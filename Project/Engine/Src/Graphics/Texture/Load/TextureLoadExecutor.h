@@ -9,7 +9,7 @@
 
 namespace CoreEngine
 {
-    class DirectXCommon;
+    class GraphicsCore;
 
     /// @brief テクスチャ読み込みの実行処理（デコード・ミップ生成・GPU転送）を担当するクラス
     class TextureLoadExecutor
@@ -25,7 +25,7 @@ namespace CoreEngine
         /// @brief 読み込み計画に基づいてテクスチャロードを実行する
         /// @param colorSpace 色空間（WIC 読み込み時の sRGB / Linear 切り替え）
         static ExecutionResult Execute(
-            CoreEngine::DirectXCommon* dxCommon,
+            CoreEngine::GraphicsCore* dxCommon,
             const std::filesystem::path& resolvedPath,
             bool ddsGenerationEnabled,
             const std::filesystem::path& ddsPath,

@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "Blur.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/Resource/ResourceFactory.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/CVar/CVar.h"
 #ifdef USE_IMGUI
 #include "Editor/ImGui/CVarPanel.h"
@@ -35,7 +35,7 @@ namespace CoreEngine
     void Blur::OnCreateConstantBuffers()
     {
         UINT blurSize = (sizeof(BlurParams) + 255) & ~255;
-        blurParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), blurSize);
+        blurParamsCB_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), blurSize);
         [[maybe_unused]] HRESULT hr = blurParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedBlurParams_));
         assert(SUCCEEDED(hr));
         UpdateBlurConstantBuffer();
@@ -61,7 +61,7 @@ namespace CoreEngine
         UpdateBlurConstantBuffer();
         UpdateScreenSizeConstants(width, height);
 
-        auto* cmdList = directXCommon_->GetCommandList();
+        auto* cmdList = graphicsCore_->GetCommandList();
 
         cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
         cmdList->SetPipelineState(computePso_.Get());

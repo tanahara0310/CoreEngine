@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "FadeEffect.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/Resource/ResourceFactory.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/CVar/CVar.h"
 #ifdef USE_IMGUI
 #include "Editor/ImGui/CVarPanel.h"
@@ -53,7 +53,7 @@ namespace CoreEngine
     void FadeEffect::OnCreateConstantBuffers()
     {
         UINT fadeSize = (sizeof(FadeParams) + 255) & ~255;
-        fadeParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), fadeSize);
+        fadeParamsCB_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), fadeSize);
         [[maybe_unused]] HRESULT hr = fadeParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedFadeParams_));
         assert(SUCCEEDED(hr));
         UpdateConstantBuffer();
@@ -105,7 +105,7 @@ namespace CoreEngine
         UpdateConstantBuffer();
         UpdateScreenSizeConstants(width, height);
 
-        auto* cmdList = directXCommon_->GetCommandList();
+        auto* cmdList = graphicsCore_->GetCommandList();
         cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
         cmdList->SetPipelineState(computePso_.Get());
 

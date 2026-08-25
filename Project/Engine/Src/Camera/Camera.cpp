@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "Camera.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Math/MathCore.h"
 #include <WinApp/WinApp.h>
 #include <cmath>

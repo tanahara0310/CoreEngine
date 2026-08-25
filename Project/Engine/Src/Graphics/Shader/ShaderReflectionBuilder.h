@@ -47,6 +47,16 @@ namespace CoreEngine
             IDxcBlob* computeShaderBlob,
             const std::string& shaderName = "");
 
+        /// @brief シェーダーライブラリ（lib_6_6 = DXR）からリフレクションデータを構築
+        /// @param libraryBlob ライブラリのコンパイル済み Blob
+        /// @param shaderName シェーダー識別名（ログ出力用）
+        /// @return リフレクション結果のデータ
+        /// @note 全エクスポート関数のバウンドリソースをマージし、可視性はすべて ALL にする
+        /// @warning lib_6_6 は未使用の宣言を削除しないので、結果には使っていないリソースも出てくる
+        std::unique_ptr<ShaderReflectionData> BuildFromLibrary(
+            IDxcBlob* libraryBlob,
+            const std::string& shaderName = "");
+
     private:
         /// @brief シェーダーリフレクションを実行
         /// @param shaderBlob シェーダーのコンパイル済みBlob
@@ -73,6 +83,26 @@ namespace CoreEngine
         void ReflectBoundResources(
             ID3D12ShaderReflection* reflection,
             D3D12_SHADER_VISIBILITY visibility,
+            ShaderReflectionData& outData);
+
+        /// @brief バウンドリソース 1 件を種別ごとの配列へ振り分ける
+        /// @param bindDesc リフレクションが返したバインド情報
+        /// @param visibility シェーダーの可視性
+        /// @param cbvSize CBV の場合のバイトサイズ（不明なら 0）
+        /// @param outData 出力先のリフレクションデータ
+        /// @note 通常シェーダーとライブラリで共通の振り分けロジック
+        void AddBoundResource(
+            const D3D12_SHADER_INPUT_BIND_DESC& bindDesc,
+            D3D12_SHADER_VISIBILITY visibility,
+            UINT cbvSize,
+            const std::string& shaderName,
+            ShaderReflectionData& outData);
+
+        /// @brief ライブラリの全エクスポート関数をリフレクションしてマージ
+        /// @param libraryBlob ライブラリのコンパイル済み Blob
+        /// @param outData 出力先のリフレクションデータ
+        void ReflectLibrary(
+            IDxcBlob* libraryBlob,
             ShaderReflectionData& outData);
 
         /// @brief 入力レイアウトをリフレクション（頂点シェーダーのみ）

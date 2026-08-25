@@ -18,6 +18,8 @@
 #include "Graphics/Asset/AssetDatabase.h"
 
 // EngineSystem が直接使う型
+#include "Graphics/RHI/Command/UploadContext.h"
+#include "Graphics/Render/RenderTarget/SceneDepth.h"
 #include "Graphics/Render/Render.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueManager.h"
@@ -218,7 +220,7 @@ namespace CoreEngine
         subsystems_.clear();
 
         // 起動時に仕掛けたモデル先読みがまだ走っている可能性があるので、
-        // TextureManager / DirectXCommon を壊す前に必ず合流させる
+        // TextureManager / GraphicsCore を壊す前に必ず合流させる
         if (auto* modelManager = GetService<ModelManager>()) {
             modelManager->WaitForPreload();
         }
@@ -230,14 +232,14 @@ namespace CoreEngine
         AssetDatabase::GetInstance().Finalize();
 
         // Hi-Z オクルージョンカリングの GPU リソースを解放する
-        // （DirectXCommon 破棄前に明示解放しないと LeakChecker の ReportLiveObjects に報告される。
+        // （GraphicsCore 破棄前に明示解放しないと LeakChecker の ReportLiveObjects に報告される。
         //   インスタンス自体は ~ModelVisibility の UnregisterTarget が空振りできるよう
         //   ここでは reset せず、EngineSystem のデストラクタまで生存させる）
         if (hiZOcclusionSystem_) {
             hiZOcclusionSystem_->Shutdown();
         }
 
-        // RenderDomainContext を先にシャットダウンしてから DirectXCommon を解放する
+        // RenderDomainContext を先にシャットダウンしてから GraphicsCore を解放する
         if (renderDomainContext_) {
             renderDomainContext_->Shutdown();
             renderDomainContext_.reset();
@@ -307,22 +309,18 @@ namespace CoreEngine
         auto* debug = GetSubsystem<DebugSubsystem>();
 #endif
 
-        auto* dx = GetService<DirectXCommon>();
+        auto* dx = GetService<GraphicsCore>();
         auto* renderManager = GetService<RenderManager>();
         auto* render = GetService<Render>();
         auto* sceneManager = GetService<SceneManager>();
 
-        // 今フレームの記録先コマンドリストを 1 回だけ解決する。
-        // これがフレーム内の唯一の供給点で、以降は RenderContext::cmdList を経由して配る。
+        // ===== フレーム開始 =====
+        // フレーム番号・記録先コマンドリスト・前フレームの後始末をここで確定し、
+        // 以降は RenderContext 経由で配る
         // 各パス／レンダラーが dxCommon->GetCommandList() を呼ぶと供給点がその数だけ増え、
         // コマンドリストを複数化したときに全箇所を直す羽目になる。
-        ID3D12GraphicsCommandList* cmdList = dx ? dx->GetCommandList() : nullptr;
-
-        // アップロードコンテキストの中間バッファを回収する（GPU 完了済みのぶんだけ）。
-        // これを呼ばないと UPLOAD ヒープ（システムメモリ）が解放されず溜まり続ける。
-        if (dx && dx->GetUploadContext()) {
-            dx->GetUploadContext()->ReleaseCompletedResources();
-        }
+        const FrameContext frame = dx ? dx->BeginFrame() : FrameContext{};
+        ID3D12GraphicsCommandList* cmdList = frame.cmdList;
 
         // レンダリングコンテキストの構築
         FrameBlackboard frameBlackboard;
@@ -344,14 +342,15 @@ namespace CoreEngine
         context.fftOceanManager = renderDomainContext_ ? renderDomainContext_->GetFFTOceanManager() : nullptr;
         context.atmosphereManager = renderDomainContext_ ? renderDomainContext_->GetAtmosphereManager() : nullptr;
         context.volumetricCloudManager = renderDomainContext_ ? renderDomainContext_->GetVolumetricCloudManager() : nullptr;
-        context.depthStencilManager = dx ? dx->GetDepthStencilManager() : nullptr;
+        context.sceneDepth = renderDomainContext_ ? renderDomainContext_->GetSceneDepth() : nullptr;
         context.frameBlackboard = &frameBlackboard;
         context.modelManager = GetService<ModelManager>();
         // 水面状態は WaterRenderFeature が RenderDomainContext へ publish する
         // （シーンに水面用の仮想関数を持たせない）
         context.waterSurfaceState = renderDomainContext_ ? renderDomainContext_->GetWaterSurfaceState() : nullptr;
         context.fftOceanSimulationTime = renderDomainContext_ ? renderDomainContext_->GetFFTOceanSimulationTime() : 0.0f;
-        context.frameNumber = ++renderFrameNumber_;
+        // フレーム番号は FrameSync が単一ソース（EngineSystem 側で別に数えない）
+        context.frameNumber = frame.frameNumber;
 #ifdef USE_IMGUI
         // RenderGraph 内の各パスが自動でタイミング計測できるようプロファイラを渡す
         // （nullptr の場合 RenderGraph::Execute は計測をスキップする）
@@ -389,19 +388,16 @@ namespace CoreEngine
             context.postEffectManager->PrepareFrame(postEffectContext);
         }
 
-        if (dx) {
+        if (context.sceneDepth) {
             frameBlackboard.SetResource(
                 FrameBlackboard::SceneDepth,
-                dx->GetDepthStencilSRV(),
-                dx->GetDepthStencilResource(),
-                context.depthStencilManager ? &context.depthStencilManager->GetCurrentState() : nullptr);
+                context.sceneDepth->GetDepthSRVHandle(),
+                &context.sceneDepth->Resource());
         }
 
 #ifdef USE_IMGUI
-        // プロファイラのリングスロットは記録中フレームインデックスに合わせる
-        // （スワップチェーンのインデックスはリサイズで 0 にリセットされるため使わない）
-        const UINT currentFrameIndex =
-            (dx && dx->GetCommandManager()) ? dx->GetCommandManager()->GetRecordingFrameIndex() : 0;
+        // プロファイラのリングスロットは今フレームのスロット番号に合わせる
+        const UINT currentFrameIndex = frame.frameIndex;
         if (debug) debug->BeginRenderPipeline(cmdList, currentFrameIndex);
 #endif
 
@@ -410,8 +406,7 @@ namespace CoreEngine
         // （補助ビュー・反射ビューはカメラが異なり、メインカメラ基準の判定は誤カリングになる）。
         HiZOcclusionSystem* hiZOcclusion = hiZOcclusionSystem_.get();
         assert(hiZOcclusion && "HiZOcclusionSystem must be created by GraphicsComponentFactory");
-        hiZOcclusion->BeginFrame(
-            (dx && dx->GetCommandManager()) ? dx->GetCommandManager()->GetRecordingFrameIndex() : 0u);
+        hiZOcclusion->BeginFrame(frame.frameIndex);
         hiZOcclusion->SetCollectEnabled(false);
 
         // DXR BLAS / TLAS 構築は ASBuildPass（FrameSetup フェーズ）として
@@ -491,13 +486,13 @@ namespace CoreEngine
         if (debug) debug->EndRenderPipeline(cmdList, currentFrameIndex);
 #endif // USE_IMGUI
 
-        // フレームの最終処理（バックバッファ終了、コマンド実行、Present）
-        // FinalizeFrame 内で SignalFrame されるフレームインデックスを事前に取得する
-        const UINT currentFrameIndexForFlush =
-            (dx && dx->GetCommandManager()) ? dx->GetCommandManager()->GetRecordingFrameIndex() : 0;
-
+        // ===== フレーム終了 =====
+        // バックバッファを PRESENT へ戻し、Close / Execute / Signal / Present / 次フレーム準備を行う
         if (render) {
             render->FinalizeFrame();
+        }
+        if (dx) {
+            dx->EndFrame();
         }
 
 #ifdef USE_IMGUI
@@ -505,10 +500,10 @@ namespace CoreEngine
         if (debug) debug->PresentGameOutputWindow();
 #endif // USE_IMGUI
 
-        // GPU 実行完了を確認してから DXR 退避リソースを解放
-        if (auto* asMgr = context.accelerationStructureManager) {
-            auto* commandManager = dx ? dx->GetCommandManager() : nullptr;
-            asMgr->FlushRetiredResources(commandManager, currentFrameIndexForFlush);
+        // DXR の退避リソースを遅延解放キューへ預ける
+        // （EndFrame() で今フレームを Signal した後に呼ぶこと。前だとフェンス値がずれる）
+        if (auto* asMgr = context.accelerationStructureManager; asMgr && dx) {
+            asMgr->MoveRetiredResourcesTo(dx->DeferredRelease(), dx->Frame().LastSignaledValue());
         }
 
 #ifdef USE_IMGUI

@@ -3,6 +3,7 @@
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
+#include "Graphics/Shader/ShaderBindingContract.h"
 #include "Graphics/Render/Pass/RenderPass.h"
 #include "Math/Matrix/Matrix4x4.h"
 #include "Math/Vector/Vector3.h"
@@ -40,7 +41,7 @@ namespace CoreEngine
         DeferredLightingTechnique() = default;
         ~DeferredLightingTechnique() override = default;
 
-        void Initialize(DirectXCommon* dxCommon) override;
+        void Initialize(GraphicsCore* dxCommon) override;
         void Execute(const RenderContext& context, D3D12_GPU_DESCRIPTOR_HANDLE& outputSrvHandle) override;
 
         // ===== カメラ・ライティングリソース セッター =====
@@ -98,6 +99,13 @@ namespace CoreEngine
     private:
         void CreateConstantBuffers();
         void UpdateWaterCausticsDebugBuffer();
+
+        /// @brief 宣言表（DeferredLightingBind::kDecls）を初期化時に 1 回だけ解決する
+        /// @note 契約違反（必須リソースの不在・種別違い）はここで throw される
+        void ResolveBindings();
+
+        /// @brief 解決済みルートパラメータ表。描画中は添字でしか触らない
+        BindingTable bindings_;
 
         // ===== 出力設定 =====
         std::string targetName_ = RenderTargetNames::SceneColor;

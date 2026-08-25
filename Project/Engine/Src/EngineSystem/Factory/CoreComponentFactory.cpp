@@ -6,9 +6,9 @@
 #include "Utility/FrameRate/FrameRateController.h"
 #include "Input/InputManager.h"
 #include "Audio/SoundManager.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Light/LightManager.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
 
@@ -43,12 +43,12 @@ namespace CoreEngine
 
     void CoreComponentFactory::SetupLight(EngineSystem& engine)
     {
-        auto* dxCommon = engine.GetService<DirectXCommon>();
+        auto* dxCommon = engine.GetService<GraphicsCore>();
         auto* resourceFactory = engine.GetService<ResourceFactory>();
-        auto* descriptorManager = dxCommon->GetDescriptorManager();
+        auto* descriptorAllocator = dxCommon->GetDescriptorAllocator();
 
         auto lightManager = std::make_unique<LightManager>();
-        lightManager->Initialize(dxCommon->GetDevice(), resourceFactory, descriptorManager);
+        lightManager->Initialize(dxCommon->GetDevice(), resourceFactory, descriptorAllocator);
 
         // デフォルトライトは作成しない（各シーンで個別に作成する）
 

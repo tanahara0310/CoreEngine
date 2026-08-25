@@ -3,6 +3,7 @@
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Utility/Logger/Logger.h"
 #include <cassert>
+#include <map>
 
 namespace CoreEngine
 {
@@ -63,6 +64,103 @@ namespace CoreEngine
         const std::string& shaderName) {
 
         return BuildFromShader(computeShaderBlob, D3D12_SHADER_VISIBILITY_ALL, shaderName);
+    }
+
+    std::unique_ptr<ShaderReflectionData> ShaderReflectionBuilder::BuildFromLibrary(
+        IDxcBlob* libraryBlob,
+        const std::string& shaderName) {
+
+        auto reflectionData = std::make_unique<ShaderReflectionData>();
+        reflectionData->SetShaderName(shaderName);
+
+        if (libraryBlob) {
+            ReflectLibrary(libraryBlob, *reflectionData);
+        }
+
+#ifdef _DEBUG
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Shader, "{}", reflectionData->ToString());
+#endif
+
+        return reflectionData;
+    }
+
+    void ShaderReflectionBuilder::ReflectLibrary(
+        IDxcBlob* libraryBlob,
+        ShaderReflectionData& outData) {
+
+        assert(dxcUtils_ != nullptr);
+        assert(libraryBlob != nullptr);
+
+        DxcBuffer reflectionBuffer;
+        reflectionBuffer.Ptr = libraryBlob->GetBufferPointer();
+        reflectionBuffer.Size = libraryBlob->GetBufferSize();
+        reflectionBuffer.Encoding = 0;
+
+        // ライブラリは ID3D12ShaderReflection では読めない。専用のインターフェースを使う
+        Microsoft::WRL::ComPtr<ID3D12LibraryReflection> libraryReflection;
+        HRESULT hr = dxcUtils_->CreateReflection(
+            &reflectionBuffer, IID_PPV_ARGS(libraryReflection.GetAddressOf()));
+        if (FAILED(hr)) {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Shader,
+                "ライブラリのリフレクション生成に失敗しました: shader={} HRESULT={:#010x}",
+                outData.GetShaderName(), static_cast<uint32_t>(hr));
+            return;
+        }
+
+        D3D12_LIBRARY_DESC libraryDesc{};
+        libraryReflection->GetDesc(&libraryDesc);
+
+        // エクスポートされた関数（RayGeneration / Miss / ClosestHit ...）を全部見る。
+        // 同じリソースが複数の関数から参照されるのが普通だが、AddOrMergeBinding が
+        // 名前・レジスタ・スペースで重複をまとめるのでそのまま流し込んでよい。
+        for (UINT fi = 0; fi < libraryDesc.FunctionCount; ++fi) {
+            ID3D12FunctionReflection* function = libraryReflection->GetFunctionByIndex(static_cast<INT>(fi));
+            if (!function) {
+                continue;
+            }
+
+            D3D12_FUNCTION_DESC functionDesc{};
+            if (FAILED(function->GetDesc(&functionDesc))) {
+                continue;
+            }
+
+            // cbuffer 名 → バイトサイズ。RootConstants のサイズ推定に使う。
+            // ついでに C++ 側のフィールド表との突き合わせもここで走らせる。
+            std::map<std::string, UINT> cbufferSizes;
+            for (UINT ci = 0; ci < functionDesc.ConstantBuffers; ++ci) {
+                ID3D12ShaderReflectionConstantBuffer* cbuffer = function->GetConstantBufferByIndex(ci);
+                if (!cbuffer) {
+                    continue;
+                }
+                D3D12_SHADER_BUFFER_DESC bufferDesc{};
+                if (FAILED(cbuffer->GetDesc(&bufferDesc)) || !bufferDesc.Name) {
+                    continue;
+                }
+                cbufferSizes[bufferDesc.Name] = bufferDesc.Size;
+
+#if CB_REFLECTION_CHECK_ENABLED
+                Cb::CheckAgainstReflection(cbuffer, bufferDesc, outData.GetShaderName());
+#endif
+            }
+
+            for (UINT ri = 0; ri < functionDesc.BoundResources; ++ri) {
+                D3D12_SHADER_INPUT_BIND_DESC bindDesc{};
+                if (FAILED(function->GetResourceBindingDesc(ri, &bindDesc)) || !bindDesc.Name) {
+                    continue;
+                }
+
+                UINT cbvSize = 0;
+                if (bindDesc.Type == D3D_SIT_CBUFFER) {
+                    if (auto it = cbufferSizes.find(bindDesc.Name); it != cbufferSizes.end()) {
+                        cbvSize = it->second;
+                    }
+                }
+
+                // DXR のルートシグネチャは全エントリが ALL であることを要求される
+                AddBoundResource(
+                    bindDesc, D3D12_SHADER_VISIBILITY_ALL, cbvSize, outData.GetShaderName(), outData);
+            }
+        }
     }
 
 
@@ -161,12 +259,16 @@ namespace CoreEngine
             Cb::CheckAgainstReflection(cbuffer, bufferDesc, outData.GetShaderName());
 #endif
 
-#ifdef _DEBUG
+            // BoundResources に無い cbuffer は「宣言はあるがバインドされていない」もの。
+            // ここで登録すると bindPoint が既定値の 0 のまま載り、実在する b0 と衝突する
+            // （＝幻の b0）。バインドされていない以上ルートパラメータも要らないので捨てる。
+            // ConstantBuffer<T> 構文で実際に使われているものは ReflectBoundResources が拾う。
             if (!found) {
-                Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Shader, "{}", 
-                    "[Warning] CBV '" + std::string(bufferDesc.Name) + "' not found in BoundResources");
+                Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Shader,
+                    "CBV '{}' は BoundResources に無いため登録しません（未使用の宣言）: shader={}",
+                    bufferDesc.Name, outData.GetShaderName());
+                continue;
             }
-#endif
 
             outData.AddCBV(binding);
         }
@@ -183,47 +285,66 @@ namespace CoreEngine
         for (UINT i = 0; i < shaderDesc.BoundResources; ++i) {
             D3D12_SHADER_INPUT_BIND_DESC bindDesc;
             reflection->GetResourceBindingDesc(i, &bindDesc);
+            AddBoundResource(bindDesc, visibility, 0, outData.GetShaderName(), outData);
+        }
+    }
 
-            ShaderResourceBinding binding;
-            binding.name = bindDesc.Name;
-            binding.type = bindDesc.Type;
-            binding.bindPoint = bindDesc.BindPoint;
-            binding.bindCount = bindDesc.BindCount;
-            binding.space = bindDesc.Space;
-            binding.visibility = visibility;
+    void ShaderReflectionBuilder::AddBoundResource(
+        const D3D12_SHADER_INPUT_BIND_DESC& bindDesc,
+        D3D12_SHADER_VISIBILITY visibility,
+        UINT cbvSize,
+        const std::string& shaderName,
+        ShaderReflectionData& outData) {
 
-            switch (bindDesc.Type) {
-            case D3D_SIT_TEXTURE:
-            case D3D_SIT_STRUCTURED:
-            case D3D_SIT_BYTEADDRESS:
-                // SRV (Texture, StructuredBuffer, ByteAddressBuffer)
-                outData.AddSRV(binding);
-                break;
+        ShaderResourceBinding binding;
+        binding.name = bindDesc.Name;
+        binding.type = bindDesc.Type;
+        binding.bindPoint = bindDesc.BindPoint;
+        binding.bindCount = bindDesc.BindCount;
+        binding.space = bindDesc.Space;
+        binding.visibility = visibility;
+        binding.size = cbvSize;
 
-            case D3D_SIT_UAV_RWTYPED:
-            case D3D_SIT_UAV_RWSTRUCTURED:
-            case D3D_SIT_UAV_RWBYTEADDRESS:
-            case D3D_SIT_UAV_APPEND_STRUCTURED:
-            case D3D_SIT_UAV_CONSUME_STRUCTURED:
-            case D3D_SIT_UAV_RWSTRUCTURED_WITH_COUNTER:
-                // UAV (RWTexture, RWStructuredBuffer等)
-                outData.AddUAV(binding);
-                break;
+        switch (bindDesc.Type) {
+        case D3D_SIT_TEXTURE:
+        case D3D_SIT_STRUCTURED:
+        case D3D_SIT_BYTEADDRESS:
+        case D3D_SIT_TBUFFER:
+        case D3D_SIT_RTACCELERATIONSTRUCTURE:
+            // SRV (Texture, StructuredBuffer, ByteAddressBuffer, tbuffer, TLAS)
+            // TLAS を落とすとインライン RayQuery と DXR が黙って壊れるのでここに含める
+            outData.AddSRV(binding);
+            break;
 
-            case D3D_SIT_SAMPLER:
-                // Sampler
-                outData.AddSampler(binding);
-                break;
+        case D3D_SIT_UAV_RWTYPED:
+        case D3D_SIT_UAV_RWSTRUCTURED:
+        case D3D_SIT_UAV_RWBYTEADDRESS:
+        case D3D_SIT_UAV_APPEND_STRUCTURED:
+        case D3D_SIT_UAV_CONSUME_STRUCTURED:
+        case D3D_SIT_UAV_RWSTRUCTURED_WITH_COUNTER:
+        case D3D_SIT_UAV_FEEDBACKTEXTURE:
+            // UAV (RWTexture, RWStructuredBuffer等)
+            outData.AddUAV(binding);
+            break;
 
-            case D3D_SIT_CBUFFER:
-                // ConstantBuffer<T>構文の場合、ConstantBuffersに含まれない可能性があるため
-                // ここで処理する
-                outData.AddCBV(binding);
-                break;
+        case D3D_SIT_SAMPLER:
+            // Sampler
+            outData.AddSampler(binding);
+            break;
 
-            default:
-                break;
-            }
+        case D3D_SIT_CBUFFER:
+            // ConstantBuffer<T>構文の場合、ConstantBuffersに含まれない可能性があるため
+            // ここで処理する
+            outData.AddCBV(binding);
+            break;
+
+        default:
+            // 未知の種別を黙って捨てるとルートシグネチャからリソースが 1 個消えるだけで、
+            // エラーも警告も出ないまま描画が壊れる。必ず気付けるようにログへ出す。
+            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Shader,
+                "未対応のリソース種別のため無視しました: name={} type={} shader={}",
+                bindDesc.Name, static_cast<int>(bindDesc.Type), shaderName);
+            break;
         }
     }
 

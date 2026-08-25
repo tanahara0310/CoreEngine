@@ -1,9 +1,10 @@
 #include "pch.h"
 #include "OffscreenRenderTarget.h"
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/Core/DescriptorManager.h"
-#include "Graphics/Common/ResourceBarrierHelper.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/Render/RenderTarget/SceneDepth.h"
 
 #include <algorithm>
 #include <format>
@@ -16,14 +17,16 @@ namespace CoreEngine
         ReleaseDescriptorHandles();
     }
 
-    void OffscreenRenderTarget::Initialize(DirectXCommon* dx, DescriptorManager* descriptorManager, const RenderTargetDescriptor& desc, int index)
+    void OffscreenRenderTarget::Initialize(GraphicsCore* dx, DescriptorAllocator* descriptorAllocator, SceneDepth* sharedDepth,
+                                           const RenderTargetDescriptor& desc, int index)
     {
         assert(dx);
-        assert(descriptorManager);
+        assert(descriptorAllocator);
         assert(index >= 0);
 
         dxCommon_ = dx;
-        descriptorManager_ = descriptorManager;
+        descriptorAllocator_ = descriptorAllocator;
+        sharedDepth_ = sharedDepth;
         index_ = index;
         format_ = desc.format;
         useDepthBuffer_ = desc.needsDepthStencil;
@@ -77,24 +80,24 @@ namespace CoreEngine
         clearValue.Color[3] = clearColor_[3];
 
         Microsoft::WRL::ComPtr<ID3D12Device> device = dxCommon_->GetDevice();
-        resource_ = ResourceFactory::CreateTextureResource(
-            device,
-            texDesc,
-            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-            &clearValue);
-
-        currentState_ = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+        resource_.Reset(
+            ResourceFactory::CreateTextureResource(
+                device,
+                texDesc,
+                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+                &clearValue),
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     }
 
     void OffscreenRenderTarget::CreateViews()
     {
         assert(dxCommon_);
-        assert(descriptorManager_);
+        assert(descriptorAllocator_);
         assert(resource_);
 
-        rtvDescriptor_ = descriptorManager_->AllocateRTVHandle(std::format("RenderTarget{}RTV", index_));
-        srvDescriptor_ = descriptorManager_->AllocateSRVHandle(std::format("RenderTarget{}SRV", index_));
-        uavDescriptor_ = descriptorManager_->AllocateSRVHandle(std::format("RenderTarget{}UAV", index_));
+        rtvDescriptor_ = descriptorAllocator_->AllocateRTVHandle(std::format("RenderTarget{}RTV", index_));
+        srvDescriptor_ = descriptorAllocator_->AllocateSRVHandle(std::format("RenderTarget{}SRV", index_));
+        uavDescriptor_ = descriptorAllocator_->AllocateSRVHandle(std::format("RenderTarget{}UAV", index_));
 
         UpdateViews();
     }
@@ -123,23 +126,32 @@ namespace CoreEngine
         uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
         device->CreateUnorderedAccessView(resource_.Get(), nullptr, &uavDesc, uavDescriptor_.cpuHandle);
 
-        dsvHandle_ = useCustomDsvHandle_ ? customDsvHandle_ : dxCommon_->GetDSVHandle();
+        dsvHandle_ = ResolveDsvHandle();
+    }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE OffscreenRenderTarget::ResolveDsvHandle() const
+    {
+        if (useCustomDsvHandle_) {
+            return customDsvHandle_;
+        }
+        // 共有シーン深度の DSV スロットはリサイズしても変わらない（同じスロットへ書き直される）
+        return sharedDepth_ ? sharedDepth_->GetDSVHandle() : D3D12_CPU_DESCRIPTOR_HANDLE{};
     }
 
     void OffscreenRenderTarget::ReleaseDescriptorHandles()
     {
-        if (!descriptorManager_) {
+        if (!descriptorAllocator_) {
             return;
         }
 
         if (rtvDescriptor_.IsValid()) {
-            descriptorManager_->Free(rtvDescriptor_);
+            descriptorAllocator_->Free(rtvDescriptor_);
         }
         if (srvDescriptor_.IsValid()) {
-            descriptorManager_->Free(srvDescriptor_);
+            descriptorAllocator_->Free(srvDescriptor_);
         }
         if (uavDescriptor_.IsValid()) {
-            descriptorManager_->Free(uavDescriptor_);
+            descriptorAllocator_->Free(uavDescriptor_);
         }
     }
 
@@ -148,15 +160,11 @@ namespace CoreEngine
         assert(cmdList);
         assert(resource_);
 
-        dsvHandle_ = useCustomDsvHandle_ ? customDsvHandle_ : dxCommon_->GetDSVHandle();
+        dsvHandle_ = ResolveDsvHandle();
+        assert((!useDepthBuffer_ || dsvHandle_.ptr != 0) && "OffscreenRenderTarget: 深度を使うのに DSV が無い");
 
         // 実際のリソース状態から RENDER_TARGET へ遷移（状態不一致によるチラつきを防ぐ）
-        if (currentState_ != D3D12_RESOURCE_STATE_RENDER_TARGET) {
-            ResourceBarrierHelper::Transition(cmdList, resource_.Get(),
-                currentState_,
-                D3D12_RESOURCE_STATE_RENDER_TARGET);
-            currentState_ = D3D12_RESOURCE_STATE_RENDER_TARGET;
-        }
+        Barrier::Transition(cmdList, resource_, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
         // RTV & DSV設定
         // useDepthBuffer_=false の場合（SSAOなどポストプロセス専用パス）は
@@ -195,9 +203,7 @@ namespace CoreEngine
         scissor.bottom = height_;
         cmdList->RSSetScissorRects(1, &scissor);
 
-        // SRVヒープ設定
-        ID3D12DescriptorHeap* heaps[] = { dxCommon_->GetSRVHeap() };
-        cmdList->SetDescriptorHeaps(1, heaps);
+        // SRV ヒープはフレーム先頭で CommandContext が 1 回バインドする（個別バインドは不要）
     }
 
     void OffscreenRenderTarget::End(ID3D12GraphicsCommandList* cmdList)
@@ -206,12 +212,7 @@ namespace CoreEngine
         assert(resource_);
 
         // 実際のリソース状態から PIXEL_SHADER_RESOURCE へ遷移
-        if (currentState_ != D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE) {
-            ResourceBarrierHelper::Transition(cmdList, resource_.Get(),
-                currentState_,
-                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-            currentState_ = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-        }
+        Barrier::Transition(cmdList, resource_, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     }
 
     D3D12_GPU_DESCRIPTOR_HANDLE OffscreenRenderTarget::GetUAVHandle() const
@@ -224,16 +225,9 @@ namespace CoreEngine
         assert(cmdList);
         assert(resource_);
 
-        if (currentState_ != D3D12_RESOURCE_STATE_UNORDERED_ACCESS) {
-            ResourceBarrierHelper::Transition(cmdList, resource_.Get(),
-                currentState_,
-                D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-            currentState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        }
+        Barrier::Transition(cmdList, resource_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-        // SRVヒープ設定（CS用バインドに必要）
-        ID3D12DescriptorHeap* heaps[] = { dxCommon_->GetSRVHeap() };
-        cmdList->SetDescriptorHeaps(1, heaps);
+        // SRV ヒープはフレーム先頭で CommandContext が 1 回バインドする（個別バインドは不要）
     }
 
     void OffscreenRenderTarget::EndCS(ID3D12GraphicsCommandList* cmdList)
@@ -241,12 +235,7 @@ namespace CoreEngine
         assert(cmdList);
         assert(resource_);
 
-        if (currentState_ != D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE) {
-            ResourceBarrierHelper::Transition(cmdList, resource_.Get(),
-                currentState_,
-                D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            currentState_ = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-        }
+        Barrier::Transition(cmdList, resource_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     }
 
     void OffscreenRenderTarget::GetSize(int32_t& width, int32_t& height) const
@@ -278,20 +267,5 @@ namespace CoreEngine
     int32_t OffscreenRenderTarget::GetHeight() const
     {
         return height_;
-    }
-
-    void OffscreenRenderTarget::SetCurrentState(D3D12_RESOURCE_STATES state)
-    {
-        currentState_ = state;
-    }
-
-    D3D12_RESOURCE_STATES& OffscreenRenderTarget::GetCurrentState()
-    {
-        return currentState_;
-    }
-
-    D3D12_RESOURCE_STATES OffscreenRenderTarget::GetCurrentState() const
-    {
-        return currentState_;
     }
 }

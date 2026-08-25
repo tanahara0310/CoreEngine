@@ -41,7 +41,7 @@ namespace CoreEngine
         SSAOTechnique() = default;
         ~SSAOTechnique() = default;
 
-        void Initialize(DirectXCommon* dxCommon) override;
+        void Initialize(GraphicsCore* dxCommon) override;
         void Execute(const RenderContext& context, D3D12_GPU_DESCRIPTOR_HANDLE& outputSrvHandle) override;
         void OnResize(uint32_t width, uint32_t height) override;
         void DrawImGui() override;
@@ -58,9 +58,8 @@ namespace CoreEngine
 
     private:
         SSAOParams params_;
-        // ジッタ入り行列が毎フレーム変わるため、フレームオーバーラップ対応のリングで運ぶ。
+        // 定数は UploadRing（GraphicsCore::GetUploadRing）から毎フレーム確保する。
         // 単一バッファ上書きだと GPU 実行中フレームの行列を CPU が書き潰し、
-        // 深度バッファと行列が食い違って AO が毎フレームちらつく。
-        FrameRingConstantBuffer cbRing_;
+        // 深度バッファと行列が食い違って AO が毎フレームちらついた。
     };
 }

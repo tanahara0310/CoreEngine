@@ -1,14 +1,15 @@
 #pragma once
 #include "RenderTarget.h"
-#include "Graphics/Common/Core/DescriptorHandle.h"
+#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include "Graphics/Render/RenderTarget/RenderTargetDescriptor.h"
 
 #include <wrl.h>
 
 namespace CoreEngine
 {
-    class DirectXCommon;
-    class DescriptorManager;
+    class GraphicsCore;
+    class DescriptorAllocator;
+    class SceneDepth;
 
     /// @brief オフスクリーンレンダーターゲット
     /// ポストエフェクトやマルチパスレンダリングで使用
@@ -18,11 +19,13 @@ namespace CoreEngine
         ~OffscreenRenderTarget() override;
 
         /// @brief 初期化
-        /// @param dx DirectXCommon
-        /// @param descriptorManager ディスクリプタマネージャー
+        /// @param dx GraphicsCore
+        /// @param descriptorAllocator ディスクリプタマネージャー
+        /// @param sharedDepth 共有するシーン深度（DSV の供給元。深度を使わないターゲットでも渡してよい）
         /// @param desc レンダーターゲット記述子
         /// @param index 内部識別用インデックス
-        void Initialize(DirectXCommon* dx, DescriptorManager* descriptorManager, const RenderTargetDescriptor& desc, int index);
+        void Initialize(GraphicsCore* dx, DescriptorAllocator* descriptorAllocator, SceneDepth* sharedDepth,
+                        const RenderTargetDescriptor& desc, int index);
 
         /// @brief リサイズ
         /// @param width 新しい幅
@@ -72,7 +75,7 @@ namespace CoreEngine
 
         /// @brief 外部 DSV を使用するよう設定する
         /// @param dsvHandle 専用深度バッファの DSV ハンドル
-        /// @note 未設定時は従来通り DirectXCommon の共有 DSV を使用する
+        /// @note 未設定時は共有シーン深度（SceneDepth）の DSV を使用する
         void SetDepthStencilHandle(D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) {
             customDsvHandle_ = dsvHandle;
             useCustomDsvHandle_ = true;
@@ -87,14 +90,9 @@ namespace CoreEngine
         ///          Begin() を呼ぶ前の値は不定。
         D3D12_CPU_DESCRIPTOR_HANDLE GetBoundDSVHandle() const { return dsvHandle_; }
 
-        /// @brief 現在のリソース状態を外部から強制設定する
-        /// @note 複数 View 実行後など、実際の状態が外部で変更された場合に使用
-        void SetCurrentState(D3D12_RESOURCE_STATES state);
-        /// @brief 現在のリソース状態参照を取得する
-        /// @return 外部の自動バリア処理が更新する状態変数への参照
-        D3D12_RESOURCE_STATES& GetCurrentState();
-        /// @brief 現在のリソースステート（バリア発行時の判定に使う）
-        D3D12_RESOURCE_STATES GetCurrentState() const;
+        /// @brief リソースをステート追跡つきで返す（バリア発行はこれを渡す）
+        /// @note ステートの更新は GpuResource 側でのみ行う
+        GpuResource& Resource() override { return resource_; }
 
     private:
         void CreateOrResizeResource(uint32_t width, uint32_t height);
@@ -102,9 +100,13 @@ namespace CoreEngine
         void UpdateViews() const;
         void ReleaseDescriptorHandles();
 
-        DirectXCommon* dxCommon_ = nullptr;
-        DescriptorManager* descriptorManager_ = nullptr;
-        Microsoft::WRL::ComPtr<ID3D12Resource> resource_;
+        /// @brief Begin() で実際に束縛する DSV（カスタム指定があればそれ、無ければ共有シーン深度）
+        D3D12_CPU_DESCRIPTOR_HANDLE ResolveDsvHandle() const;
+
+        GraphicsCore* dxCommon_ = nullptr;
+        DescriptorAllocator* descriptorAllocator_ = nullptr;
+        SceneDepth* sharedDepth_ = nullptr;
+        GpuResource resource_;
         DescriptorHandle rtvDescriptor_{};
         DescriptorHandle srvDescriptor_{};
         DescriptorHandle uavDescriptor_{};
@@ -117,6 +119,5 @@ namespace CoreEngine
         bool autoResize_ = true;
         bool useCustomDsvHandle_ = false;
         D3D12_CPU_DESCRIPTOR_HANDLE customDsvHandle_{};
-        D3D12_RESOURCE_STATES currentState_ = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
     };
 }

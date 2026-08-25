@@ -1,7 +1,8 @@
 #include "pch.h"
 #include "DeferredLightingTechnique.h"
+#include "DeferredLightingBindings.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/RenderManager.h"
@@ -12,6 +13,7 @@
 #include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Graphics/RootSignature/ShaderBinder.h"
 #include "Utility/Logger/Logger.h"
 #include <cstring>
 #include <cassert>
@@ -39,10 +41,21 @@ namespace CoreEngine
     // -------------------------------------------------------------------------
     // 初期化
     // -------------------------------------------------------------------------
-    void DeferredLightingTechnique::Initialize(DirectXCommon* dxCommon)
+    void DeferredLightingTechnique::Initialize(GraphicsCore* dxCommon)
     {
         RenderingTechniqueBase::Initialize(dxCommon);
+        ResolveBindings();
         CreateConstantBuffers();
+    }
+
+    void DeferredLightingTechnique::ResolveBindings()
+    {
+        assert(reflectionData_ && "RootSignature 構築後に呼ぶこと");
+
+        // 宣言表とシェーダー実体を突き合わせる。必須リソースの改名・削除、
+        // 種別の食い違いはここで throw される（無言で描画が壊れるのを防ぐ）。
+        bindings_ = BindingTable::Resolve(
+            *reflectionData_, DeferredLightingBind::kDecls, GetTechniqueName());
     }
 
     // -------------------------------------------------------------------------
@@ -50,7 +63,7 @@ namespace CoreEngine
     // -------------------------------------------------------------------------
     void DeferredLightingTechnique::CreateConstantBuffers()
     {
-        assert(directXCommon_);
+        assert(graphicsCore_);
 
         // 単位行列（各定数バッファの初期値）
         const float identity[16] = {
@@ -63,7 +76,7 @@ namespace CoreEngine
         // 深度復元用 View*Projection 逆行列専用の定数バッファをビュー種別ごとに作成（64 バイト = float4x4）
         for (size_t vi = 0; vi < kViewTypeCount; ++vi) {
             depthReconstructionBuffers_[vi] = ResourceFactory::CreateBufferResource(
-                directXCommon_->GetDevice(), sizeof(float) * 16);
+                graphicsCore_->GetDevice(), sizeof(float) * 16);
             depthReconstructionCBVAddresses_[vi] = depthReconstructionBuffers_[vi]->GetGPUVirtualAddress();
             float* drMapped = nullptr;
             depthReconstructionBuffers_[vi]->Map(0, nullptr, reinterpret_cast<void**>(&drMapped));
@@ -73,7 +86,7 @@ namespace CoreEngine
 
         // IBL パラメータ定数バッファを作成（float x 4 = 16 バイト）
         iblParamsBuffer_ = ResourceFactory::CreateBufferResource(
-            directXCommon_->GetDevice(), sizeof(float) * 4);
+            graphicsCore_->GetDevice(), sizeof(float) * 4);
         iblParamsCBVAddress_ = iblParamsBuffer_->GetGPUVirtualAddress();
 
         // デフォルト値で初期化 (rotation=0, intensity=1)
@@ -84,13 +97,13 @@ namespace CoreEngine
         iblParamsBuffer_->Unmap(0, nullptr);
 
         waterCausticsDebugBuffer_ = ResourceFactory::CreateBufferResource(
-            directXCommon_->GetDevice(), sizeof(WaterCausticsDebugSettings));
+            graphicsCore_->GetDevice(), sizeof(WaterCausticsDebugSettings));
         waterCausticsDebugCBVAddress_ = waterCausticsDebugBuffer_->GetGPUVirtualAddress();
         UpdateWaterCausticsDebugBuffer();
 
         // 空アンビエントパラメータ定数バッファ（既定は無効。Execute で毎フレーム更新）
         skyAmbientBuffer_ = ResourceFactory::CreateBufferResource(
-            directXCommon_->GetDevice(), sizeof(SkyAmbientParams));
+            graphicsCore_->GetDevice(), sizeof(SkyAmbientParams));
         skyAmbientCBVAddress_ = skyAmbientBuffer_->GetGPUVirtualAddress();
         SkyAmbientParams skyDefaults{};
         SkyAmbientParams* skyMapped = nullptr;
@@ -189,134 +202,91 @@ namespace CoreEngine
         cmdList->SetGraphicsRootSignature(rootSignatureManager_->GetRootSignature());
         cmdList->SetPipelineState(pipelineStateManager_.GetPipelineState(BlendMode::kBlendModeNone));
 
+        // 以降のバインドは全て ShaderBinder 経由。ルートパラメータは初期化時に
+        // 解決済み（slots_）なので、描画中に名前で map を引くことはもう無い。
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Graphics);
+
         // ===== G-Buffer SRV のバインド =====
+        binder.Set(bindings_[DeferredLightingBind::gAlbedoAO],
+            gBufferManager->GetSRVHandle(GBufferManager::Target::AlbedoAO));
+        binder.Set(bindings_[DeferredLightingBind::gNormalRoughness],
+            gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness));
+        binder.Set(bindings_[DeferredLightingBind::gEmissiveMetallic],
+            gBufferManager->GetSRVHandle(GBufferManager::Target::EmissiveMetallic));
 
-        // t0: AlbedoAO
-        const int albedoIdx = GetRootParamIndex("gAlbedoAO");
-        if (albedoIdx >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(albedoIdx,
-                gBufferManager->GetSRVHandle(GBufferManager::Target::AlbedoAO));
-        }
-
-        // t1: NormalRoughness
-        const int normalIdx = GetRootParamIndex("gNormalRoughness");
-        if (normalIdx >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(normalIdx,
-                gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness));
-        }
-
-        // t2: EmissiveMetallic
-        const int emissiveIdx = GetRootParamIndex("gEmissiveMetallic");
-        if (emissiveIdx >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(emissiveIdx,
-                gBufferManager->GetSRVHandle(GBufferManager::Target::EmissiveMetallic));
-        }
-
-        // t3: SceneDepth（WorldPosition ターゲット廃止に伴い、深度から復元する）
-        const int sceneDepthIdx = GetRootParamIndex("gSceneDepth");
-        if (sceneDepthIdx >= 0 && context.frameBlackboard) {
+        // SceneDepth（WorldPosition ターゲット廃止に伴い、深度から復元する）
+        if (context.frameBlackboard) {
             D3D12_GPU_DESCRIPTOR_HANDLE depthHandle{};
             if (context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneDepth, depthHandle)) {
-                cmdList->SetGraphicsRootDescriptorTable(sceneDepthIdx, depthHandle);
+                binder.Set(bindings_[DeferredLightingBind::gSceneDepth], depthHandle);
             }
         }
 
         // ===== カメラ CBV =====
-        const int cameraIdx = GetRootParamIndex("gCamera");
-        if (cameraIdx >= 0 && cameraCBVAddress_ != 0) {
-            cmdList->SetGraphicsRootConstantBufferView(cameraIdx, cameraCBVAddress_);
+        if (cameraCBVAddress_ != 0) {
+            binder.Set(bindings_[DeferredLightingBind::gCamera], cameraCBVAddress_);
         }
 
         // ===== 深度復元用 CBV（ビュー種別ごとに独立したバッファを参照） =====
-        const int depthReconIdx = GetRootParamIndex("gDepthReconstruction");
-        if (depthReconIdx >= 0) {
+        {
             const size_t vi = static_cast<size_t>(context.viewSettings.viewType);
             if (vi < kViewTypeCount && depthReconstructionCBVAddresses_[vi] != 0) {
-                cmdList->SetGraphicsRootConstantBufferView(depthReconIdx, depthReconstructionCBVAddresses_[vi]);
+                binder.Set(bindings_[DeferredLightingBind::gDepthReconstruction], depthReconstructionCBVAddresses_[vi]);
             }
         }
 
         // ===== ライトバインド（LightManager 経由） =====
+        // 未解決スロットは ShaderBinder 側で no-op になるので、ここでの IsValid 判定は不要
         if (context.lightManager) {
-            const int lcIdx = GetRootParamIndex("gLightCounts");
-            const int dlIdx = GetRootParamIndex("gDirectionalLights");
-            const int plIdx = GetRootParamIndex("gPointLights");
-            const int slIdx = GetRootParamIndex("gSpotLights");
-            const int alIdx = GetRootParamIndex("gAreaLights");
-
-            if (lcIdx >= 0 && dlIdx >= 0 && plIdx >= 0 && slIdx >= 0 && alIdx >= 0) {
-                context.lightManager->SetLightsToCommandList(
-                    cmdList,
-                    static_cast<UINT>(lcIdx),
-                    static_cast<UINT>(dlIdx),
-                    static_cast<UINT>(plIdx),
-                    static_cast<UINT>(slIdx),
-                    static_cast<UINT>(alIdx)
-                );
-            }
+            context.lightManager->SetLightsToCommandList(
+                binder,
+                bindings_[DeferredLightingBind::gLightCounts],
+                bindings_[DeferredLightingBind::gDirectionalLights],
+                bindings_[DeferredLightingBind::gPointLights],
+                bindings_[DeferredLightingBind::gSpotLights],
+                bindings_[DeferredLightingBind::gAreaLights]
+            );
         }
 
         // ===== IBL SRV =====
         if (context.renderManager) {
             // Irradiance Map（拡散 IBL）
-            const int irradianceIdx = GetRootParamIndex("gIrradianceMap");
-            if (irradianceIdx >= 0) {
-                auto handle = context.renderManager->GetIrradianceMapHandle();
-                if (handle.ptr != 0) {
-                    cmdList->SetGraphicsRootDescriptorTable(irradianceIdx, handle);
-                }
+            if (auto handle = context.renderManager->GetIrradianceMapHandle(); handle.ptr != 0) {
+                binder.Set(bindings_[DeferredLightingBind::gIrradianceMap], handle);
             }
-
             // Prefiltered Map（スペキュラ IBL）
-            const int prefilteredIdx = GetRootParamIndex("gPrefilteredMap");
-            if (prefilteredIdx >= 0) {
-                auto handle = context.renderManager->GetPrefilteredMapHandle();
-                if (handle.ptr != 0) {
-                    cmdList->SetGraphicsRootDescriptorTable(prefilteredIdx, handle);
-                }
+            if (auto handle = context.renderManager->GetPrefilteredMapHandle(); handle.ptr != 0) {
+                binder.Set(bindings_[DeferredLightingBind::gPrefilteredMap], handle);
             }
-
             // BRDF LUT（スペキュラ IBL 積分）
-            const int brdfLUTIdx = GetRootParamIndex("gBRDFLUT");
-            if (brdfLUTIdx >= 0) {
-                auto handle = context.renderManager->GetBRDFLUTHandle();
-                if (handle.ptr != 0) {
-                    cmdList->SetGraphicsRootDescriptorTable(brdfLUTIdx, handle);
-                }
+            if (auto handle = context.renderManager->GetBRDFLUTHandle(); handle.ptr != 0) {
+                binder.Set(bindings_[DeferredLightingBind::gBRDFLUT], handle);
             }
         }
 
         // ===== IBL パラメータ CBV =====
-        const int iblParamsIdx = GetRootParamIndex("gIBLParams");
-        if (iblParamsIdx >= 0 && iblParamsCBVAddress_ != 0) {
-            cmdList->SetGraphicsRootConstantBufferView(iblParamsIdx, iblParamsCBVAddress_);
+        if (iblParamsCBVAddress_ != 0) {
+            binder.Set(bindings_[DeferredLightingBind::gIBLParams], iblParamsCBVAddress_);
         }
 
         // ===== RT シャドウマスク SRV（ライトごとに個別バインド） =====
-        static const char* rtShadowNames[4] = {
-            "gRTShadowMask0", "gRTShadowMask1", "gRTShadowMask2", "gRTShadowMask3"
-        };
         for (uint32_t li = 0; li < kMaxRTShadowLights; ++li) {
-            const int idx = GetRootParamIndex(rtShadowNames[li]);
-            if (idx >= 0 && rtShadowHandles_[li].ptr != 0) {
-                cmdList->SetGraphicsRootDescriptorTable(idx, rtShadowHandles_[li]);
+            if (rtShadowHandles_[li].ptr != 0) {
+                binder.Set(bindings_[DeferredLightingBind::gRTShadowMask0 + li], rtShadowHandles_[li]);
             }
         }
 
         // ===== SSAO SRV =====
-        const int ssaoIdx = GetRootParamIndex("gSSAO");
-        if (ssaoIdx >= 0 && ssaoHandle_.ptr != 0) {
-            cmdList->SetGraphicsRootDescriptorTable(ssaoIdx, ssaoHandle_);
+        if (ssaoHandle_.ptr != 0) {
+            binder.Set(bindings_[DeferredLightingBind::gSSAO], ssaoHandle_);
         }
 
-        const int waterCausticsIdx = GetRootParamIndex("gWaterCaustics");
-        if (waterCausticsIdx >= 0 && waterCausticsHandle_.ptr != 0) {
-            cmdList->SetGraphicsRootDescriptorTable(waterCausticsIdx, waterCausticsHandle_);
+        if (waterCausticsHandle_.ptr != 0) {
+            binder.Set(bindings_[DeferredLightingBind::gWaterCaustics], waterCausticsHandle_);
         }
 
-        const int waterCausticsDebugIdx = GetRootParamIndex("gWaterCausticsDebug");
-        if (waterCausticsDebugIdx >= 0 && waterCausticsDebugCBVAddress_ != 0) {
-            cmdList->SetGraphicsRootConstantBufferView(waterCausticsDebugIdx, waterCausticsDebugCBVAddress_);
+        if (waterCausticsDebugCBVAddress_ != 0) {
+            binder.Set(bindings_[DeferredLightingBind::gWaterCausticsDebug], waterCausticsDebugCBVAddress_);
         }
 
         // ===== 空アンビエント（大気散乱 SH。Sky Light 相当） =====
@@ -346,22 +316,23 @@ namespace CoreEngine
                 skyAmbientBuffer_->Unmap(0, nullptr);
             }
 
-            const int skyAmbientIdx = GetRootParamIndex("gSkyAmbient");
-            if (skyAmbientIdx >= 0 && skyAmbientCBVAddress_ != 0) {
-                cmdList->SetGraphicsRootConstantBufferView(skyAmbientIdx, skyAmbientCBVAddress_);
+            if (skyAmbientCBVAddress_ != 0) {
+                binder.Set(bindings_[DeferredLightingBind::gSkyAmbient], skyAmbientCBVAddress_);
             }
             // SH バッファはバッファ自体が常に存在する（AtmosphereManager 初期化時に生成）。
             // enabled=0 のフレームではシェーダーが読まないため内容は問われない
-            const int skyShIdx = GetRootParamIndex("gSkyIrradianceSH");
-            if (skyShIdx >= 0 && atmosphere && atmosphere->GetSkyIrradianceSHSRVHandle().ptr != 0) {
-                cmdList->SetGraphicsRootDescriptorTable(skyShIdx, atmosphere->GetSkyIrradianceSHSRVHandle());
+            if (atmosphere && atmosphere->GetSkyIrradianceSHSRVHandle().ptr != 0) {
+                binder.Set(bindings_[DeferredLightingBind::gSkyIrradianceSH], atmosphere->GetSkyIrradianceSHSRVHandle());
             }
             // 空スペキュラキューブマップ（specularEnabled=0 のフレームではシェーダーが読まない）
-            const int skySpecIdx = GetRootParamIndex("gSkySpecularMap");
-            if (skySpecIdx >= 0 && atmosphere && atmosphere->GetSkySpecularSRVHandle().ptr != 0) {
-                cmdList->SetGraphicsRootDescriptorTable(skySpecIdx, atmosphere->GetSkySpecularSRVHandle());
+            if (atmosphere && atmosphere->GetSkySpecularSRVHandle().ptr != 0) {
+                binder.Set(bindings_[DeferredLightingBind::gSkySpecularMap], atmosphere->GetSkySpecularSRVHandle());
             }
         }
+
+        // 必須リソースの差し忘れをここで捕まえる（Dev のみ）。
+        // 通り抜けると GPU が前フレームの descriptor を読んだ絵が出る。
+        binder.ValidateBeforeDraw(bindings_);
 
         // フルスクリーンクアッドで描画
         DrawFullscreenQuad(cmdList);

@@ -12,7 +12,8 @@
 #include "Subsystem/DebugSubsystem.h"
 #endif
 
-class WinApp;
+// WinApp は CoreEngine 名前空間の型（グローバルスコープで前方宣言すると別物になる）
+namespace CoreEngine { class WinApp; }
 
 // ──────────────────────────────────────────────────────────
 // サービスアクセス利便インクルード
@@ -20,7 +21,7 @@ class WinApp;
 // 主要サービス型のヘッダをここでまとめて提供している。
 // 非推奨: 各呼び出し元ファイルで必要な型を直接インクルードすることを推奨。
 // ──────────────────────────────────────────────────────────
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Light/LightManager.h"
@@ -95,7 +96,7 @@ public:
     // ──────────────────────────────────────────────────────────
 
     /// @brief エンジンサービスを取得（型安全。未登録なら nullptr）
-    /// @tparam T サービスの型（DirectXCommon / TextureManager / ModelManager / InputManager など）
+    /// @tparam T サービスの型（GraphicsCore / TextureManager / ModelManager / InputManager など）
     /// @note `GameObject::GetComponent<T>()` とは別物。こちらはエンジン全体で 1 個ずつ存在する
     ///       常駐サービスのロケータ。サブシステムの取得は `GetSubsystem<T>()`。
     template<typename T>
@@ -191,8 +192,7 @@ private:
     // レンダーパイプライン
     std::unique_ptr<RenderPipeline> renderPipeline_;
 
-    // レンダリングフレーム通し番号（RenderContext::frameNumber の供給元）
-    uint64_t renderFrameNumber_ = 0;
+    // フレーム通し番号は FrameSync が単一ソース（EngineSystem 側では数えない）
 
     // ドメイン管理コンテキスト（GBuffer / シャドウ / レイトレーシング）
     std::unique_ptr<RenderDomainContext> renderDomainContext_;

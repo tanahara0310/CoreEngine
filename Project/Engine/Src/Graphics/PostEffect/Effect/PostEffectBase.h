@@ -5,9 +5,10 @@
 #include <memory>
 #include <vector>
 
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RootSignature/RootSignatureManager.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Graphics/Shader/ShaderProgram.h"
 #include "Graphics/PostEffect/Effect/PostEffectStage.h"
 #include "Graphics/PostEffect/Effect/PostEffectFrameContext.h"
 #include "Utility/CVar/CVar.h"
@@ -38,10 +39,14 @@ namespace CoreEngine {
     /// @details PS/CS 両方に共通する状態・メソッドのみを管理する
     class PostEffectBase {
     public:
+        /// @brief シェーダーのコンパイル／リフレクションを行うキャッシュを注入する
+        /// @note Initialize() の前に呼ぶこと。PostEffectManager が自動で行う。
+        void SetShaderProgramCache(ShaderProgramCache* cache) { shaderProgramCache_ = cache; }
+
         virtual ~PostEffectBase() = default;
 
         /// @brief 初期化
-        virtual void Initialize(DirectXCommon* dxCommon) = 0;
+        virtual void Initialize(GraphicsCore* dxCommon) = 0;
 
         /// @brief グラフィクスパイプラインによる描画（PS派生クラスで実装）
         virtual void Draw(D3D12_GPU_DESCRIPTOR_HANDLE /*inputSrvHandle*/) {}
@@ -141,9 +146,15 @@ namespace CoreEngine {
         /// @return 解決済み SRV。未解決なら ptr == 0
         D3D12_GPU_DESCRIPTOR_HANDLE GetExtraInput(const char* slot) const;
 
-        DirectXCommon* directXCommon_ = nullptr;
+        GraphicsCore* graphicsCore_ = nullptr;
         std::unique_ptr<RootSignatureManager> rootSignatureManager_;
-        std::unique_ptr<ShaderReflectionData> reflectionData_; ///< シェーダーリフレクションデータ
+
+        /// @brief コンパイルとリフレクションの窓口（PostEffectManager が Initialize 前に注入）
+        ShaderProgramCache* shaderProgramCache_ = nullptr;
+        /// @brief 使っているプログラム（所有者は ShaderProgramCache）
+        const ShaderProgram* shaderProgram_ = nullptr;
+        /// @brief シェーダーリフレクションデータ（shaderProgram_ が持つ実体への参照）
+        const ShaderReflectionData* reflectionData_ = nullptr;
         bool enabled_ = true;
 
     private:

@@ -3,7 +3,7 @@
 
 #ifdef USE_IMGUI
 
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/FrameBlackboard.h"
@@ -18,7 +18,7 @@
 
 namespace CoreEngine
 {
-    void RenderPassDebugPanel::Initialize(DirectXCommon* dxCommon)
+    void RenderPassDebugPanel::Initialize(GraphicsCore* dxCommon)
     {
         dxCommon_ = dxCommon;
     }

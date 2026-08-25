@@ -2,7 +2,7 @@
 #include "Utility/CVar/CVar.h"
 #include "Editor/ImGui/CVarPanel.h"
 #include "TAATechnique.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
@@ -42,10 +42,9 @@ namespace CoreEngine
         constexpr const char* kCVarPrefix = "r.TAA";
     }
 
-    void TAATechnique::Initialize(DirectXCommon* dxCommon)
+    void TAATechnique::Initialize(GraphicsCore* dxCommon)
     {
         RenderingTechniqueBase::Initialize(dxCommon);
-        cbRing_.Initialize(dxCommon, sizeof(TAAParams));
     }
 
     const char* TAATechnique::GetHistoryTargetName(uint32_t index)
@@ -90,7 +89,7 @@ namespace CoreEngine
 
         // 今フレームのスライスへ書き込む（フレームオーバーラップ対応）
         const D3D12_GPU_VIRTUAL_ADDRESS cbAddress =
-            cbRing_.Upload(context.dxCommon, &params_, sizeof(params_));
+            context.dxCommon->GetUploadRing().AllocateConstants(params_);
 
         writeTarget->Begin(cmdList);
 

@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "ModelGameObject.h"
 #include "EngineSystem/EngineSystem.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Model/ModelResource.h"

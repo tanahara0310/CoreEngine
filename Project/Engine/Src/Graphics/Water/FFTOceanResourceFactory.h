@@ -7,7 +7,7 @@
 
 namespace CoreEngine
 {
-    class DescriptorManager;
+    class DescriptorAllocator;
 
     /// @brief FFT Ocean のGPUリソース生成を担当するファクトリ
     class FFTOceanResourceFactory {
@@ -15,7 +15,7 @@ namespace CoreEngine
         /// @brief IFFT ピンポン用中間テクスチャ（A/B × 2枚）を作成する
         static bool CreateIntermediateTextures(
             ID3D12Device* device,
-            DescriptorManager* descriptorManager,
+            DescriptorAllocator* descriptorAllocator,
             uint32_t resolution,
             FFTOceanPingPong& spectrumA,
             FFTOceanPingPong& spectrumB);
@@ -24,7 +24,7 @@ namespace CoreEngine
         /// @details SRV は DEFAULT 側に作る。CPU 書き込みは outSet.mapped（UPLOAD 側）へ。
         static bool CreateSpectrumBuffers(
             ID3D12Device* device,
-            DescriptorManager* descriptorManager,
+            DescriptorAllocator* descriptorAllocator,
             uint32_t resolution,
             uint32_t sampleStride,
             FFTOceanSpectrumBufferSet& outSet);

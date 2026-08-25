@@ -5,8 +5,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include "Graphics/Common/GpuTimestampProfiler.h"
-#include "Graphics/Common/ResourceBarrierHelper.h"
+#include "Graphics/RHI/Debug/GpuTimestampProfiler.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Pass/RenderPass.h"
 
 namespace CoreEngine
@@ -18,8 +18,7 @@ namespace CoreEngine
         bool hasWriter = false;
         uint32_t version = 0;              ///< Write 宣言ごとにインクリメントされる版番号
         std::vector<uint32_t> readers;     ///< 現行バージョンを読むパス一覧（WAR 依存の計算元）
-        ID3D12Resource* resource = nullptr;
-        D3D12_RESOURCE_STATES* currentState = nullptr;
+        GpuResource* resource = nullptr;  ///< 実リソースと現在ステート（Blackboard から解決される）
     };
 
     /// @brief 1 リソースへのアクセス宣言（論理名と必要な D3D12 ステート）

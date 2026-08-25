@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "Model.h"
 #include "ModelRenderContext.h"
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Camera/Camera.h"
 #include "Camera/View/ViewInfo.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
@@ -57,7 +57,7 @@ namespace CoreEngine
                     renderContext_.dxCommon->GetDevice(),
                     *resource_->GetSkeleton(),
                     modelData,
-                    renderContext_.dxCommon->GetDescriptorManager(),
+                    renderContext_.dxCommon->GetDescriptorAllocator(),
                     resource_->GetVertexBuffer(),
                     resource_->GetVertexCount()
                 );
@@ -281,7 +281,10 @@ ModelDrawPacket Model::BuildSkinningDrawPacket(
 
 ID3D12Resource* Model::GetGameTransformBuffer() const
 {
-    const UINT frameIndex = renderContext_.dxCommon->GetSwapChain()->GetCurrentBackBufferIndex();
+    // per-frame バッファの添字は FrameSync のスロット番号を使う。
+    // スワップチェーンの GetCurrentBackBufferIndex() は ResizeBuffers で 0 に戻るため、
+    // それを使うと GPU が読んでいる最中のバッファを CPU が上書きしうる。
+    const UINT frameIndex = renderContext_.dxCommon->Frame().FrameIndex();
     assert(frameIndex < gameTransformBuffers_.size());
     return gameTransformBuffers_[frameIndex].Get();
 }

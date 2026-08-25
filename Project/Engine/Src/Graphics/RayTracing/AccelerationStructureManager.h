@@ -1,6 +1,7 @@
 #pragma once
 
 #include <d3d12.h>
+#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include <wrl.h>
 #include <vector>
 #include <cstdint>
@@ -8,9 +9,9 @@
 
 namespace CoreEngine
 {
-    class DescriptorManager;
+    class DescriptorAllocator;
     class ModelResource;
-    class CommandManager;
+    class DeferredReleaseQueue;
 
     /// @brief BLAS/TLAS を管理するクラス（DXR レイトレーシング用）
     /// @note ID3D12Device5 が必須。非対応 GPU では Initialize() が false を返す
@@ -49,7 +50,7 @@ namespace CoreEngine
 
         /// @brief 初期化（DXR サポート確認を含む）
         /// @return DXR 非対応の場合 false
-        bool Initialize(ID3D12Device* device, DescriptorManager* descriptorManager);
+        bool Initialize(ID3D12Device* device, DescriptorAllocator* descriptorAllocator);
 
         /// @brief BLAS を構築して登録する
         /// @return BLAS インデックス（BuildTLAS の InstanceDesc::blasIndex で使う）
@@ -64,15 +65,19 @@ namespace CoreEngine
         bool BuildBLASFromModelResource(ID3D12GraphicsCommandList* cmdList, ModelResource* resource);
 
         /// @brief TLAS の SRV GPU ハンドルを取得
-        D3D12_GPU_DESCRIPTOR_HANDLE GetTLASSRVHandle() const { return tlasSRVHandle_; }
+        D3D12_GPU_DESCRIPTOR_HANDLE GetTLASSRVHandle() const { return tlasSRVDescriptor_.gpuHandle; }
 
         /// @brief DXR がサポートされているか
         bool IsSupported() const { return isSupported_; }
 
-        /// @brief フレーム終了後に退避リソースを解放する
-        /// @param commandManager 現在フレームのGPU完了を待機するために使用する
-        /// @param frameIndex SignalFrame で記録したフレームインデックス
-        void FlushRetiredResources(CommandManager* commandManager, UINT frameIndex);
+        /// @brief 退避リソースを遅延解放キューへ引き渡す
+        /// @details 解放を予約するだけなのでフレームがストールしない
+        /// @param queue 引き渡し先
+        /// @param fenceValue この値まで GPU が進めば解放してよい
+        /// @warning **フレームを Signal した後**（GraphicsCore::EndFrame の後）に呼ぶこと。
+        ///          先に呼ぶと、退避リソースを参照している今フレームの作業より前の
+        ///          フェンス値が入ってしまい、GPU 使用中に解放されうる。
+        void MoveRetiredResourcesTo(DeferredReleaseQueue& queue, std::uint64_t fenceValue);
 
         /// @brief 退避リソースがあるか
         bool HasRetiredResources() const { return !retiredResources_.empty(); }
@@ -106,7 +111,7 @@ namespace CoreEngine
         void EnsureScratchBuffer(UINT64 requiredSize);
 
         Microsoft::WRL::ComPtr<ID3D12Device5> device5_;
-        DescriptorManager* descriptorManager_ = nullptr;
+        DescriptorAllocator* descriptorAllocator_ = nullptr;
 
         /// @brief BLAS 1 本分の GPU リソース
         struct BLASEntry {
@@ -118,8 +123,7 @@ namespace CoreEngine
         Microsoft::WRL::ComPtr<ID3D12Resource> tlasResult_;
         Microsoft::WRL::ComPtr<ID3D12Resource> tlasInstanceDescBuffer_;
         Microsoft::WRL::ComPtr<ID3D12Resource> tlasScratch_;
-        D3D12_GPU_DESCRIPTOR_HANDLE tlasSRVHandle_{};
-        D3D12_CPU_DESCRIPTOR_HANDLE tlasSRVCpuHandle_{};
+        DescriptorHandle tlasSRVDescriptor_{};
 
         // BLAS 構築用スクラッチ（再利用）
         Microsoft::WRL::ComPtr<ID3D12Resource> blasScratch_;

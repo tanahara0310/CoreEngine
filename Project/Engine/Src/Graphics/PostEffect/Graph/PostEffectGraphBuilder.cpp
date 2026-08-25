@@ -55,12 +55,8 @@ namespace CoreEngine
         // ここで登録しておかないとバリアの導出が実行時の再解決頼みになる。
         if (context_.frameBlackboard) {
             if (RenderTarget* target = context_.renderTargetManager->GetRenderTarget(name)) {
-                D3D12_RESOURCE_STATES* stateRef = nullptr;
-                if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(target)) {
-                    stateRef = &offscreen->GetCurrentState();
-                }
                 context_.frameBlackboard->SetResource(
-                    name, target->GetSRVHandle(), target->GetResource(), stateRef);
+                    name, target->GetSRVHandle(), &target->Resource());
             }
         }
 

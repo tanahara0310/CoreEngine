@@ -9,7 +9,7 @@
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetDescriptor.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Camera/View/ViewInfo.h"
 #include "Math/MathCore.h"
@@ -32,7 +32,7 @@ namespace CoreEngine
     }
 
     // 定数バッファと PSO は基底が用意する。ここでは水面固有の初期値だけを入れる
-    void WaterCausticsTechnique::Initialize(DirectXCommon* dxCommon)
+    void WaterCausticsTechnique::Initialize(GraphicsCore* dxCommon)
     {
         RenderingTechniqueBase::Initialize(dxCommon);
         CreateConstantBuffers();
@@ -193,20 +193,20 @@ namespace CoreEngine
 
     void WaterCausticsTechnique::CreateConstantBuffers()
     {
-        assert(directXCommon_);
+        assert(graphicsCore_);
 
         const UINT paramsBufferSize = (sizeof(Params) + 255u) & ~255u;
-        paramsBuffer_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), paramsBufferSize);
+        paramsBuffer_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), paramsBufferSize);
         [[maybe_unused]] HRESULT hr = paramsBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mappedParams_));
         assert(SUCCEEDED(hr));
 
         const UINT mainLightBufferSize = (sizeof(MainLightConstants) + 255u) & ~255u;
-        mainLightBuffer_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), mainLightBufferSize);
+        mainLightBuffer_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), mainLightBufferSize);
         hr = mainLightBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mappedMainLight_));
         assert(SUCCEEDED(hr));
 
         const UINT waterSurfaceBufferSize = (sizeof(WaterSurfaceConstants) + 255u) & ~255u;
-        waterSurfaceBuffer_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), waterSurfaceBufferSize);
+        waterSurfaceBuffer_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), waterSurfaceBufferSize);
         hr = waterSurfaceBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mappedWaterSurface_));
         assert(SUCCEEDED(hr));
 

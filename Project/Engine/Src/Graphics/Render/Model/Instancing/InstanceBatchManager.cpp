@@ -4,18 +4,18 @@
 #include <cassert>
 #include <cstring>
 
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/Render/Model/ModelDrawPacket.h"
 #include "Graphics/Model/ModelResource.h"
 #include "Graphics/Model/TransformationMatrix.h"
-#include "Graphics/Common/EngineStats.h"
+#include "Diagnostics/EngineStats.h"
 #include "Graphics/Shader/ICustomShaderProvider.h"
 
 namespace CoreEngine
 {
-    void InstanceBatchManager::Initialize(DirectXCommon* dxCommon, uint32_t frameCount,
+    void InstanceBatchManager::Initialize(GraphicsCore* dxCommon, uint32_t frameCount,
         uint32_t maxInstancesPerFrame)
     {
         assert(dxCommon);
@@ -60,8 +60,9 @@ namespace CoreEngine
 
     void InstanceBatchManager::UpdateFrameIndex()
     {
-        // SwapChain の現在のバックバッファインデックスを取得
-        const uint32_t newFrameIndex = dxCommon_->GetSwapChain()->GetCurrentBackBufferIndex();
+        // per-frame リソースの添字は FrameSync のスロット番号を使う
+        // （スワップチェーンのインデックスは ResizeBuffers で 0 に戻るため使わない）
+        const uint32_t newFrameIndex = dxCommon_->Frame().FrameIndex();
         if (newFrameIndex != currentFrameIndex_) {
             // フレームが切り替わった場合、新しいフレームのリソースをリセット
             currentFrameIndex_ = newFrameIndex;

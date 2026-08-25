@@ -3,8 +3,8 @@
 
 #include <algorithm>
 
-#include "Graphics/Common/Core/DescriptorManager.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Math/MathCore.h"
@@ -58,9 +58,10 @@ namespace CoreEngine
 
     // 屈折固有の構成（シェーダーパス・バインド名・出力フォーマット）を基盤へ渡す
     bool WaterRefractionRayTracingManager::Initialize(
-        DirectXCommon* dxCommon,
-        DescriptorManager* descriptorManager,
-        AccelerationStructureManager* asMgr)
+        GraphicsCore* dxCommon,
+        DescriptorAllocator* descriptorAllocator,
+        AccelerationStructureManager* asMgr,
+        ShaderProgramCache* shaderProgramCache)
     {
         RTWaterPipelineDesc desc{};
         desc.ownerName = "WaterRefractionRayTracingManager";
@@ -76,7 +77,7 @@ namespace CoreEngine
         desc.srvTableNames = kSrvTableNames;
         desc.constantsName = "WaterRefractionConstants";
         desc.constantsBytes = sizeof(WaterRefractionConstants);
-        return InitializeFromDesc(dxCommon, descriptorManager, asMgr, desc);
+        return InitializeFromDesc(dxCommon, descriptorAllocator, asMgr, shaderProgramCache, desc);
     }
 
     void WaterRefractionRayTracingManager::Resize(UINT width, UINT height, ViewID viewId)
@@ -89,14 +90,9 @@ namespace CoreEngine
         return GetOutputSRVHandleBase(static_cast<uint32_t>(viewId));
     }
 
-    ID3D12Resource* WaterRefractionRayTracingManager::GetRefractionResource(ViewID viewId) const
+    GpuResource& WaterRefractionRayTracingManager::GetRefractionResource(ViewID viewId)
     {
-        return GetOutputResourceBase(static_cast<uint32_t>(viewId));
-    }
-
-    D3D12_RESOURCE_STATES& WaterRefractionRayTracingManager::GetRefractionCurrentState(ViewID viewId)
-    {
-        return GetOutputCurrentStateBase(static_cast<uint32_t>(viewId));
+        return GetOutputBase(static_cast<uint32_t>(viewId));
     }
 
     // 水面から下向きに屈折レイを飛ばし、水中のシーン色を屈折テクスチャへ書く。

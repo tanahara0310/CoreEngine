@@ -6,7 +6,7 @@
 
 namespace CoreEngine
 {
-    class DirectXCommon;
+    class GraphicsCore;
 
     /// @brief レンダリング技術管理クラス
     /// @details SSAO、TAA、SSRなどの高度なレンダリング技術を管理
@@ -17,8 +17,8 @@ namespace CoreEngine
         ~RenderingTechniqueManager() = default;
 
         /// @brief 初期化
-        /// @param dxCommon DirectXCommon
-        void Initialize(DirectXCommon* dxCommon);
+        /// @param dxCommon GraphicsCore
+        void Initialize(GraphicsCore* dxCommon, ShaderProgramCache* shaderProgramCache);
 
         /// @brief レンダリング技術を登録
         /// @tparam T RenderingTechniqueBase を継承した型
@@ -59,7 +59,9 @@ namespace CoreEngine
         void DrawImGui();
 
     private:
-        DirectXCommon* directXCommon_ = nullptr;
+        GraphicsCore* graphicsCore_ = nullptr;
+        /// @brief 各技術へ配るシェーダーキャッシュ（所有者はエンジン）
+        ShaderProgramCache* shaderProgramCache_ = nullptr;
         std::unordered_map<std::string, std::unique_ptr<RenderingTechniqueBase>> techniques_;
 
         /// @brief 全技術を登録（内部で各技術をRegisterする）
@@ -77,7 +79,9 @@ namespace CoreEngine
             "T must inherit from RenderingTechniqueBase");
 
         auto technique = std::make_unique<T>();
-        technique->Initialize(directXCommon_);
+        // 派生クラスの Initialize シグネチャを変えずにキャッシュを渡すための注入点
+        technique->SetShaderProgramCache(shaderProgramCache_);
+        technique->Initialize(graphicsCore_);
         technique->SetEnabled(enabled);
         techniques_[name] = std::move(technique);
     }

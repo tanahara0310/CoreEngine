@@ -2,7 +2,7 @@
 
 // 前方宣言（ModelRenderContext が参照する全依存クラス）
 namespace CoreEngine {
-    class DirectXCommon;
+    class GraphicsCore;
     class BaseModelRenderer;
     class InstanceBatchManager;
     class SkinningComputeDispatcher;
@@ -14,7 +14,7 @@ namespace CoreEngine
     /// @brief Model クラスが描画に必要とする固定依存をまとめたコンテキスト構造体
     /// 起動時に一度だけ設定される依存オブジェクトを集約する。
     struct ModelRenderContext {
-        DirectXCommon* dxCommon = nullptr; ///< デバイス・コマンドリスト・DescriptorManager 取得元
+        GraphicsCore* dxCommon = nullptr; ///< デバイス・コマンドリスト・DescriptorAllocator 取得元
         BaseModelRenderer* modelRenderer = nullptr; ///< 通常モデル描画用レンダラー
         BaseModelRenderer* skinnedRenderer = nullptr; ///< スキニングモデル描画用レンダラー
         InstanceBatchManager* instanceBatchManager = nullptr; ///< 通常モデルのインスタンシング集約（ModelManager 内で自動設定）

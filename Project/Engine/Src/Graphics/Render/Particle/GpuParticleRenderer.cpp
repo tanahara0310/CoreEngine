@@ -1,22 +1,24 @@
 #include "pch.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "GpuParticleRenderer.h"
 #include "Graphics/Pipeline/ComputePipelineUtil.h"
 
 #include "Particle/Gpu/GpuParticleSystem.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Graphics/RootSignature/ShaderBinder.h"
 
 #include <cassert>
 #include <stdexcept>
 
 namespace CoreEngine
 {
-    int GpuParticleRenderer::ComputePass::GetRootParamIndex(const std::string& name) const
+    RootSlot GpuParticleRenderer::ComputePass::GetRootSlot(const std::string& name) const
     {
         if (!reflectionData) {
-            return -1;
+            return RootSlot{};
         }
-        return reflectionData->GetRootParameterIndexByName(name);
+        return reflectionData->GetRootSlot(name);
     }
 
     void GpuParticleRenderer::Initialize(ID3D12Device* device)
@@ -28,16 +30,16 @@ namespace CoreEngine
         CreateComputePass(device, emitPass_, L"GpuParticleEmit.CS.hlsl", "GpuParticleEmit");
         CreateComputePass(device, updatePass_, L"GpuParticleUpdate.CS.hlsl", "GpuParticleUpdate");
 
-        emitParticlesIdx_ = emitPass_.GetRootParamIndex("gParticles");
-        emitCounterIdx_ = emitPass_.GetRootParamIndex("gCounters");
-        emitFreeListIdx_ = emitPass_.GetRootParamIndex("gFreeList");
-        emitParamsIdx_ = emitPass_.GetRootParamIndex("GpuParticleParams");
+        emitParticles_ = emitPass_.GetRootSlot("gParticles");
+        emitCounter_ = emitPass_.GetRootSlot("gCounters");
+        emitFreeList_ = emitPass_.GetRootSlot("gFreeList");
+        emitParams_ = emitPass_.GetRootSlot("GpuParticleParams");
 
-        updateParticlesIdx_ = updatePass_.GetRootParamIndex("gParticles");
-        updateInstancingIdx_ = updatePass_.GetRootParamIndex("gInstancing");
-        updateCounterIdx_ = updatePass_.GetRootParamIndex("gCounters");
-        updateFreeListIdx_ = updatePass_.GetRootParamIndex("gFreeList");
-        updateParamsIdx_ = updatePass_.GetRootParamIndex("GpuParticleParams");
+        updateParticles_ = updatePass_.GetRootSlot("gParticles");
+        updateInstancing_ = updatePass_.GetRootSlot("gInstancing");
+        updateCounter_ = updatePass_.GetRootSlot("gCounters");
+        updateFreeList_ = updatePass_.GetRootSlot("gFreeList");
+        updateParams_ = updatePass_.GetRootSlot("GpuParticleParams");
 
         // ExecuteIndirect 用コマンドシグネチャ（描画引数のみ・ルートシグネチャ不要）
         D3D12_INDIRECT_ARGUMENT_DESC argDesc{};
@@ -104,41 +106,18 @@ namespace CoreEngine
         cmdList_->ExecuteIndirect(commandSignature_.Get(), 1, system->GetArgsResource(), 0, nullptr, 0);
     }
 
-    namespace {
-    /// @brief バッファの状態遷移バリアを積む（同一ステートならスキップ）
-        void TransitionBuffer(
-            ID3D12GraphicsCommandList* cmdList,
-            ID3D12Resource* resource,
-            D3D12_RESOURCE_STATES before,
-            D3D12_RESOURCE_STATES after)
-        {
-            if (before == after) {
-                return;
-            }
-            D3D12_RESOURCE_BARRIER barrier{};
-            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-            barrier.Transition.pResource = resource;
-            barrier.Transition.StateBefore = before;
-            barrier.Transition.StateAfter = after;
-            barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-            cmdList->ResourceBarrier(1, &barrier);
-        }
-    }
-
     void GpuParticleRenderer::DispatchCompute(GpuParticleSystem* system)
     {
         const uint32_t emitCount = system->GetEmitCount();
         const bool reset = system->IsResetPending();
 
         // ── 1. 前準備: インスタンシング→UAV、カウンタ/間接引数→COPY_DEST ──
-        TransitionBuffer(cmdList_, system->GetInstancingResource(),
-            system->GetInstancingState(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        system->SetInstancingState(D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-
-        TransitionBuffer(cmdList_, system->GetCounterResource(),
-            system->GetCounterState(), D3D12_RESOURCE_STATE_COPY_DEST);
-        TransitionBuffer(cmdList_, system->GetArgsResource(),
-            system->GetArgsState(), D3D12_RESOURCE_STATE_COPY_DEST);
+        {
+            BarrierBatch batch(cmdList_);
+            batch.Transition(system->Instancing(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            batch.Transition(system->Counter(), D3D12_RESOURCE_STATE_COPY_DEST);
+            batch.Transition(system->Args(), D3D12_RESOURCE_STATE_COPY_DEST);
+        }
 
         // 初回のみGPUバッファをコピーで初期化する
         // （CSのresetフラグ方式はCB1面の毎フレーム上書きと競合して実行されないことがあるため不使用）
@@ -152,83 +131,61 @@ namespace CoreEngine
                 system->GetUploadInitResource(), GpuParticleSystem::kInitCountersOffset,
                 sizeof(uint32_t) * GpuParticleSystem::kCounterCount);
             // フリーリスト {0, 1, ..., kMaxParticles-1}
-            TransitionBuffer(cmdList_, system->GetFreeListResource(),
-                system->GetFreeListState(), D3D12_RESOURCE_STATE_COPY_DEST);
+            Barrier::Transition(cmdList_, system->FreeList(), D3D12_RESOURCE_STATE_COPY_DEST);
             cmdList_->CopyBufferRegion(system->GetFreeListResource(), 0,
                 system->GetUploadInitResource(), GpuParticleSystem::kInitFreeListOffset,
                 sizeof(uint32_t) * GpuParticleSystem::kMaxParticles);
-            TransitionBuffer(cmdList_, system->GetFreeListResource(),
-                D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-            system->SetFreeListState(D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            Barrier::Transition(cmdList_, system->FreeList(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         }
         // drawCount（counter[2]）を毎フレーム0クリア（アップロードバッファの0領域をコピー元に使う）
         cmdList_->CopyBufferRegion(system->GetCounterResource(),
             sizeof(uint32_t) * GpuParticleSystem::kCounterDrawIndex,
             system->GetUploadInitResource(), sizeof(uint32_t), sizeof(uint32_t));
 
-        TransitionBuffer(cmdList_, system->GetCounterResource(),
-            D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList_, system->Counter(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         // ── 2. Emit CS（リセットフレームは放出しない） ──
         if (!reset && emitCount > 0) {
             cmdList_->SetComputeRootSignature(emitPass_.rootSignatureMg->GetRootSignature());
             cmdList_->SetPipelineState(emitPass_.pso.Get());
 
-            if (emitParticlesIdx_ >= 0) {
-                cmdList_->SetComputeRootDescriptorTable(emitParticlesIdx_, system->GetParticleUavHandleGPU());
-            }
-            if (emitCounterIdx_ >= 0) {
-                cmdList_->SetComputeRootDescriptorTable(emitCounterIdx_, system->GetCounterUavHandleGPU());
-            }
-            if (emitFreeListIdx_ >= 0) {
-                cmdList_->SetComputeRootDescriptorTable(emitFreeListIdx_, system->GetFreeListUavHandleGPU());
-            }
-            if (emitParamsIdx_ >= 0) {
-                cmdList_->SetComputeRootConstantBufferView(emitParamsIdx_, system->GetParamsGPUAddress());
-            }
+            // Set* の選択は RootSlot の種別から ShaderBinder が行う。
+            // ここで UAV をテーブルとして差すかルートディスクリプタとして差すかを
+            // 呼び出し側が暗記する必要はもう無い。
+            ShaderBinder binder(cmdList_, ShaderBinder::Pipeline::Compute);
+            binder.Set(emitParticles_, system->GetParticleUavHandleGPU());
+            binder.Set(emitCounter_, system->GetCounterUavHandleGPU());
+            binder.Set(emitFreeList_, system->GetFreeListUavHandleGPU());
+            binder.Set(emitParams_, system->GetParamsGPUAddress());
 
             const UINT groupCount = (emitCount + 63) / 64;
             cmdList_->Dispatch(groupCount, 1, 1);
 
             // Emit の書き込み（粒子・カウンタ・フリーリスト）を Update から見えるようにする
-            D3D12_RESOURCE_BARRIER uavBarrier{};
-            uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-            uavBarrier.UAV.pResource = nullptr; // 全UAV
-            cmdList_->ResourceBarrier(1, &uavBarrier);
+            Barrier::UAVAll(cmdList_);
         }
 
         // ── 3. Update CS（全スロット更新 + 死亡回収 + コンパクション書き込み） ──
         cmdList_->SetComputeRootSignature(updatePass_.rootSignatureMg->GetRootSignature());
         cmdList_->SetPipelineState(updatePass_.pso.Get());
 
-        if (updateParticlesIdx_ >= 0) {
-            cmdList_->SetComputeRootDescriptorTable(updateParticlesIdx_, system->GetParticleUavHandleGPU());
-        }
-        if (updateInstancingIdx_ >= 0) {
-            cmdList_->SetComputeRootDescriptorTable(updateInstancingIdx_, system->GetInstancingUavHandleGPU());
-        }
-        if (updateCounterIdx_ >= 0) {
-            cmdList_->SetComputeRootDescriptorTable(updateCounterIdx_, system->GetCounterUavHandleGPU());
-        }
-        if (updateFreeListIdx_ >= 0) {
-            cmdList_->SetComputeRootDescriptorTable(updateFreeListIdx_, system->GetFreeListUavHandleGPU());
-        }
-        if (updateParamsIdx_ >= 0) {
-            cmdList_->SetComputeRootConstantBufferView(updateParamsIdx_, system->GetParamsGPUAddress());
+        {
+            ShaderBinder binder(cmdList_, ShaderBinder::Pipeline::Compute);
+            binder.Set(updateParticles_, system->GetParticleUavHandleGPU());
+            binder.Set(updateInstancing_, system->GetInstancingUavHandleGPU());
+            binder.Set(updateCounter_, system->GetCounterUavHandleGPU());
+            binder.Set(updateFreeList_, system->GetFreeListUavHandleGPU());
+            binder.Set(updateParams_, system->GetParamsGPUAddress());
         }
 
         const UINT groupCount = (GpuParticleSystem::kMaxParticles + 63) / 64;
         cmdList_->Dispatch(groupCount, 1, 1);
 
         // Update の書き込み完了待ち
-        D3D12_RESOURCE_BARRIER uavBarrier{};
-        uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-        uavBarrier.UAV.pResource = nullptr; // 全UAV
-        cmdList_->ResourceBarrier(1, &uavBarrier);
+        Barrier::UAVAll(cmdList_);
 
         // ── 4. カウンタのコピー: 間接引数の InstanceCount 更新 + 統計リードバック ──
-        TransitionBuffer(cmdList_, system->GetCounterResource(),
-            D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        Barrier::Transition(cmdList_, system->Counter(), D3D12_RESOURCE_STATE_COPY_SOURCE);
 
         cmdList_->CopyBufferRegion(system->GetArgsResource(), sizeof(uint32_t) * 1, // InstanceCount
             system->GetCounterResource(), sizeof(uint32_t) * GpuParticleSystem::kCounterDrawIndex,
@@ -236,18 +193,13 @@ namespace CoreEngine
         cmdList_->CopyBufferRegion(system->GetReadbackResource(), 0,
             system->GetCounterResource(), 0, sizeof(uint32_t) * GpuParticleSystem::kCounterCount);
 
-        TransitionBuffer(cmdList_, system->GetCounterResource(),
-            D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        system->SetCounterState(D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-
-        TransitionBuffer(cmdList_, system->GetArgsResource(),
-            D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
-        system->SetArgsState(D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
-
         // ── 5. インスタンシングバッファを頂点シェーダーから読める状態へ ──
-        TransitionBuffer(cmdList_, system->GetInstancingResource(),
-            D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        system->SetInstancingState(D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        {
+            BarrierBatch batch(cmdList_);
+            batch.Transition(system->Counter(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            batch.Transition(system->Args(), D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+            batch.Transition(system->Instancing(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        }
 
         if (reset) {
             system->ClearResetPending();

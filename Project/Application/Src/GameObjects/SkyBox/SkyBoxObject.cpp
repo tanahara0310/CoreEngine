@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "SkyBoxObject.h"
 #include "Camera/Camera.h"
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/SkyBox/SkyBoxRenderer.h"
 #include "Math/MathCore.h"
@@ -47,7 +47,7 @@ void SkyBoxObject::Initialize() {
 
 void SkyBoxObject::CreateBoxVertices() {
     auto engine = GetEngineSystem();
-    auto dxCommon = engine->GetService<DirectXCommon>();
+    auto dxCommon = engine->GetService<GraphicsCore>();
     assert(dxCommon != nullptr);
 
     // 原点を中心として、幅2m、高さ2mの箱を作る（x,y,zそれぞれ、-1～1ということ）
@@ -162,7 +162,7 @@ void SkyBoxObject::Update() {
 
 void SkyBoxObject::CreateTransformBuffer() {
     auto engine = GetEngineSystem();
-    auto* dxCommon = engine->GetService<DirectXCommon>();
+    auto* dxCommon = engine->GetService<GraphicsCore>();
     assert(dxCommon != nullptr);
 
     // SceneView と GameView が同一フレーム内で SkyBox を描画するため、
@@ -177,7 +177,7 @@ void SkyBoxObject::CreateTransformBuffer() {
 void SkyBoxObject::Draw(const CoreEngine::Camera* camera) {
     if (!camera) return;
     auto engine = GetEngineSystem();
-    auto* dxCommon = engine->GetService<DirectXCommon>();
+    auto* dxCommon = engine->GetService<GraphicsCore>();
     auto* renderManager = engine->GetService<RenderManager>();
     assert(dxCommon != nullptr);
     assert(renderManager != nullptr);

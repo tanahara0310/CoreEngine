@@ -4,7 +4,7 @@
 #ifdef USE_IMGUI
 
 #include "EngineSystem/EngineSystem.h"
-#include "Graphics/Common/GpuTimestampProfiler.h"
+#include "Graphics/RHI/Debug/GpuTimestampProfiler.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/RayTracing/RayTracingDispatchInfo.h"

@@ -1,16 +1,16 @@
 #include "pch.h"
 #include "BackBufferRenderTarget.h"
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/ResourceBarrierHelper.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/SwapChain/SwapChain.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include <cassert>
 
 namespace CoreEngine
 {
-    void BackBufferRenderTarget::Initialize(DirectXCommon* dx)
+    void BackBufferRenderTarget::Initialize(GraphicsCore* dx)
     {
         assert(dx);
         dxCommon_ = dx;
-        currentState_ = D3D12_RESOURCE_STATE_PRESENT;
     }
 
     void BackBufferRenderTarget::Begin(ID3D12GraphicsCommandList* cmdList)
@@ -18,19 +18,16 @@ namespace CoreEngine
         assert(cmdList);
         assert(dxCommon_);
 
-        UINT backBufferIndex = GetCurrentBackBufferIndex();
-        ID3D12Resource* backBuffer = dxCommon_->GetSwapChainBackBuffer(backBufferIndex);
+        SwapChain& swapChain = dxCommon_->GetSwapChain();
+        const uint32_t backBufferIndex = swapChain.CurrentBackBufferIndex();
 
         // 現在状態を基準にして RENDER_TARGET へ遷移する。
-        if (currentState_ != D3D12_RESOURCE_STATE_RENDER_TARGET) {
-            ResourceBarrierHelper::Transition(cmdList, backBuffer,
-                currentState_,
-                D3D12_RESOURCE_STATE_RENDER_TARGET);
-            currentState_ = D3D12_RESOURCE_STATE_RENDER_TARGET;
-        }
+        Barrier::Transition(cmdList,
+            swapChain.BackBuffer(backBufferIndex),
+            D3D12_RESOURCE_STATE_RENDER_TARGET);
 
         // 最終合成はフルスクリーン描画のみで深度を使用しないため RTV のみ設定する。
-        D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = dxCommon_->GetRTVHandle(backBufferIndex);
+        D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = swapChain.RTV(backBufferIndex);
         cmdList->OMSetRenderTargets(1, &rtvHandle, false, nullptr);
 
         // バックバッファのみクリアする。
@@ -56,9 +53,7 @@ namespace CoreEngine
         scissor.bottom = height;
         cmdList->RSSetScissorRects(1, &scissor);
 
-        // SRVヒープ設定
-        ID3D12DescriptorHeap* heaps[] = { dxCommon_->GetSRVHeap() };
-        cmdList->SetDescriptorHeaps(1, heaps);
+        // SRV ヒープはフレーム先頭で CommandContext が 1 回バインドする（個別バインドは不要）
     }
 
     void BackBufferRenderTarget::End(ID3D12GraphicsCommandList* cmdList)
@@ -66,28 +61,30 @@ namespace CoreEngine
         assert(cmdList);
         assert(dxCommon_);
 
-        UINT backBufferIndex = GetCurrentBackBufferIndex();
-        ID3D12Resource* backBuffer = dxCommon_->GetSwapChainBackBuffer(backBufferIndex);
+        SwapChain& swapChain = dxCommon_->GetSwapChain();
 
         // 描画完了後に Present 可能状態へ戻す。
-        if (currentState_ != D3D12_RESOURCE_STATE_PRESENT) {
-            ResourceBarrierHelper::Transition(cmdList, backBuffer,
-                currentState_,
-                D3D12_RESOURCE_STATE_PRESENT);
-            currentState_ = D3D12_RESOURCE_STATE_PRESENT;
-        }
+        Barrier::Transition(cmdList,
+            swapChain.BackBuffer(swapChain.CurrentBackBufferIndex()),
+            D3D12_RESOURCE_STATE_PRESENT);
     }
 
     D3D12_CPU_DESCRIPTOR_HANDLE BackBufferRenderTarget::GetRTVHandle() const
     {
-        UINT index = GetCurrentBackBufferIndex();
-        return dxCommon_->GetRTVHandle(index);
+        SwapChain& swapChain = dxCommon_->GetSwapChain();
+        return swapChain.RTV(swapChain.CurrentBackBufferIndex());
     }
 
     ID3D12Resource* BackBufferRenderTarget::GetResource() const
     {
-        UINT index = GetCurrentBackBufferIndex();
-        return dxCommon_->GetSwapChainBackBuffer(index);
+        SwapChain& swapChain = dxCommon_->GetSwapChain();
+        return swapChain.BackBuffer(swapChain.CurrentBackBufferIndex()).Get();
+    }
+
+    GpuResource& BackBufferRenderTarget::Resource()
+    {
+        SwapChain& swapChain = dxCommon_->GetSwapChain();
+        return swapChain.BackBuffer(swapChain.CurrentBackBufferIndex());
     }
 
     void BackBufferRenderTarget::GetSize(int32_t& width, int32_t& height) const
@@ -108,6 +105,6 @@ namespace CoreEngine
 
     UINT BackBufferRenderTarget::GetCurrentBackBufferIndex() const
     {
-        return dxCommon_->GetSwapChain()->GetCurrentBackBufferIndex();
+        return dxCommon_->GetSwapChain().CurrentBackBufferIndex();
     }
 }

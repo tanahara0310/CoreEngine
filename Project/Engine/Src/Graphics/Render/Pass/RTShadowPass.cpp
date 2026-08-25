@@ -2,7 +2,7 @@
 #include "RTShadowPass.h"
 
 #include "EngineSystem/Subsystem/RayTracingSubsystem.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
 #include "Graphics/Render/RenderGraph.h"
 

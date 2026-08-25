@@ -23,7 +23,7 @@ namespace CoreEngine
         // リフレクション
         reflectionData_ = reflectionBuilder_->BuildFromShaders(vertexShaderBlob, pixelShaderBlob, "SkyBoxRenderer");
 
-        RootSignatureConfig config = RootSignatureConfig::Simple();
+        RootSignatureConfig config;
         // Sky-View / Transmittance LUT は u(方位: 太陽↔反太陽)・v(天頂↔地面)の両端が
         // 本来連続しない。既定の WRAP だと反対端の値（地面=黒 / 反太陽=暗）がバイリニア
         // 補間で混入し、天頂の黒い穴・太陽を貫く縦線の原因になるため CLAMP を使う。

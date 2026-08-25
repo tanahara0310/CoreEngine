@@ -2,72 +2,37 @@
 #include "RenderingTechniqueBase.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
-#include "Graphics/Common/Core/CommandManager.h"
-#include "Graphics/Resource/ResourceFactory.h"
 #include <cassert>
-#include <cstring>
 
 namespace CoreEngine
 {
     std::wstring RenderingTechniqueBase::emptyPath_ = L"";
 
-    void FrameRingConstantBuffer::Initialize(DirectXCommon* dxCommon, uint32_t paramsSize)
+    void RenderingTechniqueBase::Initialize(GraphicsCore* dxCommon)
     {
         assert(dxCommon);
-        alignedSize_ = (paramsSize + 255u) & ~255u;
-
-        sliceCount_ = 1;
-        if (auto* commandManager = dxCommon->GetCommandManager()) {
-            sliceCount_ = (std::max)(1u, static_cast<uint32_t>(commandManager->GetFrameCount()));
-        }
-
-        buffer_ = ResourceFactory::CreateBufferResource(
-            dxCommon->GetDevice(), alignedSize_ * sliceCount_);
-
-        void* mapped = nullptr;
-        [[maybe_unused]] HRESULT hr = buffer_->Map(0, nullptr, &mapped);
-        assert(SUCCEEDED(hr));
-        mappedBase_ = static_cast<uint8_t*>(mapped);
-    }
-
-    D3D12_GPU_VIRTUAL_ADDRESS FrameRingConstantBuffer::Upload(
-        DirectXCommon* dxCommon, const void* src, uint32_t size)
-    {
-        if (!mappedBase_ || !dxCommon || size > alignedSize_) {
-            return 0;
-        }
-
-        uint32_t slice = 0;
-        if (auto* commandManager = dxCommon->GetCommandManager()) {
-            slice = static_cast<uint32_t>(commandManager->GetRecordingFrameIndex()) % sliceCount_;
-        }
-
-        std::memcpy(mappedBase_ + static_cast<size_t>(slice) * alignedSize_, src, size);
-        return buffer_->GetGPUVirtualAddress() + static_cast<uint64_t>(slice) * alignedSize_;
-    }
-
-    void RenderingTechniqueBase::Initialize(DirectXCommon* dxCommon)
-    {
-        assert(dxCommon);
-        directXCommon_ = dxCommon;
-
-        ShaderCompiler shaderCompiler;
-        shaderCompiler.Initialize();
+        graphicsCore_ = dxCommon;
+        assert(shaderProgramCache_
+            && "SetShaderProgramCache() を Initialize() の前に呼ぶこと（Manager が行う）");
 
         // Compute Shader を使う場合
         if (IsComputeShader()) {
             const std::wstring& csPath = GetComputeShaderPath();
             if (!csPath.empty()) {
-                computeShaderBlob_ = shaderCompiler.CompileShader(csPath, L"cs_6_0");
-
-                // リフレクション（Compute Shader のみ）
-                ShaderReflectionBuilder reflectionBuilder;
-                reflectionBuilder.Initialize(shaderCompiler.GetDxcUtils());
-                reflectionData_ = reflectionBuilder.BuildFromComputeShader(
-                    computeShaderBlob_.Get(), GetTechniqueName());
+                // コンパイルとリフレクションはキャッシュが担当する。
+                // 同じシェーダーを使う技術が増えても DXC は 1 回しか走らない。
+                shaderProgram_ = shaderProgramCache_->GetOrCreateCompute(csPath, GetTechniqueName());
+                if (!shaderProgram_) {
+                    throw std::runtime_error(
+                        "Failed to compile compute shader for RenderingTechnique: " + GetTechniqueName());
+                }
+                reflectionData_ = &shaderProgram_->GetReflection();
 
                 // ルートシグネチャ構築
-                RootSignatureConfig config = RootSignatureConfig::Simple();
+                // Compute には入力アセンブラが無いので ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT を落とす
+                // （既定はグラフィックス向けに立てたままになっている）
+                RootSignatureConfig config;
+                config.SetFlags(D3D12_ROOT_SIGNATURE_FLAG_NONE);
                 OnConfigureRootSignature(config);
 
                 rootSignatureManager_ = std::make_unique<RootSignatureManager>();
@@ -75,7 +40,7 @@ namespace CoreEngine
                     dxCommon->GetDevice(), *reflectionData_, config);
 
                 if (!buildResult.success) {
-                    throw std::runtime_error("Failed to create RenderingTechnique Root Signature (CS): " 
+                    throw std::runtime_error("Failed to create RenderingTechnique Root Signature (CS): "
                         + buildResult.errorMessage);
                 }
 
@@ -90,17 +55,17 @@ namespace CoreEngine
             const std::wstring& psPath = GetPixelShaderPath();
 
             if (!vsPath.empty() && !psPath.empty()) {
-                vertexShaderBlob_ = shaderCompiler.CompileShader(vsPath, L"vs_6_0");
-                pixelShaderBlob_ = shaderCompiler.CompileShader(psPath, L"ps_6_0");
-
-                // リフレクション
-                ShaderReflectionBuilder reflectionBuilder;
-                reflectionBuilder.Initialize(shaderCompiler.GetDxcUtils());
-                reflectionData_ = reflectionBuilder.BuildFromShaders(
-                    vertexShaderBlob_.Get(), pixelShaderBlob_.Get(), GetTechniqueName());
+                // FullScreen.VS.hlsl は多くの技術が共有するので、キャッシュが効く
+                shaderProgram_ = shaderProgramCache_->GetOrCreateGraphics(
+                    vsPath, psPath, GetTechniqueName());
+                if (!shaderProgram_) {
+                    throw std::runtime_error(
+                        "Failed to compile shaders for RenderingTechnique: " + GetTechniqueName());
+                }
+                reflectionData_ = &shaderProgram_->GetReflection();
 
                 // ルートシグネチャ構築
-                RootSignatureConfig config = RootSignatureConfig::Simple();
+                RootSignatureConfig config;
                 config.ConfigureSampler("gSampler", SamplerConfig::LinearClamp());
                 OnConfigureRootSignature(config);
 
@@ -119,7 +84,7 @@ namespace CoreEngine
                     .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
                     .SetDepthStencil(false, false) // レンダリング技術は深度書き込み不要
                     .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
-                    .Build(dxCommon->GetDevice(), vertexShaderBlob_.Get(), pixelShaderBlob_.Get(),
+                    .Build(dxCommon->GetDevice(), shaderProgram_->GetVS(), shaderProgram_->GetPS(),
                         rootSignatureManager_->GetRootSignature());
 
                 if (!result) {
@@ -129,11 +94,16 @@ namespace CoreEngine
         }
     }
 
-    int RenderingTechniqueBase::GetRootParamIndex(const std::string& resourceName) const {
+    RootSlot RenderingTechniqueBase::GetRootSlot(const std::string& resourceName) const {
         if (!reflectionData_) {
-            return -1;
+            return RootSlot{};
         }
-        return reflectionData_->GetRootParameterIndexByName(resourceName);
+        return reflectionData_->GetRootSlot(resourceName);
+    }
+
+    int RenderingTechniqueBase::GetRootParamIndex(const std::string& resourceName) const {
+        const RootSlot slot = GetRootSlot(resourceName);
+        return slot.IsValid() ? static_cast<int>(slot.index) : -1;
     }
 
     const std::wstring& RenderingTechniqueBase::GetVertexShaderPath() const

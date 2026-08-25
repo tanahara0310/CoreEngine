@@ -32,7 +32,7 @@ namespace CoreEngine
         SSAOTemporalTechnique() = default;
         ~SSAOTemporalTechnique() = default;
 
-        void Initialize(DirectXCommon* dxCommon) override;
+        void Initialize(GraphicsCore* dxCommon) override;
         void Execute(const RenderContext& context, D3D12_GPU_DESCRIPTOR_HANDLE& outputSrvHandle) override;
         void OnResize(uint32_t width, uint32_t height) override;
         void DrawImGui() override;
@@ -61,7 +61,6 @@ namespace CoreEngine
         void EnsureHistoryTargets(const RenderContext& context);
 
         SSAOTemporalParams params_;
-        FrameRingConstantBuffer cbRing_;
 
         bool historyValid_ = false;
         uint64_t lastExecutedFrame_ = 0;

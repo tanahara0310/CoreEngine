@@ -1,12 +1,13 @@
 #pragma once
 
 #include <d3d12.h>
+#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include <wrl.h>
 #include <string>
 
 namespace CoreEngine
 {
-    class DirectXCommon;
+    class GraphicsCore;
     class IBLGenerator;
 
     /// @brief IBLシステム管理クラス
@@ -41,11 +42,11 @@ namespace CoreEngine
         ~IBLManager() = default;
 
         /// @brief IBLシステムを初期化
-        /// @param dxCommon DirectXCommonポインタ
+        /// @param dxCommon GraphicsCoreポインタ
         /// @param iblGenerator IBLGeneratorポインタ
         /// @param params 初期化パラメータ
         /// @return 成功したらtrue
-        bool Initialize(DirectXCommon* dxCommon, IBLGenerator* iblGenerator, const InitParams& params);
+        bool Initialize(GraphicsCore* dxCommon, IBLGenerator* iblGenerator, const InitParams& params);
 
         /// @brief Irradiance Mapを取得
         /// @return Irradiance Mapリソース
@@ -65,10 +66,10 @@ namespace CoreEngine
 
         /// @brief IBL SRVハンドルを取得
         /// @return Irradiance / Prefiltered / BRDF LUT のSRVハンドル
-        IBLSRVHandles GetSRVHandles() const { return { irradianceSRV_, prefilteredSRV_, brdfLUTSRV_ }; }
+        IBLSRVHandles GetSRVHandles() const { return { irradianceSRV_.gpuHandle, prefilteredSRV_.gpuHandle, brdfLUTSRV_.gpuHandle }; }
 
     private:
-        DirectXCommon* dxCommon_ = nullptr;
+        GraphicsCore* dxCommon_ = nullptr;
 
         // IBLリソース
         Microsoft::WRL::ComPtr<ID3D12Resource> irradianceMap_;
@@ -76,9 +77,9 @@ namespace CoreEngine
         Microsoft::WRL::ComPtr<ID3D12Resource> brdfLUT_;
 
         // SRVハンドル
-        D3D12_GPU_DESCRIPTOR_HANDLE irradianceSRV_ = {};
-        D3D12_GPU_DESCRIPTOR_HANDLE prefilteredSRV_ = {};
-        D3D12_GPU_DESCRIPTOR_HANDLE brdfLUTSRV_ = {};
+        DescriptorHandle irradianceSRV_ = {};
+        DescriptorHandle prefilteredSRV_ = {};
+        DescriptorHandle brdfLUTSRV_ = {};
 
         bool isInitialized_ = false;
 

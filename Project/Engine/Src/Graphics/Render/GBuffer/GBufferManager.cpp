@@ -5,9 +5,9 @@
 #include <cassert>
 #include <format>
 
-#include "Graphics/Common/Core/DepthStencilManager.h"
-#include "Graphics/Common/Core/DescriptorManager.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/Render/RenderTarget/SceneDepth.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Utility/Logger/Logger.h"
 
 namespace
@@ -45,10 +45,10 @@ namespace
 namespace CoreEngine
 {
     // G-Buffer 一式を作る。フォーマットは kGBufferFormats 固定で、実行時には変えない
-    void GBufferManager::Initialize(ID3D12Device* device, DescriptorManager* descriptorManager, int32_t width, int32_t height)
+    void GBufferManager::Initialize(ID3D12Device* device, DescriptorAllocator* descriptorAllocator, int32_t width, int32_t height)
     {
         device_ = device;
-        descriptorManager_ = descriptorManager;
+        descriptorAllocator_ = descriptorAllocator;
         currentWidth_ = width;
         currentHeight_ = height;
 
@@ -88,23 +88,22 @@ namespace CoreEngine
 
     void GBufferManager::BeginGeometryPass(
         ID3D12GraphicsCommandList* cmdList,
-        DepthStencilManager* depthStencilManager,
-        ID3D12DescriptorHeap* srvHeap)
+        SceneDepth* sceneDepth)
     {
         // 全 RT を一括で OMSetRenderTargets する。深度は共有 DSV を使う
         assert(cmdList);
-        assert(depthStencilManager);
+        assert(sceneDepth);
         ValidateState();
 
         std::array<D3D12_CPU_DESCRIPTOR_HANDLE, kTargetCount> rtvHandles{};
 
         for (uint32_t i = 0; i < kTargetCount; ++i) {
             auto& target = targets_[i];
-            rtvHandles[i] = target.rtvHandle;
-            cmdList->ClearRenderTargetView(target.rtvHandle, kGBufferClearColors[i].data(), 0, nullptr);
+            rtvHandles[i] = target.rtvHandle.cpuHandle;
+            cmdList->ClearRenderTargetView(target.rtvHandle.cpuHandle, kGBufferClearColors[i].data(), 0, nullptr);
         }
 
-        const D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = depthStencilManager->GetDSVHandle();
+        const D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = sceneDepth->GetDSVHandle();
         cmdList->OMSetRenderTargets(kTargetCount, rtvHandles.data(), FALSE, &dsvHandle);
 
         D3D12_VIEWPORT viewport{};
@@ -123,10 +122,7 @@ namespace CoreEngine
         scissor.bottom = currentHeight_;
         cmdList->RSSetScissorRects(1, &scissor);
 
-        if (srvHeap) {
-            ID3D12DescriptorHeap* heaps[] = { srvHeap };
-            cmdList->SetDescriptorHeaps(1, heaps);
-        }
+        // SRV ヒープはフレーム先頭で CommandContext が 1 回バインドする（個別バインドは不要）
     }
 
     ID3D12Resource* GBufferManager::GetResource(Target target) const
@@ -138,13 +134,13 @@ namespace CoreEngine
     D3D12_CPU_DESCRIPTOR_HANDLE GBufferManager::GetRTVHandle(Target target) const
     {
         ValidateState();
-        return targets_[ToIndex(target)].rtvHandle;
+        return targets_[ToIndex(target)].rtvHandle.cpuHandle;
     }
 
     D3D12_GPU_DESCRIPTOR_HANDLE GBufferManager::GetSRVHandle(Target target) const
     {
         ValidateState();
-        return targets_[ToIndex(target)].srvHandle;
+        return targets_[ToIndex(target)].srvHandle.gpuHandle;
     }
 
     DXGI_FORMAT GBufferManager::GetFormat(Target target) const
@@ -157,10 +153,10 @@ namespace CoreEngine
         return kGBufferFormats.data();
     }
 
-    D3D12_RESOURCE_STATES& GBufferManager::GetCurrentState(Target target)
+    GpuResource& GBufferManager::Resource(Target target)
     {
         ValidateState();
-        return targets_[ToIndex(target)].currentState;
+        return targets_[ToIndex(target)].resource;
     }
 
     void GBufferManager::CreateOrResizeTarget(Target target)
@@ -189,14 +185,15 @@ namespace CoreEngine
             clearValue.Color[i] = kGBufferClearColors[index][i];
         }
 
-        targetResource.resource = ResourceFactory::CreateTextureResource(
-            device_,
-            texDesc,
-            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-            &clearValue);
+        targetResource.resource.Reset(
+            ResourceFactory::CreateTextureResource(
+                device_,
+                texDesc,
+                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+                &clearValue),
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-        targetResource.currentState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-        CreateViews(targetResource, target, targetResource.rtvHandle.ptr == 0);
+        CreateViews(targetResource, target, !targetResource.rtvHandle.IsValid());
 
 #ifdef _DEBUG
         Logger::GetInstance().Logf(
@@ -227,29 +224,20 @@ namespace CoreEngine
         srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
         if (createNewDescriptors) {
-            descriptorManager_->CreateRTV(
-                targetResource.resource.Get(),
-                rtvDesc,
-                targetResource.rtvHandle,
-                ToDebugName(target));
+            targetResource.rtvHandle = descriptorAllocator_->CreateRTV(targetResource.resource.Get(), rtvDesc, ToDebugName(target));
 
-            descriptorManager_->CreateSRV(
-                targetResource.resource.Get(),
-                srvDesc,
-                targetResource.srvCpuHandle,
-                targetResource.srvHandle,
-                ToDebugName(target));
+            targetResource.srvHandle = descriptorAllocator_->CreateSRV(targetResource.resource.Get(), srvDesc, ToDebugName(target));
             return;
         }
 
-        device_->CreateRenderTargetView(targetResource.resource.Get(), &rtvDesc, targetResource.rtvHandle);
-        device_->CreateShaderResourceView(targetResource.resource.Get(), &srvDesc, targetResource.srvCpuHandle);
+        descriptorAllocator_->WriteRTV(targetResource.rtvHandle, targetResource.resource.Get(), rtvDesc);
+        descriptorAllocator_->WriteSRV(targetResource.srvHandle, targetResource.resource.Get(), srvDesc);
     }
 
     void GBufferManager::ValidateState() const
     {
         assert(device_ != nullptr);
-        assert(descriptorManager_ != nullptr);
+        assert(descriptorAllocator_ != nullptr);
         assert(currentWidth_ > 0);
         assert(currentHeight_ > 0);
     }

@@ -3,7 +3,7 @@
 
 namespace CoreEngine
 {
-    class DirectXCommon;
+    class GraphicsCore;
 
     /// @brief バックバッファレンダーターゲット
     /// スワップチェーンのバックバッファへの最終描画に使用
@@ -13,8 +13,8 @@ namespace CoreEngine
         ~BackBufferRenderTarget() override = default;
 
         /// @brief 初期化
-        /// @param dx DirectXCommon
-        void Initialize(DirectXCommon* dx);
+        /// @param dx GraphicsCore
+        void Initialize(GraphicsCore* dx);
 
         /// @brief レンダリング開始
         void Begin(ID3D12GraphicsCommandList* cmdList) override;
@@ -35,26 +35,21 @@ namespace CoreEngine
         void GetSize(int32_t& width, int32_t& height) const override;
 
         /// @brief 幅を取得
-        /// @details キャッシュせず DirectXCommon から都度取得する（リサイズ通知の配線が不要になる）
+        /// @details キャッシュせず GraphicsCore から都度取得する（リサイズ通知の配線が不要になる）
         int32_t GetWidth() const override;
 
         /// @brief 高さを取得
-        /// @details キャッシュせず DirectXCommon から都度取得する（リサイズ通知の配線が不要になる）
+        /// @details キャッシュせず GraphicsCore から都度取得する（リサイズ通知の配線が不要になる）
         int32_t GetHeight() const override;
 
         /// @brief 現在のバックバッファインデックスを取得
         UINT GetCurrentBackBufferIndex() const;
 
-        /// @brief 現在のバックバッファリソース状態参照を取得
-        /// @return 自動バリア処理が更新する状態変数への参照
-        D3D12_RESOURCE_STATES& GetCurrentState() { return currentState_; }
-
-        /// @brief 現在のバックバッファリソース状態を取得
-        /// @return 追跡中のバックバッファ状態
-        D3D12_RESOURCE_STATES GetCurrentState() const { return currentState_; }
+        /// @brief 現在のバックバッファをステート追跡つきで返す
+        /// @details ステートはバックバッファ 1 枚ごとに SwapChain が持つ
+        GpuResource& Resource() override;
 
     private:
-        DirectXCommon* dxCommon_ = nullptr;
-        D3D12_RESOURCE_STATES currentState_ = D3D12_RESOURCE_STATE_PRESENT;
+        GraphicsCore* dxCommon_ = nullptr;
     };
 }

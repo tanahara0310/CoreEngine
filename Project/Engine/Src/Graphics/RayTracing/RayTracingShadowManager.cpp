@@ -1,14 +1,16 @@
 #include "pch.h"
 #include "RayTracingShadowManager.h"
 #include "Graphics/Pipeline/ComputePipelineUtil.h"
+#include "Graphics/RayTracing/RTShadowBindings.h"
+#include "Graphics/RootSignature/ShaderBinder.h"
+#include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "AccelerationStructureManager.h"
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/Core/DescriptorManager.h"
-#include "Graphics/Common/ResourceBarrierHelper.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
-#include "Graphics/Shader/ShaderCompiler.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/CVar/CVar.h"
 
@@ -193,7 +195,6 @@ namespace CoreEngine
     };
     CB_VERIFY_LAYOUT(DenoiseConstants, kDenoiseConstantsFields);
     CB_BIND_HLSL(DenoiseConstants, kDenoiseConstantsFields, "DenoiseConstants");
-    static constexpr UINT kDenoiseConstantCount = sizeof(DenoiseConstants) / sizeof(uint32_t);
 
     /// @brief テンポラル蓄積（RTShadowTemporal.CS.hlsl）の TemporalConstants
     struct TemporalConstants {
@@ -222,7 +223,6 @@ namespace CoreEngine
     };
     CB_VERIFY_LAYOUT(TemporalConstants, kTemporalConstantsFields);
     CB_BIND_HLSL(TemporalConstants, kTemporalConstantsFields, "TemporalConstants");
-    static constexpr UINT kTemporalConstantCount = sizeof(TemporalConstants) / sizeof(uint32_t);
 
     /// @brief 解決＝バイラテラルアップサンプル（RTShadowResolve.CS.hlsl）の ResolveConstants
     struct ResolveConstants {
@@ -251,7 +251,6 @@ namespace CoreEngine
     };
     CB_VERIFY_LAYOUT(ResolveConstants, kResolveConstantsFields);
     CB_BIND_HLSL(ResolveConstants, kResolveConstantsFields, "ResolveConstants");
-    static constexpr UINT kResolveConstantCount = sizeof(ResolveConstants) / sizeof(uint32_t);
 
     namespace {
         /// @brief 投影行列から線形深度復元用の 2 要素を取り出す
@@ -274,79 +273,62 @@ namespace CoreEngine
     }
 
     // =========================================================================
-    // コンピュートパス（RS + PSO）の共通構築
-    // デノイズ / テンポラル / 解決の 3 本が全く同じ形なのでまとめてある。
-    // ルートパラメータ番号: t0..t(n-1) = 0..n-1, u0 = n, b0 = n+1
+    // コンピュートパス（RS + PSO + バインド表）の共通構築
+    // デノイズ / テンポラル / 解決の 3 本が全く同じ形なのでまとめてある
     // =========================================================================
     bool RayTracingShadowManager::CreateComputePass(
         const wchar_t* shaderPath,
-        UINT srvCount,
-        UINT constantDwordCount,
+        const ShaderBindingDecl* decls,
+        size_t declCount,
+        const char* rootConstantName,
         const char* debugLabel,
-        Microsoft::WRL::ComPtr<ID3D12RootSignature>& outRootSignature,
-        Microsoft::WRL::ComPtr<ID3D12PipelineState>& outPipelineState)
+        ComputePass& outPass)
     {
         Logger& log = Logger::GetInstance();
 
-        // ディスクリプタレンジは D3D12SerializeRootSignature が読むまで生存させる必要がある
-        std::vector<D3D12_DESCRIPTOR_RANGE> ranges(srvCount + 1);
-        for (UINT i = 0; i < srvCount; ++i) {
-            ranges[i].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-            ranges[i].NumDescriptors = 1;
-            ranges[i].BaseShaderRegister = i;
-        }
-        ranges[srvCount].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-        ranges[srvCount].NumDescriptors = 1;
-        ranges[srvCount].BaseShaderRegister = 0;
-
-        std::vector<D3D12_ROOT_PARAMETER> rootParams(srvCount + 2);
-        for (UINT i = 0; i <= srvCount; ++i) {
-            rootParams[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-            rootParams[i].DescriptorTable.NumDescriptorRanges = 1;
-            rootParams[i].DescriptorTable.pDescriptorRanges = &ranges[i];
-            rootParams[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-        }
-        rootParams[srvCount + 1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-        rootParams[srvCount + 1].Constants.ShaderRegister = 0;
-        rootParams[srvCount + 1].Constants.RegisterSpace = 0;
-        rootParams[srvCount + 1].Constants.Num32BitValues = constantDwordCount;
-        rootParams[srvCount + 1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-
-        D3D12_ROOT_SIGNATURE_DESC rsDesc{};
-        rsDesc.NumParameters = static_cast<UINT>(rootParams.size());
-        rsDesc.pParameters = rootParams.data();
-        rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
-
-        Microsoft::WRL::ComPtr<ID3DBlob> rsBlob, rsError;
-        if (FAILED(D3D12SerializeRootSignature(&rsDesc, D3D_ROOT_SIGNATURE_VERSION_1, &rsBlob, &rsError))) {
-            log.Logf(LogLevel::Error, LogCategory::Graphics,
-                "RayTracingShadowManager: {} root signature serialize failed", debugLabel);
-            return false;
-        }
-        if (FAILED(dxCommon_->GetDevice()->CreateRootSignature(0, rsBlob->GetBufferPointer(),
-            rsBlob->GetBufferSize(), IID_PPV_ARGS(&outRootSignature)))) {
-            log.Logf(LogLevel::Error, LogCategory::Graphics,
-                "RayTracingShadowManager: {} root signature creation failed", debugLabel);
-            return false;
-        }
-
-        ShaderCompiler compiler;
-        compiler.Initialize();
-        Microsoft::WRL::ComPtr<IDxcBlob> csBlob;
-        csBlob.Attach(compiler.CompileShader(shaderPath, L"cs_6_6"));
-        if (!csBlob || csBlob->GetBufferSize() == 0) {
+        // プロファイルはキャッシュのキーに含まれるので cs_6_0 の他パスとは衝突しない
+        const ShaderProgram* program =
+            shaderProgramCache_->GetOrCreateCompute(shaderPath, debugLabel, L"cs_6_6");
+        if (!program) {
             log.Logf(LogLevel::Warn, LogCategory::Graphics,
                 "RayTracingShadowManager: {} shader compile failed", debugLabel);
             return false;
         }
 
-        outPipelineState = ComputePipelineUtil::Create(
-            dxCommon_->GetDevice(), outRootSignature.Get(), csBlob.Get(),
-            std::string("RTShadow_") + debugLabel);
-        if (!outPipelineState) {
+        // 定数だけルート定数にする。dword 数はリフレクションが cbuffer サイズから決める
+        RootSignatureConfig config;
+        config.SetFlags(D3D12_ROOT_SIGNATURE_FLAG_NONE);  // コンピュートに入力アセンブラは無い
+        config.ConfigureResource(
+            ResourceBindingConfig(rootConstantName, BindingStrategy::RootConstants));
+
+        const auto buildResult = outPass.rootSigMgr.Build(
+            dxCommon_->GetDevice(), program->GetReflection(), config);
+        if (!buildResult.success) {
+            log.Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
+                "RayTracingShadowManager: {} のルートシグネチャ構築に失敗: {}",
+                debugLabel, buildResult.errorMessage);
             return false;
         }
 
+        // 宣言表とシェーダー実体を突き合わせる（改名・削除・種別違いはここで検出される）
+        try {
+            outPass.bindings = BindingTable::Resolve(
+                program->GetReflection(), decls, declCount, debugLabel);
+        }
+        catch (const std::exception& e) {
+            log.Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
+                "RayTracingShadowManager: {} のバインド契約違反: {}", debugLabel, e.what());
+            return false;
+        }
+
+        outPass.pipelineState = ComputePipelineUtil::Create(
+            dxCommon_->GetDevice(), outPass.GetRootSignature(), program->GetCS(),
+            std::string("RTShadow_") + debugLabel);
+        if (!outPass.pipelineState) {
+            return false;
+        }
+
+        outPass.initialized = true;
         log.Logf(LogLevel::Info, LogCategory::Graphics,
             "RayTracingShadowManager: {} pipeline created", debugLabel);
         return true;
@@ -356,57 +338,49 @@ namespace CoreEngine
     // Initialize
     // =========================================================================
     bool RayTracingShadowManager::Initialize(
-        DirectXCommon* dxCommon,
-        DescriptorManager* descriptorManager,
-        AccelerationStructureManager* asMgr)
+        GraphicsCore* dxCommon,
+        DescriptorAllocator* descriptorAllocator,
+        AccelerationStructureManager* asMgr,
+        ShaderProgramCache* shaderProgramCache)
     {
         Logger& log = Logger::GetInstance();
 
         // 共通基盤へ委譲（ポインタ保持と DXR サポート判定・警告ログまで面倒を見る）
-        if (!InitializeBase(dxCommon, descriptorManager, asMgr,
+        if (!InitializeBase(dxCommon, descriptorAllocator, asMgr, shaderProgramCache,
             "RayTracingShadowManager", "RTShadow")) {
             return false;
         }
 
-        // ShaderCompilerでlib_6_6ライブラリとしてコンパイル
-        ShaderCompiler shaderCompiler;
-        shaderCompiler.Initialize();
-        shaderBlob_.Attach(shaderCompiler.CompileShaderLibrary(L"RTShadow.hlsl"));
-        if (!shaderBlob_) {
+        // lib_6_6 のコンパイルとリフレクションはキャッシュが担当する
+        const ShaderProgram* program =
+            shaderProgramCache_->GetOrCreateLibrary(L"RTShadow.hlsl", "RTShadow");
+        if (!program) {
             log.Log("RayTracingShadowManager: Shader compile failed",
                 LogLevel::Error, LogCategory::Graphics);
             return false;
         }
-        log.Log("RayTracingShadowManager: Shader compiled",
-            LogLevel::Info, LogCategory::Graphics);
+        shaderBlob_ = program->GetCS();
 
-        // グローバルルートシグネチャを構築
-        // 履歴・モーションベクターは RayGen では読まない（テンポラルパスの仕事）ので張らない。
-        globalRootSigMgr_
-            .AddUAVTable("gShadowOutput", 0)      // u0: シャドウ出力（トレース解像度）
-            .AddSRVTable("gScene", 0)              // t0: TLAS
-            .AddSRVTable("gSceneDepth", 1)         // t1: 深度（ワールド座標復元用）
-            .AddSRVTable("gNormalRoughness", 2)    // t2: G-Buffer 法線（セルフシャドウバイアス用）
-            .AddRootConstants("ShadowRayConstants", 0, kShadowRayConstantCount); // b0
-        if (!globalRootSigMgr_.Build(dxCommon_->GetDevice())) {
-            log.Log("RayTracingShadowManager: Global root signature build failed",
-                LogLevel::Error, LogCategory::Graphics);
+        // グローバルルートシグネチャをリフレクションから構築する
+        // （ShadowRayConstants だけ 32bit ルート定数として明示）
+        RootSignatureConfig config;
+        config.SetFlags(D3D12_ROOT_SIGNATURE_FLAG_NONE);  // DXR に入力アセンブラは無い
+        {
+            ResourceBindingConfig rc("ShadowRayConstants", BindingStrategy::RootConstants);
+            rc.rootConstantsCount = kShadowRayConstantCount;
+            config.ConfigureResource(rc);
+        }
+        if (!BuildGlobalRootSignature(*program, RTShadowBind::kDecls,
+            RTShadowBind::Slot::Count, config)) {
             return false;
         }
         log.Log("RayTracingShadowManager: Global root signature created",
             LogLevel::Info, LogCategory::Graphics);
 
-        // ルートパラメータ番号はここで 1 回だけ解決する（毎ディスパッチの map 検索を避ける）
-        rootParams_.shadowOutput = static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gShadowOutput"));
-        rootParams_.scene = static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gScene"));
-        rootParams_.sceneDepth = static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gSceneDepth"));
-        rootParams_.normalRoughness = static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gNormalRoughness"));
-        rootParams_.constants = static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("ShadowRayConstants"));
-
         // State Objectを構築
         RayTracingPipelineBuilder pipelineBuilder;
         pipelineBuilder
-            .SetDXILLibrary(shaderBlob_.Get())
+            .SetDXILLibrary(shaderBlob_)
             .AddHitGroup({ L"RTShadowHitGroup", L"RTShadowClosestHit" })
             .SetShaderConfig(sizeof(float))  // ShadowPayload = float 1個
             .SetGlobalRootSignature(globalRootSigMgr_.GetRootSignature())
@@ -433,18 +407,21 @@ namespace CoreEngine
             LogLevel::Info, LogCategory::Graphics);
 
         isInitialized_ = true;
-        shaderBlob_.Reset();  // State Object構築後は不要
+        shaderBlob_ = nullptr;  // State Object構築後は不要（実体はキャッシュが保持）
 
-        // 後段の 3 本はどれも「SRV テーブル n 個 + UAV 1 個 + ルート定数」なので共通構築
-        denoiseInitialized_ = CreateComputePass(
-            L"RTShadowDenoise.hlsl", 3, kDenoiseConstantCount, "A-Trous denoise",
-            denoiseRootSignature_, denoisePipelineState_);
-        temporalInitialized_ = CreateComputePass(
-            L"RTShadowTemporal.CS.hlsl", 5, kTemporalConstantCount, "Temporal accumulation",
-            temporalRootSignature_, temporalPipelineState_);
-        resolveInitialized_ = CreateComputePass(
-            L"RTShadowResolve.CS.hlsl", 3, kResolveConstantCount, "Bilateral resolve",
-            resolveRootSignature_, resolvePipelineState_);
+        // 後段の 3 本はどれも「SRV n 枚 + UAV 1 枚 + ルート定数」なので共通構築
+        CreateComputePass(
+            L"RTShadowDenoise.hlsl",
+            RTShadowDenoiseBind::kDecls, RTShadowDenoiseBind::Slot::Count,
+            "DenoiseConstants", "A-Trous denoise", denoisePass_);
+        CreateComputePass(
+            L"RTShadowTemporal.CS.hlsl",
+            RTShadowTemporalBind::kDecls, RTShadowTemporalBind::Slot::Count,
+            "TemporalConstants", "Temporal accumulation", temporalPass_);
+        CreateComputePass(
+            L"RTShadowResolve.CS.hlsl",
+            RTShadowResolveBind::kDecls, RTShadowResolveBind::Slot::Count,
+            "ResolveConstants", "Bilateral resolve", resolvePass_);
 
         log.Log("RayTracingShadowManager: Initialized successfully",
             LogLevel::Info, LogCategory::Graphics);
@@ -483,7 +460,7 @@ namespace CoreEngine
         options.initialState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 
         // 最終シャドウマスク（フル解像度。DeferredLighting がフル解像度座標で Load する）
-        if (!outputViews_.EnsureTexture(dxCommon_, descriptorManager_, width, height,
+        if (!outputViews_.EnsureTexture(dxCommon_, descriptorAllocator_, width, height,
             maskSlot, "RayTracingShadowManager", "RTShadow_Mask" + suffix, options)) {
             return false;
         }
@@ -501,7 +478,7 @@ namespace CoreEngine
         };
         for (const TraceSlot& traceSlot : kTraceSlots) {
             options.format = traceSlot.format;
-            if (!outputViews_.EnsureTexture(dxCommon_, descriptorManager_, traceWidth, traceHeight,
+            if (!outputViews_.EnsureTexture(dxCommon_, descriptorAllocator_, traceWidth, traceHeight,
                 MakeSlotIndex(viewIndex, lightIndex, traceSlot.slot),
                 "RayTracingShadowManager", traceSlot.name + suffix, options)) {
                 return false;
@@ -634,33 +611,23 @@ namespace CoreEngine
                 }
 
                 const TextureSlot debugSlots[] = { TextureSlot::Raw, view.CurrentHistorySlot() };
-                ResourceBarrierBatch batch(cmdList);
+                // 未確保スロットは BarrierBatch 側で無視されるので null チェックは要らない
+                BarrierBatch batch(cmdList);
                 for (TextureSlot slot : debugSlots) {
-                    if (auto* resource = SlotResource(viewIndex, lightIndex, slot)) {
-                        batch.Add(resource, SlotState(viewIndex, lightIndex, slot),
-                            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                    }
+                    batch.Transition(Slot(viewIndex, lightIndex, slot),
+                        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
                 }
             }
         }
     }
 
-    ID3D12Resource* RayTracingShadowManager::GetShadowResource(
-        ViewID viewId,
-        uint32_t lightIndex) const
-    {
-        // 指定ビュー・ライトの現在のシャドウ出力テクスチャを返す。
-        lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
-        return SlotResource(static_cast<uint32_t>(viewId), lightIndex, TextureSlot::Mask);
-    }
-
-    D3D12_RESOURCE_STATES& RayTracingShadowManager::GetShadowCurrentState(
+    GpuResource& RayTracingShadowManager::GetShadowResource(
         ViewID viewId,
         uint32_t lightIndex)
     {
-        // 自動遷移処理が共有するシャドウ出力の現在状態参照を返す。
+        // 指定ビュー・ライトの現在のシャドウ出力テクスチャを返す。
         lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
-        return SlotState(static_cast<uint32_t>(viewId), lightIndex, TextureSlot::Mask);
+        return Slot(static_cast<uint32_t>(viewId), lightIndex, TextureSlot::Mask);
     }
 
     bool RayTracingShadowManager::IsDispatchedThisFrame(
@@ -789,33 +756,28 @@ namespace CoreEngine
         cmdList4->SetComputeRootSignature(globalRootSigMgr_.GetRootSignature());
         cmdList4->SetPipelineState1(stateObject_.Get());
 
-        ResourceBarrierHelper::Transition(
-            cmdList, SlotResource(vi, lightIndex, TextureSlot::Raw),
-            SlotState(vi, lightIndex, TextureSlot::Raw),
+        Barrier::Transition(cmdList, Slot(vi, lightIndex, TextureSlot::Raw),
             D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-        cmdList->SetComputeRootDescriptorTable(
-            rootParams_.shadowOutput, SlotUAV(vi, lightIndex, TextureSlot::Raw));
-        cmdList->SetComputeRootDescriptorTable(
-            rootParams_.scene, asMgr_->GetTLASSRVHandle());
-        cmdList->SetComputeRootDescriptorTable(
-            rootParams_.sceneDepth, sceneDepthSRV);
-        cmdList->SetComputeRootDescriptorTable(
-            rootParams_.normalRoughness, normalRoughnessSRV);
-
-        cmdList->SetComputeRoot32BitConstants(
-            rootParams_.constants, kShadowRayConstantCount, &constants, 0);
+        // 差し方は RootSlot の種別から ShaderBinder が決める（番号を直接触らない）
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
+        binder.Set(bindings_[RTShadowBind::gShadowOutput], SlotUAV(vi, lightIndex, TextureSlot::Raw));
+        binder.Set(bindings_[RTShadowBind::gScene], asMgr_->GetTLASSRVHandle());
+        binder.Set(bindings_[RTShadowBind::gSceneDepth], sceneDepthSRV);
+        binder.Set(bindings_[RTShadowBind::gNormalRoughness], normalRoughnessSRV);
+        binder.SetConstants(bindings_[RTShadowBind::ShadowRayConstants], constants);
+        binder.ValidateBeforeDraw(bindings_);
 
         // DispatchRays はトレース解像度で行う（ハーフ解像度ならレイ本数は 1/4）
         auto dispatchDesc = shaderTableBuilder_.BuildDispatchDesc(traceWidth, traceHeight);
         cmdList4->DispatchRays(&dispatchDesc);
 
         // ApplyTemporal の読み取り前に完了を保証してから SRV 状態へ
-        ResourceBarrierHelper::UAV(cmdList, SlotResource(vi, lightIndex, TextureSlot::Raw));
-        ResourceBarrierHelper::Transition(
-            cmdList, SlotResource(vi, lightIndex, TextureSlot::Raw),
-            SlotState(vi, lightIndex, TextureSlot::Raw),
+        BarrierBatch rawToSrv(cmdList);
+        rawToSrv.UAV(Slot(vi, lightIndex, TextureSlot::Raw));
+        rawToSrv.Transition(Slot(vi, lightIndex, TextureSlot::Raw),
             D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        rawToSrv.Flush();
 
         view.dispatchedThisFrame = true;
         view.dispatchInfo.status = RayTracingDispatchStatus::Dispatched;
@@ -844,7 +806,7 @@ namespace CoreEngine
         ViewID viewId,
         uint32_t lightIndex)
     {
-        if (!isInitialized_ || !temporalInitialized_) return;
+        if (!isInitialized_ || !temporalPass_.initialized) return;
 
         lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
         const uint32_t vi = static_cast<uint32_t>(viewId);
@@ -854,32 +816,32 @@ namespace CoreEngine
         const TextureSlot currentHistory = view.CurrentHistorySlot();
         const TextureSlot previousHistory = view.PreviousHistorySlot();
 
-        ID3D12Resource* rawRes = SlotResource(vi, lightIndex, TextureSlot::Raw);
-        ID3D12Resource* prevRes = SlotResource(vi, lightIndex, previousHistory);
-        ID3D12Resource* curRes = SlotResource(vi, lightIndex, currentHistory);
-        if (!rawRes || !prevRes || !curRes) return;
+        GpuResource& rawRes = Slot(vi, lightIndex, TextureSlot::Raw);
+        GpuResource& prevRes = Slot(vi, lightIndex, previousHistory);
+        GpuResource& curRes = Slot(vi, lightIndex, currentHistory);
+        if (!rawRes.IsValid() || !prevRes.IsValid() || !curRes.IsValid()) return;
 
         // 入出力の状態遷移（3リソースを一括バリア）
         {
-            ResourceBarrierBatch batch(cmdList);
-            batch.Add(rawRes, SlotState(vi, lightIndex, TextureSlot::Raw),
-                D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            batch.Add(prevRes, SlotState(vi, lightIndex, previousHistory),
-                D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            batch.Add(curRes, SlotState(vi, lightIndex, currentHistory),
-                D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            BarrierBatch batch(cmdList);
+            batch.Transition(rawRes, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            batch.Transition(prevRes, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            batch.Transition(curRes, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         }
 
-        cmdList->SetComputeRootSignature(temporalRootSignature_.Get());
-        cmdList->SetPipelineState(temporalPipelineState_.Get());
+        cmdList->SetComputeRootSignature(temporalPass_.GetRootSignature());
+        cmdList->SetPipelineState(temporalPass_.pipelineState.Get());
 
-        // t0=RawShadow, t1=Normal, t2=SceneDepth, t3=History(前フレーム), t4=MotionVector, u0=History(今フレーム)
-        cmdList->SetComputeRootDescriptorTable(0, SlotSRV(vi, lightIndex, TextureSlot::Raw));
-        cmdList->SetComputeRootDescriptorTable(1, normalRoughnessSRV);
-        cmdList->SetComputeRootDescriptorTable(2, sceneDepthSRV);
-        cmdList->SetComputeRootDescriptorTable(3, SlotSRV(vi, lightIndex, previousHistory));
-        cmdList->SetComputeRootDescriptorTable(4, motionVectorSRV);
-        cmdList->SetComputeRootDescriptorTable(5, SlotUAV(vi, lightIndex, currentHistory));
+        namespace Bind = RTShadowTemporalBind;
+        const BindingTable& table = temporalPass_.bindings;
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
+
+        binder.Set(table[Bind::gRawShadow], SlotSRV(vi, lightIndex, TextureSlot::Raw));
+        binder.Set(table[Bind::gGBufferNormal], normalRoughnessSRV);
+        binder.Set(table[Bind::gGBufferDepth], sceneDepthSRV);
+        binder.Set(table[Bind::gHistoryShadow], SlotSRV(vi, lightIndex, previousHistory));
+        binder.Set(table[Bind::gMotionVector], motionVectorSRV);
+        binder.Set(table[Bind::gOutputShadow], SlotUAV(vi, lightIndex, currentHistory));
 
         TemporalConstants tc{};
         tc.traceWidth = static_cast<int>(view.traceWidth);
@@ -893,15 +855,16 @@ namespace CoreEngine
         tc.traceOffsetY = static_cast<int>(view.traceOffsetY);
         tc.fullWidth = static_cast<int>(view.width);
         tc.fullHeight = static_cast<int>(view.height);
-        cmdList->SetComputeRoot32BitConstants(6, kTemporalConstantCount, &tc, 0);
+        binder.SetConstants(table[Bind::TemporalConstants], tc);
 
+        binder.ValidateBeforeDraw(table);
         cmdList->Dispatch(DispatchGroupCount(view.traceWidth), DispatchGroupCount(view.traceHeight), 1);
 
         // Denoise が SRV として読むので完了を保証してから遷移
-        ResourceBarrierHelper::UAV(cmdList, curRes);
-        ResourceBarrierHelper::Transition(cmdList, curRes,
-            SlotState(vi, lightIndex, currentHistory),
-            D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        BarrierBatch curToSrv(cmdList);
+        curToSrv.UAV(curRes);
+        curToSrv.Transition(curRes, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        curToSrv.Flush();
 
         view.isHistoryValid = true;
     }
@@ -932,7 +895,7 @@ namespace CoreEngine
 
         // デノイズ PSO が作れていない場合はパス数 0 として扱う
         // （その場合でも解決パスがテンポラル結果を Mask へ運ぶので影は消えない）
-        const int numPasses = denoiseInitialized_ ? GetEffectiveAtrousPassCount() : 0;
+        const int numPasses = denoisePass_.initialized ? GetEffectiveAtrousPassCount() : 0;
 
         // フル解像度のときだけ最終パスが Mask へ直接書ける（ハーフだと寸法が違う）
         const bool directToMask = (view.traceScale == 1) && (numPasses > 0);
@@ -940,8 +903,11 @@ namespace CoreEngine
         TextureSlot lastSlot = view.CurrentHistorySlot();
 
         if (numPasses > 0) {
-            cmdList->SetComputeRootSignature(denoiseRootSignature_.Get());
-            cmdList->SetPipelineState(denoisePipelineState_.Get());
+            cmdList->SetComputeRootSignature(denoisePass_.GetRootSignature());
+            cmdList->SetPipelineState(denoisePass_.pipelineState.Get());
+
+            namespace Bind = RTShadowDenoiseBind;
+            const BindingTable& table = denoisePass_.bindings;
 
             const UINT groupX = DispatchGroupCount(view.traceWidth);
             const UINT groupY = DispatchGroupCount(view.traceHeight);
@@ -954,23 +920,23 @@ namespace CoreEngine
                     ? TextureSlot::Mask
                     : ((pass % 2 == 0) ? TextureSlot::DenoiseA : TextureSlot::DenoiseB);
 
-                ID3D12Resource* inputRes = SlotResource(vi, lightIndex, inSlot);
-                ID3D12Resource* outputRes = SlotResource(vi, lightIndex, outSlot);
-                if (!inputRes || !outputRes) return;
+                GpuResource& inputRes = Slot(vi, lightIndex, inSlot);
+                GpuResource& outputRes = Slot(vi, lightIndex, outSlot);
+                if (!inputRes.IsValid() || !outputRes.IsValid()) return;
 
                 // 入力: SRV へ、出力: UAV へ（2リソースを一括バリア）
                 {
-                    ResourceBarrierBatch batch(cmdList);
-                    batch.Add(inputRes, SlotState(vi, lightIndex, inSlot),
-                        D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-                    batch.Add(outputRes, SlotState(vi, lightIndex, outSlot),
-                        D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+                    BarrierBatch batch(cmdList);
+                    batch.Transition(inputRes, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                    batch.Transition(outputRes, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
                 }
 
-                cmdList->SetComputeRootDescriptorTable(0, SlotSRV(vi, lightIndex, inSlot));   // t0: InputShadow
-                cmdList->SetComputeRootDescriptorTable(1, normalRoughnessSRV);                // t1: Normal
-                cmdList->SetComputeRootDescriptorTable(2, sceneDepthSRV);                     // t2: SceneDepth
-                cmdList->SetComputeRootDescriptorTable(3, SlotUAV(vi, lightIndex, outSlot));  // u0: Output
+                // 差し忘れ検出のビットをパス単位で見るため、バインダーはパスごとに作り直す
+                ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
+                binder.Set(table[Bind::gInputShadow], SlotSRV(vi, lightIndex, inSlot));
+                binder.Set(table[Bind::gNormalRoughness], normalRoughnessSRV);
+                binder.Set(table[Bind::gSceneDepth], sceneDepthSRV);
+                binder.Set(table[Bind::gOutputShadow], SlotUAV(vi, lightIndex, outSlot));
 
                 DenoiseConstants dc{};
                 dc.stepSize = kSteps[pass];
@@ -985,13 +951,14 @@ namespace CoreEngine
                 dc.traceOffsetY = static_cast<int>(view.traceOffsetY);
                 dc.fullWidth = static_cast<int>(view.width);
                 dc.fullHeight = static_cast<int>(view.height);
-                cmdList->SetComputeRoot32BitConstants(4, kDenoiseConstantCount, &dc, 0);
+                binder.SetConstants(table[Bind::DenoiseConstants], dc);
 
                 // directToMask は traceScale==1 のときだけ成立するので、
                 // Mask へ直接書く場合もトレース解像度＝フル解像度で寸法は一致する
+                binder.ValidateBeforeDraw(table);
                 cmdList->Dispatch(groupX, groupY, 1);
 
-                ResourceBarrierHelper::UAV(cmdList, outputRes);
+                Barrier::UAV(cmdList, outputRes);
                 lastSlot = outSlot;
             }
         }
@@ -1004,8 +971,8 @@ namespace CoreEngine
         }
 
         // 後段（DeferredLighting）はピクセルシェーダから読む
-        ResourceBarrierHelper::Transition(cmdList, SlotResource(vi, lightIndex, TextureSlot::Mask),
-            SlotState(vi, lightIndex, TextureSlot::Mask), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        Barrier::Transition(cmdList, Slot(vi, lightIndex, TextureSlot::Mask),
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     }
 
     // =========================================================================
@@ -1021,28 +988,30 @@ namespace CoreEngine
         TextureSlot sourceSlot)
     {
         // ハーフ解像度で解いた影を、法線と深度をガイドにフル解像度へバイラテラルアップサンプルする
-        if (!resolveInitialized_) return;
+        if (!resolvePass_.initialized) return;
 
         auto& view = views_[viewIndex][lightIndex];
-        ID3D12Resource* sourceRes = SlotResource(viewIndex, lightIndex, sourceSlot);
-        ID3D12Resource* maskRes = SlotResource(viewIndex, lightIndex, TextureSlot::Mask);
-        if (!sourceRes || !maskRes) return;
+        GpuResource& sourceRes = Slot(viewIndex, lightIndex, sourceSlot);
+        GpuResource& maskRes = Slot(viewIndex, lightIndex, TextureSlot::Mask);
+        if (!sourceRes.IsValid() || !maskRes.IsValid()) return;
 
         {
-            ResourceBarrierBatch batch(cmdList);
-            batch.Add(sourceRes, SlotState(viewIndex, lightIndex, sourceSlot),
-                D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            batch.Add(maskRes, SlotState(viewIndex, lightIndex, TextureSlot::Mask),
-                D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            BarrierBatch batch(cmdList);
+            batch.Transition(sourceRes, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            batch.Transition(maskRes, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         }
 
-        cmdList->SetComputeRootSignature(resolveRootSignature_.Get());
-        cmdList->SetPipelineState(resolvePipelineState_.Get());
+        cmdList->SetComputeRootSignature(resolvePass_.GetRootSignature());
+        cmdList->SetPipelineState(resolvePass_.pipelineState.Get());
 
-        cmdList->SetComputeRootDescriptorTable(0, SlotSRV(viewIndex, lightIndex, sourceSlot)); // t0: トレース解像度シャドウ
-        cmdList->SetComputeRootDescriptorTable(1, sceneDepthSRV);                              // t1: フル解像度 深度
-        cmdList->SetComputeRootDescriptorTable(2, normalRoughnessSRV);                         // t2: フル解像度 法線
-        cmdList->SetComputeRootDescriptorTable(3, SlotUAV(viewIndex, lightIndex, TextureSlot::Mask)); // u0
+        namespace Bind = RTShadowResolveBind;
+        const BindingTable& table = resolvePass_.bindings;
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
+
+        binder.Set(table[Bind::gTraceShadow], SlotSRV(viewIndex, lightIndex, sourceSlot));
+        binder.Set(table[Bind::gSceneDepth], sceneDepthSRV);
+        binder.Set(table[Bind::gNormalRoughness], normalRoughnessSRV);
+        binder.Set(table[Bind::gOutputShadow], SlotUAV(viewIndex, lightIndex, TextureSlot::Mask));
 
         ResolveConstants rc{};
         rc.fullWidth = static_cast<int>(view.width);
@@ -1054,10 +1023,11 @@ namespace CoreEngine
         rc.traceOffsetX = static_cast<int>(view.traceOffsetX);
         rc.traceOffsetY = static_cast<int>(view.traceOffsetY);
         rc.phiDepth = settings_.upsamplePhiDepth;
-        cmdList->SetComputeRoot32BitConstants(4, kResolveConstantCount, &rc, 0);
+        binder.SetConstants(table[Bind::ResolveConstants], rc);
 
+        binder.ValidateBeforeDraw(table);
         cmdList->Dispatch(DispatchGroupCount(view.width), DispatchGroupCount(view.height), 1);
 
-        ResourceBarrierHelper::UAV(cmdList, maskRes);
+        Barrier::UAV(cmdList, maskRes);
     }
 }

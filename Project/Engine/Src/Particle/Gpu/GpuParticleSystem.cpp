@@ -1,8 +1,9 @@
 #include "pch.h"
 #include "GpuParticleSystem.h"
 
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Camera/Camera.h"
 #include "Particle/Core/ParticleResourceManager.h" // ParticleForGPU（インスタンスデータレイアウト共有）
 #include "Math/MathCore.h"
@@ -25,7 +26,7 @@ namespace {
     constexpr float kDegToRad = MathCore::Constants::kDegToRad;
 }
 
-void GpuParticleSystem::Initialize(DirectXCommon* dxCommon, ResourceFactory* resourceFactory, const std::string& name)
+void GpuParticleSystem::Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory, const std::string& name)
 {
     if (!name.empty()) {
         name_ = name;
@@ -35,7 +36,7 @@ void GpuParticleSystem::Initialize(DirectXCommon* dxCommon, ResourceFactory* res
     resourceFactory_ = resourceFactory;
 
     auto device = dxCommon_->GetDevice();
-    auto descriptorManager = dxCommon_->GetDescriptorManager();
+    auto descriptorAllocator = dxCommon_->GetDescriptorAllocator();
 
     // ──────────────────────────────────────────────────────────
     // モジュールの生成（CPU版とパラメータ定義・ImGuiを共有）
@@ -71,12 +72,9 @@ void GpuParticleSystem::Initialize(DirectXCommon* dxCommon, ResourceFactory* res
     // ──────────────────────────────────────────────────────────
 
     particleResource_ = CreateUavBuffer(sizeof(GpuParticleData) * kMaxParticles);
-    counterResource_ = CreateUavBuffer(sizeof(uint32_t) * kCounterCount);
-    freeListResource_ = CreateUavBuffer(sizeof(uint32_t) * kMaxParticles);
-    instancingResource_ = CreateUavBuffer(sizeof(ParticleForGPU) * kMaxParticles);
-    instancingState_ = D3D12_RESOURCE_STATE_COMMON;
-    counterState_ = D3D12_RESOURCE_STATE_COMMON;
-    argsState_ = D3D12_RESOURCE_STATE_COMMON;
+    counterResource_.Reset(CreateUavBuffer(sizeof(uint32_t) * kCounterCount), D3D12_RESOURCE_STATE_COMMON);
+    freeListResource_.Reset(CreateUavBuffer(sizeof(uint32_t) * kMaxParticles), D3D12_RESOURCE_STATE_COMMON);
+    instancingResource_.Reset(CreateUavBuffer(sizeof(ParticleForGPU) * kMaxParticles), D3D12_RESOURCE_STATE_COMMON);
 
     // 間接引数バッファ（ExecuteIndirect 用、UAV不要・コピー先/間接引数のみ）
     {
@@ -91,12 +89,14 @@ void GpuParticleSystem::Initialize(DirectXCommon* dxCommon, ResourceFactory* res
         desc.Format = DXGI_FORMAT_UNKNOWN;
         desc.SampleDesc.Count = 1;
         desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        Microsoft::WRL::ComPtr<ID3D12Resource> args;
         HRESULT hr = device->CreateCommittedResource(
             &heapProps, D3D12_HEAP_FLAG_NONE, &desc,
-            D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&argsResource_));
+            D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&args));
         if (FAILED(hr)) {
             throw std::runtime_error("GpuParticleSystem: Failed to create indirect args buffer");
         }
+        argsResource_.Reset(std::move(args), D3D12_RESOURCE_STATE_COMMON);
     }
 
     // 初期化用アップロードバッファ（CopyBufferRegion のコピー元。オフセット定数はヘッダ参照）
@@ -139,7 +139,7 @@ void GpuParticleSystem::Initialize(DirectXCommon* dxCommon, ResourceFactory* res
         uavDesc.Buffer.FirstElement = 0;
         uavDesc.Buffer.NumElements = kMaxParticles;
         uavDesc.Buffer.StructureByteStride = sizeof(GpuParticleData);
-        descriptorManager->CreateUAV(particleResource_.Get(), uavDesc, cpuHandle, particleUavGPU_, "GpuParticleUAV");
+        particleUavGPU_ = descriptorAllocator->CreateUAV(particleResource_.Get(), uavDesc, "GpuParticleUAV");
     }
     {
         D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
@@ -148,7 +148,7 @@ void GpuParticleSystem::Initialize(DirectXCommon* dxCommon, ResourceFactory* res
         uavDesc.Buffer.FirstElement = 0;
         uavDesc.Buffer.NumElements = kCounterCount;
         uavDesc.Buffer.StructureByteStride = sizeof(uint32_t);
-        descriptorManager->CreateUAV(counterResource_.Get(), uavDesc, cpuHandle, counterUavGPU_, "GpuParticleCounterUAV");
+        counterUavGPU_ = descriptorAllocator->CreateUAV(counterResource_.Get(), uavDesc, "GpuParticleCounterUAV");
     }
     {
         D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
@@ -157,7 +157,7 @@ void GpuParticleSystem::Initialize(DirectXCommon* dxCommon, ResourceFactory* res
         uavDesc.Buffer.FirstElement = 0;
         uavDesc.Buffer.NumElements = kMaxParticles;
         uavDesc.Buffer.StructureByteStride = sizeof(uint32_t);
-        descriptorManager->CreateUAV(freeListResource_.Get(), uavDesc, cpuHandle, freeListUavGPU_, "GpuParticleFreeListUAV");
+        freeListUavGPU_ = descriptorAllocator->CreateUAV(freeListResource_.Get(), uavDesc, "GpuParticleFreeListUAV");
     }
     {
         D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
@@ -166,7 +166,7 @@ void GpuParticleSystem::Initialize(DirectXCommon* dxCommon, ResourceFactory* res
         uavDesc.Buffer.FirstElement = 0;
         uavDesc.Buffer.NumElements = kMaxParticles;
         uavDesc.Buffer.StructureByteStride = sizeof(ParticleForGPU);
-        descriptorManager->CreateUAV(instancingResource_.Get(), uavDesc, cpuHandle, instancingUavGPU_, "GpuParticleInstancingUAV");
+        instancingUavGPU_ = descriptorAllocator->CreateUAV(instancingResource_.Get(), uavDesc, "GpuParticleInstancingUAV");
     }
     {
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
@@ -176,7 +176,7 @@ void GpuParticleSystem::Initialize(DirectXCommon* dxCommon, ResourceFactory* res
         srvDesc.Buffer.FirstElement = 0;
         srvDesc.Buffer.NumElements = kMaxParticles;
         srvDesc.Buffer.StructureByteStride = sizeof(ParticleForGPU);
-        descriptorManager->CreateSRV(instancingResource_.Get(), srvDesc, cpuHandle, instancingSrvGPU_, "GpuParticleInstancingSRV");
+        instancingSrvGPU_ = descriptorAllocator->CreateSRV(instancingResource_.Get(), srvDesc, "GpuParticleInstancingSRV");
     }
 
     // ──────────────────────────────────────────────────────────

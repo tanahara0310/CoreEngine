@@ -1,6 +1,8 @@
 #include "pch.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "ImGuiManager.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/SwapChain/SwapChain.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/Render/Render.h"
 #include "Editor/Scene/SceneDebugEditor.h"
@@ -14,16 +16,15 @@ namespace CoreEngine
 
     namespace fs = std::filesystem;
 
-    void ImGuiManager::Initialize(HWND hwnd, DirectXCommon* dxCommon)
+    void ImGuiManager::Initialize(HWND hwnd, GraphicsCore* dxCommon)
     {
 
         // クラス情報をメンバ変数に代入
         hwnd_ = hwnd;
         dxCommon_ = dxCommon;
 
-        // SwapChainの情報を取得
-        DXGI_SWAP_CHAIN_DESC swapChainDesc;
-        dxCommon_->GetSwapChain()->GetDesc(&swapChainDesc);
+        // ImGui バックエンドはバックバッファ枚数と RTV フォーマットを要求する
+        const SwapChain& swapChain = dxCommon_->GetSwapChain();
 
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
@@ -103,13 +104,17 @@ namespace CoreEngine
         }
 
         ImGui_ImplWin32_Init(hwnd_);
+
+        // ImGui のフォント用スロットは DescriptorAllocator から正規に確保する
+        // （ヒープ先頭を決め打ちで使うと他の SRV と衝突する）
+        fontDescriptor_ = dxCommon_->GetDescriptorAllocator()->AllocateSRVHandle("ImGuiFont");
         ImGui_ImplDX12_Init(
             dxCommon_->GetDevice(),
-            swapChainDesc.BufferCount,
-            dxCommon_->GetRTVDesc().Format,
+            static_cast<int>(swapChain.BufferCount()),
+            swapChain.RTVFormat(),
             dxCommon_->GetSRVHeap(),
-            dxCommon_->GetSRVHeap()->GetCPUDescriptorHandleForHeapStart(),
-            dxCommon_->GetSRVHeap()->GetGPUDescriptorHandleForHeapStart());
+            fontDescriptor_.cpuHandle,
+            fontDescriptor_.gpuHandle);
 
         ImGui::GetIO().Fonts->GetTexDataAsRGBA32(nullptr, nullptr, nullptr);
         ImGui_ImplDX12_CreateDeviceObjects(); // これがないとアクセス違反が起きる
@@ -156,7 +161,7 @@ namespace CoreEngine
         ImGui::End();
     }
 
-    void ImGuiManager::DrawGameViewport([[maybe_unused]] DirectXCommon* dxCommon, [[maybe_unused]] PostEffectManager* postEffectManager, [[maybe_unused]] GameDebugUI* gameDebugUI)
+    void ImGuiManager::DrawGameViewport([[maybe_unused]] GraphicsCore* dxCommon, [[maybe_unused]] PostEffectManager* postEffectManager, [[maybe_unused]] GameDebugUI* gameDebugUI)
     {
 #ifdef USE_IMGUI
         D3D12_GPU_DESCRIPTOR_HANDLE textureHandle{};

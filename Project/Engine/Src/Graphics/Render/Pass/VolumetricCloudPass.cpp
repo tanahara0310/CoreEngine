@@ -3,9 +3,10 @@
 
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Cloud/VolumetricCloudManager.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Render/RenderTarget/OffscreenRenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
+#include "Graphics/Render/FrameBlackboard.h"
 #include "Graphics/Render/RenderGraph.h"
 
 namespace CoreEngine
@@ -47,9 +48,7 @@ namespace CoreEngine
             return;
         }
 
-        // 合成 compute はディスクリプタテーブルを使うためパス自身が SRV ヒープをバインドする。
-        ID3D12DescriptorHeap* descriptorHeaps[] = { context.dxCommon->GetSRVHeap() };
-        cmdList->SetDescriptorHeaps(1, descriptorHeaps);
+        // SRV ヒープはフレーム先頭で CommandContext が 1 回バインドする（個別バインドは不要）
 
         auto* sceneColorTarget = dynamic_cast<OffscreenRenderTarget*>(
             context.renderTargetManager->GetRenderTarget(context.viewSettings.sceneColorTargetName));
@@ -57,12 +56,18 @@ namespace CoreEngine
             return;
         }
 
+        // 深度は DeclareResources で Read 宣言した Blackboard の SceneDepth から取る
+        D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSrv{};
+        if (!context.frameBlackboard
+            || !context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneDepth, sceneDepthSrv)) {
+            return;
+        }
+
         context.volumetricCloudManager->RenderClouds(
             cmdList,
-            sceneColorTarget->GetResource(),
-            sceneColorTarget->GetCurrentState(),
+            sceneColorTarget->Resource(),
             sceneColorTarget->GetSRVHandle(),
-            context.dxCommon->GetDepthStencilSRV(),
+            sceneDepthSrv,
             context.atmosphereManager);
     }
 }

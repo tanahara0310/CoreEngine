@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "Random.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/Resource/ResourceFactory.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/CVar/CVar.h"
 #ifdef USE_IMGUI
 #include "Editor/ImGui/CVarPanel.h"
@@ -55,7 +55,7 @@ namespace CoreEngine
 	void Random::OnCreateConstantBuffers()
 	{
 		UINT randomSize = (sizeof(RandomParams) + 255) & ~255;
-		randomParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), randomSize);
+		randomParamsCB_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), randomSize);
 		[[maybe_unused]] HRESULT hr = randomParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedRandomParams_));
 		assert(SUCCEEDED(hr));
 		UpdateConstantBuffer();
@@ -91,7 +91,7 @@ namespace CoreEngine
 		UpdateConstantBuffer();
 		UpdateScreenSizeConstants(width, height);
 
-		auto* cmdList = directXCommon_->GetCommandList();
+		auto* cmdList = graphicsCore_->GetCommandList();
 		cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
 		cmdList->SetPipelineState(computePso_.Get());
 

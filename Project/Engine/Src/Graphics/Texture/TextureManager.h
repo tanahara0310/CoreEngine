@@ -17,7 +17,7 @@
 
 // 前方宣言
 namespace CoreEngine {
-    class DirectXCommon;
+    class GraphicsCore;
     class TextureCacheStore;
     class ThreadPool;
 }
@@ -41,7 +41,7 @@ namespace CoreEngine {
 
         /// @brief 初期化処理
         /// @param dxCommon dxCommonへのポインタ
-        void Initialize(CoreEngine::DirectXCommon* dxCommon);
+        void Initialize(CoreEngine::GraphicsCore* dxCommon);
 
         /// @brief 色空間付きテクスチャ読み込みリクエスト
         struct LoadRequest {
@@ -103,7 +103,7 @@ namespace CoreEngine {
         /// @brief 読み込み時に必要な実行設定をまとめた構造体
         struct LoadContext
         {
-            CoreEngine::DirectXCommon* dxCommon = nullptr;
+            CoreEngine::GraphicsCore* dxCommon = nullptr;
             bool ddsGenerationEnabled = false;
         };
 
@@ -114,7 +114,7 @@ namespace CoreEngine {
         /// @return 読み込み実行に必要なコンテキスト
         LoadContext AcquireLoadContext() const;
 
-        CoreEngine::DirectXCommon* dxCommon_ = nullptr;
+        CoreEngine::GraphicsCore* dxCommon_ = nullptr;
         TexturePathResolver texturePathResolver_;
         TextureLoadPlan textureLoadPlan_;
         TextureCubemapGenerator cubemapGenerator_;

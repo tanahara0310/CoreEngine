@@ -1,13 +1,14 @@
 #include "pch.h"
 #include "ParticleResourceManager.h"
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Particle/ParticleSystem.h" // ParticleForGPU定義のため
 
 
 namespace CoreEngine
 {
-void ParticleResourceManager::Initialize(DirectXCommon* dxCommon, ResourceFactory* resourceFactory, uint32_t maxInstances) {
+void ParticleResourceManager::Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory, uint32_t maxInstances) {
     dxCommon_ = dxCommon;
     resourceFactory_ = resourceFactory;
 
@@ -39,12 +40,7 @@ void ParticleResourceManager::CreateSRV(uint32_t maxInstances) {
     srvDesc.Buffer.StructureByteStride = sizeof(ParticleForGPU);
 
     // SRVの作成
-    dxCommon_->GetDescriptorManager()->CreateSRV(
-        instancingResource_.Get(),
-        srvDesc,
-        srvHandleCPU_,
-        srvHandleGPU_,
-        "ParticleInstancingSRV"
-    );
+    srvHandleGPU_ = dxCommon_->GetDescriptorAllocator()->CreateSRV(
+        instancingResource_.Get(), srvDesc, "ParticleInstancingSRV");
 }
 }

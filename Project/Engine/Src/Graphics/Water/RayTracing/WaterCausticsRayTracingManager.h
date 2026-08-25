@@ -14,8 +14,8 @@
 
 namespace CoreEngine
 {
-    class DirectXCommon;
-    class DescriptorManager;
+    class GraphicsCore;
+    class DescriptorAllocator;
     class AccelerationStructureManager;
 
     /// @brief RT コースティクスの設定
@@ -57,9 +57,10 @@ namespace CoreEngine
             "WaterCausticsRayTracingManager: ViewID::Count exceeds RayTracingOutputViewSet::kMaxSlotCount");
 
         bool Initialize(
-            DirectXCommon* dxCommon,
-            DescriptorManager* descriptorManager,
-            AccelerationStructureManager* asMgr);
+            GraphicsCore* dxCommon,
+            DescriptorAllocator* descriptorAllocator,
+            AccelerationStructureManager* asMgr,
+            ShaderProgramCache* shaderProgramCache);
 
         /// @param sceneDepthSRV WorldPosition ターゲット廃止に伴い深度から復元する
         /// @param invViewProj 深度復元用 View*Projection の逆行列
@@ -81,9 +82,10 @@ namespace CoreEngine
         /// @brief コースティクス出力テクスチャの SRV ハンドル
         D3D12_GPU_DESCRIPTOR_HANDLE GetCausticsSRVHandle(ViewID viewId = ViewID::GameView) const;
         /// @brief コースティクス出力テクスチャのリソース
-        ID3D12Resource* GetCausticsResource(ViewID viewId = ViewID::GameView) const;
+        /// @brief 出力テクスチャをステート追跡つきで返す（バリア発行はこれを渡す）
+        GpuResource& GetCausticsResource(ViewID viewId = ViewID::GameView);
         /// @brief コースティクス出力の現在ステートへの参照（バリア時に更新される）
-        D3D12_RESOURCE_STATES& GetCausticsCurrentState(ViewID viewId = ViewID::GameView);
+
 
         void SetSettings(const WaterCausticsRayTracingSettings& settings) { settings_ = settings; }
         const WaterCausticsRayTracingSettings& GetSettings() const { return settings_; }

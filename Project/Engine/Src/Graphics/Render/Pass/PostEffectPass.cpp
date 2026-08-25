@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "PostEffectPass.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Render/RenderTarget/OffscreenRenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
@@ -152,12 +152,8 @@ namespace CoreEngine
         }
 
         if (context.frameBlackboard) {
-            D3D12_RESOURCE_STATES* stateRef = nullptr;
-            if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(outputTarget)) {
-                stateRef = &offscreen->GetCurrentState();
-            }
             context.frameBlackboard->SetResource(
-                step_.write, outputTarget->GetSRVHandle(), outputTarget->GetResource(), stateRef);
+                step_.write, outputTarget->GetSRVHandle(), &outputTarget->Resource());
         }
     }
 }

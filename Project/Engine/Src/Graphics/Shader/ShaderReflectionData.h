@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Graphics/RootSignature/RootSlot.h"
+
 #include <d3d12.h>
 #include <string>
 #include <vector>
@@ -68,9 +70,6 @@ namespace CoreEngine
         const std::vector<ShaderResourceBinding>& GetSamplerBindings() const { return samplerBindings_; }
         const std::vector<InputElementInfo>& GetInputElements() const { return inputElements_; }
 
-        // 全リソースバインディングの取得（ソート済み）
-        std::vector<ShaderResourceBinding> GetAllBindingsSorted() const;
-
         /// @brief 名前で CBV のバインド情報を引く（無ければ nullptr）
         // 特定のリソースを検索
         const ShaderResourceBinding* FindCBV(const std::string& name) const;
@@ -78,8 +77,6 @@ namespace CoreEngine
         const ShaderResourceBinding* FindSRV(const std::string& name) const;
         /// @brief 名前で UAV のバインド情報を引く（無ければ nullptr）
         const ShaderResourceBinding* FindUAV(const std::string& name) const;
-        /// @brief 名前でサンプラーのバインド情報を引く（無ければ nullptr）
-        const ShaderResourceBinding* FindSampler(const std::string& name) const;
 
         // デバッグ用：リフレクション結果を文字列で出力
         std::string ToString() const;
@@ -95,18 +92,22 @@ namespace CoreEngine
         void SetShaderName(const std::string& name) { shaderName_ = name; }
         const std::string& GetShaderName() const { return shaderName_; }
 
-        // データをクリア
-        void Clear();
-
         // 2つのリフレクションデータをマージ（VS + PS）
         void Merge(const ShaderReflectionData& other);
 
+        /// @brief リソース名からルートパラメータ（番号＋差し方）を取得
+        /// @return 見つからない場合は kind == None（IsValid() が false）
+        /// @note RootSignature 構築後に使用可能。新規コードはこちらを使い ShaderBinder へ渡すこと。
+        RootSlot GetRootSlot(const std::string& resourceName) const;
+
         // リソース名からルートパラメータインデックスを取得
         // BuildFromReflection後に使用可能
+        /// @deprecated 番号だけでは Set* を選べない。GetRootSlot() + ShaderBinder へ移行すること。
+        ///             Phase 2 で呼び出し側を置き換え終えたら削除する。
         int GetRootParameterIndexByName(const std::string& resourceName) const;
 
-        // ルートパラメータインデックスマッピングを設定（RootSignatureManagerから呼ばれる）
-        void SetRootParameterMapping(const std::map<std::string, UINT>& mapping);
+        // ルートパラメータマッピングを設定（RootSignatureManagerから呼ばれる）
+        void SetRootParameterMapping(const std::map<std::string, RootSlot>& mapping);
 
         /// @brief 定数バッファのサイズを検証
         /// @param cbvName 定数バッファ名
@@ -118,10 +119,6 @@ namespace CoreEngine
         /// @param validations CBV名とC++構造体サイズのペアのリスト
         /// @return 全て一致すればtrue
         bool ValidateAllCBVSizes(const std::vector<std::pair<std::string, size_t>>& validations) const;
-
-        /// @brief セマンティック名に基づいて入力スロットを自動検出・設定
-        /// @note WEIGHT/INDEX等のスキニング関連セマンティックはスロット1に自動割り当て
-        void ApplyAutoSlotDetection();
 
         /// @brief 自動スロット検出済みの入力要素を取得
         /// @return スロット自動検出後の入力要素リスト
@@ -136,11 +133,7 @@ namespace CoreEngine
         std::vector<InputElementInfo> inputElements_;         // 入力レイアウト
 
         // リソース名 -> ルートパラメータインデックスのマッピング
-        std::map<std::string, UINT> rootParameterMapping_;
-
-        // 重複チェック用ヘルパー（visibility考慮版）
-        bool HasBinding(const std::vector<ShaderResourceBinding>& bindings, 
-                       UINT bindPoint, UINT space, D3D12_SHADER_VISIBILITY visibility) const;
+        std::map<std::string, RootSlot> rootParameterMapping_;
 
         // デバッグ用ヘルパー関数
         std::string GetShaderVisibilityString(D3D12_SHADER_VISIBILITY visibility) const;

@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "AccelerationStructureManager.h"
-#include "Graphics/Common/Core/DescriptorManager.h"
-#include "Graphics/Common/Core/CommandManager.h"
-#include "Graphics/Common/ResourceBarrierHelper.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
+#include "Graphics/RHI/Command/DeferredReleaseQueue.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/Model/ModelResource.h"
 #include "Graphics/Model/VertexData.h"
 #include "Utility/Logger/Logger.h"
@@ -11,9 +11,9 @@
 namespace CoreEngine
 {
     bool AccelerationStructureManager::Initialize(
-        ID3D12Device* device, DescriptorManager* descriptorManager)
+        ID3D12Device* device, DescriptorAllocator* descriptorAllocator)
     {
-        descriptorManager_ = descriptorManager;
+        descriptorAllocator_ = descriptorAllocator;
         Logger& logger = Logger::GetInstance();
 
         // ID3D12Device5 の取得（DXR API に必須）
@@ -151,7 +151,7 @@ namespace CoreEngine
         cmdList4->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr);
 
         // UAV バリア（BLAS 構築完了を保証）
-        ResourceBarrierHelper::UAV(cmdList, entry.result.Get());
+        Barrier::UAVRaw(cmdList, entry.result.Get());
 
         UINT blasIndex = static_cast<UINT>(blasList_.size());
         blasList_.push_back(std::move(entry));
@@ -302,7 +302,7 @@ namespace CoreEngine
         cmdList4->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr);
 
         // UAV バリア
-        ResourceBarrierHelper::UAV(cmdList, tlasResult_.Get());
+        Barrier::UAVRaw(cmdList, tlasResult_.Get());
 
         // TLAS の SRV を作成（初回のみ確保、以降は更新）
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
@@ -311,16 +311,14 @@ namespace CoreEngine
         srvDesc.RaytracingAccelerationStructure.Location =
             tlasResult_->GetGPUVirtualAddress();
 
-        if (tlasSRVHandle_.ptr == 0) {
-            // 初回: DescriptorManager から SRV スロットを確保
-            descriptorManager_->CreateSRV(nullptr, srvDesc,
-                tlasSRVCpuHandle_, tlasSRVHandle_, "TLAS");
-
+        // 初回はスロット確保、2回目以降は同じスロットへ書き直す
+        // （TLAS は毎フレーム作り直すが、シェーダ側のバインド位置は変えない）
+        if (!tlasSRVDescriptor_.IsValid()) {
+            tlasSRVDescriptor_ = descriptorAllocator_->CreateSRV(nullptr, srvDesc, "TLAS");
             Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Graphics,
                 "TLAS built ({} instances, SRV allocated)", instances.size());
         } else {
-            // 2回目以降: CPU ハンドルを使って SRV を上書き更新
-            device5_->CreateShaderResourceView(nullptr, &srvDesc, tlasSRVCpuHandle_);
+            descriptorAllocator_->WriteSRV(tlasSRVDescriptor_, nullptr, srvDesc);
         }
     }
 
@@ -378,18 +376,18 @@ namespace CoreEngine
             nullptr, IID_PPV_ARGS(&blasScratch_));
     }
 
-    void AccelerationStructureManager::FlushRetiredResources(
-        CommandManager* commandManager, UINT frameIndex)
+    void AccelerationStructureManager::MoveRetiredResourcesTo(
+        DeferredReleaseQueue& queue, std::uint64_t fenceValue)
     {
         if (retiredResources_.empty()) {
             return;
         }
 
-        // 退避リソースを参照しているGPUフレームの完了を待ってから解放する
-        if (commandManager) {
-            commandManager->WaitForFrame(frameIndex);
+        // 「GPU 完了を待ってから解放」ではなく「フェンス値つきで解放予約」に変える。
+        // 待たないのでパイプラインが空にならない。
+        for (auto& resource : retiredResources_) {
+            queue.Push(std::move(resource), fenceValue);
         }
-
         retiredResources_.clear();
     }
 }

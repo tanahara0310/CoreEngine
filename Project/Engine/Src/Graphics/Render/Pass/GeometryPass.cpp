@@ -1,8 +1,7 @@
 #include "pch.h"
 #include "GeometryPass.h"
 #include "Graphics/Render/Render.h"
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/Core/DepthStencilManager.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
@@ -46,7 +45,7 @@ namespace CoreEngine
         }
 
         if (!context.dxCommon) {
-            assert(false && "ForwardQueuePass requires DirectXCommon in RenderContext");
+            assert(false && "ForwardQueuePass requires GraphicsCore in RenderContext");
             return;
         }
 

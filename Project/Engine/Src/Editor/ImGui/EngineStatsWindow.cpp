@@ -1,11 +1,11 @@
 #include "pch.h"
 #include "EngineStatsWindow.h"
 
-#include "Graphics/Common/EngineStats.h"
+#include "Diagnostics/EngineStats.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Render/Culling/HiZOcclusionSystem.h"
 #include "Graphics/Render/RenderOptimizationSettings.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Utility/FrameRate/FrameRateController.h"
 #include "Scene/SceneManager.h"
@@ -606,7 +606,7 @@ namespace CoreEngine
 #endif
             if (engine_)
             {
-                if (auto* dx = engine_->GetService<DirectXCommon>())
+                if (auto* dx = engine_->GetService<GraphicsCore>())
                 {
                     meta.widthPixels = static_cast<uint32_t>(dx->GetClientWidth());
                     meta.heightPixels = static_cast<uint32_t>(dx->GetClientHeight());
@@ -864,7 +864,7 @@ namespace CoreEngine
         // GPU メモリ：DXGI Adapter3 経由
         if (engine_)
         {
-            if (auto* dx = engine_->GetService<DirectXCommon>())
+            if (auto* dx = engine_->GetService<GraphicsCore>())
             {
                 if (auto* device = dx->GetDevice())
                 {

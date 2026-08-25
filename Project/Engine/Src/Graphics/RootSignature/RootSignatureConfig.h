@@ -248,37 +248,8 @@ namespace CoreEngine
             return std::nullopt;
         }
 
-        // ========== プリセット設定 ==========
-
-        /// @brief パフォーマンス重視の設定（CBVはRoot Descriptor、SRVは個別Table）
-        static RootSignatureConfig PerformanceOptimized() {
-            RootSignatureConfig config;
-            config.SetDefaultCBVStrategy(BindingStrategy::RootDescriptor);
-            config.SetDefaultSRVStrategy(BindingStrategy::DescriptorTable);
-            config.SetDefaultUAVStrategy(BindingStrategy::DescriptorTable);
-            config.SetDefaultSamplerStrategy(BindingStrategy::StaticSampler);
-            return config;
-        }
-
-        /// @brief メモリ効率重視の設定（グループ化されたTable）
-        static RootSignatureConfig MemoryOptimized() {
-            RootSignatureConfig config;
-            config.SetDefaultCBVStrategy(BindingStrategy::DescriptorTable);
-            config.SetDefaultSRVStrategy(BindingStrategy::GroupedTable);
-            config.SetDefaultUAVStrategy(BindingStrategy::GroupedTable);
-            config.SetDefaultSamplerStrategy(BindingStrategy::StaticSampler);
-            return config;
-        }
-
-        /// @brief シンプルな設定（すべてRoot Descriptor / 個別Table）
-        static RootSignatureConfig Simple() {
-            RootSignatureConfig config;
-            config.SetDefaultCBVStrategy(BindingStrategy::RootDescriptor);
-            config.SetDefaultSRVStrategy(BindingStrategy::DescriptorTable);
-            config.SetDefaultUAVStrategy(BindingStrategy::RootDescriptor);
-            config.SetDefaultSamplerStrategy(BindingStrategy::StaticSampler);
-            return config;
-        }
+        // プリセットは用意しない。既定コンストラクタが唯一の既定値。
+        // 個別に変えたいものは SetDefault*Strategy() / ConfigureResource() で明示すること。
 
     private:
         // デフォルト戦略

@@ -5,8 +5,8 @@
 #include "Graphics/RootSignature/RootSignatureManager.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Line/Line.h"
 #include "Math/MathCore.h"
 #include <d3d12.h>
@@ -41,10 +41,10 @@ namespace CoreEngine
         RenderPassType GetRenderPassType() const override { return RenderPassType::Line; }
         void SetCamera(const Camera* camera) override;
 
-        /// @brief 初期化（DirectXCommonとResourceFactory付き）
-        /// @param dxCommon DirectXCommon
+        /// @brief 初期化（GraphicsCoreとResourceFactory付き）
+        /// @param dxCommon GraphicsCore
         /// @param resourceFactory ResourceFactory
-        void Initialize(DirectXCommon* dxCommon, ResourceFactory* resourceFactory);
+        void Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory);
 
         /// @brief ルートシグネチャを取得
         ID3D12RootSignature* GetRootSignature() const { return rootSignatureMg_->GetRootSignature(); }
@@ -90,8 +90,8 @@ namespace CoreEngine
         /// @param proj プロジェクション行列
         void SetWVPMatrix(const Matrix4x4& view, const Matrix4x4& proj);
 
-        /// @brief DirectXCommonを取得
-        DirectXCommon* GetDirectXCommon() { return dxCommon_; }
+        /// @brief GraphicsCoreを取得
+        GraphicsCore* GetGraphicsCore() { return dxCommon_; }
 
         /// @brief ResourceFactoryを取得
         ResourceFactory* GetResourceFactory() { return resourceFactory_; }
@@ -112,8 +112,8 @@ namespace CoreEngine
         ID3D12PipelineState* pipelineState_ = nullptr;
         BlendMode currentBlendMode_ = BlendMode::kBlendModeNormal;
 
-        // DirectXCommonとResourceFactory
-        DirectXCommon* dxCommon_ = nullptr;
+        // GraphicsCoreとResourceFactory
+        GraphicsCore* dxCommon_ = nullptr;
         ResourceFactory* resourceFactory_ = nullptr;
 
         // カメラ
@@ -122,14 +122,13 @@ namespace CoreEngine
         // 登録されたラインソース（所有権は持たない。登録側が Unregister する契約）
         std::vector<class ILineSource*> lineSources_;
 
-        // 頂点バッファ
-        Microsoft::WRL::ComPtr<ID3D12Resource> vertexBuffer_;
+        // 頂点バッファと WVP は専用リソースを持たず、フラッシュのたびに
+        // UploadRing から取る。Line パスは 1 フレーム中に複数回（Scene ビュー /
+        // Game ビュー等、パスの実行回数だけ）走るため、1 本を使い回すと
+        // **GPU が最初のパスを実行する前に次のパスが上書きしてしまい、
+        //   全パスが最後のカメラ・最後の頂点で描かれる**。
         D3D12_VERTEX_BUFFER_VIEW vbView_{};
-        std::vector<LineVertex> vertices_;
-
-        // WVP行列バッファ
-        Microsoft::WRL::ComPtr<ID3D12Resource> wvpBuffer_;
-        Matrix4x4* wvpData_ = nullptr;
+        D3D12_GPU_VIRTUAL_ADDRESS wvpAddress_ = 0;
 
         // コマンドリスト（BeginPass/EndPassで使用）
         ID3D12GraphicsCommandList* currentCmdList_ = nullptr;

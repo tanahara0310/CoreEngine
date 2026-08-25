@@ -39,13 +39,32 @@ namespace CoreEngine
 
         while (sequence.HasNext()) {
             // 「これから実行するステップ」を先に表示してから走らせる
-            splash.SetStatus(sequence.GetProgress(), sequence.GetNextLabel());
+            const std::string stepLabel = sequence.GetNextLabel();
+            splash.SetStatus(sequence.GetProgress(), stepLabel);
             splash.Pump(true);
 
             // 非表示のメインウィンドウにもメッセージを溜めない
             winApp_->ProcessMessage();
 
-            sequence.Step();
+            // 起動時の例外はここで名前を残さないと何も分からないまま落ちる。
+            // 完走時のログ（[Startup] n/30）は Step の中で成功後に出るため、
+            // 失敗したステップだけがログに一切現れない状態になっていた。
+            // 握り潰さずに投げ直し、ダンプ出力は従来どおり CrashDump に任せる
+            try {
+                sequence.Step();
+            }
+            catch (const std::exception& e) {
+                Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System,
+                    "[Startup] ステップで例外が発生しました: {} ({})", stepLabel, e.what());
+                Logger::GetInstance().Flush();
+                throw;
+            }
+            catch (...) {
+                Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System,
+                    "[Startup] ステップで不明な例外が発生しました: {}", stepLabel);
+                Logger::GetInstance().Flush();
+                throw;
+            }
         }
 
         splash.SetStatus(1.0f, "起動完了");

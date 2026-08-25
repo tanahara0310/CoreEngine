@@ -2,7 +2,7 @@
 #include "RTWaterReflectionPass.h"
 
 #include "EngineSystem/Subsystem/RayTracingSubsystem.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Water/RayTracing/WaterReflectionRayTracingManager.h"
 #include "Utility/Logger/Logger.h"
 #include "Graphics/Render/RenderGraph.h"
@@ -51,17 +51,11 @@ namespace CoreEngine
             D3D12_GPU_DESCRIPTOR_HANDLE handle =
                 context.rtWaterReflectionManager->GetReflectionSRVHandle(
                     WaterReflectionRayTracingManager::ViewID::GameView);
-            ID3D12Resource* resource =
-                context.rtWaterReflectionManager->GetReflectionResource(
-                    WaterReflectionRayTracingManager::ViewID::GameView);
-            D3D12_RESOURCE_STATES& currentState =
-                context.rtWaterReflectionManager->GetReflectionCurrentState(
-                    WaterReflectionRayTracingManager::ViewID::GameView);
             context.frameBlackboard->SetResource(
                 FrameBlackboard::RTWaterReflectionColor,
                 handle,
-                resource,
-                &currentState);
+                &context.rtWaterReflectionManager->GetReflectionResource(
+                    WaterReflectionRayTracingManager::ViewID::GameView));
         }
     }
 }

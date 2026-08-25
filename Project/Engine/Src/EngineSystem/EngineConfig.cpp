@@ -35,11 +35,13 @@ namespace CoreEngine
             j["window"]["height"] = config.windowHeight;
             j["debug"]["enableDebugLayer"] = config.enableDebugLayer;
             j["debug"]["enableGPUBasedValidation"] = config.enableGPUBasedValidation;
+            j["debug"]["enableDRED"] = config.enableDRED;
             j["debug"]["enablePixRuntime"] = config.enablePixRuntime;
             j["shader"]["enableCache"] = config.enableShaderCache;
             j["descriptors"]["maxSRVDescriptors"] = config.maxSRVDescriptors;
             j["descriptors"]["maxRTVDescriptors"] = config.maxRTVDescriptors;
             j["descriptors"]["maxDSVDescriptors"] = config.maxDSVDescriptors;
+            j["command"]["frameCount"] = config.frameCount;
 
             jsonManager.SaveJson(kEngineConfigPath, j);
             return config;
@@ -60,6 +62,7 @@ namespace CoreEngine
             auto& d = j["debug"];
             if (d.contains("enableDebugLayer"))          config.enableDebugLayer = d["enableDebugLayer"].get<bool>();
             if (d.contains("enableGPUBasedValidation"))  config.enableGPUBasedValidation = d["enableGPUBasedValidation"].get<bool>();
+            if (d.contains("enableDRED"))               config.enableDRED = d["enableDRED"].get<bool>();
             if (d.contains("enablePixRuntime"))           config.enablePixRuntime = d["enablePixRuntime"].get<bool>();
         }
 
@@ -69,6 +72,12 @@ namespace CoreEngine
             if (desc.contains("maxSRVDescriptors")) config.maxSRVDescriptors = desc["maxSRVDescriptors"].get<uint32_t>();
             if (desc.contains("maxRTVDescriptors")) config.maxRTVDescriptors = desc["maxRTVDescriptors"].get<uint32_t>();
             if (desc.contains("maxDSVDescriptors")) config.maxDSVDescriptors = desc["maxDSVDescriptors"].get<uint32_t>();
+        }
+
+        // コマンド / バッファリング設定
+        if (j.contains("command")) {
+            auto& cmd = j["command"];
+            if (cmd.contains("frameCount")) config.frameCount = cmd["frameCount"].get<uint32_t>();
         }
 
         // シェーダ設定

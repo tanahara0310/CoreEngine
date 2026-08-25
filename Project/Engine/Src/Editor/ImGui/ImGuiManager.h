@@ -1,6 +1,7 @@
 #pragma once
 
 #include <d3d12.h>
+#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include <dxgi1_6.h>
 #include <memory>
 #include <wrl.h>
@@ -18,7 +19,7 @@
 
 // 前方宣言
 namespace CoreEngine {
-    class DirectXCommon;
+    class GraphicsCore;
     class PostEffectManager;
     class GameDebugUI;
 }
@@ -33,7 +34,7 @@ public:
 /// @param device
 /// @param swaoChainDesc
 /// @param srvHeap
-void Initialize(HWND hwnd, CoreEngine::DirectXCommon* dxCommon);
+void Initialize(HWND hwnd, CoreEngine::GraphicsCore* dxCommon);
 
 /// @brief ImGuiの開始処理
 /// @param postEffectManager PostEffectManagerへのポインタ（オプション）
@@ -51,9 +52,9 @@ void Draw();
 void Finalize();
 
 /// @brief Gameビューポートを描画（PostEffectPass完了後、ImGui::Render前に呼ぶこと）
-/// @param dxCommon DirectXCommonへのポインタ
+/// @param dxCommon GraphicsCoreへのポインタ
 /// @param postEffectManager PostEffectManagerへのポインタ
-void DrawGameViewport(DirectXCommon* dxCommon, PostEffectManager* postEffectManager, GameDebugUI* gameDebugUI = nullptr);
+void DrawGameViewport(GraphicsCore* dxCommon, PostEffectManager* postEffectManager, GameDebugUI* gameDebugUI = nullptr);
 
 /// @brief 副ビューポート（メインウィンドウ外へ出した ImGui ウィンドウ）を描画する
 /// @details メインビューポートの Present 完了後に呼ぶこと。副ウィンドウは
@@ -88,7 +89,11 @@ HWND GetHwnd() const { return hwnd_; }
 
 private:
     HWND hwnd_ = nullptr; // ウィンドウハンドル
-    DirectXCommon* dxCommon_ = nullptr; // DirectX共通クラスへのポインタ
+    GraphicsCore* dxCommon_ = nullptr; // DirectX共通クラスへのポインタ
+
+    /// @brief ImGui のフォントテクスチャ用に確保した SRV スロット
+    /// @note ヒープ先頭を決め打ちで使うと他の SRV と衝突する（実際に事故った）
+    DescriptorHandle fontDescriptor_{};
 
     // サブモジュール
     std::unique_ptr<DockingUI> dockingUI_ = std::make_unique<DockingUI>();

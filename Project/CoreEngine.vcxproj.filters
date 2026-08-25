@@ -313,17 +313,20 @@
     <ClCompile Include="Engine\Src\Graphics\Asset\AssetMetadata.cpp">
       <Filter>Engine\Src\Graphics\Asset</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Common\GpuMarker.cpp">
-      <Filter>Engine\Src\Graphics\Common</Filter>
+    <ClCompile Include="Engine\Src\Graphics\RHI\Debug\GpuMarker.cpp">
+      <Filter>Engine\Src\Graphics\RHI\Debug</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Common\GpuTimestampProfiler.cpp">
-      <Filter>Engine\Src\Graphics\Common</Filter>
+    <ClCompile Include="Engine\Src\Graphics\RHI\Debug\GpuTimestampProfiler.cpp">
+      <Filter>Engine\Src\Graphics\RHI\Debug</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Common\GpuTimingStatsCollector.cpp">
-      <Filter>Engine\Src\Graphics\Common</Filter>
+    <ClCompile Include="Engine\Src\Diagnostics\GpuTimingStatsCollector.cpp">
+      <Filter>Engine\Src\Diagnostics</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Common\ResourceBarrierHelper.cpp">
-      <Filter>Engine\Src\Graphics\Common</Filter>
+    <ClCompile Include="Engine\Src\Graphics\RHI\Barrier\BarrierBatch.cpp">
+      <Filter>Engine\Src\Graphics\RHI\Barrier</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RHI\Resource\GpuResource.cpp">
+      <Filter>Engine\Src\Graphics\RHI\Resource</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\IBL\IBLSystem.cpp">
       <Filter>Engine\Src\Graphics\IBL</Filter>
@@ -404,9 +407,6 @@
       <Filter>Engine\Src\Graphics\Primitive</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RayTracing\AccelerationStructureManager.cpp">
-      <Filter>Engine\Src\Graphics\RayTracing</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\RayTracing\GlobalRootSignatureManager.cpp">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingDispatchInfo.cpp">
@@ -584,6 +584,9 @@
       <Filter>Engine\Src\Graphics\Render\UI</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RootSignature\RootSignatureBuilder.cpp">
+      <Filter>Engine\Src\Graphics\RootSignature</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RootSignature\ShaderBinder.cpp">
       <Filter>Engine\Src\Graphics\RootSignature</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Shader\CBufferReflectionCheck.cpp">
@@ -841,23 +844,38 @@
     <ClCompile Include="Engine\Src\Utility\Random\RandomGenerator.cpp">
       <Filter>Engine\Src\Utility\Random</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Common\Core\DepthStencilManager.cpp">
-      <Filter>Engine\Src\Graphics\Common\Core</Filter>
+    <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\SceneDepth.cpp">
+      <Filter>Engine\Src\Graphics\Render\RenderTarget</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Common\Core\CommandManager.cpp">
-      <Filter>Engine\Src\Graphics\Common\Core</Filter>
+    <ClCompile Include="Engine\Src\Graphics\RHI\Command\UploadContext.cpp">
+      <Filter>Engine\Src\Graphics\RHI\Command</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Common\Core\UploadContext.cpp">
-      <Filter>Engine\Src\Graphics\Common\Core</Filter>
+    <ClCompile Include="Engine\Src\Graphics\RHI\Command\CommandQueue.cpp">
+      <Filter>Engine\Src\Graphics\RHI\Command</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Common\Core\DescriptorManager.cpp">
-      <Filter>Engine\Src\Graphics\Common\Core</Filter>
+    <ClCompile Include="Engine\Src\Graphics\RHI\Command\CommandContext.cpp">
+      <Filter>Engine\Src\Graphics\RHI\Command</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Common\Core\DeviceManager.cpp">
-      <Filter>Engine\Src\Graphics\Common\Core</Filter>
+    <ClCompile Include="Engine\Src\Graphics\RHI\Command\FrameSync.cpp">
+      <Filter>Engine\Src\Graphics\RHI\Command</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Common\Core\SwapChainManager.cpp">
-      <Filter>Engine\Src\Graphics\Common\Core</Filter>
+    <ClCompile Include="Engine\Src\Graphics\RHI\Command\DeferredReleaseQueue.cpp">
+      <Filter>Engine\Src\Graphics\RHI\Command</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RHI\Descriptor\DescriptorAllocator.cpp">
+      <Filter>Engine\Src\Graphics\RHI\Descriptor</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RHI\Descriptor\DescriptorHeapAllocator.cpp">
+      <Filter>Engine\Src\Graphics\RHI\Descriptor</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RHI\Device\DeviceManager.cpp">
+      <Filter>Engine\Src\Graphics\RHI\Device</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RHI\Device\DeviceRemovedHandler.cpp">
+      <Filter>Engine\Src\Graphics\RHI\Device</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RHI\SwapChain\SwapChain.cpp">
+      <Filter>Engine\Src\Graphics\RHI\SwapChain</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Model\ModelLoader.cpp">
       <Filter>Engine\Src\Graphics\Model</Filter>
@@ -943,8 +961,8 @@
     <ClCompile Include="Engine\Src\Utility\Debug\CrashDump.cpp">
       <Filter>Engine\Src\Utility\Debug</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Common\DirectXCommon.cpp">
-      <Filter>Engine\Src\Graphics\Common</Filter>
+    <ClCompile Include="Engine\Src\Graphics\RHI\GraphicsCore.cpp">
+      <Filter>Engine\Src\Graphics\RHI</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Debug\LeakChecker.cpp">
       <Filter>Engine\Src\Utility\Debug</Filter>
@@ -1012,11 +1030,20 @@
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderCompiler.cpp">
       <Filter>Engine\Src\Graphics\Shader</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Shader\ShaderBindingContract.cpp">
+      <Filter>Engine\Src\Graphics\Shader</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Shader\ShaderProgram.cpp">
+      <Filter>Engine\Src\Graphics\Shader</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderPrewarm.cpp">
       <Filter>Engine\Src\Graphics\Shader</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Resource\ResourceFactory.cpp">
-      <Filter>Engine\Src\Graphics\Resource</Filter>
+    <ClCompile Include="Engine\Src\Graphics\RHI\Resource\ResourceFactory.cpp">
+      <Filter>Engine\Src\Graphics\RHI\Resource</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RHI\Resource\UploadRing.cpp">
+      <Filter>Engine\Src\Graphics\RHI\Resource</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Render.cpp">
       <Filter>Engine\Src\Graphics\Render</Filter>
@@ -1272,26 +1299,29 @@
     <ClInclude Include="Engine\Src\Graphics\Asset\AssetType.h">
       <Filter>Engine\Src\Graphics\Asset</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Common\Core\DescriptorHandle.h">
-      <Filter>Engine\Src\Graphics\Common\Core</Filter>
+    <ClInclude Include="Engine\Src\Graphics\RHI\Descriptor\DescriptorHandle.h">
+      <Filter>Engine\Src\Graphics\RHI\Descriptor</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Common\GpuMarker.h">
-      <Filter>Engine\Src\Graphics\Common</Filter>
+    <ClInclude Include="Engine\Src\Graphics\RHI\Debug\GpuMarker.h">
+      <Filter>Engine\Src\Graphics\RHI\Debug</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Common\GpuTimestampProfiler.h">
-      <Filter>Engine\Src\Graphics\Common</Filter>
+    <ClInclude Include="Engine\Src\Graphics\RHI\Debug\GpuTimestampProfiler.h">
+      <Filter>Engine\Src\Graphics\RHI\Debug</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Common\GpuTimingStatsCollector.h">
-      <Filter>Engine\Src\Graphics\Common</Filter>
+    <ClInclude Include="Engine\Src\Diagnostics\GpuTimingStatsCollector.h">
+      <Filter>Engine\Src\Diagnostics</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Common\IResizable.h">
-      <Filter>Engine\Src\Graphics\Common</Filter>
+    <ClInclude Include="Engine\Src\Graphics\RHI\IResizable.h">
+      <Filter>Engine\Src\Graphics\RHI</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Common\ResourceBarrierHelper.h">
-      <Filter>Engine\Src\Graphics\Common</Filter>
+    <ClInclude Include="Engine\Src\Graphics\RHI\Barrier\BarrierBatch.h">
+      <Filter>Engine\Src\Graphics\RHI\Barrier</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Common\EngineStats.h">
-      <Filter>Engine\Src\Graphics\Common</Filter>
+    <ClInclude Include="Engine\Src\Graphics\RHI\Resource\GpuResource.h">
+      <Filter>Engine\Src\Graphics\RHI\Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Diagnostics\EngineStats.h">
+      <Filter>Engine\Src\Diagnostics</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\IBL\IBLSystem.h">
       <Filter>Engine\Src\Graphics\IBL</Filter>
@@ -1423,9 +1453,6 @@
       <Filter>Engine\Src\Graphics\Primitive</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\AccelerationStructureManager.h">
-      <Filter>Engine\Src\Graphics\RayTracing</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\RayTracing\GlobalRootSignatureManager.h">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingDispatchInfo.h">
@@ -1744,6 +1771,12 @@
       <Filter>Engine\Src\Graphics\RootSignature</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RootSignature\RootSignatureConfig.h">
+      <Filter>Engine\Src\Graphics\RootSignature</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RootSignature\RootSlot.h">
+      <Filter>Engine\Src\Graphics\RootSignature</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RootSignature\ShaderBinder.h">
       <Filter>Engine\Src\Graphics\RootSignature</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Shader\CBufferLayout.h">
@@ -2202,23 +2235,38 @@
     <ClInclude Include="Engine\Src\EngineSystem\Startup\StartupSequence.h">
       <Filter>Engine\Src\EngineSystem\Startup</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Common\Core\DepthStencilManager.h">
-      <Filter>Engine\Src\Graphics\Common\Core</Filter>
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\SceneDepth.h">
+      <Filter>Engine\Src\Graphics\Render\RenderTarget</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Common\Core\CommandManager.h">
-      <Filter>Engine\Src\Graphics\Common\Core</Filter>
+    <ClInclude Include="Engine\Src\Graphics\RHI\Command\UploadContext.h">
+      <Filter>Engine\Src\Graphics\RHI\Command</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Common\Core\UploadContext.h">
-      <Filter>Engine\Src\Graphics\Common\Core</Filter>
+    <ClInclude Include="Engine\Src\Graphics\RHI\Command\CommandQueue.h">
+      <Filter>Engine\Src\Graphics\RHI\Command</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Common\Core\DescriptorManager.h">
-      <Filter>Engine\Src\Graphics\Common\Core</Filter>
+    <ClInclude Include="Engine\Src\Graphics\RHI\Command\CommandContext.h">
+      <Filter>Engine\Src\Graphics\RHI\Command</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Common\Core\DeviceManager.h">
-      <Filter>Engine\Src\Graphics\Common\Core</Filter>
+    <ClInclude Include="Engine\Src\Graphics\RHI\Command\FrameSync.h">
+      <Filter>Engine\Src\Graphics\RHI\Command</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Common\Core\SwapChainManager.h">
-      <Filter>Engine\Src\Graphics\Common\Core</Filter>
+    <ClInclude Include="Engine\Src\Graphics\RHI\Command\DeferredReleaseQueue.h">
+      <Filter>Engine\Src\Graphics\RHI\Command</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RHI\Descriptor\DescriptorAllocator.h">
+      <Filter>Engine\Src\Graphics\RHI\Descriptor</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RHI\Descriptor\DescriptorHeapAllocator.h">
+      <Filter>Engine\Src\Graphics\RHI\Descriptor</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RHI\Device\DeviceManager.h">
+      <Filter>Engine\Src\Graphics\RHI\Device</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RHI\Device\DeviceRemovedHandler.h">
+      <Filter>Engine\Src\Graphics\RHI\Device</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RHI\SwapChain\SwapChain.h">
+      <Filter>Engine\Src\Graphics\RHI\SwapChain</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Model\ModelLoader.h">
       <Filter>Engine\Src\Graphics\Model</Filter>
@@ -2325,8 +2373,11 @@
     <ClInclude Include="Engine\Src\Utility\Debug\CrashDump.h">
       <Filter>Engine\Src\Utility\Debug</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Common\DirectXCommon.h">
-      <Filter>Engine\Src\Graphics\Common</Filter>
+    <ClInclude Include="Engine\Src\Graphics\RHI\GraphicsCore.h">
+      <Filter>Engine\Src\Graphics\RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RHI\GraphicsCoreDesc.h">
+      <Filter>Engine\Src\Graphics\RHI</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Debug\LeakChecker.h">
       <Filter>Engine\Src\Utility\Debug</Filter>
@@ -2406,11 +2457,32 @@
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderCompiler.h">
       <Filter>Engine\Src\Graphics\Shader</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Shader\ShaderBindingContract.h">
+      <Filter>Engine\Src\Graphics\Shader</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Shader\ShaderProgram.h">
+      <Filter>Engine\Src\Graphics\Shader</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\RTShadowBindings.h">
+      <Filter>Engine\Src\Graphics\RayTracing</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Model\ModelBindings.h">
+      <Filter>Engine\Src\Graphics\Render\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting\DeferredLightingBindings.h">
+      <Filter>Engine\Src\Graphics\Render\RenderingTechnique\Lighting</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterBindings.h">
+      <Filter>Engine\Src\Graphics\Water\Surface</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderPrewarm.h">
       <Filter>Engine\Src\Graphics\Shader</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Resource\ResourceFactory.h">
-      <Filter>Engine\Src\Graphics\Resource</Filter>
+    <ClInclude Include="Engine\Src\Graphics\RHI\Resource\ResourceFactory.h">
+      <Filter>Engine\Src\Graphics\RHI\Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RHI\Resource\UploadRing.h">
+      <Filter>Engine\Src\Graphics\RHI\Resource</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\WorldTransform\WorldTransform.h">
       <Filter>Engine\Src\WorldTransform</Filter>
@@ -2548,6 +2620,9 @@
     <Filter Include="Engine\Src\Collision\Debug">
       <UniqueIdentifier>{A17F62D3-9B08-4C5E-8F31-2E7A64B0C915}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Src\Diagnostics">
+      <UniqueIdentifier>{C83816DC-1A40-4A78-BE90-6CEC2C178797}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Engine\Src\Editor">
       <UniqueIdentifier>{4F213A62-6BC7-417B-B623-E04C7DF0A552}</UniqueIdentifier>
     </Filter>
@@ -2631,12 +2706,6 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\Cloud">
       <UniqueIdentifier>{7E1B4A62-2C9D-4F3E-8A5B-1D6C0E2F9A73}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Engine\Src\Graphics\Common">
-      <UniqueIdentifier>{B4421BB1-DD73-4CFF-9FD3-7C2C0C8DE69A}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Engine\Src\Graphics\Common\Core">
-      <UniqueIdentifier>{5D7282C7-EAB3-41AC-A9C4-A9A06AFC715E}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\IBL">
       <UniqueIdentifier>{CB5C00A8-4E31-4B66-9096-A0DB805289CB}</UniqueIdentifier>
@@ -2797,8 +2866,29 @@
     <Filter Include="Engine\Src\Graphics\Render\UI">
       <UniqueIdentifier>{6BBD7C58-19C1-4E92-B472-03D0ECC8A919}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Engine\Src\Graphics\Resource">
-      <UniqueIdentifier>{46EB0AD2-056F-4170-82B0-2521E79F7F38}</UniqueIdentifier>
+    <Filter Include="Engine\Src\Graphics\RHI">
+      <UniqueIdentifier>{E3523879-1A56-4C76-AAA4-410DD2DBEE43}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\RHI\Barrier">
+      <UniqueIdentifier>{CF48B497-07F1-48A8-A2BF-1006D16595F0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\RHI\Command">
+      <UniqueIdentifier>{EF847452-E616-447B-ABD3-78B6FBB80E70}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\RHI\Debug">
+      <UniqueIdentifier>{96F9A790-DDF2-46C5-BE13-1568CD172995}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\RHI\Descriptor">
+      <UniqueIdentifier>{0AD4CB0C-E1E3-40A6-B428-D06C2F504653}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\RHI\Device">
+      <UniqueIdentifier>{2DDDC3D3-7504-4BAF-947F-519D5A5E736E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\RHI\Resource">
+      <UniqueIdentifier>{FD8F5B82-6146-4096-9D60-78E53EA66077}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\RHI\SwapChain">
+      <UniqueIdentifier>{928D9AB2-0E91-4009-BB75-331536126912}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\RootSignature">
       <UniqueIdentifier>{E6FEBD95-8FE8-4434-801F-373301855EA9}</UniqueIdentifier>

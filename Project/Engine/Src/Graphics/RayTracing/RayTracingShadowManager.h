@@ -6,7 +6,6 @@
 #include <cstdint>
 #include "Math/Vector/Vector3.h"
 #include "Math/Matrix/Matrix4x4.h"
-#include "GlobalRootSignatureManager.h"
 #include "RayTracingDispatchInfo.h"
 #include "RayTracingOutputViewSet.h"
 #include "RayTracingPassBase.h"
@@ -15,8 +14,8 @@
 
 namespace CoreEngine
 {
-    class DirectXCommon;
-    class DescriptorManager;
+    class GraphicsCore;
+    class DescriptorAllocator;
     class AccelerationStructureManager;
 
     /// @brief DXR レイトレーシングシャドウを管理するクラス
@@ -96,8 +95,9 @@ namespace CoreEngine
 
         /// @brief 初期化（State Object / Shader Table / UAV テクスチャの構築）
         /// @return 成功した場合 true
-        bool Initialize(DirectXCommon* dxCommon, DescriptorManager* descriptorManager,
-            AccelerationStructureManager* asMgr);
+        bool Initialize(GraphicsCore* dxCommon, DescriptorAllocator* descriptorAllocator,
+            AccelerationStructureManager* asMgr,
+            ShaderProgramCache* shaderProgramCache);
 
         /// @brief シャドウレイをディスパッチする（3 ステージの最初。ここで解像度が確定する）
         /// @param lightIndex ディレクショナルライトのインデックス（0〜kMaxDirectionalLights-1）
@@ -174,16 +174,8 @@ namespace CoreEngine
         /// @brief 指定ビュー・ライトのシャドウ結果テクスチャを取得する
         /// @param viewId 参照するビュー ID
         /// @param lightIndex 参照するディレクショナルライト番号
-        /// @return シャドウ結果テクスチャ。未確保なら nullptr
-        ID3D12Resource* GetShadowResource(
-            ViewID viewId = ViewID::GameView,
-            uint32_t lightIndex = 0) const;
-
-        /// @brief 指定ビュー・ライトのシャドウ結果リソース状態参照を取得する
-        /// @param viewId 参照するビュー ID
-        /// @param lightIndex 参照するディレクショナルライト番号
-        /// @return 自動遷移処理が共有する状態変数への参照
-        D3D12_RESOURCE_STATES& GetShadowCurrentState(
+        /// @return シャドウ結果テクスチャ（実体＋現在ステート）。未確保なら実体は nullptr
+        GpuResource& GetShadowResource(
             ViewID viewId = ViewID::GameView,
             uint32_t lightIndex = 0);
 
@@ -222,25 +214,12 @@ namespace CoreEngine
         bool EnsureOutputTexture(UINT width, UINT height, UINT traceWidth, UINT traceHeight,
             UINT traceScale, uint32_t viewIndex, uint32_t lightIndex);
 
-        // dxCommon_ / descriptorManager_ / asMgr_ / globalRootSigMgr_ / stateObject_ /
+        // dxCommon_ / descriptorAllocator_ / asMgr_ / globalRootSigMgr_ / stateObject_ /
         // stateObjectProperties_ / shaderTableBuilder_ / outputViews_ / isInitialized_ は
         // 全て RayTracingPassBase が持つ（Stage 2c で重複を削除した）。
 
         // シェーダーバイトコード（State Object 構築後に解放するのでここに置く）
-        Microsoft::WRL::ComPtr<IDxcBlob> shaderBlob_;
-
-        /// @brief グローバルルートシグネチャのパラメータ番号（Initialize で 1 回だけ解決する）
-        /// @details GetRootParameterIndex は std::map<std::string> 検索で、
-        ///          しかも呼ぶたびに std::string の一時オブジェクトを作る。
-        ///          ディスパッチごとに 6 回叩いていたのでキャッシュした（Stage 2d）。
-        struct RootParamIndices {
-            UINT shadowOutput = 0;
-            UINT scene = 0;
-            UINT sceneDepth = 0;
-            UINT normalRoughness = 0;
-            UINT constants = 0;
-        };
-        RootParamIndices rootParams_{};
+        IDxcBlob* shaderBlob_ = nullptr;  ///< 所有者は ShaderProgramCache
 
         /// @brief 1 つの (view, light) が持つテクスチャの用途
         /// @details 実体は共通基盤の RayTracingOutputViewSet が持ち、
@@ -306,11 +285,9 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE SlotUAV(uint32_t vi, uint32_t li, TextureSlot s) const {
             return outputViews_.GetUAVHandle(MakeSlotIndex(vi, li, s));
         }
-        ID3D12Resource* SlotResource(uint32_t vi, uint32_t li, TextureSlot s) const {
-            return outputViews_.GetResource(MakeSlotIndex(vi, li, s));
-        }
-        D3D12_RESOURCE_STATES& SlotState(uint32_t vi, uint32_t li, TextureSlot s) {
-            return outputViews_.GetCurrentState(MakeSlotIndex(vi, li, s));
+        /// @brief スロットをステート追跡つきで返す（バリア発行はこれを渡す）
+        GpuResource& Slot(uint32_t vi, uint32_t li, TextureSlot s) {
+            return outputViews_.Resource(MakeSlotIndex(vi, li, s));
         }
 
         /// @brief A-Trous デノイズの最大パス数（kSteps / kPhi* テーブルの要素数）
@@ -349,20 +326,22 @@ namespace CoreEngine
         // IsInitialized()（基底の実装）が false を返し続ける（Stage 2c で実際に踏んだ）。
         bool debugViewRequested_ = false; ///< 中間バッファの ImGui 表示要求（1 フレーム限り）
 
-        // A-Trous デノイズ用コンピュートパイプライン
-        Microsoft::WRL::ComPtr<ID3D12RootSignature> denoiseRootSignature_;
-        Microsoft::WRL::ComPtr<ID3D12PipelineState> denoisePipelineState_;
-        bool denoiseInitialized_ = false;
+        /// @brief レイの後段コンピュートパス 1 本ぶんの実体
+        /// @details ルートシグネチャはシェーダーのリフレクションから作り、bindings で
+        ///          「宣言表の添字 → ルートスロット」を引く。呼び出し側にレジスタ番号も
+        ///          ルートパラメータ番号も出てこないのが要点。
+        struct ComputePass {
+            RootSignatureManager rootSigMgr;                          ///< リフレクション由来の RS
+            Microsoft::WRL::ComPtr<ID3D12PipelineState> pipelineState;
+            BindingTable bindings;                                    ///< 解決済みスロット表
+            bool initialized = false;
 
-        // テンポラル蓄積用コンピュートパイプライン
-        Microsoft::WRL::ComPtr<ID3D12RootSignature> temporalRootSignature_;
-        Microsoft::WRL::ComPtr<ID3D12PipelineState> temporalPipelineState_;
-        bool temporalInitialized_ = false;
+            ID3D12RootSignature* GetRootSignature() { return rootSigMgr.GetRootSignature(); }
+        };
 
-        // トレース解像度 → フル解像度への解決（バイラテラルアップサンプル）パイプライン
-        Microsoft::WRL::ComPtr<ID3D12RootSignature> resolveRootSignature_;
-        Microsoft::WRL::ComPtr<ID3D12PipelineState> resolvePipelineState_;
-        bool resolveInitialized_ = false;
+        ComputePass denoisePass_;   ///< A-Trous 空間デノイズ
+        ComputePass temporalPass_;  ///< テンポラル蓄積
+        ComputePass resolvePass_;   ///< トレース解像度 → フル解像度のバイラテラルアップサンプル
 
         /// @brief トレース解像度の結果をフル解像度 Mask へ書き出す
         /// @param sourceSlot 解決元（A-Trous の最終出力、またはパス数 0 なら履歴）
@@ -375,16 +354,20 @@ namespace CoreEngine
             uint32_t lightIndex,
             TextureSlot sourceSlot);
 
-        /// @brief コンピュートパイプライン（RS + PSO）をまとめて構築する共通ヘルパー
-        /// @param srvCount 連続する t0..t(srvCount-1) のディスクリプタテーブル数
-        /// @param constantDwordCount b0 のルート定数の dword 数
-        /// @note ルートパラメータ番号は t0..=0..n-1 / u0=n / b0=n+1 で固定される
+        /// @brief コンピュートパス（RS + PSO + 解決済みバインド表）をリフレクションから構築する
+        /// @param shaderPath       CS のパス
+        /// @param decls            バインド契約（そのシェーダーが持つリソースの宣言表）
+        /// @param declCount        宣言数
+        /// @param rootConstantName ルート定数にする cbuffer 名（dword 数はリフレクションが決める）
+        /// @param debugLabel       ログ・PSO 名に使う識別名
+        /// @param outPass          構築先
+        /// @return 成功したら true。コンパイル失敗・契約違反はログ済み
         bool CreateComputePass(
             const wchar_t* shaderPath,
-            UINT srvCount,
-            UINT constantDwordCount,
+            const ShaderBindingDecl* decls,
+            size_t declCount,
+            const char* rootConstantName,
             const char* debugLabel,
-            Microsoft::WRL::ComPtr<ID3D12RootSignature>& outRootSignature,
-            Microsoft::WRL::ComPtr<ID3D12PipelineState>& outPipelineState);
+            ComputePass& outPass);
     };
 }

@@ -1,9 +1,10 @@
 #include "pch.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "ModelResource.h"
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/Core/UploadContext.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Command/UploadContext.h"
 #include "Graphics/Texture/TextureManager.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Model/ModelLoader.h"
 #include "Graphics/Model/Skeleton/SkeletonLoader.h"
 #include "Graphics/Model/VertexData.h"
@@ -20,7 +21,7 @@
 
 namespace CoreEngine
 {
-    void ModelResource::Initialize(DirectXCommon* dxCommon, ResourceFactory* factory, TextureManager* textureMg)
+    void ModelResource::Initialize(GraphicsCore* dxCommon, ResourceFactory* factory, TextureManager* textureMg)
     {
         dxCommon_ = dxCommon;
         resourceFactory_ = factory;
@@ -226,12 +227,13 @@ namespace CoreEngine
         const size_t indexBytes = sizeof(uint32_t) * modelData_.indices.size();
         ID3D12Device* device = dxCommon_->GetDevice();
 
-        vertexBuffer_ = ResourceFactory::CreateBufferResource(
-            device, vertexBytes, D3D12_HEAP_TYPE_DEFAULT);
+        vertexBuffer_.Reset(
+            ResourceFactory::CreateBufferResource(device, vertexBytes, D3D12_HEAP_TYPE_DEFAULT),
+            D3D12_RESOURCE_STATE_GENERIC_READ);
         Microsoft::WRL::ComPtr<ID3D12Resource> vertexUploadBuffer =
             ResourceFactory::CreateBufferResource(device, vertexBytes);
 
-        vertexBufferView_.BufferLocation = vertexBuffer_->GetGPUVirtualAddress();
+        vertexBufferView_.BufferLocation = vertexBuffer_.GpuAddress();
         vertexBufferView_.SizeInBytes = static_cast<UINT>(vertexBytes);
         vertexBufferView_.StrideInBytes = sizeof(VertexData);
 
@@ -240,12 +242,13 @@ namespace CoreEngine
         memcpy(mapped, modelData_.vertices.data(), vertexBytes);
         vertexUploadBuffer->Unmap(0, nullptr);
 
-        indexBuffer_ = ResourceFactory::CreateBufferResource(
-            device, indexBytes, D3D12_HEAP_TYPE_DEFAULT);
+        indexBuffer_.Reset(
+            ResourceFactory::CreateBufferResource(device, indexBytes, D3D12_HEAP_TYPE_DEFAULT),
+            D3D12_RESOURCE_STATE_GENERIC_READ);
         Microsoft::WRL::ComPtr<ID3D12Resource> indexUploadBuffer =
             ResourceFactory::CreateBufferResource(device, indexBytes);
 
-        indexBufferView_.BufferLocation = indexBuffer_->GetGPUVirtualAddress();
+        indexBufferView_.BufferLocation = indexBuffer_.GpuAddress();
         indexBufferView_.SizeInBytes = static_cast<UINT>(indexBytes);
         indexBufferView_.Format = DXGI_FORMAT_R32_UINT;
 
@@ -262,26 +265,20 @@ namespace CoreEngine
             assert(recording.IsValid() && "ModelResource: failed to begin an upload recording");
             ID3D12GraphicsCommandList* cmdList = recording.List();
 
-            D3D12_RESOURCE_BARRIER toCopy[2]{};
-            for (uint32_t i = 0; i < 2; ++i) {
-                toCopy[i].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-                toCopy[i].Transition.pResource = (i == 0) ? vertexBuffer_.Get() : indexBuffer_.Get();
-                toCopy[i].Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-                toCopy[i].Transition.StateBefore = D3D12_RESOURCE_STATE_GENERIC_READ;
-                toCopy[i].Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
+            {
+                BarrierBatch batch(cmdList);
+                batch.Transition(vertexBuffer_, D3D12_RESOURCE_STATE_COPY_DEST);
+                batch.Transition(indexBuffer_, D3D12_RESOURCE_STATE_COPY_DEST);
             }
-            cmdList->ResourceBarrier(2, toCopy);
 
             cmdList->CopyBufferRegion(vertexBuffer_.Get(), 0, vertexUploadBuffer.Get(), 0, vertexBytes);
             cmdList->CopyBufferRegion(indexBuffer_.Get(), 0, indexUploadBuffer.Get(), 0, indexBytes);
 
-            D3D12_RESOURCE_BARRIER toRead[2]{};
-            for (uint32_t i = 0; i < 2; ++i) {
-                toRead[i] = toCopy[i];
-                toRead[i].Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-                toRead[i].Transition.StateAfter = D3D12_RESOURCE_STATE_GENERIC_READ;
+            {
+                BarrierBatch batch(cmdList);
+                batch.Transition(vertexBuffer_, D3D12_RESOURCE_STATE_GENERIC_READ);
+                batch.Transition(indexBuffer_, D3D12_RESOURCE_STATE_GENERIC_READ);
             }
-            cmdList->ResourceBarrier(2, toRead);
 
             // 中間バッファはコピー完了まで生きていればよい。メンバで抱え続けない。
             recording.KeepAlive(std::move(vertexUploadBuffer));

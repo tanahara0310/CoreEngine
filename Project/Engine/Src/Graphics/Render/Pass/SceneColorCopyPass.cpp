@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "SceneColorCopyPass.h"
 
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/ResourceBarrierHelper.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/Render/RenderTarget/OffscreenRenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
@@ -42,9 +42,9 @@ namespace CoreEngine
 
         if (!context.dxCommon) {
 #ifdef _DEBUG
-            OutputDebugStringA("ERROR: SceneColorCopyPass: DirectXCommon is null in RenderContext!\n");
+            OutputDebugStringA("ERROR: SceneColorCopyPass: GraphicsCore is null in RenderContext!\n");
 #endif
-            assert(false && "SceneColorCopyPass requires DirectXCommon in RenderContext");
+            assert(false && "SceneColorCopyPass requires GraphicsCore in RenderContext");
             return;
         }
 
@@ -63,32 +63,23 @@ namespace CoreEngine
             return;
         }
 
-        D3D12_RESOURCE_STATES& sourceState = sourceTarget->GetCurrentState();
-        D3D12_RESOURCE_STATES& destinationState = destinationTarget->GetCurrentState();
+        GpuResource& source = sourceTarget->Resource();
+        GpuResource& destination = destinationTarget->Resource();
 
-        ResourceBarrierHelper::Transition(
-            cmdList,
-            sourceTarget->GetResource(),
-            sourceState,
-            D3D12_RESOURCE_STATE_COPY_SOURCE);
-        ResourceBarrierHelper::Transition(
-            cmdList,
-            destinationTarget->GetResource(),
-            destinationState,
-            D3D12_RESOURCE_STATE_COPY_DEST);
+        // コピー前後の 2 本ずつを 1 回の ResourceBarrier にまとめる
+        {
+            BarrierBatch batch(cmdList);
+            batch.Transition(source, D3D12_RESOURCE_STATE_COPY_SOURCE);
+            batch.Transition(destination, D3D12_RESOURCE_STATE_COPY_DEST);
+        }
 
-        cmdList->CopyResource(destinationTarget->GetResource(), sourceTarget->GetResource());
+        cmdList->CopyResource(destination.Get(), source.Get());
 
-        ResourceBarrierHelper::Transition(
-            cmdList,
-            destinationTarget->GetResource(),
-            destinationState,
-            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-        ResourceBarrierHelper::Transition(
-            cmdList,
-            sourceTarget->GetResource(),
-            sourceState,
-            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        {
+            BarrierBatch batch(cmdList);
+            batch.Transition(destination, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+            batch.Transition(source, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        }
 
         // SceneColorSnapshot は RegisterFrameResources で同一の実体が登録済みのため、
         // 実行中の Blackboard 再登録は行わない（パス分離契約 3）。

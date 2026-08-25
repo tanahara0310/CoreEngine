@@ -1,9 +1,10 @@
 #include "pch.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "ToneMapping.h"
 #include "Graphics/Pipeline/ComputePipelineUtil.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/Resource/ResourceFactory.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Utility/Logger/Logger.h"
@@ -117,7 +118,7 @@ namespace CoreEngine
     void ToneMapping::OnCreateConstantBuffers()
     {
         UINT size = (sizeof(ScreenParams) + 255) & ~255;
-        screenParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), size);
+        screenParamsCB_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), size);
         [[maybe_unused]] HRESULT hr = screenParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedScreenParams_));
         assert(SUCCEEDED(hr));
 
@@ -130,22 +131,16 @@ namespace CoreEngine
         autoExposureReady_ = false;
 
         // ===== 輝度計測 CS のコンパイルとパイプライン構築 =====
-        ShaderCompiler compiler;
-        compiler.Initialize();
-        reductionShaderBlob_ = compiler.CompileShader(L"LuminanceReduction.CS.hlsl", L"cs_6_0");
-        if (!reductionShaderBlob_) {
+        // コンパイルとリフレクションはエンジン共有のキャッシュが担当する
+        const ShaderProgram* reductionProgram = shaderProgramCache_->GetOrCreateCompute(
+            L"LuminanceReduction.CS.hlsl", "ToneMappingLuminanceReduction");
+        if (!reductionProgram) {
             Logger::GetInstance().Errorf(LogCategory::Shader,
                 "ToneMapping: LuminanceReduction.CS.hlsl のコンパイルに失敗（自動露出は無効）");
             return;
         }
-
-        ShaderReflectionBuilder reflectionBuilder;
-        reflectionBuilder.Initialize(compiler.GetDxcUtils());
-        reductionReflection_ = reflectionBuilder.BuildFromComputeShader(
-            reductionShaderBlob_.Get(), "ToneMappingLuminanceReduction");
-        if (!reductionReflection_) {
-            return;
-        }
+        reductionShaderBlob_ = reductionProgram->GetCS();
+        reductionReflection_ = &reductionProgram->GetReflection();
 
         RootSignatureConfig config;
         config.SetFlags(D3D12_ROOT_SIGNATURE_FLAG_NONE);
@@ -154,7 +149,7 @@ namespace CoreEngine
 
         reductionRootSignature_ = std::make_unique<RootSignatureManager>();
         auto buildResult = reductionRootSignature_->Build(
-            directXCommon_->GetDevice(), *reductionReflection_, config);
+            graphicsCore_->GetDevice(), *reductionReflection_, config);
         if (!buildResult.success) {
             Logger::GetInstance().Errorf(LogCategory::Shader,
                 "ToneMapping: 輝度計測 RootSignature の構築に失敗: {}", buildResult.errorMessage);
@@ -162,8 +157,8 @@ namespace CoreEngine
         }
 
         reductionPso_ = ComputePipelineUtil::Create(
-            directXCommon_->GetDevice(), reductionRootSignature_->GetRootSignature(),
-            reductionShaderBlob_.Get(), "ToneMapping_LuminanceReduction");
+            graphicsCore_->GetDevice(), reductionRootSignature_->GetRootSignature(),
+            reductionShaderBlob_, "ToneMapping_LuminanceReduction");
         if (!reductionPso_) {
             return;
         }
@@ -171,7 +166,7 @@ namespace CoreEngine
         // ===== ヒストグラム測光の設定バッファ（b1・永続マップ） =====
         {
             const UINT size = (sizeof(HistogramMeteringParams) + 255) & ~255u;
-            histogramParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), size);
+            histogramParamsCB_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), size);
             if (!histogramParamsCB_ ||
                 FAILED(histogramParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedHistogramParams_)))) {
                 return;
@@ -192,18 +187,20 @@ namespace CoreEngine
             desc.SampleDesc.Count = 1;
             desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
             desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-            if (FAILED(directXCommon_->GetDevice()->CreateCommittedResource(
+            Microsoft::WRL::ComPtr<ID3D12Resource> buffer;
+            if (FAILED(graphicsCore_->GetDevice()->CreateCommittedResource(
                     &heapProps, D3D12_HEAP_FLAG_NONE, &desc,
                     D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr,
-                    IID_PPV_ARGS(&avgLogLumBuffer_)))) {
+                    IID_PPV_ARGS(&buffer)))) {
                 return;
             }
+            avgLogLumBuffer_.Reset(std::move(buffer), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         }
 
         // ===== リードバックリング（GPU が最大2フレーム遅延しても読み書きが重ならない） =====
         for (uint32_t i = 0; i < kReadbackCount; ++i) {
             readbackBuffers_[i] = ResourceFactory::CreateBufferResource(
-                directXCommon_->GetDevice(), 256, D3D12_HEAP_TYPE_READBACK);
+                graphicsCore_->GetDevice(), 256, D3D12_HEAP_TYPE_READBACK);
             if (!readbackBuffers_[i]) {
                 return;
             }
@@ -300,33 +297,23 @@ namespace CoreEngine
         if (texIdx >= 0) cmdList->SetComputeRootDescriptorTable(texIdx, inputSrvHandle);
         if (cbIdx >= 0) cmdList->SetComputeRootConstantBufferView(cbIdx, screenParamsCB_->GetGPUVirtualAddress());
         if (histIdx >= 0) cmdList->SetComputeRootConstantBufferView(histIdx, histogramParamsCB_->GetGPUVirtualAddress());
-        if (uavIdx >= 0) cmdList->SetComputeRootUnorderedAccessView(uavIdx, avgLogLumBuffer_->GetGPUVirtualAddress());
+        if (uavIdx >= 0) cmdList->SetComputeRootUnorderedAccessView(uavIdx, avgLogLumBuffer_.GpuAddress());
 
         // 1グループのみ（シェーダー側が 64x64 グリッドを分担して groupshared で縮約する）
         cmdList->Dispatch(1, 1, 1);
 
         // 書き込み完了を待ってリードバックへコピー
-        D3D12_RESOURCE_BARRIER uavBarrier{};
-        uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-        uavBarrier.UAV.pResource = avgLogLumBuffer_.Get();
-        cmdList->ResourceBarrier(1, &uavBarrier);
-
-        D3D12_RESOURCE_BARRIER toCopySource{};
-        toCopySource.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        toCopySource.Transition.pResource = avgLogLumBuffer_.Get();
-        toCopySource.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-        toCopySource.Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        toCopySource.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
-        cmdList->ResourceBarrier(1, &toCopySource);
+        {
+            BarrierBatch batch(cmdList);
+            batch.UAV(avgLogLumBuffer_);
+            batch.Transition(avgLogLumBuffer_, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        }
 
         const uint32_t writeSlot = static_cast<uint32_t>(reductionFrameCounter_ % kReadbackCount);
         cmdList->CopyBufferRegion(
             readbackBuffers_[writeSlot].Get(), 0, avgLogLumBuffer_.Get(), 0, sizeof(float));
 
-        D3D12_RESOURCE_BARRIER backToUav = toCopySource;
-        backToUav.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE;
-        backToUav.Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        cmdList->ResourceBarrier(1, &backToUav);
+        Barrier::Transition(cmdList, avgLogLumBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         ++reductionFrameCounter_;
     }
@@ -359,7 +346,7 @@ namespace CoreEngine
         }
         UpdateScreenConstantBuffer(width, height);
 
-        auto* cmdList = directXCommon_->GetCommandList();
+        auto* cmdList = graphicsCore_->GetCommandList();
 
         // 今フレームの入力輝度を計測する（結果は2フレーム後の順応更新で使われる）。
         // 照明駆動測光が有効な間は GPU 計測が不要なのでスキップする

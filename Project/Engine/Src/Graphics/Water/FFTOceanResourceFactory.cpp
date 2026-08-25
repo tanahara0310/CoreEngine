@@ -4,8 +4,8 @@
 #include <stdexcept>
 #include <string>
 
-#include "Graphics/Common/Core/DescriptorManager.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
@@ -37,14 +37,14 @@ namespace CoreEngine
 
     bool FFTOceanResourceFactory::CreateIntermediateTextures(
         ID3D12Device* device,
-        DescriptorManager* descriptorManager,
+        DescriptorAllocator* descriptorAllocator,
         uint32_t resolution,
         FFTOceanPingPong& spectrumA,
         FFTOceanPingPong& spectrumB)
     {
         // ping-pong の 2 枚（A/B）を同一記述で作り、SRV と UAV を両方張る。
         // IFFT はバタフライ段ごとに読み書きを入れ替えるので、どちらの向きでも使える必要がある
-        if (!device || !descriptorManager) {
+        if (!device || !descriptorAllocator) {
             return false;
         }
 
@@ -64,22 +64,21 @@ namespace CoreEngine
 
         auto createOne = [&](FFTOceanGpuTexture& tex, const char* label, uint32_t index) -> bool {
             try {
-                tex.resource = ResourceFactory::CreateTextureResource(
-                    deviceRef,
-                    textureDesc,
+                tex.Reset(
+                    ResourceFactory::CreateTextureResource(
+                        deviceRef,
+                        textureDesc,
+                        D3D12_RESOURCE_STATE_UNORDERED_ACCESS),
                     D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             }
             catch (const std::exception&) {
                 return false;
             }
             const std::string idx = std::to_string(index);
-            descriptorManager->CreateSRV(
-                tex.Get(), srvDesc, tex.srvCpu, tex.srv,
-                std::string("FFTOceanSpectrum") + label + "_SRV_" + idx);
-            descriptorManager->CreateUAV(
-                tex.Get(), uavDesc, tex.uavCpu, tex.uav,
-                std::string("FFTOceanSpectrum") + label + "_UAV_" + idx);
-            tex.state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+            tex.srv = descriptorAllocator->CreateSRV(
+                tex.Get(), srvDesc, std::string("FFTOceanSpectrum") + label + "_SRV_" + idx);
+            tex.uav = descriptorAllocator->CreateUAV(
+                tex.Get(), uavDesc, std::string("FFTOceanSpectrum") + label + "_UAV_" + idx);
             return true;
         };
 
@@ -96,19 +95,17 @@ namespace CoreEngine
     // 中身は CPU 側（FFTOceanSpectrumBuilder）が作って 1 度だけ流し込む
     bool FFTOceanResourceFactory::CreateSpectrumBuffers(
         ID3D12Device* device,
-        DescriptorManager* descriptorManager,
+        DescriptorAllocator* descriptorAllocator,
         uint32_t resolution,
         uint32_t sampleStride,
         FFTOceanSpectrumBufferSet& outSet)
     {
-        Microsoft::WRL::ComPtr<ID3D12Resource>& spectrumBuffer = outSet.defaultBuffer;
+        GpuResource& spectrumBuffer = outSet.defaultBuffer;
         Microsoft::WRL::ComPtr<ID3D12Resource>& spectrumUploadBuffer = outSet.uploadBuffer;
         void*& mappedSpectrumSamples = outSet.mapped;
-        D3D12_CPU_DESCRIPTOR_HANDLE& spectrumSrvCpuHandle = outSet.srvCpu;
-        D3D12_GPU_DESCRIPTOR_HANDLE& spectrumSrvHandle = outSet.srv;
-        D3D12_RESOURCE_STATES& spectrumBufferState = outSet.state;
+        DescriptorHandle& spectrumSrvHandle = outSet.srv;
 
-        if (!device || !descriptorManager || sampleStride == 0) {
+        if (!device || !descriptorAllocator || sampleStride == 0) {
             return false;
         }
 
@@ -127,9 +124,11 @@ namespace CoreEngine
         desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
         try {
-            spectrumBuffer = ResourceFactory::CreateTextureResource(
-                deviceRef,
-                desc,
+            spectrumBuffer.Reset(
+                ResourceFactory::CreateTextureResource(
+                    deviceRef,
+                    desc,
+                    D3D12_RESOURCE_STATE_COPY_DEST),
                 D3D12_RESOURCE_STATE_COPY_DEST);
             spectrumUploadBuffer = ResourceFactory::CreateBufferResource(
                 deviceRef,
@@ -162,14 +161,8 @@ namespace CoreEngine
         // SRV は DEFAULT ヒープ側に作る。UPLOAD 側を読ませると時間発展CSが
         // 毎フレーム全サンプルを PCIe 経由で読むことになる（VB/IB UPLOAD 常駐事故と同型）。
         // CPU が書いた UPLOAD 側は spectrumBufferDirty 経由で次の Dispatch 時にコピーされる。
-        descriptorManager->CreateSRV(
-            spectrumBuffer.Get(),
-            srvDesc,
-            spectrumSrvCpuHandle,
-            spectrumSrvHandle,
-            "FFTOceanSpectrumSamplesSRV");
+        spectrumSrvHandle = descriptorAllocator->CreateSRV(spectrumBuffer.Get(), srvDesc, "FFTOceanSpectrumSamplesSRV");
 
-        spectrumBufferState = D3D12_RESOURCE_STATE_COPY_DEST;
         return true;
     }
 

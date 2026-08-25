@@ -14,8 +14,8 @@
 
 namespace CoreEngine
 {
-    class DirectXCommon;
-    class DescriptorManager;
+    class GraphicsCore;
+    class DescriptorAllocator;
     class AccelerationStructureManager;
 
     /// @brief RT 反射の設定
@@ -45,9 +45,10 @@ namespace CoreEngine
             "WaterReflectionRayTracingManager: ViewID::Count exceeds RayTracingOutputViewSet::kMaxSlotCount");
 
         bool Initialize(
-            DirectXCommon* dxCommon,
-            DescriptorManager* descriptorManager,
-            AccelerationStructureManager* asMgr);
+            GraphicsCore* dxCommon,
+            DescriptorAllocator* descriptorAllocator,
+            AccelerationStructureManager* asMgr,
+            ShaderProgramCache* shaderProgramCache);
 
         void Dispatch(
             ID3D12GraphicsCommandList* cmdList,
@@ -70,9 +71,10 @@ namespace CoreEngine
         /// @brief 反射出力テクスチャの SRV ハンドル
         D3D12_GPU_DESCRIPTOR_HANDLE GetReflectionSRVHandle(ViewID viewId = ViewID::GameView) const;
         /// @brief 反射出力テクスチャのリソース
-        ID3D12Resource* GetReflectionResource(ViewID viewId = ViewID::GameView) const;
+        /// @brief 出力テクスチャをステート追跡つきで返す（バリア発行はこれを渡す）
+        GpuResource& GetReflectionResource(ViewID viewId = ViewID::GameView);
         /// @brief 反射出力の現在ステートへの参照（バリア時に更新される）
-        D3D12_RESOURCE_STATES& GetReflectionCurrentState(ViewID viewId = ViewID::GameView);
+
 
         void SetSettings(const WaterReflectionRayTracingSettings& settings) { settings_ = settings; }
         const WaterReflectionRayTracingSettings& GetSettings() const { return settings_; }

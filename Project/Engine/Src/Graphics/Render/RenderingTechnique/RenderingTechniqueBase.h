@@ -4,11 +4,13 @@
 #include <wrl.h>
 #include <memory>
 
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Resource/UploadRing.h"
 #include "Graphics/Pipeline/PipelineStateManager.h"
 #include "Graphics/RootSignature/RootSignatureManager.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
+#include "Graphics/Shader/ShaderProgram.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Utility/CVar/CVar.h"
 
@@ -18,30 +20,8 @@ namespace CoreEngine
 class ShaderReflectionData;
 struct RenderContext;
 
-/// @brief フレームオーバーラップ対応の定数バッファリング
-/// @details 単一バッファを毎フレーム上書きすると、GPU が実行中フレームの値を CPU が先に書き潰す
-///          （SSAO なら深度と行列が食い違って AO がちらつく）。
-///          フレームバッファリング数ぶんのスライスを持ち、記録中フレームのスライスへ書く。
-class FrameRingConstantBuffer {
-public:
-    /// @brief バッファを確保して常時 Map する
-    /// @param dxCommon DirectXCommon（フレームバッファリング数の取得に使う）
-    /// @param paramsSize 1 スライスに書く構造体のサイズ（256B 境界へ内部で切り上げる）
-    void Initialize(DirectXCommon* dxCommon, uint32_t paramsSize);
-
-    /// @brief 記録中フレームのスライスへ書き込み、その GPU アドレスを返す
-    /// @param dxCommon DirectXCommon（記録中フレームインデックスの取得に使う）
-    /// @param src 書き込む構造体
-    /// @param size 構造体サイズ（Initialize の paramsSize 以下であること）
-    /// @return バインドすべき GPU 仮想アドレス。未初期化なら 0
-    D3D12_GPU_VIRTUAL_ADDRESS Upload(DirectXCommon* dxCommon, const void* src, uint32_t size);
-
-private:
-    Microsoft::WRL::ComPtr<ID3D12Resource> buffer_;
-    uint8_t* mappedBase_ = nullptr;
-    uint32_t alignedSize_ = 0;
-    uint32_t sliceCount_ = 1;
-};
+/// @note フレームオーバーラップ対応の定数バッファは UploadRing を使うこと
+///       （`dxCommon->GetUploadRing().AllocateConstants(params_)`）
 
 /// @brief レンダリング技術基底クラス
 /// @details SSAO、TAA、SSRなどの高度なレンダリング技術の基底クラス
@@ -51,9 +31,13 @@ class RenderingTechniqueBase {
 public:
     virtual ~RenderingTechniqueBase() = default;
 
+    /// @brief シェーダーのコンパイル／リフレクションを行うキャッシュを注入する
+    /// @note Initialize() の前に RenderingTechniqueManager が自動で呼ぶ
+    void SetShaderProgramCache(ShaderProgramCache* cache) { shaderProgramCache_ = cache; }
+
     /// @brief 初期化
-    /// @param dxCommon DirectXCommon
-    virtual void Initialize(DirectXCommon* dxCommon);
+    /// @param dxCommon GraphicsCore
+    virtual void Initialize(GraphicsCore* dxCommon);
 
     /// @brief レンダリング技術の実行
     /// @param context レンダリングコンテキスト（GBuffer、深度、カメラなどへのアクセス）
@@ -104,7 +88,12 @@ public:
     ///          設計: Docs/Engine/Editor/CVar_Design.md
     virtual CVar<bool>* GetEnabledCVar() const { return nullptr; }
 
+    /// @brief シェーダーリソース名からルートパラメータ（番号＋差し方）を取得
+    /// @note 初期化時に解決してメンバへ持ち、描画中は名前で引かないこと
+    RootSlot GetRootSlot(const std::string& resourceName) const;
+
     /// @brief シェーダーリソース名からルートパラメータインデックスを取得
+    /// @deprecated GetRootSlot() + ShaderBinder へ移行すること
     int GetRootParamIndex(const std::string& resourceName) const;
 
 protected:
@@ -137,20 +126,19 @@ protected:
     void DrawFullscreenQuad(ID3D12GraphicsCommandList* commandList);
 
 protected:
-    DirectXCommon* directXCommon_ = nullptr;
+    GraphicsCore* graphicsCore_ = nullptr;
 
-    // Graphics Shader用
-    Microsoft::WRL::ComPtr<IDxcBlob> vertexShaderBlob_;
-    Microsoft::WRL::ComPtr<IDxcBlob> pixelShaderBlob_;
+    /// @brief コンパイルとリフレクションの窓口（マネージャが Initialize 前に注入する）
+    ShaderProgramCache* shaderProgramCache_ = nullptr;
 
-    // Compute Shader用
-    Microsoft::WRL::ComPtr<IDxcBlob> computeShaderBlob_;
+    /// @brief 使っているプログラム（所有者は ShaderProgramCache）
+    const ShaderProgram* shaderProgram_ = nullptr;
 
     std::unique_ptr<RootSignatureManager> rootSignatureManager_;
     PipelineStateManager pipelineStateManager_;
 
-    // シェーダーリフレクションデータ
-    std::unique_ptr<ShaderReflectionData> reflectionData_;
+    /// @brief シェーダーリフレクションデータ（shaderProgram_ が持つ実体への参照）
+    const ShaderReflectionData* reflectionData_ = nullptr;
 
     bool enabled_ = true; // デフォルトで有効
 

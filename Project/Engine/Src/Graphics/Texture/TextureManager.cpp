@@ -62,12 +62,12 @@ namespace CoreEngine
     }
 
     // 初期化
-    void TextureManager::Initialize(CoreEngine::DirectXCommon* dxCommon)
+    void TextureManager::Initialize(CoreEngine::GraphicsCore* dxCommon)
     {
         std::lock_guard<std::mutex> lock(cacheMutex_);
 
         if (dxCommon == nullptr) {
-            throw std::invalid_argument("TextureManager::Initialize received null DirectXCommon");
+            throw std::invalid_argument("TextureManager::Initialize received null GraphicsCore");
         }
 
         dxCommon_ = dxCommon;
@@ -143,7 +143,7 @@ namespace CoreEngine
 
         // 初期化状態と実行設定の取得を共通化して処理の重複を避ける。
         LoadContext loadContext = AcquireLoadContext();
-        CoreEngine::DirectXCommon* dxCommon = loadContext.dxCommon;
+        CoreEngine::GraphicsCore* dxCommon = loadContext.dxCommon;
         bool ddsGenerationEnabled = loadContext.ddsGenerationEnabled;
 
         assert(dxCommon != nullptr);
@@ -190,8 +190,10 @@ namespace CoreEngine
 
             // 結果をLoadedTexture形式へ詰め替えて、既存インターフェースを維持する。
             result.texture = executionResult.uploadResult.texture;
-            result.cpuHandle = executionResult.uploadResult.cpuHandle;
-            result.gpuHandle = executionResult.uploadResult.gpuHandle;
+            // テクスチャの SRV はキャッシュに載ったまま解放されない（＝生涯有効）ため、
+            // 消費側へは生のハンドルだけを渡す。スロットの所有は uploadResult.descriptor が持つ。
+            result.cpuHandle = executionResult.uploadResult.descriptor.cpuHandle;
+            result.gpuHandle = executionResult.uploadResult.descriptor.gpuHandle;
 
             // 最終登録時もストア側で重複登録競合を吸収する。
             LoadedTexture storedTexture{};

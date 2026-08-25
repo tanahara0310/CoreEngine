@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "SSAOPass.h"
 
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueManager.h"
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueNames.h"
 #include "Graphics/Render/RenderingTechnique/SSAO/SSAOTechnique.h"
@@ -71,18 +71,10 @@ namespace CoreEngine
         }
 
         if (context.frameBlackboard) {
-            ID3D12Resource* ssaoResource = nullptr;
+            GpuResource* ssaoResource = nullptr;
             if (ssaoOutput.ptr != 0) {
                 if (RenderTarget* target = context.renderTargetManager->GetRenderTarget(currentTargetName)) {
-                    ssaoResource = target->GetResource();
-                    if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(target)) {
-                        context.frameBlackboard->SetResource(
-                            FrameBlackboard::SSAO,
-                            ssaoOutput,
-                            ssaoResource,
-                            &offscreen->GetCurrentState());
-                        return;
-                    }
+                    ssaoResource = &target->Resource();
                 }
             }
 

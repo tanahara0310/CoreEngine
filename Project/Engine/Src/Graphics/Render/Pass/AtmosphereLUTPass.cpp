@@ -3,7 +3,7 @@
 
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Cloud/VolumetricCloudManager.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 
 namespace CoreEngine
 {
@@ -28,9 +28,7 @@ namespace CoreEngine
         // LUT 生成 compute はディスクリプタテーブルを使うため、実行順に依存せず
         // 動作するようパス自身が SRV ヒープをバインドする（パス分離契約 2:
         // 先行パスが残した状態への暗黙依存を持たない）。
-        // ※ これを行わずフレーム先頭で実行するとヒープ未バインドでクラッシュする。
-        ID3D12DescriptorHeap* descriptorHeaps[] = { context.dxCommon->GetSRVHeap() };
-        cmdList->SetDescriptorHeaps(1, descriptorHeaps);
+        // SRV ヒープはフレーム先頭で CommandContext が 1 回バインドする（個別バインドは不要）
 
         // ダーティフラグが立っている場合のみ内部で再計算される
         context.atmosphereManager->GenerateLUTsIfNeeded(cmdList);

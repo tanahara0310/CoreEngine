@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ParticleRenderer.h"
+#include "Graphics/RootSignature/RootSlot.h"
 #include <d3d12.h>
 #include <wrl.h>
 #include <memory>
@@ -33,13 +34,14 @@ public:
     void DrawGpu(GpuParticleSystem* system);
 
 private:
-    /// @brief CS 1本分のパイプライン（RootSignature + PSO + ルートパラメータインデックス）
+    /// @brief CS 1本分のパイプライン（RootSignature + PSO + ルートパラメータ）
     struct ComputePass {
         std::unique_ptr<RootSignatureManager> rootSignatureMg = std::make_unique<RootSignatureManager>();
         std::unique_ptr<ShaderReflectionData> reflectionData;
         Microsoft::WRL::ComPtr<ID3D12PipelineState> pso;
 
-        int GetRootParamIndex(const std::string& name) const;
+        /// @brief 名前からルートパラメータ（番号＋差し方）を引く。初期化時に 1 回だけ呼ぶこと。
+        RootSlot GetRootSlot(const std::string& name) const;
     };
 
     /// @brief CSをコンパイルしてComputePassを構築
@@ -54,17 +56,17 @@ private:
     // ExecuteIndirect 用コマンドシグネチャ（DRAW 1個・ルートシグネチャなし）
     Microsoft::WRL::ComPtr<ID3D12CommandSignature> commandSignature_;
 
-    // Emit CS のルートパラメータインデックス
-    int emitParticlesIdx_ = -1;
-    int emitCounterIdx_ = -1;
-    int emitFreeListIdx_ = -1;
-    int emitParamsIdx_ = -1;
+    // Emit CS のルートパラメータ（初期化時に解決。実行時に名前で引かない）
+    RootSlot emitParticles_;
+    RootSlot emitCounter_;
+    RootSlot emitFreeList_;
+    RootSlot emitParams_;
 
-    // Update CS のルートパラメータインデックス
-    int updateParticlesIdx_ = -1;
-    int updateInstancingIdx_ = -1;
-    int updateCounterIdx_ = -1;
-    int updateFreeListIdx_ = -1;
-    int updateParamsIdx_ = -1;
+    // Update CS のルートパラメータ
+    RootSlot updateParticles_;
+    RootSlot updateInstancing_;
+    RootSlot updateCounter_;
+    RootSlot updateFreeList_;
+    RootSlot updateParams_;
 };
 }

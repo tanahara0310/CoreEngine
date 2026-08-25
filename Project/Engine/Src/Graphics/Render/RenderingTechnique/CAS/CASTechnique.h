@@ -31,7 +31,7 @@ namespace CoreEngine
         CASTechnique() = default;
         ~CASTechnique() = default;
 
-        void Initialize(DirectXCommon* dxCommon) override;
+        void Initialize(GraphicsCore* dxCommon) override;
         void Execute(const RenderContext& context, D3D12_GPU_DESCRIPTOR_HANDLE& outputSrvHandle) override;
         void OnResize(uint32_t width, uint32_t height) override;
         void DrawImGui() override;
@@ -44,8 +44,6 @@ namespace CoreEngine
         const CASParams& GetParams() const { return params_; }
         /// @brief シャープ量などのパラメータを設定する
         void SetParams(const CASParams& params);
-        /// @brief 設定済みパラメータを GPU 定数バッファへ転送する
-        void UpdateConstantBuffer();
 
     protected:
     /// @brief 有効/無効は CVar "r.CAS.Enabled" が保持する
@@ -55,11 +53,8 @@ namespace CoreEngine
         const std::wstring& GetPixelShaderPath() const override;
 
     private:
-        void CreateConstantBuffer();
-
+        /// 定数は Execute のたびに UploadRing から確保する（専用バッファは持たない）
         CASParams params_;
-        Microsoft::WRL::ComPtr<ID3D12Resource> constantBuffer_;
-        CASParams* mappedData_ = nullptr;
 
         std::string inputResourceName_ = FrameBlackboard::SceneColor;
     };

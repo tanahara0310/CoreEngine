@@ -22,7 +22,7 @@ namespace CoreEngine
 
 using namespace CoreEngine::MathCore;
 
-void ParticleSystem::Initialize(DirectXCommon* dxCommon, ResourceFactory* resourceFactory, const std::string& name)
+void ParticleSystem::Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory, const std::string& name)
 {
     // オブジェクト名を設定
     if (!name.empty()) {

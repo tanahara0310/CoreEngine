@@ -10,7 +10,7 @@
 
 namespace CoreEngine
 {
-    class DirectXCommon;
+    class GraphicsCore;
     class IBLGenerator;
     class RenderManager;
 
@@ -26,11 +26,11 @@ namespace CoreEngine
             bool forceRegenerate = false;                        ///< キャッシュを無視して強制再生成
         };
 
-        bool Initialize(DirectXCommon* dxCommon, IBLGenerator* iblGenerator, RenderManager* renderManager);
+        bool Initialize(GraphicsCore* dxCommon, IBLGenerator* iblGenerator, RenderManager* renderManager);
         bool Setup(const SetupParams& params);
 
     private:
-        DirectXCommon* dxCommon_ = nullptr;
+        GraphicsCore* dxCommon_ = nullptr;
         IBLGenerator* iblGenerator_ = nullptr;
         RenderManager* renderManager_ = nullptr;
 

@@ -15,7 +15,7 @@ namespace CoreEngine {
     class PostEffectGraphicsBase : public PostEffectBase {
     public:
         /// @brief VS+PS パイプラインによる初期化
-        void Initialize(DirectXCommon* dxCommon) override;
+        void Initialize(GraphicsCore* dxCommon) override;
 
         /// @brief オフスクリーン RT への描画
         void Draw(D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle) override;
@@ -37,9 +37,6 @@ namespace CoreEngine {
     private:
         /// @brief Draw/DrawToBackBuffer の共通処理
         void DrawInternal(D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle, PipelineStateManager& psm);
-
-        Microsoft::WRL::ComPtr<IDxcBlob> fullscreenVertexShaderBlob_;
-        Microsoft::WRL::ComPtr<IDxcBlob> pixelShaderBlob_;
 
         PipelineStateManager pipelineStateManager_;
         PipelineStateManager backBufferPipelineStateManager_; ///< バックバッファ(_SRGB)用PSO

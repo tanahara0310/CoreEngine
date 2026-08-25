@@ -22,10 +22,9 @@ namespace CoreEngine
             CVarRange{}, CVarFlags::NoUI };
     }
 
-    void SSAOTemporalTechnique::Initialize(DirectXCommon* dxCommon)
+    void SSAOTemporalTechnique::Initialize(GraphicsCore* dxCommon)
     {
         RenderingTechniqueBase::Initialize(dxCommon);
-        cbRing_.Initialize(dxCommon, sizeof(SSAOTemporalParams));
     }
 
     const char* SSAOTemporalTechnique::GetHistoryTargetName(uint32_t index)
@@ -85,7 +84,7 @@ namespace CoreEngine
         params_.screenSize[1] = static_cast<float>(context.gBufferManager->GetHeight());
 
         const D3D12_GPU_VIRTUAL_ADDRESS cbAddress =
-            cbRing_.Upload(context.dxCommon, &params_, sizeof(params_));
+            context.dxCommon->GetUploadRing().AllocateConstants(params_);
 
         writeTarget->Begin(cmdList);
 

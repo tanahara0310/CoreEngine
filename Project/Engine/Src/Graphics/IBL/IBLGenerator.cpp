@@ -1,10 +1,10 @@
 #include "pch.h"
 #include "IBLGenerator.h"
 #include "Graphics/Pipeline/ComputePipelineUtil.h"
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/Core/UploadContext.h"
-#include "Graphics/Common/ResourceBarrierHelper.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Command/UploadContext.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Utility/Logger/Logger.h"
 #include "externals/DirectXTex/d3dx12.h"
@@ -16,7 +16,7 @@
 namespace CoreEngine
 {
 
-    void IBLGenerator::Initialize(DirectXCommon* dxCommon, ShaderCompiler* shaderCompiler)
+    void IBLGenerator::Initialize(GraphicsCore* dxCommon, ShaderCompiler* shaderCompiler)
     {
         // パラメータのnullptrチェック
         if (!dxCommon || !shaderCompiler)
@@ -310,8 +310,9 @@ namespace CoreEngine
             commandList->Dispatch(dispatchX, dispatchY, 1);
 
             // UAV→SRVバリア（全サブリソース）
-            D3D12_RESOURCE_STATES brdfState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-            ResourceBarrierHelper::Transition(commandList, brdfLUT.Get(), brdfState,
+            GpuResource brdfTracked;
+            brdfTracked.Reset(brdfLUT, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            Barrier::Transition(commandList, brdfTracked,
                 D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         } // ここで Close → ExecuteCommandLists → Signal
         // uavHeap はこの関数のローカル。直後の WaitForIdle で GPU 完了を待つため、
@@ -369,8 +370,9 @@ namespace CoreEngine
             }
             ID3D12GraphicsCommandList* commandList = recording.List();
 
-            D3D12_RESOURCE_STATES copyState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-            ResourceBarrierHelper::Transition(commandList, brdfLUT, copyState,
+            GpuResource brdfTracked;
+            brdfTracked.Reset(brdfLUT, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+            Barrier::Transition(commandList, brdfTracked,
                 D3D12_RESOURCE_STATE_COPY_SOURCE);
 
             D3D12_TEXTURE_COPY_LOCATION src = {};
@@ -385,7 +387,7 @@ namespace CoreEngine
 
             commandList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
 
-            ResourceBarrierHelper::Transition(commandList, brdfLUT, copyState,
+            Barrier::Transition(commandList, brdfTracked,
                 D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         } // ここで Close → ExecuteCommandLists → Signal
 
@@ -580,8 +582,9 @@ namespace CoreEngine
             commandList->Dispatch(dispatchX, dispatchY, dispatchZ);
 
             // UAV→SRVバリア（全サブリソース = 6面すべて）
-            D3D12_RESOURCE_STATES irradState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-            ResourceBarrierHelper::Transition(commandList, irradianceMap.Get(), irradState,
+            GpuResource irradianceTracked;
+            irradianceTracked.Reset(irradianceMap, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            Barrier::Transition(commandList, irradianceTracked,
                 D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         } // ここで Close → ExecuteCommandLists → Signal
 
@@ -832,12 +835,13 @@ namespace CoreEngine
                 commandList->Dispatch(dispatchX, dispatchY, dispatchZ);
 
                 // UAVバリア（次のミップレベルの前に同期）
-                ResourceBarrierHelper::UAV(commandList, prefilteredMap.Get());
+                Barrier::UAVRaw(commandList, prefilteredMap.Get());
             }
 
             // UAV→SRVバリア（全サブリソース）
-            D3D12_RESOURCE_STATES prefState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-            ResourceBarrierHelper::Transition(commandList, prefilteredMap.Get(), prefState,
+            GpuResource prefilteredTracked;
+            prefilteredTracked.Reset(prefilteredMap.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            Barrier::Transition(commandList, prefilteredTracked,
                 D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
         } // ここで Close → ExecuteCommandLists → Signal

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Graphics/RHI/Resource/GpuResource.h"
+
 #include "../PostEffectComputeBase.h"
 #include <wrl.h>
 #include <d3d12.h>
@@ -121,15 +123,15 @@ namespace CoreEngine
         ScreenParams* mappedScreenParams_ = nullptr;
 
         // ----- 自動露出: 輝度計測パイプライン -----
-        Microsoft::WRL::ComPtr<IDxcBlob> reductionShaderBlob_;
+        IDxcBlob* reductionShaderBlob_ = nullptr;  ///< 所有者は ShaderProgramCache
         std::unique_ptr<RootSignatureManager> reductionRootSignature_;
-        std::unique_ptr<ShaderReflectionData> reductionReflection_;
+        const ShaderReflectionData* reductionReflection_ = nullptr;  ///< 所有者は ShaderProgramCache
         Microsoft::WRL::ComPtr<ID3D12PipelineState> reductionPso_;
 
         // ----- 自動露出: 計測バッファ -----
         Microsoft::WRL::ComPtr<ID3D12Resource> histogramParamsCB_; ///< 百分位カット設定（b1）
         HistogramMeteringParams* mappedHistogramParams_ = nullptr;
-        Microsoft::WRL::ComPtr<ID3D12Resource> avgLogLumBuffer_; ///< 測光結果の輝度（DEFAULT/UAV・1要素）
+        GpuResource avgLogLumBuffer_; ///< 測光結果の輝度（DEFAULT/UAV・1要素。ステート追跡込み）
         static constexpr uint32_t kReadbackCount = 3; ///< リードバックリング数（GPU遅延2フレームまで安全）
         Microsoft::WRL::ComPtr<ID3D12Resource> readbackBuffers_[kReadbackCount];
         const float* mappedReadback_[kReadbackCount] = {};

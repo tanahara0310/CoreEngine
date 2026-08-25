@@ -32,14 +32,22 @@ namespace CoreEngine
         RootSignatureBuildResult Build(
             ID3D12Device* device,
             const ShaderReflectionData& reflectionData,
-            const RootSignatureConfig& config = RootSignatureConfig::Simple());
+            const RootSignatureConfig& config = RootSignatureConfig{});
 
         /// @brief 最後のビルド結果を取得
         const RootSignatureBuildResult& GetLastBuildResult() const { return lastBuildResult_; }
 
+        /// @brief リソース名からルートパラメータ（番号＋差し方）を取得
+        /// @param resourceName リソース名
+        /// @return ルートパラメータ。見つからない場合は kind == None（IsValid() が false）
+        /// @note 新規コードはこちらを使い、結果を ShaderBinder へ渡すこと
+        RootSlot GetRootSlot(const std::string& resourceName) const;
+
         /// @brief リソース名からルートパラメータインデックスを取得
         /// @param resourceName リソース名
         /// @return ルートパラメータインデックス（見つからない場合は-1）
+        /// @deprecated 番号だけでは Set* を選べない。GetRootSlot() + ShaderBinder へ移行すること。
+        ///             Phase 2 で呼び出し側を置き換え終えたら削除する。
         int GetRootParameterIndex(const std::string& resourceName) const;
 
         /// @brief 設定をクリア（再構築前に呼び出す）

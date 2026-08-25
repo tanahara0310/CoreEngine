@@ -1,6 +1,7 @@
 #pragma once
 
 #include <d3d12.h>
+#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include <wrl.h>
 #include <cstdint>
 #include "Math/MathCore.h"
@@ -8,7 +9,7 @@
 namespace CoreEngine
 {
 // 前方宣言
-class DirectXCommon;
+class GraphicsCore;
 class ResourceFactory;
 
 /// @brief GPU送信用パーティクルデータ
@@ -26,10 +27,10 @@ public:
     ~ParticleResourceManager() = default;
 
     /// @brief 初期化
-    /// @param dxCommon DirectXCommon
+    /// @param dxCommon GraphicsCore
     /// @param resourceFactory リソースファクトリ
     /// @param maxInstances 最大インスタンス数
-    void Initialize(DirectXCommon* dxCommon, ResourceFactory* resourceFactory, uint32_t maxInstances);
+    void Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory, uint32_t maxInstances);
 
     /// @brief インスタンシングデータへのポインタを取得
     /// @return インスタンシングデータのポインタ
@@ -37,11 +38,11 @@ public:
 
     /// @brief SRVのGPUハンドルを取得
     /// @return SRVのGPUディスクリプタハンドル
-    D3D12_GPU_DESCRIPTOR_HANDLE GetSrvHandleGPU() const { return srvHandleGPU_; }
+    D3D12_GPU_DESCRIPTOR_HANDLE GetSrvHandleGPU() const { return srvHandleGPU_.gpuHandle; }
 
     /// @brief SRVのCPUハンドルを取得
     /// @return SRVのCPUディスクリプタハンドル
-  D3D12_CPU_DESCRIPTOR_HANDLE GetSrvHandleCPU() const { return srvHandleCPU_; }
+  D3D12_CPU_DESCRIPTOR_HANDLE GetSrvHandleCPU() const { return srvHandleGPU_.cpuHandle; }
 
 private:
     /// @brief インスタンシングリソースを作成
@@ -53,13 +54,12 @@ private:
     void CreateSRV(uint32_t maxInstances);
 
     // DirectX関連
-    DirectXCommon* dxCommon_ = nullptr;
+    GraphicsCore* dxCommon_ = nullptr;
     ResourceFactory* resourceFactory_ = nullptr;
 
     // GPUリソース
   Microsoft::WRL::ComPtr<ID3D12Resource> instancingResource_;
-    D3D12_CPU_DESCRIPTOR_HANDLE srvHandleCPU_ = {};
-    D3D12_GPU_DESCRIPTOR_HANDLE srvHandleGPU_ = {};
+    DescriptorHandle srvHandleGPU_{};
     ParticleForGPU* instancingData_ = nullptr;
 };
 

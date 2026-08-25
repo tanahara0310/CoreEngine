@@ -1,6 +1,9 @@
 #pragma once
 
+#include "Graphics/RHI/Resource/GpuResource.h"
+
 #include <wrl.h>
+#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include <d3d12.h>
 #include <string>
 #include <memory>
@@ -37,7 +40,7 @@
 
 // 前方宣言
 namespace CoreEngine {
-    class DirectXCommon;
+    class GraphicsCore;
     class ResourceFactory;
     class Camera;
 }
@@ -245,7 +248,7 @@ public:
     ~GpuParticleSystem() override = default;
 
     /// @brief 初期化（GPUバッファ・UAV/SRV・モジュールの生成）
-    void Initialize(DirectXCommon* dxCommon, ResourceFactory* resourceFactory, const std::string& name = "") override;
+    void Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory, const std::string& name = "") override;
 
     /// @brief 更新処理（再生時間・放出数の管理のみ。粒子更新はGPU）
     void Update() override;
@@ -349,30 +352,20 @@ public:
     ID3D12Resource* GetInstancingResource() const { return instancingResource_.Get(); }
     ID3D12Resource* GetCounterResource() const { return counterResource_.Get(); }
     ID3D12Resource* GetArgsResource() const { return argsResource_.Get(); }
+
+    // バリアを張る側はこちら（ステートは GpuResource が持つ）
+    GpuResource& Instancing() { return instancingResource_; }
+    GpuResource& Counter() { return counterResource_; }
+    GpuResource& Args() { return argsResource_; }
+    GpuResource& FreeList() { return freeListResource_; }
     ID3D12Resource* GetUploadInitResource() const { return uploadInitResource_.Get(); }
     ID3D12Resource* GetReadbackResource() const { return readbackResource_.Get(); }
 
-    D3D12_GPU_DESCRIPTOR_HANDLE GetParticleUavHandleGPU() const { return particleUavGPU_; }
-    D3D12_GPU_DESCRIPTOR_HANDLE GetCounterUavHandleGPU() const { return counterUavGPU_; }
-    D3D12_GPU_DESCRIPTOR_HANDLE GetFreeListUavHandleGPU() const { return freeListUavGPU_; }
-    D3D12_GPU_DESCRIPTOR_HANDLE GetInstancingUavHandleGPU() const { return instancingUavGPU_; }
-    D3D12_GPU_DESCRIPTOR_HANDLE GetInstancingSrvHandleGPU() const { return instancingSrvGPU_; }
-
-    /// @brief インスタンシングバッファの現在状態（レンダラーが遷移管理に使う）
-    D3D12_RESOURCE_STATES GetInstancingState() const { return instancingState_; }
-    void SetInstancingState(D3D12_RESOURCE_STATES state) { instancingState_ = state; }
-
-    /// @brief カウンタバッファの現在状態
-    D3D12_RESOURCE_STATES GetCounterState() const { return counterState_; }
-    void SetCounterState(D3D12_RESOURCE_STATES state) { counterState_ = state; }
-
-    /// @brief 間接引数バッファの現在状態
-    D3D12_RESOURCE_STATES GetArgsState() const { return argsState_; }
-    void SetArgsState(D3D12_RESOURCE_STATES state) { argsState_ = state; }
-
-    /// @brief フリーリストバッファの現在状態
-    D3D12_RESOURCE_STATES GetFreeListState() const { return freeListState_; }
-    void SetFreeListState(D3D12_RESOURCE_STATES state) { freeListState_ = state; }
+    D3D12_GPU_DESCRIPTOR_HANDLE GetParticleUavHandleGPU() const { return particleUavGPU_.gpuHandle; }
+    D3D12_GPU_DESCRIPTOR_HANDLE GetCounterUavHandleGPU() const { return counterUavGPU_.gpuHandle; }
+    D3D12_GPU_DESCRIPTOR_HANDLE GetFreeListUavHandleGPU() const { return freeListUavGPU_.gpuHandle; }
+    D3D12_GPU_DESCRIPTOR_HANDLE GetInstancingUavHandleGPU() const { return instancingUavGPU_.gpuHandle; }
+    D3D12_GPU_DESCRIPTOR_HANDLE GetInstancingSrvHandleGPU() const { return instancingSrvGPU_.gpuHandle; }
 
     ID3D12Resource* GetFreeListResource() const { return freeListResource_.Get(); }
 
@@ -393,7 +386,7 @@ private:
     /// @brief UAV付きDEFAULTヒープバッファを作成
     Microsoft::WRL::ComPtr<ID3D12Resource> CreateUavBuffer(size_t sizeInBytes);
 
-    DirectXCommon* dxCommon_ = nullptr;
+    GraphicsCore* dxCommon_ = nullptr;
     ResourceFactory* resourceFactory_ = nullptr;
 
     // ──────────────────────────────────────────────────────────
@@ -401,26 +394,22 @@ private:
     // ──────────────────────────────────────────────────────────
 
     Microsoft::WRL::ComPtr<ID3D12Resource> particleResource_;   // GpuParticleData × kMaxParticles（UAV固定）
-    Microsoft::WRL::ComPtr<ID3D12Resource> counterResource_;    // uint × 4（freeTop/alive/draw、UAV⇔COPY間遷移）
-    Microsoft::WRL::ComPtr<ID3D12Resource> freeListResource_;   // uint × kMaxParticles（死亡スロットスタック、UAV固定）
-    Microsoft::WRL::ComPtr<ID3D12Resource> instancingResource_; // ParticleForGPU互換 × kMaxParticles（コンパクション済み）
-    Microsoft::WRL::ComPtr<ID3D12Resource> argsResource_;       // D3D12_DRAW_ARGUMENTS（ExecuteIndirect用）
+    GpuResource counterResource_;    // uint × 4（freeTop/alive/draw、UAV⇔COPY間遷移）
+    GpuResource freeListResource_;   // uint × kMaxParticles（死亡スロットスタック）
+    GpuResource instancingResource_; // ParticleForGPU互換 × kMaxParticles（コンパクション済み）
+    GpuResource argsResource_;       // D3D12_DRAW_ARGUMENTS（ExecuteIndirect用）
     Microsoft::WRL::ComPtr<ID3D12Resource> uploadInitResource_; // 初期化データ（引数/カウンタ/フリーリスト）のコピー元
-    D3D12_RESOURCE_STATES freeListState_ = D3D12_RESOURCE_STATE_COMMON;
     Microsoft::WRL::ComPtr<ID3D12Resource> readbackResource_;   // カウンタのリードバック（統計用）
     Microsoft::WRL::ComPtr<ID3D12Resource> paramsResource_;     // 定数バッファ（UPLOAD・永続Map）
     GpuParticleParams* paramsData_ = nullptr;
     uint32_t* readbackData_ = nullptr;                          // readbackResource_ の永続Map
 
-    D3D12_GPU_DESCRIPTOR_HANDLE particleUavGPU_ = {};
-    D3D12_GPU_DESCRIPTOR_HANDLE counterUavGPU_ = {};
-    D3D12_GPU_DESCRIPTOR_HANDLE freeListUavGPU_ = {};
-    D3D12_GPU_DESCRIPTOR_HANDLE instancingUavGPU_ = {};
-    D3D12_GPU_DESCRIPTOR_HANDLE instancingSrvGPU_ = {};
+    DescriptorHandle particleUavGPU_ = {};
+    DescriptorHandle counterUavGPU_ = {};
+    DescriptorHandle freeListUavGPU_ = {};
+    DescriptorHandle instancingUavGPU_ = {};
+    DescriptorHandle instancingSrvGPU_ = {};
 
-    D3D12_RESOURCE_STATES instancingState_ = D3D12_RESOURCE_STATE_COMMON;
-    D3D12_RESOURCE_STATES counterState_ = D3D12_RESOURCE_STATE_COMMON;
-    D3D12_RESOURCE_STATES argsState_ = D3D12_RESOURCE_STATE_COMMON;
 
     // テクスチャ
     TextureManager::LoadedTexture texture_;

@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "GrayScale.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/Resource/ResourceFactory.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/CVar/CVar.h"
 #include <cassert>
 #include <stdexcept>
@@ -26,7 +26,7 @@ namespace CoreEngine
     {
         UpdateScreenSizeConstants(width, height);
 
-        auto* cmdList = directXCommon_->GetCommandList();
+        auto* cmdList = graphicsCore_->GetCommandList();
         cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
         cmdList->SetPipelineState(computePso_.Get());
 

@@ -5,8 +5,8 @@
 #include <cassert>
 #include <queue>
 
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/GpuMarker.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Debug/GpuMarker.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
@@ -289,10 +289,9 @@ namespace CoreEngine
         // （旧 RTShadowMask の View 特例は RenderPipeline::RegisterFrameResources へ移設済み）
         for (auto& [resourceName, resource] : resources_) {
             resource.resource = nullptr;
-            resource.currentState = nullptr;
 
             if (context.frameBlackboard) {
-                context.frameBlackboard->TryResolveResource(resourceName, resource.resource, resource.currentState);
+                context.frameBlackboard->TryResolveResource(resourceName, resource.resource);
             }
         }
     }
@@ -335,7 +334,7 @@ namespace CoreEngine
             mergeAccess(writeAccess, true);
         }
 
-        ResourceBarrierBatch barrierBatch(cmdList);
+        BarrierBatch barrierBatch(cmdList);
 
         for (const MergedAccess& access : mergedAccesses) {
             auto it = resources_.find(*access.resourceName);
@@ -346,12 +345,12 @@ namespace CoreEngine
 
             // Compile 時に未解決だったリソースは、先行パスが実行中に Blackboard へ
             // 登録した可能性があるため、実行直前に再解決を試みる（SSAO / RT 系の遅延登録対応）。
-            if ((!resource.resource || !resource.currentState) && context.frameBlackboard) {
+            if (!resource.resource && context.frameBlackboard) {
                 context.frameBlackboard->TryResolveResource(
-                    *access.resourceName, resource.resource, resource.currentState);
+                    *access.resourceName, resource.resource);
             }
 
-            if (!resource.resource || !resource.currentState) {
+            if (!resource.resource) {
                 // 未解決 = バリアを張れないまま先へ進む状態。過去に何度も踏んでいる事故の芽なので、
                 // ログだけでなくエディタから見える形でも残す。
                 if (instrumentationEnabled_) {
@@ -380,8 +379,8 @@ namespace CoreEngine
                 pass.name,
                 access.isWrite ? "Write" : "Read",
                 *access.resourceName,
-                reinterpret_cast<uintptr_t>(resource.resource),
-                static_cast<uint32_t>(*resource.currentState),
+                reinterpret_cast<uintptr_t>(resource.resource->Get()),
+                static_cast<uint32_t>(resource.resource->State()),
                 static_cast<uint32_t>(access.requiredState));
 #endif
 
@@ -389,21 +388,21 @@ namespace CoreEngine
             // UAV バリアで書き込みの直列化を保証する。
             const bool isUavBarrier = access.isWrite
                 && access.requiredState == D3D12_RESOURCE_STATE_UNORDERED_ACCESS
-                && *resource.currentState == D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+                && resource.resource->State() == D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 
             if (instrumentationEnabled_) {
                 pass.barriers.push_back({
                     *access.resourceName,
-                    *resource.currentState,
+                    resource.resource->State(),
                     access.requiredState,
                     isUavBarrier,
                     access.isWrite });
             }
 
             if (isUavBarrier) {
-                barrierBatch.AddUAV(resource.resource);
+                barrierBatch.UAV(*resource.resource);
             } else {
-                barrierBatch.Add(resource.resource, *resource.currentState, access.requiredState);
+                barrierBatch.Transition(*resource.resource, access.requiredState);
             }
         }
 

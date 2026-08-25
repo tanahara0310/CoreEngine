@@ -1,9 +1,10 @@
 #include "pch.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Bloom.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/Resource/ResourceFactory.h"
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/Core/DescriptorManager.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/Logger/Logger.h"
@@ -69,7 +70,7 @@ namespace CoreEngine
 
     void Bloom::OnCreateConstantBuffers()
     {
-        auto* device = directXCommon_->GetDevice();
+        auto* device = graphicsCore_->GetDevice();
 
         // パスごとに解像度と役割が違うので、定数バッファもパスの数だけ要る。
         // 1 本を使い回すと、GPU が読むのは記録より後なので最後のパスの値で全段が実行される
@@ -99,9 +100,9 @@ namespace CoreEngine
     bool Bloom::CreateDirtResources()
     {
         // レンズダート（汚れ）テクスチャ。未指定でも既定の手続き的パターンを焼くので必ず作る
-        auto* device = directXCommon_->GetDevice();
-        DescriptorManager* descriptorManager = directXCommon_->GetDescriptorManager();
-        if (!descriptorManager) {
+        auto* device = graphicsCore_->GetDevice();
+        DescriptorAllocator* descriptorAllocator = graphicsCore_->GetDescriptorAllocator();
+        if (!descriptorAllocator) {
             return false;
         }
 
@@ -116,12 +117,11 @@ namespace CoreEngine
         desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
         desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
-        dirtTexture_ = ResourceFactory::CreateTextureResource(
-            device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        dirtTexture_.Reset(ResourceFactory::CreateTextureResource(
+            device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         if (!dirtTexture_) {
             return false;
         }
-        dirtTextureState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
         srvDesc.Format = desc.Format;
@@ -134,8 +134,8 @@ namespace CoreEngine
         uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 
         D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle{};
-        descriptorManager->CreateSRV(dirtTexture_.Get(), srvDesc, cpuHandle, dirtSrvHandle_, "BloomDirt_SRV");
-        descriptorManager->CreateUAV(dirtTexture_.Get(), uavDesc, cpuHandle, dirtUavHandle_, "BloomDirt_UAV");
+        dirtSrvHandle_ = descriptorAllocator->CreateSRV(dirtTexture_.Get(), srvDesc, "BloomDirt_SRV");
+        dirtUavHandle_ = descriptorAllocator->CreateUAV(dirtTexture_.Get(), uavDesc, "BloomDirt_UAV");
         return true;
     }
 
@@ -152,37 +152,28 @@ namespace CoreEngine
 
         const int outputIdx = dirtGenPipeline_.GetComputeRootParamIndex("gOutput");
         const int paramsIdx = dirtGenPipeline_.GetComputeRootParamIndex("DirtGenParams");
-        if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, dirtUavHandle_);
+        if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, dirtUavHandle_.gpuHandle);
         if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, dirtGenParamsCB_->GetGPUVirtualAddress());
 
         cmdList->Dispatch(DispatchCount(kDirtTextureSize), DispatchCount(kDirtTextureSize), 1);
 
-        D3D12_RESOURCE_BARRIER uavBarrier{};
-        uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-        uavBarrier.UAV.pResource = dirtTexture_.Get();
-        cmdList->ResourceBarrier(1, &uavBarrier);
-
-        D3D12_RESOURCE_BARRIER toSrv{};
-        toSrv.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        toSrv.Transition.pResource = dirtTexture_.Get();
-        toSrv.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-        toSrv.Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        toSrv.Transition.StateAfter = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-        cmdList->ResourceBarrier(1, &toSrv);
-        dirtTextureState_ = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+        {
+            BarrierBatch batch(cmdList);
+            batch.UAV(dirtTexture_);
+            batch.Transition(dirtTexture_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        }
 
         dirtGenerated_ = true;
     }
 
     bool Bloom::CreateInternalPipelines()
     {
-        auto* device = directXCommon_->GetDevice();
+        auto* device = graphicsCore_->GetDevice();
 
-        ShaderCompiler shaderCompiler;
-        shaderCompiler.Initialize();
-
-        ShaderReflectionBuilder reflectionBuilder;
-        reflectionBuilder.Initialize(shaderCompiler.GetDxcUtils());
+        // DXC とリフレクションビルダーはエンジン共有のキャッシュのものを使う。
+        // ローカルに作ると DXC がエフェクトの数だけ生成される（Phase 3 で撤去）
+        ShaderCompiler& shaderCompiler = shaderProgramCache_->GetCompiler();
+        ShaderReflectionBuilder& reflectionBuilder = shaderProgramCache_->GetReflectionBuilder();
 
         struct Entry {
             CustomShaderPipeline& pipeline;
@@ -356,7 +347,7 @@ namespace CoreEngine
 
         if (sceneIdx >= 0)  cmdList->SetComputeRootDescriptorTable(sceneIdx, context.reads[0]);
         if (bloomIdx >= 0)  cmdList->SetComputeRootDescriptorTable(bloomIdx, context.reads[1]);
-        if (dirtIdx >= 0 && dirtResourcesReady_) cmdList->SetComputeRootDescriptorTable(dirtIdx, dirtSrvHandle_);
+        if (dirtIdx >= 0 && dirtResourcesReady_) cmdList->SetComputeRootDescriptorTable(dirtIdx, dirtSrvHandle_.gpuHandle);
         if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
         if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, compositeParamsCB_->GetGPUVirtualAddress());
 

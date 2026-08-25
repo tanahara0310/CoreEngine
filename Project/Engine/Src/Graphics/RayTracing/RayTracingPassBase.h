@@ -5,15 +5,17 @@
 #include <cstdint>
 #include <string>
 
-#include "Graphics/RayTracing/GlobalRootSignatureManager.h"
+#include "Graphics/RootSignature/RootSignatureManager.h"
+#include "Graphics/Shader/ShaderBindingContract.h"
+#include "Graphics/Shader/ShaderProgram.h"
 #include "Graphics/RayTracing/RayTracingDispatchInfo.h"
 #include "Graphics/RayTracing/RayTracingOutputViewSet.h"
 #include "Graphics/RayTracing/ShaderTableBuilder.h"
 
 namespace CoreEngine
 {
-    class DirectXCommon;
-    class DescriptorManager;
+    class GraphicsCore;
+    class DescriptorAllocator;
     class AccelerationStructureManager;
 
     /// @brief DXR パス（シャドウ・水面屈折/反射/コースティクス等）の共通基盤
@@ -42,19 +44,33 @@ namespace CoreEngine
         struct DispatchResources {
             D3D12_GPU_DESCRIPTOR_HANDLE outputSrvHandle{};
             D3D12_GPU_DESCRIPTOR_HANDLE outputUavHandle{};
-            ID3D12Resource* outputResource = nullptr;
-            D3D12_RESOURCE_STATES* outputCurrentState = nullptr;
+            GpuResource* output = nullptr;   ///< 出力テクスチャ（実体＋現在ステート）
             Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> cmdList4;
         };
 
         /// @param ownerName        ログ・診断に出す所有者名（以後 ownerName_ として使い回す）
         /// @param outputDebugName  出力テクスチャのデバッグ名の接頭辞
+        /// @param shaderProgramCache シェーダーのコンパイルとリフレクションの窓口
         bool InitializeBase(
-            DirectXCommon* dxCommon,
-            DescriptorManager* descriptorManager,
+            GraphicsCore* dxCommon,
+            DescriptorAllocator* descriptorAllocator,
             AccelerationStructureManager* asMgr,
+            ShaderProgramCache* shaderProgramCache,
             const char* ownerName,
             const char* outputDebugName);
+
+        /// @brief ライブラリのリフレクションからグローバルルートシグネチャを構築し、宣言表を解決する
+        /// @param program    GetOrCreateLibrary() で得たプログラム
+        /// @param decls      バインド契約（そのパスが差すリソースの宣言表）
+        /// @param declCount  宣言数
+        /// @param config     ルートシグネチャ設定（RootConstants 等はここで明示する）
+        /// @return 成功したら true。失敗・契約違反はログ済み
+        /// @note DXR は全エントリ ALL 可視が必須だが、ライブラリのリフレクションは ALL を返す
+        bool BuildGlobalRootSignature(
+            const ShaderProgram& program,
+            const ShaderBindingDecl* decls,
+            size_t declCount,
+            const RootSignatureConfig& config);
 
         /// @brief ディスパッチ前の共通処理（ガード判定 → 出力・定数バッファの確保 → CommandList4 取得）
         /// @param constantBufferSize 0 以外なら、そのサイズのアップロード定数バッファを確保する
@@ -77,28 +93,30 @@ namespace CoreEngine
         void ReleaseOutputIfSizeMismatchBase(UINT width, UINT height, uint32_t viewIndex);
 
         D3D12_GPU_DESCRIPTOR_HANDLE GetOutputSRVHandleBase(uint32_t viewIndex) const;
-        ID3D12Resource* GetOutputResourceBase(uint32_t viewIndex) const;
-        D3D12_RESOURCE_STATES& GetOutputCurrentStateBase(uint32_t viewIndex);
+        /// @brief 出力テクスチャをステート追跡つきで返す（バリア発行はこれを渡す）
+        GpuResource& GetOutputBase(uint32_t viewIndex);
 
         void BeginOutputWrite(
             ID3D12GraphicsCommandList* cmdList,
-            ID3D12Resource* outputResource,
-            D3D12_RESOURCE_STATES& outputCurrentState) const;
+            GpuResource& output) const;
         void EndOutputWrite(
             ID3D12GraphicsCommandList* cmdList,
-            ID3D12Resource* outputResource,
-            D3D12_RESOURCE_STATES& outputCurrentState,
+            GpuResource& output,
             D3D12_RESOURCE_STATES finalState) const;
 
         const char* GetOwnerName() const { return ownerName_; }
 
-        DirectXCommon* dxCommon_ = nullptr;
-        DescriptorManager* descriptorManager_ = nullptr;
+        GraphicsCore* dxCommon_ = nullptr;
+        DescriptorAllocator* descriptorAllocator_ = nullptr;
         AccelerationStructureManager* asMgr_ = nullptr;
 
         Microsoft::WRL::ComPtr<ID3D12Resource> constantBuffer_;
         uint8_t* constantBufferMapped_ = nullptr;
-        GlobalRootSignatureManager globalRootSigMgr_;
+        ShaderProgramCache* shaderProgramCache_ = nullptr;
+        /// @brief リフレクションから構築したグローバルルートシグネチャ
+        RootSignatureManager globalRootSigMgr_;
+        /// @brief 解決済みバインド表（添字は派生側の宣言表の並び）
+        BindingTable bindings_;
         Microsoft::WRL::ComPtr<ID3D12StateObject> stateObject_;
         Microsoft::WRL::ComPtr<ID3D12StateObjectProperties> stateObjectProperties_;
         ShaderTableBuilder shaderTableBuilder_;

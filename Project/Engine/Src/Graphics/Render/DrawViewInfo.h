@@ -20,7 +20,7 @@ namespace CoreEngine
 
         /// @brief この描画を記録するコマンドリスト
         /// @details 描画側は必ずここから取ること。GameObject が自分で
-        ///          GetDirectXCommon()->GetCommandList() を呼ぶと、「どのリストへ積むか」の
+        ///          GetGraphicsCore()->GetCommandList() を呼ぶと、「どのリストへ積むか」の
         ///          判断がオブジェクトの数だけ増え、キュー実行側が積み先を制御できなくなる。
         ///          RenderManager がキュー実行時に、パスから受け取ったリストをそのまま入れる。
         ID3D12GraphicsCommandList* cmdList = nullptr;

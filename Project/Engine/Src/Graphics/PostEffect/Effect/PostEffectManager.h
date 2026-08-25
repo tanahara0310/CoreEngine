@@ -13,7 +13,7 @@
 namespace CoreEngine
 {
 // 前方宣言
-class DirectXCommon;
+class GraphicsCore;
 class Render;
 class RenderTarget;
 
@@ -21,9 +21,9 @@ class RenderTarget;
 class PostEffectManager {
 public:
     /// @brief 初期化
-    /// @param dxCommon DirectXCommonのポインタ
+    /// @param dxCommon GraphicsCoreのポインタ
     /// @param render Renderクラスのポインタ
-    void Initialize(DirectXCommon* dxCommon, Render* render);
+    void Initialize(GraphicsCore* dxCommon, Render* render, ShaderProgramCache* shaderProgramCache);
 
     /// @brief テンプレートでエフェクトを登録（型推論による簡潔な登録）
     /// @tparam T エフェクトの型（PostEffectBaseを継承）
@@ -119,7 +119,9 @@ public:
     static constexpr int kImGuiSearchBufSize = 128;
     static constexpr float kEffectListPanelWidth = 200.0f;
 
-    DirectXCommon* directXCommon_ = nullptr;
+    GraphicsCore* graphicsCore_ = nullptr;
+    /// @brief 各エフェクトへ配るシェーダーキャッシュ（所有者はエンジン）
+    ShaderProgramCache* shaderProgramCache_ = nullptr;
     Render* render_ = nullptr;
 
     std::unordered_map<std::string, std::unique_ptr<PostEffectBase>> effects_;
@@ -160,7 +162,9 @@ void PostEffectManager::RegisterEffect(const std::string& name)
         "T must inherit from PostEffectBase");
 
     auto effect = std::make_unique<T>();
-    effect->Initialize(directXCommon_);
+    // 派生クラスの Initialize シグネチャを変えずにキャッシュを渡すための注入点
+    effect->SetShaderProgramCache(shaderProgramCache_);
+    effect->Initialize(graphicsCore_);
     // 有効/無効は各エフェクトの CVar（"r.<Effect>.Enabled"）の既定値、
     // または CVar を持たないエフェクトの enabled_ 初期値が決める
     RegisterEffectInternal(name, std::move(effect));

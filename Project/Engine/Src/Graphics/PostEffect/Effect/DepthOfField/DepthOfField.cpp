@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "DepthOfField.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/Resource/ResourceFactory.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h"
 #include "Graphics/Render/FrameBlackboard.h"
 #include "Camera/View/ViewInfo.h"
@@ -71,7 +71,7 @@ namespace CoreEngine
 
     void DepthOfField::OnCreateConstantBuffers()
     {
-        auto* device = directXCommon_->GetDevice();
+        auto* device = graphicsCore_->GetDevice();
 
         CreateMappedCB(device, prefilterParamsCB_, mappedPrefilterParams_);
         CreateMappedCB(device, gatherParamsCB_, mappedGatherParams_);
@@ -86,13 +86,12 @@ namespace CoreEngine
 
     bool DepthOfField::CreateInternalPipelines()
     {
-        auto* device = directXCommon_->GetDevice();
+        auto* device = graphicsCore_->GetDevice();
 
-        ShaderCompiler shaderCompiler;
-        shaderCompiler.Initialize();
-
-        ShaderReflectionBuilder reflectionBuilder;
-        reflectionBuilder.Initialize(shaderCompiler.GetDxcUtils());
+        // DXC とリフレクションビルダーはエンジン共有のキャッシュのものを使う。
+        // ローカルに作ると DXC がエフェクトの数だけ生成される（Phase 3 で撤去）
+        ShaderCompiler& shaderCompiler = shaderProgramCache_->GetCompiler();
+        ShaderReflectionBuilder& reflectionBuilder = shaderProgramCache_->GetReflectionBuilder();
 
         struct Entry {
             CustomShaderPipeline& pipeline;

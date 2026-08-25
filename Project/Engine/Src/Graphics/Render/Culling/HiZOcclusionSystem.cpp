@@ -7,12 +7,11 @@
 #include <cmath>
 #include <cstring>
 
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/Core/CommandManager.h"
-#include "Graphics/Common/Core/DescriptorManager.h"
-#include "Graphics/Common/EngineStats.h"
-#include "Graphics/Common/ResourceBarrierHelper.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
+#include "Diagnostics/EngineStats.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/RootSignature/RootSignatureManager.h"
 #include "Graphics/Shader/ShaderCompiler.h"
@@ -128,8 +127,8 @@ namespace CoreEngine
     {
         // GPU リソースをデバイス破棄前に解放する（LeakChecker 対策）。
         // Shutdown 後に ~Model が UnregisterTarget を呼んでも slots_ が空なので安全。
-        hiZTexture_.Reset();
-        visibilityBuffer_.Reset();
+        hiZTexture_.Release();
+        visibilityBuffer_.Release();
         if (buildParamsBuffer_ && buildParamsMapped_) {
             buildParamsBuffer_->Unmap(0, nullptr);
         }
@@ -164,7 +163,7 @@ namespace CoreEngine
         slots_.clear();
         freeIds_.clear();
         pendingQueries_.clear();
-        descriptorManager_ = nullptr;
+        descriptorAllocator_ = nullptr;
         dxCommon_ = nullptr;
         hiZWidth_ = hiZHeight_ = hiZMipCount_ = 0;
         depthWidth_ = depthHeight_ = 0;
@@ -177,7 +176,7 @@ namespace CoreEngine
     // 初期化
     // ---------------------------------------------------------------
 
-    bool HiZOcclusionSystem::InitializeIfNeeded(DirectXCommon* dxCommon)
+    bool HiZOcclusionSystem::InitializeIfNeeded(GraphicsCore* dxCommon)
     {
         if (initialized_) {
             return true;
@@ -187,9 +186,9 @@ namespace CoreEngine
         }
 
         dxCommon_ = dxCommon;
-        descriptorManager_ = dxCommon->GetDescriptorManager();
+        descriptorAllocator_ = dxCommon->GetDescriptorAllocator();
         ID3D12Device* device = dxCommon->GetDevice();
-        if (!device || !descriptorManager_) {
+        if (!device || !descriptorAllocator_) {
             initializeFailed_ = true;
             return false;
         }
@@ -301,21 +300,21 @@ namespace CoreEngine
             desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
             desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
+            Microsoft::WRL::ComPtr<ID3D12Resource> buffer;
             if (FAILED(device->CreateCommittedResource(
                     &heapProps, D3D12_HEAP_FLAG_NONE, &desc,
                     D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr,
-                    IID_PPV_ARGS(&visibilityBuffer_)))) {
+                    IID_PPV_ARGS(&buffer)))) {
                 return false;
             }
-            visibilityState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+            visibilityBuffer_.Reset(std::move(buffer), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
             D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
             uavDesc.Format = DXGI_FORMAT_UNKNOWN;
             uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
             uavDesc.Buffer.NumElements = kMaxQueries;
             uavDesc.Buffer.StructureByteStride = sizeof(uint32_t);
-            descriptorManager_->CreateUAV(visibilityBuffer_.Get(), uavDesc,
-                visibilityUavCpu_, visibilityUavGpu_, "HiZOcclusionVisibility");
+            visibilityUavGpu_ = descriptorAllocator_->CreateUAV(visibilityBuffer_.Get(), uavDesc, "HiZOcclusionVisibility");
         }
 
         // フレームリング: AABB アップロード + 判定 CS 定数 + Readback
@@ -333,8 +332,7 @@ namespace CoreEngine
             srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
             srvDesc.Buffer.NumElements = kMaxQueries;
             srvDesc.Buffer.StructureByteStride = sizeof(BoundsGPU);
-            descriptorManager_->CreateSRV(boundsUpload_[i].Get(), srvDesc,
-                boundsSrvCpu_[i], boundsSrvGpu_[i], "HiZOcclusionBounds");
+            boundsSrvGpu_[i] = descriptorAllocator_->CreateSRV(boundsUpload_[i].Get(), srvDesc, "HiZOcclusionBounds");
 
             cullParamsUpload_[i] = ResourceFactory::CreateBufferResource(
                 device, sizeof(CullParamsGPU));
@@ -382,9 +380,13 @@ namespace CoreEngine
         desc.SampleDesc.Count = 1;
         desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
-        // フレーム間は全ミップ UNORDERED_ACCESS で均一化する運用
-        hiZTexture_ = ResourceFactory::CreateTextureResource(
-            device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        // フレーム間は全ミップ UNORDERED_ACCESS で均一化する運用。
+        // ミップごとに状態が変わるので subresourceCount にミップ数を渡して個別追跡させる
+        hiZTexture_.Reset(
+            ResourceFactory::CreateTextureResource(
+                device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS),
+            D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+            hiZMipCount_);
         if (!hiZTexture_) {
             return false;
         }
@@ -397,15 +399,13 @@ namespace CoreEngine
             srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
             srvDesc.Texture2D.MostDetailedMip = mip;
             srvDesc.Texture2D.MipLevels = 1;
-            descriptorManager_->CreateOrUpdateSRV(hiZTexture_.Get(), srvDesc,
-                hiZMipSrvCpu_[mip], hiZMipSrvGpu_[mip], "HiZPyramidMipSRV");
+            descriptorAllocator_->EnsureSRV(hiZMipSrvGpu_[mip], hiZTexture_.Get(), srvDesc, "HiZPyramidMipSRV");
 
             D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
             uavDesc.Format = DXGI_FORMAT_R32_FLOAT;
             uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
             uavDesc.Texture2D.MipSlice = mip;
-            descriptorManager_->CreateOrUpdateUAV(hiZTexture_.Get(), uavDesc,
-                hiZMipUavCpu_[mip], hiZMipUavGpu_[mip], "HiZPyramidMipUAV");
+            descriptorAllocator_->EnsureUAV(hiZMipUavGpu_[mip], hiZTexture_.Get(), uavDesc, "HiZPyramidMipUAV");
         }
 
         // 判定 CS 用フルチェーン SRV
@@ -416,8 +416,7 @@ namespace CoreEngine
             srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
             srvDesc.Texture2D.MostDetailedMip = 0;
             srvDesc.Texture2D.MipLevels = hiZMipCount_;
-            descriptorManager_->CreateOrUpdateSRV(hiZTexture_.Get(), srvDesc,
-                hiZFullSrvCpu_, hiZFullSrvGpu_, "HiZPyramidFullSRV");
+            descriptorAllocator_->EnsureSRV(hiZFullSrvGpu_, hiZTexture_.Get(), srvDesc, "HiZPyramidFullSRV");
         }
 
         // 構築 CS 定数を再充填（dispatch d: mip(d) を書く。d=0 のソースはフル解像度深度）
@@ -443,7 +442,7 @@ namespace CoreEngine
 
     void HiZOcclusionSystem::ExecuteCulling(
         ID3D12GraphicsCommandList* cmdList,
-        DirectXCommon* dxCommon,
+        GraphicsCore* dxCommon,
         ID3D12Resource* depthResource,
         D3D12_GPU_DESCRIPTOR_HANDLE depthSRV)
     {
@@ -454,11 +453,7 @@ namespace CoreEngine
             return;
         }
 
-        CommandManager* commandManager = dxCommon->GetCommandManager();
-        if (!commandManager) {
-            return;
-        }
-        const uint32_t frameIndex = commandManager->GetRecordingFrameIndex();
+        const uint32_t frameIndex = dxCommon->Frame().FrameIndex();
         if (frameIndex >= kFrameRing) {
             return;
         }
@@ -496,9 +491,7 @@ namespace CoreEngine
         cullParams.minRectTexels = kMinRectTexels;
         *cullParamsMapped_[frameIndex] = cullParams;
 
-        // ディスクリプタヒープはパス実行順に依存しないよう自前でバインドする（パス分離契約 2）
-        ID3D12DescriptorHeap* heaps[] = { dxCommon->GetSRVHeap() };
-        cmdList->SetDescriptorHeaps(1, heaps);
+        // SRV ヒープはフレーム先頭で CommandContext が 1 回バインドする（個別バインドは不要）
 
         // 2) Hi-Z ピラミッド構築（深度 → mip0 → … → 最終ミップ）
         BuildHiZPyramid(cmdList, depthSRV);
@@ -515,19 +508,8 @@ namespace CoreEngine
         cmdList->SetPipelineState(buildPso_.Get());
         cmdList->SetComputeRootSignature(buildRootSignatureMg_->GetRootSignature());
 
-        // ミップ単位の遷移はリソース単位追跡の ResourceBarrierHelper では扱えないため、
-        // ここで直接バリアを発行する。
         // 関数の入口で全ミップ UNORDERED_ACCESS、出口で全ミップ NON_PIXEL_SHADER_RESOURCE。
-        auto transitionMip = [&](uint32_t mip,
-            D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after) {
-            D3D12_RESOURCE_BARRIER barrier{};
-            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-            barrier.Transition.pResource = hiZTexture_.Get();
-            barrier.Transition.Subresource = mip;
-            barrier.Transition.StateBefore = before;
-            barrier.Transition.StateAfter = after;
-            cmdList->ResourceBarrier(1, &barrier);
-        };
+        // ミップ単位の遷移は GpuResource のサブリソース追跡がそのまま扱える
 
         for (uint32_t mip = 0; mip < hiZMipCount_; ++mip) {
             if (mip == 0) {
@@ -536,14 +518,13 @@ namespace CoreEngine
                     static_cast<UINT>(buildSourceIdx_), depthSRV);
             } else {
                 // 読み側の 1 段上のミップだけ SRV 状態へ。書き込み先ミップは UAV のまま
-                transitionMip(mip - 1,
-                    D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-                    D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                Barrier::Transition(cmdList, hiZTexture_,
+                    D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, mip - 1);
                 cmdList->SetComputeRootDescriptorTable(
-                    static_cast<UINT>(buildSourceIdx_), hiZMipSrvGpu_[mip - 1]);
+                    static_cast<UINT>(buildSourceIdx_), hiZMipSrvGpu_[mip - 1].gpuHandle);
             }
             cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(buildDestIdx_), hiZMipUavGpu_[mip]);
+                static_cast<UINT>(buildDestIdx_), hiZMipUavGpu_[mip].gpuHandle);
             cmdList->SetComputeRootConstantBufferView(
                 static_cast<UINT>(buildParamsIdx_),
                 buildParamsBuffer_->GetGPUVirtualAddress() + kCbSlotSize * mip);
@@ -553,29 +534,27 @@ namespace CoreEngine
             cmdList->Dispatch((mipW + 7) / 8, (mipH + 7) / 8, 1);
 
             // 次の段（および判定 CS）がこのミップを読むため書き込み完了を保証する
-            ResourceBarrierHelper::UAV(cmdList, hiZTexture_.Get());
+            Barrier::UAV(cmdList, hiZTexture_);
         }
 
         // 最終ミップも SRV 状態へ揃え、全ミップを判定 CS から読めるようにする
-        transitionMip(hiZMipCount_ - 1,
-            D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-            D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::Transition(cmdList, hiZTexture_,
+            D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, hiZMipCount_ - 1);
     }
 
     void HiZOcclusionSystem::DispatchCull(
         ID3D12GraphicsCommandList* cmdList, uint32_t frameIndex, uint32_t queryCount)
     {
-        ResourceBarrierHelper::Transition(cmdList, visibilityBuffer_.Get(),
-            visibilityState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, visibilityBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         cmdList->SetPipelineState(cullPso_.Get());
         cmdList->SetComputeRootSignature(cullRootSignatureMg_->GetRootSignature());
         cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(cullBoundsIdx_), boundsSrvGpu_[frameIndex]);
+            static_cast<UINT>(cullBoundsIdx_), boundsSrvGpu_[frameIndex].gpuHandle);
         cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(cullHiZIdx_), hiZFullSrvGpu_);
+            static_cast<UINT>(cullHiZIdx_), hiZFullSrvGpu_.gpuHandle);
         cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(cullVisibilityIdx_), visibilityUavGpu_);
+            static_cast<UINT>(cullVisibilityIdx_), visibilityUavGpu_.gpuHandle);
         cmdList->SetComputeRootConstantBufferView(
             static_cast<UINT>(cullParamsIdx_),
             cullParamsUpload_[frameIndex]->GetGPUVirtualAddress());
@@ -583,23 +562,14 @@ namespace CoreEngine
         cmdList->Dispatch((queryCount + 63) / 64, 1, 1);
 
         // 判定結果を Readback バッファへコピー（CPU は同リングインデックスの次回フレームで読む）
-        ResourceBarrierHelper::UAV(cmdList, visibilityBuffer_.Get());
-        ResourceBarrierHelper::Transition(cmdList, visibilityBuffer_.Get(),
-            visibilityState_, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        Barrier::UAV(cmdList, visibilityBuffer_);
+        Barrier::Transition(cmdList, visibilityBuffer_, D3D12_RESOURCE_STATE_COPY_SOURCE);
         cmdList->CopyBufferRegion(readback_[frameIndex].Get(), 0,
             visibilityBuffer_.Get(), 0, sizeof(uint32_t) * queryCount);
-        ResourceBarrierHelper::Transition(cmdList, visibilityBuffer_.Get(),
-            visibilityState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, visibilityBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         // Hi-Z を次フレームの構築に備えて全ミップ UNORDERED_ACCESS へ戻す
-        for (uint32_t mip = 0; mip < hiZMipCount_; ++mip) {
-            D3D12_RESOURCE_BARRIER barrier{};
-            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-            barrier.Transition.pResource = hiZTexture_.Get();
-            barrier.Transition.Subresource = mip;
-            barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-            barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-            cmdList->ResourceBarrier(1, &barrier);
-        }
+        // （全ミップ同一ステートなので ALL_SUBRESOURCES 1 本にまとまる）
+        Barrier::Transition(cmdList, hiZTexture_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     }
 }

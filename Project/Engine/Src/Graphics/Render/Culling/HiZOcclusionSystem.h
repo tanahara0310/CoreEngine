@@ -1,6 +1,8 @@
 #pragma once
 
+#include "Graphics/RHI/Resource/GpuResource.h"
 #include <d3d12.h>
+#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include <wrl.h>
 #include <array>
 #include <cstdint>
@@ -14,8 +16,8 @@
 
 namespace CoreEngine
 {
-    class DirectXCommon;
-    class DescriptorManager;
+    class GraphicsCore;
+    class DescriptorAllocator;
     class ShaderCompiler;
     class ShaderReflectionBuilder;
     class ShaderReflectionData;
@@ -39,7 +41,7 @@ namespace CoreEngine
         // ---------------------------------------------------------------
 
         /// @brief フレーム先頭で呼ぶ。完了済みフレームの可視性 Readback を反映する
-        /// @param recordingFrameIndex CommandManager::GetRecordingFrameIndex() の値
+        /// @param recordingFrameIndex 今フレームのスロット番号（FrameContext::frameIndex）
         void BeginFrame(uint32_t recordingFrameIndex);
 
         /// @brief AABB 収集と可視判定適用の有効化（メイン GameView の描画構築中のみ true にする）
@@ -70,7 +72,7 @@ namespace CoreEngine
         /// @param depthSRV 深度 SRV（NON_PIXEL_SHADER_RESOURCE 状態で渡すこと）
         void ExecuteCulling(
             ID3D12GraphicsCommandList* cmdList,
-            DirectXCommon* dxCommon,
+            GraphicsCore* dxCommon,
             ID3D12Resource* depthResource,
             D3D12_GPU_DESCRIPTOR_HANDLE depthSRV);
 
@@ -160,7 +162,7 @@ namespace CoreEngine
             BoundsGPU bounds;
         };
 
-        bool InitializeIfNeeded(DirectXCommon* dxCommon);
+        bool InitializeIfNeeded(GraphicsCore* dxCommon);
         bool BuildPipelines(ID3D12Device* device);
         bool CreateBuffers(ID3D12Device* device);
         bool EnsureHiZResources(ID3D12Device* device, uint32_t depthWidth, uint32_t depthHeight);
@@ -197,22 +199,23 @@ namespace CoreEngine
         int cullParamsIdx_ = -1;
 
         // ---- GPU リソース ----
-        DirectXCommon* dxCommon_ = nullptr;
-        DescriptorManager* descriptorManager_ = nullptr;
+        GraphicsCore* dxCommon_ = nullptr;
+        DescriptorAllocator* descriptorAllocator_ = nullptr;
 
         // Hi-Z ピラミッド（R32_FLOAT、フルミップチェーン。フレーム間は全ミップ UAV 状態で均一化）
-        Microsoft::WRL::ComPtr<ID3D12Resource> hiZTexture_;
+        /// @brief Hi-Z ピラミッド。ミップごとに状態が食い違うのでサブリソース単位で追跡する
+        GpuResource hiZTexture_;
         uint32_t hiZWidth_ = 0;   // mip0 の幅（深度の 1/2）
         uint32_t hiZHeight_ = 0;  // mip0 の高さ
         uint32_t hiZMipCount_ = 0;
         uint32_t depthWidth_ = 0; // 元深度の解像度（リサイズ検出用）
         uint32_t depthHeight_ = 0;
         std::array<D3D12_CPU_DESCRIPTOR_HANDLE, kMaxHiZMips> hiZMipSrvCpu_{};
-        std::array<D3D12_GPU_DESCRIPTOR_HANDLE, kMaxHiZMips> hiZMipSrvGpu_{};
+        std::array<DescriptorHandle, kMaxHiZMips> hiZMipSrvGpu_{};
         std::array<D3D12_CPU_DESCRIPTOR_HANDLE, kMaxHiZMips> hiZMipUavCpu_{};
-        std::array<D3D12_GPU_DESCRIPTOR_HANDLE, kMaxHiZMips> hiZMipUavGpu_{};
+        std::array<DescriptorHandle, kMaxHiZMips> hiZMipUavGpu_{};
         D3D12_CPU_DESCRIPTOR_HANDLE hiZFullSrvCpu_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE hiZFullSrvGpu_{};
+        DescriptorHandle hiZFullSrvGpu_{};
 
         // 構築 CS 定数（ミップ段ごとに 256B スロット。内容はリサイズ時のみ更新）
         Microsoft::WRL::ComPtr<ID3D12Resource> buildParamsBuffer_;
@@ -222,15 +225,14 @@ namespace CoreEngine
         std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kFrameRing> boundsUpload_;
         std::array<BoundsGPU*, kFrameRing> boundsMapped_{};
         std::array<D3D12_CPU_DESCRIPTOR_HANDLE, kFrameRing> boundsSrvCpu_{};
-        std::array<D3D12_GPU_DESCRIPTOR_HANDLE, kFrameRing> boundsSrvGpu_{};
+        std::array<DescriptorHandle, kFrameRing> boundsSrvGpu_{};
         std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kFrameRing> cullParamsUpload_;
         std::array<CullParamsGPU*, kFrameRing> cullParamsMapped_{};
 
         // 可視フラグ（Default ヒープ UAV）と Readback リング
-        Microsoft::WRL::ComPtr<ID3D12Resource> visibilityBuffer_;
-        D3D12_RESOURCE_STATES visibilityState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        GpuResource visibilityBuffer_;
         D3D12_CPU_DESCRIPTOR_HANDLE visibilityUavCpu_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE visibilityUavGpu_{};
+        DescriptorHandle visibilityUavGpu_{};
         std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kFrameRing> readback_;
         std::array<std::vector<uint32_t>, kFrameRing> ringIds_; // その回で判定した ID 列（Readback の並び）
         std::array<bool, kFrameRing> ringPending_{};

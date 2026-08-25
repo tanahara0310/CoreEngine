@@ -16,8 +16,8 @@
 #include "Math/MathCore.h"
 
 // Graphics関連
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Pipeline/PipelineStateManager.h"
 
@@ -81,10 +81,10 @@ public:
     ~ParticleSystem() override = default;
 
     /// @brief 初期化
-    /// @param dxCommon DirectXCommon
+    /// @param dxCommon GraphicsCore
     /// @param resourceFactory リソースファクトリ
     /// @param name オブジェクト名（ImGui表示用、省略可）
-    void Initialize(DirectXCommon* dxCommon, ResourceFactory* resourceFactory, const std::string& name = "");
+    void Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory, const std::string& name = "");
 
     /// @brief 更新処理（他のオブジェクトと統一）
     void Update() override;
@@ -290,7 +290,7 @@ private:
     // パーティクルシステムのコア
     // ──────────────────────────────────────────────────────────
 
-    DirectXCommon* dxCommon_ = nullptr;
+    GraphicsCore* dxCommon_ = nullptr;
     ResourceFactory* resourceFactory_ = nullptr;
 
     // パーティクルデータ

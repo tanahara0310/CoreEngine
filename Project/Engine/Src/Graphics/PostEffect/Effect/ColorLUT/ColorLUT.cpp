@@ -1,9 +1,10 @@
 #include "pch.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "ColorLUT.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/Resource/ResourceFactory.h"
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/Core/DescriptorManager.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h"
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Utility/CVar/CVar.h"
@@ -37,7 +38,7 @@ namespace CoreEngine
 
     void ColorLUT::OnCreateConstantBuffers()
     {
-        auto* device = directXCommon_->GetDevice();
+        auto* device = graphicsCore_->GetDevice();
 
         {
             const UINT size = (sizeof(ColorLUTParams) + 255) & ~255u;
@@ -65,9 +66,9 @@ namespace CoreEngine
 
     bool ColorLUT::CreateLutResources()
     {
-        auto* device = directXCommon_->GetDevice();
-        DescriptorManager* descriptorManager = directXCommon_->GetDescriptorManager();
-        if (!descriptorManager) {
+        auto* device = graphicsCore_->GetDevice();
+        DescriptorAllocator* descriptorAllocator = graphicsCore_->GetDescriptorAllocator();
+        if (!descriptorAllocator) {
             return false;
         }
 
@@ -83,12 +84,11 @@ namespace CoreEngine
         desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
         desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
-        lutTexture_ = ResourceFactory::CreateTextureResource(
-            device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        lutTexture_.Reset(ResourceFactory::CreateTextureResource(
+            device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         if (!lutTexture_) {
             return false;
         }
-        lutTextureState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
         srvDesc.Format = desc.Format;
@@ -102,8 +102,8 @@ namespace CoreEngine
         uavDesc.Texture3D.WSize = kMaxLutSize;
 
         D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle{};
-        descriptorManager->CreateSRV(lutTexture_.Get(), srvDesc, cpuHandle, lutSrvHandle_, "ColorLUT_SRV");
-        descriptorManager->CreateUAV(lutTexture_.Get(), uavDesc, cpuHandle, lutUavHandle_, "ColorLUT_UAV");
+        lutSrvHandle_ = descriptorAllocator->CreateSRV(lutTexture_.Get(), srvDesc, "ColorLUT_SRV");
+        lutUavHandle_ = descriptorAllocator->CreateUAV(lutTexture_.Get(), uavDesc, "ColorLUT_UAV");
 
         // ---- LUT データのアップロードバッファ（StructuredBuffer として CS から読む） ----
         const size_t maxTexels = static_cast<size_t>(kMaxLutSize) * kMaxLutSize * kMaxLutSize;
@@ -119,20 +119,19 @@ namespace CoreEngine
         bufferSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
         bufferSrvDesc.Buffer.NumElements = static_cast<UINT>(maxTexels);
         bufferSrvDesc.Buffer.StructureByteStride = sizeof(LutTexel);
-        descriptorManager->CreateSRV(lutDataBuffer_.Get(), bufferSrvDesc, cpuHandle, lutDataSrvHandle_, "ColorLUT_DataSRV");
+        lutDataSrvHandle_ = descriptorAllocator->CreateSRV(lutDataBuffer_.Get(), bufferSrvDesc, "ColorLUT_DataSRV");
 
         return true;
     }
 
     bool ColorLUT::CreateFillPipeline()
     {
-        auto* device = directXCommon_->GetDevice();
+        auto* device = graphicsCore_->GetDevice();
 
-        ShaderCompiler shaderCompiler;
-        shaderCompiler.Initialize();
-
-        ShaderReflectionBuilder reflectionBuilder;
-        reflectionBuilder.Initialize(shaderCompiler.GetDxcUtils());
+        // DXC とリフレクションビルダーはエンジン共有のキャッシュのものを使う。
+        // ローカルに作ると DXC がエフェクトの数だけ生成される（Phase 3 で撤去）
+        ShaderCompiler& shaderCompiler = shaderProgramCache_->GetCompiler();
+        ShaderReflectionBuilder& reflectionBuilder = shaderProgramCache_->GetReflectionBuilder();
 
         const bool built = fillPipeline_.Build(device, shaderCompiler, reflectionBuilder, fillProvider_);
         if (!built || !fillPipeline_.HasComputePSO()) {
@@ -278,17 +277,8 @@ namespace CoreEngine
 
         mappedFillParams_->lutSize = lutSizeLoaded_;
 
-        // SRV 状態のままなら UAV へ戻す（初回は生成時から UAV）
-        if (lutTextureState_ != D3D12_RESOURCE_STATE_UNORDERED_ACCESS) {
-            D3D12_RESOURCE_BARRIER barrier{};
-            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-            barrier.Transition.pResource = lutTexture_.Get();
-            barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-            barrier.Transition.StateBefore = lutTextureState_;
-            barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-            cmdList->ResourceBarrier(1, &barrier);
-            lutTextureState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        }
+        // SRV 状態のままなら UAV へ戻す（初回は生成時から UAV。冗長なら発行されない）
+        Barrier::Transition(cmdList, lutTexture_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         cmdList->SetComputeRootSignature(fillPipeline_.GetComputeRootSignature());
         cmdList->SetPipelineState(fillPipeline_.GetComputePSO());
@@ -296,27 +286,19 @@ namespace CoreEngine
         const int dataIdx   = fillPipeline_.GetComputeRootParamIndex("gLutData");
         const int outputIdx = fillPipeline_.GetComputeRootParamIndex("gLutTexture");
         const int paramsIdx = fillPipeline_.GetComputeRootParamIndex("FillParams");
-        if (dataIdx >= 0)   cmdList->SetComputeRootDescriptorTable(dataIdx, lutDataSrvHandle_);
-        if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, lutUavHandle_);
+        if (dataIdx >= 0)   cmdList->SetComputeRootDescriptorTable(dataIdx, lutDataSrvHandle_.gpuHandle);
+        if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, lutUavHandle_.gpuHandle);
         if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, fillParamsCB_->GetGPUVirtualAddress());
 
         const uint32_t groups = (lutSizeLoaded_ + 3) / 4;
         cmdList->Dispatch(groups, groups, groups);
 
-        // 書き込み完了 → SRV で読める状態へ
-        D3D12_RESOURCE_BARRIER uavBarrier{};
-        uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-        uavBarrier.UAV.pResource = lutTexture_.Get();
-        cmdList->ResourceBarrier(1, &uavBarrier);
-
-        D3D12_RESOURCE_BARRIER toSrv{};
-        toSrv.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        toSrv.Transition.pResource = lutTexture_.Get();
-        toSrv.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-        toSrv.Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        toSrv.Transition.StateAfter = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-        cmdList->ResourceBarrier(1, &toSrv);
-        lutTextureState_ = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+        // 書き込み完了 → SRV で読める状態へ（UAV バリアと遷移を 1 回にまとめる）
+        {
+            BarrierBatch batch(cmdList);
+            batch.UAV(lutTexture_);
+            batch.Transition(lutTexture_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        }
 
         lutDirty_ = false;
     }
@@ -336,7 +318,7 @@ namespace CoreEngine
         mappedColorLutParams_->lutSize      = lutSizeLoaded_;
         mappedColorLutParams_->blend        = cvBlend.Get();
 
-        auto* cmdList = directXCommon_->GetCommandList();
+        auto* cmdList = graphicsCore_->GetCommandList();
 
         // LUT の差し替え直後だけ Texture3D への書き込みが走る
         RecordFillIfDirty(cmdList);
@@ -350,7 +332,7 @@ namespace CoreEngine
         const int paramsIdx  = GetRootParamIndex("ColorLUTParams");
 
         if (textureIdx >= 0) cmdList->SetComputeRootDescriptorTable(textureIdx, inputSrvHandle);
-        if (lutIdx >= 0)     cmdList->SetComputeRootDescriptorTable(lutIdx, lutSrvHandle_);
+        if (lutIdx >= 0)     cmdList->SetComputeRootDescriptorTable(lutIdx, lutSrvHandle_.gpuHandle);
         if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
         if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, colorLutParamsCB_->GetGPUVirtualAddress());
 

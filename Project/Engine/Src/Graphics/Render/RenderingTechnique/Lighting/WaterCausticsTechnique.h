@@ -62,7 +62,7 @@ namespace CoreEngine
 		WaterCausticsTechnique() = default;
 		~WaterCausticsTechnique() override = default;
 
-		void Initialize(DirectXCommon* dxCommon) override;
+		void Initialize(GraphicsCore* dxCommon) override;
 		void Execute(const RenderContext& context, D3D12_GPU_DESCRIPTOR_HANDLE& outputSrvHandle) override;
 		void DrawImGui() override;
 

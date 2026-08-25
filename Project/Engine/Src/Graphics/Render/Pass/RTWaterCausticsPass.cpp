@@ -2,7 +2,7 @@
 #include "RTWaterCausticsPass.h"
 
 #include "EngineSystem/Subsystem/RayTracingSubsystem.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Graphics/Render/RenderingTechnique/Lighting/WaterCausticsTechnique.h"
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueManager.h"
@@ -102,13 +102,10 @@ namespace CoreEngine
 
         if (context.frameBlackboard) {
             D3D12_GPU_DESCRIPTOR_HANDLE handle = context.rtWaterCausticsManager->GetCausticsSRVHandle(viewId);
-            ID3D12Resource* resource = context.rtWaterCausticsManager->GetCausticsResource(viewId);
-            D3D12_RESOURCE_STATES& currentState = context.rtWaterCausticsManager->GetCausticsCurrentState(viewId);
             context.frameBlackboard->SetResource(
                 FrameBlackboard::RTWaterCaustics,
                 handle,
-                resource,
-                &currentState);
+                &context.rtWaterCausticsManager->GetCausticsResource(viewId));
         }
     }
 }

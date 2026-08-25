@@ -1,14 +1,16 @@
 #pragma once
 
 #include <d3d12.h>
+#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
+#include "Graphics/RHI/Resource/GpuResource.h"
 #include <wrl.h>
 #include <cstdint>
 #include <string>
 
 namespace CoreEngine
 {
-    class DirectXCommon;
-    class DescriptorManager;
+    class GraphicsCore;
+    class DescriptorAllocator;
 
     /// @brief DXR パスが使う UAV/SRV 出力テクスチャをスロット単位でまとめて管理するクラス
     /// @details EnsureTexture() はサイズ・フォーマット変更時のみ再確保し、UAV/SRV を作り直す。
@@ -37,8 +39,8 @@ namespace CoreEngine
         /// @param debugName   ディスクリプタのデバッグ名の接頭辞（"_UAV" / "_SRV" が付く）
         /// @return 確保に成功した場合 true
         bool EnsureTexture(
-            DirectXCommon* dxCommon,
-            DescriptorManager* descriptorManager,
+            GraphicsCore* dxCommon,
+            DescriptorAllocator* descriptorAllocator,
             UINT width,
             UINT height,
             uint32_t slotIndex,
@@ -46,11 +48,12 @@ namespace CoreEngine
             const std::string& debugName,
             const TextureOptions& options);
 
-        D3D12_GPU_DESCRIPTOR_HANDLE GetSRVHandle(uint32_t slotIndex) const { return slots_[slotIndex].srvHandle; }
-        D3D12_GPU_DESCRIPTOR_HANDLE GetUAVHandle(uint32_t slotIndex) const { return slots_[slotIndex].uavHandle; }
+        D3D12_GPU_DESCRIPTOR_HANDLE GetSRVHandle(uint32_t slotIndex) const { return slots_[slotIndex].srvHandle.gpuHandle; }
+        D3D12_GPU_DESCRIPTOR_HANDLE GetUAVHandle(uint32_t slotIndex) const { return slots_[slotIndex].uavHandle.gpuHandle; }
         ID3D12Resource* GetResource(uint32_t slotIndex) const { return slots_[slotIndex].texture.Get(); }
-        D3D12_RESOURCE_STATES& GetCurrentState(uint32_t slotIndex) { return slots_[slotIndex].currentState; }
-        bool HasTexture(uint32_t slotIndex) const { return slots_[slotIndex].texture != nullptr; }
+        /// @brief スロットをステート追跡つきで返す（バリア発行はこれを渡す）
+        GpuResource& Resource(uint32_t slotIndex) { return slots_[slotIndex].texture; }
+        bool HasTexture(uint32_t slotIndex) const { return slots_[slotIndex].texture.IsValid(); }
         UINT GetWidth(uint32_t slotIndex) const { return slots_[slotIndex].width; }
         UINT GetHeight(uint32_t slotIndex) const { return slots_[slotIndex].height; }
 
@@ -59,17 +62,14 @@ namespace CoreEngine
         void ReleaseIfSizeMismatch(UINT width, UINT height, uint32_t slotIndex);
 
     private:
-        /// @brief 出力テクスチャ 1 枚分（実体・UAV/SRV・寸法・現在ステート）
+        /// @brief 出力テクスチャ 1 枚分（実体＋現在ステート・UAV/SRV・寸法）
         struct Slot {
-            Microsoft::WRL::ComPtr<ID3D12Resource> texture;
-            D3D12_GPU_DESCRIPTOR_HANDLE uavHandle{};
-            D3D12_CPU_DESCRIPTOR_HANDLE uavCpuHandle{};
-            D3D12_GPU_DESCRIPTOR_HANDLE srvHandle{};
-            D3D12_CPU_DESCRIPTOR_HANDLE srvCpuHandle{};
+            GpuResource texture;
+            DescriptorHandle uavHandle{};
+            DescriptorHandle srvHandle{};
             UINT width = 0;
             UINT height = 0;
             DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
-            D3D12_RESOURCE_STATES currentState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
         };
 
         Slot slots_[kMaxSlotCount]{};

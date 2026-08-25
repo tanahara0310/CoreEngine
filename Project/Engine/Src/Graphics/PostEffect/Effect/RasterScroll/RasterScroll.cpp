@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "RasterScroll.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/Resource/ResourceFactory.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/CVar/CVar.h"
 #ifdef USE_IMGUI
 #include "Editor/ImGui/CVarPanel.h"
@@ -50,7 +50,7 @@ namespace CoreEngine
     void RasterScroll::OnCreateConstantBuffers()
     {
         UINT rsSize = (sizeof(RasterScrollParams) + 255) & ~255;
-        rasterScrollParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), rsSize);
+        rasterScrollParamsCB_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), rsSize);
         [[maybe_unused]] HRESULT hr = rasterScrollParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedRasterScrollParams_));
         assert(SUCCEEDED(hr));
         UpdateConstantBuffer();
@@ -87,7 +87,7 @@ namespace CoreEngine
         UpdateConstantBuffer();
         UpdateScreenSizeConstants(width, height);
 
-        auto* cmdList = directXCommon_->GetCommandList();
+        auto* cmdList = graphicsCore_->GetCommandList();
         cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
         cmdList->SetPipelineState(computePso_.Get());
 

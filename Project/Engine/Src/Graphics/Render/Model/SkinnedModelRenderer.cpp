@@ -4,7 +4,7 @@
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/Model/TransformationMatrix.h"
 #include "Graphics/Material/MaterialConstants.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include <cassert>
 #include <cstring>
@@ -35,7 +35,7 @@ namespace CoreEngine
         gBufferReflectionData_ = reflectionBuilder_->BuildFromShaders(gBufferVertexShaderBlob, gBufferPixelShaderBlob, "SkinnedModelRenderer_GBuffer");
 
         // RootSignature 構成: CBV は高速な Root Descriptor、SRV は Descriptor Table
-        RootSignatureConfig config = RootSignatureConfig::PerformanceOptimized();
+        RootSignatureConfig config;
         config.SetDefaultCBVStrategy(BindingStrategy::RootDescriptor);
         config.SetDefaultSRVStrategy(BindingStrategy::DescriptorTable);
         config.ConfigureSampler("gShadowSampler", SamplerConfig::Shadow());
@@ -101,6 +101,7 @@ namespace CoreEngine
         std::memcpy(mapped, &defaults, sizeof(defaults));
         iblParamsBuffer_->Unmap(0, nullptr);
 
-        CacheRootParamIndices();
+        ResolveBindings(ModelBind::kSkinnedForward, ModelBind::kSkinnedGBuffer,
+            ModelBind::Slot::Count, "SkinnedModelRenderer");
     }
 }

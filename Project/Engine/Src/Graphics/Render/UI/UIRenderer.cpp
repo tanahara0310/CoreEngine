@@ -21,7 +21,7 @@ namespace CoreEngine
         reflectionData_ = reflectionBuilder_->BuildFromShaders(vertexShaderBlob, pixelShaderBlob, "UIRenderer");
 
         // SpriteRenderer と同じシンプル構成
-        RootSignatureConfig config = RootSignatureConfig::Simple();
+        RootSignatureConfig config;
 
         // UI はテキスト等で滑らかさが欲しいので Linear サンプラー
         config.ConfigureSampler("gSampler", SamplerConfig::Linear());
@@ -53,7 +53,7 @@ namespace CoreEngine
         return reflectionData_->GetRootParameterIndexByName(resourceName);
     }
 
-    void UIRenderer::Initialize(DirectXCommon* dxCommon, ResourceFactory* resourceFactory) {
+    void UIRenderer::Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory) {
         dxCommon_ = dxCommon;
         resourceFactory_ = resourceFactory;
 
@@ -84,7 +84,9 @@ namespace CoreEngine
     }
 
     void UIRenderer::BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMode blendMode) {
-        UINT frameIndex = dxCommon_->GetSwapChain()->GetCurrentBackBufferIndex();
+        // per-frame リソースの添字は FrameSync のスロット番号を使う
+        // （スワップチェーンのインデックスは ResizeBuffers で 0 に戻るため使わない）
+        UINT frameIndex = dxCommon_->Frame().FrameIndex();
 
         // フレーム切り替え時のみバッファインデックスをリセット
         if (frameIndex != currentFrameIndex_) {

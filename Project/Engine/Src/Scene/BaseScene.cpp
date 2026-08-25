@@ -6,11 +6,11 @@
 #include "Camera/Debug/DebugCameraCVars.h"
 #include "Editor/Camera/EditorCameraInput.h"
 #include "Utility/FrameRate/FrameRateController.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Particle/ParticleSystem.h"
 #include "Particle/Gpu/GpuParticleSystem.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Scene/SceneManager.h"
 #include "Scene/Feature/LightingFeature.h"
 #include "Scene/Feature/EnvironmentFeature.h"
@@ -27,11 +27,11 @@ namespace CoreEngine
 {
     IParticleSystem* BaseScene::CreateParticleSystem(ParticleBackend backend, const std::string& name)
     {
-        auto dxCommon = engine_->GetService<DirectXCommon>();
+        auto dxCommon = engine_->GetService<GraphicsCore>();
         auto resourceFactory = engine_->GetService<ResourceFactory>();
         if (!dxCommon || !resourceFactory) {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::General,
-                "BaseScene::CreateParticleSystem: DirectXCommon / ResourceFactory が未登録のため生成できません");
+                "BaseScene::CreateParticleSystem: GraphicsCore / ResourceFactory が未登録のため生成できません");
             return nullptr;
         }
 
@@ -137,7 +137,7 @@ namespace CoreEngine
     void BaseScene::Draw()
     {
         auto* renderManager = engine_->GetService<RenderManager>();
-        auto* dxCommon = engine_->GetService<DirectXCommon>();
+        auto* dxCommon = engine_->GetService<GraphicsCore>();
         if (!renderManager || !dxCommon) {
             return;
         }
@@ -282,7 +282,7 @@ namespace CoreEngine
 
     void BaseScene::SetupCamera()
     {
-        auto dxCommon = engine_->GetService<DirectXCommon>();
+        auto dxCommon = engine_->GetService<GraphicsCore>();
         if (!dxCommon) {
             return;
         }

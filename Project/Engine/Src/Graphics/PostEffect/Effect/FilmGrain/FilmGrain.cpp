@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "FilmGrain.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/Resource/ResourceFactory.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/CVar/CVar.h"
 #ifdef USE_IMGUI
 #include "Editor/ImGui/CVarPanel.h"
@@ -65,7 +65,7 @@ namespace CoreEngine
     void FilmGrain::OnCreateConstantBuffers()
     {
         UINT size = (sizeof(FilmGrainParams) + 255) & ~255;
-        filmGrainParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), size);
+        filmGrainParamsCB_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), size);
         [[maybe_unused]] HRESULT hr =
             filmGrainParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedFilmGrainParams_));
         assert(SUCCEEDED(hr));
@@ -105,7 +105,7 @@ namespace CoreEngine
         UpdateConstantBuffer();
         UpdateScreenSizeConstants(width, height);
 
-        auto* cmdList = directXCommon_->GetCommandList();
+        auto* cmdList = graphicsCore_->GetCommandList();
         cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
         cmdList->SetPipelineState(computePso_.Get());
 

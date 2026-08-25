@@ -6,11 +6,13 @@
 #include "Threading/ThreadPool.h"
 
 #include "Utility/Logger/Logger.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/GraphicsCoreDesc.h"
 #include "Graphics/Render/RenderDomainContext.h"
+#include "Graphics/Render/RenderTarget/SceneDepth.h"
 #include "Graphics/Render/Culling/HiZOcclusionSystem.h"
 #include "Graphics/Texture/TextureManager.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Render/Render.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/Model/ModelRenderer.h"
@@ -31,6 +33,7 @@
 #include "Graphics/IBL/IBLGenerator.h"
 #include "Graphics/IBL/IBLSystem.h"
 #include "Graphics/Shader/ShaderCompiler.h"
+#include "Graphics/Shader/ShaderProgram.h"
 
 #include <memory>
 
@@ -39,13 +42,15 @@ namespace CoreEngine
     /// @brief ステップ間で受け渡す中間ポインタ
     /// @note 所有権は EngineSystem 側（RegisterComponent 済み）。ここが持つのは生ポインタだけ。
     struct GraphicsSetupState {
-        DirectXCommon* dx = nullptr;
+        GraphicsCore* dx = nullptr;
         ResourceFactory* resourceFactory = nullptr;
         Render* render = nullptr;
         RenderManager* renderManager = nullptr;
         LineRendererPipeline* lineRenderer = nullptr;
         IBLGenerator* iblGenerator = nullptr;
         ShaderCompiler* shaderCompiler = nullptr;
+        /// @brief シェーダーのコンパイルとリフレクションを一元化するキャッシュ
+        ShaderProgramCache* shaderProgramCache = nullptr;
 
         // フォワード受影用 RT シャドウマスクの初期値（white1x1 = 影なし）
         D3D12_GPU_DESCRIPTOR_HANDLE whiteFallback{};
@@ -63,10 +68,31 @@ namespace CoreEngine
         // デバイスとフレーム基盤
         // ──────────────────────────────────────────────────────────
         sequence.Add("DirectX12 デバイス", [enginePtr, state, config] {
-            auto directXCommon = std::make_unique<DirectXCommon>();
-            directXCommon->Initialize(enginePtr->GetWinApp(), config);
-            state->dx = directXCommon.get();
-            enginePtr->RegisterComponent(std::move(directXCommon));
+            WinApp* winApp = enginePtr->GetWinApp();
+
+            // 基盤層は WinApp / EngineConfig を知らない。必要な値だけをここで詰めて渡す
+            GraphicsCoreDesc desc{};
+            desc.hwnd = winApp->GetHwnd();
+            desc.clientWidth = winApp->GetClientWidth();
+            desc.clientHeight = winApp->GetClientHeight();
+            desc.enableDebugLayer = config.enableDebugLayer;
+            desc.enableGPUBasedValidation = config.enableGPUBasedValidation;
+            desc.enableDRED = config.enableDRED;
+            desc.framesInFlight = config.frameCount;
+            desc.maxSRVDescriptors = config.maxSRVDescriptors;
+            desc.maxRTVDescriptors = config.maxRTVDescriptors;
+            desc.maxDSVDescriptors = config.maxDSVDescriptors;
+
+            auto graphicsCore = std::make_unique<GraphicsCore>();
+            graphicsCore->Initialize(desc);
+            state->dx = graphicsCore.get();
+
+            // ウィンドウリサイズ → 基盤の再作成。配線は上位（ここ）の責務
+            winApp->SetResizeCallback([dx = state->dx](int32_t width, int32_t height) {
+                dx->OnWindowResize(width, height);
+            });
+
+            enginePtr->RegisterComponent(std::move(graphicsCore));
         });
 
         // ──────────────────────────────────────────────────────────
@@ -101,14 +127,22 @@ namespace CoreEngine
     {
         EngineSystem* enginePtr = &engine;
 
+        sequence.Add("シェーダープログラムキャッシュ", [enginePtr, state] {
+            // DXC（IDxcUtils / IDxcCompiler3）はここで 1 回だけ作る
+            auto cache = std::make_unique<ShaderProgramCache>();
+            cache->Initialize();
+            state->shaderProgramCache = cache.get();
+            enginePtr->RegisterComponent(std::move(cache));
+        });
+
         sequence.Add("レンダードメイン（GBuffer / シャドウ / RT）", [enginePtr, state] {
             enginePtr->renderDomainContext_ = std::make_unique<RenderDomainContext>();
+            // RenderDomainContext は自分で RegisterResizable / UnregisterResizable する
             enginePtr->renderDomainContext_->Initialize(
                 state->dx,
                 enginePtr->GetWinApp()->GetClientWidth(),
-                enginePtr->GetWinApp()->GetClientHeight());
-
-            state->dx->RegisterResizable(enginePtr->renderDomainContext_.get());
+                enginePtr->GetWinApp()->GetClientHeight(),
+                state->shaderProgramCache);
 
             // Hi-Z オクルージョンカリングシステムの作成
             //（GPU リソースは初回 ExecuteCulling で遅延生成。
@@ -117,13 +151,12 @@ namespace CoreEngine
         });
 
         sequence.Add("Render（RTV / DSV）", [enginePtr, state] {
-            // Render の作成と初期化（DSV ヒープが必要）
+            // Render の作成と初期化（オフスクリーンターゲットが共有するシーン深度が必要）。
+            // Render は自分で RegisterResizable / UnregisterResizable する
             auto render = std::make_unique<Render>();
-            render->Initialize(state->dx, state->dx->GetDSVHeap());
+            render->Initialize(state->dx, enginePtr->renderDomainContext_->GetSceneDepth());
             state->render = render.get();
             enginePtr->RegisterComponent(std::move(render));
-
-            state->dx->RegisterResizable(state->render);
         });
 
         // ──────────────────────────────────────────────────────────
@@ -203,14 +236,17 @@ namespace CoreEngine
         // ──────────────────────────────────────────────────────────
         sequence.Add("ポストエフェクト", [enginePtr, state] {
             auto postEffectManager = std::make_unique<PostEffectManager>();
-            postEffectManager->Initialize(state->dx, state->render);
+            postEffectManager->Initialize(state->dx, state->render, state->shaderProgramCache);
             enginePtr->RegisterComponent(std::move(postEffectManager));
         });
 
         sequence.Add("レンダリング技術", [enginePtr, state] {
             auto renderingTechniqueManager = std::make_unique<RenderingTechniqueManager>();
-            renderingTechniqueManager->Initialize(state->dx);
+            renderingTechniqueManager->Initialize(state->dx, state->shaderProgramCache);
             enginePtr->RegisterComponent(std::move(renderingTechniqueManager));
+
+            // ポストエフェクトとレンダリング技術を作り終えた時点での効き具合を残す
+            state->shaderProgramCache->LogSummary();
         });
 
         sequence.Add("モデル描画コンテキスト", [enginePtr, state] {

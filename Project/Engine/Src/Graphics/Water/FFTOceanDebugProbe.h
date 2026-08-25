@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Graphics/RHI/Resource/GpuResource.h"
+
 #include "Graphics/Water/FFTOceanSpectrumBuilder.h"
 
 #include <cstdint>
@@ -37,10 +39,8 @@ namespace CoreEngine
         /// @details コピー後、両テクスチャは UNORDERED_ACCESS へ戻す（時間発展直後の状態を維持）
         void ScheduleEvolutionReadback(
             ID3D12GraphicsCommandList* cmdList,
-            ID3D12Resource* spectrumA,
-            D3D12_RESOURCE_STATES& spectrumAState,
-            ID3D12Resource* spectrumB,
-            D3D12_RESOURCE_STATES& spectrumBState);
+            GpuResource& spectrumA,
+            GpuResource& spectrumB);
 
         /// @brief カスケード0の IFFT 完了後: 完了ログと IFFT 結果のリードバックを 120 フレームごとに積む
         /// @details コピー後、両テクスチャは NON_PIXEL_SHADER_RESOURCE へ戻す（Finalize が読むため）
@@ -50,19 +50,15 @@ namespace CoreEngine
             uint32_t finalSpectrumBIndex,
             uint32_t resolution,
             uint32_t log2Resolution,
-            ID3D12Resource* spectrumA,
-            D3D12_RESOURCE_STATES& spectrumAState,
-            ID3D12Resource* spectrumB,
-            D3D12_RESOURCE_STATES& spectrumBState);
+            GpuResource& spectrumA,
+            GpuResource& spectrumB);
 
         /// @brief フレーム末尾: 最終出力（変位/法線）のリードバックを 120 フレームごとに積む
         /// @details コピー後、両テクスチャは NON_PIXEL_SHADER_RESOURCE へ戻す
         void ScheduleSurfaceReadback(
             ID3D12GraphicsCommandList* cmdList,
-            ID3D12Resource* displacement,
-            D3D12_RESOURCE_STATES& displacementState,
-            ID3D12Resource* normal,
-            D3D12_RESOURCE_STATES& normalState);
+            GpuResource& displacement,
+            GpuResource& normal);
 
     private:
         /// @brief 1 本分のリードバック先（バッファ＋レイアウト＋ペア管理）

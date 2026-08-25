@@ -2,9 +2,30 @@
 #include "WaterShaderResourceBinder.h"
 
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
+#include "Graphics/RootSignature/ShaderBinder.h"
+#include "Graphics/Water/Surface/WaterBindings.h"
 
 namespace CoreEngine
 {
+
+void WaterShaderResourceBinder::EnsureResolved(const CustomShaderPipeline* pipeline)
+{
+    const void* rs = pipeline->GetForwardRootSignature();
+    if (rs == resolvedRootSignature_) {
+        return;
+    }
+
+    const ShaderReflectionData* reflection = pipeline->GetForwardReflection();
+    if (!reflection) {
+        return;
+    }
+
+    // 水面固有リソースだけの契約。カメラ・ライト・IBL はエンジン側（ModelBind::kCustom）が
+    // 持つので、宣言外のリソースがあっても警告しない。
+    table_ = BindingTable::Resolve(
+        *reflection, WaterBind::kDecls, "WaterSurface", /*warnUndeclared=*/false);
+    resolvedRootSignature_ = rs;
+}
 
 void WaterShaderResourceBinder::Bind(
     ID3D12GraphicsCommandList* cmdList,
@@ -16,144 +37,60 @@ void WaterShaderResourceBinder::Bind(
         return;
     }
 
-    // WaterConstants を b4 にバインドする
-    const int waterConstantsSlot = pipeline->GetRootParamIndex("WaterConstants");
-    if (waterConstantsSlot >= 0) {
-        cmdList->SetGraphicsRootConstantBufferView(
-            static_cast<UINT>(waterConstantsSlot),
-            waterCBGpuAddress);
-    }
+    EnsureResolved(pipeline);
 
-    // WaterFrameConstants を b5 にバインドする
-    const int frameConstantsSlot = pipeline->GetRootParamIndex("WaterFrameConstants");
-    if (frameConstantsSlot >= 0) {
-        cmdList->SetGraphicsRootConstantBufferView(
-            static_cast<UINT>(frameConstantsSlot),
-            frameCBGpuAddress);
-    }
+    ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Graphics);
 
-    // 反射テクスチャ SRV をバインドする
+    // 水面本体の定数バッファ
+    binder.Set(table_[WaterBind::WaterConstants], waterCBGpuAddress);
+    binder.Set(table_[WaterBind::WaterFrameConstants], frameCBGpuAddress);
+
+    // 反射 / シーン深度 / シーンカラー / レイトレ屈折カラー
     if (renderResources.HasReflectionTexture()) {
-        const int reflectionSlot = pipeline->GetRootParamIndex("gReflectionTexture");
-        if (reflectionSlot >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(
-                static_cast<UINT>(reflectionSlot),
-                renderResources.reflectionSRV);
-        }
+        binder.Set(table_[WaterBind::gReflectionTexture], renderResources.reflectionSRV);
     }
-
-    // シーン深度 SRV をバインドする
     if (renderResources.HasSceneDepth()) {
-        const int sceneDepthSlot = pipeline->GetRootParamIndex("gSceneDepth");
-        if (sceneDepthSlot >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(
-                static_cast<UINT>(sceneDepthSlot),
-                renderResources.sceneDepthSRV);
-        }
+        binder.Set(table_[WaterBind::gSceneDepth], renderResources.sceneDepthSRV);
     }
-
-    // シーンカラー SRV をバインドする
     if (renderResources.HasSceneColor()) {
-        const int sceneColorSlot = pipeline->GetRootParamIndex("gSceneColor");
-        if (sceneColorSlot >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(
-                static_cast<UINT>(sceneColorSlot),
-                renderResources.sceneColorSRV);
-        }
+        binder.Set(table_[WaterBind::gSceneColor], renderResources.sceneColorSRV);
     }
-
-    // レイトレーシング屈折カラー SRV をバインドする
     if (renderResources.HasRefractionColor()) {
-        const int refractionColorSlot = pipeline->GetRootParamIndex("gRTWaterRefractionColor");
-        if (refractionColorSlot >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(
-                static_cast<UINT>(refractionColorSlot),
-                renderResources.refractionColorSRV);
-        }
+        binder.Set(table_[WaterBind::gRTWaterRefractionColor], renderResources.refractionColorSRV);
     }
 
-    // FFT Ocean のテクスチャ群をバインドする
+    // FFT Ocean のテクスチャ群（FFT を使わないシェーダーでは未解決スロットなので no-op）
     if (renderResources.fftDisplacementSRV.ptr != 0) {
-        const int fftDisplacementSlot = pipeline->GetRootParamIndex("gFFTOceanDisplacement");
-        if (fftDisplacementSlot >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(
-                static_cast<UINT>(fftDisplacementSlot),
-                renderResources.fftDisplacementSRV);
-        }
+        binder.Set(table_[WaterBind::gFFTOceanDisplacement], renderResources.fftDisplacementSRV);
     }
-
     if (renderResources.fftNormalSRV.ptr != 0) {
-        const int fftNormalSlot = pipeline->GetRootParamIndex("gFFTOceanNormal");
-        if (fftNormalSlot >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(
-                static_cast<UINT>(fftNormalSlot),
-                renderResources.fftNormalSRV);
-        }
+        binder.Set(table_[WaterBind::gFFTOceanNormal], renderResources.fftNormalSRV);
     }
-
     if (renderResources.fftJacobianSRV.ptr != 0) {
-        const int fftJacobianSlot = pipeline->GetRootParamIndex("gFFTOceanJacobian");
-        if (fftJacobianSlot >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(
-                static_cast<UINT>(fftJacobianSlot),
-                renderResources.fftJacobianSRV);
-        }
+        binder.Set(table_[WaterBind::gFFTOceanJacobian], renderResources.fftJacobianSRV);
     }
-
     if (renderResources.fftFoamSRV.ptr != 0) {
-        const int fftFoamSlot = pipeline->GetRootParamIndex("gFFTOceanFoam");
-        if (fftFoamSlot >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(
-                static_cast<UINT>(fftFoamSlot),
-                renderResources.fftFoamSRV);
-        }
+        binder.Set(table_[WaterBind::gFFTOceanFoam], renderResources.fftFoamSRV);
     }
 
-    // 大気散乱（Aerial Perspective）のリソース群をバインドする
+    // 大気散乱（Aerial Perspective）
     // （未接続のフレームはシェーダー側フラグ gAerialPerspectiveEnabled=0 で参照されない）
     if (renderResources.HasAtmosphere()) {
-        const int atmosphereSlot = pipeline->GetRootParamIndex("gAtmosphereAP");
-        if (atmosphereSlot >= 0) {
-            cmdList->SetGraphicsRootConstantBufferView(
-                static_cast<UINT>(atmosphereSlot),
-                renderResources.atmosphereCB);
-        }
-
-        const int cameraVolumeSlot = pipeline->GetRootParamIndex("gCameraVolumeLUT");
-        if (cameraVolumeSlot >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(
-                static_cast<UINT>(cameraVolumeSlot),
-                renderResources.cameraVolumeSRV);
-        }
-
-        const int skyViewSlot = pipeline->GetRootParamIndex("gSkyViewLUTAP");
-        if (skyViewSlot >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(
-                static_cast<UINT>(skyViewSlot),
-                renderResources.skyViewSRV);
-        }
+        binder.Set(table_[WaterBind::gAtmosphereAP], renderResources.atmosphereCB);
+        binder.Set(table_[WaterBind::gCameraVolumeLUT], renderResources.cameraVolumeSRV);
+        binder.Set(table_[WaterBind::gSkyViewLUTAP], renderResources.skyViewSRV);
     }
 
-    // 空アンビエント SH（水中インスキャッタの天空光）をバインドする
+    // 空アンビエント SH（水中インスキャッタの天空光）
     // （未接続のフレームはシェーダー側フラグ gSkyAmbientEnabled=0 で参照されない）
     if (renderResources.skyIrradianceSRV.ptr != 0) {
-        const int skyIrradianceSlot = pipeline->GetRootParamIndex("gWaterSkyIrradianceSH");
-        if (skyIrradianceSlot >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(
-                static_cast<UINT>(skyIrradianceSlot),
-                renderResources.skyIrradianceSRV);
-        }
+        binder.Set(table_[WaterBind::gWaterSkyIrradianceSH], renderResources.skyIrradianceSRV);
     }
 
-    // 空スペキュラキューブマップ（平面反射への雲合成）をバインドする
+    // 空スペキュラキューブマップ（平面反射への雲合成）
     // （未接続のフレームはシェーダー側フラグ gSkyEnvReflectionEnabled=0 で参照されない）
     if (renderResources.skyEnvironmentSRV.ptr != 0) {
-        const int skyEnvSlot = pipeline->GetRootParamIndex("gSkyEnvironmentMap");
-        if (skyEnvSlot >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(
-                static_cast<UINT>(skyEnvSlot),
-                renderResources.skyEnvironmentSRV);
-        }
+        binder.Set(table_[WaterBind::gSkyEnvironmentMap], renderResources.skyEnvironmentSRV);
     }
 }
 }

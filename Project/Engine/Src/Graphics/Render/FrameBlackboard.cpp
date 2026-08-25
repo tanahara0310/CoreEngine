@@ -37,7 +37,6 @@ namespace CoreEngine
     {
         srvHandle = {};
         resource = nullptr;
-        currentState = nullptr;
         isValid = false;
     }
 
@@ -49,15 +48,13 @@ namespace CoreEngine
     void FrameBlackboard::SetResource(
         const std::string& name,
         D3D12_GPU_DESCRIPTOR_HANDLE srvHandle,
-        ID3D12Resource* resource,
-        D3D12_RESOURCE_STATES* currentState)
+        GpuResource* resource)
     {
         FrameBlackboardResource& entry = resources_[name];
         entry.name = name;
         entry.srvHandle = srvHandle;
         entry.resource = resource;
-        entry.currentState = currentState;
-        entry.isValid = (srvHandle.ptr != 0) || (resource != nullptr);
+        entry.isValid = (srvHandle.ptr != 0) || (resource != nullptr && resource->IsValid());
     }
 
     void FrameBlackboard::InvalidateResource(const std::string& name)
@@ -86,15 +83,6 @@ namespace CoreEngine
         return true;
     }
 
-    D3D12_RESOURCE_STATES* FrameBlackboard::GetCurrentStateRef(const std::string& name) const
-    {
-        const FrameBlackboardResource* entry = GetResource(name);
-        if (!entry || !entry->isValid) {
-            return nullptr;
-        }
-        return entry->currentState;
-    }
-
     bool FrameBlackboard::HasResource(const std::string& name) const
     {
         const FrameBlackboardResource* entry = GetResource(name);
@@ -103,16 +91,14 @@ namespace CoreEngine
 
     bool FrameBlackboard::TryResolveResource(
         const std::string& name,
-        ID3D12Resource*& outResource,
-        D3D12_RESOURCE_STATES*& outCurrentState) const
+        GpuResource*& outResource) const
     {
         const FrameBlackboardResource* entry = GetResource(name);
-        if (!entry || !entry->isValid || !entry->resource || !entry->currentState) {
+        if (!entry || !entry->isValid || !entry->resource || !entry->resource->IsValid()) {
             return false;
         }
 
         outResource = entry->resource;
-        outCurrentState = entry->currentState;
         return true;
     }
 }

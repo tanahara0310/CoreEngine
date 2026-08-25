@@ -4,7 +4,7 @@
 #include "Graphics/Render/Culling/HiZOcclusionSystem.h"
 #include "Graphics/Render/RenderOptimizationSettings.h"
 #include "Graphics/Model/ModelResource.h"
-#include "Graphics/Common/EngineStats.h"
+#include "Diagnostics/EngineStats.h"
 #include "Camera/Camera.h"
 #include "Math/Geometry/Shapes.h"
 

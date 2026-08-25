@@ -426,14 +426,14 @@ void ConsoleUI::ShowSystemStatus()
     AddLog("=== システム状態 ===", ConsoleLogLevel::Info);
 
     // 【Phase 4】コンポーネントの状態チェック
-    auto directXCommon = engine_->GetService<DirectXCommon>();
+    auto graphicsCore = engine_->GetService<GraphicsCore>();
     auto inputManager = engine_->GetService<InputManager>();
     auto soundManager = engine_->GetService<SoundManager>();
     auto lightManager = engine_->GetService<LightManager>();
     auto particleSystem = engine_->GetService<ParticleSystem>();
 
-    AddLog("グラフィックスシステム: " + std::string(directXCommon ? "初期化済み" : "未初期化"), 
-           directXCommon ? ConsoleLogLevel::Info : ConsoleLogLevel::Error);
+    AddLog("グラフィックスシステム: " + std::string(graphicsCore ? "初期化済み" : "未初期化"), 
+           graphicsCore ? ConsoleLogLevel::Info : ConsoleLogLevel::Error);
 
     AddLog("入力システム: " + std::string(inputManager ? "初期化済み" : "未初期化"), 
            inputManager ? ConsoleLogLevel::Info : ConsoleLogLevel::Error);

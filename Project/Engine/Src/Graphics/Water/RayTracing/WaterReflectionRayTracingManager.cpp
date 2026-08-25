@@ -3,8 +3,8 @@
 
 #include <algorithm>
 
-#include "Graphics/Common/Core/DescriptorManager.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Math/MathCore.h"
@@ -59,9 +59,10 @@ namespace CoreEngine
         "WaterReflectionConstants size mismatch with HLSL cbuffer");
 
     bool WaterReflectionRayTracingManager::Initialize(
-        DirectXCommon* dxCommon,
-        DescriptorManager* descriptorManager,
-        AccelerationStructureManager* asMgr)
+        GraphicsCore* dxCommon,
+        DescriptorAllocator* descriptorAllocator,
+        AccelerationStructureManager* asMgr,
+        ShaderProgramCache* shaderProgramCache)
     {
         RTWaterPipelineDesc desc{};
         desc.ownerName = "WaterReflectionRayTracingManager";
@@ -79,7 +80,7 @@ namespace CoreEngine
         desc.srvTableNames = kSrvTableNames;
         desc.constantsName = "WaterReflectionConstants";
         desc.constantsBytes = sizeof(WaterReflectionConstants);
-        return InitializeFromDesc(dxCommon, descriptorManager, asMgr, desc);
+        return InitializeFromDesc(dxCommon, descriptorAllocator, asMgr, shaderProgramCache, desc);
     }
 
     void WaterReflectionRayTracingManager::Resize(UINT width, UINT height, ViewID viewId)
@@ -92,14 +93,9 @@ namespace CoreEngine
         return GetOutputSRVHandleBase(static_cast<uint32_t>(viewId));
     }
 
-    ID3D12Resource* WaterReflectionRayTracingManager::GetReflectionResource(ViewID viewId) const
+    GpuResource& WaterReflectionRayTracingManager::GetReflectionResource(ViewID viewId)
     {
-        return GetOutputResourceBase(static_cast<uint32_t>(viewId));
-    }
-
-    D3D12_RESOURCE_STATES& WaterReflectionRayTracingManager::GetReflectionCurrentState(ViewID viewId)
-    {
-        return GetOutputCurrentStateBase(static_cast<uint32_t>(viewId));
+        return GetOutputBase(static_cast<uint32_t>(viewId));
     }
 
     void WaterReflectionRayTracingManager::Dispatch(

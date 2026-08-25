@@ -6,12 +6,12 @@
 
 #include <string>
 
-#include "Graphics/Common/Core/DescriptorManager.h"
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/GpuMarker.h"
-#include "Graphics/Common/GpuTimestampProfiler.h"
-#include "Graphics/Common/ResourceBarrierHelper.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Debug/GpuMarker.h"
+#include "Graphics/RHI/Debug/GpuTimestampProfiler.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
 #include "Graphics/Water/FFTOceanDispatchHelper.h"
@@ -135,20 +135,20 @@ namespace CoreEngine
         constexpr float kMaxHeightWindSpeed = 32.0f;
     }
 
-    bool FFTOceanManager::Initialize(DirectXCommon* dxCommon, DescriptorManager* descriptorManager)
+    bool FFTOceanManager::Initialize(GraphicsCore* dxCommon, DescriptorAllocator* descriptorAllocator)
     {
         // 外部依存を保持し、設定をGPU向けに正規化してから初期化を開始する。
         dxCommon_ = dxCommon;
-        descriptorManager_ = descriptorManager;
+        descriptorAllocator_ = descriptorAllocator;
         SanitizeSettings(settings_);
 
-        if (!dxCommon_ || !descriptorManager_) {
+        if (!dxCommon_ || !descriptorAllocator_) {
             Logger::GetInstance().Errorf(
                 LogCategory::Graphics,
                 LogSubCategory::Pipeline,
-                "FFTOceanManager: initialization failed. dxCommon={} descriptorManager={}",
+                "FFTOceanManager: initialization failed. dxCommon={} descriptorAllocator={}",
                 dxCommon_ != nullptr,
-                descriptorManager_ != nullptr);
+                descriptorAllocator_ != nullptr);
             return false;
         }
 
@@ -270,12 +270,11 @@ namespace CoreEngine
             settings_.resolution);
 
         // 出力配列テクスチャ（全スライス）をUAVへ遷移する。
-        ResourceBarrierHelper::Transition(cmdList, displacementMap_.Get(), displacementMap_.state, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        ResourceBarrierHelper::Transition(cmdList, normalMap_.Get(), normalMap_.state, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        ResourceBarrierHelper::Transition(cmdList, jacobianMap_.Get(), jacobianMap_.state, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, displacementMap_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, normalMap_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, jacobianMap_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-        ID3D12DescriptorHeap* descriptorHeaps[] = { descriptorManager_->GetSRVHeap() };
-        cmdList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+        // SRV ヒープはフレーム先頭で CommandContext が 1 回バインドする（個別バインドは不要）
 
         // カスケードごとに 時間発展 -> IFFT(2系統) -> 最終合成（スライスc へ書き込み）を実行する。
         // 中間ピンポンテクスチャ／IFFT定数リングはカスケード間で共有する（逐次実行）。
@@ -292,8 +291,7 @@ namespace CoreEngine
                 FFTStageScope stage(cmdList, profiler, kEvolutionReadbackStageName);
                 debugProbe_.ScheduleEvolutionReadback(
                     cmdList,
-                    spectrumPingPongA_[0].Get(), spectrumPingPongA_[0].state,
-                    spectrumPingPongB_[0].Get(), spectrumPingPongB_[0].state);
+                    spectrumPingPongA_[0], spectrumPingPongB_[0]);
             }
 
             uint32_t finalSpectrumAIndex = 0;
@@ -314,8 +312,7 @@ namespace CoreEngine
                     finalSpectrumBIndex,
                     settings_.resolution,
                     GetLog2Resolution(),
-                    finalSpectrumA.Get(), finalSpectrumA.state,
-                    finalSpectrumB.Get(), finalSpectrumB.state);
+                    finalSpectrumA, finalSpectrumB);
             }
 
             {
@@ -324,15 +321,15 @@ namespace CoreEngine
             }
 
             // 次カスケードが中間ピンポンを書き換える前に、Finalizeの読み取り完了を保証する。
-            ResourceBarrierHelper::UAV(cmdList, displacementMap_.Get());
-            ResourceBarrierHelper::UAV(cmdList, normalMap_.Get());
-            ResourceBarrierHelper::UAV(cmdList, jacobianMap_.Get());
+            Barrier::UAV(cmdList, displacementMap_);
+            Barrier::UAV(cmdList, normalMap_);
+            Barrier::UAV(cmdList, jacobianMap_);
         }
 
         // 後段シェーダー参照用にSRV状態へ戻す（法線ミップ連鎖は廃止済み）。
-        ResourceBarrierHelper::Transition(cmdList, displacementMap_.Get(), displacementMap_.state, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        ResourceBarrierHelper::Transition(cmdList, normalMap_.Get(), normalMap_.state, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        ResourceBarrierHelper::Transition(cmdList, jacobianMap_.Get(), jacobianMap_.state, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::Transition(cmdList, displacementMap_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::Transition(cmdList, normalMap_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::Transition(cmdList, jacobianMap_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
         // 泡の蓄積・減衰（ヤコビアンが SRV 状態になった後に実行する）
         {
@@ -344,14 +341,13 @@ namespace CoreEngine
             FFTStageScope stage(cmdList, profiler, kSurfaceReadbackStageName);
             debugProbe_.ScheduleSurfaceReadback(
                 cmdList,
-                displacementMap_.Get(), displacementMap_.state,
-                normalMap_.Get(), normalMap_.state);
+                displacementMap_, normalMap_);
         }
     }
 
     bool FFTOceanManager::CreateFoamResources()
     {
-        if (!dxCommon_ || !dxCommon_->GetDevice() || !descriptorManager_) {
+        if (!dxCommon_ || !dxCommon_->GetDevice() || !descriptorAllocator_) {
             return false;
         }
 
@@ -372,7 +368,9 @@ namespace CoreEngine
 
         try {
             for (uint32_t i = 0; i < kPingPongCount; ++i) {
-                foam_[i].resource = ResourceFactory::CreateTextureResource(device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+                foam_[i].Reset(
+                    ResourceFactory::CreateTextureResource(device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS),
+                    D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             }
         }
         catch (const std::exception&) {
@@ -392,7 +390,7 @@ namespace CoreEngine
             s.Texture2DArray.MipLevels = 1;
             s.Texture2DArray.FirstArraySlice = 0;
             s.Texture2DArray.ArraySize = kCascadeCount;
-            descriptorManager_->CreateSRV(foam_[i].Get(), s, foam_[i].srvCpu, foam_[i].srv, "FFTOceanFoamSRV_" + idx);
+            foam_[i].srv = descriptorAllocator_->CreateSRV(foam_[i].Get(), s, "FFTOceanFoamSRV_" + idx);
 
             D3D12_UNORDERED_ACCESS_VIEW_DESC u{};
             u.Format = format;
@@ -400,9 +398,7 @@ namespace CoreEngine
             u.Texture2DArray.MipSlice = 0;
             u.Texture2DArray.FirstArraySlice = 0;
             u.Texture2DArray.ArraySize = kCascadeCount;
-            descriptorManager_->CreateUAV(foam_[i].Get(), u, foam_[i].uavCpu, foam_[i].uav, "FFTOceanFoamUAV_" + idx);
-
-            foam_[i].state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+            foam_[i].uav = descriptorAllocator_->CreateUAV(foam_[i].Get(), u, "FFTOceanFoamUAV_" + idx);
         }
 
         // 定数は 1 スロットのみ（毎フレーム上書き。simulationConstants と同じ運用）。
@@ -455,10 +451,10 @@ namespace CoreEngine
 
         // read 側は本パスの gFoamPrev（CS）に加えて、同一フレームの水面描画（PS の t21）
         // からも読まれるため、PIXEL を含む読み取り状態にする。
-        ResourceBarrierHelper::Transition(
-            cmdList, foam_[writeIndex].Get(), foam_[writeIndex].state, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        ResourceBarrierHelper::Transition(
-            cmdList, foam_[readIndex].Get(), foam_[readIndex].state,
+        Barrier::Transition(
+            cmdList, foam_[writeIndex], D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(
+            cmdList, foam_[readIndex],
             D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
         cmdList->SetPipelineState(foamPipeline_.GetComputePSO());
@@ -466,15 +462,15 @@ namespace CoreEngine
 
         const int jacobianSlot = foamPipeline_.GetComputeRootParamIndex("gJacobian");
         if (jacobianSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(jacobianSlot), jacobianMap_.srv);
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(jacobianSlot), jacobianMap_.srv.gpuHandle);
         }
         const int prevSlot = foamPipeline_.GetComputeRootParamIndex("gFoamPrev");
         if (prevSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(prevSlot), foam_[readIndex].srv);
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(prevSlot), foam_[readIndex].srv.gpuHandle);
         }
         const int outputSlot = foamPipeline_.GetComputeRootParamIndex("gFoamOutput");
         if (outputSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(outputSlot), foam_[writeIndex].uav);
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(outputSlot), foam_[writeIndex].uav.gpuHandle);
         }
         const int constantsSlot = foamPipeline_.GetComputeRootParamIndex("FFTOceanFoamConstants");
         if (constantsSlot >= 0) {
@@ -488,8 +484,8 @@ namespace CoreEngine
 
         // 書き込んだ側は Water.PS（ピクセルシェーダー）が t21 で読むため、
         // PIXEL を含む読み取り状態へ遷移させる（来フレームは CS の gFoamPrev としても読む）。
-        ResourceBarrierHelper::Transition(
-            cmdList, foam_[writeIndex].Get(), foam_[writeIndex].state,
+        Barrier::Transition(
+            cmdList, foam_[writeIndex],
             D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
         ++foamFrameIndex_;
@@ -553,7 +549,7 @@ namespace CoreEngine
 
     bool FFTOceanManager::CreateOutputTextures()
     {
-        if (!dxCommon_ || !dxCommon_->GetDevice() || !descriptorManager_) {
+        if (!dxCommon_ || !dxCommon_->GetDevice() || !descriptorAllocator_) {
             return false;
         }
 
@@ -578,7 +574,9 @@ namespace CoreEngine
         // スライスUAVは Finalize が各カスケードのスライスへ書き込むために使う。
         auto createOutput = [&](CascadeOutputTexture& out, const std::string& name) -> bool {
             try {
-                out.resource = ResourceFactory::CreateTextureResource(device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+                out.Reset(
+                    ResourceFactory::CreateTextureResource(device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS),
+                    D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             }
             catch (const std::exception&) {
                 return false;
@@ -592,7 +590,7 @@ namespace CoreEngine
             s.Texture2DArray.MipLevels = 1;
             s.Texture2DArray.FirstArraySlice = 0;
             s.Texture2DArray.ArraySize = kCascadeCount;
-            descriptorManager_->CreateSRV(out.Get(), s, out.srvCpu, out.srv, "FFTOcean" + name + "ArraySRV");
+            out.srv = descriptorAllocator_->CreateSRV(out.Get(), s, "FFTOcean" + name + "ArraySRV");
 
             for (uint32_t c = 0; c < kCascadeCount; ++c) {
                 D3D12_UNORDERED_ACCESS_VIEW_DESC u{};
@@ -601,12 +599,10 @@ namespace CoreEngine
                 u.Texture2DArray.MipSlice = 0;
                 u.Texture2DArray.FirstArraySlice = c;
                 u.Texture2DArray.ArraySize = 1;
-                descriptorManager_->CreateUAV(
-                    out.Get(), u, out.sliceUavCpu[c], out.sliceUav[c],
-                    "FFTOcean" + name + "UAV_" + std::to_string(c));
+                out.sliceUav[c] = descriptorAllocator_->CreateUAV(
+                    out.Get(), u, "FFTOcean" + name + "UAV_" + std::to_string(c));
             }
 
-            out.state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
             return true;
         };
 
@@ -619,7 +615,7 @@ namespace CoreEngine
     {
         return FFTOceanResourceFactory::CreateIntermediateTextures(
             dxCommon_->GetDevice(),
-            descriptorManager_,
+            descriptorAllocator_,
             settings_.resolution,
             spectrumPingPongA_,
             spectrumPingPongB_);
@@ -631,7 +627,7 @@ namespace CoreEngine
         for (uint32_t c = 0; c < kCascadeCount; ++c) {
             if (!FFTOceanResourceFactory::CreateSpectrumBuffers(
                     dxCommon_->GetDevice(),
-                    descriptorManager_,
+                    descriptorAllocator_,
                     settings_.resolution,
                     sizeof(SpectrumSample),
                     spectrumBuffers_[c])) {
@@ -934,15 +930,15 @@ namespace CoreEngine
             uint64_t copiedBytes = 0;
             for (uint32_t c = 0; c < kCascadeCount; ++c) {
                 FFTOceanSpectrumBufferSet& buffers = spectrumBuffers_[c];
-                if (!buffers.defaultBuffer || !buffers.uploadBuffer) {
+                if (!buffers.defaultBuffer.IsValid() || !buffers.uploadBuffer) {
                     continue;
                 }
-                ResourceBarrierHelper::Transition(
-                    cmdList, buffers.defaultBuffer.Get(), buffers.state,
+                Barrier::Transition(
+                    cmdList, buffers.defaultBuffer,
                     D3D12_RESOURCE_STATE_COPY_DEST);
                 cmdList->CopyResource(buffers.defaultBuffer.Get(), buffers.uploadBuffer.Get());
-                ResourceBarrierHelper::Transition(
-                    cmdList, buffers.defaultBuffer.Get(), buffers.state,
+                Barrier::Transition(
+                    cmdList, buffers.defaultBuffer,
                     D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
                 copiedBytes += buffers.uploadBuffer->GetDesc().Width;
             }
@@ -1012,9 +1008,9 @@ namespace CoreEngine
             spectrumA,
             spectrumB,
             finalizePipeline_,
-            displacementMap_.sliceUav[cascadeIndex],
-            normalMap_.sliceUav[cascadeIndex],
-            jacobianMap_.sliceUav[cascadeIndex],
+            displacementMap_.sliceUav[cascadeIndex].gpuHandle,
+            normalMap_.sliceUav[cascadeIndex].gpuHandle,
+            jacobianMap_.sliceUav[cascadeIndex].gpuHandle,
             GetSimulationConstantsAddress(cascadeIndex),
             settings_.resolution);
     }

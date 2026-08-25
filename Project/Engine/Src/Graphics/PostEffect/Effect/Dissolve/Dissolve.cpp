@@ -1,9 +1,9 @@
 #include "pch.h"
 #include "Dissolve.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Texture/TextureManager.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/CVar/CVar.h"
 #ifdef USE_IMGUI
 #include "Editor/ImGui/CVarPanel.h"
@@ -43,7 +43,7 @@ namespace CoreEngine
         // 確保サイズは C++ の sizeof ではなく「HLSL 上のサイズ」から取る
         // （C++ 側はパディングを持たないので sizeof の方が小さい）
         UINT dissolveSize = (static_cast<UINT>(Cb::HlslSizeOf(kDissolveParamsFields)) + 255) & ~255;
-        dissolveParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), dissolveSize);
+        dissolveParamsCB_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), dissolveSize);
         [[maybe_unused]] HRESULT hr = dissolveParamsCB_->Map(0, nullptr, &mappedDissolveParams_);
         assert(SUCCEEDED(hr));
         UpdateConstantBuffer();
@@ -83,7 +83,7 @@ namespace CoreEngine
         UpdateConstantBuffer();
         UpdateScreenSizeConstants(width, height);
 
-        auto* cmdList = directXCommon_->GetCommandList();
+        auto* cmdList = graphicsCore_->GetCommandList();
         cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
         cmdList->SetPipelineState(computePso_.Get());
 

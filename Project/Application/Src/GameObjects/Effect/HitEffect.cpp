@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "HitEffect.h"
 
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Particle/ParticleSystem.h"
 #include "Particle/Modules/MainModule.h"
 #include "Particle/Modules/EmissionModule.h"
@@ -17,7 +17,7 @@ namespace CoreEngine
 {
 
     void HitEffect::Initialize(ParticleSystem* particleSystem,
-        DirectXCommon* dxCommon,
+        GraphicsCore* dxCommon,
         ResourceFactory* factory,
         const std::string& texturePath)
     {

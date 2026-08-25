@@ -52,14 +52,6 @@ public:
     /// @return ビルダー自身(メソッドチェーン用)
     PipelineStateBuilder& SetDebugName(const std::string& name);
 
-    /// @brief 入力エレメントを追加
-    PipelineStateBuilder& AddInputElement(
-        const char* semanticName,
-        UINT semanticIndex,
-        DXGI_FORMAT format,
-        UINT alignedByteOffset,
-        UINT inputSlot = 0);
-
     /// @brief シェーダーリフレクションから入力レイアウトを自動設定
     /// @param reflectionData シェーダーリフレクションデータ
     /// @return ビルダー自身(メソッドチェーン用)

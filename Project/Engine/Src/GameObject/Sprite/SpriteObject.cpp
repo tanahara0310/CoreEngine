@@ -4,8 +4,8 @@
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/Sprite/SpriteRenderer.h"
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Model/VertexData.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/FrameRate/FrameRateController.h"
@@ -44,7 +44,7 @@ namespace CoreEngine
 
         // マテリアルインスタンスを生成
         material_ = std::make_unique<SpriteMaterialInstance>();
-        material_->Initialize(spriteRenderer_->GetDirectXCommon()->GetDevice());
+        material_->Initialize(spriteRenderer_->GetGraphicsCore()->GetDevice());
 
         // デフォルト値を設定
         Reset();
@@ -67,7 +67,7 @@ namespace CoreEngine
     void SpriteObject::CreateVertexBuffer() {
         if (!spriteRenderer_) return;
 
-        DirectXCommon* dxCommon = spriteRenderer_->GetDirectXCommon();
+        GraphicsCore* dxCommon = spriteRenderer_->GetGraphicsCore();
         ResourceFactory* resourceFactory = spriteRenderer_->GetResourceFactory();
 
         if (!dxCommon || !resourceFactory) return;
@@ -502,7 +502,7 @@ namespace CoreEngine
         // RenderGraph を経由しない直接呼び出し（レガシー経路）。
         // DrawViewInfo を持たないため、ここだけがコマンドリストの供給点になる。
         Draw2D(camera,
-            spriteRenderer_ ? spriteRenderer_->GetDirectXCommon()->GetCommandList() : nullptr);
+            spriteRenderer_ ? spriteRenderer_->GetGraphicsCore()->GetCommandList() : nullptr);
     }
 
     void SpriteObject::Draw(const DrawViewInfo& view) {

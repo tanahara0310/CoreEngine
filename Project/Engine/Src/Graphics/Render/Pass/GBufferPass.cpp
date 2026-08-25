@@ -3,8 +3,8 @@
 
 #include <cassert>
 
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/Core/DepthStencilManager.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/Render/RenderTarget/SceneDepth.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/RenderGraph.h"
@@ -33,15 +33,12 @@ namespace CoreEngine
         auto* cmdList = context.cmdList;
         auto* gBufferManager = context.gBufferManager;
 
-        if (context.depthStencilManager) {
-            context.depthStencilManager->BeginDepthWrite(cmdList);
+        if (context.sceneDepth) {
+            context.sceneDepth->BeginDepthWrite(cmdList);
         }
 
         // GBuffer の各 MRT と深度へ書き込むジオメトリパスを開始する。
-        gBufferManager->BeginGeometryPass(
-            cmdList,
-            context.depthStencilManager,
-            context.dxCommon->GetSRVHeap());
+        gBufferManager->BeginGeometryPass(cmdList, context.sceneDepth);
 
         // 不透明オブジェクトを GBuffer へ描画する。
         // ビュー種別は DrawViewInfo として各オブジェクト（Model）まで明示的に流れる。

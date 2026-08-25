@@ -1,7 +1,7 @@
 #pragma once
-#include "Graphics/Common/EngineStats.h"
-#include "Graphics/Common/GpuTimestampProfiler.h"
-#include "Graphics/Common/GpuTimingStatsCollector.h"
+#include "Diagnostics/EngineStats.h"
+#include "Graphics/RHI/Debug/GpuTimestampProfiler.h"
+#include "Diagnostics/GpuTimingStatsCollector.h"
 #include <array>
 #include <string>
 

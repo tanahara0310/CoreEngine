@@ -3,12 +3,15 @@
 #include <cstdint>
 #include <memory>
 
-#include "Graphics/Common/IResizable.h"
+#include "Graphics/RHI/IResizable.h"
 
 namespace CoreEngine
 {
-    class DirectXCommon;
-    class DescriptorManager;
+    class ShaderProgramCache;
+
+    class GraphicsCore;
+    class DescriptorAllocator;
+    class SceneDepth;
     class GBufferManager;
     class AccelerationStructureManager;
     class RayTracingShadowManager;
@@ -21,18 +24,20 @@ namespace CoreEngine
     struct WaterSurfaceData;
 
     /// @brief 描画ドメイン固有マネージャーの所有・初期化クラス
-    /// @note GBuffer / シャドウマップ / レイトレーシング等、
-    /// DirectXCommon（D3D12インフラ層）から分離したレンダリングドメイン管理。
+    /// @note シーン深度 / GBuffer / レイトレーシング等、
+    /// GraphicsCore（D3D12インフラ層）から分離したレンダリングドメイン管理。
+    /// リサイズ通知は Initialize で自分を GraphicsCore へ登録し、Shutdown / 破棄時に解除する。
     class RenderDomainContext : public IResizable {
     public:
         RenderDomainContext();
         ~RenderDomainContext() override; // 前方宣言型の unique_ptr デストラクタは .cpp に実装
 
         /// @brief 初期化
-        /// @param dxCommon DirectXCommon（デバイス・DescriptorManager 取得用）
+        /// @param dxCommon GraphicsCore（デバイス・DescriptorAllocator 取得用）
         /// @param width 初期ウィンドウ幅
         /// @param height 初期ウィンドウ高さ
-        void Initialize(DirectXCommon* dxCommon, int32_t width, int32_t height);
+        void Initialize(GraphicsCore* dxCommon, int32_t width, int32_t height,
+            ShaderProgramCache* shaderProgramCache);
 
         /// @brief シャットダウン（GPU完了後に呼ぶこと）
         void Shutdown();
@@ -43,6 +48,8 @@ namespace CoreEngine
         void OnWindowResize(int32_t width, int32_t height) override;
 
         // アクセッサ
+        /// @brief メインシーンの深度（GBuffer が書き、各パスが読む。OffscreenRenderTarget の共有 DSV）
+        SceneDepth* GetSceneDepth() { return sceneDepth_.get(); }
         GBufferManager* GetGBufferManager() { return gBufferManager_.get(); }
         const GBufferManager* GetGBufferManager()         const { return gBufferManager_.get(); }
         AccelerationStructureManager* GetAccelerationStructureManager() { return accelerationStructureManager_.get(); }
@@ -74,6 +81,9 @@ namespace CoreEngine
         float GetFFTOceanSimulationTime() const { return fftOceanSimulationTime_; }
 
     private:
+        GraphicsCore* dxCommon_ = nullptr; ///< リサイズ通知の登録解除に使う（非所有）
+
+        std::unique_ptr<SceneDepth>                   sceneDepth_;
         std::unique_ptr<GBufferManager>               gBufferManager_;
         std::unique_ptr<AccelerationStructureManager> accelerationStructureManager_;
         std::unique_ptr<RayTracingShadowManager>      rtShadowManager_;

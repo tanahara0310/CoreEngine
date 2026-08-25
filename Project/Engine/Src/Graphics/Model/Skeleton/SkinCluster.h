@@ -1,5 +1,8 @@
 #pragma once
+
+#include "Graphics/RHI/Resource/GpuResource.h"
 #include <vector>
+#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include <span>
 #include <array>
 #include <d3d12.h>
@@ -47,20 +50,19 @@ struct SkinCluster {
     Microsoft::WRL::ComPtr<ID3D12Resource> influenceResource;  // Influence用リソース
     D3D12_VERTEX_BUFFER_VIEW influenceBufferView;              // InfluenceのBufferView
     std::span<VertexInfluence> mappedInfluence;                // Influenceデータをマップしたもの
-    std::pair<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE> influenceSrvHandle; // InfluenceのSRV（CS読み取り用）
+    DescriptorHandle influenceSrvHandle; // InfluenceのSRV（CS読み取り用）
 
     Microsoft::WRL::ComPtr<ID3D12Resource> paletteResource;    // Palette用リソース
     std::span<WellForGPU> mappedPalette;                       // Paletteデータをマップしたもの
-    std::pair<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE> paletteSrvHandle; // PaletteのSRV
+    DescriptorHandle paletteSrvHandle; // PaletteのSRV
 
     // ===== GPUスキニング（ComputeShader）関連 =====
 
-    std::pair<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE> sourceVertexSrvHandle; // 元頂点バッファのSRV（CS読み取り用）
+    DescriptorHandle sourceVertexSrvHandle; // 元頂点バッファのSRV（CS読み取り用）
 
-    Microsoft::WRL::ComPtr<ID3D12Resource> outputVertexResource; // CSが書き込むスキニング後頂点バッファ（UAV）
-    D3D12_VERTEX_BUFFER_VIEW outputVertexBufferView;             // 上記をそのまま描画時の頂点バッファとして使う
-    std::pair<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE> outputUavHandle; // 出力バッファのUAV
-    D3D12_RESOURCE_STATES outputBufferState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS; // 出力バッファの現在のリソース状態
+    GpuResource outputVertexResource;                // CSが書き込むスキニング後頂点バッファ（UAV・ステート追跡込み）
+    D3D12_VERTEX_BUFFER_VIEW outputVertexBufferView; // 上記をそのまま描画時の頂点バッファとして使う
+    DescriptorHandle outputUavHandle;                // 出力バッファのUAV
 
     Microsoft::WRL::ComPtr<ID3D12Resource> skinningParamsCB; // SkinningParams（頂点数）用定数バッファ
 

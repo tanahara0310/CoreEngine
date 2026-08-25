@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "FFTOceanDebugProbe.h"
 
-#include "Graphics/Common/ResourceBarrierHelper.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/Water/FFTOceanManagerLogHelper.h"
 #include "Graphics/Water/FFTOceanReadbackHelper.h"
 #include "Graphics/Water/FFTOceanSpectrumDebugHelper.h"
@@ -148,25 +148,23 @@ namespace CoreEngine
 
     void FFTOceanDebugProbe::ScheduleEvolutionReadback(
         ID3D12GraphicsCommandList* cmdList,
-        ID3D12Resource* spectrumA,
-        D3D12_RESOURCE_STATES& spectrumAState,
-        ID3D12Resource* spectrumB,
-        D3D12_RESOURCE_STATES& spectrumBState)
+        GpuResource& spectrumA,
+        GpuResource& spectrumB)
     {
         // スペクトル（時間発展後）のリードバックを積む。毎フレームは重いので間引く
-        if (!IsEnabled() || !cmdList || !spectrumA || !spectrumB) {
+        if (!IsEnabled() || !cmdList || !spectrumA.IsValid() || !spectrumB.IsValid()) {
             return;
         }
         if ((evolutionCounter_++ % kLogIntervalFrames) != 0) {
             return;
         }
-        if (!EnsureTarget(evolutionA_, spectrumA, "evolutionA")
-            || !EnsureTarget(evolutionB_, spectrumB, "evolutionB")) {
+        if (!EnsureTarget(evolutionA_, spectrumA.Get(), "evolutionA")
+            || !EnsureTarget(evolutionB_, spectrumB.Get(), "evolutionB")) {
             return;
         }
 
         D3D12_TEXTURE_COPY_LOCATION srcA{};
-        srcA.pResource = spectrumA;
+        srcA.pResource = spectrumA.Get();
         srcA.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
         srcA.SubresourceIndex = 0;
         D3D12_TEXTURE_COPY_LOCATION dstA{};
@@ -175,7 +173,7 @@ namespace CoreEngine
         dstA.PlacedFootprint = evolutionA_.layout;
 
         D3D12_TEXTURE_COPY_LOCATION srcB{};
-        srcB.pResource = spectrumB;
+        srcB.pResource = spectrumB.Get();
         srcB.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
         srcB.SubresourceIndex = 0;
         D3D12_TEXTURE_COPY_LOCATION dstB{};
@@ -183,12 +181,12 @@ namespace CoreEngine
         dstB.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
         dstB.PlacedFootprint = evolutionB_.layout;
 
-        ResourceBarrierHelper::Transition(cmdList, spectrumA, spectrumAState, D3D12_RESOURCE_STATE_COPY_SOURCE);
-        ResourceBarrierHelper::Transition(cmdList, spectrumB, spectrumBState, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        Barrier::Transition(cmdList, spectrumA, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        Barrier::Transition(cmdList, spectrumB, D3D12_RESOURCE_STATE_COPY_SOURCE);
         cmdList->CopyTextureRegion(&dstA, 0, 0, 0, &srcA, nullptr);
         cmdList->CopyTextureRegion(&dstB, 0, 0, 0, &srcB, nullptr);
-        ResourceBarrierHelper::Transition(cmdList, spectrumA, spectrumAState, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        ResourceBarrierHelper::Transition(cmdList, spectrumB, spectrumBState, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, spectrumA, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, spectrumB, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         evolutionPending_ = true;
         ++evolutionSequence_;
@@ -200,13 +198,11 @@ namespace CoreEngine
         uint32_t finalSpectrumBIndex,
         uint32_t resolution,
         uint32_t log2Resolution,
-        ID3D12Resource* spectrumA,
-        D3D12_RESOURCE_STATES& spectrumAState,
-        ID3D12Resource* spectrumB,
-        D3D12_RESOURCE_STATES& spectrumBState)
+        GpuResource& spectrumA,
+        GpuResource& spectrumB)
     {
         // 毎フレーム全解像度をコピーすると重いので、kLogIntervalFrames ごとに 1 回だけ拾う
-        if (!IsEnabled() || !cmdList || !spectrumA || !spectrumB) {
+        if (!IsEnabled() || !cmdList || !spectrumA.IsValid() || !spectrumB.IsValid()) {
             return;
         }
         if ((ifftCounter_++ % kLogIntervalFrames) != 0) {
@@ -216,13 +212,13 @@ namespace CoreEngine
         FFTOceanManagerLogHelper::LogIFFTCompleted(
             finalSpectrumAIndex, finalSpectrumBIndex, resolution, log2Resolution);
 
-        if (!EnsureTarget(ifftA_, spectrumA, "ifftA")
-            || !EnsureTarget(ifftB_, spectrumB, "ifftB")) {
+        if (!EnsureTarget(ifftA_, spectrumA.Get(), "ifftA")
+            || !EnsureTarget(ifftB_, spectrumB.Get(), "ifftB")) {
             return;
         }
 
         D3D12_TEXTURE_COPY_LOCATION srcA{};
-        srcA.pResource = spectrumA;
+        srcA.pResource = spectrumA.Get();
         srcA.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
         srcA.SubresourceIndex = 0;
         D3D12_TEXTURE_COPY_LOCATION dstA{};
@@ -231,7 +227,7 @@ namespace CoreEngine
         dstA.PlacedFootprint = ifftA_.layout;
 
         D3D12_TEXTURE_COPY_LOCATION srcB{};
-        srcB.pResource = spectrumB;
+        srcB.pResource = spectrumB.Get();
         srcB.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
         srcB.SubresourceIndex = 0;
         D3D12_TEXTURE_COPY_LOCATION dstB{};
@@ -239,12 +235,12 @@ namespace CoreEngine
         dstB.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
         dstB.PlacedFootprint = ifftB_.layout;
 
-        ResourceBarrierHelper::Transition(cmdList, spectrumA, spectrumAState, D3D12_RESOURCE_STATE_COPY_SOURCE);
-        ResourceBarrierHelper::Transition(cmdList, spectrumB, spectrumBState, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        Barrier::Transition(cmdList, spectrumA, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        Barrier::Transition(cmdList, spectrumB, D3D12_RESOURCE_STATE_COPY_SOURCE);
         cmdList->CopyTextureRegion(&dstA, 0, 0, 0, &srcA, nullptr);
         cmdList->CopyTextureRegion(&dstB, 0, 0, 0, &srcB, nullptr);
-        ResourceBarrierHelper::Transition(cmdList, spectrumA, spectrumAState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        ResourceBarrierHelper::Transition(cmdList, spectrumB, spectrumBState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::Transition(cmdList, spectrumA, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::Transition(cmdList, spectrumB, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
         ifftPending_ = true;
         ++ifftSequence_;
@@ -252,25 +248,23 @@ namespace CoreEngine
 
     void FFTOceanDebugProbe::ScheduleSurfaceReadback(
         ID3D12GraphicsCommandList* cmdList,
-        ID3D12Resource* displacement,
-        D3D12_RESOURCE_STATES& displacementState,
-        ID3D12Resource* normal,
-        D3D12_RESOURCE_STATES& normalState)
+        GpuResource& displacement,
+        GpuResource& normal)
     {
         // 波面（変位・法線）のリードバックを積む。毎フレームは重いので間引く
-        if (!IsEnabled() || !cmdList || !displacement || !normal) {
+        if (!IsEnabled() || !cmdList || !displacement.IsValid() || !normal.IsValid()) {
             return;
         }
         if ((surfaceCounter_++ % kLogIntervalFrames) != 0) {
             return;
         }
-        if (!EnsureTarget(surfaceDisplacement_, displacement, "displacement")
-            || !EnsureTarget(surfaceNormal_, normal, "normal")) {
+        if (!EnsureTarget(surfaceDisplacement_, displacement.Get(), "displacement")
+            || !EnsureTarget(surfaceNormal_, normal.Get(), "normal")) {
             return;
         }
 
         D3D12_TEXTURE_COPY_LOCATION displacementSrc{};
-        displacementSrc.pResource = displacement;
+        displacementSrc.pResource = displacement.Get();
         displacementSrc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
         displacementSrc.SubresourceIndex = 0;
         D3D12_TEXTURE_COPY_LOCATION displacementDst{};
@@ -279,7 +273,7 @@ namespace CoreEngine
         displacementDst.PlacedFootprint = surfaceDisplacement_.layout;
 
         D3D12_TEXTURE_COPY_LOCATION normalSrc{};
-        normalSrc.pResource = normal;
+        normalSrc.pResource = normal.Get();
         normalSrc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
         normalSrc.SubresourceIndex = 0;
         D3D12_TEXTURE_COPY_LOCATION normalDst{};
@@ -287,12 +281,12 @@ namespace CoreEngine
         normalDst.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
         normalDst.PlacedFootprint = surfaceNormal_.layout;
 
-        ResourceBarrierHelper::Transition(cmdList, displacement, displacementState, D3D12_RESOURCE_STATE_COPY_SOURCE);
-        ResourceBarrierHelper::Transition(cmdList, normal, normalState, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        Barrier::Transition(cmdList, displacement, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        Barrier::Transition(cmdList, normal, D3D12_RESOURCE_STATE_COPY_SOURCE);
         cmdList->CopyTextureRegion(&displacementDst, 0, 0, 0, &displacementSrc, nullptr);
         cmdList->CopyTextureRegion(&normalDst, 0, 0, 0, &normalSrc, nullptr);
-        ResourceBarrierHelper::Transition(cmdList, displacement, displacementState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        ResourceBarrierHelper::Transition(cmdList, normal, normalState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::Transition(cmdList, displacement, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::Transition(cmdList, normal, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
         surfacePending_ = true;
         ++surfaceSequence_;

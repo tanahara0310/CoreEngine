@@ -4,18 +4,19 @@
 #include <cstring>
 
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
-#include "Graphics/Common/Core/DescriptorManager.h"
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/ResourceBarrierHelper.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
 {
     // 派生から呼ぶ共通初期化。デバイス・出力ビュー集合・デバッグ名だけを受け取る
     bool RayTracingPassBase::InitializeBase(
-        DirectXCommon* dxCommon,
-        DescriptorManager* descriptorManager,
+        GraphicsCore* dxCommon,
+        DescriptorAllocator* descriptorAllocator,
         AccelerationStructureManager* asMgr,
+        ShaderProgramCache* shaderProgramCache,
         const char* ownerName,
         const char* outputDebugName)
     {
@@ -23,10 +24,11 @@ namespace CoreEngine
         outputDebugName_ = outputDebugName ? outputDebugName : "RTOutput";
 
         dxCommon_ = dxCommon;
-        descriptorManager_ = descriptorManager;
+        descriptorAllocator_ = descriptorAllocator;
         asMgr_ = asMgr;
+        shaderProgramCache_ = shaderProgramCache;
 
-        if (!dxCommon_ || !descriptorManager_ || !asMgr_ || !asMgr_->IsSupported()) {
+        if (!dxCommon_ || !descriptorAllocator_ || !asMgr_ || !asMgr_->IsSupported()) {
             Logger::GetInstance().Warnf(
                 LogCategory::Graphics,
                 LogSubCategory::Pipeline,
@@ -35,6 +37,37 @@ namespace CoreEngine
             return false;
         }
 
+        return true;
+    }
+
+    bool RayTracingPassBase::BuildGlobalRootSignature(
+        const ShaderProgram& program,
+        const ShaderBindingDecl* decls,
+        size_t declCount,
+        const RootSignatureConfig& config)
+    {
+        Logger& log = Logger::GetInstance();
+
+        const auto buildResult = globalRootSigMgr_.Build(
+            dxCommon_->GetDevice(), program.GetReflection(), config);
+        if (!buildResult.success) {
+            log.Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
+                "{}: グローバルルートシグネチャの構築に失敗: {}",
+                ownerName_, buildResult.errorMessage);
+            return false;
+        }
+
+        // 宣言表とシェーダー実体を突き合わせる。改名・削除・種別違いはここで throw される。
+        // lib_6_6 は未使用の宣言も残すので、使わないものは Optional にしておくこと。
+        try {
+            bindings_ = BindingTable::Resolve(
+                program.GetReflection(), decls, declCount, ownerName_);
+        }
+        catch (const std::exception& e) {
+            log.Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
+                "{}: バインド契約違反: {}", ownerName_, e.what());
+            return false;
+        }
         return true;
     }
 
@@ -106,7 +139,7 @@ namespace CoreEngine
 
         return outputViews_.EnsureTexture(
             dxCommon_,
-            descriptorManager_,
+            descriptorAllocator_,
             width,
             height,
             viewIndex,
@@ -126,14 +159,9 @@ namespace CoreEngine
         return outputViews_.GetSRVHandle(viewIndex);
     }
 
-    ID3D12Resource* RayTracingPassBase::GetOutputResourceBase(uint32_t viewIndex) const
+    GpuResource& RayTracingPassBase::GetOutputBase(uint32_t viewIndex)
     {
-        return outputViews_.GetResource(viewIndex);
-    }
-
-    D3D12_RESOURCE_STATES& RayTracingPassBase::GetOutputCurrentStateBase(uint32_t viewIndex)
-    {
-        return outputViews_.GetCurrentState(viewIndex);
+        return outputViews_.Resource(viewIndex);
     }
 
     // ディスパッチ可能かを判定する。DXR オブジェクト・出力テクスチャ・
@@ -256,8 +284,7 @@ namespace CoreEngine
 
         outResources.outputSrvHandle = GetOutputSRVHandleBase(viewIndex);
         outResources.outputUavHandle = outputViews_.GetUAVHandle(viewIndex);
-        outResources.outputResource = GetOutputResourceBase(viewIndex);
-        outResources.outputCurrentState = &GetOutputCurrentStateBase(viewIndex);
+        outResources.output = &GetOutputBase(viewIndex);
         lastDispatchInfo_.outputSrvPtr = outResources.outputSrvHandle.ptr;
         return true;
     }
@@ -265,29 +292,18 @@ namespace CoreEngine
     // 出力テクスチャを UNORDERED_ACCESS へ遷移させる（DispatchRays の直前に呼ぶ）
     void RayTracingPassBase::BeginOutputWrite(
         ID3D12GraphicsCommandList* cmdList,
-        ID3D12Resource* outputResource,
-        D3D12_RESOURCE_STATES& outputCurrentState) const
+        GpuResource& output) const
     {
-        ResourceBarrierHelper::Transition(
-            cmdList,
-            outputResource,
-            outputCurrentState,
-            D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        outputCurrentState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        Barrier::Transition(cmdList, output, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     }
 
     void RayTracingPassBase::EndOutputWrite(
         ID3D12GraphicsCommandList* cmdList,
-        ID3D12Resource* outputResource,
-        D3D12_RESOURCE_STATES& outputCurrentState,
+        GpuResource& output,
         D3D12_RESOURCE_STATES finalState) const
     {
-        ResourceBarrierHelper::UAV(cmdList, outputResource);
-        ResourceBarrierHelper::Transition(
-            cmdList,
-            outputResource,
-            outputCurrentState,
-            finalState);
-        outputCurrentState = finalState;
+        BarrierBatch batch(cmdList);
+        batch.UAV(output);
+        batch.Transition(output, finalState);
     }
 }

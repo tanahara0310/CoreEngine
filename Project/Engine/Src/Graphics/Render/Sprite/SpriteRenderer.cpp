@@ -23,7 +23,7 @@ namespace CoreEngine
         reflectionData_ = reflectionBuilder_->BuildFromShaders(vertexShaderBlob, pixelShaderBlob, "SpriteRenderer");
         
         // シンプルな設定を使用
-        RootSignatureConfig config = RootSignatureConfig::Simple();
+        RootSignatureConfig config;
         
         // スプライト用サンプラー設定（ポイントフィルタリング＋クランプ）
         config.ConfigureSampler("gSampler", SamplerConfig::Linear());
@@ -51,7 +51,7 @@ namespace CoreEngine
     }
 
     void SpriteRenderer::Initialize(ID3D12Device* /*device*/) {
-        assert(false && "SpriteRenderer: Use Initialize(DirectXCommon*, ResourceFactory*) instead of Initialize(ID3D12Device*).");
+        assert(false && "SpriteRenderer: Use Initialize(GraphicsCore*, ResourceFactory*) instead of Initialize(ID3D12Device*).");
     }
 
     int SpriteRenderer::GetRootParamIndex(const std::string& resourceName) const {
@@ -61,7 +61,7 @@ namespace CoreEngine
         return reflectionData_->GetRootParameterIndexByName(resourceName);
     }
 
-    void SpriteRenderer::Initialize(DirectXCommon* dxCommon, ResourceFactory* resourceFactory) {
+    void SpriteRenderer::Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory) {
         dxCommon_ = dxCommon;
         resourceFactory_ = resourceFactory;
 
@@ -97,7 +97,9 @@ namespace CoreEngine
     }
 
     void SpriteRenderer::BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMode blendMode) {
-        UINT frameIndex = dxCommon_->GetSwapChain()->GetCurrentBackBufferIndex();
+        // per-frame リソースの添字は FrameSync のスロット番号を使う
+        // （スワップチェーンのインデックスは ResizeBuffers で 0 に戻るため使わない）
+        UINT frameIndex = dxCommon_->Frame().FrameIndex();
 
         // フレームが切り替わったときのみバッファインデックスをリセット
         if (frameIndex != currentFrameIndex_) {

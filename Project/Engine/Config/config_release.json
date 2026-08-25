@@ -9,10 +9,11 @@
     },
     "debug": {
         "enableDebugLayer": false,
-        "enableGPUBasedValidation": false
+        "enableGPUBasedValidation": false,
+        "enableDRED": false
     },
     "descriptors": {
-        "maxSRVDescriptors": 256,
+        "maxSRVDescriptors": 2048,
         "maxRTVDescriptors": 256,
         "maxDSVDescriptors": 10
     }

@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "WaterCausticsRayTracingManager.h"
 
-#include "Graphics/Common/Core/DescriptorManager.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Math/MathCore.h"
@@ -67,9 +67,10 @@ namespace CoreEngine
     // 個別フィールドの境界チェックはフィールド表（下）が全フィールド分やるので不要
 
     bool WaterCausticsRayTracingManager::Initialize(
-        DirectXCommon* dxCommon,
-        DescriptorManager* descriptorManager,
-        AccelerationStructureManager* asMgr)
+        GraphicsCore* dxCommon,
+        DescriptorAllocator* descriptorAllocator,
+        AccelerationStructureManager* asMgr,
+        ShaderProgramCache* shaderProgramCache)
     {
         // パイプラインの差分（シェーダー・エントリ名・SRV 名・定数サイズ）だけを記述する。
         // ルートシグネチャ構築〜シェーダーテーブルまでの手順は 3 マネージャ共通で
@@ -88,7 +89,7 @@ namespace CoreEngine
         desc.srvTableNames = kSrvTableNames;
         desc.constantsName = "WaterCausticsConstants";
         desc.constantsBytes = sizeof(WaterCausticsConstants);
-        return InitializeFromDesc(dxCommon, descriptorManager, asMgr, desc);
+        return InitializeFromDesc(dxCommon, descriptorAllocator, asMgr, shaderProgramCache, desc);
     }
 
 
@@ -206,13 +207,8 @@ namespace CoreEngine
         return GetOutputSRVHandleBase(static_cast<uint32_t>(viewId));
     }
 
-    ID3D12Resource* WaterCausticsRayTracingManager::GetCausticsResource(ViewID viewId) const
+    GpuResource& WaterCausticsRayTracingManager::GetCausticsResource(ViewID viewId)
     {
-        return GetOutputResourceBase(static_cast<uint32_t>(viewId));
-    }
-
-    D3D12_RESOURCE_STATES& WaterCausticsRayTracingManager::GetCausticsCurrentState(ViewID viewId)
-    {
-        return GetOutputCurrentStateBase(static_cast<uint32_t>(viewId));
+        return GetOutputBase(static_cast<uint32_t>(viewId));
     }
 }

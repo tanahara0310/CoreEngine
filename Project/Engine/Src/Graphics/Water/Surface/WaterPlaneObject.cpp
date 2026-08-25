@@ -9,7 +9,7 @@
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
 #include "Graphics/Water/Surface/WaterShaderResourceBinder.h"
 #include "EngineSystem/EngineSystem.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Math/MathCore.h"
 #include "Utility/Logger/Logger.h"
 #include <cmath>
@@ -80,7 +80,7 @@ namespace CoreEngine
 
         // 定数バッファを作成する
         auto* engine = GetEngineSystem();
-        auto* dxCommon = engine ? engine->GetService<DirectXCommon>() : nullptr;
+        auto* dxCommon = engine ? engine->GetService<GraphicsCore>() : nullptr;
         if (dxCommon) {
             constantBuffers_.Initialize(dxCommon->GetDevice());
             constantBuffers_.UpdateWaterConstants(waterCB_);
@@ -90,7 +90,7 @@ namespace CoreEngine
 
     void WaterPlaneObject::RebuildWaterShaderPipeline() {
         auto* engine = GetEngineSystem();
-        auto* dxCommon = engine ? engine->GetService<DirectXCommon>() : nullptr;
+        auto* dxCommon = engine ? engine->GetService<GraphicsCore>() : nullptr;
         auto* modelManager = engine ? engine->GetService<ModelManager>() : nullptr;
         if (!dxCommon || !modelManager) {
             return;
@@ -125,7 +125,9 @@ namespace CoreEngine
         }
 
         // Water 専用のバインダへ委譲して CBV / SRV の接続を行う
-        WaterShaderResourceBinder::Bind(
+        // （バインダは宣言表の解決結果をキャッシュするので mutable。
+        //   BindCustomResources は ICustomShaderProvider の const 契約に縛られている）
+        shaderResourceBinder_.Bind(
             cmdList,
             pipeline,
             waterCBGpuAddress,

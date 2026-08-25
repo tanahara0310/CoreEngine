@@ -1,14 +1,16 @@
 #pragma once
 
 #include <array>
+#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
+#include "Graphics/RHI/Resource/GpuResource.h"
 #include <cstdint>
 #include <d3d12.h>
 #include <wrl.h>
 
 namespace CoreEngine
 {
-    class DescriptorManager;
-    class DepthStencilManager;
+    class DescriptorAllocator;
+    class SceneDepth;
 
     /// @brief G-Buffer管理クラス
     /// @note Deferred/Hybrid Rendering への移行基盤。
@@ -41,21 +43,19 @@ namespace CoreEngine
 
         /// @brief 初期化
         /// @param device D3D12デバイス 
-        /// @param descriptorManager DescriptorManager（RTV/SRVの作成に使用）
+        /// @param descriptorAllocator DescriptorManager（RTV/SRVの作成に使用）
         /// @param width 初期幅
         /// @param height 初期高さ
-        void Initialize(ID3D12Device* device, DescriptorManager* descriptorManager, int32_t width, int32_t height);
+        void Initialize(ID3D12Device* device, DescriptorAllocator* descriptorAllocator, int32_t width, int32_t height);
         /// @brief 画面サイズ変更に合わせて全ターゲットを作り直す
         void Resize(int32_t width, int32_t height);
 
         /// @brief ジオメトリパスの描画セットアップを行う
         /// @param cmdList コマンドリスト
-        /// @param depthStencilManager 深度ステンシル管理
-        /// @param srvHeap SRVデスクリプタヒープ
+        /// @param sceneDepth 共有するシーン深度（DSV の供給元）
         void BeginGeometryPass(
             ID3D12GraphicsCommandList* cmdList,
-            DepthStencilManager* depthStencilManager,
-            ID3D12DescriptorHeap* srvHeap);
+            SceneDepth* sceneDepth);
 
         /// @brief 指定ターゲットのリソース
         ID3D12Resource* GetResource(Target target) const;
@@ -67,8 +67,8 @@ namespace CoreEngine
         DXGI_FORMAT GetFormat(Target target) const;
         /// @brief 全ターゲットのフォーマット配列（PSO の RTV 設定に渡す）
         const DXGI_FORMAT* GetFormats() const;
-        /// @brief 指定ターゲットの現在ステートへの参照（バリア時に更新される）
-        D3D12_RESOURCE_STATES& GetCurrentState(Target target);
+        /// @brief 指定ターゲットをステート追跡つきで返す（バリア発行はこれを渡す）
+        GpuResource& Resource(Target target);
 
         uint32_t GetTargetCount() const { return kTargetCount; }
         int32_t GetWidth() const { return currentWidth_; }
@@ -76,13 +76,11 @@ namespace CoreEngine
         bool IsInitialized() const { return isInitialized_; }
 
     private:
-        /// @brief G-Buffer の 1 枚分（実体・RTV/SRV・現在ステート）
+        /// @brief G-Buffer の 1 枚分（実体＋現在ステート・RTV/SRV）
         struct TargetResource {
-            Microsoft::WRL::ComPtr<ID3D12Resource> resource;
-            D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle{};
-            D3D12_CPU_DESCRIPTOR_HANDLE srvCpuHandle{};
-            D3D12_GPU_DESCRIPTOR_HANDLE srvHandle{};
-            D3D12_RESOURCE_STATES currentState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+            GpuResource resource;
+            DescriptorHandle rtvHandle{};
+            DescriptorHandle srvHandle{};
         };
 
         void CreateOrResizeTarget(Target target);
@@ -93,7 +91,7 @@ namespace CoreEngine
     private:
         std::array<TargetResource, kTargetCount> targets_{};
         ID3D12Device* device_ = nullptr;
-        DescriptorManager* descriptorManager_ = nullptr;
+        DescriptorAllocator* descriptorAllocator_ = nullptr;
         bool isInitialized_ = false;
         int32_t currentWidth_ = 0;
         int32_t currentHeight_ = 0;

@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "SceneManager.h"
 #include "EngineSystem/EngineSystem.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/Pass/RenderPipeline.h"
@@ -92,7 +92,7 @@ namespace CoreEngine
 
     void SceneManager::Finalize() {
         // GPUの処理完了を待機してからシーンを解放
-        auto dxCommon = engine_->GetService<DirectXCommon>();
+        auto dxCommon = engine_->GetService<GraphicsCore>();
         if (dxCommon) {
             dxCommon->WaitForGpuIdle();
         }
@@ -176,7 +176,7 @@ namespace CoreEngine
         }
 
         // GPUの処理完了を待機してから古いシーンを解放
-        auto dxCommon = engine_->GetService<DirectXCommon>();
+        auto dxCommon = engine_->GetService<GraphicsCore>();
         if (dxCommon) {
             dxCommon->WaitForGpuIdle();
         }

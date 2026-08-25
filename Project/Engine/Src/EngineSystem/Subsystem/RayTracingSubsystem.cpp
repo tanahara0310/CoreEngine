@@ -3,8 +3,8 @@
 #include <algorithm>
 #include <vector>
 
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/ResourceBarrierHelper.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/FrameBlackboard.h"
 #include "Graphics/Light/LightManager.h"
@@ -27,7 +27,7 @@ namespace CoreEngine
 {
     void RayTracingSubsystem::BuildAccelerationStructures(
         const RenderContext& context,
-        DirectXCommon* dx,
+        GraphicsCore* dx,
         ModelManager* modelManager,
         SceneManager* sceneManager)
     {
@@ -91,7 +91,7 @@ namespace CoreEngine
 
     bool RayTracingSubsystem::BuildShadowStageContext(
         const RenderContext& context,
-        DirectXCommon* dx,
+        GraphicsCore* dx,
         ID3D12GraphicsCommandList* cmdList,
         ShadowStageContext& outStageContext)
     {
@@ -138,7 +138,7 @@ namespace CoreEngine
 
     void RayTracingSubsystem::DispatchRTShadowTrace(
         const RenderContext& context,
-        DirectXCommon* dx,
+        GraphicsCore* dx,
         ID3D12GraphicsCommandList* cmdList,
         RayTracingShadowManager::ViewID viewId)
     {
@@ -164,7 +164,7 @@ namespace CoreEngine
 
     void RayTracingSubsystem::DispatchRTShadowTemporal(
         const RenderContext& context,
-        DirectXCommon* dx,
+        GraphicsCore* dx,
         ID3D12GraphicsCommandList* cmdList,
         RayTracingShadowManager::ViewID viewId)
     {
@@ -186,7 +186,7 @@ namespace CoreEngine
 
     void RayTracingSubsystem::DispatchRTShadowDenoise(
         const RenderContext& context,
-        DirectXCommon* dx,
+        GraphicsCore* dx,
         ID3D12GraphicsCommandList* cmdList,
         RayTracingShadowManager::ViewID viewId)
     {
@@ -212,7 +212,7 @@ namespace CoreEngine
 
     bool RayTracingSubsystem::BuildWaterDispatchContext(
         const RenderContext& context,
-        DirectXCommon* dx,
+        GraphicsCore* dx,
         ID3D12GraphicsCommandList* cmdList,
         const WaterSurfaceData& surfaceData,
         const char* debugLabel,
@@ -288,7 +288,7 @@ namespace CoreEngine
 
     void RayTracingSubsystem::DispatchWaterRefraction(
         const RenderContext& context,
-        DirectXCommon* dx,
+        GraphicsCore* dx,
         ID3D12GraphicsCommandList* cmdList,
         WaterRefractionRayTracingManager::ViewID viewId,
         const WaterSurfaceData& surfaceData)
@@ -319,7 +319,7 @@ namespace CoreEngine
 
     void RayTracingSubsystem::DispatchWaterReflection(
         const RenderContext& context,
-        DirectXCommon* dx,
+        GraphicsCore* dx,
         ID3D12GraphicsCommandList* cmdList,
         WaterReflectionRayTracingManager::ViewID viewId,
         const WaterSurfaceData& surfaceData)
@@ -360,7 +360,7 @@ namespace CoreEngine
 
     void RayTracingSubsystem::DispatchWaterCaustics(
         const RenderContext& context,
-        DirectXCommon* dx,
+        GraphicsCore* dx,
         ID3D12GraphicsCommandList* cmdList,
         WaterCausticsRayTracingManager::ViewID viewId,
         const WaterSurfaceData& surfaceData)

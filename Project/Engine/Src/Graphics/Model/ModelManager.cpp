@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "ModelManager.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Graphics/Primitive/IPrimitiveMeshGenerator.h"
@@ -8,7 +8,7 @@
 #include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/Model/Skeleton/SkinningComputeDispatcher.h"
 #include "Graphics/Pipeline/CustomShaderPipelineCache.h"
-#include "Graphics/Common/EngineStats.h"
+#include "Diagnostics/EngineStats.h"
 #include "Animation/AnimationLoader.h"
 #include "Animation/AnimationPlayer.h"
 #include "Animation/SkeletonAnimatorFactory.h"
@@ -30,7 +30,7 @@ namespace CoreEngine
         WaitForPreload();
     }
 
-    void ModelManager::Initialize(DirectXCommon* dxCommon, ResourceFactory* factory)
+    void ModelManager::Initialize(GraphicsCore* dxCommon, ResourceFactory* factory)
     {
         assert(dxCommon && factory);
         dxCommon_ = dxCommon;
@@ -44,7 +44,9 @@ namespace CoreEngine
         renderContext_ = ctx;
 
         // InstanceBatchManager を生成（フレーム数は3、最大インスタンス数は10000と仮定）
-        constexpr uint32_t kFrameCount = 3;
+        // per-frame リングの段数は FrameSync のスロット数上限に合わせる
+        // （ここに 3 を直書きすると設定の frameCount と食い違う）
+        constexpr uint32_t kFrameCount = kMaxFramesInFlight;
         constexpr uint32_t kMaxInstancesPerFrame = 10000;
         instanceBatchManager_ = std::make_unique<InstanceBatchManager>();
         instanceBatchManager_->Initialize(dxCommon_, kFrameCount, kMaxInstancesPerFrame);

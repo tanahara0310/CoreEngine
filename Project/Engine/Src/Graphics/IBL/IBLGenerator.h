@@ -6,7 +6,7 @@
 
 namespace CoreEngine
 {
-class DirectXCommon;
+class GraphicsCore;
 class ShaderCompiler;
 
 /// @brief IBLテクスチャ生成クラス
@@ -18,9 +18,9 @@ public:
     ~IBLGenerator() = default;
 
     /// @brief 初期化
-    /// @param dxCommon DirectXCommonポインタ
+    /// @param dxCommon GraphicsCoreポインタ
     /// @param shaderCompiler ShaderCompilerポインタ
-    void Initialize(DirectXCommon* dxCommon, ShaderCompiler* shaderCompiler);
+    void Initialize(GraphicsCore* dxCommon, ShaderCompiler* shaderCompiler);
 
     /// @brief BRDF LUTを生成
     /// @param size テクスチャサイズ（推奨: 512）
@@ -55,7 +55,7 @@ public:
         uint32_t size = 128);
 
 private:
-    DirectXCommon* dxCommon_ = nullptr;
+    GraphicsCore* dxCommon_ = nullptr;
     ShaderCompiler* shaderCompiler_ = nullptr;
 
     // BRDF LUT生成用パイプライン

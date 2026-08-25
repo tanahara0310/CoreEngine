@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "WorldTransform.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include <cassert>
 #include <cmath>
 

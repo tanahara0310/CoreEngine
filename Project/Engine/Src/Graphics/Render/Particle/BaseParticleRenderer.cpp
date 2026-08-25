@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "BaseParticleRenderer.h"
 #include "Particle/ParticleSystem.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Camera/Camera.h"
@@ -62,7 +62,7 @@ namespace CoreEngine
         reflectionData_ = reflectionBuilder_->BuildFromShaders(vertexShaderBlob, pixelShaderBlob, "ParticleRenderer");
 
         // シンプルな設定でRootSignatureを構築
-        RootSignatureConfig config = RootSignatureConfig::Simple();
+        RootSignatureConfig config;
         config.ConfigureSampler("gSampler", SamplerConfig::Linear());
 
         auto buildResult = rootSignatureMg_->Build(device_, *reflectionData_, config);

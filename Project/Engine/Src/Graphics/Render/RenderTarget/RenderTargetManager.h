@@ -14,7 +14,8 @@
 
 namespace CoreEngine
 {
-    class DirectXCommon;
+    class GraphicsCore;
+    class SceneDepth;
 
     /// @brief レンダーターゲット管理クラス
     /// レンダーターゲットを名前で管理し、動的な作成・取得を可能にする
@@ -24,9 +25,9 @@ namespace CoreEngine
         ~RenderTargetManager();
 
         /// @brief 初期化
-        /// @param dxCommon DirectXCommon
-        /// @param dsvHeap DSVヒープ
-        void Initialize(DirectXCommon* dxCommon, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvHeap);
+        /// @param dxCommon GraphicsCore
+        /// @param sharedDepth オフスクリーンターゲットが共有するシーン深度（DSV の供給元）
+        void Initialize(GraphicsCore* dxCommon, SceneDepth* sharedDepth);
 
         // ===== レンダーターゲットの作成 =====
 
@@ -83,9 +84,9 @@ namespace CoreEngine
         /// @return ターゲット数
         size_t GetRenderTargetCount() const { return targets_.size(); }
 
-        /// @brief DirectXCommonを取得
-        /// @return DirectXCommon
-        DirectXCommon* GetDirectXCommon() const { return dxCommon_; }
+        /// @brief GraphicsCoreを取得
+        /// @return GraphicsCore
+        GraphicsCore* GetGraphicsCore() const { return dxCommon_; }
 
         /// @brief PostEffect intermediate 用ターゲット名を取得する
         /// @param index intermediate インデックス
@@ -126,11 +127,11 @@ namespace CoreEngine
         /// @brief 直近にログへ出した合計バイト数（変化検出用）
         size_t lastLoggedBytes_ = 0;
 
-        // DirectXCommonへの参照
-        DirectXCommon* dxCommon_ = nullptr;
+        // GraphicsCoreへの参照
+        GraphicsCore* dxCommon_ = nullptr;
 
-        // DSVヒープ
-        Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvHeap_;
+        // オフスクリーンターゲットが共有するシーン深度（非所有。所有者は RenderDomainContext）
+        SceneDepth* sharedDepth_ = nullptr;
 
         // レンダーターゲットの管理マップ（名前 -> ターゲット）
         std::unordered_map<std::string, std::unique_ptr<RenderTarget>> targets_;

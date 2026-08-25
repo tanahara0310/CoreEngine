@@ -6,7 +6,7 @@
 #include <cstring>
 #include <limits>
 
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
