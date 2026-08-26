@@ -171,7 +171,23 @@ void RTWaterRefractionRayGen()
         return;
     }
 
-    float3 waterNormal = EvaluateWaterNormal(gFFTOceanNormal, waterPos.xz);
+    // 1 ピクセルが水面交点で覆う幅。垂直断面幅を水面までの距離へ比例縮小し、
+    // 平坦水面（+Y）へ投影する。波法線のカスケード縮小フィルタに渡す。
+    const float surfaceFootprintMeters = ProjectFootprintOntoSurface(
+        ComputePixelPerpendicularWidth(
+            screenUV, ndcDepth, float2(gScreenWidth, gScreenHeight), gInvViewProjection)
+            * (tRefined / sceneDistance),
+        primaryDir,
+        float3(0.0f, 1.0f, 0.0f));
+
+    // 屈折レイの向きは中間スケール以上の波だけで決める。
+    // 最細カスケードの傾きは隣接ピクセル間で再投影先の色を飛ばし、
+    // 高コントラストな海底の上でピクセル単位の色ノイズになる。
+    // 0.5m で最細カスケードが消え、中間カスケードはそのまま通る。
+    const float kRefractionDirectionMinFootprint = 0.5f;
+    const float directionFootprint = max(surfaceFootprintMeters, kRefractionDirectionMinFootprint);
+
+    float3 waterNormal = EvaluateWaterNormal(gFFTOceanNormal, waterPos.xz, directionFootprint);
     float3 refractedDir = refract(primaryDir, waterNormal, gRefractionEta);
     if (dot(refractedDir, refractedDir) <= 1.0e-6f)
     {

@@ -12,6 +12,8 @@
 
 #include "../Common/GerstnerWave.hlsli"
 #include "../Common/FFTOceanCascade.hlsli"
+// ピクセルフットプリントの算出（ScreenUVToNDC / ReconstructWorldPosition）
+#include "../../Include/Common/DepthReconstruction.hlsli"
 
 cbuffer WaterSurfaceData : register(b1)
 {
@@ -39,6 +41,34 @@ bool UseFFTOceanSurface()
     return gSurfaceSimulationType == kWaterSurfaceModelTypeFFTOcean
         && gSurfaceFFTOceanEnabled != 0
         && gSurfaceFFTOceanResolution > 0;
+}
+
+// ============================================================
+// ピクセルフットプリント（レイ 1 本が面上で覆う幅）
+// レイトレーシングには ddx/ddy が無いため、波面テクスチャの縮小フィルタに使う幅を
+// スクリーン空間から明示的に求める。
+// ============================================================
+
+/// @brief 同一 NDC 深度の隣接ピクセルから、視線に垂直な断面での 1 ピクセル幅 [m] を返す
+float ComputePixelPerpendicularWidth(
+    float2 screenUV, float ndcDepth, float2 screenSize, float4x4 invViewProj)
+{
+    const float2 texel = 1.0f / screenSize;
+    const float3 center = ReconstructWorldPosition(
+        ScreenUVToNDC(screenUV), ndcDepth, invViewProj);
+    const float3 neighborX = ReconstructWorldPosition(
+        ScreenUVToNDC(screenUV + float2(texel.x, 0.0f)), ndcDepth, invViewProj);
+    const float3 neighborY = ReconstructWorldPosition(
+        ScreenUVToNDC(screenUV + float2(0.0f, texel.y)), ndcDepth, invViewProj);
+    return max(length(neighborX - center), length(neighborY - center));
+}
+
+/// @brief 視線に垂直な幅を、法線 surfaceNormal の面に沿った幅 [m] へ換算する
+/// @details かすめ角ほど 1 ピクセルが面上で覆う範囲は広がる。
+float ProjectFootprintOntoSurface(
+    float perpendicularWidth, float3 rayDirection, float3 surfaceNormal)
+{
+    return perpendicularWidth / max(abs(dot(rayDirection, surfaceNormal)), 0.05f);
 }
 
 float3 EvaluateWaterOffsetGerstner(float2 worldXZ)
@@ -146,17 +176,25 @@ float3 SampleFFTOceanCascadeDisplacement(Texture2DArray<float4> textureData, flo
 }
 
 /// @brief 全カスケードの法線（傾き）を合算したワールド法線を返す
-float3 SampleFFTOceanCascadeNormal(Texture2DArray<float4> textureData, float2 worldXZ, uint resolution)
+/// @param footprintMeters このレイが水面上で覆う幅 [m]
+/// @details フットプリントがテクセル幅を超えるカスケードは傾きへの寄与をフェードする。
+///          ラスタ描画（WaterNormals.hlsli）が ddx/ddy で行う縮小フィルタと同じ形なので、
+///          解像できない波長は隣接レイ間で法線が食い違わなくなる。
+float3 SampleFFTOceanCascadeNormal(
+    Texture2DArray<float4> textureData, float2 worldXZ, uint resolution, float footprintMeters)
 {
     float2 slope = float2(0.0f, 0.0f);
+    const float texelCount = (float)max(resolution, 1u);
     [unroll]
     for (int c = 0; c < kFFTCascadeCount; ++c)
     {
+        const float texelMeters = max(kFFTCascadePatch[c] / texelCount, 1.0e-4f);
+        const float fade = 1.0f - smoothstep(1.0f, 4.0f, footprintMeters / texelMeters);
         const float2 gridXZ = RotateToFFTCascadeGrid(worldXZ, c);
         const float3 enc = SampleFFTOceanArraySlice(textureData, gridXZ, kFFTCascadePatch[c], (uint)c, resolution).xyz;
         const float3 nLocal = normalize(enc * 2.0f - 1.0f);
         // 回転格子系の傾きをワールドへ逆回転してから合算する
-        slope += RotateFromFFTCascadeGrid(nLocal.xz / max(nLocal.y, 1.0e-3f), c);
+        slope += RotateFromFFTCascadeGrid(nLocal.xz / max(nLocal.y, 1.0e-3f), c) * fade;
     }
     // 波群エンベロープ: 変位と同じ変調を傾きへ掛けて波面の幾何と一致させる
     slope *= ComputeFFTWaveGroupEnvelope(worldXZ);
@@ -182,13 +220,15 @@ float3 EvaluateWaterOffset(Texture2DArray<float4> displacementTex, float2 worldX
 }
 
 /// @brief 波面のワールド法線を評価する
-float3 EvaluateWaterNormal(Texture2DArray<float4> normalTex, float2 worldXZ)
+/// @param footprintMeters このレイが水面上で覆う幅 [m]（カスケードの縮小フィルタに使う）
+float3 EvaluateWaterNormal(Texture2DArray<float4> normalTex, float2 worldXZ, float footprintMeters)
 {
     if (!UseFFTOceanSurface())
     {
         return EvaluateWaterNormalGerstner(worldXZ);
     }
-    return SampleFFTOceanCascadeNormal(normalTex, worldXZ, gSurfaceFFTOceanResolution);
+    return SampleFFTOceanCascadeNormal(
+        normalTex, worldXZ, gSurfaceFFTOceanResolution, footprintMeters);
 }
 
 // ============================================================

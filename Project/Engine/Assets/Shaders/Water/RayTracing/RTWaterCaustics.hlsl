@@ -207,9 +207,10 @@ float EvaluateDrawnSurfaceHeight(float2 worldXZ)
     return h11 + (1.0f - cellFrac.x) * (h01 - h11) + (1.0f - cellFrac.y) * (h10 - h11);
 }
 
-float3 EvaluateCausticsWaterNormal(float2 worldXZ)
+/// @param footprintMeters 受光ピクセルが覆う幅 [m]（カスケードの縮小フィルタに使う）
+float3 EvaluateCausticsWaterNormal(float2 worldXZ, float footprintMeters)
 {
-    return EvaluateWaterNormal(gFFTOceanNormal, worldXZ);
+    return EvaluateWaterNormal(gFFTOceanNormal, worldXZ, footprintMeters);
 }
 
 /// @brief Schlick 近似のフレネル透過率 (1 - F) を返す
@@ -253,13 +254,37 @@ float ComputeRefractedGeometryWeight(float submergedDepth)
     return smoothstep(0.0f, kGeometryBlendDepthMeters, submergedDepth);
 }
 
+/// @brief 受光点で 1 ピクセルが覆うワールド空間の幅 [m] を返す
+/// @param screenUV        受光ピクセル中心の UV
+/// @param ndcDepth        受光ピクセルの NDC 深度
+/// @param receiverWorldPos 復元済みの受光点ワールド座標
+/// @param receiverNormal   受光面のワールド法線
+/// @details 同一深度の隣接ピクセルを復元して視線に垂直な断面でのピクセル幅を求め、
+///          視線と受光面法線のなす角の余弦で割って受光面に沿った幅へ換算する。
+///          かすめ角ほど 1 ピクセルが覆う受光面の範囲は広がる。
+float ComputeReceiverFootprintMeters(
+    float2 screenUV, float ndcDepth, float3 receiverWorldPos, float3 receiverNormal)
+{
+    const float perpendicularWidth = ComputePixelPerpendicularWidth(
+        screenUV, ndcDepth, float2(gScreenWidth, gScreenHeight), gInvViewProj);
+
+    // ニア平面上の同 UV の点から受光点への向きが、このピクセルの視線方向。
+    const float3 nearPoint = ReconstructWorldPosition(ScreenUVToNDC(screenUV), 0.0f, gInvViewProj);
+    const float3 toReceiver = receiverWorldPos - nearPoint;
+    const float3 viewDir = toReceiver / max(length(toReceiver), 1.0e-4f);
+
+    return ProjectFootprintOntoSurface(perpendicularWidth, viewDir, receiverNormal);
+}
+
 /// @brief 水面上の点（XZ）へ入射した太陽光を屈折させ、床平面 y=floorY への着地点XZを返す
 /// @details 集光率（ヤコビアン）の有限差分評価用。入射点探索と同じ波面評価・屈折計算を使うこと。
 /// @return 屈折が有効（全反射・上向きでない）なら true
-bool ProjectRefractedToFloor(float2 surfaceXZ, float floorY, float3 lightDir, float eta, out float2 landingXZ)
+bool ProjectRefractedToFloor(
+    float2 surfaceXZ, float floorY, float3 lightDir, float eta, float footprintMeters,
+    out float2 landingXZ)
 {
     const float surfaceY = gSurfaceWaterHeight + EvaluateCausticsWaterOffset(surfaceXZ).y;
-    const float3 surfaceNormal = EvaluateCausticsWaterNormal(surfaceXZ);
+    const float3 surfaceNormal = EvaluateCausticsWaterNormal(surfaceXZ, footprintMeters);
     float3 refracted = refract(lightDir, surfaceNormal, eta);
     if (dot(refracted, refracted) <= 1.0e-6f || refracted.y >= -1.0e-4f)
     {
@@ -312,6 +337,10 @@ void RTWaterCausticsRayGen()
     }
 
     float3 receiverNormal = normalize(gNormalRoughness.Load(int3(launchIndex, 0)).xyz * 2.0f - 1.0f);
+
+    // 集光率のヤコビアン差分幅に使う、このピクセルが受光面で覆う幅
+    const float receiverFootprintMeters = ComputeReceiverFootprintMeters(
+        screenUV, ndcDepth, receiverWorldPos, receiverNormal);
 
     // ===== 水中判定は「波込みの実水面高」で行い、結果を α で DeferredLighting へ運ぶ =====
     // ★汀線に平行な「透明っぽい薄い層」の真因と恒久対策（2026-07-27）★
@@ -410,7 +439,7 @@ void RTWaterCausticsRayGen()
     [unroll]
     for (int iteration = 0; iteration < 3; ++iteration)
     {
-        const float3 iterNormal = EvaluateCausticsWaterNormal(waterPos.xz);
+        const float3 iterNormal = EvaluateCausticsWaterNormal(waterPos.xz, receiverFootprintMeters);
         float3 iterRefracted = refract(lightDir, iterNormal, eta);
         if (dot(iterRefracted, iterRefracted) <= 1.0e-6f || iterRefracted.y >= -1.0e-4f)
         {
@@ -425,7 +454,7 @@ void RTWaterCausticsRayGen()
     }
 
     // 収束後の入射点で最終的な法線・屈折方向を評価する
-    float3 waterNormal = EvaluateCausticsWaterNormal(waterPos.xz);
+    float3 waterNormal = EvaluateCausticsWaterNormal(waterPos.xz, receiverFootprintMeters);
     float3 refractedDir = refract(lightDir, waterNormal, eta);
     if (dot(refractedDir, refractedDir) <= 1.0e-6f || refractedDir.y >= -1.0e-4f)
     {
@@ -523,9 +552,14 @@ void RTWaterCausticsRayGen()
     //   波が平坦    : |det J| = 1 → 等倍（素の透過光）
     // 焦線上では det J → 0 で発散するため上限でクランプする（エネルギーは本来
     // 有限幅の焦線に集中するが、点サンプルでは表現できずホワイトアウトになるだけのため）。
-    // ε は最細 FFT カスケード（パッチ23m / 256テクセル ≈ 0.09m）のテクセル幅に合わせる。
-    const float kJacobianEps = 0.08f;
+    // 差分幅 ε はこのピクセルが受光面で覆う幅にそろえる。|det J| が点での微分ではなく
+    // フットプリント全体の面積拡大率になり、ε より細かい集光は平均されて
+    // |det J| → 1（素の透過光）へ収束する。下限は最細 FFT カスケードのテクセル幅
+    // （パッチ23m / 256テクセル ≈ 0.09m）。
+    const float kJacobianMinEps = 0.08f;
+    const float kJacobianMaxEps = 16.0f;
     const float kMaxConcentration = 8.0f;
+    const float jacobianEps = clamp(receiverFootprintMeters, kJacobianMinEps, kJacobianMaxEps);
     float concentration = 1.0f;
     {
         const float floorY = receiverWorldPos.y;
@@ -534,13 +568,15 @@ void RTWaterCausticsRayGen()
         float2 landingX;
         float2 landingZ;
         const bool validX = ProjectRefractedToFloor(
-            waterPos.xz + float2(kJacobianEps, 0.0f), floorY, lightDir, eta, landingX);
+            waterPos.xz + float2(jacobianEps, 0.0f), floorY, lightDir, eta,
+            receiverFootprintMeters, landingX);
         const bool validZ = ProjectRefractedToFloor(
-            waterPos.xz + float2(0.0f, kJacobianEps), floorY, lightDir, eta, landingZ);
+            waterPos.xz + float2(0.0f, jacobianEps), floorY, lightDir, eta,
+            receiverFootprintMeters, landingZ);
         if (validX && validZ)
         {
-            const float2 dFdX = (landingX - landing0) / kJacobianEps;
-            const float2 dFdZ = (landingZ - landing0) / kJacobianEps;
+            const float2 dFdX = (landingX - landing0) / jacobianEps;
+            const float2 dFdZ = (landingZ - landing0) / jacobianEps;
             const float detJ = dFdX.x * dFdZ.y - dFdX.y * dFdZ.x;
             concentration = min(1.0f / max(abs(detJ), 1.0e-3f), kMaxConcentration);
         }

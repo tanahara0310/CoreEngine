@@ -24,8 +24,8 @@
     "r.RTShadow.MaxRayDistance": 2682.326904296875,
     "r.RTShadow.ShadowBias": 0.15800000727176666,
     "r.SSAOTemporal.Enabled": false,
-    "r.TAA.BlendAlpha": 0.009999999776482582,
-    "r.TAA.Enabled": false,
+    "r.TAA.BlendAlpha": 0.10000000149011612,
+    "r.TAA.Enabled": true,
     "r.Vignette.Intensity": 2.0,
     "r.Vignette.Smoothness": 0.10000000149011612,
     "r.Water.AbsorptionBase": [

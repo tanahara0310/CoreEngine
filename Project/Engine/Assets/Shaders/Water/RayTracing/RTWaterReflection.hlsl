@@ -172,7 +172,28 @@ void RTWaterReflectionRayGen()
         return;
     }
 
-    float3 waterNormal = EvaluateWaterNormal(gFFTOceanNormal, waterPos.xz);
+    // 1 ピクセルが水面交点で覆う幅。垂直断面幅を水面までの距離へ比例縮小し、
+    // 平坦水面（+Y）へ投影する。波法線のカスケード縮小フィルタに渡すと、
+    // 隣接ピクセルの反射方向が滑らかにつながり、再投影先の UV が飛ばなくなる。
+    const float surfaceFootprintMeters = ProjectFootprintOntoSurface(
+        ComputePixelPerpendicularWidth(
+            screenUV,
+            hasBackground ? 0.5f : ndcDepth,
+            float2(gScreenWidth, gScreenHeight),
+            gInvViewProjection) * (tRefined / pixelRayLength),
+        primaryDir,
+        float3(0.0f, 1.0f, 0.0f));
+
+    // 反射レイの向きは「うねりスケールの法線」だけで決める。
+    // 反射は再投影のてこ（レイ長）が長く、フットプリント内で解像できている
+    // 細かなさざ波の傾きでも、隣接ピクセル間で再投影先が別の物体へ飛ぶ。
+    // 解像できない微細斜面は方向ジッタではなくグロッシーぼかし
+    // （Water.PS の SampleGlossyReflectionRGBA）が受け持つ。
+    // 1.0m で最細カスケードが消え、中間カスケードは減衰して通る。
+    const float kReflectionDirectionMinFootprint = 1.0f;
+    const float directionFootprint = max(surfaceFootprintMeters, kReflectionDirectionMinFootprint);
+
+    float3 waterNormal = EvaluateWaterNormal(gFFTOceanNormal, waterPos.xz, directionFootprint);
     // 視線（primaryDir）を水面法線で鏡面反射。カメラは水面を上から見下ろすため
     // primaryDir は下向き、reflectedDir は上向き（空・水上ジオメトリ方向）になる。
     float3 reflectedDir = reflect(primaryDir, waterNormal);
