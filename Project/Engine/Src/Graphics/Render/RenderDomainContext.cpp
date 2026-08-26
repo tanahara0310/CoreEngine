@@ -101,7 +101,7 @@ namespace CoreEngine
             "RenderDomainContext: AtmosphereManager 初期化完了\n");
 
         volumetricCloudManager_ = std::make_unique<VolumetricCloudManager>();
-        volumetricCloudManager_->Initialize(device, descriptorAllocator);
+        volumetricCloudManager_->Initialize(dxCommon, descriptorAllocator);
         Logger::GetInstance().Infof(LogCategory::Graphics,
             "RenderDomainContext: VolumetricCloudManager 初期化完了\n");
 

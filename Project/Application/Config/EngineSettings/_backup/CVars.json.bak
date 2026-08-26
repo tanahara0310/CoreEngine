@@ -8,9 +8,9 @@
     "r.AtmosphereLights.MoonEnabled": true,
     "r.AtmosphereLights.SunAtmosphereIntensity": 20.0,
     "r.AtmosphereLights.SunDirection": [
-        0.018054993823170662,
-        -0.9624592065811157,
-        0.2708253860473633
+        -0.1540394127368927,
+        -0.8107157349586487,
+        0.5648113489151001
     ],
     "r.AutoExposure.Enabled": true,
     "r.Bloom.Intensity": 0.9480000138282776,
@@ -24,8 +24,8 @@
     "r.RTShadow.MaxRayDistance": 2682.326904296875,
     "r.RTShadow.ShadowBias": 0.15800000727176666,
     "r.SSAOTemporal.Enabled": false,
-    "r.TAA.BlendAlpha": 0.009999999776482582,
-    "r.TAA.Enabled": false,
+    "r.TAA.BlendAlpha": 0.10000000149011612,
+    "r.TAA.Enabled": true,
     "r.Vignette.Intensity": 2.0,
     "r.Vignette.Smoothness": 0.10000000149011612,
     "r.Water.AbsorptionBase": [

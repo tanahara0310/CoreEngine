@@ -61,6 +61,9 @@
     <ClCompile Include="Engine\Src\Graphics\Atmosphere\AtmosphereManager.cpp">
       <Filter>Engine\Src\Graphics\Atmosphere</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Cloud\CloudCVars.cpp">
+      <Filter>Engine\Src\Graphics\Cloud</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Cloud\VolumetricCloudManager.cpp">
       <Filter>Engine\Src\Graphics\Cloud</Filter>
     </ClCompile>
@@ -1829,6 +1832,12 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Atmosphere\AtmosphereManager.h">
       <Filter>Engine\Src\Graphics\Atmosphere</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Cloud\CloudCVars.h">
+      <Filter>Engine\Src\Graphics\Cloud</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Cloud\CloudSettings.h">
+      <Filter>Engine\Src\Graphics\Cloud</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Cloud\VolumetricCloudManager.h">
       <Filter>Engine\Src\Graphics\Cloud</Filter>

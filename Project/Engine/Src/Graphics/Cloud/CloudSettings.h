@@ -1,0 +1,58 @@
+#pragma once
+
+#include <cstdint>
+
+namespace CoreEngine
+{
+    /// @brief 雲の見た目パラメータ（単位はメートル・秒・無次元）
+    /// @details 値の実体は CloudCVars が持つ。既定値もそちらにあるため、ここでは初期化しない。
+    ///          チューニング指針は Docs/Engine/Graphics/Cloud/VolumetricCloud_Refactoring_Plan.md を見ること。
+    struct VolumetricCloudParameters {
+        // ===== 雲層ジオメトリ =====
+        float layerBottomAltitudeM;     ///< 雲底高度 [m]
+        float layerThicknessM;          ///< 層厚 [m]
+
+        // ===== カバレッジ・密度 =====
+        float globalCoverage;           ///< 全体カバレッジ倍率 [0,1]
+        float densityScale;             ///< 密度→消散係数 [1/m]
+
+        // ===== ノイズスケール（サンプル時のスケールのみ。ノイズ生成には影響しない） =====
+        float baseNoiseScaleM;          ///< ベースノイズ 1 タイルの実寸 [m]
+        float detailNoiseScaleM;        ///< ディテールノイズ 1 タイルの実寸 [m]
+        float detailErosionStrength;    ///< 縁の侵食強度 [0,1]
+        float weatherMapScaleM;         ///< 天候マップ 1 タイルの実寸 [m]
+
+        // ===== 風（移流アニメーション） =====
+        float windDirX;                 ///< 風向 XZ（正規化）
+        float windDirZ;
+        float windSpeedMPerS;           ///< 風速 [m/s]
+
+        // ===== ライティング =====
+        float phaseG0;                  ///< HG 前方散乱ローブ
+        float phaseG1;                  ///< HG 後方散乱ローブ
+        float phaseBlend;               ///< 2 ローブのブレンド [0,1]
+        float ambientIntensity;         ///< Sky-View アンビエント倍率
+        float beerPowderStrength;       ///< Powder 効果 [0,1]
+        float lightMarchStepM;          ///< サンライトマーチ 1 歩 [m]
+
+        // ===== 太陽散乱スケールと多重散乱（Hillaire オクターブ法） =====
+        float sunLightScale;            ///< 雲の太陽散乱輝度スケール
+        float msAttenuation;            ///< オクターブごとの消散減衰
+        float msContribution;           ///< オクターブごとの寄与減衰
+        float msEccentricity;           ///< オクターブごとの位相非対称度の減衰
+
+        // ===== マーチング =====
+        float earlyExitTransmittance;   ///< 早期終了しきい値
+        float maxMarchDistanceM;        ///< マーチ最大距離 [m]
+        uint32_t maxSteps;              ///< 反復回数の予算（実際の上限は 2 倍）
+        uint32_t resolutionDivisor;     ///< レイマーチの解像度分割数（1=フル解像度, 2=半解像度）
+
+        // ===== ゴッドレイ（雲の隙間の光芒） =====
+        bool godRayEnabled;             ///< ゴッドレイの有効/無効
+        float godRayIntensity;          ///< 遮蔽差分（物理項）のスケール。1 が物理値
+        float godRayMieBoost;           ///< 加算ミー項（演出）。0 で完全物理
+        float godRayMaxDistanceM;       ///< ビューレイマーチの最大距離 [m]
+        uint32_t godRayStepCount;       ///< ビューレイマーチのステップ数
+        float cloudShadowRegionSizeM;   ///< 雲シャドウマップのカバー範囲（一辺）[m]
+    };
+}

@@ -25,7 +25,7 @@ struct CloudConstants
     float beerPowderStrength;   float lightMarchStepM;
     float earlyExitTransmittance; float maxMarchDistanceM;              // 176
     uint maxSteps;              uint outputWidth;
-    uint outputHeight;          uint frameIndex;                         // 192
+    uint outputHeight;          uint pad0;                               // 192
     float sunLightScale;        float msAttenuation;
     float msContribution;       float msEccentricity;                    // 208
     float3 moonDirection;       float moonIntensity;                     // 224 月光の進行方向 / 強度
