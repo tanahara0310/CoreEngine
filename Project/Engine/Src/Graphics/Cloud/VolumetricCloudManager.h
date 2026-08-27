@@ -19,6 +19,7 @@ namespace CoreEngine
 {
     class AtmosphereManager;
     class DescriptorAllocator;
+    class GpuTimestampProfiler;
     class GraphicsCore;
 
     /// @brief ボリューメトリック雲システムの窓口
@@ -63,7 +64,9 @@ namespace CoreEngine
 
         /// @brief ダーティ時のみノイズテクスチャ群を再生成する
         /// @param cmdList 記録先コマンドリスト
-        void GenerateNoiseTexturesIfNeeded(ID3D12GraphicsCommandList* cmdList);
+        /// @param profiler ディスパッチ単位の内訳計測先（nullptr なら計測しない）
+        void GenerateNoiseTexturesIfNeeded(
+            ID3D12GraphicsCommandList* cmdList, GpuTimestampProfiler* profiler = nullptr);
 
         /// @brief ノイズテクスチャが生成済みか
         bool AreNoiseTexturesReady() const { return noiseBaker_.IsReady(); }
@@ -81,7 +84,8 @@ namespace CoreEngine
             GpuResource& sceneColor,
             D3D12_GPU_DESCRIPTOR_HANDLE sceneColorUavHandle,
             D3D12_GPU_DESCRIPTOR_HANDLE depthSrvHandle,
-            const AtmosphereManager* atmosphereManager);
+            const AtmosphereManager* atmosphereManager,
+            GpuTimestampProfiler* profiler = nullptr);
 
         // ===== 空キューブマップへの雲焼き込み（AtmosphereLUTPass から呼ばれる） =====
 
@@ -90,7 +94,8 @@ namespace CoreEngine
         ///          （キューブマップは UAV 状態が前提）
         void RenderCloudsToSkyCubemap(
             ID3D12GraphicsCommandList* cmdList,
-            const AtmosphereManager* atmosphereManager);
+            const AtmosphereManager* atmosphereManager,
+            GpuTimestampProfiler* profiler = nullptr);
 
         // ===== ゴッドレイ（GodRayPass から呼ばれる） =====
 
@@ -103,7 +108,8 @@ namespace CoreEngine
             GpuResource& sceneColor,
             D3D12_GPU_DESCRIPTOR_HANDLE sceneColorUavHandle,
             D3D12_GPU_DESCRIPTOR_HANDLE depthSrvHandle,
-            const AtmosphereManager* atmosphereManager);
+            const AtmosphereManager* atmosphereManager,
+            GpuTimestampProfiler* profiler = nullptr);
 
     private:
         /// @brief 現在のパラメータ・カメラ・太陽情報から定数バッファを更新する
@@ -117,7 +123,8 @@ namespace CoreEngine
 
         /// @brief 各レンダラーへ渡す参照一式を組み立てる
         CloudRenderContext MakeRenderContext(
-            ID3D12GraphicsCommandList* cmdList, const AtmosphereManager* atmosphereManager);
+            ID3D12GraphicsCommandList* cmdList, const AtmosphereManager* atmosphereManager,
+            GpuTimestampProfiler* profiler);
 
         VolumetricCloudParameters parameters_{};
 

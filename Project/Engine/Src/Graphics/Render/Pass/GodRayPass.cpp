@@ -69,6 +69,7 @@ namespace CoreEngine
             sceneColorTarget->Resource(),
             sceneColorTarget->GetUAVHandle(),
             sceneDepthSrv,
-            context.atmosphereManager);
+            context.atmosphereManager,
+            context.gpuProfiler);
     }
 }

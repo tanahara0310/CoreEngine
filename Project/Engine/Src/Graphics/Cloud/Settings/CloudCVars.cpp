@@ -56,6 +56,16 @@ namespace CoreEngine
             "天候マップ 1 タイルの実寸 [m]",
             CVarRange{ 5000.0f, 200000.0f } };
 
+        CVar<float> BaseNoiseVerticalScale{
+            "r.Cloud.BaseNoiseVerticalScale", 0.5f,
+            "ベース形状ノイズの縦方向スケール倍率。小さいほど層内の縦の変化が細かい",
+            CVarRange{ 0.05f, 2.0f } };
+
+        CVar<float> HeightSkewM{
+            "r.Cloud.HeightSkew", 500.0f,
+            "高い位置ほど風下へずらす量 [m]。雲を斜めに立たせる",
+            CVarRange{ 0.0f, 5000.0f } };
+
         // ---- 風 ----
         CVar<float> WindDirX{
             "r.Cloud.WindDirX", 1.0f,
@@ -93,6 +103,21 @@ namespace CoreEngine
             "雲に当たる環境光の強さ",
             CVarRange{ 0.0f, 5.0f } };
 
+        CVar<float> AmbientCosZenith{
+            "r.Cloud.AmbientCosZenith", 0.7f,
+            "アンビエントで Sky-View LUT を引く仰角の cos（半球平均の代用）",
+            CVarRange{ -1.0f, 1.0f } };
+
+        CVar<float> AmbientBottomOcclusion{
+            "r.Cloud.AmbientBottomOcclusion", 0.45f,
+            "雲底に届く環境光の割合。1 で遮蔽なし",
+            CVarRange{ 0.0f, 1.0f } };
+
+        CVar<float> AmbientChroma{
+            "r.Cloud.AmbientChroma", 0.35f,
+            "環境光に残す彩度。0 で完全な灰色",
+            CVarRange{ 0.0f, 1.0f } };
+
         CVar<float> BeerPowderStrength{
             "r.Cloud.BeerPowderStrength", 0.5f,
             "Beer-Powder 効果の強さ（雲の縁の暗さ）",
@@ -102,6 +127,11 @@ namespace CoreEngine
             "r.Cloud.LightMarchStep", 200.0f,
             "サンライトマーチの 1 歩 [m]。小さいほど高品質だが重い",
             CVarRange{ 10.0f, 2000.0f } };
+
+        CVar<float> MaxSunOpticalDepth{
+            "r.Cloud.MaxSunOpticalDepth", 8.0f,
+            "サンライトマーチの光学的深さの上限。小さいほど暗部に階調が残る",
+            CVarRange{ 0.5f, 50.0f } };
 
         // ---- 太陽散乱スケールと多重散乱 ----
         CVar<float> SunLightScale{
@@ -133,6 +163,21 @@ namespace CoreEngine
         CVar<float> MaxMarchDistanceM{
             "r.Cloud.MaxMarchDistance", 120000.0f,
             "ビューレイマーチの最大距離 [m]",
+            CVarRange{ 1000.0f, 500000.0f } };
+
+        CVar<float> DetailFadeDistanceM{
+            "r.Cloud.DetailFadeDistance", 25000.0f,
+            "ディテール侵食を弱めきる距離 [m]。短いほど遠方がのっぺりする",
+            CVarRange{ 1000.0f, 200000.0f } };
+
+        CVar<float> FarFadeWidthM{
+            "r.Cloud.FarFadeWidth", 8000.0f,
+            "マーチ最大距離の手前で密度をフェードさせる幅 [m]",
+            CVarRange{ 100.0f, 50000.0f } };
+
+        CVar<float> HazeDistanceM{
+            "r.Cloud.HazeDistance", 60000.0f,
+            "遠方の雲が空色へ溶けるまでの消散距離 [m]",
             CVarRange{ 1000.0f, 500000.0f } };
 
         CVar<int> MaxSteps{
@@ -194,6 +239,8 @@ namespace CoreEngine
                 { &DetailNoiseScaleM,     &VolumetricCloudParameters::detailNoiseScaleM },
                 { &DetailErosionStrength, &VolumetricCloudParameters::detailErosionStrength },
                 { &WeatherMapScaleM,      &VolumetricCloudParameters::weatherMapScaleM },
+                { &BaseNoiseVerticalScale, &VolumetricCloudParameters::baseNoiseVerticalScale },
+                { &HeightSkewM,          &VolumetricCloudParameters::heightSkewM },
                 { &WindDirX,              &VolumetricCloudParameters::windDirX },
                 { &WindDirZ,              &VolumetricCloudParameters::windDirZ },
                 { &WindSpeedMPerS,        &VolumetricCloudParameters::windSpeedMPerS },
@@ -201,14 +248,21 @@ namespace CoreEngine
                 { &PhaseG1,               &VolumetricCloudParameters::phaseG1 },
                 { &PhaseBlend,            &VolumetricCloudParameters::phaseBlend },
                 { &AmbientIntensity,      &VolumetricCloudParameters::ambientIntensity },
+                { &AmbientCosZenith,       &VolumetricCloudParameters::ambientCosZenith },
+                { &AmbientBottomOcclusion, &VolumetricCloudParameters::ambientBottomOcclusion },
+                { &AmbientChroma,         &VolumetricCloudParameters::ambientChroma },
                 { &BeerPowderStrength,    &VolumetricCloudParameters::beerPowderStrength },
                 { &LightMarchStepM,       &VolumetricCloudParameters::lightMarchStepM },
+                { &MaxSunOpticalDepth,    &VolumetricCloudParameters::maxSunOpticalDepth },
                 { &SunLightScale,         &VolumetricCloudParameters::sunLightScale },
                 { &MsAttenuation,         &VolumetricCloudParameters::msAttenuation },
                 { &MsContribution,        &VolumetricCloudParameters::msContribution },
                 { &MsEccentricity,        &VolumetricCloudParameters::msEccentricity },
                 { &EarlyExitTransmittance,&VolumetricCloudParameters::earlyExitTransmittance },
                 { &MaxMarchDistanceM,     &VolumetricCloudParameters::maxMarchDistanceM },
+                { &DetailFadeDistanceM,   &VolumetricCloudParameters::detailFadeDistanceM },
+                { &FarFadeWidthM,         &VolumetricCloudParameters::farFadeWidthM },
+                { &HazeDistanceM,         &VolumetricCloudParameters::hazeDistanceM },
                 { &GodRayIntensity,       &VolumetricCloudParameters::godRayIntensity },
                 { &GodRayMieBoost,        &VolumetricCloudParameters::godRayMieBoost },
                 { &GodRayMaxDistanceM,    &VolumetricCloudParameters::godRayMaxDistanceM },

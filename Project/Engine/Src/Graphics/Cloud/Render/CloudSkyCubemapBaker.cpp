@@ -5,6 +5,7 @@
 #include "Graphics/Cloud/Shader/CloudBindings.h"
 #include "Graphics/Cloud/Shader/CloudPipelines.h"
 #include "Graphics/Cloud/Render/CloudRenderContext.h"
+#include "Graphics/Cloud/Render/CloudStageScope.h"
 #include "Graphics/Cloud/Resource/CloudResources.h"
 
 namespace CoreEngine
@@ -17,6 +18,7 @@ namespace CoreEngine
         }
 
         CloudResources& res = *ctx.resources;
+        CloudStageScope stage(ctx, "Cloud Cubemap Capture");
 
         {
             namespace B = CloudCubemapCaptureBind;

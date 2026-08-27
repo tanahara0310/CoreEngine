@@ -28,6 +28,6 @@ namespace CoreEngine
         // SRV ヒープはフレーム先頭で CommandContext が 1 回バインドする（個別バインドは不要）
 
         // ダーティフラグが立っている場合のみ内部で再生成される
-        context.volumetricCloudManager->GenerateNoiseTexturesIfNeeded(cmdList);
+        context.volumetricCloudManager->GenerateNoiseTexturesIfNeeded(cmdList, context.gpuProfiler);
     }
 }

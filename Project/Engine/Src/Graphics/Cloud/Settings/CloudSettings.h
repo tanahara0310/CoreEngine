@@ -21,6 +21,13 @@ namespace CoreEngine
         float detailNoiseScaleM;        ///< ディテールノイズ 1 タイルの実寸 [m]
         float detailErosionStrength;    ///< 縁の侵食強度 [0,1]
         float weatherMapScaleM;         ///< 天候マップ 1 タイルの実寸 [m]
+        float baseNoiseVerticalScale;   ///< ベースノイズの縦方向スケール倍率
+        float heightSkewM;              ///< 高度による風下方向のずらし量 [m]
+
+        // ===== 距離フェード =====
+        float detailFadeDistanceM;      ///< ディテール侵食を弱めきる距離 [m]
+        float farFadeWidthM;            ///< マーチ最大距離手前で密度をフェードさせる幅 [m]
+        float hazeDistanceM;            ///< 遠方の雲が空色へ溶けるまでの消散距離 [m]
 
         // ===== 風（移流アニメーション） =====
         float windDirX;                 ///< 風向 XZ（正規化）
@@ -32,8 +39,12 @@ namespace CoreEngine
         float phaseG1;                  ///< HG 後方散乱ローブ
         float phaseBlend;               ///< 2 ローブのブレンド [0,1]
         float ambientIntensity;         ///< Sky-View アンビエント倍率
+        float ambientCosZenith;         ///< アンビエントで Sky-View LUT を引く仰角の cos
+        float ambientBottomOcclusion;   ///< 雲底の空遮蔽率（1 で遮蔽なし）
+        float ambientChroma;            ///< アンビエントに残す彩度 [0,1]
         float beerPowderStrength;       ///< Powder 効果 [0,1]
         float lightMarchStepM;          ///< サンライトマーチ 1 歩 [m]
+        float maxSunOpticalDepth;       ///< サンライトマーチの光学的深さの上限
 
         // ===== 太陽散乱スケールと多重散乱（Hillaire オクターブ法） =====
         float sunLightScale;            ///< 雲の太陽散乱輝度スケール

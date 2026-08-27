@@ -101,12 +101,12 @@ CloudMarchResult MarchClouds(float3 rayOrigin, float3 rayDir,
 
         // 雲の中: 遠方はディテール侵食を弱めて高周波エイリアシングを防ぐ。
         // 早く消しすぎると中距離の雲が輪郭のないもや玉になる
-        float detailFade = saturate(1.0f - (t - marchStart) / kCloudDetailFadeDistanceM);
+        float detailFade = saturate(1.0f - (t - marchStart) / gCloud.detailFadeDistanceM);
         float density = SampleCloudDensity(pos, hf, gCloud.detailErosionStrength * detailFade,
             gCloud, gBaseShapeNoise, gDetailNoise, gWeatherMap, gSamplerLinearWrap);
 
         // マーチ最大距離の手前でフェードし、層が地平線で唐突に切れないようにする
-        density *= saturate((gCloud.maxMarchDistanceM - t) / kCloudFarFadeWidthM);
+        density *= saturate((gCloud.maxMarchDistanceM - t) / gCloud.farFadeWidthM);
 
         if (density > 0.0f)
         {
@@ -160,7 +160,7 @@ CloudMarchResult MarchClouds(float3 rayOrigin, float3 rayDir,
         // LUT はライト色・強度前乗算済みのため、サンプル後の色乗算はしない
         float3 skyLum = gSkyViewLUT.SampleLevel(gLUTSampler, skyUv, 0).rgb;
 
-        float haze = 1.0f - exp(-cloudDist / kCloudHazeDistanceM);
+        float haze = 1.0f - exp(-cloudDist / gCloud.hazeDistanceM);
         result.luminance = lerp(result.luminance, skyLum * alpha, haze);
     }
 

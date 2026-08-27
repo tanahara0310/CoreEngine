@@ -8,6 +8,7 @@ namespace CoreEngine
     class CloudPipelines;
     class CloudResources;
     class GpuResource;
+    class GpuTimestampProfiler;
 
     /// @brief 雲の各レンダラーが 1 回の記録で必要とする参照一式
     /// @details 実体の所有は VolumetricCloudManager。レンダラーは記録するだけで状態を持たない。
@@ -16,6 +17,8 @@ namespace CoreEngine
         CloudResources* resources = nullptr;
         const CloudPipelines* pipelines = nullptr;
         const AtmosphereManager* atmosphere = nullptr;
+        /// ディスパッチ単位の内訳計測先（nullptr なら計測しない）
+        GpuTimestampProfiler* profiler = nullptr;
 
         /// 雲 CB（gCloud）の GPU 仮想アドレス
         D3D12_GPU_VIRTUAL_ADDRESS cloudConstants = 0;

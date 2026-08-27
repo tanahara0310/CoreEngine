@@ -1329,6 +1329,9 @@
     <ClInclude Include="Engine\Src\Graphics\RHI\Debug\GpuMarker.h">
       <Filter>Engine\Src\Graphics\RHI\Debug</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RHI\Debug\GpuStageScope.h">
+      <Filter>Engine\Src\Graphics\RHI\Debug</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RHI\Debug\GpuTimestampProfiler.h">
       <Filter>Engine\Src\Graphics\RHI\Debug</Filter>
     </ClInclude>
@@ -1870,6 +1873,9 @@
       <Filter>Engine\Src\Graphics\Cloud\Shader</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Cloud\Render\CloudRenderContext.h">
+      <Filter>Engine\Src\Graphics\Cloud\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Cloud\Render\CloudStageScope.h">
       <Filter>Engine\Src\Graphics\Cloud\Render</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Cloud\Render\CloudRenderer.h">

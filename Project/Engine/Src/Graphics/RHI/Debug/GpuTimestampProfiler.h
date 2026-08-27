@@ -37,6 +37,7 @@ namespace CoreEngine
         Lighting,       ///< Deferred ライティング
         PostLighting,   ///< AerialPerspective などライティング直後の合成
         Sky,            ///< SkyBox / 大気 / ボリューメトリック雲 / ゴッドレイ
+        CloudDetail,    ///< 雲の内訳（レイマーチ / 合成 / シャドウマップ等。Sky との二重計上を避けるため別カテゴリ）
         Transparent,    ///< 透明オブジェクト
         Water,          ///< 水面
         WaterSimulation,///< 水面シミュレーション（FFT Ocean の内訳。Water との二重計上を避けるため別カテゴリ）
@@ -78,7 +79,7 @@ namespace CoreEngine
         static constexpr uint32_t kQueriesPerFrame = kSlotCount * kQueriesPerSlot;
 
         /// @brief UI がグルーピング表示に使うカテゴリの表示順（Frame は Total 専用行として別扱い）
-        static constexpr std::array<GpuTimingCategory, 14> kCategoryDisplayOrder = {
+        static constexpr std::array<GpuTimingCategory, 15> kCategoryDisplayOrder = {
             GpuTimingCategory::Setup,
             GpuTimingCategory::Shadow,
             GpuTimingCategory::GBuffer,
@@ -86,6 +87,7 @@ namespace CoreEngine
             GpuTimingCategory::Lighting,
             GpuTimingCategory::PostLighting,
             GpuTimingCategory::Sky,
+            GpuTimingCategory::CloudDetail,
             GpuTimingCategory::Transparent,
             GpuTimingCategory::Water,
             GpuTimingCategory::WaterSimulation,
@@ -176,6 +178,7 @@ namespace CoreEngine
             case GpuTimingCategory::Lighting:     return "Lighting";
             case GpuTimingCategory::PostLighting: return "Post-Lighting";
             case GpuTimingCategory::Sky:          return "Sky / Atmosphere";
+            case GpuTimingCategory::CloudDetail:  return "Cloud (雲の内訳)";
             case GpuTimingCategory::Transparent:  return "Transparent";
             case GpuTimingCategory::Water:        return "Water";
             case GpuTimingCategory::WaterSimulation: return "Water Sim (FFT 内訳)";

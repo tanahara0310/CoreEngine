@@ -42,6 +42,12 @@ namespace CoreEngine
         // 統計計測・CSV 出力（パフォーマンスタブ内部）
         void DrawMeasurementSection();
 
+        /// @brief CVar 指定の経過秒で計測キャプチャを開始し、完了したら CSV を書き出す
+        void TickAutoCapture();
+
+        /// @brief 現在の計測結果を条件メタ付きで CSV へ書き出す
+        bool ExportTimingCsv(const std::string& label, std::string& outPath);
+
     private:
         EngineSystem* engine_ = nullptr;
         ModelManager* modelManager_ = nullptr;
@@ -79,5 +85,10 @@ namespace CoreEngine
         char captureNote_[192] = {};  ///< 風速・太陽高度・構図などの自由記入
         std::string lastExportPath_;  ///< 直近に書き出した CSV のパス（UI 表示用）
         std::string gpuName_;         ///< DXGI アダプタ名（CSV のメタ情報）
+
+        // 自動キャプチャ（1 起動につき 1 回だけ走る）
+        float autoCaptureElapsedSec_ = 0.0f;
+        bool autoCaptureStarted_ = false;
+        bool autoCaptureDone_ = false;
     };
 }

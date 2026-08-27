@@ -53,6 +53,7 @@ namespace CoreEngine
             case GpuTimingCategory::Lighting:        return IM_COL32(150, 120, 40, 255);
             case GpuTimingCategory::PostLighting:    return IM_COL32(110, 110, 45, 255);
             case GpuTimingCategory::Sky:             return IM_COL32(45, 105, 150, 255);
+            case GpuTimingCategory::CloudDetail:     return IM_COL32(70, 125, 165, 255);
             case GpuTimingCategory::Transparent:     return IM_COL32(60, 130, 110, 255);
             case GpuTimingCategory::Water:           return IM_COL32(35, 110, 160, 255);
             case GpuTimingCategory::WaterSimulation: return IM_COL32(30, 85, 125, 255);

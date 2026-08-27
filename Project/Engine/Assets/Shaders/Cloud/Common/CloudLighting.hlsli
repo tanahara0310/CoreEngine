@@ -54,7 +54,7 @@ float3 CloudDirectLightLuminance(float3 pos, float3 rayDir,
 
     // クランプ無しだと雲が密集した視線で tauSun が飽和し exp(-tauSun) が 0 に張り付いて
     // 暗部の階調が失われる。上限を切ると減衰したオクターブに光量が残り階調が生まれる
-    float tauSun = min(densitySum * gCloud.densityScale, kCloudMaxSunOpticalDepth);
+    float tauSun = min(densitySum * gCloud.densityScale, gCloud.maxSunOpticalDepth);
     float cosTheta = dot(rayDir, toSun);
 
     // 多重散乱の近似（Hillaire, Frostbite の N オクターブ法）。
@@ -118,16 +118,16 @@ float3 CloudSunLuminance(float3 pos, float3 rayDir)
 ///          LUT はライト色・強度前乗算済みのため、サンプル後の色乗算はしない
 float3 CloudAmbientLuminance(float h)
 {
-    float2 uv = SkyViewParamsToUv(false, kCloudAmbientCosZenith, CloudSkyViewAzimuth(),
+    float2 uv = SkyViewParamsToUv(false, gCloud.ambientCosZenith, CloudSkyViewAzimuth(),
                                   CloudSafeCameraRadiusKm(), gAtmosphere.planetRadiusKm);
     float3 skyLum = gSkyViewLUT.SampleLevel(gLUTSampler, uv, 0).rgb;
 
     // 空色（青）のままだと太陽光が届かない厚い部分が青黒い染みに見える。
     // 実際の雲内部は多重散乱で無彩色化するため、大部分を灰色へ寄せる
     float gray = dot(skyLum, float3(0.333f, 0.333f, 0.334f));
-    skyLum = lerp(float3(gray, gray, gray), skyLum, kCloudAmbientChroma);
+    skyLum = lerp(float3(gray, gray, gray), skyLum, gCloud.ambientChroma);
 
-    return skyLum * gCloud.ambientIntensity * lerp(kCloudAmbientBottomOcclusion, 1.0f, h);
+    return skyLum * gCloud.ambientIntensity * lerp(gCloud.ambientBottomOcclusion, 1.0f, h);
 }
 
 #endif // CLOUD_LIGHTING_HLSLI

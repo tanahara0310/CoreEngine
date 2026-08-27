@@ -68,7 +68,8 @@ namespace CoreEngine
             sceneColorTarget->Resource(),
             sceneColorTarget->GetUAVHandle(),
             sceneDepthSrv,
-            context.atmosphereManager);
+            context.atmosphereManager,
+            context.gpuProfiler);
 
         // 後続の GodRayPass が読む雲バッファと雲シャドウマップをグラフへ公開する
         CloudResources& cloudResources = context.volumetricCloudManager->GetResources();

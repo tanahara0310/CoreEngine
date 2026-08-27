@@ -10,7 +10,7 @@ namespace CoreEngine
 {
 
     /// @brief 雲シェーダーへ渡す定数バッファレイアウト
-    /// @details HLSL 側 CloudCommon.hlsli の CloudConstants と一致させること（256 バイト）。
+    /// @details HLSL 側 CloudCommon.hlsli の CloudConstants と一致させること（304 バイト）。
     ///          距離はメートル基準。sunDirection は「光の進行方向」（大気散乱と同じ規約）。
     struct VolumetricCloudShaderConstants {
         Matrix4x4 invViewProj;                                              // 0
@@ -33,10 +33,17 @@ namespace CoreEngine
         float msContribution;        float msEccentricity;                  // 208
         // ===== 月（第2大気ライト。夜の雲の直接照明） =====
         Vector3 moonDirection;       float moonIntensity;                   // 224
-        Vector3 moonColor;           float hasMoon;                         // 240 (= 256)
+        Vector3 moonColor;           float hasMoon;                         // 240
+        // ===== 見た目のチューニング値 =====
+        float baseNoiseVerticalScale; float heightSkewM;
+        float detailFadeDistanceM;   float farFadeWidthM;                   // 256
+        float hazeDistanceM;         float maxSunOpticalDepth;
+        float ambientCosZenith;      float ambientBottomOcclusion;          // 272
+        float ambientChroma;         float pad1;
+        float pad2;                  float pad3;                            // 288 (= 304)
     };
-    static_assert(sizeof(VolumetricCloudShaderConstants) == 256,
-        "VolumetricCloudShaderConstants は HLSL 側 CloudConstants の 256 バイトレイアウトと一致させること");
+    static_assert(sizeof(VolumetricCloudShaderConstants) == 304,
+        "VolumetricCloudShaderConstants は HLSL 側 CloudConstants の 304 バイトレイアウトと一致させること");
 
     static constexpr Cb::Field kVolumetricCloudShaderConstantsFields[] = {
         CB_FIELD(VolumetricCloudShaderConstants, invViewProj),
@@ -72,6 +79,17 @@ namespace CoreEngine
         CB_FIELD(VolumetricCloudShaderConstants, moonDirection),
         CB_FIELD(VolumetricCloudShaderConstants, moonIntensity),
         CB_FIELD(VolumetricCloudShaderConstants, moonColor), CB_FIELD(VolumetricCloudShaderConstants, hasMoon),
+        CB_FIELD(VolumetricCloudShaderConstants, baseNoiseVerticalScale),
+        CB_FIELD(VolumetricCloudShaderConstants, heightSkewM),
+        CB_FIELD(VolumetricCloudShaderConstants, detailFadeDistanceM),
+        CB_FIELD(VolumetricCloudShaderConstants, farFadeWidthM),
+        CB_FIELD(VolumetricCloudShaderConstants, hazeDistanceM),
+        CB_FIELD(VolumetricCloudShaderConstants, maxSunOpticalDepth),
+        CB_FIELD(VolumetricCloudShaderConstants, ambientCosZenith),
+        CB_FIELD(VolumetricCloudShaderConstants, ambientBottomOcclusion),
+        CB_FIELD(VolumetricCloudShaderConstants, ambientChroma),
+        CB_FIELD(VolumetricCloudShaderConstants, pad1), CB_FIELD(VolumetricCloudShaderConstants, pad2),
+        CB_FIELD(VolumetricCloudShaderConstants, pad3),
     };
     CB_VERIFY_LAYOUT(VolumetricCloudShaderConstants, kVolumetricCloudShaderConstantsFields);
     CB_BIND_HLSL(VolumetricCloudShaderConstants, kVolumetricCloudShaderConstantsFields, "gCloud");

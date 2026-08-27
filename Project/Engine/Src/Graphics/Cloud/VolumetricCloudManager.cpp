@@ -148,6 +148,18 @@ namespace CoreEngine
         c.moonIntensity = moonIntensity_;
         c.moonColor = moonColor_;
         c.hasMoon = hasMoon_ ? 1.0f : 0.0f;
+        c.baseNoiseVerticalScale = parameters_.baseNoiseVerticalScale;
+        c.heightSkewM = parameters_.heightSkewM;
+        c.detailFadeDistanceM = parameters_.detailFadeDistanceM;
+        c.farFadeWidthM = parameters_.farFadeWidthM;
+        c.hazeDistanceM = parameters_.hazeDistanceM;
+        c.maxSunOpticalDepth = parameters_.maxSunOpticalDepth;
+        c.ambientCosZenith = parameters_.ambientCosZenith;
+        c.ambientBottomOcclusion = parameters_.ambientBottomOcclusion;
+        c.ambientChroma = parameters_.ambientChroma;
+        c.pad1 = 0.0f;
+        c.pad2 = 0.0f;
+        c.pad3 = 0.0f;
 
         *constantData_ = c;
     }
@@ -186,13 +198,15 @@ namespace CoreEngine
     }
 
     CloudRenderContext VolumetricCloudManager::MakeRenderContext(
-        ID3D12GraphicsCommandList* cmdList, const AtmosphereManager* atmosphereManager)
+        ID3D12GraphicsCommandList* cmdList, const AtmosphereManager* atmosphereManager,
+        GpuTimestampProfiler* profiler)
     {
         CloudRenderContext ctx{};
         ctx.cmdList = cmdList;
         ctx.resources = &resources_;
         ctx.pipelines = &pipelines_;
         ctx.atmosphere = atmosphereManager;
+        ctx.profiler = profiler;
         ctx.cloudConstants = constantBuffer_ ? constantBuffer_->GetGPUVirtualAddress() : 0;
         ctx.godRayConstants = godRayConstantBuffer_ ? godRayConstantBuffer_->GetGPUVirtualAddress() : 0;
         return ctx;
@@ -204,12 +218,13 @@ namespace CoreEngine
             sceneColor, parameters_.resolutionDivisor);
     }
 
-    void VolumetricCloudManager::GenerateNoiseTexturesIfNeeded(ID3D12GraphicsCommandList* cmdList)
+    void VolumetricCloudManager::GenerateNoiseTexturesIfNeeded(
+        ID3D12GraphicsCommandList* cmdList, GpuTimestampProfiler* profiler)
     {
         if (!cmdList || !noisePipelinesReady_) {
             return;
         }
-        noiseBaker_.BakeIfNeeded(MakeRenderContext(cmdList, nullptr));
+        noiseBaker_.BakeIfNeeded(MakeRenderContext(cmdList, nullptr, profiler));
     }
 
     void VolumetricCloudManager::RenderClouds(
@@ -217,7 +232,8 @@ namespace CoreEngine
         GpuResource& sceneColor,
         D3D12_GPU_DESCRIPTOR_HANDLE sceneColorUavHandle,
         D3D12_GPU_DESCRIPTOR_HANDLE depthSrvHandle,
-        const AtmosphereManager* atmosphereManager)
+        const AtmosphereManager* atmosphereManager,
+        GpuTimestampProfiler* profiler)
     {
         if (!cmdList || !pipelinesReady_ || !noiseBaker_.IsReady() || !atmosphereManager) {
             return;
@@ -229,18 +245,19 @@ namespace CoreEngine
         // 出力サイズ（半解像度）を CB へ反映してから Dispatch する
         UploadConstants();
 
-        cloudRenderer_.Render(MakeRenderContext(cmdList, atmosphereManager),
+        cloudRenderer_.Render(MakeRenderContext(cmdList, atmosphereManager, profiler),
             sceneColor, sceneColorUavHandle, depthSrvHandle);
     }
 
     void VolumetricCloudManager::RenderCloudsToSkyCubemap(
         ID3D12GraphicsCommandList* cmdList,
-        const AtmosphereManager* atmosphereManager)
+        const AtmosphereManager* atmosphereManager,
+        GpuTimestampProfiler* profiler)
     {
         if (!cmdList || !pipelinesReady_ || !noiseBaker_.IsReady() || !atmosphereManager) {
             return;
         }
-        skyCubemapBaker_.Bake(MakeRenderContext(cmdList, atmosphereManager));
+        skyCubemapBaker_.Bake(MakeRenderContext(cmdList, atmosphereManager, profiler));
     }
 
     void VolumetricCloudManager::RenderGodRays(
@@ -248,7 +265,8 @@ namespace CoreEngine
         GpuResource& sceneColor,
         D3D12_GPU_DESCRIPTOR_HANDLE sceneColorUavHandle,
         D3D12_GPU_DESCRIPTOR_HANDLE depthSrvHandle,
-        const AtmosphereManager* atmosphereManager)
+        const AtmosphereManager* atmosphereManager,
+        GpuTimestampProfiler* profiler)
     {
         if (!cmdList || !godRayPipelinesReady_ || !noiseBaker_.IsReady() || !atmosphereManager) {
             return;
@@ -263,7 +281,7 @@ namespace CoreEngine
         // 出力サイズ（半解像度）確定後に CB を更新する
         UploadGodRayConstants();
 
-        godRayRenderer_.Render(MakeRenderContext(cmdList, atmosphereManager),
+        godRayRenderer_.Render(MakeRenderContext(cmdList, atmosphereManager, profiler),
             sceneColor, sceneColorUavHandle, depthSrvHandle);
     }
 }

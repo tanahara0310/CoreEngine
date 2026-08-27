@@ -26,6 +26,30 @@ namespace {
     CVar<float> cvBlackSeconds{
         "app.CameraShowcase.BlackSeconds", 0.4f,
         "カットの切れ目で完全暗転を保つ時間 [秒]", CVarRange{ 0.0f, 5.0f } };
+    // 構図を固定した A/B 比較のために開始カットを指定する。
+    // HoldSeconds を長くしても 1 カット目から始まるため、これが無いと特定の構図で止められない。
+    CVar<int> cvStartIndex{
+        "app.CameraShowcase.StartIndex", 0,
+        "起動時に表示するカットの番号（範囲外は先頭へ丸める）", CVarRange{ 0.0f, 32.0f } };
+
+    // カット一覧に無い構図で止めるための上書き。有効なら全カットがこの 1 つに差し替わる。
+    // 空や特定の対象を大きく写す検証構図を、カット一覧を書き換えずに作るためのもの。
+    constexpr CVarFlags kOverrideFlags = CVarFlags::NoUI;
+    CVar<bool> cvOverrideEnabled{
+        "app.CameraShowcase.OverrideEnabled", false,
+        "カット一覧を無視して下の上書き構図を使う", CVarRange{}, kOverrideFlags };
+    CVar<Vector3> cvOverridePosition{
+        "app.CameraShowcase.OverridePosition", { 10.0f, 35.0f, 190.0f },
+        "上書き構図のカメラ位置 [m]", {}, kOverrideFlags };
+    CVar<Vector3> cvOverrideRotation{
+        "app.CameraShowcase.OverrideRotation", { 0.1155f, -3.1216f, 0.0f },
+        "上書き構図のカメラ回転 [rad]（x=ピッチ, y=ヨー, z=ロール）", {}, kOverrideFlags };
+    CVar<float> cvOverrideFovDegrees{
+        "app.CameraShowcase.OverrideFovDegrees", 55.0f,
+        "上書き構図の垂直画角 [度]", CVarRange{ 10.0f, 120.0f }, kOverrideFlags };
+    CVar<float> cvOverrideFarClip{
+        "app.CameraShowcase.OverrideFarClip", 20000.0f,
+        "上書き構図のファークリップ [m]", CVarRange{ 100.0f, 200000.0f }, kOverrideFlags };
 }
 
 void CameraShowcase::Initialize(EngineSystem* engine, std::vector<Shot> shots, ApplyShotFunc applyShot,
@@ -35,7 +59,9 @@ void CameraShowcase::Initialize(EngineSystem* engine, std::vector<Shot> shots, A
     shots_ = std::move(shots);
     applyShot_ = std::move(applyShot);
     isReleaseCameraActive_ = std::move(isReleaseCameraActive);
-    currentIndex_ = 0;
+    currentIndex_ = shots_.empty()
+        ? 0
+        : static_cast<size_t>(std::clamp(cvStartIndex.Get(), 0, static_cast<int>(shots_.size()) - 1));
     timer_ = 0.0f;
     // 起動直後は黒から明ける。1 カット目もフェードインで始めることで、
     // ループ中のどのカットとも同じ入り方になる
@@ -161,7 +187,15 @@ void CameraShowcase::Shutdown(bool keepFade)
 
 void CameraShowcase::ApplyCurrentShot()
 {
-    if (!applyShot_ || currentIndex_ >= shots_.size()) {
+    if (!applyShot_) {
+        return;
+    }
+    if (cvOverrideEnabled.Get()) {
+        applyShot_(Shot{ cvOverridePosition.Get(), cvOverrideRotation.Get(),
+                         cvOverrideFovDegrees.Get(), cvOverrideFarClip.Get() });
+        return;
+    }
+    if (currentIndex_ >= shots_.size()) {
         return;
     }
     applyShot_(shots_[currentIndex_]);

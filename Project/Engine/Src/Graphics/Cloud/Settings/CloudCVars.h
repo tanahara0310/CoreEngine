@@ -26,6 +26,8 @@ namespace CoreEngine
         extern CVar<float> DetailNoiseScaleM;
         extern CVar<float> DetailErosionStrength;
         extern CVar<float> WeatherMapScaleM;
+        extern CVar<float> BaseNoiseVerticalScale;
+        extern CVar<float> HeightSkewM;
 
         // ---- 風 ----
         extern CVar<float> WindDirX;
@@ -37,8 +39,12 @@ namespace CoreEngine
         extern CVar<float> PhaseG1;
         extern CVar<float> PhaseBlend;
         extern CVar<float> AmbientIntensity;
+        extern CVar<float> AmbientCosZenith;
+        extern CVar<float> AmbientBottomOcclusion;
+        extern CVar<float> AmbientChroma;
         extern CVar<float> BeerPowderStrength;
         extern CVar<float> LightMarchStepM;
+        extern CVar<float> MaxSunOpticalDepth;
 
         // ---- 太陽散乱スケールと多重散乱 ----
         extern CVar<float> SunLightScale;
@@ -49,6 +55,9 @@ namespace CoreEngine
         // ---- マーチング ----
         extern CVar<float> EarlyExitTransmittance;
         extern CVar<float> MaxMarchDistanceM;
+        extern CVar<float> DetailFadeDistanceM;
+        extern CVar<float> FarFadeWidthM;
+        extern CVar<float> HazeDistanceM;
         extern CVar<int> MaxSteps;
         extern CVar<int> ResolutionDivisor;
 
