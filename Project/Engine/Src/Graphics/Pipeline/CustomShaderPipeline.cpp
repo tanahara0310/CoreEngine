@@ -209,6 +209,9 @@ namespace CoreEngine
             return;
         }
 
+        // 呼び出し側がシェーダー固有の契約を解決できるよう、ルートスロット確定後の
+        // リフレクションを保持する
+        computeReflection_ = std::move(csReflection);
         hasComputePSO_ = true;
     }
 

@@ -336,24 +336,33 @@ namespace CoreEngine
         GodRayShaderConstants* godRayConstantData_ = nullptr;
         bool godRayPipelinesReady_ = false;
 
-        // パイプライン
+        // パイプラインと、その PSO に対して解決済みのバインド契約
         CustomShaderPipeline baseShapeNoisePipeline_{};
         BaseShapeNoiseShaderProvider baseShapeNoiseShaderProvider_{};
+        BindingTable baseShapeNoiseBindings_{};
         CustomShaderPipeline detailNoisePipeline_{};
         DetailNoiseShaderProvider detailNoiseShaderProvider_{};
+        BindingTable detailNoiseBindings_{};
         CustomShaderPipeline weatherMapPipeline_{};
         WeatherMapShaderProvider weatherMapShaderProvider_{};
+        BindingTable weatherMapBindings_{};
         CustomShaderPipeline rayMarchPipeline_{};
         RayMarchShaderProvider rayMarchShaderProvider_{};
+        BindingTable rayMarchBindings_{};
         CustomShaderPipeline compositePipeline_{};
         CompositeShaderProvider compositeShaderProvider_{};
+        BindingTable compositeBindings_{};
         CustomShaderPipeline cubemapCapturePipeline_{};
         CloudCubemapCaptureShaderProvider cubemapCaptureShaderProvider_{};
+        BindingTable cubemapCaptureBindings_{};
         CustomShaderPipeline cloudShadowPipeline_{};
         CloudShadowMapShaderProvider cloudShadowShaderProvider_{};
+        BindingTable cloudShadowBindings_{};
         CustomShaderPipeline godRayMarchPipeline_{};
         GodRayMarchShaderProvider godRayMarchShaderProvider_{};
+        BindingTable godRayMarchBindings_{};
         CustomShaderPipeline godRayCompositePipeline_{};
         GodRayCompositeShaderProvider godRayCompositeShaderProvider_{};
+        BindingTable godRayCompositeBindings_{};
     };
 }

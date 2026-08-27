@@ -2,17 +2,21 @@
 #include "VolumetricCloudManager.h"
 
 #include "Graphics/Atmosphere/AtmosphereManager.h"
+#include "Graphics/Cloud/CloudBindings.h"
 #include "Graphics/Cloud/CloudCVars.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RootSignature/ShaderBinder.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
+#include "Graphics/Shader/ShaderReflectionData.h"
 #include "Utility/Logger/Logger.h"
 
 #include <algorithm>
 #include <cmath>
+#include <exception>
 
 namespace CoreEngine
 {
@@ -32,6 +36,42 @@ namespace CoreEngine
             desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
             desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
             return desc;
+        }
+
+        /// @brief CS パイプラインを構築し、宣言表を解決する
+        /// @return 構築と解決の両方に成功したら true（失敗時は呼び出し側が機能を無効化する）
+        template <size_t N>
+        bool BuildComputePass(ID3D12Device* device,
+                              ShaderCompiler& compiler,
+                              ShaderReflectionBuilder& reflectionBuilder,
+                              CustomShaderPipeline& pipeline,
+                              const ICustomShaderProvider& provider,
+                              const ShaderBindingDecl (&decls)[N],
+                              BindingTable& outBindings,
+                              const char* name)
+        {
+            if (!pipeline.Build(device, compiler, reflectionBuilder, provider)
+                || !pipeline.HasComputePSO()) {
+                Logger::GetInstance().Warnf(LogCategory::Graphics,
+                    "VolumetricCloudManager: {} コンピュートパイプラインの構築に失敗", name);
+                return false;
+            }
+
+            const ShaderReflectionData* reflection = pipeline.GetComputeReflection();
+            if (!reflection) {
+                Logger::GetInstance().Warnf(LogCategory::Graphics,
+                    "VolumetricCloudManager: {} のリフレクションを取得できません", name);
+                return false;
+            }
+
+            try {
+                outBindings = BindingTable::Resolve(*reflection, decls, name);
+            }
+            catch (const std::exception&) {
+                // 違反の内訳は BindingTable::Resolve が error ログへ出している
+                return false;
+            }
+            return true;
         }
     }
     void VolumetricCloudManager::Initialize(GraphicsCore* graphicsCore, DescriptorAllocator* descriptorAllocator)
@@ -187,6 +227,7 @@ namespace CoreEngine
         // 各ノイズ CS: UAV へ書き込み → 描画/レイマーチが読めるよう SRV 状態へ遷移。
         // ノイズシェーダーは定数バッファ不要（純手続き生成）。gOutput UAV のみバインドする。
         auto dispatchNoise = [&](CustomShaderPipeline& pipeline,
+                                 const BindingTable& bindings,
                                  GpuResource& tex,
                                  D3D12_GPU_DESCRIPTOR_HANDLE uav,
                                  UINT gx, UINT gy, UINT gz)
@@ -197,10 +238,9 @@ namespace CoreEngine
             cmdList->SetPipelineState(pipeline.GetComputePSO());
             cmdList->SetComputeRootSignature(pipeline.GetComputeRootSignature());
 
-            const int uavSlot = pipeline.GetComputeRootParamIndex("gOutput");
-            if (uavSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(uavSlot), uav);
-            }
+            ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
+            binder.Set(bindings[CloudNoiseBind::gOutput], uav);
+            binder.ValidateBeforeDraw(bindings);
 
             cmdList->Dispatch(gx, gy, gz);
 
@@ -210,15 +250,15 @@ namespace CoreEngine
         };
 
         const UINT baseGroups = kBaseShapeNoiseSize / 4;   // numthreads(4,4,4)
-        dispatchNoise(baseShapeNoisePipeline_, baseShapeNoise_,
+        dispatchNoise(baseShapeNoisePipeline_, baseShapeNoiseBindings_, baseShapeNoise_,
             baseShapeNoiseUavHandle_.gpuHandle, baseGroups, baseGroups, baseGroups);
 
         const UINT detailGroups = kDetailNoiseSize / 4;    // numthreads(4,4,4)
-        dispatchNoise(detailNoisePipeline_, detailNoise_,
+        dispatchNoise(detailNoisePipeline_, detailNoiseBindings_, detailNoise_,
             detailNoiseUavHandle_.gpuHandle, detailGroups, detailGroups, detailGroups);
 
         const UINT weatherGroups = kWeatherMapSize / 8;    // numthreads(8,8,1)
-        dispatchNoise(weatherMapPipeline_, weatherMap_,
+        dispatchNoise(weatherMapPipeline_, weatherMapBindings_, weatherMap_,
             weatherMapUavHandle_.gpuHandle, weatherGroups, weatherGroups, 1);
 
         noiseDirty_ = false;
@@ -252,47 +292,19 @@ namespace CoreEngine
         cmdList->SetComputeRootSignature(rayMarchPipeline_.GetComputeRootSignature());
 
         {
-            const int cbSlot = rayMarchPipeline_.GetComputeRootParamIndex("gCloud");
-            if (cbSlot >= 0) {
-                cmdList->SetComputeRootConstantBufferView(
-                    static_cast<UINT>(cbSlot), constantBuffer_->GetGPUVirtualAddress());
-            }
-            const int baseSlot = rayMarchPipeline_.GetComputeRootParamIndex("gBaseShapeNoise");
-            if (baseSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(baseSlot), baseShapeNoiseSrvHandle_.gpuHandle);
-            }
-            const int detailSlot = rayMarchPipeline_.GetComputeRootParamIndex("gDetailNoise");
-            if (detailSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(detailSlot), detailNoiseSrvHandle_.gpuHandle);
-            }
-            const int weatherSlot = rayMarchPipeline_.GetComputeRootParamIndex("gWeatherMap");
-            if (weatherSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(weatherSlot), weatherMapSrvHandle_.gpuHandle);
-            }
-            const int depthSlot = rayMarchPipeline_.GetComputeRootParamIndex("gSceneDepth");
-            if (depthSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(depthSlot), depthSrvHandle);
-            }
+            namespace B = CloudRayMarchBind;
+            ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
+            binder.Set(rayMarchBindings_[B::gCloud], constantBuffer_->GetGPUVirtualAddress());
             // 大気散乱の定数バッファと LUT（太陽色・アンビエントの単一情報源）
-            const int atmoCbSlot = rayMarchPipeline_.GetComputeRootParamIndex("gAtmosphere");
-            if (atmoCbSlot >= 0) {
-                cmdList->SetComputeRootConstantBufferView(
-                    static_cast<UINT>(atmoCbSlot), atmosphereManager->GetConstantBufferGPUAddress());
-            }
-            const int transmittanceSlot = rayMarchPipeline_.GetComputeRootParamIndex("gTransmittanceLUT");
-            if (transmittanceSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(
-                    static_cast<UINT>(transmittanceSlot), atmosphereManager->GetTransmittanceLUTSRVHandle());
-            }
-            const int skyViewSlot = rayMarchPipeline_.GetComputeRootParamIndex("gSkyViewLUT");
-            if (skyViewSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(
-                    static_cast<UINT>(skyViewSlot), atmosphereManager->GetSkyViewLUTSRVHandle());
-            }
-            const int outSlot = rayMarchPipeline_.GetComputeRootParamIndex("gCloudOutput");
-            if (outSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(outSlot), cloudBufferUavHandle_.gpuHandle);
-            }
+            binder.Set(rayMarchBindings_[B::gAtmosphere], atmosphereManager->GetConstantBufferGPUAddress());
+            binder.Set(rayMarchBindings_[B::gBaseShapeNoise], baseShapeNoiseSrvHandle_.gpuHandle);
+            binder.Set(rayMarchBindings_[B::gDetailNoise], detailNoiseSrvHandle_.gpuHandle);
+            binder.Set(rayMarchBindings_[B::gWeatherMap], weatherMapSrvHandle_.gpuHandle);
+            binder.Set(rayMarchBindings_[B::gSceneDepth], depthSrvHandle);
+            binder.Set(rayMarchBindings_[B::gTransmittanceLUT], atmosphereManager->GetTransmittanceLUTSRVHandle());
+            binder.Set(rayMarchBindings_[B::gSkyViewLUT], atmosphereManager->GetSkyViewLUTSRVHandle());
+            binder.Set(rayMarchBindings_[B::gCloudOutput], cloudBufferUavHandle_.gpuHandle);
+            binder.ValidateBeforeDraw(rayMarchBindings_);
         }
 
         cmdList->Dispatch(
@@ -312,27 +324,14 @@ namespace CoreEngine
         cmdList->SetComputeRootSignature(compositePipeline_.GetComputeRootSignature());
 
         {
-            const int cbSlot = compositePipeline_.GetComputeRootParamIndex("gCloud");
-            if (cbSlot >= 0) {
-                cmdList->SetComputeRootConstantBufferView(
-                    static_cast<UINT>(cbSlot), constantBuffer_->GetGPUVirtualAddress());
-            }
-            const int sceneSlot = compositePipeline_.GetComputeRootParamIndex("gSceneColor");
-            if (sceneSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(sceneSlot), sceneColorSrvHandle);
-            }
-            const int cloudSlot = compositePipeline_.GetComputeRootParamIndex("gCloudBuffer");
-            if (cloudSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(cloudSlot), cloudBufferSrvHandle_.gpuHandle);
-            }
-            const int depthSlot = compositePipeline_.GetComputeRootParamIndex("gSceneDepth");
-            if (depthSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(depthSlot), depthSrvHandle);
-            }
-            const int outSlot = compositePipeline_.GetComputeRootParamIndex("gOutput");
-            if (outSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(outSlot), compositeResultUavHandle_.gpuHandle);
-            }
+            namespace B = CloudCompositeBind;
+            ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
+            binder.Set(compositeBindings_[B::gCloud], constantBuffer_->GetGPUVirtualAddress());
+            binder.Set(compositeBindings_[B::gSceneColor], sceneColorSrvHandle);
+            binder.Set(compositeBindings_[B::gCloudBuffer], cloudBufferSrvHandle_.gpuHandle);
+            binder.Set(compositeBindings_[B::gSceneDepth], depthSrvHandle);
+            binder.Set(compositeBindings_[B::gOutput], compositeResultUavHandle_.gpuHandle);
+            binder.ValidateBeforeDraw(compositeBindings_);
         }
 
         cmdList->Dispatch(
@@ -431,19 +430,18 @@ namespace CoreEngine
         struct Entry {
             CustomShaderPipeline& pipeline;
             const ICustomShaderProvider& provider;
+            BindingTable& bindings;
             const char* name;
         };
         Entry entries[] = {
-            { baseShapeNoisePipeline_, baseShapeNoiseShaderProvider_, "BaseShapeNoise" },
-            { detailNoisePipeline_,    detailNoiseShaderProvider_,    "DetailNoise" },
-            { weatherMapPipeline_,     weatherMapShaderProvider_,     "WeatherMap" },
+            { baseShapeNoisePipeline_, baseShapeNoiseShaderProvider_, baseShapeNoiseBindings_, "BaseShapeNoise" },
+            { detailNoisePipeline_,    detailNoiseShaderProvider_,    detailNoiseBindings_,    "DetailNoise" },
+            { weatherMapPipeline_,     weatherMapShaderProvider_,     weatherMapBindings_,     "WeatherMap" },
         };
 
         for (Entry& e : entries) {
-            const bool built = e.pipeline.Build(device, shaderCompiler, reflectionBuilder, e.provider);
-            if (!built || !e.pipeline.HasComputePSO()) {
-                Logger::GetInstance().Warnf(LogCategory::Graphics,
-                    "VolumetricCloudManager: {} コンピュートパイプラインの構築に失敗", e.name);
+            if (!BuildComputePass(device, shaderCompiler, reflectionBuilder,
+                    e.pipeline, e.provider, CloudNoiseBind::kDecls, e.bindings, e.name)) {
                 return false;
             }
         }
@@ -458,27 +456,19 @@ namespace CoreEngine
         ShaderReflectionBuilder reflectionBuilder;
         reflectionBuilder.Initialize(shaderCompiler.GetDxcUtils());
 
-        const bool rayMarchBuilt = rayMarchPipeline_.Build(
-            device, shaderCompiler, reflectionBuilder, rayMarchShaderProvider_);
-        if (!rayMarchBuilt || !rayMarchPipeline_.HasComputePSO()) {
-            Logger::GetInstance().Warnf(LogCategory::Graphics,
-                "VolumetricCloudManager: RayMarch コンピュートパイプラインの構築に失敗");
+        if (!BuildComputePass(device, shaderCompiler, reflectionBuilder,
+                rayMarchPipeline_, rayMarchShaderProvider_,
+                CloudRayMarchBind::kDecls, rayMarchBindings_, "RayMarch")) {
             return false;
         }
-
-        const bool compositeBuilt = compositePipeline_.Build(
-            device, shaderCompiler, reflectionBuilder, compositeShaderProvider_);
-        if (!compositeBuilt || !compositePipeline_.HasComputePSO()) {
-            Logger::GetInstance().Warnf(LogCategory::Graphics,
-                "VolumetricCloudManager: Composite コンピュートパイプラインの構築に失敗");
+        if (!BuildComputePass(device, shaderCompiler, reflectionBuilder,
+                compositePipeline_, compositeShaderProvider_,
+                CloudCompositeBind::kDecls, compositeBindings_, "Composite")) {
             return false;
         }
-
-        const bool cubemapCaptureBuilt = cubemapCapturePipeline_.Build(
-            device, shaderCompiler, reflectionBuilder, cubemapCaptureShaderProvider_);
-        if (!cubemapCaptureBuilt || !cubemapCapturePipeline_.HasComputePSO()) {
-            Logger::GetInstance().Warnf(LogCategory::Graphics,
-                "VolumetricCloudManager: CloudCubemapCapture コンピュートパイプラインの構築に失敗");
+        if (!BuildComputePass(device, shaderCompiler, reflectionBuilder,
+                cubemapCapturePipeline_, cubemapCaptureShaderProvider_,
+                CloudCubemapCaptureBind::kDecls, cubemapCaptureBindings_, "CloudCubemapCapture")) {
             return false;
         }
 
@@ -500,41 +490,18 @@ namespace CoreEngine
         cmdList->SetPipelineState(cubemapCapturePipeline_.GetComputePSO());
         cmdList->SetComputeRootSignature(cubemapCapturePipeline_.GetComputeRootSignature());
 
-        const int cbSlot = cubemapCapturePipeline_.GetComputeRootParamIndex("gCloud");
-        if (cbSlot >= 0) {
-            cmdList->SetComputeRootConstantBufferView(
-                static_cast<UINT>(cbSlot), constantBuffer_->GetGPUVirtualAddress());
-        }
-        const int atmoCbSlot = cubemapCapturePipeline_.GetComputeRootParamIndex("gAtmosphere");
-        if (atmoCbSlot >= 0) {
-            cmdList->SetComputeRootConstantBufferView(
-                static_cast<UINT>(atmoCbSlot), atmosphereManager->GetConstantBufferGPUAddress());
-        }
-        const int baseSlot = cubemapCapturePipeline_.GetComputeRootParamIndex("gBaseShapeNoise");
-        if (baseSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(baseSlot), baseShapeNoiseSrvHandle_.gpuHandle);
-        }
-        const int detailSlot = cubemapCapturePipeline_.GetComputeRootParamIndex("gDetailNoise");
-        if (detailSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(detailSlot), detailNoiseSrvHandle_.gpuHandle);
-        }
-        const int weatherSlot = cubemapCapturePipeline_.GetComputeRootParamIndex("gWeatherMap");
-        if (weatherSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(weatherSlot), weatherMapSrvHandle_.gpuHandle);
-        }
-        const int transmittanceSlot = cubemapCapturePipeline_.GetComputeRootParamIndex("gTransmittanceLUT");
-        if (transmittanceSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(transmittanceSlot), atmosphereManager->GetTransmittanceLUTSRVHandle());
-        }
-        const int skyViewSlot = cubemapCapturePipeline_.GetComputeRootParamIndex("gSkyViewLUT");
-        if (skyViewSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(skyViewSlot), atmosphereManager->GetSkyViewLUTSRVHandle());
-        }
-        const int outSlot = cubemapCapturePipeline_.GetComputeRootParamIndex("gSkyCubemap");
-        if (outSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(outSlot), cubemapUav);
+        {
+            namespace B = CloudCubemapCaptureBind;
+            ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
+            binder.Set(cubemapCaptureBindings_[B::gCloud], constantBuffer_->GetGPUVirtualAddress());
+            binder.Set(cubemapCaptureBindings_[B::gAtmosphere], atmosphereManager->GetConstantBufferGPUAddress());
+            binder.Set(cubemapCaptureBindings_[B::gBaseShapeNoise], baseShapeNoiseSrvHandle_.gpuHandle);
+            binder.Set(cubemapCaptureBindings_[B::gDetailNoise], detailNoiseSrvHandle_.gpuHandle);
+            binder.Set(cubemapCaptureBindings_[B::gWeatherMap], weatherMapSrvHandle_.gpuHandle);
+            binder.Set(cubemapCaptureBindings_[B::gTransmittanceLUT], atmosphereManager->GetTransmittanceLUTSRVHandle());
+            binder.Set(cubemapCaptureBindings_[B::gSkyViewLUT], atmosphereManager->GetSkyViewLUTSRVHandle());
+            binder.Set(cubemapCaptureBindings_[B::gSkyCubemap], cubemapUav);
+            binder.ValidateBeforeDraw(cubemapCaptureBindings_);
         }
 
         constexpr uint32_t kCubemapSize = AtmosphereManager::kSkyCubemapSize;
@@ -722,27 +689,19 @@ namespace CoreEngine
         ShaderReflectionBuilder reflectionBuilder;
         reflectionBuilder.Initialize(shaderCompiler.GetDxcUtils());
 
-        const bool shadowBuilt = cloudShadowPipeline_.Build(
-            device, shaderCompiler, reflectionBuilder, cloudShadowShaderProvider_);
-        if (!shadowBuilt || !cloudShadowPipeline_.HasComputePSO()) {
-            Logger::GetInstance().Warnf(LogCategory::Graphics,
-                "VolumetricCloudManager: CloudShadowMap コンピュートパイプラインの構築に失敗");
+        if (!BuildComputePass(device, shaderCompiler, reflectionBuilder,
+                cloudShadowPipeline_, cloudShadowShaderProvider_,
+                CloudShadowMapBind::kDecls, cloudShadowBindings_, "CloudShadowMap")) {
             return false;
         }
-
-        const bool marchBuilt = godRayMarchPipeline_.Build(
-            device, shaderCompiler, reflectionBuilder, godRayMarchShaderProvider_);
-        if (!marchBuilt || !godRayMarchPipeline_.HasComputePSO()) {
-            Logger::GetInstance().Warnf(LogCategory::Graphics,
-                "VolumetricCloudManager: GodRayMarch コンピュートパイプラインの構築に失敗");
+        if (!BuildComputePass(device, shaderCompiler, reflectionBuilder,
+                godRayMarchPipeline_, godRayMarchShaderProvider_,
+                GodRayMarchBind::kDecls, godRayMarchBindings_, "GodRayMarch")) {
             return false;
         }
-
-        const bool godRayCompositeBuilt = godRayCompositePipeline_.Build(
-            device, shaderCompiler, reflectionBuilder, godRayCompositeShaderProvider_);
-        if (!godRayCompositeBuilt || !godRayCompositePipeline_.HasComputePSO()) {
-            Logger::GetInstance().Warnf(LogCategory::Graphics,
-                "VolumetricCloudManager: GodRayComposite コンピュートパイプラインの構築に失敗");
+        if (!BuildComputePass(device, shaderCompiler, reflectionBuilder,
+                godRayCompositePipeline_, godRayCompositeShaderProvider_,
+                GodRayCompositeBind::kDecls, godRayCompositeBindings_, "GodRayComposite")) {
             return false;
         }
 
@@ -810,32 +769,15 @@ namespace CoreEngine
         cmdList->SetComputeRootSignature(cloudShadowPipeline_.GetComputeRootSignature());
 
         {
-            const int cloudCbSlot = cloudShadowPipeline_.GetComputeRootParamIndex("gCloud");
-            if (cloudCbSlot >= 0) {
-                cmdList->SetComputeRootConstantBufferView(
-                    static_cast<UINT>(cloudCbSlot), constantBuffer_->GetGPUVirtualAddress());
-            }
-            const int godRayCbSlot = cloudShadowPipeline_.GetComputeRootParamIndex("gGodRay");
-            if (godRayCbSlot >= 0) {
-                cmdList->SetComputeRootConstantBufferView(
-                    static_cast<UINT>(godRayCbSlot), godRayConstantBuffer_->GetGPUVirtualAddress());
-            }
-            const int baseSlot = cloudShadowPipeline_.GetComputeRootParamIndex("gBaseShapeNoise");
-            if (baseSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(baseSlot), baseShapeNoiseSrvHandle_.gpuHandle);
-            }
-            const int detailSlot = cloudShadowPipeline_.GetComputeRootParamIndex("gDetailNoise");
-            if (detailSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(detailSlot), detailNoiseSrvHandle_.gpuHandle);
-            }
-            const int weatherSlot = cloudShadowPipeline_.GetComputeRootParamIndex("gWeatherMap");
-            if (weatherSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(weatherSlot), weatherMapSrvHandle_.gpuHandle);
-            }
-            const int outSlot = cloudShadowPipeline_.GetComputeRootParamIndex("gCloudShadowMap");
-            if (outSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(outSlot), cloudShadowMapUavHandle_.gpuHandle);
-            }
+            namespace B = CloudShadowMapBind;
+            ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
+            binder.Set(cloudShadowBindings_[B::gCloud], constantBuffer_->GetGPUVirtualAddress());
+            binder.Set(cloudShadowBindings_[B::gGodRay], godRayConstantBuffer_->GetGPUVirtualAddress());
+            binder.Set(cloudShadowBindings_[B::gBaseShapeNoise], baseShapeNoiseSrvHandle_.gpuHandle);
+            binder.Set(cloudShadowBindings_[B::gDetailNoise], detailNoiseSrvHandle_.gpuHandle);
+            binder.Set(cloudShadowBindings_[B::gWeatherMap], weatherMapSrvHandle_.gpuHandle);
+            binder.Set(cloudShadowBindings_[B::gCloudShadowMap], cloudShadowMapUavHandle_.gpuHandle);
+            binder.ValidateBeforeDraw(cloudShadowBindings_);
         }
 
         cmdList->Dispatch(
@@ -857,37 +799,16 @@ namespace CoreEngine
         cmdList->SetComputeRootSignature(godRayMarchPipeline_.GetComputeRootSignature());
 
         {
-            const int cbSlot = godRayMarchPipeline_.GetComputeRootParamIndex("gGodRay");
-            if (cbSlot >= 0) {
-                cmdList->SetComputeRootConstantBufferView(
-                    static_cast<UINT>(cbSlot), godRayConstantBuffer_->GetGPUVirtualAddress());
-            }
-            const int atmoCbSlot = godRayMarchPipeline_.GetComputeRootParamIndex("gAtmosphere");
-            if (atmoCbSlot >= 0) {
-                cmdList->SetComputeRootConstantBufferView(
-                    static_cast<UINT>(atmoCbSlot), atmosphereManager->GetConstantBufferGPUAddress());
-            }
-            const int shadowSlot = godRayMarchPipeline_.GetComputeRootParamIndex("gCloudShadowMap");
-            if (shadowSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(shadowSlot), cloudShadowMapSrvHandle_.gpuHandle);
-            }
-            const int transmittanceSlot = godRayMarchPipeline_.GetComputeRootParamIndex("gTransmittanceLUT");
-            if (transmittanceSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(
-                    static_cast<UINT>(transmittanceSlot), atmosphereManager->GetTransmittanceLUTSRVHandle());
-            }
-            const int depthSlot = godRayMarchPipeline_.GetComputeRootParamIndex("gSceneDepth");
-            if (depthSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(depthSlot), depthSrvHandle);
-            }
-            const int cloudBufSlot = godRayMarchPipeline_.GetComputeRootParamIndex("gCloudBuffer");
-            if (cloudBufSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(cloudBufSlot), cloudBufferSrvHandle_.gpuHandle);
-            }
-            const int outSlot = godRayMarchPipeline_.GetComputeRootParamIndex("gGodRayOutput");
-            if (outSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(outSlot), godRayBufferUavHandle_.gpuHandle);
-            }
+            namespace B = GodRayMarchBind;
+            ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
+            binder.Set(godRayMarchBindings_[B::gGodRay], godRayConstantBuffer_->GetGPUVirtualAddress());
+            binder.Set(godRayMarchBindings_[B::gAtmosphere], atmosphereManager->GetConstantBufferGPUAddress());
+            binder.Set(godRayMarchBindings_[B::gCloudShadowMap], cloudShadowMapSrvHandle_.gpuHandle);
+            binder.Set(godRayMarchBindings_[B::gTransmittanceLUT], atmosphereManager->GetTransmittanceLUTSRVHandle());
+            binder.Set(godRayMarchBindings_[B::gSceneDepth], depthSrvHandle);
+            binder.Set(godRayMarchBindings_[B::gCloudBuffer], cloudBufferSrvHandle_.gpuHandle);
+            binder.Set(godRayMarchBindings_[B::gGodRayOutput], godRayBufferUavHandle_.gpuHandle);
+            binder.ValidateBeforeDraw(godRayMarchBindings_);
         }
 
         cmdList->Dispatch(
@@ -907,23 +828,13 @@ namespace CoreEngine
         cmdList->SetComputeRootSignature(godRayCompositePipeline_.GetComputeRootSignature());
 
         {
-            const int cbSlot = godRayCompositePipeline_.GetComputeRootParamIndex("gGodRay");
-            if (cbSlot >= 0) {
-                cmdList->SetComputeRootConstantBufferView(
-                    static_cast<UINT>(cbSlot), godRayConstantBuffer_->GetGPUVirtualAddress());
-            }
-            const int sceneSlot = godRayCompositePipeline_.GetComputeRootParamIndex("gSceneColor");
-            if (sceneSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(sceneSlot), sceneColorSrvHandle);
-            }
-            const int bufSlot = godRayCompositePipeline_.GetComputeRootParamIndex("gGodRayBuffer");
-            if (bufSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(bufSlot), godRayBufferSrvHandle_.gpuHandle);
-            }
-            const int outSlot = godRayCompositePipeline_.GetComputeRootParamIndex("gOutput");
-            if (outSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(outSlot), compositeResultUavHandle_.gpuHandle);
-            }
+            namespace B = GodRayCompositeBind;
+            ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
+            binder.Set(godRayCompositeBindings_[B::gGodRay], godRayConstantBuffer_->GetGPUVirtualAddress());
+            binder.Set(godRayCompositeBindings_[B::gSceneColor], sceneColorSrvHandle);
+            binder.Set(godRayCompositeBindings_[B::gGodRayBuffer], godRayBufferSrvHandle_.gpuHandle);
+            binder.Set(godRayCompositeBindings_[B::gOutput], compositeResultUavHandle_.gpuHandle);
+            binder.ValidateBeforeDraw(godRayCompositeBindings_);
         }
 
         cmdList->Dispatch(

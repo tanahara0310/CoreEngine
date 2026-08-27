@@ -1833,6 +1833,9 @@
     <ClInclude Include="Engine\Src\Graphics\Atmosphere\AtmosphereManager.h">
       <Filter>Engine\Src\Graphics\Atmosphere</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Cloud\CloudBindings.h">
+      <Filter>Engine\Src\Graphics\Cloud</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Cloud\CloudCVars.h">
       <Filter>Engine\Src\Graphics\Cloud</Filter>
     </ClInclude>
