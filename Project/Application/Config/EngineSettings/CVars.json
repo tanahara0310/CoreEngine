@@ -33,6 +33,13 @@
     ],
     "r.Water.Caustics.DepthAttenuation": 1.5169999599456787,
     "r.Water.Caustics.Intensity": 1.128000020980835,
+    "r.Water.FFT.ActiveComponentCount": 8,
+    "r.Water.FFT.Choppiness": 0.10000000149011612,
+    "r.Water.FFT.WindDirection": [
+        1.0,
+        0.0
+    ],
+    "r.Water.FFT.WindSpeed": 2.0,
     "r.Water.Foam.Bias": 0.8600000143051147,
     "r.Water.Foam.CascadeWeights": [
         1.0,

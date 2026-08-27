@@ -24,8 +24,6 @@
     "r.RTShadow.MaxRayDistance": 2682.326904296875,
     "r.RTShadow.ShadowBias": 0.15800000727176666,
     "r.SSAOTemporal.Enabled": false,
-    "r.TAA.BlendAlpha": 0.10000000149011612,
-    "r.TAA.Enabled": true,
     "r.Vignette.Intensity": 2.0,
     "r.Vignette.Smoothness": 0.10000000149011612,
     "r.Water.AbsorptionBase": [
@@ -35,6 +33,14 @@
     ],
     "r.Water.Caustics.DepthAttenuation": 1.5169999599456787,
     "r.Water.Caustics.Intensity": 1.128000020980835,
+    "r.Water.FFT.ActiveComponentCount": 16,
+    "r.Water.FFT.AmplitudeScale": 0.5,
+    "r.Water.FFT.Choppiness": 0.3499999940395355,
+    "r.Water.FFT.WindDirection": [
+        0.9835471510887146,
+        0.18065153062343597
+    ],
+    "r.Water.FFT.WindSpeed": 7.5,
     "r.Water.Foam.Bias": 0.8600000143051147,
     "r.Water.Foam.CascadeWeights": [
         1.0,

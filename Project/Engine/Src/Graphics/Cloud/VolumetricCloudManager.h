@@ -1,15 +1,14 @@
 #pragma once
 
+#include "Graphics/Cloud/CloudPipelines.h"
+#include "Graphics/Cloud/CloudResources.h"
 #include "Graphics/Cloud/CloudSettings.h"
 #include "Graphics/RHI/Resource/GpuResource.h"
 #include <d3d12.h>
-#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include <wrl.h>
 #include "Math/MathCore.h"
-#include "Graphics/Pipeline/CustomShaderPipeline.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
-#include "Graphics/Shader/ICustomShaderProvider.h"
 
 namespace CoreEngine
 {
@@ -119,13 +118,6 @@ namespace CoreEngine
     ///          太陽情報は AtmosphereManager から取得する（単一情報源）。
     class VolumetricCloudManager {
     public:
-        // ノイズ解像度（HLSL 側 CS の Dispatch と一致させること）
-        static constexpr uint32_t kBaseShapeNoiseSize = 128;
-        static constexpr uint32_t kDetailNoiseSize = 32;
-        static constexpr uint32_t kWeatherMapSize = 512;
-        // 雲シャドウマップ解像度（HLSL 側 GodRayCommon.hlsli の定数と一致させること）
-        static constexpr uint32_t kCloudShadowMapSize = 1024;
-
         /// @brief 初期化
         /// @param graphicsCore デバイスと、ターゲット再確保前の GPU 完了待ちの取得元
         /// @param descriptorAllocator ノイズ SRV/UAV 登録先（メインのシェーダー可視ヒープ）
@@ -205,63 +197,14 @@ namespace CoreEngine
         /// @brief 現在のパラメータ・カメラ・太陽情報から定数バッファを更新する
         void UploadConstants();
 
-        /// @brief ノイズテクスチャと SRV/UAV を生成する
-        bool CreateNoiseResources(ID3D12Device* device, DescriptorAllocator* descriptorAllocator);
-
-        /// @brief ノイズ生成用コンピュートパイプライン（BaseShape/Detail/Weather）を構築する
-        bool CreateNoisePipelines(ID3D12Device* device);
-
-        /// @brief レイマーチ・合成用コンピュートパイプラインを構築する（Phase 2 で実装）
-        bool CreateRenderPipelines(ID3D12Device* device);
-
-        /// @brief 半解像度 CloudBuffer と合成用中間テクスチャを SceneColor サイズ追従で確保する（Phase 2 で実装）
-        bool EnsureCloudTargets(GpuResource& sceneColor);
-
-        /// @brief 雲シャドウマップテクスチャと CB を生成する（ゴッドレイ用）
-        bool CreateGodRayResources(ID3D12Device* device, DescriptorAllocator* descriptorAllocator);
-
-        /// @brief ゴッドレイ用コンピュートパイプライン群を構築する
-        bool CreateGodRayPipelines(ID3D12Device* device);
-
         /// @brief ゴッドレイ CB を現在のカメラ・パラメータで更新する
         void UploadGodRayConstants();
 
-        // ===== シェーダープロバイダ（AtmosphereManager の Provider 構造体群を踏襲） =====
-        struct BaseShapeNoiseShaderProvider final : ICustomShaderProvider {
-            std::wstring GetComputeShaderPath() const override { return L"CloudBaseShapeNoise.CS.hlsl"; }
-        };
-        /// @brief ディテールノイズ生成 CS のシェーダ供給
-        struct DetailNoiseShaderProvider final : ICustomShaderProvider {
-            std::wstring GetComputeShaderPath() const override { return L"CloudDetailNoise.CS.hlsl"; }
-        };
-        /// @brief 天候マップ生成 CS のシェーダ供給
-        struct WeatherMapShaderProvider final : ICustomShaderProvider {
-            std::wstring GetComputeShaderPath() const override { return L"CloudWeatherMap.CS.hlsl"; }
-        };
-        /// @brief 雲本体のレイマーチ CS のシェーダ供給
-        struct RayMarchShaderProvider final : ICustomShaderProvider {
-            std::wstring GetComputeShaderPath() const override { return L"CloudRayMarch.CS.hlsl"; }
-        };
-        /// @brief 雲を SceneColor へ合成する CS のシェーダ供給
-        struct CompositeShaderProvider final : ICustomShaderProvider {
-            std::wstring GetComputeShaderPath() const override { return L"CloudComposite.CS.hlsl"; }
-        };
-        /// @brief 空キューブマップへの雲焼き込み CS のシェーダ供給
-        struct CloudCubemapCaptureShaderProvider final : ICustomShaderProvider {
-            std::wstring GetComputeShaderPath() const override { return L"CloudCubemapCapture.CS.hlsl"; }
-        };
-        /// @brief 雲シャドウマップ生成 CS のシェーダ供給
-        struct CloudShadowMapShaderProvider final : ICustomShaderProvider {
-            std::wstring GetComputeShaderPath() const override { return L"CloudShadowMap.CS.hlsl"; }
-        };
-        /// @brief ゴッドレイのレイマーチ CS のシェーダ供給
-        struct GodRayMarchShaderProvider final : ICustomShaderProvider {
-            std::wstring GetComputeShaderPath() const override { return L"GodRayMarch.CS.hlsl"; }
-        };
-        /// @brief ゴッドレイ合成 CS のシェーダ供給
-        struct GodRayCompositeShaderProvider final : ICustomShaderProvider {
-            std::wstring GetComputeShaderPath() const override { return L"GodRayComposite.CS.hlsl"; }
-        };
+        /// @brief フレームターゲットを現在の SceneColor サイズと分割数で確保する
+        bool EnsureFrameTargets(GpuResource& sceneColor);
+
+        /// @brief 合成中間テクスチャの実サイズで合成 CS をディスパッチする
+        void DispatchComposite(ID3D12GraphicsCommandList* cmdList) const;
 
         VolumetricCloudParameters parameters_{};
 
@@ -285,84 +228,21 @@ namespace CoreEngine
         bool cloudsActive_ = false;     ///< このフレームで Update() が呼ばれ雲が要求されたか
         bool noiseDirty_ = true;        ///< ノイズ再生成が必要か
         bool noiseGenerated_ = false;   ///< ノイズ生成済みか
-        bool noisePipelinesReady_ = false; ///< ノイズ生成パイプライン構築済みか
-        bool pipelinesReady_ = false;   ///< レイマーチ/合成パイプライン構築済みか（Phase 2）
+        bool noisePipelinesReady_ = false;  ///< ノイズ生成パイプライン構築済みか
+        bool pipelinesReady_ = false;       ///< レイマーチ/合成パイプライン構築済みか
+        bool godRayPipelinesReady_ = false; ///< ゴッドレイパイプライン構築済みか
 
         GraphicsCore* graphicsCore_ = nullptr;
         ID3D12Device* device_ = nullptr;
         DescriptorAllocator* descriptorAllocator_ = nullptr;
 
-        // GPU リソース
+        // 定数バッファ（永続マップ）
         Microsoft::WRL::ComPtr<ID3D12Resource> constantBuffer_;
-        VolumetricCloudShaderConstants* constantData_ = nullptr; // 永続マップ先
-
-        // ノイズテクスチャ（Phase 1 で生成）
-        GpuResource baseShapeNoise_;
-        DescriptorHandle baseShapeNoiseSrvHandle_{};
-        DescriptorHandle baseShapeNoiseUavHandle_{};
-
-        GpuResource detailNoise_;
-        DescriptorHandle detailNoiseSrvHandle_{};
-        DescriptorHandle detailNoiseUavHandle_{};
-
-        GpuResource weatherMap_;
-        DescriptorHandle weatherMapSrvHandle_{};
-        DescriptorHandle weatherMapUavHandle_{};
-
-        // 半解像度レイマーチ結果（Phase 2 で確保）
-        GpuResource cloudBuffer_;
-        DescriptorHandle cloudBufferSrvHandle_{};
-        DescriptorHandle cloudBufferUavHandle_{};
-
-        // 合成用中間テクスチャ（SceneColor と同サイズ・Phase 2 で確保）
-        GpuResource compositeResult_;
-        DescriptorHandle compositeResultUavHandle_{};
-        uint32_t targetsWidth_ = 0;
-        uint32_t targetsHeight_ = 0;
-
-        // ===== ゴッドレイ =====
-        // 雲シャドウマップ（1024² R16_FLOAT。太陽方向の雲透過率の上面図）
-        GpuResource cloudShadowMap_;
-        DescriptorHandle cloudShadowMapSrvHandle_{};
-        DescriptorHandle cloudShadowMapUavHandle_{};
-
-        // 半解像度ゴッドレイバッファ（EnsureCloudTargets で cloudBuffer_ と同サイズ確保）
-        GpuResource godRayBuffer_;
-        DescriptorHandle godRayBufferSrvHandle_{};
-        DescriptorHandle godRayBufferUavHandle_{};
-
-        // ゴッドレイ定数バッファ（永続マップ）
+        VolumetricCloudShaderConstants* constantData_ = nullptr;
         Microsoft::WRL::ComPtr<ID3D12Resource> godRayConstantBuffer_;
         GodRayShaderConstants* godRayConstantData_ = nullptr;
-        bool godRayPipelinesReady_ = false;
 
-        // パイプラインと、その PSO に対して解決済みのバインド契約
-        CustomShaderPipeline baseShapeNoisePipeline_{};
-        BaseShapeNoiseShaderProvider baseShapeNoiseShaderProvider_{};
-        BindingTable baseShapeNoiseBindings_{};
-        CustomShaderPipeline detailNoisePipeline_{};
-        DetailNoiseShaderProvider detailNoiseShaderProvider_{};
-        BindingTable detailNoiseBindings_{};
-        CustomShaderPipeline weatherMapPipeline_{};
-        WeatherMapShaderProvider weatherMapShaderProvider_{};
-        BindingTable weatherMapBindings_{};
-        CustomShaderPipeline rayMarchPipeline_{};
-        RayMarchShaderProvider rayMarchShaderProvider_{};
-        BindingTable rayMarchBindings_{};
-        CustomShaderPipeline compositePipeline_{};
-        CompositeShaderProvider compositeShaderProvider_{};
-        BindingTable compositeBindings_{};
-        CustomShaderPipeline cubemapCapturePipeline_{};
-        CloudCubemapCaptureShaderProvider cubemapCaptureShaderProvider_{};
-        BindingTable cubemapCaptureBindings_{};
-        CustomShaderPipeline cloudShadowPipeline_{};
-        CloudShadowMapShaderProvider cloudShadowShaderProvider_{};
-        BindingTable cloudShadowBindings_{};
-        CustomShaderPipeline godRayMarchPipeline_{};
-        GodRayMarchShaderProvider godRayMarchShaderProvider_{};
-        BindingTable godRayMarchBindings_{};
-        CustomShaderPipeline godRayCompositePipeline_{};
-        GodRayCompositeShaderProvider godRayCompositeShaderProvider_{};
-        BindingTable godRayCompositeBindings_{};
+        CloudResources resources_{};
+        CloudPipelines pipelines_{};
     };
 }
