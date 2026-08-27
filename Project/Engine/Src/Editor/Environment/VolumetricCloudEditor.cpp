@@ -2,7 +2,7 @@
 #include "VolumetricCloudEditor.h"
 
 #include "EngineSystem/EngineSystem.h"
-#include "Graphics/Cloud/CloudCVars.h"
+#include "Graphics/Cloud/Settings/CloudCVars.h"
 #include "Graphics/Cloud/VolumetricCloudManager.h"
 #include "Graphics/Render/RenderDomainContext.h"
 

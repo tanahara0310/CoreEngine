@@ -2,10 +2,8 @@
 #include "VolumetricCloudManager.h"
 
 #include "Graphics/Atmosphere/AtmosphereManager.h"
-#include "Graphics/Cloud/CloudBindings.h"
-#include "Graphics/Cloud/CloudCVars.h"
+#include "Graphics/Cloud/Settings/CloudCVars.h"
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Utility/Logger/Logger.h"
 
@@ -154,179 +152,6 @@ namespace CoreEngine
         *constantData_ = c;
     }
 
-    void VolumetricCloudManager::GenerateNoiseTexturesIfNeeded(ID3D12GraphicsCommandList* cmdList)
-    {
-        if (!cmdList || !noisePipelinesReady_) {
-            return;
-        }
-        if (!noiseDirty_) {
-            return;
-        }
-
-        // 各ノイズ CS: UAV へ書き込み → 描画/レイマーチが読めるよう SRV 状態へ遷移。
-        // ノイズシェーダーは定数バッファ不要（純手続き生成）。gOutput UAV のみバインドする。
-        auto dispatchNoise = [&](CloudPass passId, CloudGpuTexture& tex,
-                                 UINT gx, UINT gy, UINT gz)
-        {
-            Barrier::Transition(cmdList, tex,
-                D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-
-            const CloudComputePass& pass = pipelines_[passId];
-            ShaderBinder binder = pass.Begin(cmdList);
-            binder.Set(pass.bindings[CloudNoiseBind::gOutput], tex.uav.gpuHandle);
-            binder.ValidateBeforeDraw(pass.bindings);
-
-            cmdList->Dispatch(gx, gy, gz);
-
-            Barrier::UAV(cmdList, tex);
-            Barrier::Transition(cmdList, tex,
-                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        };
-
-        const UINT baseGroups = CloudResources::kBaseShapeNoiseSize / 4;   // numthreads(4,4,4)
-        dispatchNoise(CloudPass::BaseShapeNoise, resources_.baseShapeNoise,
-            baseGroups, baseGroups, baseGroups);
-
-        const UINT detailGroups = CloudResources::kDetailNoiseSize / 4;    // numthreads(4,4,4)
-        dispatchNoise(CloudPass::DetailNoise, resources_.detailNoise,
-            detailGroups, detailGroups, detailGroups);
-
-        const UINT weatherGroups = CloudResources::kWeatherMapSize / 8;    // numthreads(8,8,1)
-        dispatchNoise(CloudPass::WeatherMap, resources_.weatherMap,
-            weatherGroups, weatherGroups, 1);
-
-        noiseDirty_ = false;
-        noiseGenerated_ = true;
-
-        Logger::GetInstance().Infof(LogCategory::Graphics,
-            "VolumetricCloud: ノイズテクスチャ生成完了 (BaseShape 128^3 / Detail 32^3 / Weather 512^2)");
-    }
-
-    void VolumetricCloudManager::RenderClouds(
-        ID3D12GraphicsCommandList* cmdList,
-        GpuResource& sceneColor,
-        D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSrvHandle,
-        D3D12_GPU_DESCRIPTOR_HANDLE depthSrvHandle,
-        const AtmosphereManager* atmosphereManager)
-    {
-        if (!cmdList || !pipelinesReady_ || !noiseGenerated_ || !atmosphereManager) {
-            return;
-        }
-        if (!EnsureFrameTargets(sceneColor)) {
-            return;
-        }
-
-        // 出力サイズ（半解像度）を CB へ反映してから Dispatch する。
-        UploadConstants();
-
-        // ===== レイマーチ CS: BaseShapeNoise + SceneDepth → 半解像度 CloudBuffer =====
-        Barrier::Transition(cmdList, resources_.cloudBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-
-        {
-            namespace B = CloudRayMarchBind;
-            const CloudComputePass& pass = pipelines_[CloudPass::RayMarch];
-            ShaderBinder binder = pass.Begin(cmdList);
-            binder.Set(pass.bindings[B::gCloud], constantBuffer_->GetGPUVirtualAddress());
-            // 大気散乱の定数バッファと LUT（太陽色・アンビエントの単一情報源）
-            binder.Set(pass.bindings[B::gAtmosphere], atmosphereManager->GetConstantBufferGPUAddress());
-            binder.Set(pass.bindings[B::gBaseShapeNoise], resources_.baseShapeNoise.srv.gpuHandle);
-            binder.Set(pass.bindings[B::gDetailNoise], resources_.detailNoise.srv.gpuHandle);
-            binder.Set(pass.bindings[B::gWeatherMap], resources_.weatherMap.srv.gpuHandle);
-            binder.Set(pass.bindings[B::gSceneDepth], depthSrvHandle);
-            binder.Set(pass.bindings[B::gTransmittanceLUT], atmosphereManager->GetTransmittanceLUTSRVHandle());
-            binder.Set(pass.bindings[B::gSkyViewLUT], atmosphereManager->GetSkyViewLUTSRVHandle());
-            binder.Set(pass.bindings[B::gCloudOutput], resources_.cloudBuffer.uav.gpuHandle);
-            binder.ValidateBeforeDraw(pass.bindings);
-        }
-
-        cmdList->Dispatch(
-            (resources_.TargetsWidth() + 7) / 8,
-            (resources_.TargetsHeight() + 7) / 8,
-            1);
-
-        // 合成 CS が SRV として読めるよう遷移
-        Barrier::UAV(cmdList, resources_.cloudBuffer);
-        Barrier::Transition(cmdList, resources_.cloudBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-
-        // ===== 合成 CS: SceneColor + CloudBuffer → 中間テクスチャ =====
-        Barrier::Transition(cmdList, sceneColor, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        Barrier::Transition(cmdList, resources_.compositeResult, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-
-        {
-            namespace B = CloudCompositeBind;
-            const CloudComputePass& pass = pipelines_[CloudPass::Composite];
-            ShaderBinder binder = pass.Begin(cmdList);
-            binder.Set(pass.bindings[B::gCloud], constantBuffer_->GetGPUVirtualAddress());
-            binder.Set(pass.bindings[B::gSceneColor], sceneColorSrvHandle);
-            binder.Set(pass.bindings[B::gCloudBuffer], resources_.cloudBuffer.srv.gpuHandle);
-            binder.Set(pass.bindings[B::gSceneDepth], depthSrvHandle);
-            binder.Set(pass.bindings[B::gOutput], resources_.compositeResult.uav.gpuHandle);
-            binder.ValidateBeforeDraw(pass.bindings);
-        }
-
-        DispatchComposite(cmdList);
-
-        // ===== 結果を SceneColor へコピーバック =====
-        Barrier::UAV(cmdList, resources_.compositeResult);
-        Barrier::Transition(cmdList, resources_.compositeResult, D3D12_RESOURCE_STATE_COPY_SOURCE);
-        Barrier::Transition(cmdList, sceneColor, D3D12_RESOURCE_STATE_COPY_DEST);
-
-        cmdList->CopyResource(sceneColor.Get(), resources_.compositeResult.Get());
-
-        // 後続パス（Transparent 等）に備えて元の想定状態へ戻す
-        Barrier::Transition(cmdList, sceneColor, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-        Barrier::Transition(cmdList, resources_.compositeResult, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        Barrier::Transition(cmdList, resources_.cloudBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-    }
-
-    bool VolumetricCloudManager::EnsureFrameTargets(GpuResource& sceneColor)
-    {
-        return resources_.EnsureFrameTargets(device_, descriptorAllocator_, graphicsCore_,
-            sceneColor, parameters_.resolutionDivisor);
-    }
-
-    void VolumetricCloudManager::DispatchComposite(ID3D12GraphicsCommandList* cmdList) const
-    {
-        const D3D12_RESOURCE_DESC desc = resources_.compositeResult.Desc();
-        cmdList->Dispatch(
-            (static_cast<UINT>(desc.Width) + 7) / 8,
-            (desc.Height + 7) / 8,
-            1);
-    }
-
-    void VolumetricCloudManager::RenderCloudsToSkyCubemap(
-        ID3D12GraphicsCommandList* cmdList,
-        const AtmosphereManager* atmosphereManager)
-    {
-        if (!cmdList || !pipelinesReady_ || !noiseGenerated_ || !atmosphereManager) {
-            return;
-        }
-        const D3D12_GPU_DESCRIPTOR_HANDLE cubemapUav = atmosphereManager->GetSkyCubemapUAVHandle();
-        if (cubemapUav.ptr == 0) {
-            return;
-        }
-
-        {
-            namespace B = CloudCubemapCaptureBind;
-            const CloudComputePass& pass = pipelines_[CloudPass::CubemapCapture];
-            ShaderBinder binder = pass.Begin(cmdList);
-            binder.Set(pass.bindings[B::gCloud], constantBuffer_->GetGPUVirtualAddress());
-            binder.Set(pass.bindings[B::gAtmosphere], atmosphereManager->GetConstantBufferGPUAddress());
-            binder.Set(pass.bindings[B::gBaseShapeNoise], resources_.baseShapeNoise.srv.gpuHandle);
-            binder.Set(pass.bindings[B::gDetailNoise], resources_.detailNoise.srv.gpuHandle);
-            binder.Set(pass.bindings[B::gWeatherMap], resources_.weatherMap.srv.gpuHandle);
-            binder.Set(pass.bindings[B::gTransmittanceLUT], atmosphereManager->GetTransmittanceLUTSRVHandle());
-            binder.Set(pass.bindings[B::gSkyViewLUT], atmosphereManager->GetSkyViewLUTSRVHandle());
-            binder.Set(pass.bindings[B::gSkyCubemap], cubemapUav);
-            binder.ValidateBeforeDraw(pass.bindings);
-        }
-
-        constexpr uint32_t kCubemapSize = AtmosphereManager::kSkyCubemapSize;
-        cmdList->Dispatch((kCubemapSize + 7) / 8, (kCubemapSize + 7) / 8, 6);
-        // 後段のプリフィルタ（PrefilterSkyEnvironment）が SRV 遷移で同期するため、
-        // ここでの UAV バリアは不要
-    }
-
     void VolumetricCloudManager::UploadGodRayConstants()
     {
         if (!godRayConstantData_) {
@@ -342,7 +167,8 @@ namespace CoreEngine
         g.maxDistanceM = parameters_.godRayMaxDistanceM;
 
         // シャドウマップ範囲の中心はテクセルサイズへスナップする（カメラ移動での泳ぎ防止）
-        const float texelM = parameters_.cloudShadowRegionSizeM / static_cast<float>(CloudResources::kCloudShadowMapSize);
+        const float texelM = parameters_.cloudShadowRegionSizeM
+            / static_cast<float>(CloudResources::kCloudShadowMapSize);
         g.shadowRegionCenterX = std::floor(cameraWorldPos_.x / texelM) * texelM;
         g.shadowRegionCenterZ = std::floor(cameraWorldPos_.z / texelM) * texelM;
         g.shadowRegionSizeM = parameters_.cloudShadowRegionSizeM;
@@ -359,6 +185,64 @@ namespace CoreEngine
         *godRayConstantData_ = g;
     }
 
+    CloudRenderContext VolumetricCloudManager::MakeRenderContext(
+        ID3D12GraphicsCommandList* cmdList, const AtmosphereManager* atmosphereManager)
+    {
+        CloudRenderContext ctx{};
+        ctx.cmdList = cmdList;
+        ctx.resources = &resources_;
+        ctx.pipelines = &pipelines_;
+        ctx.atmosphere = atmosphereManager;
+        ctx.cloudConstants = constantBuffer_ ? constantBuffer_->GetGPUVirtualAddress() : 0;
+        ctx.godRayConstants = godRayConstantBuffer_ ? godRayConstantBuffer_->GetGPUVirtualAddress() : 0;
+        return ctx;
+    }
+
+    bool VolumetricCloudManager::EnsureFrameTargets(GpuResource& sceneColor)
+    {
+        return resources_.EnsureFrameTargets(device_, descriptorAllocator_, graphicsCore_,
+            sceneColor, parameters_.resolutionDivisor);
+    }
+
+    void VolumetricCloudManager::GenerateNoiseTexturesIfNeeded(ID3D12GraphicsCommandList* cmdList)
+    {
+        if (!cmdList || !noisePipelinesReady_) {
+            return;
+        }
+        noiseBaker_.BakeIfNeeded(MakeRenderContext(cmdList, nullptr));
+    }
+
+    void VolumetricCloudManager::RenderClouds(
+        ID3D12GraphicsCommandList* cmdList,
+        GpuResource& sceneColor,
+        D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSrvHandle,
+        D3D12_GPU_DESCRIPTOR_HANDLE depthSrvHandle,
+        const AtmosphereManager* atmosphereManager)
+    {
+        if (!cmdList || !pipelinesReady_ || !noiseBaker_.IsReady() || !atmosphereManager) {
+            return;
+        }
+        if (!EnsureFrameTargets(sceneColor)) {
+            return;
+        }
+
+        // 出力サイズ（半解像度）を CB へ反映してから Dispatch する
+        UploadConstants();
+
+        cloudRenderer_.Render(MakeRenderContext(cmdList, atmosphereManager),
+            sceneColor, sceneColorSrvHandle, depthSrvHandle);
+    }
+
+    void VolumetricCloudManager::RenderCloudsToSkyCubemap(
+        ID3D12GraphicsCommandList* cmdList,
+        const AtmosphereManager* atmosphereManager)
+    {
+        if (!cmdList || !pipelinesReady_ || !noiseBaker_.IsReady() || !atmosphereManager) {
+            return;
+        }
+        skyCubemapBaker_.Bake(MakeRenderContext(cmdList, atmosphereManager));
+    }
+
     void VolumetricCloudManager::RenderGodRays(
         ID3D12GraphicsCommandList* cmdList,
         GpuResource& sceneColor,
@@ -366,7 +250,7 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE depthSrvHandle,
         const AtmosphereManager* atmosphereManager)
     {
-        if (!cmdList || !godRayPipelinesReady_ || !noiseGenerated_ || !atmosphereManager) {
+        if (!cmdList || !godRayPipelinesReady_ || !noiseBaker_.IsReady() || !atmosphereManager) {
             return;
         }
         if (!parameters_.godRayEnabled) {
@@ -379,91 +263,7 @@ namespace CoreEngine
         // 出力サイズ（半解像度）確定後に CB を更新する
         UploadGodRayConstants();
 
-        // ===== 雲シャドウマップ生成 =====
-        // 風の移流・太陽移動・カメラ追従で毎フレーム変わるため、雲アクティブ中は毎回焼き直す
-        // （1024²×24 サンプルの cheap 密度で Transmittance LUT 生成より軽い）。
-        Barrier::Transition(cmdList, resources_.cloudShadowMap, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-
-        {
-            namespace B = CloudShadowMapBind;
-            const CloudComputePass& pass = pipelines_[CloudPass::CloudShadowMap];
-            ShaderBinder binder = pass.Begin(cmdList);
-            binder.Set(pass.bindings[B::gCloud], constantBuffer_->GetGPUVirtualAddress());
-            binder.Set(pass.bindings[B::gGodRay], godRayConstantBuffer_->GetGPUVirtualAddress());
-            binder.Set(pass.bindings[B::gBaseShapeNoise], resources_.baseShapeNoise.srv.gpuHandle);
-            binder.Set(pass.bindings[B::gDetailNoise], resources_.detailNoise.srv.gpuHandle);
-            binder.Set(pass.bindings[B::gWeatherMap], resources_.weatherMap.srv.gpuHandle);
-            binder.Set(pass.bindings[B::gCloudShadowMap], resources_.cloudShadowMap.uav.gpuHandle);
-            binder.ValidateBeforeDraw(pass.bindings);
-        }
-
-        cmdList->Dispatch(
-            (CloudResources::kCloudShadowMapSize + 7) / 8,
-            (CloudResources::kCloudShadowMapSize + 7) / 8,
-            1);
-
-        // マーチ CS が SRV として読めるよう遷移
-        Barrier::UAV(cmdList, resources_.cloudShadowMap);
-        Barrier::Transition(cmdList, resources_.cloudShadowMap, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-
-        // ===== ゴッドレイマーチ CS: 遮蔽差分を半解像度で積分 =====
-        // 雲透過率（cloudBuffer.a）で差分をスケールするため SRV として読む
-        // （RenderClouds が末尾で UAV 状態へ戻している）
-        Barrier::Transition(cmdList, resources_.cloudBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        Barrier::Transition(cmdList, resources_.godRayBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-
-        {
-            namespace B = GodRayMarchBind;
-            const CloudComputePass& pass = pipelines_[CloudPass::GodRayMarch];
-            ShaderBinder binder = pass.Begin(cmdList);
-            binder.Set(pass.bindings[B::gGodRay], godRayConstantBuffer_->GetGPUVirtualAddress());
-            binder.Set(pass.bindings[B::gAtmosphere], atmosphereManager->GetConstantBufferGPUAddress());
-            binder.Set(pass.bindings[B::gCloudShadowMap], resources_.cloudShadowMap.srv.gpuHandle);
-            binder.Set(pass.bindings[B::gTransmittanceLUT], atmosphereManager->GetTransmittanceLUTSRVHandle());
-            binder.Set(pass.bindings[B::gSceneDepth], depthSrvHandle);
-            binder.Set(pass.bindings[B::gCloudBuffer], resources_.cloudBuffer.srv.gpuHandle);
-            binder.Set(pass.bindings[B::gGodRayOutput], resources_.godRayBuffer.uav.gpuHandle);
-            binder.ValidateBeforeDraw(pass.bindings);
-        }
-
-        cmdList->Dispatch(
-            (resources_.TargetsWidth() + 7) / 8,
-            (resources_.TargetsHeight() + 7) / 8,
-            1);
-
-        // 合成 CS が SRV として読めるよう遷移
-        Barrier::UAV(cmdList, resources_.godRayBuffer);
-        Barrier::Transition(cmdList, resources_.godRayBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-
-        // ===== 合成 CS: SceneColor + Δ輝度 → 中間テクスチャ =====
-        Barrier::Transition(cmdList, sceneColor, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        Barrier::Transition(cmdList, resources_.compositeResult, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-
-        {
-            namespace B = GodRayCompositeBind;
-            const CloudComputePass& pass = pipelines_[CloudPass::GodRayComposite];
-            ShaderBinder binder = pass.Begin(cmdList);
-            binder.Set(pass.bindings[B::gGodRay], godRayConstantBuffer_->GetGPUVirtualAddress());
-            binder.Set(pass.bindings[B::gSceneColor], sceneColorSrvHandle);
-            binder.Set(pass.bindings[B::gGodRayBuffer], resources_.godRayBuffer.srv.gpuHandle);
-            binder.Set(pass.bindings[B::gOutput], resources_.compositeResult.uav.gpuHandle);
-            binder.ValidateBeforeDraw(pass.bindings);
-        }
-
-        DispatchComposite(cmdList);
-
-        // ===== 結果を SceneColor へコピーバック =====
-        Barrier::UAV(cmdList, resources_.compositeResult);
-        Barrier::Transition(cmdList, resources_.compositeResult, D3D12_RESOURCE_STATE_COPY_SOURCE);
-        Barrier::Transition(cmdList, sceneColor, D3D12_RESOURCE_STATE_COPY_DEST);
-
-        cmdList->CopyResource(sceneColor.Get(), resources_.compositeResult.Get());
-
-        // 後続パス（Transparent 等）に備えて元の想定状態へ戻す
-        Barrier::Transition(cmdList, sceneColor, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-        Barrier::Transition(cmdList, resources_.compositeResult, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        Barrier::Transition(cmdList, resources_.godRayBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        Barrier::Transition(cmdList, resources_.cloudShadowMap, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        Barrier::Transition(cmdList, resources_.cloudBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        godRayRenderer_.Render(MakeRenderContext(cmdList, atmosphereManager),
+            sceneColor, sceneColorSrvHandle, depthSrvHandle);
     }
 }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Graphics/Cloud/CloudSettings.h"
+#include "Graphics/Cloud/Settings/CloudSettings.h"
 #include "Utility/CVar/CVar.h"
 
 namespace CoreEngine

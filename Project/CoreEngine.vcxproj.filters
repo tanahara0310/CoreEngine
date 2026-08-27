@@ -61,14 +61,29 @@
     <ClCompile Include="Engine\Src\Graphics\Atmosphere\AtmosphereManager.cpp">
       <Filter>Engine\Src\Graphics\Atmosphere</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Cloud\CloudCVars.cpp">
-      <Filter>Engine\Src\Graphics\Cloud</Filter>
+    <ClCompile Include="Engine\Src\Graphics\Cloud\Settings\CloudCVars.cpp">
+      <Filter>Engine\Src\Graphics\Cloud\Settings</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Cloud\CloudPipelines.cpp">
-      <Filter>Engine\Src\Graphics\Cloud</Filter>
+    <ClCompile Include="Engine\Src\Graphics\Cloud\Render\CloudNoiseBaker.cpp">
+      <Filter>Engine\Src\Graphics\Cloud\Render</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Cloud\CloudResources.cpp">
-      <Filter>Engine\Src\Graphics\Cloud</Filter>
+    <ClCompile Include="Engine\Src\Graphics\Cloud\Shader\CloudPipelines.cpp">
+      <Filter>Engine\Src\Graphics\Cloud\Shader</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Cloud\Render\CloudRenderContext.cpp">
+      <Filter>Engine\Src\Graphics\Cloud\Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Cloud\Render\CloudRenderer.cpp">
+      <Filter>Engine\Src\Graphics\Cloud\Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Cloud\Resource\CloudResources.cpp">
+      <Filter>Engine\Src\Graphics\Cloud\Resource</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Cloud\Render\CloudSkyCubemapBaker.cpp">
+      <Filter>Engine\Src\Graphics\Cloud\Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Cloud\Render\GodRayRenderer.cpp">
+      <Filter>Engine\Src\Graphics\Cloud\Render</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Cloud\VolumetricCloudManager.cpp">
       <Filter>Engine\Src\Graphics\Cloud</Filter>
@@ -1839,20 +1854,38 @@
     <ClInclude Include="Engine\Src\Graphics\Atmosphere\AtmosphereManager.h">
       <Filter>Engine\Src\Graphics\Atmosphere</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Cloud\CloudBindings.h">
-      <Filter>Engine\Src\Graphics\Cloud</Filter>
+    <ClInclude Include="Engine\Src\Graphics\Cloud\Shader\CloudBindings.h">
+      <Filter>Engine\Src\Graphics\Cloud\Shader</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Cloud\CloudCVars.h">
-      <Filter>Engine\Src\Graphics\Cloud</Filter>
+    <ClInclude Include="Engine\Src\Graphics\Cloud\Settings\CloudCVars.h">
+      <Filter>Engine\Src\Graphics\Cloud\Settings</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Cloud\CloudPipelines.h">
-      <Filter>Engine\Src\Graphics\Cloud</Filter>
+    <ClInclude Include="Engine\Src\Graphics\Cloud\Render\CloudNoiseBaker.h">
+      <Filter>Engine\Src\Graphics\Cloud\Render</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Cloud\CloudResources.h">
-      <Filter>Engine\Src\Graphics\Cloud</Filter>
+    <ClInclude Include="Engine\Src\Graphics\Cloud\Shader\CloudPipelines.h">
+      <Filter>Engine\Src\Graphics\Cloud\Shader</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Cloud\CloudSettings.h">
-      <Filter>Engine\Src\Graphics\Cloud</Filter>
+    <ClInclude Include="Engine\Src\Graphics\Cloud\Shader\CloudShaderConstants.h">
+      <Filter>Engine\Src\Graphics\Cloud\Shader</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Cloud\Render\CloudRenderContext.h">
+      <Filter>Engine\Src\Graphics\Cloud\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Cloud\Render\CloudRenderer.h">
+      <Filter>Engine\Src\Graphics\Cloud\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Cloud\Resource\CloudResources.h">
+      <Filter>Engine\Src\Graphics\Cloud\Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Cloud\Render\CloudSkyCubemapBaker.h">
+      <Filter>Engine\Src\Graphics\Cloud\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Cloud\Render\GodRayRenderer.h">
+      <Filter>Engine\Src\Graphics\Cloud\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Cloud\Settings\CloudSettings.h">
+      <Filter>Engine\Src\Graphics\Cloud\Settings</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Cloud\VolumetricCloudManager.h">
       <Filter>Engine\Src\Graphics\Cloud</Filter>
@@ -2730,6 +2763,18 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\Cloud">
       <UniqueIdentifier>{7E1B4A62-2C9D-4F3E-8A5B-1D6C0E2F9A73}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Cloud\Render">
+      <UniqueIdentifier>{44596F3A-9254-48B8-8DE3-6AF4A9614AD6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Cloud\Resource">
+      <UniqueIdentifier>{22E2C53E-BA76-4AF7-80B6-1776B32C7DD9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Cloud\Settings">
+      <UniqueIdentifier>{1E534C0B-1045-46BF-8428-81A6689BF431}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Cloud\Shader">
+      <UniqueIdentifier>{8B855244-D072-475E-A09C-E19A9817FA45}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\IBL">
       <UniqueIdentifier>{CB5C00A8-4E31-4B66-9096-A0DB805289CB}</UniqueIdentifier>

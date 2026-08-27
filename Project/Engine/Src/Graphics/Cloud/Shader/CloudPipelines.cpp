@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "CloudPipelines.h"
 
-#include "Graphics/Cloud/CloudBindings.h"
+#include "Graphics/Cloud/Shader/CloudBindings.h"
 #include "Graphics/Shader/ICustomShaderProvider.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
