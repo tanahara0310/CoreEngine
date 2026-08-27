@@ -13,11 +13,13 @@ namespace CoreEngine
 {
     void GodRayPass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
     {
-        // SceneColor / SceneDepth を読み、SceneColor へ光芒の差分を合成する。
-        // VolumetricCloudPass と同一の宣言。
+        // SceneDepth と、VolumetricCloudPass が生成した CloudBuffer を読み、
+        // SceneColor へ光芒の差分を in-place 合成する。
+        // CloudBuffer の Read 宣言が VolumetricCloudPass への依存（RAW）をグラフへ伝える。
         builder.Read(FrameBlackboard::SceneDepth, D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        builder.Read(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        builder.Write(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        builder.Read(FrameBlackboard::CloudBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        builder.Write(FrameBlackboard::CloudShadowMap, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        builder.Write(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     }
 
     void GodRayPass::Execute(const RenderContext& context)
@@ -65,7 +67,7 @@ namespace CoreEngine
         context.volumetricCloudManager->RenderGodRays(
             cmdList,
             sceneColorTarget->Resource(),
-            sceneColorTarget->GetSRVHandle(),
+            sceneColorTarget->GetUAVHandle(),
             sceneDepthSrv,
             context.atmosphereManager);
     }

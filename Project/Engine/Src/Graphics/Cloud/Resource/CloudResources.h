@@ -54,7 +54,6 @@ namespace CoreEngine
         // ===== フレームターゲット（EnsureFrameTargets が確保する） =====
         CloudGpuTexture cloudBuffer;      ///< 半解像度レイマーチ結果
         CloudGpuTexture godRayBuffer;     ///< 半解像度ゴッドレイ結果
-        CloudGpuTexture compositeResult;  ///< 合成用中間テクスチャ（SceneColor と同サイズ。uav のみ）
 
         /// @brief 半解像度バッファの実サイズ
         uint32_t TargetsWidth() const { return targetsWidth_; }

@@ -7,6 +7,7 @@
 #define CLOUD_COMMON_HLSLI
 
 #include "CloudNoiseCommon.hlsli"
+#include "CloudTuning.hlsli"
 
 struct CloudConstants
 {
@@ -118,15 +119,13 @@ float InterleavedGradientNoise(float2 pixel)
     return frac(52.9829189f * frac(0.06711056f * pixel.x + 0.00583715f * pixel.y));
 }
 
-// ===== 密度（Phase 3 完全版: GPU Pro 7 / Schneider 方式） =====
-// weather map カバレッジ・雲タイプ別高度勾配・風移流・ディテール侵食を含む。
-// cheap==true（サンライトマーチ）ではディテール侵食をスキップして高速化する。
+// ===== 密度（GPU Pro 7 / Schneider 方式） =====
+// weather map カバレッジ・雲タイプ別高度勾配・風移流・ディテール侵食からなる。
 
 /// @brief 雲タイプ（0:層雲〜1:積乱雲）に応じた高度勾配を返す
+/// @note 積雲は層の 8 割程度まで発達させる。縦の伸びが小さいと横長のパンケーキに見える
 float CloudHeightGradient(float h, float cloudType)
 {
-    // 積雲の縦方向の伸びが小さいと、ノイズの水平スケールに対して縦が潰れ
-    // 「横長のパンケーキ」に見える。積雲は層の 8 割程度まで発達させる。
     float gStratus =
         saturate(Remap(h, 0.00f, 0.10f, 0.0f, 1.0f)) * saturate(Remap(h, 0.20f, 0.30f, 1.0f, 0.0f));
     float gCumulus =
@@ -139,53 +138,63 @@ float CloudHeightGradient(float h, float cloudType)
     return lerp(lerp(gStratus, gCumulus, lowBlend), gCumulonimbus, highBlend);
 }
 
-/// @param cheap true でディテール侵食をスキップ（サンライトマーチ用）
-/// @param detailStrength ディテール侵食の強度（遠方では 0 へフェードさせエイリアシングを防ぐ）
-float SampleCloudDensity(float3 worldPos, float h, bool cheap, float detailStrength, CloudConstants c,
-                         Texture3D<float4> baseNoise, Texture3D<float4> detailNoise,
-                         Texture2D<float4> weatherMap, SamplerState samp)
+/// @brief 風の移流（ワールド XZ 平面）と高度スキューを適用したサンプル座標
+float3 CloudAdvectedPos(float3 worldPos, float h, CloudConstants c)
+{
+    float3 windDir = float3(c.windDirX, 0.0f, c.windDirZ);
+    return worldPos + windDir * (c.windSpeedMPerS * c.timeSec) + h * windDir * kCloudHeightSkewM;
+}
+
+/// @brief ディテール侵食を含まない密度
+/// @details サンライトマーチ・雲シャドウマップ・雲探索の大股走査が使う。
+///          縦方向だけ小さいスケールでサンプルする（等方だと層内の縦の変化が乏しく平らな板に見える）。
+float SampleCloudDensityCheap(float3 worldPos, float h, CloudConstants c,
+                              Texture3D<float4> baseNoise, Texture2D<float4> weatherMap,
+                              SamplerState samp)
 {
     if (h < 0.0f || h > 1.0f)
     {
         return 0.0f;
     }
 
-    // 1) 風による移流（ワールド XZ 平面）＋ 高度スキュー（Nubis）
-    float3 windDir = float3(c.windDirX, 0.0f, c.windDirZ);
-    float3 sampleWS = worldPos + windDir * (c.windSpeedMPerS * c.timeSec);
-    sampleWS += h * windDir * 500.0f;
+    float3 sampleWS = CloudAdvectedPos(worldPos, h, c);
 
-    // 2) ベース形状
-    //    縦方向だけ小さいスケールでサンプルする。雲層(数千m)は水平方向の特徴サイズ(数km)より
-    //    はるかに薄いため、等方サンプルだと層内の縦方向の変化が乏しく「平らな板」に見える。
+    // ベース形状
     float3 baseUvw = sampleWS / c.baseNoiseScaleM;
-    baseUvw.y = sampleWS.y / (c.baseNoiseScaleM * 0.5f);
+    baseUvw.y = sampleWS.y / (c.baseNoiseScaleM * kCloudBaseNoiseVerticalScale);
     float4 base = baseNoise.SampleLevel(samp, baseUvw, 0);
     float lowFreqFBM = base.g * 0.625f + base.b * 0.25f + base.a * 0.125f;
     float baseCloud = Remap(base.r, -(1.0f - lowFreqFBM), 1.0f, 0.0f, 1.0f);
 
-    // 3) 高度勾配（weather.g の雲タイプでブレンド）
+    // 高度勾配（weather.g の雲タイプでブレンド）
     float2 weatherUv = worldPos.xz / c.weatherMapScaleM;
     float4 weather = weatherMap.SampleLevel(samp, weatherUv, 0);
     baseCloud *= CloudHeightGradient(h, weather.g);
 
-    // 4) カバレッジ適用（縁を柔らかくしアンビル状を防ぐ: GPU Pro 7）
+    // カバレッジ適用（縁を柔らかくしアンビル状を防ぐ: GPU Pro 7）
     float coverage = saturate(weather.r * c.globalCoverage);
     float cloudWithCoverage = saturate(Remap(baseCloud, 1.0f - coverage, 1.0f, 0.0f, 1.0f));
-    cloudWithCoverage *= coverage;
+    return saturate(cloudWithCoverage * coverage);
+}
 
-    // 5) ディテール侵食（cheap 時・遠方ではスキップ）
-    if (!cheap && detailStrength > 0.0f)
+/// @brief ディテール侵食込みの密度
+/// @param detailStrength 侵食の強度（遠方では 0 へフェードさせエイリアシングを防ぐ）
+float SampleCloudDensity(float3 worldPos, float h, float detailStrength, CloudConstants c,
+                         Texture3D<float4> baseNoise, Texture3D<float4> detailNoise,
+                         Texture2D<float4> weatherMap, SamplerState samp)
+{
+    float density = SampleCloudDensityCheap(worldPos, h, c, baseNoise, weatherMap, samp);
+    if (density <= 0.0f || detailStrength <= 0.0f)
     {
-        float4 detail = detailNoise.SampleLevel(samp, sampleWS / c.detailNoiseScaleM, 0);
-        float highFreqFBM = detail.r * 0.625f + detail.g * 0.25f + detail.b * 0.125f;
-        // 層底では billowy、上部では wispy に（高さで反転）
-        float highFreqModifier = lerp(highFreqFBM, 1.0f - highFreqFBM, saturate(h * 10.0f));
-        cloudWithCoverage = Remap(cloudWithCoverage,
-                                  highFreqModifier * detailStrength, 1.0f, 0.0f, 1.0f);
+        return density;
     }
 
-    return saturate(cloudWithCoverage);
+    float3 sampleWS = CloudAdvectedPos(worldPos, h, c);
+    float4 detail = detailNoise.SampleLevel(samp, sampleWS / c.detailNoiseScaleM, 0);
+    float highFreqFBM = detail.r * 0.625f + detail.g * 0.25f + detail.b * 0.125f;
+    // 層底では billowy、上部では wispy に（高さで反転）
+    float highFreqModifier = lerp(highFreqFBM, 1.0f - highFreqFBM, saturate(h * 10.0f));
+    return saturate(Remap(density, highFreqModifier * detailStrength, 1.0f, 0.0f, 1.0f));
 }
 
 #endif // CLOUD_COMMON_HLSLI

@@ -2,15 +2,16 @@
 /// @brief 半解像度の雲バッファをフル解像度 SceneColor へ合成する
 /// @details 式: 出力 = 雲色（前乗算） + シーン色 × 透過率。
 ///          雲バッファはレイマーチ時に深度遮蔽済みなので、ここでは合成のみ行う。
-///          出力先は中間テクスチャ（パスが SceneColor へコピーバックする）。
+///          gOutput は SceneColor 自身。各スレッドが自分のテクセルだけを読んで書き戻す。
 
 #include "Common/CloudCommon.hlsli"
 
 ConstantBuffer<CloudConstants> gCloud : register(b0);
-Texture2D<float4> gSceneColor : register(t0);
-Texture2D<float4> gCloudBuffer : register(t1);
-Texture2D<float>  gSceneDepth : register(t2);
-SamplerState gSamplerLinearWrap : register(s0);
+Texture2D<float4> gCloudBuffer : register(t0);
+Texture2D<float>  gSceneDepth : register(t1);
+// RootSignature 側で "gLinearClamp" は LinearClamp 固定。端で反対側を巻き込まないので
+// アップサンプルの UV を手でクランプする必要がない
+SamplerState gLinearClamp : register(s0);
 RWTexture2D<float4> gOutput : register(u0);
 
 [numthreads(8, 8, 1)]
@@ -24,7 +25,7 @@ void main(uint3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    float4 scene = gSceneColor[dtid.xy];
+    float4 scene = gOutput[dtid.xy];
 
     // ===== 深度エッジ対策 =====
     // 半解像度でレイマーチした雲バッファをバイリニアでアップサンプルすると、
@@ -46,26 +47,20 @@ void main(uint3 dtid : SV_DispatchThreadID)
 
     if (opaqueBeforeCloudLayer)
     {
-        gOutput[dtid.xy] = scene;
-        return;
+        return; // SceneColor をそのまま残す
     }
 
-    // 半解像度の雲をテントフィルタでアップサンプル（画面端の WRAP 巻き込みを避けて内側へクランプ）。
-    // 単一バイリニアだと、遠方の薄い雲や輪郭で半解像度テクセルの階段（ギザギザ）が
-    // そのままフル解像度へ拡大される。中心 + 対角 4 タップの小さなガウス近似で
-    // 輪郭を 1 テクセル分だけ均し、階段とレイマーチのジッタ起因のエッジノイズを丸める。
+    // 半解像度の雲を中心 + 対角 4 タップのテントフィルタでアップサンプルする。
+    // 単一バイリニアだと、遠方の薄い雲や輪郭で半解像度テクセルの階段が
+    // そのままフル解像度へ拡大される。輪郭を 1 テクセル分だけ均して、
+    // 階段とレイマーチのジッタ起因のエッジノイズを丸める
     float2 cloudTexel = 1.0f / float2(gCloud.outputWidth, gCloud.outputHeight);
-    float2 halfTexel = 0.5f * cloudTexel;
-    float2 uvMin = halfTexel;
-    float2 uvMax = 1.0f - halfTexel;
-    float2 cloudUv = clamp(uv, uvMin, uvMax);
 
-    float4 cloud = gCloudBuffer.SampleLevel(gSamplerLinearWrap, cloudUv, 0) * 0.5f;
+    float4 cloud = gCloudBuffer.SampleLevel(gLinearClamp, uv, 0) * 0.5f;
     [unroll] for (int i = 0; i < 4; ++i)
     {
         float2 offset = float2((i & 1) ? 1.0f : -1.0f, (i & 2) ? 1.0f : -1.0f) * cloudTexel;
-        float2 tapUv = clamp(cloudUv + offset, uvMin, uvMax);
-        cloud += gCloudBuffer.SampleLevel(gSamplerLinearWrap, tapUv, 0) * 0.125f;
+        cloud += gCloudBuffer.SampleLevel(gLinearClamp, uv + offset, 0) * 0.125f;
     }
 
     // cloud.a = 透過率。前乗算輝度 cloud.rgb をシーンの上に重ねる。

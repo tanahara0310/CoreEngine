@@ -141,12 +141,8 @@ namespace CoreEngine
         const uint32_t halfW = static_cast<uint32_t>((sceneDesc.Width + div - 1) / div);
         const uint32_t halfH = static_cast<uint32_t>((sceneDesc.Height + div - 1) / div);
 
-        // SceneColor と同サイズ・同分割数で確保済みなら再利用する。
-        // 半解像度側も見ないと r.Cloud.ResolutionDivisor の変更が反映されない
-        // （合成中間は常に SceneColor と同サイズなので、それだけでは判定にならない）
-        if (compositeResult && godRayBuffer && cloudBuffer &&
-            compositeResult.Desc().Width == sceneDesc.Width &&
-            compositeResult.Desc().Height == sceneDesc.Height &&
+        // 現在の SceneColor サイズと分割数で確保済みなら再利用する
+        if (godRayBuffer && cloudBuffer &&
             cloudBuffer.Desc().Width == halfW &&
             cloudBuffer.Desc().Height == halfH) {
             return true;
@@ -154,7 +150,7 @@ namespace CoreEngine
 
         // 作り直す前に投入済みの描画完了を待つ。待たずに解放すると、まだ前フレームの
         // ディスパッチが参照しているテクスチャを落とすことになる
-        if (graphicsCore && (cloudBuffer || godRayBuffer || compositeResult)) {
+        if (graphicsCore && (cloudBuffer || godRayBuffer)) {
             graphicsCore->WaitForGpuIdle();
         }
 
@@ -165,14 +161,6 @@ namespace CoreEngine
             return false;
         }
         if (!CreateTexture(device, descriptorAllocator, godRayBuffer, halfDesc, "GodRayBuffer")) {
-            return false;
-        }
-
-        // 合成用中間テクスチャ（SceneColor と同サイズ・同フォーマット。SRV としては読まない）
-        D3D12_RESOURCE_DESC compositeDesc = sceneDesc;
-        compositeDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-        if (!CreateTexture(device, descriptorAllocator, compositeResult, compositeDesc,
-                "CloudComposite", /*needsSrv=*/false)) {
             return false;
         }
 

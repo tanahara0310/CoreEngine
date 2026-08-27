@@ -12,7 +12,7 @@ namespace CoreEngine
 {
     void GodRayRenderer::Render(const CloudRenderContext& ctx,
                                 GpuResource& sceneColor,
-                                D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSrvHandle,
+                                D3D12_GPU_DESCRIPTOR_HANDLE sceneColorUavHandle,
                                 D3D12_GPU_DESCRIPTOR_HANDLE depthSrvHandle)
     {
         ID3D12GraphicsCommandList* cmdList = ctx.cmdList;
@@ -30,7 +30,6 @@ namespace CoreEngine
             binder.Set(pass.bindings[B::gCloud], ctx.cloudConstants);
             binder.Set(pass.bindings[B::gGodRay], ctx.godRayConstants);
             binder.Set(pass.bindings[B::gBaseShapeNoise], res.baseShapeNoise.srv.gpuHandle);
-            binder.Set(pass.bindings[B::gDetailNoise], res.detailNoise.srv.gpuHandle);
             binder.Set(pass.bindings[B::gWeatherMap], res.weatherMap.srv.gpuHandle);
             binder.Set(pass.bindings[B::gCloudShadowMap], res.cloudShadowMap.uav.gpuHandle);
             binder.ValidateBeforeDraw(pass.bindings);
@@ -71,23 +70,20 @@ namespace CoreEngine
         Barrier::UAV(cmdList, res.godRayBuffer);
         Barrier::Transition(cmdList, res.godRayBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-        // ===== 合成 CS: SceneColor + Δ輝度 → 中間テクスチャ =====
-        Barrier::Transition(cmdList, sceneColor, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        Barrier::Transition(cmdList, res.compositeResult, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        // ===== 合成 CS: Δ輝度を SceneColor へ in-place 加算 =====
+        Barrier::Transition(cmdList, sceneColor, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         {
             namespace B = GodRayCompositeBind;
             const CloudComputePass& pass = (*ctx.pipelines)[CloudPass::GodRayComposite];
             ShaderBinder binder = pass.Begin(cmdList);
             binder.Set(pass.bindings[B::gGodRay], ctx.godRayConstants);
-            binder.Set(pass.bindings[B::gSceneColor], sceneColorSrvHandle);
             binder.Set(pass.bindings[B::gGodRayBuffer], res.godRayBuffer.srv.gpuHandle);
-            binder.Set(pass.bindings[B::gOutput], res.compositeResult.uav.gpuHandle);
+            binder.Set(pass.bindings[B::gOutput], sceneColorUavHandle);
             binder.ValidateBeforeDraw(pass.bindings);
         }
 
-        ctx.DispatchComposite();
-        ctx.CopyCompositeToSceneColor(sceneColor);
+        ctx.DispatchCompositeInPlace(sceneColor);
 
         Barrier::Transition(cmdList, res.godRayBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         Barrier::Transition(cmdList, res.cloudShadowMap, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);

@@ -25,10 +25,9 @@ namespace CoreEngine
         /// @brief 半解像度バッファの実サイズで 8x8 スレッドグループをディスパッチする
         void DispatchHalfRes() const;
 
-        /// @brief 合成中間テクスチャの実サイズで 8x8 スレッドグループをディスパッチする
-        void DispatchComposite() const;
-
-        /// @brief 合成中間テクスチャを SceneColor へコピーバックし、後続パスの想定状態へ戻す
-        void CopyCompositeToSceneColor(GpuResource& sceneColor) const;
+        /// @brief SceneColor へ合成 CS を in-place で走らせる
+        /// @details SceneColor を UAV 状態にしてディスパッチし、後続パスの想定状態へ戻す。
+        ///          合成 CS は各スレッドが自分のテクセルだけを読み書きするので中間バッファは要らない。
+        void DispatchCompositeInPlace(GpuResource& sceneColor) const;
     };
 }

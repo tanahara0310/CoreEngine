@@ -11,8 +11,7 @@
 ConstantBuffer<CloudConstants> gCloud : register(b0);
 ConstantBuffer<GodRayConstants> gGodRay : register(b1);
 Texture3D<float4> gBaseShapeNoise : register(t0);
-Texture3D<float4> gDetailNoise : register(t1);
-Texture2D<float4> gWeatherMap : register(t2);
+Texture2D<float4> gWeatherMap : register(t1);
 SamplerState gSamplerLinearWrap : register(s0);
 RWTexture2D<float> gCloudShadowMap : register(u0);
 
@@ -57,8 +56,8 @@ void main(uint3 dtid : SV_DispatchThreadID)
     {
         float3 p = pos + toSun * ((i + 0.5f) * dt);
         float hf = CloudHeightFraction(p, gCloud);
-        tau += SampleCloudDensity(p, hf, true, 0.0f, gCloud,
-            gBaseShapeNoise, gDetailNoise, gWeatherMap, gSamplerLinearWrap)
+        tau += SampleCloudDensityCheap(p, hf, gCloud,
+            gBaseShapeNoise, gWeatherMap, gSamplerLinearWrap)
             * gCloud.densityScale * dt;
     }
 

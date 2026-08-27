@@ -68,6 +68,10 @@ namespace CoreEngine
         /// @brief ノイズテクスチャが生成済みか
         bool AreNoiseTexturesReady() const { return noiseBaker_.IsReady(); }
 
+        /// @brief 保持している GPU テクスチャ一式
+        /// @note パスが CloudBuffer / CloudShadowMap を FrameBlackboard へ公開するために使う
+        CloudResources& GetResources() { return resources_; }
+
         // ===== 雲描画（VolumetricCloudPass から呼ばれる） =====
 
         /// @brief 雲をレイマーチして SceneColor へ合成する
@@ -75,7 +79,7 @@ namespace CoreEngine
         void RenderClouds(
             ID3D12GraphicsCommandList* cmdList,
             GpuResource& sceneColor,
-            D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSrvHandle,
+            D3D12_GPU_DESCRIPTOR_HANDLE sceneColorUavHandle,
             D3D12_GPU_DESCRIPTOR_HANDLE depthSrvHandle,
             const AtmosphereManager* atmosphereManager);
 
@@ -97,7 +101,7 @@ namespace CoreEngine
         void RenderGodRays(
             ID3D12GraphicsCommandList* cmdList,
             GpuResource& sceneColor,
-            D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSrvHandle,
+            D3D12_GPU_DESCRIPTOR_HANDLE sceneColorUavHandle,
             D3D12_GPU_DESCRIPTOR_HANDLE depthSrvHandle,
             const AtmosphereManager* atmosphereManager);
 

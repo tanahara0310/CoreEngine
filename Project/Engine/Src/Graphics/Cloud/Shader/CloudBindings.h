@@ -62,7 +62,6 @@ namespace CoreEngine::CloudCompositeBind
     /// @brief CloudComposite.CS.hlsl の契約
     enum Slot : size_t {
         gCloud,
-        gSceneColor,
         gCloudBuffer,
         gSceneDepth,
         gOutput,
@@ -71,10 +70,10 @@ namespace CoreEngine::CloudCompositeBind
 
     inline constexpr ShaderBindingDecl kDecls[] = {
         { "gCloud",       ShaderBindingType::CBV, BindingUsage::Required },  // b0
-        { "gSceneColor",  ShaderBindingType::SRV, BindingUsage::Required },  // t0
-        { "gCloudBuffer", ShaderBindingType::SRV, BindingUsage::Required },  // t1
-        { "gSceneDepth",  ShaderBindingType::SRV, BindingUsage::Required },  // t2
-        { "gOutput",      ShaderBindingType::UAV, BindingUsage::Required },  // u0
+        { "gCloudBuffer", ShaderBindingType::SRV, BindingUsage::Required },  // t0
+        { "gSceneDepth",  ShaderBindingType::SRV, BindingUsage::Required },  // t1
+        // u0 は SceneColor 自身。読んで書き戻すので SRV としては差さない
+        { "gOutput",      ShaderBindingType::UAV, BindingUsage::Required },
     };
 
     static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
@@ -116,7 +115,6 @@ namespace CoreEngine::CloudShadowMapBind
         gCloud,
         gGodRay,
         gBaseShapeNoise,
-        gDetailNoise,
         gWeatherMap,
         gCloudShadowMap,
         Count
@@ -126,10 +124,7 @@ namespace CoreEngine::CloudShadowMapBind
         { "gCloud",          ShaderBindingType::CBV, BindingUsage::Required },  // b0
         { "gGodRay",         ShaderBindingType::CBV, BindingUsage::Required },  // b1
         { "gBaseShapeNoise", ShaderBindingType::SRV, BindingUsage::Required },  // t0
-        // t1: SampleCloudDensity へ渡す引数としてだけ宣言されている。この CS は
-        // cheap 密度しか評価せずディテール分岐に入らないため、DXC が未参照として削除する
-        { "gDetailNoise",    ShaderBindingType::SRV, BindingUsage::Optional },
-        { "gWeatherMap",     ShaderBindingType::SRV, BindingUsage::Required },  // t2
+        { "gWeatherMap",     ShaderBindingType::SRV, BindingUsage::Required },  // t1
         { "gCloudShadowMap", ShaderBindingType::UAV, BindingUsage::Required },  // u0
     };
 
@@ -168,7 +163,6 @@ namespace CoreEngine::GodRayCompositeBind
     /// @brief GodRayComposite.CS.hlsl の契約
     enum Slot : size_t {
         gGodRay,
-        gSceneColor,
         gGodRayBuffer,
         gOutput,
         Count
@@ -176,9 +170,9 @@ namespace CoreEngine::GodRayCompositeBind
 
     inline constexpr ShaderBindingDecl kDecls[] = {
         { "gGodRay",       ShaderBindingType::CBV, BindingUsage::Required },  // b0
-        { "gSceneColor",   ShaderBindingType::SRV, BindingUsage::Required },  // t0
-        { "gGodRayBuffer", ShaderBindingType::SRV, BindingUsage::Required },  // t1
-        { "gOutput",       ShaderBindingType::UAV, BindingUsage::Required },  // u0
+        { "gGodRayBuffer", ShaderBindingType::SRV, BindingUsage::Required },  // t0
+        // u0 は SceneColor 自身。読んで書き戻すので SRV としては差さない
+        { "gOutput",       ShaderBindingType::UAV, BindingUsage::Required },
     };
 
     static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");

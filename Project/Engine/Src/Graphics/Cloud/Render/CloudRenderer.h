@@ -14,7 +14,7 @@ namespace CoreEngine
         /// @param sceneColor SceneColor（実体＋現在ステート）
         void Render(const CloudRenderContext& ctx,
                     GpuResource& sceneColor,
-                    D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSrvHandle,
+                    D3D12_GPU_DESCRIPTOR_HANDLE sceneColorUavHandle,
                     D3D12_GPU_DESCRIPTOR_HANDLE depthSrvHandle);
     };
 }

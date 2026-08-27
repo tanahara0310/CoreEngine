@@ -3,13 +3,12 @@
 /// @details 式: 出力 = max(シーン色 + Δ輝度, 0)。Δ は負を含む差分（雲影で暗く・
 ///          切れ間は変化なし）＋ 加算ミー項。CloudComposite と同じ
 ///          中心 + 対角 4 タップのテントアップサンプルで半解像度の階段を均す。
-///          出力先は中間テクスチャ（パスが SceneColor へコピーバックする）。
+///          gOutput は SceneColor 自身。各スレッドが自分のテクセルだけを読んで書き戻す。
 
 #include "Common/GodRayCommon.hlsli"
 
 ConstantBuffer<GodRayConstants> gGodRay : register(b0);
-Texture2D<float4> gSceneColor : register(t0);
-Texture2D<float4> gGodRayBuffer : register(t1);
+Texture2D<float4> gGodRayBuffer : register(t0);
 SamplerState gLUTSampler : register(s0);
 RWTexture2D<float4> gOutput : register(u0);
 
@@ -24,7 +23,7 @@ void main(uint3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    float4 scene = gSceneColor[dtid.xy];
+    float4 scene = gOutput[dtid.xy];
     float2 uv = (float2(dtid.xy) + 0.5f) / float2(width, height);
 
     // テントアップサンプル（gLUTSampler は CLAMP のため画面端の巻き込みは起きない）

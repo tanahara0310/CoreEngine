@@ -215,7 +215,7 @@ namespace CoreEngine
     void VolumetricCloudManager::RenderClouds(
         ID3D12GraphicsCommandList* cmdList,
         GpuResource& sceneColor,
-        D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSrvHandle,
+        D3D12_GPU_DESCRIPTOR_HANDLE sceneColorUavHandle,
         D3D12_GPU_DESCRIPTOR_HANDLE depthSrvHandle,
         const AtmosphereManager* atmosphereManager)
     {
@@ -230,7 +230,7 @@ namespace CoreEngine
         UploadConstants();
 
         cloudRenderer_.Render(MakeRenderContext(cmdList, atmosphereManager),
-            sceneColor, sceneColorSrvHandle, depthSrvHandle);
+            sceneColor, sceneColorUavHandle, depthSrvHandle);
     }
 
     void VolumetricCloudManager::RenderCloudsToSkyCubemap(
@@ -246,7 +246,7 @@ namespace CoreEngine
     void VolumetricCloudManager::RenderGodRays(
         ID3D12GraphicsCommandList* cmdList,
         GpuResource& sceneColor,
-        D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSrvHandle,
+        D3D12_GPU_DESCRIPTOR_HANDLE sceneColorUavHandle,
         D3D12_GPU_DESCRIPTOR_HANDLE depthSrvHandle,
         const AtmosphereManager* atmosphereManager)
     {
@@ -264,6 +264,6 @@ namespace CoreEngine
         UploadGodRayConstants();
 
         godRayRenderer_.Render(MakeRenderContext(cmdList, atmosphereManager),
-            sceneColor, sceneColorSrvHandle, depthSrvHandle);
+            sceneColor, sceneColorUavHandle, depthSrvHandle);
     }
 }
