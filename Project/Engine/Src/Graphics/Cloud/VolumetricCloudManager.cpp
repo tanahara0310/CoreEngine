@@ -169,7 +169,7 @@ namespace CoreEngine
         c.ambientBottomOcclusion = parameters_.ambientBottomOcclusion;
         c.ambientChroma = parameters_.ambientChroma;
         c.ambientGroundStrength = parameters_.ambientGroundStrength;
-        c.pad2 = 0.0f;
+        c.upsampleDepthTolerance = parameters_.upsampleDepthTolerance;
         c.pad3 = 0.0f;
         c.prevViewProj = prevViewProj_;
         // 起動直後とターゲット再確保直後は履歴が未初期化なので混ぜない

@@ -69,4 +69,15 @@ static const float kCloudIsotropicPhase = 0.0795774715f; // 1 / (4π)
 /// 地面反射光が雲層内を上へ届く範囲を絞るべき指数。大きいほど雲底だけに効く
 static const float kCloudGroundReachPower = 4.0f;
 
+// ===== アップサンプル =====
+
+/// これ以上の NDC 深度は不透明物なし（遠クリップ＝空）とみなす
+static const float kCloudDepthFarThreshold = 0.9999999f;
+
+/// 不透明物が無い画素の距離。有限の距離との差が必ず棄却域に入る大きさであること
+static const float kCloudNoOpaqueDistance = 1e8f;
+
+/// 重み総和がこれを下回ったら加重平均を諦め、最も深度の近いタップをそのまま使う
+static const float kCloudUpsampleMinWeight = 1e-4f;
+
 #endif // CLOUD_TUNING_HLSLI

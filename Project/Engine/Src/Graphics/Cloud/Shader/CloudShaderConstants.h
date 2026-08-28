@@ -40,7 +40,7 @@ namespace CoreEngine
         float hazeDistanceM;         float maxSunOpticalDepth;
         float ambientCosZenith;      float ambientBottomOcclusion;          // 272
         float ambientChroma;         float ambientGroundStrength;
-        float pad2;                  float pad3;                            // 288
+        float upsampleDepthTolerance; float pad3;                           // 288
         // ===== 時間再投影 =====
         Matrix4x4 prevViewProj;                                             // 304
         float reprojectEnabled;      float reprojectBlendMin;
@@ -94,7 +94,7 @@ namespace CoreEngine
         CB_FIELD(VolumetricCloudShaderConstants, ambientBottomOcclusion),
         CB_FIELD(VolumetricCloudShaderConstants, ambientChroma),
         CB_FIELD(VolumetricCloudShaderConstants, ambientGroundStrength),
-        CB_FIELD(VolumetricCloudShaderConstants, pad2),
+        CB_FIELD(VolumetricCloudShaderConstants, upsampleDepthTolerance),
         CB_FIELD(VolumetricCloudShaderConstants, pad3),
         CB_FIELD(VolumetricCloudShaderConstants, prevViewProj),
         CB_FIELD(VolumetricCloudShaderConstants, reprojectEnabled),

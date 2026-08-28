@@ -36,7 +36,7 @@ struct CloudConstants
     float hazeDistanceM;        float maxSunOpticalDepth;
     float ambientCosZenith;     float ambientBottomOcclusion;            // 272
     float ambientChroma;        float ambientGroundStrength;
-    float pad2;                 float pad3;                              // 288
+    float upsampleDepthTolerance; float pad3;                            // 288
     float4x4 prevViewProj;                                               // 304 前フレームのビュー射影
     float reprojectEnabled;     float reprojectBlendMin;
     float reprojectTolerance;   float pad5;                              // 368

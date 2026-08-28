@@ -195,6 +195,11 @@ namespace CoreEngine
             "雲バッファの解像度分割数。2 = 1/2 解像度",
             CVarRange{ 1.0f, 4.0f } };
 
+        CVar<float> UpsampleDepthTolerance{
+            "r.Cloud.UpsampleDepthTolerance", 0.15f,
+            "アップサンプルでタップを半減させる相対距離差。0 で深度を見ない",
+            CVarRange{ 0.0f, 1.0f } };
+
         CVar<bool> ReprojectEnabled{
             "r.Cloud.ReprojectEnabled", true,
             "前フレームのレイマーチ結果を混ぜて実効サンプル数を稼ぐ" };
@@ -293,6 +298,7 @@ namespace CoreEngine
                 { &GodRayMaxDistanceM,    &VolumetricCloudParameters::godRayMaxDistanceM },
                 { &CloudShadowRegionSizeM,&VolumetricCloudParameters::cloudShadowRegionSizeM },
                 { &SceneShadowStrength,    &VolumetricCloudParameters::sceneShadowStrength },
+                { &UpsampleDepthTolerance, &VolumetricCloudParameters::upsampleDepthTolerance },
                 { &ReprojectBlendMin,      &VolumetricCloudParameters::reprojectBlendMin },
                 { &ReprojectTolerance,     &VolumetricCloudParameters::reprojectTolerance },
             };

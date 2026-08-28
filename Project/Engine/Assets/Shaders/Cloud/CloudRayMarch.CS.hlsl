@@ -41,7 +41,7 @@ void main(uint3 dtid : SV_DispatchThreadID)
     gSceneDepth.GetDimensions(depthW, depthH);
     int2 fullPix = clamp(int2(uv * float2(depthW, depthH)), int2(0, 0), int2(depthW - 1, depthH - 1));
     float ndcDepth = gSceneDepth.Load(int3(fullPix, 0));
-    if (ndcDepth < 0.9999999f)
+    if (ndcDepth < kCloudDepthFarThreshold)
     {
         float4 wp = mul(float4(ndc, ndcDepth, 1.0f), gCloud.invViewProj);
         wp /= wp.w;

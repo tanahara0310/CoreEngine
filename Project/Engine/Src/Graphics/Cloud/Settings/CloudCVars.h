@@ -61,6 +61,7 @@ namespace CoreEngine
         extern CVar<float> HazeDistanceM;
         extern CVar<int> MaxSteps;
         extern CVar<int> ResolutionDivisor;
+        extern CVar<float> UpsampleDepthTolerance;
         extern CVar<bool> ReprojectEnabled;
         extern CVar<float> ReprojectBlendMin;
         extern CVar<float> ReprojectTolerance;
