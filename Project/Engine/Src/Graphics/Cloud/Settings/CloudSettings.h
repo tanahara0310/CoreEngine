@@ -59,6 +59,11 @@ namespace CoreEngine
         uint32_t maxSteps;              ///< 反復回数の予算（実際の上限は 2 倍）
         uint32_t resolutionDivisor;     ///< レイマーチの解像度分割数（1=フル解像度, 2=半解像度）
 
+        // ===== 時間再投影 =====
+        bool reprojectEnabled;          ///< 前フレームの結果を混ぜる
+        float reprojectBlendMin;        ///< 履歴が使える画素の現フレーム寄与率（小さいほど収束が深い）
+        float reprojectTolerance;       ///< 履歴を棄却しはじめる透過率の食い違い量
+
         // ===== ゴッドレイ（雲の隙間の光芒） =====
         bool godRayEnabled;             ///< ゴッドレイの有効/無効
         float godRayIntensity;          ///< 遮蔽差分（物理項）のスケール。1 が物理値

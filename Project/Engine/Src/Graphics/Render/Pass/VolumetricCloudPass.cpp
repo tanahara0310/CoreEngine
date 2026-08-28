@@ -74,6 +74,6 @@ namespace CoreEngine
         // 後続の GodRayPass が読む雲バッファをグラフへ公開する
         CloudResources& cloudResources = context.volumetricCloudManager->GetResources();
         context.frameBlackboard->SetResource(FrameBlackboard::CloudBuffer,
-            cloudResources.cloudBuffer.srv.gpuHandle, &cloudResources.cloudBuffer);
+            cloudResources.CurrentCloudBuffer().srv.gpuHandle, &cloudResources.CurrentCloudBuffer());
     }
 }

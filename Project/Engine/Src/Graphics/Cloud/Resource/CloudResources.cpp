@@ -124,8 +124,12 @@ namespace CoreEngine
                                             DescriptorAllocator* descriptorAllocator,
                                             GraphicsCore* graphicsCore,
                                             GpuResource& sceneColor,
-                                            uint32_t resolutionDivisor)
+                                            uint32_t resolutionDivisor,
+                                            bool* outRecreated)
     {
+        if (outRecreated) {
+            *outRecreated = false;
+        }
         if (!sceneColor || !device || !descriptorAllocator) {
             return false;
         }
@@ -142,22 +146,23 @@ namespace CoreEngine
         const uint32_t halfH = static_cast<uint32_t>((sceneDesc.Height + div - 1) / div);
 
         // 現在の SceneColor サイズと分割数で確保済みなら再利用する
-        if (godRayBuffer && cloudBuffer &&
-            cloudBuffer.Desc().Width == halfW &&
-            cloudBuffer.Desc().Height == halfH) {
+        if (godRayBuffer && cloudBuffers[0] && cloudBuffers[1] &&
+            cloudBuffers[0].Desc().Width == halfW &&
+            cloudBuffers[0].Desc().Height == halfH) {
             return true;
         }
 
         // 作り直す前に投入済みの描画完了を待つ。待たずに解放すると、まだ前フレームの
         // ディスパッチが参照しているテクスチャを落とすことになる
-        if (graphicsCore && (cloudBuffer || godRayBuffer)) {
+        if (graphicsCore && (cloudBuffers[0] || godRayBuffer)) {
             graphicsCore->WaitForGpuIdle();
         }
 
         // 半解像度のレイマーチ結果とゴッドレイ結果（同サイズ・同フォーマット）
         const D3D12_RESOURCE_DESC halfDesc =
             MakeTextureDesc(halfW, halfH, 1, DXGI_FORMAT_R16G16B16A16_FLOAT);
-        if (!CreateTexture(device, descriptorAllocator, cloudBuffer, halfDesc, "CloudBuffer")) {
+        if (!CreateTexture(device, descriptorAllocator, cloudBuffers[0], halfDesc, "CloudBuffer0")
+            || !CreateTexture(device, descriptorAllocator, cloudBuffers[1], halfDesc, "CloudBuffer1")) {
             return false;
         }
         if (!CreateTexture(device, descriptorAllocator, godRayBuffer, halfDesc, "GodRayBuffer")) {
@@ -165,6 +170,9 @@ namespace CoreEngine
         }
 
         targetsWidth_ = halfW;
+        if (outRecreated) {
+            *outRecreated = true;
+        }
         targetsHeight_ = halfH;
 
         Logger::GetInstance().Infof(LogCategory::Graphics,

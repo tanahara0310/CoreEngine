@@ -83,7 +83,7 @@ void main(uint3 dtid : SV_DispatchThreadID)
     float phaseM = HenyeyGreensteinPhase(gAtmosphere.miePhaseG, cosTheta);
 
     // 静的 IGN でサンプル位相をジッタ（時間依存にしない＝エンジン規約）
-    float ign = InterleavedGradientNoise(float2(dtid.xy));
+    float ign = InterleavedGradientNoise(float2(dtid.xy), 0u);
 
     uint stepCount = max(gGodRay.stepCount, 1u);
     float dt = tMax / stepCount;

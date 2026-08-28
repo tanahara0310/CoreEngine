@@ -171,7 +171,7 @@ namespace CoreEngine
             CVarRange{ 1000.0f, 500000.0f } };
 
         CVar<float> DetailFadeDistanceM{
-            "r.Cloud.DetailFadeDistance", 25000.0f,
+            "r.Cloud.DetailFadeDistance", 90000.0f,
             "ディテール侵食を弱めきる距離 [m]。短いほど遠方がのっぺりする",
             CVarRange{ 1000.0f, 200000.0f } };
 
@@ -194,6 +194,20 @@ namespace CoreEngine
             "r.Cloud.ResolutionDivisor", 2,
             "雲バッファの解像度分割数。2 = 1/2 解像度",
             CVarRange{ 1.0f, 4.0f } };
+
+        CVar<bool> ReprojectEnabled{
+            "r.Cloud.ReprojectEnabled", true,
+            "前フレームのレイマーチ結果を混ぜて実効サンプル数を稼ぐ" };
+
+        CVar<float> ReprojectBlendMin{
+            "r.Cloud.ReprojectBlendMin", 0.12f,
+            "履歴が使える画素の現フレーム寄与率。小さいほど収束が深いがゴーストに寄る",
+            CVarRange{ 0.02f, 1.0f } };
+
+        CVar<float> ReprojectTolerance{
+            "r.Cloud.ReprojectTolerance", 0.25f,
+            "履歴を棄却しはじめる透過率の食い違い量。小さいほど動きに敏感",
+            CVarRange{ 0.01f, 1.0f } };
 
         // ---- ゴッドレイ ----
         CVar<bool> GodRayEnabled{
@@ -279,6 +293,8 @@ namespace CoreEngine
                 { &GodRayMaxDistanceM,    &VolumetricCloudParameters::godRayMaxDistanceM },
                 { &CloudShadowRegionSizeM,&VolumetricCloudParameters::cloudShadowRegionSizeM },
                 { &SceneShadowStrength,    &VolumetricCloudParameters::sceneShadowStrength },
+                { &ReprojectBlendMin,      &VolumetricCloudParameters::reprojectBlendMin },
+                { &ReprojectTolerance,     &VolumetricCloudParameters::reprojectTolerance },
             };
 
             constexpr Binding<CVar<int>, uint32_t> kUintBindings[] = {
@@ -288,7 +304,8 @@ namespace CoreEngine
             };
 
             constexpr Binding<CVar<bool>, bool> kBoolBindings[] = {
-                { &GodRayEnabled, &VolumetricCloudParameters::godRayEnabled },
+                { &GodRayEnabled,     &VolumetricCloudParameters::godRayEnabled },
+                { &ReprojectEnabled,  &VolumetricCloudParameters::reprojectEnabled },
             };
         }
 

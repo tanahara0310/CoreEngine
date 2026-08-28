@@ -38,12 +38,14 @@ namespace CoreEngine
         /// @param graphicsCore 作り直す前の GPU 完了待ちに使う（nullptr でも動くが待たない）
         /// @param sceneColor サイズとフォーマットの基準
         /// @param resolutionDivisor 半解像度バッファの分割数（1 以上）
+        /// @param outRecreated 作り直したときに true（履歴が無効になったことを呼び出し側へ伝える）
         /// @return 確保済み（または再利用可能）なら true
         bool EnsureFrameTargets(ID3D12Device* device,
                                 DescriptorAllocator* descriptorAllocator,
                                 GraphicsCore* graphicsCore,
                                 GpuResource& sceneColor,
-                                uint32_t resolutionDivisor);
+                                uint32_t resolutionDivisor,
+                                bool* outRecreated = nullptr);
 
         // ===== 静的リソース =====
         CloudGpuTexture baseShapeNoise;
@@ -52,14 +54,24 @@ namespace CoreEngine
         CloudGpuTexture cloudShadowMap;
 
         // ===== フレームターゲット（EnsureFrameTargets が確保する） =====
-        CloudGpuTexture cloudBuffer;      ///< 半解像度レイマーチ結果
+        CloudGpuTexture cloudBuffers[2];  ///< 半解像度レイマーチ結果（時間再投影の ping-pong）
         CloudGpuTexture godRayBuffer;     ///< 半解像度ゴッドレイ結果
+
+        /// @brief 今フレームの書き込み先
+        CloudGpuTexture& CurrentCloudBuffer() { return cloudBuffers[writeIndex_]; }
+
+        /// @brief 前フレームのレイマーチ結果（履歴）
+        CloudGpuTexture& HistoryCloudBuffer() { return cloudBuffers[writeIndex_ ^ 1]; }
+
+        /// @brief 書き込み先をフレーム番号の偶奇で決める（純粋関数。累積状態を持たない）
+        void SetFrameIndex(uint32_t frameIndex) { writeIndex_ = frameIndex & 1u; }
 
         /// @brief 半解像度バッファの実サイズ
         uint32_t TargetsWidth() const { return targetsWidth_; }
         uint32_t TargetsHeight() const { return targetsHeight_; }
 
     private:
+        uint32_t writeIndex_ = 0;
         uint32_t targetsWidth_ = 0;
         uint32_t targetsHeight_ = 0;
     };

@@ -18,6 +18,7 @@ namespace CoreEngine
     {
         ID3D12GraphicsCommandList* cmdList = ctx.cmdList;
         CloudResources& res = *ctx.resources;
+        CloudGpuTexture& cloudBuffer = res.CurrentCloudBuffer();
 
         // ===== ゴッドレイマーチ CS: 遮蔽差分を半解像度で積分 =====
         // 雲シャドウマップは CloudShadowMapPass が生成済み（SRV 状態で入ってくる）
@@ -26,7 +27,7 @@ namespace CoreEngine
         {
             CloudStageScope stage(ctx, "GodRay March");
 
-            Barrier::Transition(cmdList, res.cloudBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            Barrier::Transition(cmdList, cloudBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
             Barrier::Transition(cmdList, res.godRayBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
             {
@@ -39,7 +40,7 @@ namespace CoreEngine
                 binder.Set(pass.bindings[B::gCloudShadowMap], res.cloudShadowMap.srv.gpuHandle);
                 binder.Set(pass.bindings[B::gTransmittanceLUT], ctx.atmosphere->GetTransmittanceLUTSRVHandle());
                 binder.Set(pass.bindings[B::gSceneDepth], depthSrvHandle);
-                binder.Set(pass.bindings[B::gCloudBuffer], res.cloudBuffer.srv.gpuHandle);
+                binder.Set(pass.bindings[B::gCloudBuffer], cloudBuffer.srv.gpuHandle);
                 binder.Set(pass.bindings[B::gGodRayOutput], res.godRayBuffer.uav.gpuHandle);
                 binder.ValidateBeforeDraw(pass.bindings);
             }
@@ -70,7 +71,6 @@ namespace CoreEngine
             ctx.DispatchCompositeInPlace(sceneColor);
 
             Barrier::Transition(cmdList, res.godRayBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-            Barrier::Transition(cmdList, res.cloudBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         }
     }
 }

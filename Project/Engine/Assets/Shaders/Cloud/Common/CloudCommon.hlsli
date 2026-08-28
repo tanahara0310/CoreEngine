@@ -1,6 +1,6 @@
 /// @file CloudCommon.hlsli
 /// @brief ボリューメトリック雲の共通定数バッファ・ジオメトリ・密度関数
-/// @details C++ 側 VolumetricCloudShaderConstants（304 バイト）と一致させること。
+/// @details C++ 側 VolumetricCloudShaderConstants（384 バイト）と一致させること。
 ///          座標系は 1unit=1m。惑星中心はカメラ基準で下方 planetRadiusM に置く。
 
 #ifndef CLOUD_COMMON_HLSLI
@@ -26,7 +26,7 @@ struct CloudConstants
     float beerPowderStrength;   float lightMarchCoverage;
     float earlyExitTransmittance; float maxMarchDistanceM;              // 176
     uint maxSteps;              uint outputWidth;
-    uint outputHeight;          uint pad0;                               // 192
+    uint outputHeight;          uint frameIndex;                         // 192
     float sunLightScale;        float msAttenuation;
     float msContribution;       float msEccentricity;                    // 208
     float3 moonDirection;       float moonIntensity;                     // 224 月光の進行方向 / 強度
@@ -37,7 +37,10 @@ struct CloudConstants
     float ambientCosZenith;     float ambientBottomOcclusion;            // 272
     float ambientChroma;        float ambientGroundStrength;
     float pad2;                 float pad3;                              // 288
-};                                                                       // = 304
+    float4x4 prevViewProj;                                               // 304 前フレームのビュー射影
+    float reprojectEnabled;     float reprojectBlendMin;
+    float reprojectTolerance;   float pad5;                              // 368
+};                                                                       // = 384
 
 // ===== 雲層ジオメトリ =====
 
@@ -119,10 +122,15 @@ float2 CloudLayerInterval(float3 ro, float3 rd, CloudConstants c)
 }
 
 /// @brief 画面空間 Interleaved Gradient Noise（レイマーチ開始位置のジッタ用）
-/// @details 時間依存にすると TAA 無しではちらつくため、フレーム非依存の静的パターンにする。
-float InterleavedGradientNoise(float2 pixel)
+/// @param frame フレーム番号。時間再投影が毎フレーム別のサンプル位置を積み上げられるよう
+///              位相を回す。回すのは出力側（黄金比の加算）で、入力座標はいじらない。
+///              入力へオフセットを足すと空間パターンそのものが変わり、
+///              マーチの粗/細ステップの切り替わり方まで変わってコストが跳ねる。
+///              再投影が無効なときは 0 を渡すこと（毎フレーム同じ静的パターンになる）
+float InterleavedGradientNoise(float2 pixel, uint frame)
 {
-    return frac(52.9829189f * frac(0.06711056f * pixel.x + 0.00583715f * pixel.y));
+    float ign = frac(52.9829189f * frac(0.06711056f * pixel.x + 0.00583715f * pixel.y));
+    return frac(ign + float(frame % 64u) * 0.6180339887f);
 }
 
 // ===== 密度（GPU Pro 7 / Schneider 方式） =====

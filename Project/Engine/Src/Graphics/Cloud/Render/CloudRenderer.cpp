@@ -18,12 +18,15 @@ namespace CoreEngine
     {
         ID3D12GraphicsCommandList* cmdList = ctx.cmdList;
         CloudResources& res = *ctx.resources;
+        CloudGpuTexture& target = res.CurrentCloudBuffer();
+        CloudGpuTexture& history = res.HistoryCloudBuffer();
 
         // ===== レイマーチ CS: BaseShapeNoise + SceneDepth → 半解像度 CloudBuffer =====
         {
             CloudStageScope stage(ctx, "Cloud RayMarch");
 
-            Barrier::Transition(cmdList, res.cloudBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            Barrier::Transition(cmdList, target, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            Barrier::Transition(cmdList, history, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
             {
                 namespace B = CloudRayMarchBind;
@@ -38,15 +41,16 @@ namespace CoreEngine
                 binder.Set(pass.bindings[B::gSceneDepth], depthSrvHandle);
                 binder.Set(pass.bindings[B::gTransmittanceLUT], ctx.atmosphere->GetTransmittanceLUTSRVHandle());
                 binder.Set(pass.bindings[B::gSkyViewLUT], ctx.atmosphere->GetSkyViewLUTSRVHandle());
-                binder.Set(pass.bindings[B::gCloudOutput], res.cloudBuffer.uav.gpuHandle);
+                binder.Set(pass.bindings[B::gCloudHistory], history.srv.gpuHandle);
+                binder.Set(pass.bindings[B::gCloudOutput], target.uav.gpuHandle);
                 binder.ValidateBeforeDraw(pass.bindings);
             }
 
             ctx.DispatchHalfRes();
 
             // 合成 CS が SRV として読めるよう遷移
-            Barrier::UAV(cmdList, res.cloudBuffer);
-            Barrier::Transition(cmdList, res.cloudBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            Barrier::UAV(cmdList, target);
+            Barrier::Transition(cmdList, target, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         }
 
         // ===== 合成 CS: CloudBuffer を SceneColor へ in-place 合成 =====
@@ -60,7 +64,7 @@ namespace CoreEngine
                 const CloudComputePass& pass = (*ctx.pipelines)[CloudPass::Composite];
                 ShaderBinder binder = pass.Begin(cmdList);
                 binder.Set(pass.bindings[B::gCloud], ctx.cloudConstants);
-                binder.Set(pass.bindings[B::gCloudBuffer], res.cloudBuffer.srv.gpuHandle);
+                binder.Set(pass.bindings[B::gCloudBuffer], target.srv.gpuHandle);
                 binder.Set(pass.bindings[B::gSceneDepth], depthSrvHandle);
                 binder.Set(pass.bindings[B::gOutput], sceneColorUavHandle);
                 binder.ValidateBeforeDraw(pass.bindings);
@@ -68,7 +72,7 @@ namespace CoreEngine
 
             ctx.DispatchCompositeInPlace(sceneColor);
 
-            Barrier::Transition(cmdList, res.cloudBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            // 今フレームの結果は次フレームの履歴になるので SRV 状態のまま残す
         }
     }
 }

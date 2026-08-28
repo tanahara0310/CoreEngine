@@ -82,10 +82,15 @@ namespace CoreEngine
         // 風アニメーション用の時刻積算
         timeSec_ += deltaTimeSec;
 
+        // 時間再投影の ping-pong とジッタ位相はフレーム番号の純粋関数にする
+        prevViewProj_ = viewProj_;
+        ++frameCounter_;
+        resources_.SetFrameIndex(frameCounter_);
+
         // カメラ情報
         cameraWorldPos_ = cameraWorldPosition;
-        invViewProj_ = MathCore::Matrix::Inverse(
-            viewMatrix * projMatrix);
+        viewProj_ = viewMatrix * projMatrix;
+        invViewProj_ = MathCore::Matrix::Inverse(viewProj_);
 
         // 太陽・月情報・カメラ高度は AtmosphereManager から取得（単一情報源）。
         if (atmosphereManager) {
@@ -145,7 +150,7 @@ namespace CoreEngine
         c.maxSteps = parameters_.maxSteps;
         c.outputWidth = resources_.TargetsWidth();
         c.outputHeight = resources_.TargetsHeight();
-        c.pad0 = 0;
+        c.frameIndex = frameCounter_;
         c.sunLightScale = parameters_.sunLightScale;
         c.msAttenuation = parameters_.msAttenuation;
         c.msContribution = parameters_.msContribution;
@@ -166,6 +171,12 @@ namespace CoreEngine
         c.ambientGroundStrength = parameters_.ambientGroundStrength;
         c.pad2 = 0.0f;
         c.pad3 = 0.0f;
+        c.prevViewProj = prevViewProj_;
+        // 起動直後とターゲット再確保直後は履歴が未初期化なので混ぜない
+        c.reprojectEnabled = (parameters_.reprojectEnabled && historyValid_) ? 1.0f : 0.0f;
+        c.reprojectBlendMin = parameters_.reprojectBlendMin;
+        c.reprojectTolerance = std::max(parameters_.reprojectTolerance, 1e-4f);
+        c.pad5 = 0.0f;
 
         *constantData_ = c;
     }
@@ -233,8 +244,14 @@ namespace CoreEngine
 
     bool VolumetricCloudManager::EnsureFrameTargets(GpuResource& sceneColor)
     {
-        return resources_.EnsureFrameTargets(device_, descriptorAllocator_, graphicsCore_,
-            sceneColor, parameters_.resolutionDivisor);
+        bool recreated = false;
+        const bool ok = resources_.EnsureFrameTargets(device_, descriptorAllocator_, graphicsCore_,
+            sceneColor, parameters_.resolutionDivisor, &recreated);
+        // 作り直した直後の履歴バッファは未初期化。1 フレーム書き込むまで混ぜない
+        if (!ok || recreated) {
+            historyValid_ = false;
+        }
+        return ok;
     }
 
     void VolumetricCloudManager::GenerateNoiseTexturesIfNeeded(
@@ -277,6 +294,9 @@ namespace CoreEngine
 
         cloudRenderer_.Render(MakeRenderContext(cmdList, atmosphereManager, profiler),
             sceneColor, sceneColorUavHandle, depthSrvHandle);
+
+        // 今フレームの書き込みで履歴が揃った（次フレームから混ぜられる）
+        historyValid_ = true;
     }
 
     void VolumetricCloudManager::RenderCloudsToSkyCubemap(

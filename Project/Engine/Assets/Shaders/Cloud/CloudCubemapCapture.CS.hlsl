@@ -35,7 +35,7 @@ void main(uint3 dtid : SV_DispatchThreadID)
         return; // 雲層と交差しない方向は空のまま
     }
 
-    float ign = InterleavedGradientNoise(float2(dtid.xy + dtid.z * 64u));
+    float ign = InterleavedGradientNoise(float2(dtid.xy + dtid.z * 64u), 0u);
 
     CloudMarchResult cloud = MarchClouds(rayOrigin, rayDir, marchStart, marchEnd,
                                          max(gCloud.maxSteps, 1u), ign);

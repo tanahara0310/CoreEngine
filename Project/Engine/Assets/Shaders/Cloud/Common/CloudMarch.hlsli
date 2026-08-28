@@ -13,6 +13,7 @@ struct CloudMarchResult
 {
     float3 luminance;     ///< 前乗算輝度
     float transmittance;  ///< 透過率（雲なし = 1）
+    float distance;       ///< 不透明度で重み付けした雲の代表距離（雲なし = -1）
 };
 
 /// @brief 距離に応じたステップ伸長倍率
@@ -41,6 +42,7 @@ CloudMarchResult MarchClouds(float3 rayOrigin, float3 rayDir,
     CloudMarchResult result;
     result.luminance = float3(0.0f, 0.0f, 0.0f);
     result.transmittance = 1.0f;
+    result.distance = -1.0f;
 
     if (marchStart >= marchEnd)
     {
@@ -151,6 +153,8 @@ CloudMarchResult MarchClouds(float3 rayOrigin, float3 rayDir,
     if (alpha > 0.001f && weightSum > 1e-5f)
     {
         float cloudDist = weightedDist / weightSum;
+        // 時間再投影の履歴 UV を求めるための代表深度としても使う
+        result.distance = cloudDist;
 
         float radiusKm = CloudSafeCameraRadiusKm();
         float cosHorizon = -sqrt(max(0.0f,

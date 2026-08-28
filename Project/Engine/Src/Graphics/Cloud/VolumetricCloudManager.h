@@ -150,6 +150,12 @@ namespace CoreEngine
         // フレーム更新で計算される値
         Vector3 cameraWorldPos_{};
         Matrix4x4 invViewProj_{};
+        Matrix4x4 viewProj_{};
+        Matrix4x4 prevViewProj_{};
+        /// 時間再投影の ping-pong とジッタ位相の元。Update() で毎フレーム進む
+        uint32_t frameCounter_ = 0;
+        /// フレームターゲットを作り直した直後は履歴が未初期化なので 1 フレーム再投影を止める
+        bool historyValid_ = false;
         Vector3 sunDirection_ = { 0.0f, -1.0f, 0.0f };
         Vector3 sunColor_ = { 1.0f, 1.0f, 1.0f };
         float sunIntensity_ = 1.0f;

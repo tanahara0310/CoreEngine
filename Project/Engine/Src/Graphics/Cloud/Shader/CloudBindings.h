@@ -38,6 +38,7 @@ namespace CoreEngine::CloudRayMarchBind
         gSceneDepth,
         gTransmittanceLUT,
         gSkyViewLUT,
+        gCloudHistory,
         gCloudOutput,
         Count
     };
@@ -51,6 +52,7 @@ namespace CoreEngine::CloudRayMarchBind
         { "gSceneDepth",       ShaderBindingType::SRV, BindingUsage::Required },  // t3
         { "gTransmittanceLUT", ShaderBindingType::SRV, BindingUsage::Required },  // t4
         { "gSkyViewLUT",       ShaderBindingType::SRV, BindingUsage::Required },  // t5
+        { "gCloudHistory",     ShaderBindingType::SRV, BindingUsage::Required },  // t6
         { "gCloudOutput",      ShaderBindingType::UAV, BindingUsage::Required },  // u0
     };
 
