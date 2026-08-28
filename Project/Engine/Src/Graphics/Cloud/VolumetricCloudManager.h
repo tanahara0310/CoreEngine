@@ -3,6 +3,7 @@
 #include "Graphics/Cloud/Render/CloudNoiseBaker.h"
 #include "Graphics/Cloud/Render/CloudRenderContext.h"
 #include "Graphics/Cloud/Render/CloudRenderer.h"
+#include "Graphics/Cloud/Render/CloudShadowMapRenderer.h"
 #include "Graphics/Cloud/Render/CloudSkyCubemapBaker.h"
 #include "Graphics/Cloud/Render/GodRayRenderer.h"
 #include "Graphics/Cloud/Resource/CloudResources.h"
@@ -71,6 +72,21 @@ namespace CoreEngine
         /// @brief ノイズテクスチャが生成済みか
         bool AreNoiseTexturesReady() const { return noiseBaker_.IsReady(); }
 
+        // ===== 雲シャドウマップ（CloudShadowMapPass から呼ばれる） =====
+
+        /// @brief 太陽方向の雲透過率マップを生成する
+        /// @details Deferred ライティングとゴッドレイの双方が読むため、
+        ///          ライティングより前のフェーズで生成する。
+        void RenderCloudShadowMap(
+            ID3D12GraphicsCommandList* cmdList,
+            const AtmosphereManager* atmosphereManager,
+            GpuTimestampProfiler* profiler = nullptr);
+
+        /// @brief 雲シャドウ CB の GPU 仮想アドレス（Deferred ライティングが差す）
+        D3D12_GPU_VIRTUAL_ADDRESS GetCloudShadowConstantsAddress() const {
+            return cloudShadowConstantBuffer_ ? cloudShadowConstantBuffer_->GetGPUVirtualAddress() : 0;
+        }
+
         /// @brief 保持している GPU テクスチャ一式
         /// @note パスが CloudBuffer / CloudShadowMap を FrameBlackboard へ公開するために使う
         CloudResources& GetResources() { return resources_; }
@@ -118,6 +134,9 @@ namespace CoreEngine
         /// @brief ゴッドレイ CB を現在のカメラ・パラメータで更新する
         void UploadGodRayConstants();
 
+        /// @brief 雲シャドウ CB をカメラ追従の範囲でスナップして更新する
+        void UploadCloudShadowConstants();
+
         /// @brief フレームターゲットを現在の SceneColor サイズと分割数で確保する
         bool EnsureFrameTargets(GpuResource& sceneColor);
 
@@ -159,12 +178,15 @@ namespace CoreEngine
         VolumetricCloudShaderConstants* constantData_ = nullptr;
         Microsoft::WRL::ComPtr<ID3D12Resource> godRayConstantBuffer_;
         GodRayShaderConstants* godRayConstantData_ = nullptr;
+        Microsoft::WRL::ComPtr<ID3D12Resource> cloudShadowConstantBuffer_;
+        CloudShadowShaderConstants* cloudShadowConstantData_ = nullptr;
 
         CloudResources resources_{};
         CloudPipelines pipelines_{};
 
         // 各 GPU ジョブの記録担当（状態を持つのはノイズ生成のダーティ管理だけ）
         CloudNoiseBaker noiseBaker_{};
+        CloudShadowMapRenderer cloudShadowMapRenderer_{};
         CloudRenderer cloudRenderer_{};
         CloudSkyCubemapBaker skyCubemapBaker_{};
         GodRayRenderer godRayRenderer_{};

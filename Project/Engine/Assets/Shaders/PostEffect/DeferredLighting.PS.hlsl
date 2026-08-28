@@ -5,6 +5,7 @@
 #include "../Include/Common/ColorSpace.hlsli" // Luminance / ACESFilm
 // 水中ライティング置換の関数群（PI / Luminance に依存するため PBR / ColorSpace の後）
 #include "../Include/Lighting/UnderwaterLighting.hlsli"
+#include "../Cloud/Common/CloudShadowCommon.hlsli"
 
 // ============================================================
 // G-Buffer テクスチャ
@@ -118,6 +119,14 @@ ConstantBuffer<SkyAmbientParams> gSkyAmbient : register(b6);
 // 5 ミップ（mip = roughness × 4）。輝度は空（SkyAtmosphere.PS）と同一ドメイン。
 TextureCube<float4> gSkySpecularMap : register(t19);
 static const float kSkySpecularMipCount = 5.0f;
+
+// ============================================================
+// 雲シャドウ（雲が地面へ落とす影）
+// ============================================================
+// CloudShadowMapPass が Deferred ライティングより前に生成する太陽方向の雲透過率。
+// 雲が無効なフレームは差されないので、寸法 1x1 のダミーで無効化を検出する。
+Texture2D<float> gCloudShadowMap : register(t20);
+ConstantBuffer<CloudShadowConstants> gCloudShadow : register(b8);
 
 /// @brief 解析的 EnvBRDF 近似（Karis "Physically Based Shading on Mobile"）
 /// @details Split-Sum の BRDF 積分項を LUT 無しで近似する。シーン IBL の gBRDFLUT は
@@ -273,6 +282,12 @@ PixelShaderOutput main(PixelShaderInput input)
     gRTShadowMask0.GetDimensions(rtW0, rtH0);
     bool useRTShadow = (rtW0 > 1.0f && rtH0 > 1.0f);
 
+    // ===== 雲シャドウ =====
+    // 雲が無効なフレームは差されないので、同じく寸法で有効・無効を判定する
+    float csW, csH;
+    gCloudShadowMap.GetDimensions(csW, csH);
+    bool useCloudShadow = (csW > 1.0f && csH > 1.0f && gCloudShadow.sceneStrength > 0.0f);
+
     // ===== RT シャドウ デバッグ表示 =====
 #if 0  // 1 でデバッグ表示ON、0 で通常描画
     if (useRTShadow)
@@ -379,6 +394,14 @@ PixelShaderOutput main(PixelShaderInput input)
             else              shadowFactor = gRTShadowMask3.Load(loadCoord).r;
         }
         shadowFactor = lerp(0.3f, 1.0f, shadowFactor);
+
+        // 雲影。RT シャドウとは別に底上げする（雲影は柔らかく、影の中でも空からの
+        // 光が回り込むので、ジオメトリの影ほど暗く落とさない）
+        if (useCloudShadow)
+        {
+            float cloudShadow = SampleCloudShadow(gCloudShadowMap, gSampler, worldPos, L, gCloudShadow);
+            shadowFactor *= lerp(1.0f, cloudShadow, gCloudShadow.sceneStrength);
+        }
 
         float3 dirContribution =
             CalculatePBRLighting(N, V, L, dL.color.rgb, dL.intensity, albedo, metallic, roughness, ao)

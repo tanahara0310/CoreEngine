@@ -71,11 +71,9 @@ namespace CoreEngine
             context.atmosphereManager,
             context.gpuProfiler);
 
-        // 後続の GodRayPass が読む雲バッファと雲シャドウマップをグラフへ公開する
+        // 後続の GodRayPass が読む雲バッファをグラフへ公開する
         CloudResources& cloudResources = context.volumetricCloudManager->GetResources();
         context.frameBlackboard->SetResource(FrameBlackboard::CloudBuffer,
             cloudResources.cloudBuffer.srv.gpuHandle, &cloudResources.cloudBuffer);
-        context.frameBlackboard->SetResource(FrameBlackboard::CloudShadowMap,
-            cloudResources.cloudShadowMap.srv.gpuHandle, &cloudResources.cloudShadowMap);
     }
 }

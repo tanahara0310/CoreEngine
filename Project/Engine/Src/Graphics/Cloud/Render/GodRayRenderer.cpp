@@ -19,37 +19,8 @@ namespace CoreEngine
         ID3D12GraphicsCommandList* cmdList = ctx.cmdList;
         CloudResources& res = *ctx.resources;
 
-        // ===== 雲シャドウマップ生成 =====
-        // 風の移流・太陽移動・カメラ追従で毎フレーム変わるため、雲アクティブ中は毎回焼き直す
-        // （1024²×24 サンプルの cheap 密度で Transmittance LUT 生成より軽い）。
-        {
-            CloudStageScope stage(ctx, "Cloud ShadowMap");
-
-            Barrier::Transition(cmdList, res.cloudShadowMap, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-
-            {
-                namespace B = CloudShadowMapBind;
-                const CloudComputePass& pass = (*ctx.pipelines)[CloudPass::CloudShadowMap];
-                ShaderBinder binder = pass.Begin(cmdList);
-                binder.Set(pass.bindings[B::gCloud], ctx.cloudConstants);
-                binder.Set(pass.bindings[B::gGodRay], ctx.godRayConstants);
-                binder.Set(pass.bindings[B::gBaseShapeNoise], res.baseShapeNoise.srv.gpuHandle);
-                binder.Set(pass.bindings[B::gWeatherMap], res.weatherMap.srv.gpuHandle);
-                binder.Set(pass.bindings[B::gCloudShadowMap], res.cloudShadowMap.uav.gpuHandle);
-                binder.ValidateBeforeDraw(pass.bindings);
-            }
-
-            cmdList->Dispatch(
-                (CloudResources::kCloudShadowMapSize + 7) / 8,
-                (CloudResources::kCloudShadowMapSize + 7) / 8,
-                1);
-
-            // マーチ CS が SRV として読めるよう遷移
-            Barrier::UAV(cmdList, res.cloudShadowMap);
-            Barrier::Transition(cmdList, res.cloudShadowMap, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        }
-
         // ===== ゴッドレイマーチ CS: 遮蔽差分を半解像度で積分 =====
+        // 雲シャドウマップは CloudShadowMapPass が生成済み（SRV 状態で入ってくる）
         // 雲透過率（cloudBuffer.a）で差分をスケールするため SRV として読む
         // （CloudRenderer が末尾で UAV 状態へ戻している）
         {
@@ -64,6 +35,7 @@ namespace CoreEngine
                 ShaderBinder binder = pass.Begin(cmdList);
                 binder.Set(pass.bindings[B::gGodRay], ctx.godRayConstants);
                 binder.Set(pass.bindings[B::gAtmosphere], ctx.atmosphere->GetConstantBufferGPUAddress());
+                binder.Set(pass.bindings[B::gCloudShadow], ctx.cloudShadowConstants);
                 binder.Set(pass.bindings[B::gCloudShadowMap], res.cloudShadowMap.srv.gpuHandle);
                 binder.Set(pass.bindings[B::gTransmittanceLUT], ctx.atmosphere->GetTransmittanceLUTSRVHandle());
                 binder.Set(pass.bindings[B::gSceneDepth], depthSrvHandle);
@@ -98,7 +70,6 @@ namespace CoreEngine
             ctx.DispatchCompositeInPlace(sceneColor);
 
             Barrier::Transition(cmdList, res.godRayBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-            Barrier::Transition(cmdList, res.cloudShadowMap, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             Barrier::Transition(cmdList, res.cloudBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         }
     }

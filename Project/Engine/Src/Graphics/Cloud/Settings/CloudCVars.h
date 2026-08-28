@@ -35,15 +35,16 @@ namespace CoreEngine
         extern CVar<float> WindSpeedMPerS;
 
         // ---- ライティング ----
-        extern CVar<float> PhaseG0;
-        extern CVar<float> PhaseG1;
-        extern CVar<float> PhaseBlend;
+        extern CVar<float> DropletDiameterUm;
+        extern CVar<float> MaxPhase;
         extern CVar<float> AmbientIntensity;
         extern CVar<float> AmbientCosZenith;
         extern CVar<float> AmbientBottomOcclusion;
         extern CVar<float> AmbientChroma;
+        extern CVar<float> AmbientGroundStrength;
         extern CVar<float> BeerPowderStrength;
-        extern CVar<float> LightMarchStepM;
+        extern CVar<float> LightMarchCoverage;
+        extern CVar<float> LightMarchConeSpread;
         extern CVar<float> MaxSunOpticalDepth;
 
         // ---- 太陽散乱スケールと多重散乱 ----
@@ -68,6 +69,7 @@ namespace CoreEngine
         extern CVar<float> GodRayMaxDistanceM;
         extern CVar<int> GodRayStepCount;
         extern CVar<float> CloudShadowRegionSizeM;
+        extern CVar<float> SceneShadowStrength;
 
         /// @brief CVar の現在値をパラメータ構造体へ取り込む
         void LoadInto(VolumetricCloudParameters& params);

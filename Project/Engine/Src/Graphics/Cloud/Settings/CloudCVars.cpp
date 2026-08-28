@@ -83,20 +83,15 @@ namespace CoreEngine
             CVarRange{ 0.0f, 100.0f } };
 
         // ---- ライティング ----
-        CVar<float> PhaseG0{
-            "r.Cloud.PhaseG0", 0.8f,
-            "HG 位相関数の前方散乱ローブ",
-            CVarRange{ -0.99f, 0.99f } };
+        CVar<float> DropletDiameterUm{
+            "r.Cloud.DropletDiameter", 20.0f,
+            "雲粒の直径 [µm]。大きいほど前方散乱が鋭くなり逆光の縁が強く光る",
+            CVarRange{ 5.0f, 50.0f } };
 
-        CVar<float> PhaseG1{
-            "r.Cloud.PhaseG1", -0.3f,
-            "HG 位相関数の後方散乱ローブ",
-            CVarRange{ -0.99f, 0.99f } };
-
-        CVar<float> PhaseBlend{
-            "r.Cloud.PhaseBlend", 0.5f,
-            "2 つの位相ローブのブレンド率",
-            CVarRange{ 0.0f, 1.0f } };
+        CVar<float> MaxPhase{
+            "r.Cloud.MaxPhase", 500.0f,
+            "位相関数の上限。Mie の前方ピークは太陽の視直径より鋭いので上限で丸める",
+            CVarRange{ 1.0f, 20000.0f } };
 
         CVar<float> AmbientIntensity{
             "r.Cloud.AmbientIntensity", 1.15f,
@@ -118,15 +113,25 @@ namespace CoreEngine
             "環境光に残す彩度。0 で完全な灰色",
             CVarRange{ 0.0f, 1.0f } };
 
+        CVar<float> AmbientGroundStrength{
+            "r.Cloud.AmbientGroundStrength", 0.0f,
+            "雲底へ届く地表反射光の倍率。明るい地表では雲塊の上下の陰影を消すので既定は 0",
+            CVarRange{ 0.0f, 3.0f } };
+
         CVar<float> BeerPowderStrength{
             "r.Cloud.BeerPowderStrength", 0.5f,
             "Beer-Powder 効果の強さ（雲の縁の暗さ）",
             CVarRange{ 0.0f, 1.0f } };
 
-        CVar<float> LightMarchStepM{
-            "r.Cloud.LightMarchStep", 200.0f,
-            "サンライトマーチの 1 歩 [m]。小さいほど高品質だが重い",
-            CVarRange{ 10.0f, 2000.0f } };
+        CVar<float> LightMarchCoverage{
+            "r.Cloud.LightMarchCoverage", 1.3f,
+            "サンライトマーチが覆う層内経路長の倍率。1 で層をちょうど貫く",
+            CVarRange{ 0.25f, 4.0f } };
+
+        CVar<float> LightMarchConeSpread{
+            "r.Cloud.LightMarchConeSpread", 0.15f,
+            "サンライトマーチのコーン半径（進んだ距離に対する比）。0 で直線マーチ",
+            CVarRange{ 0.0f, 1.0f } };
 
         CVar<float> MaxSunOpticalDepth{
             "r.Cloud.MaxSunOpticalDepth", 8.0f,
@@ -220,6 +225,11 @@ namespace CoreEngine
             "雲シャドウマップのカバー範囲（一辺）[m]",
             CVarRange{ 5000.0f, 200000.0f } };
 
+        CVar<float> SceneShadowStrength{
+            "r.Cloud.SceneShadowStrength", 1.0f,
+            "シーンへ落とす雲影の強さ。0 で地面に雲影が出なくなる",
+            CVarRange{ 0.0f, 1.0f } };
+
         namespace
         {
             // CVar とパラメータの対応表。取り込みはこの表からのみ行うので、
@@ -244,15 +254,16 @@ namespace CoreEngine
                 { &WindDirX,              &VolumetricCloudParameters::windDirX },
                 { &WindDirZ,              &VolumetricCloudParameters::windDirZ },
                 { &WindSpeedMPerS,        &VolumetricCloudParameters::windSpeedMPerS },
-                { &PhaseG0,               &VolumetricCloudParameters::phaseG0 },
-                { &PhaseG1,               &VolumetricCloudParameters::phaseG1 },
-                { &PhaseBlend,            &VolumetricCloudParameters::phaseBlend },
+                { &DropletDiameterUm,     &VolumetricCloudParameters::dropletDiameterUm },
+                { &MaxPhase,              &VolumetricCloudParameters::maxPhase },
                 { &AmbientIntensity,      &VolumetricCloudParameters::ambientIntensity },
                 { &AmbientCosZenith,       &VolumetricCloudParameters::ambientCosZenith },
                 { &AmbientBottomOcclusion, &VolumetricCloudParameters::ambientBottomOcclusion },
                 { &AmbientChroma,         &VolumetricCloudParameters::ambientChroma },
+                { &AmbientGroundStrength, &VolumetricCloudParameters::ambientGroundStrength },
                 { &BeerPowderStrength,    &VolumetricCloudParameters::beerPowderStrength },
-                { &LightMarchStepM,       &VolumetricCloudParameters::lightMarchStepM },
+                { &LightMarchCoverage,    &VolumetricCloudParameters::lightMarchCoverage },
+                { &LightMarchConeSpread,  &VolumetricCloudParameters::lightMarchConeSpread },
                 { &MaxSunOpticalDepth,    &VolumetricCloudParameters::maxSunOpticalDepth },
                 { &SunLightScale,         &VolumetricCloudParameters::sunLightScale },
                 { &MsAttenuation,         &VolumetricCloudParameters::msAttenuation },
@@ -267,6 +278,7 @@ namespace CoreEngine
                 { &GodRayMieBoost,        &VolumetricCloudParameters::godRayMieBoost },
                 { &GodRayMaxDistanceM,    &VolumetricCloudParameters::godRayMaxDistanceM },
                 { &CloudShadowRegionSizeM,&VolumetricCloudParameters::cloudShadowRegionSizeM },
+                { &SceneShadowStrength,    &VolumetricCloudParameters::sceneShadowStrength },
             };
 
             constexpr Binding<CVar<int>, uint32_t> kUintBindings[] = {

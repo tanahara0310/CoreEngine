@@ -205,6 +205,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Cloud\Shader\CloudPipelines.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Cloud\Render\CloudRenderContext.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Cloud\Render\CloudRenderer.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Cloud\Render\CloudShadowMapRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Cloud\Resource\CloudResources.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Cloud\Render\CloudSkyCubemapBaker.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Cloud\Render\GodRayRenderer.cpp" />
@@ -212,6 +213,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\AtmosphereLUTPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\AerialPerspectivePass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\VolumetricCloudNoisePass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\CloudShadowMapPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\VolumetricCloudPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\GodRayPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\FrameBlackboard.cpp" />
@@ -841,6 +843,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Cloud\Shader\CloudShaderConstants.h" />
     <ClInclude Include="Engine\Src\Graphics\Cloud\Render\CloudRenderContext.h" />
     <ClInclude Include="Engine\Src\Graphics\Cloud\Render\CloudStageScope.h" />
+    <ClInclude Include="Engine\Src\Graphics\Cloud\Render\CloudShadowMapRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Cloud\Render\CloudRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Cloud\Resource\CloudResources.h" />
     <ClInclude Include="Engine\Src\Graphics\Cloud\Render\CloudSkyCubemapBaker.h" />
@@ -850,6 +853,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\AtmosphereLUTPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\AerialPerspectivePass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\VolumetricCloudNoisePass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\CloudShadowMapPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\VolumetricCloudPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\GodRayPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanDebugProbe.h" />

@@ -18,7 +18,7 @@ namespace CoreEngine
         // CloudBuffer の Read 宣言が VolumetricCloudPass への依存（RAW）をグラフへ伝える。
         builder.Read(FrameBlackboard::SceneDepth, D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         builder.Read(FrameBlackboard::CloudBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        builder.Write(FrameBlackboard::CloudShadowMap, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        builder.Read(FrameBlackboard::CloudShadowMap, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         builder.Write(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     }
 

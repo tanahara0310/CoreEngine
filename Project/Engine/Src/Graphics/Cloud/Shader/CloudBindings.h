@@ -113,7 +113,7 @@ namespace CoreEngine::CloudShadowMapBind
     /// @brief CloudShadowMap.CS.hlsl の契約
     enum Slot : size_t {
         gCloud,
-        gGodRay,
+        gCloudShadow,
         gBaseShapeNoise,
         gWeatherMap,
         gCloudShadowMap,
@@ -122,7 +122,7 @@ namespace CoreEngine::CloudShadowMapBind
 
     inline constexpr ShaderBindingDecl kDecls[] = {
         { "gCloud",          ShaderBindingType::CBV, BindingUsage::Required },  // b0
-        { "gGodRay",         ShaderBindingType::CBV, BindingUsage::Required },  // b1
+        { "gCloudShadow",    ShaderBindingType::CBV, BindingUsage::Required },  // b1
         { "gBaseShapeNoise", ShaderBindingType::SRV, BindingUsage::Required },  // t0
         { "gWeatherMap",     ShaderBindingType::SRV, BindingUsage::Required },  // t1
         { "gCloudShadowMap", ShaderBindingType::UAV, BindingUsage::Required },  // u0
@@ -137,6 +137,7 @@ namespace CoreEngine::GodRayMarchBind
     enum Slot : size_t {
         gGodRay,
         gAtmosphere,
+        gCloudShadow,
         gCloudShadowMap,
         gTransmittanceLUT,
         gSceneDepth,
@@ -148,6 +149,7 @@ namespace CoreEngine::GodRayMarchBind
     inline constexpr ShaderBindingDecl kDecls[] = {
         { "gGodRay",           ShaderBindingType::CBV, BindingUsage::Required },  // b0
         { "gAtmosphere",       ShaderBindingType::CBV, BindingUsage::Required },  // b1
+        { "gCloudShadow",      ShaderBindingType::CBV, BindingUsage::Required },  // b2
         { "gCloudShadowMap",   ShaderBindingType::SRV, BindingUsage::Required },  // t0
         { "gTransmittanceLUT", ShaderBindingType::SRV, BindingUsage::Required },  // t1
         { "gSceneDepth",       ShaderBindingType::SRV, BindingUsage::Required },  // t2

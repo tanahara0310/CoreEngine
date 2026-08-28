@@ -9,6 +9,31 @@
 
 #include "CloudMarchBindings.hlsli"
 
+/// @brief Draine 位相関数（HG に前方の鋭さを与える一般化）
+/// @param g 非対称度
+/// @param alpha 前方ピークの鋭さ
+float DrainePhase(float g, float alpha, float cosTheta)
+{
+    float g2 = g * g;
+    float denom = 1.0f + g2 - 2.0f * g * cosTheta;
+    float hg = (1.0f - g2) / (4.0f * PI * denom * sqrt(max(denom, 1e-6f)));
+    return hg * (1.0f + alpha * cosTheta * cosTheta) / (1.0f + alpha * (1.0f + 2.0f * g2) / 3.0f);
+}
+
+/// @brief 雲粒の Mie 位相関数の近似（Jendersie & d'Eon 2023）
+/// @param diameterUm 粒径 [µm]。雲粒は 5〜50 の範囲
+/// @details HG と Draine の重み付き和。粒径 1 つで前方の鋭いピーク・グローリー・
+///          後方散乱の比が決まる。HG 2 ローブでは前方ピークが緩すぎて逆光の縁が光らない。
+float CloudMiePhase(float diameterUm, float cosTheta)
+{
+    float d = clamp(diameterUm, 5.0f, 50.0f);
+    float gHG = exp(-0.0990567f / (d - 1.67154f));
+    float gD = exp(-(2.20679f / (d + 3.91029f)) - 0.428934f);
+    float alpha = exp(3.62489f - 8.29288f / (d + 5.52825f));
+    float wD = exp(-(0.599085f / (d - 0.641583f)) - 0.665888f);
+    return lerp(HenyeyGreensteinPhase(gHG, cosTheta), DrainePhase(gD, alpha, cosTheta), wD);
+}
+
 /// @brief 大気 LUT のパラメータ化が破綻しない範囲へ丸めたカメラ半径 [km]
 float CloudSafeCameraRadiusKm()
 {
@@ -38,18 +63,26 @@ float3 CloudDirectLightLuminance(float3 pos, float3 rayDir,
 {
     float3 toSun = -lightDirection; // lightDirection は光の進行方向
 
+    // 歩幅は「層を斜めに貫く経路長」から決める。絶対値 [m] で固定すると層厚と食い違い、
+    // 後半のステップが層の外に出て必ず密度 0 を返す（サンプル数の空振り）
+    float pathLen = min(gCloud.layerThicknessM / max(toSun.y, kCloudMinSunElevationSin),
+                        gCloud.layerThicknessM * kCloudSunMaxPathMultiple);
+
     // 光源方向へ指数ステップでマーチし、光学的深さを積む
     float densitySum = 0.0f;
-    float stepLen = gCloud.lightMarchStepM;
+    float stepLen = pathLen * gCloud.lightMarchCoverage / kCloudSunMarchStepSum;
     float distAcc = 0.0f;
     [unroll] for (int j = 0; j < kCloudSunMarchSteps; ++j)
     {
         distAcc += stepLen;
-        float3 sp = pos + toSun * distAcc;
+        // 光源方向へ円錐状に散らし、視線上の 1 本の線だけでなく周囲の遮蔽も拾う。
+        // 直線マーチだと自己影が板状になり、雲塊の丸みが出ない
+        float3 sp = pos + toSun * distAcc
+                  + kCloudSunConeKernel[j] * (distAcc * gCloud.lightMarchConeSpread);
         float sh = CloudHeightFraction(sp, gCloud);
         densitySum += SampleCloudDensityCheap(sp, sh, gCloud,
             gBaseShapeNoise, gWeatherMap, gSamplerLinearWrap) * stepLen;
-        stepLen *= 2.0f;
+        stepLen *= kCloudSunMarchStepGrowth;
     }
 
     // クランプ無しだと雲が密集した視線で tauSun が飽和し exp(-tauSun) が 0 に張り付いて
@@ -60,6 +93,15 @@ float3 CloudDirectLightLuminance(float3 pos, float3 rayDir,
     // 多重散乱の近似（Hillaire, Frostbite の N オクターブ法）。
     // 単一散乱のみだと雲の内部が真っ黒になる（実際の雲が白いのは多重散乱のため）。
     // オクターブごとに消散・寄与・位相の非対称度を減衰させた項を足し込む
+    // 前方ピークは太陽の視直径（0.53°）より鋭いので、半解像度では上限で丸めても差が出ない。
+    // 丸めないと FP16 の雲バッファが逆光で飽和する
+    float miePhase = min(CloudMiePhase(gCloud.dropletDiameterUm, cosTheta), gCloud.maxPhase);
+
+    // Powder（雲の縁が暗く落ちる）は光源が観測者の背後にあるときだけ現れる現象。
+    // cosTheta = dot(視線方向, 太陽方向) なので順光で -1、逆光で +1。
+    // 角度を見ないと逆光でも縁が暗くなり、Mie の前方ピークで光るはずの縁を打ち消す
+    float powderWeight = saturate(0.5f - 0.5f * cosTheta);
+
     float3 energy = float3(0.0f, 0.0f, 0.0f);
     float attenuation = 1.0f;
     float contribution = 1.0f;
@@ -67,15 +109,14 @@ float3 CloudDirectLightLuminance(float3 pos, float3 rayDir,
 
     [unroll] for (int o = 0; o < kCloudMultiScatterOctaves; ++o)
     {
-        // 二重ローブ Henyey-Greenstein 位相関数（前方散乱 + 弱い後方散乱）
-        float phase = lerp(HenyeyGreensteinPhase(gCloud.phaseG0 * eccentricity, cosTheta),
-                           HenyeyGreensteinPhase(gCloud.phaseG1 * eccentricity, cosTheta),
-                           gCloud.phaseBlend);
+        // オクターブが進むほど等方へ寄せる（多重散乱は方向性を失う）
+        float phase = lerp(kCloudIsotropicPhase, miePhase, eccentricity);
 
         float tau = tauSun * attenuation;
         float beer = exp(-tau);
         float powder = 1.0f - exp(-tau * 2.0f);
-        float lightEnergy = lerp(beer, beer * powder * 2.0f, gCloud.beerPowderStrength * 0.5f);
+        float lightEnergy = lerp(beer, beer * powder * 2.0f,
+                                 gCloud.beerPowderStrength * 0.5f * powderWeight);
 
         energy += contribution * phase * lightEnergy;
 
@@ -112,22 +153,39 @@ float3 CloudSunLuminance(float3 pos, float3 rayDir)
     return luminance;
 }
 
-/// @brief 雲内部の 1 点における空由来のアンビエント輝度
-/// @param h 雲層内の高さ率（底ほど暗くする遮蔽近似）
-/// @details Sky-View LUT のやや上向き 1 サンプルを半球平均の代用とする。
-///          LUT はライト色・強度前乗算済みのため、サンプル後の色乗算はしない
+/// @brief Sky-View LUT を 1 方向サンプルし、彩度を落として返す
+/// @param belowHorizon 地平線下（地表反射側）を引くか
+/// @param cosZenith 天頂角の余弦
+/// @details LUT はライト色・強度前乗算済みのため、サンプル後の色乗算はしない。
+///          空色（青）のままだと太陽光が届かない厚い部分が青黒い染みに見える。
+///          実際の雲内部は多重散乱で無彩色化するため、大部分を灰色へ寄せる
+float3 CloudSampleAmbientDirection(bool belowHorizon, float cosZenith)
+{
+    float2 uv = SkyViewParamsToUv(belowHorizon, cosZenith, CloudSkyViewAzimuth(),
+                                  CloudSafeCameraRadiusKm(), gAtmosphere.planetRadiusKm);
+    float3 lum = gSkyViewLUT.SampleLevel(gLUTSampler, uv, 0).rgb;
+    float gray = dot(lum, float3(0.333f, 0.333f, 0.334f));
+    return lerp(float3(gray, gray, gray), lum, gCloud.ambientChroma);
+}
+
+/// @brief 雲内部の 1 点における環境光（空 + 地表反射）の輝度
+/// @param h 雲層内の高さ率（底ほど空が見えず地面が見える）
+/// @details 上向き 1 サンプルを半球平均の代用とし、下向き 1 サンプルを地表反射とする。
+///          Sky-View LUT の地平線下には地表アルベドの反射項が入っている。
 float3 CloudAmbientLuminance(float h)
 {
-    float2 uv = SkyViewParamsToUv(false, gCloud.ambientCosZenith, CloudSkyViewAzimuth(),
-                                  CloudSafeCameraRadiusKm(), gAtmosphere.planetRadiusKm);
-    float3 skyLum = gSkyViewLUT.SampleLevel(gLUTSampler, uv, 0).rgb;
+    float3 skyLum = CloudSampleAmbientDirection(false, gCloud.ambientCosZenith);
+    float3 groundLum = CloudSampleAmbientDirection(true, -gCloud.ambientCosZenith);
 
-    // 空色（青）のままだと太陽光が届かない厚い部分が青黒い染みに見える。
-    // 実際の雲内部は多重散乱で無彩色化するため、大部分を灰色へ寄せる
-    float gray = dot(skyLum, float3(0.333f, 0.333f, 0.334f));
-    skyLum = lerp(float3(gray, gray, gray), skyLum, gCloud.ambientChroma);
+    // 空は雲底ほど遮られる。地面光は下から入って上へ進むほど雲に消散されるので、
+    // 到達範囲を高さのべき乗で絞る。線形に配ると層の中ほどまで明るくなり、
+    // 雲塊の上下の陰影（立体感の主因）が消える
+    float skyVisibility = lerp(gCloud.ambientBottomOcclusion, 1.0f, h);
+    float groundReach = pow(saturate(1.0f - h), kCloudGroundReachPower);
+    float3 ambient = skyLum * skyVisibility
+                   + groundLum * groundReach * gCloud.ambientGroundStrength;
 
-    return skyLum * gCloud.ambientIntensity * lerp(gCloud.ambientBottomOcclusion, 1.0f, h);
+    return ambient * gCloud.ambientIntensity;
 }
 
 #endif // CLOUD_LIGHTING_HLSLI

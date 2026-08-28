@@ -21,9 +21,9 @@ struct CloudConstants
     float detailErosionStrength; float densityScale;                    // 128
     float windDirX;             float windDirZ;
     float windSpeedMPerS;       float weatherMapScaleM;                  // 144
-    float phaseG0;              float phaseG1;
-    float phaseBlend;           float ambientIntensity;                  // 160
-    float beerPowderStrength;   float lightMarchStepM;
+    float dropletDiameterUm;    float maxPhase;
+    float lightMarchConeSpread; float ambientIntensity;                  // 160
+    float beerPowderStrength;   float lightMarchCoverage;
     float earlyExitTransmittance; float maxMarchDistanceM;              // 176
     uint maxSteps;              uint outputWidth;
     uint outputHeight;          uint pad0;                               // 192
@@ -35,7 +35,7 @@ struct CloudConstants
     float detailFadeDistanceM;  float farFadeWidthM;                     // 256
     float hazeDistanceM;        float maxSunOpticalDepth;
     float ambientCosZenith;     float ambientBottomOcclusion;            // 272
-    float ambientChroma;        float pad1;
+    float ambientChroma;        float ambientGroundStrength;
     float pad2;                 float pad3;                              // 288
 };                                                                       // = 304
 

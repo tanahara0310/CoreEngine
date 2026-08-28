@@ -38,6 +38,11 @@ namespace CoreEngine
         godRayConstantBuffer_ = ResourceFactory::CreateBufferResource(device, sizeof(GodRayShaderConstants));
         godRayConstantBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&godRayConstantData_));
 
+        // 雲シャドウ定数バッファ（永続マップ）
+        cloudShadowConstantBuffer_ = ResourceFactory::CreateBufferResource(device, sizeof(CloudShadowShaderConstants));
+        cloudShadowConstantBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&cloudShadowConstantData_));
+        UploadCloudShadowConstants();
+
         // ノイズテクスチャと生成パイプライン
         const bool noiseResourcesReady = resources_.CreateNoiseTextures(device, descriptorAllocator);
         noisePipelinesReady_ = noiseResourcesReady && pipelines_.BuildNoisePasses(device);
@@ -99,6 +104,7 @@ namespace CoreEngine
         }
 
         UploadConstants();
+        UploadCloudShadowConstants();
     }
 
     void VolumetricCloudManager::UploadConstants()
@@ -128,12 +134,12 @@ namespace CoreEngine
         c.windDirZ = parameters_.windDirZ;
         c.windSpeedMPerS = parameters_.windSpeedMPerS;
         c.weatherMapScaleM = parameters_.weatherMapScaleM;
-        c.phaseG0 = parameters_.phaseG0;
-        c.phaseG1 = parameters_.phaseG1;
-        c.phaseBlend = parameters_.phaseBlend;
+        c.dropletDiameterUm = parameters_.dropletDiameterUm;
+        c.maxPhase = parameters_.maxPhase;
+        c.lightMarchConeSpread = parameters_.lightMarchConeSpread;
         c.ambientIntensity = parameters_.ambientIntensity;
         c.beerPowderStrength = parameters_.beerPowderStrength;
-        c.lightMarchStepM = parameters_.lightMarchStepM;
+        c.lightMarchCoverage = parameters_.lightMarchCoverage;
         c.earlyExitTransmittance = parameters_.earlyExitTransmittance;
         c.maxMarchDistanceM = parameters_.maxMarchDistanceM;
         c.maxSteps = parameters_.maxSteps;
@@ -157,7 +163,7 @@ namespace CoreEngine
         c.ambientCosZenith = parameters_.ambientCosZenith;
         c.ambientBottomOcclusion = parameters_.ambientBottomOcclusion;
         c.ambientChroma = parameters_.ambientChroma;
-        c.pad1 = 0.0f;
+        c.ambientGroundStrength = parameters_.ambientGroundStrength;
         c.pad2 = 0.0f;
         c.pad3 = 0.0f;
 
@@ -170,31 +176,43 @@ namespace CoreEngine
             return;
         }
 
-        // 地表 Y は雲 CB と同じ値を使う（食い違うとシャドウ基準面が雲底からずれる）
-        const float groundY = groundLevelY_;
-
         GodRayShaderConstants g{};
         g.invViewProj = invViewProj_;
         g.cameraWorldPos = cameraWorldPos_;
         g.maxDistanceM = parameters_.godRayMaxDistanceM;
-
-        // シャドウマップ範囲の中心はテクセルサイズへスナップする（カメラ移動での泳ぎ防止）
-        const float texelM = parameters_.cloudShadowRegionSizeM
-            / static_cast<float>(CloudResources::kCloudShadowMapSize);
-        g.shadowRegionCenterX = std::floor(cameraWorldPos_.x / texelM) * texelM;
-        g.shadowRegionCenterZ = std::floor(cameraWorldPos_.z / texelM) * texelM;
-        g.shadowRegionSizeM = parameters_.cloudShadowRegionSizeM;
-        g.shadowAnchorWorldY = groundY + parameters_.layerBottomAltitudeM;
-
         g.intensity = parameters_.godRayIntensity;
         g.mieBoost = parameters_.godRayMieBoost;
-        g.groundLevelY = groundY;
-        g.edgeFadeStart = 0.8f;
+        // 地表 Y は雲 CB と同じ値を使う（食い違うとシャドウ基準面が雲底からずれる）
+        g.groundLevelY = groundLevelY_;
+        g.pad1 = 0.0f;
         g.stepCount = std::max(parameters_.godRayStepCount, 1u);
         g.outputWidth = resources_.TargetsWidth();
         g.outputHeight = resources_.TargetsHeight();
 
         *godRayConstantData_ = g;
+    }
+
+    void VolumetricCloudManager::UploadCloudShadowConstants()
+    {
+        if (!cloudShadowConstantData_) {
+            return;
+        }
+
+        CloudShadowShaderConstants s{};
+
+        // 範囲の中心はテクセルサイズへスナップする（カメラ移動での泳ぎ防止）
+        const float texelM = parameters_.cloudShadowRegionSizeM
+            / static_cast<float>(CloudResources::kCloudShadowMapSize);
+        s.regionCenterX = std::floor(cameraWorldPos_.x / texelM) * texelM;
+        s.regionCenterZ = std::floor(cameraWorldPos_.z / texelM) * texelM;
+        s.regionSizeM = parameters_.cloudShadowRegionSizeM;
+        s.anchorWorldY = groundLevelY_ + parameters_.layerBottomAltitudeM;
+        s.edgeFadeStart = 0.8f;
+        s.sceneStrength = parameters_.sceneShadowStrength;
+        s.pad0 = 0.0f;
+        s.pad1 = 0.0f;
+
+        *cloudShadowConstantData_ = s;
     }
 
     CloudRenderContext VolumetricCloudManager::MakeRenderContext(
@@ -209,6 +227,7 @@ namespace CoreEngine
         ctx.profiler = profiler;
         ctx.cloudConstants = constantBuffer_ ? constantBuffer_->GetGPUVirtualAddress() : 0;
         ctx.godRayConstants = godRayConstantBuffer_ ? godRayConstantBuffer_->GetGPUVirtualAddress() : 0;
+        ctx.cloudShadowConstants = cloudShadowConstantBuffer_ ? cloudShadowConstantBuffer_->GetGPUVirtualAddress() : 0;
         return ctx;
     }
 
@@ -225,6 +244,17 @@ namespace CoreEngine
             return;
         }
         noiseBaker_.BakeIfNeeded(MakeRenderContext(cmdList, nullptr, profiler));
+    }
+
+    void VolumetricCloudManager::RenderCloudShadowMap(
+        ID3D12GraphicsCommandList* cmdList,
+        const AtmosphereManager* atmosphereManager,
+        GpuTimestampProfiler* profiler)
+    {
+        if (!cmdList || !godRayPipelinesReady_ || !noiseBaker_.IsReady()) {
+            return;
+        }
+        cloudShadowMapRenderer_.Render(MakeRenderContext(cmdList, atmosphereManager, profiler));
     }
 
     void VolumetricCloudManager::RenderClouds(

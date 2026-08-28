@@ -35,15 +35,16 @@ namespace CoreEngine
         float windSpeedMPerS;           ///< 風速 [m/s]
 
         // ===== ライティング =====
-        float phaseG0;                  ///< HG 前方散乱ローブ
-        float phaseG1;                  ///< HG 後方散乱ローブ
-        float phaseBlend;               ///< 2 ローブのブレンド [0,1]
+        float dropletDiameterUm;        ///< 雲粒の直径 [µm]。Mie 位相関数の唯一の形状パラメータ
+        float maxPhase;                 ///< 位相関数の上限。前方ピークの発散を止める
         float ambientIntensity;         ///< Sky-View アンビエント倍率
         float ambientCosZenith;         ///< アンビエントで Sky-View LUT を引く仰角の cos
         float ambientBottomOcclusion;   ///< 雲底の空遮蔽率（1 で遮蔽なし）
         float ambientChroma;            ///< アンビエントに残す彩度 [0,1]
+        float ambientGroundStrength;    ///< 地表反射の寄与倍率。0 で空だけ
         float beerPowderStrength;       ///< Powder 効果 [0,1]
-        float lightMarchStepM;          ///< サンライトマーチ 1 歩 [m]
+        float lightMarchCoverage;       ///< サンライトマーチが覆う層内経路長の倍率
+        float lightMarchConeSpread;     ///< サンライトマーチのコーン半径（距離に対する比）
         float maxSunOpticalDepth;       ///< サンライトマーチの光学的深さの上限
 
         // ===== 太陽散乱スケールと多重散乱（Hillaire オクターブ法） =====
@@ -65,5 +66,6 @@ namespace CoreEngine
         float godRayMaxDistanceM;       ///< ビューレイマーチの最大距離 [m]
         uint32_t godRayStepCount;       ///< ビューレイマーチのステップ数
         float cloudShadowRegionSizeM;   ///< 雲シャドウマップのカバー範囲（一辺）[m]
+        float sceneShadowStrength;      ///< シーンへ落とす雲影の強さ（0 で落とさない）
     };
 }

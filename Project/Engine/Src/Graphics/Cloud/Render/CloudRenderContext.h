@@ -24,6 +24,8 @@ namespace CoreEngine
         D3D12_GPU_VIRTUAL_ADDRESS cloudConstants = 0;
         /// ゴッドレイ CB（gGodRay）の GPU 仮想アドレス
         D3D12_GPU_VIRTUAL_ADDRESS godRayConstants = 0;
+        /// 雲シャドウ CB（gCloudShadow）の GPU 仮想アドレス
+        D3D12_GPU_VIRTUAL_ADDRESS cloudShadowConstants = 0;
 
         /// @brief 半解像度バッファの実サイズで 8x8 スレッドグループをディスパッチする
         void DispatchHalfRes() const;
