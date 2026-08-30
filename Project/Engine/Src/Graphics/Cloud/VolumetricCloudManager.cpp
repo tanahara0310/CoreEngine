@@ -9,9 +9,32 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
+#include <filesystem>
+#include <fstream>
 
 namespace CoreEngine
 {
+    namespace
+    {
+        /// @brief 配置ペイントの保存先（Config 層 = git 管理・チーム共有）
+        constexpr const char* kWeatherPaintFilePath =
+            "Application/Config/EngineSettings/CloudWeatherPaint.bin";
+
+        /// @brief 配置ペイントの総バイト数（512²×RGBA8）
+        constexpr size_t kWeatherPaintBytes = CloudResources::kPaintBytes;
+
+        /// @brief 保存ファイルの先頭ヘッダ
+        /// @details チャンネルの意味が変わったら version を上げる。読み込み側は
+        ///          一致しないファイルを破棄するので、古い形式が誤って効くことはない
+        struct WeatherPaintFileHeader {
+            char     magic[8];      ///< "CLDPAINT"
+            uint32_t version;
+            uint32_t size;          ///< 一辺のテクセル数
+        };
+        constexpr uint32_t kWeatherPaintFileVersion = 2;
+    }
+
     void VolumetricCloudManager::Initialize(GraphicsCore* graphicsCore, DescriptorAllocator* descriptorAllocator)
     {
         graphicsCore_ = graphicsCore;
@@ -43,9 +66,16 @@ namespace CoreEngine
         cloudShadowConstantBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&cloudShadowConstantData_));
         UploadCloudShadowConstants();
 
-        // ノイズテクスチャと生成パイプライン
-        const bool noiseResourcesReady = resources_.CreateNoiseTextures(device, descriptorAllocator);
+        // ノイズテクスチャ・配置ペイントと生成パイプライン
+        const bool noiseResourcesReady = resources_.CreateNoiseTextures(device, descriptorAllocator)
+            && resources_.CreateWeatherPaintTexture(device, descriptorAllocator);
         noisePipelinesReady_ = noiseResourcesReady && pipelines_.BuildNoisePasses(device);
+
+        // ペイントレイヤの CPU 実体を用意し、保存済みのペイントがあれば復元する
+        weatherPaintCpu_.assign(kWeatherPaintBytes, 0);
+        if (noiseResourcesReady) {
+            LoadWeatherPaint();
+        }
         pipelinesReady_ = pipelines_.BuildRenderPasses(device);
 
         // ゴッドレイ（失敗しても雲本体は無効化しない）
@@ -92,6 +122,16 @@ namespace CoreEngine
         viewProj_ = viewMatrix * projMatrix;
         invViewProj_ = MathCore::Matrix::Inverse(viewProj_);
 
+        // カメラ前方向 = カメラワールド行列（ビュー行列の逆行列）の第 3 行（Z 軸）
+        const Matrix4x4 cameraWorld = MathCore::Matrix::Inverse(viewMatrix);
+        const float fx = cameraWorld.m[2][0];
+        const float fy = cameraWorld.m[2][1];
+        const float fz = cameraWorld.m[2][2];
+        const float forwardLen = std::sqrt(fx * fx + fy * fy + fz * fz);
+        if (forwardLen > 1e-6f) {
+            cameraForward_ = { fx / forwardLen, fy / forwardLen, fz / forwardLen };
+        }
+
         // 太陽・月情報・カメラ高度は AtmosphereManager から取得（単一情報源）。
         if (atmosphereManager) {
             sunDirection_ = atmosphereManager->GetSunDirection();
@@ -110,6 +150,201 @@ namespace CoreEngine
 
         UploadConstants();
         UploadCloudShadowConstants();
+    }
+
+    void VolumetricCloudManager::PaintWeather(const WeatherPaintStamp& stamp)
+    {
+        if (weatherPaintCpu_.size() != kWeatherPaintBytes || !resources_.weatherPaintMapped) {
+            return;
+        }
+
+        const float regionSize = std::max(parameters_.paintRegionSizeM, 1.0f);
+        constexpr int kSize = static_cast<int>(CloudResources::kPaintSize);
+        const float texelsPerM = kSize / regionSize;
+
+        // ワールド座標 → 領域内テクセル座標
+        const float centerTexX =
+            (stamp.worldX - parameters_.paintRegionCenterX) * texelsPerM + kSize * 0.5f;
+        const float centerTexY =
+            (stamp.worldZ - parameters_.paintRegionCenterZ) * texelsPerM + kSize * 0.5f;
+        const float radiusTexels = std::max(stamp.radiusM * texelsPerM, 1.0f);
+        const int extent = static_cast<int>(std::ceil(radiusTexels));
+        const int centerX = static_cast<int>(std::floor(centerTexX));
+        const int centerY = static_cast<int>(std::floor(centerTexY));
+
+        const float targets[3] = {
+            std::clamp(stamp.coverage, 0.0f, 1.0f),
+            std::clamp(stamp.cloudType, 0.0f, 1.0f),
+            std::clamp(stamp.cloudTop, 0.0f, 1.0f),
+        };
+
+        for (int dy = -extent; dy <= extent; ++dy) {
+            for (int dx = -extent; dx <= extent; ++dx) {
+                const float dist = std::sqrt(static_cast<float>(dx * dx + dy * dy));
+                if (dist > radiusTexels) {
+                    continue;
+                }
+                // 縁が硬くならないよう smoothstep で減衰させる
+                const float t = dist / radiusTexels;
+                const float falloff = 1.0f - t * t * (3.0f - 2.0f * t);
+                const float alpha = std::clamp(stamp.strength * falloff, 0.0f, 1.0f);
+                if (alpha <= 0.0f) {
+                    continue;
+                }
+
+                // 領域外へはみ出した分は捨てる（タイルしないので折り返さない）
+                const int x = centerX + dx;
+                const int y = centerY + dy;
+                if (x < 0 || x >= kSize || y < 0 || y >= kSize) {
+                    continue;
+                }
+                uint8_t* texel = weatherPaintCpu_.data() + (size_t(y) * kSize + x) * 4;
+
+                if (stamp.erase) {
+                    // 消しゴムは影響度だけを下げる（性質はそのまま残しても影響しない）
+                    texel[3] = static_cast<uint8_t>(texel[3] * (1.0f - alpha) + 0.5f);
+                    continue;
+                }
+
+                // スタンプ（性質, alpha）を既存ペイントへアルファ合成する。
+                // 影響度で重み付けした平均を保つので、連続で塗ると目標値と影響度 1 へ収束する
+                const float weight = texel[3] / 255.0f;
+                const float newWeight = weight * (1.0f - alpha) + alpha;
+                for (int ch = 0; ch < 3; ++ch) {
+                    const float value = texel[ch] / 255.0f;
+                    const float newValue = (newWeight > 1e-4f)
+                        ? (value * weight * (1.0f - alpha) + targets[ch] * alpha) / newWeight
+                        : targets[ch];
+                    texel[ch] = static_cast<uint8_t>(std::clamp(newValue, 0.0f, 1.0f) * 255.0f + 0.5f);
+                }
+                texel[3] = static_cast<uint8_t>(std::clamp(newWeight, 0.0f, 1.0f) * 255.0f + 0.5f);
+            }
+        }
+
+        UploadWeatherPaint();
+    }
+
+    bool VolumetricCloudManager::GetCameraAimOnCloudLayer(float& outX, float& outZ) const
+    {
+        // 雲層の中ほどを表す球殻とカメラの視線レイの交点を取る。
+        // 惑星中心・半径はレイマーチと同じ規約（カメラ基準で真下 planetRadiusM）
+        const Vector3 center = {
+            cameraWorldPos_.x, groundLevelY_ - planetRadiusM_, cameraWorldPos_.z };
+        const float radius = planetRadiusM_ + parameters_.layerBottomAltitudeM
+            + parameters_.layerThicknessM * 0.5f;
+
+        const Vector3 toOrigin = {
+            cameraWorldPos_.x - center.x, cameraWorldPos_.y - center.y, cameraWorldPos_.z - center.z };
+        const Vector3& dir = cameraForward_;
+        const float b = dir.x * toOrigin.x + dir.y * toOrigin.y + dir.z * toOrigin.z;
+        const float c = toOrigin.x * toOrigin.x + toOrigin.y * toOrigin.y + toOrigin.z * toOrigin.z
+            - radius * radius;
+        const float disc = b * b - c;
+        if (disc < 0.0f) {
+            return false;
+        }
+
+        const float sq = std::sqrt(disc);
+        // 前方の交点を採る（カメラが層より下なら遠い方の解が層内へ入る点）
+        float t = -b - sq;
+        if (t <= 0.0f) {
+            t = -b + sq;
+        }
+        if (t <= 0.0f) {
+            return false;
+        }
+
+        outX = cameraWorldPos_.x + dir.x * t;
+        outZ = cameraWorldPos_.z + dir.z * t;
+        return true;
+    }
+
+    void VolumetricCloudManager::ClearWeatherPaint()
+    {
+        if (weatherPaintCpu_.size() != kWeatherPaintBytes) {
+            return;
+        }
+        std::fill(weatherPaintCpu_.begin(), weatherPaintCpu_.end(), uint8_t(0));
+        UploadWeatherPaint();
+
+        std::error_code ec;
+        std::filesystem::remove(kWeatherPaintFilePath, ec);
+    }
+
+    void VolumetricCloudManager::SaveWeatherPaint() const
+    {
+        if (weatherPaintCpu_.size() != kWeatherPaintBytes) {
+            return;
+        }
+
+        // 空のペイントはファイルごと消す（1MB のゼロ埋めファイルをリポジトリに残さない）
+        std::error_code ec;
+        if (!weatherPaintUsed_) {
+            std::filesystem::remove(kWeatherPaintFilePath, ec);
+            return;
+        }
+
+        std::filesystem::create_directories(
+            std::filesystem::path(kWeatherPaintFilePath).parent_path(), ec);
+        std::ofstream file(kWeatherPaintFilePath, std::ios::binary | std::ios::trunc);
+        if (!file) {
+            Logger::GetInstance().Warnf(LogCategory::Graphics,
+                "VolumetricCloudManager: 配置ペイントの保存に失敗 ({})", kWeatherPaintFilePath);
+            return;
+        }
+
+        WeatherPaintFileHeader header{};
+        std::memcpy(header.magic, "CLDPAINT", sizeof(header.magic));
+        header.version = kWeatherPaintFileVersion;
+        header.size = CloudResources::kPaintSize;
+        file.write(reinterpret_cast<const char*>(&header), sizeof(header));
+        file.write(reinterpret_cast<const char*>(weatherPaintCpu_.data()),
+            static_cast<std::streamsize>(weatherPaintCpu_.size()));
+    }
+
+    void VolumetricCloudManager::LoadWeatherPaint()
+    {
+        std::ifstream file(kWeatherPaintFilePath, std::ios::binary);
+        if (!file) {
+            return;
+        }
+
+        WeatherPaintFileHeader header{};
+        if (!file.read(reinterpret_cast<char*>(&header), sizeof(header))
+            || std::memcmp(header.magic, "CLDPAINT", sizeof(header.magic)) != 0
+            || header.version != kWeatherPaintFileVersion
+            || header.size != CloudResources::kPaintSize) {
+            Logger::GetInstance().Warnf(LogCategory::Graphics,
+                "VolumetricCloudManager: 配置ペイントの形式が一致しないため読み込みを破棄 ({})",
+                kWeatherPaintFilePath);
+            return;
+        }
+
+        if (!file.read(reinterpret_cast<char*>(weatherPaintCpu_.data()),
+                static_cast<std::streamsize>(kWeatherPaintBytes))) {
+            std::fill(weatherPaintCpu_.begin(), weatherPaintCpu_.end(), uint8_t(0));
+            return;
+        }
+        UploadWeatherPaint();
+    }
+
+    void VolumetricCloudManager::UploadWeatherPaint()
+    {
+        if (!resources_.weatherPaintMapped || weatherPaintCpu_.size() != kWeatherPaintBytes) {
+            return;
+        }
+        std::memcpy(resources_.weatherPaintMapped, weatherPaintCpu_.data(), kWeatherPaintBytes);
+
+        // 使用中フラグは影響度が 1 テクセルでも残っているかで決める
+        weatherPaintUsed_ = false;
+        for (size_t i = 3; i < kWeatherPaintBytes; i += 4) {
+            if (weatherPaintCpu_[i] != 0) {
+                weatherPaintUsed_ = true;
+                break;
+            }
+        }
+
+        noiseBaker_.MarkPaintDirty();
     }
 
     void VolumetricCloudManager::UploadConstants()
@@ -186,6 +421,13 @@ namespace CoreEngine
         c.cirrusStretch = parameters_.cirrusStretch;
         c.cirrusWindScale = parameters_.cirrusWindScale;
         c.noiseLodBias = parameters_.noiseLodBias;
+
+        // ペイントが 1 テクセルも無いときは領域サイズ 0 を送る。
+        // シェーダー側がサンプルごと省くので、使っていない間の追加コストはゼロになる
+        c.paintRegionCenterX = parameters_.paintRegionCenterX;
+        c.paintRegionCenterZ = parameters_.paintRegionCenterZ;
+        c.paintRegionSizeM = weatherPaintUsed_ ? parameters_.paintRegionSizeM : 0.0f;
+        c.paintEdgeFade = parameters_.paintEdgeFade;
         c.pad7 = 0.0f;
 
         *constantData_ = c;

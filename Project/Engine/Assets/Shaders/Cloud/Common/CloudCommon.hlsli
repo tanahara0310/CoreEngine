@@ -1,6 +1,6 @@
 /// @file CloudCommon.hlsli
 /// @brief ボリューメトリック雲の共通定数バッファ・ジオメトリ・密度関数
-/// @details C++ 側 VolumetricCloudShaderConstants（416 バイト）と一致させること。
+/// @details C++ 側 VolumetricCloudShaderConstants（432 バイト）と一致させること。
 ///          座標系は 1unit=1m。惑星中心はカメラ基準で下方 planetRadiusM に置く。
 
 #ifndef CLOUD_COMMON_HLSLI
@@ -43,8 +43,10 @@ struct CloudConstants
     float cirrusAltitudeM;      float cirrusCoverage;
     float cirrusDensity;        float cirrusScaleM;                      // 384
     float cirrusStretch;        float cirrusWindScale;
-    float noiseLodBias;         float pad7;                              // 400
-};                                                                       // = 416
+    float noiseLodBias;         float paintRegionCenterX;                // 400
+    float paintRegionCenterZ;   float paintRegionSizeM;
+    float paintEdgeFade;        float pad7;                              // 416
+};                                                                       // = 432
 
 // ===== 雲層ジオメトリ =====
 
@@ -196,13 +198,41 @@ float2 CloudWeatherUv(float2 worldXZ, CloudConstants c)
     return aligned / c.weatherMapScaleM;
 }
 
+/// @brief 配置ペイントのサンプル
+/// @return xyz = 置く雲の性質（雲量 / 雲タイプ / 雲頂高さ）、w = 影響度（0 でペイント無し）
+/// @details 天候マップと違いワールド固定の矩形領域を 1 枚で覆う（タイルしない）。
+///          領域外は影響度 0 なので、ペイントしていない空は手続き生成そのままになる。
+///          paintRegionSizeM が 0 のときはサンプル自体を行わない（未使用時のコストをゼロにする）。
+float4 SampleCloudPaint(float2 worldXZ, CloudConstants c,
+                        Texture2D<float4> paintMap, SamplerState samp)
+{
+    if (c.paintRegionSizeM <= 0.0f)
+    {
+        return float4(0.0f, 0.0f, 0.0f, 0.0f);
+    }
+
+    float2 uv = (worldXZ - float2(c.paintRegionCenterX, c.paintRegionCenterZ)) / c.paintRegionSizeM
+              + 0.5f;
+    if (any(uv < 0.0f) || any(uv > 1.0f))
+    {
+        return float4(0.0f, 0.0f, 0.0f, 0.0f);
+    }
+
+    float4 paint = paintMap.SampleLevel(samp, uv, 0);
+
+    // 領域の外周で影響度を落とす。ここを切らないと領域境界に雲の断崖ができる
+    float2 toEdge = min(uv, 1.0f - uv);
+    paint.w *= saturate(min(toEdge.x, toEdge.y) / max(c.paintEdgeFade, 1e-4f));
+    return paint;
+}
+
 /// @brief ディテール侵食を含まない密度
 /// @param sampleSpacingM 隣り合うサンプルのワールド距離 [m]。ミップ段の決定に使う
 /// @details サンライトマーチ・雲シャドウマップ・雲探索の大股走査が使う。
 ///          縦方向だけ小さいスケールでサンプルする（等方だと層内の縦の変化が乏しく平らな板に見える）。
 float SampleCloudDensityCheap(float3 worldPos, float h, float sampleSpacingM, CloudConstants c,
                               Texture3D<float4> baseNoise, Texture2D<float4> weatherMap,
-                              SamplerState samp)
+                              Texture2D<float4> paintMap, SamplerState samp)
 {
     if (h < 0.0f || h > 1.0f)
     {
@@ -219,14 +249,22 @@ float SampleCloudDensityCheap(float3 worldPos, float h, float sampleSpacingM, Cl
     float lowFreqFBM = base.g * 0.625f + base.b * 0.25f + base.a * 0.125f;
     float baseCloud = Remap(base.r, -(1.0f - lowFreqFBM), 1.0f, 0.0f, 1.0f);
 
-    // 高度勾配（weather.g の雲タイプでブレンド）
+    // 天候マップと配置ペイントの合成。
+    // ペイント側は「置く雲の性質」の絶対値なので、globalCoverage を掛けた後の
+    // カバレッジへ混ぜる（掛ける前に混ぜると、曇り度を下げた空へ雲を描けなくなる）
     float2 weatherUv = CloudWeatherUv(worldPos.xz, c);
     float4 weather = weatherMap.SampleLevel(samp, weatherUv, 0);
-    float topScale = lerp(1.0f, weather.b * 2.0f, c.cloudTopVariation);
-    baseCloud *= CloudHeightGradient(h, weather.g, topScale);
+    float4 paint = SampleCloudPaint(worldPos.xz, c, paintMap, samp);
+
+    float coverage = lerp(saturate(weather.r * c.globalCoverage), paint.r, paint.w);
+    float cloudType = lerp(weather.g, paint.g, paint.w);
+    float cloudTop = lerp(weather.b, paint.b, paint.w);
+
+    // 高度勾配（雲タイプでブレンド）
+    float topScale = lerp(1.0f, cloudTop * 2.0f, c.cloudTopVariation);
+    baseCloud *= CloudHeightGradient(h, cloudType, topScale);
 
     // カバレッジ適用（縁を柔らかくしアンビル状を防ぐ: GPU Pro 7）
-    float coverage = saturate(weather.r * c.globalCoverage);
     float cloudWithCoverage = saturate(Remap(baseCloud, 1.0f - coverage, 1.0f, 0.0f, 1.0f));
     return saturate(cloudWithCoverage * coverage);
 }
@@ -237,9 +275,11 @@ float SampleCloudDensityCheap(float3 worldPos, float h, float sampleSpacingM, Cl
 float SampleCloudDensity(float3 worldPos, float h, float sampleSpacingM, float detailStrength,
                          CloudConstants c,
                          Texture3D<float4> baseNoise, Texture3D<float4> detailNoise,
-                         Texture2D<float4> weatherMap, SamplerState samp)
+                         Texture2D<float4> weatherMap, Texture2D<float4> paintMap,
+                         SamplerState samp)
 {
-    float density = SampleCloudDensityCheap(worldPos, h, sampleSpacingM, c, baseNoise, weatherMap, samp);
+    float density = SampleCloudDensityCheap(worldPos, h, sampleSpacingM, c,
+                                            baseNoise, weatherMap, paintMap, samp);
     if (density <= 0.0f || detailStrength <= 0.0f)
     {
         return density;

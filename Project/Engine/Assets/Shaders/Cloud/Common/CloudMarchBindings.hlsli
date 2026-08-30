@@ -21,6 +21,7 @@ Texture3D<float4> gDetailNoise : register(t1);
 Texture2D<float4> gWeatherMap : register(t2);
 Texture2D<float4> gTransmittanceLUT : register(t4);
 Texture2D<float4> gSkyViewLUT : register(t5);
+Texture2D<float4> gCloudPaintMap : register(t8);
 
 SamplerState gSamplerLinearWrap : register(s0);
 SamplerState gLUTSampler : register(s1);

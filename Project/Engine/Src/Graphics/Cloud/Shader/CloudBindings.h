@@ -58,6 +58,7 @@ namespace CoreEngine::CloudRayMarchBind
         gSkyViewLUT,
         gCloudHistory,
         gCameraVolumeLUT,
+        gCloudPaintMap,
         gCloudOutput,
         Count
     };
@@ -73,6 +74,7 @@ namespace CoreEngine::CloudRayMarchBind
         { "gSkyViewLUT",       ShaderBindingType::SRV, BindingUsage::Required },  // t5
         { "gCloudHistory",     ShaderBindingType::SRV, BindingUsage::Required },  // t6
         { "gCameraVolumeLUT",  ShaderBindingType::SRV, BindingUsage::Required },  // t7
+        { "gCloudPaintMap",    ShaderBindingType::SRV, BindingUsage::Required },  // t8
         { "gCloudOutput",      ShaderBindingType::UAV, BindingUsage::Required },  // u0
     };
 
@@ -112,6 +114,7 @@ namespace CoreEngine::CloudCubemapCaptureBind
         gWeatherMap,
         gTransmittanceLUT,
         gSkyViewLUT,
+        gCloudPaintMap,
         gSkyCubemap,
         Count
     };
@@ -124,6 +127,7 @@ namespace CoreEngine::CloudCubemapCaptureBind
         { "gWeatherMap",       ShaderBindingType::SRV, BindingUsage::Required },  // t2
         { "gTransmittanceLUT", ShaderBindingType::SRV, BindingUsage::Required },  // t4
         { "gSkyViewLUT",       ShaderBindingType::SRV, BindingUsage::Required },  // t5
+        { "gCloudPaintMap",    ShaderBindingType::SRV, BindingUsage::Required },  // t8
         { "gSkyCubemap",       ShaderBindingType::UAV, BindingUsage::Required },  // u0
     };
 
@@ -138,6 +142,7 @@ namespace CoreEngine::CloudShadowMapBind
         gCloudShadow,
         gBaseShapeNoise,
         gWeatherMap,
+        gCloudPaintMap,
         gCloudShadowMap,
         Count
     };
@@ -147,6 +152,7 @@ namespace CoreEngine::CloudShadowMapBind
         { "gCloudShadow",    ShaderBindingType::CBV, BindingUsage::Required },  // b1
         { "gBaseShapeNoise", ShaderBindingType::SRV, BindingUsage::Required },  // t0
         { "gWeatherMap",     ShaderBindingType::SRV, BindingUsage::Required },  // t1
+        { "gCloudPaintMap",  ShaderBindingType::SRV, BindingUsage::Required },  // t2
         { "gCloudShadowMap", ShaderBindingType::UAV, BindingUsage::Required },  // u0
     };
 

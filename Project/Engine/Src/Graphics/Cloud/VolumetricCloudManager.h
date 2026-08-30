@@ -14,6 +14,7 @@
 #include "Math/MathCore.h"
 
 #include <d3d12.h>
+#include <vector>
 #include <wrl.h>
 
 namespace CoreEngine
@@ -91,6 +92,45 @@ namespace CoreEngine
         /// @note パスが CloudBuffer / CloudShadowMap を FrameBlackboard へ公開するために使う
         CloudResources& GetResources() { return resources_; }
 
+        // ===== ウェザーマップペイント（エディタの配置ブラシから呼ばれる） =====
+
+        /// @brief ブラシ 1 スタンプ分の指定
+        /// @details 位置はワールド座標。ペイント領域の外にはみ出した分は捨てられる（タイルしない）。
+        struct WeatherPaintStamp {
+            float worldX = 0.0f;        ///< スタンプ中心のワールド X [m]
+            float worldZ = 0.0f;        ///< スタンプ中心のワールド Z [m]
+            float radiusM = 4000.0f;    ///< 半径 [m]
+            float strength = 0.5f;      ///< 中心の影響度 [0,1]
+            float coverage = 1.0f;      ///< 置く雲の量（1=雲, 0=晴れ）
+            float cloudType = 0.7f;     ///< 置く雲のタイプ（0=層雲〜1=積乱雲）
+            float cloudTop = 0.5f;      ///< 置く雲の雲頂高さ
+            bool erase = false;         ///< true で影響度を下げて手続き生成へ戻す
+        };
+
+        /// @brief ペイントへブラシを 1 回スタンプし、GPU への反映を要求する
+        void PaintWeather(const WeatherPaintStamp& stamp);
+
+        /// @brief 現在のカメラの視線が雲層と交わるワールド位置を求める
+        /// @param outX,outZ 交点のワールド XZ [m]
+        /// @return 視線が雲層と交わらない（真下を向いている等）なら false
+        /// @details 3D ビューを見ながら「見ている位置へ雲を置く」ための着地点。
+        bool GetCameraAimOnCloudLayer(float& outX, float& outZ) const;
+
+        /// @brief ペイントレイヤを全消去して手続き生成のみへ戻す（保存ファイルも消す）
+        void ClearWeatherPaint();
+
+        /// @brief ペイントが 1 テクセルでも入っているか
+        bool HasWeatherPaint() const { return weatherPaintUsed_; }
+
+        /// @brief ペイントレイヤをファイルへ保存する（ブラシストローク終了時にエディタが呼ぶ）
+        void SaveWeatherPaint() const;
+
+        /// @brief 最後の Update 時点のカメラ位置（配置エディタの現在地マーカー用）
+        const Vector3& GetCameraWorldPosition() const { return cameraWorldPos_; }
+
+        /// @brief 最後の Update 時点のカメラ前方向（配置エディタの視線マーカー用）
+        const Vector3& GetCameraForward() const { return cameraForward_; }
+
         // ===== 雲描画（VolumetricCloudPass から呼ばれる） =====
 
         /// @brief 雲をレイマーチして SceneColor へ合成する
@@ -145,10 +185,17 @@ namespace CoreEngine
             ID3D12GraphicsCommandList* cmdList, const AtmosphereManager* atmosphereManager,
             GpuTimestampProfiler* profiler);
 
+        /// @brief ペイントレイヤをファイルから復元する（無ければ何もしない）
+        void LoadWeatherPaint();
+
+        /// @brief CPU 側ペイント配列を GPU の UPLOAD バッファへ反映し再生成を要求する
+        void UploadWeatherPaint();
+
         VolumetricCloudParameters parameters_{};
 
         // フレーム更新で計算される値
         Vector3 cameraWorldPos_{};
+        Vector3 cameraForward_ = { 0.0f, 0.0f, 1.0f };
         Matrix4x4 invViewProj_{};
         Matrix4x4 viewProj_{};
         Matrix4x4 prevViewProj_{};
@@ -189,6 +236,10 @@ namespace CoreEngine
 
         CloudResources resources_{};
         CloudPipelines pipelines_{};
+
+        /// ペイントレイヤの CPU 側実体（512²×RGBA8。保存/復元とブラシ合成の基準）
+        std::vector<uint8_t> weatherPaintCpu_;
+        bool weatherPaintUsed_ = false;
 
         // 各 GPU ジョブの記録担当（状態を持つのはノイズ生成のダーティ管理だけ）
         CloudNoiseBaker noiseBaker_{};

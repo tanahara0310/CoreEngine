@@ -34,6 +34,12 @@ namespace CoreEngine
         extern CVar<float> WindDirZ;
         extern CVar<float> WindSpeedMPerS;
 
+        // ---- 配置ペイント ----
+        extern CVar<float> PaintRegionCenterX;
+        extern CVar<float> PaintRegionCenterZ;
+        extern CVar<float> PaintRegionSizeM;
+        extern CVar<float> PaintEdgeFade;
+
         // ---- ライティング ----
         extern CVar<float> DropletDiameterUm;
         extern CVar<float> MaxPhase;

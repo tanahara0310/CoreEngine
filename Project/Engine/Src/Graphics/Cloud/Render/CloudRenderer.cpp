@@ -38,6 +38,7 @@ namespace CoreEngine
                 binder.Set(pass.bindings[B::gBaseShapeNoise], res.baseShapeNoise.srv.gpuHandle);
                 binder.Set(pass.bindings[B::gDetailNoise], res.detailNoise.srv.gpuHandle);
                 binder.Set(pass.bindings[B::gWeatherMap], res.weatherMap.srv.gpuHandle);
+                binder.Set(pass.bindings[B::gCloudPaintMap], res.weatherPaint.srv.gpuHandle);
                 binder.Set(pass.bindings[B::gSceneDepth], depthSrvHandle);
                 binder.Set(pass.bindings[B::gTransmittanceLUT], ctx.atmosphere->GetTransmittanceLUTSRVHandle());
                 binder.Set(pass.bindings[B::gSkyViewLUT], ctx.atmosphere->GetSkyViewLUTSRVHandle());

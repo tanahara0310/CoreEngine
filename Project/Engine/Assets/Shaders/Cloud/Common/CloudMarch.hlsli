@@ -88,7 +88,7 @@ CloudMarchResult MarchClouds(float3 rayOrigin, float3 rayDir,
         {
             // 空の空間は大股で走査する（ディテール無しの安価な密度で雲を探す）
             if (SampleCloudDensityCheap(pos, hf, dtBig, gCloud,
-                    gBaseShapeNoise, gWeatherMap, gSamplerLinearWrap) > 0.0f)
+                    gBaseShapeNoise, gWeatherMap, gCloudPaintMap, gSamplerLinearWrap) > 0.0f)
             {
                 // 雲を見つけた: 1 歩戻して細かいステップで入り直す。
                 // dtBig は dtFine の整数倍なので、戻ってもワールド固定格子上に留まる
@@ -105,7 +105,7 @@ CloudMarchResult MarchClouds(float3 rayOrigin, float3 rayDir,
         // 早く消しすぎると中距離の雲が輪郭のないもや玉になる
         float detailFade = saturate(1.0f - (t - marchStart) / gCloud.detailFadeDistanceM);
         float density = SampleCloudDensity(pos, hf, dtFine, gCloud.detailErosionStrength * detailFade,
-            gCloud, gBaseShapeNoise, gDetailNoise, gWeatherMap, gSamplerLinearWrap);
+            gCloud, gBaseShapeNoise, gDetailNoise, gWeatherMap, gCloudPaintMap, gSamplerLinearWrap);
 
         // マーチ最大距離の手前でフェードし、層が地平線で唐突に切れないようにする
         density *= saturate((gCloud.maxMarchDistanceM - t) / gCloud.farFadeWidthM);

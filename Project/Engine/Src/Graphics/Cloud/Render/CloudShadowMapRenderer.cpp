@@ -29,6 +29,7 @@ namespace CoreEngine
             binder.Set(pass.bindings[B::gCloudShadow], ctx.cloudShadowConstants);
             binder.Set(pass.bindings[B::gBaseShapeNoise], res.baseShapeNoise.srv.gpuHandle);
             binder.Set(pass.bindings[B::gWeatherMap], res.weatherMap.srv.gpuHandle);
+            binder.Set(pass.bindings[B::gCloudPaintMap], res.weatherPaint.srv.gpuHandle);
             binder.Set(pass.bindings[B::gCloudShadowMap], res.cloudShadowMap.uav.gpuHandle);
             binder.ValidateBeforeDraw(pass.bindings);
         }

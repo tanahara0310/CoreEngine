@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <d3d12.h>
 #include <vector>
+#include <wrl.h>
 
 namespace CoreEngine
 {
@@ -32,6 +33,9 @@ namespace CoreEngine
         static constexpr uint32_t kBaseShapeNoiseSize = 128;
         static constexpr uint32_t kDetailNoiseSize = 32;
         static constexpr uint32_t kWeatherMapSize = 512;
+        // 配置ペイントの解像度と総バイト数（1 行 = kPaintSize*4 が 256B 境界に乗ること）
+        static constexpr uint32_t kPaintSize = 512;
+        static constexpr uint32_t kPaintBytes = kPaintSize * kPaintSize * 4;
         // 3D ノイズのミップ段数。マーチのステップ幅から求める LOD がこの範囲に収まること
         static constexpr uint32_t kNoiseMipLevels = 5;
         // 雲シャドウマップ解像度（HLSL 側 GodRayCommon.hlsli の定数と一致させること）
@@ -39,6 +43,9 @@ namespace CoreEngine
 
         /// @brief ノイズ 3 枚を確保する
         bool CreateNoiseTextures(ID3D12Device* device, DescriptorAllocator* descriptorAllocator);
+
+        /// @brief 配置ペイントのテクスチャと、CPU が書き込むアップロードバッファを確保する
+        bool CreateWeatherPaintTexture(ID3D12Device* device, DescriptorAllocator* descriptorAllocator);
 
         /// @brief 雲シャドウマップを確保する（ゴッドレイ用）
         bool CreateCloudShadowMap(ID3D12Device* device, DescriptorAllocator* descriptorAllocator);
@@ -61,6 +68,22 @@ namespace CoreEngine
         CloudGpuTexture detailNoise;
         CloudGpuTexture weatherMap;
         CloudGpuTexture cloudShadowMap;
+
+        // ===== 配置ペイント =====
+        // ワールド固定の矩形領域を 1 枚で覆う（天候マップと違いタイルしない）。
+        // RGB = 置く雲の性質（雲量 / 雲タイプ / 雲頂高さ）、A = 影響度。
+        // CPU が書いた weatherPaintUpload からコピーして更新する
+        CloudGpuTexture weatherPaint;
+        Microsoft::WRL::ComPtr<ID3D12Resource> weatherPaintUpload;
+        uint8_t* weatherPaintMapped = nullptr;
+
+        /// エディタ表示用: weatherMap の単一チャンネル（0=雲量 / 1=雲タイプ / 2=雲頂）を
+        /// グレースケール複製して見る SRV
+        DescriptorHandle weatherChannelSrvs[3]{};
+
+        /// エディタ表示用: 配置ペイントの単一チャンネルを色、影響度をアルファにした SRV
+        /// （手続き生成のマップへ重ねて「どこを塗ったか」を見せる）
+        DescriptorHandle paintChannelSrvs[3]{};
 
         // ===== フレームターゲット（EnsureFrameTargets が確保する） =====
         CloudGpuTexture cloudBuffers[2];  ///< 半解像度レイマーチ結果（時間再投影の ping-pong）

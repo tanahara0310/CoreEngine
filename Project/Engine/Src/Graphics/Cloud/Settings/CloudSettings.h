@@ -37,6 +37,12 @@ namespace CoreEngine
         float windDirZ;
         float windSpeedMPerS;           ///< 風速 [m/s]
 
+        // ===== 配置ペイント（ワールド固定領域。天候マップと違いタイルしない） =====
+        float paintRegionCenterX;       ///< ペイント領域の中心 X [m]
+        float paintRegionCenterZ;       ///< ペイント領域の中心 Z [m]
+        float paintRegionSizeM;         ///< ペイント領域の一辺 [m]
+        float paintEdgeFade;            ///< 外周で影響度を落とす幅（領域サイズに対する比）
+
         // ===== ライティング =====
         float dropletDiameterUm;        ///< 雲粒の直径 [µm]。Mie 位相関数の唯一の形状パラメータ
         float maxPhase;                 ///< 位相関数の上限。前方ピークの発散を止める

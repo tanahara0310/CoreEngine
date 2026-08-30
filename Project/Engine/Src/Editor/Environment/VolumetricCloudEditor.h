@@ -7,7 +7,7 @@ namespace CoreEngine {
 
     /// @brief ボリューメトリック雲のエンジン常駐エディタ
     /// @details DebugSubsystem がエンジン寿命で 1 個所有し、どのシーンでも Environment ツリーから編集できる。
-    ///          UI は「プリセット → 基本 → 詳細（折りたたみ）」の 3 段構成。
+    ///          UI は「① 天候（プリセット + メタスライダー）→ ② 配置ペイント → ③ 詳細設定」の 3 層構成。
     class VolumetricCloudEditor {
     public:
         /// @brief 環境エディタの登録を解除する
@@ -22,6 +22,15 @@ namespace CoreEngine {
 
         /// @brief プリセット選択コンボと説明文を描画する（選択で即適用）
         void DrawPresetSelector(VolumetricCloudManager& manager);
+
+        /// @brief ① 天候メタスライダー（複数 CVar を意味単位で束ねたスライダー群）
+        void DrawWeatherSliders();
+
+        /// @brief ② 配置ペイント（ウェザーマップの上空視点表示 + ブラシ）
+        void DrawPaintSection(VolumetricCloudManager& manager);
+
+        /// @brief ③ 詳細設定（CVar を目的別グループの折りたたみで表示）
+        void DrawAdvancedSection();
 
         VolumetricCloudManager* GetVolumetricCloudManager() const;
 
@@ -38,5 +47,19 @@ namespace CoreEngine {
 
         /// 現在の値に一致するプリセット（-1=カスタム）。DrawPresetSelector が毎フレーム導出する
         int activePresetIndex_ = -1;
+
+        // ===== 配置ペイントのブラシ状態 =====
+        int paintTool_ = 0;             ///< 0=雲を置く / 1=晴れさせる / 2=ブラシ跡を消す
+        float brushRadiusM_ = 4000.0f;  ///< ブラシ半径 [m]
+        float brushStrength_ = 0.5f;    ///< ブラシ強さ [0,1]
+        float typeTarget_ = 0.7f;       ///< 置く雲のタイプ（0=層雲〜1=積乱雲）
+        float topTarget_ = 0.5f;        ///< 置く雲の雲頂高さ
+        float mapSpanM_ = 0.0f;         ///< マップの表示範囲 [m]（0 で初回にペイント領域から決める）
+        int mapChannel_ = 0;            ///< マップに表示する値（0=雲量 / 1=雲タイプ / 2=雲頂高さ）
+        bool paintingStroke_ = false;   ///< ドラッグ中か（リリース時の自動保存判定）
+
+        // ===== 連動スライダーの従 CVar の編集開始時の値（Undo バッチ用） =====
+        float erosionOnEditStart_ = 0.0f;
+        float windDirZOnEditStart_ = 0.0f;
     };
 }

@@ -15,6 +15,11 @@ namespace CoreEngine
 {
     void CloudNoiseBaker::BakeIfNeeded(const CloudRenderContext& ctx)
     {
+        if (paintDirty_) {
+            UploadPaintTexture(ctx);
+            paintDirty_ = false;
+        }
+
         if (!dirty_) {
             return;
         }
@@ -98,5 +103,38 @@ namespace CoreEngine
             CloudResources::kBaseShapeNoiseSize,
             CloudResources::kDetailNoiseSize,
             CloudResources::kWeatherMapSize);
+    }
+
+    void CloudNoiseBaker::UploadPaintTexture(const CloudRenderContext& ctx)
+    {
+        CloudResources& res = *ctx.resources;
+        if (!res.weatherPaintUpload || !res.weatherPaint) {
+            return;
+        }
+
+        ID3D12GraphicsCommandList* cmdList = ctx.cmdList;
+        CloudStageScope stage(ctx, "Cloud Paint Upload");
+
+        Barrier::Transition(cmdList, res.weatherPaint, D3D12_RESOURCE_STATE_COPY_DEST);
+
+        D3D12_TEXTURE_COPY_LOCATION src{};
+        src.pResource = res.weatherPaintUpload.Get();
+        src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+        src.PlacedFootprint.Offset = 0;
+        src.PlacedFootprint.Footprint.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        src.PlacedFootprint.Footprint.Width = CloudResources::kPaintSize;
+        src.PlacedFootprint.Footprint.Height = CloudResources::kPaintSize;
+        src.PlacedFootprint.Footprint.Depth = 1;
+        src.PlacedFootprint.Footprint.RowPitch = CloudResources::kPaintSize * 4;
+
+        D3D12_TEXTURE_COPY_LOCATION dst{};
+        dst.pResource = res.weatherPaint.Get();
+        dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+        dst.SubresourceIndex = 0;
+
+        cmdList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+
+        Barrier::Transition(cmdList, res.weatherPaint,
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     }
 }

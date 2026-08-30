@@ -7,6 +7,7 @@
 #include "Utility/Logger/Logger.h"
 
 #include <algorithm>
+#include <cstring>
 #include <exception>
 #include <string>
 #include <wrl.h>
@@ -131,7 +132,7 @@ namespace CoreEngine
         }
 
         constexpr DXGI_FORMAT kNoiseFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
-        return CreateTexture(device, descriptorAllocator, baseShapeNoise,
+        const bool ok = CreateTexture(device, descriptorAllocator, baseShapeNoise,
                    MakeTextureDesc(kBaseShapeNoiseSize, kBaseShapeNoiseSize, kBaseShapeNoiseSize, kNoiseFormat,
                        ClampMipLevels(kBaseShapeNoiseSize, kNoiseMipLevels)),
                    "CloudBaseShape")
@@ -142,6 +143,67 @@ namespace CoreEngine
             && CreateTexture(device, descriptorAllocator, weatherMap,
                    MakeTextureDesc(kWeatherMapSize, kWeatherMapSize, 1, kNoiseFormat),
                    "CloudWeather");
+        if (!ok) {
+            return false;
+        }
+
+        // 配置ペイントエディタ用: 単一チャンネルをグレースケール複製して表示する SRV
+        for (uint32_t ch = 0; ch < 3; ++ch) {
+            D3D12_SHADER_RESOURCE_VIEW_DESC channelDesc{};
+            channelDesc.Format = kNoiseFormat;
+            channelDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+            channelDesc.Texture2D.MipLevels = 1;
+            channelDesc.Shader4ComponentMapping = D3D12_ENCODE_SHADER_4_COMPONENT_MAPPING(
+                ch, ch, ch, D3D12_SHADER_COMPONENT_MAPPING_FORCE_VALUE_1);
+            descriptorAllocator->EnsureSRV(weatherChannelSrvs[ch], weatherMap.Get(), channelDesc,
+                ("CloudWeatherCh" + std::to_string(ch) + "SRV").c_str());
+        }
+        return true;
+    }
+
+    bool CloudResources::CreateWeatherPaintTexture(ID3D12Device* device,
+                                                   DescriptorAllocator* descriptorAllocator)
+    {
+        if (!device || !descriptorAllocator) {
+            return false;
+        }
+
+        constexpr DXGI_FORMAT kPaintFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+        if (!CreateTexture(device, descriptorAllocator, weatherPaint,
+                MakeTextureDesc(kPaintSize, kPaintSize, 1, kPaintFormat), "CloudWeatherPaint")) {
+            return false;
+        }
+
+        // エディタ表示用: 選んだチャンネルを色、影響度(A)をアルファにして手続き生成マップへ重ねる
+        for (uint32_t ch = 0; ch < 3; ++ch) {
+            D3D12_SHADER_RESOURCE_VIEW_DESC channelDesc{};
+            channelDesc.Format = kPaintFormat;
+            channelDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+            channelDesc.Texture2D.MipLevels = 1;
+            channelDesc.Shader4ComponentMapping = D3D12_ENCODE_SHADER_4_COMPONENT_MAPPING(ch, ch, ch, 3);
+            descriptorAllocator->EnsureSRV(paintChannelSrvs[ch], weatherPaint.Get(), channelDesc,
+                ("CloudWeatherPaintCh" + std::to_string(ch) + "SRV").c_str());
+        }
+
+        // CPU が書き込むアップロードバッファ（1 行 kPaintSize*4 = 2048B は 256B 境界に乗る）
+        Microsoft::WRL::ComPtr<ID3D12Device> deviceRef = device;
+        weatherPaintUpload = ResourceFactory::CreateBufferResource(deviceRef, kPaintBytes);
+        if (!weatherPaintUpload) {
+            Logger::GetInstance().Warnf(LogCategory::Graphics,
+                "CloudResources: 配置ペイントのアップロードバッファ生成に失敗");
+            return false;
+        }
+
+        void* mapped = nullptr;
+        if (FAILED(weatherPaintUpload->Map(0, nullptr, &mapped))) {
+            Logger::GetInstance().Warnf(LogCategory::Graphics,
+                "CloudResources: 配置ペイントのアップロードバッファの Map に失敗");
+            weatherPaintUpload.Reset();
+            return false;
+        }
+        weatherPaintMapped = static_cast<uint8_t*>(mapped);
+        std::memset(weatherPaintMapped, 0, kPaintBytes);
+        return true;
     }
 
     bool CloudResources::CreateCloudShadowMap(ID3D12Device* device, DescriptorAllocator* descriptorAllocator)

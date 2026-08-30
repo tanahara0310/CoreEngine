@@ -49,10 +49,13 @@ namespace CoreEngine
         float cirrusAltitudeM;       float cirrusCoverage;
         float cirrusDensity;         float cirrusScaleM;                    // 384
         float cirrusStretch;         float cirrusWindScale;
-        float noiseLodBias;          float pad7;                            // 400 (= 416)
+        float noiseLodBias;          float paintRegionCenterX;              // 400
+        // ===== 配置ペイント（ワールド固定領域） =====
+        float paintRegionCenterZ;    float paintRegionSizeM;
+        float paintEdgeFade;         float pad7;                            // 416 (= 432)
     };
-    static_assert(sizeof(VolumetricCloudShaderConstants) == 416,
-        "VolumetricCloudShaderConstants は HLSL 側 CloudConstants の 416 バイトレイアウトと一致させること");
+    static_assert(sizeof(VolumetricCloudShaderConstants) == 432,
+        "VolumetricCloudShaderConstants は HLSL 側 CloudConstants の 432 バイトレイアウトと一致させること");
 
     static constexpr Cb::Field kVolumetricCloudShaderConstantsFields[] = {
         CB_FIELD(VolumetricCloudShaderConstants, invViewProj),
@@ -113,6 +116,10 @@ namespace CoreEngine
         CB_FIELD(VolumetricCloudShaderConstants, cirrusStretch),
         CB_FIELD(VolumetricCloudShaderConstants, cirrusWindScale),
         CB_FIELD(VolumetricCloudShaderConstants, noiseLodBias),
+        CB_FIELD(VolumetricCloudShaderConstants, paintRegionCenterX),
+        CB_FIELD(VolumetricCloudShaderConstants, paintRegionCenterZ),
+        CB_FIELD(VolumetricCloudShaderConstants, paintRegionSizeM),
+        CB_FIELD(VolumetricCloudShaderConstants, paintEdgeFade),
         CB_FIELD(VolumetricCloudShaderConstants, pad7),
     };
     CB_VERIFY_LAYOUT(VolumetricCloudShaderConstants, kVolumetricCloudShaderConstantsFields);

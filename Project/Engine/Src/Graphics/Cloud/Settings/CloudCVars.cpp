@@ -82,6 +82,27 @@ namespace CoreEngine
             "風速 [m/s]。雲の流れる速さ",
             CVarRange{ 0.0f, 100.0f } };
 
+        // ---- 配置ペイント ----
+        CVar<float> PaintRegionCenterX{
+            "r.Cloud.PaintRegionCenterX", 0.0f,
+            "配置ペイント領域の中心 X [m]",
+            CVarRange{ -200000.0f, 200000.0f } };
+
+        CVar<float> PaintRegionCenterZ{
+            "r.Cloud.PaintRegionCenterZ", 0.0f,
+            "配置ペイント領域の中心 Z [m]",
+            CVarRange{ -200000.0f, 200000.0f } };
+
+        CVar<float> PaintRegionSizeM{
+            "r.Cloud.PaintRegionSize", 60000.0f,
+            "配置ペイント領域の一辺 [m]。この矩形の外は手続き生成のまま",
+            CVarRange{ 2000.0f, 200000.0f } };
+
+        CVar<float> PaintEdgeFade{
+            "r.Cloud.PaintEdgeFade", 0.08f,
+            "ペイント領域の外周で影響度を落とす幅（領域サイズに対する比）",
+            CVarRange{ 0.0f, 0.5f } };
+
         // ---- ライティング ----
         CVar<float> DropletDiameterUm{
             "r.Cloud.DropletDiameter", 20.0f,
@@ -319,6 +340,10 @@ namespace CoreEngine
                 { &WindDirX,              &VolumetricCloudParameters::windDirX },
                 { &WindDirZ,              &VolumetricCloudParameters::windDirZ },
                 { &WindSpeedMPerS,        &VolumetricCloudParameters::windSpeedMPerS },
+                { &PaintRegionCenterX,    &VolumetricCloudParameters::paintRegionCenterX },
+                { &PaintRegionCenterZ,    &VolumetricCloudParameters::paintRegionCenterZ },
+                { &PaintRegionSizeM,      &VolumetricCloudParameters::paintRegionSizeM },
+                { &PaintEdgeFade,         &VolumetricCloudParameters::paintEdgeFade },
                 { &DropletDiameterUm,     &VolumetricCloudParameters::dropletDiameterUm },
                 { &MaxPhase,              &VolumetricCloudParameters::maxPhase },
                 { &AmbientIntensity,      &VolumetricCloudParameters::ambientIntensity },
