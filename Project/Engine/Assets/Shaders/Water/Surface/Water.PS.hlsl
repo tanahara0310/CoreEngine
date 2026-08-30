@@ -127,8 +127,15 @@ static const float kWaterReflectionBlurTexels = 3.0f; // にじみ半径（テ�
 /// @brief 反射テクスチャをラフネス相当でにじませて取得する（rgb=色 / a=信頼度）
 /// @param screenUV スクリーンUV
 /// @param grazing  かすめ具合 = 1 - cosθ（大きいほど反射が伸び・ぼける）
-/// @details 信頼度（a）も一緒に平均する。成功/失敗の境界も滑らかになり、
-///          空環境マップへのフォールバックが段差にならない。
+/// @details ★信頼度（a）はぼかさず中心タップの値をそのまま返す★
+///          a は「そのピクセルに反射色があるか」の判定であって画像ではない。
+///          平均すると水面と非水面の境界のまわりに中間値の帯ができ、そこで
+///          RT 反射像（RT 側の波法線で解決）と呼び出し側の空キューブ
+///          （ラスタ側の波法線で解決）という別々の面に沿った 2 枚が重なる
+///          ＝反射が二重に見える。かすめ角では境界が画面上で圧縮されるため
+///          帯が水面の広い範囲を覆う。
+///          rgb 側は各タップ自身の信頼度で重み付けして平均する。非水面タップの
+///          rgb は黒なので、素の平均では境界のまわりが暗く引きずられる。
 float4 SampleGlossyReflectionRGBA(float2 screenUV, float grazing)
 {
     uint reflWidth = 1;
@@ -148,16 +155,30 @@ float4 SampleGlossyReflectionRGBA(float2 screenUV, float grazing)
     };
     const float kWeights[9] = { 4.0f, 1.0f, 1.0f, 1.0f, 1.0f, 2.0f, 2.0f, 2.0f, 2.0f };
 
-    float4 sum = float4(0.0f, 0.0f, 0.0f, 0.0f);
+    float3 colorSum = float3(0.0f, 0.0f, 0.0f);
     float weightSum = 0.0f;
+    float centerConfidence = 0.0f;
     [unroll]
     for (int i = 0; i < 9; ++i)
     {
         const float2 uv = saturate(screenUV + kOffsets[i] * radius);
-        sum += gReflectionTexture.Sample(gLinearClamp, uv) * kWeights[i];
-        weightSum += kWeights[i];
+        const float4 tap = gReflectionTexture.Sample(gLinearClamp, uv);
+        const float tapConfidence = saturate((tap.a - kRTSuccessRangeMin) * 2.0f);
+        if (i == 0)
+        {
+            centerConfidence = tapConfidence;
+        }
+        const float weight = kWeights[i] * tapConfidence;
+        colorSum += tap.rgb * weight;
+        weightSum += weight;
     }
-    return sum / weightSum;
+
+    // 全タップが非水面なら色は無効。信頼度 0 で呼び出し側のフォールバックへ渡す。
+    if (weightSum <= 1.0e-5f)
+    {
+        return float4(0.0f, 0.0f, 0.0f, 0.0f);
+    }
+    return float4(colorSum / weightSum, kRTSuccessRangeMin + 0.5f * centerConfidence);
 }
 
 /// @brief 可視化モード 19 用の rgb だけのラッパー
@@ -359,10 +380,9 @@ WaterPixelOutput main(WaterPSInput input)
     float3 viewDir = normalize(gCamera.worldPosition - input.worldPosition);
     float3 geomNormal = surfaceNormal;
 
-    // フレネルは「うねりスケールの低周波法線」で評価する（ResolveFresnelNormal 参照）。
-    // 短波長のさざ波斜面を (1-cosθ)^5 に直接食わせるとまだら・スペックルになるため、
-    // ミップバイアス付き法線マップで未解像斜面を平均してから角度応答を計算する。
-    float3 fresnelNormal = ResolveFresnelNormal(input);
+    // フレネルは反射像・透過像と同じ面法線から評価する（ResolveFresnelNormal 参照）。
+    // 未解像のさざ波斜面は surfaceNormal のフットプリントフェードで既に平均済み。
+    float3 fresnelNormal = ResolveFresnelNormal(surfaceNormal);
     float cosTheta = saturate(dot(fresnelNormal, viewDir));
     float fresnel = FresnelSchlick(cosTheta, saturate(gFresnelBaseReflectance));
     // 微細さざ波の幾何遮蔽でかすめ角の反射スパイクを抑え、うねりに沿った

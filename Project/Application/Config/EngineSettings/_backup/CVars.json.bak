@@ -8,15 +8,21 @@
     "r.AtmosphereLights.MoonEnabled": true,
     "r.AtmosphereLights.SunAtmosphereIntensity": 20.0,
     "r.AtmosphereLights.SunDirection": [
-        0.018054993823170662,
-        -0.9624592065811157,
-        0.2708253860473633
+        -0.1540394127368927,
+        -0.8107157349586487,
+        0.5648113489151001
     ],
     "r.AutoExposure.Enabled": true,
     "r.Bloom.Intensity": 0.9480000138282776,
     "r.Bloom.SoftKnee": 0.35100001096725464,
     "r.Blur.Intensity": 2.5290000438690186,
     "r.CAS.Enabled": false,
+    "r.Cloud.BaseNoiseScale": 8000.0,
+    "r.Cloud.DetailErosionStrength": 0.1599999964237213,
+    "r.Cloud.GlobalCoverage": 0.5,
+    "r.Cloud.LayerBottomAltitude": 2000.0,
+    "r.Cloud.LayerThickness": 3000.0,
+    "r.Cloud.WindSpeed": 6.0,
     "r.Ground.Checker": true,
     "r.LensFlare.Enabled": false,
     "r.RTShadow.AtrousPassCount": 3,
@@ -24,8 +30,6 @@
     "r.RTShadow.MaxRayDistance": 2682.326904296875,
     "r.RTShadow.ShadowBias": 0.15800000727176666,
     "r.SSAOTemporal.Enabled": false,
-    "r.TAA.BlendAlpha": 0.009999999776482582,
-    "r.TAA.Enabled": false,
     "r.Vignette.Intensity": 2.0,
     "r.Vignette.Smoothness": 0.10000000149011612,
     "r.Water.AbsorptionBase": [
@@ -35,6 +39,13 @@
     ],
     "r.Water.Caustics.DepthAttenuation": 1.5169999599456787,
     "r.Water.Caustics.Intensity": 1.128000020980835,
+    "r.Water.FFT.ActiveComponentCount": 8,
+    "r.Water.FFT.Choppiness": 0.10000000149011612,
+    "r.Water.FFT.WindDirection": [
+        1.0,
+        0.0
+    ],
+    "r.Water.FFT.WindSpeed": 2.0,
     "r.Water.Foam.Bias": 0.8600000143051147,
     "r.Water.Foam.CascadeWeights": [
         1.0,

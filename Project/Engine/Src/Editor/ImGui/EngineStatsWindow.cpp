@@ -10,6 +10,8 @@
 #include "Utility/FrameRate/FrameRateController.h"
 #include "Scene/SceneManager.h"
 #include "GameObject/GameObjectManager.h"
+#include "Utility/CVar/CVar.h"
+#include "Utility/Logger/Logger.h"
 
 #include <imgui.h>
 
@@ -23,6 +25,24 @@ namespace CoreEngine
 {
     namespace
     {
+        // 計測キャプチャの自動実行。起動から指定秒後に開始し、完了したら CSV を書き出す。
+        // ImGui のボタンを押さずに同じ条件で取り直せるようにするためのもの。
+        CVar<float> cvAutoCaptureStartSec{
+            "stats.TimingCapture.AutoStartSec", 0.0f,
+            "起動から指定秒後に計測キャプチャを自動開始する（0 で無効。実行すると 0 へ戻る）",
+            CVarRange{ 0.0f, 600.0f }, CVarFlags::NoUI };
+
+        CVar<int> cvAutoCaptureWarmupFrames{
+            "stats.TimingCapture.WarmupFrames", 120,
+            "自動キャプチャのウォームアップフレーム数",
+            CVarRange{ 0.0f, 1200.0f }, CVarFlags::NoUI };
+
+        CVar<int> cvAutoCaptureFrames{
+            "stats.TimingCapture.Frames", 300,
+            "自動キャプチャの収集フレーム数",
+            CVarRange{ 1.0f, static_cast<float>(GpuTimingStatsCollector::kMaxCaptureFrames) },
+            CVarFlags::NoUI };
+
         // 視認性向上：値の大小に応じた色付け
         ImVec4 GetFpsColor(float fps)
         {
@@ -156,7 +176,81 @@ namespace CoreEngine
 
             // 統計計測へは表示用に間引いた frozenGpu_ ではなく毎フレームの生値を渡す。
             timingCapture_.Tick(snapshotGpu_, snapshotDeltaTimeMs_, snapshotFps_);
+
+            TickAutoCapture();
         }
+    }
+
+    void EngineStatsWindow::TickAutoCapture()
+    {
+        const float startSec = cvAutoCaptureStartSec.Get();
+        if (startSec <= 0.0f || autoCaptureDone_) {
+            return;
+        }
+
+        if (!autoCaptureStarted_)
+        {
+            autoCaptureElapsedSec_ += snapshotDeltaTimeMs_ * 0.001f;
+            if (autoCaptureElapsedSec_ < startSec) {
+                return;
+            }
+            autoCaptureStarted_ = true;
+            timingCapture_.Start(
+                static_cast<uint32_t>((std::max)(0, cvAutoCaptureWarmupFrames.Get())),
+                static_cast<uint32_t>(std::clamp(cvAutoCaptureFrames.Get(), 1,
+                    static_cast<int>(GpuTimingStatsCollector::kMaxCaptureFrames))));
+            Logger::GetInstance().Infof(LogCategory::System,
+                "EngineStatsWindow: 計測キャプチャを自動開始しました (warmup={0} frames={1})",
+                cvAutoCaptureWarmupFrames.Get(), cvAutoCaptureFrames.Get());
+            return;
+        }
+
+        if (!timingCapture_.HasResult()) {
+            return;
+        }
+
+        autoCaptureDone_ = true;
+
+        // 引き金を戻して JSON からも消す。armed のまま残ると以降の起動が
+        // 毎回キャプチャして CSV を吐き続ける
+        cvAutoCaptureStartSec.Set(0.0f);
+
+        std::string exported;
+        if (ExportTimingCsv("AutoCapture", exported))
+        {
+            lastExportPath_ = exported;
+            Logger::GetInstance().Infof(LogCategory::System,
+                "EngineStatsWindow: 計測キャプチャを自動出力しました: {0}", exported);
+        }
+        else
+        {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System,
+                "EngineStatsWindow: 計測キャプチャの自動出力に失敗しました");
+        }
+    }
+
+    bool EngineStatsWindow::ExportTimingCsv(const std::string& label, std::string& outPath)
+    {
+        GpuTimingCaptureMeta meta;
+        meta.label = label;
+        meta.note = captureNote_;
+        meta.gpuName = gpuName_;
+#if defined(_DEBUG)
+        meta.buildConfig = "Debug";
+#elif defined(NDEBUG)
+        meta.buildConfig = "Release";
+#else
+        meta.buildConfig = "Development";
+#endif
+        if (engine_)
+        {
+            if (auto* dx = engine_->GetService<GraphicsCore>())
+            {
+                meta.widthPixels = static_cast<uint32_t>(dx->GetClientWidth());
+                meta.heightPixels = static_cast<uint32_t>(dx->GetClientHeight());
+            }
+        }
+        return timingCapture_.ExportCsv("Captures\\Profiling", meta, outPath);
     }
 
     void EngineStatsWindow::DrawPerformanceTab()
@@ -593,28 +687,8 @@ namespace CoreEngine
         ImGui::Spacing();
         if (ImGui::Button("CSV 出力##cap_export", ImVec2(120.0f, 0.0f)))
         {
-            GpuTimingCaptureMeta meta;
-            meta.label = captureLabel_;
-            meta.note = captureNote_;
-            meta.gpuName = gpuName_;
-#if defined(_DEBUG)
-            meta.buildConfig = "Debug";
-#elif defined(NDEBUG)
-            meta.buildConfig = "Release";
-#else
-            meta.buildConfig = "Development";
-#endif
-            if (engine_)
-            {
-                if (auto* dx = engine_->GetService<GraphicsCore>())
-                {
-                    meta.widthPixels = static_cast<uint32_t>(dx->GetClientWidth());
-                    meta.heightPixels = static_cast<uint32_t>(dx->GetClientHeight());
-                }
-            }
-
             std::string exported;
-            if (timingCapture_.ExportCsv("Captures\\Profiling", meta, exported))
+            if (ExportTimingCsv(captureLabel_, exported))
             {
                 lastExportPath_ = exported;
             }

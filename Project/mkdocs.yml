@@ -1,0 +1,98 @@
+# アプリケーション開発者向けガイドサイト
+# ビルド: python -m mkdocs build
+# プレビュー: python -m mkdocs serve （privacyプラグインのため起動に20〜30秒かかる）
+# 配布: AppDevGuide_Site フォルダを丸ごとコピーすれば file:// で開ける（サーバー不要）
+#
+# ★site_url は書かないこと★ 書くと privacy プラグインが mermaid 参照を絶対URL化し
+#   file:// で図が表示されなくなる。
+
+site_name: CoreEngine アプリ開発ガイド
+docs_dir: Docs/AppDevGuide
+site_dir: AppDevGuide_Site
+use_directory_urls: false
+
+theme:
+  name: material
+  language: ja
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: ダークモードへ
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: ライトモードへ
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.footer
+    - content.code.copy
+    - content.code.annotate
+    - search.highlight
+    - toc.follow
+
+plugins:
+  - search:
+      lang: ja
+  - privacy
+  - offline
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      # 日本語見出しをそのままアンカーIDにする（既定だと _1 等の連番になりリンクが壊れる）
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.tabbed:
+      alternate_style: true
+
+extra_css:
+  - assets/extra.css
+
+nav:
+  - ホーム: index.md
+  - はじめに:
+      - 開発環境とビルド: getting-started/setup.md
+      - チュートリアル① 最初のシーンを作る: getting-started/first-scene.md
+      - チュートリアル② モデルを画面に出す: getting-started/first-model.md
+      - チュートリアル③ 動きを付ける: getting-started/first-component.md
+  - 基本システム:
+      - シーンの仕組み: core/scene.md
+      - GameObjectとコンポーネント: core/gameobject.md
+      - モデルとアニメーション: core/model.md
+      - カメラ: core/camera.md
+  - ゲームプレイ機能:
+      - 入力: gameplay/input.md
+      - 当たり判定: gameplay/collision.md
+      - サウンド: gameplay/audio.md
+      - スプライト・UI・パーティクル: gameplay/visual.md
+  - 開発ツール:
+      - ImGuiデバッグUIの出し方: tools/imgui.md
+      - CVarでパラメータ調整: tools/cvar.md
+      - エディタの使い方（要点）: tools/editor.md
+  - リファレンス:
+      - よくあるハマりどころ: reference/pitfalls.md
+      - APIチートシート: reference/cheatsheet.md

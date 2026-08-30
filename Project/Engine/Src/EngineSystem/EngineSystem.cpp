@@ -47,6 +47,7 @@
 #include "Graphics/Render/Pass/FFTOceanPass.h"
 #include "Graphics/Render/Pass/AtmosphereLUTPass.h"
 #include "Graphics/Render/Pass/AerialPerspectivePass.h"
+#include "Graphics/Render/Pass/CloudShadowMapPass.h"
 #include "Graphics/Render/Pass/VolumetricCloudNoisePass.h"
 #include "Graphics/Render/Pass/VolumetricCloudPass.h"
 #include "Graphics/Render/Pass/GodRayPass.h"
@@ -558,6 +559,10 @@ namespace CoreEngine
 
         // フレーム前処理: ボリューメトリック雲のノイズ生成（ダーティ時のみ Compute 実行）
         renderPipeline_->AddPass(std::make_unique<VolumetricCloudNoisePass>(), RenderPassPhase::FrameSetup, 20);
+
+        // 雲シャドウマップ: Deferred ライティングとゴッドレイの双方が読むので
+        // ライティングより前のこのフェーズで生成する（GameView のみ）
+        renderPipeline_->AddPass(std::make_unique<CloudShadowMapPass>(), RenderPassPhase::FrameSetup, 30);
 
         // G-Buffer 蓄積（不透明 Model / SkinnedModel の描画）
         renderPipeline_->AddPass(std::make_unique<GBufferPass>(), RenderPassPhase::GBuffer);

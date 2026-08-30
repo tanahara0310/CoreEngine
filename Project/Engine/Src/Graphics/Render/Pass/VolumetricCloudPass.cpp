@@ -2,6 +2,7 @@
 #include "VolumetricCloudPass.h"
 
 #include "Graphics/Atmosphere/AtmosphereManager.h"
+#include "Graphics/Cloud/Resource/CloudResources.h"
 #include "Graphics/Cloud/VolumetricCloudManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Render/RenderTarget/OffscreenRenderTarget.h"
@@ -13,12 +14,11 @@ namespace CoreEngine
 {
     void VolumetricCloudPass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
     {
-        // SceneColor / SceneDepth を読み、SceneColor へ雲を合成する。
-        // （SceneColor の SRV/COPY 遷移はパス内部で状態参照を通じて管理する）
-        // AerialPerspectivePass と同一の宣言。
+        // SceneDepth を読み、SceneColor へ雲を in-place 合成する（合成 CS が UAV で読み書きする）。
+        // CloudBuffer は本パスが生成し、GodRayPass が読む（依存をグラフへ見せるため宣言する）。
         builder.Read(FrameBlackboard::SceneDepth, D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        builder.Read(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        builder.Write(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        builder.Write(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        builder.Write(FrameBlackboard::CloudBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     }
 
     void VolumetricCloudPass::Execute(const RenderContext& context)
@@ -66,8 +66,14 @@ namespace CoreEngine
         context.volumetricCloudManager->RenderClouds(
             cmdList,
             sceneColorTarget->Resource(),
-            sceneColorTarget->GetSRVHandle(),
+            sceneColorTarget->GetUAVHandle(),
             sceneDepthSrv,
-            context.atmosphereManager);
+            context.atmosphereManager,
+            context.gpuProfiler);
+
+        // 後続の GodRayPass が読む雲バッファをグラフへ公開する
+        CloudResources& cloudResources = context.volumetricCloudManager->GetResources();
+        context.frameBlackboard->SetResource(FrameBlackboard::CloudBuffer,
+            cloudResources.CurrentCloudBuffer().srv.gpuHandle, &cloudResources.CurrentCloudBuffer());
     }
 }

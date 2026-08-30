@@ -9,6 +9,7 @@
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Debug/GpuMarker.h"
+#include "Graphics/RHI/Debug/GpuStageScope.h"
 #include "Graphics/RHI/Debug/GpuTimestampProfiler.h"
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
@@ -34,46 +35,6 @@ namespace CoreEngine
         {
             return (value + 255) & ~255;
         }
-
-        /// @brief PIX マーカーと GPU/CPU タイムスタンプを同じ範囲で積むスコープ
-        /// @details FFT の内訳（時間発展 / IFFT / 合成 / 泡）は RenderGraph から見ると
-        ///          FFTOceanPass 1 パスの中身なので、パス単位の自動計測では分解できない。
-        ///          ここで名前付きスロットを直接取り、PIX 側にも同名のイベントを出す。
-        class FFTStageScope
-        {
-        public:
-            FFTStageScope(
-                ID3D12GraphicsCommandList* cmdList,
-                GpuTimestampProfiler* profiler,
-                const char* name)
-                : cmdList_(cmdList)
-                , profiler_(profiler)
-            {
-                BeginGpuMarker(cmdList_, name);
-                if (profiler_ && cmdList_) {
-                    slot_ = profiler_->GetOrCreateNamedSlot(name, GpuTimingCategory::WaterSimulation);
-                    if (slot_ != UINT32_MAX) {
-                        profiler_->BeginCpuTimestamp(slot_);
-                        profiler_->BeginGpuTimestamp(slot_, cmdList_);
-                    }
-                }
-            }
-            ~FFTStageScope()
-            {
-                if (profiler_ && slot_ != UINT32_MAX) {
-                    profiler_->EndGpuTimestamp(slot_, cmdList_);
-                    profiler_->EndCpuTimestamp(slot_);
-                }
-                EndGpuMarker(cmdList_);
-            }
-            FFTStageScope(const FFTStageScope&) = delete;
-            FFTStageScope& operator=(const FFTStageScope&) = delete;
-
-        private:
-            ID3D12GraphicsCommandList* cmdList_ = nullptr;
-            GpuTimestampProfiler* profiler_ = nullptr;
-            uint32_t slot_ = UINT32_MAX;
-        };
 
         // 計測スロット名。カスケードごとに別スロットにする必要がある
         // （同一スロットへ Begin/End を複数回積むと、最後の 1 回だけが残り
@@ -280,7 +241,7 @@ namespace CoreEngine
         // 中間ピンポンテクスチャ／IFFT定数リングはカスケード間で共有する（逐次実行）。
         for (uint32_t c = 0; c < kCascadeCount; ++c) {
             {
-                FFTStageScope stage(cmdList, profiler, kEvolutionStageNames[c]);
+                GpuStageScope stage(cmdList, profiler, kEvolutionStageNames[c], GpuTimingCategory::WaterSimulation);
                 DispatchEvolutionPass(cmdList, c);
             }
 
@@ -288,7 +249,7 @@ namespace CoreEngine
             // 各ステージのスコープ外へ出して別スロットで計測する
             // （オプトイン機能のコストを本体の数値へ混ぜないため）。
             if (c == 0) {
-                FFTStageScope stage(cmdList, profiler, kEvolutionReadbackStageName);
+                GpuStageScope stage(cmdList, profiler, kEvolutionReadbackStageName, GpuTimingCategory::WaterSimulation);
                 debugProbe_.ScheduleEvolutionReadback(
                     cmdList,
                     spectrumPingPongA_[0], spectrumPingPongB_[0]);
@@ -297,7 +258,7 @@ namespace CoreEngine
             uint32_t finalSpectrumAIndex = 0;
             uint32_t finalSpectrumBIndex = 0;
             {
-                FFTStageScope stage(cmdList, profiler, kIFFTStageNames[c]);
+                GpuStageScope stage(cmdList, profiler, kIFFTStageNames[c], GpuTimingCategory::WaterSimulation);
                 finalSpectrumAIndex = DispatchIFFTForTexture(cmdList, spectrumPingPongA_, 0);
                 finalSpectrumBIndex = DispatchIFFTForTexture(cmdList, spectrumPingPongB_, 0);
             }
@@ -305,7 +266,7 @@ namespace CoreEngine
             FFTOceanGpuTexture& finalSpectrumB = spectrumPingPongB_[finalSpectrumBIndex];
 
             if (c == 0) {
-                FFTStageScope stage(cmdList, profiler, kIFFTReadbackStageName);
+                GpuStageScope stage(cmdList, profiler, kIFFTReadbackStageName, GpuTimingCategory::WaterSimulation);
                 debugProbe_.OnIFFTCompleted(
                     cmdList,
                     finalSpectrumAIndex,
@@ -316,7 +277,7 @@ namespace CoreEngine
             }
 
             {
-                FFTStageScope stage(cmdList, profiler, kFinalizeStageNames[c]);
+                GpuStageScope stage(cmdList, profiler, kFinalizeStageNames[c], GpuTimingCategory::WaterSimulation);
                 DispatchFinalizePass(cmdList, c, finalSpectrumA, finalSpectrumB);
             }
 
@@ -333,12 +294,12 @@ namespace CoreEngine
 
         // 泡の蓄積・減衰（ヤコビアンが SRV 状態になった後に実行する）
         {
-            FFTStageScope stage(cmdList, profiler, kFoamStageName);
+            GpuStageScope stage(cmdList, profiler, kFoamStageName, GpuTimingCategory::WaterSimulation);
             DispatchFoamPass(cmdList, timeSeconds);
         }
 
         {
-            FFTStageScope stage(cmdList, profiler, kSurfaceReadbackStageName);
+            GpuStageScope stage(cmdList, profiler, kSurfaceReadbackStageName, GpuTimingCategory::WaterSimulation);
             debugProbe_.ScheduleSurfaceReadback(
                 cmdList,
                 displacementMap_, normalMap_);

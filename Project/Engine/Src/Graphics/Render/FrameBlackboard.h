@@ -34,6 +34,8 @@ namespace CoreEngine
         static const char* const SSAO;
         static const char* const ShadowMask;
         static const char* const RTShadowMask;
+        static const char* const CloudBuffer;    ///< 半解像度の雲レイマーチ結果（rgb=前乗算輝度, a=透過率）
+        static const char* const CloudShadowMap; ///< 太陽方向の雲透過率の上面図
         static const char* const WaterCaustics;
         static const char* const RTWaterCaustics;
         static const char* const RTWaterRefractionColor;

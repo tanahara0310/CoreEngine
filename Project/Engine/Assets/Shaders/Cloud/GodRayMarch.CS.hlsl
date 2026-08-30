@@ -10,9 +10,11 @@
 #include "../Atmosphere/Common/AtmosphereCommon.hlsli"
 #include "Common/CloudCommon.hlsli"
 #include "Common/GodRayCommon.hlsli"
+#include "Common/CloudShadowCommon.hlsli"
 
 ConstantBuffer<GodRayConstants> gGodRay : register(b0);
 ConstantBuffer<AtmosphereConstants> gAtmosphere : register(b1);
+ConstantBuffer<CloudShadowConstants> gCloudShadow : register(b2);
 Texture2D<float>  gCloudShadowMap : register(t0);
 Texture2D<float4> gTransmittanceLUT : register(t1);
 Texture2D<float>  gSceneDepth : register(t2);
@@ -40,7 +42,7 @@ void main(uint3 dtid : SV_DispatchThreadID)
     float3 rayDir = normalize(farH.xyz - rayOrigin);
 
     // v1 ガード: カメラが雲底面近く/より上では上面シャドウマップの前提が崩れるため無効
-    if (rayOrigin.y > gGodRay.shadowAnchorWorldY - 500.0f)
+    if (rayOrigin.y > gCloudShadow.anchorWorldY - 500.0f)
     {
         gGodRayOutput[dtid.xy] = float4(0.0f, 0.0f, 0.0f, 1.0f);
         return;
@@ -65,7 +67,7 @@ void main(uint3 dtid : SV_DispatchThreadID)
     // 上向きレイは雲底面で打ち切り（光芒は雲デッキ下の空気で起きる）
     if (rayDir.y > 1e-4f)
     {
-        float tPlane = (gGodRay.shadowAnchorWorldY - rayOrigin.y) / rayDir.y;
+        float tPlane = (gCloudShadow.anchorWorldY - rayOrigin.y) / rayDir.y;
         tMax = min(tMax, tPlane);
     }
 
@@ -81,7 +83,7 @@ void main(uint3 dtid : SV_DispatchThreadID)
     float phaseM = HenyeyGreensteinPhase(gAtmosphere.miePhaseG, cosTheta);
 
     // 静的 IGN でサンプル位相をジッタ（時間依存にしない＝エンジン規約）
-    float ign = InterleavedGradientNoise(float2(dtid.xy));
+    float ign = InterleavedGradientNoise(float2(dtid.xy), 0u);
 
     uint stepCount = max(gGodRay.stepCount, 1u);
     float dt = tMax / stepCount;
@@ -116,7 +118,7 @@ void main(uint3 dtid : SV_DispatchThreadID)
         float3 sunT = SampleTransmittanceToSun(gTransmittanceLUT, gLUTSampler,
                                                posAtmo, toSun, gAtmosphere);
 
-        float shadow = SampleCloudShadow(gCloudShadowMap, gLUTSampler, P, toSun, gGodRay);
+        float shadow = SampleCloudShadow(gCloudShadowMap, gLUTSampler, P, toSun, gCloudShadow);
 
         float3 common = T * sunT * (sigmaSMie * phaseM * dtKm);
         shaft += common * shadow;

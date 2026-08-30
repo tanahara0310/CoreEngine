@@ -44,7 +44,7 @@ namespace CoreEngine
         if (context.atmosphereManager->ConsumeSkyEnvironmentDirty(cloudsReady, context.frameNumber)) {
             context.atmosphereManager->CaptureSkyEnvironment(cmdList);
             if (cloudsReady) {
-                cloudManager->RenderCloudsToSkyCubemap(cmdList, context.atmosphereManager);
+                cloudManager->RenderCloudsToSkyCubemap(cmdList, context.atmosphereManager, context.gpuProfiler);
             }
             context.atmosphereManager->PrefilterSkyEnvironment(cmdList);
         }

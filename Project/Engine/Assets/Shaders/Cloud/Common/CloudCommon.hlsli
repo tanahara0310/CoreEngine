@@ -1,12 +1,13 @@
 /// @file CloudCommon.hlsli
 /// @brief ボリューメトリック雲の共通定数バッファ・ジオメトリ・密度関数
-/// @details C++ 側 VolumetricCloudShaderConstants（256 バイト）と一致させること。
+/// @details C++ 側 VolumetricCloudShaderConstants（432 バイト）と一致させること。
 ///          座標系は 1unit=1m。惑星中心はカメラ基準で下方 planetRadiusM に置く。
 
 #ifndef CLOUD_COMMON_HLSLI
 #define CLOUD_COMMON_HLSLI
 
 #include "CloudNoiseCommon.hlsli"
+#include "CloudTuning.hlsli"
 
 struct CloudConstants
 {
@@ -20,9 +21,9 @@ struct CloudConstants
     float detailErosionStrength; float densityScale;                    // 128
     float windDirX;             float windDirZ;
     float windSpeedMPerS;       float weatherMapScaleM;                  // 144
-    float phaseG0;              float phaseG1;
-    float phaseBlend;           float ambientIntensity;                  // 160
-    float beerPowderStrength;   float lightMarchStepM;
+    float dropletDiameterUm;    float maxPhase;
+    float lightMarchConeSpread; float ambientIntensity;                  // 160
+    float beerPowderStrength;   float lightMarchCoverage;
     float earlyExitTransmittance; float maxMarchDistanceM;              // 176
     uint maxSteps;              uint outputWidth;
     uint outputHeight;          uint frameIndex;                         // 192
@@ -30,7 +31,22 @@ struct CloudConstants
     float msContribution;       float msEccentricity;                    // 208
     float3 moonDirection;       float moonIntensity;                     // 224 月光の進行方向 / 強度
     float3 moonColor;           float hasMoon;                           // 240 月光色 / 月有効(0/1)
-};                                                                       // = 256
+    float baseNoiseVerticalScale; float heightSkewM;
+    float detailFadeDistanceM;  float farFadeWidthM;                     // 256
+    float hazeDistanceM;        float maxSunOpticalDepth;
+    float ambientCosZenith;     float ambientBottomOcclusion;            // 272
+    float ambientChroma;        float ambientGroundStrength;
+    float upsampleDepthTolerance; float cloudStreetStretch;              // 288
+    float4x4 prevViewProj;                                               // 304 前フレームのビュー射影
+    float reprojectEnabled;     float reprojectBlendMin;
+    float reprojectTolerance;   float cloudTopVariation;                 // 368
+    float cirrusAltitudeM;      float cirrusCoverage;
+    float cirrusDensity;        float cirrusScaleM;                      // 384
+    float cirrusStretch;        float cirrusWindScale;
+    float noiseLodBias;         float paintRegionCenterX;                // 400
+    float paintRegionCenterZ;   float paintRegionSizeM;
+    float paintEdgeFade;        float pad7;                              // 416
+};                                                                       // = 432
 
 // ===== 雲層ジオメトリ =====
 
@@ -112,80 +128,171 @@ float2 CloudLayerInterval(float3 ro, float3 rd, CloudConstants c)
 }
 
 /// @brief 画面空間 Interleaved Gradient Noise（レイマーチ開始位置のジッタ用）
-/// @details 時間依存にすると TAA 無しではちらつくため、フレーム非依存の静的パターンにする。
-float InterleavedGradientNoise(float2 pixel)
+/// @param frame フレーム番号。時間再投影が毎フレーム別のサンプル位置を積み上げられるよう
+///              位相を回す。回すのは出力側（黄金比の加算）で、入力座標はいじらない。
+///              入力へオフセットを足すと空間パターンそのものが変わり、
+///              マーチの粗/細ステップの切り替わり方まで変わってコストが跳ねる。
+///              再投影が無効なときは 0 を渡すこと（毎フレーム同じ静的パターンになる）
+float InterleavedGradientNoise(float2 pixel, uint frame)
 {
-    return frac(52.9829189f * frac(0.06711056f * pixel.x + 0.00583715f * pixel.y));
+    float ign = frac(52.9829189f * frac(0.06711056f * pixel.x + 0.00583715f * pixel.y));
+    return frac(ign + float(frame % 64u) * 0.6180339887f);
 }
 
-// ===== 密度（Phase 3 完全版: GPU Pro 7 / Schneider 方式） =====
-// weather map カバレッジ・雲タイプ別高度勾配・風移流・ディテール侵食を含む。
-// cheap==true（サンライトマーチ）ではディテール侵食をスキップして高速化する。
+// ===== 密度（GPU Pro 7 / Schneider 方式） =====
+// weather map カバレッジ・雲タイプ別高度勾配・風移流・ディテール侵食からなる。
 
 /// @brief 雲タイプ（0:層雲〜1:積乱雲）に応じた高度勾配を返す
-float CloudHeightGradient(float h, float cloudType)
+/// @param topScale 雲頂の高さ倍率。減衰の開始/終了高度だけを伸縮させ、雲底は動かさない
+/// @note 積雲は層の 8 割程度まで発達させる。縦の伸びが小さいと横長のパンケーキに見える
+float CloudHeightGradient(float h, float cloudType, float topScale)
 {
-    // 積雲の縦方向の伸びが小さいと、ノイズの水平スケールに対して縦が潰れ
-    // 「横長のパンケーキ」に見える。積雲は層の 8 割程度まで発達させる。
+    float t = max(topScale, 0.05f);
     float gStratus =
-        saturate(Remap(h, 0.00f, 0.10f, 0.0f, 1.0f)) * saturate(Remap(h, 0.20f, 0.30f, 1.0f, 0.0f));
+        saturate(Remap(h, 0.00f, 0.10f, 0.0f, 1.0f)) * saturate(Remap(h, 0.20f * t, 0.30f * t, 1.0f, 0.0f));
     float gCumulus =
-        saturate(Remap(h, 0.00f, 0.20f, 0.0f, 1.0f)) * saturate(Remap(h, 0.40f, 0.85f, 1.0f, 0.0f));
+        saturate(Remap(h, 0.00f, 0.20f, 0.0f, 1.0f)) * saturate(Remap(h, 0.40f * t, 0.85f * t, 1.0f, 0.0f));
     float gCumulonimbus =
-        saturate(Remap(h, 0.00f, 0.10f, 0.0f, 1.0f)) * saturate(Remap(h, 0.70f, 1.00f, 1.0f, 0.0f));
+        saturate(Remap(h, 0.00f, 0.10f, 0.0f, 1.0f)) * saturate(Remap(h, 0.70f * t, 1.00f * t, 1.0f, 0.0f));
 
     float lowBlend = saturate(cloudType * 2.0f);            // [0,0.5] を 0→1
     float highBlend = saturate((cloudType - 0.5f) * 2.0f);  // [0.5,1] を 0→1
     return lerp(lerp(gStratus, gCumulus, lowBlend), gCumulonimbus, highBlend);
 }
 
-/// @param cheap true でディテール侵食をスキップ（サンライトマーチ用）
-/// @param detailStrength ディテール侵食の強度（遠方では 0 へフェードさせエイリアシングを防ぐ）
-float SampleCloudDensity(float3 worldPos, float h, bool cheap, float detailStrength, CloudConstants c,
-                         Texture3D<float4> baseNoise, Texture3D<float4> detailNoise,
-                         Texture2D<float4> weatherMap, SamplerState samp)
+/// @brief サンプル間隔からノイズのミップ段を求める
+/// @param spacingM 隣り合うサンプルのワールド距離 [m]。0 を渡すと最細ミップ
+/// @param noiseScaleM ノイズ 1 周期が覆うワールド距離 [m]
+/// @param texels ノイズテクスチャの一辺のテクセル数
+/// @details 間隔がテクセルより広いとき、その比の log2 段だけ縮小されたミップを引く。
+///          粗いステップで細かいノイズを点サンプルすると、1 サンプルが代表しきれない
+///          構造がブロック状の縞として残る。
+float CloudNoiseLod(float spacingM, float noiseScaleM, float texels, float bias)
+{
+    float texelM = max(noiseScaleM, 1e-3f) / texels;
+    return clamp(log2(max(spacingM / texelM, 1e-4f)) + bias, 0.0f, kCloudMaxNoiseLod);
+}
+
+/// @brief 風の移流（ワールド XZ 平面）と高度スキューを適用したサンプル座標
+float3 CloudAdvectedPos(float3 worldPos, float h, CloudConstants c)
+{
+    float3 windDir = float3(c.windDirX, 0.0f, c.windDirZ);
+    return worldPos + windDir * (c.windSpeedMPerS * c.timeSec) + h * windDir * c.heightSkewM;
+}
+
+/// @brief 天候マップのサンプル UV
+/// @details 風方向の座標を縮めると、その方向へカバレッジの特徴が伸びて雲が筋状に並ぶ。
+///          線形変換なので天候マップのタイル可能性は保たれる。
+float2 CloudWeatherUv(float2 worldXZ, CloudConstants c)
+{
+    float2 wind = float2(c.windDirX, c.windDirZ);
+    float windLen = length(wind);
+    if (c.cloudStreetStretch <= 1.0f || windLen < 1e-4f)
+    {
+        return worldXZ / c.weatherMapScaleM;
+    }
+
+    float2 w = wind / windLen;
+    float2 aligned = float2(dot(worldXZ, w) / c.cloudStreetStretch,
+                            dot(worldXZ, float2(-w.y, w.x)));
+    return aligned / c.weatherMapScaleM;
+}
+
+/// @brief 配置ペイントのサンプル
+/// @return xyz = 置く雲の性質（雲量 / 雲タイプ / 雲頂高さ）、w = 影響度（0 でペイント無し）
+/// @details 天候マップと違いワールド固定の矩形領域を 1 枚で覆う（タイルしない）。
+///          領域外は影響度 0 なので、ペイントしていない空は手続き生成そのままになる。
+///          paintRegionSizeM が 0 のときはサンプル自体を行わない（未使用時のコストをゼロにする）。
+float4 SampleCloudPaint(float2 worldXZ, CloudConstants c,
+                        Texture2D<float4> paintMap, SamplerState samp)
+{
+    if (c.paintRegionSizeM <= 0.0f)
+    {
+        return float4(0.0f, 0.0f, 0.0f, 0.0f);
+    }
+
+    float2 uv = (worldXZ - float2(c.paintRegionCenterX, c.paintRegionCenterZ)) / c.paintRegionSizeM
+              + 0.5f;
+    if (any(uv < 0.0f) || any(uv > 1.0f))
+    {
+        return float4(0.0f, 0.0f, 0.0f, 0.0f);
+    }
+
+    float4 paint = paintMap.SampleLevel(samp, uv, 0);
+
+    // 領域の外周で影響度を落とす。ここを切らないと領域境界に雲の断崖ができる
+    float2 toEdge = min(uv, 1.0f - uv);
+    paint.w *= saturate(min(toEdge.x, toEdge.y) / max(c.paintEdgeFade, 1e-4f));
+    return paint;
+}
+
+/// @brief ディテール侵食を含まない密度
+/// @param sampleSpacingM 隣り合うサンプルのワールド距離 [m]。ミップ段の決定に使う
+/// @details サンライトマーチ・雲シャドウマップ・雲探索の大股走査が使う。
+///          縦方向だけ小さいスケールでサンプルする（等方だと層内の縦の変化が乏しく平らな板に見える）。
+float SampleCloudDensityCheap(float3 worldPos, float h, float sampleSpacingM, CloudConstants c,
+                              Texture3D<float4> baseNoise, Texture2D<float4> weatherMap,
+                              Texture2D<float4> paintMap, SamplerState samp)
 {
     if (h < 0.0f || h > 1.0f)
     {
         return 0.0f;
     }
 
-    // 1) 風による移流（ワールド XZ 平面）＋ 高度スキュー（Nubis）
-    float3 windDir = float3(c.windDirX, 0.0f, c.windDirZ);
-    float3 sampleWS = worldPos + windDir * (c.windSpeedMPerS * c.timeSec);
-    sampleWS += h * windDir * 500.0f;
+    float3 sampleWS = CloudAdvectedPos(worldPos, h, c);
 
-    // 2) ベース形状
-    //    縦方向だけ小さいスケールでサンプルする。雲層(数千m)は水平方向の特徴サイズ(数km)より
-    //    はるかに薄いため、等方サンプルだと層内の縦方向の変化が乏しく「平らな板」に見える。
+    // ベース形状
     float3 baseUvw = sampleWS / c.baseNoiseScaleM;
-    baseUvw.y = sampleWS.y / (c.baseNoiseScaleM * 0.5f);
-    float4 base = baseNoise.SampleLevel(samp, baseUvw, 0);
+    baseUvw.y = sampleWS.y / (c.baseNoiseScaleM * c.baseNoiseVerticalScale);
+    float baseLod = CloudNoiseLod(sampleSpacingM, c.baseNoiseScaleM, kCloudBaseNoiseTexels, c.noiseLodBias);
+    float4 base = baseNoise.SampleLevel(samp, baseUvw, baseLod);
     float lowFreqFBM = base.g * 0.625f + base.b * 0.25f + base.a * 0.125f;
     float baseCloud = Remap(base.r, -(1.0f - lowFreqFBM), 1.0f, 0.0f, 1.0f);
 
-    // 3) 高度勾配（weather.g の雲タイプでブレンド）
-    float2 weatherUv = worldPos.xz / c.weatherMapScaleM;
+    // 天候マップと配置ペイントの合成。
+    // ペイント側は「置く雲の性質」の絶対値なので、globalCoverage を掛けた後の
+    // カバレッジへ混ぜる（掛ける前に混ぜると、曇り度を下げた空へ雲を描けなくなる）
+    float2 weatherUv = CloudWeatherUv(worldPos.xz, c);
     float4 weather = weatherMap.SampleLevel(samp, weatherUv, 0);
-    baseCloud *= CloudHeightGradient(h, weather.g);
+    float4 paint = SampleCloudPaint(worldPos.xz, c, paintMap, samp);
 
-    // 4) カバレッジ適用（縁を柔らかくしアンビル状を防ぐ: GPU Pro 7）
-    float coverage = saturate(weather.r * c.globalCoverage);
+    float coverage = lerp(saturate(weather.r * c.globalCoverage), paint.r, paint.w);
+    float cloudType = lerp(weather.g, paint.g, paint.w);
+    float cloudTop = lerp(weather.b, paint.b, paint.w);
+
+    // 高度勾配（雲タイプでブレンド）
+    float topScale = lerp(1.0f, cloudTop * 2.0f, c.cloudTopVariation);
+    baseCloud *= CloudHeightGradient(h, cloudType, topScale);
+
+    // カバレッジ適用（縁を柔らかくしアンビル状を防ぐ: GPU Pro 7）
     float cloudWithCoverage = saturate(Remap(baseCloud, 1.0f - coverage, 1.0f, 0.0f, 1.0f));
-    cloudWithCoverage *= coverage;
+    return saturate(cloudWithCoverage * coverage);
+}
 
-    // 5) ディテール侵食（cheap 時・遠方ではスキップ）
-    if (!cheap && detailStrength > 0.0f)
+/// @brief ディテール侵食込みの密度
+/// @param sampleSpacingM 隣り合うサンプルのワールド距離 [m]。ミップ段の決定に使う
+/// @param detailStrength 侵食の強度（遠方では 0 へフェードさせエイリアシングを防ぐ）
+float SampleCloudDensity(float3 worldPos, float h, float sampleSpacingM, float detailStrength,
+                         CloudConstants c,
+                         Texture3D<float4> baseNoise, Texture3D<float4> detailNoise,
+                         Texture2D<float4> weatherMap, Texture2D<float4> paintMap,
+                         SamplerState samp)
+{
+    float density = SampleCloudDensityCheap(worldPos, h, sampleSpacingM, c,
+                                            baseNoise, weatherMap, paintMap, samp);
+    if (density <= 0.0f || detailStrength <= 0.0f)
     {
-        float4 detail = detailNoise.SampleLevel(samp, sampleWS / c.detailNoiseScaleM, 0);
-        float highFreqFBM = detail.r * 0.625f + detail.g * 0.25f + detail.b * 0.125f;
-        // 層底では billowy、上部では wispy に（高さで反転）
-        float highFreqModifier = lerp(highFreqFBM, 1.0f - highFreqFBM, saturate(h * 10.0f));
-        cloudWithCoverage = Remap(cloudWithCoverage,
-                                  highFreqModifier * detailStrength, 1.0f, 0.0f, 1.0f);
+        return density;
     }
 
-    return saturate(cloudWithCoverage);
+    float3 sampleWS = CloudAdvectedPos(worldPos, h, c);
+    float detailLod = CloudNoiseLod(sampleSpacingM, c.detailNoiseScaleM, kCloudDetailNoiseTexels,
+                                    c.noiseLodBias);
+    float4 detail = detailNoise.SampleLevel(samp, sampleWS / c.detailNoiseScaleM, detailLod);
+    float highFreqFBM = detail.r * 0.625f + detail.g * 0.25f + detail.b * 0.125f;
+    // 層底では billowy、上部では wispy に（高さで反転）
+    float highFreqModifier = lerp(highFreqFBM, 1.0f - highFreqFBM, saturate(h * 10.0f));
+    return saturate(Remap(density, highFreqModifier * detailStrength, 1.0f, 0.0f, 1.0f));
 }
 
 #endif // CLOUD_COMMON_HLSLI

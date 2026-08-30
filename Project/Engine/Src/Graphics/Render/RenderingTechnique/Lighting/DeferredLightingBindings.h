@@ -34,6 +34,8 @@ namespace CoreEngine::DeferredLightingBind
         gSkyAmbient,
         gSkyIrradianceSH,
         gSkySpecularMap,
+        gCloudShadowMap,
+        gCloudShadow,
         Count
     };
 
@@ -76,6 +78,10 @@ namespace CoreEngine::DeferredLightingBind
         { "gSkyAmbient",          ShaderBindingType::CBV, BindingUsage::Conditional },
         { "gSkyIrradianceSH",     ShaderBindingType::SRV, BindingUsage::Conditional },
         { "gSkySpecularMap",      ShaderBindingType::SRV, BindingUsage::Conditional },
+
+        // 雲シャドウ（雲を使わないシーン・LUT 未生成のフレームは差さない）
+        { "gCloudShadowMap",      ShaderBindingType::SRV, BindingUsage::Conditional },
+        { "gCloudShadow",         ShaderBindingType::CBV, BindingUsage::Conditional },
     };
 
     static_assert(std::size(kDecls) == Slot::Count,

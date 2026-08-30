@@ -11,6 +11,7 @@
 #include "Graphics/Render/RenderTarget/OffscreenRenderTarget.h"
 #include "Graphics/Render/Pass/RenderPass.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
+#include "Graphics/Cloud/VolumetricCloudManager.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/RootSignature/ShaderBinder.h"
@@ -327,6 +328,20 @@ namespace CoreEngine
             // 空スペキュラキューブマップ（specularEnabled=0 のフレームではシェーダーが読まない）
             if (atmosphere && atmosphere->GetSkySpecularSRVHandle().ptr != 0) {
                 binder.Set(bindings_[DeferredLightingBind::gSkySpecularMap], atmosphere->GetSkySpecularSRVHandle());
+            }
+        }
+
+        // ===== 雲シャドウ（CloudShadowMapPass が生成済みのフレームのみ） =====
+        // マップと CB は必ず対で差す。片方だけだとシェーダーが寸法で有効と判定した上で
+        // 前フレームの範囲パラメータを読み、影が別の場所に出る
+        if (context.volumetricCloudManager && context.volumetricCloudManager->AreCloudsActive()) {
+            D3D12_GPU_DESCRIPTOR_HANDLE shadowHandle{};
+            const D3D12_GPU_VIRTUAL_ADDRESS shadowCbv =
+                context.volumetricCloudManager->GetCloudShadowConstantsAddress();
+            if (shadowCbv != 0 && context.frameBlackboard
+                && context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::CloudShadowMap, shadowHandle)) {
+                binder.Set(bindings_[DeferredLightingBind::gCloudShadowMap], shadowHandle);
+                binder.Set(bindings_[DeferredLightingBind::gCloudShadow], shadowCbv);
             }
         }
 

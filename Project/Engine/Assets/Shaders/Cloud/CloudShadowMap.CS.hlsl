@@ -6,13 +6,13 @@
 ///          雲がアクティブなフレームは毎回再生成される（風・太陽・カメラで常に変わるため）。
 
 #include "Common/CloudCommon.hlsli"
-#include "Common/GodRayCommon.hlsli"
+#include "Common/CloudShadowCommon.hlsli"
 
 ConstantBuffer<CloudConstants> gCloud : register(b0);
-ConstantBuffer<GodRayConstants> gGodRay : register(b1);
+ConstantBuffer<CloudShadowConstants> gCloudShadow : register(b1);
 Texture3D<float4> gBaseShapeNoise : register(t0);
-Texture3D<float4> gDetailNoise : register(t1);
-Texture2D<float4> gWeatherMap : register(t2);
+Texture2D<float4> gWeatherMap : register(t1);
+Texture2D<float4> gCloudPaintMap : register(t2);
 SamplerState gSamplerLinearWrap : register(s0);
 RWTexture2D<float> gCloudShadowMap : register(u0);
 
@@ -25,8 +25,8 @@ void main(uint3 dtid : SV_DispatchThreadID)
     }
 
     float2 uv = (float2(dtid.xy) + 0.5f) / CLOUD_SHADOW_MAP_SIZE;
-    float2 worldXZ = float2(gGodRay.shadowRegionCenterX, gGodRay.shadowRegionCenterZ)
-                   + (uv - 0.5f) * gGodRay.shadowRegionSizeM;
+    float2 worldXZ = float2(gCloudShadow.regionCenterX, gCloudShadow.regionCenterZ)
+                   + (uv - 0.5f) * gCloudShadow.regionSizeM;
 
     float3 toSun = -gCloud.sunDirection;
 
@@ -40,7 +40,7 @@ void main(uint3 dtid : SV_DispatchThreadID)
 
     // 雲底面上の点から太陽方向へ、雲層外殻を抜けるまでマーチする。
     // 起点は内殻（雲底シェル）上にあるため RaySphere(rOut).y は必ず正。
-    float3 pos = float3(worldXZ.x, gGodRay.shadowAnchorWorldY, worldXZ.y);
+    float3 pos = float3(worldXZ.x, gCloudShadow.anchorWorldY, worldXZ.y);
     float3 center = CloudPlanetCenter(gCloud);
     float rOut = gCloud.planetRadiusM + gCloud.layerBottomAltitudeM + gCloud.layerThicknessM;
     float tExit = RaySphere(pos, toSun, center, rOut).y;
@@ -57,8 +57,8 @@ void main(uint3 dtid : SV_DispatchThreadID)
     {
         float3 p = pos + toSun * ((i + 0.5f) * dt);
         float hf = CloudHeightFraction(p, gCloud);
-        tau += SampleCloudDensity(p, hf, true, 0.0f, gCloud,
-            gBaseShapeNoise, gDetailNoise, gWeatherMap, gSamplerLinearWrap)
+        tau += SampleCloudDensityCheap(p, hf, 0.0f, gCloud,
+            gBaseShapeNoise, gWeatherMap, gCloudPaintMap, gSamplerLinearWrap)
             * gCloud.densityScale * dt;
     }
 

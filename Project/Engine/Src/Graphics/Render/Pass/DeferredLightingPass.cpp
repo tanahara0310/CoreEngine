@@ -37,6 +37,8 @@ namespace CoreEngine
         if (context.viewSettings.enableRTShadow) {
             builder.Read(FrameBlackboard::RTShadowMask, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         }
+        // 雲シャドウ（CloudShadowMapPass が生成。雲を使わないシーンでは登録されない）
+        builder.Read(FrameBlackboard::CloudShadowMap, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         builder.Write(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_RENDER_TARGET);
     }
 

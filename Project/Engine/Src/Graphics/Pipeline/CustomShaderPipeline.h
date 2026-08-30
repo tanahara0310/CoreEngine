@@ -58,6 +58,10 @@ namespace CoreEngine
         /// @return 未構築なら nullptr
         const ShaderReflectionData* GetForwardReflection() const { return forwardReflection_.get(); }
 
+        /// @brief コンピュートパスのリフレクション結果（シェーダー固有の契約を解決するため）
+        /// @return 未構築なら nullptr
+        const ShaderReflectionData* GetComputeReflection() const { return computeReflection_.get(); }
+
         /// @brief リソース名からフォワードパス用ルートパラメータインデックスを取得
         /// @param resourceName シェーダー内のリソース名（例: "gWave", "gFoamTexture"）
         /// @return インデックス（未登録の場合は -1）
@@ -109,6 +113,9 @@ namespace CoreEngine
         // フォワード用リフレクションと、モデル描画共通リソースの解決済み表
         std::unique_ptr<ShaderReflectionData> forwardReflection_;
         BindingTable modelBindings_;
+
+        // コンピュート用リフレクション（呼び出し側が固有の契約を解決するために保持する）
+        std::unique_ptr<ShaderReflectionData> computeReflection_;
 
         bool hasForwardPSO_ = false;
         bool hasComputePSO_ = false;

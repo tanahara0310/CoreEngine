@@ -15,16 +15,6 @@
 #ifndef WATER_NORMALS_INCLUDED
 #define WATER_NORMALS_INCLUDED
 
-/// @brief FFT 法線マップのエンコード値をワールド空間法線へ展開する
-float3 BuildWorldNormalFromFFTSample(float3 encodedNormal, WaterPSInput input)
-{
-    float3 localNormal = normalize(encodedNormal * 2.0f - 1.0f);
-    float3 vertexNormal = normalize(input.normal);
-    float3 tangent = normalize(input.tangent);
-    float3 bitangent = normalize(input.bitangent);
-    return normalize(localNormal.x * tangent + localNormal.y * vertexNormal + localNormal.z * bitangent);
-}
-
 /// @brief ピクセル単位の法線を解決する
 /// @details Gerstner Wave は頂点シェーダーで解析的に計算した法線をそのまま補間して使えるが、
 ///          FFT Ocean はテクスチャベースの法線マップであるため、頂点解像度で補間すると
@@ -117,36 +107,17 @@ float3 ResolveSurfaceNormal(WaterPSInput input)
 // フレネル変化はある程度残してよい。夜間にまだらが再発しないか要確認。
 static const float kFresnelNormalFlatten = 0.35f;
 
-/// @brief フレネル（反射/透過の混合比）評価に使う低周波の面法線を解決する
-float3 ResolveFresnelNormal(WaterPSInput input)
+/// @brief フレネル（反射/透過の混合比）評価に使う面法線を解決する
+/// @param surfaceNormal ResolveSurfaceNormal の結果（フットプリントフェード済み）
+/// @details ★混合比と混合される像は必ず同じ面から作ること★
+///          フレネルは「どれだけ空を映すか」の重みで、反射像・透過像はその中身。
+///          重みと中身を別々の波面で変調すると、同じ水面に周期の違う 2 つの模様が
+///          重なって見える。面法線をそのまま使えば両者は同じ波に乗る。
+///          ここでやるのは鉛直へのブレンドだけで、うねりの傾きを減衰させて
+///          反射/透過の混合比を滑らかなグラデーションに保つ。
+float3 ResolveFresnelNormal(float3 surfaceNormal)
 {
-    float3 waveNormal;
-    if (gUseFFTOceanNormalMap != 0)
-    {
-        // フレネルは「うねりスケールの低周波法線」で評価する。カスケード化により、
-        // 最大パッチ（低周波の大波）のスライスを単独でサンプルするだけで、旧来の
-        // ミップバイアスぼかしと同じ「うねりスケールの滑らかな法線」が得られる
-        // （小さいパッチ＝さざ波は混ぜない）。カスケード0は回転恒等なので uv 回転は不要。
-        float2 cuv = input.baseWorldXZ / kFFTCascadePatch[0];
-        float3 encodedNormal = gFFTOceanNormal.Sample(gSampler, float3(cuv, 0.0f)).xyz;
-        // 波群エンベロープを傾きへ掛け、実ジオメトリ（変位×エンベロープ）と整合させる
-        float3 nLocal = normalize(encodedNormal * 2.0f - 1.0f);
-        float2 slopeTex = (nLocal.xz / max(nLocal.y, 1.0e-3f))
-            * ComputeFFTWaveGroupEnvelope(input.baseWorldXZ);
-        float3 envLocal = normalize(float3(slopeTex.x, 1.0f, slopeTex.y));
-        waveNormal = BuildWorldNormalFromFFTSample(envLocal * 0.5f + 0.5f, input);
-    }
-    else
-    {
-        // Gerstner Wave など法線マップが無い経路では、変位適用後のワールド座標の
-        // 画面微分から面法線を再構成する（頂点法線は常に真上でうねりを含まないため）。
-        float3 faceNormal = normalize(cross(ddy(input.worldPosition), ddx(input.worldPosition)));
-        waveNormal = (faceNormal.y < 0.0f) ? -faceNormal : faceNormal;
-    }
-
-    // うねりの傾きを鉛直へブレンドして減衰させる（まだらの根本対策・上記コメント参照）。
-    float3 flattened = normalize(lerp(waveNormal, float3(0.0f, 1.0f, 0.0f), kFresnelNormalFlatten));
-    return flattened;
+    return normalize(lerp(surfaceNormal, float3(0.0f, 1.0f, 0.0f), kFresnelNormalFlatten));
 }
 
 #endif // WATER_NORMALS_INCLUDED
