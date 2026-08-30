@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "FrameRateController.h"
+#include "Time.h"
 #include <algorithm>
 
 
@@ -12,6 +13,7 @@ void FrameRateController::Initialize()
 
     // デルタタイムの初期化
     deltaTime_ = kFixedDeltaTime;
+    Time::Reset();
 
     // FPS計測用の初期化
     std::fill(fpsSamples_, fpsSamples_ + kFPSSampleCount, kTargetFPS);
@@ -35,6 +37,7 @@ void FrameRateController::BeginFrame()
         lastFrameTime_ = currentTime;
         // FPS表示は60で固定
         currentFPS_ = kTargetFPS;
+        Time::Advance(deltaTime_);
         return;
     }
 
@@ -51,6 +54,9 @@ void FrameRateController::BeginFrame()
         // 異常値の場合は固定値を使用
         deltaTime_ = kFixedDeltaTime;
     }
+
+    // 計測結果を Time へ渡す（ゲームロジックはここから読む）
+    Time::Advance(deltaTime_);
 
     // FPS計測を更新
     UpdateFPSCalculation();
@@ -74,15 +80,11 @@ void FrameRateController::ResetFPSMeasurement()
 
 void FrameRateController::UpdateFPSCalculation()
 {
-    // 実測FPSを計算（異常値のガード）
+    // 実測FPSを計算（0除算のガード）
+    // 表示リフレッシュレートによっては 60 を超えるので上限は設けない
     float instantFPS = kTargetFPS;
-    if (deltaTime_ > 0.0001f) { // 0除算を防ぐ
+    if (deltaTime_ > 0.0001f) {
         instantFPS = 1.0f / deltaTime_;
-
-        // VSync有効時は目標FPSを超えることはないはずなので、上限を設定
-        // 計測誤差を考慮して少し余裕を持たせる（+5%）
-        float maxAllowedFPS = kTargetFPS * 1.05f;
-        instantFPS = std::clamp(instantFPS, 1.0f, maxAllowedFPS);
     }
 
     // サンプル配列を更新
@@ -100,8 +102,5 @@ void FrameRateController::UpdateFPSCalculation()
         totalFPS += fpsSamples_[i];
     }
     currentFPS_ = totalFPS / validSampleCount_;
-
-    // 最終的な表示値も目標FPSでクランプ（表示上の安定性向上）
-    currentFPS_ = std::min(currentFPS_, kTargetFPS);
 }
 }

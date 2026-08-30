@@ -1038,6 +1038,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\RHI\GraphicsCoreDesc.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\LeakChecker.h" />
     <ClInclude Include="Engine\Src\Utility\FrameRate\FrameRateController.h" />
+    <ClInclude Include="Engine\Src\Utility\FrameRate\Time.h" />
     <ClInclude Include="Engine\Src\Utility\JsonManager\JsonManager.h" />
     <ClInclude Include="Engine\Src\Utility\Logger\Logger.h" />
     <ClInclude Include="Engine\Src\Math\Easing\EasingUtil.h" />

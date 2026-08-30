@@ -2469,6 +2469,9 @@
     <ClInclude Include="Engine\Src\Utility\FrameRate\FrameRateController.h">
       <Filter>Engine\Src\Utility\FrameRate</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\FrameRate\Time.h">
+      <Filter>Engine\Src\Utility\FrameRate</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Utility\JsonManager\JsonManager.h">
       <Filter>Engine\Src\Utility\JsonManager</Filter>
     </ClInclude>

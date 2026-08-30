@@ -5,7 +5,7 @@
 #include "Camera/Camera.h"
 #include "Camera/Debug/DebugCameraCVars.h"
 #include "Editor/Camera/EditorCameraInput.h"
-#include "Utility/FrameRate/FrameRateController.h"
+#include "Utility/FrameRate/Time.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Particle/ParticleSystem.h"
@@ -87,11 +87,8 @@ namespace CoreEngine
         // 入力の正規化（ImGui / InputManager 依存）は EditorCameraInput に閉じており、
         // コントローラは CameraInputState しか見ない。
         if (cameraManager_) {
-            float deltaTime = 1.0f / 60.0f;
-            if (auto* frameRate = engine_->GetService<FrameRateController>()) {
-                deltaTime = frameRate->GetDeltaTime();
-            }
-            cameraManager_->Update(EditorCameraInput::Collect(engine_), deltaTime);
+            // カメラ操作はポーズやスローの影響を受けない
+            cameraManager_->Update(EditorCameraInput::Collect(engine_), Time::UnscaledDeltaTime());
 
             // 更新後の設定・姿勢を CVar へ写す（カメラ UI・マウス操作のどちらの変更も拾う）
             if (sceneCamera_ && orbitController_) {

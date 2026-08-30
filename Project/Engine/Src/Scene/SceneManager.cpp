@@ -6,6 +6,7 @@
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/Pass/RenderPipeline.h"
 #include "Utility/FrameRate/FrameRateController.h"
+#include "Utility/FrameRate/Time.h"
 #include "GameObject/GameObjectManager.h"
 
 
@@ -38,12 +39,8 @@ namespace CoreEngine
     }
 
     void SceneManager::Update() {
-        // フレームレート取得
-        auto frameRateController = engine_->GetService<FrameRateController>();
-        float deltaTime = frameRateController ? frameRateController->GetDeltaTime() : 0.016f;
-
-        // トランジション更新
-        sceneTransition_->Update(deltaTime);
+        // トランジション更新（ポーズやスローの影響を受けない）
+        sceneTransition_->Update(Time::UnscaledDeltaTime());
 
         // 遅延シーン切り替えのリクエスト処理
         if (isSceneChangeRequested_ && !sceneTransition_->IsTransitioning()) {

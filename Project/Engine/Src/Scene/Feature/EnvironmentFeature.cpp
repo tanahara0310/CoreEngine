@@ -12,7 +12,7 @@
 #include "Graphics/PostEffect/Effect/ToneMapping/ToneMapping.h"
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Utility/CVar/CVar.h"
-#include "Utility/FrameRate/FrameRateController.h"
+#include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
 
 namespace
@@ -223,10 +223,8 @@ namespace CoreEngine
         // 大気散乱の直後に雲を更新する（大気モード時のみ、という既存ガードの内側なので追加ガード不要）。
         // 雲は太陽情報・カメラ高度を AtmosphereManager から取得するため、大気 Update の後に呼ぶ。
         if (auto* cloudManager = domainContext->GetVolumetricCloudManager()) {
-            auto* frameRate = ctx.engine->GetService<FrameRateController>();
-            const float deltaTime = frameRate ? frameRate->GetDeltaTime() : 0.016f;
             cloudManager->Update(cameraPosition, viewMatrix, projMatrix,
-                                 atmosphereManager, deltaTime);
+                                 atmosphereManager, Time::DeltaTime());
         }
     }
 }

@@ -8,7 +8,7 @@
 #include "GameObject/Component/Render/MaterialComponent.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "Input/InputManager.h"
-#include "Utility/FrameRate/FrameRateController.h"
+#include "Utility/FrameRate/Time.h"
 
 #include <algorithm>
 
@@ -46,7 +46,7 @@ namespace SampleGame
         {
             if (!transform_) { return; }
 
-            const float deltaTime = DeltaTime();
+            const float deltaTime = CoreEngine::Time::DeltaTime();
 
             if (const CoreEngine::InputQuery* input = Input()) {
                 using CoreEngine::InputAction;
@@ -104,13 +104,6 @@ namespace SampleGame
             auto* engine = Engine();
             auto* manager = engine ? engine->GetService<CoreEngine::InputManager>() : nullptr;
             return manager ? &manager->GetQuery() : nullptr;
-        }
-
-        float DeltaTime() const
-        {
-            auto* engine = Engine();
-            auto* frameRate = engine ? engine->GetService<CoreEngine::FrameRateController>() : nullptr;
-            return frameRate ? frameRate->GetDeltaTime() : (1.0f / 60.0f);
         }
 
         CoreEngine::TransformComponent* transform_ = nullptr;

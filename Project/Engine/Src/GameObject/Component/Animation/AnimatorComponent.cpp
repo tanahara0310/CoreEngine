@@ -8,7 +8,7 @@
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Model/ModelResource.h"
 #include "Math/MathCore.h"
-#include "Utility/FrameRate/FrameRateController.h"
+#include "Utility/FrameRate/Time.h"
 
 namespace CoreEngine
 {
@@ -80,12 +80,7 @@ namespace CoreEngine
         Model* model = renderer_->GetModel();
         if (!model || !model->GetAnimationPlayer()) { return; }
 
-        GameObject* owner = GetOwner();
-        EngineSystem* engine = owner ? owner->GetEngineSystem() : nullptr;
-        auto* frameRate = engine ? engine->GetService<FrameRateController>() : nullptr;
-        if (!frameRate) { return; }
-
-        model->UpdateAnimation(frameRate->GetDeltaTime());
+        model->UpdateAnimation(Time::DeltaTime());
 
         if (skeletonDebugDrawEnabled_) {
             DrawSkeletonDebugLines();

@@ -7,6 +7,7 @@
 #include "Camera/Camera.h"
 #include "Particle/Core/ParticleResourceManager.h" // ParticleForGPU（インスタンスデータレイアウト共有）
 #include "Math/MathCore.h"
+#include "Utility/FrameRate/Time.h"
 
 #include <algorithm>
 #include <cmath>
@@ -212,7 +213,7 @@ uint32_t GpuParticleSystem::GetEffectiveCapacity() const
 
 void GpuParticleSystem::Update()
 {
-    const float kDeltaTime = 1.0f / 60.0f;
+    const float deltaTime = Time::DeltaTime();
 
     emitCountThisFrame_ = 0;
     ++frameSeed_;
@@ -224,7 +225,7 @@ void GpuParticleSystem::Update()
     const auto& mainData = mainModule_->GetMainData();
     const auto& emissionData = emissionModule_->GetEmissionData();
 
-    elapsedTime_ += kDeltaTime;
+    elapsedTime_ += deltaTime;
 
     // duration / looping の管理（CPU版 ParticleSystem::Update と同等の挙動）
     if (elapsedTime_ >= mainData.duration) {
@@ -239,7 +240,7 @@ void GpuParticleSystem::Update()
 
     // Rate over Time
     if (emissionModule_->IsEnabled()) {
-        emitAccumulator_ += static_cast<float>(emissionData.rateOverTime) * kDeltaTime;
+        emitAccumulator_ += static_cast<float>(emissionData.rateOverTime) * deltaTime;
         emitCountThisFrame_ = static_cast<uint32_t>(emitAccumulator_);
         emitAccumulator_ -= static_cast<float>(emitCountThisFrame_);
 
@@ -260,7 +261,7 @@ void GpuParticleSystem::Draw(const Camera* camera)
         return;
     }
 
-    const float kDeltaTime = 1.0f / 60.0f;
+    const float deltaTime = Time::DeltaTime();
 
     Matrix4x4 viewMatrix = camera->GetViewMatrix();
     Matrix4x4 projectionMatrix = camera->GetProjectionMatrix();
@@ -328,7 +329,7 @@ void GpuParticleSystem::Draw(const Camera* camera)
 
     // ===== フレーム情報 =====
     p.emitterPosition = emitterPosition_;
-    p.deltaTime = kDeltaTime;
+    p.deltaTime = deltaTime;
     p.emitCount = emitCountThisFrame_;
     p.bufferCapacity = kMaxParticles;
     p.effectiveCapacity = GetEffectiveCapacity();

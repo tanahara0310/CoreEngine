@@ -8,6 +8,7 @@
 #include "Graphics/RHI/GraphicsCore.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Utility/FrameRate/FrameRateController.h"
+#include "Utility/FrameRate/Time.h"
 #include "Scene/SceneManager.h"
 #include "GameObject/GameObjectManager.h"
 #include "Utility/CVar/CVar.h"
@@ -144,7 +145,7 @@ namespace CoreEngine
             if (auto* fc = engine_->GetService<FrameRateController>())
             {
                 snapshotFps_ = fc->GetCurrentFPS();
-                snapshotDeltaTimeMs_ = fc->GetDeltaTime() * 1000.0f;
+                snapshotDeltaTimeMs_ = Time::UnscaledDeltaTime() * 1000.0f;
                 snapshotTargetFps_ = fc->GetTargetFPS();
                 fpsHistory_[fpsHistoryIndex_] = snapshotFps_;
                 fpsHistoryIndex_ = (fpsHistoryIndex_ + 1) % kFpsHistorySize;
