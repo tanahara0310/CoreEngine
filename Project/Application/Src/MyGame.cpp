@@ -9,6 +9,7 @@
 #include "Scenes/TestScene/TestScene.h"
 #include "Scenes/WaterTestScene/WaterTestScene.h"
 #include "Scenes/CollisionTestScene/CollisionTestScene.h"
+#include "Scenes/SampleGameScene/SampleGameScene.h"
 
 using namespace CoreEngine;
 
@@ -70,6 +71,8 @@ void MyGame::CreateSceneManager()
     sceneManager_->RegisterScene<WaterTestScene>("WaterTestScene");
     // 当たり判定の回帰テストシーン（Scene Manager タブから切り替えて使う）
     sceneManager_->RegisterScene<CollisionTest::CollisionTestScene>("CollisionTestScene");
+    // 学習用のサンプルゲーム
+    sceneManager_->RegisterScene<SampleGame::SampleGameScene>("SampleGameScene");
 }
 
 void MyGame::LoadInitialScene()

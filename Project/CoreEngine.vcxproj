@@ -446,6 +446,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Model\ModelManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\ModelResource.cpp" />
     <ClCompile Include="Application\Src\Scenes\TestScene\TestScene.cpp" />
+    <ClCompile Include="Application\Src\Scenes\SampleGameScene\SampleGameScene.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\UndoRedoHistory.cpp" />
     <ClCompile Include="Engine\Src\Threading\ThreadBudget.cpp" />
     <ClCompile Include="Engine\Src\Threading\ThreadPool.cpp" />
@@ -1019,6 +1020,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Particle\Modules\SizeModule.h" />
     <ClInclude Include="Engine\Src\Particle\Modules\VelocityModule.h" />
     <ClInclude Include="Application\Src\Scenes\TestScene\TestScene.h" />
+    <ClInclude Include="Application\Src\Scenes\SampleGameScene\SampleGameScene.h" />
+    <ClInclude Include="Application\Src\Scenes\SampleGameScene\PlayerControllerComponent.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\DockingUI.h" />
     <ClInclude Include="Engine\Src\Camera\Camera.h" />
     <ClInclude Include="Engine\Src\Camera\Control\OrbitFlyController.h" />

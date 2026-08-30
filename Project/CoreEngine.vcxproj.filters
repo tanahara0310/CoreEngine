@@ -790,6 +790,9 @@
     <ClCompile Include="Application\Src\Scenes\TestScene\TestScene.cpp">
       <Filter>Application\Src\Scenes\TestScene</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\SampleGameScene\SampleGameScene.cpp">
+      <Filter>Application\Src\Scenes\SampleGameScene</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Scene\UndoRedoHistory.cpp">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClCompile>
@@ -2412,6 +2415,12 @@
     <ClInclude Include="Application\Src\Scenes\TestScene\TestScene.h">
       <Filter>Application\Src\Scenes\TestScene</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\SampleGameScene\SampleGameScene.h">
+      <Filter>Application\Src\Scenes\SampleGameScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\SampleGameScene\PlayerControllerComponent.h">
+      <Filter>Application\Src\Scenes\SampleGameScene</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\DockingUI.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
@@ -2652,6 +2661,9 @@
     </Filter>
     <Filter Include="Application\Src\Scenes\CollisionTestScene">
       <UniqueIdentifier>{2C8F41A6-5B7D-4E93-9C10-6A4D2F8B7E51}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Scenes\SampleGameScene">
+      <UniqueIdentifier>{296989A0-B084-4643-ABA9-184DA0DDC6E3}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\Scenes\TestScene">
       <UniqueIdentifier>{04EE1DAA-02F5-4253-9DBB-A28737391E46}</UniqueIdentifier>
