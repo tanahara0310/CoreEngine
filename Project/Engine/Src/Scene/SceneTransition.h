@@ -8,6 +8,7 @@ namespace CoreEngine {
     class EngineSystem;
     class PostEffectManager;
     class FadeEffect;
+    class LoadingScreenEffect;
     class SoundManager;
 }
 
@@ -20,7 +21,8 @@ public:
     /// @brief トランジションタイプ
     enum class TransitionType {
         None,       // トランジションなし（即座に切り替え）
-        Fade,       // フェード（デフォルト）
+        Fade,       // フェード
+        Loading,    // ローディング画面（デフォルト）
         Slide,      // スライド（未実装）
         Dissolve    // ディゾルブ（未実装）
     };
@@ -29,6 +31,7 @@ public:
     enum class TransitionPhase {
         Idle,       // 待機中（トランジション無し）
         FadeOut,    // フェードアウト中
+        Loading,    // ローディング画面表示中
         Changing,   // シーン切り替え準備完了
         FadeIn      // フェードイン中
     };
@@ -87,6 +90,13 @@ private:
     /// @brief ポストエフェクトにフェード値を適用
     void ApplyFadeToPostEffect();
 
+    /// @brief ローディング画面の表示強度を計算
+    /// @return 表示強度（0.0 = 非表示, 1.0 = 完全表示）
+    float CalculateLoadingAlpha() const;
+
+    /// @brief ローディング画面に表示強度を適用
+    void ApplyLoadingScreen();
+
     /// @brief BGM音量を適用（コールバック経由）
     void ApplyBGMVolume();
 
@@ -94,6 +104,7 @@ private:
 EngineSystem* engine_ = nullptr;
 PostEffectManager* postEffectManager_ = nullptr;
 FadeEffect* fadeEffect_ = nullptr;
+LoadingScreenEffect* loadingScreenEffect_ = nullptr;
 SoundManager* soundManager_ = nullptr;
 
 TransitionPhase phase_ = TransitionPhase::Idle;
@@ -104,6 +115,9 @@ TransitionPhase phase_ = TransitionPhase::Idle;
     
     // フェードアウト完了後の待機フレーム数（完全暗転を確実にするため）
     static constexpr int kWaitFramesAfterFadeOut = 3;
+
+    // ローディング画面の表示強度が切り替わる時間（秒）
+    static constexpr float kLoadingFadeSeconds = 0.25f;
     int waitFrameCounter_ = 0;
 
     // BGM音量制御用コールバック

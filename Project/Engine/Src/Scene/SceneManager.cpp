@@ -26,8 +26,8 @@ namespace CoreEngine
     }
 
     void SceneManager::ChangeScene(std::string name) {
-        // デフォルトトランジション（フェード、1秒）
-        ChangeScene(std::move(name), SceneTransition::TransitionType::Fade, 1.0f);
+        // デフォルトトランジション（ローディング画面）
+        ChangeScene(std::move(name), SceneTransition::TransitionType::Loading, 0.4f);
     }
 
     void SceneManager::ChangeScene(std::string name, SceneTransition::TransitionType transitionType, float duration) {

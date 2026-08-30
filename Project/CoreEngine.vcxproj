@@ -315,6 +315,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ColorGrading\ColorGrading.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Dissolve\Dissolve.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\FadeEffect\FadeEffect.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\LoadingScreen\LoadingScreenEffect.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\GrayScale\GrayScale.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Invert\Invert.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectComputeBase.cpp" />
@@ -693,6 +694,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ColorGrading\ColorGrading.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Dissolve\Dissolve.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\FadeEffect\FadeEffect.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\LoadingScreen\LoadingScreenEffect.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\GrayScale\GrayScale.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Invert\Invert.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Outline\Outline.h" />

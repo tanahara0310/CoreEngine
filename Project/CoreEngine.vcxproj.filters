@@ -397,6 +397,9 @@
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\FadeEffect\FadeEffect.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\FadeEffect</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\LoadingScreen\LoadingScreenEffect.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\LoadingScreen</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\GrayScale\GrayScale.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\GrayScale</Filter>
     </ClCompile>
@@ -1433,6 +1436,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\FadeEffect\FadeEffect.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\FadeEffect</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\LoadingScreen\LoadingScreenEffect.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\LoadingScreen</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\GrayScale\GrayScale.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\GrayScale</Filter>
@@ -2877,6 +2883,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\LensFlare">
       <UniqueIdentifier>{A7C3E9D1-4B26-4F8E-9C05-6D1B2E8F3A47}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\LoadingScreen">
+      <UniqueIdentifier>{F950BA10-90C3-493E-9215-681967104428}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\LocalExposure">
       <UniqueIdentifier>{C50EA85E-4E02-42E4-886D-F92DE8DDDAB0}</UniqueIdentifier>

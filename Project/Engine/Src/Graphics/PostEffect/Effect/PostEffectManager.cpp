@@ -19,6 +19,7 @@
 #include "Random/Random.h"
 #include "RasterScroll/RasterScroll.h"
 #include "FadeEffect/FadeEffect.h"
+#include "LoadingScreen/LoadingScreenEffect.h"
 #include "Bloom/Bloom.h"
 #include "LensFlare/LensFlare.h"
 #include "Dissolve/Dissolve.h"
@@ -90,6 +91,7 @@ void PostEffectManager::RegisterAllEffects()
     RegisterEffect<ColorLUT>(PostEffectNames::ColorLUT);
     RegisterEffect<DepthOfField>(PostEffectNames::DepthOfField);
     RegisterEffect<ToneMapping>(PostEffectNames::ToneMapping);
+    RegisterEffect<LoadingScreenEffect>(PostEffectNames::LoadingScreen);
 
     // エフェクトチェーンの順序を登録と同じ場所で定義（二重管理を防ぐ）
     // 並びは PostEffectStage の昇順でなければならない（ValidateChain が検証する）。
@@ -126,6 +128,8 @@ void PostEffectManager::RegisterAllEffects()
         PostEffectNames::FilmGrain,
         PostEffectNames::Outline,
         PostEffectNames::Dissolve,
+        // ローディング画面は他の演出より前に出す
+        PostEffectNames::LoadingScreen,
     };
 
     ValidateChain();
