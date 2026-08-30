@@ -10,7 +10,7 @@ namespace CoreEngine
 {
 
     /// @brief 雲シェーダーへ渡す定数バッファレイアウト
-    /// @details HLSL 側 CloudCommon.hlsli の CloudConstants と一致させること（384 バイト）。
+    /// @details HLSL 側 CloudCommon.hlsli の CloudConstants と一致させること（416 バイト）。
     ///          距離はメートル基準。sunDirection は「光の進行方向」（大気散乱と同じ規約）。
     struct VolumetricCloudShaderConstants {
         Matrix4x4 invViewProj;                                              // 0
@@ -40,14 +40,19 @@ namespace CoreEngine
         float hazeDistanceM;         float maxSunOpticalDepth;
         float ambientCosZenith;      float ambientBottomOcclusion;          // 272
         float ambientChroma;         float ambientGroundStrength;
-        float upsampleDepthTolerance; float pad3;                           // 288
+        float upsampleDepthTolerance; float cloudStreetStretch;             // 288
         // ===== 時間再投影 =====
         Matrix4x4 prevViewProj;                                             // 304
         float reprojectEnabled;      float reprojectBlendMin;
-        float reprojectTolerance;    float pad5;                            // 368 (= 384)
+        float reprojectTolerance;    float cloudTopVariation;               // 368
+        // ===== 巻雲シェル =====
+        float cirrusAltitudeM;       float cirrusCoverage;
+        float cirrusDensity;         float cirrusScaleM;                    // 384
+        float cirrusStretch;         float cirrusWindScale;
+        float noiseLodBias;          float pad7;                            // 400 (= 416)
     };
-    static_assert(sizeof(VolumetricCloudShaderConstants) == 384,
-        "VolumetricCloudShaderConstants は HLSL 側 CloudConstants の 384 バイトレイアウトと一致させること");
+    static_assert(sizeof(VolumetricCloudShaderConstants) == 416,
+        "VolumetricCloudShaderConstants は HLSL 側 CloudConstants の 416 バイトレイアウトと一致させること");
 
     static constexpr Cb::Field kVolumetricCloudShaderConstantsFields[] = {
         CB_FIELD(VolumetricCloudShaderConstants, invViewProj),
@@ -95,12 +100,20 @@ namespace CoreEngine
         CB_FIELD(VolumetricCloudShaderConstants, ambientChroma),
         CB_FIELD(VolumetricCloudShaderConstants, ambientGroundStrength),
         CB_FIELD(VolumetricCloudShaderConstants, upsampleDepthTolerance),
-        CB_FIELD(VolumetricCloudShaderConstants, pad3),
+        CB_FIELD(VolumetricCloudShaderConstants, cloudStreetStretch),
         CB_FIELD(VolumetricCloudShaderConstants, prevViewProj),
         CB_FIELD(VolumetricCloudShaderConstants, reprojectEnabled),
         CB_FIELD(VolumetricCloudShaderConstants, reprojectBlendMin),
         CB_FIELD(VolumetricCloudShaderConstants, reprojectTolerance),
-        CB_FIELD(VolumetricCloudShaderConstants, pad5),
+        CB_FIELD(VolumetricCloudShaderConstants, cloudTopVariation),
+        CB_FIELD(VolumetricCloudShaderConstants, cirrusAltitudeM),
+        CB_FIELD(VolumetricCloudShaderConstants, cirrusCoverage),
+        CB_FIELD(VolumetricCloudShaderConstants, cirrusDensity),
+        CB_FIELD(VolumetricCloudShaderConstants, cirrusScaleM),
+        CB_FIELD(VolumetricCloudShaderConstants, cirrusStretch),
+        CB_FIELD(VolumetricCloudShaderConstants, cirrusWindScale),
+        CB_FIELD(VolumetricCloudShaderConstants, noiseLodBias),
+        CB_FIELD(VolumetricCloudShaderConstants, pad7),
     };
     CB_VERIFY_LAYOUT(VolumetricCloudShaderConstants, kVolumetricCloudShaderConstantsFields);
     CB_BIND_HLSL(VolumetricCloudShaderConstants, kVolumetricCloudShaderConstantsFields, "gCloud");

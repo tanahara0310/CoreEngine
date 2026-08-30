@@ -172,8 +172,23 @@ namespace CoreEngine
 
         CVar<float> DetailFadeDistanceM{
             "r.Cloud.DetailFadeDistance", 90000.0f,
-            "ディテール侵食を弱めきる距離 [m]。短いほど遠方がのっぺりする",
+            "ディテール侵食の強さを弱めきる距離 [m]。短いほど遠方の雲が丸くなる",
             CVarRange{ 1000.0f, 200000.0f } };
+
+        CVar<float> NoiseLodBias{
+            "r.Cloud.NoiseLodBias", 0.0f,
+            "ノイズのミップ段のオフセット。負で細かく（ざらつく）、正で粗く（ぼける）",
+            CVarRange{ -2.0f, 2.0f } };
+
+        CVar<float> CloudStreetStretch{
+            "r.Cloud.CloudStreetStretch", 1.0f,
+            "天候マップを風方向へ引き伸ばす倍率。1 で等方、大きいほど雲が筋状に並ぶ",
+            CVarRange{ 1.0f, 6.0f } };
+
+        CVar<float> CloudTopVariation{
+            "r.Cloud.CloudTopVariation", 0.0f,
+            "雲頂の高さを場所ごとにばらつかせる量。0 で全ての雲が同じ背丈になる",
+            CVarRange{ 0.0f, 0.8f } };
 
         CVar<float> FarFadeWidthM{
             "r.Cloud.FarFadeWidth", 8000.0f,
@@ -213,6 +228,37 @@ namespace CoreEngine
             "r.Cloud.ReprojectTolerance", 0.25f,
             "履歴を棄却しはじめる透過率の食い違い量。小さいほど動きに敏感",
             CVarRange{ 0.01f, 1.0f } };
+
+        // ---- 巻雲シェル ----
+        CVar<float> CirrusAltitudeM{
+            "r.Cloud.CirrusAltitude", 8000.0f,
+            "巻雲シェルの高度 [m]。積雲層の雲頂より上に置くこと",
+            CVarRange{ 3000.0f, 16000.0f } };
+
+        CVar<float> CirrusCoverage{
+            "r.Cloud.CirrusCoverage", 0.0f,
+            "巻雲の量。0 で巻雲を出さない。密度場が筋雲にならないため既定は 0",
+            CVarRange{ 0.0f, 1.0f } };
+
+        CVar<float> CirrusDensity{
+            "r.Cloud.CirrusDensity", 2.0f,
+            "巻雲の光学的深さのスケール。大きいほど濃く不透明になる",
+            CVarRange{ 0.0f, 5.0f } };
+
+        CVar<float> CirrusScaleM{
+            "r.Cloud.CirrusScale", 18000.0f,
+            "巻雲の模様 1 タイルの実寸 [m]",
+            CVarRange{ 10000.0f, 400000.0f } };
+
+        CVar<float> CirrusStretch{
+            "r.Cloud.CirrusStretch", 3.0f,
+            "巻雲の模様を風方向へ引き伸ばす倍率。大きいほど筋が細長くなる",
+            CVarRange{ 1.0f, 20.0f } };
+
+        CVar<float> CirrusWindScale{
+            "r.Cloud.CirrusWindScale", 2.5f,
+            "下層に対する巻雲の移流速度倍率",
+            CVarRange{ 0.0f, 10.0f } };
 
         // ---- ゴッドレイ ----
         CVar<bool> GodRayEnabled{
@@ -291,8 +337,17 @@ namespace CoreEngine
                 { &EarlyExitTransmittance,&VolumetricCloudParameters::earlyExitTransmittance },
                 { &MaxMarchDistanceM,     &VolumetricCloudParameters::maxMarchDistanceM },
                 { &DetailFadeDistanceM,   &VolumetricCloudParameters::detailFadeDistanceM },
+                { &NoiseLodBias,          &VolumetricCloudParameters::noiseLodBias },
+                { &CloudStreetStretch,    &VolumetricCloudParameters::cloudStreetStretch },
+                { &CloudTopVariation,     &VolumetricCloudParameters::cloudTopVariation },
                 { &FarFadeWidthM,         &VolumetricCloudParameters::farFadeWidthM },
                 { &HazeDistanceM,         &VolumetricCloudParameters::hazeDistanceM },
+                { &CirrusAltitudeM,       &VolumetricCloudParameters::cirrusAltitudeM },
+                { &CirrusCoverage,        &VolumetricCloudParameters::cirrusCoverage },
+                { &CirrusDensity,         &VolumetricCloudParameters::cirrusDensity },
+                { &CirrusScaleM,          &VolumetricCloudParameters::cirrusScaleM },
+                { &CirrusStretch,         &VolumetricCloudParameters::cirrusStretch },
+                { &CirrusWindScale,       &VolumetricCloudParameters::cirrusWindScale },
                 { &GodRayIntensity,       &VolumetricCloudParameters::godRayIntensity },
                 { &GodRayMieBoost,        &VolumetricCloudParameters::godRayMieBoost },
                 { &GodRayMaxDistanceM,    &VolumetricCloudParameters::godRayMaxDistanceM },

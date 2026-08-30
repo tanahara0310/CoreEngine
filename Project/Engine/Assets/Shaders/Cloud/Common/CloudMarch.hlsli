@@ -87,7 +87,7 @@ CloudMarchResult MarchClouds(float3 rayOrigin, float3 rayDir,
         if (!inCloud)
         {
             // 空の空間は大股で走査する（ディテール無しの安価な密度で雲を探す）
-            if (SampleCloudDensityCheap(pos, hf, gCloud,
+            if (SampleCloudDensityCheap(pos, hf, dtBig, gCloud,
                     gBaseShapeNoise, gWeatherMap, gSamplerLinearWrap) > 0.0f)
             {
                 // 雲を見つけた: 1 歩戻して細かいステップで入り直す。
@@ -104,7 +104,7 @@ CloudMarchResult MarchClouds(float3 rayOrigin, float3 rayDir,
         // 雲の中: 遠方はディテール侵食を弱めて高周波エイリアシングを防ぐ。
         // 早く消しすぎると中距離の雲が輪郭のないもや玉になる
         float detailFade = saturate(1.0f - (t - marchStart) / gCloud.detailFadeDistanceM);
-        float density = SampleCloudDensity(pos, hf, gCloud.detailErosionStrength * detailFade,
+        float density = SampleCloudDensity(pos, hf, dtFine, gCloud.detailErosionStrength * detailFade,
             gCloud, gBaseShapeNoise, gDetailNoise, gWeatherMap, gSamplerLinearWrap);
 
         // マーチ最大距離の手前でフェードし、層が地平線で唐突に切れないようにする
@@ -146,29 +146,61 @@ CloudMarchResult MarchClouds(float3 rayOrigin, float3 rayDir,
         result.transmittance = 0.0f;
     }
 
-    // ===== 空気遠近（雲への Aerial Perspective 近似） =====
-    // 遠くの雲は大気の散乱で空の色へ溶け込む。これが無いと遠方の雲だけがくっきり浮いて
-    // 距離感が失われる。雲の平均距離に応じて前乗算輝度を「空の輝度 × 雲の不透明度」へ寄せる
-    float alpha = 1.0f - result.transmittance;
-    if (alpha > 0.001f && weightSum > 1e-5f)
+    // 雲の代表距離。空気遠近と時間再投影の履歴 UV が使う
+    if (1.0f - result.transmittance > 0.001f && weightSum > 1e-5f)
     {
-        float cloudDist = weightedDist / weightSum;
-        // 時間再投影の履歴 UV を求めるための代表深度としても使う
-        result.distance = cloudDist;
-
-        float radiusKm = CloudSafeCameraRadiusKm();
-        float cosHorizon = -sqrt(max(0.0f,
-            1.0f - (gAtmosphere.planetRadiusKm * gAtmosphere.planetRadiusKm) / (radiusKm * radiusKm)));
-        float2 skyUv = SkyViewParamsToUv(rayDir.y < cosHorizon, rayDir.y, CloudSkyViewAzimuth(),
-                                         radiusKm, gAtmosphere.planetRadiusKm);
-        // LUT はライト色・強度前乗算済みのため、サンプル後の色乗算はしない
-        float3 skyLum = gSkyViewLUT.SampleLevel(gLUTSampler, skyUv, 0).rgb;
-
-        float haze = 1.0f - exp(-cloudDist / gCloud.hazeDistanceM);
-        result.luminance = lerp(result.luminance, skyLum * alpha, haze);
+        result.distance = weightedDist / weightSum;
     }
 
     return result;
+}
+
+// ===== 空気遠近（Aerial Perspective） =====
+// 遠くの雲は大気の散乱で空の色へ溶け込む。これが無いと遠方の雲だけがくっきり浮いて
+// 距離感が失われる。呼び出し側が引ける情報源に応じて 2 通りある。
+
+/// @brief CameraVolume LUT で空気遠近を適用する
+/// @param screenUv 画面 UV。LUT は視錐台のフロクセルなので画面座標で引く
+/// @details 不透明ジオメトリの合成（AerialPerspective.CS）と同じ LUT を引くので、
+///          雲と地形が地平線で同じ霞み方になる。LUT はライト色・強度前乗算済み。
+void ApplyCloudAerialPerspective(inout CloudMarchResult cloud, float2 screenUv,
+                                 Texture3D<float4> cameraVolumeLUT, SamplerState samp)
+{
+    if (cloud.distance <= 0.0f)
+    {
+        return;
+    }
+
+    float w = CameraVolumeDistanceToW(cloud.distance * 0.001f, gAtmosphere.apKmPerSlice);
+    float4 aerial = cameraVolumeLUT.SampleLevel(samp, float3(screenUv, w), 0);
+
+    // 前乗算輝度はカメラまでの透過率で減衰させ、内散乱は雲が覆う割合だけ足す
+    // （覆っていない部分の空は SceneColor 側で内散乱を済ませている）
+    float alpha = 1.0f - cloud.transmittance;
+    cloud.luminance = cloud.luminance * aerial.a + aerial.rgb * alpha;
+}
+
+/// @brief 方向から引く空気遠近の近似（Sky-View LUT + 指数消散）
+/// @details CameraVolume LUT は視錐台内しか持たないので、視錐台の外を焼く
+///          キューブマップ側はこちらを使う。
+void ApplyCloudAerialByDirection(inout CloudMarchResult cloud, float3 rayDir)
+{
+    if (cloud.distance <= 0.0f)
+    {
+        return;
+    }
+
+    float radiusKm = CloudSafeCameraRadiusKm();
+    float cosHorizon = -sqrt(max(0.0f,
+        1.0f - (gAtmosphere.planetRadiusKm * gAtmosphere.planetRadiusKm) / (radiusKm * radiusKm)));
+    float2 skyUv = SkyViewParamsToUv(rayDir.y < cosHorizon, rayDir.y, CloudSkyViewAzimuth(),
+                                     radiusKm, gAtmosphere.planetRadiusKm);
+    // LUT はライト色・強度前乗算済みのため、サンプル後の色乗算はしない
+    float3 skyLum = gSkyViewLUT.SampleLevel(gLUTSampler, skyUv, 0).rgb;
+
+    float alpha = 1.0f - cloud.transmittance;
+    float haze = 1.0f - exp(-cloud.distance / gCloud.hazeDistanceM);
+    cloud.luminance = lerp(cloud.luminance, skyLum * alpha, haze);
 }
 
 #endif // CLOUD_MARCH_HLSLI

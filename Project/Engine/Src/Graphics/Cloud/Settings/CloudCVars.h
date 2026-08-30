@@ -57,6 +57,9 @@ namespace CoreEngine
         extern CVar<float> EarlyExitTransmittance;
         extern CVar<float> MaxMarchDistanceM;
         extern CVar<float> DetailFadeDistanceM;
+        extern CVar<float> NoiseLodBias;
+        extern CVar<float> CloudStreetStretch;
+        extern CVar<float> CloudTopVariation;
         extern CVar<float> FarFadeWidthM;
         extern CVar<float> HazeDistanceM;
         extern CVar<int> MaxSteps;
@@ -65,6 +68,14 @@ namespace CoreEngine
         extern CVar<bool> ReprojectEnabled;
         extern CVar<float> ReprojectBlendMin;
         extern CVar<float> ReprojectTolerance;
+
+        // ---- 巻雲シェル ----
+        extern CVar<float> CirrusAltitudeM;
+        extern CVar<float> CirrusCoverage;
+        extern CVar<float> CirrusDensity;
+        extern CVar<float> CirrusScaleM;
+        extern CVar<float> CirrusStretch;
+        extern CVar<float> CirrusWindScale;
 
         // ---- ゴッドレイ ----
         extern CVar<bool> GodRayEnabled;

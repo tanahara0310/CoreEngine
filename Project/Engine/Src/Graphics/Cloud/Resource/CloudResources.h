@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <d3d12.h>
+#include <vector>
 
 namespace CoreEngine
 {
@@ -12,9 +13,15 @@ namespace CoreEngine
     class GraphicsCore;
 
     /// @brief リソース本体・追跡ステート・SRV/UAV をひとまとめにした束
+    /// @details ミップを持つテクスチャは段ごとのビューを併せ持つ。
+    ///          srv は全段を見る（サンプル用）、uav は段 0 を指す。
     struct CloudGpuTexture : GpuResource {
         DescriptorHandle srv{};
         DescriptorHandle uav{};
+        std::vector<DescriptorHandle> mipSrvs;
+        std::vector<DescriptorHandle> mipUavs;
+
+        uint32_t MipLevels() const noexcept { return static_cast<uint32_t>(mipUavs.size()); }
     };
 
     /// @brief 雲が使う GPU テクスチャ一式の生成と保持
@@ -25,6 +32,8 @@ namespace CoreEngine
         static constexpr uint32_t kBaseShapeNoiseSize = 128;
         static constexpr uint32_t kDetailNoiseSize = 32;
         static constexpr uint32_t kWeatherMapSize = 512;
+        // 3D ノイズのミップ段数。マーチのステップ幅から求める LOD がこの範囲に収まること
+        static constexpr uint32_t kNoiseMipLevels = 5;
         // 雲シャドウマップ解像度（HLSL 側 GodRayCommon.hlsli の定数と一致させること）
         static constexpr uint32_t kCloudShadowMapSize = 1024;
 

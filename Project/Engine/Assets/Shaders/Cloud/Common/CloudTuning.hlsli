@@ -69,6 +69,31 @@ static const float kCloudIsotropicPhase = 0.0795774715f; // 1 / (4π)
 /// 地面反射光が雲層内を上へ届く範囲を絞るべき指数。大きいほど雲底だけに効く
 static const float kCloudGroundReachPower = 4.0f;
 
+// ===== ノイズの LOD =====
+
+/// ノイズテクスチャの一辺のテクセル数（C++ CloudResources の k*Size と一致させること）
+static const float kCloudBaseNoiseTexels = 128.0f;
+static const float kCloudDetailNoiseTexels = 32.0f;
+
+/// 参照できる最上位ミップ段（C++ kNoiseMipLevels - 1 と一致させること）
+static const float kCloudMaxNoiseLod = 4.0f;
+
+// ===== 巻雲シェル =====
+
+/// 粗い筋を割る細かいノイズの周波数倍率と、そのしきい値
+static const float kCirrusFineFrequency = 4.3f;
+static const float kCirrusFineCutoff = 0.35f;
+
+/// 視線が殻を斜めに貫く長さの倍率。分母の下限と倍率の上限
+static const float kCirrusMinSlantCos = 0.12f;
+static const float kCirrusMaxSlant = 8.0f;
+
+/// 氷晶の前方散乱の強さ
+static const float kCirrusPhaseG = 0.7f;
+
+/// 巻雲へ届く環境光の倍率。薄い層なので下層より弱くする
+static const float kCirrusAmbientScale = 0.12f;
+
 // ===== アップサンプル =====
 
 /// これ以上の NDC 深度は不透明物なし（遠クリップ＝空）とみなす

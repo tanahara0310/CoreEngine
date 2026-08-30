@@ -15,6 +15,7 @@ namespace CoreEngine
         BaseShapeNoise,
         DetailNoise,
         WeatherMap,
+        NoiseMip3D,
         RayMarch,
         Composite,
         CubemapCapture,

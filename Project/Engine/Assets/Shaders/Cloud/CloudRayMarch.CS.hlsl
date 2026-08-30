@@ -5,10 +5,11 @@
 ///          サンプル位相をフレームごとに回し、前フレームの結果と混ぜることで
 ///          1 フレームあたりの反復数を増やさずに実効サンプル数を稼ぐ。
 
-#include "Common/CloudMarch.hlsli"
+#include "Common/CloudCirrus.hlsli"
 
 Texture2D<float> gSceneDepth : register(t3);
 Texture2D<float4> gCloudHistory : register(t6);
+Texture3D<float4> gCameraVolumeLUT : register(t7);
 RWTexture2D<float4> gCloudOutput : register(u0);
 
 [numthreads(8, 8, 1)]
@@ -41,11 +42,13 @@ void main(uint3 dtid : SV_DispatchThreadID)
     gSceneDepth.GetDimensions(depthW, depthH);
     int2 fullPix = clamp(int2(uv * float2(depthW, depthH)), int2(0, 0), int2(depthW - 1, depthH - 1));
     float ndcDepth = gSceneDepth.Load(int3(fullPix, 0));
+    float opaqueDist = kCloudNoOpaqueDistance;
     if (ndcDepth < kCloudDepthFarThreshold)
     {
         float4 wp = mul(float4(ndc, ndcDepth, 1.0f), gCloud.invViewProj);
         wp /= wp.w;
-        marchEnd = min(marchEnd, length(wp.xyz - rayOrigin));
+        opaqueDist = length(wp.xyz - rayOrigin);
+        marchEnd = min(marchEnd, opaqueDist);
     }
 
     // 画面空間 IGN でサンプル位相をジッタし、等距離サンプル面が作る
@@ -57,6 +60,13 @@ void main(uint3 dtid : SV_DispatchThreadID)
 
     CloudMarchResult cloud = MarchClouds(rayOrigin, rayDir, marchStart, marchEnd,
                                          max(gCloud.maxSteps, 1u) * 2u, ign);
+
+    ApplyCloudAerialPerspective(cloud, uv, gCameraVolumeLUT, gLUTSampler);
+
+    // 巻雲は積雲層より高いので常に奥。空気遠近は層ごとの距離で別々に掛ける
+    CloudMarchResult cirrus = SampleCirrusShell(rayOrigin, rayDir, opaqueDist);
+    ApplyCloudAerialPerspective(cirrus, uv, gCameraVolumeLUT, gLUTSampler);
+    cloud = CompositeCloudLayers(cloud, cirrus);
 
     float4 current = float4(cloud.luminance, cloud.transmittance);
 

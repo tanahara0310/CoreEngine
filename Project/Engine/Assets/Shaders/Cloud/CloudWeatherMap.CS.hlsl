@@ -50,5 +50,10 @@ void main(uint3 dtid : SV_DispatchThreadID)
     float typeNoise = PerlinFBM2D(uv + float2(3.7f, 1.3f), 2.0f, 3);
     float cloudType = saturate(Remap(typeNoise, 0.38f, 0.68f, 0.0f, 1.0f));
 
-    gOutput[dtid.xy] = float4(coverage, cloudType, 1.0f, 1.0f);
+    // B: 雲頂高度の倍率。雲タイプより高い周波数にして、隣り合う雲塊ごとに背丈が変わるようにする。
+    // 雲タイプと同じ周波数だと変化が緩やかすぎて画面内の雲がほぼ同じ高さで揃う。
+    float topNoise = PerlinFBM2D(uv + float2(17.9f, 5.3f), 9.0f, 3);
+    float cloudTop = saturate(Remap(topNoise, 0.35f, 0.65f, 0.0f, 1.0f));
+
+    gOutput[dtid.xy] = float4(coverage, cloudType, cloudTop, 1.0f);
 }

@@ -56,7 +56,7 @@ void main(uint3 dtid : SV_DispatchThreadID)
     {
         float3 p = pos + toSun * ((i + 0.5f) * dt);
         float hf = CloudHeightFraction(p, gCloud);
-        tau += SampleCloudDensityCheap(p, hf, gCloud,
+        tau += SampleCloudDensityCheap(p, hf, 0.0f, gCloud,
             gBaseShapeNoise, gWeatherMap, gSamplerLinearWrap)
             * gCloud.densityScale * dt;
     }

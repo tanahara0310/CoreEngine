@@ -80,7 +80,9 @@ float3 CloudDirectLightLuminance(float3 pos, float3 rayDir,
         float3 sp = pos + toSun * distAcc
                   + kCloudSunConeKernel[j] * (distAcc * gCloud.lightMarchConeSpread);
         float sh = CloudHeightFraction(sp, gCloud);
-        densitySum += SampleCloudDensityCheap(sp, sh, gCloud,
+        // ミップ段は最細固定。ここの歩幅は指数的に伸びるので、それを
+        // フットプリントに使うと最上位ミップまで落ちて自己影が丸ごと消える
+        densitySum += SampleCloudDensityCheap(sp, sh, 0.0f, gCloud,
             gBaseShapeNoise, gWeatherMap, gSamplerLinearWrap) * stepLen;
         stepLen *= kCloudSunMarchStepGrowth;
     }

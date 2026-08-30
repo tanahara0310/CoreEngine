@@ -45,6 +45,7 @@ namespace CoreEngine
             MakeDesc(L"CloudBaseShapeNoise.CS.hlsl", CloudNoiseBind::kDecls,           "BaseShapeNoise"),
             MakeDesc(L"CloudDetailNoise.CS.hlsl",    CloudNoiseBind::kDecls,           "DetailNoise"),
             MakeDesc(L"CloudWeatherMap.CS.hlsl",     CloudNoiseBind::kDecls,           "WeatherMap"),
+            MakeDesc(L"CloudNoiseMip3D.CS.hlsl",     CloudNoiseMipBind::kDecls,        "NoiseMip3D"),
             MakeDesc(L"CloudRayMarch.CS.hlsl",       CloudRayMarchBind::kDecls,        "RayMarch"),
             MakeDesc(L"CloudComposite.CS.hlsl",      CloudCompositeBind::kDecls,       "Composite"),
             MakeDesc(L"CloudCubemapCapture.CS.hlsl", CloudCubemapCaptureBind::kDecls,  "CloudCubemapCapture"),
@@ -107,7 +108,7 @@ namespace CoreEngine
 
     bool CloudPipelines::BuildNoisePasses(ID3D12Device* device)
     {
-        return BuildRange(device, CloudPass::BaseShapeNoise, CloudPass::WeatherMap);
+        return BuildRange(device, CloudPass::BaseShapeNoise, CloudPass::NoiseMip3D);
     }
 
     bool CloudPipelines::BuildRenderPasses(ID3D12Device* device)

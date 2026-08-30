@@ -26,6 +26,24 @@ namespace CoreEngine::CloudNoiseBind
     static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
 }
 
+namespace CoreEngine::CloudNoiseMipBind
+{
+    /// @brief ミップ生成 CS の契約
+    /// @note 扱うミップ段は記述子で決まるので定数バッファを持たない
+    enum Slot : size_t {
+        gSource,
+        gOutput,
+        Count
+    };
+
+    inline constexpr ShaderBindingDecl kDecls[] = {
+        { "gSource", ShaderBindingType::SRV, BindingUsage::Required },  // t0
+        { "gOutput", ShaderBindingType::UAV, BindingUsage::Required },  // u0
+    };
+
+    static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
+}
+
 namespace CoreEngine::CloudRayMarchBind
 {
     /// @brief CloudRayMarch.CS.hlsl の契約
@@ -39,6 +57,7 @@ namespace CoreEngine::CloudRayMarchBind
         gTransmittanceLUT,
         gSkyViewLUT,
         gCloudHistory,
+        gCameraVolumeLUT,
         gCloudOutput,
         Count
     };
@@ -53,6 +72,7 @@ namespace CoreEngine::CloudRayMarchBind
         { "gTransmittanceLUT", ShaderBindingType::SRV, BindingUsage::Required },  // t4
         { "gSkyViewLUT",       ShaderBindingType::SRV, BindingUsage::Required },  // t5
         { "gCloudHistory",     ShaderBindingType::SRV, BindingUsage::Required },  // t6
+        { "gCameraVolumeLUT",  ShaderBindingType::SRV, BindingUsage::Required },  // t7
         { "gCloudOutput",      ShaderBindingType::UAV, BindingUsage::Required },  // u0
     };
 

@@ -6,7 +6,7 @@
 ///          反復予算はメインビューの半分（品質差はミップで均される）。
 ///          雲は風で毎フレーム動くため、雲が有効なフレームでは毎回実行される。
 
-#include "Common/CloudMarch.hlsli"
+#include "Common/CloudCirrus.hlsli"
 #include "Cubemap.hlsli" // GetCubemapDirection
 
 RWTexture2DArray<float4> gSkyCubemap : register(u0);
@@ -30,15 +30,30 @@ void main(uint3 dtid : SV_DispatchThreadID)
     float2 interval = CloudLayerInterval(rayOrigin, rayDir, gCloud);
     float marchStart = interval.x;
     float marchEnd = min(interval.y, gCloud.maxMarchDistanceM);
-    if (marchStart >= marchEnd)
+
+    CloudMarchResult cloud;
+    cloud.luminance = float3(0.0f, 0.0f, 0.0f);
+    cloud.transmittance = 1.0f;
+    cloud.distance = -1.0f;
+
+    // 積雲層と交差しない方向でも巻雲シェルは見えるので、ここで打ち切らない
+    if (marchStart < marchEnd)
     {
-        return; // 雲層と交差しない方向は空のまま
+        float ign = InterleavedGradientNoise(float2(dtid.xy + dtid.z * 64u), 0u);
+        cloud = MarchClouds(rayOrigin, rayDir, marchStart, marchEnd,
+                            max(gCloud.maxSteps, 1u), ign);
+        ApplyCloudAerialByDirection(cloud, rayDir);
     }
 
-    float ign = InterleavedGradientNoise(float2(dtid.xy + dtid.z * 64u), 0u);
+    // 巻雲は積雲層より高いので常に奥。空気遠近は層ごとの距離で別々に掛ける
+    CloudMarchResult cirrus = SampleCirrusShell(rayOrigin, rayDir, kCloudNoOpaqueDistance);
+    ApplyCloudAerialByDirection(cirrus, rayDir);
+    cloud = CompositeCloudLayers(cloud, cirrus);
 
-    CloudMarchResult cloud = MarchClouds(rayOrigin, rayDir, marchStart, marchEnd,
-                                         max(gCloud.maxSteps, 1u), ign);
+    if (cloud.transmittance >= 1.0f)
+    {
+        return; // どちらの層も無い方向は空のまま
+    }
 
     // ===== 空キューブマップへ前乗算合成（雲色 + 空色 × 透過率） =====
     float4 sky = gSkyCubemap[dtid];

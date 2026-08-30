@@ -25,7 +25,10 @@ namespace CoreEngine
         float heightSkewM;              ///< 高度による風下方向のずらし量 [m]
 
         // ===== 距離フェード =====
-        float detailFadeDistanceM;      ///< ディテール侵食を弱めきる距離 [m]
+        float detailFadeDistanceM;      ///< ディテール侵食の強さを弱めきる距離 [m]
+        float noiseLodBias;             ///< ノイズのミップ段のオフセット（負で細かく、正で粗く）
+        float cloudStreetStretch;       ///< 天候マップを風方向へ引き伸ばす倍率（1 で等方）
+        float cloudTopVariation;        ///< 雲頂高度を場所ごとにばらつかせる量（0 で一定）
         float farFadeWidthM;            ///< マーチ最大距離手前で密度をフェードさせる幅 [m]
         float hazeDistanceM;            ///< 遠方の雲が空色へ溶けるまでの消散距離 [m]
 
@@ -64,6 +67,14 @@ namespace CoreEngine
         bool reprojectEnabled;          ///< 前フレームの結果を混ぜる
         float reprojectBlendMin;        ///< 履歴が使える画素の現フレーム寄与率（小さいほど収束が深い）
         float reprojectTolerance;       ///< 履歴を棄却しはじめる透過率の食い違い量
+
+        // ===== 巻雲シェル（高層の薄い筋雲） =====
+        float cirrusAltitudeM;          ///< 巻雲シェルの高度 [m]
+        float cirrusCoverage;           ///< 巻雲の量 [0,1]。0 で無効
+        float cirrusDensity;            ///< 巻雲の光学的深さのスケール
+        float cirrusScaleM;             ///< 巻雲の模様 1 タイルの実寸 [m]
+        float cirrusStretch;            ///< 風方向へ模様を引き伸ばす倍率
+        float cirrusWindScale;          ///< 下層に対する巻雲の移流速度倍率
 
         // ===== ゴッドレイ（雲の隙間の光芒） =====
         bool godRayEnabled;             ///< ゴッドレイの有効/無効

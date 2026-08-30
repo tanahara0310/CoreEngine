@@ -170,13 +170,23 @@ namespace CoreEngine
         c.ambientChroma = parameters_.ambientChroma;
         c.ambientGroundStrength = parameters_.ambientGroundStrength;
         c.upsampleDepthTolerance = parameters_.upsampleDepthTolerance;
-        c.pad3 = 0.0f;
+        c.cloudStreetStretch = std::max(parameters_.cloudStreetStretch, 1.0f);
         c.prevViewProj = prevViewProj_;
         // 起動直後とターゲット再確保直後は履歴が未初期化なので混ぜない
         c.reprojectEnabled = (parameters_.reprojectEnabled && historyValid_) ? 1.0f : 0.0f;
         c.reprojectBlendMin = parameters_.reprojectBlendMin;
         c.reprojectTolerance = std::max(parameters_.reprojectTolerance, 1e-4f);
-        c.pad5 = 0.0f;
+        c.cloudTopVariation = parameters_.cloudTopVariation;
+        // 巻雲は積雲層より上でないと前後関係の前提が崩れる
+        c.cirrusAltitudeM = std::max(parameters_.cirrusAltitudeM,
+            parameters_.layerBottomAltitudeM + parameters_.layerThicknessM);
+        c.cirrusCoverage = parameters_.cirrusCoverage;
+        c.cirrusDensity = parameters_.cirrusDensity;
+        c.cirrusScaleM = parameters_.cirrusScaleM;
+        c.cirrusStretch = parameters_.cirrusStretch;
+        c.cirrusWindScale = parameters_.cirrusWindScale;
+        c.noiseLodBias = parameters_.noiseLodBias;
+        c.pad7 = 0.0f;
 
         *constantData_ = c;
     }

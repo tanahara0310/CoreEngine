@@ -42,6 +42,8 @@ namespace CoreEngine
                 binder.Set(pass.bindings[B::gTransmittanceLUT], ctx.atmosphere->GetTransmittanceLUTSRVHandle());
                 binder.Set(pass.bindings[B::gSkyViewLUT], ctx.atmosphere->GetSkyViewLUTSRVHandle());
                 binder.Set(pass.bindings[B::gCloudHistory], history.srv.gpuHandle);
+                // 空気遠近は不透明ジオメトリと同じ LUT を引く（地平線で霞み方が揃う）
+                binder.Set(pass.bindings[B::gCameraVolumeLUT], ctx.atmosphere->GetCameraVolumeLUTSRVHandle());
                 binder.Set(pass.bindings[B::gCloudOutput], target.uav.gpuHandle);
                 binder.ValidateBeforeDraw(pass.bindings);
             }

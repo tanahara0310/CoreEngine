@@ -15,9 +15,19 @@ namespace CoreEngine
 {
     namespace
     {
+        /// @brief 一辺のサイズから作れるミップ段数を求め、上限で切る
+        uint32_t ClampMipLevels(uint32_t smallestExtent, uint32_t desired)
+        {
+            uint32_t available = 1;
+            while ((smallestExtent >> available) >= 1u && available < 16u) {
+                ++available;
+            }
+            return std::max(1u, std::min(desired, available));
+        }
+
         /// @brief UAV 対応テクスチャ（2D/3D）の Desc を作る
         D3D12_RESOURCE_DESC MakeTextureDesc(uint32_t width, uint32_t height, uint32_t depth,
-                                            DXGI_FORMAT format)
+                                            DXGI_FORMAT format, uint32_t mipLevels = 1)
         {
             D3D12_RESOURCE_DESC desc{};
             desc.Dimension = (depth > 1) ? D3D12_RESOURCE_DIMENSION_TEXTURE3D
@@ -25,7 +35,7 @@ namespace CoreEngine
             desc.Width = width;
             desc.Height = height;
             desc.DepthOrArraySize = static_cast<UINT16>(std::max(depth, 1u));
-            desc.MipLevels = 1;
+            desc.MipLevels = static_cast<UINT16>(std::max(mipLevels, 1u));
             desc.Format = format;
             desc.SampleDesc.Count = 1;
             desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
@@ -33,10 +43,13 @@ namespace CoreEngine
             return desc;
         }
 
-        /// @brief SRV/UAV の Desc を Desc の次元から組み立てる
+        /// @brief 指定ミップ段を指す SRV/UAV の Desc を Desc の次元から組み立てる
+        /// @param mip 対象のミップ段
+        /// @param srvMipCount SRV が見る段数（サンプル用の全段ビューは全体を渡す）
         void MakeViewDescs(const D3D12_RESOURCE_DESC& desc,
                            D3D12_SHADER_RESOURCE_VIEW_DESC& outSrv,
-                           D3D12_UNORDERED_ACCESS_VIEW_DESC& outUav)
+                           D3D12_UNORDERED_ACCESS_VIEW_DESC& outUav,
+                           uint32_t mip = 0, uint32_t srvMipCount = 1)
         {
             outSrv = {};
             outSrv.Format = desc.Format;
@@ -46,13 +59,17 @@ namespace CoreEngine
 
             if (desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D) {
                 outSrv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
-                outSrv.Texture3D.MipLevels = 1;
+                outSrv.Texture3D.MostDetailedMip = mip;
+                outSrv.Texture3D.MipLevels = srvMipCount;
                 outUav.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
-                outUav.Texture3D.WSize = desc.DepthOrArraySize;
+                outUav.Texture3D.MipSlice = mip;
+                outUav.Texture3D.WSize = std::max<UINT>(desc.DepthOrArraySize >> mip, 1u);
             } else {
                 outSrv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-                outSrv.Texture2D.MipLevels = 1;
+                outSrv.Texture2D.MostDetailedMip = mip;
+                outSrv.Texture2D.MipLevels = srvMipCount;
                 outUav.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+                outUav.Texture2D.MipSlice = mip;
             }
         }
 
@@ -64,12 +81,13 @@ namespace CoreEngine
                            CloudGpuTexture& tex, const D3D12_RESOURCE_DESC& desc,
                            const char* name, bool needsSrv = true)
         {
+            const uint32_t mipLevels = desc.MipLevels;
             Microsoft::WRL::ComPtr<ID3D12Device> deviceRef = device;
             try {
                 tex.Reset(
                     ResourceFactory::CreateTextureResource(
                         deviceRef, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS),
-                    D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+                    D3D12_RESOURCE_STATE_UNORDERED_ACCESS, mipLevels);
             }
             catch (const std::exception&) {
                 Logger::GetInstance().Warnf(LogCategory::Graphics,
@@ -79,13 +97,29 @@ namespace CoreEngine
 
             D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
             D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
-            MakeViewDescs(desc, srvDesc, uavDesc);
+            MakeViewDescs(desc, srvDesc, uavDesc, 0, mipLevels);
 
             const std::string label = name;
             if (needsSrv) {
                 allocator->EnsureSRV(tex.srv, tex.Get(), srvDesc, (label + "SRV").c_str());
             }
             allocator->EnsureUAV(tex.uav, tex.Get(), uavDesc, (label + "UAV").c_str());
+
+            // ミップ生成 CS は「1 段だけを見る SRV」と「1 段だけへ書く UAV」を対で使う
+            if (mipLevels > 1) {
+                tex.mipSrvs.resize(mipLevels);
+                tex.mipUavs.resize(mipLevels);
+                for (uint32_t mip = 0; mip < mipLevels; ++mip) {
+                    D3D12_SHADER_RESOURCE_VIEW_DESC mipSrv{};
+                    D3D12_UNORDERED_ACCESS_VIEW_DESC mipUav{};
+                    MakeViewDescs(desc, mipSrv, mipUav, mip, 1);
+                    const std::string suffix = "Mip" + std::to_string(mip);
+                    allocator->EnsureSRV(tex.mipSrvs[mip], tex.Get(), mipSrv,
+                        (label + suffix + "SRV").c_str());
+                    allocator->EnsureUAV(tex.mipUavs[mip], tex.Get(), mipUav,
+                        (label + suffix + "UAV").c_str());
+                }
+            }
             return true;
         }
     }
@@ -98,10 +132,12 @@ namespace CoreEngine
 
         constexpr DXGI_FORMAT kNoiseFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
         return CreateTexture(device, descriptorAllocator, baseShapeNoise,
-                   MakeTextureDesc(kBaseShapeNoiseSize, kBaseShapeNoiseSize, kBaseShapeNoiseSize, kNoiseFormat),
+                   MakeTextureDesc(kBaseShapeNoiseSize, kBaseShapeNoiseSize, kBaseShapeNoiseSize, kNoiseFormat,
+                       ClampMipLevels(kBaseShapeNoiseSize, kNoiseMipLevels)),
                    "CloudBaseShape")
             && CreateTexture(device, descriptorAllocator, detailNoise,
-                   MakeTextureDesc(kDetailNoiseSize, kDetailNoiseSize, kDetailNoiseSize, kNoiseFormat),
+                   MakeTextureDesc(kDetailNoiseSize, kDetailNoiseSize, kDetailNoiseSize, kNoiseFormat,
+                       ClampMipLevels(kDetailNoiseSize, kNoiseMipLevels)),
                    "CloudDetail")
             && CreateTexture(device, descriptorAllocator, weatherMap,
                    MakeTextureDesc(kWeatherMapSize, kWeatherMapSize, 1, kNoiseFormat),

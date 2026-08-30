@@ -53,9 +53,11 @@ void main(uint3 dtid : SV_DispatchThreadID)
     int2 centerPix = clamp(int2(uv * depthDims), int2(0, 0), depthMax);
     float centerDist = OpaqueDistanceAt(centerPix, depthDims);
 
-    // ===== 雲が丸ごと不透明物の背後なら合成しない =====
-    // レイが雲層シェルに入らない、または層への入口が不透明物より遠い画素。
-    if (interval.y <= interval.x || centerDist <= interval.x)
+    // ===== 積雲層が丸ごと不透明物の背後なら合成しない =====
+    // 巻雲シェルは積雲層に交差しない方向にも出るので、
+    // 「層に入らない」ことを理由に落としてはいけない（落とすと巻雲ごと消える）
+    bool hasLayer = interval.y > interval.x;
+    if (hasLayer && centerDist <= interval.x)
     {
         return; // SceneColor をそのまま残す
     }
@@ -63,7 +65,8 @@ void main(uint3 dtid : SV_DispatchThreadID)
     // 深度の比較はマーチ終端より先を見ても意味がないので、そこで頭打ちにする。
     // 頭打ちにしないと、遠方の海面と空（不透明物なし）が
     // 「どちらも雲層より先で終わる＝同じ雲」なのに別物として棄却される。
-    float compareLimit = min(interval.y, gCloud.maxMarchDistanceM);
+    float compareLimit = hasLayer ? min(interval.y, gCloud.maxMarchDistanceM)
+                                  : gCloud.maxMarchDistanceM;
     centerDist = min(centerDist, compareLimit);
 
     // ===== 深度考慮アップサンプル =====
