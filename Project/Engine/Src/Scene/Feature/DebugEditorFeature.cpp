@@ -28,8 +28,9 @@ namespace CoreEngine
 
     void DebugEditorFeature::Finalize(SceneContext&)
     {
-        // デバッグ編集履歴をクリア
+        // 破棄前にエンジン常駐 UI からの参照を外す（外さないとダングリング）
         if (debugEditor_) {
+            debugEditor_->DetachFromEngineUI();
             debugEditor_->ClearHistory();
         }
     }

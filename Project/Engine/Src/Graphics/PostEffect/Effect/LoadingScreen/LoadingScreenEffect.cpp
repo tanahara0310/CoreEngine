@@ -145,6 +145,8 @@ namespace CoreEngine
         // 表示強度と経過時間はシーン遷移が制御する実行時値
         mappedLoadingParams_->screenAlpha  = screenAlpha_;
         mappedLoadingParams_->time         = timeAccumulator_;
+        mappedLoadingParams_->progress     = progress_;
+        mappedLoadingParams_->gaugeAlpha   = gaugeAlpha_;
     }
 
     // デルタタイムに上限を掛けて積算する
@@ -157,6 +159,18 @@ namespace CoreEngine
     void LoadingScreenEffect::SetScreenAlpha(float alpha)
     {
         screenAlpha_ = std::clamp(alpha, 0.0f, 1.0f);
+        UpdateConstantBuffer();
+    }
+
+    void LoadingScreenEffect::SetProgress(float progress)
+    {
+        progress_ = std::clamp(progress, 0.0f, 1.0f);
+        UpdateConstantBuffer();
+    }
+
+    void LoadingScreenEffect::SetGaugeAlpha(float alpha)
+    {
+        gaugeAlpha_ = std::clamp(alpha, 0.0f, 1.0f);
         UpdateConstantBuffer();
     }
 

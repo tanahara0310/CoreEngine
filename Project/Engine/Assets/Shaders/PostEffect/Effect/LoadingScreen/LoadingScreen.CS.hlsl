@@ -27,6 +27,11 @@ cbuffer LoadingParams : register(b0)
     float centerY;      // 表示位置（画面高さに対する比率）
     float trackAlpha;   // 軌道リングの濃さ
 
+    float progress;     // 読み込みの進捗 (0.0〜1.0)
+    float gaugeAlpha;   // 進捗ゲージの表示強度
+    float gaugePad0;
+    float gaugePad1;
+
     float4 arcColor0;
     float4 arcColor1;
     float4 arcColor2;
@@ -45,6 +50,8 @@ static const float kReferenceHeight = 720.0f; // radius / thickness の基準解
 static const float kEdgeWidth = 1.5f;         // 輪郭のぼかし幅（ピクセル）
 static const float kTipScale = 1.24f;         // 先端の玉の半径 / 弧の太さの半分
 static const int   kMaxArcCount = 4;
+static const float kGaugeOffset = 2.4f;      // ゲージ半径 = 弧の半径 + 太さの半分 * これ
+static const float kGaugeWidthScale = 0.55f; // ゲージの太さ / 弧の太さ
 
 // 最終出力は sRGB へエンコードされるので、指定色はリニアへ戻してから合成する
 float3 SrgbToLinear(float3 c)
@@ -113,7 +120,9 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
     float ra = radius * uiScale;
     float rb = max(thickness * 0.5f * uiScale, 0.5f);
     float tipRadius = rb * kTipScale;
-    float bound = ra + max(rb, tipRadius) + kEdgeWidth * 2.0f;
+    float gaugeRadius = ra + rb * kGaugeOffset;
+    float gaugeWidth = rb * kGaugeWidthScale;
+    float bound = max(ra + max(rb, tipRadius), gaugeRadius + gaugeWidth) + kEdgeWidth * 2.0f;
 
     float2 center = float2(centerX * (float)screenWidth, centerY * (float)screenHeight);
     float2 p = (float2)dispatchId.xy + 0.5f - center;
@@ -153,6 +162,25 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
 
             float a = (1.0f - smoothstep(-kEdgeWidth, kEdgeWidth, d)) * screenAlpha;
             color = lerp(color, ArcColor(i, phase), a);
+        }
+
+        if (gaugeAlpha > 0.001f)
+        {
+            // ゲージの下地（全周）
+            float dBase = abs(length(p) - gaugeRadius) - gaugeWidth;
+            float aBase = (1.0f - smoothstep(-kEdgeWidth, kEdgeWidth, dBase)) * gaugeAlpha;
+            color = lerp(color, SrgbToLinear(trackColor.rgb), aBase);
+
+            // 進捗ぶんの弧（12 時から時計回り）
+            float fill = saturate(progress);
+            if (fill > 0.001f)
+            {
+                float halfFill = fill * PI;
+                float2 q = Rotate(p, HALF_PI - (halfFill - HALF_PI));
+                float d = SdArc(q, float2(sin(halfFill), cos(halfFill)), gaugeRadius, gaugeWidth);
+                float a = (1.0f - smoothstep(-kEdgeWidth, kEdgeWidth, d)) * gaugeAlpha;
+                color = lerp(color, ArcColor(0, phase), a);
+            }
         }
     }
 

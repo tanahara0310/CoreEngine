@@ -12,6 +12,7 @@
 #include "Particle/Gpu/GpuParticleSystem.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Scene/SceneManager.h"
+#include "Graphics/Model/ModelManager.h"
 #include "Scene/Feature/LightingFeature.h"
 #include "Scene/Feature/EnvironmentFeature.h"
 #include "Scene/Feature/GroundFeature.h"
@@ -48,6 +49,29 @@ namespace CoreEngine
 
     void BaseScene::Initialize(EngineSystem* engine)
     {
+        SetupSceneCore(engine);
+        InitializeFeatures();
+        OnInitialize();
+        CompleteInitialize();
+    }
+
+    void BaseScene::BuildLoadTasks(StartupSequence& sequence, EngineSystem* engine)
+    {
+        sequence.Add("カメラと Feature の登録", [this, engine] { SetupSceneCore(engine); });
+        sequence.Add("Feature の初期化", [this] { InitializeFeatures(); });
+        BuildContentLoadTasks(sequence);
+        sequence.Add("モデルの先読み", [this] { BeginModelPreload(); });
+        sequence.Add("Feature の後処理", [this] { RunPostSceneInitialize(); });
+        sequence.Add("シーンデータの復元", [this] { BeginSceneDataRestore(); });
+    }
+
+    void BaseScene::BuildContentLoadTasks(StartupSequence& sequence)
+    {
+        sequence.Add("オブジェクトの生成", [this] { OnInitialize(); });
+    }
+
+    void BaseScene::SetupSceneCore(EngineSystem* engine)
+    {
         engine_ = engine;
 
         // シーン保存システム
@@ -56,8 +80,12 @@ namespace CoreEngine
         //カメラ
         SetupCamera();
 
-        // 既定 Feature（ライト・グリッド・デバッグエディタ・コリジョン・環境・BGM）の登録と初期化
+        // 既定 Feature（ライト・グリッド・デバッグエディタ・コリジョン・環境・BGM）の登録
         RegisterDefaultFeatures();
+    }
+
+    void BaseScene::InitializeFeatures()
+    {
         RefreshFeatureContext();
         for (auto& entry : features_) {
             entry.feature->Initialize(featureContext_);
@@ -66,19 +94,69 @@ namespace CoreEngine
 
         // 既定ディレクショナルライトを従来の protected メンバーとして派生クラスへ公開する
         directionalLight_ = lightingFeature_ ? lightingFeature_->GetDirectionalLight() : nullptr;
+    }
 
-        // 派生クラス固有の初期化（オブジェクト生成など）
-        OnInitialize();
+    void BaseScene::CompleteInitialize()
+    {
+        RunPostSceneInitialize();
 
+        // 全オブジェクト生成後にシーンデータを JSON から自動復元
+        LoadObjectsFromJson();
+    }
+
+    void BaseScene::RunPostSceneInitialize()
+    {
         // OnInitialize() 完了後の Feature フック
         // （シーン生成済みオブジェクトを見る SkyBox の採用判定など）
         RefreshFeatureContext();
         for (auto& entry : features_) {
             entry.feature->PostSceneInitialize(featureContext_);
         }
+    }
 
-        // 全オブジェクト生成後にシーンデータを JSON から自動復元
-        LoadObjectsFromJson();
+    void BaseScene::BeginModelPreload()
+    {
+        auto* modelManager = engine_ ? engine_->GetService<ModelManager>() : nullptr;
+        if (!modelManager || !sceneSaveSystem_ || !sceneManager_) {
+            return;
+        }
+
+        const std::vector<std::string> modelPaths =
+            SceneSaveSystem::CollectModelPaths(sceneSaveSystem_->GetSceneName());
+        if (modelPaths.empty()) {
+            return;
+        }
+
+        // ワーカーへ投げて即座に戻る。読み終わるまでの各フレームで画面は回り続ける
+        modelManager->BeginPreload(modelPaths);
+
+        sceneManager_->SetLoadStepContinuation(
+            [modelManager] {
+                const auto progress = modelManager->GetPreloadProgress();
+                return progress.first >= progress.second;
+            },
+            [modelManager] {
+                const auto progress = modelManager->GetPreloadProgress();
+                return (progress.second == 0)
+                    ? 1.0f
+                    : static_cast<float>(progress.first) / static_cast<float>(progress.second);
+            });
+    }
+
+    void BaseScene::BeginSceneDataRestore()
+    {
+        sceneSaveSystem_->BeginLoad(&gameObjectManager_);
+
+        if (!sceneManager_) {
+            while (!sceneSaveSystem_->StepLoad()) {
+            }
+            return;
+        }
+
+        // 1 フレームに 1 体ずつ復元する
+        sceneManager_->SetLoadStepContinuation(
+            [this] { return sceneSaveSystem_->StepLoad(); },
+            [this] { return sceneSaveSystem_->GetLoadProgress(); });
     }
 
     void BaseScene::Update()
@@ -396,6 +474,7 @@ namespace CoreEngine
     {
         sceneSaveSystem_->Load(&gameObjectManager_);
     }
+
 
     void BaseScene::SaveObjectsToJson()
     {

@@ -18,6 +18,11 @@ namespace
         "r.Loading.MinSeconds", 1.5f,
         "ローディング画面を最低限表示し続ける秒数",
         CVarRange{ 0.0f, 5.0f } };
+
+    CVar<float> cvGaugeAfterSeconds{
+        "r.Loading.GaugeAfterSeconds", 3.0f,
+        "進捗ゲージを出し始めるまでの秒数（負値でゲージ無効）",
+        CVarRange{ -1.0f, 10.0f } };
 }
 
 void SceneTransition::Initialize(EngineSystem* engine) {
@@ -62,6 +67,9 @@ void SceneTransition::Update(float deltaTime) {
 
     // タイマー更新
     timer_ += deltaTime;
+    if (phase_ == TransitionPhase::Loading || phase_ == TransitionPhase::Changing) {
+        loadingElapsed_ += deltaTime;
+    }
 
     switch (phase_) {
     case TransitionPhase::FadeOut:
@@ -125,6 +133,8 @@ void SceneTransition::StartTransition(TransitionType type, float duration) {
     duration_ = duration;
     timer_ = 0.0f;
     waitFrameCounter_ = 0;
+    loadingElapsed_ = 0.0f;
+    loadProgress_ = 0.0f;
 
     if (type_ == TransitionType::None) {
         // トランジション無し → 即座に切り替え準備完了
@@ -251,7 +261,24 @@ void SceneTransition::ApplyLoadingScreen() {
 
     float alpha = CalculateLoadingAlpha();
     loadingScreenEffect_->SetScreenAlpha(alpha);
+    loadingScreenEffect_->SetProgress(loadProgress_);
+    loadingScreenEffect_->SetGaugeAlpha(CalculateGaugeAlpha());
     loadingScreenEffect_->SetEnabled(alpha > 0.0f);
+}
+
+void SceneTransition::SetLoadProgress(float progress) {
+    loadProgress_ = std::clamp(progress, 0.0f, 1.0f);
+}
+
+float SceneTransition::CalculateGaugeAlpha() const {
+    const float gaugeAfter = cvGaugeAfterSeconds.Get();
+    if (type_ != TransitionType::Loading || gaugeAfter < 0.0f) {
+        return 0.0f;
+    }
+
+    // 読み込みが長引いたときだけ現れる
+    return std::clamp((loadingElapsed_ - gaugeAfter) / kGaugeFadeSeconds, 0.0f, 1.0f)
+        * CalculateLoadingAlpha();
 }
 
 void SceneTransition::SetBGMVolumeCallback(std::function<void(float)> callback) {

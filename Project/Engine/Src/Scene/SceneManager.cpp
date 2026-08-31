@@ -8,6 +8,9 @@
 #include "Utility/FrameRate/FrameRateController.h"
 #include "Utility/FrameRate/Time.h"
 #include "GameObject/GameObjectManager.h"
+#include "EngineSystem/Startup/StartupSequence.h"
+#include "Utility/Logger/Logger.h"
+#include <thread>
 
 
 namespace CoreEngine
@@ -49,10 +52,18 @@ namespace CoreEngine
             isSceneChangeRequested_ = false;
         }
 
-        // シーン切り替え準備完了時に実際の切り替えを実行
+        // シーン切り替え準備完了後は 1 フレームに 1 ステップずつ構築する
         if (sceneTransition_->IsReadyToChangeScene()) {
-            DoChangeScene(nextSceneName_);
-            sceneTransition_->OnSceneChanged(); // フェードイン開始
+            if (!IsSceneLoadInProgress() && !BeginSceneLoad(nextSceneName_)) {
+                sceneTransition_->OnSceneChanged(); // 未登録のシーン名
+            }
+            if (IsSceneLoadInProgress()) {
+                StepSceneLoad();
+                sceneTransition_->SetLoadProgress(GetSceneLoadProgress());
+                if (!IsSceneLoadInProgress()) {
+                    sceneTransition_->OnSceneChanged(); // フェードイン開始
+                }
+            }
         }
 
         // トランジションがブロック中でない場合のみシーンを更新
@@ -98,6 +109,15 @@ namespace CoreEngine
         // Finalize を経ずに reset すると、シーンが外部システムへ登録したもの
         // （EditorSettingsSubsystem のセクション・Feature の解放処理など）が
         // 解除されないまま破棄され、終了処理でダングリングポインタになる
+        // 読み込み途中のシーンも畳んでから本体を解放する
+        loadContinuation_ = nullptr;
+        loadStepProgress_ = nullptr;
+        loadSequence_.reset();
+        if (pendingScene_) {
+            pendingScene_->Finalize();
+            pendingScene_.reset();
+        }
+
         if (currentScene_) {
             if (sceneTransition_) {
                 sceneTransition_->ClearBGMVolumeCallback();
@@ -167,18 +187,109 @@ namespace CoreEngine
     }
 
     void SceneManager::DoChangeScene(const std::string& name) {
-        auto it = sceneFactories_.find(name);
-        if (it == sceneFactories_.end()) {
+        if (!BeginSceneLoad(name)) {
             return;
         }
 
+        // フレームを回さない経路なので、続きはその場で走り切らせる
+        loadRunsSynchronously_ = true;
+        while (IsSceneLoadInProgress()) {
+            StepSceneLoad();
+        }
+        loadRunsSynchronously_ = false;
+    }
+
+    bool SceneManager::BeginSceneLoad(const std::string& name) {
+        auto it = sceneFactories_.find(name);
+        if (it == sceneFactories_.end()) {
+            return false;
+        }
+
+        // 実行を始めた列へはステップを足せないので、シーン実体を先に作ってから列を組む
+        pendingScene_ = it->second();
+        pendingSceneName_ = name;
+        pendingScene_->SetSceneManager(this);
+
+        loadContinuation_ = nullptr;
+        loadStepProgress_ = nullptr;
+        loadSequence_ = std::make_unique<StartupSequence>();
+        loadSequence_->Add("旧シーンの解放", [this] { ReleaseCurrentScene(); });
+        pendingScene_->BuildLoadTasks(*loadSequence_, engine_);
+        loadSequence_->Add("シーンの登録", [this] { AttachPendingScene(); });
+        return true;
+    }
+
+    void SceneManager::StepSceneLoad() {
+        if (!loadSequence_) {
+            return;
+        }
+
+        if (loadContinuation_) {
+            // 続きがあるステップ。完了を返すまで次へ進まない
+            ++loadContinuationFrames_;
+            if (!loadContinuation_()) {
+                return;
+            }
+
+            const double seconds = std::chrono::duration<double>(
+                std::chrono::steady_clock::now() - loadContinuationStart_).count();
+            Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
+                "[SceneLoad] {} : {:.3f}s / {} フレーム",
+                loadContinuationLabel_, seconds, loadContinuationFrames_);
+
+            loadContinuation_ = nullptr;
+            loadStepProgress_ = nullptr;
+        } else {
+            loadSequence_->Step();
+        }
+
+        if (!loadSequence_->HasNext() && !loadContinuation_) {
+            loadSequence_.reset();
+        }
+    }
+
+    void SceneManager::SetLoadStepContinuation(std::function<bool()> work,
+                                               std::function<float()> progress) {
+        if (loadRunsSynchronously_) {
+            // 完了までその場で回す。ワーカーの完了待ちで CPU を占有しないよう間隔を空ける
+            while (work && !work()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+            return;
+        }
+
+        loadContinuation_ = std::move(work);
+        loadStepProgress_ = std::move(progress);
+        loadContinuationLabel_ = loadSequence_ ? loadSequence_->GetNextLabel() : std::string();
+        loadContinuationStart_ = std::chrono::steady_clock::now();
+        loadContinuationFrames_ = 0;
+    }
+
+    float SceneManager::GetSceneLoadProgress() const {
+        if (!loadSequence_) {
+            return 1.0f;
+        }
+
+        const size_t total = loadSequence_->GetTotalCount();
+        if (total == 0) {
+            return 1.0f;
+        }
+
+        float completed = static_cast<float>(loadSequence_->GetCompletedCount());
+        if (loadContinuation_ && loadStepProgress_) {
+            // 続きの進捗は、それを積んだステップ 1 つ分の幅へ写す
+            completed += std::clamp(loadStepProgress_(), 0.0f, 1.0f) - 1.0f;
+        }
+        return std::clamp(completed / static_cast<float>(total), 0.0f, 1.0f);
+    }
+
+    void SceneManager::ReleaseCurrentScene() {
         // GPUの処理完了を待機してから古いシーンを解放
         auto dxCommon = engine_->GetService<GraphicsCore>();
         if (dxCommon) {
             dxCommon->WaitForGpuIdle();
         }
 
-        // 古いシーンを解放
         if (currentScene_) {
             // BGMコールバックをクリア
             if (sceneTransition_) {
@@ -194,6 +305,7 @@ namespace CoreEngine
         }
 
         currentScene_.reset();
+        currentSceneName_ = "None";
 
         // シーン切り替え時にライトをクリア
         auto lightManager = engine_->GetService<LightManager>();
@@ -206,12 +318,11 @@ namespace CoreEngine
         if (frameRateController) {
             frameRateController->ResetFPSMeasurement();
         }
+    }
 
-        // 新しいシーンを作成・初期化
-        currentScene_ = it->second();
-        currentSceneName_ = name;
-        currentScene_->SetSceneManager(this);
-        currentScene_->Initialize(engine_);
+    void SceneManager::AttachPendingScene() {
+        currentScene_ = std::move(pendingScene_);
+        currentSceneName_ = pendingSceneName_;
 
         // シーン固有レンダーパスの登録（所有者タグ付きで、シーン破棄時に自動除去される）
         if (auto* pipeline = engine_->GetRenderPipeline()) {

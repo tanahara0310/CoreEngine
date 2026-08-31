@@ -114,6 +114,41 @@ namespace CoreEngine
 
     void SceneSaveSystem::Load(GameObjectManager* mgr)
     {
+        BeginLoad(mgr);
+        while (!StepLoad()) {
+        }
+    }
+
+    float SceneSaveSystem::GetLoadProgress() const
+    {
+        if (pendingObjects_.empty()) {
+            return 1.0f;
+        }
+        return static_cast<float>(loadIndex_) / static_cast<float>(pendingObjects_.size());
+    }
+
+    bool SceneSaveSystem::StepLoad()
+    {
+        if (loadIndex_ >= pendingObjects_.size()) {
+            pendingObjects_.clear();
+            loadIndex_ = 0;
+            return true;
+        }
+
+        const PendingObject& pending = pendingObjects_[loadIndex_++];
+        json data = JsonManager::GetInstance().LoadJson(pending.path);
+        if (!data.is_null() && pending.object) {
+            pending.object->OnDeserialize(data);
+        }
+
+        return loadIndex_ >= pendingObjects_.size();
+    }
+
+    void SceneSaveSystem::BeginLoad(GameObjectManager* mgr)
+    {
+        pendingObjects_.clear();
+        loadIndex_ = 0;
+
         if (sceneName_.empty() || !mgr) return;
 
         auto& jm = JsonManager::GetInstance();
@@ -142,7 +177,7 @@ namespace CoreEngine
                 }
             });
 
-        // オブジェクトごとに個別ファイルからデシリアライズ
+        // 復元対象を確定させる（実際のデシリアライズは StepLoad が 1 体ずつ行う）
         for (const auto& obj : mgr->GetAllObjects()) {
             if (!obj || !obj->IsSerializeEnabled()) continue;
             const std::string& key = obj->GetSerializeKey();
@@ -151,10 +186,7 @@ namespace CoreEngine
             std::string objPath = GetObjectPath(key);
             if (!jm.FileExists(objPath)) continue;
 
-            json data = jm.LoadJson(objPath);
-            if (!data.is_null()) {
-                obj->OnDeserialize(data);
-            }
+            pendingObjects_.push_back(PendingObject{ obj.get(), std::move(objPath) });
         }
     }
 

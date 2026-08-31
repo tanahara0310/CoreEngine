@@ -75,6 +75,10 @@ public:
     /// @brief トランジションをスキップ（デバッグ用）
     void SkipTransition();
 
+    /// @brief シーン読み込みの進捗を設定する（SceneManager が毎フレーム呼ぶ）
+    /// @param progress 進捗（0.0〜1.0）
+    void SetLoadProgress(float progress);
+
     /// @brief BGMフェード用コールバックを設定
     /// @param callback フェードアルファ値（0.0～1.0）を受け取るコールバック関数
     void SetBGMVolumeCallback(std::function<void(float)> callback);
@@ -93,6 +97,10 @@ private:
     /// @brief ローディング画面の表示強度を計算
     /// @return 表示強度（0.0 = 非表示, 1.0 = 完全表示）
     float CalculateLoadingAlpha() const;
+
+    /// @brief 進捗ゲージの表示強度を計算
+    /// @return 表示強度（0.0 = 非表示, 1.0 = 完全表示）
+    float CalculateGaugeAlpha() const;
 
     /// @brief ローディング画面に表示強度を適用
     void ApplyLoadingScreen();
@@ -118,6 +126,12 @@ TransitionPhase phase_ = TransitionPhase::Idle;
 
     // ローディング画面の表示強度が切り替わる時間（秒）
     static constexpr float kLoadingFadeSeconds = 0.25f;
+
+    // 進捗ゲージが現れるまでの時間（秒）
+    static constexpr float kGaugeFadeSeconds = 0.3f;
+
+    float loadingElapsed_ = 0.0f;   // ローディング画面を表示している時間
+    float loadProgress_ = 0.0f;     // シーン読み込みの進捗
     int waitFrameCounter_ = 0;
 
     // BGM音量制御用コールバック

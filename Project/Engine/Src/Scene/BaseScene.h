@@ -44,6 +44,9 @@ namespace CoreEngine
         /// @note 派生クラスは Initialize() ではなく OnInitialize() をオーバーライドしてください
         void Initialize(CoreEngine::EngineSystem* engine) override final;
 
+        /// @brief 初期化を 4 ステップへ割って積む
+        void BuildLoadTasks(StartupSequence& sequence, EngineSystem* engine) override;
+
         /// @brief 更新（共通処理 + 派生クラスの更新）
         /// @note このメソッドはfinalです。派生クラスはOnUpdate()をオーバーライドしてください
         virtual void Update() override final;
@@ -72,6 +75,10 @@ namespace CoreEngine
         /// @note SetSceneName() と全 CreateObject() をここで行う。
         ///       完了後に LoadObjectsFromJson() が自動的に呼ばれる。
         virtual void OnInitialize() {}
+
+        /// @brief OnInitialize() をステップ列へ積む
+        /// @details 既定は 1 ステップ。生成に時間がかかるシーンはここを分割する。
+        virtual void BuildContentLoadTasks(StartupSequence& sequence);
 
         /// @brief 派生クラスでオーバーライドする更新処理（GameObjectの更新前）
         virtual void OnUpdate() {}
@@ -109,6 +116,24 @@ namespace CoreEngine
         static constexpr float kAtmosphereSunIlluminanceLux = LightUnits::kSunIlluminanceLux;
 
     private:
+
+        /// @brief エンジン参照・保存システム・カメラ・既定 Feature の登録
+        void SetupSceneCore(EngineSystem* engine);
+
+        /// @brief 全 Feature の Initialize と既定ライトの公開
+        void InitializeFeatures();
+
+        /// @brief Feature の PostSceneInitialize と JSON からのシーン復元
+        void CompleteInitialize();
+
+        /// @brief シーン JSON が参照するモデルの並列先読みを開始する
+        void BeginModelPreload();
+
+        /// @brief 全 Feature の PostSceneInitialize
+        void RunPostSceneInitialize();
+
+        /// @brief JSON からのシーン復元を開始する（1 体ずつフレームを跨いで進める）
+        void BeginSceneDataRestore();
 
         /// @brief カメラのセットアップ
         void SetupCamera();
