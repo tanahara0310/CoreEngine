@@ -4,27 +4,24 @@
 
 namespace CoreEngine
 {
-/// @brief フレームレート管理クラス（VSync 60FPS固定）
-/// @details VSyncによる60FPS固定を前提とし、デルタタイムとFPS計測のみを行う
+/// @brief フレーム時間と FPS の計測
+/// @details 計測したデルタタイムは Time へ流し込む。フレームレートの上限は Present の垂直同期に従う。
 class FrameRateController {
 public:
     /// @brief 初期化
     void Initialize();
 
     /// @brief フレーム開始時の処理
-    /// @details 前フレームからの実際の経過時間を計算し、FPS計測を更新
+    /// @details 前フレームからの実際の経過時間を計算し、Time へ渡して FPS 計測を更新する
     void BeginFrame();
 
     /// @brief FPS計測をリセット（シーン切り替え時などに使用）
     /// @details 移動平均をクリアして安定した計測を再開する
     void ResetFPSMeasurement();
 
-    /// @brief フレーム間の経過時間を取得（秒）
-    /// @return deltaTime（秒） - 実測値（VSync有効時は約0.0167秒）
-    float GetDeltaTime() const { return deltaTime_; }
-
     /// @brief 現在のFPSを取得
     /// @return 実測FPS値（60サンプルの移動平均）
+    /// @note デルタタイムは `Time::DeltaTime()` / `Time::UnscaledDeltaTime()` から取る。
     float GetCurrentFPS() const { return currentFPS_; }
 
     /// @brief 目標FPSを取得

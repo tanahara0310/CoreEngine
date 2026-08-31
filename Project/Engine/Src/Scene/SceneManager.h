@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <functional>
 #include <vector>
+#include <chrono>
 
 namespace CoreEngine
 {
@@ -87,6 +88,14 @@ public:
     /// @param callback 音量倍率(0.0～1.0)を受け取るコールバック関数
     void RegisterSceneBGMCallback(std::function<void(float)> callback);
 
+    /// @brief 実行中の読み込みステップに「続き」を持たせる
+    /// @param work     毎フレーム 1 回呼ばれ、一部だけ進めて完了したら true を返す関数
+    /// @param progress そのステップ内の進捗（0.0〜1.0）を返す関数（省略可）
+    /// @details work が true を返すまで次のステップへ進まない。
+    ///          読み込みステップの中から呼ぶこと。
+    void SetLoadStepContinuation(std::function<bool()> work,
+                                 std::function<float()> progress = nullptr);
+
     /// @brief Gameビュー用3Dカメラを取得
     Camera* GetGameViewCamera3D() const;
 
@@ -118,9 +127,44 @@ private:
     /// @brief シーン切り替えリクエストフラグ
     bool isSceneChangeRequested_ = false;
 
-    /// @brief 実際のシーン切り替えを実行（内部関数）
+    /// @brief 実際のシーン切り替えを実行（内部関数・完了まで戻らない）
     /// @param name 変更先のシーン名
     void DoChangeScene(const std::string& name);
+
+    /// @brief シーン読み込みを開始する（旧シーンの解放を含むステップ列を組む）
+    /// @param name 読み込むシーン名
+    /// @return true: 開始した, false: 未登録のシーン名
+    bool BeginSceneLoad(const std::string& name);
+
+    /// @brief 読み込みステップを 1 つ進める
+    void StepSceneLoad();
+
+    /// @brief 読み込み中か
+    bool IsSceneLoadInProgress() const { return loadSequence_ != nullptr; }
+
+    /// @brief 読み込みの進捗（0.0〜1.0）
+    float GetSceneLoadProgress() const;
+
+    /// @brief 現在のシーンを解放する
+    void ReleaseCurrentScene();
+
+    /// @brief 構築が済んだシーンを現在のシーンとして受け取る
+    void AttachPendingScene();
+
+    /// @brief 構築中のシーン（読み込み完了まで currentScene_ は空になる）
+    std::unique_ptr<IScene> pendingScene_;
+    std::string pendingSceneName_;
+
+    /// @brief 構築ステップ列（読み込み中のみ存在する）
+    std::unique_ptr<StartupSequence> loadSequence_;
+
+    /// @brief 実行中ステップの続き（設定されている間は次のステップへ進まない）
+    std::function<bool()> loadContinuation_;
+    std::function<float()> loadStepProgress_;
+    std::string loadContinuationLabel_;
+    bool loadRunsSynchronously_ = false;
+    std::chrono::steady_clock::time_point loadContinuationStart_;
+    int loadContinuationFrames_ = 0;
 
     // ──────────────────────────────────────────────────────────
     // トランジション管理

@@ -1,70 +1,74 @@
 {
-  "r.AtmosphereLights.MoonAtmosphereIntensity": 0.0013000000035390258,
-  "r.AtmosphereLights.MoonDirection": [
-    0.16805747151374817,
-    -0.17806357145309448,
-    0.9695618152618408
-  ],
-  "r.AtmosphereLights.MoonEnabled": true,
-  "r.AtmosphereLights.SunAtmosphereIntensity": 20.0,
-  "r.AtmosphereLights.SunDirection": [
-    -0.1540394127368927,
-    -0.8107157349586487,
-    0.5648113489151001
-  ],
-  "r.AutoExposure.Enabled": true,
-  "r.Bloom.Intensity": 0.9480000138282776,
-  "r.Bloom.SoftKnee": 0.35100001096725464,
-  "r.Blur.Intensity": 2.5290000438690186,
-  "r.CAS.Enabled": false,
-  "r.Cloud.BaseNoiseScale": 8000.0,
-  "r.Cloud.DetailErosionStrength": 0.1599999964237213,
-  "r.Cloud.GlobalCoverage": 0.5,
-  "r.Cloud.LayerBottomAltitude": 2000.0,
-  "r.Cloud.LayerThickness": 3000.0,
-  "r.Cloud.WindSpeed": 6.0,
-  "r.Ground.Checker": true,
-  "r.LensFlare.Enabled": false,
-  "r.RTShadow.AtrousPassCount": 3,
-  "r.RTShadow.DenoisePhiDepth": 1.034000039100647,
-  "r.RTShadow.MaxRayDistance": 2682.326904296875,
-  "r.RTShadow.ShadowBias": 0.15800000727176666,
-  "r.SSAOTemporal.Enabled": false,
-  "r.Vignette.Intensity": 2.0,
-  "r.Vignette.Smoothness": 0.10000000149011612,
-  "r.Water.AbsorptionBase": [
-    0.3499999940395355,
-    0.07000000029802322,
-    0.019999999552965164
-  ],
-  "r.Water.Caustics.DepthAttenuation": 1.5169999599456787,
-  "r.Water.Caustics.Intensity": 1.128000020980835,
-  "r.Water.FFT.ActiveComponentCount": 8,
-  "r.Water.FFT.Choppiness": 0.10000000149011612,
-  "r.Water.FFT.WindDirection": [
-    1.0,
-    0.0
-  ],
-  "r.Water.FFT.WindSpeed": 2.0,
-  "r.Water.Foam.Bias": 0.8600000143051147,
-  "r.Water.Foam.CascadeWeights": [
-    1.0,
-    1.0,
-    1.0
-  ],
-  "r.Water.Foam.Gain": 3.5199999809265137,
-  "r.Water.ScatteringBase": [
-    0.003000000026077032,
-    0.00800000037997961,
-    0.01600000075995922
-  ],
-  "r.Water.ScrollSpeed": [
-    -0.04100000113248825,
-    0.009999999776482582
-  ],
-  "r.Water.UVTiling": [
-    1.0,
-    4.0
-  ],
-  "version": 1
+    "r.AtmosphereLights.MoonAtmosphereIntensity": 0.0013000000035390258,
+    "r.AtmosphereLights.MoonDirection": [
+        0.16805747151374817,
+        -0.17806357145309448,
+        0.9695618152618408
+    ],
+    "r.AtmosphereLights.MoonEnabled": true,
+    "r.AtmosphereLights.SunAtmosphereIntensity": 20.0,
+    "r.AtmosphereLights.SunDirection": [
+        -0.1540394127368927,
+        -0.8107157349586487,
+        0.5648113489151001
+    ],
+    "r.AutoExposure.Enabled": true,
+    "r.Bloom.Intensity": 0.9480000138282776,
+    "r.Bloom.SoftKnee": 0.35100001096725464,
+    "r.Blur.Intensity": 2.5290000438690186,
+    "r.CAS.Enabled": false,
+    "r.Cloud.BaseNoiseScale": 8000.0,
+    "r.Cloud.CloudTopVariation": 0.4000000059604645,
+    "r.Cloud.DetailErosionStrength": 0.1599999964237213,
+    "r.Cloud.GlobalCoverage": 0.5,
+    "r.Cloud.LayerBottomAltitude": 2000.0,
+    "r.Cloud.LayerThickness": 3000.0,
+    "r.Cloud.PaintRegionSize": 36081.0,
+    "r.Cloud.WindDirX": 0.39073118567466736,
+    "r.Cloud.WindDirZ": 0.9205048084259033,
+    "r.Cloud.WindSpeed": 6.0,
+    "r.Ground.Checker": true,
+    "r.LensFlare.Enabled": false,
+    "r.RTShadow.AtrousPassCount": 3,
+    "r.RTShadow.DenoisePhiDepth": 1.034000039100647,
+    "r.RTShadow.MaxRayDistance": 2682.326904296875,
+    "r.RTShadow.ShadowBias": 0.15800000727176666,
+    "r.SSAOTemporal.Enabled": false,
+    "r.Vignette.Intensity": 2.0,
+    "r.Vignette.Smoothness": 0.10000000149011612,
+    "r.Water.AbsorptionBase": [
+        0.3499999940395355,
+        0.07000000029802322,
+        0.019999999552965164
+    ],
+    "r.Water.Caustics.DepthAttenuation": 1.5169999599456787,
+    "r.Water.Caustics.Intensity": 1.128000020980835,
+    "r.Water.FFT.ActiveComponentCount": 8,
+    "r.Water.FFT.Choppiness": 0.10000000149011612,
+    "r.Water.FFT.WindDirection": [
+        1.0,
+        0.0
+    ],
+    "r.Water.FFT.WindSpeed": 2.0,
+    "r.Water.Foam.Bias": 0.8600000143051147,
+    "r.Water.Foam.CascadeWeights": [
+        1.0,
+        1.0,
+        1.0
+    ],
+    "r.Water.Foam.Gain": 3.5199999809265137,
+    "r.Water.ScatteringBase": [
+        0.003000000026077032,
+        0.00800000037997961,
+        0.01600000075995922
+    ],
+    "r.Water.ScrollSpeed": [
+        -0.04100000113248825,
+        0.009999999776482582
+    ],
+    "r.Water.UVTiling": [
+        1.0,
+        4.0
+    ],
+    "version": 1
 }

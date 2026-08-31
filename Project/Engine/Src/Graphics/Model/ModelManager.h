@@ -106,6 +106,10 @@ public:
     /// @note 先読みの失敗は握り潰してログに残すだけ（本番の CreateStaticModel が読み直す）。
     void BeginPreload(const std::vector<std::string>& filePaths);
 
+    /// @brief 進行中のプリロードの完了本数と全体本数を返す（待たない）
+    /// @return {完了した本数, 積まれている本数}
+    std::pair<size_t, size_t> GetPreloadProgress();
+
     /// @brief 進行中のプリロードが全て終わるまで待つ
     /// @details 終了処理で TextureManager や GraphicsCore を壊す前に必ず呼ぶこと。
     void WaitForPreload();

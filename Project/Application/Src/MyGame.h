@@ -61,7 +61,7 @@ private:
     // ──────────────────────────────────────────────────────────
 
     /// @brief 初期シーン名
-    static constexpr const char* kInitialSceneName = "WaterTestScene";
+    static constexpr const char* kInitialSceneName = "SampleGameScene";
 
     /// @brief シーン管理システム
     std::unique_ptr<CoreEngine::SceneManager> sceneManager_;

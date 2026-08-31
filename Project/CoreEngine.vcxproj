@@ -315,6 +315,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ColorGrading\ColorGrading.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Dissolve\Dissolve.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\FadeEffect\FadeEffect.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\LoadingScreen\LoadingScreenEffect.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\GrayScale\GrayScale.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Invert\Invert.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectComputeBase.cpp" />
@@ -446,6 +447,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Model\ModelManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\ModelResource.cpp" />
     <ClCompile Include="Application\Src\Scenes\TestScene\TestScene.cpp" />
+    <ClCompile Include="Application\Src\Scenes\SampleGameScene\SampleGameScene.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\UndoRedoHistory.cpp" />
     <ClCompile Include="Engine\Src\Threading\ThreadBudget.cpp" />
     <ClCompile Include="Engine\Src\Threading\ThreadPool.cpp" />
@@ -692,6 +694,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ColorGrading\ColorGrading.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Dissolve\Dissolve.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\FadeEffect\FadeEffect.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\LoadingScreen\LoadingScreenEffect.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\GrayScale\GrayScale.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Invert\Invert.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Outline\Outline.h" />
@@ -1019,6 +1022,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Particle\Modules\SizeModule.h" />
     <ClInclude Include="Engine\Src\Particle\Modules\VelocityModule.h" />
     <ClInclude Include="Application\Src\Scenes\TestScene\TestScene.h" />
+    <ClInclude Include="Application\Src\Scenes\SampleGameScene\SampleGameScene.h" />
+    <ClInclude Include="Application\Src\Scenes\SampleGameScene\PlayerControllerComponent.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\DockingUI.h" />
     <ClInclude Include="Engine\Src\Camera\Camera.h" />
     <ClInclude Include="Engine\Src\Camera\Control\OrbitFlyController.h" />
@@ -1035,6 +1040,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\RHI\GraphicsCoreDesc.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\LeakChecker.h" />
     <ClInclude Include="Engine\Src\Utility\FrameRate\FrameRateController.h" />
+    <ClInclude Include="Engine\Src\Utility\FrameRate\Time.h" />
     <ClInclude Include="Engine\Src\Utility\JsonManager\JsonManager.h" />
     <ClInclude Include="Engine\Src\Utility\Logger\Logger.h" />
     <ClInclude Include="Engine\Src\Math\Easing\EasingUtil.h" />

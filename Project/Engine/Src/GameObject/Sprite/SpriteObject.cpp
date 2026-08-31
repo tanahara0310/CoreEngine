@@ -8,7 +8,7 @@
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Model/VertexData.h"
 #include "Utility/JsonManager/JsonManager.h"
-#include "Utility/FrameRate/FrameRateController.h"
+#include "Utility/FrameRate/Time.h"
 #include "Math/MathCore.h"
 #include <cmath>
 #include <cstdio>
@@ -147,11 +147,7 @@ namespace CoreEngine
 
         // アニメーターの更新
         if (animator_ && animator_->IsPlaying()) {
-            float deltaTime = 0.0f;
-            if (auto* fr = GetEngineSystem()->GetService<FrameRateController>()) {
-                deltaTime = fr->GetDeltaTime();
-            }
-            animator_->Update(deltaTime, this);
+            animator_->Update(Time::DeltaTime(), this);
         }
 
         // 頂点データが変更されている場合のみ更新

@@ -21,7 +21,18 @@ namespace CoreEngine
         const std::string& GetSceneName() const { return sceneName_; }
 
         /// @brief シーンのオブジェクトデータを JSON から読み込んで登録済みオブジェクトに適用
+        /// @note 完了まで戻らない。フレームを回しながら読むなら BeginLoad / StepLoad を使う
         void Load(GameObjectManager* mgr);
+
+        /// @brief 読み込みを開始する（マニフェストからの生成と復元対象の確定まで）
+        void BeginLoad(GameObjectManager* mgr);
+
+        /// @brief 復元を 1 体分だけ進める
+        /// @return true: 全ての復元が終わった
+        bool StepLoad();
+
+        /// @brief 復元の進捗（0.0〜1.0）
+        float GetLoadProgress() const;
 
         /// @brief シーン JSON から modelPath だけを列挙する（オブジェクトは一切生成しない）
         /// @return 重複を除いた modelPath のリスト
@@ -52,7 +63,15 @@ namespace CoreEngine
         /// @brief 個別オブジェクトファイルのパスを返す  (例: ".../TestScene/Model_0.json")
         std::string GetObjectPath(const std::string& key) const;
 
+        /// @brief 復元待ちのオブジェクト 1 体分
+        struct PendingObject {
+            GameObject* object = nullptr;
+            std::string path;
+        };
+
         std::string sceneName_;
         std::function<void(const std::string&)> onSaveNotification_;
+        std::vector<PendingObject> pendingObjects_;
+        size_t loadIndex_ = 0;
     };
 }

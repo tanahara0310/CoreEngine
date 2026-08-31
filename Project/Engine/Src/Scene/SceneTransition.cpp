@@ -3,13 +3,28 @@
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/PostEffect/Effect/FadeEffect/FadeEffect.h"
+#include "Graphics/PostEffect/Effect/LoadingScreen/LoadingScreenEffect.h"
 #include "Graphics/PostEffect/Effect/PostEffectNames.h"
 #include "Utility/FrameRate/FrameRateController.h"
 #include "Audio/SoundManager.h"
+#include "Utility/CVar/CVar.h"
 
 
 namespace CoreEngine
 {
+namespace
+{
+    CVar<float> cvMinSeconds{
+        "r.Loading.MinSeconds", 1.5f,
+        "ローディング画面を最低限表示し続ける秒数",
+        CVarRange{ 0.0f, 5.0f } };
+
+    CVar<float> cvGaugeAfterSeconds{
+        "r.Loading.GaugeAfterSeconds", 3.0f,
+        "進捗ゲージを出し始めるまでの秒数（負値でゲージ無効）",
+        CVarRange{ -1.0f, 10.0f } };
+}
+
 void SceneTransition::Initialize(EngineSystem* engine) {
 engine_ = engine;
 
@@ -19,6 +34,9 @@ postEffectManager_ = engine_->GetService<PostEffectManager>();
 // FadeEffectを取得
 fadeEffect_ = postEffectManager_->GetEffect<FadeEffect>(PostEffectNames::FadeEffect);
 
+// ローディング画面エフェクトを取得
+loadingScreenEffect_ = postEffectManager_->GetEffect<LoadingScreenEffect>(PostEffectNames::LoadingScreen);
+
 // SoundManagerを取得
 soundManager_ = engine_->GetService<SoundManager>();
 
@@ -26,6 +44,11 @@ soundManager_ = engine_->GetService<SoundManager>();
 fadeEffect_->SetFadeAlpha(0.0f);
 fadeEffect_->SetFadeType(FadeEffect::FadeType::BlackFade);
 fadeEffect_->SetEnabled(false); // デフォルトは無効
+
+if (loadingScreenEffect_) {
+    loadingScreenEffect_->SetScreenAlpha(0.0f);
+    loadingScreenEffect_->SetEnabled(false);
+}
 
 // 初期状態
 phase_ = TransitionPhase::Idle;
@@ -44,17 +67,32 @@ void SceneTransition::Update(float deltaTime) {
 
     // タイマー更新
     timer_ += deltaTime;
+    if (phase_ == TransitionPhase::Loading || phase_ == TransitionPhase::Changing) {
+        loadingElapsed_ += deltaTime;
+    }
 
     switch (phase_) {
     case TransitionPhase::FadeOut:
         // フェードアウト完了チェック
         if (timer_ >= duration_) {
             timer_ = duration_;
-            // 完全暗転後、数フレーム待機してからChangingフェーズに移行
+            // 完全暗転後、数フレーム待機してから次のフェーズへ移行
             waitFrameCounter_++;
             if (waitFrameCounter_ >= kWaitFramesAfterFadeOut) {
-                phase_ = TransitionPhase::Changing;
+                if (type_ == TransitionType::Loading) {
+                    phase_ = TransitionPhase::Loading;
+                    timer_ = 0.0f;
+                } else {
+                    phase_ = TransitionPhase::Changing;
+                }
             }
+        }
+        break;
+
+    case TransitionPhase::Loading:
+        // 最低表示時間を満たしたらシーン切り替えへ進む
+        if (timer_ >= cvMinSeconds.Get()) {
+            phase_ = TransitionPhase::Changing;
         }
         break;
 
@@ -79,6 +117,9 @@ void SceneTransition::Update(float deltaTime) {
     // フェードエフェクトにアルファ値を適用
     ApplyFadeToPostEffect();
 
+    // ローディング画面に表示強度を適用
+    ApplyLoadingScreen();
+
     // BGM音量を適用（フェードと同期）
     ApplyBGMVolume();
 }
@@ -92,6 +133,8 @@ void SceneTransition::StartTransition(TransitionType type, float duration) {
     duration_ = duration;
     timer_ = 0.0f;
     waitFrameCounter_ = 0;
+    loadingElapsed_ = 0.0f;
+    loadProgress_ = 0.0f;
 
     if (type_ == TransitionType::None) {
         // トランジション無し → 即座に切り替え準備完了
@@ -135,8 +178,10 @@ bool SceneTransition::IsTransitioning() const {
 }
 
 bool SceneTransition::IsBlocking() const {
-    // フェードアウト中とChanging中はシーン更新をブロック
-    return phase_ == TransitionPhase::FadeOut || phase_ == TransitionPhase::Changing;
+    // フェードアウト中・ローディング中・Changing中はシーン更新をブロック
+    return phase_ == TransitionPhase::FadeOut
+        || phase_ == TransitionPhase::Loading
+        || phase_ == TransitionPhase::Changing;
 }
 
 void SceneTransition::SkipTransition() {
@@ -149,6 +194,7 @@ void SceneTransition::SkipTransition() {
     waitFrameCounter_ = 0;
     fadeEffect_->SetFadeAlpha(0.0f);
     fadeEffect_->SetEnabled(false);
+    ApplyLoadingScreen();
 }
 
 float SceneTransition::CalculateFadeAlpha() const {
@@ -156,7 +202,7 @@ float SceneTransition::CalculateFadeAlpha() const {
         return 0.0f;
     }
 
-    if (phase_ == TransitionPhase::Changing) {
+    if (phase_ == TransitionPhase::Loading || phase_ == TransitionPhase::Changing) {
         return 1.0f; // 完全に黒
     }
 
@@ -186,6 +232,55 @@ void SceneTransition::ApplyFadeToPostEffect() {
     fadeEffect_->SetFadeAlpha(alpha);
 }
 
+float SceneTransition::CalculateLoadingAlpha() const {
+    if (type_ != TransitionType::Loading) {
+        return 0.0f;
+    }
+
+    switch (phase_) {
+    case TransitionPhase::Loading:
+        // 暗転しきってから短くフェードインする
+        return std::clamp(timer_ / kLoadingFadeSeconds, 0.0f, 1.0f);
+
+    case TransitionPhase::Changing:
+        return 1.0f;
+
+    case TransitionPhase::FadeIn:
+        // 背景が明るくなるより先に消す
+        return 1.0f - std::clamp(timer_ / kLoadingFadeSeconds, 0.0f, 1.0f);
+
+    default:
+        return 0.0f;
+    }
+}
+
+void SceneTransition::ApplyLoadingScreen() {
+    if (!loadingScreenEffect_) {
+        return;
+    }
+
+    float alpha = CalculateLoadingAlpha();
+    loadingScreenEffect_->SetScreenAlpha(alpha);
+    loadingScreenEffect_->SetProgress(loadProgress_);
+    loadingScreenEffect_->SetGaugeAlpha(CalculateGaugeAlpha());
+    loadingScreenEffect_->SetEnabled(alpha > 0.0f);
+}
+
+void SceneTransition::SetLoadProgress(float progress) {
+    loadProgress_ = std::clamp(progress, 0.0f, 1.0f);
+}
+
+float SceneTransition::CalculateGaugeAlpha() const {
+    const float gaugeAfter = cvGaugeAfterSeconds.Get();
+    if (type_ != TransitionType::Loading || gaugeAfter < 0.0f) {
+        return 0.0f;
+    }
+
+    // 読み込みが長引いたときだけ現れる
+    return std::clamp((loadingElapsed_ - gaugeAfter) / kGaugeFadeSeconds, 0.0f, 1.0f)
+        * CalculateLoadingAlpha();
+}
+
 void SceneTransition::SetBGMVolumeCallback(std::function<void(float)> callback) {
     bgmVolumeCallback_ = callback;
 }
@@ -211,8 +306,9 @@ void SceneTransition::ApplyBGMVolume() {
         volumeMultiplier = 1.0f - fadeAlpha;
         break;
 
+    case TransitionPhase::Loading:
     case TransitionPhase::Changing:
-        // シーン切替中：完全に無音
+        // ローディング中・シーン切替中：完全に無音
         volumeMultiplier = 0.0f;
         break;
 

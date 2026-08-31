@@ -7,6 +7,7 @@
 #include "EngineSystem/EngineSystem.h"
 #include "EngineSystem/EngineConfig.h"
 #include "Utility/FrameRate/FrameRateController.h"
+#include "Utility/FrameRate/Time.h"
 #include "WinApp/WinApp.h"
 #include <imgui.h>
 
@@ -348,10 +349,9 @@ namespace CoreEngine
 
         if (dockingUI_) {
             float fps = 0.0f;
-            float deltaTimeMs = 0.0f;
+            const float deltaTimeMs = Time::UnscaledDeltaTime() * 1000.0f;
             if (auto* frameRate = engine_->GetService<FrameRateController>()) {
                 fps = frameRate->GetCurrentFPS();
-                deltaTimeMs = frameRate->GetDeltaTime() * 1000.0f;
             }
             dockingUI_->DrawStatusBar(fps, deltaTimeMs);
         }

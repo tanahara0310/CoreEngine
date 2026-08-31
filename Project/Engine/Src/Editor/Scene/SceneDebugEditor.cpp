@@ -192,6 +192,28 @@ namespace CoreEngine
         }
     }
 
+    void SceneDebugEditor::DetachFromEngineUI()
+    {
+        if (!engine_) {
+            return;
+        }
+
+        auto* debug = engine_->GetDebugSubsystem();
+        if (!debug) {
+            return;
+        }
+
+        if (auto* gameDebugUI = debug->GetGameDebugUI()) {
+            gameDebugUI->SetSceneDebugEditor(nullptr);
+            gameDebugUI->SetHierarchyContentDrawer(nullptr);
+            gameDebugUI->SetInspectorCameraDrawer(nullptr);
+            gameDebugUI->SetInspectorObjectDrawer(nullptr);
+        }
+        if (auto* dockingUI = debug->GetDockingUI()) {
+            dockingUI->SetSceneDebugEditor(nullptr);
+        }
+    }
+
     void SceneDebugEditor::ClearHistory()
     {
         undoRedoHistory_.Clear();

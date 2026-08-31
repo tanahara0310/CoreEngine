@@ -33,6 +33,10 @@ namespace CoreEngine
         /// @brief 履歴をすべてクリア（シーン切り替え時）
         void ClearHistory();
 
+        /// @brief エンジン常駐 UI から自分への参照を外す
+        /// @note 外さずに破棄すると、次のフレームで解放済みの this が呼ばれる
+        void DetachFromEngineUI();
+
         /// @brief シーンオブジェクト（3D/スプライト）が選択中かどうか
         bool HasSelection() const {
             return objectSelector_.GetSelectedObject() != nullptr

@@ -7,6 +7,7 @@
 
 // コンポーネントのインクルード
 #include "Utility/FrameRate/FrameRateController.h"
+#include "Utility/FrameRate/Time.h"
 
 #include <iomanip>
 #include <sstream>
@@ -399,7 +400,7 @@ void ConsoleUI::ShowFPSInfo()
     
     float currentFPS = frameRate->GetCurrentFPS();
     float targetFPS = frameRate->GetTargetFPS();
-    float deltaTime = frameRate->GetDeltaTime() * 1000.0f; // ms
+    float deltaTime = Time::UnscaledDeltaTime() * 1000.0f; // ms
     
     AddLog("現在のFPS: " + std::to_string(static_cast<int>(currentFPS)) + " FPS", ConsoleLogLevel::Info);
     AddLog("目標FPS: " + std::to_string(static_cast<int>(targetFPS)) + " FPS (固定)", ConsoleLogLevel::Info);

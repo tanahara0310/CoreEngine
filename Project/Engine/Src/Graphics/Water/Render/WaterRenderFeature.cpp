@@ -27,7 +27,7 @@
 #include "Graphics/Water/Simulation/FFTOceanSurfaceSimulator.h"
 #include "Graphics/Water/Simulation/GerstnerWaterSimulator.h"
 #include "Graphics/Water/Surface/WaterPlaneObject.h"
-#include "Utility/FrameRate/FrameRateController.h"
+#include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
@@ -94,8 +94,7 @@ namespace CoreEngine
         switch (phase) {
         case SceneUpdatePhase::PreObjectUpdate:
         {
-            auto* frameRate = ctx.engine ? ctx.engine->GetService<FrameRateController>() : nullptr;
-            const float deltaTime = frameRate ? frameRate->GetDeltaTime() : (1.0f / 60.0f);
+            const float deltaTime = Time::DeltaTime();
 
             // FFT の時刻は水面の表示状態と独立に進める。
             // 表示・非表示や Gerstner への切り替えで巻き戻ると、再表示時に波形が飛ぶ。

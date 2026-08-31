@@ -5,7 +5,7 @@
 #include "Graphics/Water/Render/WaterRenderFeature.h"
 #include "Math/MathCore.h"
 #include "Scene/SceneManager.h"
-#include "Utility/FrameRate/FrameRateController.h"
+#include "Utility/FrameRate/Time.h"
 #include <cmath>
 #include <memory>
 
@@ -88,8 +88,7 @@ void WaterTestScene::OnInitialize() {
 }
 
 void WaterTestScene::OnUpdate() {
-    auto* frameRate = engine_ ? engine_->GetService<FrameRateController>() : nullptr;
-    cameraShowcase_.Update(frameRate ? frameRate->GetDeltaTime() : 0.016f);
+    cameraShowcase_.Update(CoreEngine::Time::UnscaledDeltaTime());
 }
 
 void WaterTestScene::Draw() {

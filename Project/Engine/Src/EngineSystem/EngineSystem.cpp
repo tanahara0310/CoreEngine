@@ -26,6 +26,7 @@
 #include "Graphics/Model/ModelManager.h"
 #include "Input/InputManager.h"
 #include "Utility/FrameRate/FrameRateController.h"
+#include "Utility/FrameRate/Time.h"
 
 #if defined(USE_IMGUI) && defined(USE_PIX)
 #include "Editor/ImGui/PixCapture.h"
@@ -379,9 +380,7 @@ namespace CoreEngine
         if (context.postEffectManager) {
             PostEffectFrameContext postEffectContext;
             postEffectContext.view = &frameViews.GameView();
-            if (auto* frameRate = GetService<FrameRateController>()) {
-                postEffectContext.deltaTime = frameRate->GetDeltaTime();
-            }
+            postEffectContext.deltaTime = Time::DeltaTime();
             if (context.atmosphereManager) {
                 postEffectContext.sunDirection = context.atmosphereManager->GetSunDirection();
                 postEffectContext.sunDirectionValid = true;

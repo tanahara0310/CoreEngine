@@ -29,5 +29,6 @@ namespace PostEffectNames {
     constexpr const char* ColorLUT = "ColorLUT";
     constexpr const char* DepthOfField = "DepthOfField";
     constexpr const char* Outline = "Outline";
+    constexpr const char* LoadingScreen = "LoadingScreen";
 }
 }

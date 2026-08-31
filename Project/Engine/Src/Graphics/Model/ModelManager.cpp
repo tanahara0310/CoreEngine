@@ -278,6 +278,19 @@ namespace CoreEngine
         WaitForPreload();
     }
 
+    std::pair<size_t, size_t> ModelManager::GetPreloadProgress()
+    {
+        std::lock_guard<std::mutex> lock(preloadMutex_);
+        size_t completed = 0;
+        for (auto& future : preloadFutures_) {
+            if (!future.valid() ||
+                future.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+                ++completed;
+            }
+        }
+        return { completed, preloadFutures_.size() };
+    }
+
     void ModelManager::BeginPreload(const std::vector<std::string>& filePaths)
     {
         if (filePaths.empty()) return;

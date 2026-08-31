@@ -397,6 +397,9 @@
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\FadeEffect\FadeEffect.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\FadeEffect</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\LoadingScreen\LoadingScreenEffect.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\LoadingScreen</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\GrayScale\GrayScale.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\GrayScale</Filter>
     </ClCompile>
@@ -789,6 +792,9 @@
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\TestScene\TestScene.cpp">
       <Filter>Application\Src\Scenes\TestScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\SampleGameScene\SampleGameScene.cpp">
+      <Filter>Application\Src\Scenes\SampleGameScene</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Scene\UndoRedoHistory.cpp">
       <Filter>Engine\Src\Editor\Scene</Filter>
@@ -1430,6 +1436,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\FadeEffect\FadeEffect.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\FadeEffect</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\LoadingScreen\LoadingScreenEffect.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\LoadingScreen</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\GrayScale\GrayScale.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\GrayScale</Filter>
@@ -2412,6 +2421,12 @@
     <ClInclude Include="Application\Src\Scenes\TestScene\TestScene.h">
       <Filter>Application\Src\Scenes\TestScene</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\SampleGameScene\SampleGameScene.h">
+      <Filter>Application\Src\Scenes\SampleGameScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\SampleGameScene\PlayerControllerComponent.h">
+      <Filter>Application\Src\Scenes\SampleGameScene</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\DockingUI.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
@@ -2458,6 +2473,9 @@
       <Filter>Engine\Src\Utility\Debug</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\FrameRate\FrameRateController.h">
+      <Filter>Engine\Src\Utility\FrameRate</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\FrameRate\Time.h">
       <Filter>Engine\Src\Utility\FrameRate</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\JsonManager\JsonManager.h">
@@ -2652,6 +2670,9 @@
     </Filter>
     <Filter Include="Application\Src\Scenes\CollisionTestScene">
       <UniqueIdentifier>{2C8F41A6-5B7D-4E93-9C10-6A4D2F8B7E51}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Scenes\SampleGameScene">
+      <UniqueIdentifier>{296989A0-B084-4643-ABA9-184DA0DDC6E3}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\Scenes\TestScene">
       <UniqueIdentifier>{04EE1DAA-02F5-4253-9DBB-A28737391E46}</UniqueIdentifier>
@@ -2862,6 +2883,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\LensFlare">
       <UniqueIdentifier>{A7C3E9D1-4B26-4F8E-9C05-6D1B2E8F3A47}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\LoadingScreen">
+      <UniqueIdentifier>{F950BA10-90C3-493E-9215-681967104428}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\LocalExposure">
       <UniqueIdentifier>{C50EA85E-4E02-42E4-886D-F92DE8DDDAB0}</UniqueIdentifier>

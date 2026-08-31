@@ -7,6 +7,7 @@
 #include "Graphics/Water/WaterSurfaceData.h"
 #include "Math/Vector/Vector4.h"
 #include "Graphics/Render/Pass/RenderPass.h"
+#include "EngineSystem/Startup/StartupSequence.h"
 
 // 前方宣言
 namespace CoreEngine {
@@ -53,6 +54,15 @@ public:
     virtual void Draw() = 0;
     /// @brief シーン終了時の後始末
     virtual void Finalize() = 0;
+
+    /// @brief 初期化をステップ列へ積む（ローディング画面はステップの合間に描かれる）
+    /// @details 既定は Initialize() 全体を 1 ステップとして積む。
+    ///          1 ステップの実行時間がそのままローディング画面の止まる時間になる。
+    /// @param sequence 積み先のステップ列
+    /// @param engine   エンジンシステム
+    virtual void BuildLoadTasks(CoreEngine::StartupSequence& sequence, CoreEngine::EngineSystem* engine) {
+        sequence.Add("シーン構築", [this, engine] { Initialize(engine); });
+    }
 
     virtual Camera* GetGameViewCamera3D() const { return nullptr; }
     virtual Camera* GetGameViewCamera2D() const { return nullptr; }

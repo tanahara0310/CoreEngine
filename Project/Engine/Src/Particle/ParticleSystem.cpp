@@ -5,6 +5,7 @@
 #include "Camera/CameraManager.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/Model/ModelResource.h"
+#include "Utility/FrameRate/Time.h"
 #include <iostream>
 #include <cstdio>
 #ifdef USE_IMGUI
@@ -96,7 +97,7 @@ void ParticleSystem::Initialize(GraphicsCore* dxCommon, ResourceFactory* resourc
 // 更新処理関数（他のオブジェクトと統一）
 void ParticleSystem::Update()
 {
-    const float kDeltaTime = 1.0f / 60.0f;
+    const float deltaTime = Time::DeltaTime();
 
     // MainModuleが無効の場合、パーティクルシステム全体を停止
     if (!mainModule_->IsEnabled()) {
@@ -104,11 +105,11 @@ void ParticleSystem::Update()
     }
 
     // 統計情報の更新
-    statistics_.systemRuntime += kDeltaTime;
-    deltaTimeAccumulator_ += kDeltaTime;
+    statistics_.systemRuntime += deltaTime;
+    deltaTimeAccumulator_ += deltaTime;
 
     // MainModuleの時間更新
-    mainModule_->UpdateTime(kDeltaTime);
+    mainModule_->UpdateTime(deltaTime);
 
     // MainModuleの時間とループ設定を取得
     float elapsedTime = mainModule_->GetElapsedTime();
@@ -116,7 +117,7 @@ void ParticleSystem::Update()
     bool looping = mainModule_->GetMainData().looping;
 
     // EmissionModuleの時間更新（バースト用）
-    emissionModule_->UpdateTime(kDeltaTime);
+    emissionModule_->UpdateTime(deltaTime);
 
     // MainModuleがループでリセットされた場合、EmissionModuleもリセット
     if (mainModule_->IsPlaying() && looping && elapsedTime < lastElapsedTime_) {
@@ -132,7 +133,7 @@ void ParticleSystem::Update()
         const auto& emissionData = emissionModule_->GetEmissionData();
         if (emissionData.burstCount > 0 && emissionData.burstTime >= duration) {
             // バーストタイミングがduration以降の場合、duration到達時に強制発生
-            uint32_t burstCount = emissionModule_->CalculateEmissionCount(kDeltaTime);
+            uint32_t burstCount = emissionModule_->CalculateEmissionCount(deltaTime);
             if (burstCount > 0) {
                 uint32_t emittedCount = particleEmitter_->EmitParticles(
                     burstCount,
@@ -150,7 +151,7 @@ void ParticleSystem::Update()
     // 放出処理
     uint32_t emissionCount = 0;
     if (shouldEmit) {
-        emissionCount = emissionModule_->CalculateEmissionCount(kDeltaTime);
+        emissionCount = emissionModule_->CalculateEmissionCount(deltaTime);
         if (emissionCount > 0) {
             uint32_t emittedCount = particleEmitter_->EmitParticles(
                 emissionCount,
@@ -166,7 +167,7 @@ void ParticleSystem::Update()
     float gravityModifier = mainModule_->GetMainData().gravityModifier;
 
     // パーティクルの更新（ParticleUpdaterに委譲）
-    uint32_t destroyedCountFromUpdate = particleUpdater_->UpdateParticles(particles_, kDeltaTime, gravityModifier);
+    uint32_t destroyedCountFromUpdate = particleUpdater_->UpdateParticles(particles_, deltaTime, gravityModifier);
 
     // パーティクルの更新後の統計情報を更新
     uint32_t currentParticleCount = GetParticleCount();
