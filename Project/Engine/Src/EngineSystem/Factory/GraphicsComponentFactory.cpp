@@ -21,6 +21,8 @@
 #include "Graphics/Render/SkyBox/SkyBoxRenderer.h"
 #include "Graphics/Render/Sprite/SpriteRenderer.h"
 #include "Graphics/Render/UI/UIRenderer.h"
+#include "Graphics/Render/UI/TextRenderer.h"
+#include "Text/FontManager.h"
 #include "Graphics/Render/Particle/ParticleRenderer.h"
 #include "Graphics/Render/Particle/ModelParticleRenderer.h"
 #include "Graphics/Render/Particle/GpuParticleRenderer.h"
@@ -115,6 +117,12 @@ namespace CoreEngine
             auto modelManager = std::make_unique<ModelManager>();
             modelManager->Initialize(state->dx, state->resourceFactory);
             enginePtr->RegisterComponent(std::move(modelManager));
+
+            // MSDF フォントの所有・共有・キャッシュはここが一元管理する。
+            // シーンが MsdfFont を直接持つと、シーンをまたぐたびに焼き直しになる
+            auto fontManager = std::make_unique<FontManager>();
+            fontManager->Initialize(state->dx);
+            enginePtr->RegisterComponent(std::move(fontManager));
         });
 
         return state;
@@ -202,6 +210,11 @@ namespace CoreEngine
             auto uiRenderer = std::make_unique<UIRenderer>();
             uiRenderer->Initialize(state->dx, state->resourceFactory);
             state->renderManager->RegisterRenderer(RenderPassType::UI, std::move(uiRenderer));
+
+            // MSDF テキストは UI と同じ座標系だが PSO が別なので独立パスにする
+            auto textRenderer = std::make_unique<TextRenderer>();
+            textRenderer->Initialize(state->dx, state->resourceFactory);
+            state->renderManager->RegisterRenderer(RenderPassType::UIText, std::move(textRenderer));
         });
 
         sequence.Add("レンダラー: パーティクル", [state] {

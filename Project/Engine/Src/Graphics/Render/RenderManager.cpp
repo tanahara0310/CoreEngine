@@ -415,6 +415,7 @@ namespace CoreEngine
         passTypePriorities_[RenderPassType::GpuParticle] = 650;
         passTypePriorities_[RenderPassType::Sprite] = 700;
         passTypePriorities_[RenderPassType::UI] = 800;       // UI は常に最後（最前面）
+        passTypePriorities_[RenderPassType::UIText] = 850;   // テキストは UI の上に載せる
     }
 
     void RenderManager::EnsureQueueSorted() {

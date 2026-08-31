@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -84,7 +84,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <WarningLevel>Level4</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>MINMAX;_DEBUG;_WINDOWS;USE_IMGUI;USE_PIX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>MINMAX;_DEBUG;_WINDOWS;USE_IMGUI;USE_PIX;MSDFGEN_PUBLIC=;MSDFGEN_USE_CPP11;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
@@ -93,7 +93,7 @@
       <TreatWarningAsError>true</TreatWarningAsError>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <MinimalRebuild>false</MinimalRebuild>
-      <AdditionalIncludeDirectories>$(ProjectDir)Externals\assimp\include;$(ProjectDir)Externals\freetype\include;$(ProjectDir)Externals\spdlog\include;$(ProjectDir)Externals\imgui;$(ProjectDir)Engine/Src;$(ProjectDir)Application/Src;$(ProjectDir)Externals</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Externals\assimp\include;$(ProjectDir)Externals\spdlog\include;$(ProjectDir)Externals\imgui;$(ProjectDir)Engine/Src;$(ProjectDir)Application/Src;$(ProjectDir)Externals</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -103,8 +103,8 @@
       <EnableCOMDATFolding>false</EnableCOMDATFolding>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
       <AdditionalOptions>/ignore:4099 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalLibraryDirectories>$(ProjectDir)externals\assimp\lib\Debug;$(ProjectDir)externals\freetype\lib\x64\Debug</AdditionalLibraryDirectories>
-      <AdditionalDependencies>assimp-vc143-mtd.lib;freetype.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)externals\assimp\lib\Debug</AdditionalLibraryDirectories>
+      <AdditionalDependencies>assimp-vc143-mtd.lib</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
@@ -121,13 +121,13 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>MINMAX;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>MINMAX;NDEBUG;_WINDOWS;MSDFGEN_PUBLIC=;MSDFGEN_USE_CPP11;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(ProjectDir)Externals\assimp\include;$(ProjectDir)Externals\freetype\include;$(ProjectDir)Externals\spdlog\include;$(ProjectDir)Externals\imgui;$(ProjectDir)Engine/Src;$(ProjectDir)Application/Src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Externals\assimp\include;$(ProjectDir)Externals\spdlog\include;$(ProjectDir)Externals\imgui;$(ProjectDir)Engine/Src;$(ProjectDir)Application/Src</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
@@ -136,8 +136,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalOptions>/ignore:4099 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalLibraryDirectories>$(ProjectDir)externals\assimp\lib\Release;$(ProjectDir)externals\freetype\lib\x64\Release</AdditionalLibraryDirectories>
-      <AdditionalDependencies>assimp-vc143-mt.lib;freetype.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)externals\assimp\lib\Release</AdditionalLibraryDirectories>
+      <AdditionalDependencies>assimp-vc143-mt.lib</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
@@ -153,13 +153,13 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_WINDOWS;USE_IMGUI;USE_PIX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;USE_IMGUI;USE_PIX;MSDFGEN_PUBLIC=;MSDFGEN_USE_CPP11;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(ProjectDir)Externals\assimp\include;$(ProjectDir)Externals\freetype\include;$(ProjectDir)Externals\spdlog\include;$(ProjectDir)Externals\imgui;$(ProjectDir)Engine/Src;$(ProjectDir)Application/Src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Externals\assimp\include;$(ProjectDir)Externals\spdlog\include;$(ProjectDir)Externals\imgui;$(ProjectDir)Engine/Src;$(ProjectDir)Application/Src</AdditionalIncludeDirectories>
       <Optimization>Disabled</Optimization>
       <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
@@ -169,8 +169,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalOptions>/ignore:4099 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalLibraryDirectories>$(ProjectDir)externals\assimp\lib\Release;$(ProjectDir)externals\freetype\lib\x64\Release</AdditionalLibraryDirectories>
-      <AdditionalDependencies>assimp-vc143-mt.lib;freetype.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)externals\assimp\lib\Release</AdditionalLibraryDirectories>
+      <AdditionalDependencies>assimp-vc143-mt.lib</AdditionalDependencies>
       <LinkTimeCodeGeneration />
     </Link>
     <PostBuildEvent>
@@ -448,6 +448,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Model\ModelResource.cpp" />
     <ClCompile Include="Application\Src\Scenes\TestScene\TestScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\SampleGameScene\SampleGameScene.cpp" />
+    <ClCompile Include="Application\Src\Scenes\ShootingSampleScene\ShootingSampleScene.cpp" />
+    <ClCompile Include="Application\Src\Scenes\Sprite2DSampleScene\Sprite2DSampleScene.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\UndoRedoHistory.cpp" />
     <ClCompile Include="Engine\Src\Threading\ThreadBudget.cpp" />
     <ClCompile Include="Engine\Src\Threading\ThreadPool.cpp" />
@@ -594,6 +596,120 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Externals\meshoptimizer\src\vfetchoptimizer.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Externals\msdfgen\core\Contour.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\msdfgen\core\DistanceMapping.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\msdfgen\core\EdgeHolder.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\msdfgen\core\MSDFErrorCorrection.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\msdfgen\core\Projection.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\msdfgen\core\Scanline.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\msdfgen\core\Shape.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\msdfgen\core\contour-combiners.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\msdfgen\core\convergent-curve-ordering.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\msdfgen\core\edge-coloring.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\msdfgen\core\edge-segments.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\msdfgen\core\edge-selectors.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\msdfgen\core\equation-solver.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\msdfgen\core\msdf-error-correction.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\msdfgen\core\msdfgen.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Text\DirectWriteFontFace.cpp" />
+    <ClCompile Include="Engine\Src\Text\MsdfFontBaker.cpp" />
+    <ClCompile Include="Engine\Src\Text\MsdfFont.cpp" />
+    <ClCompile Include="Engine\Src\Text\MsdfFontCache.cpp" />
+    <ClCompile Include="Engine\Src\Text\MsdfAtlasAllocator.cpp" />
+    <ClCompile Include="Engine\Src\Text\FontManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\UI\TextRenderer.cpp" />
+    <ClCompile Include="Engine\Src\UI\UIText.cpp" />
+    <ClCompile Include="Application\Src\Scenes\MsdfTextTestScene\MsdfTextTestScene.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionTestScene.h" />
@@ -1024,6 +1140,13 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Scenes\TestScene\TestScene.h" />
     <ClInclude Include="Application\Src\Scenes\SampleGameScene\SampleGameScene.h" />
     <ClInclude Include="Application\Src\Scenes\SampleGameScene\PlayerControllerComponent.h" />
+    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\ShootingSampleScene.h" />
+    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\BulletObject.h" />
+    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\EnemyObject.h" />
+    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\ShipControllerComponent.h" />
+    <ClInclude Include="Application\Src\Scenes\Sprite2DSampleScene\Sprite2DSampleScene.h" />
+    <ClInclude Include="Application\Src\Scenes\Sprite2DSampleScene\PaddleComponent.h" />
+    <ClInclude Include="Application\Src\Scenes\Sprite2DSampleScene\FallingItemComponent.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\DockingUI.h" />
     <ClInclude Include="Engine\Src\Camera\Camera.h" />
     <ClInclude Include="Engine\Src\Camera\Control\OrbitFlyController.h" />
@@ -1090,6 +1213,18 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Externals\imgui\imstb_textedit.h" />
     <ClInclude Include="Externals\imgui\imstb_truetype.h" />
     <ClInclude Include="Externals\meshoptimizer\src\meshoptimizer.h" />
+    <ClInclude Include="Engine\Src\Text\MsdfFontTypes.h" />
+    <ClInclude Include="Engine\Src\Text\TextEncoding.h" />
+    <ClInclude Include="Engine\Src\Text\TextLineBreak.h" />
+    <ClInclude Include="Engine\Src\Text\DirectWriteFontFace.h" />
+    <ClInclude Include="Engine\Src\Text\MsdfFontBaker.h" />
+    <ClInclude Include="Engine\Src\Text\MsdfFont.h" />
+    <ClInclude Include="Engine\Src\Text\MsdfFontCache.h" />
+    <ClInclude Include="Engine\Src\Text\MsdfAtlasAllocator.h" />
+    <ClInclude Include="Engine\Src\Text\FontManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\UI\TextRenderer.h" />
+    <ClInclude Include="Engine\Src\UI\UIText.h" />
+    <ClInclude Include="Application\Src\Scenes\MsdfTextTestScene\MsdfTextTestScene.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">
