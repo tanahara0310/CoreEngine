@@ -9,30 +9,34 @@
 namespace CoreEngine
 {
     void UIRenderer::Initialize(ID3D12Device* device) {
+        const std::string debugName = GetPipelineDebugName();
+
         shaderCompiler_->Initialize();
 
-        auto vertexShaderBlob = shaderCompiler_->CompileShader(L"Engine/Assets/Shaders/UI/UI.VS.hlsl", L"vs_6_0");
+        auto vertexShaderBlob = shaderCompiler_->CompileShader(GetVertexShaderPath(), L"vs_6_0");
         assert(vertexShaderBlob != nullptr);
 
-        auto pixelShaderBlob = shaderCompiler_->CompileShader(L"Engine/Assets/Shaders/UI/UI.PS.hlsl", L"ps_6_0");
+        auto pixelShaderBlob = shaderCompiler_->CompileShader(GetPixelShaderPath(), L"ps_6_0");
         assert(pixelShaderBlob != nullptr);
 
         reflectionBuilder_->Initialize(shaderCompiler_->GetDxcUtils());
-        reflectionData_ = reflectionBuilder_->BuildFromShaders(vertexShaderBlob, pixelShaderBlob, "UIRenderer");
+        reflectionData_ = reflectionBuilder_->BuildFromShaders(
+            vertexShaderBlob, pixelShaderBlob, debugName + "Renderer");
 
         // SpriteRenderer と同じシンプル構成
         RootSignatureConfig config;
 
         // UI はテキスト等で滑らかさが欲しいので Linear サンプラー
-        config.ConfigureSampler("gSampler", SamplerConfig::Linear());
+        config.ConfigureSampler("gSampler", GetSamplerConfig());
 
         auto buildResult = rootSignatureMg_->Build(device, *reflectionData_, config);
         if (!buildResult.success) {
-            throw std::runtime_error("Failed to create UI Root Signature: " + buildResult.errorMessage);
+            throw std::runtime_error(
+                "Failed to create " + debugName + " Root Signature: " + buildResult.errorMessage);
         }
 
         bool result = psoMg_->CreateBuilder()
-            .SetDebugName("UI")
+            .SetDebugName(debugName)
             .SetInputLayoutFromReflection(*reflectionData_)
             .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(false, false)
@@ -40,7 +44,7 @@ namespace CoreEngine
             .BuildAllBlendModes(device, vertexShaderBlob, pixelShaderBlob, rootSignatureMg_->GetRootSignature());
 
         if (!result) {
-            throw std::runtime_error("Failed to create UI Pipeline State Object");
+            throw std::runtime_error("Failed to create " + debugName + " Pipeline State Object");
         }
 
         pipelineState_ = psoMg_->GetPipelineState(BlendMode::kBlendModeNormal);
@@ -66,12 +70,13 @@ namespace CoreEngine
             auto& matData = materialDataPool_[frameIndex];
             auto& tfData = transformDataPool_[frameIndex];
 
-            matResources.resize(kMaxUICount);
-            tfResources.resize(kMaxUICount);
-            matData.resize(kMaxUICount);
-            tfData.resize(kMaxUICount);
+            const size_t poolCount = GetConstantBufferPoolCount();
+            matResources.resize(poolCount);
+            tfResources.resize(poolCount);
+            matData.resize(poolCount);
+            tfData.resize(poolCount);
 
-            for (size_t i = 0; i < kMaxUICount; ++i) {
+            for (size_t i = 0; i < poolCount; ++i) {
                 // マテリアル定数バッファ（永続マッピング）
                 matResources[i] = resourceFactory_->CreateBufferResource(dxCommon_->GetDevice(), sizeof(UIMaterial));
                 matResources[i]->Map(0, nullptr, reinterpret_cast<void**>(&matData[i]));
@@ -137,6 +142,15 @@ namespace CoreEngine
         return { w, h };
     }
 
+    Matrix4x4 UIRenderer::CalculateProjectionMatrix() const {
+        // 左上原点 (0,0) → 右下 (screenW, screenH) のスクリーン座標系
+        Vector2 screen = GetScreenSize();
+        return MathCore::Rendering::Orthographic(
+            0.0f, 0.0f,
+            screen.x, screen.y,
+            0.0f, 100.0f);
+    }
+
     Matrix4x4 UIRenderer::CalculateWVPMatrix(const Vector3& position, const Vector3& scale, const Vector3& rotation) const {
         // ローカル変換
         Matrix4x4 worldMatrix = MathCore::Matrix::MakeAffine(scale, rotation, position);
@@ -144,13 +158,6 @@ namespace CoreEngine
         // ビューは単位行列（UI はカメラ非依存）
         Matrix4x4 viewMatrix = MathCore::Matrix::Identity();
 
-        // 投影：左上原点 (0,0) → 右下 (screenW, screenH) のスクリーン座標系
-        Vector2 screen = GetScreenSize();
-        Matrix4x4 projectionMatrix = MathCore::Rendering::Orthographic(
-            0.0f, 0.0f,
-            screen.x, screen.y,
-            0.0f, 100.0f);
-
-        return worldMatrix * viewMatrix * projectionMatrix;
+        return worldMatrix * viewMatrix * CalculateProjectionMatrix();
     }
 }

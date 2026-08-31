@@ -47,6 +47,11 @@ namespace CoreEngine
         /// @brief 利用可能な定数バッファのインデックスを取得
         size_t GetAvailableConstantBuffer();
 
+        /// @brief スクリーン px → クリップ空間の射影行列を返す
+        /// @details テキストのバッチ描画は、テキストごとのワールド行列を CPU 側で
+        ///          頂点へ潰したうえで、この射影だけをシェーダーへ渡す
+        Matrix4x4 CalculateProjectionMatrix() const;
+
         /// @brief WVP 行列を計算（スクリーン固定座標系）
         /// @param position UI 要素のスクリーン座標（左上原点・ピクセル）
         /// @param scale    スケール
@@ -81,6 +86,34 @@ namespace CoreEngine
         /// @brief シェーダーリソース名からルートパラメータインデックスを取得
         int GetRootParamIndex(const std::string& resourceName) const;
 
+    protected:
+        // ──────────────────────────────────────────────────────────
+        // 派生レンダラー用のフック
+        // ──────────────────────────────────────────────────────────
+        // スクリーン固定の正射影・定数バッファプール・WVP 計算は UI と共通で、
+        // 差し替えたいのはシェーダーとサンプラーだけ。そこだけを仮想化しておく。
+        // （MSDF テキストは同じ土台の上でピクセルシェーダーだけが違う）
+
+        /// @brief 使用する頂点シェーダーのパス
+        virtual const wchar_t* GetVertexShaderPath() const { return L"Engine/Assets/Shaders/UI/UI.VS.hlsl"; }
+
+        /// @brief 使用するピクセルシェーダーのパス
+        virtual const wchar_t* GetPixelShaderPath() const { return L"Engine/Assets/Shaders/UI/UI.PS.hlsl"; }
+
+        /// @brief PSO / リフレクションのデバッグ名
+        virtual const char* GetPipelineDebugName() const { return "UI"; }
+
+        /// @brief 静的サンプラーの設定
+        virtual SamplerConfig GetSamplerConfig() const { return SamplerConfig::Linear(); }
+
+        /// @brief 確保する定数バッファプールの要素数
+        /// @details 描画データを頂点へ焼き込む派生（テキスト）はプールを使わないので
+        ///          0 を返して確保させない
+        virtual size_t GetConstantBufferPoolCount() const { return kMaxUICount; }
+
+        /// @brief シェーダーリフレクション結果（派生も GetRootParamIndex 経由で使う）
+        std::unique_ptr<ShaderReflectionData> reflectionData_;
+
     private:
         // BaseRenderer から継承したサブシステムを使用（rootSignatureMg_, psoMg_, shaderCompiler_, reflectionBuilder_ は削除）
 
@@ -96,8 +129,6 @@ namespace CoreEngine
 
         size_t currentBufferIndex_ = 0;
         UINT   currentFrameIndex_ = 0;
-
-        std::unique_ptr<ShaderReflectionData> reflectionData_;
 
         // 基準解像度（0 以下の場合はウィンドウサイズに追従）
         float referenceWidth_ = 0.0f;
