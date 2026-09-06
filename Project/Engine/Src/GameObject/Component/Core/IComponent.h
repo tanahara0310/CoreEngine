@@ -62,6 +62,18 @@ public:
     /// @brief インスペクターの中身を描画する
     /// @return 値が変更されたら true
     virtual bool DrawInspector() { return false; }
+
+    /// @brief インスペクタのタブアイコン（Engine/Assets/Textures/Icon 配下のファイル名）
+    /// @note タブを持たないオブジェクトは「コンポーネント 1 個 = 1 タブ」として
+    ///       インスペクタが組み立てられる。その左端に並ぶアイコン。
+    virtual const char* GetInspectorIcon() const { return "obj.png"; }
+
+    /// @brief タブアイコンの色（RGBA 0..1）
+    /// @param outRgba 4 要素の配列
+    virtual void GetInspectorIconColor(float* outRgba) const
+    {
+        outRgba[0] = 0.75f; outRgba[1] = 0.78f; outRgba[2] = 0.85f; outRgba[3] = 1.0f;
+    }
 #endif
 
     // ===== アクセサ =====

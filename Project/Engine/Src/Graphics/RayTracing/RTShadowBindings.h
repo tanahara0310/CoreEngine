@@ -14,6 +14,7 @@ namespace CoreEngine::RTShadowBind
         gScene,
         gSceneDepth,
         gNormalRoughness,
+        gShadowHistory,
         ShadowRayConstants,
         Count
     };
@@ -23,6 +24,7 @@ namespace CoreEngine::RTShadowBind
         { "gScene",             ShaderBindingType::SRV, BindingUsage::Required },  // t0: TLAS
         { "gSceneDepth",        ShaderBindingType::SRV, BindingUsage::Required },  // t1
         { "gNormalRoughness",   ShaderBindingType::SRV, BindingUsage::Required },  // t2
+        { "gShadowHistory",     ShaderBindingType::SRV, BindingUsage::Required },  // t3: 前フレーム履歴（適応サンプリング判定）
         { "ShadowRayConstants", ShaderBindingType::CBV, BindingUsage::Required },  // b0（ルート定数）
     };
 

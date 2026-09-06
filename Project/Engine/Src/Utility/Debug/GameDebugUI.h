@@ -220,6 +220,11 @@ namespace CoreEngine
     private:
         void ShowConsoleUI();
 
+        /// @brief メニューバー中央へ再生 / 停止ボタンを描画する
+        /// @details 切り替え先は PlaybackStateManager。停止中はゲームの更新だけが止まり、
+        ///          エディタ UI とパラメータ編集はそのまま使える。
+        void DrawPlaybackControls();
+
         /// @brief Window メニュー内の 1 グループをサブメニューとして描画する
         /// @param extraContent 省略可。グループ固有の追加項目（区切り線の後に描画される）
         /// @note 該当が 1 件も無いグループは項目自体を出さない

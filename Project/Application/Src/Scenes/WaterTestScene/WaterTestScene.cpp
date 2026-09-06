@@ -41,12 +41,12 @@ void WaterTestScene::OnInitialize() {
     // 整合しない。既定背景が大気散乱モードになったため、AtmosphereTestScene と同じ考え方で
     // 見栄えの良い太陽高度・強度に調整し、水面反射／コースティクスが参照する太陽と
     // 空に映る太陽を一致させる。
-    if (directionalLight_) {
-        directionalLight_->direction = ComputeSunLightDirection(35.0f, 25.0f);
+    if (Light* sun = GetDirectionalLight()) {
+        sun->direction = ComputeSunLightDirection(35.0f, 25.0f);
         // 空（大気・雲）の輝度スケールと、サーフェスの直接光は単位系が別なので分離して与える。
         // 両方に 20 を入れると床のような明るいアルベドが ACES の飽和域に入り真っ白になる。
-        directionalLight_->atmosphereIntensity = 20.0f;
-        directionalLight_->intensity = kAtmosphereSunIlluminanceLux;
+        sun->atmosphereIntensity = 20.0f;
+        sun->intensity = kAtmosphereSunIlluminanceLux;
     }
 
     // 水面一式（水面オブジェクト・波シミュレーション・リソース結線）は Feature が持つ。
@@ -89,10 +89,6 @@ void WaterTestScene::OnInitialize() {
 
 void WaterTestScene::OnUpdate() {
     cameraShowcase_.Update(CoreEngine::Time::UnscaledDeltaTime());
-}
-
-void WaterTestScene::Draw() {
-    BaseScene::Draw();
 }
 
 void WaterTestScene::OnFinalize() {

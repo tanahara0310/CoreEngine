@@ -180,19 +180,6 @@ namespace CoreEngine
         }
     }
 
-    void RenderManager::DrawGeometryPass(ID3D12GraphicsCommandList* cmdList, RenderViewType viewType) {
-        if ((drawQueue_.empty() && skyDrawQueue_.empty() && transparentDrawQueue_.empty() && waterDrawQueue_.empty()) || !cmdList) {
-            return;
-        }
-
-        EnsureQueueSorted();
-
-        DrawMainQueuePass(cmdList, viewType);
-        DrawSkyQueuePass(cmdList, viewType);
-        DrawTransparentQueuePass(cmdList, viewType);
-        DrawWaterQueuePass(cmdList, viewType);
-    }
-
     void RenderManager::DrawMainQueuePass(ID3D12GraphicsCommandList* cmdList, RenderViewType viewType) {
         if ((drawQueue_.empty() && (deferredLightingActive_ || opaqueDrawQueue_.empty())) || !cmdList) {
             return;
@@ -211,8 +198,7 @@ namespace CoreEngine
     void RenderManager::DrawWaterQueuePass(ID3D12GraphicsCommandList* cmdList, RenderViewType viewType) {
         // 水面は GameView 限定。反射ビューで描くと水面が自分の平面反射に
         // 描き込まれる（夜の大きな明暗斑バグの原因）。WaterSurfacePass 側の
-        // IsEnabledForView と同じ制約をキュー層でも二重に守る
-        // （DrawGeometryPass 経由など、パスを通らない呼び出し経路への防壁）。
+        // IsEnabledForView と同じ制約を、キュー層でも二重に守っておく。
         if (viewType != RenderViewType::GameView) {
             return;
         }
@@ -385,6 +371,14 @@ namespace CoreEngine
         lineKick.passType = RenderPassType::Line;
         lineKick.blendMode = BlendMode::kBlendModeNormal;
         AddRenderItem(lineKick);
+
+        // グリッドも同じくアイテムを持たないパス（描画は GridRenderer::EndPass が 1 ドロー出すだけ）。
+        // これが無いとパスが起動せず、グリッドが一切描かれない。
+        RenderItem gridKick{};
+        gridKick.object = nullptr;
+        gridKick.passType = RenderPassType::Grid;
+        gridKick.blendMode = BlendMode::kBlendModeNormal;
+        AddRenderItem(gridKick);
         waterDrawQueue_.clear();
         registrationCounter_ = 0;
         isQueueSorted_ = false;
@@ -410,10 +404,12 @@ namespace CoreEngine
         passTypePriorities_[RenderPassType::SkyBox] = 300;
         passTypePriorities_[RenderPassType::WaterSurface] = 350;
         passTypePriorities_[RenderPassType::ModelParticle] = 400;
+        passTypePriorities_[RenderPassType::Grid] = 450;      // 不透明の後・デバッグラインの下
         passTypePriorities_[RenderPassType::Line] = 500;
         passTypePriorities_[RenderPassType::Particle] = 600;
         passTypePriorities_[RenderPassType::GpuParticle] = 650;
         passTypePriorities_[RenderPassType::Sprite] = 700;
+        passTypePriorities_[RenderPassType::Text3D] = 750;   // ワールド空間の文字。3D の中身の最後・UI の下
         passTypePriorities_[RenderPassType::UI] = 800;       // UI は常に最後（最前面）
         passTypePriorities_[RenderPassType::UIText] = 850;   // テキストは UI の上に載せる
     }

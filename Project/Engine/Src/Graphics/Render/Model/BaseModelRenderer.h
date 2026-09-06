@@ -56,10 +56,28 @@ namespace CoreEngine
         /// @param params IBLパラメータ構造体
         void SetIBLParameters(const IBLParameters& params);
 
+    protected:
+        /// @brief 現在のブレンドモードに応じたフォグ定数を選ぶ
+        D3D12_GPU_VIRTUAL_ADDRESS SelectFogConstants() const;
+
+    public:
+
         /// @brief フォワード受影用 RT シャドウマスク SRV を設定（gRTShadowMask t6）
         /// @details 毎フレーム DeferredLightingPass::Setup がメインライトのマスクを供給する。
         ///          マスク未提供フレームは white1x1（=影なし）が入る。
         void SetRTShadowMask(D3D12_GPU_DESCRIPTOR_HANDLE handle) { rtShadowMaskHandle_ = handle; }
+
+        /// @brief 今フレームのフォグ定数を受け取る（gFog b4）
+        /// @details FogPass が毎フレーム供給する。どれを差すかはブレンドモードで決まる
+        ///          （不透明は全画面パスが掛けるので恒等、加算・スクリーンは減衰のみ）。
+        void SetFogConstants(D3D12_GPU_VIRTUAL_ADDRESS full,
+                             D3D12_GPU_VIRTUAL_ADDRESS additive,
+                             D3D12_GPU_VIRTUAL_ADDRESS disabled)
+        {
+            fogFullCBV_ = full;
+            fogAdditiveCBV_ = additive;
+            fogDisabledCBV_ = disabled;
+        }
 
         /// @brief 環境マップテクスチャが設定済みか確認
         bool HasEnvironmentMap() const { return iblParams_.HasEnvironmentMap(); }
@@ -90,9 +108,6 @@ namespace CoreEngine
             ID3D12GraphicsCommandList* cmdList,
             const CustomShaderPipeline* customPipeline);
 
-        /// @brief カメラ CBV の GPU 仮想アドレスを取得（DeferredLightingPass 連携用）
-        D3D12_GPU_VIRTUAL_ADDRESS GetCameraCBVAddress() const { return cameraCBV_; }
-
         /// @brief インスタンシングバッチマネージャーを設定（ModelManager から注入）
         void SetInstanceBatchManager(InstanceBatchManager* manager) { instanceBatchManager_ = manager; }
 
@@ -121,6 +136,11 @@ namespace CoreEngine
         IBLParameters iblParams_;
 
         D3D12_GPU_DESCRIPTOR_HANDLE rtShadowMaskHandle_ = {};
+
+        // 今フレームのフォグ定数（FogPass が供給。0 = 未供給で差さない）
+        D3D12_GPU_VIRTUAL_ADDRESS fogFullCBV_ = 0;
+        D3D12_GPU_VIRTUAL_ADDRESS fogAdditiveCBV_ = 0;
+        D3D12_GPU_VIRTUAL_ADDRESS fogDisabledCBV_ = 0;
 
         // IBL シーンパラメータ定数バッファ（environmentRotation）
         Microsoft::WRL::ComPtr<ID3D12Resource> iblParamsBuffer_;

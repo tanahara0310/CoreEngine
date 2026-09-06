@@ -66,15 +66,16 @@ namespace CoreEngine
             }
         }
 
-        // トランジションがブロック中でない場合のみシーンを更新
-        if (currentScene_ && !sceneTransition_->IsBlocking()) {
-            currentScene_->Update();
-        }
-    }
-
-    void SceneManager::Draw() {
+        // トランジションのブロック中は「ゲームの進行だけ」を止める。
+        // シーンごと更新を飛ばしてはいけない。大気・雲・フォグは毎フレームの Update で
+        // 「このフレーム有効」フラグを立て直しており（RenderDomainContext::EndFrame が
+        // 毎フレーム落とす）、飛ばすとフェードアウトの 1 フレーム目 ―― まだ絵が
+        // ほぼ素通しで見えている時点 ―― で雲・雲影・フォグが消え、
+        // 露出も照明駆動測光を失って画面が明るく浮く
         if (currentScene_) {
-            currentScene_->Draw();
+            currentScene_->Update(sceneTransition_->IsBlocking()
+                ? SceneUpdateMode::Suspended
+                : SceneUpdateMode::Full);
         }
     }
 
@@ -119,9 +120,6 @@ namespace CoreEngine
         }
 
         if (currentScene_) {
-            if (sceneTransition_) {
-                sceneTransition_->ClearBGMVolumeCallback();
-            }
             if (auto* pipeline = engine_->GetRenderPipeline()) {
                 pipeline->RemovePassesByOwner(currentScene_.get());
             }
@@ -160,12 +158,6 @@ namespace CoreEngine
     void SceneManager::SkipTransition() {
         if (sceneTransition_) {
             sceneTransition_->SkipTransition();
-        }
-    }
-
-    void SceneManager::RegisterSceneBGMCallback(std::function<void(float)> callback) {
-        if (sceneTransition_) {
-            sceneTransition_->SetBGMVolumeCallback(callback);
         }
     }
 
@@ -291,11 +283,6 @@ namespace CoreEngine
         }
 
         if (currentScene_) {
-            // BGMコールバックをクリア
-            if (sceneTransition_) {
-                sceneTransition_->ClearBGMVolumeCallback();
-            }
-
             // シーンが登録したユーザーレンダーパスを一括除去
             if (auto* pipeline = engine_->GetRenderPipeline()) {
                 pipeline->RemovePassesByOwner(currentScene_.get());

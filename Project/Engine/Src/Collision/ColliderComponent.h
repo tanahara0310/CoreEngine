@@ -22,6 +22,18 @@ public:
 
 #ifdef USE_IMGUI
     const char* GetInspectorName() const override { return "コライダー"; }
+
+    const char* GetInspectorIcon() const override { return "obj.png"; }
+
+    void GetInspectorIconColor(float* outRgba) const override
+    {
+        outRgba[0] = 0.35f; outRgba[1] = 0.85f; outRgba[2] = 0.45f; outRgba[3] = 1.0f;
+    }
+
+    /// @brief コライダーの形状・レイヤー編集 UI
+    /// @return 値が変更されたら true
+    /// @note 実体は ColliderInspector（ModelGameObject のタブと同じものを共有する）。
+    bool DrawInspector() override;
 #endif
 
     // ===== 追加 =====

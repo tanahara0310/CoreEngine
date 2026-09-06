@@ -38,6 +38,20 @@ public:
     /// @brief 時間の進む速さを設定する（負値は 0 に丸める）
     static void SetTimeScale(float scale) { timeScale_ = (scale > 0.0f) ? scale : 0.0f; }
 
+    // ===== ポーズ（再生 / 停止ボタン） =====
+
+    /// @brief ゲーム時間を止めているか
+    static bool IsPaused() { return paused_; }
+
+    /// @brief ゲーム時間の停止を切り替える
+    /// @param paused 止めるなら true
+    /// @note 止めている間 DeltaTime() は 0 を返す。timeScale は書き換えないので、
+    ///       解除するとヒットストップ等で設定された速さがそのまま戻る。
+    ///       UnscaledDeltaTime() は実測のまま流れ続ける（エディタ・UI 用）。
+    /// @note 切り替えるのは PlaybackStateManager の役目。ゲームコードから直接呼ぶと
+    ///       メニューバーのボタンの状態と食い違う。
+    static void SetPaused(bool paused) { paused_ = paused; }
+
     // ===== 固定ステップ =====
 
     /// @brief 固定ステップ 1 回分の時間（秒）
@@ -56,16 +70,16 @@ public:
     static void Advance(float unscaledDeltaTime)
     {
         unscaledDeltaTime_ = unscaledDeltaTime;
-        deltaTime_ = unscaledDeltaTime * timeScale_;
+        deltaTime_ = paused_ ? 0.0f : unscaledDeltaTime * timeScale_;
         unscaledTimeSinceStartup_ += unscaledDeltaTime_;
         timeSinceStartup_ += deltaTime_;
         ++frameCount_;
     }
 
-    /// @brief 累積時間とフレーム数を初期状態へ戻す（timeScale と固定ステップ幅は保持する）
+    /// @brief 累積時間とフレーム数を初期状態へ戻す（timeScale・ポーズ・固定ステップ幅は保持する）
     static void Reset()
     {
-        deltaTime_ = kDefaultFixedDeltaTime;
+        deltaTime_ = paused_ ? 0.0f : kDefaultFixedDeltaTime;
         unscaledDeltaTime_ = kDefaultFixedDeltaTime;
         timeSinceStartup_ = 0.0f;
         unscaledTimeSinceStartup_ = 0.0f;
@@ -78,6 +92,7 @@ private:
     static inline float    timeSinceStartup_ = 0.0f;
     static inline float    unscaledTimeSinceStartup_ = 0.0f;
     static inline float    timeScale_ = 1.0f;
+    static inline bool     paused_ = false;
     static inline float    fixedDeltaTime_ = kDefaultFixedDeltaTime;
     static inline uint64_t frameCount_ = 0;
 };

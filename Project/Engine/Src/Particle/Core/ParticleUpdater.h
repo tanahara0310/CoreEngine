@@ -12,6 +12,7 @@ class ColorModule;
 class SizeModule;
 class RotationModule;
 class NoiseModule;
+class CollisionModule;
 
 /// @brief パーティクル更新処理クラス
 /// パーティクルの物理演算・色・サイズ・回転などの更新を担当
@@ -26,7 +27,8 @@ public:
         ColorModule* colorModule,
         SizeModule* sizeModule,
         RotationModule* rotationModule,
-        NoiseModule* noiseModule
+        NoiseModule* noiseModule,
+        CollisionModule* collisionModule
     );
 
     /// @brief パーティクルリストを更新
@@ -53,5 +55,6 @@ private:
     SizeModule* sizeModule_ = nullptr;
     RotationModule* rotationModule_ = nullptr;
     NoiseModule* noiseModule_ = nullptr;
+    CollisionModule* collisionModule_ = nullptr;
 };
 }

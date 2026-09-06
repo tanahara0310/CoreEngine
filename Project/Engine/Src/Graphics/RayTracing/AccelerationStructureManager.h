@@ -2,7 +2,9 @@
 
 #include <d3d12.h>
 #include "Graphics/RHI/Descriptor/DescriptorHandle.h"
+#include "Graphics/RHI/Command/FrameSync.h" // kMaxFramesInFlight（インスタンスバッファのリング段数）
 #include <wrl.h>
+#include <array>
 #include <vector>
 #include <cstdint>
 #include "Math/Matrix/Matrix4x4.h"
@@ -65,7 +67,9 @@ namespace CoreEngine
         bool BuildBLASFromModelResource(ID3D12GraphicsCommandList* cmdList, ModelResource* resource);
 
         /// @brief TLAS の SRV GPU ハンドルを取得
-        D3D12_GPU_DESCRIPTOR_HANDLE GetTLASSRVHandle() const { return tlasSRVDescriptor_.gpuHandle; }
+        D3D12_GPU_DESCRIPTOR_HANDLE GetTLASSRVHandle() const {
+            return tlasSRVDescriptors_[tlasInstanceRingIndex_].gpuHandle;
+        }
 
         /// @brief DXR がサポートされているか
         bool IsSupported() const { return isSupported_; }
@@ -120,10 +124,33 @@ namespace CoreEngine
         std::vector<BLASEntry> blasList_;
 
         // TLAS リソース
-        Microsoft::WRL::ComPtr<ID3D12Resource> tlasResult_;
-        Microsoft::WRL::ComPtr<ID3D12Resource> tlasInstanceDescBuffer_;
+        /// @brief TLAS 結果バッファと、その SRV（フレームインフライトぶんのリング）
+        /// @details 1 枚＋1 ディスクリプタで回すと、インスタンスが増えてバッファを
+        ///          張り直したフレームで破綻する。張り直すと GPU 仮想アドレスが変わるため
+        ///          SRV を書き直す必要があるが、ディスクリプタヒープは GPU が
+        ///          「コマンドを実行する時点」で読む。CPU は kMaxFramesInFlight フレームまで
+        ///          先行できるので、まだ実行されていない前フレームの DispatchRays が
+        ///          新しい（まだビルドしていない）バッファを指す SRV を読んでしまい、
+        ///          そのフレームだけ影が丸ごと消える。マップを前進してインスタンス数が
+        ///          過去最大を更新するたびに起きるので、「新しいブロックへ進むと影がちらつき、
+        ///          戻るとちらつかない」という症状になる。
+        ///          フレームごとに別のバッファと別のディスクリプタを使えば、
+        ///          実行待ちのフレームが参照している SRV を書き換えることが無くなる。
+        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kMaxFramesInFlight> tlasResults_{};
+        std::array<DescriptorHandle, kMaxFramesInFlight> tlasSRVDescriptors_{};
         Microsoft::WRL::ComPtr<ID3D12Resource> tlasScratch_;
-        DescriptorHandle tlasSRVDescriptor_{};
+
+        /// @brief TLAS インスタンス記述子バッファ（フレームインフライトぶんのリング）
+        /// @details UPLOAD ヒープなので GPU はコマンド実行時に直接ここを読む。
+        ///          1 枚を使い回すと、CPU が次フレームぶんを書いている最中に
+        ///          GPU がまだ前フレームの TLAS ビルドで同じ番地を読んでいる。
+        ///          フレームごとに別の番地へ書けばその競合が起きない。
+        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kMaxFramesInFlight>
+            tlasInstanceDescBuffers_{};
+
+        /// @brief 次に書き込むリングスロット（BuildTLAS 呼び出しごとに 1 つ進む）
+        /// @details インスタンス記述子バッファ・結果バッファ・SRV の 3 つで共有する。
+        uint32_t tlasInstanceRingIndex_ = 0;
 
         // BLAS 構築用スクラッチ（再利用）
         Microsoft::WRL::ComPtr<ID3D12Resource> blasScratch_;

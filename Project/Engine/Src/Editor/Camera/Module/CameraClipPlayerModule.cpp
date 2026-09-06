@@ -1,70 +1,67 @@
 #include "pch.h"
 #include "CameraClipPlayerModule.h"
-#include "CameraSequenceAssetIO.h"
+#include "Camera/Sequence/CameraSequenceEvaluator.h"
+#include "Camera/Sequence/CameraSequenceIO.h"
 
 #ifdef USE_IMGUI
 
 #include "Editor/ImGui/ImGuiAll.h"
 #include <algorithm>
-#include <cmath>
 #include <filesystem>
 
 #include "Camera/CameraManager.h"
 #include "Camera/Camera.h"
-#include "Camera/Camera.h"
+#include "GameObject/GameObject.h"
+#include "GameObject/GameObjectManager.h"
 
 namespace CoreEngine
 {
     namespace
     {
-        struct EasingOption {
-            const char* label;
-            EasingUtil::Type type;
-        };
+        /// @brief 名前でシーンのオブジェクトを引く注視解決口を作る
+        CameraSequenceAimContext MakeAimContext(GameObjectManager* objects)
+        {
+            CameraSequenceAimContext context{};
+            if (!objects) {
+                return context;
+            }
 
-        constexpr EasingOption kEasingOptions[] = {
-            { "線形", EasingUtil::Type::Linear },
-            { "イーズイン (Quad)", EasingUtil::Type::EaseInQuad },
-            { "イーズアウト (Quad)", EasingUtil::Type::EaseOutQuad },
-            { "イーズインアウト (Quad)", EasingUtil::Type::EaseInOutQuad },
-            { "イーズイン (Cubic)", EasingUtil::Type::EaseInCubic },
-            { "イーズアウト (Cubic)", EasingUtil::Type::EaseOutCubic },
-            { "イーズインアウト (Cubic)", EasingUtil::Type::EaseInOutCubic },
-            { "イーズイン (Quart)", EasingUtil::Type::EaseInQuart },
-            { "イーズアウト (Quart)", EasingUtil::Type::EaseOutQuart },
-            { "イーズインアウト (Quart)", EasingUtil::Type::EaseInOutQuart },
-            { "イーズイン (Sine)", EasingUtil::Type::EaseInSine },
-            { "イーズアウト (Sine)", EasingUtil::Type::EaseOutSine },
-            { "イーズインアウト (Sine)", EasingUtil::Type::EaseInOutSine },
-            { "イーズイン (Expo)", EasingUtil::Type::EaseInExpo },
-            { "イーズアウト (Expo)", EasingUtil::Type::EaseOutExpo },
-            { "イーズインアウト (Expo)", EasingUtil::Type::EaseInOutExpo }
-        };
-
-        constexpr int kEasingOptionCount = static_cast<int>(sizeof(kEasingOptions) / sizeof(kEasingOptions[0]));
+            context.resolveObject = [objects](const std::string& name, Vector3& outPosition) {
+                for (const auto& object : objects->GetAllObjects()) {
+                    if (object && object->GetName() == name) {
+                        outPosition = object->GetWorldPosition();
+                        return true;
+                    }
+                }
+                return false;
+            };
+            return context;
+        }
     }
 
     // 再生中だけ playhead を進め、補間したカメラ姿勢をゲームカメラへ書き込む
     void CameraClipPlayerModule::Update(const CameraEditorContext& context)
     {
-        if (!context.cameraManager || !isPlaying_ || clipKeyframes_.empty()) {
+        if (!context.cameraManager || !isPlaying_ || clip_.keyframes.empty()) {
             return;
         }
 
         // 再生ヘッドを進め、シーケンスの補間結果を現在カメラに適用する。
         playhead_ += ImGui::GetIO().DeltaTime * playbackSpeed_;
 
-        if (playhead_ > timelineLength_) {
+        if (playhead_ > clip_.timelineLength) {
             if (loopPlayback_) {
                 playhead_ = 0.0f;
             } else {
-                playhead_ = timelineLength_;
+                playhead_ = clip_.timelineLength;
                 isPlaying_ = false;
             }
         }
 
+        const CameraSequenceAimContext aimContext = MakeAimContext(context.gameObjectManager);
+
         CameraSnapshot evaluated{};
-        if (EvaluateSnapshotAt(playhead_, evaluated)) {
+        if (CameraSequenceEvaluator::Evaluate(clip_, playhead_, evaluated, &aimContext)) {
             ApplyToActiveCamera(context, evaluated);
         }
     }
@@ -119,22 +116,19 @@ namespace CoreEngine
             UI::Hint(statusMessage_.c_str());
         }
 
-        if (clipKeyframes_.empty()) {
+        if (clip_.keyframes.empty()) {
             UI::Hint("再生可能なシーケンスが読み込まれていません。");
             return;
         }
 
-        ImGui::Text("キーフレーム数: %d", static_cast<int>(clipKeyframes_.size()));
-        ImGui::Text("ショット数: %d (%s)", static_cast<int>(clipShots_.size()), shotsEnabled_ ? "有効" : "無効");
+        ImGui::Text("キーフレーム数: %d", static_cast<int>(clip_.keyframes.size()));
+        ImGui::Text("ショット数: %d (%s)", static_cast<int>(clip_.shots.size()), clip_.shotsEnabled ? "有効" : "無効");
         UI::DragFloat("再生速度", playbackSpeed_, 0.05f, 0.1f, 4.0f, "%.2fx");
         UI::Widgets::ToggleSwitch("ループ再生", &loopPlayback_);
 
-        const char* easingLabel = (easingTypeIndex_ >= 0 && easingTypeIndex_ < kEasingOptionCount)
-            ? kEasingOptions[easingTypeIndex_].label
-            : "不明";
-        ImGui::Text("補間タイプ: %s", easingLabel);
+        ImGui::Text("補間タイプ: %s", CameraSequenceEasing::LabelAt(clip_.easingTypeIndex));
 
-        bool playheadChanged = UI::SliderFloat("再生ヘッド", playhead_, 0.0f, timelineLength_, "%.2f 秒");
+        bool playheadChanged = UI::SliderFloat("再生ヘッド", playhead_, 0.0f, clip_.timelineLength, "%.2f 秒");
 
         if (isPlaying_) {
             if (ImGui::Button("停止")) {
@@ -153,8 +147,10 @@ namespace CoreEngine
         }
 
         if (!isPlaying_ && playheadChanged) {
+            const CameraSequenceAimContext aimContext = MakeAimContext(context.gameObjectManager);
+
             CameraSnapshot evaluated{};
-            if (EvaluateSnapshotAt(playhead_, evaluated)) {
+            if (CameraSequenceEvaluator::Evaluate(clip_, playhead_, evaluated, &aimContext)) {
                 ApplyToActiveCamera(context, evaluated);
             }
         }
@@ -162,7 +158,7 @@ namespace CoreEngine
 
     void CameraClipPlayerModule::RefreshClipFileList()
     {
-        clipFileList_ = CameraSequenceAssetIO::GetSequenceFileList(clipDirectoryPath_);
+        clipFileList_ = CameraSequenceIO::GetSequenceFileList(clipDirectoryPath_);
         needRefreshClipFileList_ = false;
     }
 
@@ -170,210 +166,20 @@ namespace CoreEngine
     {
         // 読み込み成功時だけ内部状態を差し替える。失敗しても再生中のクリップは壊さない
         CameraSequenceAsset asset{};
-        if (!CameraSequenceAssetIO::Load(filePath, asset)) {
+        if (!CameraSequenceIO::Load(filePath, asset)) {
             return false;
         }
 
-        timelineLength_ = asset.timelineLength;
-        easingTypeIndex_ = asset.easingTypeIndex;
-        shotsEnabled_ = asset.shotsEnabled;
-        if (timelineLength_ < 0.1f) {
-            timelineLength_ = 0.1f;
-        }
-
-        clipKeyframes_.clear();
-        for (const auto& key : asset.keyframes) {
-            ClipKeyframe localKey{};
-            localKey.time = key.time;
-            localKey.snapshot = key.snapshot;
-            clipKeyframes_.push_back(localKey);
-        }
-
-        std::sort(clipKeyframes_.begin(), clipKeyframes_.end(),
-            [](const ClipKeyframe& a, const ClipKeyframe& b) { return a.time < b.time; });
-
-        clipShots_.clear();
-        for (const auto& shot : asset.shots) {
-            ClipShot localShot{};
-            localShot.name = shot.name;
-            localShot.startTime = shot.startTime;
-            localShot.endTime = shot.endTime;
-            localShot.enabled = shot.enabled;
-            localShot.transitionType = (shot.transitionType == CameraSequenceTransitionType::Blend)
-                ? ShotTransitionType::Blend
-                : ShotTransitionType::Cut;
-            localShot.blendDuration = shot.blendDuration;
-            clipShots_.push_back(localShot);
-        }
+        // タイムライン長の下限・時刻の並びは CameraSequenceIO::Load が保証する。
+        clip_ = std::move(asset);
 
         playhead_ = 0.0f;
         isPlaying_ = false;
         loadedClipName_ = std::filesystem::path(filePath).filename().string();
         statusMessage_.clear();
-        return !clipKeyframes_.empty();
+        return !clip_.keyframes.empty();
     }
 
-    // 指定時刻のカメラ姿勢を求める。ショット境界ではカット（補間なし）になる
-    bool CameraClipPlayerModule::EvaluateSnapshotAt(float time, CameraSnapshot& outSnapshot) const
-    {
-        if (!EvaluateSnapshotRaw(time, outSnapshot)) {
-            return false;
-        }
-
-        // ショット管理有効時は、ショット境界での遷移方式（カット/ブレンド）を適用する。
-        if (!shotsEnabled_ || clipShots_.empty()) {
-            return true;
-        }
-
-        const float clampedTime = std::clamp(time, 0.0f, timelineLength_);
-        const int shotIndex = FindShotIndexAt(clampedTime);
-        if (shotIndex < 0 || shotIndex >= static_cast<int>(clipShots_.size())) {
-            return true;
-        }
-
-        const ClipShot& currentShot = clipShots_[shotIndex];
-        if (!currentShot.enabled || currentShot.transitionType != ShotTransitionType::Blend) {
-            return true;
-        }
-
-        int previousShotIndex = -1;
-        for (int i = shotIndex - 1; i >= 0; --i) {
-            if (clipShots_[i].enabled) {
-                previousShotIndex = i;
-                break;
-            }
-        }
-
-        if (previousShotIndex < 0) {
-            return true;
-        }
-
-        const ClipShot& previousShot = clipShots_[previousShotIndex];
-        const float currentShotDuration = (std::max)(currentShot.endTime - currentShot.startTime, 0.0f);
-        const float blendDuration = std::clamp(currentShot.blendDuration, 0.0f, currentShotDuration);
-        if (blendDuration <= 0.0001f) {
-            return true;
-        }
-
-        const float blendStart = currentShot.startTime;
-        const float blendEnd = blendStart + blendDuration;
-        if (clampedTime < blendStart || clampedTime > blendEnd) {
-            return true;
-        }
-
-        CameraSnapshot fromSnapshot{};
-        if (!EvaluateSnapshotRaw(previousShot.endTime, fromSnapshot)) {
-            return true;
-        }
-
-        CameraSnapshot toSnapshot{};
-        if (!EvaluateSnapshotRaw(clampedTime, toSnapshot)) {
-            return true;
-        }
-
-        const float blendT = std::clamp((clampedTime - blendStart) / blendDuration, 0.0f, 1.0f);
-        outSnapshot = InterpolateSnapshot(fromSnapshot, toSnapshot, blendT);
-        return true;
-    }
-
-    // ショット境界を無視してキーフレーム列だけで補間する（プレビューのスクラブ用）
-    bool CameraClipPlayerModule::EvaluateSnapshotRaw(float time, CameraSnapshot& outSnapshot) const
-    {
-        if (clipKeyframes_.empty()) {
-            return false;
-        }
-
-        if (clipKeyframes_.size() == 1) {
-            outSnapshot = clipKeyframes_.front().snapshot;
-            return true;
-        }
-
-        const float clampedTime = std::clamp(time, 0.0f, timelineLength_);
-
-        if (clampedTime <= clipKeyframes_.front().time) {
-            outSnapshot = clipKeyframes_.front().snapshot;
-            return true;
-        }
-
-        if (clampedTime >= clipKeyframes_.back().time) {
-            outSnapshot = clipKeyframes_.back().snapshot;
-            return true;
-        }
-
-        // 指定時刻が含まれる区間を見つけ、補間結果を返す。
-        for (size_t i = 0; i + 1 < clipKeyframes_.size(); ++i) {
-            const ClipKeyframe& from = clipKeyframes_[i];
-            const ClipKeyframe& to = clipKeyframes_[i + 1];
-
-            if (clampedTime >= from.time && clampedTime <= to.time) {
-                const float span = to.time - from.time;
-                if (span <= 0.0001f) {
-                    outSnapshot = from.snapshot;
-                    return true;
-                }
-
-                const float t = (clampedTime - from.time) / span;
-                outSnapshot = InterpolateSnapshot(from.snapshot, to.snapshot, t);
-                return true;
-            }
-        }
-
-        outSnapshot = clipKeyframes_.back().snapshot;
-        return true;
-    }
-
-    // 2 つのスナップショットを補間する。回転だけは LerpAngle で最短経路を通す
-    // （素直に線形補間すると 359°→1° で 1 周してしまう）
-    CameraSnapshot CameraClipPlayerModule::InterpolateSnapshot(const CameraSnapshot& from, const CameraSnapshot& to, float t) const
-    {
-        CameraSnapshot result{};
-        const EasingUtil::Type easingType = GetSelectedEasingType();
-
-        result.position = EasingUtil::LerpVector3(from.position, to.position, t, easingType);
-        result.rotation = Vector3(
-            EasingUtil::LerpAngle(from.rotation.x, to.rotation.x, t, easingType),
-            EasingUtil::LerpAngle(from.rotation.y, to.rotation.y, t, easingType),
-            EasingUtil::LerpAngle(from.rotation.z, to.rotation.z, t, easingType));
-        result.scale = EasingUtil::LerpVector3(from.scale, to.scale, t, easingType);
-        result.parameters.projectionType = from.parameters.projectionType;
-
-        result.parameters.fov = EasingUtil::Lerp(from.parameters.fov, to.parameters.fov, t, easingType);
-        result.parameters.nearClip = EasingUtil::Lerp(from.parameters.nearClip, to.parameters.nearClip, t, easingType);
-        result.parameters.farClip = EasingUtil::Lerp(from.parameters.farClip, to.parameters.farClip, t, easingType);
-        result.parameters.aspectRatio = EasingUtil::Lerp(from.parameters.aspectRatio, to.parameters.aspectRatio, t, easingType);
-        return result;
-    }
-
-    EasingUtil::Type CameraClipPlayerModule::GetSelectedEasingType() const
-    {
-        if (easingTypeIndex_ < 0 || easingTypeIndex_ >= kEasingOptionCount) {
-            return EasingUtil::Type::Linear;
-        }
-
-        return kEasingOptions[easingTypeIndex_].type;
-    }
-
-    // 時刻が属するショット番号を返す（どのショットにも属さなければ -1）
-    int CameraClipPlayerModule::FindShotIndexAt(float time) const
-    {
-        int found = -1;
-        for (int i = 0; i < static_cast<int>(clipShots_.size()); ++i) {
-            const ClipShot& shot = clipShots_[i];
-            if (!shot.enabled) {
-                continue;
-            }
-
-            if (time >= shot.startTime && time <= shot.endTime) {
-                found = i;
-                break;
-            }
-        }
-
-        return found;
-    }
-
-    // 補間した姿勢をゲームカメラへ書き込む。コントローラが付いていると
-    // 次フレームで上書きされるので、再生中はコントローラを止めておくこと
     bool CameraClipPlayerModule::ApplyToActiveCamera(const CameraEditorContext& context, const CameraSnapshot& snapshot) const
     {
         Camera* active3D = context.cameraManager->GetActiveCamera(CameraType::Camera3D);
@@ -386,4 +192,4 @@ namespace CoreEngine
     }
 }
 
-#endif // _DEBUG
+#endif // USE_IMGUI

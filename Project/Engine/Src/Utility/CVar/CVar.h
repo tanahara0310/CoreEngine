@@ -28,7 +28,9 @@ namespace CoreEngine
     };
 
     /// @brief 数値 CVar の編集範囲
-    /// @details 未指定（valid == false）の場合、UI はスライダーではなくドラッグ入力になる
+    /// @details UI は常にドラッグ入力（スライダーだと細かい値を合わせられないため）。
+    ///          範囲を指定するとその範囲でクランプされ、範囲全体を一定のドラッグ量で
+    ///          走査できる速度になる。未指定（valid == false）なら上限・下限なしのドラッグ
     struct CVarRange
     {
         float min = 0.0f;
@@ -175,7 +177,7 @@ namespace CoreEngine
     public:
         /// @brief CVar を定義し、同時にレジストリへ登録する
         /// @param name  ドット区切りの一意な名前（例 "r.Vignette.Intensity"）
-        /// @param range 数値型の編集範囲（省略時はドラッグ入力）
+        /// @param range 数値型の編集範囲（省略時は上限・下限なし）
         CVar(const char* name,
              const T& defaultValue,
              const char* description = "",

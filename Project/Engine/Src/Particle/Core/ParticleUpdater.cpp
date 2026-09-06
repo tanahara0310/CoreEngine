@@ -6,6 +6,7 @@
 #include "Particle/Modules/SizeModule.h"
 #include "Particle/Modules/RotationModule.h"
 #include "Particle/Modules/NoiseModule.h"
+#include "Particle/Modules/CollisionModule.h"
 
 #include <algorithm>
 #include <execution>
@@ -18,13 +19,15 @@ void ParticleUpdater::Initialize(
     ColorModule* colorModule,
     SizeModule* sizeModule,
     RotationModule* rotationModule,
-    NoiseModule* noiseModule
+    NoiseModule* noiseModule,
+    CollisionModule* collisionModule
 ) {
     forceModule_ = forceModule;
     colorModule_ = colorModule;
     sizeModule_ = sizeModule;
     rotationModule_ = rotationModule;
     noiseModule_ = noiseModule;
+    collisionModule_ = collisionModule;
 }
 
 uint32_t ParticleUpdater::UpdateParticles(
@@ -83,6 +86,12 @@ void ParticleUpdater::UpdateSingleParticle(Particle& particle, float deltaTime, 
     // ノイズの適用
     if (noiseModule_ && noiseModule_->IsEnabled()) {
         noiseModule_->ApplyNoise(particle, deltaTime);
+    }
+
+    // 床との当たり判定。位置を動かす処理の最後に置く
+    // （ここより後で位置を変えると、床を突き抜けたまま確定してしまう）
+    if (collisionModule_ && collisionModule_->IsEnabled()) {
+        collisionModule_->ApplyCollision(particle, deltaTime);
     }
 }
 }

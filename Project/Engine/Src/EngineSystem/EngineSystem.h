@@ -16,19 +16,16 @@
 namespace CoreEngine { class WinApp; }
 
 // ──────────────────────────────────────────────────────────
-// サービスアクセス利便インクルード
-// GetService<T>() の呼び出し元が完全型を必要とするため、
-// 主要サービス型のヘッダをここでまとめて提供している。
-// 非推奨: 各呼び出し元ファイルで必要な型を直接インクルードすることを推奨。
+// このヘッダはサービス型のヘッダを一切 include しない。
+//
+// GetService<T>() / HasService<T>() は ComponentManager 経由で typeid(T) を使うため
+// 「呼び出し元の翻訳単位で T が完全型であること」を要求する。
+// かつてはその利便のため主要サービス型 8 本をここでまとめて配っていたが、
+// EngineSystem.h は 49 ファイルから include されており、配った型のヘッダを 1 つ
+// 触るだけで全ファイルが再コンパイル対象になっていた。
+//
+// GetService<T>() を呼ぶファイルは、T のヘッダを自分で include すること。
 // ──────────────────────────────────────────────────────────
-#include "Graphics/RHI/GraphicsCore.h"
-#include "Graphics/Render/RenderManager.h"
-#include "Graphics/Render/RenderDomainContext.h"
-#include "Graphics/Light/LightManager.h"
-#include "Graphics/Texture/TextureManager.h"
-#include "Input/InputManager.h"
-#include "Audio/SoundManager.h"
-#include "Utility/FrameRate/FrameRateController.h"
 
 
 /// @file
@@ -127,14 +124,12 @@ public:
     /// @brief 型指定でサブシステムを取得する
     /// @tparam T IEngineSubsystemを継承するサブシステムの型
     /// @return 該当サブシステムへのポインタ（未登録の場合nullptr）
+    /// @note 型引きは GetService<T>() と同じ ComponentManager 機構を使う
+    ///       （型キーのハッシュ引き。旧実装の dynamic_cast 線形探索から置き換えた）。
+    ///       キーは登録時の具象型そのものなので、基底型を指定しても引けない。
     template<typename T>
     T* GetSubsystem() {
-        for (auto& sys : subsystems_) {
-            if (auto* p = dynamic_cast<T*>(sys.get())) {
-                return p;
-            }
-        }
-        return nullptr;
+        return subsystemIndex_.Get<T>();
     }
 
 private:
@@ -164,6 +159,21 @@ private:
         T* ptr = component.get();
         componentOwners_.push_back(std::make_unique<ComponentHolder<T>>(std::move(component)));
         componentManager_.Register(ptr);
+    }
+
+    /// @brief サブシステムを生成して登録する
+    /// @tparam T IEngineSubsystem を継承する具象型
+    /// @return 生成したサブシステム（所有権は subsystems_ が持つ）
+    /// @note 所有（subsystems_）と型引きインデックス（subsystemIndex_）を
+    ///       必ず対で更新するための唯一の登録経路。subsystems_ へ直接
+    ///       push_back すると GetSubsystem<T>() から引けなくなる。
+    template<typename T>
+    T* RegisterSubsystem() {
+        auto subsystem = std::make_unique<T>();
+        T* ptr = subsystem.get();
+        subsystems_.push_back(std::move(subsystem));
+        subsystemIndex_.Register<T>(ptr);
+        return ptr;
     }
 
     // ──────────────────────────────────────────────────────────
@@ -207,8 +217,13 @@ private:
     // サブシステム管理
     // ──────────────────────────────────────────────────────────
     // 全サブシステム（ライフサイクルを一括ループするためのコンテナ）
-    // 型指定アクセスはGetSubsystem<T>()を使用する
+    // 登録順に BeginFrame / Initialize、逆順に EndFrame / Finalize を回す
     std::vector<std::unique_ptr<IEngineSubsystem>> subsystems_;
+
+    // 型指定アクセス用のインデックス（所有はしない。実体は subsystems_ 側）。
+    // サービスの GetService<T>() と同じ ComponentManager を使い、
+    // 「型で引く」実装をエンジン内で 1 本に揃えている
+    ComponentManager subsystemIndex_;
 
     };
 }

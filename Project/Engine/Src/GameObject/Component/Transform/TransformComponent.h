@@ -24,6 +24,17 @@ public:
 
 #ifdef USE_IMGUI
     const char* GetInspectorName() const override { return "トランスフォーム"; }
+
+    const char* GetInspectorIcon() const override { return "object_data.png"; }
+
+    void GetInspectorIconColor(float* outRgba) const override
+    {
+        outRgba[0] = 0.96f; outRgba[1] = 0.65f; outRgba[2] = 0.14f; outRgba[3] = 1.0f;
+    }
+
+    /// @brief 位置・回転・スケールの編集 UI
+    /// @return 値が変更されたら true
+    bool DrawInspector() override;
 #endif
 
     // ===== ライフサイクル =====
@@ -69,5 +80,13 @@ public:
 
 private:
     WorldTransform transform_;
+
+#ifdef USE_IMGUI
+    /// @brief ドラッグ開始時の値（Undo/Redo へ「編集前」として渡す）
+    Vector3 editSnapTranslate_{};
+    Vector3 editSnapRotate_{};
+    Vector3 editSnapScale_{};
+    bool    editSnapActive_ = true;
+#endif
 };
 }

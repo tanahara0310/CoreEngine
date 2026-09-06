@@ -7,7 +7,8 @@ namespace CoreEngine {
 
     /// @brief ボリューメトリック雲のエンジン常駐エディタ
     /// @details DebugSubsystem がエンジン寿命で 1 個所有し、どのシーンでも Environment ツリーから編集できる。
-    ///          UI は「① 天候（プリセット + メタスライダー）→ ② 配置ペイント → ③ 詳細設定」の 3 層構成。
+    ///          UI は「⓪ スタイル → ① 天候（プリセット + メタスライダー）→ ② 配置ペイント
+    ///          → ③ 詳細設定」の順。⓪ 以外は全スタイル共通で、③ だけスタイルで出し分ける。
     class VolumetricCloudEditor {
     public:
         /// @brief 環境エディタの登録を解除する
@@ -19,6 +20,9 @@ namespace CoreEngine {
     private:
         /// @brief 雲の編集パネル内容を描画する（Inspector 内に埋め込み）
         void DrawContent();
+
+        /// @brief ⓪ スタイル選択コンボ（リアル / ブロック雲 3 種）
+        void DrawStyleSelector();
 
         /// @brief プリセット選択コンボと説明文を描画する（選択で即適用）
         void DrawPresetSelector(VolumetricCloudManager& manager);

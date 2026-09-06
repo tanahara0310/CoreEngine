@@ -12,8 +12,13 @@
 #include "Graphics/Render/UI/UIRenderer.h"
 #include "EngineSystem/Subsystem/DebugSubsystem.h"
 #include "Editor/ImGui/ImGuiManager.h"
+#include "Editor/Scene/SceneDebugEditor.h"
+#include "Editor/ImGui/Gizmo.h"
 #include "WinApp/WinApp.h"
 #include "UI/UIImage.h"
+#include "UI/UIText.h"
+#include "GameObject/GameObjectManager.h"
+#include "Text/FontManager.h"
 #include "UI/UIAnchor.h"
 #include <algorithm>
 #include <cmath>
@@ -43,7 +48,7 @@ namespace CoreEngine
         UIRect ComputeImageRect(const UILayout& layout,
                                 const ImVec2& canvasMin,
                                 const Vector2& referenceSize,
-                                float scale)
+                                const Vector2& scale)
         {
             Vector2 anchorPoint = GetAnchorPoint(layout.anchor, referenceSize);
             float cx = anchorPoint.x + layout.anchoredPos.x;
@@ -55,8 +60,8 @@ namespace CoreEngine
             float bottom = cy + (1.0f - layout.pivot.y) * layout.size.y;
 
             UIRect r;
-            r.min = ImVec2(canvasMin.x + left  * scale, canvasMin.y + top    * scale);
-            r.max = ImVec2(canvasMin.x + right * scale, canvasMin.y + bottom * scale);
+            r.min = ImVec2(canvasMin.x + left  * scale.x, canvasMin.y + top    * scale.y);
+            r.max = ImVec2(canvasMin.x + right * scale.x, canvasMin.y + bottom * scale.y);
             return r;
         }
 
@@ -64,7 +69,7 @@ namespace CoreEngine
         UIQuad ComputeImageQuad(const UILayout& layout,
                                 const ImVec2& canvasMin,
                                 const Vector2& referenceSize,
-                                float scale)
+                                const Vector2& scale)
         {
             Vector2 anchorPoint = GetAnchorPoint(layout.anchor, referenceSize);
             float cx = anchorPoint.x + layout.anchoredPos.x;
@@ -81,9 +86,11 @@ namespace CoreEngine
             auto rotPt = [&](float ox, float oy) -> ImVec2 {
                 float rx2 = ox * cosR - oy * sinR;
                 float ry2 = ox * sinR + oy * cosR;
+                // 「基準解像度で回してから画面へ引き伸ばす」順序は実際の描画と同じ。
+                // 逆にすると縦横比の違う画面で回転がずれる
                 return ImVec2(
-                    canvasMin.x + (cx + rx2) * scale,
-                    canvasMin.y + (cy + ry2) * scale);
+                    canvasMin.x + (cx + rx2) * scale.x,
+                    canvasMin.y + (cy + ry2) * scale.y);
             };
 
             UIQuad q;
@@ -91,7 +98,7 @@ namespace CoreEngine
             q.tr     = rotPt(rx, ty);
             q.bl     = rotPt(lx, by);
             q.br     = rotPt(rx, by);
-            q.center = ImVec2(canvasMin.x + cx * scale, canvasMin.y + cy * scale);
+            q.center = ImVec2(canvasMin.x + cx * scale.x, canvasMin.y + cy * scale.y);
             return q;
         }
 
@@ -114,6 +121,73 @@ namespace CoreEngine
 
     } // anonymous namespace
 
+    // ════════════════════════════════════════════════════════════════
+    //  CanvasElement — UIImage / UIText を同じ操作で扱うための薄い受け皿
+    // ════════════════════════════════════════════════════════════════
+    const UILayout& CanvasViewport::CanvasElement::Layout() const
+    {
+        static const UILayout kEmpty{};
+        if (image) { return image->GetLayout(); }
+        if (text) { return text->GetLayout(); }
+        return kEmpty;
+    }
+
+    Vector2 CanvasViewport::CanvasElement::Pivot() const
+    {
+        if (image) { return image->GetPivot(); }
+        if (text) { return text->GetPivot(); }
+        return { 0.5f, 0.5f };
+    }
+
+    UIAnchor CanvasViewport::CanvasElement::Anchor() const
+    {
+        if (image) { return image->GetAnchor(); }
+        if (text) { return text->GetAnchor(); }
+        return UIAnchor::Center;
+    }
+
+    void CanvasViewport::CanvasElement::SetAnchoredPosition(const Vector2& position) const
+    {
+        if (image) { image->SetAnchoredPosition(position); }
+        if (text) { text->SetAnchoredPosition(position); }
+    }
+
+    void CanvasViewport::CanvasElement::SetRotation(float radians) const
+    {
+        if (image) { image->SetUIRotation(radians); }
+        if (text) { text->SetUIRotation(radians); }
+    }
+
+    void CanvasViewport::CanvasElement::SetSize(const Vector2& size) const
+    {
+        if (image) { image->SetSize(size); }
+        // テキストはテキストフィールド（文字を流し込む枠）の大きさになる。
+        // 幅は折り返し幅、高さは縦揃えの基準として効く
+        if (text) { text->SetFieldSize(size); }
+    }
+
+    GameObject* CanvasViewport::GetSelection() const
+    {
+        return sceneDebugEditor_ ? sceneDebugEditor_->GetSelectedObject() : selectedObject_;
+    }
+
+    void CanvasViewport::SetSelection(GameObject* object)
+    {
+        selectedObject_ = object;
+        if (sceneDebugEditor_) { sceneDebugEditor_->SelectObject(object); }
+    }
+
+    const CanvasViewport::CanvasElement* CanvasViewport::FindSelected(
+        const std::vector<CanvasElement>& elements) const
+    {
+        GameObject* selection = GetSelection();
+        if (!selection) { return nullptr; }
+        for (const CanvasElement& element : elements) {
+            if (element.object == selection) { return &element; }
+        }
+        return nullptr;
+    }
+
     void CanvasViewport::Initialize(EngineSystem* engine)
     {
         engine_ = engine;
@@ -127,9 +201,16 @@ namespace CoreEngine
         backgroundTextureSize_.y = static_cast<float>(meta.height);
     }
 
-    void CanvasViewport::DrawCanvasViewport()
+    void CanvasViewport::DrawCanvasViewport(unsigned long long gameTextureHandlePtr,
+        SceneDebugEditor* sceneDebugEditor)
     {
         if (!engine_) { return; }
+
+        sceneDebugEditor_ = sceneDebugEditor;
+
+        // 背景にゲームの描画結果そのものを敷けるか。
+        // 敷けるなら UI の模写は一切せず、ギズモだけを重ねる（＝見えているものが結果）
+        const bool useLivePreview = (gameTextureHandlePtr != 0);
 
         if (!ImGui::Begin("Canvas", nullptr,
             ImGuiWindowFlags_NoCollapse |
@@ -155,8 +236,16 @@ namespace CoreEngine
             }
         }
 
-        // 基準解像度のアスペクト比を保持したまま、コンテンツ領域に内接させる
-        const float aspect = referenceSize.x / referenceSize.y;
+        // ライブプレビュー時はゲーム描画先の縦横比に合わせる。
+        // UI は基準解像度を画面全体へ写す投影なので、
+        // 「描画結果の矩形全体 = 基準解像度の矩形全体」で対応が取れる
+        float aspect = referenceSize.x / referenceSize.y;
+        if (useLivePreview) {
+            const float clientW = static_cast<float>(WinApp::GetCurrentClientWidthStatic());
+            const float clientH = static_cast<float>(WinApp::GetCurrentClientHeightStatic());
+            if (clientW > 0.0f && clientH > 0.0f) { aspect = clientW / clientH; }
+        }
+
         float drawW = contentRegionSize.x;
         float drawH = drawW / aspect;
         if (drawH > contentRegionSize.y) {
@@ -164,9 +253,9 @@ namespace CoreEngine
             drawW = drawH * aspect;
         }
 
-        // 基準解像度 → 描画領域のスケール係数
-        // （Game ビューでは ImGui::Image が同じスケールで縮小表示している）
-        const float scale = drawW / referenceSize.x;
+        // 基準解像度 → 描画領域のスケール係数。
+        // 縦横比が基準解像度と違う画面では x と y で値が変わるので Vector2 で持つ
+        const Vector2 scale = { drawW / referenceSize.x, drawH / referenceSize.y };
 
         ImVec2 contentPos = ImGui::GetCursorScreenPos();
         float offsetX = (contentRegionSize.x - drawW) * 0.5f;
@@ -177,8 +266,12 @@ namespace CoreEngine
 
         ImDrawList* drawList = ImGui::GetWindowDrawList();
 
-        // 背景：tile_black.png を全面に表示
-        if (backgroundTextureHandlePtr_ != 0) {
+        // 背景：ゲームの描画結果（無ければ tile_black.png）
+        if (useLivePreview) {
+            drawList->AddImage(
+                static_cast<ImTextureID>(gameTextureHandlePtr),
+                canvasMin, canvasMax);
+        } else if (backgroundTextureHandlePtr_ != 0) {
             drawList->AddImage(
                 static_cast<ImTextureID>(backgroundTextureHandlePtr_),
                 canvasMin, canvasMax);
@@ -194,87 +287,120 @@ namespace CoreEngine
             return;
         }
 
-        std::vector<UIImage*> uiImages;
-        uiImages.reserve(64);
+        std::vector<CanvasElement> elements;
+        elements.reserve(64);
         for (const auto& obj : gom->GetAllObjects()) {
             if (!obj || !obj->IsActive() || obj->IsMarkedForDestroy()) { continue; }
-            if (obj->GetRenderPassType() != RenderPassType::UI) { continue; }
-            if (auto* img = dynamic_cast<UIImage*>(obj.get())) {
-                uiImages.push_back(img);
+
+            const RenderPassType pass = obj->GetRenderPassType();
+            if (pass == RenderPassType::UI) {
+                if (auto* image = dynamic_cast<UIImage*>(obj.get())) {
+                    elements.push_back(CanvasElement{ obj.get(), image, nullptr });
+                }
+            } else if (pass == RenderPassType::UIText) {
+                if (auto* text = dynamic_cast<UIText*>(obj.get())) {
+                    elements.push_back(CanvasElement{ obj.get(), nullptr, text });
+                }
             }
         }
-        std::stable_sort(uiImages.begin(), uiImages.end(),
-            [](const UIImage* a, const UIImage* b) {
-                return a->GetLayout().sortOrder < b->GetLayout().sortOrder;
+        // テキストは UI の上に描かれるので、Canvas 上でも後ろに置いて重ね順を合わせる
+        std::stable_sort(elements.begin(), elements.end(),
+            [](const CanvasElement& a, const CanvasElement& b) {
+                const int passA = (a.text != nullptr) ? 1 : 0;
+                const int passB = (b.text != nullptr) ? 1 : 0;
+                if (passA != passB) { return passA < passB; }
+                return a.Layout().sortOrder < b.Layout().sortOrder;
             });
 
         drawList->PushClipRect(canvasMin, canvasMax, true);
 
-        for (auto* img : uiImages) {
-            const UILayout& layout = img->GetLayout();
+        // ライブプレビューでは背景がそのまま結果なので、ここで描き足すと二重になる
+        for (const CanvasElement& element : elements) {
+            if (useLivePreview) { break; }
+
+            const UILayout& layout = element.Layout();
             UIQuad quad = ComputeImageQuad(layout, canvasMin, referenceSize, scale);
 
-            D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = img->GetTextureGpuHandle();
-            if (gpuHandle.ptr == 0) { continue; }
+            if (element.image) {
+                D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = element.image->GetTextureGpuHandle();
+                if (gpuHandle.ptr == 0) { continue; }
 
-            Vector4 color = img->GetColor();
-            ImU32 imColor = ImGui::ColorConvertFloat4ToU32(
-                ImVec4(color.x, color.y, color.z, color.w));
+                Vector4 color = element.image->GetColor();
+                ImU32 imColor = ImGui::ColorConvertFloat4ToU32(
+                    ImVec4(color.x, color.y, color.z, color.w));
 
-            // 回転を反映するため AddImageQuad を使用
-            drawList->AddImageQuad(
-                static_cast<ImTextureID>(gpuHandle.ptr),
-                quad.tl, quad.tr, quad.br, quad.bl,
-                ImVec2(0.0f, 0.0f), ImVec2(1.0f, 0.0f),
-                ImVec2(1.0f, 1.0f), ImVec2(0.0f, 1.0f),
-                imColor);
+                // 回転を反映するため AddImageQuad を使用
+                drawList->AddImageQuad(
+                    static_cast<ImTextureID>(gpuHandle.ptr),
+                    quad.tl, quad.tr, quad.br, quad.bl,
+                    ImVec2(0.0f, 0.0f), ImVec2(1.0f, 0.0f),
+                    ImVec2(1.0f, 1.0f), ImVec2(0.0f, 1.0f),
+                    imColor);
+            } else if (element.text) {
+                // 背景が渡らなかったときの退避表示。
+                // MSDF アトラスは ImGui の DrawList では描けない（中央値の再構成と
+                // 距離場のアンチエイリアスが要る）ので、枠と ImGui フォントで
+                // 「どこに何があるか」だけ分かるようにする
+                const Vector4 color = element.text->GetColor();
+                const ImU32 imColor = ImGui::ColorConvertFloat4ToU32(
+                    ImVec4(color.x, color.y, color.z, color.w));
+
+                drawList->AddQuad(quad.tl, quad.tr, quad.br, quad.bl,
+                    IM_COL32(120, 190, 230, 90), 1.0f);
+                drawList->AddText(quad.tl, imColor, element.text->GetText().c_str());
+            }
         }
 
         drawList->PopClipRect();
 
-        // ─── Edit モード切替トグル（ウィンドウ右上） ──────────────────
-        ImGui::SetCursorScreenPos(ImVec2(canvasMin.x + 8.0f, canvasMin.y + 8.0f));
+        // ─── ツールバー（左上） ────────────────────────────────────
+        // 背景はゲームの絵なので、下敷きを敷かないと文字が読めなくなる
+        constexpr float kToolbarPad = 6.0f;
+        const float toolbarHeight = ImGui::GetFrameHeight() + kToolbarPad * 2.0f;
+        drawList->AddRectFilled(
+            ImVec2(canvasMin.x, canvasMin.y),
+            ImVec2(canvasMax.x, canvasMin.y + toolbarHeight),
+            IM_COL32(18, 18, 22, 190));
+
+        ImGui::SetCursorScreenPos(ImVec2(canvasMin.x + kToolbarPad, canvasMin.y + kToolbarPad));
         ImGui::Checkbox("Edit Mode", &editMode_);
 
-        // 選択中要素が有効か検証（破棄/Active off 時は選択解除）
-        if (selectedImage_) {
-            bool stillValid = false;
-            for (auto* img : uiImages) {
-                if (img == selectedImage_) { stillValid = true; break; }
-            }
-            if (!stillValid) {
-                selectedImage_ = nullptr;
-                dragMode_ = DragMode::None;
-            }
-        }
+        // Edit モードのときだけ、UI を追加できるようにする
+        if (editMode_) {
+            DrawCreateUI(gom);
 
-        // 編集モード OFF 時は選択解除＆ドラッグ中断
-        if (!editMode_) {
-            selectedImage_ = nullptr;
-            dragMode_ = DragMode::None;
+            ImGui::SameLine();
+            ImGui::TextDisabled("クリックで選択 / ギズモで移動・回転・拡縮（W E R）/ 矢印キーで微調整");
+        } else if (!useLivePreview) {
+            ImGui::SameLine();
+            ImGui::TextDisabled("（簡易表示：実際の字形は Game ビューを参照）");
         }
 
         // ─── マウス座標を基準解像度系へ変換 ─────────────────────────
         ImVec2 mousePos = ImGui::GetMousePos();
+        // ツールバーのボタンや、手前に重なった別ウィンドウの上では要素を掴ませない。
+        // 矩形の内外だけで判定すると「Edit Mode を押したら背後の文字も選ばれる」ことになる
         bool mouseInCanvas = (mousePos.x >= canvasMin.x && mousePos.x <= canvasMax.x &&
-                              mousePos.y >= canvasMin.y && mousePos.y <= canvasMax.y);
+                              mousePos.y >= canvasMin.y && mousePos.y <= canvasMax.y) &&
+                             ImGui::IsWindowHovered() && !ImGui::IsAnyItemHovered();
         Vector2 mouseRef = {
-            (mousePos.x - canvasMin.x) / scale,
-            (mousePos.y - canvasMin.y) / scale,
+            (mousePos.x - canvasMin.x) / scale.x,
+            (mousePos.y - canvasMin.y) / scale.y,
         };
 
         if (editMode_) {
             // ─── Edit モード：ギズモ操作 ───────────────────────────
-            HandleGizmoInteraction(uiImages, canvasMin, canvasMax,
+            HandleGizmoInteraction(elements, canvasMin, ImVec2(drawW, drawH),
                                    referenceSize, scale,
-                                   mousePos, mouseInCanvas, mouseRef,
+                                   mousePos, mouseInCanvas,
                                    drawList);
+            HandleKeyboardNudge(elements);
         } else {
             // ─── ランタイム挙動：クリック / ホバー判定 ────────────
             if (mouseInCanvas) {
-                for (int i = static_cast<int>(uiImages.size()) - 1; i >= 0; --i) {
-                    UIImage* img = uiImages[i];
-                    if (!img->IsInteractable()) { continue; }
+                for (int i = static_cast<int>(elements.size()) - 1; i >= 0; --i) {
+                    UIImage* img = elements[i].image;
+                    if (!img || !img->IsInteractable()) { continue; }
 
                     const UILayout& layout = img->GetLayout();
                     UIQuad quad = ComputeImageQuad(layout, canvasMin, referenceSize, scale);
@@ -294,8 +420,9 @@ namespace CoreEngine
 
                 if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
                     bool clickedOnAny = false;
-                    for (auto* img : uiImages) {
-                        if (!img->IsInteractable()) { continue; }
+                    for (const CanvasElement& element : elements) {
+                        UIImage* img = element.image;
+                        if (!img || !img->IsInteractable()) { continue; }
                         UIQuad quad = ComputeImageQuad(img->GetLayout(), canvasMin, referenceSize, scale);
                         if (PointInQuad(mousePos, quad)) { clickedOnAny = true; break; }
                     }
@@ -310,216 +437,134 @@ namespace CoreEngine
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  Edit モード：選択 / 移動 / リサイズ ギズモ処理
+    //  Edit モード：矢印キーでの微調整
+    // ════════════════════════════════════════════════════════════════
+    void CanvasViewport::HandleKeyboardNudge(const std::vector<CanvasElement>& elements)
+    {
+        // 文字入力中に矢印キーを奪うと、インスペクタの入力欄でカーソルが動かせなくなる
+        if (ImGui::GetIO().WantTextInput) { return; }
+
+        const CanvasElement* selected = FindSelected(elements);
+        if (!selected) { return; }
+
+        // 1px 単位で置きたい場面と、大きく寄せたい場面の両方があるので Shift で切り替える
+        const float step = ImGui::GetIO().KeyShift ? 10.0f : 1.0f;
+
+        Vector2 delta{ 0.0f, 0.0f };
+        if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow,  true)) { delta.x -= step; }
+        if (ImGui::IsKeyPressed(ImGuiKey_RightArrow, true)) { delta.x += step; }
+        if (ImGui::IsKeyPressed(ImGuiKey_UpArrow,    true)) { delta.y -= step; }
+        if (ImGui::IsKeyPressed(ImGuiKey_DownArrow,  true)) { delta.y += step; }
+        if (delta.x == 0.0f && delta.y == 0.0f) { return; }
+
+        const Vector2 pos = selected->Layout().anchoredPos;
+        selected->SetAnchoredPosition({ pos.x + delta.x, pos.y + delta.y });
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    //  Edit モード：UI の追加
+    // ════════════════════════════════════════════════════════════════
+    void CanvasViewport::DrawCreateUI(GameObjectManager* gom)
+    {
+        if (!gom) { return; }
+
+        ImGui::SameLine();
+        if (!ImGui::Button("＋ テキストを追加")) { return; }
+
+        auto text = std::make_unique<UIText>();
+        UIText* created = static_cast<UIText*>(gom->AddObject(std::move(text)));
+        if (!created) { return; }
+
+        // 画面中央へ、すぐ見える大きさで置く。
+        // フォントは AddObject → Initialize() の中で FontManager の既定が入る
+        created->SetText("新しいテキスト");
+        created->SetFontSize(32.0f);
+        created->SetAnchor(UIAnchor::Center);
+        created->SetPivot({ 0.5f, 0.5f });
+        created->SetAnchoredPosition({ 0.0f, 0.0f });
+        created->SetSortOrder(100);
+
+        // 追加した直後に選択状態にして、そのまま動かせるようにする
+        SetSelection(created);
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    //  Edit モード：選択とギズモ操作
     // ════════════════════════════════════════════════════════════════
     void CanvasViewport::HandleGizmoInteraction(
-        const std::vector<UIImage*>& uiImages,
+        const std::vector<CanvasElement>& elements,
         const ImVec2& canvasMin,
-        [[maybe_unused]] const ImVec2& canvasMax,
+        const ImVec2& canvasSize,
         const Vector2& referenceSize,
-        float scale,
+        const Vector2& scale,
         const ImVec2& mousePos,
         bool mouseInCanvas,
-        const Vector2& mouseRef,
         ImDrawList* drawList)
     {
-        constexpr float kHandleSize    = 8.0f;
-        constexpr float kRotHandleOffset = 24.0f; // 上辺中央からの距離（スクリーンpx）
-        constexpr float kRotHandleRadius = 7.0f;
+        // ギズモは Canvas ウィンドウの描画リストへ出す。
+        // 指定しないと最前面のウィンドウへ描かれて Canvas の上に乗らない
+        Gizmo::Prepare(canvasMin, canvasSize);
+        ImGuizmo::SetDrawlist(drawList);
 
-        auto makeHandleRect = [&](const UIQuad& quad, DragMode corner) -> UIRect {
-            ImVec2 c;
-            switch (corner) {
-            case DragMode::ResizeTL: c = quad.tl; break;
-            case DragMode::ResizeTR: c = quad.tr; break;
-            case DragMode::ResizeBL: c = quad.bl; break;
-            case DragMode::ResizeBR: c = quad.br; break;
-            default:                 c = quad.tl; break;
+        // W / E / R でモードを切り替える。Game ビューと同じ割り当てにしておかないと、
+        // 「Canvas ではショートカットが効かない」という食い違いが残る。
+        // 文字入力中はインスペクタの入力欄へ譲る
+        if (sceneDebugEditor_ && mouseInCanvas && !ImGui::GetIO().WantTextInput) {
+            if (ImGui::IsKeyPressed(ImGuiKey_W, false)) {
+                sceneDebugEditor_->SetGizmoMode(Gizmo::Mode::Translate);
             }
-            return UIRect{
-                ImVec2(c.x - kHandleSize, c.y - kHandleSize),
-                ImVec2(c.x + kHandleSize, c.y + kHandleSize)
-            };
-        };
-        auto pointInRect = [](const ImVec2& p, const UIRect& r) {
-            return p.x >= r.min.x && p.x <= r.max.x &&
-                   p.y >= r.min.y && p.y <= r.max.y;
-        };
-        auto pointInCircle = [](const ImVec2& p, const ImVec2& c, float r) {
-            float dx = p.x - c.x, dy = p.y - c.y;
-            return dx * dx + dy * dy <= r * r;
-        };
-
-        // 回転ハンドル位置：上辺中央から法線方向に kRotHandleOffset だけ離した位置
-        auto getRotHandlePos = [&](const UIQuad& q) -> ImVec2 {
-            // 上辺の中点
-            ImVec2 topMid = { (q.tl.x + q.tr.x) * 0.5f, (q.tl.y + q.tr.y) * 0.5f };
-            // 上辺の法線（上方向）
-            ImVec2 edge   = { q.tr.x - q.tl.x, q.tr.y - q.tl.y };
-            float  len    = std::sqrt(edge.x * edge.x + edge.y * edge.y);
-            if (len < 0.001f) { return topMid; }
-            ImVec2 normal = { -edge.y / len, edge.x / len };
-            return ImVec2(topMid.x + normal.x * kRotHandleOffset,
-                          topMid.y + normal.y * kRotHandleOffset);
-        };
-
-        // ─── ドラッグ中処理 ─────────────────────────────────────────
-        if (dragMode_ != DragMode::None && selectedImage_) {
-            if (ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
-                Vector2 deltaRef = {
-                    mouseRef.x - dragStartMouseRef_.x,
-                    mouseRef.y - dragStartMouseRef_.y,
-                };
-
-                if (dragMode_ == DragMode::Move) {
-                    selectedImage_->SetAnchoredPosition({
-                        dragStartAnchoredPos_.x + deltaRef.x,
-                        dragStartAnchoredPos_.y + deltaRef.y,
-                    });
-                } else if (dragMode_ == DragMode::Rotate) {
-                    float angle = std::atan2(
-                        mousePos.y - dragRotatePivotScreen_.y,
-                        mousePos.x - dragRotatePivotScreen_.x);
-                    float startAngle = std::atan2(
-                        dragStartMouseRef_.y - dragRotatePivotScreen_.y,
-                        dragStartMouseRef_.x - dragRotatePivotScreen_.x);
-                    selectedImage_->SetUIRotation(
-                        dragStartRotation_ + (angle - startAngle));
-                } else {
-                    // リサイズ
-                    Vector2 pivot   = selectedImage_->GetPivot();
-                    Vector2 anchorPt = GetAnchorPoint(selectedImage_->GetAnchor(), referenceSize);
-                    Vector2 startCenter = {
-                        anchorPt.x + dragStartAnchoredPos_.x,
-                        anchorPt.y + dragStartAnchoredPos_.y,
-                    };
-                    Vector2 startTL = {
-                        startCenter.x - pivot.x * dragStartSize_.x,
-                        startCenter.y - pivot.y * dragStartSize_.y,
-                    };
-                    Vector2 startBR = {
-                        startTL.x + dragStartSize_.x,
-                        startTL.y + dragStartSize_.y,
-                    };
-
-                    // リサイズは回転ローカル系で行う
-                    float cosR =  std::cos(-dragStartRotation_);
-                    float sinR =  std::sin(-dragStartRotation_);
-                    float localDx = deltaRef.x * cosR - deltaRef.y * sinR;
-                    float localDy = deltaRef.x * sinR + deltaRef.y * cosR;
-
-                    Vector2 newTL = startTL;
-                    Vector2 newBR = startBR;
-                    switch (dragMode_) {
-                    case DragMode::ResizeTL: newTL.x += localDx; newTL.y += localDy; break;
-                    case DragMode::ResizeTR: newBR.x += localDx; newTL.y += localDy; break;
-                    case DragMode::ResizeBL: newTL.x += localDx; newBR.y += localDy; break;
-                    case DragMode::ResizeBR: newBR.x += localDx; newBR.y += localDy; break;
-                    default: break;
-                    }
-
-                    constexpr float kMinSize = 4.0f;
-                    if (newBR.x - newTL.x < kMinSize) {
-                        if (dragMode_ == DragMode::ResizeTL || dragMode_ == DragMode::ResizeBL) { newTL.x = newBR.x - kMinSize; }
-                        else { newBR.x = newTL.x + kMinSize; }
-                    }
-                    if (newBR.y - newTL.y < kMinSize) {
-                        if (dragMode_ == DragMode::ResizeTL || dragMode_ == DragMode::ResizeTR) { newTL.y = newBR.y - kMinSize; }
-                        else { newBR.y = newTL.y + kMinSize; }
-                    }
-
-                    Vector2 newSize   = { newBR.x - newTL.x, newBR.y - newTL.y };
-                    Vector2 newCenter = { newTL.x + pivot.x * newSize.x, newTL.y + pivot.y * newSize.y };
-                    selectedImage_->SetSize(newSize);
-                    selectedImage_->SetAnchoredPosition({ newCenter.x - anchorPt.x, newCenter.y - anchorPt.y });
-                }
-            } else {
-                dragMode_ = DragMode::None;
+            if (ImGui::IsKeyPressed(ImGuiKey_E, false)) {
+                sceneDebugEditor_->SetGizmoMode(Gizmo::Mode::Rotate);
+            }
+            if (ImGui::IsKeyPressed(ImGuiKey_R, false)) {
+                sceneDebugEditor_->SetGizmoMode(Gizmo::Mode::Scale);
             }
         }
 
-        // ─── 新規クリック：選択 / ドラッグ開始 ──────────────────────
-        if (dragMode_ == DragMode::None && mouseInCanvas &&
+        // 操作モードはツールバーとも共有する。
+        // UI だけ別の操作系になっていると、掴み方を覚え直すことになる
+        const Gizmo::Mode mode = sceneDebugEditor_
+            ? sceneDebugEditor_->GetGizmoMode()
+            : Gizmo::Mode::Translate;
+
+        // ─── ①ギズモ操作 ───────────────────────────────────────
+        const CanvasElement* selected = FindSelected(elements);
+        if (selected) {
+            UILayout layout = selected->Layout();
+            if (Gizmo::ManipulateUI(layout, referenceSize, mode)) {
+                selected->SetAnchoredPosition(layout.anchoredPos);
+                selected->SetRotation(layout.rotation);
+
+                // 大きさは拡縮モードのときだけ渡す。
+                // 行列の分解は移動でもスケールを誤差ぶん揺らすので、
+                // 毎回渡すと「動かしただけでテキストフィールドの自動調整が切れる」
+                if (mode == Gizmo::Mode::Scale) {
+                    selected->SetSize(layout.size);
+                }
+            }
+        }
+
+        // ─── ②クリックで選択 ───────────────────────────────────
+        // ギズモを掴んでいる / 触れている間は選択を変えない。
+        // 変えてしまうと、ハンドルを掴んだ瞬間に別の要素へ飛ぶ
+        if (mouseInCanvas && !Gizmo::IsUsing() && !Gizmo::IsOver() &&
             ImGui::IsMouseClicked(ImGuiMouseButton_Left))
         {
-            if (selectedImage_) {
-                const UILayout& layout = selectedImage_->GetLayout();
-                UIQuad quad = ComputeImageQuad(layout, canvasMin, referenceSize, scale);
-
-                // 回転ハンドル優先判定
-                ImVec2 rotHandle = getRotHandlePos(quad);
-                if (pointInCircle(mousePos, rotHandle, kRotHandleRadius + 4.0f)) {
-                    dragMode_              = DragMode::Rotate;
-                    dragStartMouseRef_     = { mousePos.x, mousePos.y };
-                    dragStartRotation_     = layout.rotation;
-                    dragRotatePivotScreen_ = { quad.center.x, quad.center.y };
-                    goto done_click;
-                }
-
-                // 4 隅ハンドル判定
-                const DragMode corners[4] = {
-                    DragMode::ResizeTL, DragMode::ResizeTR,
-                    DragMode::ResizeBL, DragMode::ResizeBR,
-                };
-                for (DragMode c : corners) {
-                    if (pointInRect(mousePos, makeHandleRect(quad, c))) {
-                        dragMode_             = c;
-                        dragStartMouseRef_    = mouseRef;
-                        dragStartAnchoredPos_ = layout.anchoredPos;
-                        dragStartSize_        = layout.size;
-                        dragStartRotation_    = layout.rotation;
-                        goto done_click;
-                    }
-                }
+            const CanvasElement* picked = nullptr;
+            for (int i = static_cast<int>(elements.size()) - 1; i >= 0; --i) {
+                UIQuad q = ComputeImageQuad(elements[i].Layout(), canvasMin, referenceSize, scale);
+                if (PointInQuad(mousePos, q)) { picked = &elements[i]; break; }
             }
-
-            {
-                // 本体クリック → 選択 + 移動開始
-                UIImage* picked = nullptr;
-                for (int i = static_cast<int>(uiImages.size()) - 1; i >= 0; --i) {
-                    UIQuad q = ComputeImageQuad(uiImages[i]->GetLayout(), canvasMin, referenceSize, scale);
-                    if (PointInQuad(mousePos, q)) { picked = uiImages[i]; break; }
-                }
-                if (picked) {
-                    selectedImage_        = picked;
-                    const UILayout& layout = picked->GetLayout();
-                    dragMode_             = DragMode::Move;
-                    dragStartMouseRef_    = mouseRef;
-                    dragStartAnchoredPos_ = layout.anchoredPos;
-                    dragStartSize_        = layout.size;
-                    dragStartRotation_    = layout.rotation;
-                } else {
-                    selectedImage_ = nullptr;
-                }
-            }
-            done_click:;
+            SetSelection(picked ? picked->object : nullptr);
         }
 
-        // ─── 選択枠・ハンドルの描画 ──────────────────────────────────
-        if (selectedImage_) {
-            const UILayout& layout = selectedImage_->GetLayout();
-            UIQuad quad = ComputeImageQuad(layout, canvasMin, referenceSize, scale);
-
-            // 選択枠（回転クワッドの4辺）
-            drawList->AddQuad(quad.tl, quad.tr, quad.br, quad.bl, IM_COL32(0, 200, 255, 220), 2.0f);
-
-            // 4 隅リサイズハンドル
-            const DragMode corners[4] = {
-                DragMode::ResizeTL, DragMode::ResizeTR,
-                DragMode::ResizeBL, DragMode::ResizeBR,
-            };
-            for (DragMode c : corners) {
-                UIRect h = makeHandleRect(quad, c);
-                drawList->AddRectFilled(h.min, h.max, IM_COL32(0, 200, 255, 255));
-                drawList->AddRect(h.min, h.max, IM_COL32(255, 255, 255, 255), 0.0f, 0, 1.0f);
-            }
-
-            // 回転ハンドル（上辺中央から伸びる線 + 円）
-            ImVec2 topMid    = { (quad.tl.x + quad.tr.x) * 0.5f, (quad.tl.y + quad.tr.y) * 0.5f };
-            ImVec2 rotHandle = getRotHandlePos(quad);
-            drawList->AddLine(topMid, rotHandle, IM_COL32(0, 200, 255, 200), 1.5f);
-            drawList->AddCircleFilled(rotHandle, kRotHandleRadius, IM_COL32(0, 200, 255, 255));
-            drawList->AddCircle(rotHandle, kRotHandleRadius, IM_COL32(255, 255, 255, 255), 0, 1.5f);
+        // ─── ③選択枠 ──────────────────────────────────────────
+        // 掴む場所はギズモなので、枠は「どこが選ばれているか」を示すだけ
+        selected = FindSelected(elements);
+        if (selected) {
+            UIQuad quad = ComputeImageQuad(selected->Layout(), canvasMin, referenceSize, scale);
+            drawList->AddQuad(quad.tl, quad.tr, quad.br, quad.bl,
+                IM_COL32(0, 200, 255, 220), 2.0f);
         }
     }
 

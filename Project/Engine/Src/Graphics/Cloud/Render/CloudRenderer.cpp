@@ -7,6 +7,7 @@
 #include "Graphics/Cloud/Render/CloudRenderContext.h"
 #include "Graphics/Cloud/Render/CloudStageScope.h"
 #include "Graphics/Cloud/Resource/CloudResources.h"
+#include "Graphics/Cloud/Settings/CloudSettings.h"
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
 
 namespace CoreEngine
@@ -22,13 +23,31 @@ namespace CoreEngine
         CloudGpuTexture& history = res.HistoryCloudBuffer();
 
         // ===== レイマーチ CS: BaseShapeNoise + SceneDepth → 半解像度 CloudBuffer =====
+        // ブロック雲（Voxel / Minecraft）は固定ステップではなく DDA でボクセルをたどる。
+        // 出力形式（前乗算アルファ）が同じなので、以降の合成とゴッドレイは共通のまま。
+        const bool useVoxelMarch = CloudStyleUsesVoxelMarch(ctx.styleIndex);
         {
-            CloudStageScope stage(ctx, "Cloud RayMarch");
+            CloudStageScope stage(ctx, useVoxelMarch ? "Cloud VoxelMarch" : "Cloud RayMarch");
 
             Barrier::Transition(cmdList, target, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             Barrier::Transition(cmdList, history, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-            {
+            if (useVoxelMarch) {
+                namespace B = CloudVoxelMarchBind;
+                const CloudComputePass& pass = (*ctx.pipelines)[CloudPass::VoxelRayMarch];
+                ShaderBinder binder = pass.Begin(cmdList);
+                binder.Set(pass.bindings[B::gCloud], ctx.cloudConstants);
+                binder.Set(pass.bindings[B::gAtmosphere], ctx.atmosphere->GetConstantBufferGPUAddress());
+                binder.Set(pass.bindings[B::gBaseShapeNoise], res.baseShapeNoise.srv.gpuHandle);
+                binder.Set(pass.bindings[B::gWeatherMap], res.weatherMap.srv.gpuHandle);
+                binder.Set(pass.bindings[B::gCloudPaintMap], res.weatherPaint.srv.gpuHandle);
+                binder.Set(pass.bindings[B::gSceneDepth], depthSrvHandle);
+                binder.Set(pass.bindings[B::gTransmittanceLUT], ctx.atmosphere->GetTransmittanceLUTSRVHandle());
+                binder.Set(pass.bindings[B::gSkyViewLUT], ctx.atmosphere->GetSkyViewLUTSRVHandle());
+                binder.Set(pass.bindings[B::gCameraVolumeLUT], ctx.atmosphere->GetCameraVolumeLUTSRVHandle());
+                binder.Set(pass.bindings[B::gCloudOutput], target.uav.gpuHandle);
+                binder.ValidateBeforeDraw(pass.bindings);
+            } else {
                 namespace B = CloudRayMarchBind;
                 const CloudComputePass& pass = (*ctx.pipelines)[CloudPass::RayMarch];
                 ShaderBinder binder = pass.Begin(cmdList);

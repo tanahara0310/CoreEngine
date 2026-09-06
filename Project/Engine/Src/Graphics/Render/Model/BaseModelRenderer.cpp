@@ -139,6 +139,22 @@ namespace CoreEngine
         if (iblParamsCBVAddress_ != 0) {
             binder.Set(table[ModelBind::gIBLParams], iblParamsCBVAddress_);
         }
+        // フォグはブレンドモードで差すバリアントを選ぶ。
+        // 不透明フォワードは全画面パス（FogPass）が深度から掛けるので、ここで掛けると二重になる。
+        // 加算・スクリーンは内散乱を足すと、背後の不透明面に既に乗った分と二重に光る
+        if (const D3D12_GPU_VIRTUAL_ADDRESS fogCBV = SelectFogConstants(); fogCBV != 0) {
+            binder.Set(table[ModelBind::gFog], fogCBV);
+        }
+    }
+
+    D3D12_GPU_VIRTUAL_ADDRESS BaseModelRenderer::SelectFogConstants() const
+    {
+        switch (currentBlendMode_) {
+        case BlendMode::kBlendModeNone:   return fogDisabledCBV_;
+        case BlendMode::kBlendModeAdd:
+        case BlendMode::kBlendModeScreen: return fogAdditiveCBV_;
+        default:                          return fogFullCBV_;
+        }
     }
 
     void BaseModelRenderer::BindSceneResourcesWithCustomPipeline(

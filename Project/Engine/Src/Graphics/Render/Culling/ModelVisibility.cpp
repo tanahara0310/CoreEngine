@@ -144,6 +144,21 @@ namespace CoreEngine
         }
     }
 
+    void ModelVisibility::ResetOcclusionHistory()
+    {
+        if (!hiZ_) {
+            return;
+        }
+        // 返却すると HiZOcclusionSystem::RegisterTarget が再利用時にスロットを
+        // 「未測定・可視」へ戻すので、次の IsSubMeshVisible が遅延登録し直すだけでよい。
+        for (uint32_t& id : occlusionIds_) {
+            if (id != HiZOcclusionSystem::kInvalidId) {
+                hiZ_->UnregisterTarget(id);
+                id = HiZOcclusionSystem::kInvalidId;
+            }
+        }
+    }
+
     bool ModelVisibility::IsSubMeshVisible(uint32_t subMeshIndex)
     {
         if (!active_ || !resource_) {

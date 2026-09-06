@@ -4,6 +4,8 @@
 #include "Camera/Camera.h"
 #include "Camera/CameraManager.h"
 #include "EngineSystem/EngineSystem.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Model/ModelResource.h"
 #include "Utility/FrameRate/Time.h"
 #include <iostream>
@@ -46,6 +48,7 @@ void ParticleSystem::Initialize(GraphicsCore* dxCommon, ResourceFactory* resourc
     sizeModule_ = std::make_unique<SizeModule>();
     rotationModule_ = std::make_unique<RotationModule>();
     noiseModule_ = std::make_unique<NoiseModule>();
+    collisionModule_ = std::make_unique<CollisionModule>();
 
     // ImGuiの最大パーティクル数スピンをバッファ容量までに制限
     mainModule_->SetCapacityLimit(kNumMaxInstance);
@@ -70,7 +73,8 @@ void ParticleSystem::Initialize(GraphicsCore* dxCommon, ResourceFactory* resourc
         colorModule_.get(),
         sizeModule_.get(),
         rotationModule_.get(),
-        noiseModule_.get()
+        noiseModule_.get(),
+        collisionModule_.get()
     );
 
     // パーティクル放出処理の初期化
@@ -253,9 +257,40 @@ bool ParticleSystem::IsFinished() const
     return !emissionModule_->IsPlaying() && particles_.empty();
 }
 
+bool ParticleSystem::LoadPreset(const std::string& filePath)
+{
+    return presetManager_ && presetManager_->LoadPreset(this, filePath);
+}
+
+bool ParticleSystem::SavePreset(const std::string& filePath)
+{
+    return presetManager_ && presetManager_->SavePreset(this, filePath);
+}
+
 void ParticleSystem::SetTexture(const std::string& texturePath)
 {
     texture_ = TextureManager::GetInstance().Load(texturePath);
+}
+
+uint32_t ParticleSystem::CollectWorldMatrices(Matrix4x4* outMatrices, uint32_t maxCount) const
+{
+    if (!outMatrices || maxCount == 0 || renderMode_ != ParticleRenderMode::Model) {
+        return 0;
+    }
+
+    // 描画側（ParticleRenderDataBuilder::BuildRenderData）と同じ打ち切り方をする。
+    // ここがずれると、影だけ出る粒／影だけ消える粒が生まれる。
+    const uint32_t limit = (std::min)(maxCount, GetMaxParticleCount());
+
+    uint32_t count = 0;
+    for (const auto& particle : particles_) {
+        if (count >= limit) {
+            break;
+        }
+        outMatrices[count] = ParticleRenderDataBuilder::MakeModelParticleWorldMatrix(particle);
+        ++count;
+    }
+    return count;
 }
 
 void ParticleSystem::SetModelResource(ModelResource* modelResource)

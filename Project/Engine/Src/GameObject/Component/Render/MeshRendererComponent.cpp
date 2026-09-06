@@ -3,6 +3,7 @@
 
 #include "Camera/View/ViewInfo.h"
 #include "EngineSystem/EngineSystem.h"
+#include "Graphics/Texture/TextureManager.h"
 #include "GameObject/GameObject.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Model/ModelManager.h"
@@ -12,6 +13,10 @@
 #include "Graphics/Render/Culling/ModelVisibility.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/Shader/ICustomShaderProvider.h"
+
+#ifdef USE_IMGUI
+#include "Editor/ImGui/ImGuiAll.h"
+#endif
 
 namespace CoreEngine
 {
@@ -195,4 +200,51 @@ namespace CoreEngine
         model_->Draw(transform->Get(), view, texture_.gpuHandle);
         return true;
     }
+
+#ifdef USE_IMGUI
+    bool MeshRendererComponent::DrawInspector()
+    {
+        bool changed = false;
+
+        // ── メッシュの出どころ ────────────────────────────────
+        const char* sourceLabel = "なし";
+        switch (source_) {
+        case Source::ModelFile:        sourceLabel = "モデルファイル"; break;
+        case Source::SkinnedModelFile: sourceLabel = "スキン付きモデル"; break;
+        case Source::Primitive:        sourceLabel = "プリミティブ"; break;
+        default: break;
+        }
+        ImGui::Text("種類: %s", sourceLabel);
+
+        if (!modelPath_.empty()) {
+            ImGui::TextWrapped("パス: %s", modelPath_.c_str());
+        }
+        ImGui::Text("読み込み済み: %s", HasModel() ? "はい" : "いいえ");
+
+        ImGui::Text("テクスチャ: %s",
+            textureName_.empty() ? "（なし）" : textureName_.c_str());
+
+        // ── ブレンドモード ────────────────────────────────────
+        UI::SectionHeader("描画");
+
+        static const char* kBlendNames[] = {
+            "なし", "アルファ", "加算", "減算", "乗算", "スクリーン",
+        };
+        int blendIndex = static_cast<int>(blendMode_);
+        if (blendIndex >= 0 && blendIndex < static_cast<int>(kBlendModeCount)) {
+            if (ImGui::Combo("ブレンド", &blendIndex, kBlendNames,
+                static_cast<int>(kBlendModeCount))) {
+                blendMode_ = static_cast<BlendMode>(blendIndex);
+                changed = true;
+            }
+        }
+
+        if (ImGui::Button("メッシュを再読み込み")) {
+            ReloadFromSpec();
+            changed = true;
+        }
+
+        return changed;
+    }
+#endif // USE_IMGUI
 }

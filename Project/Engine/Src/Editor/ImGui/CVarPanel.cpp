@@ -20,6 +20,27 @@ namespace CoreEngine
         /// @brief 範囲未指定の数値をドラッグ操作するときの速度
         constexpr float kDefaultDragSpeed = 0.01f;
 
+        /// @brief 範囲指定ありの数値を端から端まで動かすのに必要なドラッグ量 [px]
+        /// @details ウィジェット幅（＝スライダーの全長）より大きくして、スライダーより
+        ///          細かく合わせられるようにする。さらに細かくしたいときは Alt、
+        ///          粗く動かしたいときは Shift を併用する（ImGui 標準の 1/100 倍・10 倍）
+        constexpr float kRangeDragPixels = 400.0f;
+
+        /// @brief 範囲指定ありの整数をドラッグするときの速度の下限
+        /// @details 1〜4 のような狭い範囲でも 1 目盛りを 20px 程度で動かせるようにする
+        constexpr float kMinIntDragSpeed = 0.05f;
+
+        /// @brief 範囲指定ありのドラッグに付けるフラグ
+        /// @details Ctrl+クリックの直接入力でも範囲外へ出さない（スライダーと同じ保証）
+        constexpr ImGuiSliderFlags kRangedDragFlags = ImGuiSliderFlags_AlwaysClamp;
+
+        /// @brief 整数のドラッグ速度
+        /// @details 範囲未指定なら ImGui 既定と同じ 1 目盛り/px
+        float IntDragSpeed(const CVarRange& range)
+        {
+            return range.valid ? std::max(CVarUI::DragSpeed(range), kMinIntDragSpeed) : 1.0f;
+        }
+
         /// @brief ドット区切り名の depth 番目のセグメントを取得する
         /// @return セグメントが存在しない場合は空
         std::string_view SegmentAt(std::string_view name, size_t depth)
@@ -65,7 +86,22 @@ namespace CoreEngine
             return name;
         }
 
-        /// @brief 説明・フルネーム・既定値のツールチップを直前の項目に付ける
+        /// @brief 数値ウィジェットの操作方法
+        /// @return 数値以外の型なら nullptr
+        const char* DragHint(CVarType type)
+        {
+            switch (type) {
+            case CVarType::Int:
+            case CVarType::Float:
+            case CVarType::Vector2:
+            case CVarType::Vector3:
+                return "ドラッグで変更／Alt+ドラッグで微調整／Ctrl+クリックで直接入力";
+            default:
+                return nullptr;
+            }
+        }
+
+        /// @brief 説明・フルネーム・既定値・操作方法のツールチップを直前の項目に付ける
         void DrawTooltip(const ICVar* cvar)
         {
             if (!ImGui::IsItemHovered()) {
@@ -83,6 +119,10 @@ namespace CoreEngine
             ImGui::TextDisabled("既定値: %s", cvar->DefaultToString().c_str());
             if (HasFlag(cvar->GetFlags(), CVarFlags::Mirrored)) {
                 ImGui::TextDisabled("ミラー値（実体が毎フレーム上書き。Undo 対象外）");
+            }
+            // スライダーから移行したので、微調整・直接入力のやり方をここで案内する
+            if (const char* hint = DragHint(cvar->GetType())) {
+                ImGui::TextDisabled("%s", hint);
             }
             ImGui::EndTooltip();
         }
@@ -136,6 +176,16 @@ namespace CoreEngine
         }
     }
 
+    float CVarUI::DragSpeed(const CVarRange& range)
+    {
+        if (!range.valid) {
+            return kDefaultDragSpeed;
+        }
+        // 範囲全体を一定のドラッグ量で走査できる速さにする（広い範囲ほど 1px の変化が大きい）
+        const float speed = (range.max - range.min) / kRangeDragPixels;
+        return speed > 0.0f ? speed : kDefaultDragSpeed;
+    }
+
     bool CVarUI::DrawWidget(ICVar* cvar)
     {
         if (!cvar || HasFlag(cvar->GetFlags(), CVarFlags::NoUI)) {
@@ -148,6 +198,12 @@ namespace CoreEngine
         // 表示は末尾セグメントのみ。ImGui の ID 衝突を避けるため "##フルネーム" を付ける
         const std::string label = std::string(leaf) + "##" + std::string(fullName);
         const CVarRange range = cvar->GetRange();
+
+        // 数値はすべてドラッグで編集する（スライダーは 1px あたりの変化が大きく、
+        // 細かい値を合わせられないため）。範囲指定があるものはその範囲でクランプし、
+        // 範囲未指定は上限・下限なし（min >= max を渡すと ImGui が無制限として扱う）
+        const float dragSpeed = DragSpeed(range);
+        const ImGuiSliderFlags dragFlags = range.valid ? kRangedDragFlags : ImGuiSliderFlags_None;
 
         // デフォルトから変更されている項目は色を変えて「触った箇所」を一目で分かるようにする
         const bool modified = cvar->IsModified();
@@ -173,11 +229,9 @@ namespace CoreEngine
         }
         case CVarType::Int: {
             int v = *cvar->AsInt();
-            const bool edited = range.valid
-                ? ImGui::SliderInt(label.c_str(), &v,
-                                   static_cast<int>(range.min), static_cast<int>(range.max))
-                : ImGui::DragInt(label.c_str(), &v);
-            if (edited) {
+            if (ImGui::DragInt(label.c_str(), &v, IntDragSpeed(range),
+                               static_cast<int>(range.min), static_cast<int>(range.max),
+                               "%d", dragFlags)) {
                 undoStack.BeginEdit(cvar);
                 cvar->SetFromPointer(&v);
                 changed = true;
@@ -186,10 +240,8 @@ namespace CoreEngine
         }
         case CVarType::Float: {
             float v = *cvar->AsFloat();
-            const bool edited = range.valid
-                ? ImGui::SliderFloat(label.c_str(), &v, range.min, range.max, "%.3f")
-                : ImGui::DragFloat(label.c_str(), &v, kDefaultDragSpeed);
-            if (edited) {
+            if (ImGui::DragFloat(label.c_str(), &v, dragSpeed,
+                                 range.min, range.max, "%.3f", dragFlags)) {
                 undoStack.BeginEdit(cvar);
                 cvar->SetFromPointer(&v);
                 changed = true;
@@ -198,10 +250,8 @@ namespace CoreEngine
         }
         case CVarType::Vector2: {
             Vector2 v = *cvar->AsVector2();
-            const bool edited = range.valid
-                ? ImGui::SliderFloat2(label.c_str(), &v.x, range.min, range.max, "%.3f")
-                : ImGui::DragFloat2(label.c_str(), &v.x, kDefaultDragSpeed);
-            if (edited) {
+            if (ImGui::DragFloat2(label.c_str(), &v.x, dragSpeed,
+                                  range.min, range.max, "%.3f", dragFlags)) {
                 undoStack.BeginEdit(cvar);
                 cvar->SetFromPointer(&v);
                 changed = true;
@@ -210,10 +260,8 @@ namespace CoreEngine
         }
         case CVarType::Vector3: {
             Vector3 v = *cvar->AsVector3();
-            const bool edited = range.valid
-                ? ImGui::SliderFloat3(label.c_str(), &v.x, range.min, range.max, "%.3f")
-                : ImGui::DragFloat3(label.c_str(), &v.x, kDefaultDragSpeed);
-            if (edited) {
+            if (ImGui::DragFloat3(label.c_str(), &v.x, dragSpeed,
+                                  range.min, range.max, "%.3f", dragFlags)) {
                 undoStack.BeginEdit(cvar);
                 cvar->SetFromPointer(&v);
                 changed = true;
@@ -235,7 +283,7 @@ namespace CoreEngine
             ImGui::PopStyleColor();
         }
 
-        // 確定（スライダーを離した・Enter を押した・クリックした等）の検知。
+        // 確定（ドラッグを離した・Enter を押した・クリックした等）の検知。
         // 「直前の項目」を参照する API のため、ウィジェットの直後で取得しておく
         const bool committed = ImGui::IsItemDeactivatedAfterEdit();
 

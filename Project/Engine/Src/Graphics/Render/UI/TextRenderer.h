@@ -6,6 +6,9 @@
 #include "Math/Vector/Vector2.h"
 #include "Math/Vector/Vector3.h"
 #include "Math/Vector/Vector4.h"
+// TextGlyphVertex（em 単位の変換前グリフ頂点）はワールド空間の
+// テキストとも共通なので、組版側に置いてある
+#include "Text/TextGeometryBuilder.h"
 
 #include <cstdint>
 #include <vector>
@@ -13,18 +16,6 @@
 namespace CoreEngine
 {
     class MsdfFont;
-
-    /// @brief UIText が持っている変換前のグリフ頂点
-    /// @details
-    ///  位置は **em 単位**（フォントサイズ 1.0 のときの大きさ）。
-    ///  フォントサイズ・位置・回転はレンダラーへ積むときに掛ける。
-    ///  こうしておくと、サイズを変えても UIText 側の頂点は組み直さずに済む。
-    struct TextGlyphVertex
-    {
-        Vector2 position;
-        /// xy = アトラス UV / z = アトラス配列の何枚目か
-        Vector3 texcoord;
-    };
 
     /// @brief 1 つの UIText の見た目（頂点へ焼き込んでバッチにまとめる）
     /// @details

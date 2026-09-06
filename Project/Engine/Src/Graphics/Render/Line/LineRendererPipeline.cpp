@@ -36,6 +36,9 @@ namespace CoreEngine
             .SetDebugName("Line")
             .SetInputLayoutFromReflection(*reflectionData_)
             .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
+            // 面と同一平面の線がチリチリする件（Z ファイティング）は Line.VS.hlsl 側で
+            // 深度をずらして潰している。D3D の DepthBias は LINELIST に効かないので
+            // ここで SetDepthBias を足しても意味がない
             .SetDepthStencil(true, true)
             .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE)
             .BuildAllBlendModes(device, vertexShaderBlob, pixelShaderBlob, rootSignatureMg_->GetRootSignature());

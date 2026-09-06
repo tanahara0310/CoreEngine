@@ -62,14 +62,20 @@ namespace CoreEngine
         // 出力先レンダーターゲット名を設定
         deferredLighting->SetRenderTargetName(targetName_);
 
-        // ===== カメラ CBV アドレス（GBufferPass で設定済み） =====
-        if (context.renderManager) {
-            // GBufferPass 時点でカメラ CBV を保持する BaseModelRenderer からアドレスを取得
-            if (auto* modelRenderer = dynamic_cast<BaseModelRenderer*>(
-                    context.renderManager->GetRenderer(RenderPassType::Model))) {
-                deferredLighting->SetCameraCBVAddress(modelRenderer->GetCameraCBVAddress());
-            }
+        // ===== カメラ CBV アドレス =====
+        // ViewInfo は毎フレーム組み直されるので、ここから取る限り古くならない。
+        // 以前は BaseModelRenderer のキャッシュから取っていたが、あれはエンジン寿命の
+        // オブジェクトがシーン寿命のカメラ定数バッファのアドレスを持ち続ける形だった。
+        // 更新は RenderManager::DrawGBufferPass の中でしか起きず、不透明モデルが
+        // 1 つも無いフレーム（シーンロード中・既定の床を切ったシーン）は素通りするため、
+        // シーン切り替えで解放済みのアドレスがそのまま root CBV へ差されていた
+        // （D3D12 ERROR #710 SET_ROOT_CONSTANT_BUFFER_VIEW_INVALID）。
+        if (context.frameViews) {
+            const ViewInfo& view = context.frameViews->Get(context.viewSettings.viewType);
+            deferredLighting->SetCameraCBVAddress(view.isValid ? view.cameraCBV : 0);
+        }
 
+        if (context.renderManager) {
             // シーン共通 IBL 回転を転送（スカイボックス回転と連動）
             deferredLighting->SetEnvironmentRotation(context.renderManager->GetIBLRotation());
 

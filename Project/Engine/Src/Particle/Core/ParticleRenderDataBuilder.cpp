@@ -78,12 +78,17 @@ Matrix4x4 ParticleRenderDataBuilder::CalculateWorldMatrix(
         return billboardedMatrix;
     } else {
         // ビルボードなし（モデルパーティクル）の場合は通常通り
-        return Matrix::MakeAffine(
-            particle.transform.scale,
-            particle.transform.rotate,
-            particle.transform.translate
-        );
+        return MakeModelParticleWorldMatrix(particle);
     }
+}
+
+Matrix4x4 ParticleRenderDataBuilder::MakeModelParticleWorldMatrix(const Particle& particle)
+{
+    return Matrix::MakeAffine(
+        particle.transform.scale,
+        particle.transform.rotate,
+        particle.transform.translate
+    );
 }
 
 Matrix4x4 ParticleRenderDataBuilder::CreateBillboardMatrix(const Matrix4x4& viewMatrix, BillboardType type) {

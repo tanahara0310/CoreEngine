@@ -96,11 +96,18 @@ bool InputConfig::LoadFromFile(const std::string& filePath) {
     }
 
     json j = jsonManager.LoadJson(filePath);
-    if (j.is_null() || !j.contains("bindings")) {
+    if (j.is_null() || !j.contains("bindings") || !j["bindings"].is_object()) {
         return false;
     }
 
-    bindings_.clear();
+    // まず既定値を敷いてからファイルの内容で上書きする。
+    // 単純に bindings_ を空にすると、ファイルに書かれていないアクション
+    // （enum に後から追加したもの・旧バージョンのファイル）が
+    // 「バインディング 0 件 = 何を押しても反応しない」状態になってしまう。
+    // ファイル側にキーがあれば空配列もそのまま反映されるので、
+    // ユーザーが意図的に全解除したアクションは解除のまま残る
+    ResetToDefault();
+
     const auto& bindingsJson = j["bindings"];
     for (auto it = bindingsJson.begin(); it != bindingsJson.end(); ++it) {
         const InputAction action = InputActionFromString(it.key());

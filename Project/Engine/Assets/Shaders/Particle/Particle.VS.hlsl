@@ -16,5 +16,6 @@ VertexShaderOutput main(VertexShaderInput input, uint32_t instanceId : SV_Instan
     output.position = mul(input.position, gParticle[instanceId].WVP);
     output.normal = normalize(mul(input.normal, (float32_t3x3) gParticle[instanceId].World));
     output.color = gParticle[instanceId].Color;
+    output.worldPosition = mul(input.position, gParticle[instanceId].World).xyz;
         return output;
 }

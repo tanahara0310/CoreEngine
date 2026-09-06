@@ -3,6 +3,8 @@
 #include <d3d12.h>
 #include <wrl.h>
 #include <array>
+#include <cstdint>
+#include <limits>
 #include <functional>
 #include <memory>
 #include <vector>
@@ -66,6 +68,17 @@ namespace CoreEngine
         /// @param textureHandle テクスチャハンドル（省略時はモデル組み込みテクスチャを使用）
         void Draw(const WorldTransform& transform, const DrawViewInfo& view,
             D3D12_GPU_DESCRIPTOR_HANDLE textureHandle = {});
+
+        /// @brief このモデルが「前フレームと連続しない位置」へ飛ばされたことを伝える
+        /// @details プールで別の場所へ使い回した・ワープさせたときに呼ぶ。フレーム間で
+        ///          持ち越している状態を 2 つとも捨てる。
+        ///          - モーションベクターの履歴（前フレーム WVP）。捨てないと GBuffer が
+        ///            「そこまで 1 フレームで移動した」という嘘のモーションベクターを出し、
+        ///            RT シャドウのテンポラル再投影が無関係な履歴を拾う。
+        ///          - Hi-Z 遮蔽判定の履歴。捨てないと前の場所での「遮蔽されている」という
+        ///            判定を最大 8 フレーム引き継ぎ、見えているはずのマスが GBuffer から
+        ///            抜ける。抜けても TLAS には残るので、地面だけ消えて影が残る。
+        void OnTeleported();
 
         /// @brief 初期化されているか確認
         /// @return 初期化済みならtrue
@@ -151,8 +164,13 @@ namespace CoreEngine
         // フレームインデックスでリングバッファ化し、CPU が複数フレーム先行して
         // 書き込んでも GPU がまだ参照中の前フレームのデータを上書きしないようにする。
         std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kFrameBufferCount> gameTransformBuffers_;
-        Matrix4x4 prevGameWVP_{}; // 前フレームのWVP行列（モーションベクター計算用）
-        bool prevGameWVPInitialized_ = false; // false = 未初期化（初回フレームはMV=0にする）
+        // モーションベクター用の前フレーム WVP と、それを書いたフレーム番号。
+        // 「1 フレーム前に描いた」ときだけ有効。カリング・非アクティブ・プールの
+        // 使い回しで描画が飛ぶと、保持している WVP は何フレームも前の（しばしば
+        // 遠く離れた）位置になり、そのまま使うと巨大な嘘のモーションベクターになる。
+        static constexpr uint64_t kInvalidMotionFrame = (std::numeric_limits<uint64_t>::max)();
+        Matrix4x4 prevGameWVP_{};
+        uint64_t prevGameWVPFrame_ = kInvalidMotionFrame;
 
         // SkinCluster（存在する場合）
         std::optional<SkinCluster> skinCluster_;
@@ -177,6 +195,12 @@ namespace CoreEngine
         ModelVisibility visibility_;
 
         // 内部ヘルパーメソッド
+        /// @brief 前フレーム WVP をモーションベクターに使ってよいか
+        /// @param isGameView GameView（履歴を持つ唯一のビュー）で描いているか
+        /// @param frame 今フレームの通し番号（Time::FrameCount）
+        /// @return ちょうど 1 フレーム前に GameView で描いていれば true
+        bool IsMotionHistoryUsable(bool isGameView, uint64_t frame) const;
+
         /// @brief 即時描画（スキニングモデル）用の WVP 行列データを更新する
         void UpdateTransformationMatrix(const WorldTransform& transform, const DrawViewInfo& view);
 

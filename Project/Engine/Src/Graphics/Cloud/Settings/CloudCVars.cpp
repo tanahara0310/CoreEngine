@@ -13,6 +13,39 @@ namespace CoreEngine
             "ボリュメトリック雲を有効にする",
             CVarRange{}, CVarFlags::NoUI };
 
+        // ---- スタイル（ブロック雲） ----
+        // Style は VolumetricCloudEditor のコンボが専用 UI を持つため NoUI。
+        // 値は CVars.json へ保存される（NoSave は付けない）
+        CVar<int> Style{
+            "r.Cloud.Style", static_cast<int>(CloudStyle::Realistic),
+            "雲のスタイル（0=リアル / 1=ボクセル / 2=マイクラ / 3=段々）",
+            CVarRange{ 0.0f, static_cast<float>(CloudStyle::Count) - 1.0f }, CVarFlags::NoUI };
+
+        CVar<float> VoxelSizeM{
+            "r.Cloud.VoxelSize", 250.0f,
+            "ブロック雲のボクセル 1 辺の実寸（水平）[m]",
+            CVarRange{ 20.0f, 3000.0f } };
+
+        CVar<float> VoxelHeightSizeM{
+            "r.Cloud.VoxelHeightSize", 0.0f,
+            "ブロック雲のボクセルの縦の実寸 [m]。0 で水平と同じ",
+            CVarRange{ 0.0f, 3000.0f } };
+
+        CVar<float> DensityThreshold{
+            "r.Cloud.DensityThreshold", 0.10f,
+            "ブロック雲の二値化しきい値。大きいほど雲が痩せる",
+            CVarRange{ 0.001f, 0.9f } };
+
+        CVar<float> VoxelFaceBrightness{
+            "r.Cloud.VoxelFaceBrightness", 0.10f,
+            "ボクセル面の直接光の倍率。大きすぎると全ての面が白に張り付いて陰影が消える",
+            CVarRange{ 0.01f, 1.0f } };
+
+        CVar<float> VoxelFaceShadeMin{
+            "r.Cloud.VoxelFaceShadeMin", 0.28f,
+            "光源に背を向けたボクセル面の明るさ。小さいほど面ごとのコントラストが強い",
+            CVarRange{ 0.0f, 1.0f } };
+
         // ---- 雲層ジオメトリ ----
         CVar<float> LayerBottomAltitudeM{
             "r.Cloud.LayerBottomAltitude", 1500.0f,
@@ -381,12 +414,18 @@ namespace CoreEngine
                 { &UpsampleDepthTolerance, &VolumetricCloudParameters::upsampleDepthTolerance },
                 { &ReprojectBlendMin,      &VolumetricCloudParameters::reprojectBlendMin },
                 { &ReprojectTolerance,     &VolumetricCloudParameters::reprojectTolerance },
+                { &VoxelSizeM,             &VolumetricCloudParameters::voxelSizeM },
+                { &VoxelHeightSizeM,       &VolumetricCloudParameters::voxelHeightSizeM },
+                { &DensityThreshold,       &VolumetricCloudParameters::densityThreshold },
+                { &VoxelFaceBrightness,    &VolumetricCloudParameters::voxelFaceBrightness },
+                { &VoxelFaceShadeMin,      &VolumetricCloudParameters::voxelFaceShadeMin },
             };
 
             constexpr Binding<CVar<int>, uint32_t> kUintBindings[] = {
                 { &MaxSteps,          &VolumetricCloudParameters::maxSteps },
                 { &ResolutionDivisor, &VolumetricCloudParameters::resolutionDivisor },
                 { &GodRayStepCount,   &VolumetricCloudParameters::godRayStepCount },
+                { &Style,             &VolumetricCloudParameters::styleIndex },
             };
 
             constexpr Binding<CVar<bool>, bool> kBoolBindings[] = {

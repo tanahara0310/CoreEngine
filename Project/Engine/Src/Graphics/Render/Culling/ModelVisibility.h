@@ -56,6 +56,16 @@ namespace CoreEngine
         /// @return 描画すべきなら true（遮蔽中なら false）
         bool IsSubMeshVisible(uint32_t subMeshIndex);
 
+        /// @brief 遮蔽判定の履歴を捨て、次の判定が出るまで「可視」に戻す
+        /// @details Hi-Z の判定結果は 2 フレーム遅れで返り、最大 kResultStaleFrames の間
+        ///          そのスロットの答えとして使われ続ける。プールの使い回しなどで同じ
+        ///          Model が別の場所へ飛ぶと、前の場所での「遮蔽されている」という答えを
+        ///          そのまま引き継いでしまい、本当は見えているマスが数フレーム描画から
+        ///          抜ける。抜けたマスは GBuffer に居ないのに TLAS には居るため、
+        ///          そこだけ地面が消えて影だけが残る（＝影が出たり消えたりして見える）。
+        ///          スロットを返却して登録し直させることで、未測定＝可視の状態から始める。
+        void ResetOcclusionHistory();
+
     private:
         // スロット登録先の Hi-Z システム（初回 BeginOcclusionQuery で確定。
         // デストラクタのスロット返却に使うため、Model より長寿命であること）

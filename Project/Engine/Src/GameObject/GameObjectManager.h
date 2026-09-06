@@ -42,6 +42,14 @@ namespace CoreEngine
         /// @note 手動更新したい場合は obj->SetAutoUpdate(false) を設定後、自分で obj->Update() を呼んでください
         void UpdateAll();
 
+        /// @brief 全オブジェクトのワールド行列だけを計算し直して GPU へ転送する
+        /// @details 再生を停止している間、`UpdateAll()` の代わりに呼ぶための軽い経路。
+        ///          ワールド行列の転送は `TransformComponent::Update()` が担っているので、
+        ///          更新を丸ごと止めるとギズモやインスペクタで座標を動かしても
+        ///          画面が変わらなくなる。それを避けるために転送だけを残す。
+        /// @note 走査対象は `UpdateAll()` と同じ（非アクティブ・削除マーク済みは除く）。
+        void SyncTransforms();
+
         /// @brief 全オブジェクトをRenderManagerに登録して描画
         /// @param renderManager レンダーマネージャー
         void RegisterAllToRender(CoreEngine::RenderManager* renderManager);

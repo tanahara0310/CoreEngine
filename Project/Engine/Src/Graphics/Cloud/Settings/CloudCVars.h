@@ -13,6 +13,14 @@ namespace CoreEngine
         // ---- 機能トグル ----
         extern CVar<bool> Enabled;
 
+        // ---- スタイル（ブロック雲） ----
+        extern CVar<int> Style;
+        extern CVar<float> VoxelSizeM;
+        extern CVar<float> VoxelHeightSizeM;
+        extern CVar<float> DensityThreshold;
+        extern CVar<float> VoxelFaceBrightness;
+        extern CVar<float> VoxelFaceShadeMin;
+
         // ---- 雲層ジオメトリ ----
         extern CVar<float> LayerBottomAltitudeM;
         extern CVar<float> LayerThicknessM;

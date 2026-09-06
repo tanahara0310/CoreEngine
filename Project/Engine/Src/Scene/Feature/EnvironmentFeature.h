@@ -17,6 +17,9 @@ namespace CoreEngine
 
         void PostSceneInitialize(SceneContext& ctx) override;
         void Update(SceneContext& ctx, SceneUpdatePhase phase) override;
+
+        /// @brief 停止中も回す（止めると大気・フォグのエディタが効かなくなる）
+        bool RunsWhileStopped() const override { return true; }
         void Finalize(SceneContext& ctx) override;
 
         /// @brief シーンの SkyBox（大気散乱で描く空）を取得
@@ -40,6 +43,11 @@ namespace CoreEngine
         /// @details SkyBox が大気散乱モードの場合のみ AtmosphereManager へ太陽情報と
         ///          カメラ情報を反映する（LUT 生成・Aerial Perspective の有効化トリガ）。
         void UpdateAtmosphere(SceneContext& ctx);
+
+        /// @brief フォグの毎フレーム更新
+        /// @details フォグは空・大気を必要としないので、SkyBox が無いシーンでも呼ぶ。
+        ///          FogManager::Update が「このフレームはフォグを使う」フラグを立てる。
+        void UpdateFog(SceneContext& ctx);
 
         // 既定背景の SkyBox（所有権は GameObjectManager。Finalize でポインタをクリアする）
         SkyBoxObject* skyBox_ = nullptr;

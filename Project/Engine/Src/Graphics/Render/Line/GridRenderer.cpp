@@ -1,11 +1,17 @@
 #include "pch.h"
 #include "GridRenderer.h"
 #include "Graphics/Render/Line/LineRendererPipeline.h"
+#include "Graphics/Shader/ShaderReflectionData.h"
+#include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Resource/UploadRing.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Camera/Camera.h"
 #include "Math/MathCore.h"
 #include <algorithm>
+#include <cassert>
 #include <cmath>
+#include <stdexcept>
 
 #ifdef USE_IMGUI
 #include "EngineSystem/Subsystem/DebugSubsystem.h"
@@ -24,14 +30,142 @@ namespace {
 #endif
 }
 
+void GridRenderer::Initialize(ID3D12Device* device)
+{
+    shaderCompiler_->Initialize();
+    reflectionBuilder_->Initialize(shaderCompiler_->GetDxcUtils());
+
+    auto vertexShaderBlob = shaderCompiler_->CompileShader(L"Engine/Assets/Shaders/Grid/Grid.VS.hlsl", L"vs_6_0");
+    assert(vertexShaderBlob != nullptr);
+
+    auto pixelShaderBlob = shaderCompiler_->CompileShader(L"Engine/Assets/Shaders/Grid/Grid.PS.hlsl", L"ps_6_0");
+    assert(pixelShaderBlob != nullptr);
+
+    reflectionData_ = reflectionBuilder_->BuildFromShaders(vertexShaderBlob, pixelShaderBlob, "GridRenderer");
+
+    RootSignatureConfig config;
+    const auto buildResult = rootSignatureMg_->Build(device, *reflectionData_, config);
+    if (!buildResult.success) {
+        throw std::runtime_error("Failed to create Grid Root Signature: " + buildResult.errorMessage);
+    }
+
+    // 頂点バッファは使わない（VS が SV_VertexID から三角形を組み立てる）ので入力レイアウトは空になる。
+    // 深度は PS が SV_Depth で床平面の値を出すためテストは行うが、書き込みはしない
+    //（半透明の補助表示なので、後ろのパスを遮ってはいけない）。
+    const bool result = psoMg_->CreateBuilder()
+        .SetDebugName("Grid")
+        .SetInputLayoutFromReflection(*reflectionData_)
+        .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
+        .SetDepthStencil(true, false, D3D12_COMPARISON_FUNC_LESS_EQUAL)
+        .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
+        .Build(device, vertexShaderBlob, pixelShaderBlob, rootSignatureMg_->GetRootSignature(),
+               { BlendMode::kBlendModeNormal });
+
+    if (!result) {
+        throw std::runtime_error("Failed to create pipeline state for GridRenderer.");
+    }
+
+    // グリッドは通常アルファブレンド固定なので、PSO はここで確定させておく
+    pipelineState_ = psoMg_->GetPipelineState(BlendMode::kBlendModeNormal);
+}
+
+void GridRenderer::Initialize(GraphicsCore* dxCommon)
+{
+    dxCommon_ = dxCommon;
+    Initialize(dxCommon->GetDevice());
+}
+
+void GridRenderer::BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMode blendMode)
+{
+    (void)blendMode; // グリッドは通常アルファブレンド固定
+    currentCmdList_ = cmdList;
+
+    if (!cmdList || !pipelineState_) {
+        return;
+    }
+
+    cmdList->SetGraphicsRootSignature(rootSignatureMg_->GetRootSignature());
+    cmdList->SetPipelineState(pipelineState_);
+    cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+}
+
+void GridRenderer::EndPass()
+{
+    // 描画対象を持たないパスなので、Line パスと同じくフラッシュ相当をここで行う
+    DrawGrid();
+    currentCmdList_ = nullptr;
+}
+
+void GridRenderer::SetCamera(const Camera* camera)
+{
+    camera_ = camera;
+}
+
 void GridRenderer::SetBaseSpacing(float spacing)
 {
     baseSpacing_ = std::max(spacing, 1e-3f);
 }
 
-void GridRenderer::SetHeightAtBaseSpacing(float height)
+void GridRenderer::SetMinPixelsPerCell(float pixels)
 {
-    heightAtBaseSpacing_ = std::max(height, 1e-3f);
+    // これを小さくしすぎると、段が繰り上がる前に格子が数ピクセルまで詰まって縞になる
+    minPixelsPerCell_ = std::max(pixels, 4.0f);
+}
+
+int GridRenderer::GetRootParamIndex(const std::string& resourceName) const
+{
+    if (!reflectionData_) {
+        return -1;
+    }
+    return reflectionData_->GetRootParameterIndexByName(resourceName);
+}
+
+void GridRenderer::DrawGrid()
+{
+    if (!visible_ || !currentCmdList_ || !camera_ || !dxCommon_ || !pipelineState_) {
+        return;
+    }
+
+    const int paramIndex = GetRootParamIndex("GridParams");
+    if (paramIndex < 0) {
+        return;
+    }
+
+    // ジッタ込みの射影を使う（シーンと同じ行列でないと TAA の履歴とずれる）
+    const Matrix4x4 viewProjection = camera_->GetViewMatrix() * camera_->GetProjectionMatrix();
+    const Vector3 cameraPosition = camera_->GetPosition();
+
+    // シェーダーはカメラを原点とした座標系で解く。絶対ワールド座標のままだと、カメラが
+    // 原点から離れたときに float32 の桁が足りず、交点とその微分がピクセル単位でばらついて
+    // 格子も軸ラインも一面のノイズになる。
+    // 行ベクトル規約なので、カメラ相対位置 p に対して (p + camera) * VP = p * (T(camera) * VP)。
+    // 逆側は、同次座標のまま平行移動を後ろへ掛ければ「逆射影してからカメラを引く」になる。
+    GridConstants constants{};
+    constants.viewProjection = MathCore::Matrix::Translation(cameraPosition) * viewProjection;
+    constants.invViewProjection =
+        MathCore::Matrix::Inverse(viewProjection) * MathCore::Matrix::Translation(-cameraPosition);
+    constants.cameraPosition = cameraPosition;
+    constants.planeY = kGridPlaneYOffset;
+    constants.gridColor = normalColor_;
+    constants.baseSpacing = baseSpacing_;
+    constants.xAxisColor = xAxisColor_;
+    constants.brightness = brightness_;
+    constants.zAxisColor = zAxisColor_;
+    constants.minPixelsPerCell = minPixelsPerCell_;
+    constants.maxLevel = kMaxLevel;
+    constants.lineWidthPixels = lineWidthPixels_;
+    constants.axisAlpha = kAxisAlpha;
+    constants.depthBias = kDepthBias;
+
+    // Line パスと同様、この実行専用の領域を取る（1 本を使い回すとビューごとに上書きされる）
+    const D3D12_GPU_VIRTUAL_ADDRESS address = dxCommon_->GetUploadRing().AllocateConstants(constants);
+    if (address == 0) {
+        return;
+    }
+
+    currentCmdList_->SetGraphicsRootConstantBufferView(static_cast<UINT>(paramIndex), address);
+    // VS が SV_VertexID から画面全体を覆う三角形を作るので、頂点バッファの設定は要らない
+    currentCmdList_->DrawInstanced(3, 1, 0, 0);
 }
 
 void GridRenderer::SubmitLines(LineRendererPipeline& pipeline, const Camera* camera)
@@ -40,165 +174,20 @@ void GridRenderer::SubmitLines(LineRendererPipeline& pipeline, const Camera* cam
         return;
     }
 
-    // グリッドはビューごとに「そのビューのカメラ」を中心に生成する
-    auto lines = GenerateGridLines(camera->GetPosition());
-    if (!lines.empty()) {
-        pipeline.AddLines(lines);
-    }
-}
-
-namespace {
-    /// @brief カメラを中心とする半径 radius の円で線を切り、縁へ向かって α を落としながら積む
-    /// @param alongZ     true なら Z 方向に伸びる線（X が fixedCoord で固定）
-    /// @param fixedCoord 線が固定される座標（alongZ なら X、そうでなければ Z）
-    /// @note Line は 1 本に 1 つの α しか持てないため、滑らかなフェードには分割が要る。
-    void AppendFadedChord(std::vector<Line>& out, const Vector3& cameraPosition,
-                          bool alongZ, float fixedCoord, float radius, float alpha,
-                          const Vector3& color, float planeY,
-                          int segments, float fadeStartRatio, float minAlpha)
-    {
-        if (alpha <= minAlpha || radius <= 0.0f) {
-            return;
-        }
-
-        // 線とカメラの垂直距離。これが半径を超えるなら円の外なので描かない
-        const float perpendicular = alongZ ? (fixedCoord - cameraPosition.x)
-                                           : (fixedCoord - cameraPosition.z);
-        const float halfChordSq = radius * radius - perpendicular * perpendicular;
-        if (halfChordSq <= 0.0f) {
-            return;
-        }
-        const float halfChord = std::sqrt(halfChordSq);
-
-        // 線が伸びる方向のカメラ座標（弦の中点）
-        const float center = alongZ ? cameraPosition.z : cameraPosition.x;
-        const float segmentLength = (2.0f * halfChord) / static_cast<float>(segments);
-        const float fadeSpan = std::max(1.0f - fadeStartRatio, 1e-3f);
-
-        for (int s = 0; s < segments; ++s) {
-            const float t0 = -halfChord + segmentLength * static_cast<float>(s);
-            const float t1 = t0 + segmentLength;
-            const float tMid = 0.5f * (t0 + t1);
-
-            // セグメント中点のカメラからの距離でフェードを決める
-            const float distance = std::sqrt(perpendicular * perpendicular + tMid * tMid);
-            const float ratio = distance / radius;
-            const float fade = 1.0f - MathCore::SmoothStep((ratio - fadeStartRatio) / fadeSpan);
-            const float segmentAlpha = alpha * fade;
-            if (segmentAlpha <= minAlpha) {
-                continue;
-            }
-
-            const Vector3 a = alongZ ? Vector3{ fixedCoord, planeY, center + t0 }
-                                     : Vector3{ center + t0, planeY, fixedCoord };
-            const Vector3 b = alongZ ? Vector3{ fixedCoord, planeY, center + t1 }
-                                     : Vector3{ center + t1, planeY, fixedCoord };
-            out.push_back({ a, b, color, segmentAlpha });
-        }
-    }
-}
-
-std::vector<Line> GridRenderer::GenerateGridLines(const Vector3& cameraPosition) const
-{
-    std::vector<Line> lines;
-    lines.reserve(static_cast<size_t>(kLevelCount) * (2 * kHalfLines + 1) * 2 * kFadeSegments);
-
-    // ===== カメラ高度から「最細の段」を十進で決める =====
-    // 高度が 10 倍になるごとに 1 段粗くなる。段の小数部 f がクロスフェード率。
-    const float height = std::max(std::abs(cameraPosition.y - kGridPlaneYOffset), 1e-3f);
-    // baseSpacing_ より細かい段は出さないので 0 でクランプする
-    // （クランプ後の値から floor / 小数部を取るので f も自動的に 0 になる）
-    const float level = std::max(std::log10(height / heightAtBaseSpacing_), 0.0f);
-    const float levelFloor = std::floor(level);
-    const float levelFrac = level - levelFloor;
-
-    const float finestSpacing = baseSpacing_ * std::pow(10.0f, levelFloor);
-
-    // 段の α。最細は f で消え、最粗は f で現れるので、繰り上がりの瞬間に入れ替わって連続に見える。
-    // 段ごとに濃さは変えない（変えると繰り上がりで階調が飛ぶ）。
-    // 10 の倍数の位置は 1 つ粗い段が重ねて描くため、階層感は重なりから自動的に生まれる。
-    const float levelAlphas[kLevelCount] = { 1.0f - levelFrac, 1.0f, levelFrac };
-
-    const float finestRadius = finestSpacing * static_cast<float>(kHalfLines);
-
-    float spacing = finestSpacing;
-    float coarsestRadius = finestRadius;
-    for (int i = 0; i < kLevelCount; ++i) {
-        GridLevel gridLevel;
-        gridLevel.spacing = spacing;
-        gridLevel.radius = spacing * static_cast<float>(kHalfLines);
-        gridLevel.alpha = levelAlphas[i] * brightness_;
-        AppendLevel(lines, cameraPosition, gridLevel);
-
-        coarsestRadius = gridLevel.radius;
-        spacing *= 10.0f;
-    }
-
-    // 軸は最粗の半径まで伸ばす（一番遠くまで見えていてほしい基準線のため）。
-    // 垂直な Y 軸だけは最細の段に合わせる（最粗だと足元に巨大な青い柱が立つ）。
-    AppendAxes(lines, cameraPosition, coarsestRadius, finestRadius * 0.5f);
-
-    return lines;
-}
-
-void GridRenderer::AppendLevel(std::vector<Line>& out, const Vector3& cameraPosition,
-                               const GridLevel& level) const
-{
-    if (level.alpha <= kMinVisibleAlpha) {
+    const float alpha = kAxisAlpha * brightness_;
+    if (alpha <= 0.0f) {
         return;
     }
 
-    // カメラ直下を格子間隔にスナップした点を中心にする。スナップにより線の位置は
-    // ワールドへ固定され、カメラが動いても模様が滑らない。
-    const float centerX = std::round(cameraPosition.x / level.spacing) * level.spacing;
-    const float centerZ = std::round(cameraPosition.z / level.spacing) * level.spacing;
+    // 垂直な Y 軸だけは床平面に乗らないので解析グリッドでは描けない。原点の目印として
+    // Line パスへ 1 本だけ流す。長さをカメラ高度に比例させることで、どの高さでも
+    // 画面上の見え方が変わらない（旧実装の「最細の段に合わせる」と同じ狙い）。
+    const float height = std::max(std::abs(camera->GetPosition().y - kGridPlaneYOffset), baseSpacing_);
+    const float halfHeight = height * kYAxisHeightScale;
 
-    for (int i = -kHalfLines; i <= kHalfLines; ++i) {
-        const float offset = static_cast<float>(i) * level.spacing;
-
-        // 原点を通る線は軸ライン（AppendAxes）が専用色で描くのでここでは飛ばす。
-        // スナップ後の相対位置ではなくワールド絶対座標で判定すること。
-        const float x = centerX + offset;
-        if (std::abs(x) > level.spacing * 0.5f) {
-            AppendFadedChord(out, cameraPosition, /*alongZ=*/true, x, level.radius,
-                             level.alpha, normalColor_, kGridPlaneYOffset,
-                             kFadeSegments, kFadeStartRatio, kMinVisibleAlpha);
-        }
-
-        const float z = centerZ + offset;
-        if (std::abs(z) > level.spacing * 0.5f) {
-            AppendFadedChord(out, cameraPosition, /*alongZ=*/false, z, level.radius,
-                             level.alpha, normalColor_, kGridPlaneYOffset,
-                             kFadeSegments, kFadeStartRatio, kMinVisibleAlpha);
-        }
-    }
-}
-
-void GridRenderer::AppendAxes(std::vector<Line>& out, const Vector3& cameraPosition,
-                              float radius, float yAxisHalfHeight) const
-{
-    const float axisAlpha = kAxisAlpha * brightness_;
-
-    // X 軸（赤）は z=0 の上を X 方向へ、Z 軸（緑）は x=0 の上を Z 方向へ伸びる。
-    // 円の外側にあるかどうかは AppendFadedChord が垂直距離で判定する。
-    AppendFadedChord(out, cameraPosition, /*alongZ=*/false, 0.0f, radius,
-                     axisAlpha, xAxisColor_, kGridPlaneYOffset,
-                     kFadeSegments, kFadeStartRatio, kMinVisibleAlpha);
-    AppendFadedChord(out, cameraPosition, /*alongZ=*/true, 0.0f, radius,
-                     axisAlpha, zAxisColor_, kGridPlaneYOffset,
-                     kFadeSegments, kFadeStartRatio, kMinVisibleAlpha);
-
-    // Y 軸（青・垂直）はワールド原点の目印。カメラが原点から離れるほど薄くする
-    const float dx = cameraPosition.x;
-    const float dz = cameraPosition.z;
-    const float originDistance = std::sqrt(dx * dx + dz * dz);
-    const float originFade = 1.0f - MathCore::SmoothStep(originDistance / std::max(radius, 1e-3f));
-    const float yAlpha = axisAlpha * originFade;
-    if (yAlpha > kMinVisibleAlpha) {
-        out.push_back({ { 0.0f, kGridPlaneYOffset - yAxisHalfHeight, 0.0f },
-                        { 0.0f, kGridPlaneYOffset + yAxisHalfHeight, 0.0f },
-                        yAxisColor_, yAlpha });
-    }
+    pipeline.AddLine(Line{ { 0.0f, kGridPlaneYOffset - halfHeight, 0.0f },
+                           { 0.0f, kGridPlaneYOffset + halfHeight, 0.0f },
+                           yAxisColor_, alpha });
 }
 
 #ifdef USE_IMGUI
@@ -242,13 +231,17 @@ bool GridRenderer::DrawSettingsImGui()
     }
 
     UI::SectionHeader("スケール");
-    ImGui::TextDisabled("カメラ高度に応じて 10 倍ずつ粗い格子へ自動で切り替わります");
+    ImGui::TextDisabled("1 マスが画面上でこの px 数を下回ると 10 倍粗い格子へ切り替わります");
     if (UI::DragFloat("最細の間隔 [m]", baseSpacing_, 0.05f, 0.01f, 100.0f)) {
         baseSpacing_ = std::max(baseSpacing_, 1e-3f);
         changed = true;
     }
-    if (UI::DragFloat("切替の基準高度 [m]", heightAtBaseSpacing_, 0.5f, 0.1f, 1000.0f)) {
-        heightAtBaseSpacing_ = std::max(heightAtBaseSpacing_, 1e-3f);
+    if (UI::DragFloat("1 マスの最小 px", minPixelsPerCell_, 0.5f, 4.0f, 64.0f)) {
+        minPixelsPerCell_ = std::max(minPixelsPerCell_, 4.0f);
+        changed = true;
+    }
+    if (UI::DragFloat("線の太さ [px]", lineWidthPixels_, 0.05f, 0.5f, 5.0f)) {
+        lineWidthPixels_ = std::max(lineWidthPixels_, 0.1f);
         changed = true;
     }
     if (UI::DragFloat("濃さ", brightness_, 0.01f, 0.0f, 1.0f)) {

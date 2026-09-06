@@ -49,7 +49,7 @@ public:
 private:
     // UI関連の状態
     char saveFileNameBuffer_[256] = "NewPreset";
-    char directoryPathBuffer_[512] = "Assets/Presets/Particle/";
+    char directoryPathBuffer_[512] = "Application/Assets/Presets/Particle/";
     std::vector<std::string> presetFileList_;
     int selectedPresetIndex_ = -1;
     bool needUpdateFileList_ = true;

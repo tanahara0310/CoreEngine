@@ -18,6 +18,7 @@
 #include "Editor/Window/GameOutputWindow.h"
 #include "Editor/Environment/AtmosphereEditor.h"
 #include "Editor/Environment/VolumetricCloudEditor.h"
+#include "Editor/Environment/FogEditor.h"
 #include "EngineSystem/Settings/CVarSettingsSection.h"
 #include "Graphics/Render/Pass/RenderPass.h"
 #include "Graphics/Render/Pass/RenderPipeline.h"
@@ -112,6 +113,7 @@ namespace CoreEngine
         // gameDebugUI_ より後に宣言し、デストラクタでの登録解除が UI 解放前に走るようにする
         std::unique_ptr<AtmosphereEditor> atmosphereEditor_;
         std::unique_ptr<VolumetricCloudEditor> cloudEditor_;
+        std::unique_ptr<FogEditor> fogEditor_;
 
         // エディタ設定の自動保存セクション（大気物性・雲。太陽/月ライトはシーン寿命のため
         // EnvironmentFeature 側が別セクションで扱う）。cloudEditor_ を参照するため

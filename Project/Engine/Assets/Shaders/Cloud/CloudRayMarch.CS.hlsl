@@ -54,9 +54,14 @@ void main(uint3 dtid : SV_DispatchThreadID)
     // 画面空間 IGN でサンプル位相をジッタし、等距離サンプル面が作る
     // 放射状のバンディングをノイズへ分散させる。再投影が有効なときだけ
     // フレームで位相を回す（無効なら毎フレーム同じ模様＝静止画ではちらつかない）
+    // ブロック雲は密度が二値なので、画素ごとに位相をずらしても縞がノイズへ分散せず、
+    // 面の縁が 1 ステップ分ばらけて汚れるだけになる。全画素を同位相にして
+    // ワールド固定のサンプル面を共有させ、縁を揃える
     bool reproject = gCloud.reprojectEnabled > 0.5f;
     uint jitterFrame = reproject ? gCloud.frameIndex : 0u;
-    float ign = InterleavedGradientNoise(float2(dtid.xy), jitterFrame);
+    float ign = (gCloud.styleIndex == CLOUD_STYLE_REALISTIC)
+        ? InterleavedGradientNoise(float2(dtid.xy), jitterFrame)
+        : 0.0f;
 
     CloudMarchResult cloud = MarchClouds(rayOrigin, rayDir, marchStart, marchEnd,
                                          max(gCloud.maxSteps, 1u) * 2u, ign);

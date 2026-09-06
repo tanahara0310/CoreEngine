@@ -3,6 +3,7 @@
 #include "ObjectMaterial.hlsli"
 #include "../Lighting/LightStructures.hlsli"
 #include "../PBR/PBR.hlsli"
+#include "Fog.hlsli"
 
 /// @brief シーン共通 IBL パラメータ（スカイボックス回転と連動）
 struct IBLSceneParams
@@ -24,6 +25,12 @@ struct Camera
 ConstantBuffer<Camera> gCamera : register(b2);
 ConstantBuffer<LightCounts> gLightCounts : register(b1);
 ConstantBuffer<IBLSceneParams> gIBLParams : register(b3);
+// フォグ。全画面合成パス（HeightFog.CS）と同じ数式・同じ定数を使う。
+// 不透明フォワードには全画面パスが深度から掛けるので、C++ 側が「何もしない」
+// バリアントを差して二重適用を防ぐ（BaseModelRenderer::BindForwardSceneResources）。
+// b4 = Water.VS の WaterConstants、b5 = WaterFrameConstants、b6 = AtmosphereApply の
+// gAtmosphereAP が使うため、フォワード系で空いている b7 を使う
+ConstantBuffer<FogParameters> gFog : register(b7);
 
 // ===== StructuredBuffer (Lights) =====
 StructuredBuffer<DirectionalLightData> gDirectionalLights : register(t1);
@@ -253,6 +260,7 @@ PixelShaderOutput ForwardMain(VertexShaderOutput input)
     if (gMaterial.enableLighting == 0)
     {
         output.color = gMaterial.color * textureColor;
+        output.color.rgb = ApplyFog(gFog, input.worldPosition, output.color.rgb);
         return output;
     }
 
@@ -272,6 +280,10 @@ PixelShaderOutput ForwardMain(VertexShaderOutput input)
 
     // エミッシブ（自己発光: ライティングの影響を受けず加算）
     output.color.rgb += GetEmissive(uv);
+
+    // フォグ（全画面合成パスと同じ数式）。不透明フォワードでは gFog が
+    // 「何もしない」バリアントなので、ここを通っても色は変わらない
+    output.color.rgb = ApplyFog(gFog, input.worldPosition, output.color.rgb);
 
     // HDR 値をそのまま出力（トーンマッピングはポストエフェクトチェーンで適用）
 

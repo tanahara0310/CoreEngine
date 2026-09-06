@@ -6,6 +6,7 @@
 #include "Editor/Scene/SceneDebugEditor.h"
 #include "EngineSystem/EngineSystem.h"
 #include "EngineSystem/EngineConfig.h"
+#include "EngineSystem/PlaybackState.h"
 #include "Utility/FrameRate/FrameRateController.h"
 #include "Utility/FrameRate/Time.h"
 #include "WinApp/WinApp.h"
@@ -252,6 +253,9 @@ namespace CoreEngine
                 ImGui::EndMenu();
             }
 
+            // 再生 / 停止（メニューバー中央）
+            DrawPlaybackControls();
+
             // Capture メニュー（右端に配置）
             float captureMenuWidth = ImGui::CalcTextSize("Capture").x + ImGui::GetStyle().ItemSpacing.x * 4.0f;
             ImGui::SameLine(ImGui::GetWindowWidth() - captureMenuWidth);
@@ -285,6 +289,59 @@ namespace CoreEngine
             }
 
             ImGui::EndMainMenuBar();
+        }
+    }
+
+    void GameDebugUI::DrawPlaybackControls()
+    {
+        auto& playback = PlaybackStateManager::GetInstance();
+        const bool playing = playback.IsPlaying();
+
+        // 先にボタン 2 つ分の幅を測り、メニューバーのちょうど中央から並べ始める。
+        // 高さを指定しないボタンはメニューバーと同じ高さ（GetFrameHeight）になる
+        const ImGuiStyle& style = ImGui::GetStyle();
+        const float buttonWidth = ImGui::GetFrameHeight() * 1.6f;
+        const float totalWidth = buttonWidth * 2.0f + style.ItemSpacing.x;
+
+        // SameLine の引数は「内容の開始位置からの相対」なので、メニューバー左端の
+        // 安全域（DisplaySafeAreaPadding）を引いてウィンドウ中央へ正確に合わせる
+        ImGui::SameLine((ImGui::GetWindowWidth() - totalWidth) * 0.5f - ImGui::GetCursorStartPos().x);
+
+        // 現在の状態側のボタンだけをアクセント色で塗る（Unity の再生ボタンと同じ見せ方）
+        const auto stateButton = [buttonWidth](const char* label, bool current, const char* tooltip) {
+            const ImVec4 accent = ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive);
+            if (current) {
+                ImGui::PushStyleColor(ImGuiCol_Button, accent);
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, accent);
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, accent);
+            }
+            const bool pressed = ImGui::Button(label, ImVec2(buttonWidth, 0.0f));
+            if (current) {
+                ImGui::PopStyleColor(3);
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("%s", tooltip);
+            }
+            return pressed;
+            };
+
+        if (stateButton("▶##Play", playing, "再生\nゲームの更新を再開します")) {
+            playback.Play();
+        }
+
+        ImGui::SameLine();
+
+        if (stateButton("■##Stop", !playing,
+            "停止\nゲームの更新を止めます。\n"
+            "止めている間もカメラ・ギズモ・各パネルは動くので、\n"
+            "パラメータはそのまま編集できます。")) {
+            playback.Stop();
+        }
+
+        // 色が変わるだけだと見落とすので、止まっていることは文字でも出す
+        if (!playing) {
+            ImGui::SameLine();
+            ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_PlotHistogram), "停止中");
         }
     }
 

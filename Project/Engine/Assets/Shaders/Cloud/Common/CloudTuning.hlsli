@@ -78,6 +78,27 @@ static const float kCloudDetailNoiseTexels = 32.0f;
 /// 参照できる最上位ミップ段（C++ kNoiseMipLevels - 1 と一致させること）
 static const float kCloudMaxNoiseLod = 4.0f;
 
+// ===== ボクセルトラバーサル（ブロック雲）=====
+
+/// レイに平行な軸で 0 除算にならないようにする方向成分の下限
+static const float kCloudVoxelMinDirComponent = 1e-6f;
+
+/// 単位ベクトルの L1 ノルムの上限（体対角 = √3）
+/// @details DDA が 1m あたりにまたぐ境界の数は |方向| の L1 ノルム / セル幅。
+///          軸沿い 1 〜 体対角 √3 で 1.7 倍変わるので、到達距離を方向ごとに算出すると
+///          同じ距離の雲が方位によって出たり消えたりする。最も不利な向きで揃えること。
+static const float kCloudVoxelMaxL1 = 1.7320508f;
+
+/// ボクセルマーチの反復予算を MaxSteps の何倍にするか
+/// @details 予算が MaxMarchDistance より手前で尽きると遠方の雲がフェードで消える。
+///          DDA の 1 反復は「セル中心で密度を 1 回引く」だけで、体積マーチのような
+///          サンライトマーチ（コーン 6 サンプル × 多重散乱 3 オクターブ）を伴わないため、
+///          同じ予算でもコストは桁違いに軽い。遠方まで届かせるほうが得。
+static const uint kCloudVoxelBudgetScale = 8u;
+
+/// 面の明るさとコントラスト（voxelFaceBrightness / voxelFaceShadeMin）は
+/// 実物合わせが要るので CVar にしてある（r.Cloud.VoxelFaceBrightness / VoxelFaceShadeMin）。
+
 // ===== 巻雲シェル =====
 
 /// 粗い筋を割る細かいノイズの周波数倍率と、そのしきい値

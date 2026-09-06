@@ -22,11 +22,13 @@
 #include "Graphics/Render/Sprite/SpriteRenderer.h"
 #include "Graphics/Render/UI/UIRenderer.h"
 #include "Graphics/Render/UI/TextRenderer.h"
+#include "Graphics/Render/Text3D/Text3DRenderer.h"
 #include "Text/FontManager.h"
 #include "Graphics/Render/Particle/ParticleRenderer.h"
 #include "Graphics/Render/Particle/ModelParticleRenderer.h"
 #include "Graphics/Render/Particle/GpuParticleRenderer.h"
 #include "Graphics/Render/Line/LineRendererPipeline.h"
+#include "Graphics/Render/Line/GridRenderer.h"
 #include "Graphics/Line/LineManager.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueManager.h"
@@ -215,6 +217,12 @@ namespace CoreEngine
             auto textRenderer = std::make_unique<TextRenderer>();
             textRenderer->Initialize(state->dx, state->resourceFactory);
             state->renderManager->RegisterRenderer(RenderPassType::UIText, std::move(textRenderer));
+
+            // 同じ MSDF フォントをワールド空間へ描くパス。
+            // アトラスと距離場は UI 版と共有し、変換と深度の扱いだけが違う
+            auto text3DRenderer = std::make_unique<Text3DRenderer>();
+            text3DRenderer->Initialize(state->dx, state->resourceFactory);
+            state->renderManager->RegisterRenderer(RenderPassType::Text3D, std::move(text3DRenderer));
         });
 
         sequence.Add("レンダラー: パーティクル", [state] {
@@ -242,6 +250,14 @@ namespace CoreEngine
 
             // LineManager の初期化（シングルトン、RenderManager 登録後に実行）
             LineManager::GetInstance().Initialize(state->lineRenderer);
+        });
+
+        sequence.Add("レンダラー: グリッド", [state] {
+            // 解析グリッド（フルスクリーン三角形 1 枚をピクセルシェーダーで評価する床グリッド）。
+            // 既定は非表示で、エディタの GridFeature が表示を切り替える。
+            auto gridRenderer = std::make_unique<GridRenderer>();
+            gridRenderer->Initialize(state->dx);
+            state->renderManager->RegisterRenderer(RenderPassType::Grid, std::move(gridRenderer));
         });
 
         // ──────────────────────────────────────────────────────────

@@ -6,6 +6,7 @@
 #include "GameObjects/SkyBox/SkyBoxObject.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Cloud/VolumetricCloudManager.h"
+#include "Graphics/Fog/FogManager.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/PostEffect/Effect/PostEffectNames.h"
@@ -82,6 +83,8 @@ namespace CoreEngine
             MirrorAtmosphereLightsToCVars(ctx);
             // 大気散乱の更新（全ロジック更新後の最新の太陽・カメラ情報を反映する）
             UpdateAtmosphere(ctx);
+            // フォグは空・大気の有無に依存しないので、大気更新の成否と無関係に呼ぶ
+            UpdateFog(ctx);
             break;
         default:
             break;
@@ -226,5 +229,36 @@ namespace CoreEngine
             cloudManager->Update(cameraPosition, viewMatrix, projMatrix,
                                  atmosphereManager, Time::DeltaTime());
         }
+    }
+
+    void EnvironmentFeature::UpdateFog(SceneContext& ctx)
+    {
+        // フォグは空・大気を必要としないため、UpdateAtmosphere と違って
+        // SkyBox の有無でガードしない（大気非対応シーンでもフォグは使える）。
+        auto* domainContext = ctx.engine ? ctx.engine->GetRenderDomainContext() : nullptr;
+        auto* fogManager = domainContext ? domainContext->GetFogManager() : nullptr;
+        if (!fogManager) {
+            return;
+        }
+
+        // 太陽内散乱に要るのは向きだけなので、サービスではなく値を渡す
+        // （FogManager に LightManager を持たせない）。大気の太陽ライトを最優先し、
+        // 無ければ最初の平行光を使う（大気非対応シーンでも内散乱が効く）
+        Vector3 sunDirection{ 0.0f, -1.0f, 0.0f };
+        bool hasSun = false;
+        if (auto* lightManager = ctx.engine->GetService<LightManager>()) {
+            const Light* sun = lightManager->GetAtmosphereSunLight();
+            if (!sun) {
+                sun = lightManager->GetDirectionalLight(0);
+            }
+            if (sun && sun->enabled) {
+                sunDirection = sun->direction;
+                hasSun = true;
+            }
+        }
+
+        // このフレームはフォグを使うと宣言する（実際に合成するかは r.Fog.Enabled 次第）。
+        // 深度復元用の行列とカメラ位置は FrameViews から FogPass が取るのでここでは渡さない。
+        fogManager->Update(sunDirection, hasSun);
     }
 }

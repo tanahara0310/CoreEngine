@@ -179,6 +179,14 @@ namespace CoreEngine
     }
 
     // デバッグ用モジュール（追従・シーケンス再生）を毎フレーム回す
+    void CameraManager::DrawDebugViewportOverlay(const Camera& viewCamera,
+        const CameraEditorViewport& viewport)
+    {
+        if (debugUI_) {
+            debugUI_->DrawViewportOverlay(viewCamera, viewport);
+        }
+    }
+
     void CameraManager::UpdateDebugModules()
     {
         if (!debugUI_) {

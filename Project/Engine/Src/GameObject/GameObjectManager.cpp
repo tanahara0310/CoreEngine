@@ -2,6 +2,7 @@
 #include "GameObjectManager.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Collision/CollisionWorld.h"
+#include "GameObject/Component/Transform/TransformComponent.h"
 #include <algorithm>
 
 #ifdef USE_IMGUI
@@ -61,6 +62,14 @@ namespace CoreEngine
 
         // Update中に Spawn<T>() されたオブジェクトをまとめて追加
         FlushPendingAdds();
+    }
+
+    void GameObjectManager::SyncTransforms() {
+        // 親を先に転送しないと子が古い親行列で合成されるが、走査順は UpdateAll() と
+        // 同じ登録順なので、再生中と停止中で見え方が変わることはない
+        ForEachComponent<TransformComponent>([](TransformComponent& transform) {
+            transform.Get().TransferMatrix();
+            });
     }
 
     void GameObjectManager::FlushPendingAdds() {

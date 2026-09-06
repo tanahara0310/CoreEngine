@@ -149,8 +149,17 @@ namespace CoreEngine
 
         // Game ビューポートは PostEffectPass 完了後に別経路で描画する。
 #ifdef USE_IMGUI
-        // Canvas プレビューウィンドウ（UI のみを表示）
-        canvasViewport_->DrawCanvasViewport();
+        // Canvas ウィンドウ（UI の配置編集）。
+        // 背景にはゲームの描画結果そのものを敷き、その上へ選択枠とギズモだけを重ねる
+        // （Unity の Scene ビューと同じ考え方）。渡るのは 1 フレーム前の結果だが、
+        // 編集操作では体感できない
+        unsigned long long canvasBackground = 0;
+        if (postEffectManager) {
+            canvasBackground = postEffectManager->GetFinalDisplayTextureHandle().ptr;
+        }
+        // 選択は Hierarchy / Inspector と共有する
+        canvasViewport_->DrawCanvasViewport(canvasBackground,
+            gameDebugUI ? gameDebugUI->GetSceneDebugEditor() : nullptr);
 
 
         // プロジェクトビューの更新

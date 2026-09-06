@@ -40,29 +40,36 @@ struct RenderViewRequest {
     std::function<void(const RenderViewResult&)> completionCallback;
 };
 
+/// @brief シーン更新の粒度（SceneManager が毎フレーム指定する）
+enum class SceneUpdateMode {
+    Full,      ///< 通常。ゲームロジックと全 Feature を回す
+    Suspended, ///< ゲームの進行を止め、常時更新の Feature（RunsWhileStopped）だけを回す
+};
+
 /// @brief シーンのインターフェース。SceneManager はこの型だけを介してシーンを回す
 class IScene {
 public:
     virtual ~IScene() = default;
 
-    /// @brief シーン開始時の初期化
-    virtual void Initialize(CoreEngine::EngineSystem* engine) = 0;
     /// @brief 毎フレームのロジック更新
-    virtual void Update() = 0;
+    /// @param mode Suspended でゲームの進行だけを止める（シーン遷移のフェード中）
+    /// @note ここを丸ごと呼ばずに飛ばしてはいけない。大気・雲・フォグは毎フレームの
+    ///       更新で「このフレーム有効」フラグを立て直しており、1 フレームでも飛ばすと
+    ///       その場で描画から外れる。止めたいときは Suspended を渡すこと。
+    virtual void Update(SceneUpdateMode mode) = 0;
+    /// @brief 描画キューの構築（実際の描画は RenderGraph の各パスが行う）
     virtual void PrepareRender() {}
-    /// @brief 描画コマンドの発行
-    virtual void Draw() = 0;
     /// @brief シーン終了時の後始末
     virtual void Finalize() = 0;
 
-    /// @brief 初期化をステップ列へ積む（ローディング画面はステップの合間に描かれる）
-    /// @details 既定は Initialize() 全体を 1 ステップとして積む。
-    ///          1 ステップの実行時間がそのままローディング画面の止まる時間になる。
+    /// @brief 初期化をステップ列へ積む（シーン構築の唯一の入口）
+    /// @details SceneManager は必ずこの経路でシーンを組み立てる。1 ステップの実行時間が
+    ///          そのままローディング画面の止まる時間になるので、重い処理は分割すること。
+    ///          フレームを回さない同期読み込みかどうかは SceneManager 側が吸収するため、
+    ///          シーンはステップの積み方だけを考えればよい。
     /// @param sequence 積み先のステップ列
     /// @param engine   エンジンシステム
-    virtual void BuildLoadTasks(CoreEngine::StartupSequence& sequence, CoreEngine::EngineSystem* engine) {
-        sequence.Add("シーン構築", [this, engine] { Initialize(engine); });
-    }
+    virtual void BuildLoadTasks(CoreEngine::StartupSequence& sequence, CoreEngine::EngineSystem* engine) = 0;
 
     virtual Camera* GetGameViewCamera3D() const { return nullptr; }
     virtual Camera* GetGameViewCamera2D() const { return nullptr; }

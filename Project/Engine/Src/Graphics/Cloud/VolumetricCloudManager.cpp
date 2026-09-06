@@ -353,6 +353,13 @@ namespace CoreEngine
             return;
         }
 
+        const uint32_t styleIndex = ClampCloudStyleIndex(parameters_.styleIndex);
+
+        // ブロック雲では意味を失う機能をここで落とす。CVar の値は書き換えないので、
+        // スタイルを戻せば元の設定がそのまま復帰する
+        // （未使用時に paintRegionSizeM へ 0 を送るのと同じやり方）
+        const bool blocky = IsBlockyCloudStyle(styleIndex);
+
         VolumetricCloudShaderConstants c{};
         c.invViewProj = invViewProj_;
         c.cameraWorldPos = cameraWorldPos_;
@@ -407,15 +414,19 @@ namespace CoreEngine
         c.upsampleDepthTolerance = parameters_.upsampleDepthTolerance;
         c.cloudStreetStretch = std::max(parameters_.cloudStreetStretch, 1.0f);
         c.prevViewProj = prevViewProj_;
-        // 起動直後とターゲット再確保直後は履歴が未初期化なので混ぜない
-        c.reprojectEnabled = (parameters_.reprojectEnabled && historyValid_) ? 1.0f : 0.0f;
+        // 起動直後とターゲット再確保直後は履歴が未初期化なので混ぜない。
+        // ブロック雲は縁が硬いぶんジッタ位相の回転が面の位置を 1 ステップ揺らし、
+        // 輪郭がちらつくので再投影ごと切る（CloudRayMarch.CS がジッタも同時に止める）
+        c.reprojectEnabled = (parameters_.reprojectEnabled && historyValid_ && !blocky) ? 1.0f : 0.0f;
         c.reprojectBlendMin = parameters_.reprojectBlendMin;
         c.reprojectTolerance = std::max(parameters_.reprojectTolerance, 1e-4f);
         c.cloudTopVariation = parameters_.cloudTopVariation;
         // 巻雲は積雲層より上でないと前後関係の前提が崩れる
         c.cirrusAltitudeM = std::max(parameters_.cirrusAltitudeM,
             parameters_.layerBottomAltitudeM + parameters_.layerThicknessM);
-        c.cirrusCoverage = parameters_.cirrusCoverage;
+        // 巻雲は量子化の対象外の別シェルなので、ブロック雲の上に薄い筋雲だけが
+        // リアルな見た目で残ってしまう。スタイルが混ざるため落とす
+        c.cirrusCoverage = blocky ? 0.0f : parameters_.cirrusCoverage;
         c.cirrusDensity = parameters_.cirrusDensity;
         c.cirrusScaleM = parameters_.cirrusScaleM;
         c.cirrusStretch = parameters_.cirrusStretch;
@@ -428,7 +439,17 @@ namespace CoreEngine
         c.paintRegionCenterZ = parameters_.paintRegionCenterZ;
         c.paintRegionSizeM = weatherPaintUsed_ ? parameters_.paintRegionSizeM : 0.0f;
         c.paintEdgeFade = parameters_.paintEdgeFade;
+
+        // ===== スタイル（ブロック雲） =====
+        c.styleIndex = styleIndex;
+        c.voxelSizeM = parameters_.voxelSizeM;
+        c.voxelHeightSizeM = parameters_.voxelHeightSizeM;
+        c.densityThreshold = parameters_.densityThreshold;
+        c.voxelFaceBrightness = parameters_.voxelFaceBrightness;
+        c.voxelFaceShadeMin = parameters_.voxelFaceShadeMin;
         c.pad7 = 0.0f;
+        c.pad8 = 0.0f;
+        c.pad9 = 0.0f;
 
         *constantData_ = c;
     }
@@ -491,6 +512,7 @@ namespace CoreEngine
         ctx.cloudConstants = constantBuffer_ ? constantBuffer_->GetGPUVirtualAddress() : 0;
         ctx.godRayConstants = godRayConstantBuffer_ ? godRayConstantBuffer_->GetGPUVirtualAddress() : 0;
         ctx.cloudShadowConstants = cloudShadowConstantBuffer_ ? cloudShadowConstantBuffer_->GetGPUVirtualAddress() : 0;
+        ctx.styleIndex = ClampCloudStyleIndex(parameters_.styleIndex);
         return ctx;
     }
 

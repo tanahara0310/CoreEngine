@@ -28,8 +28,15 @@ namespace CoreEngine
         // RT シャドウのチューニング値。既定値の根拠は RayTracingShadowSettings のコメントを参照
         CVar<int> cvSoftShadowSamples{
             "r.RTShadow.SoftShadowSamples", 1,
-            "1 ピクセルあたりのシャドウレイ本数。コストはほぼ本数に比例する（1spp = 約1.14ms @1920x1080）。"
-            "A-Trous デノイザーで補完するため 1 で十分",
+            "基本のシャドウレイ本数（本影・日向で使う）。コストはほぼ本数に比例する。"
+            "影の縁は PenumbraSamples が別に適用されるため 1 で十分",
+            CVarRange{ 1.0f, 16.0f } };
+
+        CVar<int> cvPenumbraSamples{
+            "r.RTShadow.PenumbraSamples", 8,
+            "影の縁（前フレームの蓄積値が中間 or 蓄積が浅いピクセル）で使うレイ本数。"
+            "1spp のノイズは縁でしか出ないので、ここだけ増やすとコスト増を縁の面積に限定できる。"
+            "縁のノイズ σ は 1/sqrt(本数)",
             CVarRange{ 1.0f, 16.0f } };
 
         CVar<float> cvLightRadius{
@@ -54,23 +61,56 @@ namespace CoreEngine
             "固定距離だと遠くの遮蔽物へ届かない（有効時は 基準距離/sin(高度)、最大10倍）" };
 
         CVar<int> cvMaxHistoryFrames{
-            "r.RTShadow.MaxHistoryFrames", 32,
+            "r.RTShadow.MaxHistoryFrames", 64,
             "テンポラル蓄積フレーム数の上限。ピクセルごとの蓄積カウント N で α=1/N の適応ブレンドを行い、"
             "静止時は 1/この値 まで収束する（旧 HistoryAlpha の固定 α は定常ノイズが残るため廃止）。"
             "大きいほど滑らかだが、影の変化への追従はクランプ棄却頼みになる",
             CVarRange{ 1.0f, 255.0f } };
 
         CVar<int> cvAtrousPassCount{
-            "r.RTShadow.AtrousPassCount", 2,
-            "A-Trous デノイズのパス数。0 = デノイズ無効。1 パスごとにステップ幅が 1→2→4→8 と倍になる。"
-            "1spp のシャドウに step=8（実効31x31）まで広げる必要は無い",
+            "r.RTShadow.AtrousPassCount", 3,
+            "A-Trous デノイズのパス数。0 = デノイズ無効。カーネルは 5x5 の B3 スプラインで、"
+            "1 パスごとにステップ幅が 1→2→4→8 と倍になる（3 パスで実効 17x17）",
             CVarRange{ 0.0f, 4.0f } };
+
+        CVar<float> cvDenoisePhiShadow{
+            "r.RTShadow.DenoisePhiShadow", 6.0f,
+            "A-Trous のエッジ停止関数の σ 倍率。影値の差を「その値がもつ推定標準偏差」で割って"
+            "評価するため、収束したピクセルは自動的にぼけにくくなる。大きいほど広くぼける",
+            CVarRange{ 0.5f, 24.0f } };
+
+        CVar<float> cvStillnessSigma{
+            "r.RTShadow.StillnessSigma", 1.25f,
+            "静止化しきい値（σ の倍数、0 で無効）。現フレームと履歴の差がこの倍数×σ 未満の更新は"
+            "ノイズと区別できないので捨て、履歴をそのまま出す（静止シーンで影の縁が完全に止まる）。"
+            "上げすぎると影の微小変化への追従が鈍る",
+            CVarRange{ 0.0f, 3.0f } };
+
+        CVar<float> cvHistoryClampSigma{
+            "r.RTShadow.HistoryClampSigma", 3.0f,
+            "履歴クランプ帯の広さ（推定標準偏差の何倍まで許容するか）。小さすぎるとモンテカルロの"
+            "揺らぎで履歴が毎フレーム棄却され蓄積が収束しない。大きすぎると影の変化でゴーストが出る",
+            CVarRange{ 0.5f, 8.0f } };
+
+        CVar<float> cvHistoryDepthTolerance{
+            "r.RTShadow.HistoryDepthTolerance", 0.05f,
+            "再投影した履歴を採用する相対深度しきい値。これを超える深度差はディスオクルージョンと"
+            "みなして履歴を捨てる（斜面の勾配ぶんはシェーダー側で自動加算）",
+            CVarRange{ 0.005f, 0.5f } };
 
         CVar<float> cvDenoisePhiDepth{
             "r.RTShadow.DenoisePhiDepth", 1.0f,
             "A-Trous / テンポラルの深度エッジ重み。大きいほどエッジ検出が厳しく影の輪郭が保たれる"
             "（ぼけにくい）。小さいほど深度差を跨いで広くぼける",
             CVarRange{ 0.05f, 8.0f } };
+
+        CVar<bool> cvCycleTraceOffset{
+            "r.RTShadow.CycleTraceOffset", false,
+            "ハーフ解像度時に 2x2 のサンプル位置をフレームごとに巡回させる。"
+            "細い遮蔽物を拾えるようになる代わりに、影の縁では毎フレーム別のサブピクセルを"
+            "トレースすることになり、テンポラル蓄積から見ると入力が 4 フレーム周期で振動する"
+            "（＝縁が這うように動く）。既定 false = 常に 2x2 の中央代表点を撃つ",
+            CVarRange{} };
 
         CVar<bool> cvHalfResolutionTrace{
             "r.RTShadow.HalfResolutionTrace", true,
@@ -94,14 +134,20 @@ namespace CoreEngine
     void RayTracingShadowManager::SyncSettingsFromCVars()
     {
         settings_.softShadowSamples = cvSoftShadowSamples.Get();
+        settings_.penumbraSamples = cvPenumbraSamples.Get();
+        settings_.stillnessSigma = cvStillnessSigma.Get();
         settings_.lightRadius = cvLightRadius.Get();
         settings_.shadowBias = cvShadowBias.Get();
         settings_.maxRayDistance = cvMaxRayDistance.Get();
         settings_.scaleRayDistanceBySunElevation = cvScaleRayDistanceBySunElevation.Get();
         settings_.maxHistoryFrames = cvMaxHistoryFrames.Get();
         settings_.atrousPassCount = cvAtrousPassCount.Get();
+        settings_.denoisePhiShadow = cvDenoisePhiShadow.Get();
+        settings_.historyClampSigma = cvHistoryClampSigma.Get();
+        settings_.historyDepthTolerance = cvHistoryDepthTolerance.Get();
         settings_.denoisePhiDepth = cvDenoisePhiDepth.Get();
         settings_.halfResolutionTrace = cvHalfResolutionTrace.Get();
+        settings_.cycleTraceOffset = cvCycleTraceOffset.Get();
         settings_.upsamplePhiDepth = cvUpsamplePhiDepth.Get();
         settings_.disableHistory = cvDisableHistory.Get();
     }
@@ -110,14 +156,20 @@ namespace CoreEngine
     {
         // CVar が唯一の保持者。書き戻すことで UI・自動保存にも反映される
         cvSoftShadowSamples.Set(settings.softShadowSamples);
+        cvPenumbraSamples.Set(settings.penumbraSamples);
+        cvStillnessSigma.Set(settings.stillnessSigma);
         cvLightRadius.Set(settings.lightRadius);
         cvShadowBias.Set(settings.shadowBias);
         cvMaxRayDistance.Set(settings.maxRayDistance);
         cvScaleRayDistanceBySunElevation.Set(settings.scaleRayDistanceBySunElevation);
         cvMaxHistoryFrames.Set(settings.maxHistoryFrames);
         cvAtrousPassCount.Set(settings.atrousPassCount);
+        cvDenoisePhiShadow.Set(settings.denoisePhiShadow);
+        cvHistoryClampSigma.Set(settings.historyClampSigma);
+        cvHistoryDepthTolerance.Set(settings.historyDepthTolerance);
         cvDenoisePhiDepth.Set(settings.denoisePhiDepth);
         cvHalfResolutionTrace.Set(settings.halfResolutionTrace);
+        cvCycleTraceOffset.Set(settings.cycleTraceOffset);
         cvUpsamplePhiDepth.Set(settings.upsamplePhiDepth);
         cvDisableHistory.Set(settings.disableHistory);
         SyncSettingsFromCVars();
@@ -141,8 +193,8 @@ namespace CoreEngine
         int      traceOffsetX;       // offset 40  ハーフ解像度時の 2x2 サンプル位置
         int      traceOffsetY;       // offset 44  → row3 終了(48)
         int      traceScale;         // offset 48  1 = フル / 2 = ハーフ
-        int      pad0;               // offset 52
-        int      pad1;               // offset 56
+        int      penumbraSamples;    // offset 52  影の縁で使うレイ本数（適応サンプリング）
+        int      historyValid;       // offset 56  履歴テクスチャが有効なら 1
         int      pad2;               // offset 60  → row4 終了(64)
         Matrix4x4 invViewProj;       // offset 64  深度復元用 → 128
     };
@@ -154,8 +206,8 @@ namespace CoreEngine
         CB_FIELD(ShadowRayConstants, softShadowSamples), CB_FIELD(ShadowRayConstants, frameIndex),
         CB_FIELD(ShadowRayConstants, screenWidth), CB_FIELD(ShadowRayConstants, screenHeight),
         CB_FIELD(ShadowRayConstants, traceOffsetX), CB_FIELD(ShadowRayConstants, traceOffsetY),
-        CB_FIELD(ShadowRayConstants, traceScale), CB_FIELD(ShadowRayConstants, pad0),
-        CB_FIELD(ShadowRayConstants, pad1), CB_FIELD(ShadowRayConstants, pad2),
+        CB_FIELD(ShadowRayConstants, traceScale), CB_FIELD(ShadowRayConstants, penumbraSamples),
+        CB_FIELD(ShadowRayConstants, historyValid), CB_FIELD(ShadowRayConstants, pad2),
         CB_FIELD(ShadowRayConstants, invViewProj),
     };
     CB_VERIFY_LAYOUT(ShadowRayConstants, kShadowRayConstantsFields);
@@ -209,9 +261,13 @@ namespace CoreEngine
         int   traceOffsetY;   // offset 32
         int   fullWidth;      // offset 36
         int   fullHeight;     // offset 40
-        int   pad0;           // offset 44 → row3 終了(48)
+        float clampSigmaScale;// offset 44 → row3 終了(48)
+        float clampMargin;    // offset 48  クランプ帯の固定下駄
+        float depthTolerance; // offset 52  再投影を採用する相対深度しきい値
+        float stillnessSigma; // offset 56  静止化しきい値（σ の倍数、0 で無効）
+        int   pad1;           // offset 60 → row4 終了(64)
     };
-    static_assert(sizeof(TemporalConstants) == 48, "TemporalConstants size mismatch with HLSL cbuffer");
+    static_assert(sizeof(TemporalConstants) == 64, "TemporalConstants size mismatch with HLSL cbuffer");
 
     static constexpr Cb::Field kTemporalConstantsFields[] = {
         CB_FIELD(TemporalConstants, traceWidth), CB_FIELD(TemporalConstants, traceHeight),
@@ -219,7 +275,9 @@ namespace CoreEngine
         CB_FIELD(TemporalConstants, projM33), CB_FIELD(TemporalConstants, projM43),
         CB_FIELD(TemporalConstants, traceScale), CB_FIELD(TemporalConstants, traceOffsetX),
         CB_FIELD(TemporalConstants, traceOffsetY), CB_FIELD(TemporalConstants, fullWidth),
-        CB_FIELD(TemporalConstants, fullHeight), CB_FIELD(TemporalConstants, pad0),
+        CB_FIELD(TemporalConstants, fullHeight), CB_FIELD(TemporalConstants, clampSigmaScale),
+        CB_FIELD(TemporalConstants, clampMargin), CB_FIELD(TemporalConstants, depthTolerance),
+        CB_FIELD(TemporalConstants, stillnessSigma), CB_FIELD(TemporalConstants, pad1),
     };
     CB_VERIFY_LAYOUT(TemporalConstants, kTemporalConstantsFields);
     CB_BIND_HLSL(TemporalConstants, kTemporalConstantsFields, "TemporalConstants");
@@ -465,16 +523,17 @@ namespace CoreEngine
             return false;
         }
 
-        // 残りはすべてトレース解像度
-        // 履歴だけは R8G8（R=シャドウ値, G=蓄積フレーム数 N/255）。
-        // 適応ブレンド α=1/N のカウントを持ち歩くため（詳細は RTShadowTemporal.CS.hlsl）。
+        // 残りはすべてトレース解像度。
+        // Raw は RayGen の生バイナリなので 1 チャンネル。
+        // 履歴と A-Trous の ping-pong は「シャドウ値 / 推定分散 / 蓄積数 N / 線形深度」の
+        // 4 チャンネルを同じレイアウトで運ぶ（詳細は RTShadowTemporal.CS.hlsl の先頭）。
         struct TraceSlot { TextureSlot slot; const char* name; DXGI_FORMAT format; };
         static constexpr TraceSlot kTraceSlots[] = {
-            { TextureSlot::Raw,      "RTShadow_Raw",      kShadowTextureFormat },
-            { TextureSlot::DenoiseA, "RTShadow_DenoiseA", kShadowTextureFormat },
-            { TextureSlot::DenoiseB, "RTShadow_DenoiseB", kShadowTextureFormat },
-            { TextureSlot::HistoryA, "RTShadow_HistoryA", kShadowHistoryFormat },
-            { TextureSlot::HistoryB, "RTShadow_HistoryB", kShadowHistoryFormat },
+            { TextureSlot::Raw,      "RTShadow_Raw",      kShadowRawFormat },
+            { TextureSlot::DenoiseA, "RTShadow_DenoiseA", kShadowSignalFormat },
+            { TextureSlot::DenoiseB, "RTShadow_DenoiseB", kShadowSignalFormat },
+            { TextureSlot::HistoryA, "RTShadow_HistoryA", kShadowSignalFormat },
+            { TextureSlot::HistoryB, "RTShadow_HistoryB", kShadowSignalFormat },
         };
         for (const TraceSlot& traceSlot : kTraceSlots) {
             options.format = traceSlot.format;
@@ -683,6 +742,7 @@ namespace CoreEngine
         view.dispatchInfo.blasCount = asMgr_ ? asMgr_->GetBLASCount() : 0;
         view.dispatchInfo.AddExtra("traceScale", static_cast<float>(traceScale));
         view.dispatchInfo.AddExtra("samples/px", static_cast<float>(numSamples));
+        view.dispatchInfo.AddExtra("penumbraSpp", static_cast<float>(std::clamp(settings_.penumbraSamples, 1, 16)));
         view.dispatchInfo.AddExtra("atrousPasses", static_cast<float>(GetEffectiveAtrousPassCount()));
         view.dispatchInfo.AddExtra("lightRadius", settings_.lightRadius);
         view.dispatchInfo.AddExtra("rayDist(実効)", effectiveRayDistance);
@@ -719,10 +779,19 @@ namespace CoreEngine
         // フレームを 1 つ進める（履歴の書き込み先を入れ替え、サンプル位置を巡回させる）
         // カウンタは view × light ごと（共有だと 2x2 巡回が欠ける。ShadowView 側コメント参照）
         view.historyParity ^= 1u;
-        if (traceScale > 1) {
+        if (traceScale > 1 && settings_.cycleTraceOffset) {
             const UINT phase = view.frameCount & 3u;
             view.traceOffsetX = kTraceOffsetTable[phase][0];
             view.traceOffsetY = kTraceOffsetTable[phase][1];
+        } else if (traceScale > 1) {
+            // 巡回しない: 常に 2x2 の中央代表点を撃つ。
+            // 後段（Temporal / A-Trous / Resolve）の TraceToFull と完全に一致するので、
+            // 「トレースした点」と「幾何ガイドを読んだ点」がずれない。
+            // 巡回させると、影の縁ではフレームごとに別のサブピクセル（＝別の遮蔽率）を
+            // 撃つことになり、テンポラル蓄積の入力が 4 フレーム周期で 0↔1 近く振動する。
+            // クランプ棄却で蓄積カウントが落ち、縁が這うように動く主因だった。
+            view.traceOffsetX = traceScale >> 1;
+            view.traceOffsetY = traceScale >> 1;
         } else {
             view.traceOffsetX = 0;
             view.traceOffsetY = 0;
@@ -743,6 +812,9 @@ namespace CoreEngine
         constants.traceOffsetX = static_cast<int>(view.traceOffsetX);
         constants.traceOffsetY = static_cast<int>(view.traceOffsetY);
         constants.traceScale = static_cast<int>(traceScale);
+        constants.penumbraSamples = std::clamp(settings_.penumbraSamples, 1, 16);
+        // 初回フレームや履歴無効化中は適応サンプリングの判定材料が無いので基本本数で撃つ
+        constants.historyValid = (view.isHistoryValid && !settings_.disableHistory) ? 1 : 0;
         constants.invViewProj = invViewProj;
 
         // CommandList4 を取得
@@ -756,8 +828,14 @@ namespace CoreEngine
         cmdList4->SetComputeRootSignature(globalRootSigMgr_.GetRootSignature());
         cmdList4->SetPipelineState1(stateObject_.Get());
 
-        Barrier::Transition(cmdList, Slot(vi, lightIndex, TextureSlot::Raw),
-            D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        {
+            BarrierBatch batch(cmdList);
+            batch.Transition(Slot(vi, lightIndex, TextureSlot::Raw),
+                D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            // 前フレームの履歴（ペナンブラ適応サンプリングの判定に読む）
+            batch.Transition(Slot(vi, lightIndex, view.PreviousHistorySlot()),
+                D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        }
 
         // 差し方は RootSlot の種別から ShaderBinder が決める（番号を直接触らない）
         ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
@@ -765,6 +843,7 @@ namespace CoreEngine
         binder.Set(bindings_[RTShadowBind::gScene], asMgr_->GetTLASSRVHandle());
         binder.Set(bindings_[RTShadowBind::gSceneDepth], sceneDepthSRV);
         binder.Set(bindings_[RTShadowBind::gNormalRoughness], normalRoughnessSRV);
+        binder.Set(bindings_[RTShadowBind::gShadowHistory], SlotSRV(vi, lightIndex, view.PreviousHistorySlot()));
         binder.SetConstants(bindings_[RTShadowBind::ShadowRayConstants], constants);
         binder.ValidateBeforeDraw(bindings_);
 
@@ -855,6 +934,12 @@ namespace CoreEngine
         tc.traceOffsetY = static_cast<int>(view.traceOffsetY);
         tc.fullWidth = static_cast<int>(view.width);
         tc.fullHeight = static_cast<int>(view.height);
+        tc.clampSigmaScale = settings_.historyClampSigma;
+        // 帯の固定下駄。σ が本当に 0 になる領域（完全な本影・完全な日向）でも
+        // 量子化とガイドの揺らぎぶんは許容しておく。
+        tc.clampMargin = 0.02f;
+        tc.depthTolerance = settings_.historyDepthTolerance;
+        tc.stillnessSigma = settings_.stillnessSigma;
         binder.SetConstants(table[Bind::TemporalConstants], tc);
 
         binder.ValidateBeforeDraw(table);
@@ -889,17 +974,18 @@ namespace CoreEngine
         if (!view.dispatchedThisFrame) return;
 
         // A-Trous: ステップ幅 1 → 2 → 4 → 8
-        static constexpr int   kSteps[kMaxAtrousPassCount] = { 1,    2,    4,    8 };
-        static constexpr float kPhiNormal[kMaxAtrousPassCount] = { 4.0f, 8.0f, 16.0f, 32.0f };
-        static constexpr float kPhiShadow[kMaxAtrousPassCount] = { 1.0f, 0.7f,  0.5f,  0.35f };
+        static constexpr int kSteps[kMaxAtrousPassCount] = { 1, 2, 4, 8 };
+        // 法線重みの指数はパスに依らず一定にする。旧実装は 4→8→16→32 と厳しくしていたが、
+        // ステップ幅が広い後段ほど離れたタップを見るため、曲面ではわずかな向きの差でも
+        // 重みが消え「低周波ノイズを均すはずの広いパスだけが働かない」状態になっていた。
+        static constexpr float kPhiNormal = 16.0f;
 
         // デノイズ PSO が作れていない場合はパス数 0 として扱う
         // （その場合でも解決パスがテンポラル結果を Mask へ運ぶので影は消えない）
         const int numPasses = denoisePass_.initialized ? GetEffectiveAtrousPassCount() : 0;
 
-        // フル解像度のときだけ最終パスが Mask へ直接書ける（ハーフだと寸法が違う）
-        const bool directToMask = (view.traceScale == 1) && (numPasses > 0);
-
+        // A-Trous は 4 チャンネル信号（値/分散/N/深度）を読み書きするので、
+        // 1 チャンネルの Mask へ直接書くことはできない。解決パスが必ず最後に走る。
         TextureSlot lastSlot = view.CurrentHistorySlot();
 
         if (numPasses > 0) {
@@ -914,11 +1000,8 @@ namespace CoreEngine
 
             for (int pass = 0; pass < numPasses; ++pass)
             {
-                const bool isLast = (pass == numPasses - 1);
                 const TextureSlot inSlot = lastSlot;
-                const TextureSlot outSlot = (isLast && directToMask)
-                    ? TextureSlot::Mask
-                    : ((pass % 2 == 0) ? TextureSlot::DenoiseA : TextureSlot::DenoiseB);
+                const TextureSlot outSlot = (pass % 2 == 0) ? TextureSlot::DenoiseA : TextureSlot::DenoiseB;
 
                 GpuResource& inputRes = Slot(vi, lightIndex, inSlot);
                 GpuResource& outputRes = Slot(vi, lightIndex, outSlot);
@@ -940,8 +1023,8 @@ namespace CoreEngine
 
                 DenoiseConstants dc{};
                 dc.stepSize = kSteps[pass];
-                dc.phiShadow = kPhiShadow[pass];
-                dc.phiNormal = kPhiNormal[pass];
+                dc.phiShadow = settings_.denoisePhiShadow;
+                dc.phiNormal = kPhiNormal;
                 dc.phiDepth = settings_.denoisePhiDepth;
                 dc.traceWidth = static_cast<int>(view.traceWidth);
                 dc.traceHeight = static_cast<int>(view.traceHeight);
@@ -953,8 +1036,6 @@ namespace CoreEngine
                 dc.fullHeight = static_cast<int>(view.height);
                 binder.SetConstants(table[Bind::DenoiseConstants], dc);
 
-                // directToMask は traceScale==1 のときだけ成立するので、
-                // Mask へ直接書く場合もトレース解像度＝フル解像度で寸法は一致する
                 binder.ValidateBeforeDraw(table);
                 cmdList->Dispatch(groupX, groupY, 1);
 
@@ -963,12 +1044,10 @@ namespace CoreEngine
             }
         }
 
-        if (!directToMask) {
-            // ハーフ解像度、またはデノイズ 0 パス。
-            // トレース解像度の最終結果をフル解像度の Mask へ解決する。
-            ResolveToFullResolution(cmdList, normalRoughnessSRV, sceneDepthSRV, projection,
-                vi, lightIndex, lastSlot);
-        }
+        // トレース解像度の最終結果をフル解像度の Mask へ解決する
+        // （等倍のときは解決パスが 1:1 の写しになる）。
+        ResolveToFullResolution(cmdList, normalRoughnessSRV, sceneDepthSRV, projection,
+            vi, lightIndex, lastSlot);
 
         // 後段（DeferredLighting）はピクセルシェーダから読む
         Barrier::Transition(cmdList, Slot(vi, lightIndex, TextureSlot::Mask),

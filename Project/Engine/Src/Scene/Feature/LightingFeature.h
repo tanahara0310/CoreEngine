@@ -19,6 +19,9 @@ namespace CoreEngine
         void Initialize(SceneContext& ctx) override;
         void Update(SceneContext& ctx, SceneUpdatePhase phase) override;
 
+        /// @brief 停止中も回す（止めるとライトのパラメータ編集が画面に出ない）
+        bool RunsWhileStopped() const override { return true; }
+
         /// @brief 既定ディレクショナルライトを取得（未生成・削除済みの場合は nullptr）
         Light* GetDirectionalLight() const;
 

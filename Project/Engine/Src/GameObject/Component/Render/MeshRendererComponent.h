@@ -41,6 +41,17 @@ public:
 
 #ifdef USE_IMGUI
     const char* GetInspectorName() const override { return "メッシュ描画"; }
+
+    const char* GetInspectorIcon() const override { return "scene.png"; }
+
+    void GetInspectorIconColor(float* outRgba) const override
+    {
+        outRgba[0] = 0.34f; outRgba[1] = 0.67f; outRgba[2] = 0.88f; outRgba[3] = 1.0f;
+    }
+
+    /// @brief メッシュの取得元とテクスチャの表示 UI
+    /// @return 値が変更されたら true
+    bool DrawInspector() override;
 #endif
 
     // ===== メッシュの指定（Awake より前に呼ぶ） =====

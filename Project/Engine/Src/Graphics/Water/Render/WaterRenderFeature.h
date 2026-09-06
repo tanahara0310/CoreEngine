@@ -47,6 +47,12 @@ namespace CoreEngine
         void Initialize(SceneContext& ctx) override;
         void PostSceneInitialize(SceneContext& ctx) override;
         void Update(SceneContext& ctx, SceneUpdatePhase phase) override;
+
+        /// @brief 停止中も回す
+        /// @details 水面の設定反映と描画側への publish を毎フレーム行う必要がある。
+        ///          波の時間進行は Time::DeltaTime() を使っているので、停止中は
+        ///          こちらが回っていても自動的に止まる。
+        bool RunsWhileStopped() const override { return true; }
         void Finalize(SceneContext& ctx) override;
 
         /// @brief 管理中の水面オブジェクトを返す（未生成なら nullptr）

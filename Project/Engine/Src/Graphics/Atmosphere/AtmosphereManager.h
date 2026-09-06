@@ -343,8 +343,14 @@ namespace CoreEngine
         ///          SceneColor に触れずスキップする（大気非対応シーンへの漏れ出し防止）。
         bool IsAtmosphereActive() const { return atmosphereActive_; }
 
-        /// @brief フレーム終端で有効化フラグをリセットする（EngineSystem が全 View 描画後に呼ぶ）
-        void ResetFrameActivation() { atmosphereActive_ = false; }
+        /// @brief フレーム終端の後始末（RenderDomainContext が全 View 描画後に呼ぶ）
+        /// @param lightManager 太陽ライトの透過率変調の解除先（nullptr 可）
+        /// @details 今フレーム大気が要求されなかった場合、Update() が毎フレーム書いている
+        ///          太陽の透過率変調を {1,1,1} へ戻してから有効化フラグを落とす。
+        ///          大気シーンからキューブマップ空へ切り替えた際に減衰が残らないようにするため。
+        ///          「透過率を書くのも戻すのも AtmosphereManager」に揃えてある
+        ///          （以前は書き込みがここ、解除が EngineSystem 側に分かれていた）。
+        void EndFrame(LightManager* lightManager);
 
     private:
         /// @brief 現在のパラメータ・太陽情報から定数バッファを更新する

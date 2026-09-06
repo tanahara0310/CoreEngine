@@ -39,6 +39,11 @@ public:
     /// @param camera カメラオブジェクト
     void SetCamera(const CoreEngine::Camera* camera) override;
 
+    /// @brief 今フレームのフォグ定数を受け取る（gFog）
+    /// @details FogPass が毎フレーム供給する。パーティクルは出力がアルファ事前乗算の
+    ///          加算合成なので、内散乱を足さない「減衰のみ」バリアントを渡すこと。
+    void SetFogConstants(D3D12_GPU_VIRTUAL_ADDRESS attenuationOnly) { fogCBV_ = attenuationOnly; }
+
     /// @brief ResourceFactoryを設定（初期化前に呼び出す必要がある）
     /// @param resourceFactory リソースファクトリ
     void SetResourceFactory(ResourceFactory* resourceFactory) { resourceFactory_ = resourceFactory; }
@@ -51,6 +56,9 @@ public:
     int GetRootParamIndex(const std::string& resourceName) const;
 
 protected:
+    /// @brief 今フレームのフォグ定数（0 = 未供給で差さない）
+    D3D12_GPU_VIRTUAL_ADDRESS fogCBV_ = 0;
+
     // ──────────────────────────────────────────────────────────
     // 共通リソース
     // ──────────────────────────────────────────────────────────
@@ -88,5 +96,22 @@ protected:
 
     /// @brief BeginPassでの追加処理（派生クラスでオーバーライド可能）
     virtual void OnBeginPass() {}
+
+    // ──────────────────────────────────────────────────────────
+    // ルートシグネチャの元になるシェーダー
+    // ──────────────────────────────────────────────────────────
+
+    /// @brief ルートシグネチャ構築に使う頂点シェーダーのパス
+    /// @details CreateRootSignature がこれをコンパイルしてリフレクションを取る。
+    ///          自前のシェーダーを持つ派生クラスはここを差し替えることで、
+    ///          そのシェーダーが宣言したリソースだけを含む RS が組まれる。
+    virtual const wchar_t* GetVertexShaderPath() const {
+        return L"Engine/Assets/Shaders/Particle/Particle.VS.hlsl";
+    }
+
+    /// @brief ルートシグネチャ構築に使うピクセルシェーダーのパス
+    virtual const wchar_t* GetPixelShaderPath() const {
+        return L"Engine/Assets/Shaders/Particle/Particle.PS.hlsl";
+    }
 };
 }

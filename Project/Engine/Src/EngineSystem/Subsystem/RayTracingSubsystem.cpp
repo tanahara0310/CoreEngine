@@ -17,7 +17,7 @@
 #include "Graphics/Water/FFTOceanManager.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/GameObjectManager.h"
-#include "GameObject/GameObjectManager.h"
+#include "Particle/ParticleSystem.h"
 #include "Camera/View/ViewInfo.h"
 #include "Math/MathCore.h"
 #include "Scene/SceneManager.h"
@@ -83,6 +83,39 @@ namespace CoreEngine
                 inst.SetTransform(transform->Get().GetWorldMatrix());
                 tlasInstances.push_back(inst);
             });
+
+        // ===== モデルパーティクルもキャスターとして載せる =====
+        // 粒はコンポーネントではなく GameObject の派生なので、ForEachComponent では拾えない。
+        // 描画側（RenderManager）と同じく、仮想の GetRenderPassType() で判別する。
+        // BLAS はモデル単位で構築済みなので、ここで足すのはインスタンスだけ。
+        std::vector<Matrix4x4> particleMatrices;
+        for (const auto& obj : objMgr->GetAllObjects()) {
+            if (!obj || !obj->IsActive() || obj->IsMarkedForDestroy()) continue;
+            if (obj->GetRenderPassType() != RenderPassType::ModelParticle) continue;
+
+            auto* particleSystem = static_cast<ParticleSystem*>(obj.get());
+
+            // 加算・半透明の粒が真っ黒な影を落とすと不自然なので、不透明のものだけ。
+            // メッシュ側の除外条件と揃えている。
+            if (particleSystem->GetBlendMode() != BlendMode::kBlendModeNone) continue;
+
+            auto* resource = particleSystem->GetModelResource();
+            if (!resource || !resource->HasBLAS()) continue;
+
+            const uint32_t particleCount = particleSystem->GetParticleCount();
+            if (particleCount == 0) continue;
+
+            particleMatrices.resize(particleCount);
+            const uint32_t written =
+                particleSystem->CollectWorldMatrices(particleMatrices.data(), particleCount);
+
+            for (uint32_t i = 0; i < written; ++i) {
+                AccelerationStructureManager::InstanceDesc inst;
+                inst.blasIndex = resource->GetBLASIndex();
+                inst.SetTransform(particleMatrices[i]);
+                tlasInstances.push_back(inst);
+            }
+        }
 
         if (!tlasInstances.empty()) {
             asMgr->BuildTLAS(dx->GetCommandList(), tlasInstances);

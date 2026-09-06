@@ -29,7 +29,9 @@ enum class ParticleBackend {
 /// @brief CPU / GPU パーティクルシステムの共通インターフェース
 /// @details 両実装はモジュール（パラメータ定義・ImGui）を共有しており、
 ///          プリセットの保存/読み込みやシーンからの操作をバックエンド非依存で行える。
-///          生成は BaseScene::CreateParticleSystem(ParticleBackend, ...) を使う。
+///          生成はシーンから `CreateObject<ParticleSystem>()` /
+///          `CreateObject<GpuParticleSystem>()` した後に `Initialize()` を呼ぶ
+///          （GraphicsCore / ResourceFactory は `engine_->GetService<T>()` で取得する）。
 ///          設計は Docs/Engine/Particle/GpuParticleSystem.md 参照。
 class IParticleSystem {
 public:

@@ -46,6 +46,14 @@ namespace CoreEngine
         /// @brief シーンオブジェクトの選択を解除する
         void ClearSelection() { objectSelector_.ClearSelection(); }
 
+        /// @brief 選択中のシーンオブジェクトを取得する
+        GameObject* GetSelectedObject() const { return objectSelector_.GetSelectedObject(); }
+
+        /// @brief シーンオブジェクトを選択する
+        /// @details Canvas ビューでの選択を Hierarchy / Inspector と共有するための入口。
+        ///          ここを通さないと「Canvas で掴んだ要素と Inspector の表示が食い違う」
+        void SelectObject(GameObject* object) { objectSelector_.SelectObject(object); }
+
         bool Undo(GameObjectManager* mgr) { return undoRedoHistory_.Undo(mgr); }
         bool Redo(GameObjectManager* mgr) { return undoRedoHistory_.Redo(mgr); }
         bool CanUndo() const { return undoRedoHistory_.CanUndo(); }

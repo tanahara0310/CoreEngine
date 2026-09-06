@@ -13,9 +13,23 @@ namespace CoreEngine
 {
     void ForwardQueuePassBase::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
     {
-        // SceneColor に上乗せしつつ SceneDepth を read-only DSV/SRV として参照する。
+        // SceneColor に上乗せしつつ、SceneDepth へは書き込む。
+        //
+        // 以前はここを read-only（DEPTH_READ | PIXEL_SHADER_RESOURCE）として宣言していたが、
+        // このパスで描かれる物は実際には深度を書く必要がある。GeometryPass の後段には
+        // SkyBoxQueuePass(Sky,10) と VolumetricCloudPass(Sky,20) が並んでおり、どちらも
+        // SceneDepth を見て「ジオメトリが居ない画素だけ描く」判断をするため、
+        // フォワードで描いた物が深度を残さないと空と雲に塗り潰されて消える。
+        // 同じパス内でもモデルパーティクル(400)の後にグリッド(450)・ライン(500)が来るので、
+        // 深度を書かないと床のラインが粒を突き抜けて見える。
+        //
+        // 宣言と実態が食い違っていたため、リソース状態が実際に DEPTH_READ へ遷移した
+        // フレームでは深度書き込み付き PSO の Draw が
+        // D3D12 ERROR #538 INVALID_SUBRESOURCE_STATE で落ちていた。
+        // このパスは SceneDepth をテクスチャとしては読まない（Grid / Line / Particle の
+        // どのシェーダーも深度をサンプルしない）ので、SRV 状態を兼ねる必要もない。
         builder.Read(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-        builder.Read(FrameBlackboard::SceneDepth, D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        builder.Write(FrameBlackboard::SceneDepth, D3D12_RESOURCE_STATE_DEPTH_WRITE);
         builder.Write(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_RENDER_TARGET);
     }
 

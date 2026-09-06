@@ -35,6 +35,7 @@
 #include "Modules/SizeModule.h"
 #include "Modules/RotationModule.h"
 #include "Modules/NoiseModule.h"
+#include "Modules/CollisionModule.h"
 
 // Core関連
 #include "Core/ParticleResourceManager.h"
@@ -149,6 +150,25 @@ public:
     bool IsFinished() const;
 
     // ──────────────────────────────────────────────────────────
+    // プリセット（json）
+    // ──────────────────────────────────────────────────────────
+
+    /// @brief プリセットを読み込んで各モジュールへ反映する
+    /// @param filePath 実行ディレクトリからの相対パス
+    ///        （例: "Application/Assets/Presets/Particle/Xxx.json"）
+    /// @return 読み込めた場合 true
+    /// @note モデルとテクスチャはプリセットに含まれない（インスペクタからも変えられない）。
+    ///       SetModelResource() / SetTexture() を済ませてから呼ぶこと。
+    /// @note インスペクタの「プリセット」欄と同じ実体を使うので、ここで読んだファイルが
+    ///       そのまま Ctrl+S（上書き保存）の対象になる。
+    bool LoadPreset(const std::string& filePath);
+
+    /// @brief 現在の設定をプリセットとして書き出す
+    /// @param filePath 実行ディレクトリからの相対パス
+    /// @return 保存できた場合 true
+    bool SavePreset(const std::string& filePath);
+
+    // ──────────────────────────────────────────────────────────
     // テクスチャ管理
     // ──────────────────────────────────────────────────────────
 
@@ -212,6 +232,15 @@ public:
         return resourceManager_->GetSrvHandleGPU();
     }
 
+    /// @brief 生存中パーティクルのワールド行列を書き出す
+    /// @param outMatrices 書き出し先
+    /// @param maxCount    書き出せる上限
+    /// @return 書き出した数
+    /// @note DXR の TLAS インスタンスを組むために CPU 側の行列が要る（GPU の
+    ///       インスタンシングバッファは読み戻せない）。描画と同じ個数・同じ式で
+    ///       出すので、影と見た目がずれない。モデルパーティクル以外は 0 を返す。
+    uint32_t CollectWorldMatrices(Matrix4x4* outMatrices, uint32_t maxCount) const;
+
     // ──────────────────────────────────────────────────────────
     // モジュールアクセッサ
     // ──────────────────────────────────────────────────────────
@@ -251,6 +280,11 @@ public:
     /// @brief ノイズモジュールを取得
     /// @return ノイズモジュールの参照
     NoiseModule& GetNoiseModule() { return *noiseModule_; }
+
+    /// @brief 床との当たり判定モジュールを取得
+    /// @return 当たり判定モジュールの参照
+    /// @note CPU 版だけが持つ（IParticleSystem には無い）。既定では無効。
+    CollisionModule& GetCollisionModule() { return *collisionModule_; }
 
     // ──────────────────────────────────────────────────────────
     // 統計情報
@@ -332,6 +366,7 @@ private:
     std::unique_ptr<SizeModule> sizeModule_;
     std::unique_ptr<RotationModule> rotationModule_;
     std::unique_ptr<NoiseModule> noiseModule_;
+    std::unique_ptr<CollisionModule> collisionModule_;
 
     std::unique_ptr<ParticlePresetManager> presetManager_ = std::make_unique<ParticlePresetManager>();
 

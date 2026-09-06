@@ -6,8 +6,11 @@
 #include "../Include/Common/DepthReconstruction.hlsli"
 #include "../Include/Common/ShaderMath.hlsli" // PI / TWO_PI
 
-// 出力: シャドウマスク（0=影, 1=光）。トレース解像度（ハーフ解像度時はフルの半分）
-RWTexture2D<float> gShadowOutput : register(u0);
+// 出力: R = シャドウ値（0=影, 1=光）, G = このピクセルに撃ったレイ本数。
+// トレース解像度（ハーフ解像度時はフルの半分）。
+// レイ本数はピクセルごとに変わる（ペナンブラ適応サンプリング）ため、
+// テンポラルパスが分散を正しく見積もれるように本数も一緒に出力する。
+RWTexture2D<float2> gShadowOutput : register(u0);
 
 // TLAS
 RaytracingAccelerationStructure gScene : register(t0);
@@ -17,6 +20,11 @@ Texture2D<float> gSceneDepth : register(t1);
 
 // G-Buffer: 法線（セルフシャドウバイアス用）
 Texture2D<float4> gNormalRoughness : register(t2);
+
+// 前フレームのテンポラル履歴（RTShadowTemporal.CS.hlsl 出力。x=シャドウ値, z=蓄積N）
+// ペナンブラ適応サンプリングの判定に使う。再投影はせず同座標を読む
+// （カメラが動いた直後は判定が 1 フレームずれるだけで実害がない）。
+Texture2D<float4> gShadowHistory : register(t3);
 
 // ライト方向 + ソフトシャドウ + 解像度パラメータ
 // C++ 側 ShadowRayConstants 構造体と厳密にレイアウトを合わせること
@@ -36,8 +44,8 @@ cbuffer ShadowRayConstants : register(b0)
     int gTraceOffsetX; // ハーフ解像度時の 2x2 サンプル位置（フレームごとに巡回）
     int gTraceOffsetY;
     int gTraceScale; // 1 = フル解像度 / 2 = ハーフ解像度
-    int gPad0_;
-    int gPad1_;
+    int gPenumbraSamples; // ペナンブラ（影の縁）で使うレイ本数（適応サンプリング）
+    int gHistoryValid; // 履歴テクスチャが有効なら 1（初回フレームは 0）
     int gPad2_;
     float4x4 gInvViewProj; // WorldPosition ターゲット廃止に伴う深度復元用
 };
@@ -60,6 +68,28 @@ uint PcgHash(uint seed)
     uint state = seed * 747796405u + 2891336453u;
     uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
     return (word >> 22u) ^ word;
+}
+
+/// @brief R2（Roberts）低食い違い列の第 n 項を 32bit 固定小数で返す
+/// @details 加算列 x_{n+1} = x_n + alpha (mod 1) を uint の桁あふれで実現する。
+///          alpha = round(2^32 / g), round(2^32 / g^2)（g = 塑性数 1.324717957…）。
+///          float で n を掛けると n が大きいところで仮数 24bit を割って列が崩れるが、
+///          整数のままなら何フレーム回しても厳密に同じ列が出る。
+/// @note ホワイトノイズと違い、連続する n が 2 次元空間へ均等に散る。1spp でも
+///       「時間方向に層化されたサンプル列」になるため、テンポラル蓄積の収束が速い。
+uint2 R2SequenceFixed(uint n)
+{
+    return uint2(n * 3242174889u, n * 2447445413u);
+}
+
+/// @brief ピクセルごとの Cranley-Patterson 回転量
+/// @details 同じ R2 列を全ピクセルで共有すると、画面全体が同じ方向へ偏った
+///          サンプルを取り相関ノイズ（縞）になる。ピクセル固有のオフセットを
+///          足して回すことで、空間方向は無相関・時間方向は層化を両立させる。
+uint2 SampleRotation(uint2 pixel)
+{
+    uint h = PcgHash(pixel.x * 73856093u ^ pixel.y * 19349663u);
+    return uint2(h, PcgHash(h));
 }
 
 /// @brief dir を中心軸としたコーン内でランダム方向をサンプリング
@@ -108,7 +138,7 @@ void RTShadowRayGen()
     // 背景ピクセルはスキップ → 影なし（1.0）
     if (IsBackgroundDepth(ndcDepth))
     {
-        gShadowOutput[launchIndex] = 1.0f;
+        gShadowOutput[launchIndex] = float2(1.0f, 1.0f);
         return;
     }
 
@@ -146,17 +176,36 @@ void RTShadowRayGen()
     // ソフトシャドウ：コーン内ジッターレイの平均（N=1 はバイナリ）
     static const int kMaxSamples = 16;
     int   numSamples = clamp(gSoftShadowSamples, 1, kMaxSamples);
+
+    // ===== ペナンブラ適応サンプリング =====
+    //   1spp の分散 p(1-p) が問題になるのは影の縁（0<p<1）だけで、本影と日向は
+    //   毎フレーム同じ値が返るのでレイ 1 本で十分。前フレームの蓄積結果を見て、
+    //   「縁である」か「まだ蓄積が浅い」ピクセルだけレイ本数を増やす。
+    //   コストは縁の面積ぶんしか増えないのに、縁のノイズの標準偏差は 1/sqrt(本数) になる。
+    if (gHistoryValid != 0)
+    {
+        float4 history = gShadowHistory.Load(int3(launchIndex, 0));
+        bool uncertain = (history.x > 0.02f && history.x < 0.98f) // ペナンブラの中
+                      || (history.z < 8.0f);                      // 蓄積が浅い（出現直後）
+        if (uncertain)
+        {
+            numSamples = clamp(max(numSamples, gPenumbraSamples), 1, kMaxSamples);
+        }
+    }
+
     float shadowSum = 0.0f;
 
-    uint baseSeed = launchIndex.x * 1973u + launchIndex.y * 9277u + gFrameIndex * 26699u;
+    // 時間方向は R2 列で層化し、空間方向はピクセル固有の回転で無相関にする。
+    // 旧実装は「ピクセル座標とフレーム番号を混ぜたハッシュ」＝完全なホワイトノイズで、
+    // 蓄積 N フレームぶんのサンプルが偏って固まりやすく収束が遅かった。
+    uint2 rotation = SampleRotation(launchIndex);
 
     [loop]
     for (int s = 0; s < numSamples; ++s)
     {
-        uint seed1 = PcgHash(baseSeed + uint(s) * 6571u);
-        uint seed2 = PcgHash(seed1);
-        float r1 = float(seed1) * (1.0f / 4294967296.0f);
-        float r2 = float(seed2) * (1.0f / 4294967296.0f);
+        uint2 fixedPoint = R2SequenceFixed(gFrameIndex * uint(numSamples) + uint(s)) + rotation;
+        float r1 = float(fixedPoint.x) * (1.0f / 4294967296.0f);
+        float r2 = float(fixedPoint.y) * (1.0f / 4294967296.0f);
 
         float3 jitteredDir = (gLightRadius > 0.0f)
             ? SampleConeDirection(rayDir, gLightRadius, r1, r2)
@@ -185,8 +234,8 @@ void RTShadowRayGen()
         shadowSum += payload.shadowFactor;
     }
 
-    // 生値をそのまま出力（履歴参照は Temporal パスで行う）
-    gShadowOutput[launchIndex] = shadowSum / float(numSamples);
+    // 生値とレイ本数を出力（履歴参照は Temporal パスで行う）
+    gShadowOutput[launchIndex] = float2(shadowSum / float(numSamples), float(numSamples));
 }
 
 // ============================================================

@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "CameraKeyframeEditorModule.h"
-#include "CameraSequenceAssetIO.h"
+#include "Camera/Sequence/CameraSequenceEvaluator.h"
+#include "Camera/Sequence/CameraSequenceIO.h"
 
 #ifdef USE_IMGUI
 
@@ -13,7 +14,10 @@
 
 #include "Camera/CameraManager.h"
 #include "Camera/Camera.h"
-#include "Camera/Camera.h"
+#include "Camera/Shake/CameraShake.h"
+#include "GameObject/GameObject.h"
+#include "GameObject/GameObjectManager.h"
+#include "Editor/ImGui/Gizmo.h"
 #include "Graphics/Line/LineManager.h"
 #include "Utility/JsonManager/JsonManager.h"
 
@@ -21,32 +25,7 @@ namespace CoreEngine
 {
     namespace
     {
-        struct EasingOption {
-            const char* label;
-            EasingUtil::Type type;
-        };
-
-        constexpr EasingOption kEasingOptions[] = {
-            { "線形", EasingUtil::Type::Linear },
-            { "イーズイン (Quad)", EasingUtil::Type::EaseInQuad },
-            { "イーズアウト (Quad)", EasingUtil::Type::EaseOutQuad },
-            { "イーズインアウト (Quad)", EasingUtil::Type::EaseInOutQuad },
-            { "イーズイン (Cubic)", EasingUtil::Type::EaseInCubic },
-            { "イーズアウト (Cubic)", EasingUtil::Type::EaseOutCubic },
-            { "イーズインアウト (Cubic)", EasingUtil::Type::EaseInOutCubic },
-            { "イーズイン (Quart)", EasingUtil::Type::EaseInQuart },
-            { "イーズアウト (Quart)", EasingUtil::Type::EaseOutQuart },
-            { "イーズインアウト (Quart)", EasingUtil::Type::EaseInOutQuart },
-            { "イーズイン (Sine)", EasingUtil::Type::EaseInSine },
-            { "イーズアウト (Sine)", EasingUtil::Type::EaseOutSine },
-            { "イーズインアウト (Sine)", EasingUtil::Type::EaseInOutSine },
-            { "イーズイン (Expo)", EasingUtil::Type::EaseInExpo },
-            { "イーズアウト (Expo)", EasingUtil::Type::EaseOutExpo },
-            { "イーズインアウト (Expo)", EasingUtil::Type::EaseInOutExpo }
-        };
-
-        constexpr int kEasingOptionCount = static_cast<int>(sizeof(kEasingOptions) / sizeof(kEasingOptions[0]));
-
+        // 遷移方式の表示名。CameraSequenceTransitionType の値をそのまま添字に使う。
         constexpr const char* kShotTransitionLabels[] = {
             "カット",
             "ブレンド"
@@ -54,35 +33,62 @@ namespace CoreEngine
 
         constexpr int kShotTransitionLabelCount = static_cast<int>(sizeof(kShotTransitionLabels) / sizeof(kShotTransitionLabels[0]));
 
+        // 補間方式の表示名。CameraSequenceInterpolation の値をそのまま添字に使う。
+        constexpr const char* kInterpolationLabels[] = {
+            "ステップ (補間しない)",
+            "直線",
+            "スムーズ (Catmull-Rom)"
+        };
+
+        constexpr int kInterpolationLabelCount = static_cast<int>(sizeof(kInterpolationLabels) / sizeof(kInterpolationLabels[0]));
+
+        // 向きの決め方の表示名。CameraSequenceAimMode の値をそのまま添字に使う。
+        constexpr const char* kAimModeLabels[] = {
+            "キーの回転を使う",
+            "注視点を向く",
+            "オブジェクトを向く"
+        };
+
+        constexpr int kAimModeLabelCount = static_cast<int>(sizeof(kAimModeLabels) / sizeof(kAimModeLabels[0]));
+
+        // イベント種別の表示名。CameraSequenceEventType の値をそのまま添字に使う。
+        constexpr const char* kEventTypeLabels[] = {
+            "シェイク",
+            "trauma 加算",
+            "コールバック",
+            "時間スケール"
+        };
+
+        constexpr int kEventTypeLabelCount = static_cast<int>(sizeof(kEventTypeLabels) / sizeof(kEventTypeLabels[0]));
+
+        constexpr float kRadToDeg = 180.0f / 3.14159265358979323846f;
+        constexpr float kDegToRad = 3.14159265358979323846f / 180.0f;
     }
 
     void CameraKeyframeEditorModule::Update(const CameraEditorContext& context)
     {
-        if (!context.cameraManager || !isPlaying_ || keyframes_.size() < 2) {
+        if (!context.cameraManager || !isPlaying_ || sequence_.keyframes.size() < 2) {
             UpdateAutoKey(context);
-            DrawViewportVisualization();
+            DrawViewportVisualization(context);
             return;
         }
 
         // 再生ヘッドを進め、補間結果を現在カメラへ適用する。
         playhead_ += ImGui::GetIO().DeltaTime * playbackSpeed_;
 
-        if (playhead_ > timelineLength_) {
+        if (playhead_ > sequence_.timelineLength) {
             if (loopPlayback_) {
                 playhead_ = 0.0f;
             } else {
-                playhead_ = timelineLength_;
+                playhead_ = sequence_.timelineLength;
                 isPlaying_ = false;
             }
         }
 
-        CameraSnapshot evaluated{};
-        if (EvaluateSnapshotAt(playhead_, evaluated)) {
-            ApplyToActiveCamera(context, evaluated);
-        }
+        ApplyEvaluatedAt(context, playhead_);
 
         UpdateAutoKey(context);
-        DrawViewportVisualization();
+        DrawViewportVisualization(context);
     }
 
     void CameraKeyframeEditorModule::Draw(const CameraEditorContext& context)
@@ -91,11 +97,22 @@ namespace CoreEngine
             return;
         }
 
-        ImGuiIO& io = ImGui::GetIO();
-        if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Z, false)) {
+        // 掴んでいたウィジェットが消えた（タブを切り替えた・キーを選び直した）ときの
+        // 取り残しを掃除する。ここは今フレームのウィジェットを出す前なので、
+        // ActiveId は前フレームの続きを正しく指している。
+        if (!ImGui::IsAnyItemActive()) {
+            activeEditItemId_ = 0;
+            hasPendingEditState_ = false;
+        }
+
+        // Ctrl+Z / Ctrl+Y はシーンのオブジェクト Undo と同じキー。素で拾うと両方が
+        // 同じフレームで戻ってしまうので、ImGui の入力ルーティングに任せる。
+        // RouteFocused はこのウィンドウにフォーカスがあるときだけ勝ち、
+        // それ以外は SceneDebugEditor 側の RouteGlobal へ流れる。
+        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Z, ImGuiInputFlags_RouteFocused)) {
             Undo();
         }
-        if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Y, false)) {
+        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Y, ImGuiInputFlags_RouteFocused)) {
             Redo();
         }
 
@@ -103,139 +120,371 @@ namespace CoreEngine
             RefreshClipFileList();
         }
 
-        ImGui::Text("アクティブ3D: %s", context.cameraManager->GetActiveCameraName(CameraType::Camera3D).c_str());
-        if (ImGui::Button("Undo")) {
-            Undo();
-        }
-        UI::SameLine();
-        if (ImGui::Button("Redo")) {
-            Redo();
-        }
-        UI::SameLine();
-        UI::Hint("ショートカット: Ctrl+Z / Ctrl+Y");
-        UI::Separator();
+        bool playheadChanged = false;
 
-        UI::Widgets::ToggleSwitch("Auto Key", &autoKeyEnabled_);
-        UI::SameLine();
-        UI::Hint("Transform/Parametersの変更時に自動でキーを作成・更新");
+        DrawTransport(playheadChanged);
+        DrawTimeline(playheadChanged);
 
-        UI::SectionHeader("ビューポート可視化");
-        UI::Widgets::ToggleSwitch("可視化を有効", &viewportVisualizationEnabled_);
-        UI::Widgets::ToggleSwitch("カメラ軌跡", &viewportShowTrajectory_);
-        UI::Widgets::ToggleSwitch("キーフレーム位置", &viewportShowKeyMarkers_);
-        UI::Widgets::ToggleSwitch("DebugCamera注視点", &viewportShowDebugTarget_);
-        UI::DragInt("軌跡サンプル/区間", viewportTrajectorySamplesPerSegment_, 1.0f, 2, 64);
-        UI::DragFloat("マーカーサイズ", viewportMarkerSize_, 0.01f, 0.02f, 2.0f, "%.2f");
-        UI::SliderFloat("軌跡アルファ", viewportTrajectoryAlpha_, 0.1f, 1.0f, "%.2f");
-        UI::ColorEdit3("軌跡色", viewportTrajectoryColor_);
-        UI::ColorEdit3("キー色", viewportKeyMarkerColor_);
-        UI::ColorEdit3("選択キー色", viewportSelectedKeyColor_);
-        UI::ColorEdit3("注視点色", viewportDebugTargetColor_);
+        UI::Spacing();
 
-        viewportTrajectorySamplesPerSegment_ = std::clamp(viewportTrajectorySamplesPerSegment_, 2, 64);
-        viewportMarkerSize_ = std::clamp(viewportMarkerSize_, 0.02f, 2.0f);
-
-        // タイムライン長と再生ヘッドを編集する。
-        UI::DragFloat("タイムライン長(秒)", timelineLength_, 0.1f, 0.1f, 600.0f, "%.2f");
-        if (timelineLength_ < 0.1f) {
-            timelineLength_ = 0.1f;
+        // 左＝キーの出し入れ、右＝選んだキーの中身。この 2 つを並べるのが要点で、
+        // 「キーを打つ」と「値を直す」の往復でスクロールが要らなくなる。
+        const float listWidth = 208.0f;
+        if (auto list = UI::Scope::ChildScope("##KeyList", ImVec2(listWidth, 232.0f), ImGuiChildFlags_Border)) {
+            DrawKeyList(context);
         }
 
-        bool playheadChanged = UI::SliderFloat("再生ヘッド", playhead_, 0.0f, timelineLength_, "%.2f 秒");
+        UI::SameLine();
 
-        // タイムライン上のキーフレームを直接クリックして移動できるように可視化する。
-        {
-            const ImVec2 region = ImGui::GetContentRegionAvail();
-            const float timelineHeight = 34.0f;
-            const ImVec2 cursor = ImGui::GetCursorScreenPos();
-            const ImVec2 size((std::max)(region.x, 120.0f), timelineHeight);
+        if (auto inspector = UI::Scope::ChildScope("##KeyInspector", ImVec2(0.0f, 232.0f), ImGuiChildFlags_Border)) {
+            DrawKeyInspector(context, playheadChanged);
+        }
 
-            ImGui::InvisibleButton("##KeyframeTimeline", size);
-            ImDrawList* drawList = ImGui::GetWindowDrawList();
+        UI::Spacing();
 
-            const ImU32 lineColor = IM_COL32(120, 120, 120, 255);
-            const ImU32 keyColor = IM_COL32(80, 170, 255, 255);
-            const ImU32 selectedKeyColor = IM_COL32(255, 205, 80, 255);
-            const ImU32 playheadColor = IM_COL32(255, 120, 120, 255);
-
-            const float centerY = cursor.y + size.y * 0.5f;
-            drawList->AddLine(ImVec2(cursor.x, centerY), ImVec2(cursor.x + size.x, centerY), lineColor, 2.0f);
-
-            // キーフレームマーカー描画
-            for (int i = 0; i < static_cast<int>(keyframes_.size()); ++i) {
-                const float normalized = (timelineLength_ > 0.0f) ? (keyframes_[i].time / timelineLength_) : 0.0f;
-                const float x = cursor.x + (std::clamp(normalized, 0.0f, 1.0f) * size.x);
-                const ImU32 color = (i == selectedIndex_) ? selectedKeyColor : keyColor;
-                drawList->AddCircleFilled(ImVec2(x, centerY), 4.5f, color);
+        // 使う頻度が低いものはタブの奥へ。毎回使う操作の前に置かない。
+        if (ImGui::BeginTabBar("##KeyframeSubTabs", ImGuiTabBarFlags_None)) {
+            if (ImGui::BeginTabItem("ショット")) {
+                DrawShotTrack();
+                ImGui::EndTabItem();
             }
-
-            // 再生ヘッド描画
-            const float playheadX = cursor.x + ((playhead_ / timelineLength_) * size.x);
-            drawList->AddLine(ImVec2(playheadX, cursor.y), ImVec2(playheadX, cursor.y + size.y), playheadColor, 2.0f);
-
-            // クリック時、近いキーフレームがあれば選択、なければ再生ヘッド移動
-            if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-                const float mouseX = ImGui::GetMousePos().x;
-                int nearest = -1;
-                float nearestPixelDist = 10.0f;
-
-                for (int i = 0; i < static_cast<int>(keyframes_.size()); ++i) {
-                    const float normalized = (timelineLength_ > 0.0f) ? (keyframes_[i].time / timelineLength_) : 0.0f;
-                    const float x = cursor.x + (std::clamp(normalized, 0.0f, 1.0f) * size.x);
-                    const float d = std::fabs(mouseX - x);
-                    if (d < nearestPixelDist) {
-                        nearestPixelDist = d;
-                        nearest = i;
-                    }
-                }
-
-                if (nearest >= 0) {
-                    selectedIndex_ = nearest;
-                    playhead_ = keyframes_[nearest].time;
-                    playheadChanged = true;
-                } else {
-                    const float normalizedMouse = std::clamp((mouseX - cursor.x) / size.x, 0.0f, 1.0f);
-                    playhead_ = normalizedMouse * timelineLength_;
-                    playheadChanged = true;
-                }
+            if (ImGui::BeginTabItem("イベント")) {
+                DrawEventTrack();
+                ImGui::EndTabItem();
             }
+            if (ImGui::BeginTabItem("シーケンス")) {
+                DrawSequenceAssets(context);
+                ImGui::EndTabItem();
+            }
+            if (ImGui::BeginTabItem("表示")) {
+                DrawViewSettings();
+                ImGui::EndTabItem();
+            }
+            ImGui::EndTabBar();
         }
 
+        DrawStatusBar();
+
+        // 再生停止中に再生ヘッドが動いたら、その時刻の構図を即座に見せる。
+        if (!isPlaying_ && playheadChanged) {
+            ApplyEvaluatedAt(context, playhead_);
+        }
+    }
+
+    void CameraKeyframeEditorModule::DrawTransport(bool& playheadChanged)
+    {
+        // 再生と時刻。いちばん使うので最上段に固定し、他を開閉しても位置が動かないようにする。
         if (isPlaying_) {
-            if (ImGui::Button("停止")) {
+            if (ImGui::Button("■ 停止", ImVec2(72.0f, 0.0f))) {
                 isPlaying_ = false;
             }
         } else {
-            if (ImGui::Button("再生")) {
+            if (ImGui::Button("▶ 再生", ImVec2(72.0f, 0.0f))) {
                 isPlaying_ = true;
             }
         }
 
         UI::SameLine();
-        if (ImGui::Button("先頭へ")) {
+        if (ImGui::Button("|◀ 先頭")) {
             playhead_ = 0.0f;
-            if (!keyframes_.empty()) {
-                CameraSnapshot evaluated{};
-                if (EvaluateSnapshotAt(playhead_, evaluated)) {
-                    ApplyToActiveCamera(context, evaluated);
-                }
+            playheadChanged = true;
+        }
+
+        UI::SameLine();
+        if (ImGui::Button("◀ 前キー")) {
+            const int prev = FindPreviousKeyframeIndex(playhead_ - updateThreshold_);
+            if (prev >= 0) {
+                selectedIndex_ = prev;
+                playhead_ = sequence_.keyframes[prev].time;
+                playheadChanged = true;
             }
         }
 
         UI::SameLine();
-        UI::Widgets::ToggleSwitch("ループ再生", &loopPlayback_);
-
-        UI::DragFloat("再生速度", playbackSpeed_, 0.05f, 0.1f, 4.0f, "%.2fx");
-
-        if (easingTypeIndex_ < 0 || easingTypeIndex_ >= kEasingOptionCount) {
-            easingTypeIndex_ = 0;
+        if (ImGui::Button("次キー ▶")) {
+            const int next = FindNextKeyframeIndex(playhead_ + updateThreshold_);
+            if (next >= 0) {
+                selectedIndex_ = next;
+                playhead_ = sequence_.keyframes[next].time;
+                playheadChanged = true;
+            }
         }
 
-        if (ImGui::BeginCombo("補間タイプ", kEasingOptions[easingTypeIndex_].label)) {
-            for (int i = 0; i < kEasingOptionCount; ++i) {
-                const bool selected = (i == easingTypeIndex_);
-                if (ImGui::Selectable(kEasingOptions[i].label, selected)) {
-                    easingTypeIndex_ = i;
+        UI::SameLine();
+        ImGui::TextColored(ImVec4(0.94f, 0.71f, 0.25f, 1.0f), "%6.2f", playhead_);
+        UI::SameLine();
+        ImGui::TextDisabled("/ %.2f 秒", sequence_.timelineLength);
+
+        // 2 行目：頻度は落ちるが、再生の性格を決める設定
+        ImGui::SetNextItemWidth(90.0f);
+        UI::DragFloat("速度", playbackSpeed_, 0.05f, 0.1f, 4.0f, "%.2fx");
+
+        UI::SameLine();
+        UI::Widgets::ToggleSwitch("ループ", &loopPlayback_);
+
+        UI::SameLine();
+        ImGui::SetNextItemWidth(90.0f);
+        UI::DragFloat("スナップ", snapSeconds_, 0.01f, 0.0f, 1.0f, "%.2f 秒");
+        snapSeconds_ = std::clamp(snapSeconds_, 0.0f, 1.0f);
+        UI::SameLine();
+        UI::Hint("キーをドラッグしたときに丸める間隔。0 で無効。");
+
+        UI::SameLine();
+        ImGui::SetNextItemWidth(100.0f);
+        if (TrackEdit(UI::DragFloat("全体長", sequence_.timelineLength, 0.1f, 0.1f, 600.0f, "%.1f 秒"))) {
+            sequence_.timelineLength = (std::max)(sequence_.timelineLength, CameraSequenceAsset::kMinTimelineLength);
+        }
+
+        UI::SameLine();
+        if (ImGui::SmallButton("Undo")) {
+            Undo();
+        }
+        UI::SameLine();
+        if (ImGui::SmallButton("Redo")) {
+            Redo();
+        }
+        UI::SameLine();
+        UI::Widgets::ToggleSwitch("Auto Key", &autoKeyEnabled_);
+        UI::SameLine();
+        UI::Hint("カメラを動かすと選択中の時刻へ自動でキーを作る");
+    }
+
+    void CameraKeyframeEditorModule::DrawTimeline(bool& playheadChanged)
+    {
+        const CameraTimelineWidget::Result result = timeline_.Draw(
+            sequence_, playhead_, selectedIndex_, selectedShotIndex_, selectedEventIndex_, snapSeconds_);
+
+        if (result.keyDragStarted) {
+            // 掴んだ瞬間に 1 回だけ履歴を積む。ドラッグ中に積むと履歴が埋まる。
+            PushUndoState();
+        }
+
+        if (result.selectionChanged) {
+            selectedIndex_ = result.selectedKeyframe;
+            selectedShotIndex_ = result.selectedShot;
+            selectedEventIndex_ = result.selectedEvent;
+            editingShotNameIndex_ = -1;
+            editingEventNameIndex_ = -1;
+        }
+
+        if (result.keyTimeChanged) {
+            // 並べ替えると添字がずれるので、動かしているキーを時刻で追い直す。
+            const float movedTime = sequence_.keyframes[selectedIndex_].time;
+            sequence_.SortKeyframes();
+            selectedIndex_ = FindNearestKeyframeIndex(movedTime);
+        }
+
+        if (result.playheadChanged) {
+            playheadChanged = true;
+        }
+
+        UI::Hint("キーをドラッグで移動 / 目盛りをドラッグでスクラブ / ホイールでズーム / 中ドラッグで横移動 / ダブルクリックで全体表示");
+    }
+
+    void CameraKeyframeEditorModule::DrawKeyList(const CameraEditorContext& context)
+    {
+        // 打つ・複製・消すはキー一覧の真上。対象と操作を離さない。
+        if (ImGui::Button("＋ キーを打つ", ImVec2(-1.0f, 0.0f))) {
+            CameraSnapshot snapshot;
+            if (CaptureFromActiveCamera(context, snapshot)) {
+                PushUndoState();
+                const int nearest = FindNearestKeyframeIndex(playhead_);
+                if (nearest >= 0 && std::fabs(sequence_.keyframes[nearest].time - playhead_) <= updateThreshold_) {
+                    sequence_.keyframes[nearest].snapshot = snapshot;
+                    selectedIndex_ = nearest;
+                } else {
+                    CameraSequenceKeyframe key{};
+                    key.time = playhead_;
+                    key.snapshot = snapshot;
+                    sequence_.keyframes.push_back(key);
+                    sequence_.SortKeyframes();
+                    selectedIndex_ = FindNearestKeyframeIndex(playhead_);
+                }
+            }
+        }
+        UI::Hint("今のカメラの構図を再生ヘッドの時刻へ記録します。");
+
+        const bool hasSelection = (selectedIndex_ >= 0 && selectedIndex_ < static_cast<int>(sequence_.keyframes.size()));
+
+        if (ImGui::SmallButton("複製") && hasSelection) {
+            PushUndoState();
+            CameraSequenceKeyframe duplicated = sequence_.keyframes[selectedIndex_];
+            duplicated.time = std::clamp(duplicated.time + 0.2f, 0.0f, sequence_.timelineLength);
+            sequence_.keyframes.push_back(duplicated);
+            sequence_.SortKeyframes();
+            selectedIndex_ = FindNearestKeyframeIndex(duplicated.time);
+            playhead_ = duplicated.time;
+        }
+
+        UI::SameLine();
+        if (ImGui::SmallButton("削除") && hasSelection) {
+            PushUndoState();
+            sequence_.keyframes.erase(sequence_.keyframes.begin() + selectedIndex_);
+            selectedIndex_ = sequence_.keyframes.empty()
+                ? -1
+                : std::clamp(selectedIndex_, 0, static_cast<int>(sequence_.keyframes.size()) - 1);
+        }
+
+        UI::SameLine();
+        if (ImGui::SmallButton("全消去") && !sequence_.keyframes.empty()) {
+            PushUndoState();
+            sequence_.keyframes.clear();
+            selectedIndex_ = -1;
+        }
+
+        UI::Separator();
+
+        if (sequence_.keyframes.empty()) {
+            UI::Hint("キーがありません。\nカメラを構えて「キーを打つ」。");
+            return;
+        }
+
+        for (int i = 0; i < static_cast<int>(sequence_.keyframes.size()); ++i) {
+            const CameraSequenceKeyframe& key = sequence_.keyframes[i];
+
+            // 名前があれば名前で、無ければ時刻で。番号を頭に出して順番を読めるようにする。
+            char label[192]{};
+            if (key.label.empty()) {
+                std::snprintf(label, sizeof(label), "%2d  %6.2f 秒##key%d", i + 1, key.time, i);
+            } else {
+                std::snprintf(label, sizeof(label), "%2d  %s##key%d", i + 1, key.label.c_str(), i);
+            }
+
+            if (ImGui::Selectable(label, i == selectedIndex_)) {
+                selectedIndex_ = i;
+                playhead_ = key.time;
+                ApplyEvaluatedAt(context, playhead_);
+            }
+
+            // 注視キーには印を付ける。一覧を見ただけで性格が分かるように。
+            if (key.aimMode != CameraSequenceAimMode::Euler) {
+                UI::SameLine();
+                ImGui::TextColored(ImVec4(0.35f, 0.85f, 0.45f, 1.0f), "◎");
+            }
+        }
+    }
+
+    void CameraKeyframeEditorModule::DrawKeyInspector(const CameraEditorContext& context, bool& playheadChanged)
+    {
+        if (selectedIndex_ < 0 || selectedIndex_ >= static_cast<int>(sequence_.keyframes.size())) {
+            UI::Hint("キーを選ぶと、ここで構図とつなぎ方を調整できます。");
+            return;
+        }
+
+        CameraSequenceKeyframe& key = sequence_.keyframes[selectedIndex_];
+
+        // ---- 名前と時刻 ----
+        if (editingKeyLabelIndex_ != selectedIndex_) {
+            std::snprintf(keyLabelBuffer_, sizeof(keyLabelBuffer_), "%s", key.label.c_str());
+            editingKeyLabelIndex_ = selectedIndex_;
+        }
+        ImGui::SetNextItemWidth(180.0f);
+        if (UI::InputText("名前", keyLabelBuffer_, sizeof(keyLabelBuffer_))) {
+            key.label = keyLabelBuffer_;
+        }
+
+        UI::SameLine();
+        ImGui::SetNextItemWidth(110.0f);
+        float keyTime = key.time;
+        if (TrackEdit(UI::DragFloat("時刻", keyTime, 0.02f, 0.0f, sequence_.timelineLength, "%.2f 秒"))) {
+            key.time = std::clamp(keyTime, 0.0f, sequence_.timelineLength);
+            const float movedTime = key.time;
+            sequence_.SortKeyframes();
+            selectedIndex_ = FindNearestKeyframeIndex(movedTime);
+            playhead_ = movedTime;
+            playheadChanged = true;
+            return;
+        }
+
+        UI::SameLine();
+        if (ImGui::SmallButton("今のカメラから取得")) {
+            CameraSnapshot snapshot;
+            if (CaptureFromActiveCamera(context, snapshot)) {
+                PushUndoState();
+                key.snapshot = snapshot;
+                playheadChanged = true;
+            }
+        }
+
+        UI::Separator();
+
+        if (ImGui::BeginTabBar("##KeyInspectorTabs", ImGuiTabBarFlags_None)) {
+            if (ImGui::BeginTabItem("構図")) {
+                DrawKeyPose(context, key, playheadChanged);
+                ImGui::EndTabItem();
+            }
+            if (ImGui::BeginTabItem("向き")) {
+                DrawKeyAim(context, key, playheadChanged);
+                ImGui::EndTabItem();
+            }
+            if (ImGui::BeginTabItem("つなぎ")) {
+                DrawKeyTransition(key, playheadChanged);
+                ImGui::EndTabItem();
+            }
+            ImGui::EndTabBar();
+        }
+    }
+
+    void CameraKeyframeEditorModule::DrawKeyPose(const CameraEditorContext& context,
+        CameraSequenceKeyframe& key, bool& playheadChanged)
+    {
+        // 選んだキーの値を直接いじる。別モジュールへスクロールして戻る必要をなくす。
+        Vector3 position = key.snapshot.position;
+        if (TrackEdit(UI::DragVec3("位置", position, 0.1f))) {
+            key.snapshot.position = position;
+            playheadChanged = true;
+        }
+
+        if (key.aimMode == CameraSequenceAimMode::Euler) {
+            Vector3 rotationDegrees = {
+                key.snapshot.rotation.x * kRadToDeg,
+                key.snapshot.rotation.y * kRadToDeg,
+                key.snapshot.rotation.z * kRadToDeg
+            };
+            if (TrackEdit(UI::DragVec3("回転 (度)", rotationDegrees, 0.5f, -360.0f, 360.0f))) {
+                key.snapshot.rotation = {
+                    rotationDegrees.x * kDegToRad,
+                    rotationDegrees.y * kDegToRad,
+                    rotationDegrees.z * kDegToRad
+                };
+                playheadChanged = true;
+            }
+        } else {
+            ImGui::TextDisabled("回転は注視から自動計算されます（「向き」タブ）");
+        }
+
+        float fovDegrees = key.snapshot.parameters.GetFovDegrees();
+        if (TrackEdit(UI::SliderFloat("視野角 (度)", fovDegrees, 10.0f, 120.0f, "%.1f"))) {
+            key.snapshot.parameters.SetFovDegrees(fovDegrees);
+            playheadChanged = true;
+        }
+
+        UI::Spacing();
+        if (ImGui::Button("この構図をカメラへ")) {
+            ApplyToActiveCamera(context, key.snapshot);
+        }
+        UI::SameLine();
+        if (ImGui::Button("この時刻を見る")) {
+            playhead_ = key.time;
+            playheadChanged = true;
+        }
+    }
+
+    void CameraKeyframeEditorModule::DrawKeyAim(const CameraEditorContext& context,
+        CameraSequenceKeyframe& key, bool& playheadChanged)
+    {
+        int aimIndex = static_cast<int>(key.aimMode);
+        if (aimIndex < 0 || aimIndex >= kAimModeLabelCount) {
+            aimIndex = 0;
+        }
+
+        if (ImGui::BeginCombo("注視モード", kAimModeLabels[aimIndex])) {
+            for (int i = 0; i < kAimModeLabelCount; ++i) {
+                const bool selected = (i == aimIndex);
+                if (ImGui::Selectable(kAimModeLabels[i], selected)) {
+                    PushUndoState();
+                    key.aimMode = static_cast<CameraSequenceAimMode>(i);
+                    playheadChanged = true;
                 }
                 if (selected) {
                     ImGui::SetItemDefaultFocus();
@@ -244,184 +493,52 @@ namespace CoreEngine
             ImGui::EndCombo();
         }
 
-        // 前後キーフレームへワンクリック移動できるようにし、編集導線を短くする。
-        if (ImGui::Button("前のキーへ")) {
-            const int prev = FindPreviousKeyframeIndex(playhead_ - updateThreshold_);
-            if (prev >= 0) {
-                selectedIndex_ = prev;
-                playhead_ = keyframes_[prev].time;
+        if (key.aimMode == CameraSequenceAimMode::Euler) {
+            UI::Hint("キーに保存された回転をそのまま使います。");
+            return;
+        }
+
+        if (key.aimMode == CameraSequenceAimMode::LookAtPoint) {
+            Vector3 aimPoint = key.aimPoint;
+            if (TrackEdit(UI::DragVec3("注視点", aimPoint, 0.1f))) {
+                key.aimPoint = aimPoint;
                 playheadChanged = true;
             }
-        }
 
-        UI::SameLine();
-        if (ImGui::Button("次のキーへ")) {
-            const int next = FindNextKeyframeIndex(playhead_ + updateThreshold_);
-            if (next >= 0) {
-                selectedIndex_ = next;
-                playhead_ = keyframes_[next].time;
-                playheadChanged = true;
-            }
-        }
-
-        // 現在時刻の近傍キーフレームがあれば更新、なければ追加する。
-        if (ImGui::Button("現在位置にキーフレームを追加/更新")) {
-            CameraSnapshot snapshot;
-            if (CaptureFromActiveCamera(context, snapshot)) {
-                PushUndoState();
-                const int nearest = FindNearestKeyframeIndex(playhead_);
-                if (nearest >= 0 && std::fabs(keyframes_[nearest].time - playhead_) <= updateThreshold_) {
-                    keyframes_[nearest].snapshot = snapshot;
-                    selectedIndex_ = nearest;
-                } else {
-                    Keyframe key{};
-                    key.time = playhead_;
-                    key.snapshot = snapshot;
-                    keyframes_.push_back(key);
-                    std::sort(keyframes_.begin(), keyframes_.end(),
-                        [](const Keyframe& a, const Keyframe& b) { return a.time < b.time; });
-
-                    selectedIndex_ = FindNearestKeyframeIndex(playhead_);
-                }
-            }
-        }
-
-        UI::SameLine();
-        if (ImGui::Button("選択キーフレームを複製")) {
-            if (selectedIndex_ >= 0 && selectedIndex_ < static_cast<int>(keyframes_.size())) {
-                PushUndoState();
-
-                Keyframe duplicated = keyframes_[selectedIndex_];
-                duplicated.time = std::clamp(duplicated.time + 0.1f, 0.0f, timelineLength_);
-                if (std::fabs(duplicated.time - keyframes_[selectedIndex_].time) <= updateThreshold_) {
-                    duplicated.time = std::clamp(duplicated.time + updateThreshold_, 0.0f, timelineLength_);
-                }
-
-                keyframes_.push_back(duplicated);
-                std::sort(keyframes_.begin(), keyframes_.end(),
-                    [](const Keyframe& a, const Keyframe& b) { return a.time < b.time; });
-
-                selectedIndex_ = FindNearestKeyframeIndex(duplicated.time);
-                playhead_ = duplicated.time;
-                playheadChanged = true;
-            }
-        }
-
-        UI::SameLine();
-        if (ImGui::Button("選択キーフレームを削除")) {
-            if (selectedIndex_ >= 0 && selectedIndex_ < static_cast<int>(keyframes_.size())) {
-                PushUndoState();
-                keyframes_.erase(keyframes_.begin() + selectedIndex_);
-                if (keyframes_.empty()) {
-                    selectedIndex_ = -1;
-                } else if (selectedIndex_ >= static_cast<int>(keyframes_.size())) {
-                    selectedIndex_ = static_cast<int>(keyframes_.size()) - 1;
-                }
-            }
-        }
-
-        UI::SameLine();
-        if (ImGui::Button("全キーフレームをクリア")) {
-            PushUndoState();
-            keyframes_.clear();
-            selectedIndex_ = -1;
-        }
-
-        UI::Separator();
-
-        if (ImGui::CollapsingHeader("詳細: ショット遷移", ImGuiTreeNodeFlags_None)) {
-            UI::Widgets::ToggleSwitch("ショット遷移を有効", &shotsEnabled_);
-
-            if (ImGui::Button("現在位置にショットを追加")) {
-                PushUndoState();
-
-                Shot shot{};
-                shot.name = "ショット" + std::to_string(shots_.size() + 1);
-                shot.startTime = std::clamp(playhead_ - 0.5f, 0.0f, timelineLength_);
-                shot.endTime = std::clamp(playhead_ + 0.5f, 0.0f, timelineLength_);
-                if (shot.endTime <= shot.startTime + 0.01f) {
-                    shot.endTime = std::clamp(shot.startTime + 0.01f, 0.01f, timelineLength_);
-                }
-
-                shots_.push_back(shot);
-                selectedShotIndex_ = static_cast<int>(shots_.size()) - 1;
-                editingShotNameIndex_ = -1;
-            }
-
-            UI::SameLine();
-            if (ImGui::Button("現在位置のショットを選択")) {
-                selectedShotIndex_ = FindShotIndexAt(playhead_);
-                editingShotNameIndex_ = -1;
-            }
-
-            UI::SameLine();
-            if (ImGui::Button("選択ショットを削除")) {
-                if (selectedShotIndex_ >= 0 && selectedShotIndex_ < static_cast<int>(shots_.size())) {
+            if (ImGui::Button("今のカメラの正面を注視点に")) {
+                CameraSnapshot current{};
+                if (CaptureFromActiveCamera(context, current)) {
                     PushUndoState();
-                    shots_.erase(shots_.begin() + selectedShotIndex_);
-                    if (shots_.empty()) {
-                        selectedShotIndex_ = -1;
-                    } else {
-                        selectedShotIndex_ = std::clamp(selectedShotIndex_, 0, static_cast<int>(shots_.size()) - 1);
-                    }
-                    editingShotNameIndex_ = -1;
+                    const float pitch = current.rotation.x;
+                    const float yaw = current.rotation.y;
+                    const Vector3 forward = {
+                        std::cos(pitch) * std::sin(yaw),
+                        -std::sin(pitch),
+                        std::cos(pitch) * std::cos(yaw)
+                    };
+                    key.aimPoint = current.position + forward * 10.0f;
+                    key.aimOffset = { 0.0f, 0.0f, 0.0f };
+                    playheadChanged = true;
                 }
             }
+        }
 
-            if (shots_.empty()) {
-                UI::Hint("ショットがありません。必要な場合のみ追加してください。");
+        if (key.aimMode == CameraSequenceAimMode::LookAtObject) {
+            if (!context.gameObjectManager) {
+                UI::Hint("GameObjectManager が未設定のため対象を選べません。");
             } else {
-                selectedShotIndex_ = std::clamp(selectedShotIndex_, -1, static_cast<int>(shots_.size()) - 1);
-
-                if (auto lb = UI::Scope::ListBoxScope("ショット一覧", ImVec2(-1.0f, 100.0f))) {
-                    for (int i = 0; i < static_cast<int>(shots_.size()); ++i) {
-                        char label[256]{};
-                        std::snprintf(label, sizeof(label), "%s [%.2f - %.2f]%s",
-                            shots_[i].name.c_str(),
-                            shots_[i].startTime,
-                            shots_[i].endTime,
-                            shots_[i].enabled ? "" : " (無効)");
-
-                        const bool selected = (selectedShotIndex_ == i);
-                        if (ImGui::Selectable(label, selected)) {
-                            selectedShotIndex_ = i;
-                            editingShotNameIndex_ = -1;
+                const char* preview = key.aimObjectName.empty() ? "未選択" : key.aimObjectName.c_str();
+                if (ImGui::BeginCombo("注視オブジェクト", preview)) {
+                    for (const auto& object : context.gameObjectManager->GetAllObjects()) {
+                        if (!object) {
+                            continue;
                         }
-                    }
-                }
-            }
-
-            if (selectedShotIndex_ >= 0 && selectedShotIndex_ < static_cast<int>(shots_.size())) {
-                Shot& shot = shots_[selectedShotIndex_];
-
-                if (editingShotNameIndex_ != selectedShotIndex_) {
-                    std::snprintf(shotNameBuffer_, sizeof(shotNameBuffer_), "%s", shot.name.c_str());
-                    editingShotNameIndex_ = selectedShotIndex_;
-                }
-
-                if (UI::InputText("ショット名", shotNameBuffer_, sizeof(shotNameBuffer_))) {
-                    PushUndoState();
-                    shot.name = shotNameBuffer_;
-                }
-
-                Shot editedShot = shot;
-                bool shotChanged = false;
-
-                shotChanged |= UI::Widgets::ToggleSwitch("ショットを有効", &editedShot.enabled);
-                shotChanged |= UI::DragFloat("開始時刻", editedShot.startTime, 0.05f, 0.0f, timelineLength_, "%.2f 秒");
-                shotChanged |= UI::DragFloat("終了時刻", editedShot.endTime, 0.05f, 0.0f, timelineLength_, "%.2f 秒");
-
-                int transitionIndex = static_cast<int>(editedShot.transitionType);
-                if (transitionIndex < 0 || transitionIndex >= kShotTransitionLabelCount) {
-                    transitionIndex = 0;
-                }
-
-                if (ImGui::BeginCombo("遷移", kShotTransitionLabels[transitionIndex])) {
-                    for (int i = 0; i < kShotTransitionLabelCount; ++i) {
-                        const bool selected = (i == transitionIndex);
-                        if (ImGui::Selectable(kShotTransitionLabels[i], selected)) {
-                            transitionIndex = i;
-                            shotChanged = true;
+                        const std::string& name = object->GetName();
+                        const bool selected = (key.aimObjectName == name);
+                        if (ImGui::Selectable(name.c_str(), selected)) {
+                            PushUndoState();
+                            key.aimObjectName = name;
+                            playheadChanged = true;
                         }
                         if (selected) {
                             ImGui::SetItemDefaultFocus();
@@ -429,99 +546,216 @@ namespace CoreEngine
                     }
                     ImGui::EndCombo();
                 }
-                editedShot.transitionType = static_cast<ShotTransitionType>(transitionIndex);
 
-                if (editedShot.transitionType == ShotTransitionType::Blend) {
-                    shotChanged |= UI::DragFloat("ブレンド時間", editedShot.blendDuration, 0.01f, 0.0f, timelineLength_, "%.2f 秒");
-                }
-
-                editedShot.startTime = std::clamp(editedShot.startTime, 0.0f, timelineLength_);
-                editedShot.endTime = std::clamp(editedShot.endTime, 0.0f, timelineLength_);
-                if (editedShot.endTime <= editedShot.startTime) {
-                    editedShot.endTime = std::clamp(editedShot.startTime + 0.01f, 0.01f, timelineLength_);
-                }
-
-                if (editedShot.blendDuration < 0.0f) {
-                    editedShot.blendDuration = 0.0f;
-                }
-
-                if (shotChanged) {
-                    PushUndoState();
-                    shot = editedShot;
-                }
-
-                if (ImGui::Button("再生ヘッドをショット先頭へ")) {
-                    playhead_ = shot.startTime;
-                    playheadChanged = true;
+                if (!key.aimObjectName.empty()) {
+                    Vector3 resolved{};
+                    const CameraSequenceAimContext probe = MakeAimContext(context);
+                    if (!CameraSequenceEvaluator::ResolveAimTarget(key, &probe, resolved)) {
+                        ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.3f, 1.0f),
+                            "対象が見つかりません。保存された回転で再生されます。");
+                    }
                 }
             }
         }
 
-        UI::Separator();
+        Vector3 aimOffset = key.aimOffset;
+        if (TrackEdit(UI::DragVec3("オフセット", aimOffset, 0.05f))) {
+            key.aimOffset = aimOffset;
+            playheadChanged = true;
+        }
 
-        if (keyframes_.empty()) {
-            UI::Hint("キーフレームがありません。");
+        float rollDegrees = key.aimRoll * kRadToDeg;
+        if (TrackEdit(UI::SliderFloat("ロール (度)", rollDegrees, -45.0f, 45.0f, "%.1f"))) {
+            key.aimRoll = rollDegrees * kDegToRad;
+            playheadChanged = true;
+        }
+
+        UI::Hint("位置だけ打てば、向きは対象を捉えるよう自動計算されます。");
+    }
+
+    void CameraKeyframeEditorModule::DrawKeyTransition(CameraSequenceKeyframe& key, bool& playheadChanged)
+    {
+        int interpolationIndex = static_cast<int>(key.interpolation);
+        if (interpolationIndex < 0 || interpolationIndex >= kInterpolationLabelCount) {
+            interpolationIndex = static_cast<int>(CameraSequenceInterpolation::Linear);
+        }
+
+        if (ImGui::BeginCombo("補間方式", kInterpolationLabels[interpolationIndex])) {
+            for (int i = 0; i < kInterpolationLabelCount; ++i) {
+                const bool selected = (i == interpolationIndex);
+                if (ImGui::Selectable(kInterpolationLabels[i], selected)) {
+                    PushUndoState();
+                    key.interpolation = static_cast<CameraSequenceInterpolation>(i);
+                    playheadChanged = true;
+                }
+                if (selected) {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+        }
+        UI::Hint("スムーズは前後のキーも見て曲線でつなぎます（キーの上は必ず通ります）。");
+
+        const bool usesDefault = (key.easingTypeIndex == kUseSequenceEasing);
+        char defaultLabel[128]{};
+        std::snprintf(defaultLabel, sizeof(defaultLabel), "シーケンス既定 (%s)",
+            CameraSequenceEasing::LabelAt(sequence_.easingTypeIndex));
+
+        const char* currentEasingLabel = usesDefault
+            ? defaultLabel
+            : CameraSequenceEasing::LabelAt(key.easingTypeIndex);
+
+        if (ImGui::BeginCombo("この区間の緩急", currentEasingLabel)) {
+            if (ImGui::Selectable(defaultLabel, usesDefault)) {
+                PushUndoState();
+                key.easingTypeIndex = kUseSequenceEasing;
+                playheadChanged = true;
+            }
+            for (int i = 0; i < CameraSequenceEasing::Count(); ++i) {
+                const bool selected = (!usesDefault && i == key.easingTypeIndex);
+                if (ImGui::Selectable(CameraSequenceEasing::LabelAt(i), selected)) {
+                    PushUndoState();
+                    key.easingTypeIndex = i;
+                    playheadChanged = true;
+                }
+                if (selected) {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+        }
+
+        UI::Separator();
+        ImGui::TextDisabled("シーケンス全体の既定");
+        if (sequence_.easingTypeIndex < 0 || sequence_.easingTypeIndex >= CameraSequenceEasing::Count()) {
+            sequence_.easingTypeIndex = 0;
+        }
+        if (ImGui::BeginCombo("既定の緩急", CameraSequenceEasing::LabelAt(sequence_.easingTypeIndex))) {
+            for (int i = 0; i < CameraSequenceEasing::Count(); ++i) {
+                const bool selected = (i == sequence_.easingTypeIndex);
+                if (ImGui::Selectable(CameraSequenceEasing::LabelAt(i), selected)) {
+                    PushUndoState();
+                    sequence_.easingTypeIndex = i;
+                    playheadChanged = true;
+                }
+                if (selected) {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+        }
+    }
+
+    void CameraKeyframeEditorModule::DrawShotTrack()
+    {
+        UI::Widgets::ToggleSwitch("ショット遷移を有効", &sequence_.shotsEnabled);
+        UI::SameLine();
+        UI::Hint("ショットはカット割りの区間。無くてもシーケンスは成立します。");
+
+        if (ImGui::Button("現在位置にショットを追加")) {
+            PushUndoState();
+
+            CameraSequenceShot shot{};
+            shot.name = "ショット" + std::to_string(sequence_.shots.size() + 1);
+            shot.startTime = std::clamp(playhead_ - 0.5f, 0.0f, sequence_.timelineLength);
+            shot.endTime = std::clamp(playhead_ + 0.5f, 0.0f, sequence_.timelineLength);
+            sequence_.shots.push_back(shot);
+            sequence_.Sanitize();
+            selectedShotIndex_ = static_cast<int>(sequence_.shots.size()) - 1;
+            editingShotNameIndex_ = -1;
+        }
+
+        UI::SameLine();
+        if (ImGui::Button("選択ショットを削除")) {
+            if (selectedShotIndex_ >= 0 && selectedShotIndex_ < static_cast<int>(sequence_.shots.size())) {
+                PushUndoState();
+                sequence_.shots.erase(sequence_.shots.begin() + selectedShotIndex_);
+                selectedShotIndex_ = sequence_.shots.empty()
+                    ? -1
+                    : std::clamp(selectedShotIndex_, 0, static_cast<int>(sequence_.shots.size()) - 1);
+                editingShotNameIndex_ = -1;
+            }
+        }
+
+        if (sequence_.shots.empty()) {
+            UI::Hint("ショットがありません。");
             return;
         }
 
-        // キーフレーム一覧表示
-        if (auto lb = UI::Scope::ListBoxScope("キーフレーム一覧", ImVec2(-1.0f, 180.0f))) {
-            for (int i = 0; i < static_cast<int>(keyframes_.size()); ++i) {
-                const bool isSelected = (i == selectedIndex_);
-                char timeLabel[32]{};
-                std::snprintf(timeLabel, sizeof(timeLabel), "%.2f秒", keyframes_[i].time);
-                const std::string label = timeLabel;
-                if (ImGui::Selectable(label.c_str(), isSelected)) {
-                    selectedIndex_ = i;
+        selectedShotIndex_ = std::clamp(selectedShotIndex_, -1, static_cast<int>(sequence_.shots.size()) - 1);
+        if (selectedShotIndex_ < 0) {
+            UI::Hint("タイムラインのショット帯をクリックすると選べます。");
+            return;
+        }
+
+        CameraSequenceShot& shot = sequence_.shots[selectedShotIndex_];
+
+        if (editingShotNameIndex_ != selectedShotIndex_) {
+            std::snprintf(shotNameBuffer_, sizeof(shotNameBuffer_), "%s", shot.name.c_str());
+            editingShotNameIndex_ = selectedShotIndex_;
+        }
+        if (UI::InputText("名前", shotNameBuffer_, sizeof(shotNameBuffer_))) {
+            shot.name = shotNameBuffer_;
+        }
+
+        bool enabled = shot.enabled;
+        if (UI::Widgets::ToggleSwitch("有効", &enabled)) {
+            PushUndoState();
+            shot.enabled = enabled;
+        }
+
+        float startTime = shot.startTime;
+        if (TrackEdit(UI::DragFloat("開始", startTime, 0.05f, 0.0f, sequence_.timelineLength, "%.2f 秒"))) {
+            shot.startTime = startTime;
+            sequence_.Sanitize();
+        }
+
+        float endTime = shot.endTime;
+        if (TrackEdit(UI::DragFloat("終了", endTime, 0.05f, 0.0f, sequence_.timelineLength, "%.2f 秒"))) {
+            shot.endTime = endTime;
+            sequence_.Sanitize();
+        }
+
+        int transitionIndex = static_cast<int>(shot.transitionType);
+        if (transitionIndex < 0 || transitionIndex >= kShotTransitionLabelCount) {
+            transitionIndex = 0;
+        }
+        if (ImGui::BeginCombo("遷移", kShotTransitionLabels[transitionIndex])) {
+            for (int i = 0; i < kShotTransitionLabelCount; ++i) {
+                const bool selected = (i == transitionIndex);
+                if (ImGui::Selectable(kShotTransitionLabels[i], selected)) {
+                    PushUndoState();
+                    shot.transitionType = static_cast<CameraSequenceTransitionType>(i);
+                }
+                if (selected) {
+                    ImGui::SetItemDefaultFocus();
                 }
             }
+            ImGui::EndCombo();
         }
 
-        // 選択したキーフレームを現在のアクティブカメラへ適用
-        if (selectedIndex_ >= 0 && selectedIndex_ < static_cast<int>(keyframes_.size())) {
-            if (ImGui::Button("選択キーフレームを適用")) {
-                ApplyToActiveCamera(context, keyframes_[selectedIndex_].snapshot);
-            }
-
-            UI::SameLine();
-            if (ImGui::Button("再生ヘッドを選択位置へ移動")) {
-                playhead_ = keyframes_[selectedIndex_].time;
-                playheadChanged = true;
-            }
-
-            // 選択キーの時刻を直接編集できるようにする。
-            float selectedTime = keyframes_[selectedIndex_].time;
-            if (UI::DragFloat("選択キー時刻(秒)", selectedTime, 0.05f, 0.0f, timelineLength_, "%.2f")) {
-                PushUndoState();
-                keyframes_[selectedIndex_].time = std::clamp(selectedTime, 0.0f, timelineLength_);
-                std::sort(keyframes_.begin(), keyframes_.end(),
-                    [](const Keyframe& a, const Keyframe& b) { return a.time < b.time; });
-                selectedIndex_ = FindNearestKeyframeIndex(selectedTime);
-                playhead_ = std::clamp(selectedTime, 0.0f, timelineLength_);
-                playheadChanged = true;
+        if (shot.transitionType == CameraSequenceTransitionType::Blend) {
+            float blendDuration = shot.blendDuration;
+            if (TrackEdit(UI::DragFloat("ブレンド時間", blendDuration, 0.01f, 0.0f, sequence_.timelineLength, "%.2f 秒"))) {
+                shot.blendDuration = (std::max)(blendDuration, 0.0f);
             }
         }
+    }
 
-        // 再生停止中に再生ヘッドを動かした場合は、その時刻の値を即時反映する。
-        if (!isPlaying_ && playheadChanged) {
-            CameraSnapshot evaluated{};
-            if (EvaluateSnapshotAt(playhead_, evaluated)) {
-                ApplyToActiveCamera(context, evaluated);
-            }
-        }
+    void CameraKeyframeEditorModule::DrawSequenceAssets(const CameraEditorContext& context)
+    {
+        UI::Hint("実ゲームで使うデータはこのシーケンス(.json)です。");
 
-        UI::Separator();
-        UI::SectionHeader("シーケンス資産");
-        UI::Hint("実ゲームで使うデータは、このシーケンス(.json)です。ショットはシーケンス内の補助情報です。");
+        ImGui::SetNextItemWidth(240.0f);
         UI::InputText("シーケンス名", clipFileNameBuffer_, sizeof(clipFileNameBuffer_));
 
-        if (ImGui::Button("シーケンスを保存")) {
+        UI::SameLine();
+        if (ImGui::Button("保存")) {
             std::string fileName = clipFileNameBuffer_;
             if (!fileName.empty()) {
                 if (fileName.find(".json") == std::string::npos) {
                     fileName += ".json";
                 }
-
                 JsonManager::GetInstance().CreateJsonDirectory(clipDirectoryPath_);
                 const std::filesystem::path fullPath = std::filesystem::path(clipDirectoryPath_) / fileName;
                 if (SaveCurrentClipToFile(fullPath.string())) {
@@ -537,173 +771,73 @@ namespace CoreEngine
 
         if (clipFileList_.empty()) {
             UI::Hint("保存済みシーケンスがありません。");
-        } else {
-            selectedClipFileIndex_ = std::clamp(selectedClipFileIndex_, -1, static_cast<int>(clipFileList_.size()) - 1);
+            return;
+        }
 
-            if (auto lb = UI::Scope::ListBoxScope("シーケンス一覧", ImVec2(-1.0f, 120.0f))) {
-                for (int i = 0; i < static_cast<int>(clipFileList_.size()); ++i) {
-                    const bool isSelected = (selectedClipFileIndex_ == i);
-                    if (ImGui::Selectable(clipFileList_[i].c_str(), isSelected)) {
-                        selectedClipFileIndex_ = i;
-                    }
+        selectedClipFileIndex_ = std::clamp(selectedClipFileIndex_, -1, static_cast<int>(clipFileList_.size()) - 1);
+
+        if (auto lb = UI::Scope::ListBoxScope("##ClipFiles", ImVec2(-1.0f, 96.0f))) {
+            for (int i = 0; i < static_cast<int>(clipFileList_.size()); ++i) {
+                if (ImGui::Selectable(clipFileList_[i].c_str(), selectedClipFileIndex_ == i)) {
+                    selectedClipFileIndex_ = i;
                 }
             }
+        }
 
-            if (selectedClipFileIndex_ >= 0 && selectedClipFileIndex_ < static_cast<int>(clipFileList_.size())) {
-                if (ImGui::Button("選択シーケンスを読み込み")) {
-                    const std::filesystem::path fullPath = std::filesystem::path(clipDirectoryPath_) / clipFileList_[selectedClipFileIndex_];
-                    PushUndoState();
-                    if (LoadClipFromFile(fullPath.string())) {
-                        // 先頭状態を反映し、読み込み後すぐ内容を確認できるようにする。
-                        CameraSnapshot evaluated{};
-                        if (EvaluateSnapshotAt(playhead_, evaluated)) {
-                            ApplyToActiveCamera(context, evaluated);
-                        }
-                    } else {
-                        // 読み込み失敗時は不要なUndo履歴を取り消す。
-                        if (!undoStack_.empty()) {
-                            undoStack_.pop_back();
-                        }
-                    }
+        if (selectedClipFileIndex_ >= 0 && selectedClipFileIndex_ < static_cast<int>(clipFileList_.size())) {
+            if (ImGui::Button("選択シーケンスを読み込み")) {
+                const std::filesystem::path fullPath =
+                    std::filesystem::path(clipDirectoryPath_) / clipFileList_[selectedClipFileIndex_];
+                PushUndoState();
+                if (LoadClipFromFile(fullPath.string())) {
+                    timeline_.ResetView();
+                    ApplyEvaluatedAt(context, playhead_);
+                } else if (!undoStack_.empty()) {
+                    undoStack_.pop_back();
                 }
             }
         }
     }
 
-    bool CameraKeyframeEditorModule::EvaluateSnapshotAt(float time, CameraSnapshot& outSnapshot) const
+    void CameraKeyframeEditorModule::DrawViewSettings()
     {
-        if (!EvaluateSnapshotRaw(time, outSnapshot)) {
-            return false;
-        }
+        // 一度決めたら触らない設定。毎回使う操作より前には置かない。
+        UI::Widgets::ToggleSwitch("可視化を有効", &viewportVisualizationEnabled_);
+        UI::Widgets::ToggleSwitch("カメラ軌跡", &viewportShowTrajectory_);
+        UI::Widgets::ToggleSwitch("キーフレーム位置", &viewportShowKeyMarkers_);
+        UI::Widgets::ToggleSwitch("注視先への線", &viewportShowDebugTarget_);
+        UI::Widgets::ToggleSwitch("視錐台", &viewportShowFrustum_);
+        UI::Widgets::ToggleSwitch("再生ヘッドの視錐台", &viewportShowPlayheadFrustum_);
+        UI::SliderFloat("非選択キーの濃さ", viewportFrustumIdleAlpha_, 0.1f, 1.0f, "%.2f");
+        UI::Widgets::ToggleSwitch("ビューポートのギズモ", &viewportGizmoEnabled_);
+        UI::Widgets::ToggleSwitch("カメラアイコン", &viewportShowIcons_);
+        UI::SliderFloat("アイコンの大きさ", viewportIconScale_, 0.5f, 2.5f, "%.2f");
+        UI::DragFloat("視錐台の長さ", viewportFrustumLength_, 0.1f, 0.5f, 100.0f, "%.1f m");
 
-        // ショット管理有効時は、ショット定義に従って遷移処理（カット/ブレンド）を適用する。
-        if (!shotsEnabled_ || shots_.empty()) {
-            return true;
-        }
+        UI::DragInt("軌跡サンプル/区間", viewportTrajectorySamplesPerSegment_, 1.0f, 2, 64);
+        UI::DragFloat("マーカーサイズ", viewportMarkerSize_, 0.01f, 0.02f, 2.0f, "%.2f");
+        UI::SliderFloat("軌跡アルファ", viewportTrajectoryAlpha_, 0.1f, 1.0f, "%.2f");
 
-        const float clampedTime = std::clamp(time, 0.0f, timelineLength_);
-        const int shotIndex = FindShotIndexAt(clampedTime);
-        if (shotIndex < 0 || shotIndex >= static_cast<int>(shots_.size())) {
-            return true;
-        }
+        viewportTrajectorySamplesPerSegment_ = std::clamp(viewportTrajectorySamplesPerSegment_, 2, 64);
+        viewportMarkerSize_ = std::clamp(viewportMarkerSize_, 0.02f, 2.0f);
 
-        const Shot& currentShot = shots_[shotIndex];
-        if (!currentShot.enabled || currentShot.transitionType != ShotTransitionType::Blend) {
-            return true;
+        if (ImGui::TreeNode("色")) {
+            UI::ColorEdit3("軌跡", viewportTrajectoryColor_);
+            UI::ColorEdit3("キー", viewportKeyMarkerColor_);
+            UI::ColorEdit3("選択キー", viewportSelectedKeyColor_);
+            UI::ColorEdit3("注視先", viewportDebugTargetColor_);
+            ImGui::TreePop();
         }
-
-        int previousShotIndex = -1;
-        for (int i = shotIndex - 1; i >= 0; --i) {
-            if (shots_[i].enabled) {
-                previousShotIndex = i;
-                break;
-            }
-        }
-
-        if (previousShotIndex < 0) {
-            return true;
-        }
-
-        const Shot& previousShot = shots_[previousShotIndex];
-        const float currentShotDuration = (std::max)(currentShot.endTime - currentShot.startTime, 0.0f);
-        const float blendDuration = std::clamp(currentShot.blendDuration, 0.0f, currentShotDuration);
-        if (blendDuration <= 0.0001f) {
-            return true;
-        }
-
-        const float blendStart = currentShot.startTime;
-        const float blendEnd = blendStart + blendDuration;
-        if (clampedTime < blendStart || clampedTime > blendEnd) {
-            return true;
-        }
-
-        CameraSnapshot fromSnapshot{};
-        if (!EvaluateSnapshotRaw(previousShot.endTime, fromSnapshot)) {
-            return true;
-        }
-
-        CameraSnapshot toSnapshot{};
-        if (!EvaluateSnapshotRaw(clampedTime, toSnapshot)) {
-            return true;
-        }
-
-        const float blendT = std::clamp((clampedTime - blendStart) / blendDuration, 0.0f, 1.0f);
-        outSnapshot = InterpolateSnapshot(fromSnapshot, toSnapshot, blendT);
-        return true;
     }
 
-    bool CameraKeyframeEditorModule::EvaluateSnapshotRaw(float time, CameraSnapshot& outSnapshot) const
+    void CameraKeyframeEditorModule::DrawStatusBar()
     {
-        if (keyframes_.empty()) {
-            return false;
-        }
-
-        if (keyframes_.size() == 1) {
-            outSnapshot = keyframes_.front().snapshot;
-            return true;
-        }
-
-        const float clampedTime = std::clamp(time, 0.0f, timelineLength_);
-
-        // 範囲外は端のキーフレームを返す。
-        if (clampedTime <= keyframes_.front().time) {
-            outSnapshot = keyframes_.front().snapshot;
-            return true;
-        }
-        if (clampedTime >= keyframes_.back().time) {
-            outSnapshot = keyframes_.back().snapshot;
-            return true;
-        }
-
-        // 区間を探索して線形補間する。
-        for (size_t i = 0; i + 1 < keyframes_.size(); ++i) {
-            const Keyframe& from = keyframes_[i];
-            const Keyframe& to = keyframes_[i + 1];
-
-            if (clampedTime >= from.time && clampedTime <= to.time) {
-                const float span = to.time - from.time;
-                if (span <= 0.0001f) {
-                    outSnapshot = from.snapshot;
-                    return true;
-                }
-
-                const float t = (clampedTime - from.time) / span;
-                outSnapshot = InterpolateSnapshot(from.snapshot, to.snapshot, t);
-                return true;
-            }
-        }
-
-        outSnapshot = keyframes_.back().snapshot;
-        return true;
-    }
-
-    CameraSnapshot CameraKeyframeEditorModule::InterpolateSnapshot(const CameraSnapshot& from, const CameraSnapshot& to, float t) const
-    {
-        CameraSnapshot result{};
-        const EasingUtil::Type easingType = GetSelectedEasingType();
-
-        result.position = EasingUtil::LerpVector3(from.position, to.position, t, easingType);
-        result.rotation = Vector3(
-            EasingUtil::LerpAngle(from.rotation.x, to.rotation.x, t, easingType),
-            EasingUtil::LerpAngle(from.rotation.y, to.rotation.y, t, easingType),
-            EasingUtil::LerpAngle(from.rotation.z, to.rotation.z, t, easingType));
-        result.scale = EasingUtil::LerpVector3(from.scale, to.scale, t, easingType);
-        result.parameters.projectionType = from.parameters.projectionType;
-
-        result.parameters.fov = EasingUtil::Lerp(from.parameters.fov, to.parameters.fov, t, easingType);
-        result.parameters.nearClip = EasingUtil::Lerp(from.parameters.nearClip, to.parameters.nearClip, t, easingType);
-        result.parameters.farClip = EasingUtil::Lerp(from.parameters.farClip, to.parameters.farClip, t, easingType);
-        result.parameters.aspectRatio = EasingUtil::Lerp(from.parameters.aspectRatio, to.parameters.aspectRatio, t, easingType);
-        return result;
-    }
-
-    EasingUtil::Type CameraKeyframeEditorModule::GetSelectedEasingType() const
-    {
-        if (easingTypeIndex_ < 0 || easingTypeIndex_ >= kEasingOptionCount) {
-            return EasingUtil::Type::Linear;
-        }
-
-        return kEasingOptions[easingTypeIndex_].type;
+        UI::Separator();
+        ImGui::TextDisabled("キー %d   ショット %d   イベント %d   |   %s",
+            static_cast<int>(sequence_.keyframes.size()),
+            static_cast<int>(sequence_.shots.size()),
+            static_cast<int>(sequence_.events.size()),
+            clipDirectoryPath_.c_str());
     }
 
     bool CameraKeyframeEditorModule::CaptureFromActiveCamera(const CameraEditorContext& context, CameraSnapshot& outSnapshot) const
@@ -729,6 +863,38 @@ namespace CoreEngine
         observedSnapshot_ = snapshot;
         hasObservedSnapshot_ = true;
         return true;
+    }
+
+    void CameraKeyframeEditorModule::ApplyEvaluatedAt(const CameraEditorContext& context, float time)
+    {
+        const CameraSequenceAimContext aimContext = MakeAimContext(context);
+
+        CameraSnapshot evaluated{};
+        if (CameraSequenceEvaluator::Evaluate(sequence_, time, evaluated, &aimContext)) {
+            ApplyToActiveCamera(context, evaluated);
+        }
+    }
+
+    CameraSequenceAimContext CameraKeyframeEditorModule::MakeAimContext(const CameraEditorContext& context) const
+    {
+        // 編集中も再生時と同じ解決をしないと、エディタで見た向きと
+        // ゲーム中の向きが食い違う。
+        CameraSequenceAimContext aimContext{};
+        GameObjectManager* objects = context.gameObjectManager;
+        if (!objects) {
+            return aimContext;
+        }
+
+        aimContext.resolveObject = [objects](const std::string& name, Vector3& outPosition) {
+            for (const auto& object : objects->GetAllObjects()) {
+                if (object && object->GetName() == name) {
+                    outPosition = object->GetWorldPosition();
+                    return true;
+                }
+            }
+            return false;
+        };
+        return aimContext;
     }
 
     bool CameraKeyframeEditorModule::IsSameSnapshot(const CameraSnapshot& lhs, const CameraSnapshot& rhs) const
@@ -806,16 +972,16 @@ namespace CoreEngine
         }
 
         const int nearest = FindNearestKeyframeIndex(playhead_);
-        if (nearest >= 0 && std::fabs(keyframes_[nearest].time - playhead_) <= updateThreshold_) {
-            keyframes_[nearest].snapshot = current;
+        if (nearest >= 0 && std::fabs(sequence_.keyframes[nearest].time - playhead_) <= updateThreshold_) {
+            sequence_.keyframes[nearest].snapshot = current;
             selectedIndex_ = nearest;
         } else {
-            Keyframe key{};
+            CameraSequenceKeyframe key{};
             key.time = playhead_;
             key.snapshot = current;
-            keyframes_.push_back(key);
-            std::sort(keyframes_.begin(), keyframes_.end(),
-                [](const Keyframe& a, const Keyframe& b) { return a.time < b.time; });
+            sequence_.keyframes.push_back(key);
+            std::sort(sequence_.keyframes.begin(), sequence_.keyframes.end(),
+                [](const CameraSequenceKeyframe& a, const CameraSequenceKeyframe& b) { return a.time < b.time; });
 
             selectedIndex_ = FindNearestKeyframeIndex(playhead_);
         }
@@ -823,62 +989,469 @@ namespace CoreEngine
         observedSnapshot_ = current;
     }
 
-    void CameraKeyframeEditorModule::DrawViewportVisualization()
+    void CameraKeyframeEditorModule::DrawEventTrack()
     {
-        if (!viewportVisualizationEnabled_ || keyframes_.empty()) {
+        UI::Hint("再生ヘッドがこの時刻を跨いだ瞬間に発火します。ゲーム中の再生でも同じです。");
+
+        if (ImGui::Button("現在位置にイベントを追加")) {
+            PushUndoState();
+
+            CameraSequenceEvent event{};
+            event.time = playhead_;
+            event.type = CameraSequenceEventType::Shake;
+            // 既定のプリセット名を入れておく。空のまま置かれて
+            // 「何も起きない」と誤解されるのを防ぐ。
+            const auto& presets = CameraShake::GetPresetLibrary().GetAll();
+            event.name = presets.empty() ? std::string() : presets.front().name;
+
+            sequence_.events.push_back(event);
+            sequence_.SortEvents();
+            selectedEventIndex_ = -1;
+            for (int i = 0; i < static_cast<int>(sequence_.events.size()); ++i) {
+                if (sequence_.events[i].time == event.time && sequence_.events[i].name == event.name) {
+                    selectedEventIndex_ = i;
+                    break;
+                }
+            }
+            editingEventNameIndex_ = -1;
+        }
+
+        UI::SameLine();
+        if (ImGui::Button("選択イベントを削除")) {
+            if (selectedEventIndex_ >= 0 && selectedEventIndex_ < static_cast<int>(sequence_.events.size())) {
+                PushUndoState();
+                sequence_.events.erase(sequence_.events.begin() + selectedEventIndex_);
+                selectedEventIndex_ = sequence_.events.empty()
+                    ? -1
+                    : std::clamp(selectedEventIndex_, 0, static_cast<int>(sequence_.events.size()) - 1);
+                editingEventNameIndex_ = -1;
+            }
+        }
+
+        if (sequence_.events.empty()) {
+            UI::Hint("イベントがありません。");
+            return;
+        }
+
+        selectedEventIndex_ = std::clamp(selectedEventIndex_, -1, static_cast<int>(sequence_.events.size()) - 1);
+
+        if (auto lb = UI::Scope::ListBoxScope("イベント一覧", ImVec2(-1.0f, 110.0f))) {
+            for (int i = 0; i < static_cast<int>(sequence_.events.size()); ++i) {
+                const CameraSequenceEvent& event = sequence_.events[i];
+                const int typeIndex = std::clamp(static_cast<int>(event.type), 0, kEventTypeLabelCount - 1);
+
+                char label[256]{};
+                std::snprintf(label, sizeof(label), "%.2f秒  %s  %s%s##event%d",
+                    event.time,
+                    kEventTypeLabels[typeIndex],
+                    event.name.empty() ? "(名前なし)" : event.name.c_str(),
+                    event.enabled ? "" : "  (無効)",
+                    i);
+
+                if (ImGui::Selectable(label, selectedEventIndex_ == i)) {
+                    selectedEventIndex_ = i;
+                    editingEventNameIndex_ = -1;
+                }
+            }
+        }
+
+        if (selectedEventIndex_ < 0 || selectedEventIndex_ >= static_cast<int>(sequence_.events.size())) {
+            return;
+        }
+
+        CameraSequenceEvent& event = sequence_.events[selectedEventIndex_];
+
+        bool enabled = event.enabled;
+        if (UI::Widgets::ToggleSwitch("有効", &enabled)) {
+            PushUndoState();
+            event.enabled = enabled;
+        }
+
+        float time = event.time;
+        if (TrackEdit(UI::DragFloat("時刻 (秒)", time, 0.02f, 0.0f, sequence_.timelineLength, "%.2f"))) {
+            event.time = std::clamp(time, 0.0f, sequence_.timelineLength);
+            // 並べ替えると添字がずれるので、同じイベントを選び直す。
+            const CameraSequenceEvent moved = event;
+            sequence_.SortEvents();
+            for (int i = 0; i < static_cast<int>(sequence_.events.size()); ++i) {
+                if (sequence_.events[i].time == moved.time && sequence_.events[i].name == moved.name) {
+                    selectedEventIndex_ = i;
+                    break;
+                }
+            }
+            editingEventNameIndex_ = -1;
+            return;
+        }
+
+        int typeIndex = std::clamp(static_cast<int>(event.type), 0, kEventTypeLabelCount - 1);
+        if (ImGui::BeginCombo("種類", kEventTypeLabels[typeIndex])) {
+            for (int i = 0; i < kEventTypeLabelCount; ++i) {
+                const bool selected = (i == typeIndex);
+                if (ImGui::Selectable(kEventTypeLabels[i], selected)) {
+                    PushUndoState();
+                    event.type = static_cast<CameraSequenceEventType>(i);
+                }
+                if (selected) {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+        }
+
+        switch (event.type) {
+        case CameraSequenceEventType::Shake: {
+            const auto& presets = CameraShake::GetPresetLibrary().GetAll();
+            const char* preview = event.name.empty() ? "未選択" : event.name.c_str();
+
+            if (ImGui::BeginCombo("シェイクプリセット", preview)) {
+                for (const auto& preset : presets) {
+                    const bool selected = (preset.name == event.name);
+                    if (ImGui::Selectable(preset.name.c_str(), selected)) {
+                        PushUndoState();
+                        event.name = preset.name;
+                    }
+                    if (selected) {
+                        ImGui::SetItemDefaultFocus();
+                    }
+                }
+                ImGui::EndCombo();
+            }
+
+            if (!event.name.empty() && !CameraShake::GetPresetLibrary().Find(event.name)) {
+                ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.3f, 1.0f),
+                    "プリセットが見つかりません。再生しても何も起きません。");
+            }
+
+            float scale = event.value;
+            if (TrackEdit(UI::SliderFloat("強さ倍率", scale, 0.0f, 3.0f, "%.2f"))) {
+                event.value = scale;
+            }
+
+            if (ImGui::Button("この揺れを試す")) {
+                CameraShake::PlayPreset(event.name, event.value);
+            }
+            break;
+        }
+
+        case CameraSequenceEventType::Trauma: {
+            float amount = event.value;
+            if (TrackEdit(UI::SliderFloat("加算量", amount, 0.0f, 1.0f, "%.2f"))) {
+                event.value = amount;
+            }
+            if (ImGui::Button("試す")) {
+                CameraShake::AddTrauma(event.value);
+            }
+            break;
+        }
+
+        case CameraSequenceEventType::TimeScale: {
+            float scale = event.value;
+            if (TrackEdit(UI::SliderFloat("時間スケール", scale, 0.0f, 2.0f, "%.2f"))) {
+                event.value = scale;
+            }
+            float duration = event.duration;
+            if (TrackEdit(UI::DragFloat("継続 (秒)", duration, 0.01f, 0.0f, 10.0f, "%.2f"))) {
+                event.duration = (std::max)(duration, 0.0f);
+            }
+            UI::Hint("継続が過ぎると等倍へ戻ります。");
+            break;
+        }
+
+        case CameraSequenceEventType::Callback: {
+            if (editingEventNameIndex_ != selectedEventIndex_) {
+                std::snprintf(eventNameBuffer_, sizeof(eventNameBuffer_), "%s", event.name.c_str());
+                editingEventNameIndex_ = selectedEventIndex_;
+            }
+            if (UI::InputText("イベント名", eventNameBuffer_, sizeof(eventNameBuffer_))) {
+                event.name = eventNameBuffer_;
+            }
+            float value = event.value;
+            if (TrackEdit(UI::DragFloat("値", value, 0.05f, -1000.0f, 1000.0f, "%.2f"))) {
+                event.value = value;
+            }
+            UI::Hint("CameraSequenceCallbackEvent として EventBus へ流れます。");
+            break;
+        }
+        }
+    }
+
+    void CameraKeyframeEditorModule::DrawViewportVisualization(const CameraEditorContext& context)
+    {
+        if (!viewportVisualizationEnabled_ || sequence_.keyframes.empty()) {
             return;
         }
 
         auto& lineManager = LineManager::GetInstance();
+        const CameraSequenceAimContext aimContext = MakeAimContext(context);
 
-        if (viewportShowTrajectory_ && keyframes_.size() >= 2) {
+        // スナップショットの position はそのまま視点のワールド座標（軌道パラメータは持たない）。
+        if (viewportShowTrajectory_ && sequence_.keyframes.size() >= 2) {
             // 区間ごとの補間結果を細かくサンプルし、Sceneビュー上で軌跡として可視化する。
-            for (size_t i = 0; i + 1 < keyframes_.size(); ++i) {
-                const Keyframe& from = keyframes_[i];
-                const Keyframe& to = keyframes_[i + 1];
+            for (size_t i = 0; i + 1 < sequence_.keyframes.size(); ++i) {
+                const CameraSequenceKeyframe& from = sequence_.keyframes[i];
+                const CameraSequenceKeyframe& to = sequence_.keyframes[i + 1];
 
                 if (to.time <= from.time) {
                     continue;
                 }
 
-                Vector3 prev = GetSnapshotWorldPosition(from.snapshot);
+                // 実際の評価をそのままサンプルする。区間ごとの補間方式・緩急が
+                // 描かれる軌跡へ反映されるので、見た目と再生結果が食い違わない。
+                Vector3 prev = from.snapshot.position;
                 for (int sampleIndex = 1; sampleIndex <= viewportTrajectorySamplesPerSegment_; ++sampleIndex) {
                     const float localT = static_cast<float>(sampleIndex) / static_cast<float>(viewportTrajectorySamplesPerSegment_);
-                    CameraSnapshot interpolated = InterpolateSnapshot(from.snapshot, to.snapshot, localT);
-                    const Vector3 current = GetSnapshotWorldPosition(interpolated);
-                    lineManager.DrawLine(prev, current, viewportTrajectoryColor_, viewportTrajectoryAlpha_);
-                    prev = current;
+                    const float sampleTime = from.time + (to.time - from.time) * localT;
+
+                    CameraSnapshot sampled{};
+                    if (!CameraSequenceEvaluator::EvaluateRaw(sequence_, sampleTime, sampled, &aimContext)) {
+                        break;
+                    }
+
+                    lineManager.DrawLine(prev, sampled.position, viewportTrajectoryColor_, viewportTrajectoryAlpha_, false);
+                    prev = sampled.position;
                 }
             }
         }
 
         if (viewportShowKeyMarkers_) {
             // キーフレーム位置をマーカー表示し、選択中キーを色で区別する。
-            for (int i = 0; i < static_cast<int>(keyframes_.size()); ++i) {
-                const Vector3 position = GetSnapshotWorldPosition(keyframes_[i].snapshot);
+            for (int i = 0; i < static_cast<int>(sequence_.keyframes.size()); ++i) {
+                const Vector3 position = sequence_.keyframes[i].snapshot.position;
                 const Vector3 color = (i == selectedIndex_) ? viewportSelectedKeyColor_ : viewportKeyMarkerColor_;
-                lineManager.DrawWireSphere(position, viewportMarkerSize_, 8, color, 0.95f);
+
+                // ワイヤ球は深度テストを切れないので、3 軸の十字で描く。
+                // 地形の向こうにあるキーも見えないと、位置合わせができない。
+                const float size = viewportMarkerSize_;
+                lineManager.DrawLine(position - Vector3{ size, 0.0f, 0.0f }, position + Vector3{ size, 0.0f, 0.0f }, color, 0.95f, false);
+                lineManager.DrawLine(position - Vector3{ 0.0f, size, 0.0f }, position + Vector3{ 0.0f, size, 0.0f }, color, 0.95f, false);
+                lineManager.DrawLine(position - Vector3{ 0.0f, 0.0f, size }, position + Vector3{ 0.0f, 0.0f, size }, color, 0.95f, false);
+            }
+        }
+
+        if (viewportShowFrustum_) {
+            // 選択キーは濃く、他は薄く。どのキーを触っているのかを色で分ける。
+            for (int i = 0; i < static_cast<int>(sequence_.keyframes.size()); ++i) {
+                const bool selected = (i == selectedIndex_);
+                DrawKeyFrustum(sequence_.keyframes[i], aimContext,
+                    selected ? viewportSelectedKeyColor_ : viewportKeyMarkerColor_,
+                    selected ? 0.95f : viewportFrustumIdleAlpha_);
+            }
+        }
+
+        if (viewportShowPlayheadFrustum_) {
+            // 再生ヘッド位置の構図。キーの間でも「いま何が写っているか」が読めるので、
+            // スクラブしながら画を詰めるときに効く。
+            CameraSnapshot current{};
+            if (CameraSequenceEvaluator::Evaluate(sequence_, playhead_, current, &aimContext)) {
+                DrawFrustumFromPose(current.position, current.rotation,
+                    current.parameters.fov, current.parameters.aspectRatio,
+                    Vector3{ 0.95f, 0.35f, 0.32f }, 0.95f);
+            }
+        }
+
+        if (viewportShowDebugTarget_) {
+            // 注視を使っているキーは、視点から注視先へ線を引く。
+            // どこを見ているつもりのキーなのかが、画面を切り替えずに分かる。
+            for (const auto& key : sequence_.keyframes) {
+                Vector3 target{};
+                if (!CameraSequenceEvaluator::ResolveAimTarget(key, &aimContext, target)) {
+                    continue;
+                }
+
+                lineManager.DrawLine(key.snapshot.position, target, viewportDebugTargetColor_, 0.7f, false);
+                                const float targetSize = viewportMarkerSize_ * 0.75f;
+                lineManager.DrawLine(target - Vector3{ targetSize, 0.0f, 0.0f }, target + Vector3{ targetSize, 0.0f, 0.0f }, viewportDebugTargetColor_, 0.95f, false);
+                lineManager.DrawLine(target - Vector3{ 0.0f, targetSize, 0.0f }, target + Vector3{ 0.0f, targetSize, 0.0f }, viewportDebugTargetColor_, 0.95f, false);
             }
         }
     }
 
-    Vector3 CameraKeyframeEditorModule::GetSnapshotWorldPosition(const CameraSnapshot& snapshot) const
+    void CameraKeyframeEditorModule::DrawKeyFrustum(const CameraSequenceKeyframe& key,
+        const CameraSequenceAimContext& aim, const Vector3& color, float alpha) const
     {
-        // スナップショットは常に視点ワールド座標を持つ（軌道パラメータは持たない）
-        return snapshot.position;
+        // 注視キーは保存された回転ではなく、注視先を向いた回転で描く。
+        // そうしないと画に写る範囲が実際の再生とずれる。
+        Vector3 rotation = key.snapshot.rotation;
+        Vector3 target{};
+        if (CameraSequenceEvaluator::ResolveAimTarget(key, &aim, target)) {
+            rotation = CameraSequenceEvaluator::LookRotation(key.snapshot.position, target, key.aimRoll);
+        }
+
+        DrawFrustumFromPose(key.snapshot.position, rotation,
+            key.snapshot.parameters.fov, key.snapshot.parameters.aspectRatio, color, alpha);
     }
 
+    void CameraKeyframeEditorModule::DrawFrustumFromPose(const Vector3& position,
+        const Vector3& rotation, float fov, float aspectRatio,
+        const Vector3& color, float alpha) const
+    {
+        const Matrix4x4 basis = MathCore::Matrix::MakeAffine(
+            Vector3{ 1.0f, 1.0f, 1.0f }, rotation, Vector3{ 0.0f, 0.0f, 0.0f });
+        const Vector3 forward = basis.GetAxisZ();
+        const Vector3 right = basis.GetAxisX();
+        const Vector3 up = basis.GetAxisY();
+
+        // 遠クリップまで描くと線が画面を埋めるので、見て分かる長さで打ち切る。
+        const float length = viewportFrustumLength_;
+        const float halfHeight = std::tan(fov * 0.5f) * length;
+        // アスペクトは 0（自動）のことが多いので、読めれば十分な 16:9 で描く。
+        const float aspect = (aspectRatio > 0.0f) ? aspectRatio : (16.0f / 9.0f);
+        const float halfWidth = halfHeight * aspect;
+
+        const Vector3 origin = position;
+        const Vector3 center = origin + forward * length;
+        const Vector3 corners[4] = {
+            center + up * halfHeight - right * halfWidth,
+            center + up * halfHeight + right * halfWidth,
+            center - up * halfHeight + right * halfWidth,
+            center - up * halfHeight - right * halfWidth
+        };
+
+        auto& lineManager = LineManager::GetInstance();
+        for (int i = 0; i < 4; ++i) {
+            // 地形に隠れると構図の確認にならないので、常に手前へ描く。
+            lineManager.DrawLine(origin, corners[i], color, alpha, false);
+            lineManager.DrawLine(corners[i], corners[(i + 1) % 4], color, alpha, false);
+        }
+    }
+
+    void CameraKeyframeEditorModule::DrawViewportOverlay(const CameraEditorContext& context,
+        const Camera& viewCamera, const CameraEditorViewport& viewport)
+    {
+        if (viewportShowIcons_ && viewport.IsValid()) {
+            DrawKeyIcons(context, viewCamera, viewport);
+        }
+
+        DrawKeyGizmo(context, viewCamera);
+    }
+
+    void CameraKeyframeEditorModule::DrawKeyIcons(const CameraEditorContext& context,
+        const Camera& viewCamera, const CameraEditorViewport& viewport)
+    {
+        if (sequence_.keyframes.empty()) {
+            return;
+        }
+
+        ImDrawList* draw = ImGui::GetWindowDrawList();
+        const CameraSequenceAimContext aimContext = MakeAimContext(context);
+        const float scale = viewportIconScale_;
+        const float hitRadius = CameraIconOverlay::GetHitRadius(scale);
+
+        const ImVec2 mouse = ImGui::GetMousePos();
+        int clickedKey = -1;
+        float clickedDistance = hitRadius;
+
+        for (int i = 0; i < static_cast<int>(sequence_.keyframes.size()); ++i) {
+            const CameraSequenceKeyframe& key = sequence_.keyframes[i];
+
+            float screenX = 0.0f;
+            float screenY = 0.0f;
+            if (!CameraIconOverlay::WorldToScreen(key.snapshot.position, viewCamera, viewport, screenX, screenY)) {
+                continue;
+            }
+
+            // ビューポートの外へはみ出したものは描かない。ImGui のクリップに任せると
+            // 隣のパネルの上にアイコンが乗る。
+            if (screenX < viewport.x - hitRadius || screenX > viewport.x + viewport.width + hitRadius
+                || screenY < viewport.y - hitRadius || screenY > viewport.y + viewport.height + hitRadius) {
+                continue;
+            }
+
+            // レンズが向く方向は、そのキーが実際に撮る向き。注視キーは注視先を向いた
+            // 回転で求めないと、アイコンの向きと再生結果がずれる。
+            Vector3 rotation = key.snapshot.rotation;
+            Vector3 target{};
+            if (CameraSequenceEvaluator::ResolveAimTarget(key, &aimContext, target)) {
+                rotation = CameraSequenceEvaluator::LookRotation(key.snapshot.position, target, key.aimRoll);
+            }
+            const Matrix4x4 basis = MathCore::Matrix::MakeAffine(
+                Vector3{ 1.0f, 1.0f, 1.0f }, rotation, Vector3{ 0.0f, 0.0f, 0.0f });
+            const float angle = CameraIconOverlay::ComputeScreenAngle(
+                key.snapshot.position, basis.GetAxisZ(), viewCamera, viewport);
+
+            const bool selected = (i == selectedIndex_);
+            const ImU32 fill = selected ? IM_COL32(240, 180, 64, 255) : IM_COL32(120, 170, 235, 235);
+            const ImU32 outline = selected ? IM_COL32(70, 44, 6, 255) : IM_COL32(16, 26, 40, 255);
+
+            CameraIconOverlay::DrawCameraGlyph(draw, screenX, screenY, angle,
+                selected ? scale * 1.2f : scale, fill, outline);
+
+            // 番号と名前。アイコンだけではどのキーか分からない。
+            char label[160]{};
+            if (key.label.empty()) {
+                std::snprintf(label, sizeof(label), "%d", i + 1);
+            } else {
+                std::snprintf(label, sizeof(label), "%d %s", i + 1, key.label.c_str());
+            }
+            const float labelY = screenY + CameraIconOverlay::GetHitRadius(scale) + 2.0f;
+            draw->AddText(ImVec2(screenX - 3.0f + 1.0f, labelY + 1.0f), IM_COL32(0, 0, 0, 160), label);
+            draw->AddText(ImVec2(screenX - 3.0f, labelY),
+                selected ? IM_COL32(255, 226, 160, 255) : IM_COL32(210, 224, 240, 235), label);
+
+            const float dx = mouse.x - screenX;
+            const float dy = mouse.y - screenY;
+            const float distance = std::sqrt(dx * dx + dy * dy);
+            if (distance <= clickedDistance) {
+                clickedDistance = distance;
+                clickedKey = i;
+            }
+        }
+
+        // ギズモを掴んでいる最中は選択を変えない。掴んだまま別のキーへ移ると
+        // ドラッグの対象が入れ替わってしまう。
+        if (clickedKey >= 0 && !Gizmo::IsUsing() && !Gizmo::IsOver()
+            && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+            selectedIndex_ = clickedKey;
+            playhead_ = sequence_.keyframes[clickedKey].time;
+            ApplyEvaluatedAt(context, playhead_);
+        }
+    }
+
+    void CameraKeyframeEditorModule::DrawKeyGizmo(const CameraEditorContext& context, const Camera& viewCamera)
+    {
+        if (!viewportGizmoEnabled_
+            || selectedIndex_ < 0 || selectedIndex_ >= static_cast<int>(sequence_.keyframes.size())) {
+            return;
+        }
+
+        CameraSequenceKeyframe& key = sequence_.keyframes[selectedIndex_];
+
+        // 注視点キーは注視先を掴めたほうが早い。位置は数値でも追えるが、
+        // 「どこを見るか」は空間で決めたい。
+        const bool editAimPoint = (key.aimMode == CameraSequenceAimMode::LookAtPoint);
+        Vector3 handle = editAimPoint ? (key.aimPoint + key.aimOffset) : key.snapshot.position;
+        const Vector3 before = handle;
+
+        if (!Gizmo::ManipulatePoint(handle, &viewCamera)) {
+            gizmoDragging_ = false;
+            return;
+        }
+
+        // 掴んだ最初のフレームだけ履歴を積む。毎フレーム積むと履歴が埋まる。
+        if (!gizmoDragging_) {
+            gizmoDragging_ = true;
+            PushUndoState();
+        }
+
+        if (editAimPoint) {
+            key.aimPoint += (handle - before);
+        } else {
+            key.snapshot.position = handle;
+        }
+
+        ApplyEvaluatedAt(context, playhead_);
+    }
     int CameraKeyframeEditorModule::FindNearestKeyframeIndex(float time) const
     {
-        if (keyframes_.empty()) {
+        if (sequence_.keyframes.empty()) {
             return -1;
         }
 
         int bestIndex = 0;
-        float bestDistance = std::fabs(keyframes_[0].time - time);
+        float bestDistance = std::fabs(sequence_.keyframes[0].time - time);
 
-        for (int i = 1; i < static_cast<int>(keyframes_.size()); ++i) {
-            const float distance = std::fabs(keyframes_[i].time - time);
+        for (int i = 1; i < static_cast<int>(sequence_.keyframes.size()); ++i) {
+            const float distance = std::fabs(sequence_.keyframes[i].time - time);
             if (distance < bestDistance) {
                 bestDistance = distance;
                 bestIndex = i;
@@ -888,28 +1461,11 @@ namespace CoreEngine
         return bestIndex;
     }
 
-    int CameraKeyframeEditorModule::FindShotIndexAt(float time) const
-    {
-        int found = -1;
-        for (int i = 0; i < static_cast<int>(shots_.size()); ++i) {
-            const Shot& shot = shots_[i];
-            if (!shot.enabled) {
-                continue;
-            }
-
-            if (time >= shot.startTime && time <= shot.endTime) {
-                found = i;
-                break;
-            }
-        }
-        return found;
-    }
-
     int CameraKeyframeEditorModule::FindPreviousKeyframeIndex(float time) const
     {
         int index = -1;
-        for (int i = 0; i < static_cast<int>(keyframes_.size()); ++i) {
-            if (keyframes_[i].time <= time) {
+        for (int i = 0; i < static_cast<int>(sequence_.keyframes.size()); ++i) {
+            if (sequence_.keyframes[i].time <= time) {
                 index = i;
             } else {
                 break;
@@ -920,8 +1476,8 @@ namespace CoreEngine
 
     int CameraKeyframeEditorModule::FindNextKeyframeIndex(float time) const
     {
-        for (int i = 0; i < static_cast<int>(keyframes_.size()); ++i) {
-            if (keyframes_[i].time >= time) {
+        for (int i = 0; i < static_cast<int>(sequence_.keyframes.size()); ++i) {
+            if (sequence_.keyframes[i].time >= time) {
                 return i;
             }
         }
@@ -930,79 +1486,29 @@ namespace CoreEngine
 
     void CameraKeyframeEditorModule::RefreshClipFileList()
     {
-        clipFileList_ = CameraSequenceAssetIO::GetSequenceFileList(clipDirectoryPath_);
+        clipFileList_ = CameraSequenceIO::GetSequenceFileList(clipDirectoryPath_);
         needRefreshClipFileList_ = false;
     }
 
     bool CameraKeyframeEditorModule::SaveCurrentClipToFile(const std::string& filePath) const
     {
-        CameraSequenceAsset asset{};
-        asset.timelineLength = timelineLength_;
-        asset.easingTypeIndex = easingTypeIndex_;
-        asset.shotsEnabled = shotsEnabled_;
-
-        for (const auto& key : keyframes_) {
-            CameraSequenceAsset::Keyframe sequenceKey{};
-            sequenceKey.time = key.time;
-            sequenceKey.snapshot = key.snapshot;
-            asset.keyframes.push_back(sequenceKey);
-        }
-
-        for (const auto& shot : shots_) {
-            CameraSequenceShot sequenceShot{};
-            sequenceShot.name = shot.name;
-            sequenceShot.startTime = shot.startTime;
-            sequenceShot.endTime = shot.endTime;
-            sequenceShot.enabled = shot.enabled;
-            sequenceShot.transitionType = (shot.transitionType == ShotTransitionType::Blend)
-                ? CameraSequenceTransitionType::Blend
-                : CameraSequenceTransitionType::Cut;
-            sequenceShot.blendDuration = shot.blendDuration;
-            asset.shots.push_back(sequenceShot);
-        }
-
-        return CameraSequenceAssetIO::Save(filePath, asset);
+        // 編集中のタイムラインがシーケンスそのものなので、そのまま渡すだけでよい。
+        return CameraSequenceIO::Save(filePath, sequence_);
     }
 
     bool CameraKeyframeEditorModule::LoadClipFromFile(const std::string& filePath)
     {
         // 読み込み成功時だけ内部状態を差し替える。失敗しても編集中のタイムラインは壊さない
         CameraSequenceAsset asset{};
-        if (!CameraSequenceAssetIO::Load(filePath, asset)) {
+        if (!CameraSequenceIO::Load(filePath, asset)) {
             return false;
         }
 
-        timelineLength_ = asset.timelineLength;
-        easingTypeIndex_ = asset.easingTypeIndex;
-        shotsEnabled_ = asset.shotsEnabled;
+        // 時刻の並び・範囲は CameraSequenceIO::Load が整えて返す。
+        sequence_ = std::move(asset);
 
-        keyframes_.clear();
-        for (const auto& key : asset.keyframes) {
-            Keyframe localKey{};
-            localKey.time = key.time;
-            localKey.snapshot = key.snapshot;
-            keyframes_.push_back(localKey);
-        }
-
-        std::sort(keyframes_.begin(), keyframes_.end(),
-            [](const Keyframe& a, const Keyframe& b) { return a.time < b.time; });
-
-        shots_.clear();
-        for (const auto& shot : asset.shots) {
-            Shot localShot{};
-            localShot.name = shot.name;
-            localShot.startTime = shot.startTime;
-            localShot.endTime = shot.endTime;
-            localShot.enabled = shot.enabled;
-            localShot.transitionType = (shot.transitionType == CameraSequenceTransitionType::Blend)
-                ? ShotTransitionType::Blend
-                : ShotTransitionType::Cut;
-            localShot.blendDuration = shot.blendDuration;
-            shots_.push_back(localShot);
-        }
-
-        selectedIndex_ = keyframes_.empty() ? -1 : 0;
-        selectedShotIndex_ = shots_.empty() ? -1 : 0;
+        selectedIndex_ = sequence_.keyframes.empty() ? -1 : 0;
+        selectedShotIndex_ = sequence_.shots.empty() ? -1 : 0;
         editingShotNameIndex_ = -1;
         playhead_ = 0.0f;
         isPlaying_ = false;
@@ -1012,43 +1518,70 @@ namespace CoreEngine
     CameraKeyframeEditorModule::EditorState CameraKeyframeEditorModule::CaptureEditorState() const
     {
         EditorState state{};
-        state.keyframes = keyframes_;
-        state.shots = shots_;
-        state.timelineLength = timelineLength_;
+        state.sequence = sequence_;
         state.playhead = playhead_;
         state.selectedIndex = selectedIndex_;
         state.selectedShotIndex = selectedShotIndex_;
-        state.isPlaying = isPlaying_;
-        state.shotsEnabled = shotsEnabled_;
-        state.loopPlayback = loopPlayback_;
-        state.playbackSpeed = playbackSpeed_;
-        state.easingTypeIndex = easingTypeIndex_;
         return state;
     }
 
     void CameraKeyframeEditorModule::ApplyEditorState(const EditorState& state)
     {
-        keyframes_ = state.keyframes;
-        shots_ = state.shots;
-        timelineLength_ = state.timelineLength;
+        sequence_ = state.sequence;
         playhead_ = state.playhead;
         selectedIndex_ = state.selectedIndex;
         selectedShotIndex_ = state.selectedShotIndex;
-        isPlaying_ = state.isPlaying;
-        shotsEnabled_ = state.shotsEnabled;
-        loopPlayback_ = state.loopPlayback;
-        playbackSpeed_ = state.playbackSpeed;
-        easingTypeIndex_ = state.easingTypeIndex;
         editingShotNameIndex_ = -1;
     }
 
     void CameraKeyframeEditorModule::PushUndoState()
     {
-        undoStack_.push_back(CaptureEditorState());
+        PushUndoState(CaptureEditorState());
+    }
+
+    void CameraKeyframeEditorModule::PushUndoState(const EditorState& state)
+    {
+        undoStack_.push_back(state);
         if (undoStack_.size() > maxHistoryCount_) {
             undoStack_.erase(undoStack_.begin());
         }
         redoStack_.clear();
+    }
+
+    bool CameraKeyframeEditorModule::TrackEdit(bool changed)
+    {
+        // グループになっている DragFloat3 でも、ImGui 側が掴んでいる要素の ID を
+        // 最後の項目として転送してくれるので、この 2 つで足りる。
+        const unsigned int itemId = static_cast<unsigned int>(ImGui::GetItemID());
+        const bool active = ImGui::IsItemActive();
+
+        if (active && itemId != 0 && itemId != activeEditItemId_) {
+            // 掴み始め。ここではまだ積まない。掴んだだけで動かさなかった操作を
+            // 履歴に残すと、Ctrl+Z が「何も変わらない 1 手」になってしまう。
+            activeEditItemId_ = itemId;
+            pendingEditState_ = CaptureEditorState();
+            hasPendingEditState_ = true;
+        }
+
+        if (changed) {
+            if (hasPendingEditState_ && itemId == activeEditItemId_) {
+                // ドラッグ中の最初の変更。掴む前の状態を 1 件だけ積む。
+                PushUndoState(pendingEditState_);
+                hasPendingEditState_ = false;
+            } else if (!hasPendingEditState_ && itemId != activeEditItemId_) {
+                // 掴まずに 1 回で終わる変更（想定外の経路）。履歴を落とすより
+                // 積んでおく方がまし。
+                PushUndoState();
+            }
+        }
+
+        if (!active && itemId == activeEditItemId_) {
+            // 手を離した。控えは捨てる。
+            activeEditItemId_ = 0;
+            hasPendingEditState_ = false;
+        }
+
+        return changed;
     }
 
     void CameraKeyframeEditorModule::Undo()

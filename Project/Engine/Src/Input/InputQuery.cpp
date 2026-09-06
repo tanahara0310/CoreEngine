@@ -3,6 +3,7 @@
 #include "KeyboardInput.h"
 #include "MouseInput.h"
 #include "GamepadInput.h"
+#include <cmath>
 
 namespace CoreEngine {
 
@@ -10,7 +11,11 @@ void InputQuery::Initialize(KeyboardInput* keyboard, MouseInput* mouse, GamepadI
     keyboard_ = keyboard;
     mouse_    = mouse;
     gamepad_  = gamepad;
+
+    // 既定値を組んでから、保存済みのキーコンフィグがあれば重ねる。
+    // ファイルが無い / 壊れている場合は LoadFromFile が false を返し、既定値のまま動く
     config_.ResetToDefault();
+    config_.LoadFromFile(std::string(InputConfig::kDefaultFilePath));
 }
 
 // ─── アクションベース問い合わせ ───────────────────────────────
@@ -161,6 +166,26 @@ std::optional<InputBinding> InputQuery::DetectAnyInput() const {
         for (GamepadButton btn : kGamepadButtons) {
             if (gamepad_->IsButtonTriggered(btn)) {
                 return InputBinding::FromGamepadButton(btn);
+            }
+        }
+
+        // ゲームパッドのアナログ軸検出（スティック / トリガー）
+        // ボタンのような「押した瞬間」が取れないので、倒し込み量のしきい値で拾う。
+        // 遊び程度の傾きを誤って割り当てないよう、デッドゾーンより十分深い位置に敷居を置く
+        constexpr float kAxisDetectThreshold = 0.6f;
+        const Stick leftStick  = gamepad_->GetLeftStick();
+        const Stick rightStick = gamepad_->GetRightStick();
+        const struct { GamepadAxis axis; float value; } kAxes[] = {
+            { GamepadAxis::LeftStickX,   leftStick.x                 },
+            { GamepadAxis::LeftStickY,   leftStick.y                 },
+            { GamepadAxis::RightStickX,  rightStick.x                },
+            { GamepadAxis::RightStickY,  rightStick.y                },
+            { GamepadAxis::LeftTrigger,  gamepad_->GetLeftTrigger()  },
+            { GamepadAxis::RightTrigger, gamepad_->GetRightTrigger() },
+        };
+        for (const auto& [axis, value] : kAxes) {
+            if (std::fabs(value) >= kAxisDetectThreshold) {
+                return InputBinding::FromGamepadAxis(axis, value > 0.0f);
             }
         }
     }
