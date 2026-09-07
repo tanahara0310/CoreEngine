@@ -14,7 +14,6 @@
 #include "Editor/ImGui/ImGuiManager.h"
 #include "Editor/Scene/SceneDebugEditor.h"
 #include "Editor/ImGui/Gizmo.h"
-#include "WinApp/WinApp.h"
 #include "UI/UIImage.h"
 #include "UI/UIText.h"
 #include "GameObject/GameObjectManager.h"
@@ -236,15 +235,11 @@ namespace CoreEngine
             }
         }
 
-        // ライブプレビュー時はゲーム描画先の縦横比に合わせる。
-        // UI は基準解像度を画面全体へ写す投影なので、
+        // UI・カメラは基準解像度の縦横比で描いているので、Canvas も同じ比率で表示する。
+        // クライアント領域の縦横比に合わせてはいけない：描画ターゲットは
+        // クライアント領域サイズだが中身は基準解像度の比率で描かれており、
         // 「描画結果の矩形全体 = 基準解像度の矩形全体」で対応が取れる
-        float aspect = referenceSize.x / referenceSize.y;
-        if (useLivePreview) {
-            const float clientW = static_cast<float>(WinApp::GetCurrentClientWidthStatic());
-            const float clientH = static_cast<float>(WinApp::GetCurrentClientHeightStatic());
-            if (clientW > 0.0f && clientH > 0.0f) { aspect = clientW / clientH; }
-        }
+        const float aspect = referenceSize.x / referenceSize.y;
 
         float drawW = contentRegionSize.x;
         float drawH = drawW / aspect;

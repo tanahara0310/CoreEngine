@@ -149,11 +149,12 @@ namespace CoreEngine
         Matrix4x4 viewMatrix = MathCore::Matrix::Identity();
 
         // 射影変換（正射影）- スプライト用座標系
-        // 左上原点(0,0)から右下(width,height)の座標系
+        // 左上原点(0,0)から右下(width,height)の座標系。
+        // ウィンドウサイズではなく基準解像度に固定する（リサイズで比率が崩れないように）
         Matrix4x4 projectionMatrix = MathCore::Rendering::Orthographic(
             0.0f, 0.0f,
-            static_cast<float>(WinApp::GetCurrentClientWidthStatic()),
-            static_cast<float>(WinApp::GetCurrentClientHeightStatic()),
+            static_cast<float>(WinApp::kReferenceWidth),
+            static_cast<float>(WinApp::kReferenceHeight),
             0.0f, 100.0f);
 
         return worldMatrix * viewMatrix * projectionMatrix;
@@ -169,12 +170,12 @@ namespace CoreEngine
             Matrix4x4 projectionMatrix = camera->GetProjectionMatrix();
             return worldMatrix * viewMatrix * projectionMatrix;
         } else {
-            // カメラがない場合は従来の方式（スクリーン座標固定）
+            // カメラがない場合は従来の方式（スクリーン座標固定・基準解像度）
             Matrix4x4 viewMatrix = MathCore::Matrix::Identity();
             Matrix4x4 projectionMatrix = MathCore::Rendering::Orthographic(
                 0.0f, 0.0f,
-                static_cast<float>(WinApp::GetCurrentClientWidthStatic()),
-                static_cast<float>(WinApp::GetCurrentClientHeightStatic()),
+                static_cast<float>(WinApp::kReferenceWidth),
+                static_cast<float>(WinApp::kReferenceHeight),
                 0.0f, 100.0f);
             return worldMatrix * viewMatrix * projectionMatrix;
         }

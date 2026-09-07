@@ -198,8 +198,10 @@ namespace CoreEngine
         }
 
         ImVec2 contentRegionSize = ImGui::GetContentRegionAvail();
-        const float aspect = static_cast<float>(WinApp::GetCurrentClientWidthStatic()) /
-            static_cast<float>(WinApp::GetCurrentClientHeightStatic());
+        // クライアント領域ではなく基準解像度のアスペクト比で表示する。
+        // 描画ターゲットはクライアント領域サイズだが、カメラ・UI は基準解像度の
+        // 縦横比で描いているので、その比率へ戻して表示しないと絵が伸びる
+        const float aspect = WinApp::GetReferenceAspect();
 
         float drawW = contentRegionSize.x;
         float drawH = drawW / aspect;
@@ -261,8 +263,8 @@ namespace CoreEngine
 
         if (opened) {
             const ImVec2 available = ImGui::GetContentRegionAvail();
-            const float aspect = static_cast<float>(WinApp::GetCurrentClientWidthStatic()) /
-                static_cast<float>(WinApp::GetCurrentClientHeightStatic());
+            // 通常の Game ビューと同じく、基準解像度のアスペクト比で表示する
+            const float aspect = WinApp::GetReferenceAspect();
 
             // アスペクト比を保ったまま最大化（余白は黒帯）
             float drawW = available.x;

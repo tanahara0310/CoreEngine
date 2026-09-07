@@ -169,10 +169,10 @@ namespace CoreEngine
             return Vector2(0.0f, 0.0f);
         }
 
-        // スクリーンサイズ（2D カメラの正射影はウィンドウのクライアント領域に一致する）
+        // スクリーンサイズ（2D カメラの正射影は基準解像度に固定されている）
         const Vector2 screenSize = {
-            static_cast<float>(WinApp::GetCurrentClientWidthStatic()),
-            static_cast<float>(WinApp::GetCurrentClientHeightStatic())
+            static_cast<float>(WinApp::kReferenceWidth),
+            static_cast<float>(WinApp::kReferenceHeight)
         };
 
         // 正規化座標（0.0〜1.0）をスクリーン座標に変換

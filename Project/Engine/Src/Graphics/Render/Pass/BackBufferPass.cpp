@@ -8,6 +8,7 @@
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include "Graphics/Render/RenderGraph.h"
+#include "WinApp/WinApp.h"
 #include <cassert>
 
 namespace CoreEngine
@@ -66,8 +67,43 @@ namespace CoreEngine
 
         auto* cmdList = context.cmdList;
 
+        // レターボックスの帯はクリア色がそのまま見えるので黒に固定する
+        constexpr float kLetterboxColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+        targetToUse->SetClearColor(kLetterboxColor);
+
         // バックバッファへのレンダリング開始（自動でRTV/DSV/ビューポート/シザー設定）
         targetToUse->Begin(cmdList);
+
+        // カメラ・UI は基準解像度の縦横比で描かれている。クライアント領域の縦横比が
+        // それと違う場合（フルスクリーン解除など）に全面へ引き伸ばすと絵が伸びるので、
+        // 縦横比を保った中央の矩形だけへ転写し、余白は黒帯として残す
+        const float targetWidth = static_cast<float>(context.dxCommon->GetClientWidth());
+        const float targetHeight = static_cast<float>(context.dxCommon->GetClientHeight());
+        if (targetWidth > 0.0f && targetHeight > 0.0f) {
+            const float sourceAspect = WinApp::GetReferenceAspect();
+            float drawWidth = targetWidth;
+            float drawHeight = drawWidth / sourceAspect;
+            if (drawHeight > targetHeight) {
+                drawHeight = targetHeight;
+                drawWidth = drawHeight * sourceAspect;
+            }
+
+            D3D12_VIEWPORT viewport{};
+            viewport.TopLeftX = (targetWidth - drawWidth) * 0.5f;
+            viewport.TopLeftY = (targetHeight - drawHeight) * 0.5f;
+            viewport.Width = drawWidth;
+            viewport.Height = drawHeight;
+            viewport.MinDepth = 0.0f;
+            viewport.MaxDepth = 1.0f;
+            cmdList->RSSetViewports(1, &viewport);
+
+            D3D12_RECT scissor{};
+            scissor.left = static_cast<LONG>(viewport.TopLeftX);
+            scissor.top = static_cast<LONG>(viewport.TopLeftY);
+            scissor.right = static_cast<LONG>(viewport.TopLeftX + drawWidth);
+            scissor.bottom = static_cast<LONG>(viewport.TopLeftY + drawHeight);
+            cmdList->RSSetScissorRects(1, &scissor);
+        }
 
         // 最終結果をバックバッファに描画（_SRGB用PSOを使用）。
         // 名前で引いて Draw させる汎用 API は撤去した。ここは「FullScreen をバックバッファへ」の

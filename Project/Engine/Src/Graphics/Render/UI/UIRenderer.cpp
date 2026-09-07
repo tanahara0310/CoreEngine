@@ -136,9 +136,11 @@ namespace CoreEngine
     }
 
     Vector2 UIRenderer::GetScreenSize() const {
-        // 基準解像度が指定されていればそれを使用、未指定ならウィンドウサイズに追従
-        float w = (referenceWidth_  > 0.0f) ? referenceWidth_  : static_cast<float>(WinApp::GetCurrentClientWidthStatic());
-        float h = (referenceHeight_ > 0.0f) ? referenceHeight_ : static_cast<float>(WinApp::GetCurrentClientHeightStatic());
+        // 基準解像度が指定されていればそれを使用、未指定ならエンジン既定の基準解像度。
+        // ウィンドウサイズへ追従させてはいけない：クライアント領域の縦横比が変わる
+        // （フルスクリーン解除など）たびに UI の配置・比率が崩れる
+        float w = (referenceWidth_  > 0.0f) ? referenceWidth_  : static_cast<float>(WinApp::kReferenceWidth);
+        float h = (referenceHeight_ > 0.0f) ? referenceHeight_ : static_cast<float>(WinApp::kReferenceHeight);
         return { w, h };
     }
 
