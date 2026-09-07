@@ -22,6 +22,19 @@ namespace CoreEngine
         static const int32_t kClientWidth = 1280;
         static const int32_t kClientHeight = 720;
 
+        // 描画・UI 配置の基準解像度（16:9）。
+        // カメラのアスペクト比・UI / スプライトのスクリーン座標系はこの解像度で固定し、
+        // クライアント領域との縦横比の差は表示側（レターボックス）で吸収する。
+        // ウィンドウサイズに追従させると、フルスクリーン解除でクライアント領域の縦横比が
+        // 変わった瞬間に UI の比率が崩れるため、座標系は常にここへ固定する
+        static constexpr int32_t kReferenceWidth = 1920;
+        static constexpr int32_t kReferenceHeight = 1080;
+
+        /// @brief 基準解像度のアスペクト比（表示側のレターボックス計算用）
+        static constexpr float GetReferenceAspect() {
+            return static_cast<float>(kReferenceWidth) / static_cast<float>(kReferenceHeight);
+        }
+
         /// @brief 現在のクライアント領域の幅を静的に取得
         static int32_t GetCurrentClientWidthStatic() { return currentClientWidthStatic_; }
 

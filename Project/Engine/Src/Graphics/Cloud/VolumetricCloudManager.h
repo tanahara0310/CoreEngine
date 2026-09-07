@@ -59,8 +59,9 @@ namespace CoreEngine
         /// @brief このフレームで雲が要求されているか（Update() が呼ばれ、かつ enabled_）
         bool AreCloudsActive() const { return cloudsActive_ && enabled_; }
 
-        /// @brief フレーム終端で有効化フラグをリセットする（EngineSystem が全 View 描画後に呼ぶ）
-        void ResetFrameActivation() { cloudsActive_ = false; }
+        /// @brief フレーム終端の後始末（RenderDomainContext が全 View 描画後に呼ぶ）
+        /// @details 次フレームは Update() を呼ぶ雲シーンでのみ再度有効化される。
+        void EndFrame() { cloudsActive_ = false; }
 
         // ===== ノイズ生成（VolumetricCloudNoisePass から毎フレーム呼ばれる） =====
 

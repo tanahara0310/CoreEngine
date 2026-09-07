@@ -13,12 +13,14 @@
 //   比べて重み付けする。
 //
 // 【フル解像度モード】
-//   gTraceScale == 1 のときは 1:1 の写しになる（デノイズ 0 パス時のみ通る経路）。
+//   gTraceScale == 1 のときは 1:1 の写しになる。
+//
+// 入力レイアウトは RTShadowTemporal.CS.hlsl と共通（.x = シャドウ値）。
 // ============================================================
 
 #include "../Include/Common/DepthReconstruction.hlsli"
 
-Texture2D<float> gTraceShadow : register(t0);      // トレース解像度のシャドウ
+Texture2D<float4> gTraceShadow : register(t0);     // トレース解像度のシャドウ
 Texture2D<float> gSceneDepth : register(t1);       // フル解像度 深度
 Texture2D<float4> gNormalRoughness : register(t2); // フル解像度 法線
 
@@ -58,10 +60,10 @@ void main(uint3 dispatchID : SV_DispatchThreadID)
     if (coord.x >= gFullWidth || coord.y >= gFullHeight)
         return;
 
-    // 等倍のときは素通し（デノイズ 0 パス時のみここを通る）
+    // 等倍のときは素通し
     if (gTraceScale == 1)
     {
-        gOutputShadow[coord] = gTraceShadow.Load(int3(coord, 0));
+        gOutputShadow[coord] = gTraceShadow.Load(int3(coord, 0)).x;
         return;
     }
 
@@ -78,8 +80,15 @@ void main(uint3 dispatchID : SV_DispatchThreadID)
     float centerDepth = LinearizeViewDepth(centerNdcDepth, projZW);
     float3 centerNormal = normalize(gNormalRoughness.Load(int3(coord, 0)).rgb * 2.0f - 1.0f);
 
-    // このフル解像度ピクセルを囲む 2x2 のトレース座標
-    int2 baseTrace = coord / gTraceScale;
+    // ===== このフル解像度ピクセルを囲む 2x2 のトレース座標 =====
+    //   トレース座標 t の代表点は t*scale + scale/2 なので、
+    //   フル座標 coord に対応する連続トレース座標は (coord - scale/2) / scale。
+    //   旧実装は coord/gTraceScale を左上として +0/+1 を取っていたため、
+    //   2x2 の窓が常に右下へ半テクセルずれ、偶数ピクセルと奇数ピクセルで
+    //   重み配分が大きく食い違っていた（＝影の縁に 2px 周期の市松模様が出る）。
+    float2 continuousTrace = (float2(coord) - float(gTraceScale >> 1)) / float(gTraceScale);
+    int2 baseTrace = int2(floor(continuousTrace));
+    float2 subPixel = continuousTrace - float2(baseTrace);
 
     float shadowSum = 0.0f;
     float weightSum = 0.0f;
@@ -97,11 +106,11 @@ void main(uint3 dispatchID : SV_DispatchThreadID)
                                     int2(gTraceWidth - 1, gTraceHeight - 1));
             int2 sourceFull = TraceToFull(traceCoord);
 
-            float s = gTraceShadow.Load(int3(traceCoord, 0));
+            float s = gTraceShadow.Load(int3(traceCoord, 0)).x;
 
-            // 距離重み（代表ピクセルがこのピクセルにどれだけ近いか）
-            float2 delta = float2(sourceFull - coord) / float(gTraceScale);
-            float wSpatial = exp(-dot(delta, delta));
+            // バイリニア重み
+            float wSpatial = ((dx == 0) ? (1.0f - subPixel.x) : subPixel.x)
+                           * ((dy == 0) ? (1.0f - subPixel.y) : subPixel.y);
 
             // どのサンプルも幾何的に一致しなかったときのための素朴な平均
             fallback += s * wSpatial;

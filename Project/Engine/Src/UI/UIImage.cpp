@@ -4,6 +4,8 @@
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Model/VertexData.h"
 #include "EngineSystem/EngineSystem.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/Texture/TextureManager.h"
 
 #ifdef USE_IMGUI
 #include "Editor/ImGui/Wrappers/ImGuiInput.h"

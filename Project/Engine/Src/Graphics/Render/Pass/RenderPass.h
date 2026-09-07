@@ -38,6 +38,7 @@ namespace CoreEngine
     class FFTOceanManager;
     class AtmosphereManager;
     class VolumetricCloudManager;
+    class FogManager;
     class FrameViews;
     class SceneDepth;
     class GpuTimestampProfiler;
@@ -67,6 +68,7 @@ namespace CoreEngine
         FFTOceanManager* fftOceanManager = nullptr; ///< FFT Ocean 波面生成マネージャー
         AtmosphereManager* atmosphereManager = nullptr; ///< 大気散乱管理（LUT生成・太陽情報）
         VolumetricCloudManager* volumetricCloudManager = nullptr; ///< ボリューメトリック雲管理（ノイズ生成・雲合成）
+        FogManager* fogManager = nullptr; ///< 高さフォグ管理（設定保持・SceneColor 合成）
         /// @brief 今フレームの全ビュー（フレーム先頭で確定した不変スナップショット）
         /// @details 描画・カリング・深度復元・RT はすべてここから行列を取ること。
         ///          カメラを直接読みに行くと読み取り時刻で値が変わり、パスごとに

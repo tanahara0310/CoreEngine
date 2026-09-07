@@ -1146,6 +1146,19 @@ namespace CoreEngine
         UploadConstants();
     }
 
+    void AtmosphereManager::EndFrame(LightManager* lightManager)
+    {
+        // 大気が要求されなかったフレームは、Update() が書いた透過率変調を解除する。
+        // 大気シーンからキューブマップ空へ切り替えた際に減衰が残らないようにするため。
+        // 大気アクティブ時は Update() が毎フレーム上書きするので、ここでは触らない。
+        if (!atmosphereActive_ && lightManager) {
+            lightManager->SetAtmosphereSunTransmittance({ 1.0f, 1.0f, 1.0f });
+        }
+
+        // 次フレームは Update() を呼ぶ大気シーンでのみ再度有効化される
+        atmosphereActive_ = false;
+    }
+
     float AtmosphereManager::ComputeSceneIlluminationLuminance() const
     {
         // 光源 1 灯（intensity=1）あたりの相対地表照度。

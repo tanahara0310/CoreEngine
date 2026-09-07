@@ -251,6 +251,14 @@ namespace CoreEngine
         /// @param enable false にするとシーンデータへの保存・復元がスキップされる
         void SetSerializeEnabled(bool enable);
 
+        /// @brief シーン JSON から再生成するための型名
+        /// @return nullptr なら「シーン側のコードが生成する前提」で、
+        ///         マニフェストからは作られない（既存のオブジェクトはこちら）
+        /// @details エディタ上で追加した UI のように、コードに書かれていない
+        ///          オブジェクトを次回起動時に復活させるために使う。
+        ///          SceneSaveSystem::RegisterObjectType で同じ名前を登録しておくこと。
+        virtual const char* GetSerializeTypeName() const { return nullptr; }
+
         /// @brief オブジェクトデータを JSON に書き出す
         /// @return シリアライズ結果。保存不要な場合は空の json を返す。
         /// @note SceneSaveSystem から自動的に呼び出される。
@@ -327,6 +335,19 @@ namespace CoreEngine
         /// @param cb SceneDebugEditor が設定する Undo/Redo 記録用コールバック
         void SetEditCommitCallback(EditCommitCallback cb);
 
+#ifdef USE_IMGUI
+        /// @brief インスペクタでの編集確定を Undo/Redo へ通知する
+        /// @param beforeTranslate 編集前の位置
+        /// @param beforeRotate 編集前の回転
+        /// @param beforeScale 編集前のスケール
+        /// @param beforeActive 編集前のアクティブ状態
+        /// @note コンポーネントのインスペクタ（TransformComponent など）から呼ぶ。
+        ///       onEditCommitted_ は protected なので、非派生のコンポーネントには
+        ///       この入口が必要になる。
+        void NotifyEditCommitted(const Vector3& beforeTranslate, const Vector3& beforeRotate,
+            const Vector3& beforeScale, bool beforeActive);
+#endif
+
         /// @brief 個別保存リクエストコールバックの型
         using SaveRequestCallback = std::function<void(GameObject*)>;
 
@@ -350,6 +371,21 @@ namespace CoreEngine
         SaveRequestCallback onSaveRequested_;   ///< 個別保存ボタン用コールバック
 
         int inspectorTab_ = 0;  ///< 現在選択中のインスペクタータブインデックス
+
+        /// @brief アタッチされているコンポーネントからインスペクタのタブを組み立てる
+        /// @param outTabs 出力先
+        /// @param maxTabs 出力先の要素数
+        /// @return 追加したタブ数（コンポーネント数。maxTabs で頭打ち）
+        /// @note オブジェクト固有のタブを持つ場合も、その後ろへ追加できる。
+        ///       固有タブを持たないオブジェクトでは、コンポーネントタブがそのまま
+        ///       インスペクターのタブになる。
+        int BuildComponentTabs(InspectorTabDef* outTabs, int maxTabs) const;
+
+        /// @brief コンポーネントタブの中身を描画する
+        /// @param tabIndex `BuildComponentTabs` が並べた順のインデックス
+        /// @return 値が変更されたら true
+        /// @note `IComponent::DrawInspector()` を呼ぶ唯一の場所。
+        bool DrawComponentTabContent(int tabIndex);
 
         /// @brief Active チェックボックス変更時に呼び出されるフック
         /// @param prevActive 変更前のアクティブ状態

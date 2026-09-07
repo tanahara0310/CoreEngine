@@ -83,6 +83,16 @@ namespace CoreEngine
             illuminationValid_ = true;
         }
 
+        /// @brief 自動露出の順応を止める / 再開する（SceneTransition が暗転中に呼ぶ）
+        /// @details 自動露出は「見えている絵」への順応なので、フェードで塗り潰されている
+        ///          間は止める。シーン切り替え中は旧シーンが解放されて SceneColor が
+        ///          真っ黒になり、そこへ順応すると順応輝度が 0 まで落ちて自動EVが上限
+        ///          （既定 +8EV）へ張り付く。止めないと次のシーンが白飛びで現れる。
+        void SetAdaptationPaused(bool paused) { adaptationPaused_ = paused; }
+
+        /// @brief 順応を止めているか
+        bool IsAdaptationPaused() const { return adaptationPaused_; }
+
         /// @brief 現在の自動露出EV（自動露出無効時は 0）
         float GetAutoExposureEV() const;
 
@@ -145,6 +155,7 @@ namespace CoreEngine
         float currentKey_ = 0.18f;         ///< 現在のターゲットキー（診断表示用）
         float adaptedLuminance_ = 0.18f;   ///< 順応済み輝度（時間追従する）
         bool adaptationInitialized_ = false;
+        bool adaptationPaused_ = false;    ///< 暗転中は順応を凍結する（SetAdaptationPaused）
         float autoEV_ = 0.0f;              ///< 計算された自動露出EV
         float deltaTime_ = 1.0f / 60.0f;
     };

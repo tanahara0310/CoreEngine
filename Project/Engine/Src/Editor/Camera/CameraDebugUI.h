@@ -11,6 +11,7 @@
 namespace CoreEngine {
 
     // 前方宣言
+    class Camera;
     class CameraManager;
     class GameObjectManager;
     class EngineSystem;
@@ -39,6 +40,11 @@ namespace CoreEngine {
         /// @brief モジュールの状態更新のみ実行（描画なし）
         void UpdateModules();
 
+        /// @brief ゲームビューポート上の重ね描きを各モジュールへ行わせる
+        /// @param viewCamera いま覗いているカメラ
+        /// @param viewport ビューポートの位置と大きさ
+        void DrawViewportOverlay(const Camera& viewCamera, const CameraEditorViewport& viewport);
+
         /// @brief カメラUIの内容を描画（ImGui::Begin/Endなし、外部ウィンドウへの埋め込み用）
         void DrawContent();
 
@@ -50,6 +56,9 @@ namespace CoreEngine {
         void ClearModules();
 
     private:
+        /// @brief どのカメラを覗いているか・誰が動かしているかを出す最上段
+        void DrawToolbar(const CameraEditorContext& context);
+
         /// @brief 現在フレーム用のコンテキストを構築
         CameraEditorContext BuildContext();
 

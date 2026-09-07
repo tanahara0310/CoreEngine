@@ -47,7 +47,7 @@ namespace CoreEngine
         uint32_t GetGlobalRevision() const noexcept { return globalRevision_; }
 
         /// @brief 編集が「確定」するたびに増える通番
-        /// @details 確定＝スライダーを離した・Enter を押した・チェックボックスをクリックした等。
+        /// @details 確定＝ドラッグを離した・Enter を押した・チェックボックスをクリックした等。
         ///          ドラッグ中の毎フレーム変更（GetGlobalRevision が進む）と区別し、
         ///          自動保存が「確定した瞬間に書き込む」ために使う。
         ///          設計書: Docs/Engine/Editor/InstantSettingsSave_Design.md

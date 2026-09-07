@@ -10,12 +10,19 @@
 namespace CoreEngine
 {
     class ICVar;
+    struct CVarRange;
 
     /// @brief CVarRegistry の内容から ImGui ウィジェットを自動生成する
     /// @note UI の入口は機能ごとのパネルへ一本化している。
     ///       全 CVar を一覧する横断パネルは、同じ値を触れる場所が 2 つできるので設けない。
     namespace CVarUI
     {
+        /// @brief 数値ウィジェット（ドラッグ）の速度を求める
+        /// @param range CVar の編集範囲
+        /// @return 1px のドラッグあたりの変化量
+        /// @note 範囲付き CVar を独自ラベルで描く UI から、速度を揃えるために使う
+        float DragSpeed(const CVarRange& range);
+
         /// @brief CVar 1 つ分のウィジェットを描画する
         /// @param cvar 対象（nullptr 可）
         /// @return 値が変更された場合 true（NotifyChanged は内部で呼ばれる）

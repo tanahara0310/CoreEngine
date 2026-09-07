@@ -323,15 +323,15 @@ namespace CoreEngine
         constexpr float kClearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
         cmdList->ClearRenderTargetView(rtv, kClearColor, 0, nullptr);
 
-        const float sourceWidth = static_cast<float>(WinApp::GetCurrentClientWidthStatic());
-        const float sourceHeight = static_cast<float>(WinApp::GetCurrentClientHeightStatic());
         const float targetWidth = static_cast<float>(clientWidth_);
         const float targetHeight = static_cast<float>(clientHeight_);
-        if (sourceWidth <= 0.0f || sourceHeight <= 0.0f || targetWidth <= 0.0f || targetHeight <= 0.0f) {
+        if (targetWidth <= 0.0f || targetHeight <= 0.0f) {
             return;
         }
 
-        const float sourceAspect = sourceWidth / sourceHeight;
+        // 転写元はクライアント領域サイズのターゲットだが、中身（カメラ・UI）は
+        // 基準解像度の縦横比で描かれている。表示はその比率で行う
+        const float sourceAspect = WinApp::GetReferenceAspect();
         float drawWidth = targetWidth;
         float drawHeight = drawWidth / sourceAspect;
         if (drawHeight > targetHeight) {

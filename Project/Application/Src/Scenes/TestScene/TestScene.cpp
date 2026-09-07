@@ -49,11 +49,11 @@ namespace CoreEngine
         // 球体の環境反射は大気の空キューブマップ（スペキュラIBL）が担う。
         // BaseScene::SetupLight() の既定値（天頂・intensity=1）は大気散乱が期待する
         // 輝度スケールと整合しないため明示的に上書きする（他の大気シーンと同じ定石）。
-        if (directionalLight_) {
-            directionalLight_->direction = AtmosphereEditor::ComputeSunLightDirection(35.0f, 25.0f);
+        if (Light* sun = GetDirectionalLight()) {
+            sun->direction = AtmosphereEditor::ComputeSunLightDirection(35.0f, 25.0f);
             // 空（大気・雲）の輝度スケールと、サーフェスの直接光は単位系が別なので分離して与える
-            directionalLight_->atmosphereIntensity = 20.0f;
-            directionalLight_->intensity = kAtmosphereSunIlluminanceLux;
+            sun->atmosphereIntensity = 20.0f;
+            sun->intensity = kAtmosphereSunIlluminanceLux;
         }
 
         // ===== PBR パラメータテスト用球体グリッド =====
@@ -125,11 +125,6 @@ namespace CoreEngine
             }
             return;
         }
-    }
-
-    void TestScene::Draw()
-    {
-        BaseScene::Draw();
     }
 }
 

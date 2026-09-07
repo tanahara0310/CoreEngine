@@ -3,7 +3,10 @@
 
 #include "SceneDebugEditor.h"
 #include "EngineSystem/EngineSystem.h"
+#include "Input/InputManager.h"
 #include "Camera/CameraManager.h"
+#include "Camera/CameraSceneStateIO.h"
+#include "Editor/Camera/Module/CameraEditorContext.h"
 #include "GameObject/GameObjectManager.h"
 #include "GameObject/Model/DynamicModelObject.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
@@ -239,11 +242,14 @@ namespace CoreEngine
             cameraManager_->UpdateDebugModules();
         }
 
-        // Ctrl+Z / Ctrl+Y によるキーボードショートカット（ウィンドウ外でも反応）
-        if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_Z)) {
+        // Ctrl+Z / Ctrl+Y によるキーボードショートカット（ウィンドウ外でも反応）。
+        // RouteGlobal にしてあるので、カメラエディタのように自分で Undo を持つ
+        // ウィンドウにフォーカスがあるときはそちらへ譲る。素の IsKeyChordPressed だと
+        // 両方が同じフレームで戻ってしまう。
+        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Z, ImGuiInputFlags_RouteGlobal)) {
             undoRedoHistory_.Undo(gameObjectManager_);
         }
-        if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_Y)) {
+        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Y, ImGuiInputFlags_RouteGlobal)) {
             undoRedoHistory_.Redo(gameObjectManager_);
         }
 
@@ -251,6 +257,12 @@ namespace CoreEngine
         if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_S)) {
             if (!saveSystem_->GetSceneName().empty()) {
                 saveSystem_->SaveScene(gameObjectManager_);
+
+                // カメラの構図もシーンの一部として一緒に保存する。
+                // これが無いと、エディタで詰めた画がアプリを閉じるたびに消える。
+                if (cameraManager_) {
+                    CameraSceneStateIO::Save(saveSystem_->GetSceneName(), *cameraManager_);
+                }
             }
         }
 
@@ -290,6 +302,17 @@ namespace CoreEngine
         if (camera3D) {
             objectSelector_.Update(gameObjectManager_, camera3D, normalizedMousePos, isViewportHovered);
             objectSelector_.DrawGizmo(camera3D);
+
+            // カメラ編集の重ね描き（キーのアイコン・ギズモ）はオブジェクト選択の後。
+            // 同じフレームで両方が掴めると、どちらが動いたのか分からなくなる。
+            if (cameraManager_ && !Gizmo::IsUsing()) {
+                CameraEditorViewport cameraViewport{};
+                cameraViewport.x = viewportPos.x;
+                cameraViewport.y = viewportPos.y;
+                cameraViewport.width = viewportSize.x;
+                cameraViewport.height = viewportSize.y;
+                cameraManager_->DrawDebugViewportOverlay(*camera3D, cameraViewport);
+            }
         }
 
         if (camera2D) {

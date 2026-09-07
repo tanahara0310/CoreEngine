@@ -149,8 +149,17 @@ namespace CoreEngine
 
         // Game ビューポートは PostEffectPass 完了後に別経路で描画する。
 #ifdef USE_IMGUI
-        // Canvas プレビューウィンドウ（UI のみを表示）
-        canvasViewport_->DrawCanvasViewport();
+        // Canvas ウィンドウ（UI の配置編集）。
+        // 背景にはゲームの描画結果そのものを敷き、その上へ選択枠とギズモだけを重ねる
+        // （Unity の Scene ビューと同じ考え方）。渡るのは 1 フレーム前の結果だが、
+        // 編集操作では体感できない
+        unsigned long long canvasBackground = 0;
+        if (postEffectManager) {
+            canvasBackground = postEffectManager->GetFinalDisplayTextureHandle().ptr;
+        }
+        // 選択は Hierarchy / Inspector と共有する
+        canvasViewport_->DrawCanvasViewport(canvasBackground,
+            gameDebugUI ? gameDebugUI->GetSceneDebugEditor() : nullptr);
 
 
         // プロジェクトビューの更新
@@ -189,8 +198,10 @@ namespace CoreEngine
         }
 
         ImVec2 contentRegionSize = ImGui::GetContentRegionAvail();
-        const float aspect = static_cast<float>(WinApp::GetCurrentClientWidthStatic()) /
-            static_cast<float>(WinApp::GetCurrentClientHeightStatic());
+        // クライアント領域ではなく基準解像度のアスペクト比で表示する。
+        // 描画ターゲットはクライアント領域サイズだが、カメラ・UI は基準解像度の
+        // 縦横比で描いているので、その比率へ戻して表示しないと絵が伸びる
+        const float aspect = WinApp::GetReferenceAspect();
 
         float drawW = contentRegionSize.x;
         float drawH = drawW / aspect;
@@ -252,8 +263,8 @@ namespace CoreEngine
 
         if (opened) {
             const ImVec2 available = ImGui::GetContentRegionAvail();
-            const float aspect = static_cast<float>(WinApp::GetCurrentClientWidthStatic()) /
-                static_cast<float>(WinApp::GetCurrentClientHeightStatic());
+            // 通常の Game ビューと同じく、基準解像度のアスペクト比で表示する
+            const float aspect = WinApp::GetReferenceAspect();
 
             // アスペクト比を保ったまま最大化（余白は黒帯）
             float drawW = available.x;

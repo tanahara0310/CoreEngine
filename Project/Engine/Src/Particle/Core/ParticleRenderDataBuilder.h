@@ -45,6 +45,13 @@ public:
         uint32_t maxInstances
     );
 
+    /// @brief ビルボードなし（モデルパーティクル）のワールド行列を作る
+    /// @param particle パーティクル
+    /// @return ワールド行列
+    /// @note TLAS インスタンス構築（RayTracingSubsystem）からも呼ぶため公開している。
+    ///       影と見た目がずれないよう、行列の式はここ 1 箇所に保つこと。
+    static Matrix4x4 MakeModelParticleWorldMatrix(const Particle& particle);
+
 private:
     /// @brief ビルボード行列を作成
     /// @param viewMatrix ビュー行列

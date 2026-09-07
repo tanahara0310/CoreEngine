@@ -8,7 +8,6 @@
 
 #include "Camera/CameraManager.h"
 #include "Camera/Camera.h"
-#include "Camera/Camera.h"
 
 namespace CoreEngine
 {

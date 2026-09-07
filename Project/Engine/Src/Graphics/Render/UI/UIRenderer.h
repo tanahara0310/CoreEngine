@@ -59,7 +59,7 @@ namespace CoreEngine
         Matrix4x4 CalculateWVPMatrix(const Vector3& position, const Vector3& scale, const Vector3& rotation) const;
 
         /// @brief 基準解像度を設定（可変対応）
-        /// @note 0 以下の場合はウィンドウサイズに自動追従する
+        /// @note 0 以下の場合はエンジン既定の基準解像度（WinApp::kReferenceWidth/Height）
         void SetReferenceResolution(float width, float height);
 
         /// @brief 現在使用中のスクリーンサイズを取得
@@ -130,7 +130,7 @@ namespace CoreEngine
         size_t currentBufferIndex_ = 0;
         UINT   currentFrameIndex_ = 0;
 
-        // 基準解像度（0 以下の場合はウィンドウサイズに追従）
+        // 基準解像度（0 以下の場合はエンジン既定の基準解像度）
         float referenceWidth_ = 0.0f;
         float referenceHeight_ = 0.0f;
     };

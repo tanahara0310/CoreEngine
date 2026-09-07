@@ -5,8 +5,9 @@
 #include "Graphics/PostEffect/Effect/FadeEffect/FadeEffect.h"
 #include "Graphics/PostEffect/Effect/LoadingScreen/LoadingScreenEffect.h"
 #include "Graphics/PostEffect/Effect/PostEffectNames.h"
+#include "Graphics/PostEffect/Effect/ToneMapping/ToneMapping.h"
 #include "Utility/FrameRate/FrameRateController.h"
-#include "Audio/SoundManager.h"
+#include "Audio/AudioSystem.h"
 #include "Utility/CVar/CVar.h"
 
 
@@ -37,8 +38,11 @@ fadeEffect_ = postEffectManager_->GetEffect<FadeEffect>(PostEffectNames::FadeEff
 // ローディング画面エフェクトを取得
 loadingScreenEffect_ = postEffectManager_->GetEffect<LoadingScreenEffect>(PostEffectNames::LoadingScreen);
 
-// SoundManagerを取得
-soundManager_ = engine_->GetService<SoundManager>();
+// トーンマッピングを取得（暗転中に自動露出の順応を止めるため）
+toneMapping_ = postEffectManager_->GetEffect<ToneMapping>(PostEffectNames::ToneMapping);
+
+// AudioSystem を取得（BGM バスのダッキングに使う）
+audioSystem_ = engine_->GetService<AudioSystem>();
 
 // 初期状態：完全に透明（フェードなし）
 fadeEffect_->SetFadeAlpha(0.0f);
@@ -120,6 +124,9 @@ void SceneTransition::Update(float deltaTime) {
     // ローディング画面に表示強度を適用
     ApplyLoadingScreen();
 
+    // 暗転しきっている間は自動露出を凍結する（フェードと同期）
+    ApplyExposureHold();
+
     // BGM音量を適用（フェードと同期）
     ApplyBGMVolume();
 }
@@ -164,6 +171,12 @@ void SceneTransition::OnSceneChanged() {
         waitFrameCounter_ = 0;
         fadeEffect_->SetFadeAlpha(0.0f);
         fadeEffect_->SetEnabled(false);
+
+        // Update() は Idle だと即 return するので、ここで自分でダッキングと
+        // 自動露出を戻す。忘れると Loading 中に 0 まで絞った BGM バスがそのまま
+        // 無音で残り、露出も凍結したままになる
+        ApplyExposureHold();
+        ApplyBGMVolume();
     } else {
         // フェードイン開始
         phase_ = TransitionPhase::FadeIn;
@@ -195,6 +208,10 @@ void SceneTransition::SkipTransition() {
     fadeEffect_->SetFadeAlpha(0.0f);
     fadeEffect_->SetEnabled(false);
     ApplyLoadingScreen();
+
+    // Update() は Idle だと即 return するので、ここで自分でダッキングと露出を戻す
+    ApplyExposureHold();
+    ApplyBGMVolume();
 }
 
 float SceneTransition::CalculateFadeAlpha() const {
@@ -281,16 +298,20 @@ float SceneTransition::CalculateGaugeAlpha() const {
         * CalculateLoadingAlpha();
 }
 
-void SceneTransition::SetBGMVolumeCallback(std::function<void(float)> callback) {
-    bgmVolumeCallback_ = callback;
-}
+void SceneTransition::ApplyExposureHold() {
+    if (!toneMapping_) {
+        return;
+    }
 
-void SceneTransition::ClearBGMVolumeCallback() {
-    bgmVolumeCallback_ = nullptr;
+    // 暗転しきっている間（Loading / Changing とフェードアウトの終わり際）は、
+    // 旧シーンが解放されていて SceneColor が真っ黒。ここへ順応させると順応輝度が
+    // 0 まで落ちて自動EVが上限へ張り付き、次のシーンが白飛びで現れる。
+    // フェードインに入ってアルファが下がれば、そのまま新しいシーンへ順応が再開する。
+    toneMapping_->SetAdaptationPaused(CalculateFadeAlpha() >= kExposureHoldAlpha);
 }
 
 void SceneTransition::ApplyBGMVolume() {
-    if (!bgmVolumeCallback_) {
+    if (!audioSystem_) {
         return;
     }
 
@@ -324,7 +345,8 @@ void SceneTransition::ApplyBGMVolume() {
         break;
     }
 
-    // コールバックを呼び出して音量倍率を通知
-    bgmVolumeCallback_(volumeMultiplier);
+    // BGM バスを丸ごと絞る。ダッキングはユーザー設定（SetBusVolume）とは
+    // 別枠の倍率なので、オプション画面の設定値を壊さずに演出だけ掛かる
+    audioSystem_->SetBusDuck(AudioBus::BGM, volumeMultiplier);
 }
 }

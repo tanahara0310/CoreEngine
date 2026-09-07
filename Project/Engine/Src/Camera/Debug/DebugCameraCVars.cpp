@@ -74,7 +74,7 @@ namespace
         "ヨー [rad]", {}, kMirrorFlags };
 
     // ===== 投影パラメータ（CameraParameters と既定値を一致させること） =====
-    // aspectRatio はウィンドウサイズから毎フレーム導出される実行時値のため CVar 化しない
+    // aspectRatio は基準解像度（WinApp::kReferenceWidth/Height）から導出されるため CVar 化しない
     CVar<float> cvFov{
         "d.SceneCamera.Fov", 0.45f,
         "視野角 [rad]", CVarRange{ 0.01f, 3.0f }, kMirrorFlags };

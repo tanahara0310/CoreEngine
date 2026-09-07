@@ -23,6 +23,9 @@ namespace CoreEngine
 
         void Initialize(SceneContext& ctx) override;
         void Update(SceneContext& ctx, SceneUpdatePhase phase) override;
+
+        /// @brief 停止中も回す（止めるとギズモも選択も動かなくなる。停止中の主役）
+        bool RunsWhileStopped() const override { return true; }
         void Finalize(SceneContext& ctx) override;
 
     private:

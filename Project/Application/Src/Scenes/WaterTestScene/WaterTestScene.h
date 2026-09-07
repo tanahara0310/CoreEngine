@@ -18,9 +18,6 @@ public:
     /// @brief シーン固有の更新（カット巡回演出の進行）
     void OnUpdate() override;
 
-    /// @brief 描画処理
-    void Draw() override;
-
     /// @brief シーン固有の解放（Feature 破棄より前に UI 登録を解除する）
     void OnFinalize() override;
 

@@ -1,60 +1,27 @@
 #include "pch.h"
 #include "BaseScene.h"
 #include "EngineSystem/EngineSystem.h"
+#include "EngineSystem/PlaybackState.h"
 #include "Camera/CameraManager.h"
 #include "Camera/Camera.h"
-#include "Camera/Debug/DebugCameraCVars.h"
-#include "Editor/Camera/EditorCameraInput.h"
-#include "Utility/FrameRate/Time.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Render/RenderManager.h"
-#include "Particle/ParticleSystem.h"
-#include "Particle/Gpu/GpuParticleSystem.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Scene/SceneManager.h"
+#include "UI/UIText.h"
 #include "Graphics/Model/ModelManager.h"
+#include "Scene/Feature/DefaultSceneFeatures.h"
+// GetFeature<T>() で引くために完全型が必要な既定 Feature だけを include する
+// （顔ぶれそのものは DefaultSceneFeatures.cpp が持つ）
+#include "Scene/Feature/CameraFeature.h"
 #include "Scene/Feature/LightingFeature.h"
-#include "Scene/Feature/EnvironmentFeature.h"
 #include "Scene/Feature/GroundFeature.h"
 #include "Scene/Feature/CollisionFeature.h"
-#include "Scene/Feature/GridFeature.h"
-#include "Scene/Feature/DebugEditorFeature.h"
-#include "Scene/Feature/SceneBGMFeature.h"
 #include "Utility/Logger/Logger.h"
 #include <algorithm>
 
 
 namespace CoreEngine
 {
-    IParticleSystem* BaseScene::CreateParticleSystem(ParticleBackend backend, const std::string& name)
-    {
-        auto dxCommon = engine_->GetService<GraphicsCore>();
-        auto resourceFactory = engine_->GetService<ResourceFactory>();
-        if (!dxCommon || !resourceFactory) {
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::General,
-                "BaseScene::CreateParticleSystem: GraphicsCore / ResourceFactory が未登録のため生成できません");
-            return nullptr;
-        }
-
-        if (backend == ParticleBackend::GPU) {
-            auto* system = CreateObject<GpuParticleSystem>();
-            system->Initialize(dxCommon, resourceFactory, name);
-            return system;
-        }
-
-        auto* system = CreateObject<ParticleSystem>();
-        system->Initialize(dxCommon, resourceFactory, name);
-        return system;
-    }
-
-    void BaseScene::Initialize(EngineSystem* engine)
-    {
-        SetupSceneCore(engine);
-        InitializeFeatures();
-        OnInitialize();
-        CompleteInitialize();
-    }
-
     void BaseScene::BuildLoadTasks(StartupSequence& sequence, EngineSystem* engine)
     {
         sequence.Add("カメラと Feature の登録", [this, engine] { SetupSceneCore(engine); });
@@ -77,31 +44,19 @@ namespace CoreEngine
         // シーン保存システム
         sceneSaveSystem_ = std::make_unique<SceneSaveSystem>();
 
-        //カメラ
-        SetupCamera();
-
-        // 既定 Feature（ライト・グリッド・デバッグエディタ・コリジョン・環境・BGM）の登録
+        // 既定 Feature の登録（顔ぶれは CreateDefaultSceneFeatures() 側）
         RegisterDefaultFeatures();
     }
 
     void BaseScene::InitializeFeatures()
     {
-        RefreshFeatureContext();
+        // コンテキストは 1 体ごとに取り直す。CameraFeature が生成したカメラを、
+        // 後続の Feature が同じループの中で参照できるようにするため。
         for (auto& entry : features_) {
+            RefreshFeatureContext();
             entry.feature->Initialize(featureContext_);
         }
         featuresInitialized_ = true;
-
-        // 既定ディレクショナルライトを従来の protected メンバーとして派生クラスへ公開する
-        directionalLight_ = lightingFeature_ ? lightingFeature_->GetDirectionalLight() : nullptr;
-    }
-
-    void BaseScene::CompleteInitialize()
-    {
-        RunPostSceneInitialize();
-
-        // 全オブジェクト生成後にシーンデータを JSON から自動復元
-        LoadObjectsFromJson();
     }
 
     void BaseScene::RunPostSceneInitialize()
@@ -145,13 +100,13 @@ namespace CoreEngine
 
     void BaseScene::BeginSceneDataRestore()
     {
-        sceneSaveSystem_->BeginLoad(&gameObjectManager_);
-
+        // 進捗を出す相手（SceneManager）が居ない経路は、その場で読み切る
         if (!sceneManager_) {
-            while (!sceneSaveSystem_->StepLoad()) {
-            }
+            sceneSaveSystem_->Load(&gameObjectManager_);
             return;
         }
+
+        sceneSaveSystem_->BeginLoad(&gameObjectManager_);
 
         // 1 フレームに 1 体ずつ復元する
         sceneManager_->SetLoadStepContinuation(
@@ -159,47 +114,56 @@ namespace CoreEngine
             [this] { return sceneSaveSystem_->GetLoadProgress(); });
     }
 
-    void BaseScene::Update()
+    void BaseScene::Update(SceneUpdateMode mode)
     {
-        // カメラの更新
-        // 入力の正規化（ImGui / InputManager 依存）は EditorCameraInput に閉じており、
-        // コントローラは CameraInputState しか見ない。
-        if (cameraManager_) {
-            // カメラ操作はポーズやスローの影響を受けない
-            cameraManager_->Update(EditorCameraInput::Collect(engine_), Time::UnscaledDeltaTime());
+        // 進行を止める理由は 2 つあり、扱いは同じ。メニューバーの再生 / 停止ボタンと、
+        // シーン切り替えのトランジション（mode == Suspended）。どちらもゲームロジックだけを
+        // 飛ばす。Feature の取捨は DispatchUpdate() が RunsWhileStopped() を見て行うので、
+        // エディタカメラ・ギズモ・ライト・大気は止めている間も回り続ける
+        const bool stopped = (mode == SceneUpdateMode::Suspended)
+            || PlaybackStateManager::GetInstance().IsStopped();
+        const bool advance = !stopped;
 
-            // 更新後の設定・姿勢を CVar へ写す（カメラ UI・マウス操作のどちらの変更も拾う）
-            if (sceneCamera_ && orbitController_) {
-                DebugCameraCVars::MirrorFrom(*sceneCamera_, *orbitController_);
-            }
+        // フレーム前処理（先頭でカメラ姿勢を確定 → ライト/影・グリッド・デバッグエディタ）
+        DispatchUpdate(SceneUpdatePhase::FrameStart, stopped);
+
+        if (advance) {
+            // 派生クラスの更新処理（GameObjectの更新前）
+            OnUpdate();
         }
 
-        // フレーム前処理（ライト/影・グリッド・デバッグエディタ）
-        DispatchUpdate(SceneUpdatePhase::FrameStart);
+        // GameObject 更新前の Feature 更新（床のカメラ追従、最後にトゥイーンの前進）
+        DispatchUpdate(SceneUpdatePhase::PreObjectUpdate, stopped);
 
-        // 派生クラスの更新処理（GameObjectの更新前）
-        OnUpdate();
+        if (advance) {
+            // ゲームオブジェクトの更新
+            gameObjectManager_.UpdateAll();
+        } else {
+            // 停止中はワールド行列の転送だけを残す。
+            // インスペクタやギズモで動かした結果を画面へ出すために要る
+            gameObjectManager_.SyncTransforms();
+        }
 
-        // GameObject 更新前の Feature 更新（床のカメラ追従など位置の事前確定）
-        DispatchUpdate(SceneUpdatePhase::PreObjectUpdate);
+        // GameObject 更新後の Feature 更新（コリジョン収集 → 判定、最後にイベントの一括配信）
+        DispatchUpdate(SceneUpdatePhase::PostObjectUpdate, stopped);
 
-        // ゲームオブジェクトの更新
-        gameObjectManager_.UpdateAll();
-
-        // GameObject 更新後の Feature 更新（コリジョン収集 → 判定など）
-        DispatchUpdate(SceneUpdatePhase::PostObjectUpdate);
-
-        // 派生クラスの後処理（クリーンアップ前）
-        OnLateUpdate();
+        if (advance) {
+            // 派生クラスの後処理（クリーンアップ前）
+            OnLateUpdate();
+        }
 
         // 全ロジック確定後の Feature 更新（大気→雲など最新の太陽・カメラ情報の反映）
-        DispatchUpdate(SceneUpdatePhase::PostLogic);
+        DispatchUpdate(SceneUpdatePhase::PostLogic, stopped);
     }
 
     void BaseScene::PrepareRender()
     {
+        // cameraManager_ は CameraFeature が GraphicsCore を取れなかった場合に空のままになる。
+        // ここでも null を許容すること（描画キューを積まずに抜ける）。
         auto renderManager = engine_->GetService<RenderManager>();
-        Camera* activeCamera3D = cameraManager_->GetActiveCamera(CameraType::Camera3D);
+        Camera* activeCamera3D = cameraManager_
+            ? cameraManager_->GetActiveCamera(CameraType::Camera3D)
+            : nullptr;
 
         if (!renderManager || !activeCamera3D) {
             return;
@@ -207,22 +171,6 @@ namespace CoreEngine
 
         // 全てのゲームオブジェクトを描画キューに追加
         gameObjectManager_.RegisterAllToRender(renderManager);
-    }
-
-    void BaseScene::Draw()
-    {
-        auto* renderManager = engine_->GetService<RenderManager>();
-        auto* dxCommon = engine_->GetService<GraphicsCore>();
-        if (!renderManager || !dxCommon) {
-            return;
-        }
-
-        // RenderGraph を経由しないレガシー描画経路。
-        // 描画に使うビューは EngineSystem がフレーム先頭で確定済み（FrameViews）なので、
-        // ここでアクティブカメラを差し替えない（ギズモ／ピッキングが別カメラを見てズレるため）。
-        // RenderContext が無いので、このシーン描画自体がコマンドリストの供給点になる。
-        renderManager->SetDebugLineRenderingEnabled(true);
-        renderManager->DrawGeometryPass(dxCommon->GetCommandList());
     }
 
     Camera* BaseScene::GetGameViewCamera3D() const
@@ -239,18 +187,12 @@ namespace CoreEngine
 
     void BaseScene::Finalize()
     {
-        // 最後の設定・姿勢を CVar へ写しておく（最終フレームの Update 以降の変更を取りこぼさない）。
-        // カメラの破棄より先に行うこと
-        if (sceneCamera_ && orbitController_) {
-            DebugCameraCVars::MirrorFrom(*sceneCamera_, *orbitController_);
-        }
-        sceneCamera_ = nullptr;
-        orbitController_ = nullptr;
-
         // 派生クラス固有の解放
         OnFinalize();
 
-        // Feature の解放（登録の逆順）
+        // Feature の解放（登録の逆順）。
+        // CameraFeature は先頭に登録されているのでここでは最後に回り、
+        // 他の Feature が解放中も ctx.cameraManager を参照できる。
         RefreshFeatureContext();
         for (auto it = features_.rbegin(); it != features_.rend(); ++it) {
             it->feature->Finalize(featureContext_);
@@ -259,15 +201,18 @@ namespace CoreEngine
         // ゲームオブジェクトをクリア（新システム）
         gameObjectManager_.Clear();
 
-        // Feature を破棄（委譲先ポインタも無効化）
+        // GameObject 破棄後の Feature フック（登録の逆順）。
+        // 取り残された購読・再生途中のトゥイーンなど、「オブジェクトの破棄で
+        // 解除されるはずだったもの」をここで畳む。
+        for (auto it = features_.rbegin(); it != features_.rend(); ++it) {
+            it->feature->PostSceneFinalize(featureContext_);
+        }
+
+        // Feature を破棄（GetFeature<T>() は以降 nullptr を返す）。
+        // カメラ一式の実体もここで消えるので、キャッシュを先に落としておく
+        cameraManager_ = nullptr;
         features_.clear();
         featuresInitialized_ = false;
-        lightingFeature_ = nullptr;
-        environmentFeature_ = nullptr;
-        groundFeature_ = nullptr;
-        collisionFeature_ = nullptr;
-        bgmFeature_ = nullptr;
-        directionalLight_ = nullptr;
     }
 
     GameObject* BaseScene::CreateObject(const std::string& name)
@@ -275,6 +220,28 @@ namespace CoreEngine
         auto obj = std::make_unique<GameObject>();
         obj->SetName(name);
         return gameObjectManager_.AddObject(std::move(obj));
+    }
+
+    UIText* BaseScene::CreateText(const std::string& textUtf8, float fontSize,
+        UIAnchor anchor, const Vector2& anchoredPos, const Vector4& color,
+        const std::string& name)
+    {
+        // CreateObject<T> の中で Initialize() まで走るので、ここへ来た時点で
+        // レンダラーの解決と既定フォントの取得は済んでいる
+        auto* text = CreateObject<UIText>();
+        if (!text) { return nullptr; }
+
+        if (!name.empty()) {
+            text->SetName(name);
+        }
+
+        text->SetText(textUtf8);
+        text->SetFontSize(fontSize);
+        text->SetAnchor(anchor);
+        text->SetAnchoredPosition(anchoredPos);
+        text->SetColor(color);
+
+        return text;
     }
 
     ISceneFeature* BaseScene::AddFeature(std::unique_ptr<ISceneFeature> feature, int priority)
@@ -308,181 +275,85 @@ namespace CoreEngine
 
     void BaseScene::RegisterDefaultFeatures()
     {
-        // 登録順 = 同 priority 内の実行順。従来 BaseScene::Update の暗黙順序を再現する
-        auto lighting = std::make_unique<LightingFeature>();
-        lightingFeature_ = lighting.get();
-        AddFeature(std::move(lighting));
-
-#ifdef USE_IMGUI
-        AddFeature(std::make_unique<GridFeature>());
-        AddFeature(std::make_unique<DebugEditorFeature>());
-#endif
-
-        auto collision = std::make_unique<CollisionFeature>();
-        collisionFeature_ = collision.get();
-        AddFeature(std::move(collision));
-
-        auto environment = std::make_unique<EnvironmentFeature>();
-        environmentFeature_ = environment.get();
-        AddFeature(std::move(environment));
-
-        // 既定の床。空（Environment）と対になる「必ずある地面」で、
-        // 生成はシーンの OnInitialize 完了後（PostSceneInitialize）に行われる
-        auto ground = std::make_unique<GroundFeature>();
-        groundFeature_ = ground.get();
-        AddFeature(std::move(ground));
-
-        auto bgm = std::make_unique<SceneBGMFeature>();
-        bgmFeature_ = bgm.get();
-        AddFeature(std::move(bgm));
+        // 顔ぶれと並びは DefaultSceneFeatures.cpp が持つ。
+        // 参照が必要になったら GetFeature<T>() で引くので、ここでは持ち回らない。
+        for (auto& entry : CreateDefaultSceneFeatures()) {
+            AddFeature(std::move(entry.feature), entry.priority);
+        }
     }
 
     void BaseScene::RefreshFeatureContext()
     {
+        // カメラ一式は CameraFeature が所有する。初回だけ型で引き、以降はキャッシュを使う
+        // （毎フレーム 4 回以上通るので、ここで走査を繰り返さない）。
+        if (!cameraManager_) {
+            if (auto* camera = GetFeature<CameraFeature>()) {
+                cameraManager_ = camera->GetCameraManager();
+            }
+        }
+
         featureContext_.engine = engine_;
         featureContext_.gameObjectManager = &gameObjectManager_;
-        featureContext_.cameraManager = cameraManager_.get();
+        featureContext_.cameraManager = cameraManager_;
         featureContext_.sceneManager = sceneManager_;
         featureContext_.saveSystem = sceneSaveSystem_.get();
         featureContext_.gameViewCamera3D = GetGameViewCamera3D();
     }
 
-    void BaseScene::DispatchUpdate(SceneUpdatePhase phase)
+    void BaseScene::DispatchUpdate(SceneUpdatePhase phase, bool stopped)
     {
-        RefreshFeatureContext();
+        // 停止中はゲームの進行に関わる Feature を飛ばす。
+        // どちらに属するかは Feature 自身が RunsWhileStopped() で答える。
+        // 「止まっているか」の判断は Update() が一括で行う（停止ボタンとシーン遷移の両方）
+
+        // コンテキストは 1 体ごとに取り直す。先頭の CameraFeature が視点を切り替えた
+        // フレームでも、後続の Feature が同じフレームで新しい視点カメラを見られるようにする。
         for (auto& entry : features_) {
+            if (stopped && !entry.feature->RunsWhileStopped()) {
+                continue;
+            }
+            RefreshFeatureContext();
             entry.feature->Update(featureContext_, phase);
         }
     }
 
-    void BaseScene::SetupCamera()
-    {
-        auto dxCommon = engine_->GetService<GraphicsCore>();
-        if (!dxCommon) {
-            return;
-        }
-
-        // カメラマネージャーを作成
-        cameraManager_ = std::make_unique<CameraManager>();
-
-        // ===== 3Dカメラの設定 =====
-
-        // リリースカメラを作成して登録（斜め上から俯瞰する視点）
-        // y は既定の無限遠タイル床（y=0）より上に置く。床の高さにカメラがあると
-        // 足元の床がニアクリップで消え、地平線より下に大気の下向き（＝黒）が見えてしまう。
-        auto gameCamera = std::make_unique<Camera>();
-        gameCamera->Initialize(dxCommon->GetDevice());
-        gameCamera->SetTranslate({ 0.0f, kDefaultCameraHeight, -30.0f });
-        gameCamera->SetRotate({ 0.0f, 0.0f, 0.0f });
-
-        cameraManager_->RegisterCamera(CameraNames::Game, std::move(gameCamera));
-
-        // エディタ視点カメラ（カメラ自体は Game と同じ型。Blender 風の操作は
-        // OrbitFlyController を取り付けることで与える）
-        auto sceneCamera = std::make_unique<Camera>();
-        sceneCamera->Initialize(dxCommon->GetDevice());
-        cameraManager_->RegisterCamera(CameraNames::Scene, std::move(sceneCamera));
-
-        cameraManager_->SetEngineSystem(engine_);
-        OrbitFlyController* orbitController =
-            cameraManager_->AttachController<OrbitFlyController>(CameraNames::Scene);
-
-        // ゲーム視点カメラは一人称の自由移動で操作する（既定は無効）
-        cameraManager_->AttachController<FreeLookController>(CameraNames::Game);
-
-        // 起動時はゲーム視点で覗く（エディタ視点への切り替えはキー 1 / カメラUI）
-        cameraManager_->SetUseSceneCamera(false);
-
-        // エディタ視点カメラの設定・姿勢を CVar 経由で永続化する。
-        // 生成直後のこの時点で前回終了時の状態を復元し、以降は毎フレーム CVar へ写す
-        sceneCamera_ = cameraManager_->GetCamera(CameraNames::Scene);
-        orbitController_ = orbitController;
-        if (sceneCamera_ && orbitController_) {
-            DebugCameraCVars::RestoreTo(*sceneCamera_, *orbitController_);
-        }
-
-        // ===== 2Dカメラの設定 =====
-
-        // 2Dカメラ = 正射影パラメータを持つ同じ Camera（画面中央が原点）
-        auto camera2D = std::make_unique<Camera>(CameraParameters::Orthographic2D());
-        camera2D->SetTranslate({ 0.0f, 0.0f, 0.0f });
-        camera2D->SetZoom(1.0f);
-        camera2D->Initialize(nullptr); // 2D は GPU 定数バッファ不要
-
-        cameraManager_->RegisterCamera(CameraNames::Camera2D, std::move(camera2D));
-        cameraManager_->SetActiveCamera(CameraNames::Camera2D, CameraType::Camera2D);
-    }
-
     void BaseScene::SetReleaseCameraTransform(const Vector3& translate, const Vector3& rotate)
     {
-        if (!cameraManager_) {
-            return;
-        }
-        if (auto* releaseCamera = cameraManager_->GetCamera(CameraNames::Game)) {
-            releaseCamera->SetTranslate(translate);
-            releaseCamera->SetRotate(rotate);
+        if (auto* camera = GetFeature<CameraFeature>()) {
+            camera->SetReleaseCameraTransform(translate, rotate);
         }
     }
 
     void BaseScene::SetReleaseCameraLens(float fovDegrees, float farClip, float nearClip)
     {
-        if (!cameraManager_) {
-            return;
-        }
-        if (auto* releaseCamera = cameraManager_->GetCamera(CameraNames::Game)) {
-            CameraParameters params = releaseCamera->GetParameters();
-            params.SetFovDegrees(fovDegrees);
-            params.nearClip = nearClip;
-            params.farClip = farClip;
-            releaseCamera->SetParameters(params);
+        if (auto* camera = GetFeature<CameraFeature>()) {
+            camera->SetReleaseCameraLens(fovDegrees, farClip, nearClip);
         }
     }
 
     void BaseScene::SetCollisionEnabled(CollisionLayer a, CollisionLayer b, bool enable)
     {
-        if (collisionFeature_) {
-            collisionFeature_->SetCollisionEnabled(a, b, enable);
+        if (auto* collision = GetFeature<CollisionFeature>()) {
+            collision->SetCollisionEnabled(a, b, enable);
         }
+    }
+
+    Light* BaseScene::GetDirectionalLight() const
+    {
+        auto* lighting = GetFeature<LightingFeature>();
+        return lighting ? lighting->GetDirectionalLight() : nullptr;
     }
 
     CollisionWorld* BaseScene::GetCollisionWorld()
     {
-        return collisionFeature_ ? &collisionFeature_->GetWorld() : nullptr;
-    }
-
-    SkyBoxObject* BaseScene::GetSkyBox() const
-    {
-        return environmentFeature_ ? environmentFeature_->GetSkyBox() : nullptr;
+        auto* collision = GetFeature<CollisionFeature>();
+        return collision ? &collision->GetWorld() : nullptr;
     }
 
     void BaseScene::SetDefaultGroundEnabled(bool enabled)
     {
-        if (groundFeature_) {
-            groundFeature_->SetSuppressed(!enabled);
+        if (auto* ground = GetFeature<GroundFeature>()) {
+            ground->SetSuppressed(!enabled);
         }
-    }
-
-    void BaseScene::RegisterSceneBGM(std::unique_ptr<SoundManager::SoundResource>* bgm)
-    {
-        if (bgmFeature_) {
-            RefreshFeatureContext();
-            bgmFeature_->RegisterSceneBGM(featureContext_, bgm);
-        }
-    }
-
-    void BaseScene::LoadObjectsFromJson()
-    {
-        sceneSaveSystem_->Load(&gameObjectManager_);
-    }
-
-
-    void BaseScene::SaveObjectsToJson()
-    {
-        sceneSaveSystem_->SaveScene(&gameObjectManager_);
-    }
-
-    void BaseScene::SaveSingleObjectToJson(GameObject* obj)
-    {
-        sceneSaveSystem_->SaveObject(obj);
     }
 }

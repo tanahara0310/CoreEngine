@@ -18,6 +18,7 @@ namespace CoreEngine
 #ifdef USE_IMGUI
     // 前方宣言
     class CameraDebugUI;
+    struct CameraEditorViewport;
     class GameObjectManager;
 #endif
     class EngineSystem;
@@ -153,6 +154,12 @@ namespace CoreEngine
 
         /// @brief モジュール状態のみ更新（描画なし）
         void UpdateDebugModules();
+
+        /// @brief ゲームビューポート上のカメラ編集の重ね描き（ギズモ・アイコン）
+        /// @param viewCamera いま覗いているカメラ
+        /// @param viewport ビューポートの位置と大きさ [px]
+        void DrawDebugViewportOverlay(const Camera& viewCamera,
+            const CameraEditorViewport& viewport);
 
         /// @brief カメラUIの内容のみ描画（ImGui::Begin/Endなし、Inspectorパネル埋め込み用）
         void DrawImGuiContent();

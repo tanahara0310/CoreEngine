@@ -52,10 +52,15 @@ namespace CoreEngine
         float noiseLodBias;          float paintRegionCenterX;              // 400
         // ===== 配置ペイント（ワールド固定領域） =====
         float paintRegionCenterZ;    float paintRegionSizeM;
-        float paintEdgeFade;         float pad7;                            // 416 (= 432)
+        // ===== スタイル（ブロック雲） =====
+        float paintEdgeFade;         uint32_t styleIndex;                   // 416
+        float voxelSizeM;            float voxelHeightSizeM;
+        float densityThreshold;      float voxelFaceBrightness;             // 432
+        float voxelFaceShadeMin;     float pad7;
+        float pad8;                  float pad9;                            // 448 (= 464)
     };
-    static_assert(sizeof(VolumetricCloudShaderConstants) == 432,
-        "VolumetricCloudShaderConstants は HLSL 側 CloudConstants の 432 バイトレイアウトと一致させること");
+    static_assert(sizeof(VolumetricCloudShaderConstants) == 464,
+        "VolumetricCloudShaderConstants は HLSL 側 CloudConstants の 464 バイトレイアウトと一致させること");
 
     static constexpr Cb::Field kVolumetricCloudShaderConstantsFields[] = {
         CB_FIELD(VolumetricCloudShaderConstants, invViewProj),
@@ -120,7 +125,15 @@ namespace CoreEngine
         CB_FIELD(VolumetricCloudShaderConstants, paintRegionCenterZ),
         CB_FIELD(VolumetricCloudShaderConstants, paintRegionSizeM),
         CB_FIELD(VolumetricCloudShaderConstants, paintEdgeFade),
+        CB_FIELD(VolumetricCloudShaderConstants, styleIndex),
+        CB_FIELD(VolumetricCloudShaderConstants, voxelSizeM),
+        CB_FIELD(VolumetricCloudShaderConstants, voxelHeightSizeM),
+        CB_FIELD(VolumetricCloudShaderConstants, densityThreshold),
+        CB_FIELD(VolumetricCloudShaderConstants, voxelFaceBrightness),
+        CB_FIELD(VolumetricCloudShaderConstants, voxelFaceShadeMin),
         CB_FIELD(VolumetricCloudShaderConstants, pad7),
+        CB_FIELD(VolumetricCloudShaderConstants, pad8),
+        CB_FIELD(VolumetricCloudShaderConstants, pad9),
     };
     CB_VERIFY_LAYOUT(VolumetricCloudShaderConstants, kVolumetricCloudShaderConstantsFields);
     CB_BIND_HLSL(VolumetricCloudShaderConstants, kVolumetricCloudShaderConstantsFields, "gCloud");

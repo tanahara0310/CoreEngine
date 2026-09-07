@@ -7,6 +7,10 @@
 #include <algorithm>
 #include <cassert>
 
+#ifdef USE_IMGUI
+#include "Collision/Debug/ColliderInspector.h"
+#endif
+
 namespace CoreEngine
 {
     Collider& ColliderComponent::Add(const CollisionShape& shape, CollisionLayer layer)
@@ -82,4 +86,15 @@ namespace CoreEngine
     {
         return (index < colliders_.size()) ? colliders_[index].get() : nullptr;
     }
+
+#ifdef USE_IMGUI
+bool ColliderComponent::DrawInspector()
+{
+    GameObject* owner = GetOwner();
+    if (!owner) { return false; }
+
+    // ModelGameObject の「コライダー」タブと同じ UI を共有する
+    return ColliderInspector::Draw(*owner);
+}
+#endif // USE_IMGUI
 }

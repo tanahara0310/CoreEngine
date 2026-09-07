@@ -340,8 +340,10 @@ namespace CoreEngine
         const bool useAutoExposure = cvAutoExposureEnabled.Get() && autoExposureReady_;
         const bool useIlluminationMetering = cvMeteringIllumination.Get() && illuminationValid_;
 
-        // 過去フレームの計測値で順応を進めてから、今フレームの露出を CB へ書き込む
-        if (useAutoExposure) {
+        // 過去フレームの計測値で順応を進めてから、今フレームの露出を CB へ書き込む。
+        // 暗転で塗り潰されている間（シーン切り替え）は、見えていない絵＝シーンの無い
+        // 真っ黒な SceneColor へ順応してしまうので、順応も計測も止めて値を保持する
+        if (useAutoExposure && !adaptationPaused_) {
             UpdateAutoExposureAdaptation();
         }
         UpdateScreenConstantBuffer(width, height);
@@ -350,7 +352,7 @@ namespace CoreEngine
 
         // 今フレームの入力輝度を計測する（結果は2フレーム後の順応更新で使われる）。
         // 照明駆動測光が有効な間は GPU 計測が不要なのでスキップする
-        if (useAutoExposure && !useIlluminationMetering) {
+        if (useAutoExposure && !useIlluminationMetering && !adaptationPaused_) {
             RecordLuminanceReduction(cmdList, inputSrvHandle);
         }
 

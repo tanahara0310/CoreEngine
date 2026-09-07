@@ -36,9 +36,6 @@ protected:
     /// @brief ゲーム固有の更新処理（シーン更新を委譲）
     void Update() override;
 
-    /// @brief ゲーム固有の描画処理（シーン描画を委譲）
-    void Draw() override;
-
     /// @brief 描画前準備（シーン描画キュー構築を委譲）
     void PrepareRender() override;
 

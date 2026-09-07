@@ -16,6 +16,12 @@ public:
     struct ColorOverLifetime {
         Vector4 endColor = { 1.0f, 1.0f, 1.0f, 0.0f };   // 終了色
         bool useGradient = true;   // グラデーションを使用するか
+
+        /// 色の変化を始める寿命の割合（0.0〜1.0）
+        /// @details 0 なら生まれた瞬間から終了色へ向かって変わり始める。
+        ///          0.7 にすると寿命の最後 30% だけで変化するので、
+        ///          「消え際だけフェードさせる」用途に使える。
+        float startRatio = 0.0f;
     };
 
     ColorModule();

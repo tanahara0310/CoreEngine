@@ -69,9 +69,6 @@ namespace CoreEngine
     /// @brief G-Bufferパスのみ描画（不透明 Model / SkinnedModel を蓄積）
     void DrawGBufferPass(ID3D12GraphicsCommandList* cmdList, RenderViewType viewType = RenderViewType::GameView);
 
-    /// @brief 通常ジオメトリパスのみ描画（描画キュー必須）
-    void DrawGeometryPass(ID3D12GraphicsCommandList* cmdList, RenderViewType viewType = RenderViewType::GameView);
-
     /// @brief 通常 RenderItem キューのみ描画する
     void DrawMainQueuePass(ID3D12GraphicsCommandList* cmdList, RenderViewType viewType = RenderViewType::GameView);
 

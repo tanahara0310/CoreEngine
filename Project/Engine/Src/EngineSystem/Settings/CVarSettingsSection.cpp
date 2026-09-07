@@ -55,6 +55,23 @@ namespace CoreEngine
         return CVarRegistry::Get().GetCommitRevision();
     }
 
+    void CVarSettingsSection::LoadProjectConfigFile()
+    {
+        auto& jm = JsonManager::GetInstance();
+        if (!jm.FileExists(kConfigPath)) {
+            return;  // 未保存＝コード既定値のまま（初回起動時の正常系）
+        }
+
+        const nlohmann::json config = jm.LoadJson(kConfigPath);
+        if (config.is_null() || !config.is_object() || config.empty()) {
+            return;
+        }
+
+        // EditorSettingsSubsystem::RegisterSection の復元と同じ適用経路。
+        // "version" のような CVar 名でないキーは Load 側が単に無視する
+        CVarSerialization::Load(config);
+    }
+
     void CVarSettingsSection::MigrateLegacyFile()
     {
         auto& jm = JsonManager::GetInstance();

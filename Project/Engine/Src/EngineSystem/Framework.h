@@ -51,10 +51,10 @@ protected:
     /// @brief 更新処理（ゲーム固有のロジック）
     virtual void Update() = 0;
 
-    /// @brief 描画処理（ゲーム固有の描画）
-    virtual void Draw() = 0;
-
     /// @brief 描画前準備（描画キュー構築など、毎フレーム実行）
+    /// @note 実際の描画コマンド発行はエンジン側の RenderGraph
+    ///       （EngineSystem::ExecuteRenderPipeline）が行うので、
+    ///       ゲーム側が用意するのは「何を描くか」の登録だけ。
     virtual void PrepareRender() {}
 
     // ──────────────────────────────────────────────────────────

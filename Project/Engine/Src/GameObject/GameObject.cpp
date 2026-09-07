@@ -239,6 +239,70 @@ namespace CoreEngine
         onSaveRequested_ = std::move(cb);
     }
 
+    void GameObject::NotifyEditCommitted(const Vector3& beforeTranslate, const Vector3& beforeRotate,
+        const Vector3& beforeScale, bool beforeActive) {
+        if (onEditCommitted_) {
+            onEditCommitted_(this, beforeTranslate, beforeRotate, beforeScale, beforeActive);
+        }
+    }
+
+    int GameObject::BuildComponentTabs(InspectorTabDef* outTabs, int maxTabs) const {
+        if (!outTabs || maxTabs <= 0) { return 0; }
+
+        int count = 0;
+        for (const auto& component : GetAllComponents()) {
+            if (!component) { continue; }
+            if (count >= maxTabs) { break; }
+
+            InspectorTabDef& tab = outTabs[count];
+            tab.iconPath = component->GetInspectorIcon();
+            tab.tooltip = component->GetInspectorName();
+            component->GetInspectorIconColor(tab.tint);
+
+            // 選択中の背景はアイコン色を薄くしたもの（レガシータブと同じ見た目にする）
+            tab.selectedBg[0] = tab.tint[0];
+            tab.selectedBg[1] = tab.tint[1];
+            tab.selectedBg[2] = tab.tint[2];
+            tab.selectedBg[3] = 0.25f;
+
+            ++count;
+        }
+        return count;
+    }
+
+    bool GameObject::DrawComponentTabContent(int tabIndex) {
+        const auto& components = GetAllComponents();
+
+        // BuildComponentTabs と同じ順序で走査する（nullptr は両方で飛ばす）
+        int index = 0;
+        for (const auto& component : components) {
+            if (!component) { continue; }
+
+            if (index == tabIndex) {
+                bool changed = false;
+
+                bool enabled = component->IsEnabled();
+                if (ImGui::Checkbox("有効", &enabled)) {
+                    component->SetEnabled(enabled);
+                    changed = true;
+                }
+                UI::Separator();
+
+                // DrawInspector() の戻り値は「値が変わったか」であって
+                // 「何か描いたか」ではない。中身の有無はカーソルが進んだかで見る
+                const float cursorBefore = ImGui::GetCursorPosY();
+                changed |= component->DrawInspector();
+
+                if (ImGui::GetCursorPosY() <= cursorBefore) {
+                    UI::Hint("このコンポーネントに編集項目はありません");
+                }
+                return changed;
+            }
+            ++index;
+        }
+        return false;
+    }
+
     bool GameObject::DrawImGui() {
         bool changed = false;
         ImGui::PushID(this);
@@ -279,7 +343,14 @@ namespace CoreEngine
 
         // ── タブ判定 ─────────────────────────────────────────────
         InspectorTabDef tabs[8];
-        const int tabCount = GetInspectorTabs(tabs, 8);
+        const int objectTabCount = GetInspectorTabs(tabs, 8);
+        const int componentTabCount = objectTabCount < 8
+            ? BuildComponentTabs(tabs + objectTabCount, 8 - objectTabCount)
+            : 0;
+        const int tabCount = objectTabCount + componentTabCount;
+
+        // 前回選んでいたタブがコンポーネントの増減で範囲外になることがある
+        if (inspectorTab_ >= tabCount) { inspectorTab_ = 0; }
 
         if (tabCount > 0) {
             // タブアイコンのロード（TextureManager がキャッシュするため毎フレーム安全）
@@ -346,11 +417,13 @@ namespace CoreEngine
             {
                 UI::Scope::ChildScope content("##PropContent", ImVec2(0.0f, 0.0f));
                 if (inspectorTab_ >= 0 && inspectorTab_ < tabCount) {
-                    changed |= DrawInspectorTabContent(inspectorTab_);
+                    changed |= inspectorTab_ < objectTabCount
+                        ? DrawInspectorTabContent(inspectorTab_)
+                        : DrawComponentTabContent(inspectorTab_ - objectTabCount);
                 }
             }
         } else {
-            // タブ未定義: フォールバック
+            // タブもコンポーネントも無い: フォールバック
             changed |= DrawImGuiExtended();
         }
 

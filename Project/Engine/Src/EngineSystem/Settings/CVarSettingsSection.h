@@ -37,6 +37,15 @@ namespace CoreEngine
         uint64_t GetChangeRevision() const override;
         uint64_t GetCommitRevision() const override;
 
+        /// @brief プロジェクト設定パート（Config/EngineSettings/CVars.json）を直接読み込む
+        /// @details ImGui 無しビルド（Release）には EditorSettingsSubsystem が存在せず、
+        ///          セクション登録時の復元経路ごと落ちるため、CVar が全てコード既定値の
+        ///          ままになってしまう。較正済みの値はゲームの見た目そのものなので、
+        ///          保存はせず読み込みだけを行う経路をエディタ非依存で用意する。
+        /// @note 個人状態（"d." / Saved 配下）は読まない。デバッグ用の作業状態であり、
+        ///       製品ビルドへ持ち込む値ではないため
+        static void LoadProjectConfigFile();
+
         /// @brief 旧形式（Saved/EditorSettings/CVars.json に全部入り）を新 2 層へ移行する
         /// @details 新しい Config 側ファイルが無く旧ファイルがある場合のみ、キーを
         ///          接頭辞で振り分けて両ファイルを生成し、旧ファイルは .migrated へ退避する

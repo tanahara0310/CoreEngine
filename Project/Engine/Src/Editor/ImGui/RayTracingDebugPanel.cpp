@@ -392,13 +392,17 @@ namespace CoreEngine
         };
         const Entry entries[] = {
             { "1. Raw (RayGen 出力)",
-              "デノイズ前の生マスク（トレース解像度）。1spp なので 0/1 のバイナリノイズに見えるのが正常",
+              "デノイズ前の生マスク（トレース解像度）。R = シャドウ値（バイナリノイズに見えるのが正常）、"
+              "G = そのピクセルに撃ったレイ本数（影の縁だけ明るければ適応サンプリングが効いている）",
               shadowMgr->GetRawShadowSRVHandle(viewId, li) },
             { "2. 最終マスク (フル解像度)",
               "テンポラル蓄積 → A-Trous → アップサンプルまで通した実体（DeferredLighting が読む）",
               shadowMgr->GetShadowSRVHandle(viewId, li) },
             { "3. History (今フレームの書き込み先)",
-              "テンポラル蓄積の履歴（トレース解像度）。Stage 3 で 2 枚 ping-pong になり全画面コピーは廃止した",
+              "テンポラル蓄積の履歴（トレース解像度・RGBA16F の 2 枚 ping-pong）。"
+              "R = シャドウ値 / G = 推定分散 / B = 蓄積フレーム数 N / A = 線形ビュー深度。"
+              "影の縁にノイズが出るときは B（N）を見る。ここが暗い＝履歴が毎フレーム棄却されており、"
+              "r.RTShadow.HistoryClampSigma を上げるか HistoryDepthTolerance を緩めると改善する",
               shadowMgr->GetHistorySRVHandle(viewId, li) },
         };
 

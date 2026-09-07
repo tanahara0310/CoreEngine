@@ -4,6 +4,45 @@
 
 namespace CoreEngine
 {
+    /// @brief 雲の見た目のスタイル
+    /// @details 密度場そのものは全スタイルで共通で、「サンプル座標をどう量子化して
+    ///          密度をどう二値化するか」だけが違う（HLSL 側 CloudBlocky.hlsli）。
+    ///          値は定数バッファへそのまま乗るので、CloudBlocky.hlsli の
+    ///          CLOUD_STYLE_* と番号を一致させること。
+    enum class CloudStyle : uint32_t {
+        Realistic = 0,  ///< 量子化なし。現行のボリューメトリック雲
+        Voxel = 1,      ///< XZ + Y の 3 軸を量子化。立方体で構成された塊
+        Minecraft = 2,  ///< XZ のみ量子化 + 箱型プロファイル。一定高度の平らな板
+        Terraced = 3,   ///< Y のみ量子化。輪郭は有機的なまま高さが段々になる
+        Count
+    };
+
+    /// @brief 範囲外のスタイル番号を丸める
+    /// @details CVar の範囲は UI のヒントでしかなく Set はクランプしないため、
+    ///          手書きの CVars.json 等で範囲外が入りうる。丸めておかないと C++ 側と
+    ///          HLSL 側（未知の値は Voxel へ落ちる）で判定がずれる。
+    constexpr uint32_t ClampCloudStyleIndex(uint32_t styleIndex) noexcept
+    {
+        constexpr uint32_t kLast = static_cast<uint32_t>(CloudStyle::Count) - 1u;
+        return (styleIndex < kLast) ? styleIndex : kLast;
+    }
+
+    /// @brief スタイルがブロック雲（量子化あり）か
+    constexpr bool IsBlockyCloudStyle(uint32_t styleIndex) noexcept
+    {
+        return styleIndex != static_cast<uint32_t>(CloudStyle::Realistic)
+            && styleIndex < static_cast<uint32_t>(CloudStyle::Count);
+    }
+
+    /// @brief DDA ボクセルトラバーサル（CloudVoxelMarch.CS）を使うスタイルか
+    /// @details 水平方向にも格子があるスタイルだけが対象。Terraced は縦しか量子化せず
+    ///          水平の輪郭が連続なので、たどるべき格子が無く固定ステップのままにする。
+    constexpr bool CloudStyleUsesVoxelMarch(uint32_t styleIndex) noexcept
+    {
+        return styleIndex == static_cast<uint32_t>(CloudStyle::Voxel)
+            || styleIndex == static_cast<uint32_t>(CloudStyle::Minecraft);
+    }
+
     /// @brief 雲の見た目パラメータ（単位はメートル・秒・無次元）
     /// @details 値の実体は CloudCVars が持つ。既定値もそちらにあるため、ここでは初期化しない。
     ///          チューニング指針は Docs/Engine/Graphics/Cloud/VolumetricCloud_Refactoring_Plan.md を見ること。
@@ -90,5 +129,15 @@ namespace CoreEngine
         uint32_t godRayStepCount;       ///< ビューレイマーチのステップ数
         float cloudShadowRegionSizeM;   ///< 雲シャドウマップのカバー範囲（一辺）[m]
         float sceneShadowStrength;      ///< シーンへ落とす雲影の強さ（0 で落とさない）
+
+        // ===== スタイル（ブロック雲） =====
+        // Realistic 以外では雲影とスカイキューブマップも同じ量子化で追従する
+        // （密度関数を共有しているため）。
+        uint32_t styleIndex;            ///< CloudStyle。0 = Realistic
+        float voxelSizeM;               ///< ボクセル 1 辺の実寸（水平）[m]
+        float voxelHeightSizeM;         ///< ボクセルの縦の実寸 [m]。0 以下で水平と同じ
+        float densityThreshold;         ///< 密度の二値化しきい値 [0,1]
+        float voxelFaceBrightness;      ///< ボクセル面の直接光の倍率
+        float voxelFaceShadeMin;        ///< 光源に背を向けた面の明るさ（小さいほど高コントラスト）
     };
 }

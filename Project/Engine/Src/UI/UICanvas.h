@@ -20,7 +20,7 @@ namespace CoreEngine
 
         /// @brief 初期化（UIRenderer に基準解像度を反映する）
         /// @param engine　EngineSystem ポインタ
-        /// @param referenceResolution 基準解像度（{0,0} ならウィンドウサイズに自動追従）
+        /// @param referenceResolution 基準解像度（{0,0} ならエンジン既定の基準解像度）
         void Initialize(EngineSystem* engine,
                         const Vector2& referenceResolution = { 0.0f, 0.0f });
 

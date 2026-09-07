@@ -37,6 +37,8 @@ bool ParticleSystemDebugUI::ShowImGui(ParticleSystem* particleSystem) {
     UI::Separator();
 
     changed |= ShowModules(particleSystem);
+    // 床との衝突は CPU 版だけが持つので、共通の ShowModules ではなくここで出す
+    changed |= DrawModuleSection("床との衝突", particleSystem->GetCollisionModule());
     changed |= ShowRendererSection(particleSystem, particleSystem);
     ShowStatistics(particleSystem);
 

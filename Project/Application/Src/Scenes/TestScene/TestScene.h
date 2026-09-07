@@ -11,7 +11,7 @@
 #include <memory>
 
 // エンジンコア
-#include "Audio/SoundManager.h"
+#include "Input/InputManager.h"
 #include "Camera/CameraManager.h"
 #include "Camera/Camera.h"
 #include "Camera/Camera.h"
@@ -39,9 +39,6 @@ namespace CoreEngine
     public:
         /// @brief シーン固有の初期化
         void OnInitialize() override;
-
-        /// @brief 描画処理
-        void Draw() override;
 
     protected:
         /// @brief 更新処理（BaseSceneのOnUpdate()をオーバーライド）

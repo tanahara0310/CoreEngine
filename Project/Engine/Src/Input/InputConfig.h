@@ -4,12 +4,17 @@
 #include <unordered_map>
 #include <vector>
 #include <string>
+#include <string_view>
 
 namespace CoreEngine {
 
     /// @brief アクション↔バインディングのマッピングを管理するクラス
     class InputConfig {
     public:
+        /// @brief キーコンフィグの既定の保存先（実行時カレント基準）
+        /// 起動時の自動読み込みと ImGui のキーコンフィグ画面が同じファイルを指すための共有定数
+        static constexpr std::string_view kDefaultFilePath = "Application/Assets/Config/keybindings.json";
+
         /// @brief アクションのバインディングを一括設定
         void SetBindings(InputAction action, std::vector<InputBinding> bindings);
 
@@ -26,6 +31,7 @@ namespace CoreEngine {
         void ResetToDefault();
 
         /// @brief JSON ファイルからバインディングを読み込む
+        /// 既定値を土台にファイルの内容を上書きする（ファイルに無いアクションは既定値のまま残る）
         /// @return 読み込みに成功した場合 true
         bool LoadFromFile(const std::string& filePath);
 

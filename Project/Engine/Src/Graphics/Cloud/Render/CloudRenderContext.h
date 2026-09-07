@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <d3d12.h>
 
 namespace CoreEngine
@@ -26,6 +27,9 @@ namespace CoreEngine
         D3D12_GPU_VIRTUAL_ADDRESS godRayConstants = 0;
         /// 雲シャドウ CB（gCloudShadow）の GPU 仮想アドレス
         D3D12_GPU_VIRTUAL_ADDRESS cloudShadowConstants = 0;
+
+        /// 雲のスタイル（CloudStyle）。マーチのパスを選ぶのに使う
+        uint32_t styleIndex = 0;
 
         /// @brief 半解像度バッファの実サイズで 8x8 スレッドグループをディスパッチする
         void DispatchHalfRes() const;

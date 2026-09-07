@@ -8,6 +8,7 @@
 #include "Math/MathCore.h"
 #include "Camera/Camera.h"
 #include "WorldTransform/WorldTransform.h"
+#include <algorithm>
 #include <numbers>
 
 namespace CoreEngine
@@ -113,6 +114,40 @@ namespace CoreEngine
         return changed;
     }
 
+    bool Gizmo::ManipulatePoint(Vector3& position, const Camera* camera)
+    {
+        if (!camera) {
+            return false;
+        }
+
+        Matrix4x4 viewMatrix = camera->GetViewMatrix();
+        Matrix4x4 projectionMatrix = camera->GetProjectionMatrix();
+
+        // 点なので回転とスケールは単位のまま。平行移動だけを行列へ載せる。
+        // 回転はオイラー角の版を明示する（クォータニオン版と曖昧になるため）。
+        const Vector3 noRotation{ 0.0f, 0.0f, 0.0f };
+        Matrix4x4 worldMatrix = MathCore::Matrix::MakeAffine(
+            Vector3{ 1.0f, 1.0f, 1.0f }, noRotation, position);
+
+        ImGuizmo::SetOrthographic(false);
+
+        const bool changed = ImGuizmo::Manipulate(
+            &viewMatrix.m[0][0],
+            &projectionMatrix.m[0][0],
+            ImGuizmo::TRANSLATE,
+            ImGuizmo::WORLD,
+            &worldMatrix.m[0][0]);
+
+        if (changed) {
+            Vector3 translation, rotationDegrees, scale;
+            ImGuizmo::DecomposeMatrixToComponents(
+                &worldMatrix.m[0][0], &translation.x, &rotationDegrees.x, &scale.x);
+            position = translation;
+        }
+
+        return changed;
+    }
+
     bool Gizmo::Manipulate2D(SpriteObject* sprite, const Camera* camera, Mode mode)
     {
         if (!sprite || !camera) {
@@ -183,6 +218,79 @@ namespace CoreEngine
         }
 
         return changed;
+    }
+
+    bool Gizmo::ManipulateUI(UILayout& layout, const Vector2& referenceSize, Mode mode)
+    {
+        if (referenceSize.x <= 0.0f || referenceSize.y <= 0.0f) { return false; }
+
+        // 2D なので平面内の操作だけに絞る（Z を触れてしまうと UI が画面から消える）
+        ImGuizmo::OPERATION operation;
+        switch (mode) {
+        case Mode::Rotate:
+            operation = ImGuizmo::ROTATE_Z;
+            break;
+        case Mode::Scale:
+            operation = ImGuizmo::SCALE_X | ImGuizmo::SCALE_Y;
+            break;
+        default:
+            operation = ImGuizmo::TRANSLATE_X | ImGuizmo::TRANSLATE_Y;
+            break;
+        }
+
+        // UI はカメラに依らないのでビューは単位行列。
+        // 射影は左上原点 (0,0) → 右下 (W,H) の正射影で、UIRenderer と同じもの
+        Matrix4x4 viewMatrix = MathCore::Matrix::Identity();
+        Matrix4x4 projectionMatrix = MathCore::Rendering::Orthographic(
+            0.0f, 0.0f, referenceSize.x, referenceSize.y, 0.0f, 100.0f);
+
+        // ギズモの原点はピボット位置（アンカー点 + AnchoredPosition）。
+        // 矩形の中心ではなくピボットに出すのは、UI の回転・拡縮の基準がそこだから
+        const Vector2 anchorPoint = GetAnchorPoint(layout.anchor, referenceSize);
+        const Vector3 translate(
+            anchorPoint.x + layout.anchoredPos.x,
+            anchorPoint.y + layout.anchoredPos.y,
+            0.0f);
+
+        // 矩形の大きさをそのままスケールとして渡す。
+        // スプライトの scale と同じ扱いになり、SCALE ハンドルで矩形を伸ばせる
+        Matrix4x4 worldMatrix = MathCore::Matrix::MakeAffine(
+            Vector3(layout.size.x, layout.size.y, 1.0f),
+            Vector3(0.0f, 0.0f, layout.rotation),
+            translate);
+
+        ImGuizmo::SetOrthographic(true);
+
+        const bool changed = ImGuizmo::Manipulate(
+            &viewMatrix.m[0][0],
+            &projectionMatrix.m[0][0],
+            operation,
+            ImGuizmo::LOCAL,
+            &worldMatrix.m[0][0]);
+
+        if (!changed) { return false; }
+
+        Vector3 newTranslation, rotationDegrees, newScale;
+        ImGuizmo::DecomposeMatrixToComponents(
+            &worldMatrix.m[0][0],
+            &newTranslation.x,
+            &rotationDegrees.x,
+            &newScale.x);
+
+        layout.anchoredPos = {
+            newTranslation.x - anchorPoint.x,
+            newTranslation.y - anchorPoint.y,
+        };
+        layout.rotation = rotationDegrees.z * kDegToRad;
+
+        // 潰れた矩形はヒット判定もギズモも掴めなくなるので下限を設ける
+        constexpr float kMinSize = 1.0f;
+        layout.size = {
+            (std::max)(kMinSize, newScale.x),
+            (std::max)(kMinSize, newScale.y),
+        };
+
+        return true;
     }
 
     bool Gizmo::IsUsing()

@@ -20,7 +20,7 @@ namespace CoreEngine
     namespace
     {
         CVar<bool> cvEnabled{
-            "r.MotionBlur.Enabled", true,
+            "r.MotionBlur.Enabled", false,
             "モーションブラーを有効にする",
             CVarRange{}, CVarFlags::NoUI };
 

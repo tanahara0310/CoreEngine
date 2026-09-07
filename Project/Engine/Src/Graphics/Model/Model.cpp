@@ -9,6 +9,7 @@
 #include "Graphics/Render/Model/Instancing/InstanceBatchManager.h"
 #include "Graphics/Model/Skeleton/SkinClusterGenerator.h"
 #include "Graphics/Model/Skeleton/SkinningComputeDispatcher.h"
+#include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
 #include "Math/MathCore.h"
 
@@ -95,6 +96,27 @@ namespace CoreEngine
     }
 
 
+    void Model::OnTeleported()
+    {
+        prevGameWVPFrame_ = kInvalidMotionFrame;
+        visibility_.ResetOcclusionHistory();
+    }
+
+    bool Model::IsMotionHistoryUsable(bool isGameView, uint64_t frame) const
+    {
+        // 補助ビューは履歴を持たない（GameView とカメラが違う）。
+        // GameView でも「ちょうど 1 フレーム前に描いた」ときだけ前フレーム WVP を信用する。
+        // 視錐台カリング・SetActive(false)・プールの使い回しで描画が飛んだ場合、
+        // 保持している WVP は何フレームも前の位置なので、それを prevWVP にすると
+        // 「1 フレームでそこまで動いた」という嘘のモーションベクターになる。
+        // RT シャドウのテンポラル再投影はその嘘を信じて無関係な履歴を拾い、
+        // カメラが動いている間だけ影がちらつく。
+        if (!isGameView || prevGameWVPFrame_ == kInvalidMotionFrame) {
+            return false;
+        }
+        return prevGameWVPFrame_ + 1 == frame;
+    }
+
     void Model::UpdateTransformationMatrix(const WorldTransform& transform, const DrawViewInfo& view)
     {
         ID3D12Resource* transformBuffer = GetGameTransformBuffer();
@@ -111,14 +133,16 @@ namespace CoreEngine
         // モーションベクター履歴（prevWVP）は GameView 専用。補助ビュー（カメラが異なる）で
         // 履歴を読む/更新すると GameView 側の MV が壊れるため、GameView 以外は MV=0 で描く
         const bool isGameView = (view.viewType == RenderViewType::GameView);
+        const uint64_t frame = Time::FrameCount();
+        const bool hasMotionHistory = IsMotionHistoryUsable(isGameView, frame);
 
         // GPUメモリに書き込み
         TransformationMatrix* mappedData = nullptr;
         transformBuffer->Map(0, nullptr, reinterpret_cast<void**>(&mappedData));
         mappedData->world = worldMatrix;
-        // 初回フレームは prevWVP = currentWVP にしてモーションベクター=0を保証する
-        mappedData->prevWVP = (isGameView && prevGameWVPInitialized_)
-            ? prevGameWVP_ : worldViewProjectionMatrix;
+        // 履歴が無い（初回・カリング明け・プールの使い回し）ときは
+        // prevWVP = currentWVP にしてモーションベクター=0を保証する
+        mappedData->prevWVP = hasMotionHistory ? prevGameWVP_ : worldViewProjectionMatrix;
         mappedData->WVP = worldViewProjectionMatrix;
         mappedData->worldInverseTranspose = MathCore::Matrix::Transpose(MathCore::Matrix::Inverse(worldMatrix));
         mappedData->lightViewProjection = lightVP;
@@ -127,7 +151,7 @@ namespace CoreEngine
         // 今フレームのWVPを次フレームの prevWVP として保存
         if (isGameView) {
             prevGameWVP_ = worldViewProjectionMatrix;
-            prevGameWVPInitialized_ = true;
+            prevGameWVPFrame_ = frame;
         }
     }
 
@@ -187,16 +211,17 @@ namespace CoreEngine
 
         // モーションベクター履歴（prevWVP）は GameView 専用（UpdateTransformationMatrix と同じ規約）
         const bool isGameView = (view.viewType == RenderViewType::GameView);
+        const uint64_t frame = Time::FrameCount();
 
         TransformationMatrix mtx{};
         mtx.world = worldMatrix;
         mtx.WVP = wvp;
-        mtx.prevWVP = (isGameView && prevGameWVPInitialized_) ? prevGameWVP_ : wvp;
+        mtx.prevWVP = IsMotionHistoryUsable(isGameView, frame) ? prevGameWVP_ : wvp;
         mtx.worldInverseTranspose = MathCore::Matrix::Transpose(MathCore::Matrix::Inverse(worldMatrix));
         mtx.lightViewProjection = lightVP;
         if (isGameView) {
             prevGameWVP_ = wvp;
-            prevGameWVPInitialized_ = true;
+            prevGameWVPFrame_ = frame;
         }
 
         const bool isGBufferPass = view.isGBufferPass;

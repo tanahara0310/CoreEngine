@@ -81,6 +81,43 @@ namespace CoreEngine::CloudRayMarchBind
     static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
 }
 
+namespace CoreEngine::CloudVoxelMarchBind
+{
+    /// @brief CloudVoxelMarch.CS.hlsl の契約
+    /// @details CloudRayMarch の差し替え。DDA はディテールノイズ（縁の侵食）を使わず、
+    ///          時間再投影も行わないので gDetailNoise と gCloudHistory を持たない。
+    ///          register 割り当ては CloudMarchBindings.hlsli と共通なので、
+    ///          抜けた分の番号は空いたままにしてある。
+    enum Slot : size_t {
+        gCloud,
+        gAtmosphere,
+        gBaseShapeNoise,
+        gWeatherMap,
+        gSceneDepth,
+        gTransmittanceLUT,
+        gSkyViewLUT,
+        gCameraVolumeLUT,
+        gCloudPaintMap,
+        gCloudOutput,
+        Count
+    };
+
+    inline constexpr ShaderBindingDecl kDecls[] = {
+        { "gCloud",            ShaderBindingType::CBV, BindingUsage::Required },  // b0
+        { "gAtmosphere",       ShaderBindingType::CBV, BindingUsage::Required },  // b1
+        { "gBaseShapeNoise",   ShaderBindingType::SRV, BindingUsage::Required },  // t0
+        { "gWeatherMap",       ShaderBindingType::SRV, BindingUsage::Required },  // t2
+        { "gSceneDepth",       ShaderBindingType::SRV, BindingUsage::Required },  // t3
+        { "gTransmittanceLUT", ShaderBindingType::SRV, BindingUsage::Required },  // t4
+        { "gSkyViewLUT",       ShaderBindingType::SRV, BindingUsage::Required },  // t5
+        { "gCameraVolumeLUT",  ShaderBindingType::SRV, BindingUsage::Required },  // t7
+        { "gCloudPaintMap",    ShaderBindingType::SRV, BindingUsage::Required },  // t8
+        { "gCloudOutput",      ShaderBindingType::UAV, BindingUsage::Required },  // u0
+    };
+
+    static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
+}
+
 namespace CoreEngine::CloudCompositeBind
 {
     /// @brief CloudComposite.CS.hlsl の契約

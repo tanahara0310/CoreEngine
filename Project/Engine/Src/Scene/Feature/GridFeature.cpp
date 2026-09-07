@@ -28,21 +28,29 @@ namespace CoreEngine
 
     void GridFeature::Initialize(SceneContext& ctx)
     {
-        // GridRenderer は GameObject ではなく ILineSource。
-        // Feature が所有し、Line パスへ供給元として登録する（Hierarchy には出ない）。
-        gridRenderer_ = std::make_unique<GridRenderer>();
-        // 最細 1m 格子。カメラ高度 5m でこの段になり、以降は高度 10 倍ごとに 1 段粗くなる
+        // GridRenderer の実体は RenderManager が Grid パスとして持っている（GameObject ではない）。
+        // ここでは表示を有効にし、Y 軸ラインの供給元として Line パスへ登録するだけ。
+        auto* renderManager = ctx.engine ? ctx.engine->GetService<RenderManager>() : nullptr;
+        gridRenderer_ = renderManager
+            ? static_cast<GridRenderer*>(renderManager->GetRenderer(RenderPassType::Grid))
+            : nullptr;
+        if (!gridRenderer_) {
+            return;
+        }
+
+        // 最細 1m 格子。ここから先は「1 マスが画面上で潰れる手前で 10 倍粗い段へ」自動で切り替わる
         gridRenderer_->SetBaseSpacing(1.0f);
-        gridRenderer_->SetHeightAtBaseSpacing(5.0f);
+        gridRenderer_->SetMinPixelsPerCell(20.0f);
         gridRenderer_->SetVisible(true);
 
+        // 垂直な Y 軸だけは床平面に乗らないので、従来どおり Line パスから描く
         if (auto* pipeline = GetLinePipeline(ctx)) {
-            pipeline->RegisterLineSource(gridRenderer_.get());
+            pipeline->RegisterLineSource(gridRenderer_);
         }
 
         // Engine Settings の「Grid」パネル（設定 UI）を向ける
         GridRenderer::EnsureSettingsPanelRegistered(ctx.engine);
-        GridRenderer::SetActiveForSettingsPanel(gridRenderer_.get());
+        GridRenderer::SetActiveForSettingsPanel(gridRenderer_);
     }
 
     void GridFeature::Update(SceneContext& ctx, SceneUpdatePhase phase)
@@ -66,9 +74,13 @@ namespace CoreEngine
         // シーンと一緒に消えるので、パイプラインの登録とパネルの参照を先に外す
         GridRenderer::SetActiveForSettingsPanel(nullptr);
         if (auto* pipeline = GetLinePipeline(ctx)) {
-            pipeline->UnregisterLineSource(gridRenderer_.get());
+            pipeline->UnregisterLineSource(gridRenderer_);
         }
-        gridRenderer_.reset();
+        // 実体は RenderManager のものなので破棄しない。シーンと一緒に消えるのは表示だけ
+        if (gridRenderer_) {
+            gridRenderer_->SetVisible(false);
+        }
+        gridRenderer_ = nullptr;
     }
 }
 

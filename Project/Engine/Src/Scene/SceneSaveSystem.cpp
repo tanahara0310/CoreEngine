@@ -1,8 +1,10 @@
 #include "pch.h"
+#include <unordered_map>
 #include "SceneSaveSystem.h"
 #include "GameObject/GameObjectManager.h"
 #include "GameObject/Model/DynamicModelObject.h"
 #include "Utility/JsonManager/JsonManager.h"
+#include "Utility/Logger/Logger.h"
 
 #include <algorithm>
 #include <functional>
@@ -144,6 +146,24 @@ namespace CoreEngine
         return loadIndex_ >= pendingObjects_.size();
     }
 
+    namespace
+    {
+        /// @brief 型名 → 生成関数。RegisterObjectType で埋まる
+        /// @note 関数内 static にしてあるのは、他の翻訳単位の静的初期化から
+        ///       登録されても順序問題が起きないようにするため
+        std::unordered_map<std::string, SceneSaveSystem::ObjectFactory>& ObjectFactoryTable()
+        {
+            static std::unordered_map<std::string, SceneSaveSystem::ObjectFactory> table;
+            return table;
+        }
+    }
+
+    void SceneSaveSystem::RegisterObjectType(const std::string& typeName, ObjectFactory factory)
+    {
+        if (typeName.empty() || !factory) { return; }
+        ObjectFactoryTable()[typeName] = std::move(factory);
+    }
+
     void SceneSaveSystem::BeginLoad(GameObjectManager* mgr)
     {
         pendingObjects_.clear();
@@ -166,6 +186,24 @@ namespace CoreEngine
             [mgr, &findObjectBySerializeKey](const std::string& key, const json& data) {
                 // 既にシーン側が同じキーで生成済みならマニフェストからは作らない
                 if (findObjectBySerializeKey(key)) {
+                    return;
+                }
+
+                // 型名が入っていれば、登録済みファクトリから作る
+                // （エディタ上で追加した UI を復活させる経路）
+                if (data.contains("objectType") && data["objectType"].is_string()) {
+                    const std::string typeName = data["objectType"].get<std::string>();
+                    auto& table = ObjectFactoryTable();
+                    if (auto it = table.find(typeName); it != table.end()) {
+                        if (auto obj = it->second()) {
+                            obj->SetName(key);
+                            mgr->AddObject(std::move(obj));
+                        }
+                        return;
+                    }
+                    Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource,
+                        "SceneSaveSystem: 未登録の型 \"{}\" は復元できません（key: {}）",
+                        typeName, key);
                     return;
                 }
 
@@ -211,6 +249,10 @@ namespace CoreEngine
 
             json data = obj->OnSerialize();
             if (!data.empty()) {
+                // 次回起動時にコード無しで復元できるよう型名を残す
+                if (const char* typeName = obj->GetSerializeTypeName()) {
+                    data["objectType"] = typeName;
+                }
                 jm.SaveJson(GetObjectPath(key), data);
                 manifest["objects"].push_back(key);
             }
@@ -238,6 +280,10 @@ namespace CoreEngine
         // オブジェクトデータを個別ファイルに保存
         json data = obj->OnSerialize();
         if (!data.empty()) {
+            // 次回起動時にコード無しで復元できるよう型名を残す
+            if (const char* typeName = obj->GetSerializeTypeName()) {
+                data["objectType"] = typeName;
+            }
             jm.SaveJson(GetObjectPath(key), data);
         }
 

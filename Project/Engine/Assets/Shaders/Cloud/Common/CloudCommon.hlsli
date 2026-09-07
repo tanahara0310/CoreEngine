@@ -45,8 +45,12 @@ struct CloudConstants
     float cirrusStretch;        float cirrusWindScale;
     float noiseLodBias;         float paintRegionCenterX;                // 400
     float paintRegionCenterZ;   float paintRegionSizeM;
-    float paintEdgeFade;        float pad7;                              // 416
-};                                                                       // = 432
+    float paintEdgeFade;        uint styleIndex;                         // 416 スタイル（CloudBlocky.hlsli）
+    float voxelSizeM;           float voxelHeightSizeM;
+    float densityThreshold;     float voxelFaceBrightness;               // 432
+    float voxelFaceShadeMin;    float pad7;
+    float pad8;                 float pad9;                              // 448
+};                                                                       // = 464
 
 // ===== 雲層ジオメトリ =====
 
@@ -139,6 +143,9 @@ float InterleavedGradientNoise(float2 pixel, uint frame)
     return frac(ign + float(frame % 64u) * 0.6180339887f);
 }
 
+// スタイル（ブロック雲）の量子化。CloudHeightFraction を使うのでジオメトリの後に置く
+#include "CloudBlocky.hlsli"
+
 // ===== 密度（GPU Pro 7 / Schneider 方式） =====
 // weather map カバレッジ・雲タイプ別高度勾配・風移流・ディテール侵食からなる。
 
@@ -198,6 +205,31 @@ float2 CloudWeatherUv(float2 worldXZ, CloudConstants c)
     return aligned / c.weatherMapScaleM;
 }
 
+/// @brief 天候マップのサンプル（半径を与えると 4 タップの箱平均になる）
+/// @param radiusM 平均する半径 [m]。0 で従来どおり 1 点サンプル
+/// @details ブロック雲は密度を二値化するので、天候マップのエイリアスがそのまま
+///          「しきい値をぎりぎり超えた孤立ボクセル」として空に散る。テクセル（百数十 m）より
+///          広い間隔で 1 点だけ拾うのが原因なので、ボクセル 1 個分を平均して帯域制限する。
+///          ベースノイズと違い天候マップはミップを持たない（CloudResources::CreateNoiseTextures）
+///          ため、ミップ段では落とせない。
+float4 SampleCloudWeather(float2 worldXZ, CloudConstants c, float radiusM,
+                          Texture2D<float4> weatherMap, SamplerState samp)
+{
+    if (radiusM <= 0.0f)
+    {
+        return weatherMap.SampleLevel(samp, CloudWeatherUv(worldXZ, c), 0);
+    }
+
+    float4 sum = float4(0.0f, 0.0f, 0.0f, 0.0f);
+    [unroll] for (int i = 0; i < 4; ++i)
+    {
+        float2 offset = float2((i & 1) ? radiusM : -radiusM,
+                               (i & 2) ? radiusM : -radiusM);
+        sum += weatherMap.SampleLevel(samp, CloudWeatherUv(worldXZ + offset, c), 0);
+    }
+    return sum * 0.25f;
+}
+
 /// @brief 配置ペイントのサンプル
 /// @return xyz = 置く雲の性質（雲量 / 雲タイプ / 雲頂高さ）、w = 影響度（0 でペイント無し）
 /// @details 天候マップと違いワールド固定の矩形領域を 1 枚で覆う（タイルしない）。
@@ -234,6 +266,13 @@ float SampleCloudDensityCheap(float3 worldPos, float h, float sampleSpacingM, Cl
                               Texture3D<float4> baseNoise, Texture2D<float4> weatherMap,
                               Texture2D<float4> paintMap, SamplerState samp)
 {
+    // スタイルによるサンプル座標の量子化。Realistic では恒等変換（CloudBlocky.hlsli）。
+    // 範囲判定は量子化の後に行う。こうすると雲層の上端／下端がボクセル格子で切られ、
+    // ブロック雲の天井と底が平らな面になる
+    CloudQuantized q = CloudQuantizeSample(worldPos, h, c);
+    worldPos = q.worldPos;
+    h = q.heightFraction;
+
     if (h < 0.0f || h > 1.0f)
     {
         return 0.0f;
@@ -241,32 +280,51 @@ float SampleCloudDensityCheap(float3 worldPos, float h, float sampleSpacingM, Cl
 
     float3 sampleWS = CloudAdvectedPos(worldPos, h, c);
 
-    // ベース形状
-    float3 baseUvw = sampleWS / c.baseNoiseScaleM;
-    baseUvw.y = sampleWS.y / (c.baseNoiseScaleM * c.baseNoiseVerticalScale);
-    float baseLod = CloudNoiseLod(sampleSpacingM, c.baseNoiseScaleM, kCloudBaseNoiseTexels, c.noiseLodBias);
-    float4 base = baseNoise.SampleLevel(samp, baseUvw, baseLod);
-    float lowFreqFBM = base.g * 0.625f + base.b * 0.25f + base.a * 0.125f;
-    float baseCloud = Remap(base.r, -(1.0f - lowFreqFBM), 1.0f, 0.0f, 1.0f);
+    // ミップを決める間隔。ブロック雲はマーチのステップ幅ではなくボクセルの大きさから引く
+    // （視点距離でミップが変わるとブロックが点滅するため。理由は CloudQuantized::lodSpacingM）
+    float lodSpacingM = (q.lodSpacingM > 0.0f) ? q.lodSpacingM : sampleSpacingM;
+
+    // ベース形状。板スタイルは 3D ノイズを引かず、雲量だけで平面形状を決める
+    float baseCloud = 1.0f;
+    if (q.useBaseNoise)
+    {
+        float3 baseUvw = sampleWS / c.baseNoiseScaleM;
+        baseUvw.y = sampleWS.y / (c.baseNoiseScaleM * c.baseNoiseVerticalScale);
+        float baseLod = CloudNoiseLod(lodSpacingM, c.baseNoiseScaleM, kCloudBaseNoiseTexels, c.noiseLodBias);
+        float4 base = baseNoise.SampleLevel(samp, baseUvw, baseLod);
+        float lowFreqFBM = base.g * 0.625f + base.b * 0.25f + base.a * 0.125f;
+        baseCloud = Remap(base.r, -(1.0f - lowFreqFBM), 1.0f, 0.0f, 1.0f);
+    }
 
     // 天候マップと配置ペイントの合成。
     // ペイント側は「置く雲の性質」の絶対値なので、globalCoverage を掛けた後の
-    // カバレッジへ混ぜる（掛ける前に混ぜると、曇り度を下げた空へ雲を描けなくなる）
-    float2 weatherUv = CloudWeatherUv(worldPos.xz, c);
-    float4 weather = weatherMap.SampleLevel(samp, weatherUv, 0);
-    float4 paint = SampleCloudPaint(worldPos.xz, c, paintMap, samp);
+    // カバレッジへ混ぜる（掛ける前に混ぜると、曇り度を下げた空へ雲を描けなくなる）。
+    // ブロック雲は両方を移流後の座標で引く。ボクセル格子だけが風で動くのに参照先が
+    // 静止していると、セルがその場を滑って引いてくる値が変わり、二値化しているせいで
+    // ブロックが 1 フレームで湧く／消える。ここを揃えるとセルの中身が時間不変になる
+    float2 mapXZ = q.advectMaps ? sampleWS.xz : worldPos.xz;
+    float4 weather = SampleCloudWeather(mapXZ, c, q.weatherFilterRadiusM, weatherMap, samp);
+    float4 paint = SampleCloudPaint(mapXZ, c, paintMap, samp);
 
     float coverage = lerp(saturate(weather.r * c.globalCoverage), paint.r, paint.w);
     float cloudType = lerp(weather.g, paint.g, paint.w);
     float cloudTop = lerp(weather.b, paint.b, paint.w);
 
-    // 高度勾配（雲タイプでブレンド）
-    float topScale = lerp(1.0f, cloudTop * 2.0f, c.cloudTopVariation);
-    baseCloud *= CloudHeightGradient(h, cloudType, topScale);
+    // 高度勾配（雲タイプでブレンド）。板スタイルは層全体を一定厚みの箱にする
+    if (!q.flatProfile)
+    {
+        float topScale = lerp(1.0f, cloudTop * 2.0f, c.cloudTopVariation);
+        baseCloud *= CloudHeightGradient(h, cloudType, topScale);
+    }
 
-    // カバレッジ適用（縁を柔らかくしアンビル状を防ぐ: GPU Pro 7）
-    float cloudWithCoverage = saturate(Remap(baseCloud, 1.0f - coverage, 1.0f, 0.0f, 1.0f));
-    return saturate(cloudWithCoverage * coverage);
+    // カバレッジ適用（縁を柔らかくしアンビル状を防ぐ: GPU Pro 7）。
+    // 板スタイルは baseCloud が定数 1 なので、この Remap は coverage>0 なら恒等的に 1 になり、
+    // coverage==0 では 0/0 の NaN を踏む。適用せず雲量そのものを密度にする
+    float cloudWithCoverage = q.flatProfile
+        ? 1.0f
+        : saturate(Remap(baseCloud, 1.0f - coverage, 1.0f, 0.0f, 1.0f));
+    // スタイルによる二値化。Realistic では素通し（CloudBlocky.hlsli）
+    return CloudApplyStyleThreshold(saturate(cloudWithCoverage * coverage), c);
 }
 
 /// @brief ディテール侵食込みの密度
@@ -280,7 +338,9 @@ float SampleCloudDensity(float3 worldPos, float h, float sampleSpacingM, float d
 {
     float density = SampleCloudDensityCheap(worldPos, h, sampleSpacingM, c,
                                             baseNoise, weatherMap, paintMap, samp);
-    if (density <= 0.0f || detailStrength <= 0.0f)
+    // ブロック雲は縁の侵食を行わない。二値化して作った立方体の面を高周波ノイズで
+    // 削ると、せっかくの平らな面がモヤに戻る
+    if (density <= 0.0f || detailStrength <= 0.0f || c.styleIndex != CLOUD_STYLE_REALISTIC)
     {
         return density;
     }

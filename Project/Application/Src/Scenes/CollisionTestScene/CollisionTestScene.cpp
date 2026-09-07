@@ -64,10 +64,10 @@ namespace CollisionTest
         RunGeometrySelfTest();
 
         // ===== 太陽ライト（他の大気シーンと同じ定石） =====
-        if (directionalLight_) {
-            directionalLight_->direction = AtmosphereEditor::ComputeSunLightDirection(40.0f, 30.0f);
-            directionalLight_->atmosphereIntensity = 20.0f;
-            directionalLight_->intensity = kAtmosphereSunIlluminanceLux;
+        if (Light* sun = GetDirectionalLight()) {
+            sun->direction = AtmosphereEditor::ComputeSunLightDirection(40.0f, 30.0f);
+            sun->atmosphereIntensity = 20.0f;
+            sun->intensity = kAtmosphereSunIlluminanceLux;
         }
 
         // 全ての行を俯瞰できる位置へ

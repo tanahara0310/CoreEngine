@@ -32,6 +32,9 @@ namespace CoreEngine
         /// @brief 床の位置・広さ・マテリアルを毎フレーム更新する（PreObjectUpdate）
         void Update(SceneContext& ctx, SceneUpdatePhase phase) override;
 
+        /// @brief 停止中も回す（止めると床の CVar を変えても見た目が変わらない）
+        bool RunsWhileStopped() const override { return true; }
+
         void Finalize(SceneContext& ctx) override;
 
         /// @brief シーン側から既定床を抑止する（独自の地形・水面を持つシーン用）

@@ -8,12 +8,16 @@
 #include "Math/Vector/Vector2.h"
 #include "Math/Vector/Vector4.h"
 
+#include <array>
 #include <string>
 #include <vector>
 
 namespace CoreEngine
 {
     class MsdfFont;
+
+    // TextAlignH / TextAlignV は 3D テキストとも共通なので Text/TextGeometryBuilder.h にある
+    // （TextRenderer.h 経由で入る）
 
     /// @brief MSDF フォントで文字列を描く UI 要素
     /// @details
@@ -38,7 +42,17 @@ namespace CoreEngine
         /// @param font 生成済みの MSDF フォント（寿命は呼び出し側が持つ）
         /// @param textUtf8 表示文字列（UTF-8。改行 \n に対応）
         /// @param name デバッグ名（任意）
+        /// @brief 既定の初期化（GameObjectManager が生成時に自動で呼ぶ）
+        /// @details レンダラーを解決し、FontManager から既定フォントを取る。
+        ///          エディタ上で追加した / シーン JSON から復元したテキストはこの経路を通る
+        void Initialize() override;
+
+        /// @brief フォントと文字列を指定して初期化する（コードから作る場合）
         void Initialize(MsdfFont* font, const std::string& textUtf8, const std::string& name = "");
+
+        /// @brief 使用フォントを名前で差し替える（FontManager へ登録済みの名前）
+        void SetFontByName(const std::string& fontName);
+        const std::string& GetFontName() const { return fontName_; }
 
         // ===== GameObject インターフェース =====
         RenderPassType GetRenderPassType() const override { return RenderPassType::UIText; }
@@ -70,8 +84,31 @@ namespace CoreEngine
         ///  和文は単語の切れ目が無いのでどこでも折れるが、
         ///  句読点や閉じ括弧が行頭に落ちないよう禁則処理をかける。
         ///  欧文は空白でのみ折る（単語の途中で切らない）。
+        /// @note テキストフィールドを固定している間はこの値は使わず、
+        ///       フィールドの幅で折る（折り返し幅が二重定義になるのを避けるため）
         void SetWrapWidth(float pixelWidth);
         float GetWrapWidth() const { return wrapWidthPx_; }
+
+        // ===== テキストフィールド =====
+        // 文字を流し込む枠。スプライトの矩形にあたるもので、
+        // エディタのギズモはこの枠を動かす／伸ばす
+
+        /// @brief フィールドの大きさ（px）を明示指定する
+        /// @details 指定すると自動調整は切れる。
+        ///          幅は折り返し幅として、高さは縦揃えの基準として使われる
+        void SetFieldSize(const Vector2& sizePx);
+        Vector2 GetFieldSize() const { return layout_.size; }
+
+        /// @brief フィールドを文字列の大きさへ自動で合わせるか
+        /// @details true（既定）だと枠は常に文字を囲む最小の大きさになる。
+        ///          false にすると枠は固定され、文字は枠の中で折り返し・揃えされる
+        void SetFieldAutoFit(bool enable);
+        bool IsFieldAutoFit() const { return fieldAutoFit_; }
+
+        /// @brief フィールド内での文字の揃え
+        void SetAlign(TextAlignH horizontal, TextAlignV vertical);
+        TextAlignH GetAlignH() const { return alignH_; }
+        TextAlignV GetAlignV() const { return alignV_; }
 
         /// @brief 行間の倍率（1.0 でフォント本来の行送り）
         void SetLineSpacing(float scale);
@@ -129,39 +166,57 @@ namespace CoreEngine
         /// @brief 縁取りとして表現できる最大の太さ（em 単位）
         float GetMaxOutlineWidth() const;
 
+        // ===== シーン JSON =====
+        /// @brief シーン JSON から復元できるようにする型名
+        const char* GetSerializeTypeName() const override { return "UIText"; }
+        json OnSerialize() const override;
+        void OnDeserialize(const json& j) override;
+
 #ifdef USE_IMGUI
         int  GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const override;
         bool DrawInspectorTabContent(int tabIndex) override;
+
+    private:
+        /// @name インスペクタの入力欄が使う作業バッファ
+        /// @details
+        ///  入力中は ImGui 側がバッファを持つので、
+        ///  フォーカスが無い間だけ本体の値を写し直す。
+        ///  要素ごとに持つのは、静的バッファだと選択を切り替えた瞬間に
+        ///  前の要素の文字列が残ってしまうため。
+        ///  固定長なのは ImGui が std::string を直接扱えないため。
+        ///  UTF-8 で 1023 バイト（和文で約 340 文字）まで入る
+        /// @{
+        std::array<char, 1024> editTextBuffer_{};
+        std::array<char, 128>  editFontBuffer_{};
+        bool editTextActive_ = false;
+        bool editFontActive_ = false;
+        /// @}
+
+    public:
 #endif
 
     private:
-        /// @brief 行の範囲（コードポイント列への添字）と幅（em）
-        struct LineRange
-        {
-            size_t begin = 0;
-            size_t end = 0;   ///< 半開区間
-            float  width = 0.0f;
-        };
-
         /// @brief 文字列からグリフのクワッド列（CPU 側・em 単位）を組み立てる
+        /// @details 折り返し・禁則・整列そのものは `TextGeometry::Build` が行う。
+        ///          ここは px ↔ em の換算と、その結果を UILayout へ反映する係
         void RebuildGeometry();
-
-        /// @brief 折り返し位置を決めて行に分ける
-        /// @param codePoints 文字列
-        /// @param glyphs 各文字のグリフ情報（codePoints と同じ長さ）
-        /// @param wrapWidthEm 折り返し幅（em）。0 なら改行文字だけで分ける
-        static void BuildLines(const std::vector<char32_t>& codePoints,
-            const std::vector<MsdfGlyph>& glyphs,
-            float wrapWidthEm,
-            std::vector<LineRange>& outLines);
 
         TextRenderer* renderer_ = nullptr;
         MsdfFont* font_ = nullptr;
+        /// 使用フォントの登録名。シーン JSON にはこれだけを書く
+        std::string fontName_;
 
         std::string textUtf8_;
         float fontSize_ = 32.0f;
         float lineSpacing_ = 1.0f;
         float wrapWidthPx_ = 0.0f;
+
+        /// @brief フィールドを文字列に合わせて自動調整するか
+        /// @details 既定を true にしてあるのは、
+        ///          枠を意識せずに作った文字列がそのまま今までどおり出るようにするため
+        bool fieldAutoFit_ = true;
+        TextAlignH alignH_ = TextAlignH::Left;
+        TextAlignV alignV_ = TextAlignV::Top;
 
         UILayout layout_;
         /// 文字列を囲む矩形（em 単位）。GetMeasuredSize / pivot の計算に使う

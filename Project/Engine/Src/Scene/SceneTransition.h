@@ -1,7 +1,6 @@
 ﻿#pragma once
 
 #include <memory>
-#include <functional>
 
 // 前方宣言
 namespace CoreEngine {
@@ -9,7 +8,8 @@ namespace CoreEngine {
     class PostEffectManager;
     class FadeEffect;
     class LoadingScreenEffect;
-    class SoundManager;
+    class ToneMapping;
+    class AudioSystem;
 }
 
 namespace CoreEngine
@@ -79,13 +79,6 @@ public:
     /// @param progress 進捗（0.0〜1.0）
     void SetLoadProgress(float progress);
 
-    /// @brief BGMフェード用コールバックを設定
-    /// @param callback フェードアルファ値（0.0～1.0）を受け取るコールバック関数
-    void SetBGMVolumeCallback(std::function<void(float)> callback);
-
-    /// @brief BGMフェード用コールバックをクリア
-    void ClearBGMVolumeCallback();
-
 private:
     /// @brief フェードアルファ値を計算
     /// @return アルファ値（0.0 = 透明, 1.0 = 不透明）
@@ -105,7 +98,16 @@ private:
     /// @brief ローディング画面に表示強度を適用
     void ApplyLoadingScreen();
 
-    /// @brief BGM音量を適用（コールバック経由）
+    /// @brief 暗転中は自動露出の順応を止める
+    /// @details 自動露出は「見えている絵」への順応。暗転しきっている間はシーンが
+    ///          解放されていて SceneColor が真っ黒なので、そこへ順応させると
+    ///          順応輝度が 0 まで落ち、次のシーンが白飛びした状態で現れる。
+    void ApplyExposureHold();
+
+    /// @brief BGM バスのダッキングをフェードへ同期させる
+    /// @details AudioBus::BGM のダッキング係数だけを動かすので、オプション画面が
+    ///          設定したバス音量（SetBusVolume）は壊さない。BGM を個別に登録する
+    ///          必要も無い（BGM バスに出ている音は全部まとめて絞られる）。
     void ApplyBGMVolume();
 
 private:
@@ -113,7 +115,8 @@ EngineSystem* engine_ = nullptr;
 PostEffectManager* postEffectManager_ = nullptr;
 FadeEffect* fadeEffect_ = nullptr;
 LoadingScreenEffect* loadingScreenEffect_ = nullptr;
-SoundManager* soundManager_ = nullptr;
+ToneMapping* toneMapping_ = nullptr;
+AudioSystem* audioSystem_ = nullptr;
 
 TransitionPhase phase_ = TransitionPhase::Idle;
     TransitionType type_ = TransitionType::None;
@@ -130,11 +133,11 @@ TransitionPhase phase_ = TransitionPhase::Idle;
     // 進捗ゲージが現れるまでの時間（秒）
     static constexpr float kGaugeFadeSeconds = 0.3f;
 
+    // このフェードアルファ以上を「画面が見えていない」とみなす（自動露出の凍結境界）
+    static constexpr float kExposureHoldAlpha = 0.98f;
+
     float loadingElapsed_ = 0.0f;   // ローディング画面を表示している時間
     float loadProgress_ = 0.0f;     // シーン読み込みの進捗
     int waitFrameCounter_ = 0;
-
-    // BGM音量制御用コールバック
-    std::function<void(float)> bgmVolumeCallback_ = nullptr;
 };
 }

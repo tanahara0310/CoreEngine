@@ -21,6 +21,7 @@ namespace CoreEngine::ModelBind
         gPrefilteredMap,
         gBRDFLUT,
         gIBLParams,
+        gFog,
         gTransformationMatrix,
         gInstanceData,
         gMaterial,
@@ -54,6 +55,7 @@ namespace CoreEngine::ModelBind
         { "gPrefilteredMap",       kSRV, kCond },
         { "gBRDFLUT",              kSRV, kCond },
         { "gIBLParams",            kCBV, kCond },
+        { "gFog",                  kCBV, kReq  },  // 用途別バリアントを毎ドロー差す
         { "gTransformationMatrix", kCBV, kOpt  },  // スキニング版のみ
         { "gInstanceData",         kSRV, kReq  },
         { "gMaterial",             kCBV, kReq  },
@@ -80,6 +82,7 @@ namespace CoreEngine::ModelBind
         { "gPrefilteredMap",       kSRV, kOpt  },
         { "gBRDFLUT",              kSRV, kOpt  },
         { "gIBLParams",            kCBV, kOpt  },
+        { "gFog",                  kCBV, kOpt  },  // G-Buffer には無い（全画面パスが掛ける）
         { "gTransformationMatrix", kCBV, kOpt  },
         { "gInstanceData",         kSRV, kReq  },
         { "gMaterial",             kCBV, kReq  },
@@ -105,6 +108,7 @@ namespace CoreEngine::ModelBind
         { "gPrefilteredMap",       kSRV, kCond },
         { "gBRDFLUT",              kSRV, kCond },
         { "gIBLParams",            kCBV, kCond },
+        { "gFog",                  kCBV, kReq  },  // 用途別バリアントを毎ドロー差す
         { "gTransformationMatrix", kCBV, kReq  },
         { "gInstanceData",         kSRV, kOpt  },  // 通常モデル版のみ
         { "gMaterial",             kCBV, kReq  },
@@ -130,6 +134,7 @@ namespace CoreEngine::ModelBind
         { "gPrefilteredMap",       kSRV, kOpt  },
         { "gBRDFLUT",              kSRV, kOpt  },
         { "gIBLParams",            kCBV, kOpt  },
+        { "gFog",                  kCBV, kOpt  },  // G-Buffer には無い（全画面パスが掛ける）
         { "gTransformationMatrix", kCBV, kReq  },
         { "gInstanceData",         kSRV, kOpt  },
         { "gMaterial",             kCBV, kReq  },
@@ -155,6 +160,7 @@ namespace CoreEngine::ModelBind
         { "gPrefilteredMap",       kSRV, kOpt },
         { "gBRDFLUT",              kSRV, kOpt },
         { "gIBLParams",            kCBV, kOpt },
+        { "gFog",                  kCBV, kOpt },
         { "gTransformationMatrix", kCBV, kOpt },
         { "gInstanceData",         kSRV, kOpt },
         { "gMaterial",             kCBV, kOpt },

@@ -36,11 +36,10 @@ float Camera::ResolveAspectRatio() const
     if (parameters_.aspectRatio > 0.0f) {
         return parameters_.aspectRatio;
     }
-    const float height = static_cast<float>(WinApp::GetCurrentClientHeightStatic());
-    if (height <= 0.0f) {
-        return 1.0f;
-    }
-    return static_cast<float>(WinApp::GetCurrentClientWidthStatic()) / height;
+    // ウィンドウのクライアント領域ではなく基準解像度に固定する。
+    // クライアント領域に追従すると、フルスクリーン解除で画角（見える範囲）が変わる。
+    // 縦横比の差は表示側がレターボックスで吸収する
+    return WinApp::GetReferenceAspect();
 }
 
 void Camera::RebuildMatrices()
@@ -57,9 +56,10 @@ void Camera::RebuildMatrices()
         // カメラ行列は 3D 用の派生（GetForward 等）のためだけに保持する
         cameraMatrix_ = Matrix::Inverse(viewMatrix_);
 
-        // 画面中央を原点、Y軸は上が正（top/bottom を入れ替えて実現）
-        const float screenWidth = static_cast<float>(WinApp::GetCurrentClientWidthStatic());
-        const float screenHeight = static_cast<float>(WinApp::GetCurrentClientHeightStatic());
+        // 画面中央を原点、Y軸は上が正（top/bottom を入れ替えて実現）。
+        // 座標系はウィンドウサイズではなく基準解像度に固定する（UI / スプライトと同じ空間）
+        const float screenWidth = static_cast<float>(WinApp::kReferenceWidth);
+        const float screenHeight = static_cast<float>(WinApp::kReferenceHeight);
         projectionMatrix_ = Rendering::Orthographic(
             -screenWidth * 0.5f,
             screenHeight * 0.5f,
