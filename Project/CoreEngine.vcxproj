@@ -854,7 +854,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Collision\CollisionConfig.h" />
     <ClInclude Include="Engine\Src\Collision\CollisionLayer.h" />
     <ClInclude Include="Engine\Src\Collision\CollisionWorld.h" />
-    <ClInclude Include="Engine\Src\EngineSystem\ComponentManager.h" />
+    <ClInclude Include="Engine\Src\EngineSystem\ServiceRegistry.h" />
     <ClInclude Include="Engine\Src\EngineSystem\EngineConfig.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Factory\CoreComponentFactory.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Factory\GraphicsComponentFactory.h" />

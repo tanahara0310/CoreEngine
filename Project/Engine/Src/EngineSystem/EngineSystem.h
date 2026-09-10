@@ -4,7 +4,7 @@
 #include <vector>
 #include <typeindex>
 
-#include "ComponentManager.h"
+#include "ServiceRegistry.h"
 #include "EngineConfig.h"
 #include "Subsystem/IEngineSubsystem.h"
 
@@ -18,7 +18,7 @@ namespace CoreEngine { class WinApp; }
 // ──────────────────────────────────────────────────────────
 // このヘッダはサービス型のヘッダを一切 include しない。
 //
-// GetService<T>() / HasService<T>() は ComponentManager 経由で typeid(T) を使うため
+// GetService<T>() / HasService<T>() は ServiceRegistry 経由で typeid(T) を使うため
 // 「呼び出し元の翻訳単位で T が完全型であること」を要求する。
 // かつてはその利便のため主要サービス型 8 本をここでまとめて配っていたが、
 // EngineSystem.h は 49 ファイルから include されており、配った型のヘッダを 1 つ
@@ -98,7 +98,7 @@ public:
     ///       常駐サービスのロケータ。サブシステムの取得は `GetSubsystem<T>()`。
     template<typename T>
     T* GetService() {
-        return componentManager_.Get<T>();
+        return serviceRegistry_.Get<T>();
     }
 
     /// @brief エンジンサービスが登録されているか確認
@@ -106,7 +106,7 @@ public:
     /// @return 登録されている場合true
     template<typename T>
     bool HasService() const {
-        return componentManager_.Has<T>();
+        return serviceRegistry_.Has<T>();
     }
 
 #ifdef USE_IMGUI
@@ -124,7 +124,7 @@ public:
     /// @brief 型指定でサブシステムを取得する
     /// @tparam T IEngineSubsystemを継承するサブシステムの型
     /// @return 該当サブシステムへのポインタ（未登録の場合nullptr）
-    /// @note 型引きは GetService<T>() と同じ ComponentManager 機構を使う
+    /// @note 型引きは GetService<T>() と同じ ServiceRegistry 機構を使う
     ///       （型キーのハッシュ引き。旧実装の dynamic_cast 線形探索から置き換えた）。
     ///       キーは登録時の具象型そのものなので、基底型を指定しても引けない。
     template<typename T>
@@ -158,7 +158,7 @@ private:
     void RegisterComponent(std::unique_ptr<T> component) {
         T* ptr = component.get();
         componentOwners_.push_back(std::make_unique<ComponentHolder<T>>(std::move(component)));
-        componentManager_.Register(ptr);
+        serviceRegistry_.Register(ptr);
     }
 
     /// @brief サブシステムを生成して登録する
@@ -194,7 +194,7 @@ private:
     WinApp* winApp_ = nullptr;
 
     // コンポーネント管理
-    ComponentManager componentManager_;
+    ServiceRegistry serviceRegistry_;
 
     // コンポーネントの所有権管理（型安全なホルダーコンテナ）
     std::vector<std::unique_ptr<IComponentHolder>> componentOwners_;
@@ -221,9 +221,9 @@ private:
     std::vector<std::unique_ptr<IEngineSubsystem>> subsystems_;
 
     // 型指定アクセス用のインデックス（所有はしない。実体は subsystems_ 側）。
-    // サービスの GetService<T>() と同じ ComponentManager を使い、
+    // サービスの GetService<T>() と同じ ServiceRegistry を使い、
     // 「型で引く」実装をエンジン内で 1 本に揃えている
-    ComponentManager subsystemIndex_;
+    ServiceRegistry subsystemIndex_;
 
     };
 }

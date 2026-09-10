@@ -6,9 +6,9 @@
 
 namespace CoreEngine
 {
-/// @brief コンポーネント管理クラス
+/// @brief エンジン常駐サービスの登録所
 /// テンプレートを使用して型安全なコンポーネント登録・取得を提供
-class ComponentManager {
+class ServiceRegistry {
 public:
     /// @brief コンポーネントを登録
     /// @tparam T コンポーネントの型
@@ -16,7 +16,7 @@ public:
     template<typename T>
     void Register(T* component) {
         std::type_index typeIdx(typeid(T));
-        components_[typeIdx] = component;
+        services_[typeIdx] = component;
     }
 
     /// @brief コンポーネントを取得
@@ -25,8 +25,8 @@ public:
     template<typename T>
     T* Get() const {
         std::type_index typeIdx(typeid(T));
-        auto it = components_.find(typeIdx);
-        if (it != components_.end()) {
+        auto it = services_.find(typeIdx);
+        if (it != services_.end()) {
             return static_cast<T*>(it->second);
         }
         return nullptr;
@@ -38,17 +38,17 @@ public:
     template<typename T>
     bool Has() const {
         std::type_index typeIdx(typeid(T));
-        return components_.find(typeIdx) != components_.end();
+        return services_.find(typeIdx) != services_.end();
     }
 
     /// @brief 全てのコンポーネント登録を解除
     void Clear() {
-        components_.clear();
+        services_.clear();
     }
 
 private:
     /// @brief 型情報をキーとしたコンポーネントマップ
     /// void* として保存し、取得時に適切な型にキャスト
-    std::unordered_map<std::type_index, void*> components_;
+    std::unordered_map<std::type_index, void*> services_;
 };
 }

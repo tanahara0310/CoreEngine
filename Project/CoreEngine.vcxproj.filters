@@ -1647,7 +1647,7 @@
     <ClInclude Include="Engine\Src\Collision\CollisionWorld.h">
       <Filter>Engine\Src\Collision</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\EngineSystem\ComponentManager.h">
+    <ClInclude Include="Engine\Src\EngineSystem\ServiceRegistry.h">
       <Filter>Engine\Src\EngineSystem</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\EngineSystem\EngineConfig.h">
