@@ -83,13 +83,6 @@ public:
     /// @brief すべてのラインをクリア
     void ClearAll();
 
-#ifdef USE_IMGUI
-    /// @brief ImGuiデバッグUI描画
-    void DrawImGui();
-
-    /// @brief デバッグラインの更新・描画（ImGuiの表示状態に依存しない）
-    void UpdateDebugDrawing();
-#endif
 
 private:
     LineManager() = default;
@@ -99,79 +92,5 @@ private:
 
     LineRendererPipeline* lineRenderer_ = nullptr;
 
-#ifdef USE_IMGUI
-    // デバッグライン設定（ImGuiから編集可能）
-    struct DebugLineSettings {
-        bool enabled = false;
-        Vector3 start = {0.0f, 0.0f, 0.0f};
-        Vector3 end = {5.0f, 0.0f, 0.0f};
-        Vector3 color = {1.0f, 0.0f, 0.0f};
-        float alpha = 1.0f;
-    };
-
-    /// @brief デバッグ描画（グリッド）の設定
-    struct DebugGridSettings {
-        bool enabled = false;
-        float size = 20.0f;
-        int divisions = 10;
-        Vector3 center = {0.0f, -1.0f, 0.0f};
-        Vector3 color = {0.5f, 0.5f, 0.5f};
-        float alpha = 0.5f;
-    };
-
-    /// @brief デバッグ描画（ワイヤーフレームボックス）の設定
-    struct DebugWireBoxSettings {
-        bool enabled = false;
-        Vector3 center = {3.0f, 1.0f, 0.0f};
-        Vector3 size = {2.0f, 2.0f, 2.0f};
-        Vector3 color = {1.0f, 1.0f, 0.0f};
-        float alpha = 1.0f;
-    };
-
-    /// @brief デバッグ描画（軸）の設定
-    struct DebugAxisSettings {
-        bool enabled = false;
-        Vector3 origin = {0.0f, 0.0f, 0.0f};
-        float length = 5.0f;
-        float alpha = 1.0f;
-    };
-
-    /// @brief デバッグ描画（円）の設定
-    struct DebugCircleSettings {
-        bool enabled = false;
-        Vector3 center = {-5.0f, 0.0f, 0.0f};
-        float radius = 2.0f;
-        int segments = 32;
-        Vector3 color = {1.0f, 1.0f, 1.0f};
-        float alpha = 1.0f;
-    };
-
-    /// @brief デバッグ描画（ワイヤーフレーム球）の設定
-    struct DebugWireSphereSettings {
-        bool enabled = false;
-        Vector3 center = {-5.0f, 3.0f, -5.0f};
-        float radius = 1.5f;
-        int segments = 16;
-        Vector3 color = {0.0f, 1.0f, 1.0f};
-        float alpha = 1.0f;
-    };
-
-    /// @brief デバッグ描画（クロスマーカー）の設定
-    struct DebugCrossSettings {
-        bool enabled = false;
-        Vector3 position = {5.0f, 2.0f, 5.0f};
-        float size = 0.5f;
-        Vector3 color = {1.0f, 0.0f, 0.0f};
-        float alpha = 1.0f;
-    };
-
-    DebugLineSettings debugLine_;
-    DebugGridSettings debugGrid_;
-    DebugWireBoxSettings debugWireBox_;
-    DebugAxisSettings debugAxis_;
-    DebugCircleSettings debugCircle_;
-    DebugWireSphereSettings debugWireSphere_;
-    DebugCrossSettings debugCross_;
-#endif
 };
 }
