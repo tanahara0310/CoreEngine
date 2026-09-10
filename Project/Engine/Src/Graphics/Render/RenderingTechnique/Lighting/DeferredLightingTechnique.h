@@ -49,6 +49,12 @@ namespace CoreEngine
         /// @brief カメラ CBV アドレスを設定（スペキュラ計算用ビュー方向）
         void SetCameraCBVAddress(D3D12_GPU_VIRTUAL_ADDRESS address) { cameraCBVAddress_ = address; }
 
+        /// @brief フォールバック用のカメラ位置を控える（有効なカメラがあるフレームだけ呼ぶ）
+        /// @details カメラ不在フレーム（シーン構築中など）は cameraCBVAddress_ が 0 になる。
+        ///          そのフレームでも gCamera へ必ず有効なアドレスを差せるよう、
+        ///          直近の位置をフォールバック CBV へ書いておく。
+        void UpdateFallbackCameraPosition(const Vector3& worldPosition);
+
         /// @brief 深度復元用の View*Projection 逆行列を更新する（ビューごとに毎回呼び出し）
         /// @details gCamera はフレーム更新時に 1 回しか書かれないので、こちらを専用 CBV として毎ビュー更新する。
         /// @note ビュー種別ごとに別バッファを持つ。単一バッファだと後勝ちで両ビューが同じ行列を見てしまう。
@@ -112,6 +118,14 @@ namespace CoreEngine
 
         // ===== ライティングリソース =====
         D3D12_GPU_VIRTUAL_ADDRESS cameraCBVAddress_ = 0;
+
+        // カメラ不在フレーム用のフォールバック CBV。
+        // 未設定のルート CBV は未定義の GPU 仮想アドレスを指すため、シェーダが gCamera を
+        // 読んだ時点でページフォルト（＝デバイスロスト）になり得る。踏むかどうかは
+        // ドライバ任せなので、環境によって落ちたり落ちなかったりする。
+        // 中身の正しさより「常に有効なアドレスが差さっていること」が目的。
+        Microsoft::WRL::ComPtr<ID3D12Resource> fallbackCameraBuffer_;
+        D3D12_GPU_VIRTUAL_ADDRESS fallbackCameraCBVAddress_ = 0;
 
         // 深度復元用 View*Projection 逆行列専用定数バッファ（RenderViewType ごとに個別バッファ。
         // 同一フレーム内で GameView/ReflectionView 両方から書き込まれるため単一バッファ不可）

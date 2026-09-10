@@ -286,6 +286,13 @@ namespace CoreEngine
 #endif // USE_IMGUI
     }
 
+    void MotionBlur::SetEnabled(bool /*enabled*/)
+    {
+        // モーションブラーは常時無効。設定ファイルや SpeedBlurFeature から
+        // 有効化要求が来ても、実行時の CVar も false に戻して描画へ入れない。
+        cvEnabled.Set(false);
+    }
+
     CVar<bool>* MotionBlur::GetEnabledCVar() const
     {
         return &cvEnabled;

@@ -149,6 +149,20 @@ namespace CoreEngine
         void SetBusDuck(AudioBus bus, float duck);
         float GetBusDuck(AudioBus bus) const;
 
+        // ──────────────────────────────────────────────────────
+        // 新規再生の保留（バス単位）
+        // ──────────────────────────────────────────────────────
+
+        /// @brief そのバスで始まる音を、保留を解くまで先頭で待たせる
+        /// @param hold true で保留開始、false で解除（保留中に始まった音が一斉に鳴り出す）
+        /// @details ダッキング（SetBusDuck）は音量を 0 にするだけなので、絞っている間も
+        ///          曲は進んでしまう ―― ローディング中に始まった BGM は、画面が明けた
+        ///          時にはもう途中まで再生済みになっている。こちらは再生位置ごと止める
+        ///          （Pause）ので、解除した瞬間に必ず曲の頭から鳴り出す。
+        /// @note 保留中に Stop された音は解除時に無視される（ハンドルの世代で判別する）。
+        void SetBusStartHold(AudioBus bus, bool hold);
+        bool IsBusStartHeld(AudioBus bus) const;
+
         /// @brief ScopedSound が「この AudioSystem がまだ生きているか」を判定するためのトークン
         /// @details Shutdown() で切れる。デストラクタから破棄済みのシステムを
         ///          触らせないための仕組み。
@@ -201,6 +215,9 @@ namespace CoreEngine
         Bus& BusOf(AudioBus bus);
         const Bus& BusOf(AudioBus bus) const;
 
+        /// @brief バス番号を配列の添字へ（BusOf と同じく番兵や範囲外は SE 扱い）
+        static size_t BusIndexOf(AudioBus bus);
+
         // ── スロット管理 ──
         uint32_t AcquireSlot();
         void ReleaseSlot(uint32_t index);
@@ -222,6 +239,13 @@ namespace CoreEngine
 
         // ミキサーバス（SourceVoice → Submix → MasteringVoice）
         std::array<Bus, kAudioBusCount> buses_{};
+
+        // 新規再生の保留。submix とは無関係な純粋なメインスレッド状態なので
+        // buses_ とは別に持つ（initMutex_ の保護対象ではない）
+        std::array<bool, kAudioBusCount> busStartHeld_{};
+
+        /// @brief 保留中に始まった再生。解除でまとめて Resume する
+        std::array<std::vector<SoundInstance>, kAudioBusCount> heldStarts_{};
 
         // 非同期初期化の状態
         std::future<bool> initFuture_;

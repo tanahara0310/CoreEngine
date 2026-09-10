@@ -52,6 +52,12 @@ namespace CoreEngine
             lens.inputMax = lens.inputMin + 0.01f;
         }
 
+        // ===== Follow =====
+        // 1 を超えると対象の動きを増幅して画が飛ぶ。負は逆向きに動く。どちらも構図にならない。
+        follow.weight.x = std::clamp(follow.weight.x, 0.0f, 1.0f);
+        follow.weight.y = std::clamp(follow.weight.y, 0.0f, 1.0f);
+        follow.weight.z = std::clamp(follow.weight.z, 0.0f, 1.0f);
+
         // ===== Damping =====
         // 負の減衰は指数が発散する。0 は「減衰なし」として通す。
         damping.position = (std::max)(damping.position, 0.0f);

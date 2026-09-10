@@ -120,6 +120,50 @@ Stick GamepadInput::GetRightStick(float deadZone) const
     return stick;
 }
 
+float GamepadInput::GetAxisValue(GamepadAxis axis) const
+{
+    switch (axis) {
+    case GamepadAxis::LeftStickX:  return GetLeftStick().x;
+    case GamepadAxis::LeftStickY:  return GetLeftStick().y;
+    case GamepadAxis::RightStickX: return GetRightStick().x;
+    case GamepadAxis::RightStickY: return GetRightStick().y;
+    case GamepadAxis::LeftTrigger: return GetLeftTrigger();
+    case GamepadAxis::RightTrigger:return GetRightTrigger();
+    }
+    return 0.0f;
+}
+
+float GamepadInput::GetPreviousAxisValue(GamepadAxis axis) const
+{
+    switch (axis) {
+    case GamepadAxis::LeftStickX:
+        return NormalizeStickValue(
+            prevState_.Gamepad.sThumbLX, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+    case GamepadAxis::LeftStickY:
+        return NormalizeStickValue(
+            prevState_.Gamepad.sThumbLY, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+    case GamepadAxis::RightStickX:
+        return NormalizeStickValue(
+            prevState_.Gamepad.sThumbRX, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
+    case GamepadAxis::RightStickY:
+        return NormalizeStickValue(
+            prevState_.Gamepad.sThumbRY, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
+    case GamepadAxis::LeftTrigger:
+        return static_cast<float>(prevState_.Gamepad.bLeftTrigger) / 255.0f;
+    case GamepadAxis::RightTrigger:
+        return static_cast<float>(prevState_.Gamepad.bRightTrigger) / 255.0f;
+    }
+    return 0.0f;
+}
+
+bool GamepadInput::IsAxisTriggered(GamepadAxis axis, bool positive, float threshold) const
+{
+    const float sign = positive ? 1.0f : -1.0f;
+    const float current = GetAxisValue(axis) * sign;
+    const float previous = GetPreviousAxisValue(axis) * sign;
+    return current > threshold && previous <= threshold;
+}
+
 void GamepadInput::SetVibration(float leftMotorRatio, float rightMotorRatio)
 {
     // 0.0～1.0の範囲にクランプ

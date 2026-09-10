@@ -111,6 +111,17 @@ namespace CoreEngine
         skyAmbientBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&skyMapped));
         *skyMapped = skyDefaults;
         skyAmbientBuffer_->Unmap(0, nullptr);
+
+        // カメラ不在フレーム用フォールバック（HLSL 側 Camera = float3 worldPosition + padding）。
+        // 既定は原点。有効なカメラがあるフレームに UpdateFallbackCameraPosition で追従させる。
+        fallbackCameraBuffer_ = ResourceFactory::CreateBufferResource(
+            graphicsCore_->GetDevice(), sizeof(float) * 4);
+        fallbackCameraCBVAddress_ = fallbackCameraBuffer_->GetGPUVirtualAddress();
+        const float fallbackCameraDefaults[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+        float* fallbackCameraMapped = nullptr;
+        fallbackCameraBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&fallbackCameraMapped));
+        std::memcpy(fallbackCameraMapped, fallbackCameraDefaults, sizeof(fallbackCameraDefaults));
+        fallbackCameraBuffer_->Unmap(0, nullptr);
     }
 
     // -------------------------------------------------------------------------
@@ -126,6 +137,21 @@ namespace CoreEngine
         depthReconstructionBuffers_[vi]->Map(0, nullptr, reinterpret_cast<void**>(&mapped));
         std::memcpy(mapped, &invViewProj, sizeof(Matrix4x4));
         depthReconstructionBuffers_[vi]->Unmap(0, nullptr);
+    }
+
+    // -------------------------------------------------------------------------
+    // フォールバック用カメラ位置を書き込む（有効なカメラがあるフレームのみ呼ばれる）
+    // -------------------------------------------------------------------------
+    void DeferredLightingTechnique::UpdateFallbackCameraPosition(const Vector3& worldPosition)
+    {
+        if (!fallbackCameraBuffer_) {
+            return;
+        }
+        const float values[4] = { worldPosition.x, worldPosition.y, worldPosition.z, 0.0f };
+        float* mapped = nullptr;
+        fallbackCameraBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mapped));
+        std::memcpy(mapped, values, sizeof(values));
+        fallbackCameraBuffer_->Unmap(0, nullptr);
     }
 
     // -------------------------------------------------------------------------
@@ -224,14 +250,21 @@ namespace CoreEngine
         }
 
         // ===== カメラ CBV =====
-        if (cameraCBVAddress_ != 0) {
-            binder.Set(bindings_[DeferredLightingBind::gCamera], cameraCBVAddress_);
-        }
+        // カメラ不在フレーム（シーン構築中）でも必ず差す。差さないまま描くと、
+        // ルート CBV が未定義の GPU 仮想アドレスを指したままシェーダに読まれ、
+        // ページフォルト＝デバイスロストになる。G-Buffer の NormalRoughness は
+        // アルファ 1.0 でクリアされるため、空のフレームでもアンリット判定の
+        // 早期 return には入らず、全ピクセルが gCamera を読みに行く。
+        binder.Set(bindings_[DeferredLightingBind::gCamera],
+            (cameraCBVAddress_ != 0) ? cameraCBVAddress_ : fallbackCameraCBVAddress_);
 
         // ===== 深度復元用 CBV（ビュー種別ごとに独立したバッファを参照） =====
         {
-            const size_t vi = static_cast<size_t>(context.viewSettings.viewType);
-            if (vi < kViewTypeCount && depthReconstructionCBVAddresses_[vi] != 0) {
+            // gCamera と同じ理由で、範囲外のビュー種別が来ても未バインドで描かない。
+            // その場合は GameView 用のバッファで代替する（絵は狂うが GPU は落ちない）。
+            const size_t requested = static_cast<size_t>(context.viewSettings.viewType);
+            const size_t vi = (requested < kViewTypeCount) ? requested : 0;
+            if (depthReconstructionCBVAddresses_[vi] != 0) {
                 binder.Set(bindings_[DeferredLightingBind::gDepthReconstruction], depthReconstructionCBVAddresses_[vi]);
             }
         }

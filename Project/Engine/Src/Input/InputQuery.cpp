@@ -220,7 +220,9 @@ bool InputQuery::EvaluateTriggered(const InputBinding& b) const {
         return gamepad_ && gamepad_->IsConnected() &&
                gamepad_->IsButtonTriggered(static_cast<GamepadButton>(b.code));
     case BindingType::GamepadAxis:
-        return EvaluateAxis(b) > 0.1f;
+        return gamepad_ && gamepad_->IsConnected() &&
+               gamepad_->IsAxisTriggered(
+                   static_cast<GamepadAxis>(b.code), b.axisSign >= 0.0f);
     }
     return false;
 }

@@ -1,12 +1,28 @@
 #include "pch.h"
 #include "WinApp.h"
 
+#include "Utility/CVar/CVar.h"
+
 #pragma comment(lib, "winmm.lib")
 
 // 静的メンバの初期化
 
 namespace CoreEngine
 {
+namespace
+{
+    // 既定を無効にしてあるのは、Esc がゲーム中のポーズに使われているため。
+    // 有効にするとポーズを開く前にウィンドウが閉じる
+    CVar<bool> cvQuitOnEscape{
+        "app.QuitOnEscape", false,
+        "Esc キーでアプリケーションを終了する（無効でも × ボタンと Alt+F4 では終了できる）" };
+}
+
+bool WinApp::QuitsOnEscape()
+{
+    return cvQuitOnEscape.Get();
+}
+
 WinApp* WinApp::instance_ = nullptr;
 int32_t WinApp::currentClientWidthStatic_ = WinApp::kClientWidth;
 int32_t WinApp::currentClientHeightStatic_ = WinApp::kClientHeight;
@@ -173,9 +189,13 @@ LRESULT CALLBACK WinApp::WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM l
         }
         break;
 
-        // Esc でアプリケーションを終了する
+        // Esc でアプリケーションを終了する（既定は無効。app.QuitOnEscape で切り替える）
     case WM_KEYDOWN:
         if (wparam == VK_ESCAPE) {
+            // ゲーム中の Esc はポーズメニューが受ける。ここで閉じてはいけない
+            if (!QuitsOnEscape()) {
+                break;
+            }
 #ifdef USE_IMGUI
             // 名前入力などの最中に消えてしまわないよう、
             // ImGui がテキスト入力を受け取っている間は無視する

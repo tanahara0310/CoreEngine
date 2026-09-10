@@ -158,6 +158,12 @@ namespace CoreEngine
             }
         }
 
+        // 保留の控えは解放前に捨てる（スロットが消えるのでハンドルは全て無効になる）
+        for (auto& held : heldStarts_) {
+            held.clear();
+        }
+        busStartHeld_.fill(false);
+
         // 必ず「ボイス → PCM」の順で壊す。逆にすると再生中のボイスが
         // 解放済みバッファを指したまま残る
         slots_.clear();
@@ -201,10 +207,15 @@ namespace CoreEngine
                 continue;
             }
 
-            // フェードは完了時に自分でスロットを解放することがある
-            AdvanceFade(i, deltaTime);
-            if (!slots_[i].inUse) {
-                continue;
+            // 一時停止中はフェードを進めない。止まっている音のフェードが独りでに
+            // 満了すると、再開した瞬間に目標音量から鳴り出してフェードが無かったことになる
+            // （バス保留中の BGM は先頭で止まったまま待っている）
+            if (!slots_[i].voice->IsPaused()) {
+                // フェードは完了時に自分でスロットを解放することがある
+                AdvanceFade(i, deltaTime);
+                if (!slots_[i].inUse) {
+                    continue;
+                }
             }
 
             // 鳴り終わったスロットを回収する。これが無いとスロットが増え続ける
@@ -318,7 +329,16 @@ namespace CoreEngine
             StartFade(slot, targetVolume, params.fadeInTime, false);
         }
 
-        return SoundInstance(this, index, slot.generation);
+        SoundInstance instance(this, index, slot.generation);
+
+        // 保留中のバスなら、鳴らさずに先頭で待たせる（SetBusStartHold(false) で鳴り出す）
+        const size_t busIndex = BusIndexOf(params.bus);
+        if (busStartHeld_[busIndex]) {
+            slot.voice->Pause();
+            heldStarts_[busIndex].push_back(instance);
+        }
+
+        return instance;
     }
 
     SoundInstance AudioSystem::Play(const std::string& filename, const PlayParams& params)
@@ -353,6 +373,11 @@ namespace CoreEngine
                 slots_[i].voice->Stop();
                 ReleaseSlot(i);
             }
+        }
+
+        // 止めた音を解除で鳴らし直さないよう、保留の控えも捨てる
+        for (auto& held : heldStarts_) {
+            held.clear();
         }
     }
 
@@ -417,6 +442,32 @@ namespace CoreEngine
         return BusOf(bus).duck;
     }
 
+    void AudioSystem::SetBusStartHold(AudioBus bus, bool hold)
+    {
+        const size_t index = BusIndexOf(bus);
+        // シーン遷移が毎フレーム同じ値を投げてくるので、変化が無ければ何もしない
+        if (busStartHeld_[index] == hold) {
+            return;
+        }
+        busStartHeld_[index] = hold;
+
+        if (hold) {
+            return;
+        }
+
+        // 解除。待たせていた音を頭から鳴らし始める。
+        // 待っている間に Stop されたハンドルは世代が合わないので黙って無視される
+        for (SoundInstance& held : heldStarts_[index]) {
+            held.Resume();
+        }
+        heldStarts_[index].clear();
+    }
+
+    bool AudioSystem::IsBusStartHeld(AudioBus bus) const
+    {
+        return busStartHeld_[BusIndexOf(bus)];
+    }
+
     void AudioSystem::ApplyBusGainLocked(Bus& bus)
     {
         // submix は初期化スレッドが書くので、合流済みが確定してからしか読まない
@@ -432,9 +483,14 @@ namespace CoreEngine
 
     const AudioSystem::Bus& AudioSystem::BusOf(AudioBus bus) const
     {
+        return buses_[BusIndexOf(bus)];
+    }
+
+    size_t AudioSystem::BusIndexOf(AudioBus bus)
+    {
         const size_t index = static_cast<size_t>(bus);
         // 番兵（Count）や範囲外が渡されたら SE 扱いにする
-        return buses_[index < kAudioBusCount ? index : static_cast<size_t>(AudioBus::SE)];
+        return index < kAudioBusCount ? index : static_cast<size_t>(AudioBus::SE);
     }
 
     // ──────────────────────────────────────────────────────────

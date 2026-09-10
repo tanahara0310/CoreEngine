@@ -1,6 +1,7 @@
 #pragma once
 #include "IInputDevice.h"
 #include <Xinput.h>
+#include <cstdint>
 
 namespace CoreEngine
 {
@@ -26,6 +27,16 @@ namespace CoreEngine
     struct Stick {
         float x;
         float y;
+    };
+
+    /// @brief ゲームパッドのアナログ軸
+    enum class GamepadAxis : uint8_t {
+        LeftStickX = 0,
+        LeftStickY,
+        RightStickX,
+        RightStickY,
+        LeftTrigger,
+        RightTrigger,
     };
 
     /// @brief ゲームパッド入力クラス（XInputベース、IInputDevice直継承）
@@ -54,6 +65,13 @@ namespace CoreEngine
         /// @brief 右スティックの状態を取得
         Stick GetRightStick(float deadZone = XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE) const;
 
+        /// @brief アナログ軸の現在値を取得（スティックは -1.0〜1.0、トリガーは 0.0〜1.0）
+        float GetAxisValue(GamepadAxis axis) const;
+
+        /// @brief アナログ軸がしきい値を初めて超えたフレームか
+        /// @details スティックを倒し続けても毎フレーム true にはならない。
+        bool IsAxisTriggered(GamepadAxis axis, bool positive, float threshold = 0.1f) const;
+
         /// @brief 振動を設定（0.0〜1.0）
         void SetVibration(float leftMotorRatio, float rightMotorRatio);
 
@@ -63,6 +81,8 @@ namespace CoreEngine
         float GetRightTrigger() const;
 
     private:
+        float GetPreviousAxisValue(GamepadAxis axis) const;
+
         DWORD         padIndex_ = 0;
         XINPUT_STATE  state_ = {};
         XINPUT_STATE  prevState_ = {};

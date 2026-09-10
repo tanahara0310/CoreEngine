@@ -73,6 +73,11 @@ namespace CoreEngine
         if (context.frameViews) {
             const ViewInfo& view = context.frameViews->Get(context.viewSettings.viewType);
             deferredLighting->SetCameraCBVAddress(view.isValid ? view.cameraCBV : 0);
+            // カメラがあるうちに位置を控えておく。カメラ不在フレームでは、これを詰めた
+            // フォールバック CBV が gCamera へ差される（未バインドのまま描かないため）。
+            if (view.isValid) {
+                deferredLighting->UpdateFallbackCameraPosition(view.position);
+            }
         }
 
         if (context.renderManager) {

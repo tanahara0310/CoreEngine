@@ -1,0 +1,41 @@
+{
+    "active": true,
+    "alignH": 0,
+    "alignV": 0,
+    "anchor": 0,
+    "anchoredPos": {
+        "x": 44.151527404785156,
+        "y": 190.0
+    },
+    "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+    ],
+    "fieldAutoFit": true,
+    "fieldSize": {
+        "x": 638.19140625,
+        "y": 287.296875
+    },
+    "font": "Default",
+    "fontSize": 108.0,
+    "lineSpacing": 1.0,
+    "objectType": "UIText",
+    "outlineColor": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+    ],
+    "outlineWidth": 0.03500000014901161,
+    "pivot": {
+        "x": 0.0,
+        "y": 0.0
+    },
+    "rotation": 0.0,
+    "sortOrder": 1000,
+    "text": "進行: 0ブロック\nサル: 1",
+    "weight": 0.0,
+    "wrapWidth": 0.0
+}

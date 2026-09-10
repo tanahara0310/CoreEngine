@@ -14,6 +14,7 @@
 #include "Graphics/Render/Pass/RenderPass.h"
 #include "Graphics/Render/Pass/RenderPipeline.h"
 #include "Graphics/Render/RenderGraphSnapshot.h"
+#include "Utility/Random/Hash.h"
 
 namespace CoreEngine
 {
@@ -999,7 +1000,7 @@ namespace CoreEngine
         const std::hash<std::string> stringHasher;
 
         auto combine = [&hash](size_t value) {
-            hash ^= value + 0x9e3779b97f4a7c15ull + (hash << 6) + (hash >> 2);
+            hash = Hash::Combine(hash, value);
             };
 
         for (const RenderGraphSnapshotPass& pass : snapshot.passes) {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../PostEffectComputeBase.h"
+#include "../ILoadingScreenEffect.h"
 #include "Math/Vector/Vector4.h"
 #include <wrl.h>
 #include <d3d12.h>
@@ -10,7 +11,8 @@ namespace CoreEngine
 {
     /// @brief ローディング画面ポストエフェクト（CS方式）
     /// @details 見た目は CVar（"r.Loading.*"）が保持し、表示強度は SceneTransition が毎フレーム設定する。
-    class LoadingScreenEffect : public PostEffectComputeBase {
+    ///          エンジン既定のローディング画面。差し替えは SceneTransition::SetLoadingScreen が行う。
+    class LoadingScreenEffect : public PostEffectComputeBase, public ILoadingScreenEffect {
     public:
         /// @brief ローディング画面パラメータ構造体（GPU 定数バッファのレイアウト）
         struct LoadingParams {
@@ -79,14 +81,18 @@ namespace CoreEngine
         /// @brief ImGuiでパラメータを調整
         void DrawImGui() override;
 
+        // ---- ILoadingScreenEffect ----
+
         /// @brief 表示強度を設定する（SceneTransition が毎フレーム呼ぶ）
-        void SetScreenAlpha(float alpha);
+        void SetScreenAlpha(float alpha) override;
 
         /// @brief 読み込みの進捗を設定する
-        void SetProgress(float progress);
+        void SetProgress(float progress) override;
 
         /// @brief 進捗ゲージの表示強度を設定する
-        void SetGaugeAlpha(float alpha);
+        void SetGaugeAlpha(float alpha) override;
+
+        void SetLoadingEnabled(bool enabled) override { SetEnabled(enabled); }
 
     protected:
         /// @brief 有効/無効は CVar "r.<Effect>.Enabled" が保持する

@@ -54,8 +54,28 @@ namespace CoreEngine
             return points[static_cast<size_t>(std::clamp(index, 0, count - 1))];
         }
 
+        /// @brief 追従を弱めた軸を基準座標へ引き戻す
+        float FollowAxis(float value, float anchor, float weight)
+        {
+            // 1 は「そのまま追う」。掛けて足すと丸めで最下位桁がずれるので素通しにする。
+            return (weight >= 1.0f) ? value : anchor + (value - anchor) * weight;
+        }
+
+        /// @brief 対象の座標を軸ごとに据え置く
+        Vector3 ApplyFollowAxes(const CameraRigFollowAxes& follow, const Vector3& position)
+        {
+            return {
+                FollowAxis(position.x, follow.anchor.x, follow.weight.x),
+                FollowAxis(position.y, follow.anchor.y, follow.weight.y),
+                FollowAxis(position.z, follow.anchor.z, follow.weight.z)
+            };
+        }
+
         /// @brief 対象を解決してオフセットを足した座標を得る
+        /// @note 返す座標には追従の据え置きが掛かる。outState は素の値のままで、
+        ///       速度（SpeedToFov）と向き（オフセットの回転）はそちらを読む。
         bool ResolveTargetPosition(const CameraRigTargetRef& ref, const CameraRigContext* context,
+            const CameraRigFollowAxes& follow,
             Vector3& outPosition, CameraRigTargetState* outState = nullptr)
         {
             if (ref.objectName.empty() || context == nullptr || !context->resolveTarget) {
@@ -67,7 +87,7 @@ namespace CoreEngine
                 return false;
             }
 
-            outPosition = state.position + ref.offset;
+            outPosition = ApplyFollowAxes(follow, state.position + ref.offset);
             if (outState != nullptr) {
                 *outState = state;
             }
@@ -77,8 +97,8 @@ namespace CoreEngine
         /// @brief 対象の重み付き中心と、先頭・末尾の座標を求める
         /// @return 1 件も解決できなければ false
         bool ResolveTargetGroup(const std::vector<CameraRigTargetRef>& refs,
-            const CameraRigContext* context, Vector3& outCenter,
-            Vector3& outFirst, Vector3& outLast, float& outSpread)
+            const CameraRigContext* context, const CameraRigFollowAxes& follow,
+            Vector3& outCenter, Vector3& outFirst, Vector3& outLast, float& outSpread)
         {
             Vector3 weightedSum{ 0.0f, 0.0f, 0.0f };
             float totalWeight = 0.0f;
@@ -90,7 +110,7 @@ namespace CoreEngine
 
             for (const auto& ref : refs) {
                 Vector3 position{};
-                if (!ResolveTargetPosition(ref, context, position)) {
+                if (!ResolveTargetPosition(ref, context, follow, position)) {
                     continue;
                 }
                 resolved.push_back(position);
@@ -313,7 +333,8 @@ namespace CoreEngine
         case CameraRigBodyMode::FollowTarget: {
             Vector3 targetPosition{};
             CameraRigTargetState targetState{};
-            if (!ResolveTargetPosition(asset.body.target, context, targetPosition, &targetState)) {
+            if (!ResolveTargetPosition(asset.body.target, context, asset.follow,
+                targetPosition, &targetState)) {
                 return false;
             }
 
@@ -327,7 +348,8 @@ namespace CoreEngine
         case CameraRigBodyMode::OrbitTarget: {
             Vector3 targetPosition{};
             CameraRigTargetState targetState{};
-            if (!ResolveTargetPosition(asset.body.target, context, targetPosition, &targetState)) {
+            if (!ResolveTargetPosition(asset.body.target, context, asset.follow,
+                targetPosition, &targetState)) {
                 return false;
             }
 
@@ -349,7 +371,8 @@ namespace CoreEngine
             Vector3 center{};
             Vector3 first{};
             Vector3 last{};
-            if (!ResolveTargetGroup(asset.body.targets, context, center, first, last, bodySpread)) {
+            if (!ResolveTargetGroup(asset.body.targets, context, asset.follow,
+                center, first, last, bodySpread)) {
                 return false;
             }
 
@@ -391,7 +414,8 @@ namespace CoreEngine
             float t = asset.body.railPosition;
             if (asset.body.railFollowTarget) {
                 Vector3 targetPosition{};
-                if (!ResolveTargetPosition(asset.body.target, context, targetPosition)) {
+                if (!ResolveTargetPosition(asset.body.target, context, asset.follow,
+                    targetPosition)) {
                     return false;
                 }
                 t = ClosestRailParameter(asset.body.railPoints, asset.body.railLoop, targetPosition);
@@ -414,7 +438,7 @@ namespace CoreEngine
 
         case CameraRigAimMode::LookAtTarget: {
             Vector3 aimPosition{};
-            if (!ResolveTargetPosition(asset.aim.target, context, aimPosition)) {
+            if (!ResolveTargetPosition(asset.aim.target, context, asset.follow, aimPosition)) {
                 return false;
             }
             pose.aimPoint = aimPosition;
@@ -426,7 +450,8 @@ namespace CoreEngine
             Vector3 center{};
             Vector3 first{};
             Vector3 last{};
-            if (!ResolveTargetGroup(asset.aim.targets, context, center, first, last, aimSpread)) {
+            if (!ResolveTargetGroup(asset.aim.targets, context, asset.follow,
+                center, first, last, aimSpread)) {
                 return false;
             }
             pose.aimPoint = center;
@@ -463,7 +488,8 @@ namespace CoreEngine
 
             Vector3 ignored{};
             CameraRigTargetState state{};
-            const bool resolved = ResolveTargetPosition(ref, context, ignored, &state);
+            const bool resolved = ResolveTargetPosition(ref, context, asset.follow,
+                ignored, &state);
 
             // 速度を持たないシーンでは 0 とみなす。fovMin 側に張り付くだけで壊れない。
             const float speed = (resolved && state.hasVelocity) ? Length(state.velocity) : 0.0f;

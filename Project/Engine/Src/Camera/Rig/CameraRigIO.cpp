@@ -114,6 +114,26 @@ namespace CoreEngine
                 : CameraRigDampingMode::Exponential;
         }
 
+        json FollowToJson(const CameraRigFollowAxes& follow)
+        {
+            json jsonData;
+            jsonData["weight"] = JsonManager::Vector3ToJson(follow.weight);
+            jsonData["anchor"] = JsonManager::Vector3ToJson(follow.anchor);
+            return jsonData;
+        }
+
+        CameraRigFollowAxes JsonToFollow(const json& jsonData)
+        {
+            CameraRigFollowAxes follow{};
+            if (jsonData.contains("weight")) {
+                follow.weight = JsonManager::JsonToVector3(jsonData["weight"]);
+            }
+            if (jsonData.contains("anchor")) {
+                follow.anchor = JsonManager::JsonToVector3(jsonData["anchor"]);
+            }
+            return follow;
+        }
+
         json BodyToJson(const CameraRigBody& body)
         {
             json jsonData;
@@ -306,6 +326,7 @@ namespace CoreEngine
         root["aim"] = AimToJson(asset.aim);
         root["lens"] = LensToJson(asset.lens);
         root["damping"] = DampingToJson(asset.damping);
+        root["follow"] = FollowToJson(asset.follow);
 
         return JsonManager::GetInstance().SaveJson(filePath, root);
     }
@@ -336,6 +357,10 @@ namespace CoreEngine
         }
         if (root.contains("damping")) {
             asset.damping = JsonToDamping(root["damping"]);
+        }
+        // 項目を持たない古いファイルは既定値（全軸そのまま追う）のままになる。
+        if (root.contains("follow")) {
+            asset.follow = JsonToFollow(root["follow"]);
         }
 
         // 手で編集されたファイルでも必ず評価できる状態にしてから返す。

@@ -18,6 +18,8 @@ namespace CoreEngine {
         // UI
         UIConfirm,
         UICancel,
+        Pause,      ///< ポーズの開閉。UICancel と分けてあるのは、
+                    ///< パッドの B が Interact と兼用で誤爆するため
         // エディタ専用
         EditorGizmoTranslate,
         EditorGizmoRotate,
@@ -38,6 +40,7 @@ namespace CoreEngine {
         case InputAction::Interact:             return "Interact";
         case InputAction::UIConfirm:            return "UIConfirm";
         case InputAction::UICancel:             return "UICancel";
+        case InputAction::Pause:                return "Pause";
         case InputAction::EditorGizmoTranslate: return "EditorGizmoTranslate";
         case InputAction::EditorGizmoRotate:    return "EditorGizmoRotate";
         case InputAction::EditorGizmoScale:     return "EditorGizmoScale";
@@ -57,6 +60,7 @@ namespace CoreEngine {
         case InputAction::Interact:             return "インタラクト";
         case InputAction::UIConfirm:            return "UI決定";
         case InputAction::UICancel:             return "UIキャンセル";
+        case InputAction::Pause:                return "ポーズ";
         case InputAction::EditorGizmoTranslate: return "ギズモ：移動";
         case InputAction::EditorGizmoRotate:    return "ギズモ：回転";
         case InputAction::EditorGizmoScale:     return "ギズモ：拡縮";
@@ -75,6 +79,7 @@ namespace CoreEngine {
         if (str == "Interact")             return InputAction::Interact;
         if (str == "UIConfirm")            return InputAction::UIConfirm;
         if (str == "UICancel")             return InputAction::UICancel;
+        if (str == "Pause")                return InputAction::Pause;
         if (str == "EditorGizmoTranslate") return InputAction::EditorGizmoTranslate;
         if (str == "EditorGizmoRotate")    return InputAction::EditorGizmoRotate;
         if (str == "EditorGizmoScale")     return InputAction::EditorGizmoScale;

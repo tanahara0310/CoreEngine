@@ -106,7 +106,8 @@ namespace CoreEngine
             // このウィンドウにフォーカスがある間、エンジンの DirectInput は入力を拾わない
             //（キーボードは DISCL_FOREGROUND で本体ウィンドウに結び付いているため）。
             // フルスクリーン中でも Esc で終了できるよう、ここでも受ける。
-            if (self && wparam == VK_ESCAPE && self->mainHwnd_) {
+            // ただし app.QuitOnEscape が無効なら本体と同じく何もしない
+            if (self && wparam == VK_ESCAPE && self->mainHwnd_ && WinApp::QuitsOnEscape()) {
                 ::PostMessageW(self->mainHwnd_, WM_CLOSE, 0, 0);
                 return 0;
             }

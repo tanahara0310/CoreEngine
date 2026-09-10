@@ -4,15 +4,16 @@
 #include <EngineSystem/Startup/StartupSequence.h>
 #include "WinApp/WinApp.h"
 #include "Scene/SceneSaveSystem.h"
+#include "Graphics/PostEffect/Effect/PostEffectNames.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Utility/Logger/Logger.h"
+
+#include "Scenes/GameScene/GameScene.h"
 #include "Scenes/TestScene/TestScene.h"
-#include "Scenes/WaterTestScene/WaterTestScene.h"
-#include "Scenes/CollisionTestScene/CollisionTestScene.h"
-#include "Scenes/SampleGameScene/SampleGameScene.h"
-#include "Scenes/ShootingSampleScene/ShootingSampleScene.h"
-#include "Scenes/Sprite2DSampleScene/Sprite2DSampleScene.h"
-#include "Scenes/MsdfTextTestScene/MsdfTextTestScene.h"
+#include "Scenes/TitleScene/TitleScene.h"
+#include "Scenes/ResultScene/ResultScene.h"
+
+#include "Editor/Stage/StageEditorPanel.h"
 
 using namespace CoreEngine;
 
@@ -69,17 +70,17 @@ void MyGame::CreateSceneManager()
     sceneManager_->Initialize(GetEngineSystem());
     GetEngineSystem()->SetSceneManager(sceneManager_.get());
 
+    // ローディング画面をこのゲーム用（トロッコが走るもの）へ差し替える。
+    // 既定はエンジン汎用のスピナーで、ここを消せばそちらへ戻る
+    if (auto* transition = sceneManager_->GetTransition()) {
+        transition->SetLoadingScreen(CoreEngine::PostEffectNames::TrolleyLoading);
+    }
+
     // 全シーンを登録（アプリ層で実装）
-    sceneManager_->RegisterScene<TestScene>("TestScene");
-    sceneManager_->RegisterScene<WaterTestScene>("WaterTestScene");
-    // 当たり判定の回帰テストシーン（Scene Manager タブから切り替えて使う）
-    sceneManager_->RegisterScene<CollisionTest::CollisionTestScene>("CollisionTestScene");
-    // 学習用のサンプルゲーム
-    sceneManager_->RegisterScene<SampleGame::SampleGameScene>("SampleGameScene");
-    sceneManager_->RegisterScene<ShootingSample::ShootingSampleScene>("ShootingSampleScene");
-    sceneManager_->RegisterScene<Sprite2DSample::Sprite2DSampleScene>("Sprite2DSampleScene");
-    // MSDF フォント描画の検証シーン
-    sceneManager_->RegisterScene<MsdfTextTest::MsdfTextTestScene>("MsdfTextTestScene");
+    sceneManager_->RegisterScene<TitleScene::TitleScene>("TitleScene");
+    sceneManager_->RegisterScene<GameScene::GameScene>("GameScene");
+    sceneManager_->RegisterScene<ResultScene::ResultScene>("ResultScene");
+    sceneManager_->RegisterScene<CoreEngine::TestScene>("TestScene");
 }
 
 void MyGame::LoadInitialScene()
@@ -97,6 +98,10 @@ void MyGame::ConnectDebugUI()
     if (gameDebugUI) {
         gameDebugUI->SetSceneManager(sceneManager_.get());
     }
+
+    // ステージ（区画CSV）エディタを Inspector のタブとして足す。
+    // 表示は Window > Application > Stage から。
+    GameEditors::StageEditorPanel::Register(gameDebugUI, sceneManager_.get());
 
     auto console = GetEngineSystem()->GetDebugSubsystem()->GetConsole();
     if (console) {

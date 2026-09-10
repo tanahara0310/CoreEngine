@@ -56,27 +56,6 @@ float32_t3 CalculateParticleDiffuse(float32_t3 normal, float32_t3 albedo, out ui
     return diffuse;
 }
 
-/// @brief 4x4 Bayer ディザのしきい値（0..1）を返す
-/// @param pixelPosition SV_POSITION の xy（ピクセル座標）
-/// @details モデルパーティクルは不透明（kBlendModeNone）で描く前提なので、アルファを
-///          下げても透けずに黒くなるだけ。半透明ブレンドへ切り替えると今度は深度書き込みが
-///          切られ、後から来る SkyBox / VolumetricCloud に塗り潰されて粒ごと消える。
-///          そこでアルファは「ピクセルの残す割合」として使い、不透明のまま間引いて消す。
-/// @note しきい値は 1/32 〜 31/32。アルファ 0 で全ピクセルが消え、1 で全て残る。
-float32_t DitherThreshold(float32_t2 pixelPosition)
-{
-    static const float32_t kBayer4x4[16] =
-    {
-         0.5f / 16.0f,  8.5f / 16.0f,  2.5f / 16.0f, 10.5f / 16.0f,
-        12.5f / 16.0f,  4.5f / 16.0f, 14.5f / 16.0f,  6.5f / 16.0f,
-         3.5f / 16.0f, 11.5f / 16.0f,  1.5f / 16.0f,  9.5f / 16.0f,
-        15.5f / 16.0f,  7.5f / 16.0f, 13.5f / 16.0f,  5.5f / 16.0f
-    };
-
-    const uint32_t2 cell = uint32_t2(pixelPosition) & 3;
-    return kBayer4x4[cell.y * 4 + cell.x];
-}
-
 PixelShaderOutput main(VertexShaderOutput input)
 {
     PixelShaderOutput output;
@@ -87,9 +66,7 @@ PixelShaderOutput main(VertexShaderOutput input)
     // パーティクルの色とテクスチャ色を乗算
     float32_t4 finalColor = textureColor * input.color;
 
-    // アルファはピクセルの間引き率として使う（DitherThreshold のコメント参照）。
-    // 不透明のまま、粒を少しずつ溶かして消せる。
-    if (finalColor.a < DitherThreshold(input.position.xy))
+    if (finalColor.a <= 0.0f)
     {
         discard; // ピクセルを破棄
     }
@@ -103,10 +80,11 @@ PixelShaderOutput main(VertexShaderOutput input)
         finalColor.rgb = diffuse;
     }
 
-    // アルファはディザで消費済みなので、残ったピクセルは明るさを落とさずそのまま出す
-    // （ここで乗算すると、消えかけの粒がディザで薄くなりつつ黒ずむ）。
+    // アルファは通常の透明度としてそのまま出す。半透明（kBlendModeNormal）の
+    // SrcBlend は SRC_ALPHA なので、ここで RGB へ事前乗算すると二重に掛かって黒ずむ。
+    // 加算（kBlendModeAdd）も SrcBlend が SRC_ALPHA なので同じ扱いでよい。
     output.color.rgb = finalColor.rgb;
-    output.color.a = 1.0f;
+    output.color.a = finalColor.a;
 
     // フォグ（不透明・半透明と同じ数式。減衰のみ効く）
     output.color.rgb = ApplyFog(gFog, input.worldPosition, output.color.rgb);

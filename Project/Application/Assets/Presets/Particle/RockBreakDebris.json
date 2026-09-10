@@ -1,0 +1,113 @@
+{
+    "version": "2.1",
+    "emitterPosition": [0.0, 0.0, 0.0],
+    "billboardType": 0,
+    "blendMode": 1,
+    "main": {
+        "enabled": true,
+        "duration": 0.0,
+        "looping": false,
+        "playOnAwake": false,
+        "maxParticles": 32,
+        "simulationSpace": 1,
+        "startLifetime": 1.5,
+        "startLifetimeRandomness": 0.35,
+        "startSpeed": 2.8,
+        "startSpeedRandomness": 0.5,
+        "startSize": [1.0, 1.0, 1.0],
+        "startSizeRandomness": 0.0,
+        "startRotation": [180.0, 180.0, 180.0],
+        "startRotationRandomness": 1.0,
+        "startColor": [0.1309, 0.0736, 0.0284, 1.0],
+        "startColorRandomness": 0.0,
+        "gravityModifier": 1.0
+    },
+    "emission": {
+        "enabled": true,
+        "rateOverTime": 0,
+        "burstCount": 8,
+        "burstTime": 0.0
+    },
+    "shape": {
+        "enabled": true,
+        "shapeType": 1,
+        "scale": [0.28, 0.3, 0.28],
+        "radius": 1.0,
+        "innerRadius": 0.5,
+        "height": 2.0,
+        "angle": 25.0,
+        "randomPositionRange": 0.0,
+        "emitFromSurface": false,
+        "emissionDirection": [0.0, 1.0, 0.0],
+        "circlePlane": 0
+    },
+    "velocity": {
+        "enabled": true,
+        "startSpeed": [0.0, 1.0, 0.0],
+        "randomSpeedRange": [1.0, 1.0, 1.0],
+        "useRandomDirection": true
+    },
+    "color": {
+        "enabled": true,
+        "endColor": [0.1309, 0.0736, 0.0284, 0.0],
+        "useGradient": true,
+        "startRatio": 0.7
+    },
+    "force": {
+        "enabled": true,
+        "gravity": [0.0, -9.0, 0.0],
+        "wind": [0.0, 0.0, 0.0],
+        "drag": 1.0,
+        "acceleration": [0.0, 0.0, 0.0],
+        "areaMin": [-1.0, -1.0, -1.0],
+        "areaMax": [1.0, 1.0, 1.0],
+        "useAccelerationField": false
+    },
+    "size": {
+        "enabled": true,
+        "endSize": 0.0,
+        "sizeOverLifetime": false,
+        "endSize3D": [0.0, 0.0, 0.0],
+        "use3DSize": false,
+        "sizeCurve": 0,
+        "minSize": 0.01,
+        "maxSize": 10.0,
+        "uniformScaling": true
+    },
+    "rotation": {
+        "enabled": true,
+        "rotationSpeed": [0.0, 0.0, 0.0],
+        "rotationSpeedRandomness": [8.0, 8.0, 8.0],
+        "use2DRotation": false,
+        "rotation2DSpeed": 0.0,
+        "rotation2DSpeedRandomness": 0.0,
+        "rotationDirection": 2,
+        "rotationOverLifetime": false,
+        "startRotationSpeedMultiplier": 1.0,
+        "endRotationSpeedMultiplier": 1.0,
+        "limitRotationRange": false,
+        "minRotation": [-180.0, -180.0, -180.0],
+        "maxRotation": [180.0, 180.0, 180.0],
+        "alignToVelocity": false,
+        "velocityAlignmentStrength": 1.0
+    },
+    "noise": {
+        "enabled": false,
+        "strength": 1.0,
+        "frequency": 1.0,
+        "scrollSpeed": 0.0,
+        "damping": true,
+        "positionAmount": [1.0, 1.0, 1.0]
+    },
+    "collision": {
+        "enabled": true,
+        "planeHeight": 0.5,
+        "contactOffset": 0.12,
+        "bounce": 0.35,
+        "friction": 3.5,
+        "restSpeed": 0.8,
+        "roll": true,
+        "rollRadius": 0.2,
+        "useParticleScale": true
+    }
+}

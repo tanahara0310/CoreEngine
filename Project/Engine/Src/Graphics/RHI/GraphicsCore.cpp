@@ -187,6 +187,12 @@ namespace CoreEngine
 
     FrameContext GraphicsCore::BeginFrame()
     {
+        // 前フレームぶんのデバッグレイヤーのメッセージをログへ落とす。
+        // 既定ではデバッガの出力ウィンドウにしか出ないため、これが無いと
+        // 「他人の環境でだけ落ちる」不具合の証拠がログに一切残らない。
+        // デバッグレイヤー無効の構成では即 return するので実質ノーコスト。
+        deviceManager_->DrainDebugMessages();
+
         frameSync_->BeginFrame();
 
         // 前フレームまでに解放予約されたものを回収する。
@@ -228,6 +234,9 @@ namespace CoreEngine
         static constexpr UINT kPresentFlags = 0;
         const HRESULT presentResult = swapChain_->Present(syncInterval, kPresentFlags);
         if (FAILED(presentResult)) {
+            // 落ちる直前のメッセージを取りこぼさない（この下の throw で戻ってこない）。
+            // デバイスロストの原因になった #921 などはここに出る
+            deviceManager_->DrainDebugMessages();
             if (ReportIfDeviceRemoved(deviceManager_->GetDevice(), "GraphicsCore::EndFrame（Present）")) {
                 throw std::runtime_error(
                     "GPU device removed at Present (詳細は Graphics ログを参照)");

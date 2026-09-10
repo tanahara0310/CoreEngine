@@ -4,21 +4,13 @@
 #include "BroadPhase/BruteForceBroadPhase.h"
 #include "BroadPhase/UniformGridBroadPhase.h"
 #include "GameObject/GameObject.h"
+#include "Utility/Random/Hash.h"
 
 #include <algorithm>
 
 namespace CoreEngine
 {
     namespace {
-        /// @brief 64bit の混ぜ込み（splitmix64 の finalizer）
-        inline uint64_t Mix64(uint64_t x)
-        {
-            x += 0x9E3779B97F4A7C15ull;
-            x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9ull;
-            x = (x ^ (x >> 27)) * 0x94D049BB133111EBull;
-            return x ^ (x >> 31);
-        }
-
         /// @brief ペアキーを正規化（小さい ID を first に）
         /// @details (a,b) と (b,a) を同一視するため。
         template <class T>
@@ -31,7 +23,7 @@ namespace CoreEngine
     size_t CollisionWorld::PairKeyHash::operator()(const PairKey& key) const noexcept
     {
         // 単純な XOR は近い値同士で上位ビットが消えてバケットが偏るので、必ず混ぜてから合成する。
-        return static_cast<size_t>(Mix64(key.first) ^ (Mix64(key.second) * 0x9E3779B97F4A7C15ull));
+        return static_cast<size_t>(Hash::Mix64(key.first) ^ (Hash::Mix64(key.second) * 0x9E3779B97F4A7C15ull));
     }
 
     CollisionWorld::CollisionWorld(CollisionConfig* config)

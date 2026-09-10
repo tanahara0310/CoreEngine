@@ -15,16 +15,6 @@ namespace CoreEngine {
         GamepadAxis,  ///< ゲームパッドアナログ軸
     };
 
-    /// @brief ゲームパッドアナログ軸の種別
-    enum class GamepadAxis : uint8_t {
-        LeftStickX = 0,
-        LeftStickY,
-        RightStickX,
-        RightStickY,
-        LeftTrigger,
-        RightTrigger,
-    };
-
     /// @brief 物理入力1件のバインディング定義
     struct InputBinding {
         BindingType type = BindingType::Keyboard;

@@ -1,0 +1,36 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "allowGrowth": true,
+                "hasColorOverride": false,
+                "initialCapacity": 50
+            },
+            "type": "ModelRenderPool"
+        }
+    ],
+    "name": "RockPoolManager"
+}

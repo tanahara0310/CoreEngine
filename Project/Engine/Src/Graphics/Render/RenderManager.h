@@ -75,6 +75,10 @@ namespace CoreEngine
     /// @brief 水面 RenderItem キューのみ描画する
     void DrawWaterQueuePass(ID3D12GraphicsCommandList* cmdList, RenderViewType viewType = RenderViewType::GameView);
 
+    /// @brief ライン RenderItem キューのみ描画する
+    /// @details 水面合成後に呼び、ガイド線が水面に上書きされないようにする。
+    void DrawLineQueuePass(ID3D12GraphicsCommandList* cmdList, RenderViewType viewType = RenderViewType::GameView);
+
     /// @brief Sky RenderItem キューのみ描画する
     void DrawSkyQueuePass(ID3D12GraphicsCommandList* cmdList, RenderViewType viewType = RenderViewType::GameView);
 
@@ -134,6 +138,7 @@ namespace CoreEngine
         std::vector<RenderItem> skyDrawQueue_;
         std::vector<RenderItem> transparentDrawQueue_;
         std::vector<RenderItem> waterDrawQueue_;
+        std::vector<RenderItem> lineDrawQueue_; ///< 水面合成後に描くライン専用キュー
         std::unordered_map<RenderPassType, std::unique_ptr<IRenderer>> renderers_;
         std::unordered_map<RenderPassType, int> passTypePriorities_;  ///< 描画パスタイプごとの描画順序優先度
         size_t registrationCounter_ = 0;

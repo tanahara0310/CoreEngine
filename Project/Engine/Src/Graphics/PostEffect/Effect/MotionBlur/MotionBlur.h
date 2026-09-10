@@ -81,6 +81,10 @@ public:
     /// @brief ImGuiでパラメータを調整
     void DrawImGui() override;
 
+    /// @brief モーションブラーはプロジェクト方針として常時無効
+    void SetEnabled(bool enabled) override;
+    bool IsEnabled() const override { return false; }
+
     /// @brief 露光中の積分はトーンカーブを通る前の物理量に対して起きるため SceneHDR 段
     PostEffectStage GetStage() const override { return PostEffectStage::SceneHDR; }
 
