@@ -1,5 +1,7 @@
 #include "pch.h"
 #include <unordered_map>
+#include <unordered_set>
+#include <vector>
 #include "SceneSaveSystem.h"
 #include "GameObject/GameObjectManager.h"
 #include "GameObject/Model/DynamicModelObject.h"
@@ -8,6 +10,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <filesystem>
 
 namespace CoreEngine
 {
@@ -68,6 +71,73 @@ namespace CoreEngine
             }
         }
     }
+
+
+        /// @brief マニフェストに載っていないオブジェクト JSON を警告する
+        /// @details SaveScene はマニフェストを毎回作り直すが、不要になった
+        ///          オブジェクトの JSON ファイルは削除しない。読み込みは
+        ///          マニフェスト経由だけなので、残ったファイルは黙って無視される。
+        ///          「エディタで調整して保存したのに次回反映されない」という
+        ///          原因の分かりにくい状態になるため、起動時に名前を挙げる。
+        void WarnOrphanObjectFiles(const std::string& sceneName)
+        {
+            namespace fs = std::filesystem;
+            auto& jm = JsonManager::GetInstance();
+
+            const std::string manifestPath = MakeManifestPath(sceneName);
+            if (!jm.FileExists(manifestPath)) {
+                return;
+            }
+
+            json manifest = jm.LoadJson(manifestPath);
+            if (!manifest.contains("objects") || !manifest["objects"].is_array()) {
+                return;
+            }
+
+            std::unordered_set<std::string> known;
+            for (const auto& entry : manifest["objects"]) {
+                if (entry.is_string()) {
+                    known.insert(entry.get<std::string>());
+                }
+            }
+
+            std::error_code ec;
+            const fs::path dir = Logger::GetInstance().Utf8ToPath(MakeSceneDir(sceneName));
+            if (!fs::is_directory(dir, ec)) {
+                return;
+            }
+
+            std::vector<std::string> orphans;
+            for (const auto& entry : fs::directory_iterator(dir, ec)) {
+                if (ec) break;
+                if (!entry.is_regular_file()) continue;
+
+                const fs::path& file = entry.path();
+                if (file.extension() != ".json") continue;
+
+                // "_scene" / "_camera" などのメタファイルは対象外
+                const std::string stem = Logger::GetInstance().PathToUtf8(file.stem());
+                if (stem.empty() || stem.front() == '_') continue;
+
+                if (known.find(stem) == known.end()) {
+                    orphans.push_back(stem);
+                }
+            }
+
+            if (orphans.empty()) {
+                return;
+            }
+
+            std::string list;
+            for (size_t i = 0; i < orphans.size(); ++i) {
+                if (i) list += ", ";
+                list += orphans[i];
+            }
+            Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource,
+                "SceneSaveSystem: \"{}\" にマニフェスト未登録の JSON が {} 件あります"
+                "（読み込まれません）: {}",
+                sceneName, orphans.size(), list);
+        }
 
     // ===== パスヘルパー =====
 
@@ -170,6 +240,8 @@ namespace CoreEngine
         loadIndex_ = 0;
 
         if (sceneName_.empty() || !mgr) return;
+
+        WarnOrphanObjectFiles(sceneName_);
 
         auto& jm = JsonManager::GetInstance();
 
