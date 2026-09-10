@@ -349,3 +349,11 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# ============================================================
+# CoreEngine: settings backups
+# EditorSettingsSubsystem writes tmp -> _backup/*.bak on every save.
+# Tracking them doubles the diff noise of every CVar change.
+# ============================================================
+_backup/
+*.json.bak

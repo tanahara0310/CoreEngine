@@ -83,7 +83,7 @@ public:
     /// @brief すべてのラインをクリア
     void ClearAll();
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     /// @brief ImGuiデバッグUI描画
     void DrawImGui();
 
@@ -99,7 +99,7 @@ private:
 
     LineRendererPipeline* lineRenderer_ = nullptr;
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     // デバッグライン設定（ImGuiから編集可能）
     struct DebugLineSettings {
         bool enabled = false;

@@ -5,7 +5,7 @@
 #include <cassert>
 #include <numbers>
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 #include "Editor/ImGui/ImGuiAll.h"
 #endif
 
@@ -526,7 +526,7 @@ std::vector<Line> LineManager::GenerateCylinderLines(const Vector3& center, floa
     return lines;
 }
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 void LineManager::UpdateDebugDrawing() {
     // 有効なデバッグラインを描画
     if (debugLine_.enabled) {
