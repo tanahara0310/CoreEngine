@@ -43,7 +43,7 @@
     "Title.Transform.Position": [
         -2.815000057220459,
         3.2200000286102295,
-        -3.4860000610351563
+        -3.4860000610351562
     ],
     "Title.Transform.Rotation": [
         0.0,
@@ -72,18 +72,6 @@
         285.7139892578125
     ],
     "r.Atmosphere.SkyAmbientScale": 0.5099999904632568,
-    "r.AtmosphereLights.MoonAtmosphereIntensity": 0.0013000000035390258,
-    "r.AtmosphereLights.MoonDirection": [
-        -0.5735764503479004,
-        0.8191520571708679,
-        2.5071823728239906e-08
-    ],
-    "r.AtmosphereLights.MoonSurfaceIntensity": 80.0,
-    "r.AtmosphereLights.SunDirection": [
-        -0.45073172450065613,
-        -0.650119423866272,
-        0.6117072105407715
-    ],
     "r.AutoExposure.Enabled": true,
     "r.AutoExposure.MaxEV": 7.5,
     "r.Bloom.Intensity": 0.9480000138282776,
