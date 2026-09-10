@@ -1,0 +1,57 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "rotate": [
+                    0.0,
+                    243.96517944335938,
+                    0.0
+                ],
+                "scale": [
+                    0.625,
+                    0.5536931753158569,
+                    0.625
+                ],
+                "translate": [
+                    1.0,
+                    1.0,
+                    3.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "buildHoldTime": 0.30000001192092896,
+                "buildInterval": 0.05000000074505806,
+                "cursorEdgeRadiusRatio": 0.5,
+                "gridSize": 1.0,
+                "height": 1.0,
+                "horizontalPrioritize": true,
+                "initialGridX": 1,
+                "initialGridZ": 4,
+                "pulseAmplitude": 0.20000000298023224,
+                "pulseBaseScale": 0.800000011920929,
+                "pulseSpeed": 5.0,
+                "rockCursorHeightOffset": 1.0,
+                "rockImpactHeight": 0.699999988079071,
+                "rockThrowStartHeight": 0.5,
+                "rotationSpeed": 2.0,
+                "undoHoldTime": 0.30000001192092896,
+                "undoInterval": 0.05000000074505806
+            },
+            "type": "RailBuilder"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "name": "RailBuilder"
+}

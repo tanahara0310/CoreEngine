@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "UniformGridBroadPhase.h"
 #include "Math/Geometry/Intersect.h"
+#include "Utility/Random/Hash.h"
 
 #include <algorithm>
 #include <cmath>
@@ -9,23 +10,12 @@ namespace CoreEngine
 {
 namespace BroadPhase
 {
-    namespace {
-        /// @brief 64bit の混ぜ込み（splitmix64 の finalizer）
-        /// @details セル座標をそのまま XOR すると格子状に偏るため、必ず混ぜる。
-        inline uint64_t Mix64(uint64_t x)
-        {
-            x += 0x9E3779B97F4A7C15ull;
-            x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9ull;
-            x = (x ^ (x >> 27)) * 0x94D049BB133111EBull;
-            return x ^ (x >> 31);
-        }
-    }
-
     size_t UniformGridBroadPhase::CellHash::operator()(const CellCoord& c) const noexcept
     {
-        const uint64_t h = Mix64(static_cast<uint64_t>(static_cast<uint32_t>(c.x)))
-                         ^ Mix64(static_cast<uint64_t>(static_cast<uint32_t>(c.y)) * 3ull)
-                         ^ Mix64(static_cast<uint64_t>(static_cast<uint32_t>(c.z)) * 7ull);
+        // セル座標をそのまま XOR すると格子状に偏るため、必ず混ぜてから合成する。
+        const uint64_t h = Hash::Mix64(static_cast<uint64_t>(static_cast<uint32_t>(c.x)))
+                         ^ Hash::Mix64(static_cast<uint64_t>(static_cast<uint32_t>(c.y)) * 3ull)
+                         ^ Hash::Mix64(static_cast<uint64_t>(static_cast<uint32_t>(c.z)) * 7ull);
         return static_cast<size_t>(h);
     }
 

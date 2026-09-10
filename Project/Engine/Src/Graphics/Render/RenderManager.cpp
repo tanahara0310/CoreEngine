@@ -78,7 +78,11 @@ namespace CoreEngine
         item.registrationOrder = registrationCounter_++;
         item.sortKey = ResolveRenderOrder(item);
 
-        if (item.kind == RenderItemKind::WaterSurface) {
+        if (item.passType == RenderPassType::Line) {
+            // ラインは水面より後の専用パスで描く。通常キューへ入れると、後段の
+            // WaterSurfacePass に上書きされて水マス上のガイドだけ消えてしまう。
+            lineDrawQueue_.push_back(std::move(item));
+        } else if (item.kind == RenderItemKind::WaterSurface) {
             waterDrawQueue_.push_back(std::move(item));
         } else if (item.kind == RenderItemKind::SkyBox) {
             skyDrawQueue_.push_back(std::move(item));
@@ -208,6 +212,15 @@ namespace CoreEngine
 
         EnsureQueueSorted();
         RenderNormalPassQueue(cmdList, waterDrawQueue_, viewType);
+    }
+
+    void RenderManager::DrawLineQueuePass(ID3D12GraphicsCommandList* cmdList, RenderViewType viewType) {
+        if (lineDrawQueue_.empty() || !cmdList) {
+            return;
+        }
+
+        EnsureQueueSorted();
+        RenderNormalPassQueue(cmdList, lineDrawQueue_, viewType);
     }
 
     void RenderManager::DrawSkyQueuePass(ID3D12GraphicsCommandList* cmdList, RenderViewType viewType) {
@@ -362,6 +375,8 @@ namespace CoreEngine
         opaqueDrawQueue_.clear();
         skyDrawQueue_.clear();
         transparentDrawQueue_.clear();
+        waterDrawQueue_.clear();
+        lineDrawQueue_.clear();
 
         // Line パス起動用の合成アイテム。パス実行はアイテム駆動なので、これが無いと
         // Line アイテム 0 のフレームで EndPass（ラインソース回収とフラッシュ）が走らず、
@@ -379,7 +394,6 @@ namespace CoreEngine
         gridKick.passType = RenderPassType::Grid;
         gridKick.blendMode = BlendMode::kBlendModeNormal;
         AddRenderItem(gridKick);
-        waterDrawQueue_.clear();
         registrationCounter_ = 0;
         isQueueSorted_ = false;
     }
@@ -427,6 +441,7 @@ namespace CoreEngine
         SortRenderQueue(skyDrawQueue_);
         SortRenderQueue(transparentDrawQueue_);
         SortRenderQueue(waterDrawQueue_);
+        SortRenderQueue(lineDrawQueue_);
     }
 
     void RenderManager::SortRenderQueue(std::vector<RenderItem>& queue) {

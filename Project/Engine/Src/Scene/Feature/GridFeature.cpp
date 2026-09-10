@@ -29,7 +29,7 @@ namespace CoreEngine
     void GridFeature::Initialize(SceneContext& ctx)
     {
         // GridRenderer の実体は RenderManager が Grid パスとして持っている（GameObject ではない）。
-        // ここでは表示を有効にし、Y 軸ラインの供給元として Line パスへ登録するだけ。
+        // ここでは目盛りの設定と、Y 軸ラインの供給元として Line パスへ登録するだけ。
         auto* renderManager = ctx.engine ? ctx.engine->GetService<RenderManager>() : nullptr;
         gridRenderer_ = renderManager
             ? static_cast<GridRenderer*>(renderManager->GetRenderer(RenderPassType::Grid))
@@ -41,7 +41,8 @@ namespace CoreEngine
         // 最細 1m 格子。ここから先は「1 マスが画面上で潰れる手前で 10 倍粗い段へ」自動で切り替わる
         gridRenderer_->SetBaseSpacing(1.0f);
         gridRenderer_->SetMinPixelsPerCell(20.0f);
-        gridRenderer_->SetVisible(true);
+        // 既定はオフ。以降は毎フレーム DockingUI のトグルに従う（Update を参照）
+        gridRenderer_->SetVisible(false);
 
         // 垂直な Y 軸だけは床平面に乗らないので、従来どおり Line パスから描く
         if (auto* pipeline = GetLinePipeline(ctx)) {

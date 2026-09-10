@@ -3,7 +3,7 @@
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/PostEffect/Effect/FadeEffect/FadeEffect.h"
-#include "Graphics/PostEffect/Effect/LoadingScreen/LoadingScreenEffect.h"
+#include "Graphics/PostEffect/Effect/ILoadingScreenEffect.h"
 #include "Graphics/PostEffect/Effect/PostEffectNames.h"
 #include "Graphics/PostEffect/Effect/ToneMapping/ToneMapping.h"
 #include "Utility/FrameRate/FrameRateController.h"
@@ -35,8 +35,8 @@ postEffectManager_ = engine_->GetService<PostEffectManager>();
 // FadeEffectを取得
 fadeEffect_ = postEffectManager_->GetEffect<FadeEffect>(PostEffectNames::FadeEffect);
 
-// ローディング画面エフェクトを取得
-loadingScreenEffect_ = postEffectManager_->GetEffect<LoadingScreenEffect>(PostEffectNames::LoadingScreen);
+// ローディング画面エフェクトを取得（既定はエンジン汎用のもの。SetLoadingScreen で差し替えられる）
+loadingScreenEffect_ = postEffectManager_->GetEffect<ILoadingScreenEffect>(PostEffectNames::LoadingScreen);
 
 // トーンマッピングを取得（暗転中に自動露出の順応を止めるため）
 toneMapping_ = postEffectManager_->GetEffect<ToneMapping>(PostEffectNames::ToneMapping);
@@ -51,7 +51,7 @@ fadeEffect_->SetEnabled(false); // デフォルトは無効
 
 if (loadingScreenEffect_) {
     loadingScreenEffect_->SetScreenAlpha(0.0f);
-    loadingScreenEffect_->SetEnabled(false);
+    loadingScreenEffect_->SetLoadingEnabled(false);
 }
 
 // 初期状態
@@ -71,8 +71,13 @@ void SceneTransition::Update(float deltaTime) {
 
     // タイマー更新
     timer_ += deltaTime;
-    if (phase_ == TransitionPhase::Loading || phase_ == TransitionPhase::Changing) {
+    if (phase_ == TransitionPhase::Loading || phase_ == TransitionPhase::Changing
+        || phase_ == TransitionPhase::Hold) {
         loadingElapsed_ += deltaTime;
+    }
+    // 余韻は「到達してから」数える。loadingElapsed_ を足したあとに評価すること
+    if (phase_ == TransitionPhase::Hold && CalculateDisplayProgress() >= 1.0f) {
+        arrivedElapsed_ += deltaTime;
     }
 
     switch (phase_) {
@@ -94,9 +99,22 @@ void SceneTransition::Update(float deltaTime) {
         break;
 
     case TransitionPhase::Loading:
-        // 最低表示時間を満たしたらシーン切り替えへ進む
-        if (timer_ >= cvMinSeconds.Get()) {
-            phase_ = TransitionPhase::Changing;
+        // シーンの構築中。SceneManager が 1 フレーム 1 ステップずつ進め、
+        // 終わったら OnSceneChanged() で Hold へ送ってくる。
+        // ここで最低表示時間を待ってはいけない ―― 待ってから読み始めると、
+        // その間ずっと進捗が 0 のまま止まって見える
+        break;
+
+    case TransitionPhase::Hold:
+        // 構築は終わっている。表示進捗が 1.0 へ届き、その状態を見せる余韻を
+        // 満たしたら進む。表示進捗の 1.0 到達には最低表示時間の条件も含まれている
+        // （CalculateDisplayProgress が時間側と読み込み側の遅い方を取る）ので、
+        // ここで loadingElapsed_ を重ねて見る必要は無い
+        if (arrivedElapsed_ >= kHoldAfterArrivalSeconds) {
+            phase_ = TransitionPhase::FadeIn;
+            timer_ = 0.0f;
+            waitFrameCounter_ = 0;
+            fadeEffect_->SetEnabled(true);
         }
         break;
 
@@ -129,6 +147,9 @@ void SceneTransition::Update(float deltaTime) {
 
     // BGM音量を適用（フェードと同期）
     ApplyBGMVolume();
+
+    // 暗転中に始まった BGM は、画面が明けるまで頭で待たせる
+    ApplyBGMStartHold();
 }
 
 void SceneTransition::StartTransition(TransitionType type, float duration) {
@@ -142,6 +163,7 @@ void SceneTransition::StartTransition(TransitionType type, float duration) {
     waitFrameCounter_ = 0;
     loadingElapsed_ = 0.0f;
     loadProgress_ = 0.0f;
+    arrivedElapsed_ = 0.0f;
 
     if (type_ == TransitionType::None) {
         // トランジション無し → 即座に切り替え準備完了
@@ -153,10 +175,17 @@ void SceneTransition::StartTransition(TransitionType type, float duration) {
         fadeEffect_->SetEnabled(true); // フェード開始時に有効化
         fadeEffect_->SetFadeType(FadeEffect::FadeType::BlackFade);
     }
+
+    // 次の Update を待たずに掛ける。ここから先で始まる BGM が保留の対象になる
+    ApplyBGMStartHold();
 }
 
 bool SceneTransition::IsReadyToChangeScene() const {
-    return phase_ == TransitionPhase::Changing;
+    // Loading 系はローディング画面を出しながら構築する（Loading）。
+    // それ以外は暗転しきった Changing で構築する。
+    // Hold を含めてはいけない ―― 構築が終わった後もここが true だと、
+    // SceneManager が BeginSceneLoad をもう一度呼んで読み直してしまう
+    return phase_ == TransitionPhase::Loading || phase_ == TransitionPhase::Changing;
 }
 
 void SceneTransition::OnSceneChanged() {
@@ -177,13 +206,23 @@ void SceneTransition::OnSceneChanged() {
         // 無音で残り、露出も凍結したままになる
         ApplyExposureHold();
         ApplyBGMVolume();
+    } else if (type_ == TransitionType::Loading) {
+        // 構築は終わったが、最低表示時間はまだかもしれない。Hold で待ってから
+        // フェードインする（進捗 1.0 の絵＝駅に着いた状態を必ず見せる）
+        phase_ = TransitionPhase::Hold;
+        arrivedElapsed_ = 0.0f;
+        waitFrameCounter_ = 0;
     } else {
-        // フェードイン開始
+        // ローディング画面を出さない遷移はそのままフェードインへ
         phase_ = TransitionPhase::FadeIn;
         timer_ = 0.0f;
         waitFrameCounter_ = 0;
         fadeEffect_->SetEnabled(true);
     }
+
+    // フェーズが変わった直後に反映する。ここで解除しないと、次の Update まで
+    // BGM が頭で止まったままフェードインが進んでしまう
+    ApplyBGMStartHold();
 }
 
 bool SceneTransition::IsTransitioning() const {
@@ -191,10 +230,11 @@ bool SceneTransition::IsTransitioning() const {
 }
 
 bool SceneTransition::IsBlocking() const {
-    // フェードアウト中・ローディング中・Changing中はシーン更新をブロック
+    // フェードアウト中・ローディング中・Changing中・Hold中はシーン更新をブロック
     return phase_ == TransitionPhase::FadeOut
         || phase_ == TransitionPhase::Loading
-        || phase_ == TransitionPhase::Changing;
+        || phase_ == TransitionPhase::Changing
+        || phase_ == TransitionPhase::Hold;
 }
 
 void SceneTransition::SkipTransition() {
@@ -212,6 +252,7 @@ void SceneTransition::SkipTransition() {
     // Update() は Idle だと即 return するので、ここで自分でダッキングと露出を戻す
     ApplyExposureHold();
     ApplyBGMVolume();
+    ApplyBGMStartHold();
 }
 
 float SceneTransition::CalculateFadeAlpha() const {
@@ -219,7 +260,8 @@ float SceneTransition::CalculateFadeAlpha() const {
         return 0.0f;
     }
 
-    if (phase_ == TransitionPhase::Loading || phase_ == TransitionPhase::Changing) {
+    if (phase_ == TransitionPhase::Loading || phase_ == TransitionPhase::Changing
+        || phase_ == TransitionPhase::Hold) {
         return 1.0f; // 完全に黒
     }
 
@@ -260,6 +302,7 @@ float SceneTransition::CalculateLoadingAlpha() const {
         return std::clamp(timer_ / kLoadingFadeSeconds, 0.0f, 1.0f);
 
     case TransitionPhase::Changing:
+    case TransitionPhase::Hold:
         return 1.0f;
 
     case TransitionPhase::FadeIn:
@@ -278,13 +321,50 @@ void SceneTransition::ApplyLoadingScreen() {
 
     float alpha = CalculateLoadingAlpha();
     loadingScreenEffect_->SetScreenAlpha(alpha);
-    loadingScreenEffect_->SetProgress(loadProgress_);
+    loadingScreenEffect_->SetProgress(CalculateDisplayProgress());
     loadingScreenEffect_->SetGaugeAlpha(CalculateGaugeAlpha());
-    loadingScreenEffect_->SetEnabled(alpha > 0.0f);
+    loadingScreenEffect_->SetLoadingEnabled(alpha > 0.0f);
+}
+
+bool SceneTransition::SetLoadingScreen(const char* effectName) {
+    if (!postEffectManager_ || !effectName) {
+        return false;
+    }
+
+    auto* next = postEffectManager_->GetEffect<ILoadingScreenEffect>(effectName);
+    if (!next || next == loadingScreenEffect_) {
+        return next != nullptr;
+    }
+
+    // 旧画面を必ず消してから差し替える。チェーンには両方が並んでいるので、
+    // 消し忘れると前の画面が有効なまま重なって描かれる
+    if (loadingScreenEffect_) {
+        loadingScreenEffect_->SetScreenAlpha(0.0f);
+        loadingScreenEffect_->SetLoadingEnabled(false);
+    }
+
+    loadingScreenEffect_ = next;
+    loadingScreenEffect_->SetScreenAlpha(0.0f);
+    loadingScreenEffect_->SetLoadingEnabled(false);
+    return true;
 }
 
 void SceneTransition::SetLoadProgress(float progress) {
     loadProgress_ = std::clamp(progress, 0.0f, 1.0f);
+}
+
+float SceneTransition::CalculateDisplayProgress() const {
+    if (type_ != TransitionType::Loading) {
+        return loadProgress_;
+    }
+
+    const float minSeconds = cvMinSeconds.Get();
+    const float timeRatio = (minSeconds > 0.0f)
+        ? std::clamp(loadingElapsed_ / minSeconds, 0.0f, 1.0f)
+        : 1.0f;
+
+    // 遅い方に合わせる。読み込みが速ければ時間が、遅ければ読み込みが律速になる
+    return std::min(loadProgress_, timeRatio);
 }
 
 float SceneTransition::CalculateGaugeAlpha() const {
@@ -308,6 +388,16 @@ void SceneTransition::ApplyExposureHold() {
     // 0 まで落ちて自動EVが上限へ張り付き、次のシーンが白飛びで現れる。
     // フェードインに入ってアルファが下がれば、そのまま新しいシーンへ順応が再開する。
     toneMapping_->SetAdaptationPaused(CalculateFadeAlpha() >= kExposureHoldAlpha);
+}
+
+void SceneTransition::ApplyBGMStartHold() {
+    if (!audioSystem_) {
+        return;
+    }
+
+    // 暗転している間（FadeOut / Loading / Changing / Hold）は、シーンが鳴らし始めた
+    // BGM を頭で止めておく。フェードインへ入った時点で解除され、そこから鳴り出す
+    audioSystem_->SetBusStartHold(AudioBus::BGM, IsBlocking());
 }
 
 void SceneTransition::ApplyBGMVolume() {

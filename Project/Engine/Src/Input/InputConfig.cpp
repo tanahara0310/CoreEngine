@@ -76,6 +76,12 @@ void InputConfig::ResetToDefault() {
         InputBinding::FromKey(DIK_ESCAPE),
         InputBinding::FromGamepadButton(GamepadButton::B),
     });
+    // ポーズの開閉。パッドは START を使う。B は Interact と兼用なので、
+    // UICancel をそのまま開閉に使うとゲーム中に誤って開いてしまう
+    SetBindings(InputAction::Pause, {
+        InputBinding::FromKey(DIK_ESCAPE),
+        InputBinding::FromGamepadButton(GamepadButton::Start),
+    });
 
     // エディタ専用
     SetBindings(InputAction::EditorGizmoTranslate, {

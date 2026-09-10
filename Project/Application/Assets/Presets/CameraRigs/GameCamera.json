@@ -1,0 +1,60 @@
+{
+  "version": "1.0",
+  "name": "GameCamera",
+  "aim": {
+    "mode": 2,
+    "roll": 0.0,
+    "screenX": 0.5,
+    "screenY": 0.5,
+    "target": {
+      "objectName": "",
+      "offset": [0.0, 0.0, 0.0],
+      "weight": 1.0
+    },
+    "targets": [
+      { "objectName": "Train", "offset": [0.0, 0.0, 0.0], "weight": 1.0 },
+      { "objectName": "RailBuilder", "offset": [0.0, 0.0, 0.0], "weight": 1.0 }
+    ]
+  },
+  "body": {
+    "mode": 3,
+    "frameBias": [0.4, 0.5, 0.5],
+    "framePullBackPerMeter": 0.0,
+    "offset": [0.0, 20.0, -18.0],
+    "offsetSpace": 0,
+    "orbitDistance": 8.0,
+    "orbitPitch": 0.2,
+    "orbitYaw": 0.0,
+    "position": [0.0, 5.0, -10.0],
+    "railFollowTarget": true,
+    "railLoop": false,
+    "railOffset": [0.0, 0.0, 0.0],
+    "railPoints": [],
+    "railPosition": 0.0,
+    "rotation": [0.0, 0.0, 0.0],
+    "target": {
+      "objectName": "",
+      "offset": [0.0, 0.0, 0.0],
+      "weight": 1.0
+    },
+    "targets": [
+      { "objectName": "Train", "offset": [0.0, 0.0, 0.0], "weight": 1.0 },
+      { "objectName": "RailBuilder", "offset": [0.0, 0.0, 0.0], "weight": 1.0 }
+    ]
+  },
+  "damping": {
+    "aim": 3.0,
+    "fov": 3.0,
+    "position": 3.0,
+    "rotation": 0.0
+  },
+  "lens": {
+    "mode": 1,
+    "distanceSource": 0,
+    "fovDegrees": 45.0,
+    "fovMaxDegrees": 70.0,
+    "fovMinDegrees": 35.0,
+    "inputMax": 30.0,
+    "inputMin": 5.0
+  }
+}

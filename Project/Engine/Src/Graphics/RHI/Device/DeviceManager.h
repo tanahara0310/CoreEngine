@@ -28,6 +28,14 @@ namespace CoreEngine
         /// @brief DXRレイトレーシングのティアを取得
         D3D12_RAYTRACING_TIER GetDXRTier() const { return dxrTier_; }
 
+        /// @brief デバッグレイヤーが溜めたメッセージをログへ吸い出して空にする
+        /// @return 吸い出した件数（デバッグレイヤー無効なら常に 0）
+        /// @details ID3D12InfoQueue のメッセージは既定でデバッガの出力ウィンドウにしか出ず、
+        ///          ログファイルには残らない。そのため「他人の環境でだけ落ちる」種類の
+        ///          不具合（GPU 実行中リソースの解放など）が手元に届かなかった。
+        ///          毎フレーム呼んでログへ落とすことで、再現環境のログだけで追えるようにする。
+        size_t DrainDebugMessages();
+
     private:
         /// @brief DXGIデバイスの初期化
         void InitializeDXGIDevice();
@@ -39,6 +47,9 @@ namespace CoreEngine
         // DXGIファクトリとデバイス
         Microsoft::WRL::ComPtr<IDXGIFactory7> dxgiFactory_;
         Microsoft::WRL::ComPtr<ID3D12Device> device_;
+
+        // デバッグレイヤーのメッセージ置き場。無効な構成では null のまま
+        Microsoft::WRL::ComPtr<ID3D12InfoQueue> infoQueue_;
 
         // DXRサポート情報
         bool isDXRSupported_ = false;

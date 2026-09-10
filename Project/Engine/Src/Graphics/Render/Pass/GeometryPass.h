@@ -86,4 +86,16 @@ namespace CoreEngine
     protected:
         void DrawQueue(const RenderContext& context) override;
     };
+
+    /// @brief 水面合成後にラインだけを重ねるパス
+    class LineQueuePass : public ForwardQueuePassBase {
+    public:
+        LineQueuePass() = default;
+        ~LineQueuePass() override = default;
+
+        const char* GetName() const override { return "LineQueue"; }
+
+    protected:
+        void DrawQueue(const RenderContext& context) override;
+    };
 }

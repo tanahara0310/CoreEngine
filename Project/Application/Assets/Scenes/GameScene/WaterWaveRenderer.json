@@ -1,0 +1,49 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "fallEnabled": true,
+                "fallFlowSpeed": 3.0,
+                "fallFoamStrength": 1.0,
+                "fallLengthRatio": 6.0,
+                "gridSize": 1.0,
+                "viewDistanceX": 20,
+                "waterColor": [
+                    0.0,
+                    0.3499999940395355,
+                    0.6499999761581421,
+                    1.0
+                ],
+                "waterLevelRatio": 0.6499999761581421,
+                "waterRoughness": 0.30000001192092896,
+                "waveHeightScale": 1.0,
+                "waveSpeedScale": 1.0
+            },
+            "type": "WaterWaveView"
+        }
+    ],
+    "name": "WaterWaveRenderer"
+}

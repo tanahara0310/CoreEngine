@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "RenderTargetManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Command/DeferredReleaseQueue.h"
+#include "Graphics/RHI/Command/FrameSync.h"
 #include "RenderTargetNames.h"
 #include "Utility/Logger/Logger.h"
 #include <algorithm>
@@ -280,6 +282,20 @@ namespace CoreEngine
         if (it != targets_.end()) {
             if (auto* offscreenTarget = dynamic_cast<OffscreenRenderTarget*>(it->second.get())) {
                 freeOffscreenIndices_.push_back(offscreenTarget->GetIndex());
+            }
+
+            // ここで unique_ptr を捨てると ID3D12Resource がその場で final-release される。
+            // だが GPU はまだ前フレームのコマンドでこのターゲットを読んでいる可能性がある
+            // （PostEffectTransientPool::Acquire はフレームグラフ構築中、つまり
+            //   前フレームの実行が終わる前にここを通る）。
+            // 結果、デバッグレイヤー有効なら #921 OBJECT_DELETED_WHILE_STILL_IN_USE、
+            // 無効なら解放済み VRAM への GPU アクセス＝デバイスロストになる。
+            // フェンスを通過するまで生かしておくため、遅延解放キューへ預けてから捨てる。
+            if (dxCommon_ && it->second) {
+                if (ID3D12Resource* resource = it->second->GetResource()) {
+                    dxCommon_->DeferredRelease().Push(
+                        resource, dxCommon_->Frame().LastSignaledValue());
+                }
             }
 
             targets_.erase(it);

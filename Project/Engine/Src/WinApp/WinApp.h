@@ -41,6 +41,13 @@ namespace CoreEngine
         /// @brief 現在のクライアント領域の高さを静的に取得
         static int32_t GetCurrentClientHeightStatic() { return currentClientHeightStatic_; }
 
+        /// @brief Esc キーでアプリケーションを終了するか
+        /// @details 既定は false。ゲーム中の Esc はポーズメニューが受けるので、
+        ///          エンジンが先にウィンドウを閉じてしまわないようにしてある。
+        ///          終了させたい場合は CVar `app.QuitOnEscape` を有効にする。
+        /// @note 無効にしても × ボタンと Alt+F4 では終了できる。
+        static bool QuitsOnEscape();
+
         /// @brief 指定された幅、高さ、タイトルで初期化
         /// @note ここではウィンドウを表示しない。表示は起動シーケンス完了後の ShowMainWindow()
         void Initialize(int32_t width, int32_t height, const wchar_t* title);

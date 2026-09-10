@@ -99,4 +99,9 @@ namespace CoreEngine
     {
         context.renderManager->DrawTransparentQueuePass(context.cmdList, context.viewSettings.viewType);
     }
+
+    void LineQueuePass::DrawQueue(const RenderContext& context)
+    {
+        context.renderManager->DrawLineQueuePass(context.cmdList, context.viewSettings.viewType);
+    }
 }

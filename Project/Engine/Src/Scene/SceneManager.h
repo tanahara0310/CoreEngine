@@ -83,6 +83,12 @@ public:
     /// @brief トランジションをスキップ（デバッグ用）
     void SkipTransition();
 
+    /// @brief シーントランジションを取得する
+    /// @return トランジション。Initialize 前は nullptr
+    /// @details ローディング画面の差し替え（SceneTransition::SetLoadingScreen）など、
+    ///          遷移そのものの設定をゲーム側から行うための口
+    SceneTransition* GetTransition() const { return sceneTransition_.get(); }
+
     /// @brief 実行中の読み込みステップに「続き」を持たせる
     /// @param work     毎フレーム 1 回呼ばれ、一部だけ進めて完了したら true を返す関数
     /// @param progress そのステップ内の進捗（0.0〜1.0）を返す関数（省略可）

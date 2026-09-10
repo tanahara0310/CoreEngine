@@ -49,6 +49,9 @@ namespace CoreEngine
         /// @brief 減衰の設定を描画
         void DrawDamping();
 
+        /// @brief 追従を止める軸 (Follow) の設定を描画
+        void DrawFollow();
+
         /// @brief 対象 1 件の指定（名前・オフセット）を描画
         /// @param showWeight まとめて収める対象なら重みも出す
         /// @return 値が変わったら true

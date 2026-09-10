@@ -247,6 +247,20 @@ namespace CoreEngine
         CameraRigDampingMode mode = CameraRigDampingMode::Exponential;
     };
 
+    /// @brief 追従を軸ごとに止める設定
+    /// @details 対象の座標をここで丸めてから Body も Aim も読む。見下ろしの構図で
+    ///          Y と Z を 0 にすると、対象が高い所や奥の列へ行っても画が縦に動かない。
+    ///          カメラと注視先が同じ面に残るので、位置だけでなく向きまで据わるのが要点。
+    struct CameraRigFollowAxes {
+        /// @brief 軸ごとの追従の強さ（1 = そのまま追う / 0 = 動かさない）
+        /// @details 間の値は「対象の動きをその割合だけ写す」。0.3 なら 3 割だけ動く。
+        Vector3 weight = { 1.0f, 1.0f, 1.0f };
+
+        /// @brief 追従を弱めた軸で据え置くワールド座標
+        /// @details 強さ 1 の軸では使わない。0 なら対象の座標をこの値へ置き換える。
+        Vector3 anchor = { 0.0f, 0.0f, 0.0f };
+    };
+
     /// @brief カメラリグ 1 本分のデータ
     struct CameraRigAsset {
         /// @brief 保存時に書き込むフォーマットバージョン
@@ -268,9 +282,12 @@ namespace CoreEngine
         CameraRigLens lens;
         CameraRigDamping damping;
 
+        /// @brief 対象の座標を軸ごとに据え置く（構図の面を固定する）
+        CameraRigFollowAxes follow;
+
         /// @brief 各値を扱える範囲へ収める
         /// @details 視野角の上下限、寄り・レール位置の 0..1 クランプ、減衰の非負化、
-        ///          入力範囲の下限 < 上限、重みの非負化をまとめて行う。
+        ///          入力範囲の下限 < 上限、重み・追従の強さの丸めをまとめて行う。
         ///          読み込んだ後・エディタで触った後は必ずこれを通すこと。
         void Sanitize();
     };

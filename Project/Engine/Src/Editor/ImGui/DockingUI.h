@@ -122,8 +122,8 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE deltaTimeIcon_{};
         bool deltaTimeIconLoaded_ = false;
 
-        // グリッド表示状態
-        bool isGridVisible_ = true;
+        // グリッド表示状態。既定はオフで、ツールバーのボタンから出す
+        bool isGridVisible_ = false;
 
         // GPU/CPU タイミングデータ（ステータスバーホバー時に表示）
         std::array<GpuTimingResult, GpuTimestampProfiler::kSlotCount> timingData_{};

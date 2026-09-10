@@ -116,7 +116,7 @@ namespace CoreEngine {
         }
 
         /// @brief エフェクトが有効かどうかを取得
-        bool IsEnabled() const
+        virtual bool IsEnabled() const
         {
             if (const CVar<bool>* cvar = GetEnabledCVar()) {
                 return cvar->Get();

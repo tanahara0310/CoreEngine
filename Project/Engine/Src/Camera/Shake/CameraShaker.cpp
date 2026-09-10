@@ -2,6 +2,7 @@
 #include "CameraShaker.h"
 
 #include "Math/MathCore.h"
+#include "Utility/Random/Hash.h"
 
 #include <algorithm>
 #include <cmath>
@@ -10,22 +11,10 @@ namespace CoreEngine
 {
     namespace
     {
-        /// @brief 32bit 整数ハッシュ（乱数の種から再現可能な値を作るだけのもの）
-        std::uint32_t HashUint(std::uint32_t x)
-        {
-            x ^= x >> 16;
-            x *= 0x7feb352du;
-            x ^= x >> 15;
-            x *= 0x846ca68bu;
-            x ^= x >> 16;
-            return x;
-        }
-
-        /// @brief ハッシュ値を -1..1 の実数へ写す
+        /// @brief 種を -1..1 の実数へ写す（同じ種なら常に同じ値）
         float HashToSigned(std::uint32_t x)
         {
-            // 上位 24bit を 0..1 へ写してから -1..1 へ広げる
-            return static_cast<float>(HashUint(x) >> 8) * (1.0f / 8388608.0f) - 1.0f;
+            return Hash::ToSignedFloat(Hash::Mix32(x));
         }
 
         /// @brief 格子番号（負の位相でも破綻しないように整数へ落とす）
@@ -133,7 +122,7 @@ namespace CoreEngine
         shake.handle = AcquireHandle();
 
         // シード未指定なら再生ごとにばらす。同じ揺れを連続で撃っても波形が重ならない
-        shake.seed = (params.seed != 0) ? params.seed : HashUint(shake.handle * 2654435761u + 1u);
+        shake.seed = (params.seed != 0) ? params.seed : Hash::Mix32(shake.handle * 2654435761u + 1u);
 
         active_.push_back(shake);
         return shake.handle;

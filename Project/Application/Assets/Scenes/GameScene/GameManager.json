@@ -1,0 +1,21 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "resultTransitionDelay": 1.0
+            },
+            "type": "GameManager"
+        },
+        {
+            "enabled": true,
+            "type": "GameSettings"
+        },
+        {
+            "enabled": true,
+            "type": "Hunger"
+        }
+    ],
+    "name": "GameManager"
+}

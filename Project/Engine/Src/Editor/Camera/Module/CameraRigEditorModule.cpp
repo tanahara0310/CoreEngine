@@ -215,6 +215,10 @@ namespace CoreEngine
                 DrawDamping();
                 ImGui::EndTabItem();
             }
+            if (ImGui::BeginTabItem("追従")) {
+                DrawFollow();
+                ImGui::EndTabItem();
+            }
             ImGui::EndTabBar();
         }
 
@@ -600,6 +604,40 @@ namespace CoreEngine
                 ? "離れたら広く、寄ったら狭く写します。"
                 : "速く動くほど広がって、スピード感が出ます。");
         }
+
+        if (changed) {
+            dirty_ = true;
+        }
+    }
+
+    void CameraRigEditorModule::DrawFollow()
+    {
+        UI::Hint("対象の座標を軸ごとに据え置きます。位置にも向きにも同じように効くので、"
+            "止めた軸はカメラも注視先も動きません。");
+        UI::Spacing();
+
+        bool changed = false;
+        changed |= UI::SliderFloat("追う強さ X", rig_.follow.weight.x, 0.0f, 1.0f, "%.2f");
+        changed |= UI::SliderFloat("追う強さ Y", rig_.follow.weight.y, 0.0f, 1.0f, "%.2f");
+        changed |= UI::SliderFloat("追う強さ Z", rig_.follow.weight.z, 0.0f, 1.0f, "%.2f");
+        UI::Hint("1 = そのまま追う / 0 = 動かさない。間の値はその割合だけ写します。");
+
+        changed |= UI::DragVec3("据え置く座標", rig_.follow.anchor, 0.1f);
+        UI::SameLine();
+        UI::Hint("強さを下げた軸だけに効きます。強さ 1 の軸では使いません");
+
+        UI::Spacing();
+        if (ImGui::SmallButton("全部追う (1.0)")) {
+            rig_.follow.weight = { 1.0f, 1.0f, 1.0f };
+            changed = true;
+        }
+        UI::SameLine();
+        if (ImGui::SmallButton("横だけ追う (1, 0, 0)")) {
+            rig_.follow.weight = { 1.0f, 0.0f, 0.0f };
+            changed = true;
+        }
+        UI::SameLine();
+        UI::Hint("見下ろしの横スクロールで画が縦に動かなくなる組み合わせ");
 
         if (changed) {
             dirty_ = true;

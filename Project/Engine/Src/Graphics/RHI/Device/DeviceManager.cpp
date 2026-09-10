@@ -5,6 +5,8 @@
 
 #include <iostream>
 #include <cassert>
+#include <cstdint>
+#include <vector>
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -45,6 +47,11 @@ void DeviceManager::InitializeDXGIDevice()
         } else {
             OutputDebugString(L"Direct3D 12 デバッグインターフェースの取得に失敗しました。\n");
             std::cerr << "Direct3D 12 デバッグインターフェースの取得に失敗しました。" << std::endl;
+            // 標準出力にしか出ないと、他人の環境のログを見たときに「エラーが無い」のか
+            // 「そもそも検査できていない」のかが区別できない
+            logger.Warnf(LogCategory::Graphics, LogSubCategory::Device,
+                "デバッグレイヤーを有効にできませんでした。Windows の「グラフィックス ツール」"
+                "オプション機能が未インストールの可能性があります");
         }
     }
 
@@ -110,15 +117,22 @@ void DeviceManager::InitializeDXGIDevice()
 
     // 情報キューはデバッグレイヤーが有効なときだけ取得できる（無効なら QueryInterface が失敗する）
     if (enableDebugLayer_) {
-        ComPtr<ID3D12InfoQueue> infoQueue;
+        ComPtr<ID3D12InfoQueue>& infoQueue = infoQueue_;
         if (SUCCEEDED(device_->QueryInterface(IID_PPV_ARGS(&infoQueue)))) {
 
+            // ブレークはデバッガが居るときだけ有効にする。
+            // SetBreakOnSeverity は DebugBreak() を呼ぶので、デバッガが居ない環境では
+            // 未処理のブレークポイント例外になり「最初の警告が出た瞬間にプロセスが
+            // 黙って落ちる」。そのせいで、デバッグレイヤーを有効にしたまま他人へ
+            // 渡して再現ログを採る、という一番やりたいことができなかった。
+            // デバッガが居なければ止めずにログへ流す（DrainDebugMessages）。
+            const BOOL breakOnMessage = ::IsDebuggerPresent();
             // ヤバいエラー時に止まる
-            infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
+            infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, breakOnMessage);
             // エラー時に止まる
-            infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
+            infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, breakOnMessage);
             // 警告時に止まる(コメントアウトすることで解放漏れが詳細にわかる)
-            infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, true);
+            infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, breakOnMessage);
 
             // 抑制するメッセージのID
             D3D12_MESSAGE_ID denyIds[] = {
@@ -138,8 +152,68 @@ void DeviceManager::InitializeDXGIDevice()
             filter.DenyList.pSeverityList = severities;
             // 指定したメッセージの表示を抑制する
             infoQueue->PushStorageFilter(&filter);
+
+            logger.Infof(LogCategory::Graphics, LogSubCategory::Device,
+                "デバッグレイヤーのメッセージをログへ記録します（[D3D12 ...] の行が該当）");
+        } else {
+            logger.Warnf(LogCategory::Graphics, LogSubCategory::Device,
+                "InfoQueue を取得できませんでした。デバッグレイヤーのメッセージはログに残りません");
         }
     }
+}
+
+size_t DeviceManager::DrainDebugMessages()
+{
+    if (!infoQueue_) {
+        return 0; // デバッグレイヤーが無効な構成。ここが毎フレーム通る道なので即返す
+    }
+
+    const UINT64 count = infoQueue_->GetNumStoredMessages();
+    if (count == 0) {
+        return 0;
+    }
+
+    Logger& logger = Logger::GetInstance();
+    std::vector<uint8_t> buffer;
+
+    for (UINT64 i = 0; i < count; ++i) {
+        // 1 回目の呼び出しで必要な大きさを聞き、詰め直してから本体を受け取る
+        SIZE_T length = 0;
+        if (FAILED(infoQueue_->GetMessage(i, nullptr, &length)) || length == 0) {
+            continue;
+        }
+        buffer.resize(length);
+        auto* message = reinterpret_cast<D3D12_MESSAGE*>(buffer.data());
+        if (FAILED(infoQueue_->GetMessage(i, message, &length))) {
+            continue;
+        }
+
+        // pDescription は NUL 終端済み。DescriptionByteLength は終端を含む長さ
+        const char* text = message->pDescription ? message->pDescription : "(説明なし)";
+        const int id = static_cast<int>(message->ID);
+
+        switch (message->Severity) {
+        case D3D12_MESSAGE_SEVERITY_CORRUPTION:
+            logger.Errorf(LogCategory::Graphics, LogSubCategory::Device,
+                "[D3D12 CORRUPTION] #{} {}", id, text);
+            break;
+        case D3D12_MESSAGE_SEVERITY_ERROR:
+            logger.Errorf(LogCategory::Graphics, LogSubCategory::Device,
+                "[D3D12 ERROR] #{} {}", id, text);
+            break;
+        case D3D12_MESSAGE_SEVERITY_WARNING:
+            logger.Warnf(LogCategory::Graphics, LogSubCategory::Device,
+                "[D3D12 WARNING] #{} {}", id, text);
+            break;
+        default:
+            logger.Infof(LogCategory::Graphics, LogSubCategory::Device,
+                "[D3D12 INFO] #{} {}", id, text);
+            break;
+        }
+    }
+
+    infoQueue_->ClearStoredMessages();
+    return static_cast<size_t>(count);
 }
 
 void DeviceManager::CheckDXRSupport()

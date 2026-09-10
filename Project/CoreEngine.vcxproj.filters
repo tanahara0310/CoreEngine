@@ -1351,6 +1351,171 @@
     <ClCompile Include="Engine\Src\Utility\Tween\TweenManager.cpp">
       <Filter>Engine\Src\Utility\Tween</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Components\Building\MapGeneratorComponent.cpp">
+      <Filter>Application\Src\Components\Building</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\Building\MapViewComponent.cpp">
+      <Filter>Application\Src\Components\Building</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\Building\RockThrowComponent.cpp">
+      <Filter>Application\Src\Components\Building</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\Building\WaterWaveViewComponent.cpp">
+      <Filter>Application\Src\Components\Building</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\Camera\RockBreakShakeSettingsComponent.cpp">
+      <Filter>Application\Src\Components\Camera</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\GameCore\GameManagerComponent.cpp">
+      <Filter>Application\Src\Components\GameCore</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\GameCore\GameRecordStore.cpp">
+      <Filter>Application\Src\Components\GameCore</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\GameCore\GameSettingsComponent.cpp">
+      <Filter>Application\Src\Components\GameCore</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\GameCore\HungerComponent.cpp">
+      <Filter>Application\Src\Components\GameCore</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\Rail\RailBuilderComponent.cpp">
+      <Filter>Application\Src\Components\Rail</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\Rail\RailPathComponent.cpp">
+      <Filter>Application\Src\Components\Rail</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\Rail\RailViewComponent.cpp">
+      <Filter>Application\Src\Components\Rail</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\Result\ResultButtonAnimationComponent.cpp">
+      <Filter>Application\Src\Components\Result</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\Result\ResultMonkeyShakeComponent.cpp">
+      <Filter>Application\Src\Components\Result</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\Result\ResultTipsComponent.cpp">
+      <Filter>Application\Src\Components\Result</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\Title\TitleButtonAnimationComponent.cpp">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\Title\TitleCameraShakeSettingsComponent.cpp">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\Title\TitleLogoAnimationComponent.cpp">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\Title\TitleMonkeyAnimationComponent.cpp">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\Title\TitleTextAnimationComponent.cpp">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\Title\TitleTrolleyAnimationComponent.cpp">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\Train\SpawnPopComponent.cpp">
+      <Filter>Application\Src\Components\Train</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\Train\TrainMovementComponent.cpp">
+      <Filter>Application\Src\Components\Train</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\UI\GameStartPromptAnimationComponent.cpp">
+      <Filter>Application\Src\Components\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\UI\ObjectiveSignComponent.cpp">
+      <Filter>Application\Src\Components\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\UI\OffscreenTrainIndicatorUIComponent.cpp">
+      <Filter>Application\Src\Components\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\UI\PauseMenuUIComponent.cpp">
+      <Filter>Application\Src\Components\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\UI\ResultGaugeUIComponent.cpp">
+      <Filter>Application\Src\Components\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\UI\SpeedGaugeUIComponent.cpp">
+      <Filter>Application\Src\Components\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\UI\StaminaGaugeUIComponent.cpp">
+      <Filter>Application\Src\Components\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\Utility\ModelRenderPoolComponent.cpp">
+      <Filter>Application\Src\Components\Utility</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Editor\Stage\StageCsvDocument.cpp">
+      <Filter>Application\Src\Editor\Stage</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Editor\Stage\StageEditorPanel.cpp">
+      <Filter>Application\Src\Editor\Stage</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Editor\Stage\StageProject.cpp">
+      <Filter>Application\Src\Editor\Stage</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\GameObjects\Effect\BananaHarvestEffect.cpp">
+      <Filter>Application\Src\GameObjects\Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\GameObjects\Effect\RockBreakDebris.cpp">
+      <Filter>Application\Src\GameObjects\Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\GameObjects\Effect\StationSlowdownEffect.cpp">
+      <Filter>Application\Src\GameObjects\Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\GameObjects\GameSceneObject.cpp">
+      <Filter>Application\Src\GameObjects</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\GameScene\BananaTreeAuraFeature.cpp">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\GameScene\GameEntranceFeature.cpp">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\GameScene\OffscreenTrainIndicatorFeature.cpp">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\GameScene\PauseMenuFeature.cpp">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\GameScene\RailDirectionGuideFeature.cpp">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\GameScene\SkyFogFeature.cpp">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\GameScene\SpeedBlurFeature.cpp">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\GameScene\SpeedGaugeFeature.cpp">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\GameScene\StageLightsFeature.cpp">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\GameScene\StaminaGaugeFeature.cpp">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\ResultScene\ResultScene.cpp">
+      <Filter>Application\Src\Scenes\ResultScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\ResultScene\ResultSceneUi.cpp">
+      <Filter>Application\Src\Scenes\ResultScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\TitleScene\TitleScene.cpp">
+      <Filter>Application\Src\Scenes\TitleScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\TitleScene\TitleSceneModelSetup.cpp">
+      <Filter>Application\Src\Scenes\TitleScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\TitleScene\TitleSceneUi.cpp">
+      <Filter>Application\Src\Scenes\TitleScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\TrolleyLoading\TrolleyLoading.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\TrolleyLoading</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionTestScene.h">
@@ -3057,13 +3222,217 @@
     <ClInclude Include="Engine\Src\Utility\Tween\TweenManager.h">
       <Filter>Engine\Src\Utility\Tween</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Components\Building\MapChipData.h">
+      <Filter>Application\Src\Components\Building</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Building\MapGeneratorComponent.h">
+      <Filter>Application\Src\Components\Building</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Building\MapViewComponent.h">
+      <Filter>Application\Src\Components\Building</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Building\RockThrowComponent.h">
+      <Filter>Application\Src\Components\Building</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Building\WaterWaveViewComponent.h">
+      <Filter>Application\Src\Components\Building</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Camera\RockBreakShakeSettingsComponent.h">
+      <Filter>Application\Src\Components\Camera</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\GameCore\GameManagerComponent.h">
+      <Filter>Application\Src\Components\GameCore</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\GameCore\GameRecordStore.h">
+      <Filter>Application\Src\Components\GameCore</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\GameCore\GameResultData.h">
+      <Filter>Application\Src\Components\GameCore</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\GameCore\GameSettingsComponent.h">
+      <Filter>Application\Src\Components\GameCore</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\GameCore\HungerComponent.h">
+      <Filter>Application\Src\Components\GameCore</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Rail\RailBuilderComponent.h">
+      <Filter>Application\Src\Components\Rail</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Rail\RailPathComponent.h">
+      <Filter>Application\Src\Components\Rail</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Rail\RailViewComponent.h">
+      <Filter>Application\Src\Components\Rail</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Result\ResultButtonAnimationComponent.h">
+      <Filter>Application\Src\Components\Result</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Result\ResultMonkeyShakeComponent.h">
+      <Filter>Application\Src\Components\Result</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Result\ResultTipsComponent.h">
+      <Filter>Application\Src\Components\Result</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Title\TitleButtonAnimationComponent.h">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Title\TitleCameraShakeSettingsComponent.h">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Title\TitleLogoAnimationComponent.h">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Title\TitleMonkeyAnimationComponent.h">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Title\TitleTextAnimationComponent.h">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Title\TitleTrolleyAnimationComponent.h">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Train\SpawnPopComponent.h">
+      <Filter>Application\Src\Components\Train</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Train\TrainMovementComponent.h">
+      <Filter>Application\Src\Components\Train</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\UI\GameStartPromptAnimationComponent.h">
+      <Filter>Application\Src\Components\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\UI\ObjectiveSignComponent.h">
+      <Filter>Application\Src\Components\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\UI\OffscreenTrainIndicatorUIComponent.h">
+      <Filter>Application\Src\Components\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\UI\PauseMenuUIComponent.h">
+      <Filter>Application\Src\Components\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\UI\ResultGaugeUIComponent.h">
+      <Filter>Application\Src\Components\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\UI\SpeedGaugeUIComponent.h">
+      <Filter>Application\Src\Components\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\UI\StaminaGaugeUIComponent.h">
+      <Filter>Application\Src\Components\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Utility\BlockModelLayout.h">
+      <Filter>Application\Src\Components\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Utility\ModelRenderPoolComponent.h">
+      <Filter>Application\Src\Components\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Editor\Stage\StageChipPalette.h">
+      <Filter>Application\Src\Editor\Stage</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Editor\Stage\StageCsvDocument.h">
+      <Filter>Application\Src\Editor\Stage</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Editor\Stage\StageEditorPanel.h">
+      <Filter>Application\Src\Editor\Stage</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Editor\Stage\StageProject.h">
+      <Filter>Application\Src\Editor\Stage</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\GameObjects\Effect\BananaHarvestEffect.h">
+      <Filter>Application\Src\GameObjects\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\GameObjects\Effect\RockBreakDebris.h">
+      <Filter>Application\Src\GameObjects\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\GameObjects\Effect\StationSlowdownEffect.h">
+      <Filter>Application\Src\GameObjects\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\GameObjects\GameSceneObject.h">
+      <Filter>Application\Src\GameObjects</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\GameScene\BananaTreeAuraFeature.h">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\GameScene\GameEntranceFeature.h">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\GameScene\GameScene.h">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\GameScene\OffscreenTrainIndicatorFeature.h">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\GameScene\PauseMenuFeature.h">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\GameScene\RailDirectionGuideFeature.h">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\GameScene\SkyFogFeature.h">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\GameScene\SpeedBlurFeature.h">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\GameScene\SpeedGaugeFeature.h">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\GameScene\StageLightsFeature.h">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\GameScene\StaminaGaugeFeature.h">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\ResultScene\ResultScene.h">
+      <Filter>Application\Src\Scenes\ResultScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\ResultScene\ResultSceneUi.h">
+      <Filter>Application\Src\Scenes\ResultScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\TitleScene\TitleScene.h">
+      <Filter>Application\Src\Scenes\TitleScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\TitleScene\TitleSceneModelSetup.h">
+      <Filter>Application\Src\Scenes\TitleScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\TitleScene\TitleSceneUi.h">
+      <Filter>Application\Src\Scenes\TitleScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ILoadingScreenEffect.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\TrolleyLoading\TrolleyLoading.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\TrolleyLoading</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Random\Hash.h">
+      <Filter>Engine\Src\Utility\Random</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\pch.h">
       <Filter>Engine\Src</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <None Include="Application\Assets\Models\BrainStem\glTF-Draco\BrainStem0.bin">
+      <Filter>Application\Assets\Models\BrainStem\glTF-Draco</Filter>
+    </None>
+    <None Include="Application\Assets\Models\BrainStem\glTF-Meshopt\BrainStem.bin">
+      <Filter>Application\Assets\Models\BrainStem\glTF-Meshopt</Filter>
+    </None>
+    <None Include="Application\Assets\Models\BrainStem\glTF\BrainStem0.bin">
+      <Filter>Application\Assets\Models\BrainStem\glTF</Filter>
+    </None>
+    <None Include="Application\Assets\Models\CoralReef\coralReef.bin">
+      <Filter>Application\Assets\Models\CoralReef</Filter>
+    </None>
+    <None Include="Application\Assets\Models\Fox\glTF\Fox.bin">
+      <Filter>Application\Assets\Models\Fox\glTF</Filter>
+    </None>
+    <None Include="Application\Assets\Models\Ground\ground.bin">
+      <Filter>Application\Assets\Models\Ground</Filter>
+    </None>
     <None Include="Application\Assets\Models\human\walk.bin">
       <Filter>Application\Assets\Models\human</Filter>
+    </None>
+    <None Include="Application\Assets\Models\sponza\Sponza.bin">
+      <Filter>Application\Assets\Models\sponza</Filter>
     </None>
     <None Include="Build\Scripts\SyncFilters.ps1">
       <Filter>Build\Scripts</Filter>
@@ -3082,11 +3451,74 @@
     <Filter Include="Application\Assets\Models">
       <UniqueIdentifier>{4AD6DADC-83B6-46FB-9BA2-06F83BD35CD0}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Application\Assets\Models\BrainStem">
+      <UniqueIdentifier>{4EB14F91-DD5B-4CE4-A8BA-A724B91F61D5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Assets\Models\BrainStem\glTF">
+      <UniqueIdentifier>{261ADABC-D611-4532-9233-E41DE30BBCB5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Assets\Models\BrainStem\glTF-Draco">
+      <UniqueIdentifier>{39A159CB-9B05-4321-9606-89EC6F891F63}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Assets\Models\BrainStem\glTF-Meshopt">
+      <UniqueIdentifier>{A19FB50C-AC1C-4C87-BEB7-4654AA8C5361}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Assets\Models\CoralReef">
+      <UniqueIdentifier>{8115CC28-DD1B-4935-B721-BA30D2D5AA44}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Assets\Models\Fox">
+      <UniqueIdentifier>{EECDD533-25C4-4429-83D5-338739D12A5C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Assets\Models\Fox\glTF">
+      <UniqueIdentifier>{4825F58D-FD89-4D26-B9B9-88B48F921057}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Assets\Models\Ground">
+      <UniqueIdentifier>{BA5C0660-8AE9-4DCC-9EF0-7DAFB2596962}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Application\Assets\Models\human">
       <UniqueIdentifier>{426FC420-35FD-4168-B68A-5AEF6441C635}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Application\Assets\Models\sponza">
+      <UniqueIdentifier>{20DBDF63-45F8-4BA0-9CDD-580001B33A3D}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Application\Src">
       <UniqueIdentifier>{8C016CA9-9773-40DE-8792-E8B53FB9372C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Components">
+      <UniqueIdentifier>{1733D33F-71B1-42CB-A572-AF0B2B980EE4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Components\Building">
+      <UniqueIdentifier>{927ACB07-8F13-44F9-ACE1-DCF099B7C975}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Components\Camera">
+      <UniqueIdentifier>{CD1D03D2-9AB6-4F59-B455-6833D4F68849}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Components\GameCore">
+      <UniqueIdentifier>{EF54935F-6035-4619-AF43-6C927EAC7699}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Components\Rail">
+      <UniqueIdentifier>{849DCF39-F2B9-4594-AAF2-083D9902F5C1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Components\Result">
+      <UniqueIdentifier>{C8AB0B81-8531-4ABB-9540-A4243A581337}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Components\Title">
+      <UniqueIdentifier>{113641A0-21C5-4FA5-B8EB-E84FB19CA794}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Components\Train">
+      <UniqueIdentifier>{AC64EA6F-0684-4922-9C71-A7A71979A090}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Components\UI">
+      <UniqueIdentifier>{4DF98CEF-1553-49BA-AF94-F28F46A1556F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Components\Utility">
+      <UniqueIdentifier>{DD552702-3EE0-4964-9090-9C176DEDA1EF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Editor">
+      <UniqueIdentifier>{97E30E45-D6C0-471F-98E0-687AD59380B2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Editor\Stage">
+      <UniqueIdentifier>{7A0C5ADC-15F3-4608-8068-0598A0709FC1}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\GameObjects">
       <UniqueIdentifier>{2762868A-A4D7-448F-BAAD-024F9AF8F891}</UniqueIdentifier>
@@ -3103,8 +3535,14 @@
     <Filter Include="Application\Src\Scenes\CollisionTestScene">
       <UniqueIdentifier>{2C8F41A6-5B7D-4E93-9C10-6A4D2F8B7E51}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Application\Src\Scenes\GameScene">
+      <UniqueIdentifier>{3E720AD8-16BD-45B7-AC21-C7C0EF830957}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Application\Src\Scenes\MsdfTextTestScene">
       <UniqueIdentifier>{15CA7471-23C7-4DAE-A320-F49B83CF292A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Scenes\ResultScene">
+      <UniqueIdentifier>{21903413-3B2F-4FB4-BC72-15EEEC1C65FC}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\Scenes\SampleGameScene">
       <UniqueIdentifier>{296989A0-B084-4643-ABA9-184DA0DDC6E3}</UniqueIdentifier>
@@ -3117,6 +3555,9 @@
     </Filter>
     <Filter Include="Application\Src\Scenes\TestScene">
       <UniqueIdentifier>{04EE1DAA-02F5-4253-9DBB-A28737391E46}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Scenes\TitleScene">
+      <UniqueIdentifier>{89F1EF62-281B-4423-A2BC-0D583EB44542}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\Scenes\WaterTestScene">
       <UniqueIdentifier>{BA0CCBB8-F2BE-4C5C-95A3-D52C8433C8F5}</UniqueIdentifier>
@@ -3387,6 +3828,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping">
       <UniqueIdentifier>{A92CDA78-6D07-45C2-9567-763B0BD66C3D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\TrolleyLoading">
+      <UniqueIdentifier>{AB051751-FEBC-4AC5-A0DC-D8CED3347F94}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\Vignette">
       <UniqueIdentifier>{43286C64-BEC4-499A-B7AC-FF2EFBA50B15}</UniqueIdentifier>
