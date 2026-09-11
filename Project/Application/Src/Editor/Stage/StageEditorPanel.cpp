@@ -930,10 +930,6 @@ namespace GameEditors
                     brush_ = kStageChipPalette[i].type;
                 }
             }
-            // Ctrl+Z はシーン編集側も使うので、マップの上にいるときだけ拾う。
-            if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Z, false)) {
-                document_.Undo();
-            }
         }
 
         ImGui::EndChild();

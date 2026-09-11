@@ -181,6 +181,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Engine\Src\Editor\Inspector\InspectorRenderer.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Command\EditorCommandStack.cpp" />
+    <ClCompile Include="Engine\Src\Reflection\PropertyValue.cpp" />
     <ClCompile Include="Engine\Src\Reflection\PropertySerializer.cpp" />
     <ClCompile Include="Engine\Src\Reflection\ReflectionToggle.cpp" />
     <ClCompile Include="Engine\Src\Reflection\TypeDescriptor.cpp" />
@@ -816,6 +818,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\Src\Editor\Inspector\InspectorRenderer.h" />
+    <ClInclude Include="Engine\Src\Editor\Command\EditorCommand.h" />
+    <ClInclude Include="Engine\Src\Editor\Command\EditorCommandStack.h" />
+    <ClInclude Include="Engine\Src\Reflection\PropertyValue.h" />
     <ClInclude Include="Engine\Src\Reflection\PropertySerializer.h" />
     <ClInclude Include="Engine\Src\Reflection\Reflect.h" />
     <ClInclude Include="Engine\Src\Reflection\TypeDescriptor.h" />

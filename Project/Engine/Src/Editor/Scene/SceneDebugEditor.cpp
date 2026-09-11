@@ -7,6 +7,7 @@
 #include "Camera/CameraManager.h"
 #include "Camera/CameraSceneStateIO.h"
 #include "Editor/Camera/Module/CameraEditorContext.h"
+#include "Editor/Command/EditorCommandStack.h"
 #include "GameObject/GameObjectManager.h"
 #include "GameObject/Model/DynamicModelObject.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
@@ -105,6 +106,8 @@ namespace CoreEngine
         gameObjectManager_ = mgr;
         cameraManager_ = camMgr;
         saveSystem_ = saveSystem;
+
+        undoRedoHistory_.SetGameObjectManager(mgr);
 
         // カメラエディター側で追従対象を参照できるよう、オブジェクトマネージャーを注入する。
         if (cameraManager_) {
@@ -242,15 +245,16 @@ namespace CoreEngine
             cameraManager_->UpdateDebugModules();
         }
 
-        // Ctrl+Z / Ctrl+Y によるキーボードショートカット（ウィンドウ外でも反応）。
-        // RouteGlobal にしてあるので、カメラエディタのように自分で Undo を持つ
-        // ウィンドウにフォーカスがあるときはそちらへ譲る。素の IsKeyChordPressed だと
-        // 両方が同じフレームで戻ってしまう。
-        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Z, ImGuiInputFlags_RouteGlobal)) {
-            undoRedoHistory_.Undo(gameObjectManager_);
-        }
-        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Y, ImGuiInputFlags_RouteGlobal)) {
-            undoRedoHistory_.Redo(gameObjectManager_);
+        // Ctrl+Z / Ctrl+Y はここが唯一の受け口。オブジェクト・CVar・カメラ・ステージの
+        // 操作はすべて EditorCommandStack の 1 本に積まれている。
+        // テキスト入力中は ImGui 自身の入力 Undo に譲る。
+        if (!ImGui::GetIO().WantTextInput) {
+            if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Z, ImGuiInputFlags_RouteGlobal)) {
+                undoRedoHistory_.Undo(gameObjectManager_);
+            }
+            if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Y, ImGuiInputFlags_RouteGlobal)) {
+                undoRedoHistory_.Redo(gameObjectManager_);
+            }
         }
 
         // Ctrl+S でシーン全体保存
@@ -371,17 +375,25 @@ namespace CoreEngine
         }
         ImGui::EndDisabled();
         UI::SameLine();
+        // 履歴はエディタ共通の 1 本。次に何が戻るのかをボタンから読めるようにする
+        auto& commandStack = Editor::EditorCommandStack::Get();
         ImGui::BeginDisabled(!undoRedoHistory_.CanUndo());
         if (ImGui::Button("Undo")) {
             undoRedoHistory_.Undo(gameObjectManager_);
         }
         ImGui::EndDisabled();
+        if (ImGui::IsItemHovered() && commandStack.CanUndo()) {
+            ImGui::SetTooltip("戻す: %s", commandStack.PeekUndoLabel().c_str());
+        }
         UI::SameLine();
         {
             UI::Scope::DisabledScope ds(!undoRedoHistory_.CanRedo());
             if (ImGui::Button("Redo")) {
                 undoRedoHistory_.Redo(gameObjectManager_);
             }
+        }
+        if (ImGui::IsItemHovered() && commandStack.CanRedo()) {
+            ImGui::SetTooltip("やり直す: %s", commandStack.PeekRedoLabel().c_str());
         }
         UI::SameLine();
         UI::HintF("(%d/%d)",

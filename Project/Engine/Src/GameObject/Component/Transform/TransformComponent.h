@@ -45,11 +45,11 @@ public:
 
     /// @brief 回転の単位とワールド位置を添える
     void DrawInspectorExtra() override;
-
-    /// @brief 記述子経由の編集を手書き経路と同じ Undo 履歴へ積む
-    void OnInspectorEditCommitted(
-        const Reflection::PropertyDescriptor& property, const void* beforeValue) override;
 #endif
+
+    /// @brief 書き換わった位置・回転・スケールをワールド行列へ反映する
+    /// @note 更新が止まっているとき（再生停止中）でもインスペクタと Undo を効かせるために要る。
+    void OnPropertyChanged(const Reflection::PropertyDescriptor& property) override;
 
     // ===== ライフサイクル =====
 

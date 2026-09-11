@@ -4,8 +4,6 @@
 
 #include "Math/Vector/Vector3.h"
 #include <functional>
-#include <variant>
-#include <vector>
 #include <string>
 
 namespace CoreEngine
@@ -37,14 +35,14 @@ namespace CoreEngine
         Vector3     scale = { 1.0f, 1.0f, 1.0f };
     };
 
-    /// @brief 履歴エントリ（トランスフォーム変更 または スポーン操作）
-    using HistoryEntry = std::variant<TransformRecord, ObjectSpawnRecord>;
-
-    /// @brief Undo/Redo 履歴管理クラス（デバッグビルド専用）
+    /// @brief シーン操作を `EditorCommandStack` へ積むための入口
+    /// @details 履歴そのものはエディタ共通の単一スタックが持つ。ここは
+    ///          「オブジェクト名で引き当てて値を戻す」手順をコマンドに包む役。
     class UndoRedoHistory {
     public:
-        /// @brief 最大保持ステップ数
-        static constexpr int kMaxSteps = 50;
+        /// @brief 対象オブジェクトを引き当てるマネージャを登録する
+        /// @note 積んだ操作はこのマネージャを使って Undo される
+        void SetGameObjectManager(GameObjectManager* manager) { manager_ = manager; }
 
         /// @brief トランスフォーム操作を履歴に追加（before == after の場合は記録しない）
         void Push(const TransformRecord& record);
@@ -60,8 +58,8 @@ namespace CoreEngine
         /// @return 実行できた場合 true
         bool Redo(GameObjectManager* manager);
 
-        bool CanUndo() const { return !undoStack_.empty(); }
-        bool CanRedo() const { return !redoStack_.empty(); }
+        bool CanUndo() const;
+        bool CanRedo() const;
 
         /// @brief 履歴をすべてクリア（シーン切り替え時など）
         void Clear();
@@ -74,18 +72,22 @@ namespace CoreEngine
             onBeforeDestroy_ = std::move(cb);
         }
 
-        int GetUndoCount() const { return static_cast<int>(undoStack_.size()); }
-        int GetRedoCount() const { return static_cast<int>(redoStack_.size()); }
+        int GetUndoCount() const;
+        int GetRedoCount() const;
 
     private:
-        void ApplyTransform(GameObjectManager* manager, const std::string& name,
+        /// @brief 名前で引き当てたオブジェクトへ値を書き戻す
+        void ApplyTransform(const std::string& name,
                             const Vector3& translate, const Vector3& rotate,
-                            const Vector3& scale, bool active);
+                            const Vector3& scale, bool active) const;
 
-        void PushToStack(std::vector<HistoryEntry>& stack, HistoryEntry entry);
+        /// @brief スポーンを取り消す（オブジェクトを削除する）
+        void DestroySpawned(const ObjectSpawnRecord& record) const;
 
-        std::vector<HistoryEntry> undoStack_;
-        std::vector<HistoryEntry> redoStack_;
+        /// @brief スポーンをやり直す（同じオブジェクトを作り直す）
+        void RespawnObject(const ObjectSpawnRecord& record) const;
+
+        GameObjectManager* manager_ = nullptr;
 
         /// @brief オブジェクト削除前コールバック（ObjectSelector 選択解除用）
         std::function<void(const std::string&)> onBeforeDestroy_;

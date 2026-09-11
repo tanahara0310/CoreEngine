@@ -2,7 +2,11 @@
 #include "CVarUndoStack.h"
 #include "CVar.h"
 #include "CVarRegistry.h"
+#include "Editor/Command/EditorCommandStack.h"
+
+#include <array>
 #include <cstring>
+#include <memory>
 
 namespace CoreEngine
 {
@@ -36,6 +40,14 @@ namespace CoreEngine
             case CVarType::Color:   return cvar->AsColor();
             }
             return nullptr;
+        }
+
+        /// @brief 値を戻してから即時保存させる
+        /// @note Undo / Redo は「確定」操作なので、デバウンスを待たない
+        void ApplyValue(ICVar* cvar, const std::array<unsigned char, 16>& value)
+        {
+            cvar->SetFromPointer(value.data());
+            CVarRegistry::Get().NotifyCommit();
         }
     }
 
@@ -78,72 +90,51 @@ namespace CoreEngine
             return;
         }
 
-        Record record;
-        record.cvar = cvar;
-        std::memcpy(record.oldValue, pendingOldValue_, kValueSize);
-        CopyValue(cvar, record.newValue);
+        std::array<unsigned char, kValueSize> oldValue{};
+        std::array<unsigned char, kValueSize> newValue{};
+        std::memcpy(oldValue.data(), pendingOldValue_, kValueSize);
+        CopyValue(cvar, newValue.data());
         pendingCVar_ = nullptr;
 
         // 往復して元に戻った編集（ドラッグして元の位置で離した等）は積まない
-        if (ValuesEqual(cvar, record.oldValue, record.newValue)) {
+        if (ValuesEqual(cvar, oldValue.data(), newValue.data())) {
             return;
         }
-        Push(std::move(record));
+
+        Editor::EditorCommandStack::Get().Push(
+            std::make_unique<Editor::FunctionCommand>(
+                cvar->GetName(),
+                [cvar, oldValue] { ApplyValue(cvar, oldValue); },
+                [cvar, newValue] { ApplyValue(cvar, newValue); }));
     }
 
     void CVarUndoStack::BeginBatch()
     {
-        if (batchDepth_++ == 0) {
-            currentBatchId_ = nextBatchId_++;
-        }
+        Editor::EditorCommandStack::Get().BeginBatch("CVar の一括変更");
     }
 
     void CVarUndoStack::EndBatch()
     {
-        if (batchDepth_ > 0 && --batchDepth_ == 0) {
-            currentBatchId_ = 0;
-        }
+        Editor::EditorCommandStack::Get().EndBatch();
     }
 
-    void CVarUndoStack::Push(Record&& record)
+    bool CVarUndoStack::CanUndo() const noexcept
     {
-        // バッチ中は共通 ID、単独編集は都度新しい ID（＝1 レコード 1 Undo）
-        record.batchId = (currentBatchId_ != 0) ? currentBatchId_ : nextBatchId_++;
-
-        undo_.push_back(record);
-        redo_.clear();  // 新しい編集で Redo 履歴は無効になる
-
-        if (undo_.size() > kMaxRecords) {
-            undo_.erase(undo_.begin());
-        }
+        return Editor::EditorCommandStack::Get().CanUndo();
     }
 
-    void CVarUndoStack::ApplyTop(std::vector<Record>& from, std::vector<Record>& to, bool useOldValue)
+    bool CVarUndoStack::CanRedo() const noexcept
     {
-        if (from.empty()) {
-            return;
-        }
-
-        // 末尾と同じ batchId のレコードをまとめて適用する（一括リセット等を 1 回で戻す）
-        const uint32_t batchId = from.back().batchId;
-        while (!from.empty() && from.back().batchId == batchId) {
-            Record record = from.back();
-            from.pop_back();
-            record.cvar->SetFromPointer(useOldValue ? record.oldValue : record.newValue);
-            to.push_back(std::move(record));
-        }
-
-        // Undo/Redo は「確定」操作なので、デバウンスを待たず即時保存させる
-        CVarRegistry::Get().NotifyCommit();
+        return Editor::EditorCommandStack::Get().CanRedo();
     }
 
     void CVarUndoStack::Undo()
     {
-        ApplyTop(undo_, redo_, /*useOldValue=*/true);
+        Editor::EditorCommandStack::Get().Undo();
     }
 
     void CVarUndoStack::Redo()
     {
-        ApplyTop(redo_, undo_, /*useOldValue=*/false);
+        Editor::EditorCommandStack::Get().Redo();
     }
 }

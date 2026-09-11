@@ -5,11 +5,13 @@
 
 #ifdef USE_IMGUI
 
+#include "Editor/Command/EditorCommandStack.h"
 #include "Editor/ImGui/ImGuiAll.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <filesystem>
+#include <memory>
 #include <string>
 
 #include "Camera/CameraManager.h"
@@ -103,17 +105,6 @@ namespace CoreEngine
         if (!ImGui::IsAnyItemActive()) {
             activeEditItemId_ = 0;
             hasPendingEditState_ = false;
-        }
-
-        // Ctrl+Z / Ctrl+Y はシーンのオブジェクト Undo と同じキー。素で拾うと両方が
-        // 同じフレームで戻ってしまうので、ImGui の入力ルーティングに任せる。
-        // RouteFocused はこのウィンドウにフォーカスがあるときだけ勝ち、
-        // それ以外は SceneDebugEditor 側の RouteGlobal へ流れる。
-        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Z, ImGuiInputFlags_RouteFocused)) {
-            Undo();
-        }
-        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Y, ImGuiInputFlags_RouteFocused)) {
-            Redo();
         }
 
         if (needRefreshClipFileList_) {
@@ -788,12 +779,12 @@ namespace CoreEngine
             if (ImGui::Button("選択シーケンスを読み込み")) {
                 const std::filesystem::path fullPath =
                     std::filesystem::path(clipDirectoryPath_) / clipFileList_[selectedClipFileIndex_];
-                PushUndoState();
+                // 読み込みに失敗したときに履歴を汚さないよう、成功してから積む
+                const EditorState before = CaptureEditorState();
                 if (LoadClipFromFile(fullPath.string())) {
+                    PushUndoState(before);
                     timeline_.ResetView();
                     ApplyEvaluatedAt(context, playhead_);
-                } else if (!undoStack_.empty()) {
-                    undoStack_.pop_back();
                 }
             }
         }
@@ -1541,11 +1532,11 @@ namespace CoreEngine
 
     void CameraKeyframeEditorModule::PushUndoState(const EditorState& state)
     {
-        undoStack_.push_back(state);
-        if (undoStack_.size() > maxHistoryCount_) {
-            undoStack_.erase(undoStack_.begin());
-        }
-        redoStack_.clear();
+        Editor::EditorCommandStack::Get().Push(
+            std::make_unique<Editor::SnapshotCommand<EditorState>>(
+                "カメラシーケンスの編集", state,
+                [this] { return CaptureEditorState(); },
+                [this](const EditorState& target) { ApplyEditorState(target); }));
     }
 
     bool CameraKeyframeEditorModule::TrackEdit(bool changed)
@@ -1586,24 +1577,12 @@ namespace CoreEngine
 
     void CameraKeyframeEditorModule::Undo()
     {
-        if (undoStack_.empty()) {
-            return;
-        }
-
-        redoStack_.push_back(CaptureEditorState());
-        ApplyEditorState(undoStack_.back());
-        undoStack_.pop_back();
+        Editor::EditorCommandStack::Get().Undo();
     }
 
     void CameraKeyframeEditorModule::Redo()
     {
-        if (redoStack_.empty()) {
-            return;
-        }
-
-        undoStack_.push_back(CaptureEditorState());
-        ApplyEditorState(redoStack_.back());
-        redoStack_.pop_back();
+        Editor::EditorCommandStack::Get().Redo();
     }
 }
 

@@ -66,6 +66,15 @@ public:
     ///       記述子の resolve は派生を基準に組み立てるので、必ずこれを通す。
     virtual void* GetReflectionInstance() { return nullptr; }
 
+    /// @brief 記述子経由でプロパティが書き換わった直後に呼ばれる
+    /// @param property 書き換わったプロパティ
+    /// @note 値から派生するもの（行列・キャッシュ）を作り直す場所。
+    ///       インスペクタでの編集と Undo / Redo の適用の両方で呼ばれる。
+    virtual void OnPropertyChanged(const Reflection::PropertyDescriptor& property)
+    {
+        (void)property;
+    }
+
     // ===== インスペクター =====
 #ifdef USE_IMGUI
     /// @brief インスペクターのタブ名
@@ -81,15 +90,6 @@ public:
     ///       旧 DrawInspector でも、プロパティを描いた後に呼ばれる。
     virtual void DrawInspectorExtra() {}
 
-    /// @brief 記述子経由の編集が確定したときに呼ばれる
-    /// @param property 編集されたプロパティ
-    /// @param beforeValue 編集前の値（property.type のサイズ分）
-    /// @note Undo 履歴へ積むのはここ。手書き経路と同じ履歴に入れる。
-    virtual void OnInspectorEditCommitted(
-        const Reflection::PropertyDescriptor& property, const void* beforeValue)
-    {
-        (void)property; (void)beforeValue;
-    }
 
     /// @brief インスペクタのタブアイコン（Engine/Assets/Textures/Icon 配下のファイル名）
     /// @note タブを持たないオブジェクトは「コンポーネント 1 個 = 1 タブ」として
