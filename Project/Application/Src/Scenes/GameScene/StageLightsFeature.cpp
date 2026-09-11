@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Editor/Panel/EditorPanelRegistry.h"
 #include "StageLightsFeature.h"
 
 #include "EngineSystem/EngineSystem.h"
@@ -253,19 +254,18 @@ namespace GameScene
             return;
         }
 
-        auto* debug = engine->GetDebugSubsystem();
-        auto* gameDebugUI = debug ? debug->GetGameDebugUI() : nullptr;
-        if (!gameDebugUI) {
-            return;
-        }
-
-        gameDebugUI->RegisterAppEditor("Stage Lights", [] {
-            if (s_activeStageLights) {
-                s_activeStageLights->DrawSettingsImGui();
-            } else {
-                ImGui::TextDisabled("(このシーンには灯りがありません)");
-            }
-        });
+        CoreEngine::Editor::EditorPanelRegistry::Get().Register({
+            .id = "Stage Lights",
+            .placement = CoreEngine::Editor::PanelPlacement::InspectorTab,
+            .group = CoreEngine::Editor::PanelGroup::Application,
+            .draw = [] {
+                if (s_activeStageLights) {
+                    s_activeStageLights->DrawSettingsImGui();
+                } else {
+                    ImGui::TextDisabled("(このシーンには灯りがありません)");
+                }
+            },
+            });
 
         registered = true;
     }

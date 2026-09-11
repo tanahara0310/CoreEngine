@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Editor/Panel/EditorPanelRegistry.h"
 #include "TimeOfDayFeature.h"
 
 #include "EngineSystem/EngineSystem.h"
@@ -443,20 +444,18 @@ namespace CoreEngine
             return;
         }
 
-        auto* debug = engine->GetDebugSubsystem();
-        auto* gameDebugUI = debug ? debug->GetGameDebugUI() : nullptr;
-        if (!gameDebugUI) {
-            return;
-        }
-
         // ドロワーは何もキャプチャしない（ファイルスコープの s_activeTimeOfDay を読むだけ）
-        gameDebugUI->RegisterEnginePanel("Time of Day", [] {
-            if (s_activeTimeOfDay) {
-                s_activeTimeOfDay->DrawSettingsImGui();
-            } else {
-                ImGui::TextDisabled("(このシーンには昼夜サイクルがありません)");
-            }
-        });
+        Editor::EditorPanelRegistry::Get().Register({
+            .id = "Time of Day",
+            .placement = Editor::PanelPlacement::SettingsSection,
+            .draw = [] {
+                if (s_activeTimeOfDay) {
+                    s_activeTimeOfDay->DrawSettingsImGui();
+                } else {
+                    ImGui::TextDisabled("(このシーンには昼夜サイクルがありません)");
+                }
+            },
+            });
 
         registered = true;
     }

@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Editor/Panel/EditorPanelRegistry.h"
 #include "WaterSceneController.h"
 
 #include "EngineSystem/EngineSystem.h"
@@ -27,11 +28,7 @@ void WaterSceneController::Shutdown() {
 	// シーン破棄後にドロワーがダングリングしないよう登録を解除する
 	// （パラメータの永続化は CVars.json が担うため、ここで保存処理は不要）
 	if (engine_) {
-		if (auto* debug = engine_->GetDebugSubsystem()) {
-			if (auto* ui = debug->GetGameDebugUI()) {
-				ui->UnregisterEnvironmentEditor(kEditorLabel, this);
-			}
-		}
+		Editor::EditorPanelRegistry::Get().Unregister(kEditorLabel, this);
 		// 解除済みなので、保険で呼ばれるデストラクタ側では何もしない
 		engine_ = nullptr;
 	}
@@ -55,11 +52,12 @@ void WaterSceneController::Initialize(
 	debugPanel_.Initialize(*waterFeature_);
 
 	// Hierarchy の Environment ツリーへ登録し、選択時に Inspector で編集できるようにする
-	if (auto* debug = engine.GetDebugSubsystem()) {
-		if (auto* ui = debug->GetGameDebugUI()) {
-			ui->RegisterEnvironmentEditor(kEditorLabel, this, [this]() { DrawImGuiContent(); });
-		}
-	}
+	Editor::EditorPanelRegistry::Get().Register({
+		.id = kEditorLabel,
+		.placement = Editor::PanelPlacement::EnvironmentTree,
+		.owner = this,
+		.draw = [this]() { DrawImGuiContent(); },
+		});
 
 	// パラメータの復元・保存は WaterCVars（CVars.json / CVarSettingsSection）が担う。
 	// 旧 WaterSettingsSection（Water.json）は Phase 5 で廃止した

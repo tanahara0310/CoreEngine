@@ -182,6 +182,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
   <ItemGroup>
     <ClCompile Include="Engine\Src\Editor\Inspector\InspectorRenderer.cpp" />
     <ClCompile Include="Engine\Src\Editor\Command\EditorCommandStack.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Panel\EditorPanelRegistry.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Panel\EditorPanelStateSection.cpp" />
     <ClCompile Include="Engine\Src\Reflection\PropertyValue.cpp" />
     <ClCompile Include="Engine\Src\Reflection\PropertySerializer.cpp" />
     <ClCompile Include="Engine\Src\Reflection\ReflectionToggle.cpp" />
@@ -820,6 +822,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Editor\Inspector\InspectorRenderer.h" />
     <ClInclude Include="Engine\Src\Editor\Command\EditorCommand.h" />
     <ClInclude Include="Engine\Src\Editor\Command\EditorCommandStack.h" />
+    <ClInclude Include="Engine\Src\Editor\Panel\EditorPanelRegistry.h" />
+    <ClInclude Include="Engine\Src\Editor\Panel\EditorPanelStateSection.h" />
     <ClInclude Include="Engine\Src\Reflection\PropertyValue.h" />
     <ClInclude Include="Engine\Src\Reflection\PropertySerializer.h" />
     <ClInclude Include="Engine\Src\Reflection\Reflect.h" />

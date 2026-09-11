@@ -17,7 +17,7 @@ namespace CoreEngine
     /// @brief レンダーパスデバッグパネル
     /// @details GBuffer 各ターゲット・SSAO・ライティング結果など
     ///          各パスの中間バッファをサムネイル表示する ImGui パネル。
-    ///          "EngineDebug > RenderPass" タブとして RegisterEnginePanel から登録して使う。
+    ///          Window > Rendering > Render Pass として EditorPanelRegistry から登録して使う。
     class RenderPassDebugPanel
     {
     public:
@@ -33,7 +33,7 @@ namespace CoreEngine
         /// @brief RenderDomainContext を設定（GBufferManager 取得用）
         void SetRenderDomainContext(RenderDomainContext* rdc) { renderDomainContext_ = rdc; }
 
-        /// @brief ImGui コンテンツを描画（RegisterEnginePanel ラムダから呼ぶ）
+        /// @brief ImGui コンテンツを描画（EditorPanelRegistry のラムダから呼ぶ）
         void Draw();
 
     private:

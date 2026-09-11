@@ -12,7 +12,7 @@ namespace CoreEngine
     /// @brief エディタ設定自動保存の管理パネル
     /// @details 登録中セクションの一覧（状態・最終保存時刻）と、
     ///          リセット / バックアップ復元の操作 UI を描画する。
-    ///          DebugSubsystem が RegisterEnginePanel から呼び出す。
+    ///          DebugSubsystem が EditorPanelRegistry 経由で呼び出す。
     namespace EditorSettingsPanel
     {
         /// @brief パネル内容を描画する

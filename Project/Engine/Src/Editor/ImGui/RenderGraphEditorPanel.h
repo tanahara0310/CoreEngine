@@ -38,7 +38,7 @@ namespace CoreEngine
         ///          止める側の判断はフレーム先頭のこの関数が担う。
         void SyncCaptureState();
 
-        /// @brief ImGui コンテンツを描画（RegisterEnginePanel ラムダから呼ぶ）
+        /// @brief ImGui コンテンツを描画（EditorPanelRegistry のラムダから呼ぶ）
         void Draw();
 
     private:

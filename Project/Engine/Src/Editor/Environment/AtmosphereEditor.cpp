@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Editor/Panel/EditorPanelRegistry.h"
 #include "AtmosphereEditor.h"
 
 #include "EngineSystem/EngineSystem.h"
@@ -37,7 +38,12 @@ namespace CoreEngine {
         if (auto* debug = engine_->GetDebugSubsystem()) {
             gameDebugUI_ = debug->GetGameDebugUI();
             if (gameDebugUI_) {
-                gameDebugUI_->RegisterEnvironmentEditor(kEditorLabel, this, [this]() { DrawContent(); });
+                Editor::EditorPanelRegistry::Get().Register({
+                    .id = kEditorLabel,
+                    .placement = Editor::PanelPlacement::EnvironmentTree,
+                    .owner = this,
+                    .draw = [this]() { DrawContent(); },
+                    });
             }
         }
 #endif
@@ -50,7 +56,7 @@ namespace CoreEngine {
         // engine_->GetDebugSubsystem() を呼び直さないこと（サブシステム一括破棄中に走るため、
         // 破棄済みサブシステムへの dynamic_cast でアクセス違反になる）。キャッシュ済みポインタのみ使う。
         if (gameDebugUI_) {
-            gameDebugUI_->UnregisterEnvironmentEditor(kEditorLabel, this);
+            Editor::EditorPanelRegistry::Get().Unregister(kEditorLabel, this);
         }
 #endif
     }

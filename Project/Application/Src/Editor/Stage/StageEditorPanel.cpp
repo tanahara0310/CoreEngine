@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Editor/Panel/EditorPanelRegistry.h"
 #include "StageEditorPanel.h"
 
 #ifdef USE_IMGUI
@@ -180,7 +181,12 @@ namespace GameEditors
             return;
         }
         GetPanelInstance().Initialize(sceneManager);
-        debugUI->RegisterAppEditor("Stage", []() { GetPanelInstance().Draw(); });
+        CoreEngine::Editor::EditorPanelRegistry::Get().Register({
+            .id = "Stage",
+            .placement = CoreEngine::Editor::PanelPlacement::InspectorTab,
+            .group = CoreEngine::Editor::PanelGroup::Application,
+            .draw = []() { GetPanelInstance().Draw(); },
+            });
     }
 
     void StageEditorPanel::Initialize(SceneManager* sceneManager)

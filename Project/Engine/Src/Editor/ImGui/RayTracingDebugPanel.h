@@ -24,7 +24,7 @@ namespace CoreEngine
         /// @param gpuProfiler  パス別 GPU 時間の取得元（DebugSubsystem が所有）
         void Initialize(EngineSystem* engine, GpuTimestampProfiler* gpuProfiler);
 
-        /// @brief ImGui コンテンツを描画（RegisterEngineDebugPanel ラムダから呼ぶ）
+        /// @brief ImGui コンテンツを描画（EditorPanelRegistry のラムダから呼ぶ）
         void Draw();
 
     private:
