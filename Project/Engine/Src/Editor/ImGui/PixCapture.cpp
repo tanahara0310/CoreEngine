@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "PixCapture.h"
+#include "Utility/Path/ProjectPaths.h"
 #include "Utility/Logger/Logger.h"
 
 #include <chrono>
@@ -129,10 +130,13 @@ namespace CoreEngine
             localTime.tm_year + 1900, localTime.tm_mon + 1, localTime.tm_mday,
             localTime.tm_hour, localTime.tm_min, localTime.tm_sec);
 
-        std::wstring outputPath = L"Captures\\";
-        outputPath += fileName;
+        // キャプチャは個人の作業成果物なので Saved 配下へ置く
+        std::error_code ec;
+        const std::filesystem::path directory =
+            ProjectPaths::Resolve("Application/Saved/Captures");
+        std::filesystem::create_directories(directory, ec);
 
-        return outputPath;
+        return (directory / fileName).wstring();
     }
 
     void PixCapture::DisableHUD([[maybe_unused]] HMODULE gpuCapturerModule)

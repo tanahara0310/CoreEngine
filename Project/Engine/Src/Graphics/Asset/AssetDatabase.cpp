@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "AssetDatabase.h"
+#include "Utility/Path/ProjectPaths.h"
 #include "AssetMetadata.h"
 #include "Threading/ThreadPool.h"
 #include "Utility/Logger/Logger.h"
@@ -361,7 +362,8 @@ namespace CoreEngine
 
     std::filesystem::path AssetDatabase::GetLibraryPath() const
     {
-        return projectRoot_ / "Cache";
+        // アセットから作り直せる派生物（テクスチャキャッシュ等）の置き場
+        return ProjectPaths::Intermediate();
     }
 
     std::vector<std::filesystem::path> AssetDatabase::GetShaderIncludeDirectories() const

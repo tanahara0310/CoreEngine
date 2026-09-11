@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "ProjectView.h"
+#include "Utility/Path/ProjectPaths.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Utility/Logger/Logger.h"
@@ -19,7 +20,7 @@ namespace CoreEngine
         dxCommon_ = dxCommon;
 
         // ルートパスをプロジェクトルート（仮想ルート）に設定
-        rootPath_ = std::filesystem::current_path();
+        rootPath_ = ProjectPaths::Root();
         appAssetsPath_ = rootPath_ / "Application" / "Assets";
         engineAssetsPath_ = rootPath_ / "Engine" / "Assets";
         currentPath_ = rootPath_;

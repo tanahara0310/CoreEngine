@@ -14,6 +14,7 @@
 #include "Animation/SkeletonAnimatorFactory.h"
 #include "Threading/ThreadPool.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/Path/ProjectPaths.h"
 
 #include <cassert>
 #include <filesystem>
@@ -430,21 +431,19 @@ namespace CoreEngine
             return log.PathToUtf8(assetPath);
         }
 
-        // Application/Assets または Engine/Assets で始まる場合はそのまま返す
-        if (normalized.starts_with("Application/Assets/")) {
-            return normalized;
-        }
-        if (normalized.starts_with("Engine/Assets/")) {
-            return normalized;
-        }
-
         // 絶対パス（C:/ など）の場合はそのまま返す
         if (normalized.length() >= 2 && normalized[1] == ':') {
             return normalized;
         }
 
-        // それ以外の場合はbasePath_を前に追加
-        return basePath_ + normalized;
+        // Application/Assets・Engine/Assets で始まらないものには basePath_ を足す
+        if (!normalized.starts_with("Application/Assets/") &&
+            !normalized.starts_with("Engine/Assets/")) {
+            normalized = basePath_ + normalized;
+        }
+
+        // 相対のまま返すと実行時のカレント基準になり、起動方法で読み先が変わる
+        return log.PathToUtf8(ProjectPaths::Resolve(normalized));
     }
 
     void ModelManager::UpdateResourceCacheStats()

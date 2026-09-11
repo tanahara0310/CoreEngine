@@ -11,6 +11,7 @@
 #include "Cache/ShaderCacheStore.h"
 #include "Cache/ShaderBlobCache.h"
 #include "Cache/ShaderManifest.h"
+#include "Utility/Path/ProjectPaths.h"
 
 
 #pragma comment(lib, "dxcompiler.lib")
@@ -94,7 +95,8 @@ namespace CoreEngine
         std::wstring resolvedPath = filePath;
         std::filesystem::path fsPath(filePath);
         if (fsPath.is_relative()) {
-            fsPath = std::filesystem::absolute(fsPath);
+            // カレント基準の absolute() だと、起動方法で読み先が変わる
+            fsPath = ProjectPaths::Root() / fsPath;
         }
         if (!std::filesystem::exists(fsPath)) {
             // 検索キーは UTF-8 のテキストとして渡す（AssetDatabase の登録名も UTF-8）

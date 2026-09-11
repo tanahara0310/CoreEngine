@@ -5,6 +5,7 @@
 #include "Text/DirectWriteFontFace.h"
 #include "Threading/ThreadPool.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/Path/ProjectPaths.h"
 
 #include <algorithm>
 #include <cwctype>
@@ -159,7 +160,8 @@ namespace CoreEngine
         // シェーダ等と同じく作業ディレクトリからの相対で持つ。
         // ビルド後コピーで exe の隣にも同じ構成が置かれるので、
         // VS からの実行でも exe 単体の実行でも同じパスで引ける
-        static const std::filesystem::path kDirectory = "Engine/Assets/Font";
+        static const std::filesystem::path kDirectory =
+            ProjectPaths::Resolve("Engine/Assets/Font");
         return kDirectory;
     }
 
