@@ -221,7 +221,7 @@ namespace CoreEngine
         /// @param enabled false にすると床オブジェクトを生成しない
         /// @note **OnInitialize() から呼ぶこと**（床の生成は OnInitialize 完了直後のため）。
         ///       独自の地形や水面を y=0 付近に持つシーンで、二重の床になるのを避けるために使う。
-        ///       全シーン一律の ON/OFF は CVar "r.Ground.Enable" 側。
+        ///       全シーン一律の ON/OFF は CVar "r.Ground.Enabled" 側。
         void SetDefaultGroundEnabled(bool enabled);
 
     private:

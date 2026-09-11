@@ -71,12 +71,12 @@ namespace CoreEngine
 
     void EngineSystem::SetSceneManager(SceneManager* sceneManager)
     {
-        componentManager_.Register<SceneManager>(sceneManager);
+        serviceRegistry_.Register<SceneManager>(sceneManager);
     }
 
     SceneManager* EngineSystem::GetSceneManager() const
     {
-        return componentManager_.Get<SceneManager>();
+        return serviceRegistry_.Get<SceneManager>();
     }
 
     void EngineSystem::BuildStartupTasks(
@@ -256,7 +256,7 @@ namespace CoreEngine
             componentOwners_.back().reset();
             componentOwners_.pop_back();
         }
-        componentManager_.Clear();
+        serviceRegistry_.Clear();
 
         // COMの解放
         CoUninitialize();

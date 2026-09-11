@@ -9,7 +9,7 @@
 #include <cstring>
 #include <vector>
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 #include "Editor/ImGui/ImGuiAll.h"
 #endif
 
@@ -31,7 +31,7 @@ namespace CoreEngine
             return "Unknown";
         }
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         // ==================== ギズモ描画ヘルパー ====================
         // 注意: LineManager::DrawLine の第 4 引数は「太さ」ではなく「透明度(alpha)」。
 
@@ -97,7 +97,7 @@ namespace CoreEngine
 
     bool LightDebugVisualizer::DrawHierarchyChildren(LightManager& manager)
     {
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         bool clicked = false;
 
         std::vector<LightHandle> handles;
@@ -136,7 +136,7 @@ namespace CoreEngine
 
     void LightDebugVisualizer::DrawImGui(LightManager& manager)
     {
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         if (manager.GetLight(selectedLight_)) {
             DrawSelectedLightInspector(manager);
         } else {
@@ -149,7 +149,7 @@ namespace CoreEngine
 
     void LightDebugVisualizer::DrawOverview(LightManager& manager)
     {
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         // ── 概要 ──
         {
             uint32_t total = 0;
@@ -211,7 +211,7 @@ namespace CoreEngine
 
     void LightDebugVisualizer::DrawSelectedLightInspector(LightManager& manager)
     {
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         Light* light = manager.GetLight(selectedLight_);
         if (!light) return;
 
@@ -259,7 +259,7 @@ namespace CoreEngine
 
     void LightDebugVisualizer::DrawLightProperties(Light& light)
     {
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         // 物理量プリセットボタン列（現実の光源の目安値。対数スライダーの補助）
         auto drawPresets = [](float& value, std::initializer_list<std::pair<const char*, float>> presets) {
             bool first = true;
@@ -357,7 +357,7 @@ namespace CoreEngine
 
     void LightDebugVisualizer::DrawVisualization(const Light& light, bool selected)
     {
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         if (!enableVisualization_ || !light.enabled) {
             return;
         }
@@ -378,7 +378,7 @@ namespace CoreEngine
     {
         (void)light;
         (void)selected;
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         auto& lm = LineManager::GetInstance();
         const Vector3 color = light.color;
         const float alpha = selected ? 1.0f : 0.45f;
@@ -420,7 +420,7 @@ namespace CoreEngine
     {
         (void)light;
         (void)selected;
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         auto& lm = LineManager::GetInstance();
         const Vector3 color = light.color;
 
@@ -439,7 +439,7 @@ namespace CoreEngine
     {
         (void)light;
         (void)selected;
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         auto& lm = LineManager::GetInstance();
         const Vector3 color = light.color;
         const float alpha = selected ? 1.0f : 0.45f;
@@ -478,7 +478,7 @@ namespace CoreEngine
     {
         (void)light;
         (void)selected;
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         auto& lm = LineManager::GetInstance();
         const Vector3 color = light.color;
         const float alpha = selected ? 1.0f : 0.45f;

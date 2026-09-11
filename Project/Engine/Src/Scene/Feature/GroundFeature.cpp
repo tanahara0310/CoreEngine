@@ -44,7 +44,7 @@ namespace
     // ───────────────────────────────────────────────────────────────
 
     CVar<bool> cvEnable{
-        "r.Ground.Enable", true,
+        "r.Ground.Enabled", true,
         "既定の床（どのシーンにも必ずあるベース地面）を描く" };
 
     CVar<bool> cvUseAtmosphereAlbedo{

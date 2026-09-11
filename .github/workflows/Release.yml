@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - 'refactor/**'
 
 env:
   SOLUTION_FILE_PATH: Project/CoreEngine.slnx

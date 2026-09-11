@@ -23,10 +23,11 @@ namespace
     /// 太陽・月ライトの保存用 CVar。値の実体は LightManager の Light（シーン寿命）側にあり、
     /// これらはエンジン寿命の「鏡」として毎フレーム実体から写す。
     /// 編集 UI は Atmosphere エディタが担当するので自動生成 UI には出さず、Undo からも外す。
-    constexpr CVarFlags kMirrorFlags = CVarFlags::NoUI | CVarFlags::Mirrored;
+    constexpr CVarFlags kMirrorFlags =
+        CVarFlags::NoUI | CVarFlags::Mirrored | CVarFlags::NoSave;
 
     CVar<Vector3> cvSunDirection{
-        "r.AtmosphereLights.SunDirection", { 0.0f, -1.0f, 0.0f },
+        "r.AtmosphereLights.SunDirection", { -0.45073172f, -0.65011942f, 0.61170721f },
         "大気の太陽ライトの進行方向（太陽→地表）", {}, kMirrorFlags };
     CVar<float> cvSunAtmosphereIntensity{
         "r.AtmosphereLights.SunAtmosphereIntensity", 0.0f,
