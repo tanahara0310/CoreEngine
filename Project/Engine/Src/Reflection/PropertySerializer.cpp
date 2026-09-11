@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Reflection/PropertySerializer.h"
 
+#include "Reflection/PropertyValue.h"
 #include "Reflection/TypeDescriptor.h"
 
 namespace CoreEngine::Reflection
@@ -75,12 +76,13 @@ namespace CoreEngine::Reflection
 
     void PropertySerializer::Save(const TypeDescriptor& type, const void* instance, json& out)
     {
+        PropertyValue current;
         for (const auto& p : type.properties) {
-            if (!p.IsSaved()) {
+            if (!p.IsSaved() || !p.IsValid()) {
                 continue;
             }
-            const void* value = p.ValuePtr(instance);
-            if (value) {
+            current.LoadFrom(p, instance);
+            if (const void* value = current.Data(p.type)) {
                 out[p.name] = ValueToJson(p, value);
             }
         }
@@ -91,14 +93,20 @@ namespace CoreEngine::Reflection
         if (!in.is_object()) {
             return;
         }
+        PropertyValue current;
         for (const auto& p : type.properties) {
-            if (!p.IsSaved() || !in.contains(p.name)) {
+            if (!p.IsSaved() || !p.IsValid() || !in.contains(p.name)) {
                 continue;
             }
-            void* value = p.ValuePtr(instance);
-            if (value) {
-                JsonToValue(p, in.at(p.name), value);
+            // 現在値を読み出してから JSON を被せる。JSON に足りない要素があっても
+            // 既定値ではなく今の値が残る（手書き・旧バージョンの JSON への耐性）
+            current.LoadFrom(p, instance);
+            void* value = current.Data(p.type);
+            if (!value) {
+                continue;
             }
+            JsonToValue(p, in.at(p.name), value);
+            current.StoreTo(p, instance);
         }
     }
 }

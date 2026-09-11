@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "Reflection/PropertyValue.h"
 
+#include <utility>
+
 namespace CoreEngine::Reflection
 {
     namespace
@@ -55,6 +57,47 @@ namespace CoreEngine::Reflection
             if (!stored) { return false; }
             *static_cast<T*>(destination) = *stored;
             return true;
+            });
+    }
+
+    void PropertyValue::LoadFrom(const PropertyDescriptor& property, const void* instance)
+    {
+        if (!instance || !property.get) {
+            Reset();
+            return;
+        }
+        Dispatch(property.type, [&](auto* tag) {
+            using T = std::remove_pointer_t<decltype(tag)>;
+            T temp{};
+            property.Get(instance, &temp);
+            value_ = std::move(temp);
+            });
+    }
+
+    bool PropertyValue::StoreTo(const PropertyDescriptor& property, void* instance) const
+    {
+        if (!instance || !property.set || !IsValid()) {
+            return false;
+        }
+        return Dispatch(property.type, [&](auto* tag) {
+            using T = std::remove_pointer_t<decltype(tag)>;
+            const T* stored = std::get_if<T>(&value_);
+            if (!stored) { return false; }
+            property.Set(instance, stored);
+            return true;
+            });
+    }
+
+    void* PropertyValue::Data(PropertyType type)
+    {
+        return const_cast<void*>(std::as_const(*this).Data(type));
+    }
+
+    const void* PropertyValue::Data(PropertyType type) const
+    {
+        return Dispatch(type, [&](auto* tag) -> const void* {
+            using T = std::remove_pointer_t<decltype(tag)>;
+            return std::get_if<T>(&value_);
             });
     }
 

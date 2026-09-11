@@ -33,11 +33,9 @@ namespace CoreEngine
             void Undo() override
             {
                 // 積んだ時点では編集後の値が確定していないので、最初の Undo で控える
-                if (!hasAfter_) {
-                    if (const void* current = CurrentValue()) {
-                        after_.CopyFrom(property_->type, current);
-                        hasAfter_ = true;
-                    }
+                if (!hasAfter_ && property_ && instance_) {
+                    after_.LoadFrom(*property_, instance_);
+                    hasAfter_ = after_.IsValid();
                 }
                 Apply(before_);
             }
@@ -55,15 +53,9 @@ namespace CoreEngine
             }
 
         private:
-            void* CurrentValue() const
-            {
-                return (property_ && instance_) ? property_->ValuePtr(instance_) : nullptr;
-            }
-
             void Apply(const Reflection::PropertyValue& value)
             {
-                void* destination = CurrentValue();
-                if (!destination || !value.ApplyTo(property_->type, destination)) {
+                if (!property_ || !instance_ || !value.StoreTo(*property_, instance_)) {
                     return;
                 }
                 if (onChanged_) { onChanged_(*property_); }
@@ -193,10 +185,15 @@ namespace CoreEngine
 
         bool changed = false;
         for (const auto& p : type.properties) {
-            if (!p.IsVisible()) {
+            if (!p.IsVisible() || !p.IsValid()) {
                 continue;
             }
-            void* value = p.ValuePtr(instance);
+
+            // 値を自分で持たない型もあるので、記述子の getter で控えに読み出してから編集する。
+            // 編集されたら setter で書き戻す
+            Reflection::PropertyValue current;
+            current.LoadFrom(p, instance);
+            void* value = current.Data(p.type);
             if (!value) {
                 continue;
             }
@@ -216,6 +213,7 @@ namespace CoreEngine
                 editSnapshot.CopyFrom(p.type, value);
             }
             if (edited) {
+                current.StoreTo(p, instance);
                 changed = true;
                 if (context.onChanged) { context.onChanged(p); }
             }
