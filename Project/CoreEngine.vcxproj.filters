@@ -1,6 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <ClCompile Include="Engine\Src\Editor\Inspector\InspectorRenderer.cpp">
+      <Filter>Engine\Src\Editor\Inspector</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Reflection\PropertySerializer.cpp">
+      <Filter>Engine\Src\Reflection</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Reflection\ReflectionToggle.cpp">
+      <Filter>Engine\Src\Reflection</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Reflection\TypeDescriptor.cpp">
+      <Filter>Engine\Src\Reflection</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\CameraShowcase.cpp">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClCompile>
@@ -1518,6 +1530,24 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Engine\Src\Editor\Inspector\InspectorRenderer.h">
+      <Filter>Engine\Src\Editor\Inspector</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Reflection\PropertySerializer.h">
+      <Filter>Engine\Src\Reflection</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Reflection\Reflect.h">
+      <Filter>Engine\Src\Reflection</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Reflection\TypeDescriptor.h">
+      <Filter>Engine\Src\Reflection</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Reflection\PropertyDescriptor.h">
+      <Filter>Engine\Src\Reflection</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Reflection\ReflectionToggle.h">
+      <Filter>Engine\Src\Reflection</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionTestScene.h">
       <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
     </ClInclude>
@@ -3643,6 +3673,9 @@
     <Filter Include="Engine\Src\Editor\ImGui\Wrappers">
       <UniqueIdentifier>{C63188DC-6973-4768-BADA-DCF52132C66E}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Src\Editor\Inspector">
+      <UniqueIdentifier>{D91ACD79-3D27-4C04-A842-DDF8B8F6CB73}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Engine\Src\Editor\Scene">
       <UniqueIdentifier>{8EEC7EC7-38CE-4B25-84B4-1C1FD0F26A22}</UniqueIdentifier>
     </Filter>
@@ -4005,6 +4038,9 @@
     </Filter>
     <Filter Include="Engine\Src\Particle\Modules">
       <UniqueIdentifier>{E550DB62-CBDA-4DBB-933B-B205EE3B0311}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Reflection">
+      <UniqueIdentifier>{AB16768F-1113-4F73-AE2B-95C2276C988E}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Scene">
       <UniqueIdentifier>{863EA1EF-7BCF-42DB-9258-C0D9FAE56DED}</UniqueIdentifier>

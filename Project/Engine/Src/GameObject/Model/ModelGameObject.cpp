@@ -9,6 +9,8 @@
 #include "Graphics/Render/Culling/ModelVisibility.h"
 #include "Camera/Camera.h"
 #include "Camera/View/ViewBuilder.h"
+#include "Reflection/PropertySerializer.h"
+#include "Reflection/ReflectionToggle.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include <cmath>
 
@@ -95,9 +97,16 @@ namespace CoreEngine
         if (!name_.empty()) {
             j["name"] = name_;
         }
-        j["transform"]["translate"] = JsonManager::Vector3ToJson(transform_.translate);
-        j["transform"]["rotate"] = JsonManager::Vector3ToJson(transform_.rotate);
-        j["transform"]["scale"] = JsonManager::Vector3ToJson(transform_.scale);
+        const Reflection::TypeDescriptor* transformType =
+            transformComponent_ ? transformComponent_->GetTypeDescriptor() : nullptr;
+        if (transformType && Reflection::IsEnabled()) {
+            Reflection::PropertySerializer::Save(
+                *transformType, transformComponent_->GetReflectionInstance(), j["transform"]);
+        } else {
+            j["transform"]["translate"] = JsonManager::Vector3ToJson(transform_.translate);
+            j["transform"]["rotate"] = JsonManager::Vector3ToJson(transform_.rotate);
+            j["transform"]["scale"] = JsonManager::Vector3ToJson(transform_.scale);
+        }
 
         // コピー・Undo Redo 用にモデルパスを保存する
         const std::string modelPath = GetModelPath();
@@ -132,9 +141,16 @@ namespace CoreEngine
         }
         if (j.contains("transform")) {
             const json& t = j["transform"];
-            transform_.translate = JsonManager::SafeGetVector3(t, "translate", transform_.translate);
-            transform_.rotate = JsonManager::SafeGetVector3(t, "rotate", transform_.rotate);
-            transform_.scale = JsonManager::SafeGetVector3(t, "scale", transform_.scale);
+            const Reflection::TypeDescriptor* transformType =
+                transformComponent_ ? transformComponent_->GetTypeDescriptor() : nullptr;
+            if (transformType && Reflection::IsEnabled()) {
+                Reflection::PropertySerializer::Load(
+                    *transformType, transformComponent_->GetReflectionInstance(), t);
+            } else {
+                transform_.translate = JsonManager::SafeGetVector3(t, "translate", transform_.translate);
+                transform_.rotate = JsonManager::SafeGetVector3(t, "rotate", transform_.rotate);
+                transform_.scale = JsonManager::SafeGetVector3(t, "scale", transform_.scale);
+            }
         }
         if (j.contains("texture")) {
             textureName_ = j["texture"].get<std::string>();

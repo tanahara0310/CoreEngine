@@ -12,6 +12,8 @@
 #include "Editor/ImGui/ImGuiAll.h"
 #endif
 
+REFLECT_REGISTER(CoreEngine::TransformComponent)
+
 namespace CoreEngine
 {
     void TransformComponent::Awake()
@@ -91,12 +93,37 @@ namespace CoreEngine
             transform_.TransferMatrix();
         }
 
+        DrawInspectorExtra();
+
+        return changed;
+    }
+
+    void TransformComponent::OnInspectorEditCommitted(
+        const Reflection::PropertyDescriptor& property, const void* beforeValue)
+    {
+        GameObject* owner = GetOwner();
+        if (!owner || !beforeValue) {
+            return;
+        }
+
+        // 編集されたものだけ編集前の値に差し替え、残りは現在値を渡す
+        Vector3 translate = transform_.translate;
+        Vector3 rotate = transform_.rotate;
+        Vector3 scale = transform_.scale;
+        const Vector3& before = *static_cast<const Vector3*>(beforeValue);
+        if (property.name == "translate") { translate = before; }
+        else if (property.name == "rotate") { rotate = before; }
+        else if (property.name == "scale") { scale = before; }
+
+        owner->NotifyEditCommitted(translate, rotate, scale, owner->IsActive());
+    }
+
+    void TransformComponent::DrawInspectorExtra()
+    {
         UI::Separator();
         const Vector3 worldPos = GetWorldPosition();
         UI::Hint("回転はラジアン");
         ImGui::Text("ワールド位置: %.3f, %.3f, %.3f", worldPos.x, worldPos.y, worldPos.z);
-
-        return changed;
     }
 #endif // USE_IMGUI
 }
