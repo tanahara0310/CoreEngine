@@ -3,6 +3,7 @@
 
 #ifdef USE_IMGUI
 #include "Editor/ImGui/DockingUI.h"
+#include "Editor/Panel/EditorPanelRegistry.h"
 #include "Editor/Scene/SceneDebugEditor.h"
 #include "EngineSystem/EngineSystem.h"
 #include "EngineSystem/EngineConfig.h"
@@ -37,6 +38,16 @@ namespace CoreEngine
             RegisterWindowsForDocking();
         }
 
+        // 単独ウィンドウは開くたびに Game ビューの真上へ浮くので、既定のドック先を与える。
+        // レジストリへ既に積まれているぶんもここでまとめて通知される。
+        // （マルチビューポートが有効なので、広いパネルはここから別モニタへ引き出せばよい）
+        Editor::EditorPanelRegistry::Get().SetDockRegistrar(
+            [this](const std::string& id) {
+                if (dockingUI_) {
+                    dockingUI_->RegisterWindow(id, DockArea::Right);
+                }
+            });
+
         console_->LogInfo("GameDebugUIが正常に初期化されました");
         console_->LogDebug("エンジンシステムが正常に接続されました");
     }
@@ -46,110 +57,6 @@ namespace CoreEngine
         if (sceneManager) {
             sceneManagerTab_->Initialize(sceneManager);
             console_->LogInfo("SceneManagerがSceneManagerTabに設定されました");
-        }
-    }
-
-    void GameDebugUI::SetInspectorCameraDrawer(std::function<void()> callback)
-    {
-        // 既存の "Camera Editor" パネルがあればコールバックを更新するだけにする
-        // （シーン切り替え時に重複登録されないようにする）
-        for (auto& p : enginePanels_) {
-            if (p.label == "Camera Editor") {
-                p.drawer = std::move(callback);
-                return;
-            }
-        }
-        // Camera Editor は単独ウィンドウ。エディタ視点カメラの設定なので Editor グループへ。
-        RegisterEnginePanel("Camera Editor", std::move(callback),
-            EnginePanelCategory::Tools, EnginePanelGroup::Editor);
-    }
-
-    void GameDebugUI::RegisterAppEditor(const std::string& label, std::function<void()> drawer)
-    {
-        for (auto& entry : appEditors_) {
-            if (entry.label == label) { entry.drawer = std::move(drawer); return; }
-        }
-        appEditors_.push_back({ label, std::move(drawer), false });
-    }
-
-    void GameDebugUI::RegisterEngineEditor(const std::string& label, std::function<void()> drawer)
-    {
-        for (auto& entry : engineEditors_) {
-            if (entry.label == label) { entry.drawer = std::move(drawer); return; }
-        }
-        engineEditors_.push_back({ label, std::move(drawer), false });
-    }
-
-    void GameDebugUI::RegisterEnginePanel(const std::string& label, std::function<void()> drawer,
-        EnginePanelCategory category, EnginePanelGroup group)
-    {
-        for (auto& p : enginePanels_) {
-            if (p.label == label) {
-                p.drawer = std::move(drawer);
-                p.category = category;
-                p.group = group;
-                return;
-            }
-        }
-        enginePanels_.push_back({ label, std::move(drawer), false, category, group });
-
-        // Settings は Engine Settings ウィンドウ内のセクションなので独立ウィンドウを持たない。
-        // Tools は独立ウィンドウとして開くため、既定のドッキング先を与えておく。
-        // これが無いと Game ビューの真上に浮き、パネルを開くほど画面が覆われる。
-        // （マルチビューポートが有効なので、広いパネルはここから別モニタへ引き出せばよい）
-        if (category == EnginePanelCategory::Tools && dockingUI_) {
-            dockingUI_->RegisterWindow(label, DockArea::Right);
-        }
-    }
-
-    void GameDebugUI::RegisterEnvironmentEditor(const std::string& label, const void* owner,
-        std::function<void()> drawer, std::function<bool()> childTree,
-        std::function<void()> onParentSelected)
-    {
-        for (auto& e : environmentEditors_) {
-            if (e.label == label) {
-                e.owner = owner;
-                e.drawer = std::move(drawer);
-                e.childTree = std::move(childTree);
-                e.onParentSelected = std::move(onParentSelected);
-                return;
-            }
-        }
-        environmentEditors_.push_back(
-            { label, owner, std::move(drawer), std::move(childTree), std::move(onParentSelected) });
-    }
-
-    void GameDebugUI::UnregisterEnvironmentEditor(const std::string& label, const void* owner)
-    {
-        // owner が一致する場合のみ解除する。
-        // シーン切り替えで「新シーンの登録 → 旧シーンの破棄」の順になっても
-        // 新シーンの登録を旧シーンのデストラクタが消してしまわないようにするため。
-        std::erase_if(environmentEditors_, [&](const EnvironmentEntry& e) {
-            return e.label == label && e.owner == owner;
-        });
-        if (selectedEnvironmentLabel_ == label && !FindSelectedEnvironmentEntry()) {
-            selectedEnvironmentLabel_.clear();
-        }
-    }
-
-    void GameDebugUI::RegisterEngineDebugPanel(const std::string& label, std::function<void()> drawer,
-        EnginePanelGroup group)
-    {
-        for (auto& p : engineDebugPanels_) {
-            if (p.label == label) { p.drawer = std::move(drawer); p.group = group; return; }
-        }
-        engineDebugPanels_.push_back({ label, std::move(drawer), false, EnginePanelCategory::Tools, group });
-
-        // Tools パネルと同じ理由で、デバッグ情報パネルにも既定のドッキング先を与える
-        if (dockingUI_) {
-            dockingUI_->RegisterWindow(label, DockArea::Right);
-        }
-    }
-
-    void GameDebugUI::SetPanelVisible(const std::string& label, bool visible)
-    {
-        for (auto& p : enginePanels_) {
-            if (p.label == label) { p.visible = visible; return; }
         }
     }
 
@@ -172,25 +79,37 @@ namespace CoreEngine
             // 直下に並べるのは「常に使うもの」だけに絞る。
             if (ImGui::BeginMenu("Window")) {
 
+                auto& registry = Editor::EditorPanelRegistry::Get();
+
+                // Inspector タブを group で絞ってサブメニューへ並べる
+                const auto tabMenu = [&registry](Editor::PanelGroup group, const char* label) {
+                    const bool hasAny = registry.Any(Editor::PanelPlacement::InspectorTab,
+                        [group](const Editor::EditorPanel& p) { return p.desc.group == group; });
+                    if (!hasAny || !ImGui::BeginMenu(label)) {
+                        return;
+                    }
+                    registry.ForEach(Editor::PanelPlacement::InspectorTab,
+                        [group](Editor::EditorPanel& p) {
+                            if (p.desc.group != group) { return; }
+                            ImGui::MenuItem(p.Id().c_str(), nullptr, &p.visible);
+                        });
+                    ImGui::EndMenu();
+                    };
+
                 // グループごとの追加項目（そのグループにしか無いもの）
-                const auto drawExtra = [this](EnginePanelGroup group) -> std::function<void()> {
+                const auto drawExtra = [&](Editor::PanelGroup group) -> std::function<void()> {
                     switch (group) {
-                    case EnginePanelGroup::General:
+                    case Editor::PanelGroup::General:
                         return [this]() {
                             ImGui::MenuItem("Hierarchy", nullptr, &showHierarchy_);
                             ImGui::MenuItem("Inspector", nullptr, &showInspector_);
                             ImGui::MenuItem("Console", nullptr, &showConsole_);
                             };
-                    case EnginePanelGroup::Analysis:
-                        return [this]() {
-                            if (!engineEditors_.empty() && ImGui::BeginMenu("Engine Stats")) {
-                                for (auto& entry : engineEditors_) {
-                                    ImGui::MenuItem(entry.label.c_str(), nullptr, &entry.visible);
-                                }
-                                ImGui::EndMenu();
-                            }
+                    case Editor::PanelGroup::Analysis:
+                        return [&tabMenu]() {
+                            tabMenu(Editor::PanelGroup::Analysis, "Engine Stats");
                             };
-                    case EnginePanelGroup::Editor:
+                    case Editor::PanelGroup::Editor:
                         return [this]() {
                             ImGui::MenuItem("Engine Settings", nullptr, &showEngineSettings_);
                             };
@@ -199,18 +118,13 @@ namespace CoreEngine
                     }
                     };
 
-                // 並び順は kEnginePanelGroupOrder に一本化（Engine Settings の一覧と同じ順序になる）
-                for (const auto& [group, groupLabel] : kEnginePanelGroupOrder) {
+                // 並び順は kPanelGroupOrder に一本化（Engine Settings の一覧と同じ順序になる）
+                for (const auto& [group, groupLabel] : Editor::kPanelGroupOrder) {
                     DrawPanelGroupMenu(group, groupLabel, drawExtra(group));
                 }
 
                 // ── アプリ固有のエディタ ──
-                if (!appEditors_.empty() && ImGui::BeginMenu("Application")) {
-                    for (auto& entry : appEditors_) {
-                        ImGui::MenuItem(entry.label.c_str(), nullptr, &entry.visible);
-                    }
-                    ImGui::EndMenu();
-                }
+                tabMenu(Editor::PanelGroup::Application, "Application");
 
                 ImGui::Separator();
 
@@ -345,24 +259,20 @@ namespace CoreEngine
         }
     }
 
-    void GameDebugUI::DrawPanelGroupMenu(EnginePanelGroup group, const char* label,
+    void GameDebugUI::DrawPanelGroupMenu(Editor::PanelGroup group, const char* label,
         const std::function<void()>& extraContent)
     {
+        auto& registry = Editor::EditorPanelRegistry::Get();
+
         // 単独ウィンドウとして開けるものだけを集める
-        //（Settings カテゴリは Engine Settings ウィンドウ内のセクションなのでここには出さない）
-        const auto hasToolPanel = [this, group] {
-            return std::any_of(enginePanels_.begin(), enginePanels_.end(),
-                [group](const EnginePanelEntry& entry) {
-                    return entry.category == EnginePanelCategory::Tools && entry.group == group;
-                });
-            };
-        const auto hasDebugPanel = [this, group] {
-            return std::any_of(engineDebugPanels_.begin(), engineDebugPanels_.end(),
-                [group](const EnginePanelEntry& entry) { return entry.group == group; });
+        //（SettingsSection は Engine Settings ウィンドウ内なのでここには出さない）
+        const auto hasWindow = [&registry, group] {
+            return registry.Any(Editor::PanelPlacement::Window,
+                [group](const Editor::EditorPanel& p) { return p.desc.group == group; });
             };
 
         // 中身が何も無いグループはメニュー項目自体を出さない（空のサブメニューを作らない）
-        if (!extraContent && !hasToolPanel() && !hasDebugPanel()) {
+        if (!extraContent && !hasWindow()) {
             return;
         }
 
@@ -372,24 +282,15 @@ namespace CoreEngine
 
         if (extraContent) {
             extraContent();
-            if (hasToolPanel() || hasDebugPanel()) {
+            if (hasWindow()) {
                 ImGui::Separator();
             }
         }
 
-        for (auto& panel : enginePanels_) {
-            if (panel.category != EnginePanelCategory::Tools || panel.group != group) {
-                continue;
-            }
-            ImGui::MenuItem(panel.label.c_str(), nullptr, &panel.visible);
-        }
-
-        for (auto& panel : engineDebugPanels_) {
-            if (panel.group != group) {
-                continue;
-            }
-            ImGui::MenuItem(panel.label.c_str(), nullptr, &panel.visible);
-        }
+        registry.ForEach(Editor::PanelPlacement::Window, [group](Editor::EditorPanel& panel) {
+            if (panel.desc.group != group) { return; }
+            ImGui::MenuItem(panel.Id().c_str(), nullptr, &panel.visible);
+            });
 
         ImGui::EndMenu();
     }
@@ -398,8 +299,7 @@ namespace CoreEngine
     {
         DrawHierarchyPanel();
         DrawInspectorPanel();
-        DrawEnginePanels();
-        DrawEngineDebugPanels();
+        DrawPanelWindows();
         DrawEngineSettingsWindow();
 
         if (showConsole_) ShowConsoleUI();
@@ -422,8 +322,10 @@ namespace CoreEngine
                 if (auto tabBar = UI::Scope::TabBarScope("##HierarchyTabs")) {
                     if (auto tab = UI::Scope::TabItemScope("Objects")) {
                         DrawEnvironmentTree();
-                        if (hierarchyContentDrawer_) {
-                            hierarchyContentDrawer_();
+                        Editor::EditorPanel* content = Editor::EditorPanelRegistry::Get()
+                            .FindFirst(Editor::PanelPlacement::HierarchyContent);
+                        if (content && content->desc.draw) {
+                            content->desc.draw();
                         } else {
                             UI::Hint("シーンが読み込まれていません");
                         }
@@ -437,22 +339,24 @@ namespace CoreEngine
 
     void GameDebugUI::DrawEnvironmentTree()
     {
-        if (environmentEditors_.empty()) return;
+        auto& registry = Editor::EditorPanelRegistry::Get();
+        if (!registry.Any(Editor::PanelPlacement::EnvironmentTree, nullptr)) return;
 
         if (ImGui::TreeNodeEx("Environment",
             ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth)) {
-            for (const auto& entry : environmentEditors_) {
-                const bool selected = (entry.label == selectedEnvironmentLabel_);
+            registry.ForEach(Editor::PanelPlacement::EnvironmentTree,
+                [this](Editor::EditorPanel& entry) {
+                const bool selected = (entry.Id() == selectedEnvironmentLabel_);
 
                 // Inspector の表示先を一意にするため、選択時はシーンオブジェクトの選択を解除する
                 auto selectThisEntry = [&]() {
-                    selectedEnvironmentLabel_ = entry.label;
+                    selectedEnvironmentLabel_ = entry.Id();
                     if (sceneDebugEditor_) {
                         sceneDebugEditor_->ClearSelection();
                     }
                 };
 
-                if (entry.childTree) {
+                if (entry.desc.childTree) {
                     // 子ツリーを持つエントリ（Lighting の各ライト等）は開閉可能なノードとして描画する
                     ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow
                         | ImGuiTreeNodeFlags_OpenOnDoubleClick
@@ -460,36 +364,40 @@ namespace CoreEngine
                         | ImGuiTreeNodeFlags_DefaultOpen;
                     if (selected) flags |= ImGuiTreeNodeFlags_Selected;
 
-                    const bool open = ImGui::TreeNodeEx(entry.label.c_str(), flags);
+                    const bool open = ImGui::TreeNodeEx(entry.Id().c_str(), flags);
                     if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
                         selectThisEntry();
-                        if (entry.onParentSelected) {
-                            entry.onParentSelected();
+                        if (entry.desc.onParentSelected) {
+                            entry.desc.onParentSelected();
                         }
                     }
                     if (open) {
-                        if (entry.childTree()) {
+                        if (entry.desc.childTree()) {
                             selectThisEntry();
                         }
                         ImGui::TreePop();
                     }
                 } else {
-                    if (ImGui::Selectable(entry.label.c_str(), selected)) {
+                    if (ImGui::Selectable(entry.Id().c_str(), selected)) {
                         selectThisEntry();
                     }
                 }
-            }
+                });
             ImGui::TreePop();
         }
         ImGui::Separator();
     }
 
-    const GameDebugUI::EnvironmentEntry* GameDebugUI::FindSelectedEnvironmentEntry() const
+    Editor::EditorPanel* GameDebugUI::FindSelectedEnvironmentEntry()
     {
         if (selectedEnvironmentLabel_.empty()) return nullptr;
-        for (const auto& entry : environmentEditors_) {
-            if (entry.label == selectedEnvironmentLabel_) return &entry;
+        Editor::EditorPanel* found =
+            Editor::EditorPanelRegistry::Get().Find(selectedEnvironmentLabel_);
+        if (found && found->desc.placement == Editor::PanelPlacement::EnvironmentTree) {
+            return found;
         }
+        // 登録が外れていたら選択も落とす（Inspector が消えた中身を指し続けないように）
+        selectedEnvironmentLabel_.clear();
         return nullptr;
     }
 
@@ -507,31 +415,27 @@ namespace CoreEngine
                         selectedEnvironmentLabel_.clear();
                     }
 
-                    if (const EnvironmentEntry* env = FindSelectedEnvironmentEntry(); env && env->drawer) {
-                        ImGui::SeparatorText(env->label.c_str());
-                        env->drawer();
-                    } else if (inspectorObjectDrawer_) {
-                        inspectorObjectDrawer_();
+                    Editor::EditorPanel* env = FindSelectedEnvironmentEntry();
+                    Editor::EditorPanel* object = Editor::EditorPanelRegistry::Get()
+                        .FindFirst(Editor::PanelPlacement::InspectorObject);
+                    if (env && env->desc.draw) {
+                        ImGui::SeparatorText(env->Id().c_str());
+                        env->desc.draw();
+                    } else if (object && object->desc.draw) {
+                        object->desc.draw();
                     } else {
                         UI::Hint("シーンが読み込まれていません");
                     }
                 }
 
-                // エンジンエディタータブ（×ボタンでタブを閉じられる）
-                for (auto& entry : engineEditors_) {
-                    if (!entry.visible) continue;
-                    if (auto tab = UI::Scope::TabItemScope(entry.label.c_str(), &entry.visible)) {
-                        if (entry.drawer) entry.drawer();
-                    }
-                }
-
-                // アプリエディタータブ（×ボタンでタブを閉じられる）
-                for (auto& entry : appEditors_) {
-                    if (!entry.visible) continue;
-                    if (auto tab = UI::Scope::TabItemScope(entry.label.c_str(), &entry.visible)) {
-                        if (entry.drawer) entry.drawer();
-                    }
-                }
+                // 登録されたタブ（×ボタンで閉じられる）
+                Editor::EditorPanelRegistry::Get().ForEach(Editor::PanelPlacement::InspectorTab,
+                    [](Editor::EditorPanel& entry) {
+                        if (!entry.visible) return;
+                        if (auto tab = UI::Scope::TabItemScope(entry.Id().c_str(), &entry.visible)) {
+                            if (entry.desc.draw) entry.desc.draw();
+                        }
+                    });
             }
         }
     }
@@ -542,33 +446,20 @@ namespace CoreEngine
         console_->Draw();
     }
 
-    void GameDebugUI::DrawEnginePanels()
+    void GameDebugUI::DrawPanelWindows()
     {
-        // 独立ウィンドウとして描画するのは Tools カテゴリのみ
-        //（Settings カテゴリは Engine Settings ウィンドウ内のセクションとして描画される）
-        for (auto& panel : enginePanels_) {
-            if (panel.category != EnginePanelCategory::Tools) continue;
-            if (!panel.visible) continue;
-            // ツールはドックに登録されずフローティングで開くため、初回サイズを与える
-            ImGui::SetNextWindowSize(ImVec2(460.0f, 540.0f), ImGuiCond_FirstUseEver);
-            if (ImGui::Begin(panel.label.c_str(), &panel.visible)) {
-                if (panel.drawer) panel.drawer();
-            }
-            ImGui::End();
-        }
-    }
-
-    void GameDebugUI::DrawEngineDebugPanels()
-    {
-        for (auto& panel : engineDebugPanels_) {
-            if (!panel.visible) continue;
-            // デバッグ情報パネルは表形式が多く 420px では列が潰れるため、初回サイズを広めに取る
-            ImGui::SetNextWindowSize(ImVec2(620.0f, 620.0f), ImGuiCond_FirstUseEver);
-            if (ImGui::Begin(panel.label.c_str(), &panel.visible)) {
-                if (panel.drawer) panel.drawer();
-            }
-            ImGui::End();
-        }
+        Editor::EditorPanelRegistry::Get().ForEach(Editor::PanelPlacement::Window,
+            [](Editor::EditorPanel& panel) {
+                if (!panel.visible) return;
+                // フローティングで開くので初回サイズを与える
+                ImGui::SetNextWindowSize(
+                    ImVec2(panel.desc.defaultWidth, panel.desc.defaultHeight),
+                    ImGuiCond_FirstUseEver);
+                if (ImGui::Begin(panel.Id().c_str(), &panel.visible)) {
+                    if (panel.desc.draw) panel.desc.draw();
+                }
+                ImGui::End();
+            });
     }
 
     void GameDebugUI::DrawEngineSettingsWindow()
@@ -604,15 +495,15 @@ namespace CoreEngine
             ImGui::InputTextWithHint("##settings_filter", "検索...", settingsFilter_, sizeof(settingsFilter_));
             ImGui::Spacing();
 
-            EnginePanelEntry* firstVisible = nullptr;
+            auto& registry = Editor::EditorPanelRegistry::Get();
+            Editor::EditorPanel* firstVisible = nullptr;
             bool selectionVisible = false;
 
-            for (const auto& [group, groupLabel] : kEnginePanelGroupOrder) {
+            for (const auto& [group, groupLabel] : Editor::kPanelGroupOrder) {
                 // このカテゴリに表示対象があるかを先に調べ、無ければ見出しごと出さない
-                const bool hasAny = std::any_of(enginePanels_.begin(), enginePanels_.end(),
-                    [&](const EnginePanelEntry& entry) {
-                        return entry.category == EnginePanelCategory::Settings
-                            && entry.group == group && matchesFilter(entry.label);
+                const bool hasAny = registry.Any(Editor::PanelPlacement::SettingsSection,
+                    [&](const Editor::EditorPanel& entry) {
+                        return entry.desc.group == group && matchesFilter(entry.Id());
                     });
                 if (!hasAny) {
                     continue;
@@ -620,22 +511,22 @@ namespace CoreEngine
 
                 ImGui::SeparatorText(groupLabel);
 
-                for (auto& panel : enginePanels_) {
-                    if (panel.category != EnginePanelCategory::Settings) continue;
-                    if (panel.group != group) continue;
-                    if (!matchesFilter(panel.label)) continue;
-                    if (!firstVisible) firstVisible = &panel;
+                registry.ForEach(Editor::PanelPlacement::SettingsSection,
+                    [&](Editor::EditorPanel& panel) {
+                        if (panel.desc.group != group) return;
+                        if (!matchesFilter(panel.Id())) return;
+                        if (!firstVisible) firstVisible = &panel;
 
-                    const bool selected = (panel.label == selectedSettingsLabel_);
-                    selectionVisible |= selected;
+                        const bool selected = (panel.Id() == selectedSettingsLabel_);
+                        selectionVisible |= selected;
 
-                    ImGui::Indent(6.0f);
-                    if (ImGui::Selectable(panel.label.c_str(), selected)) {
-                        selectedSettingsLabel_ = panel.label;
-                        selectionVisible = true;
-                    }
-                    ImGui::Unindent(6.0f);
-                }
+                        ImGui::Indent(6.0f);
+                        if (ImGui::Selectable(panel.Id().c_str(), selected)) {
+                            selectedSettingsLabel_ = panel.Id();
+                            selectionVisible = true;
+                        }
+                        ImGui::Unindent(6.0f);
+                    });
             }
 
             if (!firstVisible) {
@@ -643,7 +534,7 @@ namespace CoreEngine
             }
             // 未選択・選択セクションが絞り込みで消えた場合は先頭を選ぶ
             else if (!selectionVisible) {
-                selectedSettingsLabel_ = firstVisible->label;
+                selectedSettingsLabel_ = firstVisible->Id();
             }
         }
         ImGui::EndChild();
@@ -653,23 +544,24 @@ namespace CoreEngine
         // ── 右ペイン：選択セクションの内容 ──
         ImGui::BeginChild("##settings_right", ImVec2(0.0f, 0.0f), ImGuiChildFlags_Borders);
         {
-            EnginePanelEntry* selectedEntry = nullptr;
-            for (auto& p : enginePanels_) {
-                if (p.category != EnginePanelCategory::Settings) continue;
-                if (p.label == selectedSettingsLabel_) { selectedEntry = &p; break; }
+            Editor::EditorPanel* selectedEntry =
+                Editor::EditorPanelRegistry::Get().Find(selectedSettingsLabel_);
+            if (selectedEntry
+                && selectedEntry->desc.placement != Editor::PanelPlacement::SettingsSection) {
+                selectedEntry = nullptr;
             }
 
-            if (selectedEntry && selectedEntry->drawer) {
+            if (selectedEntry && selectedEntry->desc.draw) {
                 // 見出しは「カテゴリ / セクション名」のパンくずにして、今どこを見ているか分かるようにする
-                ImGui::TextDisabled("%s", ToDisplayName(selectedEntry->group));
+                ImGui::TextDisabled("%s", Editor::ToDisplayName(selectedEntry->desc.group));
                 ImGui::SameLine(0.0f, 6.0f);
                 ImGui::TextDisabled("/");
                 ImGui::SameLine(0.0f, 6.0f);
-                ImGui::TextUnformatted(selectedEntry->label.c_str());
+                ImGui::TextUnformatted(selectedEntry->Id().c_str());
                 ImGui::Separator();
                 ImGui::Spacing();
 
-                selectedEntry->drawer();
+                selectedEntry->desc.draw();
             } else {
                 ImGui::TextDisabled("セクションがありません");
             }

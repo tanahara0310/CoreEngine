@@ -8,7 +8,7 @@ namespace CoreEngine::Reflection
     namespace
     {
         CVar<bool> cvUseReflectionInspector{
-            "d.Editor.UseReflectionInspector", false,
+            "d.Editor.UseReflectionInspector", true,
             "インスペクタと保存を型記述子から組み立てる（旧 DrawInspector / OnSerialize と切り替え）" };
     }
 

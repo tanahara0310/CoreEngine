@@ -1,15 +1,36 @@
 #include "pch.h"
 #include "ComponentHost.h"
 
+#include "Editor/Command/EditorCommandStack.h"
+
 #include <algorithm>
 
 namespace CoreEngine
 {
+    namespace
+    {
+        /// @brief このコンポーネントを握っている Undo 操作を履歴から外す
+        /// @note 外さないと、解放済みのコンポーネントへ Ctrl+Z が書き込む
+        void ForgetInHistory(const IComponent* component)
+        {
+            if (component) {
+                Editor::EditorCommandStack::Get().RemoveCommandsReferencing(component);
+            }
+        }
+    }
+
     ComponentHost::~ComponentHost()
     {
         // 破棄経路を通らずに直接 delete された場合の保険。
         // GameObjectManager 経由なら DispatchComponentDestroy() が先に走っている。
         DispatchComponentDestroy();
+
+        for (const auto& component : components_) {
+            ForgetInHistory(component.get());
+        }
+        for (const auto& component : retired_) {
+            ForgetInHistory(component.get());
+        }
     }
 
     size_t ComponentHost::GetComponentCount() const
@@ -62,6 +83,9 @@ namespace CoreEngine
             std::remove(components_.begin(), components_.end(), nullptr),
             components_.end());
 
+        for (const auto& component : retired_) {
+            ForgetInHistory(component.get());
+        }
         retired_.clear();
     }
 

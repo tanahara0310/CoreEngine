@@ -145,35 +145,6 @@ namespace CoreEngine
             return changed;
         }
 
-        /// @brief Ctrl+Z / Ctrl+Y による CVar の Undo / Redo
-        /// @details CVar ツリーを含むウィンドウにフォーカスがあるときだけ反応する
-        ///          （シーン編集など他系統の Undo と衝突させないためのスコープ）。
-        ///          同一フレームに複数の DrawTree が呼ばれても 1 回しか実行しない
-        void HandleUndoShortcuts()
-        {
-            static int lastHandledFrame = -1;
-            const int frame = ImGui::GetFrameCount();
-            if (frame == lastHandledFrame) {
-                return;
-            }
-            if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)) {
-                return;
-            }
-            // テキスト入力中は ImGui 自身の入力 Undo（Ctrl+Z）に譲る
-            if (ImGui::GetIO().WantTextInput) {
-                return;
-            }
-            if (!ImGui::GetIO().KeyCtrl) {
-                return;
-            }
-            if (ImGui::IsKeyPressed(ImGuiKey_Z, false)) {
-                lastHandledFrame = frame;
-                CVarUndoStack::Get().Undo();
-            } else if (ImGui::IsKeyPressed(ImGuiKey_Y, false)) {
-                lastHandledFrame = frame;
-                CVarUndoStack::Get().Redo();
-            }
-        }
     }
 
     float CVarUI::DragSpeed(const CVarRange& range)
@@ -350,9 +321,6 @@ namespace CoreEngine
 
     bool CVarUI::DrawTree(std::string_view prefix)
     {
-        // このツリーを含むウィンドウがフォーカス中なら Ctrl+Z / Ctrl+Y を処理する
-        HandleUndoShortcuts();
-
         std::vector<ICVar*> items = CVarRegistry::Get().GetByPrefix(prefix);
 
         // NoUI（別の UI が担当する項目・コンソール専用）を除外

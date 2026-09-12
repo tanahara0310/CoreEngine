@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Editor/Panel/EditorPanelRegistry.h"
 #include "CollisionMatrixPanel.h"
 
 #ifdef USE_IMGUI
@@ -101,15 +102,12 @@ namespace CollisionMatrixPanel
             return;
         }
 
-        auto* debug = engine->GetDebugSubsystem();
-        auto* gameDebugUI = debug ? debug->GetGameDebugUI() : nullptr;
-        if (!gameDebugUI) {
-            return;
-        }
-
         // ドロワーは何もキャプチャしない（ファイルスコープの s_activeConfig を読むだけ）
-        gameDebugUI->RegisterEnginePanel("Collision Matrix", [] { DrawMatrix(); },
-            EnginePanelCategory::Settings);
+        Editor::EditorPanelRegistry::Get().Register({
+            .id = "Collision Matrix",
+            .placement = Editor::PanelPlacement::SettingsSection,
+            .draw = [] { DrawMatrix(); },
+            });
 
         registered = true;
     }

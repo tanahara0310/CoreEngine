@@ -5,12 +5,14 @@
 
 #include "StageChipPalette.h"
 
+#include "Editor/Command/EditorCommandStack.h"
 #include "Utility/Logger/Logger.h"
 
 #include <algorithm>
 #include <cctype>
 #include <filesystem>
 #include <fstream>
+#include <memory>
 #include <sstream>
 #include <utility>
 
@@ -91,7 +93,7 @@ namespace GameEditors
         path_.clear();
         dirty_ = false;
         invalidCellCount_ = 0;
-        undoStack_.clear();
+        CoreEngine::Editor::EditorCommandStack::Get().RemoveCommandsReferencing(this);
     }
 
     bool StageCsvDocument::Load(const std::string& path)
@@ -136,7 +138,7 @@ namespace GameEditors
         path_ = path;
         dirty_ = false;
         invalidCellCount_ = invalidCount;
-        undoStack_.clear();
+        CoreEngine::Editor::EditorCommandStack::Get().RemoveCommandsReferencing(this);
 
         if (invalidCount > 0) {
             Logger::GetInstance().Warnf(LogCategory::Game,
@@ -259,22 +261,28 @@ namespace GameEditors
 
     void StageCsvDocument::BeginStroke()
     {
-        undoStack_.push_back(cells_);
-        if (undoStack_.size() > kUndoLimit) {
-            undoStack_.pop_front();
-        }
+        CoreEngine::Editor::EditorCommandStack::Get().Push(
+            std::make_unique<CoreEngine::Editor::SnapshotCommand<Grid>>(
+                "ステージの編集", cells_,
+                [this] { return cells_; },
+                [this](const Grid& grid) { RestoreGrid(grid); }, this));
     }
 
     bool StageCsvDocument::Undo()
     {
-        if (undoStack_.empty()) {
-            return false;
-        }
-        cells_ = std::move(undoStack_.back());
-        undoStack_.pop_back();
+        return CoreEngine::Editor::EditorCommandStack::Get().Undo();
+    }
+
+    bool StageCsvDocument::CanUndo() const
+    {
+        return CoreEngine::Editor::EditorCommandStack::Get().CanUndo();
+    }
+
+    void StageCsvDocument::RestoreGrid(const Grid& grid)
+    {
+        cells_ = grid;
         sizeX_ = cells_.empty() ? 0 : cells_.front().size();
         dirty_ = true;
-        return true;
     }
 }
 

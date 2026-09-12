@@ -77,13 +77,15 @@ namespace GameEditors
 
         /// @brief 直前の BeginStroke 時点へ戻す
         /// @return 戻せた場合 true
+        /// @note 履歴はエディタ共通の単一スタック。直前の操作が別のエディタのものなら
+        ///       そちらが戻る。
         bool Undo();
 
-        bool CanUndo() const { return !undoStack_.empty(); }
+        bool CanUndo() const;
 
     private:
-        /// @brief 履歴が伸び続けないよう上限を決めておく
-        static constexpr std::size_t kUndoLimit = 64;
+        /// @brief 履歴から受け取った盤面を現在の編集対象にする
+        void RestoreGrid(const Grid& grid);
 
         Grid cells_;
         std::size_t sizeX_ = 0;
@@ -91,8 +93,6 @@ namespace GameEditors
         bool dirty_ = false;
         bool writeVoidAsEmpty_ = false;
         std::size_t invalidCellCount_ = 0;
-
-        std::deque<Grid> undoStack_;
     };
 }
 

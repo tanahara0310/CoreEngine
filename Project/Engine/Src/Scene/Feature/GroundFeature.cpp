@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Editor/Panel/EditorPanelRegistry.h"
 #include "GroundFeature.h"
 
 #include "Camera/Camera.h"
@@ -358,20 +359,18 @@ namespace CoreEngine
             return;
         }
 
-        auto* debug = engine->GetDebugSubsystem();
-        auto* gameDebugUI = debug ? debug->GetGameDebugUI() : nullptr;
-        if (!gameDebugUI) {
-            return;
-        }
-
         // ドロワーは何もキャプチャしない（ファイルスコープの s_activeGround を読むだけ）
-        gameDebugUI->RegisterEnginePanel("Ground", [] {
-            if (s_activeGround) {
-                s_activeGround->DrawSettingsImGui();
-            } else {
-                ImGui::TextDisabled("(シーンがありません)");
-            }
-        });
+        Editor::EditorPanelRegistry::Get().Register({
+            .id = "Ground",
+            .placement = Editor::PanelPlacement::SettingsSection,
+            .draw = [] {
+                if (s_activeGround) {
+                    s_activeGround->DrawSettingsImGui();
+                } else {
+                    ImGui::TextDisabled("(シーンがありません)");
+                }
+            },
+            });
 
         registered = true;
     }

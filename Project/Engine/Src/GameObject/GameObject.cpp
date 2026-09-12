@@ -249,15 +249,11 @@ namespace CoreEngine
         }
     }
 
-    int GameObject::BuildComponentTabs(InspectorTabDef* outTabs, int maxTabs) const {
-        if (!outTabs || maxTabs <= 0) { return 0; }
-
-        int count = 0;
+    void GameObject::AppendComponentTabs(std::vector<InspectorTabDef>& outTabs) const {
         for (const auto& component : GetAllComponents()) {
             if (!component) { continue; }
-            if (count >= maxTabs) { break; }
 
-            InspectorTabDef& tab = outTabs[count];
+            InspectorTabDef tab{};
             tab.iconPath = component->GetInspectorIcon();
             tab.tooltip = component->GetInspectorName();
             component->GetInspectorIconColor(tab.tint);
@@ -268,9 +264,8 @@ namespace CoreEngine
             tab.selectedBg[2] = tab.tint[2];
             tab.selectedBg[3] = 0.25f;
 
-            ++count;
+            outTabs.push_back(tab);
         }
-        return count;
     }
 
     bool GameObject::DrawComponentTabContent(int tabIndex) {
@@ -298,12 +293,15 @@ namespace CoreEngine
                 // 記述子を持つ型はそこから自動生成し、無ければ従来の手書きへ落ちる
                 const Reflection::TypeDescriptor* descriptor = component->GetTypeDescriptor();
                 if (descriptor && InspectorRenderer::IsEnabled()) {
+                    IComponent* raw = component.get();
+                    InspectorRenderer::DrawContext context;
+                    context.label = std::string(GetName()) + " の " + raw->GetInspectorName();
+                    context.owner = raw;
+                    context.onChanged = [raw](const Reflection::PropertyDescriptor& property) {
+                        raw->OnPropertyChanged(property);
+                        };
                     changed |= InspectorRenderer::Draw(
-                        *descriptor, component->GetReflectionInstance(),
-                        [&component](const Reflection::PropertyDescriptor& property,
-                                     const void* beforeValue) {
-                            component->OnInspectorEditCommitted(property, beforeValue);
-                        });
+                        *descriptor, raw->GetReflectionInstance(), context);
                     component->DrawInspectorExtra();
                 } else {
                     changed |= component->DrawInspector();
@@ -358,19 +356,20 @@ namespace CoreEngine
         UI::Separator();
 
         // ── タブ判定 ─────────────────────────────────────────────
-        InspectorTabDef tabs[8];
-        const int objectTabCount = GetInspectorTabs(tabs, 8);
-        const int componentTabCount = objectTabCount < 8
-            ? BuildComponentTabs(tabs + objectTabCount, 8 - objectTabCount)
-            : 0;
-        const int tabCount = objectTabCount + componentTabCount;
+        // オブジェクト側のタブを受ける枠。GetInspectorTabs は固定長で書き込むので
+        // 一度 kMaxObjectTabs で受けてから実数へ詰める
+        std::vector<InspectorTabDef> tabs(kMaxObjectTabs);
+        const int objectTabCount = GetInspectorTabs(tabs.data(), kMaxObjectTabs);
+        tabs.resize(static_cast<size_t>(objectTabCount));
+        AppendComponentTabs(tabs);
+        const int tabCount = static_cast<int>(tabs.size());
 
         // 前回選んでいたタブがコンポーネントの増減で範囲外になることがある
         if (inspectorTab_ >= tabCount) { inspectorTab_ = 0; }
 
         if (tabCount > 0) {
             // タブアイコンのロード（TextureManager がキャッシュするため毎フレーム安全）
-            D3D12_GPU_DESCRIPTOR_HANDLE iconHandles[8]{};
+            std::vector<D3D12_GPU_DESCRIPTOR_HANDLE> iconHandles(static_cast<size_t>(tabCount), D3D12_GPU_DESCRIPTOR_HANDLE{});
             auto& texMgr = TextureManager::GetInstance();
             if (texMgr.IsInitialized()) {
                 for (int i = 0; i < tabCount; ++i) {

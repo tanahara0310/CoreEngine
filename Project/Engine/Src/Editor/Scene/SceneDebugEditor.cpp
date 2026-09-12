@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Editor/Panel/EditorPanelRegistry.h"
 #ifdef USE_IMGUI
 
 #include "SceneDebugEditor.h"
@@ -7,6 +8,7 @@
 #include "Camera/CameraManager.h"
 #include "Camera/CameraSceneStateIO.h"
 #include "Editor/Camera/Module/CameraEditorContext.h"
+#include "Editor/Command/EditorCommandStack.h"
 #include "GameObject/GameObjectManager.h"
 #include "GameObject/Model/DynamicModelObject.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
@@ -106,6 +108,8 @@ namespace CoreEngine
         cameraManager_ = camMgr;
         saveSystem_ = saveSystem;
 
+        undoRedoHistory_.SetGameObjectManager(mgr);
+
         // カメラエディター側で追従対象を参照できるよう、オブジェクトマネージャーを注入する。
         if (cameraManager_) {
             cameraManager_->SetDebugGameObjectManager(gameObjectManager_);
@@ -175,24 +179,39 @@ namespace CoreEngine
             }
         });
 
-        // Hierarchy/Inspectorパネル用の描画コールバックをGameDebugUIに登録
+        // Hierarchy / Inspector の中身とカメラエディタをパネルとして登録する
         if (auto* gameDebugUI = engine_->GetDebugSubsystem()->GetGameDebugUI()) {
             gameDebugUI->SetSceneDebugEditor(this);
-            if (auto* dockingUI = engine_->GetDebugSubsystem()->GetDockingUI()) {
-                dockingUI->SetSceneDebugEditor(this);
-            }
-            gameDebugUI->SetHierarchyContentDrawer([this]() {
-                DrawHierarchyContent();
+        }
+        if (auto* dockingUI = engine_->GetDebugSubsystem()->GetDockingUI()) {
+            dockingUI->SetSceneDebugEditor(this);
+        }
+
+        auto& panels = Editor::EditorPanelRegistry::Get();
+        panels.Register({
+            .id = "Hierarchy Content",
+            .placement = Editor::PanelPlacement::HierarchyContent,
+            .owner = this,
+            .draw = [this]() { DrawHierarchyContent(); },
             });
-            gameDebugUI->SetInspectorCameraDrawer([this]() {
+        panels.Register({
+            .id = "Inspector Object",
+            .placement = Editor::PanelPlacement::InspectorObject,
+            .owner = this,
+            .draw = [this]() { DrawInspectorContent(); },
+            });
+        // Camera Editor は単独ウィンドウ。エディタ視点カメラの設定なので Editor グループへ
+        panels.Register({
+            .id = "Camera Editor",
+            .placement = Editor::PanelPlacement::Window,
+            .group = Editor::PanelGroup::Editor,
+            .owner = this,
+            .draw = [this]() {
                 if (cameraManager_) {
                     cameraManager_->DrawImGuiContent();
                 }
+            },
             });
-            gameDebugUI->SetInspectorObjectDrawer([this]() {
-                DrawInspectorContent();
-            });
-        }
     }
 
     void SceneDebugEditor::DetachFromEngineUI()
@@ -208,13 +227,16 @@ namespace CoreEngine
 
         if (auto* gameDebugUI = debug->GetGameDebugUI()) {
             gameDebugUI->SetSceneDebugEditor(nullptr);
-            gameDebugUI->SetHierarchyContentDrawer(nullptr);
-            gameDebugUI->SetInspectorCameraDrawer(nullptr);
-            gameDebugUI->SetInspectorObjectDrawer(nullptr);
         }
         if (auto* dockingUI = debug->GetDockingUI()) {
             dockingUI->SetSceneDebugEditor(nullptr);
         }
+
+        // 解放済みの this を描かないよう、自分が登録したパネルを外す
+        auto& panels = Editor::EditorPanelRegistry::Get();
+        panels.Unregister("Hierarchy Content", this);
+        panels.Unregister("Inspector Object", this);
+        panels.Unregister("Camera Editor", this);
     }
 
     void SceneDebugEditor::ClearHistory()
@@ -242,15 +264,16 @@ namespace CoreEngine
             cameraManager_->UpdateDebugModules();
         }
 
-        // Ctrl+Z / Ctrl+Y によるキーボードショートカット（ウィンドウ外でも反応）。
-        // RouteGlobal にしてあるので、カメラエディタのように自分で Undo を持つ
-        // ウィンドウにフォーカスがあるときはそちらへ譲る。素の IsKeyChordPressed だと
-        // 両方が同じフレームで戻ってしまう。
-        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Z, ImGuiInputFlags_RouteGlobal)) {
-            undoRedoHistory_.Undo(gameObjectManager_);
-        }
-        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Y, ImGuiInputFlags_RouteGlobal)) {
-            undoRedoHistory_.Redo(gameObjectManager_);
+        // Ctrl+Z / Ctrl+Y はここが唯一の受け口。オブジェクト・CVar・カメラ・ステージの
+        // 操作はすべて EditorCommandStack の 1 本に積まれている。
+        // テキスト入力中は ImGui 自身の入力 Undo に譲る。
+        if (!ImGui::GetIO().WantTextInput) {
+            if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Z, ImGuiInputFlags_RouteGlobal)) {
+                undoRedoHistory_.Undo(gameObjectManager_);
+            }
+            if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Y, ImGuiInputFlags_RouteGlobal)) {
+                undoRedoHistory_.Redo(gameObjectManager_);
+            }
         }
 
         // Ctrl+S でシーン全体保存
@@ -371,17 +394,25 @@ namespace CoreEngine
         }
         ImGui::EndDisabled();
         UI::SameLine();
+        // 履歴はエディタ共通の 1 本。次に何が戻るのかをボタンから読めるようにする
+        auto& commandStack = Editor::EditorCommandStack::Get();
         ImGui::BeginDisabled(!undoRedoHistory_.CanUndo());
         if (ImGui::Button("Undo")) {
             undoRedoHistory_.Undo(gameObjectManager_);
         }
         ImGui::EndDisabled();
+        if (ImGui::IsItemHovered() && commandStack.CanUndo()) {
+            ImGui::SetTooltip("戻す: %s", commandStack.PeekUndoLabel().c_str());
+        }
         UI::SameLine();
         {
             UI::Scope::DisabledScope ds(!undoRedoHistory_.CanRedo());
             if (ImGui::Button("Redo")) {
                 undoRedoHistory_.Redo(gameObjectManager_);
             }
+        }
+        if (ImGui::IsItemHovered() && commandStack.CanRedo()) {
+            ImGui::SetTooltip("やり直す: %s", commandStack.PeekRedoLabel().c_str());
         }
         UI::SameLine();
         UI::HintF("(%d/%d)",

@@ -307,10 +307,15 @@ namespace CoreEngine
         /// @note GetInspectorTabs が 0 を返す場合にのみ呼び出される。
         virtual bool DrawImGuiExtended();
 
+        /// @brief オブジェクト固有タブの上限
+        static constexpr int kMaxObjectTabs = 8;
+
         /// @brief インスペクタータブの定義を取得する
         /// @param outTabs 出力先配列
-        /// @param maxTabs 配列の最大要素数
+        /// @param maxTabs 配列の最大要素数（kMaxObjectTabs）
         /// @return タブ数（0 の場合はタブなしで DrawImGuiExtended にフォールバック）
+        /// @note ここで返すのはオブジェクト固有のタブだけ。コンポーネントのタブは
+        ///       この後ろへ個数制限なしで足される。
         virtual int GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const {
             (void)outTabs; (void)maxTabs; return 0;
         }
@@ -372,17 +377,14 @@ namespace CoreEngine
 
         int inspectorTab_ = 0;  ///< 現在選択中のインスペクタータブインデックス
 
-        /// @brief アタッチされているコンポーネントからインスペクタのタブを組み立てる
-        /// @param outTabs 出力先
-        /// @param maxTabs 出力先の要素数
-        /// @return 追加したタブ数（コンポーネント数。maxTabs で頭打ち）
-        /// @note オブジェクト固有のタブを持つ場合も、その後ろへ追加できる。
-        ///       固有タブを持たないオブジェクトでは、コンポーネントタブがそのまま
+        /// @brief アタッチされているコンポーネントのタブを末尾へ足す
+        /// @param outTabs 追加先（オブジェクト固有タブが入っていれば、その後ろへ足す）
+        /// @note 固有タブを持たないオブジェクトでは、コンポーネントタブがそのまま
         ///       インスペクターのタブになる。
-        int BuildComponentTabs(InspectorTabDef* outTabs, int maxTabs) const;
+        void AppendComponentTabs(std::vector<InspectorTabDef>& outTabs) const;
 
         /// @brief コンポーネントタブの中身を描画する
-        /// @param tabIndex `BuildComponentTabs` が並べた順のインデックス
+        /// @param tabIndex `AppendComponentTabs` が並べた順のインデックス
         /// @return 値が変更されたら true
         /// @note `IComponent::DrawInspector()` を呼ぶ唯一の場所。
         bool DrawComponentTabContent(int tabIndex);

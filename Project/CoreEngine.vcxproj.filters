@@ -4,6 +4,18 @@
     <ClCompile Include="Engine\Src\Editor\Inspector\InspectorRenderer.cpp">
       <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Command\EditorCommandStack.cpp">
+      <Filter>Engine\Src\Editor\Command</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Panel\EditorPanelRegistry.cpp">
+      <Filter>Engine\Src\Editor\Panel</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Panel\EditorPanelStateSection.cpp">
+      <Filter>Engine\Src\Editor\Panel</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Reflection\PropertyValue.cpp">
+      <Filter>Engine\Src\Reflection</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Reflection\PropertySerializer.cpp">
       <Filter>Engine\Src\Reflection</Filter>
     </ClCompile>
@@ -1532,6 +1544,21 @@
   <ItemGroup>
     <ClInclude Include="Engine\Src\Editor\Inspector\InspectorRenderer.h">
       <Filter>Engine\Src\Editor\Inspector</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Command\EditorCommand.h">
+      <Filter>Engine\Src\Editor\Command</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Command\EditorCommandStack.h">
+      <Filter>Engine\Src\Editor\Command</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Panel\EditorPanelRegistry.h">
+      <Filter>Engine\Src\Editor\Panel</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Panel\EditorPanelStateSection.h">
+      <Filter>Engine\Src\Editor\Panel</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Reflection\PropertyValue.h">
+      <Filter>Engine\Src\Reflection</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Reflection\PropertySerializer.h">
       <Filter>Engine\Src\Reflection</Filter>
@@ -3661,6 +3688,9 @@
     <Filter Include="Engine\Src\Editor\Camera\Widget">
       <UniqueIdentifier>{CF2D6EC9-465F-43A8-BEB2-2A8B7F68F676}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Src\Editor\Command">
+      <UniqueIdentifier>{BB45EF97-C89C-424C-978D-4B7BD0CEB5AA}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Engine\Src\Editor\Environment">
       <UniqueIdentifier>{3E7B1A54-9C2D-4F86-B1E0-5A6D42C8F913}</UniqueIdentifier>
     </Filter>
@@ -3675,6 +3705,9 @@
     </Filter>
     <Filter Include="Engine\Src\Editor\Inspector">
       <UniqueIdentifier>{D91ACD79-3D27-4C04-A842-DDF8B8F6CB73}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Editor\Panel">
+      <UniqueIdentifier>{6938F710-F7A9-40BD-B443-83ED9B008474}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Editor\Scene">
       <UniqueIdentifier>{8EEC7EC7-38CE-4B25-84B4-1C1FD0F26A22}</UniqueIdentifier>

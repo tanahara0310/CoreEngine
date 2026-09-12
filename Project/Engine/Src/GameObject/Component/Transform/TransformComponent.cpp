@@ -98,26 +98,6 @@ namespace CoreEngine
         return changed;
     }
 
-    void TransformComponent::OnInspectorEditCommitted(
-        const Reflection::PropertyDescriptor& property, const void* beforeValue)
-    {
-        GameObject* owner = GetOwner();
-        if (!owner || !beforeValue) {
-            return;
-        }
-
-        // 編集されたものだけ編集前の値に差し替え、残りは現在値を渡す
-        Vector3 translate = transform_.translate;
-        Vector3 rotate = transform_.rotate;
-        Vector3 scale = transform_.scale;
-        const Vector3& before = *static_cast<const Vector3*>(beforeValue);
-        if (property.name == "translate") { translate = before; }
-        else if (property.name == "rotate") { rotate = before; }
-        else if (property.name == "scale") { scale = before; }
-
-        owner->NotifyEditCommitted(translate, rotate, scale, owner->IsActive());
-    }
-
     void TransformComponent::DrawInspectorExtra()
     {
         UI::Separator();
@@ -126,4 +106,11 @@ namespace CoreEngine
         ImGui::Text("ワールド位置: %.3f, %.3f, %.3f", worldPos.x, worldPos.y, worldPos.z);
     }
 #endif // USE_IMGUI
+
+    void TransformComponent::OnPropertyChanged(const Reflection::PropertyDescriptor& property)
+    {
+        (void)property;
+        // ギズモ・当たり判定・描画が同じフレームで新しい値を見られるようにする
+        transform_.TransferMatrix();
+    }
 }

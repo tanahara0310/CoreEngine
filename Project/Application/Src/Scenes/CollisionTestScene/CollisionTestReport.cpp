@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Editor/Panel/EditorPanelRegistry.h"
 #include "CollisionTestReport.h"
 
 #include "Utility/Logger/Logger.h"
@@ -107,17 +108,14 @@ namespace CollisionTest
             return;
         }
 
-        auto* debug = engine->GetDebugSubsystem();
-        auto* gameDebugUI = debug ? debug->GetGameDebugUI() : nullptr;
-        if (!gameDebugUI) {
-            return;
-        }
-
         // ドロワーは何もキャプチャしない（シングルトンを読むだけ）。
-        // GameDebugUI に App Editor の登録解除 API が無いため、シーンの this を
-        // キャプチャするとシーン破棄後にダングリングする。
-        gameDebugUI->RegisterAppEditor("Collision Test", [] {
-            Report::Get().Draw();
+        // 解除しないまま登録しっぱなしにするので、シーンの this をキャプチャすると
+        // シーン破棄後にダングリングする。
+        CoreEngine::Editor::EditorPanelRegistry::Get().Register({
+            .id = "Collision Test",
+            .placement = CoreEngine::Editor::PanelPlacement::InspectorTab,
+            .group = CoreEngine::Editor::PanelGroup::Application,
+            .draw = [] { Report::Get().Draw(); },
             });
 
         registered = true;

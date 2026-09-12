@@ -2,6 +2,7 @@
 #ifdef USE_IMGUI
 
 #include "UndoRedoHistory.h"
+#include "Editor/Command/EditorCommandStack.h"
 #include "GameObject/GameObjectManager.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/Model/DynamicModelObject.h"
@@ -10,18 +11,10 @@
 #include "GameObject/Component/Transform/ITransformSource.h"
 #include "Utility/Logger/Logger.h"
 
+#include <memory>
+
 namespace CoreEngine
 {
-    // ===== スタックへの共通追加処理 =====
-
-    void UndoRedoHistory::PushToStack(std::vector<HistoryEntry>& stack, HistoryEntry entry)
-    {
-        stack.push_back(std::move(entry));
-        if (static_cast<int>(stack.size()) > kMaxSteps) {
-            stack.erase(stack.begin());
-        }
-    }
-
     // ===== トランスフォーム変更の記録 =====
 
     void UndoRedoHistory::Push(const TransformRecord& record)
@@ -37,113 +30,78 @@ namespace CoreEngine
             return;
         }
 
-        // 新しい操作で分岐するので Redo スタックをクリア
-        redoStack_.clear();
-        PushToStack(undoStack_, record);
+        Editor::EditorCommandStack::Get().Push(
+            std::make_unique<Editor::FunctionCommand>(
+                record.objectName + " の移動",
+                [this, record] {
+                    ApplyTransform(record.objectName, record.translateBefore,
+                        record.rotateBefore, record.scaleBefore, record.activeBefore);
+                },
+                [this, record] {
+                    ApplyTransform(record.objectName, record.translateAfter,
+                        record.rotateAfter, record.scaleAfter, record.activeAfter);
+                }));
     }
 
     // ===== スポーン操作の記録 =====
 
     void UndoRedoHistory::Push(const ObjectSpawnRecord& record)
     {
-        // 新しい操作で分岐するので Redo スタックをクリア
-        redoStack_.clear();
-        PushToStack(undoStack_, record);
+        Editor::EditorCommandStack::Get().Push(
+            std::make_unique<Editor::FunctionCommand>(
+                record.objectName + " の生成",
+                [this, record] { DestroySpawned(record); },
+                [this, record] { RespawnObject(record); }));
     }
 
-    // ===== Undo =====
+    // ===== Undo / Redo =====
 
     bool UndoRedoHistory::Undo(GameObjectManager* manager)
     {
-        if (undoStack_.empty()) return false;
-
-        HistoryEntry entry = undoStack_.back();
-        undoStack_.pop_back();
-
-        std::visit([&](auto&& e) {
-            using T = std::decay_t<decltype(e)>;
-
-            if constexpr (std::is_same_v<T, TransformRecord>) {
-                // トランスフォームを「変更前」に戻す
-                ApplyTransform(manager, e.objectName,
-                               e.translateBefore, e.rotateBefore,
-                               e.scaleBefore, e.activeBefore);
-
-            } else if constexpr (std::is_same_v<T, ObjectSpawnRecord>) {
-                // 削除前コールバック（ObjectSelector の選択解除など）
-                if (onBeforeDestroy_) {
-                    onBeforeDestroy_(e.objectName);
-                }
-                // スポーンを Undo → 生成されたオブジェクトを削除する
-                manager->DestroyByName(e.objectName);
-                Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
-                    "Undo: オブジェクトを削除しました: {}", e.objectName);
-            }
-        }, entry);
-
-        redoStack_.push_back(std::move(entry));
-        return true;
+        if (manager) { manager_ = manager; }
+        return Editor::EditorCommandStack::Get().Undo();
     }
-
-    // ===== Redo =====
 
     bool UndoRedoHistory::Redo(GameObjectManager* manager)
     {
-        if (redoStack_.empty()) return false;
+        if (manager) { manager_ = manager; }
+        return Editor::EditorCommandStack::Get().Redo();
+    }
 
-        HistoryEntry entry = redoStack_.back();
-        redoStack_.pop_back();
+    bool UndoRedoHistory::CanUndo() const
+    {
+        return Editor::EditorCommandStack::Get().CanUndo();
+    }
 
-        std::visit([&](auto&& e) {
-            using T = std::decay_t<decltype(e)>;
+    bool UndoRedoHistory::CanRedo() const
+    {
+        return Editor::EditorCommandStack::Get().CanRedo();
+    }
 
-            if constexpr (std::is_same_v<T, TransformRecord>) {
-                // トランスフォームを「変更後」に戻す
-                ApplyTransform(manager, e.objectName,
-                               e.translateAfter, e.rotateAfter,
-                               e.scaleAfter, e.activeAfter);
+    int UndoRedoHistory::GetUndoCount() const
+    {
+        return static_cast<int>(Editor::EditorCommandStack::Get().GetUndoCount());
+    }
 
-            } else if constexpr (std::is_same_v<T, ObjectSpawnRecord>) {
-                // スポーンを Redo → 同じオブジェクトを再生成する
-                auto newObj = std::make_unique<DynamicModelObject>();
-                newObj->SetModelPath(e.modelPath);
-                newObj->SetName(e.objectName);
-                DynamicModelObject* raw = manager->AddObject(std::move(newObj));
-                if (raw) {
-                    if (Model* model = raw->GetModel()) {
-                        model->ForEachMaterial([](MaterialInstance* material) {
-                            material->SetLightingEnabled(true);
-                            material->SetNormalMapEnabled(false);
-                        });
-                    }
-                    if (auto* src = raw->GetComponent<ITransformSource>()) {
-                        src->Translate() = e.translate;
-                        src->Rotate()    = e.rotate;
-                        src->Scale()     = e.scale;
-                    }
-                    Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
-                        "Redo: オブジェクトを再生成しました: {}", e.objectName);
-                }
-            }
-        }, entry);
-
-        undoStack_.push_back(std::move(entry));
-        return true;
+    int UndoRedoHistory::GetRedoCount() const
+    {
+        return static_cast<int>(Editor::EditorCommandStack::Get().GetRedoCount());
     }
 
     void UndoRedoHistory::Clear()
     {
-        undoStack_.clear();
-        redoStack_.clear();
+        Editor::EditorCommandStack::Get().Clear();
     }
 
-    void UndoRedoHistory::ApplyTransform(GameObjectManager* manager, const std::string& name,
-                                          const Vector3& translate, const Vector3& rotate,
-                                          const Vector3& scale, bool active)
-    {
-        if (!manager) return;
+    // ===== 実際の適用 =====
 
-        for (const auto& obj : manager->GetAllObjects()) {
+    void UndoRedoHistory::ApplyTransform(const std::string& name,
+                                         const Vector3& translate, const Vector3& rotate,
+                                         const Vector3& scale, bool active) const
+    {
+        if (!manager_) return;
+
+        for (const auto& obj : manager_->GetAllObjects()) {
             if (obj && obj->GetName() == name) {
                 if (auto* src = obj->GetComponent<ITransformSource>()) {
                     src->Translate() = translate;
@@ -154,6 +112,44 @@ namespace CoreEngine
                 break;
             }
         }
+    }
+
+    void UndoRedoHistory::DestroySpawned(const ObjectSpawnRecord& record) const
+    {
+        if (!manager_) return;
+
+        // 削除前コールバック（ObjectSelector の選択解除など）
+        if (onBeforeDestroy_) {
+            onBeforeDestroy_(record.objectName);
+        }
+        manager_->DestroyByName(record.objectName);
+        Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
+            "Undo: オブジェクトを削除しました: {}", record.objectName);
+    }
+
+    void UndoRedoHistory::RespawnObject(const ObjectSpawnRecord& record) const
+    {
+        if (!manager_) return;
+
+        auto newObj = std::make_unique<DynamicModelObject>();
+        newObj->SetModelPath(record.modelPath);
+        newObj->SetName(record.objectName);
+        DynamicModelObject* raw = manager_->AddObject(std::move(newObj));
+        if (!raw) return;
+
+        if (Model* model = raw->GetModel()) {
+            model->ForEachMaterial([](MaterialInstance* material) {
+                material->SetLightingEnabled(true);
+                material->SetNormalMapEnabled(false);
+            });
+        }
+        if (auto* src = raw->GetComponent<ITransformSource>()) {
+            src->Translate() = record.translate;
+            src->Rotate()    = record.rotate;
+            src->Scale()     = record.scale;
+        }
+        Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
+            "Redo: オブジェクトを再生成しました: {}", record.objectName);
     }
 }
 

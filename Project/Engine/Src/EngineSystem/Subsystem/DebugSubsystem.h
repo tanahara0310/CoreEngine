@@ -3,6 +3,7 @@
 #ifdef USE_IMGUI
 
 #include <memory>
+#include "Editor/Panel/EditorPanelStateSection.h"
 #include <functional>
 
 #include "IEngineSubsystem.h"
@@ -124,6 +125,9 @@ namespace CoreEngine
         // 「個人の作業状態（d. → Saved/）」の 2 パートに分かれる
         std::unique_ptr<CVarSettingsSection> cvarConfigSection_;
         std::unique_ptr<CVarSettingsSection> cvarStateSection_;
+
+        // 開いているパネルを次の起動へ持ち越す
+        std::unique_ptr<Editor::EditorPanelStateSection> panelStateSection_;
     };
 }
 

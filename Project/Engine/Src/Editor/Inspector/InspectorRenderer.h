@@ -1,8 +1,7 @@
 #pragma once
 
-#ifdef USE_IMGUI
-
 #include <functional>
+#include <string>
 
 namespace CoreEngine::Reflection
 {
@@ -12,23 +11,36 @@ namespace CoreEngine::Reflection
 
 namespace CoreEngine
 {
-    /// @brief TypeDescriptor からインスペクタの中身を組み立てる
+    /// @brief 型記述子からインスペクタの UI を組み立てる
     namespace InspectorRenderer
     {
-        /// @brief 編集が確定したときの通知（ドラッグを離した 1 回だけ）
-        /// @param 第 2 引数は編集前の値へのポインタ
-        using EditCommitted =
-            std::function<void(const Reflection::PropertyDescriptor&, const void*)>;
+        /// @brief 描画のついでに必要になる情報
+        struct DrawContext
+        {
+            /// @brief 履歴に出す名前（空なら型の表示名を使う）
+            std::string label;
 
-        /// @brief 全プロパティの編集 UI を描く
-        /// @param onCommitted 編集確定の通知先（省略可）。Undo はここから積む
+            /// @brief 値を持っている実体（コンポーネントなど）
+            /// @note 破棄時に `EditorCommandStack::RemoveCommandsReferencing` へ渡すと、
+            ///       解放済みメモリを触る Undo が履歴から消える。
+            const void* owner = nullptr;
+
+            /// @brief 値が書き換わった直後の通知（派生データの再計算に使う）
+            /// @note 編集時だけでなく Undo / Redo の適用時にも呼ばれる。
+            std::function<void(const Reflection::PropertyDescriptor&)> onChanged;
+        };
+
+        /// @brief 記述子のプロパティを順に描く
+        /// @param type 型記述子
+        /// @param instance 記述子が想定する型の先頭アドレス
+        /// @param context 履歴名・所有者・変更通知
         /// @return 値が変更されたら true
+        /// @note 編集が確定（ドラッグを離した瞬間）したら `EditorCommandStack` へ 1 件積む。
+        ///       呼び出し側が Undo のために書くコードは無い。
         bool Draw(const Reflection::TypeDescriptor& type, void* instance,
-                  const EditCommitted& onCommitted = {});
+                  const DrawContext& context = {});
 
-        /// @brief 新経路を使うか（CVar d.Editor.UseReflectionInspector）
+        /// @brief 記述子からインスペクタを組み立てるか（CVar のトグル）
         bool IsEnabled();
     }
 }
-
-#endif // USE_IMGUI

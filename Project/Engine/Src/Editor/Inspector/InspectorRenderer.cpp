@@ -3,17 +3,82 @@
 
 #ifdef USE_IMGUI
 
+#include "Editor/Command/EditorCommandStack.h"
 #include "Editor/ImGui/ImGuiAll.h"
+#include "Reflection/PropertyValue.h"
 #include "Reflection/ReflectionToggle.h"
 #include "Reflection/TypeDescriptor.h"
 
 #include <cstring>
+#include <memory>
+#include <utility>
 #include <vector>
 
 namespace CoreEngine
 {
     namespace
     {
+        /// @brief 記述子経由で編集した 1 プロパティを元に戻すコマンド
+        class PropertyEditCommand final : public Editor::IEditorCommand
+        {
+        public:
+            using Changed = std::function<void(const Reflection::PropertyDescriptor&)>;
+
+            PropertyEditCommand(std::string label, const void* owner, void* instance,
+                                const Reflection::PropertyDescriptor* property,
+                                Reflection::PropertyValue before, Changed onChanged)
+                : label_(std::move(label)), owner_(owner), instance_(instance),
+                  property_(property), before_(std::move(before)), onChanged_(std::move(onChanged)) {}
+
+            void Undo() override
+            {
+                // 積んだ時点では編集後の値が確定していないので、最初の Undo で控える
+                if (!hasAfter_) {
+                    if (const void* current = CurrentValue()) {
+                        after_.CopyFrom(property_->type, current);
+                        hasAfter_ = true;
+                    }
+                }
+                Apply(before_);
+            }
+
+            void Redo() override
+            {
+                if (hasAfter_) { Apply(after_); }
+            }
+
+            std::string GetLabel() const override { return label_; }
+
+            bool References(const void* target) const override
+            {
+                return target != nullptr && (target == owner_ || target == instance_);
+            }
+
+        private:
+            void* CurrentValue() const
+            {
+                return (property_ && instance_) ? property_->ValuePtr(instance_) : nullptr;
+            }
+
+            void Apply(const Reflection::PropertyValue& value)
+            {
+                void* destination = CurrentValue();
+                if (!destination || !value.ApplyTo(property_->type, destination)) {
+                    return;
+                }
+                if (onChanged_) { onChanged_(*property_); }
+            }
+
+            std::string label_;
+            const void* owner_ = nullptr;
+            void*       instance_ = nullptr;
+            const Reflection::PropertyDescriptor* property_ = nullptr;
+            Reflection::PropertyValue before_;
+            Reflection::PropertyValue after_;
+            bool    hasAfter_ = false;
+            Changed onChanged_;
+        };
+
         /// @brief 範囲指定からドラッグ速度を決める
         float ResolveSpeed(const Reflection::PropertyRange& range, float fallback)
         {
@@ -117,11 +182,14 @@ namespace CoreEngine
     }
 
     bool InspectorRenderer::Draw(const Reflection::TypeDescriptor& type, void* instance,
-                                 const EditCommitted& onCommitted)
+                                 const DrawContext& context)
     {
         if (!instance) {
             return false;
         }
+
+        const char* fallbackLabel = type.displayName && type.displayName[0] ? type.displayName : type.name;
+        const std::string ownerLabel = context.label.empty() ? fallbackLabel : context.label;
 
         bool changed = false;
         for (const auto& p : type.properties) {
@@ -138,22 +206,28 @@ namespace CoreEngine
                 continue;
             }
 
-            // ドラッグ開始時の値を控え、離した瞬間に 1 件だけ履歴へ積む
-            static thread_local std::vector<uint8_t> editSnapshot;
+            // ドラッグ開始時の値を控え、離した瞬間に 1 件だけ履歴へ積む。
+            // ImGui のアクティブ項目は同時に 1 つなので控えも 1 つでよい
+            static Reflection::PropertyValue editSnapshot;
 
             ImGui::PushID(p.name.c_str());
             const bool edited = DrawWidget(p, value);
-            if (ImGui::IsItemActivated() && onCommitted) {
-                const size_t size = Reflection::SizeOfPropertyType(p.type);
-                editSnapshot.assign(size, 0);
-                std::memcpy(editSnapshot.data(), value, size);
+            if (ImGui::IsItemActivated()) {
+                editSnapshot.CopyFrom(p.type, value);
             }
             if (edited) {
                 changed = true;
+                if (context.onChanged) { context.onChanged(p); }
             }
-            if (ImGui::IsItemDeactivatedAfterEdit() && onCommitted && !editSnapshot.empty()) {
-                onCommitted(p, editSnapshot.data());
-                editSnapshot.clear();
+            if (ImGui::IsItemDeactivatedAfterEdit() && editSnapshot.IsValid()) {
+                // 掴んだだけで値が変わっていないなら履歴を汚さない
+                if (!editSnapshot.Equals(p.type, value)) {
+                    Editor::EditorCommandStack::Get().Push(
+                        std::make_unique<PropertyEditCommand>(
+                            ownerLabel + " の " + p.displayName,
+                            context.owner, instance, &p, editSnapshot, context.onChanged));
+                }
+                editSnapshot.Reset();
             }
             ImGui::PopID();
         }
