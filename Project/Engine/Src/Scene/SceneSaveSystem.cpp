@@ -210,7 +210,7 @@ namespace CoreEngine
         const PendingObject& pending = pendingObjects_[loadIndex_++];
         json data = JsonManager::GetInstance().LoadJson(pending.path);
         if (!data.is_null() && pending.object) {
-            pending.object->OnDeserialize(data);
+            pending.object->Deserialize(data);
         }
 
         return loadIndex_ >= pendingObjects_.size();
@@ -319,7 +319,7 @@ namespace CoreEngine
             const std::string& key = obj->GetSerializeKey();
             if (key.empty()) continue;
 
-            json data = obj->OnSerialize();
+            json data = obj->Serialize();
             if (!data.empty()) {
                 // 次回起動時にコード無しで復元できるよう型名を残す
                 if (const char* typeName = obj->GetSerializeTypeName()) {
@@ -350,7 +350,7 @@ namespace CoreEngine
         jm.CreateJsonDirectory(GetSceneDir());
 
         // オブジェクトデータを個別ファイルに保存
-        json data = obj->OnSerialize();
+        json data = obj->Serialize();
         if (!data.empty()) {
             // 次回起動時にコード無しで復元できるよう型名を残す
             if (const char* typeName = obj->GetSerializeTypeName()) {

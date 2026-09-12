@@ -2,8 +2,13 @@
 #include "ComponentHost.h"
 
 #include "Editor/Command/EditorCommandStack.h"
+#include "Reflection/PropertySerializer.h"
+#include "Reflection/TypeDescriptor.h"
 
 #include <algorithm>
+#include <cstddef>
+#include <string>
+#include <unordered_map>
 
 namespace CoreEngine
 {
@@ -130,6 +135,72 @@ namespace CoreEngine
         for (auto& component : components_) {
             if (component) {
                 component->OnDestroy();
+            }
+        }
+    }
+
+    // ===== シリアライズ =====
+
+    json ComponentHost::SerializeComponents() const
+    {
+        json components = json::array();
+        for (const auto& component : components_) {
+            if (!component) { continue; }
+
+            json parameters;
+            const Reflection::TypeDescriptor* descriptor = component->GetTypeDescriptor();
+            if (descriptor) {
+                // 記述子を持つ型は宣言 1 箇所から値を取る
+                IComponent* mutableComponent = const_cast<IComponent*>(component.get());
+                Reflection::PropertySerializer::Save(
+                    *descriptor, mutableComponent->GetReflectionInstance(), parameters);
+            } else {
+                parameters = component->OnSerialize();
+            }
+
+            json entry = {
+                { "type", component->GetTypeName() },
+                { "enabled", component->IsEnabled() },
+            };
+            if (!parameters.empty()) {
+                entry["parameters"] = std::move(parameters);
+            }
+            components.push_back(std::move(entry));
+        }
+        return components;
+    }
+
+    void ComponentHost::DeserializeComponents(const json& components)
+    {
+        if (!components.is_array()) { return; }
+
+        // 同じ型を複数持つ場合に備え、型ごとに「次に対応づける位置」を持って前へ進める
+        std::unordered_map<std::string, std::size_t> nextIndex;
+        for (const auto& entry : components) {
+            if (!entry.is_object() || !entry.contains("type") || !entry["type"].is_string()) {
+                continue;
+            }
+            const std::string type = entry["type"].get<std::string>();
+
+            std::size_t& searchIndex = nextIndex[type];
+            for (; searchIndex < components_.size(); ++searchIndex) {
+                IComponent* component = components_[searchIndex].get();
+                if (!component || type != component->GetTypeName()) { continue; }
+
+                if (entry.contains("enabled") && entry["enabled"].is_boolean()) {
+                    component->SetEnabled(entry["enabled"].get<bool>());
+                }
+                if (entry.contains("parameters") && entry["parameters"].is_object()) {
+                    const json& parameters = entry["parameters"];
+                    if (const Reflection::TypeDescriptor* descriptor = component->GetTypeDescriptor()) {
+                        Reflection::PropertySerializer::Load(
+                            *descriptor, component->GetReflectionInstance(), parameters);
+                    } else {
+                        component->OnDeserialize(parameters);
+                    }
+                }
+                ++searchIndex;
+                break;
             }
         }
     }

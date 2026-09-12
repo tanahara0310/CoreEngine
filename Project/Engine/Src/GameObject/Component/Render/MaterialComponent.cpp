@@ -7,6 +7,8 @@
 
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 
+REFLECT_REGISTER(CoreEngine::MaterialComponent)
+
 namespace CoreEngine
 {
     void MaterialComponent::Start()
@@ -105,6 +107,73 @@ namespace CoreEngine
         }
     }
 
+    void MaterialComponent::SetMetallic(float value)
+    {
+        if (!ForEachMaterial([value](MaterialInstance* mat) { mat->SetMetallic(value); })) {
+            SetPBR(value, GetRoughness(), GetOcclusionStrength());
+        }
+    }
+
+    void MaterialComponent::SetRoughness(float value)
+    {
+        if (!ForEachMaterial([value](MaterialInstance* mat) { mat->SetRoughness(value); })) {
+            SetPBR(GetMetallic(), value, GetOcclusionStrength());
+        }
+    }
+
+    void MaterialComponent::SetOcclusionStrength(float value)
+    {
+        if (!ForEachMaterial([value](MaterialInstance* mat) { mat->SetOcclusionStrength(value); })) {
+            SetPBR(GetMetallic(), GetRoughness(), value);
+        }
+    }
+
+    // ===== 取得 =====
+    // 実体（MaterialInstance）が出来るのはメッシュを読み終えた後なので、
+    // それまでは Start で流し込む控えを返す。どちらも無ければエンジン既定値
+
+    Vector4 MaterialComponent::GetColor() const
+    {
+        if (const MaterialInstance* mat = GetMaterial()) { return mat->GetColor(); }
+        return pendingColor_.value_or(Vector4{ 1.0f, 1.0f, 1.0f, 1.0f });
+    }
+
+    float MaterialComponent::GetMetallic() const
+    {
+        if (const MaterialInstance* mat = GetMaterial()) { return mat->GetMetallic(); }
+        return pendingPBR_ ? pendingPBR_->metallic : 0.0f;
+    }
+
+    float MaterialComponent::GetRoughness() const
+    {
+        if (const MaterialInstance* mat = GetMaterial()) { return mat->GetRoughness(); }
+        return pendingPBR_ ? pendingPBR_->roughness : 1.0f;
+    }
+
+    float MaterialComponent::GetOcclusionStrength() const
+    {
+        if (const MaterialInstance* mat = GetMaterial()) { return mat->GetOcclusionStrength(); }
+        return pendingPBR_ ? pendingPBR_->occlusion : 1.0f;
+    }
+
+    float MaterialComponent::GetIBLIntensity() const
+    {
+        if (const MaterialInstance* mat = GetMaterial()) { return mat->GetIBLIntensity(); }
+        return pendingIBL_.value_or(1.0f);
+    }
+
+    bool MaterialComponent::IsLightingEnabled() const
+    {
+        if (const MaterialInstance* mat = GetMaterial()) { return mat->IsLightingEnabled(); }
+        return pendingLighting_.value_or(true);
+    }
+
+    bool MaterialComponent::IsNormalMapEnabled() const
+    {
+        if (const MaterialInstance* mat = GetMaterial()) { return mat->IsNormalMapEnabled(); }
+        return pendingNormalMap_.value_or(false);
+    }
+
 #ifdef USE_IMGUI
     bool MaterialComponent::DrawInspector()
     {
@@ -159,6 +228,13 @@ namespace CoreEngine
         }
 
         return changed;
+    }
+
+    void MaterialComponent::DrawInspectorExtra()
+    {
+        if (!GetMaterial()) {
+            UI::Hint("マテリアル未生成（メッシュの読み込み待ち）。編集した値は生成時に反映される");
+        }
     }
 #endif // USE_IMGUI
 }

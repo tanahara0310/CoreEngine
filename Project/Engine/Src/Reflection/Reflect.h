@@ -91,6 +91,15 @@ namespace CoreEngine::Reflection
         d.name = #TypeName;                                                            \
         d.displayName = DisplayNameLiteral;
 
+/// @brief メンバ式から読み書きの口を組み立てる（他のマクロが使う）
+#define REFLECT_DETAIL_MEMBER_ACCESS(MemberExpr)                                       \
+            p.get = [](const void* o, void* out) {                                     \
+                *static_cast<ValueType*>(out) = static_cast<const Self*>(o)->MemberExpr; \
+            };                                                                         \
+            p.set = [](void* o, const void* in) {                                      \
+                static_cast<Self*>(o)->MemberExpr = *static_cast<const ValueType*>(in); \
+            };
+
 /// @brief 編集できるプロパティを足す
 /// @param MemberExpr インスタンスからの式（`value_` や `transform_.translate`）
 /// @param ... 省略可。`Speed(0.05f)` または `Range(0.0f, 1.0f)`
@@ -102,8 +111,31 @@ namespace CoreEngine::Reflection
             p.name = ::CoreEngine::Reflection::DerivePropertyName(#MemberExpr);        \
             p.displayName = DisplayNameLiteral;                                        \
             p.type = ::CoreEngine::Reflection::PropertyTypeOf<ValueType>::kValue;       \
-            p.resolve = [](void* o) -> void* {                                         \
-                return &(static_cast<Self*>(o)->MemberExpr);                           \
+            REFLECT_DETAIL_MEMBER_ACCESS(MemberExpr)                                   \
+            __VA_ARGS__;                                                               \
+            d.properties.push_back(p);                                                 \
+        }
+
+/// @brief getter / setter で表すプロパティを足す
+/// @param NameLiteral 保存キー（メンバ式が無いので明示する）
+/// @param GetterName 値を返すメンバ関数（引数なし）
+/// @param SetterName 値を受け取るメンバ関数（引数 1 つ）
+/// @param ... 省略可。`Speed(0.05f)` または `Range(0.0f, 1.0f)`
+/// @note 値を自分で持たない型のためのもの。`MaterialComponent` の色のように
+///       実体が別クラス側にあるものは、メンバ式では表せない。
+#define REFLECT_ACCESSOR(NameLiteral, DisplayNameLiteral, GetterName, SetterName, ...) \
+        {                                                                              \
+            using ValueType =                                                          \
+                ::std::decay_t<decltype(::std::declval<const Self&>().GetterName())>;  \
+            ::CoreEngine::Reflection::PropertyDescriptor p;                            \
+            p.name = NameLiteral;                                                      \
+            p.displayName = DisplayNameLiteral;                                        \
+            p.type = ::CoreEngine::Reflection::PropertyTypeOf<ValueType>::kValue;       \
+            p.get = [](const void* o, void* out) {                                     \
+                *static_cast<ValueType*>(out) = static_cast<const Self*>(o)->GetterName(); \
+            };                                                                         \
+            p.set = [](void* o, const void* in) {                                      \
+                static_cast<Self*>(o)->SetterName(*static_cast<const ValueType*>(in)); \
             };                                                                         \
             __VA_ARGS__;                                                               \
             d.properties.push_back(p);                                                 \
@@ -118,9 +150,26 @@ namespace CoreEngine::Reflection
             p.name = ::CoreEngine::Reflection::DerivePropertyName(#MemberExpr);        \
             p.displayName = DisplayNameLiteral;                                        \
             p.type = ::CoreEngine::Reflection::PropertyTypeOf<ValueType>::kValue;       \
-            p.resolve = [](void* o) -> void* {                                         \
-                return &(static_cast<Self*>(o)->MemberExpr);                           \
+            REFLECT_DETAIL_MEMBER_ACCESS(MemberExpr)                                   \
+            p.flags = ::CoreEngine::Reflection::PropertyFlags::ReadOnly;                \
+            d.properties.push_back(p);                                                 \
+        }
+
+/// @brief 読み取り専用の派生値を足す（メンバでなく計算結果）
+/// @param NameLiteral 識別子
+/// @param GetterName 値を返すメンバ関数（引数なし）
+#define REFLECT_READONLY_ACCESSOR(NameLiteral, DisplayNameLiteral, GetterName)         \
+        {                                                                              \
+            using ValueType =                                                          \
+                ::std::decay_t<decltype(::std::declval<const Self&>().GetterName())>;  \
+            ::CoreEngine::Reflection::PropertyDescriptor p;                            \
+            p.name = NameLiteral;                                                      \
+            p.displayName = DisplayNameLiteral;                                        \
+            p.type = ::CoreEngine::Reflection::PropertyTypeOf<ValueType>::kValue;       \
+            p.get = [](const void* o, void* out) {                                     \
+                *static_cast<ValueType*>(out) = static_cast<const Self*>(o)->GetterName(); \
             };                                                                         \
+            p.set = [](void*, const void*) {};                                         \
             p.flags = ::CoreEngine::Reflection::PropertyFlags::ReadOnly;                \
             d.properties.push_back(p);                                                 \
         }

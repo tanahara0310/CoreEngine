@@ -16,6 +16,18 @@ namespace CoreEngine::Reflection
         /// @brief インスタンス上の値をコピーして持つ
         void CopyFrom(PropertyType type, const void* source);
 
+        /// @brief 記述子の getter で読み出して持つ
+        void LoadFrom(const PropertyDescriptor& property, const void* instance);
+
+        /// @brief 記述子の setter で書き戻す
+        /// @return 型が一致して書き戻せたら true
+        bool StoreTo(const PropertyDescriptor& property, void* instance) const;
+
+        /// @brief 持っている値を直接編集するためのポインタ
+        /// @return 型が一致しなければ nullptr。ImGui のウィジェットへ渡す用
+        void* Data(PropertyType type);
+        const void* Data(PropertyType type) const;
+
         /// @brief 持っている値をインスタンスへ書き戻す
         /// @return 型が一致して書き戻せたら true
         bool ApplyTo(PropertyType type, void* destination) const;

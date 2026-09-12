@@ -71,22 +71,31 @@ namespace CoreEngine::Reflection
     /// @brief 1 つのプロパティの記述
     struct PropertyDescriptor
     {
-        /// @brief インスタンスの先頭から値へのポインタを求める
-        using Resolver = void* (*)(void*);
+        /// @brief 値を読み出す
+        /// @param out `type` に対応する型の実体。呼び出し側が用意する
+        /// @note 値のアドレスを返す形にしないのは、値を自分で持たない型を表せないため。
+        ///       `MaterialComponent` の色は `MaterialInstance` 側にあり、
+        ///       `MeshRendererComponent` のブレンドモードは Get/Set 越しにしか触れない。
+        using Getter = void (*)(const void* instance, void* out);
+
+        /// @brief 値を書き込む
+        /// @param in `type` に対応する型の実体
+        using Setter = void (*)(void* instance, const void* in);
 
         /// @brief 保存キー兼 UI の識別子（既定はメンバ式の末尾トークン）
         std::string   name;
         const char*   displayName = "";
         PropertyType  type = PropertyType::Float;
-        Resolver      resolve = nullptr;
+        Getter        get = nullptr;
+        Setter        set = nullptr;
         PropertyRange range{};
         PropertyFlags flags = PropertyFlags::None;
 
-        void* ValuePtr(void* instance) const { return resolve ? resolve(instance) : nullptr; }
-        const void* ValuePtr(const void* instance) const
-        {
-            return resolve ? resolve(const_cast<void*>(instance)) : nullptr;
-        }
+        /// @brief 読み書きの口が揃っているか
+        bool IsValid() const { return get != nullptr && set != nullptr; }
+
+        void Get(const void* instance, void* out) const { if (get) { get(instance, out); } }
+        void Set(void* instance, const void* in) const { if (set) { set(instance, in); } }
 
         bool IsEditable() const { return !HasFlag(flags, PropertyFlags::ReadOnly); }
         bool IsVisible()  const { return !HasFlag(flags, PropertyFlags::Hidden); }

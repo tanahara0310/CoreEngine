@@ -3,6 +3,7 @@
 #include "GameObject/Component/Core/IComponent.h"
 #include "Graphics/Material/MaterialInstance.h"
 #include "Math/Vector/Vector4.h"
+#include "Reflection/Reflect.h"
 
 namespace CoreEngine
 {
@@ -14,6 +15,23 @@ class MeshRendererComponent;
 class MaterialComponent : public IComponent {
 public:
     const char* GetTypeName() const override { return "Material"; }
+
+    // 値の実体は MaterialInstance 側にあり、このクラスはメンバとして持たない。
+    // だから記述子はメンバ式ではなく getter / setter で組み立てる
+    REFLECT_BEGIN(MaterialComponent, "マテリアル")
+        REFLECT_ACCESSOR("color", "ベースカラー", GetColor, SetColor,
+            p.type = ::CoreEngine::Reflection::PropertyType::Color)
+        REFLECT_ACCESSOR("metallic", "メタリック", GetMetallic, SetMetallic,
+            p.range = Range(0.0f, 1.0f))
+        REFLECT_ACCESSOR("roughness", "ラフネス", GetRoughness, SetRoughness,
+            p.range = Range(0.0f, 1.0f))
+        REFLECT_ACCESSOR("occlusionStrength", "オクルージョン", GetOcclusionStrength,
+            SetOcclusionStrength, p.range = Range(0.0f, 1.0f))
+        REFLECT_ACCESSOR("iblIntensity", "IBL 強度", GetIBLIntensity, SetIBLIntensity,
+            p.range = Range(0.0f, 2.0f))
+        REFLECT_ACCESSOR("lighting", "ライティング", IsLightingEnabled, SetLightingEnabled)
+        REFLECT_ACCESSOR("normalMap", "法線マップ", IsNormalMapEnabled, SetNormalMapEnabled)
+    REFLECT_END()
 
 #ifdef USE_IMGUI
     const char* GetInspectorName() const override { return "マテリアル"; }
@@ -28,6 +46,9 @@ public:
     /// @brief 色・PBR ファクター・各種フラグの編集 UI
     /// @return 値が変更されたら true
     bool DrawInspector() override;
+
+    /// @brief メッシュ待ちで実体が無いことを添える
+    void DrawInspectorExtra() override;
 #endif
 
     /// @brief 兄弟のメッシュ描画を捕まえ、遅延適用していた値を反映する
@@ -53,10 +74,25 @@ public:
     /// @brief ライティングの有効/無効
     void SetLightingEnabled(bool enable);
 
+    /// @brief PBR ファクターを 1 つずつ設定する（記述子から使う）
+    void SetMetallic(float value);
+    void SetRoughness(float value);
+    void SetOcclusionStrength(float value);
+
     // ===== 取得 =====
 
     /// @brief 代表マテリアル（スロット 0）。モデル未ロードなら nullptr
     MaterialInstance* GetMaterial() const;
+
+    // 実体があればそこから読み、メッシュ待ちの間は Start で反映する控えを返す。
+    // 控えも無い場合はエンジン既定値（MaterialInstance の初期値と同じ）
+    Vector4 GetColor() const;
+    float GetMetallic() const;
+    float GetRoughness() const;
+    float GetOcclusionStrength() const;
+    float GetIBLIntensity() const;
+    bool IsLightingEnabled() const;
+    bool IsNormalMapEnabled() const;
 
 private:
     /// @brief 全マテリアルスロットへ関数を適用する（未ロードなら false）

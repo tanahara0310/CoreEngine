@@ -45,7 +45,6 @@
 #include "GameObjects/Effect/BananaHarvestEffect.h"
 #include "GameObjects/Effect/RockBreakDebris.h"
 #include "GameObjects/Effect/StationSlowdownEffect.h"
-#include "GameObjects/GameSceneObject.h"
 #include "UI/UIText.h"
 #include "Utility/JsonManager/JsonManager.h"
 
@@ -357,13 +356,13 @@ void GameScene::GameScene::OnInitialize() {
 
     // ========== オブジェクトの生成 ==========
     //　ゲームマスターの追加
-    auto* gameManager = CreateObject<GameSceneObject>("GameManager");
+    auto* gameManager = CreateObject("GameManager");
     auto* gameManagerComponent =
         gameManager->AddComponent<GameComponents::GameManagerComponent>(sceneManager_);
     gameManager->AddComponent<GameComponents::GameSettingsComponent>();
 
     // 床のオブジェクトプールを生成
-    auto* groundPoolManager = CreateObject<GameSceneObject>("GroundPoolManager");
+    auto* groundPoolManager = CreateObject("GroundPoolManager");
     groundPoolManager->AddComponent<CoreEngine::TransformComponent>();
     groundPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
         "ground.obj",
@@ -371,69 +370,69 @@ void GameScene::GameScene::OnInitialize() {
     // 床の下へ吊るす柱（スカート）のオブジェクトプールを生成。
     // 同じ ground.obj を使うが、1マスにつき床とスカートの2つを同時に出すので
     // プールは分ける。必要数は床と同じなので容量も同じ CVar から取る。
-    auto* groundSkirtPoolManager = CreateObject<GameSceneObject>("GroundSkirtPoolManager");
+    auto* groundSkirtPoolManager = CreateObject("GroundSkirtPoolManager");
     groundSkirtPoolManager->AddComponent<CoreEngine::TransformComponent>();
     groundSkirtPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
         "ground.obj",
         ToUInt(GameComponents::GameSettings::GroundPoolCapacity.Get(), 1), false);
     // 水場は WaterWaveViewComponent が板を並べて波打たせる（この下の方で生成する）。
     // 駅のオブジェクトプールを生成
-    auto* stationPoolManager = CreateObject<GameSceneObject>("StationPoolManager");
+    auto* stationPoolManager = CreateObject("StationPoolManager");
     stationPoolManager->AddComponent<CoreEngine::TransformComponent>();
     stationPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
         "station.obj",
         ToUInt(GameComponents::GameSettings::StationPoolCapacity.Get(), 1), true);
     // 岩のオブジェクトプールを生成
-    auto* rockPoolManager = CreateObject<GameSceneObject>("RockPoolManager");
+    auto* rockPoolManager = CreateObject("RockPoolManager");
     rockPoolManager->AddComponent<CoreEngine::TransformComponent>();
     rockPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
         "rock.obj",
         ToUInt(GameComponents::GameSettings::RockPoolCapacity.Get(), 1), true);
     // レールを敷けない空白マスへ立てる硬い岩のオブジェクトプールを生成
-    auto* hardRockPoolManager = CreateObject<GameSceneObject>("HardRockPoolManager");
+    auto* hardRockPoolManager = CreateObject("HardRockPoolManager");
     hardRockPoolManager->AddComponent<CoreEngine::TransformComponent>();
     hardRockPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
         "hard_rock.obj",
         ToUInt(GameComponents::GameSettings::HardRockPoolCapacity.Get(), 1), true);
     // バナナの木のオブジェクトプールを生成（仮モデルとしてbox.objを使用）
-    auto* bananaTreePoolManager = CreateObject<GameSceneObject>("BananaTreePoolManager");
+    auto* bananaTreePoolManager = CreateObject("BananaTreePoolManager");
     bananaTreePoolManager->AddComponent<CoreEngine::TransformComponent>();
     bananaTreePoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
         "banana_tree.obj",
         ToUInt(GameComponents::GameSettings::BananaTreePoolCapacity.Get(), 1), true);
     // 地面の上に表示する装飾用の草のオブジェクトプールを生成
-    auto* grassPoolManager = CreateObject<GameSceneObject>("GrassPoolManager");
+    auto* grassPoolManager = CreateObject("GrassPoolManager");
     grassPoolManager->AddComponent<CoreEngine::TransformComponent>();
     grassPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
         "grass.obj",
         ToUInt(GameComponents::GameSettings::GrassPoolCapacity.Get(), 1), true);
     // 水上レールの下へ表示する橋のオブジェクトプールを生成
-    auto* bridgePoolManager = CreateObject<GameSceneObject>("BridgePoolManager");
+    auto* bridgePoolManager = CreateObject("BridgePoolManager");
     bridgePoolManager->AddComponent<CoreEngine::TransformComponent>();
     bridgePoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
         "bridge.obj",
         ToUInt(GameComponents::GameSettings::BridgePoolCapacity.Get(), 1), true);
     // レールのオブジェクトプールを生成
-    auto* railPoolManager = CreateObject<GameSceneObject>("RailPoolManager");
+    auto* railPoolManager = CreateObject("RailPoolManager");
     railPoolManager->AddComponent<CoreEngine::TransformComponent>();
     railPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
         "rail.obj",
         ToUInt(GameComponents::GameSettings::RailPoolCapacity.Get(), 1), false);
     // レール左のオブジェクトプールを生成
-    auto* railLeftPoolManager = CreateObject<GameSceneObject>("RailLeftPoolManager");
+    auto* railLeftPoolManager = CreateObject("RailLeftPoolManager");
     railLeftPoolManager->AddComponent<CoreEngine::TransformComponent>();
     railLeftPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
         "rail_l.obj",
         ToUInt(GameComponents::GameSettings::RailLeftPoolCapacity.Get(), 1), false);
     // レール右のオブジェクトプールを生成
-    auto* railRightPoolManager = CreateObject<GameSceneObject>("RailRightPoolManager");
+    auto* railRightPoolManager = CreateObject("RailRightPoolManager");
     railRightPoolManager->AddComponent<CoreEngine::TransformComponent>();
     railRightPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
         "rail_r.obj",
         ToUInt(GameComponents::GameSettings::RailRightPoolCapacity.Get(), 1), false);
 
     // マップを生成するコンポーネントを追加
-    auto* mapGenerator = CreateObject<GameSceneObject>("MapGenerator");
+    auto* mapGenerator = CreateObject("MapGenerator");
     mapGenerator->AddComponent<CoreEngine::TransformComponent>();
     mapGenerator->AddComponent<GameComponents::MapGeneratorComponent>(
         mapSizeZ, initialGenerateMapSizeX, mapSettings);
@@ -444,21 +443,21 @@ void GameScene::GameScene::OnInitialize() {
         gameManagerComponent);
     
     // レールの配置を管理するコンポーネントを追加
-    auto* railPath = CreateObject<GameSceneObject>("RailPath");
+    auto* railPath = CreateObject("RailPath");
     railPath->AddComponent<CoreEngine::TransformComponent>();
     railPath->AddComponent<GameComponents::RailPathComponent>(
         mapSizeZ, initialBuilderPosX, initialBuilderPosZ);
 
     // レールを表示するコンポーネントを追加
-    auto* railView = CreateObject<GameSceneObject>("RailView");
+    auto* railView = CreateObject("RailView");
     railView->AddComponent<CoreEngine::TransformComponent>();
 
     // レールを配置するオブジェクトを生成
-    auto* railBuilder = CreateObject<GameSceneObject>("RailBuilder");
+    auto* railBuilder = CreateObject("RailBuilder");
     railBuilder->AddComponent<CoreEngine::TransformComponent>();
 
     // 列車の移動ロジックを持つオブジェクト。描画とアニメーションは別コンポーネントで追加する。
-    auto* train = CreateObject<GameSceneObject>("Train");
+    auto* train = CreateObject("Train");
     auto* trainTransform = train->AddComponent<CoreEngine::TransformComponent>();
     auto* trainMovement = train->AddComponent<GameComponents::TrainMovementComponent>(
         gridSize, GameComponents::GameSettings::TrainMoveSpeed.Get(),
@@ -472,7 +471,7 @@ void GameScene::GameScene::OnInitialize() {
     train->AddComponent< CoreEngine::MeshRendererComponent>("trolley.obj");
 
     // 岩破壊時に列車から投げる石。アニメーションはゲーム終了演出中も完了させる。
-    auto* rockProjectile = CreateObject<GameSceneObject>("RockProjectile");
+    auto* rockProjectile = CreateObject("RockProjectile");
     rockProjectile->AddComponent<CoreEngine::TransformComponent>();
     rockProjectile->AddComponent<CoreEngine::MeshRendererComponent>("rock.obj");
     auto* rockThrow = rockProjectile->AddComponent<GameComponents::RockThrowComponent>();
@@ -495,7 +494,7 @@ void GameScene::GameScene::OnInitialize() {
         hungerComponent);
 
     // 列車に乗るサル
-    auto* monkey = CreateObject<GameSceneObject>("Monkey");
+    auto* monkey = CreateObject("Monkey");
     auto* monkeyTransform = monkey->AddComponent<CoreEngine::TransformComponent>();
     monkey->AddComponent<CoreEngine::MeshRendererComponent>("monkey.obj");
     monkeyTransform->Get().SetParent(&trainTransform->Get());
@@ -508,7 +507,7 @@ void GameScene::GameScene::OnInitialize() {
     trainMovement->AddMonkey(monkeyTransform, firstMonkeyLaunchTrail);
     hungerComponent->SetMonkeyAddedCallback(
         [this, trainMovement, monkeyTransform](std::size_t monkeyCount) {
-            auto* carriage = CreateObject<GameSceneObject>(
+            auto* carriage = CreateObject(
                 "TrainCarriage_" + std::to_string(monkeyCount));
             if (!carriage) {
                 return;
@@ -522,7 +521,7 @@ void GameScene::GameScene::OnInitialize() {
             trainMovement->AddCarriage(
                 carriageTransform, carriagePop->GetScaleMultiplier());
 
-            auto* addedMonkey = CreateObject<GameSceneObject>(
+            auto* addedMonkey = CreateObject(
                 "Monkey_" + std::to_string(monkeyCount));
             if (!addedMonkey) {
                 return;
@@ -553,7 +552,7 @@ void GameScene::GameScene::OnInitialize() {
     }
 
     // 岩破壊の揺れは静的に鳴らす。ここでは調整用CVarをインスペクタへ出すために付ける。
-    auto* cameraSettings = CreateObject<GameSceneObject>("CameraSettings");
+    auto* cameraSettings = CreateObject("CameraSettings");
     cameraSettings->AddComponent<GameComponents::RockBreakShakeSettingsComponent>();
 
     // 岩が砕けた瞬間に散る破片。揺れと同じく RailBuilder から静的に鳴らす。
@@ -582,7 +581,7 @@ void GameScene::GameScene::OnInitialize() {
         renderWorldDistance);
 
     // マップを描画するオブジェクトを追加
-    auto* mapRenderer = CreateObject<GameSceneObject>("MapRenderer");
+    auto* mapRenderer = CreateObject("MapRenderer");
     mapRenderer->AddComponent<CoreEngine::TransformComponent>();
     auto* mapView = mapRenderer->AddComponent<GameComponents::MapViewComponent>(
         mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
@@ -600,7 +599,7 @@ void GameScene::GameScene::OnInitialize() {
 
     // 水マスを描画するオブジェクトを追加。
     // 地面と同じ「マスごとに1枚」だが、頂点シェーダーで波打たせるためプールではなく専用。
-    auto* waterRenderer = CreateObject<GameSceneObject>("WaterWaveRenderer");
+    auto* waterRenderer = CreateObject("WaterWaveRenderer");
     waterRenderer->AddComponent<CoreEngine::TransformComponent>();
     waterRenderer->AddComponent<GameComponents::WaterWaveViewComponent>(
         mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),

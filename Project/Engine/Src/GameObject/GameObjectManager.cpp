@@ -27,6 +27,9 @@ namespace CoreEngine
             ptr->SetName(baseName + "_" + std::to_string(idx));
         }
 
+        // 保存キーを 1 シーンで一意にする（名前は重複してよい）
+        EnsureUniqueSerializeKey(*ptr);
+
         // オブジェクト固有の初期化を自動実行
         ptr->Initialize();
 
@@ -38,6 +41,28 @@ namespace CoreEngine
         }
 
         return ptr;
+    }
+
+    void GameObjectManager::EnsureUniqueSerializeKey(GameObject& object)
+    {
+        const std::string base = object.GetSerializeKey();
+        if (base.empty()) {
+            return;
+        }
+
+        // 初出はそのまま。既存の保存ファイルとの対応を切らないため
+        auto [entry, inserted] = serializeKeyCounters_.try_emplace(base, 0);
+        if (inserted) {
+            return;
+        }
+
+        std::string candidate;
+        do {
+            candidate = base + "_" + std::to_string(++entry->second);
+        } while (serializeKeyCounters_.find(candidate) != serializeKeyCounters_.end());
+
+        serializeKeyCounters_.emplace(candidate, 0);
+        object.SetSerializeKey(candidate);
     }
 
     void GameObjectManager::UpdateAll() {
