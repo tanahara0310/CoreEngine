@@ -1,6 +1,7 @@
 #pragma once
 
 #include "IComponent.h"
+#include "Utility/Macro/UniqueName.h"
 
 #include <memory>
 #include <string>
@@ -72,9 +73,6 @@ struct AutoRegisterComponent {
 };
 }
 
-#define COMPONENT_REGISTER_DETAIL_CAT2(a, b) a##b
-#define COMPONENT_REGISTER_DETAIL_CAT(a, b) COMPONENT_REGISTER_DETAIL_CAT2(a, b)
-
 /// 対応する .cpp のファイルスコープで COMPONENT_REGISTER(型名) を書くと
 /// `GetTypeName()` が返す綴りでその型を生成できるようになる。
 ///
@@ -85,5 +83,5 @@ struct AutoRegisterComponent {
         #TypeName " は既定コンストラクタを持たないので COMPONENT_REGISTER できない");   \
     namespace {                                                                        \
         const ::CoreEngine::AutoRegisterComponent<TypeName>                            \
-            COMPONENT_REGISTER_DETAIL_CAT(kAutoRegisterComponent_, __LINE__){};        \
+            CORE_UNIQUE_NAME(kAutoRegisterComponent_){};                               \
     }

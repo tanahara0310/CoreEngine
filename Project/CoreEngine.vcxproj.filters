@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="Engine\Src\Editor\Inspector\InspectorRenderer.cpp">
@@ -2946,6 +2946,9 @@
     <ClInclude Include="Engine\Src\Utility\JsonManager\JsonManager.h">
       <Filter>Engine\Src\Utility\JsonManager</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Macro\UniqueName.h">
+      <Filter>Engine\Src\Utility\Macro</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Logger\Logger.h">
       <Filter>Engine\Src\Utility\Logger</Filter>
     </ClInclude>
@@ -4122,6 +4125,9 @@
     </Filter>
     <Filter Include="Engine\Src\Utility\JsonManager">
       <UniqueIdentifier>{DDF59094-F412-4879-A350-D360A6435BCD}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Utility\Macro">
+      <UniqueIdentifier>{a7f3c1e2-5b84-4d19-9c26-3e8f0b7d4a51}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Utility\Logger">
       <UniqueIdentifier>{AE65377C-9875-46C2-ACEB-A5583C82DCD3}</UniqueIdentifier>
