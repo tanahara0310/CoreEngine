@@ -5,9 +5,11 @@
 #include "Editor/ImGui/ImGuiAll.h"
 #endif
 
+#include "GameObject/Component/Core/ComponentFactory.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 
 REFLECT_REGISTER(CoreEngine::MaterialComponent)
+COMPONENT_REGISTER(CoreEngine::MaterialComponent)
 
 namespace CoreEngine
 {

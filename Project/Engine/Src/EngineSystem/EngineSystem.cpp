@@ -58,6 +58,7 @@
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
 
+#include "GameObject/Component/Core/ComponentFactory.h"
 #include "GameObject/GameObject.h"
 #include "Reflection/TypeDescriptor.h"
 #include "Utility/Path/ProjectPaths.h"
@@ -228,6 +229,13 @@ namespace CoreEngine
             Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
                 "TypeRegistry: {} 型 / {} プロパティを登録",
                 registry.GetAll().size(), propertyCount);
+        });
+
+        sequence.Add("コンポーネントファクトリの解決", [] {
+            auto& factory = ComponentFactory::Get();
+            factory.Prime();
+            Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
+                "ComponentFactory: {} 型を登録", factory.GetRegisteredCount());
         });
 
         sequence.Add("GameObject へのエンジン参照", [this] { GameObject::SetEngine(this); });

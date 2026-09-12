@@ -697,6 +697,9 @@
     <ClCompile Include="Engine\Src\Input\InputQuery.cpp">
       <Filter>Engine\Src\Input</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\Core\ComponentFactory.cpp">
+      <Filter>Engine\Src\GameObject\Component\Core</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\Component\Core\ComponentHost.cpp">
       <Filter>Engine\Src\GameObject\Component\Core</Filter>
     </ClCompile>
@@ -2465,6 +2468,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Math\Vector\Vector4.h">
       <Filter>Engine\Src\Math\Vector</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\Core\ComponentFactory.h">
+      <Filter>Engine\Src\GameObject\Component\Core</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Core\ComponentHost.h">
       <Filter>Engine\Src\GameObject\Component\Core</Filter>

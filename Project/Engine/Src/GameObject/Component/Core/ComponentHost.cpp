@@ -1,14 +1,17 @@
 #include "pch.h"
 #include "ComponentHost.h"
 
+#include "ComponentFactory.h"
 #include "Editor/Command/EditorCommandStack.h"
 #include "Reflection/PropertySerializer.h"
 #include "Reflection/TypeDescriptor.h"
+#include "Utility/Logger/Logger.h"
 
 #include <algorithm>
 #include <cstddef>
 #include <string>
 #include <unordered_map>
+#include <utility>
 
 namespace CoreEngine
 {
@@ -36,6 +39,19 @@ namespace CoreEngine
         for (const auto& component : retired_) {
             ForgetInHistory(component.get());
         }
+    }
+
+    IComponent* ComponentHost::AttachComponent(std::unique_ptr<IComponent> component, bool invokeAwake)
+    {
+        if (!component) { return nullptr; }
+
+        IComponent* raw = component.get();
+        raw->owner_ = ownerObject_;
+        components_.push_back(std::move(component));
+        if (invokeAwake) {
+            raw->Awake();
+        }
+        return raw;
     }
 
     size_t ComponentHost::GetComponentCount() const
@@ -182,25 +198,48 @@ namespace CoreEngine
             }
             const std::string type = entry["type"].get<std::string>();
 
+            IComponent* target = nullptr;
             std::size_t& searchIndex = nextIndex[type];
             for (; searchIndex < components_.size(); ++searchIndex) {
                 IComponent* component = components_[searchIndex].get();
                 if (!component || type != component->GetTypeName()) { continue; }
 
-                if (entry.contains("enabled") && entry["enabled"].is_boolean()) {
-                    component->SetEnabled(entry["enabled"].get<bool>());
-                }
-                if (entry.contains("parameters") && entry["parameters"].is_object()) {
-                    const json& parameters = entry["parameters"];
-                    if (const Reflection::TypeDescriptor* descriptor = component->GetTypeDescriptor()) {
-                        Reflection::PropertySerializer::Load(
-                            *descriptor, component->GetReflectionInstance(), parameters);
-                    } else {
-                        component->OnDeserialize(parameters);
-                    }
-                }
+                target = component;
                 ++searchIndex;
                 break;
+            }
+
+            // ここで作った物は値を流し終えてから Awake() を呼ぶ
+            bool created = false;
+            if (!target) {
+                // 実体が足りない分はファクトリで作る。作った物は末尾に付くので、
+                // 同じ型の次の探索がそれを拾い直さないように位置を末尾へ送る。
+                target = AttachComponent(ComponentFactory::Get().Create(type), false);
+                searchIndex = components_.size();
+                created = target != nullptr;
+            }
+
+            if (!target) {
+                Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
+                    "ComponentHost: 型 \"{}\" は実体にもファクトリにも無いので読み飛ばします", type);
+                continue;
+            }
+
+            if (entry.contains("enabled") && entry["enabled"].is_boolean()) {
+                target->SetEnabled(entry["enabled"].get<bool>());
+            }
+            if (entry.contains("parameters") && entry["parameters"].is_object()) {
+                const json& parameters = entry["parameters"];
+                if (const Reflection::TypeDescriptor* descriptor = target->GetTypeDescriptor()) {
+                    Reflection::PropertySerializer::Load(
+                        *descriptor, target->GetReflectionInstance(), parameters);
+                } else {
+                    target->OnDeserialize(parameters);
+                }
+            }
+
+            if (created) {
+                target->Awake();
             }
         }
     }

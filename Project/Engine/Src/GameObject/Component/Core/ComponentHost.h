@@ -40,6 +40,15 @@ public:
         return raw;
     }
 
+    /// @brief 生成済みのコンポーネントをアタッチする
+    /// @param component 所有権を渡すコンポーネント（nullptr なら何もしない）
+    /// @param invokeAwake ここで `Awake()` を呼ぶか
+    /// @return アタッチされたコンポーネント。渡されたものが nullptr なら nullptr
+    /// @note 型が実行時の文字列でしか分からない経路（シーン JSON からの復元）が使う。
+    ///       `MeshRendererComponent` のようにモデルのロードを `Awake()` で行う型があるので、
+    ///       復元側は false を渡して値を流し終えてから自分で `Awake()` を呼ぶ。
+    IComponent* AttachComponent(std::unique_ptr<IComponent> component, bool invokeAwake = true);
+
     // ===== 取得 =====
 
     /// @brief 指定型のコンポーネントを 1 個取得する（見つからなければ nullptr）
@@ -146,8 +155,10 @@ public:
 
     /// @brief JSON 配列からコンポーネントの状態を復元する
     /// @param components `SerializeComponents` が書いた形
-    /// @note 生成はしない。既にアタッチされているものへ型名で順に対応づけて値を流す。
+    /// @note 既にアタッチされているものへ型名で順に対応づけて値を流す。
     ///       同じ型を複数持つ場合は並び順で対応する。
+    ///       対応するものが無ければ `ComponentFactory` で生成してアタッチし、
+    ///       ファクトリにも無い型は警告を出して読み飛ばす。
     void DeserializeComponents(const json& components);
 
 protected:
