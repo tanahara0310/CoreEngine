@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Logger.h"
+#include "Utility/Path/ProjectPaths.h"
 
 #include <chrono>
 #include <filesystem>
@@ -108,6 +109,16 @@ namespace CoreEngine
 {
     namespace
     {
+        /// @brief ログの置き場（作り直せるものなので Intermediate 配下）
+        const std::filesystem::path& LogRoot()
+        {
+            static const std::filesystem::path root = ProjectPaths::Intermediate("Logs");
+            return root;
+        }
+    }
+
+    namespace
+    {
         constexpr const char* kLogPattern = "[%Y-%m-%d %H:%M:%S.%e] [tid:%t] [%n] [%^%l%$] %v";
     }
 
@@ -140,7 +151,8 @@ namespace CoreEngine
     Logger::Logger()
     {
         // ログのディレクトリを用意
-        std::filesystem::create_directories("Cache/logs");
+        std::error_code logDirError;
+        std::filesystem::create_directories(LogRoot(), logDirError);
 
         // 古いログファイルを削除
         CleanupOldLogFiles();
@@ -283,14 +295,14 @@ namespace CoreEngine
         std::string loggerName   = hasSub ? (categoryName + "/" + subCategory.value) : categoryName;
 
         // ログファイルのディレクトリ・パスを構築
-        std::string logDir = "Cache/logs/" + categoryName;
+        std::filesystem::path logDirPath = LogRoot() / categoryName;
         if (hasSub) {
-            logDir += "/";
-            logDir += subCategory.value;
+            logDirPath /= subCategory.value;
         }
+        const std::string logDir = PathToUtf8(logDirPath);
 
         std::error_code ec;
-        std::filesystem::create_directories(logDir, ec);
+        std::filesystem::create_directories(logDirPath, ec);
         if (ec) {
             // フォルダ作成失敗時は OutputDebugString で通知（ロガー未生成なので直接出力）
             std::string msg = "[Logger] create_directories failed: " + logDir + " -> " + ec.message() + "\n";
@@ -425,13 +437,14 @@ namespace CoreEngine
 
     void Logger::CleanupOldLogFiles()
     {
-        if (!std::filesystem::exists("Cache/logs")) {
+        std::error_code existsError;
+        if (!std::filesystem::exists(LogRoot(), existsError)) {
             return;
         }
 
-        // Cache/logs 以下を再帰的にスキャンし、ディレクトリごとに古いログを削除する。
+        // ログの根を再帰的にスキャンし、ディレクトリごとに古いログを削除する。
         // サブカテゴリ対応で "Graphics/Device" のような階層も自動的に処理される。
-        for (const auto& dirEntry : std::filesystem::recursive_directory_iterator("Cache/logs")) {
+        for (const auto& dirEntry : std::filesystem::recursive_directory_iterator(LogRoot())) {
             if (!dirEntry.is_directory()) {
                 continue;
             }

@@ -10,6 +10,9 @@
     <ClCompile Include="Engine\Src\Editor\Panel\EditorPanelRegistry.cpp">
       <Filter>Engine\Src\Editor\Panel</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\Path\ProjectPaths.cpp">
+      <Filter>Engine\Src\Utility\Path</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Panel\EditorPanelStateSection.cpp">
       <Filter>Engine\Src\Editor\Panel</Filter>
     </ClCompile>
@@ -1553,6 +1556,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Panel\EditorPanelRegistry.h">
       <Filter>Engine\Src\Editor\Panel</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Path\ProjectPaths.h">
+      <Filter>Engine\Src\Utility\Path</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Panel\EditorPanelStateSection.h">
       <Filter>Engine\Src\Editor\Panel</Filter>
@@ -4116,6 +4122,9 @@
     </Filter>
     <Filter Include="Engine\Src\Utility\Logger">
       <UniqueIdentifier>{AE65377C-9875-46C2-ACEB-A5583C82DCD3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Utility\Path">
+      <UniqueIdentifier>{84A6DE07-7AEF-45F4-8920-E7F93EE3CB86}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Utility\Profiler">
       <UniqueIdentifier>{EB718086-7172-4261-9E65-2364207C9F96}</UniqueIdentifier>

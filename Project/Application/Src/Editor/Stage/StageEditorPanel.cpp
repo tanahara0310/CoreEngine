@@ -5,6 +5,7 @@
 #ifdef USE_IMGUI
 
 #include "StageChipPalette.h"
+#include "Utility/Path/ProjectPaths.h"
 
 #include "Components/Building/MapGeneratorComponent.h"
 
@@ -74,8 +75,8 @@ namespace GameEditors
         /// @brief UTF-8文字列をWindowsでも正しくfilesystemのパスへ変換する
         std::filesystem::path PathFromUtf8(const std::string& path)
         {
-            const std::u8string utf8Path(path.begin(), path.end());
-            return std::filesystem::path(utf8Path);
+            // 相対のまま返すと実行時のカレント基準になり、起動方法で読み先が変わる
+            return CoreEngine::ProjectPaths::Resolve(path);
         }
 
         /// @brief Windowsのパス比較用に区切り文字とASCII大文字を揃える

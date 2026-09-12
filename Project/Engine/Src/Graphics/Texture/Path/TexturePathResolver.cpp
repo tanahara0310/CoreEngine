@@ -2,6 +2,7 @@
 #include "TexturePathResolver.h"
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/Path/ProjectPaths.h"
 
 #include <format>
 #include <filesystem>
@@ -107,6 +108,7 @@ namespace CoreEngine
             normalized = basePath_ + normalized;
         }
 
-        return Logger::GetInstance().Utf8ToPath(normalized);
+        // 相対のまま返すと実行時のカレント基準になり、起動方法で読み先が変わる
+        return ProjectPaths::Resolve(normalized);
     }
 }

@@ -9,7 +9,8 @@ using namespace CoreEngine;
 
 namespace
 {
-    constexpr const char* kRecordPath = "Application/Config/result_record.json";
+    // 実行結果の記録は共有する設定ではなく、この環境で遊んだ跡
+    constexpr const char* kRecordPath = "Application/Saved/Records/result_record.json";
     constexpr const char* kKeyLast = "lastMeters";
     constexpr const char* kKeyBest = "bestMeters";
     constexpr const char* kKeyHasLast = "hasLast";

@@ -60,7 +60,7 @@ public:
 private:
     // UI関連の状態
     char saveFileNameBuffer_[256] = "NewPreset";
-    char directoryPathBuffer_[512] = "Assets/Presets/PostEffect/";
+    char directoryPathBuffer_[512] = "Application/Assets/Presets/PostEffect/";
     std::vector<std::string> presetFileList_;
     int selectedPresetIndex_ = -1;
     bool needUpdateFileList_ = true;

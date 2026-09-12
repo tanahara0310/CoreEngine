@@ -60,6 +60,7 @@
 
 #include "GameObject/GameObject.h"
 #include "Reflection/TypeDescriptor.h"
+#include "Utility/Path/ProjectPaths.h"
 #include "Scene/SceneManager.h"
 #include "Camera/View/ViewInfo.h"
 #include "EngineSystem/EngineConfig.h"
@@ -95,17 +96,24 @@ namespace CoreEngine
             // このステップは必ず先頭に置くこと
             Logger::GetInstance().Initialize();
 
+            // どこへ読み書きするかを最初に残す。起動方法で保存先が変わって
+            // いないことを、ログだけで確かめられるようにするため
+            Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
+                "データの根: {} （{}）",
+                Logger::GetInstance().PathToUtf8(ProjectPaths::Root()),
+                ProjectPaths::ResolutionNote());
+
             // WinAppのインスタンスを保持
             winApp_ = winApp;
 
             // アセットデータベースの初期化（テクスチャ読み込みより先に必要）
-            AssetDatabase::GetInstance().Initialize(std::filesystem::current_path());
+            AssetDatabase::GetInstance().Initialize(ProjectPaths::Root());
 
             // コンパイル済み DXIL のディスクキャッシュ。
             // 最初のシェーダコンパイル（レンダードメインのステップ）より前に
             // 用意しておく必要がある
             ShaderCacheStore::GetInstance().Initialize(
-                std::filesystem::current_path() / "Cache" / "ShaderCache",
+                ProjectPaths::Intermediate("ShaderCache"),
                 config.enableShaderCache);
 
             // 「実際にコンパイルされるシェーダ」の一覧。次回の起動で並列に
@@ -113,7 +121,7 @@ namespace CoreEngine
             //（キャッシュを消して再コンパイルさせる操作で一覧まで消えると、
             //  一番効いてほしい場面で事前コンパイルが効かなくなる）
             ShaderManifest::GetInstance().Initialize(
-                std::filesystem::current_path() / "Cache" / "ShaderManifest.txt",
+                ProjectPaths::Intermediate("ShaderManifest.txt"),
                 config.enableShaderCache);
         });
 

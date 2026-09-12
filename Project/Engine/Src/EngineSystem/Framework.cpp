@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Framework.h"
+#include "Utility/Path/ProjectPaths.h"
 #include "Graphics/Render/Pass/RenderPipeline.h"
 #include "Startup/StartupSequence.h"
 #include "Startup/StartupProgress.h"
@@ -95,6 +96,10 @@ namespace CoreEngine
 
     void Framework::Run()
     {
+        // データの根を先に確定させる。これより前にファイルを触るものがあっても
+        // 初回参照時に同じ結果へ落ち着くが、順序を読めるようにここで明示する
+        ProjectPaths::Prime();
+
         // ──────────────────────────────────────────────────────────
         // デバッグ機能の初期化（エンジン層で自動管理）
         // ──────────────────────────────────────────────────────────

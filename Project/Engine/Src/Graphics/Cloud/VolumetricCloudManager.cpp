@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "VolumetricCloudManager.h"
+#include "Utility/Path/ProjectPaths.h"
 
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Cloud/Settings/CloudCVars.h"
@@ -19,7 +20,7 @@ namespace CoreEngine
     {
         /// @brief 配置ペイントの保存先（Config 層 = git 管理・チーム共有）
         constexpr const char* kWeatherPaintFilePath =
-            "Application/Config/EngineSettings/CloudWeatherPaint.bin";
+            "Application/Assets/Environment/CloudWeatherPaint.bin";
 
         /// @brief 配置ペイントの総バイト数（512²×RGBA8）
         constexpr size_t kWeatherPaintBytes = CloudResources::kPaintBytes;
@@ -286,7 +287,10 @@ namespace CoreEngine
 
         std::filesystem::create_directories(
             std::filesystem::path(kWeatherPaintFilePath).parent_path(), ec);
-        std::ofstream file(kWeatherPaintFilePath, std::ios::binary | std::ios::trunc);
+        const std::filesystem::path paintPath = ProjectPaths::Resolve(kWeatherPaintFilePath);
+        std::error_code paintDirError;
+        std::filesystem::create_directories(paintPath.parent_path(), paintDirError);
+        std::ofstream file(paintPath, std::ios::binary | std::ios::trunc);
         if (!file) {
             Logger::GetInstance().Warnf(LogCategory::Graphics,
                 "VolumetricCloudManager: 配置ペイントの保存に失敗 ({})", kWeatherPaintFilePath);
@@ -304,7 +308,7 @@ namespace CoreEngine
 
     void VolumetricCloudManager::LoadWeatherPaint()
     {
-        std::ifstream file(kWeatherPaintFilePath, std::ios::binary);
+        std::ifstream file(ProjectPaths::Resolve(kWeatherPaintFilePath), std::ios::binary);
         if (!file) {
             return;
         }

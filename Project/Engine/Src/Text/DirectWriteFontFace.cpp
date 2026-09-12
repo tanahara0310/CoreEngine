@@ -2,6 +2,7 @@
 #include "Text/DirectWriteFontFace.h"
 
 #include "Utility/Logger/Logger.h"
+#include "Utility/Path/ProjectPaths.h"
 
 // ID2D1SimplifiedGeometrySink（= IDWriteGeometrySink）の実体定義に必要。
 // D2D の API は一切呼ばないので d2d1.lib のリンクは不要。
@@ -142,8 +143,13 @@ namespace CoreEngine
         IDWriteFactory* factory = AcquireFactory();
         if (!factory) { return false; }
 
+        // DirectWrite は相対パスを実行時のカレント基準で開く。
+        // 起動方法で読み先が変わらないよう、根から絶対パスにしてから渡す
+        const std::wstring resolved =
+            ProjectPaths::Resolve(Logger::GetInstance().PathToUtf8(filePath)).wstring();
+
         ComPtr<IDWriteFontFile> fontFile;
-        HRESULT hr = factory->CreateFontFileReference(filePath.c_str(), nullptr, &fontFile);
+        HRESULT hr = factory->CreateFontFileReference(resolved.c_str(), nullptr, &fontFile);
         if (FAILED(hr)) {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Resource,
                 "フォントファイルを開けませんでした: {} (HRESULT: 0x{:08X})",
