@@ -2,6 +2,7 @@
 
 #include "GameObject/Component/Core/IComponent.h"
 #include "GameObject/Component/Transform/ITransformSource.h"
+#include "Reflection/Reflect.h"
 #include "WorldTransform/WorldTransform.h"
 #include "Math/Vector/Vector3.h"
 
@@ -15,6 +16,12 @@ namespace CoreEngine
 class TransformComponent : public IComponent, public ITransformSource {
 public:
     const char* GetTypeName() const override { return "Transform"; }
+
+    REFLECT_BEGIN(TransformComponent, "トランスフォーム")
+        REFLECT_PROPERTY(transform_.translate, "位置",     p.range = Speed(0.05f))
+        REFLECT_PROPERTY(transform_.rotate,    "回転",     p.range = Speed(0.01f))
+        REFLECT_PROPERTY(transform_.scale,     "スケール", p.range = Speed(0.01f))
+    REFLECT_END()
 
     // ===== ITransformSource（ギズモ・インスペクタ・Undo/Redo からの共通入口） =====
 
@@ -35,6 +42,13 @@ public:
     /// @brief 位置・回転・スケールの編集 UI
     /// @return 値が変更されたら true
     bool DrawInspector() override;
+
+    /// @brief 回転の単位とワールド位置を添える
+    void DrawInspectorExtra() override;
+
+    /// @brief 記述子経由の編集を手書き経路と同じ Undo 履歴へ積む
+    void OnInspectorEditCommitted(
+        const Reflection::PropertyDescriptor& property, const void* beforeValue) override;
 #endif
 
     // ===== ライフサイクル =====

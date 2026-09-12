@@ -2,6 +2,8 @@
 
 #include "Utility/JsonManager/JsonManager.h"
 
+namespace CoreEngine::Reflection { struct TypeDescriptor; struct PropertyDescriptor; }
+
 namespace CoreEngine
 {
 class GameObject;
@@ -53,6 +55,17 @@ public:
     /// @return `{"type": ここの文字列}` として保存される。プレハブ復元の型名にもなる。
     virtual const char* GetTypeName() const = 0;
 
+    // ===== リフレクション =====
+
+    /// @brief プロパティ一覧の記述子
+    /// @return REFLECT_BEGIN を書いていない型は nullptr（呼び出し側は旧経路へ落ちる）
+    virtual const Reflection::TypeDescriptor* GetTypeDescriptor() const { return nullptr; }
+
+    /// @brief 記述子が想定する派生クラスの先頭アドレス
+    /// @note 多重継承していると `IComponent*` と派生のアドレスがずれる。
+    ///       記述子の resolve は派生を基準に組み立てるので、必ずこれを通す。
+    virtual void* GetReflectionInstance() { return nullptr; }
+
     // ===== インスペクター =====
 #ifdef USE_IMGUI
     /// @brief インスペクターのタブ名
@@ -62,6 +75,21 @@ public:
     /// @brief インスペクターの中身を描画する
     /// @return 値が変更されたら true
     virtual bool DrawInspector() { return false; }
+
+    /// @brief プロパティの後に足す補足表示（派生値・単位のヒントなど）
+    /// @note 記述子には書けない情報をここへ置く。記述子経由の描画でも
+    ///       旧 DrawInspector でも、プロパティを描いた後に呼ばれる。
+    virtual void DrawInspectorExtra() {}
+
+    /// @brief 記述子経由の編集が確定したときに呼ばれる
+    /// @param property 編集されたプロパティ
+    /// @param beforeValue 編集前の値（property.type のサイズ分）
+    /// @note Undo 履歴へ積むのはここ。手書き経路と同じ履歴に入れる。
+    virtual void OnInspectorEditCommitted(
+        const Reflection::PropertyDescriptor& property, const void* beforeValue)
+    {
+        (void)property; (void)beforeValue;
+    }
 
     /// @brief インスペクタのタブアイコン（Engine/Assets/Textures/Icon 配下のファイル名）
     /// @note タブを持たないオブジェクトは「コンポーネント 1 個 = 1 タブ」として

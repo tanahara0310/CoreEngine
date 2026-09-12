@@ -7,13 +7,16 @@
 
 #ifdef USE_IMGUI
 #include "Editor/ImGui/ImGuiAll.h"
+#include "Editor/Inspector/InspectorRenderer.h"
 #include "Graphics/Texture/TextureManager.h"
+#include "Reflection/TypeDescriptor.h"
 #endif
 
 namespace CoreEngine
 {
     namespace {
         EngineSystem* sEngine = nullptr;
+
     }
 
     // ===== ライフサイクル =====
@@ -291,7 +294,20 @@ namespace CoreEngine
                 // DrawInspector() の戻り値は「値が変わったか」であって
                 // 「何か描いたか」ではない。中身の有無はカーソルが進んだかで見る
                 const float cursorBefore = ImGui::GetCursorPosY();
-                changed |= component->DrawInspector();
+
+                // 記述子を持つ型はそこから自動生成し、無ければ従来の手書きへ落ちる
+                const Reflection::TypeDescriptor* descriptor = component->GetTypeDescriptor();
+                if (descriptor && InspectorRenderer::IsEnabled()) {
+                    changed |= InspectorRenderer::Draw(
+                        *descriptor, component->GetReflectionInstance(),
+                        [&component](const Reflection::PropertyDescriptor& property,
+                                     const void* beforeValue) {
+                            component->OnInspectorEditCommitted(property, beforeValue);
+                        });
+                    component->DrawInspectorExtra();
+                } else {
+                    changed |= component->DrawInspector();
+                }
 
                 if (ImGui::GetCursorPosY() <= cursorBefore) {
                     UI::Hint("このコンポーネントに編集項目はありません");

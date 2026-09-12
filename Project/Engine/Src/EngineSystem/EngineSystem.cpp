@@ -59,6 +59,7 @@
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
 
 #include "GameObject/GameObject.h"
+#include "Reflection/TypeDescriptor.h"
 #include "Scene/SceneManager.h"
 #include "Camera/View/ViewInfo.h"
 #include "EngineSystem/EngineConfig.h"
@@ -207,6 +208,19 @@ namespace CoreEngine
             CVarSettingsSection::LogOverriddenCVars();
         });
 #endif // !USE_IMGUI
+
+        sequence.Add("型記述子の登録確認", [] {
+            auto& registry = Reflection::TypeRegistry::Get();
+            registry.FlushPendingWarnings();
+
+            size_t propertyCount = 0;
+            for (const auto* type : registry.GetAll()) {
+                propertyCount += type->properties.size();
+            }
+            Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
+                "TypeRegistry: {} 型 / {} プロパティを登録",
+                registry.GetAll().size(), propertyCount);
+        });
 
         sequence.Add("GameObject へのエンジン参照", [this] { GameObject::SetEngine(this); });
 
