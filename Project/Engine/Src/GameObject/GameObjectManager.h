@@ -161,11 +161,19 @@ namespace CoreEngine
         /// @brief オブジェクト名の連番番号管理（名前重複を防ぐ）
         std::map<std::string, int> nameCounters_;
 
+        /// @brief 保存キーの連番番号管理（1 ファイル 1 オブジェクトを保つ）
+        std::map<std::string, int> serializeKeyCounters_;
+
         /// @brief ImGui変更時コールバック（デバッグビルドのみ使用）
         std::function<void(GameObject*)> onChangedCallback_;
 
         /// @brief 個別オブジェクト保存リクエスト時コールバック
         std::function<void(GameObject*)> onSaveRequestCallback_;
+
+        /// @brief 保存キーが既出なら連番を足して重複を解く
+        /// @note 同じ名前で作られたオブジェクト（`CreateObject("Sphere")` を 49 回など）は
+        ///       そのままだと 1 ファイルへ上書きし合い、最後の 1 個しか残らない。
+        void EnsureUniqueSerializeKey(GameObject& object);
 
         /// @brief pendingAdd_ を objects_ へ移動する
         void FlushPendingAdds();

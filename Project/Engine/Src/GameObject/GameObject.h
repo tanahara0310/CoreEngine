@@ -243,6 +243,11 @@ namespace CoreEngine
         ///         派生クラスでオーバーライドして固有の名前を返すことを推奨する。
         virtual const char* GetObjectName() const;
 
+        /// @brief 保存キーを差し替える
+        /// @note 1 シーンで重複しないよう `GameObjectManager` が登録時に調整する。
+        ///       保存済みファイルとの対応が切れるので、他から呼ばないこと。
+        void SetSerializeKey(const std::string& key) { serializeKey_ = key; }
+
         /// @brief JSON シリアライズ対象かどうかを返す
         /// @return true: シーン保存時にこのオブジェクトのデータが書き出される
         bool IsSerializeEnabled() const;
@@ -259,16 +264,20 @@ namespace CoreEngine
         ///          SceneSaveSystem::RegisterObjectType で同じ名前を登録しておくこと。
         virtual const char* GetSerializeTypeName() const { return nullptr; }
 
-        /// @brief オブジェクトデータを JSON に書き出す
-        /// @return シリアライズ結果。保存不要な場合は空の json を返す。
-        /// @note SceneSaveSystem から自動的に呼び出される。
-        ///       派生クラスでオーバーライドして自分の保存処理を実装する。
+        /// @brief オブジェクトを JSON へ書き出す（SceneSaveSystem が呼ぶ唯一の入口）
+        /// @return 有効・名前・コンポーネント一覧に、派生固有の値を足したもの
+        /// @note 共通部分はここが書くので、派生は `OnSerialize()` で自分の分だけ足せばよい。
+        json Serialize() const;
+
+        /// @brief JSON からオブジェクトを復元する（SceneSaveSystem が呼ぶ唯一の入口）
+        void Deserialize(const json& j);
+
+        /// @brief 派生固有の値を書き出す
+        /// @return 足したい値だけ。有効・名前・コンポーネントは `Serialize()` が書く。
         virtual json OnSerialize() const { return {}; }
 
-        /// @brief JSON からオブジェクトデータを復元する
+        /// @brief 派生固有の値を復元する
         /// @param j 読み込み元の JSON オブジェクト
-        /// @note SceneSaveSystem から自動的に呼び出される。
-        ///       派生クラスでオーバーライドして自分の復元処理を実装する。
         virtual void OnDeserialize(const json& j) { (void)j; }
 
         // ===== スポーン =====

@@ -370,7 +370,6 @@ namespace CoreEngine
     json Text3DObject::OnSerialize() const
     {
         json j;
-        j["active"] = IsActive();
 
         // フォントは名前だけ。実体の指定は FontManager 側に置く
         j["font"] = fontName_;
@@ -400,8 +399,6 @@ namespace CoreEngine
 
     void Text3DObject::OnDeserialize(const json& j)
     {
-        if (j.contains("active")) { SetActive(j["active"].get<bool>()); }
-
         // フォントを先に解決する（メトリクスが決まらないとレイアウトが組めない）
         if (j.contains("font") && j["font"].is_string()) {
             SetFontByName(j["font"].get<std::string>());

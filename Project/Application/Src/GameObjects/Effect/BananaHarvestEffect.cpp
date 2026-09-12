@@ -8,7 +8,6 @@
 #include "Components/UI/StaminaGaugeUIComponent.h"
 #include "Components/Utility/BlockModelLayout.h"
 #include "Components/Utility/ModelRenderPoolComponent.h"
-#include "GameObjects/GameSceneObject.h"
 
 #include "Audio/AudioSystem.h"
 #include "Camera/Camera.h"
@@ -584,8 +583,9 @@ namespace {
         /// @brief バナナを描くモデルプールを 1 つ作る
         static GameComponents::ModelRenderPoolComponent* CreateBananaPool(SceneContext& ctx)
         {
-            auto* owner = ctx.gameObjectManager->AddObject(
-                std::make_unique<GameScene::GameSceneObject>("BananaHarvestPool"));
+            auto owned = std::make_unique<CoreEngine::GameObject>();
+            owned->SetName("BananaHarvestPool");
+            auto* owner = ctx.gameObjectManager->AddObject(std::move(owned));
             if (!owner) {
                 Logger::GetInstance().Errorf(
                     LogCategory::Game,

@@ -721,6 +721,9 @@
     <ClCompile Include="Engine\Src\GameObject\Component\Transform\TransformComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Transform</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\Transform\EulerTransformComponent.cpp">
+      <Filter>Engine\Src\GameObject\Component\Transform</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\GameObject.cpp">
       <Filter>Engine\Src\GameObject</Filter>
     </ClCompile>
@@ -1488,9 +1491,6 @@
     </ClCompile>
     <ClCompile Include="Application\Src\GameObjects\Effect\StationSlowdownEffect.cpp">
       <Filter>Application\Src\GameObjects\Effect</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\GameObjects\GameSceneObject.cpp">
-      <Filter>Application\Src\GameObjects</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\GameScene\BananaTreeAuraFeature.cpp">
       <Filter>Application\Src\Scenes\GameScene</Filter>
@@ -3407,9 +3407,6 @@
     </ClInclude>
     <ClInclude Include="Application\Src\GameObjects\Effect\StationSlowdownEffect.h">
       <Filter>Application\Src\GameObjects\Effect</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\GameObjects\GameSceneObject.h">
-      <Filter>Application\Src\GameObjects</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\GameScene\BananaTreeAuraFeature.h">
       <Filter>Application\Src\Scenes\GameScene</Filter>

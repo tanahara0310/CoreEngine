@@ -470,20 +470,15 @@ namespace CoreEngine
 #endif // USE_IMGUI
 
     json SpriteObject::OnSerialize() const {
+        // 位置・回転・スケールは EulerTransformComponent が components 側へ書く
         json j;
-        j["active"] = IsActive();
-        j["transform"]["translate"] = JsonManager::Vector3ToJson(transform_.translate);
-        j["transform"]["rotate"] = JsonManager::Vector3ToJson(transform_.rotate);
-        j["transform"]["scale"] = JsonManager::Vector3ToJson(transform_.scale);
         j["flipX"] = flipX_;
         j["flipY"] = flipY_;
         return j;
     }
 
     void SpriteObject::OnDeserialize(const json& j) {
-        if (j.contains("active")) {
-            SetActive(j["active"].get<bool>());
-        }
+        // components を持たない旧シーンのための読み口
         if (j.contains("transform")) {
             const json& t = j["transform"];
             transform_.translate = JsonManager::SafeGetVector3(t, "translate", transform_.translate);

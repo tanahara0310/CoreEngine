@@ -137,6 +137,19 @@ public:
     /// @note 実体はまだ解放しない。二重呼び出しはしない。
     void DispatchComponentDestroy();
 
+    // ===== シリアライズ =====
+
+    /// @brief アタッチされているコンポーネントを JSON 配列へ書き出す
+    /// @return `[{ "type", "enabled", "parameters" }, ...]`。中身が無ければ空配列
+    /// @note 値は型記述子から取る。記述子が無い型は `IComponent::OnSerialize()` へ落ちる。
+    json SerializeComponents() const;
+
+    /// @brief JSON 配列からコンポーネントの状態を復元する
+    /// @param components `SerializeComponents` が書いた形
+    /// @note 生成はしない。既にアタッチされているものへ型名で順に対応づけて値を流す。
+    ///       同じ型を複数持つ場合は並び順で対応する。
+    void DeserializeComponents(const json& components);
+
 protected:
     /// @brief オーナーの GameObject を登録する
     /// @note `GameObject` のコンストラクタが `this` を渡す。`ComponentHost` は

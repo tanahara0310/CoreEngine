@@ -419,6 +419,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\GameObject\Component\Render\MeshRendererComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Animation\SkeletonSocketComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Transform\TransformComponent.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Component\Transform\EulerTransformComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\GameObject.cpp" />
     <ClCompile Include="Engine\Src\GameObject\GameObjectManager.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Model\ModelGameObject.cpp" />
@@ -796,7 +797,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\GameObjects\Effect\BananaHarvestEffect.cpp" />
     <ClCompile Include="Application\Src\GameObjects\Effect\RockBreakDebris.cpp" />
     <ClCompile Include="Application\Src\GameObjects\Effect\StationSlowdownEffect.cpp" />
-    <ClCompile Include="Application\Src\GameObjects\GameSceneObject.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\BananaTreeAuraFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\GameEntranceFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp" />
@@ -1437,7 +1437,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\GameObjects\Effect\BananaHarvestEffect.h" />
     <ClInclude Include="Application\Src\GameObjects\Effect\RockBreakDebris.h" />
     <ClInclude Include="Application\Src\GameObjects\Effect\StationSlowdownEffect.h" />
-    <ClInclude Include="Application\Src\GameObjects\GameSceneObject.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\BananaTreeAuraFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\GameEntranceFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\GameScene.h" />

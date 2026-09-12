@@ -14,7 +14,6 @@
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "Scenes/GameScene/SkyFogFeature.h"
 #include "Scenes/ResultScene/ResultSceneUi.h"
-#include "GameObjects/GameSceneObject.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Input/InputManager.h"
 #include "Scene/SceneManager.h"
@@ -90,7 +89,7 @@ void ResultScene::ResultScene::OnInitialize() {
 
     // 結果画面の設定はシーンJSONへ保存できる空オブジェクトに集約する。
     // OnInitialize 後にシーン復元が走るため、Tipsの表示は最初の更新で確定する。
-    auto* resultTipsObject = CreateObject<GameScene::GameSceneObject>("ResultTipsSettings");
+    auto* resultTipsObject = CreateObject("ResultTipsSettings");
     if (resultTipsObject) {
         resultTips_ = resultTipsObject->AddComponent<GameComponents::ResultTipsComponent>();
     }

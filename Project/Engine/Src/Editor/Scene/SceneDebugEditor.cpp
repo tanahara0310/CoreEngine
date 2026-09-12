@@ -548,7 +548,7 @@ namespace CoreEngine
         }
 
         // シリアライズデータからモデルパスを取得する
-        json serializedData = selected->OnSerialize();
+        json serializedData = selected->Serialize();
         std::string modelPath;
         if (serializedData.contains("modelPath")) {
             modelPath = serializedData["modelPath"].get<std::string>();
@@ -576,7 +576,7 @@ namespace CoreEngine
 
         // シリアライズデータを復元（トランスフォームを引き継ぐ）
         if (!serializedData.empty()) {
-            raw->OnDeserialize(serializedData);
+            raw->Deserialize(serializedData);
         }
 
         raw->SetName(copyName);

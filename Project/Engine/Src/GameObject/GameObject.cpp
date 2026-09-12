@@ -229,6 +229,48 @@ namespace CoreEngine
     bool GameObject::IsSerializeEnabled() const { return shouldSerialize_; }
     void GameObject::SetSerializeEnabled(bool enable) { shouldSerialize_ = enable; }
 
+    json GameObject::Serialize() const
+    {
+        // 派生固有の値を先に受け取り、共通部分を被せる。
+        // 共通部分を派生が書き換えられないようにするため、この順で足す
+        json j = OnSerialize();
+        if (!j.is_object()) {
+            j = json::object();
+        }
+
+        j["active"] = IsActive();
+        if (!name_.empty()) {
+            j["name"] = name_;
+        }
+
+        json components = SerializeComponents();
+        if (!components.empty()) {
+            j["components"] = std::move(components);
+        }
+        return j;
+    }
+
+    void GameObject::Deserialize(const json& j)
+    {
+        if (!j.is_object()) {
+            return;
+        }
+
+        if (j.contains("active") && j["active"].is_boolean()) {
+            SetActive(j["active"].get<bool>());
+        }
+        if (j.contains("name") && j["name"].is_string()) {
+            name_ = j["name"].get<std::string>();
+        }
+        if (j.contains("components")) {
+            DeserializeComponents(j["components"]);
+        }
+
+        // 派生固有の値は後。コンポーネントから作る派生データを上書きできるようにする
+        OnDeserialize(j);
+    }
+
+
 #ifdef USE_IMGUI
     // ===== デバッグ UI =====
 
