@@ -7,9 +7,27 @@
 #include <algorithm>
 #include <chrono>
 #include <optional>
+#include <string_view>
 
 namespace CoreEngine
 {
+    namespace
+    {
+        /// @brief パスを照合用のキーにする（区切りを '/'、ASCII の英字を小文字へ）
+        std::string MakePathKey(std::string_view path)
+        {
+            std::string key(path);
+            for (char& c : key) {
+                if (c == '\\') {
+                    c = '/';
+                } else if (c >= 'A' && c <= 'Z') {
+                    c = static_cast<char>(c - 'A' + 'a');
+                }
+            }
+            return key;
+        }
+    }
+
     AssetDatabase& AssetDatabase::GetInstance()
     {
         static AssetDatabase instance;
@@ -140,6 +158,7 @@ namespace CoreEngine
     {
         assetsByGUID_.clear();
         assetsByName_.clear();
+        guidsByPath_.clear();
         categoryPriority_.clear();
         initialized_ = false;
 
@@ -209,6 +228,53 @@ namespace CoreEngine
         return "";
     }
 
+    const AssetInfo* AssetDatabase::FindAssetByGUID(const std::string& guid) const
+    {
+        const auto it = assetsByGUID_.find(guid);
+        return it != assetsByGUID_.end() ? &it->second : nullptr;
+    }
+
+    const AssetInfo* AssetDatabase::FindAssetByPath(std::string_view path) const
+    {
+        if (path.empty()) {
+            return nullptr;
+        }
+
+        Logger& log = Logger::GetInstance();
+        std::string relative(path);
+        const std::filesystem::path asPath = log.Utf8ToPath(relative);
+        if (asPath.is_absolute()) {
+            // 根からの相対へ直す（根の外なら見つからない扱い）
+            const std::filesystem::path lexical = asPath.lexically_relative(projectRoot_);
+            if (lexical.empty() || *lexical.begin() == "..") {
+                return nullptr;
+            }
+            relative = log.PathToUtf8(lexical);
+        }
+
+        const std::string key = MakePathKey(relative);
+        auto it = guidsByPath_.find(key);
+        if (it == guidsByPath_.end() &&
+            !key.starts_with("application/assets/") && !key.starts_with("engine/assets/")) {
+            // Application/Assets/ を省いた相対パスとして引き直す
+            it = guidsByPath_.find("application/assets/" + key);
+        }
+        return it != guidsByPath_.end() ? FindAssetByGUID(it->second) : nullptr;
+    }
+
+    std::vector<const AssetInfo*> AssetDatabase::GetAssetsOfType(AssetType type) const
+    {
+        std::vector<const AssetInfo*> assets;
+        for (const auto& [guid, info] : assetsByGUID_) {
+            if (info.type == type) {
+                assets.push_back(&info);
+            }
+        }
+        std::sort(assets.begin(), assets.end(),
+            [](const AssetInfo* a, const AssetInfo* b) { return a->relativePath < b->relativePath; });
+        return assets;
+    }
+
     void AssetDatabase::Refresh()
     {
         Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}",
@@ -217,6 +283,7 @@ namespace CoreEngine
         initialized_ = false;
         assetsByGUID_.clear();
         assetsByName_.clear();
+        guidsByPath_.clear();
 
         Initialize(projectRoot_);
     }
@@ -244,6 +311,10 @@ namespace CoreEngine
 
         // メタファイルからGUIDを取得または生成（ファイルI/O）
         std::string guid = AssetMetadata::LoadOrCreateMetaFile(assetPath, type);
+        if (guid.empty())
+        {
+            return std::nullopt;
+        }
 
         AssetInfo info;
         info.guid = guid;
@@ -275,8 +346,13 @@ namespace CoreEngine
         const std::string guid = info.guid;
         const std::string name = info.name;
         const std::string fileName = info.fileName;
+        Logger& log = Logger::GetInstance();
+        const std::string pathKey = MakePathKey(log.PathToUtf8(info.relativePath));
 
         assetsByGUID_[guid] = std::move(info);
+
+        // プロジェクトの根からの相対パスで登録
+        guidsByPath_[pathKey] = guid;
 
         // ベース名（例: GrayScale）で登録
         assetsByName_[name].push_back(guid);
@@ -285,7 +361,6 @@ namespace CoreEngine
         assetsByName_[fileName].push_back(guid);
 
         // 中間 stem（例: GrayScale.CS）でも検索できるよう全 stem を登録
-        Logger& log = Logger::GetInstance();
         std::filesystem::path stem = log.Utf8ToPath(fileName).stem();
         while (stem.has_extension()) {
             assetsByName_[log.PathToUtf8(stem)].push_back(guid);

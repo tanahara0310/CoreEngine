@@ -3,6 +3,7 @@
 #include "Audio/SoundInstance.h"
 #include "GameObject/Component/Core/IComponent.h"
 #include "GameObject/Component/Core/ObjectRef.h"
+#include "Graphics/Asset/AssetRef.h"
 #include "Reflection/Reflect.h"
 
 #include <cstddef>
@@ -103,7 +104,7 @@ namespace GameComponents
         std::vector<float> confirmationSoundPitches_;
 
         // レールが確定したときに鳴らす音
-        std::string railBuildSePath_ = "Application/Assets/Sounds/SE/rail_build.mp3";
-        std::string stationRailBuildSePath_ = "Application/Assets/Sounds/SE/build_station.mp3";
+        CoreEngine::AssetRef<CoreEngine::AudioAsset> railBuildSe_{ "Application/Assets/Sounds/SE/rail_build.mp3" };
+        CoreEngine::AssetRef<CoreEngine::AudioAsset> stationRailBuildSe_{ "Application/Assets/Sounds/SE/build_station.mp3" };
     };
 }

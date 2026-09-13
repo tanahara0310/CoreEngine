@@ -2,6 +2,7 @@
 
 #include "GameObject/Component/Core/IComponent.h"
 #include "GameObject/Component/Core/ObjectRef.h"
+#include "Graphics/Asset/AssetRef.h"
 #include "Math/Vector/Vector3.h"
 #include "Reflection/Reflect.h"
 
@@ -149,12 +150,12 @@ namespace GameComponents
         std::deque<RockBreakRequest> rockBreakQueue_;
 
         // ===== 効果音 =====
-        std::string buildSePath_ = "Application/Assets/Sounds/SE/build.mp3";
+        CoreEngine::AssetRef<CoreEngine::AudioAsset> buildSe_{ "Application/Assets/Sounds/SE/build.mp3" };
         float buildSeVolume_ = 0.5f;
         float buildSePitchMin_ = 0.5f;
         float buildSePitchMax_ = 1.48f;
-        std::string undoSePath_ = "Application/Assets/Sounds/SE/build_return.mp3";
-        std::string failureSePath_ = "Application/Assets/Sounds/SE/beep.mp3";
+        CoreEngine::AssetRef<CoreEngine::AudioAsset> undoSe_{ "Application/Assets/Sounds/SE/build_return.mp3" };
+        CoreEngine::AssetRef<CoreEngine::AudioAsset> failureSe_{ "Application/Assets/Sounds/SE/beep.mp3" };
 
         std::function<void()> OnStaminaInsufficient_ = nullptr;
     };

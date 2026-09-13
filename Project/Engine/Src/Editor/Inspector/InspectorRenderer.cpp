@@ -8,13 +8,17 @@
 #include "GameObject/Component/Core/ObjectRef.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/GameObjectManager.h"
+#include "Graphics/Asset/AssetDatabase.h"
+#include "Graphics/Asset/AssetRef.h"
 #include "Reflection/PropertyValue.h"
 #include "Reflection/ReflectionToggle.h"
 #include "Reflection/TypeDescriptor.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -128,6 +132,12 @@ namespace CoreEngine
                     ref.objectId.IsValid() ? ref.objectId.ToString().c_str() : "（なし）");
                 break;
             }
+            case PropertyType::AssetRef: {
+                const auto& ref = *static_cast<const Reflection::AssetRefValue*>(value);
+                ImGui::TextDisabled("%s: %s", p.displayName,
+                    ref.path.empty() ? "（なし）" : ref.path.c_str());
+                break;
+            }
             }
         }
 
@@ -174,6 +184,7 @@ namespace CoreEngine
                 return false;
             }
             case PropertyType::ObjectRef:
+            case PropertyType::AssetRef:
                 return false;
             }
             return false;
@@ -270,6 +281,127 @@ namespace CoreEngine
             ImGui::EndCombo();
             return edited;
         }
+
+        /// @brief ProjectView からドラッグされるファイルのペイロード名（中身はファイル名）
+        const char* FileDragPayloadOf(AssetType type)
+        {
+            switch (type) {
+            case AssetType::Texture: return "TEXTURE_FILE";
+            case AssetType::Model:   return "MODEL_FILE";
+            case AssetType::Audio:   return "AUDIO_FILE";
+            default:                 return nullptr;
+            }
+        }
+
+        /// @brief ASCII の大文字と小文字を区別せずに部分一致するか
+        bool ContainsIgnoreCase(std::string_view text, std::string_view pattern)
+        {
+            if (pattern.empty()) {
+                return true;
+            }
+            const auto lower = [](char c) {
+                return (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c;
+            };
+            const auto found = std::search(text.begin(), text.end(), pattern.begin(), pattern.end(),
+                [&](char a, char b) { return lower(a) == lower(b); });
+            return found != text.end();
+        }
+
+        /// @brief AssetRef の値を、指定したアセットへ向け直す
+        /// @return 指す先が変わったら true
+        bool RetargetAsset(Reflection::AssetRefValue& ref, const AssetInfo& info)
+        {
+            Reflection::AssetRefValue next{ info.guid, ToAssetPath(info) };
+            if (next == ref) {
+                return false;
+            }
+            ref = std::move(next);
+            return true;
+        }
+
+        /// @brief AssetRef の指す先を選ぶ欄を描く（種類で絞った一覧と ProjectView からのドロップ）
+        /// @return 指す先が変わったら true
+        bool DrawAssetRef(const Reflection::PropertyDescriptor& p, Reflection::AssetRefValue& ref)
+        {
+            const AssetInfo* target = ResolveAssetRef(ref);
+            const bool isSet = !ref.guid.empty() || !ref.path.empty();
+            const bool invalid = isSet && (!target || target->type != p.assetType);
+
+            std::string preview = "（なし）";
+            if (isSet && !target) {
+                preview = "（見つかりません " + (ref.path.empty() ? ref.guid : ref.path) + "）";
+            } else if (invalid) {
+                preview = "（種類が違います " + target->fileName + "）";
+            } else if (target) {
+                preview = target->fileName;
+            }
+
+            if (invalid) {
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.4f, 0.4f, 1.0f));
+            }
+            const bool open = ImGui::BeginCombo(p.displayName, preview.c_str());
+            if (invalid) {
+                ImGui::PopStyleColor();
+            }
+
+            bool edited = false;
+            if (!open) {
+                // 閉じた欄へ ProjectView の同じ種類のファイルを落とすと指し直す
+                const char* payloadType = FileDragPayloadOf(p.assetType);
+                if (payloadType && ImGui::BeginDragDropTarget()) {
+                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(payloadType)) {
+                        const auto* data = static_cast<const char*>(payload->Data);
+                        const std::string fileName(
+                            data, strnlen(data, static_cast<size_t>(payload->DataSize)));
+                        const AssetInfo* dropped = FindAssetInfo(fileName);
+                        if (dropped && dropped->type == p.assetType) {
+                            edited = RetargetAsset(ref, *dropped);
+                        }
+                    }
+                    ImGui::EndDragDropTarget();
+                }
+                if (ImGui::IsItemHovered() && isSet) {
+                    ImGui::SetTooltip("%s\nGUID %s", ref.path.c_str(),
+                        ref.guid.empty() ? "（なし）" : ref.guid.c_str());
+                }
+                return edited;
+            }
+
+            // 一覧の先頭に絞り込み欄を置き、その種類のアセットだけを並べる
+            static char filter[128] = "";
+            if (ImGui::IsWindowAppearing()) {
+                filter[0] = '\0';
+                ImGui::SetKeyboardFocusHere();
+            }
+            ImGui::SetNextItemWidth(-FLT_MIN);
+            ImGui::InputTextWithHint("##filter", "絞り込み", filter, sizeof(filter));
+
+            if (ImGui::Selectable("（なし）", !isSet) && isSet) {
+                ref = Reflection::AssetRefValue{};
+                edited = true;
+            }
+            for (const AssetInfo* info : AssetDatabase::GetInstance().GetAssetsOfType(p.assetType)) {
+                const std::string path = ToAssetPath(*info);
+                if (!ContainsIgnoreCase(path, filter)) {
+                    continue;
+                }
+
+                const bool selected = info == target;
+                ImGui::PushID(info->guid.c_str());
+                if (ImGui::Selectable(info->fileName.c_str(), selected)) {
+                    edited = RetargetAsset(ref, *info) || edited;
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("%s", path.c_str());
+                }
+                if (selected) {
+                    ImGui::SetItemDefaultFocus();
+                }
+                ImGui::PopID();
+            }
+            ImGui::EndCombo();
+            return edited;
+        }
     }
 
     bool InspectorRenderer::IsEnabled()
@@ -307,14 +439,16 @@ namespace CoreEngine
                 continue;
             }
 
-            // 繋ぎ先の選択は 1 回で確定するので、選んだその場で履歴へ積む
-            if (p.type == Reflection::PropertyType::ObjectRef) {
+            // 参照（ObjectRef / AssetRef）は選んだその場で履歴へ積む
+            if (p.type == Reflection::PropertyType::ObjectRef ||
+                p.type == Reflection::PropertyType::AssetRef) {
                 Reflection::PropertyValue before;
                 before.CopyFrom(p.type, value);
 
                 ImGui::PushID(p.name.c_str());
-                const bool retargeted = DrawObjectRef(
-                    p, *static_cast<Reflection::ObjectRefValue*>(value), context.objects);
+                const bool retargeted = (p.type == Reflection::PropertyType::ObjectRef)
+                    ? DrawObjectRef(p, *static_cast<Reflection::ObjectRefValue*>(value), context.objects)
+                    : DrawAssetRef(p, *static_cast<Reflection::AssetRefValue*>(value));
                 ImGui::PopID();
 
                 if (retargeted) {

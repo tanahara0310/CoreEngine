@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "AssetMetadata.h"
+#include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
-#include <fstream>
 #include <sstream>
 #include <random>
 #include <iomanip>
@@ -22,6 +22,12 @@ namespace CoreEngine
             {
                 return guid;
             }
+
+            // 読めないメタファイルは上書きせず、GUID なしとして返す
+            Logger& log = Logger::GetInstance();
+            log.Logf(LogLevel::Error, LogCategory::System, "{}",
+                "Failed to read meta file (GUID is kept unchanged): " + log.PathToUtf8(metaPath));
+            return "";
         }
 
         // 存在しない場合は新規作成
@@ -89,101 +95,47 @@ namespace CoreEngine
 
     void AssetMetadata::SaveAsJSON(const std::filesystem::path& metaFilePath, const std::string& guid, AssetType type)
     {
-        try
+        const json data = {
+            { "guid", guid },
+            { "type", AssetTypeToString(type) }
+        };
+
+        Logger& log = Logger::GetInstance();
+        if (!JsonManager::GetInstance().SaveJson(log.PathToUtf8(metaFilePath), data))
         {
-            std::ofstream file(metaFilePath);
-            if (!file.is_open())
-            {
-                Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System, "{}", 
-                    "Failed to create meta file: " + metaFilePath.string());
-                return;
-            }
+            log.Logf(LogLevel::Error, LogCategory::System, "{}",
+                "Failed to create meta file: " + log.PathToUtf8(metaFilePath));
+            return;
+        }
 
-            // 簡易的なJSON形式で保存
-            file << "{\n";
-            file << "  \"guid\": \"" << guid << "\",\n";
-            file << "  \"type\": \"" << AssetTypeToString(type) << "\"\n";
-            file << "}\n";
-
-            file.close();
-
-            // Windows: メタファイルを隠しファイルに設定
 #ifdef _WIN32
-            std::wstring metaFilePathW(metaFilePath.wstring());
-            DWORD attributes = GetFileAttributesW(metaFilePathW.c_str());
-            if (attributes != INVALID_FILE_ATTRIBUTES)
-            {
-                // 隠しファイル属性を追加
-                SetFileAttributesW(metaFilePathW.c_str(), attributes | FILE_ATTRIBUTE_HIDDEN);
-            }
-#endif
-        }
-        catch (const std::exception& e)
+        // Windows: メタファイルを隠しファイルに設定
+        const std::wstring metaFilePathW(metaFilePath.wstring());
+        DWORD attributes = GetFileAttributesW(metaFilePathW.c_str());
+        if (attributes != INVALID_FILE_ATTRIBUTES)
         {
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System, "{}", 
-                "Exception while saving meta file: " + std::string(e.what()));
+            SetFileAttributesW(metaFilePathW.c_str(), attributes | FILE_ATTRIBUTE_HIDDEN);
         }
+#endif
     }
 
     bool AssetMetadata::LoadFromJSON(const std::filesystem::path& metaFilePath, std::string& outGuid, AssetType& outType)
     {
-        try
+        const json data = JsonManager::GetInstance().LoadJson(Logger::GetInstance().PathToUtf8(metaFilePath));
+        if (!data.is_object())
         {
-            std::ifstream file(metaFilePath);
-            if (!file.is_open())
-            {
-                return false;
-            }
-
-            std::string line;
-            std::string guid;
-            std::string typeStr;
-
-            // 簡易的なJSON解析
-            while (std::getline(file, line))
-            {
-                // "guid" フィールドを探す
-                size_t guidPos = line.find("\"guid\"");
-                if (guidPos != std::string::npos)
-                {
-                    size_t startQuote = line.find("\"", guidPos + 7);
-                    size_t endQuote = line.find("\"", startQuote + 1);
-                    if (startQuote != std::string::npos && endQuote != std::string::npos)
-                    {
-                        guid = line.substr(startQuote + 1, endQuote - startQuote - 1);
-                    }
-                }
-
-                // "type" フィールドを探す
-                size_t typePos = line.find("\"type\"");
-                if (typePos != std::string::npos)
-                {
-                    size_t startQuote = line.find("\"", typePos + 7);
-                    size_t endQuote = line.find("\"", startQuote + 1);
-                    if (startQuote != std::string::npos && endQuote != std::string::npos)
-                    {
-                        typeStr = line.substr(startQuote + 1, endQuote - startQuote - 1);
-                    }
-                }
-            }
-
-            file.close();
-
-            if (!guid.empty())
-            {
-                outGuid = guid;
-                outType = StringToAssetType(typeStr);
-                return true;
-            }
-
             return false;
         }
-        catch (const std::exception& e)
+
+        const std::string guid = JsonManager::SafeGet<std::string>(data, "guid", "");
+        if (guid.empty())
         {
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System, "{}", 
-                "Exception while loading meta file: " + std::string(e.what()));
             return false;
         }
+
+        outGuid = guid;
+        outType = StringToAssetType(JsonManager::SafeGet<std::string>(data, "type", ""));
+        return true;
     }
 }
 

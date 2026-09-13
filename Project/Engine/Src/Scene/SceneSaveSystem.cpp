@@ -6,6 +6,8 @@
 #include "GameObject/Component/Core/ObjectRef.h"
 #include "GameObject/GameObjectManager.h"
 #include "GameObject/Model/DynamicModelObject.h"
+#include "Graphics/Asset/AssetDatabase.h"
+#include "Graphics/Asset/AssetRef.h"
 #include "Reflection/PropertyValue.h"
 #include "Reflection/TypeDescriptor.h"
 #include "Utility/JsonManager/JsonManager.h"
@@ -99,8 +101,49 @@ namespace CoreEngine
             }
         }
 
-        /// @brief 繋ぎ先が見つからない ObjectRef を警告する
-        void WarnUnresolvedObjectRefs(const GameObjectManager& mgr, const std::string& sceneName)
+        /// @brief AssetRef の指す先を引き、見つからない・GUID とパスが食い違う・種類が違うものを警告する
+        void WarnAssetRef(const std::string& sceneName, const GameObject& object,
+                          const IComponent& component, const Reflection::PropertyDescriptor& p,
+                          const Reflection::AssetRefValue& ref)
+        {
+            if (ref.guid.empty() && ref.path.empty()) {
+                return;
+            }
+
+            Logger& log = Logger::GetInstance();
+            const AssetInfo* byGuid =
+                ref.guid.empty() ? nullptr : AssetDatabase::GetInstance().FindAssetByGUID(ref.guid);
+            const AssetInfo* byPath = FindAssetInfo(ref.path);
+            const AssetInfo* target = byGuid ? byGuid : byPath;
+
+            if (!target) {
+                log.Logf(LogLevel::Warn, LogCategory::Resource,
+                    "SceneSaveSystem: \"{}\" の {} / {} / {} が指すアセット（GUID \"{}\" / パス \"{}\"）が見つかりません",
+                    sceneName, object.GetSerializeKey(), component.GetTypeName(), p.name, ref.guid, ref.path);
+                return;
+            }
+
+            if (!ref.guid.empty() && !byGuid) {
+                log.Logf(LogLevel::Warn, LogCategory::Resource,
+                    "SceneSaveSystem: \"{}\" の {} / {} / {} の GUID \"{}\" が見つからないので、パス \"{}\" で引きました",
+                    sceneName, object.GetSerializeKey(), component.GetTypeName(), p.name, ref.guid, ref.path);
+            } else if (byGuid && !ref.path.empty() && byPath != byGuid) {
+                log.Logf(LogLevel::Warn, LogCategory::Resource,
+                    "SceneSaveSystem: \"{}\" の {} / {} / {} のパス \"{}\" は GUID の指す \"{}\" と食い違っています（GUID を使います）",
+                    sceneName, object.GetSerializeKey(), component.GetTypeName(), p.name,
+                    ref.path, ToAssetPath(*byGuid));
+            }
+
+            if (target->type != p.assetType) {
+                log.Logf(LogLevel::Warn, LogCategory::Resource,
+                    "SceneSaveSystem: \"{}\" の {} / {} / {} が指す \"{}\" は {} ではなく {} です",
+                    sceneName, object.GetSerializeKey(), component.GetTypeName(), p.name,
+                    ToAssetPath(*target), AssetTypeToString(p.assetType), AssetTypeToString(target->type));
+            }
+        }
+
+        /// @brief 指す先が見つからない参照（ObjectRef / AssetRef）を警告する
+        void WarnUnresolvedReferences(const GameObjectManager& mgr, const std::string& sceneName)
         {
             Reflection::PropertyValue value;
             for (const auto& object : mgr.GetAllObjects()) {
@@ -113,7 +156,17 @@ namespace CoreEngine
                     if (!descriptor) continue;
 
                     for (const auto& p : descriptor->properties) {
-                        if (p.type != Reflection::PropertyType::ObjectRef || !p.IsValid()) continue;
+                        if (!p.IsValid()) continue;
+
+                        if (p.type == Reflection::PropertyType::AssetRef) {
+                            value.LoadFrom(p, component->GetReflectionInstance());
+                            if (const auto* asset =
+                                    static_cast<const Reflection::AssetRefValue*>(value.Data(p.type))) {
+                                WarnAssetRef(sceneName, *object, *component, p, *asset);
+                            }
+                            continue;
+                        }
+                        if (p.type != Reflection::PropertyType::ObjectRef) continue;
 
                         value.LoadFrom(p, component->GetReflectionInstance());
                         const auto* ref =
@@ -279,9 +332,9 @@ namespace CoreEngine
             }
         }
 
-        // 全員を復元し終えたら、繋ぎ先が見つからない参照を挙げる
+        // 全員を復元し終えたら、指す先が見つからない参照を挙げる
         if (loadManager_) {
-            WarnUnresolvedObjectRefs(*loadManager_, sceneName_);
+            WarnUnresolvedReferences(*loadManager_, sceneName_);
             loadManager_ = nullptr;
         }
         pendingObjects_.clear();

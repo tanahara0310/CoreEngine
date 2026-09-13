@@ -92,6 +92,8 @@ REFLECT_DEFINE_BEGIN(GameComponents::RailViewComponent, "レール描画")
     REFLECT_OBJECT_REF(railRightPool_, "右コーナーのプール")
     REFLECT_OBJECT_REF(bridgePool_,    "橋のプール")
     REFLECT_OBJECT_REF(mapGenerator_,  "マップ生成")
+    REFLECT_ASSET_REF(railBuildSe_,    "確定音")
+    REFLECT_ASSET_REF(stationRailBuildSe_, "確定音（駅）")
 REFLECT_DEFINE_END()
 REFLECT_REGISTER(GameComponents::RailViewComponent)
 
@@ -106,9 +108,7 @@ json GameComponents::RailViewComponent::OnSerialize() const {
         { "seVolume", confirmationSeVolume_ },
         { "seBasePitch", confirmationSeBasePitch_ },
         { "sePitchStep", confirmationSePitchStep_ },
-        { "seMaxPitch", confirmationSeMaxPitch_ },
-        { "railBuildSePath", railBuildSePath_ },
-        { "stationRailBuildSePath", stationRailBuildSePath_ }
+        { "seMaxPitch", confirmationSeMaxPitch_ }
     };
 }
 
@@ -124,8 +124,6 @@ void GameComponents::RailViewComponent::OnDeserialize(const json& j) {
     confirmationSeBasePitch_ = std::max(0.01f, JsonManager::SafeGet<float>(j, "seBasePitch", confirmationSeBasePitch_));
     confirmationSePitchStep_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "sePitchStep", confirmationSePitchStep_));
     confirmationSeMaxPitch_ = std::max(confirmationSeBasePitch_, JsonManager::SafeGet<float>(j, "seMaxPitch", confirmationSeMaxPitch_));
-    railBuildSePath_ = JsonManager::SafeGet<std::string>(j, "railBuildSePath", railBuildSePath_);
-    stationRailBuildSePath_ = JsonManager::SafeGet<std::string>(j, "stationRailBuildSePath", stationRailBuildSePath_);
 }
 
 #ifdef USE_IMGUI
@@ -145,8 +143,6 @@ bool GameComponents::RailViewComponent::DrawInspector() {
     changed |= ImGui::DragFloat("確定SE基準ピッチ", &confirmationSeBasePitch_, 0.01f, 0.01f, 4.0f);
     changed |= ImGui::DragFloat("確定SEピッチ増分", &confirmationSePitchStep_, 0.01f, 0.0f, 4.0f);
     changed |= ImGui::DragFloat("確定SE最大ピッチ", &confirmationSeMaxPitch_, 0.01f, confirmationSeBasePitch_, 4.0f);
-    ImGui::TextDisabled("確定SE: %s", railBuildSePath_.c_str());
-    ImGui::TextDisabled("確定SE（駅）: %s", stationRailBuildSePath_.c_str());
     return changed;
 }
 #endif
@@ -283,7 +279,7 @@ void GameComponents::RailViewComponent::PlayConfirmationSe(
     EngineSystem* engine = GetOwner() ? GetOwner()->GetEngineSystem() : nullptr;
     if (auto* audioSystem = engine ? engine->GetService<AudioSystem>() : nullptr) {
         audioSystem->PlayOneShot(
-            isStationRail ? stationRailBuildSePath_ : railBuildSePath_,
+            isStationRail ? stationRailBuildSe_.GetPath() : railBuildSe_.GetPath(),
             { .bus = AudioBus::SE, .volume = volume, .pitch = pitch });
     }
 }
