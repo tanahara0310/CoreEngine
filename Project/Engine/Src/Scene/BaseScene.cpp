@@ -180,6 +180,11 @@ namespace CoreEngine
         return cameraManager_ ? cameraManager_->GetViewCamera() : nullptr;
     }
 
+    Camera* BaseScene::GetGameCamera3D() const
+    {
+        return cameraManager_ ? cameraManager_->GetGameCamera() : nullptr;
+    }
+
     Camera* BaseScene::GetGameViewCamera2D() const
     {
         return cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera2D) : nullptr;

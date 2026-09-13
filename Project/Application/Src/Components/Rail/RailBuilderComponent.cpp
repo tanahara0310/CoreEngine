@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "RailBuilderComponent.h"
 #include "Components/Utility/BlockModelLayout.h"
+#include "Components/Utility/GameCamera.h"
 
 #include "Audio/AudioSystem.h"
 #include "EngineSystem/EngineSystem.h"
@@ -103,7 +104,13 @@ json GameComponents::RailBuilderComponent::OnSerialize() const {
         { "rockCursorHeightOffset", rockCursorHeightOffset_ },
         { "rockThrowStartHeight", rockThrowStartHeight_ },
         { "rockImpactHeight", rockImpactHeight_ },
-        { "cursorEdgeRadiusRatio", cursorEdgeRadiusRatio_ }
+        { "cursorEdgeRadiusRatio", cursorEdgeRadiusRatio_ },
+        { "buildSePath", buildSePath_ },
+        { "buildSeVolume", buildSeVolume_ },
+        { "buildSePitchMin", buildSePitchMin_ },
+        { "buildSePitchMax", buildSePitchMax_ },
+        { "undoSePath", undoSePath_ },
+        { "failureSePath", failureSePath_ }
     };
 }
 
@@ -128,6 +135,12 @@ void GameComponents::RailBuilderComponent::OnDeserialize(const json& j) {
     rockImpactHeight_ = JsonManager::SafeGet<float>(j, "rockImpactHeight", rockImpactHeight_);
     cursorEdgeRadiusRatio_ = std::max(0.0f, JsonManager::SafeGet<float>(
         j, "cursorEdgeRadiusRatio", cursorEdgeRadiusRatio_));
+    buildSePath_ = JsonManager::SafeGet<std::string>(j, "buildSePath", buildSePath_);
+    buildSeVolume_ = std::clamp(JsonManager::SafeGet<float>(j, "buildSeVolume", buildSeVolume_), 0.0f, 1.0f);
+    buildSePitchMin_ = std::max(0.01f, JsonManager::SafeGet<float>(j, "buildSePitchMin", buildSePitchMin_));
+    buildSePitchMax_ = std::max(buildSePitchMin_, JsonManager::SafeGet<float>(j, "buildSePitchMax", buildSePitchMax_));
+    undoSePath_ = JsonManager::SafeGet<std::string>(j, "undoSePath", undoSePath_);
+    failureSePath_ = JsonManager::SafeGet<std::string>(j, "failureSePath", failureSePath_);
     gridPosX_ = initialGridPosX_;
     gridPosZ_ = initialGridPosZ_;
 }
@@ -158,6 +171,13 @@ bool GameComponents::RailBuilderComponent::DrawInspector() {
         "画面端のカーソル半径", &cursorEdgeRadiusRatio_, 0.01f, 0.0f, 3.0f);
     UI::Hint("画面端で止める位置。1マスに対する矢印の半径の割合で、"
         "0.5 で矢印が端にちょうど触れます。0 だと半分はみ出します。");
+    ImGui::SeparatorText("効果音");
+    ImGui::TextDisabled("設置: %s", buildSePath_.c_str());
+    changed |= ImGui::SliderFloat("設置音の音量", &buildSeVolume_, 0.0f, 1.0f);
+    changed |= ImGui::DragFloat("設置音の最低ピッチ", &buildSePitchMin_, 0.01f, 0.01f, buildSePitchMax_);
+    changed |= ImGui::DragFloat("設置音の最高ピッチ", &buildSePitchMax_, 0.01f, buildSePitchMin_, 4.0f);
+    ImGui::TextDisabled("撤去: %s", undoSePath_.c_str());
+    ImGui::TextDisabled("失敗: %s", failureSePath_.c_str());
     ImGui::SeparatorText("スタミナ消費量");
     changed |= CVarUI::DrawTree("Game.Stamina.Cost");
     UI::Hint("変更はCVars.jsonへ自動保存され、次の建設から反映されます。");
@@ -404,7 +424,7 @@ void GameComponents::RailBuilderComponent::Update() {
     if (IsAdjacentToBananaTree(mapGenerator_, nextX, nextZ)) {
         PlayRandomPitchSe(GetOwner(), kBananaBuildSePath);
     } else {
-        OnBuildSE_();
+        PlayBuildSe();
     }
 
     gridPosX_ = nextX;
@@ -469,7 +489,7 @@ bool GameComponents::RailBuilderComponent::TryUndoLastRail() {
         undo.removedPosition.first, undo.removedPosition.second,
         gridPosX_, gridPosZ_, undo.refundAmount);
 
-    OnUndoSE_();
+    PlaySe(undoSePath_);
     return true;
 }
 
@@ -584,7 +604,8 @@ void GameComponents::RailBuilderComponent::SyncTransformToGrid() {
 bool GameComponents::RailBuilderComponent::IsInsideScreen(
     const Vector3& worldPosition) const {
     // カメラが分からないときは制限しない。判定できないことを理由に遊べなくしない。
-    if (!viewCamera_) {
+    Camera* viewCamera = FindGameCamera(GetOwner());
+    if (!viewCamera) {
         return true;
     }
 
@@ -592,7 +613,7 @@ bool GameComponents::RailBuilderComponent::IsInsideScreen(
     // カメラの後ろの点を画面内へ折り返してしまう。ここは NDC が要るだけなので、
     // エディタの CameraIconOverlay と同じく w を見ながら自分で割る。
     const Matrix4x4 viewProjection =
-        viewCamera_->GetViewMatrix() * viewCamera_->GetProjectionMatrix();
+        viewCamera->GetViewMatrix() * viewCamera->GetProjectionMatrix();
     const auto toClip = [&viewProjection](const Vector3& position) {
         return MathCore::CoordinateTransform::TransformCoord(
             Vector4{ position.x, position.y, position.z, 1.0f }, viewProjection);
@@ -613,11 +634,11 @@ bool GameComponents::RailBuilderComponent::IsInsideScreen(
     float halfX = 0.0f;
     float halfY = 0.0f;
     if (radius > 0.0f) {
-        const Vector4 rightClip = toClip(worldPosition + viewCamera_->GetRight() * radius);
+        const Vector4 rightClip = toClip(worldPosition + viewCamera->GetRight() * radius);
         if (rightClip.w > 1.0e-5f) {
             halfX = std::abs(rightClip.x / rightClip.w - ndcX);
         }
-        const Vector4 upClip = toClip(worldPosition + viewCamera_->GetUp() * radius);
+        const Vector4 upClip = toClip(worldPosition + viewCamera->GetUp() * radius);
         if (upClip.w > 1.0e-5f) {
             halfY = std::abs(upClip.y / upClip.w - ndcY);
         }
@@ -648,10 +669,6 @@ void GameComponents::RailBuilderComponent::SetGridSize(float size) {
 
 void GameComponents::RailBuilderComponent::SetHorizontalPrioritize(bool prioritize) {
     HorizontalPrioritize = prioritize;
-}
-
-void GameComponents::RailBuilderComponent::SetViewCamera(Camera* camera) {
-    viewCamera_ = camera;
 }
 
 float GameComponents::RailBuilderComponent::GetNextPlacementCost() const {
@@ -693,7 +710,23 @@ void GameComponents::RailBuilderComponent::NotifyStaminaInsufficient() {
     if (OnStaminaInsufficient_) {
         OnStaminaInsufficient_();
     }
-    if (OnFailureSE_) {
-        OnFailureSE_();
+    PlaySe(failureSePath_);
+}
+
+void GameComponents::RailBuilderComponent::PlayBuildSe() const {
+    EngineSystem* engine = GetOwner() ? GetOwner()->GetEngineSystem() : nullptr;
+    if (auto* audioSystem = engine ? engine->GetService<AudioSystem>() : nullptr) {
+        audioSystem->PlayOneShot(
+            buildSePath_,
+            { .bus = AudioBus::SE,
+              .volume = buildSeVolume_,
+              .pitch = RandomGenerator::GetInstance().GetFloat(buildSePitchMin_, buildSePitchMax_) });
+    }
+}
+
+void GameComponents::RailBuilderComponent::PlaySe(const std::string& path) const {
+    EngineSystem* engine = GetOwner() ? GetOwner()->GetEngineSystem() : nullptr;
+    if (auto* audioSystem = engine ? engine->GetService<AudioSystem>() : nullptr) {
+        audioSystem->PlayOneShot(path, { .bus = AudioBus::SE });
     }
 }

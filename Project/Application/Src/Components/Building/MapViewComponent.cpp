@@ -7,6 +7,7 @@
 #include "GameObject/Text3D/Text3DObject.h"
 #include "MapGeneratorComponent.h"
 #include "Components/Utility/BlockModelLayout.h"
+#include "Components/Utility/GameCamera.h"
 #include "Components/Utility/ModelRenderPoolComponent.h"
 #include "Camera/Camera.h"
 #include "Input/InputAction.h"
@@ -656,7 +657,9 @@ void GameComponents::MapViewComponent::OnDestroy() {
 
 void GameComponents::MapViewComponent::Update() {
     // マップジェネレーターとグラウンドレンダープールが有効か確認する
-    if (mapGenerator_ == nullptr || groundRenderPool_ == nullptr || viewCamera_ == nullptr) {
+    // 描画範囲はゲーム視点カメラの位置から決める（構図は CameraRig が握る）
+    CoreEngine::Camera* viewCamera = FindGameCamera(GetOwner());
+    if (mapGenerator_ == nullptr || groundRenderPool_ == nullptr || viewCamera == nullptr) {
         return;
     }
 
@@ -665,7 +668,7 @@ void GameComponents::MapViewComponent::Update() {
     UpdateBananaTreeShakes(Time::DeltaTime());
 
     // カメラの注視位置を取得する
-    const auto cameraFocusPosition = viewCamera_->GetTranslate();
+    const auto cameraFocusPosition = viewCamera->GetTranslate();
     // 駅の待機演出は「あと何マスで着くか」で強さが変わる。丸めた値だと
     // 1マスごとに段が付いてしまうので、丸める前のマス座標も取っておく。
     const float cameraGridX = cameraFocusPosition.x / gridSize_;

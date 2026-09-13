@@ -285,53 +285,6 @@ void GameScene::GameScene::OnInitialize() {
         { .bus = AudioBus::BGM, .loop = true,
           .volume = GameComponents::GameSettings::BgmVolume.Get() });
 
-    // ========== SEの登録 ==========
-    std::function<void()> playDecisionSe = [this] {
-        if (auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr) {
-            audioSystem->PlayOneShot(
-                "Application/Assets/Sounds/SE/decision.mp3",
-                { .bus = AudioBus::SE });
-        }
-        };
-    std::function<void()> playBuildSe = [this] {
-        if (auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr) {
-            int randomIndex = rand() % 50;
-            float pitch = 0.5f + (static_cast<float>(randomIndex) / 50.0f);
-
-            audioSystem->PlayOneShot(
-                "Application/Assets/Sounds/SE/build.mp3",
-                { .bus = AudioBus::SE,.volume = 0.5f, .pitch = pitch });
-        }
-        };
-    std::function<void()> playUndoSe = [this] {
-        if (auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr) {
-            audioSystem->PlayOneShot(
-                "Application/Assets/Sounds/SE/build_return.mp3",
-                { .bus = AudioBus::SE });
-        }
-        };
-    std::function<void()> playFailureSe = [this] {
-        if (auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr) {
-            audioSystem->PlayOneShot(
-                "Application/Assets/Sounds/SE/beep.mp3",
-                { .bus = AudioBus::SE });
-        }
-        };
-    std::function<void(float, float, bool)> playRailBuildSe =
-        [this](float volume, float pitch, bool isStationRail) {
-        if (auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr) {
-            CoreEngine::PlayParams params;
-            params.bus = AudioBus::SE;
-            params.volume = volume;
-            params.pitch = pitch;
-            audioSystem->PlayOneShot(
-                isStationRail
-                    ? "Application/Assets/Sounds/SE/build_station.mp3"
-                    : "Application/Assets/Sounds/SE/rail_build.mp3",
-                params);
-        }
-        };
-
     // ========== ゲームルールの設定 ==========
     const float gridSize = GameComponents::GameSettings::GridSize.Get();
     const uint32_t mapSizeZ = ToUInt(
@@ -358,7 +311,7 @@ void GameScene::GameScene::OnInitialize() {
     //　ゲームマスターの追加
     auto* gameManager = CreateObject("GameManager");
     auto* gameManagerComponent =
-        gameManager->AddComponent<GameComponents::GameManagerComponent>(sceneManager_);
+        gameManager->AddComponent<GameComponents::GameManagerComponent>();
     gameManager->AddComponent<GameComponents::GameSettingsComponent>();
 
     // 床のオブジェクトプールを生成
@@ -483,8 +436,7 @@ void GameScene::GameScene::OnInitialize() {
         mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
         train->GetComponent<GameComponents::TrainMovementComponent>(),
         hungerComponent,
-        rockThrow,
-        playBuildSe, playUndoSe, playFailureSe);
+        rockThrow);
 
     railBuilder->AddComponent<CoreEngine::MeshRendererComponent>("arrow.obj");
 
@@ -542,14 +494,6 @@ void GameScene::GameScene::OnInitialize() {
 
     // カメラの構図は Presets/CameraRigs/GamePlay.json が持つ。
     // 起動は _camera.json の startupRigName 任せで、ここでは何も駆動しない。
-    auto* gameCamera = cameraManager_->GetCamera(CoreEngine::CameraNames::Game);
-
-    // カーソルが画面外へ出ないよう、映っている範囲をカメラから直接見て止める。
-    // 渡さなければ制限は掛からないので、リグを止めても建設は従来どおり動く。
-    if (auto* railBuilderComponent =
-        railBuilder->GetComponent<GameComponents::RailBuilderComponent>()) {
-        railBuilderComponent->SetViewCamera(gameCamera);
-    }
 
     // 岩破壊の揺れは静的に鳴らす。ここでは調整用CVarをインスペクタへ出すために付ける。
     auto* cameraSettings = CreateObject("CameraSettings");
@@ -576,8 +520,6 @@ void GameScene::GameScene::OnInitialize() {
         railRightPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         bridgePoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
-        gameCamera,
-        playRailBuildSe,
         renderWorldDistance);
 
     // マップを描画するオブジェクトを追加
@@ -594,7 +536,6 @@ void GameScene::GameScene::OnInitialize() {
         hardRockPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         bananaTreePoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         grassPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
-        gameCamera,
         gridSize, renderWorldDistance);
 
     // 水マスを描画するオブジェクトを追加。
@@ -603,7 +544,6 @@ void GameScene::GameScene::OnInitialize() {
     waterRenderer->AddComponent<CoreEngine::TransformComponent>();
     waterRenderer->AddComponent<GameComponents::WaterWaveViewComponent>(
         mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
-        gameCamera,
         gridSize, renderWorldDistance,
         ToUInt(GameComponents::GameSettings::WaterPoolCapacity.Get(), 1));
 

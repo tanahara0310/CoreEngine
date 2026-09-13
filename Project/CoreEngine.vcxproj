@@ -1432,6 +1432,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Components\UI\SpeedGaugeUIComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\StaminaGaugeUIComponent.h" />
     <ClInclude Include="Application\Src\Components\Utility\BlockModelLayout.h" />
+    <ClInclude Include="Application\Src\Components\Utility\GameCamera.h" />
     <ClInclude Include="Application\Src\Components\Utility\ModelRenderPoolComponent.h" />
     <ClInclude Include="Application\Src\Editor\Stage\StageChipPalette.h" />
     <ClInclude Include="Application\Src\Editor\Stage\StageCsvDocument.h" />

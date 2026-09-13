@@ -5,8 +5,6 @@
 #include "Components/Train/TrainMovementComponent.h"
 #include "Components/UI/OffscreenTrainIndicatorUIComponent.h"
 
-#include "Camera/CameraManager.h"
-#include "Camera/CameraStructs.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/GameObjectManager.h"
 #include "UI/UIImage.h"
@@ -43,19 +41,6 @@ namespace
                 return;
             }
 
-            // 画面内かどうかは、ゲーム視点カメラで測る。エディタのカメラで覗いている
-            // あいだも判定はゲーム側のままになるが、これは画面外への移動を止めている
-            // RailBuilderComponent::SetViewCamera と同じ扱いで、両者の「画面」がずれない
-            Camera* gameCamera = ctx.cameraManager
-                ? ctx.cameraManager->GetCamera(CameraNames::Game)
-                : nullptr;
-            if (!gameCamera) {
-                Logger::GetInstance().Warnf(
-                    LogCategory::Game,
-                    "OffscreenTrainIndicatorFeature: ゲーム視点カメラが無いため案内を出しません");
-                return;
-            }
-
             auto* gameManager =
                 ctx.gameObjectManager->FindFirstComponent<GameComponents::GameManagerComponent>();
 
@@ -66,7 +51,7 @@ namespace
             icon->Initialize(kIconTexture, "OffscreenTrainIndicator");
             icon->SetSerializeEnabled(false);
             icon->AddComponent<GameComponents::OffscreenTrainIndicatorUIComponent>(
-                train, gameCamera, gameManager);
+                train, gameManager);
         }
 
         /// @note 生成した UI はシーンの GameObject と一緒に破棄されるので、後始末は不要

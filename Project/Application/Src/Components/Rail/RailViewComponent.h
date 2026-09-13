@@ -5,13 +5,12 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string>
 #include <vector>
-#include <functional>
 
 namespace CoreEngine
 {
     class TransformComponent;
-    class Camera;
 }
 
 namespace GameComponents {
@@ -34,8 +33,6 @@ namespace GameComponents
             GameComponents::ModelRenderPoolComponent* railRightPool = nullptr,
             GameComponents::ModelRenderPoolComponent* bridgePool = nullptr,
             GameComponents::MapGeneratorComponent* mapGenerator = nullptr,
-            CoreEngine::Camera* viewCamera = nullptr,
-            std::function<void(float, float, bool)> onRailBuildSE = nullptr,
             uint32_t viewDistanceX = 30)
             : gridSize_(gridSize), railPath_(railPath),
             railPool_(railPool),
@@ -43,9 +40,7 @@ namespace GameComponents
             railRightPool_(railRightPool),
             bridgePool_(bridgePool),
             mapGenerator_(mapGenerator),
-            viewCamera_(viewCamera),
-            viewDistanceX_(viewDistanceX),
-            onRailBuildSE_(onRailBuildSE) {
+            viewDistanceX_(viewDistanceX) {
         }
 
         // コンポーネントを識別する名前。必須
@@ -80,6 +75,8 @@ namespace GameComponents
             int32_t gridX, int32_t gridZ) const;
         // 列車が通過して確定したレールに、確定順に少しずつ遅らせてSEを鳴らす
         void UpdateConfirmationSounds(float deltaTime);
+        /// @brief 確定したレールの音を鳴らす（駅のマスは別の音）
+        void PlayConfirmationSe(float volume, float pitch, bool isStationRail) const;
 
         // レール経路を直線・左コーナー・右コーナーへ分類してモデルを描画する
         void DrawRailModels();
@@ -92,8 +89,6 @@ namespace GameComponents
         GameComponents::ModelRenderPoolComponent* railRightPool_ = nullptr;
         GameComponents::ModelRenderPoolComponent* bridgePool_ = nullptr;
         GameComponents::MapGeneratorComponent* mapGenerator_ = nullptr;
-        // 描画範囲はゲーム視点カメラの位置から決める（構図は CameraRig が握る）
-        CoreEngine::Camera* viewCamera_ = nullptr;
         float gridSize_ = 5.0f;
         uint32_t viewDistanceX_ = 30;
         float railJumpHeight_ = 0.8f;
@@ -111,7 +106,8 @@ namespace GameComponents
         std::vector<float> confirmationSoundTimes_;
         std::vector<float> confirmationSoundPitches_;
 
-        // 引数は音量、ピッチ、駅レールかどうかの順
-        std::function<void(float, float, bool)> onRailBuildSE_ = nullptr;
+        // レールが確定したときに鳴らす音
+        std::string railBuildSePath_ = "Application/Assets/Sounds/SE/rail_build.mp3";
+        std::string stationRailBuildSePath_ = "Application/Assets/Sounds/SE/build_station.mp3";
     };
 }

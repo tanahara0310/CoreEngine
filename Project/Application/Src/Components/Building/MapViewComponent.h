@@ -12,7 +12,6 @@
 #include "MapChipData.h"
 
 namespace CoreEngine {
-    class Camera;
     class GameObject;
     class MsdfFont;
     class Text3DObject;
@@ -39,7 +38,6 @@ namespace GameComponents
             ModelRenderPoolComponent* hardRockRenderPool,
             ModelRenderPoolComponent* bananaTreeRenderPool,
             ModelRenderPoolComponent* grassRenderPool,
-            CoreEngine::Camera* viewCamera,
             float gridSize = 1.0f, uint32_t viewDistanceX = 30)
             : gridSize_(gridSize), viewDistanceX_(viewDistanceX),
             mapGenerator_(mapGenerator),
@@ -50,8 +48,7 @@ namespace GameComponents
             rockRenderPool_(rockRenderPool),
             hardRockRenderPool_(hardRockRenderPool),
             bananaTreeRenderPool_(bananaTreeRenderPool),
-            grassRenderPool_(grassRenderPool),
-            viewCamera_(viewCamera) {}
+            grassRenderPool_(grassRenderPool) {}
 
         // コンポーネントを識別する名前。必須
         const char* GetTypeName() const override {
@@ -200,8 +197,6 @@ namespace GameComponents
         ModelRenderPoolComponent* hardRockRenderPool_ = nullptr;
         ModelRenderPoolComponent* bananaTreeRenderPool_ = nullptr;
         ModelRenderPoolComponent* grassRenderPool_ = nullptr;
-        // 描画範囲はゲーム視点カメラの位置から決める（構図は CameraRig が握る）
-        CoreEngine::Camera* viewCamera_ = nullptr;
 
         CoreEngine::MsdfFont* distanceMarkerFont_ = nullptr;
         std::vector<CoreEngine::Text3DObject*> distanceMarkers_;

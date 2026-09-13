@@ -72,6 +72,8 @@ public:
     virtual void BuildLoadTasks(CoreEngine::StartupSequence& sequence, CoreEngine::EngineSystem* engine) = 0;
 
     virtual Camera* GetGameViewCamera3D() const { return nullptr; }
+    /// @brief ゲーム視点の 3D カメラ（エディタ視点で覗いていても変わらない）
+    virtual Camera* GetGameCamera3D() const { return nullptr; }
     virtual Camera* GetGameViewCamera2D() const { return nullptr; }
     virtual GameObjectManager* GetGameObjectManager() { return nullptr; }
 

@@ -7,7 +7,9 @@
 #include "Components/Rail/RailPathComponent.h"
 #include "Components/Building/MapGeneratorComponent.h"
 #include "Components/Utility/BlockModelLayout.h"
+#include "Components/Utility/GameCamera.h"
 #include "Components/Utility/ModelRenderPoolComponent.h"
+#include "Audio/AudioSystem.h"
 #include "Camera/Camera.h"
 #include "Input/InputAction.h"
 #include "Input/InputManager.h"
@@ -74,7 +76,9 @@ json GameComponents::RailViewComponent::OnSerialize() const {
         { "seVolume", confirmationSeVolume_ },
         { "seBasePitch", confirmationSeBasePitch_ },
         { "sePitchStep", confirmationSePitchStep_ },
-        { "seMaxPitch", confirmationSeMaxPitch_ }
+        { "seMaxPitch", confirmationSeMaxPitch_ },
+        { "railBuildSePath", railBuildSePath_ },
+        { "stationRailBuildSePath", stationRailBuildSePath_ }
     };
 }
 
@@ -90,6 +94,8 @@ void GameComponents::RailViewComponent::OnDeserialize(const json& j) {
     confirmationSeBasePitch_ = std::max(0.01f, JsonManager::SafeGet<float>(j, "seBasePitch", confirmationSeBasePitch_));
     confirmationSePitchStep_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "sePitchStep", confirmationSePitchStep_));
     confirmationSeMaxPitch_ = std::max(confirmationSeBasePitch_, JsonManager::SafeGet<float>(j, "seMaxPitch", confirmationSeMaxPitch_));
+    railBuildSePath_ = JsonManager::SafeGet<std::string>(j, "railBuildSePath", railBuildSePath_);
+    stationRailBuildSePath_ = JsonManager::SafeGet<std::string>(j, "stationRailBuildSePath", stationRailBuildSePath_);
 }
 
 #ifdef USE_IMGUI
@@ -109,6 +115,8 @@ bool GameComponents::RailViewComponent::DrawInspector() {
     changed |= ImGui::DragFloat("確定SE基準ピッチ", &confirmationSeBasePitch_, 0.01f, 0.01f, 4.0f);
     changed |= ImGui::DragFloat("確定SEピッチ増分", &confirmationSePitchStep_, 0.01f, 0.0f, 4.0f);
     changed |= ImGui::DragFloat("確定SE最大ピッチ", &confirmationSeMaxPitch_, 0.01f, confirmationSeBasePitch_, 4.0f);
+    ImGui::TextDisabled("確定SE: %s", railBuildSePath_.c_str());
+    ImGui::TextDisabled("確定SE（駅）: %s", stationRailBuildSePath_.c_str());
     return changed;
 }
 #endif
@@ -232,11 +240,21 @@ void GameComponents::RailViewComponent::UpdateConfirmationSounds(float deltaTime
             const auto& rail = railPath_->GetRailMap()[i];
             const bool isStationRail = mapGenerator_ && mapGenerator_->IsStationRailCell(
                 static_cast<std::size_t>(rail.first), static_cast<std::size_t>(rail.second));
-            if (previousTime <= 0.0f && animationTime > 0.0f && onRailBuildSE_) {
-                onRailBuildSE_(
+            if (previousTime <= 0.0f && animationTime > 0.0f) {
+                PlayConfirmationSe(
                     confirmationSeVolume_, confirmationSoundPitches_[i], isStationRail);
             }
         }
+    }
+}
+
+void GameComponents::RailViewComponent::PlayConfirmationSe(
+    float volume, float pitch, bool isStationRail) const {
+    EngineSystem* engine = GetOwner() ? GetOwner()->GetEngineSystem() : nullptr;
+    if (auto* audioSystem = engine ? engine->GetService<AudioSystem>() : nullptr) {
+        audioSystem->PlayOneShot(
+            isStationRail ? stationRailBuildSePath_ : railBuildSePath_,
+            { .bus = AudioBus::SE, .volume = volume, .pitch = pitch });
     }
 }
 
@@ -258,9 +276,10 @@ void GameComponents::RailViewComponent::DrawRailModels() {
 
     int32_t minVisibleX = 0;
     int32_t maxVisibleX = (std::numeric_limits<int32_t>::max)();
-    if (viewCamera_ && gridSize_ > 0.0f) {
+    Camera* viewCamera = FindGameCamera(GetOwner());
+    if (viewCamera && gridSize_ > 0.0f) {
         const float centerGridX =
-            viewCamera_->GetTranslate().x / gridSize_;
+            viewCamera->GetTranslate().x / gridSize_;
         minVisibleX = std::max(
             0,
             static_cast<int32_t>(std::floor(centerGridX)) -

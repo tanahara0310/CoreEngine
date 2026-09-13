@@ -99,6 +99,11 @@ namespace CoreEngine
         void SetGameCameraName(const std::string& name) { gameCameraName_ = name; }
         const std::string& GetGameCameraName() const { return gameCameraName_; }
 
+        /// @brief ゲーム視点カメラ
+        /// @details `GetViewCamera()` と違い、エディタ視点で覗いている間もゲーム側のカメラを返す。
+        /// @return カメラ（未登録なら nullptr）
+        Camera* GetGameCamera() const { return GetCamera(gameCameraName_); }
+
         /// @brief エディタ視点で覗くかどうかを設定（false = ゲーム視点）
         void SetUseSceneCamera(bool useSceneCamera) { useSceneCamera_ = useSceneCamera; }
 

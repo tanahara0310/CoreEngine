@@ -6,6 +6,8 @@
 #include "Components/Rail/RailBuilderComponent.h"
 #include "Components/Train/TrainMovementComponent.h"
 #include "Camera/Rig/CameraRig.h"
+#include "EngineSystem/EngineSystem.h"
+#include "GameObject/GameObject.h"
 #include "Scene/SceneManager.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
@@ -27,18 +29,35 @@ namespace {
 }
 
 json GameComponents::GameManagerComponent::OnSerialize() const {
-    return { { "resultTransitionDelay", defaultChangeDelay_ } };
+    return {
+        { "resultTransitionDelay", defaultChangeDelay_ },
+        { "resultSceneName", resultSceneName_ }
+    };
 }
 
 void GameComponents::GameManagerComponent::OnDeserialize(const json& j) {
     defaultChangeDelay_ = std::max(0.0f,
         JsonManager::SafeGet<float>(j, "resultTransitionDelay", defaultChangeDelay_));
+    resultSceneName_ = JsonManager::SafeGet<std::string>(j, "resultSceneName", resultSceneName_);
 }
 
 #ifdef USE_IMGUI
 bool GameComponents::GameManagerComponent::DrawInspector() {
     bool changed = ImGui::DragFloat(
         "リザルト遷移待機時間", &defaultChangeDelay_, 0.05f, 0.0f, 10.0f);
+    if (ImGui::BeginCombo("遷移先シーン", resultSceneName_.c_str())) {
+        if (SceneManager* sceneManager = FindSceneManager()) {
+            for (const std::string& name : sceneManager->GetAllSceneNames()) {
+                const bool selected = name == resultSceneName_;
+                if (ImGui::Selectable(name.c_str(), selected) && !selected) {
+                    resultSceneName_ = name;
+                    changed = true;
+                }
+                if (selected) ImGui::SetItemDefaultFocus();
+            }
+        }
+        ImGui::EndCombo();
+    }
     const char* phaseName = phase_ == Phase::Playing ? "Playing"
         : phase_ == Phase::Ending ? "Ending" : "Transitioning";
     ImGui::TextDisabled("現在フェーズ: %s", phaseName);
@@ -48,12 +67,18 @@ bool GameComponents::GameManagerComponent::DrawInspector() {
 
 void GameComponents::GameManagerComponent::Start() {
     // 終了要求を Start() でリセットしない（オブジェクトの更新順に依存させない）。
-    if (!sceneManager_ || !sceneManager_->HasScene("ResultScene")) {
+    const SceneManager* sceneManager = FindSceneManager();
+    if (!sceneManager || !sceneManager->HasScene(resultSceneName_)) {
         Logger::GetInstance().Errorf(
             LogCategory::Game,
-            "GameManager: SceneManager または ResultScene が未設定です");
+            "GameManager: SceneManager または遷移先シーン \"{}\" がありません", resultSceneName_);
         SetEnabled(false);
     }
+}
+
+CoreEngine::SceneManager* GameComponents::GameManagerComponent::FindSceneManager() const {
+    EngineSystem* engine = GetOwner() ? GetOwner()->GetEngineSystem() : nullptr;
+    return engine ? engine->GetSceneManager() : nullptr;
 }
 
 void GameComponents::GameManagerComponent::SetGameplayComponents(
@@ -143,11 +168,12 @@ void GameComponents::GameManagerComponent::UpdateEnding() {
 }
 
 void GameComponents::GameManagerComponent::TransitionToResult() {
-    if (!sceneManager_ || !sceneManager_->HasScene("ResultScene")) {
+    SceneManager* sceneManager = FindSceneManager();
+    if (!sceneManager || !sceneManager->HasScene(resultSceneName_)) {
         return;
     }
 
     // SceneManager は次フレームで切り替える。要求後は二度と送らない。
     phase_ = Phase::Transitioning;
-    sceneManager_->ChangeScene("ResultScene");
+    sceneManager->ChangeScene(resultSceneName_);
 }
