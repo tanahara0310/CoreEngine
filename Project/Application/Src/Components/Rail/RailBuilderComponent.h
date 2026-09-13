@@ -6,10 +6,10 @@
 #include <cstdint>
 #include <deque>
 #include <functional>
+#include <string>
 
 namespace CoreEngine
 {
-    class Camera;
     class TransformComponent;
 }
 
@@ -34,16 +34,12 @@ namespace GameComponents
             GameComponents::MapGeneratorComponent* mapGenerator = nullptr,
             GameComponents::TrainMovementComponent* trainMovement = nullptr,
             GameComponents::HungerComponent* hunger = nullptr,
-            GameComponents::RockThrowComponent* rockThrow = nullptr,
-            std::function<void()> OnBuildSE = nullptr,
-            std::function<void()> OnUndoSE = nullptr,
-            std::function<void()> OnFailureSE = nullptr)
+            GameComponents::RockThrowComponent* rockThrow = nullptr)
             : gridSize_(gridSize), initialGridPosX_(gridPosX), initialGridPosZ_(gridPosZ),
               gridPosX_(gridPosX), gridPosZ_(gridPosZ),
               railPath_(railPath),
               mapGenerator_(mapGenerator), trainMovement_(trainMovement),
-              hunger_(hunger), rockThrow_(rockThrow),
-              OnBuildSE_(OnBuildSE), OnUndoSE_(OnUndoSE), OnFailureSE_(OnFailureSE) {
+              hunger_(hunger), rockThrow_(rockThrow) {
         }
 
         // コンポーネントを識別する名前。必須
@@ -70,9 +66,6 @@ namespace GameComponents
         void SetGridSize(float size);
         // 水平方向優先かどうかを設定する
         void SetHorizontalPrioritize(bool prioritize);
-        // 画面外への移動を止めるために覗くカメラ（ゲーム視点）を渡す。
-        // 渡さなければ制限は掛からず、従来どおりどこまでも先へ進める。
-        void SetViewCamera(CoreEngine::Camera* camera);
         void SetInsufficientFeedback(std::function<void()> onStaminaInsufficient);
 
         /// @brief 進行方向へ 1 マス敷いた場合のスタミナ消費量を返す（スタミナゲージの予告表示用）
@@ -85,7 +78,7 @@ namespace GameComponents
         // 論理グリッド座標を Transform のワールド座標へ反映する
         void SyncTransformToGrid();
         /// @brief そのワールド座標が、余白のぶん内側まで画面に映っているか
-        /// @details カメラを渡されていなければ常に true（制限しない）。
+        /// @details ゲーム視点カメラが引けなければ常に true（制限しない）。
         bool IsInsideScreen(const CoreEngine::Vector3& worldPosition) const;
         /// @brief そのマスへカーソルを動かしても画面に映ったままか
         bool IsCellInsideScreen(int32_t gridX, int32_t gridZ) const;
@@ -96,6 +89,10 @@ namespace GameComponents
         // 投石の着弾時に岩を地面へ変え、カーソルを通常位置へ戻す
         void CompleteRockBreak();
         void NotifyStaminaInsufficient();
+        /// @brief レールを置いた音を鳴らす（ピッチは buildSePitchMin_〜buildSePitchMax_ で揺らす）
+        void PlayBuildSe() const;
+        /// @brief 効果音を既定の音量とピッチで鳴らす
+        void PlaySe(const std::string& path) const;
 
         struct RockBreakRequest {
             int32_t gridX = 0;
@@ -108,8 +105,6 @@ namespace GameComponents
         GameComponents::TrainMovementComponent* trainMovement_ = nullptr;
         GameComponents::HungerComponent* hunger_ = nullptr;
         GameComponents::RockThrowComponent* rockThrow_ = nullptr;
-        // 画面外への移動を止める判定に使うゲーム視点カメラ（非所有）
-        CoreEngine::Camera* viewCamera_ = nullptr;
 
         // 左・後ろ方向へ移動したときの符号なし整数アンダーフローを避ける
         int32_t initialGridPosX_ = 0;
@@ -155,9 +150,14 @@ namespace GameComponents
         bool isScreenLimited_ = false;
         std::deque<RockBreakRequest> rockBreakQueue_;
 
-        std::function<void()> OnBuildSE_ = nullptr;
-        std::function<void()> OnUndoSE_ = nullptr;
-        std::function<void()> OnFailureSE_ = nullptr;
+        // ===== 効果音 =====
+        std::string buildSePath_ = "Application/Assets/Sounds/SE/build.mp3";
+        float buildSeVolume_ = 0.5f;
+        float buildSePitchMin_ = 0.5f;
+        float buildSePitchMax_ = 1.48f;
+        std::string undoSePath_ = "Application/Assets/Sounds/SE/build_return.mp3";
+        std::string failureSePath_ = "Application/Assets/Sounds/SE/beep.mp3";
+
         std::function<void()> OnStaminaInsufficient_ = nullptr;
     };
 }

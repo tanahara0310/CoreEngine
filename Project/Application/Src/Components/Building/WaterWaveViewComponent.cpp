@@ -16,6 +16,7 @@
 #include "Graphics/Water/Surface/WaterSurfaceTypes.h"
 #include "MapGeneratorComponent.h"
 #include "Components/Utility/BlockModelLayout.h"
+#include "Components/Utility/GameCamera.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
 
@@ -221,15 +222,13 @@ namespace {
 
 GameComponents::WaterWaveViewComponent::WaterWaveViewComponent(
     MapGeneratorComponent* mapGenerator,
-    CoreEngine::Camera* viewCamera,
     float gridSize,
     uint32_t viewDistanceX,
     std::size_t initialCapacity)
     : gridSize_(gridSize),
       viewDistanceX_(viewDistanceX),
       initialCapacity_(initialCapacity),
-      mapGenerator_(mapGenerator),
-      viewCamera_(viewCamera) {
+      mapGenerator_(mapGenerator) {
 }
 
 // unique_ptr が指す型の定義がここまで来ないとデストラクタを作れないので、
@@ -363,7 +362,9 @@ void GameComponents::WaterWaveViewComponent::Awake() {
 }
 
 void GameComponents::WaterWaveViewComponent::Update() {
-    if (mapGenerator_ == nullptr || viewCamera_ == nullptr || !shaderProvider_) {
+    // 描画範囲はゲーム視点カメラの位置から決める（MapViewComponent と同じ基準）
+    CoreEngine::Camera* viewCamera = FindGameCamera(GetOwner());
+    if (mapGenerator_ == nullptr || viewCamera == nullptr || !shaderProvider_) {
         return;
     }
 
@@ -372,7 +373,7 @@ void GameComponents::WaterWaveViewComponent::Update() {
     UploadWaveConstants();
 
     // 描画範囲の決め方は MapViewComponent と揃える（地面と水がずれた範囲で出ないように）
-    const auto cameraFocusPosition = viewCamera_->GetTranslate();
+    const auto cameraFocusPosition = viewCamera->GetTranslate();
     const float cameraFocusGridX = std::round(cameraFocusPosition.x / gridSize_);
     const uint32_t viewCenterX = cameraFocusGridX > 0.0f
         ? static_cast<uint32_t>(cameraFocusGridX)

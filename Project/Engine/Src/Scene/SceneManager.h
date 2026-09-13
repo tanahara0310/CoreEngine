@@ -100,6 +100,9 @@ public:
     /// @brief Gameビュー用3Dカメラを取得
     Camera* GetGameViewCamera3D() const;
 
+    /// @brief ゲーム視点の3Dカメラを取得（エディタ視点で覗いていても変わらない）
+    Camera* GetGameCamera3D() const;
+
     /// @brief Gameビュー用2Dカメラを取得
     Camera* GetGameViewCamera2D() const;
 

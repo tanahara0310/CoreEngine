@@ -8,7 +8,6 @@
 
 namespace CoreEngine
 {
-    class Camera;
     class UIImage;
     class UIText;
 }
@@ -43,9 +42,8 @@ namespace GameComponents
     public:
         OffscreenTrainIndicatorUIComponent(
             TrainMovementComponent* train = nullptr,
-            CoreEngine::Camera* viewCamera = nullptr,
             GameManagerComponent* gameManager = nullptr)
-            : train_(train), viewCamera_(viewCamera), gameManager_(gameManager) {}
+            : train_(train), gameManager_(gameManager) {}
 
         const char* GetTypeName() const override { return "OffscreenTrainIndicatorUI"; }
 
@@ -82,7 +80,6 @@ namespace GameComponents
         void SetPartsActive(bool active);
 
         TrainMovementComponent* train_ = nullptr;
-        CoreEngine::Camera* viewCamera_ = nullptr;
         GameManagerComponent* gameManager_ = nullptr;
 
         CoreEngine::UIImage* icon_ = nullptr;      ///< トロッコのアイコン（オーナー自身）

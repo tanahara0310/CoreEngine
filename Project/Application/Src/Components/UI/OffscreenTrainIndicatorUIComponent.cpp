@@ -3,6 +3,7 @@
 
 #include "Components/GameCore/GameManagerComponent.h"
 #include "Components/Train/TrainMovementComponent.h"
+#include "Components/Utility/GameCamera.h"
 
 #include "Camera/Camera.h"
 #include "EngineSystem/EngineSystem.h"
@@ -312,20 +313,21 @@ void GameComponents::OffscreenTrainIndicatorUIComponent::BuildParts()
 
 bool GameComponents::OffscreenTrainIndicatorUIComponent::Measure(Measurement& out) const
 {
-    if (!train_ || !viewCamera_) {
+    CoreEngine::Camera* viewCamera = FindGameCamera(GetOwner());
+    if (!train_ || !viewCamera) {
         return false;
     }
 
     const Vector3 trainPosition = train_->GetWorldPosition();
     const Matrix4x4 viewProjection =
-        viewCamera_->GetViewMatrix() * viewCamera_->GetProjectionMatrix();
+        viewCamera->GetViewMatrix() * viewCamera->GetProjectionMatrix();
 
     Vector2 ndc{};
-    if (!ProjectToNdc(*viewCamera_, viewProjection, trainPosition, ndc)) {
+    if (!ProjectToNdc(*viewCamera, viewProjection, trainPosition, ndc)) {
         // カメラの後ろ。ゲームのリグ（真後ろ上空から見下ろす）では起こらないが、
         // 起きたときに嘘の数字を出さないよう、横のずれをそのまま距離として扱う
-        const Vector3 toTrain = trainPosition - viewCamera_->GetTranslate();
-        const float lateral = Dot(toTrain, viewCamera_->GetRight());
+        const Vector3 toTrain = trainPosition - viewCamera->GetTranslate();
+        const float lateral = Dot(toTrain, viewCamera->GetRight());
         out.canvasPosition = {
             lateral >= 0.0f ? static_cast<float>(WinApp::kReferenceWidth) * 1.5f
                             : static_cast<float>(WinApp::kReferenceWidth) * -0.5f,
@@ -344,12 +346,12 @@ bool GameComponents::OffscreenTrainIndicatorUIComponent::Measure(Measurement& ou
     float ndcPerMeterX = 0.0f;
     float ndcPerMeterY = 0.0f;
     Vector2 probe{};
-    if (ProjectToNdc(*viewCamera_, viewProjection,
-        trainPosition + viewCamera_->GetRight() * kProbeMeters, probe)) {
+    if (ProjectToNdc(*viewCamera, viewProjection,
+        trainPosition + viewCamera->GetRight() * kProbeMeters, probe)) {
         ndcPerMeterX = std::abs(probe.x - ndc.x) / kProbeMeters;
     }
-    if (ProjectToNdc(*viewCamera_, viewProjection,
-        trainPosition + viewCamera_->GetUp() * kProbeMeters, probe)) {
+    if (ProjectToNdc(*viewCamera, viewProjection,
+        trainPosition + viewCamera->GetUp() * kProbeMeters, probe)) {
         ndcPerMeterY = std::abs(probe.y - ndc.y) / kProbeMeters;
     }
 

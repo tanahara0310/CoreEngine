@@ -11,7 +11,6 @@
 #include <vector>
 
 namespace CoreEngine {
-    class Camera;
     class GameObject;
     class MeshRendererComponent;
     class TransformComponent;
@@ -35,7 +34,6 @@ namespace GameComponents
     public:
         explicit WaterWaveViewComponent(
             MapGeneratorComponent* mapGenerator,
-            CoreEngine::Camera* viewCamera,
             float gridSize = 1.0f,
             uint32_t viewDistanceX = 30,
             std::size_t initialCapacity = 100);
@@ -165,8 +163,6 @@ namespace GameComponents
         float elapsedTime_ = 0.0f;
 
         MapGeneratorComponent* mapGenerator_ = nullptr;
-        // 描画範囲はゲーム視点カメラの位置から決める（MapViewComponent と同じ基準）
-        CoreEngine::Camera* viewCamera_ = nullptr;
 
         std::unique_ptr<WaterWaveShaderProvider> shaderProvider_;
         std::unique_ptr<WaterFallShaderProvider> fallShaderProvider_;

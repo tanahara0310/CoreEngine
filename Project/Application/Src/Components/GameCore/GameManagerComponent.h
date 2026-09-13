@@ -2,6 +2,8 @@
 
 #include "GameObject/Component/Core/IComponent.h"
 
+#include <string>
+
 namespace CoreEngine {
     class SceneManager;
 }
@@ -18,8 +20,6 @@ namespace GameComponents
     public:
         enum class Phase { Playing, Ending, Transitioning };
 
-        explicit GameManagerComponent(CoreEngine::SceneManager* sceneManager = nullptr)
-            : sceneManager_(sceneManager) {}
         // コンポーネントを識別する名前。必須
         const char* GetTypeName() const override {
             return "GameManager";
@@ -57,8 +57,11 @@ namespace GameComponents
         // 終了演出の待機とシーン遷移を分離する。
         void UpdateEnding();
         void TransitionToResult();
+        // エンジンが持つシーンマネージャ（無ければ nullptr）
+        CoreEngine::SceneManager* FindSceneManager() const;
 
-        CoreEngine::SceneManager* sceneManager_ = nullptr;
+        // リザルトとして遷移するシーン名
+        std::string resultSceneName_ = "ResultScene";
         TrainMovementComponent* train_ = nullptr;
         RailBuilderComponent* builder_ = nullptr;
         HungerComponent* hunger_ = nullptr;
