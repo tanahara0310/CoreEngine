@@ -51,6 +51,43 @@ namespace {
     constexpr std::size_t kStationMonkeyPoolCapacity = 8;
 }
 
+GameComponents::MapViewComponent::MapViewComponent(
+    MapGeneratorComponent* mapGenerator,
+    ModelRenderPoolComponent* groundRenderPool,
+    ModelRenderPoolComponent* groundSkirtRenderPool,
+    ModelRenderPoolComponent* waterRenderPool,
+    ModelRenderPoolComponent* stationRenderPool,
+    ModelRenderPoolComponent* rockRenderPool,
+    ModelRenderPoolComponent* hardRockRenderPool,
+    ModelRenderPoolComponent* bananaTreeRenderPool,
+    ModelRenderPoolComponent* grassRenderPool,
+    float gridSize, uint32_t viewDistanceX)
+    : gridSize_(gridSize), viewDistanceX_(viewDistanceX),
+      mapGenerator_(mapGenerator),
+      groundRenderPool_(groundRenderPool),
+      groundSkirtRenderPool_(groundSkirtRenderPool),
+      waterRenderPool_(waterRenderPool),
+      stationRenderPool_(stationRenderPool),
+      rockRenderPool_(rockRenderPool),
+      hardRockRenderPool_(hardRockRenderPool),
+      bananaTreeRenderPool_(bananaTreeRenderPool),
+      grassRenderPool_(grassRenderPool) {
+}
+
+REFLECT_DEFINE_BEGIN(GameComponents::MapViewComponent, "マップ描画")
+    REFLECT_PARTIAL()
+    REFLECT_OBJECT_REF(mapGenerator_,          "マップ生成")
+    REFLECT_OBJECT_REF(groundRenderPool_,      "地面のプール")
+    REFLECT_OBJECT_REF(groundSkirtRenderPool_, "地面の柱のプール")
+    REFLECT_OBJECT_REF(waterRenderPool_,       "水のプール")
+    REFLECT_OBJECT_REF(stationRenderPool_,     "駅のプール")
+    REFLECT_OBJECT_REF(rockRenderPool_,        "岩のプール")
+    REFLECT_OBJECT_REF(hardRockRenderPool_,    "壊せない岩のプール")
+    REFLECT_OBJECT_REF(bananaTreeRenderPool_,  "バナナの木のプール")
+    REFLECT_OBJECT_REF(grassRenderPool_,       "草のプール")
+REFLECT_DEFINE_END()
+REFLECT_REGISTER(GameComponents::MapViewComponent)
+
 json GameComponents::MapViewComponent::OnSerialize() const {
     return {
         { "gridSize", gridSize_ },
@@ -659,7 +696,7 @@ void GameComponents::MapViewComponent::Update() {
     // マップジェネレーターとグラウンドレンダープールが有効か確認する
     // 描画範囲はゲーム視点カメラの位置から決める（構図は CameraRig が握る）
     CoreEngine::Camera* viewCamera = FindGameCamera(GetOwner());
-    if (mapGenerator_ == nullptr || groundRenderPool_ == nullptr || viewCamera == nullptr) {
+    if (!mapGenerator_ || !groundRenderPool_ || viewCamera == nullptr) {
         return;
     }
 

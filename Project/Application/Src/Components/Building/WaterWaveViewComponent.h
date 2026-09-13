@@ -1,7 +1,9 @@
 #pragma once
 
 #include "GameObject/Component/Core/IComponent.h"
+#include "GameObject/Component/Core/ObjectRef.h"
 #include "Math/Vector/Vector4.h"
+#include "Reflection/Reflect.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -44,6 +46,8 @@ namespace GameComponents
         const char* GetTypeName() const override {
             return "WaterWaveView";
         }
+
+        REFLECT_DECLARE(WaterWaveViewComponent)
 
         json OnSerialize() const override;
         void OnDeserialize(const json& j) override;
@@ -162,7 +166,7 @@ namespace GameComponents
 
         float elapsedTime_ = 0.0f;
 
-        MapGeneratorComponent* mapGenerator_ = nullptr;
+        CoreEngine::ObjectRef<MapGeneratorComponent> mapGenerator_;
 
         std::unique_ptr<WaterWaveShaderProvider> shaderProvider_;
         std::unique_ptr<WaterFallShaderProvider> fallShaderProvider_;

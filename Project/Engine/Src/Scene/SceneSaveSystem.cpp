@@ -3,8 +3,11 @@
 #include <unordered_set>
 #include <vector>
 #include "SceneSaveSystem.h"
+#include "GameObject/Component/Core/ObjectRef.h"
 #include "GameObject/GameObjectManager.h"
 #include "GameObject/Model/DynamicModelObject.h"
+#include "Reflection/PropertyValue.h"
+#include "Reflection/TypeDescriptor.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
 
@@ -68,6 +71,67 @@ namespace CoreEngine
                 if (data.is_null()) continue;
 
                 visitor(key, data);
+            }
+        }
+
+        /// @brief 保存された ID をオブジェクトへ戻す
+        void RestoreObjectId(GameObjectManager& mgr, GameObject& object, const json& data)
+        {
+            if (!data.contains("id") || !data.at("id").is_string()) {
+                return;
+            }
+
+            const std::string text = data.at("id").get<std::string>();
+            const ObjectId id = ObjectId::FromString(text);
+            if (!id.IsValid()) {
+                Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource,
+                    "SceneSaveSystem: \"{}\" の id \"{}\" を読めません",
+                    object.GetSerializeKey(), text);
+                return;
+            }
+
+            if (!mgr.AssignObjectId(object, id)) {
+                const GameObject* other = mgr.FindObject(id);
+                Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource,
+                    "SceneSaveSystem: \"{}\" の id {} は \"{}\" が使っているので戻せません",
+                    object.GetSerializeKey(), text,
+                    other ? other->GetSerializeKey() : std::string{});
+            }
+        }
+
+        /// @brief 繋ぎ先が見つからない ObjectRef を警告する
+        void WarnUnresolvedObjectRefs(const GameObjectManager& mgr, const std::string& sceneName)
+        {
+            Reflection::PropertyValue value;
+            for (const auto& object : mgr.GetAllObjects()) {
+                if (!object) continue;
+
+                for (const auto& slot : object->GetAllComponents()) {
+                    IComponent* component = slot.get();
+                    const Reflection::TypeDescriptor* descriptor =
+                        component ? component->GetTypeDescriptor() : nullptr;
+                    if (!descriptor) continue;
+
+                    for (const auto& p : descriptor->properties) {
+                        if (p.type != Reflection::PropertyType::ObjectRef || !p.IsValid()) continue;
+
+                        value.LoadFrom(p, component->GetReflectionInstance());
+                        const auto* ref =
+                            static_cast<const Reflection::ObjectRefValue*>(value.Data(p.type));
+                        if (!ref || !ref->objectId.IsValid()) continue;
+
+                        const GameObject* target = mgr.FindObject(ref->objectId);
+                        if (target &&
+                            FindReferencedComponent(*target, p.acceptsComponent, ref->componentType)) {
+                            continue;
+                        }
+
+                        Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource,
+                            "SceneSaveSystem: \"{}\" の {} / {} / {} が指す {}（{}）が見つかりません",
+                            sceneName, object->GetSerializeKey(), component->GetTypeName(), p.name,
+                            ref->objectId.ToString(), ref->componentType);
+                    }
+                }
             }
         }
     }
@@ -201,19 +265,28 @@ namespace CoreEngine
 
     bool SceneSaveSystem::StepLoad()
     {
-        if (loadIndex_ >= pendingObjects_.size()) {
-            pendingObjects_.clear();
-            loadIndex_ = 0;
-            return true;
+        if (loadIndex_ < pendingObjects_.size()) {
+            const PendingObject& pending = pendingObjects_[loadIndex_++];
+            json data = JsonManager::GetInstance().LoadJson(pending.path);
+            if (!data.is_null() && pending.object) {
+                if (loadManager_) {
+                    RestoreObjectId(*loadManager_, *pending.object, data);
+                }
+                pending.object->Deserialize(data);
+            }
+            if (loadIndex_ < pendingObjects_.size()) {
+                return false;
+            }
         }
 
-        const PendingObject& pending = pendingObjects_[loadIndex_++];
-        json data = JsonManager::GetInstance().LoadJson(pending.path);
-        if (!data.is_null() && pending.object) {
-            pending.object->Deserialize(data);
+        // 全員を復元し終えたら、繋ぎ先が見つからない参照を挙げる
+        if (loadManager_) {
+            WarnUnresolvedObjectRefs(*loadManager_, sceneName_);
+            loadManager_ = nullptr;
         }
-
-        return loadIndex_ >= pendingObjects_.size();
+        pendingObjects_.clear();
+        loadIndex_ = 0;
+        return true;
     }
 
     namespace
@@ -238,6 +311,7 @@ namespace CoreEngine
     {
         pendingObjects_.clear();
         loadIndex_ = 0;
+        loadManager_ = mgr;
 
         if (sceneName_.empty() || !mgr) return;
 
@@ -325,6 +399,7 @@ namespace CoreEngine
                 if (const char* typeName = obj->GetSerializeTypeName()) {
                     data["objectType"] = typeName;
                 }
+                data["id"] = obj->GetObjectId().ToString();
                 jm.SaveJson(GetObjectPath(key), data);
                 manifest["objects"].push_back(key);
             }
@@ -356,6 +431,7 @@ namespace CoreEngine
             if (const char* typeName = obj->GetSerializeTypeName()) {
                 data["objectType"] = typeName;
             }
+            data["id"] = obj->GetObjectId().ToString();
             jm.SaveJson(GetObjectPath(key), data);
         }
 

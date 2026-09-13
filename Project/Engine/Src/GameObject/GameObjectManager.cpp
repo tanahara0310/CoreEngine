@@ -3,6 +3,7 @@
 #include "Graphics/Render/RenderManager.h"
 #include "Collision/CollisionWorld.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
+#include "Utility/Logger/Logger.h"
 #include <algorithm>
 
 #ifdef USE_IMGUI
@@ -19,6 +20,7 @@ namespace CoreEngine
 
         // spawner_ を注入（このオブジェクトから Spawn<T>() が呼べるようになる）
         ptr->spawner_ = this;
+        ptr->objectManager_ = this;
 
         // 名前未設定の場合は GetObjectName() + 連番番号で自動付与
         if (ptr->GetName().empty()) {
@@ -29,6 +31,9 @@ namespace CoreEngine
 
         // 保存キーを 1 シーンで一意にする（名前は重複してよい）
         EnsureUniqueSerializeKey(*ptr);
+
+        // 保存キーから ID を決めて登録する
+        RegisterObjectId(*ptr);
 
         // オブジェクト固有の初期化を自動実行
         ptr->Initialize();
@@ -63,6 +68,54 @@ namespace CoreEngine
 
         serializeKeyCounters_.emplace(candidate, 0);
         object.SetSerializeKey(candidate);
+    }
+
+    void GameObjectManager::RegisterObjectId(GameObject& object)
+    {
+        const std::string& key = object.GetSerializeKey();
+        const ObjectId baseId = ObjectId::FromKey(key);
+
+        ObjectId id = baseId;
+        for (int salt = 1; objectsById_.contains(id); ++salt) {
+            id = ObjectId::FromKey(key + "#" + std::to_string(salt));
+        }
+        if (!(id == baseId)) {
+            Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
+                "GameObjectManager: \"{}\" の ID {} は使用中なので {} にしました",
+                key, baseId.ToString(), id.ToString());
+        }
+
+        object.objectId_ = id;
+        objectsById_.emplace(id, &object);
+    }
+
+    GameObject* GameObjectManager::FindObject(ObjectId id) const
+    {
+        const auto it = objectsById_.find(id);
+        return it != objectsById_.end() ? it->second : nullptr;
+    }
+
+    bool GameObjectManager::AssignObjectId(GameObject& object, ObjectId id)
+    {
+        if (!id.IsValid()) {
+            return false;
+        }
+        if (object.objectId_ == id) {
+            return true;
+        }
+        if (const auto used = objectsById_.find(id);
+            used != objectsById_.end() && used->second != &object) {
+            return false;
+        }
+
+        if (const auto current = objectsById_.find(object.objectId_);
+            current != objectsById_.end() && current->second == &object) {
+            objectsById_.erase(current);
+        }
+        object.objectId_ = id;
+        objectsById_[id] = &object;
+        ++referenceEpoch_;
+        return true;
     }
 
     void GameObjectManager::UpdateAll() {
@@ -123,16 +176,19 @@ namespace CoreEngine
         // 取り外し済みコライダー／コンポーネントの実体を解放する。
         // 衝突判定（PostObjectUpdate）より後のこのタイミングでしか解放してはいけない
         // ——判定ループが colliders_ に生ポインタを保持しているため。
+        bool referencesChanged = false;
         for (auto& obj : objects_) {
             if (obj) {
                 obj->ReleaseRetiredColliders();
-                obj->ReleaseRetiredComponents();
+                if (obj->ReleaseRetiredComponents()) {
+                    referencesChanged = true;
+                }
             }
         }
 
         objects_.erase(
             std::remove_if(objects_.begin(), objects_.end(),
-                [this](auto& obj) {
+                [this, &referencesChanged](auto& obj) {
                     // unique_ptrの有効性チェック
                     if (!obj) {
                         return true;
@@ -144,6 +200,14 @@ namespace CoreEngine
                         // OnDestroy() は「もう死んだ」と分かった今フレームで発行する
                         // （他コンポーネントがまだ生きているうちに後始末できる）。
                         obj->DispatchComponentDestroy();
+
+                        // ID から引けないようにする
+                        if (const auto it = objectsById_.find(obj->GetObjectId());
+                            it != objectsById_.end() && it->second == obj.get()) {
+                            objectsById_.erase(it);
+                        }
+                        referencesChanged = true;
+
                         destroyQueue_.push_back(std::move(obj));
                         return true;
                     }
@@ -152,6 +216,11 @@ namespace CoreEngine
                 }),
             objects_.end()
         );
+
+        // ObjectRef が控えている実体を引き直させる
+        if (referencesChanged) {
+            ++referenceEpoch_;
+        }
     }
 
     void GameObjectManager::Clear() {
@@ -160,6 +229,11 @@ namespace CoreEngine
         for (auto& obj : objects_) {
             if (obj) obj->DispatchComponentDestroy();
         }
+
+        // 捨てる前に ID から引けないようにする
+        objectsById_.clear();
+        ++referenceEpoch_;
+
         objects_.clear();
         destroyQueue_.clear();
         nameCounters_.clear();

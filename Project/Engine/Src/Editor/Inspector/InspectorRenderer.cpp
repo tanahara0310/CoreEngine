@@ -5,10 +5,14 @@
 
 #include "Editor/Command/EditorCommandStack.h"
 #include "Editor/ImGui/ImGuiAll.h"
+#include "GameObject/Component/Core/ObjectRef.h"
+#include "GameObject/GameObject.h"
+#include "GameObject/GameObjectManager.h"
 #include "Reflection/PropertyValue.h"
 #include "Reflection/ReflectionToggle.h"
 #include "Reflection/TypeDescriptor.h"
 
+#include <cstdint>
 #include <cstring>
 #include <memory>
 #include <utility>
@@ -118,6 +122,12 @@ namespace CoreEngine
                 ImGui::TextDisabled("%s: %s", p.displayName,
                     static_cast<const std::string*>(value)->c_str());
                 break;
+            case PropertyType::ObjectRef: {
+                const auto& ref = *static_cast<const Reflection::ObjectRefValue*>(value);
+                ImGui::TextDisabled("%s: %s", p.displayName,
+                    ref.objectId.IsValid() ? ref.objectId.ToString().c_str() : "（なし）");
+                break;
+            }
             }
         }
 
@@ -163,8 +173,102 @@ namespace CoreEngine
                 }
                 return false;
             }
+            case PropertyType::ObjectRef:
+                return false;
             }
             return false;
+        }
+
+        /// @brief ObjectRef の値を、指定したオブジェクトの指せるコンポーネントへ向け直す
+        /// @return 繋ぎ先が変わったら true
+        bool Retarget(Reflection::ObjectRefValue& ref, const GameObject& object,
+                      Reflection::PropertyDescriptor::ComponentFilter accepts)
+        {
+            const IComponent* component = FindReferencedComponent(object, accepts, {});
+            if (!component) {
+                return false;
+            }
+
+            Reflection::ObjectRefValue next{ object.GetObjectId(), component->GetTypeName() };
+            if (next == ref) {
+                return false;
+            }
+            ref = std::move(next);
+            return true;
+        }
+
+        /// @brief ObjectRef の繋ぎ先を選ぶ欄を描く（候補の一覧と Hierarchy からのドロップ）
+        /// @return 繋ぎ先が変わったら true
+        bool DrawObjectRef(const Reflection::PropertyDescriptor& p, Reflection::ObjectRefValue& ref,
+                           const GameObjectManager* objects)
+        {
+            const GameObject* target =
+                (objects && ref.objectId.IsValid()) ? objects->FindObject(ref.objectId) : nullptr;
+            const bool missing = ref.objectId.IsValid() &&
+                (!target || !FindReferencedComponent(*target, p.acceptsComponent, ref.componentType));
+
+            std::string preview = "（なし）";
+            if (missing) {
+                preview = "（見つかりません " + ref.objectId.ToString() + "）";
+            } else if (target) {
+                preview = target->GetDisplayName();
+            }
+
+            if (missing) {
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.4f, 0.4f, 1.0f));
+            }
+            const bool open = ImGui::BeginCombo(p.displayName, preview.c_str());
+            if (missing) {
+                ImGui::PopStyleColor();
+            }
+
+            bool edited = false;
+            if (!open) {
+                // 閉じた欄へ Hierarchy のオブジェクトを落とすと繋ぎ替える
+                if (ImGui::BeginDragDropTarget()) {
+                    if (const ImGuiPayload* payload =
+                            ImGui::AcceptDragDropPayload(InspectorRenderer::kObjectDragPayload)) {
+                        std::uint64_t droppedId = 0;
+                        if (objects && payload->DataSize == sizeof(droppedId)) {
+                            std::memcpy(&droppedId, payload->Data, sizeof(droppedId));
+                            if (const GameObject* dropped = objects->FindObject(ObjectId{ droppedId })) {
+                                edited = Retarget(ref, *dropped, p.acceptsComponent);
+                            }
+                        }
+                    }
+                    ImGui::EndDragDropTarget();
+                }
+                if (ImGui::IsItemHovered() && ref.objectId.IsValid()) {
+                    ImGui::SetTooltip("ID %s\n%s",
+                        ref.objectId.ToString().c_str(), ref.componentType.c_str());
+                }
+                return edited;
+            }
+
+            if (ImGui::Selectable("（なし）", !ref.objectId.IsValid()) && ref.objectId.IsValid()) {
+                ref = Reflection::ObjectRefValue{};
+                edited = true;
+            }
+            if (objects) {
+                for (const auto& object : objects->GetAllObjects()) {
+                    if (!object || object->IsMarkedForDestroy() ||
+                        !FindReferencedComponent(*object, p.acceptsComponent, {})) {
+                        continue;
+                    }
+
+                    const bool selected = object->GetObjectId() == ref.objectId;
+                    ImGui::PushID(object.get());
+                    if (ImGui::Selectable(object->GetDisplayName(), selected)) {
+                        edited = Retarget(ref, *object, p.acceptsComponent) || edited;
+                    }
+                    if (selected) {
+                        ImGui::SetItemDefaultFocus();
+                    }
+                    ImGui::PopID();
+                }
+            }
+            ImGui::EndCombo();
+            return edited;
         }
     }
 
@@ -200,6 +304,28 @@ namespace CoreEngine
 
             if (!p.IsEditable()) {
                 DrawReadOnly(p, value);
+                continue;
+            }
+
+            // 繋ぎ先の選択は 1 回で確定するので、選んだその場で履歴へ積む
+            if (p.type == Reflection::PropertyType::ObjectRef) {
+                Reflection::PropertyValue before;
+                before.CopyFrom(p.type, value);
+
+                ImGui::PushID(p.name.c_str());
+                const bool retargeted = DrawObjectRef(
+                    p, *static_cast<Reflection::ObjectRefValue*>(value), context.objects);
+                ImGui::PopID();
+
+                if (retargeted) {
+                    current.StoreTo(p, instance);
+                    changed = true;
+                    if (context.onChanged) { context.onChanged(p); }
+                    Editor::EditorCommandStack::Get().Push(
+                        std::make_unique<PropertyEditCommand>(
+                            ownerLabel + " の " + p.displayName,
+                            context.owner, instance, &p, std::move(before), context.onChanged));
+                }
                 continue;
             }
 

@@ -703,6 +703,9 @@
     <ClCompile Include="Engine\Src\GameObject\Component\Core\ComponentHost.cpp">
       <Filter>Engine\Src\GameObject\Component\Core</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\Core\ObjectRef.cpp">
+      <Filter>Engine\Src\GameObject\Component\Core</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\Component\Render\MaterialComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClCompile>
@@ -731,6 +734,9 @@
       <Filter>Engine\Src\GameObject</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\GameObjectManager.cpp">
+      <Filter>Engine\Src\GameObject</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\ObjectId.cpp">
       <Filter>Engine\Src\GameObject</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\Model\ModelGameObject.cpp">
@@ -2475,6 +2481,9 @@
     <ClInclude Include="Engine\Src\GameObject\Component\Core\ComponentHost.h">
       <Filter>Engine\Src\GameObject\Component\Core</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\Core\ObjectRef.h">
+      <Filter>Engine\Src\GameObject\Component\Core</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Animation\AnimatorComponent.h">
       <Filter>Engine\Src\GameObject\Component\Animation</Filter>
     </ClInclude>
@@ -2515,6 +2524,9 @@
       <Filter>Engine\Src\GameObject</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\IObjectSpawner.h">
+      <Filter>Engine\Src\GameObject</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\ObjectId.h">
       <Filter>Engine\Src\GameObject</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Model\DynamicModelObject.h">

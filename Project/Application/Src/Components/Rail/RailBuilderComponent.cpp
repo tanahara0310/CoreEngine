@@ -86,6 +86,29 @@ namespace {
     }
 }
 
+GameComponents::RailBuilderComponent::RailBuilderComponent(
+    float gridSize, int32_t gridPosX, int32_t gridPosZ,
+    RailPathComponent* railPath,
+    MapGeneratorComponent* mapGenerator,
+    TrainMovementComponent* trainMovement,
+    HungerComponent* hunger,
+    RockThrowComponent* rockThrow)
+    : railPath_(railPath), mapGenerator_(mapGenerator), trainMovement_(trainMovement),
+      hunger_(hunger), rockThrow_(rockThrow),
+      initialGridPosX_(gridPosX), initialGridPosZ_(gridPosZ),
+      gridPosX_(gridPosX), gridPosZ_(gridPosZ), gridSize_(gridSize) {
+}
+
+REFLECT_DEFINE_BEGIN(GameComponents::RailBuilderComponent, "レールビルダー")
+    REFLECT_PARTIAL()
+    REFLECT_OBJECT_REF(railPath_,      "レール経路")
+    REFLECT_OBJECT_REF(mapGenerator_,  "マップ生成")
+    REFLECT_OBJECT_REF(trainMovement_, "列車移動")
+    REFLECT_OBJECT_REF(hunger_,        "スタミナ")
+    REFLECT_OBJECT_REF(rockThrow_,     "岩破壊の投石")
+REFLECT_DEFINE_END()
+REFLECT_REGISTER(GameComponents::RailBuilderComponent)
+
 json GameComponents::RailBuilderComponent::OnSerialize() const {
     return {
         { "gridSize", gridSize_ },
@@ -421,7 +444,7 @@ void GameComponents::RailBuilderComponent::Update() {
         return;
     }
 
-    if (IsAdjacentToBananaTree(mapGenerator_, nextX, nextZ)) {
+    if (IsAdjacentToBananaTree(mapGenerator_.Get(), nextX, nextZ)) {
         PlayRandomPitchSe(GetOwner(), kBananaBuildSePath);
     } else {
         PlayBuildSe();

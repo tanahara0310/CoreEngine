@@ -1,6 +1,8 @@
 #pragma once
 
 #include "GameObject/Component/Core/IComponent.h"
+#include "GameObject/Component/Core/ObjectRef.h"
+#include "Reflection/Reflect.h"
 
 #include <string>
 
@@ -24,6 +26,9 @@ namespace GameComponents
         const char* GetTypeName() const override {
             return "GameManager";
         }
+
+        REFLECT_DECLARE(GameManagerComponent)
+
         json OnSerialize() const override;
         void OnDeserialize(const json& j) override;
 
@@ -62,9 +67,9 @@ namespace GameComponents
 
         // リザルトとして遷移するシーン名
         std::string resultSceneName_ = "ResultScene";
-        TrainMovementComponent* train_ = nullptr;
-        RailBuilderComponent* builder_ = nullptr;
-        HungerComponent* hunger_ = nullptr;
+        CoreEngine::ObjectRef<TrainMovementComponent> train_;
+        CoreEngine::ObjectRef<RailBuilderComponent> builder_;
+        CoreEngine::ObjectRef<HungerComponent> hunger_;
         Phase phase_ = Phase::Playing;
         bool isGameClear_ = false;
         bool isGameOver_ = false;

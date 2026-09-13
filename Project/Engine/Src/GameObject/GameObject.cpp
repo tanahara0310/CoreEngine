@@ -339,11 +339,17 @@ namespace CoreEngine
                     InspectorRenderer::DrawContext context;
                     context.label = std::string(GetName()) + " の " + raw->GetInspectorName();
                     context.owner = raw;
+                    context.objects = objectManager_;
                     context.onChanged = [raw](const Reflection::PropertyDescriptor& property) {
                         raw->OnPropertyChanged(property);
                         };
                     changed |= InspectorRenderer::Draw(
                         *descriptor, raw->GetReflectionInstance(), context);
+                    // 記述子に一部だけを載せた型は、残りを手書きの UI で描く
+                    if (descriptor->partial) {
+                        UI::Separator();
+                        changed |= component->DrawInspector();
+                    }
                     component->DrawInspectorExtra();
                 } else {
                     changed |= component->DrawInspector();

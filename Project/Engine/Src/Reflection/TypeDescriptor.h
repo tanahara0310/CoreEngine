@@ -14,6 +14,10 @@ namespace CoreEngine::Reflection
         uint32_t    version = 1;
         std::vector<PropertyDescriptor> properties;
 
+        /// @brief プロパティの一部だけを持つか
+        /// @details true なら、残りの保存と表示は `OnSerialize` / `OnDeserialize` / `DrawInspector` が受け持つ。
+        bool partial = false;
+
         const PropertyDescriptor* Find(const char* propertyName) const;
     };
 

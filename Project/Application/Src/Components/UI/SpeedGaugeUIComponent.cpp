@@ -287,6 +287,17 @@ namespace
 }
 
 /// @note 上限を 2 まで許すのは、EaseOutBack を通した「行き過ぎ」をそのまま活かすため
+GameComponents::SpeedGaugeUIComponent::SpeedGaugeUIComponent(TrainMovementComponent* train)
+    : train_(train)
+{
+}
+
+REFLECT_DEFINE_BEGIN(GameComponents::SpeedGaugeUIComponent, "速度計")
+    REFLECT_PARTIAL()
+    REFLECT_OBJECT_REF(train_, "列車移動")
+REFLECT_DEFINE_END()
+REFLECT_REGISTER(GameComponents::SpeedGaugeUIComponent)
+
 void GameComponents::SpeedGaugeUIComponent::SetIntroReveal(float reveal)
 {
     introReveal_ = std::clamp(reveal, 0.0f, 2.0f);

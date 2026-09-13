@@ -83,5 +83,8 @@ namespace CoreEngine
         std::function<void(const std::string&)> onSaveNotification_;
         std::vector<PendingObject> pendingObjects_;
         size_t loadIndex_ = 0;
+
+        /// @brief 読み込み中のシーンのオブジェクト（復元し終えたら参照を確かめる）
+        GameObjectManager* loadManager_ = nullptr;
     };
 }

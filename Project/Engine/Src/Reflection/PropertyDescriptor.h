@@ -1,5 +1,6 @@
 #pragma once
 
+#include "GameObject/ObjectId.h"
 #include "Math/Vector/Vector2.h"
 #include "Math/Vector/Vector3.h"
 #include "Math/Vector/Vector4.h"
@@ -7,6 +8,11 @@
 #include <cstdint>
 #include <string>
 #include <type_traits>
+
+namespace CoreEngine
+{
+    class IComponent;
+}
 
 namespace CoreEngine::Reflection
 {
@@ -21,6 +27,19 @@ namespace CoreEngine::Reflection
         Vector4,
         Color,
         String,
+        ObjectRef,
+    };
+
+    /// @brief シーン内の別オブジェクトのコンポーネントを指す値
+    struct ObjectRefValue
+    {
+        ObjectId    objectId{};
+        std::string componentType;  ///< 指す先の `IComponent::GetTypeName()`
+
+        bool operator==(const ObjectRefValue& other) const
+        {
+            return objectId == other.objectId && componentType == other.componentType;
+        }
     };
 
     /// @brief 数値プロパティの編集範囲
@@ -57,13 +76,14 @@ namespace CoreEngine::Reflection
 
     /// @brief C++ の型から PropertyType を引く
     template <class T> struct PropertyTypeOf;
-    template <> struct PropertyTypeOf<bool>        { static constexpr PropertyType kValue = PropertyType::Bool; };
-    template <> struct PropertyTypeOf<int>         { static constexpr PropertyType kValue = PropertyType::Int; };
-    template <> struct PropertyTypeOf<float>       { static constexpr PropertyType kValue = PropertyType::Float; };
-    template <> struct PropertyTypeOf<Vector2>     { static constexpr PropertyType kValue = PropertyType::Vector2; };
-    template <> struct PropertyTypeOf<Vector3>     { static constexpr PropertyType kValue = PropertyType::Vector3; };
-    template <> struct PropertyTypeOf<Vector4>     { static constexpr PropertyType kValue = PropertyType::Vector4; };
-    template <> struct PropertyTypeOf<std::string> { static constexpr PropertyType kValue = PropertyType::String; };
+    template <> struct PropertyTypeOf<bool>           { static constexpr PropertyType kValue = PropertyType::Bool; };
+    template <> struct PropertyTypeOf<int>            { static constexpr PropertyType kValue = PropertyType::Int; };
+    template <> struct PropertyTypeOf<float>          { static constexpr PropertyType kValue = PropertyType::Float; };
+    template <> struct PropertyTypeOf<Vector2>        { static constexpr PropertyType kValue = PropertyType::Vector2; };
+    template <> struct PropertyTypeOf<Vector3>        { static constexpr PropertyType kValue = PropertyType::Vector3; };
+    template <> struct PropertyTypeOf<Vector4>        { static constexpr PropertyType kValue = PropertyType::Vector4; };
+    template <> struct PropertyTypeOf<std::string>    { static constexpr PropertyType kValue = PropertyType::String; };
+    template <> struct PropertyTypeOf<ObjectRefValue> { static constexpr PropertyType kValue = PropertyType::ObjectRef; };
 
     /// @brief 型ごとの値サイズ（Undo のスナップショットが使う）
     size_t SizeOfPropertyType(PropertyType type) noexcept;
@@ -82,14 +102,18 @@ namespace CoreEngine::Reflection
         /// @param in `type` に対応する型の実体
         using Setter = void (*)(void* instance, const void* in);
 
+        /// @brief ObjectRef が指せるコンポーネントかを判定する
+        using ComponentFilter = bool (*)(const IComponent* component);
+
         /// @brief 保存キー兼 UI の識別子（既定はメンバ式の末尾トークン）
-        std::string   name;
-        const char*   displayName = "";
-        PropertyType  type = PropertyType::Float;
-        Getter        get = nullptr;
-        Setter        set = nullptr;
-        PropertyRange range{};
-        PropertyFlags flags = PropertyFlags::None;
+        std::string     name;
+        const char*     displayName = "";
+        PropertyType    type = PropertyType::Float;
+        Getter          get = nullptr;
+        Setter          set = nullptr;
+        PropertyRange   range{};
+        PropertyFlags   flags = PropertyFlags::None;
+        ComponentFilter acceptsComponent = nullptr;  ///< ObjectRef の繋ぎ先の判定（ObjectRef 以外は nullptr）
 
         /// @brief 読み書きの口が揃っているか
         bool IsValid() const { return get != nullptr && set != nullptr; }

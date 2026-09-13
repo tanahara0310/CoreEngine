@@ -28,6 +28,14 @@ namespace {
     constexpr float kEndingCloseUpSeconds = 1.5f;
 }
 
+REFLECT_DEFINE_BEGIN(GameComponents::GameManagerComponent, "ゲーム進行")
+    REFLECT_PARTIAL()
+    REFLECT_OBJECT_REF(train_,   "列車移動")
+    REFLECT_OBJECT_REF(builder_, "レールビルダー")
+    REFLECT_OBJECT_REF(hunger_,  "スタミナ")
+REFLECT_DEFINE_END()
+REFLECT_REGISTER(GameComponents::GameManagerComponent)
+
 json GameComponents::GameManagerComponent::OnSerialize() const {
     return {
         { "resultTransitionDelay", defaultChangeDelay_ },
@@ -85,9 +93,9 @@ void GameComponents::GameManagerComponent::SetGameplayComponents(
     TrainMovementComponent* train,
     RailBuilderComponent* builder,
     HungerComponent* hunger) {
-    train_ = train;
-    builder_ = builder;
-    hunger_ = hunger;
+    train_.Set(train);
+    builder_.Set(builder);
+    hunger_.Set(hunger);
 }
 
 void GameComponents::GameManagerComponent::LateUpdate() {

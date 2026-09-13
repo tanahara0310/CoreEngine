@@ -1,8 +1,10 @@
 #pragma once
 
 #include "GameObject/Component/Core/IComponent.h"
+#include "GameObject/Component/Core/ObjectRef.h"
 #include "Math/Vector/Vector2.h"
 #include "Math/Vector/Vector4.h"
+#include "Reflection/Reflect.h"
 
 #include <vector>
 
@@ -42,10 +44,11 @@ namespace GameComponents
     public:
         OffscreenTrainIndicatorUIComponent(
             TrainMovementComponent* train = nullptr,
-            GameManagerComponent* gameManager = nullptr)
-            : train_(train), gameManager_(gameManager) {}
+            GameManagerComponent* gameManager = nullptr);
 
         const char* GetTypeName() const override { return "OffscreenTrainIndicatorUI"; }
+
+        REFLECT_DECLARE(OffscreenTrainIndicatorUIComponent)
 
 #ifdef USE_IMGUI
         const char* GetInspectorName() const override { return "画面外トロッコ案内"; }
@@ -79,8 +82,8 @@ namespace GameComponents
         /// @brief 表示中のパーツをまとめて表示／非表示にする
         void SetPartsActive(bool active);
 
-        TrainMovementComponent* train_ = nullptr;
-        GameManagerComponent* gameManager_ = nullptr;
+        CoreEngine::ObjectRef<TrainMovementComponent> train_;
+        CoreEngine::ObjectRef<GameManagerComponent> gameManager_;
 
         CoreEngine::UIImage* icon_ = nullptr;      ///< トロッコのアイコン（オーナー自身）
         CoreEngine::UIText* arrow_ = nullptr;      ///< 画面外を指す三角

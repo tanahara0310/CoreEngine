@@ -65,6 +65,36 @@ namespace
 #include "Editor/ImGui/ImGuiAll.h"
 #endif
 
+GameComponents::RailViewComponent::RailViewComponent(
+    float gridSize,
+    RailPathComponent* railPath,
+    ModelRenderPoolComponent* railPool,
+    ModelRenderPoolComponent* railLeftPool,
+    ModelRenderPoolComponent* railRightPool,
+    ModelRenderPoolComponent* bridgePool,
+    MapGeneratorComponent* mapGenerator,
+    uint32_t viewDistanceX)
+    : railPath_(railPath),
+      railPool_(railPool),
+      railLeftPool_(railLeftPool),
+      railRightPool_(railRightPool),
+      bridgePool_(bridgePool),
+      mapGenerator_(mapGenerator),
+      gridSize_(gridSize),
+      viewDistanceX_(viewDistanceX) {
+}
+
+REFLECT_DEFINE_BEGIN(GameComponents::RailViewComponent, "レール描画")
+    REFLECT_PARTIAL()
+    REFLECT_OBJECT_REF(railPath_,      "レール経路")
+    REFLECT_OBJECT_REF(railPool_,      "直線レールのプール")
+    REFLECT_OBJECT_REF(railLeftPool_,  "左コーナーのプール")
+    REFLECT_OBJECT_REF(railRightPool_, "右コーナーのプール")
+    REFLECT_OBJECT_REF(bridgePool_,    "橋のプール")
+    REFLECT_OBJECT_REF(mapGenerator_,  "マップ生成")
+REFLECT_DEFINE_END()
+REFLECT_REGISTER(GameComponents::RailViewComponent)
+
 json GameComponents::RailViewComponent::OnSerialize() const {
     return {
         { "gridSize", gridSize_ },
@@ -188,7 +218,7 @@ float GameComponents::RailViewComponent::GetRailJumpOffset(
 float GameComponents::RailViewComponent::GetBananaBuildRotation(
     std::size_t pathIndex, int32_t gridX, int32_t gridZ) const {
     if (pathIndex >= railJumpTimes_.size() || bananaBuildRotationTurns_ <= 0.0f ||
-        !IsAdjacentToBananaTree(mapGenerator_, gridX, gridZ)) {
+        !IsAdjacentToBananaTree(mapGenerator_.Get(), gridX, gridZ)) {
         return 0.0f;
     }
 

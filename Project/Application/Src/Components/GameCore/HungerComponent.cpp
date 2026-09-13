@@ -32,6 +32,20 @@ bool GameComponents::HungerComponent::DrawInspector()
 }
 #endif
 
+GameComponents::HungerComponent::HungerComponent(
+    MapGeneratorComponent* mapGenerator,
+    GameManagerComponent* gameManager)
+    : mapGenerator_(mapGenerator), gameManager_(gameManager)
+{
+}
+
+REFLECT_DEFINE_BEGIN(GameComponents::HungerComponent, "スタミナ")
+    REFLECT_PARTIAL()
+    REFLECT_OBJECT_REF(mapGenerator_, "マップ生成")
+    REFLECT_OBJECT_REF(gameManager_,  "ゲーム進行")
+REFLECT_DEFINE_END()
+REFLECT_REGISTER(GameComponents::HungerComponent)
+
 void GameComponents::HungerComponent::Start()
 {
     currentHunger_ = std::clamp(GameSettings::InitialStamina.Get(), 0.0f, GetMaximumHunger());
