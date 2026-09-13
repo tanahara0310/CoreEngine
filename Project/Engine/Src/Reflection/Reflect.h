@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Reflection/TypeDescriptor.h"
+#include "Utility/Macro/UniqueName.h"
 
 #include <string>
 #include <type_traits>
@@ -76,9 +77,6 @@ namespace CoreEngine::Reflection
         AutoRegister() { TypeRegistry::Get().Register(&TypeDescriptorHolder<T>::Get()); }
     };
 }
-
-#define REFLECT_DETAIL_CAT2(a, b) a##b
-#define REFLECT_DETAIL_CAT(a, b) REFLECT_DETAIL_CAT2(a, b)
 
 #define REFLECT_BEGIN(TypeName, DisplayNameLiteral)                                    \
     using ReflectedSelf = TypeName;                                                    \
@@ -190,5 +188,5 @@ namespace CoreEngine::Reflection
 #define REFLECT_REGISTER(TypeName)                                                     \
     namespace {                                                                        \
         const ::CoreEngine::Reflection::AutoRegister<TypeName>                         \
-            REFLECT_DETAIL_CAT(kAutoRegisterType_, __LINE__){};                        \
+            CORE_UNIQUE_NAME(kAutoRegisterType_){};                                    \
     }

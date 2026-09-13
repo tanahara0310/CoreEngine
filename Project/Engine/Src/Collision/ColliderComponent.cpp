@@ -2,6 +2,7 @@
 #include "ColliderComponent.h"
 
 #include "GameObject/GameObject.h"
+#include "GameObject/Component/Core/ComponentFactory.h"
 #include "GameObject/Component/Transform/ITransformSource.h"
 
 #include <algorithm>
@@ -10,6 +11,8 @@
 #ifdef USE_IMGUI
 #include "Collision/Debug/ColliderInspector.h"
 #endif
+
+COMPONENT_REGISTER(CoreEngine::ColliderComponent)
 
 namespace CoreEngine
 {

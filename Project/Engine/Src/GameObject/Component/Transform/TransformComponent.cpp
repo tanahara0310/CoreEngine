@@ -2,6 +2,7 @@
 #include "TransformComponent.h"
 
 #include "EngineSystem/EngineSystem.h"
+#include "GameObject/Component/Core/ComponentFactory.h"
 #include "GameObject/GameObject.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Math/MathCore.h"
@@ -13,6 +14,7 @@
 #endif
 
 REFLECT_REGISTER(CoreEngine::TransformComponent)
+COMPONENT_REGISTER(CoreEngine::TransformComponent)
 
 namespace CoreEngine
 {

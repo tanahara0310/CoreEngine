@@ -2,6 +2,7 @@
 #include "AnimatorComponent.h"
 
 #include "EngineSystem/EngineSystem.h"
+#include "GameObject/Component/Core/ComponentFactory.h"
 #include "GameObject/GameObject.h"
 #include "Graphics/Line/LineManager.h"
 #include "Graphics/Model/Animation/AnimationPlayer.h"
@@ -9,6 +10,8 @@
 #include "Graphics/Model/ModelResource.h"
 #include "Math/MathCore.h"
 #include "Utility/FrameRate/Time.h"
+
+COMPONENT_REGISTER(CoreEngine::AnimatorComponent)
 
 namespace CoreEngine
 {
