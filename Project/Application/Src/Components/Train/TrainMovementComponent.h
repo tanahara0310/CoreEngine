@@ -1,7 +1,9 @@
 #pragma once
 
 #include "GameObject/Component/Core/IComponent.h"
+#include "GameObject/Component/Core/ObjectRef.h"
 #include "Math/Vector/Vector3.h"
+#include "Reflection/Reflect.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -32,16 +34,14 @@ namespace GameComponents
             int32_t gridX = 0, int32_t gridZ = 0,
             GameComponents::RailPathComponent* railPath = nullptr,
             GameManagerComponent* gameManager = nullptr,
-            HungerComponent* hunger = nullptr)
-            : railPath_(railPath), gameManager_(gameManager), hunger_(hunger), gridSize_(gridSize),
-              initialMoveSpeed_(moveSpeed), moveSpeed_(moveSpeed),
-              initialGridX_(gridX), initialGridZ_(gridZ), gridX_(gridX), gridZ_(gridZ) {
-        }
+            HungerComponent* hunger = nullptr);
 
         // コンポーネントを識別する名前。必須
         const char* GetTypeName() const override {
             return "TrainMovement";
         }
+
+        REFLECT_DECLARE(TrainMovementComponent)
 
         json OnSerialize() const override;
         void OnDeserialize(const json& j) override;
@@ -111,9 +111,9 @@ namespace GameComponents
             float progress, float entryTurnProgress) const;
 
         CoreEngine::TransformComponent* transform_ = nullptr;
-        GameComponents::RailPathComponent* railPath_ = nullptr;
-        GameManagerComponent* gameManager_ = nullptr;
-        HungerComponent* hunger_ = nullptr;
+        CoreEngine::ObjectRef<GameComponents::RailPathComponent> railPath_;
+        CoreEngine::ObjectRef<GameManagerComponent> gameManager_;
+        CoreEngine::ObjectRef<HungerComponent> hunger_;
         float gridSize_ = 5.0f;
 
         float initialMoveSpeed_ = 0.5f; // 基準最低速度（初期速度・駅到着時のリセット速度）

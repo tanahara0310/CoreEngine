@@ -1,6 +1,8 @@
 #pragma once
 
 #include "GameObject/Component/Core/IComponent.h"
+#include "GameObject/Component/Core/ObjectRef.h"
+#include "Reflection/Reflect.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -36,10 +38,11 @@ namespace GameComponents
     public:
         explicit HungerComponent(
             MapGeneratorComponent* mapGenerator = nullptr,
-            GameManagerComponent* gameManager = nullptr)
-            : mapGenerator_(mapGenerator), gameManager_(gameManager) {}
+            GameManagerComponent* gameManager = nullptr);
 
         const char* GetTypeName() const override { return "Hunger"; }
+
+        REFLECT_DECLARE(HungerComponent)
 
 #ifdef USE_IMGUI
         const char* GetInspectorName() const override { return "スタミナ"; }
@@ -95,8 +98,8 @@ namespace GameComponents
     private:
         using BananaTriggerKey = std::tuple<std::size_t, int32_t, int32_t, int32_t, int32_t>;
 
-        MapGeneratorComponent* mapGenerator_ = nullptr;
-        GameManagerComponent* gameManager_ = nullptr;
+        CoreEngine::ObjectRef<MapGeneratorComponent> mapGenerator_;
+        CoreEngine::ObjectRef<GameManagerComponent> gameManager_;
 
         float currentHunger_ = 100.0f; // すべてのサルで共有するスタミナ。
         bool gameOverRequested_ = false;

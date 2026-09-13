@@ -193,6 +193,20 @@ namespace
     }
 }
 
+GameComponents::StaminaGaugeUIComponent::StaminaGaugeUIComponent(
+    HungerComponent* hunger,
+    RailBuilderComponent* builder)
+    : hunger_(hunger), builder_(builder)
+{
+}
+
+REFLECT_DEFINE_BEGIN(GameComponents::StaminaGaugeUIComponent, "スタミナゲージ")
+    REFLECT_PARTIAL()
+    REFLECT_OBJECT_REF(hunger_,  "スタミナ")
+    REFLECT_OBJECT_REF(builder_, "レールビルダー")
+REFLECT_DEFINE_END()
+REFLECT_REGISTER(GameComponents::StaminaGaugeUIComponent)
+
 void GameComponents::StaminaGaugeUIComponent::Awake()
 {
     if (!hunger_) {

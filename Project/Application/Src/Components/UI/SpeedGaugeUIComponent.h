@@ -1,8 +1,10 @@
 #pragma once
 
 #include "GameObject/Component/Core/IComponent.h"
+#include "GameObject/Component/Core/ObjectRef.h"
 #include "Math/Vector/Vector2.h"
 #include "Math/Vector/Vector3.h"
+#include "Reflection/Reflect.h"
 
 #include <array>
 #include <vector>
@@ -32,10 +34,11 @@ namespace GameComponents
     class SpeedGaugeUIComponent final : public CoreEngine::IComponent
     {
     public:
-        explicit SpeedGaugeUIComponent(TrainMovementComponent* train = nullptr)
-            : train_(train) {}
+        explicit SpeedGaugeUIComponent(TrainMovementComponent* train = nullptr);
 
         const char* GetTypeName() const override { return "SpeedGaugeUI"; }
+
+        REFLECT_DECLARE(SpeedGaugeUIComponent)
 
 #ifdef USE_IMGUI
         const char* GetInspectorName() const override { return "速度計"; }
@@ -92,7 +95,7 @@ namespace GameComponents
 
         static constexpr std::size_t kDigitCount = 4; ///< 百・十・一・小数 1 桁
 
-        TrainMovementComponent* train_ = nullptr;
+        CoreEngine::ObjectRef<TrainMovementComponent> train_;
 
         CoreEngine::UIImage* board_ = nullptr;    ///< 中板（オーナー自身）
         CoreEngine::UIImage* capLeft_ = nullptr;  ///< 左の端木

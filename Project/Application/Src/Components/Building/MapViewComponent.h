@@ -1,8 +1,10 @@
 #pragma once
 
 #include "GameObject/Component/Core/IComponent.h"
+#include "GameObject/Component/Core/ObjectRef.h"
 #include "Math/Vector/Vector4.h"
 #include "Math/Vector/Vector3.h"
+#include "Reflection/Reflect.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -38,22 +40,14 @@ namespace GameComponents
             ModelRenderPoolComponent* hardRockRenderPool,
             ModelRenderPoolComponent* bananaTreeRenderPool,
             ModelRenderPoolComponent* grassRenderPool,
-            float gridSize = 1.0f, uint32_t viewDistanceX = 30)
-            : gridSize_(gridSize), viewDistanceX_(viewDistanceX),
-            mapGenerator_(mapGenerator),
-            groundRenderPool_(groundRenderPool),
-            groundSkirtRenderPool_(groundSkirtRenderPool),
-            waterRenderPool_(waterRenderPool),
-            stationRenderPool_(stationRenderPool),
-            rockRenderPool_(rockRenderPool),
-            hardRockRenderPool_(hardRockRenderPool),
-            bananaTreeRenderPool_(bananaTreeRenderPool),
-            grassRenderPool_(grassRenderPool) {}
+            float gridSize = 1.0f, uint32_t viewDistanceX = 30);
 
         // コンポーネントを識別する名前。必須
         const char* GetTypeName() const override {
             return "MapView";
         }
+
+        REFLECT_DECLARE(MapViewComponent)
 
         json OnSerialize() const override;
         void OnDeserialize(const json& j) override;
@@ -185,18 +179,18 @@ namespace GameComponents
         uint32_t mapViewCenterX_ = 0;
         uint32_t viewDistanceX_ = 30;
 
-        MapGeneratorComponent* mapGenerator_ = nullptr;
-        ModelRenderPoolComponent* groundRenderPool_ = nullptr;
+        CoreEngine::ObjectRef<MapGeneratorComponent> mapGenerator_;
+        CoreEngine::ObjectRef<ModelRenderPoolComponent> groundRenderPool_;
         // 地面ブロックの下へ吊るす柱。地面と同じ ground.obj を使うが、1マスにつき
         // 地面とスカートの2つを出すのでプールは分ける
-        ModelRenderPoolComponent* groundSkirtRenderPool_ = nullptr;
-        ModelRenderPoolComponent* waterRenderPool_ = nullptr;
-        ModelRenderPoolComponent* stationRenderPool_ = nullptr;
-        ModelRenderPoolComponent* rockRenderPool_ = nullptr;
+        CoreEngine::ObjectRef<ModelRenderPoolComponent> groundSkirtRenderPool_;
+        CoreEngine::ObjectRef<ModelRenderPoolComponent> waterRenderPool_;
+        CoreEngine::ObjectRef<ModelRenderPoolComponent> stationRenderPool_;
+        CoreEngine::ObjectRef<ModelRenderPoolComponent> rockRenderPool_;
         // レールを敷けない空白マスへ立てる、壊せない岩
-        ModelRenderPoolComponent* hardRockRenderPool_ = nullptr;
-        ModelRenderPoolComponent* bananaTreeRenderPool_ = nullptr;
-        ModelRenderPoolComponent* grassRenderPool_ = nullptr;
+        CoreEngine::ObjectRef<ModelRenderPoolComponent> hardRockRenderPool_;
+        CoreEngine::ObjectRef<ModelRenderPoolComponent> bananaTreeRenderPool_;
+        CoreEngine::ObjectRef<ModelRenderPoolComponent> grassRenderPool_;
 
         CoreEngine::MsdfFont* distanceMarkerFont_ = nullptr;
         std::vector<CoreEngine::Text3DObject*> distanceMarkers_;

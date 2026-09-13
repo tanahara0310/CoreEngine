@@ -1,7 +1,9 @@
 #pragma once
 
 #include "GameObject/Component/Core/IComponent.h"
+#include "GameObject/Component/Core/ObjectRef.h"
 #include "Math/Vector/Vector3.h"
+#include "Reflection/Reflect.h"
 
 #include <cstdint>
 #include <deque>
@@ -34,18 +36,14 @@ namespace GameComponents
             GameComponents::MapGeneratorComponent* mapGenerator = nullptr,
             GameComponents::TrainMovementComponent* trainMovement = nullptr,
             GameComponents::HungerComponent* hunger = nullptr,
-            GameComponents::RockThrowComponent* rockThrow = nullptr)
-            : gridSize_(gridSize), initialGridPosX_(gridPosX), initialGridPosZ_(gridPosZ),
-              gridPosX_(gridPosX), gridPosZ_(gridPosZ),
-              railPath_(railPath),
-              mapGenerator_(mapGenerator), trainMovement_(trainMovement),
-              hunger_(hunger), rockThrow_(rockThrow) {
-        }
+            GameComponents::RockThrowComponent* rockThrow = nullptr);
 
         // コンポーネントを識別する名前。必須
         const char* GetTypeName() const override {
             return "RailBuilder";
         }
+
+        REFLECT_DECLARE(RailBuilderComponent)
 
         json OnSerialize() const override;
         void OnDeserialize(const json& j) override;
@@ -100,11 +98,11 @@ namespace GameComponents
         };
 
         CoreEngine::TransformComponent* transform_ = nullptr;
-        GameComponents::RailPathComponent* railPath_ = nullptr;
-        GameComponents::MapGeneratorComponent* mapGenerator_ = nullptr;
-        GameComponents::TrainMovementComponent* trainMovement_ = nullptr;
-        GameComponents::HungerComponent* hunger_ = nullptr;
-        GameComponents::RockThrowComponent* rockThrow_ = nullptr;
+        CoreEngine::ObjectRef<GameComponents::RailPathComponent> railPath_;
+        CoreEngine::ObjectRef<GameComponents::MapGeneratorComponent> mapGenerator_;
+        CoreEngine::ObjectRef<GameComponents::TrainMovementComponent> trainMovement_;
+        CoreEngine::ObjectRef<GameComponents::HungerComponent> hunger_;
+        CoreEngine::ObjectRef<GameComponents::RockThrowComponent> rockThrow_;
 
         // 左・後ろ方向へ移動したときの符号なし整数アンダーフローを避ける
         int32_t initialGridPosX_ = 0;

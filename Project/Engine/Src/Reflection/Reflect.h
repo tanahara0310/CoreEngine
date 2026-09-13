@@ -184,6 +184,67 @@ namespace CoreEngine::Reflection
         return static_cast<ReflectedSelf*>(this);                                      \
     }
 
+/// @brief 記述子の組み立てを .cpp に置く型の宣言（クラスの public セクションに書く）
+/// @note 対応する .cpp のファイルスコープに REFLECT_DEFINE_BEGIN 〜 REFLECT_DEFINE_END を書く。
+///       プロパティの型がヘッダでは前方宣言だけのとき（`ObjectRef<T>` の `T` など）に使う。
+#define REFLECT_DECLARE(TypeName)                                                      \
+    using ReflectedSelf = TypeName;                                                    \
+    static constexpr const char* kReflectedTypeName = #TypeName;                       \
+    static ::CoreEngine::Reflection::TypeDescriptor BuildTypeDescriptor();             \
+    const ::CoreEngine::Reflection::TypeDescriptor* GetTypeDescriptor() const override  \
+    {                                                                                  \
+        return &::CoreEngine::Reflection::TypeDescriptorHolder<ReflectedSelf>::Get();   \
+    }                                                                                  \
+    void* GetReflectionInstance() override                                             \
+    {                                                                                  \
+        return static_cast<ReflectedSelf*>(this);                                      \
+    }
+
+/// @brief REFLECT_DECLARE した型の記述子を組み立てる
+/// @param QualifiedTypeName 名前空間を含めた型名
+#define REFLECT_DEFINE_BEGIN(QualifiedTypeName, DisplayNameLiteral)                    \
+    ::CoreEngine::Reflection::TypeDescriptor QualifiedTypeName::BuildTypeDescriptor()  \
+    {                                                                                  \
+        using Self = QualifiedTypeName;                                                \
+        using ::CoreEngine::Reflection::Speed;                                         \
+        using ::CoreEngine::Reflection::Range;                                         \
+        ::CoreEngine::Reflection::TypeDescriptor d;                                    \
+        d.name = Self::kReflectedTypeName;                                             \
+        d.displayName = DisplayNameLiteral;
+
+#define REFLECT_DEFINE_END()                                                           \
+        return d;                                                                      \
+    }
+
+/// @brief 記述子がプロパティの一部だけを持つことを示す
+/// @note 残りの保存と表示は `OnSerialize` / `OnDeserialize` / `DrawInspector` が受け持つ。
+#define REFLECT_PARTIAL()                                                              \
+        d.partial = true;
+
+/// @brief `ObjectRef<T>` 型のメンバをプロパティとして足す
+/// @param MemberExpr インスタンスからの式（`railPath_` など）
+#define REFLECT_OBJECT_REF(MemberExpr, DisplayNameLiteral)                             \
+        {                                                                              \
+            using RefType =                                                            \
+                ::std::decay_t<decltype(::std::declval<Self&>().MemberExpr)>;          \
+            ::CoreEngine::Reflection::PropertyDescriptor p;                            \
+            p.name = ::CoreEngine::Reflection::DerivePropertyName(#MemberExpr);        \
+            p.displayName = DisplayNameLiteral;                                        \
+            p.type = ::CoreEngine::Reflection::PropertyType::ObjectRef;                \
+            p.get = [](const void* o, void* out) {                                     \
+                *static_cast<::CoreEngine::Reflection::ObjectRefValue*>(out) =         \
+                    static_cast<const Self*>(o)->MemberExpr.GetValue();                \
+            };                                                                         \
+            p.set = [](void* o, const void* in) {                                      \
+                Self* self = static_cast<Self*>(o);                                    \
+                self->MemberExpr.SetValue(                                             \
+                    *static_cast<const ::CoreEngine::Reflection::ObjectRefValue*>(in), \
+                    self);                                                             \
+            };                                                                         \
+            p.acceptsComponent = &RefType::Accepts;                                    \
+            d.properties.push_back(p);                                                 \
+        }
+
 /// @brief 型を TypeRegistry へ登録する（対応する .cpp のファイルスコープに書く）
 #define REFLECT_REGISTER(TypeName)                                                     \
     namespace {                                                                        \

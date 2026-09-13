@@ -128,8 +128,9 @@ public:
     void RemoveAllComponents();
 
     /// @brief 取り外し済みコンポーネントの実体を解放し、配列を詰め直す
+    /// @return 解放したものがあれば true
     /// @note `GameObjectManager` がフレーム末（衝突判定の後）に呼ぶ。
-    void ReleaseRetiredComponents();
+    bool ReleaseRetiredComponents();
 
     // ===== ライフサイクル発行（GameObjectManager が呼ぶ） =====
 

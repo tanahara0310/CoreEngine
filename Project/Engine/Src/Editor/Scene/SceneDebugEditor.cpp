@@ -9,6 +9,7 @@
 #include "Camera/CameraSceneStateIO.h"
 #include "Editor/Camera/Module/CameraEditorContext.h"
 #include "Editor/Command/EditorCommandStack.h"
+#include "Editor/Inspector/InspectorRenderer.h"
 #include "GameObject/GameObjectManager.h"
 #include "GameObject/Model/DynamicModelObject.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
@@ -463,6 +464,15 @@ namespace CoreEngine
 
                 if (ImGui::Selectable(itemId, isSelected)) {
                     objectSelector_.SelectObject(obj.get());
+                }
+
+                // インスペクタの ObjectRef 欄へ落とせるように ID を運ぶ
+                if (ImGui::BeginDragDropSource()) {
+                    const std::uint64_t idValue = obj->GetObjectId().value;
+                    ImGui::SetDragDropPayload(
+                        InspectorRenderer::kObjectDragPayload, &idValue, sizeof(idValue));
+                    ImGui::TextUnformatted(displayName);
+                    ImGui::EndDragDropSource();
                 }
 
                 if (colorsPushed > 0) {

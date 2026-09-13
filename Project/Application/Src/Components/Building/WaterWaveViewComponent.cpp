@@ -235,6 +235,12 @@ GameComponents::WaterWaveViewComponent::WaterWaveViewComponent(
 // 宣言はヘッダ・定義はこちらに置く
 GameComponents::WaterWaveViewComponent::~WaterWaveViewComponent() = default;
 
+REFLECT_DEFINE_BEGIN(GameComponents::WaterWaveViewComponent, "水面の波")
+    REFLECT_PARTIAL()
+    REFLECT_OBJECT_REF(mapGenerator_, "マップ生成")
+REFLECT_DEFINE_END()
+REFLECT_REGISTER(GameComponents::WaterWaveViewComponent)
+
 json GameComponents::WaterWaveViewComponent::OnSerialize() const {
     return {
         { "gridSize", gridSize_ },
@@ -364,7 +370,7 @@ void GameComponents::WaterWaveViewComponent::Awake() {
 void GameComponents::WaterWaveViewComponent::Update() {
     // 描画範囲はゲーム視点カメラの位置から決める（MapViewComponent と同じ基準）
     CoreEngine::Camera* viewCamera = FindGameCamera(GetOwner());
-    if (mapGenerator_ == nullptr || viewCamera == nullptr || !shaderProvider_) {
+    if (!mapGenerator_ || viewCamera == nullptr || !shaderProvider_) {
         return;
     }
 

@@ -413,6 +413,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Input\InputQuery.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Core\ComponentFactory.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Core\ComponentHost.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Component\Core\ObjectRef.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Render\MaterialComponent.cpp" />
     <ClCompile Include="Application\Src\Scenes\CollisionTestScene\ProbeComponent.cpp" />
     <ClCompile Include="Application\Src\Scenes\CollisionTestScene\ProbeEvents.cpp" />
@@ -423,6 +424,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\GameObject\Component\Transform\EulerTransformComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\GameObject.cpp" />
     <ClCompile Include="Engine\Src\GameObject\GameObjectManager.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\ObjectId.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Model\ModelGameObject.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Primitive\PrimitiveGameObject.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Sprite\SpriteAnimationClip.cpp" />
@@ -1126,6 +1128,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Math\Vector\Vector4.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Core\ComponentFactory.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Core\ComponentHost.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\Core\ObjectRef.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Animation\AnimatorComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Transform\EulerTransformComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Core\IComponent.h" />
@@ -1140,6 +1143,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\GameObject\GameObject.h" />
     <ClInclude Include="Engine\Src\GameObject\GameObjectManager.h" />
     <ClInclude Include="Engine\Src\GameObject\IObjectSpawner.h" />
+    <ClInclude Include="Engine\Src\GameObject\ObjectId.h" />
     <ClInclude Include="Engine\Src\GameObject\Model\DynamicModelObject.h" />
     <ClInclude Include="Engine\Src\GameObject\Model\ModelGameObject.h" />
     <ClInclude Include="Engine\Src\GameObject\Primitive\PrimitiveGameObject.h" />

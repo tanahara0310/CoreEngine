@@ -2,6 +2,8 @@
 
 #include "Audio/SoundInstance.h"
 #include "GameObject/Component/Core/IComponent.h"
+#include "GameObject/Component/Core/ObjectRef.h"
+#include "Reflection/Reflect.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -33,20 +35,14 @@ namespace GameComponents
             GameComponents::ModelRenderPoolComponent* railRightPool = nullptr,
             GameComponents::ModelRenderPoolComponent* bridgePool = nullptr,
             GameComponents::MapGeneratorComponent* mapGenerator = nullptr,
-            uint32_t viewDistanceX = 30)
-            : gridSize_(gridSize), railPath_(railPath),
-            railPool_(railPool),
-            railLeftPool_(railLeftPool),
-            railRightPool_(railRightPool),
-            bridgePool_(bridgePool),
-            mapGenerator_(mapGenerator),
-            viewDistanceX_(viewDistanceX) {
-        }
+            uint32_t viewDistanceX = 30);
 
         // コンポーネントを識別する名前。必須
         const char* GetTypeName() const override {
             return "RailView";
         }
+
+        REFLECT_DECLARE(RailViewComponent)
 
         json OnSerialize() const override;
         void OnDeserialize(const json& j) override;
@@ -82,13 +78,13 @@ namespace GameComponents
         void DrawRailModels();
 
         CoreEngine::TransformComponent* transform_ = nullptr;
-        GameComponents::RailPathComponent* railPath_ = nullptr;
+        CoreEngine::ObjectRef<GameComponents::RailPathComponent> railPath_;
 
-        GameComponents::ModelRenderPoolComponent* railPool_ = nullptr;
-        GameComponents::ModelRenderPoolComponent* railLeftPool_ = nullptr;
-        GameComponents::ModelRenderPoolComponent* railRightPool_ = nullptr;
-        GameComponents::ModelRenderPoolComponent* bridgePool_ = nullptr;
-        GameComponents::MapGeneratorComponent* mapGenerator_ = nullptr;
+        CoreEngine::ObjectRef<GameComponents::ModelRenderPoolComponent> railPool_;
+        CoreEngine::ObjectRef<GameComponents::ModelRenderPoolComponent> railLeftPool_;
+        CoreEngine::ObjectRef<GameComponents::ModelRenderPoolComponent> railRightPool_;
+        CoreEngine::ObjectRef<GameComponents::ModelRenderPoolComponent> bridgePool_;
+        CoreEngine::ObjectRef<GameComponents::MapGeneratorComponent> mapGenerator_;
         float gridSize_ = 5.0f;
         uint32_t viewDistanceX_ = 30;
         float railJumpHeight_ = 0.8f;

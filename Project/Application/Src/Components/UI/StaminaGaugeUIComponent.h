@@ -1,7 +1,9 @@
 #pragma once
 
 #include "GameObject/Component/Core/IComponent.h"
+#include "GameObject/Component/Core/ObjectRef.h"
 #include "Math/Vector/Vector2.h"
+#include "Reflection/Reflect.h"
 
 #include <cstddef>
 #include <vector>
@@ -30,10 +32,11 @@ namespace GameComponents
     public:
         explicit StaminaGaugeUIComponent(
             HungerComponent* hunger = nullptr,
-            RailBuilderComponent* builder = nullptr)
-            : hunger_(hunger), builder_(builder) {}
+            RailBuilderComponent* builder = nullptr);
 
         const char* GetTypeName() const override { return "StaminaGaugeUI"; }
+
+        REFLECT_DECLARE(StaminaGaugeUIComponent)
 
 #ifdef USE_IMGUI
         const char* GetInspectorName() const override { return "スタミナゲージ"; }
@@ -91,8 +94,8 @@ namespace GameComponents
         /// @brief 表示する粒の数（スタミナ上限 ÷ 粒あたりの量）
         std::size_t CalculatePipCount() const;
 
-        HungerComponent* hunger_ = nullptr;
-        RailBuilderComponent* builder_ = nullptr;  ///< 予告に使う。無くてもゲージは動く
+        CoreEngine::ObjectRef<HungerComponent> hunger_;
+        CoreEngine::ObjectRef<RailBuilderComponent> builder_;  ///< 予告に使う。無くてもゲージは動く
 
         CoreEngine::UIImage* board_ = nullptr;     ///< 中板（オーナー自身。横に伸ばす）
         CoreEngine::UIImage* capLeft_ = nullptr;

@@ -213,6 +213,20 @@ namespace
     }
 }
 
+GameComponents::OffscreenTrainIndicatorUIComponent::OffscreenTrainIndicatorUIComponent(
+    TrainMovementComponent* train,
+    GameManagerComponent* gameManager)
+    : train_(train), gameManager_(gameManager)
+{
+}
+
+REFLECT_DEFINE_BEGIN(GameComponents::OffscreenTrainIndicatorUIComponent, "画面外トロッコ案内")
+    REFLECT_PARTIAL()
+    REFLECT_OBJECT_REF(train_,       "列車移動")
+    REFLECT_OBJECT_REF(gameManager_, "ゲーム進行")
+REFLECT_DEFINE_END()
+REFLECT_REGISTER(GameComponents::OffscreenTrainIndicatorUIComponent)
+
 void GameComponents::OffscreenTrainIndicatorUIComponent::Awake()
 {
     if (!train_) {

@@ -24,6 +24,18 @@ namespace CoreEngine::Reflection
             case PropertyType::Color:
                 return JsonManager::Vector4ToJson(*static_cast<const Vector4*>(value));
             case PropertyType::String: return *static_cast<const std::string*>(value);
+            case PropertyType::ObjectRef: {
+                // 何も指していなければ null、指していれば {"ref": ID, "comp": 型名}
+                const auto& ref = *static_cast<const ObjectRefValue*>(value);
+                if (!ref.objectId.IsValid()) {
+                    return nullptr;
+                }
+                json node = { { "ref", ref.objectId.ToString() } };
+                if (!ref.componentType.empty()) {
+                    node["comp"] = ref.componentType;
+                }
+                return node;
+            }
             }
             return {};
         }
@@ -70,6 +82,22 @@ namespace CoreEngine::Reflection
                     *static_cast<std::string*>(value) = node.get<std::string>();
                 }
                 break;
+            case PropertyType::ObjectRef: {
+                // null は「何も指さない」。読めない ID は今の値を残す
+                auto& ref = *static_cast<ObjectRefValue*>(value);
+                if (node.is_null()) {
+                    ref = ObjectRefValue{};
+                } else if (node.is_object() && node.contains("ref") && node.at("ref").is_string()) {
+                    const ObjectId id = ObjectId::FromString(node.at("ref").get<std::string>());
+                    if (id.IsValid()) {
+                        ref.objectId = id;
+                        ref.componentType = (node.contains("comp") && node.at("comp").is_string())
+                            ? node.at("comp").get<std::string>()
+                            : std::string{};
+                    }
+                }
+                break;
+            }
             }
         }
     }

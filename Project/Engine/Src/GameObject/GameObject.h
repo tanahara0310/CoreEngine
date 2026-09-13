@@ -16,11 +16,13 @@
 #include <vector>
 
 #include "GameObject/IObjectSpawner.h"
+#include "GameObject/ObjectId.h"
 
 // Forward declaration
 namespace CoreEngine {
     class Camera;
     class EngineSystem;
+    class GameObjectManager;
 }
 
 namespace CoreEngine
@@ -218,6 +220,15 @@ namespace CoreEngine
         /// @note GameObjectManager がフレーム末（衝突判定の後）に呼ぶ。
         void ReleaseRetiredColliders();
 
+        // ===== 識別子 =====
+
+        /// @brief シーン内で重複しない ID
+        /// @note `GameObjectManager` への登録時に保存キーから決まり、保存したシーンを読むと保存時の値へ戻る。
+        ObjectId GetObjectId() const { return objectId_; }
+
+        /// @brief 登録先の `GameObjectManager`（未登録なら nullptr）
+        GameObjectManager* GetObjectManager() const { return objectManager_; }
+
         // ===== 名前 / シリアライズ =====
 
         /// @brief オブジェクト識別名を設定する
@@ -411,8 +422,10 @@ namespace CoreEngine
 
     private:
         IObjectSpawner* spawner_ = nullptr;  ///< AddObject 時に GameObjectManager が注入するスポーナー
+        GameObjectManager* objectManager_ = nullptr;  ///< 登録先（AddObject 時に注入される）
+        ObjectId objectId_{};  ///< シーン内の ID（登録時に GameObjectManager が決める）
 
-        friend class GameObjectManager;  ///< spawner_ への書き込みを許可
+        friend class GameObjectManager;  ///< spawner_ / objectManager_ / objectId_ への書き込みを許可
     };
 
     // ===== IComponent のインライン定義 =====

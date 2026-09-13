@@ -11,9 +11,14 @@ namespace CoreEngine::Reflection
 
 namespace CoreEngine
 {
+    class GameObjectManager;
+
     /// @brief 型記述子からインスペクタの UI を組み立てる
     namespace InspectorRenderer
     {
+        /// @brief Hierarchy からオブジェクトをドラッグするときのペイロード名（中身は `ObjectId::value`）
+        inline constexpr const char* kObjectDragPayload = "GAME_OBJECT_ID";
+
         /// @brief 描画のついでに必要になる情報
         struct DrawContext
         {
@@ -28,6 +33,9 @@ namespace CoreEngine
             /// @brief 値が書き換わった直後の通知（派生データの再計算に使う）
             /// @note 編集時だけでなく Undo / Redo の適用時にも呼ばれる。
             std::function<void(const Reflection::PropertyDescriptor&)> onChanged;
+
+            /// @brief ObjectRef の繋ぎ先の候補を探すシーン
+            const GameObjectManager* objects = nullptr;
         };
 
         /// @brief 記述子のプロパティを順に描く

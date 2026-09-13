@@ -96,7 +96,7 @@ namespace CoreEngine
         }
     }
 
-    void ComponentHost::ReleaseRetiredComponents()
+    bool ComponentHost::ReleaseRetiredComponents()
     {
         // 先に nullptr スロットを詰める（retired_ の解放より先。解放中に
         // components_ を触られても矛盾しないようにするため）
@@ -104,10 +104,12 @@ namespace CoreEngine
             std::remove(components_.begin(), components_.end(), nullptr),
             components_.end());
 
+        const bool released = !retired_.empty();
         for (const auto& component : retired_) {
             ForgetInHistory(component.get());
         }
         retired_.clear();
+        return released;
     }
 
     void ComponentHost::DispatchComponentStart()
@@ -165,13 +167,17 @@ namespace CoreEngine
 
             json parameters;
             const Reflection::TypeDescriptor* descriptor = component->GetTypeDescriptor();
+            if (!descriptor || descriptor->partial) {
+                parameters = component->OnSerialize();
+            }
             if (descriptor) {
-                // 記述子を持つ型は宣言 1 箇所から値を取る
+                // 記述子を持つ型は宣言 1 箇所から値を取る。一部だけを載せた型は OnSerialize の値へ足す
+                if (!parameters.is_object()) {
+                    parameters = json::object();
+                }
                 IComponent* mutableComponent = const_cast<IComponent*>(component.get());
                 Reflection::PropertySerializer::Save(
                     *descriptor, mutableComponent->GetReflectionInstance(), parameters);
-            } else {
-                parameters = component->OnSerialize();
             }
 
             json entry = {
@@ -230,10 +236,12 @@ namespace CoreEngine
             }
             if (entry.contains("parameters") && entry["parameters"].is_object()) {
                 const json& parameters = entry["parameters"];
-                if (const Reflection::TypeDescriptor* descriptor = target->GetTypeDescriptor()) {
+                const Reflection::TypeDescriptor* descriptor = target->GetTypeDescriptor();
+                if (descriptor) {
                     Reflection::PropertySerializer::Load(
                         *descriptor, target->GetReflectionInstance(), parameters);
-                } else {
+                }
+                if (!descriptor || descriptor->partial) {
                     target->OnDeserialize(parameters);
                 }
             }

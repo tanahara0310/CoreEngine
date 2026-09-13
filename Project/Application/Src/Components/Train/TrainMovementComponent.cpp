@@ -74,6 +74,25 @@ namespace {
     constexpr float kInitialHeadingYaw = -std::numbers::pi_v<float> * 0.5f;
 }
 
+GameComponents::TrainMovementComponent::TrainMovementComponent(
+    float gridSize, float moveSpeed,
+    int32_t gridX, int32_t gridZ,
+    RailPathComponent* railPath,
+    GameManagerComponent* gameManager,
+    HungerComponent* hunger)
+    : railPath_(railPath), gameManager_(gameManager), hunger_(hunger), gridSize_(gridSize),
+      initialMoveSpeed_(moveSpeed), moveSpeed_(moveSpeed),
+      initialGridX_(gridX), initialGridZ_(gridZ), gridX_(gridX), gridZ_(gridZ) {
+}
+
+REFLECT_DEFINE_BEGIN(GameComponents::TrainMovementComponent, "列車移動")
+    REFLECT_PARTIAL()
+    REFLECT_OBJECT_REF(railPath_,    "レール経路")
+    REFLECT_OBJECT_REF(gameManager_, "ゲーム進行")
+    REFLECT_OBJECT_REF(hunger_,      "スタミナ")
+REFLECT_DEFINE_END()
+REFLECT_REGISTER(GameComponents::TrainMovementComponent)
+
 json GameComponents::TrainMovementComponent::OnSerialize() const {
     return {
         { "gridSize", gridSize_ },

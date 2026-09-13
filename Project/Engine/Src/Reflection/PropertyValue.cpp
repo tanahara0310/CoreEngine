@@ -21,6 +21,7 @@ namespace CoreEngine::Reflection
             case PropertyType::Vector4:
             case PropertyType::Color:   return fn(static_cast<Vector4*>(nullptr));
             case PropertyType::String:  return fn(static_cast<std::string*>(nullptr));
+            case PropertyType::ObjectRef: return fn(static_cast<ObjectRefValue*>(nullptr));
             }
             return fn(static_cast<float*>(nullptr));
         }
