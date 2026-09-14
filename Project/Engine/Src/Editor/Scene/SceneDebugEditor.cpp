@@ -24,7 +24,6 @@
 #include "Editor/ImGui/ImGuiAll.h"
 #include "Editor/ImGui/Gizmo.h"
 #include "Graphics/Texture/TextureManager.h"
-#include "GameObject/Sprite/SpriteObject.h"
 #include "Math/Geometry/RayCast.h"
 #include "Utility/Logger/Logger.h"
 #include <cctype>
@@ -518,7 +517,7 @@ namespace CoreEngine
     void SceneDebugEditor::DrawInspectorContent()
     {
         GameObject* selected = objectSelector_.GetSelectedObject();
-        SpriteObject* selectedSprite = objectSelector_.GetSelectedSprite();
+        GameObject* selectedSprite = objectSelector_.GetSelectedSprite();
 
         if (selectedSprite) {
             gameObjectManager_->DrawSingleObjectImGui(selectedSprite);

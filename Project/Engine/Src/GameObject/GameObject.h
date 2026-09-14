@@ -424,7 +424,7 @@ namespace CoreEngine
 
         /// @brief Active チェックボックス変更時に呼び出されるフック
         /// @param prevActive 変更前のアクティブ状態
-        /// @note Undo/Redo を記録したい派生クラス（SpriteObject など）でオーバーライドする。
+        /// @note Undo/Redo を記録したい派生クラスでオーバーライドする。
         virtual void OnImGuiActiveChanged(bool prevActive) { (void)prevActive; }
 
         /// @brief 「このオブジェクトのみ保存」ボタンを ImGui に描画する

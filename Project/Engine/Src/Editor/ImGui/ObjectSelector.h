@@ -10,7 +10,6 @@
 namespace CoreEngine
 {
     class GameObject;
-    class SpriteObject;
     class Camera;
     class GameObjectManager;
 
@@ -50,7 +49,7 @@ namespace CoreEngine
 
         /// @brief 選択中のスプライトを取得
         /// @return 選択中のスプライト（nullptrの場合は未選択）
-        SpriteObject* GetSelectedSprite() const { return selectedSprite_; }
+        GameObject* GetSelectedSprite() const { return selectedSprite_; }
 
         /// @brief オブジェクトを選択
         /// @param object 選択するオブジェクト
@@ -58,7 +57,7 @@ namespace CoreEngine
 
         /// @brief スプライトを選択
         /// @param sprite 選択するスプライト
-        void SelectSprite(SpriteObject* sprite) { selectedSprite_ = sprite; selectedObject_ = nullptr; }
+        void SelectSprite(GameObject* sprite) { selectedSprite_ = sprite; selectedObject_ = nullptr; }
 
         /// @brief 選択を解除
         void ClearSelection() { selectedObject_ = nullptr; selectedSprite_ = nullptr; }
@@ -97,7 +96,7 @@ namespace CoreEngine
         /// @param camera 2Dカメラ
         /// @param mousePos マウス座標（ビューポート座標系）
         /// @return 検出されたスプライト（nullptrの場合は検出失敗）
-        SpriteObject* RaycastSprite(GameObjectManager* gameObjectManager,
+        GameObject* RaycastSprite(GameObjectManager* gameObjectManager,
             const Camera* camera, const Vector2& mousePos);
 
         /// @brief スクリーン座標をワールド座標に変換（2D用）
@@ -143,7 +142,7 @@ namespace CoreEngine
 
     private:
         GameObject* selectedObject_ = nullptr;         // 選択中の3Dオブジェクト
-        SpriteObject* selectedSprite_ = nullptr;       // 選択中のスプライト
+        GameObject* selectedSprite_ = nullptr;         // 選択中のスプライト
         Gizmo::Mode gizmoMode_ = Gizmo::Mode::Translate;  // ギズモモード
 
         /// @brief ギズモ操作完了時に呼び出すコールバック（isDirty_用）

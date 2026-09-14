@@ -8,7 +8,6 @@
 namespace CoreEngine
 {
     class GameObject;
-    class SpriteObject;
     class Camera;
 
     /// @brief ImGuizmo操作クラス
@@ -34,11 +33,11 @@ namespace CoreEngine
         static bool Manipulate(GameObject* object, const Camera* camera, Mode mode = Mode::Translate);
 
         /// @brief スプライト用ギズモを描画し、2Dトランスフォームを操作
-        /// @param sprite 操作対象のスプライトオブジェクト
+        /// @param object 操作対象のスプライトオブジェクト
         /// @param camera 2Dカメラ
         /// @param mode 操作モード
         /// @return トランスフォームが変更された場合true
-        static bool Manipulate2D(SpriteObject* sprite, const Camera* camera, Mode mode = Mode::Translate);
+        static bool Manipulate2D(GameObject* object, const Camera* camera, Mode mode = Mode::Translate);
 
         /// @brief UI 要素用ギズモを描画し、レイアウトを操作する
         /// @param layout 操作対象のレイアウト。変更はこの引数へ直接書き戻す

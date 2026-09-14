@@ -721,6 +721,9 @@
     <ClCompile Include="Engine\Src\GameObject\Component\Render\MeshRendererComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\Render\SpriteRendererComponent.cpp">
+      <Filter>Engine\Src\GameObject\Component\Render</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\Component\Render\Text3DRendererComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClCompile>
@@ -746,9 +749,6 @@
       <Filter>Engine\Src\GameObject\Sprite</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\Sprite\SpriteAnimator.cpp">
-      <Filter>Engine\Src\GameObject\Sprite</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\GameObject\Sprite\SpriteObject.cpp">
       <Filter>Engine\Src\GameObject\Sprite</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Particle\Core\ParticleEmitter.cpp">
@@ -2517,6 +2517,9 @@
     <ClInclude Include="Engine\Src\GameObject\Component\Render\MeshRendererComponent.h">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\Render\SpriteRendererComponent.h">
+      <Filter>Engine\Src\GameObject\Component\Render</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Render\Text3DRendererComponent.h">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClInclude>
@@ -2539,9 +2542,6 @@
       <Filter>Engine\Src\GameObject\Sprite</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Sprite\SpriteAnimator.h">
-      <Filter>Engine\Src\GameObject\Sprite</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\GameObject\Sprite\SpriteObject.h">
       <Filter>Engine\Src\GameObject\Sprite</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Particle\Gpu\GpuParticleSystem.h">
