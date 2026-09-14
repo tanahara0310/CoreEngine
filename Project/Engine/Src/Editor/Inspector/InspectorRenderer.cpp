@@ -10,9 +10,11 @@
 #include "GameObject/GameObjectManager.h"
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Graphics/Asset/AssetRef.h"
+#include "Reflection/PropertySerializer.h"
 #include "Reflection/PropertyValue.h"
 #include "Reflection/ReflectionToggle.h"
 #include "Reflection/TypeDescriptor.h"
+#include "Scene/PrefabSystem.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -142,7 +144,8 @@ namespace CoreEngine
         }
 
         /// @brief 型に応じたウィジェットを描く
-        bool DrawWidget(const Reflection::PropertyDescriptor& p, void* value)
+        /// @param ownContextMenu 右クリックのメニューをこちらで出すか（色の編集欄の既定メニューを止める）
+        bool DrawWidget(const Reflection::PropertyDescriptor& p, void* value, bool ownContextMenu)
         {
             using Reflection::PropertyType;
             const auto& r = p.range;
@@ -171,7 +174,8 @@ namespace CoreEngine
                 return ImGui::DragFloat4(p.displayName, &static_cast<Vector4*>(value)->x,
                     ResolveSpeed(r, 0.01f), min, max);
             case PropertyType::Color:
-                return ImGui::ColorEdit4(p.displayName, &static_cast<Vector4*>(value)->x);
+                return ImGui::ColorEdit4(p.displayName, &static_cast<Vector4*>(value)->x,
+                    ownContextMenu ? ImGuiColorEditFlags_NoOptions : 0);
             case PropertyType::String: {
                 auto* text = static_cast<std::string*>(value);
                 char buffer[256]{};
@@ -289,6 +293,7 @@ namespace CoreEngine
             case AssetType::Texture: return "TEXTURE_FILE";
             case AssetType::Model:   return "MODEL_FILE";
             case AssetType::Audio:   return "AUDIO_FILE";
+            case AssetType::Prefab:  return "PREFAB_FILE";
             default:                 return nullptr;
             }
         }
@@ -402,6 +407,52 @@ namespace CoreEngine
             ImGui::EndCombo();
             return edited;
         }
+
+        /// @brief 直前の項目について、プレハブと違う値なら左に線を引き、右クリックでプレハブのメニューを出す
+        /// @return プレハブの値に戻したら true
+        bool DrawPrefabOverride(const Reflection::PropertyDescriptor& p, void* instance,
+                                const InspectorRenderer::DrawContext& context, const std::string& ownerLabel)
+        {
+            if (!context.prefabParameters || !p.IsSaved()) {
+                return false;
+            }
+
+            const json current = Reflection::PropertySerializer::PropertyToJson(p, instance);
+            const auto base = context.prefabParameters->find(p.name);
+            const bool hasBase = base != context.prefabParameters->end();
+            const bool overridden = !hasBase || !PrefabSystem::SameValue(*base, current);
+
+            if (overridden) {
+                const ImVec2 min = ImGui::GetItemRectMin();
+                const ImVec2 max = ImGui::GetItemRectMax();
+                ImGui::GetWindowDrawList()->AddRectFilled(
+                    ImVec2(min.x, min.y), ImVec2(min.x + 3.0f, max.y),
+                    ImGui::GetColorU32(ImGuiCol_CheckMark));
+            }
+
+            bool reverted = false;
+            if (ImGui::BeginPopupContextItem("##prefabOverride")) {
+                if (ImGui::MenuItem("プレハブの値に戻す", nullptr, false, overridden && hasBase)) {
+                    Reflection::PropertyValue before;
+                    before.LoadFrom(p, instance);
+                    if (Reflection::PropertySerializer::JsonToProperty(p, instance, *base)) {
+                        if (context.onChanged) { context.onChanged(p); }
+                        Editor::EditorCommandStack::Get().Push(
+                            std::make_unique<PropertyEditCommand>(
+                                ownerLabel + " の " + p.displayName + " をプレハブの値に戻す",
+                                context.owner, instance, &p, std::move(before), context.onChanged));
+                        reverted = true;
+                    }
+                }
+                const bool canApply = overridden && context.applyToPrefab &&
+                    p.type != Reflection::PropertyType::ObjectRef;
+                if (ImGui::MenuItem("この値をプレハブへ適用", nullptr, false, canApply)) {
+                    context.applyToPrefab(p);
+                }
+                ImGui::EndPopup();
+            }
+            return reverted;
+        }
     }
 
     bool InspectorRenderer::IsEnabled()
@@ -418,6 +469,7 @@ namespace CoreEngine
 
         const char* fallbackLabel = type.displayName && type.displayName[0] ? type.displayName : type.name;
         const std::string ownerLabel = context.label.empty() ? fallbackLabel : context.label;
+        const bool ownContextMenu = context.prefabParameters != nullptr;
 
         bool changed = false;
         for (const auto& p : type.properties) {
@@ -449,6 +501,7 @@ namespace CoreEngine
                 const bool retargeted = (p.type == Reflection::PropertyType::ObjectRef)
                     ? DrawObjectRef(p, *static_cast<Reflection::ObjectRefValue*>(value), context.objects)
                     : DrawAssetRef(p, *static_cast<Reflection::AssetRefValue*>(value));
+                changed |= DrawPrefabOverride(p, instance, context, ownerLabel);
                 ImGui::PopID();
 
                 if (retargeted) {
@@ -468,7 +521,7 @@ namespace CoreEngine
             static Reflection::PropertyValue editSnapshot;
 
             ImGui::PushID(p.name.c_str());
-            const bool edited = DrawWidget(p, value);
+            const bool edited = DrawWidget(p, value, ownContextMenu);
             if (ImGui::IsItemActivated()) {
                 editSnapshot.CopyFrom(p.type, value);
             }
@@ -487,6 +540,7 @@ namespace CoreEngine
                 }
                 editSnapshot.Reset();
             }
+            changed |= DrawPrefabOverride(p, instance, context, ownerLabel);
             ImGui::PopID();
         }
         return changed;

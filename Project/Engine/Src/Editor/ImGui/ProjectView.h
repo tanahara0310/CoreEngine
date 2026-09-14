@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <vector>
 #include <filesystem>
@@ -128,6 +129,9 @@ namespace CoreEngine
 
         // 右ペイン表示データ
         std::vector<Entry> currentEntries_;
+
+        // 最後に読み直したときの AssetDatabase の番号
+        uint64_t seenAssetRevision_ = 0;
 
         // 左ツリー展開アニメーション
         std::unordered_map<std::string, float> treeExpandAnimTime_;

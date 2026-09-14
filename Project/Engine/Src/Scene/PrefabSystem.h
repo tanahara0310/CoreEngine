@@ -3,11 +3,18 @@
 #include "Reflection/PropertyDescriptor.h"
 #include "Utility/JsonManager/JsonManager.h"
 
+#include <cstddef>
+#include <optional>
 #include <string>
 #include <vector>
 
 namespace CoreEngine
 {
+    class GameObject;
+    class GameObjectManager;
+    class IComponent;
+    struct AssetInfo;
+
     /// @brief プレハブ（コンポーネントの構成と値を持つアセット）と、そこから作ったオブジェクトの差分を扱う
     /// @details 差分の形は `{"prefab", "overrides", "addedComponents", "removedComponents"}`。
     ///          上書きのキーは `型名.プロパティ名`、同じ型の 2 個目以降は `型名[1].プロパティ名`。
@@ -38,5 +45,33 @@ namespace CoreEngine
         /// @note `components` を持つ JSON は、差分の指定を外してそのまま返す。
         json ExpandInstanceJson(const json& instance, const json* prefabComponents,
                                 std::vector<std::string>* problems = nullptr);
+
+        /// @brief 値が同じか（数値は float の精度で比べる）
+        bool SameValue(const json& a, const json& b);
+
+        /// @brief プレハブの `components` 配列から、オブジェクトのこのコンポーネントと同じ型・同じ順番の要素を探す
+        /// @return 見つからなければ空
+        std::optional<std::size_t> FindComponentIndex(const json& prefabComponents,
+                                                      const GameObject& object, const IComponent& component);
+
+        /// @brief オブジェクトの構成と値を、プレハブの `components` 配列の形にする
+        /// @note シーン内の別オブジェクトへの参照（`{"ref": …}`）は null にする。
+        json MakePrefabComponents(const GameObject& object);
+
+        /// @brief プレハブからオブジェクトを 1 体作ってシーンへ登録する
+        /// @return プレハブを読めなければ nullptr
+        GameObject* Instantiate(GameObjectManager& manager, const Reflection::AssetRefValue& prefab,
+                                const std::string& name);
+
+        /// @brief `components` 配列を新しいプレハブファイルに書き出し、AssetDatabase へ登録する
+        /// @param path プロジェクトの根からの相対パス（`Application/Assets/Prefabs/Rock.prefab` など）
+        /// @return 登録したアセット（書き出せない・登録できなければ nullptr）
+        const AssetInfo* CreatePrefab(const std::string& path, const json& components);
+
+        /// @brief プレハブの `components` 配列を書き換え、シーン内でそのプレハブから作ったオブジェクトへ反映する
+        /// @details 各オブジェクトは、書き換える前のプレハブとの差分を保ったまま、残りの値を新しいプレハブにそろえる。
+        /// @return 書き出せなければ false
+        bool UpdatePrefab(GameObjectManager& manager, const Reflection::AssetRefValue& prefab,
+                          const json& components);
     }
 }

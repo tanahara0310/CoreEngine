@@ -1,18 +1,24 @@
 #include "pch.h"
 #include "Scene/PrefabSystem.h"
 
+#include "GameObject/GameObject.h"
+#include "GameObject/GameObjectManager.h"
+#include "Graphics/Asset/AssetDatabase.h"
 #include "Graphics/Asset/AssetInfo.h"
 #include "Graphics/Asset/AssetRef.h"
 #include "Reflection/PropertySerializer.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/Path/ProjectPaths.h"
 
 #include <algorithm>
 #include <charconv>
-#include <cstddef>
 #include <filesystem>
+#include <functional>
+#include <memory>
 #include <string_view>
 #include <system_error>
 #include <unordered_map>
+#include <utility>
 
 namespace CoreEngine::PrefabSystem
 {
@@ -36,6 +42,24 @@ namespace CoreEngine::PrefabSystem
         {
             static std::unordered_map<std::string, CachedPrefab> cache;
             return cache;
+        }
+
+        /// @brief 書き出したプレハブの内容を控えに入れる
+        void StoreInCache(const AssetInfo& info, const json& components)
+        {
+            std::error_code ec;
+            const auto writeTime = std::filesystem::last_write_time(info.fullPath, ec);
+            CachedPrefab& entry = PrefabCache()[info.guid];
+            entry.components = components;
+            entry.writeTime = ec ? std::filesystem::file_time_type{} : writeTime;
+        }
+
+        /// @brief `components` 配列を `{"components": …}` の形でファイルへ書く
+        bool WritePrefabFile(const std::string& path, const json& components)
+        {
+            json root = json::object();
+            root[kComponentsKey] = components;
+            return JsonManager::GetInstance().SaveJson(path, root);
         }
 
         /// @brief components 配列の 1 要素と、同じ型の中での順番
@@ -121,41 +145,6 @@ namespace CoreEngine::PrefabSystem
             const auto it = entry.find("parameters");
             return (it != entry.end() && it->is_object()) ? *it : kEmpty;
         }
-
-        /// @brief 値が同じか（数値は float の精度で比べる）
-        bool SameValue(const json& a, const json& b)
-        {
-            if (a.is_number() && b.is_number()) {
-                return static_cast<float>(a.get<double>()) == static_cast<float>(b.get<double>());
-            }
-            if (a.type() != b.type()) {
-                return false;
-            }
-            if (a.is_array()) {
-                if (a.size() != b.size()) {
-                    return false;
-                }
-                for (std::size_t i = 0; i < a.size(); ++i) {
-                    if (!SameValue(a[i], b[i])) {
-                        return false;
-                    }
-                }
-                return true;
-            }
-            if (a.is_object()) {
-                if (a.size() != b.size()) {
-                    return false;
-                }
-                for (auto it = a.begin(); it != a.end(); ++it) {
-                    const auto other = b.find(it.key());
-                    if (other == b.end() || !SameValue(*it, *other)) {
-                        return false;
-                    }
-                }
-                return true;
-            }
-            return a == b;
-        }
     }
 
     const json* LoadComponents(const Reflection::AssetRefValue& prefab)
@@ -198,6 +187,40 @@ namespace CoreEngine::PrefabSystem
             Reflection::PropertySerializer::JsonToAssetRef(instance.at(kPrefabKey), prefab);
         }
         return prefab;
+    }
+
+    bool SameValue(const json& a, const json& b)
+    {
+        if (a.is_number() && b.is_number()) {
+            return static_cast<float>(a.get<double>()) == static_cast<float>(b.get<double>());
+        }
+        if (a.type() != b.type()) {
+            return false;
+        }
+        if (a.is_array()) {
+            if (a.size() != b.size()) {
+                return false;
+            }
+            for (std::size_t i = 0; i < a.size(); ++i) {
+                if (!SameValue(a[i], b[i])) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        if (a.is_object()) {
+            if (a.size() != b.size()) {
+                return false;
+            }
+            for (auto it = a.begin(); it != a.end(); ++it) {
+                const auto other = b.find(it.key());
+                if (other == b.end() || !SameValue(*it, *other)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return a == b;
     }
 
     json MakeInstanceJson(const json& full, const json& prefabComponents)
@@ -357,5 +380,120 @@ namespace CoreEngine::PrefabSystem
 
         full[kComponentsKey] = std::move(components);
         return full;
+    }
+
+    std::optional<std::size_t> FindComponentIndex(const json& prefabComponents,
+                                                  const GameObject& object, const IComponent& component)
+    {
+        // オブジェクトの中で、同じ型のコンポーネントの何番目かを数える
+        const std::string_view type = component.GetTypeName();
+        std::size_t ordinal = 0;
+        bool found = false;
+        for (const auto& slot : object.GetAllComponents()) {
+            if (!slot) {
+                continue;
+            }
+            if (slot.get() == &component) {
+                found = true;
+                break;
+            }
+            if (type == slot->GetTypeName()) {
+                ++ordinal;
+            }
+        }
+        if (!found) {
+            return std::nullopt;
+        }
+
+        const std::vector<Slot> slots = MakeSlots(prefabComponents);
+        const Slot* slot = FindSlot(slots, type, ordinal);
+        return slot ? std::optional<std::size_t>(slot->index) : std::nullopt;
+    }
+
+    json MakePrefabComponents(const GameObject& object)
+    {
+        json components = object.SerializeComponents();
+        for (auto& entry : components) {
+            if (!entry.is_object() || !entry.contains("parameters") || !entry["parameters"].is_object()) {
+                continue;
+            }
+            for (auto& value : entry["parameters"]) {
+                if (value.is_object() && value.contains("ref")) {
+                    value = nullptr;
+                }
+            }
+        }
+        return components;
+    }
+
+    GameObject* Instantiate(GameObjectManager& manager, const Reflection::AssetRefValue& prefab,
+                            const std::string& name)
+    {
+        const json* components = LoadComponents(prefab);
+        const AssetInfo* info = components ? ResolveAssetRef(prefab) : nullptr;
+        if (!info) {
+            return nullptr;
+        }
+
+        auto owned = std::make_unique<GameObject>();
+        owned->SetName(name);
+        GameObject* object = manager.AddObject(std::move(owned));
+
+        json state = json::object();
+        state[kComponentsKey] = *components;
+        object->Deserialize(state);
+        object->SetPrefab(Reflection::AssetRefValue{ info->guid, ToAssetPath(*info) });
+        return object;
+    }
+
+    const AssetInfo* CreatePrefab(const std::string& path, const json& components)
+    {
+        Logger& log = Logger::GetInstance();
+        const std::filesystem::path parent = log.Utf8ToPath(path).parent_path();
+        if (!parent.empty()) {
+            JsonManager::GetInstance().CreateJsonDirectory(log.PathToUtf8(parent));
+        }
+        if (!WritePrefabFile(path, components)) {
+            return nullptr;
+        }
+
+        const AssetInfo* info = AssetDatabase::GetInstance().ImportAsset(ProjectPaths::Resolve(path));
+        if (!info || info->type != AssetType::Prefab) {
+            return nullptr;
+        }
+        StoreInCache(*info, components);
+        return info;
+    }
+
+    bool UpdatePrefab(GameObjectManager& manager, const Reflection::AssetRefValue& prefab,
+                      const json& components)
+    {
+        const json* current = LoadComponents(prefab);
+        const AssetInfo* info = current ? ResolveAssetRef(prefab) : nullptr;
+        if (!info || !components.is_array()) {
+            return false;
+        }
+
+        // 書き換える前のプレハブとの差分を控える
+        std::vector<std::pair<GameObject*, json>> instances;
+        for (const auto& object : manager.GetAllObjects()) {
+            if (!object || object->IsMarkedForDestroy() || !object->IsPrefabInstance() ||
+                ResolveAssetRef(object->GetPrefab().GetValue()) != info) {
+                continue;
+            }
+            instances.emplace_back(object.get(), MakeInstanceJson(object->Serialize(), *current));
+        }
+
+        const json written = components;
+        if (!WritePrefabFile(ToAssetPath(*info), written)) {
+            return false;
+        }
+        StoreInCache(*info, written);
+
+        // 新しいプレハブの値に、控えた差分を重ねて戻す
+        for (auto& [object, instance] : instances) {
+            object->Deserialize(ExpandInstanceJson(instance, &written));
+        }
+        return true;
     }
 }

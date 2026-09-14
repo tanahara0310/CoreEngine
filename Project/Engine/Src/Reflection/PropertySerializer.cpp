@@ -146,6 +146,26 @@ namespace CoreEngine::Reflection
         }
     }
 
+    json PropertySerializer::PropertyToJson(const PropertyDescriptor& property, const void* instance)
+    {
+        PropertyValue current;
+        current.LoadFrom(property, instance);
+        const void* value = current.Data(property.type);
+        return value ? ValueToJson(property, value) : json{};
+    }
+
+    bool PropertySerializer::JsonToProperty(const PropertyDescriptor& property, void* instance, const json& node)
+    {
+        PropertyValue current;
+        current.LoadFrom(property, instance);
+        void* value = current.Data(property.type);
+        if (!value) {
+            return false;
+        }
+        JsonToValue(property, node, value);
+        return current.StoreTo(property, instance);
+    }
+
     json PropertySerializer::AssetRefToJson(const AssetRefValue& value)
     {
         if (value.guid.empty() && value.path.empty()) {

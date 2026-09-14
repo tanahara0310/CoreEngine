@@ -15,8 +15,13 @@
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "GameObject/Component/Transform/ITransformSource.h"
+#include "Scene/PrefabSystem.h"
 #include "Scene/SceneSaveSystem.h"
+#include "Editor/Command/EditorCommand.h"
+#include "Editor/Scene/PrefabEditing.h"
 #include "Editor/ImGui/ObjectSelector.h"
+#include "Graphics/Asset/AssetInfo.h"
+#include "Graphics/Asset/AssetRef.h"
 #include "Editor/ImGui/ImGuiAll.h"
 #include "Editor/ImGui/Gizmo.h"
 #include "Graphics/Texture/TextureManager.h"
@@ -359,15 +364,23 @@ namespace CoreEngine
             return false;
         }
 
+        const ImVec2 mousePos = ImGui::GetMousePos();
+        const Vector2 normalizedDropPos(
+            std::clamp((mousePos.x - viewportPos.x) / viewportSize.x, 0.0f, 1.0f),
+            std::clamp((mousePos.y - viewportPos.y) / viewportSize.y, 0.0f, 1.0f));
+
         bool accepted = false;
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_FILE")) {
             const char* droppedFilename = static_cast<const char*>(payload->Data);
             if (droppedFilename && droppedFilename[0] != '\0') {
-                const ImVec2 mousePos = ImGui::GetMousePos();
-                const Vector2 normalizedDropPos(
-                    std::clamp((mousePos.x - viewportPos.x) / viewportSize.x, 0.0f, 1.0f),
-                    std::clamp((mousePos.y - viewportPos.y) / viewportSize.y, 0.0f, 1.0f));
                 SpawnModelFromFile(droppedFilename, &normalizedDropPos);
+                accepted = true;
+            }
+        }
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PREFAB_FILE")) {
+            const char* droppedFilename = static_cast<const char*>(payload->Data);
+            if (droppedFilename && droppedFilename[0] != '\0') {
+                SpawnPrefabFromFile(droppedFilename, &normalizedDropPos);
                 accepted = true;
             }
         }
@@ -448,12 +461,15 @@ namespace CoreEngine
                     ++colorsPushed;
                 }
 
-                // アイコンを表示
+                // アイコンを表示（プレハブから作ったオブジェクトは青）
                 if (sObjIconLoaded) {
+                    const ImVec4 iconTint = obj->IsPrefabInstance()
+                        ? ImGui::GetStyleColorVec4(ImGuiCol_CheckMark)
+                        : ImVec4(0.96f, 0.65f, 0.14f, 1.0f);
                     ImGui::ImageWithBg((ImTextureID)sObjIconHandle.ptr, ImVec2(14, 14),
                         ImVec2(0, 0), ImVec2(1, 1),
                         ImVec4(0, 0, 0, 0),
-                        ImVec4(0.96f, 0.65f, 0.14f, 1.0f));
+                        iconTint);
                     ImGui::SameLine(0.0f, 4.0f);
                 }
 
@@ -478,6 +494,8 @@ namespace CoreEngine
                 if (colorsPushed > 0) {
                     ImGui::PopStyleColor(colorsPushed);
                 }
+
+                DrawObjectContextMenu(*obj);
             }
         }
     }
@@ -637,44 +655,7 @@ namespace CoreEngine
         ApplyDynamicModelMaterialOverrides(raw->GetModel());
 
         if (auto* src = raw->GetComponent<ITransformSource>()) {
-            Vector3 spawnPosition = { 0.0f, 1.0f, 0.0f };
-
-            if (const Camera* camera3D = cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera3D) : nullptr) {
-                const Vector2 dropPos = normalizedDropPos ? *normalizedDropPos : Vector2{ 0.5f, 0.5f };
-                const Vector2 ndcPos(
-                    dropPos.x * 2.0f - 1.0f,
-                    1.0f - dropPos.y * 2.0f);
-
-                const Vector3 nearPoint = MathCore::Coordinate::NormalizedScreenToWorld(
-                    ndcPos,
-                    0.0f,
-                    camera3D->GetViewMatrix(),
-                    camera3D->GetProjectionMatrix(),
-                    1.0f,
-                    1.0f);
-                const Vector3 farPoint = MathCore::Coordinate::NormalizedScreenToWorld(
-                    ndcPos,
-                    1.0f,
-                    camera3D->GetViewMatrix(),
-                    camera3D->GetProjectionMatrix(),
-                    1.0f,
-                    1.0f);
-                const Vector3 forward = CoreEngine::Normalize(farPoint - nearPoint);
-
-                const Geometry::Ray ray{ camera3D->GetPosition(), forward };
-                const Geometry::Plane groundPlane{ { 0.0f, 1.0f, 0.0f }, 0.0f };   // y = 0
-                Geometry::RayHit hit{};
-                if (Geometry::Raycast(ray, groundPlane, &hit)) {
-                    spawnPosition = hit.point;
-                } else {
-                    spawnPosition = camera3D->GetPosition() + forward * 5.0f;
-                    if (spawnPosition.y < 0.5f) {
-                        spawnPosition.y = 0.5f;
-                    }
-                }
-            }
-
-            src->Translate() = spawnPosition;
+            src->Translate() = ComputeDropPosition(normalizedDropPos);
         }
 
         // スポーンしたオブジェクトを選択状態にする
@@ -690,6 +671,126 @@ namespace CoreEngine
             spawnRecord.scale     = src->Scale();
         }
         undoRedoHistory_.Push(spawnRecord);
+    }
+
+    void SceneDebugEditor::SpawnPrefabFromFile(const std::string& prefabFileName, const Vector2* normalizedDropPos)
+    {
+        const AssetInfo* info = FindAssetInfo(prefabFileName);
+        if (!info || info->type != AssetType::Prefab) {
+            Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
+                "プレハブが見つかりません: {}", prefabFileName);
+            return;
+        }
+
+        const Reflection::AssetRefValue prefab{ info->guid, ToAssetPath(*info) };
+        GameObject* placed = PrefabSystem::Instantiate(*gameObjectManager_, prefab, info->name);
+        if (!placed) {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System,
+                "プレハブからオブジェクトを作れませんでした: {}", prefab.path);
+            return;
+        }
+
+        if (auto* src = placed->GetComponent<ITransformSource>()) {
+            src->Translate() = ComputeDropPosition(normalizedDropPos);
+        }
+        objectSelector_.SelectObject(placed);
+
+        // 置いた操作を Undo 履歴に記録する（戻すと消し、やり直すと同じ ID と状態で置き直す）
+        const ObjectId id = placed->GetObjectId();
+        const std::string name = placed->GetName();
+        const json state = placed->Serialize();
+        Editor::EditorCommandStack::Get().Push(std::make_unique<Editor::FunctionCommand>(
+            name + " の配置",
+            [this, id] {
+                if (GameObject* target = gameObjectManager_->FindObject(id)) {
+                    if (objectSelector_.GetSelectedObject() == target) {
+                        objectSelector_.SelectObject(nullptr);
+                    }
+                    target->Destroy();
+                }
+            },
+            [this, prefab, name, state, id] {
+                if (GameObject* target = PrefabSystem::Instantiate(*gameObjectManager_, prefab, name)) {
+                    gameObjectManager_->AssignObjectId(*target, id);
+                    target->Deserialize(state);
+                }
+            }));
+
+        Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
+            "プレハブを置きました: {}（{}）", name, prefab.path);
+    }
+
+    Vector3 SceneDebugEditor::ComputeDropPosition(const Vector2* normalizedDropPos) const
+    {
+        Vector3 spawnPosition = { 0.0f, 1.0f, 0.0f };
+
+        const Camera* camera3D = cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera3D) : nullptr;
+        if (!camera3D) {
+            return spawnPosition;
+        }
+
+        const Vector2 dropPos = normalizedDropPos ? *normalizedDropPos : Vector2{ 0.5f, 0.5f };
+        const Vector2 ndcPos(
+            dropPos.x * 2.0f - 1.0f,
+            1.0f - dropPos.y * 2.0f);
+
+        const Vector3 nearPoint = MathCore::Coordinate::NormalizedScreenToWorld(
+            ndcPos,
+            0.0f,
+            camera3D->GetViewMatrix(),
+            camera3D->GetProjectionMatrix(),
+            1.0f,
+            1.0f);
+        const Vector3 farPoint = MathCore::Coordinate::NormalizedScreenToWorld(
+            ndcPos,
+            1.0f,
+            camera3D->GetViewMatrix(),
+            camera3D->GetProjectionMatrix(),
+            1.0f,
+            1.0f);
+        const Vector3 forward = CoreEngine::Normalize(farPoint - nearPoint);
+
+        const Geometry::Ray ray{ camera3D->GetPosition(), forward };
+        const Geometry::Plane groundPlane{ { 0.0f, 1.0f, 0.0f }, 0.0f };   // y = 0
+        Geometry::RayHit hit{};
+        if (Geometry::Raycast(ray, groundPlane, &hit)) {
+            spawnPosition = hit.point;
+        } else {
+            spawnPosition = camera3D->GetPosition() + forward * 5.0f;
+            if (spawnPosition.y < 0.5f) {
+                spawnPosition.y = 0.5f;
+            }
+        }
+        return spawnPosition;
+    }
+
+    void SceneDebugEditor::DrawObjectContextMenu(GameObject& object)
+    {
+        if (!ImGui::BeginPopupContextItem()) {
+            return;
+        }
+
+        if (object.IsPrefabInstance()) {
+            ImGui::TextDisabled("%s", object.GetPrefab().GetPath().c_str());
+            ImGui::Separator();
+            if (ImGui::MenuItem("プレハブへ適用")) {
+                if (PrefabEditing::ApplyObject(*gameObjectManager_, object)) {
+                    ShowSaveNotification("プレハブへ適用しました: " + object.GetPrefab().GetPath());
+                }
+            }
+            if (ImGui::MenuItem("プレハブとのつながりを外す")) {
+                PrefabEditing::Unlink(object);
+            }
+        } else {
+            // 型名で作り直すオブジェクト（UIText など）はプレハブにできない
+            const bool plainObject = object.GetSerializeTypeName() == nullptr;
+            if (ImGui::MenuItem("プレハブとして保存", nullptr, false, plainObject)) {
+                if (const AssetInfo* info = PrefabEditing::CreateFromObject(object)) {
+                    ShowSaveNotification("プレハブを作りました: " + ToAssetPath(*info));
+                }
+            }
+        }
+        ImGui::EndPopup();
     }
 }
 

@@ -2,6 +2,7 @@
 #include "ProjectView.h"
 #include "Utility/Path/ProjectPaths.h"
 #include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/Asset/AssetDatabase.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Utility/Logger/Logger.h"
 
@@ -35,6 +36,15 @@ namespace CoreEngine
     {
         if (!isVisible_) {
             return;
+        }
+
+        // AssetDatabase に登録が増えたら、表示中のフォルダを読み直す
+        const uint64_t assetRevision = AssetDatabase::GetInstance().GetRevision();
+        if (assetRevision != seenAssetRevision_) {
+            seenAssetRevision_ = assetRevision;
+            currentEntries_ = GetCurrentDirectoryContents();
+            hasSubdirCache_.clear();
+            treeDirCache_.clear();
         }
 
         // ウィンドウを開始
@@ -284,6 +294,14 @@ namespace CoreEngine
                         const std::string filename = Logger::GetInstance().PathToUtf8(entry.path.filename());
                         ImGui::SetDragDropPayload("AUDIO_FILE", filename.c_str(), filename.size() + 1);
                         ImGui::Text("Audio: %s", filename.c_str());
+                        ImGui::EndDragDropSource();
+                    }
+                } else if (ext == ".prefab") {
+                    // プレハブのD&Dソース（ファイル名のみ渡す）
+                    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
+                        const std::string filename = Logger::GetInstance().PathToUtf8(entry.path.filename());
+                        ImGui::SetDragDropPayload("PREFAB_FILE", filename.c_str(), filename.size() + 1);
+                        ImGui::Text("Prefab: %s", filename.c_str());
                         ImGui::EndDragDropSource();
                     }
                 }
