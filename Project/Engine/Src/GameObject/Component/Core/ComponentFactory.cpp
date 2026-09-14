@@ -14,7 +14,7 @@ namespace CoreEngine
         return instance;
     }
 
-    void ComponentFactory::Reserve(Creator creator, TypeNameProbe probe)
+    void ComponentFactory::Reserve(Creator creator, ProbeFunction probe)
     {
         if (!creator || !probe) { return; }
         reservations_.push_back(Reservation{ creator, probe });
@@ -26,14 +26,15 @@ namespace CoreEngine
         primed_ = true;
 
         for (const Reservation& reservation : reservations_) {
-            std::string typeName = reservation.probe();
-            if (typeName.empty()) {
+            Probe probe = reservation.probe();
+            if (probe.typeName.empty()) {
                 Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
                     "ComponentFactory: 型名が空のコンポーネントは登録しません");
                 continue;
             }
 
-            auto [it, inserted] = creators_.try_emplace(std::move(typeName), reservation.creator);
+            const Entry entry{ reservation.creator, probe.descriptor };
+            auto [it, inserted] = entries_.try_emplace(std::move(probe.typeName), entry);
             if (!inserted) {
                 Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
                     "ComponentFactory: 型名 \"{}\" が重複しています。先に登録した方を使います",
@@ -46,21 +47,27 @@ namespace CoreEngine
 
     std::unique_ptr<IComponent> ComponentFactory::Create(const std::string& typeName) const
     {
-        const auto it = creators_.find(typeName);
-        if (it == creators_.end()) { return nullptr; }
-        return it->second();
+        const auto it = entries_.find(typeName);
+        if (it == entries_.end()) { return nullptr; }
+        return it->second.creator();
+    }
+
+    const Reflection::TypeDescriptor* ComponentFactory::FindDescriptor(const std::string& typeName) const
+    {
+        const auto it = entries_.find(typeName);
+        return it != entries_.end() ? it->second.descriptor : nullptr;
     }
 
     bool ComponentFactory::IsRegistered(const std::string& typeName) const
     {
-        return creators_.find(typeName) != creators_.end();
+        return entries_.find(typeName) != entries_.end();
     }
 
     std::vector<std::string> ComponentFactory::GetRegisteredTypeNames() const
     {
         std::vector<std::string> names;
-        names.reserve(creators_.size());
-        for (const auto& [name, creator] : creators_) {
+        names.reserve(entries_.size());
+        for (const auto& [name, entry] : entries_) {
             names.push_back(name);
         }
         std::sort(names.begin(), names.end());

@@ -16,21 +16,31 @@ namespace CoreEngine
 class ComponentFactory {
 public:
     using Creator = std::unique_ptr<IComponent> (*)();
-    using TypeNameProbe = std::string (*)();
+
+    /// @brief 試作した 1 個から読む型名と記述子
+    struct Probe {
+        std::string typeName;
+        const Reflection::TypeDescriptor* descriptor = nullptr;
+    };
+    using ProbeFunction = Probe (*)();
 
     static ComponentFactory& Get();
 
     /// @brief 生成関数を予約する
     /// @note 静的初期化中に呼ばれるのでインスタンスは作らない。型名の解決は `Prime()` が行う。
-    void Reserve(Creator creator, TypeNameProbe probe);
+    void Reserve(Creator creator, ProbeFunction probe);
 
     /// @brief 予約を型名へ解決する（エンジン起動時に 1 回だけ）
-    /// @note 型名を読むために 1 個ずつ試作して即座に捨てる。二度目以降の呼び出しは何もしない。
+    /// @note 型名と記述子を読むために 1 個ずつ試作して即座に捨てる。二度目以降の呼び出しは何もしない。
     void Prime();
 
     /// @brief 型名からコンポーネントを生成する
     /// @return 未登録の型なら nullptr
     std::unique_ptr<IComponent> Create(const std::string& typeName) const;
+
+    /// @brief 型名からその型の記述子を引く
+    /// @return 未登録の型か、記述子を持たない型なら nullptr（`Prime()` の前も nullptr）
+    const Reflection::TypeDescriptor* FindDescriptor(const std::string& typeName) const;
 
     /// @brief その型名で生成できるか
     bool IsRegistered(const std::string& typeName) const;
@@ -39,7 +49,10 @@ public:
     std::vector<std::string> GetRegisteredTypeNames() const;
 
     /// @brief 登録済みの型数
-    size_t GetRegisteredCount() const { return creators_.size(); }
+    size_t GetRegisteredCount() const { return entries_.size(); }
+
+    /// @brief 型名の解決（`Prime()`）が済んだか
+    bool IsPrimed() const { return primed_; }
 
 private:
     ComponentFactory() = default;
@@ -49,14 +62,20 @@ private:
 
     struct Reservation {
         Creator creator = nullptr;
-        TypeNameProbe probe = nullptr;
+        ProbeFunction probe = nullptr;
+    };
+
+    /// @brief 型名を解決した 1 型
+    struct Entry {
+        Creator creator = nullptr;
+        const Reflection::TypeDescriptor* descriptor = nullptr;
     };
 
     /// 型名の解決前に溜めておく予約
     std::vector<Reservation> reservations_;
 
-    /// 型名 → 生成関数
-    std::unordered_map<std::string, Creator> creators_;
+    /// 型名 → 生成関数と記述子
+    std::unordered_map<std::string, Entry> entries_;
 
     bool primed_ = false;
 };
@@ -68,7 +87,10 @@ struct AutoRegisterComponent {
     {
         ComponentFactory::Get().Reserve(
             []() -> std::unique_ptr<IComponent> { return std::make_unique<T>(); },
-            []() -> std::string { T probe; return probe.GetTypeName(); });
+            []() -> ComponentFactory::Probe {
+                T probe;
+                return { probe.GetTypeName(), probe.GetTypeDescriptor() };
+            });
     }
 };
 }

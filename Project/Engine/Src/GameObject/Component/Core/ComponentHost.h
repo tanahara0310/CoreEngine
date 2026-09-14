@@ -150,8 +150,9 @@ public:
     // ===== シリアライズ =====
 
     /// @brief アタッチされているコンポーネントを JSON 配列へ書き出す
-    /// @return `[{ "type", "enabled", "parameters" }, ...]`。中身が無ければ空配列
+    /// @return `[{ "type", "enabled", "version", "parameters" }, ...]`。中身が無ければ空配列
     /// @note 値は型記述子から取る。記述子が無い型は `IComponent::OnSerialize()` へ落ちる。
+    ///       `version` は記述子の版が 2 以上の型だけに書く。
     json SerializeComponents() const;
 
     /// @brief JSON 配列からコンポーネントの状態を復元する

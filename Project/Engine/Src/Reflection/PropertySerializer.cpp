@@ -207,4 +207,104 @@ namespace CoreEngine::Reflection
         out.path = hasPath ? node.at("path").get<std::string>() : std::string{};
         return true;
     }
+
+    bool PropertySerializer::MigrateParameters(const TypeDescriptor& type, uint32_t savedVersion, json& parameters)
+    {
+        const uint32_t from = savedVersion < 1 ? 1 : savedVersion;
+        if (from > type.version) {
+            return false;
+        }
+        if (from == type.version) {
+            return true;
+        }
+        if (!parameters.is_object()) {
+            parameters = json::object();
+        }
+
+        for (uint32_t version = from; version < type.version; ++version) {
+            const uint32_t next = version + 1;
+            for (const KeyRename& rename : type.renames) {
+                if (rename.version != next || !rename.from || !rename.to) {
+                    continue;
+                }
+                const auto it = parameters.find(rename.from);
+                if (it == parameters.end()) {
+                    continue;
+                }
+                // 新しいキーが既にあれば、そちらの値を残す
+                json value = std::move(*it);
+                parameters.erase(it);
+                if (!parameters.contains(rename.to)) {
+                    parameters[rename.to] = std::move(value);
+                }
+            }
+            if (type.upgrade) {
+                type.upgrade(version, next, parameters);
+                if (!parameters.is_object()) {
+                    parameters = json::object();
+                }
+            }
+        }
+        return true;
+    }
+
+    uint32_t PropertySerializer::ReadVersion(const json& node)
+    {
+        if (!node.is_number_integer()) {
+            return 1;
+        }
+        const int64_t value = node.get<int64_t>();
+        if (value < 1) {
+            return 1;
+        }
+        if (value > static_cast<int64_t>(UINT32_MAX)) {
+            return UINT32_MAX;
+        }
+        return static_cast<uint32_t>(value);
+    }
+
+    uint32_t PropertySerializer::ReadComponentVersion(const json& entry)
+    {
+        if (!entry.is_object()) {
+            return 1;
+        }
+        const auto it = entry.find("version");
+        return it != entry.end() ? ReadVersion(*it) : 1;
+    }
+
+    void PropertySerializer::WriteComponentVersion(json& entry, uint32_t version)
+    {
+        if (!entry.is_object()) {
+            return;
+        }
+        if (version > 1) {
+            entry["version"] = version;
+        } else {
+            entry.erase("version");
+        }
+    }
+
+    bool PropertySerializer::UpgradeComponentEntry(const TypeDescriptor& type, json& entry)
+    {
+        if (!entry.is_object()) {
+            return true;
+        }
+        const uint32_t saved = ReadComponentVersion(entry);
+        if (saved == type.version) {
+            return true;
+        }
+
+        const auto found = entry.find("parameters");
+        json parameters = found != entry.end() ? *found : json::object();
+        if (!MigrateParameters(type, saved, parameters)) {
+            return false;
+        }
+        if (parameters.is_object() && !parameters.empty()) {
+            entry["parameters"] = std::move(parameters);
+        } else {
+            entry.erase("parameters");
+        }
+        WriteComponentVersion(entry, type.version);
+        return true;
+    }
 }

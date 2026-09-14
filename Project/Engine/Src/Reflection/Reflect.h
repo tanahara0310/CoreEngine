@@ -31,7 +31,8 @@ namespace CoreEngine::Reflection
     /// @param memberExpr `transform_.translate` のような式の綴り
     /// @return 最後の `.` `->` `::` より後ろを取り、末尾のアンダースコアを落としたもの
     /// @note 綴りを変えると保存キーも変わる。既存の JSON と合わせたい場合は
-    ///       REFLECT_PROPERTY の可変長引数で `p.name = "texture"` と上書きする。
+    ///       REFLECT_PROPERTY の可変長引数で `p.name = "texture"` と上書きするか、
+    ///       REFLECT_VERSION で版を上げて REFLECT_RENAMED で古いキーを移行表に足す。
     inline std::string DerivePropertyName(const char* memberExpr)
     {
         std::string s = memberExpr ? memberExpr : "";
@@ -220,6 +221,27 @@ namespace CoreEngine::Reflection
 /// @note 残りの保存と表示は `OnSerialize` / `OnDeserialize` / `DrawInspector` が受け持つ。
 #define REFLECT_PARTIAL()                                                              \
         d.partial = true;
+
+/// @brief 型の保存形の版を指定する（書かなければ 1）
+/// @note 版を上げたら、上げた版ごとに REFLECT_RENAMED か REFLECT_UPGRADE で移行を書く。
+///       移行の無い版があると、起動時に TypeRegistry がエラーを出す。
+#define REFLECT_VERSION(Number)                                                        \
+        d.version = Number;
+
+/// @brief 保存キーの改名を移行表に足す
+/// @param Version 新しいキーで保存するようになった版
+/// @param OldNameLiteral それより前の版での保存キー
+/// @param NewNameLiteral その版からの保存キー
+/// @note 古い版で保存した JSON は、値を流す前にキーを付け替える。
+#define REFLECT_RENAMED(Version, OldNameLiteral, NewNameLiteral)                       \
+        d.renames.push_back(::CoreEngine::Reflection::KeyRename{                       \
+            Version, OldNameLiteral, NewNameLiteral });
+
+/// @brief キーの改名だけでは表せない保存値の書き換えを指定する
+/// @param FunctionName `void (uint32_t fromVersion, uint32_t toVersion, json& parameters)` の関数
+/// @note 1 版ずつ、その版の改名を済ませてから呼ぶ。`toVersion` の版で変わった分だけを書き換える。
+#define REFLECT_UPGRADE(FunctionName)                                                  \
+        d.upgrade = &FunctionName;
 
 /// @brief `ObjectRef<T>` 型のメンバをプロパティとして足す
 /// @param MemberExpr インスタンスからの式（`railPath_` など）
