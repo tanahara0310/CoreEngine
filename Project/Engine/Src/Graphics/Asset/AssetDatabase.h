@@ -30,6 +30,12 @@ namespace CoreEngine
         /// @note 戻り値を narrow 文字列に落とさないこと（ANSI と UTF-8 の取り違えを避けるため）
         std::filesystem::path FindAssetPath(const std::string& name);
 
+        /// @brief ファイル名で、指定した種類のアセットパスだけを検索
+        /// @param name 検索キー（ファイル名・ステム）
+        /// @param type 探す種類（`AssetType::Unknown` なら種類を問わない）
+        /// @return 見つかった絶対パス。見つからなければ空の path
+        std::filesystem::path FindAssetPath(const std::string& name, AssetType type);
+
         /// @brief ファイルパスから GUID を取得
         std::string GetGUID(const std::filesystem::path& assetPath);
 

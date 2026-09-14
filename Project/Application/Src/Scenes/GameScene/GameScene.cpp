@@ -45,6 +45,7 @@
 #include "GameObjects/Effect/RockBreakDebris.h"
 #include "GameObjects/Effect/StationSlowdownEffect.h"
 #include "UI/UIText.h"
+#include "Graphics/Asset/AssetRef.h"
 #include "Utility/JsonManager/JsonManager.h"
 
 #include <algorithm>
@@ -190,8 +191,10 @@ namespace {
 
         settings.csvChunkSizeX = std::max<std::size_t>(1,
             JsonManager::SafeGet<std::size_t>(root, "chunkSizeX", settings.csvChunkSizeX));
-        settings.fixedCsvPath = JsonManager::SafeGet<std::string>(
-            root, "fixedCsvPath", settings.fixedCsvPath);
+        if (root.contains("fixedCsvPath")) {
+            settings.fixedCsvPath = CoreEngine::JsonToAssetPath(
+                root.at("fixedCsvPath"), "GameScene: stage_project.json の fixedCsvPath");
+        }
         settings.initialCsvPoolName = JsonManager::SafeGet<std::string>(
             root, "initialArea", settings.initialCsvPoolName);
 
@@ -210,8 +213,10 @@ namespace {
                 GameComponents::CsvMapPoolSettings pool;
                 pool.name = name;
                 for (const auto& path : element["paths"]) {
-                    if (path.is_string()) {
-                        pool.paths.push_back(path.get<std::string>());
+                    std::string resolved = CoreEngine::JsonToAssetPath(
+                        path, "GameScene: stage_project.json のエリア " + name);
+                    if (!resolved.empty()) {
+                        pool.paths.push_back(std::move(resolved));
                     }
                 }
                 pools.push_back(std::move(pool));

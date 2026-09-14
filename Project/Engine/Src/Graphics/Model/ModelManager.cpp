@@ -423,9 +423,9 @@ namespace CoreEngine
         }
 
         auto& assetDB = AssetDatabase::GetInstance();
-        std::filesystem::path assetPath = assetDB.FindAssetPath(searchName);
+        std::filesystem::path assetPath = assetDB.FindAssetPath(searchName, AssetType::Model);
         if (assetPath.empty() && inputPath.has_stem()) {
-            assetPath = assetDB.FindAssetPath(log.PathToUtf8(inputPath.stem()));
+            assetPath = assetDB.FindAssetPath(log.PathToUtf8(inputPath.stem()), AssetType::Model);
         }
         if (!assetPath.empty()) {
             return log.PathToUtf8(assetPath);

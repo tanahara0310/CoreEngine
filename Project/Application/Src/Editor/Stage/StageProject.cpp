@@ -4,6 +4,7 @@
 
 #ifdef USE_IMGUI
 
+#include "Graphics/Asset/AssetRef.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
 
@@ -67,7 +68,10 @@ namespace GameEditors
         loaded.fixedMapSizeZ = JsonManager::SafeGet<std::size_t>(
             root, "fixedMapSizeZ", loaded.fixedMapSizeZ);
         loaded.initialAreaName = JsonManager::SafeGet<std::string>(root, "initialArea", loaded.initialAreaName);
-        loaded.fixedCsvPath = JsonManager::SafeGet<std::string>(root, "fixedCsvPath", loaded.fixedCsvPath);
+        if (root.contains("fixedCsvPath")) {
+            loaded.fixedCsvPath = CoreEngine::JsonToAssetPath(
+                root.at("fixedCsvPath"), "StageEditor: " + path + " の fixedCsvPath");
+        }
 
         if (root.contains("areas") && root["areas"].is_array()) {
             for (const auto& element : root["areas"]) {
@@ -81,8 +85,10 @@ namespace GameEditors
                 }
                 if (element.contains("paths") && element["paths"].is_array()) {
                     for (const auto& pathElement : element["paths"]) {
-                        if (pathElement.is_string()) {
-                            area.paths.push_back(pathElement.get<std::string>());
+                        std::string resolved = CoreEngine::JsonToAssetPath(
+                            pathElement, "StageEditor: " + path + " のエリア " + area.name);
+                        if (!resolved.empty()) {
+                            area.paths.push_back(std::move(resolved));
                         }
                     }
                 }
@@ -108,13 +114,17 @@ namespace GameEditors
         root["fixedMapSizeX"] = project.fixedMapSizeX;
         root["fixedMapSizeZ"] = project.fixedMapSizeZ;
         root["initialArea"] = project.initialAreaName;
-        root["fixedCsvPath"] = project.fixedCsvPath;
+        root["fixedCsvPath"] = CoreEngine::AssetPathToJson(project.fixedCsvPath);
 
         json areas = json::array();
         for (const auto& area : project.areas) {
             json element = json::object();
             element["name"] = area.name;
-            element["paths"] = area.paths;
+            json paths = json::array();
+            for (const auto& csvPath : area.paths) {
+                paths.push_back(CoreEngine::AssetPathToJson(csvPath));
+            }
+            element["paths"] = std::move(paths);
             areas.push_back(std::move(element));
         }
         root["areas"] = std::move(areas);
