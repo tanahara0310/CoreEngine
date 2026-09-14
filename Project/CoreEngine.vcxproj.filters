@@ -721,6 +721,9 @@
     <ClCompile Include="Engine\Src\GameObject\Component\Render\MeshRendererComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\Render\Text3DRendererComponent.cpp">
+      <Filter>Engine\Src\GameObject\Component\Render</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\Component\Animation\SkeletonSocketComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Animation</Filter>
     </ClCompile>
@@ -1332,9 +1335,6 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Environment\FogEditor.cpp">
       <Filter>Engine\Src\Editor\Environment</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\GameObject\Text3D\Text3DObject.cpp">
-      <Filter>Engine\Src\GameObject\Text3D</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Fog\FogManager.cpp">
       <Filter>Engine\Src\Graphics\Fog</Filter>
@@ -2517,6 +2517,9 @@
     <ClInclude Include="Engine\Src\GameObject\Component\Render\MeshRendererComponent.h">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\Render\Text3DRendererComponent.h">
+      <Filter>Engine\Src\GameObject\Component\Render</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Transform\TransformComponent.h">
       <Filter>Engine\Src\GameObject\Component\Transform</Filter>
     </ClInclude>
@@ -3243,9 +3246,6 @@
     <ClInclude Include="Engine\Src\Editor\Environment\FogEditor.h">
       <Filter>Engine\Src\Editor\Environment</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\GameObject\Text3D\Text3DObject.h">
-      <Filter>Engine\Src\GameObject\Text3D</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Fog\FogManager.h">
       <Filter>Engine\Src\Graphics\Fog</Filter>
     </ClInclude>
@@ -3780,9 +3780,6 @@
     </Filter>
     <Filter Include="Engine\Src\GameObject\Sprite">
       <UniqueIdentifier>{70079A16-C468-498A-BF3A-C14C52126902}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Engine\Src\GameObject\Text3D">
-      <UniqueIdentifier>{71EAF758-3541-4DCD-B613-4960A0EDEB25}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics">
       <UniqueIdentifier>{C8B50C5F-F075-4840-B95F-62CA73D35902}</UniqueIdentifier>

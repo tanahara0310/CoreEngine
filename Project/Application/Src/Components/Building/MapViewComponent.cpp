@@ -4,7 +4,7 @@
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
-#include "GameObject/Text3D/Text3DObject.h"
+#include "GameObject/Component/Render/Text3DRendererComponent.h"
 #include "MapGeneratorComponent.h"
 #include "Components/Utility/BlockModelLayout.h"
 #include "Components/Utility/GameCamera.h"
@@ -657,7 +657,7 @@ void GameComponents::MapViewComponent::Start() {
     }
 
     // 駅で待つサルのプール。他のプールと違って駅の演出だけに使うもので、外から
-    // 差し替える意味が無いのでここで生やす（距離目盛りの Text3DObject と同じ扱い）。
+    // 差し替える意味が無いのでここで生やす（距離目盛りの 3D テキストと同じ扱い）。
     // AddComponent はその場で Awake を呼ぶので、Start の時点で足しても中身は揃う。
     if (owner) {
         stationMonkeyPoolObject_ = owner->Spawn<GameObject>();
@@ -678,8 +678,9 @@ void GameComponents::MapViewComponent::Start() {
 
 void GameComponents::MapViewComponent::OnDestroy() {
     for (auto* marker : distanceMarkers_) {
-        if (marker && !marker->IsMarkedForDestroy()) {
-            marker->Destroy();
+        GameObject* markerObject = marker ? marker->GetOwner() : nullptr;
+        if (markerObject && !markerObject->IsMarkedForDestroy()) {
+            markerObject->Destroy();
         }
     }
     distanceMarkers_.clear();
@@ -873,13 +874,16 @@ void GameComponents::MapViewComponent::UpdateDistanceMarkers(
         static_cast<double>(markerIndex) * kDistanceMarkerIntervalMeters < endMeters;
         ++markerIndex) {
         if (usedCount == distanceMarkers_.size()) {
-            auto* marker = GetOwner()->Spawn<Text3DObject>();
-            if (!marker) {
+            auto* markerObject = GetOwner()->Spawn<GameObject>();
+            if (!markerObject) {
                 break;
             }
-            marker->Initialize(distanceMarkerFont_, "", "DistanceMarker_" + std::to_string(usedCount));
+            markerObject->SetName("DistanceMarker_" + std::to_string(usedCount));
             // 描画範囲に応じて再配置するため、個々の目盛りはシーンに保存しない。
-            marker->SetSerializeEnabled(false);
+            markerObject->SetSerializeEnabled(false);
+            markerObject->AddComponent<TransformComponent>();
+            auto* marker = markerObject->AddComponent<Text3DRendererComponent>();
+            marker->SetFont(distanceMarkerFont_);
             marker->SetAlign(TextAlignH::Center, TextAlignV::Top);
             marker->SetPivot({ 0.5f, 0.0f });
             marker->SetLineSpacing(0.9f);
@@ -906,7 +910,7 @@ void GameComponents::MapViewComponent::UpdateDistanceMarkers(
         auto* marker = distanceMarkers_[usedCount++];
         marker->SetText("|\n" + std::to_string(meters) + "m");
         marker->SetFontSize(kDistanceMarkerFontSize);
-        auto& transform = marker->GetComponent<TransformComponent>()->Get();
+        auto& transform = marker->GetTransformComponent()->Get();
         // ゲームカメラ側（-Z）の地形端より外へ置く。文字面は床と平行で、上から読める向き。
         transform.translate = {
             static_cast<float>(meters),
@@ -915,11 +919,11 @@ void GameComponents::MapViewComponent::UpdateDistanceMarkers(
         };
         transform.rotate = { std::numbers::pi_v<float> * 0.5f, 0.0f, 0.0f };
         transform.TransferMatrix();
-        marker->SetActive(true);
+        marker->GetOwner()->SetActive(true);
     }
 
     // 戻ったり描画距離を縮めたりした場合は、余った目盛りを隠す。
     for (std::size_t i = usedCount; i < distanceMarkers_.size(); ++i) {
-        distanceMarkers_[i]->SetActive(false);
+        distanceMarkers_[i]->GetOwner()->SetActive(false);
     }
 }

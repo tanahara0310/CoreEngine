@@ -100,7 +100,7 @@ namespace CoreEngine
     ///  そのまま流用できるので、ピクセルシェーダーは UI 版とほぼ同一。
     ///
     ///  **バッチング**:
-    ///  `Text3DObject::Draw` はドローコールを発行せず Submit() で頂点を積むだけ。
+    ///  `Text3DRendererComponent::Render` はドローコールを発行せず Submit() で頂点を積むだけ。
     ///  実際の描画は Flush()（BeginPass / EndPass / フォント・深度モード・ビューの
     ///  切り替え / 容量超過）で 1 回にまとめて行う。
     ///  テキストごとの色・縁取り・ワールド行列は頂点へ焼き込んであるので、
