@@ -184,6 +184,9 @@ namespace CoreEngine
                 { "type", component->GetTypeName() },
                 { "enabled", component->IsEnabled() },
             };
+            if (descriptor) {
+                Reflection::PropertySerializer::WriteComponentVersion(entry, descriptor->version);
+            }
             if (!parameters.empty()) {
                 entry["parameters"] = std::move(parameters);
             }
@@ -234,9 +237,25 @@ namespace CoreEngine
             if (entry.contains("enabled") && entry["enabled"].is_boolean()) {
                 target->SetEnabled(entry["enabled"].get<bool>());
             }
-            if (entry.contains("parameters") && entry["parameters"].is_object()) {
-                const json& parameters = entry["parameters"];
-                const Reflection::TypeDescriptor* descriptor = target->GetTypeDescriptor();
+
+            // 古い版で保存した値は、型の今の版の形へ書き換えてから流す
+            const Reflection::TypeDescriptor* descriptor = target->GetTypeDescriptor();
+            const uint32_t savedVersion = Reflection::PropertySerializer::ReadComponentVersion(entry);
+            json upgraded;
+            const json* source = &entry;
+            if (descriptor && savedVersion != descriptor->version) {
+                upgraded = entry;
+                if (Reflection::PropertySerializer::UpgradeComponentEntry(*descriptor, upgraded)) {
+                    source = &upgraded;
+                } else {
+                    Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
+                        "ComponentHost: 型 \"{}\" の保存値は版 {} で、今の版 {} より新しいので、そのまま読みます",
+                        type, savedVersion, descriptor->version);
+                }
+            }
+
+            if (source->contains("parameters") && source->at("parameters").is_object()) {
+                const json& parameters = source->at("parameters");
                 if (descriptor) {
                     Reflection::PropertySerializer::Load(
                         *descriptor, target->GetReflectionInstance(), parameters);

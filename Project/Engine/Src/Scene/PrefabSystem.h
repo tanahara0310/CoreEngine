@@ -16,8 +16,9 @@ namespace CoreEngine
     struct AssetInfo;
 
     /// @brief プレハブ（コンポーネントの構成と値を持つアセット）と、そこから作ったオブジェクトの差分を扱う
-    /// @details 差分の形は `{"prefab", "overrides", "addedComponents", "removedComponents"}`。
+    /// @details 差分の形は `{"prefab", "overrides", "versions", "addedComponents", "removedComponents"}`。
     ///          上書きのキーは `型名.プロパティ名`、同じ型の 2 個目以降は `型名[1].プロパティ名`。
+    ///          `versions` は、上書きを書いた型のうち版が 2 以上のものの `型名 → 版`。
     namespace PrefabSystem
     {
         /// @brief コンポーネントの有効・無効を表す上書きのプロパティ名
@@ -25,7 +26,8 @@ namespace CoreEngine
 
         /// @brief プレハブの `components` 配列を読む
         /// @return 見つからない・プレハブでない・読めなければ nullptr
-        /// @note 読んだ内容は、ファイルの更新時刻が変わるまで使い回す。
+        /// @note 各コンポーネントを型の今の版の形へ書き換えてから、ファイルの更新時刻が変わるまで使い回す。
+        ///       `ComponentFactory::Prime()` の前に読んだ分は、その後に初めて読むときに書き換える。
         const json* LoadComponents(const Reflection::AssetRefValue& prefab);
 
         /// @brief オブジェクトの JSON からプレハブの参照を読む
@@ -43,6 +45,7 @@ namespace CoreEngine
         /// @param prefabComponents プレハブの `components` 配列（読めなかったときは nullptr）
         /// @param problems 読み飛ばした指定の説明を足す先（要らなければ nullptr）
         /// @note `components` を持つ JSON は、差分の指定を外してそのまま返す。
+        ///       上書きは、`versions` の版（書いていない型は 1）から型の今の版の形へ書き換えてから重ねる。
         json ExpandInstanceJson(const json& instance, const json* prefabComponents,
                                 std::vector<std::string>* problems = nullptr);
 

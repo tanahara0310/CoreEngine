@@ -1,19 +1,23 @@
 #include "pch.h"
 #include "Scene/PrefabSystem.h"
 
+#include "GameObject/Component/Core/ComponentFactory.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/GameObjectManager.h"
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Graphics/Asset/AssetInfo.h"
 #include "Graphics/Asset/AssetRef.h"
 #include "Reflection/PropertySerializer.h"
+#include "Reflection/TypeDescriptor.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
 
 #include <algorithm>
 #include <charconv>
+#include <cstdint>
 #include <filesystem>
 #include <functional>
+#include <map>
 #include <memory>
 #include <string_view>
 #include <system_error>
@@ -29,12 +33,14 @@ namespace CoreEngine::PrefabSystem
         constexpr const char* kOverridesKey = "overrides";
         constexpr const char* kAddedKey = "addedComponents";
         constexpr const char* kRemovedKey = "removedComponents";
+        constexpr const char* kVersionsKey = "versions";
 
         /// @brief 読み込んだプレハブ 1 件分
         struct CachedPrefab
         {
             json components;
             std::filesystem::file_time_type writeTime{};
+            bool upgraded = false;  ///< components を型の今の版の形へ書き換え済みか
         };
 
         /// @brief GUID → 読み込んだプレハブ
@@ -52,6 +58,7 @@ namespace CoreEngine::PrefabSystem
             CachedPrefab& entry = PrefabCache()[info.guid];
             entry.components = components;
             entry.writeTime = ec ? std::filesystem::file_time_type{} : writeTime;
+            entry.upgraded = true;
         }
 
         /// @brief `components` 配列を `{"components": …}` の形でファイルへ書く
@@ -145,6 +152,90 @@ namespace CoreEngine::PrefabSystem
             const auto it = entry.find("parameters");
             return (it != entry.end() && it->is_object()) ? *it : kEmpty;
         }
+
+        /// @brief components 配列の各要素を、型の今の版の形へ書き換える
+        /// @param source 警告に出す読み込み元
+        void UpgradeComponents(json& components, const std::string& source)
+        {
+            if (!components.is_array()) {
+                return;
+            }
+            for (json& entry : components) {
+                if (!entry.is_object()) {
+                    continue;
+                }
+                const auto type = entry.find("type");
+                if (type == entry.end() || !type->is_string()) {
+                    continue;
+                }
+                const std::string typeName = type->get<std::string>();
+                const Reflection::TypeDescriptor* descriptor = ComponentFactory::Get().FindDescriptor(typeName);
+                const uint32_t saved = Reflection::PropertySerializer::ReadComponentVersion(entry);
+                if (!descriptor || saved == descriptor->version) {
+                    continue;
+                }
+                if (!Reflection::PropertySerializer::UpgradeComponentEntry(*descriptor, entry)) {
+                    Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource,
+                        "PrefabSystem: \"{}\" の {} は版 {} で、今の版 {} より新しいので、そのまま使います",
+                        source, typeName, saved, descriptor->version);
+                }
+            }
+        }
+
+        /// @brief 控えたプレハブを、まだなら型の今の版の形へ書き換える
+        /// @note ファクトリが型名を解決する前は記述子を引けないので、解決した後の読み込みまで書き換えない。
+        void EnsureUpgraded(CachedPrefab& prefab, const AssetInfo& info)
+        {
+            if (prefab.upgraded || !ComponentFactory::Get().IsPrimed()) {
+                return;
+            }
+            UpgradeComponents(prefab.components, ToAssetPath(info));
+            prefab.upgraded = true;
+        }
+
+        /// @brief 上書きを、保存したときの版から型の今の版の形へ書き換える
+        /// @param versions インスタンスの `versions`（`型名 → 版`。書いていない型は版 1 として扱う）
+        /// @param report 読み飛ばした指定の説明を渡す先
+        json UpgradeOverrides(const json& overrides, const json* versions,
+                              const std::function<void(std::string)>& report)
+        {
+            // 有効・無効と読めないキーはそのまま残し、残りをコンポーネントごとの parameters の形にまとめる
+            json upgraded = json::object();
+            std::map<std::string, json> groups;
+            for (auto it = overrides.begin(); it != overrides.end(); ++it) {
+                const std::string& key = it.key();
+                const std::size_t dot = key.find('.');
+                if (dot == std::string::npos || dot + 1 == key.size() ||
+                    key.compare(dot + 1, std::string::npos, kEnabledProperty) == 0) {
+                    upgraded[key] = *it;
+                    continue;
+                }
+                groups[key.substr(0, dot)][key.substr(dot + 1)] = *it;
+            }
+
+            for (auto& [slotName, parameters] : groups) {
+                std::string type;
+                std::size_t ordinal = 0;
+                const Reflection::TypeDescriptor* descriptor = ParseSlotName(slotName, type, ordinal)
+                    ? ComponentFactory::Get().FindDescriptor(type) : nullptr;
+                if (descriptor) {
+                    uint32_t saved = 1;
+                    if (versions && versions->is_object()) {
+                        if (const auto found = versions->find(type); found != versions->end()) {
+                            saved = Reflection::PropertySerializer::ReadVersion(*found);
+                        }
+                    }
+                    if (!Reflection::PropertySerializer::MigrateParameters(*descriptor, saved, parameters)) {
+                        report("上書きの " + type + " は版 " + std::to_string(saved) + " で、今の版 " +
+                            std::to_string(descriptor->version) + " より新しいので、そのまま使います");
+                    }
+                }
+                for (auto it = parameters.begin(); it != parameters.end(); ++it) {
+                    upgraded[slotName + "." + it.key()] = *it;
+                }
+            }
+            return upgraded;
+        }
     }
 
     const json* LoadComponents(const Reflection::AssetRefValue& prefab)
@@ -160,6 +251,7 @@ namespace CoreEngine::PrefabSystem
         auto& cache = PrefabCache();
         if (const auto it = cache.find(info->guid);
             it != cache.end() && !ec && it->second.writeTime == writeTime) {
+            EnsureUpgraded(it->second, *info);
             return &it->second.components;
         }
 
@@ -176,6 +268,8 @@ namespace CoreEngine::PrefabSystem
 
         CachedPrefab& entry = cache[info->guid];
         entry.components = root.at(kComponentsKey);
+        entry.upgraded = false;
+        EnsureUpgraded(entry, *info);
         entry.writeTime = ec ? std::filesystem::file_time_type{} : writeTime;
         return &entry.components;
     }
@@ -239,6 +333,7 @@ namespace CoreEngine::PrefabSystem
 
         // プレハブの各コンポーネントと、同じ型・同じ順番のものを突き合わせる
         json overrides = json::object();
+        json versions = json::object();
         json removed = json::array();
         std::vector<bool> matched(components.size(), false);
         for (const Slot& slot : prefabSlots) {
@@ -252,6 +347,7 @@ namespace CoreEngine::PrefabSystem
 
             const json& base = prefabComponents[slot.index];
             const json& current = components[own->index];
+            const std::size_t overrideCount = overrides.size();
             if (EnabledOf(base) != EnabledOf(current)) {
                 overrides[name + "." + kEnabledProperty] = EnabledOf(current);
             }
@@ -263,6 +359,12 @@ namespace CoreEngine::PrefabSystem
                 if (found == baseParameters.end() || !SameValue(*found, *it)) {
                     overrides[name + "." + it.key()] = *it;
                 }
+            }
+
+            // 上書きを書いた型は、保存したときの版を控える
+            const uint32_t version = Reflection::PropertySerializer::ReadComponentVersion(current);
+            if (overrides.size() != overrideCount && version > 1) {
+                versions[slot.type] = version;
             }
         }
 
@@ -276,6 +378,9 @@ namespace CoreEngine::PrefabSystem
 
         if (!overrides.empty()) {
             instance[kOverridesKey] = std::move(overrides);
+        }
+        if (!versions.empty()) {
+            instance[kVersionsKey] = std::move(versions);
         }
         if (!added.empty()) {
             instance[kAddedKey] = std::move(added);
@@ -294,6 +399,7 @@ namespace CoreEngine::PrefabSystem
         full.erase(kOverridesKey);
         full.erase(kAddedKey);
         full.erase(kRemovedKey);
+        full.erase(kVersionsKey);
         if (full.contains(kComponentsKey) || !instance.is_object()) {
             return full;
         }
@@ -308,10 +414,13 @@ namespace CoreEngine::PrefabSystem
             ? *prefabComponents : json::array();
         const std::vector<Slot> slots = MakeSlots(components);
 
-        // 上書きは、プレハブの同じ型・同じ順番のコンポーネントへ書き込む
-        if (const auto overrides = instance.find(kOverridesKey);
-            overrides != instance.end() && overrides->is_object()) {
-            for (auto it = overrides->begin(); it != overrides->end(); ++it) {
+        // 上書きは、保存したときの版から今の版の形へ書き換えてから、プレハブの同じ型・同じ順番のコンポーネントへ書き込む
+        if (const auto stored = instance.find(kOverridesKey);
+            stored != instance.end() && stored->is_object()) {
+            const auto versions = instance.find(kVersionsKey);
+            const json overrides = UpgradeOverrides(
+                *stored, versions != instance.end() ? &*versions : nullptr, report);
+            for (auto it = overrides.begin(); it != overrides.end(); ++it) {
                 const std::string& key = it.key();
                 const std::size_t dot = key.find('.');
                 std::string type;

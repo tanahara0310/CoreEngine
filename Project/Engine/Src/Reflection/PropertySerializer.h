@@ -3,6 +3,8 @@
 #include "Reflection/PropertyDescriptor.h"
 #include "Utility/JsonManager/JsonManager.h"
 
+#include <cstdint>
+
 namespace CoreEngine::Reflection
 {
     struct TypeDescriptor;
@@ -30,5 +32,26 @@ namespace CoreEngine::Reflection
         /// @brief 保存形から AssetRef の値を読む
         /// @return null なら何も指さない値にして true。GUID もパスも読めなければ false（`out` は変えない）
         bool JsonToAssetRef(const json& node, AssetRefValue& out);
+
+        /// @brief 古い版で保存した `parameters` を、型の今の版の形へ書き換える
+        /// @param savedVersion 保存したときの版
+        /// @return 保存した版が型の版より新しければ false（`parameters` は変えない）
+        /// @note 1 版ずつ、その版の改名（`TypeDescriptor::renames`）を済ませてから `TypeDescriptor::upgrade` を呼ぶ。
+        bool MigrateParameters(const TypeDescriptor& type, uint32_t savedVersion, json& parameters);
+
+        /// @brief 保存した版の数値を読む
+        /// @return 1 以上の整数でなければ 1
+        uint32_t ReadVersion(const json& node);
+
+        /// @brief コンポーネントの保存形 `{"type", "enabled", "version", "parameters"}` から版を読む
+        /// @return `version` が無ければ 1
+        uint32_t ReadComponentVersion(const json& entry);
+
+        /// @brief コンポーネントの保存形へ版を書く（1 以下なら `version` を消す）
+        void WriteComponentVersion(json& entry, uint32_t version);
+
+        /// @brief コンポーネントの保存形の `parameters` を型の今の版の形へ書き換え、`version` を今の版にする
+        /// @return 保存した版が型の版より新しければ false（何も変えない）
+        bool UpgradeComponentEntry(const TypeDescriptor& type, json& entry);
     }
 }
