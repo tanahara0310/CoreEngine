@@ -2,6 +2,7 @@
 #include "Graphics/Asset/AssetRef.h"
 
 #include "Graphics/Asset/AssetDatabase.h"
+#include "Reflection/PropertySerializer.h"
 #include "Utility/Logger/Logger.h"
 
 #include <algorithm>
@@ -16,7 +17,7 @@ namespace CoreEngine
         return path;
     }
 
-    const AssetInfo* FindAssetInfo(std::string_view pathOrName)
+    const AssetInfo* FindAssetInfo(std::string_view pathOrName, AssetType type)
     {
         if (pathOrName.empty()) {
             return nullptr;
@@ -28,7 +29,7 @@ namespace CoreEngine
         }
 
         // ファイル名だけなら名前で探す
-        const std::filesystem::path found = database.FindAssetPath(std::string(pathOrName));
+        const std::filesystem::path found = database.FindAssetPath(std::string(pathOrName), type);
         return found.empty() ? nullptr
             : database.FindAssetByPath(Logger::GetInstance().PathToUtf8(found));
     }
@@ -41,6 +42,55 @@ namespace CoreEngine
             }
         }
         return FindAssetInfo(value.path);
+    }
+
+    std::string JsonToAssetPath(const json& node, std::string_view context)
+    {
+        Reflection::AssetRefValue value;
+        if (node.is_string()) {
+            value.path = node.get<std::string>();
+        } else if (!Reflection::PropertySerializer::JsonToAssetRef(node, value)) {
+            return {};
+        }
+        if (value.guid.empty() && value.path.empty()) {
+            return {};
+        }
+
+        Logger& log = Logger::GetInstance();
+        const AssetInfo* byGuid =
+            value.guid.empty() ? nullptr : AssetDatabase::GetInstance().FindAssetByGUID(value.guid);
+        const AssetInfo* byPath = value.path.empty() ? nullptr : FindAssetInfo(value.path);
+
+        if (byGuid) {
+            if (!value.path.empty() && byPath != byGuid) {
+                log.Logf(LogLevel::Warn, LogCategory::Resource,
+                    "{}: パス \"{}\" は GUID の指す \"{}\" と食い違っています（GUID を使います）",
+                    context, value.path, ToAssetPath(*byGuid));
+            }
+            return ToAssetPath(*byGuid);
+        }
+
+        if (byPath) {
+            if (!value.guid.empty()) {
+                log.Logf(LogLevel::Warn, LogCategory::Resource,
+                    "{}: GUID \"{}\" が見つからないので、パス \"{}\" で引きました",
+                    context, value.guid, value.path);
+            }
+            return ToAssetPath(*byPath);
+        }
+
+        log.Logf(LogLevel::Warn, LogCategory::Resource,
+            "{}: アセット（GUID \"{}\" / パス \"{}\"）が見つかりません",
+            context, value.guid, value.path);
+        return value.path;
+    }
+
+    json AssetPathToJson(std::string_view path)
+    {
+        if (path.empty()) {
+            return nullptr;
+        }
+        return Reflection::PropertySerializer::AssetRefToJson(Reflection::AssetRefValue{ {}, std::string(path) });
     }
 
     std::string AssetRefBase::GetPath() const
@@ -69,7 +119,7 @@ namespace CoreEngine
         path_.assign(pathOrName.data(), pathOrName.size());
         std::replace(path_.begin(), path_.end(), '\\', '/');
 
-        const AssetInfo* info = FindAssetInfo(path_);
+        const AssetInfo* info = FindAssetInfo(path_, type_);
         if (!info) {
             return;
         }

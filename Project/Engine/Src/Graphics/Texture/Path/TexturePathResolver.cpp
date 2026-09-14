@@ -15,7 +15,7 @@ namespace CoreEngine
         auto& assetDB = AssetDatabase::GetInstance();
 
         // まずフルパス文字列でそのまま検索する
-        std::filesystem::path assetPath = assetDB.FindAssetPath(filePath);
+        std::filesystem::path assetPath = assetDB.FindAssetPath(filePath, AssetType::Texture);
         if (!assetPath.empty()) {
             if (writeLog) {
                 Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}",
@@ -30,7 +30,7 @@ namespace CoreEngine
         std::filesystem::path fsPath = Logger::GetInstance().Utf8ToPath(filePath);
         std::string fileName = Logger::GetInstance().PathToUtf8(fsPath.filename());
         if (!fileName.empty() && fileName != filePath) {
-            assetPath = assetDB.FindAssetPath(fileName);
+            assetPath = assetDB.FindAssetPath(fileName, AssetType::Texture);
             if (!assetPath.empty()) {
                 if (writeLog) {
                     Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}",
