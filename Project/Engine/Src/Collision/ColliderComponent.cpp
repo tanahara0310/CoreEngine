@@ -96,7 +96,7 @@ bool ColliderComponent::DrawInspector()
     GameObject* owner = GetOwner();
     if (!owner) { return false; }
 
-    // ModelGameObject の「コライダー」タブと同じ UI を共有する
+    // 編集 UI は ColliderInspector が持つ
     return ColliderInspector::Draw(*owner);
 }
 #endif // USE_IMGUI

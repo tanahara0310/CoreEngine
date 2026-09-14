@@ -29,7 +29,7 @@ namespace CoreEngine
     /// @note Undo でオブジェクトを削除し、Redo で同じオブジェクトを再生成する
     struct ObjectSpawnRecord {
         std::string objectName;    ///< 生成されたオブジェクト名
-        std::string modelPath;     ///< DynamicModelObject のモデルパス
+        std::string modelPath;     ///< 生成したオブジェクトのモデルファイル
         Vector3     translate;     ///< 生成時のトランスフォーム
         Vector3     rotate;
         Vector3     scale = { 1.0f, 1.0f, 1.0f };

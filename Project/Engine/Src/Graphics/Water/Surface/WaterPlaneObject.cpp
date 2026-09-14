@@ -29,6 +29,9 @@ namespace CoreEngine
         , scrollSpeed_({ 0.03f, 0.01f })
         , uvTiling_({ 4.0f, 4.0f })
         , uvOffset_({ 0.0f, 0.0f }) {
+        transformComponent_ = AddComponent<TransformComponent>();
+        meshRenderer_ = AddComponent<MeshRendererComponent>();
+
         // 「シーンの水面」タグ（WaterRenderFeature が具象型を知らずに見つけるため）
         AddComponent<SceneTagComponent<WaterPlaneObject>>(this);
 
@@ -54,8 +57,32 @@ namespace CoreEngine
         waterCB_.waves[15] = { { -0.7f,  0.6f }, 0.008f,  5.5f, 2.6f, 0.01f, 6.0f };
     }
 
+    void WaterPlaneObject::Initialize() {
+        meshRenderer_->SetPrimitive(CreateMeshGenerator());
+
+        // 独自シェーダーを使用するよう登録する
+        meshRenderer_->SetCustomShaderProvider(this);
+
+        // 水面は半透明オブジェクトとして描画する
+        meshRenderer_->SetBlendMode(BlendMode::kBlendModeNormal);
+
+        // 定数バッファを作成する
+        auto* engine = GetEngineSystem();
+        auto* dxCommon = engine ? engine->GetService<GraphicsCore>() : nullptr;
+        if (dxCommon) {
+            constantBuffers_.Initialize(dxCommon->GetDevice());
+            constantBuffers_.UpdateWaterConstants(waterCB_);
+            constantBuffers_.UpdateFrameConstants(frameCB_);
+        }
+
+        // 登録したシェーダーを含めてメッシュを作る
+        meshRenderer_->ReloadFromSpec();
+
+        SetActive(true);
+    }
+
     RenderItem WaterPlaneObject::BuildRenderItem() const {
-        RenderItem item = PrimitiveGameObject::BuildRenderItem();
+        RenderItem item = GameObject::BuildRenderItem();
         item.kind = RenderItemKind::WaterSurface;
         item.passType = RenderPassType::WaterSurface;
         return item;
@@ -69,23 +96,6 @@ namespace CoreEngine
 
     std::wstring WaterPlaneObject::GetPixelShaderPath() const {
         return L"Water.PS.hlsl";
-    }
-
-    void WaterPlaneObject::OnInitialize() {
-        // 独自シェーダーを使用するよう登録する
-        SetCustomShaderProvider(this);
-
-        // 水面は半透明オブジェクトとして描画する
-        SetBlendMode(BlendMode::kBlendModeNormal);
-
-        // 定数バッファを作成する
-        auto* engine = GetEngineSystem();
-        auto* dxCommon = engine ? engine->GetService<GraphicsCore>() : nullptr;
-        if (dxCommon) {
-            constantBuffers_.Initialize(dxCommon->GetDevice());
-            constantBuffers_.UpdateWaterConstants(waterCB_);
-            constantBuffers_.UpdateFrameConstants(frameCB_);
-        }
     }
 
     void WaterPlaneObject::RebuildWaterShaderPipeline() {
@@ -105,8 +115,8 @@ namespace CoreEngine
             useFFTOcean_);
         dxCommon->WaitForGpuIdle();
 
-        SetCustomShaderProvider(this);
-        BuildCustomShaderPipelineIfNeeded(dxCommon->GetDevice(), modelManager);
+        meshRenderer_->SetCustomShaderProvider(this);
+        meshRenderer_->RebuildCustomShaderPipeline();
 
         Logger::GetInstance().Infof(
             LogCategory::Graphics,

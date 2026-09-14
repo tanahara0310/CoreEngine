@@ -61,7 +61,6 @@ namespace CoreEngine
 
         std::vector<AccelerationStructureManager::InstanceDesc> tlasInstances;
 
-        // 以前は全オブジェクトを `dynamic_cast<ModelGameObject*>` していた。
         // 「メッシュを持つか」はコンポーネントの有無で決まるので、具象クラスを知る必要はない。
         // 非アクティブ／削除マーク済みのスキップは ForEachComponent が行う。
         objMgr->ForEachComponent<MeshRendererComponent>(

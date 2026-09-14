@@ -14,7 +14,7 @@ namespace CoreEngine {
 }
 
 /// @brief 空（大気散乱）オブジェクト
-/// @note ModelGameObject は使用しない。model_ を持たず、独自の頂点バッファと定数バッファで描画する。
+/// @note メッシュ描画コンポーネントは使わず、独自の頂点バッファと定数バッファで描画する。
 ///       背景は常に大気散乱（SkyAtmosphere.PS.hlsl）で描く。静的 HDR キューブマップ経路は廃止済み。
 class SkyBoxObject : public CoreEngine::GameObject {
 public:

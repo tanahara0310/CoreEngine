@@ -5,7 +5,6 @@
 #include "SceneSaveSystem.h"
 #include "GameObject/Component/Core/ObjectRef.h"
 #include "GameObject/GameObjectManager.h"
-#include "GameObject/Model/DynamicModelObject.h"
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Graphics/Asset/AssetRef.h"
 #include "Reflection/PropertySerializer.h"
@@ -371,21 +370,6 @@ namespace CoreEngine
             } else if (data.contains("components")) {
                 CollectModelRefs(data.at("components"), modelPaths);
             }
-
-            if (!data.contains("modelPath") || !data["modelPath"].is_string()) {
-                return;
-            }
-            std::string modelPath = data["modelPath"].get<std::string>();
-            if (modelPath.empty()) {
-                return;
-            }
-
-            // 同じモデルを複数オブジェクトが共有するのが普通なので重複を潰す。
-            // ここで潰さなくても ModelManager 側のロード権で 1 回に収束するが、
-            // 無駄なタスクをスレッドプールへ積まない
-            if (std::find(modelPaths.begin(), modelPaths.end(), modelPath) == modelPaths.end()) {
-                modelPaths.push_back(std::move(modelPath));
-            }
         });
 
         return modelPaths;
@@ -507,17 +491,11 @@ namespace CoreEngine
                     return;
                 }
 
-                // プレハブから作るものは空のオブジェクトだけを置き、構成は復元時にプレハブから組む
-                if (data.contains("prefab")) {
+                // プレハブから作るものと、コンポーネントの構成を持つものは空のオブジェクトだけを置き、
+                // 構成は復元時に組む
+                if (data.contains("prefab") ||
+                    (data.contains("components") && data["components"].is_array())) {
                     auto obj = std::make_unique<GameObject>();
-                    obj->SetName(key);
-                    mgr->AddObject(std::move(obj));
-                    return;
-                }
-
-                if (data.contains("modelPath") && data["modelPath"].is_string()) {
-                    auto obj = std::make_unique<DynamicModelObject>();
-                    obj->SetModelPath(data["modelPath"].get<std::string>());
                     obj->SetName(key);
                     mgr->AddObject(std::move(obj));
                 }

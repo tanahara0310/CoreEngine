@@ -1,6 +1,8 @@
 #pragma once
 
-#include "GameObject/Primitive/PrimitiveGameObject.h"
+#include "GameObject/GameObject.h"
+#include "GameObject/Component/Render/MeshRendererComponent.h"
+#include "GameObject/Component/Transform/TransformComponent.h"
 #include "Graphics/Primitive/PlaneMeshGenerator.h"
 #include "Graphics/Shader/ICustomShaderProvider.h"
 #include "Math/Vector/Vector2.h"
@@ -12,6 +14,7 @@
 #include "Graphics/Water/Surface/WaterShaderResourceBinder.h"
 
 #include <d3d12.h>
+#include <memory>
 
 namespace CoreEngine
 {
@@ -19,13 +22,17 @@ namespace CoreEngine
     /// @details 責務はメッシュ・トランスフォーム・マテリアルと水そのもののパラメータまで。
     ///          シーンカラーや RT 屈折・FFT・大気といった外部リソースの結線は
     ///          WaterRenderFeature が組み立て、ApplyFrameBinding() で 1 度に渡す。
-    class WaterPlaneObject : public PrimitiveGameObject
+    ///          トランスフォームとメッシュ描画のコンポーネントはコンストラクタで自分で付ける。
+    class WaterPlaneObject : public GameObject
         , public ICustomShaderProvider {
     public:
         /// @param size 水面の一辺のサイズ（XZ 方向共通）
         /// @param resolution XZ 方向の分割数
         /// @param useFFTOcean true のとき FFT Ocean 描画経路を使用する
         WaterPlaneObject(float size = 50.0f, uint32_t resolution = 64, bool useFFTOcean = false);
+
+        /// @brief 平面メッシュを作り、水面のシェーダーと定数バッファを用意する
+        void Initialize() override;
 
         RenderPassType GetRenderPassType() const override {
             return RenderPassType::WaterSurface;
@@ -34,6 +41,17 @@ namespace CoreEngine
         RenderItem BuildRenderItem() const override;
 
         const char* GetObjectName() const override { return "WaterPlane"; }
+
+        /// @brief トランスフォームを取得
+        WorldTransform& GetTransform() { return transformComponent_->Get(); }
+        /// @brief トランスフォームを取得（const版）
+        const WorldTransform& GetTransform() const { return transformComponent_->Get(); }
+
+        /// @brief 水面のメッシュのモデル（まだ作っていなければ nullptr）
+        Model* GetModel() const { return meshRenderer_->GetModel(); }
+
+        /// @brief メッシュ描画コンポーネントを取得する
+        MeshRendererComponent* GetMeshRenderer() const { return meshRenderer_; }
 
         // ===== ICustomShaderProvider =====
         std::wstring GetVertexShaderPath() const override;
@@ -173,15 +191,10 @@ namespace CoreEngine
             return renderResources_.HasFFTOceanTextureSRVs();
         }
 
-    protected:
-        std::string GetTexturePath() const override { return {}; }
-
-        std::unique_ptr<IPrimitiveMeshGenerator> CreateMeshGenerator() const override;
-
-        /// @brief Initialize 完了後に独自シェーダー PSO を登録する
-        void OnInitialize() override;
-
     private:
+        /// @brief 水面の平面メッシュの生成器を作る
+        std::unique_ptr<IPrimitiveMeshGenerator> CreateMeshGenerator() const;
+
         /// @brief 現在の useFFTOcean 状態に合わせてカスタム PSO を再構築する
         void RebuildWaterShaderPipeline();
 
@@ -190,6 +203,9 @@ namespace CoreEngine
 
         /// @brief フレーム定数バッファを GPU へ転送する
         void UploadFrameConstants();
+
+        TransformComponent* transformComponent_ = nullptr;
+        MeshRendererComponent* meshRenderer_ = nullptr;
 
         float    size_;
         uint32_t resolution_;

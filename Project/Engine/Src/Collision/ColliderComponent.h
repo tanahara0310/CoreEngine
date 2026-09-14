@@ -32,7 +32,7 @@ public:
 
     /// @brief コライダーの形状・レイヤー編集 UI
     /// @return 値が変更されたら true
-    /// @note 実体は ColliderInspector（ModelGameObject のタブと同じものを共有する）。
+    /// @note 実体は ColliderInspector。
     bool DrawInspector() override;
 #endif
 

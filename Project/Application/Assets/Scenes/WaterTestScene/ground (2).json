@@ -1,68 +1,83 @@
 {
     "active": false,
-    "materials": [
+    "components": [
         {
-            "alphaCutoff": 0.5,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "dithering": true,
-            "ditheringScale": 1.0,
-            "emissive": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "iblIntensity": 1.0,
-            "lighting": true,
-            "metallic": 0.0,
-            "normalMap": false,
-            "occlusionStrength": 1.0,
-            "roughness": 0.5
+            "enabled": true,
+            "parameters": {
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0917094498872757
+                ],
+                "scale": [
+                    2.9299986362457275,
+                    2.9299986362457275,
+                    2.929999828338623
+                ],
+                "translate": [
+                    4.362316131591797,
+                    2.771944284439087,
+                    6.6466827392578125
+                ]
+            },
+            "type": "Transform"
         },
         {
-            "alphaCutoff": 0.5,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "dithering": true,
-            "ditheringScale": 1.0,
-            "emissive": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "iblIntensity": 1.0,
-            "lighting": true,
-            "metallic": 0.0,
-            "normalMap": false,
-            "occlusionStrength": 1.0,
-            "roughness": 0.5
+            "enabled": true,
+            "parameters": {
+                "materials": [
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "dithering": true,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "iblIntensity": 1.0,
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.5
+                    },
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "dithering": true,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "iblIntensity": 1.0,
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.5
+                    }
+                ],
+                "model": {
+                    "guid": "33bbc725-9b20-d397-937c-444c29985eed",
+                    "path": "Application/Assets/Models/Ground/ground.gltf"
+                }
+            },
+            "type": "MeshRenderer"
         }
     ],
-    "modelPath": "ground.gltf",
-    "name": "ground (2)",
-    "transform": {
-        "rotate": [
-            0.0,
-            0.0,
-            0.0917094498872757
-        ],
-        "scale": [
-            2.9299986362457275,
-            2.9299986362457275,
-            2.929999828338623
-        ],
-        "translate": [
-            4.362316131591797,
-            2.771944284439087,
-            6.6466827392578125
-        ]
-    }
+    "name": "ground (2)"
 }
