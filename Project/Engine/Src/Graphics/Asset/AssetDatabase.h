@@ -45,6 +45,14 @@ namespace CoreEngine
         /// @brief 指定した種類のアセット情報を相対パス順に返す
         std::vector<const AssetInfo*> GetAssetsOfType(AssetType type) const;
 
+        /// @brief ファイルを 1 件登録する（登録済みならその情報を返す）
+        /// @param assetPath プロジェクトの根からの相対パスか絶対パス
+        /// @return 登録できない種類・存在しないファイルなら nullptr
+        const AssetInfo* ImportAsset(const std::filesystem::path& assetPath);
+
+        /// @brief 登録内容が変わるたびに進む番号
+        uint64_t GetRevision() const noexcept { return revision_; }
+
         /// @brief アセットの再スキャン
         void Refresh();
 
@@ -90,6 +98,9 @@ namespace CoreEngine
         std::unordered_map<std::string, int> categoryPriority_;
 
         bool initialized_ = false;
+
+        // 登録内容が変わるたびに進む番号
+        uint64_t revision_ = 0;
 
         // 並列スキャン用スレッドプール（初回スキャン時に生成、完了後解放）
         std::unique_ptr<ThreadPool> threadPool_;

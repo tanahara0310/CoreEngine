@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Utility/JsonManager/JsonManager.h"
+
 #include <functional>
 #include <string>
 
@@ -36,6 +38,13 @@ namespace CoreEngine
 
             /// @brief ObjectRef の繋ぎ先の候補を探すシーン
             const GameObjectManager* objects = nullptr;
+
+            /// @brief 元のプレハブでのこのコンポーネントの parameters（プレハブから作っていなければ nullptr）
+            /// @note プレハブと違う値のプロパティに印を付け、右クリックでプレハブの値に戻せるようにする。
+            const json* prefabParameters = nullptr;
+
+            /// @brief プロパティの今の値をプレハブへ書き戻す（空ならメニューに出さない）
+            std::function<void(const Reflection::PropertyDescriptor&)> applyToPrefab;
         };
 
         /// @brief 記述子のプロパティを順に描く

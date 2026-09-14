@@ -8,8 +8,12 @@
 #ifdef USE_IMGUI
 #include "Editor/ImGui/ImGuiAll.h"
 #include "Editor/Inspector/InspectorRenderer.h"
+#include "Editor/Scene/PrefabEditing.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Reflection/TypeDescriptor.h"
+#include "Scene/PrefabSystem.h"
+#include <cstddef>
+#include <optional>
 #endif
 
 namespace CoreEngine
@@ -343,14 +347,34 @@ namespace CoreEngine
                     context.onChanged = [raw](const Reflection::PropertyDescriptor& property) {
                         raw->OnPropertyChanged(property);
                         };
+
+                    // プレハブから作ったオブジェクトは、プレハブでのこのコンポーネントの値と見比べる
+                    json prefabParameters;
+                    if (IsPrefabInstance()) {
+                        const json* prefabComponents = PrefabSystem::LoadComponents(GetPrefab().GetValue());
+                        const std::optional<std::size_t> prefabIndex = prefabComponents
+                            ? PrefabSystem::FindComponentIndex(*prefabComponents, *this, *raw) : std::nullopt;
+                        if (prefabIndex) {
+                            const json& entry = (*prefabComponents)[*prefabIndex];
+                            prefabParameters = (entry.contains("parameters") && entry.at("parameters").is_object())
+                                ? entry.at("parameters") : json::object();
+                            context.prefabParameters = &prefabParameters;
+                            if (objectManager_) {
+                                context.applyToPrefab = [this, raw](const Reflection::PropertyDescriptor& property) {
+                                    PrefabEditing::ApplyProperty(*objectManager_, *this, *raw, property);
+                                    };
+                            }
+                        }
+                    }
+
                     changed |= InspectorRenderer::Draw(
                         *descriptor, raw->GetReflectionInstance(), context);
                     // 記述子に一部だけを載せた型は、残りを手書きの UI で描く
                     if (descriptor->partial) {
                         UI::Separator();
-                        changed |= component->DrawInspector();
+                        changed |= raw->DrawInspector();
                     }
-                    component->DrawInspectorExtra();
+                    raw->DrawInspectorExtra();
                 } else {
                     changed |= component->DrawInspector();
                 }

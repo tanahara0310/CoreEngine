@@ -75,6 +75,10 @@ namespace CoreEngine
         /// @param modelFileName モデルファイル名（例: "cube.obj"）
         void SpawnModelFromFile(const std::string& modelFileName, const Vector2* normalizedDropPos = nullptr);
 
+        /// @brief プレハブからオブジェクトを作ってシーンに置く（Undo に積む）
+        /// @param prefabFileName プレハブのファイル名（例: "Rock.prefab"）
+        void SpawnPrefabFromFile(const std::string& prefabFileName, const Vector2* normalizedDropPos = nullptr);
+
         /// @brief Gameビュー上の選択とギズモ描画を更新する
         /// @param viewportPos Gameビュー画像の左上座標
         /// @param viewportSize Gameビュー画像サイズ
@@ -84,8 +88,8 @@ namespace CoreEngine
             const ImVec2& viewportSize,
             bool isViewportHovered);
 
-        /// @brief Gameビューへのモデルドロップを処理する
-        /// @return モデルドロップを受理した場合 true
+        /// @brief Gameビューへのモデル・プレハブのドロップを処理する
+        /// @return ドロップを受理した場合 true
         bool AcceptGameViewportModelDrop(const ImVec2& viewportPos, const ImVec2& viewportSize);
 
         /// @brief 現在のギズモモードを取得する
@@ -95,6 +99,13 @@ namespace CoreEngine
         void SetGizmoMode(Gizmo::Mode mode);
 
     private:
+        /// @brief Gameビュー上のドロップ位置から、置く場所（y = 0 の地面との交点）を求める
+        /// @param normalizedDropPos Gameビュー内の位置（0〜1）。nullptr なら中央
+        Vector3 ComputeDropPosition(const Vector2* normalizedDropPos) const;
+
+        /// @brief Hierarchy の行の右クリックメニュー（プレハブとして保存・プレハブへ適用・つながりを外す）
+        void DrawObjectContextMenu(GameObject& object);
+
         UndoRedoHistory undoRedoHistory_;
         ObjectSelector objectSelector_;
 

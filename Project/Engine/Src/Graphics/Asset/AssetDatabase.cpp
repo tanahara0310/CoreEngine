@@ -275,6 +275,29 @@ namespace CoreEngine
         return assets;
     }
 
+    const AssetInfo* AssetDatabase::ImportAsset(const std::filesystem::path& assetPath)
+    {
+        Logger& log = Logger::GetInstance();
+        const std::filesystem::path fullPath =
+            (assetPath.is_absolute() ? assetPath : projectRoot_ / assetPath).lexically_normal();
+        if (const AssetInfo* existing = FindAssetByPath(log.PathToUtf8(fullPath))) {
+            return existing;
+        }
+
+        // Engine/Assets の下なら Engine、それ以外は Application のアセットとして登録する
+        const std::string key = MakePathKey(log.PathToUtf8(fullPath.lexically_relative(projectRoot_)));
+        const std::string category = key.starts_with("engine/") ? "Engine" : "Application";
+        std::optional<AssetInfo> info = BuildAssetInfo(fullPath, category);
+        if (!info) {
+            return nullptr;
+        }
+
+        const std::string guid = info->guid;
+        MergeAssetInfo(std::move(*info));
+        ++revision_;
+        return FindAssetByGUID(guid);
+    }
+
     void AssetDatabase::Refresh()
     {
         Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}",
@@ -286,6 +309,7 @@ namespace CoreEngine
         guidsByPath_.clear();
 
         Initialize(projectRoot_);
+        ++revision_;
     }
 
     std::optional<AssetInfo> AssetDatabase::BuildAssetInfo(
