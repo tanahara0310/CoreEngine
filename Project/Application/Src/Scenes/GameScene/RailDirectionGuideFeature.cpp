@@ -14,7 +14,7 @@
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/GameObjectManager.h"
-#include "GameObject/Text3D/Text3DObject.h"
+#include "GameObject/Component/Render/Text3DRendererComponent.h"
 #include "Math/Vector/Vector4.h"
 #include "Text/FontManager.h"
 #include "Utility/CVar/CVar.h"
@@ -279,14 +279,17 @@ namespace {
             }
 
             for (std::size_t i = 0; i < markers_.size(); ++i) {
-                auto* marker = ctx.gameObjectManager->AddObject(std::make_unique<Text3DObject>());
-                if (!marker) {
+                auto* markerObject = ctx.gameObjectManager->AddObject(std::make_unique<GameObject>());
+                if (!markerObject) {
                     break;
                 }
-                marker->Initialize(
-                    font, kDirections[i].arrow, "RailDirectionGuide_" + std::to_string(i));
+                markerObject->SetName("RailDirectionGuide_" + std::to_string(i));
                 // 毎フレーム置き直すので、シーンには保存しない
-                marker->SetSerializeEnabled(false);
+                markerObject->SetSerializeEnabled(false);
+                markerObject->AddComponent<TransformComponent>();
+                auto* marker = markerObject->AddComponent<Text3DRendererComponent>();
+                marker->SetFont(font);
+                marker->SetText(kDirections[i].arrow);
                 // 床へ寝かせて置くので、カメラへは向けない
                 marker->SetBillboard(Text3DBillboard::None);
                 // 深度テストは切って常に手前へ出す。岩マスはレールを敷ける＝矢印を出す
@@ -294,7 +297,7 @@ namespace {
                 // 「行けるのに矢印が岩へ埋まって見えない」が起きる
                 marker->SetDepthMode(Text3DDepthMode::Overlay);
                 // 色・縁取りは CVar を毎フレーム反映するので、ここでは触らない
-                marker->SetActive(false);
+                markerObject->SetActive(false);
                 markers_[i] = marker;
             }
         }
@@ -405,7 +408,7 @@ namespace {
 
         /// @brief 1 方向ぶんの矢印を置き直す
         void UpdateMarker(
-            Text3DObject* marker, const GuideDirection& direction, const RailHead& railHead,
+            Text3DRendererComponent* marker, const GuideDirection& direction, const RailHead& railHead,
             float gridSize, float height, float offset) const
         {
             if (!marker) {
@@ -415,12 +418,12 @@ namespace {
             const GuideState state = Classify(direction, railHead);
             const bool isBack = (state == GuideState::Back);
             if (state == GuideState::Hidden || (isBack && !cvShowBack.Get())) {
-                marker->SetActive(false);
+                marker->GetOwner()->SetActive(false);
                 return;
             }
 
             const bool useBackGlyph = isBack && !cvBackAsArrow.Get();
-            marker->SetActive(true);
+            marker->GetOwner()->SetActive(true);
             marker->SetText(useBackGlyph ? kBackGlyph : direction.arrow);
             // 登場アニメーション中は同じ場所で伸び上がらせる。床へ寝かせてあるので、
             // 位置を動かすより大きさを変えたほうが「生えてきた」に見える
@@ -444,7 +447,7 @@ namespace {
             marker->SetOutline(
                 outlineColor, std::min(cvOutlineWidth.Get(), marker->GetMaxOutlineWidth()));
 
-            auto* transformComponent = marker->GetComponent<TransformComponent>();
+            auto* transformComponent = marker->GetTransformComponent();
             if (!transformComponent) {
                 return;
             }
@@ -466,12 +469,12 @@ namespace {
         {
             for (auto* marker : markers_) {
                 if (marker) {
-                    marker->SetActive(false);
+                    marker->GetOwner()->SetActive(false);
                 }
             }
         }
 
-        std::array<Text3DObject*, kDirections.size()> markers_{};
+        std::array<Text3DRendererComponent*, kDirections.size()> markers_{};
 
         /// 出入りの位相[rad]。1 周ごとに畳んでいる
         float pulsePhase_ = 0.0f;

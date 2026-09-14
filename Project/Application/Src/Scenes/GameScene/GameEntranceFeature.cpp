@@ -17,7 +17,7 @@
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/GameObjectManager.h"
-#include "GameObject/Text3D/Text3DObject.h"
+#include "GameObject/Component/Render/Text3DRendererComponent.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/PostEffect/Effect/PostEffectNames.h"
 #include "Graphics/PostEffect/Effect/ToneMapping/ToneMapping.h"
@@ -478,8 +478,8 @@ namespace
                 if (!object || object->GetName().rfind(kMarkerNamePrefix, 0) != 0) {
                     continue;
                 }
-                auto* marker = dynamic_cast<Text3DObject*>(object.get());
-                auto* transform = marker ? marker->GetComponent<TransformComponent>() : nullptr;
+                auto* marker = object->GetComponent<Text3DRendererComponent>();
+                auto* transform = marker ? marker->GetTransformComponent() : nullptr;
                 if (!transform) {
                     continue;
                 }

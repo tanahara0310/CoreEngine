@@ -16,7 +16,7 @@
 namespace CoreEngine {
     class GameObject;
     class MsdfFont;
-    class Text3DObject;
+    class Text3DRendererComponent;
 }
 
 namespace GameComponents {
@@ -193,7 +193,7 @@ namespace GameComponents
         CoreEngine::ObjectRef<ModelRenderPoolComponent> grassRenderPool_;
 
         CoreEngine::MsdfFont* distanceMarkerFont_ = nullptr;
-        std::vector<CoreEngine::Text3DObject*> distanceMarkers_;
+        std::vector<CoreEngine::Text3DRendererComponent*> distanceMarkers_;
 
         std::vector<StationPop> stationPops_;
         float stationPopDuration_ = 0.45f; // 沈んで跳ね返るまでの時間（秒）
@@ -235,7 +235,7 @@ namespace GameComponents
 
         // ===== 駅で待つサル =====
         // 「この駅は何をくれるのか」をモデルで言わせる。プールは GameScene から
-        // 渡さず Start() で自前に生やす（距離目盛りの Text3DObject と同じ扱い）。
+        // 渡さず Start() で自前に生やす（距離目盛りの 3D テキストと同じ扱い）。
         //
         // ■ 屋根の上に載せる理由
         //   station.obj は 1 マスをぎっしり埋めていて、地面には正面 0.06m しか余地が無い。

@@ -1,12 +1,14 @@
 #pragma once
 
-#include "GameObject/GameObject.h"
+#include "GameObject/Component/Core/IComponent.h"
+#include "GameObject/Component/Render/IRenderableComponent.h"
 #include "Graphics/Render/Text3D/Text3DRenderer.h"
-#include "Text/TextGeometryBuilder.h"
 #include "Math/Vector/Vector2.h"
 #include "Math/Vector/Vector4.h"
+#include "Text/TextGeometryBuilder.h"
 
 #include <array>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -19,8 +21,7 @@ namespace CoreEngine
     enum class Text3DBillboard : uint8_t
     {
         /// @brief ビルボードなし（既定）
-        /// @details トランスフォームの回転がそのまま効く。看板・床の文字向け。
-        ///          ギズモで回した見た目と描画が一致するので既定にしてある
+        /// @details トランスフォームの回転がそのまま効く。看板・床の文字向け
         None,
 
         /// @brief カメラの向きに完全に合わせる
@@ -33,42 +34,67 @@ namespace CoreEngine
         YAxisOnly,
     };
 
-    /// @brief MSDF フォントで文字列をワールド空間へ描くオブジェクト
+    /// @brief MSDF フォントで文字列をワールド空間へ描くコンポーネント
     /// @details
     ///  組版（折り返し・禁則・整列）は UIText と同じ `TextGeometry::Build` を通す。
     ///  出力が em 単位なので、UI は「1em = fontSize px」、こちらは
     ///  「1em = fontSize ワールド単位」と読み替えるだけで同じ組版が両方で使える。
     ///
-    ///  位置・回転・スケールは `TransformComponent`（エディタのギズモが動かすもの）に
-    ///  持たせてある。文字固有の大きさは SetFontSize() で別に指定する。
+    ///  位置・回転・スケールは兄弟の `TransformComponent` を使う（無ければ Awake で足す）。
+    ///  文字固有の大きさは SetFontSize() で別に指定する。
     ///
-    ///  **描画はここでは行わない。** Draw() は Text3DRenderer へ頂点を積むだけで、
+    ///  **描画はここでは行わない。** Render() は Text3DRenderer へ頂点を積むだけで、
     ///  実際のドローコールはレンダラー側でまとめて発行される。
-    ///  そのため色・縁取り・変換はテキストごとの定数バッファではなく
+    ///  色・縁取り・変換はテキストごとの定数バッファではなく
     ///  頂点へ焼き込まれる（Text3DRenderer::Submit を参照）。
-    class Text3DObject : public GameObject
+    class Text3DRendererComponent : public IComponent, public IRenderableComponent
     {
     public:
-        Text3DObject() = default;
-        ~Text3DObject() override = default;
+        Text3DRendererComponent() = default;
+        ~Text3DRendererComponent() override = default;
 
-        /// @brief 既定の初期化（GameObjectManager が生成時に自動で呼ぶ）
-        /// @details レンダラーとトランスフォームを用意し、FontManager から既定フォントを取る
-        void Initialize() override;
+        const char* GetTypeName() const override { return "Text3DRenderer"; }
 
-        /// @brief フォントと文字列を指定して初期化する（コードから作る場合）
-        void Initialize(MsdfFont* font, const std::string& textUtf8, const std::string& name = "");
+#ifdef USE_IMGUI
+        const char* GetInspectorName() const override { return "3D テキスト"; }
 
-        /// @brief 使用フォントを名前で差し替える（FontManager へ登録済みの名前）
-        void SetFontByName(const std::string& fontName);
-        const std::string& GetFontName() const { return fontName_; }
+        const char* GetInspectorIcon() const override { return "material.png"; }
 
-        // ===== GameObject インターフェース =====
+        void GetInspectorIconColor(float* outRgba) const override
+        {
+            outRgba[0] = 0.30f; outRgba[1] = 0.70f; outRgba[2] = 0.90f; outRgba[3] = 1.0f;
+        }
+
+        /// @brief 文字列・フォント・見た目・配置・描画順の編集 UI
+        /// @return 値が変更されたら true
+        bool DrawInspector() override;
+#endif
+
+        // ===== ライフサイクル =====
+
+        /// @brief トランスフォームを確保し、描画先のレンダラーを取得する
+        void Awake() override;
+
+        // ===== IRenderableComponent =====
+
         RenderPassType GetRenderPassType() const override { return RenderPassType::Text3D; }
         BlendMode GetBlendMode() const override { return BlendMode::kBlendModeNormal; }
-        const char* GetObjectName() const override { return "Text3D"; }
-        void Draw(const Camera* camera) override;
-        void Draw(const DrawViewInfo& view) override;
+
+        /// @brief 頂点をレンダラーのバッチへ積む
+        void Render(const DrawViewInfo& view) override;
+
+        // ===== フォント =====
+
+        /// @brief 使用フォントを実体で指定する
+        /// @param font FontManager から取得したフォント
+        /// @param fontName FontManager で引ける名前。空ならシーン JSON にフォントを書かない
+        void SetFont(MsdfFont* font, const std::string& fontName = {});
+
+        /// @brief 使用フォントを名前で差し替える（FontManager で引ける名前）
+        void SetFontByName(const std::string& fontName);
+
+        MsdfFont* GetFont() const { return font_; }
+        const std::string& GetFontName() const { return fontName_; }
 
         // ===== テキスト =====
 
@@ -110,7 +136,7 @@ namespace CoreEngine
         float GetLineSpacing() const { return lineSpacing_; }
 
         /// @brief 文字列全体の基準点（0,0 = 左上 / 0.5,0.5 = 中央）
-        /// @note 既定は中央。3D では「置いた位置に文字の中心が来る」のが自然なため
+        /// @note 既定は中央
         void SetPivot(const Vector2& pivot);
         Vector2 GetPivot() const { return pivot_; }
 
@@ -156,30 +182,27 @@ namespace CoreEngine
         /// @brief 縁取りとして表現できる最大の太さ（em 単位）
         float GetMaxOutlineWidth() const;
 
-        // ===== シーン JSON =====
-        const char* GetSerializeTypeName() const override { return "Text3D"; }
+        /// @brief 兄弟の TransformComponent（位置・回転・スケールの出どころ）
+        TransformComponent* GetTransformComponent() const { return ResolveTransform(); }
+
+        // ===== シリアライズ =====
+
+        /// @brief フォント名・文字列・組版・見た目・ビルボード・深度を書き出す
         json OnSerialize() const override;
+
+        /// @brief OnSerialize が書いた値を読む（フォントを先に解決する）
         void OnDeserialize(const json& j) override;
 
-#ifdef USE_IMGUI
-        int  GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const override;
-        bool DrawInspectorTabContent(int tabIndex) override;
-
     private:
-        /// @name インスペクタの入力欄が使う作業バッファ
-        /// @details 入力中は ImGui 側がバッファを持つので、
-        ///          フォーカスが無い間だけ本体の値を写し直す
-        /// @{
-        std::array<char, 1024> editTextBuffer_{};
-        std::array<char, 128>  editFontBuffer_{};
-        bool editTextActive_ = false;
-        bool editFontActive_ = false;
-        /// @}
+        /// @brief transform_ が未取得なら兄弟から取る
+        TransformComponent* ResolveTransform() const;
 
-    public:
-#endif
+        /// @brief RenderManager から Text3D パスのレンダラーを取る
+        void ResolveRenderer();
 
-    private:
+        /// @brief フォントが未指定なら既定フォントを取る（1 回だけ試す）
+        void EnsureFont();
+
         /// @brief 文字列からグリフのクワッド列（CPU 側・em 単位・Y 上正）を組み立てる
         void RebuildGeometry();
 
@@ -187,14 +210,16 @@ namespace CoreEngine
         /// @param viewMatrix ビルボードの姿勢を取るビュー行列（ビルボード無効なら参照しない）
         Matrix4x4 BuildWorldMatrix(const Matrix4x4& viewMatrix) const;
 
-        /// @brief 頂点をレンダラーのバッチへ積む（Draw の 2 経路の共通部分）
+        /// @brief 頂点をレンダラーのバッチへ積む
         void SubmitToRenderer(const Matrix4x4& viewMatrix, const Matrix4x4& viewProjection);
 
         Text3DRenderer* renderer_ = nullptr;
-        TransformComponent* transform_ = nullptr;
+        mutable TransformComponent* transform_ = nullptr;
         MsdfFont* font_ = nullptr;
         /// 使用フォントの登録名。シーン JSON にはこれだけを書く
         std::string fontName_;
+        /// 既定フォントの取得を試したか
+        bool defaultFontRequested_ = false;
 
         std::string textUtf8_;
         /// 1em の大きさ（ワールド単位）
@@ -204,7 +229,6 @@ namespace CoreEngine
 
         bool fieldAutoFit_ = true;
         Vector2 fieldSize_ = { 0.0f, 0.0f };
-        /// 3D では中央揃え・中央基準のほうが「置いた位置に文字が出る」ので既定にする
         TextAlignH alignH_ = TextAlignH::Center;
         TextAlignV alignV_ = TextAlignV::Middle;
         Vector2 pivot_ = { 0.5f, 0.5f };
@@ -222,7 +246,7 @@ namespace CoreEngine
         /// 色・縁取り・太さ。頂点へ焼き込まれる
         Text3DDrawStyle style_;
 
-        bool geometryDirty_ = false;
+        bool geometryDirty_ = true;
         /// グリフ数上限の警告を 1 回だけ出すためのフラグ
         bool glyphLimitWarned_ = false;
 
@@ -230,5 +254,17 @@ namespace CoreEngine
         /// @details 実行時ベイクでグリフ表が更新されると進む。
         ///          変化を検出したら頂点を組み直し、□ が本来の字へ差し替わる
         uint32_t lastGlyphGeneration_ = 0;
+
+#ifdef USE_IMGUI
+        /// @name インスペクタの入力欄が使う作業バッファ
+        /// @details 入力中は ImGui 側がバッファを持つので、
+        ///          フォーカスが無い間だけ本体の値を写し直す
+        /// @{
+        std::array<char, 1024> editTextBuffer_{};
+        std::array<char, 128>  editFontBuffer_{};
+        bool editTextActive_ = false;
+        bool editFontActive_ = false;
+        /// @}
+#endif
     };
 }
