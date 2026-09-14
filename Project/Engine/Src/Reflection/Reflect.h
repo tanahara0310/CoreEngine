@@ -245,6 +245,28 @@ namespace CoreEngine::Reflection
             d.properties.push_back(p);                                                 \
         }
 
+/// @brief `AssetRef<T>` 型のメンバをプロパティとして足す
+/// @param MemberExpr インスタンスからの式（`buildSe_` など）
+#define REFLECT_ASSET_REF(MemberExpr, DisplayNameLiteral)                              \
+        {                                                                              \
+            using RefType =                                                            \
+                ::std::decay_t<decltype(::std::declval<Self&>().MemberExpr)>;          \
+            ::CoreEngine::Reflection::PropertyDescriptor p;                            \
+            p.name = ::CoreEngine::Reflection::DerivePropertyName(#MemberExpr);        \
+            p.displayName = DisplayNameLiteral;                                        \
+            p.type = ::CoreEngine::Reflection::PropertyType::AssetRef;                 \
+            p.get = [](const void* o, void* out) {                                     \
+                *static_cast<::CoreEngine::Reflection::AssetRefValue*>(out) =          \
+                    static_cast<const Self*>(o)->MemberExpr.GetValue();                \
+            };                                                                         \
+            p.set = [](void* o, const void* in) {                                      \
+                static_cast<Self*>(o)->MemberExpr.SetValue(                            \
+                    *static_cast<const ::CoreEngine::Reflection::AssetRefValue*>(in)); \
+            };                                                                         \
+            p.assetType = RefType::kAssetType;                                         \
+            d.properties.push_back(p);                                                 \
+        }
+
 /// @brief 型を TypeRegistry へ登録する（対応する .cpp のファイルスコープに書く）
 #define REFLECT_REGISTER(TypeName)                                                     \
     namespace {                                                                        \

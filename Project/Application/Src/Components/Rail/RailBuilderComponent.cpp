@@ -106,6 +106,9 @@ REFLECT_DEFINE_BEGIN(GameComponents::RailBuilderComponent, "レールビルダ�
     REFLECT_OBJECT_REF(trainMovement_, "列車移動")
     REFLECT_OBJECT_REF(hunger_,        "スタミナ")
     REFLECT_OBJECT_REF(rockThrow_,     "岩破壊の投石")
+    REFLECT_ASSET_REF(buildSe_,        "設置音")
+    REFLECT_ASSET_REF(undoSe_,         "撤去音")
+    REFLECT_ASSET_REF(failureSe_,      "失敗音")
 REFLECT_DEFINE_END()
 REFLECT_REGISTER(GameComponents::RailBuilderComponent)
 
@@ -128,12 +131,9 @@ json GameComponents::RailBuilderComponent::OnSerialize() const {
         { "rockThrowStartHeight", rockThrowStartHeight_ },
         { "rockImpactHeight", rockImpactHeight_ },
         { "cursorEdgeRadiusRatio", cursorEdgeRadiusRatio_ },
-        { "buildSePath", buildSePath_ },
         { "buildSeVolume", buildSeVolume_ },
         { "buildSePitchMin", buildSePitchMin_ },
-        { "buildSePitchMax", buildSePitchMax_ },
-        { "undoSePath", undoSePath_ },
-        { "failureSePath", failureSePath_ }
+        { "buildSePitchMax", buildSePitchMax_ }
     };
 }
 
@@ -158,12 +158,9 @@ void GameComponents::RailBuilderComponent::OnDeserialize(const json& j) {
     rockImpactHeight_ = JsonManager::SafeGet<float>(j, "rockImpactHeight", rockImpactHeight_);
     cursorEdgeRadiusRatio_ = std::max(0.0f, JsonManager::SafeGet<float>(
         j, "cursorEdgeRadiusRatio", cursorEdgeRadiusRatio_));
-    buildSePath_ = JsonManager::SafeGet<std::string>(j, "buildSePath", buildSePath_);
     buildSeVolume_ = std::clamp(JsonManager::SafeGet<float>(j, "buildSeVolume", buildSeVolume_), 0.0f, 1.0f);
     buildSePitchMin_ = std::max(0.01f, JsonManager::SafeGet<float>(j, "buildSePitchMin", buildSePitchMin_));
     buildSePitchMax_ = std::max(buildSePitchMin_, JsonManager::SafeGet<float>(j, "buildSePitchMax", buildSePitchMax_));
-    undoSePath_ = JsonManager::SafeGet<std::string>(j, "undoSePath", undoSePath_);
-    failureSePath_ = JsonManager::SafeGet<std::string>(j, "failureSePath", failureSePath_);
     gridPosX_ = initialGridPosX_;
     gridPosZ_ = initialGridPosZ_;
 }
@@ -195,12 +192,9 @@ bool GameComponents::RailBuilderComponent::DrawInspector() {
     UI::Hint("画面端で止める位置。1マスに対する矢印の半径の割合で、"
         "0.5 で矢印が端にちょうど触れます。0 だと半分はみ出します。");
     ImGui::SeparatorText("効果音");
-    ImGui::TextDisabled("設置: %s", buildSePath_.c_str());
     changed |= ImGui::SliderFloat("設置音の音量", &buildSeVolume_, 0.0f, 1.0f);
     changed |= ImGui::DragFloat("設置音の最低ピッチ", &buildSePitchMin_, 0.01f, 0.01f, buildSePitchMax_);
     changed |= ImGui::DragFloat("設置音の最高ピッチ", &buildSePitchMax_, 0.01f, buildSePitchMin_, 4.0f);
-    ImGui::TextDisabled("撤去: %s", undoSePath_.c_str());
-    ImGui::TextDisabled("失敗: %s", failureSePath_.c_str());
     ImGui::SeparatorText("スタミナ消費量");
     changed |= CVarUI::DrawTree("Game.Stamina.Cost");
     UI::Hint("変更はCVars.jsonへ自動保存され、次の建設から反映されます。");
@@ -512,7 +506,7 @@ bool GameComponents::RailBuilderComponent::TryUndoLastRail() {
         undo.removedPosition.first, undo.removedPosition.second,
         gridPosX_, gridPosZ_, undo.refundAmount);
 
-    PlaySe(undoSePath_);
+    PlaySe(undoSe_.GetPath());
     return true;
 }
 
@@ -733,14 +727,14 @@ void GameComponents::RailBuilderComponent::NotifyStaminaInsufficient() {
     if (OnStaminaInsufficient_) {
         OnStaminaInsufficient_();
     }
-    PlaySe(failureSePath_);
+    PlaySe(failureSe_.GetPath());
 }
 
 void GameComponents::RailBuilderComponent::PlayBuildSe() const {
     EngineSystem* engine = GetOwner() ? GetOwner()->GetEngineSystem() : nullptr;
     if (auto* audioSystem = engine ? engine->GetService<AudioSystem>() : nullptr) {
         audioSystem->PlayOneShot(
-            buildSePath_,
+            buildSe_.GetPath(),
             { .bus = AudioBus::SE,
               .volume = buildSeVolume_,
               .pitch = RandomGenerator::GetInstance().GetFloat(buildSePitchMin_, buildSePitchMax_) });

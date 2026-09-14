@@ -302,6 +302,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\EngineSystem\Startup\StartupSequence.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Asset\AssetDatabase.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Asset\AssetMetadata.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Asset\AssetRef.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\Debug\GpuMarker.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\Debug\GpuTimestampProfiler.cpp" />
     <ClCompile Include="Engine\Src\Diagnostics\GpuTimingStatsCollector.cpp" />
@@ -895,6 +896,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Asset\AssetDatabase.h" />
     <ClInclude Include="Engine\Src\Graphics\Asset\AssetInfo.h" />
     <ClInclude Include="Engine\Src\Graphics\Asset\AssetMetadata.h" />
+    <ClInclude Include="Engine\Src\Graphics\Asset\AssetRef.h" />
     <ClInclude Include="Engine\Src\Graphics\Asset\AssetType.h" />
     <ClInclude Include="Engine\Src\Graphics\RHI\Descriptor\DescriptorHandle.h" />
     <ClInclude Include="Engine\Src\Graphics\RHI\Debug\GpuMarker.h" />

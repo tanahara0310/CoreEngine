@@ -278,6 +278,14 @@ namespace CoreEngine
                         ImGui::Text("Model: %s", filename.c_str());
                         ImGui::EndDragDropSource();
                     }
+                } else if (ext == ".wav" || ext == ".mp3" || ext == ".ogg") {
+                    // 音声ファイルのD&Dソース（ファイル名のみ渡す）
+                    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
+                        const std::string filename = Logger::GetInstance().PathToUtf8(entry.path.filename());
+                        ImGui::SetDragDropPayload("AUDIO_FILE", filename.c_str(), filename.size() + 1);
+                        ImGui::Text("Audio: %s", filename.c_str());
+                        ImGui::EndDragDropSource();
+                    }
                 }
             }
 

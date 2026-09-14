@@ -19,6 +19,7 @@ namespace CoreEngine::Reflection
         case PropertyType::Color:   return sizeof(Vector4);
         case PropertyType::String:  return sizeof(std::string);
         case PropertyType::ObjectRef: return sizeof(ObjectRefValue);
+        case PropertyType::AssetRef:  return sizeof(AssetRefValue);
         }
         return 0;
     }

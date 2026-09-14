@@ -370,6 +370,9 @@
     <ClCompile Include="Engine\Src\Graphics\Asset\AssetMetadata.cpp">
       <Filter>Engine\Src\Graphics\Asset</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Asset\AssetRef.cpp">
+      <Filter>Engine\Src\Graphics\Asset</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RHI\Debug\GpuMarker.cpp">
       <Filter>Engine\Src\Graphics\RHI\Debug</Filter>
     </ClCompile>
@@ -1780,6 +1783,9 @@
       <Filter>Engine\Src\Graphics\Asset</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Asset\AssetMetadata.h">
+      <Filter>Engine\Src\Graphics\Asset</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Asset\AssetRef.h">
       <Filter>Engine\Src\Graphics\Asset</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Asset\AssetType.h">

@@ -6,6 +6,7 @@
 #include <vector>
 #include <filesystem>
 #include <memory>
+#include <string_view>
 
 namespace CoreEngine
 {
@@ -31,6 +32,18 @@ namespace CoreEngine
 
         /// @brief ファイルパスから GUID を取得
         std::string GetGUID(const std::filesystem::path& assetPath);
+
+        /// @brief GUID でアセット情報を引く
+        /// @return 見つからなければ nullptr
+        const AssetInfo* FindAssetByGUID(const std::string& guid) const;
+
+        /// @brief パスでアセット情報を引く
+        /// @param path プロジェクトの根からの相対パス（`Application/Assets/` を省いたものも可）か絶対パス。UTF-8
+        /// @return 見つからなければ nullptr
+        const AssetInfo* FindAssetByPath(std::string_view path) const;
+
+        /// @brief 指定した種類のアセット情報を相対パス順に返す
+        std::vector<const AssetInfo*> GetAssetsOfType(AssetType type) const;
 
         /// @brief アセットの再スキャン
         void Refresh();
@@ -69,6 +82,9 @@ namespace CoreEngine
 
         // ファイル名 -> GUIDs のマップ（同名ファイル対応）
         std::unordered_map<std::string, std::vector<std::string>> assetsByName_;
+
+        // 相対パス（区切りは '/'、ASCII の英字は小文字）-> GUID のマップ
+        std::unordered_map<std::string, std::string> guidsByPath_;
 
         // カテゴリ別の優先順位（Application > Engine など）
         std::unordered_map<std::string, int> categoryPriority_;

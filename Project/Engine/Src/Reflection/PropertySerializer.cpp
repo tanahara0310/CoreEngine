@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "Reflection/PropertySerializer.h"
 
+#include "Graphics/Asset/AssetInfo.h"
+#include "Graphics/Asset/AssetRef.h"
 #include "Reflection/PropertyValue.h"
 #include "Reflection/TypeDescriptor.h"
 
@@ -33,6 +35,25 @@ namespace CoreEngine::Reflection
                 json node = { { "ref", ref.objectId.ToString() } };
                 if (!ref.componentType.empty()) {
                     node["comp"] = ref.componentType;
+                }
+                return node;
+            }
+            case PropertyType::AssetRef: {
+                // 何も指していなければ null。指していれば引いた先の GUID とパス（引けなければ持っている値）
+                AssetRefValue ref = *static_cast<const AssetRefValue*>(value);
+                if (ref.guid.empty() && ref.path.empty()) {
+                    return nullptr;
+                }
+                if (const AssetInfo* info = ResolveAssetRef(ref)) {
+                    ref.guid = info->guid;
+                    ref.path = ToAssetPath(*info);
+                }
+                json node = json::object();
+                if (!ref.guid.empty()) {
+                    node["guid"] = ref.guid;
+                }
+                if (!ref.path.empty()) {
+                    node["path"] = ref.path;
                 }
                 return node;
             }
@@ -94,6 +115,21 @@ namespace CoreEngine::Reflection
                         ref.componentType = (node.contains("comp") && node.at("comp").is_string())
                             ? node.at("comp").get<std::string>()
                             : std::string{};
+                    }
+                }
+                break;
+            }
+            case PropertyType::AssetRef: {
+                // null は「何も指さない」。GUID もパスも無いものは今の値を残す
+                auto& ref = *static_cast<AssetRefValue*>(value);
+                if (node.is_null()) {
+                    ref = AssetRefValue{};
+                } else if (node.is_object()) {
+                    const bool hasGuid = node.contains("guid") && node.at("guid").is_string();
+                    const bool hasPath = node.contains("path") && node.at("path").is_string();
+                    if (hasGuid || hasPath) {
+                        ref.guid = hasGuid ? node.at("guid").get<std::string>() : std::string{};
+                        ref.path = hasPath ? node.at("path").get<std::string>() : std::string{};
                     }
                 }
                 break;

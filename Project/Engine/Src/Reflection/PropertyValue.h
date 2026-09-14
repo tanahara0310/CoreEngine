@@ -42,6 +42,7 @@ namespace CoreEngine::Reflection
 
     private:
         std::variant<std::monostate, bool, int, float,
-                     Vector2, Vector3, Vector4, std::string, ObjectRefValue> value_;
+                     Vector2, Vector3, Vector4, std::string, ObjectRefValue,
+                     AssetRefValue> value_;
     };
 }
