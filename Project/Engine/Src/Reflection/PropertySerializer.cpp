@@ -38,25 +38,8 @@ namespace CoreEngine::Reflection
                 }
                 return node;
             }
-            case PropertyType::AssetRef: {
-                // 何も指していなければ null。指していれば引いた先の GUID とパス（引けなければ持っている値）
-                AssetRefValue ref = *static_cast<const AssetRefValue*>(value);
-                if (ref.guid.empty() && ref.path.empty()) {
-                    return nullptr;
-                }
-                if (const AssetInfo* info = ResolveAssetRef(ref)) {
-                    ref.guid = info->guid;
-                    ref.path = ToAssetPath(*info);
-                }
-                json node = json::object();
-                if (!ref.guid.empty()) {
-                    node["guid"] = ref.guid;
-                }
-                if (!ref.path.empty()) {
-                    node["path"] = ref.path;
-                }
-                return node;
-            }
+            case PropertyType::AssetRef:
+                return PropertySerializer::AssetRefToJson(*static_cast<const AssetRefValue*>(value));
             }
             return {};
         }
@@ -119,21 +102,10 @@ namespace CoreEngine::Reflection
                 }
                 break;
             }
-            case PropertyType::AssetRef: {
-                // null は「何も指さない」。GUID もパスも無いものは今の値を残す
-                auto& ref = *static_cast<AssetRefValue*>(value);
-                if (node.is_null()) {
-                    ref = AssetRefValue{};
-                } else if (node.is_object()) {
-                    const bool hasGuid = node.contains("guid") && node.at("guid").is_string();
-                    const bool hasPath = node.contains("path") && node.at("path").is_string();
-                    if (hasGuid || hasPath) {
-                        ref.guid = hasGuid ? node.at("guid").get<std::string>() : std::string{};
-                        ref.path = hasPath ? node.at("path").get<std::string>() : std::string{};
-                    }
-                }
+            case PropertyType::AssetRef:
+                // 読めない形なら今の値を残す
+                PropertySerializer::JsonToAssetRef(node, *static_cast<AssetRefValue*>(value));
                 break;
-            }
             }
         }
     }
@@ -172,5 +144,47 @@ namespace CoreEngine::Reflection
             JsonToValue(p, in.at(p.name), value);
             current.StoreTo(p, instance);
         }
+    }
+
+    json PropertySerializer::AssetRefToJson(const AssetRefValue& value)
+    {
+        if (value.guid.empty() && value.path.empty()) {
+            return nullptr;
+        }
+
+        AssetRefValue ref = value;
+        if (const AssetInfo* info = ResolveAssetRef(ref)) {
+            ref.guid = info->guid;
+            ref.path = ToAssetPath(*info);
+        }
+
+        json node = json::object();
+        if (!ref.guid.empty()) {
+            node["guid"] = ref.guid;
+        }
+        if (!ref.path.empty()) {
+            node["path"] = ref.path;
+        }
+        return node;
+    }
+
+    bool PropertySerializer::JsonToAssetRef(const json& node, AssetRefValue& out)
+    {
+        if (node.is_null()) {
+            out = AssetRefValue{};
+            return true;
+        }
+        if (!node.is_object()) {
+            return false;
+        }
+
+        const bool hasGuid = node.contains("guid") && node.at("guid").is_string();
+        const bool hasPath = node.contains("path") && node.at("path").is_string();
+        if (!hasGuid && !hasPath) {
+            return false;
+        }
+        out.guid = hasGuid ? node.at("guid").get<std::string>() : std::string{};
+        out.path = hasPath ? node.at("path").get<std::string>() : std::string{};
+        return true;
     }
 }

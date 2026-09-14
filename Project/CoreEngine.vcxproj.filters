@@ -814,6 +814,9 @@
     <ClCompile Include="Engine\Src\Editor\Scene\SceneDebugEditor.cpp">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Scene\PrefabSystem.cpp">
+      <Filter>Engine\Src\Scene</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Scene\SceneSaveSystem.cpp">
       <Filter>Engine\Src\Scene</Filter>
     </ClCompile>
@@ -2621,6 +2624,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Scene\SceneDebugEditor.h">
       <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Scene\PrefabSystem.h">
+      <Filter>Engine\Src\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Scene\SceneSaveSystem.h">
       <Filter>Engine\Src\Scene</Filter>

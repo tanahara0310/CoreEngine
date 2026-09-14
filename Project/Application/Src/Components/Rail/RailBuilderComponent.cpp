@@ -91,10 +91,9 @@ GameComponents::RailBuilderComponent::RailBuilderComponent(
     RailPathComponent* railPath,
     MapGeneratorComponent* mapGenerator,
     TrainMovementComponent* trainMovement,
-    HungerComponent* hunger,
-    RockThrowComponent* rockThrow)
+    HungerComponent* hunger)
     : railPath_(railPath), mapGenerator_(mapGenerator), trainMovement_(trainMovement),
-      hunger_(hunger), rockThrow_(rockThrow),
+      hunger_(hunger),
       initialGridPosX_(gridPosX), initialGridPosZ_(gridPosZ),
       gridPosX_(gridPosX), gridPosZ_(gridPosZ), gridSize_(gridSize) {
 }

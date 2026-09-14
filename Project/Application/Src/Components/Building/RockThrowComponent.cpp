@@ -2,6 +2,7 @@
 #include "RockThrowComponent.h"
 
 #include "GameObject/GameObject.h"
+#include "GameObject/Component/Core/ComponentFactory.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "Utility/FrameRate/Time.h"
@@ -13,6 +14,8 @@
 #ifdef USE_IMGUI
 #include "Editor/ImGui/ImGuiAll.h"
 #endif
+
+COMPONENT_REGISTER(GameComponents::RockThrowComponent)
 
 using namespace CoreEngine;
 

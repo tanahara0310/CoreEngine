@@ -17,6 +17,7 @@
 
 #include "GameObject/IObjectSpawner.h"
 #include "GameObject/ObjectId.h"
+#include "Graphics/Asset/AssetRef.h"
 
 // Forward declaration
 namespace CoreEngine {
@@ -229,6 +230,18 @@ namespace CoreEngine
         /// @brief 登録先の `GameObjectManager`（未登録なら nullptr）
         GameObjectManager* GetObjectManager() const { return objectManager_; }
 
+        // ===== プレハブ =====
+
+        /// @brief 元になったプレハブ（プレハブから作っていなければ何も指さない）
+        const AssetRef<PrefabAsset>& GetPrefab() const { return prefab_; }
+
+        /// @brief 元になったプレハブを設定する
+        /// @note 設定したオブジェクトは、シーンへプレハブとの差分だけが保存される。
+        void SetPrefab(const Reflection::AssetRefValue& prefab) { prefab_.SetValue(prefab); }
+
+        /// @brief プレハブから作ったオブジェクトか
+        bool IsPrefabInstance() const { return prefab_.IsSet(); }
+
         // ===== 名前 / シリアライズ =====
 
         /// @brief オブジェクト識別名を設定する
@@ -424,6 +437,7 @@ namespace CoreEngine
         IObjectSpawner* spawner_ = nullptr;  ///< AddObject 時に GameObjectManager が注入するスポーナー
         GameObjectManager* objectManager_ = nullptr;  ///< 登録先（AddObject 時に注入される）
         ObjectId objectId_{};  ///< シーン内の ID（登録時に GameObjectManager が決める）
+        AssetRef<PrefabAsset> prefab_;  ///< 元になったプレハブ
 
         friend class GameObjectManager;  ///< spawner_ / objectManager_ / objectId_ への書き込みを許可
     };

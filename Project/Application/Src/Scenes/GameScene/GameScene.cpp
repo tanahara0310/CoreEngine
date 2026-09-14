@@ -29,7 +29,6 @@
 
 #include "Components/Building/MapGeneratorComponent.h"
 #include "Components/Building/MapViewComponent.h"
-#include "Components/Building/RockThrowComponent.h"
 #include "Components/Building/WaterWaveViewComponent.h"
 #include "Components/Camera/RockBreakShakeSettingsComponent.h"
 #include "Components/Rail/RailBuilderComponent.h"
@@ -423,11 +422,7 @@ void GameScene::GameScene::OnInitialize() {
 
     train->AddComponent< CoreEngine::MeshRendererComponent>("trolley.obj");
 
-    // 岩破壊時に列車から投げる石。アニメーションはゲーム終了演出中も完了させる。
-    auto* rockProjectile = CreateObject("RockProjectile");
-    rockProjectile->AddComponent<CoreEngine::TransformComponent>();
-    rockProjectile->AddComponent<CoreEngine::MeshRendererComponent>("rock.obj");
-    auto* rockThrow = rockProjectile->AddComponent<GameComponents::RockThrowComponent>();
+    // 岩破壊時に列車から投げる石（RockProjectile）は、シーンの JSON が Prefabs/RockProjectile.prefab から作る。
 
     // 列車の描画は、列車の移動ロジックを持つコンポーネントとは別のコンポーネントで行う。
     railBuilder->AddComponent<GameComponents::RailBuilderComponent>(
@@ -435,8 +430,7 @@ void GameScene::GameScene::OnInitialize() {
         railPath->GetComponent<GameComponents::RailPathComponent>(),
         mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
         train->GetComponent<GameComponents::TrainMovementComponent>(),
-        hungerComponent,
-        rockThrow);
+        hungerComponent);
 
     railBuilder->AddComponent<CoreEngine::MeshRendererComponent>("arrow.obj");
 

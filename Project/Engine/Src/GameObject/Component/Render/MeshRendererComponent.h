@@ -3,11 +3,13 @@
 #include "GameObject/Component/Core/IComponent.h"
 #include "GameObject/Component/Render/IRenderableComponent.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
+#include "Graphics/Asset/AssetRef.h"
 #include "Graphics/Model/Model.h"
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
 #include "Graphics/Primitive/IPrimitiveMeshGenerator.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Math/Geometry/Shapes.h"
+#include "Reflection/Reflect.h"
 
 #include <memory>
 #include <optional>
@@ -28,8 +30,7 @@ public:
     MeshRendererComponent() = default;
 
     /// @brief モデルファイルから静的メッシュを作る
-    explicit MeshRendererComponent(std::string modelPath)
-        : modelPath_(std::move(modelPath)), source_(Source::ModelFile) {}
+    explicit MeshRendererComponent(std::string modelPath);
 
     /// @brief 手続き的メッシュ（プリミティブ）を作る
     explicit MeshRendererComponent(std::unique_ptr<IPrimitiveMeshGenerator> generator)
@@ -38,6 +39,8 @@ public:
     ~MeshRendererComponent() override;
 
     const char* GetTypeName() const override { return "MeshRenderer"; }
+
+    REFLECT_DECLARE(MeshRendererComponent)
 
 #ifdef USE_IMGUI
     const char* GetInspectorName() const override { return "メッシュ描画"; }
@@ -65,6 +68,13 @@ public:
 
     /// @brief 手続き的メッシュを指定する
     void SetPrimitive(std::unique_ptr<IPrimitiveMeshGenerator> generator);
+
+    /// @brief 指しているモデルファイル（型記述子とやり取りする値）
+    Reflection::AssetRefValue GetModelAsset() const { return modelAsset_.GetValue(); }
+
+    /// @brief モデルファイルを指し直す（Awake 済みなら読み込み直す）
+    /// @note 何も指さない値を渡すと、ファイルから作ったメッシュを外す。
+    void SetModelAsset(const Reflection::AssetRefValue& value);
 
     /// @brief 上書きテクスチャを指定する（空ならモデル組み込みを使う）
     void SetTexture(std::string texturePath);
@@ -138,6 +148,8 @@ private:
     std::string modelPath_;
     std::string initialClipName_;
     Source source_ = Source::None;
+    AssetRef<ModelAsset> modelAsset_;  ///< 保存とインスペクタに出すモデルファイル
+    bool awoken_ = false;              ///< Awake を済ませたか
 
     TextureManager::LoadedTexture texture_{};
     std::string textureName_;

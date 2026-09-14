@@ -6,6 +6,7 @@
 #include "Graphics/Texture/TextureManager.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
 #include "GameObject/GameObject.h"
+#include "Graphics/Asset/AssetInfo.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Model/ModelResource.h"
@@ -21,14 +22,28 @@
 
 COMPONENT_REGISTER(CoreEngine::MeshRendererComponent)
 
+REFLECT_DEFINE_BEGIN(CoreEngine::MeshRendererComponent, "メッシュ描画")
+    REFLECT_PARTIAL()
+    REFLECT_ACCESSOR("model", "モデル", GetModelAsset, SetModelAsset,
+        p.assetType = ::CoreEngine::AssetType::Model)
+REFLECT_DEFINE_END()
+REFLECT_REGISTER(CoreEngine::MeshRendererComponent)
+
 namespace CoreEngine
 {
+    MeshRendererComponent::MeshRendererComponent(std::string modelPath)
+        : modelPath_(std::move(modelPath)), source_(Source::ModelFile)
+    {
+        modelAsset_.SetValue(Reflection::AssetRefValue{ {}, modelPath_ });
+    }
+
     MeshRendererComponent::~MeshRendererComponent() = default;
 
     void MeshRendererComponent::SetModelFile(std::string modelPath)
     {
         modelPath_ = std::move(modelPath);
         source_ = Source::ModelFile;
+        modelAsset_.SetValue(Reflection::AssetRefValue{ {}, modelPath_ });
     }
 
     void MeshRendererComponent::SetSkinnedModelFile(std::string modelPath, std::string initialClipName)
@@ -36,12 +51,55 @@ namespace CoreEngine
         modelPath_ = std::move(modelPath);
         initialClipName_ = std::move(initialClipName);
         source_ = Source::SkinnedModelFile;
+        modelAsset_.SetValue(Reflection::AssetRefValue{ {}, modelPath_ });
     }
 
     void MeshRendererComponent::SetPrimitive(std::unique_ptr<IPrimitiveMeshGenerator> generator)
     {
         generator_ = std::move(generator);
         source_ = Source::Primitive;
+        modelAsset_.Reset();
+    }
+
+    void MeshRendererComponent::SetModelAsset(const Reflection::AssetRefValue& value)
+    {
+        if (value == modelAsset_.GetValue()) {
+            return;
+        }
+
+        const bool fromFile = source_ == Source::ModelFile || source_ == Source::SkinnedModelFile;
+        const std::string previous = modelAsset_.GetPath();
+        modelAsset_.SetValue(value);
+
+        // 何も指さなくなったら、ファイルから作ったメッシュだけを外す
+        if (!modelAsset_.IsSet()) {
+            if (fromFile) {
+                modelPath_.clear();
+                source_ = Source::None;
+                model_.reset();
+            }
+            return;
+        }
+
+        // 引けないファイルとモデル以外は読み込まない（読み込み完了時の検証が警告する）
+        const AssetInfo* info = ResolveAssetRef(modelAsset_.GetValue());
+        if (!info || info->type != AssetType::Model) {
+            return;
+        }
+
+        // 同じファイルを指し直しただけなら読み込み直さない
+        const std::string next = ToAssetPath(*info);
+        if (fromFile && next == previous) {
+            return;
+        }
+
+        modelPath_ = next;
+        if (source_ != Source::SkinnedModelFile) {
+            source_ = Source::ModelFile;
+        }
+        if (awoken_) {
+            ReloadFromSpec();
+        }
     }
 
     void MeshRendererComponent::SetTexture(std::string texturePath)
@@ -68,6 +126,8 @@ namespace CoreEngine
 
     void MeshRendererComponent::Awake()
     {
+        awoken_ = true;
+
         // トランスフォームは描画に必須なので、無ければ自動で足す（Unity の RequireComponent 相当）
         if (GameObject* owner = GetOwner()) {
             transform_ = owner->GetOrAddComponent<TransformComponent>();
@@ -218,10 +278,6 @@ namespace CoreEngine
         default: break;
         }
         ImGui::Text("種類: %s", sourceLabel);
-
-        if (!modelPath_.empty()) {
-            ImGui::TextWrapped("パス: %s", modelPath_.c_str());
-        }
         ImGui::Text("読み込み済み: %s", HasModel() ? "はい" : "いいえ");
 
         ImGui::Text("テクスチャ: %s",
