@@ -7,6 +7,7 @@
 #include "GameObject/Component/Core/ComponentFactory.h"
 #include "GameObject/GameObject.h"
 #include "Graphics/Asset/AssetInfo.h"
+#include "Graphics/Material/MaterialInstance.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Model/ModelResource.h"
@@ -15,6 +16,8 @@
 #include "Graphics/Render/Culling/ModelVisibility.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/Shader/ICustomShaderProvider.h"
+
+#include <algorithm>
 
 #ifdef USE_IMGUI
 #include "Editor/ImGui/ImGuiAll.h"
@@ -124,6 +127,99 @@ namespace CoreEngine
             : RenderPassType::Model;
     }
 
+    json MeshRendererComponent::OnSerialize() const
+    {
+        json j = json::object();
+        if (!textureName_.empty()) {
+            j["texture"] = AssetPathToJson(textureName_);
+        }
+        if (blendMode_ != BlendMode::kBlendModeNone) {
+            j["blendMode"] = static_cast<int>(blendMode_);
+        }
+
+        if (!model_) {
+            if (pendingMaterials_.is_array()) {
+                j["materials"] = pendingMaterials_;
+            }
+            return j;
+        }
+
+        const ModelResource* resource = model_->GetModelResource();
+        json materials = json::array();
+        bool differs = false;
+        for (size_t i = 0; i < model_->GetMaterialCount(); ++i) {
+            const MaterialInstance* material = model_->GetMaterial(i);
+            if (!material) {
+                continue;
+            }
+            json value = material->ToJson();
+            const MaterialInstance* defaults =
+                resource ? resource->GetDefaultMaterial(static_cast<uint32_t>(i)) : nullptr;
+            if (!defaults || defaults->ToJson() != value) {
+                differs = true;
+            }
+            materials.push_back(std::move(value));
+        }
+        if (differs) {
+            j["materials"] = std::move(materials);
+        }
+        return j;
+    }
+
+    void MeshRendererComponent::OnDeserialize(const json& j)
+    {
+        if (!j.is_object()) {
+            return;
+        }
+
+        if (const auto it = j.find("texture"); it != j.end()) {
+            const GameObject* owner = GetOwner();
+            const std::string context = "MeshRenderer（" + (owner ? owner->GetName() : std::string{}) + "）のテクスチャ";
+            std::string path = JsonToAssetPath(*it, context);
+            if (path.empty()) {
+                texture_ = {};
+                textureName_.clear();
+                pendingTexturePath_.clear();
+            } else {
+                SetTexture(std::move(path));
+            }
+        }
+
+        if (const auto it = j.find("blendMode"); it != j.end() && it->is_number_integer()) {
+            const int index = it->get<int>();
+            if (index >= 0 && index < static_cast<int>(kBlendModeCount)) {
+                blendMode_ = static_cast<BlendMode>(index);
+            }
+        }
+
+        if (const auto it = j.find("materials"); it != j.end() && it->is_array()) {
+            pendingMaterials_ = *it;
+            ApplyPendingMaterials();
+        }
+    }
+
+    void MeshRendererComponent::ApplyPendingMaterials()
+    {
+        if (!model_ || !pendingMaterials_.is_array()) {
+            return;
+        }
+
+        // モデルの既定と同じスロットは、モデル間で共有する既定のマテリアルのままにする
+        const ModelResource* resource = model_->GetModelResource();
+        const size_t count = (std::min)(pendingMaterials_.size(), static_cast<size_t>(model_->GetMaterialCount()));
+        for (size_t i = 0; i < count; ++i) {
+            const MaterialInstance* defaults =
+                resource ? resource->GetDefaultMaterial(static_cast<uint32_t>(i)) : nullptr;
+            if (defaults && defaults->ToJson() == pendingMaterials_[i]) {
+                continue;
+            }
+            if (MaterialInstance* material = model_->GetMaterial(i)) {
+                material->FromJson(pendingMaterials_[i]);
+            }
+        }
+        pendingMaterials_ = json();
+    }
+
     void MeshRendererComponent::Awake()
     {
         awoken_ = true;
@@ -134,6 +230,7 @@ namespace CoreEngine
         }
 
         LoadMesh();
+        ApplyPendingMaterials();
 
         if (!pendingTexturePath_.empty()) {
             SetTexture(std::move(pendingTexturePath_));
@@ -149,6 +246,7 @@ namespace CoreEngine
         if (source_ == Source::None) { return; }
 
         LoadMesh();
+        ApplyPendingMaterials();
 
         if (!pendingTexturePath_.empty()) {
             SetTexture(std::move(pendingTexturePath_));
@@ -280,10 +378,24 @@ namespace CoreEngine
         ImGui::Text("種類: %s", sourceLabel);
         ImGui::Text("読み込み済み: %s", HasModel() ? "はい" : "いいえ");
 
-        ImGui::Text("テクスチャ: %s",
-            textureName_.empty() ? "（なし）" : textureName_.c_str());
+        // ── テクスチャ（ProjectView からのドロップで差し替える） ──
+        UI::SectionHeader("テクスチャ");
+        ImGui::Button(textureName_.empty() ? "テクスチャをドロップ" : textureName_.c_str(),
+            ImVec2(ImGui::GetContentRegionAvail().x, 0.0f));
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("TEXTURE_FILE")) {
+                SetTexture(static_cast<const char*>(payload->Data));
+                changed = true;
+            }
+            ImGui::EndDragDropTarget();
+        }
+        if (!textureName_.empty() && ImGui::Button("テクスチャを外す")) {
+            texture_ = {};
+            textureName_.clear();
+            changed = true;
+        }
 
-        // ── ブレンドモード ────────────────────────────────────
+        // ── ブレンドモードと描画順 ────────────────────────────
         UI::SectionHeader("描画");
 
         static const char* kBlendNames[] = {
@@ -298,9 +410,36 @@ namespace CoreEngine
             }
         }
 
+        if (GameObject* owner = GetOwner()) {
+            bool hasOrder = owner->GetRenderOrder().has_value();
+            if (ImGui::Checkbox("描画順を指定する", &hasOrder)) {
+                if (hasOrder) {
+                    owner->SetRenderOrder(0);
+                } else {
+                    owner->ResetRenderOrder();
+                }
+                changed = true;
+            }
+            if (const std::optional<int> order = owner->GetRenderOrder()) {
+                int value = *order;
+                if (ImGui::DragInt("描画順", &value, 1.0f)) {
+                    owner->SetRenderOrder(value);
+                    changed = true;
+                }
+            }
+        }
+
         if (ImGui::Button("メッシュを再読み込み")) {
             ReloadFromSpec();
             changed = true;
+        }
+
+        // ── マテリアル（スロットごと） ─────────────────────────
+        if (model_ && model_->GetMaterial()) {
+            if (!materialDebugUI_) {
+                materialDebugUI_ = std::make_unique<MaterialDebugUI>();
+            }
+            changed |= materialDebugUI_->Draw(model_.get());
         }
 
         return changed;

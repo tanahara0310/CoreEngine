@@ -15,6 +15,10 @@
 #include <optional>
 #include <string>
 
+#ifdef USE_IMGUI
+#include "Graphics/Material/Debug/MaterialDebugUI.h"
+#endif
+
 namespace CoreEngine
 {
 class ICustomShaderProvider;
@@ -52,10 +56,21 @@ public:
         outRgba[0] = 0.34f; outRgba[1] = 0.67f; outRgba[2] = 0.88f; outRgba[3] = 1.0f;
     }
 
-    /// @brief メッシュの取得元とテクスチャの表示 UI
+    /// @brief メッシュの取得元・テクスチャ・描画設定・マテリアルの編集 UI
     /// @return 値が変更されたら true
     bool DrawInspector() override;
 #endif
+
+    // ===== シリアライズ =====
+
+    /// @brief テクスチャ・ブレンド・マテリアルのうち、既定から変えたものを書き出す
+    /// @details `texture` は `{"guid", "path"}`、`blendMode` は番号、`materials` はスロットごとの配列。
+    ///          マテリアルは、どれか 1 つのスロットでもモデルの既定と違うときだけ全スロットを書く。
+    json OnSerialize() const override;
+
+    /// @brief テクスチャ・ブレンド・マテリアルを読む
+    /// @note マテリアルはメッシュを読み込んだ後に当てる（まだ無ければ読み込むまで控える）。
+    void OnDeserialize(const json& j) override;
 
     // ===== メッシュの指定（Awake より前に呼ぶ） =====
 
@@ -98,8 +113,6 @@ public:
     void Awake() override;
 
     /// @brief 指定内容でメッシュを作り直す（`Awake()` より後に Set*Mesh した場合に呼ぶ）
-    /// @note 移行用シム（`ModelGameObject::Initialize()`）が、テンプレートメソッドの
-    ///       フックで得たパスを流し込んだ後に使う。
     void ReloadFromSpec();
 
     /// @brief カスタムシェーダー PSO を作り直す（シェーダー切替時。水面の FFT 切替など）
@@ -112,13 +125,7 @@ public:
     bool HasModel() const { return model_ != nullptr; }
     const std::string& GetModelPath() const { return modelPath_; }
 
-    /// @brief モデルの所有権を持つスマートポインタへの参照（移行用シムが束縛する）
-    std::unique_ptr<Model>& ModelPtr() { return model_; }
-
-    TextureManager::LoadedTexture& TextureRef() { return texture_; }
-    std::string& TextureNameRef() { return textureName_; }
     const std::string& GetTextureName() const { return textureName_; }
-    BlendMode& BlendModeRef() { return blendMode_; }
 
     /// @brief 視錐台カリングを行い、通過したらモデルを描画する
     /// @return 実際に描画したら true
@@ -140,6 +147,9 @@ private:
     /// @brief 指定に従ってモデルを生成する
     void LoadMesh();
 
+    /// @brief 控えたマテリアルをモデルの各スロットへ当てる（モデルの既定と同じスロットは当てない）
+    void ApplyPendingMaterials();
+
     /// @brief カスタムシェーダー用 PSO を構築する（プロバイダ登録時のみ）
     void BuildCustomShaderPipelineIfNeeded();
 
@@ -156,6 +166,8 @@ private:
     std::string pendingTexturePath_;
     BlendMode blendMode_ = BlendMode::kBlendModeNone;
 
+    json pendingMaterials_;  ///< メッシュを読み込むまで控えるマテリアル（`materials` の配列）
+
     std::optional<RenderPassType> passTypeOverride_;
 
     ICustomShaderProvider* customShaderProvider_ = nullptr;
@@ -164,5 +176,9 @@ private:
     std::shared_ptr<CustomShaderPipeline> customShaderPipeline_;
 
     mutable TransformComponent* transform_ = nullptr;
+
+#ifdef USE_IMGUI
+    std::unique_ptr<MaterialDebugUI> materialDebugUI_;
+#endif
 };
 }

@@ -438,11 +438,11 @@ namespace CollisionTest
             Report::Get().Upsert(result);
         }
 
-        // T9: ModelGameObject 以外の派生でも位置が判定に効くか
+        // T9: GameObject を直接継いだオブジェクトでも位置が判定に効くか
         if (t9Far_) {
             CaseResult result;
             result.id       = "T9";
-            result.title    = "ModelGameObject 以外の派生でも位置が判定に効く";
+            result.title    = "GameObject を直接継いだオブジェクトでも位置が判定に効く";
             result.expected = "Enter=0（z=+100 と z=-100 は離れている）";
             result.actual   = StatsStr(t9Far_->Stats());
             result.note     =

@@ -11,8 +11,8 @@
 namespace CoreEngine
 {
 /// @brief 3D モデル用の位置・回転・スケール（`WorldTransform` を内包。GPU 定数バッファつき）。
-/// @details `ModelGameObject::transform_` はこの中の実体への参照なので、
-///          **このコンポーネントは取り外してはいけない**（参照が宙に浮く）。
+/// @details `MeshRendererComponent` や水面のオブジェクトがこのコンポーネントを指したまま持つので、
+///          **取り外してはいけない**（指す先が宙に浮く）。
 class TransformComponent : public IComponent, public ITransformSource {
 public:
     const char* GetTypeName() const override { return "Transform"; }

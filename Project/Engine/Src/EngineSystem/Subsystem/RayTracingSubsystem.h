@@ -38,7 +38,7 @@ namespace CoreEngine
         const char* GetName() const noexcept override { return "RayTracingSubsystem"; }
 
         /// @brief フレーム開始時の DXR 加速構造構築
-        /// @details 未構築モデルリソースの BLAS 遅延ビルドと、シーン内 ModelGameObject からの
+        /// @details 未構築モデルリソースの BLAS 遅延ビルドと、シーン内のメッシュ描画コンポーネントからの
         ///　TLAS 構築を行う。RT シャドウマネージャのフレーム状態リセットも実施。
         void BuildAccelerationStructures(
             const RenderContext& context,

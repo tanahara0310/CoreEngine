@@ -131,19 +131,19 @@ namespace CoreEngine
         const ModelResource* GetModelResource() const;
 
         /// @brief カスタムシェーダー用フォワード PSO を設定する（nullptr = 既定シェーダーを使用）
-        /// @note ModelGameObject::Initialize() 内部から呼び出される。直接呼ぶ必要はない。
+        /// @note MeshRendererComponent がカスタムシェーダーの PSO を組むときに呼ぶ。直接呼ぶ必要はない。
         void SetCustomForwardPSO(ID3D12PipelineState* pso) { customForwardPSO_ = pso; }
 
         /// @brief カスタムシェーダー用 RootSignature を設定する（nullptr = 既定 RS を使用）
-        /// @note ModelGameObject::Initialize() 内部から呼び出される。直接呼ぶ必要はない。
+        /// @note MeshRendererComponent がカスタムシェーダーの PSO を組むときに呼ぶ。直接呼ぶ必要はない。
         void SetCustomRootSignature(ID3D12RootSignature* rs) { customRootSignature_ = rs; }
 
         /// @brief カスタムパイプラインオブジェクトを設定する（BindCustomResources に渡される）
-        /// @note ModelGameObject::Initialize() 内部から呼び出される。直接呼ぶ必要はない。
+        /// @note MeshRendererComponent がカスタムシェーダーの PSO を組むときに呼ぶ。直接呼ぶ必要はない。
         void SetCustomPipeline(const CustomShaderPipeline* pipeline) { customPipeline_ = pipeline; }
 
         /// @brief カスタムリソースバインドプロバイダを設定する（nullptr = なし）
-        /// @note SetCustomForwardPSO() と合わせて ModelGameObject::Initialize() 内部から呼び出される。
+        /// @note SetCustomForwardPSO() と合わせて MeshRendererComponent がカスタムシェーダーの PSO を組むときに呼ぶ。
         void SetCustomShaderProvider(const ICustomShaderProvider* provider) { customProvider_ = provider; }
 
     private:

@@ -11,7 +11,6 @@
 #include "Editor/Command/EditorCommandStack.h"
 #include "Editor/Inspector/InspectorRenderer.h"
 #include "GameObject/GameObjectManager.h"
-#include "GameObject/Model/DynamicModelObject.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "GameObject/Component/Transform/ITransformSource.h"
@@ -85,6 +84,22 @@ namespace
                 return candidate;
             }
         }
+    }
+
+    /// @brief トランスフォームとモデルファイルのメッシュ描画を持つ素のオブジェクトを作ってシーンへ登録する
+    /// @return 登録できなければ nullptr
+    CoreEngine::GameObject* CreateModelObject(CoreEngine::GameObjectManager& manager,
+                                              const std::string& name, const std::string& modelPath)
+    {
+        auto owned = std::make_unique<CoreEngine::GameObject>();
+        owned->SetName(name);
+        CoreEngine::GameObject* object = manager.AddObject(std::move(owned));
+        if (!object) {
+            return nullptr;
+        }
+        object->AddComponent<CoreEngine::TransformComponent>();
+        object->AddComponent<CoreEngine::MeshRendererComponent>(modelPath);
+        return object;
     }
 
     /// @brief 動的生成モデルへ既定のマテリアル上書きを適用する
@@ -569,46 +584,33 @@ namespace CoreEngine
             return false;
         }
 
-        // メッシュを持つオブジェクトかどうか確認する（具象クラスではなくコンポーネントで判定）
-        if (!selected->HasComponent<MeshRendererComponent>()) {
-            Logger::GetInstance().Log("選択オブジェクトはメッシュを持たないためコピーできません", LogLevel::Warn, LogCategory::System);
-            return false;
-        }
-
-        // シリアライズデータからモデルパスを取得する
-        json serializedData = selected->Serialize();
-        std::string modelPath;
-        if (serializedData.contains("modelPath")) {
-            modelPath = serializedData["modelPath"].get<std::string>();
-        }
-
+        // モデルファイルのメッシュを持つオブジェクトだけをコピーする
+        const auto* sourceMesh = selected->GetComponent<MeshRendererComponent>();
+        const std::string modelPath = sourceMesh ? sourceMesh->GetModelPath() : std::string{};
         if (modelPath.empty()) {
-            Logger::GetInstance().Log("モデルパスが取得できないためコピーできません", LogLevel::Warn, LogCategory::System);
+            Logger::GetInstance().Log("選択オブジェクトはモデルファイルのメッシュを持たないためコピーできません", LogLevel::Warn, LogCategory::System);
             return false;
         }
-
-        // DynamicModelObject として複製を生成
-        auto newObj = std::make_unique<DynamicModelObject>();
-        newObj->SetModelPath(modelPath);
 
         // 名前を設定（Unity 風の "Name (1)" 形式で一意化）
         std::string copyName = GenerateUnityStyleCopyName(gameObjectManager_, selected->GetName());
-        newObj->SetName(copyName);
 
-        // 登録して Initialize
-        DynamicModelObject* raw = gameObjectManager_->AddObject(std::move(newObj));
+        GameObject* raw = CreateModelObject(*gameObjectManager_, copyName, modelPath);
         if (!raw) {
             Logger::GetInstance().Log("オブジェクトのコピーに失敗しました", LogLevel::Error, LogCategory::System);
             return false;
         }
 
-        // シリアライズデータを復元（トランスフォームを引き継ぐ）
+        // コピー元の値を戻す（足りないコンポーネントはファクトリで足す）
+        const json serializedData = selected->Serialize();
         if (!serializedData.empty()) {
             raw->Deserialize(serializedData);
         }
 
         raw->SetName(copyName);
-        ApplyDynamicModelMaterialOverrides(raw->GetModel());
+        if (auto* mesh = raw->GetComponent<MeshRendererComponent>()) {
+            ApplyDynamicModelMaterialOverrides(mesh->GetModel());
+        }
 
         // 少しオフセットを加えて重ならないようにする
         if (auto* src = raw->GetComponent<ITransformSource>()) {
@@ -637,22 +639,20 @@ namespace CoreEngine
     {
         Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System, "モデルをスポーン: {}", modelFileName);
 
-        auto obj = std::make_unique<DynamicModelObject>();
-        obj->SetModelPath(modelFileName);
-
         // ファイル名から拡張子を除いたものを名前にする
         std::filesystem::path p(modelFileName);
         std::string name = p.stem().string();
-        obj->SetName(name);
 
-        DynamicModelObject* raw = gameObjectManager_->AddObject(std::move(obj));
+        GameObject* raw = CreateModelObject(*gameObjectManager_, name, modelFileName);
         if (!raw) {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System, "モデルのスポーンに失敗しました: {}", modelFileName);
             return;
         }
 
         // 動的スポーン時は PBR テクスチャを活かしつつ、問題のある法線マップのみ無効化する
-        ApplyDynamicModelMaterialOverrides(raw->GetModel());
+        if (auto* mesh = raw->GetComponent<MeshRendererComponent>()) {
+            ApplyDynamicModelMaterialOverrides(mesh->GetModel());
+        }
 
         if (auto* src = raw->GetComponent<ITransformSource>()) {
             src->Translate() = ComputeDropPosition(normalizedDropPos);

@@ -44,8 +44,8 @@ namespace CoreEngine
         /// @brief 復元の進捗（0.0〜1.0）
         float GetLoadProgress() const;
 
-        /// @brief シーン JSON から modelPath だけを列挙する（オブジェクトは一切生成しない）
-        /// @return 重複を除いた modelPath のリスト
+        /// @brief シーン JSON のコンポーネントが指すモデルのパスを列挙する（オブジェクトは一切生成しない）
+        /// @return 重複を除いたモデルのパスのリスト
         /// @note GameObjectManager が要らないので、シーン構築より前（シェーダコンパイル中）に呼べる
         static std::vector<std::string> CollectModelPaths(const std::string& sceneName);
 

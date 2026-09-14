@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="Engine\Src\Editor\Inspector\InspectorRenderer.cpp">
@@ -210,9 +210,6 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\Simulation\WaterSurfaceModelProvider.cpp">
       <Filter>Engine\Src\Graphics\Water\Simulation</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\GameObject\Model\DynamicModelObject.cpp">
-      <Filter>Engine\Src\GameObject\Model</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Particle\Modules\LifetimeModule.cpp">
       <Filter>Engine\Src\Particle\Modules</Filter>
@@ -741,12 +738,6 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\ObjectId.cpp">
       <Filter>Engine\Src\GameObject</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\GameObject\Model\ModelGameObject.cpp">
-      <Filter>Engine\Src\GameObject\Model</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\GameObject\Primitive\PrimitiveGameObject.cpp">
-      <Filter>Engine\Src\GameObject\Primitive</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\Sprite\SpriteAnimationClip.cpp">
       <Filter>Engine\Src\GameObject\Sprite</Filter>
@@ -2541,15 +2532,6 @@
     <ClInclude Include="Engine\Src\GameObject\ObjectId.h">
       <Filter>Engine\Src\GameObject</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\GameObject\Model\DynamicModelObject.h">
-      <Filter>Engine\Src\GameObject\Model</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\GameObject\Model\ModelGameObject.h">
-      <Filter>Engine\Src\GameObject\Model</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\GameObject\Primitive\PrimitiveGameObject.h">
-      <Filter>Engine\Src\GameObject\Primitive</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Sprite\SpriteAnimationClip.h">
       <Filter>Engine\Src\GameObject\Sprite</Filter>
     </ClInclude>
@@ -3796,12 +3778,6 @@
     <Filter Include="Engine\Src\GameObject\Component\Transform">
       <UniqueIdentifier>{D038A3B9-7746-4B74-9597-0D06389C3908}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Engine\Src\GameObject\Model">
-      <UniqueIdentifier>{3BDA1622-442D-4473-9600-3317565D72B4}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Engine\Src\GameObject\Primitive">
-      <UniqueIdentifier>{4EDF1521-D8FF-4496-9FE6-E7F302E98571}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Engine\Src\GameObject\Sprite">
       <UniqueIdentifier>{70079A16-C468-498A-BF3A-C14C52126902}</UniqueIdentifier>
     </Filter>
@@ -4159,11 +4135,11 @@
     <Filter Include="Engine\Src\Utility\JsonManager">
       <UniqueIdentifier>{DDF59094-F412-4879-A350-D360A6435BCD}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Engine\Src\Utility\Macro">
-      <UniqueIdentifier>{a7f3c1e2-5b84-4d19-9c26-3e8f0b7d4a51}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Engine\Src\Utility\Logger">
       <UniqueIdentifier>{AE65377C-9875-46C2-ACEB-A5583C82DCD3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Utility\Macro">
+      <UniqueIdentifier>{a7f3c1e2-5b84-4d19-9c26-3e8f0b7d4a51}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Utility\Path">
       <UniqueIdentifier>{84A6DE07-7AEF-45F4-8920-E7F93EE3CB86}</UniqueIdentifier>

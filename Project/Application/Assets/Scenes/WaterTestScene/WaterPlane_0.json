@@ -1,45 +1,57 @@
 {
     "active": true,
-    "materials": [
+    "components": [
         {
-            "alphaCutoff": 0.5,
-            "color": [
-                0.0,
-                0.21960784494876862,
-                0.3490196168422699,
-                0.7803921699523926
-            ],
-            "dithering": true,
-            "ditheringScale": 1.0,
-            "emissive": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "iblIntensity": 1.0,
-            "lighting": true,
-            "metallic": 0.0,
-            "normalMap": false,
-            "occlusionStrength": 1.0,
-            "roughness": 0.009999999776482582
+            "enabled": true,
+            "parameters": {
+                "rotate": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    40.0,
+                    1.0,
+                    40.0
+                ],
+                "translate": [
+                    0.09734535217285156,
+                    5.768860816955566,
+                    -8.508995056152344
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "materials": [
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            0.0,
+                            0.21960784494876862,
+                            0.3490196168422699,
+                            0.7803921699523926
+                        ],
+                        "dithering": true,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "iblIntensity": 1.0,
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.009999999776482582
+                    }
+                ]
+            },
+            "type": "MeshRenderer"
         }
     ],
-    "name": "WaterPlane_0",
-    "transform": {
-        "rotate": [
-            0.0,
-            -0.0,
-            0.0
-        ],
-        "scale": [
-            40.0,
-            1.0,
-            40.0
-        ],
-        "translate": [
-            0.09734535217285156,
-            5.768860816955566,
-            -8.508995056152344
-        ]
-    }
+    "name": "WaterPlane_0"
 }

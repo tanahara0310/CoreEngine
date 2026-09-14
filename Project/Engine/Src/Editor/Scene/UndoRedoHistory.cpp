@@ -5,7 +5,8 @@
 #include "Editor/Command/EditorCommandStack.h"
 #include "GameObject/GameObjectManager.h"
 #include "GameObject/GameObject.h"
-#include "GameObject/Model/DynamicModelObject.h"
+#include "GameObject/Component/Render/MeshRendererComponent.h"
+#include "GameObject/Component/Transform/TransformComponent.h"
 #include "Graphics/Model/Model.h"
 #include "Graphics/Material/MaterialInstance.h"
 #include "GameObject/Component/Transform/ITransformSource.h"
@@ -131,13 +132,16 @@ namespace CoreEngine
     {
         if (!manager_) return;
 
-        auto newObj = std::make_unique<DynamicModelObject>();
-        newObj->SetModelPath(record.modelPath);
+        // トランスフォームとモデルファイルのメッシュ描画を持つ素のオブジェクトとして作り直す
+        auto newObj = std::make_unique<GameObject>();
         newObj->SetName(record.objectName);
-        DynamicModelObject* raw = manager_->AddObject(std::move(newObj));
+        GameObject* raw = manager_->AddObject(std::move(newObj));
         if (!raw) return;
 
-        if (Model* model = raw->GetModel()) {
+        raw->AddComponent<TransformComponent>();
+        auto* mesh = raw->AddComponent<MeshRendererComponent>(record.modelPath);
+
+        if (Model* model = mesh ? mesh->GetModel() : nullptr) {
             model->ForEachMaterial([](MaterialInstance* material) {
                 material->SetLightingEnabled(true);
                 material->SetNormalMapEnabled(false);

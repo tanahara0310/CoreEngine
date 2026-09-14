@@ -150,7 +150,7 @@ namespace CoreEngine
         }
 
         ImGui::TextDisabled("  ※TLAS はフラスタム非依存（画面外の遮蔽物も影を落とす）");
-        ImGui::TextDisabled("  ※現状 TLAS に入るのは不透明 ModelGameObject のみ");
+        ImGui::TextDisabled("  ※現状 TLAS に入るのは不透明なメッシュ描画コンポーネントのみ");
         ImGui::TextDisabled("    （スキンメッシュ・半透明・FFT海面は未対応 = Stage 4）");
     }
 
