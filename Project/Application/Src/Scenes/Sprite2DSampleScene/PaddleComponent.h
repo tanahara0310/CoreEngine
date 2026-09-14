@@ -6,7 +6,8 @@
 #include "GameObject/GameObject.h"
 #include "GameObject/Component/Core/IComponent.h"
 #include "GameObject/Component/Transform/ITransformSource.h"
-#include "GameObject/Sprite/SpriteObject.h"
+#include "GameObject/Component/Render/SpriteRendererComponent.h"
+#include "GameObject/Component/Transform/EulerTransformComponent.h"
 #include "Input/InputManager.h"
 #include "Utility/FrameRate/Time.h"
 
@@ -15,14 +16,16 @@
 namespace Sprite2DSample
 {
     /// @brief 自機スプライトの左右移動と、アイテム取得時の発色を行うコンポーネント。
-    /// @details 描画は SpriteObject 側が持つ。ここはゲームロジックだけを担当する。
+    /// @details 描画は兄弟の SpriteRendererComponent が持つ。ここはゲームロジックだけを担当する。
     class PaddleComponent : public CoreEngine::IComponent {
     public:
         const char* GetTypeName() const override { return "Paddle"; }
 
         void Start() override
         {
-            sprite_ = dynamic_cast<CoreEngine::SpriteObject*>(GetOwner());
+            sprite_ = Sibling<CoreEngine::SpriteRendererComponent>();
+            transform_ = Sibling<CoreEngine::EulerTransformComponent>();
+            if (!transform_) { sprite_ = nullptr; }
 
             GetOwner()->GetColliders().SetOnEnter(
                 [this](const CoreEngine::CollisionInfo& info) {
@@ -48,7 +51,7 @@ namespace Sprite2DSample
                 const float moveX = input->GetAxisValue(InputAction::MoveRight)
                     - input->GetAxisValue(InputAction::MoveLeft);
 
-                auto& transform = sprite_->GetSpriteTransform();
+                auto& transform = transform_->Get();
                 transform.translate.x = std::clamp(
                     transform.translate.x + moveX * kMoveSpeed * deltaTime, -kLimitX, kLimitX);
             }
@@ -82,7 +85,8 @@ namespace Sprite2DSample
             return manager ? &manager->GetQuery() : nullptr;
         }
 
-        CoreEngine::SpriteObject* sprite_ = nullptr;
+        CoreEngine::SpriteRendererComponent* sprite_ = nullptr;
+        CoreEngine::EulerTransformComponent* transform_ = nullptr;
         float flashTimer_ = 0.0f;
         int score_ = 0;
     };

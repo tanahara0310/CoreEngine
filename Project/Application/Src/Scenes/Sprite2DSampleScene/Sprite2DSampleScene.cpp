@@ -5,7 +5,8 @@
 #include "PaddleComponent.h"
 
 #include "Collision/CollisionLayer.h"
-#include "GameObject/Sprite/SpriteObject.h"
+#include "GameObject/Component/Render/SpriteRendererComponent.h"
+#include "GameObject/Component/Transform/EulerTransformComponent.h"
 #include "UI/UIImage.h"
 
 namespace Sprite2DSample
@@ -32,26 +33,28 @@ namespace Sprite2DSample
 
         // ── 背景（Sprite パス／ワールド座標・画面中央が原点）──
         {
-            auto* background = CreateObject<SpriteObject>();
-            background->Initialize(kWhiteTexture, "Background");
-            background->SetAnchor({ 0.5f, 0.5f });
-            background->SetColor({ 0.10f, 0.12f, 0.18f, 1.0f });
+            auto* background = CreateObject("Background");
+            background->AddComponent<EulerTransformComponent>();
+            auto* backgroundSprite = background->AddComponent<SpriteRendererComponent>(kWhiteTexture);
+            backgroundSprite->SetAnchor({ 0.5f, 0.5f });
+            backgroundSprite->SetColor({ 0.10f, 0.12f, 0.18f, 1.0f });
             // 2D の可視範囲は「画面解像度そのもの」（中央原点・Y 上正）。
             // 全面を覆って背後の 3D の空を隠す
-            background->GetSpriteTransform().scale = { 1920.0f, 1080.0f, 1.0f };
+            background->GetComponent<EulerTransformComponent>()->Get().scale = { 1920.0f, 1080.0f, 1.0f };
 
             // 数字が小さいほど奥。背景を最背面に置く
-            background->SetSortingLayer(0);
+            backgroundSprite->SetSortingLayer(0);
         }
 
         // ── 自機 ──────────────────────────────────────────
         {
-            auto* paddle = CreateObject<SpriteObject>();
-            paddle->Initialize(kWhiteTexture, "Paddle");
-            paddle->SetAnchor({ 0.5f, 0.5f });
-            paddle->SetSortingLayer(1);
+            auto* paddle = CreateObject("Paddle");
+            paddle->AddComponent<EulerTransformComponent>();
+            auto* paddleSprite = paddle->AddComponent<SpriteRendererComponent>(kWhiteTexture);
+            paddleSprite->SetAnchor({ 0.5f, 0.5f });
+            paddleSprite->SetSortingLayer(1);
 
-            auto& transform = paddle->GetSpriteTransform();
+            auto& transform = paddle->GetComponent<EulerTransformComponent>()->Get();
             transform.scale = { kPaddleWidth, kPaddleHeight, 1.0f };
             transform.translate = { 0.0f, kPaddleY, 0.0f };
 

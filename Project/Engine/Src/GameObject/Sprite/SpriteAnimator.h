@@ -7,10 +7,10 @@
 
 namespace CoreEngine
 {
-    class SpriteObject;
+    class SpriteRendererComponent;
 
     /// @brief スプライトアニメーションの再生を管理するクラス
-    /// @details SpriteObject に持たせ、Update() を毎フレーム呼ぶことで
+    /// @details SpriteRendererComponent に持たせ、Update() を毎フレーム呼ぶことで
     ///          フレームを自動進行し SetUVRect でテクスチャ範囲を切り替える。
     class SpriteAnimator
     {
@@ -43,10 +43,10 @@ namespace CoreEngine
 
         // ===== 毎フレーム更新 =====
 
-        /// @brief フレームを進め、必要であれば SpriteObject の UV を更新する
+        /// @brief フレームを進め、必要であればスプライトの UV を更新する
         /// @param deltaTime 前フレームからの経過時間（秒）
-        /// @param sprite    UV を適用する対象の SpriteObject
-        void Update(float deltaTime, SpriteObject* sprite);
+        /// @param sprite    UV を適用する対象のスプライト描画コンポーネント
+        void Update(float deltaTime, SpriteRendererComponent* sprite);
 
         // ===== コールバック =====
 
@@ -70,7 +70,7 @@ namespace CoreEngine
 
     private:
         /// @brief 現在フレームの UV 矩形を sprite に適用する
-        void ApplyFrame(SpriteObject* sprite) const;
+        void ApplyFrame(SpriteRendererComponent* sprite) const;
 
         // ── データ ──────────────────────────────────────────────
         std::unordered_map<std::string, SpriteAnimationClip> clips_;

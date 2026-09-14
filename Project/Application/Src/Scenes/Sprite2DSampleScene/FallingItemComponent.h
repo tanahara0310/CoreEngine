@@ -3,7 +3,8 @@
 #include "Collision/CollisionLayer.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/Component/Core/IComponent.h"
-#include "GameObject/Sprite/SpriteObject.h"
+#include "GameObject/Component/Render/SpriteRendererComponent.h"
+#include "GameObject/Component/Transform/EulerTransformComponent.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Random/RandomGenerator.h"
 
@@ -14,13 +15,13 @@ namespace Sprite2DSample
     public:
         const char* GetTypeName() const override { return "FallingItem"; }
 
-        void Start() override { sprite_ = dynamic_cast<CoreEngine::SpriteObject*>(GetOwner()); }
+        void Start() override { transform_ = Sibling<CoreEngine::EulerTransformComponent>(); }
 
         void Update() override
         {
-            if (!sprite_) { return; }
+            if (!transform_) { return; }
 
-            auto& transform = sprite_->GetSpriteTransform();
+            auto& transform = transform_->Get();
             transform.translate.y -= kFallSpeed * CoreEngine::Time::DeltaTime();
 
             // 取り逃がしたアイテムを消さないと増え続ける
@@ -31,11 +32,11 @@ namespace Sprite2DSample
         static constexpr float kFallSpeed = 260.0f;
         static constexpr float kDespawnY = -560.0f;
 
-        CoreEngine::SpriteObject* sprite_ = nullptr;
+        CoreEngine::EulerTransformComponent* transform_ = nullptr;
     };
 
     /// @brief 一定間隔でアイテムのスプライトを生成するコンポーネント。
-    /// @details 2D は 3D と違い、生成後に Initialize() を明示的に呼ぶ必要がある。
+    /// @details 素の GameObject にトランスフォームとスプライト描画のコンポーネントを付けて作る。
     class ItemSpawnerComponent : public CoreEngine::IComponent {
     public:
         const char* GetTypeName() const override { return "ItemSpawner"; }
@@ -46,15 +47,15 @@ namespace Sprite2DSample
             if (timer_ > 0.0f) { return; }
             timer_ = kInterval;
 
-            // SpriteObject も GameObject なので Spawn できる
-            auto* item = GetOwner()->Spawn<CoreEngine::SpriteObject>();
+            auto* item = GetOwner()->Spawn<CoreEngine::GameObject>();
+            item->SetName("Item");
+            item->AddComponent<CoreEngine::EulerTransformComponent>();
 
-            // 3D の MeshRendererComponent と違い、テクスチャ指定は Initialize で行う
-            item->Initialize("white1x1.png", "Item");
-            item->SetAnchor({ 0.5f, 0.5f });
-            item->SetColor({ 0.95f, 0.65f, 0.20f, 1.0f });
+            auto* sprite = item->AddComponent<CoreEngine::SpriteRendererComponent>("white1x1.png");
+            sprite->SetAnchor({ 0.5f, 0.5f });
+            sprite->SetColor({ 0.95f, 0.65f, 0.20f, 1.0f });
 
-            auto& transform = item->GetSpriteTransform();
+            auto& transform = item->GetComponent<CoreEngine::EulerTransformComponent>()->Get();
             transform.scale = { kItemSize, kItemSize, 1.0f };
             transform.translate = {
                 CoreEngine::RandomGenerator::GetInstance().GetFloat(-kSpreadX, kSpreadX),

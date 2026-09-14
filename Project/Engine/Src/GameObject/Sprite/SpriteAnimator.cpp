@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "SpriteAnimator.h"
-#include "SpriteObject.h"
+#include "GameObject/Component/Render/SpriteRendererComponent.h"
 #include "Math/Vector/Vector2.h"
 
 namespace CoreEngine
@@ -53,7 +53,7 @@ namespace CoreEngine
         }
     }
 
-    void SpriteAnimator::Update(float deltaTime, SpriteObject* sprite)
+    void SpriteAnimator::Update(float deltaTime, SpriteRendererComponent* sprite)
     {
         if (!isPlaying_ || isPaused_ || !currentClip_ || !sprite) {
             return;
@@ -95,7 +95,7 @@ namespace CoreEngine
         }
     }
 
-    void SpriteAnimator::ApplyFrame(SpriteObject* sprite) const
+    void SpriteAnimator::ApplyFrame(SpriteRendererComponent* sprite) const
     {
         if (!currentClip_ || currentFrame_ < 0 ||
             currentFrame_ >= currentClip_->GetFrameCount()) {
