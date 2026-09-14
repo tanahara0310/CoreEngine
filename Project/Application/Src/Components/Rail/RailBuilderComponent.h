@@ -36,8 +36,7 @@ namespace GameComponents
             GameComponents::RailPathComponent* railPath = nullptr,
             GameComponents::MapGeneratorComponent* mapGenerator = nullptr,
             GameComponents::TrainMovementComponent* trainMovement = nullptr,
-            GameComponents::HungerComponent* hunger = nullptr,
-            GameComponents::RockThrowComponent* rockThrow = nullptr);
+            GameComponents::HungerComponent* hunger = nullptr);
 
         // コンポーネントを識別する名前。必須
         const char* GetTypeName() const override {

@@ -19,6 +19,9 @@ namespace CoreEngine
     /// @brief `AssetRef` が音声を指すことを表す型
     struct AudioAsset { static constexpr AssetType kType = AssetType::Audio; };
 
+    /// @brief `AssetRef` がプレハブを指すことを表す型
+    struct PrefabAsset { static constexpr AssetType kType = AssetType::Prefab; };
+
     /// @brief アセットの、プロジェクトの根からの相対パス（区切りは `/`）
     std::string ToAssetPath(const AssetInfo& info);
 

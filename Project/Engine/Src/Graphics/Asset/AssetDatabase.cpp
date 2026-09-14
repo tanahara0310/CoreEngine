@@ -410,6 +410,12 @@ namespace CoreEngine
             return AssetType::Scene;
         }
 
+        // プレハブ
+        if (ext == ".prefab")
+        {
+            return AssetType::Prefab;
+        }
+
         // アニメーション
         if (ext == ".anim" || ext == ".animation")
         {

@@ -8,8 +8,10 @@
 #include "GameObject/Model/DynamicModelObject.h"
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Graphics/Asset/AssetRef.h"
+#include "Reflection/PropertySerializer.h"
 #include "Reflection/PropertyValue.h"
 #include "Reflection/TypeDescriptor.h"
+#include "Scene/PrefabSystem.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
 
@@ -142,11 +144,13 @@ namespace CoreEngine
             }
         }
 
-        /// @brief 指す先が見つからない参照（ObjectRef / AssetRef）を警告する
-        void WarnUnresolvedReferences(const GameObjectManager& mgr, const std::string& sceneName)
+        /// @brief 復元したオブジェクトの参照（ObjectRef / AssetRef）のうち、指す先が見つからないものを警告する
+        void WarnUnresolvedReferences(const GameObjectManager& mgr,
+                                      const std::vector<const GameObject*>& objects,
+                                      const std::string& sceneName)
         {
             Reflection::PropertyValue value;
-            for (const auto& object : mgr.GetAllObjects()) {
+            for (const GameObject* object : objects) {
                 if (!object) continue;
 
                 for (const auto& slot : object->GetAllComponents()) {
@@ -183,6 +187,83 @@ namespace CoreEngine
                             "SceneSaveSystem: \"{}\" の {} / {} / {} が指す {}（{}）が見つかりません",
                             sceneName, object->GetSerializeKey(), component->GetTypeName(), p.name,
                             ref->objectId.ToString(), ref->componentType);
+                    }
+                }
+            }
+        }
+
+        /// @brief オブジェクト 1 体の保存 JSON を作る（プレハブから作ったものは差分の形にする）
+        json BuildObjectJson(const GameObject& object)
+        {
+            json data = object.Serialize();
+            if (data.empty()) {
+                return data;
+            }
+
+            // 次回起動時にコード無しで復元できるよう型名を残す
+            if (const char* typeName = object.GetSerializeTypeName()) {
+                data["objectType"] = typeName;
+            }
+            data["id"] = object.GetObjectId().ToString();
+
+            if (object.IsPrefabInstance()) {
+                const Reflection::AssetRefValue prefab = object.GetPrefab().GetValue();
+                if (const json* components = PrefabSystem::LoadComponents(prefab)) {
+                    data = PrefabSystem::MakeInstanceJson(data, *components);
+                } else {
+                    Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource,
+                        "SceneSaveSystem: \"{}\" のプレハブ（GUID \"{}\" / パス \"{}\"）を読めないので、構成をそのまま保存します",
+                        object.GetSerializeKey(), prefab.guid, prefab.path);
+                }
+                data["prefab"] = Reflection::PropertySerializer::AssetRefToJson(prefab);
+            }
+            return data;
+        }
+
+        /// @brief プレハブの値に保存された差分を重ねて、オブジェクトへ戻す
+        void RestorePrefabInstance(const std::string& sceneName, GameObject& object, const json& data)
+        {
+            const Reflection::AssetRefValue prefab = PrefabSystem::ReadPrefabRef(data);
+            const json* components = PrefabSystem::LoadComponents(prefab);
+            if (!components && !data.contains("components")) {
+                Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource,
+                    "SceneSaveSystem: \"{}\" の {} のプレハブ（GUID \"{}\" / パス \"{}\"）が見つからないので、足したコンポーネントだけで組みます",
+                    sceneName, object.GetSerializeKey(), prefab.guid, prefab.path);
+            }
+
+            std::vector<std::string> problems;
+            object.SetPrefab(prefab);
+            object.Deserialize(PrefabSystem::ExpandInstanceJson(data, components, &problems));
+            for (const std::string& problem : problems) {
+                Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource,
+                    "SceneSaveSystem: \"{}\" の {}: {}", sceneName, object.GetSerializeKey(), problem);
+            }
+        }
+
+        /// @brief components 配列からモデルを指す AssetRef を探し、そのパスを重ならないように足す
+        void CollectModelRefs(const json& components, std::vector<std::string>& modelPaths)
+        {
+            if (!components.is_array()) {
+                return;
+            }
+
+            for (const auto& entry : components) {
+                if (!entry.is_object() || !entry.contains("parameters") ||
+                    !entry.at("parameters").is_object()) {
+                    continue;
+                }
+                for (const auto& node : entry.at("parameters")) {
+                    Reflection::AssetRefValue ref;
+                    if (!node.is_object() || !Reflection::PropertySerializer::JsonToAssetRef(node, ref)) {
+                        continue;
+                    }
+                    const AssetInfo* info = ResolveAssetRef(ref);
+                    if (!info || info->type != AssetType::Model) {
+                        continue;
+                    }
+                    std::string path = ToAssetPath(*info);
+                    if (std::find(modelPaths.begin(), modelPaths.end(), path) == modelPaths.end()) {
+                        modelPaths.push_back(std::move(path));
                     }
                 }
             }
@@ -280,6 +361,17 @@ namespace CoreEngine
         }
 
         ForEachManifestObject(sceneName, [&modelPaths](const std::string&, const json& data) {
+            // コンポーネントの値が指すモデル（プレハブから作るものはプレハブの値を重ねてから探す）
+            if (data.contains("prefab")) {
+                const json expanded = PrefabSystem::ExpandInstanceJson(
+                    data, PrefabSystem::LoadComponents(PrefabSystem::ReadPrefabRef(data)));
+                if (expanded.contains("components")) {
+                    CollectModelRefs(expanded.at("components"), modelPaths);
+                }
+            } else if (data.contains("components")) {
+                CollectModelRefs(data.at("components"), modelPaths);
+            }
+
             if (!data.contains("modelPath") || !data["modelPath"].is_string()) {
                 return;
             }
@@ -325,7 +417,11 @@ namespace CoreEngine
                 if (loadManager_) {
                     RestoreObjectId(*loadManager_, *pending.object, data);
                 }
-                pending.object->Deserialize(data);
+                if (data.contains("prefab")) {
+                    RestorePrefabInstance(sceneName_, *pending.object, data);
+                } else {
+                    pending.object->Deserialize(data);
+                }
             }
             if (loadIndex_ < pendingObjects_.size()) {
                 return false;
@@ -334,7 +430,12 @@ namespace CoreEngine
 
         // 全員を復元し終えたら、指す先が見つからない参照を挙げる
         if (loadManager_) {
-            WarnUnresolvedReferences(*loadManager_, sceneName_);
+            std::vector<const GameObject*> restored;
+            restored.reserve(pendingObjects_.size());
+            for (const PendingObject& pending : pendingObjects_) {
+                restored.push_back(pending.object);
+            }
+            WarnUnresolvedReferences(*loadManager_, restored, sceneName_);
             loadManager_ = nullptr;
         }
         pendingObjects_.clear();
@@ -406,6 +507,14 @@ namespace CoreEngine
                     return;
                 }
 
+                // プレハブから作るものは空のオブジェクトだけを置き、構成は復元時にプレハブから組む
+                if (data.contains("prefab")) {
+                    auto obj = std::make_unique<GameObject>();
+                    obj->SetName(key);
+                    mgr->AddObject(std::move(obj));
+                    return;
+                }
+
                 if (data.contains("modelPath") && data["modelPath"].is_string()) {
                     auto obj = std::make_unique<DynamicModelObject>();
                     obj->SetModelPath(data["modelPath"].get<std::string>());
@@ -446,13 +555,8 @@ namespace CoreEngine
             const std::string& key = obj->GetSerializeKey();
             if (key.empty()) continue;
 
-            json data = obj->Serialize();
+            const json data = BuildObjectJson(*obj);
             if (!data.empty()) {
-                // 次回起動時にコード無しで復元できるよう型名を残す
-                if (const char* typeName = obj->GetSerializeTypeName()) {
-                    data["objectType"] = typeName;
-                }
-                data["id"] = obj->GetObjectId().ToString();
                 jm.SaveJson(GetObjectPath(key), data);
                 manifest["objects"].push_back(key);
             }
@@ -478,13 +582,8 @@ namespace CoreEngine
         jm.CreateJsonDirectory(GetSceneDir());
 
         // オブジェクトデータを個別ファイルに保存
-        json data = obj->Serialize();
+        const json data = BuildObjectJson(*obj);
         if (!data.empty()) {
-            // 次回起動時にコード無しで復元できるよう型名を残す
-            if (const char* typeName = obj->GetSerializeTypeName()) {
-                data["objectType"] = typeName;
-            }
-            data["id"] = obj->GetObjectId().ToString();
             jm.SaveJson(GetObjectPath(key), data);
         }
 
