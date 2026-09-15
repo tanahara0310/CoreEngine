@@ -47,7 +47,7 @@ namespace {
     //   雲がステージの真下にしか出ない。エンジン既定どおり有効にしておく。
     //
     // ■ この設定は「既定床が無い」前提
-    //   GameScene・ResultScene とも SetDefaultGroundEnabled(false) を呼んである。
+    //   GameScene は SetDefaultGroundEnabled(false) を呼び、ResultScene はシーンの保存データの defaultGround を false にしてある。
     //   床を戻すと y = 0 の板が雲より上に出るので、雲も柱も水場の滝も板に隠れて
     //   見えなくなる（全シーン一括の CVar r.Ground.Enable も同じ）。
     //

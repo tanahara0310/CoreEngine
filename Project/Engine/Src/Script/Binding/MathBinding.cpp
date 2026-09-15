@@ -9,6 +9,7 @@
 #include "Script/Binding/BindingRegistrar.h"
 
 #include <algorithm>
+#include <cmath>
 #include <new>
 #include <type_traits>
 
@@ -101,6 +102,9 @@ namespace CoreEngine::Script
         float MaxFloat(float a, float b) { return (std::max)(a, b); }
         int MinInt(int a, int b) { return (std::min)(a, b); }
         int MaxInt(int a, int b) { return (std::max)(a, b); }
+        float FmodFloat(float x, float y) { return std::fmod(x, y); }
+        float ExpFloat(float x) { return std::exp(x); }
+        float Exp2Float(float x) { return std::exp2(x); }
 
         constexpr asQWORD kVectorFlags = asOBJ_VALUE | asOBJ_POD | asOBJ_APP_CLASS_ALLFLOATS;
 
@@ -243,6 +247,9 @@ namespace CoreEngine::Script
             r.Function("float Max(float, float)", asFUNCTION(MaxFloat));
             r.Function("int Min(int, int)", asFUNCTION(MinInt));
             r.Function("int Max(int, int)", asFUNCTION(MaxInt));
+            r.Function("float fmod(float, float)", asFUNCTION(FmodFloat));
+            r.Function("float exp(float)", asFUNCTION(ExpFloat));
+            r.Function("float exp2(float)", asFUNCTION(Exp2Float));
         }
 
         /// @brief 進捗 t にイージングを掛ける（範囲外の種類は t のまま）

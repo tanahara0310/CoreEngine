@@ -1,5 +1,12 @@
 {
+    "defaultGround": false,
+    "features": [
+        "SkyFog"
+    ],
     "objects": [
-        "ResultTipsSettings"
+        "ResultTipsSettings",
+        "ResultDirector",
+        "ResultStage",
+        "ResultGauge"
     ]
 }

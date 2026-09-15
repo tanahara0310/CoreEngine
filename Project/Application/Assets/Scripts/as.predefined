@@ -490,6 +490,9 @@ float Min(float, float);
 float Max(float, float);
 int Min(int, int);
 int Max(int, int);
+float fmod(float, float);
+float exp(float);
+float exp2(float);
 float Ease(EaseType type, float t);
 namespace Time {
 float DeltaTime();
