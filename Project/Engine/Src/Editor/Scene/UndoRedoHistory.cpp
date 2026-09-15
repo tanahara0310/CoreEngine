@@ -138,6 +138,8 @@ namespace CoreEngine
         GameObject* raw = manager_->AddObject(std::move(newObj));
         if (!raw) return;
 
+        // エディタが作るオブジェクトのコンポーネントとして付ける
+        ComponentHost::DataAttachScope dataScope(*raw);
         raw->AddComponent<TransformComponent>();
         auto* mesh = raw->AddComponent<MeshRendererComponent>(record.modelPath);
 

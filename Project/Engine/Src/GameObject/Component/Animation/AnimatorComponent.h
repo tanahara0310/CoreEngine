@@ -61,6 +61,13 @@ public:
     /// @brief 兄弟のメッシュ描画・トランスフォームを捕まえる
     void Start() override;
 
+    /// @brief 兄弟のメッシュ描画とトランスフォームを使う
+    bool RequiresComponent(const IComponent& other) const override
+    {
+        return dynamic_cast<const MeshRendererComponent*>(&other) != nullptr ||
+            dynamic_cast<const TransformComponent*>(&other) != nullptr;
+    }
+
     /// @brief アニメーションを 1 フレーム進める
     /// @note `GameObject::Update()` より前に走る。更新後の姿勢を読む処理は
     ///       `SkeletonSocketComponent` のように `LateUpdate()` で行うこと。

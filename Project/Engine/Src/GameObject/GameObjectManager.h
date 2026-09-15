@@ -131,8 +131,11 @@ namespace CoreEngine
         /// @return 他のオブジェクトが使っている ID なら差し替えずに false
         bool AssignObjectId(GameObject& object, ObjectId id);
 
-        /// @brief ID から引いた結果が変わる操作（破棄・ID の差し替え・コンポーネントの解放）のたびに進む番号
+        /// @brief ID から引いた結果が変わる操作（破棄・ID の差し替え・コンポーネントの付け外しと解放）のたびに進む番号
         const std::uint64_t& GetReferenceEpoch() const noexcept { return referenceEpoch_; }
+
+        /// @brief ID から引いた結果を引き直させる（コンポーネントを付け外ししたときに呼ぶ）
+        void InvalidateReferences() noexcept { ++referenceEpoch_; }
 
         /// @brief コライダーを持つ全オブジェクトのコライダーを CollisionWorld に登録
         /// @param collisionWorld 登録先の CollisionWorld

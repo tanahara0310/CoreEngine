@@ -39,6 +39,9 @@ namespace CoreEngine
         for (const auto& component : retired_) {
             ForgetInHistory(component.get());
         }
+        for (const auto& component : detached_) {
+            ForgetInHistory(component.get());
+        }
     }
 
     IComponent* ComponentHost::AttachComponent(std::unique_ptr<IComponent> component, bool invokeAwake)
@@ -47,6 +50,7 @@ namespace CoreEngine
 
         IComponent* raw = component.get();
         raw->owner_ = ownerObject_;
+        raw->attachedByCode_ = dataAttachDepth_ == 0;
         components_.push_back(std::move(component));
         if (invokeAwake) {
             raw->Awake();
@@ -94,6 +98,67 @@ namespace CoreEngine
         for (auto& component : components_) {
             RetireSlot(component);
         }
+    }
+
+    std::optional<std::size_t> ComponentHost::DetachComponent(IComponent* component)
+    {
+        if (!component) { return std::nullopt; }
+
+        std::size_t position = 0;
+        for (auto& slot : components_) {
+            if (!slot) { continue; }
+            if (slot.get() == component) {
+                // スロットは nullptr にして残し、フレーム末に詰める
+                detached_.push_back(std::move(slot));
+                return position;
+            }
+            ++position;
+        }
+        return std::nullopt;
+    }
+
+    bool ComponentHost::ReattachComponent(IComponent* component, std::size_t position)
+    {
+        if (!component) { return false; }
+
+        const auto detached = std::find_if(detached_.begin(), detached_.end(),
+            [component](const std::unique_ptr<IComponent>& entry) {
+                return entry.get() == component;
+            });
+        if (detached == detached_.end()) {
+            return false;
+        }
+
+        // 取り外し済みのスロットを飛ばして数え、position 番目の手前へ入れる
+        auto insertAt = components_.end();
+        std::size_t live = 0;
+        for (auto slot = components_.begin(); slot != components_.end(); ++slot) {
+            if (!*slot) { continue; }
+            if (live == position) {
+                insertAt = slot;
+                break;
+            }
+            ++live;
+        }
+
+        components_.insert(insertAt, std::move(*detached));
+        detached_.erase(detached);
+        return true;
+    }
+
+    std::optional<std::size_t> ComponentHost::FindComponentPosition(const IComponent* component) const
+    {
+        if (!component) { return std::nullopt; }
+
+        std::size_t position = 0;
+        for (const auto& slot : components_) {
+            if (!slot) { continue; }
+            if (slot.get() == component) {
+                return position;
+            }
+            ++position;
+        }
+        return std::nullopt;
     }
 
     bool ComponentHost::ReleaseRetiredComponents()
@@ -155,6 +220,10 @@ namespace CoreEngine
                 component->OnDestroy();
             }
         }
+        // 外して控えているものも、オブジェクトと一緒に後始末する
+        for (auto& component : detached_) {
+            component->OnDestroy();
+        }
     }
 
     // ===== シリアライズ =====
@@ -198,6 +267,9 @@ namespace CoreEngine
     void ComponentHost::DeserializeComponents(const json& components)
     {
         if (!components.is_array()) { return; }
+
+        // ここで付くもの（Awake の中で足されるものを含む）は、コードが付けたものとして扱わない
+        DataAttachScope dataScope(*this);
 
         // 同じ型を複数持つ場合に備え、型ごとに「次に対応づける位置」を持って前へ進める
         std::unordered_map<std::string, std::size_t> nextIndex;

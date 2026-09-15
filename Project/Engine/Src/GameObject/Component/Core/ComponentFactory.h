@@ -21,6 +21,9 @@ public:
     struct Probe {
         std::string typeName;
         const Reflection::TypeDescriptor* descriptor = nullptr;
+#ifdef USE_IMGUI
+        std::string inspectorName;
+#endif
     };
     using ProbeFunction = Probe (*)();
 
@@ -44,6 +47,12 @@ public:
 
     /// @brief その型名で生成できるか
     bool IsRegistered(const std::string& typeName) const;
+
+#ifdef USE_IMGUI
+    /// @brief 型名からインスペクタでの表示名を引く
+    /// @return 未登録の型なら空
+    std::string GetInspectorName(const std::string& typeName) const;
+#endif
 
     /// @brief 登録済みの型名一覧（綴り順）
     std::vector<std::string> GetRegisteredTypeNames() const;
@@ -69,6 +78,9 @@ private:
     struct Entry {
         Creator creator = nullptr;
         const Reflection::TypeDescriptor* descriptor = nullptr;
+#ifdef USE_IMGUI
+        std::string inspectorName;
+#endif
     };
 
     /// 型名の解決前に溜めておく予約
@@ -89,7 +101,11 @@ struct AutoRegisterComponent {
             []() -> std::unique_ptr<IComponent> { return std::make_unique<T>(); },
             []() -> ComponentFactory::Probe {
                 T probe;
-                return { probe.GetTypeName(), probe.GetTypeDescriptor() };
+                ComponentFactory::Probe result{ probe.GetTypeName(), probe.GetTypeDescriptor() };
+#ifdef USE_IMGUI
+                result.inspectorName = probe.GetInspectorName();
+#endif
+                return result;
             });
     }
 };

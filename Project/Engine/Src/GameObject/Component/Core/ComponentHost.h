@@ -2,7 +2,9 @@
 
 #include "IComponent.h"
 
+#include <cstddef>
 #include <memory>
+#include <optional>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -27,6 +29,7 @@ public:
 
     /// @brief コンポーネントを生成してアタッチする（以後の追加でも戻り値は無効化されない）
     /// @note `Awake()` はこの中で即座に呼ばれる。兄弟コンポーネントを見る初期化は `Start()` に書くこと。
+    ///       `DataAttachScope` の外で付けたものは、コードが付けたもの（`IComponent::IsAttachedByCode()`）になる。
     template <typename T, typename... Args>
     T* AddComponent(Args&&... args) {
         static_assert(std::is_base_of_v<IComponent, T>,
@@ -35,6 +38,7 @@ public:
         auto owned = std::make_unique<T>(std::forward<Args>(args)...);
         T* raw = owned.get();
         raw->owner_ = ownerObject_;
+        raw->attachedByCode_ = dataAttachDepth_ == 0;
         components_.push_back(std::move(owned));
         raw->Awake();
         return raw;
@@ -132,6 +136,37 @@ public:
     /// @note `GameObjectManager` がフレーム末（衝突判定の後）に呼ぶ。
     bool ReleaseRetiredComponents();
 
+    // ===== エディタからの着脱 =====
+
+    /// @brief スコープの間に付いたコンポーネントを、コードが付けたものとして扱わない
+    /// @note シーン JSON・プレハブの復元と、エディタでオブジェクトを作る・コンポーネントを足す操作が使う。
+    class DataAttachScope {
+    public:
+        explicit DataAttachScope(ComponentHost& host) : host_(host) { ++host_.dataAttachDepth_; }
+        ~DataAttachScope() { --host_.dataAttachDepth_; }
+
+        DataAttachScope(const DataAttachScope&) = delete;
+        DataAttachScope& operator=(const DataAttachScope&) = delete;
+
+    private:
+        ComponentHost& host_;
+    };
+
+    /// @brief コンポーネントを外し、実体はオブジェクトが破棄されるまで控える
+    /// @return 外す前の位置（取り外し済みを除いた並びでの添え字）。付いていなければ空
+    /// @note `OnDestroy()` は呼ばない。兄弟が控えたポインタは、破棄まで指したまま使える。
+    ///       控えたものは `ReattachComponent()` で付け直せる。更新ループの外から呼ぶこと。
+    std::optional<std::size_t> DetachComponent(IComponent* component);
+
+    /// @brief `DetachComponent()` で外したコンポーネントを付け直す
+    /// @param position 取り外し済みを除いた並びでの添え字（付いている数以上なら末尾）
+    /// @return 外したものの中に無ければ false
+    bool ReattachComponent(IComponent* component, std::size_t position);
+
+    /// @brief コンポーネントの位置（取り外し済みを除いた並びでの添え字）
+    /// @return 付いていなければ空
+    std::optional<std::size_t> FindComponentPosition(const IComponent* component) const;
+
     // ===== ライフサイクル発行（GameObjectManager が呼ぶ） =====
 
     /// @brief まだ Start() を呼んでいないコンポーネントの Start() を呼ぶ
@@ -161,6 +196,7 @@ public:
     ///       同じ型を複数持つ場合は並び順で対応する。
     ///       対応するものが無ければ `ComponentFactory` で生成してアタッチし、
     ///       ファクトリにも無い型は警告を出して読み飛ばす。
+    ///       ここで付いたものは、コードが付けたものとして扱わない。
     void DeserializeComponents(const json& components);
 
 protected:
@@ -180,6 +216,12 @@ private:
 
     /// 取り外し済みコンポーネントの墓場（フレーム末まで実体を保持する）
     std::vector<std::unique_ptr<IComponent>> retired_;
+
+    /// `DetachComponent()` で外したコンポーネント（オブジェクトの破棄まで実体を保持する）
+    std::vector<std::unique_ptr<IComponent>> detached_;
+
+    /// `DataAttachScope` の入れ子の深さ（0 より大きい間に付いたものは、コードが付けたものではない）
+    int dataAttachDepth_ = 0;
 
     /// OnDestroy() を発行済みか（二重発行の防止）
     bool destroyDispatched_ = false;

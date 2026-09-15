@@ -44,6 +44,12 @@ public:
 
     const char* GetTypeName() const override { return "MeshRenderer"; }
 
+    /// @brief トランスフォームを使う
+    bool RequiresComponent(const IComponent& other) const override
+    {
+        return dynamic_cast<const TransformComponent*>(&other) != nullptr;
+    }
+
     REFLECT_DECLARE(MeshRendererComponent)
 
 #ifdef USE_IMGUI

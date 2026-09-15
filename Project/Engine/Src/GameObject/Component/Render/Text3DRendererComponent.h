@@ -55,6 +55,9 @@ namespace CoreEngine
 
         const char* GetTypeName() const override { return "Text3DRenderer"; }
 
+        /// @brief トランスフォームを使う
+        bool RequiresComponent(const IComponent& other) const override;
+
 #ifdef USE_IMGUI
         const char* GetInspectorName() const override { return "3D テキスト"; }
 

@@ -331,7 +331,7 @@ namespace CoreEngine
 
         /// @brief ImGui インスペクター UI を描画する（共通フレームワーク）
         /// @return 値の変更があった場合 true を返す
-        /// @note 名前フィールド、Active トグル、タブストリップ、保存ボタンを自動描画する。
+        /// @note 名前フィールド、Active トグル、コンポーネント追加ボタン、タブストリップ、保存ボタンを自動描画する。
         ///       タブの内容は GetInspectorTabs / DrawInspectorTabContent で制御する。
         virtual bool DrawImGui();
 
@@ -418,9 +418,10 @@ namespace CoreEngine
 
         /// @brief コンポーネントタブの中身を描画する
         /// @param tabIndex `AppendComponentTabs` が並べた順のインデックス
+        /// @param removeRequest 「外す」が押されたコンポーネントを書く先（押されなければ書かない）
         /// @return 値が変更されたら true
         /// @note `IComponent::DrawInspector()` を呼ぶ唯一の場所。
-        bool DrawComponentTabContent(int tabIndex);
+        bool DrawComponentTabContent(int tabIndex, IComponent*& removeRequest);
 
         /// @brief Active チェックボックス変更時に呼び出されるフック
         /// @param prevActive 変更前のアクティブ状態
