@@ -30,6 +30,5 @@ namespace PostEffectNames {
     constexpr const char* DepthOfField = "DepthOfField";
     constexpr const char* Outline = "Outline";
     constexpr const char* LoadingScreen = "LoadingScreen";
-    constexpr const char* TrolleyLoading = "TrolleyLoading";
 }
 }

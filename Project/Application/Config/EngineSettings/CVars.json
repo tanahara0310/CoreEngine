@@ -1,21 +1,4 @@
 {
-    "Game.BananaTreeAura.Color": [
-        1.0,
-        0.2816901206970215,
-        0.0,
-        1.0
-    ],
-    "Game.Hud.Position": [
-        32.0,
-        190.0
-    ],
-    "Game.Rail.BuilderStartX": 1,
-    "Game.Rail.TrainMoveSpeed": 2.0,
-    "Game.Stamina.BananaRecoveryMonkeyCorrectionRate": 0.3499999940395355,
-    "Game.Stamina.Cost.Rail": 1.0,
-    "Game.Stamina.Cost.Rock": 10.0,
-    "Game.Stamina.Initial": 120.0,
-    "Game.Stamina.Maximum": 120.0,
     "r.Atmosphere.SkyAmbientScale": 0.5099999904632568,
     "r.AutoExposure.Enabled": true,
     "r.AutoExposure.MaxEV": 7.5,
