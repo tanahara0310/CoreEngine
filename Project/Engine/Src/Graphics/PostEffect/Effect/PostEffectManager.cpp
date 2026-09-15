@@ -20,7 +20,6 @@
 #include "RasterScroll/RasterScroll.h"
 #include "FadeEffect/FadeEffect.h"
 #include "LoadingScreen/LoadingScreenEffect.h"
-#include "TrolleyLoading/TrolleyLoading.h"
 #include "Bloom/Bloom.h"
 #include "LensFlare/LensFlare.h"
 #include "Dissolve/Dissolve.h"
@@ -93,7 +92,6 @@ void PostEffectManager::RegisterAllEffects()
     RegisterEffect<DepthOfField>(PostEffectNames::DepthOfField);
     RegisterEffect<ToneMapping>(PostEffectNames::ToneMapping);
     RegisterEffect<LoadingScreenEffect>(PostEffectNames::LoadingScreen);
-    RegisterEffect<TrolleyLoading>(PostEffectNames::TrolleyLoading);
 
     // エフェクトチェーンの順序を登録と同じ場所で定義（二重管理を防ぐ）
     // 並びは PostEffectStage の昇順でなければならない（ValidateChain が検証する）。
@@ -131,9 +129,7 @@ void PostEffectManager::RegisterAllEffects()
         PostEffectNames::Outline,
         PostEffectNames::Dissolve,
         // ローディング画面は他の演出より前に出す。
-        // 実際に描くのはどちらか一方だけ（SceneTransition が表示強度を持つ側を有効化する）
         PostEffectNames::LoadingScreen,
-        PostEffectNames::TrolleyLoading,
     };
 
     ValidateChain();

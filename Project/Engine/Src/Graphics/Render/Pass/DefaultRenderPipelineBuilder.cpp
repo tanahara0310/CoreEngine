@@ -110,7 +110,7 @@ namespace CoreEngine
         pipeline.AddPass(std::make_unique<RTWaterReflectionPass>(), RenderPassPhase::Water, 15);
         pipeline.AddPass(std::make_unique<WaterSurfacePass>(), RenderPassPhase::Water, 20);
         // 水面が SceneColor へ合成された後でラインを重ねる。通常の Geometry で描くと
-        // 水面に上書きされ、バナナ範囲やデバッグガイドが水マス上だけ消えてしまう。
+        // 水面に上書きされ、水面の上のラインだけ消えてしまう。
         pipeline.AddPass(std::make_unique<LineQueuePass>(), RenderPassPhase::Water, 30);
 
         // TAA: トーンマップ前の HDR 空間で解決する（ポストエフェクト列より必ず前）

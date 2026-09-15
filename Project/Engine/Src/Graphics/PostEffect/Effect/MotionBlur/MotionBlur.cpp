@@ -288,7 +288,7 @@ namespace CoreEngine
 
     void MotionBlur::SetEnabled(bool /*enabled*/)
     {
-        // モーションブラーは常時無効。設定ファイルや SpeedBlurFeature から
+        // モーションブラーは常時無効。設定ファイルやシーンの処理から
         // 有効化要求が来ても、実行時の CVar も false に戻して描画へ入れない。
         cvEnabled.Set(false);
     }
