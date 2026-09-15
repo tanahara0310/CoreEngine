@@ -18,6 +18,7 @@ namespace CoreEngine
     enum class SceneUpdatePhase : uint32_t {
         FrameStart = 0,   ///< カメラ更新後・OnUpdate() 前（ライト/影・エディタ等のフレーム前処理）
         PreObjectUpdate,  ///< OnUpdate() 後・GameObject 更新前（床のカメラ追従など位置の事前確定）
+        BetweenObjectUpdates, ///< GameObject の Update の後・LateUpdate の前（Update の中で始めたトゥイーンの前進）
         PostObjectUpdate, ///< GameObject 更新後・OnLateUpdate() 前（コリジョンなど結果の収集・判定）
         PostLogic,        ///< OnLateUpdate() 後（大気→雲など全ロジック確定後の反映）
     };

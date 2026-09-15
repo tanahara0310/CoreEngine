@@ -43,13 +43,15 @@ namespace CoreEngine
         /// @brief 全オブジェクトの更新処理
         /// @note autoUpdate_ が true のオブジェクトのみ更新されます
         /// @note 手動更新したい場合は obj->SetAutoUpdate(false) を設定後、自分で obj->Update() を呼んでください
-        void UpdateAll();
+        /// @param afterUpdatePass 全員の Update の後、ワールド行列を転送し直す前に呼ぶ処理（無くてよい）
+        void UpdateAll(const std::function<void()>& afterUpdatePass = {});
 
         /// @brief 全オブジェクトのワールド行列だけを計算し直して GPU へ転送する
-        /// @details 再生を停止している間、`UpdateAll()` の代わりに呼ぶための軽い経路。
-        ///          ワールド行列の転送は `TransformComponent::Update()` が担っているので、
-        ///          更新を丸ごと止めるとギズモやインスペクタで座標を動かしても
-        ///          画面が変わらなくなる。それを避けるために転送だけを残す。
+        /// @details `UpdateAll()` が全員の Update の後に呼び、Update の中で書き換えた座標を
+        ///          そのフレームの描画と当たり判定に出す。
+        ///          再生を停止している間は `UpdateAll()` の代わりに呼ぶ。ワールド行列の転送は
+        ///          `TransformComponent::Update()` が担っているので、更新を丸ごと止めると
+        ///          ギズモやインスペクタで座標を動かしても画面が変わらなくなる。
         /// @note 走査対象は `UpdateAll()` と同じ（非アクティブ・削除マーク済みは除く）。
         void SyncTransforms();
 
@@ -126,6 +128,11 @@ namespace CoreEngine
         /// @brief ID からオブジェクトを引く
         /// @return 見つからなければ nullptr（削除マーク済みでもフレーム末までは返す）
         GameObject* FindObject(ObjectId id) const;
+
+        /// @brief 名前が一致する最初のオブジェクトを引く
+        /// @return 見つからなければ nullptr（削除マーク済みは返さない）
+        /// @note `UpdateAll()` の途中で作られ、まだ一覧に加わっていないオブジェクトも探す。
+        GameObject* FindObjectByName(const std::string& name) const;
 
         /// @brief オブジェクトの ID を差し替える
         /// @return 他のオブジェクトが使っている ID なら差し替えずに false
