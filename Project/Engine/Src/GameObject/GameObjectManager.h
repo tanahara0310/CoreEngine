@@ -137,6 +137,10 @@ namespace CoreEngine
         /// @brief ID から引いた結果を引き直させる（コンポーネントを付け外ししたときに呼ぶ）
         void InvalidateReferences() noexcept { ++referenceEpoch_; }
 
+        /// @brief この管理者が生きている間だけ期限切れにならない印
+        /// @note 管理者より長く残りうる参照（スクリプトのハンドルなど）が、管理者を触る前に確かめる。
+        std::weak_ptr<const GameObjectManager*> GetLifetimeToken() const noexcept { return lifetimeToken_; }
+
         /// @brief コライダーを持つ全オブジェクトのコライダーを CollisionWorld に登録
         /// @param collisionWorld 登録先の CollisionWorld
         void RegisterAllColliders(CollisionWorld* collisionWorld);
@@ -210,5 +214,8 @@ namespace CoreEngine
         /// @brief ImGui 編集コミット時コールバック（Undo/Redo 用）
         GameObject::EditCommitCallback editCommitCallback_;
 #endif
+
+        /// @brief `GetLifetimeToken()` の実体（最後に宣言し、ほかのメンバより先に壊す）
+        std::shared_ptr<const GameObjectManager*> lifetimeToken_ = std::make_shared<const GameObjectManager*>(this);
     };
 }

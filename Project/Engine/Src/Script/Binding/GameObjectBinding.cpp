@@ -3,7 +3,9 @@
 
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "GameObject/GameObject.h"
+#include "GameObject/GameObjectManager.h"
 #include "Script/Binding/BindingRegistrar.h"
+#include "Script/ScriptComponent.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine::Script
@@ -116,6 +118,19 @@ namespace CoreEngine::Script
         return handle;
     }
 
+    ScriptGameObject* ScriptGameObject::CreateForObject(const GameObject* object)
+    {
+        if (!object) {
+            return nullptr;
+        }
+        auto* handle = new ScriptGameObject();
+        handle->objectId_ = object->GetObjectId();
+        if (const GameObjectManager* const manager = object->GetObjectManager()) {
+            handle->manager_ = manager->GetLifetimeToken();
+        }
+        return handle;
+    }
+
     void ScriptGameObject::AddRef() const
     {
         ++refCount_;
@@ -130,7 +145,14 @@ namespace CoreEngine::Script
 
     GameObject* ScriptGameObject::Resolve() const
     {
-        return component_ ? component_->GetOwner() : nullptr;
+        if (component_) {
+            return component_->GetOwner();
+        }
+        if (!objectId_.IsValid()) {
+            return nullptr;
+        }
+        const std::shared_ptr<const GameObjectManager*> manager = manager_.lock();
+        return (manager && *manager) ? (*manager)->FindObject(objectId_) : nullptr;
     }
 
     GameObject* ScriptGameObject::ResolveOrWarn(const char* action) const
@@ -195,6 +217,52 @@ namespace CoreEngine::Script
         return &transform_;
     }
 
+    ScriptGameObject* ScriptGameObject::FindObject(const std::string& name) const
+    {
+        const GameObject* const self = ResolveOrWarn("オブジェクトの検索");
+        const GameObjectManager* const manager = self ? self->GetObjectManager() : nullptr;
+        if (!manager) {
+            return nullptr;
+        }
+        for (const auto& candidate : manager->GetAllObjects()) {
+            if (candidate && !candidate->IsMarkedForDestroy() && candidate->GetName() == name) {
+                return CreateForObject(candidate.get());
+            }
+        }
+        return nullptr;
+    }
+
+    bool ScriptGameObject::GetComponent(void* reference, int typeId) const
+    {
+        asIScriptContext* const context = asGetActiveContext();
+        const bool scriptHandle = (typeId & asTYPEID_OBJHANDLE) != 0 && (typeId & asTYPEID_SCRIPTOBJECT) != 0;
+        if (!reference || !scriptHandle) {
+            if (context) {
+                context->SetException("GetComponent には、スクリプトのクラスのハンドルを @ を付けて渡します（例: owner.GetComponent(@found)）");
+            }
+            return false;
+        }
+
+        const GameObject* const object = ResolveOrWarn("コンポーネントの検索");
+        const asITypeInfo* const wanted = context
+            ? context->GetEngine()->GetTypeInfoById(typeId & ~(asTYPEID_OBJHANDLE | asTYPEID_HANDLETOCONST))
+            : nullptr;
+        if (!object || !wanted) {
+            return false;
+        }
+        for (const auto& component : object->GetAllComponents()) {
+            const auto* const script = dynamic_cast<const ScriptComponent*>(component.get());
+            asIScriptObject* const instance = script ? script->GetScriptObject() : nullptr;
+            if (!instance || !instance->GetObjectType()->DerivesFrom(wanted)) {
+                continue;
+            }
+            instance->AddRef();
+            *static_cast<asIScriptObject**>(reference) = instance;
+            return true;
+        }
+        return false;
+    }
+
     // ---------------------------------------------------------------- 登録
 
     bool RegisterGameObjectBinding(asIScriptEngine* engine)
@@ -216,6 +284,8 @@ namespace CoreEngine::Script
         r.Method("GameObject", "void Destroy()", asMETHOD(ScriptGameObject, Destroy), asCALL_THISCALL);
         r.Method("GameObject", "bool opEquals(const GameObject &in) const", asMETHOD(ScriptGameObject, Equals), asCALL_THISCALL);
         r.Method("GameObject", "Transform@ get_transform() property", asMETHOD(ScriptGameObject, GetTransform), asCALL_THISCALL);
+        r.Method("GameObject", "GameObject@ FindObject(const string &in name) const", asMETHOD(ScriptGameObject, FindObject), asCALL_THISCALL);
+        r.Method("GameObject", "bool GetComponent(?&out component) const", asMETHOD(ScriptGameObject, GetComponent), asCALL_THISCALL);
 
         r.Behaviour("Transform", asBEHAVE_ADDREF, "void f()", asMETHOD(ScriptTransform, AddRef), asCALL_THISCALL);
         r.Behaviour("Transform", asBEHAVE_RELEASE, "void f()", asMETHOD(ScriptTransform, Release), asCALL_THISCALL);

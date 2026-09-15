@@ -22,6 +22,7 @@ namespace CoreEngine::Script
         void Method(const char* type, const char* declaration, const asSFuncPtr& function, asDWORD callConvention);
         void Property(const char* type, const char* declaration, int byteOffset);
         void Function(const char* declaration, const asSFuncPtr& function, asDWORD callConvention = asCALL_CDECL);
+        void Funcdef(const char* declaration);
         void Enum(const char* name);
         void EnumValue(const char* type, const char* name, int value);
 

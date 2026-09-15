@@ -1,4 +1,37 @@
 // CoreEngine が起動時に、スクリプトへ登録した型と関数から書き出す補完用の宣言（手で書き換えない）
+enum EaseType {
+	Linear = 0,
+	EaseInQuad = 1,
+	EaseOutQuad = 2,
+	EaseInOutQuad = 3,
+	EaseInCubic = 4,
+	EaseOutCubic = 5,
+	EaseInOutCubic = 6,
+	EaseInQuart = 7,
+	EaseOutQuart = 8,
+	EaseInOutQuart = 9,
+	EaseInQuint = 10,
+	EaseOutQuint = 11,
+	EaseInOutQuint = 12,
+	EaseInSine = 13,
+	EaseOutSine = 14,
+	EaseInOutSine = 15,
+	EaseInExpo = 16,
+	EaseOutExpo = 17,
+	EaseInOutExpo = 18,
+	EaseInCirc = 19,
+	EaseOutCirc = 20,
+	EaseInOutCirc = 21,
+	EaseInBack = 22,
+	EaseOutBack = 23,
+	EaseInOutBack = 24,
+	EaseInElastic = 25,
+	EaseOutElastic = 26,
+	EaseInOutElastic = 27,
+	EaseInBounce = 28,
+	EaseOutBounce = 29,
+	EaseInOutBounce = 30
+}
 enum InputAction {
 	MoveForward = 0,
 	MoveBack = 1,
@@ -14,6 +47,50 @@ enum InputAction {
 	EditorGizmoRotate = 11,
 	EditorGizmoScale = 12
 }
+enum TweenLoop {
+	Restart = 0,
+	Yoyo = 1
+}
+enum TweenUpdate {
+	Scaled = 0,
+	Unscaled = 1
+}
+enum UIAnchor {
+	TopLeft = 0,
+	TopCenter = 1,
+	TopRight = 2,
+	MiddleLeft = 3,
+	Center = 4,
+	MiddleRight = 5,
+	BottomLeft = 6,
+	BottomCenter = 7,
+	BottomRight = 8
+}
+enum AudioBus {
+	BGM = 0,
+	SE = 1,
+	Voice = 2
+}
+enum ShakeWaveform {
+	Perlin = 0,
+	Random = 1,
+	Sine = 2,
+	Kick = 3
+}
+enum ShakeSpace {
+	CameraLocal = 0,
+	World = 1
+}
+enum ShakeTimeMode {
+	Scaled = 0,
+	Unscaled = 1
+}
+funcdef void TweenCallback();
+funcdef void TweenProgressCallback(float progress);
+funcdef void TweenFloatSetter(float value);
+funcdef void TweenVector2Setter(const Vector2&in value);
+funcdef void TweenVector3Setter(const Vector3&in value);
+funcdef void TweenVector4Setter(const Vector4&in value);
 class array<T> {
 	T& opIndex(uint index);
 	const T& opIndex(uint index) const;
@@ -155,6 +232,8 @@ class GameObject {
 	void Destroy();
 	bool opEquals(const GameObject&in) const;
 	Transform@ get_transform() property;
+	GameObject@ FindObject(const string&in name) const;
+	UIText@ get_uiText() property;
 }
 class Transform {
 	bool get_exists() const property;
@@ -167,6 +246,101 @@ class Transform {
 	Vector3 get_worldPosition() const property;
 	void SetParent(Transform@ parent);
 	GameObject@ get_gameObject() const property;
+}
+class TweenHandle {
+	TweenHandle();
+	TweenHandle& SetEase(EaseType ease);
+	TweenHandle& SetDelay(float seconds);
+	TweenHandle& SetLoops(int count, TweenLoop type = TweenLoop::Restart);
+	TweenHandle& SetLink(GameObject@ owner);
+	TweenHandle& SetUpdateType(TweenUpdate type);
+	TweenHandle& SetId(const string&in id);
+	TweenHandle& OnComplete(TweenCallback@ callback);
+	TweenHandle& OnStepComplete(TweenCallback@ callback);
+	TweenHandle& OnUpdate(TweenProgressCallback@ callback);
+	void Kill(bool complete = false);
+	void Complete();
+	bool get_isActive() const property;
+	float get_progress() const property;
+}
+class TweenSequence {
+	TweenSequence();
+	TweenSequence& Append(const TweenHandle&in tween);
+	TweenSequence& Join(const TweenHandle&in tween);
+	TweenSequence& AppendInterval(float seconds);
+	TweenSequence& AppendCallback(TweenCallback@ action);
+	TweenSequence& SetLoops(int count, TweenLoop type = TweenLoop::Restart);
+	TweenSequence& SetDelay(float seconds);
+	TweenSequence& SetLink(GameObject@ owner);
+	TweenSequence& SetUpdateType(TweenUpdate type);
+	TweenSequence& SetId(const string&in id);
+	TweenSequence& OnComplete(TweenCallback@ callback);
+	void Kill(bool complete = false);
+	TweenHandle get_handle() const property;
+}
+class UIText {
+	bool get_exists() const property;
+	string get_text() const property;
+	void set_text(const string&in) property;
+	float get_fontSize() const property;
+	void set_fontSize(float) property;
+	Vector2 get_anchoredPosition() const property;
+	void set_anchoredPosition(const Vector2&in) property;
+	Vector2 get_pivot() const property;
+	void set_pivot(const Vector2&in) property;
+	Vector4 get_color() const property;
+	void set_color(const Vector4&in) property;
+	int get_sortOrder() const property;
+	void set_sortOrder(int) property;
+	UIAnchor get_anchor() const property;
+	void set_anchor(UIAnchor) property;
+	float get_rotation() const property;
+	void set_rotation(float) property;
+	GameObject@ get_gameObject() const property;
+}
+class PlayParams {
+	PlayParams();
+	AudioBus bus;
+	bool loop;
+	float volume;
+	float pitch;
+	float fadeInTime;
+}
+class Sound {
+	void Stop();
+	void Pause();
+	void Resume();
+	float get_volume() const property;
+	void set_volume(float) property;
+	float get_pitch() const property;
+	void set_pitch(float) property;
+	void FadeTo(float targetVolume, float duration, bool stopAfterFade = false);
+	void FadeIn(float duration, float targetVolume = 1.0f);
+	void FadeOut(float duration, bool stopAfterFade = true);
+	bool get_isPlaying() const property;
+	bool get_isPaused() const property;
+	bool get_isValid() const property;
+}
+class CameraShakeParams {
+	CameraShakeParams();
+	Vector3 positionAmplitude;
+	Vector3 rotationAmplitude;
+	float fovAmplitude;
+	float frequency;
+	Vector3 frequencyScale;
+	float duration;
+	float attack;
+	EaseType decayEase;
+	Vector3 direction;
+	float directionality;
+	bool useWorldFalloff;
+	float innerRadius;
+	float outerRadius;
+	EaseType falloffEase;
+	ShakeWaveform waveform;
+	ShakeSpace space;
+	ShakeTimeMode timeMode;
+	uint seed;
 }
 string formatInt(int64 val, const string&in options = "", uint width = 0);
 string formatUInt(uint64 val, const string&in options = "", uint width = 0);
@@ -247,4 +421,43 @@ bool IsActionTriggered(InputAction);
 bool IsActionReleased(InputAction);
 float GetAxisValue(InputAction);
 bool IsGamepadConnected();
+}
+namespace Tween {
+TweenHandle To(float from, float to, float duration, TweenFloatSetter@ setter);
+TweenHandle To(const Vector2&in from, const Vector2&in to, float duration, TweenVector2Setter@ setter);
+TweenHandle To(const Vector3&in from, const Vector3&in to, float duration, TweenVector3Setter@ setter);
+TweenHandle To(const Vector4&in from, const Vector4&in to, float duration, TweenVector4Setter@ setter);
+TweenHandle Delay(float seconds, TweenCallback@ action);
+TweenHandle MoveTo(GameObject@ object, const Vector3&in to, float duration);
+TweenHandle ScaleTo(GameObject@ object, const Vector3&in to, float duration);
+TweenHandle RotateTo(GameObject@ object, const Vector3&in to, float duration);
+int KillById(const string&in id, bool complete = false);
+int KillByLink(GameObject@ owner, bool complete = false);
+TweenSequence Sequence();
+}
+namespace Audio {
+void PlayOneShot(const string&in path, const PlayParams&in params = PlayParams());
+Sound@ PlayScoped(const string&in path, const PlayParams&in params = PlayParams());
+}
+namespace CameraShake {
+uint Play(const CameraShakeParams&in params);
+uint Play(const CameraShakeParams&in params, const Vector3&in worldOrigin);
+uint PlayPreset(const string&in name, float scale = 1.0f);
+void Stop(uint handle, float fadeOutSeconds = 0.0f);
+void StopAll(float fadeOutSeconds = 0.0f);
+void AddTrauma(float amount);
+}
+namespace CameraShakePresets {
+CameraShakeParams Hit();
+CameraShakeParams HeavyHit();
+CameraShakeParams Explosion();
+CameraShakeParams Landing();
+CameraShakeParams Recoil();
+CameraShakeParams Earthquake();
+CameraShakeParams Handheld();
+CameraShakeParams Rumble();
+}
+namespace Scene {
+void ChangeScene(const string&in name);
+string GetCurrentName();
 }

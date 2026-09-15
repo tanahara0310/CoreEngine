@@ -46,6 +46,21 @@
     <ClCompile Include="Engine\Src\Script\Binding\ScriptInputBinding.cpp">
       <Filter>Engine\Src\Script\Binding</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\TweenBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\UIBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\AudioBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\CameraShakeBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\SceneBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Script\Metadata\MetadataParser.cpp">
       <Filter>Engine\Src\Script\Metadata</Filter>
     </ClCompile>
@@ -62,6 +77,9 @@
       <Filter>Engine\Src\Script</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Script\ScriptPredefined.cpp">
+      <Filter>Engine\Src\Script</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\ScriptCallback.cpp">
       <Filter>Engine\Src\Script</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Script\ScriptSubsystem.cpp">
@@ -1785,6 +1803,21 @@
     <ClInclude Include="Engine\Src\Script\Binding\ScriptInputBinding.h">
       <Filter>Engine\Src\Script\Binding</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\TweenBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\UIBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\AudioBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\CameraShakeBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\SceneBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Script\Metadata\MetadataParser.h">
       <Filter>Engine\Src\Script\Metadata</Filter>
     </ClInclude>
@@ -1801,6 +1834,9 @@
       <Filter>Engine\Src\Script</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Script\ScriptPredefined.h">
+      <Filter>Engine\Src\Script</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\ScriptCallback.h">
       <Filter>Engine\Src\Script</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Script\ScriptSubsystem.h">

@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Script/ScriptSubsystem.h"
 
+#include "Audio/AudioSystem.h"
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
 #include "Input/InputManager.h"
@@ -28,6 +29,8 @@ namespace CoreEngine
     {
         ScriptServices services;
         services.input = engine ? engine->GetService<InputManager>() : nullptr;
+        services.audio = engine ? engine->GetService<AudioSystem>() : nullptr;
+        services.engine = engine;
 
         auto host = std::make_unique<ScriptHost>();
         if (!host->Initialize(services)) {

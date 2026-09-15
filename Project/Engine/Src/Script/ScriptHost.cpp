@@ -1,11 +1,16 @@
 #include "pch.h"
 #include "Script/ScriptHost.h"
 
+#include "Script/Binding/AudioBinding.h"
+#include "Script/Binding/CameraShakeBinding.h"
 #include "Script/Binding/GameObjectBinding.h"
 #include "Script/Binding/LogBinding.h"
 #include "Script/Binding/MathBinding.h"
+#include "Script/Binding/SceneBinding.h"
 #include "Script/Binding/ScriptInputBinding.h"
 #include "Script/Binding/TimeBinding.h"
+#include "Script/Binding/TweenBinding.h"
+#include "Script/Binding/UIBinding.h"
 #include "Script/ScriptComponent.h"
 #include "Script/ScriptComponentType.h"
 #include "Script/ScriptDiagnostics.h"
@@ -35,6 +40,9 @@ namespace CoreEngine
 
         /// 1 回の呼び出しで実行してよい行数
         constexpr uint32_t kLineBudget = 200000;
+
+        /// エンジンのユーザーデータに実行環境を置くときの種類
+        constexpr asPWORD kHostUserDataType = 0x436F7245;
 
 #ifdef USE_IMGUI
         struct LineBudget
@@ -132,6 +140,9 @@ namespace CoreEngine
             return false;
         }
 
+        engine_->SetUserData(this, kHostUserDataType);
+        lifetimeToken_ = std::make_shared<int>(0);
+
         bool configured = engine_->SetMessageCallback(asFUNCTION(Script::OnCompilerMessage), nullptr, asCALL_CDECL) >= 0;
         configured = engine_->SetEngineProperty(asEP_COMPILER_WARNINGS, 2) >= 0 && configured;
         configured = engine_->SetContextCallbacks(&ScriptHost::RequestContext, &ScriptHost::ReturnContext, this) >= 0 && configured;
@@ -147,6 +158,17 @@ namespace CoreEngine
         configured = Script::RegisterInputBinding(engine_, services.input) && configured;
         if (!services.input) {
             logger.Logf(LogLevel::Warn, LogCategory::Script, "入力が見つからないので、スクリプトの Input は常に押されていないを返します");
+        }
+        configured = Script::RegisterTweenBinding(engine_) && configured;
+        configured = Script::RegisterUIBinding(engine_) && configured;
+        configured = Script::RegisterAudioBinding(engine_, services.audio) && configured;
+        if (!services.audio) {
+            logger.Logf(LogLevel::Warn, LogCategory::Script, "音が見つからないので、スクリプトの Audio は何も鳴らしません");
+        }
+        configured = Script::RegisterCameraShakeBinding(engine_) && configured;
+        configured = Script::RegisterSceneBinding(engine_, services.engine) && configured;
+        if (!services.engine) {
+            logger.Logf(LogLevel::Warn, LogCategory::Script, "エンジンが見つからないので、スクリプトの Scene はシーンを切り替えません");
         }
 
         stringTypeId_ = engine_->GetTypeIdByDecl("string");
@@ -263,6 +285,7 @@ namespace CoreEngine
             context->Release();
         }
         contextPool_.clear();
+        lifetimeToken_.reset();
         engine_->ShutDownAndRelease();
         engine_ = nullptr;
         stringTypeId_ = 0;
@@ -307,6 +330,34 @@ namespace CoreEngine
         if (result >= 0) {
             result = context->SetObject(object);
         }
+        return RunPrepared(context, result, describeCaller);
+    }
+
+    bool ScriptHost::CallFunction(asIScriptFunction* function, const std::function<int(asIScriptContext*)>& setArguments,
+                                  const std::function<std::string()>& describeCaller)
+    {
+        if (!engine_ || !function) {
+            return false;
+        }
+        asIScriptContext* const context = engine_->RequestContext();
+        if (!context) {
+            return false;
+        }
+
+        int result = context->Prepare(function);
+        if (result >= 0 && setArguments) {
+            result = setArguments(context);
+        }
+        return RunPrepared(context, result, describeCaller);
+    }
+
+    ScriptHost* ScriptHost::FromEngine(asIScriptEngine* engine)
+    {
+        return engine ? static_cast<ScriptHost*>(engine->GetUserData(kHostUserDataType)) : nullptr;
+    }
+
+    bool ScriptHost::RunPrepared(asIScriptContext* context, int result, const std::function<std::string()>& describeCaller)
+    {
 #ifdef USE_IMGUI
         LineBudget budget;
         if (result >= 0) {

@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Script/Binding/MathBinding.h"
 
+#include "Math/Easing/EasingUtil.h"
 #include "Math/MathCore.h"
 #include "Math/Vector/Vector2.h"
 #include "Math/Vector/Vector3.h"
@@ -243,6 +244,15 @@ namespace CoreEngine::Script
             r.Function("int Min(int, int)", asFUNCTION(MinInt));
             r.Function("int Max(int, int)", asFUNCTION(MaxInt));
         }
+
+        void RegisterEaseType(BindingRegistrar& r)
+        {
+            r.Enum("EaseType");
+            const int last = static_cast<int>(EasingUtil::Type::EaseInOutBounce);
+            for (int value = 0; value <= last; ++value) {
+                r.EnumValue("EaseType", EasingUtil::GetTypeName(static_cast<EasingUtil::Type>(value)), value);
+            }
+        }
     }
 
     bool RegisterMathBinding(asIScriptEngine* engine)
@@ -255,6 +265,7 @@ namespace CoreEngine::Script
         RegisterVector3(registrar);
         RegisterVector4(registrar);
         RegisterScalars(registrar);
+        RegisterEaseType(registrar);
         return registrar.Succeeded();
     }
 }
