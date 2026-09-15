@@ -249,6 +249,8 @@ class GameObject {
 	UIImage@ get_uiImage() property;
 	UIImage@ SpawnUIImage(const string&in texturePath, const string&in name) const;
 	Material@ get_material() property;
+	ModelRenderPool@ get_modelRenderPool() property;
+	TileWater@ get_tileWater() property;
 }
 class Transform {
 	bool get_exists() const property;
@@ -403,6 +405,25 @@ class Material {
 	bool get_exists() const property;
 	Vector4 get_color() const property;
 	void set_color(const Vector4&in) property;
+	GameObject@ get_gameObject() const property;
+}
+class ModelRenderPool {
+	bool get_exists() const property;
+	bool Draw(const Vector3&in position);
+	bool Draw(const Vector3&in position, const Vector3&in rotation, const Vector3&in scale);
+	bool Draw(const Vector3&in position, const Vector3&in rotation, const Vector3&in scale, const Vector4&in color);
+	uint get_capacity() const property;
+	uint get_activeCount() const property;
+	GameObject@ get_gameObject() const property;
+}
+class TileWater {
+	bool get_exists() const property;
+	void DrawSurface(float worldX, float worldZ);
+	void DrawFall(float worldX, float edgeZ, bool facingNegativeZ);
+	float get_tileSize() const property;
+	void set_tileSize(float) property;
+	float get_surfaceHeight() const property;
+	void set_surfaceHeight(float) property;
 	GameObject@ get_gameObject() const property;
 }
 class SaveFile {

@@ -25,7 +25,7 @@
 #include "StaminaGaugeFeature.h"
 #include "Utility/Logger/Logger.h"
 
-#include "Components/Utility/ModelRenderPoolComponent.h"
+#include "GameObject/Component/Render/ModelRenderPoolComponent.h"
 
 #include "Components/Building/MapGeneratorComponent.h"
 #include "Components/Building/MapViewComponent.h"
@@ -321,7 +321,7 @@ void GameScene::GameScene::OnInitialize() {
     // 床のオブジェクトプールを生成
     auto* groundPoolManager = CreateObject("GroundPoolManager");
     groundPoolManager->AddComponent<CoreEngine::TransformComponent>();
-    groundPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
+    groundPoolManager->AddComponent<CoreEngine::ModelRenderPoolComponent>(
         "ground.obj",
         ToUInt(GameComponents::GameSettings::GroundPoolCapacity.Get(), 1), false);
     // 床の下へ吊るす柱（スカート）のオブジェクトプールを生成。
@@ -329,62 +329,62 @@ void GameScene::GameScene::OnInitialize() {
     // プールは分ける。必要数は床と同じなので容量も同じ CVar から取る。
     auto* groundSkirtPoolManager = CreateObject("GroundSkirtPoolManager");
     groundSkirtPoolManager->AddComponent<CoreEngine::TransformComponent>();
-    groundSkirtPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
+    groundSkirtPoolManager->AddComponent<CoreEngine::ModelRenderPoolComponent>(
         "ground.obj",
         ToUInt(GameComponents::GameSettings::GroundPoolCapacity.Get(), 1), false);
     // 水場は WaterWaveViewComponent が板を並べて波打たせる（この下の方で生成する）。
     // 駅のオブジェクトプールを生成
     auto* stationPoolManager = CreateObject("StationPoolManager");
     stationPoolManager->AddComponent<CoreEngine::TransformComponent>();
-    stationPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
+    stationPoolManager->AddComponent<CoreEngine::ModelRenderPoolComponent>(
         "station.obj",
         ToUInt(GameComponents::GameSettings::StationPoolCapacity.Get(), 1), true);
     // 岩のオブジェクトプールを生成
     auto* rockPoolManager = CreateObject("RockPoolManager");
     rockPoolManager->AddComponent<CoreEngine::TransformComponent>();
-    rockPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
+    rockPoolManager->AddComponent<CoreEngine::ModelRenderPoolComponent>(
         "rock.obj",
         ToUInt(GameComponents::GameSettings::RockPoolCapacity.Get(), 1), true);
     // レールを敷けない空白マスへ立てる硬い岩のオブジェクトプールを生成
     auto* hardRockPoolManager = CreateObject("HardRockPoolManager");
     hardRockPoolManager->AddComponent<CoreEngine::TransformComponent>();
-    hardRockPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
+    hardRockPoolManager->AddComponent<CoreEngine::ModelRenderPoolComponent>(
         "hard_rock.obj",
         ToUInt(GameComponents::GameSettings::HardRockPoolCapacity.Get(), 1), true);
     // バナナの木のオブジェクトプールを生成（仮モデルとしてbox.objを使用）
     auto* bananaTreePoolManager = CreateObject("BananaTreePoolManager");
     bananaTreePoolManager->AddComponent<CoreEngine::TransformComponent>();
-    bananaTreePoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
+    bananaTreePoolManager->AddComponent<CoreEngine::ModelRenderPoolComponent>(
         "banana_tree.obj",
         ToUInt(GameComponents::GameSettings::BananaTreePoolCapacity.Get(), 1), true);
     // 地面の上に表示する装飾用の草のオブジェクトプールを生成
     auto* grassPoolManager = CreateObject("GrassPoolManager");
     grassPoolManager->AddComponent<CoreEngine::TransformComponent>();
-    grassPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
+    grassPoolManager->AddComponent<CoreEngine::ModelRenderPoolComponent>(
         "grass.obj",
         ToUInt(GameComponents::GameSettings::GrassPoolCapacity.Get(), 1), true);
     // 水上レールの下へ表示する橋のオブジェクトプールを生成
     auto* bridgePoolManager = CreateObject("BridgePoolManager");
     bridgePoolManager->AddComponent<CoreEngine::TransformComponent>();
-    bridgePoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
+    bridgePoolManager->AddComponent<CoreEngine::ModelRenderPoolComponent>(
         "bridge.obj",
         ToUInt(GameComponents::GameSettings::BridgePoolCapacity.Get(), 1), true);
     // レールのオブジェクトプールを生成
     auto* railPoolManager = CreateObject("RailPoolManager");
     railPoolManager->AddComponent<CoreEngine::TransformComponent>();
-    railPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
+    railPoolManager->AddComponent<CoreEngine::ModelRenderPoolComponent>(
         "rail.obj",
         ToUInt(GameComponents::GameSettings::RailPoolCapacity.Get(), 1), false);
     // レール左のオブジェクトプールを生成
     auto* railLeftPoolManager = CreateObject("RailLeftPoolManager");
     railLeftPoolManager->AddComponent<CoreEngine::TransformComponent>();
-    railLeftPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
+    railLeftPoolManager->AddComponent<CoreEngine::ModelRenderPoolComponent>(
         "rail_l.obj",
         ToUInt(GameComponents::GameSettings::RailLeftPoolCapacity.Get(), 1), false);
     // レール右のオブジェクトプールを生成
     auto* railRightPoolManager = CreateObject("RailRightPoolManager");
     railRightPoolManager->AddComponent<CoreEngine::TransformComponent>();
-    railRightPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
+    railRightPoolManager->AddComponent<CoreEngine::ModelRenderPoolComponent>(
         "rail_r.obj",
         ToUInt(GameComponents::GameSettings::RailRightPoolCapacity.Get(), 1), false);
 
@@ -514,10 +514,10 @@ void GameScene::GameScene::OnInitialize() {
     railView->AddComponent<GameComponents::RailViewComponent>(
         gridSize,
         railPath->GetComponent<GameComponents::RailPathComponent>(),
-        railPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
-        railLeftPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
-        railRightPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
-        bridgePoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
+        railPoolManager->GetComponent<CoreEngine::ModelRenderPoolComponent>(),
+        railLeftPoolManager->GetComponent<CoreEngine::ModelRenderPoolComponent>(),
+        railRightPoolManager->GetComponent<CoreEngine::ModelRenderPoolComponent>(),
+        bridgePoolManager->GetComponent<CoreEngine::ModelRenderPoolComponent>(),
         mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
         renderWorldDistance);
 
@@ -526,15 +526,15 @@ void GameScene::GameScene::OnInitialize() {
     mapRenderer->AddComponent<CoreEngine::TransformComponent>();
     auto* mapView = mapRenderer->AddComponent<GameComponents::MapViewComponent>(
         mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
-        groundPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
-        groundSkirtPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
+        groundPoolManager->GetComponent<CoreEngine::ModelRenderPoolComponent>(),
+        groundSkirtPoolManager->GetComponent<CoreEngine::ModelRenderPoolComponent>(),
         // 水は WaterWaveViewComponent が描くので、ここでは渡さない（二重描画になる）
         nullptr,
-        stationPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
-        rockPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
-        hardRockPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
-        bananaTreePoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
-        grassPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
+        stationPoolManager->GetComponent<CoreEngine::ModelRenderPoolComponent>(),
+        rockPoolManager->GetComponent<CoreEngine::ModelRenderPoolComponent>(),
+        hardRockPoolManager->GetComponent<CoreEngine::ModelRenderPoolComponent>(),
+        bananaTreePoolManager->GetComponent<CoreEngine::ModelRenderPoolComponent>(),
+        grassPoolManager->GetComponent<CoreEngine::ModelRenderPoolComponent>(),
         gridSize, renderWorldDistance);
 
     // 水マスを描画するオブジェクトを追加。

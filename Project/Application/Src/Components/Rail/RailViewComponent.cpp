@@ -8,7 +8,7 @@
 #include "Components/Building/MapGeneratorComponent.h"
 #include "Components/Utility/BlockModelLayout.h"
 #include "Components/Utility/GameCamera.h"
-#include "Components/Utility/ModelRenderPoolComponent.h"
+#include "GameObject/Component/Render/ModelRenderPoolComponent.h"
 #include "Audio/AudioSystem.h"
 #include "Camera/Camera.h"
 #include "Input/InputAction.h"
@@ -68,10 +68,10 @@ namespace
 GameComponents::RailViewComponent::RailViewComponent(
     float gridSize,
     RailPathComponent* railPath,
-    ModelRenderPoolComponent* railPool,
-    ModelRenderPoolComponent* railLeftPool,
-    ModelRenderPoolComponent* railRightPool,
-    ModelRenderPoolComponent* bridgePool,
+    CoreEngine::ModelRenderPoolComponent* railPool,
+    CoreEngine::ModelRenderPoolComponent* railLeftPool,
+    CoreEngine::ModelRenderPoolComponent* railRightPool,
+    CoreEngine::ModelRenderPoolComponent* bridgePool,
     MapGeneratorComponent* mapGenerator,
     uint32_t viewDistanceX)
     : railPath_(railPath),

@@ -15,13 +15,13 @@
 
 namespace CoreEngine {
     class GameObject;
+    class ModelRenderPoolComponent;
     class MsdfFont;
     class Text3DRendererComponent;
 }
 
 namespace GameComponents {
     class MapGeneratorComponent;
-    class ModelRenderPoolComponent;
 }
 
 namespace GameComponents
@@ -32,14 +32,14 @@ namespace GameComponents
     public:
         explicit MapViewComponent(
             MapGeneratorComponent* mapGenerator,
-            ModelRenderPoolComponent* groundRenderPool,
-            ModelRenderPoolComponent* groundSkirtRenderPool,
-            ModelRenderPoolComponent* waterRenderPool,
-            ModelRenderPoolComponent* stationRenderPool,
-            ModelRenderPoolComponent* rockRenderPool,
-            ModelRenderPoolComponent* hardRockRenderPool,
-            ModelRenderPoolComponent* bananaTreeRenderPool,
-            ModelRenderPoolComponent* grassRenderPool,
+            CoreEngine::ModelRenderPoolComponent* groundRenderPool,
+            CoreEngine::ModelRenderPoolComponent* groundSkirtRenderPool,
+            CoreEngine::ModelRenderPoolComponent* waterRenderPool,
+            CoreEngine::ModelRenderPoolComponent* stationRenderPool,
+            CoreEngine::ModelRenderPoolComponent* rockRenderPool,
+            CoreEngine::ModelRenderPoolComponent* hardRockRenderPool,
+            CoreEngine::ModelRenderPoolComponent* bananaTreeRenderPool,
+            CoreEngine::ModelRenderPoolComponent* grassRenderPool,
             float gridSize = 1.0f, uint32_t viewDistanceX = 30);
 
         // コンポーネントを識別する名前。必須
@@ -180,17 +180,17 @@ namespace GameComponents
         uint32_t viewDistanceX_ = 30;
 
         CoreEngine::ObjectRef<MapGeneratorComponent> mapGenerator_;
-        CoreEngine::ObjectRef<ModelRenderPoolComponent> groundRenderPool_;
+        CoreEngine::ObjectRef<CoreEngine::ModelRenderPoolComponent> groundRenderPool_;
         // 地面ブロックの下へ吊るす柱。地面と同じ ground.obj を使うが、1マスにつき
         // 地面とスカートの2つを出すのでプールは分ける
-        CoreEngine::ObjectRef<ModelRenderPoolComponent> groundSkirtRenderPool_;
-        CoreEngine::ObjectRef<ModelRenderPoolComponent> waterRenderPool_;
-        CoreEngine::ObjectRef<ModelRenderPoolComponent> stationRenderPool_;
-        CoreEngine::ObjectRef<ModelRenderPoolComponent> rockRenderPool_;
+        CoreEngine::ObjectRef<CoreEngine::ModelRenderPoolComponent> groundSkirtRenderPool_;
+        CoreEngine::ObjectRef<CoreEngine::ModelRenderPoolComponent> waterRenderPool_;
+        CoreEngine::ObjectRef<CoreEngine::ModelRenderPoolComponent> stationRenderPool_;
+        CoreEngine::ObjectRef<CoreEngine::ModelRenderPoolComponent> rockRenderPool_;
         // レールを敷けない空白マスへ立てる、壊せない岩
-        CoreEngine::ObjectRef<ModelRenderPoolComponent> hardRockRenderPool_;
-        CoreEngine::ObjectRef<ModelRenderPoolComponent> bananaTreeRenderPool_;
-        CoreEngine::ObjectRef<ModelRenderPoolComponent> grassRenderPool_;
+        CoreEngine::ObjectRef<CoreEngine::ModelRenderPoolComponent> hardRockRenderPool_;
+        CoreEngine::ObjectRef<CoreEngine::ModelRenderPoolComponent> bananaTreeRenderPool_;
+        CoreEngine::ObjectRef<CoreEngine::ModelRenderPoolComponent> grassRenderPool_;
 
         CoreEngine::MsdfFont* distanceMarkerFont_ = nullptr;
         std::vector<CoreEngine::Text3DRendererComponent*> distanceMarkers_;
@@ -249,7 +249,7 @@ namespace GameComponents
         // ■ 拍は駅とずらす
         //   同じ拍で動くと駅とサルが 1 つの塊に見える。跳ねは波の絶対値なので、
         //   屋根へ着地しては跳ね上がる弾みになる（下へは沈まない）。
-        ModelRenderPoolComponent* stationMonkeyRenderPool_ = nullptr;
+        CoreEngine::ModelRenderPoolComponent* stationMonkeyRenderPool_ = nullptr;
         CoreEngine::GameObject* stationMonkeyPoolObject_ = nullptr;
         // 列車に乗っているサルに対する大きさの比。屋根の面から食み出しすぎない値
         float stationMonkeyScale_ = 0.85f;

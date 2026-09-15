@@ -8,7 +8,7 @@
 #include "MapGeneratorComponent.h"
 #include "Components/Utility/BlockModelLayout.h"
 #include "Components/Utility/GameCamera.h"
-#include "Components/Utility/ModelRenderPoolComponent.h"
+#include "GameObject/Component/Render/ModelRenderPoolComponent.h"
 #include "Camera/Camera.h"
 #include "Input/InputAction.h"
 #include "Input/InputManager.h"
@@ -53,14 +53,14 @@ namespace {
 
 GameComponents::MapViewComponent::MapViewComponent(
     MapGeneratorComponent* mapGenerator,
-    ModelRenderPoolComponent* groundRenderPool,
-    ModelRenderPoolComponent* groundSkirtRenderPool,
-    ModelRenderPoolComponent* waterRenderPool,
-    ModelRenderPoolComponent* stationRenderPool,
-    ModelRenderPoolComponent* rockRenderPool,
-    ModelRenderPoolComponent* hardRockRenderPool,
-    ModelRenderPoolComponent* bananaTreeRenderPool,
-    ModelRenderPoolComponent* grassRenderPool,
+    CoreEngine::ModelRenderPoolComponent* groundRenderPool,
+    CoreEngine::ModelRenderPoolComponent* groundSkirtRenderPool,
+    CoreEngine::ModelRenderPoolComponent* waterRenderPool,
+    CoreEngine::ModelRenderPoolComponent* stationRenderPool,
+    CoreEngine::ModelRenderPoolComponent* rockRenderPool,
+    CoreEngine::ModelRenderPoolComponent* hardRockRenderPool,
+    CoreEngine::ModelRenderPoolComponent* bananaTreeRenderPool,
+    CoreEngine::ModelRenderPoolComponent* grassRenderPool,
     float gridSize, uint32_t viewDistanceX)
     : gridSize_(gridSize), viewDistanceX_(viewDistanceX),
       mapGenerator_(mapGenerator),
@@ -369,7 +369,7 @@ void GameComponents::MapViewComponent::ApplyBananaTreeSway(
 
     // 位相はマス座標から作る。全部が同位相で揺れると、木ではなく地面ごと揺れて見える。
     // プールの要素番号を種にするのは不可で、描画範囲が 1 マスずれた瞬間に担当要素が
-    // ずれて位相が飛ぶ（ModelRenderPoolComponent の entryByPosition_ と同じ罠）。
+    // ずれて位相が飛ぶ（CoreEngine::ModelRenderPoolComponent の entryByPosition_ と同じ罠）。
     // Hash::Cell01 は同じマスなら何フレーム後でも同じ値なので、担当が入れ替わっても
     // 揺れは途切れずに続く。
     const float cellPhase = Hash::Cell01(
@@ -521,7 +521,7 @@ float GameComponents::MapViewComponent::GetStationWave(
     std::size_t x, std::size_t z, float approach, float phaseOffset) const {
     // 位相はマス座標から作る。全部が同位相だと駅ではなく地面ごと脈打って見えるし、
     // プールの要素番号を種にすると描画範囲が1マスずれた瞬間に位相が飛ぶ
-    // （ModelRenderPoolComponent の entryByPosition_ と同じ罠）。
+    // （CoreEngine::ModelRenderPoolComponent の entryByPosition_ と同じ罠）。
     const float cellPhase = Hash::Cell01(
         static_cast<std::int32_t>(x), static_cast<std::int32_t>(z))
         * 2.0f * std::numbers::pi_v<float>;
@@ -666,7 +666,7 @@ void GameComponents::MapViewComponent::Start() {
             stationMonkeyPoolObject_->SetSerializeEnabled(false);
             stationMonkeyPoolObject_->AddComponent<TransformComponent>();
             stationMonkeyRenderPool_ =
-                stationMonkeyPoolObject_->AddComponent<ModelRenderPoolComponent>(
+                stationMonkeyPoolObject_->AddComponent<CoreEngine::ModelRenderPoolComponent>(
                     "monkey.obj", kStationMonkeyPoolCapacity, true);
         }
     }
