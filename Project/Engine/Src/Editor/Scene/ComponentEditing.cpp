@@ -26,7 +26,7 @@ namespace CoreEngine::ComponentEditing
     {
         constexpr const char* kAddButtonLabel = "＋ コンポーネント追加";
         constexpr const char* kAddPopupId = "##AddComponentPopup";
-        constexpr const char* kRemoveButtonLabel = "外す";
+        constexpr const char* kRemoveButtonLabel = "外す##RemoveComponent";
         constexpr float kDisplayNameWidth = 160.0f;
         constexpr float kFilterWidth = 280.0f;
 
