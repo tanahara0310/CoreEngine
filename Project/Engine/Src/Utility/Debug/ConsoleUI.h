@@ -130,8 +130,8 @@ namespace CoreEngine
 
         // タブカウントキャッシュ（毎フレーム全件走査の防止）
         bool tabCountsDirty_ = true;
-        size_t cachedTabCounts_[9] = {};
-        size_t cachedTabErrorCounts_[9] = {};
+        size_t cachedTabCounts_[10] = {};
+        size_t cachedTabErrorCounts_[10] = {};
         bool prevShowInfo_ = true;
         bool prevShowWarning_ = true;
         bool prevShowError_ = true;

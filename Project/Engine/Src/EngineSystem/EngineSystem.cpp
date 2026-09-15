@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "EngineSystem.h"
 #include "Subsystem/RayTracingSubsystem.h"
+#include "Script/ScriptSubsystem.h"
 #ifdef USE_IMGUI
 #include "Settings/EditorSettingsSubsystem.h"
 #endif
@@ -174,6 +175,7 @@ namespace CoreEngine
         // 初期化時点で全サブシステムが生成済みである前提のコードがある。
         sequence.Add("サブシステム生成", [this] {
             RegisterSubsystem<RayTracingSubsystem>();
+            RegisterSubsystem<ScriptSubsystem>();
 #ifdef USE_IMGUI
             // エディタ設定の自動保存（セクション登録元より先に生成しておく）
             RegisterSubsystem<EditorSettingsSubsystem>();
@@ -186,9 +188,9 @@ namespace CoreEngine
         // （実行中にステップを追加すると StartupSequence の内部 vector が
         //   再確保され、実行中エントリの参照が壊れるので絶対にやらない）
 #ifdef USE_IMGUI
-        constexpr size_t kSubsystemCount = 3;
+        constexpr size_t kSubsystemCount = 4;
 #else
-        constexpr size_t kSubsystemCount = 1;
+        constexpr size_t kSubsystemCount = 2;
 #endif
         for (size_t i = 0; i < kSubsystemCount; ++i) {
             sequence.Add(

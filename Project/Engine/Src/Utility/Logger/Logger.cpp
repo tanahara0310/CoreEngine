@@ -330,6 +330,7 @@ namespace CoreEngine
         case LogCategory::Game:      return "Game";
         case LogCategory::Resource:  return "Resource";
         case LogCategory::Shader:    return "Shader";
+        case LogCategory::Script:    return "Script";
         default:                     return "Unknown";
         }
     }
@@ -394,6 +395,7 @@ namespace CoreEngine
         case LogCategory::Game:
         case LogCategory::Audio:
         case LogCategory::Input:
+        case LogCategory::Script:
         default:
             return spdlog::level::info;
         }

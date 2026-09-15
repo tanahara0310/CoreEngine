@@ -27,6 +27,7 @@ namespace CoreEngine
         Game,       // ゲームロジック
         Resource,   // リソース管理
         Shader,     // シェーダー
+        Script,     // スクリプト
     };
 
     /// @brief サブカテゴリを表す型

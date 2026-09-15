@@ -92,10 +92,12 @@ namespace CoreEngine::Reflection
 
 /// @brief メンバ式から読み書きの口を組み立てる（他のマクロが使う）
 #define REFLECT_DETAIL_MEMBER_ACCESS(MemberExpr)                                       \
-            p.get = [](const void* o, void* out) {                                     \
+            p.get = [](const ::CoreEngine::Reflection::PropertyDescriptor&,            \
+                       const void* o, void* out) {                                     \
                 *static_cast<ValueType*>(out) = static_cast<const Self*>(o)->MemberExpr; \
             };                                                                         \
-            p.set = [](void* o, const void* in) {                                      \
+            p.set = [](const ::CoreEngine::Reflection::PropertyDescriptor&,            \
+                       void* o, const void* in) {                                      \
                 static_cast<Self*>(o)->MemberExpr = *static_cast<const ValueType*>(in); \
             };
 
@@ -130,10 +132,12 @@ namespace CoreEngine::Reflection
             p.name = NameLiteral;                                                      \
             p.displayName = DisplayNameLiteral;                                        \
             p.type = ::CoreEngine::Reflection::PropertyTypeOf<ValueType>::kValue;       \
-            p.get = [](const void* o, void* out) {                                     \
+            p.get = [](const ::CoreEngine::Reflection::PropertyDescriptor&,            \
+                       const void* o, void* out) {                                     \
                 *static_cast<ValueType*>(out) = static_cast<const Self*>(o)->GetterName(); \
             };                                                                         \
-            p.set = [](void* o, const void* in) {                                      \
+            p.set = [](const ::CoreEngine::Reflection::PropertyDescriptor&,            \
+                       void* o, const void* in) {                                      \
                 static_cast<Self*>(o)->SetterName(*static_cast<const ValueType*>(in)); \
             };                                                                         \
             __VA_ARGS__;                                                               \
@@ -165,10 +169,12 @@ namespace CoreEngine::Reflection
             p.name = NameLiteral;                                                      \
             p.displayName = DisplayNameLiteral;                                        \
             p.type = ::CoreEngine::Reflection::PropertyTypeOf<ValueType>::kValue;       \
-            p.get = [](const void* o, void* out) {                                     \
+            p.get = [](const ::CoreEngine::Reflection::PropertyDescriptor&,            \
+                       const void* o, void* out) {                                     \
                 *static_cast<ValueType*>(out) = static_cast<const Self*>(o)->GetterName(); \
             };                                                                         \
-            p.set = [](void*, const void*) {};                                         \
+            p.set = [](const ::CoreEngine::Reflection::PropertyDescriptor&,            \
+                       void*, const void*) {};                                         \
             p.flags = ::CoreEngine::Reflection::PropertyFlags::ReadOnly;                \
             d.properties.push_back(p);                                                 \
         }
@@ -253,11 +259,13 @@ namespace CoreEngine::Reflection
             p.name = ::CoreEngine::Reflection::DerivePropertyName(#MemberExpr);        \
             p.displayName = DisplayNameLiteral;                                        \
             p.type = ::CoreEngine::Reflection::PropertyType::ObjectRef;                \
-            p.get = [](const void* o, void* out) {                                     \
+            p.get = [](const ::CoreEngine::Reflection::PropertyDescriptor&,            \
+                       const void* o, void* out) {                                     \
                 *static_cast<::CoreEngine::Reflection::ObjectRefValue*>(out) =         \
                     static_cast<const Self*>(o)->MemberExpr.GetValue();                \
             };                                                                         \
-            p.set = [](void* o, const void* in) {                                      \
+            p.set = [](const ::CoreEngine::Reflection::PropertyDescriptor&,            \
+                       void* o, const void* in) {                                      \
                 Self* self = static_cast<Self*>(o);                                    \
                 self->MemberExpr.SetValue(                                             \
                     *static_cast<const ::CoreEngine::Reflection::ObjectRefValue*>(in), \
@@ -277,11 +285,13 @@ namespace CoreEngine::Reflection
             p.name = ::CoreEngine::Reflection::DerivePropertyName(#MemberExpr);        \
             p.displayName = DisplayNameLiteral;                                        \
             p.type = ::CoreEngine::Reflection::PropertyType::AssetRef;                 \
-            p.get = [](const void* o, void* out) {                                     \
+            p.get = [](const ::CoreEngine::Reflection::PropertyDescriptor&,            \
+                       const void* o, void* out) {                                     \
                 *static_cast<::CoreEngine::Reflection::AssetRefValue*>(out) =          \
                     static_cast<const Self*>(o)->MemberExpr.GetValue();                \
             };                                                                         \
-            p.set = [](void* o, const void* in) {                                      \
+            p.set = [](const ::CoreEngine::Reflection::PropertyDescriptor&,            \
+                       void* o, const void* in) {                                      \
                 static_cast<Self*>(o)->MemberExpr.SetValue(                            \
                     *static_cast<const ::CoreEngine::Reflection::AssetRefValue*>(in)); \
             };                                                                         \

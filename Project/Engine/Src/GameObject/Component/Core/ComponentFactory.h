@@ -3,6 +3,7 @@
 #include "IComponent.h"
 #include "Utility/Macro/UniqueName.h"
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <type_traits>
@@ -16,6 +17,9 @@ namespace CoreEngine
 class ComponentFactory {
 public:
     using Creator = std::unique_ptr<IComponent> (*)();
+
+    /// @brief 実行時に分かる型の生成関数
+    using RuntimeCreator = std::function<std::unique_ptr<IComponent>()>;
 
     /// @brief 試作した 1 個から読む型名と記述子
     struct Probe {
@@ -36,6 +40,20 @@ public:
     /// @brief 予約を型名へ解決する（エンジン起動時に 1 回だけ）
     /// @note 型名と記述子を読むために 1 個ずつ試作して即座に捨てる。二度目以降の呼び出しは何もしない。
     void Prime();
+
+    /// @brief 実行時に分かる型を登録する
+    /// @param typeName `IComponent::GetTypeName()` が返す綴り
+    /// @param creator 生成関数
+    /// @param descriptor 型の記述子（無ければ nullptr）
+    /// @param inspectorName インスペクタでの表示名
+    /// @return 同じ型名が登録済みなら、登録せずに false
+    /// @note スクリプトのクラスのように、起動してから分かる型が使う。
+    ///       `Prime()` の前に登録した型名が C++ の型と重なっていたら、`Prime()` が C++ の型に置き換える。
+    bool RegisterRuntime(const std::string& typeName, RuntimeCreator creator,
+        const Reflection::TypeDescriptor* descriptor, const std::string& inspectorName);
+
+    /// @brief `RegisterRuntime()` で登録した型をすべて外す
+    void UnregisterRuntimeTypes();
 
     /// @brief 型名からコンポーネントを生成する
     /// @return 未登録の型なら nullptr
@@ -76,8 +94,11 @@ private:
 
     /// @brief 型名を解決した 1 型
     struct Entry {
-        Creator creator = nullptr;
+        RuntimeCreator creator;
         const Reflection::TypeDescriptor* descriptor = nullptr;
+
+        /// `RegisterRuntime()` で登録した型か
+        bool runtime = false;
 #ifdef USE_IMGUI
         std::string inspectorName;
 #endif

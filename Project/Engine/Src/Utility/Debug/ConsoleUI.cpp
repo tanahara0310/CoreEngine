@@ -23,16 +23,16 @@ namespace CoreEngine
 
 // タブ定義（Draw・RebuildTabCounts・RebuildFilteredView で共有）
 static const char* const kTabNames[] = {
-    "All", "System", "Graphics", "Resource", "Shader", "Audio", "Game", "General", "Console"
+    "All", "System", "Graphics", "Resource", "Shader", "Audio", "Game", "Script", "General", "Console"
 };
 static const char* const kTabCategories[] = {
-    nullptr, "System", "Graphics", "Resource", "Shader", "Audio", "Game", "General", "Console"
+    nullptr, "System", "Graphics", "Resource", "Shader", "Audio", "Game", "Script", "General", "Console"
 };
 static const char* const kTabIds[] = {
     "###TabAll", "###TabSystem", "###TabGraphics", "###TabResource",
-    "###TabShader", "###TabAudio", "###TabGame", "###TabGeneral", "###TabConsole"
+    "###TabShader", "###TabAudio", "###TabGame", "###TabScript", "###TabGeneral", "###TabConsole"
 };
-static constexpr int kTabCount = 9;
+static constexpr int kTabCount = 10;
 
 void ConsoleUI::Initialize()
 {
@@ -509,6 +509,7 @@ ImVec4 ConsoleUI::GetCategoryColor(const std::string& category) const
     if (category == "Shader")    return ImVec4(1.0f, 1.0f, 0.6f, 1.0f);  // 黄
     if (category == "Audio")     return ImVec4(1.0f, 0.8f, 0.6f, 1.0f);  // オレンジ
     if (category == "Game")      return ImVec4(0.6f, 1.0f, 0.6f, 1.0f);  // 緑
+    if (category == "Script")    return ImVec4(1.0f, 0.7f, 0.9f, 1.0f);  // 桃
     if (category == "General")   return ImVec4(0.9f, 0.9f, 0.9f, 1.0f);  // 白
     if (category == "Console")   return ImVec4(0.7f, 0.7f, 0.7f, 1.0f);  // グレー
     return ImVec4(0.8f, 0.8f, 0.8f, 1.0f);
