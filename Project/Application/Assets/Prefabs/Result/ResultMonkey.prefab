@@ -1,0 +1,39 @@
+{
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "model": {
+                    "guid": "12cd3abd-aeb9-28fd-ffc0-fb95ae29611f",
+                    "path": "Application/Assets/Models/Result_monkey/result_monkey.obj"
+                }
+            },
+            "type": "MeshRenderer"
+        },
+        {
+            "enabled": true,
+            "type": "ResultMonkeyShake"
+        }
+    ]
+}

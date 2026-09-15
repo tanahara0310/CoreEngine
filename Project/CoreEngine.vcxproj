@@ -1121,22 +1121,17 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Components\Building\WaterWaveViewComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Camera\RockBreakShakeSettingsComponent.cpp" />
     <ClCompile Include="Application\Src\Components\GameCore\GameManagerComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\GameCore\GameRecordStore.cpp" />
     <ClCompile Include="Application\Src\Components\GameCore\GameSettingsComponent.cpp" />
     <ClCompile Include="Application\Src\Components\GameCore\HungerComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Rail\RailBuilderComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Rail\RailPathComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Rail\RailViewComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\Result\ResultButtonAnimationComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\Result\ResultMonkeyShakeComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\Result\ResultTipsComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Train\SpawnPopComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Train\TrainMovementComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\GameStartPromptAnimationComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\ObjectiveSignComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\OffscreenTrainIndicatorUIComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\PauseMenuUIComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\UI\ResultGaugeUIComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\SpeedGaugeUIComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\StaminaGaugeUIComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Utility\ModelRenderPoolComponent.cpp" />
@@ -1157,8 +1152,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Scenes\GameScene\SpeedGaugeFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\StageLightsFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\StaminaGaugeFeature.cpp" />
-    <ClCompile Include="Application\Src\Scenes\ResultScene\ResultScene.cpp" />
-    <ClCompile Include="Application\Src\Scenes\ResultScene\ResultSceneUi.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\TrolleyLoading\TrolleyLoading.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -1824,23 +1817,18 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Components\Building\WaterWaveViewComponent.h" />
     <ClInclude Include="Application\Src\Components\Camera\RockBreakShakeSettingsComponent.h" />
     <ClInclude Include="Application\Src\Components\GameCore\GameManagerComponent.h" />
-    <ClInclude Include="Application\Src\Components\GameCore\GameRecordStore.h" />
     <ClInclude Include="Application\Src\Components\GameCore\GameResultData.h" />
     <ClInclude Include="Application\Src\Components\GameCore\GameSettingsComponent.h" />
     <ClInclude Include="Application\Src\Components\GameCore\HungerComponent.h" />
     <ClInclude Include="Application\Src\Components\Rail\RailBuilderComponent.h" />
     <ClInclude Include="Application\Src\Components\Rail\RailPathComponent.h" />
     <ClInclude Include="Application\Src\Components\Rail\RailViewComponent.h" />
-    <ClInclude Include="Application\Src\Components\Result\ResultButtonAnimationComponent.h" />
-    <ClInclude Include="Application\Src\Components\Result\ResultMonkeyShakeComponent.h" />
-    <ClInclude Include="Application\Src\Components\Result\ResultTipsComponent.h" />
     <ClInclude Include="Application\Src\Components\Train\SpawnPopComponent.h" />
     <ClInclude Include="Application\Src\Components\Train\TrainMovementComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\GameStartPromptAnimationComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\ObjectiveSignComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\OffscreenTrainIndicatorUIComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\PauseMenuUIComponent.h" />
-    <ClInclude Include="Application\Src\Components\UI\ResultGaugeUIComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\SpeedGaugeUIComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\StaminaGaugeUIComponent.h" />
     <ClInclude Include="Application\Src\Components\Utility\BlockModelLayout.h" />
@@ -1864,8 +1852,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Scenes\GameScene\SpeedGaugeFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\StageLightsFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\StaminaGaugeFeature.h" />
-    <ClInclude Include="Application\Src\Scenes\ResultScene\ResultScene.h" />
-    <ClInclude Include="Application\Src\Scenes\ResultScene\ResultSceneUi.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ILoadingScreenEffect.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\TrolleyLoading\TrolleyLoading.h" />
     <ClInclude Include="Engine\Src\Utility\Random\Hash.h" />

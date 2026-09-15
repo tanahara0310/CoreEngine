@@ -10,7 +10,6 @@
 
 #include "Scenes/GameScene/GameScene.h"
 #include "Scenes/TestScene/TestScene.h"
-#include "Scenes/ResultScene/ResultScene.h"
 
 #include "Editor/Stage/StageEditorPanel.h"
 
@@ -78,7 +77,7 @@ void MyGame::CreateSceneManager()
     // 全シーンを登録（アプリ層で実装）
     sceneManager_->RegisterDataScene("TitleScene");
     sceneManager_->RegisterScene<GameScene::GameScene>("GameScene");
-    sceneManager_->RegisterScene<ResultScene::ResultScene>("ResultScene");
+    sceneManager_->RegisterDataScene("ResultScene");
     sceneManager_->RegisterScene<CoreEngine::TestScene>("TestScene");
 }
 

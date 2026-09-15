@@ -1,6 +1,6 @@
 // コンポーネントの基底クラス。これを継いだクラスが、クラス名を型名とするコンポーネントになる。
 //
-// 公開メンバ変数のうち bool / int / float / string / Vector2 / Vector3 / Vector4 がインスペクタに出て、シーンの JSON に保存される。
+// 公開メンバ変数のうち bool / int / float / string / Vector2 / Vector3 / Vector4 と、それを要素にした array<T> がインスペクタに出て、シーンの JSON に保存される。
 // private / protected のメンバ変数は出さず、保存もしない。
 //
 // メンバ変数に付ける属性（[A] [B] と並べても、[A, B] とまとめてもよい）
@@ -10,7 +10,7 @@
 //   [ReadOnly]                   インスペクタで編集させず、保存もしない
 //   [Hidden]                     インスペクタに出さない（保存はする）
 //   [Transient]                  保存しない（インスペクタには出す）
-//   [Color]                      Vector4 を色として編集する
+//   [Color]                      Vector4（array<Vector4> なら各要素）を色として編集する
 //
 // クラスに付ける属性
 //   [DisplayName("表示名")]       インスペクタのタブとコンポーネント追加の一覧での名前
