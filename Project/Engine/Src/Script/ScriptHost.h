@@ -15,8 +15,15 @@ class asIScriptObject;
 
 namespace CoreEngine
 {
+    class InputManager;
     class ScriptComponent;
     class ScriptComponentType;
+
+    /// @brief スクリプトの束縛が使うエンジンのサービス
+    struct ScriptServices
+    {
+        InputManager* input = nullptr;
+    };
 
     /// @brief AngelScript の実行環境（エンジン・モジュール・コンポーネントの型）
     /// @details スクリプトのフォルダの `.as` をすべて 1 つのモジュール `Game` にコンパイルする。
@@ -31,8 +38,9 @@ namespace CoreEngine
         ScriptHost& operator=(const ScriptHost&) = delete;
 
         /// @brief エンジンを作り、スクリプトから使える型と関数を登録する
+        /// @param services 束縛が使うエンジンのサービス
         /// @return 失敗したら false（ログに理由を出す）
-        bool Initialize();
+        bool Initialize(const ScriptServices& services);
 
         /// @brief スクリプトのフォルダの `.as` をコンパイルし、ScriptComponent を継いだクラスを型として集める
         /// @param root スクリプトのフォルダ（下のフォルダも読む。エディタの無いビルドは直下の `Editor` を読まない）
@@ -64,6 +72,14 @@ namespace CoreEngine
         /// @brief string 型の型 ID（エンジンを作る前は 0）
         int GetStringTypeId() const { return stringTypeId_; }
 
+        /// @brief Vector2 / Vector3 / Vector4 型の型 ID（エンジンを作る前は 0）
+        int GetVector2TypeId() const { return vector2TypeId_; }
+        int GetVector3TypeId() const { return vector3TypeId_; }
+        int GetVector4TypeId() const { return vector4TypeId_; }
+
+        /// @brief GameObject のハンドル（`GameObject@`）の型 ID（エンジンを作る前は 0）
+        int GetGameObjectHandleTypeId() const { return gameObjectHandleTypeId_; }
+
         /// @brief 型 ID の宣言の綴り（ログ用。引けなければ nullptr）
         const char* GetTypeDeclaration(int typeId) const;
 
@@ -83,6 +99,10 @@ namespace CoreEngine
         asIScriptEngine* engine_ = nullptr;
         asIScriptModule* module_ = nullptr;
         int stringTypeId_ = 0;
+        int vector2TypeId_ = 0;
+        int vector3TypeId_ = 0;
+        int vector4TypeId_ = 0;
+        int gameObjectHandleTypeId_ = 0;
         std::vector<std::unique_ptr<ScriptComponentType>> types_;
 
         /// 使い回すコンテキスト

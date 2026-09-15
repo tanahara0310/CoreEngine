@@ -1,7 +1,9 @@
 #include "pch.h"
 #include "Script/ScriptSubsystem.h"
 
+#include "EngineSystem/EngineSystem.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
+#include "Input/InputManager.h"
 #include "Script/ScriptComponent.h"
 #include "Script/ScriptComponentType.h"
 #include "Script/ScriptHost.h"
@@ -19,10 +21,13 @@ namespace CoreEngine
 
     ScriptSubsystem::~ScriptSubsystem() = default;
 
-    void ScriptSubsystem::Initialize(EngineSystem* /*engine*/, const EngineConfig& /*config*/)
+    void ScriptSubsystem::Initialize(EngineSystem* engine, const EngineConfig& /*config*/)
     {
+        ScriptServices services;
+        services.input = engine ? engine->GetService<InputManager>() : nullptr;
+
         auto host = std::make_unique<ScriptHost>();
-        if (!host->Initialize()) {
+        if (!host->Initialize(services)) {
             return;
         }
         host_ = std::move(host);

@@ -66,10 +66,15 @@ namespace CoreEngine
         /// @brief ライフサイクルの関数の名前（ログ用）
         static const char* GetMethodName(Method method);
 
+        /// @brief 基底クラスの `owner_`（持ち主のハンドル）のプロパティの添え字
+        /// @return 見つからなければ -1
+        int GetOwnerPropertyIndex() const { return ownerPropertyIndex_; }
+
     private:
         void ReadClassAttributes(CScriptBuilder& builder);
         void BuildProperties(asITypeInfo* base, CScriptBuilder& builder);
         void FindMethods(asITypeInfo* base);
+        void FindOwnerProperty();
 
         /// @brief 属性 1 つをプロパティへ当てる
         /// @return 当てられなければ false（`error` に理由）
@@ -85,6 +90,7 @@ namespace CoreEngine
         std::string displayName_;
         Reflection::TypeDescriptor descriptor_;
         std::array<asIScriptFunction*, static_cast<std::size_t>(Method::Count)> methods_{};
+        int ownerPropertyIndex_ = -1;
 
         /// 記述子の文字列の置き場（足しても要素のアドレスが変わらない入れ物）
         std::deque<std::string> texts_;

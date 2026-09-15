@@ -2,6 +2,7 @@
 #include "ComponentHost.h"
 
 #include "ComponentFactory.h"
+#include "MissingComponent.h"
 #include "Editor/Command/EditorCommandStack.h"
 #include "Reflection/PropertySerializer.h"
 #include "Reflection/TypeDescriptor.h"
@@ -255,6 +256,8 @@ namespace CoreEngine
             };
             if (descriptor) {
                 Reflection::PropertySerializer::WriteComponentVersion(entry, descriptor->version);
+            } else if (const auto* missing = dynamic_cast<const MissingComponent*>(component.get())) {
+                Reflection::PropertySerializer::WriteComponentVersion(entry, missing->GetSavedVersion());
             }
             if (!parameters.empty()) {
                 entry["parameters"] = std::move(parameters);
@@ -295,14 +298,19 @@ namespace CoreEngine
             if (!target) {
                 // 実体が足りない分はファクトリで作る。作った物は末尾に付くので、
                 // 同じ型の次の探索がそれを拾い直さないように位置を末尾へ送る。
-                target = AttachComponent(ComponentFactory::Get().Create(type), false);
+                std::unique_ptr<IComponent> component = ComponentFactory::Get().Create(type);
+                if (!component) {
+                    // 型が無くても保存データは捨てず、次に保存したときへ持ち越す
+                    Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System,
+                        "ComponentHost: 型 \"{}\" は実体にもファクトリにも無いので、保存データを持ったまま読み込めないコンポーネントとして置きます", type);
+                    component = std::make_unique<MissingComponent>(type);
+                }
+                target = AttachComponent(std::move(component), false);
                 searchIndex = components_.size();
                 created = target != nullptr;
             }
 
             if (!target) {
-                Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
-                    "ComponentHost: 型 \"{}\" は実体にもファクトリにも無いので読み飛ばします", type);
                 continue;
             }
 
@@ -313,6 +321,10 @@ namespace CoreEngine
             // 古い版で保存した値は、型の今の版の形へ書き換えてから流す
             const Reflection::TypeDescriptor* descriptor = target->GetTypeDescriptor();
             const uint32_t savedVersion = Reflection::PropertySerializer::ReadComponentVersion(entry);
+            // 型が見つからないものは、保存データの版を次の保存へ持ち越す
+            if (auto* missing = dynamic_cast<MissingComponent*>(target)) {
+                missing->SetSavedVersion(savedVersion);
+            }
             json upgraded;
             const json* source = &entry;
             if (descriptor && savedVersion != descriptor->version) {

@@ -187,6 +187,11 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Reflection\ReflectionToggle.cpp" />
     <ClCompile Include="Engine\Src\Reflection\TypeDescriptor.cpp" />
     <ClCompile Include="Engine\Src\Script\Binding\LogBinding.cpp" />
+    <ClCompile Include="Engine\Src\Script\Binding\BindingRegistrar.cpp" />
+    <ClCompile Include="Engine\Src\Script\Binding\MathBinding.cpp" />
+    <ClCompile Include="Engine\Src\Script\Binding\TimeBinding.cpp" />
+    <ClCompile Include="Engine\Src\Script\Binding\GameObjectBinding.cpp" />
+    <ClCompile Include="Engine\Src\Script\Binding\ScriptInputBinding.cpp" />
     <ClCompile Include="Engine\Src\Script\Metadata\MetadataParser.cpp" />
     <ClCompile Include="Engine\Src\Script\ScriptComponent.cpp" />
     <ClCompile Include="Engine\Src\Script\ScriptComponentType.cpp" />
@@ -421,6 +426,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Input\InputQuery.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Core\ComponentFactory.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Core\ComponentHost.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Component\Core\MissingComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Core\ObjectRef.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Render\MaterialComponent.cpp" />
     <ClCompile Include="Application\Src\Scenes\CollisionTestScene\ProbeComponent.cpp" />
@@ -1163,6 +1169,11 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Reflection\Reflect.h" />
     <ClInclude Include="Engine\Src\Reflection\TypeDescriptor.h" />
     <ClInclude Include="Engine\Src\Script\Binding\LogBinding.h" />
+    <ClInclude Include="Engine\Src\Script\Binding\BindingRegistrar.h" />
+    <ClInclude Include="Engine\Src\Script\Binding\MathBinding.h" />
+    <ClInclude Include="Engine\Src\Script\Binding\TimeBinding.h" />
+    <ClInclude Include="Engine\Src\Script\Binding\GameObjectBinding.h" />
+    <ClInclude Include="Engine\Src\Script\Binding\ScriptInputBinding.h" />
     <ClInclude Include="Engine\Src\Script\Metadata\MetadataParser.h" />
     <ClInclude Include="Engine\Src\Script\ScriptComponent.h" />
     <ClInclude Include="Engine\Src\Script\ScriptComponentType.h" />
@@ -1469,6 +1480,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Math\Vector\Vector4.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Core\ComponentFactory.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Core\ComponentHost.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\Core\MissingComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Core\ObjectRef.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Animation\AnimatorComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Transform\EulerTransformComponent.h" />

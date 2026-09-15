@@ -31,6 +31,21 @@
     <ClCompile Include="Engine\Src\Script\Binding\LogBinding.cpp">
       <Filter>Engine\Src\Script\Binding</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\BindingRegistrar.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\MathBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\TimeBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\GameObjectBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\ScriptInputBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Script\Metadata\MetadataParser.cpp">
       <Filter>Engine\Src\Script\Metadata</Filter>
     </ClCompile>
@@ -860,6 +875,9 @@
       <Filter>Engine\Src\GameObject\Component\Core</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\Component\Core\ComponentHost.cpp">
+      <Filter>Engine\Src\GameObject\Component\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\Core\MissingComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Core</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\Component\Core\ObjectRef.cpp">
@@ -1747,6 +1765,21 @@
       <Filter>Engine\Src\Reflection</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Script\Binding\LogBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\BindingRegistrar.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\MathBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\TimeBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\GameObjectBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\ScriptInputBinding.h">
       <Filter>Engine\Src\Script\Binding</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Script\Metadata\MetadataParser.h">
@@ -2797,6 +2830,9 @@
       <Filter>Engine\Src\GameObject\Component\Core</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Core\ComponentHost.h">
+      <Filter>Engine\Src\GameObject\Component\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\Core\MissingComponent.h">
       <Filter>Engine\Src\GameObject\Component\Core</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Core\ObjectRef.h">
