@@ -277,9 +277,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Scenes\CollisionTestScene\CollisionTestScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\CollisionTestScene\CollisionTestReport.cpp" />
     <ClCompile Include="Application\Src\Scenes\CollisionTestScene\GeometrySelfTest.cpp" />
-    <ClCompile Include="Application\Src\GameObjects\Effect\HitEffect.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterPlaneObject.cpp" />
-    <ClCompile Include="Application\Src\GameObjects\SkyBox\SkyBoxObject.cpp" />
     <ClCompile Include="Engine\Src\Camera\CameraManager.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraClipPlayerModule.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\CameraDebugUI.cpp" />
@@ -413,6 +411,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\BackBufferRenderTarget.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\OffscreenRenderTarget.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\RenderTargetManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxObject.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Sprite\SpriteRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\UI\UIRenderer.cpp" />
@@ -1128,7 +1127,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Components\Rail\RailViewComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Train\SpawnPopComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Train\TrainMovementComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\UI\GameStartPromptAnimationComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\ObjectiveSignComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\OffscreenTrainIndicatorUIComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\PauseMenuUIComponent.cpp" />
@@ -1197,14 +1195,12 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSceneController.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceDebugPanel.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceParameterPanel.h" />
-    <ClInclude Include="Application\Src\GameObjects\Effect\HitEffect.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Render\IRenderableComponent.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterConstantBufferSet.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterPlaneObject.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterRenderResources.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterShaderResourceBinder.h" />
-    <ClInclude Include="Application\Src\GameObjects\SkyBox\SkyBoxObject.h" />
     <ClInclude Include="Engine\Src\Camera\CameraManager.h" />
     <ClInclude Include="Engine\Src\Camera\CameraStructs.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraClipPlayerModule.h" />
@@ -1408,6 +1404,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\RenderTargetDescriptor.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\RenderTargetManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\RenderTargetNames.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxObject.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Sprite\SpriteMaterial.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Sprite\SpriteRenderer.h" />
@@ -1825,7 +1822,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Components\Rail\RailViewComponent.h" />
     <ClInclude Include="Application\Src\Components\Train\SpawnPopComponent.h" />
     <ClInclude Include="Application\Src\Components\Train\TrainMovementComponent.h" />
-    <ClInclude Include="Application\Src\Components\UI\GameStartPromptAnimationComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\ObjectiveSignComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\OffscreenTrainIndicatorUIComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\PauseMenuUIComponent.h" />

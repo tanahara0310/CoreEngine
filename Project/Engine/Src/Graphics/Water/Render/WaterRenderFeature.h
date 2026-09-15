@@ -9,10 +9,9 @@
 
 #include <memory>
 
-class SkyBoxObject;
-
 namespace CoreEngine
 {
+    class SkyBoxObject;
     class WaterPlaneObject;
     class RenderDomainContext;
 

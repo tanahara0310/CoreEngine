@@ -7,7 +7,7 @@
 #include "Camera/Camera.h"
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/GameObjectManager.h"
-#include "GameObjects/SkyBox/SkyBoxObject.h"
+#include "Graphics/Render/SkyBox/SkyBoxObject.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Material/MaterialInstance.h"

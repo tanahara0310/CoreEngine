@@ -3,7 +3,7 @@
 #include "EngineSystem/EngineSystem.h"
 #include "Camera/Camera.h"
 #include "GameObject/GameObjectManager.h"
-#include "GameObjects/SkyBox/SkyBoxObject.h"
+#include "Graphics/Render/SkyBox/SkyBoxObject.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Cloud/VolumetricCloudManager.h"
 #include "Graphics/Fog/FogManager.h"

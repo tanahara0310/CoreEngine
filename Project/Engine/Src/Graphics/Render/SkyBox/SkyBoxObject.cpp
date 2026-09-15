@@ -13,20 +13,20 @@
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Utility/Logger/Logger.h"
 
-using namespace CoreEngine;
-
+namespace CoreEngine
+{
 namespace {
 
-    CoreEngine::SkyBoxRenderer* sSkyBoxRenderer_ = nullptr;
+    SkyBoxRenderer* sSkyBoxRenderer_ = nullptr;
+
+    struct SkyBoxVertex {
+        Vector4 position;
+    };
 }
 
 void SkyBoxObject::SetSkyBoxRenderer(SkyBoxRenderer* renderer) {
     sSkyBoxRenderer_ = renderer;
 }
-
-struct SkyBoxVertex {
-    Vector4 position; // Vector3からVector4に変更
-};
 
 void SkyBoxObject::Initialize() {
 
@@ -174,7 +174,7 @@ void SkyBoxObject::CreateTransformBuffer() {
     }
 }
 
-void SkyBoxObject::Draw(const CoreEngine::Camera* camera) {
+void SkyBoxObject::Draw(const Camera* camera) {
     if (!camera) return;
     auto engine = GetEngineSystem();
     auto* dxCommon = engine->GetService<GraphicsCore>();
@@ -290,4 +290,4 @@ bool SkyBoxObject::DrawTransformSection() {
 }
 
 #endif
-
+}

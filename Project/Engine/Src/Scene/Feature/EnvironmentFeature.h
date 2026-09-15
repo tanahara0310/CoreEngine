@@ -2,11 +2,10 @@
 
 #include "ISceneFeature.h"
 
-// 前方宣言
-class SkyBoxObject;
-
 namespace CoreEngine
 {
+    class SkyBoxObject;
+
     /// @brief 既定の環境（空・大気散乱・雲）を管理する Feature
     /// @details PostSceneInitialize で SkyBox を採用（未生成なら自動生成）し、
     ///          PostLogic で大気散乱 → 雲の順に毎フレーム反映する。
