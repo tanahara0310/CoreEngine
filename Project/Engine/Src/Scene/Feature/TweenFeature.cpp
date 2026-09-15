@@ -6,11 +6,11 @@ namespace CoreEngine
 {
     void TweenFeature::Update(SceneContext&, SceneUpdatePhase phase)
     {
-        if (phase != SceneUpdatePhase::PreObjectUpdate) {
-            return;
+        if (phase == SceneUpdatePhase::PreObjectUpdate) {
+            TweenManager::GetInstance().Update();
+        } else if (phase == SceneUpdatePhase::BetweenObjectUpdates) {
+            TweenManager::GetInstance().AdvanceAddedAfterUpdate();
         }
-
-        TweenManager::GetInstance().Update();
     }
 
     void TweenFeature::PostSceneFinalize(SceneContext&)

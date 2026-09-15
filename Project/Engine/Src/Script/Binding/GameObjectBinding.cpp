@@ -233,12 +233,8 @@ namespace CoreEngine::Script
         if (!manager) {
             return nullptr;
         }
-        for (const auto& candidate : manager->GetAllObjects()) {
-            if (candidate && !candidate->IsMarkedForDestroy() && candidate->GetName() == name) {
-                return CreateForObject(candidate.get());
-            }
-        }
-        return nullptr;
+        const GameObject* const found = manager->FindObjectByName(name);
+        return found ? CreateForObject(found) : nullptr;
     }
 
     ScriptGameObject* ScriptGameObject::InstantiatePrefab(const std::string& prefabPath, const std::string& name) const

@@ -11,11 +11,12 @@ namespace CoreEngine
     /// @note PreObjectUpdate の最後（kLateFeaturePriority）で回すこと。
     ///       GameObject の更新より前に進めることで、コンポーネントが同じフレームで
     ///       トゥイーン後の値を読める（追従処理が 1 フレーム遅れない）。
+    ///       BetweenObjectUpdates では、GameObject の Update の中で始めたトゥイーンを同じフレームの分だけ進める。
     class TweenFeature : public ISceneFeature {
     public:
         const char* GetName() const override { return "Tween"; }
 
-        /// @brief PreObjectUpdate でトゥイーンを 1 フレーム分進める
+        /// @brief PreObjectUpdate でトゥイーンを 1 フレーム分進め、BetweenObjectUpdates で Update の中で始めた分を進める
         void Update(SceneContext& ctx, SceneUpdatePhase phase) override;
 
         /// @brief 再生途中のトゥイーンを畳む（GameObject の破棄後）

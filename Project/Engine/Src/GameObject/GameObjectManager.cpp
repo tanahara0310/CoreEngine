@@ -95,6 +95,22 @@ namespace CoreEngine
         return it != objectsById_.end() ? it->second : nullptr;
     }
 
+    GameObject* GameObjectManager::FindObjectByName(const std::string& name) const
+    {
+        for (const auto& obj : objects_) {
+            if (obj && !obj->IsMarkedForDestroy() && obj->GetName() == name) {
+                return obj.get();
+            }
+        }
+        // UpdateAll() の途中で作られ、まだ objects_ へ移していないもの
+        for (const auto& obj : pendingAdd_) {
+            if (obj && !obj->IsMarkedForDestroy() && obj->GetName() == name) {
+                return obj.get();
+            }
+        }
+        return nullptr;
+    }
+
     bool GameObjectManager::AssignObjectId(GameObject& object, ObjectId id)
     {
         if (!id.IsValid()) {
@@ -118,12 +134,14 @@ namespace CoreEngine
         return true;
     }
 
-    void GameObjectManager::UpdateAll() {
+    void GameObjectManager::UpdateAll(const std::function<void()>& afterUpdatePass) {
         isUpdating_ = true;
         // アクティブかつ削除マークが無く、自動更新が有効なオブジェクトのみ更新する。
         // 呼び出し順は [パス1] Start → コンポーネント Update → GameObject::Update を全員分、
-        // [パス2] LateUpdate を全員分。別パスにすることで、他オブジェクトを参照する処理
-        // （ジョイント追従など）が生成順に依存しなくなる。
+        // afterUpdatePass とワールド行列の転送、[パス2] LateUpdate を全員分。別パスにすることで、
+        // 他オブジェクトを参照する処理（ジョイント追従など）が生成順に依存しなくなる。
+        // 転送はパス1 で書き換えた座標をこのフレームの描画と当たり判定に出すためのもので、
+        // パス2 より前に置くので、LateUpdate でワールド行列を上書きする処理（ソケット追従など）は残る
         for (auto& obj : objects_) {
             if (obj && obj->IsActive() && !obj->IsMarkedForDestroy()) {
                 obj->DispatchComponentStart();
@@ -131,6 +149,10 @@ namespace CoreEngine
                 obj->Update();
             }
         }
+        if (afterUpdatePass) {
+            afterUpdatePass();
+        }
+        SyncTransforms();
         for (auto& obj : objects_) {
             if (obj && obj->IsActive() && !obj->IsMarkedForDestroy()) {
                 obj->DispatchComponentLateUpdate();
@@ -152,6 +174,10 @@ namespace CoreEngine
 
     void GameObjectManager::FlushPendingAdds() {
         for (auto& obj : pendingAdd_) {
+            // 作った直後に書いた座標を、次の TransformComponent::Update を待たずに描画へ出す
+            if (TransformComponent* const transform = obj ? obj->GetComponent<TransformComponent>() : nullptr) {
+                transform->Get().TransferMatrix();
+            }
             objects_.push_back(std::move(obj));
         }
         pendingAdd_.clear();

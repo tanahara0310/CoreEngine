@@ -136,8 +136,8 @@ namespace CoreEngine
         DispatchUpdate(SceneUpdatePhase::PreObjectUpdate, stopped);
 
         if (advance) {
-            // ゲームオブジェクトの更新
-            gameObjectManager_.UpdateAll();
+            // ゲームオブジェクトの更新（Update の後・LateUpdate の前に BetweenObjectUpdates の Feature を回す）
+            gameObjectManager_.UpdateAll([this] { DispatchUpdate(SceneUpdatePhase::BetweenObjectUpdates, false); });
         } else {
             // 停止中はワールド行列の転送だけを残す。
             // インスペクタやギズモで動かした結果を画面へ出すために要る
