@@ -179,7 +179,7 @@ namespace CoreEngine
 
                         const GameObject* target = mgr.FindObject(ref->objectId);
                         if (target &&
-                            FindReferencedComponent(*target, p.acceptsComponent, ref->componentType)) {
+                            FindReferencedComponent(*target, p, ref->componentType)) {
                             continue;
                         }
 

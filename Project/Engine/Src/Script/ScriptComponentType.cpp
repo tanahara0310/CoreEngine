@@ -96,6 +96,34 @@ namespace CoreEngine
             }
             return std::nullopt;
         }
+
+        /// @brief 属性の並びに、指定した名前の属性があるか（読めない並びは飛ばす。理由は属性を当てるときに出す）
+        bool HasAttribute(const std::vector<std::string>& metadata, const char* name)
+        {
+            std::vector<Script::MetadataAttribute> attributes;
+            std::string error;
+            for (const std::string& block : metadata) {
+                if (!Script::ParseMetadata(block, attributes, error)) {
+                    continue;
+                }
+                for (const Script::MetadataAttribute& attribute : attributes) {
+                    if (attribute.name == name) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        /// @brief ハンドルの型 ID が ScriptComponent を継いだスクリプトのクラスを指すなら、そのクラスの型を返す
+        const asITypeInfo* FindComponentClass(asIScriptEngine* engine, int typeId, const asITypeInfo* base)
+        {
+            if (!engine || !base || (typeId & asTYPEID_OBJHANDLE) == 0 || (typeId & asTYPEID_SCRIPTOBJECT) == 0) {
+                return nullptr;
+            }
+            const asITypeInfo* const type = engine->GetTypeInfoById(typeId);
+            return (type && type != base && type->DerivesFrom(base)) ? type : nullptr;
+        }
     }
 
     ScriptComponentType::ScriptComponentType(ScriptHost& host, asITypeInfo* type, asITypeInfo* base, CScriptBuilder& builder)
@@ -179,6 +207,9 @@ namespace CoreEngine
                 continue;
             }
 
+            const std::vector<std::string> metadata =
+                builder.GetMetadataForTypeProperty(typeInfo_->GetTypeId(), static_cast<int>(i));
+
             std::optional<Reflection::PropertyType> propertyType = ToPropertyType(host_, typeId);
             std::optional<Reflection::PropertyType> elementType;
             if (!propertyType) {
@@ -186,6 +217,16 @@ namespace CoreEngine
                 elementType = elementTypeId >= 0 ? ToPropertyType(host_, elementTypeId) : std::nullopt;
                 if (elementType) {
                     propertyType = Reflection::PropertyType::Array;
+                }
+            }
+            // [ObjectRef] を付けた GameObject@ と、ScriptComponent を継いだクラスのハンドルは、別オブジェクトへの参照にする
+            const char* referenceTypeName = nullptr;
+            if (!propertyType && HasAttribute(metadata, "ObjectRef")) {
+                if (typeId == host_.GetGameObjectHandleTypeId()) {
+                    propertyType = Reflection::PropertyType::ObjectRef;
+                } else if (const asITypeInfo* const referenced = FindComponentClass(typeInfo_->GetEngine(), typeId, base)) {
+                    propertyType = Reflection::PropertyType::ObjectRef;
+                    referenceTypeName = StoreText(referenced->GetName());
                 }
             }
             if (!propertyType) {
@@ -205,8 +246,9 @@ namespace CoreEngine
             property.get = &ReadScriptProperty;
             property.set = &WriteScriptProperty;
             property.index = i;
+            property.acceptsComponentType = referenceTypeName;
 
-            for (const std::string& block : builder.GetMetadataForTypeProperty(typeInfo_->GetTypeId(), static_cast<int>(i))) {
+            for (const std::string& block : metadata) {
                 if (!Script::ParseMetadata(block, attributes, error)) {
                     WarnScript(name_ + "." + name + ": 属性を読めません（" + error + "）: [" + block + "]");
                     continue;
@@ -319,6 +361,18 @@ namespace CoreEngine
                 return false;
             }
             property.type = Reflection::PropertyType::Color;
+            return true;
+        }
+
+        if (attribute.name == "ObjectRef") {
+            if (!arguments.empty()) {
+                error = "属性「ObjectRef」は引数を取りません";
+                return false;
+            }
+            if (property.type != Reflection::PropertyType::ObjectRef) {
+                error = "属性「ObjectRef」は GameObject@ か、ScriptComponent を継いだクラスのハンドルのメンバ変数にだけ付けられます";
+                return false;
+            }
             return true;
         }
 

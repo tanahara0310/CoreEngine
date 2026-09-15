@@ -267,9 +267,9 @@ namespace CoreEngine
         /// @brief ObjectRef の値を、指定したオブジェクトの指せるコンポーネントへ向け直す
         /// @return 繋ぎ先が変わったら true
         bool Retarget(Reflection::ObjectRefValue& ref, const GameObject& object,
-                      Reflection::PropertyDescriptor::ComponentFilter accepts)
+                      const Reflection::PropertyDescriptor& p)
         {
-            const IComponent* component = FindReferencedComponent(object, accepts, {});
+            const IComponent* component = FindReferencedComponent(object, p, {});
             if (!component) {
                 return false;
             }
@@ -290,7 +290,7 @@ namespace CoreEngine
             const GameObject* target =
                 (objects && ref.objectId.IsValid()) ? objects->FindObject(ref.objectId) : nullptr;
             const bool missing = ref.objectId.IsValid() &&
-                (!target || !FindReferencedComponent(*target, p.acceptsComponent, ref.componentType));
+                (!target || !FindReferencedComponent(*target, p, ref.componentType));
 
             std::string preview = "（なし）";
             if (missing) {
@@ -317,7 +317,7 @@ namespace CoreEngine
                         if (objects && payload->DataSize == sizeof(droppedId)) {
                             std::memcpy(&droppedId, payload->Data, sizeof(droppedId));
                             if (const GameObject* dropped = objects->FindObject(ObjectId{ droppedId })) {
-                                edited = Retarget(ref, *dropped, p.acceptsComponent);
+                                edited = Retarget(ref, *dropped, p);
                             }
                         }
                     }
@@ -337,14 +337,14 @@ namespace CoreEngine
             if (objects) {
                 for (const auto& object : objects->GetAllObjects()) {
                     if (!object || object->IsMarkedForDestroy() ||
-                        !FindReferencedComponent(*object, p.acceptsComponent, {})) {
+                        !FindReferencedComponent(*object, p, {})) {
                         continue;
                     }
 
                     const bool selected = object->GetObjectId() == ref.objectId;
                     ImGui::PushID(object.get());
                     if (ImGui::Selectable(object->GetDisplayName(), selected)) {
-                        edited = Retarget(ref, *object, p.acceptsComponent) || edited;
+                        edited = Retarget(ref, *object, p) || edited;
                     }
                     if (selected) {
                         ImGui::SetItemDefaultFocus();

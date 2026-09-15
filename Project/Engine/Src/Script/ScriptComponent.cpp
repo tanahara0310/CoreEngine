@@ -1,7 +1,9 @@
 #include "pch.h"
 #include "Script/ScriptComponent.h"
 
+#include "GameObject/Component/Core/ObjectRef.h"
 #include "GameObject/GameObject.h"
+#include "GameObject/GameObjectManager.h"
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Graphics/Asset/AssetRef.h"
 #include "Reflection/PropertyValue.h"
@@ -148,6 +150,12 @@ namespace CoreEngine
                 *static_cast<Reflection::ArrayValue*>(out));
             return;
         }
+        if (property.type == Reflection::PropertyType::ObjectRef) {
+            const auto it = objectRefs_.find(property.index);
+            *static_cast<Reflection::ObjectRefValue*>(out) =
+                it != objectRefs_.end() ? it->second.value : Reflection::ObjectRefValue{};
+            return;
+        }
         if (property.type == Reflection::PropertyType::AssetRef) {
             ReadAssetRef(property, *static_cast<const std::string*>(address),
                 *static_cast<Reflection::AssetRefValue*>(out));
@@ -169,6 +177,13 @@ namespace CoreEngine
         if (property.type == Reflection::PropertyType::Array) {
             WriteArray(property.elementType, *static_cast<const Reflection::ArrayValue*>(in),
                 *static_cast<CScriptArray*>(address));
+            return;
+        }
+        if (property.type == Reflection::PropertyType::ObjectRef) {
+            ObjectRefSlot& slot = objectRefs_[property.index];
+            slot.property = &property;
+            slot.value = *static_cast<const Reflection::ObjectRefValue*>(in);
+            ApplyObjectRef(property.index);
             return;
         }
         if (property.type == Reflection::PropertyType::AssetRef) {
@@ -204,6 +219,68 @@ namespace CoreEngine
         }
         path = resolved.path;
         assetRefs_[property.index] = std::move(resolved);
+    }
+
+    void ScriptComponent::ApplyObjectRefs()
+    {
+        const GameObject* const owner = GetOwner();
+        const GameObjectManager* const manager = owner ? owner->GetObjectManager() : nullptr;
+        if (!manager) {
+            return;
+        }
+        const std::uint64_t epoch = manager->GetReferenceEpoch();
+        for (auto& [index, slot] : objectRefs_) {
+            if (slot.appliedEpoch != epoch) {
+                ApplyObjectRef(index);
+            }
+        }
+    }
+
+    void ScriptComponent::ApplyObjectRef(std::uint32_t index)
+    {
+        const auto it = objectRefs_.find(index);
+        const GameObject* const owner = GetOwner();
+        const GameObjectManager* const manager = owner ? owner->GetObjectManager() : nullptr;
+        if (it == objectRefs_.end() || !object_ || !host_ || !manager) {
+            return;
+        }
+        ObjectRefSlot& slot = it->second;
+
+        // 繋ぎ先が消えた・見つからないときは null を入れる
+        void* handle = nullptr;
+        const GameObject* const target =
+            slot.value.objectId.IsValid() ? manager->FindObject(slot.value.objectId) : nullptr;
+        if (target && !target->IsMarkedForDestroy() && slot.property) {
+            if (object_->GetPropertyTypeId(index) == host_->GetGameObjectHandleTypeId()) {
+                handle = Script::ScriptGameObject::CreateForObject(target);
+            } else if (auto* const component = dynamic_cast<ScriptComponent*>(
+                           FindReferencedComponent(*target, *slot.property, slot.value.componentType))) {
+                if (component->object_) {
+                    component->object_->AddRef();
+                    handle = component->object_;
+                }
+            }
+        }
+        StoreHandle(index, handle);
+        slot.appliedEpoch = manager->GetReferenceEpoch();
+    }
+
+    void ScriptComponent::StoreHandle(std::uint32_t index, void* handle)
+    {
+        asIScriptEngine* const engine = object_->GetEngine();
+        asITypeInfo* const type = engine->GetTypeInfoById(object_->GetPropertyTypeId(index));
+        auto** const slot = static_cast<void**>(object_->GetAddressOfProperty(index));
+        if (!slot || !type) {
+            // 入れる先が無いときは、引き取った参照をそのまま手放す
+            if (handle && type) {
+                engine->ReleaseScriptObject(handle, type);
+            }
+            return;
+        }
+        if (*slot) {
+            engine->ReleaseScriptObject(*slot, type);
+        }
+        *slot = handle;
     }
 
     void ScriptComponent::BindOwnerHandle()
@@ -258,6 +335,9 @@ namespace CoreEngine
     {
         if (!type_ || !host_ || !object_) {
             return;
+        }
+        if (!objectRefs_.empty()) {
+            ApplyObjectRefs();
         }
         asIScriptFunction* const function = type_->GetMethod(method);
         if (!function) {
