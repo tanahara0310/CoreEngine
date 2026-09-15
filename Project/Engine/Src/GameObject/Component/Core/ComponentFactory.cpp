@@ -33,26 +33,59 @@ namespace CoreEngine
                 continue;
             }
 
-            Entry entry{ reservation.creator, probe.descriptor };
+            Entry entry;
+            entry.creator = reservation.creator;
+            entry.descriptor = probe.descriptor;
 #ifdef USE_IMGUI
             entry.inspectorName = std::move(probe.inspectorName);
 #endif
-            auto [it, inserted] = entries_.try_emplace(std::move(probe.typeName), entry);
-            if (!inserted) {
-                Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
-                    "ComponentFactory: 型名 \"{}\" が重複しています。先に登録した方を使います",
-                    it->first);
+            auto [it, inserted] = entries_.try_emplace(std::move(probe.typeName), std::move(entry));
+            if (inserted) {
+                continue;
             }
+            if (it->second.runtime) {
+                Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System,
+                    "ComponentFactory: 型名 \"{}\" が実行時に登録した型と重なっています。C++ の型を使います",
+                    it->first);
+                it->second = std::move(entry);
+                continue;
+            }
+            Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
+                "ComponentFactory: 型名 \"{}\" が重複しています。先に登録した方を使います",
+                it->first);
         }
         reservations_.clear();
         reservations_.shrink_to_fit();
+    }
+
+    bool ComponentFactory::RegisterRuntime(const std::string& typeName, RuntimeCreator creator,
+        const Reflection::TypeDescriptor* descriptor, const std::string& inspectorName)
+    {
+        if (typeName.empty() || !creator || entries_.contains(typeName)) { return false; }
+
+        Entry entry;
+        entry.creator = std::move(creator);
+        entry.descriptor = descriptor;
+        entry.runtime = true;
+#ifdef USE_IMGUI
+        entry.inspectorName = inspectorName;
+#else
+        (void)inspectorName;
+#endif
+        entries_.emplace(typeName, std::move(entry));
+        return true;
+    }
+
+    void ComponentFactory::UnregisterRuntimeTypes()
+    {
+        std::erase_if(entries_, [](const auto& item) { return item.second.runtime; });
     }
 
     std::unique_ptr<IComponent> ComponentFactory::Create(const std::string& typeName) const
     {
         const auto it = entries_.find(typeName);
         if (it == entries_.end()) { return nullptr; }
-        return it->second.creator();
+        return it->second.creator ? it->second.creator() : nullptr;
     }
 
     const Reflection::TypeDescriptor* ComponentFactory::FindDescriptor(const std::string& typeName) const
