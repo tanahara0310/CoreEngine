@@ -220,8 +220,9 @@ namespace CoreEngine
             }
 
             bool edited = false;
-            size_t removeAt = elements.size();
-            size_t swapAt = elements.size();
+            const size_t count = elements.size();
+            size_t removeAt = count;
+            size_t swapAt = count;
             for (size_t i = 0; i < elements.size(); ++i) {
                 ImGui::PushID(static_cast<int>(i));
                 if (ImGui::SmallButton("削除")) {
@@ -254,10 +255,10 @@ namespace CoreEngine
             }
             ImGui::TreePop();
 
-            if (removeAt < elements.size()) {
+            if (removeAt < count) {
                 elements.erase(elements.begin() + static_cast<std::ptrdiff_t>(removeAt));
                 structureChanged = true;
-            } else if (swapAt + 1 < elements.size()) {
+            } else if (swapAt + 1 < count) {
                 std::swap(elements[swapAt], elements[swapAt + 1]);
                 structureChanged = true;
             }
@@ -644,15 +645,17 @@ namespace CoreEngine
                 continue;
             }
 
-            // ドラッグ開始時の値を控え、離した瞬間に 1 件だけ履歴へ積む。
+            // 描く前の値を控え、掴んだフレームでそれを編集前の値として持ち、離した瞬間に 1 件だけ履歴へ積む。
             // ImGui のアクティブ項目は同時に 1 つなので控えも 1 つでよい
             static Reflection::PropertyValue editSnapshot;
+            Reflection::PropertyValue before;
+            before.CopyFrom(p.type, value);
 
             ImGui::PushID(p.name.c_str());
             const bool edited = DrawWidget(p, value, ownContextMenu);
             const bool hovered = ImGui::IsItemHovered();
             if (ImGui::IsItemActivated()) {
-                editSnapshot.CopyFrom(p.type, value);
+                editSnapshot = std::move(before);
             }
             if (edited) {
                 current.StoreTo(p, instance);
