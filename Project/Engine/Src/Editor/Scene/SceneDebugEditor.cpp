@@ -96,6 +96,8 @@ namespace
         if (!object) {
             return nullptr;
         }
+        // エディタが作るオブジェクトのコンポーネントとして付ける
+        CoreEngine::ComponentHost::DataAttachScope dataScope(*object);
         object->AddComponent<CoreEngine::TransformComponent>();
         object->AddComponent<CoreEngine::MeshRendererComponent>(modelPath);
         return object;

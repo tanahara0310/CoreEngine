@@ -50,6 +50,12 @@ bool GameComponents::RockThrowComponent::DrawInspector()
 }
 #endif
 
+bool GameComponents::RockThrowComponent::RequiresComponent(const IComponent& other) const
+{
+    return dynamic_cast<const TransformComponent*>(&other) != nullptr ||
+        dynamic_cast<const MeshRendererComponent*>(&other) != nullptr;
+}
+
 void GameComponents::RockThrowComponent::Start()
 {
     transform_ = Sibling<TransformComponent>();

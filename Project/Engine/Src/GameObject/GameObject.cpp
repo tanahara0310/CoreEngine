@@ -8,6 +8,7 @@
 #ifdef USE_IMGUI
 #include "Editor/ImGui/ImGuiAll.h"
 #include "Editor/Inspector/InspectorRenderer.h"
+#include "Editor/Scene/ComponentEditing.h"
 #include "Editor/Scene/PrefabEditing.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Reflection/TypeDescriptor.h"
@@ -314,7 +315,7 @@ namespace CoreEngine
         }
     }
 
-    bool GameObject::DrawComponentTabContent(int tabIndex) {
+    bool GameObject::DrawComponentTabContent(int tabIndex, IComponent*& removeRequest) {
         const auto& components = GetAllComponents();
 
         // BuildComponentTabs と同じ順序で走査する（nullptr は両方で飛ばす）
@@ -329,6 +330,10 @@ namespace CoreEngine
                 if (ImGui::Checkbox("有効", &enabled)) {
                     component->SetEnabled(enabled);
                     changed = true;
+                }
+                UI::SameLine();
+                if (ComponentEditing::DrawRemoveButton(*this, *component)) {
+                    removeRequest = component.get();
                 }
                 UI::Separator();
 
@@ -425,6 +430,14 @@ namespace CoreEngine
             changed = true;
             OnImGuiActiveChanged(prevActive);
         }
+
+        // ── コンポーネント追加（同じ行の右端） ──────────────────
+        UI::SameLine();
+        IComponent* addedComponent = nullptr;
+        if (const std::string addType = ComponentEditing::DrawAddButton(*this); !addType.empty()) {
+            addedComponent = ComponentEditing::Add(*this, addType);
+            changed |= addedComponent != nullptr;
+        }
         UI::Separator();
 
         // ── タブ判定 ─────────────────────────────────────────────
@@ -435,6 +448,13 @@ namespace CoreEngine
         tabs.resize(static_cast<size_t>(objectTabCount));
         AppendComponentTabs(tabs);
         const int tabCount = static_cast<int>(tabs.size());
+
+        // 足したコンポーネントのタブを開く
+        if (addedComponent) {
+            if (const std::optional<size_t> position = FindComponentPosition(addedComponent)) {
+                inspectorTab_ = objectTabCount + static_cast<int>(*position);
+            }
+        }
 
         // 前回選んでいたタブがコンポーネントの増減で範囲外になることがある
         if (inspectorTab_ >= tabCount) { inspectorTab_ = 0; }
@@ -501,13 +521,19 @@ namespace CoreEngine
             ImGui::SameLine(0.0f, 2.0f);
 
             // ── 右コンテンツエリア ───────────────────────────────
+            IComponent* removeRequest = nullptr;
             {
                 UI::Scope::ChildScope content("##PropContent", ImVec2(0.0f, 0.0f));
                 if (inspectorTab_ >= 0 && inspectorTab_ < tabCount) {
                     changed |= inspectorTab_ < objectTabCount
                         ? DrawInspectorTabContent(inspectorTab_)
-                        : DrawComponentTabContent(inspectorTab_ - objectTabCount);
+                        : DrawComponentTabContent(inspectorTab_ - objectTabCount, removeRequest);
                 }
+            }
+
+            // 外すのはタブの中身を描き終えてから行う
+            if (removeRequest && ComponentEditing::Remove(*this, *removeRequest)) {
+                changed = true;
             }
         } else {
             // タブもコンポーネントも無い: フォールバック

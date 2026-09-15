@@ -206,6 +206,11 @@ namespace CoreEngine
         return *animator_;
     }
 
+    bool SpriteRendererComponent::RequiresComponent(const IComponent& other) const
+    {
+        return dynamic_cast<const ITransformSource*>(&other) != nullptr;
+    }
+
     ITransformSource* SpriteRendererComponent::GetTransformSource() const
     {
         if (!transform_) {

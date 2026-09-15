@@ -13,6 +13,11 @@ COMPONENT_REGISTER(CoreEngine::MaterialComponent)
 
 namespace CoreEngine
 {
+    bool MaterialComponent::RequiresComponent(const IComponent& other) const
+    {
+        return dynamic_cast<const MeshRendererComponent*>(&other) != nullptr;
+    }
+
     void MaterialComponent::Start()
     {
         renderer_ = Sibling<MeshRendererComponent>();

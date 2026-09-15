@@ -48,6 +48,12 @@ public:
 
     void Start() override { transform_ = Sibling<TransformComponent>(); }
 
+    /// @brief トランスフォームを使う
+    bool RequiresComponent(const IComponent& other) const override
+    {
+        return dynamic_cast<const TransformComponent*>(&other) != nullptr;
+    }
+
     /// @brief ジョイントのワールド行列にオフセットを掛けて自分のワールド行列を上書きする
     /// @note `LateUpdate()` なのは追従元のアニメーション更新（`AnimatorComponent::Update()`）が
     ///       全オブジェクト分終わった後に読む必要があるため。

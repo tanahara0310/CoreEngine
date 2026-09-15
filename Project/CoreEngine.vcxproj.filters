@@ -805,6 +805,9 @@
     <ClCompile Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.cpp">
       <Filter>Engine\Src\Editor\Environment</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Scene\ComponentEditing.cpp">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Scene\PrefabEditing.cpp">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClCompile>
@@ -2609,6 +2612,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.h">
       <Filter>Engine\Src\Editor\Environment</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Scene\ComponentEditing.h">
+      <Filter>Engine\Src\Editor\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Scene\PrefabEditing.h">
       <Filter>Engine\Src\Editor\Scene</Filter>

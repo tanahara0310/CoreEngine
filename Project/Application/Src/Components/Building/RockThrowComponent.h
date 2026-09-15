@@ -30,6 +30,9 @@ namespace GameComponents
         void Start() override;
         void Update() override;
 
+        /// @brief トランスフォームとメッシュ描画を使う
+        bool RequiresComponent(const CoreEngine::IComponent& other) const override;
+
         bool Play(
             const CoreEngine::Vector3& start,
             const CoreEngine::Vector3& target,

@@ -95,6 +95,11 @@ namespace CoreEngine
     }
 #endif // USE_IMGUI
 
+    bool Text3DRendererComponent::RequiresComponent(const IComponent& other) const
+    {
+        return dynamic_cast<const TransformComponent*>(&other) != nullptr;
+    }
+
     void Text3DRendererComponent::Awake()
     {
         // 位置・回転・スケールはトランスフォームに持たせる

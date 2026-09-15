@@ -54,6 +54,9 @@ public:
     /// @brief 兄弟のメッシュ描画を捕まえ、遅延適用していた値を反映する
     void Start() override;
 
+    /// @brief 兄弟のメッシュ描画を使う
+    bool RequiresComponent(const IComponent& other) const override;
+
     // ===== 一括設定（全マテリアルスロットへ適用） =====
 
     /// @brief PBR ファクターを設定（テクスチャ有りマテリアルではマップ値と乗算される）

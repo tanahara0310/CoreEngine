@@ -33,7 +33,10 @@ namespace CoreEngine
                 continue;
             }
 
-            const Entry entry{ reservation.creator, probe.descriptor };
+            Entry entry{ reservation.creator, probe.descriptor };
+#ifdef USE_IMGUI
+            entry.inspectorName = std::move(probe.inspectorName);
+#endif
             auto [it, inserted] = entries_.try_emplace(std::move(probe.typeName), entry);
             if (!inserted) {
                 Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
@@ -62,6 +65,14 @@ namespace CoreEngine
     {
         return entries_.find(typeName) != entries_.end();
     }
+
+#ifdef USE_IMGUI
+    std::string ComponentFactory::GetInspectorName(const std::string& typeName) const
+    {
+        const auto it = entries_.find(typeName);
+        return it != entries_.end() ? it->second.inspectorName : std::string{};
+    }
+#endif
 
     std::vector<std::string> ComponentFactory::GetRegisteredTypeNames() const
     {

@@ -16,6 +16,11 @@ COMPONENT_REGISTER(CoreEngine::ColliderComponent)
 
 namespace CoreEngine
 {
+    bool ColliderComponent::RequiresComponent(const IComponent& other) const
+    {
+        return dynamic_cast<const ITransformSource*>(&other) != nullptr;
+    }
+
     Collider& ColliderComponent::Add(const CollisionShape& shape, CollisionLayer layer)
     {
         // Collider は owner の GetWorldPosition()/GetWorldScale() を位置ソースにする。

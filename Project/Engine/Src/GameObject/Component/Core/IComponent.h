@@ -75,6 +75,18 @@ public:
         (void)property;
     }
 
+    // ===== 兄弟との依存 =====
+
+    /// @brief 同じオブジェクトに付いた別のコンポーネントを使っているか
+    /// @param other 同じオブジェクトに付いている別のコンポーネント
+    /// @return true を返されたコンポーネントは、エディタから外せない
+    /// @note 兄弟へのポインタを控えるコンポーネントは、控える型に対して true を返す。
+    virtual bool RequiresComponent(const IComponent& other) const
+    {
+        (void)other;
+        return false;
+    }
+
     // ===== インスペクター =====
 #ifdef USE_IMGUI
     /// @brief インスペクターのタブ名
@@ -120,12 +132,19 @@ public:
     bool IsEnabled() const { return isEnabled_; }
     void SetEnabled(bool enabled) { isEnabled_ = enabled; }
 
+    /// @brief コードが付けたか
+    /// @return シーン JSON・プレハブの復元とエディタの操作で付いたものは false
+    bool IsAttachedByCode() const { return attachedByCode_; }
+
 protected:
     IComponent() = default;
 
 private:
     GameObject* owner_ = nullptr;
     bool        isEnabled_ = true;
+
+    /// コードが付けたか（ComponentHost が付けるときに決める）
+    bool attachedByCode_ = true;
 
     /// Start() を呼んだか（ComponentHost が管理）
     bool startCalled_ = false;

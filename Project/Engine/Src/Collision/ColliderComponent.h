@@ -20,6 +20,9 @@ class ColliderComponent : public IComponent {
 public:
     const char* GetTypeName() const override { return "Collider"; }
 
+    /// @brief トランスフォーム（ITransformSource）を使う
+    bool RequiresComponent(const IComponent& other) const override;
+
 #ifdef USE_IMGUI
     const char* GetInspectorName() const override { return "コライダー"; }
 
