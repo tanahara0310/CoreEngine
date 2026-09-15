@@ -10,9 +10,9 @@ namespace CoreEngine::Reflection
 {
     namespace
     {
-        json ValueToJson(const PropertyDescriptor& p, const void* value)
+        json ValueToJson(PropertyType type, PropertyType elementType, const void* value)
         {
-            switch (p.type) {
+            switch (type) {
             case PropertyType::Bool:   return *static_cast<const bool*>(value);
             case PropertyType::Int:    return *static_cast<const int*>(value);
             case PropertyType::Float:  return *static_cast<const float*>(value);
@@ -40,13 +40,27 @@ namespace CoreEngine::Reflection
             }
             case PropertyType::AssetRef:
                 return PropertySerializer::AssetRefToJson(*static_cast<const AssetRefValue*>(value));
+            case PropertyType::Array: {
+                // 要素ごとに要素の型の保存形にして並べる
+                json node = json::array();
+                for (const ArrayValue::Element& element : static_cast<const ArrayValue*>(value)->elements) {
+                    const void* const data = ArrayElementData(elementType, element);
+                    node.push_back(data ? ValueToJson(elementType, elementType, data) : json{});
+                }
+                return node;
+            }
             }
             return {};
         }
 
-        void JsonToValue(const PropertyDescriptor& p, const json& node, void* value)
+        json ValueToJson(const PropertyDescriptor& p, const void* value)
         {
-            switch (p.type) {
+            return ValueToJson(p.type, p.elementType, value);
+        }
+
+        void JsonToValue(PropertyType type, PropertyType elementType, const json& node, void* value)
+        {
+            switch (type) {
             case PropertyType::Bool:
                 if (node.is_boolean()) { *static_cast<bool*>(value) = node.get<bool>(); }
                 break;
@@ -106,7 +120,31 @@ namespace CoreEngine::Reflection
                 // 読めない形なら今の値を残す
                 PropertySerializer::JsonToAssetRef(node, *static_cast<AssetRefValue*>(value));
                 break;
+            case PropertyType::Array: {
+                // 配列でなければ今の値を残す。各要素は同じ位置の今の値（無ければ既定値）へ JSON を被せる
+                if (!node.is_array() || !IsArrayElementType(elementType)) {
+                    break;
+                }
+                auto& array = *static_cast<ArrayValue*>(value);
+                std::vector<ArrayValue::Element> elements;
+                elements.reserve(node.size());
+                for (size_t i = 0; i < node.size(); ++i) {
+                    ArrayValue::Element element =
+                        (i < array.elements.size() && ArrayElementData(elementType, array.elements[i]))
+                            ? array.elements[i]
+                            : MakeArrayElement(elementType);
+                    JsonToValue(elementType, elementType, node[i], ArrayElementData(elementType, element));
+                    elements.push_back(std::move(element));
+                }
+                array.elements = std::move(elements);
+                break;
             }
+            }
+        }
+
+        void JsonToValue(const PropertyDescriptor& p, const json& node, void* value)
+        {
+            JsonToValue(p.type, p.elementType, node, value);
         }
     }
 

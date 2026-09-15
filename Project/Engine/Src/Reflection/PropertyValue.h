@@ -43,6 +43,14 @@ namespace CoreEngine::Reflection
     private:
         std::variant<std::monostate, bool, int, float,
                      Vector2, Vector3, Vector4, std::string, ObjectRefValue,
-                     AssetRefValue> value_;
+                     AssetRefValue, ArrayValue> value_;
     };
+
+    /// @brief 配列の要素の値を指す
+    /// @return 要素の型と中身が合わなければ nullptr
+    void* ArrayElementData(PropertyType elementType, ArrayValue::Element& element);
+    const void* ArrayElementData(PropertyType elementType, const ArrayValue::Element& element);
+
+    /// @brief 要素の型の既定値を作る（配列の要素にできない型なら float の 0）
+    ArrayValue::Element MakeArrayElement(PropertyType elementType);
 }

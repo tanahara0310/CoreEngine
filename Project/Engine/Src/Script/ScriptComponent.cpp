@@ -2,14 +2,75 @@
 #include "Script/ScriptComponent.h"
 
 #include "GameObject/GameObject.h"
+#include "Reflection/PropertyValue.h"
 #include "Script/Binding/GameObjectBinding.h"
 #include "Script/ScriptHost.h"
 #include "Utility/Logger/Logger.h"
 
 #include <angelscript.h>
+#include <scriptarray/scriptarray.h>
 
 namespace CoreEngine
 {
+    namespace
+    {
+        /// @brief 型に合わせて値を 1 つ写す（参照と配列の型は写さない）
+        void CopyValue(Reflection::PropertyType type, const void* from, void* to)
+        {
+            switch (type) {
+            case Reflection::PropertyType::Bool:
+                *static_cast<bool*>(to) = *static_cast<const bool*>(from);
+                break;
+            case Reflection::PropertyType::Int:
+                *static_cast<int*>(to) = *static_cast<const int*>(from);
+                break;
+            case Reflection::PropertyType::Float:
+                *static_cast<float*>(to) = *static_cast<const float*>(from);
+                break;
+            case Reflection::PropertyType::String:
+                *static_cast<std::string*>(to) = *static_cast<const std::string*>(from);
+                break;
+            case Reflection::PropertyType::Vector2:
+                *static_cast<Vector2*>(to) = *static_cast<const Vector2*>(from);
+                break;
+            case Reflection::PropertyType::Vector3:
+                *static_cast<Vector3*>(to) = *static_cast<const Vector3*>(from);
+                break;
+            case Reflection::PropertyType::Vector4:
+            case Reflection::PropertyType::Color:
+                *static_cast<Vector4*>(to) = *static_cast<const Vector4*>(from);
+                break;
+            default:
+                break;
+            }
+        }
+
+        /// @brief スクリプトの配列を記述子の配列の値へ写す
+        void ReadArray(Reflection::PropertyType elementType, const CScriptArray& from, Reflection::ArrayValue& to)
+        {
+            to.elements.clear();
+            to.elements.reserve(from.GetSize());
+            for (asUINT i = 0; i < from.GetSize(); ++i) {
+                Reflection::ArrayValue::Element element = Reflection::MakeArrayElement(elementType);
+                if (void* const data = Reflection::ArrayElementData(elementType, element)) {
+                    CopyValue(elementType, from.At(i), data);
+                }
+                to.elements.push_back(std::move(element));
+            }
+        }
+
+        /// @brief 記述子の配列の値をスクリプトの配列へ写す（要素の数も合わせる）
+        void WriteArray(Reflection::PropertyType elementType, const Reflection::ArrayValue& from, CScriptArray& to)
+        {
+            to.Resize(static_cast<asUINT>(from.elements.size()));
+            for (asUINT i = 0; i < to.GetSize(); ++i) {
+                if (const void* const data = Reflection::ArrayElementData(elementType, from.elements[i])) {
+                    CopyValue(elementType, data, to.At(i));
+                }
+            }
+        }
+    }
+
     ScriptComponent::ScriptComponent(const ScriptComponentType& type)
         : typeName_(type.GetName())
 #ifdef USE_IMGUI
@@ -80,32 +141,12 @@ namespace CoreEngine
             return;
         }
 
-        switch (property.type) {
-        case Reflection::PropertyType::Bool:
-            *static_cast<bool*>(out) = *static_cast<const bool*>(address);
-            break;
-        case Reflection::PropertyType::Int:
-            *static_cast<int*>(out) = *static_cast<const int*>(address);
-            break;
-        case Reflection::PropertyType::Float:
-            *static_cast<float*>(out) = *static_cast<const float*>(address);
-            break;
-        case Reflection::PropertyType::String:
-            *static_cast<std::string*>(out) = *static_cast<const std::string*>(address);
-            break;
-        case Reflection::PropertyType::Vector2:
-            *static_cast<Vector2*>(out) = *static_cast<const Vector2*>(address);
-            break;
-        case Reflection::PropertyType::Vector3:
-            *static_cast<Vector3*>(out) = *static_cast<const Vector3*>(address);
-            break;
-        case Reflection::PropertyType::Vector4:
-        case Reflection::PropertyType::Color:
-            *static_cast<Vector4*>(out) = *static_cast<const Vector4*>(address);
-            break;
-        default:
-            break;
+        if (property.type == Reflection::PropertyType::Array) {
+            ReadArray(property.elementType, *static_cast<const CScriptArray*>(address),
+                *static_cast<Reflection::ArrayValue*>(out));
+            return;
         }
+        CopyValue(property.type, address, out);
     }
 
     void ScriptComponent::WriteProperty(const Reflection::PropertyDescriptor& property, const void* in)
@@ -118,32 +159,12 @@ namespace CoreEngine
             return;
         }
 
-        switch (property.type) {
-        case Reflection::PropertyType::Bool:
-            *static_cast<bool*>(address) = *static_cast<const bool*>(in);
-            break;
-        case Reflection::PropertyType::Int:
-            *static_cast<int*>(address) = *static_cast<const int*>(in);
-            break;
-        case Reflection::PropertyType::Float:
-            *static_cast<float*>(address) = *static_cast<const float*>(in);
-            break;
-        case Reflection::PropertyType::String:
-            *static_cast<std::string*>(address) = *static_cast<const std::string*>(in);
-            break;
-        case Reflection::PropertyType::Vector2:
-            *static_cast<Vector2*>(address) = *static_cast<const Vector2*>(in);
-            break;
-        case Reflection::PropertyType::Vector3:
-            *static_cast<Vector3*>(address) = *static_cast<const Vector3*>(in);
-            break;
-        case Reflection::PropertyType::Vector4:
-        case Reflection::PropertyType::Color:
-            *static_cast<Vector4*>(address) = *static_cast<const Vector4*>(in);
-            break;
-        default:
-            break;
+        if (property.type == Reflection::PropertyType::Array) {
+            WriteArray(property.elementType, *static_cast<const Reflection::ArrayValue*>(in),
+                *static_cast<CScriptArray*>(address));
+            return;
         }
+        CopyValue(property.type, in, address);
     }
 
     void ScriptComponent::BindOwnerHandle()
