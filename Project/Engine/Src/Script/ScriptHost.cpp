@@ -30,9 +30,13 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
+#include <exception>
 #include <fstream>
 #include <iterator>
+#include <string>
 #include <system_error>
+#include <unordered_map>
+#include <vector>
 
 namespace CoreEngine
 {
@@ -126,6 +130,64 @@ namespace CoreEngine
         }
     }
 
+    namespace
+    {
+        /// @brief 束縛した関数が投げた C++ の例外を、中身の分かるスクリプトの例外にする
+        void TranslateAppException(asIScriptContext* context, void*)
+        {
+            try {
+                throw;
+            } catch (const std::exception& exception) {
+                context->SetException(exception.what());
+            } catch (...) {
+                context->SetException("C++ の例外（型が分からない）");
+            }
+        }
+
+        /// @brief スクリプトのクラスを書いた節（ファイル）の名前を、そのクラスのスクリプトの関数から引く
+        /// @return 引けなければ空
+        std::string FindDeclaringSection(const asITypeInfo& type)
+        {
+            const auto sectionOf = [](const asIScriptFunction* function) -> std::string {
+                const char* section = nullptr;
+                if (function && function->GetDeclaredAt(&section, nullptr, nullptr) >= 0 && section && section[0] != '\0') {
+                    return section;
+                }
+                return {};
+            };
+            for (asUINT i = 0; i < type.GetMethodCount(); ++i) {
+                const asIScriptFunction* const method = type.GetMethodByIndex(i, false);
+                if (method && method->GetObjectType() == &type) {
+                    if (std::string section = sectionOf(method); !section.empty()) {
+                        return section;
+                    }
+                }
+            }
+            for (asUINT i = 0; i < type.GetBehaviourCount(); ++i) {
+                asEBehaviours behaviour = asBEHAVE_CONSTRUCT;
+                if (std::string section = sectionOf(type.GetBehaviourByIndex(i, &behaviour)); !section.empty()) {
+                    return section;
+                }
+            }
+            for (asUINT i = 0; i < type.GetFactoryCount(); ++i) {
+                if (std::string section = sectionOf(type.GetFactoryByIndex(i)); !section.empty()) {
+                    return section;
+                }
+            }
+            return {};
+        }
+
+        /// @brief パスのファイル名から拡張子を除いた部分（区切りは `/`）
+        std::string FileStem(const std::string& path)
+        {
+            const std::size_t slash = path.find_last_of('/');
+            const std::size_t begin = slash == std::string::npos ? 0 : slash + 1;
+            const std::size_t dot = path.find_last_of('.');
+            const std::size_t end = (dot == std::string::npos || dot < begin) ? path.size() : dot;
+            return path.substr(begin, end - begin);
+        }
+    }
+
     ScriptHost::ScriptHost() = default;
 
     ScriptHost::~ScriptHost()
@@ -149,6 +211,7 @@ namespace CoreEngine
         bool configured = engine_->SetMessageCallback(asFUNCTION(Script::OnCompilerMessage), nullptr, asCALL_CDECL) >= 0;
         configured = engine_->SetEngineProperty(asEP_COMPILER_WARNINGS, 2) >= 0 && configured;
         configured = engine_->SetContextCallbacks(&ScriptHost::RequestContext, &ScriptHost::ReturnContext, this) >= 0 && configured;
+        configured = engine_->SetTranslateAppExceptionCallback(asFUNCTION(TranslateAppException), nullptr, asCALL_CDECL) >= 0 && configured;
 
         RegisterScriptArray(engine_, true);
         RegisterStdString(engine_);
@@ -263,6 +326,33 @@ namespace CoreEngine
             const ScriptComponentType& added = *types_.back();
             logger.Logf(LogLevel::Info, LogCategory::Script, "コンポーネントの型 {}（{}）: プロパティ {} 個",
                 added.GetName(), added.GetDisplayName(), added.GetDescriptor().properties.size());
+        }
+
+        // コンポーネントのクラスは「1 ファイルに 1 つ」「ファイル名 = クラス名」で書く。外れていても動かすが、警告を出す
+        std::unordered_map<std::string, std::vector<std::string>> classesBySection;
+        for (const auto& type : types_) {
+            const std::string section = FindDeclaringSection(*type->GetTypeInfo());
+            if (section.empty()) {
+                continue;
+            }
+            classesBySection[section].push_back(type->GetName());
+            if (FileStem(section) != type->GetName()) {
+                logger.Logf(LogLevel::Warn, LogCategory::Script,
+                    "コンポーネントのクラス {} が {} に書かれています。ファイル名をクラス名と同じにしてください",
+                    type->GetName(), section);
+            }
+        }
+        for (const auto& [section, names] : classesBySection) {
+            if (names.size() < 2) {
+                continue;
+            }
+            std::string joined;
+            for (const std::string& name : names) {
+                joined += (joined.empty() ? "" : "・") + name;
+            }
+            logger.Logf(LogLevel::Warn, LogCategory::Script,
+                "{} にコンポーネントのクラスが {} 個あります（{}）。1 ファイルに 1 つにしてください",
+                section, names.size(), joined);
         }
 
         const double elapsedMs =
