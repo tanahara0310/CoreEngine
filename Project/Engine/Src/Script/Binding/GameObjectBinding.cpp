@@ -95,20 +95,20 @@ namespace CoreEngine::Script
             return;
         }
         if (!parent) {
-            transform->Get().SetParent(nullptr);
+            transform->SetParent(nullptr);
             return;
         }
         TransformComponent* const parentTransform = parent->ResolveOrWarn("親としての指定");
-        if (!parentTransform || parentTransform == transform) {
+        if (!parentTransform) {
             return;
         }
-        transform->Get().SetParent(&parentTransform->Get());
+        transform->SetParent(parentTransform);
     }
 
     void ScriptTransform::UpdateMatrix()
     {
         if (TransformComponent* const transform = ResolveOrWarn("行列の作り直し")) {
-            transform->Get().TransferMatrix();
+            transform->SyncWorldMatrix();
         }
     }
 

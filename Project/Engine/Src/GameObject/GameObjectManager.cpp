@@ -168,7 +168,7 @@ namespace CoreEngine
         // 親を先に転送しないと子が古い親行列で合成されるが、走査順は UpdateAll() と
         // 同じ登録順なので、再生中と停止中で見え方が変わることはない
         ForEachComponent<TransformComponent>([](TransformComponent& transform) {
-            transform.Get().TransferMatrix();
+            transform.SyncWorldMatrix();
             });
     }
 
@@ -176,7 +176,7 @@ namespace CoreEngine
         for (auto& obj : pendingAdd_) {
             // 作った直後に書いた座標を、次の TransformComponent::Update を待たずに描画へ出す
             if (TransformComponent* const transform = obj ? obj->GetComponent<TransformComponent>() : nullptr) {
-                transform->Get().TransferMatrix();
+                transform->SyncWorldMatrix();
             }
             objects_.push_back(std::move(obj));
         }
