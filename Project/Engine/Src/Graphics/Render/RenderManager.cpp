@@ -10,7 +10,7 @@
 #include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/Render/Model/IBLParameters.h"
 #include "Graphics/Render/SkyBox/SkyBoxRenderer.h"
-#include "GameObjects/SkyBox/SkyBoxObject.h"
+#include "Graphics/Render/SkyBox/SkyBoxObject.h"
 #include "Camera/Camera.h"
 #include "Camera/View/ViewInfo.h"
 #include "Math/MathCore.h"
