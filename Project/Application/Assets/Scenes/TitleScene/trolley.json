@@ -1,0 +1,58 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "rotate": [
+                    -0.1679999977350235,
+                    0.2930000126361847,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    1.4930000305175781,
+                    0.9330000281333923,
+                    -3.440999984741211
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "model": {
+                    "guid": "13e48e6c-4170-967e-e8db-cb987eb48dcd",
+                    "path": "Application/Assets/Models/Trolley/trolley.obj"
+                }
+            },
+            "type": "MeshRenderer"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "bobDuration": 1.600000023841858,
+                "bobEnd": [
+                    0.0,
+                    0.11999999731779099,
+                    0.0
+                ],
+                "bobStart": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "introDelay": 0.3499999940395355,
+                "introDuration": 0.8999999761581421,
+                "introOffset": 8.0,
+                "logoName": "title"
+            },
+            "type": "TitleTrolley"
+        }
+    ],
+    "name": "trolley"
+}

@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "SceneManager.h"
+#include "Scene/DataScene.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Light/LightManager.h"
@@ -26,6 +27,10 @@ namespace CoreEngine
     void SceneManager::SetInitialScene(const std::string& name) {
         // トランジション無しで即座にシーンを読み込む
         DoChangeScene(name);
+    }
+
+    void SceneManager::RegisterDataScene(const std::string& name) {
+        sceneFactories_[name] = [name]() { return std::make_unique<DataScene>(name); };
     }
 
     void SceneManager::ChangeScene(std::string name) {

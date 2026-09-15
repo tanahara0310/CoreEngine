@@ -471,6 +471,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Editor\Scene\ComponentEditing.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\PrefabEditing.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\SceneDebugEditor.cpp" />
+    <ClCompile Include="Engine\Src\Scene\DataScene.cpp" />
     <ClCompile Include="Engine\Src\Scene\PrefabSystem.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneSaveSystem.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneTransition.cpp" />
@@ -1124,12 +1125,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Components\Result\ResultButtonAnimationComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Result\ResultMonkeyShakeComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Result\ResultTipsComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\Title\TitleButtonAnimationComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\Title\TitleCameraShakeSettingsComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\Title\TitleLogoAnimationComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\Title\TitleMonkeyAnimationComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\Title\TitleTextAnimationComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\Title\TitleTrolleyAnimationComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Train\SpawnPopComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Train\TrainMovementComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\GameStartPromptAnimationComponent.cpp" />
@@ -1159,9 +1154,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Scenes\GameScene\StaminaGaugeFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\ResultScene\ResultScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\ResultScene\ResultSceneUi.cpp" />
-    <ClCompile Include="Application\Src\Scenes\TitleScene\TitleScene.cpp" />
-    <ClCompile Include="Application\Src\Scenes\TitleScene\TitleSceneModelSetup.cpp" />
-    <ClCompile Include="Application\Src\Scenes\TitleScene\TitleSceneUi.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\TrolleyLoading\TrolleyLoading.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -1528,6 +1520,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Particle\Modules\ShapeModule.h" />
     <ClInclude Include="Engine\Src\Particle\ParticlePresetManager.h" />
     <ClInclude Include="Engine\Src\Scene\BaseScene.h" />
+    <ClInclude Include="Engine\Src\Scene\DataScene.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\ISceneFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\LightingFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\EnvironmentFeature.h" />
@@ -1831,12 +1824,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Components\Result\ResultButtonAnimationComponent.h" />
     <ClInclude Include="Application\Src\Components\Result\ResultMonkeyShakeComponent.h" />
     <ClInclude Include="Application\Src\Components\Result\ResultTipsComponent.h" />
-    <ClInclude Include="Application\Src\Components\Title\TitleButtonAnimationComponent.h" />
-    <ClInclude Include="Application\Src\Components\Title\TitleCameraShakeSettingsComponent.h" />
-    <ClInclude Include="Application\Src\Components\Title\TitleLogoAnimationComponent.h" />
-    <ClInclude Include="Application\Src\Components\Title\TitleMonkeyAnimationComponent.h" />
-    <ClInclude Include="Application\Src\Components\Title\TitleTextAnimationComponent.h" />
-    <ClInclude Include="Application\Src\Components\Title\TitleTrolleyAnimationComponent.h" />
     <ClInclude Include="Application\Src\Components\Train\SpawnPopComponent.h" />
     <ClInclude Include="Application\Src\Components\Train\TrainMovementComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\GameStartPromptAnimationComponent.h" />
@@ -1869,9 +1856,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Scenes\GameScene\StaminaGaugeFeature.h" />
     <ClInclude Include="Application\Src\Scenes\ResultScene\ResultScene.h" />
     <ClInclude Include="Application\Src\Scenes\ResultScene\ResultSceneUi.h" />
-    <ClInclude Include="Application\Src\Scenes\TitleScene\TitleScene.h" />
-    <ClInclude Include="Application\Src\Scenes\TitleScene\TitleSceneModelSetup.h" />
-    <ClInclude Include="Application\Src\Scenes\TitleScene\TitleSceneUi.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ILoadingScreenEffect.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\TrolleyLoading\TrolleyLoading.h" />
     <ClInclude Include="Engine\Src\Utility\Random\Hash.h" />

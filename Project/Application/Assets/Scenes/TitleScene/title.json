@@ -1,0 +1,51 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "rotate": [
+                    0.0,
+                    -0.5389999747276306,
+                    0.1679999977350235
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    -2.815000057220459,
+                    3.2200000286102295,
+                    -3.4860000610351562
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "model": {
+                    "guid": "9c7cb98d-d238-f2b6-6779-203da46fa4f8",
+                    "path": "Application/Assets/Models/Title/title.obj"
+                }
+            },
+            "type": "MeshRenderer"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "bobDuration": 1.600000023841858,
+                "bobHeight": 0.11999999731779099,
+                "boundSePath": "Sounds/SE/title_bound.mp3",
+                "dropHeight": 3.5,
+                "introDuration": 1.0499999523162842,
+                "introScale": 0.8199999928474426,
+                "rotationAmplitude": 0.03500000014901161,
+                "shakeStrength": 0.7400000095367432
+            },
+            "type": "TitleLogo"
+        }
+    ],
+    "name": "title"
+}
