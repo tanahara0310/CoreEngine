@@ -8,6 +8,7 @@
 #include <format>
 #include <fstream>
 #include <iterator>
+#include <string_view>
 #include <system_error>
 #include <utility>
 #include <vector>
@@ -56,12 +57,26 @@ namespace CoreEngine::Script
             return std::string(text.begin(), text.end());
         }
 
-        /// @brief スクリプトの構文で書ける宣言か（`?&` の型・`&out` の `= void`・`...` はアプリの登録でしか書けない）
-        bool IsScriptSyntax(const std::string& declaration)
+        bool IsIdentifierCharacter(char c)
         {
-            return declaration.find("?&") == std::string::npos
-                && declaration.find("= void") == std::string::npos
-                && declaration.find("...") == std::string::npos;
+            return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_';
+        }
+
+        /// @brief 配列の子の型（`T[]::less`）を、テンプレートの形（`array<T>::less`）に書き換える
+        std::string ToTemplateScope(std::string text, const std::string& arrayName)
+        {
+            constexpr std::string_view kArrayScope = "[]::";
+            std::size_t at = text.find(kArrayScope);
+            while (at != std::string::npos) {
+                std::size_t begin = at;
+                while (begin > 0 && IsIdentifierCharacter(text[begin - 1])) {
+                    --begin;
+                }
+                const std::string scope = std::format("{}<{}>::", arrayName, text.substr(begin, at - begin));
+                text.replace(begin, at + kArrayScope.size() - begin, scope);
+                at = text.find(kArrayScope, begin + scope.size());
+            }
+            return text;
         }
 
         /// @brief 関数の宣言（プロパティの読み書きの関数には `property` を付ける）
@@ -142,10 +157,8 @@ namespace CoreEngine::Script
                 if (!signature) {
                     continue;
                 }
-                const std::string declaration = signature->GetDeclaration(false, false, true);
-                if (IsScriptSyntax(declaration)) {
-                    blocks.Add(type->GetNamespace(), std::format("funcdef {};{}", declaration, kNewLine));
-                }
+                blocks.Add(type->GetNamespace(),
+                    std::format("funcdef {};{}", signature->GetDeclaration(false, false, true), kNewLine));
             }
             blocks.AppendTo(out);
         }
@@ -169,9 +182,7 @@ namespace CoreEngine::Script
 
                 std::string block = std::format("class {} {{{}", TypeNameOf(*type), kNewLine);
                 const auto appendMember = [&block](const std::string& declaration) {
-                    if (IsScriptSyntax(declaration)) {
-                        block += std::format("\t{};{}", declaration, kNewLine);
-                    }
+                    block += std::format("\t{};{}", declaration, kNewLine);
                 };
                 for (asUINT j = 0; j < type->GetBehaviourCount(); ++j) {
                     asEBehaviours behaviour = asBEHAVE_DESTRUCT;
@@ -218,10 +229,7 @@ namespace CoreEngine::Script
                 if (!function) {
                     continue;
                 }
-                const std::string declaration = DeclarationOf(*function);
-                if (IsScriptSyntax(declaration)) {
-                    blocks.Add(function->GetNamespace(), std::format("{};{}", declaration, kNewLine));
-                }
+                blocks.Add(function->GetNamespace(), std::format("{};{}", DeclarationOf(*function), kNewLine));
             }
             blocks.AppendTo(out);
         }
@@ -273,6 +281,10 @@ namespace CoreEngine::Script
         AppendFunctions(engine, out);
         AppendGlobalProperties(engine, out);
         AppendTypedefs(engine, out);
+
+        if (const asITypeInfo* const arrayType = engine.GetTypeInfoById(engine.GetDefaultArrayTypeId())) {
+            out = ToTemplateScope(std::move(out), arrayType->GetName());
+        }
         return out;
     }
 
