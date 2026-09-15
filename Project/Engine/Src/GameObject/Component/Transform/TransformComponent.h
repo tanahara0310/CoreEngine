@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GameObject/Component/Core/IComponent.h"
+#include "GameObject/Component/Core/ObjectRef.h"
 #include "GameObject/Component/Transform/ITransformSource.h"
 #include "Reflection/Reflect.h"
 #include "WorldTransform/WorldTransform.h"
@@ -21,6 +22,7 @@ public:
         REFLECT_PROPERTY(transform_.translate, "位置",     p.range = Speed(0.05f))
         REFLECT_PROPERTY(transform_.rotate,    "回転",     p.range = Speed(0.01f))
         REFLECT_PROPERTY(transform_.scale,     "スケール", p.range = Speed(0.01f))
+        REFLECT_OBJECT_REF(parent_, "親")
     REFLECT_END()
 
     // ===== ITransformSource（ギズモ・インスペクタ・Undo/Redo からの共通入口） =====
@@ -57,10 +59,23 @@ public:
     /// @note 自己完結させているので、素の GameObject に AddComponent するだけで使える。
     void Awake() override;
 
-    /// @brief 毎フレーム、ローカル→ワールド行列を計算して GPU へ転送する
+    /// @brief 毎フレーム、親を引き直してローカル→ワールド行列を計算し、GPU へ転送する
     /// @note `GameObject::Update()` より**前**に走るので、転送済みのワールド行列を
     ///       後から上書きする処理（ソケット追従など）は `LateUpdate()` 側で行う。
-    void Update() override { transform_.TransferMatrix(); }
+    void Update() override { SyncWorldMatrix(); }
+
+    /// @brief 親を引き直してからワールド行列を計算し、GPU へ転送する
+    void SyncWorldMatrix();
+
+    // ===== 親子 =====
+
+    /// @brief 親の Transform を付け替える（nullptr で親を外す）
+    /// @return 自分自身か自分の子孫を指したときは付け替えずに false
+    /// @note ローカルの位置・回転・スケールはそのまま残る。親は保存され、インスペクタでも選べる。
+    bool SetParent(TransformComponent* parent);
+
+    /// @brief 親の Transform（無い・見つからないなら nullptr）
+    TransformComponent* GetParent() const { return parent_.Get(); }
 
     // ===== GPU リソース =====
 
@@ -93,7 +108,19 @@ public:
     bool ApplyWorldDelta(const Vector3& delta);
 
 private:
+    /// @brief 親を引き、変わっていれば WorldTransform へ渡す（自分や子孫を指していたら親を外す）
+    void ApplyParent();
+
+    /// @brief candidate が自分自身か自分の子孫か
+    bool IsSelfOrDescendant(const TransformComponent* candidate) const;
+
     WorldTransform transform_;
+
+    /// @brief 親の Transform（ID で指すので保存でき、親が消えると引けなくなる）
+    ObjectRef<TransformComponent> parent_;
+
+    /// @brief 最後に WorldTransform へ渡した親
+    const TransformComponent* appliedParent_ = nullptr;
 
 #ifdef USE_IMGUI
     /// @brief ドラッグ開始時の値（Undo/Redo へ「編集前」として渡す）
