@@ -15,6 +15,9 @@ namespace CoreEngine
     namespace
     {
         constexpr const char* kScriptRoot = "Application/Assets/Scripts";
+#ifdef USE_IMGUI
+        constexpr const char* kPredefinedFileName = "as.predefined";
+#endif
     }
 
     ScriptSubsystem::ScriptSubsystem() = default;
@@ -31,6 +34,10 @@ namespace CoreEngine
             return;
         }
         host_ = std::move(host);
+
+#ifdef USE_IMGUI
+        host_->WritePredefined(ProjectPaths::Resolve(kScriptRoot) / kPredefinedFileName);
+#endif
 
         if (!host_->Build(ProjectPaths::Resolve(kScriptRoot))) {
             return;

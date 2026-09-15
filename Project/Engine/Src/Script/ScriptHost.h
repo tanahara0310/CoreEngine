@@ -55,6 +55,10 @@ namespace CoreEngine
         /// @brief GC を 1 段だけ進める
         void CollectGarbageStep();
 
+        /// @brief 登録済みの型と関数を `as.predefined` の形でファイルへ書く（中身が同じなら書かない）
+        /// @return 書き終えたか、既に同じ中身だったら true。エンジンを作る前は false
+        bool WritePredefined(const std::filesystem::path& file) const;
+
         /// @brief 集めたコンポーネントの型
         const std::vector<std::unique_ptr<ScriptComponentType>>& GetTypes() const { return types_; }
 

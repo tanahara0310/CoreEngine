@@ -9,6 +9,7 @@
 #include "Script/ScriptComponent.h"
 #include "Script/ScriptComponentType.h"
 #include "Script/ScriptDiagnostics.h"
+#include "Script/ScriptPredefined.h"
 #include "Utility/Logger/Logger.h"
 
 #include <angelscript.h>
@@ -276,6 +277,11 @@ namespace CoreEngine
         if (engine_) {
             engine_->GarbageCollect(asGC_ONE_STEP);
         }
+    }
+
+    bool ScriptHost::WritePredefined(const std::filesystem::path& file) const
+    {
+        return engine_ && Script::WriteScriptPredefined(*engine_, file);
     }
 
     asIScriptObject* ScriptHost::CreateObject(const ScriptComponentType& type)
