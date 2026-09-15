@@ -148,6 +148,7 @@ namespace CoreEngine::Reflection
         PropertyRange   range{};
         PropertyFlags   flags = PropertyFlags::None;
         ComponentFilter acceptsComponent = nullptr;  ///< ObjectRef の繋ぎ先の判定（ObjectRef 以外は nullptr）
+        const char*     acceptsComponentType = nullptr;  ///< ObjectRef の繋ぎ先の型名（判定の関数では区別できないスクリプトのクラスに使う。nullptr なら型名で絞らない）
         AssetType       assetType = AssetType::Unknown;  ///< AssetRef が指せるアセットの種類（AssetRef 以外は Unknown）
         PropertyType    elementType = PropertyType::Float;  ///< Array の要素の型（Array 以外は使わない）
 

@@ -20,6 +20,12 @@ namespace CoreEngine
     IComponent* FindReferencedComponent(const GameObject& object,
         Reflection::PropertyDescriptor::ComponentFilter accepts, std::string_view componentType);
 
+    /// @brief プロパティの記述（判定の関数と繋ぎ先の型名）で、オブジェクトから参照で指せるコンポーネントを探す
+    /// @param componentType この型名のものを優先する（無ければ最初に指せたもの）
+    /// @return 見つからなければ nullptr
+    IComponent* FindReferencedComponent(const GameObject& object,
+        const Reflection::PropertyDescriptor& property, std::string_view componentType);
+
     /// @brief シーン内の別オブジェクトのコンポーネントを ID で指す参照の、型に依らない部分
     class ObjectRefBase
     {

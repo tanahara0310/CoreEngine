@@ -26,6 +26,28 @@ namespace CoreEngine
         return firstAccepted;
     }
 
+    IComponent* FindReferencedComponent(const GameObject& object,
+        const Reflection::PropertyDescriptor& property, std::string_view componentType)
+    {
+        IComponent* firstAccepted = nullptr;
+        for (const auto& slot : object.GetAllComponents()) {
+            IComponent* component = slot.get();
+            if (!component || (property.acceptsComponent && !property.acceptsComponent(component))) {
+                continue;
+            }
+            if (property.acceptsComponentType && std::string_view(property.acceptsComponentType) != component->GetTypeName()) {
+                continue;
+            }
+            if (!componentType.empty() && componentType == component->GetTypeName()) {
+                return component;
+            }
+            if (!firstAccepted) {
+                firstAccepted = component;
+            }
+        }
+        return firstAccepted;
+    }
+
     Reflection::ObjectRefValue ObjectRefBase::GetValue() const
     {
         return Reflection::ObjectRefValue{ objectId_, componentType_ };

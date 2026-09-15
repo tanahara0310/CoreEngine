@@ -79,6 +79,15 @@ namespace CoreEngine
         void WriteAssetRef(const Reflection::PropertyDescriptor& property, const Reflection::AssetRefValue& in,
             std::string& path);
 
+        /// @brief シーンの参照が変わった ObjectRef だけ、繋ぎ先を引き直してスクリプトのハンドルへ入れる
+        void ApplyObjectRefs();
+
+        /// @brief ObjectRef のプロパティ 1 つの繋ぎ先を引いて、スクリプトのハンドルへ入れる（見つからなければ null を入れる）
+        void ApplyObjectRef(std::uint32_t index);
+
+        /// @brief スクリプトのハンドルのメンバ変数を差し替える（前のハンドルを手放し、渡したハンドルの参照を 1 つ引き取る）
+        void StoreHandle(std::uint32_t index, void* handle);
+
         std::string typeName_;
 #ifdef USE_IMGUI
         std::string displayName_;
@@ -93,5 +102,18 @@ namespace CoreEngine
         /// AssetRef のプロパティごとの、最後に書き込んだ GUID とパス（キーはメンバ変数の番号）。
         /// スクリプトのメンバ変数はパスの文字列だけを持つので、GUID はここに残す
         std::unordered_map<std::uint32_t, Reflection::AssetRefValue> assetRefs_;
+
+        /// ObjectRef のプロパティ 1 つの繋ぎ先
+        struct ObjectRefSlot
+        {
+            const Reflection::PropertyDescriptor* property = nullptr;
+            Reflection::ObjectRefValue value;
+            /// ハンドルへ入れたときの GameObjectManager の参照の番号（0 はまだ入れていない）
+            std::uint64_t appliedEpoch = 0;
+        };
+
+        /// ObjectRef のプロパティごとの繋ぎ先（キーはメンバ変数の番号）。
+        /// スクリプトのメンバ変数はハンドルだけを持つので、保存する ID と型名はここに残す
+        std::unordered_map<std::uint32_t, ObjectRefSlot> objectRefs_;
     };
 }
