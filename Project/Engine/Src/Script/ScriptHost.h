@@ -101,6 +101,10 @@ namespace CoreEngine
         /// @brief GameObject のハンドル（`GameObject@`）の型 ID（エンジンを作る前は 0）
         int GetGameObjectHandleTypeId() const { return gameObjectHandleTypeId_; }
 
+        /// @brief 配列（`array<T>`。ハンドルは除く）の型 ID から要素の型 ID を引く
+        /// @return 配列でなければ -1
+        int GetArrayElementTypeId(int typeId) const;
+
         /// @brief 型 ID の宣言の綴り（ログ用。引けなければ nullptr）
         const char* GetTypeDeclaration(int typeId) const;
 

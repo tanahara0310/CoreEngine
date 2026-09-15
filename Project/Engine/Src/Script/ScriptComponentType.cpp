@@ -166,7 +166,15 @@ namespace CoreEngine
                 continue;
             }
 
-            const std::optional<Reflection::PropertyType> propertyType = ToPropertyType(host_, typeId);
+            std::optional<Reflection::PropertyType> propertyType = ToPropertyType(host_, typeId);
+            std::optional<Reflection::PropertyType> elementType;
+            if (!propertyType) {
+                const int elementTypeId = host_.GetArrayElementTypeId(typeId);
+                elementType = elementTypeId >= 0 ? ToPropertyType(host_, elementTypeId) : std::nullopt;
+                if (elementType) {
+                    propertyType = Reflection::PropertyType::Array;
+                }
+            }
             if (!propertyType) {
                 const char* declaration = host_.GetTypeDeclaration(typeId);
                 WarnScript(name_ + "." + name + ": " + (declaration ? declaration : "?") +
@@ -178,6 +186,9 @@ namespace CoreEngine
             property.name = name;
             property.displayName = StoreText(name);
             property.type = *propertyType;
+            if (elementType) {
+                property.elementType = *elementType;
+            }
             property.get = &ReadScriptProperty;
             property.set = &WriteScriptProperty;
             property.index = i;
@@ -285,8 +296,13 @@ namespace CoreEngine
                 error = "属性「Color」は引数を取りません";
                 return false;
             }
+            if (property.type == Reflection::PropertyType::Array &&
+                property.elementType == Reflection::PropertyType::Vector4) {
+                property.elementType = Reflection::PropertyType::Color;
+                return true;
+            }
             if (property.type != Reflection::PropertyType::Vector4) {
-                error = "属性「Color」は Vector4 のメンバ変数にだけ付けられます";
+                error = "属性「Color」は Vector4 か array<Vector4> のメンバ変数にだけ付けられます";
                 return false;
             }
             property.type = Reflection::PropertyType::Color;

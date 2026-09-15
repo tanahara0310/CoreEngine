@@ -163,7 +163,7 @@ namespace CoreEngine
             logger.Logf(LogLevel::Warn, LogCategory::Script, "入力が見つからないので、スクリプトの Input は常に押されていないを返します");
         }
         configured = Script::RegisterTweenBinding(engine_) && configured;
-        configured = Script::RegisterUIBinding(engine_) && configured;
+        configured = Script::RegisterUIBinding(engine_, services.engine) && configured;
         configured = Script::RegisterAudioBinding(engine_, services.audio) && configured;
         if (!services.audio) {
             logger.Logf(LogLevel::Warn, LogCategory::Script, "音が見つからないので、スクリプトの Audio は何も鳴らしません");
@@ -172,7 +172,7 @@ namespace CoreEngine
         configured = Script::RegisterSceneBinding(engine_, services.engine) && configured;
         configured = Script::RegisterRenderingBinding(engine_, services.engine) && configured;
         if (!services.engine) {
-            logger.Logf(LogLevel::Warn, LogCategory::Script, "エンジンが見つからないので、スクリプトの Scene と Rendering は何もしません");
+            logger.Logf(LogLevel::Warn, LogCategory::Script, "エンジンが見つからないので、スクリプトの Scene・Rendering・Font は何もしません");
         }
         configured = Script::RegisterSessionBinding(engine_) && configured;
         configured = Script::RegisterRandomBinding(engine_) && configured;
@@ -398,6 +398,18 @@ namespace CoreEngine
     const char* ScriptHost::GetTypeDeclaration(int typeId) const
     {
         return engine_ ? engine_->GetTypeDeclaration(typeId) : nullptr;
+    }
+
+    int ScriptHost::GetArrayElementTypeId(int typeId) const
+    {
+        if (!engine_ || (typeId & asTYPEID_OBJHANDLE) != 0) {
+            return -1;
+        }
+        const asITypeInfo* const type = engine_->GetTypeInfoById(typeId);
+        if (!type || type->GetSubTypeCount() != 1 || !type->GetName() || std::string(type->GetName()) != "array") {
+            return -1;
+        }
+        return type->GetSubTypeId(0);
     }
 
     void ScriptHost::RegisterComponent(ScriptComponent* component)

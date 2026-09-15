@@ -66,6 +66,16 @@ enum UIAnchor {
 	BottomCenter = 7,
 	BottomRight = 8
 }
+enum TextAlignH {
+	Left = 0,
+	Center = 1,
+	Right = 2
+}
+enum TextAlignV {
+	Top = 0,
+	Middle = 1,
+	Bottom = 2
+}
 enum AudioBus {
 	BGM = 0,
 	SE = 1,
@@ -235,6 +245,9 @@ class GameObject {
 	GameObject@ FindObject(const string&in name) const;
 	GameObject@ InstantiatePrefab(const string&in prefabPath, const string&in name) const;
 	UIText@ get_uiText() property;
+	UIText@ SpawnUIText(const string&in fontName, const string&in text, const string&in name) const;
+	UIImage@ get_uiImage() property;
+	UIImage@ SpawnUIImage(const string&in texturePath, const string&in name) const;
 	Material@ get_material() property;
 }
 class Transform {
@@ -283,10 +296,6 @@ class TweenSequence {
 }
 class UIText {
 	bool get_exists() const property;
-	string get_text() const property;
-	void set_text(const string&in) property;
-	float get_fontSize() const property;
-	void set_fontSize(float) property;
 	Vector2 get_anchoredPosition() const property;
 	void set_anchoredPosition(const Vector2&in) property;
 	Vector2 get_pivot() const property;
@@ -300,6 +309,42 @@ class UIText {
 	float get_rotation() const property;
 	void set_rotation(float) property;
 	GameObject@ get_gameObject() const property;
+	string get_text() const property;
+	void set_text(const string&in) property;
+	float get_fontSize() const property;
+	void set_fontSize(float) property;
+	string get_font() const property;
+	void set_font(const string&in) property;
+	Vector4 get_outlineColor() const property;
+	void set_outlineColor(const Vector4&in) property;
+	float get_outlineWidth() const property;
+	void set_outlineWidth(float) property;
+	void SetOutline(const Vector4&in color, float width);
+	TextAlignH get_alignH() const property;
+	void set_alignH(TextAlignH) property;
+	TextAlignV get_alignV() const property;
+	void set_alignV(TextAlignV) property;
+	void SetAlign(TextAlignH horizontal, TextAlignV vertical);
+	Vector2 get_measuredSize() const property;
+}
+class UIImage {
+	bool get_exists() const property;
+	Vector2 get_anchoredPosition() const property;
+	void set_anchoredPosition(const Vector2&in) property;
+	Vector2 get_pivot() const property;
+	void set_pivot(const Vector2&in) property;
+	Vector4 get_color() const property;
+	void set_color(const Vector4&in) property;
+	int get_sortOrder() const property;
+	void set_sortOrder(int) property;
+	UIAnchor get_anchor() const property;
+	void set_anchor(UIAnchor) property;
+	float get_rotation() const property;
+	void set_rotation(float) property;
+	GameObject@ get_gameObject() const property;
+	Vector2 get_size() const property;
+	void set_size(const Vector2&in) property;
+	Vector2 get_textureSize() const property;
 }
 class PlayParams {
 	PlayParams();
@@ -474,6 +519,9 @@ TweenHandle RotateTo(GameObject@ object, const Vector3&in to, float duration);
 int KillById(const string&in id, bool complete = false);
 int KillByLink(GameObject@ owner, bool complete = false);
 TweenSequence Sequence();
+}
+namespace Font {
+void Register(const string&in name, const string&in filePath, const string[]&in systemFamilies, const string&in charset = "");
 }
 namespace Audio {
 void PlayOneShot(const string&in path, const PlayParams&in params = PlayParams());

@@ -60,8 +60,26 @@ namespace CoreEngine::Reflection
         case PropertyType::String:  return sizeof(std::string);
         case PropertyType::ObjectRef: return sizeof(ObjectRefValue);
         case PropertyType::AssetRef:  return sizeof(AssetRefValue);
+        case PropertyType::Array:     return sizeof(ArrayValue);
         }
         return 0;
+    }
+
+    bool IsArrayElementType(PropertyType type) noexcept
+    {
+        switch (type) {
+        case PropertyType::Bool:
+        case PropertyType::Int:
+        case PropertyType::Float:
+        case PropertyType::Vector2:
+        case PropertyType::Vector3:
+        case PropertyType::Vector4:
+        case PropertyType::Color:
+        case PropertyType::String:
+            return true;
+        default:
+            return false;
+        }
     }
 
     const PropertyDescriptor* TypeDescriptor::Find(const char* propertyName) const

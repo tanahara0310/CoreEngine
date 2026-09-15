@@ -9,6 +9,8 @@
 #include <cstdint>
 #include <string>
 #include <type_traits>
+#include <variant>
+#include <vector>
 
 namespace CoreEngine
 {
@@ -30,6 +32,7 @@ namespace CoreEngine::Reflection
         String,
         ObjectRef,
         AssetRef,
+        Array,
     };
 
     /// @brief シーン内の別オブジェクトのコンポーネントを指す値
@@ -54,6 +57,15 @@ namespace CoreEngine::Reflection
         {
             return guid == other.guid && path == other.path;
         }
+    };
+
+    /// @brief 配列の値（要素の型は記述子の `elementType`）
+    struct ArrayValue
+    {
+        /// @brief 要素 1 つ分の値（Color の要素は Vector4 で持つ）
+        using Element = std::variant<bool, int, float, Vector2, Vector3, Vector4, std::string>;
+
+        std::vector<Element> elements;
     };
 
     /// @brief 数値プロパティの編集範囲
@@ -103,6 +115,9 @@ namespace CoreEngine::Reflection
     /// @brief 型ごとの値サイズ（Undo のスナップショットが使う）
     size_t SizeOfPropertyType(PropertyType type) noexcept;
 
+    /// @brief 配列の要素にできる型か（Bool / Int / Float / Vector2 / Vector3 / Vector4 / Color / String）
+    bool IsArrayElementType(PropertyType type) noexcept;
+
     /// @brief 1 つのプロパティの記述
     struct PropertyDescriptor
     {
@@ -133,6 +148,7 @@ namespace CoreEngine::Reflection
         PropertyFlags   flags = PropertyFlags::None;
         ComponentFilter acceptsComponent = nullptr;  ///< ObjectRef の繋ぎ先の判定（ObjectRef 以外は nullptr）
         AssetType       assetType = AssetType::Unknown;  ///< AssetRef が指せるアセットの種類（AssetRef 以外は Unknown）
+        PropertyType    elementType = PropertyType::Float;  ///< Array の要素の型（Array 以外は使わない）
 
         /// @brief 読み書きの口が揃っているか
         bool IsValid() const { return get != nullptr && set != nullptr; }

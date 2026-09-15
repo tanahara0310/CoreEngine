@@ -23,6 +23,7 @@ namespace CoreEngine::Reflection
             case PropertyType::String:  return fn(static_cast<std::string*>(nullptr));
             case PropertyType::ObjectRef: return fn(static_cast<ObjectRefValue*>(nullptr));
             case PropertyType::AssetRef:  return fn(static_cast<AssetRefValue*>(nullptr));
+            case PropertyType::Array:     return fn(static_cast<ArrayValue*>(nullptr));
             }
             return fn(static_cast<float*>(nullptr));
         }
@@ -34,6 +35,26 @@ namespace CoreEngine::Reflection
             return a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w;
         }
         template <class T> bool IsSame(const T& a, const T& b) { return a == b; }
+
+        bool IsSame(const ArrayValue& a, const ArrayValue& b)
+        {
+            if (a.elements.size() != b.elements.size()) {
+                return false;
+            }
+            for (size_t i = 0; i < a.elements.size(); ++i) {
+                const ArrayValue::Element& other = b.elements[i];
+                if (a.elements[i].index() != other.index()) {
+                    return false;
+                }
+                const bool same = std::visit([&](const auto& value) {
+                    return IsSame(value, std::get<std::decay_t<decltype(value)>>(other));
+                    }, a.elements[i]);
+                if (!same) {
+                    return false;
+                }
+            }
+            return true;
+        }
     }
 
     void PropertyValue::CopyFrom(PropertyType type, const void* source)
@@ -114,5 +135,39 @@ namespace CoreEngine::Reflection
             if (!stored) { return false; }
             return IsSame(*stored, *static_cast<const T*>(other));
             });
+    }
+
+    void* ArrayElementData(PropertyType elementType, ArrayValue::Element& element)
+    {
+        return const_cast<void*>(ArrayElementData(elementType, std::as_const(element)));
+    }
+
+    const void* ArrayElementData(PropertyType elementType, const ArrayValue::Element& element)
+    {
+        switch (elementType) {
+        case PropertyType::Bool:    return std::get_if<bool>(&element);
+        case PropertyType::Int:     return std::get_if<int>(&element);
+        case PropertyType::Float:   return std::get_if<float>(&element);
+        case PropertyType::Vector2: return std::get_if<Vector2>(&element);
+        case PropertyType::Vector3: return std::get_if<Vector3>(&element);
+        case PropertyType::Vector4:
+        case PropertyType::Color:   return std::get_if<Vector4>(&element);
+        case PropertyType::String:  return std::get_if<std::string>(&element);
+        default:                    return nullptr;
+        }
+    }
+
+    ArrayValue::Element MakeArrayElement(PropertyType elementType)
+    {
+        switch (elementType) {
+        case PropertyType::Bool:    return ArrayValue::Element(std::in_place_type<bool>, false);
+        case PropertyType::Int:     return ArrayValue::Element(std::in_place_type<int>, 0);
+        case PropertyType::Vector2: return ArrayValue::Element(std::in_place_type<Vector2>);
+        case PropertyType::Vector3: return ArrayValue::Element(std::in_place_type<Vector3>);
+        case PropertyType::Vector4:
+        case PropertyType::Color:   return ArrayValue::Element(std::in_place_type<Vector4>);
+        case PropertyType::String:  return ArrayValue::Element(std::in_place_type<std::string>);
+        default:                    return ArrayValue::Element(std::in_place_type<float>, 0.0f);
+        }
     }
 }
