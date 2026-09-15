@@ -83,6 +83,19 @@ namespace CoreEngine
         {
             Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Script, "{}", message);
         }
+
+        /// @brief アセットの種類の名前（AssetTypeToString と同じ綴り）から種類を引く
+        std::optional<AssetType> ParseAssetType(const std::string& name)
+        {
+            for (const AssetType type : { AssetType::Texture, AssetType::Model, AssetType::Shader, AssetType::Audio,
+                                          AssetType::Material, AssetType::Scene, AssetType::Prefab, AssetType::Animation,
+                                          AssetType::MaterialLibrary, AssetType::Json, AssetType::Csv }) {
+                if (AssetTypeToString(type) == name) {
+                    return type;
+                }
+            }
+            return std::nullopt;
+        }
     }
 
     ScriptComponentType::ScriptComponentType(ScriptHost& host, asITypeInfo* type, asITypeInfo* base, CScriptBuilder& builder)
@@ -306,6 +319,34 @@ namespace CoreEngine
                 return false;
             }
             property.type = Reflection::PropertyType::Color;
+            return true;
+        }
+
+        if (attribute.name == "Tooltip") {
+            if (arguments.size() != 1) {
+                error = "属性「Tooltip」の引数は説明 1 つです";
+                return false;
+            }
+            property.tooltip = StoreText(arguments.front());
+            return true;
+        }
+
+        if (attribute.name == "Asset") {
+            if (arguments.size() != 1) {
+                error = "属性「Asset」の引数はアセットの種類 1 つです（Texture / Model / Audio / Prefab など）";
+                return false;
+            }
+            if (property.type != Reflection::PropertyType::String) {
+                error = "属性「Asset」は string のメンバ変数にだけ付けられます";
+                return false;
+            }
+            const std::optional<AssetType> assetType = ParseAssetType(arguments.front());
+            if (!assetType) {
+                error = "属性「Asset」の種類「" + arguments.front() + "」はありません";
+                return false;
+            }
+            property.type = Reflection::PropertyType::AssetRef;
+            property.assetType = *assetType;
             return true;
         }
 

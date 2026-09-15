@@ -140,6 +140,7 @@ namespace CoreEngine::Reflection
         /// @brief 保存キー兼 UI の識別子（既定はメンバ式の末尾トークン）
         std::string     name;
         const char*     displayName = "";
+        const char*     tooltip = "";  ///< インスペクタで項目にカーソルを乗せたときに出す説明（空なら出さない）
         PropertyType    type = PropertyType::Float;
         Getter          get = nullptr;
         Setter          set = nullptr;
