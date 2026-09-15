@@ -245,6 +245,15 @@ namespace CoreEngine::Script
             r.Function("int Max(int, int)", asFUNCTION(MaxInt));
         }
 
+        /// @brief 進捗 t にイージングを掛ける（範囲外の種類は t のまま）
+        float EaseValue(int type, float t)
+        {
+            if (type < 0 || type > static_cast<int>(EasingUtil::Type::EaseInOutBounce)) {
+                return t;
+            }
+            return EasingUtil::Apply(t, static_cast<EasingUtil::Type>(type));
+        }
+
         void RegisterEaseType(BindingRegistrar& r)
         {
             r.Enum("EaseType");
@@ -252,6 +261,7 @@ namespace CoreEngine::Script
             for (int value = 0; value <= last; ++value) {
                 r.EnumValue("EaseType", EasingUtil::GetTypeName(static_cast<EasingUtil::Type>(value)), value);
             }
+            r.Function("float Ease(EaseType type, float t)", asFUNCTION(EaseValue));
         }
     }
 

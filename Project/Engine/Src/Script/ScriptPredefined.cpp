@@ -150,6 +150,14 @@ namespace CoreEngine::Script
             blocks.AppendTo(out);
         }
 
+        /// @brief 参照型の生成関数の宣言を、コンストラクタの宣言の形（`型名(引数)`）にする
+        std::string FactoryDeclarationOf(const asITypeInfo& type, const asIScriptFunction& factory)
+        {
+            const std::string declaration = factory.GetDeclaration(false, false, true);
+            const std::size_t open = declaration.find('(');
+            return open == std::string::npos ? std::string() : TypeNameOf(type) + declaration.substr(open);
+        }
+
         void AppendClasses(asIScriptEngine& engine, std::string& out)
         {
             NamespacedBlocks blocks;
@@ -170,6 +178,13 @@ namespace CoreEngine::Script
                     const asIScriptFunction* const function = type->GetBehaviourByIndex(j, &behaviour);
                     if (function && behaviour == asBEHAVE_CONSTRUCT) {
                         appendMember(DeclarationOf(*function));
+                    }
+                }
+                if ((type->GetFlags() & asOBJ_TEMPLATE) == 0) {
+                    for (asUINT j = 0; j < type->GetFactoryCount(); ++j) {
+                        if (const asIScriptFunction* const factory = type->GetFactoryByIndex(j)) {
+                            appendMember(FactoryDeclarationOf(*type, *factory));
+                        }
                     }
                 }
                 for (asUINT j = 0; j < type->GetMethodCount(); ++j) {

@@ -61,6 +61,15 @@
     <ClCompile Include="Engine\Src\Script\Binding\SceneBinding.cpp">
       <Filter>Engine\Src\Script\Binding</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\SessionBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\RandomBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\RenderingBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Script\Metadata\MetadataParser.cpp">
       <Filter>Engine\Src\Script\Metadata</Filter>
     </ClCompile>
@@ -1126,6 +1135,9 @@
     <ClCompile Include="Engine\Src\Utility\Random\RandomGenerator.cpp">
       <Filter>Engine\Src\Utility\Random</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\Session\SessionValues.cpp">
+      <Filter>Engine\Src\Utility\Session</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\SceneDepth.cpp">
       <Filter>Engine\Src\Graphics\Render\RenderTarget</Filter>
     </ClCompile>
@@ -1582,6 +1594,9 @@
     <ClCompile Include="Engine\Src\Scene\Feature\TweenFeature.cpp">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Scene\Feature\SceneFeatureRegistry.cpp">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Text\TextGeometryBuilder.cpp">
       <Filter>Engine\Src\Text</Filter>
     </ClCompile>
@@ -1792,6 +1807,15 @@
       <Filter>Engine\Src\Script\Binding</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Script\Binding\SceneBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\SessionBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\RandomBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\RenderingBinding.h">
       <Filter>Engine\Src\Script\Binding</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Script\Metadata\MetadataParser.h">
@@ -3123,6 +3147,9 @@
     <ClInclude Include="Engine\Src\Utility\Random\RandomGenerator.h">
       <Filter>Engine\Src\Utility\Random</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Session\SessionValues.h">
+      <Filter>Engine\Src\Utility\Session</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\EngineSystem\EngineSystem.h">
       <Filter>Engine\Src\EngineSystem</Filter>
     </ClInclude>
@@ -3667,6 +3694,9 @@
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Scene\Feature\TweenFeature.h">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Scene\Feature\SceneFeatureRegistry.h">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Text\TextGeometryBuilder.h">
@@ -4488,6 +4518,9 @@
     </Filter>
     <Filter Include="Engine\Src\Utility\Random">
       <UniqueIdentifier>{CE13D7F5-57F4-4CDF-BDA2-D844D244356B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Utility\Session">
+      <UniqueIdentifier>{A45F329B-F0A3-4B9E-BC5E-F9AEE2A0FF64}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Utility\Timer">
       <UniqueIdentifier>{139020EE-B17F-427B-AB95-76D25BBBABD6}</UniqueIdentifier>

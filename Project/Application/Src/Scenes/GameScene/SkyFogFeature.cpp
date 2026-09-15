@@ -8,6 +8,7 @@
 #include "Math/MathCore.h"
 #include "Math/Vector/Vector4.h"
 #include "Scene/Feature/ISceneFeature.h"
+#include "Scene/Feature/SceneFeatureRegistry.h"
 #include "Utility/CVar/CVar.h"
 
 #include <algorithm>
@@ -421,6 +422,8 @@ GameComponents::CreateSkyFogFeature(bool enabled)
 {
     return std::make_unique<SkyFogFeature>(enabled);
 }
+
+SCENE_FEATURE_REGISTER("SkyFog", [] { return GameComponents::CreateSkyFogFeature(); })
 
 void GameComponents::SetSkyFogCloudLift(float lift, float baseHeight, float heightFalloff)
 {

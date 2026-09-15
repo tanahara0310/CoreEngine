@@ -233,7 +233,9 @@ class GameObject {
 	bool opEquals(const GameObject&in) const;
 	Transform@ get_transform() property;
 	GameObject@ FindObject(const string&in name) const;
+	GameObject@ InstantiatePrefab(const string&in prefabPath, const string&in name) const;
 	UIText@ get_uiText() property;
+	Material@ get_material() property;
 }
 class Transform {
 	bool get_exists() const property;
@@ -245,6 +247,7 @@ class Transform {
 	void set_scale(const Vector3&in) property;
 	Vector3 get_worldPosition() const property;
 	void SetParent(Transform@ parent);
+	void UpdateMatrix();
 	GameObject@ get_gameObject() const property;
 }
 class TweenHandle {
@@ -342,6 +345,42 @@ class CameraShakeParams {
 	ShakeTimeMode timeMode;
 	uint seed;
 }
+class GameCamera {
+	bool get_exists() const property;
+	Vector3 get_position() const property;
+	void set_position(const Vector3&in) property;
+	Vector3 get_rotation() const property;
+	void set_rotation(const Vector3&in) property;
+	void LookAt(const Vector3&in target);
+	void UpdateMatrix();
+}
+class Material {
+	bool get_exists() const property;
+	Vector4 get_color() const property;
+	void set_color(const Vector4&in) property;
+	GameObject@ get_gameObject() const property;
+}
+class SaveFile {
+	SaveFile(const string&in relativePath);
+	const string& get_path() const property;
+	bool Has(const string&in key) const;
+	int GetInt(const string&in key, int fallback = 0) const;
+	float GetFloat(const string&in key, float fallback = 0.0f) const;
+	bool GetBool(const string&in key, bool fallback = false) const;
+	string GetString(const string&in key, const string&in fallback = "") const;
+	void SetInt(const string&in key, int value);
+	void SetFloat(const string&in key, float value);
+	void SetBool(const string&in key, bool value);
+	void SetString(const string&in key, const string&in value);
+	void Remove(const string&in key);
+	bool Save() const;
+}
+class RandomStream {
+	RandomStream(uint seed);
+	uint Next();
+	float Uniform(float minimum, float maximum);
+	int UniformInt(int minimum, int maximum);
+}
 string formatInt(int64 val, const string&in options = "", uint width = 0);
 string formatUInt(uint64 val, const string&in options = "", uint width = 0);
 string formatFloat(double val, const string&in options = "", uint width = 0, uint precision = 0);
@@ -406,6 +445,7 @@ float Min(float, float);
 float Max(float, float);
 int Min(int, int);
 int Max(int, int);
+float Ease(EaseType type, float t);
 namespace Time {
 float DeltaTime();
 float UnscaledDeltaTime();
@@ -460,4 +500,25 @@ CameraShakeParams Rumble();
 namespace Scene {
 void ChangeScene(const string&in name);
 string GetCurrentName();
+GameCamera@ GetGameCamera();
+}
+namespace Rendering {
+float GetAutoExposureEV();
+}
+namespace Session {
+void SetInt(const string&in key, int value);
+int GetInt(const string&in key, int fallback = 0);
+void SetFloat(const string&in key, float value);
+float GetFloat(const string&in key, float fallback = 0.0f);
+void SetBool(const string&in key, bool value);
+bool GetBool(const string&in key, bool fallback = false);
+void SetString(const string&in key, const string&in value);
+string GetString(const string&in key, const string&in fallback = "");
+bool Has(const string&in key);
+void Remove(const string&in key);
+}
+namespace Random {
+float Range(float minimum, float maximum);
+int Range(int minimum, int maximum);
+bool Chance(float probability = 0.5f);
 }

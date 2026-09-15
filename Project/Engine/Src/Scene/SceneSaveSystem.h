@@ -3,6 +3,7 @@
 #include <string>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <vector>
 
 namespace CoreEngine
@@ -49,6 +50,15 @@ namespace CoreEngine
         /// @return 重複を除いたモデルのパスのリスト
         /// @note GameObjectManager が要らないので、シーン構築より前（シェーダコンパイル中）に呼べる
         static std::vector<std::string> CollectModelPaths(const std::string& sceneName);
+
+        /// @brief マニフェスト（`_scene.json`）の、オブジェクトの一覧のほかに書ける設定
+        struct ManifestSettings {
+            std::vector<std::string> features; ///< `features`：足す Feature の名前（並び順に足す）
+            std::optional<bool> defaultGround; ///< `defaultGround`：既定の床を使うか（書かれていなければ空）
+        };
+
+        /// @brief マニフェストの設定を読む（オブジェクトは生成しない）
+        static ManifestSettings LoadManifestSettings(const std::string& sceneName);
 
         /// @brief シーン全体を保存（マニフェスト + 全オブジェクトの個別ファイル）
         /// @note マニフェストに載らなかったオブジェクトの JSON（名前が `_` で始まるものを除く）は消す。

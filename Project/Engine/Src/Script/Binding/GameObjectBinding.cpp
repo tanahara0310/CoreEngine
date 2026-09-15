@@ -4,6 +4,8 @@
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/GameObjectManager.h"
+#include "Reflection/PropertyDescriptor.h"
+#include "Scene/PrefabSystem.h"
 #include "Script/Binding/BindingRegistrar.h"
 #include "Script/ScriptComponent.h"
 #include "Utility/Logger/Logger.h"
@@ -101,6 +103,13 @@ namespace CoreEngine::Script
             return;
         }
         transform->Get().SetParent(&parentTransform->Get());
+    }
+
+    void ScriptTransform::UpdateMatrix()
+    {
+        if (TransformComponent* const transform = ResolveOrWarn("行列の作り直し")) {
+            transform->Get().TransferMatrix();
+        }
     }
 
     ScriptGameObject* ScriptTransform::GetGameObject() const
@@ -232,6 +241,23 @@ namespace CoreEngine::Script
         return nullptr;
     }
 
+    ScriptGameObject* ScriptGameObject::InstantiatePrefab(const std::string& prefabPath, const std::string& name) const
+    {
+        const GameObject* const self = ResolveOrWarn("プレハブからの生成");
+        GameObjectManager* const manager = self ? self->GetObjectManager() : nullptr;
+        if (!manager) {
+            return nullptr;
+        }
+        const GameObject* const object =
+            PrefabSystem::Instantiate(*manager, Reflection::AssetRefValue{ std::string(), prefabPath }, name);
+        if (!object) {
+            Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Script,
+                "プレハブ {} を読めないので、{} を作れませんでした", prefabPath, name);
+            return nullptr;
+        }
+        return CreateForObject(object);
+    }
+
     bool ScriptGameObject::GetComponent(void* reference, int typeId) const
     {
         asIScriptContext* const context = asGetActiveContext();
@@ -286,6 +312,8 @@ namespace CoreEngine::Script
         r.Method("GameObject", "Transform@ get_transform() property", asMETHOD(ScriptGameObject, GetTransform), asCALL_THISCALL);
         r.Method("GameObject", "GameObject@ FindObject(const string &in name) const", asMETHOD(ScriptGameObject, FindObject), asCALL_THISCALL);
         r.Method("GameObject", "bool GetComponent(?&out component) const", asMETHOD(ScriptGameObject, GetComponent), asCALL_THISCALL);
+        r.Method("GameObject", "GameObject@ InstantiatePrefab(const string &in prefabPath, const string &in name) const",
+            asMETHOD(ScriptGameObject, InstantiatePrefab), asCALL_THISCALL);
 
         r.Behaviour("Transform", asBEHAVE_ADDREF, "void f()", asMETHOD(ScriptTransform, AddRef), asCALL_THISCALL);
         r.Behaviour("Transform", asBEHAVE_RELEASE, "void f()", asMETHOD(ScriptTransform, Release), asCALL_THISCALL);
@@ -298,6 +326,7 @@ namespace CoreEngine::Script
         r.Method("Transform", "void set_scale(const Vector3 &in) property", asMETHOD(ScriptTransform, SetScale), asCALL_THISCALL);
         r.Method("Transform", "Vector3 get_worldPosition() const property", asMETHOD(ScriptTransform, GetWorldPosition), asCALL_THISCALL);
         r.Method("Transform", "void SetParent(Transform@+ parent)", asMETHOD(ScriptTransform, SetParent), asCALL_THISCALL);
+        r.Method("Transform", "void UpdateMatrix()", asMETHOD(ScriptTransform, UpdateMatrix), asCALL_THISCALL);
         r.Method("Transform", "GameObject@ get_gameObject() const property", asMETHOD(ScriptTransform, GetGameObject), asCALL_THISCALL);
         return r.Succeeded();
     }

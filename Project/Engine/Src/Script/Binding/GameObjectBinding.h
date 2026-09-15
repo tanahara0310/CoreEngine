@@ -53,6 +53,9 @@ namespace CoreEngine::Script
         /// @brief 親を設定する（nullptr で親なし。自分自身は親にしない）
         void SetParent(ScriptTransform* parent);
 
+        /// @brief 位置・回転・拡大と親から行列を作り直す（その後で描くときに今の値が出る）
+        void UpdateMatrix();
+
         /// @brief 持ち主の GameObject のハンドル（参照を 1 つ足して返す）
         ScriptGameObject* GetGameObject() const;
 
@@ -112,6 +115,12 @@ namespace CoreEngine::Script
         /// @brief 同じ管理者（同じシーン）から表示名でオブジェクトを探す（破棄を予約されたものは飛ばす）
         /// @return 参照を 1 つ持ったハンドル。見つからなければ nullptr
         ScriptGameObject* FindObject(const std::string& name) const;
+
+        /// @brief プレハブからオブジェクトを 1 体作り、同じ管理者（同じシーン）へ登録する
+        /// @param prefabPath プロジェクトの根からの相対パス（`Application/Assets/Prefabs/Rock.prefab` など）
+        /// @param name 作るオブジェクトの名前
+        /// @return 参照を 1 つ持ったハンドル。プレハブを読めなければ nullptr
+        ScriptGameObject* InstantiatePrefab(const std::string& prefabPath, const std::string& name) const;
 
         /// @brief 付いているスクリプトのコンポーネントを型で探す（`?&out` の受け口）
         /// @param reference スクリプトのクラスのハンドルの置き場
