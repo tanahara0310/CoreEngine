@@ -197,6 +197,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Script\Binding\AudioBinding.cpp" />
     <ClCompile Include="Engine\Src\Script\Binding\CameraShakeBinding.cpp" />
     <ClCompile Include="Engine\Src\Script\Binding\SceneBinding.cpp" />
+    <ClCompile Include="Engine\Src\Script\Binding\SessionBinding.cpp" />
+    <ClCompile Include="Engine\Src\Script\Binding\RandomBinding.cpp" />
+    <ClCompile Include="Engine\Src\Script\Binding\RenderingBinding.cpp" />
     <ClCompile Include="Engine\Src\Script\Metadata\MetadataParser.cpp" />
     <ClCompile Include="Engine\Src\Script\ScriptComponent.cpp" />
     <ClCompile Include="Engine\Src\Script\ScriptComponentType.cpp" />
@@ -510,6 +513,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Editor\ImGui\ThreadProfilerUI.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\LivePPAgent.cpp" />
     <ClCompile Include="Engine\Src\Utility\Random\RandomGenerator.cpp" />
+    <ClCompile Include="Engine\Src\Utility\Session\SessionValues.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\SceneDepth.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\Command\UploadContext.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\Command\CommandQueue.cpp" />
@@ -1106,6 +1110,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Scene\Feature\EventDispatchFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\TimeOfDayFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\TweenFeature.cpp" />
+    <ClCompile Include="Engine\Src\Scene\Feature\SceneFeatureRegistry.cpp" />
     <ClCompile Include="Engine\Src\Text\TextGeometryBuilder.cpp" />
     <ClCompile Include="Engine\Src\Utility\Event\EventBus.cpp" />
     <ClCompile Include="Engine\Src\Utility\Tween\Tween.cpp" />
@@ -1178,6 +1183,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Script\Binding\AudioBinding.h" />
     <ClInclude Include="Engine\Src\Script\Binding\CameraShakeBinding.h" />
     <ClInclude Include="Engine\Src\Script\Binding\SceneBinding.h" />
+    <ClInclude Include="Engine\Src\Script\Binding\SessionBinding.h" />
+    <ClInclude Include="Engine\Src\Script\Binding\RandomBinding.h" />
+    <ClInclude Include="Engine\Src\Script\Binding\RenderingBinding.h" />
     <ClInclude Include="Engine\Src\Script\Metadata\MetadataParser.h" />
     <ClInclude Include="Engine\Src\Script\ScriptComponent.h" />
     <ClInclude Include="Engine\Src\Script\ScriptComponentType.h" />
@@ -1578,6 +1586,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Utility\Debug\LivePPAgent.h" />
     <ClInclude Include="Engine\Src\Utility\FileErrorDialog\FileErrorDialog.h" />
     <ClInclude Include="Engine\Src\Utility\Random\RandomGenerator.h" />
+    <ClInclude Include="Engine\Src\Utility\Session\SessionValues.h" />
     <ClInclude Include="Engine\Src\EngineSystem\EngineSystem.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Startup\IStartupTask.h" />
     <ClInclude Include="Engine\Src\Utility\Profiler\CpuProfiler.h" />
@@ -1803,6 +1812,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Scene\Feature\EventDispatchFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\TimeOfDayFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\TweenFeature.h" />
+    <ClInclude Include="Engine\Src\Scene\Feature\SceneFeatureRegistry.h" />
     <ClInclude Include="Engine\Src\Text\TextGeometryBuilder.h" />
     <ClInclude Include="Engine\Src\Utility\Event\EventBus.h" />
     <ClInclude Include="Engine\Src\Utility\Tween\Tween.h" />

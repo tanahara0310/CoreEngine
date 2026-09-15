@@ -6,8 +6,11 @@
 #include "Script/Binding/GameObjectBinding.h"
 #include "Script/Binding/LogBinding.h"
 #include "Script/Binding/MathBinding.h"
+#include "Script/Binding/RandomBinding.h"
+#include "Script/Binding/RenderingBinding.h"
 #include "Script/Binding/SceneBinding.h"
 #include "Script/Binding/ScriptInputBinding.h"
+#include "Script/Binding/SessionBinding.h"
 #include "Script/Binding/TimeBinding.h"
 #include "Script/Binding/TweenBinding.h"
 #include "Script/Binding/UIBinding.h"
@@ -167,9 +170,12 @@ namespace CoreEngine
         }
         configured = Script::RegisterCameraShakeBinding(engine_) && configured;
         configured = Script::RegisterSceneBinding(engine_, services.engine) && configured;
+        configured = Script::RegisterRenderingBinding(engine_, services.engine) && configured;
         if (!services.engine) {
-            logger.Logf(LogLevel::Warn, LogCategory::Script, "エンジンが見つからないので、スクリプトの Scene はシーンを切り替えません");
+            logger.Logf(LogLevel::Warn, LogCategory::Script, "エンジンが見つからないので、スクリプトの Scene と Rendering は何もしません");
         }
+        configured = Script::RegisterSessionBinding(engine_) && configured;
+        configured = Script::RegisterRandomBinding(engine_) && configured;
 
         stringTypeId_ = engine_->GetTypeIdByDecl("string");
         vector2TypeId_ = engine_->GetTypeIdByDecl("Vector2");

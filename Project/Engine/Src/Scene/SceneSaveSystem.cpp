@@ -479,6 +479,32 @@ namespace CoreEngine
         }
     }
 
+    SceneSaveSystem::ManifestSettings SceneSaveSystem::LoadManifestSettings(const std::string& sceneName)
+    {
+        ManifestSettings settings;
+        auto& jm = JsonManager::GetInstance();
+        const std::string manifestPath = MakeManifestPath(sceneName);
+        if (!jm.FileExists(manifestPath)) {
+            return settings;
+        }
+
+        const json manifest = jm.LoadJson(manifestPath);
+        if (!manifest.is_object()) {
+            return settings;
+        }
+        if (const auto features = manifest.find("features"); features != manifest.end() && features->is_array()) {
+            for (const auto& entry : *features) {
+                if (entry.is_string() && !entry.get<std::string>().empty()) {
+                    settings.features.push_back(entry.get<std::string>());
+                }
+            }
+        }
+        if (const auto ground = manifest.find("defaultGround"); ground != manifest.end() && ground->is_boolean()) {
+            settings.defaultGround = ground->get<bool>();
+        }
+        return settings;
+    }
+
     void SceneSaveSystem::RegisterObjectType(const std::string& typeName, ObjectFactory factory)
     {
         if (typeName.empty() || !factory) { return; }
@@ -563,8 +589,11 @@ namespace CoreEngine
         auto& jm = JsonManager::GetInstance();
         jm.CreateJsonDirectory(GetSceneDir());
 
-        // マニフェスト（オブジェクトキー一覧）
-        json manifest;
+        // マニフェスト（オブジェクトキー一覧を書き直し、ほかの項目は読み込んだまま残す）
+        json manifest = jm.FileExists(GetManifestPath()) ? jm.LoadJson(GetManifestPath()) : json::object();
+        if (!manifest.is_object()) {
+            manifest = json::object();
+        }
         manifest["objects"] = json::array();
         std::unordered_set<std::string> savedKeys;
 
