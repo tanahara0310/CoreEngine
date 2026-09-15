@@ -3,7 +3,9 @@
 #include "GameObject/Component/Core/IComponent.h"
 #include "Script/ScriptComponentType.h"
 
+#include <cstdint>
 #include <string>
+#include <unordered_map>
 
 class asIScriptObject;
 
@@ -69,6 +71,14 @@ namespace CoreEngine
         /// @brief 持ち主のハンドルからこのコンポーネントを外して手放す
         void ReleaseOwnerHandle();
 
+        /// @brief スクリプトのパスの文字列と控えた GUID から、AssetRef の値を作る
+        void ReadAssetRef(const Reflection::PropertyDescriptor& property, const std::string& path,
+            Reflection::AssetRefValue& out) const;
+
+        /// @brief AssetRef の値からパスを決めてスクリプトの文字列へ書き、GUID を控える
+        void WriteAssetRef(const Reflection::PropertyDescriptor& property, const Reflection::AssetRefValue& in,
+            std::string& path);
+
         std::string typeName_;
 #ifdef USE_IMGUI
         std::string displayName_;
@@ -79,5 +89,9 @@ namespace CoreEngine
 
         /// 持ち主のハンドル（参照を 1 つ持つ）
         Script::ScriptGameObject* ownerHandle_ = nullptr;
+
+        /// AssetRef のプロパティごとの、最後に書き込んだ GUID とパス（キーはメンバ変数の番号）。
+        /// スクリプトのメンバ変数はパスの文字列だけを持つので、GUID はここに残す
+        std::unordered_map<std::uint32_t, Reflection::AssetRefValue> assetRefs_;
     };
 }

@@ -530,6 +530,17 @@ namespace CoreEngine
         return Reflection::IsEnabled();
     }
 
+    namespace
+    {
+        /// @brief 直前の項目にカーソルが乗っていれば、プロパティの説明を出す
+        void ShowPropertyTooltip(const Reflection::PropertyDescriptor& p, bool hovered)
+        {
+            if (hovered && p.tooltip && p.tooltip[0] != '\0') {
+                ImGui::SetTooltip("%s", p.tooltip);
+            }
+        }
+    }
+
     bool InspectorRenderer::Draw(const Reflection::TypeDescriptor& type, void* instance,
                                  const DrawContext& context)
     {
@@ -558,6 +569,7 @@ namespace CoreEngine
 
             if (!p.IsEditable()) {
                 DrawReadOnly(p, value);
+                ShowPropertyTooltip(p, ImGui::IsItemHovered());
                 continue;
             }
 
@@ -571,8 +583,10 @@ namespace CoreEngine
                 const bool retargeted = (p.type == Reflection::PropertyType::ObjectRef)
                     ? DrawObjectRef(p, *static_cast<Reflection::ObjectRefValue*>(value), context.objects)
                     : DrawAssetRef(p, *static_cast<Reflection::AssetRefValue*>(value));
+                const bool hovered = ImGui::IsItemHovered();
                 changed |= DrawPrefabOverride(p, instance, context, ownerLabel);
                 ImGui::PopID();
+                ShowPropertyTooltip(p, hovered);
 
                 if (retargeted) {
                     current.StoreTo(p, instance);
@@ -598,6 +612,7 @@ namespace CoreEngine
                 const bool edited = DrawArray(p, *static_cast<Reflection::ArrayValue*>(value),
                     ownContextMenu, structureChanged);
                 ImGui::EndGroup();
+                const bool hovered = ImGui::IsItemHovered();
 
                 if (edited) {
                     current.StoreTo(p, instance);
@@ -625,6 +640,7 @@ namespace CoreEngine
                 }
                 changed |= DrawPrefabOverride(p, instance, context, ownerLabel);
                 ImGui::PopID();
+                ShowPropertyTooltip(p, hovered);
                 continue;
             }
 
@@ -634,6 +650,7 @@ namespace CoreEngine
 
             ImGui::PushID(p.name.c_str());
             const bool edited = DrawWidget(p, value, ownContextMenu);
+            const bool hovered = ImGui::IsItemHovered();
             if (ImGui::IsItemActivated()) {
                 editSnapshot.CopyFrom(p.type, value);
             }
@@ -654,6 +671,7 @@ namespace CoreEngine
             }
             changed |= DrawPrefabOverride(p, instance, context, ownerLabel);
             ImGui::PopID();
+            ShowPropertyTooltip(p, hovered);
         }
         return changed;
     }

@@ -2,6 +2,8 @@
 #include "Script/ScriptComponent.h"
 
 #include "GameObject/GameObject.h"
+#include "Graphics/Asset/AssetDatabase.h"
+#include "Graphics/Asset/AssetRef.h"
 #include "Reflection/PropertyValue.h"
 #include "Script/Binding/GameObjectBinding.h"
 #include "Script/ScriptHost.h"
@@ -146,6 +148,11 @@ namespace CoreEngine
                 *static_cast<Reflection::ArrayValue*>(out));
             return;
         }
+        if (property.type == Reflection::PropertyType::AssetRef) {
+            ReadAssetRef(property, *static_cast<const std::string*>(address),
+                *static_cast<Reflection::AssetRefValue*>(out));
+            return;
+        }
         CopyValue(property.type, address, out);
     }
 
@@ -164,7 +171,39 @@ namespace CoreEngine
                 *static_cast<CScriptArray*>(address));
             return;
         }
+        if (property.type == Reflection::PropertyType::AssetRef) {
+            WriteAssetRef(property, *static_cast<const Reflection::AssetRefValue*>(in),
+                *static_cast<std::string*>(address));
+            return;
+        }
         CopyValue(property.type, in, address);
+    }
+
+    void ScriptComponent::ReadAssetRef(const Reflection::PropertyDescriptor& property, const std::string& path,
+        Reflection::AssetRefValue& out) const
+    {
+        // 最後に書き込んだパスのままなら、控えた GUID を使う
+        if (const auto it = assetRefs_.find(property.index); it != assetRefs_.end() && it->second.path == path) {
+            out = it->second;
+            return;
+        }
+        // スクリプトがパスを書き換えたときは、そのパスから GUID を引き直す
+        out.path = path;
+        const AssetInfo* const info = path.empty() ? nullptr : FindAssetInfo(path, property.assetType);
+        out.guid = info ? info->guid : std::string();
+    }
+
+    void ScriptComponent::WriteAssetRef(const Reflection::PropertyDescriptor& property,
+        const Reflection::AssetRefValue& in, std::string& path)
+    {
+        // GUID で引ければ今のパスへ直す（ファイルを動かしても参照が切れない）
+        Reflection::AssetRefValue resolved = in;
+        if (const AssetInfo* const info = ResolveAssetRef(in)) {
+            resolved.guid = info->guid;
+            resolved.path = ToAssetPath(*info);
+        }
+        path = resolved.path;
+        assetRefs_[property.index] = std::move(resolved);
     }
 
     void ScriptComponent::BindOwnerHandle()
