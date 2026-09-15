@@ -397,6 +397,10 @@ namespace CoreEngine
     public:
         TweenSequence();
 
+        /// @brief `Handle()` で得たシーケンスのハンドルから、同じシーケンスを指し直す
+        /// @note シーケンス以外のハンドルを渡さないこと（無効なハンドルなら操作はすべて空振りになる）。
+        explicit TweenSequence(const TweenHandle& handle) : handle_(handle) {}
+
         /// @brief 前のステップの完了後に始まるトゥイーンを足す
         TweenSequence& Append(const TweenHandle& tween);
 

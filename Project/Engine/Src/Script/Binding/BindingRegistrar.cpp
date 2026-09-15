@@ -45,6 +45,11 @@ namespace CoreEngine::Script
         Check(engine_->RegisterGlobalFunction(declaration, function, callConvention), "関数", declaration);
     }
 
+    void BindingRegistrar::Funcdef(const char* declaration)
+    {
+        Check(engine_->RegisterFuncdef(declaration), "funcdef", declaration);
+    }
+
     void BindingRegistrar::Enum(const char* name)
     {
         Check(engine_->RegisterEnum(name), "列挙", name);

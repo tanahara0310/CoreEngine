@@ -1,7 +1,9 @@
 #pragma once
 
+#include "GameObject/ObjectId.h"
 #include "Math/Vector/Vector3.h"
 
+#include <memory>
 #include <string>
 
 class asIScriptEngine;
@@ -9,6 +11,7 @@ class asIScriptEngine;
 namespace CoreEngine
 {
     class GameObject;
+    class GameObjectManager;
     class IComponent;
     class TransformComponent;
 }
@@ -62,8 +65,9 @@ namespace CoreEngine::Script
     };
 
     /// @brief スクリプトへ渡す GameObject のハンドル
-    /// @details 実体のポインタは持たず、使うたびにコンポーネントから持ち主を引き直す。
-    ///          そのコンポーネントが壊れる（外された・持ち主が破棄された・シーンが終わった）と、実体の無いハンドルになる。
+    /// @details 実体のポインタは持たず、使うたびに引き直す。引けなければ実体の無いハンドルになる。
+    ///          コンポーネントの持ち主を指すものはそのコンポーネントから引き（コンポーネントが壊れたら繋がりを切る）、
+    ///          それ以外は所属する管理者の印とオブジェクトの ID から引く（管理者が壊れたら引けない）。
     class ScriptGameObject
     {
     public:
@@ -71,6 +75,10 @@ namespace CoreEngine::Script
         /// @return 参照を 1 つ持ったハンドル
         /// @note そのコンポーネントを壊す前に `DetachComponent()` を呼ぶこと。
         static ScriptGameObject* CreateForOwner(const IComponent& component);
+
+        /// @brief オブジェクトを ID で指すハンドルを作る
+        /// @return 参照を 1 つ持ったハンドル。object が nullptr なら nullptr
+        static ScriptGameObject* CreateForObject(const GameObject* object);
 
         ScriptGameObject(const ScriptGameObject&) = delete;
         ScriptGameObject& operator=(const ScriptGameObject&) = delete;
@@ -101,6 +109,16 @@ namespace CoreEngine::Script
         /// @brief この GameObject の Transform のハンドル（参照を 1 つ足して返す）
         ScriptTransform* GetTransform();
 
+        /// @brief 同じ管理者（同じシーン）から表示名でオブジェクトを探す（破棄を予約されたものは飛ばす）
+        /// @return 参照を 1 つ持ったハンドル。見つからなければ nullptr
+        ScriptGameObject* FindObject(const std::string& name) const;
+
+        /// @brief 付いているスクリプトのコンポーネントを型で探す（`?&out` の受け口）
+        /// @param reference スクリプトのクラスのハンドルの置き場
+        /// @param typeId 置き場の型 ID（スクリプトのクラスのハンドルでなければスクリプトの例外にする）
+        /// @return 見つかったら true（置き場へ参照を 1 つ足して入れる）
+        bool GetComponent(void* reference, int typeId) const;
+
     private:
         ScriptGameObject() = default;
         ~ScriptGameObject() = default;
@@ -109,6 +127,8 @@ namespace CoreEngine::Script
         GameObject* ResolveOrWarn(const char* action) const;
 
         const IComponent* component_ = nullptr;
+        ObjectId objectId_{};
+        std::weak_ptr<const GameObjectManager*> manager_;
         ScriptTransform transform_{ *this };
         mutable int refCount_ = 1;
         mutable bool warned_ = false;

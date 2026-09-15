@@ -15,6 +15,8 @@ class asIScriptObject;
 
 namespace CoreEngine
 {
+    class AudioSystem;
+    class EngineSystem;
     class InputManager;
     class ScriptComponent;
     class ScriptComponentType;
@@ -23,6 +25,8 @@ namespace CoreEngine
     struct ScriptServices
     {
         InputManager* input = nullptr;
+        AudioSystem* audio = nullptr;
+        EngineSystem* engine = nullptr;
     };
 
     /// @brief AngelScript の実行環境（エンジン・モジュール・コンポーネントの型）
@@ -73,6 +77,19 @@ namespace CoreEngine
         bool CallMethod(asIScriptFunction* function, asIScriptObject* object,
                         const std::function<std::string()>& describeCaller);
 
+        /// @brief スクリプトの関数を呼ぶ（デリゲートでもよい）
+        /// @param setArguments コンテキストへ引数を積む（負の値を返したら実行しない。nullptr なら引数なし）
+        /// @param describeCaller 止まったときのログに出す呼び出し元の名前を作る（止まったときだけ呼ぶ）
+        /// @return 最後まで実行できたら true。例外・中断のときは場所と呼び出し履歴をログへ出して false
+        bool CallFunction(asIScriptFunction* function, const std::function<int(asIScriptContext*)>& setArguments,
+                          const std::function<std::string()>& describeCaller);
+
+        /// @brief エンジンを作った実行環境（無ければ nullptr）
+        static ScriptHost* FromEngine(asIScriptEngine* engine);
+
+        /// @brief 実行環境を終えると期限切れになる印（スクリプトの関数を持ち続ける側が、手放す前に確かめる）
+        std::weak_ptr<void> GetLifetimeToken() const { return lifetimeToken_; }
+
         /// @brief string 型の型 ID（エンジンを作る前は 0）
         int GetStringTypeId() const { return stringTypeId_; }
 
@@ -97,6 +114,9 @@ namespace CoreEngine
         static asIScriptContext* RequestContext(asIScriptEngine* engine, void* userData);
         static void ReturnContext(asIScriptEngine* engine, asIScriptContext* context, void* userData);
 
+        /// @brief 用意したコンテキストを実行し、止まったらログへ出して、コンテキストを返す
+        bool RunPrepared(asIScriptContext* context, int result, const std::function<std::string()>& describeCaller);
+
         /// @brief 型を捨ててからモジュールを捨てる
         void DiscardModule();
 
@@ -114,5 +134,8 @@ namespace CoreEngine
 
         /// 生きているスクリプトのコンポーネント
         std::unordered_set<ScriptComponent*> components_;
+
+        /// `GetLifetimeToken()` の実体（エンジンを捨てる前に切る）
+        std::shared_ptr<void> lifetimeToken_;
     };
 }
