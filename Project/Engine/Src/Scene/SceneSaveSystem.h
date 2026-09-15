@@ -35,6 +35,7 @@ namespace CoreEngine
         void Load(GameObjectManager* mgr);
 
         /// @brief 読み込みを開始する（マニフェストからの生成と復元対象の確定まで）
+        /// @note マニフェストに無いオブジェクトの JSON があれば、エラーとして名前を挙げる。
         void BeginLoad(GameObjectManager* mgr);
 
         /// @brief 復元を 1 体分だけ進める
@@ -50,6 +51,7 @@ namespace CoreEngine
         static std::vector<std::string> CollectModelPaths(const std::string& sceneName);
 
         /// @brief シーン全体を保存（マニフェスト + 全オブジェクトの個別ファイル）
+        /// @note マニフェストに載らなかったオブジェクトの JSON（名前が `_` で始まるものを除く）は消す。
         void SaveScene(GameObjectManager* mgr);
 
         /// @brief 指定オブジェクト1体だけを個別ファイルに保存

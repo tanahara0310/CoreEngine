@@ -13,6 +13,7 @@
 #include "Scene/PrefabSystem.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/Path/ProjectPaths.h"
 
 #include <algorithm>
 #include <functional>
@@ -267,18 +268,56 @@ namespace CoreEngine
                 }
             }
         }
-    }
 
+        /// @brief キーを「, 」でつなぐ
+        std::string JoinKeys(const std::vector<std::string>& keys)
+        {
+            std::string text;
+            for (const std::string& key : keys) {
+                if (!text.empty()) {
+                    text += ", ";
+                }
+                text += key;
+            }
+            return text;
+        }
 
-        /// @brief マニフェストに載っていないオブジェクト JSON を警告する
-        /// @details SaveScene はマニフェストを毎回作り直すが、不要になった
-        ///          オブジェクトの JSON ファイルは削除しない。読み込みは
-        ///          マニフェスト経由だけなので、残ったファイルは黙って無視される。
-        ///          「エディタで調整して保存したのに次回反映されない」という
-        ///          原因の分かりにくい状態になるため、起動時に名前を挙げる。
-        void WarnOrphanObjectFiles(const std::string& sceneName)
+        /// @brief シーンフォルダにある、指定したキーに含まれないオブジェクト JSON のキーを集める
+        /// @param keys マニフェストに載っているキー
+        /// @return 綴り順のキー（名前が `_` で始まるファイルとフォルダは含めない）
+        std::vector<std::string> CollectOrphanObjectKeys(const std::string& sceneName,
+                                                         const std::unordered_set<std::string>& keys)
         {
             namespace fs = std::filesystem;
+            std::vector<std::string> orphans;
+
+            std::error_code ec;
+            const fs::path dir = ProjectPaths::Resolve(MakeSceneDir(sceneName));
+            if (!fs::is_directory(dir, ec)) {
+                return orphans;
+            }
+
+            for (const auto& entry : fs::directory_iterator(dir, ec)) {
+                if (!entry.is_regular_file(ec)) continue;
+
+                const fs::path& file = entry.path();
+                if (file.extension() != ".json") continue;
+
+                const std::string stem = Logger::GetInstance().PathToUtf8(file.stem());
+                if (stem.empty() || stem.front() == '_') continue;
+
+                if (keys.find(stem) == keys.end()) {
+                    orphans.push_back(stem);
+                }
+            }
+
+            std::sort(orphans.begin(), orphans.end());
+            return orphans;
+        }
+
+        /// @brief マニフェストに載っていないオブジェクト JSON を、エラーとして名前を挙げる
+        void ReportOrphanObjectFiles(const std::string& sceneName)
+        {
             auto& jm = JsonManager::GetInstance();
 
             const std::string manifestPath = MakeManifestPath(sceneName);
@@ -291,50 +330,51 @@ namespace CoreEngine
                 return;
             }
 
-            std::unordered_set<std::string> known;
+            std::unordered_set<std::string> keys;
             for (const auto& entry : manifest["objects"]) {
                 if (entry.is_string()) {
-                    known.insert(entry.get<std::string>());
+                    keys.insert(entry.get<std::string>());
                 }
             }
 
-            std::error_code ec;
-            const fs::path dir = Logger::GetInstance().Utf8ToPath(MakeSceneDir(sceneName));
-            if (!fs::is_directory(dir, ec)) {
-                return;
-            }
-
-            std::vector<std::string> orphans;
-            for (const auto& entry : fs::directory_iterator(dir, ec)) {
-                if (ec) break;
-                if (!entry.is_regular_file()) continue;
-
-                const fs::path& file = entry.path();
-                if (file.extension() != ".json") continue;
-
-                // "_scene" / "_camera" などのメタファイルは対象外
-                const std::string stem = Logger::GetInstance().PathToUtf8(file.stem());
-                if (stem.empty() || stem.front() == '_') continue;
-
-                if (known.find(stem) == known.end()) {
-                    orphans.push_back(stem);
-                }
-            }
-
+            const std::vector<std::string> orphans = CollectOrphanObjectKeys(sceneName, keys);
             if (orphans.empty()) {
                 return;
             }
 
-            std::string list;
-            for (size_t i = 0; i < orphans.size(); ++i) {
-                if (i) list += ", ";
-                list += orphans[i];
-            }
-            Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource,
-                "SceneSaveSystem: \"{}\" にマニフェスト未登録の JSON が {} 件あります"
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Resource,
+                "SceneSaveSystem: \"{}\" にマニフェストに無いオブジェクトの JSON が {} 件あります"
                 "（読み込まれません）: {}",
-                sceneName, orphans.size(), list);
+                sceneName, orphans.size(), JoinKeys(orphans));
         }
+
+        /// @brief マニフェストに載せたキー以外のオブジェクト JSON を消す
+        void RemoveOrphanObjectFiles(const std::string& sceneName, const std::unordered_set<std::string>& keys)
+        {
+            const std::vector<std::string> orphans = CollectOrphanObjectKeys(sceneName, keys);
+            if (orphans.empty()) {
+                return;
+            }
+
+            std::vector<std::string> removed;
+            for (const std::string& key : orphans) {
+                std::error_code ec;
+                if (std::filesystem::remove(ProjectPaths::Resolve(MakeObjectPath(sceneName, key)), ec)) {
+                    removed.push_back(key);
+                    continue;
+                }
+                Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Resource,
+                    "SceneSaveSystem: \"{}\" の {}.json を消せませんでした（エラー {}）",
+                    sceneName, key, ec.value());
+            }
+
+            if (!removed.empty()) {
+                Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Resource,
+                    "SceneSaveSystem: \"{}\" のマニフェストに無いオブジェクトの JSON を {} 件消しました: {}",
+                    sceneName, removed.size(), JoinKeys(removed));
+            }
+        }
+    }
 
     // ===== パスヘルパー =====
 
@@ -453,7 +493,7 @@ namespace CoreEngine
 
         if (sceneName_.empty() || !mgr) return;
 
-        WarnOrphanObjectFiles(sceneName_);
+        ReportOrphanObjectFiles(sceneName_);
 
         auto& jm = JsonManager::GetInstance();
 
@@ -526,6 +566,7 @@ namespace CoreEngine
         // マニフェスト（オブジェクトキー一覧）
         json manifest;
         manifest["objects"] = json::array();
+        std::unordered_set<std::string> savedKeys;
 
         // 各オブジェクトを個別ファイルに保存
         for (const auto& obj : mgr->GetAllObjects()) {
@@ -537,11 +578,14 @@ namespace CoreEngine
             if (!data.empty()) {
                 jm.SaveJson(GetObjectPath(key), data);
                 manifest["objects"].push_back(key);
+                savedKeys.insert(key);
             }
         }
 
-        // マニフェストを保存
-        jm.SaveJson(GetManifestPath(), manifest);
+        // マニフェストを保存し、載らなかったオブジェクトの JSON を消す
+        if (jm.SaveJson(GetManifestPath(), manifest)) {
+            RemoveOrphanObjectFiles(sceneName_, savedKeys);
+        }
 
         if (onSaveNotification_) {
             onSaveNotification_("シーンを保存しました: " + sceneName_);
