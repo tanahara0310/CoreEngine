@@ -18,19 +18,18 @@ namespace CoreEngine
     class GameObject;
     class MaterialComponent;
     class TransformComponent;
-}
 
-namespace GameComponents
-{
     /// @brief Draw() が呼ばれた分だけ、同じ静的モデルの GameObject をプールから表示する。
     /// @note 表示したいモデルは毎フレーム Draw() する。呼ばれなかった要素は自動で非表示になる。
-    class ModelRenderPoolComponent final : public CoreEngine::IComponent {
+    class ModelRenderPoolComponent final : public IComponent {
     public:
+        ModelRenderPoolComponent() = default;
+
         explicit ModelRenderPoolComponent(
             std::string modelPath,
             std::size_t initialCapacity = 32,
             bool allowGrowth = true,
-            std::optional<CoreEngine::Vector4> color = std::nullopt)
+            std::optional<Vector4> color = std::nullopt)
             : modelPath_(std::move(modelPath)),
               initialCapacity_(initialCapacity),
               allowGrowth_(allowGrowth),
@@ -62,11 +61,13 @@ namespace GameComponents
         /// @note 色はモデルのベースカラーへ乗算される。プールの要素は毎フレーム別のマスへ
         ///       割り当てられうるので、マスごとに色を変えたい場合は毎回渡すこと。
         bool Draw(
-            const CoreEngine::Vector3& position,
-            const CoreEngine::Vector3& rotation = { 0.0f, 0.0f, 0.0f },
-            const CoreEngine::Vector3& scale = { 1.0f, 1.0f, 1.0f },
-            const std::optional<CoreEngine::Vector4>& color = std::nullopt);
+            const Vector3& position,
+            const Vector3& rotation = { 0.0f, 0.0f, 0.0f },
+            const Vector3& scale = { 1.0f, 1.0f, 1.0f },
+            const std::optional<Vector4>& color = std::nullopt);
 
+        /// @brief 表示するモデルのパス
+        const std::string& GetModelPath() const { return modelPath_; }
         std::size_t GetCapacity() const { return entries_.size(); }
         std::size_t GetActiveCount() const;
         std::size_t GetAvailableCount() const {
@@ -75,11 +76,11 @@ namespace GameComponents
 
     private:
         struct Entry {
-            CoreEngine::GameObject* object = nullptr;
-            CoreEngine::TransformComponent* transform = nullptr;
-            CoreEngine::MaterialComponent* material = nullptr;
+            GameObject* object = nullptr;
+            TransformComponent* transform = nullptr;
+            MaterialComponent* material = nullptr;
             /// @brief 今この要素へ入っている色。同じ値の再設定を省くために持つ。
-            std::optional<CoreEngine::Vector4> appliedColor;
+            std::optional<Vector4> appliedColor;
             std::uint64_t lastSubmittedFrame =
                 (std::numeric_limits<std::uint64_t>::max)();
         };
@@ -87,7 +88,7 @@ namespace GameComponents
         Entry* CreateEntry();
 
         /// @brief 要素へ色を反映する（変化が無ければ何もしない）
-        void ApplyEntryColor(Entry& entry, const std::optional<CoreEngine::Vector4>& color);
+        void ApplyEntryColor(Entry& entry, const std::optional<Vector4>& color);
 
         /// @brief フレームが変わっていたら割り当て状態を繰り越す
         void BeginFrameIfNeeded(std::uint64_t frame);
@@ -102,7 +103,7 @@ namespace GameComponents
         std::string modelPath_;
         std::size_t initialCapacity_ = 32;
         bool allowGrowth_ = true;
-        std::optional<CoreEngine::Vector4> color_;
+        std::optional<Vector4> color_;
         std::uint64_t allocationFrame_ =
             (std::numeric_limits<std::uint64_t>::max)();
         std::size_t nextEntryIndex_ = 0;

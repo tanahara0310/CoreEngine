@@ -13,13 +13,13 @@
 
 namespace CoreEngine
 {
+    class ModelRenderPoolComponent;
     class TransformComponent;
 }
 
 namespace GameComponents {
     class RailPathComponent;
     class MapGeneratorComponent;
-    class ModelRenderPoolComponent;
 }
 
 namespace GameComponents
@@ -31,10 +31,10 @@ namespace GameComponents
         explicit RailViewComponent(
             float gridSize = 5.0f,
             GameComponents::RailPathComponent* railPath = nullptr,
-            GameComponents::ModelRenderPoolComponent* railPool = nullptr,
-            GameComponents::ModelRenderPoolComponent* railLeftPool = nullptr,
-            GameComponents::ModelRenderPoolComponent* railRightPool = nullptr,
-            GameComponents::ModelRenderPoolComponent* bridgePool = nullptr,
+            CoreEngine::ModelRenderPoolComponent* railPool = nullptr,
+            CoreEngine::ModelRenderPoolComponent* railLeftPool = nullptr,
+            CoreEngine::ModelRenderPoolComponent* railRightPool = nullptr,
+            CoreEngine::ModelRenderPoolComponent* bridgePool = nullptr,
             GameComponents::MapGeneratorComponent* mapGenerator = nullptr,
             uint32_t viewDistanceX = 30);
 
@@ -81,10 +81,10 @@ namespace GameComponents
         CoreEngine::TransformComponent* transform_ = nullptr;
         CoreEngine::ObjectRef<GameComponents::RailPathComponent> railPath_;
 
-        CoreEngine::ObjectRef<GameComponents::ModelRenderPoolComponent> railPool_;
-        CoreEngine::ObjectRef<GameComponents::ModelRenderPoolComponent> railLeftPool_;
-        CoreEngine::ObjectRef<GameComponents::ModelRenderPoolComponent> railRightPool_;
-        CoreEngine::ObjectRef<GameComponents::ModelRenderPoolComponent> bridgePool_;
+        CoreEngine::ObjectRef<CoreEngine::ModelRenderPoolComponent> railPool_;
+        CoreEngine::ObjectRef<CoreEngine::ModelRenderPoolComponent> railLeftPool_;
+        CoreEngine::ObjectRef<CoreEngine::ModelRenderPoolComponent> railRightPool_;
+        CoreEngine::ObjectRef<CoreEngine::ModelRenderPoolComponent> bridgePool_;
         CoreEngine::ObjectRef<GameComponents::MapGeneratorComponent> mapGenerator_;
         float gridSize_ = 5.0f;
         uint32_t viewDistanceX_ = 30;

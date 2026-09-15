@@ -442,8 +442,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Scenes\CollisionTestScene\ProbeEvents.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Animation\AnimatorComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Render\MeshRendererComponent.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Component\Render\ModelRenderPoolComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Render\SpriteRendererComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Render\Text3DRendererComponent.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Component\Render\TileWaterComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Animation\SkeletonSocketComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Transform\TransformComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Transform\EulerTransformComponent.cpp" />
@@ -1132,7 +1134,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Components\UI\PauseMenuUIComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\SpeedGaugeUIComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\StaminaGaugeUIComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\Utility\ModelRenderPoolComponent.cpp" />
     <ClCompile Include="Application\Src\Editor\Stage\StageCsvDocument.cpp" />
     <ClCompile Include="Application\Src\Editor\Stage\StageEditorPanel.cpp" />
     <ClCompile Include="Application\Src\Editor\Stage\StageProject.cpp" />
@@ -1496,8 +1497,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\GameObject\Component\Scene\SceneTagComponent.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Line\ILineSource.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Render\MeshRendererComponent.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\Render\ModelRenderPoolComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Render\SpriteRendererComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Render\Text3DRendererComponent.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\Render\TileWaterComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Transform\TransformComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\GameObject.h" />
     <ClInclude Include="Engine\Src\GameObject\GameObjectManager.h" />
@@ -1829,7 +1832,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Components\UI\StaminaGaugeUIComponent.h" />
     <ClInclude Include="Application\Src\Components\Utility\BlockModelLayout.h" />
     <ClInclude Include="Application\Src\Components\Utility\GameCamera.h" />
-    <ClInclude Include="Application\Src\Components\Utility\ModelRenderPoolComponent.h" />
     <ClInclude Include="Application\Src\Editor\Stage\StageChipPalette.h" />
     <ClInclude Include="Application\Src\Editor\Stage\StageCsvDocument.h" />
     <ClInclude Include="Application\Src\Editor\Stage\StageEditorPanel.h" />

@@ -7,7 +7,7 @@
 #include "Components/Train/TrainMovementComponent.h"
 #include "Components/UI/StaminaGaugeUIComponent.h"
 #include "Components/Utility/BlockModelLayout.h"
-#include "Components/Utility/ModelRenderPoolComponent.h"
+#include "GameObject/Component/Render/ModelRenderPoolComponent.h"
 
 #include "Audio/AudioSystem.h"
 #include "Camera/Camera.h"
@@ -581,7 +581,7 @@ namespace {
 
     private:
         /// @brief バナナを描くモデルプールを 1 つ作る
-        static GameComponents::ModelRenderPoolComponent* CreateBananaPool(SceneContext& ctx)
+        static CoreEngine::ModelRenderPoolComponent* CreateBananaPool(SceneContext& ctx)
         {
             auto owned = std::make_unique<CoreEngine::GameObject>();
             owned->SetName("BananaHarvestPool");
@@ -595,7 +595,7 @@ namespace {
             // 演出のためにここで作ったオブジェクトなので、シーンの JSON には残さない
             owner->SetSerializeEnabled(false);
             owner->AddComponent<TransformComponent>();
-            return owner->AddComponent<GameComponents::ModelRenderPoolComponent>(
+            return owner->AddComponent<CoreEngine::ModelRenderPoolComponent>(
                 kBananaModel, kBananaPoolCapacity, true);
         }
 
@@ -928,7 +928,7 @@ namespace {
         GameComponents::TrainMovementComponent* train_ = nullptr;
         GameComponents::MapViewComponent* mapView_ = nullptr;
         GameComponents::StaminaGaugeUIComponent* gauge_ = nullptr;
-        GameComponents::ModelRenderPoolComponent* pool_ = nullptr;
+        CoreEngine::ModelRenderPoolComponent* pool_ = nullptr;
         AudioSystem* audio_ = nullptr;
 
         std::vector<Banana> bananas_;

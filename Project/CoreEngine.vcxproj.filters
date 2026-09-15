@@ -925,10 +925,16 @@
     <ClCompile Include="Engine\Src\GameObject\Component\Render\MeshRendererComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\Render\ModelRenderPoolComponent.cpp">
+      <Filter>Engine\Src\GameObject\Component\Render</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\Component\Render\SpriteRendererComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\Component\Render\Text3DRendererComponent.cpp">
+      <Filter>Engine\Src\GameObject\Component\Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\Render\TileWaterComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\Component\Animation\SkeletonSocketComponent.cpp">
@@ -1659,9 +1665,6 @@
     </ClCompile>
     <ClCompile Include="Application\Src\Components\UI\StaminaGaugeUIComponent.cpp">
       <Filter>Application\Src\Components\UI</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Components\Utility\ModelRenderPoolComponent.cpp">
-      <Filter>Application\Src\Components\Utility</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Editor\Stage\StageCsvDocument.cpp">
       <Filter>Application\Src\Editor\Stage</Filter>
@@ -2880,10 +2883,16 @@
     <ClInclude Include="Engine\Src\GameObject\Component\Render\MeshRendererComponent.h">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\Render\ModelRenderPoolComponent.h">
+      <Filter>Engine\Src\GameObject\Component\Render</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Render\SpriteRendererComponent.h">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Render\Text3DRendererComponent.h">
+      <Filter>Engine\Src\GameObject\Component\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\Render\TileWaterComponent.h">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Transform\TransformComponent.h">
@@ -3745,9 +3754,6 @@
       <Filter>Application\Src\Components\Utility</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Components\Utility\GameCamera.h">
-      <Filter>Application\Src\Components\Utility</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\Utility\ModelRenderPoolComponent.h">
       <Filter>Application\Src\Components\Utility</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Editor\Stage\StageChipPalette.h">
