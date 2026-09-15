@@ -61,6 +61,9 @@
     <ClCompile Include="Engine\Src\Script\ScriptHost.cpp">
       <Filter>Engine\Src\Script</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Script\ScriptPredefined.cpp">
+      <Filter>Engine\Src\Script</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Script\ScriptSubsystem.cpp">
       <Filter>Engine\Src\Script</Filter>
     </ClCompile>
@@ -1795,6 +1798,9 @@
       <Filter>Engine\Src\Script</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Script\ScriptHost.h">
+      <Filter>Engine\Src\Script</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\ScriptPredefined.h">
       <Filter>Engine\Src\Script</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Script\ScriptSubsystem.h">

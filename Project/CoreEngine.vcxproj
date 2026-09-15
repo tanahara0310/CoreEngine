@@ -197,6 +197,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Script\ScriptComponentType.cpp" />
     <ClCompile Include="Engine\Src\Script\ScriptDiagnostics.cpp" />
     <ClCompile Include="Engine\Src\Script\ScriptHost.cpp" />
+    <ClCompile Include="Engine\Src\Script\ScriptPredefined.cpp" />
     <ClCompile Include="Engine\Src\Script\ScriptSubsystem.cpp" />
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\CameraShowcase.cpp" />
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.cpp" />
@@ -1179,6 +1180,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Script\ScriptComponentType.h" />
     <ClInclude Include="Engine\Src\Script\ScriptDiagnostics.h" />
     <ClInclude Include="Engine\Src\Script\ScriptHost.h" />
+    <ClInclude Include="Engine\Src\Script\ScriptPredefined.h" />
     <ClInclude Include="Engine\Src\Script\ScriptSubsystem.h" />
     <ClInclude Include="Engine\Src\Reflection\PropertyDescriptor.h" />
     <ClInclude Include="Engine\Src\Reflection\ReflectionToggle.h" />
