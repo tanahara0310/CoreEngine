@@ -1,0 +1,47 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "rotate": [
+                    -0.0010000000474974513,
+                    0.0010000000474974513,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    0.6039999723434448,
+                    0.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "model": {
+                    "guid": "9114188e-c75f-ae3b-e57b-30015e32fcbb",
+                    "path": "Application/Assets/Models/Monkey/monkey.obj"
+                }
+            },
+            "type": "MeshRenderer"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "introDuration": 0.5109999775886536,
+                "introOffset": 3.2279999256134033,
+                "logoName": "title",
+                "trolleyName": "trolley"
+            },
+            "type": "TitleMonkey"
+        }
+    ],
+    "name": "monkey"
+}

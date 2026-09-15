@@ -1,0 +1,22 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "bgmPath": "Sounds/BGM/Title_bgm.mp3",
+                "bgmVolume": 0.3333333432674408,
+                "decisionSePath": "Sounds/SE/decision.mp3",
+                "gamepadPrompt": "- Aボタンをおしてスタート -",
+                "hintName": "StartHint",
+                "keyboardPrompt": "- SPACEキーをおしてスタート -",
+                "logoName": "title",
+                "monkeyName": "monkey",
+                "nextScene": "GameScene",
+                "trolleyName": "trolley"
+            },
+            "type": "TitleDirector"
+        }
+    ],
+    "name": "TitleDirector"
+}

@@ -35,6 +35,10 @@ public:
         sceneFactories_[name] = []() { return std::make_unique<T>(); };
     }
 
+    /// @brief 保存データだけで組むシーンを登録する
+    /// @param name シーン名（Application/Assets/Scenes/シーン名 の保存データを読む）
+    void RegisterDataScene(const std::string& name);
+
     /// @brief 初期シーンを設定（トランジション無し）
     /// @param name 初期シーン名
     void SetInitialScene(const std::string& name);

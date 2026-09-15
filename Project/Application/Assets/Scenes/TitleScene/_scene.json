@@ -1,5 +1,9 @@
 {
     "objects": [
-        "UIText_0"
+        "title",
+        "trolley",
+        "monkey",
+        "StartHint",
+        "TitleDirector"
     ]
 }

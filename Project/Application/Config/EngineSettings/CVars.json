@@ -31,46 +31,6 @@
         0.5404356122016907,
         1.0
     ],
-    "Title.CameraShake.Strength": 0.7400000095367432,
-    "Title.Monkey.Distance": 0.6039999723434448,
-    "Title.Monkey.IntroDuration": 0.5109999775886536,
-    "Title.Monkey.IntroOffset": 3.2279999256134033,
-    "Title.Monkey.Rotation": [
-        -0.0010000000474974513,
-        0.0010000000474974513,
-        0.0
-    ],
-    "Title.Transform.Position": [
-        -2.815000057220459,
-        3.2200000286102295,
-        -3.4860000610351562
-    ],
-    "Title.Transform.Rotation": [
-        0.0,
-        -0.5389999747276306,
-        0.1679999977350235
-    ],
-    "Title.Trolley.Position": [
-        1.4930000305175781,
-        0.9330000281333923,
-        -3.440999984741211
-    ],
-    "Title.Trolley.Rotation": [
-        -0.1679999977350235,
-        0.2930000126361847,
-        0.0
-    ],
-    "Title.UI.HintColor": [
-        0.8509804010391235,
-        0.9215686321258545,
-        1.0,
-        0.0
-    ],
-    "Title.UI.HintFontSize": 53.417999267578125,
-    "Title.UI.HintPosition": [
-        0.0,
-        285.7139892578125
-    ],
     "r.Atmosphere.SkyAmbientScale": 0.5099999904632568,
     "r.AutoExposure.Enabled": true,
     "r.AutoExposure.MaxEV": 7.5,

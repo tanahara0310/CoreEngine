@@ -13,6 +13,22 @@
         1.0,
         1.0
     ],
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "idleDuration": 1.149999976158142,
+                "idleScale": 1.024999976158142,
+                "introDelay": 0.75,
+                "introDuration": 0.3499999940395355,
+                "reactionDuration": 0.25,
+                "reactionScale": 1.350000023841858,
+                "slideDistance": 12.0,
+                "tweenId": "title_start_hint_intro"
+            },
+            "type": "TitleHint"
+        }
+    ],
     "fieldAutoFit": true,
     "fieldSize": {
         "x": 631.4608764648438,
@@ -21,6 +37,7 @@
     "font": "x8y12pxDenkiChip.ttf",
     "fontSize": 58.2886962890625,
     "lineSpacing": 1.0,
+    "name": "StartHint",
     "objectType": "UIText",
     "outlineColor": [
         0.0,
