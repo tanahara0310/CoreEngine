@@ -11,6 +11,7 @@
 
 #include <iterator>
 #include <optional>
+#include <string_view>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -19,6 +20,9 @@ namespace CoreEngine
 {
     namespace
     {
+        /// 基底クラスで持ち主のハンドルを入れるメンバ変数の名前
+        constexpr const char* kOwnerPropertyName = "owner_";
+
         /// ライフサイクルの関数の宣言（`ScriptComponentType::Method` の並び）
         constexpr const char* kMethodDeclarations[] = {
             "void Awake()",
@@ -63,6 +67,15 @@ namespace CoreEngine
             if (typeId == host.GetStringTypeId()) {
                 return Reflection::PropertyType::String;
             }
+            if (typeId == host.GetVector2TypeId()) {
+                return Reflection::PropertyType::Vector2;
+            }
+            if (typeId == host.GetVector3TypeId()) {
+                return Reflection::PropertyType::Vector3;
+            }
+            if (typeId == host.GetVector4TypeId()) {
+                return Reflection::PropertyType::Vector4;
+            }
             return std::nullopt;
         }
 
@@ -85,6 +98,7 @@ namespace CoreEngine
         descriptor_.displayName = displayName_.c_str();
         BuildProperties(base, builder);
         FindMethods(base);
+        FindOwnerProperty();
     }
 
     ScriptComponentType::~ScriptComponentType()
@@ -195,6 +209,24 @@ namespace CoreEngine
         }
     }
 
+    void ScriptComponentType::FindOwnerProperty()
+    {
+        for (asUINT i = 0; i < typeInfo_->GetPropertyCount(); ++i) {
+            const char* name = nullptr;
+            int typeId = 0;
+            if (typeInfo_->GetProperty(i, &name, &typeId) < 0 || !name || std::string_view(name) != kOwnerPropertyName) {
+                continue;
+            }
+            if (typeId != host_.GetGameObjectHandleTypeId()) {
+                WarnScript(name_ + ": 基底クラスの " + kOwnerPropertyName + " が GameObject@ ではないので、owner を入れられません");
+                return;
+            }
+            ownerPropertyIndex_ = static_cast<int>(i);
+            return;
+        }
+        WarnScript(name_ + ": 基底クラスに " + kOwnerPropertyName + " が無いので、owner を入れられません");
+    }
+
     bool ScriptComponentType::ApplyPropertyAttribute(Reflection::PropertyDescriptor& property,
         const Script::MetadataAttribute& attribute, std::string& error)
     {
@@ -245,6 +277,19 @@ namespace CoreEngine
                 return false;
             }
             property.range.speed = speed;
+            return true;
+        }
+
+        if (attribute.name == "Color") {
+            if (!arguments.empty()) {
+                error = "属性「Color」は引数を取りません";
+                return false;
+            }
+            if (property.type != Reflection::PropertyType::Vector4) {
+                error = "属性「Color」は Vector4 のメンバ変数にだけ付けられます";
+                return false;
+            }
+            property.type = Reflection::PropertyType::Color;
             return true;
         }
 

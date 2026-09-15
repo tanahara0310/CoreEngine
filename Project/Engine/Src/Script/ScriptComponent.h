@@ -7,6 +7,11 @@
 
 class asIScriptObject;
 
+namespace CoreEngine::Script
+{
+    class ScriptGameObject;
+}
+
 namespace CoreEngine
 {
     class ScriptHost;
@@ -58,6 +63,12 @@ namespace CoreEngine
         /// @brief ライフサイクルの関数を呼ぶ（止まったらこのコンポーネントを無効にする）
         void Invoke(ScriptComponentType::Method method);
 
+        /// @brief スクリプトのオブジェクトの `owner_` へ持ち主のハンドルを入れる
+        void BindOwnerHandle();
+
+        /// @brief 持ち主のハンドルからこのコンポーネントを外して手放す
+        void ReleaseOwnerHandle();
+
         std::string typeName_;
 #ifdef USE_IMGUI
         std::string displayName_;
@@ -65,5 +76,8 @@ namespace CoreEngine
         const ScriptComponentType* type_ = nullptr;
         ScriptHost* host_ = nullptr;
         asIScriptObject* object_ = nullptr;
+
+        /// 持ち主のハンドル（参照を 1 つ持つ）
+        Script::ScriptGameObject* ownerHandle_ = nullptr;
     };
 }

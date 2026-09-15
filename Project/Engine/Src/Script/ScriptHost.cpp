@@ -1,7 +1,11 @@
 #include "pch.h"
 #include "Script/ScriptHost.h"
 
+#include "Script/Binding/GameObjectBinding.h"
 #include "Script/Binding/LogBinding.h"
+#include "Script/Binding/MathBinding.h"
+#include "Script/Binding/ScriptInputBinding.h"
+#include "Script/Binding/TimeBinding.h"
 #include "Script/ScriptComponent.h"
 #include "Script/ScriptComponentType.h"
 #include "Script/ScriptDiagnostics.h"
@@ -117,7 +121,7 @@ namespace CoreEngine
         Shutdown();
     }
 
-    bool ScriptHost::Initialize()
+    bool ScriptHost::Initialize(const ScriptServices& services)
     {
         Logger& logger = Logger::GetInstance();
 
@@ -136,9 +140,21 @@ namespace CoreEngine
         RegisterScriptMath(engine_);
         RegisterExceptionRoutines(engine_);
         configured = Script::RegisterLogBinding(engine_) && configured;
+        configured = Script::RegisterMathBinding(engine_) && configured;
+        configured = Script::RegisterTimeBinding(engine_) && configured;
+        configured = Script::RegisterGameObjectBinding(engine_) && configured;
+        configured = Script::RegisterInputBinding(engine_, services.input) && configured;
+        if (!services.input) {
+            logger.Logf(LogLevel::Warn, LogCategory::Script, "入力が見つからないので、スクリプトの Input は常に押されていないを返します");
+        }
 
         stringTypeId_ = engine_->GetTypeIdByDecl("string");
-        if (!configured || stringTypeId_ < 0) {
+        vector2TypeId_ = engine_->GetTypeIdByDecl("Vector2");
+        vector3TypeId_ = engine_->GetTypeIdByDecl("Vector3");
+        vector4TypeId_ = engine_->GetTypeIdByDecl("Vector4");
+        gameObjectHandleTypeId_ = engine_->GetTypeIdByDecl("GameObject@");
+        if (!configured || stringTypeId_ < 0 || vector2TypeId_ < 0 || vector3TypeId_ < 0 || vector4TypeId_ < 0 ||
+            gameObjectHandleTypeId_ < 0) {
             logger.Logf(LogLevel::Error, LogCategory::Script, "スクリプトから使う型と関数を登録できませんでした");
             return false;
         }
@@ -249,6 +265,10 @@ namespace CoreEngine
         engine_->ShutDownAndRelease();
         engine_ = nullptr;
         stringTypeId_ = 0;
+        vector2TypeId_ = 0;
+        vector3TypeId_ = 0;
+        vector4TypeId_ = 0;
+        gameObjectHandleTypeId_ = 0;
     }
 
     void ScriptHost::CollectGarbageStep()
