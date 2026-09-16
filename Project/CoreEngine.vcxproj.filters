@@ -283,9 +283,6 @@
     <ClCompile Include="Engine\Src\Graphics\Water\Simulation\WaterSurfaceModelProvider.cpp">
       <Filter>Engine\Src\Graphics\Water\Simulation</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Particle\Modules\LifetimeModule.cpp">
-      <Filter>Engine\Src\Particle\Modules</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\pch.cpp">
       <Filter>Engine\Src</Filter>
     </ClCompile>
@@ -850,6 +847,12 @@
     <ClCompile Include="Engine\Src\Particle\ParticlePresetManager.cpp">
       <Filter>Engine\Src\Particle</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Particle\ParticleSystemComponent.cpp">
+      <Filter>Engine\Src\Particle</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Particle\Gpu\GpuParticleSystemComponent.cpp">
+      <Filter>Engine\Src\Particle\Gpu</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Scene\BaseScene.cpp">
       <Filter>Engine\Src\Scene</Filter>
     </ClCompile>
@@ -1227,12 +1230,6 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\WorldTransform\WorldTransform.cpp">
       <Filter>Engine\Src\WorldTransform</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Particle\Gpu\GpuParticleSystem.cpp">
-      <Filter>Engine\Src\Particle\Gpu</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Particle\ParticleSystem.cpp">
-      <Filter>Engine\Src\Particle</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Scene\SceneManager.cpp">
       <Filter>Engine\Src\Scene</Filter>
@@ -2715,9 +2712,6 @@
     <ClInclude Include="Engine\Src\GameObject\Sprite\SpriteAnimator.h">
       <Filter>Engine\Src\GameObject\Sprite</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Particle\Gpu\GpuParticleSystem.h">
-      <Filter>Engine\Src\Particle\Gpu</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Particle\IParticleSystem.h">
       <Filter>Engine\Src\Particle</Filter>
     </ClInclude>
@@ -2736,9 +2730,6 @@
     <ClInclude Include="Engine\Src\Particle\Debug\ParticleSystemDebugUI.h">
       <Filter>Engine\Src\Particle\Debug</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Particle\Modules\LifetimeModule.h">
-      <Filter>Engine\Src\Particle\Modules</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Particle\Modules\MainModule.h">
       <Filter>Engine\Src\Particle\Modules</Filter>
     </ClInclude>
@@ -2750,6 +2741,15 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Particle\ParticlePresetManager.h">
       <Filter>Engine\Src\Particle</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Particle\ParticleSystemComponent.h">
+      <Filter>Engine\Src\Particle</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Particle\Gpu\GpuParticleSystemComponent.h">
+      <Filter>Engine\Src\Particle\Gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Particle\Core\Particle.h">
+      <Filter>Engine\Src\Particle\Core</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Scene\BaseScene.h">
       <Filter>Engine\Src\Scene</Filter>
@@ -3179,9 +3179,6 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Light\LightManager.h">
       <Filter>Engine\Src\Graphics\Light</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Particle\ParticleSystem.h">
-      <Filter>Engine\Src\Particle</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Input\IInputDevice.h">
       <Filter>Engine\Src\Input</Filter>

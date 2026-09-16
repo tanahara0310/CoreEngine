@@ -27,7 +27,7 @@ public:
     bool IsEnabled() const { return enabled_; }
 
     /// @brief GPUバックエンドで動作しているかを設定
-    /// @note GpuParticleSystem::Initialize が true を設定する。
+    /// @note GpuParticleSystemComponent のコンストラクタが true を設定する。
     ///       ImGui側でCPU専用項目（形状のデバッグ描画など）を隠すために使う。
     void SetGpuBackend(bool isGpu) { gpuBackend_ = isGpu; }
 

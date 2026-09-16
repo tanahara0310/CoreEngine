@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "RotationModule.h"
-#include "../ParticleSystem.h"
+#include "Particle/Core/Particle.h"
 #include "Math/MathCore.h"
 #include <numbers>
 #include <algorithm>

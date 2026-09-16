@@ -3,7 +3,7 @@
 #include "GpuParticleRenderer.h"
 #include "Graphics/Pipeline/ComputePipelineUtil.h"
 
-#include "Particle/Gpu/GpuParticleSystem.h"
+#include "Particle/Gpu/GpuParticleSystemComponent.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/RootSignature/ShaderBinder.h"
@@ -80,9 +80,10 @@ namespace CoreEngine
         }
     }
 
-    void GpuParticleRenderer::DrawGpu(GpuParticleSystem* system)
+    void GpuParticleRenderer::DrawGpu(GpuParticleSystemComponent* system)
     {
-        if (!cmdList_ || !system || !system->IsActive()) {
+        // テクスチャが無いまま SRV を差すと GPU が不正なアドレスを読むので描かない
+        if (!cmdList_ || !system || system->GetTextureHandle().ptr == 0) {
             return;
         }
 
@@ -114,7 +115,7 @@ namespace CoreEngine
         cmdList_->ExecuteIndirect(commandSignature_.Get(), 1, system->GetArgsResource(), 0, nullptr, 0);
     }
 
-    void GpuParticleRenderer::DispatchCompute(GpuParticleSystem* system)
+    void GpuParticleRenderer::DispatchCompute(GpuParticleSystemComponent* system)
     {
         const uint32_t emitCount = system->GetEmitCount();
         const bool reset = system->IsResetPending();
@@ -132,22 +133,22 @@ namespace CoreEngine
         if (reset) {
             // 間接引数 {6, 0, 0, 0}
             cmdList_->CopyBufferRegion(system->GetArgsResource(), 0,
-                system->GetUploadInitResource(), GpuParticleSystem::kInitArgsOffset,
+                system->GetUploadInitResource(), GpuParticleSystemComponent::kInitArgsOffset,
                 sizeof(uint32_t) * 4);
             // カウンタ {freeTop=kMaxParticles, alive=0, draw=0, 0}
             cmdList_->CopyBufferRegion(system->GetCounterResource(), 0,
-                system->GetUploadInitResource(), GpuParticleSystem::kInitCountersOffset,
-                sizeof(uint32_t) * GpuParticleSystem::kCounterCount);
+                system->GetUploadInitResource(), GpuParticleSystemComponent::kInitCountersOffset,
+                sizeof(uint32_t) * GpuParticleSystemComponent::kCounterCount);
             // フリーリスト {0, 1, ..., kMaxParticles-1}
             Barrier::Transition(cmdList_, system->FreeList(), D3D12_RESOURCE_STATE_COPY_DEST);
             cmdList_->CopyBufferRegion(system->GetFreeListResource(), 0,
-                system->GetUploadInitResource(), GpuParticleSystem::kInitFreeListOffset,
-                sizeof(uint32_t) * GpuParticleSystem::kMaxParticles);
+                system->GetUploadInitResource(), GpuParticleSystemComponent::kInitFreeListOffset,
+                sizeof(uint32_t) * GpuParticleSystemComponent::kMaxParticles);
             Barrier::Transition(cmdList_, system->FreeList(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         }
         // drawCount（counter[2]）を毎フレーム0クリア（アップロードバッファの0領域をコピー元に使う）
         cmdList_->CopyBufferRegion(system->GetCounterResource(),
-            sizeof(uint32_t) * GpuParticleSystem::kCounterDrawIndex,
+            sizeof(uint32_t) * GpuParticleSystemComponent::kCounterDrawIndex,
             system->GetUploadInitResource(), sizeof(uint32_t), sizeof(uint32_t));
 
         Barrier::Transition(cmdList_, system->Counter(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -186,7 +187,7 @@ namespace CoreEngine
             binder.Set(updateParams_, system->GetParamsGPUAddress());
         }
 
-        const UINT groupCount = (GpuParticleSystem::kMaxParticles + 63) / 64;
+        const UINT groupCount = (GpuParticleSystemComponent::kMaxParticles + 63) / 64;
         cmdList_->Dispatch(groupCount, 1, 1);
 
         // Update の書き込み完了待ち
@@ -196,10 +197,10 @@ namespace CoreEngine
         Barrier::Transition(cmdList_, system->Counter(), D3D12_RESOURCE_STATE_COPY_SOURCE);
 
         cmdList_->CopyBufferRegion(system->GetArgsResource(), sizeof(uint32_t) * 1, // InstanceCount
-            system->GetCounterResource(), sizeof(uint32_t) * GpuParticleSystem::kCounterDrawIndex,
+            system->GetCounterResource(), sizeof(uint32_t) * GpuParticleSystemComponent::kCounterDrawIndex,
             sizeof(uint32_t));
         cmdList_->CopyBufferRegion(system->GetReadbackResource(), 0,
-            system->GetCounterResource(), 0, sizeof(uint32_t) * GpuParticleSystem::kCounterCount);
+            system->GetCounterResource(), 0, sizeof(uint32_t) * GpuParticleSystemComponent::kCounterCount);
 
         // ── 5. インスタンシングバッファを頂点シェーダーから読める状態へ ──
         {

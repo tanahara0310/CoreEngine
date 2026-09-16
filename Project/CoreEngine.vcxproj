@@ -271,7 +271,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Water\Simulation\FFTOceanSurfaceSimulator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Simulation\GerstnerWaterSimulator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Simulation\WaterSurfaceModelProvider.cpp" />
-    <ClCompile Include="Engine\Src\Particle\Modules\LifetimeModule.cpp" />
     <ClCompile Include="Engine\Src\pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
@@ -463,6 +462,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Particle\Modules\NoiseModule.cpp" />
     <ClCompile Include="Engine\Src\Particle\Modules\ShapeModule.cpp" />
     <ClCompile Include="Engine\Src\Particle\ParticlePresetManager.cpp" />
+    <ClCompile Include="Engine\Src\Particle\ParticleSystemComponent.cpp" />
+    <ClCompile Include="Engine\Src\Particle\Gpu\GpuParticleSystemComponent.cpp" />
     <ClCompile Include="Engine\Src\Scene\BaseScene.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\LightingFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\EnvironmentFeature.cpp" />
@@ -592,8 +593,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\RHI\Resource\UploadRing.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Render.cpp" />
     <ClCompile Include="Engine\Src\WorldTransform\WorldTransform.cpp" />
-    <ClCompile Include="Engine\Src\Particle\Gpu\GpuParticleSystem.cpp" />
-    <ClCompile Include="Engine\Src\Particle\ParticleSystem.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneManager.cpp" />
     <ClCompile Include="Engine\Src\Input\MouseInput.cpp" />
     <ClCompile Include="Externals\imgui\imgui.cpp">
@@ -1485,18 +1484,19 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\GameObject\ObjectId.h" />
     <ClInclude Include="Engine\Src\GameObject\Sprite\SpriteAnimationClip.h" />
     <ClInclude Include="Engine\Src\GameObject\Sprite\SpriteAnimator.h" />
-    <ClInclude Include="Engine\Src\Particle\Gpu\GpuParticleSystem.h" />
     <ClInclude Include="Engine\Src\Particle\IParticleSystem.h" />
     <ClInclude Include="Engine\Src\Particle\Core\ParticleEmitter.h" />
     <ClInclude Include="Engine\Src\Particle\Core\ParticleRenderDataBuilder.h" />
     <ClInclude Include="Engine\Src\Particle\Core\ParticleResourceManager.h" />
     <ClInclude Include="Engine\Src\Particle\Core\ParticleUpdater.h" />
     <ClInclude Include="Engine\Src\Particle\Debug\ParticleSystemDebugUI.h" />
-    <ClInclude Include="Engine\Src\Particle\Modules\LifetimeModule.h" />
     <ClInclude Include="Engine\Src\Particle\Modules\MainModule.h" />
     <ClInclude Include="Engine\Src\Particle\Modules\NoiseModule.h" />
     <ClInclude Include="Engine\Src\Particle\Modules\ShapeModule.h" />
     <ClInclude Include="Engine\Src\Particle\ParticlePresetManager.h" />
+    <ClInclude Include="Engine\Src\Particle\ParticleSystemComponent.h" />
+    <ClInclude Include="Engine\Src\Particle\Gpu\GpuParticleSystemComponent.h" />
+    <ClInclude Include="Engine\Src\Particle\Core\Particle.h" />
     <ClInclude Include="Engine\Src\Scene\BaseScene.h" />
     <ClInclude Include="Engine\Src\Scene\DataScene.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\ISceneFeature.h" />
@@ -1640,7 +1640,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Input\InputManager.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\ImGuiManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Light\LightManager.h" />
-    <ClInclude Include="Engine\Src\Particle\ParticleSystem.h" />
     <ClInclude Include="Engine\Src\Input\IInputDevice.h" />
     <ClInclude Include="Engine\Src\Input\KeyboardInput.h" />
     <ClInclude Include="Engine\Src\Input\MouseInput.h" />

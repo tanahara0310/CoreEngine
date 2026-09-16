@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "ParticleEmitter.h"
-#include "Particle/ParticleSystem.h" // Particle構造体のため
+#include "Particle/Core/Particle.h"
 #include "Particle/Modules/MainModule.h"
 #include "Particle/Modules/EmissionModule.h"
 #include "Particle/Modules/ShapeModule.h"
@@ -27,14 +27,14 @@ void ParticleEmitter::Initialize(
 
 uint32_t ParticleEmitter::EmitParticles(
     uint32_t count,
-    const EulerTransform& emitterTransform,
+    const Vector3& emitterPosition,
     uint32_t maxParticles,
     std::vector<Particle>& outParticles
 ) {
     uint32_t emittedCount = 0;
 
     for (uint32_t i = 0; i < count && outParticles.size() < maxParticles; ++i) {
-        Particle newParticle = CreateParticle(emitterTransform);
+        Particle newParticle = CreateParticle(emitterPosition);
         outParticles.push_back(newParticle);
         ++emittedCount;
     }
@@ -42,8 +42,8 @@ uint32_t ParticleEmitter::EmitParticles(
     return emittedCount;
 }
 
-Particle ParticleEmitter::CreateParticle(const EulerTransform& emitterTransform) {
-    Particle particle;
+Particle ParticleEmitter::CreateParticle(const Vector3& emitterPosition) {
+    Particle particle{};
 
     // === MainModuleから初期値を設定（最優先） ===
     if (mainModule_ && mainModule_->IsEnabled()) {
@@ -56,10 +56,10 @@ Particle ParticleEmitter::CreateParticle(const EulerTransform& emitterTransform)
         particle.currentTime = 0.0f;
     }
 
-    // ShapeModuleから位置を生成
-    if (shapeModule_ && shapeModule_->IsEnabled()) {
-        particle.transform.translate = shapeModule_->GeneratePosition(emitterTransform.translate);
-    }
+    // ShapeModuleから位置を生成（無効なら放出位置そのもの）
+    particle.transform.translate = (shapeModule_ && shapeModule_->IsEnabled())
+        ? shapeModule_->GeneratePosition(emitterPosition)
+        : emitterPosition;
 
     // === 速度の設定 ===
     // VelocityModuleが方向を決定し、MainModuleが大きさを適用

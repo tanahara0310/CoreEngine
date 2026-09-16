@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "CollisionModule.h"
-#include "../ParticleSystem.h" // Particle構造体のために必要
+#include "Particle/Core/Particle.h"
 
 #include <algorithm>
 

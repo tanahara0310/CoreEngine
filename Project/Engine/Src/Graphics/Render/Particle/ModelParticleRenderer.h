@@ -5,9 +5,6 @@
 #include <d3d12.h>
 #include <wrl.h>
 
-// 前方宣言
-class ParticleSystem;
-
 namespace CoreEngine
 {
 // 前方宣言
@@ -29,9 +26,9 @@ public:
     /// @return 描画パスタイプ
     RenderPassType GetRenderPassType() const override { return RenderPassType::ModelParticle; }
 
-    /// @brief モデルパーティクルを描画
-    /// @param particle パーティクルシステム
-    void Draw(ParticleSystem* particle) override;
+    /// @brief モデルの粒を描画
+    /// @param particle パーティクルのコンポーネント
+    void Draw(ParticleSystemComponent* particle) override;
 
     /// @brief ライトマネージャーを設定
     /// @param lightManager ライトマネージャー（未設定ならアンリットのまま描画される）

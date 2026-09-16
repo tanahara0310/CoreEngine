@@ -38,9 +38,20 @@ namespace CoreEngine
             Image,  ///< UI 画像
         };
 
+        /// @brief 作るパーティクルの種類
+        enum class ParticleKind
+        {
+            Cpu,    ///< パーティクル（CPU で更新）
+            Gpu,    ///< GPU パーティクル
+        };
+
         /// @brief Transform だけを持つ空のオブジェクトを作る
         /// @return 作ったオブジェクト（作れなければ nullptr）
         GameObject* CreateEmpty(const Context& context, const Vector3& position);
+
+        /// @brief Transform とパーティクルを持つオブジェクトを作る
+        /// @return 作ったオブジェクト（作れなければ nullptr）
+        GameObject* CreateParticle(const Context& context, ParticleKind kind, const Vector3& position);
 
         /// @brief UI トランスフォームと、UI テキストか UI 画像を持つオブジェクトを画面の中央に作る
         /// @return 作ったオブジェクト（作れなければ nullptr）

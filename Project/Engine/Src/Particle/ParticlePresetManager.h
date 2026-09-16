@@ -16,6 +16,13 @@ public:
     ParticlePresetManager() = default;
     ~ParticlePresetManager() = default;
 
+    /// @brief 設定をプリセットの形の JSON にする（CPU/GPU どちらでも可）
+    /// @note コンポーネントの保存（OnSerialize）もこの形を使う。放出位置は含めない
+    static json ToJson(IParticleSystem& particleSystem);
+
+    /// @brief プリセットの形の JSON を設定へ読み込む（書かれていないモジュールは触らない）
+    static void FromJson(IParticleSystem& particleSystem, const json& data);
+
     /// @brief パーティクルシステムの設定をファイルに保存
     /// @param particleSystem 保存するパーティクルシステム（CPU/GPUどちらでも可）
     /// @param filePath 保存先ファイルパス

@@ -8,8 +8,6 @@
 namespace CoreEngine
 {
 // 前方宣言
-class GraphicsCore;
-class ResourceFactory;
 class MainModule;
 class EmissionModule;
 class ShapeModule;
@@ -19,31 +17,26 @@ class ForceModule;
 class SizeModule;
 class RotationModule;
 class NoiseModule;
+class CollisionModule;
 
 /// @brief パーティクルシステムのバックエンド種別
 enum class ParticleBackend {
-    CPU,    ///< ParticleSystem（CPU更新。少数・細かい制御向け）
-    GPU,    ///< GpuParticleSystem（ComputeShader更新。大量粒子向け）
+    CPU,    ///< ParticleSystemComponent（CPU更新。少数・細かい制御向け）
+    GPU,    ///< GpuParticleSystemComponent（ComputeShader更新。大量粒子向け）
 };
 
 /// @brief CPU / GPU パーティクルシステムの共通インターフェース
 /// @details 両実装はモジュール（パラメータ定義・ImGui）を共有しており、
-///          プリセットの保存/読み込みやシーンからの操作をバックエンド非依存で行える。
-///          生成はシーンから `CreateObject<ParticleSystem>()` /
-///          `CreateObject<GpuParticleSystem>()` した後に `Initialize()` を呼ぶ
-///          （GraphicsCore / ResourceFactory は `engine_->GetService<T>()` で取得する）。
-///          設計は Docs/Engine/Particle/GpuParticleSystem.md 参照。
+///          プリセットの保存/読み込みとインスペクタをバックエンド非依存で行える。
+///          どちらもコンポーネントで、放出位置は兄弟のトランスフォームから取る。
 class IParticleSystem {
 public:
     virtual ~IParticleSystem() = default;
 
-    /// @brief 初期化
-    virtual void Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory, const std::string& name) = 0;
-
     // ===== 再生制御 =====
     /// @brief 再生を開始する
     virtual void Play() = 0;
-    /// @brief 再生を停止する（生存中のパーティクルも消える）
+    /// @brief 再生を停止する
     virtual void Stop() = 0;
     /// @brief 再生中か
     virtual bool IsPlaying() const = 0;
@@ -60,10 +53,8 @@ public:
     /// @brief ブレンドモードを取得
     virtual BlendMode GetBlendMode() const = 0;
 
-    // ===== エミッター =====
-    /// @brief エミッターのワールド座標を設定
-    virtual void SetEmitterPosition(const Vector3& position) = 0;
-    /// @brief エミッターのワールド座標を取得
+    // ===== 放出位置 =====
+    /// @brief 放出する位置（ワールド座標。兄弟のトランスフォームの位置）
     virtual Vector3 GetEmitterPosition() const = 0;
 
     // ===== モジュール（パラメータはここから編集する） =====
@@ -85,5 +76,8 @@ public:
     virtual RotationModule& GetRotationModule() = 0;
     /// @brief ノイズ（乱流）モジュールを取得
     virtual NoiseModule& GetNoiseModule() = 0;
+    /// @brief 床との当たり判定モジュールを取得
+    /// @return 持たないバックエンド（GPU 版）は nullptr
+    virtual CollisionModule* GetCollisionModule() { return nullptr; }
 };
 }

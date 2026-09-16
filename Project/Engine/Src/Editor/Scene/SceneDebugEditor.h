@@ -87,6 +87,9 @@ namespace CoreEngine
         /// @brief UI のオブジェクトを画面の中央に作って選ぶ（Undo に積む）
         void CreateUIObject(ObjectEditing::UIElementKind kind);
 
+        /// @brief パーティクルのオブジェクトを Game ビューの中央の地面に作って選ぶ（Undo に積む）
+        void CreateParticleObject(ObjectEditing::ParticleKind kind);
+
         /// @brief 選択中のオブジェクトを複製・削除できるか
         /// @param reason できないときの理由を書く先（要らなければ nullptr）
         bool CanEditSelectedObject(std::string* reason = nullptr) const;

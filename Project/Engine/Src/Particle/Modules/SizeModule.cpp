@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "SizeModule.h"
-#include "../ParticleSystem.h"
+#include "Particle/Core/Particle.h"
 #include <algorithm>
 
 // コンストラクタでデフォルトパラメータを設定

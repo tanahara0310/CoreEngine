@@ -10,7 +10,6 @@ namespace CoreEngine
 {
 // 前方宣言
 class GraphicsCore;
-class ResourceFactory;
 
 /// @brief GPU送信用パーティクルデータ
 struct ParticleForGPU {
@@ -28,9 +27,8 @@ public:
 
     /// @brief 初期化
     /// @param dxCommon GraphicsCore
-    /// @param resourceFactory リソースファクトリ
     /// @param maxInstances 最大インスタンス数
-    void Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory, uint32_t maxInstances);
+    void Initialize(GraphicsCore* dxCommon, uint32_t maxInstances);
 
     /// @brief インスタンシングデータへのポインタを取得
     /// @return インスタンシングデータのポインタ
@@ -55,7 +53,6 @@ private:
 
     // DirectX関連
     GraphicsCore* dxCommon_ = nullptr;
-    ResourceFactory* resourceFactory_ = nullptr;
 
     // GPUリソース
   Microsoft::WRL::ComPtr<ID3D12Resource> instancingResource_;

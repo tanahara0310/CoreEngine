@@ -9,6 +9,8 @@
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/GameObjectManager.h"
+#include "Particle/Gpu/GpuParticleSystemComponent.h"
+#include "Particle/ParticleSystemComponent.h"
 #include "Scene/PrefabSystem.h"
 #include "UI/RectTransformComponent.h"
 #include "UI/UIImageComponent.h"
@@ -25,6 +27,12 @@ namespace CoreEngine::ObjectEditing
     {
         /// 空のオブジェクトの名前
         constexpr const char* kEmptyObjectName = "GameObject";
+
+        /// パーティクルのオブジェクトの名前
+        constexpr const char* kParticleObjectName = "Particle System";
+
+        /// GPU パーティクルのオブジェクトの名前
+        constexpr const char* kGpuParticleObjectName = "GPU Particle System";
 
         /// UI テキストのオブジェクトの名前
         constexpr const char* kTextObjectName = "Text";
@@ -206,6 +214,38 @@ namespace CoreEngine::ObjectEditing
         PushCreateCommand(context, *object, object->GetName() + " を作る");
         Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
             "ObjectEditing: 空のオブジェクト \"{}\" を作りました", object->GetName());
+        return object;
+    }
+
+    GameObject* CreateParticle(const Context& context, ParticleKind kind, const Vector3& position)
+    {
+        GameObjectManager& manager = *context.manager;
+        const char* const baseName = (kind == ParticleKind::Gpu) ? kGpuParticleObjectName : kParticleObjectName;
+        auto owned = std::make_unique<GameObject>();
+        owned->SetName(HasObjectNamed(manager, baseName)
+            ? MakeCopyName(manager, baseName) : std::string(baseName));
+        GameObject* const object = manager.AddObject(std::move(owned));
+        if (!object) {
+            return nullptr;
+        }
+
+        // エディタが作るオブジェクトのコンポーネントとして、トランスフォームを先頭に付ける
+        {
+            ComponentHost::DataAttachScope dataScope(*object);
+            if (TransformComponent* const transform = object->AddComponent<TransformComponent>()) {
+                transform->Get().translate = position;
+            }
+            if (kind == ParticleKind::Gpu) {
+                object->AddComponent<GpuParticleSystemComponent>();
+            } else {
+                object->AddComponent<ParticleSystemComponent>();
+            }
+        }
+        manager.InvalidateReferences();
+
+        PushCreateCommand(context, *object, object->GetName() + " を作る");
+        Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
+            "ObjectEditing: パーティクルのオブジェクト \"{}\" を作りました", object->GetName());
         return object;
     }
 

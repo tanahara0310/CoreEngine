@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "ModelParticleRenderer.h"
-#include "Particle/ParticleSystem.h"
+#include "Particle/ParticleSystemComponent.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Model/ModelResource.h"
 #include "Camera/Camera.h"
@@ -34,7 +34,7 @@ namespace CoreEngine
             RootSlot{}, RootSlot{}, RootSlot{});
     }
 
-    void ModelParticleRenderer::Draw(ParticleSystem* particle) {
+    void ModelParticleRenderer::Draw(ParticleSystemComponent* particle) {
         // 基本的な検証
         if (!ValidateDrawCall(particle)) {
             return;
@@ -64,6 +64,11 @@ namespace CoreEngine
             if (!materials.empty() && !materials[0].baseColorTexture.empty()) {
                 textureHandle = TextureManager::GetInstance().Load(materials[0].baseColorTexture).gpuHandle;
             }
+        }
+
+        // テクスチャが無いまま SRV を差すと GPU が不正なアドレスを読むので描かない
+        if (textureHandle.ptr == 0) {
+            return;
         }
 
         // 共通リソースを設定
