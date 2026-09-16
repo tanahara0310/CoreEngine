@@ -61,13 +61,6 @@ namespace CoreEngine
 #ifdef USE_IMGUI
         const char* GetInspectorName() const override { return "3D テキスト"; }
 
-        const char* GetInspectorIcon() const override { return "material.png"; }
-
-        void GetInspectorIconColor(float* outRgba) const override
-        {
-            outRgba[0] = 0.30f; outRgba[1] = 0.70f; outRgba[2] = 0.90f; outRgba[3] = 1.0f;
-        }
-
         /// @brief 文字列・フォント・見た目・配置・描画順の編集 UI
         /// @return 値が変更されたら true
         bool DrawInspector() override;

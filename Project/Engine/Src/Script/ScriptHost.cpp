@@ -327,6 +327,7 @@ namespace CoreEngine
             if (section.empty()) {
                 continue;
             }
+            type->SetSourceSection(section);
             classesBySection[section].push_back(type->GetName());
             if (FileStem(section) != type->GetName()) {
                 logger.Logf(LogLevel::Warn, LogCategory::Script,

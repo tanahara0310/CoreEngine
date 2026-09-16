@@ -45,9 +45,13 @@ namespace CoreEngine
 
             /// @brief プロパティの今の値をプレハブへ書き戻す（空ならメニューに出さない）
             std::function<void(const Reflection::PropertyDescriptor&)> applyToPrefab;
+
+            /// @brief 新しく作ったときの値（保存形。分からなければ nullptr）
+            /// @note 既定値と違うプロパティのラベルを橙にし、右クリックで既定値に戻せるようにする。
+            const json* defaultParameters = nullptr;
         };
 
-        /// @brief 記述子のプロパティを順に描く
+        /// @brief 記述子のプロパティを、左にラベル・右に欄の行で順に描く
         /// @param type 型記述子
         /// @param instance 記述子が想定する型の先頭アドレス
         /// @param context 履歴名・所有者・変更通知
@@ -56,6 +60,12 @@ namespace CoreEngine
         ///       呼び出し側が Undo のために書くコードは無い。
         bool Draw(const Reflection::TypeDescriptor& type, void* instance,
                   const DrawContext& context = {});
+
+        /// @brief 既定値と違うプロパティをすべて既定値へ戻す
+        /// @return 1 つでも書き換えたら true
+        /// @note 戻した分をまとめて 1 件だけ `EditorCommandStack` へ積む。
+        bool ResetToDefaults(const Reflection::TypeDescriptor& type, void* instance,
+                             const DrawContext& context);
 
         /// @brief 記述子からインスペクタを組み立てるか（CVar のトグル）
         bool IsEnabled();

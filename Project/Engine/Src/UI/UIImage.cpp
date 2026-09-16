@@ -168,20 +168,17 @@ namespace CoreEngine
     }
 
 #ifdef USE_IMGUI
-    int UIImage::GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const
+    std::span<const char* const> UIImage::GetInspectorSections() const
     {
-        if (maxTabs < 3) { return 0; }
-        outTabs[0] = { "object_data.png", "レイアウト",   {0.96f,0.65f,0.14f,1.0f}, {0.96f,0.65f,0.14f,0.25f} };
-        outTabs[1] = { "material.png",    "マテリアル",   {0.90f,0.30f,0.40f,1.0f}, {0.90f,0.30f,0.40f,0.25f} };
-        outTabs[2] = { "imagePlane.png",  "テクスチャ",   {0.60f,0.40f,0.80f,1.0f}, {0.60f,0.40f,0.80f,0.25f} };
-        return 3;
+        static constexpr const char* kSections[] = { "レイアウト", "マテリアル", "テクスチャ" };
+        return kSections;
     }
 
-    bool UIImage::DrawInspectorTabContent(int tabIndex)
+    bool UIImage::DrawInspectorSection(int index)
     {
         bool changed = false;
 
-        switch (tabIndex)
+        switch (index)
         {
             // ── 0: レイアウト ──────────────────────────────────────────
         case 0:

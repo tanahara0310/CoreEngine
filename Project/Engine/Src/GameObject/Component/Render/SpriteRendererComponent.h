@@ -44,13 +44,6 @@ namespace CoreEngine
 #ifdef USE_IMGUI
         const char* GetInspectorName() const override { return "スプライト描画"; }
 
-        const char* GetInspectorIcon() const override { return "imagePlane.png"; }
-
-        void GetInspectorIconColor(float* outRgba) const override
-        {
-            outRgba[0] = 0.60f; outRgba[1] = 0.40f; outRgba[2] = 0.80f; outRgba[3] = 1.0f;
-        }
-
         /// @brief テクスチャ・色・UV・ブレンド・描画順・フリップ・アンカーの編集 UI
         /// @return 値が変更されたら true
         bool DrawInspector() override;

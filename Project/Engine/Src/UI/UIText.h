@@ -173,8 +173,8 @@ namespace CoreEngine
         void OnDeserialize(const json& j) override;
 
 #ifdef USE_IMGUI
-        int  GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const override;
-        bool DrawInspectorTabContent(int tabIndex) override;
+        std::span<const char* const> GetInspectorSections() const override;
+        bool DrawInspectorSection(int index) override;
 
     private:
         /// @name インスペクタの入力欄が使う作業バッファ

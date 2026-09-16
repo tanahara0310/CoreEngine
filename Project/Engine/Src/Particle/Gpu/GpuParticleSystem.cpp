@@ -458,17 +458,16 @@ Microsoft::WRL::ComPtr<ID3D12Resource> GpuParticleSystem::CreateUavBuffer(size_t
 }
 
 #ifdef USE_IMGUI
-int GpuParticleSystem::GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const
+std::span<const char* const> GpuParticleSystem::GetInspectorSections() const
 {
-    if (maxTabs < 1) return 0;
-    // CPU版と同じタブ構成。色はGPUバッジと同じオレンジで区別する
-    outTabs[0] = { "obj.png", "GPUパーティクル設定", {1.0f,0.6f,0.25f,1.0f}, {1.0f,0.6f,0.25f,0.25f} };
-    return 1;
+    // CPU版と同じ構成
+    static constexpr const char* kSections[] = { "GPUパーティクル設定" };
+    return kSections;
 }
 
-bool GpuParticleSystem::DrawInspectorTabContent(int tabIndex)
+bool GpuParticleSystem::DrawInspectorSection(int index)
 {
-    if (tabIndex != 0) return false;
+    if (index != 0) return false;
     // CPU版と共通の開発UI（ParticleSystemDebugUI）で表示する
     return ParticleSystemDebugUI::ShowImGui(this);
 }

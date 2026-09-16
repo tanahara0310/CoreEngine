@@ -306,14 +306,13 @@ void ParticleSystem::SetModelResource(ModelResource* modelResource)
 }
 
 #ifdef USE_IMGUI
-int ParticleSystem::GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const {
-    if (maxTabs < 1) return 0;
-    outTabs[0] = { "obj.png", "パーティクル設定", {0.40f,0.70f,0.90f,1.0f}, {0.40f,0.70f,0.90f,0.25f} };
-    return 1;
+std::span<const char* const> ParticleSystem::GetInspectorSections() const {
+    static constexpr const char* kSections[] = { "パーティクル設定" };
+    return kSections;
 }
 
-bool ParticleSystem::DrawInspectorTabContent(int tabIndex) {
-    if (tabIndex != 0) return false;
+bool ParticleSystem::DrawInspectorSection(int index) {
+    if (index != 0) return false;
     return ParticleSystemDebugUI::ShowImGui(this);
 }
 #endif // USE_IMGUI

@@ -95,6 +95,10 @@ namespace CoreEngine
         /// @brief 直前のフレームに Update を呼んだ実体の数
         std::uint32_t GetLastFrameInstances() const { return lastInstances_; }
 
+        /// @brief クラスを書いたファイル（スクリプトのフォルダからの相対パス。分からなければ空）
+        const std::string& GetSourceSection() const { return sourceSection_; }
+        void SetSourceSection(std::string section) { sourceSection_ = std::move(section); }
+
     private:
         void ReadClassAttributes(CScriptBuilder& builder);
         void BuildProperties(asITypeInfo* base, CScriptBuilder& builder);
@@ -119,6 +123,9 @@ namespace CoreEngine
 
         /// 記述子の文字列の置き場（足しても要素のアドレスが変わらない入れ物）
         std::deque<std::string> texts_;
+
+        /// クラスを書いたファイル
+        std::string sourceSection_;
 
         /// 実行時間の集計（このフレームの分と、直前のフレームの分）
         mutable double frameCostMs_ = 0.0;

@@ -102,11 +102,15 @@ namespace CoreEngine
         ComponentFactory& factory = ComponentFactory::Get();
         for (const std::unique_ptr<ScriptComponentType>& type : host_->GetTypes()) {
             const ScriptComponentType* const raw = type.get();
+            const std::filesystem::path sourceFile = raw->GetSourceSection().empty()
+                ? std::filesystem::path{}
+                : scriptRoot_ / Logger::GetInstance().Utf8ToPath(raw->GetSourceSection());
             const bool registered = factory.RegisterRuntime(
                 raw->GetName(),
                 [raw]() -> std::unique_ptr<IComponent> { return std::make_unique<ScriptComponent>(*raw); },
                 &raw->GetDescriptor(),
-                raw->GetDisplayName());
+                raw->GetDisplayName(),
+                sourceFile);
             if (!registered) {
                 Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Script,
                     "スクリプトのクラス {} は、同じ名前のコンポーネントが既にあるので使えません", raw->GetName());

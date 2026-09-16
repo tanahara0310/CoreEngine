@@ -251,14 +251,13 @@ void SkyBoxObject::Draw(const Camera* camera) {
 }
 
 #ifdef _DEBUG
-int SkyBoxObject::GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const {
-    if (maxTabs < 1) return 0;
-    outTabs[0] = { "object_data.png", "トランスフォーム", {0.96f,0.65f,0.14f,1.0f}, {0.96f,0.65f,0.14f,0.25f} };
-    return 1;
+std::span<const char* const> SkyBoxObject::GetInspectorSections() const {
+    static constexpr const char* kSections[] = { "トランスフォーム" };
+    return kSections;
 }
 
-bool SkyBoxObject::DrawInspectorTabContent(int tabIndex) {
-    switch (tabIndex) {
+bool SkyBoxObject::DrawInspectorSection(int index) {
+    switch (index) {
     case 0: return DrawTransformSection();
     default: return false;
     }

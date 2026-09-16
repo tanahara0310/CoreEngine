@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "ComponentFactory.h"
 
+#include "Reflection/PropertySerializer.h"
 #include "Utility/Logger/Logger.h"
 
 #include <algorithm>
@@ -59,7 +60,8 @@ namespace CoreEngine
     }
 
     bool ComponentFactory::RegisterRuntime(const std::string& typeName, RuntimeCreator creator,
-        const Reflection::TypeDescriptor* descriptor, const std::string& inspectorName)
+        const Reflection::TypeDescriptor* descriptor, const std::string& inspectorName,
+        std::filesystem::path sourceFile)
     {
         if (typeName.empty() || !creator || entries_.contains(typeName)) { return false; }
 
@@ -69,8 +71,10 @@ namespace CoreEngine
         entry.runtime = true;
 #ifdef USE_IMGUI
         entry.inspectorName = inspectorName;
+        entry.sourceFile = std::move(sourceFile);
 #else
         (void)inspectorName;
+        (void)sourceFile;
 #endif
         entries_.emplace(typeName, std::move(entry));
         return true;
@@ -99,11 +103,43 @@ namespace CoreEngine
         return entries_.find(typeName) != entries_.end();
     }
 
+    bool ComponentFactory::IsRuntimeType(const std::string& typeName) const
+    {
+        const auto it = entries_.find(typeName);
+        return it != entries_.end() && it->second.runtime;
+    }
+
 #ifdef USE_IMGUI
     std::string ComponentFactory::GetInspectorName(const std::string& typeName) const
     {
         const auto it = entries_.find(typeName);
         return it != entries_.end() ? it->second.inspectorName : std::string{};
+    }
+
+    std::filesystem::path ComponentFactory::GetSourceFile(const std::string& typeName) const
+    {
+        const auto it = entries_.find(typeName);
+        return it != entries_.end() ? it->second.sourceFile : std::filesystem::path{};
+    }
+
+    const json* ComponentFactory::GetDefaultParameters(const std::string& typeName)
+    {
+        const auto it = entries_.find(typeName);
+        if (it == entries_.end() || !it->second.descriptor) {
+            return nullptr;
+        }
+
+        Entry& entry = it->second;
+        if (!entry.defaults) {
+            json values = json::object();
+            if (const std::unique_ptr<IComponent> probe = entry.creator ? entry.creator() : nullptr) {
+                if (const void* const instance = probe->GetReflectionInstance()) {
+                    Reflection::PropertySerializer::Save(*entry.descriptor, instance, values);
+                }
+            }
+            entry.defaults = std::move(values);
+        }
+        return &*entry.defaults;
     }
 #endif
 
