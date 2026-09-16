@@ -1102,6 +1102,9 @@
     <ClCompile Include="Engine\Src\Editor\ImGui\DockingUI.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\ImGui\EditorLayoutSection.cpp">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\External\ExternalCodeEditor.cpp">
       <Filter>Engine\Src\Editor\External</Filter>
     </ClCompile>
@@ -3091,6 +3094,9 @@
       <Filter>Application\Src\Scenes\Sprite2DSampleScene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\DockingUI.h">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ImGui\EditorLayoutSection.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Camera\Camera.h">

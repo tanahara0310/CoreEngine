@@ -2,7 +2,6 @@
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "ImGuiManager.h"
 #include "Editor/ImGui/EditorTheme.h"
-#include "Utility/Path/ProjectPaths.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/SwapChain/SwapChain.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
@@ -48,12 +47,8 @@ namespace CoreEngine
 
         io.ConfigWindowsMoveFromTitleBarOnly = false; // ウィンドウ全体からドラッグ移動を可能にする
 
-        // imgui.ini はレイアウトの控えなので、作り直せるものと同じ場所へ置く
-        std::error_code iniDirError;
-        std::filesystem::create_directories(ProjectPaths::Intermediate(), iniDirError);
-        static const std::string kIniPath =
-            Logger::GetInstance().PathToUtf8(ProjectPaths::Intermediate("imgui.ini"));
-        io.IniFilename = kIniPath.c_str();
+        // ウィンドウの位置とドックの配置はエディタ設定の保存（EditorLayout）が持つので、ファイルへは書かない
+        io.IniFilename = nullptr;
 
         ImGui::StyleColorsDark();
         ApplyCustomTheme();

@@ -926,6 +926,27 @@ namespace CoreEngine
         }
     }
 
+    std::filesystem::path ProjectView::GetCurrentFolder() const
+    {
+        return currentPath_.lexically_relative(rootPath_);
+    }
+
+    void ProjectView::OpenFolder(const std::filesystem::path& relativeFolder)
+    {
+        if (relativeFolder.empty() || relativeFolder.is_absolute()) {
+            return;
+        }
+        const std::filesystem::path relative = relativeFolder.lexically_normal();
+        if (!relative.empty() && *relative.begin() == "..") {
+            return;
+        }
+        const std::filesystem::path folder = (rootPath_ / relative).lexically_normal();
+        std::error_code error;
+        if (std::filesystem::is_directory(folder, error)) {
+            NavigateToDirectory(folder);
+        }
+    }
+
     void ProjectView::OpenFile(const std::filesystem::path& filePath)
     {
         if (!std::filesystem::exists(filePath)) {

@@ -215,6 +215,13 @@ namespace CoreEngine
             // パネルの開閉。ここより後に登録されるパネルにも復元値が効く
             panelStateSection_ = std::make_unique<Editor::EditorPanelStateSection>();
             editorSettings->RegisterSection(panelStateSection_.get(), this);
+
+            // 画面の配置（ドックとウィンドウの位置・常設ウィンドウの開閉・Project のフォルダ）
+            if (DockingUI* const docking = imGui_->GetDockingUI()) {
+                layoutSection_ = std::make_unique<Editor::EditorLayoutSection>(
+                    *gameDebugUI_, *docking, imGui_->GetProjectView());
+                editorSettings->RegisterSection(layoutSection_.get(), this);
+            }
         }
 
         // 静的初期化中（main より前）に溜まった CVar の警告をログへ流す。
@@ -425,6 +432,7 @@ namespace CoreEngine
         cvarConfigSection_.reset();
         cvarStateSection_.reset();
         panelStateSection_.reset();
+        layoutSection_.reset();
 
         // コンソールUIへのログ転送を解除（ImGui解放前に行う）
         Logger::GetInstance().ClearConsoleCallback();

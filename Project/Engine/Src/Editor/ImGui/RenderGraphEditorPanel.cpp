@@ -226,7 +226,7 @@ namespace CoreEngine
         }
 
         // Tools パネル既定の 460x540 ではノードグラフには狭すぎるため、初回だけ広げる
-        //（ユーザーがリサイズすれば imgui.ini 側の値が優先される）
+        //（ユーザーがリサイズすれば、保存された配置の値が優先される）
         ImGui::SetWindowSize(ImVec2(1180.0f, 720.0f), ImGuiCond_FirstUseEver);
 
         drawnRecently_ = true;

@@ -52,6 +52,21 @@ namespace CoreEngine
         /// @brief Gameビュー用のSceneDebugEditorを設定
         void SetSceneDebugEditor(SceneDebugEditor* sceneDebugEditor) { sceneDebugEditor_ = sceneDebugEditor; }
 
+        /// @brief 常設ウィンドウ（Hierarchy・Inspector・Console）の開閉
+        struct CoreWindows
+        {
+            bool hierarchy = true;
+            bool inspector = true;
+            bool console = true;
+        };
+        CoreWindows GetCoreWindows() const { return { showHierarchy_, showInspector_, showConsole_ }; }
+        void SetCoreWindows(const CoreWindows& windows)
+        {
+            showHierarchy_ = windows.hierarchy;
+            showInspector_ = windows.inspector;
+            showConsole_ = windows.console;
+        }
+
         /// @brief Gameビュー用のSceneDebugEditorを取得
         SceneDebugEditor* GetSceneDebugEditor() const { return sceneDebugEditor_; }
 

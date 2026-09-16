@@ -68,6 +68,10 @@ namespace CoreEngine
         /// @details 登録済みウィンドウはすべて既定位置へ戻る。
         void RequestResetLayout() { layoutDirty_ = true; }
 
+        /// @brief 保存された配置を使う（最初のフレームで標準レイアウトを組まない）
+        /// @note 保存に載っていないウィンドウだけは、既定の場所へ入れる。
+        void UseSavedLayout() { useSavedLayout_ = true; }
+
         /// @brief レイアウトプリセットを設定
         void SetLayoutPreset(DockLayoutPreset preset);
 
@@ -102,8 +106,14 @@ namespace CoreEngine
         void SetSceneDebugEditor(SceneDebugEditor* sceneDebugEditor) { sceneDebugEditor_ = sceneDebugEditor; }
 
     private:
-        /// @brief エリアごとのノードIDを取得
-        ImGuiID GetNodeIdForArea(Editor::DockArea area) const;
+        /// @brief エリアのノードを探す
+        /// @details 標準レイアウトを組んだならそのノード。保存された配置なら、
+        ///          そのエリアへ登録したウィンドウが今いるノード。
+        /// @return 見つからなければ 0
+        ImGuiID FindNodeForArea(Editor::DockArea area) const;
+
+        /// @brief 保存に載っていない登録ウィンドウを、エリアのノードへ入れる
+        void DockWindowsWithoutSettings();
 
         /// @brief ドッキングレイアウトを構築
         void BuildDockLayout();
@@ -129,6 +139,8 @@ namespace CoreEngine
         std::vector<std::pair<std::string, Editor::DockArea>> registeredWindows_;
         bool layoutInitialized_ = false; // レイアウトが初期化されたかどうか
         bool layoutDirty_ = false; // レイアウト再構築が必要かどうか
+        bool useSavedLayout_ = false; // 保存された配置を使うか
+        bool dockNewWindowsPending_ = false; // 保存に載っていないウィンドウを次のフレームで入れるか
         DockLayoutPreset layoutPreset_ = DockLayoutPreset::Standard;
 
         // エリアごとのノードID
