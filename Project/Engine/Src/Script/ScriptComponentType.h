@@ -4,6 +4,7 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <deque>
 #include <string>
 
@@ -71,6 +72,29 @@ namespace CoreEngine
         /// @return 見つからなければ -1
         int GetOwnerPropertyIndex() const { return ownerPropertyIndex_; }
 
+        /// @brief このフレームの Update / LateUpdate にかかった時間を足す
+        /// @param countInstance Update の呼び出しなら true（実体の数として数える）
+        void AddFrameCost(double milliseconds, bool countInstance) const
+        {
+            frameCostMs_ += milliseconds;
+            frameInstances_ += countInstance ? 1u : 0u;
+        }
+
+        /// @brief このフレームの集計を「直前のフレーム」へ移し、次のフレームのために空にする
+        void RollFrameCost() const
+        {
+            lastCostMs_ = frameCostMs_;
+            lastInstances_ = frameInstances_;
+            frameCostMs_ = 0.0;
+            frameInstances_ = 0;
+        }
+
+        /// @brief 直前のフレームの Update / LateUpdate にかかった時間（ミリ秒）
+        double GetLastFrameCostMs() const { return lastCostMs_; }
+
+        /// @brief 直前のフレームに Update を呼んだ実体の数
+        std::uint32_t GetLastFrameInstances() const { return lastInstances_; }
+
     private:
         void ReadClassAttributes(CScriptBuilder& builder);
         void BuildProperties(asITypeInfo* base, CScriptBuilder& builder);
@@ -95,5 +119,11 @@ namespace CoreEngine
 
         /// 記述子の文字列の置き場（足しても要素のアドレスが変わらない入れ物）
         std::deque<std::string> texts_;
+
+        /// 実行時間の集計（このフレームの分と、直前のフレームの分）
+        mutable double frameCostMs_ = 0.0;
+        mutable std::uint32_t frameInstances_ = 0;
+        mutable double lastCostMs_ = 0.0;
+        mutable std::uint32_t lastInstances_ = 0;
     };
 }

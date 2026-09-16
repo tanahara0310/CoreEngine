@@ -2,6 +2,7 @@
 #include "DockingUI.h"
 #include "Editor/ImGui/EditorTheme.h"
 #include "Editor/ImGui/Widgets/EditorBars.h"
+#include "Editor/ImGui/Widgets/PassTimingTable.h"
 #include "Editor/Scene/SceneDebugEditor.h"
 #include "EngineSystem/PlaybackState.h"
 #include "Utility/CVar/CVar.h"
@@ -429,9 +430,8 @@ namespace CoreEngine
     void DockingUI::DrawTimingTooltip()
     {
 #ifdef USE_IMGUI
-        const bool hasTimingData = timingData_[static_cast<uint32_t>(GpuTimestampSlot::Total)].gpuMs > 0.0f
-            || timingData_[static_cast<uint32_t>(GpuTimestampSlot::Total)].cpuMs > 0.0f;
-        if (!ImGui::IsWindowHovered() || !hasTimingData) {
+        const auto& total = timingData_[static_cast<uint32_t>(GpuTimestampSlot::Total)];
+        if (!ImGui::IsWindowHovered() || (total.gpuMs <= 0.0f && total.cpuMs <= 0.0f)) {
             return;
         }
 
@@ -440,119 +440,11 @@ namespace CoreEngine
             return;
         }
 
-        ImGui::TextColored(Theme::kWarm, "Frame Timing");
+        ImGui::TextColored(Theme::kWarm, "パス別の時間");
         UI::SameLine();
-        UI::Hint("(1-frame delay)");
+        UI::Hint("（GPU は 1 フレーム遅れ）");
         UI::Separator();
-        UI::Spacing();
-
-        // 1フレームバジェット（60fps = 16.67ms）を基準にバーを描画
-        constexpr float kFrameBudgetMs = 1000.0f / 60.0f;
-
-        constexpr ImGuiTableFlags tableFlags =
-            ImGuiTableFlags_BordersInnerV
-            | ImGuiTableFlags_BordersOuter
-            | ImGuiTableFlags_RowBg;
-
-        ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(8.0f, 4.0f));
-        if (auto table = UI::Scope::TableScope("##timing_table", 4, tableFlags))
-        {
-            ImGui::TableSetupColumn("Pass", ImGuiTableColumnFlags_WidthStretch);
-            ImGui::TableSetupColumn("CPU (ms)", ImGuiTableColumnFlags_WidthFixed, 68.0f);
-            ImGui::TableSetupColumn("GPU (ms)", ImGuiTableColumnFlags_WidthFixed, 68.0f);
-            ImGui::TableSetupColumn("Budget", ImGuiTableColumnFlags_WidthFixed, 100.0f);
-            ImGui::TableHeadersRow();
-
-            // パス名から解決したカテゴリ（GpuTimingCategory）でグルーピングする。
-            // RenderGraph に新規パスを追加してもこのテーブルは編集不要（BuildGpuTimingGroups が自動集計）。
-            const std::vector<GpuTimingGroup> groups = BuildGpuTimingGroups(timingData_);
-
-            // Total（Frame カテゴリ）スロットのインデックスを探す
-            uint32_t totalIdx = static_cast<uint32_t>(timingData_.size());
-            for (uint32_t i = 0; i < timingData_.size(); ++i)
-            {
-                if (timingData_[i].category == GpuTimingCategory::Frame) { totalIdx = i; break; }
-            }
-
-            // 1 行分のセル（名前の左に状態の丸、右端にバジェット比のバー）
-            const auto drawRow = [](const GpuTimingResult& slot, bool idle, bool emphasize) {
-                const ImVec4 kIdle = ImVec4(0.45f, 0.45f, 0.45f, 1.0f);
-                const ImVec4 gpuColor = emphasize ? Theme::kWarm
-                    : idle ? kIdle
-                    : (slot.gpuMs > 8.0f) ? Theme::kError
-                    : (slot.gpuMs > 4.0f) ? Theme::kWarn
-                    : Theme::kOk;
-
-                ImGui::TableSetColumnIndex(0);
-                {
-                    const ImVec2 dotPos = {
-                        ImGui::GetCursorScreenPos().x + 4.0f,
-                        ImGui::GetCursorScreenPos().y + ImGui::GetTextLineHeight() * 0.5f
-                    };
-                    ImGui::GetWindowDrawList()->AddCircleFilled(dotPos, 4.0f,
-                        ImGui::ColorConvertFloat4ToU32(gpuColor));
-                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 14.0f);
-                }
-                if (emphasize) {
-                    ImGui::TextColored(Theme::kWarm, "%s", slot.name);
-                } else {
-                    UI::Label(slot.name);
-                }
-
-                ImGui::TableSetColumnIndex(1);
-                {
-                    const ImVec4 cpuColor = emphasize ? Theme::kWarm
-                        : idle ? kIdle
-                        : (slot.cpuMs > 2.0f) ? Theme::kError
-                        : (slot.cpuMs > 0.5f) ? Theme::kWarn
-                        : Theme::kTextDim;
-                    ImGui::TextColored(cpuColor, "%.3f", slot.cpuMs);
-                }
-
-                ImGui::TableSetColumnIndex(2);
-                ImGui::TextColored(gpuColor, "%.3f", slot.gpuMs);
-
-                ImGui::TableSetColumnIndex(3);
-                {
-                    const float ratio =
-                        slot.gpuMs / kFrameBudgetMs < 1.0f ? slot.gpuMs / kFrameBudgetMs : 1.0f;
-                    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, gpuColor);
-                    const auto overlay = std::format("{:.1f}%", ratio * 100.0f);
-                    UI::ProgressBar(ratio, ImVec2(-FLT_MIN, ImGui::GetTextLineHeight()), overlay.c_str());
-                    ImGui::PopStyleColor();
-                }
-                };
-
-            for (const auto& group : groups)
-            {
-                // カテゴリヘッダー行
-                ImGui::TableNextRow();
-                ImGui::TableSetColumnIndex(0);
-                ImGui::TextColored(Theme::kWarm, "%s",
-                    GpuTimestampProfiler::GetCategoryLabel(group.category));
-
-                for (uint32_t idx : group.slotIndices)
-                {
-                    if (idx >= timingData_.size()) continue;
-                    ImGui::TableNextRow();
-
-                    // 今フレーム実行されなかったパスも行位置を保つ（行の出入りで
-                    // 下の全パスがずれると内訳が読めなくなる）。淡色で区別する。
-                    drawRow(timingData_[idx], IsIdleTimingSlot(timingData_[idx]), false);
-                }
-            }
-
-            // Frame Total 行
-            if (totalIdx < timingData_.size())
-            {
-                ImGui::TableNextRow();
-                constexpr ImU32 kTotalBg = IM_COL32(40, 40, 48, 255);
-                ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, kTotalBg);
-                ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg1, kTotalBg);
-                drawRow(timingData_[totalIdx], false, true);
-            }
-        }
-        ImGui::PopStyleVar();
+        UI::PassTimingTable("##timing_table", timingData_, true);
 #endif
-}
+    }
 }

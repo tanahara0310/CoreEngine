@@ -81,6 +81,9 @@ namespace CoreEngine
             return;
         }
 
+        // 読み直すと型が作り直されるので、先にこのフレームの実行時間を締める
+        host_->EndFrameStats();
+
 #ifdef USE_IMGUI
         // スクリプトを実行していないここで読み直す
         std::vector<std::filesystem::path> changed;

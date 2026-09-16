@@ -83,6 +83,22 @@ namespace CoreEngine
         /// @brief GC を 1 段だけ進める
         void CollectGarbageStep();
 
+        /// @brief 直前のフレームの実行の集計
+        struct FrameStats
+        {
+            double updateMs = 0.0;          ///< Update / LateUpdate にかかった時間の合計（ミリ秒）
+            std::size_t liveComponents = 0; ///< 生きているスクリプトのコンポーネントの数
+            std::size_t pooledContexts = 0; ///< 使い回しを待っているコンテキストの数
+            std::size_t gcObjects = 0;      ///< GC が抱えているオブジェクトの数
+        };
+
+        /// @brief フレームの集計を締める（型ごとの時間を「直前のフレーム」へ移す）
+        /// @note フレームの最後に 1 回呼ぶ。
+        void EndFrameStats();
+
+        /// @brief 直前のフレームの実行の集計
+        const FrameStats& GetFrameStats() const { return frameStats_; }
+
         /// @brief 登録済みの型と関数を `as.predefined` の形でファイルへ書く（中身が同じなら書かない）
         /// @return 書き終えたか、既に同じ中身だったら true。エンジンを作る前は false
         bool WritePredefined(const std::filesystem::path& file) const;
@@ -177,5 +193,8 @@ namespace CoreEngine
 
         /// `GetLifetimeToken()` の実体（エンジンを捨てる前に切る）
         std::shared_ptr<void> lifetimeToken_;
+
+        /// 直前のフレームの実行の集計
+        FrameStats frameStats_;
     };
 }

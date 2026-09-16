@@ -109,6 +109,12 @@ namespace CoreEngine
         }
     };
 
+    /// @brief フレームの区間ごとの CPU 時間（ミリ秒）
+    struct FrameTimings
+    {
+        float updateMs = 0.0f;                   // ゲームの更新（アプリの Update 全体）
+    };
+
     /// @brief エンジン統計情報の集約
     class EngineStats
     {
@@ -141,6 +147,10 @@ namespace CoreEngine
         // メモリ統計
         MemoryStats& GetMemoryStats() { return memoryStats_; }
         const MemoryStats& GetMemoryStats() const { return memoryStats_; }
+
+        // フレームの区間ごとの CPU 時間
+        FrameTimings& GetFrameTimings() { return frameTimings_; }
+        const FrameTimings& GetFrameTimings() const { return frameTimings_; }
 
         // ドローコールを記録（三角形数・頂点数も加算）
         void RecordDrawCall(bool isInstanced, uint32_t instanceCount,
@@ -221,5 +231,6 @@ namespace CoreEngine
         ResourceCacheStats resourceCacheStats_;
         SceneStats         sceneStats_;
         MemoryStats        memoryStats_;
+        FrameTimings       frameTimings_;
     };
 }

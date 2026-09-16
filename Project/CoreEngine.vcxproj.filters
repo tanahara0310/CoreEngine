@@ -1102,6 +1102,12 @@
     <ClCompile Include="Engine\Src\Editor\External\ExternalCodeEditor.cpp">
       <Filter>Engine\Src\Editor\External</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\ImGui\ProfilerPanel.cpp">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\ImGui\Widgets\PassTimingTable.cpp">
+      <Filter>Engine\Src\Editor\ImGui\Widgets</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Camera\Camera.cpp">
       <Filter>Engine\Src\Camera</Filter>
     </ClCompile>
@@ -1640,6 +1646,12 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\External\ExternalCodeEditor.h">
       <Filter>Engine\Src\Editor\External</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ImGui\ProfilerPanel.h">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\PassTimingTable.h">
+      <Filter>Engine\Src\Editor\ImGui\Widgets</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Path\ProjectPaths.h">
       <Filter>Engine\Src\Utility\Path</Filter>

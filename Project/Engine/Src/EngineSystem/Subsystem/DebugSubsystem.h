@@ -13,6 +13,7 @@
 #include "Editor/ImGui/ThreadProfilerUI.h"
 #include "Editor/ImGui/KeyConfigUI.h"
 #include "Editor/ImGui/EngineStatsWindow.h"
+#include "Editor/ImGui/ProfilerPanel.h"
 #include "Editor/ImGui/RenderPassDebugPanel.h"
 #include "Editor/ImGui/RenderGraphEditorPanel.h"
 #include "Editor/ImGui/RayTracingDebugPanel.h"
@@ -102,6 +103,7 @@ namespace CoreEngine
         GpuTimestampProfiler gpuProfiler_;
         std::unique_ptr<ThreadProfilerUI> threadProfilerUI_;
         std::unique_ptr<EngineStatsWindow> engineStatsWindow_;
+        std::unique_ptr<ProfilerPanel> profilerPanel_;
         KeyConfigUI keyConfigUI_;
         RenderPassDebugPanel renderPassDebugPanel_;
         RenderGraphEditorPanel renderGraphEditorPanel_;

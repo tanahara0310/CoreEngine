@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "RenderGraphEditorPanel.h"
+#include "Editor/ImGui/Widgets/PassTimingTable.h"
 
 #ifdef USE_IMGUI
 
@@ -603,7 +604,7 @@ namespace CoreEngine
         // 計測値（ピンを持たない静的行）
         ImNodes::BeginStaticAttribute(MakeAttributeId(passIndex, 127));
         if (pass.executed) {
-            ImGui::Text("GPU %.3f ms", gpuMs);
+            ImGui::TextColored(UI::GpuTimeColor(gpuMs), "GPU %.3f ms", gpuMs);
         } else {
             ImGui::TextDisabled("not executed");
         }

@@ -482,6 +482,23 @@ namespace CoreEngine
         }
     }
 
+    void ScriptHost::EndFrameStats()
+    {
+        FrameStats stats;
+        for (const std::unique_ptr<ScriptComponentType>& type : types_) {
+            type->RollFrameCost();
+            stats.updateMs += type->GetLastFrameCostMs();
+        }
+        stats.liveComponents = components_.size();
+        stats.pooledContexts = contextPool_.size();
+        if (engine_) {
+            asUINT currentSize = 0;
+            engine_->GetGCStatistics(&currentSize);
+            stats.gcObjects = currentSize;
+        }
+        frameStats_ = stats;
+    }
+
     bool ScriptHost::WritePredefined(const std::filesystem::path& file) const
     {
         return engine_ && Script::WriteScriptPredefined(*engine_, file);
