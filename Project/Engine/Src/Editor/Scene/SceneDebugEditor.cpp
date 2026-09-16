@@ -264,6 +264,7 @@ namespace CoreEngine
     void SceneDebugEditor::ClearHistory()
     {
         undoRedoHistory_.Clear();
+        savedRevision_ = Editor::EditorCommandStack::Get().GetSceneRevision();
     }
 
     void SceneDebugEditor::Update()
@@ -300,15 +301,7 @@ namespace CoreEngine
 
         // Ctrl+S でシーン全体保存
         if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_S)) {
-            if (!saveSystem_->GetSceneName().empty()) {
-                saveSystem_->SaveScene(gameObjectManager_);
-
-                // カメラの構図もシーンの一部として一緒に保存する。
-                // これが無いと、エディタで詰めた画がアプリを閉じるたびに消える。
-                if (cameraManager_) {
-                    CameraSceneStateIO::Save(saveSystem_->GetSceneName(), *cameraManager_);
-                }
-            }
+            SaveScene();
         }
 
         // Ctrl+C で選択中オブジェクトをコピー（複製）
@@ -415,43 +408,37 @@ namespace CoreEngine
         objectSelector_.SetGizmoMode(mode);
     }
 
+    bool SceneDebugEditor::SaveScene()
+    {
+        if (!saveSystem_ || saveSystem_->GetSceneName().empty()) {
+            return false;
+        }
+
+        saveSystem_->SaveScene(gameObjectManager_);
+
+        // カメラの構図もシーンの一部として一緒に保存する。
+        // これが無いと、エディタで詰めた画がアプリを閉じるたびに消える。
+        if (cameraManager_) {
+            CameraSceneStateIO::Save(saveSystem_->GetSceneName(), *cameraManager_);
+        }
+
+        savedRevision_ = Editor::EditorCommandStack::Get().GetSceneRevision();
+        return true;
+    }
+
+    bool SceneDebugEditor::IsSceneDirty() const
+    {
+        return Editor::EditorCommandStack::Get().GetSceneRevision() != savedRevision_;
+    }
+
+    std::string SceneDebugEditor::GetSceneName() const
+    {
+        return saveSystem_ ? saveSystem_->GetSceneName() : std::string{};
+    }
+
     void SceneDebugEditor::DrawHierarchyContent()
     {
-        // ツールバー：保存 / Undo / Redo
-        ImGui::BeginDisabled(saveSystem_->GetSceneName().empty());
-        if (ImGui::Button("Save Scene")) {
-            saveSystem_->SaveScene(gameObjectManager_);
-        }
-        ImGui::EndDisabled();
-        UI::SameLine();
-        // 履歴はエディタ共通の 1 本。次に何が戻るのかをボタンから読めるようにする
-        auto& commandStack = Editor::EditorCommandStack::Get();
-        ImGui::BeginDisabled(!undoRedoHistory_.CanUndo());
-        if (ImGui::Button("Undo")) {
-            undoRedoHistory_.Undo(gameObjectManager_);
-        }
-        ImGui::EndDisabled();
-        if (ImGui::IsItemHovered() && commandStack.CanUndo()) {
-            ImGui::SetTooltip("戻す: %s", commandStack.PeekUndoLabel().c_str());
-        }
-        UI::SameLine();
-        {
-            UI::Scope::DisabledScope ds(!undoRedoHistory_.CanRedo());
-            if (ImGui::Button("Redo")) {
-                undoRedoHistory_.Redo(gameObjectManager_);
-            }
-        }
-        if (ImGui::IsItemHovered() && commandStack.CanRedo()) {
-            ImGui::SetTooltip("やり直す: %s", commandStack.PeekRedoLabel().c_str());
-        }
-        UI::SameLine();
-        UI::HintF("(%d/%d)",
-            undoRedoHistory_.GetUndoCount(),
-            undoRedoHistory_.GetUndoCount() + undoRedoHistory_.GetRedoCount());
-        UI::Separator();
-
         const auto& objects = gameObjectManager_->GetAllObjects();
-        UI::Separator();
 
         if (auto child = UI::Scope::ChildScope("##HierarchyObjectList")) {
             // ── オブジェクトアイコンの初回ロード ──

@@ -2,12 +2,19 @@
 #include "GameDebugUI.h"
 
 #ifdef USE_IMGUI
+#include "Editor/Command/EditorCommandStack.h"
 #include "Editor/ImGui/DockingUI.h"
+#include "Editor/ImGui/EditorTheme.h"
+#include "Editor/ImGui/Widgets/EditorBars.h"
 #include "Editor/Panel/EditorPanelRegistry.h"
+#include "Editor/Scene/ComponentEditing.h"
 #include "Editor/Scene/SceneDebugEditor.h"
 #include "EngineSystem/EngineSystem.h"
 #include "EngineSystem/EngineConfig.h"
 #include "EngineSystem/PlaybackState.h"
+#include "GameObject/Component/Core/ComponentFactory.h"
+#include "Scene/SceneManager.h"
+#include "Script/ScriptSubsystem.h"
 #include "Utility/FrameRate/FrameRateController.h"
 #include "Utility/FrameRate/Time.h"
 #include "WinApp/WinApp.h"
@@ -20,6 +27,21 @@
 
 namespace CoreEngine
 {
+    namespace
+    {
+        /// @brief 実行中のビルド構成の名前
+        constexpr const char* BuildConfigName()
+        {
+#if defined(_DEBUG)
+            return "Editor · Debug";
+#elif defined(NDEBUG)
+            return "Editor · Release";
+#else
+            return "Editor · Development";
+#endif
+        }
+    }
+
     void GameDebugUI::Initialize(EngineSystem* engine, DockingUI* dockingUI)
     {
         assert(engine != nullptr);
@@ -38,13 +60,13 @@ namespace CoreEngine
             RegisterWindowsForDocking();
         }
 
-        // 単独ウィンドウは開くたびに Game ビューの真上へ浮くので、既定のドック先を与える。
+        // 単独ウィンドウのドック先は記述子の defaultDock だけが決める。
+        // 既定は None なので、指定の無いパネルはフローティングのまま Window メニューから開く。
         // レジストリへ既に積まれているぶんもここでまとめて通知される。
-        // （マルチビューポートが有効なので、広いパネルはここから別モニタへ引き出せばよい）
         Editor::EditorPanelRegistry::Get().SetDockRegistrar(
-            [this](const std::string& id) {
+            [this](const Editor::EditorPanelDesc& desc) {
                 if (dockingUI_) {
-                    dockingUI_->RegisterWindow(id, DockArea::Right);
+                    dockingUI_->RegisterWindow(desc.id, desc.defaultDock);
                 }
             });
 
@@ -54,6 +76,7 @@ namespace CoreEngine
 
     void GameDebugUI::SetSceneManager(SceneManager* sceneManager)
     {
+        sceneManager_ = sceneManager;
         if (sceneManager) {
             sceneManagerTab_->Initialize(sceneManager);
             console_->LogInfo("SceneManagerがSceneManagerTabに設定されました");
@@ -73,10 +96,186 @@ namespace CoreEngine
         screenCapture_.ProcessPendingCapture();
         pixCapture_.ProcessPendingCapture();
 
-        if (ImGui::BeginMainMenuBar()) {
-            // Window メニュー：すべてのパネルを用途別サブメニューへ振り分ける。
-            // パネルが増えても一覧が縦に伸び続けないようにするため、
-            // 直下に並べるのは「常に使うもの」だけに絞る。
+        if (!ImGui::BeginMainMenuBar()) {
+            return;
+        }
+
+        ImGui::TextColored(Editor::Theme::kAccentHover, "CoreEngine");
+        ImGui::Dummy(ImVec2(6.0f, 0.0f));
+
+        DrawFileMenu();
+        DrawEditMenu();
+        DrawComponentMenu();
+        DrawWindowMenu();
+        DrawHelpMenu();
+        DrawMenuBarChips();
+
+        ImGui::EndMainMenuBar();
+    }
+
+    void GameDebugUI::DrawFileMenu()
+    {
+        if (!ImGui::BeginMenu("File")) {
+            return;
+        }
+
+        const bool hasScene = sceneDebugEditor_ && !sceneDebugEditor_->GetSceneName().empty();
+        if (ImGui::MenuItem("シーンを保存", "Ctrl+S", false, hasScene)) {
+            sceneDebugEditor_->SaveScene();
+        }
+
+        if (sceneManager_ && ImGui::BeginMenu("シーンを開く")) {
+            const std::string current = sceneManager_->GetCurrentSceneName();
+            for (const std::string& name : sceneManager_->GetAllSceneNames()) {
+                if (ImGui::MenuItem(name.c_str(), nullptr, name == current)) {
+                    sceneManager_->ChangeScene(name);
+                }
+            }
+            ImGui::EndMenu();
+        }
+
+        ImGui::Separator();
+
+        if (ImGui::MenuItem("スクリーンショット")) {
+            screenCapture_.RequestCapture();
+        }
+
+        if (PixCapture::IsPixAvailable()) {
+            if (ImGui::MenuItem("PIX GPU キャプチャ")) {
+                pixCapture_.RequestCapture();
+            }
+            if (ImGui::MenuItem("PIX を無効化して再起動")) {
+                EngineConfig::SetPixRuntimeAndRestart(false);
+            }
+        } else {
+            ImGui::MenuItem("PIX GPU キャプチャ", nullptr, false, false);
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                ImGui::SetTooltip("PIX は現在無効です");
+            }
+            if (ImGui::MenuItem("PIX を有効化して再起動")) {
+                EngineConfig::SetPixRuntimeAndRestart(true);
+            }
+        }
+
+        ImGui::Separator();
+
+        if (ImGui::MenuItem("終了", "Alt+F4")) {
+            PostQuitMessage(0);
+        }
+
+        ImGui::EndMenu();
+    }
+
+    void GameDebugUI::DrawEditMenu()
+    {
+        if (!ImGui::BeginMenu("Edit")) {
+            return;
+        }
+
+        const auto& commandStack = Editor::EditorCommandStack::Get();
+        const std::string undoLabel = commandStack.PeekUndoLabel();
+        const std::string redoLabel = commandStack.PeekRedoLabel();
+        const std::string undoText = undoLabel.empty() ? "元に戻す" : "元に戻す: " + undoLabel;
+        const std::string redoText = redoLabel.empty() ? "やり直す" : "やり直す: " + redoLabel;
+
+        if (ImGui::MenuItem(undoText.c_str(), "Ctrl+Z", false,
+            sceneDebugEditor_ && sceneDebugEditor_->CanUndo())) {
+            sceneDebugEditor_->Undo();
+        }
+        if (ImGui::MenuItem(redoText.c_str(), "Ctrl+Y", false,
+            sceneDebugEditor_ && sceneDebugEditor_->CanRedo())) {
+            sceneDebugEditor_->Redo();
+        }
+
+        ImGui::Separator();
+
+        if (ImGui::MenuItem("選択を複製", "Ctrl+C", false,
+            sceneDebugEditor_ && sceneDebugEditor_->HasSelection())) {
+            sceneDebugEditor_->CopySelectedObject();
+        }
+
+        ImGui::EndMenu();
+    }
+
+    void GameDebugUI::DrawComponentMenu()
+    {
+        if (!ImGui::BeginMenu("Component")) {
+            return;
+        }
+
+        GameObject* const selected = sceneDebugEditor_ ? sceneDebugEditor_->GetSelectedObject() : nullptr;
+        if (!selected) {
+            ImGui::TextDisabled("オブジェクトを選ぶと足せます");
+            ImGui::EndMenu();
+            return;
+        }
+
+        const ComponentFactory& factory = ComponentFactory::Get();
+        for (const std::string& typeName : factory.GetRegisteredTypeNames()) {
+            std::string reason;
+            const bool canAdd = ComponentEditing::CanAdd(*selected, typeName, &reason);
+            const std::string displayName = factory.GetInspectorName(typeName);
+
+            if (ImGui::MenuItem(displayName.empty() ? typeName.c_str() : displayName.c_str(),
+                nullptr, false, canAdd)) {
+                ComponentEditing::Add(*selected, typeName);
+            }
+            if (!canAdd && !reason.empty()
+                && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                ImGui::SetTooltip("%s", reason.c_str());
+            }
+        }
+
+        ImGui::EndMenu();
+    }
+
+    void GameDebugUI::DrawHelpMenu()
+    {
+        if (!ImGui::BeginMenu("Help")) {
+            return;
+        }
+
+        if (Editor::EditorPanel* keyConfig = Editor::EditorPanelRegistry::Get().Find("Key Config")) {
+            if (ImGui::MenuItem("キー操作を見る")) {
+                keyConfig->visible = true;
+            }
+        }
+        if (ImGui::MenuItem("バージョン情報")) {
+            showAboutWindow_ = true;
+        }
+
+        ImGui::EndMenu();
+    }
+
+    void GameDebugUI::DrawMenuBarChips()
+    {
+        namespace Theme = Editor::Theme;
+
+        const std::string scene = sceneManager_ ? sceneManager_->GetCurrentSceneName() : std::string{};
+        const char* const build = BuildConfigName();
+
+        float width = UI::Bar::ChipWidth(build);
+        if (!scene.empty()) {
+            width += UI::Bar::ChipWidth(scene.c_str()) + ImGui::GetStyle().ItemSpacing.x;
+        }
+
+        const float x = ImGui::GetWindowWidth() - width - 10.0f;
+        if (x > ImGui::GetCursorPosX()) {
+            ImGui::SetCursorPosX(x);
+        }
+
+        if (!scene.empty()) {
+            UI::Bar::Chip(scene.c_str(), Theme::kTextDim, Theme::kOutline);
+        }
+        UI::Bar::Chip(build, Theme::kOk, Theme::WithAlpha(Theme::kOk, 0.35f));
+    }
+
+    void GameDebugUI::DrawWindowMenu()
+    {
+        // すべてのパネルを用途別サブメニューへ振り分ける。
+        // パネルが増えても一覧が縦に伸び続けないようにするため、
+        // 直下に並べるのは「常に使うもの」だけに絞る。
+        {
             if (ImGui::BeginMenu("Window")) {
 
                 auto& registry = Editor::EditorPanelRegistry::Get();
@@ -166,96 +365,77 @@ namespace CoreEngine
 
                 ImGui::EndMenu();
             }
-
-            // 再生 / 停止（メニューバー中央）
-            DrawPlaybackControls();
-
-            // Capture メニュー（右端に配置）
-            float captureMenuWidth = ImGui::CalcTextSize("Capture").x + ImGui::GetStyle().ItemSpacing.x * 4.0f;
-            ImGui::SameLine(ImGui::GetWindowWidth() - captureMenuWidth);
-            if (ImGui::BeginMenu("Capture")) {
-                if (ImGui::MenuItem("Screenshot")) {
-                    screenCapture_.RequestCapture();
-                }
-
-                ImGui::Separator();
-
-                if (PixCapture::IsPixAvailable()) {
-                    if (ImGui::MenuItem("PIX GPU Capture")) {
-                        pixCapture_.RequestCapture();
-                    }
-                    if (ImGui::MenuItem("PIX を無効化して再起動")) {
-                        EngineConfig::SetPixRuntimeAndRestart(false);
-                    }
-                } else {
-                    ImGui::BeginDisabled();
-                    ImGui::MenuItem("PIX GPU Capture");
-                    ImGui::EndDisabled();
-                    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-                        ImGui::SetTooltip("PIX は現在無効です");
-                    }
-                    if (ImGui::MenuItem("PIX を有効化して再起動")) {
-                        EngineConfig::SetPixRuntimeAndRestart(true);
-                    }
-                }
-
-                ImGui::EndMenu();
-            }
-
-            ImGui::EndMainMenuBar();
         }
     }
 
-    void GameDebugUI::DrawPlaybackControls()
+    void GameDebugUI::HandleShortcuts()
     {
-        auto& playback = PlaybackStateManager::GetInstance();
-        const bool playing = playback.IsPlaying();
-
-        // 先にボタン 2 つ分の幅を測り、メニューバーのちょうど中央から並べ始める。
-        // 高さを指定しないボタンはメニューバーと同じ高さ（GetFrameHeight）になる
-        const ImGuiStyle& style = ImGui::GetStyle();
-        const float buttonWidth = ImGui::GetFrameHeight() * 1.6f;
-        const float totalWidth = buttonWidth * 2.0f + style.ItemSpacing.x;
-
-        // SameLine の引数は「内容の開始位置からの相対」なので、メニューバー左端の
-        // 安全域（DisplaySafeAreaPadding）を引いてウィンドウ中央へ正確に合わせる
-        ImGui::SameLine((ImGui::GetWindowWidth() - totalWidth) * 0.5f - ImGui::GetCursorStartPos().x);
-
-        // 現在の状態側のボタンだけをアクセント色で塗る（Unity の再生ボタンと同じ見せ方）
-        const auto stateButton = [buttonWidth](const char* label, bool current, const char* tooltip) {
-            const ImVec4 accent = ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive);
-            if (current) {
-                ImGui::PushStyleColor(ImGuiCol_Button, accent);
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, accent);
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, accent);
-            }
-            const bool pressed = ImGui::Button(label, ImVec2(buttonWidth, 0.0f));
-            if (current) {
-                ImGui::PopStyleColor(3);
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("%s", tooltip);
-            }
-            return pressed;
-            };
-
-        if (stateButton("▶##Play", playing, "再生\nゲームの更新を再開します")) {
-            playback.Play();
+        // テキスト入力中は文字として扱う
+        if (ImGui::GetIO().WantTextInput) {
+            return;
         }
 
-        ImGui::SameLine();
-
-        if (stateButton("■##Stop", !playing,
-            "停止\nゲームの更新を止めます。\n"
-            "止めている間もカメラ・ギズモ・各パネルは動くので、\n"
-            "パラメータはそのまま編集できます。")) {
+        auto& playback = PlaybackStateManager::GetInstance();
+        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_P, ImGuiInputFlags_RouteGlobal)) {
+            if (playback.IsPlaying()) {
+                playback.Stop();
+            } else {
+                playback.Play();
+            }
+        }
+        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_P, ImGuiInputFlags_RouteGlobal)) {
             playback.Stop();
         }
+        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_L, ImGuiInputFlags_RouteGlobal)) {
+            if (dockingUI_) {
+                dockingUI_->RequestResetLayout();
+            }
+        }
+    }
 
-        // 色が変わるだけだと見落とすので、止まっていることは文字でも出す
-        if (!playing) {
-            ImGui::SameLine();
-            ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_PlotHistogram), "停止中");
+    void GameDebugUI::RefreshEditorStatus()
+    {
+        if (!dockingUI_) {
+            return;
+        }
+
+        EditorStatus status;
+        if (auto* frameRate = engine_ ? engine_->GetService<FrameRateController>() : nullptr) {
+            status.fps = frameRate->GetCurrentFPS();
+        }
+        if (sceneDebugEditor_) {
+            status.sceneName = sceneDebugEditor_->GetSceneName();
+            status.sceneSaved = !sceneDebugEditor_->IsSceneDirty();
+        }
+        if (sceneManager_ && status.sceneName.empty()) {
+            status.sceneName = sceneManager_->GetCurrentSceneName();
+        }
+        if (auto* script = engine_ ? engine_->GetSubsystem<ScriptSubsystem>() : nullptr) {
+            status.scriptOk = script->GetStatus().ok;
+            status.scriptTypeCount = script->GetStatus().typeCount;
+        }
+        status.undoCount = Editor::EditorCommandStack::Get().GetUndoCount();
+
+        dockingUI_->SetStatus(status);
+    }
+
+    void GameDebugUI::DrawAboutWindow()
+    {
+        if (!showAboutWindow_) {
+            return;
+        }
+
+        ImGui::SetNextWindowSize(ImVec2(360.0f, 0.0f), ImGuiCond_FirstUseEver);
+        if (auto w = UI::Scope::WindowScope("バージョン情報", &showAboutWindow_,
+            ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::TextColored(Editor::Theme::kAccentHover, "CoreEngine");
+            ImGui::Separator();
+            ImGui::Text("ビルド構成: %s", BuildConfigName());
+            ImGui::Text("Dear ImGui: %s", IMGUI_VERSION);
+            if (auto* script = engine_ ? engine_->GetSubsystem<ScriptSubsystem>() : nullptr) {
+                ImGui::Text("スクリプトの型: %zu", script->GetStatus().typeCount);
+            }
+            ImGui::Text("コンポーネントの型: %zu", ComponentFactory::Get().GetRegisteredCount());
         }
     }
 
@@ -297,20 +477,18 @@ namespace CoreEngine
 
     void GameDebugUI::UpdateDebugPanels()
     {
+        HandleShortcuts();
+
         DrawHierarchyPanel();
         DrawInspectorPanel();
         DrawPanelWindows();
         DrawEngineSettingsWindow();
+        DrawAboutWindow();
 
         if (showConsole_) ShowConsoleUI();
 
         if (dockingUI_) {
-            float fps = 0.0f;
-            const float deltaTimeMs = Time::UnscaledDeltaTime() * 1000.0f;
-            if (auto* frameRate = engine_->GetService<FrameRateController>()) {
-                fps = frameRate->GetCurrentFPS();
-            }
-            dockingUI_->DrawStatusBar(fps, deltaTimeMs);
+            dockingUI_->DrawStatusBar();
         }
     }
 
@@ -575,13 +753,11 @@ namespace CoreEngine
     {
         if (!dockingUI_) return;
 
-        dockingUI_->RegisterWindow("Hierarchy", DockArea::Hierarchy);
-        dockingUI_->RegisterWindow("Inspector", DockArea::Right);
-        dockingUI_->RegisterWindow(consoleWindow, DockArea::Bottom);
-        dockingUI_->RegisterWindow("Project",     DockArea::Bottom);
-
-        // エンジンパネルはドッキング登録しない
-        //（Settings は Engine Settings ウィンドウ内、Tools はフローティングで開く）
+        // 常設パネルの既定位置（モック① の標準レイアウト）
+        dockingUI_->RegisterWindow("Hierarchy", Editor::DockArea::LeftTop);
+        dockingUI_->RegisterWindow("Project", Editor::DockArea::LeftBottom);
+        dockingUI_->RegisterWindow("Inspector", Editor::DockArea::Right);
+        dockingUI_->RegisterWindow(consoleWindow, Editor::DockArea::Bottom);
     }
 }
 #endif // USE_IMGUI

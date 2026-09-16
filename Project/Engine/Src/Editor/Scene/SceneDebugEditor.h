@@ -5,6 +5,7 @@
 #include "Editor/Scene/UndoRedoHistory.h"
 #include "Editor/ImGui/Gizmo.h"
 #include "Editor/ImGui/ObjectSelector.h"
+#include <cstdint>
 #include <string>
 
 namespace CoreEngine
@@ -56,8 +57,20 @@ namespace CoreEngine
 
         bool Undo(GameObjectManager* mgr) { return undoRedoHistory_.Undo(mgr); }
         bool Redo(GameObjectManager* mgr) { return undoRedoHistory_.Redo(mgr); }
+        bool Undo() { return undoRedoHistory_.Undo(gameObjectManager_); }
+        bool Redo() { return undoRedoHistory_.Redo(gameObjectManager_); }
         bool CanUndo() const { return undoRedoHistory_.CanUndo(); }
         bool CanRedo() const { return undoRedoHistory_.CanRedo(); }
+
+        /// @brief シーンとカメラの構図を保存する
+        /// @return 保存したら true（シーン名が無ければ false）
+        bool SaveScene();
+
+        /// @brief 最後の保存から編集したか
+        bool IsSceneDirty() const;
+
+        /// @brief 開いているシーンの名前（無ければ空）
+        std::string GetSceneName() const;
         int GetUndoCount() const { return undoRedoHistory_.GetUndoCount(); }
         int GetRedoCount() const { return undoRedoHistory_.GetRedoCount(); }
 
@@ -113,6 +126,9 @@ namespace CoreEngine
         std::string saveNotificationMessage_;
         double saveNotificationEndTime_ = 0.0;
         static constexpr double kNotificationDuration = 2.5;
+
+        // 最後に保存したときの EditorCommandStack の通し番号
+        uint64_t savedRevision_ = 0;
 
         // 非所有参照
         EngineSystem* engine_ = nullptr;

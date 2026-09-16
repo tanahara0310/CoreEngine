@@ -65,9 +65,14 @@ namespace CoreEngine
         /// @param visible 表示するなら true
         void SetStandaloneGameWindowVisible(bool visible) { showStandaloneGameWindow_ = visible; }
 
+        /// @brief 上下のバーに出す状態を集めてドッキングUIへ渡す
+        /// @note パネルを描き始める前に呼ぶ（ツールバーとステータスバーが同じ値を出すため）。
+        void RefreshEditorStatus();
+
     private:
         EngineSystem* engine_ = nullptr;
         DockingUI* dockingUI_ = nullptr;
+        SceneManager* sceneManager_ = nullptr;
 
 #ifdef USE_IMGUI
         std::unique_ptr<ConsoleUI> console_ = std::make_unique<ConsoleUI>();
@@ -83,6 +88,7 @@ namespace CoreEngine
         bool showConsole_ = true;
         bool showStandaloneGameWindow_ = false; ///< ゲーム画面のみの独立ウィンドウ
         bool showEngineSettings_ = false;   ///< Engine Settings ウィンドウの表示状態
+        bool showAboutWindow_ = false;      ///< バージョン情報ウィンドウの表示状態
         std::string selectedSettingsLabel_; ///< Engine Settings で選択中のセクション（空=未選択）
         char settingsFilter_[64] = {};      ///< Engine Settings のセクション検索文字列
 
@@ -96,10 +102,21 @@ namespace CoreEngine
     private:
         void ShowConsoleUI();
 
-        /// @brief メニューバー中央へ再生 / 停止ボタンを描画する
-        /// @details 切り替え先は PlaybackStateManager。停止中はゲームの更新だけが止まり、
-        ///          エディタ UI とパラメータ編集はそのまま使える。
-        void DrawPlaybackControls();
+        /// @brief メニューバーの各メニュー
+        void DrawFileMenu();
+        void DrawEditMenu();
+        void DrawComponentMenu();
+        void DrawWindowMenu();
+        void DrawHelpMenu();
+
+        /// @brief メニューバー右端のシーン名とビルド構成
+        void DrawMenuBarChips();
+
+        /// @brief グローバルなショートカット（再生・レイアウト）
+        void HandleShortcuts();
+
+        /// @brief バージョン情報のウィンドウ
+        void DrawAboutWindow();
 
         /// @brief Window メニュー内の 1 グループをサブメニューとして描画する
         /// @param extraContent 省略可。グループ固有の追加項目（区切り線の後に描画される）

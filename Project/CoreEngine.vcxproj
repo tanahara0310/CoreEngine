@@ -1122,6 +1122,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Editor\Command\EditorCommand.h" />
     <ClInclude Include="Engine\Src\Editor\Command\EditorCommandStack.h" />
     <ClInclude Include="Engine\Src\Editor\Panel\EditorPanelRegistry.h" />
+    <ClInclude Include="Engine\Src\Editor\Panel\EditorDockArea.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\EditorTheme.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\EditorBars.h" />
     <ClInclude Include="Engine\Src\Utility\Path\ProjectPaths.h" />
     <ClInclude Include="Engine\Src\Editor\Panel\EditorPanelStateSection.h" />
     <ClInclude Include="Engine\Src\Reflection\PropertyValue.h" />

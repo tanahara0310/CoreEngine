@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "ImGuiManager.h"
+#include "Editor/ImGui/EditorTheme.h"
 #include "Utility/Path/ProjectPaths.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/SwapChain/SwapChain.h"
@@ -74,10 +75,22 @@ namespace CoreEngine
         // 日本語グリフ範囲に加え、罫線文字・記号を追加
         static const ImWchar kExtraRanges[] = {
             0x2022, 0x2022, // Bullet •
-            0x2500, 0x257F, // Box Drawing 
+            0x2500, 0x257F, // Box Drawing
             0x2580, 0x259F, // Block Elements
             0x25A0, 0x25FF, // Geometric Shapes
-            0x2713, 0x2713, // Check mark 
+            0x2713, 0x2713, // Check mark
+            0,
+        };
+
+        // UI の記号（矢印・再生記号・幾何学図形）。Yu Gothic は大半を持たないため、
+        // これらだけを記号フォントから重ねて読む
+        static const ImWchar kSymbolRanges[] = {
+            0x2190, 0x21FF, // Arrows
+            0x23E9, 0x23FA, // Media Control Symbols
+            0x25A0, 0x25FF, // Geometric Shapes
+            0x2700, 0x27BF, // Dingbats
+            0x27F0, 0x27FF, // Supplemental Arrows-A
+            0x2900, 0x297F, // Supplemental Arrows-B
             0,
         };
 
@@ -89,6 +102,7 @@ namespace CoreEngine
         rangesBuilder.BuildRanges(&fontRanges);
 
         const char* fontPath = "C:/Windows/Fonts/YuGothB.ttc";
+        const char* symbolFontPath = "C:/Windows/Fonts/seguisym.ttf";
 
         if (fs::exists(fontPath)) {
             ImFont* font = io.Fonts->AddFontFromFileTTF(
@@ -96,6 +110,17 @@ namespace CoreEngine
                 config.SizePixels,
                 &config,
                 fontRanges.Data);
+
+            // 本文フォントに無い記号だけを同じフォントへ足す
+            if (font && fs::exists(symbolFontPath)) {
+                ImFontConfig symbolConfig = config;
+                symbolConfig.MergeMode = true;
+                io.Fonts->AddFontFromFileTTF(
+                    symbolFontPath,
+                    config.SizePixels,
+                    &symbolConfig,
+                    kSymbolRanges);
+            }
 
             if (font) {
                 io.FontDefault = font;
@@ -147,8 +172,8 @@ namespace CoreEngine
         }
 
         // ドッキングUIの開始（メニューバーの高さを考慮してドッキングスペースを配置）
-        // レイアウト構築は BeginDockSpaceHostWindow が DockSpace 提出前に内部で行う
-        dockingUI_->BeginDockSpaceHostWindow();
+        // レイアウト構築は BeginDockSpaceHost が DockSpace 提出前に内部で行う
+        auto dockHost = dockingUI_->BeginDockSpaceHost();
 
         // Game ビューポートは PostEffectPass 完了後に別経路で描画する。
 #ifdef USE_IMGUI
@@ -169,8 +194,6 @@ namespace CoreEngine
 
         projectView_->Update();
 #endif
-
-        ImGui::End();
     }
 
     void ImGuiManager::DrawGameViewport([[maybe_unused]] GraphicsCore* dxCommon, [[maybe_unused]] PostEffectManager* postEffectManager, [[maybe_unused]] GameDebugUI* gameDebugUI)
@@ -335,38 +358,32 @@ namespace CoreEngine
         // 方針: ①背景に明度の段差を作る ②アクセント色は「選択・操作中」だけに使う
         //       ③面の区切りは枠線ではなく明度差で行う（FrameBorderSize = 0）
         //
-        // 【重要】ImGui は sRGB の RTV へ描くので、リニア値を渡すと書き込み時に持ち上がる。
-        // 配色は「画面に出したい sRGB の 0-255 値」で書き、下の srgb ヘルパでリニアへ逆変換する。
-        const auto srgb = [](int r, int g, int b, float a = 1.0f) -> ImVec4 {
-            const auto toLinear = [](int v8) {
-                const float c = static_cast<float>(v8) / 255.0f;
-                return (c <= 0.04045f) ? c / 12.92f : powf((c + 0.055f) / 1.055f, 2.4f);
-            };
-            return ImVec4(toLinear(r), toLinear(g), toLinear(b), a);
-        };
+        // 配色の実体は Editor::Theme が持つ（sRGB の 0-255 値をリニアへ逆変換したもの）。
+        // ここでは ImGui の色スロットへ割り当てるだけにする。
+        namespace Theme = Editor::Theme;
 
-        // 背景の階調（暗 → 明）。Unity ダークテーマの実測値に近い並び
-        const ImVec4 bgDeepest = srgb(20, 20, 21);    // 最奥（スクロールバー溝など）
-        const ImVec4 bgField = srgb(26, 26, 28);    // 入力欄（一段沈める）
-        const ImVec4 bgChild = srgb(30, 30, 33);    // 子パネル（少し沈める）
-        const ImVec4 bgWindow = srgb(36, 36, 40);    // ウィンドウ
-        const ImVec4 bgPanel = srgb(44, 44, 48);    // メニューバー・タイトル・ポップアップ
-        const ImVec4 bgControl = srgb(58, 58, 64);    // ボタン・タブ選択
-        const ImVec4 bgHover = srgb(74, 74, 82);    // ホバー
-        const ImVec4 bgActive = srgb(90, 90, 100);   // 押下
+        // 背景の階調（暗 → 明）
+        const ImVec4 bgDeepest = Theme::kDeepest;    // 最奥（スクロールバー溝など）
+        const ImVec4 bgField = Theme::kField;      // 入力欄（一段沈める）
+        const ImVec4 bgChild = Theme::kChild;      // 子パネル（少し沈める）
+        const ImVec4 bgWindow = Theme::kWindow;     // ウィンドウ
+        const ImVec4 bgPanel = Theme::kPanel;      // メニューバー・タイトル・ポップアップ
+        const ImVec4 bgControl = Theme::kControl;    // ボタン・タブ選択
+        const ImVec4 bgHover = Theme::kHover;      // ホバー
+        const ImVec4 bgActive = Theme::kActive;     // 押下
 
         // アクセント（青。選択・操作中の要素だけに使う）
-        const ImVec4 accent = srgb(61, 126, 200);
-        const ImVec4 accentHover = srgb(85, 150, 222);
-        const ImVec4 accentMuted = srgb(42, 63, 85);   // 選択行の下地
-        const ImVec4 accentWarm = srgb(242, 156, 49); // 差し色（少量だけ使う）
+        const ImVec4 accent = Theme::kAccent;
+        const ImVec4 accentHover = Theme::kAccentHover;
+        const ImVec4 accentMuted = Theme::kAccentMuted; // 選択行の下地
+        const ImVec4 accentWarm = Theme::kWarm;         // 差し色（少量だけ使う）
 
         // テキスト
-        const ImVec4 textPrimary = srgb(238, 238, 242);
-        const ImVec4 textDisabled = srgb(128, 128, 138);
+        const ImVec4 textPrimary = Theme::kText;
+        const ImVec4 textDisabled = Theme::kTextMute;
 
-        const ImVec4 borderColor = srgb(15, 15, 16);
-        const ImVec4 transparent = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+        const ImVec4 borderColor = Theme::kBorder;
+        const ImVec4 transparent = Theme::kTransparent;
 
         // ===== 面 =====
         colors[ImGuiCol_WindowBg] = bgWindow;
@@ -408,8 +425,8 @@ namespace CoreEngine
 
         // ===== 入力欄 =====
         colors[ImGuiCol_FrameBg] = bgField;
-        colors[ImGuiCol_FrameBgHovered] = srgb(32, 32, 36);
-        colors[ImGuiCol_FrameBgActive] = srgb(38, 38, 43);
+        colors[ImGuiCol_FrameBgHovered] = Theme::FromSrgb(32, 32, 36);
+        colors[ImGuiCol_FrameBgActive] = Theme::FromSrgb(38, 38, 43);
 
         // ===== ボタン =====
         colors[ImGuiCol_Button] = bgControl;
@@ -422,11 +439,11 @@ namespace CoreEngine
         colors[ImGuiCol_SliderGrabActive] = accentHover;
 
         colors[ImGuiCol_ScrollbarBg] = bgDeepest;
-        colors[ImGuiCol_ScrollbarGrab] = srgb(63, 63, 70);
+        colors[ImGuiCol_ScrollbarGrab] = Theme::FromSrgb(63, 63, 70);
         colors[ImGuiCol_ScrollbarGrabHovered] = bgHover;
         colors[ImGuiCol_ScrollbarGrabActive] = bgActive;
 
-        colors[ImGuiCol_Separator] = srgb(56, 56, 62);
+        colors[ImGuiCol_Separator] = Theme::FromSrgb(56, 56, 62);
         colors[ImGuiCol_SeparatorHovered] = accent;
         colors[ImGuiCol_SeparatorActive] = accentHover;
 
@@ -439,12 +456,12 @@ namespace CoreEngine
         colors[ImGuiCol_PlotLines] = accentHover;
         colors[ImGuiCol_PlotLinesHovered] = accentWarm;
         colors[ImGuiCol_PlotHistogram] = accentWarm;
-        colors[ImGuiCol_PlotHistogramHovered] = srgb(255, 204, 120);
+        colors[ImGuiCol_PlotHistogramHovered] = Theme::FromSrgb(255, 204, 120);
 
         // ===== テーブル =====
         colors[ImGuiCol_TableHeaderBg] = bgPanel;
-        colors[ImGuiCol_TableBorderStrong] = srgb(60, 60, 66);
-        colors[ImGuiCol_TableBorderLight] = srgb(42, 42, 47);
+        colors[ImGuiCol_TableBorderStrong] = Theme::FromSrgb(60, 60, 66);
+        colors[ImGuiCol_TableBorderLight] = Theme::FromSrgb(42, 42, 47);
         colors[ImGuiCol_TableRowBg] = transparent;
         colors[ImGuiCol_TableRowBgAlt] = ImVec4(1.0f, 1.0f, 1.0f, 0.022f);
 

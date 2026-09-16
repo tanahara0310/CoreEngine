@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Editor/Panel/EditorDockArea.h"
+
 #include <functional>
 #include <memory>
 #include <string>
@@ -52,6 +54,10 @@ namespace CoreEngine::Editor
         PanelPlacement placement = PanelPlacement::SettingsSection;
         PanelGroup     group = PanelGroup::General;
 
+        /// @brief 単独ウィンドウの既定のドック先
+        /// @note None なら標準レイアウトへ組み込まず、フローティングで開く。
+        DockArea defaultDock = DockArea::None;
+
         /// @brief 初期表示状態（保存された状態があればそちらが優先される）
         bool defaultVisible = false;
 
@@ -88,7 +94,7 @@ namespace CoreEngine::Editor
     {
     public:
         /// @brief 単独ウィンドウをドッキング先へ登録するための橋渡し
-        using DockRegistrar = std::function<void(const std::string& id)>;
+        using DockRegistrar = std::function<void(const EditorPanelDesc& desc)>;
 
         static EditorPanelRegistry& Get();
 
