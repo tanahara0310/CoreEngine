@@ -83,6 +83,28 @@ namespace CoreEngine {
                 explicit operator bool() const { return open; }
             };
 
+            /// @brief BeginPopupContextItem/EndPopup を RAII で管理する
+            /// @note 直前の項目を右クリックしたときに開くメニュー
+            struct PopupContextItemScope {
+                const bool open;
+                explicit PopupContextItemScope(const char* str_id = nullptr,
+                    ImGuiPopupFlags flags = ImGuiPopupFlags_MouseButtonRight)
+                    : open(ImGui::BeginPopupContextItem(str_id, flags)) {
+                }
+                ~PopupContextItemScope() { if (open) ImGui::EndPopup(); }
+                explicit operator bool() const { return open; }
+            };
+
+            /// @brief BeginCombo/EndCombo を RAII で管理する
+            struct ComboScope {
+                const bool open;
+                explicit ComboScope(const char* label, const char* preview, ImGuiComboFlags flags = 0)
+                    : open(ImGui::BeginCombo(label, preview, flags)) {
+                }
+                ~ComboScope() { if (open) ImGui::EndCombo(); }
+                explicit operator bool() const { return open; }
+            };
+
             /// @brief BeginChild/EndChild を RAII で管理する
             /// @note EndChild は常に呼び出す必要があるためデストラクタで無条件に呼ぶ
             /// @note if (auto child = ChildScope("id", {0, 200}, ImGuiChildFlags_Border)) { ... }

@@ -90,6 +90,7 @@ namespace CoreEngine
         bool showStandaloneGameWindow_ = false; ///< ゲーム画面のみの独立ウィンドウ
         bool showEngineSettings_ = false;   ///< Engine Settings ウィンドウの表示状態
         bool showAboutWindow_ = false;      ///< バージョン情報ウィンドウの表示状態
+        bool lastScriptOk_ = true;          ///< 前のフレームでスクリプトのコンパイルが通っていたか
         std::string selectedSettingsLabel_; ///< Engine Settings で選択中のセクション（空=未選択）
         char settingsFilter_[64] = {};      ///< Engine Settings のセクション検索文字列
 

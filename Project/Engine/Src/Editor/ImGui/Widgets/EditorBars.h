@@ -4,6 +4,7 @@
 
 #include "Editor/ImGui/EditorTheme.h"
 #include <imgui.h>
+#include <imgui_internal.h>
 
 /// @file
 /// @brief メニューバー・ツールバー・ステータスバーで使う小さな部品
@@ -93,7 +94,7 @@ namespace CoreEngine::UI::Bar
             : (on ? Editor::Theme::kText : Editor::Theme::kTextDim);
         ImGui::GetWindowDrawList()->AddText(
             ImVec2(min.x + (size.x - textSize.x) * 0.5f, min.y + (size.y - textSize.y) * 0.5f),
-            ImGui::GetColorU32(textColor), label);
+            ImGui::GetColorU32(textColor), label, ImGui::FindRenderedTextEnd(label));
 
         if (tooltip && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
             ImGui::SetTooltip("%s", tooltip);

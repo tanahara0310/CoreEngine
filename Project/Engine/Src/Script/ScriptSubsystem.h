@@ -46,6 +46,9 @@ namespace CoreEngine
         /// @brief スクリプトの読み込み状態
         const Status& GetStatus() const { return status_; }
 
+        /// @brief スクリプトのフォルダ（コンパイラのメッセージのファイル名はここからの相対パス）
+        const std::filesystem::path& GetScriptRoot() const { return scriptRoot_; }
+
     private:
         /// @brief コンポーネントの型をファクトリへ登録する（前の登録を外してから呼ぶ）
         void RegisterComponentTypes();

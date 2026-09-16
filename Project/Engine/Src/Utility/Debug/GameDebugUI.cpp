@@ -431,6 +431,13 @@ namespace CoreEngine
         }
         status.undoCount = Editor::EditorCommandStack::Get().GetUndoCount();
 
+        // スクリプトのコンパイルが失敗に変わったら、エラーの行が見えるよう Console を前に出す
+        if (lastScriptOk_ && !status.scriptOk) {
+            showConsole_ = true;
+            console_->RequestFocus();
+        }
+        lastScriptOk_ = status.scriptOk;
+
         dockingUI_->SetStatus(status);
     }
 
@@ -643,6 +650,8 @@ namespace CoreEngine
     {
         console_->SetVisible(showConsole_);
         console_->Draw();
+        // exit コマンドで閉じたときはメニューの表示もそろえる
+        showConsole_ = console_->IsVisible();
     }
 
     void GameDebugUI::DrawPanelWindows()
