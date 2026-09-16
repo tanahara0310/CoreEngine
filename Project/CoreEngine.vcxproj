@@ -546,6 +546,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Particle\Modules\SizeModule.cpp" />
     <ClCompile Include="Engine\Src\Particle\Modules\VelocityModule.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\DockingUI.cpp" />
+    <ClCompile Include="Engine\Src\Editor\External\ExternalCodeEditor.cpp" />
     <ClCompile Include="Engine\Src\Camera\Camera.cpp" />
     <ClCompile Include="Engine\Src\Camera\Control\OrbitFlyController.cpp" />
     <ClCompile Include="Engine\Src\Camera\Debug\DebugCameraCVars.cpp" />
@@ -1125,6 +1126,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Editor\Panel\EditorDockArea.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\EditorTheme.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\EditorBars.h" />
+    <ClInclude Include="Engine\Src\Editor\External\ExternalCodeEditor.h" />
     <ClInclude Include="Engine\Src\Utility\Path\ProjectPaths.h" />
     <ClInclude Include="Engine\Src\Editor\Panel\EditorPanelStateSection.h" />
     <ClInclude Include="Engine\Src\Reflection\PropertyValue.h" />

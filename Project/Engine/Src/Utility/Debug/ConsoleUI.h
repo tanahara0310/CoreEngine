@@ -30,19 +30,11 @@ namespace CoreEngine
         std::chrono::system_clock::time_point timestamp;       // タイムスタンプ
         std::string formattedTimestamp;                        // 事前計算済みタイムスタンプ文字列
 
-        ConsoleMessage(const std::string& msg, ConsoleLogLevel lvl, const std::string& cat = "Console")
-            : message(msg), category(cat), level(lvl), timestamp(std::chrono::system_clock::now()) {
-            // タイムスタンプを構築時に計算（spdlog非同期スレッドで実行され、メインスレッドの負荷を軽減）
-            auto tt = std::chrono::system_clock::to_time_t(timestamp);
-            int ms_val = static_cast<int>(
-                std::chrono::duration_cast<std::chrono::milliseconds>(
-                    timestamp.time_since_epoch()).count() % 1000);
-            std::tm tm{};
-            localtime_s(&tm, &tt);
-            char buf[16];
-            sprintf_s(buf, "%02d:%02d:%02d.%03d", tm.tm_hour, tm.tm_min, tm.tm_sec, ms_val);
-            formattedTimestamp = buf;
-        }
+        std::string sourceFile;                                 // 本文に含まれるスクリプトのファイル（無ければ空）
+        int sourceLine = 0;                                     // その行（1 始まり）
+        int sourceColumn = 0;                                   // その桁（1 始まり）
+
+        ConsoleMessage(const std::string& msg, ConsoleLogLevel lvl, const std::string& cat = "Console");
     };
 
     /// @brief ゲーム開発用デバッグコンソールUI
@@ -80,6 +72,9 @@ namespace CoreEngine
         /// @return true: 表示中, false: 非表示
         bool IsVisible() const { return isVisible_; }
 
+        /// @brief 次の描画でコンソールのウィンドウを前に出す
+        void RequestFocus() { focusWindow_ = true; }
+
         // === 便利メソッド ===
 
         /// @brief 情報メッセージを追加
@@ -99,20 +94,28 @@ namespace CoreEngine
         void LogDebug(const std::string& message);
 
     private:
+        /// @brief 画面に並べる 1 行（畳んだときは同じ内容の件数を持つ）
+        struct ViewRow {
+            size_t index = 0;   // messages_ の位置（畳んだときは最後に出た位置）
+            size_t count = 1;   // 同じ内容の件数
+        };
+
         EngineSystem* engine_ = nullptr;                        // エンジンシステムへのポインタ
         bool isVisible_ = true;                                 // コンソールの表示フラグ
+        bool focusWindow_ = false;                              // 次の描画で前に出すか
         std::deque<ConsoleMessage> messages_;                   // メッセージログ
         static constexpr size_t maxMessages_ = 1000;            // 最大メッセージ数
+        static constexpr int kLevelCount = 4;                   // ログレベルの数
 
-        // フィルター設定
-        bool showInfo_ = true;                                  // 情報メッセージを表示
-        bool showWarning_ = true;                               // 警告メッセージを表示
-        bool showError_ = true;                                 // エラーメッセージを表示
-        bool showDebug_ = true;                                 // デバッグメッセージを表示
+        // レベルごとの表示（ConsoleLogLevel の並び）
+        bool showLevel_[kLevelCount] = { true, true, true, true };
 
         // 表示設定
+        int categoryFilter_ = 0;                                // 0 はすべて
+        bool collapse_ = false;                                 // 同じ内容の行を畳む
+        bool pauseOnError_ = false;                             // エラーが出たら再生を止める
         bool autoScroll_ = true;                                // 自動スクロール
-        bool showTimestamp_ = true;                             // タイムスタンプ表示
+        bool showTimestamp_ = false;                            // タイムスタンプ表示
 
         // 入力用
         char inputBuffer_[512] = "";                            // コマンド入力バッファ
@@ -127,44 +130,36 @@ namespace CoreEngine
         std::mutex pendingMutex_;
         std::vector<ConsoleMessage> pendingMessages_;
 
-        // カテゴリタブ
-        int activeTab_ = 0;                                     // 現在のアクティブタブ
-
-        // タブカウントキャッシュ（毎フレーム全件走査の防止）
-        bool tabCountsDirty_ = true;
-        size_t cachedTabCounts_[10] = {};
-        size_t cachedTabErrorCounts_[10] = {};
-        bool prevShowInfo_ = true;
-        bool prevShowWarning_ = true;
-        bool prevShowError_ = true;
-        bool prevShowDebug_ = true;
+        // 件数と表示する行の控え（変化したときだけ作り直す）
+        bool viewDirty_ = true;
+        size_t levelCounts_[kLevelCount] = {};
+        std::vector<ViewRow> viewRows_;
+        bool prevShowLevel_[kLevelCount] = { true, true, true, true };
+        int prevCategoryFilter_ = 0;
+        bool prevCollapse_ = false;
         char prevFilterBuf_[256] = {};
-
-        // ImGuiListClipper 用フィルター済みインデックスキャッシュ
-        bool filteredViewDirty_ = true;
-        int cachedFilterActiveTab_ = -1;
-        std::vector<size_t> filteredIndices_;
 
     private:
         /// @brief メッセージの色を取得
-        /// @param level ログレベル
-        /// @return ImVec4形式の色
         ImVec4 GetMessageColor(ConsoleLogLevel level) const;
 
-        /// @brief ログレベルの文字列を取得
-        /// @param level ログレベル
-        /// @return ログレベルの文字列
+        /// @brief ログレベルの表示名を取得
         const char* GetLevelString(ConsoleLogLevel level) const;
 
-        /// @brief タイムスタンプを文字列に変換
-        /// @param timestamp タイムスタンプ
-        /// @return 時刻文字列
-        std::string FormatTimestamp(const std::chrono::system_clock::time_point& timestamp) const;
-
-        /// @brief メッセージがフィルターを通るかチェック
-        /// @param message メッセージ
-        /// @return true: 表示対象, false: 非表示
+        /// @brief メッセージがレベルとカテゴリの絞り込みを通るか
         bool ShouldShowMessage(const ConsoleMessage& message) const;
+
+        /// @brief 件数・レベルの切り替え・クリア・畳む・一時停止・検索の行
+        void DrawToolbar();
+
+        /// @brief ログの一覧
+        void DrawRows();
+
+        /// @brief コマンドの入力欄
+        void DrawCommandInput();
+
+        /// @brief メッセージに含まれるスクリプトの行を外部エディタで開く
+        void OpenSource(const ConsoleMessage& message) const;
 
         /// @brief コマンド入力の処理
         /// @param command 入力されたコマンド
@@ -188,21 +183,8 @@ namespace CoreEngine
         /// @brief 保留中のメッセージをメインキューに転送
         void FlushPendingMessages();
 
-        /// @brief カテゴリ別のメッセージ数をカウント
-        size_t CountMessages(const char* categoryFilter) const;
-
-        /// @brief カテゴリ別のエラーメッセージ数をカウント
-        size_t CountErrorMessages(const char* categoryFilter) const;
-
-        /// @brief タブのメッセージカウントキャッシュを再構築（変化時のみ呼び出し）
-        void RebuildTabCounts();
-
-        /// @brief ImGuiListClipper 用フィルター済みインデックスを再構築（変化時のみ呼び出し）
-        /// @param categoryFilter カテゴリフィルター（nullptr = All）
-        void RebuildFilteredView(const char* categoryFilter);
-
-        /// @brief カテゴリの表示色を取得
-        ImVec4 GetCategoryColor(const std::string& category) const;
+        /// @brief レベルごとの件数と表示する行を作り直す（変化したときだけ呼ぶ）
+        void RebuildView();
     };
 }
 #endif // USE_IMGUI

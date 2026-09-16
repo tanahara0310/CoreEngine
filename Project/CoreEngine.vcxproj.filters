@@ -1099,6 +1099,9 @@
     <ClCompile Include="Engine\Src\Editor\ImGui\DockingUI.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\External\ExternalCodeEditor.cpp">
+      <Filter>Engine\Src\Editor\External</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Camera\Camera.cpp">
       <Filter>Engine\Src\Camera</Filter>
     </ClCompile>
@@ -1634,6 +1637,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\EditorBars.h">
       <Filter>Engine\Src\Editor\ImGui\Widgets</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\External\ExternalCodeEditor.h">
+      <Filter>Engine\Src\Editor\External</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Path\ProjectPaths.h">
       <Filter>Engine\Src\Utility\Path</Filter>
@@ -3777,6 +3783,9 @@
     </Filter>
     <Filter Include="Engine\Src\Editor\Environment">
       <UniqueIdentifier>{3E7B1A54-9C2D-4F86-B1E0-5A6D42C8F913}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Editor\External">
+      <UniqueIdentifier>{31C0E02C-827E-4C4A-9C42-8A38CBE83D4A}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Editor\ImGui">
       <UniqueIdentifier>{AC458439-F252-40B2-838E-13455FEB9AB5}</UniqueIdentifier>
