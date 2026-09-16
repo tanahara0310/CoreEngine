@@ -1105,6 +1105,9 @@
     <ClCompile Include="Engine\Src\Editor\ImGui\ProfilerPanel.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\ImGui\ProjectSettingsWindow.cpp">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\ImGui\Widgets\PassTimingTable.cpp">
       <Filter>Engine\Src\Editor\ImGui\Widgets</Filter>
     </ClCompile>
@@ -1648,6 +1651,9 @@
       <Filter>Engine\Src\Editor\External</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\ProfilerPanel.h">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ImGui\ProjectSettingsWindow.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\PassTimingTable.h">

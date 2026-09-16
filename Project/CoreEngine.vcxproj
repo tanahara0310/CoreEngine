@@ -548,6 +548,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Editor\ImGui\DockingUI.cpp" />
     <ClCompile Include="Engine\Src\Editor\External\ExternalCodeEditor.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\ProfilerPanel.cpp" />
+    <ClCompile Include="Engine\Src\Editor\ImGui\ProjectSettingsWindow.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\Widgets\PassTimingTable.cpp" />
     <ClCompile Include="Engine\Src\Camera\Camera.cpp" />
     <ClCompile Include="Engine\Src\Camera\Control\OrbitFlyController.cpp" />
@@ -1130,6 +1131,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\EditorBars.h" />
     <ClInclude Include="Engine\Src\Editor\External\ExternalCodeEditor.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\ProfilerPanel.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\ProjectSettingsWindow.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\PassTimingTable.h" />
     <ClInclude Include="Engine\Src\Utility\Path\ProjectPaths.h" />
     <ClInclude Include="Engine\Src\Editor\Panel\EditorPanelStateSection.h" />

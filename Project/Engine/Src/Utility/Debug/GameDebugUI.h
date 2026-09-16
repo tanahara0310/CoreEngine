@@ -4,6 +4,7 @@
 #include "Utility/Debug/ConsoleUI.h"
 #include "Editor/ImGui/ScreenCapture.h"
 #include "Editor/ImGui/PixCapture.h"
+#include "Editor/ImGui/ProjectSettingsWindow.h"
 #endif
 #include "Editor/ImGui/SceneManagerTab.h"
 #include "Editor/Panel/EditorPanelRegistry.h"
@@ -88,15 +89,14 @@ namespace CoreEngine
         bool showInspector_ = true;
         bool showConsole_ = true;
         bool showStandaloneGameWindow_ = false; ///< ゲーム画面のみの独立ウィンドウ
-        bool showEngineSettings_ = false;   ///< Engine Settings ウィンドウの表示状態
+        bool showProjectSettings_ = false;  ///< Project Settings ウィンドウの表示状態
         bool showAboutWindow_ = false;      ///< バージョン情報ウィンドウの表示状態
         bool lastScriptOk_ = true;          ///< 前のフレームでスクリプトのコンパイルが通っていたか
-        std::string selectedSettingsLabel_; ///< Engine Settings で選択中のセクション（空=未選択）
-        char settingsFilter_[64] = {};      ///< Engine Settings のセクション検索文字列
 
 #ifdef USE_IMGUI
         ScreenCapture screenCapture_;  ///< スクリーンキャプチャ機能
         PixCapture pixCapture_;  ///< PIX GPU キャプチャ機能
+        ProjectSettingsWindow projectSettings_;  ///< Project Settings ウィンドウ
 #endif
 
         static constexpr const char* consoleWindow = "Console";
@@ -134,7 +134,6 @@ namespace CoreEngine
         Editor::EditorPanel* FindSelectedEnvironmentEntry();
         void DrawInspectorPanel();
         void DrawPanelWindows();
-        void DrawEngineSettingsWindow();
         void RegisterWindowsForDocking();
     };
 }
