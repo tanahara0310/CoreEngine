@@ -4,8 +4,6 @@
 #include "GameObject/GameObject.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/Render/Model/IBLParameters.h"
-#include "Graphics/Render/SkyBox/SkyBoxRenderer.h"
-#include "Graphics/Render/SkyBox/SkyBoxObject.h"
 #include "Camera/Camera.h"
 #include "Camera/View/ViewInfo.h"
 #include "Math/MathCore.h"
@@ -22,14 +20,6 @@ namespace CoreEngine
 
     void RenderManager::RegisterRenderer(RenderPassType type, std::unique_ptr<IRenderer> renderer) {
         renderers_[type] = std::move(renderer);
-
-        // SkyBoxRendererが登録された場合、SkyBoxObject クラスに設定
-        if (type == RenderPassType::SkyBox) {
-            auto* skyBoxRenderer = dynamic_cast<SkyBoxRenderer*>(renderers_[type].get());
-            if (skyBoxRenderer) {
-                SkyBoxObject::SetSkyBoxRenderer(skyBoxRenderer);
-            }
-        }
 
         if (type == RenderPassType::Model || type == RenderPassType::SkinnedModel) {
             ApplyEnvironmentLightingToRenderers();
