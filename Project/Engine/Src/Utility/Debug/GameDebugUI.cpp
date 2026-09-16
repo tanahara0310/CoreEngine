@@ -75,10 +75,6 @@ namespace CoreEngine
     void GameDebugUI::SetSceneManager(SceneManager* sceneManager)
     {
         sceneManager_ = sceneManager;
-        if (sceneManager) {
-            sceneManagerTab_->Initialize(sceneManager);
-            console_->LogInfo("SceneManagerがSceneManagerTabに設定されました");
-        }
     }
 
     void GameDebugUI::Update()
@@ -130,6 +126,12 @@ namespace CoreEngine
                 }
             }
             ImGui::EndMenu();
+        }
+
+        const std::string currentScene = sceneManager_ ? sceneManager_->GetCurrentSceneName() : std::string{};
+        const bool canReload = sceneManager_ && sceneManager_->HasScene(currentScene);
+        if (ImGui::MenuItem("シーンを再読み込み", nullptr, false, canReload)) {
+            sceneManager_->ChangeScene(currentScene);
         }
 
         ImGui::Separator();
@@ -519,22 +521,15 @@ namespace CoreEngine
         if (!showHierarchy_) return;
 
         if (auto w = UI::Scope::WindowScope("Hierarchy")) {
-                if (auto tabBar = UI::Scope::TabBarScope("##HierarchyTabs")) {
-                    if (auto tab = UI::Scope::TabItemScope("Objects")) {
-                        DrawEnvironmentTree();
-                        Editor::EditorPanel* content = Editor::EditorPanelRegistry::Get()
-                            .FindFirst(Editor::PanelPlacement::HierarchyContent);
-                        if (content && content->desc.draw) {
-                            content->desc.draw();
-                        } else {
-                            UI::Hint("シーンが読み込まれていません");
-                        }
-                    }
-                    if (auto tab = UI::Scope::TabItemScope("Scenes")) {
-                        sceneManagerTab_->DrawImGui();
-                    }
-                }
+            DrawEnvironmentTree();
+            Editor::EditorPanel* content = Editor::EditorPanelRegistry::Get()
+                .FindFirst(Editor::PanelPlacement::HierarchyContent);
+            if (content && content->desc.draw) {
+                content->desc.draw();
+            } else {
+                UI::Hint("シーンが読み込まれていません");
             }
+        }
     }
 
     void GameDebugUI::DrawEnvironmentTree()
@@ -547,6 +542,9 @@ namespace CoreEngine
             registry.ForEach(Editor::PanelPlacement::EnvironmentTree,
                 [this](Editor::EditorPanel& entry) {
                 const bool selected = (entry.Id() == selectedEnvironmentLabel_);
+                const std::string label = entry.desc.icon
+                    ? std::string(entry.desc.icon) + " " + entry.Id()
+                    : entry.Id();
 
                 // Inspector の表示先を一意にするため、選択時はシーンオブジェクトの選択を解除する
                 auto selectThisEntry = [&]() {
@@ -564,7 +562,7 @@ namespace CoreEngine
                         | ImGuiTreeNodeFlags_DefaultOpen;
                     if (selected) flags |= ImGuiTreeNodeFlags_Selected;
 
-                    const bool open = ImGui::TreeNodeEx(entry.Id().c_str(), flags);
+                    const bool open = ImGui::TreeNodeEx(entry.Id().c_str(), flags, "%s", label.c_str());
                     if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
                         selectThisEntry();
                         if (entry.desc.onParentSelected) {
@@ -578,14 +576,15 @@ namespace CoreEngine
                         ImGui::TreePop();
                     }
                 } else {
-                    if (ImGui::Selectable(entry.Id().c_str(), selected)) {
+                    ImGui::PushID(entry.Id().c_str());
+                    if (ImGui::Selectable(label.c_str(), selected)) {
                         selectThisEntry();
                     }
+                    ImGui::PopID();
                 }
                 });
             ImGui::TreePop();
         }
-        ImGui::Separator();
     }
 
     Editor::EditorPanel* GameDebugUI::FindSelectedEnvironmentEntry()

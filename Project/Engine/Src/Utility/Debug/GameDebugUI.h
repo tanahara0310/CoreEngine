@@ -6,7 +6,6 @@
 #include "Editor/ImGui/PixCapture.h"
 #include "Editor/ImGui/ProjectSettingsWindow.h"
 #endif
-#include "Editor/ImGui/SceneManagerTab.h"
 #include "Editor/Panel/EditorPanelRegistry.h"
 #include <functional>
 #include <memory>
@@ -50,9 +49,6 @@ namespace CoreEngine
         ConsoleUI* GetConsole() { return console_.get(); }
 #endif
 
-        /// @brief シーンマネージャータブへのアクセッサ
-        SceneManagerTab* GetSceneManagerTab() { return sceneManagerTab_.get(); }
-
         /// @brief Gameビュー用のSceneDebugEditorを設定
         void SetSceneDebugEditor(SceneDebugEditor* sceneDebugEditor) { sceneDebugEditor_ = sceneDebugEditor; }
 
@@ -79,7 +75,6 @@ namespace CoreEngine
 #ifdef USE_IMGUI
         std::unique_ptr<ConsoleUI> console_ = std::make_unique<ConsoleUI>();
 #endif
-        std::unique_ptr<SceneManagerTab> sceneManagerTab_ = std::make_unique<SceneManagerTab>();
 
         SceneDebugEditor* sceneDebugEditor_ = nullptr;
 

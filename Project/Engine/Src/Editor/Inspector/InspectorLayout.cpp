@@ -4,6 +4,7 @@
 #ifdef USE_IMGUI
 
 #include "Editor/ImGui/EditorTheme.h"
+#include "Editor/ImGui/Widgets/EditorBars.h"
 
 #include <imgui_internal.h>
 
@@ -19,7 +20,7 @@ namespace CoreEngine::InspectorLayout
         /// ラベルの列と欄の間の空き
         constexpr float kLabelGap = 8.0f;
 
-        /// 小さな文字（札・ID）の大きさの倍率
+        /// 小さな文字（ID）の大きさの倍率
         constexpr float kSmallTextScale = 0.85f;
 
         /// 見出しの丸の半径
@@ -32,18 +33,6 @@ namespace CoreEngine::InspectorLayout
         float LabelColumnWidth()
         {
             return std::clamp(ImGui::GetContentRegionAvail().x * 0.4f, 80.0f, 180.0f);
-        }
-
-        /// @brief 範囲に収まらない文字を省略記号で詰めて描く
-        void DrawEllipsizedText(ImDrawList* drawList, float left, float top, float right, float bottom,
-                                const char* text, const ImVec4& color)
-        {
-            if (right <= left) {
-                return;
-            }
-            ImGui::PushStyleColor(ImGuiCol_Text, color);
-            ImGui::RenderTextEllipsis(drawList, ImVec2(left, top), ImVec2(right, bottom), right, text, nullptr, nullptr);
-            ImGui::PopStyleColor();
         }
 
         /// @brief 小さな文字の大きさを測る
@@ -144,23 +133,18 @@ namespace CoreEngine::InspectorLayout
             right -= 4.0f;
         }
         if (header.tag && header.tag[0] != '\0') {
-            const ImVec2 tagText = SmallTextSize(header.tag);
-            const float tagWidth = tagText.x + 8.0f;
+            const ImVec2 tagSize = UI::Bar::TagSize(header.tag);
             // 名前の場所が無くなるほど長い札は出さない
-            if (tagWidth <= (right - left) * 0.6f) {
-                const float tagHeight = tagText.y + 2.0f;
-                right -= tagWidth;
-                const ImVec2 tagMin(right, centerY - tagHeight * 0.5f);
-                const ImVec2 tagMax(right + tagWidth, centerY + tagHeight * 0.5f);
-                const ImVec4& tagColor = header.origin == Origin::Script ? Theme::kScript : Theme::kTextMute;
-                drawList->AddRect(tagMin, tagMax, ImGui::GetColorU32(Theme::WithAlpha(tagColor, 0.4f)), 3.0f);
-                DrawSmallText(drawList, ImVec2(tagMin.x + 4.0f, tagMin.y + 1.0f), tagColor, header.tag);
+            if (tagSize.x <= (right - left) * 0.6f) {
+                right -= tagSize.x;
+                UI::Bar::DrawTag(drawList, ImVec2(right, centerY - tagSize.y * 0.5f), header.tag,
+                    header.origin == Origin::Script ? Theme::kScript : Theme::kTextMute);
                 right -= 6.0f;
             }
         }
 
         // 名前（入りきらなければ省略記号で詰める）
-        DrawEllipsizedText(drawList, left, textY, right, bottom, header.name, Theme::kText);
+        UI::Bar::EllipsizedText(drawList, ImVec2(left, textY), ImVec2(right, bottom), header.name, Theme::kText);
 
         ImGui::SetCursorScreenPos(next);
         return open;
@@ -174,8 +158,9 @@ namespace CoreEngine::InspectorLayout
         const float height = ImGui::GetFrameHeight();
         const float textWidth = (std::max)(1.0f, labelWidth - kLabelGap);
 
-        DrawEllipsizedText(ImGui::GetWindowDrawList(), origin.x, origin.y + ImGui::GetStyle().FramePadding.y,
-            origin.x + textWidth, origin.y + height, label, color);
+        UI::Bar::EllipsizedText(ImGui::GetWindowDrawList(),
+            ImVec2(origin.x, origin.y + ImGui::GetStyle().FramePadding.y),
+            ImVec2(origin.x + textWidth, origin.y + height), label, color);
 
         ImGui::Dummy(ImVec2(textWidth, height));
         const bool hovered = ImGui::IsItemHovered();
@@ -212,7 +197,8 @@ namespace CoreEngine::InspectorLayout
             drawList->AddText(ImVec2(left, textY), ImGui::GetColorU32(Theme::kAccentHover), icon);
             left += ImGui::CalcTextSize(icon).x + 5.0f;
         }
-        DrawEllipsizedText(drawList, left, textY, right, max.y, name, error ? Theme::kError : Theme::kText);
+        UI::Bar::EllipsizedText(drawList, ImVec2(left, textY), ImVec2(right, max.y), name,
+            error ? Theme::kError : Theme::kText);
         drawList->PopClipRect();
     }
 

@@ -64,6 +64,9 @@ namespace CoreEngine::Editor
         /// @brief 登録元の識別子（破棄時に自分の登録だけを外すために使う）
         const void* owner = nullptr;
 
+        /// @brief EnvironmentTree のみ。行の名前の前に出す記号（nullptr なら出さない）
+        const char* icon = nullptr;
+
         /// @brief 単独ウィンドウの初回サイズ
         float defaultWidth = 460.0f;
         float defaultHeight = 540.0f;
