@@ -334,8 +334,13 @@ namespace CoreEngine
         }
 
         // prefix で絞った場合、その分の階層はツリーに出さない（"r.Vignette" 指定なら
-        // "r" > "Vignette" のノードを重ねて表示しても情報量が無いため）
-        const size_t depth = prefix.empty() ? 0 : SegmentCount(prefix);
+        // "r" > "Vignette" のノードを重ねて表示しても情報量が無いため）。
+        // 末尾の点（"r.Water."＝そのグループだけ）は階層に数えない
+        std::string_view groupPath = prefix;
+        if (!groupPath.empty() && groupPath.back() == '.') {
+            groupPath.remove_suffix(1);
+        }
+        const size_t depth = groupPath.empty() ? 0 : SegmentCount(groupPath);
         return DrawGroup(items, depth);
     }
 
