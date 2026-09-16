@@ -36,17 +36,6 @@ public:
     /// @brief 描画
     void Draw(const Camera* camera) override;
 
-#ifdef _DEBUG
-    /// @brief インスペクタのセクション名を返す
-    std::span<const char* const> GetInspectorSections() const override;
-
-    /// @brief セクションの中身を描画する
-    bool DrawInspectorSection(int index) override;
-
-    /// @brief トランスフォームのセクションを描画
-    bool DrawTransformSection();
-#endif
-
     const char* GetObjectName() const override { return "SkyBox"; }
     RenderPassType GetRenderPassType() const override { return RenderPassType::SkyBox; }
     Vector3 GetWorldPosition() const override { return transform_.translate; }

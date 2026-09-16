@@ -16,6 +16,7 @@ namespace CoreEngine
 
 		ModelData Generate() const override;
 		std::string GetCacheKey() const override;
+		const char* GetDisplayName() const override { return "円柱"; }
 
 	private:
 		float topRadius_;

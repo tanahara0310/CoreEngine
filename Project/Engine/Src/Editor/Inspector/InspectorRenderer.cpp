@@ -126,10 +126,22 @@ namespace CoreEngine
             return changed;
         }
 
-        /// @brief ベクトルの欄（成分ごとの欄に、軸の文字を添えて並べる）
+        /// @brief 成分の印と文字の色（X 赤・Y 緑・Z 青。W は淡色）
+        const ImVec4& AxisColorOf(int axis)
+        {
+            switch (axis) {
+            case 0:  return Theme::kAxisX;
+            case 1:  return Theme::kAxisY;
+            case 2:  return Theme::kAxisZ;
+            default: return Theme::kTextMute;
+            }
+        }
+
+        /// @brief ベクトルの欄（成分ごとの欄の左端に、軸の色の印と文字を添えて並べる）
         bool DragVector(const char* id, float* values, int count, float speed, float min, float max)
         {
             static constexpr const char* kAxes[] = { "X", "Y", "Z", "W" };
+            constexpr float kAxisMarkWidth = 3.0f;
             const ImGuiStyle& style = ImGui::GetStyle();
             const float spacing = style.ItemInnerSpacing.x;
             const float fieldWidth = (std::max)(1.0f,
@@ -138,17 +150,23 @@ namespace CoreEngine
             bool changed = false;
             ImGui::PushID(id);
             ImGui::BeginGroup();
+            ImDrawList* const drawList = ImGui::GetWindowDrawList();
             for (int i = 0; i < count; ++i) {
                 ImGui::PushID(i);
                 if (i > 0) {
                     ImGui::SameLine(0.0f, spacing);
                 }
-                const ImVec2 fieldMin = ImGui::GetCursorScreenPos();
                 ImGui::SetNextItemWidth(fieldWidth);
                 changed = ImGui::DragFloat("##axis", &values[i], speed, min, max, "%.3f") || changed;
-                ImGui::GetWindowDrawList()->AddText(
-                    ImVec2(fieldMin.x + style.FramePadding.x * 0.6f, fieldMin.y + style.FramePadding.y),
-                    ImGui::GetColorU32(Theme::kTextMute), kAxes[i]);
+
+                const ImVec2 fieldMin = ImGui::GetItemRectMin();
+                const ImVec2 fieldMax = ImGui::GetItemRectMax();
+                const ImU32 axisColor = ImGui::GetColorU32(AxisColorOf(i));
+                drawList->AddRectFilled(fieldMin, ImVec2(fieldMin.x + kAxisMarkWidth, fieldMax.y), axisColor,
+                    style.FrameRounding, ImDrawFlags_RoundCornersLeft);
+                drawList->AddText(
+                    ImVec2(fieldMin.x + kAxisMarkWidth + style.FramePadding.x * 0.5f, fieldMin.y + style.FramePadding.y),
+                    axisColor, kAxes[i]);
                 ImGui::PopID();
             }
             ImGui::EndGroup();
@@ -156,23 +174,82 @@ namespace CoreEngine
             return changed;
         }
 
+        /// @brief 表示用の倍率を掛けた値で欄を描き、動いた成分だけを書き戻す
+        /// @param drawField 倍率を掛けた値の配列を受け取って欄を描き、動いたら true を返す関数
+        template <class DrawField>
+        bool DrawScaled(float* values, int count, float scale, DrawField&& drawField)
+        {
+            constexpr int kMaxComponents = 4;
+            float shown[kMaxComponents]{};
+            for (int i = 0; i < count; ++i) {
+                shown[i] = values[i] * scale;
+            }
+            if (!drawField(shown)) {
+                return false;
+            }
+            for (int i = 0; i < count; ++i) {
+                if (shown[i] != values[i] * scale) {
+                    values[i] = shown[i] / scale;
+                }
+            }
+            return true;
+        }
+
+        /// @brief 表示用の倍率を掛けてベクトルの欄を描く（範囲と速度にも同じ倍率を掛ける）
+        bool DragScaledVector(const char* id, float* values, int count, const Reflection::PropertyRange& r, float scale)
+        {
+            const float min = r.valid ? r.min * scale : 0.0f;
+            const float max = r.valid ? r.max * scale : 0.0f;
+            return DrawScaled(values, count, scale, [&](float* shown) {
+                return DragVector(id, shown, count, ResolveSpeed(r, 0.01f) * scale, min, max);
+                });
+        }
+
+        /// @brief 整数を名前の一覧から選ぶ欄
+        /// @return 別の値を選んだら true
+        bool DrawEnumCombo(const char* id, int* value, const char* const* names, int count)
+        {
+            const char* preview = (*value >= 0 && *value < count) ? names[*value] : "";
+            bool changed = false;
+            if (ImGui::BeginCombo(id, preview)) {
+                for (int i = 0; i < count; ++i) {
+                    const bool selected = i == *value;
+                    if (ImGui::Selectable(names[i], selected) && !selected) {
+                        *value = i;
+                        changed = true;
+                    }
+                    if (selected) {
+                        ImGui::SetItemDefaultFocus();
+                    }
+                }
+                ImGui::EndCombo();
+            }
+            return changed;
+        }
+
         /// @brief 色の欄（幅いっぱいのスウォッチを押すとピッカーが開く）
+        /// @param hasAlpha false なら不透明度を出さない（`rgba` の 4 つ目は読み書きしない）
         /// @note ピッカーを同じグループの中で描くので、ピッカーを掴んだ・離したが呼ぶ側の直前の項目として見える。
-        bool DrawColorSwatch(const char* id, float* rgba)
+        bool DrawColorSwatch(const char* id, float* rgba, bool hasAlpha)
         {
             constexpr const char* kPickerId = "##colorPicker";
             const ImVec2 size((std::max)(1.0f, ImGui::CalcItemWidth()), ImGui::GetFrameHeight());
+            const ImGuiColorEditFlags swatchFlags = hasAlpha
+                ? ImGuiColorEditFlags_AlphaPreviewHalf
+                : ImGuiColorEditFlags_NoAlpha;
+            const ImGuiColorEditFlags pickerFlags = hasAlpha
+                ? (ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreviewHalf)
+                : ImGuiColorEditFlags_NoAlpha;
 
             bool changed = false;
             ImGui::PushID(id);
             ImGui::BeginGroup();
-            const ImVec4 color(rgba[0], rgba[1], rgba[2], rgba[3]);
-            if (ImGui::ColorButton("##swatch", color, ImGuiColorEditFlags_AlphaPreviewHalf, size)) {
+            const ImVec4 color(rgba[0], rgba[1], rgba[2], hasAlpha ? rgba[3] : 1.0f);
+            if (ImGui::ColorButton("##swatch", color, swatchFlags, size)) {
                 ImGui::OpenPopup(kPickerId);
             }
             if (ImGui::BeginPopup(kPickerId)) {
-                changed = ImGui::ColorPicker4("##picker", rgba,
-                    ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreviewHalf);
+                changed = ImGui::ColorPicker4("##picker", rgba, pickerFlags);
                 ImGui::EndPopup();
             }
             ImGui::EndGroup();
@@ -184,20 +261,26 @@ namespace CoreEngine
         std::string FormatValue(const Reflection::PropertyDescriptor& p, const void* value)
         {
             using Reflection::PropertyType;
+            const float s = p.displayScale;
             switch (p.type) {
             case PropertyType::Bool:
                 return *static_cast<const bool*>(value) ? "true" : "false";
-            case PropertyType::Int:
-                return std::to_string(*static_cast<const int*>(value));
+            case PropertyType::Int: {
+                const int number = *static_cast<const int*>(value);
+                if (p.enumNames && number >= 0 && number < p.enumCount) {
+                    return p.enumNames[number];
+                }
+                return std::to_string(number);
+            }
             case PropertyType::Float:
-                return std::format("{:.3f}", *static_cast<const float*>(value));
+                return std::format("{:.3f}", *static_cast<const float*>(value) * s);
             case PropertyType::Vector2: {
                 const auto& v = *static_cast<const Vector2*>(value);
-                return std::format("{:.3f}, {:.3f}", v.x, v.y);
+                return std::format("{:.3f}, {:.3f}", v.x * s, v.y * s);
             }
             case PropertyType::Vector3: {
                 const auto& v = *static_cast<const Vector3*>(value);
-                return std::format("{:.3f}, {:.3f}, {:.3f}", v.x, v.y, v.z);
+                return std::format("{:.3f}, {:.3f}, {:.3f}", v.x * s, v.y * s, v.z * s);
             }
             case PropertyType::Vector4:
             case PropertyType::Color: {
@@ -245,19 +328,24 @@ namespace CoreEngine
         }
 
         /// @brief 型に応じたウィジェットを 1 つ描く
-        bool DrawValueWidget(Reflection::PropertyType type, const char* label, const Reflection::PropertyRange& r,
-                             void* value)
+        /// @param p 範囲・表示の倍率・値の名前・不透明度の扱いを読む記述子
+        /// @param type 描く値の型（配列の要素なら `p.elementType`）
+        bool DrawValueWidget(const Reflection::PropertyDescriptor& p, Reflection::PropertyType type,
+                             const char* label, void* value)
         {
             using Reflection::PropertyType;
+            const Reflection::PropertyRange& r = p.range;
             const bool ranged = r.valid && r.max > r.min;
-            const float min = r.valid ? r.min : 0.0f;
-            const float max = r.valid ? r.max : 0.0f;
+            const float scale = p.displayScale > 0.0f ? p.displayScale : 1.0f;
 
             switch (type) {
             case PropertyType::Bool:
                 return ImGui::Checkbox(label, static_cast<bool*>(value));
             case PropertyType::Int: {
                 auto* const number = static_cast<int*>(value);
+                if (p.enumNames && p.enumCount > 0) {
+                    return DrawEnumCombo(label, number, p.enumNames, p.enumCount);
+                }
                 const int iMin = r.valid ? static_cast<int>(r.min) : 0;
                 const int iMax = r.valid ? static_cast<int>(r.max) : 0;
                 const auto drawField = [&] {
@@ -269,19 +357,24 @@ namespace CoreEngine
             }
             case PropertyType::Float: {
                 auto* const number = static_cast<float*>(value);
+                const float min = r.valid ? r.min * scale : 0.0f;
+                const float max = r.valid ? r.max * scale : 0.0f;
                 const auto drawField = [&] {
-                    return ImGui::DragFloat(label, number, ResolveSpeed(r, 0.01f), min, max);
+                    return DrawScaled(number, 1, scale, [&](float* shown) {
+                        return ImGui::DragFloat(label, shown, ResolveSpeed(r, 0.01f) * scale, min, max);
+                        });
                 };
                 return ranged ? DrawWithFill((*number - r.min) / (r.max - r.min), drawField) : drawField();
             }
             case PropertyType::Vector2:
-                return DragVector(label, &static_cast<Vector2*>(value)->x, 2, ResolveSpeed(r, 0.01f), min, max);
+                return DragScaledVector(label, &static_cast<Vector2*>(value)->x, 2, r, scale);
             case PropertyType::Vector3:
-                return DragVector(label, &static_cast<Vector3*>(value)->x, 3, ResolveSpeed(r, 0.01f), min, max);
+                return DragScaledVector(label, &static_cast<Vector3*>(value)->x, 3, r, scale);
             case PropertyType::Vector4:
-                return DragVector(label, &static_cast<Vector4*>(value)->x, 4, ResolveSpeed(r, 0.01f), min, max);
+                return DragScaledVector(label, &static_cast<Vector4*>(value)->x, 4, r, scale);
             case PropertyType::Color:
-                return DrawColorSwatch(label, &static_cast<Vector4*>(value)->x);
+                return DrawColorSwatch(label, &static_cast<Vector4*>(value)->x,
+                    !Reflection::HasFlag(p.flags, Reflection::PropertyFlags::NoAlpha));
             case PropertyType::String: {
                 auto* text = static_cast<std::string*>(value);
                 char buffer[256]{};
@@ -347,7 +440,7 @@ namespace CoreEngine
                 if (void* const data = Reflection::ArrayElementData(p.elementType, elements[i])) {
                     ImGui::SameLine();
                     ImGui::SetNextItemWidth(-FLT_MIN);
-                    edited = DrawValueWidget(p.elementType, "##value", p.range, data) || edited;
+                    edited = DrawValueWidget(p, p.elementType, "##value", data) || edited;
                 }
                 ImGui::PopID();
             }
@@ -518,8 +611,10 @@ namespace CoreEngine
         }
 
         /// @brief AssetRef の指す先を選ぶ欄を描く（種類で絞った一覧と ProjectView からのドロップ）
+        /// @param instance 何も指していないときの表示を記述子に尋ねるときに渡す持ち主
         /// @return 指す先が変わったら true
-        bool DrawAssetRef(const Reflection::PropertyDescriptor& p, Reflection::AssetRefValue& ref)
+        bool DrawAssetRef(const Reflection::PropertyDescriptor& p, Reflection::AssetRefValue& ref,
+                          const void* instance)
         {
             const AssetInfo* target = ResolveAssetRef(ref);
             const bool isSet = !ref.guid.empty() || !ref.path.empty();
@@ -528,7 +623,12 @@ namespace CoreEngine
             std::string name = "（なし）";
             std::string idText;
             const char* icon = nullptr;
-            if (isSet && !target) {
+            if (!isSet && p.emptyText) {
+                if (std::string text = p.emptyText(instance); !text.empty()) {
+                    name = std::move(text);
+                    icon = InspectorLayout::AssetGlyph(p.assetType);
+                }
+            } else if (isSet && !target) {
                 name = "（見つかりません " + (ref.path.empty() ? ref.guid : ref.path) + "）";
             } else if (invalid) {
                 name = "（種類が違います " + target->fileName + "）";
@@ -721,6 +821,14 @@ namespace CoreEngine
             return changed;
         }
 
+        /// @brief 一覧から選ぶ欄か（ObjectRef / AssetRef / 名前付きの整数）
+        bool IsChosenFromList(const Reflection::PropertyDescriptor& p)
+        {
+            return p.type == Reflection::PropertyType::ObjectRef
+                || p.type == Reflection::PropertyType::AssetRef
+                || (p.type == Reflection::PropertyType::Int && p.enumNames != nullptr);
+        }
+
         /// @brief 直前の項目か行にカーソルが乗っていれば、プロパティの説明を出す
         void ShowPropertyTooltip(const Reflection::PropertyDescriptor& p, bool hovered)
         {
@@ -779,16 +887,24 @@ namespace CoreEngine
 
             const PropertyState state = InspectState(p, instance, context);
 
-            // 参照（ObjectRef / AssetRef）は選んだその場で履歴へ積む
-            if (p.type == Reflection::PropertyType::ObjectRef ||
-                p.type == Reflection::PropertyType::AssetRef) {
+            // 一覧から選ぶ欄（ObjectRef / AssetRef / 名前付きの整数）は選んだその場で履歴へ積む
+            if (IsChosenFromList(p)) {
                 Reflection::PropertyValue before;
                 before.CopyFrom(p.type, value);
 
                 const bool labelHovered = InspectorLayout::BeginRow(p.displayName, LabelColorOf(state), kPropertyMenuId);
-                const bool retargeted = (p.type == Reflection::PropertyType::ObjectRef)
-                    ? DrawObjectRef(p, *static_cast<Reflection::ObjectRefValue*>(value), context.objects)
-                    : DrawAssetRef(p, *static_cast<Reflection::AssetRefValue*>(value));
+                bool retargeted = false;
+                switch (p.type) {
+                case Reflection::PropertyType::ObjectRef:
+                    retargeted = DrawObjectRef(p, *static_cast<Reflection::ObjectRefValue*>(value), context.objects);
+                    break;
+                case Reflection::PropertyType::AssetRef:
+                    retargeted = DrawAssetRef(p, *static_cast<Reflection::AssetRefValue*>(value), instance);
+                    break;
+                default:
+                    retargeted = DrawValueWidget(p, p.type, "##value", value);
+                    break;
+                }
                 const bool hovered = ImGui::IsItemHovered() || labelHovered;
                 ImGui::OpenPopupOnItemClick(kPropertyMenuId, ImGuiPopupFlags_MouseButtonRight);
                 DrawOverrideMark(state, rowStart);
@@ -859,7 +975,7 @@ namespace CoreEngine
             before.CopyFrom(p.type, value);
 
             const bool labelHovered = InspectorLayout::BeginRow(p.displayName, LabelColorOf(state), kPropertyMenuId);
-            const bool edited = DrawValueWidget(p.type, "##value", p.range, value);
+            const bool edited = DrawValueWidget(p, p.type, "##value", value);
             const bool hovered = ImGui::IsItemHovered() || labelHovered;
             if (ImGui::IsItemActivated()) {
                 editSnapshot = std::move(before);

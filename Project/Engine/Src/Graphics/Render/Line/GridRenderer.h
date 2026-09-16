@@ -107,10 +107,10 @@ private:
     float lineWidthPixels_ = 1.0f;      // 線の太さ [px]
     float brightness_ = 1.0f;           // 全体の濃さ（α への一括係数）
 
-    // Blender 風のカラー設定
+    // 軸の色（ギズモ・インスペクタと同じ X 赤・Y 緑・Z 青）
     Vector3 xAxisColor_ = { 0.85f, 0.0f, 0.0f };   // X軸の色（赤）
-    Vector3 yAxisColor_ = { 0.0f, 0.0f, 0.85f };   // Y軸の色（青）
-    Vector3 zAxisColor_ = { 0.0f, 0.85f, 0.0f };   // Z軸の色（緑）
+    Vector3 yAxisColor_ = { 0.0f, 0.85f, 0.0f };   // Y軸の色（緑）
+    Vector3 zAxisColor_ = { 0.0f, 0.0f, 0.85f };   // Z軸の色（青）
     Vector3 normalColor_ = { 0.4f, 0.35f, 0.25f }; // 通常のグリッド色（オレンジっぽいグレー）
 
     /// baseSpacing_ から何段まで粗くしてよいか（10^kMaxLevel 倍まで）。

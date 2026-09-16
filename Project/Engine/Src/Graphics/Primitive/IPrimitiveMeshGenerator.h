@@ -17,5 +17,8 @@ namespace CoreEngine
         /// @brief キャッシュ用の一意キーを返す
         /// @return 形状パラメータを含むキー文字列
         virtual std::string GetCacheKey() const = 0;
+
+        /// @brief 形の名前（エディタに出す）
+        virtual const char* GetDisplayName() const = 0;
     };
 }

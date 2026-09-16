@@ -18,9 +18,10 @@ class TransformComponent : public IComponent, public ITransformSource {
 public:
     const char* GetTypeName() const override { return "Transform"; }
 
+    // 回転はラジアンで持ち、インスペクタでは度で見せる
     REFLECT_BEGIN(TransformComponent, "トランスフォーム")
         REFLECT_PROPERTY(transform_.translate, "位置",     p.range = Speed(0.05f))
-        REFLECT_PROPERTY(transform_.rotate,    "回転",     p.range = Speed(0.01f))
+        REFLECT_PROPERTY(transform_.rotate,    "回転",     p.range = Speed(0.01f), p.displayScale = kDegreesPerRadian)
         REFLECT_PROPERTY(transform_.scale,     "スケール", p.range = Speed(0.01f))
         REFLECT_OBJECT_REF(parent_, "親")
     REFLECT_END()
@@ -34,12 +35,9 @@ public:
 #ifdef USE_IMGUI
     const char* GetInspectorName() const override { return "トランスフォーム"; }
 
-    /// @brief 位置・回転・スケールの編集 UI
+    /// @brief 位置・回転（度）・スケールの編集 UI
     /// @return 値が変更されたら true
     bool DrawInspector() override;
-
-    /// @brief 回転の単位とワールド位置を添える
-    void DrawInspectorExtra() override;
 #endif
 
     /// @brief 書き換わった位置・回転・スケールをワールド行列へ反映する

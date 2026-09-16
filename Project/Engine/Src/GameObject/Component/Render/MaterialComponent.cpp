@@ -31,6 +31,13 @@ namespace CoreEngine
         if (pendingNormalMap_) { SetNormalMapEnabled(*pendingNormalMap_); pendingNormalMap_.reset(); }
         if (pendingIBL_) { SetIBLIntensity(*pendingIBL_); pendingIBL_.reset(); }
         if (pendingLighting_) { SetLightingEnabled(*pendingLighting_); pendingLighting_.reset(); }
+        if (pendingEmissive_) {
+            const Vector3 emissive = *pendingEmissive_;
+            pendingEmissive_.reset();
+            SetEmissive({ emissive.x, emissive.y, emissive.z, 1.0f });
+        }
+        if (pendingDitheringScale_) { SetDitheringScale(*pendingDitheringScale_); pendingDitheringScale_.reset(); }
+        if (pendingDithering_) { SetDitheringEnabled(*pendingDithering_); pendingDithering_.reset(); }
     }
 
     bool MaterialComponent::ForEachMaterial(const std::function<void(MaterialInstance*)>& fn) const
@@ -60,6 +67,12 @@ namespace CoreEngine
         if (!renderer_) { return; }
         const MaterialInstance* mat = GetMaterial();
         if (!mat) { return; }
+
+        // 加算などを選んでいるときは変えない
+        const BlendMode current = renderer_->GetBlendMode();
+        if (current != BlendMode::kBlendModeNone && current != BlendMode::kBlendModeNormal) {
+            return;
+        }
 
         // α < 1 かつディザリング OFF → アルファブレンドで段階的透明。
         // ディザリング ON なら不透明のままディザに任せる。
@@ -135,6 +148,33 @@ namespace CoreEngine
         }
     }
 
+    void MaterialComponent::SetEmissive(const Vector4& color)
+    {
+        const Vector3 emissive = { color.x, color.y, color.z };
+        if (!ForEachMaterial([&emissive](MaterialInstance* mat) { mat->SetEmissiveFactor(emissive); })) {
+            pendingEmissive_ = emissive;
+        }
+    }
+
+    void MaterialComponent::SetDitheringEnabled(bool enable)
+    {
+        const bool applied = ForEachMaterial([enable](MaterialInstance* mat) {
+            mat->SetDitheringEnabled(enable);
+            });
+        if (applied) {
+            UpdateBlendModeForAlpha();
+        } else {
+            pendingDithering_ = enable;
+        }
+    }
+
+    void MaterialComponent::SetDitheringScale(float scale)
+    {
+        if (!ForEachMaterial([scale](MaterialInstance* mat) { mat->SetDitheringScale(scale); })) {
+            pendingDitheringScale_ = scale;
+        }
+    }
+
     // ===== 取得 =====
     // 実体（MaterialInstance）が出来るのはメッシュを読み終えた後なので、
     // それまでは Start で流し込む控えを返す。どちらも無ければエンジン既定値
@@ -179,6 +219,26 @@ namespace CoreEngine
     {
         if (const MaterialInstance* mat = GetMaterial()) { return mat->IsNormalMapEnabled(); }
         return pendingNormalMap_.value_or(false);
+    }
+
+    Vector4 MaterialComponent::GetEmissive() const
+    {
+        const Vector3 emissive = GetMaterial()
+            ? GetMaterial()->GetEmissiveFactor()
+            : pendingEmissive_.value_or(Vector3{ 0.0f, 0.0f, 0.0f });
+        return { emissive.x, emissive.y, emissive.z, 1.0f };
+    }
+
+    bool MaterialComponent::IsDitheringEnabled() const
+    {
+        if (const MaterialInstance* mat = GetMaterial()) { return mat->IsDitheringEnabled(); }
+        return pendingDithering_.value_or(true);
+    }
+
+    float MaterialComponent::GetDitheringScale() const
+    {
+        if (const MaterialInstance* mat = GetMaterial()) { return mat->GetDitheringScale(); }
+        return pendingDitheringScale_.value_or(1.0f);
     }
 
 #ifdef USE_IMGUI

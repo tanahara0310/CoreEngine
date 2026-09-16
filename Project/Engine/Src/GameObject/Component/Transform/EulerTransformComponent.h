@@ -14,9 +14,10 @@ class EulerTransformComponent : public IComponent, public ITransformSource {
 public:
     const char* GetTypeName() const override { return "EulerTransform"; }
 
+    // 回転はラジアンで持ち、インスペクタでは度で見せる
     REFLECT_BEGIN(EulerTransformComponent, "トランスフォーム")
         REFLECT_PROPERTY(transform_.translate, "位置",     p.range = Speed(0.05f))
-        REFLECT_PROPERTY(transform_.rotate,    "回転",     p.range = Speed(0.01f))
+        REFLECT_PROPERTY(transform_.rotate,    "回転",     p.range = Speed(0.01f), p.displayScale = kDegreesPerRadian)
         REFLECT_PROPERTY(transform_.scale,     "スケール", p.range = Speed(0.01f))
     REFLECT_END()
 

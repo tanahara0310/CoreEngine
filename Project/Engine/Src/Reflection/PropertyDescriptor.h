@@ -88,6 +88,7 @@ namespace CoreEngine::Reflection
         ReadOnly = 1 << 0,  ///< インスペクタで編集させず、保存もしない
         Hidden   = 1 << 1,  ///< インスペクタに出さない（保存はする）
         NoSave   = 1 << 2,  ///< 保存しない（インスペクタには出す）
+        NoAlpha  = 1 << 3,  ///< 色の不透明度を扱わない（Color の欄に不透明度を出さない）
     };
 
     constexpr PropertyFlags operator|(PropertyFlags a, PropertyFlags b) noexcept
@@ -137,6 +138,11 @@ namespace CoreEngine::Reflection
         /// @brief ObjectRef が指せるコンポーネントかを判定する
         using ComponentFilter = bool (*)(const IComponent* component);
 
+        /// @brief AssetRef が何も指していないときに欄へ出す文字を返す
+        /// @param instance 型記述子の持ち主（`GetReflectionInstance()` の値）
+        /// @return 空なら「（なし）」を出す
+        using EmptyText = std::string (*)(const void* instance);
+
         /// @brief 保存キー兼 UI の識別子（既定はメンバ式の末尾トークン）
         std::string     name;
         const char*     displayName = "";
@@ -151,6 +157,10 @@ namespace CoreEngine::Reflection
         const char*     acceptsComponentType = nullptr;  ///< ObjectRef の繋ぎ先の型名（判定の関数では区別できないスクリプトのクラスに使う。nullptr なら型名で絞らない）
         AssetType       assetType = AssetType::Unknown;  ///< AssetRef が指せるアセットの種類（AssetRef 以外は Unknown）
         PropertyType    elementType = PropertyType::Float;  ///< Array の要素の型（Array 以外は使わない）
+        float           displayScale = 1.0f;  ///< インスペクタで値・範囲・速度に掛けて見せる数（ラジアンを度で見せるなど。保存する値は変わらない）
+        const char* const* enumNames = nullptr;  ///< Int の値ごとの名前（値が添え字。あればコンボで選ぶ）
+        int             enumCount = 0;         ///< `enumNames` の数
+        EmptyText       emptyText = nullptr;   ///< AssetRef が何も指していないときに欄へ出す文字（nullptr なら「（なし）」）
 
         /// @brief 読み書きの口が揃っているか
         bool IsValid() const { return get != nullptr && set != nullptr; }

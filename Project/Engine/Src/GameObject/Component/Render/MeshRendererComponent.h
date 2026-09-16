@@ -15,10 +15,6 @@
 #include <optional>
 #include <string>
 
-#ifdef USE_IMGUI
-#include "Graphics/Material/Debug/MaterialDebugUI.h"
-#endif
-
 namespace CoreEngine
 {
 class ICustomShaderProvider;
@@ -54,21 +50,17 @@ public:
 
 #ifdef USE_IMGUI
     const char* GetInspectorName() const override { return "メッシュ描画"; }
-
-    /// @brief メッシュの取得元・テクスチャ・描画設定・マテリアルの編集 UI
-    /// @return 値が変更されたら true
-    bool DrawInspector() override;
 #endif
 
     // ===== シリアライズ =====
+    // モデル・テクスチャ・ブレンドは型記述子が保存する
 
-    /// @brief テクスチャ・ブレンド・マテリアルのうち、既定から変えたものを書き出す
-    /// @details `texture` は `{"guid", "path"}`、`blendMode` は番号、`materials` はスロットごとの配列。
-    ///          マテリアルは、どれか 1 つのスロットでもモデルの既定と違うときだけ全スロットを書く。
+    /// @brief スロットごとのマテリアルを、どれか 1 つでもモデルの既定と違うときだけ書き出す
+    /// @details `materials` はスロットごとの配列で、書くときは全スロットを書く。
     json OnSerialize() const override;
 
-    /// @brief テクスチャ・ブレンド・マテリアルを読む
-    /// @note マテリアルはメッシュを読み込んだ後に当てる（まだ無ければ読み込むまで控える）。
+    /// @brief スロットごとのマテリアルを読む
+    /// @note メッシュを読み込んだ後に当てる（まだ無ければ読み込むまで控える）。
     void OnDeserialize(const json& j) override;
 
     // ===== メッシュの指定（Awake より前に呼ぶ） =====
@@ -90,8 +82,17 @@ public:
     /// @note 何も指さない値を渡すと、ファイルから作ったメッシュを外す。
     void SetModelAsset(const Reflection::AssetRefValue& value);
 
-    /// @brief 上書きテクスチャを指定する（空ならモデル組み込みを使う）
+    /// @brief プリミティブで作ったメッシュの形の名前（ファイルのメッシュや無しなら空）
+    std::string GetPrimitiveName() const;
+
+    /// @brief 上書きテクスチャを指定する（パスかファイル名。空ならモデル組み込みを使う）
     void SetTexture(std::string texturePath);
+
+    /// @brief 指している上書きテクスチャ（型記述子とやり取りする値）
+    Reflection::AssetRefValue GetTextureAsset() const { return textureAsset_.GetValue(); }
+
+    /// @brief 上書きテクスチャを指し直す（何も指さない値ならモデル組み込みに戻す）
+    void SetTextureAsset(const Reflection::AssetRefValue& value);
 
     /// @brief カスタムシェーダーを使う場合のプロバイダを登録する（所有権は移さない）
     void SetCustomShaderProvider(ICustomShaderProvider* provider) { customShaderProvider_ = provider; }
@@ -149,6 +150,9 @@ private:
     /// @brief 控えたマテリアルをモデルの各スロットへ当てる（モデルの既定と同じスロットは当てない）
     void ApplyPendingMaterials();
 
+    /// @brief テクスチャを読み込む（テクスチャ管理がまだ立っていなければ Awake まで控える。空なら外す）
+    void LoadTexture(std::string texturePath);
+
     /// @brief カスタムシェーダー用 PSO を構築する（プロバイダ登録時のみ）
     void BuildCustomShaderPipelineIfNeeded();
 
@@ -161,6 +165,7 @@ private:
     bool awoken_ = false;              ///< Awake を済ませたか
 
     TextureManager::LoadedTexture texture_{};
+    AssetRef<TextureAsset> textureAsset_;  ///< 保存とインスペクタに出す上書きテクスチャ
     std::string textureName_;
     std::string pendingTexturePath_;
     BlendMode blendMode_ = BlendMode::kBlendModeNone;
@@ -175,9 +180,5 @@ private:
     std::shared_ptr<CustomShaderPipeline> customShaderPipeline_;
 
     mutable TransformComponent* transform_ = nullptr;
-
-#ifdef USE_IMGUI
-    std::unique_ptr<MaterialDebugUI> materialDebugUI_;
-#endif
 };
 }

@@ -6,7 +6,6 @@
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/SkyBox/SkyBoxRenderer.h"
 #include "Math/MathCore.h"
-#include "Editor/ImGui/ImGuiAll.h"
 #include <cassert>
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
@@ -249,44 +248,4 @@ void SkyBoxObject::Draw(const Camera* camera) {
     // 描画コマンド
     commandList->DrawIndexedInstanced(kIndexCount, 1, 0, 0, 0);
 }
-
-#ifdef _DEBUG
-std::span<const char* const> SkyBoxObject::GetInspectorSections() const {
-    static constexpr const char* kSections[] = { "トランスフォーム" };
-    return kSections;
-}
-
-bool SkyBoxObject::DrawInspectorSection(int index) {
-    switch (index) {
-    case 0: return DrawTransformSection();
-    default: return false;
-    }
-}
-
-bool SkyBoxObject::DrawTransformSection() {
-    bool changed = false;
-
-    UI::SectionHeader("回転");
-    changed |= UI::DragVec3("回転", transform_.rotate, 0.01f);
-
-    UI::SectionHeader("スケール");
-    changed |= UI::DragVec3("スケール", transform_.scale, 0.01f);
-
-    UI::SectionHeader("環境設定");
-    if (ImGui::SliderFloat("輝度スケール", &environmentIntensity_, 0.01f, 5.0f, "%.2f")) {
-        changed = true;
-    }
-    ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "環境マップ（映り込み）の明るさを調整します");
-
-    UI::Spacing();
-    if (ImGui::Button("リセット##skybox")) {
-        transform_.scale  = { 1.0f, 1.0f, 1.0f };
-        transform_.rotate = { 0.0f, 0.0f, 0.0f };
-        changed = true;
-    }
-
-    return changed;
-}
-
-#endif
 }

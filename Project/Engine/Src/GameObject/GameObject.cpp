@@ -546,11 +546,17 @@ namespace CoreEngine
             ImGui::PopID();
         }
 
-        // コンポーネントのセクション（外すのは全部を描き終えてから行う）
+        // コンポーネントのセクション（トランスフォームを先頭に並べる。外すのは全部を描き終えてから行う）
         IComponent* removeRequest = nullptr;
-        for (const auto& component : GetAllComponents()) {
-            if (component) {
-                changed |= DrawComponentSection(*component, removeRequest);
+        for (const bool transformPass : { true, false }) {
+            for (const auto& component : GetAllComponents()) {
+                if (!component || !component->IsShownInInspector()) {
+                    continue;
+                }
+                const bool isTransform = dynamic_cast<const ITransformSource*>(component.get()) != nullptr;
+                if (isTransform == transformPass) {
+                    changed |= DrawComponentSection(*component, removeRequest);
+                }
             }
         }
         if (removeRequest && ComponentEditing::Remove(*this, *removeRequest)) {

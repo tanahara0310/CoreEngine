@@ -3,6 +3,7 @@
 #include "Reflection/TypeDescriptor.h"
 #include "Utility/Macro/UniqueName.h"
 
+#include <iterator>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -60,6 +61,9 @@ namespace CoreEngine::Reflection
         return PropertyRange{ minValue, maxValue, dragSpeed };
     }
 
+    /// @brief ラジアンで持つ値を度で見せるときの `displayScale`
+    inline constexpr float kDegreesPerRadian = 180.0f / 3.14159265358979f;
+
     /// @brief REFLECT_BEGIN が作る記述子を初回参照時に 1 度だけ組み立てる
     template <class T>
     struct TypeDescriptorHolder
@@ -86,6 +90,7 @@ namespace CoreEngine::Reflection
         using Self = TypeName;                                                         \
         using ::CoreEngine::Reflection::Speed;                                         \
         using ::CoreEngine::Reflection::Range;                                         \
+        using ::CoreEngine::Reflection::kDegreesPerRadian;                             \
         ::CoreEngine::Reflection::TypeDescriptor d;                                    \
         d.name = #TypeName;                                                            \
         d.displayName = DisplayNameLiteral;
@@ -139,6 +144,40 @@ namespace CoreEngine::Reflection
             p.set = [](const ::CoreEngine::Reflection::PropertyDescriptor&,            \
                        void* o, const void* in) {                                      \
                 static_cast<Self*>(o)->SetterName(*static_cast<const ValueType*>(in)); \
+            };                                                                         \
+            __VA_ARGS__;                                                               \
+            d.properties.push_back(p);                                                 \
+        }
+
+/// @brief 列挙型の値を getter / setter で表し、名前の一覧から選ぶプロパティを足す
+/// @param NameLiteral 保存キー
+/// @param GetterName 列挙型の値を返すメンバ関数（引数なし）
+/// @param SetterName 列挙型の値を受け取るメンバ関数（引数 1 つ）
+/// @param NamesArray 列挙の値の順に並べた名前の配列
+/// @param ... 省略可。`p.tooltip = "…"` など
+/// @note 値は整数として保存する。名前の数の範囲外の整数は書き込まない。
+#define REFLECT_ENUM_ACCESSOR(NameLiteral, DisplayNameLiteral, GetterName, SetterName, NamesArray, ...) \
+        {                                                                              \
+            using EnumType =                                                           \
+                ::std::decay_t<decltype(::std::declval<const Self&>().GetterName())>;  \
+            ::CoreEngine::Reflection::PropertyDescriptor p;                            \
+            p.name = NameLiteral;                                                      \
+            p.displayName = DisplayNameLiteral;                                        \
+            p.type = ::CoreEngine::Reflection::PropertyType::Int;                      \
+            p.enumNames = NamesArray;                                                  \
+            p.enumCount = static_cast<int>(::std::size(NamesArray));                   \
+            p.get = [](const ::CoreEngine::Reflection::PropertyDescriptor&,            \
+                       const void* o, void* out) {                                     \
+                *static_cast<int*>(out) =                                              \
+                    static_cast<int>(static_cast<const Self*>(o)->GetterName());       \
+            };                                                                         \
+            p.set = [](const ::CoreEngine::Reflection::PropertyDescriptor& property,   \
+                       void* o, const void* in) {                                      \
+                const int value = *static_cast<const int*>(in);                        \
+                if (value < 0 || value >= property.enumCount) {                        \
+                    return;                                                            \
+                }                                                                      \
+                static_cast<Self*>(o)->SetterName(static_cast<EnumType>(value));        \
             };                                                                         \
             __VA_ARGS__;                                                               \
             d.properties.push_back(p);                                                 \
@@ -215,6 +254,7 @@ namespace CoreEngine::Reflection
         using Self = QualifiedTypeName;                                                \
         using ::CoreEngine::Reflection::Speed;                                         \
         using ::CoreEngine::Reflection::Range;                                         \
+        using ::CoreEngine::Reflection::kDegreesPerRadian;                             \
         ::CoreEngine::Reflection::TypeDescriptor d;                                    \
         d.name = Self::kReflectedTypeName;                                             \
         d.displayName = DisplayNameLiteral;
