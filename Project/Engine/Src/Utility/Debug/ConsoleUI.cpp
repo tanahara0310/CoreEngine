@@ -10,6 +10,7 @@
 #include "Particle/ParticleSystem.h"
 
 // コンポーネントのインクルード
+#include "Utility/CVar/CVarConsole.h"
 #include "Utility/FrameRate/FrameRateController.h"
 #include "Utility/FrameRate/Time.h"
 
@@ -33,6 +34,9 @@ static const char* const kTabIds[] = {
     "###TabShader", "###TabAudio", "###TabGame", "###TabScript", "###TabGeneral", "###TabConsole"
 };
 static constexpr int kTabCount = 10;
+
+// 補完に使う組み込みコマンド
+static const char* const kCommandNames[] = { "help", "clear", "fps", "status", "exit", "cvar" };
 
 void ConsoleUI::Initialize()
 {
@@ -202,8 +206,10 @@ void ConsoleUI::Draw()
             focusInput_ = false;
         }
 
+        constexpr ImGuiInputTextFlags inputFlags = ImGuiInputTextFlags_EnterReturnsTrue |
+            ImGuiInputTextFlags_CallbackHistory | ImGuiInputTextFlags_CallbackCompletion;
         bool enterPressed = UI::InputText("##CommandInput", inputBuffer_, sizeof(inputBuffer_),
-                                           ImGuiInputTextFlags_EnterReturnsTrue);
+                                           inputFlags, &ConsoleUI::InputTextCallback, this);
 
         UI::SameLine();
         if (ImGui::Button("Send") || enterPressed) {
@@ -337,6 +343,12 @@ void ConsoleUI::ProcessCommand(const std::string& command)
     // コマンドをログに表示
     AddLog("> " + command, ConsoleLogLevel::Debug);
 
+    // 履歴へ積む（同じコマンドが続いたときは 1 つだけ持つ）
+    if (history_.empty() || history_.back() != command) {
+        history_.push_back(command);
+    }
+    historyPos_ = -1;
+
     // コマンドを空白で分割
     std::vector<std::string> tokens;
     std::string token;
@@ -361,6 +373,11 @@ void ConsoleUI::ProcessCommand(const std::string& command)
         AddLog("fps                  - FPS情報を表示", ConsoleLogLevel::Info);
         AddLog("status, stat         - システム状態を表示", ConsoleLogLevel::Info);
         AddLog("exit, quit           - コンソールを閉じる", ConsoleLogLevel::Info);
+        AddLog("cvar <接頭辞>        - 名前が一致する CVar と値を一覧", ConsoleLogLevel::Info);
+        AddLog("cvar <名前>          - その CVar の型・値・既定値・説明を表示", ConsoleLogLevel::Info);
+        AddLog("cvar <名前> <値>     - 値を書き込む（Ctrl+Z で戻せる）", ConsoleLogLevel::Info);
+        AddLog("cvar reset <名前>    - 既定値へ戻す", ConsoleLogLevel::Info);
+        AddLog("↑ ↓ で履歴、Tab で補完", ConsoleLogLevel::Info);
     }
     // === ログクリアコマンド ===
     else if (cmd == "clear" || cmd == "cls") {
@@ -380,10 +397,109 @@ void ConsoleUI::ProcessCommand(const std::string& command)
         SetVisible(false);
         AddLog("コンソールを閉じました", ConsoleLogLevel::Info);
     }
+    // === CVar コマンド ===
+    else if (const CVarConsole::Result result = CVarConsole::Execute(command); result.handled) {
+        for (const std::string& line : result.lines) {
+            AddLog(line, result.failed ? ConsoleLogLevel::Error : ConsoleLogLevel::Info);
+        }
+    }
     // === 不明なコマンド ===
     else {
         AddLog("不明なコマンド: " + cmd + " (help で利用可能なコマンドを表示)", ConsoleLogLevel::Error);
     }
+}
+
+int ConsoleUI::InputTextCallback(ImGuiInputTextCallbackData* data)
+{
+    auto* const console = data ? static_cast<ConsoleUI*>(data->UserData) : nullptr;
+    return console ? console->OnInputText(*data) : 0;
+}
+
+int ConsoleUI::OnInputText(ImGuiInputTextCallbackData& data)
+{
+    // ↑ ↓ で履歴をたどる
+    if (data.EventFlag == ImGuiInputTextFlags_CallbackHistory) {
+        const int previous = historyPos_;
+        if (data.EventKey == ImGuiKey_UpArrow) {
+            if (historyPos_ < 0) {
+                historyPos_ = static_cast<int>(history_.size()) - 1;
+            } else if (historyPos_ > 0) {
+                --historyPos_;
+            }
+        } else if (data.EventKey == ImGuiKey_DownArrow && historyPos_ >= 0) {
+            if (++historyPos_ >= static_cast<int>(history_.size())) {
+                historyPos_ = -1;
+            }
+        }
+        if (previous != historyPos_) {
+            const std::string line =
+                historyPos_ >= 0 ? history_[static_cast<size_t>(historyPos_)] : std::string();
+            data.DeleteChars(0, data.BufTextLen);
+            data.InsertChars(0, line.c_str());
+        }
+        return 0;
+    }
+
+    // Tab で補完する
+    if (data.EventFlag == ImGuiInputTextFlags_CallbackCompletion) {
+        const std::vector<std::string> candidates = CollectCompletions(data.Buf);
+        if (candidates.empty()) {
+            return 0;
+        }
+
+        // 候補に共通する所まで入れる
+        std::string shared = candidates.front();
+        for (const std::string& candidate : candidates) {
+            size_t same = 0;
+            while (same < shared.size() && same < candidate.size() && shared[same] == candidate[same]) {
+                ++same;
+            }
+            shared.resize(same);
+        }
+        if (!shared.empty()) {
+            data.DeleteChars(0, data.BufTextLen);
+            data.InsertChars(0, shared.c_str());
+            if (candidates.size() == 1) {
+                data.InsertChars(data.CursorPos, " ");
+            }
+        }
+
+        if (candidates.size() > 1) {
+            constexpr size_t kShowLimit = 20;
+            AddLog("候補 " + std::to_string(candidates.size()) + " 件:", ConsoleLogLevel::Debug);
+            for (size_t i = 0; i < candidates.size() && i < kShowLimit; ++i) {
+                AddLog("  " + candidates[i], ConsoleLogLevel::Debug);
+            }
+            if (candidates.size() > kShowLimit) {
+                AddLog("  … 他 " + std::to_string(candidates.size() - kShowLimit) + " 件",
+                    ConsoleLogLevel::Debug);
+            }
+        }
+    }
+    return 0;
+}
+
+std::vector<std::string> ConsoleUI::CollectCompletions(const char* text) const
+{
+    std::string line(text ? text : "");
+    if (const size_t begin = line.find_first_not_of(" \t"); begin == std::string::npos) {
+        line.clear();
+    } else {
+        line = line.substr(begin);
+    }
+
+    // 語を打ち終えているなら、その語のコマンドに続く候補を出す
+    if (line.find(' ') != std::string::npos) {
+        return CVarConsole::Complete(line, 30);
+    }
+
+    std::vector<std::string> candidates;
+    for (const char* const name : kCommandNames) {
+        if (line.empty() || std::string(name).rfind(line, 0) == 0) {
+            candidates.emplace_back(name);
+        }
+    }
+    return candidates;
 }
 
 void ConsoleUI::ShowFPSInfo()

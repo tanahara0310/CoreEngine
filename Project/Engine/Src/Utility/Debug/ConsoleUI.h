@@ -117,6 +117,8 @@ namespace CoreEngine
         // 入力用
         char inputBuffer_[512] = "";                            // コマンド入力バッファ
         bool focusInput_ = false;                               // 入力欄にフォーカス
+        std::vector<std::string> history_;                      // 送ったコマンド（古い順）
+        int historyPos_ = -1;                                   // 履歴をたどっている位置（-1 はたどっていない）
 
         // UI用の一時変数
         ImGuiTextFilter filter_;                                // テキストフィルター
@@ -167,6 +169,15 @@ namespace CoreEngine
         /// @brief コマンド入力の処理
         /// @param command 入力されたコマンド
         void ProcessCommand(const std::string& command);
+
+        /// @brief 入力欄のコールバック（↑ ↓ で履歴、Tab で補完）
+        static int InputTextCallback(ImGuiInputTextCallbackData* data);
+
+        /// @brief InputTextCallback の本体
+        int OnInputText(ImGuiInputTextCallbackData& data);
+
+        /// @brief 入力の続きとして使える候補（コマンド名と CVar の名前）
+        std::vector<std::string> CollectCompletions(const char* text) const;
 
         /// @brief FPS情報を表示
         void ShowFPSInfo();

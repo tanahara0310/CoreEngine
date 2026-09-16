@@ -6,6 +6,7 @@
 #include <queue>
 
 #include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/RHI/Debug/GpuMarker.h"
 #include "Utility/Logger/Logger.h"
 
@@ -357,31 +358,35 @@ namespace CoreEngine
                     pass.unresolvedResources.push_back(*access.resourceName);
                 }
 #ifdef _DEBUG
-                Logger::GetInstance().Logf(
-                    LogLevel::Debug,
-                    LogCategory::Graphics,
-                    LogSubCategory::Barrier,
-                    "[RenderGraph] View={} Pass={} Unresolved={} (barrier skipped)",
-                    RenderViewTypeToString(context.viewSettings.viewType),
-                    pass.name,
-                    *access.resourceName);
+                if (BarrierBatch::IsLoggingEnabled()) {
+                    Logger::GetInstance().Logf(
+                        LogLevel::Debug,
+                        LogCategory::Graphics,
+                        LogSubCategory::Barrier,
+                        "[RenderGraph] View={} Pass={} Unresolved={} (barrier skipped)",
+                        RenderViewTypeToString(context.viewSettings.viewType),
+                        pass.name,
+                        *access.resourceName);
+                }
 #endif
                 continue;
             }
 
 #ifdef _DEBUG
-            Logger::GetInstance().Logf(
-                LogLevel::Debug,
-                LogCategory::Graphics,
-                LogSubCategory::Barrier,
-                "[RenderGraph] View={} Pass={} {}={} resource=0x{:X} current=0x{:X} required=0x{:X}",
-                RenderViewTypeToString(context.viewSettings.viewType),
-                pass.name,
-                access.isWrite ? "Write" : "Read",
-                *access.resourceName,
-                reinterpret_cast<uintptr_t>(resource.resource->Get()),
-                static_cast<uint32_t>(resource.resource->State()),
-                static_cast<uint32_t>(access.requiredState));
+            if (BarrierBatch::IsLoggingEnabled()) {
+                Logger::GetInstance().Logf(
+                    LogLevel::Debug,
+                    LogCategory::Graphics,
+                    LogSubCategory::Barrier,
+                    "[RenderGraph] View={} Pass={} {}={} resource=0x{:X} current=0x{:X} required=0x{:X}",
+                    RenderViewTypeToString(context.viewSettings.viewType),
+                    pass.name,
+                    access.isWrite ? "Write" : "Read",
+                    *access.resourceName,
+                    reinterpret_cast<uintptr_t>(resource.resource->Get()),
+                    static_cast<uint32_t>(resource.resource->State()),
+                    static_cast<uint32_t>(access.requiredState));
+            }
 #endif
 
             // UNORDERED_ACCESS のまま連続書き込みする場合は遷移が発生しないため、

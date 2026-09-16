@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
 
+#include "Utility/CVar/CVar.h"
 #include "Utility/Logger/Logger.h"
 
 #include <cassert>
@@ -11,7 +12,8 @@ namespace CoreEngine
     namespace
     {
         /// バリアの逐次ログ。既定 OFF（Debug で全部出すと 60 秒 100MB を超える）
-        bool g_barrierLoggingEnabled = false;
+        CVar<bool> cvLogBarriers{ "d.Graphics.LogBarriers", false,
+            "リソースの状態遷移（バリア）を 1 件ずつログへ出す" };
 
         /// @brief D3D12_RESOURCE_STATES を人間が読める文字列に変換する（デバッグログ用）
         std::string ResourceStateToString(D3D12_RESOURCE_STATES state)
@@ -39,7 +41,7 @@ namespace CoreEngine
             D3D12_RESOURCE_STATES after,
             uint32_t subresource)
         {
-            if (!g_barrierLoggingEnabled) {
+            if (!cvLogBarriers.Get()) {
                 return;
             }
             Logger::GetInstance().Logf(
@@ -54,12 +56,12 @@ namespace CoreEngine
 
     void BarrierBatch::SetLoggingEnabled(bool enabled) noexcept
     {
-        g_barrierLoggingEnabled = enabled;
+        cvLogBarriers.Set(enabled);
     }
 
     bool BarrierBatch::IsLoggingEnabled() noexcept
     {
-        return g_barrierLoggingEnabled;
+        return cvLogBarriers.Get();
     }
 
     BarrierBatch::BarrierBatch(ID3D12GraphicsCommandList* cmdList)
