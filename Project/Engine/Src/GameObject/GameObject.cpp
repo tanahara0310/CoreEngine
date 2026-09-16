@@ -6,14 +6,21 @@
 #include <cstdio>
 
 #ifdef USE_IMGUI
+#include "Editor/External/ExternalCodeEditor.h"
+#include "Editor/ImGui/EditorTheme.h"
 #include "Editor/ImGui/ImGuiAll.h"
+#include "Editor/ImGui/Widgets/EditorBars.h"
+#include "Editor/Inspector/InspectorLayout.h"
 #include "Editor/Inspector/InspectorRenderer.h"
 #include "Editor/Scene/ComponentEditing.h"
 #include "Editor/Scene/PrefabEditing.h"
-#include "Graphics/Texture/TextureManager.h"
+#include "GameObject/Component/Core/ComponentFactory.h"
 #include "Reflection/TypeDescriptor.h"
 #include "Scene/PrefabSystem.h"
+#include "Utility/Logger/Logger.h"
+#include <algorithm>
 #include <cstddef>
+#include <filesystem>
 #include <optional>
 #endif
 
@@ -279,7 +286,34 @@ namespace CoreEngine
 #ifdef USE_IMGUI
     // ===== デバッグ UI =====
 
-    bool GameObject::DrawImGuiExtended() { return false; }
+    namespace
+    {
+        namespace Theme = Editor::Theme;
+
+        /// オブジェクトの ⋮ のメニュー
+        constexpr const char* kObjectMenuId = "##objectMenu";
+
+        /// プレハブの行の右クリックのメニュー
+        constexpr const char* kPrefabMenuId = "##prefabMenu";
+
+        /// コンポーネントの ⋮ のメニュー
+        constexpr const char* kComponentMenuId = "##componentMenu";
+
+        /// スクリプトのセクションの末尾のボタン
+        constexpr const char* kOpenScriptLabel = "◇ スクリプトを開く";
+
+        /// @brief パスからフォルダと拡張子を除いた名前（UTF-8 のまま扱う）
+        std::string StemOf(const std::string& path)
+        {
+            const std::size_t slash = path.find_last_of("/\\");
+            std::string name = slash == std::string::npos ? path : path.substr(slash + 1);
+            const std::size_t dot = name.find_last_of('.');
+            if (dot != std::string::npos && dot > 0) {
+                name.resize(dot);
+            }
+            return name;
+        }
+    }
 
     void GameObject::SetEditCommitCallback(EditCommitCallback cb) {
         onEditCommitted_ = std::move(cb);
@@ -296,266 +330,241 @@ namespace CoreEngine
         }
     }
 
-    void GameObject::AppendComponentTabs(std::vector<InspectorTabDef>& outTabs) const {
-        for (const auto& component : GetAllComponents()) {
-            if (!component) { continue; }
+    bool GameObject::DrawInspectorHeader() {
+        bool changed = false;
+        const ImGuiStyle& style = ImGui::GetStyle();
 
-            InspectorTabDef tab{};
-            tab.iconPath = component->GetInspectorIcon();
-            tab.tooltip = component->GetInspectorName();
-            component->GetInspectorIconColor(tab.tint);
-
-            // 選択中の背景はアイコン色を薄くしたもの（レガシータブと同じ見た目にする）
-            tab.selectedBg[0] = tab.tint[0];
-            tab.selectedBg[1] = tab.tint[1];
-            tab.selectedBg[2] = tab.tint[2];
-            tab.selectedBg[3] = 0.25f;
-
-            outTabs.push_back(tab);
+        // 種類の記号（プレハブから作ったものは ◈）
+        ImGui::AlignTextToFramePadding();
+        if (IsPrefabInstance()) {
+            ImGui::TextColored(Theme::kAccentHover, "◈");
+        } else {
+            ImGui::TextColored(Theme::kTextDim, "◆");
         }
+
+        // 有効
+        ImGui::SameLine();
+        const bool prevActive = isActive_;
+        if (ImGui::Checkbox("##active", &isActive_)) {
+            changed = true;
+            OnImGuiActiveChanged(prevActive);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("%s", isActive_ ? "有効（外すと更新も描画もしない）" : "無効（入れると動く）");
+        }
+
+        // 名前（右端に ⋮ の場所を残す）
+        const float menuWidth = ImGui::CalcTextSize("⋮").x + style.FramePadding.x * 2.0f;
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth((std::max)(1.0f, ImGui::GetContentRegionAvail().x - menuWidth - style.ItemSpacing.x));
+        char nameBuf[128];
+        const char* displayText = name_.empty() ? serializeKey_.c_str() : name_.c_str();
+        snprintf(nameBuf, sizeof(nameBuf), "%s", displayText);
+        if (ImGui::InputText("##objName", nameBuf, sizeof(nameBuf))) {
+            name_ = nameBuf;
+            changed = true;
+        }
+
+        ImGui::SameLine();
+        ImGui::PushStyleColor(ImGuiCol_Button, Theme::kTransparent);
+        if (ImGui::Button("⋮##objectMenuButton", ImVec2(menuWidth, 0.0f))) {
+            ImGui::OpenPopup(kObjectMenuId);
+        }
+        ImGui::PopStyleColor();
+        if (ImGui::BeginPopup(kObjectMenuId)) {
+            const bool canSave = shouldSerialize_ && !serializeKey_.empty() && onSaveRequested_;
+            if (ImGui::MenuItem("このオブジェクトだけ保存", nullptr, false, canSave)) {
+                onSaveRequested_(this);
+            }
+            ImGui::EndPopup();
+        }
+
+        // プレハブから作ったものは、元のプレハブを参照の欄で出す
+        if (IsPrefabInstance()) {
+            const std::string path = GetPrefab().GetPath();
+            const bool labelHovered = InspectorLayout::BeginRow("Prefab", Theme::kTextDim, kPrefabMenuId);
+            const bool fieldHovered = InspectorLayout::ReferenceField(
+                InspectorLayout::AssetGlyph(AssetType::Prefab), StemOf(path).c_str(),
+                InspectorLayout::ShortId(GetPrefab().GetGuid()).c_str());
+            ImGui::OpenPopupOnItemClick(kPrefabMenuId, ImGuiPopupFlags_MouseButtonRight);
+            if (labelHovered || fieldHovered) {
+                ImGui::SetTooltip("%s\n右クリックでプレハブの操作", path.c_str());
+            }
+            if (ImGui::BeginPopup(kPrefabMenuId)) {
+                ImGui::TextDisabled("%s", path.c_str());
+                ImGui::Separator();
+                if (ImGui::MenuItem("プレハブへ適用", nullptr, false, objectManager_ != nullptr)) {
+                    PrefabEditing::ApplyObject(*objectManager_, *this);
+                }
+                if (ImGui::MenuItem("プレハブとのつながりを外す")) {
+                    PrefabEditing::Unlink(*this);
+                }
+                ImGui::EndPopup();
+            }
+        }
+        return changed;
     }
 
-    bool GameObject::DrawComponentTabContent(int tabIndex, IComponent*& removeRequest) {
-        const auto& components = GetAllComponents();
+    bool GameObject::DrawComponentSection(IComponent& component, IComponent*& removeRequest) {
+        bool changed = false;
+        ImGui::PushID(&component);
 
-        // BuildComponentTabs と同じ順序で走査する（nullptr は両方で飛ばす）
-        int index = 0;
-        for (const auto& component : components) {
-            if (!component) { continue; }
+        ComponentFactory& factory = ComponentFactory::Get();
+        const std::string typeName = component.GetTypeName();
+        const bool isScript = factory.IsRuntimeType(typeName);
+        const std::filesystem::path sourceFile = isScript ? factory.GetSourceFile(typeName) : std::filesystem::path{};
+        const std::string tag = sourceFile.empty() ? std::string("AS")
+            : Logger::GetInstance().PathToUtf8(sourceFile.filename());
 
-            if (index == tabIndex) {
-                bool changed = false;
-
-                bool enabled = component->IsEnabled();
-                if (ImGui::Checkbox("有効", &enabled)) {
-                    component->SetEnabled(enabled);
-                    changed = true;
-                }
-                UI::SameLine();
-                if (ComponentEditing::DrawRemoveButton(*this, *component)) {
-                    removeRequest = component.get();
-                }
-                UI::Separator();
-
-                // DrawInspector() の戻り値は「値が変わったか」であって
-                // 「何か描いたか」ではない。中身の有無はカーソルが進んだかで見る
-                const float cursorBefore = ImGui::GetCursorPosY();
-
-                // 記述子を持つ型はそこから自動生成し、無ければ従来の手書きへ落ちる
-                const Reflection::TypeDescriptor* descriptor = component->GetTypeDescriptor();
-                if (descriptor && InspectorRenderer::IsEnabled()) {
-                    IComponent* raw = component.get();
-                    InspectorRenderer::DrawContext context;
-                    context.label = std::string(GetName()) + " の " + raw->GetInspectorName();
-                    context.owner = raw;
-                    context.objects = objectManager_;
-                    context.onChanged = [raw](const Reflection::PropertyDescriptor& property) {
-                        raw->OnPropertyChanged(property);
-                        };
-
-                    // プレハブから作ったオブジェクトは、プレハブでのこのコンポーネントの値と見比べる
-                    json prefabParameters;
-                    if (IsPrefabInstance()) {
-                        const json* prefabComponents = PrefabSystem::LoadComponents(GetPrefab().GetValue());
-                        const std::optional<std::size_t> prefabIndex = prefabComponents
-                            ? PrefabSystem::FindComponentIndex(*prefabComponents, *this, *raw) : std::nullopt;
-                        if (prefabIndex) {
-                            const json& entry = (*prefabComponents)[*prefabIndex];
-                            prefabParameters = (entry.contains("parameters") && entry.at("parameters").is_object())
-                                ? entry.at("parameters") : json::object();
-                            context.prefabParameters = &prefabParameters;
-                            if (objectManager_) {
-                                context.applyToPrefab = [this, raw](const Reflection::PropertyDescriptor& property) {
-                                    PrefabEditing::ApplyProperty(*objectManager_, *this, *raw, property);
-                                    };
-                            }
-                        }
-                    }
-
-                    changed |= InspectorRenderer::Draw(
-                        *descriptor, raw->GetReflectionInstance(), context);
-                    // 記述子に一部だけを載せた型は、残りを手書きの UI で描く
-                    if (descriptor->partial) {
-                        UI::Separator();
-                        changed |= raw->DrawInspector();
-                    }
-                    raw->DrawInspectorExtra();
-                } else {
-                    changed |= component->DrawInspector();
-                }
-
-                if (ImGui::GetCursorPosY() <= cursorBefore) {
-                    UI::Hint("このコンポーネントに編集項目はありません");
-                }
-                return changed;
-            }
-            ++index;
+        // 見出し
+        bool enabled = component.IsEnabled();
+        bool enabledChanged = false;
+        InspectorLayout::SectionHeader header;
+        header.name = component.GetInspectorName();
+        header.origin = isScript ? InspectorLayout::Origin::Script : InspectorLayout::Origin::Native;
+        header.enabled = &enabled;
+        header.tag = isScript ? tag.c_str() : nullptr;
+        header.menuId = kComponentMenuId;
+        const bool open = InspectorLayout::DrawSectionHeader(header, enabledChanged);
+        if (enabledChanged) {
+            component.SetEnabled(enabled);
+            changed = true;
         }
-        return false;
+
+        // 記述子を持つ型は、中身を描くのと既定値へ戻すのに同じ文脈を使う
+        const Reflection::TypeDescriptor* descriptor = component.GetTypeDescriptor();
+        const bool reflected = descriptor && InspectorRenderer::IsEnabled();
+        InspectorRenderer::DrawContext context;
+        json prefabParameters;
+        if (reflected) {
+            IComponent* const raw = &component;
+            context.label = std::string(GetName()) + " の " + raw->GetInspectorName();
+            context.owner = raw;
+            context.objects = objectManager_;
+            context.onChanged = [raw](const Reflection::PropertyDescriptor& property) {
+                raw->OnPropertyChanged(property);
+                };
+            context.defaultParameters = factory.GetDefaultParameters(typeName);
+
+            // プレハブから作ったオブジェクトは、プレハブでのこのコンポーネントの値と見比べる
+            if (IsPrefabInstance()) {
+                const json* prefabComponents = PrefabSystem::LoadComponents(GetPrefab().GetValue());
+                const std::optional<std::size_t> prefabIndex = prefabComponents
+                    ? PrefabSystem::FindComponentIndex(*prefabComponents, *this, *raw) : std::nullopt;
+                if (prefabIndex) {
+                    const json& entry = (*prefabComponents)[*prefabIndex];
+                    prefabParameters = (entry.contains("parameters") && entry.at("parameters").is_object())
+                        ? entry.at("parameters") : json::object();
+                    context.prefabParameters = &prefabParameters;
+                    if (objectManager_) {
+                        context.applyToPrefab = [this, raw](const Reflection::PropertyDescriptor& property) {
+                            PrefabEditing::ApplyProperty(*objectManager_, *this, *raw, property);
+                            };
+                    }
+                }
+            }
+        }
+
+        // ⋮ と右クリックのメニュー
+        if (ImGui::BeginPopup(kComponentMenuId)) {
+            ImGui::TextDisabled("%s", typeName.c_str());
+            ImGui::Separator();
+            if (ImGui::MenuItem("既定値へ戻す", nullptr, false, reflected && context.defaultParameters)) {
+                changed = InspectorRenderer::ResetToDefaults(*descriptor, component.GetReflectionInstance(), context)
+                    || changed;
+            }
+            if (isScript && ImGui::MenuItem("スクリプトを開く", nullptr, false, !sourceFile.empty())) {
+                Editor::OpenInCodeEditor(sourceFile);
+            }
+            ImGui::Separator();
+            std::string reason;
+            const bool removable = ComponentEditing::CanRemove(*this, component, &reason);
+            if (ImGui::MenuItem("外す", nullptr, false, removable)) {
+                removeRequest = &component;
+            }
+            if (!removable && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                ImGui::SetTooltip("%s", reason.c_str());
+            }
+            ImGui::EndPopup();
+        }
+
+        if (open) {
+            // DrawInspector() の戻り値は「値が変わったか」であって
+            // 「何か描いたか」ではない。中身の有無はカーソルが進んだかで見る
+            const float cursorBefore = ImGui::GetCursorPosY();
+
+            // 記述子を持つ型はそこから自動生成し、無ければ従来の手書きへ落ちる
+            if (reflected) {
+                IComponent* const raw = &component;
+                changed |= InspectorRenderer::Draw(*descriptor, raw->GetReflectionInstance(), context);
+                // 記述子に一部だけを載せた型は、残りを手書きの UI で描く
+                if (descriptor->partial) {
+                    changed |= raw->DrawInspector();
+                }
+                raw->DrawInspectorExtra();
+            } else {
+                changed |= component.DrawInspector();
+            }
+
+            if (ImGui::GetCursorPosY() <= cursorBefore) {
+                UI::Hint("編集できる項目はありません");
+            }
+
+            if (isScript) {
+                InspectorLayout::AlignToRight(UI::Bar::ButtonWidth(kOpenScriptLabel));
+                const bool canOpen = !sourceFile.empty();
+                if (UI::Bar::Button(kOpenScriptLabel, false,
+                        canOpen ? "VS Code で開く" : "スクリプトのファイルが分かりません", canOpen)) {
+                    Editor::OpenInCodeEditor(sourceFile);
+                }
+            }
+            ImGui::Spacing();
+        }
+
+        ImGui::PopID();
+        return changed;
     }
 
     bool GameObject::DrawImGui() {
         bool changed = false;
         ImGui::PushID(this);
 
-        // ── 名前フィールド（アイコン付き） ───────────────────────
-        {
-            static D3D12_GPU_DESCRIPTOR_HANDLE sNameIconHandle{};
-            static bool sNameIconLoaded = false;
-            if (!sNameIconLoaded && TextureManager::GetInstance().IsInitialized()) {
-                sNameIconHandle = TextureManager::GetInstance().Load("obj.png").gpuHandle;
-                sNameIconLoaded = true;
+        changed |= DrawInspectorHeader();
+        ImGui::Spacing();
+
+        // オブジェクト固有のセクション
+        const std::span<const char* const> sections = GetInspectorSections();
+        for (std::size_t i = 0; i < sections.size(); ++i) {
+            ImGui::PushID(static_cast<int>(i));
+            bool unusedEnabledChanged = false;
+            InspectorLayout::SectionHeader header;
+            header.name = sections[i];
+            if (InspectorLayout::DrawSectionHeader(header, unusedEnabledChanged)) {
+                changed |= DrawInspectorSection(static_cast<int>(i));
+                ImGui::Spacing();
             }
-            if (sNameIconLoaded) {
-                ImGui::AlignTextToFramePadding();
-                ImGui::ImageWithBg((ImTextureID)sNameIconHandle.ptr, ImVec2(16, 16),
-                    ImVec2(0, 0), ImVec2(1, 1),
-                    ImVec4(0, 0, 0, 0),
-                    ImVec4(0.96f, 0.65f, 0.14f, 1.0f));
-                ImGui::SameLine(0.0f, 4.0f);
-            }
-            char nameBuf[128];
-            const char* displayText = name_.empty() ? serializeKey_.c_str() : name_.c_str();
-            snprintf(nameBuf, sizeof(nameBuf), "%s", displayText);
-            ImGui::SetNextItemWidth(-FLT_MIN);
-            if (ImGui::InputText("##objName", nameBuf, sizeof(nameBuf))) {
-                name_ = nameBuf;
-                changed = true;
-            }
+            ImGui::PopID();
         }
 
-        // ── Active トグル ────────────────────────────────────────
-        bool prevActive = isActive_;
-        if (UI::Widgets::ToggleSwitch("Active", &isActive_)) {
+        // コンポーネントのセクション（外すのは全部を描き終えてから行う）
+        IComponent* removeRequest = nullptr;
+        for (const auto& component : GetAllComponents()) {
+            if (component) {
+                changed |= DrawComponentSection(*component, removeRequest);
+            }
+        }
+        if (removeRequest && ComponentEditing::Remove(*this, *removeRequest)) {
             changed = true;
-            OnImGuiActiveChanged(prevActive);
         }
 
-        // ── コンポーネント追加（同じ行の右端） ──────────────────
-        UI::SameLine();
-        IComponent* addedComponent = nullptr;
+        // コンポーネント追加（右寄せ）
+        ImGui::Spacing();
         if (const std::string addType = ComponentEditing::DrawAddButton(*this); !addType.empty()) {
-            addedComponent = ComponentEditing::Add(*this, addType);
-            changed |= addedComponent != nullptr;
-        }
-        UI::Separator();
-
-        // ── タブ判定 ─────────────────────────────────────────────
-        // オブジェクト側のタブを受ける枠。GetInspectorTabs は固定長で書き込むので
-        // 一度 kMaxObjectTabs で受けてから実数へ詰める
-        std::vector<InspectorTabDef> tabs(kMaxObjectTabs);
-        const int objectTabCount = GetInspectorTabs(tabs.data(), kMaxObjectTabs);
-        tabs.resize(static_cast<size_t>(objectTabCount));
-        AppendComponentTabs(tabs);
-        const int tabCount = static_cast<int>(tabs.size());
-
-        // 足したコンポーネントのタブを開く
-        if (addedComponent) {
-            if (const std::optional<size_t> position = FindComponentPosition(addedComponent)) {
-                inspectorTab_ = objectTabCount + static_cast<int>(*position);
-            }
+            changed |= ComponentEditing::Add(*this, addType) != nullptr;
         }
 
-        // 前回選んでいたタブがコンポーネントの増減で範囲外になることがある
-        if (inspectorTab_ >= tabCount) { inspectorTab_ = 0; }
-
-        if (tabCount > 0) {
-            // タブアイコンのロード（TextureManager がキャッシュするため毎フレーム安全）
-            std::vector<D3D12_GPU_DESCRIPTOR_HANDLE> iconHandles(static_cast<size_t>(tabCount), D3D12_GPU_DESCRIPTOR_HANDLE{});
-            auto& texMgr = TextureManager::GetInstance();
-            if (texMgr.IsInitialized()) {
-                for (int i = 0; i < tabCount; ++i) {
-                    if (tabs[i].iconPath && tabs[i].iconPath[0] != '\0') {
-                        iconHandles[i] = texMgr.Load(tabs[i].iconPath).gpuHandle;
-                    }
-                }
-            }
-
-            constexpr float kStripW   = 28.0f;
-            constexpr float kIconSize = 16.0f;
-            constexpr float kBtnPad   = 4.0f;
-
-            // ── 左側タブストリップ ───────────────────────────────
-            {
-                ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.10f, 0.10f, 0.10f, 1.0f));
-                ImGui::PushStyleColor(ImGuiCol_Border,  ImVec4(0.04f, 0.04f, 0.04f, 1.0f));
-                ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(3.0f, 4.0f));
-                ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0.0f);
-
-                UI::Scope::ChildScope tabStrip("##PropTabs", ImVec2(kStripW, 0.0f),
-                    ImGuiChildFlags_Border,
-                    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
-
-                ImGui::PopStyleVar(2);
-                ImGui::PopStyleColor(2);
-
-                for (int i = 0; i < tabCount; ++i) {
-                    const bool sel = (inspectorTab_ == i);
-                    const ImVec4 tint(tabs[i].tint[0], tabs[i].tint[1], tabs[i].tint[2], tabs[i].tint[3]);
-                    const ImVec4 selBg(tabs[i].selectedBg[0], tabs[i].selectedBg[1], tabs[i].selectedBg[2], tabs[i].selectedBg[3]);
-
-                    ImGui::PushStyleColor(ImGuiCol_Button, sel ? selBg : ImVec4(0, 0, 0, 0));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1, 1, 1, 0.10f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonActive,  ImVec4(1, 1, 1, 0.18f));
-                    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(kBtnPad, kBtnPad));
-
-                    char btnId[32];
-                    snprintf(btnId, sizeof(btnId), "##proptab%d", i);
-                    if (ImGui::ImageButton(btnId, (ImTextureID)iconHandles[i].ptr,
-                        ImVec2(kIconSize, kIconSize),
-                        ImVec2(0, 0), ImVec2(1, 1),
-                        ImVec4(0, 0, 0, 0), tint))
-                    {
-                        inspectorTab_ = i;
-                    }
-
-                    ImGui::PopStyleVar();
-                    ImGui::PopStyleColor(3);
-
-                    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort)) {
-                        ImGui::SetTooltip("%s", tabs[i].tooltip);
-                    }
-                }
-            }
-
-            ImGui::SameLine(0.0f, 2.0f);
-
-            // ── 右コンテンツエリア ───────────────────────────────
-            IComponent* removeRequest = nullptr;
-            {
-                UI::Scope::ChildScope content("##PropContent", ImVec2(0.0f, 0.0f));
-                if (inspectorTab_ >= 0 && inspectorTab_ < tabCount) {
-                    changed |= inspectorTab_ < objectTabCount
-                        ? DrawInspectorTabContent(inspectorTab_)
-                        : DrawComponentTabContent(inspectorTab_ - objectTabCount, removeRequest);
-                }
-            }
-
-            // 外すのはタブの中身を描き終えてから行う
-            if (removeRequest && ComponentEditing::Remove(*this, *removeRequest)) {
-                changed = true;
-            }
-        } else {
-            // タブもコンポーネントも無い: フォールバック
-            changed |= DrawImGuiExtended();
-        }
-
-        DrawSaveButton();
         ImGui::PopID();
         return changed;
-    }
-
-    void GameObject::DrawSaveButton() {
-        if (!shouldSerialize_ || serializeKey_.empty()) return;
-
-        UI::Separator();
-        if (ImGui::Button("Save Object##save_single")) {
-            if (onSaveRequested_) {
-                onSaveRequested_(this);
-            }
-        }
-        UI::SameLine();
-        UI::Hint("このオブジェクトのみ保存");
     }
 #endif // USE_IMGUI
 

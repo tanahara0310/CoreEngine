@@ -3,8 +3,11 @@
 
 #ifdef USE_IMGUI
 
+#include "Editor/Command/EditorCommand.h"
 #include "Editor/Command/EditorCommandStack.h"
+#include "Editor/ImGui/EditorTheme.h"
 #include "Editor/ImGui/ImGuiAll.h"
+#include "Editor/Inspector/InspectorLayout.h"
 #include "GameObject/Component/Core/ObjectRef.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/GameObjectManager.h"
@@ -19,6 +22,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
+#include <format>
 #include <memory>
 #include <string_view>
 #include <utility>
@@ -28,6 +32,11 @@ namespace CoreEngine
 {
     namespace
     {
+        namespace Theme = Editor::Theme;
+
+        /// 1 つのプロパティの右クリックのメニュー
+        constexpr const char* kPropertyMenuId = "##propertyMenu";
+
         /// @brief 記述子経由で編集した 1 プロパティを元に戻すコマンド
         class PropertyEditCommand final : public Editor::IEditorCommand
         {
@@ -93,66 +102,154 @@ namespace CoreEngine
             return fallback;
         }
 
-        /// @brief 編集不可のプロパティを沈んだ表示で描く
-        void DrawReadOnly(const Reflection::PropertyDescriptor& p, const void* value)
+        /// @brief 範囲の決まった数値の欄を、値の位置まで塗った下地の上に描く
+        /// @param fraction 範囲の中での値の位置（0〜1 の外は端に丸める）
+        /// @param drawField 欄を描いて、値が変わったら true を返す関数
+        template <class DrawField>
+        bool DrawWithFill(float fraction, DrawField&& drawField)
+        {
+            const ImVec2 min = ImGui::GetCursorScreenPos();
+            const ImVec2 max(min.x + ImGui::CalcItemWidth(), min.y + ImGui::GetFrameHeight());
+            const float rounding = ImGui::GetStyle().FrameRounding;
+            ImDrawList* const drawList = ImGui::GetWindowDrawList();
+            drawList->AddRectFilled(min, max, ImGui::GetColorU32(ImGuiCol_FrameBg), rounding);
+            const float filled = min.x + (max.x - min.x) * std::clamp(fraction, 0.0f, 1.0f);
+            if (filled > min.x) {
+                drawList->AddRectFilled(min, ImVec2(filled, max.y), ImGui::GetColorU32(Theme::kAccentMuted), rounding);
+            }
+
+            ImGui::PushStyleColor(ImGuiCol_FrameBg, Theme::kTransparent);
+            ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, Theme::WithAlpha(Theme::kHover, 0.35f));
+            ImGui::PushStyleColor(ImGuiCol_FrameBgActive, Theme::WithAlpha(Theme::kActive, 0.35f));
+            const bool changed = drawField();
+            ImGui::PopStyleColor(3);
+            return changed;
+        }
+
+        /// @brief ベクトルの欄（成分ごとの欄に、軸の文字を添えて並べる）
+        bool DragVector(const char* id, float* values, int count, float speed, float min, float max)
+        {
+            static constexpr const char* kAxes[] = { "X", "Y", "Z", "W" };
+            const ImGuiStyle& style = ImGui::GetStyle();
+            const float spacing = style.ItemInnerSpacing.x;
+            const float fieldWidth = (std::max)(1.0f,
+                (ImGui::CalcItemWidth() - spacing * static_cast<float>(count - 1)) / static_cast<float>(count));
+
+            bool changed = false;
+            ImGui::PushID(id);
+            ImGui::BeginGroup();
+            for (int i = 0; i < count; ++i) {
+                ImGui::PushID(i);
+                if (i > 0) {
+                    ImGui::SameLine(0.0f, spacing);
+                }
+                const ImVec2 fieldMin = ImGui::GetCursorScreenPos();
+                ImGui::SetNextItemWidth(fieldWidth);
+                changed = ImGui::DragFloat("##axis", &values[i], speed, min, max, "%.3f") || changed;
+                ImGui::GetWindowDrawList()->AddText(
+                    ImVec2(fieldMin.x + style.FramePadding.x * 0.6f, fieldMin.y + style.FramePadding.y),
+                    ImGui::GetColorU32(Theme::kTextMute), kAxes[i]);
+                ImGui::PopID();
+            }
+            ImGui::EndGroup();
+            ImGui::PopID();
+            return changed;
+        }
+
+        /// @brief 色の欄（幅いっぱいのスウォッチを押すとピッカーが開く）
+        /// @note ピッカーを同じグループの中で描くので、ピッカーを掴んだ・離したが呼ぶ側の直前の項目として見える。
+        bool DrawColorSwatch(const char* id, float* rgba)
+        {
+            constexpr const char* kPickerId = "##colorPicker";
+            const ImVec2 size((std::max)(1.0f, ImGui::CalcItemWidth()), ImGui::GetFrameHeight());
+
+            bool changed = false;
+            ImGui::PushID(id);
+            ImGui::BeginGroup();
+            const ImVec4 color(rgba[0], rgba[1], rgba[2], rgba[3]);
+            if (ImGui::ColorButton("##swatch", color, ImGuiColorEditFlags_AlphaPreviewHalf, size)) {
+                ImGui::OpenPopup(kPickerId);
+            }
+            if (ImGui::BeginPopup(kPickerId)) {
+                changed = ImGui::ColorPicker4("##picker", rgba,
+                    ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreviewHalf);
+                ImGui::EndPopup();
+            }
+            ImGui::EndGroup();
+            ImGui::PopID();
+            return changed;
+        }
+
+        /// @brief 値を表示用の文字列にする（編集できない欄に使う）
+        std::string FormatValue(const Reflection::PropertyDescriptor& p, const void* value)
         {
             using Reflection::PropertyType;
             switch (p.type) {
             case PropertyType::Bool:
-                ImGui::TextDisabled("%s: %s", p.displayName,
-                    *static_cast<const bool*>(value) ? "true" : "false");
-                break;
+                return *static_cast<const bool*>(value) ? "true" : "false";
             case PropertyType::Int:
-                ImGui::TextDisabled("%s: %d", p.displayName, *static_cast<const int*>(value));
-                break;
+                return std::to_string(*static_cast<const int*>(value));
             case PropertyType::Float:
-                ImGui::TextDisabled("%s: %.3f", p.displayName, *static_cast<const float*>(value));
-                break;
+                return std::format("{:.3f}", *static_cast<const float*>(value));
             case PropertyType::Vector2: {
                 const auto& v = *static_cast<const Vector2*>(value);
-                ImGui::TextDisabled("%s: %.3f, %.3f", p.displayName, v.x, v.y);
-                break;
+                return std::format("{:.3f}, {:.3f}", v.x, v.y);
             }
             case PropertyType::Vector3: {
                 const auto& v = *static_cast<const Vector3*>(value);
-                ImGui::TextDisabled("%s: %.3f, %.3f, %.3f", p.displayName, v.x, v.y, v.z);
-                break;
+                return std::format("{:.3f}, {:.3f}, {:.3f}", v.x, v.y, v.z);
             }
             case PropertyType::Vector4:
             case PropertyType::Color: {
                 const auto& v = *static_cast<const Vector4*>(value);
-                ImGui::TextDisabled("%s: %.3f, %.3f, %.3f, %.3f", p.displayName, v.x, v.y, v.z, v.w);
-                break;
+                return std::format("{:.3f}, {:.3f}, {:.3f}, {:.3f}", v.x, v.y, v.z, v.w);
             }
             case PropertyType::String:
-                ImGui::TextDisabled("%s: %s", p.displayName,
-                    static_cast<const std::string*>(value)->c_str());
-                break;
+                return *static_cast<const std::string*>(value);
             case PropertyType::ObjectRef: {
                 const auto& ref = *static_cast<const Reflection::ObjectRefValue*>(value);
-                ImGui::TextDisabled("%s: %s", p.displayName,
-                    ref.objectId.IsValid() ? ref.objectId.ToString().c_str() : "（なし）");
-                break;
+                return ref.objectId.IsValid() ? "◆ #" + ref.objectId.ToString() : std::string("（なし）");
             }
             case PropertyType::AssetRef: {
                 const auto& ref = *static_cast<const Reflection::AssetRefValue*>(value);
-                ImGui::TextDisabled("%s: %s", p.displayName,
-                    ref.path.empty() ? "（なし）" : ref.path.c_str());
-                break;
+                return ref.path.empty() ? std::string("（なし）") : ref.path;
             }
             case PropertyType::Array:
-                ImGui::TextDisabled("%s: %d 個", p.displayName,
-                    static_cast<int>(static_cast<const Reflection::ArrayValue*>(value)->elements.size()));
-                break;
+                return std::format("{} 個", static_cast<const Reflection::ArrayValue*>(value)->elements.size());
             }
+            return {};
+        }
+
+        /// @brief 編集できないプロパティを、沈んだ欄に淡い文字で描く
+        /// @return 行にカーソルが乗っていれば true
+        bool DrawReadOnly(const Reflection::PropertyDescriptor& p, const void* value)
+        {
+            bool hovered = InspectorLayout::BeginRow(p.displayName, Theme::kTextDim);
+
+            const ImVec2 min = ImGui::GetCursorScreenPos();
+            const ImVec2 size((std::max)(1.0f, ImGui::CalcItemWidth()), ImGui::GetFrameHeight());
+            const ImVec2 max(min.x + size.x, min.y + size.y);
+            ImDrawList* const drawList = ImGui::GetWindowDrawList();
+            drawList->AddRectFilled(min, max, ImGui::GetColorU32(Theme::kDeepest), ImGui::GetStyle().FrameRounding);
+
+            const std::string text = FormatValue(p, value);
+            const ImVec2 padding = ImGui::GetStyle().FramePadding;
+            drawList->PushClipRect(min, max, true);
+            drawList->AddText(ImVec2(min.x + padding.x, min.y + padding.y),
+                ImGui::GetColorU32(Theme::kTextMute), text.c_str());
+            drawList->PopClipRect();
+
+            ImGui::Dummy(size);
+            hovered = ImGui::IsItemHovered() || hovered;
+            return hovered;
         }
 
         /// @brief 型に応じたウィジェットを 1 つ描く
-        /// @param ownContextMenu 右クリックのメニューをこちらで出すか（色の編集欄の既定メニューを止める）
         bool DrawValueWidget(Reflection::PropertyType type, const char* label, const Reflection::PropertyRange& r,
-                             void* value, bool ownContextMenu)
+                             void* value)
         {
             using Reflection::PropertyType;
+            const bool ranged = r.valid && r.max > r.min;
             const float min = r.valid ? r.min : 0.0f;
             const float max = r.valid ? r.max : 0.0f;
 
@@ -160,26 +257,31 @@ namespace CoreEngine
             case PropertyType::Bool:
                 return ImGui::Checkbox(label, static_cast<bool*>(value));
             case PropertyType::Int: {
+                auto* const number = static_cast<int*>(value);
                 const int iMin = r.valid ? static_cast<int>(r.min) : 0;
                 const int iMax = r.valid ? static_cast<int>(r.max) : 0;
-                return ImGui::DragInt(label, static_cast<int*>(value),
-                    ResolveSpeed(r, 1.0f), iMin, iMax);
+                const auto drawField = [&] {
+                    return ImGui::DragInt(label, number, ResolveSpeed(r, 1.0f), iMin, iMax);
+                };
+                return ranged
+                    ? DrawWithFill((static_cast<float>(*number) - r.min) / (r.max - r.min), drawField)
+                    : drawField();
             }
-            case PropertyType::Float:
-                return ImGui::DragFloat(label, static_cast<float*>(value),
-                    ResolveSpeed(r, 0.01f), min, max);
+            case PropertyType::Float: {
+                auto* const number = static_cast<float*>(value);
+                const auto drawField = [&] {
+                    return ImGui::DragFloat(label, number, ResolveSpeed(r, 0.01f), min, max);
+                };
+                return ranged ? DrawWithFill((*number - r.min) / (r.max - r.min), drawField) : drawField();
+            }
             case PropertyType::Vector2:
-                return ImGui::DragFloat2(label, &static_cast<Vector2*>(value)->x,
-                    ResolveSpeed(r, 0.01f), min, max);
+                return DragVector(label, &static_cast<Vector2*>(value)->x, 2, ResolveSpeed(r, 0.01f), min, max);
             case PropertyType::Vector3:
-                return ImGui::DragFloat3(label, &static_cast<Vector3*>(value)->x,
-                    ResolveSpeed(r, 0.01f), min, max);
+                return DragVector(label, &static_cast<Vector3*>(value)->x, 3, ResolveSpeed(r, 0.01f), min, max);
             case PropertyType::Vector4:
-                return ImGui::DragFloat4(label, &static_cast<Vector4*>(value)->x,
-                    ResolveSpeed(r, 0.01f), min, max);
+                return DragVector(label, &static_cast<Vector4*>(value)->x, 4, ResolveSpeed(r, 0.01f), min, max);
             case PropertyType::Color:
-                return ImGui::ColorEdit4(label, &static_cast<Vector4*>(value)->x,
-                    ownContextMenu ? ImGuiColorEditFlags_NoOptions : 0);
+                return DrawColorSwatch(label, &static_cast<Vector4*>(value)->x);
             case PropertyType::String: {
                 auto* text = static_cast<std::string*>(value);
                 char buffer[256]{};
@@ -199,25 +301,25 @@ namespace CoreEngine
             return false;
         }
 
-        /// @brief プロパティの型に応じたウィジェットを描く
-        /// @param ownContextMenu 右クリックのメニューをこちらで出すか（色の編集欄の既定メニューを止める）
-        bool DrawWidget(const Reflection::PropertyDescriptor& p, void* value, bool ownContextMenu)
-        {
-            return DrawValueWidget(p.type, p.displayName, p.range, value, ownContextMenu);
-        }
-
         /// @brief 配列の欄を描く（要素ごとの欄と、消す・並べ替える・足すボタン）
+        /// @param labelColor 見出しの文字の色
         /// @param structureChanged 要素を足す・消す・並べ替えたら true にする
         /// @return 要素の値か並びが変わったら true
         bool DrawArray(const Reflection::PropertyDescriptor& p, Reflection::ArrayValue& array,
-                       bool ownContextMenu, bool& structureChanged)
+                       const ImVec4& labelColor, bool& structureChanged)
         {
             std::vector<Reflection::ArrayValue::Element>& elements = array.elements;
-            const bool open = ImGui::TreeNodeEx("##array", ImGuiTreeNodeFlags_SpanAvailWidth, "%s（%d 個）",
-                p.displayName, static_cast<int>(elements.size()));
+            ImGui::PushStyleColor(ImGuiCol_Text, labelColor);
+            const bool open = ImGui::TreeNodeEx("##array",
+                ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_NoTreePushOnOpen,
+                "%s（%d 個）", p.displayName, static_cast<int>(elements.size()));
+            ImGui::PopStyleColor();
+            // 見出しを右クリックしてもプロパティのメニューを開く（ID をずらさないよう、字下げの前に行う）
+            ImGui::OpenPopupOnItemClick(kPropertyMenuId, ImGuiPopupFlags_MouseButtonRight);
             if (!open) {
                 return false;
             }
+            ImGui::TreePush("##array");
 
             bool edited = false;
             const size_t count = elements.size();
@@ -245,7 +347,7 @@ namespace CoreEngine
                 if (void* const data = Reflection::ArrayElementData(p.elementType, elements[i])) {
                     ImGui::SameLine();
                     ImGui::SetNextItemWidth(-FLT_MIN);
-                    edited = DrawValueWidget(p.elementType, "##value", p.range, data, ownContextMenu) || edited;
+                    edited = DrawValueWidget(p.elementType, "##value", p.range, data) || edited;
                 }
                 ImGui::PopID();
             }
@@ -283,6 +385,24 @@ namespace CoreEngine
             return true;
         }
 
+        /// @brief コンボの枠の範囲（矢印を除く）を、描く前に控える
+        struct ComboPreviewArea
+        {
+            ImDrawList* drawList = nullptr;
+            ImVec2 min;
+            ImVec2 max;
+        };
+
+        ComboPreviewArea CaptureComboPreviewArea()
+        {
+            ComboPreviewArea area;
+            area.drawList = ImGui::GetWindowDrawList();
+            area.min = ImGui::GetCursorScreenPos();
+            const float height = ImGui::GetFrameHeight();
+            area.max = ImVec2(area.min.x + ImGui::CalcItemWidth() - height, area.min.y + height);
+            return area;
+        }
+
         /// @brief ObjectRef の繋ぎ先を選ぶ欄を描く（候補の一覧と Hierarchy からのドロップ）
         /// @return 繋ぎ先が変わったら true
         bool DrawObjectRef(const Reflection::PropertyDescriptor& p, Reflection::ObjectRefValue& ref,
@@ -293,20 +413,22 @@ namespace CoreEngine
             const bool missing = ref.objectId.IsValid() &&
                 (!target || !FindReferencedComponent(*target, p, ref.componentType));
 
-            std::string preview = "（なし）";
+            std::string name = "（なし）";
+            std::string idText;
+            const char* icon = nullptr;
             if (missing) {
-                preview = "（見つかりません " + ref.objectId.ToString() + "）";
+                name = "（見つかりません " + ref.objectId.ToString() + "）";
             } else if (target) {
-                preview = target->GetDisplayName();
+                name = target->GetDisplayName();
+                idText = "#" + InspectorLayout::ShortId(ref.objectId.ToString(), 4);
+                icon = "◆";
             }
 
-            if (missing) {
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.4f, 0.4f, 1.0f));
-            }
-            const bool open = ImGui::BeginCombo(p.displayName, preview.c_str());
-            if (missing) {
-                ImGui::PopStyleColor();
-            }
+            // 中身は枠の上に重ねて描く。開くとポップアップが今の窓になるので、描く先を先に控える
+            const ComboPreviewArea area = CaptureComboPreviewArea();
+            const bool open = ImGui::BeginCombo("##value", "");
+            InspectorLayout::DrawReferencePreview(area.drawList, area.min, area.max,
+                icon, name.c_str(), idText.c_str(), missing);
 
             bool edited = false;
             if (!open) {
@@ -403,22 +525,24 @@ namespace CoreEngine
             const bool isSet = !ref.guid.empty() || !ref.path.empty();
             const bool invalid = isSet && (!target || target->type != p.assetType);
 
-            std::string preview = "（なし）";
+            std::string name = "（なし）";
+            std::string idText;
+            const char* icon = nullptr;
             if (isSet && !target) {
-                preview = "（見つかりません " + (ref.path.empty() ? ref.guid : ref.path) + "）";
+                name = "（見つかりません " + (ref.path.empty() ? ref.guid : ref.path) + "）";
             } else if (invalid) {
-                preview = "（種類が違います " + target->fileName + "）";
+                name = "（種類が違います " + target->fileName + "）";
             } else if (target) {
-                preview = target->fileName;
+                name = target->fileName;
+                idText = InspectorLayout::ShortId(ref.guid);
+                icon = InspectorLayout::AssetGlyph(target->type);
             }
 
-            if (invalid) {
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.4f, 0.4f, 1.0f));
-            }
-            const bool open = ImGui::BeginCombo(p.displayName, preview.c_str());
-            if (invalid) {
-                ImGui::PopStyleColor();
-            }
+            // 中身は枠の上に重ねて描く。開くとポップアップが今の窓になるので、描く先を先に控える
+            const ComboPreviewArea area = CaptureComboPreviewArea();
+            const bool open = ImGui::BeginCombo("##value", "");
+            InspectorLayout::DrawReferencePreview(area.drawList, area.min, area.max,
+                icon, name.c_str(), idText.c_str(), invalid);
 
             bool edited = false;
             if (!open) {
@@ -479,67 +603,145 @@ namespace CoreEngine
             return edited;
         }
 
-        /// @brief 直前の項目について、プレハブと違う値なら左に線を引き、右クリックでプレハブのメニューを出す
-        /// @return プレハブの値に戻したら true
-        bool DrawPrefabOverride(const Reflection::PropertyDescriptor& p, void* instance,
-                                const InspectorRenderer::DrawContext& context, const std::string& ownerLabel)
+        /// @brief 1 つのプロパティの、既定値とプレハブとの見比べ
+        struct PropertyState
         {
-            if (!context.prefabParameters || !p.IsSaved()) {
+            const json* defaultValue = nullptr; ///< 新しく作ったときの値（分からなければ nullptr）
+            bool modified = false;              ///< 既定値と違うか
+            const json* prefabValue = nullptr;  ///< プレハブでの値（プレハブに無ければ nullptr）
+            bool overridden = false;            ///< プレハブと違うか
+        };
+
+        /// @brief 今の値を既定値・プレハブの値と見比べる
+        PropertyState InspectState(const Reflection::PropertyDescriptor& p, const void* instance,
+                                   const InspectorRenderer::DrawContext& context)
+        {
+            PropertyState state;
+            if (!p.IsSaved() || (!context.defaultParameters && !context.prefabParameters)) {
+                return state;
+            }
+            const json current = Reflection::PropertySerializer::PropertyToJson(p, instance);
+
+            if (context.defaultParameters) {
+                const auto found = context.defaultParameters->find(p.name);
+                if (found != context.defaultParameters->end()) {
+                    state.defaultValue = &*found;
+                    state.modified = !PrefabSystem::SameValue(*found, current);
+                }
+            }
+            if (context.prefabParameters) {
+                const auto found = context.prefabParameters->find(p.name);
+                if (found != context.prefabParameters->end()) {
+                    state.prefabValue = &*found;
+                    state.overridden = !PrefabSystem::SameValue(*found, current);
+                } else {
+                    state.overridden = true;
+                }
+            }
+            return state;
+        }
+
+        /// @brief ラベルの色（既定値から変えていれば橙）
+        const ImVec4& LabelColorOf(const PropertyState& state)
+        {
+            return state.modified ? Theme::kWarm : Theme::kTextDim;
+        }
+
+        /// @brief プレハブと違う値の行の左端（窓の余白）に線を引く
+        void DrawOverrideMark(const PropertyState& state, const ImVec2& rowStart)
+        {
+            if (!state.overridden) {
+                return;
+            }
+            ImGui::GetWindowDrawList()->AddRectFilled(
+                ImVec2(rowStart.x - 4.0f, rowStart.y), ImVec2(rowStart.x - 1.0f, ImGui::GetItemRectMax().y),
+                ImGui::GetColorU32(Theme::kAccent));
+        }
+
+        /// @brief 保存形の値をプロパティへ書き込み、元に戻すコマンドを作る
+        /// @return 書き込めなければ nullptr
+        std::unique_ptr<Editor::IEditorCommand> AssignFromJson(const Reflection::PropertyDescriptor& p,
+            void* instance, const json& node, const InspectorRenderer::DrawContext& context, std::string label)
+        {
+            Reflection::PropertyValue before;
+            before.LoadFrom(p, instance);
+            if (!Reflection::PropertySerializer::JsonToProperty(p, instance, node)) {
+                return nullptr;
+            }
+            if (context.onChanged) { context.onChanged(p); }
+            return std::make_unique<PropertyEditCommand>(std::move(label), context.owner, instance, &p,
+                std::move(before), context.onChanged);
+        }
+
+        /// @brief 値を書き込み、書き込めたら履歴へ積む
+        /// @return 書き込めたら true
+        bool AssignAndPush(const Reflection::PropertyDescriptor& p, void* instance, const json& node,
+                           const InspectorRenderer::DrawContext& context, std::string label)
+        {
+            std::unique_ptr<Editor::IEditorCommand> command = AssignFromJson(p, instance, node, context, std::move(label));
+            if (!command) {
+                return false;
+            }
+            Editor::EditorCommandStack::Get().Push(std::move(command));
+            return true;
+        }
+
+        /// @brief プロパティの右クリックのメニュー（既定値へ戻す・プレハブの値に戻す・プレハブへ適用）
+        /// @return 値を書き換えたら true
+        bool DrawPropertyMenu(const Reflection::PropertyDescriptor& p, void* instance, const PropertyState& state,
+                              const InspectorRenderer::DrawContext& context, const std::string& ownerLabel)
+        {
+            if (!ImGui::BeginPopup(kPropertyMenuId)) {
                 return false;
             }
 
-            const json current = Reflection::PropertySerializer::PropertyToJson(p, instance);
-            const auto base = context.prefabParameters->find(p.name);
-            const bool hasBase = base != context.prefabParameters->end();
-            const bool overridden = !hasBase || !PrefabSystem::SameValue(*base, current);
+            bool changed = false;
+            ImGui::TextDisabled("%s", p.displayName);
+            ImGui::Separator();
 
-            if (overridden) {
-                const ImVec2 min = ImGui::GetItemRectMin();
-                const ImVec2 max = ImGui::GetItemRectMax();
-                ImGui::GetWindowDrawList()->AddRectFilled(
-                    ImVec2(min.x, min.y), ImVec2(min.x + 3.0f, max.y),
-                    ImGui::GetColorU32(ImGuiCol_CheckMark));
+            if (ImGui::MenuItem("既定値へ戻す", nullptr, false, state.modified && state.defaultValue)) {
+                changed = AssignAndPush(p, instance, *state.defaultValue, context,
+                    ownerLabel + " の " + p.displayName + " を既定値へ戻す");
             }
 
-            bool reverted = false;
-            if (ImGui::BeginPopupContextItem("##prefabOverride")) {
-                if (ImGui::MenuItem("プレハブの値に戻す", nullptr, false, overridden && hasBase)) {
-                    Reflection::PropertyValue before;
-                    before.LoadFrom(p, instance);
-                    if (Reflection::PropertySerializer::JsonToProperty(p, instance, *base)) {
-                        if (context.onChanged) { context.onChanged(p); }
-                        Editor::EditorCommandStack::Get().Push(
-                            std::make_unique<PropertyEditCommand>(
-                                ownerLabel + " の " + p.displayName + " をプレハブの値に戻す",
-                                context.owner, instance, &p, std::move(before), context.onChanged));
-                        reverted = true;
-                    }
+            if (context.prefabParameters) {
+                ImGui::Separator();
+                if (ImGui::MenuItem("プレハブの値に戻す", nullptr, false, state.overridden && state.prefabValue)) {
+                    changed = AssignAndPush(p, instance, *state.prefabValue, context,
+                        ownerLabel + " の " + p.displayName + " をプレハブの値に戻す") || changed;
                 }
-                const bool canApply = overridden && context.applyToPrefab &&
+                const bool canApply = state.overridden && context.applyToPrefab &&
                     p.type != Reflection::PropertyType::ObjectRef;
                 if (ImGui::MenuItem("この値をプレハブへ適用", nullptr, false, canApply)) {
                     context.applyToPrefab(p);
                 }
-                ImGui::EndPopup();
             }
-            return reverted;
+
+            ImGui::EndPopup();
+            return changed;
         }
-    }
 
-    bool InspectorRenderer::IsEnabled()
-    {
-        return Reflection::IsEnabled();
-    }
-
-    namespace
-    {
-        /// @brief 直前の項目にカーソルが乗っていれば、プロパティの説明を出す
+        /// @brief 直前の項目か行にカーソルが乗っていれば、プロパティの説明を出す
         void ShowPropertyTooltip(const Reflection::PropertyDescriptor& p, bool hovered)
         {
             if (hovered && p.tooltip && p.tooltip[0] != '\0') {
                 ImGui::SetTooltip("%s", p.tooltip);
             }
         }
+
+        /// @brief 履歴に出す持ち主の名前
+        std::string OwnerLabelOf(const Reflection::TypeDescriptor& type, const InspectorRenderer::DrawContext& context)
+        {
+            if (!context.label.empty()) {
+                return context.label;
+            }
+            return type.displayName && type.displayName[0] ? type.displayName : type.name;
+        }
+    }
+
+    bool InspectorRenderer::IsEnabled()
+    {
+        return Reflection::IsEnabled();
     }
 
     bool InspectorRenderer::Draw(const Reflection::TypeDescriptor& type, void* instance,
@@ -549,9 +751,7 @@ namespace CoreEngine
             return false;
         }
 
-        const char* fallbackLabel = type.displayName && type.displayName[0] ? type.displayName : type.name;
-        const std::string ownerLabel = context.label.empty() ? fallbackLabel : context.label;
-        const bool ownContextMenu = context.prefabParameters != nullptr;
+        const std::string ownerLabel = OwnerLabelOf(type, context);
 
         bool changed = false;
         for (const auto& p : type.properties) {
@@ -568,11 +768,16 @@ namespace CoreEngine
                 continue;
             }
 
+            ImGui::PushID(p.name.c_str());
+            const ImVec2 rowStart = ImGui::GetCursorScreenPos();
+
             if (!p.IsEditable()) {
-                DrawReadOnly(p, value);
-                ShowPropertyTooltip(p, ImGui::IsItemHovered());
+                ShowPropertyTooltip(p, DrawReadOnly(p, value));
+                ImGui::PopID();
                 continue;
             }
+
+            const PropertyState state = InspectState(p, instance, context);
 
             // 参照（ObjectRef / AssetRef）は選んだその場で履歴へ積む
             if (p.type == Reflection::PropertyType::ObjectRef ||
@@ -580,14 +785,13 @@ namespace CoreEngine
                 Reflection::PropertyValue before;
                 before.CopyFrom(p.type, value);
 
-                ImGui::PushID(p.name.c_str());
+                const bool labelHovered = InspectorLayout::BeginRow(p.displayName, LabelColorOf(state), kPropertyMenuId);
                 const bool retargeted = (p.type == Reflection::PropertyType::ObjectRef)
                     ? DrawObjectRef(p, *static_cast<Reflection::ObjectRefValue*>(value), context.objects)
                     : DrawAssetRef(p, *static_cast<Reflection::AssetRefValue*>(value));
-                const bool hovered = ImGui::IsItemHovered();
-                changed |= DrawPrefabOverride(p, instance, context, ownerLabel);
-                ImGui::PopID();
-                ShowPropertyTooltip(p, hovered);
+                const bool hovered = ImGui::IsItemHovered() || labelHovered;
+                ImGui::OpenPopupOnItemClick(kPropertyMenuId, ImGuiPopupFlags_MouseButtonRight);
+                DrawOverrideMark(state, rowStart);
 
                 if (retargeted) {
                     current.StoreTo(p, instance);
@@ -598,6 +802,9 @@ namespace CoreEngine
                             ownerLabel + " の " + p.displayName,
                             context.owner, instance, &p, std::move(before), context.onChanged));
                 }
+                changed = DrawPropertyMenu(p, instance, state, context, ownerLabel) || changed;
+                ImGui::PopID();
+                ShowPropertyTooltip(p, hovered);
                 continue;
             }
 
@@ -607,11 +814,10 @@ namespace CoreEngine
                 Reflection::PropertyValue before;
                 before.CopyFrom(p.type, value);
 
-                ImGui::PushID(p.name.c_str());
                 ImGui::BeginGroup();
                 bool structureChanged = false;
                 const bool edited = DrawArray(p, *static_cast<Reflection::ArrayValue*>(value),
-                    ownContextMenu, structureChanged);
+                    LabelColorOf(state), structureChanged);
                 ImGui::EndGroup();
                 const bool hovered = ImGui::IsItemHovered();
 
@@ -639,7 +845,8 @@ namespace CoreEngine
                             context.owner, instance, &p, std::move(before), context.onChanged));
                     arraySnapshot.Reset();
                 }
-                changed |= DrawPrefabOverride(p, instance, context, ownerLabel);
+                DrawOverrideMark(state, rowStart);
+                changed = DrawPropertyMenu(p, instance, state, context, ownerLabel) || changed;
                 ImGui::PopID();
                 ShowPropertyTooltip(p, hovered);
                 continue;
@@ -651,9 +858,9 @@ namespace CoreEngine
             Reflection::PropertyValue before;
             before.CopyFrom(p.type, value);
 
-            ImGui::PushID(p.name.c_str());
-            const bool edited = DrawWidget(p, value, ownContextMenu);
-            const bool hovered = ImGui::IsItemHovered();
+            const bool labelHovered = InspectorLayout::BeginRow(p.displayName, LabelColorOf(state), kPropertyMenuId);
+            const bool edited = DrawValueWidget(p.type, "##value", p.range, value);
+            const bool hovered = ImGui::IsItemHovered() || labelHovered;
             if (ImGui::IsItemActivated()) {
                 editSnapshot = std::move(before);
             }
@@ -672,11 +879,45 @@ namespace CoreEngine
                 }
                 editSnapshot.Reset();
             }
-            changed |= DrawPrefabOverride(p, instance, context, ownerLabel);
+            ImGui::OpenPopupOnItemClick(kPropertyMenuId, ImGuiPopupFlags_MouseButtonRight);
+            DrawOverrideMark(state, rowStart);
+            changed = DrawPropertyMenu(p, instance, state, context, ownerLabel) || changed;
             ImGui::PopID();
             ShowPropertyTooltip(p, hovered);
         }
         return changed;
+    }
+
+    bool InspectorRenderer::ResetToDefaults(const Reflection::TypeDescriptor& type, void* instance,
+                                            const DrawContext& context)
+    {
+        if (!instance || !context.defaultParameters) {
+            return false;
+        }
+
+        const std::string ownerLabel = OwnerLabelOf(type, context);
+        auto composite = std::make_unique<Editor::CompositeCommand>(ownerLabel + " を既定値へ戻す");
+        for (const auto& p : type.properties) {
+            if (!p.IsVisible() || !p.IsValid() || !p.IsEditable()) {
+                continue;
+            }
+            const PropertyState state = InspectState(p, instance, context);
+            if (!state.modified || !state.defaultValue) {
+                continue;
+            }
+            composite->Add(AssignFromJson(p, instance, *state.defaultValue, context,
+                ownerLabel + " の " + p.displayName + " を既定値へ戻す"));
+        }
+
+        if (composite->IsEmpty()) {
+            return false;
+        }
+        if (std::unique_ptr<Editor::IEditorCommand> single = composite->ExtractSingle()) {
+            Editor::EditorCommandStack::Get().Push(std::move(single));
+        } else {
+            Editor::EditorCommandStack::Get().Push(std::move(composite));
+        }
+        return true;
     }
 }
 

@@ -86,6 +86,7 @@ namespace CoreEngine
         // これらだけを記号フォントから重ねて読む
         static const ImWchar kSymbolRanges[] = {
             0x2190, 0x21FF, // Arrows
+            0x2200, 0x22FF, // Mathematical Operators
             0x23E9, 0x23FA, // Media Control Symbols
             0x25A0, 0x25FF, // Geometric Shapes
             0x2700, 0x27BF, // Dingbats

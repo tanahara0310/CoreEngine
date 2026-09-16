@@ -86,8 +86,8 @@ namespace CoreEngine
         const UILayout& GetLayout() const { return layout_; }
 
 #ifdef USE_IMGUI
-        int  GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const override;
-        bool DrawInspectorTabContent(int tabIndex) override;
+        std::span<const char* const> GetInspectorSections() const override;
+        bool DrawInspectorSection(int index) override;
 #endif
 
         // ===== インタラクション =====

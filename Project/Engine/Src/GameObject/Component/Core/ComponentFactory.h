@@ -1,10 +1,13 @@
 #pragma once
 
 #include "IComponent.h"
+#include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Macro/UniqueName.h"
 
+#include <filesystem>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
@@ -46,11 +49,13 @@ public:
     /// @param creator 生成関数
     /// @param descriptor 型の記述子（無ければ nullptr）
     /// @param inspectorName インスペクタでの表示名
+    /// @param sourceFile 型を書いたファイル（分からなければ空）
     /// @return 同じ型名が登録済みなら、登録せずに false
     /// @note スクリプトのクラスのように、起動してから分かる型が使う。
     ///       `Prime()` の前に登録した型名が C++ の型と重なっていたら、`Prime()` が C++ の型に置き換える。
     bool RegisterRuntime(const std::string& typeName, RuntimeCreator creator,
-        const Reflection::TypeDescriptor* descriptor, const std::string& inspectorName);
+        const Reflection::TypeDescriptor* descriptor, const std::string& inspectorName,
+        std::filesystem::path sourceFile = {});
 
     /// @brief `RegisterRuntime()` で登録した型をすべて外す
     void UnregisterRuntimeTypes();
@@ -66,10 +71,21 @@ public:
     /// @brief その型名で生成できるか
     bool IsRegistered(const std::string& typeName) const;
 
+    /// @brief `RegisterRuntime()` で登録した型か（スクリプトのクラスなど）
+    bool IsRuntimeType(const std::string& typeName) const;
+
 #ifdef USE_IMGUI
     /// @brief 型名からインスペクタでの表示名を引く
     /// @return 未登録の型なら空
     std::string GetInspectorName(const std::string& typeName) const;
+
+    /// @brief 型を書いたファイル（`RegisterRuntime()` で渡したもの。無ければ空）
+    std::filesystem::path GetSourceFile(const std::string& typeName) const;
+
+    /// @brief 新しく作ったときのプロパティの値（保存形）
+    /// @return 記述子を持たない型か、作れなかったら nullptr
+    /// @note 初めて引いたときに 1 個作って控える。実行時の型を外すと控えも消える。
+    const json* GetDefaultParameters(const std::string& typeName);
 #endif
 
     /// @brief 登録済みの型名一覧（綴り順）
@@ -101,6 +117,10 @@ private:
         bool runtime = false;
 #ifdef USE_IMGUI
         std::string inspectorName;
+        std::filesystem::path sourceFile;
+
+        /// 新しく作ったときのプロパティの値（まだ作っていなければ空）
+        std::optional<json> defaults;
 #endif
     };
 

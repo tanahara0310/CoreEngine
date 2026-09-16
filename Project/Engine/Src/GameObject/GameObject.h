@@ -12,6 +12,7 @@
 #include <d3d12.h>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -321,43 +322,21 @@ namespace CoreEngine
 #ifdef USE_IMGUI
         // ===== プロパティインスペクター =====
 
-        /// @brief インスペクタータブの定義情報
-        struct InspectorTabDef {
-            const char* iconPath;    ///< アイコンテクスチャのファイル名
-            const char* tooltip;     ///< ツールチップテキスト
-            float tint[4];           ///< アイコン色 {R, G, B, A}
-            float selectedBg[4];     ///< 選択時背景色 {R, G, B, A}
-        };
-
-        /// @brief ImGui インスペクター UI を描画する（共通フレームワーク）
+        /// @brief インスペクタを描く
         /// @return 値の変更があった場合 true を返す
-        /// @note 名前フィールド、Active トグル、コンポーネント追加ボタン、タブストリップ、保存ボタンを自動描画する。
-        ///       タブの内容は GetInspectorTabs / DrawInspectorTabContent で制御する。
+        /// @note 名前と有効の行、プレハブの行、オブジェクト固有のセクション、コンポーネントのセクション、
+        ///       コンポーネント追加ボタンを上から縦に並べる。
         virtual bool DrawImGui();
 
-        /// @brief タブ未対応オブジェクト用のフォールバック描画
-        /// @return 値の変更があった場合 true を返す
-        /// @note GetInspectorTabs が 0 を返す場合にのみ呼び出される。
-        virtual bool DrawImGuiExtended();
+        /// @brief オブジェクト固有のセクションの名前（上から並べる順）
+        /// @note コンポーネントのセクションはこの後ろに並ぶ。
+        virtual std::span<const char* const> GetInspectorSections() const { return {}; }
 
-        /// @brief オブジェクト固有タブの上限
-        static constexpr int kMaxObjectTabs = 8;
-
-        /// @brief インスペクタータブの定義を取得する
-        /// @param outTabs 出力先配列
-        /// @param maxTabs 配列の最大要素数（kMaxObjectTabs）
-        /// @return タブ数（0 の場合はタブなしで DrawImGuiExtended にフォールバック）
-        /// @note ここで返すのはオブジェクト固有のタブだけ。コンポーネントのタブは
-        ///       この後ろへ個数制限なしで足される。
-        virtual int GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const {
-            (void)outTabs; (void)maxTabs; return 0;
-        }
-
-        /// @brief 指定タブのコンテンツを描画する
-        /// @param tabIndex タブインデックス
+        /// @brief オブジェクト固有のセクションの中身を描く
+        /// @param index `GetInspectorSections()` の並びでの位置
         /// @return 値が変更された場合 true
-        virtual bool DrawInspectorTabContent(int tabIndex) {
-            (void)tabIndex; return false;
+        virtual bool DrawInspectorSection(int index) {
+            (void)index; return false;
         }
 
         /// @brief ImGui 編集コミット時コールバックの型
@@ -390,7 +369,7 @@ namespace CoreEngine
         using SaveRequestCallback = std::function<void(GameObject*)>;
 
         /// @brief 個別保存リクエストコールバックを設定する
-        /// @param cb 「このオブジェクトのみ保存」ボタン押下時に呼ばれるコールバック
+        /// @param cb インスペクタの ⋮ で「このオブジェクトだけ保存」を選んだときに呼ばれるコールバック
         void SetSaveRequestCallback(SaveRequestCallback cb);
 #endif
 
@@ -406,32 +385,22 @@ namespace CoreEngine
 
 #ifdef USE_IMGUI
         EditCommitCallback  onEditCommitted_;   ///< 編集確定時コールバック
-        SaveRequestCallback onSaveRequested_;   ///< 個別保存ボタン用コールバック
+        SaveRequestCallback onSaveRequested_;   ///< 個別保存のコールバック
 
-        int inspectorTab_ = 0;  ///< 現在選択中のインスペクタータブインデックス
+        /// @brief インスペクタの先頭の行（種類の記号・有効・名前・⋮）を描く
+        /// @return 値が変更されたら true
+        bool DrawInspectorHeader();
 
-        /// @brief アタッチされているコンポーネントのタブを末尾へ足す
-        /// @param outTabs 追加先（オブジェクト固有タブが入っていれば、その後ろへ足す）
-        /// @note 固有タブを持たないオブジェクトでは、コンポーネントタブがそのまま
-        ///       インスペクターのタブになる。
-        void AppendComponentTabs(std::vector<InspectorTabDef>& outTabs) const;
-
-        /// @brief コンポーネントタブの中身を描画する
-        /// @param tabIndex `AppendComponentTabs` が並べた順のインデックス
-        /// @param removeRequest 「外す」が押されたコンポーネントを書く先（押されなければ書かない）
+        /// @brief コンポーネント 1 個のセクション（見出しと中身）を描く
+        /// @param removeRequest 「外す」が選ばれたら、そのコンポーネントを書く先（選ばれなければ書かない）
         /// @return 値が変更されたら true
         /// @note `IComponent::DrawInspector()` を呼ぶ唯一の場所。
-        bool DrawComponentTabContent(int tabIndex, IComponent*& removeRequest);
+        bool DrawComponentSection(IComponent& component, IComponent*& removeRequest);
 
         /// @brief Active チェックボックス変更時に呼び出されるフック
         /// @param prevActive 変更前のアクティブ状態
         /// @note Undo/Redo を記録したい派生クラスでオーバーライドする。
         virtual void OnImGuiActiveChanged(bool prevActive) { (void)prevActive; }
-
-        /// @brief 「このオブジェクトのみ保存」ボタンを ImGui に描画する
-        /// @note shouldSerialize_ が false または name_ が空の場合は何も描画しない。
-        ///       DrawImGui() の末尾から呼ばれる。
-        void DrawSaveButton();
 #endif
 
     private:

@@ -89,7 +89,7 @@ public:
 
     // ===== インスペクター =====
 #ifdef USE_IMGUI
-    /// @brief インスペクターのタブ名
+    /// @brief インスペクタのセクション名
     /// @note 既定は GetTypeName() と同じ。日本語表示にしたい場合はオーバーライドする。
     virtual const char* GetInspectorName() const { return GetTypeName(); }
 
@@ -101,19 +101,6 @@ public:
     /// @note 記述子には書けない情報をここへ置く。記述子経由の描画でも
     ///       旧 DrawInspector でも、プロパティを描いた後に呼ばれる。
     virtual void DrawInspectorExtra() {}
-
-
-    /// @brief インスペクタのタブアイコン（Engine/Assets/Textures/Icon 配下のファイル名）
-    /// @note タブを持たないオブジェクトは「コンポーネント 1 個 = 1 タブ」として
-    ///       インスペクタが組み立てられる。その左端に並ぶアイコン。
-    virtual const char* GetInspectorIcon() const { return "obj.png"; }
-
-    /// @brief タブアイコンの色（RGBA 0..1）
-    /// @param outRgba 4 要素の配列
-    virtual void GetInspectorIconColor(float* outRgba) const
-    {
-        outRgba[0] = 0.75f; outRgba[1] = 0.78f; outRgba[2] = 0.85f; outRgba[3] = 1.0f;
-    }
 #endif
 
     // ===== アクセサ =====

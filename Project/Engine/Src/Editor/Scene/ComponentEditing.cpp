@@ -6,6 +6,8 @@
 #include "Editor/Command/EditorCommand.h"
 #include "Editor/Command/EditorCommandStack.h"
 #include "Editor/ImGui/ImGuiAll.h"
+#include "Editor/ImGui/Widgets/EditorBars.h"
+#include "Editor/Inspector/InspectorLayout.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/GameObjectManager.h"
@@ -26,7 +28,6 @@ namespace CoreEngine::ComponentEditing
     {
         constexpr const char* kAddButtonLabel = "＋ コンポーネント追加";
         constexpr const char* kAddPopupId = "##AddComponentPopup";
-        constexpr const char* kRemoveButtonLabel = "外す##RemoveComponent";
         constexpr float kDisplayNameWidth = 160.0f;
         constexpr float kFilterWidth = 280.0f;
 
@@ -107,21 +108,6 @@ namespace CoreEngine::ComponentEditing
             };
             return std::search(text.begin(), text.end(), pattern.begin(), pattern.end(),
                 [&toLower](char a, char b) { return toLower(a) == toLower(b); }) != text.end();
-        }
-
-        /// @brief 幅 width の項目を、今の行の右端へ寄せる
-        void AlignToRight(float width)
-        {
-            const float available = ImGui::GetContentRegionAvail().x;
-            if (available > width) {
-                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + available - width);
-            }
-        }
-
-        /// @brief ラベルを収めるボタンの幅
-        float ButtonWidth(const char* label)
-        {
-            return ImGui::CalcTextSize(label, nullptr, true).x + ImGui::GetStyle().FramePadding.x * 2.0f;
         }
     }
 
@@ -241,8 +227,8 @@ namespace CoreEngine::ComponentEditing
 
     std::string DrawAddButton(const GameObject& object)
     {
-        AlignToRight(ButtonWidth(kAddButtonLabel));
-        if (ImGui::Button(kAddButtonLabel)) {
+        InspectorLayout::AlignToRight(UI::Bar::ButtonWidth(kAddButtonLabel));
+        if (UI::Bar::Button(kAddButtonLabel, false)) {
             sAddFilter[0] = '\0';
             ImGui::OpenPopup(kAddPopupId);
         }
@@ -285,23 +271,6 @@ namespace CoreEngine::ComponentEditing
             }
         }
         return chosen;
-    }
-
-    bool DrawRemoveButton(const GameObject& object, const IComponent& component)
-    {
-        std::string reason;
-        const bool removable = CanRemove(object, component, &reason);
-
-        AlignToRight(ButtonWidth(kRemoveButtonLabel));
-        bool clicked = false;
-        {
-            UI::Scope::DisabledScope disabled(!removable);
-            clicked = ImGui::SmallButton(kRemoveButtonLabel);
-        }
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-            ImGui::SetTooltip("%s", removable ? "このコンポーネントを外す（Ctrl+Z で戻せる）" : reason.c_str());
-        }
-        return clicked && removable;
     }
 }
 

@@ -271,11 +271,11 @@ public:
 #ifdef USE_IMGUI
     const char* GetObjectName() const override { return "GpuParticleSystem"; }
 
-    /// @brief インスペクタータブ定義を返す（CPU版 ParticleSystem と同じタブ構成）
-    int GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const override;
+    /// @brief インスペクタのセクション名を返す（CPU版 ParticleSystem と同じ構成）
+    std::span<const char* const> GetInspectorSections() const override;
 
-    /// @brief 指定タブのコンテンツを描画する
-    bool DrawInspectorTabContent(int tabIndex) override;
+    /// @brief セクションの中身を描画する
+    bool DrawInspectorSection(int index) override;
 #endif
 
     // ──────────────────────────────────────────────────────────

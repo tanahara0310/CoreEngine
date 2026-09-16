@@ -37,13 +37,13 @@ public:
     void Draw(const Camera* camera) override;
 
 #ifdef _DEBUG
-    /// @brief インスペクタータブ定義を返す
-    int GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const override;
+    /// @brief インスペクタのセクション名を返す
+    std::span<const char* const> GetInspectorSections() const override;
 
-    /// @brief 指定タブのコンテンツを描画する
-    bool DrawInspectorTabContent(int tabIndex) override;
+    /// @brief セクションの中身を描画する
+    bool DrawInspectorSection(int index) override;
 
-    /// @brief トランスフォームタブ描画
+    /// @brief トランスフォームのセクションを描画
     bool DrawTransformSection();
 #endif
 

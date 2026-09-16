@@ -34,11 +34,6 @@ namespace CoreEngine
         /// @brief 「＋ コンポーネント追加」ボタンと、足せる型の一覧を今の行の右端に描く
         /// @return 一覧で選ばれた型名（選ばれなければ空）
         std::string DrawAddButton(const GameObject& object);
-
-        /// @brief 「外す」ボタンを今の行の右端に描く
-        /// @return 押されたら true
-        /// @note 外せないときは押せない状態で描き、理由をツールチップに出す。
-        bool DrawRemoveButton(const GameObject& object, const IComponent& component);
     }
 }
 
