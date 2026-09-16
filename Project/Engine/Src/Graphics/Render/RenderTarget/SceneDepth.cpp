@@ -84,8 +84,10 @@ namespace CoreEngine
         cmdList->ClearDepthStencilView(dsvDescriptor_.cpuHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
 #ifdef _DEBUG
-        logger.Logf(LogLevel::Debug, LogCategory::Graphics, LogSubCategory::Barrier,
-            "[SceneDepth] BeginDepthWrite: クリア完了");
+        if (BarrierBatch::IsLoggingEnabled()) {
+            logger.Logf(LogLevel::Debug, LogCategory::Graphics, LogSubCategory::Barrier,
+                "[SceneDepth] BeginDepthWrite: クリア完了");
+        }
 #endif
     }
 

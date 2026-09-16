@@ -65,6 +65,13 @@ namespace CoreEngine {
             return ImGui::InputText(label, buf, buf_size, flags);
         }
 
+        /// @brief コールバック付きの文字列入力ボックス（履歴・補完に使う）
+        inline bool InputText(const char* label, char* buf, size_t buf_size,
+            ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* userData)
+        {
+            return ImGui::InputText(label, buf, buf_size, flags, callback, userData);
+        }
+
         /// @brief プレースホルダー付き文字列入力ボックス
         inline bool InputTextWithHint(const char* label, const char* hint,
             char* buf, size_t buf_size,

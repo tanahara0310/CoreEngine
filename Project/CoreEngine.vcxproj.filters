@@ -379,6 +379,9 @@
     <ClCompile Include="Engine\Src\Utility\CVar\CVar.cpp">
       <Filter>Engine\Src\Utility\CVar</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\CVar\CVarConsole.cpp">
+      <Filter>Engine\Src\Utility\CVar</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Utility\CVar\CVarRegistry.cpp">
       <Filter>Engine\Src\Utility\CVar</Filter>
     </ClCompile>
@@ -1864,6 +1867,9 @@
       <Filter>Engine\Src\EngineSystem\Settings</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\CVar\CVar.h">
+      <Filter>Engine\Src\Utility\CVar</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\CVar\CVarConsole.h">
       <Filter>Engine\Src\Utility\CVar</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\CVar\CVarRegistry.h">
