@@ -87,9 +87,15 @@ namespace CoreEngine
 #ifdef USE_IMGUI
         // スクリプトを実行していないここで読み直す
         std::vector<std::filesystem::path> changed;
-        if (watcher_.TakeSettledChanges(kSettleTime, changed)) {
+        const bool settled = watcher_.TakeSettledChanges(kSettleTime, changed);
+        if (settled) {
             Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Script,
                 "スクリプトが {} 件変わったので読み直します", changed.size());
+        } else if (reloadRequested_) {
+            Logger::GetInstance().Log("スクリプトを読み直します", LogLevel::Info, LogCategory::Script);
+        }
+        if (settled || reloadRequested_) {
+            reloadRequested_ = false;
             ReloadScripts();
         }
 #endif

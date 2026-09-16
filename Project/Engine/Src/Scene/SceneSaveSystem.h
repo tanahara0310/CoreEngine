@@ -25,6 +25,13 @@ namespace CoreEngine
         ///          登録が無い型はマニフェストにあっても生成されない（黙って消える）
         static void RegisterObjectType(const std::string& typeName, ObjectFactory factory);
 
+        /// @brief 型名が登録されているか
+        static bool IsObjectTypeRegistered(const std::string& typeName);
+
+        /// @brief 登録された型名からオブジェクトを 1 体作る（シーンへは登録しない）
+        /// @return 型名が登録されていなければ nullptr
+        static std::unique_ptr<GameObject> CreateObjectOfType(const std::string& typeName);
+
         /// @brief シーン名を設定（JSON ファイルパスに使用）
         void SetSceneName(const std::string& name) { sceneName_ = name; }
 

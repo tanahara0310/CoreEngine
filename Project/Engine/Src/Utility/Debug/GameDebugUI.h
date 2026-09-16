@@ -102,6 +102,8 @@ namespace CoreEngine
         /// @brief メニューバーの各メニュー
         void DrawFileMenu();
         void DrawEditMenu();
+        void DrawGameObjectMenu();
+        void DrawAssetsMenu();
         void DrawComponentMenu();
         void DrawWindowMenu();
         void DrawHelpMenu();

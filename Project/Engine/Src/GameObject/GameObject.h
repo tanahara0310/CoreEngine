@@ -270,7 +270,8 @@ namespace CoreEngine
 
         /// @brief 保存キーを差し替える
         /// @note 1 シーンで重複しないよう `GameObjectManager` が登録時に調整する。
-        ///       保存済みファイルとの対応が切れるので、他から呼ばないこと。
+        ///       消したオブジェクトを作り直すときは、元のキーへ戻すために呼ぶ。
+        ///       それ以外から呼ぶと保存済みファイルとの対応が切れる。
         void SetSerializeKey(const std::string& key) { serializeKey_ = key; }
 
         /// @brief JSON シリアライズ対象かどうかを返す

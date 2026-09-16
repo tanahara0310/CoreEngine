@@ -99,7 +99,9 @@ namespace CoreEngine
 
         DrawFileMenu();
         DrawEditMenu();
+        DrawGameObjectMenu();
         DrawComponentMenu();
+        DrawAssetsMenu();
         DrawWindowMenu();
         DrawHelpMenu();
         DrawMenuBarChips();
@@ -189,14 +191,53 @@ namespace CoreEngine
 
         ImGui::Separator();
 
-        if (ImGui::MenuItem("選択を複製", "Ctrl+C", false,
-            sceneDebugEditor_ && sceneDebugEditor_->HasSelection())) {
-            sceneDebugEditor_->CopySelectedObject();
+        ImGui::MenuItem("Project Settings…", nullptr, &showProjectSettings_);
+
+        ImGui::EndMenu();
+    }
+
+    void GameDebugUI::DrawGameObjectMenu()
+    {
+        if (!ImGui::BeginMenu("GameObject")) {
+            return;
+        }
+
+        if (ImGui::MenuItem("空のオブジェクトを作成", nullptr, false, sceneDebugEditor_ != nullptr)) {
+            sceneDebugEditor_->CreateEmptyObject();
         }
 
         ImGui::Separator();
 
-        ImGui::MenuItem("Project Settings…", nullptr, &showProjectSettings_);
+        // 押せないときは理由をツールチップに出す
+        std::string reason;
+        const bool canEdit = sceneDebugEditor_ && sceneDebugEditor_->CanEditSelectedObject(&reason);
+        const auto showReason = [&canEdit, &reason]() {
+            if (!canEdit && !reason.empty() && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                ImGui::SetTooltip("%s", reason.c_str());
+            }
+        };
+        if (ImGui::MenuItem("複製", "Ctrl+D", false, canEdit)) {
+            sceneDebugEditor_->DuplicateSelectedObject();
+        }
+        showReason();
+        if (ImGui::MenuItem("削除", "Del", false, canEdit)) {
+            sceneDebugEditor_->DeleteSelectedObject();
+        }
+        showReason();
+
+        ImGui::EndMenu();
+    }
+
+    void GameDebugUI::DrawAssetsMenu()
+    {
+        if (!ImGui::BeginMenu("Assets")) {
+            return;
+        }
+
+        ScriptSubsystem* const script = engine_ ? engine_->GetSubsystem<ScriptSubsystem>() : nullptr;
+        if (ImGui::MenuItem("スクリプトを再読み込み", "Ctrl+R", false, script != nullptr)) {
+            script->RequestReload();
+        }
 
         ImGui::EndMenu();
     }
@@ -408,6 +449,11 @@ namespace CoreEngine
                 dockingUI_->RequestResetLayout();
             }
         }
+        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_R, ImGuiInputFlags_RouteGlobal)) {
+            if (auto* script = engine_ ? engine_->GetSubsystem<ScriptSubsystem>() : nullptr) {
+                script->RequestReload();
+            }
+        }
     }
 
     void GameDebugUI::RefreshEditorStatus()
@@ -521,6 +567,9 @@ namespace CoreEngine
         if (!showHierarchy_) return;
 
         if (auto w = UI::Scope::WindowScope("Hierarchy")) {
+            if (sceneDebugEditor_) {
+                sceneDebugEditor_->HandleSelectionShortcuts();
+            }
             DrawEnvironmentTree();
             Editor::EditorPanel* content = Editor::EditorPanelRegistry::Get()
                 .FindFirst(Editor::PanelPlacement::HierarchyContent);

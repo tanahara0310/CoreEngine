@@ -2,6 +2,7 @@
 
 #ifdef USE_IMGUI
 
+#include "Editor/Scene/ObjectEditing.h"
 #include "Editor/Scene/UndoRedoHistory.h"
 #include "Editor/ImGui/Gizmo.h"
 #include "Editor/ImGui/ObjectSelector.h"
@@ -80,9 +81,24 @@ namespace CoreEngine
         /// @brief 保存通知オーバーレイを描画する
         void DrawSaveNotification();
 
-        /// @brief 選択中オブジェクトをコピーしてシーンに追加する
-        /// @return コピーに成功した場合 true
-        bool CopySelectedObject();
+        /// @brief 空のオブジェクトを作って選ぶ（Undo に積む）
+        void CreateEmptyObject();
+
+        /// @brief 選択中のオブジェクトを複製・削除できるか
+        /// @param reason できないときの理由を書く先（要らなければ nullptr）
+        bool CanEditSelectedObject(std::string* reason = nullptr) const;
+
+        /// @brief 選択中のオブジェクトを複製して選ぶ（Undo に積む）
+        /// @return 複製したら true
+        bool DuplicateSelectedObject();
+
+        /// @brief 選択中のオブジェクトを消す（Undo に積む）
+        /// @return 消したら true
+        bool DeleteSelectedObject();
+
+        /// @brief 複製（Ctrl+D）と削除（Del）のショートカットを受ける
+        /// @note Hierarchy と Game ビューの窓の中から呼ぶ。その窓にフォーカスがあるときだけ効く。
+        void HandleSelectionShortcuts();
 
         /// @brief モデルファイルをシーンにスポーンする
         /// @param modelFileName モデルファイル名（例: "cube.obj"）
@@ -115,6 +131,9 @@ namespace CoreEngine
         /// @brief Gameビュー上のドロップ位置から、置く場所（y = 0 の地面との交点）を求める
         /// @param normalizedDropPos Gameビュー内の位置（0〜1）。nullptr なら中央
         Vector3 ComputeDropPosition(const Vector2* normalizedDropPos) const;
+
+        /// @brief オブジェクトの作成・複製・削除に渡す文脈（削除の前に選択を外す）
+        ObjectEditing::Context MakeObjectEditingContext();
 
         /// @brief Hierarchy の 1 行（種類の記号・名前・Prefab と AS の札）を描く
         void DrawHierarchyRow(GameObject& object);

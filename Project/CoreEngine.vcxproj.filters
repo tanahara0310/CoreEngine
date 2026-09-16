@@ -883,6 +883,9 @@
     <ClCompile Include="Engine\Src\Editor\Scene\ComponentEditing.cpp">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Scene\ObjectEditing.cpp">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Scene\PrefabEditing.cpp">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClCompile>
@@ -2785,6 +2788,9 @@
       <Filter>Engine\Src\Editor\Environment</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Scene\ComponentEditing.h">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Scene\ObjectEditing.h">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Scene\PrefabEditing.h">

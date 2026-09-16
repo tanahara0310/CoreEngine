@@ -49,6 +49,11 @@ namespace CoreEngine
         /// @brief スクリプトのフォルダ（コンパイラのメッセージのファイル名はここからの相対パス）
         const std::filesystem::path& GetScriptRoot() const { return scriptRoot_; }
 
+#ifdef USE_IMGUI
+        /// @brief ファイルが変わっていなくても、このフレームの終わりにスクリプトを読み直す
+        void RequestReload() { reloadRequested_ = true; }
+#endif
+
     private:
         /// @brief コンポーネントの型をファクトリへ登録する（前の登録を外してから呼ぶ）
         void RegisterComponentTypes();
@@ -62,6 +67,7 @@ namespace CoreEngine
         std::filesystem::path scriptRoot_;
         Status status_;
 #ifdef USE_IMGUI
+        bool reloadRequested_ = false;
         ScriptFileWatcher watcher_;
 #endif
     };

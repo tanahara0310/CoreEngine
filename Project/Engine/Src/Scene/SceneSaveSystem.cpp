@@ -511,6 +511,18 @@ namespace CoreEngine
         ObjectFactoryTable()[typeName] = std::move(factory);
     }
 
+    bool SceneSaveSystem::IsObjectTypeRegistered(const std::string& typeName)
+    {
+        return ObjectFactoryTable().contains(typeName);
+    }
+
+    std::unique_ptr<GameObject> SceneSaveSystem::CreateObjectOfType(const std::string& typeName)
+    {
+        const auto& table = ObjectFactoryTable();
+        const auto it = table.find(typeName);
+        return it != table.end() ? it->second() : nullptr;
+    }
+
     void SceneSaveSystem::BeginLoad(GameObjectManager* mgr)
     {
         pendingObjects_.clear();
