@@ -9,6 +9,8 @@
 #include "Graphics/Shader/Cache/ShaderBlobCache.h"
 #include "Graphics/Shader/Cache/ShaderManifest.h"
 #include "Utility/Profiler/CpuProfiler.h"
+#include "Diagnostics/EngineStats.h"
+#include <chrono>
 
 
 namespace CoreEngine
@@ -156,7 +158,11 @@ namespace CoreEngine
             engineSystem_->BeginFrame();
 
             // ゲーム固有の更新処理（派生クラスで実装）
+            const auto updateStarted = std::chrono::steady_clock::now();
             Update();
+            const std::chrono::duration<float, std::milli> updateElapsed =
+                std::chrono::steady_clock::now() - updateStarted;
+            EngineStats::GetInstance().GetFrameTimings().updateMs = updateElapsed.count();
 
             // ゲーム固有の描画処理（派生クラスで実装）
             PrepareRender();

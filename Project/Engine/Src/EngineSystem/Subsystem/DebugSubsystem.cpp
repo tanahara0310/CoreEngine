@@ -110,6 +110,21 @@ namespace CoreEngine
             .draw = [this]() { threadProfilerUI_->Draw(); },
             });
 
+        // CPU・GPU・スクリプト・スレッドをまとめたプロファイラ（下段で Console と並べる）
+        profilerPanel_ = std::make_unique<ProfilerPanel>();
+        profilerPanel_->Initialize(engine_, &gpuProfiler_, threadProfilerUI_.get());
+        Editor::EditorPanelRegistry::Get().Register({
+            .id = "Profiler",
+            .placement = Editor::PanelPlacement::Window,
+            .group = Editor::PanelGroup::Analysis,
+            .defaultDock = Editor::DockArea::Bottom,
+            .defaultVisible = true,
+            .owner = this,
+            .defaultWidth = 900.0f,
+            .defaultHeight = 360.0f,
+            .draw = [this]() { profilerPanel_->Draw(); },
+            });
+
         // キーコンフィグUIの登録
         Editor::EditorPanelRegistry::Get().Register({
             .id = "Key Config",
@@ -492,6 +507,9 @@ namespace CoreEngine
         // 全描画完了後に統計を収集（ドローコール数等が確定した後）
         if (engineStatsWindow_) {
             engineStatsWindow_->Collect();
+        }
+        if (profilerPanel_) {
+            profilerPanel_->Collect();
         }
 
         EngineProfileScope scope(engine_, GpuTimestampSlot::ImGuiDraw, cmdList);

@@ -14,6 +14,7 @@
 #include "Utility/Logger/Logger.h"
 
 #include <angelscript.h>
+#include <chrono>
 #include <scriptarray/scriptarray.h>
 
 namespace CoreEngine
@@ -402,8 +403,18 @@ namespace CoreEngine
             return;
         }
 
+        // 毎フレーム呼ばれる関数だけ、型ごとの実行時間として数える
+        const bool perFrame = method == ScriptComponentType::Method::Update
+            || method == ScriptComponentType::Method::LateUpdate;
+        const auto started = perFrame ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
+
         const bool finished = host_->CallMethod(function, object_,
             [this, method]() { return DescribeMethod(method); });
+
+        if (perFrame) {
+            const std::chrono::duration<double, std::milli> elapsed = std::chrono::steady_clock::now() - started;
+            type_->AddFrameCost(elapsed.count(), method == ScriptComponentType::Method::Update);
+        }
         if (!finished) {
             SetEnabled(false);
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Script,
