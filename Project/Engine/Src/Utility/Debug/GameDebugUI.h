@@ -19,6 +19,7 @@ namespace CoreEngine
     class DockingUI; // 前方宣言
     class SceneManager; // 前方宣言
     class SceneDebugEditor;
+    class ProjectView;
 
     /// @brief エディタのメニューバーと常設パネルを描画するクラス。
     /// @details パネルの登録先は `Editor::EditorPanelRegistry` 一本。ここは
@@ -117,6 +118,9 @@ namespace CoreEngine
 
         /// @brief バージョン情報のウィンドウ
         void DrawAboutWindow();
+
+        /// @brief プロジェクトビュー（取れなければ nullptr）
+        ProjectView* FindProjectView() const;
 
         /// @brief Window メニュー内の 1 グループをサブメニューとして描画する
         /// @param extraContent 省略可。グループ固有の追加項目（区切り線の後に描画される）

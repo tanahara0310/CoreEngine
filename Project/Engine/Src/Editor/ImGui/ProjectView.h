@@ -34,12 +34,36 @@ namespace CoreEngine
         /// @return 表示状態
         bool IsVisible() const { return isVisible_; }
 
+        /// @brief 選択中のアセット（無ければ空）
+        const std::filesystem::path& GetSelectedAsset() const { return selectedPath_; }
+
+        /// @brief 選択中のアセットの情報を Inspector へ描く
+        /// @note 種類・GUID・パスと、そのアセットを参照しているファイルの一覧を出す。
+        void DrawSelectedAssetInspector();
+
+        /// @brief アセットの種類（表示と絞り込みに使う）
+        enum class Kind {
+            Any,        ///< 絞り込みで「すべて」を表す（エントリには付かない）
+            Folder,
+            Model,
+            Texture,
+            Prefab,
+            Script,
+            Scene,
+            Audio,
+            Material,
+            Shader,
+            Data,
+            Other,
+        };
+
     private:
         /// @brief エントリ（ファイルまたはフォルダ）の情報
         struct Entry {
             std::string name;           // 名前
             std::filesystem::path path; // フルパス
             bool isDirectory;           // ディレクトリかどうか
+            Kind kind = Kind::Other;    // 種類
         };
 
         /// @brief PNGプレビューの情報
@@ -64,6 +88,22 @@ namespace CoreEngine
         /// @param entries エントリのリスト
         void DrawGridLayout(const std::vector<Entry>& entries);
 
+        /// @brief 一覧（名前・種類・GUID の表）で項目を表示
+        void DrawListLayout(const std::vector<Entry>& entries);
+
+        /// @brief 検索欄と種類の絞り込みを描画
+        void DrawFilterBar();
+
+        /// @brief そのアセットを参照しているファイルを探し直す
+        void RebuildReferences(const std::filesystem::path& assetPath);
+
+        /// @brief 絞り込みを通ったエントリだけを集める
+        std::vector<Entry> FilterEntries(const std::vector<Entry>& entries) const;
+
+        /// @brief 1 件分のクリック・ダブルクリック・ドラッグ開始を処理する
+        /// @param index entries 内の位置
+        void HandleEntryInteraction(const Entry& entry, int index);
+
         /// @brief アイコンを描画
         /// @param entry エントリ情報
         void DrawIcon(const Entry& entry);
@@ -72,9 +112,6 @@ namespace CoreEngine
         /// @param filePath PNGファイルのパス
         /// @return テクスチャのGPUハンドルとサイズ
         PNGPreviewInfo GetPNGPreview(const std::filesystem::path& filePath);
-
-        /// @brief デフォルトアイコンテクスチャを読み込み
-        void LoadDefaultIcon();
 
         /// @brief フォルダツリーを再帰的に描画
         /// @param path 描画するフォルダのパス
@@ -103,19 +140,6 @@ namespace CoreEngine
 
         bool isVisible_ = true;                 // 表示状態
 
-        // アイコンテクスチャ
-        Microsoft::WRL::ComPtr<ID3D12Resource> directoryIconTexture_;
-        D3D12_GPU_DESCRIPTOR_HANDLE directoryIconGpuHandle_ = {};
-        bool directoryIconLoaded_ = false;
-
-        Microsoft::WRL::ComPtr<ID3D12Resource> fileIconTexture_;
-        D3D12_GPU_DESCRIPTOR_HANDLE fileIconGpuHandle_ = {};
-        bool fileIconLoaded_ = false;
-
-        Microsoft::WRL::ComPtr<ID3D12Resource> shaderIconTexture_;
-        D3D12_GPU_DESCRIPTOR_HANDLE shaderIconGpuHandle_ = {};
-        bool shaderIconLoaded_ = false;
-
         // UI設定
         float iconSize_ = 64.0f;                // アイコンのサイズ
         float padding_ = 8.0f;                  // アイコン間のパディング
@@ -129,6 +153,20 @@ namespace CoreEngine
 
         // 右ペイン表示データ
         std::vector<Entry> currentEntries_;
+
+        // 絞り込みと表示形式
+        char searchFilter_[64] = {};            // 名前の絞り込み
+        Kind kindFilter_ = Kind::Any;           // 種類の絞り込み
+        bool useListView_ = false;              // 一覧表示にするか
+        std::filesystem::path selectedPath_;    // 選択中のエントリ
+
+        // 参照しているファイルの控え（選択が変わったときだけ調べ直す）
+        struct Reference {
+            std::filesystem::path path;         // 参照している側のファイル
+            Kind kind = Kind::Other;            // その種類
+        };
+        std::filesystem::path referencesFor_;   // どのアセットについて調べたか
+        std::vector<Reference> references_;
 
         // 最後に読み直したときの AssetDatabase の番号
         uint64_t seenAssetRevision_ = 0;
