@@ -1866,6 +1866,9 @@
     <ClInclude Include="Engine\Src\EngineSystem\Settings\CVarSettingsSection.h">
       <Filter>Engine\Src\EngineSystem\Settings</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Asset\NamedAssetLibrary.h">
+      <Filter>Engine\Src\Utility\Asset</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Utility\CVar\CVar.h">
       <Filter>Engine\Src\Utility\CVar</Filter>
     </ClInclude>
@@ -4164,6 +4167,9 @@
     </Filter>
     <Filter Include="Engine\Src\Utility">
       <UniqueIdentifier>{46B344B6-CF7F-4BA4-AD45-446450F55874}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Utility\Asset">
+      <UniqueIdentifier>{A8B005CD-2D36-4460-AE1A-C213375311C2}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Utility\CVar">
       <UniqueIdentifier>{3C1F7A62-5D48-4B0E-9E21-7A6C0B4D8F13}</UniqueIdentifier>
