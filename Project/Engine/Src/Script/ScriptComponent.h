@@ -34,6 +34,9 @@ namespace CoreEngine
 
         void* GetReflectionInstance() override { return this; }
 
+        /// @brief クラスが見つからない間は、控えた値をそのまま保存へ返す
+        json OnSerialize() const override;
+
 #ifdef USE_IMGUI
         const char* GetInspectorName() const override { return displayName_.c_str(); }
 #endif
@@ -54,6 +57,16 @@ namespace CoreEngine
 
         /// @brief スクリプトのオブジェクトと型を手放す（実行環境を終える前に呼ばれる）
         void ReleaseScriptObject();
+
+        /// @brief スクリプトを読み直す前に、値を控えてスクリプトのオブジェクトを手放す
+        void PrepareForReload();
+
+        /// @brief 読み直した後の型へ繋ぎ直し、控えた値を戻す
+        /// @return 繋ぎ直せたら true（作れなければ値を控えたまま止まる）
+        bool RebindType(const ScriptComponentType& type);
+
+        /// @brief 読み直しが終わったことをスクリプトへ知らせる
+        void NotifyScriptReloaded();
 
         /// @brief 持っているスクリプトのオブジェクト（無ければ nullptr）
         asIScriptObject* GetScriptObject() const { return object_; }
@@ -95,6 +108,9 @@ namespace CoreEngine
         const ScriptComponentType* type_ = nullptr;
         ScriptHost* host_ = nullptr;
         asIScriptObject* object_ = nullptr;
+
+        /// 読み直しの間だけ持つ、繋ぎ直す前の値（クラスが見つからなければ持ち続ける）
+        json savedParameters_;
 
         /// 持ち主のハンドル（参照を 1 つ持つ）
         Script::ScriptGameObject* ownerHandle_ = nullptr;

@@ -30,6 +30,7 @@ namespace CoreEngine
             "void Update()",
             "void LateUpdate()",
             "void OnDestroy()",
+            "void OnScriptReloaded()",
         };
 
         /// ライフサイクルの関数の名前（`ScriptComponentType::Method` の並び）
@@ -39,6 +40,7 @@ namespace CoreEngine
             "Update",
             "LateUpdate",
             "OnDestroy",
+            "OnScriptReloaded",
         };
 
         static_assert(std::size(kMethodDeclarations) == static_cast<std::size_t>(ScriptComponentType::Method::Count));

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
@@ -19,6 +20,7 @@ namespace CoreEngine::Script
     /// @brief スクリプトの関数（デリゲートを含む）を 1 つ持ち、C++ から呼ぶ
     /// @details 関数の参照を 1 つ持ち、壊すときに手放す（実行環境が先に終わっていたら手放さない）。
     ///          1 回でも最後まで実行できなかったら、以後は呼ばない。
+    ///          スクリプトを読み直した後は、前のモジュールの関数なので呼ばずに手放す。
     class ScriptCallback
     {
     public:
@@ -39,6 +41,7 @@ namespace CoreEngine::Script
         asIScriptFunction* function_ = nullptr;
         std::weak_ptr<void> hostLifetime_;
         std::string label_;
+        std::uint32_t moduleGeneration_ = 0;
         bool failed_ = false;
     };
 

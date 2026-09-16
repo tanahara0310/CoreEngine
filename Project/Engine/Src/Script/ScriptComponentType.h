@@ -33,6 +33,7 @@ namespace CoreEngine
             Update,
             LateUpdate,
             OnDestroy,
+            OnScriptReloaded,
             Count,
         };
 

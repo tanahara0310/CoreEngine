@@ -21,6 +21,7 @@ namespace CoreEngine::Script
         }
         if (ScriptHost* const host = ScriptHost::FromEngine(function_->GetEngine())) {
             hostLifetime_ = host->GetLifetimeToken();
+            moduleGeneration_ = host->GetModuleGeneration();
         }
     }
 
@@ -42,6 +43,12 @@ namespace CoreEngine::Script
         }
         ScriptHost* const host = ScriptHost::FromEngine(function_->GetEngine());
         if (!host) {
+            return false;
+        }
+        if (host->GetModuleGeneration() != moduleGeneration_) {
+            // スクリプトを読み直した後なので、前のモジュールの関数は呼ばずに手放す
+            function_->Release();
+            function_ = nullptr;
             return false;
         }
         const bool finished = host->CallFunction(function_, setArguments, [this]() { return label_; });
