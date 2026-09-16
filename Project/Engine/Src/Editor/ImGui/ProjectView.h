@@ -37,6 +37,16 @@ namespace CoreEngine
         /// @brief 選択中のアセット（無ければ空）
         const std::filesystem::path& GetSelectedAsset() const { return selectedPath_; }
 
+        /// @brief 開いているフォルダ（プロジェクトの根からの相対パス）
+        std::filesystem::path GetCurrentFolder() const;
+
+        /// @brief フォルダを開く（プロジェクトの根からの相対パス。根の外や無いフォルダなら何もしない）
+        void OpenFolder(const std::filesystem::path& relativeFolder);
+
+        /// @brief 一覧表示にしているか（false ならグリッド表示）
+        bool IsListView() const { return useListView_; }
+        void SetListView(bool listView) { useListView_ = listView; }
+
         /// @brief 選択中のアセットの情報を Inspector へ描く
         /// @note 種類・GUID・パスと、そのアセットを参照しているファイルの一覧を出す。
         void DrawSelectedAssetInspector();

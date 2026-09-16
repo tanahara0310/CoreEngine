@@ -77,8 +77,12 @@ namespace CoreEngine
         }
 
         // レイアウトが既に初期化されている場合、動的にドッキング
+        // （保存された配置では、保存に位置が載っているウィンドウはそのままにする）
         if (layoutInitialized_) {
-            const ImGuiID nodeId = GetNodeIdForArea(area);
+            if (useSavedLayout_ && ImGui::FindWindowSettingsByID(ImHashStr(windowName.c_str()))) {
+                return;
+            }
+            const ImGuiID nodeId = FindNodeForArea(area);
             if (nodeId != 0) {
                 ImGui::DockBuilderDockWindow(windowName.c_str(), nodeId);
             }
@@ -144,6 +148,19 @@ namespace CoreEngine
 
     void DockingUI::SetupDockSpace()
     {
+        // 保存された配置があれば組み直さず、保存に載っていないウィンドウだけを次のフレームで入れる
+        // （保存にドックスペースが無ければ、標準レイアウトを組む）
+        if (!layoutInitialized_ && useSavedLayout_ && !layoutDirty_ &&
+            ImGui::DockBuilderGetNode(ImGui::GetID("MyDockSpace"))) {
+            layoutInitialized_ = true;
+            dockNewWindowsPending_ = true;
+            return;
+        }
+        if (dockNewWindowsPending_ && !layoutDirty_) {
+            dockNewWindowsPending_ = false;
+            DockWindowsWithoutSettings();
+        }
+
         // 初回またはレイアウト変更時のみドッキングレイアウトを構築
         if (layoutInitialized_ && !layoutDirty_)
             return;
@@ -151,6 +168,7 @@ namespace CoreEngine
         BuildDockLayout();
         layoutInitialized_ = true;
         layoutDirty_ = false;
+        dockNewWindowsPending_ = false;
     }
 
     void DockingUI::SetLayoutPreset(DockLayoutPreset preset)
@@ -163,9 +181,34 @@ namespace CoreEngine
         layoutDirty_ = true;
     }
 
-    ImGuiID DockingUI::GetNodeIdForArea(Editor::DockArea area) const
+    ImGuiID DockingUI::FindNodeForArea(Editor::DockArea area) const
     {
-        return nodeIds_[static_cast<int>(area)];
+        const ImGuiID built = nodeIds_[static_cast<int>(area)];
+        if (built != 0 && ImGui::DockBuilderGetNode(built)) {
+            return built;
+        }
+        for (const auto& [windowName, windowArea] : registeredWindows_) {
+            if (windowArea != area) {
+                continue;
+            }
+            if (const ImGuiWindow* const window = ImGui::FindWindowByName(windowName.c_str());
+                window && window->DockId != 0) {
+                return window->DockId;
+            }
+        }
+        return 0;
+    }
+
+    void DockingUI::DockWindowsWithoutSettings()
+    {
+        for (const auto& [windowName, area] : registeredWindows_) {
+            if (ImGui::FindWindowSettingsByID(ImHashStr(windowName.c_str()))) {
+                continue;
+            }
+            if (const ImGuiID nodeId = FindNodeForArea(area); nodeId != 0) {
+                ImGui::DockBuilderDockWindow(windowName.c_str(), nodeId);
+            }
+        }
     }
 
     void DockingUI::BuildDockLayout()
@@ -214,11 +257,11 @@ namespace CoreEngine
         nodeIds_[static_cast<int>(Editor::DockArea::Bottom)] = idBottom;
 
         // 登録されているウィンドウを各ノードへ必ずドッキングする。
-        // 【この無条件ドックを条件付きにしないこと】imgui.ini の DockId 欠落は
+        // 【この無条件ドックを条件付きにしないこと】保存された ImGui の設定の DockId 欠落は
         // 「ユーザーが意図して引き出した」ことを意味しないため、判定を入れると
         // Hierarchy や Console が毎起動フローティングのまま復帰しなくなる。
         for (const auto& [windowName, area] : registeredWindows_) {
-            const ImGuiID nodeId = GetNodeIdForArea(area);
+            const ImGuiID nodeId = nodeIds_[static_cast<int>(area)];
             if (nodeId != 0) {
                 ImGui::DockBuilderDockWindow(windowName.c_str(), nodeId);
             }

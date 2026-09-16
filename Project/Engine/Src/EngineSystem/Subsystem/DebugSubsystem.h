@@ -3,6 +3,7 @@
 #ifdef USE_IMGUI
 
 #include <memory>
+#include "Editor/ImGui/EditorLayoutSection.h"
 #include "Editor/Panel/EditorPanelStateSection.h"
 #include <functional>
 
@@ -130,6 +131,9 @@ namespace CoreEngine
 
         // 開いているパネルを次の起動へ持ち越す
         std::unique_ptr<Editor::EditorPanelStateSection> panelStateSection_;
+
+        // 画面の配置を次の起動へ持ち越す
+        std::unique_ptr<Editor::EditorLayoutSection> layoutSection_;
     };
 }
 

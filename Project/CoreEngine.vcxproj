@@ -547,6 +547,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Particle\Modules\SizeModule.cpp" />
     <ClCompile Include="Engine\Src\Particle\Modules\VelocityModule.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\DockingUI.cpp" />
+    <ClCompile Include="Engine\Src\Editor\ImGui\EditorLayoutSection.cpp" />
     <ClCompile Include="Engine\Src\Editor\External\ExternalCodeEditor.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\ProfilerPanel.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\ProjectSettingsWindow.cpp" />
@@ -1611,6 +1612,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Scenes\Sprite2DSampleScene\PaddleComponent.h" />
     <ClInclude Include="Application\Src\Scenes\Sprite2DSampleScene\FallingItemComponent.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\DockingUI.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\EditorLayoutSection.h" />
     <ClInclude Include="Engine\Src\Camera\Camera.h" />
     <ClInclude Include="Engine\Src\Camera\Control\OrbitFlyController.h" />
     <ClInclude Include="Engine\Src\Camera\Debug\DebugCameraCVars.h" />
