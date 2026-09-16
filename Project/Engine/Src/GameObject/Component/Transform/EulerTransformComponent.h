@@ -23,6 +23,7 @@ public:
 
 #ifdef USE_IMGUI
     const char* GetInspectorName() const override { return "トランスフォーム"; }
+    bool IsShownFirstInInspector() const override { return true; }
 #endif
 
     // ===== ITransformSource =====

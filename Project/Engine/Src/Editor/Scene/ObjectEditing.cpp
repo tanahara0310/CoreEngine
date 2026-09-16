@@ -10,7 +10,9 @@
 #include "GameObject/GameObject.h"
 #include "GameObject/GameObjectManager.h"
 #include "Scene/PrefabSystem.h"
-#include "Scene/SceneSaveSystem.h"
+#include "UI/RectTransformComponent.h"
+#include "UI/UIImageComponent.h"
+#include "UI/UITextComponent.h"
 #include "Utility/Logger/Logger.h"
 
 #include <cctype>
@@ -24,6 +26,18 @@ namespace CoreEngine::ObjectEditing
         /// 空のオブジェクトの名前
         constexpr const char* kEmptyObjectName = "GameObject";
 
+        /// UI テキストのオブジェクトの名前
+        constexpr const char* kTextObjectName = "Text";
+
+        /// UI 画像のオブジェクトの名前
+        constexpr const char* kImageObjectName = "Image";
+
+        /// 作った UI テキストの文字列
+        constexpr const char* kNewTextString = "新しいテキスト";
+
+        /// UI を複製したときにずらす量（px）
+        constexpr float kUIDuplicateOffset = 10.0f;
+
         /// @brief オブジェクトを作り直すための控え
         struct Snapshot
         {
@@ -32,7 +46,6 @@ namespace CoreEngine::ObjectEditing
             ObjectId id;
             json state;
             Reflection::AssetRefValue prefab;
-            std::string typeName;
         };
 
         /// @brief 今の状態を控える
@@ -45,9 +58,6 @@ namespace CoreEngine::ObjectEditing
             snapshot.state = object.Serialize();
             if (object.IsPrefabInstance()) {
                 snapshot.prefab = object.GetPrefab().GetValue();
-            }
-            if (const char* const typeName = object.GetSerializeTypeName()) {
-                snapshot.typeName = typeName;
             }
             return snapshot;
         }
@@ -99,12 +109,7 @@ namespace CoreEngine::ObjectEditing
                              bool keepIdentity)
         {
             GameObject* object = nullptr;
-            if (!snapshot.typeName.empty()) {
-                if (std::unique_ptr<GameObject> owned = SceneSaveSystem::CreateObjectOfType(snapshot.typeName)) {
-                    owned->SetName(name);
-                    object = manager.AddObject(std::move(owned));
-                }
-            } else if (!snapshot.prefab.guid.empty() || !snapshot.prefab.path.empty()) {
+            if (!snapshot.prefab.guid.empty() || !snapshot.prefab.path.empty()) {
                 object = PrefabSystem::Instantiate(manager, snapshot.prefab, name);
             } else {
                 auto owned = std::make_unique<GameObject>();
@@ -175,10 +180,6 @@ namespace CoreEngine::ObjectEditing
                 return fail("コードが作ったオブジェクトは、エディタから複製・削除できません");
             }
         }
-        if (const char* const typeName = object.GetSerializeTypeName();
-            typeName && !SceneSaveSystem::IsObjectTypeRegistered(typeName)) {
-            return fail("型名から作り直せないオブジェクトです");
-        }
         return true;
     }
 
@@ -208,6 +209,38 @@ namespace CoreEngine::ObjectEditing
         return object;
     }
 
+    GameObject* CreateUI(const Context& context, UIElementKind kind)
+    {
+        GameObjectManager& manager = *context.manager;
+        const char* const baseName = (kind == UIElementKind::Text) ? kTextObjectName : kImageObjectName;
+        auto owned = std::make_unique<GameObject>();
+        owned->SetName(HasObjectNamed(manager, baseName)
+            ? MakeCopyName(manager, baseName) : std::string(baseName));
+        GameObject* const object = manager.AddObject(std::move(owned));
+        if (!object) {
+            return nullptr;
+        }
+
+        // エディタが作るオブジェクトのコンポーネントとして、UI トランスフォームを先頭に付ける
+        {
+            ComponentHost::DataAttachScope dataScope(*object);
+            object->AddComponent<RectTransformComponent>();
+            if (kind == UIElementKind::Text) {
+                if (UITextComponent* const text = object->AddComponent<UITextComponent>()) {
+                    text->SetText(kNewTextString);
+                }
+            } else {
+                object->AddComponent<UIImageComponent>();
+            }
+        }
+        manager.InvalidateReferences();
+
+        PushCreateCommand(context, *object, object->GetName() + " を作る");
+        Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
+            "ObjectEditing: UI のオブジェクト \"{}\" を作りました", object->GetName());
+        return object;
+    }
+
     GameObject* Duplicate(const Context& context, const GameObject& source)
     {
         std::string reason;
@@ -227,6 +260,9 @@ namespace CoreEngine::ObjectEditing
         // 元と重ならないよう少しずらす
         if (ITransformSource* const transform = copy->GetComponent<ITransformSource>()) {
             transform->Translate().x += 1.0f;
+        } else if (RectTransformComponent* const rect = copy->GetComponent<RectTransformComponent>()) {
+            const Vector2 position = rect->GetAnchoredPosition();
+            rect->SetAnchoredPosition({ position.x + kUIDuplicateOffset, position.y + kUIDuplicateOffset });
         }
 
         PushCreateCommand(context, *copy, source.GetName() + " を複製");

@@ -84,6 +84,9 @@ namespace CoreEngine
         /// @brief 空のオブジェクトを作って選ぶ（Undo に積む）
         void CreateEmptyObject();
 
+        /// @brief UI のオブジェクトを画面の中央に作って選ぶ（Undo に積む）
+        void CreateUIObject(ObjectEditing::UIElementKind kind);
+
         /// @brief 選択中のオブジェクトを複製・削除できるか
         /// @param reason できないときの理由を書く先（要らなければ nullptr）
         bool CanEditSelectedObject(std::string* reason = nullptr) const;

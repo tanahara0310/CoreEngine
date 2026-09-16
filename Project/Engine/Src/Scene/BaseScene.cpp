@@ -7,7 +7,6 @@
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Scene/SceneManager.h"
-#include "UI/UIText.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Scene/Feature/DefaultSceneFeatures.h"
 // GetFeature<T>() で引くために完全型が必要な既定 Feature だけを include する
@@ -225,28 +224,6 @@ namespace CoreEngine
         auto obj = std::make_unique<GameObject>();
         obj->SetName(name);
         return gameObjectManager_.AddObject(std::move(obj));
-    }
-
-    UIText* BaseScene::CreateText(const std::string& textUtf8, float fontSize,
-        UIAnchor anchor, const Vector2& anchoredPos, const Vector4& color,
-        const std::string& name)
-    {
-        // CreateObject<T> の中で Initialize() まで走るので、ここへ来た時点で
-        // レンダラーの解決と既定フォントの取得は済んでいる
-        auto* text = CreateObject<UIText>();
-        if (!text) { return nullptr; }
-
-        if (!name.empty()) {
-            text->SetName(name);
-        }
-
-        text->SetText(textUtf8);
-        text->SetFontSize(fontSize);
-        text->SetAnchor(anchor);
-        text->SetAnchoredPosition(anchoredPos);
-        text->SetColor(color);
-
-        return text;
     }
 
     ISceneFeature* BaseScene::AddFeature(std::unique_ptr<ISceneFeature> feature, int priority)

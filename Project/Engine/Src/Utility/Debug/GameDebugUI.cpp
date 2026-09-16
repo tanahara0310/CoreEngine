@@ -205,6 +205,15 @@ namespace CoreEngine
         if (ImGui::MenuItem("空のオブジェクトを作成", nullptr, false, sceneDebugEditor_ != nullptr)) {
             sceneDebugEditor_->CreateEmptyObject();
         }
+        if (ImGui::BeginMenu("UI", sceneDebugEditor_ != nullptr)) {
+            if (ImGui::MenuItem("テキスト")) {
+                sceneDebugEditor_->CreateUIObject(ObjectEditing::UIElementKind::Text);
+            }
+            if (ImGui::MenuItem("画像")) {
+                sceneDebugEditor_->CreateUIObject(ObjectEditing::UIElementKind::Image);
+            }
+            ImGui::EndMenu();
+        }
 
         ImGui::Separator();
 

@@ -17,6 +17,7 @@
 #include "Math/MathCore.h"
 #include "Math/Geometry/Shapes.h"
 #include "Math/Geometry/RayCast.h"
+#include "UI/RectTransformComponent.h"
 #include <algorithm>
 #include <limits>
 #include <cmath>
@@ -71,12 +72,16 @@ namespace CoreEngine
     void ObjectSelector::DrawGizmo(const Camera* camera)
     {
         if (selectedObject_ && camera) {
-            auto* transformComponent = selectedObject_->GetComponent<TransformComponent>();
-            if (!Gizmo::IsUsing() && transformComponent) {
-                const WorldTransform& transform = transformComponent->Get();
-                beforeGizmoTranslate_ = transform.translate;
-                beforeGizmoRotate_ = transform.rotate;
-                beforeGizmoScale_ = transform.scale;
+            // ギズモはトランスフォームを持つものにだけ出る。持たないもの（UI など）では、
+            // 別の窓のギズモの操作を自分の操作と取り違えないように何もしない
+            ITransformSource* const source = selectedObject_->GetComponent<ITransformSource>();
+            if (!source) {
+                return;
+            }
+            if (!Gizmo::IsUsing()) {
+                beforeGizmoTranslate_ = source->Translate();
+                beforeGizmoRotate_ = source->Rotate();
+                beforeGizmoScale_ = source->Scale();
                 beforeGizmoActive_ = selectedObject_->IsActive();
             }
 
@@ -465,6 +470,11 @@ namespace CoreEngine
 
         for (const auto& obj : objects) {
             if (!obj->IsActive()) {
+                continue;
+            }
+
+            // UI は画面に貼るもので 3D の位置を持たないので、ここでは選ばない（Canvas で選ぶ）
+            if (obj->GetComponent<RectTransformComponent>()) {
                 continue;
             }
 

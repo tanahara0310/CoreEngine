@@ -34,6 +34,7 @@ public:
 
 #ifdef USE_IMGUI
     const char* GetInspectorName() const override { return "トランスフォーム"; }
+    bool IsShownFirstInInspector() const override { return true; }
 
     /// @brief 位置・回転（度）・スケールの編集 UI
     /// @return 値が変更されたら true

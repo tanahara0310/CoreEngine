@@ -36,7 +36,7 @@ namespace CoreEngine
 
     /// @brief MSDF フォントで文字列をワールド空間へ描くコンポーネント
     /// @details
-    ///  組版（折り返し・禁則・整列）は UIText と同じ `TextGeometry::Build` を通す。
+    ///  組版（折り返し・禁則・整列）は UITextComponent と同じ `TextGeometry::Build` を通す。
     ///  出力が em 単位なので、UI は「1em = fontSize px」、こちらは
     ///  「1em = fontSize ワールド単位」と読み替えるだけで同じ組版が両方で使える。
     ///

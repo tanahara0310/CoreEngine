@@ -560,6 +560,16 @@ namespace CoreEngine
         }
     }
 
+    void SceneDebugEditor::CreateUIObject(ObjectEditing::UIElementKind kind)
+    {
+        if (!gameObjectManager_) {
+            return;
+        }
+        if (GameObject* const created = ObjectEditing::CreateUI(MakeObjectEditingContext(), kind)) {
+            objectSelector_.SelectObject(created);
+        }
+    }
+
     bool SceneDebugEditor::CanEditSelectedObject(std::string* reason) const
     {
         const GameObject* const selected = objectSelector_.GetSelectedObject();
@@ -752,9 +762,7 @@ namespace CoreEngine
                 PrefabEditing::Unlink(object);
             }
         } else {
-            // 型名で作り直すオブジェクト（UIText など）はプレハブにできない
-            const bool plainObject = object.GetSerializeTypeName() == nullptr;
-            if (ImGui::MenuItem("プレハブとして保存", nullptr, false, plainObject)) {
+            if (ImGui::MenuItem("プレハブとして保存")) {
                 if (const AssetInfo* info = PrefabEditing::CreateFromObject(object)) {
                     ShowSaveNotification("プレハブを作りました: " + ToAssetPath(*info));
                 }

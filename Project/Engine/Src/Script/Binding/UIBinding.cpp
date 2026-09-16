@@ -7,8 +7,9 @@
 #include "Script/Binding/BindingRegistrar.h"
 #include "Script/Binding/GameObjectBinding.h"
 #include "Text/FontManager.h"
-#include "UI/UIImage.h"
-#include "UI/UIText.h"
+#include "UI/RectTransformComponent.h"
+#include "UI/UIImageComponent.h"
+#include "UI/UITextComponent.h"
 #include "Utility/Logger/Logger.h"
 
 #include <angelscript.h>
@@ -26,11 +27,12 @@ namespace CoreEngine::Script
 
         /// ログに出す UI 要素の型名
         template <class Element> constexpr const char* kElementTypeName = "";
-        template <> constexpr const char* kElementTypeName<UIText> = "UIText";
-        template <> constexpr const char* kElementTypeName<UIImage> = "UIImage";
+        template <> constexpr const char* kElementTypeName<UITextComponent> = "UIText";
+        template <> constexpr const char* kElementTypeName<UIImageComponent> = "UIImage";
 
-        /// @brief スクリプトへ渡す UI 要素（UIText / UIImage）のハンドル
-        /// @details GameObject のハンドルの参照を 1 つ持ち、使うたびに UI 要素を引き直す。
+        /// @brief スクリプトへ渡す UI 要素（UI テキスト / UI 画像のコンポーネント）のハンドル
+        /// @details GameObject のハンドルの参照を 1 つ持ち、使うたびにコンポーネントを引き直す。
+        ///          配置の口は兄弟の UI トランスフォームへ渡す。
         ///          文字と画像にだけある口は、その型を登録するときだけ使う。
         template <class Element>
         class ScriptUIElement
@@ -55,27 +57,27 @@ namespace CoreEngine::Script
 
             Vector2 GetAnchoredPosition() const
             {
-                const Element* const element = FindOrWarn("位置の読み取り");
-                return element ? element->GetAnchoredPosition() : Vector2{};
+                const RectTransformComponent* const rect = FindRectOrWarn("位置の読み取り");
+                return rect ? rect->GetAnchoredPosition() : Vector2{};
             }
 
             void SetAnchoredPosition(const Vector2& value)
             {
-                if (Element* const element = FindOrWarn("位置の変更")) {
-                    element->SetAnchoredPosition(value);
+                if (RectTransformComponent* const rect = FindRectOrWarn("位置の変更")) {
+                    rect->SetAnchoredPosition(value);
                 }
             }
 
             Vector2 GetPivot() const
             {
-                const Element* const element = FindOrWarn("基準点の読み取り");
-                return element ? element->GetPivot() : Vector2{};
+                const RectTransformComponent* const rect = FindRectOrWarn("基準点の読み取り");
+                return rect ? rect->GetPivot() : Vector2{};
             }
 
             void SetPivot(const Vector2& value)
             {
-                if (Element* const element = FindOrWarn("基準点の変更")) {
-                    element->SetPivot(value);
+                if (RectTransformComponent* const rect = FindRectOrWarn("基準点の変更")) {
+                    rect->SetPivot(value);
                 }
             }
 
@@ -94,40 +96,43 @@ namespace CoreEngine::Script
 
             int GetSortOrder() const
             {
-                const Element* const element = FindOrWarn("描画順の読み取り");
-                return element ? element->GetSortOrder() : 0;
+                const RectTransformComponent* const rect = FindRectOrWarn("描画順の読み取り");
+                return rect ? rect->GetSortOrder() : 0;
             }
 
             void SetSortOrder(int value)
             {
-                if (Element* const element = FindOrWarn("描画順の変更")) {
-                    element->SetSortOrder(value);
+                if (RectTransformComponent* const rect = FindRectOrWarn("描画順の変更")) {
+                    rect->SetSortOrder(value);
                 }
             }
 
             int GetAnchor() const
             {
-                const Element* const element = FindOrWarn("アンカーの読み取り");
-                return static_cast<int>(element ? element->GetAnchor() : UIAnchor::Center);
+                const RectTransformComponent* const rect = FindRectOrWarn("アンカーの読み取り");
+                return static_cast<int>(rect ? rect->GetAnchor() : UIAnchor::Center);
             }
 
             void SetAnchor(int value)
             {
-                if (Element* const element = FindOrWarn("アンカーの変更")) {
-                    element->SetAnchor(static_cast<UIAnchor>(value));
+                if (value < 0 || value > static_cast<int>(UIAnchor::BottomRight)) {
+                    return;
+                }
+                if (RectTransformComponent* const rect = FindRectOrWarn("アンカーの変更")) {
+                    rect->SetAnchor(static_cast<UIAnchor>(value));
                 }
             }
 
             float GetRotation() const
             {
-                const Element* const element = FindOrWarn("回転の読み取り");
-                return element ? element->GetUIRotation() : 0.0f;
+                const RectTransformComponent* const rect = FindRectOrWarn("回転の読み取り");
+                return rect ? rect->GetRotation() : 0.0f;
             }
 
             void SetRotation(float value)
             {
-                if (Element* const element = FindOrWarn("回転の変更")) {
-                    element->SetUIRotation(value);
+                if (RectTransformComponent* const rect = FindRectOrWarn("回転の変更")) {
+                    rect->SetRotation(value);
                 }
             }
 
@@ -188,7 +193,7 @@ namespace CoreEngine::Script
             void SetOutlineColor(const Vector4& value)
             {
                 if (Element* const element = FindOrWarn("縁取りの色の変更")) {
-                    element->SetOutline(value, element->GetOutlineWidth());
+                    element->SetOutlineColor(value);
                 }
             }
 
@@ -201,7 +206,7 @@ namespace CoreEngine::Script
             void SetOutlineWidth(float value)
             {
                 if (Element* const element = FindOrWarn("縁取りの太さの変更")) {
-                    element->SetOutline(element->GetOutlineColor(), value);
+                    element->SetOutlineWidth(value);
                 }
             }
 
@@ -220,8 +225,11 @@ namespace CoreEngine::Script
 
             void SetAlignH(int value)
             {
+                if (value < 0 || value > static_cast<int>(TextAlignH::Right)) {
+                    return;
+                }
                 if (Element* const element = FindOrWarn("横の揃えの変更")) {
-                    element->SetAlign(static_cast<TextAlignH>(value), element->GetAlignV());
+                    element->SetAlignH(static_cast<TextAlignH>(value));
                 }
             }
 
@@ -233,16 +241,18 @@ namespace CoreEngine::Script
 
             void SetAlignV(int value)
             {
+                if (value < 0 || value > static_cast<int>(TextAlignV::Bottom)) {
+                    return;
+                }
                 if (Element* const element = FindOrWarn("縦の揃えの変更")) {
-                    element->SetAlign(element->GetAlignH(), static_cast<TextAlignV>(value));
+                    element->SetAlignV(static_cast<TextAlignV>(value));
                 }
             }
 
             void SetAlign(int horizontal, int vertical)
             {
-                if (Element* const element = FindOrWarn("揃えの変更")) {
-                    element->SetAlign(static_cast<TextAlignH>(horizontal), static_cast<TextAlignV>(vertical));
-                }
+                SetAlignH(horizontal);
+                SetAlignV(vertical);
             }
 
             /// @brief 最後に頂点を組んだときの文字列を囲む大きさ（px）
@@ -256,14 +266,14 @@ namespace CoreEngine::Script
 
             Vector2 GetSize() const
             {
-                const Element* const element = FindOrWarn("大きさの読み取り");
-                return element ? element->GetSize() : Vector2{};
+                const RectTransformComponent* const rect = FindRectOrWarn("大きさの読み取り");
+                return rect ? rect->GetSize() : Vector2{};
             }
 
             void SetSize(const Vector2& value)
             {
-                if (Element* const element = FindOrWarn("大きさの変更")) {
-                    element->SetSize(value);
+                if (RectTransformComponent* const rect = FindRectOrWarn("大きさの変更")) {
+                    rect->SetSize(value);
                 }
             }
 
@@ -278,7 +288,8 @@ namespace CoreEngine::Script
 
             Element* Find() const
             {
-                return dynamic_cast<Element*>(owner_.Resolve());
+                GameObject* const object = owner_.Resolve();
+                return object ? object->GetComponent<Element>() : nullptr;
             }
 
             /// @brief UI 要素を引き、引けなければ 1 回だけ警告する
@@ -294,13 +305,20 @@ namespace CoreEngine::Script
                 return element;
             }
 
+            /// @brief UI 要素の UI トランスフォームを引き、UI 要素が引けなければ 1 回だけ警告する
+            RectTransformComponent* FindRectOrWarn(const char* action) const
+            {
+                const Element* const element = FindOrWarn(action);
+                return element ? element->GetRectTransform() : nullptr;
+            }
+
             ScriptGameObject& owner_;
             mutable int refCount_ = 1;
             mutable bool warned_ = false;
         };
 
-        using ScriptUIText = ScriptUIElement<UIText>;
-        using ScriptUIImage = ScriptUIElement<UIImage>;
+        using ScriptUIText = ScriptUIElement<UITextComponent>;
+        using ScriptUIImage = ScriptUIElement<UIImageComponent>;
 
         /// @brief GameObject のハンドルから UI 要素のハンドルを作る
         /// @return 参照を 1 つ持ったハンドル
@@ -310,18 +328,34 @@ namespace CoreEngine::Script
             return new ScriptUIElement<Element>(self);
         }
 
-        /// @brief 作った UI 要素を指すハンドルを作る
+        /// @brief 作った UI のオブジェクトを指すハンドルを作る
         /// @return 参照を 1 つ持ったハンドル
         template <class Element>
-        ScriptUIElement<Element>* WrapElement(const Element& element)
+        ScriptUIElement<Element>* WrapElement(const GameObject& object)
         {
-            ScriptGameObject* const object = ScriptGameObject::CreateForObject(&element);
+            ScriptGameObject* const handle = ScriptGameObject::CreateForObject(&object);
+            if (!handle) {
+                return nullptr;
+            }
+            auto* const element = new ScriptUIElement<Element>(*handle);
+            handle->Release();
+            return element;
+        }
+
+        /// @brief 同じシーンへ、UI トランスフォームだけを持つ保存しないオブジェクトを作る
+        /// @return 作ったオブジェクト。作れなければ nullptr
+        GameObject* SpawnUIObject(GameObjectManager& manager, const std::string& name)
+        {
+            GameObject* const object = manager.AddObject(std::make_unique<GameObject>());
             if (!object) {
                 return nullptr;
             }
-            auto* const handle = new ScriptUIElement<Element>(*object);
-            object->Release();
-            return handle;
+            if (!name.empty()) {
+                object->SetName(name);
+            }
+            object->SetSerializeEnabled(false);
+            object->AddComponent<RectTransformComponent>();
+            return object;
         }
 
         /// @brief 呼び出し元の GameObject が属する管理者（同じシーン）を引き、引けなければ警告する
@@ -341,13 +375,17 @@ namespace CoreEngine::Script
         ScriptUIImage* SpawnUIImage(const std::string& texturePath, const std::string& name, const ScriptGameObject& self)
         {
             GameObjectManager* const manager = FindManager(self, "UIImage の生成");
-            UIImage* const image = manager ? manager->AddObject(std::make_unique<UIImage>()) : nullptr;
-            if (!image) {
+            GameObject* const object = manager ? SpawnUIObject(*manager, name) : nullptr;
+            if (!object) {
                 return nullptr;
             }
-            image->Initialize(texturePath, name);
-            image->SetSerializeEnabled(false);
-            return WrapElement(*image);
+            UIImageComponent* const image = object->AddComponent<UIImageComponent>();
+            if (!texturePath.empty()) {
+                // 大きさはテクスチャの大きさにする
+                image->SetTexture(texturePath);
+                image->SetNativeSize();
+            }
+            return WrapElement<UIImageComponent>(*object);
         }
 
         /// @brief 同じシーンへ、名前で引いたフォントの UIText を作る（シーンの保存には含めない）
@@ -356,18 +394,16 @@ namespace CoreEngine::Script
                                   const ScriptGameObject& self)
         {
             GameObjectManager* const manager = FindManager(self, "UIText の生成");
-            UIText* const label = manager ? manager->AddObject(std::make_unique<UIText>()) : nullptr;
-            if (!label) {
+            GameObject* const object = manager ? SpawnUIObject(*manager, name) : nullptr;
+            if (!object) {
                 return nullptr;
             }
+            // 文字の左上を基準にしたほうが HUD の配置は考えやすい
+            object->GetComponent<RectTransformComponent>()->SetPivot({ 0.0f, 0.0f });
+            UITextComponent* const label = object->AddComponent<UITextComponent>();
             label->SetFontByName(fontName);
             label->SetText(text);
-            if (!name.empty()) {
-                label->SetName(name);
-            }
-            label->Initialize();
-            label->SetSerializeEnabled(false);
-            return WrapElement(*label);
+            return WrapElement<UITextComponent>(*object);
         }
 
         /// @brief 名前付きのフォントを登録する（`UIText.font` と `SpawnUIText` の fontName で引ける）
@@ -426,7 +462,7 @@ namespace CoreEngine::Script
             r.EnumValue("TextAlignV", "Bottom", static_cast<int>(TextAlignV::Bottom));
         }
 
-        /// @brief UIText / UIImage に共通の型・配置・色の口を登録する
+        /// @brief UI テキスト / UI 画像に共通の型・配置・色の口を登録する
         template <class Element>
         void RegisterElement(BindingRegistrar& r, const char* type)
         {
@@ -453,7 +489,7 @@ namespace CoreEngine::Script
         void RegisterText(BindingRegistrar& r)
         {
             using Handle = ScriptUIText;
-            RegisterElement<UIText>(r, "UIText");
+            RegisterElement<UITextComponent>(r, "UIText");
             r.Method("UIText", "string get_text() const property", asMETHOD(Handle, GetText), asCALL_THISCALL);
             r.Method("UIText", "void set_text(const string &in) property", asMETHOD(Handle, SetText), asCALL_THISCALL);
             r.Method("UIText", "float get_fontSize() const property", asMETHOD(Handle, GetFontSize), asCALL_THISCALL);
@@ -471,7 +507,7 @@ namespace CoreEngine::Script
             r.Method("UIText", "void set_alignV(TextAlignV) property", asMETHOD(Handle, SetAlignV), asCALL_THISCALL);
             r.Method("UIText", "void SetAlign(TextAlignH horizontal, TextAlignV vertical)", asMETHOD(Handle, SetAlign), asCALL_THISCALL);
             r.Method("UIText", "Vector2 get_measuredSize() const property", asMETHOD(Handle, GetMeasuredSize), asCALL_THISCALL);
-            r.Method("GameObject", "UIText@ get_uiText() property", asFUNCTION(GetElement<UIText>), asCALL_CDECL_OBJLAST);
+            r.Method("GameObject", "UIText@ get_uiText() property", asFUNCTION(GetElement<UITextComponent>), asCALL_CDECL_OBJLAST);
             r.Method("GameObject", "UIText@ SpawnUIText(const string &in fontName, const string &in text, const string &in name) const",
                 asFUNCTION(SpawnUIText), asCALL_CDECL_OBJLAST);
         }
@@ -479,11 +515,11 @@ namespace CoreEngine::Script
         void RegisterImage(BindingRegistrar& r)
         {
             using Handle = ScriptUIImage;
-            RegisterElement<UIImage>(r, "UIImage");
+            RegisterElement<UIImageComponent>(r, "UIImage");
             r.Method("UIImage", "Vector2 get_size() const property", asMETHOD(Handle, GetSize), asCALL_THISCALL);
             r.Method("UIImage", "void set_size(const Vector2 &in) property", asMETHOD(Handle, SetSize), asCALL_THISCALL);
             r.Method("UIImage", "Vector2 get_textureSize() const property", asMETHOD(Handle, GetTextureSize), asCALL_THISCALL);
-            r.Method("GameObject", "UIImage@ get_uiImage() property", asFUNCTION(GetElement<UIImage>), asCALL_CDECL_OBJLAST);
+            r.Method("GameObject", "UIImage@ get_uiImage() property", asFUNCTION(GetElement<UIImageComponent>), asCALL_CDECL_OBJLAST);
             r.Method("GameObject", "UIImage@ SpawnUIImage(const string &in texturePath, const string &in name) const",
                 asFUNCTION(SpawnUIImage), asCALL_CDECL_OBJLAST);
         }

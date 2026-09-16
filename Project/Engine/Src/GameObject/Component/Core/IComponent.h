@@ -97,6 +97,9 @@ public:
     /// @note エンジンが内部で使う印のコンポーネントは false を返す。
     virtual bool IsShownInInspector() const { return true; }
 
+    /// @brief インスペクタで先頭に並べるか（トランスフォーム系は true を返す）
+    virtual bool IsShownFirstInInspector() const { return false; }
+
     /// @brief インスペクターの中身を描画する
     /// @return 値が変更されたら true
     virtual bool DrawInspector() { return false; }

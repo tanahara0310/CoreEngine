@@ -16,22 +16,6 @@ namespace CoreEngine
     ///          オブジェクト単位の `{serializeKey}.json` を分けて置く。
     class SceneSaveSystem {
     public:
-        /// @brief 型名からオブジェクトを 1 体作る関数
-        using ObjectFactory = std::function<std::unique_ptr<GameObject>()>;
-
-        /// @brief シーン JSON から生成できる型を登録する
-        /// @param typeName GameObject::GetSerializeTypeName() が返す名前と一致させること
-        /// @details エディタ上で追加した UI を次回起動時に復活させるために使う。
-        ///          登録が無い型はマニフェストにあっても生成されない（黙って消える）
-        static void RegisterObjectType(const std::string& typeName, ObjectFactory factory);
-
-        /// @brief 型名が登録されているか
-        static bool IsObjectTypeRegistered(const std::string& typeName);
-
-        /// @brief 登録された型名からオブジェクトを 1 体作る（シーンへは登録しない）
-        /// @return 型名が登録されていなければ nullptr
-        static std::unique_ptr<GameObject> CreateObjectOfType(const std::string& typeName);
-
         /// @brief シーン名を設定（JSON ファイルパスに使用）
         void SetSceneName(const std::string& name) { sceneName_ = name; }
 

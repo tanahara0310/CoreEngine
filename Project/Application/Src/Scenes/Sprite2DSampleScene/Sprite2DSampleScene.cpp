@@ -7,7 +7,8 @@
 #include "Collision/CollisionLayer.h"
 #include "GameObject/Component/Render/SpriteRendererComponent.h"
 #include "GameObject/Component/Transform/EulerTransformComponent.h"
-#include "UI/UIImage.h"
+#include "UI/RectTransformComponent.h"
+#include "UI/UIImageComponent.h"
 
 namespace Sprite2DSample
 {
@@ -71,13 +72,14 @@ namespace Sprite2DSample
 
         // ── HUD（UI パス／スクリーン座標・左上原点）──
         {
-            auto* hud = CreateObject<UIImage>();
-            hud->Initialize(kWhiteTexture, "HudBar");
-            hud->SetAnchor(UIAnchor::TopLeft);
-            hud->SetAnchoredPosition({ 24.0f, 24.0f });
-            hud->SetSize({ 220.0f, 12.0f });
-            hud->SetColor({ 0.95f, 0.80f, 0.30f, 0.9f });
-            hud->SetSortOrder(10);
+            auto* hud = CreateObject("HudBar");
+            auto* rect = hud->AddComponent<RectTransformComponent>();
+            rect->SetAnchor(UIAnchor::TopLeft);
+            rect->SetAnchoredPosition({ 24.0f, 24.0f });
+            rect->SetSize({ 220.0f, 12.0f });
+            rect->SetSortOrder(10);
+            // テクスチャを指さない UI 画像は白い矩形になる
+            hud->AddComponent<UIImageComponent>()->SetColor({ 0.95f, 0.80f, 0.30f, 0.9f });
         }
     }
 }
