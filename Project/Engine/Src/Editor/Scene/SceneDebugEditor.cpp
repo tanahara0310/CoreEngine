@@ -11,6 +11,7 @@
 #include "Editor/Command/EditorCommandStack.h"
 #include "Editor/Inspector/InspectorRenderer.h"
 #include "GameObject/GameObjectManager.h"
+#include "GameObject/Component/Core/ComponentFactory.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "GameObject/Component/Transform/ITransformSource.h"
@@ -21,11 +22,13 @@
 #include "Editor/ImGui/ObjectSelector.h"
 #include "Graphics/Asset/AssetInfo.h"
 #include "Graphics/Asset/AssetRef.h"
+#include "Editor/ImGui/EditorTheme.h"
 #include "Editor/ImGui/ImGuiAll.h"
+#include "Editor/ImGui/Widgets/EditorBars.h"
 #include "Editor/ImGui/Gizmo.h"
-#include "Graphics/Texture/TextureManager.h"
 #include "Math/Geometry/RayCast.h"
 #include "Utility/Logger/Logger.h"
+#include <algorithm>
 #include <cctype>
 #include <filesystem>
 
@@ -438,69 +441,93 @@ namespace CoreEngine
 
     void SceneDebugEditor::DrawHierarchyContent()
     {
-        const auto& objects = gameObjectManager_->GetAllObjects();
-
         if (auto child = UI::Scope::ChildScope("##HierarchyObjectList")) {
-            // ── オブジェクトアイコンの初回ロード ──
-            static D3D12_GPU_DESCRIPTOR_HANDLE sObjIconHandle{};
-            static bool sObjIconLoaded = false;
-            if (!sObjIconLoaded && TextureManager::GetInstance().IsInitialized()) {
-                sObjIconHandle = TextureManager::GetInstance().Load("obj.png").gpuHandle;
-                sObjIconLoaded = true;
+            // シーンの名前の枝（保存していない変更があれば * を付ける）
+            std::string sceneLabel = GetSceneName();
+            if (sceneLabel.empty()) {
+                sceneLabel = "Scene";
             }
-
-            for (const auto& obj : objects) {
-                if (!obj) continue;
-
-                const bool isSelected = (objectSelector_.GetSelectedObject() == obj.get());
-
-                // 状態に応じた文字色
-                int colorsPushed = 0;
-                if (obj->IsMarkedForDestroy()) {
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.4f, 0.4f, 1.0f));
-                    ++colorsPushed;
-                } else if (!obj->IsActive()) {
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.55f, 0.55f, 0.55f, 1.0f));
-                    ++colorsPushed;
+            if (IsSceneDirty()) {
+                sceneLabel += " *";
+            }
+            if (ImGui::TreeNodeEx("##sceneRoot", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth,
+                    "%s", sceneLabel.c_str())) {
+                for (const auto& obj : gameObjectManager_->GetAllObjects()) {
+                    if (obj) {
+                        DrawHierarchyRow(*obj);
+                    }
                 }
-
-                // アイコンを表示（プレハブから作ったオブジェクトは青）
-                if (sObjIconLoaded) {
-                    const ImVec4 iconTint = obj->IsPrefabInstance()
-                        ? ImGui::GetStyleColorVec4(ImGuiCol_CheckMark)
-                        : ImVec4(0.96f, 0.65f, 0.14f, 1.0f);
-                    ImGui::ImageWithBg((ImTextureID)sObjIconHandle.ptr, ImVec2(14, 14),
-                        ImVec2(0, 0), ImVec2(1, 1),
-                        ImVec4(0, 0, 0, 0),
-                        iconTint);
-                    ImGui::SameLine(0.0f, 4.0f);
-                }
-
-                const char* displayName = obj->GetDisplayName();
-
-                char itemId[256];
-                snprintf(itemId, sizeof(itemId), "%s##obj_%p", displayName, (void*)obj.get());
-
-                if (ImGui::Selectable(itemId, isSelected)) {
-                    objectSelector_.SelectObject(obj.get());
-                }
-
-                // インスペクタの ObjectRef 欄へ落とせるように ID を運ぶ
-                if (ImGui::BeginDragDropSource()) {
-                    const std::uint64_t idValue = obj->GetObjectId().value;
-                    ImGui::SetDragDropPayload(
-                        InspectorRenderer::kObjectDragPayload, &idValue, sizeof(idValue));
-                    ImGui::TextUnformatted(displayName);
-                    ImGui::EndDragDropSource();
-                }
-
-                if (colorsPushed > 0) {
-                    ImGui::PopStyleColor(colorsPushed);
-                }
-
-                DrawObjectContextMenu(*obj);
+                ImGui::TreePop();
             }
         }
+    }
+
+    void SceneDebugEditor::DrawHierarchyRow(GameObject& object)
+    {
+        namespace Theme = Editor::Theme;
+
+        const bool isSelected = objectSelector_.GetSelectedObject() == &object;
+        const bool isPrefab = object.IsPrefabInstance();
+        const ComponentFactory& factory = ComponentFactory::Get();
+        const bool hasScript = std::any_of(object.GetAllComponents().begin(), object.GetAllComponents().end(),
+            [&factory](const auto& component) {
+                return component && factory.IsRuntimeType(component->GetTypeName());
+            });
+
+        ImGui::PushID(&object);
+        const ImVec2 rowMin = ImGui::GetCursorScreenPos();
+        const float rowHeight = ImGui::GetTextLineHeight();
+        if (ImGui::Selectable("##row", isSelected, ImGuiSelectableFlags_SpanAvailWidth, ImVec2(0.0f, rowHeight))) {
+            objectSelector_.SelectObject(&object);
+        }
+        const float rowRight = ImGui::GetItemRectMax().x;
+
+        // インスペクタの ObjectRef 欄へ落とせるように ID を運ぶ
+        if (ImGui::BeginDragDropSource()) {
+            const std::uint64_t idValue = object.GetObjectId().value;
+            ImGui::SetDragDropPayload(InspectorRenderer::kObjectDragPayload, &idValue, sizeof(idValue));
+            ImGui::TextUnformatted(object.GetDisplayName());
+            ImGui::EndDragDropSource();
+        }
+        DrawObjectContextMenu(object);
+
+        // 状態に応じた色（破棄待ちは赤、非アクティブは淡く）
+        ImVec4 textColor = Theme::kText;
+        ImVec4 glyphColor = isPrefab ? Theme::kAccentHover : Theme::kTextDim;
+        if (object.IsMarkedForDestroy()) {
+            textColor = glyphColor = Theme::kError;
+        } else if (!object.IsActive()) {
+            textColor = glyphColor = Theme::kTextMute;
+        }
+
+        // 種類の記号（プレハブから作ったものは ◈）
+        ImDrawList* const drawList = ImGui::GetWindowDrawList();
+        const char* const glyph = isPrefab ? "◈" : "◆";
+        drawList->AddText(rowMin, ImGui::GetColorU32(glyphColor), glyph);
+        const float left = rowMin.x + ImGui::CalcTextSize(glyph).x + 6.0f;
+
+        // 右端の札（名前の場所が無くなるほど狭いときは出さない）
+        float right = rowRight - 4.0f;
+        const auto placeTag = [&](const char* text, const ImVec4& color) {
+            const ImVec2 size = UI::Bar::TagSize(text);
+            if (size.x > (right - left) * 0.5f) {
+                return;
+            }
+            right -= size.x;
+            UI::Bar::DrawTag(drawList, ImVec2(right, rowMin.y + (rowHeight - size.y) * 0.5f), text, color);
+            right -= 4.0f;
+        };
+        if (isPrefab) {
+            placeTag("Prefab", Theme::kAccentHover);
+        }
+        if (hasScript) {
+            placeTag("AS", Theme::kScript);
+        }
+
+        // 名前（入りきらなければ省略記号で詰める）
+        UI::Bar::EllipsizedText(drawList, ImVec2(left, rowMin.y), ImVec2(right, rowMin.y + rowHeight),
+            object.GetDisplayName(), textColor);
+        ImGui::PopID();
     }
 
     void SceneDebugEditor::DrawInspectorContent()

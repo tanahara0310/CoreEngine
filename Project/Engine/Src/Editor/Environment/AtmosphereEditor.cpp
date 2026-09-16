@@ -42,6 +42,7 @@ namespace CoreEngine {
                     .id = kEditorLabel,
                     .placement = Editor::PanelPlacement::EnvironmentTree,
                     .owner = this,
+                    .icon = "☀",
                     .draw = [this]() { DrawContent(); },
                     });
             }

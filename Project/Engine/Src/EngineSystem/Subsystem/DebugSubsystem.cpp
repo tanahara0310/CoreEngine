@@ -171,6 +171,7 @@ namespace CoreEngine
             .id = "Lighting",
             .placement = Editor::PanelPlacement::EnvironmentTree,
             .owner = this,
+            .icon = "✦",
             .draw = [this]() {
                 if (auto* lightManager = engine_->GetService<LightManager>()) {
                     lightManager->DrawAllImGui();

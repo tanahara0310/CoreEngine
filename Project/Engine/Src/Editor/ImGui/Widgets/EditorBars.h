@@ -6,8 +6,10 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include <cfloat>
+
 /// @file
-/// @brief メニューバー・ツールバー・ステータスバーで使う小さな部品
+/// @brief メニューバー・ツールバー・ステータスバーと各パネルで使う小さな部品
 
 namespace CoreEngine::UI::Bar
 {
@@ -66,6 +68,43 @@ namespace CoreEngine::UI::Bar
         draw->AddText(ImVec2(min.x + 7.0f, min.y + 2.0f), ImGui::GetColorU32(textColor), text);
 
         ImGui::Dummy(size);
+    }
+
+    /// 札の文字の大きさの倍率
+    inline constexpr float kTagTextScale = 0.85f;
+
+    /// @brief 札（輪郭だけの小さな文字）の大きさ
+    inline ImVec2 TagSize(const char* text)
+    {
+        const ImVec2 textSize = ImGui::GetFont()->CalcTextSizeA(
+            ImGui::GetFontSize() * kTagTextScale, FLT_MAX, 0.0f, text);
+        return ImVec2(textSize.x + 8.0f, textSize.y + 2.0f);
+    }
+
+    /// @brief 札を描く
+    /// @param min 左上
+    /// @param color 文字の色（輪郭はこれを薄くした色）
+    inline void DrawTag(ImDrawList* drawList, const ImVec2& min, const char* text, const ImVec4& color)
+    {
+        const ImVec2 size = TagSize(text);
+        drawList->AddRect(min, ImVec2(min.x + size.x, min.y + size.y),
+            ImGui::GetColorU32(Editor::Theme::WithAlpha(color, 0.4f)), 3.0f);
+        drawList->AddText(ImGui::GetFont(), ImGui::GetFontSize() * kTagTextScale,
+            ImVec2(min.x + 4.0f, min.y + 1.0f), ImGui::GetColorU32(color), text);
+    }
+
+    /// @brief 範囲に収まらない文字を省略記号で詰めて描く
+    /// @param min 文字の左上
+    /// @param max 描いてよい範囲の右下
+    inline void EllipsizedText(ImDrawList* drawList, const ImVec2& min, const ImVec2& max,
+                               const char* text, const ImVec4& color)
+    {
+        if (max.x <= min.x) {
+            return;
+        }
+        ImGui::PushStyleColor(ImGuiCol_Text, color);
+        ImGui::RenderTextEllipsis(drawList, min, max, max.x, text, nullptr, nullptr);
+        ImGui::PopStyleColor();
     }
 
     /// @brief ツールバーのボタンの幅

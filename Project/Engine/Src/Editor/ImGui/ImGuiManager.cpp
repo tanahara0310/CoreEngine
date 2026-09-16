@@ -89,6 +89,7 @@ namespace CoreEngine
             0x2200, 0x22FF, // Mathematical Operators
             0x23E9, 0x23FA, // Media Control Symbols
             0x25A0, 0x25FF, // Geometric Shapes
+            0x2600, 0x26FF, // Miscellaneous Symbols
             0x2700, 0x27BF, // Dingbats
             0x27F0, 0x27FF, // Supplemental Arrows-A
             0x2900, 0x297F, // Supplemental Arrows-B

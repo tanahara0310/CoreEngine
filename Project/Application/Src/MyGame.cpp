@@ -115,30 +115,6 @@ void MyGame::Finalize()
 void MyGame::Update()
 {
     // ──────────────────────────────────────────────────────────
-    // デバッグUIからのシーン切り替えリクエストを処理
-    // ──────────────────────────────────────────────────────────
-#ifdef USE_IMGUI
-    auto gameDebugUI = GetEngineSystem()->GetDebugSubsystem()->GetGameDebugUI();
-    if (gameDebugUI) {
-        auto sceneManagerTab = gameDebugUI->GetSceneManagerTab();
-        if (sceneManagerTab && sceneManagerTab->IsChangeRequested()) {
-            std::string requestedScene = sceneManagerTab->GetRequestedSceneName();
-            if (sceneManager_ && sceneManager_->HasScene(requestedScene)) {
-                sceneManager_->ChangeScene(requestedScene);
-
-#ifdef USE_IMGUI
-                auto console = GetEngineSystem()->GetDebugSubsystem()->GetConsole();
-                if (console) {
-                    console->LogInfo("シーン切り替え: " + requestedScene);
-                }
-#endif
-            }
-            sceneManagerTab->ResetChangeRequest();
-        }
-    }
-#endif
-
-    // ──────────────────────────────────────────────────────────
     // シーン更新処理を委譲
     // ──────────────────────────────────────────────────────────
 

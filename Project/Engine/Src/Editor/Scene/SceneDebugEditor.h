@@ -116,6 +116,9 @@ namespace CoreEngine
         /// @param normalizedDropPos Gameビュー内の位置（0〜1）。nullptr なら中央
         Vector3 ComputeDropPosition(const Vector2* normalizedDropPos) const;
 
+        /// @brief Hierarchy の 1 行（種類の記号・名前・Prefab と AS の札）を描く
+        void DrawHierarchyRow(GameObject& object);
+
         /// @brief Hierarchy の行の右クリックメニュー（プレハブとして保存・プレハブへ適用・つながりを外す）
         void DrawObjectContextMenu(GameObject& object);
 
