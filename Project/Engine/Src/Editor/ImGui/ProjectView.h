@@ -77,9 +77,13 @@ namespace CoreEngine
         /// @return エントリのリスト
         std::vector<Entry> GetCurrentDirectoryContents();
 
-        /// @brief ディレクトリに移動
+        /// @brief ディレクトリの移動を頼む
         /// @param path 移動先のパス
+        /// @note 実際に移るのはフレームの最後（描画の途中でキャッシュを捨てないため）。
         void NavigateToDirectory(const std::filesystem::path& path);
+
+        /// @brief 頼まれていた移動を行う
+        void ApplyPendingNavigation();
 
         /// @brief 親ディレクトリに戻る
         void NavigateUp();
@@ -159,6 +163,7 @@ namespace CoreEngine
         Kind kindFilter_ = Kind::Any;           // 種類の絞り込み
         bool useListView_ = false;              // 一覧表示にするか
         std::filesystem::path selectedPath_;    // 選択中のエントリ
+        std::filesystem::path pendingNavigate_; // フレームの最後に移る先（空なら移らない）
 
         // 参照しているファイルの控え（選択が変わったときだけ調べ直す）
         struct Reference {

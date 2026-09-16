@@ -175,6 +175,9 @@ namespace CoreEngine
             ImGui::EndChild();
         }
         ImGui::End();
+
+        // 描画中に頼まれた移動をここで行う
+        ApplyPendingNavigation();
     }
 
     void ProjectView::DrawFilterBar()
@@ -295,6 +298,21 @@ namespace CoreEngine
 
     void ProjectView::NavigateToDirectory(const std::filesystem::path& path)
     {
+        // 実際の移動はフレームの最後まで遅らせる。
+        // 移動はフォルダツリーのキャッシュを捨てるので、ツリーをなぞっている最中に
+        // 呼ぶと、走査中の配列がその場で消える。
+        pendingNavigate_ = path;
+    }
+
+    void ProjectView::ApplyPendingNavigation()
+    {
+        if (pendingNavigate_.empty()) {
+            return;
+        }
+
+        const std::filesystem::path path = pendingNavigate_;
+        pendingNavigate_.clear();
+
         if (!std::filesystem::exists(path) || !std::filesystem::is_directory(path) || path == currentPath_) {
             return;
         }
