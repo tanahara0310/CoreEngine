@@ -2,6 +2,7 @@
 
 #include "Editor/Command/EditorCommand.h"
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -37,6 +38,11 @@ namespace CoreEngine::Editor
         size_t GetUndoCount() const noexcept { return undo_.size(); }
         size_t GetRedoCount() const noexcept { return redo_.size(); }
 
+        /// @brief シーンの変更の通し番号（シーンを変える操作のたびに 1 つ増える）
+        /// @note 「最後に保存したときの番号」と比べて、未保存の変更があるかを判定する。
+        ///       CVar のように自分の保存先を持つ操作は数えない。
+        uint64_t GetSceneRevision() const noexcept { return sceneRevision_; }
+
         /// @brief 次に取り消される操作の名前（無ければ空）
         std::string PeekUndoLabel() const;
 
@@ -71,6 +77,9 @@ namespace CoreEngine::Editor
 
         std::vector<std::unique_ptr<IEditorCommand>> undo_;
         std::vector<std::unique_ptr<IEditorCommand>> redo_;
+
+        /// シーンの変更の通し番号
+        uint64_t sceneRevision_ = 0;
 
         std::unique_ptr<CompositeCommand> batch_;
         int  batchDepth_ = 0;

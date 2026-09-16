@@ -53,10 +53,35 @@ namespace CoreEngine
         bool IsStopped() const { return state_ == PlaybackState::Stopped; }
 
         /// @brief 再生を開始
-        void Play() { SetState(PlaybackState::Playing); }
+        void Play() { stepRequested_ = false; SetState(PlaybackState::Playing); }
 
         /// @brief 更新を止める
-        void Stop() { SetState(PlaybackState::Stopped); }
+        void Stop() { stepRequested_ = false; SetState(PlaybackState::Stopped); }
+
+        /// @brief 止めたまま 1 フレームだけ進めるよう頼む
+        /// @note 実際に進むのは次のフレーム。進み終えたらまた停止へ戻る。
+        void RequestStep() { stepRequested_ = true; }
+
+        /// @brief コマ送りの要求を取り込む（フレームの先頭で呼ぶ）
+        void BeginFrame()
+        {
+            if (!stepRequested_) {
+                return;
+            }
+            stepRequested_ = false;
+            stepping_ = true;
+            SetState(PlaybackState::Playing);
+        }
+
+        /// @brief コマ送りの 1 フレームを閉じる（フレームの末尾で呼ぶ）
+        void EndFrame()
+        {
+            if (!stepping_) {
+                return;
+            }
+            stepping_ = false;
+            SetState(PlaybackState::Stopped);
+        }
 
     private:
         PlaybackStateManager() = default;
@@ -68,5 +93,11 @@ namespace CoreEngine
         /// @note エディタ UI を持たない Release ビルドには停止を解除する手段が無いため、
         ///       既定を停止にしてはいけない。
         PlaybackState state_ = PlaybackState::Playing;
+
+        /// コマ送りの要求（次のフレームの先頭で取り込む）
+        bool stepRequested_ = false;
+
+        /// コマ送りの 1 フレームを進めている最中か
+        bool stepping_ = false;
     };
 }

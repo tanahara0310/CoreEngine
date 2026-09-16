@@ -23,6 +23,7 @@ namespace CoreEngine::Editor
         }
 
         if (batch_) {
+            if (command->AffectsScene()) { ++sceneRevision_; }
             batch_->Add(std::move(command));
             return;
         }
@@ -33,6 +34,7 @@ namespace CoreEngine::Editor
 
     void EditorCommandStack::PushToUndo(std::unique_ptr<IEditorCommand> command)
     {
+        if (command->AffectsScene()) { ++sceneRevision_; }
         undo_.push_back(std::move(command));
         if (undo_.size() > kMaxCommands) {
             undo_.erase(undo_.begin());
@@ -52,6 +54,7 @@ namespace CoreEngine::Editor
         command->Undo();
         applying_ = false;
 
+        if (command->AffectsScene()) { ++sceneRevision_; }
         redo_.push_back(std::move(command));
         return true;
     }

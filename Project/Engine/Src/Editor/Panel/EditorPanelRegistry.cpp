@@ -42,7 +42,7 @@ namespace CoreEngine::Editor
         panels_.push_back(std::move(panel));
 
         if (ref.desc.placement == PanelPlacement::Window && dockRegistrar_) {
-            dockRegistrar_(ref.desc.id);
+            dockRegistrar_(ref.desc);
         }
         return ref;
     }
@@ -104,7 +104,7 @@ namespace CoreEngine::Editor
         // 橋渡しが付く前に登録されたぶんをまとめて通知する
         for (const auto& panel : panels_) {
             if (panel && panel->desc.placement == PanelPlacement::Window) {
-                dockRegistrar_(panel->desc.id);
+                dockRegistrar_(panel->desc);
             }
         }
     }

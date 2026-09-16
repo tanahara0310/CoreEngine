@@ -1,20 +1,83 @@
 #include "pch.h"
 #include "DockingUI.h"
+#include "Editor/ImGui/EditorTheme.h"
+#include "Editor/ImGui/Widgets/EditorBars.h"
 #include "Editor/Scene/SceneDebugEditor.h"
-#include "Graphics/Texture/TextureManager.h"
-#include "Utility/Logger/Logger.h"
+#include "EngineSystem/PlaybackState.h"
+#include "Utility/CVar/CVar.h"
+#include "Utility/CVar/CVarConsole.h"
+#include "Utility/CVar/CVarRegistry.h"
+#include <algorithm>
 #include <format>
 
 
 namespace CoreEngine
 {
-    void DockingUI::RegisterWindow(const std::string& windowName, DockArea area)
+    namespace
     {
-        registeredWindows_[windowName] = area;
+        namespace Theme = Editor::Theme;
+
+        /// 標準レイアウトの区画の割合（画面全体に対する幅・高さ）
+        constexpr float kRightRatio = 0.27f;   // Inspector
+        constexpr float kLeftRatio = 0.22f;   // Hierarchy / Project の列
+        constexpr float kBottomRatio = 0.28f;   // Console / Profiler（中央列の高さに対して）
+        constexpr float kProjectRatio = 0.40f;   // Project（左列の高さに対して）
+
+        /// コライダー表示の切り替え先
+        constexpr const char* kColliderCVar = "r.Collision.DebugDraw";
+
+        /// @brief bool の CVar を Undo に積んで書き換える
+        void SetBoolCVar(const char* name, bool value)
+        {
+            ICVar* const cvar = CVarRegistry::Get().Find(name);
+            if (!cvar) {
+                return;
+            }
+            std::string reason;
+            CVarConsole::SetFromString(*cvar, value ? "true" : "false", reason);
+        }
+
+        /// @brief bool の CVar の現在値（無ければ false）
+        bool GetBoolCVar(const char* name)
+        {
+            const ICVar* const cvar = CVarRegistry::Get().Find(name);
+            const bool* const value = cvar ? cvar->AsBool() : nullptr;
+            return value && *value;
+        }
+
+        /// @brief 残りの幅から右詰めで描き始める位置へ移動する
+        void AlignRight(float width)
+        {
+            ImGui::SameLine(0.0f, 0.0f);
+            const float x = ImGui::GetWindowWidth() - ImGui::GetStyle().WindowPadding.x - width;
+            if (x > ImGui::GetCursorPosX()) {
+                ImGui::SetCursorPosX(x);
+            }
+        }
+    }
+
+    DockSpaceHostScope::~DockSpaceHostScope()
+    {
+        ImGui::End();
+    }
+
+    void DockingUI::RegisterWindow(const std::string& windowName, Editor::DockArea area)
+    {
+        if (area == Editor::DockArea::None) {
+            return;
+        }
+
+        const auto found = std::find_if(registeredWindows_.begin(), registeredWindows_.end(),
+            [&windowName](const auto& entry) { return entry.first == windowName; });
+        if (found != registeredWindows_.end()) {
+            found->second = area;
+        } else {
+            registeredWindows_.emplace_back(windowName, area);
+        }
 
         // レイアウトが既に初期化されている場合、動的にドッキング
         if (layoutInitialized_) {
-            ImGuiID nodeId = ResolveNodeIdForWindow(windowName, area);
+            const ImGuiID nodeId = GetNodeIdForArea(area);
             if (nodeId != 0) {
                 ImGui::DockBuilderDockWindow(windowName.c_str(), nodeId);
             }
@@ -23,22 +86,23 @@ namespace CoreEngine
 
     void DockingUI::UnregisterWindow(const std::string& windowName)
     {
-        registeredWindows_.erase(windowName);
+        std::erase_if(registeredWindows_,
+            [&windowName](const auto& entry) { return entry.first == windowName; });
     }
 
-    void DockingUI::BeginDockSpaceHostWindow()
+    DockSpaceHostScope DockingUI::BeginDockSpaceHost()
     {
         // メインビューポートに合わせてホストウィンドウの位置・サイズを設定
         ImGuiViewport* vp = ImGui::GetMainViewport();
 
         // メニューバーの高さを取得
-        float menuBarHeight = ImGui::GetFrameHeight();
+        const float menuBarHeight = ImGui::GetFrameHeight();
 
         // 再生ツールバーを描画（メニューバーの直下）
         DrawPlaybackToolbar();
 
         // メニューバー + ツールバーの下にドッキングエリアを配置
-        float totalTopHeight = menuBarHeight + toolbarHeight_;
+        const float totalTopHeight = menuBarHeight + toolbarHeight_;
         ImVec2 pos = vp->Pos;
         pos.y += totalTopHeight;
 
@@ -50,7 +114,7 @@ namespace CoreEngine
         ImGui::SetNextWindowViewport(vp->ID);
 
         // タイトルバーや移動不可など、ドッキング用の特殊フラグを設定
-        ImGuiWindowFlags hostFlags = ImGuiWindowFlags_NoTitleBar
+        const ImGuiWindowFlags hostFlags = ImGuiWindowFlags_NoTitleBar
             | ImGuiWindowFlags_NoCollapse
             | ImGuiWindowFlags_NoResize
             | ImGuiWindowFlags_NoMove
@@ -71,8 +135,10 @@ namespace CoreEngine
         SetupDockSpace();
 
         // ドッキングスペースを作成（中央透過）
-        ImGuiID dockId = ImGui::GetID("MyDockSpace");
+        const ImGuiID dockId = ImGui::GetID("MyDockSpace");
         ImGui::DockSpace(dockId, ImVec2(0, 0), ImGuiDockNodeFlags_PassthruCentralNode);
+
+        return DockSpaceHostScope{};
     }
 
     void DockingUI::SetupDockSpace()
@@ -96,18 +162,9 @@ namespace CoreEngine
         layoutDirty_ = true;
     }
 
-    ImGuiID DockingUI::GetNodeIdForArea(DockArea area) const
+    ImGuiID DockingUI::GetNodeIdForArea(Editor::DockArea area) const
     {
         return nodeIds_[static_cast<int>(area)];
-    }
-
-    ImGuiID DockingUI::ResolveNodeIdForWindow(const std::string& windowName, DockArea area) const
-    {
-        if (windowName == "Game" || windowName == "Canvas") {
-            return gameNodeId_;
-        }
-
-        return GetNodeIdForArea(area);
     }
 
     void DockingUI::BuildDockLayout()
@@ -116,11 +173,11 @@ namespace CoreEngine
         ImGuiViewport* vp = ImGui::GetMainViewport();
 
         // メニューバー + ツールバーの高さを考慮したサイズを設定
-        float menuBarHeight = ImGui::GetFrameHeight();
-        float totalTopHeight = menuBarHeight + toolbarHeight_;
-        ImVec2 dockSpaceSize = ImVec2(vp->Size.x, vp->Size.y - totalTopHeight - statusBarHeight_);
+        const float menuBarHeight = ImGui::GetFrameHeight();
+        const float totalTopHeight = menuBarHeight + toolbarHeight_;
+        const ImVec2 dockSpaceSize = ImVec2(vp->Size.x, vp->Size.y - totalTopHeight - statusBarHeight_);
 
-        ImGuiID dockMain = ImGui::GetID("MyDockSpace");
+        const ImGuiID dockMain = ImGui::GetID("MyDockSpace");
         ImGui::DockBuilderRemoveNode(dockMain);
         // ホストウィンドウ内に埋め込むノードなので DockSpace フラグを立てる。
         // 立てないと「自前のウィンドウを持つ浮遊ノード」として作られ、
@@ -131,41 +188,36 @@ namespace CoreEngine
         for (ImGuiID& nodeId : nodeIds_) {
             nodeId = 0;
         }
-        gameNodeId_ = 0;
 
-        // 1) 右側エリア（Inspector）を最初に分割（25%）
-        ImGuiID idMainArea, idRight;
-        ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Right, 0.25f, &idRight, &idMainArea);
+        // 左右の列は画面の高さいっぱいに取り、中央の列だけを上下に割る。
+        // 分割の割合は「今から割るノード」に対する比なので、画面全体に対する
+        // 割合から、既に切り出した分を割り戻す。
+        ImGuiID idRight = 0, idWithoutRight = 0;
+        ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Right, kRightRatio, &idRight, &idWithoutRight);
 
-        // 2) 残りのエリアを上下に分割（下部30%）
-        ImGuiID idTop, idBottom;
-        ImGui::DockBuilderSplitNode(idMainArea, ImGuiDir_Down, 0.30f, &idBottom, &idTop);
+        ImGuiID idLeft = 0, idCenterColumn = 0;
+        ImGui::DockBuilderSplitNode(idWithoutRight, ImGuiDir_Left,
+            kLeftRatio / (1.0f - kRightRatio), &idLeft, &idCenterColumn);
 
-        // 3) 上部エリアを左側と中央に分割（左側25%）
-        ImGuiID idLeft, idCenter;
-        ImGui::DockBuilderSplitNode(idTop, ImGuiDir_Left, 0.25f, &idLeft, &idCenter);
+        ImGuiID idBottom = 0, idCenter = 0;
+        ImGui::DockBuilderSplitNode(idCenterColumn, ImGuiDir_Down, kBottomRatio, &idBottom, &idCenter);
 
-        // 4) 左側をさらに上下に分割
-        ImGuiID idLeftTop, idLeftBottom;
-        ImGui::DockBuilderSplitNode(idLeft, ImGuiDir_Down, 0.5f, &idLeftBottom, &idLeftTop);
+        ImGuiID idLeftBottom = 0, idLeftTop = 0;
+        ImGui::DockBuilderSplitNode(idLeft, ImGuiDir_Down, kProjectRatio, &idLeftBottom, &idLeftTop);
 
-        gameNodeId_ = idCenter;
-
-        nodeIds_[static_cast<int>(DockArea::LeftTop)] = idLeftTop;
-        nodeIds_[static_cast<int>(DockArea::LeftBottom)] = idLeftBottom;
-        nodeIds_[static_cast<int>(DockArea::Center)] = idCenter;
-        nodeIds_[static_cast<int>(DockArea::Right)] = idRight;
-        nodeIds_[static_cast<int>(DockArea::BottomLeft)] = 0;
-        nodeIds_[static_cast<int>(DockArea::BottomRight)] = 0;
-        nodeIds_[static_cast<int>(DockArea::Bottom)] = idBottom;
-        nodeIds_[static_cast<int>(DockArea::Hierarchy)] = idLeftTop;
+        nodeIds_[static_cast<int>(Editor::DockArea::None)] = 0;
+        nodeIds_[static_cast<int>(Editor::DockArea::LeftTop)] = idLeftTop;
+        nodeIds_[static_cast<int>(Editor::DockArea::LeftBottom)] = idLeftBottom;
+        nodeIds_[static_cast<int>(Editor::DockArea::Center)] = idCenter;
+        nodeIds_[static_cast<int>(Editor::DockArea::Right)] = idRight;
+        nodeIds_[static_cast<int>(Editor::DockArea::Bottom)] = idBottom;
 
         // 登録されているウィンドウを各ノードへ必ずドッキングする。
         // 【この無条件ドックを条件付きにしないこと】imgui.ini の DockId 欠落は
         // 「ユーザーが意図して引き出した」ことを意味しないため、判定を入れると
         // Hierarchy や Console が毎起動フローティングのまま復帰しなくなる。
         for (const auto& [windowName, area] : registeredWindows_) {
-            ImGuiID nodeId = ResolveNodeIdForWindow(windowName, area);
+            const ImGuiID nodeId = GetNodeIdForArea(area);
             if (nodeId != 0) {
                 ImGui::DockBuilderDockWindow(windowName.c_str(), nodeId);
             }
@@ -175,71 +227,17 @@ namespace CoreEngine
         ImGui::DockBuilderFinish(dockMain);
     }
 
-    void DockingUI::LoadPlaybackIcons()
-    {
-        auto& texManager = TextureManager::GetInstance();
-
-        if (!texManager.IsInitialized()) {
-            return;
-        }
-
-        try {
-            // 全アイコンを並列ロードに投入する。
-            std::vector<std::string> iconPaths = {
-                "grid.png", "translate.png", "rotate.png", "scale.png",
-                "fps.png", "deltaTime.png"
-            };
-            texManager.Load(iconPaths);
-
-            // キャッシュ済みの結果を割り当てる。
-            auto gridTex = texManager.Load("grid.png");
-            auto translateTex = texManager.Load("translate.png");
-            auto rotateTex = texManager.Load("rotate.png");
-            auto scaleTex = texManager.Load("scale.png");
-
-            gridIcon_ = gridTex.gpuHandle;
-            translateIcon_ = translateTex.gpuHandle;
-            rotateIcon_ = rotateTex.gpuHandle;
-            scaleIcon_ = scaleTex.gpuHandle;
-
-            // ステータスバー用アイコン
-            auto fpsTex = texManager.Load("fps.png");
-            fpsIcon_ = fpsTex.gpuHandle;
-            fpsIconLoaded_ = true;
-
-            auto deltaTimeTex = texManager.Load("deltaTime.png");
-            deltaTimeIcon_ = deltaTimeTex.gpuHandle;
-            deltaTimeIconLoaded_ = true;
-
-            playbackIconsLoaded_ = true;
-            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "Toolbar icons loaded successfully (DockingUI)");
-        }
-        catch (const std::exception& e) {
-            std::string errorMsg = std::format("Failed to load toolbar icons: {}", e.what());
-            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "{}", errorMsg);
-            playbackIconsLoaded_ = false;
-        }
-    }
-
     void DockingUI::DrawPlaybackToolbar()
     {
 #ifdef USE_IMGUI
-        // アイコンがまだ読み込まれていない場合は読み込む
-        if (!playbackIconsLoaded_) {
-            LoadPlaybackIcons();
-        }
-
         ImGuiViewport* vp = ImGui::GetMainViewport();
-        float menuBarHeight = ImGui::GetFrameHeight();
+        const float menuBarHeight = ImGui::GetFrameHeight();
 
-        // ツールバーの位置とサイズを設定
-        ImVec2 toolbarPos = ImVec2(vp->Pos.x, vp->Pos.y + menuBarHeight);
-        ImVec2 toolbarSize = ImVec2(vp->Size.x, toolbarHeight_);
+        ImGui::SetNextWindowPos(ImVec2(vp->Pos.x, vp->Pos.y + menuBarHeight));
+        ImGui::SetNextWindowSize(ImVec2(vp->Size.x, toolbarHeight_));
+        ImGui::SetNextWindowViewport(vp->ID);
 
-        ImGui::SetNextWindowPos(toolbarPos);
-        ImGui::SetNextWindowSize(toolbarSize);
-
-        ImGuiWindowFlags toolbarFlags = ImGuiWindowFlags_NoTitleBar
+        const ImGuiWindowFlags toolbarFlags = ImGuiWindowFlags_NoTitleBar
             | ImGuiWindowFlags_NoResize
             | ImGuiWindowFlags_NoMove
             | ImGuiWindowFlags_NoScrollbar
@@ -249,91 +247,123 @@ namespace CoreEngine
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4.0f, 4.0f));
-        // メニューバー（bgPanel）と同じ面に揃える。値はリニア（画面上は #2C2C30 相当）
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0251f, 0.0251f, 0.0296f, 1.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(9.0f, 4.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(5.0f, 4.0f));
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, Theme::kWindow);
 
         if (auto toolbar = UI::Scope::WindowScope("##PlaybackToolbar", nullptr, toolbarFlags)) {
-            if (playbackIconsLoaded_) {
-                constexpr float kIconSize = 18.0f;
-                constexpr float kPadding = 3.0f;
-
-                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(kPadding, kPadding));
-                ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
-                ImGui::SetCursorPosX(8.0f);
-
-                if (sceneDebugEditor_) {
-                    const auto drawGizmoButton = [&](const char* id, D3D12_GPU_DESCRIPTOR_HANDLE icon, Gizmo::Mode mode, const char* tooltip) {
-                        const bool isActive = (sceneDebugEditor_->GetGizmoMode() == mode);
-                        // 値はリニア（sRGB RTV に描かれるため画面上では約2倍明るく見える）
-                        if (isActive) {
-                            // 選択中のモードはアクセント青の面で示す（画面上 #3D7EC8 相当）
-                            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.047f, 0.208f, 0.578f, 1.00f));
-                            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.090f, 0.300f, 0.708f, 1.00f));
-                            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.035f, 0.160f, 0.470f, 1.00f));
-                        } else {
-                            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.048f, 0.048f, 0.054f, 0.60f));
-                            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.095f, 0.098f, 0.110f, 0.90f));
-                            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.030f, 0.030f, 0.034f, 0.95f));
-                        }
-
-                        if (ImGui::ImageButton(id, (ImTextureID)icon.ptr, ImVec2(kIconSize, kIconSize))) {
-                            sceneDebugEditor_->SetGizmoMode(mode);
-                        }
-                        ImGui::PopStyleColor(3);
-                        UI::Tooltip(tooltip);
-                        };
-
-                    drawGizmoButton("##GizmoTranslateToolbar", translateIcon_, Gizmo::Mode::Translate, "移動 [W]");
-                    UI::SameLine(0.0f, 6.0f);
-                    drawGizmoButton("##GizmoRotateToolbar", rotateIcon_, Gizmo::Mode::Rotate, "回転 [E]");
-                    UI::SameLine(0.0f, 6.0f);
-                    drawGizmoButton("##GizmoScaleToolbar", scaleIcon_, Gizmo::Mode::Scale, "拡縮 [R]");
-                    UI::SameLine(0.0f, 16.0f);
-                }
-
-                // グリッドボタン
-                {
-                    bool isActive = isGridVisible_;
-                    if (isActive) {
-                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.48f, 0.48f, 0.48f, 1.00f));
-                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.58f, 0.58f, 0.58f, 1.00f));
-                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.40f, 0.40f, 0.40f, 1.00f));
-                    } else {
-                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.22f, 0.22f, 0.55f));
-                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.35f, 0.35f, 0.35f, 0.85f));
-                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.15f, 0.15f, 0.15f, 0.90f));
-                    }
-
-                    if (ImGui::ImageButton("##GridBtn", (ImTextureID)gridIcon_.ptr, ImVec2(kIconSize, kIconSize))) {
-                        isGridVisible_ = !isGridVisible_;
-                    }
-                    ImGui::PopStyleColor(3);
-
-                    UI::Tooltip(isGridVisible_ ? "グリッドを非表示 (Hide Grid)" : "グリッドを表示 (Show Grid)");
-                }
-
-                ImGui::PopStyleVar(2);
-            }
+            DrawPlaybackButtons();
+            UI::Bar::Separator();
+            DrawGizmoButtons();
+            UI::Bar::Separator();
+            DrawViewToggles();
+            DrawToolbarStatusChips();
         }
 
         ImGui::PopStyleColor();
-        ImGui::PopStyleVar(3);
+        ImGui::PopStyleVar(4);
 #endif
-    }
+}
 
-    void DockingUI::DrawStatusBar([[maybe_unused]] float fps, [[maybe_unused]] float deltaTimeMs)
+    void DockingUI::DrawPlaybackButtons()
+    {
+#ifdef USE_IMGUI
+        auto& playback = PlaybackStateManager::GetInstance();
+        const bool playing = playback.IsPlaying();
+
+        if (UI::Bar::TransportButton("##Play", UI::Bar::Transport::Play, playing,
+            "再生 [Ctrl+P]\nゲームの更新を進めます")) {
+            playback.Play();
+        }
+
+        ImGui::SameLine();
+        if (UI::Bar::TransportButton("##Pause", UI::Bar::Transport::Pause, !playing,
+            "一時停止 [Ctrl+Shift+P]\nゲームの更新だけを止めます。\n"
+            "止めている間もカメラ・ギズモ・各パネルは動きます")) {
+            playback.Stop();
+        }
+
+        ImGui::SameLine();
+        if (UI::Bar::TransportButton("##Step", UI::Bar::Transport::Step, false,
+            "コマ送り\n止めたまま 1 フレームだけ進めます", !playing)) {
+            playback.RequestStep();
+        }
+#endif
+}
+
+    void DockingUI::DrawGizmoButtons()
+    {
+#ifdef USE_IMGUI
+        if (!sceneDebugEditor_) {
+            return;
+        }
+
+        const auto modeButton = [this](const char* label, Gizmo::Mode mode, const char* tooltip) {
+            if (UI::Bar::Button(label, sceneDebugEditor_->GetGizmoMode() == mode, tooltip)) {
+                sceneDebugEditor_->SetGizmoMode(mode);
+            }
+            };
+
+        modeButton("✥ 移動", Gizmo::Mode::Translate, "移動 [W]");
+        ImGui::SameLine();
+        modeButton("⟳ 回転", Gizmo::Mode::Rotate, "回転 [E]");
+        ImGui::SameLine();
+        modeButton("⤢ 拡縮", Gizmo::Mode::Scale, "拡縮 [R]");
+#endif
+}
+
+    void DockingUI::DrawViewToggles()
+    {
+#ifdef USE_IMGUI
+        if (UI::Bar::Button("▦ Grid", isGridVisible_,
+            isGridVisible_ ? "グリッドを隠す" : "グリッドを出す")) {
+            isGridVisible_ = !isGridVisible_;
+        }
+
+        ImGui::SameLine();
+        const bool collider = GetBoolCVar(kColliderCVar);
+        if (UI::Bar::Button("◍ Collider", collider,
+            "当たり判定の形を描く（r.Collision.DebugDraw）")) {
+            SetBoolCVar(kColliderCVar, !collider);
+        }
+#endif
+}
+
+    void DockingUI::DrawToolbarStatusChips()
+    {
+#ifdef USE_IMGUI
+        const std::string scriptText = status_.scriptOk
+            ? std::format("Script ✓ {} 型", status_.scriptTypeCount)
+            : std::string("Script ✕ コンパイル失敗");
+        const char* const saveText = status_.sceneSaved ? "保存済み" : "未保存の変更";
+
+        const float width = UI::Bar::ChipWidth(scriptText.c_str())
+            + ImGui::GetStyle().ItemSpacing.x + UI::Bar::ChipWidth(saveText);
+        AlignRight(width);
+
+        UI::Bar::Chip(scriptText.c_str(),
+            status_.scriptOk ? Theme::kOk : Theme::kError,
+            Theme::WithAlpha(status_.scriptOk ? Theme::kOk : Theme::kError, 0.35f));
+
+        ImGui::SameLine();
+        UI::Bar::Chip(saveText,
+            status_.sceneSaved ? Theme::kTextMute : Theme::kWarm,
+            status_.sceneSaved ? Theme::kOutline : Theme::WithAlpha(Theme::kWarm, 0.35f));
+#endif
+}
+
+    void DockingUI::DrawStatusBar()
     {
 #ifdef USE_IMGUI
         ImGuiViewport* vp = ImGui::GetMainViewport();
-        ImVec2 pos = ImVec2(vp->Pos.x, vp->Pos.y + vp->Size.y - statusBarHeight_);
-        ImVec2 size = ImVec2(vp->Size.x, statusBarHeight_);
+        const ImVec2 pos = ImVec2(vp->Pos.x, vp->Pos.y + vp->Size.y - statusBarHeight_);
+        const ImVec2 size = ImVec2(vp->Size.x, statusBarHeight_);
 
         ImGui::SetNextWindowPos(pos);
         ImGui::SetNextWindowSize(size);
         ImGui::SetNextWindowViewport(vp->ID);
 
-        ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar
+        const ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar
             | ImGuiWindowFlags_NoResize
             | ImGuiWindowFlags_NoMove
             | ImGuiWindowFlags_NoScrollbar
@@ -345,243 +375,184 @@ namespace CoreEngine
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 0.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 0.0f));
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, Theme::kPanel);
 
-        // 背景は他のパネルと同じ落ち着いた面にする。
-        // 画面幅いっぱいの帯を状態色で塗ると、そこだけ彩度が突出して安っぽく見えるため、
-        // フレームレートの状態は「小さなインジケータと文字色」だけで示す。
+        // フレームレートは数値の色だけで状態を示す（帯を状態色で塗らない）
         constexpr float kTargetFPS = 60.0f;
-        ImVec4 statusColor;
-        if (fps >= kTargetFPS * 0.90f) {
-            statusColor = ImVec4(0.42f, 0.78f, 0.47f, 1.0f);  // 良好
-        } else if (fps >= kTargetFPS * 0.80f) {
-            statusColor = ImVec4(0.93f, 0.76f, 0.35f, 1.0f);  // 注意
-        } else {
-            statusColor = ImVec4(0.90f, 0.44f, 0.42f, 1.0f);  // 低下
-        }
-        // テーマの bgPanel（メニューバー）と同じ面にして、上下のバーの色を揃える。
-        // 値はリニア（sRGB RTV へ描かれるため、画面上では #2C2C30 相当になる）
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0251f, 0.0251f, 0.0296f, 1.0f));
+        const ImVec4 fpsColor =
+            (status_.fps >= kTargetFPS * 0.90f) ? Theme::kOk
+            : (status_.fps >= kTargetFPS * 0.80f) ? Theme::kWarn
+            : Theme::kError;
 
         if (auto statusBar = UI::Scope::WindowScope("##StatusBar", nullptr, flags)) {
-            constexpr float kFpsIconSize = 16.0f;
-            constexpr float kDeltaTimeIconSize = 32.0f;
-            constexpr float kSeparatorSpacing = 16.0f;
-            const float windowHeight = ImGui::GetWindowHeight();
-            const float textCenterY = (windowHeight - ImGui::GetTextLineHeight()) * 0.5f;
+            const float textCenterY = (ImGui::GetWindowHeight() - ImGui::GetTextLineHeight()) * 0.5f;
+            const auto item = [textCenterY](const ImVec4& color, const std::string& text) {
+                ImGui::SetCursorPosY(textCenterY);
+                ImGui::TextColored(color, "%s", text.c_str());
+                };
 
-            // フレームレートの状態インジケータ（小さな丸）
-            {
-                const float dotRadius = 4.0f;
-                ImGui::SetCursorPosY((windowHeight - dotRadius * 2.0f) * 0.5f);
-                const ImVec2 dotPos = ImGui::GetCursorScreenPos();
-                ImGui::GetWindowDrawList()->AddCircleFilled(
-                    ImVec2(dotPos.x + dotRadius, dotPos.y + dotRadius),
-                    dotRadius, ImGui::GetColorU32(statusColor));
-                ImGui::Dummy(ImVec2(dotRadius * 2.0f, dotRadius * 2.0f));
-                UI::SameLine(0.0f, 8.0f);
-            }
+            const auto& total = timingData_[static_cast<uint32_t>(GpuTimestampSlot::Total)];
 
-            // FPS アイコン
-            if (fpsIconLoaded_) {
-                ImGui::SetCursorPosY((windowHeight - kFpsIconSize) * 0.5f);
-                ImGui::Image((ImTextureID)fpsIcon_.ptr, ImVec2(kFpsIconSize, kFpsIconSize));
-                UI::SameLine(0.0f, 6.0f);
-            }
+            item(fpsColor, std::format("{:.1f} FPS", status_.fps));
+            ImGui::SameLine(0.0f, 14.0f);
+            item(Theme::kTextMute, std::format("CPU {:.1f}ms", total.cpuMs));
+            ImGui::SameLine(0.0f, 14.0f);
+            item(Theme::kTextMute, std::format("GPU {:.1f}ms", total.gpuMs));
 
-            // FPS テキスト（数値だけ状態色を乗せる）
-            ImGui::SetCursorPosY(textCenterY);
-            ImGui::TextDisabled("FPS");
-            UI::SameLine(0.0f, 6.0f);
-            ImGui::SetCursorPosY(textCenterY);
-            ImGui::TextColored(statusColor, "%.1f", fps);
+            // ── 右側：スクリプト・Undo・シーンの保存状態 ──
+            const std::string scriptText = status_.scriptOk ? "Script OK" : "Script 失敗";
+            const std::string undoText = std::format("Undo {}", status_.undoCount);
+            const std::string sceneText = status_.sceneName.empty()
+                ? std::string("シーンなし")
+                : status_.sceneName + (status_.sceneSaved ? " · 保存済み" : " · 未保存の変更");
 
-            // セパレーター
-            UI::SameLine(0.0f, kSeparatorSpacing);
-            ImGui::SetCursorPosY(textCenterY);
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.4f, 0.4f, 1.0f));
-            UI::Label("|");
-            ImGui::PopStyleColor();
+            const float width = ImGui::CalcTextSize(scriptText.c_str()).x
+                + ImGui::CalcTextSize(undoText.c_str()).x
+                + ImGui::CalcTextSize(sceneText.c_str()).x + 28.0f;
+            AlignRight(width);
 
-            // デルタタイムアイコン
-            UI::SameLine(0.0f, kSeparatorSpacing);
-            if (deltaTimeIconLoaded_) {
-                ImGui::SetCursorPosY((windowHeight - kDeltaTimeIconSize) * 0.5f);
-                ImGui::Image((ImTextureID)deltaTimeIcon_.ptr, ImVec2(kDeltaTimeIconSize, kDeltaTimeIconSize));
-                UI::SameLine(0.0f, 6.0f);
-            }
+            item(status_.scriptOk ? Theme::kOk : Theme::kError, scriptText);
+            ImGui::SameLine(0.0f, 14.0f);
+            item(Theme::kTextMute, undoText);
+            ImGui::SameLine(0.0f, 14.0f);
+            item(status_.sceneSaved ? Theme::kTextMute : Theme::kWarm, sceneText);
 
-            // デルタタイムテキスト
-            ImGui::SetCursorPosY(textCenterY);
-            ImGui::TextDisabled("Frame");
-            UI::SameLine(0.0f, 6.0f);
-            ImGui::SetCursorPosY(textCenterY);
-            ImGui::Text("%.2f ms", deltaTimeMs);
-
-            // ── ホバー時に CPU / GPU タイムスタンプを表示 ─────────
-            const bool hasTimingData = timingData_[static_cast<uint32_t>(GpuTimestampSlot::Total)].gpuMs > 0.0f
-                || timingData_[static_cast<uint32_t>(GpuTimestampSlot::Total)].cpuMs > 0.0f;
-            if (ImGui::IsWindowHovered() && hasTimingData)
-            {
-                if (auto tooltip = UI::Scope::TooltipScope())
-                {
-                    ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "Frame Timing");
-                    UI::SameLine();
-                    UI::Hint("(1-frame delay)");
-                    UI::Separator();
-                    UI::Spacing();
-
-                    // 1フレームバジェット（60fps = 16.67ms）を基準にバーを描画
-                    constexpr float kFrameBudgetMs = 1000.0f / 60.0f;
-
-                    constexpr ImGuiTableFlags tableFlags =
-                        ImGuiTableFlags_BordersInnerV
-                        | ImGuiTableFlags_BordersOuter
-                        | ImGuiTableFlags_RowBg;
-
-                    ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(8.0f, 4.0f));
-                    if (auto table = UI::Scope::TableScope("##timing_table", 4, tableFlags))
-                    {
-                        ImGui::TableSetupColumn("Pass", ImGuiTableColumnFlags_WidthStretch);
-                        ImGui::TableSetupColumn("CPU (ms)", ImGuiTableColumnFlags_WidthFixed, 68.0f);
-                        ImGui::TableSetupColumn("GPU (ms)", ImGuiTableColumnFlags_WidthFixed, 68.0f);
-                        ImGui::TableSetupColumn("Budget", ImGuiTableColumnFlags_WidthFixed, 100.0f);
-                        ImGui::TableHeadersRow();
-
-                        // パス名から解決したカテゴリ（GpuTimingCategory）でグルーピングする。
-                        // RenderGraph に新規パスを追加してもこのテーブルは編集不要（BuildGpuTimingGroups が自動集計）。
-                        const std::vector<GpuTimingGroup> groups = BuildGpuTimingGroups(timingData_);
-
-                        // Total（Frame カテゴリ）スロットのインデックスを探す
-                        uint32_t totalIdx = static_cast<uint32_t>(timingData_.size());
-                        for (uint32_t i = 0; i < timingData_.size(); ++i)
-                        {
-                            if (timingData_[i].category == GpuTimingCategory::Frame) { totalIdx = i; break; }
-                        }
-
-                        for (const auto& group : groups)
-                        {
-                            // カテゴリヘッダー行
-                            ImGui::TableNextRow();
-                            ImGui::TableSetColumnIndex(0);
-                            ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "%s",
-                                GpuTimestampProfiler::GetCategoryLabel(group.category));
-
-                            for (uint32_t idx : group.slotIndices)
-                            {
-                                if (idx >= timingData_.size()) continue;
-                                const auto& slot = timingData_[idx];
-
-                                ImGui::TableNextRow();
-
-                                // 今フレーム実行されなかったパスも行位置を保つ（行の出入りで
-                                // 下の全パスがずれると内訳が読めなくなる）。淡色で区別する。
-                                const bool idle = IsIdleTimingSlot(slot);
-                                const ImVec4 kIdle = ImVec4(0.45f, 0.45f, 0.45f, 1.0f);
-
-                                const ImVec4 gpuColor = idle ? kIdle
-                                    : (slot.gpuMs > 8.0f) ? ImVec4(1.0f, 0.35f, 0.35f, 1.0f)
-                                    : (slot.gpuMs > 4.0f) ? ImVec4(1.0f, 0.80f, 0.20f, 1.0f)
-                                    : ImVec4(0.45f, 0.90f, 0.45f, 1.0f);
-
-                                ImGui::TableSetColumnIndex(0);
-                                {
-                                    const ImVec2 dotPos = {
-                                        ImGui::GetCursorScreenPos().x + 4.0f,
-                                        ImGui::GetCursorScreenPos().y + ImGui::GetTextLineHeight() * 0.5f
-                                    };
-                                    ImGui::GetWindowDrawList()->AddCircleFilled(
-                                        dotPos, 4.0f,
-                                        ImGui::ColorConvertFloat4ToU32(gpuColor));
-                                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 14.0f);
-                                }
-                                UI::Label(slot.name);
-
-                                ImGui::TableSetColumnIndex(1);
-                                {
-                                    const ImVec4 cpuColor = idle ? kIdle
-                                        : (slot.cpuMs > 2.0f) ? ImVec4(1.0f, 0.35f, 0.35f, 1.0f)
-                                        : (slot.cpuMs > 0.5f) ? ImVec4(1.0f, 0.80f, 0.20f, 1.0f)
-                                        : ImVec4(0.75f, 0.75f, 0.75f, 1.0f);
-                                    ImGui::TextColored(cpuColor, "%.3f", slot.cpuMs);
-                                }
-
-                                ImGui::TableSetColumnIndex(2);
-                                ImGui::TextColored(gpuColor, "%.3f", slot.gpuMs);
-
-                                ImGui::TableSetColumnIndex(3);
-                                {
-                                    const float ratio =
-                                        slot.gpuMs / kFrameBudgetMs < 1.0f
-                                        ? slot.gpuMs / kFrameBudgetMs : 1.0f;
-                                    const ImVec4 barColor =
-                                        (slot.gpuMs > 8.0f) ? ImVec4(0.9f, 0.25f, 0.25f, 1.0f)
-                                        : (slot.gpuMs > 4.0f) ? ImVec4(0.9f, 0.70f, 0.10f, 1.0f)
-                                        : ImVec4(0.20f, 0.75f, 0.30f, 1.0f);
-                                    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, barColor);
-                                    const auto overlay = std::format("{:.1f}%", ratio * 100.0f);
-                                    UI::ProgressBar(ratio,
-                                        ImVec2(-FLT_MIN, ImGui::GetTextLineHeight()), overlay.c_str());
-                                    ImGui::PopStyleColor();
-                                }
-                            }
-                        }
-
-                        // Frame Total 行
-                        if (totalIdx < timingData_.size())
-                        {
-                            const auto& slot = timingData_[totalIdx];
-                            ImGui::TableNextRow();
-                            constexpr ImU32 kTotalBg = IM_COL32(40, 40, 48, 255);
-                            ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, kTotalBg);
-                            ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg1, kTotalBg);
-
-                            const ImVec4 gpuColor =
-                                (slot.gpuMs > 8.0f) ? ImVec4(1.0f, 0.35f, 0.35f, 1.0f)
-                                : (slot.gpuMs > 4.0f) ? ImVec4(1.0f, 0.80f, 0.20f, 1.0f)
-                                : ImVec4(0.45f, 0.90f, 0.45f, 1.0f);
-
-                            ImGui::TableSetColumnIndex(0);
-                            {
-                                const ImVec2 dotPos = {
-                                    ImGui::GetCursorScreenPos().x + 4.0f,
-                                    ImGui::GetCursorScreenPos().y + ImGui::GetTextLineHeight() * 0.5f
-                                };
-                                ImGui::GetWindowDrawList()->AddCircleFilled(
-                                    dotPos, 4.0f,
-                                    ImGui::ColorConvertFloat4ToU32(gpuColor));
-                                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 14.0f);
-                            }
-                            ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "%s", slot.name);
-
-                            ImGui::TableSetColumnIndex(1);
-                            ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "%.3f", slot.cpuMs);
-
-                            ImGui::TableSetColumnIndex(2);
-                            ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "%.3f", slot.gpuMs);
-
-                            ImGui::TableSetColumnIndex(3);
-                            {
-                                const float ratio =
-                                    slot.gpuMs / kFrameBudgetMs < 1.0f
-                                    ? slot.gpuMs / kFrameBudgetMs : 1.0f;
-                                ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.9f, 0.70f, 0.10f, 1.0f));
-                                const auto overlay = std::format("{:.1f}%", ratio * 100.0f);
-                                UI::ProgressBar(ratio,
-                                    ImVec2(-FLT_MIN, ImGui::GetTextLineHeight()), overlay.c_str());
-                                ImGui::PopStyleColor();
-                            }
-                        }
-                    }
-                    ImGui::PopStyleVar();
-                }
-            }
+            DrawTimingTooltip();
         }
 
         ImGui::PopStyleColor();
         ImGui::PopStyleVar(3);
 #endif
-    }
 }
 
+    void DockingUI::DrawTimingTooltip()
+    {
+#ifdef USE_IMGUI
+        const bool hasTimingData = timingData_[static_cast<uint32_t>(GpuTimestampSlot::Total)].gpuMs > 0.0f
+            || timingData_[static_cast<uint32_t>(GpuTimestampSlot::Total)].cpuMs > 0.0f;
+        if (!ImGui::IsWindowHovered() || !hasTimingData) {
+            return;
+        }
 
+        auto tooltip = UI::Scope::TooltipScope();
+        if (!tooltip) {
+            return;
+        }
+
+        ImGui::TextColored(Theme::kWarm, "Frame Timing");
+        UI::SameLine();
+        UI::Hint("(1-frame delay)");
+        UI::Separator();
+        UI::Spacing();
+
+        // 1フレームバジェット（60fps = 16.67ms）を基準にバーを描画
+        constexpr float kFrameBudgetMs = 1000.0f / 60.0f;
+
+        constexpr ImGuiTableFlags tableFlags =
+            ImGuiTableFlags_BordersInnerV
+            | ImGuiTableFlags_BordersOuter
+            | ImGuiTableFlags_RowBg;
+
+        ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(8.0f, 4.0f));
+        if (auto table = UI::Scope::TableScope("##timing_table", 4, tableFlags))
+        {
+            ImGui::TableSetupColumn("Pass", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("CPU (ms)", ImGuiTableColumnFlags_WidthFixed, 68.0f);
+            ImGui::TableSetupColumn("GPU (ms)", ImGuiTableColumnFlags_WidthFixed, 68.0f);
+            ImGui::TableSetupColumn("Budget", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+            ImGui::TableHeadersRow();
+
+            // パス名から解決したカテゴリ（GpuTimingCategory）でグルーピングする。
+            // RenderGraph に新規パスを追加してもこのテーブルは編集不要（BuildGpuTimingGroups が自動集計）。
+            const std::vector<GpuTimingGroup> groups = BuildGpuTimingGroups(timingData_);
+
+            // Total（Frame カテゴリ）スロットのインデックスを探す
+            uint32_t totalIdx = static_cast<uint32_t>(timingData_.size());
+            for (uint32_t i = 0; i < timingData_.size(); ++i)
+            {
+                if (timingData_[i].category == GpuTimingCategory::Frame) { totalIdx = i; break; }
+            }
+
+            // 1 行分のセル（名前の左に状態の丸、右端にバジェット比のバー）
+            const auto drawRow = [](const GpuTimingResult& slot, bool idle, bool emphasize) {
+                const ImVec4 kIdle = ImVec4(0.45f, 0.45f, 0.45f, 1.0f);
+                const ImVec4 gpuColor = emphasize ? Theme::kWarm
+                    : idle ? kIdle
+                    : (slot.gpuMs > 8.0f) ? Theme::kError
+                    : (slot.gpuMs > 4.0f) ? Theme::kWarn
+                    : Theme::kOk;
+
+                ImGui::TableSetColumnIndex(0);
+                {
+                    const ImVec2 dotPos = {
+                        ImGui::GetCursorScreenPos().x + 4.0f,
+                        ImGui::GetCursorScreenPos().y + ImGui::GetTextLineHeight() * 0.5f
+                    };
+                    ImGui::GetWindowDrawList()->AddCircleFilled(dotPos, 4.0f,
+                        ImGui::ColorConvertFloat4ToU32(gpuColor));
+                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 14.0f);
+                }
+                if (emphasize) {
+                    ImGui::TextColored(Theme::kWarm, "%s", slot.name);
+                } else {
+                    UI::Label(slot.name);
+                }
+
+                ImGui::TableSetColumnIndex(1);
+                {
+                    const ImVec4 cpuColor = emphasize ? Theme::kWarm
+                        : idle ? kIdle
+                        : (slot.cpuMs > 2.0f) ? Theme::kError
+                        : (slot.cpuMs > 0.5f) ? Theme::kWarn
+                        : Theme::kTextDim;
+                    ImGui::TextColored(cpuColor, "%.3f", slot.cpuMs);
+                }
+
+                ImGui::TableSetColumnIndex(2);
+                ImGui::TextColored(gpuColor, "%.3f", slot.gpuMs);
+
+                ImGui::TableSetColumnIndex(3);
+                {
+                    const float ratio =
+                        slot.gpuMs / kFrameBudgetMs < 1.0f ? slot.gpuMs / kFrameBudgetMs : 1.0f;
+                    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, gpuColor);
+                    const auto overlay = std::format("{:.1f}%", ratio * 100.0f);
+                    UI::ProgressBar(ratio, ImVec2(-FLT_MIN, ImGui::GetTextLineHeight()), overlay.c_str());
+                    ImGui::PopStyleColor();
+                }
+                };
+
+            for (const auto& group : groups)
+            {
+                // カテゴリヘッダー行
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::TextColored(Theme::kWarm, "%s",
+                    GpuTimestampProfiler::GetCategoryLabel(group.category));
+
+                for (uint32_t idx : group.slotIndices)
+                {
+                    if (idx >= timingData_.size()) continue;
+                    ImGui::TableNextRow();
+
+                    // 今フレーム実行されなかったパスも行位置を保つ（行の出入りで
+                    // 下の全パスがずれると内訳が読めなくなる）。淡色で区別する。
+                    drawRow(timingData_[idx], IsIdleTimingSlot(timingData_[idx]), false);
+                }
+            }
+
+            // Frame Total 行
+            if (totalIdx < timingData_.size())
+            {
+                ImGui::TableNextRow();
+                constexpr ImU32 kTotalBg = IM_COL32(40, 40, 48, 255);
+                ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, kTotalBg);
+                ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg1, kTotalBg);
+                drawRow(timingData_[totalIdx], false, true);
+            }
+        }
+        ImGui::PopStyleVar();
+#endif
+}
+}

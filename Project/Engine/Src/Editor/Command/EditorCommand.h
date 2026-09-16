@@ -28,23 +28,33 @@ namespace CoreEngine::Editor
         /// @note 生ポインタで対象を握るコマンドは true を返すこと。対象の破棄時に
         ///       履歴から取り除かれ、Undo が解放済みメモリを触らなくなる。
         virtual bool References(const void* target) const { (void)target; return false; }
+
+        /// @brief シーンの保存対象を変える操作か
+        /// @note 自分の保存先を持つもの（CVar など）は false を返す。
+        ///       シーンの「未保存の変更」の判定に数えないため。
+        virtual bool AffectsScene() const { return true; }
     };
 
     /// @brief 「戻す」「やり直す」を関数 2 本で表すコマンド
     class FunctionCommand final : public IEditorCommand
     {
     public:
-        FunctionCommand(std::string label, std::function<void()> undo, std::function<void()> redo)
-            : label_(std::move(label)), undo_(std::move(undo)), redo_(std::move(redo)) {}
+        /// @param affectsScene シーンの保存対象を変える操作なら true
+        FunctionCommand(std::string label, std::function<void()> undo, std::function<void()> redo,
+                        bool affectsScene = true)
+            : label_(std::move(label)), undo_(std::move(undo)), redo_(std::move(redo)),
+              affectsScene_(affectsScene) {}
 
         void Undo() override { if (undo_) { undo_(); } }
         void Redo() override { if (redo_) { redo_(); } }
         std::string GetLabel() const override { return label_; }
+        bool AffectsScene() const override { return affectsScene_; }
 
     private:
         std::string label_;
         std::function<void()> undo_;
         std::function<void()> redo_;
+        bool affectsScene_ = true;
     };
 
     /// @brief 状態まるごとのスナップショットで戻すコマンド
@@ -137,6 +147,14 @@ namespace CoreEngine::Editor
         {
             for (const auto& child : children_) {
                 if (child->References(target)) { return true; }
+            }
+            return false;
+        }
+
+        bool AffectsScene() const override
+        {
+            for (const auto& child : children_) {
+                if (child->AffectsScene()) { return true; }
             }
             return false;
         }

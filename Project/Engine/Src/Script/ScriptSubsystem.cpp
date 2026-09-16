@@ -51,9 +51,11 @@ namespace CoreEngine
         host_->WritePredefined(scriptRoot_ / kPredefinedFileName);
 #endif
 
-        if (host_->Build(scriptRoot_)) {
+        status_.ok = host_->Build(scriptRoot_);
+        if (status_.ok) {
             RegisterComponentTypes();
         }
+        status_.typeCount = host_->GetTypes().size();
 
 #ifdef USE_IMGUI
         // コンパイルに失敗していても見張る（直して保存すれば、そのときに読み直す）
@@ -116,6 +118,12 @@ namespace CoreEngine
         ComponentFactory::Get().UnregisterRuntimeTypes();
         const ScriptHost::ReloadReport report = host_->Reload(scriptRoot_);
         RegisterComponentTypes();
+
+        status_.ok = report.compiled;
+        status_.typeCount = host_->GetTypes().size();
+        status_.restored = report.restored;
+        status_.orphaned = report.orphaned;
+        status_.elapsedMs = report.elapsedMs;
 
         if (!report.compiled) {
             return;

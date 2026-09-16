@@ -388,13 +388,10 @@ namespace CoreEngine
         DockingUI* dockingUI = imGui_->GetDockingUI();
         if (dockingUI) {
             // GameViewportが作成するウィンドウを中央に配置
-            dockingUI->RegisterWindow("Game", DockArea::Center);
+            dockingUI->RegisterWindow("Game", Editor::DockArea::Center);
 
             // Canvasプレビューウィンドウを Game と同じ位置にタブとして配置
-            dockingUI->RegisterWindow("Canvas", DockArea::Center);
-
-            // パーティクルシステムデバッグを右側に配置
-            dockingUI->RegisterWindow("Particle System Debug", DockArea::Right);
+            dockingUI->RegisterWindow("Canvas", Editor::DockArea::Center);
         }
 
     }
@@ -454,6 +451,11 @@ namespace CoreEngine
             gameOutputWindow_.RequestVisible(gameDebugUI_->IsStandaloneGameWindowVisible());
         }
         gameOutputWindow_.ApplyPendingRequests();
+
+        // 上下のバーが同じ値を出せるよう、描き始める前に状態を集める
+        if (gameDebugUI_) {
+            gameDebugUI_->RefreshEditorStatus();
+        }
 
         // ImGuiの開始（PostEffectManagerとGameDebugUIを渡す）
         if (auto* postEffect = engine_->GetService<PostEffectManager>()) {

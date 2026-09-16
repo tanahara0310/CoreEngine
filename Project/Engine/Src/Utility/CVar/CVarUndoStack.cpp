@@ -101,11 +101,13 @@ namespace CoreEngine
             return;
         }
 
+        // CVar は自分の JSON へ保存されるので、シーンの未保存には数えない
         Editor::EditorCommandStack::Get().Push(
             std::make_unique<Editor::FunctionCommand>(
                 cvar->GetName(),
                 [cvar, oldValue] { ApplyValue(cvar, oldValue); },
-                [cvar, newValue] { ApplyValue(cvar, newValue); }));
+                [cvar, newValue] { ApplyValue(cvar, newValue); },
+                false));
     }
 
     void CVarUndoStack::BeginBatch()

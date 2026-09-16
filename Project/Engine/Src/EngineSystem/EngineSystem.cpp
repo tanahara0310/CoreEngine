@@ -11,6 +11,7 @@
 #include "Factory/GraphicsComponentFactory.h"
 #include "Factory/CoreComponentFactory.h"
 #include "Startup/StartupSequence.h"
+#include "EngineSystem/PlaybackState.h"
 #include "Graphics/Shader/Cache/ShaderCacheStore.h"
 #include "Graphics/Shader/Cache/ShaderManifest.h"
 #include "Graphics/Shader/ShaderPrewarm.h"
@@ -299,6 +300,9 @@ namespace CoreEngine
 
     void EngineSystem::BeginFrame()
     {
+        // コマ送りの要求を取り込む（このフレームだけゲームの更新が進む）
+        PlaybackStateManager::GetInstance().BeginFrame();
+
         // フレームレート制御の開始
         if (auto* frameRate = GetService<FrameRateController>()) {
             frameRate->BeginFrame();
@@ -335,6 +339,9 @@ namespace CoreEngine
         for (auto it = subsystems_.rbegin(); it != subsystems_.rend(); ++it) {
             (*it)->EndFrame();
         }
+
+        // コマ送りで進めた 1 フレームをここで閉じ、停止へ戻す
+        PlaybackStateManager::GetInstance().EndFrame();
 
         // VSync有効時はフレームレート制御の終了処理は不要
         // Present(1, 0)が自動的に60Hzに同期してくれる

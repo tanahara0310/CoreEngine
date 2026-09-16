@@ -1626,6 +1626,15 @@
     <ClInclude Include="Engine\Src\Editor\Panel\EditorPanelRegistry.h">
       <Filter>Engine\Src\Editor\Panel</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Panel\EditorDockArea.h">
+      <Filter>Engine\Src\Editor\Panel</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ImGui\EditorTheme.h">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\EditorBars.h">
+      <Filter>Engine\Src\Editor\ImGui\Widgets</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Path\ProjectPaths.h">
       <Filter>Engine\Src\Utility\Path</Filter>
     </ClInclude>
