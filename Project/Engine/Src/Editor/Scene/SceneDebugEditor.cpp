@@ -29,65 +29,10 @@
 #include "Math/Geometry/RayCast.h"
 #include "Utility/Logger/Logger.h"
 #include <algorithm>
-#include <cctype>
 #include <filesystem>
 
 namespace
 {
-    /// @brief 名前が " (n)" のコピー接尾辞で終わるか調べ、基底名を返す
-    bool EndsWithUnityCopySuffix(const std::string& name, std::string* outBaseName)
-    {
-        if (name.size() < 4 || name.back() != ')') {
-            return false;
-        }
-
-        const size_t openParen = name.rfind(" (");
-        if (openParen == std::string::npos || openParen + 3 >= name.size()) {
-            return false;
-        }
-
-        for (size_t i = openParen + 2; i + 1 < name.size(); ++i) {
-            if (!std::isdigit(static_cast<unsigned char>(name[i]))) {
-                return false;
-            }
-        }
-
-        if (outBaseName) {
-            *outBaseName = name.substr(0, openParen);
-        }
-        return true;
-    }
-
-    /// @brief 同名のオブジェクトが既に登録されているか
-    bool HasObjectName(const CoreEngine::GameObjectManager* manager, const std::string& name)
-    {
-        if (!manager) {
-            return false;
-        }
-
-        for (const auto& obj : manager->GetAllObjects()) {
-            if (obj && obj->GetName() == name) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /// @brief Unity 風の重複しないコピー名（"Name (1)"）を作る
-    std::string GenerateUnityStyleCopyName(const CoreEngine::GameObjectManager* manager, const std::string& sourceName)
-    {
-        std::string baseName = sourceName;
-        EndsWithUnityCopySuffix(sourceName, &baseName);
-
-        for (int copyIndex = 1;; ++copyIndex) {
-            const std::string candidate = baseName + " (" + std::to_string(copyIndex) + ")";
-            if (!HasObjectName(manager, candidate)) {
-                return candidate;
-            }
-        }
-    }
-
     /// @brief トランスフォームとモデルファイルのメッシュ描画を持つ素のオブジェクトを作ってシーンへ登録する
     /// @return 登録できなければ nullptr
     CoreEngine::GameObject* CreateModelObject(CoreEngine::GameObjectManager& manager,
@@ -303,13 +248,14 @@ namespace CoreEngine
         }
 
         // Ctrl+S でシーン全体保存
-        if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_S)) {
+        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S, ImGuiInputFlags_RouteGlobal)) {
             SaveScene();
         }
 
-        // Ctrl+C で選択中オブジェクトをコピー（複製）
-        if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_C)) {
-            CopySelectedObject();
+        // Ctrl+C でも選択中のオブジェクトを複製する（Ctrl+D と同じ）
+        if (!ImGui::GetIO().WantTextInput &&
+            ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_C, ImGuiInputFlags_RouteGlobal)) {
+            DuplicateSelectedObject();
         }
 
         // 保存通知オーバーレイの描画
@@ -324,6 +270,8 @@ namespace CoreEngine
         if (!gameObjectManager_) {
             return;
         }
+
+        HandleSelectionShortcuts();
 
         if (viewportSize.x <= 0.0f || viewportSize.y <= 0.0f) {
             return;
@@ -590,64 +538,71 @@ namespace CoreEngine
         ImGui::PopStyleVar(2);
     }
 
-    bool SceneDebugEditor::CopySelectedObject()
+    ObjectEditing::Context SceneDebugEditor::MakeObjectEditingContext()
     {
-        // 選択中のオブジェクトを取得
-        GameObject* selected = objectSelector_.GetSelectedObject();
+        ObjectEditing::Context context;
+        context.manager = gameObjectManager_;
+        context.beforeDestroy = [this](const GameObject& object) {
+            if (objectSelector_.GetSelectedObject() == &object || objectSelector_.GetSelectedSprite() == &object) {
+                objectSelector_.ClearSelection();
+            }
+        };
+        return context;
+    }
+
+    void SceneDebugEditor::CreateEmptyObject()
+    {
+        if (!gameObjectManager_) {
+            return;
+        }
+        if (GameObject* const created = ObjectEditing::CreateEmpty(MakeObjectEditingContext(), ComputeDropPosition(nullptr))) {
+            objectSelector_.SelectObject(created);
+        }
+    }
+
+    bool SceneDebugEditor::CanEditSelectedObject(std::string* reason) const
+    {
+        const GameObject* const selected = objectSelector_.GetSelectedObject();
         if (!selected) {
-            Logger::GetInstance().Log("コピー対象のオブジェクトが選択されていません", LogLevel::Warn, LogCategory::System);
+            if (reason) {
+                *reason = "オブジェクトを選んでいません";
+            }
             return false;
         }
+        return ObjectEditing::CanDuplicateOrDelete(*selected, reason);
+    }
 
-        // モデルファイルのメッシュを持つオブジェクトだけをコピーする
-        const auto* sourceMesh = selected->GetComponent<MeshRendererComponent>();
-        const std::string modelPath = sourceMesh ? sourceMesh->GetModelPath() : std::string{};
-        if (modelPath.empty()) {
-            Logger::GetInstance().Log("選択オブジェクトはモデルファイルのメッシュを持たないためコピーできません", LogLevel::Warn, LogCategory::System);
+    bool SceneDebugEditor::DuplicateSelectedObject()
+    {
+        const GameObject* const selected = objectSelector_.GetSelectedObject();
+        if (!gameObjectManager_ || !selected) {
             return false;
         }
-
-        // 名前を設定（Unity 風の "Name (1)" 形式で一意化）
-        std::string copyName = GenerateUnityStyleCopyName(gameObjectManager_, selected->GetName());
-
-        GameObject* raw = CreateModelObject(*gameObjectManager_, copyName, modelPath);
-        if (!raw) {
-            Logger::GetInstance().Log("オブジェクトのコピーに失敗しました", LogLevel::Error, LogCategory::System);
+        GameObject* const copy = ObjectEditing::Duplicate(MakeObjectEditingContext(), *selected);
+        if (!copy) {
             return false;
         }
-
-        // コピー元の値を戻す（足りないコンポーネントはファクトリで足す）
-        const json serializedData = selected->Serialize();
-        if (!serializedData.empty()) {
-            raw->Deserialize(serializedData);
-        }
-
-        raw->SetName(copyName);
-        if (auto* mesh = raw->GetComponent<MeshRendererComponent>()) {
-            ApplyDynamicModelMaterialOverrides(mesh->GetModel());
-        }
-
-        // 少しオフセットを加えて重ならないようにする
-        if (auto* src = raw->GetComponent<ITransformSource>()) {
-            src->Translate().x += 1.0f;
-        }
-
-        // コピー操作を Undo 履歴に記録する
-        ObjectSpawnRecord spawnRecord;
-        spawnRecord.objectName = raw->GetName(); // GameObjectManager で確定した名前を使う
-        spawnRecord.modelPath  = modelPath;
-        if (auto* src = raw->GetComponent<ITransformSource>()) {
-            spawnRecord.translate = src->Translate();
-            spawnRecord.rotate    = src->Rotate();
-            spawnRecord.scale     = src->Scale();
-        }
-        undoRedoHistory_.Push(spawnRecord);
-
-        // コピーしたオブジェクトを選択状態にする
-        objectSelector_.SelectObject(raw);
-
-        Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System, "オブジェクトをコピーしました: {}", raw->GetName());
+        objectSelector_.SelectObject(copy);
         return true;
+    }
+
+    bool SceneDebugEditor::DeleteSelectedObject()
+    {
+        GameObject* const selected = objectSelector_.GetSelectedObject();
+        if (!gameObjectManager_ || !selected) {
+            return false;
+        }
+        return ObjectEditing::Delete(MakeObjectEditingContext(), *selected);
+    }
+
+    void SceneDebugEditor::HandleSelectionShortcuts()
+    {
+        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_D)) {
+            DuplicateSelectedObject();
+        }
+        if (ImGui::Shortcut(ImGuiKey_Delete)) {
+            DeleteSelectedObject();
+        }
     }
 
     void SceneDebugEditor::SpawnModelFromFile(const std::string& modelFileName, const Vector2* normalizedDropPos)
