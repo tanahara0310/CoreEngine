@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "ParticleRenderer.h"
-#include "Particle/ParticleSystem.h"
+#include "Particle/ParticleSystemComponent.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Camera/Camera.h"
 #include <cassert>
@@ -21,16 +21,22 @@ namespace CoreEngine
         cmdList_->IASetVertexBuffers(0, 1, &vertexBufferView_);
     }
 
-    void ParticleRenderer::Draw(ParticleSystem* particle) {
+    void ParticleRenderer::Draw(ParticleSystemComponent* particle) {
         // 基本的な検証
         if (!ValidateDrawCall(particle)) {
+            return;
+        }
+
+        // テクスチャが無いまま SRV を差すと GPU が不正なアドレスを読むので描かない
+        const D3D12_GPU_DESCRIPTOR_HANDLE textureHandle = particle->GetTextureHandle();
+        if (textureHandle.ptr == 0) {
             return;
         }
 
         uint32_t instanceCount = particle->GetInstanceCount();
 
         // 共通リソースを設定
-        SetupCommonResources(particle, particle->GetTextureHandle());
+        SetupCommonResources(particle, textureHandle);
 
         // ビルボード描画コマンドを発行
         cmdList_->DrawInstanced(6, instanceCount, 0, 0);

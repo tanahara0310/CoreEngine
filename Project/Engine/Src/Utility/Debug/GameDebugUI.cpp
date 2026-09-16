@@ -205,6 +205,15 @@ namespace CoreEngine
         if (ImGui::MenuItem("空のオブジェクトを作成", nullptr, false, sceneDebugEditor_ != nullptr)) {
             sceneDebugEditor_->CreateEmptyObject();
         }
+        if (ImGui::BeginMenu("エフェクト", sceneDebugEditor_ != nullptr)) {
+            if (ImGui::MenuItem("パーティクル")) {
+                sceneDebugEditor_->CreateParticleObject(ObjectEditing::ParticleKind::Cpu);
+            }
+            if (ImGui::MenuItem("GPU パーティクル")) {
+                sceneDebugEditor_->CreateParticleObject(ObjectEditing::ParticleKind::Gpu);
+            }
+            ImGui::EndMenu();
+        }
         if (ImGui::BeginMenu("UI", sceneDebugEditor_ != nullptr)) {
             if (ImGui::MenuItem("テキスト")) {
                 sceneDebugEditor_->CreateUIObject(ObjectEditing::UIElementKind::Text);

@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "ForceModule.h"
-#include "../ParticleSystem.h"
+#include "Particle/Core/Particle.h"
 #include "Math/Geometry/Intersect.h"
 #include <algorithm>
 #include "Editor/ImGui/ImGuiAll.h"

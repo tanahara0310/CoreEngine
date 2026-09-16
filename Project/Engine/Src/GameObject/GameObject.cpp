@@ -532,20 +532,6 @@ namespace CoreEngine
         changed |= DrawInspectorHeader();
         ImGui::Spacing();
 
-        // オブジェクト固有のセクション
-        const std::span<const char* const> sections = GetInspectorSections();
-        for (std::size_t i = 0; i < sections.size(); ++i) {
-            ImGui::PushID(static_cast<int>(i));
-            bool unusedEnabledChanged = false;
-            InspectorLayout::SectionHeader header;
-            header.name = sections[i];
-            if (InspectorLayout::DrawSectionHeader(header, unusedEnabledChanged)) {
-                changed |= DrawInspectorSection(static_cast<int>(i));
-                ImGui::Spacing();
-            }
-            ImGui::PopID();
-        }
-
         // コンポーネントのセクション（トランスフォーム系を先頭に並べる。外すのは全部を描き終えてから行う）
         IComponent* removeRequest = nullptr;
         for (const bool firstPass : { true, false }) {

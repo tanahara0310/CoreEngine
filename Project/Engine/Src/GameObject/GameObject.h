@@ -12,7 +12,6 @@
 #include <d3d12.h>
 #include <memory>
 #include <optional>
-#include <span>
 #include <string>
 #include <vector>
 
@@ -317,20 +316,9 @@ namespace CoreEngine
 
         /// @brief インスペクタを描く
         /// @return 値の変更があった場合 true を返す
-        /// @note 名前と有効の行、プレハブの行、オブジェクト固有のセクション、コンポーネントのセクション、
+        /// @note 名前と有効の行、プレハブの行、コンポーネントのセクション、
         ///       コンポーネント追加ボタンを上から縦に並べる。
         virtual bool DrawImGui();
-
-        /// @brief オブジェクト固有のセクションの名前（上から並べる順）
-        /// @note コンポーネントのセクションはこの後ろに並ぶ。
-        virtual std::span<const char* const> GetInspectorSections() const { return {}; }
-
-        /// @brief オブジェクト固有のセクションの中身を描く
-        /// @param index `GetInspectorSections()` の並びでの位置
-        /// @return 値が変更された場合 true
-        virtual bool DrawInspectorSection(int index) {
-            (void)index; return false;
-        }
 
         /// @brief ImGui 編集コミット時コールバックの型
         /// @note 編集前のトランスフォームを引数として受け取り、Undo/Redo システムへ渡す。

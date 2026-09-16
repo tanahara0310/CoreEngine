@@ -1,52 +1,37 @@
 #pragma once
 
 #include "Graphics/RHI/Resource/GpuResource.h"
-
-#include <wrl.h>
 #include "Graphics/RHI/Descriptor/DescriptorHandle.h"
-#include <d3d12.h>
-#include <string>
-#include <memory>
-
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 
-// Math
-#include "Math/MathCore.h"
+#include <d3d12.h>
+#include <memory>
+#include <string>
+#include <wrl.h>
 
-// GameObject基底クラス
-#include "GameObject/GameObject.h"
-#include "GameObject/Component/Transform/EulerTransformComponent.h"
-
-// テクスチャ
+#include "GameObject/Component/Core/IComponent.h"
+#include "GameObject/Component/Render/IRenderableComponent.h"
+#include "Graphics/Asset/AssetRef.h"
 #include "Graphics/Texture/TextureManager.h"
-
-// CPU/GPU共通インターフェース
+#include "Math/MathCore.h"
 #include "Particle/IParticleSystem.h"
-
-// プリセット管理（CPU版と共通）
-#include "Particle/ParticlePresetManager.h"
-
-// モジュール（CPU版とパラメータ定義・ImGuiを共有。CPU用更新メソッドは使わない）
-#include "Particle/Modules/MainModule.h"
-#include "Particle/Modules/EmissionModule.h"
-#include "Particle/Modules/ShapeModule.h"
-#include "Particle/Modules/VelocityModule.h"
 #include "Particle/Modules/ColorModule.h"
+#include "Particle/Modules/EmissionModule.h"
 #include "Particle/Modules/ForceModule.h"
-#include "Particle/Modules/SizeModule.h"
-#include "Particle/Modules/RotationModule.h"
+#include "Particle/Modules/MainModule.h"
 #include "Particle/Modules/NoiseModule.h"
-
-// 前方宣言
-namespace CoreEngine {
-    class GraphicsCore;
-    class ResourceFactory;
-    class Camera;
-}
+#include "Particle/Modules/RotationModule.h"
+#include "Particle/Modules/ShapeModule.h"
+#include "Particle/Modules/SizeModule.h"
+#include "Particle/Modules/VelocityModule.h"
+#include "Reflection/Reflect.h"
 
 namespace CoreEngine
 {
+    class GpuParticleRenderer;
+    class GraphicsCore;
+    class ParticlePresetManager;
 
 /// @brief GPUパーティクル用定数バッファ（GpuParticle.hlsli の GpuParticleParams と一致・576バイト）
 struct GpuParticleParams {
@@ -216,11 +201,11 @@ static constexpr Cb::Field kGpuParticleDataFields[] = {
 };
 CB_VERIFY_STRIDE(GpuParticleData, kGpuParticleDataFields);
 
-/// @brief GPUパーティクルシステム（Phase 3: フリーリスト + ExecuteIndirect + リードバック）
-/// 放出・更新・生存管理・描画データ生成をすべてComputeShaderで行う。
-/// パラメータはCPU版と同じモジュール群で編集し、毎フレームCBへ詰めてGPUに渡す。
-/// 設計は Docs/Engine/Particle/GpuParticleSystem.md 参照。
-class GpuParticleSystem : public GameObject, public IParticleSystem {
+/// @brief 放出・更新・生存管理・描画データの生成をすべて ComputeShader で行うパーティクルのコンポーネント
+/// @details パラメータは CPU 版と同じモジュールで編集し、毎フレーム定数バッファへ詰めて GPU に渡す。
+///          放出位置は兄弟のトランスフォームのワールド位置（無ければ Awake でトランスフォームを足す）。
+///          粒の生存管理はフリーリスト、描画は ExecuteIndirect、生存数は 1 フレーム遅れのリードバックで読む。
+class GpuParticleSystemComponent : public IComponent, public IRenderableComponent, public IParticleSystem {
 public:
     // パーティクルバッファの物理容量（生存数の上限は MainModule.maxParticles でさらに制限）
     static constexpr uint32_t kMaxParticles = 65536;
@@ -239,88 +224,79 @@ public:
     static constexpr uint64_t kInitCountersOffset = 16; // {kMaxParticles, 0, 0, 0}
     static constexpr uint64_t kInitFreeListOffset = 32; // {0, 1, ..., kMaxParticles-1}
 
-    /// @brief コンストラクタ
-    /// @note エミッタ位置の実体は `EulerTransformComponent` が持つ。
-    ///       `emitterPosition_` はその translate への参照なので既存コードは変わらない。
-    GpuParticleSystem()
-        : emitterTransformComponent_(AddComponent<EulerTransformComponent>())
-        , emitterPosition_(emitterTransformComponent_->Translate()) {}
-    ~GpuParticleSystem() override = default;
+    GpuParticleSystemComponent();
+    ~GpuParticleSystemComponent() override;
 
-    /// @brief 初期化（GPUバッファ・UAV/SRV・モジュールの生成）
-    void Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory, const std::string& name = "") override;
+    const char* GetTypeName() const override { return "GpuParticleSystem"; }
 
-    /// @brief 更新処理（再生時間・放出数の管理のみ。粒子更新はGPU）
-    void Update() override;
+    REFLECT_DECLARE(GpuParticleSystemComponent)
 
-    /// @brief ワールド空間での位置を取得（エミッタ位置）
-    Vector3 GetWorldPosition() const override { return emitterPosition_; }
-
-    /// @brief 描画前処理（定数バッファへの書き込み。ディスパッチはレンダラーが行う）
-    void Draw(const Camera* camera) override;
-
-    // ──────────────────────────────────────────────────────────
-    // GameObjectインターフェース実装
-    // ──────────────────────────────────────────────────────────
-
-    RenderPassType GetRenderPassType() const override { return RenderPassType::GpuParticle; }
-
-    void SetBlendMode(BlendMode mode) override { blendMode_ = mode; }
-    BlendMode GetBlendMode() const override { return blendMode_; }
+    /// @brief 放出位置を取るトランスフォームを使う
+    bool RequiresComponent(const IComponent& other) const override;
 
 #ifdef USE_IMGUI
-    const char* GetObjectName() const override { return "GpuParticleSystem"; }
+    const char* GetInspectorName() const override { return "GPU パーティクル"; }
 
-    /// @brief インスペクタのセクション名を返す（CPU版 ParticleSystem と同じ構成）
-    std::span<const char* const> GetInspectorSections() const override;
-
-    /// @brief セクションの中身を描画する
-    bool DrawInspectorSection(int index) override;
+    /// @brief 再生の操作・プリセット・モジュールを描く（モジュールの編集は Undo に積む）
+    bool DrawInspector() override;
 #endif
 
-    // ──────────────────────────────────────────────────────────
-    // 制御
-    // ──────────────────────────────────────────────────────────
+    /// @brief トランスフォームを確保し、GPU バッファ・UAV / SRV・レンダラー・テクスチャを用意する
+    void Awake() override;
 
-    /// @brief 再生開始
+    /// @brief 「起動時に再生」なら再生を始める
+    void Start() override;
+
+    /// @brief 再生時間と放出数の管理（粒の更新は GPU）
+    void Update() override;
+
+    /// @brief モジュールの値をプリセットと同じ形で書き出す
+    json OnSerialize() const override;
+    void OnDeserialize(const json& j) override;
+
+    // ===== IRenderableComponent =====
+
+    RenderPassType GetRenderPassType() const override { return RenderPassType::GpuParticle; }
+    BlendMode GetBlendMode() const override { return blendMode_; }
+    void SetBlendMode(BlendMode mode) override { blendMode_ = mode; }
+
+    /// @brief 定数バッファを書き、レンダラーに放出・更新のディスパッチと描画を任せる
+    void Render(const DrawViewInfo& view) override;
+
+    // ===== 再生 =====
+
+    /// @brief 最初から再生する（経過時間とバーストを戻す）
     void Play() override;
 
-    /// @brief 再生停止（放出のみ止まる。生存中の粒子は寿命まで更新される）
+    /// @brief 放出だけを止める（生きている粒は寿命まで更新する）
     void Stop() override { isPlaying_ = false; }
 
-    /// @brief 再生中かどうか
     bool IsPlaying() const override { return isPlaying_; }
 
-    /// @brief テクスチャを設定
+    // ===== プリセット =====
+
+    bool LoadPreset(const std::string& filePath);
+    bool SavePreset(const std::string& filePath);
+    ParticlePresetManager& GetPresetManager() { return *presetManager_; }
+
+    // ===== 見た目 =====
+
+    /// @brief テクスチャをパスかファイル名で指す（空なら既定のテクスチャ）
     void SetTexture(const std::string& texturePath) override;
 
-    /// @brief テクスチャハンドルを取得
+    Reflection::AssetRefValue GetTextureAsset() const { return textureAsset_.GetValue(); }
+    void SetTextureAsset(const Reflection::AssetRefValue& value);
+
     D3D12_GPU_DESCRIPTOR_HANDLE GetTextureHandle() const { return texture_.gpuHandle; }
 
-    // ──────────────────────────────────────────────────────────
-    // 設定アクセッサ
-    // ──────────────────────────────────────────────────────────
-
-    void SetEmitterPosition(const Vector3& position) override { emitterPosition_ = position; }
-    Vector3 GetEmitterPosition() const override { return emitterPosition_; }
-
-    /// @brief ビルボードタイプを設定（None/ViewFacing/YAxisOnly/ScreenAligned）
+    /// @brief 板ポリの向き
     void SetBillboardType(BillboardType type) override { billboardType_ = type; }
     BillboardType GetBillboardType() const override { return billboardType_; }
 
-    /// @brief 放出レート（個/秒）を設定（EmissionModule.rateOverTime への転送）
-    void SetEmissionRate(float rate) {
-        emissionModule_->GetEmissionData().rateOverTime = static_cast<uint32_t>(rate);
-    }
+    /// @brief 放出位置（兄弟のトランスフォームのワールド位置）
+    Vector3 GetEmitterPosition() const override;
 
-    void SetStartLifetime(float lifetime) { mainModule_->GetMainData().startLifetime = lifetime; }
-    void SetStartSpeed(float speed) { mainModule_->GetMainData().startSpeed = speed; }
-    void SetStartScale(float scale) { mainModule_->GetMainData().startSize = { scale, scale, scale }; }
-    void SetStartColor(const Vector4& color) { mainModule_->GetMainData().startColor = color; }
-
-    // ──────────────────────────────────────────────────────────
-    // モジュールアクセッサ（CPU版 ParticleSystem と同形）
-    // ──────────────────────────────────────────────────────────
+    // ===== モジュール =====
 
     MainModule& GetMainModule() override { return *mainModule_; }
     EmissionModule& GetEmissionModule() override { return *emissionModule_; }
@@ -332,9 +308,7 @@ public:
     RotationModule& GetRotationModule() override { return *rotationModule_; }
     NoiseModule& GetNoiseModule() override { return *noiseModule_; }
 
-    // ──────────────────────────────────────────────────────────
-    // レンダラーがアクセスするためのゲッター
-    // ──────────────────────────────────────────────────────────
+    // ===== レンダラーが読む値 =====
 
     /// @brief 今フレームの放出数
     uint32_t GetEmitCount() const { return emitCountThisFrame_; }
@@ -369,9 +343,7 @@ public:
 
     ID3D12Resource* GetFreeListResource() const { return freeListResource_.Get(); }
 
-    // ──────────────────────────────────────────────────────────
-    // 統計（リードバック。1フレーム遅延）
-    // ──────────────────────────────────────────────────────────
+    // ===== 統計（リードバック。1フレーム遅延） =====
 
     /// @brief 生存パーティクル数を取得（1フレーム遅延）
     uint32_t GetAliveCount() const { return readbackData_ ? readbackData_[kCounterAliveIndex] : 0; }
@@ -383,11 +355,18 @@ public:
     uint32_t GetEffectiveCapacity() const;
 
 private:
-    /// @brief UAV付きDEFAULTヒープバッファを作成
-    Microsoft::WRL::ComPtr<ID3D12Resource> CreateUavBuffer(size_t sizeInBytes);
+    /// @brief GPU バッファ・UAV / SRV・定数バッファを作る
+    /// @return 作れたら true
+    bool CreateGpuResources(GraphicsCore& graphics);
 
-    GraphicsCore* dxCommon_ = nullptr;
-    ResourceFactory* resourceFactory_ = nullptr;
+    /// @brief UAV付きDEFAULTヒープバッファを作成
+    Microsoft::WRL::ComPtr<ID3D12Resource> CreateUavBuffer(ID3D12Device* device, size_t sizeInBytes);
+
+    /// @brief 指しているテクスチャ（無ければ既定）を読み込む
+    void LoadTexture();
+
+    /// @brief カメラの向きに合わせた板ポリの回転を作る
+    Matrix4x4 MakeBillboardMatrix(const Matrix4x4& viewMatrix) const;
 
     // ──────────────────────────────────────────────────────────
     // GPUリソース
@@ -410,9 +389,11 @@ private:
     DescriptorHandle instancingUavGPU_ = {};
     DescriptorHandle instancingSrvGPU_ = {};
 
+    GpuParticleRenderer* renderer_ = nullptr;
+    bool awoken_ = false;
 
-    // テクスチャ
-    TextureManager::LoadedTexture texture_;
+    AssetRef<TextureAsset> textureAsset_;
+    TextureManager::LoadedTexture texture_{};
 
     // ──────────────────────────────────────────────────────────
     // モジュール（パラメータコンテナ + ImGui として使用）
@@ -428,28 +409,11 @@ private:
     std::unique_ptr<RotationModule> rotationModule_;
     std::unique_ptr<NoiseModule> noiseModule_;
 
-    // ──────────────────────────────────────────────────────────
-    // エミッター設定・再生状態
-    // ──────────────────────────────────────────────────────────
-
-    /// トランスフォームの実体を持つコンポーネント（コンストラクタでアタッチ済み）
-    /// @note GPU 版はエミッタ位置しか使わないが、コンポーネント化することで
-    ///       ギズモ・インスペクタが具象型を知らずにエミッタを動かせるようになる。
-    EulerTransformComponent* emitterTransformComponent_ = nullptr;
-
-    /// エミッタ位置（`emitterTransformComponent_` が持つ translate への参照）
-    Vector3& emitterPosition_;
+    // プリセット管理（CPU版と共通のJSONフォーマット）
+    std::unique_ptr<ParticlePresetManager> presetManager_;
 
     BillboardType billboardType_ = BillboardType::ViewFacing;
     BlendMode blendMode_ = BlendMode::kBlendModeAdd;
-
-    // プリセット管理（CPU版と共通のJSONフォーマット）
-    std::unique_ptr<ParticlePresetManager> presetManager_ = std::make_unique<ParticlePresetManager>();
-
-#ifdef USE_IMGUI
-    // 開発UI（CPU版と共通実装）からプリセットマネージャーへアクセスするため
-    friend class ParticleSystemDebugUI;
-#endif
 
     bool isPlaying_ = false;
     bool resetPending_ = true;         // 初回フレームでバッファをGPU側初期化する
@@ -458,5 +422,11 @@ private:
     float emitAccumulator_ = 0.0f;     // 放出レートの端数積算
     uint32_t emitCountThisFrame_ = 0;
     uint32_t frameSeed_ = 0;
+
+#ifdef USE_IMGUI
+    /// モジュールの編集を始める前の値（編集が終わったら Undo に積む）
+    json moduleEditBefore_;
+    bool moduleEditActive_ = false;
+#endif
 };
 }

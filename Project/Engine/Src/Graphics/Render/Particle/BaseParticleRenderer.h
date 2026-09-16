@@ -8,7 +8,7 @@
 
 // 前方宣言
 namespace CoreEngine {
-    class ParticleSystem;
+    class ParticleSystemComponent;
     class Camera;
     class ResourceFactory;
     class ShaderReflectionData;
@@ -48,9 +48,10 @@ public:
     /// @param resourceFactory リソースファクトリ
     void SetResourceFactory(ResourceFactory* resourceFactory) { resourceFactory_ = resourceFactory; }
 
-    /// @brief パーティクルシステムを描画（派生クラスで実装）
-    /// @param particle パーティクルシステム
-    virtual void Draw(CoreEngine::ParticleSystem* particle) = 0;
+    /// @brief パーティクルを描画（派生クラスで実装）
+    /// @param particle パーティクルのコンポーネント
+    /// @note コンポーネントの Render から呼ぶ。パスの開始はキューを流す側が済ませている
+    virtual void Draw(CoreEngine::ParticleSystemComponent* particle) = 0;
 
     /// @brief シェーダーリソース名からルートパラメータインデックスを取得
     int GetRootParamIndex(const std::string& resourceName) const;
@@ -78,14 +79,14 @@ protected:
     void CreateRootSignature();
 
     /// @brief 基本的な検証を行う
-    /// @param particle パーティクルシステム
+    /// @param particle パーティクルのコンポーネント
     /// @return 描画可能な場合true
-    bool ValidateDrawCall(CoreEngine::ParticleSystem* particle) const;
+    bool ValidateDrawCall(CoreEngine::ParticleSystemComponent* particle) const;
 
     /// @brief 共通のリソース設定を行う
-    /// @param particle パーティクルシステム
+    /// @param particle パーティクルのコンポーネント
     /// @param textureHandle テクスチャハンドル
-    void SetupCommonResources(CoreEngine::ParticleSystem* particle, D3D12_GPU_DESCRIPTOR_HANDLE textureHandle);
+    void SetupCommonResources(CoreEngine::ParticleSystemComponent* particle, D3D12_GPU_DESCRIPTOR_HANDLE textureHandle);
 
     // ──────────────────────────────────────────────────────────
     // 派生クラスで実装すべき純粋仮想関数

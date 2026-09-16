@@ -8,7 +8,6 @@
 #include "Graphics/Light/LightManager.h"
 #include "Input/InputManager.h"
 #include "Audio/AudioSystem.h"
-#include "Particle/ParticleSystem.h"
 #include "Script/ScriptSubsystem.h"
 
 // コンポーネントのインクルード
@@ -661,7 +660,6 @@ void ConsoleUI::ShowSystemStatus()
     auto inputManager = engine_->GetService<InputManager>();
     auto soundManager = engine_->GetService<AudioSystem>();
     auto lightManager = engine_->GetService<LightManager>();
-    auto particleSystem = engine_->GetService<ParticleSystem>();
 
     AddLog("グラフィックスシステム: " + std::string(graphicsCore ? "初期化済み" : "未初期化"), 
            graphicsCore ? ConsoleLogLevel::Info : ConsoleLogLevel::Error);
@@ -674,9 +672,6 @@ void ConsoleUI::ShowSystemStatus()
 
     AddLog("ライティングシステム: " + std::string(lightManager ? "初期化済み" : "未初期化"), 
            lightManager ? ConsoleLogLevel::Info : ConsoleLogLevel::Error);
-
-    AddLog("パーティクルシステム: " + std::string(particleSystem ? "初期化済み" : "未初期化"), 
-           particleSystem ? ConsoleLogLevel::Info : ConsoleLogLevel::Error);
 
     AddLog("エンジンシステム: 正常稼働中", ConsoleLogLevel::Info);
 }

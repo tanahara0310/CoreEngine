@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "ParticleRenderDataBuilder.h"
 #include "Camera/Camera.h"
-#include "Particle/ParticleSystem.h" // Particle, BillboardType, ParticleRenderMode定義のため
+#include "Particle/Core/Particle.h"
 #include <cmath>
 
 namespace CoreEngine

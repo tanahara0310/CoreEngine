@@ -8,7 +8,6 @@ namespace CoreEngine
 {
 // 前方宣言
 struct Particle;
-struct EulerTransform;
 class MainModule;
 class EmissionModule;
 class ShapeModule;
@@ -32,19 +31,20 @@ public:
     );
 
     /// @brief パーティクルを放出
+    /// @param emitterPosition 放出する位置（ワールド座標）
     /// @return 実際に放出されたパーティクル数
     uint32_t EmitParticles(
         uint32_t count,
-        const EulerTransform& emitterTransform,
+        const Vector3& emitterPosition,
         uint32_t maxParticles,
         std::vector<Particle>& outParticles
     );
 
 private:
     /// @brief 新しいパーティクルを生成
-    /// @param emitterTransform エミッターのトランスフォーム
+    /// @param emitterPosition 放出する位置（ワールド座標）
     /// @return 生成されたパーティクル
-    Particle CreateParticle(const EulerTransform& emitterTransform);
+    Particle CreateParticle(const Vector3& emitterPosition);
 
     // モジュールへの参照（ポインタ）
     MainModule* mainModule_ = nullptr;

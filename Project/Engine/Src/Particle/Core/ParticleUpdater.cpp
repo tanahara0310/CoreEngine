@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "ParticleUpdater.h"
-#include "Particle/ParticleSystem.h" // Particle構造体のため
+#include "Particle/Core/Particle.h"
 #include "Particle/Modules/ForceModule.h"
 #include "Particle/Modules/ColorModule.h"
 #include "Particle/Modules/SizeModule.h"

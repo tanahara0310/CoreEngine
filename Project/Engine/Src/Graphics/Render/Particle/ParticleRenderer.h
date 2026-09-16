@@ -5,9 +5,6 @@
 #include <d3d12.h>
 #include <wrl.h>
 
-// 前方宣言
-class ParticleSystem;
-
 namespace CoreEngine
 {
 /// @brief ビルボードパーティクル専用レンダラー
@@ -24,9 +21,9 @@ public:
     /// @return 描画パスタイプ
     RenderPassType GetRenderPassType() const override { return RenderPassType::Particle; }
 
-    /// @brief パーティクルシステムを描画
-    /// @param particle パーティクルシステム
-    void Draw(ParticleSystem* particle) override;
+    /// @brief 板ポリの粒を描画
+    /// @param particle パーティクルのコンポーネント
+    void Draw(ParticleSystemComponent* particle) override;
 
 protected:
     /// @brief パイプラインステートオブジェクトの作成（ビルボード用）

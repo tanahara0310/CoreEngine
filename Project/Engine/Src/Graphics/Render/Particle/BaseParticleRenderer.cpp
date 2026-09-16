@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "BaseParticleRenderer.h"
-#include "Particle/ParticleSystem.h"
+#include "Particle/ParticleSystemComponent.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
@@ -81,8 +81,8 @@ namespace CoreEngine
         return reflectionData_->GetRootParameterIndexByName(resourceName);
     }
 
-    bool BaseParticleRenderer::ValidateDrawCall(ParticleSystem* particle) const {
-        if (!cmdList_ || !particle || !particle->IsActive()) {
+    bool BaseParticleRenderer::ValidateDrawCall(ParticleSystemComponent* particle) const {
+        if (!cmdList_ || !particle) {
             return false;
         }
 
@@ -94,7 +94,7 @@ namespace CoreEngine
         return true;
     }
 
-    void BaseParticleRenderer::SetupCommonResources(ParticleSystem* particle, D3D12_GPU_DESCRIPTOR_HANDLE textureHandle) {
+    void BaseParticleRenderer::SetupCommonResources(ParticleSystemComponent* particle, D3D12_GPU_DESCRIPTOR_HANDLE textureHandle) {
         // インスタンシングリソースを設定
         int instanceIdx = GetRootParamIndex("gParticle");
         if (instanceIdx >= 0) {

@@ -8,7 +8,7 @@
 
 // 前方宣言
 namespace CoreEngine {
-    class GpuParticleSystem;
+    class GpuParticleSystemComponent;
 }
 
 namespace CoreEngine
@@ -16,7 +16,6 @@ namespace CoreEngine
 /// @brief GPUパーティクル専用レンダラー
 /// ParticleRenderer の描画基盤（Particle.VS/PS・PSO・共有頂点バッファ）を継承し、
 /// 描画前に Emit / Update の ComputeShader をディスパッチする。
-/// 設計は Docs/Engine/Particle/GpuParticleSystem.md 参照。
 class GpuParticleRenderer : public ParticleRenderer {
 public:
     GpuParticleRenderer() = default;
@@ -29,9 +28,10 @@ public:
     /// @brief このレンダラーがサポートする描画タイプを取得
     RenderPassType GetRenderPassType() const override { return RenderPassType::GpuParticle; }
 
-    /// @brief GPUパーティクルシステムを描画（CSディスパッチ + DrawInstanced）
-    /// @param system GPUパーティクルシステム
-    void DrawGpu(GpuParticleSystem* system);
+    /// @brief GPU パーティクルを描画（CSディスパッチ + 間接描画）
+    /// @param system GPU パーティクルのコンポーネント
+    /// @note コンポーネントの Render から呼ぶ。パスの開始はキューを流す側が済ませている
+    void DrawGpu(GpuParticleSystemComponent* system);
 
 private:
     /// @brief CS 1本分のパイプライン（RootSignature + PSO + ルートパラメータ）
@@ -48,7 +48,7 @@ private:
     void CreateComputePass(ID3D12Device* device, ComputePass& pass, const wchar_t* shaderPath, const char* debugName);
 
     /// @brief Emit / Update CS のディスパッチとカウンタコピー
-    void DispatchCompute(GpuParticleSystem* system);
+    void DispatchCompute(GpuParticleSystemComponent* system);
 
     ComputePass emitPass_;
     ComputePass updatePass_;

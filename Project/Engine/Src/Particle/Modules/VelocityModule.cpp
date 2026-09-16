@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "VelocityModule.h"
-#include "../ParticleSystem.h" // Particle構造体のために必要
+#include "Particle/Core/Particle.h"
 
 namespace CoreEngine
 {

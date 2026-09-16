@@ -560,6 +560,17 @@ namespace CoreEngine
         }
     }
 
+    void SceneDebugEditor::CreateParticleObject(ObjectEditing::ParticleKind kind)
+    {
+        if (!gameObjectManager_) {
+            return;
+        }
+        if (GameObject* const created = ObjectEditing::CreateParticle(
+                MakeObjectEditingContext(), kind, ComputeDropPosition(nullptr))) {
+            objectSelector_.SelectObject(created);
+        }
+    }
+
     void SceneDebugEditor::CreateUIObject(ObjectEditing::UIElementKind kind)
     {
         if (!gameObjectManager_) {

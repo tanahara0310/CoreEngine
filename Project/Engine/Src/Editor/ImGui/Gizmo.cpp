@@ -56,7 +56,7 @@ namespace CoreEngine
         }
 
         // 具象クラスではなく `ITransformSource` で引く。実体が WorldTransform でも
-        // EulerTransform でも同じ経路で通るので、ParticleSystem 等でもギズモが効く。
+        // EulerTransform でも同じ経路で通るので、スプライト等でもギズモが効く。
         // トランスフォームを持たないオブジェクト（デバッグ線など）は対象外。
         auto* source = object->GetComponent<ITransformSource>();
         if (!source) return false;
