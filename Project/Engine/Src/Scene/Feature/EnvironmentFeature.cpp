@@ -3,7 +3,8 @@
 #include "EngineSystem/EngineSystem.h"
 #include "Camera/Camera.h"
 #include "GameObject/GameObjectManager.h"
-#include "Graphics/Render/SkyBox/SkyBoxObject.h"
+#include "GameObject/GameObject.h"
+#include "Graphics/Render/SkyBox/SkyBoxComponent.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Cloud/VolumetricCloudManager.h"
 #include "Graphics/Fog/FogManager.h"
@@ -98,24 +99,29 @@ namespace CoreEngine
         // ライトのクリア（SceneManager::DoChangeScene の ClearAllLights）より前に行う
         MirrorAtmosphereLightsToCVars(ctx);
 
-        // SkyBox は GameObjectManager が所有しているためポインタのみクリア
+        // 空は GameObjectManager が所有しているためポインタのみクリア
         skyBox_ = nullptr;
     }
 
     void EnvironmentFeature::SetupDefaultSky(SceneContext& ctx)
     {
-        // シーン側（OnInitialize）で生成済みの SkyBox があればそれを採用する
-        // （具象型のダウンキャストではなく SceneTag で探す）
-        if (auto* tag = ctx.gameObjectManager->FindFirstComponent<SceneTagComponent<SkyBoxObject>>()) {
-            skyBox_ = tag->Get();
+        // シーン側（OnInitialize）で作った空があればそれを使う
+        if (auto* skyBox = ctx.gameObjectManager->FindFirstComponent<SkyBoxComponent>()) {
+            skyBox_ = skyBox;
             Logger::GetInstance().Infof(LogCategory::System,
                 "BaseScene: シーン生成の SkyBox を採用");
             return;
         }
 
-        // 未生成なら既定の背景として大気散乱モードの SkyBox を自動生成する
-        skyBox_ = ctx.gameObjectManager->AddObject(std::make_unique<SkyBoxObject>());
-        skyBox_->SetActive(true);
+        // 無ければ既定の背景として、大気散乱の空を持つオブジェクトを作る（シーンには保存しない）
+        auto owned = std::make_unique<GameObject>();
+        owned->SetName("SkyBox");
+        GameObject* const object = ctx.gameObjectManager->AddObject(std::move(owned));
+        if (!object) {
+            return;
+        }
+        object->SetSerializeEnabled(false);
+        skyBox_ = object->AddComponent<SkyBoxComponent>();
         Logger::GetInstance().Infof(LogCategory::System,
             "BaseScene: 既定背景として大気散乱モードの SkyBox を自動生成");
     }

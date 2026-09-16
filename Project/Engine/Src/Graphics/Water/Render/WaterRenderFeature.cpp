@@ -6,8 +6,9 @@
 #include "Camera/CameraStructs.h"
 #include "Camera/Camera.h"
 #include "EngineSystem/EngineSystem.h"
+#include "GameObject/Component/Scene/SceneTagComponent.h"
 #include "GameObject/GameObjectManager.h"
-#include "Graphics/Render/SkyBox/SkyBoxObject.h"
+#include "Graphics/Render/SkyBox/SkyBoxComponent.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Material/MaterialInstance.h"
@@ -83,9 +84,8 @@ namespace CoreEngine
         if (!ctx.gameObjectManager) {
             return;
         }
-        // 具象型のダウンキャストではなく SceneTag で探す
-        if (auto* tag = ctx.gameObjectManager->FindFirstComponent<SceneTagComponent<SkyBoxObject>>()) {
-            skyBox_ = tag->Get();
+        if (auto* skyBox = ctx.gameObjectManager->FindFirstComponent<SkyBoxComponent>()) {
+            skyBox_ = skyBox;
         }
     }
 

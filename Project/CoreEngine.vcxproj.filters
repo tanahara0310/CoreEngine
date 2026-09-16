@@ -697,7 +697,7 @@
     <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\RenderTargetManager.cpp">
       <Filter>Engine\Src\Graphics\Render\RenderTarget</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxObject.cpp">
+    <ClCompile Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxComponent.cpp">
       <Filter>Engine\Src\Graphics\Render\SkyBox</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxRenderer.cpp">
@@ -2409,7 +2409,7 @@
     <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\RenderTargetNames.h">
       <Filter>Engine\Src\Graphics\Render\RenderTarget</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxObject.h">
+    <ClInclude Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxComponent.h">
       <Filter>Engine\Src\Graphics\Render\SkyBox</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxRenderer.h">

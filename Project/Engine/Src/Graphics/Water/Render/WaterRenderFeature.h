@@ -11,7 +11,7 @@
 
 namespace CoreEngine
 {
-    class SkyBoxObject;
+    class SkyBoxComponent;
     class WaterPlaneObject;
     class RenderDomainContext;
 
@@ -107,7 +107,7 @@ namespace CoreEngine
         WaterPlaneObject* waterPlane_ = nullptr;
 
         /// @brief 空気遠近感の適用可否判定に使う空（所有権は GameObjectManager）
-        SkyBoxObject* skyBox_ = nullptr;
+        SkyBoxComponent* skyBox_ = nullptr;
 
         /// @brief 現在フレームの水面状態（RenderDomainContext へ publish する実体）
         WaterSurfaceData waterSurfaceState_{};

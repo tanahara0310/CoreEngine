@@ -4,7 +4,7 @@
 
 namespace CoreEngine
 {
-    class SkyBoxObject;
+    class SkyBoxComponent;
 
     /// @brief 既定の環境（空・大気散乱・雲）を管理する Feature
     /// @details PostSceneInitialize で SkyBox を採用（未生成なら自動生成）し、
@@ -22,7 +22,7 @@ namespace CoreEngine
         void Finalize(SceneContext& ctx) override;
 
         /// @brief シーンの SkyBox（大気散乱で描く空）を取得
-        SkyBoxObject* GetSkyBox() const { return skyBox_; }
+        SkyBoxComponent* GetSkyBox() const { return skyBox_; }
 
     private:
         /// @brief 既定の空（大気散乱モードの SkyBox）のセットアップ
@@ -49,6 +49,6 @@ namespace CoreEngine
         void UpdateFog(SceneContext& ctx);
 
         // 既定背景の SkyBox（所有権は GameObjectManager。Finalize でポインタをクリアする）
-        SkyBoxObject* skyBox_ = nullptr;
+        SkyBoxComponent* skyBox_ = nullptr;
     };
 }

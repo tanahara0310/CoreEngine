@@ -17,7 +17,6 @@
 #include "Math/MathCore.h"
 #include "Math/Geometry/Shapes.h"
 #include "Math/Geometry/RayCast.h"
-#include "UI/RectTransformComponent.h"
 #include <algorithm>
 #include <limits>
 #include <cmath>
@@ -473,8 +472,9 @@ namespace CoreEngine
                 continue;
             }
 
-            // UI は画面に貼るもので 3D の位置を持たないので、ここでは選ばない（Canvas で選ぶ）
-            if (obj->GetComponent<RectTransformComponent>()) {
+            // 3D の位置を持たないもの（UI・空・管理用のオブジェクト）はここでは選ばない。
+            // UI は Canvas で、それ以外は Hierarchy で選ぶ
+            if (!obj->GetComponent<ITransformSource>()) {
                 continue;
             }
 
