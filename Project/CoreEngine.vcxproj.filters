@@ -457,9 +457,6 @@
     <ClCompile Include="Engine\Src\Graphics\IBL\IBLSystem.cpp">
       <Filter>Engine\Src\Graphics\IBL</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Material\Debug\MaterialDebugUI.cpp">
-      <Filter>Engine\Src\Graphics\Material\Debug</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Material\MaterialInstance.cpp">
       <Filter>Engine\Src\Graphics\Material</Filter>
     </ClCompile>
@@ -1988,9 +1985,6 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\IBL\IBLSystem.h">
       <Filter>Engine\Src\Graphics\IBL</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Material\Debug\MaterialDebugUI.h">
-      <Filter>Engine\Src\Graphics\Material\Debug</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Material\MaterialBase.h">
       <Filter>Engine\Src\Graphics\Material</Filter>
@@ -3921,9 +3915,6 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\Material">
       <UniqueIdentifier>{2DB1E047-AE58-44DD-8480-B82893379866}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Engine\Src\Graphics\Material\Debug">
-      <UniqueIdentifier>{10693903-59A0-4E5B-A93C-38B5BD0DECD2}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Model">
       <UniqueIdentifier>{B6A41025-2F8A-4DFB-9825-0D9F32E0D8E8}</UniqueIdentifier>

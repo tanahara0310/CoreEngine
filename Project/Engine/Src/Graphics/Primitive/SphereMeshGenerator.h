@@ -15,6 +15,7 @@ namespace CoreEngine
 
         ModelData Generate() const override;
         std::string GetCacheKey() const override;
+        const char* GetDisplayName() const override { return "球"; }
 
     private:
         float radius_;

@@ -27,10 +27,16 @@ public:
             p.range = Range(0.0f, 1.0f))
         REFLECT_ACCESSOR("occlusionStrength", "オクルージョン", GetOcclusionStrength,
             SetOcclusionStrength, p.range = Range(0.0f, 1.0f))
+        REFLECT_ACCESSOR("emissive", "エミッシブ", GetEmissive, SetEmissive,
+            p.type = ::CoreEngine::Reflection::PropertyType::Color,
+            p.flags = ::CoreEngine::Reflection::PropertyFlags::NoAlpha)
         REFLECT_ACCESSOR("iblIntensity", "IBL 強度", GetIBLIntensity, SetIBLIntensity,
             p.range = Range(0.0f, 2.0f))
         REFLECT_ACCESSOR("lighting", "ライティング", IsLightingEnabled, SetLightingEnabled)
         REFLECT_ACCESSOR("normalMap", "法線マップ", IsNormalMapEnabled, SetNormalMapEnabled)
+        REFLECT_ACCESSOR("dithering", "ディザリング", IsDitheringEnabled, SetDitheringEnabled)
+        REFLECT_ACCESSOR("ditheringScale", "ディザリングの細かさ", GetDitheringScale, SetDitheringScale,
+            p.range = Range(0.1f, 5.0f))
     REFLECT_END()
 
 #ifdef USE_IMGUI
@@ -75,6 +81,15 @@ public:
     void SetRoughness(float value);
     void SetOcclusionStrength(float value);
 
+    /// @brief エミッシブファクターを設定（RGB を使い、4 つ目は読まない）
+    void SetEmissive(const Vector4& color);
+
+    /// @brief ディザリングの有効/無効（α<1 のときのブレンドの切り替えも合わせて行う）
+    void SetDitheringEnabled(bool enable);
+
+    /// @brief ディザリングの細かさ
+    void SetDitheringScale(float scale);
+
     // ===== 取得 =====
 
     /// @brief 代表マテリアル（スロット 0）。モデル未ロードなら nullptr
@@ -89,12 +104,17 @@ public:
     float GetIBLIntensity() const;
     bool IsLightingEnabled() const;
     bool IsNormalMapEnabled() const;
+    /// @brief エミッシブファクター（4 つ目は常に 1）
+    Vector4 GetEmissive() const;
+    bool IsDitheringEnabled() const;
+    float GetDitheringScale() const;
 
 private:
     /// @brief 全マテリアルスロットへ関数を適用する（未ロードなら false）
     bool ForEachMaterial(const std::function<void(MaterialInstance*)>& fn) const;
 
-    /// @brief α<1 かつディザリング OFF ならアルファブレンドへ切り替える
+    /// @brief α<1 かつディザリング OFF ならアルファブレンドへ、それ以外はブレンドなしへ切り替える
+    /// @note メッシュ描画のブレンドが「なし」「アルファ」以外なら変えない。
     void UpdateBlendModeForAlpha() const;
 
     mutable MeshRendererComponent* renderer_ = nullptr;
@@ -107,5 +127,8 @@ private:
     std::optional<bool> pendingNormalMap_;
     std::optional<float> pendingIBL_;
     std::optional<bool> pendingLighting_;
+    std::optional<Vector3> pendingEmissive_;
+    std::optional<bool> pendingDithering_;
+    std::optional<float> pendingDitheringScale_;
 };
 }

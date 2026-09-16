@@ -83,7 +83,20 @@ namespace CoreEngine
         if (ImGui::IsItemActivated()) { captureSnapshot(); }
         commitIfFinished();
 
-        if (UI::DragVec3("回転", transform_.rotate, 0.01f)) { changed = true; }
+        // 回転は度で見せ、ラジアンで持つ
+        Vector3 rotateDegrees = {
+            transform_.rotate.x * Reflection::kDegreesPerRadian,
+            transform_.rotate.y * Reflection::kDegreesPerRadian,
+            transform_.rotate.z * Reflection::kDegreesPerRadian,
+        };
+        if (UI::DragVec3("回転", rotateDegrees, 0.5f)) {
+            transform_.rotate = {
+                rotateDegrees.x / Reflection::kDegreesPerRadian,
+                rotateDegrees.y / Reflection::kDegreesPerRadian,
+                rotateDegrees.z / Reflection::kDegreesPerRadian,
+            };
+            changed = true;
+        }
         if (ImGui::IsItemActivated()) { captureSnapshot(); }
         commitIfFinished();
 
@@ -96,17 +109,7 @@ namespace CoreEngine
             SyncWorldMatrix();
         }
 
-        DrawInspectorExtra();
-
         return changed;
-    }
-
-    void TransformComponent::DrawInspectorExtra()
-    {
-        UI::Separator();
-        const Vector3 worldPos = GetWorldPosition();
-        UI::Hint("回転はラジアン");
-        ImGui::Text("ワールド位置: %.3f, %.3f, %.3f", worldPos.x, worldPos.y, worldPos.z);
     }
 #endif // USE_IMGUI
 

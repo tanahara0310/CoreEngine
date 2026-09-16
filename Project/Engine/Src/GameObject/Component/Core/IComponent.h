@@ -93,6 +93,10 @@ public:
     /// @note 既定は GetTypeName() と同じ。日本語表示にしたい場合はオーバーライドする。
     virtual const char* GetInspectorName() const { return GetTypeName(); }
 
+    /// @brief インスペクタに出すか
+    /// @note エンジンが内部で使う印のコンポーネントは false を返す。
+    virtual bool IsShownInInspector() const { return true; }
+
     /// @brief インスペクターの中身を描画する
     /// @return 値が変更されたら true
     virtual bool DrawInspector() { return false; }
