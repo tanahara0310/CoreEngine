@@ -17,7 +17,7 @@ namespace CoreEngine
 {
     class MsdfFont;
 
-    /// @brief 1 つの UIText の見た目（頂点へ焼き込んでバッチにまとめる）
+    /// @brief 1 つの UI テキストの見た目（頂点へ焼き込んでバッチにまとめる）
     /// @details
     ///  以前はテキストごとの定数バッファに入れていたが、それだと
     ///  テキストの数だけドローコールが要る。頂点へ載せると 1 本にまとめられる。
@@ -79,11 +79,11 @@ namespace CoreEngine
     ///
     ///  UI と別パスに分けているのは、RenderManager が
     ///  「パス種別が変わったときだけ BeginPass（＝PSO 切り替え）」で束ねるため。
-    ///  同じ UI パスに相乗りさせると、UIText の後に描かれる UIImage が
+    ///  同じ UI パスに相乗りさせると、UI テキストの後に描かれる UI 画像が
     ///  MSDF 用 PSO のまま描かれてしまう。
     ///
     ///  **バッチング**:
-    ///  `UIText::Draw` はドローコールを発行せず Submit() で頂点を積むだけ。
+    ///  `UITextComponent::Render` はドローコールを発行せず Submit() で頂点を積むだけ。
     ///  実際の描画は Flush()（BeginPass / EndPass / フォント切り替え / 容量超過）で
     ///  1 回にまとめて行う。テキストごとの色・縁取り・行列は頂点へ焼き込んであるので、
     ///  何個並べてもドローコールは（フォントの種類数だけ）で済む。
@@ -95,7 +95,7 @@ namespace CoreEngine
         ///       超えたらその場でフラッシュして次のバッチへ続ける（描画は欠けない）
         static constexpr uint32_t kMaxGlyphsPerBatch = 8192;
 
-        /// @brief 1 つの UIText が描けるグリフ数の上限
+        /// @brief 1 つの UI テキストが描けるグリフ数の上限
         static constexpr uint32_t kMaxGlyphsPerText = kMaxGlyphsPerBatch;
 
         RenderPassType GetRenderPassType() const override { return RenderPassType::UIText; }
@@ -105,7 +105,7 @@ namespace CoreEngine
         ///       名前隠蔽で見えなくなる（呼び出し側は 2 引数版を使う）
         using UIRenderer::Initialize;
 
-        /// @brief PSO の構築に加えて、全 UIText で共有するインデックスバッファを作る
+        /// @brief PSO の構築に加えて、全 UI テキストで共有するインデックスバッファを作る
         void Initialize(ID3D12Device* device) override;
 
         /// @brief 溜まっているバッチを描いてから、ルートシグネチャと PSO を張り直す
@@ -116,7 +116,7 @@ namespace CoreEngine
         /// @brief 溜まっているバッチを描き切る
         void EndPass() override;
 
-        /// @brief UIText 1 件ぶんの頂点を積む（ドローコールはここでは出ない）
+        /// @brief UI テキスト 1 件ぶんの頂点を積む（ドローコールはここでは出ない）
         /// @param font 使用フォント。変わったらその時点でフラッシュする
         /// @param glyphVertices em 単位の頂点（4 頂点 = 1 グリフ）
         /// @param vertexCount 頂点数（4 の倍数）

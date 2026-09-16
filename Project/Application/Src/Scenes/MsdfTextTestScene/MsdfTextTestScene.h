@@ -7,7 +7,7 @@
 
 namespace CoreEngine {
     class MsdfFont;
-    class UIText;
+    class UITextComponent;
 }
 
 namespace MsdfTextTest
@@ -36,7 +36,7 @@ namespace MsdfTextTest
 
     private:
         /// @brief 検証用テキストを 1 つ作って登録する
-        CoreEngine::UIText* CreateText(
+        CoreEngine::UITextComponent* CreateText(
             const std::string& text,
             float fontSize,
             const CoreEngine::Vector2& position,
@@ -50,17 +50,17 @@ namespace MsdfTextTest
         CoreEngine::MsdfFont* font_ = nullptr;
 
         /// 拡大縮小で輪郭が崩れないことを見るための対象
-        CoreEngine::UIText* scalingText_ = nullptr;
+        CoreEngine::UITextComponent* scalingText_ = nullptr;
         /// 回転しても崩れないことを見るための対象
-        CoreEngine::UIText* rotatingText_ = nullptr;
+        CoreEngine::UITextComponent* rotatingText_ = nullptr;
         /// 毎フレーム文字列が変わる対象（頂点バッファのフレーム跨ぎ破損の検証）
-        CoreEngine::UIText* counterText_ = nullptr;
+        CoreEngine::UITextComponent* counterText_ = nullptr;
         /// アトラスに焼いていない文字を出す対象（実行時ベイクの検証）
-        CoreEngine::UIText* dynamicText_ = nullptr;
+        CoreEngine::UITextComponent* dynamicText_ = nullptr;
         /// アトラスの登録数・待ち件数・使用量を出す
-        CoreEngine::UIText* statusText_ = nullptr;
+        CoreEngine::UITextComponent* statusText_ = nullptr;
         /// バッチングの効き（ドローコール数）を出す
-        CoreEngine::UIText* batchText_ = nullptr;
+        CoreEngine::UITextComponent* batchText_ = nullptr;
 
         float elapsedSeconds_ = 0.0f;
         uint64_t frameCount_ = 0;

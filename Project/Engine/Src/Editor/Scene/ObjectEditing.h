@@ -31,11 +31,23 @@ namespace CoreEngine
         ///       コードが作ったオブジェクトとみなして扱わない。
         bool CanDuplicateOrDelete(const GameObject& object, std::string* reason = nullptr);
 
+        /// @brief 作る UI の種類
+        enum class UIElementKind
+        {
+            Text,   ///< UI テキスト
+            Image,  ///< UI 画像
+        };
+
         /// @brief Transform だけを持つ空のオブジェクトを作る
         /// @return 作ったオブジェクト（作れなければ nullptr）
         GameObject* CreateEmpty(const Context& context, const Vector3& position);
 
-        /// @brief オブジェクトを複製する（名前は「名前 (1)」、位置は X へ 1 ずらす）
+        /// @brief UI トランスフォームと、UI テキストか UI 画像を持つオブジェクトを画面の中央に作る
+        /// @return 作ったオブジェクト（作れなければ nullptr）
+        GameObject* CreateUI(const Context& context, UIElementKind kind);
+
+        /// @brief オブジェクトを複製する
+        /// @details 名前は「名前 (1)」にし、位置は 3D なら X へ 1、UI なら右下へ 10px ずらす。
         /// @return 複製したオブジェクト（複製できなければ nullptr）
         GameObject* Duplicate(const Context& context, const GameObject& source);
 

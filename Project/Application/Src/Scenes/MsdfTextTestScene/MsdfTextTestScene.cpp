@@ -9,8 +9,9 @@
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/UI/TextRenderer.h"
 #include "Text/FontManager.h"
-#include "UI/UIImage.h"
-#include "UI/UIText.h"
+#include "UI/RectTransformComponent.h"
+#include "UI/UIImageComponent.h"
+#include "UI/UITextComponent.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
 
@@ -24,9 +25,6 @@ namespace MsdfTextTest
 
     namespace
     {
-        /// 1x1 の白テクスチャ。scale がそのままピクセルサイズになるので矩形として使える
-        constexpr const char* kWhiteTexture = "white1x1.png";
-
         // ── 検証に使う文字列 ──────────────────────────────────────
         // ソースは /utf-8 でコンパイルされるので、素の文字列リテラルが UTF-8 になる
         constexpr const char* kTitleText = "MSDF フォント描画テスト";
@@ -98,6 +96,9 @@ namespace MsdfTextTest
 
         /// アトラスの目視確認用 PNG の出力先（作業ディレクトリは Project/）
         constexpr const char* kAtlasDumpPath = "Cache/FontCache/MsdfTextTest_atlas.png";
+
+        /// このシーンのフォントを登録する名前（UI テキストはこの名前でフォントを指す）
+        constexpr const char* kFontName = "MsdfTextTest";
     }
 
     MsdfTextTestScene::MsdfTextTestScene() = default;
@@ -114,15 +115,16 @@ namespace MsdfTextTest
 
         // ── 背景（暗色。白文字のコントラストを取る）──────────────
         {
-            auto* background = CreateObject<UIImage>();
-            background->Initialize(kWhiteTexture, "Background");
+            auto* background = CreateObject("Background");
             background->SetSerializeEnabled(false);
-            background->SetAnchor(UIAnchor::Center);
-            background->SetPivot({ 0.5f, 0.5f });
-            background->SetAnchoredPosition({ 0.0f, 0.0f });
-            background->SetSize({ 4096.0f, 4096.0f });
-            background->SetColor({ 0.09f, 0.10f, 0.13f, 1.0f });
-            background->SetSortOrder(-100);
+            auto* rect = background->AddComponent<RectTransformComponent>();
+            rect->SetAnchor(UIAnchor::Center);
+            rect->SetPivot({ 0.5f, 0.5f });
+            rect->SetAnchoredPosition({ 0.0f, 0.0f });
+            rect->SetSize({ 4096.0f, 4096.0f });
+            rect->SetSortOrder(-100);
+            // テクスチャを指さない UI 画像は白い矩形になるので、色だけで塗る
+            background->AddComponent<UIImageComponent>()->SetColor({ 0.09f, 0.10f, 0.13f, 1.0f });
         }
 
         if (!font_ || !font_->IsValid()) {
@@ -212,16 +214,16 @@ namespace MsdfTextTest
         scalingText_ = CreateText(
             kScalingText, kScaleMinPx, { 0.0f, 90.0f }, accent, "ScalingText");
         if (scalingText_) {
-            scalingText_->SetAnchor(UIAnchor::Center);
-            scalingText_->SetPivot({ 0.5f, 0.5f });
+            scalingText_->GetRectTransform()->SetAnchor(UIAnchor::Center);
+            scalingText_->GetRectTransform()->SetPivot({ 0.5f, 0.5f });
         }
 
         // ── ④回転しても崩れないことの確認 ────────────────────────
         rotatingText_ = CreateText(
             kRotatingText, 30.0f, { 0.0f, 220.0f }, white, "RotatingText");
         if (rotatingText_) {
-            rotatingText_->SetAnchor(UIAnchor::Center);
-            rotatingText_->SetPivot({ 0.5f, 0.5f });
+            rotatingText_->GetRectTransform()->SetAnchor(UIAnchor::Center);
+            rotatingText_->GetRectTransform()->SetPivot({ 0.5f, 0.5f });
         }
 
         // ── 見方の説明 ────────────────────────────────────────────
@@ -230,8 +232,8 @@ namespace MsdfTextTest
                 "拡大しても輪郭が鋭いまま／縮小しても消えないことを確認する",
                 16.0f, { 40.0f, -34.0f }, dim, "Hint");
             if (hint) {
-                hint->SetAnchor(UIAnchor::BottomLeft);
-                hint->SetPivot({ 0.0f, 0.0f });
+                hint->GetRectTransform()->SetAnchor(UIAnchor::BottomLeft);
+                hint->GetRectTransform()->SetPivot({ 0.0f, 0.0f });
             }
         }
     }
@@ -275,15 +277,17 @@ namespace MsdfTextTest
         desc.debugAtlasDumpPath = kAtlasDumpPath;
 
         // 所有は FontManager。同じ指定なら再利用され、
-        // 初回だけディスクキャッシュを見て、無ければ焼いて保存する
-        font_ = fontManager->Acquire(desc);
+        // 初回だけディスクキャッシュを見て、無ければ焼いて保存する。
+        // 名前を付けて登録しておくと、UI テキストは名前で指せてインスペクタにもその名前が出る
+        fontManager->RegisterNamedFont(kFontName, desc);
+        font_ = fontManager->AcquireNamed(kFontName);
         if (!font_) {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Resource,
                 "MsdfTextTestScene: MSDF フォントの取得に失敗しました");
         }
     }
 
-    UIText* MsdfTextTestScene::CreateText(
+    UITextComponent* MsdfTextTestScene::CreateText(
         const std::string& text,
         float fontSize,
         const Vector2& position,
@@ -292,15 +296,19 @@ namespace MsdfTextTest
     {
         if (!font_) { return nullptr; }
 
-        auto* uiText = CreateObject<UIText>();
-        uiText->Initialize(font_, text, name);
-        uiText->SetSerializeEnabled(false);
-        uiText->SetAnchor(UIAnchor::TopLeft);
-        uiText->SetPivot({ 0.0f, 0.0f });
-        uiText->SetAnchoredPosition(position);
+        auto* object = CreateObject(name);
+        object->SetSerializeEnabled(false);
+        auto* rect = object->AddComponent<RectTransformComponent>();
+        rect->SetAnchor(UIAnchor::TopLeft);
+        rect->SetPivot({ 0.0f, 0.0f });
+        rect->SetAnchoredPosition(position);
+        rect->SetSortOrder(10);
+
+        auto* uiText = object->AddComponent<UITextComponent>();
+        uiText->SetFontByName(kFontName);
+        uiText->SetText(text);
         uiText->SetFontSize(fontSize);
         uiText->SetColor(color);
-        uiText->SetSortOrder(10);
         return uiText;
     }
 
@@ -348,7 +356,7 @@ namespace MsdfTextTest
         }
 
         // バッチングの効きを画面に出す。
-        // シーンには 20 個以上の UIText があるが、まとめて 1 回で描かれる
+        // シーンには 20 個以上の UI テキストがあるが、まとめて 1 回で描かれる
         if (batchText_ && engine_) {
             if (auto* renderManager = engine_->GetService<RenderManager>()) {
                 auto* textRenderer = dynamic_cast<TextRenderer*>(
@@ -364,7 +372,7 @@ namespace MsdfTextTest
 
         // ── 回転：MSDF は回転にも強い（ビットマップ方式だと斜めでジャギる）──
         if (rotatingText_) {
-            rotatingText_->SetUIRotation(std::sin(elapsedSeconds_ * 0.7f) * 0.35f);
+            rotatingText_->GetRectTransform()->SetRotation(std::sin(elapsedSeconds_ * 0.7f) * 0.35f);
         }
     }
 }

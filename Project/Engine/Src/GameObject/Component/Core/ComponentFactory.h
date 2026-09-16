@@ -28,6 +28,7 @@ public:
     struct Probe {
         std::string typeName;
         const Reflection::TypeDescriptor* descriptor = nullptr;
+        bool renderable = false;
 #ifdef USE_IMGUI
         std::string inspectorName;
 #endif
@@ -74,6 +75,12 @@ public:
     /// @brief `RegisterRuntime()` で登録した型か（スクリプトのクラスなど）
     bool IsRuntimeType(const std::string& typeName) const;
 
+    /// @brief 描画するコンポーネントの型か（`IRenderableComponent` を持つか）
+    bool IsRenderableType(const std::string& typeName) const;
+
+    /// @brief 描画するコンポーネントか（`IRenderableComponent` を持つか）
+    static bool IsRenderable(const IComponent& component);
+
 #ifdef USE_IMGUI
     /// @brief 型名からインスペクタでの表示名を引く
     /// @return 未登録の型なら空
@@ -115,6 +122,9 @@ private:
 
         /// `RegisterRuntime()` で登録した型か
         bool runtime = false;
+
+        /// 描画するコンポーネントの型か
+        bool renderable = false;
 #ifdef USE_IMGUI
         std::string inspectorName;
         std::filesystem::path sourceFile;
@@ -142,7 +152,8 @@ struct AutoRegisterComponent {
             []() -> std::unique_ptr<IComponent> { return std::make_unique<T>(); },
             []() -> ComponentFactory::Probe {
                 T probe;
-                ComponentFactory::Probe result{ probe.GetTypeName(), probe.GetTypeDescriptor() };
+                ComponentFactory::Probe result{ probe.GetTypeName(), probe.GetTypeDescriptor(),
+                    ComponentFactory::IsRenderable(probe) };
 #ifdef USE_IMGUI
                 result.inspectorName = probe.GetInspectorName();
 #endif

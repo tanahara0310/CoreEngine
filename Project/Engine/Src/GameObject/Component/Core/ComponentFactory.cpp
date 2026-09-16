@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "ComponentFactory.h"
 
+#include "GameObject/Component/Render/IRenderableComponent.h"
 #include "Reflection/PropertySerializer.h"
 #include "Utility/Logger/Logger.h"
 
@@ -37,6 +38,7 @@ namespace CoreEngine
             Entry entry;
             entry.creator = reservation.creator;
             entry.descriptor = probe.descriptor;
+            entry.renderable = probe.renderable;
 #ifdef USE_IMGUI
             entry.inspectorName = std::move(probe.inspectorName);
 #endif
@@ -107,6 +109,17 @@ namespace CoreEngine
     {
         const auto it = entries_.find(typeName);
         return it != entries_.end() && it->second.runtime;
+    }
+
+    bool ComponentFactory::IsRenderableType(const std::string& typeName) const
+    {
+        const auto it = entries_.find(typeName);
+        return it != entries_.end() && it->second.renderable;
+    }
+
+    bool ComponentFactory::IsRenderable(const IComponent& component)
+    {
+        return dynamic_cast<const IRenderableComponent*>(&component) != nullptr;
     }
 
 #ifdef USE_IMGUI

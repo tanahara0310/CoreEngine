@@ -487,7 +487,7 @@ namespace CoreEngine
             if (!baked.empty()) {
                 unsavedGlyphCount_.fetch_add(static_cast<uint32_t>(baked.size()),
                     std::memory_order_relaxed);
-                // 表が変わったことを描画側へ知らせる（UIText が頂点を組み直す）
+                // 表が変わったことを描画側へ知らせる（UI テキストが頂点を組み直す）
                 glyphGeneration_.fetch_add(1, std::memory_order_release);
             }
 

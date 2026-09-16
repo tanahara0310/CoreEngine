@@ -89,6 +89,7 @@ namespace CoreEngine::Reflection
         Hidden   = 1 << 1,  ///< インスペクタに出さない（保存はする）
         NoSave   = 1 << 2,  ///< 保存しない（インスペクタには出す）
         NoAlpha  = 1 << 3,  ///< 色の不透明度を扱わない（Color の欄に不透明度を出さない）
+        Multiline = 1 << 4, ///< 文字列を複数行で編集する
     };
 
     constexpr PropertyFlags operator|(PropertyFlags a, PropertyFlags b) noexcept
@@ -143,6 +144,10 @@ namespace CoreEngine::Reflection
         /// @return 空なら「（なし）」を出す
         using EmptyText = std::string (*)(const void* instance);
 
+        /// @brief String の値の候補を返す
+        /// @param instance 型記述子の持ち主（`GetReflectionInstance()` の値）
+        using StringChoices = std::vector<std::string> (*)(const void* instance);
+
         /// @brief 保存キー兼 UI の識別子（既定はメンバ式の末尾トークン）
         std::string     name;
         const char*     displayName = "";
@@ -161,6 +166,7 @@ namespace CoreEngine::Reflection
         const char* const* enumNames = nullptr;  ///< Int の値ごとの名前（値が添え字。あればコンボで選ぶ）
         int             enumCount = 0;         ///< `enumNames` の数
         EmptyText       emptyText = nullptr;   ///< AssetRef が何も指していないときに欄へ出す文字（nullptr なら「（なし）」）
+        StringChoices   stringChoices = nullptr;  ///< String を候補の一覧から選ぶときの候補（nullptr なら入力欄）
 
         /// @brief 読み書きの口が揃っているか
         bool IsValid() const { return get != nullptr && set != nullptr; }

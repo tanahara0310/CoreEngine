@@ -205,6 +205,74 @@ namespace CoreEngine
                 });
         }
 
+        /// @brief std::string をそのまま編集する入力欄（長さの上限なし）
+        /// @param multiline true なら複数行で編集する
+        bool InputString(const char* id, std::string* text, bool multiline)
+        {
+            const ImGuiInputTextCallback resize = [](ImGuiInputTextCallbackData* data) -> int {
+                if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
+                    auto* const target = static_cast<std::string*>(data->UserData);
+                    target->resize(static_cast<std::size_t>(data->BufTextLen));
+                    data->Buf = target->data();
+                }
+                return 0;
+            };
+            const ImGuiInputTextFlags flags = ImGuiInputTextFlags_CallbackResize;
+            if (multiline) {
+                const ImVec2 size(-FLT_MIN, ImGui::GetTextLineHeight() * 4.5f);
+                return ImGui::InputTextMultiline(id, text->data(), text->capacity() + 1, size, flags, resize, text);
+            }
+            return ImGui::InputText(id, text->data(), text->capacity() + 1, flags, resize, text);
+        }
+
+        /// @brief 文字列を候補の一覧から選ぶ欄（一覧の上の入力欄に名前を打って Enter でも決まる）
+        /// @param instance 候補を記述子に尋ねるときに渡す持ち主
+        /// @return 別の値を選んだら true
+        bool DrawStringChoices(const Reflection::PropertyDescriptor& p, std::string& value, const void* instance)
+        {
+            if (!ImGui::BeginCombo("##value", value.empty() ? "（なし）" : value.c_str())) {
+                return false;
+            }
+
+            bool changed = false;
+            static std::string typed;
+            if (ImGui::IsWindowAppearing()) {
+                typed = value;
+                ImGui::SetKeyboardFocusHere();
+            }
+            ImGui::SetNextItemWidth(-FLT_MIN);
+            if (ImGui::InputTextWithHint("##typed", "名前を入力して Enter", typed.data(), typed.capacity() + 1,
+                    ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackResize,
+                    [](ImGuiInputTextCallbackData* data) -> int {
+                        if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
+                            auto* const target = static_cast<std::string*>(data->UserData);
+                            target->resize(static_cast<std::size_t>(data->BufTextLen));
+                            data->Buf = target->data();
+                        }
+                        return 0;
+                    }, &typed)) {
+                if (!typed.empty() && typed != value) {
+                    value = typed;
+                    changed = true;
+                }
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::Separator();
+
+            for (const std::string& choice : p.stringChoices(instance)) {
+                const bool selected = choice == value;
+                if (ImGui::Selectable(choice.c_str(), selected) && !selected) {
+                    value = choice;
+                    changed = true;
+                }
+                if (selected) {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+            return changed;
+        }
+
         /// @brief 整数を名前の一覧から選ぶ欄
         /// @return 別の値を選んだら true
         bool DrawEnumCombo(const char* id, int* value, const char* const* names, int count)
@@ -375,17 +443,9 @@ namespace CoreEngine
             case PropertyType::Color:
                 return DrawColorSwatch(label, &static_cast<Vector4*>(value)->x,
                     !Reflection::HasFlag(p.flags, Reflection::PropertyFlags::NoAlpha));
-            case PropertyType::String: {
-                auto* text = static_cast<std::string*>(value);
-                char buffer[256]{};
-                const size_t length = (std::min)(text->size(), sizeof(buffer) - 1);
-                std::memcpy(buffer, text->data(), length);
-                if (ImGui::InputText(label, buffer, sizeof(buffer))) {
-                    *text = buffer;
-                    return true;
-                }
-                return false;
-            }
+            case PropertyType::String:
+                return InputString(label, static_cast<std::string*>(value),
+                    Reflection::HasFlag(p.flags, Reflection::PropertyFlags::Multiline));
             case PropertyType::ObjectRef:
             case PropertyType::AssetRef:
             case PropertyType::Array:
@@ -821,12 +881,13 @@ namespace CoreEngine
             return changed;
         }
 
-        /// @brief 一覧から選ぶ欄か（ObjectRef / AssetRef / 名前付きの整数）
+        /// @brief 一覧から選ぶ欄か（ObjectRef / AssetRef / 名前付きの整数 / 候補のある文字列）
         bool IsChosenFromList(const Reflection::PropertyDescriptor& p)
         {
             return p.type == Reflection::PropertyType::ObjectRef
                 || p.type == Reflection::PropertyType::AssetRef
-                || (p.type == Reflection::PropertyType::Int && p.enumNames != nullptr);
+                || (p.type == Reflection::PropertyType::Int && p.enumNames != nullptr)
+                || (p.type == Reflection::PropertyType::String && p.stringChoices != nullptr);
         }
 
         /// @brief 直前の項目か行にカーソルが乗っていれば、プロパティの説明を出す
@@ -900,6 +961,9 @@ namespace CoreEngine
                     break;
                 case Reflection::PropertyType::AssetRef:
                     retargeted = DrawAssetRef(p, *static_cast<Reflection::AssetRefValue*>(value), instance);
+                    break;
+                case Reflection::PropertyType::String:
+                    retargeted = DrawStringChoices(p, *static_cast<std::string*>(value), instance);
                     break;
                 default:
                     retargeted = DrawValueWidget(p, p.type, "##value", value);

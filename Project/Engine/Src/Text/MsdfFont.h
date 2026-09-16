@@ -115,7 +115,7 @@ namespace CoreEngine
         void RequestGlyphs(const std::vector<char32_t>& codePoints);
 
         /// @brief グリフ表が更新されるたびに進む番号
-        /// @details `UIText` はこれを毎フレーム見て、変化していたら頂点を組み直す。
+        /// @details `UITextComponent` はこれを毎フレーム見て、変化していたら頂点を組み直す。
         uint32_t GetGlyphGeneration() const { return glyphGeneration_.load(std::memory_order_acquire); }
 
         /// @brief 描画に使うグリフを解決する（未登録なら .notdef を返す）

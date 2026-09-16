@@ -5,7 +5,6 @@
 #include "GameObject/GameObjectManager.h"
 #include "Collision/CollisionConfig.h"
 #include "Scene/Feature/ISceneFeature.h"
-#include "UI/UIAnchor.h"
 #include <memory>
 #include <vector>
 
@@ -18,7 +17,6 @@ namespace CoreEngine {
     class GraphicsCore;
     class RenderManager;
     class CollisionWorld;
-    class UIText;
 }
 
 namespace CoreEngine
@@ -174,24 +172,6 @@ namespace CoreEngine
             auto obj = std::make_unique<T>(std::forward<Args>(args)...);
             return gameObjectManager_.AddObject(std::move(obj));
         }
-
-        /// @brief HUD 用のテキストを生成して登録する
-        /// @param textUtf8 表示文字列（UTF-8。改行コードに対応）
-        /// @param fontSize フォントサイズ（px）
-        /// @param anchor 画面のどこを基準に置くか
-        /// @param anchoredPos アンカーからのオフセット（px。Y は下方向が正）
-        /// @param color 文字色
-        /// @param name オブジェクト名（Hierarchy 表示用。省略時は自動採番）
-        /// @return 生成された UIText。以降の見た目調整は戻り値から行う
-        /// @details フォント指定は不要。FontManager の既定フォント（和文＋ASCII、
-        ///          未収録文字は実行時ベイク）が自動で使われる。
-        ///          別のフォントにしたい場合は戻り値へ `SetFontByName()` を呼ぶこと。
-        UIText* CreateText(const std::string& textUtf8,
-            float fontSize = 32.0f,
-            UIAnchor anchor = UIAnchor::TopLeft,
-            const Vector2& anchoredPos = { 0.0f, 0.0f },
-            const Vector4& color = { 1.0f, 1.0f, 1.0f, 1.0f },
-            const std::string& name = "");
 
         /// @brief レイヤー間の衝突判定を有効/無効に設定
         /// @param a レイヤーA

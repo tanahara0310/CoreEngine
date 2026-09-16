@@ -36,7 +36,7 @@ namespace CoreEngine
     /// @brief 文字列からグリフのクワッド列（em 単位）を組み立てる
     /// @details
     ///  折り返し・禁則・整列といった組版はスクリーンにもワールドにも共通なので、
-    ///  UIText と Text3DRendererComponent はどちらもここを通す。
+    ///  UITextComponent と Text3DRendererComponent はどちらもここを通す。
     ///  出力が em 単位なので、呼び出し側が「1em を何 px と読むか / 何ワールド単位と
     ///  読むか」を決めるだけで同じ組版が両方の空間で使える。
     namespace TextGeometry

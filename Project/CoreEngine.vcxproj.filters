@@ -937,10 +937,13 @@
     <ClCompile Include="Engine\Src\TileMap\TileMap.cpp">
       <Filter>Engine\Src\TileMap</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\UI\UICanvas.cpp">
+    <ClCompile Include="Engine\Src\UI\RectTransformComponent.cpp">
       <Filter>Engine\Src\UI</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\UI\UIImage.cpp">
+    <ClCompile Include="Engine\Src\UI\UIImageComponent.cpp">
+      <Filter>Engine\Src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\UI\UITextComponent.cpp">
       <Filter>Engine\Src\UI</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Math\Geometry\Distance.cpp">
@@ -1482,9 +1485,6 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\UI\TextRenderer.cpp">
       <Filter>Engine\Src\Graphics\Render\UI</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\UI\UIText.cpp">
-      <Filter>Engine\Src\UI</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\MsdfTextTestScene\MsdfTextTestScene.cpp">
       <Filter>Application\Src\Scenes\MsdfTextTestScene</Filter>
@@ -2838,13 +2838,16 @@
     <ClInclude Include="Engine\Src\UI\UIAnchor.h">
       <Filter>Engine\Src\UI</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\UI\UICanvas.h">
-      <Filter>Engine\Src\UI</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\UI\UIElement.h">
       <Filter>Engine\Src\UI</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\UI\UIImage.h">
+    <ClInclude Include="Engine\Src\UI\RectTransformComponent.h">
+      <Filter>Engine\Src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\UI\UIImageComponent.h">
+      <Filter>Engine\Src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\UI\UITextComponent.h">
       <Filter>Engine\Src\UI</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Math\Geometry\Distance.h">
@@ -3449,9 +3452,6 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\UI\TextRenderer.h">
       <Filter>Engine\Src\Graphics\Render\UI</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\UI\UIText.h">
-      <Filter>Engine\Src\UI</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\MsdfTextTestScene\MsdfTextTestScene.h">
       <Filter>Application\Src\Scenes\MsdfTextTestScene</Filter>

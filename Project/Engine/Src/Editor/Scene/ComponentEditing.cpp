@@ -128,6 +128,15 @@ namespace CoreEngine::ComponentEditing
                 return fail("同じ型のコンポーネントがすでに付いています");
             }
         }
+
+        // 描画のパスとブレンドは 1 つ目の描画コンポーネントで決まるので、2 つ目は付けない
+        if (ComponentFactory::Get().IsRenderableType(typeName)) {
+            for (const auto& slot : object.GetAllComponents()) {
+                if (slot && ComponentFactory::IsRenderable(*slot)) {
+                    return fail("描画するコンポーネントは 1 つのオブジェクトに 1 つまでです");
+                }
+            }
+        }
         return true;
     }
 

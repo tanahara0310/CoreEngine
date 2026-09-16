@@ -492,8 +492,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Threading\ThreadPool.cpp" />
     <ClCompile Include="Engine\Src\TileMap\TileCollider.cpp" />
     <ClCompile Include="Engine\Src\TileMap\TileMap.cpp" />
-    <ClCompile Include="Engine\Src\UI\UICanvas.cpp" />
-    <ClCompile Include="Engine\Src\UI\UIImage.cpp" />
+    <ClCompile Include="Engine\Src\UI\RectTransformComponent.cpp" />
+    <ClCompile Include="Engine\Src\UI\UIImageComponent.cpp" />
+    <ClCompile Include="Engine\Src\UI\UITextComponent.cpp" />
     <ClCompile Include="Engine\Src\Math\Geometry\Distance.cpp" />
     <ClCompile Include="Engine\Src\Math\Geometry\Intersect.cpp" />
     <ClCompile Include="Engine\Src\Math\Geometry\RayCast.cpp" />
@@ -1073,7 +1074,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Text\MsdfAtlasAllocator.cpp" />
     <ClCompile Include="Engine\Src\Text\FontManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\UI\TextRenderer.cpp" />
-    <ClCompile Include="Engine\Src\UI\UIText.cpp" />
     <ClCompile Include="Application\Src\Scenes\MsdfTextTestScene\MsdfTextTestScene.cpp" />
     <ClCompile Include="Engine\Src\Audio\AudioSystem.cpp" />
     <ClCompile Include="Engine\Src\Audio\Decoder\MediaFoundationDecoder.cpp" />
@@ -1526,9 +1526,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\TileMap\TileCollider.h" />
     <ClInclude Include="Engine\Src\TileMap\TileMap.h" />
     <ClInclude Include="Engine\Src\UI\UIAnchor.h" />
-    <ClInclude Include="Engine\Src\UI\UICanvas.h" />
     <ClInclude Include="Engine\Src\UI\UIElement.h" />
-    <ClInclude Include="Engine\Src\UI\UIImage.h" />
+    <ClInclude Include="Engine\Src\UI\RectTransformComponent.h" />
+    <ClInclude Include="Engine\Src\UI\UIImageComponent.h" />
+    <ClInclude Include="Engine\Src\UI\UITextComponent.h" />
     <ClInclude Include="Engine\Src\Math\Geometry\Distance.h" />
     <ClInclude Include="Engine\Src\Math\Geometry\Intersect.h" />
     <ClInclude Include="Engine\Src\Math\Geometry\RayCast.h" />
@@ -1730,7 +1731,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Text\MsdfAtlasAllocator.h" />
     <ClInclude Include="Engine\Src\Text\FontManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\UI\TextRenderer.h" />
-    <ClInclude Include="Engine\Src\UI\UIText.h" />
     <ClInclude Include="Application\Src\Scenes\MsdfTextTestScene\MsdfTextTestScene.h" />
     <ClInclude Include="Engine\Src\Audio\AudioBus.h" />
     <ClInclude Include="Engine\Src\Audio\AudioSystem.h" />
