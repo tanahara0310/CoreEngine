@@ -67,6 +67,12 @@ namespace CoreEngine::UI::Bar
         ImGui::Dummy(size);
     }
 
+    /// @brief ツールバーのボタンの幅
+    inline float ButtonWidth(const char* label)
+    {
+        return ImGui::CalcTextSize(label, nullptr, true).x + 18.0f;
+    }
+
     /// @brief 状態を持つツールバーのボタン
     /// @param on 選択中ならアクセントの面で描く
     /// @return 押されたら true

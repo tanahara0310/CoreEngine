@@ -5,6 +5,8 @@
 #include "Editor/Command/EditorCommandStack.h"
 #include "Editor/ImGui/DockingUI.h"
 #include "Editor/ImGui/EditorTheme.h"
+#include "Editor/ImGui/ImGuiManager.h"
+#include "Editor/ImGui/ProjectView.h"
 #include "Editor/ImGui/Widgets/EditorBars.h"
 #include "Editor/Panel/EditorPanelRegistry.h"
 #include "Editor/Scene/ComponentEditing.h"
@@ -303,6 +305,12 @@ namespace CoreEngine
                             ImGui::MenuItem("Hierarchy", nullptr, &showHierarchy_);
                             ImGui::MenuItem("Inspector", nullptr, &showInspector_);
                             ImGui::MenuItem("Console", nullptr, &showConsole_);
+                            if (ProjectView* const projectView = FindProjectView()) {
+                                bool visible = projectView->IsVisible();
+                                if (ImGui::MenuItem("Project", nullptr, &visible)) {
+                                    projectView->SetVisible(visible);
+                                }
+                            }
                             };
                     case Editor::PanelGroup::Analysis:
                         return [&tabMenu]() {
@@ -366,6 +374,13 @@ namespace CoreEngine
                 ImGui::EndMenu();
             }
         }
+    }
+
+    ProjectView* GameDebugUI::FindProjectView() const
+    {
+        DebugSubsystem* const debug = engine_ ? engine_->GetDebugSubsystem() : nullptr;
+        ImGuiManager* const imGui = debug ? debug->GetImGuiManager() : nullptr;
+        return imGui ? imGui->GetProjectView() : nullptr;
     }
 
     void GameDebugUI::HandleShortcuts()
@@ -596,9 +611,15 @@ namespace CoreEngine
                     Editor::EditorPanel* env = FindSelectedEnvironmentEntry();
                     Editor::EditorPanel* object = Editor::EditorPanelRegistry::Get()
                         .FindFirst(Editor::PanelPlacement::InspectorObject);
+                    ProjectView* const projectView = FindProjectView();
+                    const bool hasObject = sceneDebugEditor_ && sceneDebugEditor_->HasSelection();
+
                     if (env && env->desc.draw) {
                         ImGui::SeparatorText(env->Id().c_str());
                         env->desc.draw();
+                    } else if (!hasObject && projectView && !projectView->GetSelectedAsset().empty()) {
+                        // シーンのオブジェクトを選んでいないときは、Project で選んだアセットを出す
+                        projectView->DrawSelectedAssetInspector();
                     } else if (object && object->desc.draw) {
                         object->desc.draw();
                     } else {
