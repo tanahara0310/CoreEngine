@@ -11,6 +11,11 @@
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
 
+#ifdef USE_IMGUI
+#include <chrono>
+#include <vector>
+#endif
+
 namespace CoreEngine
 {
     namespace
@@ -18,6 +23,9 @@ namespace CoreEngine
         constexpr const char* kScriptRoot = "Application/Assets/Scripts";
 #ifdef USE_IMGUI
         constexpr const char* kPredefinedFileName = "as.predefined";
+
+        /// 変更が落ち着いたと見なすまでの時間（エディタは 1 回の保存で何度も変更を出す）
+        constexpr std::chrono::milliseconds kSettleTime{ 200 };
 #endif
     }
 
@@ -37,15 +45,55 @@ namespace CoreEngine
             return;
         }
         host_ = std::move(host);
+        scriptRoot_ = ProjectPaths::Resolve(kScriptRoot);
 
 #ifdef USE_IMGUI
-        host_->WritePredefined(ProjectPaths::Resolve(kScriptRoot) / kPredefinedFileName);
+        host_->WritePredefined(scriptRoot_ / kPredefinedFileName);
 #endif
 
-        if (!host_->Build(ProjectPaths::Resolve(kScriptRoot))) {
+        if (host_->Build(scriptRoot_)) {
+            RegisterComponentTypes();
+        }
+
+#ifdef USE_IMGUI
+        // コンパイルに失敗していても見張る（直して保存すれば、そのときに読み直す）
+        watcher_.Start(scriptRoot_);
+#endif
+    }
+
+    void ScriptSubsystem::Finalize()
+    {
+#ifdef USE_IMGUI
+        watcher_.Stop();
+#endif
+        ComponentFactory::Get().UnregisterRuntimeTypes();
+        if (host_) {
+            host_->Shutdown();
+            host_.reset();
+        }
+    }
+
+    void ScriptSubsystem::EndFrame()
+    {
+        if (!host_) {
             return;
         }
 
+#ifdef USE_IMGUI
+        // スクリプトを実行していないここで読み直す
+        std::vector<std::filesystem::path> changed;
+        if (watcher_.TakeSettledChanges(kSettleTime, changed)) {
+            Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Script,
+                "スクリプトが {} 件変わったので読み直します", changed.size());
+            ReloadScripts();
+        }
+#endif
+
+        host_->CollectGarbageStep();
+    }
+
+    void ScriptSubsystem::RegisterComponentTypes()
+    {
         ComponentFactory& factory = ComponentFactory::Get();
         for (const std::unique_ptr<ScriptComponentType>& type : host_->GetTypes()) {
             const ScriptComponentType* const raw = type.get();
@@ -61,19 +109,20 @@ namespace CoreEngine
         }
     }
 
-    void ScriptSubsystem::Finalize()
+#ifdef USE_IMGUI
+    void ScriptSubsystem::ReloadScripts()
     {
+        // 生成の登録は型ごと作り直すので、先に外す（読み直せなかったときは前の型で登録し直す）
         ComponentFactory::Get().UnregisterRuntimeTypes();
-        if (host_) {
-            host_->Shutdown();
-            host_.reset();
-        }
-    }
+        const ScriptHost::ReloadReport report = host_->Reload(scriptRoot_);
+        RegisterComponentTypes();
 
-    void ScriptSubsystem::EndFrame()
-    {
-        if (host_) {
-            host_->CollectGarbageStep();
+        if (!report.compiled) {
+            return;
         }
+        Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Script,
+            "スクリプトを読み直しました（値を戻したコンポーネント {} 個・止めた {} 個・{:.1f}ms）",
+            report.restored, report.orphaned, report.elapsedMs);
     }
+#endif
 }

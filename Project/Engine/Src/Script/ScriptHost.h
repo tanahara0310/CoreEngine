@@ -1,9 +1,11 @@
 #pragma once
 
+#include <cstdint>
 #include <filesystem>
 #include <functional>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <unordered_set>
 #include <vector>
 
@@ -51,6 +53,28 @@ namespace CoreEngine
         /// @return コンパイルできたら true。失敗したらモジュールも型も持たない
         /// @note スクリプトのコンポーネントが残っている間は何もせずに false を返す。
         bool Build(const std::filesystem::path& root);
+
+        /// @brief スクリプトを読み直した結果
+        struct ReloadReport
+        {
+            bool compiled = false;    ///< 新しいモジュールを作れたか（false なら前のモジュールのまま動き続ける）
+            std::size_t restored = 0; ///< 値を戻せたコンポーネントの数
+            std::size_t orphaned = 0; ///< クラスが無くなり、値を持ったまま止めたコンポーネントの数
+            double elapsedMs = 0.0;
+        };
+
+        /// @brief スクリプトをコンパイルし直し、生きているコンポーネントの値を持ち越して差し替える
+        /// @param root スクリプトのフォルダ
+        /// @return 結果（コンパイルに失敗したら何も変えない）
+        /// @note スクリプトを実行していないところ（フレームの最後）から呼ぶ。
+        ReloadReport Reload(const std::filesystem::path& root);
+
+        /// @brief モジュールの世代（コンパイルし直すたびに 1 つ増える）
+        std::uint32_t GetModuleGeneration() const { return moduleGeneration_; }
+
+        /// @brief 名前からコンポーネントの型を引く
+        /// @return 無ければ nullptr
+        const ScriptComponentType* FindType(std::string_view name) const;
 
         /// @brief エンジンを終える
         /// @note 生きているコンポーネントには先にスクリプトのオブジェクトを手放させる。
@@ -124,8 +148,20 @@ namespace CoreEngine
         /// @brief 型を捨ててからモジュールを捨てる
         void DiscardModule();
 
+        /// @brief コンパイルしてコンポーネントの型を集めた 1 モジュール分
+        struct CompiledModule
+        {
+            asIScriptModule* module = nullptr;
+            std::vector<std::unique_ptr<ScriptComponentType>> types;
+        };
+
+        /// @brief フォルダの `.as` を、まだ使っていない名前のモジュールへコンパイルし、型を集める
+        /// @return 失敗したら false（作りかけのモジュールは捨てる。今のモジュールは触らない）
+        bool CompileModule(const std::filesystem::path& root, CompiledModule& out);
+
         asIScriptEngine* engine_ = nullptr;
         asIScriptModule* module_ = nullptr;
+        std::uint32_t moduleGeneration_ = 0;
         int stringTypeId_ = 0;
         int vector2TypeId_ = 0;
         int vector3TypeId_ = 0;

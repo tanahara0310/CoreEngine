@@ -255,19 +255,9 @@ namespace CoreEngine
         return true;
     }
 
-    bool ScriptHost::Build(const std::filesystem::path& root)
+    bool ScriptHost::CompileModule(const std::filesystem::path& root, CompiledModule& out)
     {
         Logger& logger = Logger::GetInstance();
-        if (!engine_) {
-            return false;
-        }
-        if (!components_.empty()) {
-            logger.Logf(LogLevel::Error, LogCategory::Script,
-                "スクリプトのコンポーネントが {} 個残っているので、コンパイルし直せません", components_.size());
-            return false;
-        }
-        DiscardModule();
-
         const auto started = std::chrono::steady_clock::now();
         const std::vector<std::filesystem::path> files = CollectScriptFiles(root);
         if (files.empty()) {
@@ -275,9 +265,11 @@ namespace CoreEngine
             return false;
         }
 
+        // 今のモジュールを残したままコンパイルするので、名前は世代で分ける
+        const std::string moduleName = std::string(kModuleName) + "@" + std::to_string(moduleGeneration_ + 1);
         CScriptBuilder builder;
         builder.SetIncludeCallback(&IgnoreInclude, nullptr);
-        if (builder.StartNewModule(engine_, kModuleName) < 0) {
+        if (builder.StartNewModule(engine_, moduleName.c_str()) < 0) {
             logger.Logf(LogLevel::Error, LogCategory::Script, "スクリプトのモジュールを作れませんでした");
             return false;
         }
@@ -303,34 +295,34 @@ namespace CoreEngine
             builder.GetModule()->Discard();
             return false;
         }
-        module_ = builder.GetModule();
+        asIScriptModule* const module = builder.GetModule();
 
-        asITypeInfo* const base = module_->GetTypeInfoByName(kComponentBaseName);
+        asITypeInfo* const base = module->GetTypeInfoByName(kComponentBaseName);
         if (!base) {
             logger.Logf(LogLevel::Error, LogCategory::Script,
                 "クラス {} がありません（Shared/ScriptComponent.as）", kComponentBaseName);
-            DiscardModule();
+            module->Discard();
             return false;
         }
 
-        for (asUINT i = 0; i < module_->GetObjectTypeCount(); ++i) {
-            asITypeInfo* const type = module_->GetObjectTypeByIndex(i);
+        for (asUINT i = 0; i < module->GetObjectTypeCount(); ++i) {
+            asITypeInfo* const type = module->GetObjectTypeByIndex(i);
             if (!type || type == base || !type->DerivesFrom(base)) {
                 continue;
             }
             if ((type->GetFlags() & asOBJ_ABSTRACT) != 0) {
                 continue;
             }
-            types_.push_back(std::make_unique<ScriptComponentType>(*this, type, base, builder));
+            out.types.push_back(std::make_unique<ScriptComponentType>(*this, type, base, builder));
 
-            const ScriptComponentType& added = *types_.back();
+            const ScriptComponentType& added = *out.types.back();
             logger.Logf(LogLevel::Info, LogCategory::Script, "コンポーネントの型 {}（{}）: プロパティ {} 個",
                 added.GetName(), added.GetDisplayName(), added.GetDescriptor().properties.size());
         }
 
         // コンポーネントのクラスは「1 ファイルに 1 つ」「ファイル名 = クラス名」で書く。外れていても動かすが、警告を出す
         std::unordered_map<std::string, std::vector<std::string>> classesBySection;
-        for (const auto& type : types_) {
+        for (const auto& type : out.types) {
             const std::string section = FindDeclaringSection(*type->GetTypeInfo());
             if (section.empty()) {
                 continue;
@@ -355,12 +347,104 @@ namespace CoreEngine
                 section, names.size(), joined);
         }
 
+        out.module = module;
         const double elapsedMs =
             std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count();
         logger.Logf(LogLevel::Info, LogCategory::Script,
             "スクリプト {} ファイルをコンパイルしました（コンポーネントの型 {} 個・{:.1f}ms）",
-            files.size(), types_.size(), elapsedMs);
+            files.size(), out.types.size(), elapsedMs);
         return true;
+    }
+
+    bool ScriptHost::Build(const std::filesystem::path& root)
+    {
+        if (!engine_) {
+            return false;
+        }
+        if (!components_.empty()) {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Script,
+                "スクリプトのコンポーネントが {} 個残っているので、コンパイルし直せません（読み直しは Reload から行う）",
+                components_.size());
+            return false;
+        }
+
+        CompiledModule built;
+        if (!CompileModule(root, built)) {
+            return false;
+        }
+        DiscardModule();
+        module_ = built.module;
+        types_ = std::move(built.types);
+        ++moduleGeneration_;
+        return true;
+    }
+
+    ScriptHost::ReloadReport ScriptHost::Reload(const std::filesystem::path& root)
+    {
+        Logger& logger = Logger::GetInstance();
+        ReloadReport report;
+        if (!engine_) {
+            return report;
+        }
+
+        const auto started = std::chrono::steady_clock::now();
+        CompiledModule built;
+        if (!CompileModule(root, built)) {
+            logger.Logf(LogLevel::Warn, LogCategory::Script,
+                "スクリプトを読み直せないので、前のスクリプトのまま動かします");
+            return report;
+        }
+        report.compiled = true;
+
+        // 値を控えてスクリプトのオブジェクトを手放させてから、前のモジュールを捨てる
+        const std::vector<ScriptComponent*> alive(components_.begin(), components_.end());
+        for (ScriptComponent* const component : alive) {
+            component->PrepareForReload();
+        }
+        DiscardModule();
+        for (asIScriptContext* const context : contextPool_) {
+            context->Release();
+        }
+        contextPool_.clear();
+        engine_->GarbageCollect(asGC_FULL_CYCLE);
+
+        module_ = built.module;
+        types_ = std::move(built.types);
+        ++moduleGeneration_;
+
+        std::unordered_map<std::string, std::size_t> orphans;
+        for (ScriptComponent* const component : alive) {
+            const ScriptComponentType* const type = FindType(component->GetTypeName());
+            if (type && component->RebindType(*type)) {
+                ++report.restored;
+            } else {
+                ++report.orphaned;
+                ++orphans[component->GetTypeName()];
+            }
+        }
+        for (const auto& [name, count] : orphans) {
+            logger.Logf(LogLevel::Warn, LogCategory::Script,
+                "クラス {} が無くなったので、そのコンポーネント {} 個は値を持ったまま止まります", name, count);
+        }
+
+        // 繋ぎ直しが全部済んでから知らせる（スクリプトが他のコンポーネントを引けるようにする）
+        for (ScriptComponent* const component : alive) {
+            component->NotifyScriptReloaded();
+        }
+
+        report.elapsedMs =
+            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count();
+        return report;
+    }
+
+    const ScriptComponentType* ScriptHost::FindType(std::string_view name) const
+    {
+        for (const std::unique_ptr<ScriptComponentType>& type : types_) {
+            if (type->GetName() == name) {
+                return type.get();
+            }
+        }
+        return nullptr;
     }
 
     void ScriptHost::Shutdown()

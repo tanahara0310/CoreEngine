@@ -1,11 +1,13 @@
 #include "pch.h"
 #include "Script/ScriptComponent.h"
 
+#include "Editor/Command/EditorCommandStack.h"
 #include "GameObject/Component/Core/ObjectRef.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/GameObjectManager.h"
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Graphics/Asset/AssetRef.h"
+#include "Reflection/PropertySerializer.h"
 #include "Reflection/PropertyValue.h"
 #include "Script/Binding/GameObjectBinding.h"
 #include "Script/ScriptHost.h"
@@ -322,6 +324,62 @@ namespace CoreEngine
         }
         type_ = nullptr;
         host_ = nullptr;
+    }
+
+    void ScriptComponent::PrepareForReload()
+    {
+        // 型の記述子を握っている Undo の操作は、型ごと作り直すので履歴から外す
+        Editor::EditorCommandStack::Get().RemoveCommandsReferencing(this);
+
+        if (type_ && object_) {
+            savedParameters_ = json::object();
+            Reflection::PropertySerializer::Save(type_->GetDescriptor(), this, savedParameters_);
+        }
+
+        ReleaseOwnerHandle();
+        if (object_) {
+            object_->Release();
+            object_ = nullptr;
+        }
+        type_ = nullptr;
+        objectRefs_.clear();
+        assetRefs_.clear();
+    }
+
+    bool ScriptComponent::RebindType(const ScriptComponentType& type)
+    {
+        if (!host_) {
+            return false;
+        }
+        typeName_ = type.GetName();
+#ifdef USE_IMGUI
+        displayName_ = type.GetDisplayName();
+#endif
+        type_ = &type;
+        object_ = host_->CreateObject(type);
+        if (!object_) {
+            type_ = nullptr;
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Script,
+                "読み直した後に、スクリプトのクラス {} のオブジェクトを作れませんでした", typeName_);
+            return false;
+        }
+
+        BindOwnerHandle();
+        if (savedParameters_.is_object()) {
+            Reflection::PropertySerializer::Load(type.GetDescriptor(), this, savedParameters_);
+            savedParameters_ = json();
+        }
+        return true;
+    }
+
+    void ScriptComponent::NotifyScriptReloaded()
+    {
+        Invoke(ScriptComponentType::Method::OnScriptReloaded);
+    }
+
+    json ScriptComponent::OnSerialize() const
+    {
+        return savedParameters_;
     }
 
     std::string ScriptComponent::DescribeMethod(ScriptComponentType::Method method) const
