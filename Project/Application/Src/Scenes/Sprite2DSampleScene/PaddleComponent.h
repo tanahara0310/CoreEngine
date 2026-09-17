@@ -27,7 +27,7 @@ namespace Sprite2DSample
             transform_ = Sibling<CoreEngine::EulerTransformComponent>();
             if (!transform_) { sprite_ = nullptr; }
 
-            GetOwner()->GetColliders().SetOnEnter(
+            GetOwner()->GetOrAddComponent<CoreEngine::ColliderComponent>()->SetOnEnter(
                 [this](const CoreEngine::CollisionInfo& info) {
                     if (info.other) { info.other->Destroy(); }
                     ++score_;

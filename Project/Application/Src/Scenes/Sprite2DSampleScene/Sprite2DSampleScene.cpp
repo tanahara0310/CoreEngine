@@ -59,7 +59,8 @@ namespace Sprite2DSample
             transform.scale = { kPaddleWidth, kPaddleHeight, 1.0f };
             transform.translate = { 0.0f, kPaddleY, 0.0f };
 
-            paddle->AddAABBCollider({ 1.0f, 1.0f, 100.0f }, CollisionLayer::Player);
+            paddle->GetOrAddComponent<ColliderComponent>()->AddBox(
+                { 1.0f, 1.0f, 100.0f }, CollisionLayer::Player);
             paddle->AddComponent<PaddleComponent>();
         }
 

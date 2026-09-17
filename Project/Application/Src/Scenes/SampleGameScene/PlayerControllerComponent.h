@@ -27,7 +27,7 @@ namespace SampleGame
             material_ = Sibling<CoreEngine::MaterialComponent>();
 
             // GameObject を継承しなくても、コライダーのイベントはここで購読できる
-            GetOwner()->GetColliders().SetOnEnter(
+            GetOwner()->GetOrAddComponent<CoreEngine::ColliderComponent>()->SetOnEnter(
                 [this](const CoreEngine::CollisionInfo& info) {
                     if (!info.other) { return; }
 

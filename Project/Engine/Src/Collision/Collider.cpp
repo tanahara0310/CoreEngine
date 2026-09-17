@@ -177,20 +177,20 @@ namespace {
 
 void Collider::OnCollisionEnter(Collider* other, const Geometry::Contact& contact) {
     if (owner_ && other && other->owner_) {
-        owner_->OnCollisionEnter(MakeInfo(this, other, contact));
+        owner_->NotifyCollisionEnter(MakeInfo(this, other, contact));
     }
 }
 
 void Collider::OnCollisionStay(Collider* other, const Geometry::Contact& contact) {
     if (owner_ && other && other->owner_) {
-        owner_->OnCollisionStay(MakeInfo(this, other, contact));
+        owner_->NotifyCollisionStay(MakeInfo(this, other, contact));
     }
 }
 
 void Collider::OnCollisionExit(Collider* other) {
     if (owner_ && other && other->owner_) {
         // 接触は既に切れているので normal / depth は持たない
-        owner_->OnCollisionExit(MakeInfo(this, other, Geometry::Contact{}));
+        owner_->NotifyCollisionExit(MakeInfo(this, other, Geometry::Contact{}));
     }
 }
 }

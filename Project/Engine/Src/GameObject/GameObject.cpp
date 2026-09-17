@@ -3,6 +3,8 @@
 #include "GameObject/Component/Render/IRenderableComponent.h"
 #include "GameObject/Component/Transform/ITransformSource.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
+#include "Collision/ColliderComponent.h"
+#include "Graphics/Render/DrawViewInfo.h"
 #include <cstdio>
 
 
@@ -25,25 +27,13 @@ namespace CoreEngine
         return sEngine;
     }
 
-    void GameObject::Update() {}
-
-    void GameObject::Draw(const Camera* camera) {
-        (void)camera;
-    }
-
     void GameObject::Draw(const DrawViewInfo& view) {
-        // 描画はコンポーネントが答える（継承で Draw を override する必要はない）。
-        // 1 つも無ければ旧経路（Draw(カメラ)）へフォールバックする。
-        bool rendered = false;
+        // 描画はコンポーネントが答える
         for (const auto& slot : GetAllComponents()) {
             if (!slot || !slot->IsEnabled()) { continue; }
             if (auto* renderable = dynamic_cast<IRenderableComponent*>(slot.get())) {
                 renderable->Render(view);
-                rendered = true;
             }
-        }
-        if (!rendered) {
-            Draw(view.GetCamera());
         }
     }
 
@@ -141,65 +131,16 @@ namespace CoreEngine
 
     // ===== 衝突イベント =====
 
-    void GameObject::OnCollisionEnter(GameObject* other) { (void)other; }
-    void GameObject::OnCollisionStay(GameObject* other) { (void)other; }
-    void GameObject::OnCollisionExit(GameObject* other) { (void)other; }
+    // 接触の通知はコライダーの購読者へ配る（継承して受け取る口は持たない）
 
-    // 接触情報つき版の既定実装は ①ColliderComponent の購読者へ配り ②旧 API へ転送する。
-    // これでコンポーネント購読（継承不要）と GameObject* 版の override が同時に動く。
-    void GameObject::OnCollisionEnter(const CollisionInfo& info) {
-        if (auto* colliders = TryGetColliders()) { colliders->DispatchEnter(info); }
-        OnCollisionEnter(info.other);
+    void GameObject::NotifyCollisionEnter(const CollisionInfo& info) {
+        if (auto* colliders = GetComponent<ColliderComponent>()) { colliders->DispatchEnter(info); }
     }
-    void GameObject::OnCollisionStay(const CollisionInfo& info) {
-        if (auto* colliders = TryGetColliders()) { colliders->DispatchStay(info); }
-        OnCollisionStay(info.other);
+    void GameObject::NotifyCollisionStay(const CollisionInfo& info) {
+        if (auto* colliders = GetComponent<ColliderComponent>()) { colliders->DispatchStay(info); }
     }
-    void GameObject::OnCollisionExit(const CollisionInfo& info) {
-        if (auto* colliders = TryGetColliders()) { colliders->DispatchExit(info); }
-        OnCollisionExit(info.other);
-    }
-
-    // ===== コライダー =====
-
-    // 問い合わせ系は TryGetColliders()（生成しない）を使う。GetColliders() を使うと
-    // 「持っているか調べただけ」で空のコライダー集合が生えてしまう。
-
-    bool GameObject::HasCollider() const {
-        const ColliderComponent* colliders = TryGetColliders();
-        return colliders && !colliders->IsEmpty();
-    }
-
-    Collider* GameObject::GetCollider() {
-        ColliderComponent* colliders = TryGetColliders();
-        return colliders ? colliders->GetFirst() : nullptr;
-    }
-
-    const Collider* GameObject::GetCollider() const {
-        const ColliderComponent* colliders = TryGetColliders();
-        return colliders ? colliders->GetFirst() : nullptr;
-    }
-
-    void GameObject::RemoveCollider() {
-        if (ColliderComponent* colliders = TryGetColliders()) {
-            colliders->RemoveAll();
-        }
-    }
-
-    void GameObject::ReleaseRetiredColliders() {
-        if (ColliderComponent* colliders = TryGetColliders()) {
-            colliders->ReleaseRetired();
-        }
-    }
-
-    // 追加系はオンデマンド生成でよい（呼んだ時点でコライダーが要ると確定している）
-
-    Collider& GameObject::AddSphereCollider(float radius, CollisionLayer layer) {
-        return GetColliders().AddSphere(radius, layer);
-    }
-
-    Collider& GameObject::AddAABBCollider(const Vector3& size, CollisionLayer layer) {
-        return GetColliders().AddBox(size, layer);
+    void GameObject::NotifyCollisionExit(const CollisionInfo& info) {
+        if (auto* colliders = GetComponent<ColliderComponent>()) { colliders->DispatchExit(info); }
     }
 
     // ===== 名前 / シリアライズ =====
@@ -216,9 +157,8 @@ namespace CoreEngine
     const char* GameObject::GetDisplayName() const {
         if (!name_.empty()) return name_.c_str();
         if (!serializeKey_.empty()) return serializeKey_.c_str();
-        return GetObjectName();
+        return "GameObject";
     }
-    const char* GameObject::GetObjectName() const { return "GameObject"; }
 
     bool GameObject::IsSerializeEnabled() const { return shouldSerialize_; }
     void GameObject::SetSerializeEnabled(bool enable) { shouldSerialize_ = enable; }

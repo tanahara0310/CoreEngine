@@ -306,7 +306,7 @@ namespace CoreEngine
                         if (!mat) return;
 
                         ImGui::PushID(modelIndex++);
-                        const char* name = owner.GetObjectName();
+                        const char* name = owner.GetDisplayName();
                         ImGui::SetNextItemWidth(170.0f);
                         float intensity = mat->GetIBLIntensity();
                         if (ImGui::SliderFloat(name, &intensity, 0.0f, 2.0f)) {

@@ -124,9 +124,9 @@ namespace ColliderInspector
     {
         bool changed = false;
 
-        // 表示は TryGetColliders()（生成しない）で行う。GetColliders() を使うと
-        // インスペクタを開いただけで全オブジェクトに ColliderComponent が生える。
-        ColliderComponent* colliders = object.TryGetColliders();
+        // 表示は付いているものだけを見る（生成しない）。
+        // 取得のついでに足すと、インスペクタを開いただけで全オブジェクトにコライダーが生える
+        ColliderComponent* colliders = object.GetComponent<ColliderComponent>();
 
         UI::SectionHeader("コライダー");
 
@@ -144,12 +144,12 @@ namespace ColliderInspector
 
         // 追加ボタンだけはオンデマンド生成でよい（押した時点で要ると確定している）
         if (ImGui::Button("球を追加")) {
-            object.GetColliders().AddSphere(0.5f);
+            object.GetOrAddComponent<ColliderComponent>()->AddSphere(0.5f);
             changed = true;
         }
         ImGui::SameLine();
         if (ImGui::Button("箱を追加")) {
-            object.GetColliders().AddBox({ 1.0f, 1.0f, 1.0f });
+            object.GetOrAddComponent<ColliderComponent>()->AddBox({ 1.0f, 1.0f, 1.0f });
             changed = true;
         }
         ImGui::SameLine();

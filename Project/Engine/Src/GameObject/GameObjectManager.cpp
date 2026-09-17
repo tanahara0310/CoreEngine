@@ -2,6 +2,7 @@
 #include "GameObjectManager.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Collision/CollisionWorld.h"
+#include "Collision/ColliderComponent.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "Utility/Logger/Logger.h"
 #include <algorithm>
@@ -14,13 +15,13 @@ namespace CoreEngine
 
         GameObject* ptr = obj.get();
 
-        // spawner_ を注入（このオブジェクトから Spawn<T>() が呼べるようになる）
+        // spawner_ を注入（このオブジェクトから Spawn() が呼べるようになる）
         ptr->spawner_ = this;
         ptr->objectManager_ = this;
 
-        // 名前未設定の場合は GetObjectName() + 連番番号で自動付与
+        // 名前未設定の場合は既定名 + 連番番号で自動付与
         if (ptr->GetName().empty()) {
-            std::string baseName = ptr->GetObjectName();
+            const std::string baseName = "GameObject";
             int idx = nameCounters_[baseName]++;
             ptr->SetName(baseName + "_" + std::to_string(idx));
         }
@@ -30,9 +31,6 @@ namespace CoreEngine
 
         // 保存キーから ID を決めて登録する
         RegisterObjectId(*ptr);
-
-        // オブジェクト固有の初期化を自動実行
-        ptr->Initialize();
 
         // Update中は pending に積む（deque への push_back は全イテレータを無効化するため）
         if (isUpdating_) {
@@ -142,7 +140,6 @@ namespace CoreEngine
             if (obj && obj->IsActive() && !obj->IsMarkedForDestroy()) {
                 obj->DispatchComponentStart();
                 obj->DispatchComponentUpdate();
-                obj->Update();
             }
         }
         if (afterUpdatePass) {
@@ -156,7 +153,7 @@ namespace CoreEngine
         }
         isUpdating_ = false;
 
-        // Update中に Spawn<T>() されたオブジェクトをまとめて追加
+        // Update 中に Spawn() されたオブジェクトをまとめて追加
         FlushPendingAdds();
     }
 
@@ -201,7 +198,9 @@ namespace CoreEngine
         bool referencesChanged = false;
         for (auto& obj : objects_) {
             if (obj) {
-                obj->ReleaseRetiredColliders();
+                if (auto* colliders = obj->GetComponent<ColliderComponent>()) {
+                    colliders->ReleaseRetired();
+                }
                 if (obj->ReleaseRetiredComponents()) {
                     referencesChanged = true;
                 }

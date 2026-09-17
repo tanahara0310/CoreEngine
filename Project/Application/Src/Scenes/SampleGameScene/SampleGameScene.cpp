@@ -59,7 +59,7 @@ namespace SampleGame
             player->GetComponent<TransformComponent>()->Get().translate =
                 { 0.0f, kPlayerRadius, 0.0f };
 
-            player->AddSphereCollider(kPlayerRadius, CollisionLayer::Player);
+            player->GetOrAddComponent<ColliderComponent>()->AddSphere(kPlayerRadius, CollisionLayer::Player);
             player->AddComponent<PlayerControllerComponent>();
             player->SetActive(true);
         }
@@ -78,7 +78,8 @@ namespace SampleGame
                 std::sin(angle) * kItemRingRadius
             };
 
-            item->AddAABBCollider({ kItemSize, kItemSize, kItemSize }, CollisionLayer::Item);
+            item->GetOrAddComponent<ColliderComponent>()->AddBox(
+                { kItemSize, kItemSize, kItemSize }, CollisionLayer::Item);
             item->SetActive(true);
         }
     }

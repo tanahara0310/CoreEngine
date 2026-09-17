@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "CollisionTestScene.h"
 
 #include "CollisionTestReport.h"
@@ -129,12 +129,12 @@ namespace CollisionTest
         t8A_->Transform().scale = { 2.0f, 2.0f, 2.0f };
         t8B_->Transform().scale = { 2.0f, 2.0f, 2.0f };
 
-        // ===== T9: GetWorldPosition を持たないオブジェクト =====
+        // ===== T9: 見た目を持たないオブジェクト =====
         t9Far_ = MakeHeadlessProbe("T9_Far", { 0.0f, kProbeY, 100.0f });
-        t9Far_->Object()->AddSphereCollider(1.0f, CollisionLayer::Boss);
+        t9Far_->Object()->GetOrAddComponent<ColliderComponent>()->AddSphere(1.0f, CollisionLayer::Boss);
 
         t9Near_ = MakeHeadlessProbe("T9_Near", { 0.0f, kProbeY, -100.0f });
-        t9Near_->Object()->AddSphereCollider(1.0f, CollisionLayer::BossBullet);
+        t9Near_->Object()->GetOrAddComponent<ColliderComponent>()->AddSphere(1.0f, CollisionLayer::BossBullet);
 
         // ===== T10: コールバック中の RemoveCollider（オプトイン） =====
         t10Static_ = MakeSphereProbe("T10_Static", { -0.5f, kProbeY, RowZ(8) },
@@ -224,7 +224,7 @@ namespace CollisionTest
     {
         auto* probe = MakeProbe(label, position,
             std::make_unique<SphereMeshGenerator>(radius, 24u, 12u), baseColor);
-        probe->Object()->AddSphereCollider(radius, layer);
+        probe->Object()->GetOrAddComponent<ColliderComponent>()->AddSphere(radius, layer);
         return probe;
     }
 
@@ -233,7 +233,7 @@ namespace CollisionTest
     {
         auto* probe = MakeProbe(label, position,
             std::make_unique<CubeMeshGenerator>(size), baseColor);
-        probe->Object()->AddAABBCollider({ size, size, size }, layer);
+        probe->Object()->GetOrAddComponent<ColliderComponent>()->AddBox({ size, size, size }, layer);
         return probe;
     }
 
@@ -438,18 +438,18 @@ namespace CollisionTest
             Report::Get().Upsert(result);
         }
 
-        // T9: GameObject を直接継いだオブジェクトでも位置が判定に効くか
+        // T9: 見た目を持たないオブジェクトでも位置が判定に効くか
         if (t9Far_) {
             CaseResult result;
             result.id       = "T9";
-            result.title    = "GameObject を直接継いだオブジェクトでも位置が判定に効く";
+            result.title    = "見た目を持たないオブジェクトでも位置が判定に効く";
             result.expected = "Enter=0（z=+100 と z=-100 は離れている）";
             result.actual   = StatsStr(t9Far_->Stats());
             result.note     =
-                "GameObject を直接継承したオブジェクト。GetWorldPosition() は純粋仮想なので\n"
-                "実装を強制される（A-3 の「オーバーライド忘れで全員が原点」はコンパイル\n"
-                "エラーになり、実行時には再現しなくなった）。ここでは実装済みの位置が\n"
-                "正しく判定に使われることを確認する。";
+                "メッシュを持たないオブジェクト。位置はトランスフォームが持つので、\n"
+                "見た目の有無に関わらず判定へ正しく渡ることを確認する\n"
+                "（A-3 の「位置を返し忘れて全員が原点」は、位置の出どころが\n"
+                "トランスフォーム 1 本になったため起こらない）。";
             result.status = !decided ? Status::Pending
                 : (t9Far_->Stats().enter == 0) ? Status::Pass : Status::Fail;
             Report::Get().Upsert(result);
