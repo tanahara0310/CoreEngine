@@ -16,10 +16,6 @@ class SkeletonSocketComponent : public IComponent {
 public:
     const char* GetTypeName() const override { return "SkeletonSocket"; }
 
-#ifdef USE_IMGUI
-    const char* GetInspectorName() const override { return "ソケット追従"; }
-#endif
-
     // ===== 設定 =====
 
     /// @brief 追従先を指定する

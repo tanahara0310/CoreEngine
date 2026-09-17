@@ -152,29 +152,6 @@ namespace CoreEngine
         /// @param collisionWorld 登録先の CollisionWorld
         void RegisterAllColliders(CollisionWorld* collisionWorld);
 
-#ifdef USE_IMGUI
-        /// @brief 指定オブジェクトのImGuiデバッグUI表示（Inspector埋め込み用）
-        /// @param obj 描画対象のオブジェクト（nullptrの場合はプレースホルダーを表示）
-        void DrawSingleObjectImGui(GameObject* obj);
-#endif
-
-        /// @brief オブジェクトの値が ImGui で変更されたときのコールバックを設定
-        void SetOnChangedCallback(std::function<void(GameObject*)> callback) {
-            onChangedCallback_ = std::move(callback);
-        }
-
-        /// @brief 個別オブジェクト保存コールバックを設定
-        void SetOnSaveRequestCallback(std::function<void(GameObject*)> callback) {
-            onSaveRequestCallback_ = std::move(callback);
-        }
-
-#ifdef USE_IMGUI
-        /// @brief ImGui 編集コミット時コールバックを設定（Undo/Redo 用）
-        void SetEditCommitCallback(GameObject::EditCommitCallback cb) {
-            editCommitCallback_ = std::move(cb);
-        }
-#endif
-
     private:
         /// @brief 管理中のオブジェクトリスト
         std::deque<std::unique_ptr<GameObject>> objects_;
@@ -200,12 +177,6 @@ namespace CoreEngine
         /// @brief `GetReferenceEpoch()` の実体
         std::uint64_t referenceEpoch_ = 1;
 
-        /// @brief ImGui変更時コールバック（デバッグビルドのみ使用）
-        std::function<void(GameObject*)> onChangedCallback_;
-
-        /// @brief 個別オブジェクト保存リクエスト時コールバック
-        std::function<void(GameObject*)> onSaveRequestCallback_;
-
         /// @brief 保存キーが既出なら連番を足して重複を解く
         /// @note 同じ名前で作られたオブジェクト（`CreateObject("Sphere")` を 49 回など）は
         ///       そのままだと 1 ファイルへ上書きし合い、最後の 1 個しか残らない。
@@ -216,11 +187,6 @@ namespace CoreEngine
 
         /// @brief pendingAdd_ を objects_ へ移動する
         void FlushPendingAdds();
-
-#ifdef USE_IMGUI
-        /// @brief ImGui 編集コミット時コールバック（Undo/Redo 用）
-        GameObject::EditCommitCallback editCommitCallback_;
-#endif
 
         /// @brief `GetLifetimeToken()` の実体（最後に宣言し、ほかのメンバより先に壊す）
         std::shared_ptr<const GameObjectManager*> lifetimeToken_ = std::make_shared<const GameObjectManager*>(this);

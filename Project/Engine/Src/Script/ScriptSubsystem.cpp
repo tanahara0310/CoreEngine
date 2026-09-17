@@ -115,7 +115,6 @@ namespace CoreEngine
                 raw->GetName(),
                 [raw]() -> std::unique_ptr<IComponent> { return std::make_unique<ScriptComponent>(*raw); },
                 &raw->GetDescriptor(),
-                raw->GetDisplayName(),
                 sourceFile);
             if (!registered) {
                 Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Script,

@@ -41,10 +41,6 @@ namespace CoreEngine
         /// @brief UI トランスフォームを使う
         bool RequiresComponent(const IComponent& other) const override;
 
-#ifdef USE_IMGUI
-        const char* GetInspectorName() const override { return "UI 画像"; }
-#endif
-
         /// @brief UI トランスフォームを確保し、レンダラー・頂点バッファ・マテリアル・テクスチャを用意する
         void Awake() override;
 

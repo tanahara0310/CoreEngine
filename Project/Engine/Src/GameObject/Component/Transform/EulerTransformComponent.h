@@ -21,11 +21,6 @@ public:
         REFLECT_PROPERTY(transform_.scale,     "スケール", p.range = Speed(0.01f))
     REFLECT_END()
 
-#ifdef USE_IMGUI
-    const char* GetInspectorName() const override { return "トランスフォーム"; }
-    bool IsShownFirstInInspector() const override { return true; }
-#endif
-
     // ===== ITransformSource =====
 
     Vector3& Translate() override { return transform_.translate; }

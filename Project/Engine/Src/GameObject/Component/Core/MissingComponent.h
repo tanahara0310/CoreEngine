@@ -28,17 +28,9 @@ namespace CoreEngine
         /// @brief 保存データにあった版（ComponentHost が保存するときに書き戻す）
         uint32_t GetSavedVersion() const { return savedVersion_; }
 
-#ifdef USE_IMGUI
-        const char* GetInspectorName() const override { return inspectorName_.c_str(); }
-        bool DrawInspector() override;
-#endif
-
     private:
         std::string typeName_;
         json parameters_ = json::object();
         uint32_t savedVersion_ = 1;
-#ifdef USE_IMGUI
-        std::string inspectorName_;
-#endif
     };
 }

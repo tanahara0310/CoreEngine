@@ -42,7 +42,7 @@ namespace CoreEngine::Reflection
         UpgradeFunction upgrade = nullptr;
 
         /// @brief プロパティの一部だけを持つか
-        /// @details true なら、残りの保存と表示は `OnSerialize` / `OnDeserialize` / `DrawInspector` が受け持つ。
+        /// @details true なら、残りの保存は `OnSerialize` / `OnDeserialize`、表示はエディタの型ごとの登録が受け持つ。
         bool partial = false;
 
         const PropertyDescriptor* Find(const char* propertyName) const;

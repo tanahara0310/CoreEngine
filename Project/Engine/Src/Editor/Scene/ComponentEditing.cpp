@@ -7,6 +7,7 @@
 #include "Editor/Command/EditorCommandStack.h"
 #include "Editor/ImGui/ImGuiAll.h"
 #include "Editor/ImGui/Widgets/EditorBars.h"
+#include "Editor/Inspector/ComponentInspectors.h"
 #include "Editor/Inspector/InspectorLayout.h"
 #include "Editor/Scene/EditorSceneAccess.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
@@ -131,13 +132,6 @@ namespace CoreEngine::ComponentEditing
             bool attachOnRedo_ = true;
         };
 
-        /// @brief 型名に対応するインスペクタでの表示名（無ければ型名）
-        std::string DisplayNameOf(const std::string& typeName)
-        {
-            std::string name = ComponentFactory::Get().GetInspectorName(typeName);
-            return name.empty() ? typeName : name;
-        }
-
         /// @brief 英字の大小を区別せずに部分一致を調べる
         bool ContainsIgnoreCase(std::string_view text, std::string_view pattern)
         {
@@ -213,7 +207,7 @@ namespace CoreEngine::ComponentEditing
             }
         }
 
-        const std::string displayName = added->GetInspectorName();
+        const std::string displayName = Editor::ComponentInspectors::DisplayNameOf(*added);
         if (GameObjectManager* manager = object.GetObjectManager()) {
             manager->InvalidateReferences();
             Editor::EditorCommandStack::Get().Push(std::make_unique<AttachmentCommand>(
@@ -240,7 +234,7 @@ namespace CoreEngine::ComponentEditing
                 continue;
             }
             if (reason) {
-                *reason = std::string("「") + slot->GetInspectorName() + "」が使っているので外せません";
+                *reason = "「" + Editor::ComponentInspectors::DisplayNameOf(*slot) + "」が使っているので外せません";
             }
             return false;
         }
@@ -263,7 +257,7 @@ namespace CoreEngine::ComponentEditing
         }
         slot.position = *position;
 
-        const std::string displayName = component.GetInspectorName();
+        const std::string displayName = Editor::ComponentInspectors::DisplayNameOf(component);
         if (GameObjectManager* manager = object.GetObjectManager()) {
             manager->InvalidateReferences();
             Editor::EditorCommandStack::Get().Push(std::make_unique<AttachmentCommand>(
@@ -296,7 +290,7 @@ namespace CoreEngine::ComponentEditing
 
             int shown = 0;
             for (const std::string& typeName : ComponentFactory::Get().GetRegisteredTypeNames()) {
-                const std::string displayName = DisplayNameOf(typeName);
+                const std::string displayName = Editor::ComponentInspectors::DisplayNameOf(typeName);
                 if (!ContainsIgnoreCase(displayName, sAddFilter) && !ContainsIgnoreCase(typeName, sAddFilter)) {
                     continue;
                 }

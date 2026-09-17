@@ -39,9 +39,6 @@ namespace CoreEngine
             entry.creator = reservation.creator;
             entry.descriptor = probe.descriptor;
             entry.renderable = probe.renderable;
-#ifdef USE_IMGUI
-            entry.inspectorName = std::move(probe.inspectorName);
-#endif
             auto [it, inserted] = entries_.try_emplace(std::move(probe.typeName), std::move(entry));
             if (inserted) {
                 continue;
@@ -62,8 +59,7 @@ namespace CoreEngine
     }
 
     bool ComponentFactory::RegisterRuntime(const std::string& typeName, RuntimeCreator creator,
-        const Reflection::TypeDescriptor* descriptor, const std::string& inspectorName,
-        std::filesystem::path sourceFile)
+        const Reflection::TypeDescriptor* descriptor, std::filesystem::path sourceFile)
     {
         if (typeName.empty() || !creator || entries_.contains(typeName)) { return false; }
 
@@ -72,10 +68,8 @@ namespace CoreEngine
         entry.descriptor = descriptor;
         entry.runtime = true;
 #ifdef USE_IMGUI
-        entry.inspectorName = inspectorName;
         entry.sourceFile = std::move(sourceFile);
 #else
-        (void)inspectorName;
         (void)sourceFile;
 #endif
         entries_.emplace(typeName, std::move(entry));
@@ -123,12 +117,6 @@ namespace CoreEngine
     }
 
 #ifdef USE_IMGUI
-    std::string ComponentFactory::GetInspectorName(const std::string& typeName) const
-    {
-        const auto it = entries_.find(typeName);
-        return it != entries_.end() ? it->second.inspectorName : std::string{};
-    }
-
     std::filesystem::path ComponentFactory::GetSourceFile(const std::string& typeName) const
     {
         const auto it = entries_.find(typeName);

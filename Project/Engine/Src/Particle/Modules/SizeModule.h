@@ -51,7 +51,7 @@ public:
 #ifdef USE_IMGUI
     /// @brief ImGuiデバッグ表示
     /// @return UIに変更があった場合true
-bool ShowImGui() override;
+    bool ShowImGui();
 #endif
 
 private:

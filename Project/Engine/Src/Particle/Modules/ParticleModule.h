@@ -34,12 +34,6 @@ public:
     /// @brief GPUバックエンドで動作しているか
     bool IsGpuBackend() const { return gpuBackend_; }
 
-#ifdef USE_IMGUI
-    /// @brief ImGuiデバッグ表示（純粋仮想関数）
-    /// @return UIに変更があった場合true
-    virtual bool ShowImGui() = 0;
-#endif
-
 protected:
     bool enabled_ = true;
     bool gpuBackend_ = false;  // GPUバックエンド上で動作しているか（UI出し分け用）

@@ -10,7 +10,6 @@ namespace CoreEngine
     class ParticleSystemComponent;
     class GpuParticleSystemComponent;
     class IParticleSystem;
-    class ParticleModule;
 
     /// @brief パーティクルのコンポーネントのインスペクタ（CPU/GPU共通）
     /// @details Unity の Particle System インスペクターに近い構成:
@@ -41,10 +40,6 @@ namespace CoreEngine
 
         /// @brief モジュール一覧（有効トグル付きヘッダー）
         static bool ShowModules(IParticleSystem& system);
-
-        /// @brief 有効トグル付き折りたたみヘッダーでモジュールUIを表示する
-        static bool DrawModuleSection(const char* label, ParticleModule& module,
-                                      bool defaultOpen = false);
 
         /// @brief 統計情報（CPU版のみ）
         static void ShowStatistics(ParticleSystemComponent& particleSystem);

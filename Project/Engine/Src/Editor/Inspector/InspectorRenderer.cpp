@@ -15,7 +15,6 @@
 #include "Graphics/Asset/AssetRef.h"
 #include "Reflection/PropertySerializer.h"
 #include "Reflection/PropertyValue.h"
-#include "Reflection/ReflectionToggle.h"
 #include "Reflection/TypeDescriptor.h"
 #include "Scene/PrefabSystem.h"
 
@@ -250,26 +249,6 @@ namespace CoreEngine
                 });
         }
 
-        /// @brief std::string をそのまま編集する入力欄（長さの上限なし）
-        /// @param multiline true なら複数行で編集する
-        bool InputString(const char* id, std::string* text, bool multiline)
-        {
-            const ImGuiInputTextCallback resize = [](ImGuiInputTextCallbackData* data) -> int {
-                if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
-                    auto* const target = static_cast<std::string*>(data->UserData);
-                    target->resize(static_cast<std::size_t>(data->BufTextLen));
-                    data->Buf = target->data();
-                }
-                return 0;
-            };
-            const ImGuiInputTextFlags flags = ImGuiInputTextFlags_CallbackResize;
-            if (multiline) {
-                const ImVec2 size(-FLT_MIN, ImGui::GetTextLineHeight() * 4.5f);
-                return ImGui::InputTextMultiline(id, text->data(), text->capacity() + 1, size, flags, resize, text);
-            }
-            return ImGui::InputText(id, text->data(), text->capacity() + 1, flags, resize, text);
-        }
-
         /// @brief 文字列を候補の一覧から選ぶ欄（一覧の上の入力欄に名前を打って Enter でも決まる）
         /// @param instance 候補を記述子に尋ねるときに渡す持ち主
         /// @return 別の値を選んだら true
@@ -286,16 +265,7 @@ namespace CoreEngine
                 ImGui::SetKeyboardFocusHere();
             }
             ImGui::SetNextItemWidth(-FLT_MIN);
-            if (ImGui::InputTextWithHint("##typed", "名前を入力して Enter", typed.data(), typed.capacity() + 1,
-                    ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackResize,
-                    [](ImGuiInputTextCallbackData* data) -> int {
-                        if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
-                            auto* const target = static_cast<std::string*>(data->UserData);
-                            target->resize(static_cast<std::size_t>(data->BufTextLen));
-                            data->Buf = target->data();
-                        }
-                        return 0;
-                    }, &typed)) {
+            if (UI::InputStringWithHint("##typed", "名前を入力して Enter", typed, ImGuiInputTextFlags_EnterReturnsTrue)) {
                 if (!typed.empty() && typed != value) {
                     value = typed;
                     changed = true;
@@ -488,9 +458,13 @@ namespace CoreEngine
             case PropertyType::Color:
                 return DrawColorSwatch(label, &static_cast<Vector4*>(value)->x,
                     !Reflection::HasFlag(p.flags, Reflection::PropertyFlags::NoAlpha));
-            case PropertyType::String:
-                return InputString(label, static_cast<std::string*>(value),
-                    Reflection::HasFlag(p.flags, Reflection::PropertyFlags::Multiline));
+            case PropertyType::String: {
+                std::string& text = *static_cast<std::string*>(value);
+                if (Reflection::HasFlag(p.flags, Reflection::PropertyFlags::Multiline)) {
+                    return UI::InputStringMultiline(label, text, ImVec2(-FLT_MIN, ImGui::GetTextLineHeight() * 4.5f));
+                }
+                return UI::InputString(label, text);
+            }
             case PropertyType::ObjectRef:
             case PropertyType::AssetRef:
             case PropertyType::Array:
@@ -950,11 +924,6 @@ namespace CoreEngine
             }
             return type.displayName && type.displayName[0] ? type.displayName : type.name;
         }
-    }
-
-    bool InspectorRenderer::IsEnabled()
-    {
-        return Reflection::IsEnabled();
     }
 
     bool InspectorRenderer::Draw(const Reflection::TypeDescriptor& type, void* instance,

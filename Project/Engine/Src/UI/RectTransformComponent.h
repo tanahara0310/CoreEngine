@@ -37,11 +37,6 @@ namespace CoreEngine
             REFLECT_ACCESSOR("sortOrder", "描画順", GetSortOrder, SetSortOrder)
         REFLECT_END()
 
-#ifdef USE_IMGUI
-        const char* GetInspectorName() const override { return "UI トランスフォーム"; }
-        bool IsShownFirstInInspector() const override { return true; }
-#endif
-
         /// @brief 描画順をオーナーへ反映する
         void Awake() override;
 

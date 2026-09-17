@@ -24,14 +24,6 @@
 #include <algorithm>
 #include <iterator>
 
-#ifdef USE_IMGUI
-#include "Editor/Command/EditorCommand.h"
-#include "Editor/Command/EditorCommandStack.h"
-#include "Editor/Scene/EditorSceneAccess.h"
-#include "Particle/Debug/ParticleSystemDebugUI.h"
-#include <imgui.h>
-#endif
-
 #ifdef _DEBUG
 #include "Graphics/Render/Line/LineRendererPipeline.h"
 #endif
@@ -373,29 +365,4 @@ namespace CoreEngine
     {
         ParticlePresetManager::FromJson(*this, j);
     }
-
-#ifdef USE_IMGUI
-    bool ParticleSystemComponent::DrawInspector()
-    {
-        // 編集を始める前の値を控えておき、編集が終わったら 1 回の Undo として積む
-        json before = moduleEditActive_ ? json{} : OnSerialize();
-        const bool changed = ParticleSystemDebugUI::ShowImGui(*this);
-        if (changed && !moduleEditActive_) {
-            moduleEditBefore_ = std::move(before);
-            moduleEditActive_ = true;
-        }
-        if (moduleEditActive_ && !ImGui::IsAnyItemActive()) {
-            moduleEditActive_ = false;
-            const GameObject* const owner = GetOwner();
-            std::string label = (owner ? owner->GetName() + " の " : std::string{}) + GetInspectorName();
-            Editor::EditorCommandStack::Get().Push(
-                std::make_unique<Editor::ComponentStateCommand<ParticleSystemComponent, json>>(
-                    std::move(label), *this, std::move(moduleEditBefore_),
-                    [](ParticleSystemComponent& target) { return target.OnSerialize(); },
-                    [](ParticleSystemComponent& target, const json& settings) { target.OnDeserialize(settings); }));
-            moduleEditBefore_ = json{};
-        }
-        return changed;
-    }
-#endif
 }

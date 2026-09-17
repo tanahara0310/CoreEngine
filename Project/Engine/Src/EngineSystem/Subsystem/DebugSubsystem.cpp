@@ -6,6 +6,7 @@
 
 #include "../EngineSystem.h"
 #include "EngineProfileScope.h"
+#include "Editor/Inspector/ComponentInspectors.h"
 #include "Editor/Scene/EditorSceneAccess.h"
 #include "../EngineConfig.h"
 #include "../Settings/EditorSettingsSubsystem.h"
@@ -66,6 +67,9 @@ namespace CoreEngine
 
         // GPU タイムスタンププロファイラーの初期化
         gpuProfiler_.Initialize(dx->GetDevice());
+
+        // インスペクタにエンジンの型の出し方を登録する
+        Editor::ComponentInspectors::RegisterEngineTypes();
 
         // ゲームデバッグUIの初期化（DockingUIを渡す）
         gameDebugUI_->Initialize(engine_, imGui_->GetDockingUI());

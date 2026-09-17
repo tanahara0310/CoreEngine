@@ -16,7 +16,6 @@
 #include <algorithm>
 #include <cfloat>
 #include <cmath>
-#include <cstring>
 
 #ifdef USE_IMGUI
 #include "Editor/ImGui/Wrappers/ImGuiInput.h"
@@ -74,26 +73,6 @@ namespace CoreEngine
             return billboard;
         }
     }
-
-#ifdef USE_IMGUI
-    namespace
-    {
-        /// @brief 入力欄の作業バッファへ文字列を写す
-        /// @details 入りきらない分は捨てる。UTF-8 の途中で切らないよう、
-        ///          多バイト文字の境界まで戻して切る
-        template <size_t N>
-        void CopyToEditBuffer(std::array<char, N>& buffer, const std::string& source)
-        {
-            size_t length = (std::min)(source.size(), N - 1);
-            while (length > 0 &&
-                (static_cast<unsigned char>(source[length]) & 0xC0) == 0x80) {
-                --length; // 継続バイトの上にいる間は先頭バイトまで戻す
-            }
-            std::memcpy(buffer.data(), source.data(), length);
-            buffer[length] = '\0';
-        }
-    }
-#endif // USE_IMGUI
 
     bool Text3DRendererComponent::RequiresComponent(const IComponent& other) const
     {
@@ -440,7 +419,7 @@ namespace CoreEngine
     }
 
 #ifdef USE_IMGUI
-    bool Text3DRendererComponent::DrawInspector()
+    bool Text3DRendererComponent::DrawEditorUI()
     {
         bool changed = false;
 
@@ -449,17 +428,14 @@ namespace CoreEngine
 
         UI::SectionHeader("文字列");
         {
-            // 入力中は ImGui がバッファを持つので、そうでない間だけ写し直す
-            if (!editTextActive_) { CopyToEditBuffer(editTextBuffer_, textUtf8_); }
-
+            // 入力中は ImGui が持つ文字列を出し、それ以外は今の値を出す
+            std::string text = textUtf8_;
             const ImVec2 boxSize(-FLT_MIN, ImGui::GetTextLineHeight() * 4.5f);
-            if (ImGui::InputTextMultiline("##text", editTextBuffer_.data(),
-                editTextBuffer_.size(), boxSize)) {
+            if (UI::InputStringMultiline("##text", text, boxSize)) {
                 // 1 打鍵ごとに反映する。未収録の字はここで焼き足しの要求が出る
-                SetText(editTextBuffer_.data());
+                SetText(text);
                 changed = true;
             }
-            editTextActive_ = ImGui::IsItemActive();
             ImGui::TextDisabled("Enter で改行。日本語は IME でそのまま入力できます");
         }
 
@@ -478,7 +454,6 @@ namespace CoreEngine
                             const bool selected = (name == fontName_);
                             if (ImGui::Selectable(name.c_str(), selected)) {
                                 SetFontByName(name);
-                                CopyToEditBuffer(editFontBuffer_, fontName_);
                                 changed = true;
                             }
                             if (selected) { ImGui::SetItemDefaultFocus(); }
@@ -488,13 +463,11 @@ namespace CoreEngine
                 }
             }
 
-            if (!editFontActive_) { CopyToEditBuffer(editFontBuffer_, fontName_); }
-            if (ImGui::InputText("##fontName", editFontBuffer_.data(),
-                editFontBuffer_.size(), ImGuiInputTextFlags_EnterReturnsTrue)) {
-                SetFontByName(editFontBuffer_.data());
+            std::string fontName = fontName_;
+            if (UI::InputString("##fontName", fontName, ImGuiInputTextFlags_EnterReturnsTrue)) {
+                SetFontByName(fontName);
                 changed = true;
             }
-            editFontActive_ = ImGui::IsItemActive();
             ImGui::TextDisabled("フォント名を入力して Enter");
         }
 

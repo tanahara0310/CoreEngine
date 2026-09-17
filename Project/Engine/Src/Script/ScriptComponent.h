@@ -37,10 +37,6 @@ namespace CoreEngine
         /// @brief クラスが見つからない間は、控えた値をそのまま保存へ返す
         json OnSerialize() const override;
 
-#ifdef USE_IMGUI
-        const char* GetInspectorName() const override { return displayName_.c_str(); }
-#endif
-
         void Awake() override;
         void Start() override;
         void Update() override;
@@ -102,9 +98,6 @@ namespace CoreEngine
         void StoreHandle(std::uint32_t index, void* handle);
 
         std::string typeName_;
-#ifdef USE_IMGUI
-        std::string displayName_;
-#endif
         const ScriptComponentType* type_ = nullptr;
         ScriptHost* host_ = nullptr;
         asIScriptObject* object_ = nullptr;

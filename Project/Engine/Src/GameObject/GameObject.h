@@ -311,49 +311,6 @@ namespace CoreEngine
                 );
         }
 
-#ifdef USE_IMGUI
-        // ===== プロパティインスペクター =====
-
-        /// @brief インスペクタを描く
-        /// @return 値の変更があった場合 true を返す
-        /// @note 名前と有効の行、プレハブの行、コンポーネントのセクション、
-        ///       コンポーネント追加ボタンを上から縦に並べる。
-        virtual bool DrawImGui();
-
-        /// @brief ImGui 編集コミット時コールバックの型
-        /// @note 編集前のトランスフォームを引数として受け取り、Undo/Redo システムへ渡す。
-        using EditCommitCallback = std::function<void(
-            GameObject*            /* 対象オブジェクト */,
-            const Vector3&         /* 編集前の位置 */,
-            const Vector3&         /* 編集前の回転 */,
-            const Vector3&         /* 編集前のスケール */,
-            bool                   /* 編集前のアクティブ状態 */)>;
-
-        /// @brief 編集コミット時コールバックを設定する
-        /// @param cb SceneDebugEditor が設定する Undo/Redo 記録用コールバック
-        void SetEditCommitCallback(EditCommitCallback cb);
-
-#ifdef USE_IMGUI
-        /// @brief インスペクタでの編集確定を Undo/Redo へ通知する
-        /// @param beforeTranslate 編集前の位置
-        /// @param beforeRotate 編集前の回転
-        /// @param beforeScale 編集前のスケール
-        /// @param beforeActive 編集前のアクティブ状態
-        /// @note コンポーネントのインスペクタ（TransformComponent など）から呼ぶ。
-        ///       onEditCommitted_ は protected なので、非派生のコンポーネントには
-        ///       この入口が必要になる。
-        void NotifyEditCommitted(const Vector3& beforeTranslate, const Vector3& beforeRotate,
-            const Vector3& beforeScale, bool beforeActive);
-#endif
-
-        /// @brief 個別保存リクエストコールバックの型
-        using SaveRequestCallback = std::function<void(GameObject*)>;
-
-        /// @brief 個別保存リクエストコールバックを設定する
-        /// @param cb インスペクタの ⋮ で「このオブジェクトだけ保存」を選んだときに呼ばれるコールバック
-        void SetSaveRequestCallback(SaveRequestCallback cb);
-#endif
-
     protected:
         std::string               name_;          ///< オブジェクト表示名（ユーザー編集可能）
         std::string               serializeKey_;  ///< シリアライズ用安定キー（初回 SetName で固定）
@@ -363,26 +320,6 @@ namespace CoreEngine
         bool shouldSerialize_ = true;   ///< JSON シリアライズ対象フラグ
 
         std::optional<int> renderOrder_;  ///< 描画順序オーバーライド（nullopt: パス優先度に従う）
-
-#ifdef USE_IMGUI
-        EditCommitCallback  onEditCommitted_;   ///< 編集確定時コールバック
-        SaveRequestCallback onSaveRequested_;   ///< 個別保存のコールバック
-
-        /// @brief インスペクタの先頭の行（種類の記号・有効・名前・⋮）を描く
-        /// @return 値が変更されたら true
-        bool DrawInspectorHeader();
-
-        /// @brief コンポーネント 1 個のセクション（見出しと中身）を描く
-        /// @param removeRequest 「外す」が選ばれたら、そのコンポーネントを書く先（選ばれなければ書かない）
-        /// @return 値が変更されたら true
-        /// @note `IComponent::DrawInspector()` を呼ぶ唯一の場所。
-        bool DrawComponentSection(IComponent& component, IComponent*& removeRequest);
-
-        /// @brief Active チェックボックス変更時に呼び出されるフック
-        /// @param prevActive 変更前のアクティブ状態
-        /// @note Undo/Redo を記録したい派生クラスでオーバーライドする。
-        virtual void OnImGuiActiveChanged(bool prevActive) { (void)prevActive; }
-#endif
 
     private:
         IObjectSpawner* spawner_ = nullptr;  ///< AddObject 時に GameObjectManager が注入するスポーナー

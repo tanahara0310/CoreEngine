@@ -177,15 +177,16 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Engine\Src\Editor\Inspector\ComponentInspectors.cpp" />
     <ClCompile Include="Engine\Src\Editor\Inspector\InspectorLayout.cpp" />
     <ClCompile Include="Engine\Src\Editor\Inspector\InspectorRenderer.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Inspector\ObjectInspector.cpp" />
     <ClCompile Include="Engine\Src\Editor\Command\EditorCommandStack.cpp" />
     <ClCompile Include="Engine\Src\Editor\Panel\EditorPanelRegistry.cpp" />
     <ClCompile Include="Engine\Src\Utility\Path\ProjectPaths.cpp" />
     <ClCompile Include="Engine\Src\Editor\Panel\EditorPanelStateSection.cpp" />
     <ClCompile Include="Engine\Src\Reflection\PropertyValue.cpp" />
     <ClCompile Include="Engine\Src\Reflection\PropertySerializer.cpp" />
-    <ClCompile Include="Engine\Src\Reflection\ReflectionToggle.cpp" />
     <ClCompile Include="Engine\Src\Reflection\TypeDescriptor.cpp" />
     <ClCompile Include="Engine\Src\Script\Binding\LogBinding.cpp" />
     <ClCompile Include="Engine\Src\Script\Binding\BindingRegistrar.cpp" />
@@ -1125,8 +1126,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Utility\Tween\TweenManager.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Engine\Src\Editor\Inspector\ComponentInspectors.h" />
     <ClInclude Include="Engine\Src\Editor\Inspector\InspectorLayout.h" />
     <ClInclude Include="Engine\Src\Editor\Inspector\InspectorRenderer.h" />
+    <ClInclude Include="Engine\Src\Editor\Inspector\ObjectInspector.h" />
     <ClInclude Include="Engine\Src\Editor\Command\EditorCommand.h" />
     <ClInclude Include="Engine\Src\Editor\Command\EditorCommandStack.h" />
     <ClInclude Include="Engine\Src\Editor\Panel\EditorPanelRegistry.h" />
@@ -1167,7 +1170,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Script\ScriptCallback.h" />
     <ClInclude Include="Engine\Src\Script\ScriptSubsystem.h" />
     <ClInclude Include="Engine\Src\Reflection\PropertyDescriptor.h" />
-    <ClInclude Include="Engine\Src\Reflection\ReflectionToggle.h" />
     <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionTestScene.h" />
     <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionTestReport.h" />
     <ClInclude Include="Application\Src\Scenes\CollisionTestScene\GeometrySelfTest.h" />

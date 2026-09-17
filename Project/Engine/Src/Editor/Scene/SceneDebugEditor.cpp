@@ -11,6 +11,7 @@
 #include "Editor/Camera/Module/CameraEditorContext.h"
 #include "Editor/Command/EditorCommandStack.h"
 #include "Editor/Inspector/InspectorRenderer.h"
+#include "Editor/Inspector/ObjectInspector.h"
 #include "GameObject/GameObjectManager.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
@@ -96,15 +97,8 @@ namespace CoreEngine
             ShowSaveNotification(msg);
             });
 
-        // 個別オブジェクト保存コールバック
-        mgr->SetOnSaveRequestCallback([this](GameObject* obj) {
-            if (!RefuseSaveWhilePlaying()) {
-                saveSystem_->SaveObject(obj);
-            }
-            });
-
-        // ギズモとインスペクタで動かし終えたら、移動を Undo に積む
-        const auto pushTransformRecord = [this](
+        // ギズモで動かし終えたら、移動を Undo に積む
+        objectSelector_.SetOnGizmoEditCommitted([this](
             GameObject* obj,
             const Vector3& tBefore, const Vector3& rBefore,
             const Vector3& sBefore, bool aBefore) {
@@ -123,9 +117,7 @@ namespace CoreEngine
                 }
                 record.activeAfter = obj->IsActive();
                 undoRedoHistory_.Push(record);
-            };
-        objectSelector_.SetOnGizmoEditCommitted(pushTransformRecord);
-        mgr->SetEditCommitCallback(pushTransformRecord);
+            });
 
         // Hierarchy / Inspector の中身とカメラエディタをパネルとして登録する
         if (auto* gameDebugUI = engine_->GetDebugSubsystem()->GetGameDebugUI()) {
@@ -476,14 +468,20 @@ namespace CoreEngine
 
     void SceneDebugEditor::DrawInspectorContent()
     {
-        GameObject* selected = objectSelector_.GetSelectedObject();
-        GameObject* selectedSprite = objectSelector_.GetSelectedSprite();
-
-        if (selectedSprite) {
-            gameObjectManager_->DrawSingleObjectImGui(selectedSprite);
-        } else {
-            gameObjectManager_->DrawSingleObjectImGui(selected);
+        GameObject* const selectedSprite = objectSelector_.GetSelectedSprite();
+        GameObject* const selected = selectedSprite ? selectedSprite : objectSelector_.GetSelectedObject();
+        if (!selected) {
+            UI::Hint("オブジェクトを選択してください");
+            return;
         }
+
+        Editor::ObjectInspector::Callbacks callbacks;
+        callbacks.saveObject = [this](GameObject& object) {
+            if (!RefuseSaveWhilePlaying()) {
+                saveSystem_->SaveObject(&object);
+            }
+            };
+        Editor::ObjectInspector::Draw(*selected, callbacks);
     }
 
     void SceneDebugEditor::ShowSaveNotification(const std::string& message)
