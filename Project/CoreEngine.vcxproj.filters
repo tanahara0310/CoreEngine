@@ -325,9 +325,6 @@
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraParametersEditorModule.cpp">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraSequenceAssetIO.cpp">
-      <Filter>Engine\Src\Editor\Camera\Module</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraTransformEditorModule.cpp">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClCompile>
@@ -1842,9 +1839,6 @@
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraParametersEditorModule.h">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraSequenceAssetIO.h">
-      <Filter>Engine\Src\Editor\Camera\Module</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraTransformEditorModule.h">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClInclude>
@@ -2639,9 +2633,6 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Math\Frustum.h">
       <Filter>Engine\Src\Math</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Math\Matrix\Matrix3x3.h">
-      <Filter>Engine\Src\Math\Matrix</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Math\Matrix\Matrix4x4.h">
       <Filter>Engine\Src\Math\Matrix</Filter>
