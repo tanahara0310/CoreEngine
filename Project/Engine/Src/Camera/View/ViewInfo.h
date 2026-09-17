@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <d3d12.h>
 #include <cstdint>
@@ -19,10 +19,9 @@ namespace CoreEngine
     ///          カメラを描画側が直接読むと読み取り時刻で答えが変わるため、行列を確定させて配る。
     /// @note ジッタは projection に注入済み。派生する行列とフラスタムはすべてこれから導出する。
     struct ViewInfo {
-        /// @brief 移行期の互換用カメラポインタ
-        /// @details GameObject::Draw(const Camera*) 系のレガシー描画経路がまだ Camera を
-        ///          要求するため保持する。Phase 2（カメラのデータ化）で撤去する。
-        ///          新規コードはここではなく下の行列群を参照すること。
+        /// @brief このビューを作ったカメラ
+        /// @details スプライト・空・パーティクルなど、行列ではなくカメラそのものを
+        ///          受け取る描画が使う。行列で足りるものは下の行列群を参照すること。
         const Camera* camera = nullptr;
 
         RenderViewType type = RenderViewType::GameView;
