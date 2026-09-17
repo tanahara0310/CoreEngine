@@ -46,6 +46,20 @@ namespace CoreEngine
         isSceneChangeRequested_ = true;
     }
 
+    bool SceneManager::CanLoadSceneNow() const {
+        return !IsSceneLoadInProgress() && !IsTransitioning();
+    }
+
+    bool SceneManager::LoadSceneFromSnapshot(const std::string& name, std::shared_ptr<const SceneSnapshot> snapshot) {
+        if (!CanLoadSceneNow() || !HasScene(name)) {
+            return false;
+        }
+
+        // まだ始まっていないシーン切り替えの依頼を取り消す
+        isSceneChangeRequested_ = false;
+        return DoChangeScene(name, std::move(snapshot));
+    }
+
     void SceneManager::Update() {
         // トランジション更新（ポーズやスローの影響を受けない）
         sceneTransition_->Update(Time::UnscaledDeltaTime());
@@ -187,9 +201,9 @@ namespace CoreEngine
         return currentScene_ ? currentScene_->BuildRenderViewRequests() : std::vector<RenderViewRequest>{};
     }
 
-    void SceneManager::DoChangeScene(const std::string& name) {
-        if (!BeginSceneLoad(name)) {
-            return;
+    bool SceneManager::DoChangeScene(const std::string& name, std::shared_ptr<const SceneSnapshot> snapshot) {
+        if (!BeginSceneLoad(name, std::move(snapshot))) {
+            return false;
         }
 
         // フレームを回さない経路なので、続きはその場で走り切らせる
@@ -198,9 +212,10 @@ namespace CoreEngine
             StepSceneLoad();
         }
         loadRunsSynchronously_ = false;
+        return true;
     }
 
-    bool SceneManager::BeginSceneLoad(const std::string& name) {
+    bool SceneManager::BeginSceneLoad(const std::string& name, std::shared_ptr<const SceneSnapshot> snapshot) {
         auto it = sceneFactories_.find(name);
         if (it == sceneFactories_.end()) {
             return false;
@@ -210,6 +225,9 @@ namespace CoreEngine
         pendingScene_ = it->second();
         pendingSceneName_ = name;
         pendingScene_->SetSceneManager(this);
+        if (snapshot) {
+            pendingScene_->SetRestoreSnapshot(std::move(snapshot));
+        }
 
         loadContinuation_ = nullptr;
         loadStepProgress_ = nullptr;

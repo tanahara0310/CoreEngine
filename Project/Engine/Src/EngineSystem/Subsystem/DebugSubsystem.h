@@ -22,6 +22,7 @@
 #include "Editor/Environment/AtmosphereEditor.h"
 #include "Editor/Environment/VolumetricCloudEditor.h"
 #include "Editor/Environment/FogEditor.h"
+#include "Editor/Scene/PlayModeController.h"
 #include "EngineSystem/Settings/CVarSettingsSection.h"
 #include "Graphics/Render/Pass/RenderPass.h"
 #include "Graphics/Render/Pass/RenderPipeline.h"
@@ -101,6 +102,10 @@ namespace CoreEngine
 
         std::unique_ptr<ImGuiManager> imGui_;
         std::unique_ptr<GameDebugUI> gameDebugUI_;
+
+        // 再生の前にシーンを控え、停止したら控えから組み直す（gameDebugUI_ より先に破棄される）
+        std::unique_ptr<Editor::PlayModeController> playModeController_;
+
         GpuTimestampProfiler gpuProfiler_;
         std::unique_ptr<ThreadProfilerUI> threadProfilerUI_;
         std::unique_ptr<EngineStatsWindow> engineStatsWindow_;

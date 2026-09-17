@@ -21,6 +21,11 @@ namespace CoreEngine
     class SceneDebugEditor;
     class ProjectView;
 
+    namespace Editor
+    {
+        class PlayModeController;
+    }
+
     /// @brief エディタのメニューバーと常設パネルを描画するクラス。
     /// @details パネルの登録先は `Editor::EditorPanelRegistry` 一本。ここは
     ///          登録された記述子を placement 別に描き分けるだけを担う。
@@ -70,6 +75,9 @@ namespace CoreEngine
         /// @brief Gameビュー用のSceneDebugEditorを取得
         SceneDebugEditor* GetSceneDebugEditor() const { return sceneDebugEditor_; }
 
+        /// @brief 再生の前の控えを持つ相手を設定する（上下のバーに控えの様子を出す）
+        void SetPlayModeController(Editor::PlayModeController* controller) { playModeController_ = controller; }
+
         /// @brief ゲーム画面のみを表示する独立ウィンドウを開いているか
         /// @details エディタUIを一切含まない、Release ビルド相当の見た目を確認するためのウィンドウ。
         bool IsStandaloneGameWindowVisible() const { return showStandaloneGameWindow_; }
@@ -92,6 +100,7 @@ namespace CoreEngine
 #endif
 
         SceneDebugEditor* sceneDebugEditor_ = nullptr;
+        Editor::PlayModeController* playModeController_ = nullptr;
 
         std::string selectedEnvironmentLabel_; ///< Environmentツリーで選択中のエントリー（空=未選択）
 
@@ -123,10 +132,10 @@ namespace CoreEngine
         void DrawWindowMenu();
         void DrawHelpMenu();
 
-        /// @brief メニューバー右端のシーン名とビルド構成
+        /// @brief メニューバー右端の再生モード・シーン名・ビルド構成
         void DrawMenuBarChips();
 
-        /// @brief グローバルなショートカット（再生・レイアウト）
+        /// @brief グローバルなショートカット（再生・一時停止・コマ送り・レイアウト）
         void HandleShortcuts();
 
         /// @brief バージョン情報のウィンドウ

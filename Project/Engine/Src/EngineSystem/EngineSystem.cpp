@@ -300,7 +300,7 @@ namespace CoreEngine
 
     void EngineSystem::BeginFrame()
     {
-        // コマ送りの要求を取り込む（このフレームだけゲームの更新が進む）
+        // 再生の開始・停止とコマ送りの要求を取り込む（停止ではシーンを再生前の状態へ読み直す）
         PlaybackStateManager::GetInstance().BeginFrame();
 
         // フレームレート制御の開始
@@ -340,7 +340,7 @@ namespace CoreEngine
             (*it)->EndFrame();
         }
 
-        // コマ送りで進めた 1 フレームをここで閉じ、停止へ戻す
+        // コマ送りで進めた 1 フレームをここで閉じ、一時停止へ戻す
         PlaybackStateManager::GetInstance().EndFrame();
 
         // VSync有効時はフレームレート制御の終了処理は不要

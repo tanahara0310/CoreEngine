@@ -1,15 +1,31 @@
 #pragma once
 
+#include "Utility/JsonManager/JsonManager.h"
+
 #include <string>
 #include <functional>
 #include <memory>
 #include <optional>
+#include <utility>
 #include <vector>
 
 namespace CoreEngine
 {
     class GameObjectManager;
     class GameObject;
+
+    /// @brief メモリに控えたシーンのオブジェクト（保存ファイルと同じ中身）
+    struct SceneSnapshot
+    {
+        /// @brief オブジェクト 1 体分
+        struct Object
+        {
+            std::string key; ///< 保存キー
+            json data;       ///< `SaveScene` がファイルへ書くのと同じ JSON
+        };
+
+        std::vector<Object> objects; ///< 保存するときのマニフェストと同じ並び
+    };
 
     /// @brief シーンのオブジェクトデータ JSON 保存 / 読み込みを担当するクラス
     /// @details `Assets/Scenes/{sceneName}/` にマニフェスト `_scene.json` と
@@ -42,6 +58,18 @@ namespace CoreEngine
         /// @note GameObjectManager が要らないので、シーン構築より前（シェーダコンパイル中）に呼べる
         static std::vector<std::string> CollectModelPaths(const std::string& sceneName);
 
+        /// @brief 控えのコンポーネントが指すモデルのパスを列挙する
+        /// @return 重複を除いたモデルのパスのリスト
+        static std::vector<std::string> CollectModelPaths(const SceneSnapshot& snapshot);
+
+        /// @brief シーンのオブジェクトを、保存と同じ形でメモリに控える（ファイルは書かない）
+        static std::shared_ptr<const SceneSnapshot> CaptureSnapshot(const GameObjectManager& mgr);
+
+        /// @brief 読み込みの元を、保存ファイルではなくメモリの控えにする
+        /// @param snapshot 空ならファイルから読む
+        /// @note BeginLoad より前に呼ぶ。読み終えたら控えを手放す。
+        void SetRestoreSnapshot(std::shared_ptr<const SceneSnapshot> snapshot) { restoreSnapshot_ = std::move(snapshot); }
+
         /// @brief マニフェスト（`_scene.json`）の、オブジェクトの一覧のほかに書ける設定
         struct ManifestSettings {
             std::vector<std::string> features; ///< `features`：足す Feature の名前（並び順に足す）
@@ -53,6 +81,7 @@ namespace CoreEngine
 
         /// @brief シーン全体を保存（マニフェスト + 全オブジェクトの個別ファイル）
         /// @note マニフェストに載らなかったオブジェクトの JSON（名前が `_` で始まるものを除く）は消す。
+        ///       削除の印が付いたオブジェクトは保存しない。
         void SaveScene(GameObjectManager* mgr);
 
         /// @brief 指定オブジェクト1体だけを個別ファイルに保存
@@ -79,7 +108,8 @@ namespace CoreEngine
         /// @brief 復元待ちのオブジェクト 1 体分
         struct PendingObject {
             GameObject* object = nullptr;
-            std::string path;
+            std::string path;          ///< 保存ファイルから読むときのパス
+            const json* data = nullptr; ///< 控えから読むときの値（restoreSnapshot_ の中を指す）
         };
 
         std::string sceneName_;
@@ -89,5 +119,8 @@ namespace CoreEngine
 
         /// @brief 読み込み中のシーンのオブジェクト（復元し終えたら参照を確かめる）
         GameObjectManager* loadManager_ = nullptr;
+
+        /// @brief 保存ファイルの代わりに読む控え（空ならファイルから読む）
+        std::shared_ptr<const SceneSnapshot> restoreSnapshot_;
     };
 }

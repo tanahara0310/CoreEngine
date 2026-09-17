@@ -203,7 +203,7 @@ void ConsoleUI::DrawToolbar()
         collapse_ = !collapse_;
     }
     UI::SameLine(0.0f, 4.0f);
-    if (UI::Bar::Button("エラーで一時停止", pauseOnError_, "エラーが出たらゲームの更新を止める")) {
+    if (UI::Bar::Button("エラーで一時停止", pauseOnError_, "再生中にエラーが出たら一時停止する")) {
         pauseOnError_ = !pauseOnError_;
     }
 
@@ -703,8 +703,8 @@ void ConsoleUI::FlushPendingMessages()
     if (hasError && pauseOnError_) {
         auto& playback = PlaybackStateManager::GetInstance();
         if (playback.IsPlaying()) {
-            playback.Stop();
-            AddLog("エラーが出たのでゲームの更新を止めました（▶ で再開）", ConsoleLogLevel::Warning);
+            playback.Pause();
+            AddLog("エラーが出たので一時停止しました（⏸ をもう一度押すと再開します）", ConsoleLogLevel::Warning);
         }
     }
 }

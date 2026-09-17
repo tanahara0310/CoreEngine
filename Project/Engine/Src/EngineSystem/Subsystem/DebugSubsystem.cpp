@@ -69,6 +69,11 @@ namespace CoreEngine
         // ゲームデバッグUIの初期化（DockingUIを渡す）
         gameDebugUI_->Initialize(engine_, imGui_->GetDockingUI());
 
+        // 再生の前にシーンを控え、停止したら控えから組み直す
+        playModeController_ = std::make_unique<Editor::PlayModeController>();
+        playModeController_->Initialize(engine_, gameDebugUI_.get());
+        gameDebugUI_->SetPlayModeController(playModeController_.get());
+
         // LoggerからConsoleUIへのログ転送を接続
         if (auto* console = GetConsole()) {
             Logger::GetInstance().SetConsoleCallback(
@@ -433,6 +438,14 @@ namespace CoreEngine
         cvarStateSection_.reset();
         panelStateSection_.reset();
         layoutSection_.reset();
+
+        // 再生の開始と停止に差し込んだ処理を外す
+        if (playModeController_) {
+            playModeController_->Finalize();
+        }
+        if (gameDebugUI_) {
+            gameDebugUI_->SetPlayModeController(nullptr);
+        }
 
         // コンソールUIへのログ転送を解除（ImGui解放前に行う）
         Logger::GetInstance().ClearConsoleCallback();

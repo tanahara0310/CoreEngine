@@ -55,6 +55,9 @@ namespace CoreEngine
         /// @brief 現在のゲームオブジェクトマネージャーを取得
         GameObjectManager* GetGameObjectManager() override { return &gameObjectManager_; }
 
+        /// @brief オブジェクトの値を、保存ファイルではなくメモリの控えから戻すようにする
+        void SetRestoreSnapshot(std::shared_ptr<const SceneSnapshot> snapshot) override { restoreSnapshot_ = std::move(snapshot); }
+
     protected:
         /// @brief 派生クラスでオーバーライドするシーン固有の初期化処理
         /// @note SetSceneName() と全 CreateObject() をここで行う。
@@ -222,5 +225,8 @@ namespace CoreEngine
 
         // シーン保存/読み込み
         std::unique_ptr<SceneSaveSystem> sceneSaveSystem_;
+
+        // 保存ファイルの代わりに読む控え（空ならファイルから読む）
+        std::shared_ptr<const SceneSnapshot> restoreSnapshot_;
     };
 }
