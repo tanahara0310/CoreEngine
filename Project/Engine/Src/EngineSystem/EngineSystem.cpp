@@ -40,7 +40,7 @@
 #include "Utility/FrameRate/Time.h"
 
 #if defined(CORE_EDITOR) && defined(USE_PIX)
-#include "Editor/ImGui/PixCapture.h"
+#include "Graphics/RHI/Debug/PixCapture.h"
 #endif
 
 // レンダーパイプライン

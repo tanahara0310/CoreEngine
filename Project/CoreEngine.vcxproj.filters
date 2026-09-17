@@ -991,8 +991,8 @@
     <ClCompile Include="Engine\Src\Editor\ImGui\ObjectSelector.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Editor\ImGui\PixCapture.cpp">
-      <Filter>Engine\Src\Editor\ImGui</Filter>
+    <ClCompile Include="Engine\Src\Graphics\RHI\Debug\PixCapture.cpp">
+      <Filter>Engine\Src\Graphics\RHI\Debug</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\ImGui\ProjectView.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
@@ -1003,14 +1003,14 @@
     <ClCompile Include="Engine\Src\Editor\ImGui\RenderGraphEditorPanel.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Editor\Window\GameOutputWindow.cpp">
-      <Filter>Engine\Src\Editor\Window</Filter>
+    <ClCompile Include="Engine\Src\Graphics\Render\GameOutputWindow.cpp">
+      <Filter>Engine\Src\Graphics\Render</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\ImGui\RenderPassDebugPanel.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Editor\ImGui\ScreenCapture.cpp">
-      <Filter>Engine\Src\Editor\ImGui</Filter>
+    <ClCompile Include="Engine\Src\WinApp\ScreenCapture.cpp">
+      <Filter>Engine\Src\WinApp</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\ImGui\ThreadProfilerUI.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
@@ -2907,8 +2907,8 @@
     <ClInclude Include="Engine\Src\Editor\ImGui\ObjectSelector.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Editor\ImGui\PixCapture.h">
-      <Filter>Engine\Src\Editor\ImGui</Filter>
+    <ClInclude Include="Engine\Src\Graphics\RHI\Debug\PixCapture.h">
+      <Filter>Engine\Src\Graphics\RHI\Debug</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\ProjectView.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
@@ -2919,14 +2919,14 @@
     <ClInclude Include="Engine\Src\Editor\ImGui\RenderGraphEditorPanel.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Editor\Window\GameOutputWindow.h">
-      <Filter>Engine\Src\Editor\Window</Filter>
+    <ClInclude Include="Engine\Src\Graphics\Render\GameOutputWindow.h">
+      <Filter>Engine\Src\Graphics\Render</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\RenderPassDebugPanel.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Editor\ImGui\ScreenCapture.h">
-      <Filter>Engine\Src\Editor\ImGui</Filter>
+    <ClInclude Include="Engine\Src\WinApp\ScreenCapture.h">
+      <Filter>Engine\Src\WinApp</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\ThreadProfilerUI.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
@@ -3846,9 +3846,6 @@
     </Filter>
     <Filter Include="Engine\Src\Editor\Scene">
       <UniqueIdentifier>{8EEC7EC7-38CE-4B25-84B4-1C1FD0F26A22}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Engine\Src\Editor\Window">
-      <UniqueIdentifier>{0ED5B9B7-469F-40E4-89F7-0AE0CE44302A}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\EngineSystem">
       <UniqueIdentifier>{25A76813-6EF1-43E7-8910-74FA30780B0C}</UniqueIdentifier>

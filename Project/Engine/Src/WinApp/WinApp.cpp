@@ -3,6 +3,7 @@
 
 #include "Utility/CVar/CVar.h"
 
+#pragma comment(lib, "user32.lib")
 #pragma comment(lib, "winmm.lib")
 
 // 静的メンバの初期化

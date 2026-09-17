@@ -1,5 +1,7 @@
 #pragma once
 
+#ifdef CORE_EDITOR
+
 #include "Camera/Control/CameraInputState.h"
 
 /// @file
@@ -11,13 +13,13 @@ namespace CoreEngine
 
     /// @brief カメラ操作用の入力収集
     /// @details ImGui / ImGuizmo / InputManager / ウィンドウ判定への依存はここだけに閉じる。
-    ///          コントローラ側は正規化された CameraInputState しか見ないため、
-    ///          エディタ非搭載ビルドでも同じコードパスが動く。
+    ///          コントローラ側は正規化された CameraInputState しか見ない。
+    ///          エディタを含まないビルドにはこのクラスが無く、呼び出し側が「入力なし」を渡す。
     class EditorCameraInput {
     public:
         /// @brief 今フレームの入力を収集する
         /// @param engine 入力取得に使うエンジン（nullptr 可）
-        /// @return 正規化済み入力。エディタ非搭載ビルドでは常に「入力なし」
+        /// @return 正規化済み入力
         static CameraInputState Collect(EngineSystem* engine);
 
     private:
@@ -27,3 +29,5 @@ namespace CoreEngine
         static inline bool hasLastCursor_ = false;
     };
 }
+
+#endif // CORE_EDITOR

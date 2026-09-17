@@ -7,6 +7,9 @@
 #include <shellapi.h>
 #include <iostream>
 
+#pragma comment(lib, "shell32.lib")
+#pragma comment(lib, "user32.lib")
+
 namespace CoreEngine
 {
     // ビルド構成に応じたコンフィグファイルパス

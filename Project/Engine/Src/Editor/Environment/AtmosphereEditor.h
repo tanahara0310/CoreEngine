@@ -51,10 +51,6 @@ namespace CoreEngine {
         /// @brief 月設定を適用する（月ライトが無ければ有効化時に生成し、方向・色・強度へ反映）
         void ApplyMoonSettings(const AtmosphereEditorMoonSettings& settings);
 
-        /// @brief 高度角・方位角から太陽光の進行方向ベクトルを計算する
-        /// @return 正規化済みのライト方向（太陽から地表へ向かう方向）
-        static Vector3 ComputeSunLightDirection(float elevationDeg, float azimuthDeg);
-
     private:
         /// @brief 大気散乱の編集パネル内容を描画する（Inspector 内に埋め込み）
         void DrawContent();

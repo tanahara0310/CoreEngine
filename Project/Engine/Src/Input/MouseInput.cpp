@@ -5,6 +5,7 @@
 
 #pragma comment(lib, "dinput8.lib")
 #pragma comment(lib, "dxguid.lib")
+#pragma comment(lib, "user32.lib")
 
 
 namespace CoreEngine

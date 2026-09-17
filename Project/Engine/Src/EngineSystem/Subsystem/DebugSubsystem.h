@@ -18,7 +18,7 @@
 #include "Editor/ImGui/RenderPassDebugPanel.h"
 #include "Editor/ImGui/RenderGraphEditorPanel.h"
 #include "Editor/ImGui/RayTracingDebugPanel.h"
-#include "Editor/Window/GameOutputWindow.h"
+#include "Graphics/Render/GameOutputWindow.h"
 #include "Editor/Environment/AtmosphereEditor.h"
 #include "Editor/Environment/VolumetricCloudEditor.h"
 #include "Editor/Environment/FogEditor.h"

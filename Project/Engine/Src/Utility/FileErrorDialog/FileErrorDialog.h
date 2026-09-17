@@ -3,6 +3,8 @@
 #include <format>
 #include <Windows.h>
 
+#pragma comment(lib, "user32.lib")
+
 /// @file
 /// @brief ファイル読み込みエラーをメッセージボックスで表示するユーティリティ
 

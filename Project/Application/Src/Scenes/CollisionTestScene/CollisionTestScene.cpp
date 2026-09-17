@@ -10,7 +10,7 @@
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "Graphics/Primitive/CubeMeshGenerator.h"
 #include "Graphics/Primitive/SphereMeshGenerator.h"
-#include "Editor/Environment/AtmosphereEditor.h"
+#include "Graphics/Light/Light.h"
 #include "Input/KeyboardInput.h"
 #include "Scene/SceneManager.h"
 
@@ -65,7 +65,7 @@ namespace CollisionTest
 
         // ===== 太陽ライト（他の大気シーンと同じ定石） =====
         if (Light* sun = GetDirectionalLight()) {
-            sun->direction = AtmosphereEditor::ComputeSunLightDirection(40.0f, 30.0f);
+            sun->direction = ComputeSunLightDirection(40.0f, 30.0f);
             sun->atmosphereIntensity = 20.0f;
             sun->intensity = kAtmosphereSunIlluminanceLux;
         }

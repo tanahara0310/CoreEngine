@@ -2,8 +2,8 @@
 #include "Editor/ImGui/Gizmo.h"
 #ifdef CORE_EDITOR
 #include "Utility/Debug/ConsoleUI.h"
-#include "Editor/ImGui/ScreenCapture.h"
-#include "Editor/ImGui/PixCapture.h"
+#include "Graphics/RHI/Debug/PixCapture.h"
+#include "WinApp/ScreenCapture.h"
 #include "Editor/ImGui/ProjectSettingsWindow.h"
 #endif
 #include "Editor/Panel/EditorPanelRegistry.h"
