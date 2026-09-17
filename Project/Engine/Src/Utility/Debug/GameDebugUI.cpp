@@ -10,12 +10,14 @@
 #include "Editor/ImGui/Widgets/EditorBars.h"
 #include "Editor/Panel/EditorPanelRegistry.h"
 #include "Editor/Scene/ComponentEditing.h"
+#include "Editor/Scene/PlayModeController.h"
 #include "Editor/Scene/SceneDebugEditor.h"
 #include "EngineSystem/EngineSystem.h"
 #include "EngineSystem/EngineConfig.h"
 #include "EngineSystem/PlaybackState.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
 #include "Scene/SceneManager.h"
+#include "Script/ScriptHost.h"
 #include "Script/ScriptSubsystem.h"
 #include "Utility/FrameRate/FrameRateController.h"
 #include "Utility/FrameRate/Time.h"
@@ -120,7 +122,11 @@ namespace CoreEngine
             sceneDebugEditor_->SaveScene();
         }
 
-        if (sceneManager_ && ImGui::BeginMenu("シーンを開く")) {
+        // 再生中はシーンを開かせない
+        const bool editing = PlaybackStateManager::GetInstance().IsEditing();
+        constexpr const char* kStopFirst = "再生中は開けません。停止してから開いてください";
+
+        if (sceneManager_ && ImGui::BeginMenu("シーンを開く", editing)) {
             const std::string current = sceneManager_->GetCurrentSceneName();
             for (const std::string& name : sceneManager_->GetAllSceneNames()) {
                 if (ImGui::MenuItem(name.c_str(), nullptr, name == current)) {
@@ -129,11 +135,17 @@ namespace CoreEngine
             }
             ImGui::EndMenu();
         }
+        if (sceneManager_ && !editing && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::SetTooltip("%s", kStopFirst);
+        }
 
         const std::string currentScene = sceneManager_ ? sceneManager_->GetCurrentSceneName() : std::string{};
         const bool canReload = sceneManager_ && sceneManager_->HasScene(currentScene);
-        if (ImGui::MenuItem("シーンを再読み込み", nullptr, false, canReload)) {
+        if (ImGui::MenuItem("シーンを再読み込み", nullptr, false, canReload && editing)) {
             sceneManager_->ChangeScene(currentScene);
+        }
+        if (!editing && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::SetTooltip("%s", kStopFirst);
         }
 
         ImGui::Separator();
@@ -316,10 +328,16 @@ namespace CoreEngine
 
         const std::string scene = sceneManager_ ? sceneManager_->GetCurrentSceneName() : std::string{};
         const char* const build = BuildConfigName();
+        const bool inPlayMode = PlaybackStateManager::GetInstance().IsInPlayMode();
+        constexpr const char* kPlayMode = "Play Mode";
+        const float spacing = ImGui::GetStyle().ItemSpacing.x;
 
         float width = UI::Bar::ChipWidth(build);
         if (!scene.empty()) {
-            width += UI::Bar::ChipWidth(scene.c_str()) + ImGui::GetStyle().ItemSpacing.x;
+            width += UI::Bar::ChipWidth(scene.c_str()) + spacing;
+        }
+        if (inPlayMode) {
+            width += UI::Bar::ChipWidth(kPlayMode) + spacing;
         }
 
         const float x = ImGui::GetWindowWidth() - width - 10.0f;
@@ -327,6 +345,9 @@ namespace CoreEngine
             ImGui::SetCursorPosX(x);
         }
 
+        if (inPlayMode) {
+            UI::Bar::Chip(kPlayMode, Theme::kWarm, Theme::WithAlpha(Theme::kWarm, 0.6f));
+        }
         if (!scene.empty()) {
             UI::Bar::Chip(scene.c_str(), Theme::kTextDim, Theme::kOutline);
         }
@@ -451,16 +472,20 @@ namespace CoreEngine
             return;
         }
 
+        // 再生（停止）・一時停止・コマ送り
         auto& playback = PlaybackStateManager::GetInstance();
         if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_P, ImGuiInputFlags_RouteGlobal)) {
-            if (playback.IsPlaying()) {
+            if (playback.IsInPlayMode()) {
                 playback.Stop();
             } else {
                 playback.Play();
             }
         }
         if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_P, ImGuiInputFlags_RouteGlobal)) {
-            playback.Stop();
+            playback.TogglePause();
+        }
+        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Alt | ImGuiKey_P, ImGuiInputFlags_RouteGlobal)) {
+            playback.RequestStep();
         }
         if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_L, ImGuiInputFlags_RouteGlobal)) {
             if (dockingUI_) {
@@ -494,8 +519,20 @@ namespace CoreEngine
         if (auto* script = engine_ ? engine_->GetSubsystem<ScriptSubsystem>() : nullptr) {
             status.scriptOk = script->GetStatus().ok;
             status.scriptTypeCount = script->GetStatus().typeCount;
+            if (const ScriptHost* const host = script->GetHost()) {
+                status.scriptUpdateMs = host->GetFrameStats().updateMs;
+                status.scriptComponents = host->GetFrameStats().liveComponents;
+            }
         }
         status.undoCount = Editor::EditorCommandStack::Get().GetUndoCount();
+
+        const auto& playback = PlaybackStateManager::GetInstance();
+        status.playback = playback.GetState();
+        if (playModeController_) {
+            status.snapshotObjects = playModeController_->GetSnapshotObjectCount();
+            status.snapshotSeconds = playModeController_->GetCaptureSeconds();
+            status.playTime = playModeController_->GetPlayTime();
+        }
 
         // スクリプトのコンパイルが失敗に変わったら、エラーの行が見えるよう Console を前に出す
         if (lastScriptOk_ && !status.scriptOk) {

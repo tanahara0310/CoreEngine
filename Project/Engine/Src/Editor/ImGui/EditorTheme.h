@@ -43,6 +43,7 @@ namespace CoreEngine::Editor::Theme
     inline const ImVec4 kWarn = FromSrgb(240, 180, 41);
     inline const ImVec4 kError = FromSrgb(224, 87, 76);
     inline const ImVec4 kScript = FromSrgb(169, 120, 224); ///< スクリプト由来であることの印
+    inline const ImVec4 kOnWarm = FromSrgb(32, 21, 3);     ///< 橙の面に載せる文字
 
     // ===== 軸（X 赤・Y 緑・Z 青） =====
     inline const ImVec4 kAxisX = FromSrgb(224, 87, 76);

@@ -64,11 +64,19 @@ namespace CoreEngine
         bool CanRedo() const { return undoRedoHistory_.CanRedo(); }
 
         /// @brief シーンとカメラの構図を保存する
-        /// @return 保存したら true（シーン名が無ければ false）
+        /// @return 保存したら true（シーン名が無い・再生中なら false）
+        /// @note 再生中は保存せず、ステータスバーに理由を出す。
         bool SaveScene();
 
         /// @brief 最後の保存から編集したか
         bool IsSceneDirty() const;
+
+        /// @brief 操作をしていなくても、保存するまで未保存の変更があることにする
+        /// @note 未保存の変更があったシーンを、再生の前の控えから組み直したときに使う。
+        void MarkSceneDirty() { dirtyWithoutEdits_ = true; }
+
+        /// @brief シーンのカメラ一式（無ければ nullptr）
+        CameraManager* GetCameraManager() const { return cameraManager_; }
 
         /// @brief 開いているシーンの名前（無ければ空）
         std::string GetSceneName() const;
@@ -89,6 +97,10 @@ namespace CoreEngine
 
         /// @brief パーティクルのオブジェクトを Game ビューの中央の地面に作って選ぶ（Undo に積む）
         void CreateParticleObject(ObjectEditing::ParticleKind kind);
+
+        /// @brief プレハブから作ったオブジェクトの今の構成と値を、プレハブへ書き戻す（Undo に積む）
+        /// @return 書き戻したら true
+        bool ApplyToPrefab(GameObject& object);
 
         /// @brief 選択中のオブジェクトを複製・削除できるか
         /// @param reason できないときの理由を書く先（要らなければ nullptr）
@@ -147,6 +159,10 @@ namespace CoreEngine
         /// @brief Hierarchy の行の右クリックメニュー（プレハブとして保存・プレハブへ適用・つながりを外す）
         void DrawObjectContextMenu(GameObject& object);
 
+        /// @brief 再生中なら保存を断り、ステータスバーに理由を出す
+        /// @return 再生中で断ったら true
+        bool RefuseSaveWhilePlaying() const;
+
         UndoRedoHistory undoRedoHistory_;
         ObjectSelector objectSelector_;
 
@@ -157,6 +173,9 @@ namespace CoreEngine
 
         // 最後に保存したときの EditorCommandStack の通し番号
         uint64_t savedRevision_ = 0;
+
+        // 操作をしていなくても未保存として扱うか（保存すると外れる）
+        bool dirtyWithoutEdits_ = false;
 
         // 非所有参照
         EngineSystem* engine_ = nullptr;

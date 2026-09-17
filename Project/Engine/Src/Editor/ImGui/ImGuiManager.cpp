@@ -11,11 +11,63 @@
 #include "WinApp/WinApp.h"
 #include <ImGuizmo.h>
 #include <filesystem>
+#include <format>
+#include <string>
 
 namespace CoreEngine
 {
 
     namespace fs = std::filesystem;
+
+#ifdef USE_IMGUI
+    namespace
+    {
+        /// @brief 暗い下地の上に小さな文字を描く
+        /// @param min 下地の左上
+        void DrawBadge(ImDrawList* drawList, const ImVec2& min, const std::string& text)
+        {
+            const ImVec2 textSize = ImGui::CalcTextSize(text.c_str());
+            const ImVec2 max(min.x + textSize.x + 12.0f, min.y + textSize.y + 4.0f);
+            drawList->AddRectFilled(min, max, ImGui::GetColorU32(Editor::Theme::WithAlpha(Editor::Theme::kDeepest, 0.8f)), 3.0f);
+            drawList->AddText(ImVec2(min.x + 6.0f, min.y + 2.0f), ImGui::GetColorU32(Editor::Theme::kText), text.c_str());
+        }
+
+        /// @brief 再生モードの間、Game ビューの外周の橙枠と上辺の札・経過時間・スクリプトの実行時間を描く
+        /// @param min 映像の左上
+        /// @param max 映像の右下
+        void DrawPlayModeOverlay(const ImVec2& min, const ImVec2& max, const EditorStatus& status)
+        {
+            if (status.playback == PlaybackState::Editing) {
+                return;
+            }
+
+            namespace Theme = Editor::Theme;
+            ImDrawList* const drawList = ImGui::GetWindowDrawList();
+            const ImU32 warm = ImGui::GetColorU32(Theme::kWarm);
+            drawList->AddRect(min, max, warm, 0.0f, 0, 2.0f);
+
+            // 上辺の中央の札
+            const char* const label = (status.playback == PlaybackState::Paused) ? "PAUSED" : "PLAYING";
+            const ImVec2 labelSize = ImGui::CalcTextSize(label);
+            const float centerX = (min.x + max.x) * 0.5f;
+            const ImVec2 tabMin(centerX - labelSize.x * 0.5f - 12.0f, min.y);
+            const ImVec2 tabMax(centerX + labelSize.x * 0.5f + 12.0f, min.y + labelSize.y + 2.0f);
+            drawList->AddRectFilled(tabMin, tabMax, warm, 4.0f, ImDrawFlags_RoundCornersBottom);
+            drawList->AddText(ImVec2(tabMin.x + 12.0f, tabMin.y + 1.0f), ImGui::GetColorU32(Theme::kOnWarm), label);
+
+            // 右上：再生を始めてから進んだゲームの時間
+            const int tenths = static_cast<int>(status.playTime * 10.0f);
+            const std::string elapsed = std::format("経過 {:02}:{:02}.{}", tenths / 600, (tenths / 10) % 60, tenths % 10);
+            const float elapsedWidth = ImGui::CalcTextSize(elapsed.c_str()).x + 12.0f;
+            DrawBadge(drawList, ImVec2(max.x - elapsedWidth - 8.0f, min.y + 8.0f), elapsed);
+
+            // 左下：スクリプトの実行
+            const std::string scripts = std::format("Script {:.2f}ms / {} 実体", status.scriptUpdateMs, status.scriptComponents);
+            const float badgeHeight = ImGui::GetTextLineHeight() + 4.0f;
+            DrawBadge(drawList, ImVec2(min.x + 8.0f, max.y - badgeHeight - 8.0f), scripts);
+        }
+    }
+#endif
 
     void ImGuiManager::Initialize(HWND hwnd, GraphicsCore* dxCommon)
     {
@@ -238,6 +290,9 @@ namespace CoreEngine
         float offsetY = (contentRegionSize.y - drawH) * 0.5f;
         ImGui::SetCursorScreenPos(ImVec2(contentPos.x + offsetX, contentPos.y + offsetY));
         ImGui::Image((ImTextureID)textureHandle.ptr, ImVec2(drawW, drawH));
+
+        // 再生モードの間は、編集が停止で戻ることを映像の外周で知らせる
+        DrawPlayModeOverlay(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), dockingUI_->GetStatus());
 
         // Gameビュー上のギズモ・オブジェクト選択・モデルドロップ。
         // エディタ機能の有効条件は USE_IMGUI（Development ビルドにも必要）。_DEBUG で囲まないこと

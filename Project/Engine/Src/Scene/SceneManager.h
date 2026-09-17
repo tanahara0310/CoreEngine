@@ -53,6 +53,16 @@ public:
     /// @param duration トランジション時間（秒）
     void ChangeScene(std::string name, SceneTransition::TransitionType transitionType, float duration = 1.0f);
 
+    /// @brief 今すぐシーンを組み直せるか（トランジションや読み込みの途中でない）
+    bool CanLoadSceneNow() const;
+
+    /// @brief メモリの控えからシーンを組み直す（トランジション無し・完了まで戻らない）
+    /// @param name 組み直すシーン名
+    /// @param snapshot オブジェクトの値の元（保存ファイルの代わりに読む）
+    /// @return 組み直したら true。未登録のシーン名・トランジションや読み込みの途中なら何もせず false
+    /// @note まだ始まっていないシーン切り替えの依頼は取り消す。フレームの外（先頭）から呼ぶこと。
+    bool LoadSceneFromSnapshot(const std::string& name, std::shared_ptr<const SceneSnapshot> snapshot);
+
     /// @brief 更新処理
     void Update();
 
@@ -137,12 +147,15 @@ private:
 
     /// @brief 実際のシーン切り替えを実行（内部関数・完了まで戻らない）
     /// @param name 変更先のシーン名
-    void DoChangeScene(const std::string& name);
+    /// @param snapshot 保存ファイルの代わりに読む控え（空ならファイルから読む）
+    /// @return true: 切り替えた, false: 未登録のシーン名
+    bool DoChangeScene(const std::string& name, std::shared_ptr<const SceneSnapshot> snapshot = nullptr);
 
     /// @brief シーン読み込みを開始する（旧シーンの解放を含むステップ列を組む）
     /// @param name 読み込むシーン名
+    /// @param snapshot 保存ファイルの代わりに読む控え（空ならファイルから読む）
     /// @return true: 開始した, false: 未登録のシーン名
-    bool BeginSceneLoad(const std::string& name);
+    bool BeginSceneLoad(const std::string& name, std::shared_ptr<const SceneSnapshot> snapshot = nullptr);
 
     /// @brief 読み込みステップを 1 つ進める
     void StepSceneLoad();

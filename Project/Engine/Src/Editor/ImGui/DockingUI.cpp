@@ -5,11 +5,13 @@
 #include "Editor/ImGui/Widgets/PassTimingTable.h"
 #include "Editor/Scene/SceneDebugEditor.h"
 #include "EngineSystem/PlaybackState.h"
+#include "GameObject/GameObject.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/CVar/CVarConsole.h"
 #include "Utility/CVar/CVarRegistry.h"
 #include <algorithm>
 #include <format>
+#include <utility>
 
 
 namespace CoreEngine
@@ -313,24 +315,39 @@ namespace CoreEngine
     {
 #ifdef USE_IMGUI
         auto& playback = PlaybackStateManager::GetInstance();
-        const bool playing = playback.IsPlaying();
+        const bool inPlayMode = playback.IsInPlayMode();
 
-        if (UI::Bar::TransportButton("##Play", UI::Bar::Transport::Play, playing,
-            "再生 [Ctrl+P]\nゲームの更新を進めます")) {
-            playback.Play();
+        // 再生ボタンは再生モードの出入りを切り替える
+        if (UI::Bar::TransportButton("##Play", UI::Bar::Transport::Play, inPlayMode,
+            inPlayMode
+                ? "停止 [Ctrl+P]\n再生をやめ、シーンを再生前の状態へ戻します"
+                : "再生 [Ctrl+P]\nシーンを控えてからゲームを動かします。\n"
+                  "停止するとシーンは再生前の状態へ戻ります")) {
+            if (inPlayMode) {
+                playback.Stop();
+            } else {
+                playback.Play();
+            }
         }
 
         ImGui::SameLine();
-        if (UI::Bar::TransportButton("##Pause", UI::Bar::Transport::Pause, !playing,
+        if (UI::Bar::TransportButton("##Pause", UI::Bar::Transport::Pause, playback.IsPauseToggled(),
             "一時停止 [Ctrl+Shift+P]\nゲームの更新だけを止めます。\n"
-            "止めている間もカメラ・ギズモ・各パネルは動きます")) {
-            playback.Stop();
+            "止めている間もカメラ・ギズモ・各パネルは動きます。\n"
+            "再生の前に入れておくと、一時停止した状態で始まります")) {
+            playback.TogglePause();
         }
 
         ImGui::SameLine();
         if (UI::Bar::TransportButton("##Step", UI::Bar::Transport::Step, false,
-            "コマ送り\n止めたまま 1 フレームだけ進めます", !playing)) {
+            "コマ送り [Ctrl+Alt+P]\n一時停止したまま 1 フレームだけ進めます", inPlayMode)) {
             playback.RequestStep();
+        }
+
+        // 再生中の編集は停止で消えることを知らせる
+        if (inPlayMode) {
+            ImGui::SameLine(0.0f, 8.0f);
+            UI::Bar::Chip("再生中の編集は停止で元に戻ります", Theme::kWarm, Theme::WithAlpha(Theme::kWarm, 0.6f));
         }
 #endif
 }
@@ -380,10 +397,29 @@ namespace CoreEngine
             ? std::format("Script ✓ {} 型", status_.scriptTypeCount)
             : std::string("Script ✕ コンパイル失敗");
         const char* const saveText = status_.sceneSaved ? "保存済み" : "未保存の変更";
+        const bool inPlayMode = status_.playback != PlaybackState::Editing;
+        constexpr const char* kApplyLabel = "◈ 変更をプレハブへ適用";
+        const float spacing = ImGui::GetStyle().ItemSpacing.x;
 
-        const float width = UI::Bar::ChipWidth(scriptText.c_str())
-            + ImGui::GetStyle().ItemSpacing.x + UI::Bar::ChipWidth(saveText);
+        float width = UI::Bar::ChipWidth(scriptText.c_str()) + spacing + UI::Bar::ChipWidth(saveText);
+        if (inPlayMode) {
+            width += UI::Bar::ButtonWidth(kApplyLabel) + spacing;
+        }
         AlignRight(width);
+
+        // 再生中に詰めた値を、停止で消える前にプレハブへ持ち帰る
+        if (inPlayMode) {
+            GameObject* const selected = sceneDebugEditor_ ? sceneDebugEditor_->GetSelectedObject() : nullptr;
+            const bool canApply = selected && selected->IsPrefabInstance();
+            if (UI::Bar::Button(kApplyLabel, false,
+                    canApply
+                        ? "選んでいるオブジェクトの今の構成と値をプレハブへ書き戻します（停止しても残ります）"
+                        : "プレハブから作ったオブジェクトを選ぶと、今の値をプレハブへ書き戻せます",
+                    canApply)) {
+                sceneDebugEditor_->ApplyToPrefab(*selected);
+            }
+            ImGui::SameLine();
+        }
 
         UI::Bar::Chip(scriptText.c_str(),
             status_.scriptOk ? Theme::kOk : Theme::kError,
@@ -437,6 +473,19 @@ namespace CoreEngine
                 };
 
             const auto& total = timingData_[static_cast<uint32_t>(GpuTimestampSlot::Total)];
+            const bool inPlayMode = status_.playback != PlaybackState::Editing;
+
+            // ── 左側：知らせ・再生モード・フレームの時間 ──
+            if (!statusMessage_.empty() && ImGui::GetTime() < statusMessageEndTime_) {
+                item(statusMessageColor_, statusMessage_);
+                ImGui::SameLine(0.0f, 14.0f);
+            }
+            if (inPlayMode) {
+                item(Theme::kWarm, status_.playback == PlaybackState::Paused
+                    ? "PAUSE · 停止するとシーンは再生前の状態へ戻ります"
+                    : "PLAY · 停止するとシーンは再生前の状態へ戻ります");
+                ImGui::SameLine(0.0f, 14.0f);
+            }
 
             item(fpsColor, std::format("{:.1f} FPS", status_.fps));
             ImGui::SameLine(0.0f, 14.0f);
@@ -444,12 +493,19 @@ namespace CoreEngine
             ImGui::SameLine(0.0f, 14.0f);
             item(Theme::kTextMute, std::format("GPU {:.1f}ms", total.gpuMs));
 
-            // ── 右側：スクリプト・Undo・シーンの保存状態 ──
+            // ── 右側：スクリプト・Undo・シーンの保存状態（再生中は再生前の控え） ──
             const std::string scriptText = status_.scriptOk ? "Script OK" : "Script 失敗";
             const std::string undoText = std::format("Undo {}", status_.undoCount);
-            const std::string sceneText = status_.sceneName.empty()
-                ? std::string("シーンなし")
-                : status_.sceneName + (status_.sceneSaved ? " · 保存済み" : " · 未保存の変更");
+            std::string sceneText;
+            if (inPlayMode) {
+                sceneText = std::format("スナップショット {} obj / {:.2f}s",
+                    status_.snapshotObjects, status_.snapshotSeconds);
+            } else if (status_.sceneName.empty()) {
+                sceneText = "シーンなし";
+            } else {
+                sceneText = status_.sceneName + (status_.sceneSaved ? " · 保存済み" : " · 未保存の変更");
+            }
+            const ImVec4 sceneColor = (inPlayMode || status_.sceneSaved) ? Theme::kTextMute : Theme::kWarm;
 
             const float width = ImGui::CalcTextSize(scriptText.c_str()).x
                 + ImGui::CalcTextSize(undoText.c_str()).x
@@ -460,7 +516,7 @@ namespace CoreEngine
             ImGui::SameLine(0.0f, 14.0f);
             item(Theme::kTextMute, undoText);
             ImGui::SameLine(0.0f, 14.0f);
-            item(status_.sceneSaved ? Theme::kTextMute : Theme::kWarm, sceneText);
+            item(sceneColor, sceneText);
 
             DrawTimingTooltip();
         }
@@ -469,6 +525,16 @@ namespace CoreEngine
         ImGui::PopStyleVar(3);
 #endif
 }
+
+    void DockingUI::ShowStatusMessage([[maybe_unused]] std::string message, [[maybe_unused]] const ImVec4& color,
+        [[maybe_unused]] double seconds)
+    {
+#ifdef USE_IMGUI
+        statusMessage_ = std::move(message);
+        statusMessageColor_ = color;
+        statusMessageEndTime_ = ImGui::GetTime() + seconds;
+#endif
+    }
 
     void DockingUI::DrawTimingTooltip()
     {

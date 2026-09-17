@@ -265,6 +265,39 @@ namespace CoreEngine
             }
         }
 
+        /// @brief オブジェクト 1 体の保存 JSON からモデルを指す参照を探し、そのパスを重ならないように足す
+        void CollectObjectModelRefs(const json& data, std::vector<std::string>& modelPaths)
+        {
+            // プレハブから作るものはプレハブの値を重ねてから探す
+            if (data.contains("prefab")) {
+                const json expanded = PrefabSystem::ExpandInstanceJson(
+                    data, PrefabSystem::LoadComponents(PrefabSystem::ReadPrefabRef(data)));
+                if (expanded.contains("components")) {
+                    CollectModelRefs(expanded.at("components"), modelPaths);
+                }
+            } else if (data.contains("components")) {
+                CollectModelRefs(data.at("components"), modelPaths);
+            }
+        }
+
+        /// @brief 保存するオブジェクトを、保存 JSON と一緒に並びどおりに訪問する
+        /// @param visitor (保存キー, 保存 JSON) を受け取る
+        /// @note 保存しないもの・キーの無いもの・削除の印が付いたもの・書く値の無いものは来ない。
+        void ForEachSavedObject(const GameObjectManager& mgr,
+                                const std::function<void(const std::string& key, json data)>& visitor)
+        {
+            for (const auto& obj : mgr.GetAllObjects()) {
+                if (!obj || obj->IsMarkedForDestroy() || !obj->IsSerializeEnabled()) continue;
+                const std::string& key = obj->GetSerializeKey();
+                if (key.empty()) continue;
+
+                json data = BuildObjectJson(*obj);
+                if (!data.empty()) {
+                    visitor(key, std::move(data));
+                }
+            }
+        }
+
         /// @brief キーを「, 」でつなぐ
         std::string JoinKeys(const std::vector<std::string>& keys)
         {
@@ -396,19 +429,30 @@ namespace CoreEngine
         }
 
         ForEachManifestObject(sceneName, [&modelPaths](const std::string&, const json& data) {
-            // コンポーネントの値が指すモデル（プレハブから作るものはプレハブの値を重ねてから探す）
-            if (data.contains("prefab")) {
-                const json expanded = PrefabSystem::ExpandInstanceJson(
-                    data, PrefabSystem::LoadComponents(PrefabSystem::ReadPrefabRef(data)));
-                if (expanded.contains("components")) {
-                    CollectModelRefs(expanded.at("components"), modelPaths);
-                }
-            } else if (data.contains("components")) {
-                CollectModelRefs(data.at("components"), modelPaths);
-            }
+            CollectObjectModelRefs(data, modelPaths);
         });
 
         return modelPaths;
+    }
+
+    std::vector<std::string> SceneSaveSystem::CollectModelPaths(const SceneSnapshot& snapshot)
+    {
+        std::vector<std::string> modelPaths;
+        for (const SceneSnapshot::Object& object : snapshot.objects) {
+            CollectObjectModelRefs(object.data, modelPaths);
+        }
+        return modelPaths;
+    }
+
+    // ===== 控え =====
+
+    std::shared_ptr<const SceneSnapshot> SceneSaveSystem::CaptureSnapshot(const GameObjectManager& mgr)
+    {
+        auto snapshot = std::make_shared<SceneSnapshot>();
+        ForEachSavedObject(mgr, [&snapshot](const std::string& key, json data) {
+            snapshot->objects.push_back(SceneSnapshot::Object{ key, std::move(data) });
+        });
+        return snapshot;
     }
 
     // ===== Load =====
@@ -432,15 +476,20 @@ namespace CoreEngine
     {
         if (loadIndex_ < pendingObjects_.size()) {
             const PendingObject& pending = pendingObjects_[loadIndex_++];
-            json data = JsonManager::GetInstance().LoadJson(pending.path);
-            if (!data.is_null() && pending.object) {
+            json loaded;
+            const json* data = pending.data;
+            if (!data) {
+                loaded = JsonManager::GetInstance().LoadJson(pending.path);
+                data = &loaded;
+            }
+            if (!data->is_null() && pending.object) {
                 if (loadManager_) {
-                    RestoreObjectId(*loadManager_, *pending.object, data);
+                    RestoreObjectId(*loadManager_, *pending.object, *data);
                 }
-                if (data.contains("prefab")) {
-                    RestorePrefabInstance(sceneName_, *pending.object, data);
+                if (data->contains("prefab")) {
+                    RestorePrefabInstance(sceneName_, *pending.object, *data);
                 } else {
-                    pending.object->Deserialize(data);
+                    pending.object->Deserialize(*data);
                 }
             }
             if (loadIndex_ < pendingObjects_.size()) {
@@ -460,6 +509,7 @@ namespace CoreEngine
         }
         pendingObjects_.clear();
         loadIndex_ = 0;
+        restoreSnapshot_.reset();
         return true;
     }
 
@@ -495,9 +545,7 @@ namespace CoreEngine
         loadIndex_ = 0;
         loadManager_ = mgr;
 
-        if (sceneName_.empty() || !mgr) return;
-
-        ReportOrphanObjectFiles(sceneName_);
+        if (!mgr || (sceneName_.empty() && !restoreSnapshot_)) return;
 
         auto& jm = JsonManager::GetInstance();
 
@@ -510,7 +558,7 @@ namespace CoreEngine
             return nullptr;
         };
 
-        ForEachManifestObject(sceneName_,
+        const auto placeDataObject =
             [mgr, &findObjectBySerializeKey](const std::string& key, const json& data) {
                 // 既にシーン側が同じキーで生成済みならマニフェストからは作らない
                 if (findObjectBySerializeKey(key)) {
@@ -525,13 +573,33 @@ namespace CoreEngine
                     obj->SetName(key);
                     mgr->AddObject(std::move(obj));
                 }
-            });
+            };
+
+        // 控えから読むときは、キーから控えの値を引けるようにする
+        std::unordered_map<std::string, const json*> snapshotData;
+        if (restoreSnapshot_) {
+            for (const SceneSnapshot::Object& entry : restoreSnapshot_->objects) {
+                snapshotData.emplace(entry.key, &entry.data);
+                placeDataObject(entry.key, entry.data);
+            }
+        } else {
+            ReportOrphanObjectFiles(sceneName_);
+            ForEachManifestObject(sceneName_, placeDataObject);
+        }
 
         // 復元対象を確定させる（実際のデシリアライズは StepLoad が 1 体ずつ行う）
         for (const auto& obj : mgr->GetAllObjects()) {
             if (!obj || !obj->IsSerializeEnabled()) continue;
             const std::string& key = obj->GetSerializeKey();
             if (key.empty()) continue;
+
+            if (restoreSnapshot_) {
+                const auto found = snapshotData.find(key);
+                if (found == snapshotData.end()) continue;
+
+                pendingObjects_.push_back(PendingObject{ obj.get(), std::string{}, found->second });
+                continue;
+            }
 
             std::string objPath = GetObjectPath(key);
             if (!jm.FileExists(objPath)) continue;
@@ -558,18 +626,11 @@ namespace CoreEngine
         std::unordered_set<std::string> savedKeys;
 
         // 各オブジェクトを個別ファイルに保存
-        for (const auto& obj : mgr->GetAllObjects()) {
-            if (!obj || !obj->IsSerializeEnabled()) continue;
-            const std::string& key = obj->GetSerializeKey();
-            if (key.empty()) continue;
-
-            const json data = BuildObjectJson(*obj);
-            if (!data.empty()) {
-                jm.SaveJson(GetObjectPath(key), data);
-                manifest["objects"].push_back(key);
-                savedKeys.insert(key);
-            }
-        }
+        ForEachSavedObject(*mgr, [this, &jm, &manifest, &savedKeys](const std::string& key, json data) {
+            jm.SaveJson(GetObjectPath(key), data);
+            manifest["objects"].push_back(key);
+            savedKeys.insert(key);
+        });
 
         // マニフェストを保存し、載らなかったオブジェクトの JSON を消す
         if (jm.SaveJson(GetManifestPath(), manifest)) {

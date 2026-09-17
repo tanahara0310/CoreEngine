@@ -40,8 +40,9 @@ namespace CoreEngine
     {
         engine_ = engine;
 
-        // シーン保存システム
+        // シーン保存システム（控えから組み直すときは、その控えから読む）
         sceneSaveSystem_ = std::make_unique<SceneSaveSystem>();
+        sceneSaveSystem_->SetRestoreSnapshot(restoreSnapshot_);
 
         // 既定 Feature の登録（顔ぶれは CreateDefaultSceneFeatures() 側）
         RegisterDefaultFeatures();
@@ -75,8 +76,9 @@ namespace CoreEngine
             return;
         }
 
-        const std::vector<std::string> modelPaths =
-            SceneSaveSystem::CollectModelPaths(sceneSaveSystem_->GetSceneName());
+        const std::vector<std::string> modelPaths = restoreSnapshot_
+            ? SceneSaveSystem::CollectModelPaths(*restoreSnapshot_)
+            : SceneSaveSystem::CollectModelPaths(sceneSaveSystem_->GetSceneName());
         if (modelPaths.empty()) {
             return;
         }
@@ -115,12 +117,12 @@ namespace CoreEngine
 
     void BaseScene::Update(SceneUpdateMode mode)
     {
-        // 進行を止める理由は 2 つあり、扱いは同じ。メニューバーの再生 / 停止ボタンと、
+        // 進行を止める理由は 2 つあり、扱いは同じ。再生していないとき（編集中・一時停止中）と、
         // シーン切り替えのトランジション（mode == Suspended）。どちらもゲームロジックだけを
         // 飛ばす。Feature の取捨は DispatchUpdate() が RunsWhileStopped() を見て行うので、
         // エディタカメラ・ギズモ・ライト・大気は止めている間も回り続ける
         const bool stopped = (mode == SceneUpdateMode::Suspended)
-            || PlaybackStateManager::GetInstance().IsStopped();
+            || !PlaybackStateManager::GetInstance().IsAdvancing();
         const bool advance = !stopped;
 
         // フレーム前処理（先頭でカメラ姿勢を確定 → ライト/影・グリッド・デバッグエディタ）

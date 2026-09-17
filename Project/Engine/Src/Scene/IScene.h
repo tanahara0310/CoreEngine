@@ -2,6 +2,7 @@
 #include <d3d12.h>
 #include <string>
 #include <functional>
+#include <memory>
 #include <vector>
 
 #include "Graphics/Water/WaterSurfaceData.h"
@@ -16,6 +17,7 @@ namespace CoreEngine {
     class Camera;
     class GameObjectManager;
     class RenderPipeline;
+    struct SceneSnapshot;
 }
 
 namespace CoreEngine
@@ -92,6 +94,10 @@ public:
     virtual void SetSceneManager(CoreEngine::SceneManager* sceneManager) {
         sceneManager_ = sceneManager;
     }
+
+    /// @brief オブジェクトの値を、保存ファイルではなくメモリの控えから戻すようにする
+    /// @note 読み込みを始める前に SceneManager が呼ぶ。
+    virtual void SetRestoreSnapshot(std::shared_ptr<const SceneSnapshot> snapshot) { (void)snapshot; }
 
 protected:
     SceneManager* sceneManager_ = nullptr;

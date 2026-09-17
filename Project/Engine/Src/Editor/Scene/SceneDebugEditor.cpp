@@ -4,6 +4,7 @@
 
 #include "SceneDebugEditor.h"
 #include "EngineSystem/EngineSystem.h"
+#include "EngineSystem/PlaybackState.h"
 #include "Input/InputManager.h"
 #include "Camera/CameraManager.h"
 #include "Camera/CameraSceneStateIO.h"
@@ -78,6 +79,9 @@ namespace CoreEngine
         cameraManager_ = camMgr;
         saveSystem_ = saveSystem;
 
+        // 読み込んだ直後のシーンは保存済みとして扱う
+        savedRevision_ = Editor::EditorCommandStack::Get().GetSceneRevision();
+
         undoRedoHistory_.SetGameObjectManager(mgr);
 
         // カメラエディター側で追従対象を参照できるよう、オブジェクトマネージャーを注入する。
@@ -95,7 +99,9 @@ namespace CoreEngine
 
         // 個別オブジェクト保存コールバック
         mgr->SetOnSaveRequestCallback([this](GameObject* obj) {
-            saveSystem_->SaveObject(obj);
+            if (!RefuseSaveWhilePlaying()) {
+                saveSystem_->SaveObject(obj);
+            }
             });
 
         // ギズモ変更時コールバックを設定
@@ -364,6 +370,9 @@ namespace CoreEngine
         if (!saveSystem_ || saveSystem_->GetSceneName().empty()) {
             return false;
         }
+        if (RefuseSaveWhilePlaying()) {
+            return false;
+        }
 
         saveSystem_->SaveScene(gameObjectManager_);
 
@@ -374,12 +383,27 @@ namespace CoreEngine
         }
 
         savedRevision_ = Editor::EditorCommandStack::Get().GetSceneRevision();
+        dirtyWithoutEdits_ = false;
         return true;
     }
 
     bool SceneDebugEditor::IsSceneDirty() const
     {
-        return Editor::EditorCommandStack::Get().GetSceneRevision() != savedRevision_;
+        return dirtyWithoutEdits_ || Editor::EditorCommandStack::Get().GetSceneRevision() != savedRevision_;
+    }
+
+    bool SceneDebugEditor::RefuseSaveWhilePlaying() const
+    {
+        if (!PlaybackStateManager::GetInstance().IsInPlayMode()) {
+            return false;
+        }
+
+        constexpr const char* kMessage = "再生中は保存できません。停止してから保存してください";
+        if (DockingUI* const dockingUI = engine_ ? engine_->GetDebugSubsystem()->GetDockingUI() : nullptr) {
+            dockingUI->ShowStatusMessage(kMessage, Editor::Theme::kWarn);
+        }
+        Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System, "SceneDebugEditor: {}", kMessage);
+        return true;
     }
 
     std::string SceneDebugEditor::GetSceneName() const
@@ -581,6 +605,18 @@ namespace CoreEngine
         }
     }
 
+    bool SceneDebugEditor::ApplyToPrefab(GameObject& object)
+    {
+        if (!gameObjectManager_ || !object.IsPrefabInstance()) {
+            return false;
+        }
+        if (!PrefabEditing::ApplyObject(*gameObjectManager_, object)) {
+            return false;
+        }
+        ShowSaveNotification("プレハブへ適用しました: " + object.GetPrefab().GetPath());
+        return true;
+    }
+
     bool SceneDebugEditor::CanEditSelectedObject(std::string* reason) const
     {
         const GameObject* const selected = objectSelector_.GetSelectedObject();
@@ -765,9 +801,7 @@ namespace CoreEngine
             ImGui::TextDisabled("%s", object.GetPrefab().GetPath().c_str());
             ImGui::Separator();
             if (ImGui::MenuItem("プレハブへ適用")) {
-                if (PrefabEditing::ApplyObject(*gameObjectManager_, object)) {
-                    ShowSaveNotification("プレハブへ適用しました: " + object.GetPrefab().GetPath());
-                }
+                ApplyToPrefab(object);
             }
             if (ImGui::MenuItem("プレハブとのつながりを外す")) {
                 PrefabEditing::Unlink(object);

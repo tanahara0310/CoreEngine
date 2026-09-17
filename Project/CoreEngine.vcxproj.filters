@@ -364,6 +364,9 @@
     <ClCompile Include="Engine\Src\EngineSystem\EngineSystem.cpp">
       <Filter>Engine\Src\EngineSystem</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\EngineSystem\PlaybackState.cpp">
+      <Filter>Engine\Src\EngineSystem</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\EngineSystem\Factory\CoreComponentFactory.cpp">
       <Filter>Engine\Src\EngineSystem\Factory</Filter>
     </ClCompile>
@@ -884,6 +887,9 @@
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Scene\ObjectEditing.cpp">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Scene\PlayModeController.cpp">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Scene\PrefabEditing.cpp">
@@ -2788,6 +2794,9 @@
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Scene\ObjectEditing.h">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Scene\PlayModeController.h">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Scene\PrefabEditing.h">

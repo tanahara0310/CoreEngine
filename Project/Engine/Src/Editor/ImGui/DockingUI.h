@@ -2,6 +2,7 @@
 
 #include "Editor/ImGui/ImGuiAll.h"
 #include "Editor/Panel/EditorDockArea.h"
+#include "EngineSystem/PlaybackState.h"
 #include "Graphics/RHI/Debug/GpuTimestampProfiler.h"
 #include <imgui_internal.h>
 #include <array>
@@ -27,7 +28,14 @@ namespace CoreEngine
         std::size_t editsSinceSave = 0;     ///< 最後の保存からの編集回数
         bool scriptOk = true;               ///< 直前のスクリプトの読み込みに成功したか
         std::size_t scriptTypeCount = 0;    ///< 読み込めているスクリプトの型数
+        double scriptUpdateMs = 0.0;        ///< 直前のフレームでスクリプトの更新にかかった時間（ミリ秒）
+        std::size_t scriptComponents = 0;   ///< 生きているスクリプトのコンポーネントの数
         std::size_t undoCount = 0;          ///< 取り消せる操作の数
+
+        PlaybackState playback = PlaybackState::Editing; ///< 再生の状態
+        std::size_t snapshotObjects = 0;    ///< 再生の前に控えたオブジェクトの数
+        double snapshotSeconds = 0.0;       ///< 控えるのにかかった秒数
+        float playTime = 0.0f;              ///< 再生を始めてから進んだゲームの時間（秒）
     };
 
     class DockingUI;
@@ -99,6 +107,11 @@ namespace CoreEngine
         /// @brief 画面最下部のステータスバーを描画
         void DrawStatusBar();
 
+        /// @brief ステータスバーの左に、しばらくの間だけ知らせを出す
+        /// @param color 文字の色
+        /// @param seconds 出しておく秒数
+        void ShowStatusMessage(std::string message, const ImVec4& color, double seconds = 4.0);
+
         /// @brief GPU/CPU タイミングデータを設定（ステータスバーホバー時に表示）
         void SetTimingData(const std::array<GpuTimingResult, GpuTimestampProfiler::kSlotCount>& slots) { timingData_ = slots; }
 
@@ -151,6 +164,11 @@ namespace CoreEngine
 
         // 上下のバーに出す状態
         EditorStatus status_{};
+
+        // ステータスバーに出す知らせ（出し終える時刻は ImGui::GetTime の値）
+        std::string statusMessage_;
+        ImVec4 statusMessageColor_{};
+        double statusMessageEndTime_ = 0.0;
 
         // GPU/CPU タイミングデータ（ステータスバーホバー時に表示）
         std::array<GpuTimingResult, GpuTimestampProfiler::kSlotCount> timingData_{};
