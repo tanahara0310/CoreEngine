@@ -1,12 +1,11 @@
 #include "pch.h"
 #include "WaterTestScene.h"
 
+#include "CameraShowcaseComponent.h"
 #include "Camera/CameraManager.h"
 #include "Graphics/Light/Light.h"
 #include "Graphics/Water/Render/WaterRenderFeature.h"
 #include "Math/MathCore.h"
-#include "Scene/SceneManager.h"
-#include "Utility/FrameRate/Time.h"
 #include <memory>
 
 using namespace CoreEngine;
@@ -45,8 +44,8 @@ void WaterTestScene::OnInitialize() {
     // 海底メッシュの切れ目が正面に来る方角は候補から外してある）。
     // 既定の画角 0.45rad(≒25.8°) は風景には狭く、既定のファークリップ 1000m では
     // 水面メッシュ（4000m 四方）が水平線の手前で切れるため、カットごとにレンズも与える。
-    cameraShowcase_.Initialize(
-        engine_,
+    auto* showcase = CreateObject("CameraShowcase")->AddComponent<CameraShowcaseComponent>();
+    showcase->Configure(
         {
             // ① 礁湖から外洋へ抜ける水路。手前は浅瀬（コースティクス・砕波泡）、左右を岩と椰子が締める
             { { 55.0f, 15.0f, -180.0f }, { 0.0166f, 0.0942f, 0.0f }, 50.0f, 20000.0f },
@@ -61,25 +60,15 @@ void WaterTestScene::OnInitialize() {
             // ⑥ 外洋から島影を望む。手前は深場のうねりと白波だけの構図
             { { -30.0f, 10.0f, -230.0f }, { -0.0187f, 0.1882f, 0.0f }, 60.0f, 20000.0f },
         },
-        [this](const CameraShowcase::Shot& shot) {
+        [this](const CameraShowcaseComponent::Shot& shot) {
             SetReleaseCameraTransform(shot.translate, shot.rotate);
             SetReleaseCameraLens(shot.fovDegrees, shot.farClip);
         },
-        // デバッグ（エディタ）カメラで覗いている間は演出を止めるための判定。
-        // フェードも構図の巡回もリリースカメラの見せ方なので、視点を借りている間は動かさない。
+        // エディタのカメラで覗いている間は演出を止める
         [this] { return cameraManager_ && !cameraManager_->IsUsingSceneCamera(); });
 }
 
-void WaterTestScene::OnUpdate() {
-    cameraShowcase_.Update(CoreEngine::Time::UnscaledDeltaTime());
-}
-
 void WaterTestScene::OnFinalize() {
-    // シーン遷移中はフェードの主導権が SceneTransition にあるので触らない
-    // （暗転しているはずの画が 1 フレーム戻ってしまう）
-    auto* sceneManager = engine_ ? engine_->GetSceneManager() : nullptr;
-    cameraShowcase_.Shutdown(sceneManager && sceneManager->IsTransitioning());
-
     // WaterRenderFeature の所有者は BaseScene（この直後に features_ が破棄される）。
     // UI が Feature ポインタを持ったままにならないよう、ここで先に切る。
     waterController_.Shutdown();

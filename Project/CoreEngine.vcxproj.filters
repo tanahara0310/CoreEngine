@@ -103,7 +103,7 @@
     <ClCompile Include="Engine\Src\Script\ScriptSubsystem.cpp">
       <Filter>Engine\Src\Script</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\CameraShowcase.cpp">
+    <ClCompile Include="Application\Src\Scenes\WaterTestScene\CameraShowcaseComponent.cpp">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.cpp">
@@ -1779,7 +1779,7 @@
     <ClInclude Include="Application\Src\Scenes\CollisionTestScene\GeometrySelfTest.h">
       <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\CameraShowcase.h">
+    <ClInclude Include="Application\Src\Scenes\WaterTestScene\CameraShowcaseComponent.h">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.h">

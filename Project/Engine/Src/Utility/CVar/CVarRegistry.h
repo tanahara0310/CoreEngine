@@ -36,10 +36,22 @@ namespace CoreEngine
         /// @brief 登録順の全 CVar
         const std::vector<ICVar*>& GetAll() const noexcept { return cvars_; }
 
-
-        /// @brief 接頭辞に一致する CVar を名前昇順で取得する
-        /// @param prefix "r.Vignette" のような接頭辞（空文字なら全件）
+        /// @brief 系統に含まれる CVar を名前昇順で取得する
+        /// @param prefix "r.Vignette" のような系統名（空文字なら全件）
+        /// @details 名前が系統名と一致するものと、系統名の直後が `.` のものを返す（`r.SSAO` は `r.SSAOBlur.*` を含まない）。
+        ///          系統名が `.` で終わるときは、その後に続く名前を返す。
         std::vector<ICVar*> GetByPrefix(std::string_view prefix) const;
+
+        /// @brief 名前が指定の文字列で始まる CVar を名前昇順で取得する
+        /// @param text 名前の先頭（段の途中で切れていてもよい）
+        std::vector<ICVar*> GetByNameStart(std::string_view text) const;
+
+        /// @brief 名前が決まりに合っているかを調べる
+        /// @return 合っていなければ理由（合っていれば空）
+        /// @details 決まり：接頭辞は r.（描画）/ sys.（システム）/ d.（エディタ）のどれか。
+        ///          `<接頭辞>.<グループ>.<名前>` の 3 段以上。2 段目以降は英大文字で始まる英数字。
+        ///          有効・無効を表す語は `Enabled`（`Enable` / `Disable` は使わない）。
+        static std::string CheckName(std::string_view name);
 
         /// @brief いずれかの CVar が変更されるたびに増える通番
         /// @details 「どれか 1 つでも変わったか」を O(1) で判定するために使う。
@@ -62,8 +74,9 @@ namespace CoreEngine
         /// @brief 変更通知（ICVar::NotifyChanged から呼ばれる）
         void OnCVarChanged(ICVar* cvar);
 
-        /// @brief 登録時に蓄積した警告をログへ出力し、バッファを空にする
-        /// @details 静的初期化中は Logger が使えないため、エンジン初期化後に 1 回呼ぶ
+        /// @brief 登録時に蓄積した警告と名前の決まりの違反をログへ出力し、バッファを空にする
+        /// @details 静的初期化中は Logger が使えないため、エンジン初期化後に 1 回呼ぶ。
+        ///          名前の決まりの違反はエラーとして出し、assert で止める
         void FlushPendingWarnings();
 
     private:
@@ -75,6 +88,7 @@ namespace CoreEngine
         std::vector<ICVar*> cvars_;                             ///< 登録順
         std::unordered_map<std::string, ICVar*> lookup_;        ///< 名前 → CVar
         std::vector<std::string> pendingWarnings_;              ///< 静的初期化中に出た警告
+        std::vector<std::string> nameViolations_;               ///< 名前の決まりに合わない CVar と理由
         uint32_t globalRevision_ = 0;
         uint64_t commitRevision_ = 0;
     };
