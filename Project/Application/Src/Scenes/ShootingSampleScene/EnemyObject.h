@@ -1,6 +1,7 @@
-#pragma once
+﻿#pragma once
 
 #include "Collision/CollisionLayer.h"
+#include "Collision/ColliderComponent.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/Component/Core/IComponent.h"
 #include "GameObject/Component/Render/MaterialComponent.h"
@@ -39,25 +40,27 @@ namespace ShootingSample
         CoreEngine::TransformComponent* transform_ = nullptr;
     };
 
-    /// @brief 敵 1 体分の構成。
-    class EnemyObject : public CoreEngine::GameObject {
-    public:
-        static constexpr float kSize = 1.0f;
+    /// @brief 敵 1 体の大きさ
+    inline constexpr float kEnemySize = 1.0f;
 
-        /// @brief Hierarchy の表示名（Enemy_0, Enemy_1 ... と自動採番される）
-        const char* GetObjectName() const override { return "Enemy"; }
-
-        void Initialize() override
-        {
-            AddComponent<CoreEngine::MeshRendererComponent>(
-                std::make_unique<CoreEngine::CubeMeshGenerator>(kSize));
-            AddComponent<CoreEngine::MaterialComponent>()
-                ->SetColor({ 0.90f, 0.30f, 0.28f, 1.0f });
-
-            AddAABBCollider({ kSize, kSize, kSize }, CoreEngine::CollisionLayer::Enemy);
-            AddComponent<EnemyComponent>();
+    /// @brief 敵を 1 体作る（見た目・コライダー・動きのコンポーネントを載せる）
+    /// @param spawner 同じシーンへ作るための呼び出し元
+    inline CoreEngine::GameObject* SpawnEnemy(CoreEngine::GameObject& spawner)
+    {
+        CoreEngine::GameObject* const enemy = spawner.Spawn();
+        if (!enemy) {
+            return nullptr;
         }
-    };
+        enemy->SetName("Enemy");
+        enemy->AddComponent<CoreEngine::MeshRendererComponent>(
+            std::make_unique<CoreEngine::CubeMeshGenerator>(kEnemySize));
+        enemy->AddComponent<CoreEngine::MaterialComponent>()
+            ->SetColor({ 0.90f, 0.30f, 0.28f, 1.0f });
+        enemy->GetOrAddComponent<CoreEngine::ColliderComponent>()->AddBox(
+            { kEnemySize, kEnemySize, kEnemySize }, CoreEngine::CollisionLayer::Enemy);
+        enemy->AddComponent<EnemyComponent>();
+        return enemy;
+    }
 
     /// @brief 一定間隔で敵を湧かせるコンポーネント。
     /// @details 見た目を持たない空の GameObject に載せて使う。
@@ -71,12 +74,13 @@ namespace ShootingSample
             if (timer_ > 0.0f) { return; }
             timer_ = kInterval;
 
-            // Update 中の Spawn は安全（次フレームから動き始める）
-            auto* enemy = GetOwner()->Spawn<EnemyObject>();
+            // Update 中に作っても安全（次フレームから動き始める）
+            CoreEngine::GameObject* const enemy = SpawnEnemy(*GetOwner());
+            if (!enemy) { return; }
 
             const float x = CoreEngine::RandomGenerator::GetInstance().GetFloat(-kSpreadX, kSpreadX);
             enemy->GetComponent<CoreEngine::TransformComponent>()->Get().translate =
-                { x, EnemyObject::kSize * 0.5f, kSpawnZ };
+                { x, kEnemySize * 0.5f, kSpawnZ };
         }
 
     private:

@@ -1,6 +1,7 @@
-#pragma once
+﻿#pragma once
 
 #include "Collision/CollisionLayer.h"
+#include "Collision/ColliderComponent.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/Component/Core/IComponent.h"
 #include "GameObject/Component/Render/SpriteRendererComponent.h"
@@ -47,7 +48,8 @@ namespace Sprite2DSample
             if (timer_ > 0.0f) { return; }
             timer_ = kInterval;
 
-            auto* item = GetOwner()->Spawn<CoreEngine::GameObject>();
+            CoreEngine::GameObject* const item = GetOwner()->Spawn();
+            if (!item) { return; }
             item->SetName("Item");
             item->AddComponent<CoreEngine::EulerTransformComponent>();
 
@@ -64,7 +66,8 @@ namespace Sprite2DSample
             };
 
             // コライダーのサイズはスプライトの scale が乗る（Z は重なり用に厚みを持たせる）
-            item->AddAABBCollider({ 1.0f, 1.0f, 100.0f }, CoreEngine::CollisionLayer::Item);
+            item->GetOrAddComponent<CoreEngine::ColliderComponent>()->AddBox(
+                { 1.0f, 1.0f, 100.0f }, CoreEngine::CollisionLayer::Item);
             item->AddComponent<FallingItemComponent>();
         }
 

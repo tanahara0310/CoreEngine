@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "ShootingSampleScene.h"
 
-#include "BulletObject.h"
 #include "EnemyObject.h"
 #include "ShipControllerComponent.h"
 
@@ -61,7 +60,8 @@ namespace ShootingSample
             ship->GetComponent<TransformComponent>()->Get().translate =
                 { 0.0f, kShipHeight * 0.5f, -10.0f };
 
-            ship->AddAABBCollider({ kShipWidth, kShipHeight, kShipDepth }, CollisionLayer::Player);
+            ship->GetOrAddComponent<ColliderComponent>()->AddBox(
+                { kShipWidth, kShipHeight, kShipDepth }, CollisionLayer::Player);
             ship->AddComponent<ShipControllerComponent>();
         }
 

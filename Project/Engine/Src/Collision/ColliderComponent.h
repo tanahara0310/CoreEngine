@@ -38,7 +38,7 @@ public:
                      const Vector3& offset = {});
 
     // ===== 衝突イベントの購読 =====
-    // 継承（GameObject::OnCollisionEnter の override）なしで衝突に反応するための入口。
+    // 継承なしで衝突に反応するための入口。
     // `CollisionWorld` はオーナーの仮想関数を呼び、その既定実装がここへ配る。
 
     using CollisionCallback = std::function<void(const CollisionInfo&)>;

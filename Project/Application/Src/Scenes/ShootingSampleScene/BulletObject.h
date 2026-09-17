@@ -28,7 +28,7 @@ namespace ShootingSample
         {
             transform_ = Sibling<CoreEngine::TransformComponent>();
 
-            GetOwner()->GetColliders().SetOnEnter(
+            GetOwner()->GetOrAddComponent<CoreEngine::ColliderComponent>()->SetOnEnter(
                 [this](const CoreEngine::CollisionInfo& info) {
                     if (info.other) { info.other->Destroy(); }
                     GetOwner()->Destroy();
@@ -56,23 +56,25 @@ namespace ShootingSample
 
     /// @brief 弾 1 発分の構成。
     /// @details プレハブが無いため、このクラスが弾の定義書になる。
-    class BulletObject : public CoreEngine::GameObject {
-    public:
-        static constexpr float kRadius = 0.15f;
+    /// @brief 弾の半径
+    inline constexpr float kBulletRadius = 0.15f;
 
-        /// @brief Hierarchy の表示名（Bullet_0, Bullet_1 ... と自動採番される）
-        const char* GetObjectName() const override { return "Bullet"; }
-
-        /// @brief Spawn 時にエンジンから呼ばれる
-        void Initialize() override
-        {
-            AddComponent<CoreEngine::MeshRendererComponent>(
-                std::make_unique<CoreEngine::SphereMeshGenerator>(kRadius));
-            AddComponent<CoreEngine::MaterialComponent>()
-                ->SetColor({ 1.00f, 0.90f, 0.35f, 1.0f });
-
-            AddSphereCollider(kRadius, CoreEngine::CollisionLayer::PlayerBullet);
-            AddComponent<BulletComponent>();
+    /// @brief 弾を 1 発作る（見た目・コライダー・動きのコンポーネントを載せる）
+    /// @param spawner 同じシーンへ作るための呼び出し元
+    inline CoreEngine::GameObject* SpawnBullet(CoreEngine::GameObject& spawner)
+    {
+        CoreEngine::GameObject* const bullet = spawner.Spawn();
+        if (!bullet) {
+            return nullptr;
         }
-    };
+        bullet->SetName("Bullet");
+        bullet->AddComponent<CoreEngine::MeshRendererComponent>(
+            std::make_unique<CoreEngine::SphereMeshGenerator>(kBulletRadius));
+        bullet->AddComponent<CoreEngine::MaterialComponent>()
+            ->SetColor({ 1.00f, 0.90f, 0.35f, 1.0f });
+        bullet->GetOrAddComponent<CoreEngine::ColliderComponent>()->AddSphere(
+            kBulletRadius, CoreEngine::CollisionLayer::PlayerBullet);
+        bullet->AddComponent<BulletComponent>();
+        return bullet;
+    }
 }

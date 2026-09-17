@@ -5,7 +5,7 @@ namespace CoreEngine {
     class GameObject;
 
     /// @brief ゲームオブジェクトのスポーンインターフェース
-    /// @note GameObjectManager が実装し、GameObject::Spawn<T>() から使用される
+    /// @note GameObjectManager が実装し、GameObject::Spawn() から使用される
     class IObjectSpawner {
     public:
         virtual ~IObjectSpawner() = default;

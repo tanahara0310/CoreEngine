@@ -27,7 +27,7 @@ namespace ShootingSample
             transform_ = Sibling<CoreEngine::TransformComponent>();
             material_ = Sibling<CoreEngine::MaterialComponent>();
 
-            GetOwner()->GetColliders().SetOnEnter(
+            GetOwner()->GetOrAddComponent<CoreEngine::ColliderComponent>()->SetOnEnter(
                 [this](const CoreEngine::CollisionInfo& info) {
                     if (info.other) { info.other->Destroy(); }
                     damageFlash_ = kFlashSeconds;
@@ -84,7 +84,8 @@ namespace ShootingSample
         /// @brief 自機の前方へ弾を 1 発スポーンする
         void Fire()
         {
-            auto* bullet = GetOwner()->Spawn<BulletObject>();
+            CoreEngine::GameObject* const bullet = SpawnBullet(*GetOwner());
+            if (!bullet) { return; }
 
             bullet->GetComponent<CoreEngine::TransformComponent>()->Get().translate =
                 transform_->Get().translate + CoreEngine::Vector3{ 0.0f, 0.0f, 1.0f };

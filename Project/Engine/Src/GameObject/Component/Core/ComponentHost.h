@@ -90,7 +90,7 @@ public:
     }
 
     /// @brief 指定型のコンポーネントを取得し、無ければ生成する
-    /// @note 移行期の互換 API（`GameObject::AddSphereCollider()` 等）が使う。
+    /// @note 付いていなければ足す（コライダーのように、必要になった時点で足す用途に使う）。
     template <typename T, typename... Args>
     T* GetOrAddComponent(Args&&... args) {
         if (auto* existing = GetComponent<T>()) {

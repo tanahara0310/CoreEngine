@@ -16,7 +16,7 @@ namespace CollisionTest
         if (!owner) { return; }
 
         // コライダーのイベントを購読する（GameObject の override は不要）
-        auto& colliders = owner->GetColliders();
+        auto& colliders = *owner->GetOrAddComponent<ColliderComponent>();
 
         colliders.SetOnEnter([this](const CollisionInfo& info) {
             stats_.lastNormal = info.normal;
@@ -29,7 +29,9 @@ namespace CollisionTest
             // 実体の解放はフレーム末まで遅延するので判定ループの生ポインタは浮かない。
             if (removeColliderOnEnter_ && ProbeEvents::IsRemoveColliderInCallbackEnabled()) {
                 if (GameObject* self = GetOwner()) {
-                    self->RemoveCollider();
+                    if (auto* selfColliders = self->GetComponent<ColliderComponent>()) {
+                        selfColliders->RemoveAll();
+                    }
                 }
             }
             });
@@ -64,12 +66,13 @@ namespace CollisionTest
 
     Collider* ProbeComponent::FirstCollider() const
     {
-        return GetOwner()->GetCollider();
+        auto* const colliders = GetOwner()->GetComponent<ColliderComponent>();
+        return colliders ? colliders->GetFirst() : nullptr;
     }
 
     ColliderComponent& ProbeComponent::Colliders() const
     {
-        return GetOwner()->GetColliders();
+        return *GetOwner()->GetOrAddComponent<ColliderComponent>();
     }
 
     void ProbeComponent::ApplyColor()
