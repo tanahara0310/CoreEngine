@@ -15,10 +15,6 @@ public:
 
     const char* GetTypeName() const override { return "SceneTag"; }
 
-#ifdef USE_IMGUI
-    bool IsShownInInspector() const override { return false; }
-#endif
-
     /// @brief タグが指す実体（アタッチした本人）
     T* Get() const { return target_; }
 

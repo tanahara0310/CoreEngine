@@ -63,13 +63,6 @@ namespace CoreEngine
         /// @brief 放出位置を取るトランスフォームを使う
         bool RequiresComponent(const IComponent& other) const override;
 
-#ifdef USE_IMGUI
-        const char* GetInspectorName() const override { return "パーティクル"; }
-
-        /// @brief 再生の操作・プリセット・モジュール・統計を描く（モジュールの編集は Undo に積む）
-        bool DrawInspector() override;
-#endif
-
         /// @brief トランスフォームを確保し、インスタンスバッファ・レンダラー・テクスチャ・モデルを用意する
         void Awake() override;
 
@@ -229,11 +222,5 @@ namespace CoreEngine
         Statistics statistics_;
         /// ループで経過時間が巻き戻ったかを見るための、前の更新の経過時間
         float lastElapsedTime_ = 0.0f;
-
-#ifdef USE_IMGUI
-        /// モジュールの編集を始める前の値（編集が終わったら Undo に積む）
-        json moduleEditBefore_;
-        bool moduleEditActive_ = false;
-#endif
     };
 }

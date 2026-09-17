@@ -32,15 +32,6 @@ public:
     Vector3& Rotate()    override { return transform_.rotate; }
     Vector3& Scale()     override { return transform_.scale; }
 
-#ifdef USE_IMGUI
-    const char* GetInspectorName() const override { return "トランスフォーム"; }
-    bool IsShownFirstInInspector() const override { return true; }
-
-    /// @brief 位置・回転（度）・スケールの編集 UI
-    /// @return 値が変更されたら true
-    bool DrawInspector() override;
-#endif
-
     /// @brief 書き換わった位置・回転・スケールをワールド行列へ反映する
     /// @note 更新が止まっているとき（再生停止中）でもインスペクタと Undo を効かせるために要る。
     void OnPropertyChanged(const Reflection::PropertyDescriptor& property) override;
@@ -113,13 +104,5 @@ private:
 
     /// @brief 最後に WorldTransform へ渡した親
     const TransformComponent* appliedParent_ = nullptr;
-
-#ifdef USE_IMGUI
-    /// @brief ドラッグ開始時の値（Undo/Redo へ「編集前」として渡す）
-    Vector3 editSnapTranslate_{};
-    Vector3 editSnapRotate_{};
-    Vector3 editSnapScale_{};
-    bool    editSnapActive_ = true;
-#endif
 };
 }

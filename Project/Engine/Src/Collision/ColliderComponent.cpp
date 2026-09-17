@@ -8,10 +8,6 @@
 #include <algorithm>
 #include <cassert>
 
-#ifdef USE_IMGUI
-#include "Collision/Debug/ColliderInspector.h"
-#endif
-
 COMPONENT_REGISTER(CoreEngine::ColliderComponent)
 
 namespace CoreEngine
@@ -94,15 +90,4 @@ namespace CoreEngine
     {
         return (index < colliders_.size()) ? colliders_[index].get() : nullptr;
     }
-
-#ifdef USE_IMGUI
-bool ColliderComponent::DrawInspector()
-{
-    GameObject* owner = GetOwner();
-    if (!owner) { return false; }
-
-    // 編集 UI は ColliderInspector が持つ
-    return ColliderInspector::Draw(*owner);
-}
-#endif // USE_IMGUI
 }

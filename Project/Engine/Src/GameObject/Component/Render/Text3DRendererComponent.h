@@ -7,7 +7,6 @@
 #include "Math/Vector/Vector4.h"
 #include "Text/TextGeometryBuilder.h"
 
-#include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -59,11 +58,9 @@ namespace CoreEngine
         bool RequiresComponent(const IComponent& other) const override;
 
 #ifdef USE_IMGUI
-        const char* GetInspectorName() const override { return "3D テキスト"; }
-
         /// @brief 文字列・フォント・見た目・配置・描画順の編集 UI
         /// @return 値が変更されたら true
-        bool DrawInspector() override;
+        bool DrawEditorUI();
 #endif
 
         // ===== ライフサイクル =====
@@ -250,17 +247,5 @@ namespace CoreEngine
         /// @details 実行時ベイクでグリフ表が更新されると進む。
         ///          変化を検出したら頂点を組み直し、□ が本来の字へ差し替わる
         uint32_t lastGlyphGeneration_ = 0;
-
-#ifdef USE_IMGUI
-        /// @name インスペクタの入力欄が使う作業バッファ
-        /// @details 入力中は ImGui 側がバッファを持つので、
-        ///          フォーカスが無い間だけ本体の値を写し直す
-        /// @{
-        std::array<char, 1024> editTextBuffer_{};
-        std::array<char, 128>  editFontBuffer_{};
-        bool editTextActive_ = false;
-        bool editFontActive_ = false;
-        /// @}
-#endif
     };
 }

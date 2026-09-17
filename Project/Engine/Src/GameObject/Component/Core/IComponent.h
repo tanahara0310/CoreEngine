@@ -58,7 +58,7 @@ public:
     // ===== リフレクション =====
 
     /// @brief プロパティ一覧の記述子
-    /// @return REFLECT_BEGIN を書いていない型は nullptr（呼び出し側は旧経路へ落ちる）
+    /// @return REFLECT_BEGIN を書いていない型は nullptr（保存は OnSerialize、インスペクタはエディタの登録へ落ちる）
     virtual const Reflection::TypeDescriptor* GetTypeDescriptor() const { return nullptr; }
 
     /// @brief 記述子が想定する派生クラスの先頭アドレス
@@ -86,29 +86,6 @@ public:
         (void)other;
         return false;
     }
-
-    // ===== インスペクター =====
-#ifdef USE_IMGUI
-    /// @brief インスペクタのセクション名
-    /// @note 既定は GetTypeName() と同じ。日本語表示にしたい場合はオーバーライドする。
-    virtual const char* GetInspectorName() const { return GetTypeName(); }
-
-    /// @brief インスペクタに出すか
-    /// @note エンジンが内部で使う印のコンポーネントは false を返す。
-    virtual bool IsShownInInspector() const { return true; }
-
-    /// @brief インスペクタで先頭に並べるか（トランスフォーム系は true を返す）
-    virtual bool IsShownFirstInInspector() const { return false; }
-
-    /// @brief インスペクターの中身を描画する
-    /// @return 値が変更されたら true
-    virtual bool DrawInspector() { return false; }
-
-    /// @brief プロパティの後に足す補足表示（派生値・単位のヒントなど）
-    /// @note 記述子には書けない情報をここへ置く。記述子経由の描画でも
-    ///       旧 DrawInspector でも、プロパティを描いた後に呼ばれる。
-    virtual void DrawInspectorExtra() {}
-#endif
 
     // ===== アクセサ =====
 

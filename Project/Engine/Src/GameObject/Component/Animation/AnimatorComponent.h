@@ -46,10 +46,6 @@ public:
 
     const char* GetTypeName() const override { return "Animator"; }
 
-#ifdef USE_IMGUI
-    const char* GetInspectorName() const override { return "アニメーション"; }
-#endif
-
     // ===== ライフサイクル =====
 
     /// @brief クリップを読み、兄弟 `MeshRendererComponent` にスキニングモデルを作らせる

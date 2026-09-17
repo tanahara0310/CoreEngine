@@ -23,15 +23,6 @@ public:
     /// @brief トランスフォーム（ITransformSource）を使う
     bool RequiresComponent(const IComponent& other) const override;
 
-#ifdef USE_IMGUI
-    const char* GetInspectorName() const override { return "コライダー"; }
-
-    /// @brief コライダーの形状・レイヤー編集 UI
-    /// @return 値が変更されたら true
-    /// @note 実体は ColliderInspector。
-    bool DrawInspector() override;
-#endif
-
     // ===== 追加 =====
 
     /// @brief 形状を指定してコライダーを追加する

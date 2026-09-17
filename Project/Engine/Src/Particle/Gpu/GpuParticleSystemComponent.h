@@ -234,13 +234,6 @@ public:
     /// @brief 放出位置を取るトランスフォームを使う
     bool RequiresComponent(const IComponent& other) const override;
 
-#ifdef USE_IMGUI
-    const char* GetInspectorName() const override { return "GPU パーティクル"; }
-
-    /// @brief 再生の操作・プリセット・モジュールを描く（モジュールの編集は Undo に積む）
-    bool DrawInspector() override;
-#endif
-
     /// @brief トランスフォームを確保し、GPU バッファ・UAV / SRV・レンダラー・テクスチャを用意する
     void Awake() override;
 
@@ -422,11 +415,5 @@ private:
     float emitAccumulator_ = 0.0f;     // 放出レートの端数積算
     uint32_t emitCountThisFrame_ = 0;
     uint32_t frameSeed_ = 0;
-
-#ifdef USE_IMGUI
-    /// モジュールの編集を始める前の値（編集が終わったら Undo に積む）
-    json moduleEditBefore_;
-    bool moduleEditActive_ = false;
-#endif
 };
 }

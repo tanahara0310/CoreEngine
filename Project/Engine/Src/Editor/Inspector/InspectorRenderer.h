@@ -72,8 +72,5 @@ namespace CoreEngine
         /// @note 戻した分をまとめて 1 件だけ `EditorCommandStack` へ積む。
         bool ResetToDefaults(const Reflection::TypeDescriptor& type, void* instance,
                              const DrawContext& context);
-
-        /// @brief 記述子からインスペクタを組み立てるか（CVar のトグル）
-        bool IsEnabled();
     }
 }

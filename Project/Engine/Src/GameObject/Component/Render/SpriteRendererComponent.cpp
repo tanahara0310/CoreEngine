@@ -496,7 +496,7 @@ namespace CoreEngine
     }
 
 #ifdef USE_IMGUI
-    bool SpriteRendererComponent::DrawInspector()
+    bool SpriteRendererComponent::DrawEditorUI()
     {
         bool changed = false;
 

@@ -39,17 +39,6 @@ public:
             p.range = Range(0.1f, 5.0f))
     REFLECT_END()
 
-#ifdef USE_IMGUI
-    const char* GetInspectorName() const override { return "マテリアル"; }
-
-    /// @brief 色・PBR ファクター・各種フラグの編集 UI
-    /// @return 値が変更されたら true
-    bool DrawInspector() override;
-
-    /// @brief メッシュ待ちで実体が無いことを添える
-    void DrawInspectorExtra() override;
-#endif
-
     /// @brief 兄弟のメッシュ描画を捕まえ、遅延適用していた値を反映する
     void Start() override;
 

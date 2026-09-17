@@ -14,6 +14,49 @@ namespace CoreEngine
 {
 
 // ──────────────────────────────────────────────────────────
+// モジュールの欄
+// ──────────────────────────────────────────────────────────
+
+namespace {
+
+/// @brief 有効トグル付き折りたたみヘッダーでモジュールの欄を描く
+/// @return 値を変えたら true
+template <class TModule>
+bool DrawModuleSection(const char* label, TModule& module, bool defaultOpen = false) {
+    bool changed = false;
+    ImGui::PushID(label);
+
+    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_AllowOverlap;
+    if (defaultOpen) flags |= ImGuiTreeNodeFlags_DefaultOpen;
+    const bool open = ImGui::CollapsingHeader(label, flags);
+
+    // ヘッダー右端に有効トグルを重ねる（Unityのモジュールチェックボックス相当）
+    const float toggleWidth = ImGui::GetFrameHeight() * 1.8f;
+    const float rightEdge = ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x;
+    UI::SameLine(rightEdge - toggleWidth - ImGui::GetStyle().FramePadding.x);
+    bool enabled = module.IsEnabled();
+    if (UI::Widgets::ToggleSwitch("##enabled", &enabled)) {
+        module.SetEnabled(enabled);
+        changed = true;
+    }
+    UI::Tooltip(enabled ? "モジュール有効（クリックで無効化）" : "モジュール無効（クリックで有効化）");
+
+    if (open) {
+        UI::Scope::IndentScope indent;
+        {
+            UI::Scope::DisabledScope ds(!module.IsEnabled());
+            changed |= module.ShowImGui();
+        }
+        UI::Spacing();
+    }
+
+    ImGui::PopID();
+    return changed;
+}
+
+} // namespace
+
+// ──────────────────────────────────────────────────────────
 // 公開エントリーポイント（CPU / GPU）
 // ──────────────────────────────────────────────────────────
 
@@ -134,39 +177,6 @@ bool ParticleSystemDebugUI::ShowModules(IParticleSystem& system) {
     changed |= DrawModuleSection("ノイズ（揺らぎ）", system.GetNoiseModule());
     changed |= DrawModuleSection("外力（重力・風）", system.GetForceModule());
 
-    return changed;
-}
-
-bool ParticleSystemDebugUI::DrawModuleSection(const char* label, ParticleModule& module,
-                                              bool defaultOpen) {
-    bool changed = false;
-    ImGui::PushID(label);
-
-    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_AllowOverlap;
-    if (defaultOpen) flags |= ImGuiTreeNodeFlags_DefaultOpen;
-    const bool open = ImGui::CollapsingHeader(label, flags);
-
-    // ヘッダー右端に有効トグルを重ねる（Unityのモジュールチェックボックス相当）
-    const float toggleWidth = ImGui::GetFrameHeight() * 1.8f;
-    const float rightEdge = ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x;
-    UI::SameLine(rightEdge - toggleWidth - ImGui::GetStyle().FramePadding.x);
-    bool enabled = module.IsEnabled();
-    if (UI::Widgets::ToggleSwitch("##enabled", &enabled)) {
-        module.SetEnabled(enabled);
-        changed = true;
-    }
-    UI::Tooltip(enabled ? "モジュール有効（クリックで無効化）" : "モジュール無効（クリックで有効化）");
-
-    if (open) {
-        UI::Scope::IndentScope indent;
-        {
-            UI::Scope::DisabledScope ds(!module.IsEnabled());
-            changed |= module.ShowImGui();
-        }
-        UI::Spacing();
-    }
-
-    ImGui::PopID();
     return changed;
 }
 

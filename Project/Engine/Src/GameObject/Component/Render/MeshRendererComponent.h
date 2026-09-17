@@ -48,10 +48,6 @@ public:
 
     REFLECT_DECLARE(MeshRendererComponent)
 
-#ifdef USE_IMGUI
-    const char* GetInspectorName() const override { return "メッシュ描画"; }
-#endif
-
     // ===== シリアライズ =====
     // モデル・テクスチャ・ブレンドは型記述子が保存する
 

@@ -10,10 +10,6 @@
 
 #include <cmath>
 
-#ifdef USE_IMGUI
-#include "Editor/ImGui/ImGuiAll.h"
-#endif
-
 REFLECT_REGISTER(CoreEngine::TransformComponent)
 COMPONENT_REGISTER(CoreEngine::TransformComponent)
 
@@ -57,61 +53,6 @@ namespace CoreEngine
         SyncWorldMatrix();
         return true;
     }
-
-#ifdef USE_IMGUI
-    bool TransformComponent::DrawInspector()
-    {
-        bool changed = false;
-
-        // ドラッグを始めた時点の値を控えておき、離した瞬間に Undo へ積む。
-        // 毎フレーム積むとドラッグ 1 回で履歴が数十件生えてしまう
-        auto captureSnapshot = [this]() {
-            editSnapTranslate_ = transform_.translate;
-            editSnapRotate_ = transform_.rotate;
-            editSnapScale_ = transform_.scale;
-            editSnapActive_ = GetOwner() ? GetOwner()->IsActive() : true;
-            };
-
-        auto commitIfFinished = [this]() {
-            if (ImGui::IsItemDeactivatedAfterEdit() && GetOwner()) {
-                GetOwner()->NotifyEditCommitted(
-                    editSnapTranslate_, editSnapRotate_, editSnapScale_, editSnapActive_);
-            }
-            };
-
-        if (UI::DragVec3("位置", transform_.translate, 0.05f)) { changed = true; }
-        if (ImGui::IsItemActivated()) { captureSnapshot(); }
-        commitIfFinished();
-
-        // 回転は度で見せ、ラジアンで持つ
-        Vector3 rotateDegrees = {
-            transform_.rotate.x * Reflection::kDegreesPerRadian,
-            transform_.rotate.y * Reflection::kDegreesPerRadian,
-            transform_.rotate.z * Reflection::kDegreesPerRadian,
-        };
-        if (UI::DragVec3("回転", rotateDegrees, 0.5f)) {
-            transform_.rotate = {
-                rotateDegrees.x / Reflection::kDegreesPerRadian,
-                rotateDegrees.y / Reflection::kDegreesPerRadian,
-                rotateDegrees.z / Reflection::kDegreesPerRadian,
-            };
-            changed = true;
-        }
-        if (ImGui::IsItemActivated()) { captureSnapshot(); }
-        commitIfFinished();
-
-        if (UI::DragVec3("スケール", transform_.scale, 0.01f)) { changed = true; }
-        if (ImGui::IsItemActivated()) { captureSnapshot(); }
-        commitIfFinished();
-
-        if (changed) {
-            // ギズモ・当たり判定が同じフレームで新しい値を見られるようにする
-            SyncWorldMatrix();
-        }
-
-        return changed;
-    }
-#endif // USE_IMGUI
 
     void TransformComponent::OnPropertyChanged(const Reflection::PropertyDescriptor& property)
     {

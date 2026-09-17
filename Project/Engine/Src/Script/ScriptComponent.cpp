@@ -80,9 +80,6 @@ namespace CoreEngine
 
     ScriptComponent::ScriptComponent(const ScriptComponentType& type)
         : typeName_(type.GetName())
-#ifdef USE_IMGUI
-        , displayName_(type.GetDisplayName())
-#endif
         , type_(&type)
         , host_(&type.GetHost())
     {
@@ -353,9 +350,6 @@ namespace CoreEngine
             return false;
         }
         typeName_ = type.GetName();
-#ifdef USE_IMGUI
-        displayName_ = type.GetDisplayName();
-#endif
         type_ = &type;
         object_ = host_->CreateObject(type);
         if (!object_) {

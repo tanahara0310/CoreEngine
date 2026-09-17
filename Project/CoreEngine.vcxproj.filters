@@ -1,10 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <ClCompile Include="Engine\Src\Editor\Inspector\ComponentInspectors.cpp">
+      <Filter>Engine\Src\Editor\Inspector</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Inspector\InspectorLayout.cpp">
       <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Inspector\InspectorRenderer.cpp">
+      <Filter>Engine\Src\Editor\Inspector</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Inspector\ObjectInspector.cpp">
       <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Command\EditorCommandStack.cpp">
@@ -23,9 +29,6 @@
       <Filter>Engine\Src\Reflection</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Reflection\PropertySerializer.cpp">
-      <Filter>Engine\Src\Reflection</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Reflection\ReflectionToggle.cpp">
       <Filter>Engine\Src\Reflection</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Reflection\TypeDescriptor.cpp">
@@ -1635,10 +1638,16 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Engine\Src\Editor\Inspector\ComponentInspectors.h">
+      <Filter>Engine\Src\Editor\Inspector</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Inspector\InspectorLayout.h">
       <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Inspector\InspectorRenderer.h">
+      <Filter>Engine\Src\Editor\Inspector</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Inspector\ObjectInspector.h">
       <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Command\EditorCommand.h">
@@ -1759,9 +1768,6 @@
       <Filter>Engine\Src\Script</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Reflection\PropertyDescriptor.h">
-      <Filter>Engine\Src\Reflection</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Reflection\ReflectionToggle.h">
       <Filter>Engine\Src\Reflection</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionTestScene.h">

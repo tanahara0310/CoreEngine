@@ -1,10 +1,6 @@
 #include "pch.h"
 #include "MaterialComponent.h"
 
-#ifdef USE_IMGUI
-#include "Editor/ImGui/ImGuiAll.h"
-#endif
-
 #include "GameObject/Component/Core/ComponentFactory.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 
@@ -240,68 +236,4 @@ namespace CoreEngine
         if (const MaterialInstance* mat = GetMaterial()) { return mat->GetDitheringScale(); }
         return pendingDitheringScale_.value_or(1.0f);
     }
-
-#ifdef USE_IMGUI
-    bool MaterialComponent::DrawInspector()
-    {
-        MaterialInstance* material = GetMaterial();
-        if (!material) {
-            // モデルがまだ読めていないと実体が無い。値を持たないので編集もできない
-            UI::Hint("マテリアル未生成（メッシュの読み込み待ち）");
-            return false;
-        }
-
-        bool changed = false;
-
-        Vector4 color = material->GetColor();
-        if (UI::ColorEdit("ベースカラー", color)) {
-            SetColor(color);
-            changed = true;
-        }
-
-        UI::SectionHeader("PBR");
-
-        float metallic = material->GetMetallic();
-        float roughness = material->GetRoughness();
-        float occlusion = material->GetOcclusionStrength();
-
-        bool pbrChanged = false;
-        pbrChanged |= UI::SliderFloat("メタリック", metallic, 0.0f, 1.0f);
-        pbrChanged |= UI::SliderFloat("ラフネス", roughness, 0.0f, 1.0f);
-        pbrChanged |= UI::SliderFloat("オクルージョン", occlusion, 0.0f, 1.0f);
-        if (pbrChanged) {
-            SetPBR(metallic, roughness, occlusion);
-            changed = true;
-        }
-
-        UI::SectionHeader("その他");
-
-        float iblIntensity = material->GetIBLIntensity();
-        if (UI::SliderFloat("IBL 強度", iblIntensity, 0.0f, 2.0f)) {
-            SetIBLIntensity(iblIntensity);
-            changed = true;
-        }
-
-        bool lighting = material->IsLightingEnabled();
-        if (ImGui::Checkbox("ライティング", &lighting)) {
-            SetLightingEnabled(lighting);
-            changed = true;
-        }
-
-        bool normalMap = material->IsNormalMapEnabled();
-        if (ImGui::Checkbox("法線マップ", &normalMap)) {
-            SetNormalMapEnabled(normalMap);
-            changed = true;
-        }
-
-        return changed;
-    }
-
-    void MaterialComponent::DrawInspectorExtra()
-    {
-        if (!GetMaterial()) {
-            UI::Hint("マテリアル未生成（メッシュの読み込み待ち）。編集した値は生成時に反映される");
-        }
-    }
-#endif // USE_IMGUI
 }

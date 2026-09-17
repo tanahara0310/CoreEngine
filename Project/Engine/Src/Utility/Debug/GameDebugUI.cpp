@@ -8,6 +8,7 @@
 #include "Editor/ImGui/ImGuiManager.h"
 #include "Editor/ImGui/ProjectView.h"
 #include "Editor/ImGui/Widgets/EditorBars.h"
+#include "Editor/Inspector/ComponentInspectors.h"
 #include "Editor/Panel/EditorPanelRegistry.h"
 #include "Editor/Scene/ComponentEditing.h"
 #include "Editor/Scene/PlayModeController.h"
@@ -289,10 +290,9 @@ namespace CoreEngine
         for (const std::string& typeName : factory.GetRegisteredTypeNames()) {
             std::string reason;
             const bool canAdd = ComponentEditing::CanAdd(*selected, typeName, &reason);
-            const std::string displayName = factory.GetInspectorName(typeName);
+            const std::string displayName = Editor::ComponentInspectors::DisplayNameOf(typeName);
 
-            if (ImGui::MenuItem(displayName.empty() ? typeName.c_str() : displayName.c_str(),
-                nullptr, false, canAdd)) {
+            if (ImGui::MenuItem(displayName.c_str(), nullptr, false, canAdd)) {
                 ComponentEditing::Add(*selected, typeName);
             }
             if (!canAdd && !reason.empty()

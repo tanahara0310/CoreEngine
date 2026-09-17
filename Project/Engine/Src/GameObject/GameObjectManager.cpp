@@ -6,10 +6,6 @@
 #include "Utility/Logger/Logger.h"
 #include <algorithm>
 
-#ifdef USE_IMGUI
-#include "Editor/ImGui/ImGuiAll.h"
-#endif
-
 
 namespace CoreEngine
 {
@@ -292,34 +288,4 @@ namespace CoreEngine
         return false;
     }
 
-#ifdef USE_IMGUI
-    void GameObjectManager::DrawSingleObjectImGui(GameObject* obj)
-    {
-        if (!obj) {
-            UI::Hint("オブジェクトを選択してください");
-            return;
-        }
-
-        if (editCommitCallback_) {
-            obj->SetEditCommitCallback(editCommitCallback_);
-        }
-        if (onSaveRequestCallback_) {
-            obj->SetSaveRequestCallback(onSaveRequestCallback_);
-        }
-
-        if (obj->IsMarkedForDestroy()) {
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
-        }
-
-        bool changed = obj->DrawImGui();
-
-        if (obj->IsMarkedForDestroy()) {
-            ImGui::PopStyleColor();
-        }
-
-        if (changed && onChangedCallback_) {
-            onChangedCallback_(obj);
-        }
-    }
-#endif // USE_IMGUI
 }

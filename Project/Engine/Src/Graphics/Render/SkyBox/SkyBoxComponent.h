@@ -23,10 +23,6 @@ public:
 
     const char* GetTypeName() const override { return "SkyBox"; }
 
-#ifdef USE_IMGUI
-    const char* GetInspectorName() const override { return "スカイボックス"; }
-#endif
-
     /// @brief 頂点・インデックス・定数バッファを作り、レンダラーを引く
     void Awake() override;
 

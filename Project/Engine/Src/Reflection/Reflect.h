@@ -264,7 +264,7 @@ namespace CoreEngine::Reflection
     }
 
 /// @brief 記述子がプロパティの一部だけを持つことを示す
-/// @note 残りの保存と表示は `OnSerialize` / `OnDeserialize` / `DrawInspector` が受け持つ。
+/// @note 残りの保存は `OnSerialize` / `OnDeserialize`、表示はエディタの型ごとの登録が受け持つ。
 #define REFLECT_PARTIAL()                                                              \
         d.partial = true;
 

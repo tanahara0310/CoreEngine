@@ -40,10 +40,6 @@ namespace CoreEngine
         /// @brief UI トランスフォームを使う
         bool RequiresComponent(const IComponent& other) const override;
 
-#ifdef USE_IMGUI
-        const char* GetInspectorName() const override { return "UI テキスト"; }
-#endif
-
         /// @brief UI トランスフォームを確保し、レンダラーを引く（名前で指したフォントは最初に描くときに引く）
         void Awake() override;
 
