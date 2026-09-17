@@ -13,7 +13,6 @@
 #include "Graphics/PostEffect/Effect/PostEffectNames.h"
 #include "Graphics/PostEffect/Effect/ToneMapping/ToneMapping.h"
 #include "Graphics/Render/RenderDomainContext.h"
-#include "Utility/CVar/CVar.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
 
@@ -21,36 +20,31 @@ namespace
 {
     using namespace CoreEngine;
 
-    /// 太陽・月ライトの保存用 CVar。値の実体は LightManager の Light（シーン寿命）側にあり、
-    /// これらはエンジン寿命の「鏡」として毎フレーム実体から写す。
-    /// 編集 UI は Atmosphere エディタが担当するので自動生成 UI には出さず、Undo からも外す。
-    constexpr CVarFlags kMirrorFlags =
-        CVarFlags::NoUI | CVarFlags::Mirrored | CVarFlags::NoSave;
+    /// 太陽の進行方向（太陽→地表）の既定。控えがこれと違うときだけシーンの太陽へ当てる
+    constexpr Vector3 kDefaultSunDirection{ -0.45073172f, -0.65011942f, 0.61170721f };
 
-    CVar<Vector3> cvSunDirection{
-        "r.AtmosphereLights.SunDirection", { -0.45073172f, -0.65011942f, 0.61170721f },
-        "大気の太陽ライトの進行方向（太陽→地表）", {}, kMirrorFlags };
-    CVar<float> cvSunAtmosphereIntensity{
-        "r.AtmosphereLights.SunAtmosphereIntensity", 0.0f,
-        "太陽の空（大気散乱）輝度スケール。0 で照度からの自動換算",
-        CVarRange{ 0.0f, 100.0f }, kMirrorFlags };
+    /// 太陽の空（大気散乱）輝度スケールの既定（0 で照度からの自動換算）
+    constexpr float kDefaultSunAtmosphereIntensity = 0.0f;
 
-    CVar<bool> cvMoonEnabled{
-        "r.AtmosphereLights.MoonEnabled", false,
-        "月（第2大気ライト）の有効/無効", {}, kMirrorFlags };
-    CVar<Vector3> cvMoonDirection{
-        // 既定は高度角 30°・方位角 180°（太陽の反対側）を向けた進行方向
-        "r.AtmosphereLights.MoonDirection", { 0.0f, -0.5f, 0.8660254f },
-        "月ライトの進行方向（月→地表）", {}, kMirrorFlags };
-    CVar<Vector3> cvMoonColor{
-        "r.AtmosphereLights.MoonColor", { 0.55f, 0.65f, 0.85f },
-        "月光色（知覚的な青白さの美術値）", {}, kMirrorFlags };
-    CVar<float> cvMoonSurfaceIntensity{
-        "r.AtmosphereLights.MoonSurfaceIntensity", 114.0f,
-        "月光のサーフェス直接光 [lx]", CVarRange{ 0.0f, 1000.0f }, kMirrorFlags };
-    CVar<float> cvMoonAtmosphereIntensity{
-        "r.AtmosphereLights.MoonAtmosphereIntensity", 0.02f,
-        "月光の空（大気散乱）輝度スケール", CVarRange{ 0.0f, 1.0f }, kMirrorFlags };
+    /// @brief 太陽・月ライトの控え（エンジンの寿命。シーンを作り直しても引き継ぐ）
+    /// @details 値の実体は LightManager の Light（シーン寿命）にあり、毎フレーム実体から控える。
+    struct AtmosphereLightsCarry
+    {
+        Vector3 sunDirection = kDefaultSunDirection;
+        float sunAtmosphereIntensity = kDefaultSunAtmosphereIntensity;
+
+        bool moonEnabled = false;                          ///< 月（第2大気ライト）の有効/無効
+        Vector3 moonDirection{ 0.0f, -0.5f, 0.8660254f };  ///< 進行方向（高度角 30°・方位角 180°）
+        Vector3 moonColor{ 0.55f, 0.65f, 0.85f };          ///< 月光色（知覚的な青白さの美術値）
+        float moonSurfaceIntensity = 114.0f;               ///< サーフェス直接光 [lx]
+        float moonAtmosphereIntensity = 0.02f;             ///< 空（大気散乱）輝度スケール
+    };
+
+    AtmosphereLightsCarry& Carry()
+    {
+        static AtmosphereLightsCarry carry;
+        return carry;
+    }
 
     /// @brief ゼロベクトル等の不正値を弾いて正規化する
     Vector3 SafeDirection(const Vector3& dir, const Vector3& fallback)
@@ -73,16 +67,16 @@ namespace CoreEngine
         // 保存済みの太陽・月設定を復元する。ライト（LightingFeature 生成）と
         // シーン OnInitialize の両方より後のこの時点で流し込むことで、
         // 復元値が最終的な起点になる
-        RestoreAtmosphereLightsFromCVars(ctx);
+        RestoreAtmosphereLights(ctx);
     }
 
     void EnvironmentFeature::Update(SceneContext& ctx, SceneUpdatePhase phase)
     {
         switch (phase) {
         case SceneUpdatePhase::PostLogic:
-            // 太陽・月ライトの現在値を保存用 CVar へ写す（エディタ・ギズモ・
+            // 太陽・月ライトの現在値を控える（エディタ・ギズモ・
             // シーンコードのどこから変更されても拾えるよう、実体側から毎フレーム）
-            MirrorAtmosphereLightsToCVars(ctx);
+            CaptureAtmosphereLights(ctx);
             // 大気散乱の更新（全ロジック更新後の最新の太陽・カメラ情報を反映する）
             UpdateAtmosphere(ctx);
             // フォグは空・大気の有無に依存しないので、大気更新の成否と無関係に呼ぶ
@@ -95,9 +89,9 @@ namespace CoreEngine
 
     void EnvironmentFeature::Finalize(SceneContext& ctx)
     {
-        // 最後の状態を CVar へ写しておく（最終フレームの Update 以降の変更を取りこぼさない）。
+        // 最後の状態を控えておく（最終フレームの Update 以降の変更を取りこぼさない）。
         // ライトのクリア（SceneManager::DoChangeScene の ClearAllLights）より前に行う
-        MirrorAtmosphereLightsToCVars(ctx);
+        CaptureAtmosphereLights(ctx);
 
         // 空は GameObjectManager が所有しているためポインタのみクリア
         skyBox_ = nullptr;
@@ -126,7 +120,7 @@ namespace CoreEngine
             "BaseScene: 既定背景として大気散乱モードの SkyBox を自動生成");
     }
 
-    void EnvironmentFeature::RestoreAtmosphereLightsFromCVars(SceneContext& ctx)
+    void EnvironmentFeature::RestoreAtmosphereLights(SceneContext& ctx)
     {
         auto* lightManager = ctx.engine ? ctx.engine->GetService<LightManager>() : nullptr;
         if (!lightManager) {
@@ -137,19 +131,20 @@ namespace CoreEngine
         // 太陽ライトはシーン側が独自の向き・強度を設定していることがあるため、
         // 「コード既定から変更されている項目」だけを上書きする。全項目を無条件に
         // 流し込むと、保存していない項目のコード既定値でシーンの設定を潰してしまう
+        const AtmosphereLightsCarry& carry = Carry();
         if (Light* sun = lightManager->GetAtmosphereSunLight()) {
-            if (cvSunDirection.IsModified()) {
-                sun->direction = SafeDirection(cvSunDirection.Get(), sun->direction);
+            if (carry.sunDirection != kDefaultSunDirection) {
+                sun->direction = SafeDirection(carry.sunDirection, sun->direction);
             }
-            if (cvSunAtmosphereIntensity.IsModified()) {
-                sun->atmosphereIntensity = cvSunAtmosphereIntensity.Get();
+            if (carry.sunAtmosphereIntensity != kDefaultSunAtmosphereIntensity) {
+                sun->atmosphereIntensity = carry.sunAtmosphereIntensity;
             }
             // 変化は AtmosphereManager::Update() が自動検知して Sky-View LUT を再生成する
         }
 
         // ===== 月（オプトイン。有効で保存されていればライトを生成して復元） =====
         Light* moon = lightManager->GetAtmosphereMoonLight();
-        if (!moon && cvMoonEnabled.Get()) {
+        if (!moon && carry.moonEnabled) {
             // AtmosphereEditor::ApplyMoonSettings と同じ手順で第2ディレクショナルライトを生成する
             LightHandle moonHandle = lightManager->CreateLight(LightType::Directional, "Moon");
             moon = lightManager->GetLight(moonHandle);
@@ -160,37 +155,37 @@ namespace CoreEngine
         if (moon) {
             // 月は大気の月として作られた時点でシーン固有の初期状態を持たないため、
             // 太陽と違い全項目を無条件に流し込む
-            moon->enabled = cvMoonEnabled.Get();
-            moon->direction = SafeDirection(cvMoonDirection.Get(), moon->direction);
-            moon->color = cvMoonColor.Get();
-            moon->intensity = cvMoonSurfaceIntensity.Get();
-            moon->atmosphereIntensity = cvMoonAtmosphereIntensity.Get();
+            moon->enabled = carry.moonEnabled;
+            moon->direction = SafeDirection(carry.moonDirection, moon->direction);
+            moon->color = carry.moonColor;
+            moon->intensity = carry.moonSurfaceIntensity;
+            moon->atmosphereIntensity = carry.moonAtmosphereIntensity;
         }
     }
 
-    void EnvironmentFeature::MirrorAtmosphereLightsToCVars(SceneContext& ctx)
+    void EnvironmentFeature::CaptureAtmosphereLights(SceneContext& ctx)
     {
         auto* lightManager = ctx.engine ? ctx.engine->GetService<LightManager>() : nullptr;
         if (!lightManager) {
             return;
         }
 
-        // CVar::Set は値が実際に変わったときだけ変更通番を進めるため、毎フレーム呼んでよい。
-        // 太陽のサーフェス照度・色は Lighting エディタ側の責務なので写さない
+        // 太陽のサーフェス照度・色は Lighting エディタ側の責務なので控えない
+        AtmosphereLightsCarry& carry = Carry();
         if (const Light* sun = lightManager->GetAtmosphereSunLight()) {
-            cvSunDirection.Set(sun->direction);
-            cvSunAtmosphereIntensity.Set(sun->atmosphereIntensity);
+            carry.sunDirection = sun->direction;
+            carry.sunAtmosphereIntensity = sun->atmosphereIntensity;
         }
 
         if (const Light* moon = lightManager->GetAtmosphereMoonLight()) {
-            cvMoonEnabled.Set(moon->enabled);
-            cvMoonDirection.Set(moon->direction);
-            cvMoonColor.Set(moon->color);
-            cvMoonSurfaceIntensity.Set(moon->intensity);
-            cvMoonAtmosphereIntensity.Set(moon->atmosphereIntensity);
+            carry.moonEnabled = moon->enabled;
+            carry.moonDirection = moon->direction;
+            carry.moonColor = moon->color;
+            carry.moonSurfaceIntensity = moon->intensity;
+            carry.moonAtmosphereIntensity = moon->atmosphereIntensity;
         } else {
-            // 月ライトが無いシーンでは無効として記録する（色などは次回有効化用に維持）
-            cvMoonEnabled.Set(false);
+            // 月ライトが無いシーンでは無効として控える（色などは次回有効化用に維持）
+            carry.moonEnabled = false;
         }
     }
 

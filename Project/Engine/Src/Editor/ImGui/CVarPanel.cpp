@@ -117,9 +117,6 @@ namespace CoreEngine
             // 分からないため、既定値をここで常に確認できるようにする
             ImGui::Separator();
             ImGui::TextDisabled("既定値: %s", cvar->DefaultToString().c_str());
-            if (HasFlag(cvar->GetFlags(), CVarFlags::Mirrored)) {
-                ImGui::TextDisabled("ミラー値（実体が毎フレーム上書き。Undo 対象外）");
-            }
             // スライダーから移行したので、微調整・直接入力のやり方をここで案内する
             if (const char* hint = DragHint(cvar->GetType())) {
                 ImGui::TextDisabled("%s", hint);

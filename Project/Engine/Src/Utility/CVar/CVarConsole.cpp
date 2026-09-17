@@ -111,7 +111,6 @@ namespace CoreEngine::CVarConsole
             std::string flags;
             if (HasFlag(cvar.GetFlags(), CVarFlags::NoSave)) { flags += "保存しない "; }
             if (HasFlag(cvar.GetFlags(), CVarFlags::NoUI)) { flags += "自動 UI に出さない "; }
-            if (HasFlag(cvar.GetFlags(), CVarFlags::Mirrored)) { flags += "実体が毎フレーム上書きする "; }
             if (!flags.empty()) {
                 lines.push_back("  " + flags);
             }

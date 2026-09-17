@@ -11,7 +11,7 @@ namespace CoreEngine
     class OrbitFlyController;
 
     /// @brief シーンのカメラ一式（ゲーム視点・エディタ視点・2D）を所有する Feature
-    /// @details 生成・毎フレームの操作反映・CVar への永続化までをここに閉じる。
+    /// @details 生成・毎フレームの操作反映・エディタ視点の控えまでをここに閉じる。
     ///          BaseScene は所有せず、SceneContext と GetGameViewCamera3D() へ
     ///          渡すための非所有ポインタだけを持つ。
     /// @note FrameStart の最初（kEarlyFeaturePriority）で回すこと。
@@ -28,7 +28,7 @@ namespace CoreEngine
 
         const char* GetName() const override { return "Camera"; }
 
-        /// @brief カメラ一式を生成し、エディタ視点の前回状態を CVar から復元する
+        /// @brief カメラ一式を生成し、エディタ視点へ控えの設定・姿勢を当てる
         /// @note GraphicsCore が未登録の場合は何も生成しない（GetCameraManager() は nullptr）。
         void Initialize(SceneContext& ctx) override;
 
@@ -37,13 +37,13 @@ namespace CoreEngine
         ///          エディタで詰めた構図がシーンのコードより優先される。
         void PostSceneInitialize(SceneContext& ctx) override;
 
-        /// @brief FrameStart でカメラ操作を反映し、結果を CVar へ写す
+        /// @brief FrameStart でカメラ操作を反映し、エディタ視点の設定・姿勢を控える
         void Update(SceneContext& ctx, SceneUpdatePhase phase) override;
 
         /// @brief 停止中も回す（止めるとエディタカメラを動かせなくなる）
         bool RunsWhileStopped() const override { return true; }
 
-        /// @brief 最後の設定・姿勢を CVar へ写す（カメラの破棄より先に行う）
+        /// @brief 最後の設定・姿勢を控える（カメラの破棄より先に行う）
         void Finalize(SceneContext& ctx) override;
 
         /// @brief カメラマネージャーを取得（未生成なら nullptr）
@@ -61,13 +61,12 @@ namespace CoreEngine
         static constexpr float kDefaultCameraHeight = 3.0f;
 
     private:
-        /// @brief エディタ視点カメラの設定・姿勢を CVar へ写す
-        void MirrorEditorCameraToCVars();
+        /// @brief エディタ視点カメラの設定・姿勢を控える
+        void CaptureEditorCamera();
 
         std::unique_ptr<CameraManager> cameraManager_;
 
-        // エディタ視点カメラの CVar ミラー対象（所有は cameraManager_）。
-        // 設定・姿勢を毎フレーム CVar へ写して自動保存に載せる
+        // 設定・姿勢を毎フレーム控えるエディタ視点カメラ（所有は cameraManager_）
         Camera* sceneCamera_ = nullptr;
         OrbitFlyController* orbitController_ = nullptr;
     };

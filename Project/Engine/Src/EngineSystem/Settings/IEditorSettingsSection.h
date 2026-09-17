@@ -60,8 +60,7 @@ namespace CoreEngine
         enum class ChangeSignal
         {
             /// 1 秒ごとに全量シリアライズして前回保存分と比較する。
-            /// 変更イベントを持てないセクション用（実体が毎フレーム CVar へ書き込む
-            /// ミラー系: DebugCamera / AtmosphereLights 等）
+            /// 変更イベントを持てないセクション用
             Polling,
 
             /// GetChangeRevision() の整数比較で毎フレーム安価に検知する（イベント駆動）。

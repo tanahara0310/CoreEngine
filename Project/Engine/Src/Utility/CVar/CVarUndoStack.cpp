@@ -79,7 +79,7 @@ namespace CoreEngine
 
     void CVarUndoStack::BeginEdit(ICVar* cvar)
     {
-        if (!cvar || HasFlag(cvar->GetFlags(), CVarFlags::Mirrored)) {
+        if (!cvar) {
             return;
         }
         if (pendingCVar_ == cvar) {
