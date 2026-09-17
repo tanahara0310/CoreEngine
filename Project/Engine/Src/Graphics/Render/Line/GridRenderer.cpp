@@ -16,7 +16,7 @@
 
 #ifdef CORE_EDITOR
 #include "EngineSystem/Subsystem/DebugSubsystem.h"
-#include "Utility/Debug/GameDebugUI.h"
+#include "Editor/ImGui/GameDebugUI.h"
 #include "Editor/ImGui/ImGuiAll.h"
 #endif
 

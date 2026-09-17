@@ -10,7 +10,7 @@
 
 #include "IEngineSubsystem.h"
 #include "Editor/ImGui/ImGuiManager.h"
-#include "Utility/Debug/GameDebugUI.h"
+#include "Editor/ImGui/GameDebugUI.h"
 #include "Graphics/RHI/Debug/GpuTimestampProfiler.h"
 #include "Editor/ImGui/ThreadProfilerUI.h"
 #include "Editor/ImGui/KeyConfigUI.h"

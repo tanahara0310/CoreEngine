@@ -5,7 +5,7 @@
 
 #include "Editor/ImGui/DockingUI.h"
 #include "Editor/ImGui/ProjectView.h"
-#include "Utility/Debug/GameDebugUI.h"
+#include "Editor/ImGui/GameDebugUI.h"
 #include "Utility/Logger/Logger.h"
 #include "externals/nlohmann/single_include/nlohmann/json.hpp"
 

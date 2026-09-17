@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="Engine\Src\Editor\Inspector\ComponentInspectors.cpp">
@@ -349,10 +349,10 @@
     <ClCompile Include="Engine\Src\Collision\Debug\ColliderDebugRenderer.cpp">
       <Filter>Engine\Src\Collision\Debug</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Collision\Debug\ColliderInspector.cpp">
+    <ClCompile Include="Engine\Src\Editor\Inspector\ColliderInspector.cpp">
       <Filter>Engine\Src\Collision\Debug</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Collision\Debug\CollisionMatrixPanel.cpp">
+    <ClCompile Include="Engine\Src\Editor\ImGui\CollisionMatrixPanel.cpp">
       <Filter>Engine\Src\Collision\Debug</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Collision\CollisionConfig.cpp">
@@ -838,7 +838,7 @@
     <ClCompile Include="Engine\Src\Particle\Core\ParticleUpdater.cpp">
       <Filter>Engine\Src\Particle\Core</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Particle\Debug\ParticleSystemDebugUI.cpp">
+    <ClCompile Include="Engine\Src\Editor\ImGui\ParticleSystemDebugUI.cpp">
       <Filter>Engine\Src\Particle\Debug</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Particle\Modules\MainModule.cpp">
@@ -877,7 +877,7 @@
     <ClCompile Include="Engine\Src\Scene\Feature\GridFeature.cpp">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Scene\Feature\DebugEditorFeature.cpp">
+    <ClCompile Include="Engine\Src\Editor\Scene\DebugEditorFeature.cpp">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Environment\AtmosphereEditor.cpp">
@@ -970,7 +970,7 @@
     <ClCompile Include="Engine\Src\Math\Geometry\RayCast.cpp">
       <Filter>Engine\Src\Math\Geometry</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Utility\Debug\ConsoleUI.cpp">
+    <ClCompile Include="Engine\Src\Editor\ImGui\ConsoleUI.cpp">
       <Filter>Engine\Src\Utility\Debug</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\ImGui\CanvasViewport.cpp">
@@ -1189,7 +1189,7 @@
     <ClCompile Include="Engine\Src\Input\GamepadInput.cpp">
       <Filter>Engine\Src\Input</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Utility\Debug\GameDebugUI.cpp">
+    <ClCompile Include="Engine\Src\Editor\ImGui\GameDebugUI.cpp">
       <Filter>Engine\Src\Utility\Debug</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\MyGame.cpp">
@@ -1878,10 +1878,10 @@
     <ClInclude Include="Engine\Src\Collision\Debug\ColliderDebugRenderer.h">
       <Filter>Engine\Src\Collision\Debug</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Collision\Debug\ColliderInspector.h">
+    <ClInclude Include="Engine\Src\Editor\Inspector\ColliderInspector.h">
       <Filter>Engine\Src\Collision\Debug</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Collision\Debug\CollisionMatrixPanel.h">
+    <ClInclude Include="Engine\Src\Editor\ImGui\CollisionMatrixPanel.h">
       <Filter>Engine\Src\Collision\Debug</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Collision\CollisionConfig.h">
@@ -2745,7 +2745,7 @@
     <ClInclude Include="Engine\Src\Particle\Core\ParticleUpdater.h">
       <Filter>Engine\Src\Particle\Core</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Particle\Debug\ParticleSystemDebugUI.h">
+    <ClInclude Include="Engine\Src\Editor\ImGui\ParticleSystemDebugUI.h">
       <Filter>Engine\Src\Particle\Debug</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Particle\Modules\MainModule.h">
@@ -2793,7 +2793,7 @@
     <ClInclude Include="Engine\Src\Scene\Feature\GridFeature.h">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Scene\Feature\DebugEditorFeature.h">
+    <ClInclude Include="Engine\Src\Editor\Scene\DebugEditorFeature.h">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Environment\AtmosphereEditor.h">
@@ -2886,7 +2886,7 @@
     <ClInclude Include="Engine\Src\Math\Geometry\Shapes.h">
       <Filter>Engine\Src\Math\Geometry</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Utility\Debug\ConsoleUI.h">
+    <ClInclude Include="Engine\Src\Editor\ImGui\ConsoleUI.h">
       <Filter>Engine\Src\Utility\Debug</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\CanvasViewport.h">
@@ -3219,7 +3219,7 @@
     <ClInclude Include="Engine\Src\Input\GamepadInput.h">
       <Filter>Engine\Src\Input</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Utility\Debug\GameDebugUI.h">
+    <ClInclude Include="Engine\Src\Editor\ImGui\GameDebugUI.h">
       <Filter>Engine\Src\Utility\Debug</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\WinApp\WinApp.h">

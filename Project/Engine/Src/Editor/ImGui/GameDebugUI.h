@@ -1,7 +1,7 @@
 #pragma once
 #include "Editor/ImGui/Gizmo.h"
 #ifdef CORE_EDITOR
-#include "Utility/Debug/ConsoleUI.h"
+#include "Editor/ImGui/ConsoleUI.h"
 #include "Graphics/RHI/Debug/PixCapture.h"
 #include "WinApp/ScreenCapture.h"
 #include "Editor/ImGui/ProjectSettingsWindow.h"
