@@ -273,7 +273,7 @@ namespace CoreEngine::CVarConsole
         }
 
         // cvar <接頭辞>
-        const std::vector<ICVar*> matched = registry.GetByPrefix(name);
+        const std::vector<ICVar*> matched = registry.GetByNameStart(name);
         if (matched.empty()) {
             result.failed = true;
             result.lines.push_back("一致する CVar がありません: " + name);
@@ -301,7 +301,7 @@ namespace CoreEngine::CVarConsole
         const bool typingName = tokens.size() == 2 && !commandLine.empty() &&
             std::isspace(static_cast<unsigned char>(commandLine.back())) == 0;
         const std::string prefix = typingName ? tokens[1] : std::string();
-        for (const ICVar* const cvar : CVarRegistry::Get().GetByPrefix(prefix)) {
+        for (const ICVar* const cvar : CVarRegistry::Get().GetByNameStart(prefix)) {
             if (candidates.size() >= limit) {
                 break;
             }

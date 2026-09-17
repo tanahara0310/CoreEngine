@@ -44,7 +44,7 @@ namespace CoreEngine
         /// @brief Esc キーでアプリケーションを終了するか
         /// @details 既定は false。ゲーム中の Esc はポーズメニューが受けるので、
         ///          エンジンが先にウィンドウを閉じてしまわないようにしてある。
-        ///          終了させたい場合は CVar `app.QuitOnEscape` を有効にする。
+        ///          終了させたい場合は CVar `sys.Window.QuitOnEscape` を有効にする。
         /// @note 無効にしても × ボタンと Alt+F4 では終了できる。
         static bool QuitsOnEscape();
 

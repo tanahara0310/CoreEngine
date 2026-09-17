@@ -15,7 +15,7 @@ namespace
     // 既定を無効にしてあるのは、Esc がゲーム中のポーズに使われているため。
     // 有効にするとポーズを開く前にウィンドウが閉じる
     CVar<bool> cvQuitOnEscape{
-        "app.QuitOnEscape", false,
+        "sys.Window.QuitOnEscape", false,
         "Esc キーでアプリケーションを終了する（無効でも × ボタンと Alt+F4 では終了できる）" };
 }
 
@@ -190,7 +190,7 @@ LRESULT CALLBACK WinApp::WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM l
         }
         break;
 
-        // Esc でアプリケーションを終了する（既定は無効。app.QuitOnEscape で切り替える）
+        // Esc でアプリケーションを終了する（既定は無効。sys.Window.QuitOnEscape で切り替える）
     case WM_KEYDOWN:
         if (wparam == VK_ESCAPE) {
             // ゲーム中の Esc はポーズメニューが受ける。ここで閉じてはいけない

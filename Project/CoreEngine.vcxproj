@@ -211,7 +211,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Script\ScriptPredefined.cpp" />
     <ClCompile Include="Engine\Src\Script\ScriptCallback.cpp" />
     <ClCompile Include="Engine\Src\Script\ScriptSubsystem.cpp" />
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\CameraShowcase.cpp" />
+    <ClCompile Include="Application\Src\Scenes\WaterTestScene\CameraShowcaseComponent.cpp" />
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.cpp" />
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSceneController.cpp" />
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceDebugPanel.cpp" />
@@ -1173,7 +1173,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionTestScene.h" />
     <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionTestReport.h" />
     <ClInclude Include="Application\Src\Scenes\CollisionTestScene\GeometrySelfTest.h" />
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\CameraShowcase.h" />
+    <ClInclude Include="Application\Src\Scenes\WaterTestScene\CameraShowcaseComponent.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSceneController.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceDebugPanel.h" />

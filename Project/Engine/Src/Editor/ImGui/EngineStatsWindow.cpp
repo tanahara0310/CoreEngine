@@ -30,17 +30,17 @@ namespace CoreEngine
         // 計測キャプチャの自動実行。起動から指定秒後に開始し、完了したら CSV を書き出す。
         // ImGui のボタンを押さずに同じ条件で取り直せるようにするためのもの。
         CVar<float> cvAutoCaptureStartSec{
-            "stats.TimingCapture.AutoStartSec", 0.0f,
+            "sys.TimingCapture.AutoStartSec", 0.0f,
             "起動から指定秒後に計測キャプチャを自動開始する（0 で無効。実行すると 0 へ戻る）",
             CVarRange{ 0.0f, 600.0f }, CVarFlags::NoUI };
 
         CVar<int> cvAutoCaptureWarmupFrames{
-            "stats.TimingCapture.WarmupFrames", 120,
+            "sys.TimingCapture.WarmupFrames", 120,
             "自動キャプチャのウォームアップフレーム数",
             CVarRange{ 0.0f, 1200.0f }, CVarFlags::NoUI };
 
         CVar<int> cvAutoCaptureFrames{
-            "stats.TimingCapture.Frames", 300,
+            "sys.TimingCapture.Frames", 300,
             "自動キャプチャの収集フレーム数",
             CVarRange{ 1.0f, static_cast<float>(GpuTimingStatsCollector::kMaxCaptureFrames) },
             CVarFlags::NoUI };
