@@ -46,6 +46,7 @@ namespace
 
 REFLECT_DEFINE_BEGIN(CoreEngine::GpuParticleSystemComponent, "GPU パーティクル")
     REFLECT_PARTIAL()
+    REFLECT_JSON(SaveModulesToJson, LoadModulesFromJson)
     REFLECT_ACCESSOR("texture", "テクスチャ", GetTextureAsset, SetTextureAsset,
         p.assetType = ::CoreEngine::AssetType::Texture, p.emptyText = &DescribeDefaultTexture)
     REFLECT_ENUM_ACCESSOR("blendMode", "ブレンド", GetBlendMode, SetBlendMode, kBlendModeNames,
@@ -555,17 +556,16 @@ namespace CoreEngine
         return dynamic_cast<const ITransformSource*>(&other) != nullptr;
     }
 
-    json GpuParticleSystemComponent::OnSerialize() const
+    void GpuParticleSystemComponent::SaveModulesToJson(json& parameters) const
     {
-        // ビルボードとブレンドは記述子が保存する
         json settings = ParticlePresetManager::ToJson(const_cast<GpuParticleSystemComponent&>(*this));
         settings.erase("billboardType");
         settings.erase("blendMode");
-        return settings;
+        parameters.update(settings);
     }
 
-    void GpuParticleSystemComponent::OnDeserialize(const json& j)
+    void GpuParticleSystemComponent::LoadModulesFromJson(const json& parameters)
     {
-        ParticlePresetManager::FromJson(*this, j);
+        ParticlePresetManager::FromJson(*this, parameters);
     }
 }

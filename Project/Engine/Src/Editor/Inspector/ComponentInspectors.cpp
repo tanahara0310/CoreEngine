@@ -8,6 +8,7 @@
 #include "Editor/ImGui/ImGuiAll.h"
 #include "Editor/Scene/EditorSceneAccess.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
+#include "GameObject/Component/Core/IRawSavedParameters.h"
 #include "GameObject/Component/Core/MissingComponent.h"
 #include "GameObject/Component/Render/MaterialComponent.h"
 #include "GameObject/Component/Render/SpriteRendererComponent.h"
@@ -41,10 +42,10 @@ namespace CoreEngine::Editor::ComponentInspectors
                     ImGui::TextWrapped("型「%s」が見つからないので、保存データをそのまま持っています。",
                         component.GetTypeName());
                     UI::Hint("スクリプトのコンパイルに失敗しているか、型の名前が変わったときに出ます。保存しても中身は消えません。");
-                    const json parameters = component.OnSerialize();
-                    if (!parameters.empty()) {
+                    const auto* const raw = dynamic_cast<const IRawSavedParameters*>(&component);
+                    if (raw && !raw->GetRawParameters().empty()) {
                         UI::Separator();
-                        ImGui::TextUnformatted(parameters.dump(2).c_str());
+                        ImGui::TextUnformatted(raw->GetRawParameters().dump(2).c_str());
                     }
                     return false;
                 },
@@ -62,8 +63,14 @@ namespace CoreEngine::Editor::ComponentInspectors
             static const IComponent* editing = nullptr;
             static json before;
 
+            const auto readModules = [](TSystem& target) {
+                json modules = json::object();
+                target.SaveModulesToJson(modules);
+                return modules;
+            };
+
             const bool alreadyEditing = editing == &component;
-            json current = alreadyEditing ? json{} : system.OnSerialize();
+            json current = alreadyEditing ? json{} : readModules(system);
             const bool changed = ParticleSystemDebugUI::ShowImGui(system);
             if (changed && !alreadyEditing) {
                 editing = &component;
@@ -75,8 +82,12 @@ namespace CoreEngine::Editor::ComponentInspectors
                 std::string label = (owner ? owner->GetName() + " の " : std::string{}) + DisplayNameOf(component);
                 EditorCommandStack::Get().Push(std::make_unique<ComponentStateCommand<TSystem, json>>(
                     std::move(label), system, std::move(before),
-                    [](TSystem& target) { return target.OnSerialize(); },
-                    [](TSystem& target, const json& settings) { target.OnDeserialize(settings); }));
+                    [](TSystem& target) {
+                        json modules = json::object();
+                        target.SaveModulesToJson(modules);
+                        return modules;
+                    },
+                    [](TSystem& target, const json& settings) { target.LoadModulesFromJson(settings); }));
                 before = json{};
             }
             return changed;

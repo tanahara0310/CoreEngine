@@ -24,6 +24,16 @@ namespace CoreEngine::Reflection
     ///        プレハブの上書きから呼ぶときは、上書きしたキーだけを持つ
     using UpgradeFunction = void (*)(uint32_t fromVersion, uint32_t toVersion, json& parameters);
 
+    /// @brief プロパティで表せない値を書き出す関数
+    /// @param instance 記述子の持ち主（`GetReflectionInstance()` の値）
+    /// @param parameters 書き足す先（プロパティの値が入っている）
+    using SaveExtraFunction = void (*)(const void* instance, json& parameters);
+
+    /// @brief プロパティで表せない値を読む関数
+    /// @param instance 記述子の持ち主（`GetReflectionInstance()` の値）
+    /// @param parameters 読み込み元（プロパティの値も入っている）
+    using LoadExtraFunction = void (*)(void* instance, const json& parameters);
+
     /// @brief 1 つの型のプロパティ一覧
     struct TypeDescriptor
     {
@@ -42,8 +52,13 @@ namespace CoreEngine::Reflection
         UpgradeFunction upgrade = nullptr;
 
         /// @brief プロパティの一部だけを持つか
-        /// @details true なら、残りの保存は `OnSerialize` / `OnDeserialize`、表示はエディタの型ごとの登録が受け持つ。
+        /// @details true なら、表示はエディタの型ごとの登録が受け持つ。
         bool partial = false;
+
+        /// @brief プロパティで表せない値の保存（無ければ nullptr）
+        /// @details 中身が実行時に決まる値（スクリプトの公開メンバ・パーティクルのモジュールなど）に使う。
+        SaveExtraFunction saveExtra = nullptr;
+        LoadExtraFunction loadExtra = nullptr;
 
         const PropertyDescriptor* Find(const char* propertyName) const;
     };

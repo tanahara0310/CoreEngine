@@ -5,6 +5,7 @@
 #include "Graphics/Render/Text3D/Text3DRenderer.h"
 #include "Math/Vector/Vector2.h"
 #include "Math/Vector/Vector4.h"
+#include "Reflection/Reflect.h"
 #include "Text/TextGeometryBuilder.h"
 
 #include <cstdint>
@@ -70,6 +71,8 @@ namespace CoreEngine
 
         // ===== IRenderableComponent =====
 
+        REFLECT_DECLARE(Text3DRendererComponent)
+
         RenderPassType GetRenderPassType() const override { return RenderPassType::Text3D; }
         BlendMode GetBlendMode() const override { return BlendMode::kBlendModeNormal; }
 
@@ -85,6 +88,9 @@ namespace CoreEngine
 
         /// @brief 使用フォントを名前で差し替える（FontManager で引ける名前）
         void SetFontByName(const std::string& fontName);
+
+        /// @brief 保存データから戻すときのフォント指定（空の名前は無視する）
+        void SetFontFromName(const std::string& fontName);
 
         MsdfFont* GetFont() const { return font_; }
         const std::string& GetFontName() const { return fontName_; }
@@ -123,6 +129,12 @@ namespace CoreEngine
         void SetAlign(TextAlignH horizontal, TextAlignV vertical);
         TextAlignH GetAlignH() const { return alignH_; }
         TextAlignV GetAlignV() const { return alignV_; }
+
+        /// @brief 横揃えだけを変える
+        void SetAlignH(TextAlignH horizontal) { SetAlign(horizontal, alignV_); }
+
+        /// @brief 縦揃えだけを変える
+        void SetAlignV(TextAlignV vertical) { SetAlign(alignH_, vertical); }
 
         /// @brief 行間の倍率（1.0 でフォント本来の行送り）
         void SetLineSpacing(float scale);
@@ -168,6 +180,12 @@ namespace CoreEngine
         Vector4 GetOutlineColor() const { return style_.outlineColor; }
         float GetOutlineWidth() const { return style_.outlineWidthEm; }
 
+        /// @brief 縁取りの色だけを変える
+        void SetOutlineColor(const Vector4& color) { SetOutline(color, style_.outlineWidthEm); }
+
+        /// @brief 縁取りの太さだけを変える（em 単位）
+        void SetOutlineWidth(float widthEm) { SetOutline(style_.outlineColor, widthEm); }
+
         /// @brief 文字の太さ調整（em 単位。正で太く）
         void SetWeight(float weightEm) { style_.weightEm = weightEm; }
         float GetWeight() const { return style_.weightEm; }
@@ -177,14 +195,6 @@ namespace CoreEngine
 
         /// @brief 兄弟の TransformComponent（位置・回転・スケールの出どころ）
         TransformComponent* GetTransformComponent() const { return ResolveTransform(); }
-
-        // ===== シリアライズ =====
-
-        /// @brief フォント名・文字列・組版・見た目・ビルボード・深度を書き出す
-        json OnSerialize() const override;
-
-        /// @brief OnSerialize が書いた値を読む（フォントを先に解決する）
-        void OnDeserialize(const json& j) override;
 
     private:
         /// @brief transform_ が未取得なら兄弟から取る

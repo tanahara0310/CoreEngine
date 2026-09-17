@@ -282,20 +282,11 @@ namespace CoreEngine
         void SetSerializeEnabled(bool enable);
 
         /// @brief オブジェクトを JSON へ書き出す（SceneSaveSystem が呼ぶ唯一の入口）
-        /// @return 有効・名前・コンポーネント一覧に、派生固有の値を足したもの
-        /// @note 共通部分はここが書くので、派生は `OnSerialize()` で自分の分だけ足せばよい。
+        /// @return 有効・名前・コンポーネント一覧
         json Serialize() const;
 
         /// @brief JSON からオブジェクトを復元する（SceneSaveSystem が呼ぶ唯一の入口）
         void Deserialize(const json& j);
-
-        /// @brief 派生固有の値を書き出す
-        /// @return 足したい値だけ。有効・名前・コンポーネントは `Serialize()` が書く。
-        virtual json OnSerialize() const { return {}; }
-
-        /// @brief 派生固有の値を復元する
-        /// @param j 読み込み元の JSON オブジェクト
-        virtual void OnDeserialize(const json& j) { (void)j; }
 
         // ===== スポーン =====
 

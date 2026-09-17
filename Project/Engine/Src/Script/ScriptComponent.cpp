@@ -376,11 +376,6 @@ namespace CoreEngine
         Invoke(ScriptComponentType::Method::OnScriptReloaded);
     }
 
-    json ScriptComponent::OnSerialize() const
-    {
-        return savedParameters_;
-    }
-
     std::string ScriptComponent::DescribeMethod(ScriptComponentType::Method method) const
     {
         const GameObject* const owner = GetOwner();

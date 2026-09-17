@@ -23,6 +23,44 @@
 #include <imgui.h>
 #endif
 
+namespace
+{
+    /// @brief ビルボードの名前（`Text3DBillboard` の並び）
+    constexpr const char* kBillboardNames[] = { "なし", "カメラに向く", "Y 軸だけ回す" };
+
+    /// @brief 深度の扱いの名前（`Text3DDepthMode` の並び）
+    constexpr const char* kDepthModeNames[] = { "遮蔽される", "常に手前" };
+
+    /// @brief 横揃えの名前（`TextAlignH` の並び）
+    constexpr const char* kAlignHNames[] = { "左", "中央", "右" };
+
+    /// @brief 縦揃えの名前（`TextAlignV` の並び）
+    constexpr const char* kAlignVNames[] = { "上", "中央", "下" };
+
+    /// @brief 編集はすべて手書きの UI が受け持つので、自動生成の欄には出さない
+    constexpr auto kHidden = ::CoreEngine::Reflection::PropertyFlags::Hidden;
+}
+
+REFLECT_DEFINE_BEGIN(CoreEngine::Text3DRendererComponent, "3D テキスト描画")
+    REFLECT_PARTIAL()
+    REFLECT_ACCESSOR("font", "フォント", GetFontName, SetFontFromName, p.flags = kHidden)
+    REFLECT_ACCESSOR("text", "文字列", GetText, SetText, p.flags = kHidden)
+    REFLECT_ACCESSOR("fontSize", "文字の大きさ", GetFontSize, SetFontSize, p.flags = kHidden)
+    REFLECT_ACCESSOR("lineSpacing", "行間", GetLineSpacing, SetLineSpacing, p.flags = kHidden)
+    REFLECT_ACCESSOR("wrapWidth", "折り返し幅", GetWrapWidth, SetWrapWidth, p.flags = kHidden)
+    REFLECT_ACCESSOR("fieldAutoFit", "枠を文字に合わせる", IsFieldAutoFit, SetFieldAutoFit, p.flags = kHidden)
+    REFLECT_ACCESSOR("fieldSize", "枠の大きさ", GetFieldSize, SetFieldSize, p.flags = kHidden)
+    REFLECT_ENUM_ACCESSOR("alignH", "横揃え", GetAlignH, SetAlignH, kAlignHNames, p.flags = kHidden)
+    REFLECT_ENUM_ACCESSOR("alignV", "縦揃え", GetAlignV, SetAlignV, kAlignVNames, p.flags = kHidden)
+    REFLECT_ACCESSOR("pivot", "中心", GetPivot, SetPivot, p.flags = kHidden)
+    REFLECT_ACCESSOR("color", "カラー", GetColor, SetColor, p.flags = kHidden)
+    REFLECT_ACCESSOR("outlineColor", "縁取りの色", GetOutlineColor, SetOutlineColor, p.flags = kHidden)
+    REFLECT_ACCESSOR("outlineWidth", "縁取りの太さ", GetOutlineWidth, SetOutlineWidth, p.flags = kHidden)
+    REFLECT_ACCESSOR("weight", "太さ調整", GetWeight, SetWeight, p.flags = kHidden)
+    REFLECT_ENUM_ACCESSOR("billboard", "ビルボード", GetBillboard, SetBillboard, kBillboardNames, p.flags = kHidden)
+    REFLECT_ENUM_ACCESSOR("depthMode", "深度", GetDepthMode, SetDepthMode, kDepthModeNames, p.flags = kHidden)
+REFLECT_DEFINE_END()
+REFLECT_REGISTER(CoreEngine::Text3DRendererComponent)
 COMPONENT_REGISTER(CoreEngine::Text3DRendererComponent)
 
 namespace CoreEngine
@@ -337,85 +375,13 @@ namespace CoreEngine
             world, viewProjection, style_, depthMode_);
     }
 
-    json Text3DRendererComponent::OnSerialize() const
+    void Text3DRendererComponent::SetFontFromName(const std::string& fontName)
     {
-        json j;
-
-        // フォントは名前だけ。実体の指定は FontManager 側に置く
-        if (!fontName_.empty()) {
-            j["font"] = fontName_;
+        // フォントは先に解決する（メトリクスが決まらないと組版できない）。
+        // 空の名前は「指定なし」なので、既定のフォントのままにする
+        if (!fontName.empty() && fontName != fontName_) {
+            SetFontByName(fontName);
         }
-        j["text"] = textUtf8_;
-        j["fontSize"] = fontSize_;
-        j["lineSpacing"] = lineSpacing_;
-        j["wrapWidth"] = wrapWidth_;
-
-        j["fieldAutoFit"] = fieldAutoFit_;
-        j["fieldSize"]["x"] = fieldSize_.x;
-        j["fieldSize"]["y"] = fieldSize_.y;
-        j["alignH"] = static_cast<int>(alignH_);
-        j["alignV"] = static_cast<int>(alignV_);
-        j["pivot"]["x"] = pivot_.x;
-        j["pivot"]["y"] = pivot_.y;
-
-        j["color"] = JsonManager::Vector4ToJson(style_.color);
-        j["outlineColor"] = JsonManager::Vector4ToJson(style_.outlineColor);
-        j["outlineWidth"] = style_.outlineWidthEm;
-        j["weight"] = style_.weightEm;
-
-        j["billboard"] = static_cast<int>(billboard_);
-        j["depthMode"] = static_cast<int>(depthMode_);
-
-        return j;
-    }
-
-    void Text3DRendererComponent::OnDeserialize(const json& j)
-    {
-        if (!j.is_object()) { return; }
-
-        // フォントを先に解決する（メトリクスが決まらないとレイアウトが組めない）
-        if (j.contains("font") && j["font"].is_string()) {
-            SetFontByName(j["font"].get<std::string>());
-        }
-
-        textUtf8_ = JsonManager::SafeGet<std::string>(j, "text", textUtf8_);
-        fontSize_ = JsonManager::SafeGet<float>(j, "fontSize", fontSize_);
-        lineSpacing_ = JsonManager::SafeGet<float>(j, "lineSpacing", lineSpacing_);
-        wrapWidth_ = JsonManager::SafeGet<float>(j, "wrapWidth", wrapWidth_);
-
-        fieldAutoFit_ = JsonManager::SafeGet<bool>(j, "fieldAutoFit", fieldAutoFit_);
-        if (j.contains("fieldSize")) {
-            fieldSize_.x = JsonManager::SafeGet<float>(j["fieldSize"], "x", fieldSize_.x);
-            fieldSize_.y = JsonManager::SafeGet<float>(j["fieldSize"], "y", fieldSize_.y);
-        }
-        const int alignHIndex = JsonManager::SafeGet<int>(j, "alignH", static_cast<int>(alignH_));
-        if (alignHIndex >= 0 && alignHIndex <= static_cast<int>(TextAlignH::Right)) {
-            alignH_ = static_cast<TextAlignH>(alignHIndex);
-        }
-        const int alignVIndex = JsonManager::SafeGet<int>(j, "alignV", static_cast<int>(alignV_));
-        if (alignVIndex >= 0 && alignVIndex <= static_cast<int>(TextAlignV::Bottom)) {
-            alignV_ = static_cast<TextAlignV>(alignVIndex);
-        }
-        if (j.contains("pivot")) {
-            pivot_.x = JsonManager::SafeGet<float>(j["pivot"], "x", pivot_.x);
-            pivot_.y = JsonManager::SafeGet<float>(j["pivot"], "y", pivot_.y);
-        }
-
-        style_.color = JsonManager::SafeGetVector4(j, "color", style_.color);
-        style_.outlineColor = JsonManager::SafeGetVector4(j, "outlineColor", style_.outlineColor);
-        style_.outlineWidthEm = JsonManager::SafeGet<float>(j, "outlineWidth", style_.outlineWidthEm);
-        style_.weightEm = JsonManager::SafeGet<float>(j, "weight", style_.weightEm);
-
-        const int billboardIndex = JsonManager::SafeGet<int>(j, "billboard", static_cast<int>(billboard_));
-        if (billboardIndex >= 0 && billboardIndex <= static_cast<int>(Text3DBillboard::YAxisOnly)) {
-            billboard_ = static_cast<Text3DBillboard>(billboardIndex);
-        }
-        const int depthIndex = JsonManager::SafeGet<int>(j, "depthMode", static_cast<int>(depthMode_));
-        if (depthIndex >= 0 && depthIndex <= static_cast<int>(Text3DDepthMode::Overlay)) {
-            depthMode_ = static_cast<Text3DDepthMode>(depthIndex);
-        }
-
-        geometryDirty_ = true;
     }
 
 #ifdef CORE_EDITOR
@@ -525,7 +491,6 @@ namespace CoreEngine
 
         UI::SectionHeader("ビルボード");
         {
-            static const char* kBillboardNames[] = { "なし", "カメラに向く", "Y軸のみ" };
             int billboardIndex = static_cast<int>(billboard_);
             if (ImGui::Combo("##billboard", &billboardIndex, kBillboardNames, 3)) {
                 billboard_ = static_cast<Text3DBillboard>(billboardIndex);
@@ -583,8 +548,6 @@ namespace CoreEngine
             }
             ImGui::TextDisabled("単位はワールド単位です");
 
-            static const char* kAlignHNames[] = { "左", "中央", "右" };
-            static const char* kAlignVNames[] = { "上", "中央", "下" };
             int alignHIndex = static_cast<int>(alignH_);
             int alignVIndex = static_cast<int>(alignV_);
             bool alignChanged = ImGui::Combo("横揃え##alignH", &alignHIndex, kAlignHNames, 3);

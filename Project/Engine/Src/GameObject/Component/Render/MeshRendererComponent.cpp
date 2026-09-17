@@ -39,6 +39,7 @@ namespace
 
 REFLECT_DEFINE_BEGIN(CoreEngine::MeshRendererComponent, "メッシュ描画")
     REFLECT_PARTIAL()
+    REFLECT_JSON(SaveMaterialsToJson, LoadMaterialsFromJson)
     REFLECT_ACCESSOR("model", "モデル", GetModelAsset, SetModelAsset,
         p.assetType = ::CoreEngine::AssetType::Model, p.emptyText = &DescribeUnsetModel)
     REFLECT_ACCESSOR("texture", "テクスチャ", GetTextureAsset, SetTextureAsset,
@@ -174,14 +175,13 @@ namespace CoreEngine
             : RenderPassType::Model;
     }
 
-    json MeshRendererComponent::OnSerialize() const
+    void MeshRendererComponent::SaveMaterialsToJson(json& parameters) const
     {
-        json j = json::object();
         if (!model_) {
             if (pendingMaterials_.is_array()) {
-                j["materials"] = pendingMaterials_;
+                parameters["materials"] = pendingMaterials_;
             }
-            return j;
+            return;
         }
 
         const ModelResource* resource = model_->GetModelResource();
@@ -201,18 +201,17 @@ namespace CoreEngine
             materials.push_back(std::move(value));
         }
         if (differs) {
-            j["materials"] = std::move(materials);
+            parameters["materials"] = std::move(materials);
         }
-        return j;
     }
 
-    void MeshRendererComponent::OnDeserialize(const json& j)
+    void MeshRendererComponent::LoadMaterialsFromJson(const json& parameters)
     {
-        if (!j.is_object()) {
+        if (!parameters.is_object()) {
             return;
         }
 
-        if (const auto it = j.find("materials"); it != j.end() && it->is_array()) {
+        if (const auto it = parameters.find("materials"); it != parameters.end() && it->is_array()) {
             pendingMaterials_ = *it;
             ApplyPendingMaterials();
         }

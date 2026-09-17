@@ -197,7 +197,7 @@ public:
 
     /// @brief アタッチされているコンポーネントを JSON 配列へ書き出す
     /// @return `[{ "type", "enabled", "version", "parameters" }, ...]`。中身が無ければ空配列
-    /// @note 値は型記述子から取る。記述子が無い型は `IComponent::OnSerialize()` へ落ちる。
+    /// @note 値は型記述子から取る。記述子が無い型は、保存データをそのまま持つ口（`IRawSavedParameters`）から取る。
     ///       `version` は記述子の版が 2 以上の型だけに書く。
     json SerializeComponents() const;
 

@@ -10,6 +10,7 @@
 #include "Math/Matrix/Matrix4x4.h"
 #include "Math/Vector/Vector2.h"
 #include "Math/Vector/Vector4.h"
+#include "Reflection/Reflect.h"
 
 #include <d3d12.h>
 #include <memory>
@@ -37,6 +38,8 @@ namespace CoreEngine
         ~SpriteRendererComponent() override;
 
         const char* GetTypeName() const override { return "SpriteRenderer"; }
+
+        REFLECT_DECLARE(SpriteRendererComponent)
 
         /// @brief トランスフォーム（ITransformSource）を使う
         bool RequiresComponent(const IComponent& other) const override;
@@ -143,12 +146,33 @@ namespace CoreEngine
         ITransformSource* GetTransformSource() const;
 
         // ===== シリアライズ =====
+        // テクスチャ・色・アンカー・UV・フリップ・ブレンドは型記述子が保存する
 
-        /// @brief テクスチャ・色・アンカー・UV・フリップ・ブレンド・描画順を書き出す
-        json OnSerialize() const override;
+        /// @brief 指しているテクスチャ（型記述子とやり取りする値）
+        Reflection::AssetRefValue GetTextureAsset() const;
+        void SetTextureAsset(const Reflection::AssetRefValue& value);
 
-        /// @brief OnSerialize が書いた値を読む
-        void OnDeserialize(const json& j) override;
+        /// @brief UV の範囲（左上・右下）
+        Vector2 GetUVMin() const { return uvMin_; }
+        void SetUVMin(const Vector2& value) { SetUVRect(value.x, value.y, uvMax_.x, uvMax_.y); }
+        Vector2 GetUVMax() const { return uvMax_; }
+        void SetUVMax(const Vector2& value) { SetUVRect(uvMin_.x, uvMin_.y, value.x, value.y); }
+
+        /// @brief UV の移動量
+        Vector2 GetUVOffset() const { return { uvTransform_.translate.x, uvTransform_.translate.y }; }
+        void SetUVOffset(const Vector2& value) { SetUVOffset(value.x, value.y); }
+
+        /// @brief UV の倍率
+        Vector2 GetUVScale() const { return { uvTransform_.scale.x, uvTransform_.scale.y }; }
+        void SetUVScale(const Vector2& value) { SetUVScale(value.x, value.y); }
+
+        /// @brief UV の回転 [rad]
+        float GetUVRotation() const { return uvTransform_.rotate.z; }
+
+        /// @brief 描画順を指定しているときだけ書き出す
+        /// @note 指定していないスプライトへ 0 を入れると、描画の並べ替えの鍵が変わってしまう。
+        void SaveRenderOrderToJson(json& parameters) const;
+        void LoadRenderOrderFromJson(const json& parameters);
 
     private:
         /// @brief RenderManager から Sprite パスのレンダラーを取る

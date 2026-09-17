@@ -2,6 +2,7 @@
 #include "ComponentHost.h"
 
 #include "ComponentFactory.h"
+#include "IRawSavedParameters.h"
 #include "MissingComponent.h"
 #ifdef CORE_EDITOR
 #include "Editor/Command/EditorCommandStack.h"
@@ -290,29 +291,31 @@ namespace CoreEngine
 
     json ComponentHost::SerializeComponent(const IComponent& component)
     {
-        json parameters;
+        json parameters = json::object();
         const Reflection::TypeDescriptor* descriptor = component.GetTypeDescriptor();
-        if (!descriptor || descriptor->partial) {
-            parameters = component.OnSerialize();
-        }
         if (descriptor) {
-            // 記述子を持つ型は宣言 1 箇所から値を取る。一部だけを載せた型は OnSerialize の値へ足す
-            if (!parameters.is_object()) {
-                parameters = json::object();
-            }
+            // 記述子を持つ型は宣言 1 箇所から値を取る。プロパティで表せない値は記述子の口が書く
             IComponent& mutableComponent = const_cast<IComponent&>(component);
-            Reflection::PropertySerializer::Save(
-                *descriptor, mutableComponent.GetReflectionInstance(), parameters);
+            void* const instance = mutableComponent.GetReflectionInstance();
+            Reflection::PropertySerializer::Save(*descriptor, instance, parameters);
+            if (descriptor->saveExtra) {
+                descriptor->saveExtra(instance, parameters);
+            }
+        } else if (const auto* raw = dynamic_cast<const IRawSavedParameters*>(&component)) {
+            // 型が見つからないコンポーネントは、読んだ保存データをそのまま書き戻す
+            if (raw->GetRawParameters().is_object()) {
+                parameters = raw->GetRawParameters();
+            }
         }
 
         json entry = {
             { "type", component.GetTypeName() },
             { "enabled", component.IsEnabled() },
         };
-        if (descriptor) {
-            Reflection::PropertySerializer::WriteComponentVersion(entry, descriptor->version);
-        } else if (const auto* missing = dynamic_cast<const MissingComponent*>(&component)) {
+        if (const auto* missing = dynamic_cast<const MissingComponent*>(&component)) {
             Reflection::PropertySerializer::WriteComponentVersion(entry, missing->GetSavedVersion());
+        } else if (descriptor) {
+            Reflection::PropertySerializer::WriteComponentVersion(entry, descriptor->version);
         }
         if (!parameters.empty()) {
             entry["parameters"] = std::move(parameters);
@@ -404,11 +407,13 @@ namespace CoreEngine
         if (source->contains("parameters") && source->at("parameters").is_object()) {
             const json& parameters = source->at("parameters");
             if (descriptor) {
-                Reflection::PropertySerializer::Load(
-                    *descriptor, target.GetReflectionInstance(), parameters);
-            }
-            if (!descriptor || descriptor->partial) {
-                target.OnDeserialize(parameters);
+                void* const instance = target.GetReflectionInstance();
+                Reflection::PropertySerializer::Load(*descriptor, instance, parameters);
+                if (descriptor->loadExtra) {
+                    descriptor->loadExtra(instance, parameters);
+                }
+            } else if (auto* raw = dynamic_cast<IRawSavedParameters*>(&target)) {
+                raw->SetRawParameters(parameters);
             }
         }
     }

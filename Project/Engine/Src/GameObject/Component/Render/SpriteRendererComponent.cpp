@@ -22,6 +22,34 @@
 #include "Editor/ImGui/ImGuiAll.h"
 #endif
 
+namespace
+{
+    /// @brief ブレンドの名前（`BlendMode` の並び）
+    constexpr const char* kBlendModeNames[] = { "なし", "アルファ", "加算", "減算", "乗算", "スクリーン" };
+    static_assert(std::size(kBlendModeNames) == CoreEngine::kBlendModeCount);
+
+    /// @brief 編集はすべて手書きの UI が受け持つので、自動生成の欄には出さない
+    constexpr auto kHidden = ::CoreEngine::Reflection::PropertyFlags::Hidden;
+}
+
+REFLECT_DEFINE_BEGIN(CoreEngine::SpriteRendererComponent, "スプライト描画")
+    REFLECT_PARTIAL()
+    REFLECT_JSON(SaveRenderOrderToJson, LoadRenderOrderFromJson)
+    REFLECT_ACCESSOR("texture", "テクスチャ", GetTextureAsset, SetTextureAsset,
+        p.assetType = ::CoreEngine::AssetType::Texture, p.flags = kHidden)
+    REFLECT_ACCESSOR("color", "カラー", GetColor, SetColor, p.flags = kHidden)
+    REFLECT_ACCESSOR("anchor", "アンカー", GetAnchor, SetAnchor, p.flags = kHidden)
+    REFLECT_ACCESSOR("uvMin", "UV 左上", GetUVMin, SetUVMin, p.flags = kHidden)
+    REFLECT_ACCESSOR("uvMax", "UV 右下", GetUVMax, SetUVMax, p.flags = kHidden)
+    REFLECT_ACCESSOR("uvOffset", "UV の移動", GetUVOffset, SetUVOffset, p.flags = kHidden)
+    REFLECT_ACCESSOR("uvScale", "UV の倍率", GetUVScale, SetUVScale, p.flags = kHidden)
+    REFLECT_ACCESSOR("uvRotation", "UV の回転", GetUVRotation, SetUVRotation, p.flags = kHidden)
+    REFLECT_ACCESSOR("flipX", "左右反転", GetFlipX, SetFlipX, p.flags = kHidden)
+    REFLECT_ACCESSOR("flipY", "上下反転", GetFlipY, SetFlipY, p.flags = kHidden)
+    REFLECT_ENUM_ACCESSOR("blendMode", "ブレンド", GetBlendMode, SetBlendMode, kBlendModeNames,
+        p.flags = kHidden)
+REFLECT_DEFINE_END()
+REFLECT_REGISTER(CoreEngine::SpriteRendererComponent)
 COMPONENT_REGISTER(CoreEngine::SpriteRendererComponent)
 
 namespace CoreEngine
@@ -409,90 +437,40 @@ namespace CoreEngine
         vertexDataDirty_ = true;
     }
 
-    json SpriteRendererComponent::OnSerialize() const
+    Reflection::AssetRefValue SpriteRendererComponent::GetTextureAsset() const
     {
-        json j = json::object();
-
-        if (!texturePath_.empty()) {
-            j["texture"] = AssetPathToJson(texturePath_);
-        }
-        j["color"] = JsonManager::Vector4ToJson(color_);
-        j["anchor"]["x"] = anchorPoint_.x;
-        j["anchor"]["y"] = anchorPoint_.y;
-        j["uvMin"]["x"] = uvMin_.x;
-        j["uvMin"]["y"] = uvMin_.y;
-        j["uvMax"]["x"] = uvMax_.x;
-        j["uvMax"]["y"] = uvMax_.y;
-        j["uvOffset"]["x"] = uvTransform_.translate.x;
-        j["uvOffset"]["y"] = uvTransform_.translate.y;
-        j["uvScale"]["x"] = uvTransform_.scale.x;
-        j["uvScale"]["y"] = uvTransform_.scale.y;
-        j["uvRotation"] = uvTransform_.rotate.z;
-        j["flipX"] = flipX_;
-        j["flipY"] = flipY_;
-        j["blendMode"] = static_cast<int>(blendMode_);
-        if (hasRenderOrder_) {
-            j["sortingLayer"] = sortingLayer_;
-            j["orderInLayer"] = orderInLayer_;
-        }
-
-        return j;
+        return Reflection::AssetRefValue{ {}, texturePath_ };
     }
 
-    void SpriteRendererComponent::OnDeserialize(const json& j)
+    void SpriteRendererComponent::SetTextureAsset(const Reflection::AssetRefValue& value)
     {
-        if (!j.is_object()) { return; }
-
-        if (const auto it = j.find("texture"); it != j.end()) {
-            const GameObject* owner = GetOwner();
-            const std::string context = "SpriteRenderer（" + (owner ? owner->GetName() : std::string{}) + "）のテクスチャ";
-            SetTexture(JsonToAssetPath(*it, context));
+        if (value.path == texturePath_) {
+            return;
         }
+        SetTexture(value.path);
+    }
 
-        SetColor(JsonManager::SafeGetVector4(j, "color", color_));
-
-        if (j.contains("anchor")) {
-            SetAnchor({
-                JsonManager::SafeGet<float>(j["anchor"], "x", anchorPoint_.x),
-                JsonManager::SafeGet<float>(j["anchor"], "y", anchorPoint_.y) });
+    void SpriteRendererComponent::SaveRenderOrderToJson(json& parameters) const
+    {
+        if (!hasRenderOrder_) {
+            return;
         }
-        if (j.contains("uvMin") && j.contains("uvMax")) {
-            SetUVRect(
-                JsonManager::SafeGet<float>(j["uvMin"], "x", uvMin_.x),
-                JsonManager::SafeGet<float>(j["uvMin"], "y", uvMin_.y),
-                JsonManager::SafeGet<float>(j["uvMax"], "x", uvMax_.x),
-                JsonManager::SafeGet<float>(j["uvMax"], "y", uvMax_.y));
-        }
+        parameters["sortingLayer"] = sortingLayer_;
+        parameters["orderInLayer"] = orderInLayer_;
+    }
 
-        if (j.contains("uvOffset") || j.contains("uvScale") || j.contains("uvRotation")) {
-            if (j.contains("uvOffset")) {
-                uvTransform_.translate.x = JsonManager::SafeGet<float>(j["uvOffset"], "x", uvTransform_.translate.x);
-                uvTransform_.translate.y = JsonManager::SafeGet<float>(j["uvOffset"], "y", uvTransform_.translate.y);
-            }
-            if (j.contains("uvScale")) {
-                uvTransform_.scale.x = JsonManager::SafeGet<float>(j["uvScale"], "x", uvTransform_.scale.x);
-                uvTransform_.scale.y = JsonManager::SafeGet<float>(j["uvScale"], "y", uvTransform_.scale.y);
-            }
-            uvTransform_.rotate.z = JsonManager::SafeGet<float>(j, "uvRotation", uvTransform_.rotate.z);
-            UpdateUVTransformMatrix();
+    void SpriteRendererComponent::LoadRenderOrderFromJson(const json& parameters)
+    {
+        if (!parameters.is_object()) {
+            return;
         }
-
-        if (j.contains("flipX")) { SetFlipX(JsonManager::SafeGet<bool>(j, "flipX", flipX_)); }
-        if (j.contains("flipY")) { SetFlipY(JsonManager::SafeGet<bool>(j, "flipY", flipY_)); }
-
-        if (const auto it = j.find("blendMode"); it != j.end() && it->is_number_integer()) {
-            const int index = it->get<int>();
-            if (index >= 0 && index < static_cast<int>(kBlendModeCount)) {
-                blendMode_ = static_cast<BlendMode>(index);
-            }
+        if (!parameters.contains("sortingLayer") && !parameters.contains("orderInLayer")) {
+            return;
         }
-
-        if (j.contains("sortingLayer") || j.contains("orderInLayer")) {
-            sortingLayer_ = JsonManager::SafeGet<int>(j, "sortingLayer", sortingLayer_);
-            orderInLayer_ = JsonManager::SafeGet<int>(j, "orderInLayer", orderInLayer_);
-            hasRenderOrder_ = true;
-            ApplyRenderOrder();
-        }
+        sortingLayer_ = JsonManager::SafeGet<int>(parameters, "sortingLayer", sortingLayer_);
+        orderInLayer_ = JsonManager::SafeGet<int>(parameters, "orderInLayer", orderInLayer_);
+        hasRenderOrder_ = true;
+        ApplyRenderOrder();
     }
 
 #ifdef CORE_EDITOR

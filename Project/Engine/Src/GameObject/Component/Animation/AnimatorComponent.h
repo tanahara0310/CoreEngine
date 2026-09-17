@@ -6,6 +6,7 @@
 #include "Graphics/Model/Skeleton/Skeleton.h"
 #include "Math/Matrix/Matrix4x4.h"
 #include "Math/Vector/Vector3.h"
+#include "Reflection/Reflect.h"
 
 #include <optional>
 #include <string>
@@ -45,6 +46,20 @@ public:
         : modelPath_(std::move(modelPath)), clips_(std::move(clips)) {}
 
     const char* GetTypeName() const override { return "Animator"; }
+
+    REFLECT_DECLARE(AnimatorComponent)
+
+    /// @brief スケルトンモデルのファイル名（空 = 兄弟が持っているモデルを使う）
+    const std::string& GetModelPath() const { return modelPath_; }
+
+    /// @brief スケルトンモデルのファイル名を差し替える（`Awake` より前に呼ぶ）
+    void SetModelPath(const std::string& modelPath) { modelPath_ = modelPath; }
+
+    /// @brief 読み込むクリップを書き出す（識別名・ファイル内の名前・読み込み元ファイル）
+    void SaveClipsToJson(json& parameters) const;
+
+    /// @brief 読み込むクリップを読む
+    void LoadClipsFromJson(const json& parameters);
 
     // ===== ライフサイクル =====
 

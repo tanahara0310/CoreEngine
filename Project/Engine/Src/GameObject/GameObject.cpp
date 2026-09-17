@@ -225,13 +225,7 @@ namespace CoreEngine
 
     json GameObject::Serialize() const
     {
-        // 派生固有の値を先に受け取り、共通部分を被せる。
-        // 共通部分を派生が書き換えられないようにするため、この順で足す
-        json j = OnSerialize();
-        if (!j.is_object()) {
-            j = json::object();
-        }
-
+        json j = json::object();
         j["active"] = IsActive();
         if (!name_.empty()) {
             j["name"] = name_;
@@ -259,9 +253,6 @@ namespace CoreEngine
         if (j.contains("components")) {
             DeserializeComponents(j["components"]);
         }
-
-        // 派生固有の値は後。コンポーネントから作る派生データを上書きできるようにする
-        OnDeserialize(j);
     }
 
 

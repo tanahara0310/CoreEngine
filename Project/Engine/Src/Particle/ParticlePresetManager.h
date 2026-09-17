@@ -17,7 +17,7 @@ public:
     ~ParticlePresetManager() = default;
 
     /// @brief 設定をプリセットの形の JSON にする（CPU/GPU どちらでも可）
-    /// @note コンポーネントの保存（OnSerialize）もこの形を使う。放出位置は含めない
+    /// @note コンポーネントの保存（型記述子の口）もこの形を使う。放出位置は含めない
     static json ToJson(IParticleSystem& particleSystem);
 
     /// @brief プリセットの形の JSON を設定へ読み込む（書かれていないモジュールは触らない）

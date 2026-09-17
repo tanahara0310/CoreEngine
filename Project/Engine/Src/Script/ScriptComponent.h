@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GameObject/Component/Core/IComponent.h"
+#include "GameObject/Component/Core/IRawSavedParameters.h"
 #include "Script/ScriptComponentType.h"
 
 #include <cstdint>
@@ -20,7 +21,7 @@ namespace CoreEngine
 
     /// @brief スクリプトのクラスのインスタンスを 1 つ持つコンポーネント
     /// @details 型名はスクリプトのクラス名。プロパティの保存・インスペクタ・Undo は型の記述子を通る。
-    class ScriptComponent final : public IComponent
+    class ScriptComponent final : public IComponent, public IRawSavedParameters
     {
     public:
         /// @brief 型のクラスのオブジェクトを作って持つ（作れなければ持たないまま）
@@ -35,7 +36,8 @@ namespace CoreEngine
         void* GetReflectionInstance() override { return this; }
 
         /// @brief クラスが見つからない間は、控えた値をそのまま保存へ返す
-        json OnSerialize() const override;
+        const json& GetRawParameters() const override { return savedParameters_; }
+        void SetRawParameters(const json& parameters) override { savedParameters_ = parameters; }
 
         void Awake() override;
         void Start() override;
