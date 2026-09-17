@@ -8,6 +8,7 @@
 #include "Editor/ImGui/ImGuiAll.h"
 #include "Editor/ImGui/Widgets/EditorBars.h"
 #include "Editor/Inspector/InspectorLayout.h"
+#include "Editor/Scene/EditorSceneAccess.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/GameObjectManager.h"
@@ -34,57 +35,97 @@ namespace CoreEngine::ComponentEditing
         /// @brief 足せる型の一覧を絞り込む文字列
         char sAddFilter[64] = "";
 
-        /// @brief 付け外ししたコンポーネントと、その位置
+        /// @brief 付け外しするコンポーネント 1 つ分
         struct Slot
         {
-            IComponent* component = nullptr;
-            std::size_t position = 0;
+            std::string type;              ///< 型名
+            std::size_t position = 0;      ///< 取り外し済みを除いた並びでの位置
+            json entry;                    ///< 作り直すときの保存形
+            IComponent* instance = nullptr; ///< 最後に付け外しした実体（控えの中を探すときに比べるだけに使う）
         };
 
+        /// @brief 付け外ししたコンポーネントの控えを作る
+        Slot MakeSlot(IComponent& component, std::size_t position)
+        {
+            return Slot{ component.GetTypeName(), position, ComponentHost::SerializeComponent(component), &component };
+        }
+
         /// @brief コンポーネントの付け外しを戻す・やり直すコマンド
-        /// @details 外した実体はオブジェクトが控えているので、同じ実体を同じ位置へ付け直す。
+        /// @details 相手のオブジェクトは今のシーンから ID で引く。外して控えている実体があればそれを
+        ///          同じ位置へ付け直し、無ければ（シーンを組み直した後など）保存形から作り直す。
         class AttachmentCommand final : public Editor::IEditorCommand
         {
         public:
             /// @param attachOnRedo やり直したときに付いた状態になるか（足す操作は true、外す操作は false）
-            AttachmentCommand(std::string label, GameObjectManager& manager, ObjectId objectId,
-                              std::vector<Slot> slots, bool attachOnRedo)
-                : label_(std::move(label)), manager_(&manager), objectId_(objectId),
+            AttachmentCommand(std::string label, ObjectId objectId, std::vector<Slot> slots, bool attachOnRedo)
+                : label_(std::move(label)), objectId_(objectId),
                   slots_(std::move(slots)), attachOnRedo_(attachOnRedo) {}
 
             void Undo() override { Apply(!attachOnRedo_); }
             void Redo() override { Apply(attachOnRedo_); }
             std::string GetLabel() const override { return label_; }
-
-            bool References(const void* target) const override
-            {
-                return target != nullptr && std::any_of(slots_.begin(), slots_.end(),
-                    [target](const Slot& slot) { return slot.component == target; });
-            }
+            bool SurvivesSceneReload() const override { return true; }
 
         private:
             void Apply(bool attach)
             {
-                GameObject* object = manager_->FindObject(objectId_);
+                GameObjectManager* const manager = Editor::SceneAccess::Objects();
+                GameObject* const object = manager ? manager->FindObject(objectId_) : nullptr;
                 if (!object) {
                     return;
                 }
 
                 // 付けるときは前の位置から、外すときは後ろから行う
                 if (attach) {
-                    for (const Slot& slot : slots_) {
-                        object->ReattachComponent(slot.component, slot.position);
+                    for (Slot& slot : slots_) {
+                        IComponent* const detached = object->FindDetachedComponent(slot.instance);
+                        if (detached && slot.type == detached->GetTypeName() &&
+                            object->ReattachComponent(detached, slot.position)) {
+                            continue;
+                        }
+                        slot.instance = object->RestoreComponent(slot.entry, slot.position);
                     }
                 } else {
                     for (auto it = slots_.rbegin(); it != slots_.rend(); ++it) {
-                        object->DetachComponent(it->component);
+                        IComponent* const attached = FindAttached(*object, *it);
+                        if (!attached) {
+                            continue;
+                        }
+                        it->entry = ComponentHost::SerializeComponent(*attached);
+                        object->DetachComponent(attached);
+                        it->instance = attached;
                     }
                 }
-                manager_->InvalidateReferences();
+                manager->InvalidateReferences();
+            }
+
+            /// @brief 付いているコンポーネントのうち、控えに当たるものを探す
+            /// @details 最後に付けた実体が付いていればそれ、無ければ控えの位置にある同じ型、
+            ///          それも無ければ最初の同じ型を返す。
+            static IComponent* FindAttached(const GameObject& object, const Slot& slot)
+            {
+                IComponent* sameType = nullptr;
+                std::size_t position = 0;
+                for (const auto& component : object.GetAllComponents()) {
+                    if (!component) {
+                        continue;
+                    }
+                    if (component.get() == slot.instance && slot.type == component->GetTypeName()) {
+                        return component.get();
+                    }
+                    if (slot.type == component->GetTypeName()) {
+                        if (position == slot.position) {
+                            sameType = component.get();
+                        } else if (!sameType) {
+                            sameType = component.get();
+                        }
+                    }
+                    ++position;
+                }
+                return sameType;
             }
 
             std::string label_;
-            GameObjectManager* manager_ = nullptr;
             ObjectId objectId_{};
             std::vector<Slot> slots_;
             bool attachOnRedo_ = true;
@@ -168,7 +209,7 @@ namespace CoreEngine::ComponentEditing
                 continue;
             }
             if (const std::optional<std::size_t> position = object.FindComponentPosition(component)) {
-                slots.push_back(Slot{ component, *position });
+                slots.push_back(MakeSlot(*component, *position));
             }
         }
 
@@ -176,7 +217,7 @@ namespace CoreEngine::ComponentEditing
         if (GameObjectManager* manager = object.GetObjectManager()) {
             manager->InvalidateReferences();
             Editor::EditorCommandStack::Get().Push(std::make_unique<AttachmentCommand>(
-                object.GetName() + " に" + displayName + "を追加", *manager, object.GetObjectId(),
+                object.GetName() + " に" + displayName + "を追加", object.GetObjectId(),
                 std::move(slots), true));
         }
 
@@ -215,17 +256,19 @@ namespace CoreEngine::ComponentEditing
             return false;
         }
 
+        Slot slot = MakeSlot(component, 0);
         const std::optional<std::size_t> position = object.DetachComponent(&component);
         if (!position) {
             return false;
         }
+        slot.position = *position;
 
         const std::string displayName = component.GetInspectorName();
         if (GameObjectManager* manager = object.GetObjectManager()) {
             manager->InvalidateReferences();
             Editor::EditorCommandStack::Get().Push(std::make_unique<AttachmentCommand>(
-                object.GetName() + " から" + displayName + "を外す", *manager, object.GetObjectId(),
-                std::vector<Slot>{ Slot{ &component, *position } }, false));
+                object.GetName() + " から" + displayName + "を外す", object.GetObjectId(),
+                std::vector<Slot>{ std::move(slot) }, false));
         }
 
         Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,

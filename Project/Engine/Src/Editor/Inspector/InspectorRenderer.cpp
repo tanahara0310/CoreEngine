@@ -24,6 +24,7 @@
 #include <cstring>
 #include <format>
 #include <memory>
+#include <optional>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -38,56 +39,100 @@ namespace CoreEngine
         constexpr const char* kPropertyMenuId = "##propertyMenu";
 
         /// @brief 記述子経由で編集した 1 プロパティを元に戻すコマンド
+        /// @details 文脈がコンポーネントを引き直す関数を持っていれば、適用のたびに引き直し、
+        ///          プロパティは名前で探す。持っていなければ積んだときの実体へ書く。
         class PropertyEditCommand final : public Editor::IEditorCommand
         {
         public:
-            using Changed = std::function<void(const Reflection::PropertyDescriptor&)>;
-
-            PropertyEditCommand(std::string label, const void* owner, void* instance,
-                                const Reflection::PropertyDescriptor* property,
-                                Reflection::PropertyValue before, Changed onChanged)
-                : label_(std::move(label)), owner_(owner), instance_(instance),
-                  property_(property), before_(std::move(before)), onChanged_(std::move(onChanged)) {}
+            PropertyEditCommand(std::string label, const InspectorRenderer::DrawContext& context, void* instance,
+                                const Reflection::PropertyDescriptor& property, Reflection::PropertyValue before)
+                : label_(std::move(label)), owner_(context.owner), instance_(instance), property_(&property),
+                  propertyName_(property.name), propertyType_(property.type), before_(std::move(before)),
+                  onChanged_(context.onChanged), resolveComponent_(context.resolveComponent) {}
 
             void Undo() override
             {
+                const std::optional<Target> target = ResolveTarget();
+                if (!target) {
+                    return;
+                }
                 // 積んだ時点では編集後の値が確定していないので、最初の Undo で控える
-                if (!hasAfter_ && property_ && instance_) {
-                    after_.LoadFrom(*property_, instance_);
+                if (!hasAfter_) {
+                    after_.LoadFrom(*target->property, target->instance);
                     hasAfter_ = after_.IsValid();
                 }
-                Apply(before_);
+                Apply(*target, before_);
             }
 
             void Redo() override
             {
-                if (hasAfter_) { Apply(after_); }
+                const std::optional<Target> target = ResolveTarget();
+                if (target && hasAfter_) {
+                    Apply(*target, after_);
+                }
             }
 
             std::string GetLabel() const override { return label_; }
 
             bool References(const void* target) const override
             {
-                return target != nullptr && (target == owner_ || target == instance_);
+                return !resolveComponent_ && target != nullptr && (target == owner_ || target == instance_);
             }
 
+            bool SurvivesSceneReload() const override { return static_cast<bool>(resolveComponent_); }
+
         private:
-            void Apply(const Reflection::PropertyValue& value)
+            /// @brief 書き込む先
+            struct Target
             {
-                if (!property_ || !instance_ || !value.StoreTo(*property_, instance_)) {
+                void* instance = nullptr;
+                const Reflection::PropertyDescriptor* property = nullptr;
+                IComponent* component = nullptr; ///< 引き直したコンポーネント（引き直さないなら nullptr）
+            };
+
+            std::optional<Target> ResolveTarget() const
+            {
+                if (!resolveComponent_) {
+                    if (!instance_ || !property_) {
+                        return std::nullopt;
+                    }
+                    return Target{ instance_, property_, nullptr };
+                }
+
+                IComponent* const component = resolveComponent_();
+                const Reflection::TypeDescriptor* const type = component ? component->GetTypeDescriptor() : nullptr;
+                const Reflection::PropertyDescriptor* const property =
+                    type ? type->Find(propertyName_.c_str()) : nullptr;
+                void* const instance = component ? component->GetReflectionInstance() : nullptr;
+                if (!property || property->type != propertyType_ || !instance) {
+                    return std::nullopt;
+                }
+                return Target{ instance, property, component };
+            }
+
+            void Apply(const Target& target, const Reflection::PropertyValue& value)
+            {
+                if (!value.StoreTo(*target.property, target.instance)) {
                     return;
                 }
-                if (onChanged_) { onChanged_(*property_); }
+                if (target.component) {
+                    target.component->OnPropertyChanged(*target.property);
+                } else if (onChanged_) {
+                    onChanged_(*target.property);
+                }
             }
 
             std::string label_;
             const void* owner_ = nullptr;
             void*       instance_ = nullptr;
             const Reflection::PropertyDescriptor* property_ = nullptr;
+            std::string propertyName_;
+            Reflection::PropertyType propertyType_{};
             Reflection::PropertyValue before_;
             Reflection::PropertyValue after_;
-            bool    hasAfter_ = false;
-            Changed onChanged_;
+            bool hasAfter_ = false;
+            std::function<void(const Reflection::PropertyDescriptor&)> onChanged_;
+            std::function<IComponent*()> resolveComponent_;
         };
 
         /// @brief 範囲指定からドラッグ速度を決める
@@ -829,8 +874,7 @@ namespace CoreEngine
                 return nullptr;
             }
             if (context.onChanged) { context.onChanged(p); }
-            return std::make_unique<PropertyEditCommand>(std::move(label), context.owner, instance, &p,
-                std::move(before), context.onChanged);
+            return std::make_unique<PropertyEditCommand>(std::move(label), context, instance, p, std::move(before));
         }
 
         /// @brief 値を書き込み、書き込めたら履歴へ積む
@@ -977,10 +1021,8 @@ namespace CoreEngine
                     current.StoreTo(p, instance);
                     changed = true;
                     if (context.onChanged) { context.onChanged(p); }
-                    Editor::EditorCommandStack::Get().Push(
-                        std::make_unique<PropertyEditCommand>(
-                            ownerLabel + " の " + p.displayName,
-                            context.owner, instance, &p, std::move(before), context.onChanged));
+                    Editor::EditorCommandStack::Get().Push(std::make_unique<PropertyEditCommand>(
+                        ownerLabel + " の " + p.displayName, context, instance, p, std::move(before)));
                 }
                 changed = DrawPropertyMenu(p, instance, state, context, ownerLabel) || changed;
                 ImGui::PopID();
@@ -1008,10 +1050,8 @@ namespace CoreEngine
                 }
                 if (ImGui::IsItemDeactivatedAfterEdit() && arraySnapshot.IsValid()) {
                     if (!arraySnapshot.Equals(p.type, before.Data(p.type))) {
-                        Editor::EditorCommandStack::Get().Push(
-                            std::make_unique<PropertyEditCommand>(
-                                ownerLabel + " の " + p.displayName,
-                                context.owner, instance, &p, arraySnapshot, context.onChanged));
+                        Editor::EditorCommandStack::Get().Push(std::make_unique<PropertyEditCommand>(
+                            ownerLabel + " の " + p.displayName, context, instance, p, arraySnapshot));
                     }
                     arraySnapshot.Reset();
                 }
@@ -1019,10 +1059,8 @@ namespace CoreEngine
                     arraySnapshot = before;
                 }
                 if (structureChanged) {
-                    Editor::EditorCommandStack::Get().Push(
-                        std::make_unique<PropertyEditCommand>(
-                            ownerLabel + " の " + p.displayName,
-                            context.owner, instance, &p, std::move(before), context.onChanged));
+                    Editor::EditorCommandStack::Get().Push(std::make_unique<PropertyEditCommand>(
+                        ownerLabel + " の " + p.displayName, context, instance, p, std::move(before)));
                     arraySnapshot.Reset();
                 }
                 DrawOverrideMark(state, rowStart);
@@ -1052,10 +1090,8 @@ namespace CoreEngine
             if (ImGui::IsItemDeactivatedAfterEdit() && editSnapshot.IsValid()) {
                 // 掴んだだけで値が変わっていないなら履歴を汚さない
                 if (!editSnapshot.Equals(p.type, value)) {
-                    Editor::EditorCommandStack::Get().Push(
-                        std::make_unique<PropertyEditCommand>(
-                            ownerLabel + " の " + p.displayName,
-                            context.owner, instance, &p, editSnapshot, context.onChanged));
+                    Editor::EditorCommandStack::Get().Push(std::make_unique<PropertyEditCommand>(
+                        ownerLabel + " の " + p.displayName, context, instance, p, editSnapshot));
                 }
                 editSnapshot.Reset();
             }

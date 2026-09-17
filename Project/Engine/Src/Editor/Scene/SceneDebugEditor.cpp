@@ -19,6 +19,7 @@
 #include "Scene/PrefabSystem.h"
 #include "Scene/SceneSaveSystem.h"
 #include "Editor/Command/EditorCommand.h"
+#include "Editor/Scene/EditorSceneAccess.h"
 #include "Editor/Scene/PrefabEditing.h"
 #include "Editor/ImGui/ObjectSelector.h"
 #include "Graphics/Asset/AssetInfo.h"
@@ -82,8 +83,6 @@ namespace CoreEngine
         // 読み込んだ直後のシーンは保存済みとして扱う
         savedRevision_ = Editor::EditorCommandStack::Get().GetSceneRevision();
 
-        undoRedoHistory_.SetGameObjectManager(mgr);
-
         // カメラエディター側で追従対象を参照できるよう、オブジェクトマネージャーを注入する。
         if (cameraManager_) {
             cameraManager_->SetDebugGameObjectManager(gameObjectManager_);
@@ -104,13 +103,14 @@ namespace CoreEngine
             }
             });
 
-        // ギズモ変更時コールバックを設定
-        objectSelector_.SetOnGizmoEditCommitted([this](
+        // ギズモとインスペクタで動かし終えたら、移動を Undo に積む
+        const auto pushTransformRecord = [this](
             GameObject* obj,
             const Vector3& tBefore, const Vector3& rBefore,
             const Vector3& sBefore, bool aBefore) {
                 if (!obj) return;
                 TransformRecord record;
+                record.objectId = obj->GetObjectId();
                 record.objectName = obj->GetName();
                 record.translateBefore = tBefore;
                 record.rotateBefore = rBefore;
@@ -123,37 +123,9 @@ namespace CoreEngine
                 }
                 record.activeAfter = obj->IsActive();
                 undoRedoHistory_.Push(record);
-            });
-
-        // Undo/Redo 記録（ImGui 操作完了時）
-        mgr->SetEditCommitCallback([this](
-            GameObject* obj,
-            const Vector3& tBefore, const Vector3& rBefore,
-            const Vector3& sBefore, bool aBefore) {
-                if (!obj) return;
-                TransformRecord record;
-                record.objectName = obj->GetName();
-                record.translateBefore = tBefore;
-                record.rotateBefore = rBefore;
-                record.scaleBefore = sBefore;
-                record.activeBefore = aBefore;
-                if (auto* src = obj->GetComponent<ITransformSource>()) {
-                    record.translateAfter = src->Translate();
-                    record.rotateAfter = src->Rotate();
-                    record.scaleAfter = src->Scale();
-                }
-                record.activeAfter = obj->IsActive();
-                undoRedoHistory_.Push(record);
-            });
-
-        // Undo でオブジェクトが削除される直前に ObjectSelector の選択を解除する。
-        // 解除しないと削除済みオブジェクトへのダングリングポインタでクラッシュする。
-        undoRedoHistory_.SetOnBeforeDestroyCallback([this](const std::string& objectName) {
-            if (objectSelector_.GetSelectedObject() &&
-                objectSelector_.GetSelectedObject()->GetName() == objectName) {
-                objectSelector_.SelectObject(nullptr);
-            }
-        });
+            };
+        objectSelector_.SetOnGizmoEditCommitted(pushTransformRecord);
+        mgr->SetEditCommitCallback(pushTransformRecord);
 
         // Hierarchy / Inspector の中身とカメラエディタをパネルとして登録する
         if (auto* gameDebugUI = engine_->GetDebugSubsystem()->GetGameDebugUI()) {
@@ -246,10 +218,10 @@ namespace CoreEngine
         // テキスト入力中は ImGui 自身の入力 Undo に譲る。
         if (!ImGui::GetIO().WantTextInput) {
             if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Z, ImGuiInputFlags_RouteGlobal)) {
-                undoRedoHistory_.Undo(gameObjectManager_);
+                undoRedoHistory_.Undo();
             }
             if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Y, ImGuiInputFlags_RouteGlobal)) {
-                undoRedoHistory_.Redo(gameObjectManager_);
+                undoRedoHistory_.Redo();
             }
         }
 
@@ -562,15 +534,18 @@ namespace CoreEngine
         ImGui::PopStyleVar(2);
     }
 
+    void SceneDebugEditor::Deselect(const GameObject& object)
+    {
+        if (objectSelector_.GetSelectedObject() == &object || objectSelector_.GetSelectedSprite() == &object) {
+            objectSelector_.ClearSelection();
+        }
+    }
+
     ObjectEditing::Context SceneDebugEditor::MakeObjectEditingContext()
     {
         ObjectEditing::Context context;
         context.manager = gameObjectManager_;
-        context.beforeDestroy = [this](const GameObject& object) {
-            if (objectSelector_.GetSelectedObject() == &object || objectSelector_.GetSelectedSprite() == &object) {
-                objectSelector_.ClearSelection();
-            }
-        };
+        context.beforeDestroy = [this](const GameObject& object) { Deselect(object); };
         return context;
     }
 
@@ -690,7 +665,9 @@ namespace CoreEngine
 
         // スポーン操作を Undo 履歴に記録する
         ObjectSpawnRecord spawnRecord;
+        spawnRecord.objectId = raw->GetObjectId();
         spawnRecord.objectName = raw->GetName();
+        spawnRecord.serializeKey = raw->GetSerializeKey();
         spawnRecord.modelPath  = modelFileName;
         if (auto* src = raw->GetComponent<ITransformSource>()) {
             spawnRecord.translate = src->Translate();
@@ -725,23 +702,28 @@ namespace CoreEngine
         // 置いた操作を Undo 履歴に記録する（戻すと消し、やり直すと同じ ID と状態で置き直す）
         const ObjectId id = placed->GetObjectId();
         const std::string name = placed->GetName();
+        const std::string key = placed->GetSerializeKey();
         const json state = placed->Serialize();
         Editor::EditorCommandStack::Get().Push(std::make_unique<Editor::FunctionCommand>(
             name + " の配置",
-            [this, id] {
-                if (GameObject* target = gameObjectManager_->FindObject(id)) {
-                    if (objectSelector_.GetSelectedObject() == target) {
-                        objectSelector_.SelectObject(nullptr);
-                    }
+            [id] {
+                GameObjectManager* const manager = Editor::SceneAccess::Objects();
+                if (GameObject* const target = manager ? manager->FindObject(id) : nullptr) {
+                    Editor::SceneAccess::Deselect(*target);
                     target->Destroy();
+                    manager->InvalidateReferences();
                 }
             },
-            [this, prefab, name, state, id] {
-                if (GameObject* target = PrefabSystem::Instantiate(*gameObjectManager_, prefab, name)) {
-                    gameObjectManager_->AssignObjectId(*target, id);
+            [prefab, name, key, state, id] {
+                GameObjectManager* const manager = Editor::SceneAccess::Objects();
+                if (GameObject* const target = manager ? PrefabSystem::Instantiate(*manager, prefab, name) : nullptr) {
+                    target->SetSerializeKey(key);
+                    manager->AssignObjectId(*target, id);
                     target->Deserialize(state);
+                    manager->InvalidateReferences();
                 }
-            }));
+            },
+            true, true));
 
         Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
             "プレハブを置きました: {}（{}）", name, prefab.path);

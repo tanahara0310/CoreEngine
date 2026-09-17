@@ -5,6 +5,7 @@
 
 #include "Editor/Command/EditorCommand.h"
 #include "Editor/Command/EditorCommandStack.h"
+#include "Editor/Scene/EditorSceneAccess.h"
 #include "GameObject/Component/Transform/ITransformSource.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "GameObject/GameObject.h"
@@ -150,21 +151,37 @@ namespace CoreEngine::ObjectEditing
             context.manager->InvalidateReferences();
         }
 
+        /// @brief 今のシーンで、選択を外してからオブジェクトに削除の印を付ける
+        void DestroyInScene(ObjectId id)
+        {
+            GameObjectManager* const manager = Editor::SceneAccess::Objects();
+            GameObject* const target = manager ? manager->FindObject(id) : nullptr;
+            if (!target) {
+                return;
+            }
+            Editor::SceneAccess::Deselect(*target);
+            target->Destroy();
+            manager->InvalidateReferences();
+        }
+
+        /// @brief 今のシーンに、控えから同じ ID と保存キーでオブジェクトを作り直す
+        void RecreateInScene(const Snapshot& snapshot)
+        {
+            if (GameObjectManager* const manager = Editor::SceneAccess::Objects()) {
+                Recreate(*manager, snapshot, snapshot.name, true);
+            }
+        }
+
         /// @brief 作ったオブジェクトを、Undo で消し Redo で同じ ID のまま作り直すコマンドを積む
-        void PushCreateCommand(const Context& context, const GameObject& object, std::string label)
+        void PushCreateCommand(const GameObject& object, std::string label)
         {
             Snapshot snapshot = Capture(object);
             const ObjectId id = snapshot.id;
             Editor::EditorCommandStack::Get().Push(std::make_unique<Editor::FunctionCommand>(
                 std::move(label),
-                [context, id] {
-                    if (GameObject* const target = context.manager->FindObject(id)) {
-                        DestroyObject(context, *target);
-                    }
-                },
-                [context, snapshot = std::move(snapshot)] {
-                    Recreate(*context.manager, snapshot, snapshot.name, true);
-                }));
+                [id] { DestroyInScene(id); },
+                [snapshot = std::move(snapshot)] { RecreateInScene(snapshot); },
+                true, true));
         }
     }
 
@@ -211,7 +228,7 @@ namespace CoreEngine::ObjectEditing
         }
         manager.InvalidateReferences();
 
-        PushCreateCommand(context, *object, object->GetName() + " を作る");
+        PushCreateCommand(*object, object->GetName() + " を作る");
         Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
             "ObjectEditing: 空のオブジェクト \"{}\" を作りました", object->GetName());
         return object;
@@ -243,7 +260,7 @@ namespace CoreEngine::ObjectEditing
         }
         manager.InvalidateReferences();
 
-        PushCreateCommand(context, *object, object->GetName() + " を作る");
+        PushCreateCommand(*object, object->GetName() + " を作る");
         Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
             "ObjectEditing: パーティクルのオブジェクト \"{}\" を作りました", object->GetName());
         return object;
@@ -275,7 +292,7 @@ namespace CoreEngine::ObjectEditing
         }
         manager.InvalidateReferences();
 
-        PushCreateCommand(context, *object, object->GetName() + " を作る");
+        PushCreateCommand(*object, object->GetName() + " を作る");
         Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
             "ObjectEditing: UI のオブジェクト \"{}\" を作りました", object->GetName());
         return object;
@@ -305,7 +322,7 @@ namespace CoreEngine::ObjectEditing
             rect->SetAnchoredPosition({ position.x + kUIDuplicateOffset, position.y + kUIDuplicateOffset });
         }
 
-        PushCreateCommand(context, *copy, source.GetName() + " を複製");
+        PushCreateCommand(*copy, source.GetName() + " を複製");
         Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
             "ObjectEditing: \"{}\" を \"{}\" として複製しました", source.GetName(), copy->GetName());
         return copy;
@@ -327,14 +344,9 @@ namespace CoreEngine::ObjectEditing
 
         Editor::EditorCommandStack::Get().Push(std::make_unique<Editor::FunctionCommand>(
             name + " を削除",
-            [context, snapshot = std::move(snapshot)] {
-                Recreate(*context.manager, snapshot, snapshot.name, true);
-            },
-            [context, id] {
-                if (GameObject* const target = context.manager->FindObject(id)) {
-                    DestroyObject(context, *target);
-                }
-            }));
+            [snapshot = std::move(snapshot)] { RecreateInScene(snapshot); },
+            [id] { DestroyInScene(id); },
+            true, true));
 
         Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
             "ObjectEditing: \"{}\" を削除しました", name);

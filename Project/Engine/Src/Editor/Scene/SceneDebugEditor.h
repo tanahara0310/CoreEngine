@@ -48,6 +48,9 @@ namespace CoreEngine
         /// @brief シーンオブジェクトの選択を解除する
         void ClearSelection() { objectSelector_.ClearSelection(); }
 
+        /// @brief オブジェクトを選んでいたら選択を解除する（消す直前に呼ぶ）
+        void Deselect(const GameObject& object);
+
         /// @brief 選択中のシーンオブジェクトを取得する
         GameObject* GetSelectedObject() const { return objectSelector_.GetSelectedObject(); }
 
@@ -56,10 +59,8 @@ namespace CoreEngine
         ///          ここを通さないと「Canvas で掴んだ要素と Inspector の表示が食い違う」
         void SelectObject(GameObject* object) { objectSelector_.SelectObject(object); }
 
-        bool Undo(GameObjectManager* mgr) { return undoRedoHistory_.Undo(mgr); }
-        bool Redo(GameObjectManager* mgr) { return undoRedoHistory_.Redo(mgr); }
-        bool Undo() { return undoRedoHistory_.Undo(gameObjectManager_); }
-        bool Redo() { return undoRedoHistory_.Redo(gameObjectManager_); }
+        bool Undo() { return undoRedoHistory_.Undo(); }
+        bool Redo() { return undoRedoHistory_.Redo(); }
         bool CanUndo() const { return undoRedoHistory_.CanUndo(); }
         bool CanRedo() const { return undoRedoHistory_.CanRedo(); }
 

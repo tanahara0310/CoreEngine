@@ -475,6 +475,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Editor\Environment\AtmosphereEditor.cpp" />
     <ClCompile Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\ComponentEditing.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Scene\EditorSceneAccess.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\ObjectEditing.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\PlayModeController.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\PrefabEditing.cpp" />
@@ -1511,6 +1512,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Editor\Environment\AtmosphereEditor.h" />
     <ClInclude Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\ComponentEditing.h" />
+    <ClInclude Include="Engine\Src\Editor\Scene\EditorSceneAccess.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\ObjectEditing.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\PlayModeController.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\PrefabEditing.h" />

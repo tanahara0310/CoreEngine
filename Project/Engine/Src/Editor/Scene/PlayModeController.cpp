@@ -5,6 +5,7 @@
 
 #include "Audio/AudioSystem.h"
 #include "Camera/CameraManager.h"
+#include "Editor/Command/EditorCommandStack.h"
 #include "Editor/Scene/SceneDebugEditor.h"
 #include "EngineSystem/EngineSystem.h"
 #include "EngineSystem/PlaybackState.h"
@@ -117,6 +118,9 @@ namespace CoreEngine::Editor
         sceneDirty_ = editor && editor->IsSceneDirty();
         captureSeconds_ = SecondsSince(started);
 
+        // 再生中の操作は別の履歴に積み、停止したら再生前の履歴へ戻す
+        EditorCommandStack::Get().BeginPlaySession();
+
         Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
             "PlayModeController: 再生を始めます。シーン \"{}\" のオブジェクト {} 体を控えました（{:.3f} 秒）",
             sceneName_, snapshot_->objects.size(), captureSeconds_);
@@ -156,9 +160,14 @@ namespace CoreEngine::Editor
             selectedId = selected->GetObjectId();
         }
 
+        // 再生前の履歴を取り出してから組み直し、組み直した後に戻す
+        EditorCommandStack::History history = EditorCommandStack::Get().EndPlaySession();
+
         const auto started = std::chrono::steady_clock::now();
         const std::shared_ptr<const SceneSnapshot> snapshot = std::move(snapshot_);
-        if (!sceneManager->LoadSceneFromSnapshot(sceneName_, snapshot)) {
+        const bool loaded = sceneManager->LoadSceneFromSnapshot(sceneName_, snapshot);
+        EditorCommandStack::Get().RestoreHistory(std::move(history));
+        if (!loaded) {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System,
                 "PlayModeController: 再生前のシーン \"{}\" を組み直せませんでした", sceneName_);
             return true;

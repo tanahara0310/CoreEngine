@@ -5,6 +5,7 @@
 
 #include "Editor/Command/EditorCommand.h"
 #include "Editor/Command/EditorCommandStack.h"
+#include "Editor/Scene/EditorSceneAccess.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/GameObjectManager.h"
 #include "Graphics/Asset/AssetInfo.h"
@@ -58,44 +59,49 @@ namespace CoreEngine::PrefabEditing
         void PushLinkCommand(GameObject& object, std::string label,
                              Reflection::AssetRefValue before, Reflection::AssetRefValue after)
         {
-            GameObjectManager* manager = object.GetObjectManager();
-            if (!manager) {
+            if (!object.GetObjectManager()) {
                 return;
             }
             const ObjectId id = object.GetObjectId();
             Editor::EditorCommandStack::Get().Push(std::make_unique<Editor::FunctionCommand>(
                 std::move(label),
-                [manager, id, before] {
-                    if (GameObject* target = manager->FindObject(id)) {
+                [id, before] {
+                    if (GameObject* target = Editor::SceneAccess::FindObject(id)) {
                         target->SetPrefab(before);
                     }
                 },
-                [manager, id, after] {
-                    if (GameObject* target = manager->FindObject(id)) {
+                [id, after] {
+                    if (GameObject* target = Editor::SceneAccess::FindObject(id)) {
                         target->SetPrefab(after);
                     }
-                }));
+                },
+                true, true));
         }
 
         /// @brief プレハブの書き換えを履歴へ積む
         /// @param sourceState 書き戻したオブジェクトの、書き戻す前の状態（戻すときに一緒に戻す）
-        void PushUpdateCommand(GameObjectManager& manager, const GameObject& source,
-                               const Reflection::AssetRefValue& prefab, std::string label,
-                               json before, json after, json sourceState)
+        void PushUpdateCommand(const GameObject& source, const Reflection::AssetRefValue& prefab,
+                               std::string label, json before, json after, json sourceState)
         {
-            GameObjectManager* target = &manager;
             const ObjectId id = source.GetObjectId();
             Editor::EditorCommandStack::Get().Push(std::make_unique<Editor::FunctionCommand>(
                 std::move(label),
-                [target, prefab, before, id, sourceState] {
-                    PrefabSystem::UpdatePrefab(*target, prefab, before);
-                    if (GameObject* object = target->FindObject(id)) {
+                [prefab, before, id, sourceState] {
+                    GameObjectManager* const manager = Editor::SceneAccess::Objects();
+                    if (!manager) {
+                        return;
+                    }
+                    PrefabSystem::UpdatePrefab(*manager, prefab, before);
+                    if (GameObject* object = manager->FindObject(id)) {
                         object->Deserialize(sourceState);
                     }
                 },
-                [target, prefab, after] {
-                    PrefabSystem::UpdatePrefab(*target, prefab, after);
-                }));
+                [prefab, after] {
+                    if (GameObjectManager* const manager = Editor::SceneAccess::Objects()) {
+                        PrefabSystem::UpdatePrefab(*manager, prefab, after);
+                    }
+                },
+                true, true));
         }
 
         /// @brief components 配列の中で最初の Transform の parameters を探す
@@ -163,7 +169,7 @@ namespace CoreEngine::PrefabEditing
                 "PrefabEditing: プレハブ \"{}\" へ書き戻せませんでした", prefab.path);
             return false;
         }
-        PushUpdateCommand(manager, object, prefab, object.GetName() + " をプレハブへ適用",
+        PushUpdateCommand(object, prefab, object.GetName() + " をプレハブへ適用",
             std::move(before), std::move(after), std::move(sourceState));
         return true;
     }
@@ -197,7 +203,7 @@ namespace CoreEngine::PrefabEditing
                 "PrefabEditing: プレハブ \"{}\" へ書き戻せませんでした", prefab.path);
             return false;
         }
-        PushUpdateCommand(manager, object, prefab,
+        PushUpdateCommand(object, prefab,
             object.GetName() + " の " + property.displayName + " をプレハブへ適用",
             std::move(before), std::move(after), std::move(sourceState));
         return true;

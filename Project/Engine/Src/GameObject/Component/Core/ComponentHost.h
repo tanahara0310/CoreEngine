@@ -163,6 +163,17 @@ public:
     /// @return 外したものの中に無ければ false
     bool ReattachComponent(IComponent* component, std::size_t position);
 
+    /// @brief `DetachComponent()` で外して控えているコンポーネントを探す
+    /// @return 控えていなければ nullptr
+    IComponent* FindDetachedComponent(const IComponent* component) const;
+
+    /// @brief 保存形からコンポーネントを作り、指定の位置へ付ける
+    /// @param entry `SerializeComponents` が書いた配列の 1 要素
+    /// @param position 取り外し済みを除いた並びでの添え字（付いている数以上なら末尾）
+    /// @return 付けたコンポーネント（保存形が壊れていれば nullptr）
+    /// @note コードが付けたものとして扱わない。値を流し終えてから `Awake()` を呼ぶ。
+    IComponent* RestoreComponent(const json& entry, std::size_t position);
+
     /// @brief コンポーネントの位置（取り外し済みを除いた並びでの添え字）
     /// @return 付いていなければ空
     std::optional<std::size_t> FindComponentPosition(const IComponent* component) const;
@@ -190,6 +201,9 @@ public:
     ///       `version` は記述子の版が 2 以上の型だけに書く。
     json SerializeComponents() const;
 
+    /// @brief 1 つのコンポーネントを `SerializeComponents` の配列の 1 要素の形で書き出す
+    static json SerializeComponent(const IComponent& component);
+
     /// @brief JSON 配列からコンポーネントの状態を復元する
     /// @param components `SerializeComponents` が書いた形
     /// @note 既にアタッチされているものへ型名で順に対応づけて値を流す。
@@ -208,6 +222,12 @@ protected:
 private:
     /// @brief スロットを retired_ へ移し、配列上は nullptr にする（インデックス不変）
     void RetireSlot(std::unique_ptr<IComponent>& slot);
+
+    /// @brief 取り外し済みを除いた並びで position 番目の手前へ入れる
+    void InsertAtPosition(std::unique_ptr<IComponent> component, std::size_t position);
+
+    /// @brief 保存形の 1 要素の有効・版・値をコンポーネントへ流す
+    static void LoadComponentEntry(IComponent& target, const json& entry);
 
     GameObject* ownerObject_ = nullptr;
 

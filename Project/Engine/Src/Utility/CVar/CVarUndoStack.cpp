@@ -107,7 +107,7 @@ namespace CoreEngine
                 cvar->GetName(),
                 [cvar, oldValue] { ApplyValue(cvar, oldValue); },
                 [cvar, newValue] { ApplyValue(cvar, newValue); },
-                false));
+                false, true));
     }
 
     void CVarUndoStack::BeginBatch()

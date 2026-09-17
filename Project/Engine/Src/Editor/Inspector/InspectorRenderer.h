@@ -14,6 +14,7 @@ namespace CoreEngine::Reflection
 namespace CoreEngine
 {
     class GameObjectManager;
+    class IComponent;
 
     /// @brief 型記述子からインスペクタの UI を組み立てる
     namespace InspectorRenderer
@@ -35,6 +36,11 @@ namespace CoreEngine
             /// @brief 値が書き換わった直後の通知（派生データの再計算に使う）
             /// @note 編集時だけでなく Undo / Redo の適用時にも呼ばれる。
             std::function<void(const Reflection::PropertyDescriptor&)> onChanged;
+
+            /// @brief 値を持っているコンポーネントを今のシーンから引き直す関数（空なら owner と実体を使い続ける）
+            /// @note 設定すると、Undo / Redo はシーンを組み直した後も同じコンポーネントへ効き、
+            ///       適用の後は onChanged の代わりに、引き直したコンポーネントの OnPropertyChanged を呼ぶ。
+            std::function<IComponent*()> resolveComponent;
 
             /// @brief ObjectRef の繋ぎ先の候補を探すシーン
             const GameObjectManager* objects = nullptr;
