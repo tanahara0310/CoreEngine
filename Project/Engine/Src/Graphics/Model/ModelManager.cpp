@@ -124,7 +124,8 @@ namespace CoreEngine
             return instance;
         }
 
-        // 初期アニメーションのコントローラーと切り替え用ファクトリーを持つプレイヤーを注入する
+        // スケルトンで頂点を変形して描き、初期アニメーションのコントローラーと切り替え用ファクトリーを持つプレイヤーを注入する
+        instance->EnableSkinning();
         auto factory = std::make_unique<SkeletonAnimatorFactory>();
         auto skeletonAnimator = factory->CreateSkeletonAnimator(*resource->GetSkeleton(), *animation, loop);
         instance->SetAnimationPlayer(std::make_unique<AnimationPlayer>(

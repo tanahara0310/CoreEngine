@@ -165,7 +165,10 @@ namespace CoreEngine
         if (passTypeOverride_) {
             return *passTypeOverride_;
         }
-        // スケルトン付きモデルはスキニング経路（頂点変形を CS が行う）へ
+        // 頂点をスケルトンで変形するモデルはスキニング経路（頂点変形を CS が行う）へ
+        if (model_) {
+            return model_->HasSkinCluster() ? RenderPassType::SkinnedModel : RenderPassType::Model;
+        }
         return (source_ == Source::SkinnedModelFile)
             ? RenderPassType::SkinnedModel
             : RenderPassType::Model;
