@@ -60,7 +60,13 @@ namespace CoreEngine
         /// @brief 初期化
         /// @param resource 共有するModelResourceのポインタ
         /// @param ctx 描画依存コンテキスト
+        /// @note スケルトンによる頂点の変形は作らない（`EnableSkinning()` で足す）
         void Initialize(ModelResource* resource, const ModelRenderContext& ctx);
+
+        /// @brief スケルトンで頂点を変形して描くようにする（SkinCluster を作る）
+        /// @return リソースがスケルトンとスキンの重みを持ち、SkinCluster を作れたら true
+        /// @note 呼ばなければ、スケルトンを持つリソースも初期姿勢の頂点のまま通常モデルとして描く
+        bool EnableSkinning();
 
         /// @brief モデルを描画（スキニングモデルか通常モデルかは内部で自動判別）
         /// @param transform ワールドトランスフォーム
