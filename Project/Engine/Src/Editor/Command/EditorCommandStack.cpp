@@ -2,6 +2,7 @@
 #include "Editor/Command/EditorCommandStack.h"
 
 #include <algorithm>
+#include <cstddef>
 
 namespace CoreEngine::Editor
 {
@@ -36,8 +37,13 @@ namespace CoreEngine::Editor
     {
         if (command->AffectsScene()) { ++sceneRevision_; }
         undo_.push_back(std::move(command));
+        TrimUndo();
+    }
+
+    void EditorCommandStack::TrimUndo()
+    {
         if (undo_.size() > kMaxCommands) {
-            undo_.erase(undo_.begin());
+            undo_.erase(undo_.begin(), undo_.begin() + static_cast<std::ptrdiff_t>(undo_.size() - kMaxCommands));
         }
     }
 
@@ -111,10 +117,85 @@ namespace CoreEngine::Editor
 
         drop(undo_);
         drop(redo_);
+        drop(pausedUndo_);
+        drop(pausedRedo_);
         if (batch_ && batch_->References(target)) {
             batch_.reset();
             batch_ = std::make_unique<CompositeCommand>("");
         }
+    }
+
+    void EditorCommandStack::BeginPlaySession()
+    {
+        if (inPlaySession_) {
+            return;
+        }
+
+        batch_.reset();
+        batchDepth_ = 0;
+        pausedUndo_ = std::move(undo_);
+        pausedRedo_ = std::move(redo_);
+        undo_.clear();
+        redo_.clear();
+        inPlaySession_ = true;
+    }
+
+    EditorCommandStack::History EditorCommandStack::EndPlaySession()
+    {
+        History history;
+        if (inPlaySession_) {
+            history.undo = std::move(pausedUndo_);
+            history.redo = std::move(pausedRedo_);
+
+            // 再生中の操作は、シーンを変えないものだけを後ろへ続ける
+            bool appended = false;
+            for (auto& command : undo_) {
+                if (command && !command->AffectsScene()) {
+                    history.undo.push_back(std::move(command));
+                    appended = true;
+                }
+            }
+            if (appended) {
+                history.redo.clear();
+            }
+        } else {
+            history.undo = std::move(undo_);
+            history.redo = std::move(redo_);
+        }
+
+        undo_.clear();
+        redo_.clear();
+        pausedUndo_.clear();
+        pausedRedo_.clear();
+        batch_.reset();
+        batchDepth_ = 0;
+        inPlaySession_ = false;
+
+        // シーンを組み直すと使えなくなる操作を外す
+        const auto keepSurvivors = [](std::vector<std::unique_ptr<IEditorCommand>>& stack) {
+            stack.erase(
+                std::remove_if(stack.begin(), stack.end(),
+                    [](const std::unique_ptr<IEditorCommand>& command) {
+                        return !command || !command->SurvivesSceneReload();
+                    }),
+                stack.end());
+            };
+        keepSurvivors(history.undo);
+        keepSurvivors(history.redo);
+        return history;
+    }
+
+    void EditorCommandStack::RestoreHistory(History history)
+    {
+        if (!undo_.empty()) {
+            history.redo.clear();
+        }
+        for (auto& command : undo_) {
+            history.undo.push_back(std::move(command));
+        }
+        undo_ = std::move(history.undo);
+        redo_ = std::move(history.redo);
+        TrimUndo();
     }
 
     void EditorCommandStack::BeginBatch(std::string label)

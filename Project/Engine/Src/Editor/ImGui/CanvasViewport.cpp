@@ -13,6 +13,7 @@
 #include "Editor/Command/EditorCommand.h"
 #include "Editor/Command/EditorCommandStack.h"
 #include "Editor/ImGui/ImGuiManager.h"
+#include "Editor/Scene/EditorSceneAccess.h"
 #include "Editor/Scene/SceneDebugEditor.h"
 #include "Editor/ImGui/Gizmo.h"
 #include "UI/RectTransformComponent.h"
@@ -134,12 +135,11 @@ namespace CoreEngine
         /// @note 変更した後の配置は、最初に戻すときに控える
         void PushLayoutCommand(RectTransformComponent& rect, const UILayout& before, std::string label)
         {
-            RectTransformComponent* const target = &rect;
-            Editor::EditorCommandStack::Get().Push(std::make_unique<Editor::SnapshotCommand<UILayout>>(
-                std::move(label), before,
-                [target] { return target->GetLayout(); },
-                [target](const UILayout& layout) { ApplyLayout(*target, layout); },
-                static_cast<const IComponent*>(target)));
+            Editor::EditorCommandStack::Get().Push(
+                std::make_unique<Editor::ComponentStateCommand<RectTransformComponent, UILayout>>(
+                    std::move(label), rect, before,
+                    [](RectTransformComponent& target) { return target.GetLayout(); },
+                    [](RectTransformComponent& target, const UILayout& layout) { ApplyLayout(target, layout); }));
         }
 
         /// @brief 2 つの配置が同じか

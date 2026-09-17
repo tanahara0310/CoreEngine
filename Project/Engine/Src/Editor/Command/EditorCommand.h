@@ -33,6 +33,11 @@ namespace CoreEngine::Editor
         /// @note 自分の保存先を持つもの（CVar など）は false を返す。
         ///       シーンの「未保存の変更」の判定に数えないため。
         virtual bool AffectsScene() const { return true; }
+
+        /// @brief シーンを控えから組み直した後も使える操作か
+        /// @note 相手を ID などで今のシーンから引き直す操作と、シーンの外の値を変える操作は true を返す。
+        ///       false の操作は、再生を止めてシーンを組み直すときに履歴から外れる。
+        virtual bool SurvivesSceneReload() const { return false; }
     };
 
     /// @brief 「戻す」「やり直す」を関数 2 本で表すコマンド
@@ -40,21 +45,24 @@ namespace CoreEngine::Editor
     {
     public:
         /// @param affectsScene シーンの保存対象を変える操作なら true
+        /// @param survivesSceneReload 2 本の関数が、相手を今のシーンから引き直すなら true
         FunctionCommand(std::string label, std::function<void()> undo, std::function<void()> redo,
-                        bool affectsScene = true)
+                        bool affectsScene = true, bool survivesSceneReload = false)
             : label_(std::move(label)), undo_(std::move(undo)), redo_(std::move(redo)),
-              affectsScene_(affectsScene) {}
+              affectsScene_(affectsScene), survivesSceneReload_(survivesSceneReload) {}
 
         void Undo() override { if (undo_) { undo_(); } }
         void Redo() override { if (redo_) { redo_(); } }
         std::string GetLabel() const override { return label_; }
         bool AffectsScene() const override { return affectsScene_; }
+        bool SurvivesSceneReload() const override { return survivesSceneReload_; }
 
     private:
         std::string label_;
         std::function<void()> undo_;
         std::function<void()> redo_;
         bool affectsScene_ = true;
+        bool survivesSceneReload_ = false;
     };
 
     /// @brief 状態まるごとのスナップショットで戻すコマンド
@@ -157,6 +165,14 @@ namespace CoreEngine::Editor
                 if (child->AffectsScene()) { return true; }
             }
             return false;
+        }
+
+        bool SurvivesSceneReload() const override
+        {
+            for (const auto& child : children_) {
+                if (!child->SurvivesSceneReload()) { return false; }
+            }
+            return true;
         }
 
     private:

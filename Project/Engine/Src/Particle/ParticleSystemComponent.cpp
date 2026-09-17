@@ -27,6 +27,7 @@
 #ifdef USE_IMGUI
 #include "Editor/Command/EditorCommand.h"
 #include "Editor/Command/EditorCommandStack.h"
+#include "Editor/Scene/EditorSceneAccess.h"
 #include "Particle/Debug/ParticleSystemDebugUI.h"
 #include <imgui.h>
 #endif
@@ -387,11 +388,11 @@ namespace CoreEngine
             moduleEditActive_ = false;
             const GameObject* const owner = GetOwner();
             std::string label = (owner ? owner->GetName() + " の " : std::string{}) + GetInspectorName();
-            Editor::EditorCommandStack::Get().Push(std::make_unique<Editor::SnapshotCommand<json>>(
-                std::move(label), std::move(moduleEditBefore_),
-                [this] { return OnSerialize(); },
-                [this](const json& settings) { OnDeserialize(settings); },
-                static_cast<const IComponent*>(this)));
+            Editor::EditorCommandStack::Get().Push(
+                std::make_unique<Editor::ComponentStateCommand<ParticleSystemComponent, json>>(
+                    std::move(label), *this, std::move(moduleEditBefore_),
+                    [](ParticleSystemComponent& target) { return target.OnSerialize(); },
+                    [](ParticleSystemComponent& target, const json& settings) { target.OnDeserialize(settings); }));
             moduleEditBefore_ = json{};
         }
         return changed;

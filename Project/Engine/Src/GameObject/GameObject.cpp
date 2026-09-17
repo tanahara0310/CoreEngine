@@ -13,6 +13,7 @@
 #include "Editor/Inspector/InspectorLayout.h"
 #include "Editor/Inspector/InspectorRenderer.h"
 #include "Editor/Scene/ComponentEditing.h"
+#include "Editor/Scene/EditorSceneAccess.h"
 #include "Editor/Scene/PrefabEditing.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
 #include "Reflection/TypeDescriptor.h"
@@ -443,6 +444,9 @@ namespace CoreEngine
             context.objects = objectManager_;
             context.onChanged = [raw](const Reflection::PropertyDescriptor& property) {
                 raw->OnPropertyChanged(property);
+                };
+            context.resolveComponent = [handle = Editor::ComponentHandle::Of(*raw)] {
+                return handle.Resolve();
                 };
             context.defaultParameters = factory.GetDefaultParameters(typeName);
 

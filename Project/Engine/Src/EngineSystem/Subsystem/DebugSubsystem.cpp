@@ -6,6 +6,7 @@
 
 #include "../EngineSystem.h"
 #include "EngineProfileScope.h"
+#include "Editor/Scene/EditorSceneAccess.h"
 #include "../EngineConfig.h"
 #include "../Settings/EditorSettingsSubsystem.h"
 #include "Editor/ImGui/EditorSettingsPanel.h"
@@ -69,7 +70,8 @@ namespace CoreEngine
         // ゲームデバッグUIの初期化（DockingUIを渡す）
         gameDebugUI_->Initialize(engine_, imGui_->GetDockingUI());
 
-        // 再生の前にシーンを控え、停止したら控えから組み直す
+        // Undo / Redo が今のシーンを引けるようにし、再生の前にシーンを控え、停止したら控えから組み直す
+        Editor::SceneAccess::Bind(engine_);
         playModeController_ = std::make_unique<Editor::PlayModeController>();
         playModeController_->Initialize(engine_, gameDebugUI_.get());
         gameDebugUI_->SetPlayModeController(playModeController_.get());
@@ -446,6 +448,7 @@ namespace CoreEngine
         if (gameDebugUI_) {
             gameDebugUI_->SetPlayModeController(nullptr);
         }
+        Editor::SceneAccess::Bind(nullptr);
 
         // コンソールUIへのログ転送を解除（ImGui解放前に行う）
         Logger::GetInstance().ClearConsoleCallback();
