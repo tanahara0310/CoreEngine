@@ -107,16 +107,4 @@ namespace CoreEngine
     }
 }
 
-#else // CORE_EDITOR
-
-namespace CoreEngine
-{
-    CameraInputState EditorCameraInput::Collect(EngineSystem* engine)
-    {
-        // エディタ非搭載ビルドではビューポート操作が存在しない
-        (void)engine;
-        return CameraInputState::None();
-    }
-}
-
 #endif // CORE_EDITOR

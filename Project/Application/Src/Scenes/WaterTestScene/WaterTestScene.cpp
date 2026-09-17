@@ -2,31 +2,14 @@
 #include "WaterTestScene.h"
 
 #include "Camera/CameraManager.h"
+#include "Graphics/Light/Light.h"
 #include "Graphics/Water/Render/WaterRenderFeature.h"
 #include "Math/MathCore.h"
 #include "Scene/SceneManager.h"
 #include "Utility/FrameRate/Time.h"
-#include <cmath>
 #include <memory>
 
 using namespace CoreEngine;
-
-namespace {
-    constexpr float kDegToRad = 3.14159265358979323846f / 180.0f;
-
-    // 太陽高度角・方位角からライト方向（太陽 → 地表への進行方向）を計算する。
-    // AtmosphereEditor::ComputeSunLightDirection と同じ規約（elevation=90°で天頂）。
-    Vector3 ComputeSunLightDirection(float elevationDeg, float azimuthDeg) {
-        const float elevation = elevationDeg * kDegToRad;
-        const float azimuth = azimuthDeg * kDegToRad;
-        const Vector3 toSun = {
-            std::cos(elevation) * std::sin(azimuth),
-            std::sin(elevation),
-            std::cos(elevation) * std::cos(azimuth),
-        };
-        return CoreEngine::Normalize(-toSun);
-    }
-}
 
 void WaterTestScene::OnInitialize() {
     SetSceneName("WaterTestScene");

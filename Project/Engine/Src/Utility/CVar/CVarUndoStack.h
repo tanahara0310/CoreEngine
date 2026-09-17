@@ -11,7 +11,7 @@ namespace CoreEngine
 
     /// @brief CVar 編集の Undo / Redo（Ctrl+Z / Ctrl+Y）
     /// @details 商用エンジンの「調整した瞬間に保存」は Undo とセットで初めて安全になる。
-    ///          履歴そのものはエディタ共通の `EditorCommandStack` が持つ。
+    ///          履歴そのものはエディタ共通の `EditorCommandStack` が持つ（エディタを含まないビルドでは積まない）。
     class CVarUndoStack
     {
     public:

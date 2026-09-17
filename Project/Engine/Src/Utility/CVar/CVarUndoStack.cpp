@@ -2,7 +2,10 @@
 #include "CVarUndoStack.h"
 #include "CVar.h"
 #include "CVarRegistry.h"
+
+#ifdef CORE_EDITOR
 #include "Editor/Command/EditorCommandStack.h"
+#endif
 
 #include <array>
 #include <cstring>
@@ -42,6 +45,7 @@ namespace CoreEngine
             return nullptr;
         }
 
+#ifdef CORE_EDITOR
         /// @brief 値を戻してから即時保存させる
         /// @note Undo / Redo は「確定」操作なので、デバウンスを待たない
         void ApplyValue(ICVar* cvar, const std::array<unsigned char, 16>& value)
@@ -49,6 +53,7 @@ namespace CoreEngine
             cvar->SetFromPointer(value.data());
             CVarRegistry::Get().NotifyCommit();
         }
+#endif
     }
 
     CVarUndoStack& CVarUndoStack::Get()
@@ -101,6 +106,7 @@ namespace CoreEngine
             return;
         }
 
+#ifdef CORE_EDITOR
         // CVar は自分の JSON へ保存されるので、シーンの未保存には数えない
         Editor::EditorCommandStack::Get().Push(
             std::make_unique<Editor::FunctionCommand>(
@@ -108,8 +114,10 @@ namespace CoreEngine
                 [cvar, oldValue] { ApplyValue(cvar, oldValue); },
                 [cvar, newValue] { ApplyValue(cvar, newValue); },
                 false, true));
+#endif
     }
 
+#ifdef CORE_EDITOR
     void CVarUndoStack::BeginBatch()
     {
         Editor::EditorCommandStack::Get().BeginBatch("CVar の一括変更");
@@ -139,4 +147,12 @@ namespace CoreEngine
     {
         Editor::EditorCommandStack::Get().Redo();
     }
+#else
+    void CVarUndoStack::BeginBatch() {}
+    void CVarUndoStack::EndBatch() {}
+    bool CVarUndoStack::CanUndo() const noexcept { return false; }
+    bool CVarUndoStack::CanRedo() const noexcept { return false; }
+    void CVarUndoStack::Undo() {}
+    void CVarUndoStack::Redo() {}
+#endif
 }

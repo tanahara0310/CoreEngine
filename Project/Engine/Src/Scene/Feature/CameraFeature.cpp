@@ -5,8 +5,11 @@
 #include "Camera/CameraSceneStateIO.h"
 #include "Scene/SceneSaveSystem.h"
 #include "Camera/CameraManager.h"
+#include "Camera/Control/CameraInputState.h"
 #include "Camera/Debug/DebugCameraCVars.h"
+#ifdef CORE_EDITOR
 #include "Editor/Camera/EditorCameraInput.h"
+#endif
 #include "EngineSystem/EngineSystem.h"
 #include "Input/InputManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
@@ -85,16 +88,21 @@ namespace CoreEngine
         CameraSceneStateIO::Load(ctx.saveSystem->GetSceneName(), *cameraManager_);
     }
 
-    void CameraFeature::Update(SceneContext& ctx, SceneUpdatePhase phase)
+    void CameraFeature::Update([[maybe_unused]] SceneContext& ctx, SceneUpdatePhase phase)
     {
         if (phase != SceneUpdatePhase::FrameStart || !cameraManager_) {
             return;
         }
 
         // 入力の正規化（ImGui / InputManager 依存）は EditorCameraInput に閉じており、
-        // コントローラは CameraInputState しか見ない。
+        // コントローラは CameraInputState しか見ない（エディタを含まないビルドは入力なし）。
         // カメラ操作はポーズやスローの影響を受けない
-        cameraManager_->Update(EditorCameraInput::Collect(ctx.engine), Time::UnscaledDeltaTime());
+#ifdef CORE_EDITOR
+        const CameraInputState input = EditorCameraInput::Collect(ctx.engine);
+#else
+        const CameraInputState input = CameraInputState::None();
+#endif
+        cameraManager_->Update(input, Time::UnscaledDeltaTime());
 
         // 更新後の設定・姿勢を CVar へ写す（カメラ UI・マウス操作のどちらの変更も拾う）
         MirrorEditorCameraToCVars();

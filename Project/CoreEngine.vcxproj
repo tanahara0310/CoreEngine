@@ -510,13 +510,13 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Editor\ImGui\Gizmo.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\KeyConfigUI.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\ObjectSelector.cpp" />
-    <ClCompile Include="Engine\Src\Editor\ImGui\PixCapture.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RHI\Debug\PixCapture.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\ProjectView.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\RayTracingDebugPanel.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\RenderGraphEditorPanel.cpp" />
-    <ClCompile Include="Engine\Src\Editor\Window\GameOutputWindow.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\GameOutputWindow.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\RenderPassDebugPanel.cpp" />
-    <ClCompile Include="Engine\Src\Editor\ImGui\ScreenCapture.cpp" />
+    <ClCompile Include="Engine\Src\WinApp\ScreenCapture.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\ThreadProfilerUI.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\LivePPAgent.cpp" />
     <ClCompile Include="Engine\Src\Utility\Random\RandomGenerator.cpp" />
@@ -1549,13 +1549,13 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Editor\ImGui\ImGuiAll.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\KeyConfigUI.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\ObjectSelector.h" />
-    <ClInclude Include="Engine\Src\Editor\ImGui\PixCapture.h" />
+    <ClInclude Include="Engine\Src\Graphics\RHI\Debug\PixCapture.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\ProjectView.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\RayTracingDebugPanel.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\RenderGraphEditorPanel.h" />
-    <ClInclude Include="Engine\Src\Editor\Window\GameOutputWindow.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\GameOutputWindow.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\RenderPassDebugPanel.h" />
-    <ClInclude Include="Engine\Src\Editor\ImGui\ScreenCapture.h" />
+    <ClInclude Include="Engine\Src\WinApp\ScreenCapture.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\ThreadProfilerUI.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\ImGuiWidgets.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\Wrappers\ImGuiInput.h" />
@@ -1818,6 +1818,15 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
   </ItemGroup>
   <ItemGroup>
     <MASM Include="Externals\angelscript\source\as_callfunc_x64_msvc_asm.asm" />
+  </ItemGroup>
+  <!-- エディタを含まない構成（CORE_EDITOR を定義しない Release）では、Editor 配下と ImGui 系の .cpp をビルドしない -->
+  <ItemGroup Condition="'$(Configuration)'=='Release'">
+    <ClCompile Update="Engine\Src\Editor\**\*.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Update="Externals\imgui\*.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

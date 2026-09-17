@@ -1,7 +1,9 @@
 #include "pch.h"
 #include "Script/ScriptComponent.h"
 
+#ifdef CORE_EDITOR
 #include "Editor/Command/EditorCommandStack.h"
+#endif
 #include "GameObject/Component/Core/ObjectRef.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/GameObjectManager.h"
@@ -326,8 +328,10 @@ namespace CoreEngine
 
     void ScriptComponent::PrepareForReload()
     {
+#ifdef CORE_EDITOR
         // 型の記述子を握っている Undo の操作は、型ごと作り直すので履歴から外す
         Editor::EditorCommandStack::Get().RemoveCommandsReferencing(this);
+#endif
 
         if (type_ && object_) {
             savedParameters_ = json::object();

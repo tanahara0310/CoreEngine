@@ -62,22 +62,6 @@ namespace CoreEngine {
 #endif
     }
 
-    Vector3 AtmosphereEditor::ComputeSunLightDirection(float elevationDeg, float azimuthDeg)
-    {
-        const float elevation = elevationDeg * kDegToRad;
-        const float azimuth = azimuthDeg * kDegToRad;
-
-        // 太陽の位置方向（地表から太陽を見る方向）
-        const Vector3 toSun = {
-            std::cos(elevation) * std::sin(azimuth),
-            std::sin(elevation),
-            std::cos(elevation) * std::cos(azimuth),
-        };
-
-        // ライト方向は光の進行方向（太陽 → 地表）なので逆ベクトル
-        return Normalize(-toSun);
-    }
-
     void AtmosphereEditor::ApplySunSettings(const AtmosphereEditorSunSettings& settings)
     {
         sunSettings_ = settings;

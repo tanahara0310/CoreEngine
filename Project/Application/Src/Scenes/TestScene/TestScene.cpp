@@ -20,7 +20,7 @@
 #include "WinApp/WinApp.h"
 #include "Scene/SceneManager.h"
 #include "Graphics/Render/RenderManager.h"
-#include "Editor/Environment/AtmosphereEditor.h"
+#include "Graphics/Light/Light.h"
 #include "Utility/FrameRate/Time.h"
 
 #include <cstdlib>
@@ -69,7 +69,7 @@ namespace CoreEngine
         // LightingFeature の既定値（天頂・シェーダー単位 intensity=1 相当）は大気散乱が
         // 期待する輝度スケールと整合しないため明示的に上書きする（他の大気シーンと同じ定石）。
         if (Light* sun = GetDirectionalLight()) {
-            sun->direction = AtmosphereEditor::ComputeSunLightDirection(35.0f, 25.0f);
+            sun->direction = ComputeSunLightDirection(35.0f, 25.0f);
             // 空（大気・雲）の輝度スケールと、サーフェスの直接光は単位系が別なので分離して与える
             sun->atmosphereIntensity = 20.0f;
             sun->intensity = kAtmosphereSunIlluminanceLux;

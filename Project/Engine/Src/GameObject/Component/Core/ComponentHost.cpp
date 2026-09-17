@@ -3,7 +3,9 @@
 
 #include "ComponentFactory.h"
 #include "MissingComponent.h"
+#ifdef CORE_EDITOR
 #include "Editor/Command/EditorCommandStack.h"
+#endif
 #include "Reflection/PropertySerializer.h"
 #include "Reflection/TypeDescriptor.h"
 #include "Utility/Logger/Logger.h"
@@ -18,13 +20,15 @@ namespace CoreEngine
 {
     namespace
     {
-        /// @brief このコンポーネントを握っている Undo 操作を履歴から外す
+        /// @brief このコンポーネントを握っている Undo 操作を履歴から外す（エディタを含まないビルドは何もしない）
         /// @note 外さないと、解放済みのコンポーネントへ Ctrl+Z が書き込む
-        void ForgetInHistory(const IComponent* component)
+        void ForgetInHistory([[maybe_unused]] const IComponent* component)
         {
+#ifdef CORE_EDITOR
             if (component) {
                 Editor::EditorCommandStack::Get().RemoveCommandsReferencing(component);
             }
+#endif
         }
     }
 
