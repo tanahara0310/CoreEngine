@@ -6,7 +6,7 @@
 #include "CameraSequenceFeature.h"
 #include "CameraShakeFeature.h"
 #include "CollisionFeature.h"
-#include "DebugEditorFeature.h"
+#include "Editor/Scene/DebugEditorFeature.h"
 #include "EnvironmentFeature.h"
 #include "EventDispatchFeature.h"
 #include "GridFeature.h"

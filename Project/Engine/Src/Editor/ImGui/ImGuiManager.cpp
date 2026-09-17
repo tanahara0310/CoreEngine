@@ -7,7 +7,7 @@
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/Render/Render.h"
 #include "Editor/Scene/SceneDebugEditor.h"
-#include "Utility/Debug/GameDebugUI.h"
+#include "Editor/ImGui/GameDebugUI.h"
 #include "WinApp/WinApp.h"
 #include <ImGuizmo.h>
 #include <filesystem>

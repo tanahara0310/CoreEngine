@@ -7,7 +7,7 @@
 #include "Collision/CollisionConfig.h"
 #include "EngineSystem/EngineSystem.h"
 #include "EngineSystem/Subsystem/DebugSubsystem.h"
-#include "Utility/Debug/GameDebugUI.h"
+#include "Editor/ImGui/GameDebugUI.h"
 #include "Editor/ImGui/ImGuiAll.h"
 
 namespace CoreEngine

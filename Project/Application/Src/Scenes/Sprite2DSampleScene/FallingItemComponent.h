@@ -66,7 +66,7 @@ namespace Sprite2DSample
             };
 
             // コライダーのサイズはスプライトの scale が乗る（Z は重なり用に厚みを持たせる）
-            item->GetOrAddComponent<CoreEngine::ColliderComponent>()->AddBox(
+            item->GetOrAddComponent<CoreEngine::ColliderComponent>()->AddBox(
                 { 1.0f, 1.0f, 100.0f }, CoreEngine::CollisionLayer::Item);
             item->AddComponent<FallingItemComponent>();
         }

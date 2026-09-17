@@ -3,7 +3,7 @@
 
 #ifdef CORE_EDITOR
 
-#include "Collision/Debug/ColliderInspector.h"
+#include "Editor/Inspector/ColliderInspector.h"
 #include "Editor/Command/EditorCommandStack.h"
 #include "Editor/ImGui/ImGuiAll.h"
 #include "Editor/Scene/EditorSceneAccess.h"
@@ -14,7 +14,7 @@
 #include "GameObject/Component/Render/SpriteRendererComponent.h"
 #include "GameObject/Component/Render/Text3DRendererComponent.h"
 #include "GameObject/GameObject.h"
-#include "Particle/Debug/ParticleSystemDebugUI.h"
+#include "Editor/ImGui/ParticleSystemDebugUI.h"
 #include "Particle/Gpu/GpuParticleSystemComponent.h"
 #include "Particle/ParticleSystemComponent.h"
 #include "Reflection/TypeDescriptor.h"

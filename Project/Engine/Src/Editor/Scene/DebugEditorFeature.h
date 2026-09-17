@@ -2,7 +2,7 @@
 
 #ifdef CORE_EDITOR
 
-#include "ISceneFeature.h"
+#include "Scene/Feature/ISceneFeature.h"
 #include <memory>
 
 namespace CoreEngine

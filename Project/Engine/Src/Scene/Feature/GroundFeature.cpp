@@ -22,7 +22,7 @@
 
 #ifdef CORE_EDITOR
 #include "EngineSystem/Subsystem/DebugSubsystem.h"
-#include "Utility/Debug/GameDebugUI.h"
+#include "Editor/ImGui/GameDebugUI.h"
 #include "Editor/ImGui/CVarPanel.h"
 #include "Editor/ImGui/ImGuiAll.h"
 #endif
@@ -229,7 +229,7 @@ namespace CoreEngine
         // コライダーの実効サイズ = shape.size × オーナーのワールドスケール。
         // XZ に 1 を渡すと床の全幅に一致し、Y は scale.y = 1 固定なので shape.size.y が厚みになる。
         // レイヤーは Default（既定の衝突マトリクスでは Default だけが全レイヤーと当たる）。
-        collider_ = &ground_->GetOrAddComponent<ColliderComponent>()->AddBox(
+        collider_ = &ground_->GetOrAddComponent<ColliderComponent>()->AddBox(
             { 1.0f, 1.0f, 1.0f }, CollisionLayer::Default);
         collider_->SetTrigger(false);  // 通知だけでなく押し出す（＝床の上に立てる）
         collider_->SetStatic(true);    // 床自身は押し返されない（相手を全量押し出す）

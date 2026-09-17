@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "GameObject.h"
 #include "GameObject/ObjectId.h"
@@ -110,8 +110,7 @@ namespace CoreEngine
 
         /// @brief シーン内で最初に見つかった指定型コンポーネントを返す
         /// @return 見つからなければ nullptr
-        /// @note アクティブ状態は問わない（「シーンに存在するか」の問い合わせ用。
-        ///       SceneTagComponent と組み合わせて具象型のシーン走査を置き換える）。
+        /// @note アクティブ状態は問わない（「シーンに存在するか」の問い合わせ用）。
         template <typename T>
         T* FindFirstComponent() {
             for (auto& obj : objects_) {

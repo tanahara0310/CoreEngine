@@ -325,9 +325,6 @@
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraParametersEditorModule.cpp">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraSequenceAssetIO.cpp">
-      <Filter>Engine\Src\Editor\Camera\Module</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraTransformEditorModule.cpp">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClCompile>
@@ -349,11 +346,11 @@
     <ClCompile Include="Engine\Src\Collision\Debug\ColliderDebugRenderer.cpp">
       <Filter>Engine\Src\Collision\Debug</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Collision\Debug\ColliderInspector.cpp">
-      <Filter>Engine\Src\Collision\Debug</Filter>
+    <ClCompile Include="Engine\Src\Editor\Inspector\ColliderInspector.cpp">
+      <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Collision\Debug\CollisionMatrixPanel.cpp">
-      <Filter>Engine\Src\Collision\Debug</Filter>
+    <ClCompile Include="Engine\Src\Editor\ImGui\CollisionMatrixPanel.cpp">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Collision\CollisionConfig.cpp">
       <Filter>Engine\Src\Collision</Filter>
@@ -838,8 +835,8 @@
     <ClCompile Include="Engine\Src\Particle\Core\ParticleUpdater.cpp">
       <Filter>Engine\Src\Particle\Core</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Particle\Debug\ParticleSystemDebugUI.cpp">
-      <Filter>Engine\Src\Particle\Debug</Filter>
+    <ClCompile Include="Engine\Src\Editor\ImGui\ParticleSystemDebugUI.cpp">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Particle\Modules\MainModule.cpp">
       <Filter>Engine\Src\Particle\Modules</Filter>
@@ -877,8 +874,8 @@
     <ClCompile Include="Engine\Src\Scene\Feature\GridFeature.cpp">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Scene\Feature\DebugEditorFeature.cpp">
-      <Filter>Engine\Src\Scene\Feature</Filter>
+    <ClCompile Include="Engine\Src\Editor\Scene\DebugEditorFeature.cpp">
+      <Filter>Engine\Src\Editor\Scene</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Environment\AtmosphereEditor.cpp">
       <Filter>Engine\Src\Editor\Environment</Filter>
@@ -970,8 +967,8 @@
     <ClCompile Include="Engine\Src\Math\Geometry\RayCast.cpp">
       <Filter>Engine\Src\Math\Geometry</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Utility\Debug\ConsoleUI.cpp">
-      <Filter>Engine\Src\Utility\Debug</Filter>
+    <ClCompile Include="Engine\Src\Editor\ImGui\ConsoleUI.cpp">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\ImGui\CanvasViewport.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
@@ -1189,8 +1186,8 @@
     <ClCompile Include="Engine\Src\Input\GamepadInput.cpp">
       <Filter>Engine\Src\Input</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Utility\Debug\GameDebugUI.cpp">
-      <Filter>Engine\Src\Utility\Debug</Filter>
+    <ClCompile Include="Engine\Src\Editor\ImGui\GameDebugUI.cpp">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\MyGame.cpp">
       <Filter>Application\Src</Filter>
@@ -1842,9 +1839,6 @@
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraParametersEditorModule.h">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraSequenceAssetIO.h">
-      <Filter>Engine\Src\Editor\Camera\Module</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraTransformEditorModule.h">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClInclude>
@@ -1878,11 +1872,11 @@
     <ClInclude Include="Engine\Src\Collision\Debug\ColliderDebugRenderer.h">
       <Filter>Engine\Src\Collision\Debug</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Collision\Debug\ColliderInspector.h">
-      <Filter>Engine\Src\Collision\Debug</Filter>
+    <ClInclude Include="Engine\Src\Editor\Inspector\ColliderInspector.h">
+      <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Collision\Debug\CollisionMatrixPanel.h">
-      <Filter>Engine\Src\Collision\Debug</Filter>
+    <ClInclude Include="Engine\Src\Editor\ImGui\CollisionMatrixPanel.h">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Collision\CollisionConfig.h">
       <Filter>Engine\Src\Collision</Filter>
@@ -2640,9 +2634,6 @@
     <ClInclude Include="Engine\Src\Math\Frustum.h">
       <Filter>Engine\Src\Math</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Math\Matrix\Matrix3x3.h">
-      <Filter>Engine\Src\Math\Matrix</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Math\Matrix\Matrix4x4.h">
       <Filter>Engine\Src\Math\Matrix</Filter>
     </ClInclude>
@@ -2694,9 +2685,6 @@
     <ClInclude Include="Engine\Src\GameObject\Component\Transform\ITransformSource.h">
       <Filter>Engine\Src\GameObject\Component\Transform</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\GameObject\Component\Scene\SceneTagComponent.h">
-      <Filter>Engine\Src\GameObject\Component\Scene</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Line\ILineSource.h">
       <Filter>Engine\Src\Graphics\Render\Line</Filter>
     </ClInclude>
@@ -2745,8 +2733,8 @@
     <ClInclude Include="Engine\Src\Particle\Core\ParticleUpdater.h">
       <Filter>Engine\Src\Particle\Core</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Particle\Debug\ParticleSystemDebugUI.h">
-      <Filter>Engine\Src\Particle\Debug</Filter>
+    <ClInclude Include="Engine\Src\Editor\ImGui\ParticleSystemDebugUI.h">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Particle\Modules\MainModule.h">
       <Filter>Engine\Src\Particle\Modules</Filter>
@@ -2793,8 +2781,8 @@
     <ClInclude Include="Engine\Src\Scene\Feature\GridFeature.h">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Scene\Feature\DebugEditorFeature.h">
-      <Filter>Engine\Src\Scene\Feature</Filter>
+    <ClInclude Include="Engine\Src\Editor\Scene\DebugEditorFeature.h">
+      <Filter>Engine\Src\Editor\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Environment\AtmosphereEditor.h">
       <Filter>Engine\Src\Editor\Environment</Filter>
@@ -2886,8 +2874,8 @@
     <ClInclude Include="Engine\Src\Math\Geometry\Shapes.h">
       <Filter>Engine\Src\Math\Geometry</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Utility\Debug\ConsoleUI.h">
-      <Filter>Engine\Src\Utility\Debug</Filter>
+    <ClInclude Include="Engine\Src\Editor\ImGui\ConsoleUI.h">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\CanvasViewport.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
@@ -3219,8 +3207,8 @@
     <ClInclude Include="Engine\Src\Input\GamepadInput.h">
       <Filter>Engine\Src\Input</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Utility\Debug\GameDebugUI.h">
-      <Filter>Engine\Src\Utility\Debug</Filter>
+    <ClInclude Include="Engine\Src\Editor\ImGui\GameDebugUI.h">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\WinApp\WinApp.h">
       <Filter>Engine\Src\WinApp</Filter>
@@ -3883,9 +3871,6 @@
     <Filter Include="Engine\Src\GameObject\Component\Render">
       <UniqueIdentifier>{91995376-8555-4326-8BF2-AE823BABD219}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Engine\Src\GameObject\Component\Scene">
-      <UniqueIdentifier>{AED89F0C-58A7-4CAE-825D-330886315211}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Engine\Src\GameObject\Component\Transform">
       <UniqueIdentifier>{D038A3B9-7746-4B74-9597-0D06389C3908}</UniqueIdentifier>
     </Filter>
@@ -4185,9 +4170,6 @@
     </Filter>
     <Filter Include="Engine\Src\Particle\Core">
       <UniqueIdentifier>{0B5330CA-5D07-40BA-A04C-5B83D8196A96}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Engine\Src\Particle\Debug">
-      <UniqueIdentifier>{22576EEA-4D70-4394-9259-FB63EDAD61E0}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Particle\Gpu">
       <UniqueIdentifier>{771131E5-303E-432F-8D22-A5F52B5121E6}</UniqueIdentifier>

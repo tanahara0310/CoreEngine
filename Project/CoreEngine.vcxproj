@@ -288,7 +288,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraKeyframeEditorModule.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraListEditorModule.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraParametersEditorModule.cpp" />
-    <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraSequenceAssetIO.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraTransformEditorModule.cpp" />
     <ClCompile Include="Engine\Src\Collision\Collider.cpp" />
     <ClCompile Include="Engine\Src\Collision\ColliderComponent.cpp" />
@@ -296,8 +295,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Collision\BroadPhase\BruteForceBroadPhase.cpp" />
     <ClCompile Include="Engine\Src\Collision\BroadPhase\UniformGridBroadPhase.cpp" />
     <ClCompile Include="Engine\Src\Collision\Debug\ColliderDebugRenderer.cpp" />
-    <ClCompile Include="Engine\Src\Collision\Debug\ColliderInspector.cpp" />
-    <ClCompile Include="Engine\Src\Collision\Debug\CollisionMatrixPanel.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Inspector\ColliderInspector.cpp" />
+    <ClCompile Include="Engine\Src\Editor\ImGui\CollisionMatrixPanel.cpp" />
     <ClCompile Include="Engine\Src\Collision\CollisionConfig.cpp" />
     <ClCompile Include="Engine\Src\Collision\CollisionWorld.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\EngineConfig.cpp" />
@@ -459,7 +458,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Particle\Core\ParticleRenderDataBuilder.cpp" />
     <ClCompile Include="Engine\Src\Particle\Core\ParticleResourceManager.cpp" />
     <ClCompile Include="Engine\Src\Particle\Core\ParticleUpdater.cpp" />
-    <ClCompile Include="Engine\Src\Particle\Debug\ParticleSystemDebugUI.cpp" />
+    <ClCompile Include="Engine\Src\Editor\ImGui\ParticleSystemDebugUI.cpp" />
     <ClCompile Include="Engine\Src\Particle\Modules\MainModule.cpp" />
     <ClCompile Include="Engine\Src\Particle\Modules\NoiseModule.cpp" />
     <ClCompile Include="Engine\Src\Particle\Modules\ShapeModule.cpp" />
@@ -472,7 +471,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Scene\Feature\GroundFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\CollisionFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\GridFeature.cpp" />
-    <ClCompile Include="Engine\Src\Scene\Feature\DebugEditorFeature.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Scene\DebugEditorFeature.cpp" />
     <ClCompile Include="Engine\Src\Editor\Environment\AtmosphereEditor.cpp" />
     <ClCompile Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\ComponentEditing.cpp" />
@@ -503,7 +502,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Math\Geometry\Distance.cpp" />
     <ClCompile Include="Engine\Src\Math\Geometry\Intersect.cpp" />
     <ClCompile Include="Engine\Src\Math\Geometry\RayCast.cpp" />
-    <ClCompile Include="Engine\Src\Utility\Debug\ConsoleUI.cpp" />
+    <ClCompile Include="Engine\Src\Editor\ImGui\ConsoleUI.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\CanvasViewport.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\EditorSettingsPanel.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\EngineStatsWindow.cpp" />
@@ -576,7 +575,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Editor\ImGui\ImGuiManager.cpp" />
     <ClCompile Include="Engine\Src\Input\KeyboardInput.cpp" />
     <ClCompile Include="Engine\Src\Input\GamepadInput.cpp" />
-    <ClCompile Include="Engine\Src\Utility\Debug\GameDebugUI.cpp" />
+    <ClCompile Include="Engine\Src\Editor\ImGui\GameDebugUI.cpp" />
     <ClCompile Include="Application\Src\MyGame.cpp" />
     <ClCompile Include="Application\Src\main.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
@@ -1194,7 +1193,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraKeyframeEditorModule.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraListEditorModule.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraParametersEditorModule.h" />
-    <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraSequenceAssetIO.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraTransformEditorModule.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\ICameraEditorModule.h" />
     <ClInclude Include="Engine\Src\Collision\Collider.h" />
@@ -1206,8 +1204,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Collision\BroadPhase\BruteForceBroadPhase.h" />
     <ClInclude Include="Engine\Src\Collision\BroadPhase\UniformGridBroadPhase.h" />
     <ClInclude Include="Engine\Src\Collision\Debug\ColliderDebugRenderer.h" />
-    <ClInclude Include="Engine\Src\Collision\Debug\ColliderInspector.h" />
-    <ClInclude Include="Engine\Src\Collision\Debug\CollisionMatrixPanel.h" />
+    <ClInclude Include="Engine\Src\Editor\Inspector\ColliderInspector.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\CollisionMatrixPanel.h" />
     <ClInclude Include="Engine\Src\Collision\CollisionConfig.h" />
     <ClInclude Include="Engine\Src\Collision\CollisionLayer.h" />
     <ClInclude Include="Engine\Src\Collision\CollisionWorld.h" />
@@ -1460,7 +1458,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Input\InputQuery.h" />
     <ClInclude Include="Engine\Src\Math\EulerTransform.h" />
     <ClInclude Include="Engine\Src\Math\Frustum.h" />
-    <ClInclude Include="Engine\Src\Math\Matrix\Matrix3x3.h" />
     <ClInclude Include="Engine\Src\Math\Matrix\Matrix4x4.h" />
     <ClInclude Include="Engine\Src\Math\QuaternionTransform.h" />
     <ClInclude Include="Engine\Src\Math\Vector\Vector2.h" />
@@ -1478,7 +1475,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Scenes\CollisionTestScene\ProbeComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Animation\SkeletonSocketComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Transform\ITransformSource.h" />
-    <ClInclude Include="Engine\Src\GameObject\Component\Scene\SceneTagComponent.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Line\ILineSource.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Render\MeshRendererComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Render\SpriteRendererComponent.h" />
@@ -1495,7 +1491,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Particle\Core\ParticleRenderDataBuilder.h" />
     <ClInclude Include="Engine\Src\Particle\Core\ParticleResourceManager.h" />
     <ClInclude Include="Engine\Src\Particle\Core\ParticleUpdater.h" />
-    <ClInclude Include="Engine\Src\Particle\Debug\ParticleSystemDebugUI.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\ParticleSystemDebugUI.h" />
     <ClInclude Include="Engine\Src\Particle\Modules\MainModule.h" />
     <ClInclude Include="Engine\Src\Particle\Modules\NoiseModule.h" />
     <ClInclude Include="Engine\Src\Particle\Modules\ShapeModule.h" />
@@ -1511,7 +1507,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Scene\Feature\GroundFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\CollisionFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\GridFeature.h" />
-    <ClInclude Include="Engine\Src\Scene\Feature\DebugEditorFeature.h" />
+    <ClInclude Include="Engine\Src\Editor\Scene\DebugEditorFeature.h" />
     <ClInclude Include="Engine\Src\Editor\Environment\AtmosphereEditor.h" />
     <ClInclude Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\ComponentEditing.h" />
@@ -1542,7 +1538,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Math\Geometry\Intersect.h" />
     <ClInclude Include="Engine\Src\Math\Geometry\RayCast.h" />
     <ClInclude Include="Engine\Src\Math\Geometry\Shapes.h" />
-    <ClInclude Include="Engine\Src\Utility\Debug\ConsoleUI.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\ConsoleUI.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\CanvasViewport.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\EditorSettingsPanel.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\EngineStatsWindow.h" />
@@ -1653,7 +1649,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Input\KeyboardInput.h" />
     <ClInclude Include="Engine\Src\Input\MouseInput.h" />
     <ClInclude Include="Engine\Src\Input\GamepadInput.h" />
-    <ClInclude Include="Engine\Src\Utility\Debug\GameDebugUI.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\GameDebugUI.h" />
     <ClInclude Include="Engine\Src\WinApp\WinApp.h" />
     <ClInclude Include="Engine\Src\Graphics\RootSignature\RootSignatureManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\TextureManager.h" />

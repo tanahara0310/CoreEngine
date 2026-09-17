@@ -7,7 +7,7 @@
 #include "Utility/CVar/CVar.h"
 
 #ifdef CORE_EDITOR
-#include "Collision/Debug/CollisionMatrixPanel.h"
+#include "Editor/ImGui/CollisionMatrixPanel.h"
 #endif
 
 namespace CoreEngine

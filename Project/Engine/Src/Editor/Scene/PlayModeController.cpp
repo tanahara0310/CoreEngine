@@ -13,7 +13,7 @@
 #include "GameObject/ObjectId.h"
 #include "Scene/SceneManager.h"
 #include "Scene/SceneSaveSystem.h"
-#include "Utility/Debug/GameDebugUI.h"
+#include "Editor/ImGui/GameDebugUI.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
 

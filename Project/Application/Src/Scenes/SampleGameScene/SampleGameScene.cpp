@@ -78,7 +78,7 @@ namespace SampleGame
                 std::sin(angle) * kItemRingRadius
             };
 
-            item->GetOrAddComponent<ColliderComponent>()->AddBox(
+            item->GetOrAddComponent<ColliderComponent>()->AddBox(
                 { kItemSize, kItemSize, kItemSize }, CollisionLayer::Item);
             item->SetActive(true);
         }

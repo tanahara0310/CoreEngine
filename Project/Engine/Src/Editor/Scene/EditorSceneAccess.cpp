@@ -9,7 +9,7 @@
 #include "GameObject/GameObject.h"
 #include "GameObject/GameObjectManager.h"
 #include "Scene/SceneManager.h"
-#include "Utility/Debug/GameDebugUI.h"
+#include "Editor/ImGui/GameDebugUI.h"
 
 namespace CoreEngine::Editor
 {

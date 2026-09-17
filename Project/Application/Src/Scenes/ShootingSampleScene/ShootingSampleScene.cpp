@@ -60,7 +60,7 @@ namespace ShootingSample
             ship->GetComponent<TransformComponent>()->Get().translate =
                 { 0.0f, kShipHeight * 0.5f, -10.0f };
 
-            ship->GetOrAddComponent<ColliderComponent>()->AddBox(
+            ship->GetOrAddComponent<ColliderComponent>()->AddBox(
                 { kShipWidth, kShipHeight, kShipDepth }, CollisionLayer::Player);
             ship->AddComponent<ShipControllerComponent>();
         }
