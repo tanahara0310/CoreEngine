@@ -355,9 +355,6 @@ namespace CoreEngine
 
         // サブシステムキャッシュ（フレーム内再利用）
         auto* rayTracing = GetSubsystem<RayTracingSubsystem>();
-#ifdef USE_IMGUI
-        auto* debug = GetSubsystem<DebugSubsystem>();
-#endif
 
         auto* dx = GetService<GraphicsCore>();
         auto* renderManager = GetService<RenderManager>();
@@ -396,11 +393,6 @@ namespace CoreEngine
 
         // フレーム番号は FrameSync が単一ソース（EngineSystem 側で別に数えない）
         context.frameNumber = frame.frameNumber;
-#ifdef USE_IMGUI
-        // RenderGraph 内の各パスが自動でタイミング計測できるようプロファイラを渡す
-        // （nullptr の場合 RenderGraph::Execute は計測をスキップする）
-        context.gpuProfiler = debug ? &debug->GetGpuProfiler() : nullptr;
-#endif
 
         // RenderTargetManager はビュー確定より前に必要（TAA 履歴ターゲット等の判定に使う）
         if (render) {
@@ -438,11 +430,10 @@ namespace CoreEngine
                 &context.sceneDepth->Resource());
         }
 
-#ifdef USE_IMGUI
-        // プロファイラのリングスロットは今フレームのスロット番号に合わせる
-        const UINT currentFrameIndex = frame.frameIndex;
-        if (debug) debug->BeginRenderPipeline(cmdList, currentFrameIndex);
-#endif
+        // サブシステムへ描画の開始を伝える（計測器を文脈へ入れるなど）
+        for (const auto& subsystem : subsystems_) {
+            subsystem->BeginRender(context, frame);
+        }
 
         // Hi-Z オクルージョンカリング: 完了済みリングスロットの可視性 Readback を反映する。
         // AABB 収集と遮蔽スキップの適用はメイン GameView の構築中のみ有効化する
@@ -511,15 +502,10 @@ namespace CoreEngine
             sceneManager->FinalizeRenderFrame();
         }
 
-#ifdef USE_IMGUI
-        if (debug) debug->DrawImGuiWithProfiling(cmdList);
-
-        // ゲーム映像専用ウィンドウへの転写。ImGui を描いた後に別のレンダーターゲットへ
-        // 積むだけなので、メインバックバッファの内容には影響しない。
-        if (debug) debug->RecordGameOutputWindow();
-
-        if (debug) debug->EndRenderPipeline(cmdList, currentFrameIndex);
-#endif // USE_IMGUI
+        // サブシステムへ描画の終わりを伝える（登録の逆順・コマンドリストを閉じる前）
+        for (auto it = subsystems_.rbegin(); it != subsystems_.rend(); ++it) {
+            (*it)->EndRender(frame);
+        }
 
         // ===== フレーム終了 =====
         // バックバッファを PRESENT へ戻し、Close / Execute / Signal / Present / 次フレーム準備を行う
@@ -530,20 +516,16 @@ namespace CoreEngine
             dx->EndFrame();
         }
 
-#ifdef USE_IMGUI
-        // 転写コマンドの実行が済んだこの位置で専用ウィンドウを Present する
-        if (debug) debug->PresentGameOutputWindow();
-#endif // USE_IMGUI
-
         // DXR の退避リソースを遅延解放キューへ預ける
         // （EndFrame() で今フレームを Signal した後に呼ぶこと。前だとフェンス値がずれる）
         if (auto* asMgr = context.accelerationStructureManager; asMgr && dx) {
             asMgr->MoveRetiredResourcesTo(dx->DeferredRelease(), dx->Frame().LastSignaledValue());
         }
 
-#ifdef USE_IMGUI
-        if (debug) debug->PostFinalizeFrame(dx);
-#endif // USE_IMGUI
+        // サブシステムへフレームの提示が済んだことを伝える
+        for (const auto& subsystem : subsystems_) {
+            subsystem->AfterPresent();
+        }
 
         // frameViews はこの関数のローカル。フレーム外から参照されないよう参照を切る。
         if (renderManager) {

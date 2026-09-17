@@ -524,14 +524,18 @@ namespace CoreEngine
         }
     }
 
-    void DebugSubsystem::BeginRenderPipeline(ID3D12GraphicsCommandList* cmdList, UINT frameIndex)
+    void DebugSubsystem::BeginRender(RenderContext& context, const FrameContext& frame)
     {
-        gpuProfiler_.NewFrame(frameIndex);
+        // RenderGraph 内の各パスが計測できるよう、計測器を文脈へ入れる
+        context.gpuProfiler = &gpuProfiler_;
+
+        // 計測のリングスロットを今フレームのスロット番号に合わせ、フレーム全体の計測を始める
+        gpuProfiler_.NewFrame(frame.frameIndex);
         gpuProfiler_.BeginCpuTimestamp(GpuTimestampSlot::Total);
-        gpuProfiler_.BeginGpuTimestamp(GpuTimestampSlot::Total, cmdList);
+        gpuProfiler_.BeginGpuTimestamp(GpuTimestampSlot::Total, frame.cmdList);
     }
 
-    void DebugSubsystem::DrawImGuiWithProfiling(ID3D12GraphicsCommandList* cmdList)
+    void DebugSubsystem::EndRender(const FrameContext& frame)
     {
         // 全描画完了後に統計を収集（ドローコール数等が確定した後）
         if (engineStatsWindow_) {
@@ -541,35 +545,32 @@ namespace CoreEngine
             profilerPanel_->Collect();
         }
 
-        EngineProfileScope scope(engine_, GpuTimestampSlot::ImGuiDraw, cmdList);
-        if (imGui_) {
-            // PostEffectPass完了後に最新の finalDisplayHandle_ でGameビューを描画
-            auto* dx = engine_->GetService<GraphicsCore>();
-            auto* postEffect = engine_->GetService<PostEffectManager>();
-            imGui_->DrawGameViewport(dx, postEffect, gameDebugUI_.get());
-            imGui_->Draw();
+        {
+            EngineProfileScope scope(engine_, GpuTimestampSlot::ImGuiDraw, frame.cmdList);
+            if (imGui_) {
+                // PostEffectPass完了後に最新の finalDisplayHandle_ でGameビューを描画
+                auto* dx = engine_->GetService<GraphicsCore>();
+                auto* postEffect = engine_->GetService<PostEffectManager>();
+                imGui_->DrawGameViewport(dx, postEffect, gameDebugUI_.get());
+                imGui_->Draw();
+            }
         }
-    }
 
-    void DebugSubsystem::EndRenderPipeline(ID3D12GraphicsCommandList* cmdList, UINT frameIndex)
-    {
-        gpuProfiler_.EndCpuTimestamp(GpuTimestampSlot::Total);
-        gpuProfiler_.EndGpuTimestamp(GpuTimestampSlot::Total, cmdList);
-        gpuProfiler_.ResolveAll(cmdList, frameIndex);
-    }
-
-    void DebugSubsystem::RecordGameOutputWindow()
-    {
+        // ゲーム映像専用ウィンドウへ、ImGui を描いた後の映像を転写するコマンドを積む
         gameOutputWindow_.RecordDrawCommands();
+
+        // フレーム全体の計測を閉じ、今フレームの計測結果を読み出し用に解決する
+        gpuProfiler_.EndCpuTimestamp(GpuTimestampSlot::Total);
+        gpuProfiler_.EndGpuTimestamp(GpuTimestampSlot::Total, frame.cmdList);
+        gpuProfiler_.ResolveAll(frame.cmdList, frame.frameIndex);
     }
 
-    void DebugSubsystem::PresentGameOutputWindow()
+    void DebugSubsystem::AfterPresent()
     {
+        // メインの Present が済んだので、ゲーム映像専用ウィンドウを Present する
         gameOutputWindow_.Present();
-    }
 
-    void DebugSubsystem::PostFinalizeFrame(GraphicsCore* dx)
-    {
+        auto* dx = engine_ ? engine_->GetService<GraphicsCore>() : nullptr;
         if (!dx) {
             return;
         }
@@ -583,7 +584,7 @@ namespace CoreEngine
         }
 
         // メインウィンドウの Present が済んだこの位置で、外へ出された ImGui ウィンドウを描く。
-        // エンジンのコマンドリスト記録中（DrawImGuiWithProfiling など）では呼べない。
+        // エンジンのコマンドリスト記録中（EndRender など）では呼べない。
         if (imGui_) {
             imGui_->RenderPlatformWindows();
         }

@@ -60,31 +60,14 @@ namespace CoreEngine
         /// @brief フレーム終了処理（ImGui::End）
         void EndFrame() override;
 
-        /// @brief レンダーパイプライン開始時のプロファイル計測を開始する
-        /// @param cmdList      コマンドリスト
-        /// @param frameIndex   現在のバックバッファインデックス
-        void BeginRenderPipeline(ID3D12GraphicsCommandList* cmdList, UINT frameIndex);
+        /// @brief 計測器を描画の文脈へ渡し、フレーム全体の計測を始める
+        void BeginRender(RenderContext& context, const FrameContext& frame) override;
 
-        /// @brief ImGui の描画コマンドを積む（プロファイルスコープ付き）
-        /// @param cmdList コマンドリスト
-        void DrawImGuiWithProfiling(ID3D12GraphicsCommandList* cmdList);
+        /// @brief ImGui とゲーム映像専用ウィンドウの描画を積み、フレーム全体の計測を閉じる
+        void EndRender(const FrameContext& frame) override;
 
-        /// @brief レンダーパイプライン終了時のプロファイル計測を終了・解決する
-        /// @param cmdList      コマンドリスト
-        /// @param frameIndex   現在のバックバッファインデックス
-        void EndRenderPipeline(ID3D12GraphicsCommandList* cmdList, UINT frameIndex);
-
-        /// @brief FinalizeFrame 完了後にGPU計測結果を読み取り、DockingUI へ反映する
-        /// @param dx GraphicsCore（コマンドキュー・フレームインデックス取得用）
-        void PostFinalizeFrame(GraphicsCore* dx);
-
-        /// @brief ゲーム映像専用ウィンドウへの転写コマンドを積む
-        /// @details メインのコマンドリストを Close する直前に呼ぶこと。
-        void RecordGameOutputWindow();
-
-        /// @brief ゲーム映像専用ウィンドウを Present する
-        /// @details メインの ExecuteCommandLists / Present が済んだ後に呼ぶこと。
-        void PresentGameOutputWindow();
+        /// @brief ゲーム映像専用ウィンドウを提示し、計測結果を読み、外へ出した ImGui ウィンドウを描く
+        void AfterPresent() override;
 
         // ──────────────────────────────────────────────────────────
         // アクセサ
