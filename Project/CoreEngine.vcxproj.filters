@@ -1138,7 +1138,7 @@
     <ClCompile Include="Engine\Src\Camera\Control\OrbitFlyController.cpp">
       <Filter>Engine\Src\Camera\Control</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Camera\Debug\DebugCameraCVars.cpp">
+    <ClCompile Include="Engine\Src\Camera\Debug\DebugCameraState.cpp">
       <Filter>Engine\Src\Camera\Debug</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Camera\Control\FreeLookController.cpp">
@@ -3123,8 +3123,11 @@
     <ClInclude Include="Engine\Src\Camera\Control\OrbitFlyController.h">
       <Filter>Engine\Src\Camera\Control</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Camera\Debug\DebugCameraCVars.h">
+    <ClInclude Include="Engine\Src\Camera\Debug\DebugCameraState.h">
       <Filter>Engine\Src\Camera\Debug</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Camera\SceneCameraSection.h">
+      <Filter>Engine\Src\Editor\Camera</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Camera\Control\FreeLookController.h">
       <Filter>Engine\Src\Camera\Control</Filter>

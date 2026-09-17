@@ -223,6 +223,10 @@ namespace CoreEngine
             cvarStateSection_ = std::make_unique<CVarSettingsSection>(/*userStatePart=*/true);
             editorSettings->RegisterSection(cvarStateSection_.get(), this);
 
+            // エディタ視点カメラの設定・姿勢（シーンの生成より前に読み込む）
+            sceneCameraSection_ = std::make_unique<Editor::SceneCameraSection>();
+            editorSettings->RegisterSection(sceneCameraSection_.get(), this);
+
             // パネルの開閉。ここより後に登録されるパネルにも復元値が効く
             panelStateSection_ = std::make_unique<Editor::EditorPanelStateSection>();
             editorSettings->RegisterSection(panelStateSection_.get(), this);

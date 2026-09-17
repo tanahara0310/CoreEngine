@@ -42,6 +42,8 @@ namespace CoreEngine
             float maxHorizontalExtent = 5000.0f; // 水平(X/Z)の移動限界 [m]
             float minHeight = -100.0f;           // 注視点の最低高度 [m]
             float maxHeight = 10000.0f;          // 注視点の最高高度 [m]
+
+            bool operator==(const Settings&) const = default;
         };
 
         /// @brief 軌道状態（保存・復元の対象）
@@ -50,6 +52,8 @@ namespace CoreEngine
             float distance = 20.0f;
             float pitch = 0.25f;
             float yaw = std::numbers::pi_v<float>;
+
+            bool operator==(const OrbitState&) const = default;
         };
 
         /// @brief 視点プリセット

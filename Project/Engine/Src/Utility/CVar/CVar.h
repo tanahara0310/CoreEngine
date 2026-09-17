@@ -52,11 +52,6 @@ namespace CoreEngine
         ///          "r.<Effect>.Enabled" は Post Effects タブのトグルスイッチが担当するため、
         ///          これを付けないと同じ値を操作する UI が 2 つ並んでしまう
         NoUI   = 1 << 1,
-        /// @brief 実体（Light / カメラ等）が毎フレームこの CVar へ写し込むミラー値
-        /// @details CVar へ直接書いても次フレームに実体の値で上書きされるため、
-        ///          Undo の対象外にする（戻しても即座に巻き戻り、無意味なため）。
-        ///          ツールチップにもミラー値であることを表示する
-        Mirrored = 1 << 2,
     };
 
     constexpr CVarFlags operator|(CVarFlags a, CVarFlags b) noexcept

@@ -6,7 +6,7 @@
 #include "Scene/SceneSaveSystem.h"
 #include "Camera/CameraManager.h"
 #include "Camera/Control/CameraInputState.h"
-#include "Camera/Debug/DebugCameraCVars.h"
+#include "Camera/Debug/DebugCameraState.h"
 #ifdef CORE_EDITOR
 #include "Editor/Camera/EditorCameraInput.h"
 #endif
@@ -58,12 +58,11 @@ namespace CoreEngine
         // 起動時はゲーム視点で覗く（エディタ視点への切り替えはキー 1 / カメラUI）
         cameraManager_->SetUseSceneCamera(false);
 
-        // エディタ視点カメラの設定・姿勢を CVar 経由で永続化する。
-        // 生成直後のこの時点で前回終了時の状態を復元し、以降は毎フレーム CVar へ写す
+        // エディタ視点カメラは、生成直後のこの時点で控えの設定・姿勢を当て、以降は毎フレーム控え直す
         sceneCamera_ = cameraManager_->GetCamera(CameraNames::Scene);
         orbitController_ = orbitController;
         if (sceneCamera_ && orbitController_) {
-            DebugCameraCVars::RestoreTo(*sceneCamera_, *orbitController_);
+            DebugCameraState::RestoreTo(*sceneCamera_, *orbitController_);
         }
 
         // ===== 2Dカメラの設定 =====
@@ -84,7 +83,7 @@ namespace CoreEngine
             return;
         }
 
-        // 保存が無ければ何もしない。エディタ視点は CVar 側の値がそのまま残る。
+        // 保存が無ければ何もしない。エディタ視点は控えの値がそのまま残る。
         CameraSceneStateIO::Load(ctx.saveSystem->GetSceneName(), *cameraManager_);
     }
 
@@ -104,24 +103,24 @@ namespace CoreEngine
 #endif
         cameraManager_->Update(input, Time::UnscaledDeltaTime());
 
-        // 更新後の設定・姿勢を CVar へ写す（カメラ UI・マウス操作のどちらの変更も拾う）
-        MirrorEditorCameraToCVars();
+        // 更新後の設定・姿勢を控える（カメラ UI・マウス操作のどちらの変更も拾う）
+        CaptureEditorCamera();
     }
 
     void CameraFeature::Finalize(SceneContext&)
     {
-        // 最後の設定・姿勢を CVar へ写しておく（最終フレームの Update 以降の変更を取りこぼさない）。
+        // 最後の設定・姿勢を控えておく（最終フレームの Update 以降の変更を取りこぼさない）。
         // カメラの破棄より先に行うこと
-        MirrorEditorCameraToCVars();
+        CaptureEditorCamera();
 
         sceneCamera_ = nullptr;
         orbitController_ = nullptr;
     }
 
-    void CameraFeature::MirrorEditorCameraToCVars()
+    void CameraFeature::CaptureEditorCamera()
     {
         if (sceneCamera_ && orbitController_) {
-            DebugCameraCVars::MirrorFrom(*sceneCamera_, *orbitController_);
+            DebugCameraState::Capture(*sceneCamera_, *orbitController_);
         }
     }
 

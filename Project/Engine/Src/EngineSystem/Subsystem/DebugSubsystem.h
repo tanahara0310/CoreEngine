@@ -3,6 +3,7 @@
 #ifdef CORE_EDITOR
 
 #include <memory>
+#include "Editor/Camera/SceneCameraSection.h"
 #include "Editor/ImGui/EditorLayoutSection.h"
 #include "Editor/Panel/EditorPanelStateSection.h"
 #include <functional>
@@ -122,6 +123,9 @@ namespace CoreEngine
 
         // 画面の配置を次の起動へ持ち越す
         std::unique_ptr<Editor::EditorLayoutSection> layoutSection_;
+
+        // エディタ視点カメラの設定・姿勢を次の起動へ持ち越す
+        std::unique_ptr<Editor::SceneCameraSection> sceneCameraSection_;
     };
 }
 

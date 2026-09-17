@@ -559,7 +559,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Editor\ImGui\Widgets\PassTimingTable.cpp" />
     <ClCompile Include="Engine\Src\Camera\Camera.cpp" />
     <ClCompile Include="Engine\Src\Camera\Control\OrbitFlyController.cpp" />
-    <ClCompile Include="Engine\Src\Camera\Debug\DebugCameraCVars.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\DebugCameraState.cpp" />
     <ClCompile Include="Engine\Src\Camera\Control\FreeLookController.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\EditorCameraInput.cpp" />
     <ClCompile Include="Engine\Src\Camera\View\ViewBuilder.cpp" />
@@ -1621,7 +1621,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Editor\ImGui\EditorLayoutSection.h" />
     <ClInclude Include="Engine\Src\Camera\Camera.h" />
     <ClInclude Include="Engine\Src\Camera\Control\OrbitFlyController.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\DebugCameraCVars.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\DebugCameraState.h" />
+    <ClInclude Include="Engine\Src\Editor\Camera\SceneCameraSection.h" />
     <ClInclude Include="Engine\Src\Camera\Control\FreeLookController.h" />
     <ClInclude Include="Engine\Src\Camera\Control\ICameraController.h" />
     <ClInclude Include="Engine\Src\Camera\Control\CameraInputState.h" />
