@@ -16,10 +16,35 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <utility>
 
 
 namespace CoreEngine
 {
+
+    Model::~Model() {
+        GraphicsCore* const graphics = renderContext_.dxCommon;
+        if (!graphics) {
+            return;
+        }
+
+        for (auto& buffer : gameTransformBuffers_) {
+            graphics->DeferRelease(std::move(buffer));
+        }
+
+        if (skinCluster_) {
+            SkinCluster& cluster = *skinCluster_;
+            graphics->DeferFree(cluster.influenceSrvHandle);
+            graphics->DeferFree(cluster.paletteSrvHandle);
+            graphics->DeferFree(cluster.sourceVertexSrvHandle);
+            graphics->DeferFree(cluster.outputUavHandle);
+            graphics->DeferRelease(std::move(cluster.influenceResource));
+            graphics->DeferRelease(std::move(cluster.paletteResource));
+            graphics->DeferRelease(cluster.outputVertexResource.Get());
+            cluster.outputVertexResource.Release();
+            graphics->DeferRelease(std::move(cluster.skinningParamsCB));
+        }
+    }
 
     bool Model::IsIBLAvailable() const {
         // 自身の renderContext_ 経由でレンダラーの IBL テクスチャ状態を確認

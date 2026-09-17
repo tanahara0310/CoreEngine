@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iterator>
+#include <utility>
 
 namespace
 {
@@ -93,6 +94,33 @@ namespace CoreEngine
         if (readbackResource_ && readbackData_) {
             readbackResource_->Unmap(0, nullptr);
         }
+        ReleaseGpuResources();
+    }
+
+    void GpuParticleSystemComponent::ReleaseGpuResources()
+    {
+        if (!graphics_) { return; }
+
+        for (DescriptorHandle* const handle : {
+                &particleUavGPU_, &counterUavGPU_, &freeListUavGPU_, &instancingUavGPU_, &instancingSrvGPU_ }) {
+            graphics_->DeferFree(*handle);
+        }
+
+        graphics_->DeferRelease(std::move(particleResource_));
+        graphics_->DeferRelease(counterResource_.Get());
+        graphics_->DeferRelease(freeListResource_.Get());
+        graphics_->DeferRelease(instancingResource_.Get());
+        graphics_->DeferRelease(argsResource_.Get());
+        graphics_->DeferRelease(std::move(uploadInitResource_));
+        graphics_->DeferRelease(std::move(readbackResource_));
+        graphics_->DeferRelease(std::move(paramsResource_));
+        counterResource_.Release();
+        freeListResource_.Release();
+        instancingResource_.Release();
+        argsResource_.Release();
+        paramsData_ = nullptr;
+        readbackData_ = nullptr;
+        graphics_ = nullptr;
     }
 
     void GpuParticleSystemComponent::Awake()
@@ -110,6 +138,7 @@ namespace CoreEngine
         RenderManager* const renderManager = engine ? engine->GetService<RenderManager>() : nullptr;
         if (!graphics || !renderManager) { return; }
 
+        graphics_ = graphics;
         if (!CreateGpuResources(*graphics)) {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics,
                 "GpuParticleSystemComponent: \"{}\" の GPU バッファを作れませんでした", owner->GetName());

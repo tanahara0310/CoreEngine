@@ -42,7 +42,8 @@ namespace CoreEngine
         /// @brief デフォルトコンストラクタ
         Model() = default;
 
-        ~Model() = default;
+        /// @brief WVP バッファとスキニングのバッファ・SRV / UAV を、描画中のフレームが終わってから返すよう預ける
+        ~Model();
 
         /// @brief IBLテクスチャ（Irradiance/Prefiltered/BRDF LUT）がレンダラーに全て設定済みか確認
         bool IsIBLAvailable() const;
