@@ -5,7 +5,7 @@
 #include <filesystem>
 #include <iostream>
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/ImguiManager.h"
 #endif
 
@@ -116,7 +116,7 @@ std::vector<std::string> PostEffectPresetManager::GetPresetList(const std::strin
 
 void PostEffectPresetManager::ShowImGui(PostEffectManager* postEffectManager)
 {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     if (ImGui::CollapsingHeader("プリセット管理")) {
         // キーボードショートカット: Ctrl+S で上書き保存
         if (!currentPresetPath_.empty() && ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyPressed(ImGuiKey_S)) {
@@ -279,7 +279,7 @@ void PostEffectPresetManager::ShowImGui(PostEffectManager* postEffectManager)
     }
 #else
     (void)postEffectManager; // 未使用警告を抑制
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
 }
 
 void PostEffectPresetManager::UpdatePresetFileList()

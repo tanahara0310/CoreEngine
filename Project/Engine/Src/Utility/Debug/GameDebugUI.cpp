@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "GameDebugUI.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/Command/EditorCommandStack.h"
 #include "Editor/ImGui/DockingUI.h"
 #include "Editor/ImGui/EditorTheme.h"
@@ -784,4 +784,4 @@ namespace CoreEngine
         dockingUI_->RegisterWindow(consoleWindow, Editor::DockArea::Bottom);
     }
 }
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

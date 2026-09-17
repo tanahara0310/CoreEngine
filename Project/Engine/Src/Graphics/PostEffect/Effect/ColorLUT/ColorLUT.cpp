@@ -9,7 +9,7 @@
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/Logger/Logger.h"
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
 #endif
 #include <algorithm>
@@ -341,7 +341,7 @@ namespace CoreEngine
 
     void ColorLUT::DrawImGui()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         ImGui::PushID("ColorLUTParams");
         ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
         ImGui::Text("LUT: %s（%u^3）", loadedLutName_.c_str(), lutSizeLoaded_);
@@ -367,7 +367,7 @@ namespace CoreEngine
             CVarUI::ResetTree(kCVarPrefix);
         }
         ImGui::PopID();
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
     }
 
     CVar<bool>* ColorLUT::GetEnabledCVar() const

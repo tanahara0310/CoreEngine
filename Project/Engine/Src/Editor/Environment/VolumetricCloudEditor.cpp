@@ -7,7 +7,7 @@
 #include "Graphics/Cloud/VolumetricCloudManager.h"
 #include "Graphics/Render/RenderDomainContext.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
 #include "Editor/ImGui/ImGuiAll.h"
 #include "EngineSystem/Subsystem/DebugSubsystem.h"
@@ -26,7 +26,7 @@ namespace CoreEngine {
     namespace {
         constexpr const char* kEditorLabel = "Volumetric Cloud";
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         constexpr float kPi = 3.14159265358979323846f;
 
         /// @brief UE 風の (?) ホバーツールチップ（ラベルの右に付ける）
@@ -357,7 +357,7 @@ namespace CoreEngine {
     void VolumetricCloudEditor::Initialize(EngineSystem& engine)
     {
         engine_ = &engine;
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         // Hierarchy の Environment ツリーへ登録し、選択時に Inspector で編集できるようにする。
         // GameDebugUI はここで一度だけ取得してキャッシュする（デストラクタで使うため）
         if (auto* debug = engine_->GetDebugSubsystem()) {
@@ -377,7 +377,7 @@ namespace CoreEngine {
 
     VolumetricCloudEditor::~VolumetricCloudEditor()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         // エンジン終了時にドロワーがダングリングしないよう登録を解除する。
         // engine_->GetDebugSubsystem() を呼び直さないこと（サブシステム一括破棄中に走るため、
         // 破棄済みサブシステムへの dynamic_cast でアクセス違反になる）。キャッシュ済みポインタのみ使う。
@@ -387,11 +387,11 @@ namespace CoreEngine {
 #endif
     }
 
-    // manager は USE_IMGUI 無効時（Release）に本体が丸ごと消えて未使用になる。
+    // manager は CORE_EDITOR 無効時（Release）に本体が丸ごと消えて未使用になる。
     // Release は TreatWarningAsError なので C4100 でビルドが止まる。
     void VolumetricCloudEditor::DrawPresetSelector([[maybe_unused]] VolumetricCloudManager& manager)
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         // 表示は現在値から導出する（どの経路で値が変わっても追随する）
         activePresetIndex_ = FindMatchingCloudPreset(manager.GetParameters());
 
@@ -425,7 +425,7 @@ namespace CoreEngine {
 
     void VolumetricCloudEditor::DrawWeatherSliders()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         // 曇り度は GlobalCoverage と DetailErosionStrength を連動させる
         // （カバレッジだけ下げると雲塊が粒状に崩れるため。個別調整は詳細設定から）
         const CVarRange coverageRange = CloudCVars::GlobalCoverage.GetRange();
@@ -487,7 +487,7 @@ namespace CoreEngine {
 
     void VolumetricCloudEditor::DrawPaintSection([[maybe_unused]] VolumetricCloudManager& manager)
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         CloudResources& resources = manager.GetResources();
         if (!manager.AreNoiseTexturesReady()
             || resources.weatherChannelSrvs[0].gpuHandle.ptr == 0) {
@@ -746,7 +746,7 @@ namespace CoreEngine {
 
     void VolumetricCloudEditor::DrawStyleSelector()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         int style = CloudCVars::Style.Get();
         if (ImGui::Combo("雲のスタイル", &style, kCloudStyleNames,
                 static_cast<int>(CloudStyle::Count))) {
@@ -815,7 +815,7 @@ namespace CoreEngine {
 
     void VolumetricCloudEditor::DrawAdvancedSection()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         // 効かない CVar を並べないよう、スタイルで出し分ける。
         // 隠したグループも CoveredCVarNames() には入っているので「その他（未分類）」へは落ちない
         const bool blocky = IsBlockyCloudStyle(static_cast<uint32_t>(CloudCVars::Style.Get()));
@@ -855,7 +855,7 @@ namespace CoreEngine {
 
     void VolumetricCloudEditor::DrawContent()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         auto* cloudManager = GetVolumetricCloudManager();
         if (!cloudManager) {
             ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "VolumetricCloudManager が見つかりません");

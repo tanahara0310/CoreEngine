@@ -14,7 +14,7 @@
 #include "Utility/Logger/Logger.h"
 #include <filesystem>
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/ImguiManager.h"
 #endif
 
@@ -453,7 +453,7 @@ std::vector<std::string> ParticlePresetManager::GetPresetList(const std::string&
 
 void ParticlePresetManager::ShowImGui(IParticleSystem* particleSystem)
 {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     ImGui::PushID(this);
 
     // ── ツールバー行: プリセット名 + 保存/読み込みボタン ──
@@ -592,12 +592,12 @@ void ParticlePresetManager::ShowImGui(IParticleSystem* particleSystem)
     ImGui::PopID();
 #else
     (void)particleSystem; // 未使用警告を抑制
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
 }
 
 void ParticlePresetManager::SetStatus(const std::string& message, bool isError)
 {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     statusMessage_ = message;
     statusIsError_ = isError;
     statusExpireTime_ = ImGui::GetTime() + 4.0; // 4秒間表示

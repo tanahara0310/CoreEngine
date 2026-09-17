@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Editor/Inspector/InspectorLayout.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "Editor/ImGui/EditorTheme.h"
 #include "Editor/ImGui/Widgets/EditorBars.h"
@@ -246,4 +246,4 @@ namespace CoreEngine::InspectorLayout
     }
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

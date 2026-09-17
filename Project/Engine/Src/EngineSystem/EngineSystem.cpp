@@ -2,7 +2,7 @@
 #include "EngineSystem.h"
 #include "Subsystem/RayTracingSubsystem.h"
 #include "Script/ScriptSubsystem.h"
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Settings/EditorSettingsSubsystem.h"
 #endif
 // ImGui 無しビルドでも CVar の保存値を適用するために常に必要
@@ -39,7 +39,7 @@
 #include "Utility/FrameRate/FrameRateController.h"
 #include "Utility/FrameRate/Time.h"
 
-#if defined(USE_IMGUI) && defined(USE_PIX)
+#if defined(CORE_EDITOR) && defined(USE_PIX)
 #include "Editor/ImGui/PixCapture.h"
 #endif
 
@@ -135,7 +135,7 @@ namespace CoreEngine
         // 以降のシェーダコンパイル数秒の裏に隠れる（このステップ自体は即座に戻る）
         sequence.Add("オーディオ（非同期開始）", [this] { CreateAudioComponents(); });
 
-#if defined(USE_IMGUI) && defined(USE_PIX)
+#if defined(CORE_EDITOR) && defined(USE_PIX)
         // PIX GPU キャプチャ DLL をロード（D3D12 デバイス作成より前に必要）
         // DLL がロードされると全 D3D12 API がフックされ ~33% のオーバーヘッドが発生するため、
         // コンフィグで明示的に有効化された場合のみロードする
@@ -177,18 +177,18 @@ namespace CoreEngine
         sequence.Add("サブシステム生成", [this] {
             RegisterSubsystem<RayTracingSubsystem>();
             RegisterSubsystem<ScriptSubsystem>();
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
             // エディタ設定の自動保存（セクション登録元より先に生成しておく）
             RegisterSubsystem<EditorSettingsSubsystem>();
             RegisterSubsystem<DebugSubsystem>();
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
         });
 
         // 生成ステップが積む個数は静的に決まるので、インデックス指定で
         // 1 サブシステム 1 ステップに切り出せる。
         // （実行中にステップを追加すると StartupSequence の内部 vector が
         //   再確保され、実行中エントリの参照が壊れるので絶対にやらない）
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         constexpr size_t kSubsystemCount = 4;
 #else
         constexpr size_t kSubsystemCount = 2;
@@ -207,7 +207,7 @@ namespace CoreEngine
                 });
         }
 
-#ifndef USE_IMGUI
+#ifndef CORE_EDITOR
         // ImGui 無しビルドには EditorSettingsSubsystem が無く、セクション登録時の
         // CVar 復元経路ごと落ちるため、そのままだと全 CVar がコード既定値になる。
         // 較正済みのプロジェクト設定はゲームの見た目そのものなので、保存はせず
@@ -219,7 +219,7 @@ namespace CoreEngine
             CVarRegistry::Get().FlushPendingWarnings();
             CVarSettingsSection::LogOverriddenCVars();
         });
-#endif // !USE_IMGUI
+#endif // !CORE_EDITOR
 
         sequence.Add("型記述子の登録確認", [] {
             auto& registry = Reflection::TypeRegistry::Get();

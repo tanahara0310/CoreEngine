@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "ParticleSystemDebugUI.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "Particle/ParticleSystemComponent.h"
 #include "Particle/Gpu/GpuParticleSystemComponent.h"
@@ -205,4 +205,4 @@ void ParticleSystemDebugUI::ShowStatistics(ParticleSystemComponent& particleSyst
 
 } // namespace CoreEngine
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

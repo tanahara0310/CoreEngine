@@ -7,7 +7,7 @@
 #include "Graphics/Fog/Settings/FogCVars.h"
 #include "Graphics/Render/RenderDomainContext.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
 #include "Editor/ImGui/ImGuiAll.h"
 #include "EngineSystem/Subsystem/DebugSubsystem.h"
@@ -20,7 +20,7 @@ namespace CoreEngine {
         constexpr const char* kEditorLabel = "Height Fog";
         constexpr const char* kCVarPrefix = "r.Fog";
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         /// @brief プリセット 1 件分。単位系は FogCVars と同じ
         struct FogPreset {
             const char* name;
@@ -94,13 +94,13 @@ namespace CoreEngine {
                 ImGui::SetTooltip("%s", desc);
             }
         }
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
     }
 
     void FogEditor::Initialize(EngineSystem& engine)
     {
         engine_ = &engine;
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         // Hierarchy の Environment ツリーへ登録し、選択時に Inspector で編集できるようにする。
         // GameDebugUI はここで一度だけ取得してキャッシュする（デストラクタで使うため）
         if (auto* debug = engine_->GetDebugSubsystem()) {
@@ -120,7 +120,7 @@ namespace CoreEngine {
 
     FogEditor::~FogEditor()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         // エンジン終了時にドロワーがダングリングしないよう登録を解除する。
         // engine_->GetDebugSubsystem() を呼び直さないこと（サブシステム一括破棄中に走るため）
         if (gameDebugUI_) {
@@ -131,7 +131,7 @@ namespace CoreEngine {
 
     void FogEditor::DrawContent()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         ImGui::PushID("HeightFog");
 
         // シェーダーのコンパイルに失敗していると、有効にしても何も起きない。
@@ -171,12 +171,12 @@ namespace CoreEngine {
         }
 
         ImGui::PopID();
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
     }
 
     void FogEditor::DrawPresetButtons()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         for (int i = 0; i < kFogPresetCount; ++i) {
             const FogPreset& preset = FogPresets()[i];
             if (ImGui::Button(preset.name)) {
@@ -188,7 +188,7 @@ namespace CoreEngine {
                 ImGui::SetTooltip("%s", preset.description);
             }
         }
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
     }
 
     FogManager* FogEditor::GetFogManager() const

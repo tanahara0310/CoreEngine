@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "ColliderInspector.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "Collision/ColliderComponent.h"
 #include "GameObject/GameObject.h"
@@ -166,4 +166,4 @@ namespace ColliderInspector
 }
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

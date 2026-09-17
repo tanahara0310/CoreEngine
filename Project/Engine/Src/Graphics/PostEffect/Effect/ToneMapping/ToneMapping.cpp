@@ -9,7 +9,7 @@
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/CVar/CVar.h"
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
 #endif
 #include <algorithm>
@@ -379,7 +379,7 @@ namespace CoreEngine
 
     void ToneMapping::DrawImGui()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         ImGui::PushID("ToneMapping");
         ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
         static const char* kOperatorNames[] = { "ACES", "GT", "AgX" };
@@ -424,6 +424,6 @@ namespace CoreEngine
         }
         UI::Separator();
         ImGui::PopID();
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
     }
 }

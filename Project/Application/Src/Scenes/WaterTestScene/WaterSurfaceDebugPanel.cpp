@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "WaterSurfaceDebugPanel.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "Graphics/Water/Render/WaterRenderFeature.h"
 #include "Graphics/Water/Surface/WaterPlaneObject.h"

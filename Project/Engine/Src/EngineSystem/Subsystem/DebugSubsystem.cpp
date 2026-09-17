@@ -2,7 +2,7 @@
 #include "Editor/Panel/EditorPanelRegistry.h"
 #include "DebugSubsystem.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "../EngineSystem.h"
 #include "EngineProfileScope.h"
@@ -592,4 +592,4 @@ namespace CoreEngine
 
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

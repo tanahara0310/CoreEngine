@@ -12,7 +12,7 @@
 #include <imgui_internal.h>
 
 #include "DockingUI.h"
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "CanvasViewport.h"
 #include "ProjectView.h"
 #endif
@@ -73,7 +73,7 @@ bool IsEditorUiVisible() const { return editorUiVisible_; }
 /// @brief エディタUIの表示/非表示を切り替える
 void ToggleEditorUi() { editorUiVisible_ = !editorUiVisible_; }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 /// @brief Canvasプレビュービューポートへのアクセッサ
 /// @return CanvasViewportへのポインタ
 CanvasViewport* GetCanvasViewport() const { return canvasViewport_.get(); }
@@ -97,7 +97,7 @@ private:
 
     // サブモジュール
     std::unique_ptr<DockingUI> dockingUI_ = std::make_unique<DockingUI>();
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     std::unique_ptr<CanvasViewport> canvasViewport_ = std::make_unique<CanvasViewport>();
     std::unique_ptr<ProjectView> projectView_ = std::make_unique<ProjectView>();
 #endif

@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include <memory>
 #include "Editor/ImGui/EditorLayoutSection.h"
@@ -36,7 +36,7 @@ namespace CoreEngine
 
     /// @brief デバッグ機能（ImGui / プロファイラ / デバッグUI）の管理サブシステム
     /// @details EngineSystem からデバッグ関連の責務を分離し、肥大化を抑える。
-    ///          USE_IMGUI が定義されたビルドでのみ有効。
+    ///          CORE_EDITOR が定義されたビルドでのみ有効。
     class DebugSubsystem : public IEngineSubsystem
     {
     public:
@@ -125,4 +125,4 @@ namespace CoreEngine
     };
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

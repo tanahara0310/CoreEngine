@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "Editor/Panel/EditorPanelRegistry.h"
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "SceneDebugEditor.h"
 #include "EngineSystem/EngineSystem.h"
@@ -797,4 +797,4 @@ namespace CoreEngine
     }
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

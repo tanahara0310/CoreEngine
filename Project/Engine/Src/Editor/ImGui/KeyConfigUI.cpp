@@ -1,5 +1,5 @@
 #include "pch.h"
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "KeyConfigUI.h"
 #include "Input/InputQuery.h"
@@ -163,4 +163,4 @@ namespace CoreEngine {
 
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

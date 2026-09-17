@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "WaterEditorFacade.h"
 #include "WaterSurfaceDebugPanel.h"
 #include "WaterSurfaceParameterPanel.h"
@@ -31,7 +31,7 @@ public:
 	void Shutdown();
 
 private:
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 	/// @brief 水面制御用 UI の内容を描画する（Inspector 内に埋め込み）
 	void DrawImGuiContent();
 	/// @brief 水面の通常パラメータ編集パネル

@@ -5,14 +5,14 @@
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/Water/Render/WaterRenderFeature.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/ImGuiAll.h"
 #include "EngineSystem/Subsystem/DebugSubsystem.h"
 #endif
 
 using namespace CoreEngine;
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 namespace {
 	constexpr const char* kEditorLabel = "Water";
 }
@@ -24,7 +24,7 @@ WaterSceneController::~WaterSceneController() {
 
 void WaterSceneController::Shutdown() {
 	waterFeature_ = nullptr;
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 	// シーン破棄後にドロワーがダングリングしないよう登録を解除する
 	// （パラメータの永続化は CVars.json が担うため、ここで保存処理は不要）
 	if (engine_) {
@@ -43,7 +43,7 @@ void WaterSceneController::Initialize(
 		return;
 	}
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 	engine_ = &engine;
 	// UI は facade 経由で Water 設定を取得・適用する
 	editorFacade_.Initialize(*waterFeature_, engine);
@@ -64,7 +64,7 @@ void WaterSceneController::Initialize(
 #endif
 }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 void WaterSceneController::DrawImGuiContent() {
 	if (!waterFeature_ || !waterFeature_->GetWaterPlane()) {
 		ImGui::TextDisabled("水面オブジェクトがありません");

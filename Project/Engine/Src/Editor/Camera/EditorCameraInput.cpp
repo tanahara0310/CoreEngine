@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "EditorCameraInput.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "Editor/ImGui/ImGuiAll.h"
 #include "EngineSystem/EngineSystem.h"
@@ -107,7 +107,7 @@ namespace CoreEngine
     }
 }
 
-#else // USE_IMGUI
+#else // CORE_EDITOR
 
 namespace CoreEngine
 {
@@ -119,4 +119,4 @@ namespace CoreEngine
     }
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

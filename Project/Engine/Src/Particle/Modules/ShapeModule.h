@@ -80,7 +80,7 @@ public:
     /// @return 有効な場合true
     bool IsDebugDrawEnabled() const { return debugDraw_; }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     /// @brief ImGuiデバッグ表示
     /// @return UIに変更があった場合true
     bool ShowImGui();

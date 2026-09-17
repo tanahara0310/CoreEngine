@@ -6,7 +6,7 @@
 namespace CoreEngine { class WaterRenderFeature; }
 namespace CoreEngine { class WaterPlaneObject; }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 /// @brief 水面パラメータ編集パネル
 /// @details Phase 5 で全パラメータを WaterCVars（単一情報源）へ移行した。
 ///          このパネルは CVar のストレージを直接編集する薄い UI で、

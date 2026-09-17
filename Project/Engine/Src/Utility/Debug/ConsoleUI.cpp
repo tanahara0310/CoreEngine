@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "ConsoleUI.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "EngineSystem/EngineSystem.h"
 #include "EngineSystem/PlaybackState.h"
 #include "Graphics/RHI/GraphicsCore.h"
@@ -759,4 +759,4 @@ void ConsoleUI::RebuildView()
     }
 }
 } // namespace CoreEngine
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

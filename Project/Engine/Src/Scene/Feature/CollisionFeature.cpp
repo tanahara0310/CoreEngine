@@ -6,7 +6,7 @@
 #include "Graphics/Render/RenderManager.h"
 #include "Utility/CVar/CVar.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Collision/Debug/CollisionMatrixPanel.h"
 #endif
 
@@ -47,7 +47,7 @@ namespace CoreEngine
             pipeline->RegisterLineSource(debugRenderer_.get());
         }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         // コリジョンマトリクス編集ウィンドウ（Engine Settings）。編集対象を現在のシーンへ向ける。
         CollisionMatrixPanel::EnsureRegistered(ctx.engine);
         CollisionMatrixPanel::SetActiveConfig(&collisionConfig_);
@@ -83,7 +83,7 @@ namespace CoreEngine
 
     void CollisionFeature::Finalize(SceneContext& ctx)
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         // シーンと一緒に消える CollisionConfig を UI が指したままにしない
         CollisionMatrixPanel::SetActiveConfig(nullptr);
 #endif

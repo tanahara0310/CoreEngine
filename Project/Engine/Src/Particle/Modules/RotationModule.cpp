@@ -113,7 +113,7 @@ void RotationModule::UpdateRotation(Particle& particle, float deltaTime)
     }
 }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 bool RotationModule::ShowImGui() {
     bool changed = false;
 

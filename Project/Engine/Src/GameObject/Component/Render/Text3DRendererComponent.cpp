@@ -17,7 +17,7 @@
 #include <cfloat>
 #include <cmath>
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/Wrappers/ImGuiInput.h"
 #include "Editor/ImGui/Wrappers/ImGuiLayout.h"
 #include <imgui.h>
@@ -418,7 +418,7 @@ namespace CoreEngine
         geometryDirty_ = true;
     }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     bool Text3DRendererComponent::DrawEditorUI()
     {
         bool changed = false;
@@ -635,5 +635,5 @@ namespace CoreEngine
 
         return changed;
     }
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
 }

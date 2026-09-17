@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "CameraRigEditorModule.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "Camera/Camera.h"
 #include "Camera/CameraManager.h"
@@ -683,4 +683,4 @@ namespace CoreEngine
     }
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

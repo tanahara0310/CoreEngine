@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Editor/Scene/PrefabEditing.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "Editor/Command/EditorCommand.h"
 #include "Editor/Command/EditorCommandStack.h"
@@ -218,4 +218,4 @@ namespace CoreEngine::PrefabEditing
     }
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

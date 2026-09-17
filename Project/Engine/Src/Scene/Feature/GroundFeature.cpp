@@ -20,7 +20,7 @@
 #include <cmath>
 #include <memory>
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "EngineSystem/Subsystem/DebugSubsystem.h"
 #include "Utility/Debug/GameDebugUI.h"
 #include "Editor/ImGui/CVarPanel.h"
@@ -31,7 +31,7 @@ namespace
 {
     using namespace CoreEngine;
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     /// 設定パネルの編集対象（シーン寿命のポインタをラムダに持たせないための
     /// ファイルスコープ変数。GridRenderer と同じ流儀）
     GroundFeature* s_activeGround = nullptr;
@@ -132,7 +132,7 @@ namespace CoreEngine
 {
     void GroundFeature::Initialize([[maybe_unused]] SceneContext& ctx)
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         // パラメータ UI は CVar から自動生成する。全 CVar を一覧する横断パネルは
         // 存在しない設計なので、機能ごとにこの登録をしないとどこにも出てこない
         EnsureSettingsPanelRegistered(ctx.engine);
@@ -186,7 +186,7 @@ namespace CoreEngine
 
     void GroundFeature::Finalize(SceneContext&)
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         // シーンと一緒に消えるので、パネルの参照を先に外す
         SetActiveForSettingsPanel(nullptr);
 #endif
@@ -350,7 +350,7 @@ namespace CoreEngine
         return 0.0f;
     }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
     void GroundFeature::EnsureSettingsPanelRegistered(EngineSystem* engine)
     {
@@ -402,5 +402,5 @@ namespace CoreEngine
         }
     }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
 }

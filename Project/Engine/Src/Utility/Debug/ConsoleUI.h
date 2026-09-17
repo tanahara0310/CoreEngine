@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/ImGuiAll.h"
 #include <string>
 #include <vector>
@@ -187,4 +187,4 @@ namespace CoreEngine
         void RebuildView();
     };
 }
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

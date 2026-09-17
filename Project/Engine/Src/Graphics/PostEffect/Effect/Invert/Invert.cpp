@@ -43,7 +43,7 @@ namespace CoreEngine
     }
 void Invert::DrawImGui()
 {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     ImGui::PushID("Invert");
     
     ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
@@ -58,7 +58,7 @@ void Invert::DrawImGui()
     }
     
     ImGui::PopID();
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
 }
 
     CVar<bool>* Invert::GetEnabledCVar() const

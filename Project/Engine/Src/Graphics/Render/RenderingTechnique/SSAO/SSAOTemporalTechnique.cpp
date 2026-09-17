@@ -8,7 +8,7 @@
 #include "Graphics/Render/RenderTarget/RenderTargetDescriptor.h"
 #include "Graphics/Render/Pass/RenderPass.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/ImguiManager.h"
 #endif
 
@@ -139,7 +139,7 @@ namespace CoreEngine
 
     void SSAOTemporalTechnique::DrawImGui()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         ImGui::PushID("SSAOTemporalParams");
 
         UI::SliderFloat("現フレーム寄与率", params_.blendAlpha, 0.02f, 0.5f);

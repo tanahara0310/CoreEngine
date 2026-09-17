@@ -56,7 +56,7 @@ namespace CollisionTest
         SetSceneName("CollisionTestScene");
 
         Report::Get().BeginSession("CollisionTestScene");
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         Report::EnsureRegistered(engine_);
 #endif
 

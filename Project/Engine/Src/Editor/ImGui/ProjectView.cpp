@@ -6,7 +6,7 @@
 #include "Graphics/Texture/TextureManager.h"
 #include "Utility/Logger/Logger.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/EditorTheme.h"
 #include "Editor/ImGui/ImGuiAll.h"
 #include "Editor/ImGui/Widgets/EditorBars.h"
@@ -18,7 +18,7 @@
 #include <Windows.h>
 #include <shellapi.h>
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 namespace CoreEngine
 {
     namespace
@@ -1031,6 +1031,6 @@ namespace CoreEngine
         return result;
     }
 }
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
 
 

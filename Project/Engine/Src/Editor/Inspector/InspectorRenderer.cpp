@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Editor/Inspector/InspectorRenderer.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "Editor/Command/EditorCommand.h"
 #include "Editor/Command/EditorCommandStack.h"
@@ -1106,4 +1106,4 @@ namespace CoreEngine
     }
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

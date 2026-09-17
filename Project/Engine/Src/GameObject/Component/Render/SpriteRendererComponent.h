@@ -41,7 +41,7 @@ namespace CoreEngine
         /// @brief トランスフォーム（ITransformSource）を使う
         bool RequiresComponent(const IComponent& other) const override;
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         /// @brief テクスチャ・色・UV・ブレンド・描画順・フリップ・アンカーの編集 UI
         /// @return 値が変更されたら true
         bool DrawEditorUI();

@@ -19,7 +19,7 @@ namespace CoreEngine
 
     namespace fs = std::filesystem;
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     namespace
     {
         /// @brief 暗い下地の上に小さな文字を描く
@@ -196,7 +196,7 @@ namespace CoreEngine
         ImGui::GetIO().Fonts->GetTexDataAsRGBA32(nullptr, nullptr, nullptr);
         ImGui_ImplDX12_CreateDeviceObjects(); // これがないとアクセス違反が起きる
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         // ProjectViewの初期化
         projectView_->Initialize(dxCommon_);
 #endif
@@ -225,7 +225,7 @@ namespace CoreEngine
         auto dockHost = dockingUI_->BeginDockSpaceHost();
 
         // Game ビューポートは PostEffectPass 完了後に別経路で描画する。
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         // Canvas ウィンドウ（UI の配置編集）。
         // 背景にはゲームの描画結果そのものを敷き、その上へ選択枠とギズモだけを重ねる
         // （Unity の Scene ビューと同じ考え方）。渡るのは 1 フレーム前の結果だが、
@@ -247,7 +247,7 @@ namespace CoreEngine
 
     void ImGuiManager::DrawGameViewport([[maybe_unused]] GraphicsCore* dxCommon, [[maybe_unused]] PostEffectManager* postEffectManager, [[maybe_unused]] GameDebugUI* gameDebugUI)
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         D3D12_GPU_DESCRIPTOR_HANDLE textureHandle{};
         if (postEffectManager) {
             textureHandle = postEffectManager->GetFinalDisplayTextureHandle();
@@ -295,7 +295,7 @@ namespace CoreEngine
         DrawPlayModeOverlay(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), dockingUI_->GetStatus());
 
         // Gameビュー上のギズモ・オブジェクト選択・モデルドロップ。
-        // エディタ機能の有効条件は USE_IMGUI（Development ビルドにも必要）。_DEBUG で囲まないこと
+        // エディタ機能の有効条件は CORE_EDITOR（Development ビルドにも必要）。_DEBUG で囲まないこと
         SceneDebugEditor* sceneDebugEditor = gameDebugUI ? gameDebugUI->GetSceneDebugEditor() : nullptr;
 
         if (sceneDebugEditor) {
@@ -316,7 +316,7 @@ namespace CoreEngine
 
     void ImGuiManager::DrawFullscreenGameViewport([[maybe_unused]] D3D12_GPU_DESCRIPTOR_HANDLE textureHandle)
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(viewport->Pos);
         ImGui::SetNextWindowSize(viewport->Size);
@@ -393,7 +393,7 @@ namespace CoreEngine
 
     void ImGuiManager::Finalize()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         projectView_->Finalize();
 #endif
         ImGui_ImplDX12_Shutdown();

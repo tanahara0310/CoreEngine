@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Editor/ImGui/EditorLayoutSection.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "Editor/ImGui/DockingUI.h"
 #include "Editor/ImGui/ProjectView.h"
@@ -88,4 +88,4 @@ namespace CoreEngine::Editor
     }
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

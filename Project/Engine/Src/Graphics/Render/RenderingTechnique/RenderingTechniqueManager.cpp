@@ -11,7 +11,7 @@
 #include "Lighting/WaterCausticsTechnique.h"
 #include <cassert>
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/ImguiManager.h"
 #endif
 
@@ -68,7 +68,7 @@ namespace CoreEngine
 
     void RenderingTechniqueManager::DrawImGui()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         for (auto& [name, technique] : techniques_) {
             if (technique) {
                 // 常時有効な技術は無効化できないようにする

@@ -2,7 +2,7 @@
 #include "EmissionModule.h"
 #include "Particle/Core/Particle.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/ImguiManager.h"
 #endif
 
@@ -68,7 +68,7 @@ void EmissionModule::Stop() {
     isPlaying_ = false;
 }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 bool EmissionModule::ShowImGui() {
     bool changed = false;
 

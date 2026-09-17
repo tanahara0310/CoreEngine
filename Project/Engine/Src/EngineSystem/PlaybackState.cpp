@@ -15,7 +15,7 @@ namespace CoreEngine
 
     PlaybackStateManager::PlaybackStateManager()
     {
-#ifndef USE_IMGUI
+#ifndef CORE_EDITOR
         // エディタの無いビルドは最初から再生する
         inPlayMode_ = true;
 #endif

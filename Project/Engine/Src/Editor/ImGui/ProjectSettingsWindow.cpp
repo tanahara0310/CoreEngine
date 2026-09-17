@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Editor/ImGui/ProjectSettingsWindow.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "Editor/ImGui/CVarPanel.h"
 #include "Editor/ImGui/EditorTheme.h"
@@ -377,4 +377,4 @@ namespace CoreEngine
     }
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

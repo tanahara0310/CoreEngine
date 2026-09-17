@@ -11,7 +11,7 @@
 #include "Utility/CVar/CVarRegistry.h"
 #include "Utility/FrameRate/Time.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "EngineSystem/Subsystem/DebugSubsystem.h"
 #include "Utility/Debug/GameDebugUI.h"
 #include "Editor/ImGui/CVarPanel.h"
@@ -31,7 +31,7 @@ namespace
     /// パネルが扱う CVar の接頭辞
     constexpr const char* kCVarPrefix = "r.TimeOfDay";
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     /// 設定パネルの編集対象（GroundFeature と同じ流儀。ドロワーは何もキャプチャしない）
     TimeOfDayFeature* s_activeTimeOfDay = nullptr;
 #endif
@@ -123,7 +123,7 @@ namespace CoreEngine
     {
         timeOfDay_ = NormalizeHours(cvStartHour.Get());
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         // パラメータ UI は CVar から自動生成する。機能ごとにこの登録をしないと
         // どのパネルにも出てこない（全 CVar を一覧する横断パネルは無い設計）
         EnsureSettingsPanelRegistered(ctx.engine);
@@ -151,7 +151,7 @@ namespace CoreEngine
 
     void TimeOfDayFeature::Finalize(SceneContext& ctx)
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         // シーンと一緒に消えるので、パネルの参照を先に外す
         SetActiveForSettingsPanel(nullptr);
 #endif
@@ -436,7 +436,7 @@ namespace CoreEngine
 
     // ==================== 設定パネル ====================
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     void TimeOfDayFeature::EnsureSettingsPanelRegistered(EngineSystem* engine)
     {
         static bool registered = false;

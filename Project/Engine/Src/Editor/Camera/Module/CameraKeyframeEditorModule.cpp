@@ -3,7 +3,7 @@
 #include "Camera/Sequence/CameraSequenceEvaluator.h"
 #include "Camera/Sequence/CameraSequenceIO.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "Editor/Command/EditorCommandStack.h"
 #include "Editor/ImGui/ImGuiAll.h"

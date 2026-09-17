@@ -61,7 +61,7 @@ namespace CoreEngine
         /// @brief 再生中の本数
         std::size_t ActiveCount() const;
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         /// @brief デバッグパネルを描画する（Window > Analysis > Tween）
         void DrawImGui();
 #endif
@@ -108,7 +108,7 @@ namespace CoreEngine
         /// @brief Update() の後、AdvanceAddedAfterUpdate() までの間か（この間の登録を控える）
         bool collectingAddedAfterUpdate_ = false;
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         char filter_[64] = {};
 #endif
     };

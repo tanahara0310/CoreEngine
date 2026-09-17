@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "CameraFollowEditorModule.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "Editor/ImGui/ImGuiAll.h"
 #include <algorithm>

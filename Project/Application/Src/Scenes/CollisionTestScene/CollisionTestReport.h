@@ -62,7 +62,7 @@ namespace CollisionTest
         /// @brief テストの進行をリスタートしたいかどうか（シーン側が消費する）
         bool ConsumeRestartRequest();
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         /// @brief App Editor へパネルを登録する（プロセス中 1 回だけ実行される）
         static void EnsureRegistered(CoreEngine::EngineSystem* engine);
 

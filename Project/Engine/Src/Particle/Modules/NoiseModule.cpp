@@ -58,7 +58,7 @@ void NoiseModule::ApplyNoise(Particle& particle, float deltaTime) {
     particle.transform.translate.z += noiseOffset.z * deltaTime;
 }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 bool NoiseModule::ShowImGui() {
     bool changed = false;
 
