@@ -4,7 +4,7 @@
 #ifdef CORE_EDITOR
 
 #include "Graphics/Water/Render/WaterRenderFeature.h"
-#include "Graphics/Water/Surface/WaterPlaneObject.h"
+#include "Graphics/Water/Surface/WaterSurfaceComponent.h"
 
 #include "Editor/ImGui/ImGuiAll.h"
 
@@ -36,7 +36,7 @@ const char* const kRTCausticsDebugViewNames[] = {
 }
 
 void WaterSurfaceDebugPanel::Initialize(WaterRenderFeature& runtimeController) {
-	if (WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane()) {
+	if (WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane()) {
 		// デバッグパネルの既定状態を水面へ反映する
 		waterPlane->SetDepthFadeDebug(depthFadeDebugEnabled_, depthFadeDebugScale_);
 		waterPlane->SetDepthDebugViewMode(static_cast<WaterDebugViewMode>(depthDebugViewMode_));
@@ -44,7 +44,7 @@ void WaterSurfaceDebugPanel::Initialize(WaterRenderFeature& runtimeController) {
 }
 
 void WaterSurfaceDebugPanel::Draw(WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade) {
-	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
+	WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
 	if (!waterPlane || !ImGui::CollapsingHeader("デバッグ / 診断", ImGuiTreeNodeFlags_DefaultOpen)) {
 		return;
 	}
@@ -57,7 +57,7 @@ void WaterSurfaceDebugPanel::Draw(WaterRenderFeature& runtimeController, WaterEd
 }
 
 void WaterSurfaceDebugPanel::DrawCommonDebugSection(WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade) {
-	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
+	WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
 	if (!waterPlane || !ImGui::TreeNodeEx("共通デバッグ", ImGuiTreeNodeFlags_DefaultOpen)) {
 		return;
 	}
@@ -98,7 +98,7 @@ void WaterSurfaceDebugPanel::DrawCommonDebugSection(WaterRenderFeature& runtimeC
 void WaterSurfaceDebugPanel::DrawFFTOceanDebugSection(
 	WaterRenderFeature& runtimeController,
 	WaterEditorFacade& editorFacade) {
-	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
+	WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
 	if (!waterPlane) {
 		return;
 	}
@@ -135,7 +135,7 @@ void WaterSurfaceDebugPanel::DrawFFTOceanDebugSection(
 }
 
 void WaterSurfaceDebugPanel::DrawGerstnerWaveDebugSection(WaterRenderFeature& runtimeController) {
-	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
+	WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
 	if (!waterPlane) {
 		return;
 	}

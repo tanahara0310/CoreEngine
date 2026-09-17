@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "Graphics/Water/WaterCVars.h"
-#include "WaterPlaneObject.h"
+#include "WaterSurfaceComponent.h"
 
-#include "GameObject/Component/Scene/SceneTagComponent.h"
+#include "GameObject/GameObject.h"
 #include "Graphics/Primitive/PlaneMeshGenerator.h"
 #include "Graphics/Material/MaterialInstance.h"
 #include "Graphics/Model/ModelManager.h"
@@ -17,24 +17,18 @@
 
 namespace CoreEngine
 {
-    bool WaterPlaneObject::WritesMotionVector() const
+    bool WaterSurfaceComponent::WritesMotionVector() const
     {
         return WaterCVars::WriteMotionVector.Get();
     }
 
-    WaterPlaneObject::WaterPlaneObject(float size, uint32_t resolution, bool useFFTOcean)
+    WaterSurfaceComponent::WaterSurfaceComponent(float size, uint32_t resolution, bool useFFTOcean)
         : size_(size)
         , resolution_(resolution)
         , useFFTOcean_(useFFTOcean)
         , scrollSpeed_({ 0.03f, 0.01f })
         , uvTiling_({ 4.0f, 4.0f })
         , uvOffset_({ 0.0f, 0.0f }) {
-        transformComponent_ = AddComponent<TransformComponent>();
-        meshRenderer_ = AddComponent<MeshRendererComponent>();
-
-        // 「シーンの水面」タグ（WaterRenderFeature が具象型を知らずに見つけるため）
-        AddComponent<SceneTagComponent<WaterPlaneObject>>(this);
-
         waterCB_.activeWaveCount = kMaxWaterWaveCount;
         frameCB_.useFFTOceanNormalMap = useFFTOcean_ ? 1 : 0;
 
@@ -57,7 +51,21 @@ namespace CoreEngine
         waterCB_.waves[15] = { { -0.7f,  0.6f }, 0.008f,  5.5f, 2.6f, 0.01f, 6.0f };
     }
 
-    void WaterPlaneObject::Initialize() {
+    bool WaterSurfaceComponent::RequiresComponent(const IComponent& other) const {
+        return &other == static_cast<const IComponent*>(transformComponent_)
+            || &other == static_cast<const IComponent*>(meshRenderer_);
+    }
+
+    void WaterSurfaceComponent::Awake() {
+        GameObject* const owner = GetOwner();
+        if (!owner) {
+            return;
+        }
+        transformComponent_ = owner->GetOrAddComponent<TransformComponent>();
+        meshRenderer_ = owner->GetOrAddComponent<MeshRendererComponent>();
+
+        // 水面は専用のパスで描く（GameObject の描画項目はパスから種別を決める）
+        meshRenderer_->SetRenderPassType(RenderPassType::WaterSurface);
         meshRenderer_->SetPrimitive(CreateMeshGenerator());
 
         // 独自シェーダーを使用するよう登録する
@@ -67,7 +75,7 @@ namespace CoreEngine
         meshRenderer_->SetBlendMode(BlendMode::kBlendModeNormal);
 
         // 定数バッファを作成する
-        auto* engine = GetEngineSystem();
+        auto* engine = owner->GetEngineSystem();
         auto* dxCommon = engine ? engine->GetService<GraphicsCore>() : nullptr;
         if (dxCommon) {
             constantBuffers_.Initialize(dxCommon->GetDevice());
@@ -77,29 +85,21 @@ namespace CoreEngine
 
         // 登録したシェーダーを含めてメッシュを作る
         meshRenderer_->ReloadFromSpec();
-
-        SetActive(true);
     }
 
-    RenderItem WaterPlaneObject::BuildRenderItem() const {
-        RenderItem item = GameObject::BuildRenderItem();
-        item.kind = RenderItemKind::WaterSurface;
-        item.passType = RenderPassType::WaterSurface;
-        return item;
-    }
-
-    std::wstring WaterPlaneObject::GetVertexShaderPath() const {
+    std::wstring WaterSurfaceComponent::GetVertexShaderPath() const {
         return useFFTOcean_
             ? L"FFTWater.VS.hlsl"
             : L"Water.VS.hlsl";
     }
 
-    std::wstring WaterPlaneObject::GetPixelShaderPath() const {
+    std::wstring WaterSurfaceComponent::GetPixelShaderPath() const {
         return L"Water.PS.hlsl";
     }
 
-    void WaterPlaneObject::RebuildWaterShaderPipeline() {
-        auto* engine = GetEngineSystem();
+    void WaterSurfaceComponent::RebuildWaterShaderPipeline() {
+        GameObject* const owner = GetOwner();
+        auto* engine = owner ? owner->GetEngineSystem() : nullptr;
         auto* dxCommon = engine ? engine->GetService<GraphicsCore>() : nullptr;
         auto* modelManager = engine ? engine->GetService<ModelManager>() : nullptr;
         if (!dxCommon || !modelManager) {
@@ -125,7 +125,7 @@ namespace CoreEngine
             useFFTOcean_);
     }
 
-    void WaterPlaneObject::BindCustomResources(
+    void WaterSurfaceComponent::BindCustomResources(
         ID3D12GraphicsCommandList* cmdList,
         const CustomShaderPipeline* pipeline) const {
 
@@ -145,7 +145,7 @@ namespace CoreEngine
             renderResources_);
     }
 
-    void WaterPlaneObject::ApplyFrameBinding(const WaterFrameBinding& binding) {
+    void WaterSurfaceComponent::ApplyFrameBinding(const WaterFrameBinding& binding) {
         renderResources_ = binding.resources;
 
         // ---- SRV / リソースの実在から、シェーダー側の参照フラグを 1 箇所で導出する ----
@@ -170,11 +170,11 @@ namespace CoreEngine
         UploadFrameConstants();
     }
 
-    void WaterPlaneObject::UploadFrameConstants() {
+    void WaterSurfaceComponent::UploadFrameConstants() {
         constantBuffers_.UpdateFrameConstants(frameCB_);
     }
 
-    void WaterPlaneObject::SetUseFFTOcean(bool useFFTOcean) {
+    void WaterSurfaceComponent::SetUseFFTOcean(bool useFFTOcean) {
         if (useFFTOcean_ == useFFTOcean) {
             return;
         }
@@ -194,34 +194,34 @@ namespace CoreEngine
             std::filesystem::path(GetPixelShaderPath()).string());
     }
 
-    void WaterPlaneObject::SetScrollSpeed(const Vector2& speed) {
+    void WaterSurfaceComponent::SetScrollSpeed(const Vector2& speed) {
         scrollSpeed_ = speed;
     }
 
-    void WaterPlaneObject::SetUVTiling(const Vector2& tiling) {
+    void WaterSurfaceComponent::SetUVTiling(const Vector2& tiling) {
         uvTiling_ = tiling;
     }
 
-    void WaterPlaneObject::SetWave(uint32_t index, const WaveParams& wave) {
+    void WaterSurfaceComponent::SetWave(uint32_t index, const WaveParams& wave) {
         if (index < kMaxWaterWaveCount) {
             waterCB_.waves[index] = wave;
         }
     }
 
-    void WaterPlaneObject::SetActiveWaveCount(uint32_t count) {
+    void WaterSurfaceComponent::SetActiveWaveCount(uint32_t count) {
         waterCB_.activeWaveCount = (count > kMaxWaterWaveCount) ? kMaxWaterWaveCount : count;
     }
 
-    void WaterPlaneObject::SetFresnelParameters(float reflectanceScale, float baseReflectance) {
+    void WaterSurfaceComponent::SetFresnelParameters(float reflectanceScale, float baseReflectance) {
         frameCB_.fresnelReflectanceScale = reflectanceScale;
         frameCB_.fresnelBaseReflectance = baseReflectance;
     }
 
-    void WaterPlaneObject::SetDepthFade(bool enabled) {
+    void WaterSurfaceComponent::SetDepthFade(bool enabled) {
         frameCB_.depthFadeEnabled = enabled ? 1 : 0;
     }
 
-    void WaterPlaneObject::SetDepthFadeDebug(bool enabled, float debugScale) {
+    void WaterSurfaceComponent::SetDepthFadeDebug(bool enabled, float debugScale) {
         frameCB_.depthFadeDebugEnabled = enabled ? 1 : 0;
         frameCB_.depthFadeDebugScale = debugScale;
         Logger::GetInstance().Infof(
@@ -232,7 +232,7 @@ namespace CoreEngine
             frameCB_.depthFadeDebugScale);
     }
 
-    void WaterPlaneObject::SetDepthDebugViewMode(WaterDebugViewMode mode) {
+    void WaterSurfaceComponent::SetDepthDebugViewMode(WaterDebugViewMode mode) {
         frameCB_.depthDebugViewMode = static_cast<uint32_t>(mode);
         Logger::GetInstance().Infof(
             LogCategory::Graphics,
@@ -243,7 +243,7 @@ namespace CoreEngine
             frameCB_.depthFadeDebugScale);
     }
 
-    float WaterPlaneObject::ComputeFoamWindCoverageScale(float windSpeed) {
+    float WaterSurfaceComponent::ComputeFoamWindCoverageScale(float windSpeed) {
         // Monahan の白波被覆率 W = 3.84e-6 · U^3.41。基準風速との比を取ると係数が消える。
         // 基準風速 = FoamBias を較正した風速。ここを変えるなら Bias も較正し直すこと。
         constexpr float kReferenceWindSpeed = 18.0f;
@@ -252,7 +252,7 @@ namespace CoreEngine
         return (std::min)(std::pow(ratio, kMonahanExponent), 1.0f);
     }
 
-    void WaterPlaneObject::SetFoamParameters(
+    void WaterSurfaceComponent::SetFoamParameters(
         bool enabled, float bias, float gain, float opacity,
         const Vector3& cascadeWeights, float decaySeconds,
         float windCoverageScale) {
@@ -267,7 +267,7 @@ namespace CoreEngine
         frameCB_.foamWindCoverageScale = windCoverageScale;
     }
 
-    void WaterPlaneObject::SetWaterOpticalCoefficients(const Vector3& absorptionCoeff, const Vector3& scatteringCoeff) {
+    void WaterSurfaceComponent::SetWaterOpticalCoefficients(const Vector3& absorptionCoeff, const Vector3& scatteringCoeff) {
         frameCB_.absorptionCoeff[0] = absorptionCoeff.x;
         frameCB_.absorptionCoeff[1] = absorptionCoeff.y;
         frameCB_.absorptionCoeff[2] = absorptionCoeff.z;
@@ -276,28 +276,28 @@ namespace CoreEngine
         frameCB_.scatteringCoeff[2] = scatteringCoeff.z;
     }
 
-    void WaterPlaneObject::SetBaseColor(const Vector4& color) {
+    void WaterSurfaceComponent::SetBaseColor(const Vector4& color) {
         auto* mat = GetModel() ? GetModel()->GetMaterial() : nullptr;
         if (mat) { mat->SetColor(color); }
     }
 
-    void WaterPlaneObject::SetRoughness(float roughness) {
+    void WaterSurfaceComponent::SetRoughness(float roughness) {
         auto* mat = GetModel() ? GetModel()->GetMaterial() : nullptr;
         if (mat) { mat->SetRoughness(roughness); }
     }
 
-    void WaterPlaneObject::SetMetallic(float metallic) {
+    void WaterSurfaceComponent::SetMetallic(float metallic) {
         auto* mat = GetModel() ? GetModel()->GetMaterial() : nullptr;
         if (mat) { mat->SetMetallic(metallic); }
     }
 
-    void WaterPlaneObject::SetIBLEnabled(bool enable) {
+    void WaterSurfaceComponent::SetIBLEnabled(bool enable) {
         // IBL の有効/無効はシーン側で決まるため、マテリアル側は強度によるオプトアウトで表現する
         auto* mat = GetModel() ? GetModel()->GetMaterial() : nullptr;
         if (mat) { mat->SetIBLIntensity(enable ? 1.0f : 0.0f); }
     }
 
-    void WaterPlaneObject::UpdateUVAnimation(float deltaTime) {
+    void WaterSurfaceComponent::UpdateUVAnimation(float deltaTime) {
         // 経過時間を加算（波の位相計算に使用）
         // UV オフセットを速度 × 時間で加算
         uvOffset_.x += scrollSpeed_.x * deltaTime;
@@ -310,19 +310,19 @@ namespace CoreEngine
         ApplyUVTransform();
     }
 
-    void WaterPlaneObject::SetSimulationTime(float timeSeconds) {
+    void WaterSurfaceComponent::SetSimulationTime(float timeSeconds) {
         // simulation 層が決定した時間を CPU / GPU の WaterConstants へ反映する
         elapsedTime_ = timeSeconds;
         waterCB_.time = timeSeconds;
         constantBuffers_.UpdateWaterConstants(waterCB_);
     }
 
-    std::unique_ptr<IPrimitiveMeshGenerator> WaterPlaneObject::CreateMeshGenerator() const {
+    std::unique_ptr<IPrimitiveMeshGenerator> WaterSurfaceComponent::CreateMeshGenerator() const {
         return std::make_unique<PlaneMeshGenerator>(
             size_, size_, resolution_, resolution_);
     }
 
-    void WaterPlaneObject::ApplyUVTransform() {
+    void WaterSurfaceComponent::ApplyUVTransform() {
         auto* mat = GetModel() ? GetModel()->GetMaterial() : nullptr;
         if (!mat) {
             return;

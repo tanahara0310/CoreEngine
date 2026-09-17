@@ -4,7 +4,7 @@
 #ifdef CORE_EDITOR
 
 #include "Graphics/Water/Render/WaterRenderFeature.h"
-#include "Graphics/Water/Surface/WaterPlaneObject.h"
+#include "Graphics/Water/Surface/WaterSurfaceComponent.h"
 #include "Graphics/Water/WaterCVars.h"
 
 #include "Math/MathCore.h"
@@ -101,7 +101,7 @@ Vector2 RotateDirection(const Vector2& direction, float radians) {
 	return NormalizeDirection({ rotatedDirection.x, rotatedDirection.y });
 }
 
-// UI 上の波数を WaterPlaneObject の有効範囲に丸める。
+// UI 上の波数を WaterSurfaceComponent の有効範囲に丸める。
 uint32_t ClampWaveCountToRange(int count) {
 	return static_cast<uint32_t>(std::clamp(count, 1, static_cast<int>(kMaxWaterWaveCount)));
 }
@@ -178,7 +178,7 @@ void WaterSurfaceParameterPanel::Initialize(WaterRenderFeature& runtimeControlle
 void WaterSurfaceParameterPanel::Draw(WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade) {
 	// 共通設定と方式別設定をタブで分離して、開発用 UI の見通しを良くする
 	if (ImGui::CollapsingHeader("水面パラメータ", ImGuiTreeNodeFlags_DefaultOpen)) {
-		const WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
+		const WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
 		const bool usingFFTOcean = waterPlane && waterPlane->IsUsingFFTOcean();
 
 		ImGui::Text("現在の編集中モード: %s", usingFFTOcean ? "FFTOcean" : "Gerstner Wave");
@@ -208,7 +208,7 @@ void WaterSurfaceParameterPanel::Draw(WaterRenderFeature& runtimeController, Wat
 }
 
 void WaterSurfaceParameterPanel::DrawWaterTypeSection(WaterRenderFeature& runtimeController) {
-	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
+	WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
 	if (!waterPlane) {
 		return;
 	}
@@ -227,7 +227,7 @@ void WaterSurfaceParameterPanel::DrawWaterTypeSection(WaterRenderFeature& runtim
 }
 
 void WaterSurfaceParameterPanel::DrawCommonParameterSection(WaterRenderFeature& runtimeController) {
-	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
+	WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
 	if (!waterPlane) {
 		return;
 	}
@@ -341,7 +341,7 @@ void WaterSurfaceParameterPanel::DrawCausticsSection(WaterEditorFacade& editorFa
 void WaterSurfaceParameterPanel::DrawFFTOceanSection(
 	WaterRenderFeature& runtimeController,
 	WaterEditorFacade& editorFacade) {
-	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
+	WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
 	if (!waterPlane) {
 		return;
 	}
@@ -437,7 +437,7 @@ void WaterSurfaceParameterPanel::ApplyFFTOceanPreset(int presetIndex) {
 }
 
 void WaterSurfaceParameterPanel::ApplyWaterPreset(WaterRenderFeature& runtimeController, WaterPresetType preset) {
-	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
+	WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
 	if (!waterPlane) {
 		return;
 	}
@@ -467,7 +467,7 @@ void WaterSurfaceParameterPanel::ApplyWaterPreset(WaterRenderFeature& runtimeCon
 }
 
 void WaterSurfaceParameterPanel::RestoreRecommendedWaveCount(WaterRenderFeature& runtimeController, WaterPresetType preset) {
-	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
+	WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
 	if (!waterPlane) {
 		return;
 	}
@@ -482,7 +482,7 @@ void WaterSurfaceParameterPanel::RegenerateLayeredWaves(
 	WaterRenderFeature& runtimeController,
 	WaterPresetType preset,
 	uint32_t activeWaveCount) {
-	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
+	WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
 	if (!waterPlane) {
 		return;
 	}
@@ -544,7 +544,7 @@ void WaterSurfaceParameterPanel::RegenerateLayeredWaves(
 }
 
 void WaterSurfaceParameterPanel::DrawGerstnerWaveSection(WaterRenderFeature& runtimeController) {
-	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
+	WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
 	if (!waterPlane) {
 		return;
 	}
@@ -629,7 +629,7 @@ void WaterSurfaceParameterPanel::DrawGerstnerWaveSection(WaterRenderFeature& run
 }
 
 void WaterSurfaceParameterPanel::DrawIndividualWaveEditor(WaterRenderFeature& runtimeController) {
-	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
+	WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
 	if (!waterPlane || !ImGui::TreeNode("個別波編集")) {
 		return;
 	}

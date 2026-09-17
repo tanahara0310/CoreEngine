@@ -6,7 +6,6 @@
 #include "Camera/CameraStructs.h"
 #include "Camera/Camera.h"
 #include "EngineSystem/EngineSystem.h"
-#include "GameObject/Component/Scene/SceneTagComponent.h"
 #include "GameObject/GameObjectManager.h"
 #include "Graphics/Render/SkyBox/SkyBoxComponent.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
@@ -27,7 +26,7 @@
 #include "Graphics/Water/WaterCVars.h"
 #include "Graphics/Water/Simulation/FFTOceanSurfaceSimulator.h"
 #include "Graphics/Water/Simulation/GerstnerWaterSimulator.h"
-#include "Graphics/Water/Surface/WaterPlaneObject.h"
+#include "Graphics/Water/Surface/WaterSurfaceComponent.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
 
@@ -200,28 +199,31 @@ namespace CoreEngine
             return;
         }
 
-        // シーン側が既に水面を生成していればそれを採用する（EnvironmentFeature と同じ規約。
-        // 具象型のダウンキャストではなく SceneTag で探す）
-        if (auto* tag = ctx.gameObjectManager->FindFirstComponent<SceneTagComponent<WaterPlaneObject>>()) {
-            waterPlane_ = tag->Get();
+        // シーン側が既に水面を置いていればそれを採用する（EnvironmentFeature と同じ規約）
+        if (auto* existing = ctx.gameObjectManager->FindFirstComponent<WaterSurfaceComponent>()) {
+            waterPlane_ = existing;
             return;
         }
 
-        waterPlane_ = ctx.gameObjectManager->AddObject(
-            std::make_unique<WaterPlaneObject>(config_.size, config_.resolution, config_.useFFTOcean));
+        auto owned = std::make_unique<GameObject>();
+        owned->SetName("WaterPlane");
+        GameObject* const object = ctx.gameObjectManager->AddObject(std::move(owned));
+        if (!object) {
+            return;
+        }
+        waterPlane_ = object->AddComponent<WaterSurfaceComponent>(
+            config_.size, config_.resolution, config_.useFFTOcean);
         if (!waterPlane_) {
             return;
         }
 
         waterPlane_->GetTransform().translate = config_.translate;
         waterPlane_->GetTransform().scale = config_.scale;
-        waterPlane_->SetBlendMode(BlendMode::kBlendModeNormal);
         // 既定のスクロール/タイリングは Lake プリセットを単一情報源とする
-        // （以前はここと WaterPlaneObject コンストラクタに同値のハードコードが重複していた）
+        // （以前はここと WaterSurfaceComponent コンストラクタに同値のハードコードが重複していた）
         const WaterPresetData& defaultPreset = GetWaterPresetData(WaterPresetType::Lake);
         waterPlane_->SetScrollSpeed(defaultPreset.scrollSpeed);
         waterPlane_->SetUVTiling(defaultPreset.uvTiling);
-        waterPlane_->SetActive(true);
         ConfigureDefaultMaterial();
     }
 
@@ -353,7 +355,7 @@ namespace CoreEngine
             return;
         }
 
-        // ---- 見た目・水質・泡 → WaterPlaneObject ----
+        // ---- 見た目・水質・泡 → WaterSurfaceComponent ----
         // setter は CPU 側ミラーの更新のみで安価なため毎フレーム呼んでよい
         // （cbuffer 転送は描画時に一括で行われる）。
         waterPlane_->SetBaseColor(WaterCVars::BaseColor.Get());
@@ -370,7 +372,7 @@ namespace CoreEngine
         // 白波被覆率の風速追従係数。変化したときだけログして、
         // 「風速を変えたのに泡が追従していない」を目視でなく数値で追えるようにする。
         const float foamWindCoverageScale =
-            WaterPlaneObject::ComputeFoamWindCoverageScale(WaterCVars::FFTWindSpeed.Get());
+            WaterSurfaceComponent::ComputeFoamWindCoverageScale(WaterCVars::FFTWindSpeed.Get());
         if (std::abs(foamWindCoverageScale - lastFoamWindCoverageScale_) > 1.0e-4f) {
             lastFoamWindCoverageScale_ = foamWindCoverageScale;
             Logger::GetInstance().Infof(
@@ -516,10 +518,11 @@ namespace CoreEngine
             return;
         }
 
-        // 水面オブジェクトが非表示のフレームは「水なし」として扱う。
+        // 水面が無効なフレームは「水なし」として扱う。
         // regionValid=0 を publish しないと RT コースティクスと水中ライティングが動き続け、
         // 非表示のはずの水の光学効果（薄い青色）が床に乗り続ける。
-        if (!waterPlane_->IsActive()) {
+        const GameObject* const waterObject = waterPlane_->GetOwner();
+        if (!waterPlane_->IsEnabled() || !waterObject || !waterObject->IsActive()) {
             if (surfaceModelProvider_) {
                 surfaceModelProvider_->ClearSurfaceData();
             }

@@ -11,7 +11,7 @@ namespace CoreEngine
     class CustomShaderPipeline;
 
 /// @brief 水面シェーダ向けの GPU リソースバインド補助
-/// @details WaterPlaneObject から SRV / CBV バインドの詳細を分離するためのクラス。
+/// @details WaterSurfaceComponent から SRV / CBV バインドの詳細を分離するためのクラス。
 ///          宣言表（WaterBind::kDecls）をパイプラインごとに 1 回解決して保持するので、
 ///          描画中に名前で map を引くことはない。
 class WaterShaderResourceBinder {
