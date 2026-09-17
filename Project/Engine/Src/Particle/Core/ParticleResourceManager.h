@@ -23,7 +23,12 @@ struct ParticleForGPU {
 class ParticleResourceManager {
 public:
     ParticleResourceManager() = default;
-    ~ParticleResourceManager() = default;
+
+    /// @brief インスタンシングバッファと SRV を、描画中のフレームが終わってから返すよう預ける
+    ~ParticleResourceManager();
+
+    ParticleResourceManager(const ParticleResourceManager&) = delete;
+    ParticleResourceManager& operator=(const ParticleResourceManager&) = delete;
 
     /// @brief 初期化
     /// @param dxCommon GraphicsCore

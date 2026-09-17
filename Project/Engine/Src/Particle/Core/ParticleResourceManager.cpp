@@ -4,9 +4,20 @@
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 
+#include <utility>
+
 
 namespace CoreEngine
 {
+ParticleResourceManager::~ParticleResourceManager() {
+    if (!dxCommon_) {
+        return;
+    }
+    dxCommon_->DeferFree(srvHandleGPU_);
+    dxCommon_->DeferRelease(std::move(instancingResource_));
+    instancingData_ = nullptr;
+}
+
 void ParticleResourceManager::Initialize(GraphicsCore* dxCommon, uint32_t maxInstances) {
     dxCommon_ = dxCommon;
 

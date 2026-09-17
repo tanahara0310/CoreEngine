@@ -1,7 +1,9 @@
 #include "pch.h"
 #include "Graphics/RHI/Command/DeferredReleaseQueue.h"
 
-#include <algorithm>
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
+
+#include <utility>
 
 namespace CoreEngine
 {
@@ -11,7 +13,44 @@ namespace CoreEngine
             return;
         }
         std::lock_guard<std::mutex> lock(mutex_);
-        entries_.push_back(Entry{ std::move(resource), fenceValue });
+        Entry entry;
+        entry.resource = std::move(resource);
+        entry.fenceValue = fenceValue;
+        entries_.push_back(std::move(entry));
+    }
+
+    void DeferredReleaseQueue::PushForCurrentFrame(Microsoft::WRL::ComPtr<ID3D12Resource> resource)
+    {
+        if (!resource) {
+            return;
+        }
+        std::lock_guard<std::mutex> lock(mutex_);
+        Entry entry;
+        entry.resource = std::move(resource);
+        entries_.push_back(std::move(entry));
+    }
+
+    void DeferredReleaseQueue::PushForCurrentFrame(DescriptorAllocator& allocator, DescriptorHandle& handle)
+    {
+        if (!handle.IsValid()) {
+            return;
+        }
+        std::lock_guard<std::mutex> lock(mutex_);
+        Entry entry;
+        entry.allocator = &allocator;
+        entry.descriptor = handle;
+        entries_.push_back(std::move(entry));
+        handle.Invalidate();
+    }
+
+    void DeferredReleaseQueue::SealFrame(std::uint64_t fenceValue)
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        for (Entry& entry : entries_) {
+            if (entry.fenceValue == kUnsealed) {
+                entry.fenceValue = fenceValue;
+            }
+        }
     }
 
     size_t DeferredReleaseQueue::Collect(std::uint64_t completedFenceValue)
@@ -21,18 +60,30 @@ namespace CoreEngine
             return 0;
         }
 
-        const size_t before = entries_.size();
-        // 解放は ComPtr のデストラクタに任せる（erase で落ちる）
-        entries_.erase(
-            std::remove_if(entries_.begin(), entries_.end(),
-                [completedFenceValue](const Entry& e) { return e.fenceValue <= completedFenceValue; }),
-            entries_.end());
-        return before - entries_.size();
+        // フェンスを通過した予約を解放し、残りを前へ詰める（フェンス値の無い予約は残す）
+        size_t released = 0;
+        auto kept = entries_.begin();
+        for (auto it = entries_.begin(); it != entries_.end(); ++it) {
+            if (it->fenceValue != kUnsealed && it->fenceValue <= completedFenceValue) {
+                Release(*it);
+                ++released;
+                continue;
+            }
+            if (kept != it) {
+                *kept = std::move(*it);
+            }
+            ++kept;
+        }
+        entries_.erase(kept, entries_.end());
+        return released;
     }
 
     void DeferredReleaseQueue::ReleaseAll()
     {
         std::lock_guard<std::mutex> lock(mutex_);
+        for (Entry& entry : entries_) {
+            Release(entry);
+        }
         entries_.clear();
     }
 
@@ -40,5 +91,14 @@ namespace CoreEngine
     {
         std::lock_guard<std::mutex> lock(mutex_);
         return entries_.size();
+    }
+
+    void DeferredReleaseQueue::Release(Entry& entry)
+    {
+        if (entry.allocator && entry.descriptor.IsValid()) {
+            entry.allocator->Free(entry.descriptor);
+        }
+        entry.allocator = nullptr;
+        entry.resource.Reset();
     }
 }

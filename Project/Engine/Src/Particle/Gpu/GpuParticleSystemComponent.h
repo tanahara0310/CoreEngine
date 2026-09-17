@@ -352,6 +352,9 @@ private:
     /// @return 作れたら true
     bool CreateGpuResources(GraphicsCore& graphics);
 
+    /// @brief GPU バッファと UAV / SRV を、描画中のフレームが終わってから返すよう預ける
+    void ReleaseGpuResources();
+
     /// @brief UAV付きDEFAULTヒープバッファを作成
     Microsoft::WRL::ComPtr<ID3D12Resource> CreateUavBuffer(ID3D12Device* device, size_t sizeInBytes);
 
@@ -382,6 +385,7 @@ private:
     DescriptorHandle instancingUavGPU_ = {};
     DescriptorHandle instancingSrvGPU_ = {};
 
+    GraphicsCore* graphics_ = nullptr;  // GPU バッファを作った先（破棄時に返す）
     GpuParticleRenderer* renderer_ = nullptr;
     bool awoken_ = false;
 
