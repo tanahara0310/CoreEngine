@@ -298,7 +298,7 @@
     <ClCompile Include="Application\Src\Scenes\CollisionTestScene\GeometrySelfTest.cpp">
       <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterPlaneObject.cpp">
+    <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterSurfaceComponent.cpp">
       <Filter>Engine\Src\Graphics\Water\Surface</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Camera\CameraManager.cpp">
@@ -1803,7 +1803,7 @@
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterConstantBufferSet.h">
       <Filter>Engine\Src\Graphics\Water\Surface</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterPlaneObject.h">
+    <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterSurfaceComponent.h">
       <Filter>Engine\Src\Graphics\Water\Surface</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterRenderResources.h">

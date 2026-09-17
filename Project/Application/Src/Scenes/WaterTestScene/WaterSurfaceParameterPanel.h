@@ -4,7 +4,7 @@
 #include "WaterEditorFacade.h"
 
 namespace CoreEngine { class WaterRenderFeature; }
-namespace CoreEngine { class WaterPlaneObject; }
+namespace CoreEngine { class WaterSurfaceComponent; }
 
 #ifdef CORE_EDITOR
 /// @brief 水面パラメータ編集パネル
@@ -14,7 +14,7 @@ namespace CoreEngine { class WaterPlaneObject; }
 ///          永続化は CVars.json（CVarSettingsSection）に一本化されている。
 ///          旧 Water.json / UI キャッシュ構造体 / 専用シリアライズは廃止済み。
 ///          Gerstner の波生成ツール・個別波編集はワークフロー状態のため
-///          CVar 化せず、従来どおり WaterPlaneObject を直接操作する（非永続）。
+///          CVar 化せず、従来どおり WaterSurfaceComponent を直接操作する（非永続）。
 class WaterSurfaceParameterPanel {
 public:
 	/// @brief パラメータパネルの初期状態を構築する

@@ -8,7 +8,7 @@
 namespace CoreEngine
 {
 /// @brief Water 描画用の定数バッファ群をまとめて管理する helper
-/// @details WaterPlaneObject から GPU バッファ生成・マップ・更新責務を切り離す。
+/// @details WaterSurfaceComponent から GPU バッファ生成・マップ・更新責務を切り離す。
 class WaterConstantBufferSet {
 public:
     /// @brief Water 用定数バッファ群を作成する

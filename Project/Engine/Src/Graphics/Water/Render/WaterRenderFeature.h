@@ -12,7 +12,7 @@
 namespace CoreEngine
 {
     class SkyBoxComponent;
-    class WaterPlaneObject;
+    class WaterSurfaceComponent;
     class RenderDomainContext;
 
     /// @brief 水面描画一式（水面オブジェクト・波シミュレーション・外部リソース結線）を持つ Feature
@@ -55,7 +55,7 @@ namespace CoreEngine
         void Finalize(SceneContext& ctx) override;
 
         /// @brief 管理中の水面オブジェクトを返す（未生成なら nullptr）
-        WaterPlaneObject* GetWaterPlane() const { return waterPlane_; }
+        WaterSurfaceComponent* GetWaterPlane() const { return waterPlane_; }
 
         /// @brief 現在の水面高さ（ワールド Y）を返す
         float GetWaterHeight() const;
@@ -83,7 +83,7 @@ namespace CoreEngine
 
         /// @brief このフレームの外部リソース結線を組み立てる
         /// @brief WaterCVars（単一情報源）から全水面設定を各所へ反映する（毎フレーム）
-        /// @details 見た目/水質/泡 → WaterPlaneObject、FFT → FFTOceanManager（revision 変化時のみ）、
+        /// @details 見た目/水質/泡 → WaterSurfaceComponent、FFT → FFTOceanManager（revision 変化時のみ）、
         ///          コースティクス → Technique + RT設定、DXR屈折 → RT設定。
         ///          UI（CVarツリー / 水面パネル）はストレージを書くだけで、適用は必ずここを通る。
         void ApplySettingsFromCVars(SceneContext& ctx, RenderDomainContext& domain);
@@ -97,14 +97,14 @@ namespace CoreEngine
         void SyncFoamSettings(RenderDomainContext& domain) const;
 
         /// @brief 結線結果の診断ログ（デバッグ表示中のみ・低頻度）
-        /// @details 以前は WaterPlaneObject の setter 6 個と BindCustomResources に
+        /// @details 以前は WaterSurfaceComponent の setter 6 個と BindCustomResources に
         ///          散っていたログをここへ集約した。
         void LogFrameDiagnostics(const WaterFrameBinding& binding) const;
 
         Config config_{};
 
         /// @brief 水面描画本体（所有権は GameObjectManager）
-        WaterPlaneObject* waterPlane_ = nullptr;
+        WaterSurfaceComponent* waterPlane_ = nullptr;
 
         /// @brief 空気遠近感の適用可否判定に使う空（所有権は GameObjectManager）
         SkyBoxComponent* skyBox_ = nullptr;

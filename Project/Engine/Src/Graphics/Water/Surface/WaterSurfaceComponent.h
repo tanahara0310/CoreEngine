@@ -1,6 +1,6 @@
 #pragma once
 
-#include "GameObject/GameObject.h"
+#include "GameObject/Component/Core/IComponent.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "Graphics/Primitive/PlaneMeshGenerator.h"
@@ -18,29 +18,26 @@
 
 namespace CoreEngine
 {
-    /// @brief 水面表現用のグリッドメッシュオブジェクト
-    /// @details 責務はメッシュ・トランスフォーム・マテリアルと水そのもののパラメータまで。
+    /// @brief 水面を描くコンポーネント（平面メッシュ・水のパラメータ・専用シェーダー）
+    /// @details 責務はメッシュ・マテリアルと水そのもののパラメータまで。
     ///          シーンカラーや RT 屈折・FFT・大気といった外部リソースの結線は
     ///          WaterRenderFeature が組み立て、ApplyFrameBinding() で 1 度に渡す。
-    ///          トランスフォームとメッシュ描画のコンポーネントはコンストラクタで自分で付ける。
-    class WaterPlaneObject : public GameObject
+    ///          トランスフォームとメッシュ描画のコンポーネントは `Awake()` で足す。
+    class WaterSurfaceComponent : public IComponent
         , public ICustomShaderProvider {
     public:
         /// @param size 水面の一辺のサイズ（XZ 方向共通）
         /// @param resolution XZ 方向の分割数
         /// @param useFFTOcean true のとき FFT Ocean 描画経路を使用する
-        WaterPlaneObject(float size = 50.0f, uint32_t resolution = 64, bool useFFTOcean = false);
+        WaterSurfaceComponent(float size = 50.0f, uint32_t resolution = 64, bool useFFTOcean = false);
 
-        /// @brief 平面メッシュを作り、水面のシェーダーと定数バッファを用意する
-        void Initialize() override;
+        const char* GetTypeName() const override { return "WaterSurface"; }
 
-        RenderPassType GetRenderPassType() const override {
-            return RenderPassType::WaterSurface;
-        }
+        /// @brief トランスフォームとメッシュ描画を確保し、平面メッシュ・シェーダー・定数バッファを用意する
+        void Awake() override;
 
-        RenderItem BuildRenderItem() const override;
-
-        const char* GetObjectName() const override { return "WaterPlane"; }
+        /// @brief トランスフォームとメッシュ描画を使う
+        bool RequiresComponent(const IComponent& other) const override;
 
         /// @brief トランスフォームを取得
         WorldTransform& GetTransform() { return transformComponent_->Get(); }

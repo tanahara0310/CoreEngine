@@ -2,7 +2,7 @@
 #include "WaterEditorFacade.h"
 
 #include "Graphics/Water/Render/WaterRenderFeature.h"
-#include "Graphics/Water/Surface/WaterPlaneObject.h"
+#include "Graphics/Water/Surface/WaterSurfaceComponent.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueManager.h"

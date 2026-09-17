@@ -5,7 +5,7 @@
 namespace CoreEngine
 {
     /// @brief 水面描画で使用する GPU ディスクリプタ群をまとめた構造体
-    /// @details WaterPlaneObject から描画リソース保持責務を切り離すための中間構造。
+    /// @details WaterSurfaceComponent から描画リソース保持責務を切り離すための中間構造。
     struct WaterRenderResources {
         D3D12_GPU_DESCRIPTOR_HANDLE reflectionSRV = { 0 };
         D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV = { 0 };
