@@ -53,11 +53,11 @@ public:
 
     /// @brief スロットごとのマテリアルを、どれか 1 つでもモデルの既定と違うときだけ書き出す
     /// @details `materials` はスロットごとの配列で、書くときは全スロットを書く。
-    json OnSerialize() const override;
+    void SaveMaterialsToJson(json& parameters) const;
 
     /// @brief スロットごとのマテリアルを読む
     /// @note メッシュを読み込んだ後に当てる（まだ無ければ読み込むまで控える）。
-    void OnDeserialize(const json& j) override;
+    void LoadMaterialsFromJson(const json& parameters);
 
     // ===== メッシュの指定（Awake より前に呼ぶ） =====
 

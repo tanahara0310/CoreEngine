@@ -10,7 +10,14 @@
 #include "Graphics/Model/ModelResource.h"
 #include "Math/MathCore.h"
 #include "Utility/FrameRate/Time.h"
+#include "Utility/JsonManager/JsonManager.h"
 
+REFLECT_DEFINE_BEGIN(CoreEngine::AnimatorComponent, "アニメーション")
+    REFLECT_PARTIAL()
+    REFLECT_JSON(SaveClipsToJson, LoadClipsFromJson)
+    REFLECT_ACCESSOR("model", "モデル", GetModelPath, SetModelPath)
+REFLECT_DEFINE_END()
+REFLECT_REGISTER(CoreEngine::AnimatorComponent)
 COMPONENT_REGISTER(CoreEngine::AnimatorComponent)
 
 namespace CoreEngine
@@ -24,6 +31,47 @@ namespace CoreEngine
         constexpr float kJointMarkerSize = 0.02f;
         /// 骨はメッシュ内部にあるので深度テストを切って手前に描く（LineManager の depthTest 引数）
         constexpr bool kDrawThroughMesh = false;
+    }
+
+    void AnimatorComponent::SaveClipsToJson(json& parameters) const
+    {
+        if (clips_.empty()) {
+            return;
+        }
+        json clips = json::array();
+        for (const AnimationClipDesc& clip : clips_) {
+            json entry = { { "name", clip.name } };
+            if (!clip.sourceName.empty()) { entry["sourceName"] = clip.sourceName; }
+            if (!clip.file.empty()) { entry["file"] = clip.file; }
+            clips.push_back(std::move(entry));
+        }
+        parameters["clips"] = std::move(clips);
+    }
+
+    void AnimatorComponent::LoadClipsFromJson(const json& parameters)
+    {
+        if (!parameters.is_object()) {
+            return;
+        }
+        const auto it = parameters.find("clips");
+        if (it == parameters.end() || !it->is_array()) {
+            return;
+        }
+
+        std::vector<AnimationClipDesc> clips;
+        for (const json& entry : *it) {
+            if (!entry.is_object()) {
+                continue;
+            }
+            AnimationClipDesc clip;
+            clip.name = JsonManager::SafeGet<std::string>(entry, "name", {});
+            clip.sourceName = JsonManager::SafeGet<std::string>(entry, "sourceName", {});
+            clip.file = JsonManager::SafeGet<std::string>(entry, "file", {});
+            if (!clip.name.empty()) {
+                clips.push_back(std::move(clip));
+            }
+        }
+        clips_ = std::move(clips);
     }
 
     void AnimatorComponent::Awake()

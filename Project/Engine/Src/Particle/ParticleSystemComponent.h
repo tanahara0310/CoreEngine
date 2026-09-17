@@ -73,8 +73,11 @@ namespace CoreEngine
         void Update() override;
 
         /// @brief モジュールの値をプリセットと同じ形で書き出す
-        json OnSerialize() const override;
-        void OnDeserialize(const json& j) override;
+        /// @brief モジュールの値をプリセットと同じ形で書き出す（ビルボードとブレンドは記述子が保存する）
+        void SaveModulesToJson(json& parameters) const;
+
+        /// @brief モジュールの値を読む
+        void LoadModulesFromJson(const json& parameters);
 
         // ===== IRenderableComponent =====
 

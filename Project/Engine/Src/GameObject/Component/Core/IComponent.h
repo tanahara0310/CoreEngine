@@ -44,13 +44,6 @@ public:
 
     // ===== シリアライズ =====
 
-    /// @brief このコンポーネントの状態を JSON へ書き出す
-    /// @return 保存不要なら空の json を返す（呼び出し側が省略する）
-    virtual json OnSerialize() const { return {}; }
-
-    /// @brief JSON から状態を復元する
-    virtual void OnDeserialize(const json& j) { (void)j; }
-
     /// @brief シリアライズ時の型キー
     /// @return `{"type": ここの文字列}` として保存される。プレハブ復元の型名にもなる。
     virtual const char* GetTypeName() const = 0;
@@ -58,7 +51,7 @@ public:
     // ===== リフレクション =====
 
     /// @brief プロパティ一覧の記述子
-    /// @return REFLECT_BEGIN を書いていない型は nullptr（保存は OnSerialize、インスペクタはエディタの登録へ落ちる）
+    /// @return REFLECT_BEGIN を書いていない型は nullptr（保存は `IRawSavedParameters`、インスペクタはエディタの登録へ落ちる）
     virtual const Reflection::TypeDescriptor* GetTypeDescriptor() const { return nullptr; }
 
     /// @brief 記述子が想定する派生クラスの先頭アドレス

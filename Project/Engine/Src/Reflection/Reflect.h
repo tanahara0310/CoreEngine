@@ -264,9 +264,22 @@ namespace CoreEngine::Reflection
     }
 
 /// @brief 記述子がプロパティの一部だけを持つことを示す
-/// @note 残りの保存は `OnSerialize` / `OnDeserialize`、表示はエディタの型ごとの登録が受け持つ。
+/// @note 表示はエディタの型ごとの登録が受け持つ。
 #define REFLECT_PARTIAL()                                                              \
         d.partial = true;
+
+/// @brief プロパティで表せない値の読み書きを足す
+/// @param SaveMemberFunction `void (json& parameters) const` の公開メンバ関数
+/// @param LoadMemberFunction `void (const json& parameters)` の公開メンバ関数
+/// @note 中身が実行時に決まる値（パーティクルのモジュールなど）に使う。
+///       プロパティで表せる値はここに書かず `REFLECT_PROPERTY` で宣言する。
+#define REFLECT_JSON(SaveMemberFunction, LoadMemberFunction)                           \
+        d.saveExtra = [](const void* o, ::json& parameters) {                          \
+            static_cast<const Self*>(o)->SaveMemberFunction(parameters);               \
+        };                                                                             \
+        d.loadExtra = [](void* o, const ::json& parameters) {                          \
+            static_cast<Self*>(o)->LoadMemberFunction(parameters);                     \
+        };
 
 /// @brief 型の保存形の版を指定する（書かなければ 1）
 /// @note 版を上げたら、上げた版ごとに REFLECT_RENAMED か REFLECT_UPGRADE で移行を書く。

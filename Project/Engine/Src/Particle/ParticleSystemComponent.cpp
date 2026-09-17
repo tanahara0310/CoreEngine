@@ -49,6 +49,7 @@ namespace
 
 REFLECT_DEFINE_BEGIN(CoreEngine::ParticleSystemComponent, "パーティクル")
     REFLECT_PARTIAL()
+    REFLECT_JSON(SaveModulesToJson, LoadModulesFromJson)
     REFLECT_ACCESSOR("texture", "テクスチャ", GetTextureAsset, SetTextureAsset,
         p.assetType = ::CoreEngine::AssetType::Texture, p.emptyText = &DescribeDefaultTexture)
     REFLECT_ACCESSOR("model", "モデル", GetModelAsset, SetModelAsset,
@@ -352,17 +353,16 @@ namespace CoreEngine
         return dynamic_cast<const ITransformSource*>(&other) != nullptr;
     }
 
-    json ParticleSystemComponent::OnSerialize() const
+    void ParticleSystemComponent::SaveModulesToJson(json& parameters) const
     {
-        // ビルボードとブレンドは記述子が保存する
         json settings = ParticlePresetManager::ToJson(const_cast<ParticleSystemComponent&>(*this));
         settings.erase("billboardType");
         settings.erase("blendMode");
-        return settings;
+        parameters.update(settings);
     }
 
-    void ParticleSystemComponent::OnDeserialize(const json& j)
+    void ParticleSystemComponent::LoadModulesFromJson(const json& parameters)
     {
-        ParticlePresetManager::FromJson(*this, j);
+        ParticlePresetManager::FromJson(*this, parameters);
     }
 }

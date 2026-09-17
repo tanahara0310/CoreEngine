@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GameObject/Component/Core/IComponent.h"
+#include "GameObject/Component/Core/IRawSavedParameters.h"
 
 #include <cstdint>
 #include <string>
@@ -11,7 +12,7 @@ namespace CoreEngine
     /// @details シーン JSON やプレハブにある型が、C++ にもスクリプトにも無いとき（スクリプトのコンパイルに
     ///          失敗したときなど）に付く。保存すると読み込んだときの `parameters` と版をそのまま書き戻すので、
     ///          型が戻れば次の読み込みで元のコンポーネントとして読める。
-    class MissingComponent final : public IComponent
+    class MissingComponent final : public IComponent, public IRawSavedParameters
     {
     public:
         /// @param typeName 保存データにある型名
@@ -19,8 +20,8 @@ namespace CoreEngine
 
         const char* GetTypeName() const override { return typeName_.c_str(); }
 
-        json OnSerialize() const override { return parameters_; }
-        void OnDeserialize(const json& j) override { parameters_ = j; }
+        const json& GetRawParameters() const override { return parameters_; }
+        void SetRawParameters(const json& parameters) override { parameters_ = parameters; }
 
         /// @brief 保存データにあった版を覚える（ComponentHost が読み込むときに渡す）
         void SetSavedVersion(uint32_t version) { savedVersion_ = version; }

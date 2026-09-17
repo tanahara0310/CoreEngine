@@ -2679,6 +2679,9 @@
     <ClInclude Include="Engine\Src\GameObject\Component\Core\IComponent.h">
       <Filter>Engine\Src\GameObject\Component\Core</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\Core\IRawSavedParameters.h">
+      <Filter>Engine\Src\GameObject\Component\Core</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Render\MaterialComponent.h">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClInclude>
