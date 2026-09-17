@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "Editor/ImGui/EditorTheme.h"
 #include <imgui.h>
@@ -207,4 +207,4 @@ namespace CoreEngine::UI::Bar
     }
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

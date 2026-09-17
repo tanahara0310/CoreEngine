@@ -14,7 +14,7 @@
 #include <cmath>
 #include <stdexcept>
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "EngineSystem/Subsystem/DebugSubsystem.h"
 #include "Utility/Debug/GameDebugUI.h"
 #include "Editor/ImGui/ImGuiAll.h"
@@ -24,7 +24,7 @@
 namespace CoreEngine
 {
 namespace {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     /// 設定パネルの編集対象（シーンの寿命に縛られるポインタをラムダに持たせないための
     /// ファイルスコープ変数。CollisionMatrixPanel と同じ流儀）
     GridRenderer* s_activeGrid = nullptr;
@@ -191,7 +191,7 @@ void GridRenderer::SubmitLines(LineRendererPipeline& pipeline, const Camera* cam
                            yAxisColor_, alpha });
 }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 void GridRenderer::EnsureSettingsPanelRegistered(EngineSystem* engine)
 {
     static bool registered = false;
@@ -263,5 +263,5 @@ bool GridRenderer::DrawSettingsImGui()
 
     return changed;
 }
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
 }

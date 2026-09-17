@@ -1,6 +1,6 @@
 #include "pch.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "DebugEditorFeature.h"
 #include "Editor/Scene/SceneDebugEditor.h"
@@ -36,4 +36,4 @@ namespace CoreEngine
     }
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

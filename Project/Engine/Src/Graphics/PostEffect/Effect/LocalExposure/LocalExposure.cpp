@@ -6,7 +6,7 @@
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/Logger/Logger.h"
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
 #endif
 #include <algorithm>
@@ -253,7 +253,7 @@ namespace CoreEngine
 
     void LocalExposure::DrawImGui()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         ImGui::PushID("LocalExposureParams");
         ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
         UI::Separator();
@@ -265,7 +265,7 @@ namespace CoreEngine
             CVarUI::ResetTree(kCVarPrefix);
         }
         ImGui::PopID();
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
     }
 
     CVar<bool>* LocalExposure::GetEnabledCVar() const

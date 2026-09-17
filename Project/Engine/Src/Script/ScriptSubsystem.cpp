@@ -11,7 +11,7 @@
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include <chrono>
 #include <vector>
 #endif
@@ -21,7 +21,7 @@ namespace CoreEngine
     namespace
     {
         constexpr const char* kScriptRoot = "Application/Assets/Scripts";
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         constexpr const char* kPredefinedFileName = "as.predefined";
 
         /// 変更が落ち着いたと見なすまでの時間（エディタは 1 回の保存で何度も変更を出す）
@@ -47,7 +47,7 @@ namespace CoreEngine
         host_ = std::move(host);
         scriptRoot_ = ProjectPaths::Resolve(kScriptRoot);
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         host_->WritePredefined(scriptRoot_ / kPredefinedFileName);
 #endif
 
@@ -57,7 +57,7 @@ namespace CoreEngine
         }
         status_.typeCount = host_->GetTypes().size();
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         // コンパイルに失敗していても見張る（直して保存すれば、そのときに読み直す）
         watcher_.Start(scriptRoot_);
 #endif
@@ -65,7 +65,7 @@ namespace CoreEngine
 
     void ScriptSubsystem::Finalize()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         watcher_.Stop();
 #endif
         ComponentFactory::Get().UnregisterRuntimeTypes();
@@ -84,7 +84,7 @@ namespace CoreEngine
         // 読み直すと型が作り直されるので、先にこのフレームの実行時間を締める
         host_->EndFrameStats();
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         // スクリプトを実行していないここで読み直す
         std::vector<std::filesystem::path> changed;
         const bool settled = watcher_.TakeSettledChanges(kSettleTime, changed);
@@ -123,7 +123,7 @@ namespace CoreEngine
         }
     }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     void ScriptSubsystem::ReloadScripts()
     {
         // 生成の登録は型ごと作り直すので、先に外す（読み直せなかったときは前の型で登録し直す）

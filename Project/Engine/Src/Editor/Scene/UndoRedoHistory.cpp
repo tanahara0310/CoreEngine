@@ -1,5 +1,5 @@
 #include "pch.h"
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "UndoRedoHistory.h"
 #include "Editor/Command/EditorCommandStack.h"
@@ -170,4 +170,4 @@ namespace CoreEngine
     }
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

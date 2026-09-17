@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "ThreadProfilerUI.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "Threading/ThreadPool.h"
 #include "Threading/ThreadBudget.h"
@@ -428,4 +428,4 @@ namespace CoreEngine
 
 } // namespace CoreEngine
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

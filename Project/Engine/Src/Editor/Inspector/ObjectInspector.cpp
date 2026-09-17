@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Editor/Inspector/ObjectInspector.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "Editor/External/ExternalCodeEditor.h"
 #include "Editor/ImGui/EditorTheme.h"
@@ -307,4 +307,4 @@ namespace CoreEngine::Editor::ObjectInspector
     }
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

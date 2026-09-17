@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "RenderPassDebugPanel.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Render/RenderDomainContext.h"
@@ -265,4 +265,4 @@ namespace CoreEngine
 
 } // namespace CoreEngine
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

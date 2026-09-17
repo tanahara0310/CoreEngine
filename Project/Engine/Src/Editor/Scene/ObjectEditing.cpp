@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Editor/Scene/ObjectEditing.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "Editor/Command/EditorCommand.h"
 #include "Editor/Command/EditorCommandStack.h"
@@ -354,4 +354,4 @@ namespace CoreEngine::ObjectEditing
     }
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

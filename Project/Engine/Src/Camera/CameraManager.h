@@ -15,7 +15,7 @@
 namespace CoreEngine
 {
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     // 前方宣言
     class CameraDebugUI;
     struct CameraEditorViewport;
@@ -153,7 +153,7 @@ namespace CoreEngine
         /// @brief デバッグUIが参照するEngineSystemを設定
         void SetEngineSystem(EngineSystem* engine) { engineSystem_ = engine; }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         /// @brief ImGuiデバッグウィンドウを描画
         void DrawImGui();
 
@@ -194,7 +194,7 @@ namespace CoreEngine
         /// @brief 入力・デルタタイム参照用（非所有）
         EngineSystem* engineSystem_ = nullptr;
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         /// @brief デバッグUI（遅延初期化）
         std::unique_ptr<CameraDebugUI> debugUI_;
 

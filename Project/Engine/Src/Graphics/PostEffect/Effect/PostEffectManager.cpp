@@ -289,17 +289,17 @@ void PostEffectManager::PrepareFrame(const PostEffectFrameContext& ctx)
 
 void PostEffectManager::DrawImGui()
 {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     if (ImGui::Begin("Post Effects")) {
         DrawImGuiContent();
     }
     ImGui::End();
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
 }
 
 void PostEffectManager::DrawImGuiContent()
 {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     // プリセット管理
     presetManager_->ShowImGui(this);
     UI::Separator();
@@ -411,7 +411,7 @@ void PostEffectManager::DrawImGuiContent()
             }
         }
     }
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
 }
 
 D3D12_GPU_DESCRIPTOR_HANDLE PostEffectManager::GetFinalDisplayTextureHandle() const

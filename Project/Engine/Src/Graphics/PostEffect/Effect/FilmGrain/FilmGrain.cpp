@@ -4,7 +4,7 @@
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/CVar/CVar.h"
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
 #endif
 #include <cassert>
@@ -126,7 +126,7 @@ namespace CoreEngine
 
     void FilmGrain::DrawImGui()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         ImGui::PushID("FilmGrainParams");
         ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
         ImGui::TextDisabled("常時薄く乗せる想定。見えたら強すぎる");
@@ -139,7 +139,7 @@ namespace CoreEngine
             CVarUI::ResetTree(kCVarPrefix);
         }
         ImGui::PopID();
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
     }
 
     CVar<bool>* FilmGrain::GetEnabledCVar() const

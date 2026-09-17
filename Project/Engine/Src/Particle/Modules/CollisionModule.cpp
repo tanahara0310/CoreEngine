@@ -58,7 +58,7 @@ void CollisionModule::ApplyCollision(Particle& particle, float deltaTime)
         Cross(Vector3{ 0.0f, 1.0f, 0.0f }, horizontalVelocity) * (1.0f / radius);
 }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 bool CollisionModule::ShowImGui() {
     bool changed = false;
 

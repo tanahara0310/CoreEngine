@@ -4,13 +4,13 @@
 #include <cstdint>
 #include <functional>
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include <imgui.h>
 #include <imgui_impl_win32.h>
 
 // ImGuiのウィンドウプロシージャ（グローバル名前空間）
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
 
 namespace CoreEngine
 {

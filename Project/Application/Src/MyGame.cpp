@@ -77,7 +77,7 @@ void MyGame::LoadInitialScene()
 void MyGame::ConnectDebugUI()
 {
     // ===== コンソールログ出力とシーンマネージャーの設定 =====
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     // GameDebugUIにSceneManagerを設定
     auto gameDebugUI = GetEngineSystem()->GetDebugSubsystem()->GetGameDebugUI();
     if (gameDebugUI) {
@@ -98,7 +98,7 @@ void MyGame::Finalize()
     // シーン管理システムの終了処理
     // ──────────────────────────────────────────────────────────
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     auto console = GetEngineSystem()->GetDebugSubsystem()->GetConsole();
     if (console) {
         console->LogInfo("MyGame: ゲーム終了処理を開始しました");

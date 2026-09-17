@@ -7,7 +7,7 @@
 
 /// @file
 /// @brief カメラリグの JSON 保存・読み込み
-/// @details エディタ専用ではない。製品ビルドでもリグを読めるよう USE_IMGUI の外に置く。
+/// @details エディタ専用ではない。製品ビルドでもリグを読めるよう CORE_EDITOR の外に置く。
 
 namespace CoreEngine
 {

@@ -7,7 +7,7 @@
 
 #include <algorithm>
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/ImGuiAll.h"
 #endif
 
@@ -241,7 +241,7 @@ namespace CoreEngine
         return count;
     }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     void TweenManager::DrawImGui()
     {
         ImGui::Text("Active: %zu   Slots: %zu   Free: %zu",

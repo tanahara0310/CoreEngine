@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Editor/Inspector/ComponentInspectors.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "Collision/Debug/ColliderInspector.h"
 #include "Editor/Command/EditorCommandStack.h"
@@ -187,4 +187,4 @@ namespace CoreEngine::Editor::ComponentInspectors
     }
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

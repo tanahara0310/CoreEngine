@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "Camera/CameraSceneStateIO.h"
 
@@ -83,4 +83,4 @@ namespace CoreEngine::Editor
     };
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

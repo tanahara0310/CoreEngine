@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "CameraIconOverlay.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "Editor/ImGui/ImGuiAll.h"
 #include "Camera/Camera.h"
@@ -133,4 +133,4 @@ namespace CoreEngine
     }
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

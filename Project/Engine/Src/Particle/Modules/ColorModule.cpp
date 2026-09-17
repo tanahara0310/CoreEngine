@@ -30,7 +30,7 @@ namespace CoreEngine
         particle.color = MathCore::Lerp(particle.initialColor, colorData_.endColor, t);
     }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     bool ColorModule::ShowImGui() {
         bool changed = false;
 

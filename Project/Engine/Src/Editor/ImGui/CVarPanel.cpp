@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "CVarPanel.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "Utility/CVar/CVar.h"
 #include "Utility/CVar/CVarRegistry.h"
@@ -361,4 +361,4 @@ namespace CoreEngine
 
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

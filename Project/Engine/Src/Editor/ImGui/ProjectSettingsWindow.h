@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include <cstddef>
 #include <string>
@@ -55,4 +55,4 @@ namespace CoreEngine
     };
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

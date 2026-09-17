@@ -7,7 +7,7 @@
 
 /// @file
 /// @brief カメラシーケンスの JSON 保存・読み込み
-/// @details エディタ専用ではない。製品ビルドでもシーケンスを読めるよう USE_IMGUI の外に置く。
+/// @details エディタ専用ではない。製品ビルドでもシーケンスを読めるよう CORE_EDITOR の外に置く。
 
 namespace CoreEngine
 {

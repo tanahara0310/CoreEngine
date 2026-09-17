@@ -2,7 +2,7 @@
 #include "RenderGraphEditorPanel.h"
 #include "Editor/ImGui/Widgets/PassTimingTable.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include <imnodes.h>
 
@@ -1126,4 +1126,4 @@ namespace CoreEngine
     }
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

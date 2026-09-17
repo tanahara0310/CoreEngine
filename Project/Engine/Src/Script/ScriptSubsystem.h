@@ -2,7 +2,7 @@
 
 #include "EngineSystem/Subsystem/IEngineSubsystem.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Script/ScriptFileWatcher.h"
 #endif
 
@@ -49,7 +49,7 @@ namespace CoreEngine
         /// @brief スクリプトのフォルダ（コンパイラのメッセージのファイル名はここからの相対パス）
         const std::filesystem::path& GetScriptRoot() const { return scriptRoot_; }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         /// @brief ファイルが変わっていなくても、このフレームの終わりにスクリプトを読み直す
         void RequestReload() { reloadRequested_ = true; }
 #endif
@@ -58,7 +58,7 @@ namespace CoreEngine
         /// @brief コンポーネントの型をファクトリへ登録する（前の登録を外してから呼ぶ）
         void RegisterComponentTypes();
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         /// @brief スクリプトを読み直し、ファクトリの登録を入れ替える
         void ReloadScripts();
 #endif
@@ -66,7 +66,7 @@ namespace CoreEngine
         std::unique_ptr<ScriptHost> host_;
         std::filesystem::path scriptRoot_;
         Status status_;
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         bool reloadRequested_ = false;
         ScriptFileWatcher watcher_;
 #endif

@@ -3,7 +3,7 @@
 #include "Math/MathCore.h"
 #include "Utility/Random/RandomGenerator.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/ImguiManager.h"
 #endif
 

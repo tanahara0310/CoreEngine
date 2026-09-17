@@ -54,7 +54,7 @@ namespace CoreEngine
     private:
         LightHandle selectedLight_{};  ///< Hierarchy で選択中のライト（無効=概要表示）
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         bool enableVisualization_ = true;
 #else
         bool enableVisualization_ = false;

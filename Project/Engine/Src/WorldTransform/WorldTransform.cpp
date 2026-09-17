@@ -4,7 +4,7 @@
 #include <cassert>
 #include <cmath>
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/ImGuiAll.h"
 #endif
 
@@ -107,7 +107,7 @@ void WorldTransform::QuaternionToEuler()
     }
 }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 bool WorldTransform::DrawImGui(const std::string& label)
 {
     bool changed = false;

@@ -45,7 +45,7 @@ namespace CoreEngine
 
     void GrayScale::DrawImGui()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         ImGui::PushID("GrayScale");
         ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
         ImGui::Text("画像をグレースケールに変換します");
@@ -54,7 +54,7 @@ namespace CoreEngine
             ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "注意: エフェクトは無効です");
         }
         ImGui::PopID();
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
     }
 
     CVar<bool>* GrayScale::GetEnabledCVar() const

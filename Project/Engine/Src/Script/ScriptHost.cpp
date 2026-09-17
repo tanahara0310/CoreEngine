@@ -51,7 +51,7 @@ namespace CoreEngine
         /// エンジンのユーザーデータに実行環境を置くときの種類
         constexpr asPWORD kHostUserDataType = 0x436F7245;
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         struct LineBudget
         {
             uint32_t lines = 0;
@@ -94,7 +94,7 @@ namespace CoreEngine
             for (auto it = std::filesystem::recursive_directory_iterator(root, ec);
                  !ec && it != std::filesystem::recursive_directory_iterator(); it.increment(ec)) {
                 const std::filesystem::path relative = it->path().lexically_relative(root);
-#ifndef USE_IMGUI
+#ifndef CORE_EDITOR
                 if (it.depth() == 0 && it->is_directory(ec) && relative == "Editor") {
                     it.disable_recursion_pending();
                     continue;
@@ -556,7 +556,7 @@ namespace CoreEngine
 
     bool ScriptHost::RunPrepared(asIScriptContext* context, int result, const std::function<std::string()>& describeCaller)
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         LineBudget budget;
         if (result >= 0) {
             result = context->SetLineCallback(asFUNCTION(CountLine), &budget, asCALL_CDECL);
@@ -580,7 +580,7 @@ namespace CoreEngine
             }
         }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         context->ClearLineCallback();
 #endif
         engine_->ReturnContext(context);

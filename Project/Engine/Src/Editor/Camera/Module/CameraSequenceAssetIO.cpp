@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "CameraSequenceAssetIO.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "Utility/JsonManager/JsonManager.h"
 #include "Camera/Control/OrbitFlyController.h"

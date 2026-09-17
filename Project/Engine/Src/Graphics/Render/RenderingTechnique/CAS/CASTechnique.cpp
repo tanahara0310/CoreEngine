@@ -11,7 +11,7 @@
 #include "Graphics/RootSignature/ShaderBinder.h"
 #include <cassert>
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/ImguiManager.h"
 #endif
 
@@ -97,7 +97,7 @@ namespace CoreEngine
 
     void CASTechnique::DrawImGui()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         ImGui::PushID("CASParams");
 
         // パラメータ UI は CVar から自動生成される（値は毎フレーム Execute で取り込まれる）

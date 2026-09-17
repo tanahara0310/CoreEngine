@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Editor/Scene/PlayModeController.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "Audio/AudioSystem.h"
 #include "Camera/CameraManager.h"
@@ -210,4 +210,4 @@ namespace CoreEngine::Editor
     }
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

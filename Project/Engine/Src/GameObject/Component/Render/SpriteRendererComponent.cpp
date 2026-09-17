@@ -18,7 +18,7 @@
 
 #include <utility>
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/ImGuiAll.h"
 #endif
 
@@ -495,7 +495,7 @@ namespace CoreEngine
         }
     }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     bool SpriteRendererComponent::DrawEditorUI()
     {
         bool changed = false;
@@ -592,5 +592,5 @@ namespace CoreEngine
 
         return changed;
     }
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
 }

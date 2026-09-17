@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include <functional>
 
@@ -24,4 +24,4 @@ namespace CoreEngine::Editor::ObjectInspector
     bool Draw(GameObject& object, const Callbacks& callbacks);
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

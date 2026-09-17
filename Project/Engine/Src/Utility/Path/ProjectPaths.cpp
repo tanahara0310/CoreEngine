@@ -81,7 +81,7 @@ namespace CoreEngine
         {
             const std::filesystem::path exeDir = ExecutableDirectory();
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
             // エディタを持つビルドはソースツリーへ書く。調整した値がそのまま
             // リポジトリに乗り、起動方法によって保存先が分かれなくなる。
             // エディタの無いビルド（Release）は配布形態と同じく exe の隣を見る

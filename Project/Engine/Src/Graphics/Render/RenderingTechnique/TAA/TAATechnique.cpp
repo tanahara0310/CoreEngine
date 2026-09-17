@@ -10,7 +10,7 @@
 #include "Graphics/Render/Pass/RenderPass.h"
 #include <cassert>
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/ImguiManager.h"
 #endif
 
@@ -165,7 +165,7 @@ namespace CoreEngine
 
     void TAATechnique::DrawImGui()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         ImGui::PushID("TAAParams");
 
         // パラメータ UI は CVar から自動生成される（値は毎フレーム Execute で取り込まれる）

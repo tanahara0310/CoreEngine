@@ -275,7 +275,7 @@ namespace CoreEngine
 
     void DockingUI::DrawPlaybackToolbar()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         ImGuiViewport* vp = ImGui::GetMainViewport();
         const float menuBarHeight = ImGui::GetFrameHeight();
 
@@ -313,7 +313,7 @@ namespace CoreEngine
 
     void DockingUI::DrawPlaybackButtons()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         auto& playback = PlaybackStateManager::GetInstance();
         const bool inPlayMode = playback.IsInPlayMode();
 
@@ -354,7 +354,7 @@ namespace CoreEngine
 
     void DockingUI::DrawGizmoButtons()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         if (!sceneDebugEditor_) {
             return;
         }
@@ -375,7 +375,7 @@ namespace CoreEngine
 
     void DockingUI::DrawViewToggles()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         if (UI::Bar::Button("▦ Grid", isGridVisible_,
             isGridVisible_ ? "グリッドを隠す" : "グリッドを出す")) {
             isGridVisible_ = !isGridVisible_;
@@ -392,7 +392,7 @@ namespace CoreEngine
 
     void DockingUI::DrawToolbarStatusChips()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         const std::string scriptText = status_.scriptOk
             ? std::format("Script ✓ {} 型", status_.scriptTypeCount)
             : std::string("Script ✕ コンパイル失敗");
@@ -434,7 +434,7 @@ namespace CoreEngine
 
     void DockingUI::DrawStatusBar()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         ImGuiViewport* vp = ImGui::GetMainViewport();
         const ImVec2 pos = ImVec2(vp->Pos.x, vp->Pos.y + vp->Size.y - statusBarHeight_);
         const ImVec2 size = ImVec2(vp->Size.x, statusBarHeight_);
@@ -529,7 +529,7 @@ namespace CoreEngine
     void DockingUI::ShowStatusMessage([[maybe_unused]] std::string message, [[maybe_unused]] const ImVec4& color,
         [[maybe_unused]] double seconds)
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         statusMessage_ = std::move(message);
         statusMessageColor_ = color;
         statusMessageEndTime_ = ImGui::GetTime() + seconds;
@@ -538,7 +538,7 @@ namespace CoreEngine
 
     void DockingUI::DrawTimingTooltip()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         const auto& total = timingData_[static_cast<uint32_t>(GpuTimestampSlot::Total)];
         if (!ImGui::IsWindowHovered() || (total.gpuMs <= 0.0f && total.cpuMs <= 0.0f)) {
             return;

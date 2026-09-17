@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "EngineSystem/Settings/IEditorSettingsSection.h"
 
@@ -43,4 +43,4 @@ namespace CoreEngine::Editor
     };
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

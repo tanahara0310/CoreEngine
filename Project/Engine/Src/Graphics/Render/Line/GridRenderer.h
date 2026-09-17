@@ -78,7 +78,7 @@ public:
     /// @brief シェーダーリソース名からルートパラメータインデックスを取得
     int GetRootParamIndex(const std::string& resourceName) const;
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     /// @brief Engine Settings に「Grid」パネルを登録する（プロセスで一度だけ）
     /// @details パネルはファイルスコープの「現在アクティブなグリッド」を読むだけで
     ///          何もキャプチャしない（GameDebugUI に登録解除 API が無いため）。
@@ -92,7 +92,7 @@ private:
     /// @brief 画面全体を覆う三角形 1 枚を描く
     void DrawGrid();
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     /// @brief 設定パネルの中身を描画する
     bool DrawSettingsImGui();
 #endif

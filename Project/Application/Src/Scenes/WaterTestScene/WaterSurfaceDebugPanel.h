@@ -5,7 +5,7 @@
 
 namespace CoreEngine { class WaterRenderFeature; }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 class WaterSurfaceDebugPanel {
 public:
 	/// @brief デバッグパネルの初期状態を水面へ反映する

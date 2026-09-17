@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 namespace CoreEngine
 {
@@ -24,4 +24,4 @@ namespace CollisionMatrixPanel
 }
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

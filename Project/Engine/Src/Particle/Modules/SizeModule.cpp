@@ -51,7 +51,7 @@ void SizeModule::UpdateSize(Particle& particle)
     }
 }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 bool SizeModule::ShowImGui() {
     bool changed = false;
 

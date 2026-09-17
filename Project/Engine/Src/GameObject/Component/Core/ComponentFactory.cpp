@@ -67,7 +67,7 @@ namespace CoreEngine
         entry.creator = std::move(creator);
         entry.descriptor = descriptor;
         entry.runtime = true;
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         entry.sourceFile = std::move(sourceFile);
 #else
         (void)sourceFile;
@@ -116,7 +116,7 @@ namespace CoreEngine
         return dynamic_cast<const IRenderableComponent*>(&component) != nullptr;
     }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     std::filesystem::path ComponentFactory::GetSourceFile(const std::string& typeName) const
     {
         const auto it = entries_.find(typeName);

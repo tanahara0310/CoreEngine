@@ -53,7 +53,7 @@ namespace CoreEngine
         }
     }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     bool ForceModule::ShowImGui() {
         bool changed = false;
 

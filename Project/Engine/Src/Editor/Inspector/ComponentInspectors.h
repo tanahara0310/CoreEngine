@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include <functional>
 #include <string>
@@ -45,4 +45,4 @@ namespace CoreEngine::Editor::ComponentInspectors
     bool IsShownFirst(const IComponent& component);
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

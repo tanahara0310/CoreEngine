@@ -52,7 +52,7 @@ void VelocityModule::ApplyInitialVelocity(Particle& particle) {
     particle.velocity = direction;
 }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 bool VelocityModule::ShowImGui() {
     bool changed = false;
 

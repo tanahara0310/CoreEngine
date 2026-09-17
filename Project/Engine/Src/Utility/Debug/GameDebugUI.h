@@ -1,6 +1,6 @@
 #pragma once
 #include "Editor/ImGui/Gizmo.h"
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Utility/Debug/ConsoleUI.h"
 #include "Editor/ImGui/ScreenCapture.h"
 #include "Editor/ImGui/PixCapture.h"
@@ -49,7 +49,7 @@ namespace CoreEngine
         /// @brief メニューバー以外のデバッグパネルを表示
         void UpdateDebugPanels();
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         /// @brief コンソールUIへのアクセッサ
         ConsoleUI* GetConsole() { return console_.get(); }
 #endif
@@ -95,7 +95,7 @@ namespace CoreEngine
         DockingUI* dockingUI_ = nullptr;
         SceneManager* sceneManager_ = nullptr;
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         std::unique_ptr<ConsoleUI> console_ = std::make_unique<ConsoleUI>();
 #endif
 
@@ -112,7 +112,7 @@ namespace CoreEngine
         bool showAboutWindow_ = false;      ///< バージョン情報ウィンドウの表示状態
         bool lastScriptOk_ = true;          ///< 前のフレームでスクリプトのコンパイルが通っていたか
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         ScreenCapture screenCapture_;  ///< スクリーンキャプチャ機能
         PixCapture pixCapture_;  ///< PIX GPU キャプチャ機能
         ProjectSettingsWindow projectSettings_;  ///< Project Settings ウィンドウ

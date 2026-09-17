@@ -4,7 +4,7 @@
 
 #include "Utility/Logger/Logger.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "EngineSystem/EngineSystem.h"
 #include "EngineSystem/Subsystem/DebugSubsystem.h"
 #include "Utility/Debug/GameDebugUI.h"
@@ -99,7 +99,7 @@ namespace CollisionTest
             CoreEngine::LogSubCategory::Physics);
     }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
     void Report::EnsureRegistered(CoreEngine::EngineSystem* engine)
     {
@@ -209,5 +209,5 @@ namespace CollisionTest
         ImGui::EndChild();
     }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
 }

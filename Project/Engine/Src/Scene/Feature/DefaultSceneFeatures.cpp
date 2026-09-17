@@ -54,7 +54,7 @@ namespace CoreEngine
 
         Add<LightingFeature>(features);
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         Add<GridFeature>(features);
         Add<DebugEditorFeature>(features);
 #endif

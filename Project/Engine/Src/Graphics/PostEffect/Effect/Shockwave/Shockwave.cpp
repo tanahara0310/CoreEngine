@@ -4,7 +4,7 @@
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/CVar/CVar.h"
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
 #endif
 #include <cassert>
@@ -112,7 +112,7 @@ namespace CoreEngine
 
     void Shockwave::DrawImGui()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         ImGui::PushID("ShockwaveParams");
         ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
         ImGui::Text("アクティブ: %s", isActive_ ? "true" : "false");
@@ -129,7 +129,7 @@ namespace CoreEngine
             CVarUI::ResetTree(kCVarPrefix);
         }
         ImGui::PopID();
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
     }
 
     CVar<bool>* Shockwave::GetEnabledCVar() const

@@ -511,7 +511,7 @@ namespace CoreEngine
     }
 #endif // _DEBUG
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     bool ShapeModule::ShowImGui() {
         bool changed = false;
 
@@ -609,5 +609,5 @@ namespace CoreEngine
 
         return changed;
     }
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
 }

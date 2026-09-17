@@ -64,7 +64,7 @@ public:
     /// @param deltaTime フレーム時間
     void UpdateRotation(Particle& particle, float deltaTime);
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     /// @brief ImGuiデバッグ表示
     /// @return UIに変更があった場合true
     bool ShowImGui();

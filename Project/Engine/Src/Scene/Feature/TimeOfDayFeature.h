@@ -84,7 +84,7 @@ namespace CoreEngine
         /// @brief 高度角・方位角から光の進行方向（光源 → 地表）を求める
         static Vector3 ComputeLightDirection(float elevationDeg, float azimuthDeg);
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         /// @brief Engine Settings に「Time of Day」パネルを登録する（プロセスで一度だけ）
         static void EnsureSettingsPanelRegistered(EngineSystem* engine);
 

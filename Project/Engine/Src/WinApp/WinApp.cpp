@@ -168,13 +168,13 @@ void WinApp::SetFullscreen(bool fullscreen)
 LRESULT CALLBACK WinApp::WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     // ImGuiの処理を優先する
     if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam)) {
         return true;
     }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
 
     // メッセージに応じて固有の処理を行う
     switch (msg) {
@@ -196,7 +196,7 @@ LRESULT CALLBACK WinApp::WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM l
             if (!QuitsOnEscape()) {
                 break;
             }
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
             // 名前入力などの最中に消えてしまわないよう、
             // ImGui がテキスト入力を受け取っている間は無視する
             if (ImGui::GetCurrentContext() && ImGui::GetIO().WantTextInput) {

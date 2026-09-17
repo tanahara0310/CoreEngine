@@ -11,7 +11,7 @@
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Math/MathCore.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/ImGuiAll.h"
 #include "Editor/ImGui/CVarPanel.h"
 #include "EngineSystem/Subsystem/DebugSubsystem.h"
@@ -32,7 +32,7 @@ namespace CoreEngine {
     void AtmosphereEditor::Initialize(EngineSystem& engine)
     {
         engine_ = &engine;
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         // Hierarchy の Environment ツリーへ登録し、選択時に Inspector で編集できるようにする。
         // GameDebugUI はここで一度だけ取得してキャッシュする（デストラクタで使うため）
         if (auto* debug = engine_->GetDebugSubsystem()) {
@@ -52,7 +52,7 @@ namespace CoreEngine {
 
     AtmosphereEditor::~AtmosphereEditor()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         // エンジン終了時にドロワーがダングリングしないよう登録を解除する。
         // engine_->GetDebugSubsystem() を呼び直さないこと（サブシステム一括破棄中に走るため、
         // 破棄済みサブシステムへの dynamic_cast でアクセス違反になる）。キャッシュ済みポインタのみ使う。
@@ -162,7 +162,7 @@ namespace CoreEngine {
 
     void AtmosphereEditor::DrawContent()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         // エディタはエンジン寿命・ライトはシーン寿命。まず実体から UI モデルを同期する
         SyncFromLights();
 
@@ -344,7 +344,7 @@ namespace CoreEngine {
 
     void AtmosphereEditor::DrawSunMoonPlacementWidget()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         // ===== スカイマップ: 上から見た天球の極座標表示 =====
         // 中心=天頂（高度90°）・内側の円=地平線（0°）・外周=高度-20°（スライダーの下限と一致）。
         // 方位はワールド軸準拠で上=+Z（方位角0°）・右=+X（+90°）。

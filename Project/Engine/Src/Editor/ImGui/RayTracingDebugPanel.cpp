@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "RayTracingDebugPanel.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/RHI/Debug/GpuTimestampProfiler.h"
@@ -568,4 +568,4 @@ namespace CoreEngine
 
 } // namespace CoreEngine
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

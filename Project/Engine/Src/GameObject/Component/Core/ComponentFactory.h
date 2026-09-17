@@ -76,7 +76,7 @@ public:
     /// @brief 描画するコンポーネントか（`IRenderableComponent` を持つか）
     static bool IsRenderable(const IComponent& component);
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     /// @brief 型を書いたファイル（`RegisterRuntime()` で渡したもの。無ければ空）
     std::filesystem::path GetSourceFile(const std::string& typeName) const;
 
@@ -116,7 +116,7 @@ private:
 
         /// 描画するコンポーネントの型か
         bool renderable = false;
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         std::filesystem::path sourceFile;
 
         /// 新しく作ったときのプロパティの値（まだ作っていなければ空）

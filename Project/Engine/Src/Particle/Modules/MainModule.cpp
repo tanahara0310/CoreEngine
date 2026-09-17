@@ -6,7 +6,7 @@
 
 #include "Math/MathCore.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/ImguiManager.h"
 #endif
 
@@ -131,7 +131,7 @@ float MainModule::ApplyRandomness(float base, float randomness) const {
     return (result < 0.0f) ? 0.0f : result;  // 負の値を防ぐ
 }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 bool MainModule::ShowImGui() {
     bool changed = false;
 

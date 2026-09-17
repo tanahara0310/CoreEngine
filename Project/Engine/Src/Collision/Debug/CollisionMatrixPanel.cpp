@@ -2,7 +2,7 @@
 #include "Editor/Panel/EditorPanelRegistry.h"
 #include "CollisionMatrixPanel.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "Collision/CollisionConfig.h"
 #include "EngineSystem/EngineSystem.h"
@@ -114,4 +114,4 @@ namespace CollisionMatrixPanel
 }
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
