@@ -2,6 +2,9 @@
 
 #include "Math/Geometry/Shapes.h"
 
+#include <cstddef>
+#include <iterator>
+
 /// @file
 /// @brief コライダーの形状記述（ローカル空間）
 /// @details 「どんな形か」だけを持つデータ。ワールド空間の形状（Geometry::Sphere 等）は
@@ -17,6 +20,11 @@ namespace CoreEngine
         Box,      ///< 軸平行ボックス（回転は未対応）
         Count,
     };
+
+    /// @brief 形状種別の名前（列挙の並びと同じ順。保存データが使う）
+    inline constexpr const char* kColliderShapeTypeNames[] = { "Sphere", "Box" };
+    static_assert(std::size(kColliderShapeTypeNames) == static_cast<std::size_t>(ColliderShapeType::Count),
+        "ColliderShapeType を増減したら kColliderShapeTypeNames も更新すること");
 
     /// @brief コライダーの形状（オーナー原点を基準としたローカル定義）
     /// @details 実際の判定サイズにはオーナーの GetWorldScale() が乗る。
