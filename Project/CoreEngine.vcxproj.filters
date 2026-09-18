@@ -49,6 +49,9 @@
     <ClCompile Include="Engine\Src\Script\Binding\GameObjectBinding.cpp">
       <Filter>Engine\Src\Script\Binding</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\PhysicsBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Script\Binding\ScriptInputBinding.cpp">
       <Filter>Engine\Src\Script\Binding</Filter>
     </ClCompile>
@@ -1708,6 +1711,9 @@
       <Filter>Engine\Src\Script\Binding</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Script\Binding\GameObjectBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\PhysicsBinding.h">
       <Filter>Engine\Src\Script\Binding</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Script\Binding\ScriptInputBinding.h">

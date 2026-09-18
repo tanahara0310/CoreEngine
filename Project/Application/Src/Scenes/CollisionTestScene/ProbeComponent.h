@@ -18,6 +18,8 @@ namespace CollisionTest
         int stay = 0;
         int exit = 0;
         int overlapDepth = 0;  ///< enter - exit（同時接触数。0 に戻らなければ Exit 取りこぼし）
+        int triggerEnter = 0;    ///< OnTriggerEnter で届いた数
+        int collisionEnter = 0;  ///< OnCollisionEnter で届いた数
 
         // 直近の接触情報（Phase 4 の押し出し検証用）
         CoreEngine::Vector3 lastNormal{};
@@ -26,6 +28,7 @@ namespace CollisionTest
 
         void Reset() {
             enter = stay = exit = overlapDepth = 0;
+            triggerEnter = collisionEnter = 0;
             lastNormal = {};
             lastDepth = 0.0f;
             lastInfoValid = false;
@@ -44,16 +47,21 @@ namespace CollisionTest
     }
 
     /// @brief 衝突イベントを数え、接触状態を色で示すコンポーネント。
-    /// @details `ColliderComponent` のコールバックを購読するだけなので、**見た目の種類
-    ///          （球・箱・見た目なし）を問わず同じ 1 行で載る**。以前は
-    ///          `template<class Base> class ModelProbe : public Base` という CRTP で
-    ///          見た目クラスごとに実体化していた。
+    /// @details 接触の通知（OnTriggerEnter / OnCollisionEnter など）を受けるだけなので、
+    ///          **見た目の種類（球・箱・見た目なし）を問わず同じ 1 行で載る**。
     class ProbeComponent : public CoreEngine::IComponent {
     public:
         const char* GetTypeName() const override { return "Probe"; }
 
-        /// @brief コライダーのイベントを購読し、初期色を適用する
+        /// @brief 初期色を適用する
         void Start() override;
+
+        void OnCollisionEnter(const CoreEngine::CollisionInfo& info) override { HandleEnter(info, false); }
+        void OnCollisionStay(const CoreEngine::CollisionInfo& info) override { HandleStay(info); }
+        void OnCollisionExit(const CoreEngine::CollisionInfo& info) override { HandleExit(info); }
+        void OnTriggerEnter(const CoreEngine::CollisionInfo& info) override { HandleEnter(info, true); }
+        void OnTriggerStay(const CoreEngine::CollisionInfo& info) override { HandleStay(info); }
+        void OnTriggerExit(const CoreEngine::CollisionInfo& info) override { HandleExit(info); }
 
         // ===== 設定 =====
 
@@ -92,6 +100,15 @@ namespace CollisionTest
     private:
         /// @brief 現在の接触状態に応じてマテリアル色を反映（マテリアルが無ければ何もしない）
         void ApplyColor();
+
+        /// @brief 接触の開始を数え、色を変える（A-2 の再現が有効ならコライダーを取り外す）
+        void HandleEnter(const CoreEngine::CollisionInfo& info, bool trigger);
+
+        /// @brief 接触の継続を数える
+        void HandleStay(const CoreEngine::CollisionInfo& info);
+
+        /// @brief 接触の終わりを数え、色を戻す
+        void HandleExit(const CoreEngine::CollisionInfo& info);
 
         ProbeStats  stats_;
         std::string label_ = "Probe";

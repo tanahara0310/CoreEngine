@@ -6,6 +6,7 @@
 #include "Script/Binding/GameObjectBinding.h"
 #include "Script/Binding/LogBinding.h"
 #include "Script/Binding/MathBinding.h"
+#include "Script/Binding/PhysicsBinding.h"
 #include "Script/Binding/RandomBinding.h"
 #include "Script/Binding/RenderingBinding.h"
 #include "Script/Binding/SceneBinding.h"
@@ -221,6 +222,7 @@ namespace CoreEngine
         configured = Script::RegisterMathBinding(engine_) && configured;
         configured = Script::RegisterTimeBinding(engine_) && configured;
         configured = Script::RegisterGameObjectBinding(engine_) && configured;
+        configured = Script::RegisterPhysicsBinding(engine_) && configured;
         configured = Script::RegisterInputBinding(engine_, services.input) && configured;
         if (!services.input) {
             logger.Logf(LogLevel::Warn, LogCategory::Script, "入力が見つからないので、スクリプトの Input は常に押されていないを返します");
@@ -527,6 +529,28 @@ namespace CoreEngine
         int result = context->Prepare(function);
         if (result >= 0) {
             result = context->SetObject(object);
+        }
+        return RunPrepared(context, result, describeCaller);
+    }
+
+    bool ScriptHost::CallMethod(asIScriptFunction* function, asIScriptObject* object,
+                                const std::function<int(asIScriptContext*)>& setArguments,
+                                const std::function<std::string()>& describeCaller)
+    {
+        if (!engine_ || !function || !object) {
+            return false;
+        }
+        asIScriptContext* const context = engine_->RequestContext();
+        if (!context) {
+            return false;
+        }
+
+        int result = context->Prepare(function);
+        if (result >= 0) {
+            result = context->SetObject(object);
+        }
+        if (result >= 0 && setArguments) {
+            result = setArguments(context);
         }
         return RunPrepared(context, result, describeCaller);
     }

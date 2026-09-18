@@ -11,43 +11,40 @@ namespace CollisionTest
     void ProbeComponent::Start()
     {
         material_ = Sibling<MaterialComponent>();
+        ApplyColor();
+    }
 
-        GameObject* owner = GetOwner();
-        if (!owner) { return; }
+    void ProbeComponent::HandleEnter(const CollisionInfo& info, bool trigger)
+    {
+        stats_.lastNormal = info.normal;
+        stats_.lastDepth = info.depth;
+        stats_.lastInfoValid = true;
+        ++(trigger ? stats_.triggerEnter : stats_.collisionEnter);
+        ProbeEvents::OnEnter(label_, stats_, info.other);
+        ApplyColor();
 
-        // コライダーのイベントを購読する（GameObject の override は不要）
-        auto& colliders = *owner->GetOrAddComponent<ColliderComponent>();
-
-        colliders.SetOnEnter([this](const CollisionInfo& info) {
-            stats_.lastNormal = info.normal;
-            stats_.lastDepth = info.depth;
-            stats_.lastInfoValid = true;
-            ProbeEvents::OnEnter(label_, stats_, info.other);
-            ApplyColor();
-
-            // A-2 の再現: コールバック中にコライダーを取り外す。
-            // 実体の解放はフレーム末まで遅延するので判定ループの生ポインタは浮かない。
-            if (removeColliderOnEnter_ && ProbeEvents::IsRemoveColliderInCallbackEnabled()) {
-                if (GameObject* self = GetOwner()) {
-                    if (auto* selfColliders = self->GetComponent<ColliderComponent>()) {
-                        selfColliders->RemoveAll();
-                    }
+        // A-2 の再現: 通知の中でコライダーを取り外す。
+        // 実体の解放はフレーム末まで遅延するので判定ループの生ポインタは浮かない。
+        if (removeColliderOnEnter_ && ProbeEvents::IsRemoveColliderInCallbackEnabled()) {
+            if (GameObject* self = GetOwner()) {
+                if (auto* selfColliders = self->GetComponent<ColliderComponent>()) {
+                    selfColliders->RemoveAll();
                 }
             }
-            });
+        }
+    }
 
-        colliders.SetOnStay([this](const CollisionInfo& info) {
-            stats_.lastNormal = info.normal;
-            stats_.lastDepth = info.depth;
-            stats_.lastInfoValid = true;
-            ProbeEvents::OnStay(label_, stats_, info.other);
-            });
+    void ProbeComponent::HandleStay(const CollisionInfo& info)
+    {
+        stats_.lastNormal = info.normal;
+        stats_.lastDepth = info.depth;
+        stats_.lastInfoValid = true;
+        ProbeEvents::OnStay(label_, stats_, info.other);
+    }
 
-        colliders.SetOnExit([this](const CollisionInfo& info) {
-            ProbeEvents::OnExit(label_, stats_, info.other);
-            ApplyColor();
-            });
-
+    void ProbeComponent::HandleExit(const CollisionInfo& info)
+    {
+        ProbeEvents::OnExit(label_, stats_, info.other);
         ApplyColor();
     }
 

@@ -41,8 +41,8 @@ public:
                      const Vector3& offset = {});
 
     // ===== 衝突イベントの購読 =====
-    // 継承なしで衝突に反応するための入口。
-    // `CollisionWorld` はオーナーの仮想関数を呼び、その既定実装がここへ配る。
+    // C++ から関数を渡して衝突に反応する入口。コンポーネントなら OnTriggerEnter などを上書きする。
+    // 接触は `GameObject::NotifyCollision*` がここと有効なコンポーネントへ配る。
 
     using CollisionCallback = std::function<void(const CollisionInfo&)>;
 
@@ -50,7 +50,7 @@ public:
     void SetOnStay(CollisionCallback callback) { onStay_ = std::move(callback); }
     void SetOnExit(CollisionCallback callback) { onExit_ = std::move(callback); }
 
-    /// @brief 購読者へイベントを配る（`GameObject` の既定実装から呼ばれる）
+    /// @brief 購読者へイベントを配る（`GameObject::NotifyCollision*` から呼ばれる）
     void DispatchEnter(const CollisionInfo& info) const { if (onEnter_) onEnter_(info); }
     void DispatchStay(const CollisionInfo& info) const { if (onStay_) onStay_(info); }
     void DispatchExit(const CollisionInfo& info) const { if (onExit_) onExit_(info); }

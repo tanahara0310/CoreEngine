@@ -32,6 +32,18 @@ enum EaseType {
 	EaseOutBounce = 29,
 	EaseInOutBounce = 30
 }
+enum CollisionLayer {
+	Default = 0,
+	Player = 1,
+	Enemy = 2,
+	PlayerBullet = 3,
+	EnemyBullet = 4,
+	Boss = 5,
+	BossBullet = 6,
+	BossAttack = 7,
+	Item = 8,
+	Environment = 9
+}
 enum InputAction {
 	MoveForward = 0,
 	MoveBack = 1,
@@ -264,6 +276,15 @@ class Transform {
 	void SetParent(Transform@ parent);
 	void UpdateMatrix();
 	GameObject@ get_gameObject() const property;
+}
+class Collision {
+	GameObject@ get_gameObject() const property;
+	Vector3 get_normal() const property;
+	float get_depth() const property;
+	Vector3 get_point() const property;
+	CollisionLayer get_layer() const property;
+	CollisionLayer get_selfLayer() const property;
+	bool get_isTrigger() const property;
 }
 class TweenHandle {
 	TweenHandle();

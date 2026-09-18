@@ -260,6 +260,27 @@ namespace CoreEngine
         }
     }
 
+    void ComponentHost::DispatchComponentContact(ContactPhase phase, bool trigger, const CollisionInfo& info)
+    {
+        // 通知の中で足したコンポーネントには、このフレームの通知を配らない
+        const size_t count = components_.size();
+        for (size_t i = 0; i < count && i < components_.size(); ++i) {
+            IComponent* component = components_[i].get();
+            if (!component || !component->IsEnabled()) { continue; }
+            switch (phase) {
+            case ContactPhase::Enter:
+                if (trigger) { component->OnTriggerEnter(info); } else { component->OnCollisionEnter(info); }
+                break;
+            case ContactPhase::Stay:
+                if (trigger) { component->OnTriggerStay(info); } else { component->OnCollisionStay(info); }
+                break;
+            case ContactPhase::Exit:
+                if (trigger) { component->OnTriggerExit(info); } else { component->OnCollisionExit(info); }
+                break;
+            }
+        }
+    }
+
     void ComponentHost::DispatchComponentDestroy()
     {
         if (destroyDispatched_) { return; }

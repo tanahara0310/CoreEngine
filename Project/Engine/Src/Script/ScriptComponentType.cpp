@@ -31,6 +31,12 @@ namespace CoreEngine
             "void LateUpdate()",
             "void OnDestroy()",
             "void OnScriptReloaded()",
+            "void OnCollisionEnter(Collision@)",
+            "void OnCollisionStay(Collision@)",
+            "void OnCollisionExit(Collision@)",
+            "void OnTriggerEnter(Collision@)",
+            "void OnTriggerStay(Collision@)",
+            "void OnTriggerExit(Collision@)",
         };
 
         /// ライフサイクルの関数の名前（`ScriptComponentType::Method` の並び）
@@ -41,6 +47,12 @@ namespace CoreEngine
             "LateUpdate",
             "OnDestroy",
             "OnScriptReloaded",
+            "OnCollisionEnter",
+            "OnCollisionStay",
+            "OnCollisionExit",
+            "OnTriggerEnter",
+            "OnTriggerStay",
+            "OnTriggerExit",
         };
 
         static_assert(std::size(kMethodDeclarations) == static_cast<std::size_t>(ScriptComponentType::Method::Count));

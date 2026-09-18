@@ -117,6 +117,14 @@ namespace CoreEngine
         bool CallMethod(asIScriptFunction* function, asIScriptObject* object,
                         const std::function<std::string()>& describeCaller);
 
+        /// @brief オブジェクトのメソッドを引数付きで呼ぶ
+        /// @param setArguments コンテキストへ引数を積む（負の値を返したら実行しない）
+        /// @param describeCaller 止まったときのログに出す呼び出し元の名前を作る（止まったときだけ呼ぶ）
+        /// @return 最後まで実行できたら true。例外・中断のときは場所と呼び出し履歴をログへ出して false
+        bool CallMethod(asIScriptFunction* function, asIScriptObject* object,
+                        const std::function<int(asIScriptContext*)>& setArguments,
+                        const std::function<std::string()>& describeCaller);
+
         /// @brief スクリプトの関数を呼ぶ（デリゲートでもよい）
         /// @param setArguments コンテキストへ引数を積む（負の値を返したら実行しない。nullptr なら引数なし）
         /// @param describeCaller 止まったときのログに出す呼び出し元の名前を作る（止まったときだけ呼ぶ）

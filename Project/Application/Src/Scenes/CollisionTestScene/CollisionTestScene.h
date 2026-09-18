@@ -88,6 +88,7 @@ namespace CollisionTest
         void EvaluatePushOutCase();
         void EvaluateContactInfoCase();
         void EvaluateRaycastQueryCase();
+        void EvaluateContactKindCase();
 
         // ===== 状態 =====
         int frame_ = 0;
