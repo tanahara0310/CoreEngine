@@ -3,6 +3,7 @@
 
 #ifdef CORE_EDITOR
 
+#include "Collision/ColliderComponent.h"
 #include "Editor/Inspector/ColliderInspector.h"
 #include "Editor/Command/EditorCommandStack.h"
 #include "Editor/ImGui/ImGuiAll.h"
@@ -53,25 +54,29 @@ namespace CoreEngine::Editor::ComponentInspectors
             return entry;
         }
 
-        /// @brief パーティクルのモジュールの欄を描き、編集が終わったら 1 回の Undo として積む
-        template <class TSystem>
-        bool DrawParticleModules(IComponent& component)
+        /// @brief 型ごとの欄を描き、編集が終わったら保存データの形の Undo を 1 回積む
+        /// @tparam T コンポーネントの型
+        /// @param save 今の状態を書き出す（`state` へ書き足す）
+        /// @param load 書き出した状態へ戻す
+        /// @param draw 欄を描く（値を変えたら true）
+        template <class T>
+        bool DrawWithJsonUndo(IComponent& component,
+                              void (*save)(const T&, json&),
+                              void (*load)(T&, const json&),
+                              bool (*draw)(T&))
         {
-            auto& system = static_cast<TSystem&>(component);
+            auto& target = static_cast<T&>(component);
 
             // 同時に編集できる欄は 1 つなので、編集を始める前の値も 1 つだけ控える
             static const IComponent* editing = nullptr;
             static json before;
 
-            const auto readModules = [](TSystem& target) {
-                json modules = json::object();
-                target.SaveModulesToJson(modules);
-                return modules;
-            };
-
             const bool alreadyEditing = editing == &component;
-            json current = alreadyEditing ? json{} : readModules(system);
-            const bool changed = ParticleSystemDebugUI::ShowImGui(system);
+            json current = json::object();
+            if (!alreadyEditing) {
+                save(target, current);
+            }
+            const bool changed = draw(target);
             if (changed && !alreadyEditing) {
                 editing = &component;
                 before = std::move(current);
@@ -80,17 +85,27 @@ namespace CoreEngine::Editor::ComponentInspectors
                 editing = nullptr;
                 const GameObject* const owner = component.GetOwner();
                 std::string label = (owner ? owner->GetName() + " の " : std::string{}) + DisplayNameOf(component);
-                EditorCommandStack::Get().Push(std::make_unique<ComponentStateCommand<TSystem, json>>(
-                    std::move(label), system, std::move(before),
-                    [](TSystem& target) {
-                        json modules = json::object();
-                        target.SaveModulesToJson(modules);
-                        return modules;
+                EditorCommandStack::Get().Push(std::make_unique<ComponentStateCommand<T, json>>(
+                    std::move(label), target, std::move(before),
+                    [save](T& object) {
+                        json state = json::object();
+                        save(object, state);
+                        return state;
                     },
-                    [](TSystem& target, const json& settings) { target.LoadModulesFromJson(settings); }));
+                    [load](T& object, const json& state) { load(object, state); }));
                 before = json{};
             }
             return changed;
+        }
+
+        /// @brief パーティクルのモジュールの欄を描き、編集が終わったら 1 回の Undo として積む
+        template <class TSystem>
+        bool DrawParticleModules(IComponent& component)
+        {
+            return DrawWithJsonUndo<TSystem>(component,
+                [](const TSystem& system, json& state) { system.SaveModulesToJson(state); },
+                [](TSystem& system, const json& state) { system.LoadModulesFromJson(state); },
+                [](TSystem& system) { return ParticleSystemDebugUI::ShowImGui(system); });
         }
     }
 
@@ -99,7 +114,6 @@ namespace CoreEngine::Editor::ComponentInspectors
         Register("Transform", { .shownFirst = true });
         Register("EulerTransform", { .shownFirst = true });
         Register("RectTransform", { .shownFirst = true });
-        Register("SceneTag", { .hidden = true });
         Register("Animator", { .displayName = "アニメーション" });
         Register("SkeletonSocket", { .displayName = "ソケット追従" });
         Register("SkyBox", { .displayName = "スカイボックス" });
@@ -107,8 +121,13 @@ namespace CoreEngine::Editor::ComponentInspectors
         Register("Collider", {
             .displayName = "コライダー",
             .drawBody = [](IComponent& component) {
-                GameObject* const owner = component.GetOwner();
-                return owner ? ColliderInspector::Draw(*owner) : false;
+                return DrawWithJsonUndo<ColliderComponent>(component,
+                    [](const ColliderComponent& colliders, json& state) { colliders.SaveShapesToJson(state); },
+                    [](ColliderComponent& colliders, const json& state) { colliders.LoadShapesFromJson(state); },
+                    [](ColliderComponent& colliders) {
+                        GameObject* const owner = colliders.GetOwner();
+                        return owner ? ColliderInspector::Draw(*owner) : false;
+                    });
             },
             });
 

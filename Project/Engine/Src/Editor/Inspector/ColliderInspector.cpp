@@ -14,20 +14,8 @@ namespace CoreEngine
 namespace ColliderInspector
 {
     namespace {
-        /// @brief CollisionLayer の表示名（enum の並びと必ず一致させること）
-        const char* const kLayerNames[] = {
-            "Default", "Player", "Enemy", "PlayerBullet", "EnemyBullet",
-            "Boss", "BossBullet", "BossAttack", "Item", "Environment",
-        };
-        // 列挙子を増やしたのに表示名を足し忘れると、ここでコンパイルエラーになる
-        static_assert(
-            static_cast<int>(CollisionLayer::Count) == static_cast<int>(std::size(kLayerNames)),
-            "CollisionLayer を増減したら kLayerNames も更新すること");
-
-        const char* const kShapeNames[] = { "Sphere", "Box" };
-        static_assert(
-            static_cast<int>(ColliderShapeType::Count) == static_cast<int>(std::size(kShapeNames)),
-            "ColliderShapeType を増減したら kShapeNames も更新すること");
+        const auto& kLayerNames = kCollisionLayerNames;
+        const auto& kShapeNames = kColliderShapeTypeNames;
 
         /// @brief 1 本ぶんの編集 UI
         bool DrawOne(Collider& collider, int index)

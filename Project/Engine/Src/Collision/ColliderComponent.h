@@ -3,6 +3,7 @@
 #include "Collider.h"
 #include "CollisionInfo.h"
 #include "GameObject/Component/Core/IComponent.h"
+#include "Reflection/Reflect.h"
 
 #include <functional>
 #include <memory>
@@ -18,6 +19,8 @@ class GameObject;
 ///          （衝突コールバック中の着脱で判定ループの生ポインタが宙に浮かないため）。
 class ColliderComponent : public IComponent {
 public:
+    REFLECT_DECLARE(ColliderComponent)
+
     const char* GetTypeName() const override { return "Collider"; }
 
     /// @brief トランスフォーム（ITransformSource）を使う
@@ -64,6 +67,16 @@ public:
     /// @brief 取り外し済みコライダーの実体を解放する
     /// @note 衝突判定より後（GameObjectManager::CleanupDestroyed）で呼ぶこと。
     void ReleaseRetired();
+
+    // ===== 保存 =====
+
+    /// @brief 形の一覧を書き出す（記述子の口）
+    void SaveShapesToJson(json& parameters) const;
+
+    /// @brief 形の一覧を読み込む（記述子の口）
+    /// @details 数が同じ間は今のコライダーを書き換えるので、コライダーへの参照は変わらない。
+    ///          足りなければ足し、余れば取り外す（実体の解放はフレーム末）。
+    void LoadShapesFromJson(const json& parameters);
 
     // ===== アクセス =====
 

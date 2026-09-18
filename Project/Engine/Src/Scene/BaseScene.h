@@ -166,16 +166,6 @@ namespace CoreEngine
         /// @note 機能はここから `AddComponent<T>()` で載せる。専用クラスは要らない。
         GameObject* CreateObject(const std::string& name);
 
-        /// @brief 特定の派生クラスを生成して登録する（レガシー経路）
-        /// @tparam T GameObjectの派生クラス
-        /// @note 新しいコードは `CreateObject(name)` + `AddComponent<T>()` を使うこと。
-        ///       これは水面など、まだコンポーネント化していないクラス専用。
-        template<typename T, typename... Args>
-        T* CreateObject(Args&&... args) {
-            auto obj = std::make_unique<T>(std::forward<Args>(args)...);
-            return gameObjectManager_.AddObject(std::move(obj));
-        }
-
         /// @brief レイヤー間の衝突判定を有効/無効に設定
         /// @param a レイヤーA
         /// @param b レイヤーB
