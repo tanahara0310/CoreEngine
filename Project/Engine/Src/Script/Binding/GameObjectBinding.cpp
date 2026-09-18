@@ -7,6 +7,7 @@
 #include "Reflection/PropertyDescriptor.h"
 #include "Scene/PrefabSystem.h"
 #include "Script/Binding/BindingRegistrar.h"
+#include "Script/Binding/ComponentBinding.h"
 #include "Script/ScriptComponent.h"
 #include "Utility/Logger/Logger.h"
 
@@ -257,10 +258,19 @@ namespace CoreEngine::Script
     bool ScriptGameObject::GetComponent(void* reference, int typeId) const
     {
         asIScriptContext* const context = asGetActiveContext();
-        const bool scriptHandle = (typeId & asTYPEID_OBJHANDLE) != 0 && (typeId & asTYPEID_SCRIPTOBJECT) != 0;
+        const bool handle = (typeId & asTYPEID_OBJHANDLE) != 0;
+        const bool scriptHandle = handle && (typeId & asTYPEID_SCRIPTOBJECT) != 0;
+
+        // エンジンのコンポーネントの型（ParticleSystem など）なら、付いていればハンドルを入れる
+        if (reference && handle && !scriptHandle) {
+            if (const std::optional<bool> found = GetEngineComponent(const_cast<ScriptGameObject&>(*this), reference, typeId)) {
+                return *found;
+            }
+        }
+
         if (!reference || !scriptHandle) {
             if (context) {
-                context->SetException("GetComponent には、スクリプトのクラスのハンドルを @ を付けて渡します（例: owner.GetComponent(@found)）");
+                context->SetException("GetComponent には、コンポーネントの型のハンドルを @ を付けて渡します（例: owner.GetComponent(@found)）");
             }
             return false;
         }

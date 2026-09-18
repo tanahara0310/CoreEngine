@@ -20,6 +20,10 @@ namespace CoreEngine::Script
         void Behaviour(const char* type, asEBehaviours behaviour, const char* declaration,
                        const asSFuncPtr& function, asDWORD callConvention);
         void Method(const char* type, const char* declaration, const asSFuncPtr& function, asDWORD callConvention);
+
+        /// @brief 汎用の呼び出し規約でメソッドを登録する
+        /// @param auxiliary 関数の中で `asIScriptGeneric::GetAuxiliary()` から読む値
+        void GenericMethod(const char* type, const char* declaration, asGENFUNC_t function, void* auxiliary);
         void Property(const char* type, const char* declaration, int byteOffset);
         void Function(const char* declaration, const asSFuncPtr& function, asDWORD callConvention = asCALL_CDECL);
         void Funcdef(const char* declaration);

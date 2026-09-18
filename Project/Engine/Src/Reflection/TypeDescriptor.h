@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Reflection/MethodDescriptor.h"
 #include "Reflection/PropertyDescriptor.h"
 #include "Utility/JsonManager/JsonManager.h"
 
@@ -44,6 +45,9 @@ namespace CoreEngine::Reflection
         uint32_t    version = 1;
 
         std::vector<PropertyDescriptor> properties;
+
+        /// @brief 操作（スクリプトから呼べるメンバ関数）
+        std::vector<MethodDescriptor> methods;
 
         /// @brief 保存キーの移行表
         std::vector<KeyRename> renames;

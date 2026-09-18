@@ -52,6 +52,9 @@
     <ClCompile Include="Engine\Src\Script\Binding\PhysicsBinding.cpp">
       <Filter>Engine\Src\Script\Binding</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\ComponentBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Script\Binding\ScriptInputBinding.cpp">
       <Filter>Engine\Src\Script\Binding</Filter>
     </ClCompile>
@@ -1715,6 +1718,12 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Script\Binding\PhysicsBinding.h">
       <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\ComponentBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Reflection\MethodDescriptor.h">
+      <Filter>Engine\Src\Reflection</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Script\Binding\ScriptInputBinding.h">
       <Filter>Engine\Src\Script\Binding</Filter>

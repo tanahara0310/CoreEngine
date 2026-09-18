@@ -352,6 +352,20 @@ namespace CoreEngine::Reflection
             d.properties.push_back(p);                                                 \
         }
 
+/// @brief 型の操作（メンバ関数）を足す（スクリプトから呼べるようになる）
+/// @param NameLiteral スクリプトから呼ぶ名前
+/// @param MemberFunction 公開メンバ関数（多重定義しているものは使えない）
+/// @param ... 省略可。`m.tooltip = "…"` など
+/// @note 引数と戻り値に使える型は MethodDescriptor を参照。
+#define REFLECT_METHOD(NameLiteral, DisplayNameLiteral, MemberFunction, ...)           \
+        {                                                                              \
+            ::CoreEngine::Reflection::MethodDescriptor m =                             \
+                ::CoreEngine::Reflection::MakeMethod<Self, &Self::MemberFunction>(     \
+                    NameLiteral, DisplayNameLiteral);                                  \
+            __VA_ARGS__;                                                               \
+            d.methods.push_back(std::move(m));                                         \
+        }
+
 /// @brief 型を TypeRegistry へ登録する（対応する .cpp のファイルスコープに書く）
 #define REFLECT_REGISTER(TypeName)                                                     \
     namespace {                                                                        \

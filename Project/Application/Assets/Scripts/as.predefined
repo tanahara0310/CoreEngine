@@ -263,7 +263,15 @@ class GameObject {
 	UIText@ SpawnUIText(const string&in fontName, const string&in text, const string&in name) const;
 	UIImage@ get_uiImage() property;
 	UIImage@ SpawnUIImage(const string&in texturePath, const string&in name) const;
+	Animator@ get_animator() property;
+	EulerTransform@ get_eulerTransform() property;
+	GpuParticleSystem@ get_gpuParticleSystem() property;
 	Material@ get_material() property;
+	MeshRenderer@ get_meshRenderer() property;
+	ParticleSystem@ get_particleSystem() property;
+	RectTransform@ get_rectTransform() property;
+	SpriteRenderer@ get_spriteRenderer() property;
+	Text3DRenderer@ get_text3DRenderer() property;
 }
 class Transform {
 	bool get_exists() const property;
@@ -446,12 +454,6 @@ class GameCamera {
 	void LookAt(const Vector3&in target);
 	void UpdateMatrix();
 }
-class Material {
-	bool get_exists() const property;
-	Vector4 get_color() const property;
-	void set_color(const Vector4&in) property;
-	GameObject@ get_gameObject() const property;
-}
 class SaveFile {
 	SaveFile(const string&in relativePath);
 	const string& get_path() const property;
@@ -472,6 +474,185 @@ class RandomStream {
 	uint Next();
 	float Uniform(float minimum, float maximum);
 	int UniformInt(int minimum, int maximum);
+}
+class Animator {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	string get_model() const property;
+	void set_model(const string&in) property;
+	bool Switch(const string&in, bool);
+	bool SwitchWithBlend(const string&in, float, bool);
+	string GetCurrentClipName();
+}
+class EulerTransform {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	Vector3 get_translate() const property;
+	void set_translate(const Vector3&in) property;
+	Vector3 get_rotate() const property;
+	void set_rotate(const Vector3&in) property;
+	Vector3 get_scale() const property;
+	void set_scale(const Vector3&in) property;
+}
+class GpuParticleSystem {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	string get_texture() const property;
+	void set_texture(const string&in) property;
+	int get_blendMode() const property;
+	void set_blendMode(int) property;
+	int get_billboard() const property;
+	void set_billboard(int) property;
+	void Play();
+	void Stop();
+	bool IsPlaying();
+}
+class Material {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	Vector4 get_color() const property;
+	void set_color(const Vector4&in) property;
+	float get_metallic() const property;
+	void set_metallic(float) property;
+	float get_roughness() const property;
+	void set_roughness(float) property;
+	float get_occlusionStrength() const property;
+	void set_occlusionStrength(float) property;
+	Vector4 get_emissive() const property;
+	void set_emissive(const Vector4&in) property;
+	float get_iblIntensity() const property;
+	void set_iblIntensity(float) property;
+	bool get_lighting() const property;
+	void set_lighting(bool) property;
+	bool get_normalMap() const property;
+	void set_normalMap(bool) property;
+	bool get_dithering() const property;
+	void set_dithering(bool) property;
+	float get_ditheringScale() const property;
+	void set_ditheringScale(float) property;
+}
+class MeshRenderer {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	string get_model() const property;
+	void set_model(const string&in) property;
+	string get_texture() const property;
+	void set_texture(const string&in) property;
+	int get_blendMode() const property;
+	void set_blendMode(int) property;
+}
+class ParticleSystem {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	string get_texture() const property;
+	void set_texture(const string&in) property;
+	string get_model() const property;
+	void set_model(const string&in) property;
+	int get_blendMode() const property;
+	void set_blendMode(int) property;
+	int get_billboard() const property;
+	void set_billboard(int) property;
+	void Play();
+	void Stop();
+	bool IsPlaying();
+	void Clear();
+	void Emit(int);
+}
+class RectTransform {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	int get_anchor() const property;
+	void set_anchor(int) property;
+	Vector2 get_anchoredPosition() const property;
+	void set_anchoredPosition(const Vector2&in) property;
+	Vector2 get_pivot() const property;
+	void set_pivot(const Vector2&in) property;
+	Vector2 get_size() const property;
+	void set_size(const Vector2&in) property;
+	float get_rotation() const property;
+	void set_rotation(float) property;
+	int get_sortOrder() const property;
+	void set_sortOrder(int) property;
+}
+class SpriteRenderer {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	string get_texture() const property;
+	void set_texture(const string&in) property;
+	Vector4 get_color() const property;
+	void set_color(const Vector4&in) property;
+	Vector2 get_anchor() const property;
+	void set_anchor(const Vector2&in) property;
+	Vector2 get_uvMin() const property;
+	void set_uvMin(const Vector2&in) property;
+	Vector2 get_uvMax() const property;
+	void set_uvMax(const Vector2&in) property;
+	Vector2 get_uvOffset() const property;
+	void set_uvOffset(const Vector2&in) property;
+	Vector2 get_uvScale() const property;
+	void set_uvScale(const Vector2&in) property;
+	float get_uvRotation() const property;
+	void set_uvRotation(float) property;
+	bool get_flipX() const property;
+	void set_flipX(bool) property;
+	bool get_flipY() const property;
+	void set_flipY(bool) property;
+	int get_blendMode() const property;
+	void set_blendMode(int) property;
+}
+class Text3DRenderer {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	string get_font() const property;
+	void set_font(const string&in) property;
+	string get_text() const property;
+	void set_text(const string&in) property;
+	float get_fontSize() const property;
+	void set_fontSize(float) property;
+	float get_lineSpacing() const property;
+	void set_lineSpacing(float) property;
+	float get_wrapWidth() const property;
+	void set_wrapWidth(float) property;
+	bool get_fieldAutoFit() const property;
+	void set_fieldAutoFit(bool) property;
+	Vector2 get_fieldSize() const property;
+	void set_fieldSize(const Vector2&in) property;
+	int get_alignH() const property;
+	void set_alignH(int) property;
+	int get_alignV() const property;
+	void set_alignV(int) property;
+	Vector2 get_pivot() const property;
+	void set_pivot(const Vector2&in) property;
+	Vector4 get_color() const property;
+	void set_color(const Vector4&in) property;
+	Vector4 get_outlineColor() const property;
+	void set_outlineColor(const Vector4&in) property;
+	float get_outlineWidth() const property;
+	void set_outlineWidth(float) property;
+	float get_weight() const property;
+	void set_weight(float) property;
+	int get_billboard() const property;
+	void set_billboard(int) property;
+	int get_depthMode() const property;
+	void set_depthMode(int) property;
 }
 uint scan(const string&in str, ?&out...);
 string format(const string&in fmt, const ?&in...);
