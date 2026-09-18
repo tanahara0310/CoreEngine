@@ -144,6 +144,7 @@ namespace CoreEngine
         /// @note エンジン機能のシーン組み込みは BaseScene を編集せず Feature の追加で行うこと
         ISceneFeature* AddFeature(std::unique_ptr<ISceneFeature> feature, int priority = 0);
 
+    public:
         /// @brief 登録済みの Feature を型で引く（既定 Feature・追加 Feature のどちらも引ける）
         /// @tparam T ISceneFeature の派生型。呼び出し側の .cpp で完全型であればよい
         /// @return 最初に見つかった T。未登録なら nullptr
@@ -161,6 +162,7 @@ namespace CoreEngine
             return nullptr;
         }
 
+    protected:
         /// @brief 空の GameObject を生成して登録する（コンポーネント化の標準的な入口）
         /// @param name オブジェクト名（Hierarchy 表示・シーン保存のキー）
         /// @note 機能はここから `AddComponent<T>()` で載せる。専用クラスは要らない。

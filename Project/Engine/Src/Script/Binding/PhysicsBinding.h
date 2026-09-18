@@ -7,6 +7,7 @@ class asIScriptEngine;
 
 namespace CoreEngine
 {
+    class EngineSystem;
     struct CollisionInfo;
 }
 
@@ -64,8 +65,10 @@ namespace CoreEngine::Script
         mutable int refCount_ = 1;
     };
 
-    /// @brief 当たり判定の型をスクリプトへ登録する
-    /// @details 列挙 `CollisionLayer` と、接触の関数に渡す `Collision` を出す。
+    /// @brief 当たり判定の型と関数をスクリプトへ登録する
+    /// @details 列挙 `CollisionLayer`、接触の関数に渡す `Collision`、レイキャストの当たり `RaycastHit`、
+    ///          GameObject から取るコライダーのハンドル `Collider`、今のシーンへ問い合わせる名前空間 `Physics` を出す。
+    /// @param engineSystem 今のシーンを引く先（nullptr なら問い合わせは何も返さない）
     /// @return すべて登録できたら true
-    bool RegisterPhysicsBinding(asIScriptEngine* engine);
+    bool RegisterPhysicsBinding(asIScriptEngine* engine, EngineSystem* engineSystem);
 }

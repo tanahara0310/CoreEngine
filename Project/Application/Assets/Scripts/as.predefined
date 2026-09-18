@@ -258,6 +258,7 @@ class GameObject {
 	GameObject@ FindObject(const string&in name) const;
 	bool GetComponent(?&out component) const;
 	GameObject@ InstantiatePrefab(const string&in prefabPath, const string&in name) const;
+	Collider@ get_collider() property;
 	UIText@ get_uiText() property;
 	UIText@ SpawnUIText(const string&in fontName, const string&in text, const string&in name) const;
 	UIImage@ get_uiImage() property;
@@ -285,6 +286,29 @@ class Collision {
 	CollisionLayer get_layer() const property;
 	CollisionLayer get_selfLayer() const property;
 	bool get_isTrigger() const property;
+}
+class RaycastHit {
+	GameObject@ get_gameObject() const property;
+	Vector3 get_point() const property;
+	Vector3 get_normal() const property;
+	float get_distance() const property;
+	CollisionLayer get_layer() const property;
+}
+class Collider {
+	bool get_exists() const property;
+	int get_count() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	CollisionLayer get_layer() const property;
+	void set_layer(CollisionLayer) property;
+	bool get_isTrigger() const property;
+	void set_isTrigger(bool) property;
+	bool get_isStatic() const property;
+	void set_isStatic(bool) property;
+	void AddSphere(float radius, CollisionLayer layer = CollisionLayer::Default, const Vector3&in offset = Vector3());
+	void AddBox(const Vector3&in size, CollisionLayer layer = CollisionLayer::Default, const Vector3&in offset = Vector3());
+	void RemoveAll();
+	GameObject@ get_gameObject() const property;
 }
 class TweenHandle {
 	TweenHandle();
@@ -527,6 +551,15 @@ float UnscaledTimeSinceStartup();
 uint64 FrameCount();
 float TimeScale();
 bool IsPaused();
+}
+namespace Physics {
+RaycastHit@ Raycast(const Vector3&in origin, const Vector3&in direction, float maxDistance, int layerMask = -1);
+RaycastHit@[]@ RaycastAll(const Vector3&in origin, const Vector3&in direction, float maxDistance, int layerMask = -1);
+GameObject@[]@ OverlapSphere(const Vector3&in center, float radius, int layerMask = -1);
+GameObject@[]@ OverlapBox(const Vector3&in center, const Vector3&in size, int layerMask = -1);
+void SetLayerCollision(CollisionLayer a, CollisionLayer b, bool enabled);
+bool GetLayerCollision(CollisionLayer a, CollisionLayer b);
+int LayerMask(CollisionLayer layer);
 }
 namespace Input {
 bool IsActionPressed(InputAction);
