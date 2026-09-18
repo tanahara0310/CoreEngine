@@ -37,6 +37,8 @@ public:
 
     /// @brief 保存データだけで組むシーンを登録する
     /// @param name シーン名（Application/Assets/Scenes/シーン名 の保存データを読む）
+    /// @note `Application/Assets/Scenes` にあるシーンは、初期化のときに自動で登録する。
+    ///       同じ名前を RegisterScene で登録すると、C++ のクラスの方が使われる。
     void RegisterDataScene(const std::string& name);
 
     /// @brief 初期シーンを設定（トランジション無し）
@@ -86,8 +88,8 @@ public:
     /// @return 現在のシーン名（シーンが無い場合は"None"）
     std::string GetCurrentSceneName() const;
 
-    /// @brief 今のシーン（読み込みの途中は nullptr のことがある）
-    IScene* GetCurrentScene() const { return currentScene_.get(); }
+    /// @brief 今のシーン（読み込みの途中は、組み立て中のシーン）
+    IScene* GetCurrentScene() const { return currentScene_ ? currentScene_.get() : pendingScene_.get(); }
 
     /// @brief 登録されているすべてのシーン名を取得
     /// @return シーン名のリスト

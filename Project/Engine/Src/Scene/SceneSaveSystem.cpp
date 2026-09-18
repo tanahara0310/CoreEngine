@@ -29,8 +29,11 @@ namespace CoreEngine
         // スキーマ変更で先読みだけが静かに空振りする（遅くなるだけで気づけない）。
         // ──────────────────────────────────────────────────────────
 
+        /// @brief シーンの保存データを置くフォルダ
+        constexpr const char* kScenesRoot = "Application/Assets/Scenes";
+
         std::string MakeSceneDir(const std::string& sceneName) {
-            return "Application/Assets/Scenes/" + sceneName;
+            return std::string(kScenesRoot) + "/" + sceneName;
         }
 
         /// @brief シーンマニフェスト（_scene.json）のパス
@@ -511,6 +514,29 @@ namespace CoreEngine
         loadIndex_ = 0;
         restoreSnapshot_.reset();
         return true;
+    }
+
+    std::vector<std::string> SceneSaveSystem::ListSavedScenes()
+    {
+        namespace fs = std::filesystem;
+        std::vector<std::string> names;
+
+        std::error_code ec;
+        const fs::path root = ProjectPaths::Resolve(kScenesRoot);
+        if (!fs::is_directory(root, ec)) {
+            return names;
+        }
+        for (const auto& entry : fs::directory_iterator(root, ec)) {
+            if (!entry.is_directory(ec) || !fs::is_regular_file(entry.path() / "_scene.json", ec)) {
+                continue;
+            }
+            const std::string name = Logger::GetInstance().PathToUtf8(entry.path().filename());
+            if (!name.empty()) {
+                names.push_back(name);
+            }
+        }
+        std::sort(names.begin(), names.end());
+        return names;
     }
 
     SceneSaveSystem::ManifestSettings SceneSaveSystem::LoadManifestSettings(const std::string& sceneName)

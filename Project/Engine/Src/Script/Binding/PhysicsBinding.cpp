@@ -268,12 +268,28 @@ namespace CoreEngine::Script
             return new ScriptCollider(self);
         }
 
+        /// @brief 今のシーン（読み込みの途中は組み立て中のシーン。無ければ nullptr）
+        BaseScene* FindScene()
+        {
+            SceneManager* const manager = sEngineSystem ? sEngineSystem->GetSceneManager() : nullptr;
+            return manager ? dynamic_cast<BaseScene*>(manager->GetCurrentScene()) : nullptr;
+        }
+
         /// @brief 今のシーンの当たり判定（シーンが無い・当たり判定を持たないシーンなら nullptr）
         CollisionFeature* FindCollisionFeature()
         {
-            SceneManager* const manager = sEngineSystem ? sEngineSystem->GetSceneManager() : nullptr;
-            auto* const scene = manager ? dynamic_cast<BaseScene*>(manager->GetCurrentScene()) : nullptr;
+            BaseScene* const scene = FindScene();
             return scene ? scene->GetFeature<CollisionFeature>() : nullptr;
+        }
+
+        /// @brief 今のシーンの、問い合わせ用の衝突ワールド（シーンが無い・当たり判定を持たないシーンなら nullptr）
+        /// @note スクリプトは判定より前（Update）に問い合わせるので、登録をこのフレームのものにしてから使う。
+        CollisionWorld* FindQueryWorld()
+        {
+            BaseScene* const scene = FindScene();
+            CollisionFeature* const feature = scene ? scene->GetFeature<CollisionFeature>() : nullptr;
+            GameObjectManager* const objects = scene ? scene->GetGameObjectManager() : nullptr;
+            return feature && objects ? &feature->GetQueryWorld(*objects) : nullptr;
         }
 
         /// @brief スクリプトのレイヤーのビットを、当たり判定のビットへ（-1 はすべてのレイヤー）
@@ -306,13 +322,13 @@ namespace CoreEngine::Script
 
         ScriptRaycastHit* Raycast(const Vector3& origin, const Vector3& direction, float maxDistance, int layerMask)
         {
-            CollisionFeature* const feature = FindCollisionFeature();
+            CollisionWorld* const world = FindQueryWorld();
             Geometry::Ray ray;
-            if (!feature || maxDistance <= 0.0f || !MakeRay(origin, direction, ray)) {
+            if (!world || maxDistance <= 0.0f || !MakeRay(origin, direction, ray)) {
                 return nullptr;
             }
             RaycastHit hit;
-            if (!feature->GetWorld().Raycast(ray, maxDistance, ToLayerMask(layerMask), &hit)) {
+            if (!world->Raycast(ray, maxDistance, ToLayerMask(layerMask), &hit)) {
                 return nullptr;
             }
             return new ScriptRaycastHit(hit);
@@ -321,13 +337,13 @@ namespace CoreEngine::Script
         CScriptArray* RaycastAll(const Vector3& origin, const Vector3& direction, float maxDistance, int layerMask)
         {
             CScriptArray* const result = CreateArray("array<RaycastHit@>");
-            CollisionFeature* const feature = FindCollisionFeature();
+            CollisionWorld* const world = FindQueryWorld();
             Geometry::Ray ray;
-            if (!result || !feature || maxDistance <= 0.0f || !MakeRay(origin, direction, ray)) {
+            if (!result || !world || maxDistance <= 0.0f || !MakeRay(origin, direction, ray)) {
                 return result;
             }
             std::vector<RaycastHit> hits;
-            feature->GetWorld().RaycastAll(ray, maxDistance, ToLayerMask(layerMask), hits);
+            world->RaycastAll(ray, maxDistance, ToLayerMask(layerMask), hits);
             for (const RaycastHit& hit : hits) {
                 ScriptRaycastHit* handle = new ScriptRaycastHit(hit);
                 result->InsertLast(&handle);
@@ -362,8 +378,8 @@ namespace CoreEngine::Script
         CScriptArray* OverlapSphere(const Vector3& center, float radius, int layerMask)
         {
             std::vector<Collider*> colliders;
-            if (CollisionFeature* const feature = FindCollisionFeature(); feature && radius > 0.0f) {
-                feature->GetWorld().OverlapSphere(Geometry::Sphere(center, radius), ToLayerMask(layerMask), colliders);
+            if (CollisionWorld* const world = FindQueryWorld(); world && radius > 0.0f) {
+                world->OverlapSphere(Geometry::Sphere(center, radius), ToLayerMask(layerMask), colliders);
             }
             return ToObjectArray(colliders);
         }
@@ -371,9 +387,9 @@ namespace CoreEngine::Script
         CScriptArray* OverlapBox(const Vector3& center, const Vector3& size, int layerMask)
         {
             std::vector<Collider*> colliders;
-            if (CollisionFeature* const feature = FindCollisionFeature()) {
+            if (CollisionWorld* const world = FindQueryWorld()) {
                 const Vector3 half = size * 0.5f;
-                feature->GetWorld().OverlapBox(Geometry::AABB(center - half, center + half), ToLayerMask(layerMask), colliders);
+                world->OverlapBox(Geometry::AABB(center - half, center + half), ToLayerMask(layerMask), colliders);
             }
             return ToObjectArray(colliders);
         }

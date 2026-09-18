@@ -1,0 +1,8 @@
+{
+    "objects": [
+        "Director",
+        "Turret",
+        "Wall",
+        "ScoreBoard"
+    ]
+}

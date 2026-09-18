@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "EnvironmentFeature.h"
+#include "LightingFeature.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Camera/Camera.h"
 #include "GameObject/GameObjectManager.h"
@@ -23,8 +24,8 @@ namespace
     /// 太陽の進行方向（太陽→地表）の既定。控えがこれと違うときだけシーンの太陽へ当てる
     constexpr Vector3 kDefaultSunDirection{ -0.45073172f, -0.65011942f, 0.61170721f };
 
-    /// 太陽の空（大気散乱）輝度スケールの既定（0 で照度からの自動換算）
-    constexpr float kDefaultSunAtmosphereIntensity = 0.0f;
+    /// 太陽の空（大気散乱）輝度スケールの既定（LightingFeature が作る太陽の値と同じ）
+    constexpr float kDefaultSunAtmosphereIntensity = LightingFeature::kDefaultSunAtmosphereIntensity;
 
     /// @brief 太陽・月ライトの控え（エンジンの寿命。シーンを作り直しても引き継ぐ）
     /// @details 値の実体は LightManager の Light（シーン寿命）にあり、毎フレーム実体から控える。

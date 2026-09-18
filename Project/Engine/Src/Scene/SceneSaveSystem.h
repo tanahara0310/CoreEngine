@@ -79,6 +79,10 @@ namespace CoreEngine
         /// @brief マニフェストの設定を読む（オブジェクトは生成しない）
         static ManifestSettings LoadManifestSettings(const std::string& sceneName);
 
+        /// @brief 保存データを持つシーンの名前（`Application/Assets/Scenes/<名前>/_scene.json` があるフォルダ）
+        /// @return 名前順
+        static std::vector<std::string> ListSavedScenes();
+
         /// @brief シーン全体を保存（マニフェスト + 全オブジェクトの個別ファイル）
         /// @note マニフェストに載らなかったオブジェクトの JSON（名前が `_` で始まるものを除く）は消す。
         ///       削除の印が付いたオブジェクトは保存しない。
