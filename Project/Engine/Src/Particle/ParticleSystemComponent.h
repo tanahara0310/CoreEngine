@@ -98,6 +98,9 @@ namespace CoreEngine
         /// @brief 生きている粒を全部消す
         void Clear();
 
+        /// @brief 放出した数を統計へ足しながら粒を放出する
+        void Emit(uint32_t count);
+
         /// @brief 放出が止まり、粒が全部消えたか
         bool IsFinished() const;
 
@@ -183,9 +186,6 @@ namespace CoreEngine
 
         /// @brief 指しているモデルを読み込む（無ければ外す）
         void LoadModel();
-
-        /// @brief 放出した数を統計へ足しながら粒を放出する
-        void Emit(uint32_t count);
 
         // モジュール
         std::unique_ptr<MainModule> mainModule_;

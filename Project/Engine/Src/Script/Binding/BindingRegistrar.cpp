@@ -34,6 +34,12 @@ namespace CoreEngine::Script
             "メソッド", std::string(type) + " " + declaration);
     }
 
+    void BindingRegistrar::GenericMethod(const char* type, const char* declaration, asGENFUNC_t function, void* auxiliary)
+    {
+        Check(engine_->RegisterObjectMethod(type, declaration, asFUNCTION(function), asCALL_GENERIC, auxiliary),
+            "メソッド", std::string(type) + " " + declaration);
+    }
+
     void BindingRegistrar::Property(const char* type, const char* declaration, int byteOffset)
     {
         Check(engine_->RegisterObjectProperty(type, declaration, byteOffset),

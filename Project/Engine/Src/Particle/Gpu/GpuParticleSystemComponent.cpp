@@ -53,6 +53,9 @@ REFLECT_DEFINE_BEGIN(CoreEngine::GpuParticleSystemComponent, "GPU パーティ�
         p.tooltip = "背景との合成のしかた。炎や光は「加算」、煙は「アルファ」が向く")
     REFLECT_ENUM_ACCESSOR("billboard", "ビルボード", GetBillboardType, SetBillboardType, kBillboardNames,
         p.tooltip = "板ポリの向き。草や炎の柱のように立てたいものは「Y 軸だけ回す」")
+    REFLECT_METHOD("Play", "再生", Play)
+    REFLECT_METHOD("Stop", "停止", Stop)
+    REFLECT_METHOD("IsPlaying", "再生中か", IsPlaying)
 REFLECT_DEFINE_END()
 REFLECT_REGISTER(CoreEngine::GpuParticleSystemComponent)
 COMPONENT_REGISTER(CoreEngine::GpuParticleSystemComponent)

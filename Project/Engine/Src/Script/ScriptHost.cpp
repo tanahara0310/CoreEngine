@@ -3,6 +3,7 @@
 
 #include "Script/Binding/AudioBinding.h"
 #include "Script/Binding/CameraShakeBinding.h"
+#include "Script/Binding/ComponentBinding.h"
 #include "Script/Binding/GameObjectBinding.h"
 #include "Script/Binding/LogBinding.h"
 #include "Script/Binding/MathBinding.h"
@@ -241,6 +242,8 @@ namespace CoreEngine
         }
         configured = Script::RegisterSessionBinding(engine_) && configured;
         configured = Script::RegisterRandomBinding(engine_) && configured;
+        // 手で書いた型（Transform・UIText・UIImage・Collider）を登録し終えてから、残りの型を記述子から作る
+        configured = Script::RegisterComponentBinding(engine_) && configured;
 
         stringTypeId_ = engine_->GetTypeIdByDecl("string");
         vector2TypeId_ = engine_->GetTypeIdByDecl("Vector2");
