@@ -325,6 +325,7 @@ namespace CollisionTest
         EvaluatePushOutCase();
         EvaluateContactInfoCase();
         EvaluateRaycastQueryCase();
+        EvaluateContactKindCase();
 
         // 全ケースの結論が出そろうフレームで集計をログへ（GUI を開かずに確認できるようにする）
         const int summaryFrame = (kAbaJudge > kTraverseEnd + 6 ? kAbaJudge : kTraverseEnd + 6) + 5;
@@ -583,6 +584,35 @@ namespace CollisionTest
         result.status = !decided ? Status::Pending
             : (colliderCount == 2 && bodyHit.enter == 1 && atkHit.enter == 1)
                 ? Status::Pass : Status::Fail;
+        Report::Get().Upsert(result);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // T15: トリガーを含む接触は OnTrigger*、押し出す同士は OnCollision* に届く
+    // ─────────────────────────────────────────────────────────────────────
+    void CollisionTestScene::EvaluateContactKindCase()
+    {
+        if (!t1Mover_ || !t12Pusher_) { return; }
+
+        const bool decided = (frame_ >= kTraverseEnd + 6);
+        const ProbeStats& trigger = t1Mover_->Stats();
+        const ProbeStats& solid = t12Pusher_->Stats();
+
+        char actual[128];
+        std::snprintf(actual, sizeof(actual), "T1: Trigger=%d Collision=%d / T12: Trigger=%d Collision=%d",
+            trigger.triggerEnter, trigger.collisionEnter, solid.triggerEnter, solid.collisionEnter);
+
+        CaseResult result;
+        result.id       = "T15";
+        result.title    = "トリガーを含む接触は OnTrigger*、押し出す同士は OnCollision* に届く";
+        result.expected = "T1 は Trigger だけ、T12 は Collision だけ（どちらも 1 以上）";
+        result.actual   = actual;
+        result.note     =
+            "T1 はトリガーの球同士、T12 は押し出す球と壁（どちらもトリガーでない）。\n"
+            "Unity と同じく、どちらかがトリガーなら OnTrigger*、両方とも押し出す側なら OnCollision* で届く。";
+        result.status = !decided ? Status::Pending
+            : (trigger.triggerEnter >= 1 && trigger.collisionEnter == 0
+               && solid.collisionEnter >= 1 && solid.triggerEnter == 0) ? Status::Pass : Status::Fail;
         Report::Get().Upsert(result);
     }
 

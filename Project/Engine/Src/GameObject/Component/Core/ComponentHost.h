@@ -13,6 +13,9 @@ namespace CoreEngine
 {
 class GameObject;
 
+/// @brief 接触の通知の段階
+enum class ContactPhase { Enter, Stay, Exit };
+
 /// @brief コンポーネントを保持する器（`GameObject` が継承する）。
 /// @details 実体は個別ヒープ確保なので追加しても既存の `T*` は無効化されず（参照安定）、
 ///          取り外しはスロットを nullptr 化してフレーム末に解放する（遅延解放）。
@@ -188,6 +191,10 @@ public:
 
     /// @brief 有効なコンポーネントの LateUpdate() を呼ぶ
     void DispatchComponentLateUpdate();
+
+    /// @brief 有効なコンポーネントへ接触を配る
+    /// @param trigger どちらかのコライダーがトリガーなら true（OnTrigger* を呼ぶ）。false なら OnCollision*
+    void DispatchComponentContact(ContactPhase phase, bool trigger, const CollisionInfo& info);
 
     /// @brief 全コンポーネントの OnDestroy() を呼ぶ（オブジェクト破棄時）
     /// @note 実体はまだ解放しない。二重呼び出しはしない。

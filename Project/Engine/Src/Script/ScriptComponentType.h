@@ -35,6 +35,12 @@ namespace CoreEngine
             LateUpdate,
             OnDestroy,
             OnScriptReloaded,
+            OnCollisionEnter,
+            OnCollisionStay,
+            OnCollisionExit,
+            OnTriggerEnter,
+            OnTriggerStay,
+            OnTriggerExit,
             Count,
         };
 

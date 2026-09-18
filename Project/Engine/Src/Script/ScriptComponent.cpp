@@ -12,6 +12,7 @@
 #include "Reflection/PropertySerializer.h"
 #include "Reflection/PropertyValue.h"
 #include "Script/Binding/GameObjectBinding.h"
+#include "Script/Binding/PhysicsBinding.h"
 #include "Script/ScriptHost.h"
 #include "Utility/Logger/Logger.h"
 
@@ -135,6 +136,36 @@ namespace CoreEngine
     void ScriptComponent::OnDestroy()
     {
         Invoke(ScriptComponentType::Method::OnDestroy);
+    }
+
+    void ScriptComponent::OnCollisionEnter(const CollisionInfo& info)
+    {
+        InvokeContact(ScriptComponentType::Method::OnCollisionEnter, info, false);
+    }
+
+    void ScriptComponent::OnCollisionStay(const CollisionInfo& info)
+    {
+        InvokeContact(ScriptComponentType::Method::OnCollisionStay, info, false);
+    }
+
+    void ScriptComponent::OnCollisionExit(const CollisionInfo& info)
+    {
+        InvokeContact(ScriptComponentType::Method::OnCollisionExit, info, false);
+    }
+
+    void ScriptComponent::OnTriggerEnter(const CollisionInfo& info)
+    {
+        InvokeContact(ScriptComponentType::Method::OnTriggerEnter, info, true);
+    }
+
+    void ScriptComponent::OnTriggerStay(const CollisionInfo& info)
+    {
+        InvokeContact(ScriptComponentType::Method::OnTriggerStay, info, true);
+    }
+
+    void ScriptComponent::OnTriggerExit(const CollisionInfo& info)
+    {
+        InvokeContact(ScriptComponentType::Method::OnTriggerExit, info, true);
     }
 
     void ScriptComponent::ReadProperty(const Reflection::PropertyDescriptor& property, void* out) const
@@ -408,6 +439,37 @@ namespace CoreEngine
             const std::chrono::duration<double, std::milli> elapsed = std::chrono::steady_clock::now() - started;
             type_->AddFrameCost(elapsed.count(), method == ScriptComponentType::Method::Update);
         }
+        if (!finished) {
+            SetEnabled(false);
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Script,
+                "{} が止まったので、このコンポーネントを無効にしました", DescribeMethod(method));
+        }
+    }
+
+    void ScriptComponent::InvokeContact(ScriptComponentType::Method method, const CollisionInfo& info, bool trigger)
+    {
+        if (!type_ || !host_ || !object_) {
+            return;
+        }
+        asIScriptFunction* const function = type_->GetMethod(method);
+        if (!function) {
+            return;
+        }
+        if (!objectRefs_.empty()) {
+            ApplyObjectRefs();
+        }
+
+        const auto started = std::chrono::steady_clock::now();
+        Script::ScriptCollision* const collision = Script::ScriptCollision::Create(info, trigger);
+        const bool finished = host_->CallMethod(function, object_,
+            [collision](asIScriptContext* context) { return context->SetArgObject(0, collision); },
+            [this, method]() { return DescribeMethod(method); });
+        collision->Release();
+
+        // 触れている間は毎フレーム呼ばれるので、型ごとの実行時間に数える（実体の数には数えない）
+        const std::chrono::duration<double, std::milli> elapsed = std::chrono::steady_clock::now() - started;
+        type_->AddFrameCost(elapsed.count(), false);
+
         if (!finished) {
             SetEnabled(false);
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Script,

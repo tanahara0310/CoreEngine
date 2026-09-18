@@ -91,7 +91,7 @@ namespace CoreEngine
 
         // ===== 当たり判定 =====
 
-        /// @brief 接触の開始を伝える（`Collider` が呼び、コライダーの購読者へ配る）
+        /// @brief 接触の開始を伝える（`Collider` が呼び、コライダーの購読者と有効なコンポーネントへ配る）
         void NotifyCollisionEnter(const CollisionInfo& info);
 
         /// @brief 接触が続いていることを伝える

@@ -38,10 +38,10 @@ abstract class ScriptComponent
     // 最初の更新の前に 1 回
     void Start() {}
 
-    // 毎フレーム（GameObject の更新より前）
+    // 毎フレーム
     void Update() {}
 
-    // 毎フレーム（全オブジェクトの更新の後）
+    // 毎フレーム（全オブジェクトの Update の後）
     void LateUpdate() {}
 
     // 持ち主のオブジェクトを破棄するときに 1 回
@@ -50,4 +50,27 @@ abstract class ScriptComponent
     // スクリプトを読み直した後に 1 回（エディタのあるビルドだけ）。
     // 初期値に戻ったメンバ変数の組み直しと、エンジンへ渡す関数の渡し直しをここに書く
     void OnScriptReloaded() {}
+
+    // 当たり判定（持ち主にコライダーが要る。無効なコンポーネントには届かない）。
+    // どちらかのコライダーがトリガーなら OnTrigger*、両方とも押し出す側なら OnCollision* が呼ばれる。
+    // コライダーの既定はトリガーなので、多くの場面では OnTriggerEnter を書く。
+    // collision.gameObject が相手。全オブジェクトの LateUpdate の後に呼ばれる
+
+    // 押し出す同士のコライダーが触れ始めたとき
+    void OnCollisionEnter(Collision@ collision) {}
+
+    // 押し出す同士のコライダーが触れている間、毎フレーム
+    void OnCollisionStay(Collision@ collision) {}
+
+    // 押し出す同士のコライダーが離れたとき
+    void OnCollisionExit(Collision@ collision) {}
+
+    // トリガーのコライダーと重なり始めたとき
+    void OnTriggerEnter(Collision@ other) {}
+
+    // トリガーのコライダーと重なっている間、毎フレーム
+    void OnTriggerStay(Collision@ other) {}
+
+    // トリガーのコライダーから離れたとき
+    void OnTriggerExit(Collision@ other) {}
 }

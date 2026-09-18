@@ -45,6 +45,13 @@ namespace CoreEngine
         void LateUpdate() override;
         void OnDestroy() override;
 
+        void OnCollisionEnter(const CollisionInfo& info) override;
+        void OnCollisionStay(const CollisionInfo& info) override;
+        void OnCollisionExit(const CollisionInfo& info) override;
+        void OnTriggerEnter(const CollisionInfo& info) override;
+        void OnTriggerStay(const CollisionInfo& info) override;
+        void OnTriggerExit(const CollisionInfo& info) override;
+
         /// @brief プロパティの値を読み出す（型の記述子の読み出しの口）
         /// @param out `property.type` に対応する型の実体
         void ReadProperty(const Reflection::PropertyDescriptor& property, void* out) const;
@@ -75,6 +82,9 @@ namespace CoreEngine
     private:
         /// @brief ライフサイクルの関数を呼ぶ（止まったらこのコンポーネントを無効にする）
         void Invoke(ScriptComponentType::Method method);
+
+        /// @brief 接触の関数を呼ぶ（スクリプトが書いていなければ何もしない。止まったらこのコンポーネントを無効にする）
+        void InvokeContact(ScriptComponentType::Method method, const CollisionInfo& info, bool trigger);
 
         /// @brief スクリプトのオブジェクトの `owner_` へ持ち主のハンドルを入れる
         void BindOwnerHandle();

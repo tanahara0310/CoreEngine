@@ -8,10 +8,11 @@ namespace CoreEngine
 {
 class GameObject;
 class ComponentHost;
+struct CollisionInfo;
 
 /// @brief GameObject にアタッチする機能単位の基底クラス。
 /// @details 呼び出し順は Awake（Add直後）→ Start（初回更新）→ Update →
-///          GameObject::Update → 全オブジェクトの後に LateUpdate → OnDestroy。
+///          全オブジェクトの後に LateUpdate → 当たり判定の通知 → OnDestroy。
 ///          他コンポーネントの参照は Start 以降に `Sibling<T>()` で行う。
 class IComponent {
 public:
@@ -31,16 +32,39 @@ public:
     /// @note 兄弟コンポーネントは揃っている。`Sibling<T>()` で取得できる。
     virtual void Start() {}
 
-    /// @brief 毎フレームの更新（GameObject::Update() より前）
+    /// @brief 毎フレームの更新
     virtual void Update() {}
 
-    /// @brief 毎フレームの更新（GameObject::Update() より後）
+    /// @brief 毎フレームの更新（全オブジェクトの Update の後）
     virtual void LateUpdate() {}
 
     /// @brief 取り外し時・オブジェクト破棄時に 1 回だけ呼ばれる
     /// @note 実体の解放はフレーム末まで遅延する（衝突コールバック中の着脱で
     ///       生ポインタが宙に浮かないようにするため）。
     virtual void OnDestroy() {}
+
+    // ===== 当たり判定 =====
+    // 持ち主のコライダーが他のコライダーと触れたときに呼ばれる（無効なコンポーネントには届かない）。
+    // どちらかのコライダーがトリガーなら OnTrigger*、両方とも押し出す側なら OnCollision*。
+    // 呼ばれるのは全オブジェクトの LateUpdate の後の判定の中。
+
+    /// @brief 押し出す同士のコライダーが触れ始めた
+    virtual void OnCollisionEnter(const CollisionInfo&) {}
+
+    /// @brief 押し出す同士のコライダーが触れている（触れている間、毎フレーム）
+    virtual void OnCollisionStay(const CollisionInfo&) {}
+
+    /// @brief 押し出す同士のコライダーが離れた
+    virtual void OnCollisionExit(const CollisionInfo&) {}
+
+    /// @brief トリガーのコライダーと重なり始めた
+    virtual void OnTriggerEnter(const CollisionInfo&) {}
+
+    /// @brief トリガーのコライダーと重なっている（重なっている間、毎フレーム）
+    virtual void OnTriggerStay(const CollisionInfo&) {}
+
+    /// @brief トリガーのコライダーから離れた
+    virtual void OnTriggerExit(const CollisionInfo&) {}
 
     // ===== シリアライズ =====
 

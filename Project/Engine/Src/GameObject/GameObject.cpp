@@ -131,16 +131,29 @@ namespace CoreEngine
 
     // ===== 衝突イベント =====
 
-    // 接触の通知はコライダーの購読者へ配る（継承して受け取る口は持たない）
+    // 接触の通知は、コライダーの購読者へ配ってから有効なコンポーネントへ配る
+
+    namespace
+    {
+        /// @brief どちらかのコライダーがトリガーか（トリガーを含む接触は OnTrigger* で配る）
+        bool IsTriggerContact(const CollisionInfo& info)
+        {
+            return (info.selfCollider && info.selfCollider->IsTrigger())
+                || (info.otherCollider && info.otherCollider->IsTrigger());
+        }
+    }
 
     void GameObject::NotifyCollisionEnter(const CollisionInfo& info) {
         if (auto* colliders = GetComponent<ColliderComponent>()) { colliders->DispatchEnter(info); }
+        DispatchComponentContact(ContactPhase::Enter, IsTriggerContact(info), info);
     }
     void GameObject::NotifyCollisionStay(const CollisionInfo& info) {
         if (auto* colliders = GetComponent<ColliderComponent>()) { colliders->DispatchStay(info); }
+        DispatchComponentContact(ContactPhase::Stay, IsTriggerContact(info), info);
     }
     void GameObject::NotifyCollisionExit(const CollisionInfo& info) {
         if (auto* colliders = GetComponent<ColliderComponent>()) { colliders->DispatchExit(info); }
+        DispatchComponentContact(ContactPhase::Exit, IsTriggerContact(info), info);
     }
 
     // ===== 名前 / シリアライズ =====
