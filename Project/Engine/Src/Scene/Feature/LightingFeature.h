@@ -14,6 +14,9 @@ namespace CoreEngine
     ///          （エディタでの削除後も安全にアクセスできる）。
     class LightingFeature : public ISceneFeature {
     public:
+        /// @brief 既定の太陽の空（大気散乱）輝度スケール
+        static constexpr float kDefaultSunAtmosphereIntensity = 20.0f;
+
         const char* GetName() const override { return "Lighting"; }
 
         void Initialize(SceneContext& ctx) override;

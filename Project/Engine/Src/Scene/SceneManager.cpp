@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "SceneManager.h"
 #include "Scene/DataScene.h"
+#include "Scene/SceneSaveSystem.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Light/LightManager.h"
@@ -22,6 +23,13 @@ namespace CoreEngine
         // シーントランジションの初期化
         sceneTransition_ = std::make_unique<SceneTransition>();
         sceneTransition_->Initialize(engine);
+
+        // 保存データを持つシーンは、C++ のクラスが無くても開けるようにする
+        for (const std::string& name : SceneSaveSystem::ListSavedScenes()) {
+            if (!HasScene(name)) {
+                RegisterDataScene(name);
+            }
+        }
     }
 
     void SceneManager::SetInitialScene(const std::string& name) {
