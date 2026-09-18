@@ -86,6 +86,9 @@ public:
     /// @return 現在のシーン名（シーンが無い場合は"None"）
     std::string GetCurrentSceneName() const;
 
+    /// @brief 今のシーン（読み込みの途中は nullptr のことがある）
+    IScene* GetCurrentScene() const { return currentScene_.get(); }
+
     /// @brief 登録されているすべてのシーン名を取得
     /// @return シーン名のリスト
     std::vector<std::string> GetAllSceneNames() const;

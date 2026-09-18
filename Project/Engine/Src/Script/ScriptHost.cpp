@@ -222,7 +222,7 @@ namespace CoreEngine
         configured = Script::RegisterMathBinding(engine_) && configured;
         configured = Script::RegisterTimeBinding(engine_) && configured;
         configured = Script::RegisterGameObjectBinding(engine_) && configured;
-        configured = Script::RegisterPhysicsBinding(engine_) && configured;
+        configured = Script::RegisterPhysicsBinding(engine_, services.engine) && configured;
         configured = Script::RegisterInputBinding(engine_, services.input) && configured;
         if (!services.input) {
             logger.Logf(LogLevel::Warn, LogCategory::Script, "入力が見つからないので、スクリプトの Input は常に押されていないを返します");
@@ -237,7 +237,7 @@ namespace CoreEngine
         configured = Script::RegisterSceneBinding(engine_, services.engine) && configured;
         configured = Script::RegisterRenderingBinding(engine_, services.engine) && configured;
         if (!services.engine) {
-            logger.Logf(LogLevel::Warn, LogCategory::Script, "エンジンが見つからないので、スクリプトの Scene・Rendering・Font は何もしません");
+            logger.Logf(LogLevel::Warn, LogCategory::Script, "エンジンが見つからないので、スクリプトの Scene・Rendering・Font・Physics は何もしません");
         }
         configured = Script::RegisterSessionBinding(engine_) && configured;
         configured = Script::RegisterRandomBinding(engine_) && configured;
