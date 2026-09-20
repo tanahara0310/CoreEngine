@@ -311,6 +311,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Utility\CVar\CVar.cpp" />
     <ClCompile Include="Engine\Src\Utility\CVar\CVarConsole.cpp" />
     <ClCompile Include="Engine\Src\Utility\CVar\CVarRegistry.cpp" />
+    <ClCompile Include="Engine\Src\Utility\CVar\CVarScope.cpp" />
     <ClCompile Include="Engine\Src\Utility\CVar\CVarSerialization.cpp" />
     <ClCompile Include="Engine\Src\Utility\CVar\CVarUndoStack.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\CVarPanel.cpp" />
@@ -485,6 +486,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Editor\Scene\SceneDebugEditor.cpp" />
     <ClCompile Include="Engine\Src\Scene\DataScene.cpp" />
     <ClCompile Include="Engine\Src\Scene\PrefabSystem.cpp" />
+    <ClCompile Include="Engine\Src\Scene\SceneEnvironmentIO.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneSaveSystem.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneTransition.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Model.cpp" />
@@ -1227,6 +1229,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Utility\CVar\CVar.h" />
     <ClInclude Include="Engine\Src\Utility\CVar\CVarConsole.h" />
     <ClInclude Include="Engine\Src\Utility\CVar\CVarRegistry.h" />
+    <ClInclude Include="Engine\Src\Utility\CVar\CVarScope.h" />
     <ClInclude Include="Engine\Src\Utility\CVar\CVarSerialization.h" />
     <ClInclude Include="Engine\Src\Utility\CVar\CVarUndoStack.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\CVarPanel.h" />
@@ -1524,6 +1527,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Editor\Scene\PrefabEditing.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\SceneDebugEditor.h" />
     <ClInclude Include="Engine\Src\Scene\PrefabSystem.h" />
+    <ClInclude Include="Engine\Src\Scene\SceneEnvironmentIO.h" />
     <ClInclude Include="Engine\Src\Scene\SceneSaveSystem.h" />
     <ClInclude Include="Engine\Src\Scene\SceneTransition.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Model.h" />

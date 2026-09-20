@@ -14,6 +14,7 @@
 #include "Math/MathCore.h"
 
 #include <d3d12.h>
+#include <string>
 #include <vector>
 #include <wrl.h>
 
@@ -126,6 +127,12 @@ namespace CoreEngine
         /// @brief ペイントレイヤをファイルへ保存する（ブラシストローク終了時にエディタが呼ぶ）
         void SaveWeatherPaint() const;
 
+        /// @brief 配置ペイントの保存先を切り替えて読み直す
+        /// @param path 新しい保存先（空ならペイント無しの状態にする）
+        /// @details 雲の配置はシーンごとの画なので、シーンを開くときに切り替える。
+        ///          前の保存先のファイルには触らない。
+        void SetWeatherPaintPath(const std::string& path);
+
         /// @brief 最後の Update 時点のカメラ位置（配置エディタの現在地マーカー用）
         const Vector3& GetCameraWorldPosition() const { return cameraWorldPos_; }
 
@@ -189,6 +196,9 @@ namespace CoreEngine
         /// @brief ペイントレイヤをファイルから復元する（無ければ何もしない）
         void LoadWeatherPaint();
 
+        /// @brief CPU 側ペイント配列を空にして GPU へ反映する（保存ファイルには触らない）
+        void ResetWeatherPaintBuffer();
+
         /// @brief CPU 側ペイント配列を GPU の UPLOAD バッファへ反映し再生成を要求する
         void UploadWeatherPaint();
 
@@ -241,6 +251,9 @@ namespace CoreEngine
         /// ペイントレイヤの CPU 側実体（512²×RGBA8。保存/復元とブラシ合成の基準）
         std::vector<uint8_t> weatherPaintCpu_;
         bool weatherPaintUsed_ = false;
+
+        /// @brief 配置ペイントの保存先（シーンを開くときに切り替える。空なら保存しない）
+        std::string weatherPaintPath_;
 
         // 各 GPU ジョブの記録担当（状態を持つのはノイズ生成のダーティ管理だけ）
         CloudNoiseBaker noiseBaker_{};

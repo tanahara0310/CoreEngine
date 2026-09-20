@@ -2,6 +2,9 @@
 
 #include "ISceneFeature.h"
 
+#include <chrono>
+#include <cstdint>
+
 namespace CoreEngine
 {
     class SkyBoxComponent;
@@ -34,6 +37,13 @@ namespace CoreEngine
         ///          カメラ情報を反映する（LUT 生成・Aerial Perspective の有効化トリガ）。
         void UpdateAtmosphere(SceneContext& ctx);
 
+#ifdef CORE_EDITOR
+        /// @brief 触った少し後に環境をシーンへ書く
+        /// @details CVars.json へ自動保存していた頃と同じ間合い。動かしている間は書かず、
+        ///          手を止めてから 1 回だけ書く。
+        void AutoSaveEnvironment(SceneContext& ctx);
+#endif
+
         /// @brief フォグの毎フレーム更新
         /// @details フォグは空・大気を必要としないので、SkyBox が無いシーンでも呼ぶ。
         ///          FogManager::Update が「このフレームはフォグを使う」フラグを立てる。
@@ -41,5 +51,12 @@ namespace CoreEngine
 
         // 既定背景の SkyBox（所有権は GameObjectManager。Finalize でポインタをクリアする）
         SkyBoxComponent* skyBox_ = nullptr;
+
+#ifdef CORE_EDITOR
+        // 環境の変更を見張るための控え
+        uint64_t lastEnvironmentRevision_ = 0;
+        bool environmentDirty_ = false;
+        std::chrono::steady_clock::time_point lastEnvironmentChange_{};
+#endif
     };
 }

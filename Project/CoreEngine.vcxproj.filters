@@ -394,6 +394,9 @@
     <ClCompile Include="Engine\Src\Utility\CVar\CVarRegistry.cpp">
       <Filter>Engine\Src\Utility\CVar</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\CVar\CVarScope.cpp">
+      <Filter>Engine\Src\Utility\CVar</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Utility\CVar\CVarSerialization.cpp">
       <Filter>Engine\Src\Utility\CVar</Filter>
     </ClCompile>
@@ -914,6 +917,9 @@
       <Filter>Engine\Src\Scene</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Scene\PrefabSystem.cpp">
+      <Filter>Engine\Src\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Scene\SceneEnvironmentIO.cpp">
       <Filter>Engine\Src\Scene</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Scene\SceneSaveSystem.cpp">
@@ -1941,6 +1947,9 @@
     <ClInclude Include="Engine\Src\Utility\CVar\CVarRegistry.h">
       <Filter>Engine\Src\Utility\CVar</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\CVar\CVarScope.h">
+      <Filter>Engine\Src\Utility\CVar</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Utility\CVar\CVarSerialization.h">
       <Filter>Engine\Src\Utility\CVar</Filter>
     </ClInclude>
@@ -2830,6 +2839,9 @@
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Scene\PrefabSystem.h">
+      <Filter>Engine\Src\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Scene\SceneEnvironmentIO.h">
       <Filter>Engine\Src\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Scene\SceneSaveSystem.h">

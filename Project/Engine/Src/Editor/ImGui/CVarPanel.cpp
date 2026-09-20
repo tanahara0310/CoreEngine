@@ -5,6 +5,7 @@
 
 #include "Utility/CVar/CVar.h"
 #include "Utility/CVar/CVarRegistry.h"
+#include "Utility/CVar/CVarScope.h"
 #include "Utility/CVar/CVarUndoStack.h"
 #include "Editor/ImGui/Wrappers/ImGuiInput.h"
 #include "Editor/ImGui/Wrappers/ImGuiLayout.h"
@@ -117,6 +118,10 @@ namespace CoreEngine
             // 分からないため、既定値をここで常に確認できるようにする
             ImGui::Separator();
             ImGui::TextDisabled("既定値: %s", cvar->DefaultToString().c_str());
+            // 同じ項目でもシーンごとに違う値になりうるので、持ち主をここで知らせる
+            if (CVarScopes::IsSceneOwned(cvar->GetName())) {
+                ImGui::TextDisabled("保存先: 今のシーン（_environment.json）");
+            }
             // スライダーから移行したので、微調整・直接入力のやり方をここで案内する
             if (const char* hint = DragHint(cvar->GetType())) {
                 ImGui::TextDisabled("%s", hint);
