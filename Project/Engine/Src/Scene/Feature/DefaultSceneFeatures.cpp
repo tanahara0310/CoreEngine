@@ -63,7 +63,7 @@ namespace CoreEngine
         Add<EnvironmentFeature>(features);
 
         // 既定の床。空（Environment）と対になる「必ずある地面」で、
-        // 生成はシーンの OnInitialize 完了後（PostSceneInitialize）に行われる
+        // 生成はシーンのオブジェクトが出そろった後（PostSceneInitialize）に行われる
         Add<GroundFeature>(features);
 
         // ここから下は「そのフェーズの全 Feature が終わってから 1 回だけ」動く。

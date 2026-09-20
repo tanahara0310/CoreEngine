@@ -7,7 +7,8 @@ namespace CoreEngine
     class SkyBoxComponent;
 
     /// @brief 既定の環境（空・大気散乱・雲）を管理する Feature
-    /// @details PostSceneInitialize で SkyBox を採用（未生成なら自動生成）し、
+    /// @details シーンのオブジェクトが出そろった後（PostSceneInitialize）に SkyBox を
+    ///          採用（未生成なら自動生成）し、
     ///          PostLogic で大気散乱 → 雲の順に毎フレーム反映する。
     /// @note 地平線より下の地面は大気散乱そのものが描く（Sky-View LUT の地表反射項）。
     class EnvironmentFeature : public ISceneFeature {
