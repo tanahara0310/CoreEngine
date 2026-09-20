@@ -63,9 +63,11 @@ namespace CoreEngine
         /// @brief シーン初期化時（派生シーンの OnInitialize() より前）
         virtual void Initialize(SceneContext&) {}
 
-        /// @brief OnInitialize() 完了後・シーン JSON からの復元より前
-        /// @details シーンが生成したオブジェクトを見て挙動を決める Feature 用
-        ///          （SkyBox / 無限床の採用判定など）。
+        /// @brief シーンのオブジェクトが出そろった後
+        /// @details シーンのコードが作ったオブジェクトと、シーン JSON から復元したオブジェクトの
+        ///          両方を見て挙動を決める Feature 用（SkyBox / 無限床の採用判定など）。
+        /// @note 復元より前に置きたい処理——保存データで値を上書きされるオブジェクトの生成など——は
+        ///       Initialize() で行うこと（水面がこの形）。
         virtual void PostSceneInitialize(SceneContext&) {}
 
         /// @brief 毎フレーム更新（フェーズごとに 1 回ずつ呼ばれる）

@@ -23,12 +23,15 @@ namespace CoreEngine
 {
     void BaseScene::BuildLoadTasks(StartupSequence& sequence, EngineSystem* engine)
     {
+        // Feature の後処理は保存データの復元より後に置く。シーンのオブジェクトを見て
+        // 決める Feature（空の採用判定・既定床の生成）が、コードで作ったオブジェクトと
+        // 保存データで置いたオブジェクトの両方を見られるようにするため。
         sequence.Add("カメラと Feature の登録", [this, engine] { SetupSceneCore(engine); });
         sequence.Add("Feature の初期化", [this] { InitializeFeatures(); });
         BuildContentLoadTasks(sequence);
         sequence.Add("モデルの先読み", [this] { BeginModelPreload(); });
-        sequence.Add("Feature の後処理", [this] { RunPostSceneInitialize(); });
         sequence.Add("シーンデータの復元", [this] { BeginSceneDataRestore(); });
+        sequence.Add("Feature の後処理", [this] { RunPostSceneInitialize(); });
     }
 
     void BaseScene::BuildContentLoadTasks(StartupSequence& sequence)
@@ -61,8 +64,8 @@ namespace CoreEngine
 
     void BaseScene::RunPostSceneInitialize()
     {
-        // OnInitialize() 完了後の Feature フック
-        // （シーン生成済みオブジェクトを見る SkyBox の採用判定など）
+        // シーンのオブジェクトが出そろった後の Feature フック
+        // （SkyBox の採用判定・既定床の生成・カメラの構図の復元）
         RefreshFeatureContext();
         for (auto& entry : features_) {
             entry.feature->PostSceneInitialize(featureContext_);

@@ -61,7 +61,7 @@ namespace CoreEngine
     protected:
         /// @brief 派生クラスでオーバーライドするシーン固有の初期化処理
         /// @note SetSceneName() と全 CreateObject() をここで行う。
-        ///       完了後にシーン JSON からの復元が自動的に走る。
+        ///       完了後にシーン JSON からの復元が走り、そのあとで Feature の後処理が走る。
         virtual void OnInitialize() {}
 
         /// @brief OnInitialize() をステップ列へ積む
@@ -109,7 +109,7 @@ namespace CoreEngine
         /// @brief シーン JSON が参照するモデルの並列先読みを開始する
         void BeginModelPreload();
 
-        /// @brief 全 Feature の PostSceneInitialize
+        /// @brief 全 Feature の PostSceneInitialize（シーンのオブジェクトが出そろった後）
         void RunPostSceneInitialize();
 
         /// @brief JSON からのシーン復元を開始する（1 体ずつフレームを跨いで進める）

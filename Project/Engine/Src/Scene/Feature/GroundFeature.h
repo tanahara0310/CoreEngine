@@ -24,7 +24,7 @@ namespace CoreEngine
         /// @brief Engine Settings に「Ground」パネルを登録する（デバッグビルドのみ）
         void Initialize(SceneContext& ctx) override;
 
-        /// @brief シーンの OnInitialize() 完了後に床オブジェクトを生成する
+        /// @brief シーンのオブジェクトが出そろった後に床オブジェクトを生成する
         /// @details シーン側が `BaseScene::SetDefaultGroundEnabled(false)` で抑止したかを
         ///          見てから作るので、`PostSceneInitialize` のタイミングでなければならない。
         void PostSceneInitialize(SceneContext& ctx) override;

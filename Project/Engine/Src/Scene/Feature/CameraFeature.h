@@ -33,7 +33,7 @@ namespace CoreEngine
         void Initialize(SceneContext& ctx) override;
 
         /// @brief シーンに保存されたカメラ状態を復元する
-        /// @details シーン側の OnInitialize が構図を決めた後に走る。ここで復元すると、
+        /// @details シーンのオブジェクトが出そろった後に走る。ここで復元すると、
         ///          エディタで詰めた構図がシーンのコードより優先される。
         void PostSceneInitialize(SceneContext& ctx) override;
 
