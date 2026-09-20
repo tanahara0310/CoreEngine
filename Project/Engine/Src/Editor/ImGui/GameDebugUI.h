@@ -91,6 +91,13 @@ namespace CoreEngine
         void RefreshEditorStatus();
 
     private:
+        /// @brief シーンを切り替える前に確かめる操作
+        enum class PendingSceneAction {
+            None,
+            Open,    ///< 別のシーンを開く
+            Create,  ///< 新しいシーンを作って開く
+        };
+
         EngineSystem* engine_ = nullptr;
         DockingUI* dockingUI_ = nullptr;
         SceneManager* sceneManager_ = nullptr;
@@ -110,6 +117,15 @@ namespace CoreEngine
         bool showStandaloneGameWindow_ = false; ///< ゲーム画面のみの独立ウィンドウ
         bool showProjectSettings_ = false;  ///< Project Settings ウィンドウの表示状態
         bool showAboutWindow_ = false;      ///< バージョン情報ウィンドウの表示状態
+
+        bool showNewSceneDialog_ = false;   ///< 新しいシーンの窓の表示状態
+        char newSceneName_[64] = {};        ///< 新しいシーンの名前
+        int  newSceneTemplate_ = 1;         ///< ひな形（0: 空 / 1: 基本）
+        std::string newSceneError_;         ///< 名前が使えないときの理由（空なら出さない）
+
+        PendingSceneAction pendingSceneAction_ = PendingSceneAction::None;
+        std::string pendingSceneName_;      ///< 開く／作るシーンの名前
+        int pendingSceneTemplate_ = 1;      ///< 作るときのひな形
         bool lastScriptOk_ = true;          ///< 前のフレームでスクリプトのコンパイルが通っていたか
 
 #ifdef CORE_EDITOR
@@ -140,6 +156,25 @@ namespace CoreEngine
 
         /// @brief バージョン情報のウィンドウ
         void DrawAboutWindow();
+
+        /// @brief 新しいシーンの窓（名前とひな形を決めて作る）
+        void DrawNewSceneDialog();
+
+        /// @brief 保存していない変更があるときの確認の窓
+        void DrawUnsavedChangesDialog();
+
+        /// @brief シーンを開く（保存していない変更があれば先に確認する）
+        void RequestOpenScene(const std::string& name);
+
+        /// @brief 新しいシーンを作って開く（保存していない変更があれば先に確認する）
+        void RequestCreateScene(const std::string& name, int templateIndex);
+
+        /// @brief 確認で「続ける」を選んだときに、待たせていた操作を行う
+        void RunPendingSceneAction();
+
+        /// @brief 新しいシーンを作って登録し、開く
+        /// @return 作れたら true（作れなければ newSceneError_ に理由が入る）
+        bool CreateAndOpenScene(const std::string& name, int templateIndex);
 
         /// @brief プロジェクトビュー（取れなければ nullptr）
         ProjectView* FindProjectView() const;
