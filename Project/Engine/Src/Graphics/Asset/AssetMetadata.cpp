@@ -105,18 +105,7 @@ namespace CoreEngine
         {
             log.Logf(LogLevel::Error, LogCategory::System, "{}",
                 "Failed to create meta file: " + log.PathToUtf8(metaFilePath));
-            return;
         }
-
-#ifdef _WIN32
-        // Windows: メタファイルを隠しファイルに設定
-        const std::wstring metaFilePathW(metaFilePath.wstring());
-        DWORD attributes = GetFileAttributesW(metaFilePathW.c_str());
-        if (attributes != INVALID_FILE_ATTRIBUTES)
-        {
-            SetFileAttributesW(metaFilePathW.c_str(), attributes | FILE_ATTRIBUTE_HIDDEN);
-        }
-#endif
     }
 
     bool AssetMetadata::LoadFromJSON(const std::filesystem::path& metaFilePath, std::string& outGuid, AssetType& outType)
