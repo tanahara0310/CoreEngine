@@ -74,10 +74,16 @@ namespace CoreEngine
         struct ManifestSettings {
             std::vector<std::string> features; ///< `features`：足す Feature の名前（並び順に足す）
             std::optional<bool> defaultGround; ///< `defaultGround`：既定の床を使うか（書かれていなければ空）
+
+            /// `collision.pairs`：当たるレイヤーの組み合わせ（書かれていなければ空＝エンジンの既定とシーンのコードのまま）
+            std::optional<std::vector<std::pair<std::string, std::string>>> collisionPairs;
         };
 
         /// @brief マニフェストの設定を読む（オブジェクトは生成しない）
         static ManifestSettings LoadManifestSettings(const std::string& sceneName);
+
+        /// @brief マニフェストのシーンの設定を書き換える（オブジェクトの一覧はそのまま）
+        void SaveManifestSettings(const ManifestSettings& settings);
 
         /// @brief 保存データを持つシーンの名前（`Application/Assets/Scenes/<名前>/_scene.json` があるフォルダ）
         /// @return 名前順

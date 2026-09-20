@@ -355,7 +355,7 @@
     <ClCompile Include="Engine\Src\Editor\Inspector\ColliderInspector.cpp">
       <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Editor\ImGui\CollisionMatrixPanel.cpp">
+    <ClCompile Include="Engine\Src\Editor\ImGui\SceneSettingsPanel.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Collision\CollisionConfig.cpp">
@@ -1893,7 +1893,7 @@
     <ClInclude Include="Engine\Src\Editor\Inspector\ColliderInspector.h">
       <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Editor\ImGui\CollisionMatrixPanel.h">
+    <ClInclude Include="Engine\Src\Editor\ImGui\SceneSettingsPanel.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Collision\CollisionConfig.h">

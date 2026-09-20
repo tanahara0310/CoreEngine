@@ -562,7 +562,65 @@ namespace CoreEngine
         if (const auto ground = manifest.find("defaultGround"); ground != manifest.end() && ground->is_boolean()) {
             settings.defaultGround = ground->get<bool>();
         }
+        if (const auto collision = manifest.find("collision");
+            collision != manifest.end() && collision->is_object()) {
+            const auto pairs = collision->find("pairs");
+            if (pairs != collision->end() && pairs->is_array()) {
+                std::vector<std::pair<std::string, std::string>> parsed;
+                for (const auto& entry : *pairs) {
+                    if (!entry.is_array() || entry.size() != 2 ||
+                        !entry[0].is_string() || !entry[1].is_string()) {
+                        continue;
+                    }
+                    parsed.emplace_back(entry[0].get<std::string>(), entry[1].get<std::string>());
+                }
+                settings.collisionPairs = std::move(parsed);
+            }
+        }
         return settings;
+    }
+
+    void SceneSaveSystem::SaveManifestSettings(const ManifestSettings& settings)
+    {
+        if (sceneName_.empty()) {
+            return;
+        }
+
+        auto& jm = JsonManager::GetInstance();
+        jm.CreateJsonDirectory(GetSceneDir());
+
+        // オブジェクトの一覧と、ここで扱わない項目はそのまま残す
+        json manifest = jm.FileExists(GetManifestPath()) ? jm.LoadJson(GetManifestPath()) : json::object();
+        if (!manifest.is_object()) {
+            manifest = json::object();
+        }
+        if (!manifest.contains("objects") || !manifest["objects"].is_array()) {
+            manifest["objects"] = json::array();
+        }
+
+        if (settings.features.empty()) {
+            manifest.erase("features");
+        } else {
+            manifest["features"] = settings.features;
+        }
+
+        if (settings.defaultGround) {
+            manifest["defaultGround"] = *settings.defaultGround;
+        } else {
+            manifest.erase("defaultGround");
+        }
+
+        if (settings.collisionPairs) {
+            json pairs = json::array();
+            for (const auto& [first, second] : *settings.collisionPairs) {
+                pairs.push_back(json::array({ first, second }));
+            }
+            manifest["collision"] = json{ { "pairs", std::move(pairs) } };
+        } else {
+            manifest.erase("collision");
+        }
+
+        jm.SaveJson(GetManifestPath(), manifest);
     }
 
     void SceneSaveSystem::BeginLoad(GameObjectManager* mgr)

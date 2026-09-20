@@ -8,7 +8,7 @@
 #include "Utility/FrameRate/Time.h"
 
 #ifdef CORE_EDITOR
-#include "Editor/ImGui/CollisionMatrixPanel.h"
+#include "Editor/ImGui/SceneSettingsPanel.h"
 #endif
 
 namespace CoreEngine
@@ -50,8 +50,7 @@ namespace CoreEngine
 
 #ifdef CORE_EDITOR
         // コリジョンマトリクス編集ウィンドウ（Engine Settings）。編集対象を現在のシーンへ向ける。
-        CollisionMatrixPanel::EnsureRegistered(ctx.engine);
-        CollisionMatrixPanel::SetActiveConfig(&collisionConfig_);
+        SceneSettingsPanel::EnsureRegistered(ctx.engine);
 #endif
     }
 
@@ -96,10 +95,6 @@ namespace CoreEngine
 
     void CollisionFeature::Finalize(SceneContext& ctx)
     {
-#ifdef CORE_EDITOR
-        // シーンと一緒に消える CollisionConfig を UI が指したままにしない
-        CollisionMatrixPanel::SetActiveConfig(nullptr);
-#endif
         // 破棄前に Line パスの登録を外す（登録したまま消すとダングリング）
         if (auto* pipeline = GetLinePipeline(ctx)) {
             pipeline->UnregisterLineSource(debugRenderer_.get());
