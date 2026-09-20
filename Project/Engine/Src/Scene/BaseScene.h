@@ -6,6 +6,7 @@
 #include "Collision/CollisionConfig.h"
 #include "Scene/Feature/ISceneFeature.h"
 #include <memory>
+#include <string_view>
 #include <vector>
 
 #include "Scene/SceneSaveSystem.h"
@@ -161,6 +162,11 @@ namespace CoreEngine
             }
             return nullptr;
         }
+
+        /// @brief 登録済みの Feature を名前（`ISceneFeature::GetName()`）で引く
+        /// @return 最初に見つかったもの。無ければ nullptr
+        /// @note 型が分からない経路（保存データの `features`）が、二重に足していないかを見るために使う。
+        ISceneFeature* FindFeature(std::string_view name) const;
 
     protected:
         /// @brief 空の GameObject を生成して登録する（コンポーネント化の標準的な入口）

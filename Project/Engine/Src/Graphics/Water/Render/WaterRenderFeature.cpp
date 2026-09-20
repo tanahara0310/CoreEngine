@@ -27,8 +27,11 @@
 #include "Graphics/Water/Simulation/FFTOceanSurfaceSimulator.h"
 #include "Graphics/Water/Simulation/GerstnerWaterSimulator.h"
 #include "Graphics/Water/Surface/WaterSurfaceComponent.h"
+#include "Scene/Feature/SceneFeatureRegistry.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
+
+SCENE_FEATURE_REGISTER("WaterRender", [] { return std::make_unique<CoreEngine::WaterRenderFeature>(); })
 
 namespace CoreEngine
 {
