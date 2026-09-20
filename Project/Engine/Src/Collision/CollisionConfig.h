@@ -11,6 +11,10 @@ class CollisionConfig {
 public:
    CollisionConfig();
 
+   /// @brief すべての組み合わせを衝突しないようにする
+   /// @note 保存データのマトリクスを当てる前に呼ぶ（保存された組み合わせだけを有効にするため）。
+   void DisableAll();
+
    /// @brief 指定したレイヤー間の衝突判定を有効/無効に設定
    /// @param a レイヤーA
    /// @param b レイヤーB

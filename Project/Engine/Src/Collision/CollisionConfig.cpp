@@ -20,6 +20,15 @@ CollisionConfig::CollisionConfig() {
    }
 }
 
+void CollisionConfig::DisableAll() {
+   for (int i = 0; i < kMaxLayers; ++i) {
+      for (int j = 0; j < kMaxLayers; ++j) {
+         matrix_[i][j] = false;
+      }
+      layerMasks_[i] = 0;
+   }
+}
+
 void CollisionConfig::SetCollisionEnabled(CollisionLayer a, CollisionLayer b, bool enable) {
    int ia = static_cast<int>(a);
    int ib = static_cast<int>(b);

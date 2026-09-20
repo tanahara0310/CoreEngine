@@ -6,7 +6,9 @@
 #include "Collision/CollisionConfig.h"
 #include "Scene/Feature/ISceneFeature.h"
 #include <memory>
+#include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "Scene/SceneSaveSystem.h"
@@ -58,6 +60,10 @@ namespace CoreEngine
 
         /// @brief オブジェクトの値を、保存ファイルではなくメモリの控えから戻すようにする
         void SetRestoreSnapshot(std::shared_ptr<const SceneSnapshot> snapshot) override { restoreSnapshot_ = std::move(snapshot); }
+
+        /// @brief 今のシーンの設定（足した Feature・既定の床・衝突マトリクス）をマニフェストへ書く
+        /// @note エディタがシーンを保存するときに呼ぶ。
+        void SaveSceneSettings();
 
     protected:
         /// @brief 派生クラスでオーバーライドするシーン固有の初期化処理
@@ -113,6 +119,15 @@ namespace CoreEngine
         /// @brief 全 Feature の PostSceneInitialize（シーンのオブジェクトが出そろった後）
         void RunPostSceneInitialize();
 
+        /// @brief マニフェストのシーンの設定を当てる（シーンのコードより後＝保存した値が勝つ）
+        void ApplyManifestSettings();
+
+        /// @brief 保存データの衝突マトリクスを当てる（書かれている組み合わせだけを有効にする）
+        void ApplyCollisionPairs(const std::vector<std::pair<std::string, std::string>>& pairs);
+
+        /// @brief 今のシーンの設定を集める
+        SceneSaveSystem::ManifestSettings CollectManifestSettings() const;
+
         /// @brief JSON からのシーン復元を開始する（1 体ずつフレームを跨いで進める）
         void BeginSceneDataRestore();
 
@@ -162,6 +177,9 @@ namespace CoreEngine
             }
             return nullptr;
         }
+
+        /// @brief 登録済みの Feature の名前（呼ばれる順）
+        std::vector<const char*> GetFeatureNames() const;
 
         /// @brief 登録済みの Feature を名前（`ISceneFeature::GetName()`）で引く
         /// @return 最初に見つかったもの。無ければ nullptr

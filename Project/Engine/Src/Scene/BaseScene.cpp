@@ -15,8 +15,10 @@
 #include "Scene/Feature/LightingFeature.h"
 #include "Scene/Feature/GroundFeature.h"
 #include "Scene/Feature/CollisionFeature.h"
+#include "Scene/Feature/SceneFeatureRegistry.h"
 #include "Utility/Logger/Logger.h"
 #include <algorithm>
+#include <utility>
 
 
 namespace CoreEngine
@@ -29,6 +31,7 @@ namespace CoreEngine
         sequence.Add("カメラと Feature の登録", [this, engine] { SetupSceneCore(engine); });
         sequence.Add("Feature の初期化", [this] { InitializeFeatures(); });
         BuildContentLoadTasks(sequence);
+        sequence.Add("シーンの設定", [this] { ApplyManifestSettings(); });
         sequence.Add("モデルの先読み", [this] { BeginModelPreload(); });
         sequence.Add("シーンデータの復元", [this] { BeginSceneDataRestore(); });
         sequence.Add("Feature の後処理", [this] { RunPostSceneInitialize(); });
@@ -60,6 +63,113 @@ namespace CoreEngine
             entry.feature->Initialize(featureContext_);
         }
         featuresInitialized_ = true;
+    }
+
+    void BaseScene::ApplyManifestSettings()
+    {
+        const SceneSaveSystem::ManifestSettings settings =
+            SceneSaveSystem::LoadManifestSettings(GetSceneName());
+        Logger& log = Logger::GetInstance();
+
+        if (settings.defaultGround) {
+            SetDefaultGroundEnabled(*settings.defaultGround);
+        }
+
+        for (const std::string& name : settings.features) {
+            std::unique_ptr<ISceneFeature> feature = SceneFeatureRegistry::Create(name);
+            if (!feature) {
+                std::string available;
+                for (const std::string& registered : SceneFeatureRegistry::GetNames()) {
+                    if (!available.empty()) {
+                        available += ", ";
+                    }
+                    available += registered;
+                }
+                log.Logf(LogLevel::Warn, LogCategory::System,
+                    "シーン {} の Feature {} は登録されていないので、足しません（足せるもの: {}）",
+                    GetSceneName(), name, available);
+                continue;
+            }
+            if (FindFeature(feature->GetName())) {
+                log.Logf(LogLevel::Warn, LogCategory::System,
+                    "シーン {} の Feature {} は既にあるので、足しません", GetSceneName(), name);
+                continue;
+            }
+            AddFeature(std::move(feature));
+            log.Logf(LogLevel::Info, LogCategory::System,
+                "シーン {} に Feature {} を足しました", GetSceneName(), name);
+        }
+
+        if (settings.collisionPairs) {
+            ApplyCollisionPairs(*settings.collisionPairs);
+        }
+    }
+
+    void BaseScene::ApplyCollisionPairs(const std::vector<std::pair<std::string, std::string>>& pairs)
+    {
+        auto* const collision = GetFeature<CollisionFeature>();
+        if (!collision) {
+            return;
+        }
+
+        // 保存データが全部を決める。書かれていない組み合わせは当たらない
+        CollisionConfig& config = collision->GetConfig();
+        config.DisableAll();
+        for (const auto& [first, second] : pairs) {
+            CollisionLayer a{};
+            CollisionLayer b{};
+            if (!TryParseCollisionLayer(first, a) || !TryParseCollisionLayer(second, b)) {
+                Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
+                    "シーン {} の衝突の組み合わせ「{} と {}」に知らないレイヤーがあるので、飛ばします",
+                    GetSceneName(), first, second);
+                continue;
+            }
+            config.SetCollisionEnabled(a, b, true);
+        }
+    }
+
+    SceneSaveSystem::ManifestSettings BaseScene::CollectManifestSettings() const
+    {
+        SceneSaveSystem::ManifestSettings settings;
+
+        // 名前で足せる Feature だけを書く（既定で全シーンに入るものは書かない）
+        const std::vector<std::string> registered = SceneFeatureRegistry::GetNames();
+        for (const auto& entry : features_) {
+            const char* const name = entry.feature->GetName();
+            if (name && std::find(registered.begin(), registered.end(), name) != registered.end()) {
+                settings.features.emplace_back(name);
+            }
+        }
+
+        if (const auto* ground = GetFeature<GroundFeature>()) {
+            settings.defaultGround = !ground->IsSuppressed();
+        }
+
+        if (auto* const collision = GetFeature<CollisionFeature>()) {
+            const CollisionConfig& config = collision->GetConfig();
+            std::vector<std::pair<std::string, std::string>> pairs;
+            // 対称なので下三角だけを書く
+            for (int row = 0; row < CollisionConfig::kMaxLayers; ++row) {
+                for (int col = 0; col <= row; ++col) {
+                    const auto a = static_cast<CollisionLayer>(row);
+                    const auto b = static_cast<CollisionLayer>(col);
+                    if (config.IsCollisionEnabled(a, b)) {
+                        pairs.emplace_back(ToString(a), ToString(b));
+                    }
+                }
+            }
+            settings.collisionPairs = std::move(pairs);
+        }
+
+        return settings;
+    }
+
+    void BaseScene::SaveSceneSettings()
+    {
+        if (!sceneSaveSystem_ || GetSceneName().empty()) {
+            return;
+        }
+        sceneSaveSystem_->SaveManifestSettings(CollectManifestSettings());
     }
 
     void BaseScene::RunPostSceneInitialize()
@@ -229,6 +339,16 @@ namespace CoreEngine
         auto obj = std::make_unique<GameObject>();
         obj->SetName(name);
         return gameObjectManager_.AddObject(std::move(obj));
+    }
+
+    std::vector<const char*> BaseScene::GetFeatureNames() const
+    {
+        std::vector<const char*> names;
+        names.reserve(features_.size());
+        for (const auto& entry : features_) {
+            names.push_back(entry.feature->GetName());
+        }
+        return names;
     }
 
     ISceneFeature* BaseScene::FindFeature(std::string_view name) const

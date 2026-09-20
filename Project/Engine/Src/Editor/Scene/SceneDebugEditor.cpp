@@ -17,7 +17,9 @@
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "GameObject/Component/Transform/ITransformSource.h"
+#include "Scene/BaseScene.h"
 #include "Scene/PrefabSystem.h"
+#include "Scene/SceneManager.h"
 #include "Scene/SceneSaveSystem.h"
 #include "Editor/Command/EditorCommand.h"
 #include "Editor/Scene/EditorSceneAccess.h"
@@ -339,6 +341,12 @@ namespace CoreEngine
         }
 
         saveSystem_->SaveScene(gameObjectManager_);
+
+        // Feature・既定の床・衝突マトリクスもシーンの一部として書く
+        SceneManager* const sceneManager = engine_ ? engine_->GetSceneManager() : nullptr;
+        if (auto* const scene = sceneManager ? dynamic_cast<BaseScene*>(sceneManager->GetCurrentScene()) : nullptr) {
+            scene->SaveSceneSettings();
+        }
 
         // カメラの構図もシーンの一部として一緒に保存する。
         // これが無いと、エディタで詰めた画がアプリを閉じるたびに消える。

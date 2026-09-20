@@ -298,7 +298,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Collision\BroadPhase\UniformGridBroadPhase.cpp" />
     <ClCompile Include="Engine\Src\Collision\Debug\ColliderDebugRenderer.cpp" />
     <ClCompile Include="Engine\Src\Editor\Inspector\ColliderInspector.cpp" />
-    <ClCompile Include="Engine\Src\Editor\ImGui\CollisionMatrixPanel.cpp" />
+    <ClCompile Include="Engine\Src\Editor\ImGui\SceneSettingsPanel.cpp" />
     <ClCompile Include="Engine\Src\Collision\CollisionConfig.cpp" />
     <ClCompile Include="Engine\Src\Collision\CollisionWorld.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\EngineConfig.cpp" />
@@ -1211,7 +1211,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Collision\BroadPhase\UniformGridBroadPhase.h" />
     <ClInclude Include="Engine\Src\Collision\Debug\ColliderDebugRenderer.h" />
     <ClInclude Include="Engine\Src\Editor\Inspector\ColliderInspector.h" />
-    <ClInclude Include="Engine\Src\Editor\ImGui\CollisionMatrixPanel.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\SceneSettingsPanel.h" />
     <ClInclude Include="Engine\Src\Collision\CollisionConfig.h" />
     <ClInclude Include="Engine\Src\Collision\CollisionLayer.h" />
     <ClInclude Include="Engine\Src\Collision\CollisionWorld.h" />
