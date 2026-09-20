@@ -622,6 +622,42 @@ namespace CoreEngine
                 return false;
             }
             manifest["objects"].push_back("Sun");
+
+            // ゲームの視点をシーンのオブジェクトとして置く（構図は Transform が持つ）
+            const json camera = {
+                { "active", true },
+                { "name", "MainCamera" },
+                { "components", json::array({
+                    json{
+                        { "type", "Transform" },
+                        { "enabled", true },
+                        { "parameters", json{
+                            { "translate", json::array({ 0.0f, 3.0f, -30.0f }) },
+                            { "rotate", json::array({ 0.0f, 0.0f, 0.0f }) },
+                            { "scale", json::array({ 1.0f, 1.0f, 1.0f }) },
+                        } },
+                    },
+                    json{
+                        { "type", "Camera" },
+                        { "enabled", true },
+                        { "parameters", json{
+                            { "isMainCamera", true },
+                            { "projection", 0 },
+                            { "fov", 45.0f },
+                            { "nearClip", 0.1f },
+                            { "farClip", 1000.0f },
+                        } },
+                    },
+                }) },
+            };
+            if (!jm.SaveJson(MakeObjectPath(sceneName, "MainCamera"), camera)) {
+                if (error) {
+                    *error = "カメラのファイルを書けませんでした";
+                }
+                return false;
+            }
+            manifest["objects"].push_back("MainCamera");
+
             manifest["defaultGround"] = true;
         }
 

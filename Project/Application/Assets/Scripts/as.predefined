@@ -264,6 +264,7 @@ class GameObject {
 	UIImage@ get_uiImage() property;
 	UIImage@ SpawnUIImage(const string&in texturePath, const string&in name) const;
 	Animator@ get_animator() property;
+	Camera@ get_camera() property;
 	EulerTransform@ get_eulerTransform() property;
 	GpuParticleSystem@ get_gpuParticleSystem() property;
 	Light@ get_light() property;
@@ -488,6 +489,22 @@ class Animator {
 	bool Switch(const string&in, bool);
 	bool SwitchWithBlend(const string&in, float, bool);
 	string GetCurrentClipName();
+}
+class Camera {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	bool get_isMainCamera() const property;
+	void set_isMainCamera(bool) property;
+	int get_projection() const property;
+	void set_projection(int) property;
+	float get_fov() const property;
+	void set_fov(float) property;
+	float get_nearClip() const property;
+	void set_nearClip(float) property;
+	float get_farClip() const property;
+	void set_farClip(float) property;
 }
 class EulerTransform {
 	bool get_exists() const property;
