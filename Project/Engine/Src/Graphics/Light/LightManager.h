@@ -52,6 +52,10 @@ namespace CoreEngine
 
         // ==================== ライトの生成・破棄・参照 ====================
 
+        /// @brief 種類ごとの既定値（物理単位）を設定する
+        /// @note ライトの既定値の単一情報源。`LightComponent` も足した直後の値をここから取る。
+        static void SetupDefaults(Light& light, LightType type);
+
         /// @brief ライトを生成する
         /// @param type ライトの種類
         /// @param name エディタ表示名（空なら "Point 1" のように自動命名）
@@ -190,9 +194,6 @@ namespace CoreEngine
         /// @details 生成順を基本に、大気の太陽（無ければ先頭）を先頭へ移動した順。
         ///          GPU 転送・GetDirectionalLight・RT シャドウのインデックスがこの順で一致する。
         std::vector<uint16_t> CollectDirectionalSlotsCanonical() const;
-
-        /// @brief 種類ごとの既定値（物理単位）を設定する
-        static void SetupDefaults(Light& light, LightType type);
 
         std::vector<Slot> slots_;
 

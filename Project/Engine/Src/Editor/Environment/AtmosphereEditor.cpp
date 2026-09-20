@@ -3,8 +3,12 @@
 #include "AtmosphereEditor.h"
 
 #include "EngineSystem/EngineSystem.h"
+#include "GameObject/GameObject.h"
+#include "GameObject/GameObjectManager.h"
+#include "GameObject/Component/Light/LightComponent.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Light/LightManager.h"
+#include "Scene/SceneManager.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/PostEffect/Effect/PostEffectNames.h"
 #include "Graphics/PostEffect/Effect/ToneMapping/ToneMapping.h"
@@ -19,6 +23,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <memory>
 
 namespace CoreEngine {
 
@@ -27,6 +32,32 @@ namespace CoreEngine {
         constexpr const char* kEditorLabel = "Sky Atmosphere";
         /// @brief 大気パラメータの CVar 接頭辞（定義は AtmosphereManager.cpp）
         constexpr const char* kAtmosphereCVarPrefix = "r.Atmosphere";
+
+        /// @brief 今のシーンへ月のオブジェクトを作り、その実体を返す（作れなければ nullptr）
+        /// @note ライトはオブジェクトが持つので、ここで作った月もシーンに保存される。
+        Light* CreateMoonLightObject(EngineSystem* engine)
+        {
+            SceneManager* const sceneManager = engine ? engine->GetSceneManager() : nullptr;
+            GameObjectManager* const objects =
+                sceneManager ? sceneManager->GetCurrentGameObjectManager() : nullptr;
+            if (!objects) {
+                return nullptr;
+            }
+
+            auto owned = std::make_unique<GameObject>();
+            owned->SetName("Moon");
+            GameObject* const object = objects->AddObject(std::move(owned));
+            LightComponent* const component = object ? object->AddComponent<LightComponent>() : nullptr;
+            if (!component) {
+                return nullptr;
+            }
+
+            Light& light = component->Get();
+            light.type = LightType::Directional;
+            light.isAtmosphereMoon = true;
+            component->SyncWithManager();
+            return component->GetLight();
+        }
     }
 
     void AtmosphereEditor::Initialize(EngineSystem& engine)
@@ -90,12 +121,8 @@ namespace CoreEngine {
 
         Light* moon = lightManager->GetAtmosphereMoonLight();
         if (!moon && settings.enabled) {
-            // 月ライトはオプトイン。初回有効化時に第2ディレクショナルライトとして生成する
-            LightHandle moonHandle = lightManager->CreateLight(LightType::Directional, "Moon");
-            moon = lightManager->GetLight(moonHandle);
-            if (moon) {
-                moon->isAtmosphereMoon = true;
-            }
+            // 月ライトはオプトイン。初回有効化時に第2ディレクショナルライトのオブジェクトを作る
+            moon = CreateMoonLightObject(engine_);
         }
         if (!moon) {
             return;

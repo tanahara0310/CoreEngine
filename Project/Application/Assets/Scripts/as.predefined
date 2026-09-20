@@ -266,6 +266,7 @@ class GameObject {
 	Animator@ get_animator() property;
 	EulerTransform@ get_eulerTransform() property;
 	GpuParticleSystem@ get_gpuParticleSystem() property;
+	Light@ get_light() property;
 	Material@ get_material() property;
 	MeshRenderer@ get_meshRenderer() property;
 	ParticleSystem@ get_particleSystem() property;
@@ -512,6 +513,36 @@ class GpuParticleSystem {
 	void Play();
 	void Stop();
 	bool IsPlaying();
+}
+class Light {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	int get_type() const property;
+	void set_type(int) property;
+	Vector4 get_color() const property;
+	void set_color(const Vector4&in) property;
+	float get_intensity() const property;
+	void set_intensity(float) property;
+	Vector3 get_direction() const property;
+	void set_direction(const Vector3&in) property;
+	float get_range() const property;
+	void set_range(float) property;
+	float get_innerConeAngleDeg() const property;
+	void set_innerConeAngleDeg(float) property;
+	float get_outerConeAngleDeg() const property;
+	void set_outerConeAngleDeg(float) property;
+	float get_areaWidth() const property;
+	void set_areaWidth(float) property;
+	float get_areaHeight() const property;
+	void set_areaHeight(float) property;
+	bool get_isAtmosphereSun() const property;
+	void set_isAtmosphereSun(bool) property;
+	bool get_isAtmosphereMoon() const property;
+	void set_isAtmosphereMoon(bool) property;
+	float get_atmosphereIntensity() const property;
+	void set_atmosphereIntensity(float) property;
 }
 class Material {
 	bool get_exists() const property;

@@ -1,6 +1,5 @@
 #include "pch.h"
 #include "EnvironmentFeature.h"
-#include "LightingFeature.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Camera/Camera.h"
 #include "GameObject/GameObjectManager.h"
@@ -17,67 +16,18 @@
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
 
-namespace
-{
-    using namespace CoreEngine;
-
-    /// 太陽の進行方向（太陽→地表）の既定。控えがこれと違うときだけシーンの太陽へ当てる
-    constexpr Vector3 kDefaultSunDirection{ -0.45073172f, -0.65011942f, 0.61170721f };
-
-    /// 太陽の空（大気散乱）輝度スケールの既定（LightingFeature が作る太陽の値と同じ）
-    constexpr float kDefaultSunAtmosphereIntensity = LightingFeature::kDefaultSunAtmosphereIntensity;
-
-    /// @brief 太陽・月ライトの控え（エンジンの寿命。シーンを作り直しても引き継ぐ）
-    /// @details 値の実体は LightManager の Light（シーン寿命）にあり、毎フレーム実体から控える。
-    struct AtmosphereLightsCarry
-    {
-        Vector3 sunDirection = kDefaultSunDirection;
-        float sunAtmosphereIntensity = kDefaultSunAtmosphereIntensity;
-
-        bool moonEnabled = false;                          ///< 月（第2大気ライト）の有効/無効
-        Vector3 moonDirection{ 0.0f, -0.5f, 0.8660254f };  ///< 進行方向（高度角 30°・方位角 180°）
-        Vector3 moonColor{ 0.55f, 0.65f, 0.85f };          ///< 月光色（知覚的な青白さの美術値）
-        float moonSurfaceIntensity = 114.0f;               ///< サーフェス直接光 [lx]
-        float moonAtmosphereIntensity = 0.02f;             ///< 空（大気散乱）輝度スケール
-    };
-
-    AtmosphereLightsCarry& Carry()
-    {
-        static AtmosphereLightsCarry carry;
-        return carry;
-    }
-
-    /// @brief ゼロベクトル等の不正値を弾いて正規化する
-    Vector3 SafeDirection(const Vector3& dir, const Vector3& fallback)
-    {
-        const float lengthSq = dir.x * dir.x + dir.y * dir.y + dir.z * dir.z;
-        if (lengthSq < 1e-8f) {
-            return fallback;
-        }
-        return CoreEngine::Normalize(dir);
-    }
-}
-
 namespace CoreEngine
 {
     void EnvironmentFeature::PostSceneInitialize(SceneContext& ctx)
     {
-        // シーンが SkyBox を生成していない場合のみ自動生成するため OnInitialize() の後に行う
+        // シーンが SkyBox を生成していない場合のみ自動生成するため、オブジェクトが出そろった後に行う
         SetupDefaultSky(ctx);
-
-        // 保存済みの太陽・月設定を復元する。ライト（LightingFeature 生成）と
-        // シーン OnInitialize の両方より後のこの時点で流し込むことで、
-        // 復元値が最終的な起点になる
-        RestoreAtmosphereLights(ctx);
     }
 
     void EnvironmentFeature::Update(SceneContext& ctx, SceneUpdatePhase phase)
     {
         switch (phase) {
         case SceneUpdatePhase::PostLogic:
-            // 太陽・月ライトの現在値を控える（エディタ・ギズモ・
-            // シーンコードのどこから変更されても拾えるよう、実体側から毎フレーム）
-            CaptureAtmosphereLights(ctx);
             // 大気散乱の更新（全ロジック更新後の最新の太陽・カメラ情報を反映する）
             UpdateAtmosphere(ctx);
             // フォグは空・大気の有無に依存しないので、大気更新の成否と無関係に呼ぶ
@@ -88,12 +38,8 @@ namespace CoreEngine
         }
     }
 
-    void EnvironmentFeature::Finalize(SceneContext& ctx)
+    void EnvironmentFeature::Finalize(SceneContext&)
     {
-        // 最後の状態を控えておく（最終フレームの Update 以降の変更を取りこぼさない）。
-        // ライトのクリア（SceneManager::DoChangeScene の ClearAllLights）より前に行う
-        CaptureAtmosphereLights(ctx);
-
         // 空は GameObjectManager が所有しているためポインタのみクリア
         skyBox_ = nullptr;
     }
@@ -119,75 +65,6 @@ namespace CoreEngine
         skyBox_ = object->AddComponent<SkyBoxComponent>();
         Logger::GetInstance().Infof(LogCategory::System,
             "BaseScene: 既定背景として大気散乱モードの SkyBox を自動生成");
-    }
-
-    void EnvironmentFeature::RestoreAtmosphereLights(SceneContext& ctx)
-    {
-        auto* lightManager = ctx.engine ? ctx.engine->GetService<LightManager>() : nullptr;
-        if (!lightManager) {
-            return;
-        }
-
-        // ===== 太陽（LightingFeature の既定ライトへのフォールバック込みで取得） =====
-        // 太陽ライトはシーン側が独自の向き・強度を設定していることがあるため、
-        // 「コード既定から変更されている項目」だけを上書きする。全項目を無条件に
-        // 流し込むと、保存していない項目のコード既定値でシーンの設定を潰してしまう
-        const AtmosphereLightsCarry& carry = Carry();
-        if (Light* sun = lightManager->GetAtmosphereSunLight()) {
-            if (carry.sunDirection != kDefaultSunDirection) {
-                sun->direction = SafeDirection(carry.sunDirection, sun->direction);
-            }
-            if (carry.sunAtmosphereIntensity != kDefaultSunAtmosphereIntensity) {
-                sun->atmosphereIntensity = carry.sunAtmosphereIntensity;
-            }
-            // 変化は AtmosphereManager::Update() が自動検知して Sky-View LUT を再生成する
-        }
-
-        // ===== 月（オプトイン。有効で保存されていればライトを生成して復元） =====
-        Light* moon = lightManager->GetAtmosphereMoonLight();
-        if (!moon && carry.moonEnabled) {
-            // AtmosphereEditor::ApplyMoonSettings と同じ手順で第2ディレクショナルライトを生成する
-            LightHandle moonHandle = lightManager->CreateLight(LightType::Directional, "Moon");
-            moon = lightManager->GetLight(moonHandle);
-            if (moon) {
-                moon->isAtmosphereMoon = true;
-            }
-        }
-        if (moon) {
-            // 月は大気の月として作られた時点でシーン固有の初期状態を持たないため、
-            // 太陽と違い全項目を無条件に流し込む
-            moon->enabled = carry.moonEnabled;
-            moon->direction = SafeDirection(carry.moonDirection, moon->direction);
-            moon->color = carry.moonColor;
-            moon->intensity = carry.moonSurfaceIntensity;
-            moon->atmosphereIntensity = carry.moonAtmosphereIntensity;
-        }
-    }
-
-    void EnvironmentFeature::CaptureAtmosphereLights(SceneContext& ctx)
-    {
-        auto* lightManager = ctx.engine ? ctx.engine->GetService<LightManager>() : nullptr;
-        if (!lightManager) {
-            return;
-        }
-
-        // 太陽のサーフェス照度・色は Lighting エディタ側の責務なので控えない
-        AtmosphereLightsCarry& carry = Carry();
-        if (const Light* sun = lightManager->GetAtmosphereSunLight()) {
-            carry.sunDirection = sun->direction;
-            carry.sunAtmosphereIntensity = sun->atmosphereIntensity;
-        }
-
-        if (const Light* moon = lightManager->GetAtmosphereMoonLight()) {
-            carry.moonEnabled = moon->enabled;
-            carry.moonDirection = moon->direction;
-            carry.moonColor = moon->color;
-            carry.moonSurfaceIntensity = moon->intensity;
-            carry.moonAtmosphereIntensity = moon->atmosphereIntensity;
-        } else {
-            // 月ライトが無いシーンでは無効として控える（色などは次回有効化用に維持）
-            carry.moonEnabled = false;
-        }
     }
 
     void EnvironmentFeature::UpdateAtmosphere(SceneContext& ctx)
