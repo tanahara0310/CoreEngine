@@ -12,6 +12,7 @@
 #include "Graphics/Water/Surface/WaterRenderResources.h"
 #include "Graphics/Water/Surface/WaterSurfaceTypes.h"
 #include "Graphics/Water/Surface/WaterShaderResourceBinder.h"
+#include "Reflection/Reflect.h"
 
 #include <d3d12.h>
 #include <memory>
@@ -32,6 +33,20 @@ namespace CoreEngine
         WaterSurfaceComponent(float size = 50.0f, uint32_t resolution = 64, bool useFFTOcean = false);
 
         const char* GetTypeName() const override { return "WaterSurface"; }
+
+        // 水の見た目そのもの（フレネル・光学係数・泡・波）は CVar と WaterRenderFeature が持つ。
+        // ここに出すのは、その水面 1 枚ごとに決めるものだけ
+        REFLECT_BEGIN(WaterSurfaceComponent, "水面")
+            REFLECT_PROPERTY(size_, "一辺の長さ", p.range = Range(1.0f, 20000.0f, 1.0f),
+                p.tooltip = "メッシュの大きさ [m]。シーンを読み込むときに効く")
+            REFLECT_ACCESSOR("resolution", "分割数", GetResolutionValue, SetResolutionValue,
+                p.range = Range(2.0f, 1024.0f, 1.0f),
+                p.tooltip = "XZ 方向の分割数。シーンを読み込むときに効く")
+            REFLECT_PROPERTY(useFFTOcean_, "FFT の海を使う",
+                p.tooltip = "外洋のうねり（FFT）で波を作る。切ると Gerstner 波になる")
+            REFLECT_PROPERTY(scrollSpeed_, "UV の流れる速さ", p.range = Speed(0.001f))
+            REFLECT_PROPERTY(uvTiling_, "UV の繰り返し", p.range = Speed(0.1f))
+        REFLECT_END()
 
         /// @brief トランスフォームとメッシュ描画を確保し、平面メッシュ・シェーダー・定数バッファを用意する
         void Awake() override;
@@ -164,6 +179,10 @@ namespace CoreEngine
 
         /// @brief メッシュの分割数（XZ 方向共通）を返す
         uint32_t GetResolution() const { return resolution_; }
+
+        /// @brief 分割数（記述子が扱える int で読み書きする）
+        int GetResolutionValue() const { return static_cast<int>(resolution_); }
+        void SetResolutionValue(int resolution) { resolution_ = static_cast<uint32_t>(resolution < 2 ? 2 : resolution); }
 
         /// @brief DXR 屈折用に現在の WaterConstants を取得する
         const WaterConstants& GetWaterConstants() const { return waterCB_; }

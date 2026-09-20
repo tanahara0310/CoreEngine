@@ -271,8 +271,10 @@ class GameObject {
 	MeshRenderer@ get_meshRenderer() property;
 	ParticleSystem@ get_particleSystem() property;
 	RectTransform@ get_rectTransform() property;
+	SkyBox@ get_skyBox() property;
 	SpriteRenderer@ get_spriteRenderer() property;
 	Text3DRenderer@ get_text3DRenderer() property;
+	WaterSurface@ get_waterSurface() property;
 }
 class Transform {
 	bool get_exists() const property;
@@ -619,6 +621,16 @@ class RectTransform {
 	int get_sortOrder() const property;
 	void set_sortOrder(int) property;
 }
+class SkyBox {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	Vector3 get_rotation() const property;
+	void set_rotation(const Vector3&in) property;
+	float get_environmentIntensity() const property;
+	void set_environmentIntensity(float) property;
+}
 class SpriteRenderer {
 	bool get_exists() const property;
 	bool get_enabled() const property;
@@ -684,6 +696,22 @@ class Text3DRenderer {
 	void set_billboard(int) property;
 	int get_depthMode() const property;
 	void set_depthMode(int) property;
+}
+class WaterSurface {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	float get_size() const property;
+	void set_size(float) property;
+	int get_resolution() const property;
+	void set_resolution(int) property;
+	bool get_useFFTOcean() const property;
+	void set_useFFTOcean(bool) property;
+	Vector2 get_scrollSpeed() const property;
+	void set_scrollSpeed(const Vector2&in) property;
+	Vector2 get_uvTiling() const property;
+	void set_uvTiling(const Vector2&in) property;
 }
 uint scan(const string&in str, ?&out...);
 string format(const string&in fmt, const ?&in...);

@@ -3,6 +3,7 @@
 #include "WaterSurfaceComponent.h"
 
 #include "GameObject/GameObject.h"
+#include "GameObject/Component/Core/ComponentFactory.h"
 #include "Graphics/Primitive/PlaneMeshGenerator.h"
 #include "Graphics/Material/MaterialInstance.h"
 #include "Graphics/Model/ModelManager.h"
@@ -14,6 +15,9 @@
 #include "Utility/Logger/Logger.h"
 #include <cmath>
 #include <filesystem>
+
+REFLECT_REGISTER(CoreEngine::WaterSurfaceComponent)
+COMPONENT_REGISTER(CoreEngine::WaterSurfaceComponent)
 
 namespace CoreEngine
 {

@@ -80,15 +80,44 @@ namespace CoreEngine
 
     void WaterRenderFeature::PostSceneInitialize(SceneContext& ctx)
     {
-        // 空気遠近感の適用可否は「シーンに空（大気散乱の SkyBox）があるか」で決まる。
-        // AtmosphereManager::IsAtmosphereActive() はフレーム後半まで立たないため、
-        // 空の有無そのものを見る（EnvironmentFeature が先に SkyBox を確定させている）。
         if (!ctx.gameObjectManager) {
             return;
         }
+
+        AdoptSceneWaterPlane(ctx);
+
+        // 空気遠近感の適用可否は「シーンに空（大気散乱の SkyBox）があるか」で決まる。
+        // AtmosphereManager::IsAtmosphereActive() はフレーム後半まで立たないため、
+        // 空の有無そのものを見る（EnvironmentFeature が先に SkyBox を確定させている）。
         if (auto* skyBox = ctx.gameObjectManager->FindFirstComponent<SkyBoxComponent>()) {
             skyBox_ = skyBox;
         }
+    }
+
+    void WaterRenderFeature::AdoptSceneWaterPlane(SceneContext& ctx)
+    {
+        // 保存データで置いた水面があれば、そちらを使ってこの Feature が作った水面は消す
+        // （結線は毎フレームの RefreshWaterSurfaceState が張り直す）
+        if (!ownsWaterPlane_ || !waterPlane_) {
+            return;
+        }
+
+        WaterSurfaceComponent* sceneWaterPlane = nullptr;
+        ctx.gameObjectManager->ForEachComponent<WaterSurfaceComponent>(
+            [&](WaterSurfaceComponent& component) {
+                if (&component != waterPlane_) {
+                    sceneWaterPlane = &component;
+                }
+            });
+        if (!sceneWaterPlane) {
+            return;
+        }
+
+        if (GameObject* const owner = waterPlane_->GetOwner()) {
+            owner->Destroy();
+        }
+        waterPlane_ = sceneWaterPlane;
+        ownsWaterPlane_ = false;
     }
 
     void WaterRenderFeature::Update(SceneContext& ctx, SceneUpdatePhase phase)
@@ -202,7 +231,8 @@ namespace CoreEngine
             return;
         }
 
-        // シーン側が既に水面を置いていればそれを採用する（EnvironmentFeature と同じ規約）
+        // シーンのコードが既に水面を置いていればそれを採用する（EnvironmentFeature と同じ規約）。
+        // 保存データで置いた水面はこの時点ではまだ生まれていないので、PostSceneInitialize で見直す
         if (auto* existing = ctx.gameObjectManager->FindFirstComponent<WaterSurfaceComponent>()) {
             waterPlane_ = existing;
             return;
@@ -219,6 +249,7 @@ namespace CoreEngine
         if (!waterPlane_) {
             return;
         }
+        ownsWaterPlane_ = true;
 
         waterPlane_->GetTransform().translate = config_.translate;
         waterPlane_->GetTransform().scale = config_.scale;

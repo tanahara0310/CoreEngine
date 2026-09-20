@@ -4,6 +4,7 @@
 #include "Camera/Camera.h"
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/GameObject.h"
+#include "GameObject/Component/Core/ComponentFactory.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Render/DrawViewInfo.h"
 #include "Graphics/Render/RenderDomainContext.h"
@@ -13,6 +14,9 @@
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 
 #include <cstring>
+
+REFLECT_REGISTER(CoreEngine::SkyBoxComponent)
+COMPONENT_REGISTER(CoreEngine::SkyBoxComponent)
 
 namespace CoreEngine
 {

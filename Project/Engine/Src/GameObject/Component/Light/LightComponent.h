@@ -32,16 +32,18 @@ namespace CoreEngine
             REFLECT_ACCESSOR("color", "色", GetColor, SetColor,
                 p.type = ::CoreEngine::Reflection::PropertyType::Color,
                 p.flags = ::CoreEngine::Reflection::PropertyFlags::NoAlpha)
-            REFLECT_PROPERTY(light_.intensity, "強さ", Speed(10.0f))
-            REFLECT_PROPERTY(light_.direction, "向き", Range(-1.0f, 1.0f, 0.01f))
-            REFLECT_PROPERTY(light_.range, "届く距離", Range(0.0f, 1000.0f, 0.1f))
-            REFLECT_PROPERTY(light_.innerConeAngleDeg, "内側の角度", Range(0.0f, 90.0f, 0.5f))
-            REFLECT_PROPERTY(light_.outerConeAngleDeg, "外側の角度", Range(0.0f, 90.0f, 0.5f))
-            REFLECT_PROPERTY(light_.areaWidth, "発光面の幅", Range(0.0f, 100.0f, 0.1f))
-            REFLECT_PROPERTY(light_.areaHeight, "発光面の高さ", Range(0.0f, 100.0f, 0.1f))
+            REFLECT_PROPERTY(light_.intensity, "強さ", p.range = Speed(10.0f),
+                p.tooltip = "平行光源は照度 [lx]（快晴の太陽 = 100000）、点光源とスポットは光度 [cd]")
+            REFLECT_PROPERTY(light_.direction, "向き", p.range = Range(-1.0f, 1.0f, 0.01f))
+            REFLECT_PROPERTY(light_.range, "届く距離", p.range = Range(0.0f, 1000.0f, 0.1f))
+            REFLECT_PROPERTY(light_.innerConeAngleDeg, "内側の角度", p.range = Range(0.0f, 90.0f, 0.5f))
+            REFLECT_PROPERTY(light_.outerConeAngleDeg, "外側の角度", p.range = Range(0.0f, 90.0f, 0.5f))
+            REFLECT_PROPERTY(light_.areaWidth, "発光面の幅", p.range = Range(0.0f, 100.0f, 0.1f))
+            REFLECT_PROPERTY(light_.areaHeight, "発光面の高さ", p.range = Range(0.0f, 100.0f, 0.1f))
             REFLECT_PROPERTY(light_.isAtmosphereSun, "大気の太陽")
             REFLECT_PROPERTY(light_.isAtmosphereMoon, "大気の月")
-            REFLECT_PROPERTY(light_.atmosphereIntensity, "空の明るさ", Range(0.0f, 100.0f, 0.1f))
+            REFLECT_PROPERTY(light_.atmosphereIntensity, "空の明るさ", p.range = Range(0.0f, 100.0f, 0.1f),
+                p.tooltip = "空・雲の明るさ（無次元。太陽の目安 20）。0 で照度から自動換算")
         REFLECT_END()
 
         LightComponent();
