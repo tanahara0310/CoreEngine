@@ -15,6 +15,10 @@ namespace CoreEngine
     /// @brief 名前から Feature を作る表
     /// @details シーンの保存データ（`_scene.json` の `features`）に並べた名前から、`DataScene` が Feature を足す。
     ///          登録は Feature の .cpp のファイルスコープで `SCENE_FEATURE_REGISTER("名前", 作る関数)` と書く。
+    /// @note 名前は その Feature の `GetName()` と同じ綴りにすること
+    ///       （既にある Feature を二重に足していないかの照合に使う）。
+    /// @note 既定で全シーンに入る Feature（`CreateDefaultSceneFeatures()` の顔ぶれ）は登録しない。
+    ///       登録すると保存データから二重に足せてしまう。
     namespace SceneFeatureRegistry
     {
         using Creator = std::function<std::unique_ptr<ISceneFeature>()>;
@@ -42,6 +46,7 @@ namespace CoreEngine
 
 /// 対応する .cpp のファイルスコープで SCENE_FEATURE_REGISTER("名前", 作る関数) と書くと、
 /// シーンの保存データからその名前で Feature を足せるようになる。
+/// 例: SCENE_FEATURE_REGISTER("TimeOfDay", [] { return std::make_unique<TimeOfDayFeature>(); })
 #define SCENE_FEATURE_REGISTER(Name, CreatorFunction)                                          \
     namespace {                                                                                \
         const ::CoreEngine::AutoRegisterSceneFeature                                           \

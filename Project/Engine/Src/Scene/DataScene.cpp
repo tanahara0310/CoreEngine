@@ -7,7 +7,25 @@
 #include "Utility/Logger/Logger.h"
 
 #include <memory>
+#include <string>
 #include <utility>
+#include <vector>
+
+namespace
+{
+    /// @brief 名前を「, 」でつなぐ
+    std::string JoinNames(const std::vector<std::string>& names)
+    {
+        std::string text;
+        for (const std::string& name : names) {
+            if (!text.empty()) {
+                text += ", ";
+            }
+            text += name;
+        }
+        return text;
+    }
+}
 
 namespace CoreEngine
 {
@@ -28,10 +46,18 @@ namespace CoreEngine
             std::unique_ptr<ISceneFeature> feature = SceneFeatureRegistry::Create(name);
             if (!feature) {
                 Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
-                    "シーン {} の Feature {} は登録されていないので、足しません", sceneName_, name);
+                    "シーン {} の Feature {} は登録されていないので、足しません（足せるもの: {}）",
+                    sceneName_, name, JoinNames(SceneFeatureRegistry::GetNames()));
+                continue;
+            }
+            if (FindFeature(feature->GetName())) {
+                Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
+                    "シーン {} の Feature {} は既にあるので、足しません", sceneName_, name);
                 continue;
             }
             AddFeature(std::move(feature));
+            Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
+                "シーン {} に Feature {} を足しました", sceneName_, name);
         }
     }
 }

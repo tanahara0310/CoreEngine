@@ -231,6 +231,17 @@ namespace CoreEngine
         return gameObjectManager_.AddObject(std::move(obj));
     }
 
+    ISceneFeature* BaseScene::FindFeature(std::string_view name) const
+    {
+        for (const auto& entry : features_) {
+            const char* const featureName = entry.feature->GetName();
+            if (featureName && name == featureName) {
+                return entry.feature.get();
+            }
+        }
+        return nullptr;
+    }
+
     ISceneFeature* BaseScene::AddFeature(std::unique_ptr<ISceneFeature> feature, int priority)
     {
         if (!feature) {

@@ -7,6 +7,7 @@
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/PostEffect/Effect/PostEffectNames.h"
 #include "Graphics/PostEffect/Effect/ToneMapping/ToneMapping.h"
+#include "Scene/Feature/SceneFeatureRegistry.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/CVar/CVarRegistry.h"
 #include "Utility/FrameRate/Time.h"
@@ -114,6 +115,8 @@ namespace
         return (hours < 0.0f) ? hours + 24.0f : hours;
     }
 }
+
+SCENE_FEATURE_REGISTER("TimeOfDay", [] { return std::make_unique<CoreEngine::TimeOfDayFeature>(); })
 
 namespace CoreEngine
 {
