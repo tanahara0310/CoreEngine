@@ -10,6 +10,8 @@
 #include "Reflection/PropertySerializer.h"
 #include "Reflection/PropertyValue.h"
 #include "Reflection/TypeDescriptor.h"
+#include "Graphics/Light/Light.h"
+#include "Scene/Feature/LightingFeature.h"
 #include "Scene/PrefabSystem.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
@@ -537,6 +539,102 @@ namespace CoreEngine
         }
         std::sort(names.begin(), names.end());
         return names;
+    }
+
+    bool SceneSaveSystem::IsValidSceneName(const std::string& name, std::string* error)
+    {
+        const auto fail = [error](const char* reason) {
+            if (error) {
+                *error = reason;
+            }
+            return false;
+        };
+
+        if (name.empty()) {
+            return fail("名前を入れてください");
+        }
+        if (name.front() == '_') {
+            return fail("`_` で始まる名前は使えません（保存データの予約）");
+        }
+        if (name.find_first_of("\\/:*?\"<>|") != std::string::npos) {
+            return fail("\\ / : * ? \" < > | は使えません");
+        }
+        if (JsonManager::GetInstance().FileExists(MakeManifestPath(name))) {
+            return fail("同じ名前のシーンが既にあります");
+        }
+        if (error) {
+            error->clear();
+        }
+        return true;
+    }
+
+    bool SceneSaveSystem::CreateScene(const std::string& sceneName, SceneTemplate templateKind,
+                                      std::string* error)
+    {
+        if (!IsValidSceneName(sceneName, error)) {
+            return false;
+        }
+
+        auto& jm = JsonManager::GetInstance();
+        if (!jm.CreateJsonDirectory(MakeSceneDir(sceneName))) {
+            if (error) {
+                *error = "フォルダを作れませんでした";
+            }
+            return false;
+        }
+
+        json manifest = json::object();
+        manifest["objects"] = json::array();
+
+        if (templateKind == SceneTemplate::Basic) {
+            // 太陽をシーンのオブジェクトとして置く（値は LightingFeature の既定と同じ）
+            const json sun = {
+                { "active", true },
+                { "name", "Sun" },
+                { "components", json::array({
+                    json{
+                        { "type", "Transform" },
+                        { "enabled", true },
+                        { "parameters", json{
+                            { "translate", json::array({ 0.0f, 5.0f, 0.0f }) },
+                            { "rotate", json::array({ 0.0f, 0.0f, 0.0f }) },
+                            { "scale", json::array({ 1.0f, 1.0f, 1.0f }) },
+                        } },
+                    },
+                    json{
+                        { "type", "Light" },
+                        { "enabled", true },
+                        { "parameters", json{
+                            { "type", 0 },
+                            { "color", json::array({ 1.0f, 1.0f, 1.0f, 1.0f }) },
+                            { "intensity", LightUnits::kSunIlluminanceLux },
+                            { "direction", json::array({ -0.45073172f, -0.65011942f, 0.61170721f }) },
+                            { "isAtmosphereSun", true },
+                            { "atmosphereIntensity", LightingFeature::kDefaultSunAtmosphereIntensity },
+                        } },
+                    },
+                }) },
+            };
+            if (!jm.SaveJson(MakeObjectPath(sceneName, "Sun"), sun)) {
+                if (error) {
+                    *error = "太陽のファイルを書けませんでした";
+                }
+                return false;
+            }
+            manifest["objects"].push_back("Sun");
+            manifest["defaultGround"] = true;
+        }
+
+        if (!jm.SaveJson(MakeManifestPath(sceneName), manifest)) {
+            if (error) {
+                *error = "マニフェストを書けませんでした";
+            }
+            return false;
+        }
+
+        Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Resource,
+            "シーン {} を作りました", sceneName);
+        return true;
     }
 
     SceneSaveSystem::ManifestSettings SceneSaveSystem::LoadManifestSettings(const std::string& sceneName)

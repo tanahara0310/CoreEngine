@@ -89,6 +89,27 @@ namespace CoreEngine
         /// @return 名前順
         static std::vector<std::string> ListSavedScenes();
 
+        /// @brief 新しいシーンのひな形
+        enum class SceneTemplate {
+            Empty,  ///< 空（オブジェクトなし。床と空はエンジンの既定が入る）
+            Basic,  ///< 基本（太陽のオブジェクトと既定の床）
+        };
+
+        /// @brief シーン名として使えるか調べる
+        /// @param name 調べる名前
+        /// @param error 使えないときの理由（省略可）
+        /// @return 使えるなら true
+        /// @note 空・パスの区切りを含む・`_` で始まる・既に同じ名前があるものは使えない。
+        static bool IsValidSceneName(const std::string& name, std::string* error = nullptr);
+
+        /// @brief 新しいシーンのフォルダとマニフェストを作る
+        /// @param sceneName シーン名（フォルダ名になる）
+        /// @param templateKind ひな形
+        /// @param error 作れなかったときの理由（省略可）
+        /// @return 作れたら true
+        static bool CreateScene(const std::string& sceneName, SceneTemplate templateKind,
+                                std::string* error = nullptr);
+
         /// @brief シーン全体を保存（マニフェスト + 全オブジェクトの個別ファイル）
         /// @note マニフェストに載らなかったオブジェクトの JSON（名前が `_` で始まるものを除く）は消す。
         ///       削除の印が付いたオブジェクトは保存しない。

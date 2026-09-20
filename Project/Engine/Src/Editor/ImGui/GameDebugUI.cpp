@@ -18,6 +18,7 @@
 #include "EngineSystem/PlaybackState.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
 #include "Scene/SceneManager.h"
+#include "Scene/SceneSaveSystem.h"
 #include "Script/ScriptHost.h"
 #include "Script/ScriptSubsystem.h"
 #include "Utility/FrameRate/FrameRateController.h"
@@ -127,11 +128,20 @@ namespace CoreEngine
         const bool editing = PlaybackStateManager::GetInstance().IsEditing();
         constexpr const char* kStopFirst = "再生中は開けません。停止してから開いてください";
 
+        if (ImGui::MenuItem("新しいシーン…", nullptr, false, editing && sceneManager_ != nullptr)) {
+            newSceneName_[0] = '\0';
+            newSceneError_.clear();
+            showNewSceneDialog_ = true;
+        }
+        if (sceneManager_ && !editing && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::SetTooltip("%s", kStopFirst);
+        }
+
         if (sceneManager_ && ImGui::BeginMenu("シーンを開く", editing)) {
             const std::string current = sceneManager_->GetCurrentSceneName();
             for (const std::string& name : sceneManager_->GetAllSceneNames()) {
                 if (ImGui::MenuItem(name.c_str(), nullptr, name == current)) {
-                    sceneManager_->ChangeScene(name);
+                    RequestOpenScene(name);
                 }
             }
             ImGui::EndMenu();
@@ -564,6 +574,159 @@ namespace CoreEngine
         }
     }
 
+    void GameDebugUI::DrawNewSceneDialog()
+    {
+        constexpr const char* kTitle = "新しいシーン";
+        if (showNewSceneDialog_ && !ImGui::IsPopupOpen(kTitle)) {
+            ImGui::OpenPopup(kTitle);
+        }
+
+        ImGui::SetNextWindowSize(ImVec2(380.0f, 0.0f), ImGuiCond_FirstUseEver);
+        if (!ImGui::BeginPopupModal(kTitle, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            return;
+        }
+
+        UI::Hint("Application/Assets/Scenes の下にフォルダを作り、その場で開きます。");
+        ImGui::Separator();
+
+        UI::InputText("名前", newSceneName_, sizeof(newSceneName_));
+        ImGui::RadioButton("空", &newSceneTemplate_, 0);
+        UI::SameLine();
+        ImGui::RadioButton("基本（太陽と床）", &newSceneTemplate_, 1);
+
+        if (!newSceneError_.empty()) {
+            ImGui::TextColored(Editor::Theme::kError, "%s", newSceneError_.c_str());
+        }
+
+        ImGui::Separator();
+        if (ImGui::Button("作成")) {
+            std::string error;
+            if (SceneSaveSystem::IsValidSceneName(newSceneName_, &error)) {
+                newSceneError_.clear();
+                showNewSceneDialog_ = false;
+                ImGui::CloseCurrentPopup();
+                RequestCreateScene(newSceneName_, newSceneTemplate_);
+            } else {
+                newSceneError_ = error;
+            }
+        }
+        UI::SameLine();
+        if (ImGui::Button("やめる")) {
+            showNewSceneDialog_ = false;
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+
+    void GameDebugUI::DrawUnsavedChangesDialog()
+    {
+        constexpr const char* kTitle = "保存していない変更があります";
+        const bool waiting = pendingSceneAction_ != PendingSceneAction::None;
+        if (waiting && !ImGui::IsPopupOpen(kTitle)) {
+            ImGui::OpenPopup(kTitle);
+        }
+
+        if (!ImGui::BeginPopupModal(kTitle, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            return;
+        }
+
+        UI::Hint("このシーンの変更はまだ保存されていません。");
+        ImGui::Separator();
+
+        if (ImGui::Button("保存して続ける")) {
+            if (sceneDebugEditor_) {
+                sceneDebugEditor_->SaveScene();
+            }
+            ImGui::CloseCurrentPopup();
+            RunPendingSceneAction();
+        }
+        UI::SameLine();
+        if (ImGui::Button("保存せずに続ける")) {
+            ImGui::CloseCurrentPopup();
+            RunPendingSceneAction();
+        }
+        UI::SameLine();
+        if (ImGui::Button("やめる")) {
+            pendingSceneAction_ = PendingSceneAction::None;
+            pendingSceneName_.clear();
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+
+    void GameDebugUI::RequestOpenScene(const std::string& name)
+    {
+        if (!sceneManager_) {
+            return;
+        }
+        if (sceneDebugEditor_ && sceneDebugEditor_->IsSceneDirty()) {
+            pendingSceneAction_ = PendingSceneAction::Open;
+            pendingSceneName_ = name;
+            return;
+        }
+        sceneManager_->ChangeScene(name);
+    }
+
+    void GameDebugUI::RequestCreateScene(const std::string& name, int templateIndex)
+    {
+        if (!sceneManager_) {
+            return;
+        }
+        if (sceneDebugEditor_ && sceneDebugEditor_->IsSceneDirty()) {
+            pendingSceneAction_ = PendingSceneAction::Create;
+            pendingSceneName_ = name;
+            pendingSceneTemplate_ = templateIndex;
+            return;
+        }
+        CreateAndOpenScene(name, templateIndex);
+    }
+
+    void GameDebugUI::RunPendingSceneAction()
+    {
+        const PendingSceneAction action = pendingSceneAction_;
+        const std::string name = pendingSceneName_;
+        pendingSceneAction_ = PendingSceneAction::None;
+        pendingSceneName_.clear();
+
+        switch (action) {
+        case PendingSceneAction::Open:
+            if (sceneManager_) {
+                sceneManager_->ChangeScene(name);
+            }
+            break;
+        case PendingSceneAction::Create:
+            CreateAndOpenScene(name, pendingSceneTemplate_);
+            break;
+        default:
+            break;
+        }
+    }
+
+    bool GameDebugUI::CreateAndOpenScene(const std::string& name, int templateIndex)
+    {
+        if (!sceneManager_) {
+            return false;
+        }
+
+        const auto kind = (templateIndex == 0)
+            ? SceneSaveSystem::SceneTemplate::Empty
+            : SceneSaveSystem::SceneTemplate::Basic;
+
+        std::string error;
+        if (!SceneSaveSystem::CreateScene(name, kind, &error)) {
+            newSceneError_ = error;
+            showNewSceneDialog_ = true;   // 窓を開き直して理由を見せる
+            return false;
+        }
+
+        // 作ったシーンはその場で開けるようにする（再起動を待たせない）
+        sceneManager_->RegisterDataScene(name);
+        sceneManager_->ChangeScene(name);
+        return true;
+    }
+
     void GameDebugUI::DrawPanelGroupMenu(Editor::PanelGroup group, const char* label,
         const std::function<void()>& extraContent)
     {
@@ -609,6 +772,8 @@ namespace CoreEngine
         DrawPanelWindows();
         projectSettings_.Draw(showProjectSettings_);
         DrawAboutWindow();
+        DrawNewSceneDialog();
+        DrawUnsavedChangesDialog();
 
         if (showConsole_) ShowConsoleUI();
 
