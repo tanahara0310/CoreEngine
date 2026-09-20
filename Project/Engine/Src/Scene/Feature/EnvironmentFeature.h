@@ -29,16 +29,6 @@ namespace CoreEngine
         /// @brief 既定の空（大気散乱モードの SkyBox）のセットアップ
         void SetupDefaultSky(SceneContext& ctx);
 
-        /// @brief 控えている太陽・月ライトの設定をシーンのライトへ当てる
-        /// @details ライトはシーン寿命・控えはエンジン寿命のため、ライト生成後の
-        ///          PostSceneInitialize で一度だけ流し込む。
-        void RestoreAtmosphereLights(SceneContext& ctx);
-
-        /// @brief 現在の太陽・月ライトの状態を控える（毎フレーム）
-        /// @details エディタ・ギズモ・シーンコードのどこから書き換えられても、
-        ///          ここを通ることで次に作るシーンへ引き継がれる。
-        void CaptureAtmosphereLights(SceneContext& ctx);
-
         /// @brief 大気散乱システム（と雲）の毎フレーム更新
         /// @details SkyBox が大気散乱モードの場合のみ AtmosphereManager へ太陽情報と
         ///          カメラ情報を反映する（LUT 生成・Aerial Perspective の有効化トリガ）。

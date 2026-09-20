@@ -808,6 +808,9 @@
     <ClCompile Include="Engine\Src\GameObject\Component\Animation\SkeletonSocketComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Animation</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\Light\LightComponent.cpp">
+      <Filter>Engine\Src\GameObject\Component\Light</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\Component\Transform\TransformComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Transform</Filter>
     </ClCompile>
@@ -2679,6 +2682,9 @@
     <ClInclude Include="Engine\Src\GameObject\Component\Animation\AnimatorComponent.h">
       <Filter>Engine\Src\GameObject\Component\Animation</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\Light\LightComponent.h">
+      <Filter>Engine\Src\GameObject\Component\Light</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Transform\EulerTransformComponent.h">
       <Filter>Engine\Src\GameObject\Component\Transform</Filter>
     </ClInclude>
@@ -3882,6 +3888,9 @@
     </Filter>
     <Filter Include="Engine\Src\GameObject\Component\Core">
       <UniqueIdentifier>{74B1A113-B811-40A6-A9D1-A7192BC8431C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\GameObject\Component\Light">
+      <UniqueIdentifier>{0EA9EDE3-489E-46B8-AF55-B094DCDA4A5C}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\GameObject\Component\Render">
       <UniqueIdentifier>{91995376-8555-4326-8BF2-AE823BABD219}</UniqueIdentifier>
