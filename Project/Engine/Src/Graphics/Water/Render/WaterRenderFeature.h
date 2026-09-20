@@ -75,6 +75,10 @@ namespace CoreEngine
         /// @brief 水面オブジェクトをシーンから採用、無ければ生成する
         void AcquireWaterPlane(SceneContext& ctx);
 
+        /// @brief 保存データで置かれた水面があれば、そちらへ乗り換える
+        /// @note 保存データのオブジェクトは AcquireWaterPlane の時点ではまだ生まれていない。
+        void AdoptSceneWaterPlane(SceneContext& ctx);
+
         /// @brief 生成直後の水面マテリアル既定値を設定する
         void ConfigureDefaultMaterial() const;
 
@@ -105,6 +109,9 @@ namespace CoreEngine
 
         /// @brief 水面描画本体（所有権は GameObjectManager）
         WaterSurfaceComponent* waterPlane_ = nullptr;
+
+        /// この Feature が水面を作ったか（シーンが自前の水面を置いていたら引っ込める）
+        bool ownsWaterPlane_ = false;
 
         /// @brief 空気遠近感の適用可否判定に使う空（所有権は GameObjectManager）
         SkyBoxComponent* skyBox_ = nullptr;

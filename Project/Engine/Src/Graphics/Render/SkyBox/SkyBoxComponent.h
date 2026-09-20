@@ -3,6 +3,7 @@
 #include "GameObject/Component/Core/IComponent.h"
 #include "GameObject/Component/Render/IRenderableComponent.h"
 #include "Math/MathCore.h"
+#include "Reflection/Reflect.h"
 
 #include <array>
 #include <d3d12.h>
@@ -15,13 +16,19 @@ class SkyBoxRenderer;
 /// @brief 空（大気散乱）を描くコンポーネント
 /// @details 内向きの箱を独自の頂点バッファで描き、色は大気散乱（SkyAtmosphere.PS.hlsl）で決まる。
 ///          回転と環境光の強さは、IBL の回転と強さとして毎フレーム RenderManager へ渡す。
-/// @note 空は EnvironmentFeature がシーンに 1 つ作る（保存しない）ので、ファクトリには載せない。
+/// @note シーンが空を置いていなければ EnvironmentFeature が 1 つ作る（そちらは保存しない）。
+///       向きや環境光を変えたいシーンは、自分で空のオブジェクトを置くとその値が保存される。
 class SkyBoxComponent : public IComponent, public IRenderableComponent {
 public:
     SkyBoxComponent() = default;
     ~SkyBoxComponent() override;
 
     const char* GetTypeName() const override { return "SkyBox"; }
+
+    REFLECT_BEGIN(SkyBoxComponent, "空")
+        REFLECT_PROPERTY(rotation_, "向き", p.range = Speed(0.01f), p.displayScale = kDegreesPerRadian)
+        REFLECT_PROPERTY(environmentIntensity_, "環境光の強さ", p.range = Range(0.0f, 10.0f, 0.01f))
+    REFLECT_END()
 
     /// @brief 頂点・インデックス・定数バッファを作り、レンダラーを引く
     void Awake() override;
