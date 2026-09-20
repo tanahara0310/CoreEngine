@@ -2,16 +2,20 @@
 #include "CVarSerialization.h"
 #include "CVar.h"
 #include "CVarRegistry.h"
+#include "CVarScope.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include "externals/nlohmann/single_include/nlohmann/json.hpp"
 
 namespace CoreEngine
 {
     void CVarSerialization::Save(nlohmann::json& out, std::string_view prefix, bool skipDefaults,
-                                 std::string_view excludePrefix)
+                                 std::string_view excludePrefix, CVarScope scope)
     {
         for (const ICVar* cvar : CVarRegistry::Get().GetByPrefix(prefix)) {
             if (HasFlag(cvar->GetFlags(), CVarFlags::NoSave)) {
+                continue;
+            }
+            if (!CVarScopes::Matches(*cvar, scope)) {
                 continue;
             }
             if (skipDefaults && !cvar->IsModified()) {
@@ -53,10 +57,14 @@ namespace CoreEngine
         }
     }
 
-    void CVarSerialization::Load(const nlohmann::json& in, std::string_view prefix)
+    void CVarSerialization::Load(const nlohmann::json& in, std::string_view prefix,
+                                 CVarScope scope)
     {
         for (ICVar* cvar : CVarRegistry::Get().GetByPrefix(prefix)) {
             if (HasFlag(cvar->GetFlags(), CVarFlags::NoSave)) {
+                continue;
+            }
+            if (!CVarScopes::Matches(*cvar, scope)) {
                 continue;
             }
 

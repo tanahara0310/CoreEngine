@@ -13,6 +13,8 @@
 #include "Graphics/PostEffect/Effect/PostEffectNames.h"
 #include "Graphics/PostEffect/Effect/ToneMapping/ToneMapping.h"
 #include "Graphics/Render/RenderDomainContext.h"
+#include "Scene/SceneEnvironmentIO.h"
+#include "Scene/SceneSaveSystem.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
 
@@ -22,6 +24,11 @@ namespace CoreEngine
     {
         // シーンが SkyBox を生成していない場合のみ自動生成するため、オブジェクトが出そろった後に行う
         SetupDefaultSky(ctx);
+
+#ifdef CORE_EDITOR
+        // 復元直後の通番を基準にする（そろえないと、開いた直後に読んだ値をそのまま書き戻す）
+        lastEnvironmentRevision_ = SceneEnvironmentIO::GetChangeRevision();
+#endif
     }
 
     void EnvironmentFeature::Update(SceneContext& ctx, SceneUpdatePhase phase)
@@ -32,17 +39,57 @@ namespace CoreEngine
             UpdateAtmosphere(ctx);
             // フォグは空・大気の有無に依存しないので、大気更新の成否と無関係に呼ぶ
             UpdateFog(ctx);
+#ifdef CORE_EDITOR
+            AutoSaveEnvironment(ctx);
+#endif
             break;
         default:
             break;
         }
     }
 
-    void EnvironmentFeature::Finalize(SceneContext&)
+    void EnvironmentFeature::Finalize([[maybe_unused]] SceneContext& ctx)
     {
+#ifdef CORE_EDITOR
+        // 書き待ちのまま閉じると最後の調整が消えるので、ここで書き切る
+        if (environmentDirty_ && ctx.saveSystem) {
+            environmentDirty_ = false;
+            SceneEnvironmentIO::Save(ctx.saveSystem->GetSceneName());
+        }
+#endif
+
         // 空は GameObjectManager が所有しているためポインタのみクリア
         skyBox_ = nullptr;
     }
+
+#ifdef CORE_EDITOR
+    void EnvironmentFeature::AutoSaveEnvironment(SceneContext& ctx)
+    {
+        if (!ctx.saveSystem) {
+            return;
+        }
+
+        const uint64_t revision = SceneEnvironmentIO::GetChangeRevision();
+        if (revision != lastEnvironmentRevision_) {
+            lastEnvironmentRevision_ = revision;
+            lastEnvironmentChange_ = std::chrono::steady_clock::now();
+            environmentDirty_ = true;
+            return;
+        }
+        if (!environmentDirty_) {
+            return;
+        }
+
+        // 動かしている間は書かない（離してから 0.3 秒で 1 回だけ書く）
+        constexpr auto kQuietTime = std::chrono::milliseconds(300);
+        if (std::chrono::steady_clock::now() - lastEnvironmentChange_ < kQuietTime) {
+            return;
+        }
+
+        environmentDirty_ = false;
+        SceneEnvironmentIO::Save(ctx.saveSystem->GetSceneName());
+    }
+#endif
 
     void EnvironmentFeature::SetupDefaultSky(SceneContext& ctx)
     {

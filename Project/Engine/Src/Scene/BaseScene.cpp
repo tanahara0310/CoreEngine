@@ -7,6 +7,7 @@
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Scene/SceneManager.h"
+#include "Scene/SceneEnvironmentIO.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Scene/Feature/DefaultSceneFeatures.h"
 // GetFeature<T>() で引くために完全型が必要な既定 Feature だけを include する
@@ -67,6 +68,11 @@ namespace CoreEngine
 
     void BaseScene::ApplyManifestSettings()
     {
+        // 環境（空・大気・雲・霧・時刻）はシーンが持つ。前のシーンの画が残らないよう、
+        // 一度コード既定へ戻してからこのシーンの保存を当てる
+        SceneEnvironmentIO::ResetToDefaults(engine_);
+        SceneEnvironmentIO::Load(GetSceneName(), engine_);
+
         const SceneSaveSystem::ManifestSettings settings =
             SceneSaveSystem::LoadManifestSettings(GetSceneName());
         Logger& log = Logger::GetInstance();
@@ -170,6 +176,7 @@ namespace CoreEngine
             return;
         }
         sceneSaveSystem_->SaveManifestSettings(CollectManifestSettings());
+        SceneEnvironmentIO::Save(GetSceneName());
     }
 
     void BaseScene::RunPostSceneInitialize()
