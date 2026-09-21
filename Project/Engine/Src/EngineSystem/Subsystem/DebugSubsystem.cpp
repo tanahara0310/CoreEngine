@@ -176,7 +176,7 @@ namespace CoreEngine
         // ── ドメイン固有パネルの登録 ──
 
         // 大気散乱・雲は全シーン既定の機能のため、シーン所有の facade ではなく
-        // エンジン寿命で常時登録する（どのシーンでも Environment ツリーから編集できる）
+        // エンジン寿命で常時登録する（どのシーンでもインスペクタから編集できる）
         atmosphereEditor_ = std::make_unique<AtmosphereEditor>();
         atmosphereEditor_->Initialize(*engine_);
         cloudEditor_ = std::make_unique<VolumetricCloudEditor>();
@@ -297,16 +297,15 @@ namespace CoreEngine
             },
             });
 
-        // Post Effects セクション（Engine Settings 内）
-        Editor::EditorPanelRegistry::Get().Register({
-            .id = "Post Effects",
-            .placement = Editor::PanelPlacement::SettingsSection,
-            .group = Editor::PanelGroup::Rendering,
-            .owner = this,
-            .draw = [this]() {
+        // ポストエフェクトはシーンが持つ見た目なので、シーンに置いた
+        // PostProcess コンポーネントのインスペクタとして出す（Engine Settings には出さない）
+        Editor::ComponentInspectors::Register("PostProcess", {
+            .displayName = "ポストエフェクト",
+            .drawBody = [this](IComponent&) {
                 if (auto* postEffect = engine_->GetService<PostEffectManager>()) {
                     postEffect->DrawImGuiContent();
                 }
+                return false;
             },
             });
 

@@ -37,6 +37,7 @@ namespace CoreEngine
         // 水の見た目そのもの（フレネル・光学係数・泡・波）は CVar と WaterRenderFeature が持つ。
         // ここに出すのは、その水面 1 枚ごとに決めるものだけ
         REFLECT_BEGIN(WaterSurfaceComponent, "水面")
+            REFLECT_PARTIAL()
             REFLECT_PROPERTY(size_, "一辺の長さ", p.range = Range(1.0f, 20000.0f, 1.0f),
                 p.tooltip = "メッシュの大きさ [m]。シーンを読み込むときに効く")
             REFLECT_ACCESSOR("resolution", "分割数", GetResolutionValue, SetResolutionValue,

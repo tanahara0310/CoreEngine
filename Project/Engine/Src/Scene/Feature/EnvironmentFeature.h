@@ -10,11 +10,13 @@ namespace CoreEngine
     class SkyBoxComponent;
     class VolumetricCloudComponent;
     class HeightFogComponent;
+    class PostProcessComponent;
     class GameObject;
 
     /// @brief 環境（空・大気散乱・雲・霧）をシーンのオブジェクトとして置く Feature
-    /// @details シーンのオブジェクトが出そろった後（PostSceneInitialize）に、空・雲・霧の
-    ///          コンポーネントを採用する（どれも無ければ `Environment` オブジェクトを作って載せる）。
+    /// @details シーンのオブジェクトが出そろった後（PostSceneInitialize）に、空・雲・霧・
+    ///          ポストエフェクトのコンポーネントを採用する
+    ///          （足りなければ `Environment` オブジェクトを作って載せる）。
     ///          PostLogic で大気散乱 → 雲 → 霧の順に毎フレーム反映する。
     /// @note パラメータの実体は CVar が持つ（保存はシーンの `_environment.json`）。
     ///       コンポーネントが持つのは「シーンに置かれている」ことと有効・無効だけ。
@@ -34,7 +36,7 @@ namespace CoreEngine
         SkyBoxComponent* GetSkyBox() const { return skyBox_; }
 
     private:
-        /// @brief 空・雲・霧のコンポーネントを採用する（無ければ `Environment` を作って載せる）
+        /// @brief 環境のコンポーネントを採用する（足りなければ `Environment` を作って載せる）
         void SetupEnvironmentObject(SceneContext& ctx);
 
         /// @brief コンポーネントの有効・無効と CVar を行き来させる
@@ -63,6 +65,7 @@ namespace CoreEngine
         SkyBoxComponent* skyBox_ = nullptr;
         VolumetricCloudComponent* cloud_ = nullptr;
         HeightFogComponent* fog_ = nullptr;
+        PostProcessComponent* postProcess_ = nullptr;
 
         // 前回そろえた時点の有効・無効（どちら側が変わったかを見分けるための控え）
         bool lastCloudEnabled_ = false;

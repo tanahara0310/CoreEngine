@@ -8,6 +8,7 @@
 #include "Graphics/Render/SkyBox/SkyBoxComponent.h"
 #include "GameObject/Component/Environment/VolumetricCloudComponent.h"
 #include "GameObject/Component/Environment/HeightFogComponent.h"
+#include "GameObject/Component/Environment/PostProcessComponent.h"
 #include "Graphics/Cloud/Settings/CloudCVars.h"
 #include "Graphics/Fog/Settings/FogCVars.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
@@ -70,6 +71,7 @@ namespace CoreEngine
         skyBox_ = nullptr;
         cloud_ = nullptr;
         fog_ = nullptr;
+        postProcess_ = nullptr;
     }
 
 #ifdef CORE_EDITOR
@@ -121,7 +123,8 @@ namespace CoreEngine
         skyBox_ = objects->FindFirstComponent<SkyBoxComponent>();
         cloud_ = objects->FindFirstComponent<VolumetricCloudComponent>();
         fog_ = objects->FindFirstComponent<HeightFogComponent>();
-        if (skyBox_ && cloud_ && fog_) {
+        postProcess_ = objects->FindFirstComponent<PostProcessComponent>();
+        if (skyBox_ && cloud_ && fog_ && postProcess_) {
             Logger::GetInstance().Infof(LogCategory::System,
                 "EnvironmentFeature: シーンが置いた環境を採用");
             SyncComponentToggles();
@@ -143,6 +146,7 @@ namespace CoreEngine
         if (!skyBox_) { skyBox_ = host->AddComponent<SkyBoxComponent>(); }
         if (!cloud_) { cloud_ = host->AddComponent<VolumetricCloudComponent>(); }
         if (!fog_) { fog_ = host->AddComponent<HeightFogComponent>(); }
+        if (!postProcess_) { postProcess_ = host->AddComponent<PostProcessComponent>(); }
 
         // 実体の値（CVar）に合わせてチェックの初期状態を決める
         if (cloud_) { cloud_->SetEnabled(CloudCVars::Enabled.Get()); }
@@ -151,7 +155,8 @@ namespace CoreEngine
         lastFogEnabled_ = FogCVars::Enabled.Get();
 
         Logger::GetInstance().Infof(LogCategory::System,
-            "EnvironmentFeature: 既定の環境（空・雲・霧）を {} に載せた", host->GetName());
+            "EnvironmentFeature: 既定の環境（空・雲・霧・ポストエフェクト）を {} に載せた",
+            host->GetName());
     }
 
     void EnvironmentFeature::SyncComponentToggles()

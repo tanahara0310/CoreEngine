@@ -217,10 +217,10 @@ namespace CoreEngine {
 
         // ===== 太陽設定 =====
         if (ImGui::CollapsingHeader("太陽", ImGuiTreeNodeFlags_DefaultOpen)) {
-            // ここは Lighting > Sun（大気の太陽フラグ付きライト）を操作する別ビュー。
+            // ここは Sun オブジェクト（大気の太陽フラグ付きライト）を操作する別ビュー。
             // 「空の明るさ」は大気散乱（空・雲）専用のスケールで、地面や物への
-            // 直接光の強さ（照度 [lx]）は Lighting > Sun 側で設定する
-            UI::Hint("Lighting > Sun と同じライトを操作します。地表への直接光は Lighting 側の「照度 [lx]」");
+            // 直接光の強さ（照度 [lx]）は Sun オブジェクトのライト側で設定する
+            UI::Hint("Sun オブジェクトと同じライトを操作します。地表への直接光はそちらの「強さ [lx]」");
             AtmosphereEditorSunSettings settings = sunSettings_;
             bool changed = false;
             changed |= ImGui::SliderFloat("高度角 [deg]", &settings.elevationDeg, -20.0f, 90.0f, "%.1f");

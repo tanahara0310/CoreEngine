@@ -29,14 +29,15 @@ namespace CoreEngine {
     };
 
     /// @brief 大気散乱（Sky Atmosphere）のエンジン常駐エディタ
-    /// @details DebugSubsystem がエンジン寿命で 1 個所有し、どのシーンでも Environment ツリーから編集できる。
+    /// @details DebugSubsystem がエンジン寿命で 1 個所有し、シーンに置かれたコンポーネントの
+    ///          インスペクタとして中身を描く。
     /// @note 編集対象のライトはシーンごとに作り直されるため、描画のたびに UI モデルを再同期する。
     class AtmosphereEditor {
     public:
-        /// @brief 環境エディタの登録を解除する
+        /// @brief インスペクタの登録を解除する
         ~AtmosphereEditor();
 
-        /// @brief 参照先を初期化し、環境エディタとして登録する
+        /// @brief 参照先を初期化し、空のコンポーネントのインスペクタとして登録する
         void Initialize(EngineSystem& engine);
 
         /// @brief 現在の太陽設定を取得する
