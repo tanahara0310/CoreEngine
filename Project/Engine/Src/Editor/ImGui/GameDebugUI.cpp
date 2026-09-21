@@ -790,7 +790,6 @@ namespace CoreEngine
             if (sceneDebugEditor_) {
                 sceneDebugEditor_->HandleSelectionShortcuts();
             }
-            DrawEnvironmentTree();
             Editor::EditorPanel* content = Editor::EditorPanelRegistry::Get()
                 .FindFirst(Editor::PanelPlacement::HierarchyContent);
             if (content && content->desc.draw) {
@@ -801,74 +800,6 @@ namespace CoreEngine
         }
     }
 
-    void GameDebugUI::DrawEnvironmentTree()
-    {
-        auto& registry = Editor::EditorPanelRegistry::Get();
-        if (!registry.Any(Editor::PanelPlacement::EnvironmentTree, nullptr)) return;
-
-        if (ImGui::TreeNodeEx("Environment",
-            ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth)) {
-            registry.ForEach(Editor::PanelPlacement::EnvironmentTree,
-                [this](Editor::EditorPanel& entry) {
-                const bool selected = (entry.Id() == selectedEnvironmentLabel_);
-                const std::string label = entry.desc.icon
-                    ? std::string(entry.desc.icon) + " " + entry.Id()
-                    : entry.Id();
-
-                // Inspector の表示先を一意にするため、選択時はシーンオブジェクトの選択を解除する
-                auto selectThisEntry = [&]() {
-                    selectedEnvironmentLabel_ = entry.Id();
-                    if (sceneDebugEditor_) {
-                        sceneDebugEditor_->ClearSelection();
-                    }
-                };
-
-                if (entry.desc.childTree) {
-                    // 子ツリーを持つエントリ（Lighting の各ライト等）は開閉可能なノードとして描画する
-                    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow
-                        | ImGuiTreeNodeFlags_OpenOnDoubleClick
-                        | ImGuiTreeNodeFlags_SpanAvailWidth
-                        | ImGuiTreeNodeFlags_DefaultOpen;
-                    if (selected) flags |= ImGuiTreeNodeFlags_Selected;
-
-                    const bool open = ImGui::TreeNodeEx(entry.Id().c_str(), flags, "%s", label.c_str());
-                    if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
-                        selectThisEntry();
-                        if (entry.desc.onParentSelected) {
-                            entry.desc.onParentSelected();
-                        }
-                    }
-                    if (open) {
-                        if (entry.desc.childTree()) {
-                            selectThisEntry();
-                        }
-                        ImGui::TreePop();
-                    }
-                } else {
-                    ImGui::PushID(entry.Id().c_str());
-                    if (ImGui::Selectable(label.c_str(), selected)) {
-                        selectThisEntry();
-                    }
-                    ImGui::PopID();
-                }
-                });
-            ImGui::TreePop();
-        }
-    }
-
-    Editor::EditorPanel* GameDebugUI::FindSelectedEnvironmentEntry()
-    {
-        if (selectedEnvironmentLabel_.empty()) return nullptr;
-        Editor::EditorPanel* found =
-            Editor::EditorPanelRegistry::Get().Find(selectedEnvironmentLabel_);
-        if (found && found->desc.placement == Editor::PanelPlacement::EnvironmentTree) {
-            return found;
-        }
-        // 登録が外れていたら選択も落とす（Inspector が消えた中身を指し続けないように）
-        selectedEnvironmentLabel_.clear();
-        return nullptr;
-    }
-
     void GameDebugUI::DrawInspectorPanel()
     {
         if (!showInspector_) return;
@@ -876,23 +807,14 @@ namespace CoreEngine
         if (auto w = UI::Scope::WindowScope("Inspector")) {
             if (auto tabBar = UI::Scope::TabBarScope("##InspectorTabs", ImGuiTabBarFlags_AutoSelectNewTabs)) {
                 // Object タブ（常時表示、閉じるボタンなし）
-                // 環境エディタ選択中はその内容を、シーンオブジェクト選択中はそのプロパティを表示する
+                // シーンのオブジェクトを選んでいればそのプロパティを表示する
                 if (auto tab = UI::Scope::TabItemScope("Object")) {
-                    // シーンオブジェクトが選択されたら環境エディタの選択は解除（後から選んだ方を優先）
-                    if (sceneDebugEditor_ && sceneDebugEditor_->HasSelection()) {
-                        selectedEnvironmentLabel_.clear();
-                    }
-
-                    Editor::EditorPanel* env = FindSelectedEnvironmentEntry();
                     Editor::EditorPanel* object = Editor::EditorPanelRegistry::Get()
                         .FindFirst(Editor::PanelPlacement::InspectorObject);
                     ProjectView* const projectView = FindProjectView();
                     const bool hasObject = sceneDebugEditor_ && sceneDebugEditor_->HasSelection();
 
-                    if (env && env->desc.draw) {
-                        ImGui::SeparatorText(env->Id().c_str());
-                        env->desc.draw();
-                    } else if (!hasObject && projectView && !projectView->GetSelectedAsset().empty()) {
+                    if (!hasObject && projectView && !projectView->GetSelectedAsset().empty()) {
                         // シーンのオブジェクトを選んでいないときは、Project で選んだアセットを出す
                         projectView->DrawSelectedAssetInspector();
                     } else if (object && object->desc.draw) {

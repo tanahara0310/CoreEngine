@@ -17,7 +17,6 @@ namespace CoreEngine::Editor
         SettingsSection,  ///< Engine Settings ウィンドウの 1 セクション
         Window,           ///< 単独ウィンドウ（Window / Debug メニューから開閉）
         InspectorTab,     ///< Inspector のタブ（× で閉じられる）
-        EnvironmentTree,  ///< Hierarchy の Environment ツリー → 選ぶと Inspector に出る
         HierarchyContent, ///< Hierarchy パネルの中身（シーンのオブジェクト一覧）
         InspectorObject,  ///< Inspector の Object タブの中身
     };
@@ -64,21 +63,12 @@ namespace CoreEngine::Editor
         /// @brief 登録元の識別子（破棄時に自分の登録だけを外すために使う）
         const void* owner = nullptr;
 
-        /// @brief EnvironmentTree のみ。行の名前の前に出す記号（nullptr なら出さない）
-        const char* icon = nullptr;
-
         /// @brief 単独ウィンドウの初回サイズ
         float defaultWidth = 460.0f;
         float defaultHeight = 540.0f;
 
         /// @brief 中身の描画
         std::function<void()> draw;
-
-        /// @brief EnvironmentTree のみ。子ツリー行の描画（クリックされたら true）
-        std::function<bool()> childTree;
-
-        /// @brief EnvironmentTree のみ。親エントリが選ばれたときの通知
-        std::function<void()> onParentSelected;
     };
 
     /// @brief 登録済みパネル（記述子＋表示状態）

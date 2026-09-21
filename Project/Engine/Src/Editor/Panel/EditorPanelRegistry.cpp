@@ -111,7 +111,7 @@ namespace CoreEngine::Editor
 
     bool EditorPanelRegistry::IsVisibilityPersisted(const EditorPanel& panel)
     {
-        // Settings セクションと Environment ツリーは選択式で開閉の概念が無い
+        // Settings セクションと Hierarchy の中身は選択式で開閉の概念が無い
         return panel.desc.placement == PanelPlacement::Window
             || panel.desc.placement == PanelPlacement::InspectorTab;
     }
