@@ -6,6 +6,7 @@
 #include "Camera/Control/FreeLookController.h"
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 #include <string>
 #include <utility>
 
@@ -40,6 +41,14 @@ namespace CoreEngine
         /// @brief カメラを登録解除
         /// @param name カメラの名前
         void UnregisterCamera(const std::string& name);
+
+        /// @brief そのカメラをシーンのオブジェクトが持つものとして印を付ける
+        /// @details 印の付いたカメラは、構図の正本がオブジェクトの保存データ側にある。
+        ///          シーンのカメラ状態ファイル（_camera.json）には書かない。
+        void SetObjectOwnedCamera(const std::string& name, bool owned);
+
+        /// @brief そのカメラをシーンのオブジェクトが持っているか
+        bool IsObjectOwnedCamera(const std::string& name) const;
 
         /// @brief カメラへコントローラを取り付ける（1 カメラにつき 1 つ・既存があれば置き換え）
         /// @tparam T ICameraController の派生型
@@ -179,6 +188,9 @@ namespace CoreEngine
 
         /// @brief カメラ名 → コントローラ（1 カメラにつき 1 つ。付いていないカメラもある）
         std::unordered_map<std::string, std::unique_ptr<ICameraController>> controllers_;
+
+        /// @brief シーンのオブジェクトが持つカメラの名前
+        std::unordered_set<std::string> objectOwnedCameras_;
 
         /// @brief 役割ごとのカメラ名
         std::string sceneCameraName_ = CameraNames::Scene;

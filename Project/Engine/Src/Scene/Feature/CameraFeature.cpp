@@ -3,6 +3,9 @@
 
 #include "Camera/Camera.h"
 #include "Camera/CameraSceneStateIO.h"
+#include "GameObject/GameObject.h"
+#include "GameObject/GameObjectManager.h"
+#include "GameObject/Component/Camera/CameraComponent.h"
 #include "Scene/SceneSaveSystem.h"
 #include "Camera/CameraManager.h"
 #include "Camera/Control/CameraInputState.h"
@@ -14,6 +17,9 @@
 #include "Input/InputManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/FrameRate/Time.h"
+#include "Utility/Logger/Logger.h"
+
+#include <algorithm>
 
 namespace CoreEngine
 {
@@ -83,8 +89,14 @@ namespace CoreEngine
             return;
         }
 
+        // シーンに置かれたカメラを先に実体にする（保存ファイルが名前で指せるようにする）
+        SyncSceneCameras(ctx);
+
         // 保存が無ければ何もしない。エディタ視点は控えの値がそのまま残る。
         CameraSceneStateIO::Load(ctx.saveSystem->GetSceneName(), *cameraManager_);
+
+        // シーンに置かれたカメラが勝つ（保存ファイルの指定より後に当てる）
+        ApplyMainCamera();
     }
 
     void CameraFeature::Update([[maybe_unused]] SceneContext& ctx, SceneUpdatePhase phase)
@@ -103,8 +115,98 @@ namespace CoreEngine
 #endif
         cameraManager_->Update(input, Time::UnscaledDeltaTime());
 
+        // シーンに置かれたカメラは、オブジェクトの Transform とレンズが正本。
+        // コントローラの反映より後に写して、この 1 フレームの姿勢を確定させる
+        SyncSceneCameras(ctx);
+        ApplyMainCamera();
+
         // 更新後の設定・姿勢を控える（カメラ UI・マウス操作のどちらの変更も拾う）
         CaptureEditorCamera();
+    }
+
+    void CameraFeature::SyncSceneCameras(SceneContext& ctx)
+    {
+        mainCameraName_.clear();
+        if (!cameraManager_ || !ctx.gameObjectManager) {
+            return;
+        }
+
+        auto* const dxCommon = ctx.engine ? ctx.engine->GetService<GraphicsCore>() : nullptr;
+        std::vector<std::string> alive;
+
+        // 無効なコンポーネント・非アクティブなオブジェクトのカメラも実体を残す必要があるので、
+        // ForEachComponent（有効なものだけを回す）ではなく自分で走査する
+        for (const auto& object : ctx.gameObjectManager->GetAllObjects()) {
+            if (!object || object->IsMarkedForDestroy()) {
+                continue;
+            }
+            for (const auto& slot : object->GetAllComponents()) {
+                auto* const component = dynamic_cast<CameraComponent*>(slot.get());
+                if (!component) {
+                    continue;
+                }
+
+                const std::string& name = object->GetName();
+                if (name == CameraNames::Game || name == CameraNames::Scene
+                    || name == CameraNames::Camera2D) {
+                    Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
+                        "カメラのオブジェクト名 {} はエンジンが使っているので、実体を作りません",
+                        name);
+                    continue;
+                }
+
+                if (component->GetRegisteredName() != name) {
+                    // 初めて見つけた、または名前が変わった。実体を作り直す
+                    if (!component->GetRegisteredName().empty()) {
+                        cameraManager_->UnregisterCamera(component->GetRegisteredName());
+                    }
+                    auto created = std::make_unique<Camera>();
+                    created->Initialize(dxCommon ? dxCommon->GetDevice() : nullptr);
+                    Camera* const raw = created.get();
+                    cameraManager_->RegisterCamera(name, std::move(created));
+                    cameraManager_->SetObjectOwnedCamera(name, true);
+                    component->SetRegisteredName(name);
+                    component->SetCamera(raw);
+                }
+
+                if (Camera* const camera = component->GetCamera()) {
+                    component->ApplyTo(*camera);
+                    camera->UpdateMatrix();
+                }
+                alive.push_back(name);
+
+                if (mainCameraName_.empty() && component->IsMainCamera()
+                    && component->IsEnabled() && object->IsActive()) {
+                    mainCameraName_ = name;
+                }
+            }
+        }
+
+        // 消えたオブジェクトのカメラを外す
+        for (const std::string& name : sceneCameraNames_) {
+            if (std::find(alive.begin(), alive.end(), name) == alive.end()) {
+                cameraManager_->UnregisterCamera(name);
+            }
+        }
+        sceneCameraNames_ = std::move(alive);
+    }
+
+    void CameraFeature::ApplyMainCamera()
+    {
+        if (!cameraManager_) {
+            return;
+        }
+
+        if (!mainCameraName_.empty()) {
+            cameraManager_->SetGameCameraName(mainCameraName_);
+            return;
+        }
+
+        // シーンのカメラが無くなったらエンジン既定のカメラへ戻す
+        //（消えたカメラを指したままだとゲームビューが映らなくなる）
+        if (!cameraManager_->GetGameCamera()) {
+            cameraManager_->SetGameCameraName(CameraNames::Game);
+        }
     }
 
     void CameraFeature::Finalize(SceneContext&)

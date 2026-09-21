@@ -3,6 +3,8 @@
 #include "ISceneFeature.h"
 #include "Math/Vector/Vector3.h"
 #include <memory>
+#include <string>
+#include <vector>
 
 namespace CoreEngine
 {
@@ -64,10 +66,25 @@ namespace CoreEngine
         /// @brief エディタ視点カメラの設定・姿勢を控える
         void CaptureEditorCamera();
 
+        /// @brief シーンに置かれたカメラ（`CameraComponent`）を実体へ写す
+        /// @details オブジェクトが増減・改名したら実体を作り直し、姿勢とレンズを毎フレーム流す。
+        ///          ゲームの視点にするカメラの名前もここで決めて控える。
+        void SyncSceneCameras(SceneContext& ctx);
+
+        /// @brief 控えた「ゲームの視点」をカメラマネージャーへ当てる
+        /// @details シーンに候補が無いときは、エンジン既定のカメラへ戻す。
+        void ApplyMainCamera();
+
         std::unique_ptr<CameraManager> cameraManager_;
 
         // 設定・姿勢を毎フレーム控えるエディタ視点カメラ（所有は cameraManager_）
         Camera* sceneCamera_ = nullptr;
         OrbitFlyController* orbitController_ = nullptr;
+
+        // 実体を持っているシーンのカメラの名前（増減を見分けるための控え）
+        std::vector<std::string> sceneCameraNames_;
+
+        // ゲームの視点にするシーンのカメラの名前（候補が無ければ空）
+        std::string mainCameraName_;
     };
 }

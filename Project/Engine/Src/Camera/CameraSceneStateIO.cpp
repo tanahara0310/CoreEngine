@@ -77,6 +77,12 @@ namespace CoreEngine
                 continue;
             }
 
+            // オブジェクトが持つカメラは、構図もレンズもオブジェクトの保存データが正本。
+            // ここに書くと 2 か所に同じ値が残り、どちらが勝つか読めなくなる
+            if (cameraManager.IsObjectOwnedCamera(name)) {
+                continue;
+            }
+
             CameraSceneStateEntry entry{};
             entry.name = name;
             entry.snapshot = camera->CaptureSnapshot(name);
