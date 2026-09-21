@@ -109,7 +109,6 @@ namespace CoreEngine
         SceneDebugEditor* sceneDebugEditor_ = nullptr;
         Editor::PlayModeController* playModeController_ = nullptr;
 
-        std::string selectedEnvironmentLabel_; ///< Environmentツリーで選択中のエントリー（空=未選択）
 
         bool showHierarchy_ = true;
         bool showInspector_ = true;
@@ -186,8 +185,6 @@ namespace CoreEngine
             const std::function<void()>& extraContent = nullptr);
 
         void DrawHierarchyPanel();
-        void DrawEnvironmentTree();
-        Editor::EditorPanel* FindSelectedEnvironmentEntry();
         void DrawInspectorPanel();
         void DrawPanelWindows();
         void RegisterWindowsForDocking();
