@@ -40,6 +40,12 @@ namespace CoreEngine::Editor
         /// @note 完全に消すのではなくごみ箱へ入れるので、間違えたらエクスプローラから戻せる。
         bool MoveToRecycleBin(const std::filesystem::path& target, std::string* outError = nullptr);
 
+        /// @brief フォルダを作る
+        /// @param parentFolder 作る場所
+        /// @param name フォルダの名前
+        bool CreateFolder(const std::filesystem::path& parentFolder, const std::string& name,
+                          std::filesystem::path* outPath = nullptr, std::string* outError = nullptr);
+
         /// @brief 名前として使えるか（パス区切り・Windows が禁じる文字・予約名を弾く）
         bool IsValidName(const std::string& name, std::string* outError = nullptr);
 

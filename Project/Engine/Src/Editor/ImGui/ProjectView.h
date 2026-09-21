@@ -157,6 +157,21 @@ namespace CoreEngine
         /// @brief 項目 1 件の右クリックメニュー（コピー・切り取り・名前の変更・削除）
         void DrawEntryContextMenu(const Entry& entry);
 
+        /// @brief 選ばれているか
+        bool IsSelected(const std::filesystem::path& path) const;
+
+        /// @brief クリックに応じて選択を入れ替える（Ctrl で足し引き・Shift で範囲）
+        void UpdateSelection(const Entry& entry, int index);
+
+        /// @brief 操作の対象（複数選んでいればその全部。何も無ければ空）
+        std::vector<std::filesystem::path> SelectedPaths() const;
+
+        /// @brief 新しいフォルダを作る窓
+        void DrawNewFolderDialog();
+
+        /// @brief 新しいフォルダを作る窓を開く
+        void OpenNewFolderDialog();
+
         /// @brief 名前を変える窓
         void DrawRenameDialog();
 
@@ -167,7 +182,7 @@ namespace CoreEngine
         void OpenRenameDialog(const std::filesystem::path& target);
 
         /// @brief 削除の確認の窓を開く
-        void OpenDeleteDialog(const std::filesystem::path& target);
+        void OpenDeleteDialog(std::vector<std::filesystem::path> targets);
 
         /// @brief 控えたものを今のフォルダへ貼る
         void PasteIntoCurrentFolder();
@@ -229,8 +244,13 @@ namespace CoreEngine
         std::unordered_map<std::string, PNGPreviewInfo> pngPreviewInfoCache_;
 
         // コピー／切り取りで控えたもの（空なら貼れない）
-        std::filesystem::path clipboardPath_;
+        std::vector<std::filesystem::path> clipboardPaths_;
         bool clipboardIsCut_ = false;
+
+        // 選んでいるもの（selectedPath_ はそのうち最後に触ったもの＝インスペクタに出す 1 件）
+        std::vector<std::filesystem::path> selection_;
+        int selectionAnchor_ = -1;            ///< Shift での範囲選択の起点
+        std::vector<Entry> shownEntries_;     ///< このフレームに並べたもの（範囲選択が使う）
 
         // 名前を変える窓
         bool showRenameDialog_ = false;
@@ -240,8 +260,13 @@ namespace CoreEngine
 
         // 削除の確認の窓
         bool showDeleteDialog_ = false;
-        std::filesystem::path deleteTarget_;
+        std::vector<std::filesystem::path> deleteTargets_;
         std::string deleteError_;
+
+        // 新しいフォルダを作る窓
+        bool showNewFolderDialog_ = false;
+        char newFolderName_[128] = {};
+        std::string newFolderError_;
 
         // 新しいスクリプトを作る窓
         bool showNewScriptDialog_ = false;
