@@ -1,0 +1,19 @@
+// {CLASS}
+[DisplayName("{CLASS}")]
+class {CLASS} : ScriptComponent
+{
+    // 最初の更新の前に 1 回
+    void Start()
+    {
+    }
+
+    // 毎フレーム
+    void Update()
+    {
+    }
+
+    // トリガーのコライダーと重なり始めたとき（持ち主にコライダーが要る）
+    void OnTriggerEnter(Collision@ other)
+    {
+    }
+}

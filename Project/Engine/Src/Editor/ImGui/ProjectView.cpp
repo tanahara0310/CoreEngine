@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "ProjectView.h"
 #include "Utility/Path/ProjectPaths.h"
+#include "Editor/External/ExternalCodeEditor.h"
+#include "Editor/Script/ScriptTemplate.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Graphics/Texture/TextureManager.h"
@@ -171,10 +173,13 @@ namespace CoreEngine
                 } else {
                     DrawGridLayout(shown);
                 }
+                DrawCreateContextMenu();
             }
             ImGui::EndChild();
         }
         ImGui::End();
+
+        DrawNewScriptDialog();
 
         // 描画中に頼まれた移動をここで行う
         ApplyPendingNavigation();
@@ -188,6 +193,8 @@ namespace CoreEngine
         ImGui::InputTextWithHint("##project_search", "名前で絞り込み...",
             searchFilter_, sizeof(searchFilter_));
 
+        UI::SameLine(0.0f, 8.0f);
+        if (UI::Bar::Button("＋ 作成", false, "スクリプトを作る")) { OpenNewScriptDialog(); }
         UI::SameLine(0.0f, 8.0f);
         if (UI::Bar::Button("グリッド", !useListView_)) { useListView_ = false; }
         UI::SameLine(0.0f, 4.0f);
@@ -945,6 +952,108 @@ namespace CoreEngine
         if (std::filesystem::is_directory(folder, error)) {
             NavigateToDirectory(folder);
         }
+    }
+
+    void ProjectView::DrawCreateContextMenu()
+    {
+        if (!ImGui::BeginPopupContextWindow("##projectCreate",
+                ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems)) {
+            return;
+        }
+        if (ImGui::MenuItem("スクリプトを作成...")) {
+            OpenNewScriptDialog();
+        }
+        ImGui::EndPopup();
+    }
+
+    void ProjectView::OpenNewScriptDialog()
+    {
+        showNewScriptDialog_ = true;
+        newScriptError_.clear();
+        newScriptName_[0] = '\0';
+
+        // 置き先は今開いているフォルダ。スクリプトのフォルダの外にいるならその根を出す
+        const std::filesystem::path scriptRoot = Editor::ScriptTemplate::GetScriptRoot();
+        std::filesystem::path folder = GetCurrentFolder().lexically_normal();
+        const std::filesystem::path fromRoot = folder.lexically_relative(scriptRoot);
+        if (fromRoot.empty() || *fromRoot.begin() == "..") {
+            folder = scriptRoot;
+        }
+        const std::string text = folder.generic_string();
+        const std::size_t length = (std::min)(text.size(), sizeof(newScriptFolder_) - 1);
+        std::memcpy(newScriptFolder_, text.data(), length);
+        newScriptFolder_[length] = '\0';
+
+        if (newScriptTemplate_.empty()) {
+            const std::vector<Editor::ScriptTemplate::Entry> templates = Editor::ScriptTemplate::List();
+            newScriptTemplate_ = templates.empty() ? std::string("Basic") : templates.front().id;
+            for (const auto& entry : templates) {
+                if (entry.id == "Basic") { newScriptTemplate_ = entry.id; break; }
+            }
+        }
+    }
+
+    void ProjectView::DrawNewScriptDialog()
+    {
+        constexpr const char* kTitle = "新しいスクリプト";
+        if (showNewScriptDialog_ && !ImGui::IsPopupOpen(kTitle)) {
+            ImGui::OpenPopup(kTitle);
+        }
+
+        ImGui::SetNextWindowSize(ImVec2(460.0f, 0.0f), ImGuiCond_FirstUseEver);
+        if (!ImGui::BeginPopupModal(kTitle, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            return;
+        }
+
+        UI::Hint("クラス名がそのままファイル名とコンポーネントの型名になります。");
+        UI::Separator();
+
+        UI::InputText("置き先", newScriptFolder_, sizeof(newScriptFolder_));
+        UI::InputText("クラス名", newScriptName_, sizeof(newScriptName_));
+
+        const std::vector<Editor::ScriptTemplate::Entry> templates = Editor::ScriptTemplate::List();
+        if (templates.empty()) {
+            UI::Hint("雛形が見つかりません（Application/Config/ScriptTemplates）。中身の無いクラスを作ります。");
+        } else {
+            ImGui::TextUnformatted("雛形");
+            for (const auto& entry : templates) {
+                ImGui::PushID(entry.id.c_str());
+                if (ImGui::RadioButton(entry.label.c_str(), newScriptTemplate_ == entry.id)) {
+                    newScriptTemplate_ = entry.id;
+                }
+                ImGui::PopID();
+            }
+        }
+
+        ImGui::Checkbox("作ったら VS Code で開く", &openNewScriptAfterCreate_);
+
+        if (!newScriptError_.empty()) {
+            ImGui::TextColored(Theme::kError, "%s", newScriptError_.c_str());
+        }
+
+        UI::Separator();
+        if (ImGui::Button("作成")) {
+            std::filesystem::path created;
+            if (Editor::ScriptTemplate::Create(std::filesystem::path(newScriptFolder_),
+                    newScriptName_, newScriptTemplate_, &created, &newScriptError_)) {
+                showNewScriptDialog_ = false;
+                ImGui::CloseCurrentPopup();
+                // 作った場所を開いて、そのファイルを選んでおく
+                NavigateToDirectory(created.parent_path());
+                selectedPath_ = created;
+                if (openNewScriptAfterCreate_) {
+                    Editor::OpenInCodeEditor(created);
+                }
+            }
+        }
+        UI::SameLine();
+        if (ImGui::Button("やめる")) {
+            showNewScriptDialog_ = false;
+            newScriptError_.clear();
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
     }
 
     void ProjectView::OpenFile(const std::filesystem::path& filePath)

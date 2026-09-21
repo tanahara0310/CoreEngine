@@ -144,6 +144,16 @@ namespace CoreEngine
         /// @param filePath 対象ファイルパス
         void OpenFile(const std::filesystem::path& filePath);
 
+        /// @brief 一覧の空きを右クリックしたときのメニュー（作成）
+        void DrawCreateContextMenu();
+
+        /// @brief 新しいスクリプトを作る窓
+        /// @note 置き先の既定は今開いているフォルダ。スクリプトのフォルダの外は断る。
+        void DrawNewScriptDialog();
+
+        /// @brief 新しいスクリプトを作る窓を開く（置き先を今のフォルダで埋める）
+        void OpenNewScriptDialog();
+
     private:
         GraphicsCore* dxCommon_ = nullptr;     // DirectX共通クラスへのポインタ
 
@@ -195,6 +205,14 @@ namespace CoreEngine
         // PNGプレビューキャッシュ
         std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3D12Resource>> pngPreviewCache_;
         std::unordered_map<std::string, PNGPreviewInfo> pngPreviewInfoCache_;
+
+        // 新しいスクリプトを作る窓
+        bool showNewScriptDialog_ = false;
+        char newScriptName_[64] = {};        ///< クラス名（ファイル名にもなる）
+        char newScriptFolder_[260] = {};     ///< 置き先（プロジェクトの根からの相対パス）
+        std::string newScriptTemplate_;      ///< 選んでいる雛形の id
+        std::string newScriptError_;         ///< 作れなかったときの訳
+        bool openNewScriptAfterCreate_ = true; ///< 作ったら VS Code で開く
 
         // フォルダツリーキャッシュ（毎フレームのファイルシステムスキャンを抑止）
         std::unordered_map<std::string, bool> hasSubdirCache_;
