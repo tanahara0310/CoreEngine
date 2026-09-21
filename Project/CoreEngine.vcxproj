@@ -179,6 +179,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
   <ItemGroup>
     <ClCompile Include="Engine\Src\Editor\Inspector\ComponentInspectors.cpp" />
     <ClCompile Include="Engine\Src\Editor\Script\ScriptTemplate.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Project\AssetFileOperations.cpp" />
     <ClCompile Include="Engine\Src\Editor\Inspector\InspectorLayout.cpp" />
     <ClCompile Include="Engine\Src\Editor\Inspector\InspectorRenderer.cpp" />
     <ClCompile Include="Engine\Src\Editor\Inspector\ObjectInspector.cpp" />
@@ -1124,6 +1125,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
   <ItemGroup>
     <ClInclude Include="Engine\Src\Editor\Inspector\ComponentInspectors.h" />
     <ClInclude Include="Engine\Src\Editor\Script\ScriptTemplate.h" />
+    <ClInclude Include="Engine\Src\Editor\Project\AssetFileOperations.h" />
     <ClInclude Include="Engine\Src\Editor\Inspector\InspectorLayout.h" />
     <ClInclude Include="Engine\Src\Editor\Inspector\InspectorRenderer.h" />
     <ClInclude Include="Engine\Src\Editor\Inspector\ObjectInspector.h" />
