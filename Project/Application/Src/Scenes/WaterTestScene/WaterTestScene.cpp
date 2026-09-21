@@ -31,11 +31,9 @@ void WaterTestScene::OnInitialize() {
         sun->intensity = kAtmosphereSunIlluminanceLux;
     }
 
-    // 水面一式（水面オブジェクト・波シミュレーション・リソース結線）は Feature が持つ。
-    // シーン側は登録するだけで、以降の毎フレーム処理に手を入れる必要がない。
-    auto* waterFeature = static_cast<WaterRenderFeature*>(
-        AddFeature(std::make_unique<WaterRenderFeature>()));
-    waterController_.Initialize(waterFeature, *engine_);
+    // 水面一式（水面オブジェクト・波シミュレーション・リソース結線・調整画面）は
+    // Feature が持つ。シーン側は登録するだけでよい。
+    AddFeature(std::make_unique<WaterRenderFeature>());
 
     // 起動時のリリースカメラは「1 カット見せる → 黒へフェード → 暗転中に構図を差し替える」を巡回する。
     // 構図を 1 つに固定すると、水面すれすれの視点では大気散乱の白いもやが画面の半分を占め、
@@ -66,12 +64,6 @@ void WaterTestScene::OnInitialize() {
         },
         // エディタのカメラで覗いている間は演出を止める
         [this] { return cameraManager_ && !cameraManager_->IsUsingSceneCamera(); });
-}
-
-void WaterTestScene::OnFinalize() {
-    // WaterRenderFeature の所有者は BaseScene（この直後に features_ が破棄される）。
-    // UI が Feature ポインタを持ったままにならないよう、ここで先に切る。
-    waterController_.Shutdown();
 }
 
 std::vector<RenderViewRequest> WaterTestScene::BuildRenderViewRequests()

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Graphics/Water/Surface/WaterSurfaceTypes.h"
-#include "WaterEditorFacade.h"
+#include "Editor/Water/WaterEditorFacade.h"
 
 namespace CoreEngine { class WaterRenderFeature; }
 namespace CoreEngine { class WaterSurfaceComponent; }

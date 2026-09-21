@@ -14,6 +14,7 @@ namespace CoreEngine
     class SkyBoxComponent;
     class WaterSurfaceComponent;
     class RenderDomainContext;
+    class WaterEditorPanel;
 
     /// @brief 水面描画一式（水面オブジェクト・波シミュレーション・外部リソース結線）を持つ Feature
     /// @details AddFeature() するだけで水面が成立する。結線を PostLogic で行うのは、
@@ -136,6 +137,13 @@ namespace CoreEngine
         // 無条件で呼んではいけない。サニタイズ（風向正規化）で CVar 値と保持値が
         // 恒常的に食い違い、毎フレーム再構築になる事故も防ぐ）。~0u は初回強制適用。
         uint32_t lastFFTCVarRevisionSum_ = ~0u;
+
+#ifdef CORE_EDITOR
+        /// @brief 水面の調整画面（Hierarchy の Environment ツリーへ出す）
+        /// @details 実体はエディタ側にあるので前方宣言のまま持つ
+        ///          （コンストラクタとデストラクタは .cpp で定義する）。
+        std::unique_ptr<WaterEditorPanel> editorPanel_;
+#endif
 
         /// @brief 直近にログした白波被覆率の風速追従係数（変化時のみログするため）
         float lastFoamWindCoverageScale_ = -1.0f;

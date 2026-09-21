@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "Editor/Panel/EditorPanelRegistry.h"
-#include "WaterSceneController.h"
+#include "Editor/Water/WaterEditorPanel.h"
 
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/Water/Render/WaterRenderFeature.h"
@@ -18,11 +18,13 @@ namespace {
 }
 #endif
 
-WaterSceneController::~WaterSceneController() {
+namespace CoreEngine {
+
+WaterEditorPanel::~WaterEditorPanel() {
 	Shutdown();
 }
 
-void WaterSceneController::Shutdown() {
+void WaterEditorPanel::Shutdown() {
 	waterFeature_ = nullptr;
 #ifdef CORE_EDITOR
 	// シーン破棄後にドロワーがダングリングしないよう登録を解除する
@@ -35,7 +37,7 @@ void WaterSceneController::Shutdown() {
 #endif
 }
 
-void WaterSceneController::Initialize(
+void WaterEditorPanel::Initialize(
 	[[maybe_unused]] WaterRenderFeature* waterFeature,
 	[[maybe_unused]] EngineSystem& engine) {
 	waterFeature_ = waterFeature;
@@ -65,7 +67,7 @@ void WaterSceneController::Initialize(
 }
 
 #ifdef CORE_EDITOR
-void WaterSceneController::DrawImGuiContent() {
+void WaterEditorPanel::DrawImGuiContent() {
 	if (!waterFeature_ || !waterFeature_->GetWaterPlane()) {
 		ImGui::TextDisabled("水面オブジェクトがありません");
 		return;
@@ -79,3 +81,5 @@ void WaterSceneController::DrawImGuiContent() {
 	debugPanel_.Draw(*waterFeature_, editorFacade_);
 }
 #endif
+
+}

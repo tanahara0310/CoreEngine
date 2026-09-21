@@ -1,9 +1,9 @@
 #pragma once
 
 #ifdef CORE_EDITOR
-#include "WaterEditorFacade.h"
-#include "WaterSurfaceDebugPanel.h"
-#include "WaterSurfaceParameterPanel.h"
+#include "Editor/Water/WaterEditorFacade.h"
+#include "Editor/Water/WaterSurfaceDebugPanel.h"
+#include "Editor/Water/WaterSurfaceParameterPanel.h"
 #endif
 
 namespace CoreEngine {
@@ -11,13 +11,15 @@ namespace CoreEngine {
 	class WaterRenderFeature;
 }
 
+namespace CoreEngine {
+
 /// @brief 水面エディタ UI の組み立てと Hierarchy への登録を担当する
 /// @details 水面本体・波シミュレーション・毎フレームのリソース結線は
 ///          Engine 側の WaterRenderFeature が持つ。ここは UI だけを扱う。
-class WaterSceneController {
+class WaterEditorPanel {
 public:
 	/// @brief 環境エディタの登録を解除する
-	~WaterSceneController();
+	~WaterEditorPanel();
 
 	/// @brief 水面 UI の各パネルを初期化し、環境エディタとして登録する
 	/// @param waterFeature シーンへ登録済みの水面 Feature（nullptr のとき UI は出ない）
@@ -50,3 +52,5 @@ private:
 	/// @brief UI の操作対象（所有権は BaseScene の Feature 一覧）
 	CoreEngine::WaterRenderFeature* waterFeature_ = nullptr;
 };
+
+}
