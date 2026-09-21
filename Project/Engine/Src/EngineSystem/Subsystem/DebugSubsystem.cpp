@@ -31,7 +31,6 @@
 #include "Graphics/Render/Render.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Diagnostics/EngineStats.h"
-#include "Graphics/Light/LightManager.h"
 #include "Graphics/Material/MaterialConstants.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include "Input/InputManager.h"
@@ -175,31 +174,6 @@ namespace CoreEngine
         addStatsTab("メモリ", &EngineStatsWindow::DrawMemoryTab);
 
         // ── ドメイン固有パネルの登録 ──
-
-        // Lighting は環境エディタとして Hierarchy の Environment ツリーから選択して編集する。
-        // 配下に各ライトを子行として列挙し、選択したライトを Inspector に表示する（Unity 風）
-        Editor::EditorPanelRegistry::Get().Register({
-            .id = "Lighting",
-            .placement = Editor::PanelPlacement::EnvironmentTree,
-            .owner = this,
-            .icon = "✦",
-            .draw = [this]() {
-                if (auto* lightManager = engine_->GetService<LightManager>()) {
-                    lightManager->DrawAllImGui();
-                }
-            },
-            .childTree = [this]() -> bool {
-                if (auto* lightManager = engine_->GetService<LightManager>()) {
-                    return lightManager->DrawLightTreeImGui();
-                }
-                return false;
-            },
-            .onParentSelected = [this]() {
-                if (auto* lightManager = engine_->GetService<LightManager>()) {
-                    lightManager->ClearLightUISelection();
-                }
-            },
-            });
 
         // 大気散乱・雲は全シーン既定の機能のため、シーン所有の facade ではなく
         // エンジン寿命で常時登録する（どのシーンでも Environment ツリーから編集できる）

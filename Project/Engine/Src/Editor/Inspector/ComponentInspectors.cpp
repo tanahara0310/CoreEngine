@@ -11,6 +11,7 @@
 #include "GameObject/Component/Core/ComponentFactory.h"
 #include "GameObject/Component/Core/IRawSavedParameters.h"
 #include "GameObject/Component/Core/MissingComponent.h"
+#include "GameObject/Component/Light/LightComponent.h"
 #include "GameObject/Component/Render/MaterialComponent.h"
 #include "GameObject/Component/Render/SpriteRendererComponent.h"
 #include "GameObject/Component/Render/Text3DRendererComponent.h"
@@ -18,6 +19,7 @@
 #include "Editor/ImGui/ParticleSystemDebugUI.h"
 #include "Particle/Gpu/GpuParticleSystemComponent.h"
 #include "Particle/ParticleSystemComponent.h"
+#include "Graphics/Light/LightManager.h"
 #include "Reflection/TypeDescriptor.h"
 
 #include <memory>
@@ -117,6 +119,13 @@ namespace CoreEngine::Editor::ComponentInspectors
         Register("Animator", { .displayName = "アニメーション" });
         Register("SkeletonSocket", { .displayName = "ソケット追従" });
         Register("SkyBox", { .displayName = "スカイボックス" });
+
+        Register("Light", {
+            .drawExtra = [](IComponent& component) {
+                // 出ている＝選ばれている。ギズモを詳細表示にするライトとして毎フレーム指す
+                static_cast<LightComponent&>(component).FocusGizmo();
+            },
+            });
 
         Register("Collider", {
             .displayName = "コライダー",
