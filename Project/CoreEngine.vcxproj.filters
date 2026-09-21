@@ -379,6 +379,9 @@
     <ClCompile Include="Engine\Src\EngineSystem\Settings\CVarSettingsSection.cpp">
       <Filter>Engine\Src\EngineSystem\Settings</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\EngineSystem\Settings\ProjectSettings.cpp">
+      <Filter>Engine\Src\EngineSystem\Settings</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Utility\CVar\CVar.cpp">
       <Filter>Engine\Src\Utility\CVar</Filter>
     </ClCompile>
@@ -1912,6 +1915,9 @@
       <Filter>Engine\Src\EngineSystem\Settings</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\EngineSystem\Settings\CVarSettingsSection.h">
+      <Filter>Engine\Src\EngineSystem\Settings</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\EngineSystem\Settings\ProjectSettings.h">
       <Filter>Engine\Src\EngineSystem\Settings</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Asset\NamedAssetLibrary.h">

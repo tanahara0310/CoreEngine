@@ -35,6 +35,12 @@
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include "Input/InputManager.h"
 #include "Scene/SceneManager.h"
+#include "Scene/SceneSaveSystem.h"
+#include "EngineSystem/Settings/ProjectSettings.h"
+#include "Editor/ImGui/EditorTheme.h"
+#include <algorithm>
+#include <string>
+#include <vector>
 #include "GameObject/GameObjectManager.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/GameObjectManager.h"
@@ -42,6 +48,46 @@
 
 namespace CoreEngine
 {
+    namespace
+    {
+        /// @brief 起動時に開くシーンを選ぶ欄
+        /// @details 実体は `Application/Config/EngineSettings/Project.json`。
+        ///          選んだ時点で書き出すので、ここに保存ボタンは無い。
+        void DrawStartupSettings()
+        {
+            ProjectSettings& settings = ProjectSettings::Get();
+            const std::vector<std::string> scenes = SceneSaveSystem::ListSavedScenes();
+            const std::string& current = settings.GetInitialSceneName();
+
+            UI::Hint("ゲームを起動したときに最初に開くシーンです。");
+
+            if (scenes.empty()) {
+                ImGui::TextColored(Editor::Theme::kError, "シーンが 1 つもありません");
+                return;
+            }
+
+            const bool missing = !current.empty()
+                && std::find(scenes.begin(), scenes.end(), current) == scenes.end();
+            const char* const preview = current.empty() ? "（未設定）" : current.c_str();
+
+            if (ImGui::BeginCombo("起動シーン", preview)) {
+                for (const std::string& name : scenes) {
+                    if (ImGui::Selectable(name.c_str(), name == current)) {
+                        settings.SetInitialSceneName(name);
+                    }
+                }
+                ImGui::EndCombo();
+            }
+
+            if (current.empty()) {
+                UI::Hint("未設定のときは、保存されているシーンの先頭を開きます。");
+            } else if (missing) {
+                ImGui::TextColored(Editor::Theme::kError,
+                    "このシーンが見つかりません。先頭のシーンを開きます");
+            }
+        }
+    }
+
     DebugSubsystem::DebugSubsystem()
         : imGui_(std::make_unique<ImGuiManager>())
         , gameDebugUI_(std::make_unique<GameDebugUI>())
@@ -295,6 +341,15 @@ namespace CoreEngine
                 ImGui::TextDisabled("(シーンが存在しません)");
             }
             },
+            });
+
+        // 起動時に開くシーン（CVar で表せない文字列なので Project.json が持つ）
+        Editor::EditorPanelRegistry::Get().Register({
+            .id = "Startup",
+            .placement = Editor::PanelPlacement::SettingsSection,
+            .group = Editor::PanelGroup::General,
+            .owner = this,
+            .draw = [] { DrawStartupSettings(); },
             });
 
         // ポストエフェクトはシーンが持つ見た目なので、シーンに置いた
