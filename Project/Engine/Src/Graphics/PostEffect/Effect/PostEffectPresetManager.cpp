@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "PostEffectPresetManager.h"
 #include "PostEffectManager.h"
+#include "Utility/CVar/CVarScope.h"
 #include "Utility/CVar/CVarSerialization.h"
 #include <filesystem>
 #include <iostream>
@@ -31,8 +32,10 @@ json PostEffectPresetManager::CaptureToJson()
     json presetData;
     json cvars = json::object();
     for (const char* prefix : kPostEffectCVarPrefixes) {
-        // プリセットは完全なスナップショットなのでデフォルト値も含めて保存する
-        CVarSerialization::Save(cvars, prefix, /*skipDefaults=*/false);
+        // プリセットは完全なスナップショットなのでデフォルト値も含めて保存する。
+        // 持ち主（シーン / プロジェクト）で絞らないのは、プリセットが系統を丸ごと写すものだから
+        CVarSerialization::Save(cvars, prefix, /*skipDefaults=*/false,
+                                /*excludePrefix=*/{}, CVarScope::Any);
     }
     presetData["cvars"] = cvars;
     presetData["version"] = "2.0";
@@ -46,7 +49,7 @@ void PostEffectPresetManager::ApplyFromJson(const json& presetData)
     }
     const json& cvars = presetData["cvars"];
     for (const char* prefix : kPostEffectCVarPrefixes) {
-        CVarSerialization::Load(cvars, prefix);
+        CVarSerialization::Load(cvars, prefix, CVarScope::Any);
     }
 }
 

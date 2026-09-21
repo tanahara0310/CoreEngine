@@ -68,7 +68,7 @@ namespace CoreEngine
 
     void BaseScene::ApplyManifestSettings()
     {
-        // 環境（空・大気・雲・霧・時刻）はシーンが持つ。前のシーンの画が残らないよう、
+        // 見た目（環境とポストエフェクト）はシーンが持つ。前のシーンの画が残らないよう、
         // 一度コード既定へ戻してからこのシーンの保存を当てる
         SceneEnvironmentIO::ResetToDefaults(engine_);
         SceneEnvironmentIO::Load(GetSceneName(), engine_);

@@ -38,7 +38,7 @@ namespace CoreEngine
         void UpdateAtmosphere(SceneContext& ctx);
 
 #ifdef CORE_EDITOR
-        /// @brief 触った少し後に環境をシーンへ書く
+        /// @brief 触った少し後に、シーンが持つ見た目の設定をシーンへ書く
         /// @details CVars.json へ自動保存していた頃と同じ間合い。動かしている間は書かず、
         ///          手を止めてから 1 回だけ書く。
         void AutoSaveEnvironment(SceneContext& ctx);
@@ -53,7 +53,7 @@ namespace CoreEngine
         SkyBoxComponent* skyBox_ = nullptr;
 
 #ifdef CORE_EDITOR
-        // 環境の変更を見張るための控え
+        // シーンが持つ値の変更を見張るための控え
         uint64_t lastEnvironmentRevision_ = 0;
         bool environmentDirty_ = false;
         std::chrono::steady_clock::time_point lastEnvironmentChange_{};
