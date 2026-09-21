@@ -1,6 +1,10 @@
 {
-    "version": "1.0",
     "r.Atmosphere.SkyAmbientScale": 0.5099999904632568,
+    "r.AutoExposure.Enabled": true,
+    "r.AutoExposure.MaxEV": 7.5,
+    "r.Bloom.Intensity": 0.9480000138282776,
+    "r.Bloom.SoftKnee": 0.35100001096725464,
+    "r.Blur.Intensity": 2.5290000438690186,
     "r.Cloud.DensityScale": 0.007000000216066837,
     "r.Cloud.DetailErosionStrength": 0.15399998426437378,
     "r.Cloud.GlobalCoverage": 0.47999998927116394,
@@ -31,5 +35,9 @@
         0.8600000143051147,
         1.0
     ],
-    "r.TimeOfDay.Advance": false
+    "r.LensFlare.Enabled": false,
+    "r.TimeOfDay.Advance": false,
+    "r.Vignette.Intensity": 2.0,
+    "r.Vignette.Smoothness": 0.10000000149011612,
+    "version": "1.0"
 }

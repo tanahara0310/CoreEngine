@@ -9,12 +9,40 @@ namespace CoreEngine
     namespace
     {
         /// @brief シーンが持つ系統
-        /// @details シーンの画そのものを決める値（空・大気・雲・霧・時刻）だけを並べる。
+        /// @details シーンの画そのものを決める値だけを並べる。
+        ///          `r.Loading`（読み込み画面）と `r.Fade`（シーン遷移）は、シーンが無い間や
+        ///          切り替えの最中に出るものなのでプロジェクトのまま。
+        ///          SSAO・TAA・CAS・RTShadow は品質の設定なのでプロジェクトのまま。
         constexpr std::string_view kSceneOwnedPrefixes[] = {
+            // 環境
             "r.Atmosphere",
             "r.Cloud",
             "r.Fog",
             "r.TimeOfDay",
+
+            // ポストエフェクト
+            "r.AutoExposure",
+            "r.Bloom",
+            "r.Blur",
+            "r.ChromaticAberration",
+            "r.ColorGrading",
+            "r.ColorLUT",
+            "r.Dissolve",
+            "r.DoF",
+            "r.FilmGrain",
+            "r.GrayScale",
+            "r.Invert",
+            "r.LensFlare",
+            "r.LocalExposure",
+            "r.MotionBlur",
+            "r.Outline",
+            "r.RadialBlur",
+            "r.Random",
+            "r.RasterScroll",
+            "r.Sepia",
+            "r.Shockwave",
+            "r.ToneMapping",
+            "r.Vignette",
         };
     }
 
@@ -37,6 +65,9 @@ namespace CoreEngine
 
     bool CVarScopes::Matches(const ICVar& cvar, CVarScope scope)
     {
+        if (scope == CVarScope::Any) {
+            return true;
+        }
         const bool sceneOwned = IsSceneOwned(cvar.GetName());
         return (scope == CVarScope::Scene) == sceneOwned;
     }

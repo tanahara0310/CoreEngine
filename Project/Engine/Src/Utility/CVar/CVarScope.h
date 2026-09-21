@@ -20,6 +20,10 @@ namespace CoreEngine
 
         /// @brief シーンが持つ（Assets/Scenes/<名前>/_environment.json）
         Scene,
+
+        /// @brief 持ち主で絞らない
+        /// @details プリセットのように「ある系統を丸ごと写す」用途で使う。
+        Any,
     };
 
     /// @brief 持ち主の判定
@@ -28,6 +32,7 @@ namespace CoreEngine
         /// @brief シーンが持つ系統の名前を返す
         /// @details 系統ごと移すこと。同じ系統の中で持ち主が分かれると、
         ///          どちらのファイルに入るかが名前から読めなくなる。
+        ///          中身はシーンの画を決めるもの（環境とポストエフェクト）。
         std::vector<std::string_view> SceneOwnedPrefixes();
 
         /// @brief その名前の CVar をシーンが持つか
