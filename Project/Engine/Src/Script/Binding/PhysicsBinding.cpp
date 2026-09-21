@@ -458,9 +458,11 @@ namespace CoreEngine::Script
         sEngineSystem = engineSystem;
         BindingRegistrar r(engine);
 
+        // 名前はプロジェクト設定が持つので、スクリプトの列挙もそこから作る
         r.Enum("CollisionLayer");
-        for (std::size_t i = 0; i < std::size(kCollisionLayerNames); ++i) {
-            r.EnumValue("CollisionLayer", kCollisionLayerNames[i], static_cast<int>(i));
+        const std::vector<std::string>& layerNames = CollisionLayers::Names();
+        for (std::size_t i = 0; i < layerNames.size(); ++i) {
+            r.EnumValue("CollisionLayer", layerNames[i].c_str(), static_cast<int>(i));
         }
 
         r.ReferenceType("Collision", asOBJ_REF);

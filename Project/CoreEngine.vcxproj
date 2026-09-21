@@ -299,6 +299,7 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClCompile Include="Engine\Src\Editor\Inspector\ColliderInspector.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\SceneSettingsPanel.cpp" />
     <ClCompile Include="Engine\Src\Collision\CollisionConfig.cpp" />
+    <ClCompile Include="Engine\Src\Collision\CollisionLayer.cpp" />
     <ClCompile Include="Engine\Src\Collision\CollisionWorld.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\EngineConfig.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\EngineSystem.cpp" />

@@ -14,7 +14,8 @@ namespace CoreEngine
 namespace ColliderInspector
 {
     namespace {
-        const auto& kLayerNames = kCollisionLayerNames;
+        // 名前はプロジェクト設定が持つので、描くたびに今の表を引く
+        const std::vector<std::string>& LayerNames() { return CollisionLayers::Names(); }
         const auto& kShapeNames = kColliderShapeTypeNames;
 
         /// @brief 1 本ぶんの編集 UI
@@ -28,7 +29,7 @@ namespace ColliderInspector
 
             const std::string header =
                 "[" + std::to_string(index) + "] " + shapeName
-                + " / " + kLayerNames[static_cast<int>(collider.GetLayer())];
+                + " / " + ToString(collider.GetLayer());
 
             if (ImGui::TreeNodeEx(header.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
 
@@ -64,11 +65,17 @@ namespace ColliderInspector
                 UI::Hint("オーナー原点からのローカル位置。スケールが乗る。");
 
                 // ── レイヤー / フラグ ───────────────────────────
-                int layerIndex = static_cast<int>(collider.GetLayer());
-                if (ImGui::Combo("レイヤー", &layerIndex, kLayerNames,
-                        static_cast<int>(std::size(kLayerNames)))) {
-                    collider.SetLayer(static_cast<CollisionLayer>(layerIndex));
-                    changed = true;
+                // 名前の数は設定で変わるので、その場で引いて並べる
+                if (ImGui::BeginCombo("レイヤー", ToString(collider.GetLayer()).c_str())) {
+                    const std::vector<std::string>& names = LayerNames();
+                    for (std::size_t i = 0; i < names.size(); ++i) {
+                        const auto layer = static_cast<CollisionLayer>(i);
+                        if (ImGui::Selectable(names[i].c_str(), collider.GetLayer() == layer)) {
+                            collider.SetLayer(layer);
+                            changed = true;
+                        }
+                    }
+                    ImGui::EndCombo();
                 }
 
                 bool enabled = collider.IsEnabled();
