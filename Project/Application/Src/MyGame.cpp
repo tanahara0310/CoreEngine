@@ -7,8 +7,6 @@
 #include "Graphics/Model/ModelManager.h"
 #include "Utility/Logger/Logger.h"
 
-#include "Scenes/TestScene/TestScene.h"
-
 using namespace CoreEngine;
 
 MyGame::~MyGame() = default;
@@ -64,8 +62,6 @@ void MyGame::CreateSceneManager()
     sceneManager_->Initialize(GetEngineSystem());
     GetEngineSystem()->SetSceneManager(sceneManager_.get());
 
-    // C++ で書いた残りのシーンを登録する（保存データのシーンは自動で登録される）
-    sceneManager_->RegisterScene<CoreEngine::TestScene>("TestScene");
 }
 
 void MyGame::LoadInitialScene()

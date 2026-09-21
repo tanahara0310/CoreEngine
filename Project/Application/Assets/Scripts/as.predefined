@@ -59,6 +59,54 @@ enum InputAction {
 	EditorGizmoRotate = 11,
 	EditorGizmoScale = 12
 }
+enum Key {
+	Num0 = 11,
+	Num1 = 2,
+	Num2 = 3,
+	Num3 = 4,
+	Num4 = 5,
+	Num5 = 6,
+	Num6 = 7,
+	Num7 = 8,
+	Num8 = 9,
+	Num9 = 10,
+	A = 30,
+	B = 48,
+	C = 46,
+	D = 32,
+	E = 18,
+	F = 33,
+	G = 34,
+	H = 35,
+	I = 23,
+	J = 36,
+	K = 37,
+	L = 38,
+	M = 50,
+	N = 49,
+	O = 24,
+	P = 25,
+	Q = 16,
+	R = 19,
+	S = 31,
+	T = 20,
+	U = 22,
+	V = 47,
+	W = 17,
+	X = 45,
+	Y = 21,
+	Z = 44,
+	Space = 57,
+	Enter = 28,
+	Escape = 1,
+	Tab = 15,
+	Shift = 42,
+	Ctrl = 29,
+	Left = 203,
+	Right = 205,
+	Up = 200,
+	Down = 208
+}
 enum TweenLoop {
 	Restart = 0,
 	Yoyo = 1
@@ -824,6 +872,9 @@ bool IsActionTriggered(InputAction);
 bool IsActionReleased(InputAction);
 float GetAxisValue(InputAction);
 bool IsGamepadConnected();
+bool IsKeyPressed(Key);
+bool IsKeyTriggered(Key);
+bool IsKeyReleased(Key);
 }
 namespace Tween {
 TweenHandle To(float from, float to, float duration, TweenFloatSetter@ setter);

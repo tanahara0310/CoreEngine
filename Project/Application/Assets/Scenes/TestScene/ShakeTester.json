@@ -1,0 +1,32 @@
+{
+    "active": true,
+    "name": "ShakeTester",
+    "components": [
+        {
+            "type": "Transform",
+            "enabled": true,
+            "parameters": {
+                "translate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "type": "CameraShakeTester",
+            "enabled": true,
+            "parameters": {}
+        }
+    ]
+}
