@@ -27,7 +27,7 @@ public:
 	void Initialize(CoreEngine::WaterRenderFeature* waterFeature, CoreEngine::EngineSystem& engine);
 
 	/// @brief UI 登録を解除し、Feature 参照を切る
-	/// @details Feature の所有者は BaseScene（Finalize で features_ が破棄される）なので、
+	/// @details Feature の所有者は Scene（Finalize で features_ が破棄される）なので、
 	///          それより先に呼ぶこと。WaterTestScene::OnFinalize() から呼ばれる。
 	///          冪等。デストラクタからも保険として呼ぶ。
 	void Shutdown();
@@ -49,7 +49,7 @@ private:
 	// 全パラメータは WaterCVars として CVars.json（CVarSettingsSection）に保存される
 #endif
 
-	/// @brief UI の操作対象（所有権は BaseScene の Feature 一覧）
+	/// @brief UI の操作対象（所有権は Scene の Feature 一覧）
 	CoreEngine::WaterRenderFeature* waterFeature_ = nullptr;
 };
 

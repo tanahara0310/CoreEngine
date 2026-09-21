@@ -3,6 +3,7 @@
 #include "IScene.h"
 #include "SceneTransition.h"
 #include <memory>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <functional>
@@ -27,18 +28,9 @@ public:
     void Initialize(EngineSystem* engine);
 
     /// @brief シーンを登録する
-    /// @tparam T シーンクラス（ISceneを継承している必要がある）
-    /// @param name シーン名
-    template<typename T>
-    void RegisterScene(const std::string& name) {
-        static_assert(std::is_base_of<IScene, T>::value);
-        sceneFactories_[name] = []() { return std::make_unique<T>(); };
-    }
-
-    /// @brief 保存データだけで組むシーンを登録する
     /// @param name シーン名（Application/Assets/Scenes/シーン名 の保存データを読む）
     /// @note `Application/Assets/Scenes` にあるシーンは、初期化のときに自動で登録する。
-    ///       同じ名前を RegisterScene で登録すると、C++ のクラスの方が使われる。
+    ///       ここで足すのは、エディタで作った直後のシーンを再起動なしで開くときだけ。
     void RegisterDataScene(const std::string& name);
 
     /// @brief 初期シーンを設定（トランジション無し）
@@ -133,7 +125,8 @@ public:
     std::vector<RenderViewRequest> BuildRenderViewRequests();
 
 private:
-    std::unordered_map<std::string, std::function<std::unique_ptr<IScene>()>> sceneFactories_;
+    /// @brief 開けるシーンの名前（中身はすべて保存データが決める）
+    std::set<std::string> sceneNames_;
 
     std::unique_ptr<IScene> currentScene_ = nullptr;
     std::string currentSceneName_ = "None"; // 現在のシーン名を保持

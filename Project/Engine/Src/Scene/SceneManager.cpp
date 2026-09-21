@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "SceneManager.h"
-#include "Scene/DataScene.h"
+#include "Scene/Scene.h"
 #include "Scene/SceneSaveSystem.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/RHI/GraphicsCore.h"
@@ -38,7 +38,7 @@ namespace CoreEngine
     }
 
     void SceneManager::RegisterDataScene(const std::string& name) {
-        sceneFactories_[name] = [name]() { return std::make_unique<DataScene>(name); };
+        sceneNames_.insert(name);
     }
 
     void SceneManager::ChangeScene(std::string name) {
@@ -152,14 +152,14 @@ namespace CoreEngine
 
         currentScene_.reset();
         currentSceneName_ = "None";
-        sceneFactories_.clear();
+        sceneNames_.clear();
 
         // トランジションの解放
         sceneTransition_.reset();
     }
 
     bool SceneManager::HasScene(const std::string& name) const {
-        return sceneFactories_.find(name) != sceneFactories_.end();
+        return sceneNames_.find(name) != sceneNames_.end();
     }
 
     std::string SceneManager::GetCurrentSceneName() const {
@@ -168,9 +168,9 @@ namespace CoreEngine
 
     std::vector<std::string> SceneManager::GetAllSceneNames() const {
         std::vector<std::string> sceneNames;
-        sceneNames.reserve(sceneFactories_.size());
-        for (const auto& pair : sceneFactories_) {
-            sceneNames.push_back(pair.first);
+        sceneNames.reserve(sceneNames_.size());
+        for (const std::string& name : sceneNames_) {
+            sceneNames.push_back(name);
         }
         return sceneNames;
     }
@@ -221,13 +221,12 @@ namespace CoreEngine
     }
 
     bool SceneManager::BeginSceneLoad(const std::string& name, std::shared_ptr<const SceneSnapshot> snapshot) {
-        auto it = sceneFactories_.find(name);
-        if (it == sceneFactories_.end()) {
+        if (!HasScene(name)) {
             return false;
         }
 
         // 実行を始めた列へはステップを足せないので、シーン実体を先に作ってから列を組む
-        pendingScene_ = it->second();
+        pendingScene_ = std::make_unique<Scene>(name);
         pendingSceneName_ = name;
         pendingScene_->SetSceneManager(this);
         if (snapshot) {

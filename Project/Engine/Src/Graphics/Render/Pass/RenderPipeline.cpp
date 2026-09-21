@@ -316,7 +316,7 @@ namespace CoreEngine
     void RenderPipeline::PrepareFrameViews(const RenderContext& context, FrameViews& outViews)
     {
         // ===== 「どのカメラで描くか」を決める唯一の場所 =====
-        // 以前は BaseScene / RenderManager / RenderPipeline / SSAO がそれぞれ別の規則で
+        // 以前は Scene / RenderManager / RenderPipeline / SSAO がそれぞれ別の規則で
         // カメラを解決しており、「一致させること」というコメントで整合を守ろうとしていた。
         // ここで 1 回解決し、以降は ViewInfo という値を配る。
         Camera* camera = context.sceneManager

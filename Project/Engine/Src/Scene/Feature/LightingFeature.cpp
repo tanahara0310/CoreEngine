@@ -46,7 +46,7 @@ namespace CoreEngine
         // intensity（サーフェス直接光）を上げるとアルベドの明るい面が ACES の飽和域へ入る。
         light.atmosphereIntensity = kDefaultSunAtmosphereIntensity;
 
-        // シーンのコードが OnInitialize から GetDirectionalLight() で触れるよう、実体へ先に写す
+        // 大気・フォグが初回フレームから太陽を引けるよう、実体へ先に写す
         component->SyncWithManager();
         defaultSun_ = object;
     }
@@ -72,12 +72,6 @@ namespace CoreEngine
             defaultSun_->Destroy();
             defaultSun_ = nullptr;
         }
-    }
-
-    Light* LightingFeature::GetDirectionalLight() const
-    {
-        // 大気の太陽が無ければ最初の平行光源へフォールバックする（LightManager 側の規則）
-        return lightManager_ ? lightManager_->GetAtmosphereSunLight() : nullptr;
     }
 
     void LightingFeature::Update(SceneContext& ctx, SceneUpdatePhase phase)

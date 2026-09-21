@@ -226,28 +226,4 @@ namespace CoreEngine
         }
     }
 
-    void CameraFeature::SetReleaseCameraTransform(const Vector3& translate, const Vector3& rotate)
-    {
-        if (!cameraManager_) {
-            return;
-        }
-        if (auto* releaseCamera = cameraManager_->GetCamera(CameraNames::Game)) {
-            releaseCamera->SetTranslate(translate);
-            releaseCamera->SetRotate(rotate);
-        }
-    }
-
-    void CameraFeature::SetReleaseCameraLens(float fovDegrees, float farClip, float nearClip)
-    {
-        if (!cameraManager_) {
-            return;
-        }
-        if (auto* releaseCamera = cameraManager_->GetCamera(CameraNames::Game)) {
-            CameraParameters params = releaseCamera->GetParameters();
-            params.SetFovDegrees(fovDegrees);
-            params.nearClip = nearClip;
-            params.farClip = farClip;
-            releaseCamera->SetParameters(params);
-        }
-    }
 }

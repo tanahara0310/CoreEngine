@@ -850,7 +850,7 @@
     <ClCompile Include="Engine\Src\Particle\Gpu\GpuParticleSystemComponent.cpp">
       <Filter>Engine\Src\Particle\Gpu</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Scene\BaseScene.cpp">
+    <ClCompile Include="Engine\Src\Scene\Scene.cpp">
       <Filter>Engine\Src\Scene</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Scene\Feature\LightingFeature.cpp">
@@ -894,9 +894,6 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Scene\SceneDebugEditor.cpp">
       <Filter>Engine\Src\Editor\Scene</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Scene\DataScene.cpp">
-      <Filter>Engine\Src\Scene</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Scene\PrefabSystem.cpp">
       <Filter>Engine\Src\Scene</Filter>
@@ -2742,10 +2739,7 @@
     <ClInclude Include="Engine\Src\Particle\Core\Particle.h">
       <Filter>Engine\Src\Particle\Core</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Scene\BaseScene.h">
-      <Filter>Engine\Src\Scene</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Scene\DataScene.h">
+    <ClInclude Include="Engine\Src\Scene\Scene.h">
       <Filter>Engine\Src\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Scene\Feature\ISceneFeature.h">

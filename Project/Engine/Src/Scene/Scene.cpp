@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "BaseScene.h"
+#include "Scene.h"
 #include "EngineSystem/EngineSystem.h"
 #include "EngineSystem/PlaybackState.h"
 #include "Camera/CameraManager.h"
@@ -24,38 +24,38 @@
 
 namespace CoreEngine
 {
-    void BaseScene::BuildLoadTasks(StartupSequence& sequence, EngineSystem* engine)
+    Scene::Scene(std::string sceneName)
+        : sceneName_(std::move(sceneName))
+    {
+    }
+
+    void Scene::BuildLoadTasks(StartupSequence& sequence, EngineSystem* engine)
     {
         // Feature の後処理は保存データの復元より後に置く。シーンのオブジェクトを見て
         // 決める Feature（空の採用判定・既定床の生成）が、コードで作ったオブジェクトと
         // 保存データで置いたオブジェクトの両方を見られるようにするため。
         sequence.Add("カメラと Feature の登録", [this, engine] { SetupSceneCore(engine); });
         sequence.Add("Feature の初期化", [this] { InitializeFeatures(); });
-        BuildContentLoadTasks(sequence);
         sequence.Add("シーンの設定", [this] { ApplyManifestSettings(); });
         sequence.Add("モデルの先読み", [this] { BeginModelPreload(); });
         sequence.Add("シーンデータの復元", [this] { BeginSceneDataRestore(); });
         sequence.Add("Feature の後処理", [this] { RunPostSceneInitialize(); });
     }
 
-    void BaseScene::BuildContentLoadTasks(StartupSequence& sequence)
-    {
-        sequence.Add("オブジェクトの生成", [this] { OnInitialize(); });
-    }
-
-    void BaseScene::SetupSceneCore(EngineSystem* engine)
+    void Scene::SetupSceneCore(EngineSystem* engine)
     {
         engine_ = engine;
 
         // シーン保存システム（控えから組み直すときは、その控えから読む）
         sceneSaveSystem_ = std::make_unique<SceneSaveSystem>();
+        sceneSaveSystem_->SetSceneName(sceneName_);
         sceneSaveSystem_->SetRestoreSnapshot(restoreSnapshot_);
 
         // 既定 Feature の登録（顔ぶれは CreateDefaultSceneFeatures() 側）
         RegisterDefaultFeatures();
     }
 
-    void BaseScene::InitializeFeatures()
+    void Scene::InitializeFeatures()
     {
         // コンテキストは 1 体ごとに取り直す。CameraFeature が生成したカメラを、
         // 後続の Feature が同じループの中で参照できるようにするため。
@@ -66,7 +66,7 @@ namespace CoreEngine
         featuresInitialized_ = true;
     }
 
-    void BaseScene::ApplyManifestSettings()
+    void Scene::ApplyManifestSettings()
     {
         // 見た目（環境とポストエフェクト）はシーンが持つ。前のシーンの画が残らないよう、
         // 一度コード既定へ戻してからこのシーンの保存を当てる
@@ -111,7 +111,7 @@ namespace CoreEngine
         }
     }
 
-    void BaseScene::ApplyCollisionPairs(const std::vector<std::pair<std::string, std::string>>& pairs)
+    void Scene::ApplyCollisionPairs(const std::vector<std::pair<std::string, std::string>>& pairs)
     {
         auto* const collision = GetFeature<CollisionFeature>();
         if (!collision) {
@@ -134,7 +134,7 @@ namespace CoreEngine
         }
     }
 
-    SceneSaveSystem::ManifestSettings BaseScene::CollectManifestSettings() const
+    SceneSaveSystem::ManifestSettings Scene::CollectManifestSettings() const
     {
         SceneSaveSystem::ManifestSettings settings;
 
@@ -170,7 +170,7 @@ namespace CoreEngine
         return settings;
     }
 
-    void BaseScene::SaveSceneSettings()
+    void Scene::SaveSceneSettings()
     {
         if (!sceneSaveSystem_ || GetSceneName().empty()) {
             return;
@@ -179,7 +179,7 @@ namespace CoreEngine
         SceneEnvironmentIO::Save(GetSceneName());
     }
 
-    void BaseScene::RunPostSceneInitialize()
+    void Scene::RunPostSceneInitialize()
     {
         // シーンのオブジェクトが出そろった後の Feature フック
         // （SkyBox の採用判定・既定床の生成・カメラの構図の復元）
@@ -189,7 +189,7 @@ namespace CoreEngine
         }
     }
 
-    void BaseScene::BeginModelPreload()
+    void Scene::BeginModelPreload()
     {
         auto* modelManager = engine_ ? engine_->GetService<ModelManager>() : nullptr;
         if (!modelManager || !sceneSaveSystem_ || !sceneManager_) {
@@ -219,7 +219,7 @@ namespace CoreEngine
             });
     }
 
-    void BaseScene::BeginSceneDataRestore()
+    void Scene::BeginSceneDataRestore()
     {
         // 進捗を出す相手（SceneManager）が居ない経路は、その場で読み切る
         if (!sceneManager_) {
@@ -235,7 +235,7 @@ namespace CoreEngine
             [this] { return sceneSaveSystem_->GetLoadProgress(); });
     }
 
-    void BaseScene::Update(SceneUpdateMode mode)
+    void Scene::Update(SceneUpdateMode mode)
     {
         // 進行を止める理由は 2 つあり、扱いは同じ。再生していないとき（編集中・一時停止中）と、
         // シーン切り替えのトランジション（mode == Suspended）。どちらもゲームロジックだけを
@@ -247,11 +247,6 @@ namespace CoreEngine
 
         // フレーム前処理（先頭でカメラ姿勢を確定 → ライト/影・グリッド・デバッグエディタ）
         DispatchUpdate(SceneUpdatePhase::FrameStart, stopped);
-
-        if (advance) {
-            // 派生クラスの更新処理（GameObjectの更新前）
-            OnUpdate();
-        }
 
         // GameObject 更新前の Feature 更新（床のカメラ追従、最後にトゥイーンの前進）
         DispatchUpdate(SceneUpdatePhase::PreObjectUpdate, stopped);
@@ -268,16 +263,11 @@ namespace CoreEngine
         // GameObject 更新後の Feature 更新（コリジョン収集 → 判定、最後にイベントの一括配信）
         DispatchUpdate(SceneUpdatePhase::PostObjectUpdate, stopped);
 
-        if (advance) {
-            // 派生クラスの後処理（クリーンアップ前）
-            OnLateUpdate();
-        }
-
         // 全ロジック確定後の Feature 更新（大気→雲など最新の太陽・カメラ情報の反映）
         DispatchUpdate(SceneUpdatePhase::PostLogic, stopped);
     }
 
-    void BaseScene::PrepareRender()
+    void Scene::PrepareRender()
     {
         // cameraManager_ は CameraFeature が GraphicsCore を取れなかった場合に空のままになる。
         // ここでも null を許容すること（描画キューを積まずに抜ける）。
@@ -294,28 +284,25 @@ namespace CoreEngine
         gameObjectManager_.RegisterAllToRender(renderManager);
     }
 
-    Camera* BaseScene::GetGameViewCamera3D() const
+    Camera* Scene::GetGameViewCamera3D() const
     {
         // 覗いているカメラの決定は CameraManager に一本化されている（Scene / Game の役割 + フラグ）。
         // シーン側で名前を解決し直すと、また規則が二重化して食い違う。
         return cameraManager_ ? cameraManager_->GetViewCamera() : nullptr;
     }
 
-    Camera* BaseScene::GetGameCamera3D() const
+    Camera* Scene::GetGameCamera3D() const
     {
         return cameraManager_ ? cameraManager_->GetGameCamera() : nullptr;
     }
 
-    Camera* BaseScene::GetGameViewCamera2D() const
+    Camera* Scene::GetGameViewCamera2D() const
     {
         return cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera2D) : nullptr;
     }
 
-    void BaseScene::Finalize()
+    void Scene::Finalize()
     {
-        // 派生クラス固有の解放
-        OnFinalize();
-
         // Feature の解放（登録の逆順）。
         // CameraFeature は先頭に登録されているのでここでは最後に回り、
         // 他の Feature が解放中も ctx.cameraManager を参照できる。
@@ -341,14 +328,7 @@ namespace CoreEngine
         featuresInitialized_ = false;
     }
 
-    GameObject* BaseScene::CreateObject(const std::string& name)
-    {
-        auto obj = std::make_unique<GameObject>();
-        obj->SetName(name);
-        return gameObjectManager_.AddObject(std::move(obj));
-    }
-
-    std::vector<const char*> BaseScene::GetFeatureNames() const
+    std::vector<const char*> Scene::GetFeatureNames() const
     {
         std::vector<const char*> names;
         names.reserve(features_.size());
@@ -358,7 +338,7 @@ namespace CoreEngine
         return names;
     }
 
-    ISceneFeature* BaseScene::FindFeature(std::string_view name) const
+    ISceneFeature* Scene::FindFeature(std::string_view name) const
     {
         for (const auto& entry : features_) {
             const char* const featureName = entry.feature->GetName();
@@ -369,7 +349,7 @@ namespace CoreEngine
         return nullptr;
     }
 
-    ISceneFeature* BaseScene::AddFeature(std::unique_ptr<ISceneFeature> feature, int priority)
+    ISceneFeature* Scene::AddFeature(std::unique_ptr<ISceneFeature> feature, int priority)
     {
         if (!feature) {
             return nullptr;
@@ -398,7 +378,7 @@ namespace CoreEngine
         return result;
     }
 
-    void BaseScene::RegisterDefaultFeatures()
+    void Scene::RegisterDefaultFeatures()
     {
         // 顔ぶれと並びは DefaultSceneFeatures.cpp が持つ。
         // 参照が必要になったら GetFeature<T>() で引くので、ここでは持ち回らない。
@@ -407,7 +387,7 @@ namespace CoreEngine
         }
     }
 
-    void BaseScene::RefreshFeatureContext()
+    void Scene::RefreshFeatureContext()
     {
         // カメラ一式は CameraFeature が所有する。初回だけ型で引き、以降はキャッシュを使う
         // （毎フレーム 4 回以上通るので、ここで走査を繰り返さない）。
@@ -425,7 +405,7 @@ namespace CoreEngine
         featureContext_.gameViewCamera3D = GetGameViewCamera3D();
     }
 
-    void BaseScene::DispatchUpdate(SceneUpdatePhase phase, bool stopped)
+    void Scene::DispatchUpdate(SceneUpdatePhase phase, bool stopped)
     {
         // 停止中はゲームの進行に関わる Feature を飛ばす。
         // どちらに属するかは Feature 自身が RunsWhileStopped() で答える。
@@ -442,40 +422,7 @@ namespace CoreEngine
         }
     }
 
-    void BaseScene::SetReleaseCameraTransform(const Vector3& translate, const Vector3& rotate)
-    {
-        if (auto* camera = GetFeature<CameraFeature>()) {
-            camera->SetReleaseCameraTransform(translate, rotate);
-        }
-    }
-
-    void BaseScene::SetReleaseCameraLens(float fovDegrees, float farClip, float nearClip)
-    {
-        if (auto* camera = GetFeature<CameraFeature>()) {
-            camera->SetReleaseCameraLens(fovDegrees, farClip, nearClip);
-        }
-    }
-
-    void BaseScene::SetCollisionEnabled(CollisionLayer a, CollisionLayer b, bool enable)
-    {
-        if (auto* collision = GetFeature<CollisionFeature>()) {
-            collision->SetCollisionEnabled(a, b, enable);
-        }
-    }
-
-    Light* BaseScene::GetDirectionalLight() const
-    {
-        auto* lighting = GetFeature<LightingFeature>();
-        return lighting ? lighting->GetDirectionalLight() : nullptr;
-    }
-
-    CollisionWorld* BaseScene::GetCollisionWorld()
-    {
-        auto* collision = GetFeature<CollisionFeature>();
-        return collision ? &collision->GetWorld() : nullptr;
-    }
-
-    void BaseScene::SetDefaultGroundEnabled(bool enabled)
+    void Scene::SetDefaultGroundEnabled(bool enabled)
     {
         if (auto* ground = GetFeature<GroundFeature>()) {
             ground->SetSuppressed(!enabled);

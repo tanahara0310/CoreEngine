@@ -25,7 +25,7 @@ namespace CoreEngine
         void Initialize(SceneContext& ctx) override;
 
         /// @brief シーンのオブジェクトが出そろった後に床オブジェクトを生成する
-        /// @details シーン側が `BaseScene::SetDefaultGroundEnabled(false)` で抑止したかを
+        /// @details シーン側が `Scene::SetDefaultGroundEnabled(false)` で抑止したかを
         ///          見てから作るので、`PostSceneInitialize` のタイミングでなければならない。
         void PostSceneInitialize(SceneContext& ctx) override;
 
