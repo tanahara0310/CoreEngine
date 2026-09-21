@@ -4,6 +4,9 @@
     <ClCompile Include="Engine\Src\Editor\Inspector\ComponentInspectors.cpp">
       <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Script\ScriptTemplate.cpp">
+      <Filter>Engine\Src\Editor\Script</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Inspector\InspectorLayout.cpp">
       <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClCompile>
@@ -1625,6 +1628,9 @@
   <ItemGroup>
     <ClInclude Include="Engine\Src\Editor\Inspector\ComponentInspectors.h">
       <Filter>Engine\Src\Editor\Inspector</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Script\ScriptTemplate.h">
+      <Filter>Engine\Src\Editor\Script</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Inspector\InspectorLayout.h">
       <Filter>Engine\Src\Editor\Inspector</Filter>
@@ -3780,6 +3786,9 @@
     </Filter>
     <Filter Include="Engine\Src\Editor\Scene">
       <UniqueIdentifier>{8EEC7EC7-38CE-4B25-84B4-1C1FD0F26A22}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Editor\Script">
+      <UniqueIdentifier>{54D003EF-57AE-4DC4-B254-B1380C6F0D2E}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Editor\Water">
       <UniqueIdentifier>{32FE3850-C2E5-459D-A623-BB1E995134B0}</UniqueIdentifier>
