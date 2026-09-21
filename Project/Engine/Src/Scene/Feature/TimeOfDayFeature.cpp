@@ -4,6 +4,9 @@
 
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/Light/LightManager.h"
+#include "GameObject/GameObject.h"
+#include "GameObject/GameObjectManager.h"
+#include "GameObject/Component/Light/LightComponent.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/PostEffect/Effect/PostEffectNames.h"
 #include "Graphics/PostEffect/Effect/ToneMapping/ToneMapping.h"
@@ -21,6 +24,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <memory>
 
 namespace
 {
@@ -183,10 +187,10 @@ namespace CoreEngine
             savedSunValid_ = false;
         }
 
-        if (createdMoon_.IsValid()) {
+        if (createdMoonObject_) {
             // 自分で足した月は片付ける（借り物のシーンに月を増やして返さない）
-            lightManager->DestroyLight(createdMoon_);
-            createdMoon_ = {};
+            createdMoonObject_->Destroy();
+            createdMoonObject_ = nullptr;
         } else if (savedMoonValid_) {
             if (Light* moon = lightManager->GetAtmosphereMoonLight()) {
                 moon->enabled = savedMoonEnabled_;
@@ -266,6 +270,42 @@ namespace CoreEngine
 
     // ==================== 反映 ====================
 
+    Light* TimeOfDayFeature::CreateMoonObject(SceneContext& ctx)
+    {
+        if (!ctx.gameObjectManager) {
+            return nullptr;
+        }
+
+        auto owned = std::make_unique<GameObject>();
+        owned->SetName("Moon");
+        GameObject* const object = ctx.gameObjectManager->AddObject(std::move(owned));
+        if (!object) {
+            return nullptr;
+        }
+        // サイクルが向きを毎フレーム書くので、シーンへ保存しても復元した値は残らない
+        object->SetSerializeEnabled(false);
+
+        LightComponent* const component = object->AddComponent<LightComponent>();
+        if (!component) {
+            object->Destroy();
+            return nullptr;
+        }
+
+        Light& light = component->Get();
+        light.type = LightType::Directional;
+        light.isAtmosphereMoon = true;
+        component->SyncWithManager();
+
+        Light* const live = component->GetLight();
+        if (!live) {
+            // ディレクショナルライトが上限（4 本）で実体を作れなかった
+            object->Destroy();
+            return nullptr;
+        }
+        createdMoonObject_ = object;
+        return live;
+    }
+
     void TimeOfDayFeature::ApplyToLights(SceneContext& ctx)
     {
         auto* lightManager = GetLightManager(ctx);
@@ -308,16 +348,15 @@ namespace CoreEngine
             if (!wantMoon) {
                 return;
             }
-            // 月はオプトイン。初回に第2ディレクショナルライトとして生成する
-            createdMoon_ = lightManager->CreateLight(LightType::Directional, "Moon");
-            moon = lightManager->GetLight(createdMoon_);
+            // 月はオプトイン。初回に第2ディレクショナルライトとして生成する。
+            // ライトはオブジェクトが持つので、Hierarchy から選んで Inspector で編集できる
+            moon = CreateMoonObject(ctx);
             if (!moon) {
-                return;  // ディレクショナルライトが上限（4 本）で作れなかった
+                return;  // シーンが無いか、ディレクショナルライトが上限（4 本）で作れなかった
             }
-            moon->isAtmosphereMoon = true;
         }
 
-        if (!savedMoonValid_ && !createdMoon_.IsValid()) {
+        if (!savedMoonValid_ && !createdMoonObject_) {
             // シーンが元から持っていた月は、借りている間の変更を Finalize で返す
             savedMoonEnabled_ = moon->enabled;
             savedMoonDirection_ = moon->direction;

@@ -2,6 +2,7 @@
 #include "LightManager.h"
 
 #include "Math/MathCore.h"
+#include "Utility/CVar/CVar.h"
 
 #include <algorithm>
 #include <cmath>
@@ -12,6 +13,10 @@ namespace CoreEngine
     namespace
     {
         constexpr float kDegToRad = MathCore::Constants::kDegToRad;
+
+        CVar<bool> cvVisualize{
+            "d.Light.Visualize", true,
+            "ライトの位置と向きをギズモで描く" };
 
     /// @brief ライト種別のログ表示名
         const char* GetLightTypeName(LightType type)
@@ -380,32 +385,18 @@ namespace CoreEngine
         bufferManager_.UpdateBuffers(gpuDirectionals, gpuPoints, gpuSpots, gpuAreas);
 
 #ifdef _DEBUG
-        if (debugVisualizer_.IsVisualizationEnabled()) {
-            // 選択中のライトのみ詳細ギズモ、他は簡略マーカーで描く（画面の線ノイズ抑制）
-            const LightHandle selected = debugVisualizer_.GetSelectedLight();
+        if (cvVisualize.Get()) {
+            // Inspector が指したライトのみ詳細ギズモ、他は簡略マーカーで描く（画面の線ノイズ抑制）
+            const LightHandle focus = gizmoFocus_;
+            gizmoFocus_ = {};
             for (size_t i = 0; i < slots_.size(); ++i) {
                 const Slot& slot = slots_[i];
                 if (!slot.alive) continue;
                 const LightHandle handle{ static_cast<uint16_t>(i), slot.generation };
-                debugVisualizer_.DrawVisualization(slot.light, handle == selected);
+                debugVisualizer_.DrawVisualization(slot.light, handle == focus);
             }
         }
 #endif
-    }
-
-    void LightManager::DrawAllImGui()
-    {
-        debugVisualizer_.DrawImGui(*this);
-    }
-
-    bool LightManager::DrawLightTreeImGui()
-    {
-        return debugVisualizer_.DrawHierarchyChildren(*this);
-    }
-
-    void LightManager::ClearLightUISelection()
-    {
-        debugVisualizer_.ClearSelection();
     }
 
     // ==================== GPU バインディング ====================

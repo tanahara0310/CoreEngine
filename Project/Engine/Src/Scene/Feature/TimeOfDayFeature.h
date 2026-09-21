@@ -7,6 +7,7 @@
 namespace CoreEngine
 {
     class EngineSystem;
+    class GameObject;
     class ICVar;
     class LightManager;
     class ToneMapping;
@@ -126,6 +127,10 @@ namespace CoreEngine
         /// @brief 借りている CVar を元の値へ返す
         static void ReleaseFloatCVar(BorrowedCVar& slot);
 
+        /// @brief 月のオブジェクト（ライト付き）を今のシーンへ作る
+        /// @return 作った月の実体。シーンが無い・ディレクショナルライトが上限なら nullptr
+        Light* CreateMoonObject(SceneContext& ctx);
+
         static LightManager* GetLightManager(SceneContext& ctx);
         static ToneMapping* GetToneMapping(SceneContext& ctx);
 
@@ -141,7 +146,8 @@ namespace CoreEngine
         bool savedSunValid_ = false;
         Vector3 savedSunDirection_{ 0.0f, -1.0f, 0.0f };
 
-        LightHandle createdMoon_{};       ///< この Feature が生成した月（借り物なら無効ハンドル）
+        /// この Feature が生成した月のオブジェクト（シーンが元から持っていれば nullptr）
+        GameObject* createdMoonObject_ = nullptr;
         bool savedMoonValid_ = false;
         bool savedMoonEnabled_ = false;
         Vector3 savedMoonDirection_{ 0.0f, -1.0f, 0.0f };

@@ -12,7 +12,7 @@ namespace CoreEngine
 
     /// @brief シーンのライト 1 灯を持つコンポーネント
     /// @details 値はこのコンポーネントが持ち、`SyncWithManager()` で `LightManager` の実体へ写す。
-    ///          実体を直に書き換える経路（Lighting パネル・Sky Atmosphere エディタ・シーンのコード）の
+    ///          実体を直に書き換える経路（Sky Atmosphere エディタ・昼夜サイクル）の
     ///          編集は次の同期で取り込むので、どちらから触っても保存データに残る。
     /// @note 位置はオブジェクトの Transform が持つ（実体側で動かされたらオブジェクトを動かす）。
     ///       向きは今はこのコンポーネントの値で、オブジェクトの回転からは決めていない。
@@ -70,6 +70,10 @@ namespace CoreEngine
 
         /// @brief `LightManager` が持つ実体（作れていなければ nullptr）
         Light* GetLight() const;
+
+        /// @brief このライトのギズモを、次の描画だけ詳細表示にする
+        /// @note 選択中のライトを目立たせるためにインスペクタから毎フレーム呼ぶ。
+        void FocusGizmo() const;
 
     private:
         /// @brief エンジンから `LightManager` を引く（一度引いたら覚える）
