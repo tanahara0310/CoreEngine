@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Editor/Inspector/ComponentInspectors.h"
 #include "Editor/Panel/EditorPanelRegistry.h"
 #include "FogEditor.h"
 
@@ -18,6 +19,8 @@ namespace CoreEngine {
 
     namespace {
         constexpr const char* kEditorLabel = "Height Fog";
+        /// @brief この設定を持つコンポーネントの型名
+        constexpr const char* kComponentTypeName = "HeightFog";
         constexpr const char* kCVarPrefix = "r.Fog";
 
 #ifdef CORE_EDITOR
@@ -101,17 +104,14 @@ namespace CoreEngine {
     {
         engine_ = &engine;
 #ifdef CORE_EDITOR
-        // Hierarchy の Environment ツリーへ登録し、選択時に Inspector で編集できるようにする。
+        // シーンに置かれたコンポーネントのインスペクタとして中身を描く。
         // GameDebugUI はここで一度だけ取得してキャッシュする（デストラクタで使うため）
         if (auto* debug = engine_->GetDebugSubsystem()) {
             gameDebugUI_ = debug->GetGameDebugUI();
             if (gameDebugUI_) {
-                Editor::EditorPanelRegistry::Get().Register({
-                    .id = kEditorLabel,
-                    .placement = Editor::PanelPlacement::EnvironmentTree,
-                    .owner = this,
-                    .icon = "≋",
-                    .draw = [this]() { DrawContent(); },
+                Editor::ComponentInspectors::Register(kComponentTypeName, {
+                    .displayName = "高さフォグ",
+                    .drawBody = [this](IComponent&) { DrawContent(); return false; },
                     });
             }
         }
@@ -124,7 +124,7 @@ namespace CoreEngine {
         // エンジン終了時にドロワーがダングリングしないよう登録を解除する。
         // engine_->GetDebugSubsystem() を呼び直さないこと（サブシステム一括破棄中に走るため）
         if (gameDebugUI_) {
-            Editor::EditorPanelRegistry::Get().Unregister(kEditorLabel, this);
+            Editor::ComponentInspectors::Unregister(kComponentTypeName);
         }
 #endif
     }

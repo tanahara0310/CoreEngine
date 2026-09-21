@@ -8,11 +8,16 @@
 namespace CoreEngine
 {
     class SkyBoxComponent;
+    class VolumetricCloudComponent;
+    class HeightFogComponent;
+    class GameObject;
 
-    /// @brief 既定の環境（空・大気散乱・雲）を管理する Feature
-    /// @details シーンのオブジェクトが出そろった後（PostSceneInitialize）に SkyBox を
-    ///          採用（未生成なら自動生成）し、
-    ///          PostLogic で大気散乱 → 雲の順に毎フレーム反映する。
+    /// @brief 環境（空・大気散乱・雲・霧）をシーンのオブジェクトとして置く Feature
+    /// @details シーンのオブジェクトが出そろった後（PostSceneInitialize）に、空・雲・霧の
+    ///          コンポーネントを採用する（どれも無ければ `Environment` オブジェクトを作って載せる）。
+    ///          PostLogic で大気散乱 → 雲 → 霧の順に毎フレーム反映する。
+    /// @note パラメータの実体は CVar が持つ（保存はシーンの `_environment.json`）。
+    ///       コンポーネントが持つのは「シーンに置かれている」ことと有効・無効だけ。
     /// @note 地平線より下の地面は大気散乱そのものが描く（Sky-View LUT の地表反射項）。
     class EnvironmentFeature : public ISceneFeature {
     public:
@@ -29,8 +34,13 @@ namespace CoreEngine
         SkyBoxComponent* GetSkyBox() const { return skyBox_; }
 
     private:
-        /// @brief 既定の空（大気散乱モードの SkyBox）のセットアップ
-        void SetupDefaultSky(SceneContext& ctx);
+        /// @brief 空・雲・霧のコンポーネントを採用する（無ければ `Environment` を作って載せる）
+        void SetupEnvironmentObject(SceneContext& ctx);
+
+        /// @brief コンポーネントの有効・無効と CVar を行き来させる
+        /// @details 片方だけが変わったらもう片方へ写す。CVar パネルとインスペクタの
+        ///          どちらから触っても同じ値になる（`LightComponent` と同じ流儀）。
+        void SyncComponentToggles();
 
         /// @brief 大気散乱システム（と雲）の毎フレーム更新
         /// @details SkyBox が大気散乱モードの場合のみ AtmosphereManager へ太陽情報と
@@ -49,8 +59,14 @@ namespace CoreEngine
         ///          FogManager::Update が「このフレームはフォグを使う」フラグを立てる。
         void UpdateFog(SceneContext& ctx);
 
-        // 既定背景の SkyBox（所有権は GameObjectManager。Finalize でポインタをクリアする）
+        // 環境のコンポーネント（所有権は GameObjectManager。Finalize でポインタをクリアする）
         SkyBoxComponent* skyBox_ = nullptr;
+        VolumetricCloudComponent* cloud_ = nullptr;
+        HeightFogComponent* fog_ = nullptr;
+
+        // 前回そろえた時点の有効・無効（どちら側が変わったかを見分けるための控え）
+        bool lastCloudEnabled_ = false;
+        bool lastFogEnabled_ = false;
 
 #ifdef CORE_EDITOR
         // シーンが持つ値の変更を見張るための控え

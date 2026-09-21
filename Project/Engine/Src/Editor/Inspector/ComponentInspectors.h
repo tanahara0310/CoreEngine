@@ -29,6 +29,10 @@ namespace CoreEngine::Editor::ComponentInspectors
     /// @brief 型の出し方を登録する（同じ型名は上書きする）
     void Register(const std::string& typeName, Entry entry);
 
+    /// @brief 型の出し方の登録を外す
+    /// @note 登録元より先に描かれないよう、登録した側のデストラクタから呼ぶ。
+    void Unregister(const std::string& typeName);
+
     /// @brief コンポーネントの出し方（登録が無ければ nullptr）
     const Entry* Find(const IComponent& component);
 
