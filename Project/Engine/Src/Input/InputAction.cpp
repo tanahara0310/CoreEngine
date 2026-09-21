@@ -33,7 +33,7 @@ namespace CoreEngine
                 { "Jump", "ジャンプ", { "Key:Space", "Gamepad:A" } },
                 { "Attack", "攻撃", { "Mouse:Left", "Gamepad:X" } },
                 { "Interact", "インタラクト", { "Key:E", "Gamepad:B" } },
-                { "UIConfirm", "UI決定", { "Key:Return", "Gamepad:A" } },
+                { "UIConfirm", "UI決定", { "Key:Enter", "Gamepad:A" } },
                 { "UICancel", "UIキャンセル", { "Key:Escape", "Gamepad:B" } },
                 // ポーズの開閉。パッドは START を使う。B は Interact と兼用なので、
                 // UICancel をそのまま開閉に使うとゲーム中に誤って開いてしまう

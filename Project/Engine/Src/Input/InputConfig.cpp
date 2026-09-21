@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "InputConfig.h"
+#include "Utility/Logger/Logger.h"
 #include "Utility/JsonManager/JsonManager.h"
 
 namespace CoreEngine {
@@ -34,7 +35,15 @@ void InputConfig::ResetToDefault() {
         std::vector<InputBinding> list;
         list.reserve(defs[i].defaults.size());
         for (const std::string& text : defs[i].defaults) {
-            list.push_back(InputBinding::Deserialize(text));
+            const InputBinding binding = InputBinding::Deserialize(text);
+            // 綴りが表に無いと既定のキーへ倒れて黙って別の割り当てになる。
+            // 往復させて食い違ったら綴り違いなので、どのアクションのどれかを出す
+            if (binding.Serialize() != text) {
+                Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
+                    "入力の既定の綴りが読めません（{} の \"{}\" → \"{}\"）",
+                    defs[i].id, text, binding.Serialize());
+            }
+            list.push_back(binding);
         }
         SetBindings(static_cast<InputAction>(i), std::move(list));
     }
