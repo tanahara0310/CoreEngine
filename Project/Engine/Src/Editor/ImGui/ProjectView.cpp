@@ -3,6 +3,7 @@
 #include "Utility/Path/ProjectPaths.h"
 #include "Editor/External/ExternalCodeEditor.h"
 #include "Editor/Script/ScriptTemplate.h"
+#include "Editor/Project/AssetFileOperations.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Graphics/Texture/TextureManager.h"
@@ -164,6 +165,8 @@ namespace CoreEngine
 
             UI::SameLine();
 
+            HandleFileShortcuts();
+
             // 右側の一覧
             ImGui::BeginChild("RightPanel", ImVec2(0, 0), true, ImGuiWindowFlags_HorizontalScrollbar);
             {
@@ -180,6 +183,8 @@ namespace CoreEngine
         ImGui::End();
 
         DrawNewScriptDialog();
+        DrawRenameDialog();
+        DrawDeleteDialog();
 
         // 描画中に頼まれた移動をここで行う
         ApplyPendingNavigation();
@@ -611,6 +616,8 @@ namespace CoreEngine
             }
         }
 
+        DrawEntryContextMenu(entry);
+
         if (entry.isDirectory) {
             return;
         }
@@ -954,6 +961,209 @@ namespace CoreEngine
         }
     }
 
+    void ProjectView::DrawEntryContextMenu(const Entry& entry)
+    {
+        if (!ImGui::BeginPopupContextItem("##entryMenu")) {
+            return;
+        }
+
+        // メニューを開いた項目を選択にしておく（見ているものと操作の対象をそろえる）
+        selectedPath_ = entry.path;
+
+        ImGui::TextDisabled("%s", entry.name.c_str());
+        ImGui::Separator();
+
+        if (ImGui::MenuItem("コピー", "Ctrl+C")) {
+            clipboardPath_ = entry.path;
+            clipboardIsCut_ = false;
+        }
+        if (ImGui::MenuItem("切り取り", "Ctrl+X")) {
+            clipboardPath_ = entry.path;
+            clipboardIsCut_ = true;
+        }
+        if (ImGui::MenuItem("貼り付け", "Ctrl+V", false, !clipboardPath_.empty())) {
+            PasteIntoCurrentFolder();
+        }
+        ImGui::Separator();
+        if (ImGui::MenuItem("名前を変更", "F2")) {
+            OpenRenameDialog(entry.path);
+        }
+        if (ImGui::MenuItem("削除", "Delete")) {
+            OpenDeleteDialog(entry.path);
+        }
+        ImGui::Separator();
+        if (ImGui::MenuItem("エクスプローラで開く")) {
+            const std::wstring folder = entry.isDirectory
+                ? entry.path.wstring() : entry.path.parent_path().wstring();
+            ShellExecuteW(nullptr, L"open", folder.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+        }
+
+        ImGui::EndPopup();
+    }
+
+    void ProjectView::HandleFileShortcuts()
+    {
+        // Project の窓にフォーカスがあるときだけ効かせる（他の窓の Ctrl+C を奪わない）
+        if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)) {
+            return;
+        }
+        if (showRenameDialog_ || showDeleteDialog_ || showNewScriptDialog_) {
+            return;
+        }
+
+        const bool ctrl = ImGui::GetIO().KeyCtrl;
+        if (ctrl && ImGui::IsKeyPressed(ImGuiKey_C) && !selectedPath_.empty()) {
+            clipboardPath_ = selectedPath_;
+            clipboardIsCut_ = false;
+        }
+        if (ctrl && ImGui::IsKeyPressed(ImGuiKey_X) && !selectedPath_.empty()) {
+            clipboardPath_ = selectedPath_;
+            clipboardIsCut_ = true;
+        }
+        if (ctrl && ImGui::IsKeyPressed(ImGuiKey_V) && !clipboardPath_.empty()) {
+            PasteIntoCurrentFolder();
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_F2) && !selectedPath_.empty()) {
+            OpenRenameDialog(selectedPath_);
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_Delete) && !selectedPath_.empty()) {
+            OpenDeleteDialog(selectedPath_);
+        }
+    }
+
+    void ProjectView::PasteIntoCurrentFolder()
+    {
+        if (clipboardPath_.empty()) {
+            return;
+        }
+
+        std::filesystem::path result;
+        std::string error;
+        const bool ok = clipboardIsCut_
+            ? Editor::AssetFileOperations::Move(clipboardPath_, currentPath_, &result, &error)
+            : Editor::AssetFileOperations::Copy(clipboardPath_, currentPath_, &result, &error);
+
+        if (ok) {
+            if (clipboardIsCut_) {
+                clipboardPath_.clear();  // 切り取りは 1 回だけ
+            }
+            selectedPath_ = result;
+            currentEntries_ = GetCurrentDirectoryContents();
+        } else {
+            Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System, "貼り付けできません: {}", error);
+        }
+    }
+
+    void ProjectView::OpenRenameDialog(const std::filesystem::path& target)
+    {
+        showRenameDialog_ = true;
+        renameTarget_ = target;
+        renameError_.clear();
+
+        const std::string name = Logger::GetInstance().PathToUtf8(target.filename());
+        const std::size_t length = (std::min)(name.size(), sizeof(renameBuffer_) - 1);
+        std::memcpy(renameBuffer_, name.data(), length);
+        renameBuffer_[length] = '\0';
+    }
+
+    void ProjectView::DrawRenameDialog()
+    {
+        constexpr const char* kTitle = "名前を変更";
+        if (showRenameDialog_ && !ImGui::IsPopupOpen(kTitle)) {
+            ImGui::OpenPopup(kTitle);
+        }
+
+        ImGui::SetNextWindowSize(ImVec2(420.0f, 0.0f), ImGuiCond_FirstUseEver);
+        if (!ImGui::BeginPopupModal(kTitle, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            return;
+        }
+
+        UI::Hint("実物のファイルの名前が変わります。GUID を持つ .meta も一緒に付いていきます。");
+        if (renameTarget_.extension() == ".as") {
+            UI::Hint("スクリプトはクラス名とファイル名を合わせてください（中のクラス名は変わりません）。");
+        }
+        UI::Separator();
+
+        const bool enterPressed = UI::InputText("新しい名前", renameBuffer_, sizeof(renameBuffer_),
+            ImGuiInputTextFlags_EnterReturnsTrue);
+
+        if (!renameError_.empty()) {
+            ImGui::TextColored(Theme::kError, "%s", renameError_.c_str());
+        }
+
+        UI::Separator();
+        const bool commit = ImGui::Button("変更") || enterPressed;
+        if (commit) {
+            std::filesystem::path result;
+            if (Editor::AssetFileOperations::Rename(renameTarget_, renameBuffer_, &result, &renameError_)) {
+                showRenameDialog_ = false;
+                ImGui::CloseCurrentPopup();
+                selectedPath_ = result;
+                currentEntries_ = GetCurrentDirectoryContents();
+            }
+        }
+        UI::SameLine();
+        if (ImGui::Button("やめる")) {
+            showRenameDialog_ = false;
+            renameError_.clear();
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+
+    void ProjectView::OpenDeleteDialog(const std::filesystem::path& target)
+    {
+        showDeleteDialog_ = true;
+        deleteTarget_ = target;
+        deleteError_.clear();
+    }
+
+    void ProjectView::DrawDeleteDialog()
+    {
+        constexpr const char* kTitle = "削除";
+        if (showDeleteDialog_ && !ImGui::IsPopupOpen(kTitle)) {
+            ImGui::OpenPopup(kTitle);
+        }
+
+        ImGui::SetNextWindowSize(ImVec2(440.0f, 0.0f), ImGuiCond_FirstUseEver);
+        if (!ImGui::BeginPopupModal(kTitle, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            return;
+        }
+
+        std::error_code ec;
+        const bool isDirectory = std::filesystem::is_directory(deleteTarget_, ec);
+        ImGui::Text("%s を削除しますか？",
+            Logger::GetInstance().PathToUtf8(deleteTarget_.filename()).c_str());
+        if (isDirectory) {
+            ImGui::TextColored(Theme::kError, "フォルダの中身もまとめて消えます。");
+        }
+        UI::Hint("ごみ箱へ送るので、間違えたらエクスプローラのごみ箱から戻せます。");
+
+        if (!deleteError_.empty()) {
+            ImGui::TextColored(Theme::kError, "%s", deleteError_.c_str());
+        }
+
+        UI::Separator();
+        if (ImGui::Button("削除")) {
+            if (Editor::AssetFileOperations::MoveToRecycleBin(deleteTarget_, &deleteError_)) {
+                showDeleteDialog_ = false;
+                ImGui::CloseCurrentPopup();
+                if (selectedPath_ == deleteTarget_) { selectedPath_.clear(); }
+                if (clipboardPath_ == deleteTarget_) { clipboardPath_.clear(); }
+                currentEntries_ = GetCurrentDirectoryContents();
+            }
+        }
+        UI::SameLine();
+        if (ImGui::Button("やめる")) {
+            showDeleteDialog_ = false;
+            deleteError_.clear();
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+
     void ProjectView::DrawCreateContextMenu()
     {
         if (!ImGui::BeginPopupContextWindow("##projectCreate",
@@ -962,6 +1172,10 @@ namespace CoreEngine
         }
         if (ImGui::MenuItem("スクリプトを作成...")) {
             OpenNewScriptDialog();
+        }
+        ImGui::Separator();
+        if (ImGui::MenuItem("貼り付け", "Ctrl+V", false, !clipboardPath_.empty())) {
+            PasteIntoCurrentFolder();
         }
         ImGui::EndPopup();
     }

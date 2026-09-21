@@ -154,6 +154,28 @@ namespace CoreEngine
         /// @brief 新しいスクリプトを作る窓を開く（置き先を今のフォルダで埋める）
         void OpenNewScriptDialog();
 
+        /// @brief 項目 1 件の右クリックメニュー（コピー・切り取り・名前の変更・削除）
+        void DrawEntryContextMenu(const Entry& entry);
+
+        /// @brief 名前を変える窓
+        void DrawRenameDialog();
+
+        /// @brief 削除の確認の窓
+        void DrawDeleteDialog();
+
+        /// @brief 名前を変える窓を開く
+        void OpenRenameDialog(const std::filesystem::path& target);
+
+        /// @brief 削除の確認の窓を開く
+        void OpenDeleteDialog(const std::filesystem::path& target);
+
+        /// @brief 控えたものを今のフォルダへ貼る
+        void PasteIntoCurrentFolder();
+
+        /// @brief コピー・切り取り・貼り付け・名前の変更・削除のキー操作
+        /// @note Project の窓にフォーカスがあるときだけ効く。
+        void HandleFileShortcuts();
+
     private:
         GraphicsCore* dxCommon_ = nullptr;     // DirectX共通クラスへのポインタ
 
@@ -205,6 +227,21 @@ namespace CoreEngine
         // PNGプレビューキャッシュ
         std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3D12Resource>> pngPreviewCache_;
         std::unordered_map<std::string, PNGPreviewInfo> pngPreviewInfoCache_;
+
+        // コピー／切り取りで控えたもの（空なら貼れない）
+        std::filesystem::path clipboardPath_;
+        bool clipboardIsCut_ = false;
+
+        // 名前を変える窓
+        bool showRenameDialog_ = false;
+        std::filesystem::path renameTarget_;
+        char renameBuffer_[260] = {};
+        std::string renameError_;
+
+        // 削除の確認の窓
+        bool showDeleteDialog_ = false;
+        std::filesystem::path deleteTarget_;
+        std::string deleteError_;
 
         // 新しいスクリプトを作る窓
         bool showNewScriptDialog_ = false;
