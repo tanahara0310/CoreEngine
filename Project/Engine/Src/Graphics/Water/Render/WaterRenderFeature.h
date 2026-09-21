@@ -139,7 +139,7 @@ namespace CoreEngine
         uint32_t lastFFTCVarRevisionSum_ = ~0u;
 
 #ifdef CORE_EDITOR
-        /// @brief 水面の調整画面（Hierarchy の Environment ツリーへ出す）
+        /// @brief 水面の調整画面（水面コンポーネントのインスペクタへ出す）
         /// @details 実体はエディタ側にあるので前方宣言のまま持つ
         ///          （コンストラクタとデストラクタは .cpp で定義する）。
         std::unique_ptr<WaterEditorPanel> editorPanel_;

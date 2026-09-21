@@ -796,6 +796,9 @@
     <ClCompile Include="Engine\Src\GameObject\Component\Environment\HeightFogComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Environment</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\Environment\PostProcessComponent.cpp">
+      <Filter>Engine\Src\GameObject\Component\Environment</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\Component\Environment\VolumetricCloudComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Environment</Filter>
     </ClCompile>
@@ -2653,6 +2656,9 @@
       <Filter>Engine\Src\GameObject\Component\Camera</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Environment\HeightFogComponent.h">
+      <Filter>Engine\Src\GameObject\Component\Environment</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\Environment\PostProcessComponent.h">
       <Filter>Engine\Src\GameObject\Component\Environment</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Environment\VolumetricCloudComponent.h">

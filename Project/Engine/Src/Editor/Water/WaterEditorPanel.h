@@ -13,15 +13,15 @@ namespace CoreEngine {
 
 namespace CoreEngine {
 
-/// @brief 水面エディタ UI の組み立てと Hierarchy への登録を担当する
+/// @brief 水面エディタ UI の組み立てとインスペクタへの登録を担当する
 /// @details 水面本体・波シミュレーション・毎フレームのリソース結線は
 ///          Engine 側の WaterRenderFeature が持つ。ここは UI だけを扱う。
 class WaterEditorPanel {
 public:
-	/// @brief 環境エディタの登録を解除する
+	/// @brief インスペクタの登録を解除する
 	~WaterEditorPanel();
 
-	/// @brief 水面 UI の各パネルを初期化し、環境エディタとして登録する
+	/// @brief 水面 UI の各パネルを初期化し、水面コンポーネントのインスペクタとして登録する
 	/// @param waterFeature シーンへ登録済みの水面 Feature（nullptr のとき UI は出ない）
 	/// @param engine エンジンシステム
 	void Initialize(CoreEngine::WaterRenderFeature* waterFeature, CoreEngine::EngineSystem& engine);

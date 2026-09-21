@@ -26,6 +26,7 @@ public:
     const char* GetTypeName() const override { return "SkyBox"; }
 
     REFLECT_BEGIN(SkyBoxComponent, "空")
+        REFLECT_PARTIAL()
         REFLECT_PROPERTY(rotation_, "向き", p.range = Speed(0.01f), p.displayScale = kDegreesPerRadian)
         REFLECT_PROPERTY(environmentIntensity_, "環境光の強さ", p.range = Range(0.0f, 10.0f, 0.01f))
     REFLECT_END()

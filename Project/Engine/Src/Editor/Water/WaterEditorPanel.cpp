@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Editor/Panel/EditorPanelRegistry.h"
+#include "Editor/Inspector/ComponentInspectors.h"
 #include "Editor/Water/WaterEditorPanel.h"
 
 #include "EngineSystem/EngineSystem.h"
@@ -14,7 +14,8 @@ using namespace CoreEngine;
 
 #ifdef CORE_EDITOR
 namespace {
-	constexpr const char* kEditorLabel = "Water";
+	/// @brief この設定を持つコンポーネントの型名
+	constexpr const char* kComponentTypeName = "WaterSurface";
 }
 #endif
 
@@ -30,7 +31,7 @@ void WaterEditorPanel::Shutdown() {
 	// シーン破棄後にドロワーがダングリングしないよう登録を解除する
 	// （パラメータの永続化は CVars.json が担うため、ここで保存処理は不要）
 	if (engine_) {
-		Editor::EditorPanelRegistry::Get().Unregister(kEditorLabel, this);
+		Editor::ComponentInspectors::Unregister(kComponentTypeName);
 		// 解除済みなので、保険で呼ばれるデストラクタ側では何もしない
 		engine_ = nullptr;
 	}
@@ -53,12 +54,10 @@ void WaterEditorPanel::Initialize(
 	parameterPanel_.Initialize(*waterFeature_, editorFacade_);
 	debugPanel_.Initialize(*waterFeature_);
 
-	// Hierarchy の Environment ツリーへ登録し、選択時に Inspector で編集できるようにする
-	Editor::EditorPanelRegistry::Get().Register({
-		.id = kEditorLabel,
-		.placement = Editor::PanelPlacement::EnvironmentTree,
-		.owner = this,
-		.draw = [this]() { DrawImGuiContent(); },
+	// シーンに置かれた水面コンポーネントのインスペクタとして中身を描く
+	Editor::ComponentInspectors::Register(kComponentTypeName, {
+		.displayName = "水面",
+		.drawBody = [this](IComponent&) { DrawImGuiContent(); return false; },
 		});
 
 	// パラメータの復元・保存は WaterCVars（CVars.json / CVarSettingsSection）が担う。

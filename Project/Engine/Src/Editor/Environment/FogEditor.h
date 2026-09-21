@@ -6,7 +6,8 @@ namespace CoreEngine {
     class GameDebugUI;
 
     /// @brief 高さフォグのエンジン常駐エディタ
-    /// @details DebugSubsystem がエンジン寿命で 1 個所有し、どのシーンでも Environment ツリーから編集できる。
+    /// @details DebugSubsystem がエンジン寿命で 1 個所有し、シーンに置かれたコンポーネントの
+    ///          インスペクタとして中身を描く。
     ///          UI は「① プリセット → ② 詳細設定（CVar 自動生成）」の 2 層。
     class FogEditor {
     public:
