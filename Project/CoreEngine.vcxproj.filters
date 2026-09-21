@@ -85,6 +85,9 @@
     <ClCompile Include="Engine\Src\Script\Binding\RandomBinding.cpp">
       <Filter>Engine\Src\Script\Binding</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\CVarBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Script\Binding\RenderingBinding.cpp">
       <Filter>Engine\Src\Script\Binding</Filter>
     </ClCompile>
@@ -1741,6 +1744,9 @@
       <Filter>Engine\Src\Script\Binding</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Script\Binding\RandomBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\CVarBinding.h">
       <Filter>Engine\Src\Script\Binding</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Script\Binding\RenderingBinding.h">

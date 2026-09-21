@@ -2,6 +2,7 @@
 #include "CVarSettingsSection.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/CVar/CVarRegistry.h"
+#include "EngineSystem/PlaybackState.h"
 #include "Utility/CVar/CVarSerialization.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
@@ -48,11 +49,25 @@ namespace CoreEngine
 
     uint64_t CVarSettingsSection::GetChangeRevision() const
     {
-        return CVarRegistry::Get().GetGlobalRevision();
+        const CVarRegistry& registry = CVarRegistry::Get();
+        if (PlaybackStateManager::GetInstance().IsInPlayMode()) {
+            if (!frozen_) {
+                // 再生に入った時点の通番で止める。以降スクリプトが書いても「変化なし」に見える
+                frozen_ = true;
+                frozenChangeRevision_ = registry.GetGlobalRevision();
+                frozenCommitRevision_ = registry.GetCommitRevision();
+            }
+            return frozenChangeRevision_;
+        }
+        frozen_ = false;
+        return registry.GetGlobalRevision();
     }
 
     uint64_t CVarSettingsSection::GetCommitRevision() const
     {
+        if (frozen_) {
+            return frozenCommitRevision_;
+        }
         return CVarRegistry::Get().GetCommitRevision();
     }
 
