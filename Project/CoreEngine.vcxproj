@@ -141,7 +141,8 @@
     <PostBuildEvent>
       <Command>copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
 xcopy "$(ProjectDir)Application\Assets" "$(TargetDir)Application\Assets\" /E /I /Y /D
-xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Command>
+xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D
+xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I /Y /D</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'">
@@ -306,6 +307,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\EngineSystem\Factory\GraphicsComponentFactory.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Settings\EditorSettingsSubsystem.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Settings\CVarSettingsSection.cpp" />
+    <ClCompile Include="Engine\Src\EngineSystem\Settings\ProjectSettings.cpp" />
     <ClCompile Include="Engine\Src\Utility\CVar\CVar.cpp" />
     <ClCompile Include="Engine\Src\Utility\CVar\CVarConsole.cpp" />
     <ClCompile Include="Engine\Src\Utility\CVar\CVarRegistry.cpp" />
@@ -1218,6 +1220,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\EngineSystem\Settings\EditorSettingsSubsystem.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Settings\IEditorSettingsSection.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Settings\CVarSettingsSection.h" />
+    <ClInclude Include="Engine\Src\EngineSystem\Settings\ProjectSettings.h" />
     <ClInclude Include="Engine\Src\Utility\Asset\NamedAssetLibrary.h" />
     <ClInclude Include="Engine\Src\Utility\CVar\CVar.h" />
     <ClInclude Include="Engine\Src\Utility\CVar\CVarConsole.h" />

@@ -4,8 +4,13 @@
 #include <EngineSystem/Startup/StartupSequence.h>
 #include "WinApp/WinApp.h"
 #include "Scene/SceneSaveSystem.h"
+#include "EngineSystem/Settings/ProjectSettings.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Utility/Logger/Logger.h"
+
+#include <algorithm>
+#include <string>
+#include <vector>
 
 using namespace CoreEngine;
 
@@ -18,19 +23,33 @@ void MyGame::Initialize()
     ConnectDebugUI();
 }
 
+std::string MyGame::ResolveInitialSceneName()
+{
+    const std::vector<std::string> scenes = CoreEngine::SceneSaveSystem::ListSavedScenes();
+    const std::string& wanted = CoreEngine::ProjectSettings::Get().GetInitialSceneName();
+
+    if (!wanted.empty()
+        && std::find(scenes.begin(), scenes.end(), wanted) != scenes.end()) {
+        return wanted;
+    }
+    // 設定が空か、指していたシーンが消えている。開けるものを出しておく
+    return scenes.empty() ? std::string{} : scenes.front();
+}
+
 void MyGame::BuildStartupTasks(CoreEngine::StartupSequence& sequence)
 {
     sequence.Add("シーン管理システム", [this] { CreateSceneManager(); });
-    sequence.Add(std::string("シーン構築: ") + kInitialSceneName, [this] { LoadInitialScene(); });
+    sequence.Add("シーン構築: " + ResolveInitialSceneName(), [this] { LoadInitialScene(); });
     sequence.Add("デバッグUI 接続", [this] { ConnectDebugUI(); });
 }
 
 void MyGame::BuildPreloadTasks(CoreEngine::StartupSequence& sequence)
 {
-    sequence.Add(std::string("モデル先読み開始: ") + kInitialSceneName, [this] {
+    const std::string sceneName = ResolveInitialSceneName();
+    sequence.Add("モデル先読み開始: " + sceneName, [this, sceneName] {
         // シーン JSON から modelPath だけを抜き出す（オブジェクトはまだ作らない）
         const std::vector<std::string> modelPaths =
-            CoreEngine::SceneSaveSystem::CollectModelPaths(kInitialSceneName);
+            CoreEngine::SceneSaveSystem::CollectModelPaths(sceneName);
 
         if (modelPaths.empty()) {
             return;
@@ -48,7 +67,7 @@ void MyGame::BuildPreloadTasks(CoreEngine::StartupSequence& sequence)
 
         CoreEngine::Logger::GetInstance().Logf(
             CoreEngine::LogLevel::Info, CoreEngine::LogCategory::Resource,
-            "モデル先読みを開始: {} 件（シーン: {}）", modelPaths.size(), kInitialSceneName);
+            "モデル先読みを開始: {} 件（シーン: {}）", modelPaths.size(), sceneName);
     });
 }
 
@@ -66,8 +85,16 @@ void MyGame::CreateSceneManager()
 
 void MyGame::LoadInitialScene()
 {
+    const std::string sceneName = ResolveInitialSceneName();
+    if (sceneName.empty()) {
+        CoreEngine::Logger::GetInstance().Logf(
+            CoreEngine::LogLevel::Error, CoreEngine::LogCategory::System,
+            "開けるシーンがありません（Application/Assets/Scenes が空か、"
+            "プロジェクト設定の initialScene が指すシーンが見つかりません）");
+        return;
+    }
     // 初期シーンを設定（トランジション無し）
-    sceneManager_->SetInitialScene(kInitialSceneName);
+    sceneManager_->SetInitialScene(sceneName);
 }
 
 void MyGame::ConnectDebugUI()
@@ -83,7 +110,7 @@ void MyGame::ConnectDebugUI()
     auto console = GetEngineSystem()->GetDebugSubsystem()->GetConsole();
     if (console) {
         console->LogInfo("MyGame: ゲーム初期化が完了しました");
-        console->LogInfo(std::string("MyGame: 初期シーン '") + kInitialSceneName + "' を読み込みました");
+        console->LogInfo("MyGame: 初期シーン '" + ResolveInitialSceneName() + "' を読み込みました");
     }
 #endif
 }

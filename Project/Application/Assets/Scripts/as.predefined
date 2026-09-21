@@ -856,6 +856,7 @@ float UnscaledTimeSinceStartup();
 uint64 FrameCount();
 float TimeScale();
 bool IsPaused();
+void SetTimeScale(float scale);
 }
 namespace Physics {
 RaycastHit@ Raycast(const Vector3&in origin, const Vector3&in direction, float maxDistance, int layerMask = -1);
