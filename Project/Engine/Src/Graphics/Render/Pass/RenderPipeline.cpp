@@ -273,7 +273,6 @@ namespace CoreEngine
         entry.priority = priority;
         entry.timingCategoryOverride = timingCategoryOverride;
         entry.sequence = nextSequence_++;
-        entry.owner = activeOwner_;
         RenderPass* passPtr = entry.pass.get();
 
         // (phase, priority, 登録順) で決まる位置へ挿入し、passes_ を常にソート済みに保つ。
@@ -299,20 +298,6 @@ namespace CoreEngine
         passes_.erase(
             std::remove_if(passes_.begin(), passes_.end(),
                 [pass](const RenderPassEntry& entry) { return entry.pass.get() == pass; }),
-            passes_.end());
-
-        InvalidateGraphSnapshots();
-    }
-
-    void RenderPipeline::RemovePassesByOwner(const void* owner)
-    {
-        if (!owner) {
-            return;
-        }
-
-        passes_.erase(
-            std::remove_if(passes_.begin(), passes_.end(),
-                [owner](const RenderPassEntry& entry) { return entry.owner == owner; }),
             passes_.end());
 
         InvalidateGraphSnapshots();

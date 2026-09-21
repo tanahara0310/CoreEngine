@@ -278,9 +278,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
       <PrecompiledHeader>Create</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\CollisionTestScene.cpp" />
-    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\CollisionTestReport.cpp" />
-    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\GeometrySelfTest.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterSurfaceComponent.cpp" />
     <ClCompile Include="Engine\Src\Camera\CameraManager.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraClipPlayerModule.cpp" />
@@ -443,8 +440,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\GameObject\Component\Core\MissingComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Core\ObjectRef.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Render\MaterialComponent.cpp" />
-    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\ProbeComponent.cpp" />
-    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\ProbeEvents.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Animation\AnimatorComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Render\MeshRendererComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Render\SpriteRendererComponent.cpp" />
@@ -494,9 +489,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Model\ModelManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\ModelResource.cpp" />
     <ClCompile Include="Application\Src\Scenes\TestScene\TestScene.cpp" />
-    <ClCompile Include="Application\Src\Scenes\SampleGameScene\SampleGameScene.cpp" />
-    <ClCompile Include="Application\Src\Scenes\ShootingSampleScene\ShootingSampleScene.cpp" />
-    <ClCompile Include="Application\Src\Scenes\Sprite2DSampleScene\Sprite2DSampleScene.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\UndoRedoHistory.cpp" />
     <ClCompile Include="Engine\Src\Threading\ThreadBudget.cpp" />
     <ClCompile Include="Engine\Src\Threading\ThreadPool.cpp" />
@@ -1082,7 +1074,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Text\MsdfAtlasAllocator.cpp" />
     <ClCompile Include="Engine\Src\Text\FontManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\UI\TextRenderer.cpp" />
-    <ClCompile Include="Application\Src\Scenes\MsdfTextTestScene\MsdfTextTestScene.cpp" />
     <ClCompile Include="Engine\Src\Audio\AudioSystem.cpp" />
     <ClCompile Include="Engine\Src\Audio\Decoder\MediaFoundationDecoder.cpp" />
     <ClCompile Include="Engine\Src\Audio\Decoder\WavDecoder.cpp" />
@@ -1178,9 +1169,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Script\ScriptCallback.h" />
     <ClInclude Include="Engine\Src\Script\ScriptSubsystem.h" />
     <ClInclude Include="Engine\Src\Reflection\PropertyDescriptor.h" />
-    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionTestScene.h" />
-    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionTestReport.h" />
-    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\GeometrySelfTest.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\CameraShowcaseComponent.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSceneController.h" />
@@ -1484,7 +1472,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\GameObject\Component\Core\IComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Core\IRawSavedParameters.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Render\MaterialComponent.h" />
-    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\ProbeComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Animation\SkeletonSocketComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Transform\ITransformSource.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Line\ILineSource.h" />
@@ -1618,15 +1605,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Particle\Modules\SizeModule.h" />
     <ClInclude Include="Engine\Src\Particle\Modules\VelocityModule.h" />
     <ClInclude Include="Application\Src\Scenes\TestScene\TestScene.h" />
-    <ClInclude Include="Application\Src\Scenes\SampleGameScene\SampleGameScene.h" />
-    <ClInclude Include="Application\Src\Scenes\SampleGameScene\PlayerControllerComponent.h" />
-    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\ShootingSampleScene.h" />
-    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\BulletObject.h" />
-    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\EnemyObject.h" />
-    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\ShipControllerComponent.h" />
-    <ClInclude Include="Application\Src\Scenes\Sprite2DSampleScene\Sprite2DSampleScene.h" />
-    <ClInclude Include="Application\Src\Scenes\Sprite2DSampleScene\PaddleComponent.h" />
-    <ClInclude Include="Application\Src\Scenes\Sprite2DSampleScene\FallingItemComponent.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\DockingUI.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\EditorLayoutSection.h" />
     <ClInclude Include="Engine\Src\Camera\Camera.h" />
@@ -1748,7 +1726,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Text\MsdfAtlasAllocator.h" />
     <ClInclude Include="Engine\Src\Text\FontManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\UI\TextRenderer.h" />
-    <ClInclude Include="Application\Src\Scenes\MsdfTextTestScene\MsdfTextTestScene.h" />
     <ClInclude Include="Engine\Src\Audio\AudioBus.h" />
     <ClInclude Include="Engine\Src\Audio\AudioSystem.h" />
     <ClInclude Include="Engine\Src\Audio\Decoder\AudioData.h" />

@@ -295,15 +295,6 @@
     <ClCompile Include="Engine\Src\pch.cpp">
       <Filter>Engine\Src</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\CollisionTestScene.cpp">
-      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\CollisionTestReport.cpp">
-      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\GeometrySelfTest.cpp">
-      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterSurfaceComponent.cpp">
       <Filter>Engine\Src\Graphics\Water\Surface</Filter>
     </ClCompile>
@@ -790,12 +781,6 @@
     <ClCompile Include="Engine\Src\GameObject\Component\Render\MaterialComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\ProbeComponent.cpp">
-      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\ProbeEvents.cpp">
-      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\Component\Animation\AnimatorComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Animation</Filter>
     </ClCompile>
@@ -942,15 +927,6 @@
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\TestScene\TestScene.cpp">
       <Filter>Application\Src\Scenes\TestScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\SampleGameScene\SampleGameScene.cpp">
-      <Filter>Application\Src\Scenes\SampleGameScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\ShootingSampleScene\ShootingSampleScene.cpp">
-      <Filter>Application\Src\Scenes\ShootingSampleScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\Sprite2DSampleScene\Sprite2DSampleScene.cpp">
-      <Filter>Application\Src\Scenes\Sprite2DSampleScene</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Scene\UndoRedoHistory.cpp">
       <Filter>Engine\Src\Editor\Scene</Filter>
@@ -1510,9 +1486,6 @@
     <ClCompile Include="Engine\Src\Graphics\Render\UI\TextRenderer.cpp">
       <Filter>Engine\Src\Graphics\Render\UI</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\MsdfTextTestScene\MsdfTextTestScene.cpp">
-      <Filter>Application\Src\Scenes\MsdfTextTestScene</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Audio\AudioSystem.cpp">
       <Filter>Engine\Src\Audio</Filter>
     </ClCompile>
@@ -1793,15 +1766,6 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Reflection\PropertyDescriptor.h">
       <Filter>Engine\Src\Reflection</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionTestScene.h">
-      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionTestReport.h">
-      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\GeometrySelfTest.h">
-      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\CameraShowcaseComponent.h">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
@@ -2712,9 +2676,6 @@
     <ClInclude Include="Engine\Src\GameObject\Component\Render\MaterialComponent.h">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\ProbeComponent.h">
-      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Animation\SkeletonSocketComponent.h">
       <Filter>Engine\Src\GameObject\Component\Animation</Filter>
     </ClInclude>
@@ -3114,33 +3075,6 @@
     <ClInclude Include="Application\Src\Scenes\TestScene\TestScene.h">
       <Filter>Application\Src\Scenes\TestScene</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\SampleGameScene\SampleGameScene.h">
-      <Filter>Application\Src\Scenes\SampleGameScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\SampleGameScene\PlayerControllerComponent.h">
-      <Filter>Application\Src\Scenes\SampleGameScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\ShootingSampleScene.h">
-      <Filter>Application\Src\Scenes\ShootingSampleScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\BulletObject.h">
-      <Filter>Application\Src\Scenes\ShootingSampleScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\EnemyObject.h">
-      <Filter>Application\Src\Scenes\ShootingSampleScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\ShipControllerComponent.h">
-      <Filter>Application\Src\Scenes\ShootingSampleScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\Sprite2DSampleScene\Sprite2DSampleScene.h">
-      <Filter>Application\Src\Scenes\Sprite2DSampleScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\Sprite2DSampleScene\PaddleComponent.h">
-      <Filter>Application\Src\Scenes\Sprite2DSampleScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\Sprite2DSampleScene\FallingItemComponent.h">
-      <Filter>Application\Src\Scenes\Sprite2DSampleScene</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\DockingUI.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
@@ -3504,9 +3438,6 @@
     <ClInclude Include="Engine\Src\Graphics\Render\UI\TextRenderer.h">
       <Filter>Engine\Src\Graphics\Render\UI</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\MsdfTextTestScene\MsdfTextTestScene.h">
-      <Filter>Application\Src\Scenes\MsdfTextTestScene</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Audio\AudioBus.h">
       <Filter>Engine\Src\Audio</Filter>
     </ClInclude>
@@ -3762,21 +3693,6 @@
     </Filter>
     <Filter Include="Application\Src\Scenes">
       <UniqueIdentifier>{E0897678-58CC-4A82-AA9F-47042D9CD67B}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Scenes\CollisionTestScene">
-      <UniqueIdentifier>{2C8F41A6-5B7D-4E93-9C10-6A4D2F8B7E51}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Scenes\MsdfTextTestScene">
-      <UniqueIdentifier>{15CA7471-23C7-4DAE-A320-F49B83CF292A}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Scenes\SampleGameScene">
-      <UniqueIdentifier>{296989A0-B084-4643-ABA9-184DA0DDC6E3}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Scenes\ShootingSampleScene">
-      <UniqueIdentifier>{65B4BE20-1815-46C3-91A4-0099398D063C}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Scenes\Sprite2DSampleScene">
-      <UniqueIdentifier>{0594C199-08F3-4021-B85A-4EC3C966081F}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\Scenes\TestScene">
       <UniqueIdentifier>{04EE1DAA-02F5-4253-9DBB-A28737391E46}</UniqueIdentifier>
