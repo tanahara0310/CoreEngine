@@ -867,9 +867,11 @@ namespace Scene {
 void ChangeScene(const string&in name);
 string GetCurrentName();
 GameCamera@ GetGameCamera();
+bool IsUsingEditorCamera();
 }
 namespace Rendering {
 float GetAutoExposureEV();
+void SetFadeAlpha(float alpha);
 }
 namespace Session {
 void SetInt(const string&in key, int value);

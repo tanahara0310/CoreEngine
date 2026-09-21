@@ -8,7 +8,6 @@
 #include "Utility/Logger/Logger.h"
 
 #include "Scenes/TestScene/TestScene.h"
-#include "Scenes/WaterTestScene/WaterTestScene.h"
 
 using namespace CoreEngine;
 
@@ -65,9 +64,8 @@ void MyGame::CreateSceneManager()
     sceneManager_->Initialize(GetEngineSystem());
     GetEngineSystem()->SetSceneManager(sceneManager_.get());
 
-    // 全シーンを登録（アプリ層で実装）
+    // C++ で書いた残りのシーンを登録する（保存データのシーンは自動で登録される）
     sceneManager_->RegisterScene<CoreEngine::TestScene>("TestScene");
-    sceneManager_->RegisterScene<WaterTestScene>("WaterTestScene");
 }
 
 void MyGame::LoadInitialScene()

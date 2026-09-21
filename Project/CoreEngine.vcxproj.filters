@@ -109,9 +109,6 @@
     <ClCompile Include="Engine\Src\Script\ScriptSubsystem.cpp">
       <Filter>Engine\Src\Script</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\CameraShowcaseComponent.cpp">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Water\WaterEditorFacade.cpp">
       <Filter>Engine\Src\Editor\Water</Filter>
     </ClCompile>
@@ -123,9 +120,6 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Water\WaterSurfaceParameterPanel.cpp">
       <Filter>Engine\Src\Editor\Water</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.cpp">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.cpp">
       <Filter>Engine\Src\Graphics\Water\Render</Filter>
@@ -1767,9 +1761,6 @@
     <ClInclude Include="Engine\Src\Reflection\PropertyDescriptor.h">
       <Filter>Engine\Src\Reflection</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\CameraShowcaseComponent.h">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Water\WaterEditorFacade.h">
       <Filter>Engine\Src\Editor\Water</Filter>
     </ClInclude>
@@ -3237,9 +3228,6 @@
     <ClInclude Include="Application\Src\MyGame.h">
       <Filter>Application\Src</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.h">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
-    </ClInclude>
     <ClInclude Include="Externals\imgui\imconfig.h">
       <Filter>Externals\imgui</Filter>
     </ClInclude>
@@ -3696,9 +3684,6 @@
     </Filter>
     <Filter Include="Application\Src\Scenes\TestScene">
       <UniqueIdentifier>{04EE1DAA-02F5-4253-9DBB-A28737391E46}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Scenes\WaterTestScene">
-      <UniqueIdentifier>{BA0CCBB8-F2BE-4C5C-95A3-D52C8433C8F5}</UniqueIdentifier>
     </Filter>
     <Filter Include="Build">
       <UniqueIdentifier>{39C0671C-39F8-432F-BE2C-E14FDE0F3B36}</UniqueIdentifier>
