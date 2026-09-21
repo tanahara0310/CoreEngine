@@ -118,7 +118,6 @@ namespace CoreEngine::Editor::ComponentInspectors
         Register("RectTransform", { .shownFirst = true });
         Register("Animator", { .displayName = "アニメーション" });
         Register("SkeletonSocket", { .displayName = "ソケット追従" });
-        Register("SkyBox", { .displayName = "スカイボックス" });
 
         Register("Light", {
             .drawExtra = [](IComponent& component) {
@@ -173,6 +172,11 @@ namespace CoreEngine::Editor::ComponentInspectors
     void Register(const std::string& typeName, Entry entry)
     {
         Entries()[typeName] = std::move(entry);
+    }
+
+    void Unregister(const std::string& typeName)
+    {
+        Entries().erase(typeName);
     }
 
     const Entry* Find(const IComponent& component)

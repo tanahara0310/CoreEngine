@@ -6,6 +6,10 @@
 #include "GameObject/GameObjectManager.h"
 #include "GameObject/GameObject.h"
 #include "Graphics/Render/SkyBox/SkyBoxComponent.h"
+#include "GameObject/Component/Environment/VolumetricCloudComponent.h"
+#include "GameObject/Component/Environment/HeightFogComponent.h"
+#include "Graphics/Cloud/Settings/CloudCVars.h"
+#include "Graphics/Fog/Settings/FogCVars.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Cloud/VolumetricCloudManager.h"
 #include "Graphics/Fog/FogManager.h"
@@ -16,6 +20,7 @@
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Scene/SceneEnvironmentIO.h"
 #include "Scene/SceneSaveSystem.h"
+#include "Utility/CVar/CVar.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
 
@@ -23,8 +28,8 @@ namespace CoreEngine
 {
     void EnvironmentFeature::PostSceneInitialize(SceneContext& ctx)
     {
-        // シーンが SkyBox を生成していない場合のみ自動生成するため、オブジェクトが出そろった後に行う
-        SetupDefaultSky(ctx);
+        // シーンが置いていないものだけを自動生成するため、オブジェクトが出そろった後に行う
+        SetupEnvironmentObject(ctx);
 
 #ifdef CORE_EDITOR
         // 復元直後の通番を基準にする（そろえないと、開いた直後に読んだ値をそのまま書き戻す）
@@ -36,6 +41,8 @@ namespace CoreEngine
     {
         switch (phase) {
         case SceneUpdatePhase::PostLogic:
+            // インスペクタのチェックと CVar をそろえてから描画側へ渡す
+            SyncComponentToggles();
             // 大気散乱の更新（全ロジック更新後の最新の太陽・カメラ情報を反映する）
             UpdateAtmosphere(ctx);
             // フォグは空・大気の有無に依存しないので、大気更新の成否と無関係に呼ぶ
@@ -59,8 +66,10 @@ namespace CoreEngine
         }
 #endif
 
-        // 空は GameObjectManager が所有しているためポインタのみクリア
+        // どれも GameObjectManager が所有しているためポインタのみクリア
         skyBox_ = nullptr;
+        cloud_ = nullptr;
+        fog_ = nullptr;
     }
 
 #ifdef CORE_EDITOR
@@ -101,27 +110,67 @@ namespace CoreEngine
     }
 #endif
 
-    void EnvironmentFeature::SetupDefaultSky(SceneContext& ctx)
+    void EnvironmentFeature::SetupEnvironmentObject(SceneContext& ctx)
     {
-        // シーン側（OnInitialize）で作った空があればそれを使う
-        if (auto* skyBox = ctx.gameObjectManager->FindFirstComponent<SkyBoxComponent>()) {
-            skyBox_ = skyBox;
-            Logger::GetInstance().Infof(LogCategory::System,
-                "EnvironmentFeature: シーン生成の SkyBox を採用");
+        GameObjectManager* const objects = ctx.gameObjectManager;
+        if (!objects) {
             return;
         }
 
-        // 無ければ既定の背景として、大気散乱の空を持つオブジェクトを作る（シーンには保存しない）
-        auto owned = std::make_unique<GameObject>();
-        owned->SetName("SkyBox");
-        GameObject* const object = ctx.gameObjectManager->AddObject(std::move(owned));
-        if (!object) {
+        // シーン側が置いた分をまず採る
+        skyBox_ = objects->FindFirstComponent<SkyBoxComponent>();
+        cloud_ = objects->FindFirstComponent<VolumetricCloudComponent>();
+        fog_ = objects->FindFirstComponent<HeightFogComponent>();
+        if (skyBox_ && cloud_ && fog_) {
+            Logger::GetInstance().Infof(LogCategory::System,
+                "EnvironmentFeature: シーンが置いた環境を採用");
+            SyncComponentToggles();
             return;
         }
-        object->SetSerializeEnabled(false);
-        skyBox_ = object->AddComponent<SkyBoxComponent>();
+
+        // 足りない分を載せる入れ物を用意する（シーンには保存しない）
+        GameObject* host = skyBox_ ? skyBox_->GetOwner() : nullptr;
+        if (!host) {
+            auto owned = std::make_unique<GameObject>();
+            owned->SetName("Environment");
+            host = objects->AddObject(std::move(owned));
+            if (!host) {
+                return;
+            }
+            host->SetSerializeEnabled(false);
+        }
+
+        if (!skyBox_) { skyBox_ = host->AddComponent<SkyBoxComponent>(); }
+        if (!cloud_) { cloud_ = host->AddComponent<VolumetricCloudComponent>(); }
+        if (!fog_) { fog_ = host->AddComponent<HeightFogComponent>(); }
+
+        // 実体の値（CVar）に合わせてチェックの初期状態を決める
+        if (cloud_) { cloud_->SetEnabled(CloudCVars::Enabled.Get()); }
+        if (fog_) { fog_->SetEnabled(FogCVars::Enabled.Get()); }
+        lastCloudEnabled_ = CloudCVars::Enabled.Get();
+        lastFogEnabled_ = FogCVars::Enabled.Get();
+
         Logger::GetInstance().Infof(LogCategory::System,
-            "EnvironmentFeature: 既定背景として大気散乱モードの SkyBox を自動生成");
+            "EnvironmentFeature: 既定の環境（空・雲・霧）を {} に載せた", host->GetName());
+    }
+
+    void EnvironmentFeature::SyncComponentToggles()
+    {
+        const auto sync = [](IComponent* component, CVar<bool>& cvar, bool& last) {
+            if (!component) {
+                return;
+            }
+            if (cvar.Get() != last) {
+                // CVar パネルやコンソールから変わった
+                component->SetEnabled(cvar.Get());
+            } else if (component->IsEnabled() != cvar.Get()) {
+                // インスペクタのチェックから変わった
+                cvar.Set(component->IsEnabled());
+            }
+            last = cvar.Get();
+            };
+        sync(cloud_, CloudCVars::Enabled, lastCloudEnabled_);
+        sync(fog_, FogCVars::Enabled, lastFogEnabled_);
     }
 
     void EnvironmentFeature::UpdateAtmosphere(SceneContext& ctx)

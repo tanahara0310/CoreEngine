@@ -793,6 +793,12 @@
     <ClCompile Include="Engine\Src\GameObject\Component\Camera\CameraComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Camera</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\Environment\HeightFogComponent.cpp">
+      <Filter>Engine\Src\GameObject\Component\Environment</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\Environment\VolumetricCloudComponent.cpp">
+      <Filter>Engine\Src\GameObject\Component\Environment</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\Component\Light\LightComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Light</Filter>
     </ClCompile>
@@ -2646,6 +2652,12 @@
     <ClInclude Include="Engine\Src\GameObject\Component\Camera\CameraComponent.h">
       <Filter>Engine\Src\GameObject\Component\Camera</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\Environment\HeightFogComponent.h">
+      <Filter>Engine\Src\GameObject\Component\Environment</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\Environment\VolumetricCloudComponent.h">
+      <Filter>Engine\Src\GameObject\Component\Environment</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Light\LightComponent.h">
       <Filter>Engine\Src\GameObject\Component\Light</Filter>
     </ClInclude>
@@ -3795,6 +3807,9 @@
     </Filter>
     <Filter Include="Engine\Src\GameObject\Component\Core">
       <UniqueIdentifier>{74B1A113-B811-40A6-A9D1-A7192BC8431C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\GameObject\Component\Environment">
+      <UniqueIdentifier>{B59042EB-424A-4EB2-B2A7-AD2E9CD697E9}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\GameObject\Component\Light">
       <UniqueIdentifier>{0EA9EDE3-489E-46B8-AF55-B094DCDA4A5C}</UniqueIdentifier>

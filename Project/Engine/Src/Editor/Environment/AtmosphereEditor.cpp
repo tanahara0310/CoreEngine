@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Editor/Inspector/ComponentInspectors.h"
 #include "Editor/Panel/EditorPanelRegistry.h"
 #include "AtmosphereEditor.h"
 
@@ -30,6 +31,8 @@ namespace CoreEngine {
     namespace {
         constexpr float kDegToRad = MathCore::Constants::kDegToRad;
         constexpr const char* kEditorLabel = "Sky Atmosphere";
+        /// @brief この設定を持つコンポーネントの型名
+        constexpr const char* kComponentTypeName = "SkyBox";
         /// @brief 大気パラメータの CVar 接頭辞（定義は AtmosphereManager.cpp）
         constexpr const char* kAtmosphereCVarPrefix = "r.Atmosphere";
 
@@ -64,17 +67,14 @@ namespace CoreEngine {
     {
         engine_ = &engine;
 #ifdef CORE_EDITOR
-        // Hierarchy の Environment ツリーへ登録し、選択時に Inspector で編集できるようにする。
+        // シーンに置かれたコンポーネントのインスペクタとして中身を描く。
         // GameDebugUI はここで一度だけ取得してキャッシュする（デストラクタで使うため）
         if (auto* debug = engine_->GetDebugSubsystem()) {
             gameDebugUI_ = debug->GetGameDebugUI();
             if (gameDebugUI_) {
-                Editor::EditorPanelRegistry::Get().Register({
-                    .id = kEditorLabel,
-                    .placement = Editor::PanelPlacement::EnvironmentTree,
-                    .owner = this,
-                    .icon = "☀",
-                    .draw = [this]() { DrawContent(); },
+                Editor::ComponentInspectors::Register(kComponentTypeName, {
+                    .displayName = "空と大気散乱",
+                    .drawBody = [this](IComponent&) { DrawContent(); return false; },
                     });
             }
         }
@@ -88,7 +88,7 @@ namespace CoreEngine {
         // engine_->GetDebugSubsystem() を呼び直さないこと（サブシステム一括破棄中に走るため、
         // 破棄済みサブシステムへの dynamic_cast でアクセス違反になる）。キャッシュ済みポインタのみ使う。
         if (gameDebugUI_) {
-            Editor::EditorPanelRegistry::Get().Unregister(kEditorLabel, this);
+            Editor::ComponentInspectors::Unregister(kComponentTypeName);
         }
 #endif
     }
