@@ -15,7 +15,7 @@ namespace CoreEngine
     ///
     /// @details
     /// 利用側が直接触ることはほとんどない。`Tween::To()` 等が内部で登録し、
-    /// `BaseScene::Update()` が `Update()` と `AdvanceAddedAfterUpdate()` を、`BaseScene::Finalize()` が `Clear()` を呼ぶ。
+    /// `Scene::Update()` が `Update()` と `AdvanceAddedAfterUpdate()` を、`Scene::Finalize()` が `Clear()` を呼ぶ。
     ///
     /// @note **メインスレッド専用**。トゥイーンは GameObject の値を書き換えるため、
     ///       ゲームループのスレッド以外から生成・更新してはいけない。

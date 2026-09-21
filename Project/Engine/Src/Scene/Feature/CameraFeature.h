@@ -14,7 +14,7 @@ namespace CoreEngine
 
     /// @brief シーンのカメラ一式（ゲーム視点・エディタ視点・2D）を所有する Feature
     /// @details 生成・毎フレームの操作反映・エディタ視点の控えまでをここに閉じる。
-    ///          BaseScene は所有せず、SceneContext と GetGameViewCamera3D() へ
+    ///          Scene は所有せず、SceneContext と GetGameViewCamera3D() へ
     ///          渡すための非所有ポインタだけを持つ。
     /// @note FrameStart の最初（kEarlyFeaturePriority）で回すこと。
     ///       他の Feature（ライト/影・床の追従・大気散乱）はいずれも
@@ -50,12 +50,6 @@ namespace CoreEngine
 
         /// @brief カメラマネージャーを取得（未生成なら nullptr）
         CameraManager* GetCameraManager() const { return cameraManager_.get(); }
-
-        /// @brief ゲーム視点カメラ（CameraNames::Game）の位置・回転を上書きする
-        void SetReleaseCameraTransform(const Vector3& translate, const Vector3& rotate);
-
-        /// @brief ゲーム視点カメラ（CameraNames::Game）のレンズを上書きする
-        void SetReleaseCameraLens(float fovDegrees, float farClip, float nearClip);
 
         /// 既定 GameView カメラの高さ。
         /// 大気散乱は「カメラ高度 - groundLevelY」を惑星中心距離へ変換するため、

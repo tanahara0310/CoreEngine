@@ -9,7 +9,7 @@
 #include "GameObject/Component/Transform/ITransformSource.h"
 #include "GameObject/GameObject.h"
 #include "Math/Geometry/Shapes.h"
-#include "Scene/BaseScene.h"
+#include "Scene/Scene.h"
 #include "Scene/Feature/CollisionFeature.h"
 #include "Scene/SceneManager.h"
 #include "Script/Binding/BindingRegistrar.h"
@@ -269,16 +269,16 @@ namespace CoreEngine::Script
         }
 
         /// @brief 今のシーン（読み込みの途中は組み立て中のシーン。無ければ nullptr）
-        BaseScene* FindScene()
+        Scene* FindScene()
         {
             SceneManager* const manager = sEngineSystem ? sEngineSystem->GetSceneManager() : nullptr;
-            return manager ? dynamic_cast<BaseScene*>(manager->GetCurrentScene()) : nullptr;
+            return manager ? dynamic_cast<Scene*>(manager->GetCurrentScene()) : nullptr;
         }
 
         /// @brief 今のシーンの当たり判定（シーンが無い・当たり判定を持たないシーンなら nullptr）
         CollisionFeature* FindCollisionFeature()
         {
-            BaseScene* const scene = FindScene();
+            Scene* const scene = FindScene();
             return scene ? scene->GetFeature<CollisionFeature>() : nullptr;
         }
 
@@ -286,7 +286,7 @@ namespace CoreEngine::Script
         /// @note スクリプトは判定より前（Update）に問い合わせるので、登録をこのフレームのものにしてから使う。
         CollisionWorld* FindQueryWorld()
         {
-            BaseScene* const scene = FindScene();
+            Scene* const scene = FindScene();
             CollisionFeature* const feature = scene ? scene->GetFeature<CollisionFeature>() : nullptr;
             GameObjectManager* const objects = scene ? scene->GetGameObjectManager() : nullptr;
             return feature && objects ? &feature->GetQueryWorld(*objects) : nullptr;

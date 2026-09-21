@@ -35,7 +35,7 @@ namespace CoreEngine
         /// @param descriptorAllocator ノイズ SRV/UAV 登録先（メインのシェーダー可視ヒープ）
         void Initialize(GraphicsCore* graphicsCore, DescriptorAllocator* descriptorAllocator);
 
-        /// @brief フレーム更新（雲を使うシーンの BaseScene::UpdateAtmosphere から呼ばれる）
+        /// @brief フレーム更新（雲を使うシーンの Scene::UpdateAtmosphere から呼ばれる）
         /// @details cloudsActive_ を立て、カメラ・時刻・太陽情報を CB へ反映する。
         /// @param atmosphereManager 太陽情報・カメラ高度の取得元（AtmosphereManager と同一の値）
         void Update(const Vector3& cameraWorldPosition,

@@ -23,8 +23,8 @@ namespace CoreEngine
         const char* GetName() const override { return "Lighting"; }
 
         /// @brief 既定の太陽のオブジェクトを置く
-        /// @note シーンのコード（OnInitialize）から GetDirectionalLight() で触れるよう、
-        ///       保存データの復元より前のこの時点で置く。
+        /// @note 保存データの復元より前に置く。復元で同じ名前のライトが来たら、
+        ///       PostSceneInitialize でこちらを引っ込める。
         void Initialize(SceneContext& ctx) override;
 
         /// @brief シーンが自前の平行光源を持っていたら、既定の太陽を引っ込める
@@ -35,9 +35,6 @@ namespace CoreEngine
 
         /// @brief 停止中も回す（止めるとライトのパラメータ編集が画面に出ない）
         bool RunsWhileStopped() const override { return true; }
-
-        /// @brief 大気の太陽（無ければ最初の平行光源）を取得（1 灯も無ければ nullptr）
-        Light* GetDirectionalLight() const;
 
     private:
         /// @brief 既定の太陽のオブジェクトを作る

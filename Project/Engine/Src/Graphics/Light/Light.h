@@ -28,7 +28,7 @@ namespace CoreEngine
         constexpr float kSunIlluminanceLux = 100000.0f;
 
         /// @brief 較正定数: 照度 [lx] → シェーダー単位の変換係数
-        /// @details 既存シーンの太陽（旧シェーダー単位 1.75 = 旧 BaseScene::kAtmosphereSurfaceSunIntensity）
+        /// @details 既存シーンの太陽（旧シェーダー単位 1.75 = 旧 Scene::kAtmosphereSurfaceSunIntensity）
         ///          を 100,000 lx に対応付ける。この係数を変えると全ライトの見た目の明るさが一斉に変わる。
         constexpr float kShaderUnitsPerLux = 1.75f / kSunIlluminanceLux;
 

@@ -107,7 +107,7 @@ namespace CoreEngine
         if (auto* skyBox = ctx.gameObjectManager->FindFirstComponent<SkyBoxComponent>()) {
             skyBox_ = skyBox;
             Logger::GetInstance().Infof(LogCategory::System,
-                "BaseScene: シーン生成の SkyBox を採用");
+                "EnvironmentFeature: シーン生成の SkyBox を採用");
             return;
         }
 
@@ -121,7 +121,7 @@ namespace CoreEngine
         object->SetSerializeEnabled(false);
         skyBox_ = object->AddComponent<SkyBoxComponent>();
         Logger::GetInstance().Infof(LogCategory::System,
-            "BaseScene: 既定背景として大気散乱モードの SkyBox を自動生成");
+            "EnvironmentFeature: 既定背景として大気散乱モードの SkyBox を自動生成");
     }
 
     void EnvironmentFeature::UpdateAtmosphere(SceneContext& ctx)

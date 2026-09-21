@@ -10,7 +10,7 @@
 #include "Editor/ImGui/ImGuiAll.h"
 #include "Editor/Scene/EditorSceneAccess.h"
 #include "Editor/Scene/SceneDebugEditor.h"
-#include "Scene/BaseScene.h"
+#include "Scene/Scene.h"
 #include "Scene/Feature/CollisionFeature.h"
 #include "Scene/Feature/GroundFeature.h"
 #include "Scene/Feature/SceneFeatureRegistry.h"
@@ -31,10 +31,10 @@ namespace SceneSettingsPanel
         constexpr int kLayerCount = static_cast<int>(CollisionLayer::Count);
 
         /// @brief 今のシーン（無ければ nullptr）
-        BaseScene* ResolveScene()
+        Scene* ResolveScene()
         {
             SceneManager* const manager = s_engine ? s_engine->GetSceneManager() : nullptr;
-            return manager ? dynamic_cast<BaseScene*>(manager->GetCurrentScene()) : nullptr;
+            return manager ? dynamic_cast<Scene*>(manager->GetCurrentScene()) : nullptr;
         }
 
         /// @brief 未保存の印を付ける（Ctrl+S の対象になる）
@@ -46,7 +46,7 @@ namespace SceneSettingsPanel
         }
 
         /// @brief このシーンが持つ Feature を並べる（保存データから足せるものには印を付ける）
-        void DrawFeatures(const BaseScene& scene)
+        void DrawFeatures(const Scene& scene)
         {
             const std::vector<std::string> addable = SceneFeatureRegistry::GetNames();
             for (const char* const name : scene.GetFeatureNames()) {
@@ -61,7 +61,7 @@ namespace SceneSettingsPanel
         }
 
         /// @brief 既定の床を使うか
-        void DrawGround(BaseScene& scene)
+        void DrawGround(Scene& scene)
         {
             auto* const ground = scene.GetFeature<GroundFeature>();
             if (!ground) {
@@ -77,7 +77,7 @@ namespace SceneSettingsPanel
         }
 
         /// @brief レイヤー同士が当たるかの表
-        void DrawCollisionMatrix(BaseScene& scene)
+        void DrawCollisionMatrix(Scene& scene)
         {
             auto* const collision = scene.GetFeature<CollisionFeature>();
             if (!collision) {
@@ -140,7 +140,7 @@ namespace SceneSettingsPanel
 
         void Draw()
         {
-            BaseScene* const scene = ResolveScene();
+            Scene* const scene = ResolveScene();
             if (!scene) {
                 UI::Hint("シーンがありません");
                 return;

@@ -43,7 +43,7 @@ namespace CoreEngine
     {
         std::vector<DefaultSceneFeature> features;
 
-        // 並び順 = 同 priority 内の実行順。従来 BaseScene::Update に
+        // 並び順 = 同 priority 内の実行順。従来 Scene::Update に
         // 暗黙の順序として埋まっていた並びをそのまま再現している。
 
         // カメラは最優先。以降の Feature（ライト/影・床の追従・大気散乱）はいずれも

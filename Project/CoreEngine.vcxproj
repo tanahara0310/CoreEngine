@@ -463,7 +463,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Particle\ParticlePresetManager.cpp" />
     <ClCompile Include="Engine\Src\Particle\ParticleSystemComponent.cpp" />
     <ClCompile Include="Engine\Src\Particle\Gpu\GpuParticleSystemComponent.cpp" />
-    <ClCompile Include="Engine\Src\Scene\BaseScene.cpp" />
+    <ClCompile Include="Engine\Src\Scene\Scene.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\LightingFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\EnvironmentFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\GroundFeature.cpp" />
@@ -478,7 +478,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Editor\Scene\PlayModeController.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\PrefabEditing.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\SceneDebugEditor.cpp" />
-    <ClCompile Include="Engine\Src\Scene\DataScene.cpp" />
     <ClCompile Include="Engine\Src\Scene\PrefabSystem.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneEnvironmentIO.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneSaveSystem.cpp" />
@@ -1494,8 +1493,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Particle\ParticleSystemComponent.h" />
     <ClInclude Include="Engine\Src\Particle\Gpu\GpuParticleSystemComponent.h" />
     <ClInclude Include="Engine\Src\Particle\Core\Particle.h" />
-    <ClInclude Include="Engine\Src\Scene\BaseScene.h" />
-    <ClInclude Include="Engine\Src\Scene\DataScene.h" />
+    <ClInclude Include="Engine\Src\Scene\Scene.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\ISceneFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\LightingFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\EnvironmentFeature.h" />

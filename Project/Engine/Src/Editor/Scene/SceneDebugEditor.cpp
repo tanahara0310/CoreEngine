@@ -17,7 +17,7 @@
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "GameObject/Component/Transform/ITransformSource.h"
-#include "Scene/BaseScene.h"
+#include "Scene/Scene.h"
 #include "Scene/PrefabSystem.h"
 #include "Scene/SceneManager.h"
 #include "Scene/SceneSaveSystem.h"
@@ -344,7 +344,7 @@ namespace CoreEngine
 
         // Feature・既定の床・衝突マトリクスもシーンの一部として書く
         SceneManager* const sceneManager = engine_ ? engine_->GetSceneManager() : nullptr;
-        if (auto* const scene = sceneManager ? dynamic_cast<BaseScene*>(sceneManager->GetCurrentScene()) : nullptr) {
+        if (auto* const scene = sceneManager ? dynamic_cast<Scene*>(sceneManager->GetCurrentScene()) : nullptr) {
             scene->SaveSceneSettings();
         }
 

@@ -14,9 +14,9 @@ namespace CoreEngine
 
     /// @brief どのシーンにも入る既定 Feature 一式を生成する（並び順 = 登録順）
     /// @return 生成済みの Feature 群。呼び出し側が AddFeature() へ流し込む
-    /// @details 既定 Feature の顔ぶれを BaseScene から切り離すための入口。
-    ///          エンジン機能を全シーンへ載せたくなったら BaseScene ではなく
-    ///          この関数へ 1 行足すこと（BaseScene は Feature の型を知らなくてよい）。
+    /// @details 既定 Feature の顔ぶれを Scene から切り離すための入口。
+    ///          エンジン機能を全シーンへ載せたくなったら Scene ではなく
+    ///          この関数へ 1 行足すこと（Scene は Feature の型を知らなくてよい）。
     /// @note 同 priority 内はこの並び順がそのまま実行順になる。
     std::vector<DefaultSceneFeature> CreateDefaultSceneFeatures();
 }
