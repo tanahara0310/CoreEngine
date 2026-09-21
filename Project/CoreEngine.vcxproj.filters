@@ -919,9 +919,6 @@
     <ClCompile Include="Engine\Src\Graphics\Model\ModelResource.cpp">
       <Filter>Engine\Src\Graphics\Model</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\TestScene\TestScene.cpp">
-      <Filter>Application\Src\Scenes\TestScene</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Scene\UndoRedoHistory.cpp">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClCompile>
@@ -3063,9 +3060,6 @@
     <ClInclude Include="Engine\Src\Particle\Modules\VelocityModule.h">
       <Filter>Engine\Src\Particle\Modules</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\TestScene\TestScene.h">
-      <Filter>Application\Src\Scenes\TestScene</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\DockingUI.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
@@ -3678,12 +3672,6 @@
     </Filter>
     <Filter Include="Application\Src">
       <UniqueIdentifier>{8C016CA9-9773-40DE-8792-E8B53FB9372C}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Scenes">
-      <UniqueIdentifier>{E0897678-58CC-4A82-AA9F-47042D9CD67B}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Scenes\TestScene">
-      <UniqueIdentifier>{04EE1DAA-02F5-4253-9DBB-A28737391E46}</UniqueIdentifier>
     </Filter>
     <Filter Include="Build">
       <UniqueIdentifier>{39C0671C-39F8-432F-BE2C-E14FDE0F3B36}</UniqueIdentifier>

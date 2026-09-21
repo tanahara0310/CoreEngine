@@ -1,0 +1,53 @@
+{
+    "active": true,
+    "name": "Sphere_m0_r0",
+    "components": [
+        {
+            "type": "Transform",
+            "enabled": true,
+            "parameters": {
+                "translate": [
+                    -7.5,
+                    1.5,
+                    0.0
+                ],
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "type": "MeshRenderer",
+            "enabled": true,
+            "parameters": {
+                "model": {
+                    "guid": "e16552a6-c74d-f458-71fe-2810a97c3777",
+                    "path": "Application/Assets/Models/Sphere/sphere.obj"
+                }
+            }
+        },
+        {
+            "type": "Material",
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "metallic": 0.0,
+                "roughness": 0.0,
+                "occlusionStrength": 1.0,
+                "iblIntensity": 1.0
+            }
+        }
+    ]
+}
