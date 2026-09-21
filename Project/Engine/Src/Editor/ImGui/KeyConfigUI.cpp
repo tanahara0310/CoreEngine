@@ -61,7 +61,7 @@ namespace CoreEngine {
             ImGui::TableSetupColumn("##Controls", ImGuiTableColumnFlags_WidthFixed, 70.0f);
             ImGui::TableHeadersRow();
 
-            for (uint32_t i = 0; i < static_cast<uint32_t>(InputAction::Count); ++i) {
+            for (uint32_t i = 0; i < static_cast<uint32_t>(InputActions::Count()); ++i) {
                 const InputAction action = static_cast<InputAction>(i);
                 const std::string_view displayName = InputActionToDisplayName(action);
 
@@ -147,7 +147,7 @@ namespace CoreEngine {
 
     void KeyConfigUI::StopListening() {
         isListening_ = false;
-        listeningAction_ = InputAction::Count;
+        listeningAction_ = InputAction::Invalid;
         listeningIndex_ = -1;
     }
 

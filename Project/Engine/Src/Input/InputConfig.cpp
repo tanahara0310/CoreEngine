@@ -27,72 +27,17 @@ const std::vector<InputBinding>& InputConfig::GetBindings(InputAction action) co
 void InputConfig::ResetToDefault() {
     bindings_.clear();
 
-    // 移動
-    SetBindings(InputAction::MoveForward, {
-        InputBinding::FromKey(DIK_W),
-        InputBinding::FromKey(DIK_UP),
-        InputBinding::FromGamepadAxis(GamepadAxis::LeftStickY, true),
-        InputBinding::FromGamepadButton(GamepadButton::DPadUp),
-    });
-    SetBindings(InputAction::MoveBack, {
-        InputBinding::FromKey(DIK_S),
-        InputBinding::FromKey(DIK_DOWN),
-        InputBinding::FromGamepadAxis(GamepadAxis::LeftStickY, false),
-        InputBinding::FromGamepadButton(GamepadButton::DPadDown),
-    });
-    SetBindings(InputAction::MoveLeft, {
-        InputBinding::FromKey(DIK_A),
-        InputBinding::FromKey(DIK_LEFT),
-        InputBinding::FromGamepadAxis(GamepadAxis::LeftStickX, false),
-        InputBinding::FromGamepadButton(GamepadButton::DPadLeft),
-    });
-    SetBindings(InputAction::MoveRight, {
-        InputBinding::FromKey(DIK_D),
-        InputBinding::FromKey(DIK_RIGHT),
-        InputBinding::FromGamepadAxis(GamepadAxis::LeftStickX, true),
-        InputBinding::FromGamepadButton(GamepadButton::DPadRight),
-    });
-
-    // アクション
-    SetBindings(InputAction::Jump, {
-        InputBinding::FromKey(DIK_SPACE),
-        InputBinding::FromGamepadButton(GamepadButton::A),
-    });
-    SetBindings(InputAction::Attack, {
-        InputBinding::FromMouseButton(MouseButton::Left),
-        InputBinding::FromGamepadButton(GamepadButton::X),
-    });
-    SetBindings(InputAction::Interact, {
-        InputBinding::FromKey(DIK_E),
-        InputBinding::FromGamepadButton(GamepadButton::B),
-    });
-
-    // UI
-    SetBindings(InputAction::UIConfirm, {
-        InputBinding::FromKey(DIK_RETURN),
-        InputBinding::FromGamepadButton(GamepadButton::A),
-    });
-    SetBindings(InputAction::UICancel, {
-        InputBinding::FromKey(DIK_ESCAPE),
-        InputBinding::FromGamepadButton(GamepadButton::B),
-    });
-    // ポーズの開閉。パッドは START を使う。B は Interact と兼用なので、
-    // UICancel をそのまま開閉に使うとゲーム中に誤って開いてしまう
-    SetBindings(InputAction::Pause, {
-        InputBinding::FromKey(DIK_ESCAPE),
-        InputBinding::FromGamepadButton(GamepadButton::Start),
-    });
-
-    // エディタ専用
-    SetBindings(InputAction::EditorGizmoTranslate, {
-        InputBinding::FromKey(DIK_W),
-    });
-    SetBindings(InputAction::EditorGizmoRotate, {
-        InputBinding::FromKey(DIK_E),
-    });
-    SetBindings(InputAction::EditorGizmoScale, {
-        InputBinding::FromKey(DIK_R),
-    });
+    // 既定の割り当てはプロジェクト設定（InputActions.json）が持つ。
+    // 綴りは keybindings.json と同じ（"Key:W" / "Gamepad:A" / "Axis:LeftStickY+" など）
+    const std::vector<InputActionDef>& defs = InputActions::All();
+    for (std::size_t i = 0; i < defs.size(); ++i) {
+        std::vector<InputBinding> list;
+        list.reserve(defs[i].defaults.size());
+        for (const std::string& text : defs[i].defaults) {
+            list.push_back(InputBinding::Deserialize(text));
+        }
+        SetBindings(static_cast<InputAction>(i), std::move(list));
+    }
 }
 
 bool InputConfig::LoadFromFile(const std::string& filePath) {
@@ -117,7 +62,7 @@ bool InputConfig::LoadFromFile(const std::string& filePath) {
     const auto& bindingsJson = j["bindings"];
     for (auto it = bindingsJson.begin(); it != bindingsJson.end(); ++it) {
         const InputAction action = InputActionFromString(it.key());
-        if (action == InputAction::Count) continue;
+        if (action == InputAction::Invalid) continue;
 
         std::vector<InputBinding> list;
         for (const auto& entry : it.value()) {
