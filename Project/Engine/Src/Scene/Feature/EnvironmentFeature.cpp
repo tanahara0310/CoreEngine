@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "EnvironmentFeature.h"
 #include "EngineSystem/EngineSystem.h"
+#include "EngineSystem/PlaybackState.h"
 #include "Camera/Camera.h"
 #include "GameObject/GameObjectManager.h"
 #include "GameObject/GameObject.h"
@@ -66,6 +67,15 @@ namespace CoreEngine
     void EnvironmentFeature::AutoSaveEnvironment(SceneContext& ctx)
     {
         if (!ctx.saveSystem) {
+            return;
+        }
+
+        // 再生中に触った分はシーンへ書かない。停止すると再生前のシーンへ組み直すので、
+        // 環境だけがファイルに残ると「停止で戻す」と食い違う。
+        // 通番は追いかけておき、再生前との差だけを見る
+        if (PlaybackStateManager::GetInstance().IsInPlayMode()) {
+            lastEnvironmentRevision_ = SceneEnvironmentIO::GetChangeRevision();
+            environmentDirty_ = false;
             return;
         }
 
