@@ -147,9 +147,6 @@ namespace CoreEngine
         }
 
         if (currentScene_) {
-            if (auto* pipeline = engine_->GetRenderPipeline()) {
-                pipeline->RemovePassesByOwner(currentScene_.get());
-            }
             currentScene_->Finalize();
         }
 
@@ -318,11 +315,6 @@ namespace CoreEngine
         }
 
         if (currentScene_) {
-            // シーンが登録したユーザーレンダーパスを一括除去
-            if (auto* pipeline = engine_->GetRenderPipeline()) {
-                pipeline->RemovePassesByOwner(currentScene_.get());
-            }
-
             currentScene_->Finalize();
         }
 
@@ -345,12 +337,5 @@ namespace CoreEngine
     void SceneManager::AttachPendingScene() {
         currentScene_ = std::move(pendingScene_);
         currentSceneName_ = pendingSceneName_;
-
-        // シーン固有レンダーパスの登録（所有者タグ付きで、シーン破棄時に自動除去される）
-        if (auto* pipeline = engine_->GetRenderPipeline()) {
-            pipeline->BeginOwnerScope(currentScene_.get());
-            currentScene_->RegisterRenderPasses(*pipeline);
-            pipeline->EndOwnerScope();
-        }
     }
 }

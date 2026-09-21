@@ -16,7 +16,6 @@ namespace CoreEngine {
     class SceneManager;
     class Camera;
     class GameObjectManager;
-    class RenderPipeline;
     struct SceneSnapshot;
 }
 
@@ -82,13 +81,6 @@ public:
     /// @brief Scene が要求する補助 RenderView 一覧を構築する
     /// @return Engine 側 RenderGraph で実行する補助 View 要求群
     virtual std::vector<RenderViewRequest> BuildRenderViewRequests() { return {}; }
-
-    /// @brief シーン固有のレンダーパスをパイプラインへ登録する（シーン初期化直後に自動呼び出し）
-    /// @details pipeline.AddPass(pass, phase, priority) で任意フェーズへ挿入できる。
-    ///          登録したパスはシーン破棄時に SceneManager が自動で除去するため、
-    ///          Finalize での手動削除は不要。エンジンコードの編集も不要。
-    /// @param pipeline エンジンのレンダーパイプライン
-    virtual void RegisterRenderPasses([[maybe_unused]] RenderPipeline& pipeline) {}
 
     /// @brief SceneManager への参照を設定（自動呼び出し）
     virtual void SetSceneManager(CoreEngine::SceneManager* sceneManager) {
