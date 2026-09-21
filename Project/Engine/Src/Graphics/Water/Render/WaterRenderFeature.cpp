@@ -28,6 +28,9 @@
 #include "Graphics/Water/Simulation/GerstnerWaterSimulator.h"
 #include "Graphics/Water/Surface/WaterSurfaceComponent.h"
 #include "Scene/Feature/SceneFeatureRegistry.h"
+#ifdef CORE_EDITOR
+#include "Editor/Water/WaterEditorPanel.h"
+#endif
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
 
@@ -62,6 +65,16 @@ namespace CoreEngine
         }
 
         AcquireWaterPlane(ctx);
+
+#ifdef CORE_EDITOR
+        // 水面の調整画面は水面と一緒に出す（シーンのコードは登録に関与しない）
+        if (!editorPanel_) {
+            editorPanel_ = std::make_unique<WaterEditorPanel>();
+        }
+        if (ctx.engine) {
+            editorPanel_->Initialize(this, *ctx.engine);
+        }
+#endif
 
         if (waterPlane_) {
             // 初期フレームでも水面シェーダーの時間が不定にならないよう即時反映する
@@ -190,6 +203,13 @@ namespace CoreEngine
 
     void WaterRenderFeature::Finalize([[maybe_unused]] SceneContext& ctx)
     {
+#ifdef CORE_EDITOR
+        // 調整画面のドロワーが Feature より長生きしないよう、先に登録を外す
+        if (editorPanel_) {
+            editorPanel_->Shutdown();
+        }
+#endif
+
         // 水面オブジェクトは GameObjectManager が所有しているためポインタのみクリア。
         // ConnectSurfaceModelProvider は waterPlane_ の有無で接続/切断を決めるので、
         // 切断のためには **先に** null にしておく必要がある。

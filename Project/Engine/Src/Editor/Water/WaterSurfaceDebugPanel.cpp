@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "WaterSurfaceDebugPanel.h"
+#include "Editor/Water/WaterSurfaceDebugPanel.h"
 
 #ifdef CORE_EDITOR
 
