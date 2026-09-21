@@ -8,6 +8,7 @@
 #include "Script/Binding/LogBinding.h"
 #include "Script/Binding/MathBinding.h"
 #include "Script/Binding/PhysicsBinding.h"
+#include "Script/Binding/CVarBinding.h"
 #include "Script/Binding/RandomBinding.h"
 #include "Script/Binding/RenderingBinding.h"
 #include "Script/Binding/SceneBinding.h"
@@ -242,6 +243,7 @@ namespace CoreEngine
         }
         configured = Script::RegisterSessionBinding(engine_) && configured;
         configured = Script::RegisterRandomBinding(engine_) && configured;
+        configured = Script::RegisterCVarBinding(engine_) && configured;
         // 手で書いた型（Transform・UIText・UIImage・Collider）を登録し終えてから、残りの型を記述子から作る
         configured = Script::RegisterComponentBinding(engine_) && configured;
 

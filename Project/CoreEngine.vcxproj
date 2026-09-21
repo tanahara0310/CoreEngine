@@ -205,6 +205,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Script\Binding\SceneBinding.cpp" />
     <ClCompile Include="Engine\Src\Script\Binding\SessionBinding.cpp" />
     <ClCompile Include="Engine\Src\Script\Binding\RandomBinding.cpp" />
+    <ClCompile Include="Engine\Src\Script\Binding\CVarBinding.cpp" />
     <ClCompile Include="Engine\Src\Script\Binding\RenderingBinding.cpp" />
     <ClCompile Include="Engine\Src\Script\Metadata\MetadataParser.cpp" />
     <ClCompile Include="Engine\Src\Script\ScriptComponent.cpp" />
@@ -1161,6 +1162,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Script\Binding\SceneBinding.h" />
     <ClInclude Include="Engine\Src\Script\Binding\SessionBinding.h" />
     <ClInclude Include="Engine\Src\Script\Binding\RandomBinding.h" />
+    <ClInclude Include="Engine\Src\Script\Binding\CVarBinding.h" />
     <ClInclude Include="Engine\Src\Script\Binding\RenderingBinding.h" />
     <ClInclude Include="Engine\Src\Script\Metadata\MetadataParser.h" />
     <ClInclude Include="Engine\Src\Script\ScriptComponent.h" />
