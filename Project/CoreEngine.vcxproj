@@ -213,12 +213,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Script\ScriptPredefined.cpp" />
     <ClCompile Include="Engine\Src\Script\ScriptCallback.cpp" />
     <ClCompile Include="Engine\Src\Script\ScriptSubsystem.cpp" />
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\CameraShowcaseComponent.cpp" />
     <ClCompile Include="Engine\Src\Editor\Water\WaterEditorFacade.cpp" />
     <ClCompile Include="Engine\Src\Editor\Water\WaterEditorPanel.cpp" />
     <ClCompile Include="Engine\Src\Editor\Water\WaterSurfaceDebugPanel.cpp" />
     <ClCompile Include="Engine\Src\Editor\Water\WaterSurfaceParameterPanel.cpp" />
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterConstantBufferSet.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterRenderResources.cpp" />
@@ -1169,7 +1167,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Script\ScriptCallback.h" />
     <ClInclude Include="Engine\Src\Script\ScriptSubsystem.h" />
     <ClInclude Include="Engine\Src\Reflection\PropertyDescriptor.h" />
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\CameraShowcaseComponent.h" />
     <ClInclude Include="Engine\Src\Editor\Water\WaterEditorFacade.h" />
     <ClInclude Include="Engine\Src\Editor\Water\WaterEditorPanel.h" />
     <ClInclude Include="Engine\Src\Editor\Water\WaterSurfaceDebugPanel.h" />
@@ -1659,7 +1656,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\WorldTransform\WorldTransform.h" />
     <ClInclude Include="Engine\Src\Scene\SceneManager.h" />
     <ClInclude Include="Application\Src\MyGame.h" />
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.h" />
     <ClInclude Include="Externals\imgui\imconfig.h" />
     <ClInclude Include="Externals\imgui\imgui.h" />
     <ClInclude Include="Externals\imgui\imgui_internal.h" />

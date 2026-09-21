@@ -137,6 +137,18 @@ namespace CoreEngine::Script
         {
             return new ScriptGameCamera();
         }
+
+        /// @brief 今エディタ視点で覗いているか
+        /// @details 覗いているカメラとゲーム視点のカメラが違えばエディタ視点。
+        ///          エディタを含まないビルドでは常に false になる。
+        bool IsUsingEditorCamera()
+        {
+            const SceneManager* const manager = CurrentSceneManager();
+            if (!manager) {
+                return false;
+            }
+            return manager->GetGameViewCamera3D() != manager->GetGameCamera3D();
+        }
     }
 
     bool RegisterSceneBinding(asIScriptEngine* engine, EngineSystem* engineSystem)
@@ -162,6 +174,7 @@ namespace CoreEngine::Script
         r.Function("void ChangeScene(const string &in name)", asFUNCTION(ChangeScene));
         r.Function("string GetCurrentName()", asFUNCTION(GetCurrentName));
         r.Function("GameCamera@ GetGameCamera()", asFUNCTION(GetGameCamera));
+        r.Function("bool IsUsingEditorCamera()", asFUNCTION(IsUsingEditorCamera));
         r.Namespace("");
         return r.Succeeded();
     }

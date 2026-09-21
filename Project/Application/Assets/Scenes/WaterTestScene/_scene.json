@@ -1,5 +1,11 @@
 {
+    "features": [
+        "WaterRender"
+    ],
+    "defaultGround": false,
     "objects": [
+        "Sun",
+        "MainCamera",
         "WaterPlane",
         "ground",
         "ground (1)",
