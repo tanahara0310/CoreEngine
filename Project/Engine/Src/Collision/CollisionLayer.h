@@ -1,53 +1,49 @@
-﻿#pragma once
+#pragma once
 
-#include <cstddef>
-#include <iterator>
+#include <cstdint>
+#include <string>
 #include <string_view>
-
-/// @brief 衝突判定レイヤー
-/// @note 衝突判定の最適化とゲームロジックの分離に使用
+#include <vector>
 
 namespace CoreEngine
 {
-enum class CollisionLayer {
-   Default = 0,   // デフォルトレイヤー（汎用）
-   Player,        // プレイヤー
-   Enemy,         // 敵
-   PlayerBullet,  // プレイヤーの弾
-   EnemyBullet,   // 敵の弾
-   Boss,          // ボス
-   BossBullet,    // ボスの弾
-   BossAttack,    // ボスの攻撃判定
-   Item,          // アイテム
-   Environment,   // 環境オブジェクト（壁など）
-   Count          // レイヤー数（列挙の最後に配置）
+/// @brief 衝突判定レイヤー
+/// @details 値は添字。名前はプロジェクト設定（`Application/Config/EngineSettings/Layers.json`）が
+///          持つので、レイヤーを増やすのにエンジンの再ビルドは要らない。
+/// @note エンジンが名指しするのは `Default` だけ。それ以外はゲームの語彙なので、
+///       C++ の列挙には並べない（`static_cast<CollisionLayer>(添字)` で作る）。
+enum class CollisionLayer : std::uint8_t {
+    Default = 0,  ///< 何も決めていないときのレイヤー。必ず添字 0
 };
 
-/// @brief レイヤーの名前（列挙の並びと同じ順。保存データとスクリプトが使う）
-inline constexpr const char* kCollisionLayerNames[] = {
-   "Default", "Player", "Enemy", "PlayerBullet", "EnemyBullet",
-   "Boss", "BossBullet", "BossAttack", "Item", "Environment",
-};
-static_assert(std::size(kCollisionLayerNames) == static_cast<std::size_t>(CollisionLayer::Count),
-   "CollisionLayer を増減したら kCollisionLayerNames も更新すること");
+/// @brief 持てるレイヤーの上限
+/// @note 当たり判定の表は常にこの大きさで持つ（名前の数を変えても表の形が変わらない）。
+inline constexpr std::size_t kMaxCollisionLayers = 32;
+
+/// @brief レイヤーの名前の表
+/// @details 初回の参照で `Layers.json` を読む。無ければ既定の並びを使う。
+namespace CollisionLayers
+{
+    /// @brief 使っているレイヤーの数（1 以上 kMaxCollisionLayers 以下）
+    std::size_t Count();
+
+    /// @brief 名前の一覧（添字がそのままレイヤーの値）
+    const std::vector<std::string>& Names();
+
+    /// @brief 名前を決めて保存する
+    /// @param names 添字 0 は必ず "Default"。空文字・重複・上限超えは断る
+    /// @param outError 断った訳（省略可）
+    /// @return 保存できたら true
+    bool SetNames(std::vector<std::string> names, std::string* outError = nullptr);
+
+    /// @brief ファイルから読み直す
+    void Reload();
+}
 
 /// @brief レイヤーの名前（範囲外なら "Default"）
-inline const char* ToString(CollisionLayer layer)
-{
-   const auto index = static_cast<std::size_t>(layer);
-   return index < std::size(kCollisionLayerNames) ? kCollisionLayerNames[index] : kCollisionLayerNames[0];
-}
+const std::string& ToString(CollisionLayer layer);
 
 /// @brief 名前からレイヤーを引く
 /// @return 名前が無ければ false（out は変えない）
-inline bool TryParseCollisionLayer(std::string_view name, CollisionLayer& out)
-{
-   for (std::size_t i = 0; i < std::size(kCollisionLayerNames); ++i) {
-      if (name == kCollisionLayerNames[i]) {
-         out = static_cast<CollisionLayer>(i);
-         return true;
-      }
-   }
-   return false;
-}
+bool TryParseCollisionLayer(std::string_view name, CollisionLayer& out);
 }

@@ -355,6 +355,9 @@
     <ClCompile Include="Engine\Src\Collision\CollisionConfig.cpp">
       <Filter>Engine\Src\Collision</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Collision\CollisionLayer.cpp">
+      <Filter>Engine\Src\Collision</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Collision\CollisionWorld.cpp">
       <Filter>Engine\Src\Collision</Filter>
     </ClCompile>

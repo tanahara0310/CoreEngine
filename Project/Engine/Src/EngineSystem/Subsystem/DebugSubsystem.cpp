@@ -36,6 +36,7 @@
 #include "Input/InputManager.h"
 #include "Scene/SceneManager.h"
 #include "Scene/SceneSaveSystem.h"
+#include "Collision/CollisionLayer.h"
 #include "EngineSystem/Settings/ProjectSettings.h"
 #include "Editor/ImGui/EditorTheme.h"
 #include <algorithm>
@@ -50,6 +51,69 @@ namespace CoreEngine
 {
     namespace
     {
+        /// @brief 当たり判定のレイヤーの名前を編集する欄
+        /// @details 実体は `Application/Config/EngineSettings/Layers.json`。
+        ///          添字 0 は `Default` 固定で、エンジンが名指しするのはこれだけ。
+        void DrawCollisionLayerSettings()
+        {
+            // 編集中の控え。確定するまで実体へは流さない（途中の空名で弾かれ続けないように）
+            static std::vector<std::string> editing;
+            static std::string error;
+            static bool loaded = false;
+            if (!loaded) {
+                editing = CollisionLayers::Names();
+                loaded = true;
+            }
+
+            UI::Hint("スクリプトの CollisionLayer と、シーンの当たり判定の表に出る名前です。");
+            UI::Hint("名前を変えても、保存済みのシーンは添字で覚えているので組み合わせは崩れません。");
+
+            for (std::size_t i = 0; i < editing.size(); ++i) {
+                ImGui::PushID(static_cast<int>(i));
+                char buffer[64] = {};
+                const std::size_t length = (std::min)(editing[i].size(), sizeof(buffer) - 1);
+                std::memcpy(buffer, editing[i].data(), length);
+
+                const bool isDefault = (i == 0);
+                ImGui::BeginDisabled(isDefault);
+                if (UI::InputText(("#" + std::to_string(i)).c_str(), buffer, sizeof(buffer))) {
+                    editing[i] = buffer;
+                }
+                ImGui::EndDisabled();
+
+                if (!isDefault) {
+                    UI::SameLine();
+                    if (ImGui::SmallButton("外す")) {
+                        editing.erase(editing.begin() + static_cast<std::ptrdiff_t>(i));
+                        ImGui::PopID();
+                        break;
+                    }
+                }
+                ImGui::PopID();
+            }
+
+            if (editing.size() < kMaxCollisionLayers && ImGui::Button("レイヤーを足す")) {
+                editing.push_back("Layer" + std::to_string(editing.size()));
+            }
+
+            UI::Separator();
+            if (ImGui::Button("適用")) {
+                if (CollisionLayers::SetNames(editing, &error)) {
+                    editing = CollisionLayers::Names();
+                }
+            }
+            UI::SameLine();
+            if (ImGui::Button("戻す")) {
+                editing = CollisionLayers::Names();
+                error.clear();
+            }
+
+            if (!error.empty()) {
+                ImGui::TextColored(Editor::Theme::kError, "%s", error.c_str());
+            }
+            UI::Hint("適用してもスクリプトの CollisionLayer は次の起動から変わります。");
+        }
+
         /// @brief 起動時に開くシーンを選ぶ欄
         /// @details 実体は `Application/Config/EngineSettings/Project.json`。
         ///          選んだ時点で書き出すので、ここに保存ボタンは無い。
@@ -350,6 +414,15 @@ namespace CoreEngine
             .group = Editor::PanelGroup::General,
             .owner = this,
             .draw = [] { DrawStartupSettings(); },
+            });
+
+        // 当たり判定のレイヤーの名前（CVar で表せないのでプロジェクト設定が持つ）
+        Editor::EditorPanelRegistry::Get().Register({
+            .id = "Collision Layers",
+            .placement = Editor::PanelPlacement::SettingsSection,
+            .group = Editor::PanelGroup::General,
+            .owner = this,
+            .draw = [] { DrawCollisionLayerSettings(); },
             });
 
         // ポストエフェクトはシーンが持つ見た目なので、シーンに置いた

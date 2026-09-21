@@ -28,7 +28,11 @@ namespace SceneSettingsPanel
         /// 描くたびにシーンを引き直すための、エンジンへの参照（プロセスの寿命）
         EngineSystem* s_engine = nullptr;
 
-        constexpr int kLayerCount = static_cast<int>(CollisionLayer::Count);
+        /// @brief 今使っているレイヤーの数（プロジェクト設定で変わる）
+        int LayerCount()
+        {
+            return static_cast<int>(CollisionLayers::Count());
+        }
 
         /// @brief 今のシーン（無ければ nullptr）
         Scene* ResolveScene()
@@ -87,6 +91,8 @@ namespace SceneSettingsPanel
 
             UI::Hint("チェックが入っている組み合わせだけ衝突判定が走ります。");
 
+            const int kLayerCount = LayerCount();
+
             // 対称行列なので下三角だけ描く（同じ組み合わせが 2 回出ない）
             if (ImGui::BeginTable("CollisionMatrix", kLayerCount + 1,
                     ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit
@@ -94,7 +100,8 @@ namespace SceneSettingsPanel
 
                 ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 110.0f);
                 for (int col = 0; col < kLayerCount; ++col) {
-                    ImGui::TableSetupColumn(kCollisionLayerNames[col], ImGuiTableColumnFlags_WidthFixed, 26.0f);
+                    ImGui::TableSetupColumn(CollisionLayers::Names()[col].c_str(),
+                        ImGuiTableColumnFlags_WidthFixed, 26.0f);
                 }
 
                 // 縦書き風のヘッダは組めないので、番号 + 凡例で代用する
@@ -110,7 +117,7 @@ namespace SceneSettingsPanel
                     ImGui::TableNextRow();
 
                     ImGui::TableNextColumn();
-                    ImGui::Text("%d %s", row, kCollisionLayerNames[row]);
+                    ImGui::Text("%d %s", row, CollisionLayers::Names()[row].c_str());
 
                     for (int col = 0; col < kLayerCount; ++col) {
                         ImGui::TableNextColumn();
@@ -129,7 +136,8 @@ namespace SceneSettingsPanel
                         }
                         if (ImGui::IsItemHovered()) {
                             ImGui::SetTooltip("%s x %s",
-                                kCollisionLayerNames[row], kCollisionLayerNames[col]);
+                                CollisionLayers::Names()[row].c_str(),
+                                CollisionLayers::Names()[col].c_str());
                         }
                         ImGui::PopID();
                     }
