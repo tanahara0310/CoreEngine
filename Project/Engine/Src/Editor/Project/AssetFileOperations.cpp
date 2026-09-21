@@ -148,6 +148,42 @@ namespace CoreEngine::Editor::AssetFileOperations
         return desired;
     }
 
+    bool CreateFolder(const std::filesystem::path& parentFolder, const std::string& name,
+                      std::filesystem::path* outPath, std::string* outError)
+    {
+        const auto fail = [outError](const std::string& reason) {
+            if (outError) { *outError = reason; }
+            return false;
+            };
+
+        if (!IsValidName(name, outError) || !IsEditableLocation(parentFolder, outError)) {
+            return false;
+        }
+
+        std::error_code ec;
+        if (!std::filesystem::is_directory(parentFolder, ec)) {
+            return fail("作る場所がフォルダではありません");
+        }
+
+        const std::filesystem::path destination = parentFolder / name;
+        if (std::filesystem::exists(destination, ec)) {
+            return fail("同じ名前のものがもうあります");
+        }
+
+        std::filesystem::create_directory(destination, ec);
+        if (ec) {
+            return fail("フォルダを作れませんでした");
+        }
+
+        RefreshDatabase();
+        if (outPath) { *outPath = destination; }
+        if (outError) { outError->clear(); }
+        Logger& logger = Logger::GetInstance();
+        logger.Logf(LogLevel::Info, LogCategory::System, "フォルダを作りました: {}",
+            logger.PathToUtf8(destination));
+        return true;
+    }
+
     bool Rename(const std::filesystem::path& target, const std::string& newName,
                 std::filesystem::path* outPath, std::string* outError)
     {
