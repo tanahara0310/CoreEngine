@@ -941,3 +941,19 @@ float Range(float minimum, float maximum);
 int Range(int minimum, int maximum);
 bool Chance(float probability = 0.5f);
 }
+namespace CVar {
+bool Exists(const string&in name);
+bool Reset(const string&in name);
+bool GetBool(const string&in name, bool fallback = false);
+int GetInt(const string&in name, int fallback = 0);
+float GetFloat(const string&in name, float fallback = 0.0f);
+Vector2 GetVector2(const string&in name);
+Vector3 GetVector3(const string&in name);
+Vector4 GetColor(const string&in name);
+bool SetBool(const string&in name, bool value);
+bool SetInt(const string&in name, int value);
+bool SetFloat(const string&in name, float value);
+bool SetVector2(const string&in name, const Vector2&in value);
+bool SetVector3(const string&in name, const Vector3&in value);
+bool SetColor(const string&in name, const Vector4&in value);
+}
