@@ -343,6 +343,58 @@ namespace Geometry
         return true;
     }
 
+    int CollectBoxContacts(const OBB& a, const OBB& b, const Vector3& normal,
+                           Contact* outPoints, int maxPoints)
+    {
+        if (!outPoints || maxPoints <= 0) {
+            return 0;
+        }
+
+        // 面と判断する許容。頂点がわずかに外側でも接触として拾う
+        constexpr float kFaceTolerance = 1e-2f;
+
+        // 法線方向に見た、それぞれの箱の表側・裏側の位置
+        const float frontOfA = Dot(a.center, normal) + a.ProjectedRadius(normal);
+        const float backOfB  = Dot(b.center, normal) - b.ProjectedRadius(normal);
+
+        int count = 0;
+
+        // a の内側へ入っている b の頂点
+        Vector3 corners[8];
+        b.Corners(corners);
+        for (int index = 0; index < 8 && count < maxPoints; ++index) {
+            if (!a.Contains(corners[index], kFaceTolerance)) {
+                continue;
+            }
+            const float depth = frontOfA - Dot(corners[index], normal);
+            if (depth <= 0.0f) {
+                continue;
+            }
+            outPoints[count].point = corners[index];
+            outPoints[count].normal = normal;
+            outPoints[count].depth = depth;
+            ++count;
+        }
+
+        // b の内側へ入っている a の頂点
+        a.Corners(corners);
+        for (int index = 0; index < 8 && count < maxPoints; ++index) {
+            if (!b.Contains(corners[index], kFaceTolerance)) {
+                continue;
+            }
+            const float depth = Dot(corners[index], normal) - backOfB;
+            if (depth <= 0.0f) {
+                continue;
+            }
+            outPoints[count].point = corners[index];
+            outPoints[count].normal = normal;
+            outPoints[count].depth = depth;
+            ++count;
+        }
+
+        return count;
+    }
+
     //================================================
     // カプセル × 球（実装はここ 1 箇所だけ）
     //================================================

@@ -1,4 +1,4 @@
 {
-    "initialScene": "TestScene",
+    "initialScene": "PhysicsTestScene",
     "version": "1.0"
 }

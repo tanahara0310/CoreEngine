@@ -178,6 +178,37 @@ namespace Geometry
             return result;
         }
 
+        /// @brief 8 つの頂点を書き出す
+        /// @param out 頂点の書き出し先（8 個ぶん）
+        void Corners(Vector3 out[8]) const {
+            const Vector3 extentX = axes[0] * halfExtents.x;
+            const Vector3 extentY = axes[1] * halfExtents.y;
+            const Vector3 extentZ = axes[2] * halfExtents.z;
+
+            for (int index = 0; index < 8; ++index) {
+                const float signX = (index & 1) ? 1.0f : -1.0f;
+                const float signY = (index & 2) ? 1.0f : -1.0f;
+                const float signZ = (index & 4) ? 1.0f : -1.0f;
+                out[index] = center + extentX * signX + extentY * signY + extentZ * signZ;
+            }
+        }
+
+        /// @brief 点が内部にあるか（境界も含む）
+        /// @param tolerance 境界の外側に許す幅
+        bool Contains(const Vector3& point, float tolerance = 0.0f) const {
+            const Vector3 local = ToLocal(point);
+            return std::abs(local.x) <= halfExtents.x + tolerance
+                && std::abs(local.y) <= halfExtents.y + tolerance
+                && std::abs(local.z) <= halfExtents.z + tolerance;
+        }
+
+        /// @brief 向き axis へ投影したときの、中心からの広がり
+        float ProjectedRadius(const Vector3& axis) const {
+            return halfExtents.x * std::abs(Dot(axis, axes[0]))
+                 + halfExtents.y * std::abs(Dot(axis, axes[1]))
+                 + halfExtents.z * std::abs(Dot(axis, axes[2]));
+        }
+
         /// @brief 外接する AABB を作る
         AABB ToAABB() const {
             const Vector3 extent{

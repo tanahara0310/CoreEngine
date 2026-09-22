@@ -101,6 +101,7 @@ namespace CoreEngine
         }
 
         solver_.Build(contacts_);
+        solver_.WarmStart();
         solver_.SolveVelocities();
 
         for (RigidbodyComponent* body : bodies_) {
