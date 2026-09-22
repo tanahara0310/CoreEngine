@@ -1,0 +1,73 @@
+{
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [ 0.0, 0.0, 0.0 ],
+                "scale": [ 1.0, 1.0, 1.0 ],
+                "translate": [ 0.0, 5.0, 0.0 ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "model": {
+                    "guid": "e8a79191-50ea-0673-1816-c257f280ba64",
+                    "path": "Application/Assets/Models/Box/cube.obj"
+                }
+            },
+            "type": "MeshRenderer"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [ 0.85, 0.55, 0.2, 1.0 ],
+                "emissive": [ 0.0, 0.0, 0.0, 1.0 ],
+                "metallic": 0.1,
+                "roughness": 0.5
+            },
+            "type": "Material"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "shapes": [
+                    {
+                        "enabled": true,
+                        "height": 1.8,
+                        "layer": "Default",
+                        "offset": [ 0.0, 0.0, 0.0 ],
+                        "radius": 0.4,
+                        "static": false,
+                        "trigger": false,
+                        "type": "Capsule"
+                    }
+                ]
+            },
+            "type": "Collider"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "friction": 0.5,
+                "frictionCombine": 3,
+                "restitution": 0.1,
+                "restitutionCombine": 2
+            },
+            "type": "PhysicsMaterial"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "bodyType": 0,
+                "freezeRotation": false,
+                "linearDamping": 0.0,
+                "mass": 1.0,
+                "useGravity": true
+            },
+            "type": "Rigidbody"
+        }
+    ]
+}

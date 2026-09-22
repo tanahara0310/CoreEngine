@@ -84,6 +84,10 @@ public:
                                                 float height, float angle, const Vector3& color, float alpha, int segments = 16);
     static std::vector<Line> GenerateCylinderLines(const Vector3& center, float radius,
                                                     float height, const Vector3& direction, const Vector3& color, float alpha, int segments = 16);
+    /// @brief カプセルの枠を作る（線分の両端に半球を付けた形）
+    static std::vector<Line> GenerateCapsuleLines(const Vector3& start, const Vector3& end,
+                                                   float radius, const Vector3& color, float alpha,
+                                                   int segments = 16);
 
     /// @brief すべてのラインをクリア
     void ClearAll();

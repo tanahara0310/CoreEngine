@@ -45,6 +45,10 @@ public:
     /// @brief ワールド空間の向き付きボックス（type != Box でも外接ボックスとして使える）
     Geometry::OBB GetWorldOBB() const;
 
+    /// @brief ワールド空間のカプセル（type != Capsule でも外接カプセルとして使える）
+    /// @note 軸はオーナーの上方向。半径は最大スケール、全高は上方向のスケールが乗る。
+    Geometry::Capsule GetWorldCapsule() const;
+
     /// @brief オーナーのワールドスケール（未設定なら等倍）
     Vector3 GetWorldScale() const;
 
@@ -54,10 +58,12 @@ public:
     void SetShape(const CollisionShape& shape) { shape_ = shape; }
     ColliderShapeType GetShapeType() const { return shape_.type; }
 
-    /// @brief 球の半径を変更する（Box 形状には無効）
+    /// @brief 球とカプセルの半径を変更する（Box 形状には無効）
     void SetRadius(float radius);
-    /// @brief ボックスのサイズを変更する（Sphere 形状には無効）
+    /// @brief ボックスのサイズを変更する（Sphere / Capsule 形状には無効）
     void SetSize(const Vector3& size);
+    /// @brief カプセルの全高を変更する（他の形状には無効）
+    void SetHeight(float height);
     /// @brief ローカルオフセットを変更する
     void SetOffset(const Vector3& offset) { shape_.offset = offset; }
 

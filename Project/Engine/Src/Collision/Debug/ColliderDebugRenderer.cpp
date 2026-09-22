@@ -70,6 +70,11 @@ namespace CoreEngine
                 auto shape = LineManager::GenerateSphereLines(
                     sphere.center, sphere.radius, color, alpha, segments);
                 lines.insert(lines.end(), shape.begin(), shape.end());
+            } else if (collider->GetShapeType() == ColliderShapeType::Capsule) {
+                const Geometry::Capsule capsule = collider->GetWorldCapsule();
+                auto shape = LineManager::GenerateCapsuleLines(
+                    capsule.start, capsule.end, capsule.radius, color, alpha, segments);
+                lines.insert(lines.end(), shape.begin(), shape.end());
             } else {
                 const Geometry::OBB box = collider->GetWorldOBB();
                 auto shape = LineManager::GenerateBoxLines(

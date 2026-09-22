@@ -49,6 +49,17 @@ namespace ColliderInspector
                         collider.SetRadius(radius);
                         changed = true;
                     }
+                } else if (shape.type == ColliderShapeType::Capsule) {
+                    float radius = shape.radius;
+                    if (ImGui::DragFloat("半径", &radius, 0.01f, 0.0f, 1000.0f)) {
+                        collider.SetRadius(radius);
+                        changed = true;
+                    }
+                    float height = shape.height;
+                    if (ImGui::DragFloat("高さ", &height, 0.01f, 0.0f, 1000.0f)) {
+                        collider.SetHeight(height);
+                        changed = true;
+                    }
                 } else {
                     Vector3 size = shape.size;
                     if (ImGui::DragFloat3("サイズ", &size.x, 0.01f, 0.0f, 1000.0f)) {

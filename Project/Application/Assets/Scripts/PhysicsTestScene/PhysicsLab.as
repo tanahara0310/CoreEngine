@@ -9,6 +9,9 @@ class PhysicsLab : ScriptComponent
     [Asset("Prefab")] [Tooltip("落とす球")]
     string ballPrefab = "Application/Assets/Prefabs/Physics/PhysicsBall.prefab";
 
+    [Asset("Prefab")] [Tooltip("落とすカプセル")]
+    string capsulePrefab = "Application/Assets/Prefabs/Physics/PhysicsCapsule.prefab";
+
     [Asset("Prefab")] [Tooltip("動かない台と斜面")]
     string platformPrefab = "Application/Assets/Prefabs/Physics/PhysicsPlatform.prefab";
 
@@ -190,6 +193,9 @@ class PhysicsLab : ScriptComponent
         if (Input::IsKeyTriggered(Key::Num3)) {
             DropMany(100);
         }
+        if (Input::IsKeyTriggered(Key::Num4)) {
+            DropOne(capsulePrefab, "Capsule");
+        }
         if (Input::IsKeyTriggered(Key::Space)) {
             ShootFromCamera();
         }
@@ -329,7 +335,7 @@ class PhysicsLab : ScriptComponent
         }
 
         statusText_.text =
-            "1:箱  2:球  3:100 個  Space:撃つ\n"
+            "1:箱  2:球  3:100 個  4:カプセル  Space:撃つ\n"
             + "R:並べ直す  C:片付ける  T:スロー  G:重力\n"
             + "重力 " + gravity + "   時間 " + (slowMotion_ ? "0.2 倍" : "等倍")
             + "   " + int(smoothedFps_ + 0.5f) + " fps\n"

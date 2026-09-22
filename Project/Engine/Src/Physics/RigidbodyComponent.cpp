@@ -231,6 +231,12 @@ namespace CoreEngine
                                 size.z * std::abs(scale.z) }) * 0.5f;
         }
 
+        if (collider->GetShapeType() == ColliderShapeType::Capsule) {
+            // いちばん薄いのは横から見たときの太さ
+            const float radialScale = (std::max)(std::abs(scale.x), std::abs(scale.z));
+            return collider->GetShape().radius * radialScale;
+        }
+
         const float maxScale =
             (std::max)({ std::abs(scale.x), std::abs(scale.y), std::abs(scale.z) });
         return collider->GetShape().radius * maxScale;
@@ -255,6 +261,14 @@ namespace CoreEngine
                 size.z * std::abs(scale.z)
             };
             localInverseInertia_ = Inertia::Invert(Inertia::ForBox(mass_, scaledSize));
+            return;
+        }
+
+        if (collider && collider->GetShapeType() == ColliderShapeType::Capsule) {
+            const CollisionShape& shape = collider->GetShape();
+            const float radialScale = (std::max)(std::abs(scale.x), std::abs(scale.z));
+            localInverseInertia_ = Inertia::Invert(Inertia::ForCapsule(
+                mass_, shape.radius * radialScale, shape.CylinderLength() * std::abs(scale.y)));
             return;
         }
 

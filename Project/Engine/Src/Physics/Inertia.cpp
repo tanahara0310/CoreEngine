@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "Inertia.h"
 
+#include <numbers>
+
 namespace CoreEngine
 {
 namespace Inertia
@@ -25,6 +27,31 @@ namespace Inertia
             factor * (width2 + depth2),
             factor * (width2 + height2),
         };
+    }
+
+    Vector3 ForCapsule(float mass, float radius, float cylinderLength)
+    {
+        const float r2 = radius * radius;
+        const float h  = (cylinderLength > 0.0f) ? cylinderLength : 0.0f;
+
+        // 円筒と両端の半球へ、体積の比で質量を配る
+        const float pi = std::numbers::pi_v<float>;
+        const float cylinderVolume = pi * r2 * h;
+        const float sphereVolume   = (4.0f / 3.0f) * pi * r2 * radius;
+        const float totalVolume    = cylinderVolume + sphereVolume;
+
+        const float cylinderMass = (totalVolume > 0.0f) ? mass * (cylinderVolume / totalVolume) : 0.0f;
+        const float sphereMass   = mass - cylinderMass;
+
+        // 軸方向は円筒と球をそのまま足す
+        const float axial = cylinderMass * r2 * 0.5f + sphereMass * r2 * 0.4f;
+
+        // 横方向は半球のぶんを軸からの距離で押し出す
+        const float radial =
+            cylinderMass * (h * h / 12.0f + r2 * 0.25f)
+            + sphereMass * (0.4f * r2 + 0.375f * radius * h + h * h * 0.25f);
+
+        return Vector3{ radial, axial, radial };
     }
 
     Vector3 Invert(const Vector3& inertia)

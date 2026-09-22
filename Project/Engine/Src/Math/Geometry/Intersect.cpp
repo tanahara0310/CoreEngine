@@ -431,5 +431,59 @@ namespace Geometry
         return BuildRadialContact(pointA, a.radius, pointB, b.radius,
                                   Vector3{ 0.0f, 1.0f, 0.0f }, outContact);
     }
+
+    //================================================
+    // カプセル × OBB
+    //================================================
+
+    namespace {
+        /// @brief 線分と箱の最近接点を交互に取り直す回数
+        constexpr int kCapsuleBoxIterations = 8;
+
+        /// @brief 最近接点がこれ以上動かなくなったら打ち切る
+        constexpr float kCapsuleBoxConvergeSq = 1e-10f;
+    }
+
+    bool Intersect(const Capsule& capsule, const OBB& box, Contact* outContact)
+    {
+        const LineSegment axis(capsule.start, capsule.end);
+
+        // 箱の中心から始めて、線分上の点と箱の上の点を交互に取り直す
+        Vector3 onSegment = ClosestPointOnSegment(box.center, axis);
+        for (int i = 0; i < kCapsuleBoxIterations; ++i) {
+            const Vector3 onBox = box.ClosestPoint(onSegment);
+            const Vector3 next  = ClosestPointOnSegment(onBox, axis);
+
+            const Vector3 move = next - onSegment;
+            onSegment = next;
+            if (Dot(move, move) < kCapsuleBoxConvergeSq) { break; }
+        }
+
+        // 寄せ終えた点を中心とする球として解く（内部に入った場合の押し出しも球側が持つ）
+        return Intersect(Sphere{ onSegment, capsule.radius }, box, outContact);
+    }
+
+    bool Intersect(const OBB& box, const Capsule& capsule, Contact* outContact)
+    {
+        const bool hit = Intersect(capsule, box, outContact);
+        if (hit && outContact) {
+            outContact->normal = outContact->normal * -1.0f;
+        }
+        return hit;
+    }
+
+    bool Intersect(const Capsule& capsule, const AABB& box, Contact* outContact)
+    {
+        return Intersect(capsule, OBB{ box.GetCenter(), box.GetSize() * 0.5f }, outContact);
+    }
+
+    bool Intersect(const AABB& box, const Capsule& capsule, Contact* outContact)
+    {
+        const bool hit = Intersect(capsule, box, outContact);
+        if (hit && outContact) {
+            outContact->normal = outContact->normal * -1.0f;
+        }
+        return hit;
+    }
 }
 }

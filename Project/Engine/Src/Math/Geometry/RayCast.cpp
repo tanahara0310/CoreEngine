@@ -145,7 +145,7 @@ namespace Geometry
     }
 
     //================================================
-    // レイ × 平面
+    // レイ × OBB
     //================================================
 
     bool Raycast(const Ray& ray, const OBB& box, RayHit* outHit, float tMin, float tMax)
@@ -174,6 +174,82 @@ namespace Geometry
         outHit->normal = box.axes[0] * localHit.normal.x
                        + box.axes[1] * localHit.normal.y
                        + box.axes[2] * localHit.normal.z;
+        return true;
+    }
+
+    //================================================
+    // レイ × カプセル
+    //================================================
+
+    bool Raycast(const Ray& ray, const Capsule& capsule, RayHit* outHit, float tMin, float tMax)
+    {
+        const Vector3 axis = capsule.end - capsule.start;
+        const float axisLengthSq = Dot(axis, axis);
+
+        // 長さが無いカプセルは球として扱う
+        if (axisLengthSq < kParallelEpsilon) {
+            return Raycast(ray, Sphere(capsule.start, capsule.radius), outHit, tMin, tMax);
+        }
+
+        float   bestT = tMax;
+        Vector3 bestNormal{ 0.0f, 1.0f, 0.0f };
+        bool    found = false;
+
+        // 側面。軸方向の成分を落とした 2 次方程式を解く
+        const Vector3 toOrigin      = ray.origin - capsule.start;
+        const float   axisDotDir    = Dot(axis, ray.direction);
+        const float   axisDotOrigin = Dot(axis, toOrigin);
+
+        const float a = axisLengthSq * Dot(ray.direction, ray.direction) - axisDotDir * axisDotDir;
+        const float b = axisLengthSq * Dot(toOrigin, ray.direction) - axisDotOrigin * axisDotDir;
+        const float c = axisLengthSq * (Dot(toOrigin, toOrigin) - capsule.radius * capsule.radius)
+                      - axisDotOrigin * axisDotOrigin;
+
+        if (std::abs(a) > kParallelEpsilon) {
+            const float discriminant = b * b - a * c;
+            if (discriminant >= 0.0f) {
+                const float root = std::sqrt(discriminant);
+                const float candidates[2] = { (-b - root) / a, (-b + root) / a };
+
+                for (const float t : candidates) {
+                    if (t < tMin || t > bestT) { continue; }
+
+                    // 当たった高さが両端の間なら円筒部分
+                    const float height = axisDotOrigin + t * axisDotDir;
+                    if (height < 0.0f || height > axisLengthSq) { continue; }
+
+                    const Vector3 point   = ray.origin + ray.direction * t;
+                    const Vector3 onAxis  = capsule.start + axis * (height / axisLengthSq);
+                    const Vector3 outward = point - onAxis;
+                    const float   length  = Length(outward);
+
+                    bestT = t;
+                    bestNormal = (length > kParallelEpsilon) ? outward * (1.0f / length) : bestNormal;
+                    found = true;
+                    break;
+                }
+            }
+        }
+
+        // 両端の半球。手前で当たったものだけを残す
+        const Vector3 caps[2] = { capsule.start, capsule.end };
+        for (const Vector3& center : caps) {
+            RayHit capHit;
+            if (Raycast(ray, Sphere(center, capsule.radius), &capHit, tMin, bestT)) {
+                bestT = capHit.distance;
+                bestNormal = capHit.normal;
+                found = true;
+            }
+        }
+
+        if (!found) {
+            return false;
+        }
+        if (outHit) {
+            outHit->distance = bestT;
+            outHit->point    = ray.origin + ray.direction * bestT;
+            outHit->normal   = bestNormal;
+        }
         return true;
     }
 
