@@ -319,6 +319,7 @@ class GameObject {
 	Material@ get_material() property;
 	MeshRenderer@ get_meshRenderer() property;
 	ParticleSystem@ get_particleSystem() property;
+	PhysicsMaterial@ get_physicsMaterial() property;
 	RectTransform@ get_rectTransform() property;
 	Rigidbody@ get_rigidbody() property;
 	SkyBox@ get_skyBox() property;
@@ -668,6 +669,20 @@ class ParticleSystem {
 	bool IsPlaying();
 	void Clear();
 	void Emit(int);
+}
+class PhysicsMaterial {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	float get_restitution() const property;
+	void set_restitution(float) property;
+	float get_friction() const property;
+	void set_friction(float) property;
+	int get_restitutionCombine() const property;
+	void set_restitutionCombine(int) property;
+	int get_frictionCombine() const property;
+	void set_frictionCombine(int) property;
 }
 class RectTransform {
 	bool get_exists() const property;

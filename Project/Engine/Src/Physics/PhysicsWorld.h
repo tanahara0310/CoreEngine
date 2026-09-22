@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ContactSolver.h"
+
 #include "Collision/CollisionWorld.h"
 #include "Math/Vector/Vector3.h"
 
@@ -59,6 +61,14 @@ public:
     void SetPenetrationSlop(float slop);
     float GetPenetrationSlop() const { return penetrationSlop_; }
 
+    /// @brief 接触を解く繰り返し回数を設定する
+    void SetSolverIterations(int count) { solver_.SetIterations(count); }
+    int GetSolverIterations() const { return solver_.GetIterations(); }
+
+    /// @brief この速さ未満の接近では反発させない（m/s）
+    void SetRestitutionThreshold(float speed) { solver_.SetRestitutionThreshold(speed); }
+    float GetRestitutionThreshold() const { return solver_.GetRestitutionThreshold(); }
+
     // ===== 状態 =====
 
     /// @brief 直前の Advance が進めたステップ数
@@ -76,23 +86,14 @@ public:
     /// @brief 上限に達して捨てた時間の累計（秒）
     float GetDroppedTime() const { return droppedTime_; }
 
-    /// @brief 直前のステップで解決した接触の数
-    size_t GetContactCount() const { return contacts_.size(); }
+    /// @brief 直前のステップで解いた接触の数
+    size_t GetContactCount() const { return solver_.GetConstraintCount(); }
 
 private:
     /// @brief 1 ステップ分だけ物理を進める
     /// @details 速度の積分 → 接触の収集 → 速度の解決 → 位置の積分 → めり込みの押し戻し。
     ///          速度を先に解決するので、接している剛体は位置を進める前に押し戻しの分だけ止まる。
     void Step(float fixedDeltaTime);
-
-    /// @brief 接触している剛体の、近づく向きの速度を打ち消す
-    void SolveVelocities();
-
-    /// @brief 許容を超えためり込みを押し戻す
-    void SolvePositions();
-
-    /// @brief コライダーの持ち主から剛体を引く（無い・無効なら nullptr）
-    static RigidbodyComponent* FindBody(const Collider* collider);
 
     Vector3 gravity_{ 0.0f, -9.81f, 0.0f };
     float   fixedDeltaTime_ = 1.0f / 60.0f;
@@ -103,6 +104,7 @@ private:
     std::vector<RigidbodyComponent*> bodies_;
     CollisionWorld*                  collisionWorld_ = nullptr;
     std::vector<ContactPair>         contacts_;
+    ContactSolver                    solver_;
 
     float    accumulator_ = 0.0f;
     int      lastStepCount_ = 0;
