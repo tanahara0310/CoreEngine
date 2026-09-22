@@ -715,10 +715,15 @@ class Rigidbody {
 	void set_useGravity(bool) property;
 	float get_linearDamping() const property;
 	void set_linearDamping(float) property;
+	bool get_freezeRotation() const property;
+	void set_freezeRotation(bool) property;
 	Vector3 get_velocity() const property;
 	void set_velocity(const Vector3&in) property;
+	Vector3 get_angularVelocity() const property;
+	void set_angularVelocity(const Vector3&in) property;
 	void AddForce(const Vector3&in);
 	void AddImpulse(const Vector3&in);
+	void AddTorque(const Vector3&in);
 }
 class SkyBox {
 	bool get_exists() const property;

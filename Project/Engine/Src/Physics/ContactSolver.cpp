@@ -83,18 +83,27 @@ namespace CoreEngine
 
             constraint.normal = pair.contact.normal;
             constraint.depth = pair.contact.depth;
+            constraint.point = pair.contact.point;
             MakeTangents(constraint.normal, constraint.tangent1, constraint.tangent2);
+
+            // 重心から接触点へのてこ。回転の寄与はこの腕で決まる
+            if (constraint.bodyA && constraint.bodyA->GetOwner()) {
+                constraint.leverA = constraint.point - constraint.bodyA->GetOwner()->GetWorldPosition();
+            }
+            if (constraint.bodyB && constraint.bodyB->GetOwner()) {
+                constraint.leverB = constraint.point - constraint.bodyB->GetOwner()->GetWorldPosition();
+            }
 
             const PhysicsMaterialComponent* const materialA = FindMaterial(pair.a);
             const PhysicsMaterialComponent* const materialB = FindMaterial(pair.b);
             constraint.friction =
                 PhysicsMaterialComponent::CombineFriction(materialA, materialB);
 
-            // 跳ね返る速さは、解き始める前の近づく速さから決める
-            const Vector3 velocityA =
-                constraint.bodyA ? constraint.bodyA->GetVelocity() : Vector3{};
-            const Vector3 velocityB =
-                constraint.bodyB ? constraint.bodyB->GetVelocity() : Vector3{};
+            // 跳ね返る速さは、解き始める前の接触点での近づく速さから決める
+            const Vector3 velocityA = constraint.bodyA
+                ? constraint.bodyA->GetVelocityAtPoint(constraint.point) : Vector3{};
+            const Vector3 velocityB = constraint.bodyB
+                ? constraint.bodyB->GetVelocityAtPoint(constraint.point) : Vector3{};
             const float approachSpeed = Dot(velocityA - velocityB, constraint.normal);
 
             if (approachSpeed > restitutionThreshold_) {
@@ -149,17 +158,43 @@ namespace CoreEngine
         }
     }
 
+    float ContactSolver::EffectiveInverseMass(const ContactConstraint& constraint,
+                                              const Vector3& axis)
+    {
+        float result = constraint.inverseMassSum;
+
+        // てこの先を軸方向へ動かすときの回りにくさを足す
+        if (constraint.bodyA) {
+            const Vector3 angular = constraint.bodyA->ApplyInverseInertia(
+                Cross(constraint.leverA, axis));
+            result += Dot(Cross(angular, constraint.leverA), axis);
+        }
+        if (constraint.bodyB) {
+            const Vector3 angular = constraint.bodyB->ApplyInverseInertia(
+                Cross(constraint.leverB, axis));
+            result += Dot(Cross(angular, constraint.leverB), axis);
+        }
+        return result;
+    }
+
     void ContactSolver::ApplyAxisImpulse(ContactConstraint& constraint, const Vector3& axis,
                                          float& accumulated, float minImpulse, float maxImpulse,
                                          float bias)
     {
-        const Vector3 velocityA = constraint.bodyA ? constraint.bodyA->GetVelocity() : Vector3{};
-        const Vector3 velocityB = constraint.bodyB ? constraint.bodyB->GetVelocity() : Vector3{};
+        const float inverseMass = EffectiveInverseMass(constraint, axis);
+        if (inverseMass <= 0.0f) {
+            return;
+        }
+
+        const Vector3 velocityA = constraint.bodyA
+            ? constraint.bodyA->GetVelocityAtPoint(constraint.point) : Vector3{};
+        const Vector3 velocityB = constraint.bodyB
+            ? constraint.bodyB->GetVelocityAtPoint(constraint.point) : Vector3{};
 
         // axis は a から b へ向かう向き。正で近づく
         const float approachSpeed = Dot(velocityA - velocityB, axis);
 
-        float impulse = (approachSpeed + bias) / constraint.inverseMassSum;
+        float impulse = (approachSpeed + bias) / inverseMass;
 
         // 累積を範囲へ収めてから、その差分だけ与える
         const float previous = accumulated;
@@ -172,11 +207,12 @@ namespace CoreEngine
             return;
         }
 
+        // a は軸の逆向き、b は軸の向きへ。回転は接触点のてこで決まる
         if (constraint.bodyA) {
-            constraint.bodyA->SetVelocity(velocityA - axis * (impulse * constraint.inverseMassA));
+            constraint.bodyA->AddImpulseAtPoint(axis * -impulse, constraint.point);
         }
         if (constraint.bodyB) {
-            constraint.bodyB->SetVelocity(velocityB + axis * (impulse * constraint.inverseMassB));
+            constraint.bodyB->AddImpulseAtPoint(axis * impulse, constraint.point);
         }
     }
 }

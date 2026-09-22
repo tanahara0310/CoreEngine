@@ -91,6 +91,7 @@ namespace CoreEngine
     {
         for (RigidbodyComponent* body : bodies_) {
             body->IntegrateVelocity(gravity_, fixedDeltaTime);
+            body->IntegrateAngularVelocity(fixedDeltaTime);
         }
 
         if (collisionWorld_) {
@@ -104,6 +105,7 @@ namespace CoreEngine
 
         for (RigidbodyComponent* body : bodies_) {
             body->IntegratePosition(fixedDeltaTime);
+            body->IntegrateRotation(fixedDeltaTime);
         }
 
         solver_.SolvePositions(correctionRate_, penetrationSlop_);
