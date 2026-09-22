@@ -306,6 +306,7 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClCompile Include="Engine\Src\Physics\PhysicsMaterialComponent.cpp" />
     <ClCompile Include="Engine\Src\Physics\ContactSolver.cpp" />
     <ClCompile Include="Engine\Src\Physics\Inertia.cpp" />
+    <ClCompile Include="Engine\Src\Physics\Debug\PhysicsDebugRenderer.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\EngineConfig.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\EngineSystem.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\PlaybackState.cpp" />
@@ -1225,6 +1226,7 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClInclude Include="Engine\Src\Physics\PhysicsMaterialComponent.h" />
     <ClInclude Include="Engine\Src\Physics\ContactSolver.h" />
     <ClInclude Include="Engine\Src\Physics\Inertia.h" />
+    <ClInclude Include="Engine\Src\Physics\Debug\PhysicsDebugRenderer.h" />
     <ClInclude Include="Engine\Src\EngineSystem\ServiceRegistry.h" />
     <ClInclude Include="Engine\Src\EngineSystem\EngineConfig.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Factory\CoreComponentFactory.h" />

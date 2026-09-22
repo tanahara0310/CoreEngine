@@ -9,6 +9,8 @@
 #include "Physics/RigidbodyComponent.h"
 #include "Script/ScriptComponent.h"
 #include "Scene/Scene.h"
+#include "Graphics/Render/Line/LineRendererPipeline.h"
+#include "Graphics/Render/RenderManager.h"
 #include "Scene/SceneManager.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/FrameRate/Time.h"
@@ -80,10 +82,28 @@ namespace CoreEngine
 #endif
     }
 
+    namespace {
+        /// @brief Line パスのパイプラインを取得する（無ければ nullptr）
+        LineRendererPipeline* GetLinePipeline(SceneContext& ctx)
+        {
+            auto* const renderManager = ctx.engine ? ctx.engine->GetService<RenderManager>() : nullptr;
+            if (!renderManager) { return nullptr; }
+            return static_cast<LineRendererPipeline*>(
+                renderManager->GetRenderer(RenderPassType::Line));
+        }
+    }
+
     void PhysicsFeature::Initialize(SceneContext& ctx)
     {
         ApplyCVars();
         world_.Reset();
+
+        // 速度と接触点の表示。物理側はレンダラを知らず、描く側が見に行く
+        debugRenderer_ = std::make_unique<PhysicsDebugRenderer>();
+        debugRenderer_->SetWorld(&world_);
+        if (auto* const pipeline = GetLinePipeline(ctx)) {
+            pipeline->RegisterLineSource(debugRenderer_.get());
+        }
 
 #ifdef CORE_EDITOR
         EnsureSettingsPanelRegistered(ctx.engine);
@@ -167,7 +187,11 @@ namespace CoreEngine
 
     void PhysicsFeature::Finalize(SceneContext& ctx)
     {
-        (void)ctx;
+        // 登録したまま消すとダングリングするので、破棄の前に外す
+        if (auto* const pipeline = GetLinePipeline(ctx)) {
+            pipeline->UnregisterLineSource(debugRenderer_.get());
+        }
+        debugRenderer_.reset();
 
         world_.Reset();
 
