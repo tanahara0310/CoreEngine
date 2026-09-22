@@ -128,6 +128,11 @@ namespace CoreEngine
         Invoke(ScriptComponentType::Method::Update);
     }
 
+    void ScriptComponent::FixedUpdate()
+    {
+        Invoke(ScriptComponentType::Method::FixedUpdate);
+    }
+
     void ScriptComponent::LateUpdate()
     {
         Invoke(ScriptComponentType::Method::LateUpdate);

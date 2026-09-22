@@ -42,6 +42,9 @@ namespace CoreEngine
         void Awake() override;
         void Start() override;
         void Update() override;
+
+        /// @brief 物理の固定ステップごとに呼ばれる（IComponent には無い独自の口）
+        void FixedUpdate();
         void LateUpdate() override;
         void OnDestroy() override;
 

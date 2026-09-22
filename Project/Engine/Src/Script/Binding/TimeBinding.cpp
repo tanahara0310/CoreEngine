@@ -18,6 +18,7 @@ namespace CoreEngine::Script
         registrar.Function("float TimeSinceStartup()", asFUNCTION(Time::TimeSinceStartup));
         registrar.Function("float UnscaledTimeSinceStartup()", asFUNCTION(Time::UnscaledTimeSinceStartup));
         registrar.Function("uint64 FrameCount()", asFUNCTION(Time::FrameCount));
+        registrar.Function("float FixedDeltaTime()", asFUNCTION(Time::FixedDeltaTime));
         registrar.Function("float TimeScale()", asFUNCTION(Time::TimeScale));
         registrar.Function("bool IsPaused()", asFUNCTION(Time::IsPaused));
         // 速さはゲームが決めてよい（スローモー・ヒットストップ）。

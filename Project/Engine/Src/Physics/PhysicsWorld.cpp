@@ -38,6 +38,7 @@ namespace CoreEngine
         bodies_.clear();
         contacts_.clear();
         collisionWorld_ = nullptr;
+        preStep_ = nullptr;
     }
 
     //================================================
@@ -89,6 +90,10 @@ namespace CoreEngine
 
     void PhysicsWorld::Step(float fixedDeltaTime)
     {
+        if (preStep_) {
+            preStep_(fixedDeltaTime);
+        }
+
         for (RigidbodyComponent* body : bodies_) {
             body->IntegrateVelocity(gravity_, fixedDeltaTime);
             body->IntegrateAngularVelocity(fixedDeltaTime);

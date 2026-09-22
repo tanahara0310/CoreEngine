@@ -893,6 +893,7 @@ float UnscaledDeltaTime();
 float TimeSinceStartup();
 float UnscaledTimeSinceStartup();
 uint64 FrameCount();
+float FixedDeltaTime();
 float TimeScale();
 bool IsPaused();
 void SetTimeScale(float scale);
