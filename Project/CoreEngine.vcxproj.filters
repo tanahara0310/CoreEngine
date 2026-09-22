@@ -376,6 +376,9 @@
     <ClCompile Include="Engine\Src\Physics\Inertia.cpp">
       <Filter>Engine\Src\Physics</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Physics\Debug\PhysicsDebugRenderer.cpp">
+      <Filter>Engine\Src\Physics\Debug</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\EngineSystem\EngineConfig.cpp">
       <Filter>Engine\Src\EngineSystem</Filter>
     </ClCompile>
@@ -1931,6 +1934,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Physics\Inertia.h">
       <Filter>Engine\Src\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Physics\Debug\PhysicsDebugRenderer.h">
+      <Filter>Engine\Src\Physics\Debug</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\EngineSystem\ServiceRegistry.h">
       <Filter>Engine\Src\EngineSystem</Filter>
@@ -4203,6 +4209,9 @@
     </Filter>
     <Filter Include="Engine\Src\Physics">
       <UniqueIdentifier>{28E028D4-0822-4468-90B5-F749BAA150B8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Physics\Debug">
+      <UniqueIdentifier>{EE2A29E4-20F4-4FF1-9AAA-E266593C0639}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Reflection">
       <UniqueIdentifier>{AB16768F-1113-4F73-AE2B-95C2276C988E}</UniqueIdentifier>

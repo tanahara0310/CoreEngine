@@ -72,6 +72,9 @@ public:
     /// @brief 組み立てた拘束の数
     size_t GetConstraintCount() const { return constraints_.size(); }
 
+    /// @brief 組み立てた拘束（デバッグ表示が読む）
+    const std::vector<ContactConstraint>& GetConstraints() const { return constraints_; }
+
 private:
     /// @brief 1 本の軸について相対速度を打ち消すインパルスを与える
     /// @param constraint 対象の拘束

@@ -1,7 +1,10 @@
 #pragma once
 
 #include "ISceneFeature.h"
+#include "Physics/Debug/PhysicsDebugRenderer.h"
 #include "Physics/PhysicsWorld.h"
+
+#include <memory>
 
 namespace CoreEngine
 {
@@ -54,5 +57,8 @@ namespace CoreEngine
         static CollisionWorld* FindCollisionWorld(SceneContext& ctx);
 
         PhysicsWorld world_;
+
+        /// 速度と接触点のワイヤ表示（この Feature が所有し、Line パスへはポインタを渡すだけ）
+        std::unique_ptr<PhysicsDebugRenderer> debugRenderer_;
     };
 }

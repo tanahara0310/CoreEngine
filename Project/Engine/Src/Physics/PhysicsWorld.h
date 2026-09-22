@@ -37,6 +37,15 @@ public:
     /// @brief 登録されている剛体の数
     size_t GetBodyCount() const { return bodies_.size(); }
 
+    /// @brief 登録されている剛体（デバッグ表示が読む）
+    const std::vector<RigidbodyComponent*>& GetBodies() const { return bodies_; }
+
+    /// @brief 直前のステップで解いた接触（デバッグ表示が読む）
+    const std::vector<ContactConstraint>& GetConstraints() const
+    {
+        return solver_.GetConstraints();
+    }
+
     /// @brief 接触を集める相手（nullptr なら接触の解決を行わない）
     void SetCollisionWorld(CollisionWorld* world) { collisionWorld_ = world; }
 
