@@ -6,6 +6,7 @@
 
 namespace CoreEngine
 {
+class Collider;
 class TransformComponent;
 
 /// @brief 剛体の種別
@@ -36,12 +37,19 @@ public:
         REFLECT_PROPERTY(useGravity_, "重力を受ける")
         REFLECT_PROPERTY(linearDamping_, "抗力", p.range = Range(0.0f, 10.0f, 0.01f),
             p.tooltip = "大きいほど速度が早く落ちる（0 で減らさない）")
+        REFLECT_PROPERTY(freezeRotation_, "回転を止める",
+            p.tooltip = "接触で回らなくなる（向きは自分で指定する）")
         REFLECT_ACCESSOR("velocity", "速度", GetVelocity, SetVelocity,
             p.range = Speed(0.1f),
             p.flags = ::CoreEngine::Reflection::PropertyFlags::NoSave,
             p.tooltip = "m/s。実行中の値なので保存しない")
+        REFLECT_ACCESSOR("angularVelocity", "角速度", GetAngularVelocity, SetAngularVelocity,
+            p.range = Speed(0.1f),
+            p.flags = ::CoreEngine::Reflection::PropertyFlags::NoSave,
+            p.tooltip = "rad/s。実行中の値なので保存しない")
         REFLECT_METHOD("AddForce", "力を加える", AddForce)
         REFLECT_METHOD("AddImpulse", "撃力を加える", AddImpulse)
+        REFLECT_METHOD("AddTorque", "トルクを加える", AddTorque)
     REFLECT_END()
 
     /// @brief トランスフォームを使う
@@ -59,10 +67,23 @@ public:
     /// @brief 撃力を加える（N・s。その場で速度が変わる）
     void AddImpulse(const Vector3& impulse);
 
+    /// @brief トルクを加える（N・m。次のステップで角速度へ変わる）
+    void AddTorque(const Vector3& torque);
+
+    /// @brief ワールド上の点へ撃力を加える（その場で速度と角速度が変わる）
+    void AddImpulseAtPoint(const Vector3& impulse, const Vector3& worldPoint);
+
     // ===== 状態 =====
 
     Vector3 GetVelocity() const { return velocity_; }
     void SetVelocity(const Vector3& velocity) { velocity_ = velocity; }
+
+    Vector3 GetAngularVelocity() const { return angularVelocity_; }
+    void SetAngularVelocity(const Vector3& angularVelocity) { angularVelocity_ = angularVelocity; }
+
+    /// @brief 回転を止めているか
+    bool IsRotationFrozen() const { return freezeRotation_; }
+    void SetRotationFrozen(bool frozen) { freezeRotation_ = frozen; }
 
     BodyType GetBodyType() const { return bodyType_; }
     void SetBodyType(BodyType type) { bodyType_ = type; }
@@ -78,6 +99,17 @@ public:
     /// @brief 重力と力を受けて動く剛体か
     bool IsDynamic() const { return bodyType_ == BodyType::Dynamic; }
 
+    /// @brief ワールド空間の点が持つ速度（並進 ＋ 回転の寄与）
+    Vector3 GetVelocityAtPoint(const Vector3& worldPoint) const;
+
+    /// @brief 慣性の逆をワールド空間のベクトルへ掛ける（回りにくさの向きを持つ）
+    /// @note 対角のローカル慣性を、今の向きの軸で挟んで掛ける。
+    Vector3 ApplyInverseInertia(const Vector3& worldVector) const;
+
+    /// @brief 質量と形とスケールから慣性を計算し直す
+    /// @note 兄弟のコライダーを見る。コライダーが無ければ半径 0.5 の球として扱う。
+    void RefreshInertia();
+
     // ===== 物理ステップ（PhysicsWorld が呼ぶ） =====
 
     /// @brief 重力と溜まった力を速度へ積み、抗力を掛ける
@@ -89,17 +121,33 @@ public:
     /// @brief ワールド空間で位置をずらす（めり込みの押し戻し）
     void ApplyPositionDelta(const Vector3& delta);
 
+    /// @brief 溜まったトルクを角速度へ積む
+    void IntegrateAngularVelocity(float deltaTime);
+
+    /// @brief 角速度の分だけ向きを回す
+    void IntegrateRotation(float deltaTime);
+
 private:
     /// @brief 兄弟のトランスフォームを引く（控えが無ければ引き直す）
     TransformComponent* FindTransform();
+
+    /// @brief 慣性の計算に使う先頭のコライダー（無ければ nullptr）
+    const Collider* GetColliderShape() const;
 
     BodyType bodyType_ = BodyType::Dynamic;
     float    mass_ = 1.0f;
     bool     useGravity_ = true;
     float    linearDamping_ = 0.0f;
 
+    bool freezeRotation_ = false;
+
     Vector3 velocity_{};
     Vector3 accumulatedForce_{};
+    Vector3 angularVelocity_{};
+    Vector3 accumulatedTorque_{};
+
+    /// ローカル軸に沿った慣性の逆（0 の成分はその軸で回らない）
+    Vector3 localInverseInertia_{};
 
     TransformComponent* transform_ = nullptr;
 };

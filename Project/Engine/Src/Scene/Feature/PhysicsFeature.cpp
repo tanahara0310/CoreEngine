@@ -114,6 +114,8 @@ namespace CoreEngine
 
         ctx.gameObjectManager->ForEachComponent<RigidbodyComponent>(
             [this](RigidbodyComponent& body, GameObject& owner) {
+                // 質量やスケールの変更に追従させるため、集めるたびに計算し直す
+                body.RefreshInertia();
                 world_.RegisterBody(&body);
 
                 if (auto* const colliders = owner.GetComponent<ColliderComponent>()) {

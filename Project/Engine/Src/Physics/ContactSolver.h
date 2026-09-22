@@ -19,10 +19,14 @@ struct ContactConstraint {
     Vector3 tangent1{};   ///< 摩擦の軸その 1（法線に直交）
     Vector3 tangent2{};   ///< 摩擦の軸その 2（法線とその 1 に直交）
 
+    Vector3 point{};      ///< 接触点（ワールド）
+    Vector3 leverA{};     ///< bodyA の重心から接触点へ
+    Vector3 leverB{};     ///< bodyB の重心から接触点へ
+
     float depth = 0.0f;             ///< 貫通深度
     float inverseMassA = 0.0f;
     float inverseMassB = 0.0f;
-    float inverseMassSum = 0.0f;
+    float inverseMassSum = 0.0f;    ///< 押し戻しに使う（並進だけの和）
     float friction = 0.0f;          ///< 合成後の摩擦係数
     float targetSeparation = 0.0f;  ///< 反発で目指す離れる速さ（m/s）
 
@@ -66,9 +70,14 @@ private:
     /// @param minImpulse 累積の下限
     /// @param maxImpulse 累積の上限
     /// @param bias       目標にする相対速度（正で離れる向き）
+    /// @note 接触点での相対速度を見るので、回転の寄与も込みで打ち消す。
     static void ApplyAxisImpulse(ContactConstraint& constraint, const Vector3& axis,
                                  float& accumulated, float minImpulse, float maxImpulse,
                                  float bias);
+
+    /// @brief 1 本の軸について、接触点に効く質量の逆数を求める
+    /// @details 並進の逆質量に、てこの長さと慣性から決まる回りにくさを足したもの。
+    static float EffectiveInverseMass(const ContactConstraint& constraint, const Vector3& axis);
 
     std::vector<ContactConstraint> constraints_;
     int   iterations_ = 8;
