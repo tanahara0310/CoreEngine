@@ -65,6 +65,7 @@ class PhysicsLab : ScriptComponent
         BuildSlope();
         BuildBouncers();
         BuildSeesaw();
+        BuildThinWall();
     }
 
     // 箱を 3 段。10 秒静止すれば合格（結果はログと画面に出す）
@@ -135,6 +136,15 @@ class PhysicsLab : ScriptComponent
             if (plank.GetComponent(@body)) {
                 body.mass = 4.0f;
             }
+        }
+    }
+
+    // 薄い板。速い球を撃ち込んで、すり抜けないかを見る
+    private void BuildThinWall()
+    {
+        GameObject@ wall = Spawn(platformPrefab, "ThinWall", Vector3(0.0f, 1.25f, -6.0f));
+        if (wall !is null) {
+            wall.transform.scale = Vector3(6.0f, 2.5f, 0.15f);
         }
     }
 

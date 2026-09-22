@@ -127,6 +127,11 @@ public:
     /// @brief ワールド空間の点が持つ速度（並進 ＋ 回転の寄与）
     Vector3 GetVelocityAtPoint(const Vector3& worldPoint) const;
 
+    /// @brief 形のいちばん薄いところの半分の長さ（m）
+    /// @details 1 ステップの移動がこれを超えると、間の壁を飛び越えうる。
+    ///          コライダーが無ければ 0.5 を返す。
+    float GetMinimumExtent() const;
+
     /// @brief 慣性の逆をワールド空間のベクトルへ掛ける（回りにくさの向きを持つ）
     /// @note 対角のローカル慣性を、今の向きの軸で挟んで掛ける。
     Vector3 ApplyInverseInertia(const Vector3& worldVector) const;

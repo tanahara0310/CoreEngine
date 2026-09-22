@@ -2,6 +2,10 @@
 #include "PhysicsWorld.h"
 #include "RigidbodyComponent.h"
 
+#include "Collision/Collider.h"
+#include "Collision/ColliderComponent.h"
+#include "GameObject/GameObject.h"
+
 namespace CoreEngine
 {
     int PhysicsWorld::Advance(float deltaTime)
@@ -84,6 +88,11 @@ namespace CoreEngine
         penetrationSlop_ = (slop > 0.0f) ? slop : 0.0f;
     }
 
+    void PhysicsWorld::SetContinuousThreshold(float ratio)
+    {
+        continuousThreshold_ = (ratio > 0.0f) ? ratio : 0.0f;
+    }
+
     void PhysicsWorld::SetSleepThresholds(float linear, float angular, float timeToSleep)
     {
         sleepLinearThreshold_ = (linear > 0.0f) ? linear : 0.0f;
@@ -135,7 +144,9 @@ namespace CoreEngine
             if (body->IsSleeping()) {
                 continue;
             }
-            body->IntegratePosition(fixedDeltaTime);
+            if (!continuousEnabled_ || !IntegrateWithSweep(*body, fixedDeltaTime)) {
+                body->IntegratePosition(fixedDeltaTime);
+            }
             body->IntegrateRotation(fixedDeltaTime);
         }
 
@@ -151,4 +162,54 @@ namespace CoreEngine
 
         simulatedTime_ += fixedDeltaTime;
     }
+
+    bool PhysicsWorld::IntegrateWithSweep(RigidbodyComponent& body, float fixedDeltaTime)
+    {
+        GameObject* const owner = body.GetOwner();
+        if (!collisionWorld_ || !owner) {
+            return false;
+        }
+
+        const Vector3 step = body.GetVelocity() * fixedDeltaTime;
+        const float distance = Length(step);
+        const float extent = body.GetMinimumExtent();
+
+        // 1 ステップの移動が形の薄さに収まっていれば、間を飛び越えようがない
+        if (distance <= 0.0f || distance <= extent * continuousThreshold_) {
+            return false;
+        }
+
+        // 当たる相手はレイヤーの表で決める（自分の最初のコライダーの行）
+        const auto* const colliders = owner->GetComponent<ColliderComponent>();
+        const Collider* const own = colliders ? colliders->GetFirst() : nullptr;
+        const uint64_t layerMask = own ? collisionWorld_->GetLayerMask(own->GetLayer())
+                                       : CollisionWorld::kAllLayers;
+
+        const Geometry::Ray ray(owner->GetWorldPosition(), step * (1.0f / distance));
+
+        sweepHits_.clear();
+        collisionWorld_->RaycastAll(ray, distance + extent, layerMask, sweepHits_);
+
+        for (const RaycastHit& hit : sweepHits_) {
+            // 自分の中から飛ばすので、自分自身と通知専用は読み飛ばす
+            if (!hit.collider || hit.object == owner || hit.collider->IsTrigger()) {
+                continue;
+            }
+
+            // 表面の手前で止める。残ったすき間は次のステップの接触で詰まる
+            const float stopDistance = (hit.distance > extent) ? (hit.distance - extent) : 0.0f;
+            body.ApplyPositionDelta(ray.direction * stopDistance);
+
+            // 面へ食い込む向きの速度を消す
+            const Vector3 velocity = body.GetVelocity();
+            const float into = Dot(velocity, hit.normal);
+            if (into < 0.0f) {
+                body.SetVelocity(velocity - hit.normal * into);
+            }
+            return true;
+        }
+
+        return false;
+    }
+
 }

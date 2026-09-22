@@ -112,6 +112,9 @@ public:
     void OverlapBox(const Geometry::AABB& box, uint64_t layerMask,
                     std::vector<Collider*>& outColliders) const;
 
+    /// @brief そのレイヤーが当たる相手のビット集合（マトリクスの 1 行）
+    uint64_t GetLayerMask(CollisionLayer layer) const;
+
     /// @brief 直近の Step() で 1 件以上と接触していたか
     /// @note デバッグ表示の色分けに使う。判定をやり直さず履歴を引くだけ。
     bool IsColliding(const Collider& collider) const;

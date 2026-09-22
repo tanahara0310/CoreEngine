@@ -78,6 +78,14 @@ public:
     void SetPenetrationSlop(float slop);
     float GetPenetrationSlop() const { return penetrationSlop_; }
 
+    /// @brief 速いものが壁を飛び越えないよう、移動の経路を調べるかどうか
+    void SetContinuousEnabled(bool enabled) { continuousEnabled_ = enabled; }
+    bool IsContinuousEnabled() const { return continuousEnabled_; }
+
+    /// @brief 形の厚みのこの割合を超えて動くとき、経路を調べる（小さいほど早く働く）
+    void SetContinuousThreshold(float ratio);
+    float GetContinuousThreshold() const { return continuousThreshold_; }
+
     /// @brief 止まった剛体を計算から外すかどうか
     void SetSleepEnabled(bool enabled) { sleepEnabled_ = enabled; }
     bool IsSleepEnabled() const { return sleepEnabled_; }
@@ -117,6 +125,10 @@ public:
     size_t GetSleepingCount() const;
 
 private:
+    /// @brief 経路を調べながら位置を進める（壁を飛び越えそうなときだけ）
+    /// @return 経路の途中で止めたら true
+    bool IntegrateWithSweep(RigidbodyComponent& body, float fixedDeltaTime);
+
     /// @brief 1 ステップ分だけ物理を進める
     /// @details 速度の積分 → 接触の収集 → 速度の解決 → 位置の積分 → めり込みの押し戻し。
     ///          速度を先に解決するので、接している剛体は位置を進める前に押し戻しの分だけ止まる。
@@ -128,6 +140,9 @@ private:
     float   correctionRate_ = 0.2f;
     float   penetrationSlop_ = 0.01f;
 
+    bool    continuousEnabled_ = true;
+    float   continuousThreshold_ = 0.5f;
+
     bool    sleepEnabled_ = true;
     float   sleepLinearThreshold_ = 0.05f;
     float   sleepAngularThreshold_ = 0.12f;
@@ -137,6 +152,7 @@ private:
     std::vector<RigidbodyComponent*> bodies_;
     CollisionWorld*                  collisionWorld_ = nullptr;
     std::vector<ContactPair>         contacts_;
+    std::vector<RaycastHit>          sweepHits_;
     ContactSolver                    solver_;
 
     float    accumulator_ = 0.0f;
