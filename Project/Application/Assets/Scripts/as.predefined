@@ -343,6 +343,7 @@ class Transform {
 class Collision {
 	GameObject@ get_gameObject() const property;
 	Vector3 get_normal() const property;
+	float get_impulse() const property;
 	float get_depth() const property;
 	Vector3 get_point() const property;
 	CollisionLayer get_layer() const property;
@@ -675,6 +676,8 @@ class PhysicsMaterial {
 	bool get_enabled() const property;
 	void set_enabled(bool) property;
 	GameObject@ get_gameObject() const property;
+	string get_materialAsset() const property;
+	void set_materialAsset(const string&in) property;
 	float get_restitution() const property;
 	void set_restitution(float) property;
 	float get_friction() const property;
@@ -715,15 +718,20 @@ class Rigidbody {
 	void set_useGravity(bool) property;
 	float get_linearDamping() const property;
 	void set_linearDamping(float) property;
+	float get_angularDamping() const property;
+	void set_angularDamping(float) property;
 	bool get_freezeRotation() const property;
 	void set_freezeRotation(bool) property;
 	Vector3 get_velocity() const property;
 	void set_velocity(const Vector3&in) property;
 	Vector3 get_angularVelocity() const property;
 	void set_angularVelocity(const Vector3&in) property;
+	bool get_sleeping() const property;
+	void set_sleeping(bool) property;
 	void AddForce(const Vector3&in);
 	void AddImpulse(const Vector3&in);
 	void AddTorque(const Vector3&in);
+	void WakeUp();
 }
 class SkyBox {
 	bool get_exists() const property;
@@ -906,6 +914,9 @@ GameObject@[]@ OverlapBox(const Vector3&in center, const Vector3&in size, int la
 void SetLayerCollision(CollisionLayer a, CollisionLayer b, bool enabled);
 bool GetLayerCollision(CollisionLayer a, CollisionLayer b);
 int LayerMask(CollisionLayer layer);
+int GetBodyCount();
+int GetSleepingCount();
+int GetContactCount();
 Vector3 get_gravity() property;
 void set_gravity(const Vector3&in) property;
 }

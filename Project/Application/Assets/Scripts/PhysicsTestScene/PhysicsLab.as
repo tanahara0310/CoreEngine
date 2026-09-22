@@ -12,6 +12,9 @@ class PhysicsLab : ScriptComponent
     [Asset("Prefab")] [Tooltip("動かない台と斜面")]
     string platformPrefab = "Application/Assets/Prefabs/Physics/PhysicsPlatform.prefab";
 
+    [Asset("Prefab")] [Tooltip("氷の坂（Ice.physmat を参照する板）")]
+    string icePlatformPrefab = "Application/Assets/Prefabs/Physics/PhysicsIcePlatform.prefab";
+
     [Range(5.0f, 80.0f)] [Tooltip("撃ち出す球の速さ")]
     float shootSpeed = 28.0f;
 
@@ -90,7 +93,7 @@ class PhysicsLab : ScriptComponent
     // 45 度の坂と、その上を転がる球
     private void BuildSlope()
     {
-        GameObject@ slope = Spawn(platformPrefab, "Slope", Vector3(-9.0f, 2.6f, 0.0f));
+        GameObject@ slope = Spawn(icePlatformPrefab, "Slope", Vector3(-9.0f, 2.6f, 0.0f));
         if (slope !is null) {
             slope.transform.scale = Vector3(9.0f, 0.5f, 5.0f);
             slope.transform.rotation = Vector3(0.0f, 0.0f, 0.7853982f);
