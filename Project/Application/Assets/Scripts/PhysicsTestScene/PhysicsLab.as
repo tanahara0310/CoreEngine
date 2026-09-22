@@ -196,7 +196,8 @@ class PhysicsLab : ScriptComponent
         if (Input::IsKeyTriggered(Key::Num4)) {
             DropOne(capsulePrefab, "Capsule");
         }
-        if (Input::IsKeyTriggered(Key::Space)) {
+        // Space はキャラのジャンプと分け合う
+        if (Input::IsKeyTriggered(Key::Space) && !IsCharacterMode()) {
             ShootFromCamera();
         }
         if (Input::IsKeyTriggered(Key::R)) {

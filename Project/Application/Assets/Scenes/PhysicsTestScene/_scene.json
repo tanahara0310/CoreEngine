@@ -2,6 +2,8 @@
     "objects": [
         "MainCamera",
         "PhysicsLab",
-        "StatusBoard"
+        "StatusBoard",
+        "CharacterLab",
+        "StatusBoard2"
     ]
 }

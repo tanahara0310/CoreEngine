@@ -6,6 +6,7 @@
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/GameObjectManager.h"
+#include "Physics/CharacterControllerComponent.h"
 #include "Physics/RigidbodyComponent.h"
 #include "Script/ScriptComponent.h"
 #include "Scene/Scene.h"
@@ -163,6 +164,18 @@ namespace CoreEngine
                 // 質量やスケールの変更に追従させるため、集めるたびに計算し直す
                 body.RefreshInertia();
                 world_.RegisterBody(&body);
+
+                if (auto* const colliders = owner.GetComponent<ColliderComponent>()) {
+                    colliders->ForEachEnabled(
+                        [](Collider& collider) { collider.SetSimulated(true); });
+                }
+            });
+
+        // キャラは剛体を持たないので、問い合わせ先と重力を配って自分で動いてもらう
+        ctx.gameObjectManager->ForEachComponent<CharacterControllerComponent>(
+            [this, collisionWorld](CharacterControllerComponent& controller, GameObject& owner) {
+                controller.SetCollisionWorld(collisionWorld);
+                controller.SetGravity(world_.GetGravity());
 
                 if (auto* const colliders = owner.GetComponent<ColliderComponent>()) {
                     colliders->ForEachEnabled(

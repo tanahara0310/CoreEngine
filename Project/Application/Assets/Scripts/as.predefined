@@ -313,6 +313,7 @@ class GameObject {
 	UIImage@ SpawnUIImage(const string&in texturePath, const string&in name) const;
 	Animator@ get_animator() property;
 	Camera@ get_camera() property;
+	CharacterController@ get_characterController() property;
 	EulerTransform@ get_eulerTransform() property;
 	GpuParticleSystem@ get_gpuParticleSystem() property;
 	Light@ get_light() property;
@@ -556,6 +557,26 @@ class Camera {
 	void set_nearClip(float) property;
 	float get_farClip() const property;
 	void set_farClip(float) property;
+}
+class CharacterController {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	float get_slopeLimit() const property;
+	void set_slopeLimit(float) property;
+	float get_stepOffset() const property;
+	void set_stepOffset(float) property;
+	float get_skinWidth() const property;
+	void set_skinWidth(float) property;
+	bool get_useGravity() const property;
+	void set_useGravity(bool) property;
+	bool get_grounded() const property;
+	Vector3 get_velocity() const property;
+	void set_velocity(const Vector3&in) property;
+	void Move(const Vector3&in);
+	void SimpleMove(const Vector3&in);
+	void Jump(float);
 }
 class EulerTransform {
 	bool get_exists() const property;
