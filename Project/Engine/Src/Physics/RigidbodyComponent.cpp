@@ -34,16 +34,19 @@ namespace CoreEngine
     void RigidbodyComponent::AddForce(const Vector3& force)
     {
         accumulatedForce_ += force;
+        WakeUp();
     }
 
     void RigidbodyComponent::AddImpulse(const Vector3& impulse)
     {
         velocity_ += impulse * GetInverseMass();
+        WakeUp();
     }
 
     void RigidbodyComponent::AddTorque(const Vector3& torque)
     {
         accumulatedTorque_ += torque;
+        WakeUp();
     }
 
     void RigidbodyComponent::AddImpulseAtPoint(const Vector3& impulse, const Vector3& worldPoint)
@@ -96,9 +99,9 @@ namespace CoreEngine
         angularVelocity_ += ApplyInverseInertia(accumulatedTorque_) * deltaTime;
         accumulatedTorque_ = {};
 
-        // 並進と同じ規則で減らす
-        if (linearDamping_ > 0.0f) {
-            angularVelocity_ *= 1.0f / (1.0f + linearDamping_ * deltaTime);
+        // 減り方がステップ幅に依らないよう、割り算で掛ける
+        if (angularDamping_ > 0.0f) {
+            angularVelocity_ *= 1.0f / (1.0f + angularDamping_ * deltaTime);
         }
     }
 
@@ -141,6 +144,44 @@ namespace CoreEngine
     {
         if (TransformComponent* const transform = FindTransform()) {
             transform->ApplyWorldDelta(delta);
+        }
+    }
+
+    void RigidbodyComponent::SetSleeping(bool sleeping)
+    {
+        if (!sleeping) {
+            WakeUp();
+            return;
+        }
+        sleeping_ = true;
+        velocity_ = {};
+        angularVelocity_ = {};
+    }
+
+    void RigidbodyComponent::WakeUp()
+    {
+        sleeping_ = false;
+        stillTime_ = 0.0f;
+    }
+
+    void RigidbodyComponent::UpdateSleepState(float deltaTime, float linearThreshold,
+                                              float angularThreshold, float timeToSleep)
+    {
+        if (!IsDynamic() || sleeping_) {
+            return;
+        }
+
+        const bool still = LengthSquared(velocity_) <= linearThreshold * linearThreshold
+            && LengthSquared(angularVelocity_) <= angularThreshold * angularThreshold;
+
+        if (!still) {
+            stillTime_ = 0.0f;
+            return;
+        }
+
+        stillTime_ += deltaTime;
+        if (stillTime_ >= timeToSleep) {
+            SetSleeping(true);
         }
     }
 

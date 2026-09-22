@@ -61,6 +61,7 @@ abstract class ScriptComponent
     // コライダーの既定はトリガーなので、多くの場面では OnTriggerEnter を書く。
     // collision.gameObject が相手。全オブジェクトの LateUpdate の後に呼ばれる
 
+    // collision.impulse がぶつかった強さ（N・s）。強くぶつかったときだけ音を鳴らす、といった出し分けに使う
     // 押し出す同士のコライダーが触れ始めたとき
     void OnCollisionEnter(Collision@ collision) {}
 

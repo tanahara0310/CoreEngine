@@ -293,6 +293,35 @@ namespace CoreEngine::Script
             return feature && objects ? &feature->GetQueryWorld(*objects) : nullptr;
         }
 
+        /// @brief 今のシーンの物理（シーンが無い・物理を持たないシーンなら nullptr）
+        PhysicsWorld* FindPhysicsWorld()
+        {
+            Scene* const scene = FindScene();
+            PhysicsFeature* const feature = scene ? scene->GetFeature<PhysicsFeature>() : nullptr;
+            return feature ? &feature->GetWorld() : nullptr;
+        }
+
+        /// @brief 物理が見ている剛体の数
+        int GetBodyCount()
+        {
+            const PhysicsWorld* const world = FindPhysicsWorld();
+            return world ? static_cast<int>(world->GetBodyCount()) : 0;
+        }
+
+        /// @brief 眠っている（計算から外れている）剛体の数
+        int GetSleepingCount()
+        {
+            const PhysicsWorld* const world = FindPhysicsWorld();
+            return world ? static_cast<int>(world->GetSleepingCount()) : 0;
+        }
+
+        /// @brief 直前のステップで解いた接触の数
+        int GetContactCount()
+        {
+            const PhysicsWorld* const world = FindPhysicsWorld();
+            return world ? static_cast<int>(world->GetContactCount()) : 0;
+        }
+
         /// @brief スクリプトのレイヤーのビットを、当たり判定のビットへ（-1 はすべてのレイヤー）
         std::uint64_t ToLayerMask(int layerMask)
         {
@@ -420,6 +449,7 @@ namespace CoreEngine::Script
         collision->other_ = ScriptGameObject::CreateForObject(info.other);
         collision->normal_ = info.normal;
         collision->depth_ = info.depth;
+        collision->impulse_ = info.impulse;
         collision->point_ = info.point;
         collision->layer_ = info.otherCollider ? info.otherCollider->GetLayer() : CollisionLayer::Default;
         collision->selfLayer_ = info.selfCollider ? info.selfCollider->GetLayer() : CollisionLayer::Default;
@@ -471,6 +501,7 @@ namespace CoreEngine::Script
         r.Behaviour("Collision", asBEHAVE_RELEASE, "void f()", asMETHOD(ScriptCollision, Release), asCALL_THISCALL);
         r.Method("Collision", "GameObject@ get_gameObject() const property", asMETHOD(ScriptCollision, GetGameObject), asCALL_THISCALL);
         r.Method("Collision", "Vector3 get_normal() const property", asMETHOD(ScriptCollision, GetNormal), asCALL_THISCALL);
+        r.Method("Collision", "float get_impulse() const property", asMETHOD(ScriptCollision, GetImpulse), asCALL_THISCALL);
         r.Method("Collision", "float get_depth() const property", asMETHOD(ScriptCollision, GetDepth), asCALL_THISCALL);
         r.Method("Collision", "Vector3 get_point() const property", asMETHOD(ScriptCollision, GetPoint), asCALL_THISCALL);
         r.Method("Collision", "CollisionLayer get_layer() const property", asMETHOD(ScriptCollision, GetLayer), asCALL_THISCALL);
@@ -519,6 +550,9 @@ namespace CoreEngine::Script
         r.Function("void SetLayerCollision(CollisionLayer a, CollisionLayer b, bool enabled)", asFUNCTION(SetLayerCollision));
         r.Function("bool GetLayerCollision(CollisionLayer a, CollisionLayer b)", asFUNCTION(GetLayerCollision));
         r.Function("int LayerMask(CollisionLayer layer)", asFUNCTION(LayerMask));
+        r.Function("int GetBodyCount()", asFUNCTION(GetBodyCount));
+        r.Function("int GetSleepingCount()", asFUNCTION(GetSleepingCount));
+        r.Function("int GetContactCount()", asFUNCTION(GetContactCount));
         r.Function("Vector3 get_gravity() property", asFUNCTION(PhysicsFeature::GetGravity));
         r.Function("void set_gravity(const Vector3&in) property", asFUNCTION(PhysicsFeature::SetGravity));
         r.Namespace("");

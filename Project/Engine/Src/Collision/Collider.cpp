@@ -199,6 +199,8 @@ namespace {
         info.normal        = contact.normal;
         info.depth         = contact.depth;
         info.point         = contact.point;
+        // 強さは両側の記録のうち大きい方（片方だけが剛体のこともある）
+        info.impulse       = (std::max)(self->GetLastImpulse(), other->GetLastImpulse());
         return info;
     }
 }

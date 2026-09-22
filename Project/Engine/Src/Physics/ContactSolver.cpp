@@ -80,6 +80,17 @@ namespace CoreEngine
                 continue;   // 物理が扱わない接触
             }
 
+            // どちらも動いていない接触は解かなくてよい。片方でも動いていれば両方起こす
+            const bool restingA = !constraint.bodyA || constraint.bodyA->IsSleeping();
+            const bool restingB = !constraint.bodyB || constraint.bodyB->IsSleeping();
+            if (restingA && restingB) {
+                continue;
+            }
+            // 起こすのは眠っている側だけ。起きている剛体へ呼ぶと、止まっている時間が
+            // 毎ステップ 0 に戻って永久に眠れなくなる
+            if (constraint.bodyA && constraint.bodyA->IsSleeping()) { constraint.bodyA->WakeUp(); }
+            if (constraint.bodyB && constraint.bodyB->IsSleeping()) { constraint.bodyB->WakeUp(); }
+
             constraint.inverseMassA = constraint.bodyA ? constraint.bodyA->GetInverseMass() : 0.0f;
             constraint.inverseMassB = constraint.bodyB ? constraint.bodyB->GetInverseMass() : 0.0f;
             constraint.inverseMassSum = constraint.inverseMassA + constraint.inverseMassB;
@@ -87,6 +98,8 @@ namespace CoreEngine
                 continue;   // 両方とも無限質量
             }
 
+            constraint.colliderA = pair.a;
+            constraint.colliderB = pair.b;
             constraint.normal = pair.contact.normal;
             MakeTangents(constraint.normal, constraint.tangent1, constraint.tangent2);
 
@@ -199,6 +212,18 @@ namespace CoreEngine
                     -limit, limit, 0.0f);
                 ApplyAxisImpulse(constraint, constraint.tangent2, constraint.tangentImpulse2,
                     -limit, limit, 0.0f);
+            }
+        }
+    }
+
+    void ContactSolver::PublishImpulses()
+    {
+        for (const ContactConstraint& constraint : constraints_) {
+            if (constraint.colliderA) {
+                constraint.colliderA->AccumulateImpulse(constraint.normalImpulse);
+            }
+            if (constraint.colliderB) {
+                constraint.colliderB->AccumulateImpulse(constraint.normalImpulse);
             }
         }
     }

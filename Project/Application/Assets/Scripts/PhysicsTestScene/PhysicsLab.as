@@ -28,6 +28,7 @@ class PhysicsLab : ScriptComponent
     private float towerStillTime_ = 0.0f;
     private bool towerReported_ = false;
 
+    private float smoothedFps_ = 0.0f;
     private int gravityMode_ = 0;
     private bool slowMotion_ = false;
     private Text3DRenderer@ statusText_;
@@ -43,6 +44,13 @@ class PhysicsLab : ScriptComponent
 
     void Update()
     {
+        // フレーム時間を均して fps にする
+        const float frameDelta = Time::UnscaledDeltaTime();
+        if (frameDelta > 0.0f) {
+            const float instant = 1.0f / frameDelta;
+            smoothedFps_ = (smoothedFps_ <= 0.0f) ? instant : (smoothedFps_ * 0.9f + instant * 0.1f);
+        }
+
         HandleInput();
         MeasureTower();
         UpdateStatus();
@@ -166,6 +174,9 @@ class PhysicsLab : ScriptComponent
         if (Input::IsKeyTriggered(Key::Num2)) {
             DropOne(ballPrefab, "Ball");
         }
+        if (Input::IsKeyTriggered(Key::Num3)) {
+            DropMany(100);
+        }
         if (Input::IsKeyTriggered(Key::Space)) {
             ShootFromCamera();
         }
@@ -199,6 +210,18 @@ class PhysicsLab : ScriptComponent
                     Random::Range(-2.0f, 2.0f));
             }
         }
+    }
+
+    // 負荷を見るためにまとめて落とす
+    private void DropMany(int count)
+    {
+        for (int index = 0; index < count; ++index) {
+            const float x = Random::Range(-7.0f, 7.0f);
+            const float z = Random::Range(-7.0f, 7.0f);
+            const float y = dropHeight + float(index) * 0.35f;
+            Spawn((index % 2 == 0) ? boxPrefab : ballPrefab, "Many", Vector3(x, y, z));
+        }
+        Log("PhysicsLab: " + count + " 個落とした");
     }
 
     // 見ている向きへ球を撃ち込む
@@ -293,9 +316,12 @@ class PhysicsLab : ScriptComponent
         }
 
         statusText_.text =
-            "1:箱を落とす  2:球を落とす  Space:撃つ\n"
+            "1:箱  2:球  3:100 個  Space:撃つ\n"
             + "R:並べ直す  C:片付ける  T:スロー  G:重力\n"
-            + "重力 " + gravity + "   時間 " + (slowMotion_ ? "0.2 倍" : "等倍") + "\n"
+            + "重力 " + gravity + "   時間 " + (slowMotion_ ? "0.2 倍" : "等倍")
+            + "   " + int(smoothedFps_ + 0.5f) + " fps\n"
+            + "剛体 " + Physics::GetBodyCount() + "（眠り " + Physics::GetSleepingCount()
+            + "）  接触 " + Physics::GetContactCount() + "\n"
             + "3 段積み " + stack + "   置いたもの " + placed_.length();
     }
 }
