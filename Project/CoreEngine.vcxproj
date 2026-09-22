@@ -303,6 +303,8 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClCompile Include="Engine\Src\Collision\CollisionWorld.cpp" />
     <ClCompile Include="Engine\Src\Physics\PhysicsWorld.cpp" />
     <ClCompile Include="Engine\Src\Physics\RigidbodyComponent.cpp" />
+    <ClCompile Include="Engine\Src\Physics\PhysicsMaterialComponent.cpp" />
+    <ClCompile Include="Engine\Src\Physics\ContactSolver.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\EngineConfig.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\EngineSystem.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\PlaybackState.cpp" />
@@ -1219,6 +1221,8 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClInclude Include="Engine\Src\Collision\CollisionWorld.h" />
     <ClInclude Include="Engine\Src\Physics\PhysicsWorld.h" />
     <ClInclude Include="Engine\Src\Physics\RigidbodyComponent.h" />
+    <ClInclude Include="Engine\Src\Physics\PhysicsMaterialComponent.h" />
+    <ClInclude Include="Engine\Src\Physics\ContactSolver.h" />
     <ClInclude Include="Engine\Src\EngineSystem\ServiceRegistry.h" />
     <ClInclude Include="Engine\Src\EngineSystem\EngineConfig.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Factory\CoreComponentFactory.h" />

@@ -49,6 +49,14 @@ namespace CoreEngine
             "sys.Physics.PenetrationSlop", 0.01f,
             "押し戻さずに許すめり込みの深さ（m）", CVarRange{ 0.0f, 0.1f } };
 
+        CVar<int> cvSolverIterations{
+            "sys.Physics.SolverIterations", 8,
+            "接触を解く繰り返し回数", CVarRange{ 1.0f, 32.0f } };
+
+        CVar<float> cvRestitutionThreshold{
+            "sys.Physics.RestitutionThreshold", 1.0f,
+            "この速さ未満の接近では跳ね返らせない（m/s）", CVarRange{ 0.0f, 5.0f } };
+
 #ifdef CORE_EDITOR
         /// 設定パネルが編集する Feature（ドロワーは何もキャプチャせずこれを読む）
         PhysicsFeature* s_activePhysics = nullptr;
@@ -160,6 +168,8 @@ namespace CoreEngine
         world_.SetMaxSubSteps(cvMaxSubSteps.Get());
         world_.SetCorrectionRate(cvCorrectionRate.Get());
         world_.SetPenetrationSlop(cvPenetrationSlop.Get());
+        world_.SetSolverIterations(cvSolverIterations.Get());
+        world_.SetRestitutionThreshold(cvRestitutionThreshold.Get());
 
         // スクリプトが読む Time の固定ステップ幅を物理と揃える
         Time::SetFixedDeltaTime(cvFixedStep.Get());

@@ -2,9 +2,6 @@
 #include "PhysicsWorld.h"
 #include "RigidbodyComponent.h"
 
-#include "Collision/Collider.h"
-#include "GameObject/GameObject.h"
-
 namespace CoreEngine
 {
     int PhysicsWorld::Advance(float deltaTime)
@@ -98,100 +95,19 @@ namespace CoreEngine
 
         if (collisionWorld_) {
             collisionWorld_->CollectContacts(contacts_);
-            SolveVelocities();
         } else {
             contacts_.clear();
         }
+
+        solver_.Build(contacts_);
+        solver_.SolveVelocities();
 
         for (RigidbodyComponent* body : bodies_) {
             body->IntegratePosition(fixedDeltaTime);
         }
 
-        SolvePositions();
+        solver_.SolvePositions(correctionRate_, penetrationSlop_);
 
         simulatedTime_ += fixedDeltaTime;
-    }
-
-    void PhysicsWorld::SolveVelocities()
-    {
-        for (const ContactPair& pair : contacts_) {
-            if (pair.a->IsTrigger() || pair.b->IsTrigger()) {
-                continue;
-            }
-
-            RigidbodyComponent* const bodyA = FindBody(pair.a);
-            RigidbodyComponent* const bodyB = FindBody(pair.b);
-
-            const float inverseMassA = bodyA ? bodyA->GetInverseMass() : 0.0f;
-            const float inverseMassB = bodyB ? bodyB->GetInverseMass() : 0.0f;
-            const float inverseMassSum = inverseMassA + inverseMassB;
-            if (inverseMassSum <= 0.0f) {
-                continue;
-            }
-
-            const Vector3 velocityA = bodyA ? bodyA->GetVelocity() : Vector3{};
-            const Vector3 velocityB = bodyB ? bodyB->GetVelocity() : Vector3{};
-
-            // normal は a から b へ向かう。a が +normal へ動くほど深くめり込む
-            const float approachSpeed = Dot(velocityA - velocityB, pair.contact.normal);
-            if (approachSpeed <= 0.0f) {
-                continue;   // 離れつつある
-            }
-
-            // 反発なし（完全非弾性）。近づく向きの相対速度をちょうど 0 にする
-            const float impulse = -approachSpeed / inverseMassSum;
-
-            if (bodyA) {
-                bodyA->SetVelocity(velocityA + pair.contact.normal * (impulse * inverseMassA));
-            }
-            if (bodyB) {
-                bodyB->SetVelocity(velocityB - pair.contact.normal * (impulse * inverseMassB));
-            }
-        }
-    }
-
-    void PhysicsWorld::SolvePositions()
-    {
-        for (const ContactPair& pair : contacts_) {
-            if (pair.a->IsTrigger() || pair.b->IsTrigger()) {
-                continue;
-            }
-
-            const float excess = pair.contact.depth - penetrationSlop_;
-            if (excess <= 0.0f) {
-                continue;   // 許容の範囲なので触らない
-            }
-
-            RigidbodyComponent* const bodyA = FindBody(pair.a);
-            RigidbodyComponent* const bodyB = FindBody(pair.b);
-
-            const float inverseMassA = bodyA ? bodyA->GetInverseMass() : 0.0f;
-            const float inverseMassB = bodyB ? bodyB->GetInverseMass() : 0.0f;
-            const float inverseMassSum = inverseMassA + inverseMassB;
-            if (inverseMassSum <= 0.0f) {
-                continue;
-            }
-
-            // 軽い方が多く動くよう、質量の逆数の比で割り振る
-            const float correction = excess * correctionRate_ / inverseMassSum;
-
-            if (bodyA) {
-                bodyA->ApplyPositionDelta(pair.contact.normal * (-correction * inverseMassA));
-            }
-            if (bodyB) {
-                bodyB->ApplyPositionDelta(pair.contact.normal * (correction * inverseMassB));
-            }
-        }
-    }
-
-    RigidbodyComponent* PhysicsWorld::FindBody(const Collider* collider)
-    {
-        GameObject* const owner = collider ? collider->GetOwner() : nullptr;
-        if (!owner) {
-            return nullptr;
-        }
-
-        RigidbodyComponent* const body = owner->GetComponent<RigidbodyComponent>();
-        return (body && body->IsEnabled()) ? body : nullptr;
     }
 }
