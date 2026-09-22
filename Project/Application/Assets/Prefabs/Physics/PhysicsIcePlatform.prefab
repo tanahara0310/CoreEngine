@@ -1,0 +1,95 @@
+{
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "model": {
+                    "guid": "e8a79191-50ea-0673-1816-c257f280ba64",
+                    "path": "Application/Assets/Models/Box/cube.obj"
+                }
+            },
+            "type": "MeshRenderer"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    0.62,
+                    0.78,
+                    0.9,
+                    1.0
+                ],
+                "emissive": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "metallic": 0.05,
+                "roughness": 0.15
+            },
+            "type": "Material"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "shapes": [
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "size": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    }
+                ]
+            },
+            "type": "Collider"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "materialAsset": {
+                    "guid": "b5408fa9-87b0-7320-ad8e-3174a20fc082",
+                    "path": "Application/Assets/Physics/Ice.physmat"
+                },
+                "friction": 0.5,
+                "frictionCombine": 3,
+                "restitution": 0.0,
+                "restitutionCombine": 2
+            },
+            "type": "PhysicsMaterial"
+        }
+    ]
+}

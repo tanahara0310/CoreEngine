@@ -459,6 +459,12 @@ namespace CoreEngine
             return AssetType::Scene;
         }
 
+        // 物理の材質
+        if (ext == ".physmat")
+        {
+            return AssetType::PhysicsMaterial;
+        }
+
         // プレハブ
         if (ext == ".prefab")
         {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GameObject/Component/Core/IComponent.h"
+#include "Graphics/Asset/AssetRef.h"
 #include "Reflection/Reflect.h"
 
 namespace CoreEngine
@@ -28,6 +29,7 @@ public:
     const char* GetTypeName() const override { return "PhysicsMaterial"; }
 
     REFLECT_BEGIN(PhysicsMaterialComponent, "物理マテリアル")
+        REFLECT_ASSET_REF(materialAsset_, "材質ファイル")
         REFLECT_PROPERTY(restitution_, "反発係数", p.range = Range(0.0f, 1.0f, 0.01f),
             p.tooltip = "0 で跳ねず、1 で高さが落ちない")
         REFLECT_PROPERTY(friction_, "摩擦係数", p.range = Range(0.0f, 2.0f, 0.01f),
@@ -38,7 +40,19 @@ public:
             SetFrictionCombine, kCombineNames)
     REFLECT_END()
 
+    /// @brief 材質ファイルを指していれば、その値を取り込む
+    void Start() override;
+
+    /// @brief 指す先が変わったら読み直す
+    void OnPropertyChanged(const Reflection::PropertyDescriptor& property) override;
+
     // ===== 係数 =====
+
+    /// @brief 指している材質ファイル（何も指していなければ自分の値を使う）
+    const AssetRef<PhysicsMaterialAsset>& GetMaterialAsset() const { return materialAsset_; }
+
+    /// @brief 材質ファイルを指し直して読み込む
+    void SetMaterialAsset(std::string_view pathOrName);
 
     float GetRestitution() const { return restitution_; }
     void SetRestitution(float restitution) { restitution_ = restitution; }
@@ -67,6 +81,11 @@ public:
                                  const PhysicsMaterialComponent* b);
 
 private:
+    /// @brief 指している材質ファイルの値を自分へ写す（指していなければ何もしない）
+    void LoadFromAsset();
+
+    AssetRef<PhysicsMaterialAsset> materialAsset_;
+
     float           restitution_ = kDefaultRestitution;
     float           friction_ = kDefaultFriction;
     MaterialCombine restitutionCombine_ = MaterialCombine::Maximum;

@@ -17,7 +17,8 @@ namespace CoreEngine
         Animation,
         MaterialLibrary,
         Json,
-        Csv
+        Csv,
+        PhysicsMaterial
     };
 
     // AssetType を文字列に変換
@@ -36,6 +37,7 @@ namespace CoreEngine
         case AssetType::MaterialLibrary: return "MaterialLibrary";
         case AssetType::Json:            return "Json";
         case AssetType::Csv:             return "Csv";
+        case AssetType::PhysicsMaterial: return "PhysicsMaterial";
         default:                         return "Unknown";
         }
     }
@@ -54,6 +56,7 @@ namespace CoreEngine
         if (typeStr == "MaterialLibrary") return AssetType::MaterialLibrary;
         if (typeStr == "Json")            return AssetType::Json;
         if (typeStr == "Csv")             return AssetType::Csv;
+        if (typeStr == "PhysicsMaterial") return AssetType::PhysicsMaterial;
         return AssetType::Unknown;
     }
 }

@@ -29,6 +29,9 @@ namespace CoreEngine
     /// @brief `AssetRef` が CSV のデータを指すことを表す型
     struct CsvAsset { static constexpr AssetType kType = AssetType::Csv; };
 
+    /// @brief 物理の材質（.physmat）を指す参照の種類
+    struct PhysicsMaterialAsset { static constexpr AssetType kType = AssetType::PhysicsMaterial; };
+
     /// @brief アセットの、プロジェクトの根からの相対パス（区切りは `/`）
     std::string ToAssetPath(const AssetInfo& info);
 
