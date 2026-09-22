@@ -107,7 +107,13 @@ namespace CoreEngine
 
     void CollisionWorld::Step()
     {
-        currentCollisions_.clear();
+        CollectContacts(contacts_);
+        DispatchEvents(contacts_);
+    }
+
+    void CollisionWorld::CollectContacts(std::vector<ContactPair>& outPairs)
+    {
+        outPairs.clear();
 
         // ── ブロードフェーズ: AABB とレイヤーで候補を絞る ──────────────
         BuildBroadPhase();
@@ -126,22 +132,34 @@ namespace CoreEngine
                 continue;
             }
 
+            outPairs.push_back(ContactPair{ a, b, contact });
+        }
+    }
+
+    void CollisionWorld::DispatchEvents(const std::vector<ContactPair>& pairs)
+    {
+        currentCollisions_.clear();
+
+        for (const auto& pair : pairs) {
+            Collider* a = pair.a;
+            Collider* b = pair.b;
+
             const auto ids = Ordered(a->GetId(), b->GetId());
             const PairKey key{ ids.first, ids.second };
             currentCollisions_.emplace(key, PairColliders{ a, b });
 
             // めり込み解消はコールバックより先。コールバックには解決前の
             // 接触情報（どれだけめり込んでいたか）を渡す。
-            CollisionResolver::Resolve(*a, *b, contact);
+            CollisionResolver::Resolve(*a, *b, pair.contact);
 
-            Geometry::Contact reversed = contact;
-            reversed.normal = contact.normal * -1.0f;
+            Geometry::Contact reversed = pair.contact;
+            reversed.normal = pair.contact.normal * -1.0f;
 
             if (previousCollisions_.find(key) == previousCollisions_.end()) {
-                a->OnCollisionEnter(b, contact);
+                a->OnCollisionEnter(b, pair.contact);
                 b->OnCollisionEnter(a, reversed);
             } else {
-                a->OnCollisionStay(b, contact);
+                a->OnCollisionStay(b, pair.contact);
                 b->OnCollisionStay(a, reversed);
             }
         }

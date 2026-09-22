@@ -301,6 +301,7 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClCompile Include="Engine\Src\Collision\CollisionConfig.cpp" />
     <ClCompile Include="Engine\Src\Collision\CollisionLayer.cpp" />
     <ClCompile Include="Engine\Src\Collision\CollisionWorld.cpp" />
+    <ClCompile Include="Engine\Src\Physics\PhysicsWorld.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\EngineConfig.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\EngineSystem.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\PlaybackState.cpp" />
@@ -478,6 +479,7 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClCompile Include="Engine\Src\Scene\Feature\EnvironmentFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\GroundFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\CollisionFeature.cpp" />
+    <ClCompile Include="Engine\Src\Scene\Feature\PhysicsFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\GridFeature.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\DebugEditorFeature.cpp" />
     <ClCompile Include="Engine\Src\Editor\Environment\AtmosphereEditor.cpp" />
@@ -1214,6 +1216,7 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClInclude Include="Engine\Src\Collision\CollisionConfig.h" />
     <ClInclude Include="Engine\Src\Collision\CollisionLayer.h" />
     <ClInclude Include="Engine\Src\Collision\CollisionWorld.h" />
+    <ClInclude Include="Engine\Src\Physics\PhysicsWorld.h" />
     <ClInclude Include="Engine\Src\EngineSystem\ServiceRegistry.h" />
     <ClInclude Include="Engine\Src\EngineSystem\EngineConfig.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Factory\CoreComponentFactory.h" />
@@ -1516,6 +1519,7 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClInclude Include="Engine\Src\Scene\Feature\EnvironmentFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\GroundFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\CollisionFeature.h" />
+    <ClInclude Include="Engine\Src\Scene\Feature\PhysicsFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\GridFeature.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\DebugEditorFeature.h" />
     <ClInclude Include="Engine\Src\Editor\Environment\AtmosphereEditor.h" />

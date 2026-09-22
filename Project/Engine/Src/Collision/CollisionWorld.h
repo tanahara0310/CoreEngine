@@ -27,6 +27,14 @@ struct RaycastHit {
     Vector3     normal{ 0.0f, 0.0f, 0.0f };  ///< 交点の法線
 };
 
+/// @brief 交差していた 1 ペアとその接触情報
+/// @note normal は a から b へ向かう向き。
+struct ContactPair {
+    Collider*         a = nullptr;
+    Collider*         b = nullptr;
+    Geometry::Contact contact{};
+};
+
 /// @brief 衝突ワールド
 /// @note コライダーの所有権は GameObject 側。ここは毎フレーム登録し直される
 ///       生ポインタを借用するだけ。
@@ -56,6 +64,16 @@ public:
     /// @details ブロードフェーズ（AABB とレイヤーで候補を絞る）→ ナローフェーズ
     ///          （実形状で判定）→ 押し出し → Enter/Stay/Exit の発火、の順。
     void Step();
+
+    /// @brief 交差しているペアを集める（押し出しもイベントの発火も行わない）
+    /// @param outPairs 結果の書き出し先（呼び出しのたびに中身を作り直す）
+    /// @note ブロードフェーズの AABB はこの中で作り直すので、同じフレームに何度呼んでもよい。
+    void CollectContacts(std::vector<ContactPair>& outPairs);
+
+    /// @brief 押し出しと Enter/Stay/Exit の発火を行う（フレームに 1 回）
+    /// @param pairs 直前の CollectContacts が集めたペア
+    /// @note 接触の履歴を進めるので、同じフレームに 2 回呼ぶと Enter が Stay になる。
+    void DispatchEvents(const std::vector<ContactPair>& pairs);
 
     // ===== ブロードフェーズの選択 =====
 
@@ -145,6 +163,7 @@ private:
 
     // 毎フレーム使い回すワークバッファ
     std::vector<BroadPhase::PairIndices> candidatePairs_;
+    std::vector<ContactPair>             contacts_;
 
     /// 直近の Step() で接触していたコライダー ID（デバッグ表示の色分け用）
     std::unordered_set<uint64_t> collidingIds_;
