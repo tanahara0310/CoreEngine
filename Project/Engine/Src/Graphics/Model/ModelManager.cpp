@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "ModelManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Texture/TextureManager.h"
@@ -147,12 +147,19 @@ namespace CoreEngine
             return false;
         }
 
-        const std::string& animFile = loadInfo.animationFile.empty()
-            ? resolvedFilename
-            : loadInfo.animationFile;
+        // アニメーションの置き場は、モデルと同じファイルのことも別ファイルのこともある。
+        // どちらもパスを解決してから分けないと、ディレクトリと二重に繋がって開けなくなる。
+        std::string animDirectory = resolvedDirectory;
+        std::string animFilename = resolvedFilename;
+        if (!loadInfo.animationFile.empty()) {
+            SplitPath(ResolveFilePath(loadInfo.animationFile), animDirectory, animFilename);
+        }
 
-        Animation animation = AnimationLoader::LoadAnimationFile(
-            resolvedDirectory, animFile, loadInfo.sourceAnimationName);
+        Animation animation;
+        if (!AnimationLoader::LoadAnimationFile(
+                animDirectory, animFilename, loadInfo.sourceAnimationName, animation)) {
+            return false;
+        }
         resource->AddAnimation(loadInfo.animationName, animation);
         return true;
     }
