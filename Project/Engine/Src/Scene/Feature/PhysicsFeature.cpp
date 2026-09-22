@@ -1,7 +1,14 @@
 #include "pch.h"
 #include "PhysicsFeature.h"
 
+#include "CollisionFeature.h"
+#include "Collision/ColliderComponent.h"
 #include "EngineSystem/EngineSystem.h"
+#include "GameObject/GameObject.h"
+#include "GameObject/GameObjectManager.h"
+#include "Physics/RigidbodyComponent.h"
+#include "Scene/Scene.h"
+#include "Scene/SceneManager.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/FrameRate/Time.h"
 
@@ -34,6 +41,14 @@ namespace CoreEngine
             "sys.Physics.MaxSubSteps", 4,
             "1 フレームで進めるステップ数の上限", CVarRange{ 1.0f, 16.0f } };
 
+        CVar<float> cvCorrectionRate{
+            "sys.Physics.CorrectionRate", 0.2f,
+            "めり込みを 1 ステップで押し戻す割合", CVarRange{ 0.0f, 1.0f } };
+
+        CVar<float> cvPenetrationSlop{
+            "sys.Physics.PenetrationSlop", 0.01f,
+            "押し戻さずに許すめり込みの深さ（m）", CVarRange{ 0.0f, 0.1f } };
+
 #ifdef CORE_EDITOR
         /// 設定パネルが編集する Feature（ドロワーは何もキャプチャせずこれを読む）
         PhysicsFeature* s_activePhysics = nullptr;
@@ -55,8 +70,6 @@ namespace CoreEngine
 
     void PhysicsFeature::Update(SceneContext& ctx, SceneUpdatePhase phase)
     {
-        (void)ctx;
-
         if (phase != SceneUpdatePhase::PostObjectUpdate) {
             return;
         }
@@ -67,8 +80,54 @@ namespace CoreEngine
             return;
         }
 
+        CollectBodies(ctx);
+
         // timeScale を掛けた経過時間を積む（ヒットストップ・スローがそのまま効く）
         world_.Advance(Time::DeltaTime());
+    }
+
+    void PhysicsFeature::CollectBodies(SceneContext& ctx)
+    {
+        world_.ClearBodies();
+        world_.SetCollisionWorld(nullptr);
+
+        if (!ctx.gameObjectManager) {
+            return;
+        }
+
+        CollisionWorld* const collisionWorld = FindCollisionWorld(ctx);
+
+        if (collisionWorld) {
+            // 前のフレームに立てた印を落としてから、剛体を持つものへ立て直す
+            for (Collider* collider : collisionWorld->GetAllColliders()) {
+                collider->SetSimulated(false);
+            }
+        }
+
+        ctx.gameObjectManager->ForEachComponent<RigidbodyComponent>(
+            [this](RigidbodyComponent& body, GameObject& owner) {
+                world_.RegisterBody(&body);
+
+                if (auto* const colliders = owner.GetComponent<ColliderComponent>()) {
+                    colliders->ForEachEnabled(
+                        [](Collider& collider) { collider.SetSimulated(true); });
+                }
+            });
+
+        world_.SetCollisionWorld(collisionWorld);
+    }
+
+    CollisionWorld* PhysicsFeature::FindCollisionWorld(SceneContext& ctx)
+    {
+        Scene* const scene = ctx.sceneManager
+            ? dynamic_cast<Scene*>(ctx.sceneManager->GetCurrentScene())
+            : nullptr;
+        CollisionFeature* const collision = scene ? scene->GetFeature<CollisionFeature>() : nullptr;
+
+        // 判定はこの後の CollisionFeature が行うので、ここで今フレームの登録を作っておく
+        return (collision && ctx.gameObjectManager)
+            ? &collision->GetQueryWorld(*ctx.gameObjectManager)
+            : nullptr;
     }
 
     void PhysicsFeature::Finalize(SceneContext& ctx)
@@ -84,11 +143,23 @@ namespace CoreEngine
 #endif
     }
 
+    Vector3 PhysicsFeature::GetGravity()
+    {
+        return cvGravity.Get();
+    }
+
+    void PhysicsFeature::SetGravity(const Vector3& gravity)
+    {
+        cvGravity.Set(gravity);
+    }
+
     void PhysicsFeature::ApplyCVars()
     {
         world_.SetGravity(cvGravity.Get());
         world_.SetFixedDeltaTime(cvFixedStep.Get());
         world_.SetMaxSubSteps(cvMaxSubSteps.Get());
+        world_.SetCorrectionRate(cvCorrectionRate.Get());
+        world_.SetPenetrationSlop(cvPenetrationSlop.Get());
 
         // スクリプトが読む Time の固定ステップ幅を物理と揃える
         Time::SetFixedDeltaTime(cvFixedStep.Get());
@@ -125,6 +196,9 @@ namespace CoreEngine
 
     void PhysicsFeature::DrawSettingsImGui()
     {
+        ImGui::Text("剛体 %d 個 / 接触 %d 件",
+            static_cast<int>(world_.GetBodyCount()),
+            static_cast<int>(world_.GetContactCount()));
         ImGui::Text("ステップ %d 回/フレーム（累計 %llu 回）",
             world_.GetLastStepCount(),
             static_cast<unsigned long long>(world_.GetTotalStepCount()));

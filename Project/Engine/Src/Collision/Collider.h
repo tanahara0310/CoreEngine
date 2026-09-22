@@ -78,6 +78,11 @@ public:
     void SetStatic(bool isStatic) { isStatic_ = isStatic; }
     bool IsStatic() const { return isStatic_; }
 
+    /// @brief 物理が扱うコライダーか
+    /// @note 物理側が毎フレーム立てる。立っているものが絡む接触は、めり込みの解消を物理へ任せる。
+    void SetSimulated(bool isSimulated) { isSimulated_ = isSimulated; }
+    bool IsSimulated() const { return isSimulated_; }
+
     // ===== 衝突イベント（オーナーへ転送） =====
 
     /// @param contact 接触情報。normal は this から other へ向かう向き。
@@ -96,5 +101,6 @@ private:
     bool           isEnabled_ = true;
     bool           isTrigger_ = true;
     bool           isStatic_ = false;
+    bool           isSimulated_ = false;
 };
 }

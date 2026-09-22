@@ -364,6 +364,9 @@
     <ClCompile Include="Engine\Src\Physics\PhysicsWorld.cpp">
       <Filter>Engine\Src\Physics</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Physics\RigidbodyComponent.cpp">
+      <Filter>Engine\Src\Physics</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\EngineSystem\EngineConfig.cpp">
       <Filter>Engine\Src\EngineSystem</Filter>
     </ClCompile>
@@ -1906,6 +1909,9 @@
       <Filter>Engine\Src\Collision</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Physics\PhysicsWorld.h">
+      <Filter>Engine\Src\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Physics\RigidbodyComponent.h">
       <Filter>Engine\Src\Physics</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\EngineSystem\ServiceRegistry.h">
