@@ -15,9 +15,11 @@ class AnimationLoader {
 public:
     /// @brief アニメーションファイルを読み込む
     /// @param sourceAnimationName ファイル内のアニメーション名（空 = 先頭の 1 本）
+    /// @param outAnimation 読めたときだけ書き込む
+    /// @return 読めたか（ファイルが無い・アニメーションが入っていないときは false）
     /// @note 1 ファイルに複数のアニメーションが入るため名前で選べるようにしてある
-    static Animation LoadAnimationFile(const std::string& directoryPath, const std::string& filename,
-        const std::string& sourceAnimationName = "");
+    static bool LoadAnimationFile(const std::string& directoryPath, const std::string& filename,
+        const std::string& sourceAnimationName, Animation& outAnimation);
 
 private:
     /// @brief 名前からアニメーションのインデックスを引く（見つからなければ 0 を返して警告）

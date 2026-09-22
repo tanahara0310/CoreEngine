@@ -27,6 +27,7 @@ class CharacterLab : ScriptComponent
     private GameObject@ character_;
     private GameObject@ model_;
     private CharacterController@ controller_;
+    private Animator@ animator_;
     private array<GameObject@> mapParts_;
     private Text3DRenderer@ statusText_;
 
@@ -130,6 +131,7 @@ class CharacterLab : ScriptComponent
         if (model_ !is null) {
             model_.transform.SetParent(character_.transform);
             model_.transform.position = Vector3(0.0f, -0.9f, 0.0f);
+            model_.GetComponent(@animator_);
         }
     }
 
@@ -180,6 +182,11 @@ class CharacterLab : ScriptComponent
         }
         if (Input::IsKeyTriggered(Key::F)) {
             ResetCharacter();
+        }
+
+        // 止まっている間は歩きのモーションを止める
+        if (animator_ !is null && animator_.exists) {
+            animator_.enabled = (length > 0.0001f);
         }
     }
 

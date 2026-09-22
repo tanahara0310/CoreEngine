@@ -4,13 +4,12 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
-#include <cassert>
 
 
 namespace CoreEngine
 {
-Animation AnimationLoader::LoadAnimationFile(const std::string& directoryPath, const std::string& filename,
-    const std::string& sourceAnimationName) {
+bool AnimationLoader::LoadAnimationFile(const std::string& directoryPath, const std::string& filename,
+    const std::string& sourceAnimationName, Animation& outAnimation) {
     // ファイルパスを構築
     std::string filePath = directoryPath + "/" + filename;
 
@@ -22,8 +21,13 @@ Animation AnimationLoader::LoadAnimationFile(const std::string& directoryPath, c
         aiProcess_ConvertToLeftHanded
     );
 
-    // アニメーションがない場合はアサート
-    assert(scene != nullptr && scene->mNumAnimations != 0 && "Animation not found in file");
+    // 開けなかったファイルをそのまま辿ると落ちるので、ここで止めて知らせる
+    if (scene == nullptr || scene->mNumAnimations == 0) {
+        Logger::GetInstance().Warnf(LogCategory::Resource,
+            "AnimationLoader: {} を読めませんでした（{}）",
+            filePath, (scene == nullptr) ? "ファイルが開けない" : "アニメーションが入っていない");
+        return false;
+    }
 
     // 1 つのファイルに複数のアニメーションが入っていることがある
     // （例: Fox.gltf は Survey / Walk / Run の 3 本）。
@@ -35,7 +39,8 @@ Animation AnimationLoader::LoadAnimationFile(const std::string& directoryPath, c
         filename, animationIndex,
         scene->mAnimations[animationIndex]->mName.C_Str(), scene->mNumAnimations);
 
-    return ParseAnimation(scene, animationIndex);
+    outAnimation = ParseAnimation(scene, animationIndex);
+    return true;
 }
 
 unsigned int AnimationLoader::FindAnimationIndex(const aiScene* scene, const std::string& sourceAnimationName) {

@@ -94,7 +94,7 @@ namespace CoreEngine
             AnimationLoadInfo info;
             info.modelFile = modelPath_;
             info.animationName = clip.name;
-            info.animationFile = clip.file.empty() ? modelPath_ : clip.file;
+            info.animationFile = clip.file;   // 空ならモデルと同じファイルから読む
             info.sourceAnimationName = clip.sourceName;
             modelMgr->LoadAnimation(info);
         }

@@ -29,6 +29,19 @@
                 "roughness": 0.8
             },
             "type": "Material"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "clips": [
+                    {
+                        "name": "walk",
+                        "sourceName": "Armature|mixamo.com|Layer0"
+                    }
+                ],
+                "model": "Application/Assets/Models/human/walk.gltf"
+            },
+            "type": "Animator"
         }
     ]
 }
