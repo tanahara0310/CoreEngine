@@ -370,6 +370,9 @@
     <ClCompile Include="Engine\Src\Physics\PhysicsMaterialComponent.cpp">
       <Filter>Engine\Src\Physics</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Physics\CharacterControllerComponent.cpp">
+      <Filter>Engine\Src\Physics</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Physics\ContactSolver.cpp">
       <Filter>Engine\Src\Physics</Filter>
     </ClCompile>
@@ -1927,6 +1930,9 @@
       <Filter>Engine\Src\Physics</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Physics\PhysicsMaterialComponent.h">
+      <Filter>Engine\Src\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Physics\CharacterControllerComponent.h">
       <Filter>Engine\Src\Physics</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Physics\ContactSolver.h">
