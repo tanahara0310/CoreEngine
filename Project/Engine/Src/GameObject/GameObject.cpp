@@ -59,6 +59,28 @@ namespace CoreEngine
         return { 1.0f, 1.0f, 1.0f };
     }
 
+    void GameObject::GetWorldAxes(Vector3& axisX, Vector3& axisY, Vector3& axisZ) const {
+        axisX = { 1.0f, 0.0f, 0.0f };
+        axisY = { 0.0f, 1.0f, 0.0f };
+        axisZ = { 0.0f, 0.0f, 1.0f };
+
+        auto* transform = GetComponent<TransformComponent>();
+        if (!transform) {
+            return;
+        }
+
+        // 行ベクトル規約（p' = p * M）なので各行が基底ベクトル。長さはスケールなので正規化する
+        const Matrix4x4& world = transform->Get().GetWorldMatrix();
+        Vector3* const axes[3] = { &axisX, &axisY, &axisZ };
+
+        for (int row = 0; row < 3; ++row) {
+            const Vector3 basis{ world.m[row][0], world.m[row][1], world.m[row][2] };
+            if (LengthSquared(basis) > 1e-12f) {
+                *axes[row] = Normalize(basis);
+            }
+        }
+    }
+
     bool GameObject::TryApplyCollisionPush(const Vector3& delta) {
         if (auto* transform = GetComponent<TransformComponent>()) {
             return transform->ApplyWorldDelta(delta);

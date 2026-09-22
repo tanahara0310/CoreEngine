@@ -39,7 +39,11 @@ public:
     Geometry::Sphere GetWorldSphere() const;
 
     /// @brief ワールド空間の AABB（type != Box でも外接 AABB として使える）
+    /// @note ボックスが回転している場合は、回転後の箱に外接する AABB を返す。
     Geometry::AABB GetWorldAABB() const;
+
+    /// @brief ワールド空間の向き付きボックス（type != Box でも外接ボックスとして使える）
+    Geometry::OBB GetWorldOBB() const;
 
     /// @brief オーナーのワールドスケール（未設定なら等倍）
     Vector3 GetWorldScale() const;

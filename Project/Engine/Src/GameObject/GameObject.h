@@ -112,6 +112,13 @@ namespace CoreEngine
         /// @brief ワールド空間でのスケール（コライダーのサイズ／半径に乗る）
         Vector3 GetWorldScale() const;
 
+        /// @brief ワールド空間での向き（正規化した 3 本の軸）
+        /// @param axisX X 軸の向きの書き出し先
+        /// @param axisY Y 軸の向きの書き出し先
+        /// @param axisZ Z 軸の向きの書き出し先
+        /// @note `TransformComponent` が無ければワールド軸をそのまま返す。
+        void GetWorldAxes(Vector3& axisX, Vector3& axisY, Vector3& axisZ) const;
+
         // ===== 識別子 =====
 
         /// @brief シーン内で重複しない ID

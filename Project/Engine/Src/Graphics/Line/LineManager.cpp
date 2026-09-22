@@ -329,18 +329,28 @@ std::vector<Line> LineManager::GenerateSphereLines(const Vector3& center, float 
 
 std::vector<Line> LineManager::GenerateBoxLines(const Vector3& center, const Vector3& size,
     const Vector3& color, float alpha) {
+    return GenerateBoxLines(center, size,
+        { 1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f, 1.0f }, color, alpha);
+}
+
+std::vector<Line> LineManager::GenerateBoxLines(const Vector3& center, const Vector3& size,
+    const Vector3& axisX, const Vector3& axisY, const Vector3& axisZ,
+    const Vector3& color, float alpha) {
     std::vector<Line> lines;
 
-    Vector3 halfSize = { size.x * 0.5f, size.y * 0.5f, size.z * 0.5f };
+    const Vector3 extentX = axisX * (size.x * 0.5f);
+    const Vector3 extentY = axisY * (size.y * 0.5f);
+    const Vector3 extentZ = axisZ * (size.z * 0.5f);
+
     Vector3 vertices[8] = {
-        { center.x - halfSize.x, center.y - halfSize.y, center.z - halfSize.z },
-        { center.x + halfSize.x, center.y - halfSize.y, center.z - halfSize.z },
-        { center.x + halfSize.x, center.y + halfSize.y, center.z - halfSize.z },
-        { center.x - halfSize.x, center.y + halfSize.y, center.z - halfSize.z },
-        { center.x - halfSize.x, center.y - halfSize.y, center.z + halfSize.z },
-        { center.x + halfSize.x, center.y - halfSize.y, center.z + halfSize.z },
-        { center.x + halfSize.x, center.y + halfSize.y, center.z + halfSize.z },
-        { center.x - halfSize.x, center.y + halfSize.y, center.z + halfSize.z }
+        center - extentX - extentY - extentZ,
+        center + extentX - extentY - extentZ,
+        center + extentX + extentY - extentZ,
+        center - extentX + extentY - extentZ,
+        center - extentX - extentY + extentZ,
+        center + extentX - extentY + extentZ,
+        center + extentX + extentY + extentZ,
+        center - extentX + extentY + extentZ
     };
 
     // 前面の4辺
