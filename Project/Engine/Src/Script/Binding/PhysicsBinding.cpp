@@ -11,6 +11,7 @@
 #include "Math/Geometry/Shapes.h"
 #include "Scene/Scene.h"
 #include "Scene/Feature/CollisionFeature.h"
+#include "Scene/Feature/PhysicsFeature.h"
 #include "Scene/SceneManager.h"
 #include "Script/Binding/BindingRegistrar.h"
 #include "Script/Binding/GameObjectBinding.h"
@@ -518,6 +519,8 @@ namespace CoreEngine::Script
         r.Function("void SetLayerCollision(CollisionLayer a, CollisionLayer b, bool enabled)", asFUNCTION(SetLayerCollision));
         r.Function("bool GetLayerCollision(CollisionLayer a, CollisionLayer b)", asFUNCTION(GetLayerCollision));
         r.Function("int LayerMask(CollisionLayer layer)", asFUNCTION(LayerMask));
+        r.Function("Vector3 get_gravity() property", asFUNCTION(PhysicsFeature::GetGravity));
+        r.Function("void set_gravity(const Vector3&in) property", asFUNCTION(PhysicsFeature::SetGravity));
         r.Namespace("");
 
         return r.Succeeded();

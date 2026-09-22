@@ -1,11 +1,15 @@
 #pragma once
 
+#include "Collision/CollisionWorld.h"
 #include "Math/Vector/Vector3.h"
 
 #include <cstdint>
+#include <vector>
 
 namespace CoreEngine
 {
+class RigidbodyComponent;
+
 /// @brief 物理を一定幅の時間で進めるワールド
 /// @details 経過時間を溜め、溜まった分を固定ステップへ切り分けて進める。
 class PhysicsWorld {
@@ -18,6 +22,20 @@ public:
 
     /// @brief 溜めた時間・ステップ数・シミュレーション時間を初期状態へ戻す
     void Reset();
+
+    // ===== 剛体 =====
+
+    /// @brief 登録されている剛体をすべて外す
+    void ClearBodies();
+
+    /// @brief 剛体を登録する（毎フレーム集め直す）
+    void RegisterBody(RigidbodyComponent* body);
+
+    /// @brief 登録されている剛体の数
+    size_t GetBodyCount() const { return bodies_.size(); }
+
+    /// @brief 接触を集める相手（nullptr なら接触の解決を行わない）
+    void SetCollisionWorld(CollisionWorld* world) { collisionWorld_ = world; }
 
     // ===== 設定 =====
 
@@ -32,6 +50,14 @@ public:
     /// @brief 重力加速度を設定する（m/s²）
     void SetGravity(const Vector3& gravity) { gravity_ = gravity; }
     const Vector3& GetGravity() const { return gravity_; }
+
+    /// @brief めり込みを 1 ステップで押し戻す割合を設定する（0〜1 に丸める）
+    void SetCorrectionRate(float rate);
+    float GetCorrectionRate() const { return correctionRate_; }
+
+    /// @brief 押し戻さずに許すめり込みの深さを設定する（m。負値は 0 に丸める）
+    void SetPenetrationSlop(float slop);
+    float GetPenetrationSlop() const { return penetrationSlop_; }
 
     // ===== 状態 =====
 
@@ -50,13 +76,33 @@ public:
     /// @brief 上限に達して捨てた時間の累計（秒）
     float GetDroppedTime() const { return droppedTime_; }
 
+    /// @brief 直前のステップで解決した接触の数
+    size_t GetContactCount() const { return contacts_.size(); }
+
 private:
     /// @brief 1 ステップ分だけ物理を進める
+    /// @details 速度の積分 → 接触の収集 → 速度の解決 → 位置の積分 → めり込みの押し戻し。
+    ///          速度を先に解決するので、接している剛体は位置を進める前に押し戻しの分だけ止まる。
     void Step(float fixedDeltaTime);
+
+    /// @brief 接触している剛体の、近づく向きの速度を打ち消す
+    void SolveVelocities();
+
+    /// @brief 許容を超えためり込みを押し戻す
+    void SolvePositions();
+
+    /// @brief コライダーの持ち主から剛体を引く（無い・無効なら nullptr）
+    static RigidbodyComponent* FindBody(const Collider* collider);
 
     Vector3 gravity_{ 0.0f, -9.81f, 0.0f };
     float   fixedDeltaTime_ = 1.0f / 60.0f;
     int     maxSubSteps_ = 4;
+    float   correctionRate_ = 0.2f;
+    float   penetrationSlop_ = 0.01f;
+
+    std::vector<RigidbodyComponent*> bodies_;
+    CollisionWorld*                  collisionWorld_ = nullptr;
+    std::vector<ContactPair>         contacts_;
 
     float    accumulator_ = 0.0f;
     int      lastStepCount_ = 0;

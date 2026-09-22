@@ -320,6 +320,7 @@ class GameObject {
 	MeshRenderer@ get_meshRenderer() property;
 	ParticleSystem@ get_particleSystem() property;
 	RectTransform@ get_rectTransform() property;
+	Rigidbody@ get_rigidbody() property;
 	SkyBox@ get_skyBox() property;
 	SpriteRenderer@ get_spriteRenderer() property;
 	Text3DRenderer@ get_text3DRenderer() property;
@@ -686,6 +687,24 @@ class RectTransform {
 	int get_sortOrder() const property;
 	void set_sortOrder(int) property;
 }
+class Rigidbody {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	int get_bodyType() const property;
+	void set_bodyType(int) property;
+	float get_mass() const property;
+	void set_mass(float) property;
+	bool get_useGravity() const property;
+	void set_useGravity(bool) property;
+	float get_linearDamping() const property;
+	void set_linearDamping(float) property;
+	Vector3 get_velocity() const property;
+	void set_velocity(const Vector3&in) property;
+	void AddForce(const Vector3&in);
+	void AddImpulse(const Vector3&in);
+}
 class SkyBox {
 	bool get_exists() const property;
 	bool get_enabled() const property;
@@ -866,6 +885,8 @@ GameObject@[]@ OverlapBox(const Vector3&in center, const Vector3&in size, int la
 void SetLayerCollision(CollisionLayer a, CollisionLayer b, bool enabled);
 bool GetLayerCollision(CollisionLayer a, CollisionLayer b);
 int LayerMask(CollisionLayer layer);
+Vector3 get_gravity() property;
+void set_gravity(const Vector3&in) property;
 }
 namespace Input {
 bool IsActionPressed(InputAction);
