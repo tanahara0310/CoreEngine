@@ -73,6 +73,11 @@ public:
                                                   const Vector3& color, float alpha, int segments = 16);
     static std::vector<Line> GenerateBoxLines(const Vector3& center, const Vector3& size,
                                                const Vector3& color, float alpha);
+    /// @brief 向きを指定して箱の枠を作る（軸は正規化しておくこと）
+    static std::vector<Line> GenerateBoxLines(const Vector3& center, const Vector3& size,
+                                               const Vector3& axisX, const Vector3& axisY,
+                                               const Vector3& axisZ,
+                                               const Vector3& color, float alpha);
     static std::vector<Line> GenerateCircleLines(const Vector3& center, float radius,
                                                   const Vector3& normal, const Vector3& color, float alpha, int segments = 32);
     static std::vector<Line> GenerateConeLines(const Vector3& apex, const Vector3& direction,

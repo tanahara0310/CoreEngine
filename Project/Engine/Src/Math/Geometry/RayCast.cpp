@@ -148,6 +148,35 @@ namespace Geometry
     // レイ × 平面
     //================================================
 
+    bool Raycast(const Ray& ray, const OBB& box, RayHit* outHit, float tMin, float tMax)
+    {
+        // 箱のローカルでは軸平行になるので、既存の AABB 判定へ委譲できる
+        const Vector3 localOrigin = box.ToLocal(ray.origin);
+        const Vector3 localDirection{
+            Dot(ray.direction, box.axes[0]),
+            Dot(ray.direction, box.axes[1]),
+            Dot(ray.direction, box.axes[2]),
+        };
+
+        const AABB localBox(box.halfExtents * -1.0f, box.halfExtents);
+
+        if (!outHit) {
+            return Raycast(Ray(localOrigin, localDirection), localBox, nullptr, tMin, tMax);
+        }
+
+        RayHit localHit;
+        if (!Raycast(Ray(localOrigin, localDirection), localBox, &localHit, tMin, tMax)) {
+            return false;
+        }
+
+        outHit->distance = localHit.distance;
+        outHit->point = ray.origin + ray.direction * localHit.distance;
+        outHit->normal = box.axes[0] * localHit.normal.x
+                       + box.axes[1] * localHit.normal.y
+                       + box.axes[2] * localHit.normal.z;
+        return true;
+    }
+
     bool Raycast(const Ray& ray, const Plane& plane, RayHit* outHit, float tMin, float tMax)
     {
         const float denom = Dot(plane.normal, ray.direction);

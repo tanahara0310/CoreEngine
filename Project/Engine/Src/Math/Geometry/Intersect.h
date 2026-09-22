@@ -51,6 +51,13 @@ namespace Geometry
     bool Intersect(const Sphere& sphere, const AABB& box, Contact* outContact = nullptr);
     bool Intersect(const AABB& box, const Sphere& sphere, Contact* outContact = nullptr);
 
+    /// @note 実装はこちら（球が A）。OBB×Sphere はこれへ転送する。
+    bool Intersect(const Sphere& sphere, const OBB& box, Contact* outContact = nullptr);
+    bool Intersect(const OBB& box, const Sphere& sphere, Contact* outContact = nullptr);
+
+    /// @note 15 本の分離軸を調べ、重なりが最小の軸を押し出し方向にする。
+    bool Intersect(const OBB& a, const OBB& b, Contact* outContact = nullptr);
+
     /// @note 実装はこちら（カプセルが A）。Sphere×Capsule はこれへ転送する。
     bool Intersect(const Capsule& capsule, const Sphere& sphere, Contact* outContact = nullptr);
     bool Intersect(const Sphere& sphere, const Capsule& capsule, Contact* outContact = nullptr);

@@ -215,6 +215,135 @@ namespace Geometry
     }
 
     //================================================
+    // 球 × OBB（実装はここ 1 箇所だけ）
+    //================================================
+
+    bool Intersect(const Sphere& sphere, const OBB& box, Contact* outContact)
+    {
+        const Vector3 closest = box.ClosestPoint(sphere.center);
+        const Vector3 delta = sphere.center - closest;
+        const float distanceSq = Dot(delta, delta);
+
+        if (distanceSq > sphere.radius * sphere.radius) {
+            return false;
+        }
+        if (!outContact) {
+            return true;
+        }
+
+        const float distance = std::sqrt(distanceSq);
+
+        if (distance > kCoincidentEpsilon) {
+            // 中心は箱の外側。最近接点への向きがそのまま押し出し方向。
+            const Vector3 outward = delta * (1.0f / distance);   // 箱 → 球
+            outContact->normal = outward * -1.0f;                // 球 → 箱
+            outContact->depth  = sphere.radius - distance;
+            outContact->point  = closest;
+            return true;
+        }
+
+        // 中心が箱の内部。最も近い面へ押し出す。
+        const Vector3 local = box.ToLocal(sphere.center);
+        const float localOffset[3] = { local.x, local.y, local.z };
+
+        int   nearestAxis = 0;
+        float nearestDistance = box.Extent(0) - std::abs(localOffset[0]);
+        for (int axis = 1; axis < 3; ++axis) {
+            const float faceDistance = box.Extent(axis) - std::abs(localOffset[axis]);
+            if (faceDistance < nearestDistance) {
+                nearestDistance = faceDistance;
+                nearestAxis = axis;
+            }
+        }
+
+        const float sign = (localOffset[nearestAxis] >= 0.0f) ? 1.0f : -1.0f;
+        const Vector3 escape = box.axes[nearestAxis] * sign;   // 球を押し出す向き
+
+        outContact->normal = escape * -1.0f;                   // 球 → 箱
+        outContact->depth  = nearestDistance + sphere.radius;
+        outContact->point  = sphere.center - escape * nearestDistance;
+        return true;
+    }
+
+    bool Intersect(const OBB& box, const Sphere& sphere, Contact* outContact)
+    {
+        // 実装は Sphere×OBB に一本化。引数順が逆なので法線を反転する。
+        const bool hit = Intersect(sphere, box, outContact);
+        if (hit && outContact) {
+            outContact->normal = outContact->normal * -1.0f;
+        }
+        return hit;
+    }
+
+    //================================================
+    // OBB × OBB（分離軸判定）
+    //================================================
+
+    bool Intersect(const OBB& a, const OBB& b, Contact* outContact)
+    {
+        // 辺どうしが平行だと外積が 0 に縮む。その軸は他の軸が代わりに判定する
+        constexpr float kDegenerateAxisSq = 1e-8f;
+
+        const Vector3 delta = b.center - a.center;
+
+        float   minOverlap = FLT_MAX;
+        Vector3 minAxis{ 0.0f, 0.0f, 0.0f };
+
+        // 1 本の軸へ投影して重なりを見る。分離していれば false
+        const auto testAxis = [&](const Vector3& axis) {
+            const float lengthSq = Dot(axis, axis);
+            if (lengthSq < kDegenerateAxisSq) {
+                return true;
+            }
+
+            const Vector3 unit = axis * (1.0f / std::sqrt(lengthSq));
+
+            const float radiusA = a.halfExtents.x * std::abs(Dot(unit, a.axes[0]))
+                                + a.halfExtents.y * std::abs(Dot(unit, a.axes[1]))
+                                + a.halfExtents.z * std::abs(Dot(unit, a.axes[2]));
+            const float radiusB = b.halfExtents.x * std::abs(Dot(unit, b.axes[0]))
+                                + b.halfExtents.y * std::abs(Dot(unit, b.axes[1]))
+                                + b.halfExtents.z * std::abs(Dot(unit, b.axes[2]));
+
+            const float centerDistance = Dot(delta, unit);
+            const float overlap = radiusA + radiusB - std::abs(centerDistance);
+            if (overlap <= 0.0f) {
+                return false;
+            }
+
+            if (overlap < minOverlap) {
+                minOverlap = overlap;
+                // 法線は a から b へ向ける
+                minAxis = (centerDistance < 0.0f) ? (unit * -1.0f) : unit;
+            }
+            return true;
+        };
+
+        for (int axis = 0; axis < 3; ++axis) {
+            if (!testAxis(a.axes[axis]) || !testAxis(b.axes[axis])) {
+                return false;
+            }
+        }
+        for (int i = 0; i < 3; ++i) {
+            for (int j = 0; j < 3; ++j) {
+                if (!testAxis(Cross(a.axes[i], b.axes[j]))) {
+                    return false;
+                }
+            }
+        }
+
+        if (!outContact) {
+            return true;
+        }
+
+        outContact->normal = minAxis;
+        outContact->depth  = minOverlap;
+        // 互いの最近接点の中点で代表させる（面どうしの接触点は接触マニフォールドで扱う）
+        outContact->point  = (a.ClosestPoint(b.center) + b.ClosestPoint(a.center)) * 0.5f;
+        return true;
+    }
+
+    //================================================
     // カプセル × 球（実装はここ 1 箇所だけ）
     //================================================
 

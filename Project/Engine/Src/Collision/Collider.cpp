@@ -21,13 +21,13 @@ namespace {
         return Geometry::Intersect(a.GetWorldSphere(), b.GetWorldSphere(), c);
     }
     bool SphereVsBox(const Collider& a, const Collider& b, Geometry::Contact* c) {
-        return Geometry::Intersect(a.GetWorldSphere(), b.GetWorldAABB(), c);
+        return Geometry::Intersect(a.GetWorldSphere(), b.GetWorldOBB(), c);
     }
     bool BoxVsSphere(const Collider& a, const Collider& b, Geometry::Contact* c) {
-        return Geometry::Intersect(a.GetWorldAABB(), b.GetWorldSphere(), c);
+        return Geometry::Intersect(a.GetWorldOBB(), b.GetWorldSphere(), c);
     }
     bool BoxVsBox(const Collider& a, const Collider& b, Geometry::Contact* c) {
-        return Geometry::Intersect(a.GetWorldAABB(), b.GetWorldAABB(), c);
+        return Geometry::Intersect(a.GetWorldOBB(), b.GetWorldOBB(), c);
     }
 
     constexpr int kShapeCount = static_cast<int>(ColliderShapeType::Count);
@@ -96,7 +96,13 @@ Vector3 Collider::GetWorldCenter() const
         shape_.offset.y * scale.y,
         shape_.offset.z * scale.z
     };
-    return owner_->GetWorldPosition() + scaledOffset;
+    // オフセットは持ち主の向きに合わせて回す
+    Vector3 axisX, axisY, axisZ;
+    owner_->GetWorldAxes(axisX, axisY, axisZ);
+    const Vector3 rotatedOffset =
+        axisX * scaledOffset.x + axisY * scaledOffset.y + axisZ * scaledOffset.z;
+
+    return owner_->GetWorldPosition() + rotatedOffset;
 }
 
 Geometry::Sphere Collider::GetWorldSphere() const
@@ -130,12 +136,34 @@ Geometry::AABB Collider::GetWorldAABB() const
         return Geometry::AABB{ center - extent, center + extent };
     }
 
-    const Vector3 half{
+    return GetWorldOBB().ToAABB();
+}
+
+Geometry::OBB Collider::GetWorldOBB() const
+{
+    const Vector3 scale = GetWorldScale();
+
+    Geometry::OBB obb;
+    obb.center = GetWorldCenter();
+
+    if (shape_.type == ColliderShapeType::Sphere) {
+        // 球を箱として見るときは外接する立方体にする
+        const float maxScale =
+            (std::max)({ std::abs(scale.x), std::abs(scale.y), std::abs(scale.z) });
+        const float radius = shape_.radius * maxScale;
+        obb.halfExtents = Vector3{ radius, radius, radius };
+        return obb;
+    }
+
+    obb.halfExtents = Vector3{
         shape_.size.x * std::abs(scale.x) * 0.5f,
         shape_.size.y * std::abs(scale.y) * 0.5f,
         shape_.size.z * std::abs(scale.z) * 0.5f
     };
-    return Geometry::AABB{ center - half, center + half };
+    if (owner_) {
+        owner_->GetWorldAxes(obb.axes[0], obb.axes[1], obb.axes[2]);
+    }
+    return obb;
 }
 
 //================================================

@@ -209,7 +209,7 @@ namespace CoreEngine
             if (collider.GetShapeType() == ColliderShapeType::Sphere) {
                 return Geometry::Raycast(ray, collider.GetWorldSphere(), &outHit, 0.0f, maxDistance);
             }
-            return Geometry::Raycast(ray, collider.GetWorldAABB(), &outHit, 0.0f, maxDistance);
+            return Geometry::Raycast(ray, collider.GetWorldOBB(), &outHit, 0.0f, maxDistance);
         }
     }
 
@@ -269,7 +269,7 @@ namespace CoreEngine
 
             const bool hit = (collider->GetShapeType() == ColliderShapeType::Sphere)
                 ? Geometry::Intersect(sphere, collider->GetWorldSphere())
-                : Geometry::Intersect(sphere, collider->GetWorldAABB());
+                : Geometry::Intersect(sphere, collider->GetWorldOBB());
             if (hit) { outColliders.push_back(collider); }
         }
     }
@@ -277,12 +277,15 @@ namespace CoreEngine
     void CollisionWorld::OverlapBox(const Geometry::AABB& box, uint64_t layerMask,
                                     std::vector<Collider*>& outColliders) const
     {
+        // 問い合わせの箱も向きを持つ形として扱い、判定を OBB へ一本化する
+        const Geometry::OBB queryBox{ box.GetCenter(), box.GetSize() * 0.5f };
+
         for (Collider* collider : colliders_) {
             if (!collider->IsEnabled() || !MatchesLayer(*collider, layerMask)) { continue; }
 
             const bool hit = (collider->GetShapeType() == ColliderShapeType::Sphere)
-                ? Geometry::Intersect(box, collider->GetWorldSphere())
-                : Geometry::Intersect(box, collider->GetWorldAABB());
+                ? Geometry::Intersect(collider->GetWorldSphere(), queryBox)
+                : Geometry::Intersect(queryBox, collider->GetWorldOBB());
             if (hit) { outColliders.push_back(collider); }
         }
     }

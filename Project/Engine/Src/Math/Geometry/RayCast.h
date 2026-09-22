@@ -37,6 +37,10 @@ namespace Geometry
     bool Raycast(const Ray& ray, const AABB& box, RayHit* outHit = nullptr,
                  float tMin = 0.0f, float tMax = kRayMaxDistance);
 
+    /// @note レイを箱のローカルへ移してから軸平行として判定する。
+    bool Raycast(const Ray& ray, const OBB& box, RayHit* outHit = nullptr,
+                 float tMin = 0.0f, float tMax = kRayMaxDistance);
+
     bool Raycast(const Ray& ray, const Plane& plane, RayHit* outHit = nullptr,
                  float tMin = 0.0f, float tMax = kRayMaxDistance);
 
