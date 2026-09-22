@@ -58,6 +58,18 @@ namespace Geometry
     /// @note 15 本の分離軸を調べ、重なりが最小の軸を押し出し方向にする。
     bool Intersect(const OBB& a, const OBB& b, Contact* outContact = nullptr);
 
+    /// @brief 2 つの箱が触れている面の接触点を集める
+    /// @param a         箱その 1
+    /// @param b         箱その 2
+    /// @param normal    交差判定が返した法線（a から b へ向かう）
+    /// @param outPoints 接触点の書き出し先。normal は引数のものをそのまま入れる
+    /// @param maxPoints 書き出せる数の上限
+    /// @return 集まった点の数。0 なら面ではなく辺や角で触れているので、代表点 1 つで扱うこと
+    /// @details 相手の内部に入っている頂点を接触点とする。深さは法線方向に測り直すので、
+    ///          傾いて触れている面では点ごとに違う値になる。
+    int CollectBoxContacts(const OBB& a, const OBB& b, const Vector3& normal,
+                           Contact* outPoints, int maxPoints);
+
     /// @note 実装はこちら（カプセルが A）。Sphere×Capsule はこれへ転送する。
     bool Intersect(const Capsule& capsule, const Sphere& sphere, Contact* outContact = nullptr);
     bool Intersect(const Sphere& sphere, const Capsule& capsule, Contact* outContact = nullptr);

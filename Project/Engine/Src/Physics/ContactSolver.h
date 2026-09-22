@@ -51,6 +51,10 @@ public:
     /// @details トリガー・両方とも無限質量・剛体が片方も無い接触は落とす。
     void Build(const std::vector<ContactPair>& pairs);
 
+    /// @brief 前のステップで解いたインパルスを、同じ接触点へ先に与える
+    /// @details 0 から解き直すと毎ステップ押し合いをやり直すことになり、積んだものが揺れて崩れる。
+    void WarmStart();
+
     /// @brief 近づく向きの速度を打ち消し、反発と摩擦を与える
     void SolveVelocities();
 
@@ -79,7 +83,11 @@ private:
     /// @details 並進の逆質量に、てこの長さと慣性から決まる回りにくさを足したもの。
     static float EffectiveInverseMass(const ContactConstraint& constraint, const Vector3& axis);
 
+    /// @brief 前のステップの同じ接触点を探す（見つからなければ nullptr）
+    const ContactConstraint* FindPrevious(const ContactConstraint& constraint) const;
+
     std::vector<ContactConstraint> constraints_;
+    std::vector<ContactConstraint> previous_;
     int   iterations_ = 8;
     float restitutionThreshold_ = 1.0f;
 };

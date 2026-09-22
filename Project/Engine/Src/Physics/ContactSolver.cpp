@@ -5,6 +5,7 @@
 
 #include "Collision/Collider.h"
 #include "Collision/CollisionWorld.h"
+#include "Math/Geometry/Intersect.h"
 #include "GameObject/GameObject.h"
 
 #include <cmath>
@@ -13,6 +14,9 @@
 namespace CoreEngine
 {
     namespace {
+        /// 1 ペアから作る接触点の上限（箱の面どうしは 4 点で足りる）
+        constexpr int kMaxManifoldPoints = 4;
+
         /// @brief コライダーの持ち主から剛体を引く（無い・無効なら nullptr）
         RigidbodyComponent* FindBody(const Collider* collider)
         {
@@ -60,6 +64,8 @@ namespace CoreEngine
 
     void ContactSolver::Build(const std::vector<ContactPair>& pairs)
     {
+        // 前のステップの結果を引き継ぐため、作り直す前に控える
+        previous_.swap(constraints_);
         constraints_.clear();
 
         for (const ContactPair& pair : pairs) {
@@ -82,37 +88,98 @@ namespace CoreEngine
             }
 
             constraint.normal = pair.contact.normal;
-            constraint.depth = pair.contact.depth;
-            constraint.point = pair.contact.point;
             MakeTangents(constraint.normal, constraint.tangent1, constraint.tangent2);
-
-            // 重心から接触点へのてこ。回転の寄与はこの腕で決まる
-            if (constraint.bodyA && constraint.bodyA->GetOwner()) {
-                constraint.leverA = constraint.point - constraint.bodyA->GetOwner()->GetWorldPosition();
-            }
-            if (constraint.bodyB && constraint.bodyB->GetOwner()) {
-                constraint.leverB = constraint.point - constraint.bodyB->GetOwner()->GetWorldPosition();
-            }
 
             const PhysicsMaterialComponent* const materialA = FindMaterial(pair.a);
             const PhysicsMaterialComponent* const materialB = FindMaterial(pair.b);
             constraint.friction =
                 PhysicsMaterialComponent::CombineFriction(materialA, materialB);
+            const float restitution =
+                PhysicsMaterialComponent::CombineRestitution(materialA, materialB);
 
-            // 跳ね返る速さは、解き始める前の接触点での近づく速さから決める
-            const Vector3 velocityA = constraint.bodyA
-                ? constraint.bodyA->GetVelocityAtPoint(constraint.point) : Vector3{};
-            const Vector3 velocityB = constraint.bodyB
-                ? constraint.bodyB->GetVelocityAtPoint(constraint.point) : Vector3{};
-            const float approachSpeed = Dot(velocityA - velocityB, constraint.normal);
+            // 面で触れている箱は接触点が複数要る。1 点だけだと支えが足りず倒れてしまう
+            Geometry::Contact points[kMaxManifoldPoints];
+            int pointCount = 0;
 
-            if (approachSpeed > restitutionThreshold_) {
-                const float restitution =
-                    PhysicsMaterialComponent::CombineRestitution(materialA, materialB);
-                constraint.targetSeparation = restitution * approachSpeed;
+            if (pair.a->GetShapeType() == ColliderShapeType::Box
+                && pair.b->GetShapeType() == ColliderShapeType::Box) {
+                pointCount = Geometry::CollectBoxContacts(
+                    pair.a->GetWorldOBB(), pair.b->GetWorldOBB(), constraint.normal,
+                    points, kMaxManifoldPoints);
+            }
+            if (pointCount == 0) {
+                points[0] = pair.contact;
+                pointCount = 1;
             }
 
-            constraints_.push_back(constraint);
+            for (int index = 0; index < pointCount; ++index) {
+                ContactConstraint point = constraint;
+                point.point = points[index].point;
+                point.depth = points[index].depth;
+
+                // 重心から接触点へのてこ。回転の寄与はこの腕で決まる
+                if (point.bodyA && point.bodyA->GetOwner()) {
+                    point.leverA = point.point - point.bodyA->GetOwner()->GetWorldPosition();
+                }
+                if (point.bodyB && point.bodyB->GetOwner()) {
+                    point.leverB = point.point - point.bodyB->GetOwner()->GetWorldPosition();
+                }
+
+                // 跳ね返る速さは、解き始める前のその点での近づく速さから決める
+                const Vector3 velocityA = point.bodyA
+                    ? point.bodyA->GetVelocityAtPoint(point.point) : Vector3{};
+                const Vector3 velocityB = point.bodyB
+                    ? point.bodyB->GetVelocityAtPoint(point.point) : Vector3{};
+                const float approachSpeed = Dot(velocityA - velocityB, point.normal);
+
+                if (approachSpeed > restitutionThreshold_) {
+                    point.targetSeparation = restitution * approachSpeed;
+                }
+
+                // 前のステップで同じ場所を解いていれば、その強さから始める
+                if (const ContactConstraint* const last = FindPrevious(point)) {
+                    point.normalImpulse = last->normalImpulse;
+                    point.tangentImpulse1 = last->tangentImpulse1;
+                    point.tangentImpulse2 = last->tangentImpulse2;
+                }
+
+                constraints_.push_back(point);
+            }
+        }
+    }
+
+    const ContactConstraint* ContactSolver::FindPrevious(const ContactConstraint& constraint) const
+    {
+        // 接触点は毎ステップ計算し直すので、同じ場所と見なす距離で探す
+        constexpr float kSamePointDistanceSq = 0.0025f;   // 5cm
+
+        for (const ContactConstraint& last : previous_) {
+            if (last.bodyA != constraint.bodyA || last.bodyB != constraint.bodyB) {
+                continue;
+            }
+            if (LengthSquared(last.point - constraint.point) <= kSamePointDistanceSq) {
+                return &last;
+            }
+        }
+        return nullptr;
+    }
+
+    void ContactSolver::WarmStart()
+    {
+        for (ContactConstraint& constraint : constraints_) {
+            const Vector3 impulse = constraint.normal * constraint.normalImpulse
+                                  + constraint.tangent1 * constraint.tangentImpulse1
+                                  + constraint.tangent2 * constraint.tangentImpulse2;
+
+            if (LengthSquared(impulse) <= 0.0f) {
+                continue;
+            }
+            if (constraint.bodyA) {
+                constraint.bodyA->AddImpulseAtPoint(impulse * -1.0f, constraint.point);
+            }
+            if (constraint.bodyB) {
+                constraint.bodyB->AddImpulseAtPoint(impulse, constraint.point);
+            }
         }
     }
 
