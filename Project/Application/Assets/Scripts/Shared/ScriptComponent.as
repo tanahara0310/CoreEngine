@@ -41,6 +41,11 @@ abstract class ScriptComponent
     // 毎フレーム
     void Update() {}
 
+    // 物理の固定ステップごと（フレームによって 0 回にも複数回にもなる）。
+    // 力を加える処理はここに書くと、フレームレートによらず同じ結果になる。
+    // 1 回分の時間は Time::FixedDeltaTime()
+    void FixedUpdate() {}
+
     // 毎フレーム（全オブジェクトの Update の後）
     void LateUpdate() {}
 

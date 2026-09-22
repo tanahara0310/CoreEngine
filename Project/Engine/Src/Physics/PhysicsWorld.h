@@ -6,6 +6,7 @@
 #include "Math/Vector/Vector3.h"
 
 #include <cstdint>
+#include <functional>
 #include <vector>
 
 namespace CoreEngine
@@ -38,6 +39,13 @@ public:
 
     /// @brief 接触を集める相手（nullptr なら接触の解決を行わない）
     void SetCollisionWorld(CollisionWorld* world) { collisionWorld_ = world; }
+
+    /// @brief 1 ステップを進める前に呼ぶ処理（スクリプトの FixedUpdate を回す口）
+    /// @param callback 引数はそのステップの秒数。空の関数を渡すと呼ばなくなる
+    void SetPreStepCallback(std::function<void(float)> callback)
+    {
+        preStep_ = std::move(callback);
+    }
 
     // ===== 設定 =====
 
@@ -101,6 +109,7 @@ private:
     float   correctionRate_ = 0.2f;
     float   penetrationSlop_ = 0.01f;
 
+    std::function<void(float)>       preStep_;
     std::vector<RigidbodyComponent*> bodies_;
     CollisionWorld*                  collisionWorld_ = nullptr;
     std::vector<ContactPair>         contacts_;

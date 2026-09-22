@@ -32,6 +32,7 @@ namespace CoreEngine
             Awake,
             Start,
             Update,
+            FixedUpdate,
             LateUpdate,
             OnDestroy,
             OnScriptReloaded,

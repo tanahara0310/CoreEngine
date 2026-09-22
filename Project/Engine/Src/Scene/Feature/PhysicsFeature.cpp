@@ -7,6 +7,7 @@
 #include "GameObject/GameObject.h"
 #include "GameObject/GameObjectManager.h"
 #include "Physics/RigidbodyComponent.h"
+#include "Script/ScriptComponent.h"
 #include "Scene/Scene.h"
 #include "Scene/SceneManager.h"
 #include "Utility/CVar/CVar.h"
@@ -125,6 +126,13 @@ namespace CoreEngine
             });
 
         world_.SetCollisionWorld(collisionWorld);
+
+        // スクリプトの FixedUpdate は物理のステップごとに回す（力の積み方がフレームレートに依らない）
+        GameObjectManager* const manager = ctx.gameObjectManager;
+        world_.SetPreStepCallback([manager](float) {
+            manager->ForEachComponent<ScriptComponent>(
+                [](ScriptComponent& script) { script.FixedUpdate(); });
+            });
     }
 
     CollisionWorld* PhysicsFeature::FindCollisionWorld(SceneContext& ctx)
