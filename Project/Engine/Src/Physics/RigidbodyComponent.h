@@ -37,6 +37,8 @@ public:
         REFLECT_PROPERTY(useGravity_, "重力を受ける")
         REFLECT_PROPERTY(linearDamping_, "抗力", p.range = Range(0.0f, 10.0f, 0.01f),
             p.tooltip = "大きいほど速度が早く落ちる（0 で減らさない）")
+        REFLECT_PROPERTY(angularDamping_, "回転の抗力", p.range = Range(0.0f, 10.0f, 0.01f),
+            p.tooltip = "大きいほど回転が早く止まる（転がり続けるのを防ぐ）")
         REFLECT_PROPERTY(freezeRotation_, "回転を止める",
             p.tooltip = "接触で回らなくなる（向きは自分で指定する）")
         REFLECT_ACCESSOR("velocity", "速度", GetVelocity, SetVelocity,
@@ -47,9 +49,13 @@ public:
             p.range = Speed(0.1f),
             p.flags = ::CoreEngine::Reflection::PropertyFlags::NoSave,
             p.tooltip = "rad/s。実行中の値なので保存しない")
+        REFLECT_ACCESSOR("sleeping", "眠っている", IsSleeping, SetSleeping,
+            p.flags = ::CoreEngine::Reflection::PropertyFlags::NoSave,
+            p.tooltip = "止まっている間は計算から外れる。触ると起きる")
         REFLECT_METHOD("AddForce", "力を加える", AddForce)
         REFLECT_METHOD("AddImpulse", "撃力を加える", AddImpulse)
         REFLECT_METHOD("AddTorque", "トルクを加える", AddTorque)
+        REFLECT_METHOD("WakeUp", "起こす", WakeUp)
     REFLECT_END()
 
     /// @brief トランスフォームを使う
@@ -99,6 +105,25 @@ public:
     /// @brief 重力と力を受けて動く剛体か
     bool IsDynamic() const { return bodyType_ == BodyType::Dynamic; }
 
+    // ===== 眠り =====
+
+    /// @brief 眠っているか（眠っている間は積分もソルバも飛ばす）
+    bool IsSleeping() const { return sleeping_; }
+
+    /// @brief 眠りの状態を直に指定する（インスペクタとスクリプト用）
+    void SetSleeping(bool sleeping);
+
+    /// @brief 起こす（止まっていた時間も数え直す）
+    void WakeUp();
+
+    /// @brief 止まっている時間を数え、続いていれば眠らせる
+    /// @param deltaTime         このステップの秒数
+    /// @param linearThreshold   眠ってよい速さ（m/s）
+    /// @param angularThreshold  眠ってよい角速度（rad/s）
+    /// @param timeToSleep       この秒数だけ止まり続けたら眠る
+    void UpdateSleepState(float deltaTime, float linearThreshold,
+                          float angularThreshold, float timeToSleep);
+
     /// @brief ワールド空間の点が持つ速度（並進 ＋ 回転の寄与）
     Vector3 GetVelocityAtPoint(const Vector3& worldPoint) const;
 
@@ -138,8 +163,12 @@ private:
     float    mass_ = 1.0f;
     bool     useGravity_ = true;
     float    linearDamping_ = 0.0f;
+    float    angularDamping_ = 0.05f;
 
     bool freezeRotation_ = false;
+
+    bool  sleeping_ = false;
+    float stillTime_ = 0.0f;
 
     Vector3 velocity_{};
     Vector3 accumulatedForce_{};

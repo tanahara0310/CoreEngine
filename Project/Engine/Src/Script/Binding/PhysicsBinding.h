@@ -39,6 +39,9 @@ namespace CoreEngine::Script
         /// @brief めり込みの深さ（Exit では 0）
         float GetDepth() const { return depth_; }
 
+        /// @brief ぶつかった強さ（N・s。剛体を持たない相手や Exit では 0）
+        float GetImpulse() const { return impulse_; }
+
         /// @brief 接触点（ワールド座標）
         Vector3 GetPoint() const { return point_; }
 
@@ -58,6 +61,7 @@ namespace CoreEngine::Script
         ScriptGameObject* other_ = nullptr;
         Vector3 normal_{};
         float depth_ = 0.0f;
+        float impulse_ = 0.0f;
         Vector3 point_{};
         CollisionLayer layer_ = CollisionLayer::Default;
         CollisionLayer selfLayer_ = CollisionLayer::Default;

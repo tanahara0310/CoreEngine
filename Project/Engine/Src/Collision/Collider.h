@@ -82,6 +82,19 @@ public:
     void SetStatic(bool isStatic) { isStatic_ = isStatic; }
     bool IsStatic() const { return isStatic_; }
 
+    /// @brief このフレームでぶつかった強さ（N・s）
+    /// @note 物理が毎フレーム書き込む。衝突の通知へそのまま渡す。
+    float GetLastImpulse() const { return lastImpulse_; }
+
+    /// @brief ぶつかった強さを記録する（大きい方を残す）
+    void AccumulateImpulse(float impulse)
+    {
+        if (impulse > lastImpulse_) { lastImpulse_ = impulse; }
+    }
+
+    /// @brief 記録した強さを消す
+    void ClearImpulse() { lastImpulse_ = 0.0f; }
+
     /// @brief 物理が扱うコライダーか
     /// @note 物理側が毎フレーム立てる。立っているものが絡む接触は、めり込みの解消を物理へ任せる。
     void SetSimulated(bool isSimulated) { isSimulated_ = isSimulated; }
@@ -106,5 +119,6 @@ private:
     bool           isTrigger_ = true;
     bool           isStatic_ = false;
     bool           isSimulated_ = false;
+    float          lastImpulse_ = 0.0f;
 };
 }

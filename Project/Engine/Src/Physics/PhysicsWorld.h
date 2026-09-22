@@ -69,6 +69,13 @@ public:
     void SetPenetrationSlop(float slop);
     float GetPenetrationSlop() const { return penetrationSlop_; }
 
+    /// @brief 止まった剛体を計算から外すかどうか
+    void SetSleepEnabled(bool enabled) { sleepEnabled_ = enabled; }
+    bool IsSleepEnabled() const { return sleepEnabled_; }
+
+    /// @brief 眠ってよい速さ・角速度・止まり続ける秒数を設定する
+    void SetSleepThresholds(float linear, float angular, float timeToSleep);
+
     /// @brief 接触を解く繰り返し回数を設定する
     void SetSolverIterations(int count) { solver_.SetIterations(count); }
     int GetSolverIterations() const { return solver_.GetIterations(); }
@@ -97,6 +104,9 @@ public:
     /// @brief 直前のステップで解いた接触の数
     size_t GetContactCount() const { return solver_.GetConstraintCount(); }
 
+    /// @brief 眠っている剛体の数
+    size_t GetSleepingCount() const;
+
 private:
     /// @brief 1 ステップ分だけ物理を進める
     /// @details 速度の積分 → 接触の収集 → 速度の解決 → 位置の積分 → めり込みの押し戻し。
@@ -108,6 +118,11 @@ private:
     int     maxSubSteps_ = 4;
     float   correctionRate_ = 0.2f;
     float   penetrationSlop_ = 0.01f;
+
+    bool    sleepEnabled_ = true;
+    float   sleepLinearThreshold_ = 0.05f;
+    float   sleepAngularThreshold_ = 0.12f;
+    float   timeToSleep_ = 0.5f;
 
     std::function<void(float)>       preStep_;
     std::vector<RigidbodyComponent*> bodies_;

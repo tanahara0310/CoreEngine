@@ -84,6 +84,24 @@ namespace CoreEngine
         penetrationSlop_ = (slop > 0.0f) ? slop : 0.0f;
     }
 
+    void PhysicsWorld::SetSleepThresholds(float linear, float angular, float timeToSleep)
+    {
+        sleepLinearThreshold_ = (linear > 0.0f) ? linear : 0.0f;
+        sleepAngularThreshold_ = (angular > 0.0f) ? angular : 0.0f;
+        timeToSleep_ = (timeToSleep > 0.0f) ? timeToSleep : 0.0f;
+    }
+
+    size_t PhysicsWorld::GetSleepingCount() const
+    {
+        size_t count = 0;
+        for (const RigidbodyComponent* body : bodies_) {
+            if (body->IsSleeping()) {
+                ++count;
+            }
+        }
+        return count;
+    }
+
     //================================================
     // ステップ
     //================================================
@@ -95,6 +113,9 @@ namespace CoreEngine
         }
 
         for (RigidbodyComponent* body : bodies_) {
+            if (body->IsSleeping()) {
+                continue;
+            }
             body->IntegrateVelocity(gravity_, fixedDeltaTime);
             body->IntegrateAngularVelocity(fixedDeltaTime);
         }
@@ -108,13 +129,25 @@ namespace CoreEngine
         solver_.Build(contacts_);
         solver_.WarmStart();
         solver_.SolveVelocities();
+        solver_.PublishImpulses();
 
         for (RigidbodyComponent* body : bodies_) {
+            if (body->IsSleeping()) {
+                continue;
+            }
             body->IntegratePosition(fixedDeltaTime);
             body->IntegrateRotation(fixedDeltaTime);
         }
 
         solver_.SolvePositions(correctionRate_, penetrationSlop_);
+
+        // 止まったものを計算から外す（接している相手が動けば ContactSolver が起こす）
+        if (sleepEnabled_) {
+            for (RigidbodyComponent* body : bodies_) {
+                body->UpdateSleepState(fixedDeltaTime, sleepLinearThreshold_,
+                    sleepAngularThreshold_, timeToSleep_);
+            }
+        }
 
         simulatedTime_ += fixedDeltaTime;
     }

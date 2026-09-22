@@ -54,6 +54,22 @@ namespace CoreEngine
             "sys.Physics.SolverIterations", 8,
             "接触を解く繰り返し回数", CVarRange{ 1.0f, 32.0f } };
 
+        CVar<bool> cvSleepEnabled{
+            "sys.Physics.SleepEnabled", true,
+            "止まった剛体を計算から外す" };
+
+        CVar<float> cvSleepLinear{
+            "sys.Physics.SleepLinearThreshold", 0.05f,
+            "眠ってよい速さ（m/s）", CVarRange{ 0.0f, 1.0f } };
+
+        CVar<float> cvSleepAngular{
+            "sys.Physics.SleepAngularThreshold", 0.12f,
+            "眠ってよい角速度（rad/s）", CVarRange{ 0.0f, 2.0f } };
+
+        CVar<float> cvTimeToSleep{
+            "sys.Physics.TimeToSleep", 0.5f,
+            "この秒数だけ止まり続けたら眠る", CVarRange{ 0.05f, 5.0f } };
+
         CVar<float> cvRestitutionThreshold{
             "sys.Physics.RestitutionThreshold", 1.0f,
             "この速さ未満の接近では跳ね返らせない（m/s）", CVarRange{ 0.0f, 5.0f } };
@@ -107,9 +123,10 @@ namespace CoreEngine
         CollisionWorld* const collisionWorld = FindCollisionWorld(ctx);
 
         if (collisionWorld) {
-            // 前のフレームに立てた印を落としてから、剛体を持つものへ立て直す
+            // 前のフレームに立てた印とぶつかった強さを落としてから、剛体を持つものへ立て直す
             for (Collider* collider : collisionWorld->GetAllColliders()) {
                 collider->SetSimulated(false);
+                collider->ClearImpulse();
             }
         }
 
@@ -180,6 +197,8 @@ namespace CoreEngine
         world_.SetPenetrationSlop(cvPenetrationSlop.Get());
         world_.SetSolverIterations(cvSolverIterations.Get());
         world_.SetRestitutionThreshold(cvRestitutionThreshold.Get());
+        world_.SetSleepEnabled(cvSleepEnabled.Get());
+        world_.SetSleepThresholds(cvSleepLinear.Get(), cvSleepAngular.Get(), cvTimeToSleep.Get());
 
         // スクリプトが読む Time の固定ステップ幅を物理と揃える
         Time::SetFixedDeltaTime(cvFixedStep.Get());
@@ -216,8 +235,9 @@ namespace CoreEngine
 
     void PhysicsFeature::DrawSettingsImGui()
     {
-        ImGui::Text("剛体 %d 個 / 接触 %d 件",
+        ImGui::Text("剛体 %d 個（眠り %d）/ 接触 %d 件",
             static_cast<int>(world_.GetBodyCount()),
+            static_cast<int>(world_.GetSleepingCount()),
             static_cast<int>(world_.GetContactCount()));
         ImGui::Text("ステップ %d 回/フレーム（累計 %llu 回）",
             world_.GetLastStepCount(),

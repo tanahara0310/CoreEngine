@@ -29,5 +29,10 @@ struct CollisionInfo {
 
     /// @brief 代表接触点（ワールド座標）
     Vector3 point{ 0.0f, 0.0f, 0.0f };
+
+    /// @brief ぶつかった強さ（N・s）
+    /// @note 物理が解いた法線インパルスのうち、このフレームで最大のもの。
+    ///       剛体を持たない相手や Exit では 0。
+    float impulse = 0.0f;
 };
 }

@@ -7,6 +7,7 @@
 namespace CoreEngine
 {
 struct ContactPair;
+class Collider;
 class RigidbodyComponent;
 
 /// @brief 1 つの接触を解くための拘束
@@ -14,6 +15,8 @@ class RigidbodyComponent;
 struct ContactConstraint {
     RigidbodyComponent* bodyA = nullptr;   ///< 剛体を持たない側は nullptr（無限質量）
     RigidbodyComponent* bodyB = nullptr;
+    Collider*           colliderA = nullptr;
+    Collider*           colliderB = nullptr;
 
     Vector3 normal{};     ///< 接触法線
     Vector3 tangent1{};   ///< 摩擦の軸その 1（法線に直交）
@@ -57,6 +60,9 @@ public:
 
     /// @brief 近づく向きの速度を打ち消し、反発と摩擦を与える
     void SolveVelocities();
+
+    /// @brief 解いた強さをコライダーへ書き戻す（衝突の通知が読む）
+    void PublishImpulses();
 
     /// @brief 許容を超えためり込みを押し戻す
     /// @param correctionRate 1 回で戻す割合
