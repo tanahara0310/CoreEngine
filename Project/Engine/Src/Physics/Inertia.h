@@ -15,6 +15,12 @@ namespace Inertia
     /// @param size 各軸の辺の長さ
     Vector3 ForBox(float mass, const Vector3& size);
 
+    /// @brief Y 軸に立てたカプセルの慣性モーメント
+    /// @param radius        半径
+    /// @param cylinderLength 半球を除いた円筒部分の長さ
+    /// @note 円筒と 2 つの半球の質量を体積比で分け、合算する。
+    Vector3 ForCapsule(float mass, float radius, float cylinderLength);
+
     /// @brief 成分ごとの逆数を取る（0 以下の成分は 0 のままにする＝その軸は回らない）
     Vector3 Invert(const Vector3& inertia);
 }

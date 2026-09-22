@@ -41,6 +41,10 @@ namespace Geometry
     bool Raycast(const Ray& ray, const OBB& box, RayHit* outHit = nullptr,
                  float tMin = 0.0f, float tMax = kRayMaxDistance);
 
+    /// @note 円筒部分と両端の半球を別々に調べ、いちばん手前のヒットを返す。
+    bool Raycast(const Ray& ray, const Capsule& capsule, RayHit* outHit = nullptr,
+                 float tMin = 0.0f, float tMax = kRayMaxDistance);
+
     bool Raycast(const Ray& ray, const Plane& plane, RayHit* outHit = nullptr,
                  float tMin = 0.0f, float tMax = kRayMaxDistance);
 

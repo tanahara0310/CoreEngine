@@ -75,5 +75,14 @@ namespace Geometry
     bool Intersect(const Sphere& sphere, const Capsule& capsule, Contact* outContact = nullptr);
 
     bool Intersect(const Capsule& a, const Capsule& b, Contact* outContact = nullptr);
+
+    /// @note 実装はこちら（カプセルが A）。OBB×Capsule はこれへ転送する。
+    /// @details 線分上で箱にいちばん近い点を反復で求め、そこを中心とする球として解く。
+    bool Intersect(const Capsule& capsule, const OBB& box, Contact* outContact = nullptr);
+    bool Intersect(const OBB& box, const Capsule& capsule, Contact* outContact = nullptr);
+
+    /// @note 箱を向きの無い OBB として扱い、Capsule×OBB へ転送する。
+    bool Intersect(const Capsule& capsule, const AABB& box, Contact* outContact = nullptr);
+    bool Intersect(const AABB& box, const Capsule& capsule, Contact* outContact = nullptr);
 }
 }

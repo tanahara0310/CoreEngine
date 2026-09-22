@@ -74,6 +74,12 @@ namespace CoreEngine
         return Add(CollisionShape::MakeBox(size, offset), layer);
     }
 
+    Collider& ColliderComponent::AddCapsule(float radius, float height, CollisionLayer layer,
+                                            const Vector3& offset)
+    {
+        return Add(CollisionShape::MakeCapsule(radius, height, offset), layer);
+    }
+
     void ColliderComponent::RemoveAll()
     {
         // 即 delete すると、衝突判定ループが保持している生ポインタが宙に浮く
@@ -117,6 +123,9 @@ namespace CoreEngine
             entry["offset"] = JsonManager::Vector3ToJson(shape.offset);
             if (shape.type == ColliderShapeType::Sphere) {
                 entry["radius"] = shape.radius;
+            } else if (shape.type == ColliderShapeType::Capsule) {
+                entry["radius"] = shape.radius;
+                entry["height"] = shape.height;
             } else {
                 entry["size"] = JsonManager::Vector3ToJson(shape.size);
             }
@@ -154,6 +163,7 @@ namespace CoreEngine
             shape.offset = JsonManager::SafeGetVector3(entry, "offset", shape.offset);
             shape.radius = JsonManager::SafeGet<float>(entry, "radius", shape.radius);
             shape.size = JsonManager::SafeGetVector3(entry, "size", shape.size);
+            shape.height = JsonManager::SafeGet<float>(entry, "height", shape.height);
             const CollisionLayer layer = ParseLayer(JsonManager::SafeGet<std::string>(entry, "layer", ToString(CollisionLayer::Default)));
 
             if (i < colliders_.size() && colliders_[i]) {

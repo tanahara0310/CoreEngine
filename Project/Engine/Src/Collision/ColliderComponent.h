@@ -40,6 +40,11 @@ public:
     Collider& AddBox(const Vector3& size, CollisionLayer layer = CollisionLayer::Default,
                      const Vector3& offset = {});
 
+    /// @brief カプセルコライダーを追加する
+    /// @param height 両端の半球を含む全高
+    Collider& AddCapsule(float radius, float height, CollisionLayer layer = CollisionLayer::Default,
+                         const Vector3& offset = {});
+
     // ===== 衝突イベントの購読 =====
     // C++ から関数を渡して衝突に反応する入口。コンポーネントなら OnTriggerEnter などを上書きする。
     // 接触は `GameObject::NotifyCollision*` がここと有効なコンポーネントへ配る。
