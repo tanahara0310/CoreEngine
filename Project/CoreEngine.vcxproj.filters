@@ -361,6 +361,9 @@
     <ClCompile Include="Engine\Src\Collision\CollisionWorld.cpp">
       <Filter>Engine\Src\Collision</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Physics\PhysicsWorld.cpp">
+      <Filter>Engine\Src\Physics</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\EngineSystem\EngineConfig.cpp">
       <Filter>Engine\Src\EngineSystem</Filter>
     </ClCompile>
@@ -890,6 +893,9 @@
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Scene\Feature\CollisionFeature.cpp">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Scene\Feature\PhysicsFeature.cpp">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Scene\Feature\GridFeature.cpp">
@@ -1899,6 +1905,9 @@
     <ClInclude Include="Engine\Src\Collision\CollisionWorld.h">
       <Filter>Engine\Src\Collision</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Physics\PhysicsWorld.h">
+      <Filter>Engine\Src\Physics</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\EngineSystem\ServiceRegistry.h">
       <Filter>Engine\Src\EngineSystem</Filter>
     </ClInclude>
@@ -2803,6 +2812,9 @@
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Scene\Feature\CollisionFeature.h">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Scene\Feature\PhysicsFeature.h">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Scene\Feature\GridFeature.h">
@@ -4164,6 +4176,9 @@
     </Filter>
     <Filter Include="Engine\Src\Particle\Modules">
       <UniqueIdentifier>{E550DB62-CBDA-4DBB-933B-B205EE3B0311}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Physics">
+      <UniqueIdentifier>{28E028D4-0822-4468-90B5-F749BAA150B8}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Reflection">
       <UniqueIdentifier>{AB16768F-1113-4F73-AE2B-95C2276C988E}</UniqueIdentifier>

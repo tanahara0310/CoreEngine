@@ -12,6 +12,7 @@
 #include "GridFeature.h"
 #include "GroundFeature.h"
 #include "LightingFeature.h"
+#include "PhysicsFeature.h"
 #include "TweenFeature.h"
 
 namespace CoreEngine
@@ -58,6 +59,10 @@ namespace CoreEngine
         Add<GridFeature>(features);
         Add<DebugEditorFeature>(features);
 #endif
+
+        // 物理は当たり判定より先。同じ PostObjectUpdate に居るので、
+        // 登録の並びではなく priority で順序を決める
+        AddEarly<PhysicsFeature>(features);
 
         Add<CollisionFeature>(features);
         Add<EnvironmentFeature>(features);
