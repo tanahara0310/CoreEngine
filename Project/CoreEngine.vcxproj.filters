@@ -769,6 +769,9 @@
     <ClCompile Include="Engine\Src\Input\InputBinding.cpp">
       <Filter>Engine\Src\Input</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Input\InputAction.cpp">
+      <Filter>Engine\Src\Input</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Input\InputConfig.cpp">
       <Filter>Engine\Src\Input</Filter>
     </ClCompile>

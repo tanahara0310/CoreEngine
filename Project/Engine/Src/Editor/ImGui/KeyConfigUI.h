@@ -29,7 +29,7 @@ namespace CoreEngine {
         void Save(const InputConfig& config);
 
         bool isListening_ = false;
-        InputAction listeningAction_ = InputAction::Count;
+        InputAction listeningAction_ = InputAction::Invalid;
         int listeningIndex_ = -1;
         bool saveFailed_ = false;   ///< 直近の自動保存に失敗したか（画面に警告を出すため）
         std::string configFilePath_{ InputConfig::kDefaultFilePath };

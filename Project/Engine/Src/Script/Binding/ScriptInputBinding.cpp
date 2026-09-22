@@ -19,7 +19,7 @@ namespace CoreEngine::Script
         /// @return 問い合わせてよければ問い合わせ先
         const InputQuery* QueryFor(int action)
         {
-            if (!sInput || action < 0 || action >= static_cast<int>(InputAction::Count)) {
+            if (!sInput || action < 0 || action >= static_cast<int>(InputActions::Count())) {
                 return nullptr;
             }
             return &sInput->GetQuery();
@@ -114,7 +114,7 @@ namespace CoreEngine::Script
 
         BindingRegistrar r(engine);
         r.Enum("InputAction");
-        for (int action = 0; action < static_cast<int>(InputAction::Count); ++action) {
+        for (int action = 0; action < static_cast<int>(InputActions::Count()); ++action) {
             const std::string name(InputActionToString(static_cast<InputAction>(action)));
             r.EnumValue("InputAction", name.c_str(), action);
         }
