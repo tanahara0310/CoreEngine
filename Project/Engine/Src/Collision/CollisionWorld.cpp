@@ -186,6 +186,11 @@ namespace CoreEngine
         previousCollisions_.swap(currentCollisions_);
     }
 
+    uint64_t CollisionWorld::GetLayerMask(CollisionLayer layer) const
+    {
+        return config_ ? config_->GetLayerMask(layer) : kAllLayers;
+    }
+
     bool CollisionWorld::IsColliding(const Collider& collider) const
     {
         return collidingIds_.find(collider.GetId()) != collidingIds_.end();

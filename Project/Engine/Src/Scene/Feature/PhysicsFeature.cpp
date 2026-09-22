@@ -56,6 +56,14 @@ namespace CoreEngine
             "sys.Physics.SolverIterations", 8,
             "接触を解く繰り返し回数", CVarRange{ 1.0f, 32.0f } };
 
+        CVar<bool> cvContinuousEnabled{
+            "sys.Physics.ContinuousEnabled", true,
+            "速いものが壁を飛び越えないよう経路を調べる" };
+
+        CVar<float> cvContinuousThreshold{
+            "sys.Physics.ContinuousThreshold", 0.5f,
+            "形の薄さのこの割合を超えて動くときに調べる", CVarRange{ 0.05f, 2.0f } };
+
         CVar<bool> cvSleepEnabled{
             "sys.Physics.SleepEnabled", true,
             "止まった剛体を計算から外す" };
@@ -221,6 +229,8 @@ namespace CoreEngine
         world_.SetPenetrationSlop(cvPenetrationSlop.Get());
         world_.SetSolverIterations(cvSolverIterations.Get());
         world_.SetRestitutionThreshold(cvRestitutionThreshold.Get());
+        world_.SetContinuousEnabled(cvContinuousEnabled.Get());
+        world_.SetContinuousThreshold(cvContinuousThreshold.Get());
         world_.SetSleepEnabled(cvSleepEnabled.Get());
         world_.SetSleepThresholds(cvSleepLinear.Get(), cvSleepAngular.Get(), cvTimeToSleep.Get());
 

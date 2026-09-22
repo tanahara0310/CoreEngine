@@ -215,6 +215,27 @@ namespace CoreEngine
         return result;
     }
 
+    float RigidbodyComponent::GetMinimumExtent() const
+    {
+        const Vector3 scale = GetOwner() ? GetOwner()->GetWorldScale() : Vector3{ 1.0f, 1.0f, 1.0f };
+        const Collider* const collider = GetOwner() ? GetColliderShape() : nullptr;
+
+        if (!collider) {
+            return 0.5f;
+        }
+
+        if (collider->GetShapeType() == ColliderShapeType::Box) {
+            const Vector3& size = collider->GetShape().size;
+            return (std::min)({ size.x * std::abs(scale.x),
+                                size.y * std::abs(scale.y),
+                                size.z * std::abs(scale.z) }) * 0.5f;
+        }
+
+        const float maxScale =
+            (std::max)({ std::abs(scale.x), std::abs(scale.y), std::abs(scale.z) });
+        return collider->GetShape().radius * maxScale;
+    }
+
     void RigidbodyComponent::RefreshInertia()
     {
         if (!IsDynamic()) {
