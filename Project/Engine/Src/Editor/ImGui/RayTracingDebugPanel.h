@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include <d3d12.h>
 #include <string>
@@ -24,7 +24,7 @@ namespace CoreEngine
         /// @param gpuProfiler  パス別 GPU 時間の取得元（DebugSubsystem が所有）
         void Initialize(EngineSystem* engine, GpuTimestampProfiler* gpuProfiler);
 
-        /// @brief ImGui コンテンツを描画（RegisterEngineDebugPanel ラムダから呼ぶ）
+        /// @brief ImGui コンテンツを描画（EditorPanelRegistry のラムダから呼ぶ）
         void Draw();
 
     private:
@@ -68,4 +68,4 @@ namespace CoreEngine
 
 } // namespace CoreEngine
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

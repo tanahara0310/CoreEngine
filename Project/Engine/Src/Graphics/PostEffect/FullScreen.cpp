@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "FullScreen.h"
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/ImguiManager.h"
 #endif
 
@@ -15,7 +15,7 @@ const std::wstring& FullScreen::GetPixelShaderPath() const
 
 void FullScreen::DrawImGui()
 {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     ImGui::PushID("FullScreenParams");
     
     ImGui::Text("Status: Always Enabled (Display Effect)");
@@ -25,6 +25,6 @@ void FullScreen::DrawImGui()
     UI::Separator();
     
     ImGui::PopID();
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
 }
 }

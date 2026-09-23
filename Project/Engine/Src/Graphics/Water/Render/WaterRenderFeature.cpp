@@ -7,7 +7,7 @@
 #include "Camera/Camera.h"
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/GameObjectManager.h"
-#include "GameObjects/SkyBox/SkyBoxObject.h"
+#include "Graphics/Render/SkyBox/SkyBoxComponent.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Material/MaterialInstance.h"
@@ -26,9 +26,15 @@
 #include "Graphics/Water/WaterCVars.h"
 #include "Graphics/Water/Simulation/FFTOceanSurfaceSimulator.h"
 #include "Graphics/Water/Simulation/GerstnerWaterSimulator.h"
-#include "Graphics/Water/Surface/WaterPlaneObject.h"
+#include "Graphics/Water/Surface/WaterSurfaceComponent.h"
+#include "Scene/Feature/SceneFeatureRegistry.h"
+#ifdef CORE_EDITOR
+#include "Editor/Water/WaterEditorPanel.h"
+#endif
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
+
+SCENE_FEATURE_REGISTER("WaterRender", [] { return std::make_unique<CoreEngine::WaterRenderFeature>(); })
 
 namespace CoreEngine
 {
@@ -60,6 +66,16 @@ namespace CoreEngine
 
         AcquireWaterPlane(ctx);
 
+#ifdef CORE_EDITOR
+        // 水面の調整画面は水面と一緒に出す（シーンのコードは登録に関与しない）
+        if (!editorPanel_) {
+            editorPanel_ = std::make_unique<WaterEditorPanel>();
+        }
+        if (ctx.engine) {
+            editorPanel_->Initialize(this, *ctx.engine);
+        }
+#endif
+
         if (waterPlane_) {
             // 初期フレームでも水面シェーダーの時間が不定にならないよう即時反映する
             if (auto* activeSimulator = GetActiveSimulator()) {
@@ -77,16 +93,44 @@ namespace CoreEngine
 
     void WaterRenderFeature::PostSceneInitialize(SceneContext& ctx)
     {
-        // 空気遠近感の適用可否は「シーンに空（大気散乱の SkyBox）があるか」で決まる。
-        // AtmosphereManager::IsAtmosphereActive() はフレーム後半まで立たないため、
-        // 空の有無そのものを見る（EnvironmentFeature が先に SkyBox を確定させている）。
         if (!ctx.gameObjectManager) {
             return;
         }
-        // 具象型のダウンキャストではなく SceneTag で探す
-        if (auto* tag = ctx.gameObjectManager->FindFirstComponent<SceneTagComponent<SkyBoxObject>>()) {
-            skyBox_ = tag->Get();
+
+        AdoptSceneWaterPlane(ctx);
+
+        // 空気遠近感の適用可否は「シーンに空（大気散乱の SkyBox）があるか」で決まる。
+        // AtmosphereManager::IsAtmosphereActive() はフレーム後半まで立たないため、
+        // 空の有無そのものを見る（EnvironmentFeature が先に SkyBox を確定させている）。
+        if (auto* skyBox = ctx.gameObjectManager->FindFirstComponent<SkyBoxComponent>()) {
+            skyBox_ = skyBox;
         }
+    }
+
+    void WaterRenderFeature::AdoptSceneWaterPlane(SceneContext& ctx)
+    {
+        // 保存データで置いた水面があれば、そちらを使ってこの Feature が作った水面は消す
+        // （結線は毎フレームの RefreshWaterSurfaceState が張り直す）
+        if (!ownsWaterPlane_ || !waterPlane_) {
+            return;
+        }
+
+        WaterSurfaceComponent* sceneWaterPlane = nullptr;
+        ctx.gameObjectManager->ForEachComponent<WaterSurfaceComponent>(
+            [&](WaterSurfaceComponent& component) {
+                if (&component != waterPlane_) {
+                    sceneWaterPlane = &component;
+                }
+            });
+        if (!sceneWaterPlane) {
+            return;
+        }
+
+        if (GameObject* const owner = waterPlane_->GetOwner()) {
+            owner->Destroy();
+        }
+        waterPlane_ = sceneWaterPlane;
+        ownsWaterPlane_ = false;
     }
 
     void WaterRenderFeature::Update(SceneContext& ctx, SceneUpdatePhase phase)
@@ -159,6 +203,13 @@ namespace CoreEngine
 
     void WaterRenderFeature::Finalize([[maybe_unused]] SceneContext& ctx)
     {
+#ifdef CORE_EDITOR
+        // 調整画面のドロワーが Feature より長生きしないよう、先に登録を外す
+        if (editorPanel_) {
+            editorPanel_->Shutdown();
+        }
+#endif
+
         // 水面オブジェクトは GameObjectManager が所有しているためポインタのみクリア。
         // ConnectSurfaceModelProvider は waterPlane_ の有無で接続/切断を決めるので、
         // 切断のためには **先に** null にしておく必要がある。
@@ -200,28 +251,33 @@ namespace CoreEngine
             return;
         }
 
-        // シーン側が既に水面を生成していればそれを採用する（EnvironmentFeature と同じ規約。
-        // 具象型のダウンキャストではなく SceneTag で探す）
-        if (auto* tag = ctx.gameObjectManager->FindFirstComponent<SceneTagComponent<WaterPlaneObject>>()) {
-            waterPlane_ = tag->Get();
+        // シーンのコードが既に水面を置いていればそれを採用する（EnvironmentFeature と同じ規約）。
+        // 保存データで置いた水面はこの時点ではまだ生まれていないので、PostSceneInitialize で見直す
+        if (auto* existing = ctx.gameObjectManager->FindFirstComponent<WaterSurfaceComponent>()) {
+            waterPlane_ = existing;
             return;
         }
 
-        waterPlane_ = ctx.gameObjectManager->AddObject(
-            std::make_unique<WaterPlaneObject>(config_.size, config_.resolution, config_.useFFTOcean));
+        auto owned = std::make_unique<GameObject>();
+        owned->SetName("WaterPlane");
+        GameObject* const object = ctx.gameObjectManager->AddObject(std::move(owned));
+        if (!object) {
+            return;
+        }
+        waterPlane_ = object->AddComponent<WaterSurfaceComponent>(
+            config_.size, config_.resolution, config_.useFFTOcean);
         if (!waterPlane_) {
             return;
         }
+        ownsWaterPlane_ = true;
 
         waterPlane_->GetTransform().translate = config_.translate;
         waterPlane_->GetTransform().scale = config_.scale;
-        waterPlane_->SetBlendMode(BlendMode::kBlendModeNormal);
         // 既定のスクロール/タイリングは Lake プリセットを単一情報源とする
-        // （以前はここと WaterPlaneObject コンストラクタに同値のハードコードが重複していた）
+        // （以前はここと WaterSurfaceComponent コンストラクタに同値のハードコードが重複していた）
         const WaterPresetData& defaultPreset = GetWaterPresetData(WaterPresetType::Lake);
         waterPlane_->SetScrollSpeed(defaultPreset.scrollSpeed);
         waterPlane_->SetUVTiling(defaultPreset.uvTiling);
-        waterPlane_->SetActive(true);
         ConfigureDefaultMaterial();
     }
 
@@ -353,7 +409,7 @@ namespace CoreEngine
             return;
         }
 
-        // ---- 見た目・水質・泡 → WaterPlaneObject ----
+        // ---- 見た目・水質・泡 → WaterSurfaceComponent ----
         // setter は CPU 側ミラーの更新のみで安価なため毎フレーム呼んでよい
         // （cbuffer 転送は描画時に一括で行われる）。
         waterPlane_->SetBaseColor(WaterCVars::BaseColor.Get());
@@ -370,7 +426,7 @@ namespace CoreEngine
         // 白波被覆率の風速追従係数。変化したときだけログして、
         // 「風速を変えたのに泡が追従していない」を目視でなく数値で追えるようにする。
         const float foamWindCoverageScale =
-            WaterPlaneObject::ComputeFoamWindCoverageScale(WaterCVars::FFTWindSpeed.Get());
+            WaterSurfaceComponent::ComputeFoamWindCoverageScale(WaterCVars::FFTWindSpeed.Get());
         if (std::abs(foamWindCoverageScale - lastFoamWindCoverageScale_) > 1.0e-4f) {
             lastFoamWindCoverageScale_ = foamWindCoverageScale;
             Logger::GetInstance().Infof(
@@ -516,10 +572,11 @@ namespace CoreEngine
             return;
         }
 
-        // 水面オブジェクトが非表示のフレームは「水なし」として扱う。
+        // 水面が無効なフレームは「水なし」として扱う。
         // regionValid=0 を publish しないと RT コースティクスと水中ライティングが動き続け、
         // 非表示のはずの水の光学効果（薄い青色）が床に乗り続ける。
-        if (!waterPlane_->IsActive()) {
+        const GameObject* const waterObject = waterPlane_->GetOwner();
+        if (!waterPlane_->IsEnabled() || !waterObject || !waterObject->IsActive()) {
             if (surfaceModelProvider_) {
                 surfaceModelProvider_->ClearSurfaceData();
             }

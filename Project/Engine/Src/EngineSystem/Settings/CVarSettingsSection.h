@@ -34,6 +34,12 @@ namespace CoreEngine
 
         // CVar はレジストリが変更/確定の通番を持つため、ポーリング不要のイベント駆動で保存する
         ChangeSignal GetChangeSignal() const override { return ChangeSignal::Revision; }
+
+        /// @brief 変更の通番（再生中は再生前の値で止める）
+        /// @details 再生中はスクリプトが CVar を書く。それをプロジェクト設定へ残すと、
+        ///          遊んだだけで `Config/EngineSettings/CVars.json` が書き換わってしまう。
+        ///          停止するとシーンを組み直して値も戻るので、再生中は通番を止めて
+        ///          「変わっていない」ことにする（`EnvironmentFeature` の自動保存と同じ考え方）。
         uint64_t GetChangeRevision() const override;
         uint64_t GetCommitRevision() const override;
 
@@ -58,6 +64,11 @@ namespace CoreEngine
         static void LogOverriddenCVars();
 
     private:
+        /// @brief 再生に入る直前の通番（再生中はこれを返し続ける）
+        mutable uint64_t frozenChangeRevision_ = 0;
+        mutable uint64_t frozenCommitRevision_ = 0;
+        mutable bool frozen_ = false;
+
         bool userStatePart_ = false;
     };
 }

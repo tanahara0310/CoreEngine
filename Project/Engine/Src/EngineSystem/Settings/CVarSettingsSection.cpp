@@ -2,9 +2,11 @@
 #include "CVarSettingsSection.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/CVar/CVarRegistry.h"
+#include "EngineSystem/PlaybackState.h"
 #include "Utility/CVar/CVarSerialization.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/Path/ProjectPaths.h"
 #include "externals/nlohmann/single_include/nlohmann/json.hpp"
 #include <filesystem>
 #include <fstream>
@@ -47,11 +49,25 @@ namespace CoreEngine
 
     uint64_t CVarSettingsSection::GetChangeRevision() const
     {
-        return CVarRegistry::Get().GetGlobalRevision();
+        const CVarRegistry& registry = CVarRegistry::Get();
+        if (PlaybackStateManager::GetInstance().IsInPlayMode()) {
+            if (!frozen_) {
+                // 再生に入った時点の通番で止める。以降スクリプトが書いても「変化なし」に見える
+                frozen_ = true;
+                frozenChangeRevision_ = registry.GetGlobalRevision();
+                frozenCommitRevision_ = registry.GetCommitRevision();
+            }
+            return frozenChangeRevision_;
+        }
+        frozen_ = false;
+        return registry.GetGlobalRevision();
     }
 
     uint64_t CVarSettingsSection::GetCommitRevision() const
     {
+        if (frozen_) {
+            return frozenCommitRevision_;
+        }
         return CVarRegistry::Get().GetCommitRevision();
     }
 
@@ -104,19 +120,20 @@ namespace CoreEngine
 
         try {
             namespace fs = std::filesystem;
-            fs::create_directories(kConfigDir);
+            fs::create_directories(ProjectPaths::Resolve(kConfigDir));
             {
-                std::ofstream file(kConfigPath, std::ios::trunc);
+                std::ofstream file(ProjectPaths::Resolve(kConfigPath), std::ios::trunc);
                 file << config.dump(4);
             }
             {
-                std::ofstream file(kStatePath, std::ios::trunc);
+                std::ofstream file(ProjectPaths::Resolve(kStatePath), std::ios::trunc);
                 file << state.dump(4);
             }
             // 旧ファイルはユーザーデータなので削除せずリネームで退避する
             // （過去に PostEffect 移行でユーザーの有効化設定を失った教訓）
             std::error_code ec;
-            fs::rename(kLegacyPath, kMigratedPath, ec);
+            fs::rename(ProjectPaths::Resolve(kLegacyPath),
+                ProjectPaths::Resolve(kMigratedPath), ec);
 
             Logger::GetInstance().Infof(LogCategory::System,
                 "CVar: 旧 CVars.json を 2 層形式へ移行しました（設定 {} 件 → {} / 状態 {} 件 → {}）",

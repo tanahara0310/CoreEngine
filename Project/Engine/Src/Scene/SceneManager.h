@@ -3,6 +3,7 @@
 #include "IScene.h"
 #include "SceneTransition.h"
 #include <memory>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <functional>
@@ -27,13 +28,10 @@ public:
     void Initialize(EngineSystem* engine);
 
     /// @brief シーンを登録する
-    /// @tparam T シーンクラス（ISceneを継承している必要がある）
-    /// @param name シーン名
-    template<typename T>
-    void RegisterScene(const std::string& name) {
-        static_assert(std::is_base_of<IScene, T>::value);
-        sceneFactories_[name] = []() { return std::make_unique<T>(); };
-    }
+    /// @param name シーン名（Application/Assets/Scenes/シーン名 の保存データを読む）
+    /// @note `Application/Assets/Scenes` にあるシーンは、初期化のときに自動で登録する。
+    ///       ここで足すのは、エディタで作った直後のシーンを再起動なしで開くときだけ。
+    void RegisterDataScene(const std::string& name);
 
     /// @brief 初期シーンを設定（トランジション無し）
     /// @param name 初期シーン名
@@ -48,6 +46,16 @@ public:
     /// @param transitionType トランジションタイプ
     /// @param duration トランジション時間（秒）
     void ChangeScene(std::string name, SceneTransition::TransitionType transitionType, float duration = 1.0f);
+
+    /// @brief 今すぐシーンを組み直せるか（トランジションや読み込みの途中でない）
+    bool CanLoadSceneNow() const;
+
+    /// @brief メモリの控えからシーンを組み直す（トランジション無し・完了まで戻らない）
+    /// @param name 組み直すシーン名
+    /// @param snapshot オブジェクトの値の元（保存ファイルの代わりに読む）
+    /// @return 組み直したら true。未登録のシーン名・トランジションや読み込みの途中なら何もせず false
+    /// @note まだ始まっていないシーン切り替えの依頼は取り消す。フレームの外（先頭）から呼ぶこと。
+    bool LoadSceneFromSnapshot(const std::string& name, std::shared_ptr<const SceneSnapshot> snapshot);
 
     /// @brief 更新処理
     void Update();
@@ -71,6 +79,9 @@ public:
     /// @brief 現在のシーン名を取得
     /// @return 現在のシーン名（シーンが無い場合は"None"）
     std::string GetCurrentSceneName() const;
+
+    /// @brief 今のシーン（読み込みの途中は、組み立て中のシーン）
+    IScene* GetCurrentScene() const { return currentScene_ ? currentScene_.get() : pendingScene_.get(); }
 
     /// @brief 登録されているすべてのシーン名を取得
     /// @return シーン名のリスト
@@ -100,6 +111,9 @@ public:
     /// @brief Gameビュー用3Dカメラを取得
     Camera* GetGameViewCamera3D() const;
 
+    /// @brief ゲーム視点の3Dカメラを取得（エディタ視点で覗いていても変わらない）
+    Camera* GetGameCamera3D() const;
+
     /// @brief Gameビュー用2Dカメラを取得
     Camera* GetGameViewCamera2D() const;
 
@@ -111,7 +125,8 @@ public:
     std::vector<RenderViewRequest> BuildRenderViewRequests();
 
 private:
-    std::unordered_map<std::string, std::function<std::unique_ptr<IScene>()>> sceneFactories_;
+    /// @brief 開けるシーンの名前（中身はすべて保存データが決める）
+    std::set<std::string> sceneNames_;
 
     std::unique_ptr<IScene> currentScene_ = nullptr;
     std::string currentSceneName_ = "None"; // 現在のシーン名を保持
@@ -130,12 +145,15 @@ private:
 
     /// @brief 実際のシーン切り替えを実行（内部関数・完了まで戻らない）
     /// @param name 変更先のシーン名
-    void DoChangeScene(const std::string& name);
+    /// @param snapshot 保存ファイルの代わりに読む控え（空ならファイルから読む）
+    /// @return true: 切り替えた, false: 未登録のシーン名
+    bool DoChangeScene(const std::string& name, std::shared_ptr<const SceneSnapshot> snapshot = nullptr);
 
     /// @brief シーン読み込みを開始する（旧シーンの解放を含むステップ列を組む）
     /// @param name 読み込むシーン名
+    /// @param snapshot 保存ファイルの代わりに読む控え（空ならファイルから読む）
     /// @return true: 開始した, false: 未登録のシーン名
-    bool BeginSceneLoad(const std::string& name);
+    bool BeginSceneLoad(const std::string& name, std::shared_ptr<const SceneSnapshot> snapshot = nullptr);
 
     /// @brief 読み込みステップを 1 つ進める
     void StepSceneLoad();

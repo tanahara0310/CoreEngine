@@ -39,7 +39,15 @@ public:
     Geometry::Sphere GetWorldSphere() const;
 
     /// @brief ワールド空間の AABB（type != Box でも外接 AABB として使える）
+    /// @note ボックスが回転している場合は、回転後の箱に外接する AABB を返す。
     Geometry::AABB GetWorldAABB() const;
+
+    /// @brief ワールド空間の向き付きボックス（type != Box でも外接ボックスとして使える）
+    Geometry::OBB GetWorldOBB() const;
+
+    /// @brief ワールド空間のカプセル（type != Capsule でも外接カプセルとして使える）
+    /// @note 軸はオーナーの上方向。半径は最大スケール、全高は上方向のスケールが乗る。
+    Geometry::Capsule GetWorldCapsule() const;
 
     /// @brief オーナーのワールドスケール（未設定なら等倍）
     Vector3 GetWorldScale() const;
@@ -50,10 +58,12 @@ public:
     void SetShape(const CollisionShape& shape) { shape_ = shape; }
     ColliderShapeType GetShapeType() const { return shape_.type; }
 
-    /// @brief 球の半径を変更する（Box 形状には無効）
+    /// @brief 球とカプセルの半径を変更する（Box 形状には無効）
     void SetRadius(float radius);
-    /// @brief ボックスのサイズを変更する（Sphere 形状には無効）
+    /// @brief ボックスのサイズを変更する（Sphere / Capsule 形状には無効）
     void SetSize(const Vector3& size);
+    /// @brief カプセルの全高を変更する（他の形状には無効）
+    void SetHeight(float height);
     /// @brief ローカルオフセットを変更する
     void SetOffset(const Vector3& offset) { shape_.offset = offset; }
 
@@ -78,6 +88,24 @@ public:
     void SetStatic(bool isStatic) { isStatic_ = isStatic; }
     bool IsStatic() const { return isStatic_; }
 
+    /// @brief このフレームでぶつかった強さ（N・s）
+    /// @note 物理が毎フレーム書き込む。衝突の通知へそのまま渡す。
+    float GetLastImpulse() const { return lastImpulse_; }
+
+    /// @brief ぶつかった強さを記録する（大きい方を残す）
+    void AccumulateImpulse(float impulse)
+    {
+        if (impulse > lastImpulse_) { lastImpulse_ = impulse; }
+    }
+
+    /// @brief 記録した強さを消す
+    void ClearImpulse() { lastImpulse_ = 0.0f; }
+
+    /// @brief 物理が扱うコライダーか
+    /// @note 物理側が毎フレーム立てる。立っているものが絡む接触は、めり込みの解消を物理へ任せる。
+    void SetSimulated(bool isSimulated) { isSimulated_ = isSimulated; }
+    bool IsSimulated() const { return isSimulated_; }
+
     // ===== 衝突イベント（オーナーへ転送） =====
 
     /// @param contact 接触情報。normal は this から other へ向かう向き。
@@ -96,5 +124,7 @@ private:
     bool           isEnabled_ = true;
     bool           isTrigger_ = true;
     bool           isStatic_ = false;
+    bool           isSimulated_ = false;
+    float          lastImpulse_ = 0.0f;
 };
 }

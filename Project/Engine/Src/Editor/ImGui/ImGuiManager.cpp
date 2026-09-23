@@ -1,20 +1,74 @@
 #include "pch.h"
+#include "UI/UIPointer.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "ImGuiManager.h"
+#include "Editor/ImGui/EditorTheme.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/SwapChain/SwapChain.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/Render/Render.h"
 #include "Editor/Scene/SceneDebugEditor.h"
-#include "Utility/Debug/GameDebugUI.h"
+#include "Editor/ImGui/GameDebugUI.h"
 #include "WinApp/WinApp.h"
 #include <ImGuizmo.h>
 #include <filesystem>
+#include <format>
+#include <string>
 
 namespace CoreEngine
 {
 
     namespace fs = std::filesystem;
+
+#ifdef CORE_EDITOR
+    namespace
+    {
+        /// @brief 暗い下地の上に小さな文字を描く
+        /// @param min 下地の左上
+        void DrawBadge(ImDrawList* drawList, const ImVec2& min, const std::string& text)
+        {
+            const ImVec2 textSize = ImGui::CalcTextSize(text.c_str());
+            const ImVec2 max(min.x + textSize.x + 12.0f, min.y + textSize.y + 4.0f);
+            drawList->AddRectFilled(min, max, ImGui::GetColorU32(Editor::Theme::WithAlpha(Editor::Theme::kDeepest, 0.8f)), 3.0f);
+            drawList->AddText(ImVec2(min.x + 6.0f, min.y + 2.0f), ImGui::GetColorU32(Editor::Theme::kText), text.c_str());
+        }
+
+        /// @brief 再生モードの間、Game ビューの外周の橙枠と上辺の札・経過時間・スクリプトの実行時間を描く
+        /// @param min 映像の左上
+        /// @param max 映像の右下
+        void DrawPlayModeOverlay(const ImVec2& min, const ImVec2& max, const EditorStatus& status)
+        {
+            if (status.playback == PlaybackState::Editing) {
+                return;
+            }
+
+            namespace Theme = Editor::Theme;
+            ImDrawList* const drawList = ImGui::GetWindowDrawList();
+            const ImU32 warm = ImGui::GetColorU32(Theme::kWarm);
+            drawList->AddRect(min, max, warm, 0.0f, 0, 2.0f);
+
+            // 上辺の中央の札
+            const char* const label = (status.playback == PlaybackState::Paused) ? "PAUSED" : "PLAYING";
+            const ImVec2 labelSize = ImGui::CalcTextSize(label);
+            const float centerX = (min.x + max.x) * 0.5f;
+            const ImVec2 tabMin(centerX - labelSize.x * 0.5f - 12.0f, min.y);
+            const ImVec2 tabMax(centerX + labelSize.x * 0.5f + 12.0f, min.y + labelSize.y + 2.0f);
+            drawList->AddRectFilled(tabMin, tabMax, warm, 4.0f, ImDrawFlags_RoundCornersBottom);
+            drawList->AddText(ImVec2(tabMin.x + 12.0f, tabMin.y + 1.0f), ImGui::GetColorU32(Theme::kOnWarm), label);
+
+            // 右上：再生を始めてから進んだゲームの時間
+            const int tenths = static_cast<int>(status.playTime * 10.0f);
+            const std::string elapsed = std::format("経過 {:02}:{:02}.{}", tenths / 600, (tenths / 10) % 60, tenths % 10);
+            const float elapsedWidth = ImGui::CalcTextSize(elapsed.c_str()).x + 12.0f;
+            DrawBadge(drawList, ImVec2(max.x - elapsedWidth - 8.0f, min.y + 8.0f), elapsed);
+
+            // 左下：スクリプトの実行
+            const std::string scripts = std::format("Script {:.2f}ms / {} 実体", status.scriptUpdateMs, status.scriptComponents);
+            const float badgeHeight = ImGui::GetTextLineHeight() + 4.0f;
+            DrawBadge(drawList, ImVec2(min.x + 8.0f, max.y - badgeHeight - 8.0f), scripts);
+        }
+    }
+#endif
 
     void ImGuiManager::Initialize(HWND hwnd, GraphicsCore* dxCommon)
     {
@@ -46,10 +100,8 @@ namespace CoreEngine
 
         io.ConfigWindowsMoveFromTitleBarOnly = false; // ウィンドウ全体からドラッグ移動を可能にする
 
-        // imgui.ini の保存先を Cache フォルダに変更
-        std::filesystem::create_directories("Cache");
-        static const std::string kIniPath = "Cache/imgui.ini";
-        io.IniFilename = kIniPath.c_str();
+        // ウィンドウの位置とドックの配置はエディタ設定の保存（EditorLayout）が持つので、ファイルへは書かない
+        io.IniFilename = nullptr;
 
         ImGui::StyleColorsDark();
         ApplyCustomTheme();
@@ -71,10 +123,24 @@ namespace CoreEngine
         // 日本語グリフ範囲に加え、罫線文字・記号を追加
         static const ImWchar kExtraRanges[] = {
             0x2022, 0x2022, // Bullet •
-            0x2500, 0x257F, // Box Drawing 
+            0x2500, 0x257F, // Box Drawing
             0x2580, 0x259F, // Block Elements
             0x25A0, 0x25FF, // Geometric Shapes
-            0x2713, 0x2713, // Check mark 
+            0x2713, 0x2713, // Check mark
+            0,
+        };
+
+        // UI の記号（矢印・再生記号・幾何学図形）。Yu Gothic は大半を持たないため、
+        // これらだけを記号フォントから重ねて読む
+        static const ImWchar kSymbolRanges[] = {
+            0x2190, 0x21FF, // Arrows
+            0x2200, 0x22FF, // Mathematical Operators
+            0x23E9, 0x23FA, // Media Control Symbols
+            0x25A0, 0x25FF, // Geometric Shapes
+            0x2600, 0x26FF, // Miscellaneous Symbols
+            0x2700, 0x27BF, // Dingbats
+            0x27F0, 0x27FF, // Supplemental Arrows-A
+            0x2900, 0x297F, // Supplemental Arrows-B
             0,
         };
 
@@ -86,6 +152,7 @@ namespace CoreEngine
         rangesBuilder.BuildRanges(&fontRanges);
 
         const char* fontPath = "C:/Windows/Fonts/YuGothB.ttc";
+        const char* symbolFontPath = "C:/Windows/Fonts/seguisym.ttf";
 
         if (fs::exists(fontPath)) {
             ImFont* font = io.Fonts->AddFontFromFileTTF(
@@ -93,6 +160,17 @@ namespace CoreEngine
                 config.SizePixels,
                 &config,
                 fontRanges.Data);
+
+            // 本文フォントに無い記号だけを同じフォントへ足す
+            if (font && fs::exists(symbolFontPath)) {
+                ImFontConfig symbolConfig = config;
+                symbolConfig.MergeMode = true;
+                io.Fonts->AddFontFromFileTTF(
+                    symbolFontPath,
+                    config.SizePixels,
+                    &symbolConfig,
+                    kSymbolRanges);
+            }
 
             if (font) {
                 io.FontDefault = font;
@@ -119,7 +197,7 @@ namespace CoreEngine
         ImGui::GetIO().Fonts->GetTexDataAsRGBA32(nullptr, nullptr, nullptr);
         ImGui_ImplDX12_CreateDeviceObjects(); // これがないとアクセス違反が起きる
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         // ProjectViewの初期化
         projectView_->Initialize(dxCommon_);
 #endif
@@ -144,11 +222,11 @@ namespace CoreEngine
         }
 
         // ドッキングUIの開始（メニューバーの高さを考慮してドッキングスペースを配置）
-        // レイアウト構築は BeginDockSpaceHostWindow が DockSpace 提出前に内部で行う
-        dockingUI_->BeginDockSpaceHostWindow();
+        // レイアウト構築は BeginDockSpaceHost が DockSpace 提出前に内部で行う
+        auto dockHost = dockingUI_->BeginDockSpaceHost();
 
         // Game ビューポートは PostEffectPass 完了後に別経路で描画する。
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         // Canvas ウィンドウ（UI の配置編集）。
         // 背景にはゲームの描画結果そのものを敷き、その上へ選択枠とギズモだけを重ねる
         // （Unity の Scene ビューと同じ考え方）。渡るのは 1 フレーム前の結果だが、
@@ -166,13 +244,11 @@ namespace CoreEngine
 
         projectView_->Update();
 #endif
-
-        ImGui::End();
     }
 
     void ImGuiManager::DrawGameViewport([[maybe_unused]] GraphicsCore* dxCommon, [[maybe_unused]] PostEffectManager* postEffectManager, [[maybe_unused]] GameDebugUI* gameDebugUI)
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         D3D12_GPU_DESCRIPTOR_HANDLE textureHandle{};
         if (postEffectManager) {
             textureHandle = postEffectManager->GetFinalDisplayTextureHandle();
@@ -216,8 +292,11 @@ namespace CoreEngine
         ImGui::SetCursorScreenPos(ImVec2(contentPos.x + offsetX, contentPos.y + offsetY));
         ImGui::Image((ImTextureID)textureHandle.ptr, ImVec2(drawW, drawH));
 
+        // 再生モードの間は、編集が停止で戻ることを映像の外周で知らせる
+        DrawPlayModeOverlay(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), dockingUI_->GetStatus());
+
         // Gameビュー上のギズモ・オブジェクト選択・モデルドロップ。
-        // エディタ機能の有効条件は USE_IMGUI（Development ビルドにも必要）。_DEBUG で囲まないこと
+        // エディタ機能の有効条件は CORE_EDITOR（Development ビルドにも必要）。_DEBUG で囲まないこと
         SceneDebugEditor* sceneDebugEditor = gameDebugUI ? gameDebugUI->GetSceneDebugEditor() : nullptr;
 
         if (sceneDebugEditor) {
@@ -226,6 +305,9 @@ namespace CoreEngine
             const ImVec2 imageSize(imageMax.x - imageMin.x, imageMax.y - imageMin.y);
             sceneDebugEditor->AcceptGameViewportModelDrop(imageMin, imageSize);
             const bool isImageHovered = ImGui::IsItemHovered();
+            // UI の当たり判定へ、ゲーム画像が画面上のどこにあるかを教える
+            UIPointer::Get().SetViewRect({ imageMin.x, imageMin.y },
+                                         { imageSize.x, imageSize.y }, isImageHovered);
             sceneDebugEditor->UpdateGameViewportInteraction(
                 imageMin,
                 imageSize,
@@ -238,7 +320,7 @@ namespace CoreEngine
 
     void ImGuiManager::DrawFullscreenGameViewport([[maybe_unused]] D3D12_GPU_DESCRIPTOR_HANDLE textureHandle)
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(viewport->Pos);
         ImGui::SetNextWindowSize(viewport->Size);
@@ -315,7 +397,7 @@ namespace CoreEngine
 
     void ImGuiManager::Finalize()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         projectView_->Finalize();
 #endif
         ImGui_ImplDX12_Shutdown();
@@ -332,38 +414,32 @@ namespace CoreEngine
         // 方針: ①背景に明度の段差を作る ②アクセント色は「選択・操作中」だけに使う
         //       ③面の区切りは枠線ではなく明度差で行う（FrameBorderSize = 0）
         //
-        // 【重要】ImGui は sRGB の RTV へ描くので、リニア値を渡すと書き込み時に持ち上がる。
-        // 配色は「画面に出したい sRGB の 0-255 値」で書き、下の srgb ヘルパでリニアへ逆変換する。
-        const auto srgb = [](int r, int g, int b, float a = 1.0f) -> ImVec4 {
-            const auto toLinear = [](int v8) {
-                const float c = static_cast<float>(v8) / 255.0f;
-                return (c <= 0.04045f) ? c / 12.92f : powf((c + 0.055f) / 1.055f, 2.4f);
-            };
-            return ImVec4(toLinear(r), toLinear(g), toLinear(b), a);
-        };
+        // 配色の実体は Editor::Theme が持つ（sRGB の 0-255 値をリニアへ逆変換したもの）。
+        // ここでは ImGui の色スロットへ割り当てるだけにする。
+        namespace Theme = Editor::Theme;
 
-        // 背景の階調（暗 → 明）。Unity ダークテーマの実測値に近い並び
-        const ImVec4 bgDeepest = srgb(20, 20, 21);    // 最奥（スクロールバー溝など）
-        const ImVec4 bgField = srgb(26, 26, 28);    // 入力欄（一段沈める）
-        const ImVec4 bgChild = srgb(30, 30, 33);    // 子パネル（少し沈める）
-        const ImVec4 bgWindow = srgb(36, 36, 40);    // ウィンドウ
-        const ImVec4 bgPanel = srgb(44, 44, 48);    // メニューバー・タイトル・ポップアップ
-        const ImVec4 bgControl = srgb(58, 58, 64);    // ボタン・タブ選択
-        const ImVec4 bgHover = srgb(74, 74, 82);    // ホバー
-        const ImVec4 bgActive = srgb(90, 90, 100);   // 押下
+        // 背景の階調（暗 → 明）
+        const ImVec4 bgDeepest = Theme::kDeepest;    // 最奥（スクロールバー溝など）
+        const ImVec4 bgField = Theme::kField;      // 入力欄（一段沈める）
+        const ImVec4 bgChild = Theme::kChild;      // 子パネル（少し沈める）
+        const ImVec4 bgWindow = Theme::kWindow;     // ウィンドウ
+        const ImVec4 bgPanel = Theme::kPanel;      // メニューバー・タイトル・ポップアップ
+        const ImVec4 bgControl = Theme::kControl;    // ボタン・タブ選択
+        const ImVec4 bgHover = Theme::kHover;      // ホバー
+        const ImVec4 bgActive = Theme::kActive;     // 押下
 
         // アクセント（青。選択・操作中の要素だけに使う）
-        const ImVec4 accent = srgb(61, 126, 200);
-        const ImVec4 accentHover = srgb(85, 150, 222);
-        const ImVec4 accentMuted = srgb(42, 63, 85);   // 選択行の下地
-        const ImVec4 accentWarm = srgb(242, 156, 49); // 差し色（少量だけ使う）
+        const ImVec4 accent = Theme::kAccent;
+        const ImVec4 accentHover = Theme::kAccentHover;
+        const ImVec4 accentMuted = Theme::kAccentMuted; // 選択行の下地
+        const ImVec4 accentWarm = Theme::kWarm;         // 差し色（少量だけ使う）
 
         // テキスト
-        const ImVec4 textPrimary = srgb(238, 238, 242);
-        const ImVec4 textDisabled = srgb(128, 128, 138);
+        const ImVec4 textPrimary = Theme::kText;
+        const ImVec4 textDisabled = Theme::kTextMute;
 
-        const ImVec4 borderColor = srgb(15, 15, 16);
-        const ImVec4 transparent = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+        const ImVec4 borderColor = Theme::kBorder;
+        const ImVec4 transparent = Theme::kTransparent;
 
         // ===== 面 =====
         colors[ImGuiCol_WindowBg] = bgWindow;
@@ -405,8 +481,8 @@ namespace CoreEngine
 
         // ===== 入力欄 =====
         colors[ImGuiCol_FrameBg] = bgField;
-        colors[ImGuiCol_FrameBgHovered] = srgb(32, 32, 36);
-        colors[ImGuiCol_FrameBgActive] = srgb(38, 38, 43);
+        colors[ImGuiCol_FrameBgHovered] = Theme::FromSrgb(32, 32, 36);
+        colors[ImGuiCol_FrameBgActive] = Theme::FromSrgb(38, 38, 43);
 
         // ===== ボタン =====
         colors[ImGuiCol_Button] = bgControl;
@@ -419,11 +495,11 @@ namespace CoreEngine
         colors[ImGuiCol_SliderGrabActive] = accentHover;
 
         colors[ImGuiCol_ScrollbarBg] = bgDeepest;
-        colors[ImGuiCol_ScrollbarGrab] = srgb(63, 63, 70);
+        colors[ImGuiCol_ScrollbarGrab] = Theme::FromSrgb(63, 63, 70);
         colors[ImGuiCol_ScrollbarGrabHovered] = bgHover;
         colors[ImGuiCol_ScrollbarGrabActive] = bgActive;
 
-        colors[ImGuiCol_Separator] = srgb(56, 56, 62);
+        colors[ImGuiCol_Separator] = Theme::FromSrgb(56, 56, 62);
         colors[ImGuiCol_SeparatorHovered] = accent;
         colors[ImGuiCol_SeparatorActive] = accentHover;
 
@@ -436,12 +512,12 @@ namespace CoreEngine
         colors[ImGuiCol_PlotLines] = accentHover;
         colors[ImGuiCol_PlotLinesHovered] = accentWarm;
         colors[ImGuiCol_PlotHistogram] = accentWarm;
-        colors[ImGuiCol_PlotHistogramHovered] = srgb(255, 204, 120);
+        colors[ImGuiCol_PlotHistogramHovered] = Theme::FromSrgb(255, 204, 120);
 
         // ===== テーブル =====
         colors[ImGuiCol_TableHeaderBg] = bgPanel;
-        colors[ImGuiCol_TableBorderStrong] = srgb(60, 60, 66);
-        colors[ImGuiCol_TableBorderLight] = srgb(42, 42, 47);
+        colors[ImGuiCol_TableBorderStrong] = Theme::FromSrgb(60, 60, 66);
+        colors[ImGuiCol_TableBorderLight] = Theme::FromSrgb(42, 42, 47);
         colors[ImGuiCol_TableRowBg] = transparent;
         colors[ImGuiCol_TableRowBgAlt] = ImVec4(1.0f, 1.0f, 1.0f, 0.022f);
 

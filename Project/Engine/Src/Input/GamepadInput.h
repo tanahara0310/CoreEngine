@@ -49,6 +49,9 @@ namespace CoreEngine
         /// @brief ゲームパッドの状態を更新
         void Update() override;
 
+        /// @brief 全ボタンを離し、スティックとトリガーを 0 にする
+        void Reset() override;
+
         /// @brief コントローラが接続されているか
         bool IsConnected() const;
 
@@ -71,6 +74,9 @@ namespace CoreEngine
         /// @brief アナログ軸がしきい値を初めて超えたフレームか
         /// @details スティックを倒し続けても毎フレーム true にはならない。
         bool IsAxisTriggered(GamepadAxis axis, bool positive, float threshold = 0.1f) const;
+
+        /// @brief アナログ軸がしきい値を下回ったフレームか（倒していたのを戻した）
+        bool IsAxisReleased(GamepadAxis axis, bool positive, float threshold = 0.1f) const;
 
         /// @brief 振動を設定（0.0〜1.0）
         void SetVibration(float leftMotorRatio, float rightMotorRatio);

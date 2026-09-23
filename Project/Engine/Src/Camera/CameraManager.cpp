@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "CameraManager.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/Camera/CameraDebugUI.h"
 #include "GameObject/GameObjectManager.h"
 #endif
@@ -50,7 +50,22 @@ namespace CoreEngine
         }
 
         controllers_.erase(name);
+        objectOwnedCameras_.erase(name);
         cameras_.erase(it);
+    }
+
+    void CameraManager::SetObjectOwnedCamera(const std::string& name, bool owned)
+    {
+        if (owned) {
+            objectOwnedCameras_.insert(name);
+        } else {
+            objectOwnedCameras_.erase(name);
+        }
+    }
+
+    bool CameraManager::IsObjectOwnedCamera(const std::string& name) const
+    {
+        return objectOwnedCameras_.find(name) != objectOwnedCameras_.end();
     }
 
     ICameraController* CameraManager::GetController(const std::string& name) const
@@ -158,7 +173,7 @@ namespace CoreEngine
         }
     }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     void CameraManager::SetDebugGameObjectManager(GameObjectManager* gameObjectManager)
     {
         debugGameObjectManager_ = gameObjectManager;

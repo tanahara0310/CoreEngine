@@ -22,7 +22,9 @@ Project/Externals/LivePP/Broker/
 mono_crash.*
 
 # C++ build intermediate / output files
-*.obj
+# ※ `*.obj` は書かない。コンパイラの中間ファイルは generated/ 配下にしか出ないのに、
+#    この 1 行が Wavefront OBJ のモデル（Application/Assets/Models/*.obj）まで
+#    巻き込んで、clone してもゲームが立ち上がらない状態になっていた
 *.ilk
 *.exp
 *.map
@@ -68,8 +70,12 @@ StyleCopReport.xml
 
 # Files built by Visual Studio
 *.pdb
-Project/Cache/
 Project/Dumps/
+
+# 消しても作り直せるもの（シェーダ/テクスチャ/フォントのキャッシュ・ログ・imgui.ini）
+Project/Intermediate/
+# 旧称。まだディスクに残っている環境のために残す
+Project/Cache/
 
 # エディタ設定の自動保存（ローカルのエディタ状態。カメラ姿勢・大気/雲の編集値など）
 Project/Application/Saved/
@@ -78,7 +84,6 @@ Project/Application/Saved/
 imgui.ini
 **/Cache/logs/
 **/Cache/imgui.ini
-*Application/Assets/Scene
 generated/
 Captures/
 packages/

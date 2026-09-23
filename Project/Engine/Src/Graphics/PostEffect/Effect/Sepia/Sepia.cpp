@@ -4,7 +4,7 @@
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/CVar/CVar.h"
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
 #endif
 #include <cassert>
@@ -87,7 +87,7 @@ namespace CoreEngine
 
     void Sepia::DrawImGui()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         ImGui::PushID("SepiaParams");
         ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
         UI::Separator();
@@ -102,7 +102,7 @@ namespace CoreEngine
             ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "注意: エフェクトは無効ですが、パラメータは調整可能です");
         }
         ImGui::PopID();
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
     }
 
     CVar<bool>* Sepia::GetEnabledCVar() const

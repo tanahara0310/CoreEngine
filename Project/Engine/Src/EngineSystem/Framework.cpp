@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Framework.h"
+#include "Utility/Path/ProjectPaths.h"
 #include "Graphics/Render/Pass/RenderPipeline.h"
 #include "Startup/StartupSequence.h"
 #include "Startup/StartupProgress.h"
@@ -8,6 +9,8 @@
 #include "Graphics/Shader/Cache/ShaderBlobCache.h"
 #include "Graphics/Shader/Cache/ShaderManifest.h"
 #include "Utility/Profiler/CpuProfiler.h"
+#include "Diagnostics/EngineStats.h"
+#include <chrono>
 
 
 namespace CoreEngine
@@ -95,6 +98,10 @@ namespace CoreEngine
 
     void Framework::Run()
     {
+        // データの根を先に確定させる。これより前にファイルを触るものがあっても
+        // 初回参照時に同じ結果へ落ち着くが、順序を読めるようにここで明示する
+        ProjectPaths::Prime();
+
         // ──────────────────────────────────────────────────────────
         // デバッグ機能の初期化（エンジン層で自動管理）
         // ──────────────────────────────────────────────────────────
@@ -151,7 +158,11 @@ namespace CoreEngine
             engineSystem_->BeginFrame();
 
             // ゲーム固有の更新処理（派生クラスで実装）
+            const auto updateStarted = std::chrono::steady_clock::now();
             Update();
+            const std::chrono::duration<float, std::milli> updateElapsed =
+                std::chrono::steady_clock::now() - updateStarted;
+            EngineStats::GetInstance().GetFrameTimings().updateMs = updateElapsed.count();
 
             // ゲーム固有の描画処理（派生クラスで実装）
             PrepareRender();

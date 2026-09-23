@@ -1,0 +1,72 @@
+{
+    "id": "c91b0c05d16876a4",
+    "active": true,
+    "name": "LeftButton",
+    "components": [
+        {
+            "type": "RectTransform",
+            "enabled": true,
+            "parameters": {
+                "anchor": 4,
+                "anchoredPosition": [
+                    -260.0,
+                    80.0
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "size": [
+                    200.0,
+                    64.0
+                ],
+                "rotation": 0.0,
+                "sortOrder": 10
+            }
+        },
+        {
+            "type": "UIImage",
+            "enabled": true,
+            "parameters": {
+                "texture": "Application/Assets/Textures/gradationLine.png",
+                "color": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "type": "UIButton",
+            "enabled": true,
+            "parameters": {
+                "interactable": true,
+                "normalColor": [
+                    0.32,
+                    0.38,
+                    0.5,
+                    1.0
+                ],
+                "hoveredColor": [
+                    0.4,
+                    0.68,
+                    1.0,
+                    1.0
+                ],
+                "pressedColor": [
+                    0.15,
+                    0.35,
+                    0.7,
+                    1.0
+                ],
+                "disabledColor": [
+                    0.45,
+                    0.45,
+                    0.45,
+                    0.6
+                ]
+            }
+        }
+    ]
+}

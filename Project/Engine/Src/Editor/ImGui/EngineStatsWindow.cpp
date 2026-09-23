@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "EngineStatsWindow.h"
+#include "Editor/ImGui/Widgets/PassTimingTable.h"
 
 #include "Diagnostics/EngineStats.h"
 #include "Graphics/Model/ModelManager.h"
@@ -29,17 +30,17 @@ namespace CoreEngine
         // 計測キャプチャの自動実行。起動から指定秒後に開始し、完了したら CSV を書き出す。
         // ImGui のボタンを押さずに同じ条件で取り直せるようにするためのもの。
         CVar<float> cvAutoCaptureStartSec{
-            "stats.TimingCapture.AutoStartSec", 0.0f,
+            "sys.TimingCapture.AutoStartSec", 0.0f,
             "起動から指定秒後に計測キャプチャを自動開始する（0 で無効。実行すると 0 へ戻る）",
             CVarRange{ 0.0f, 600.0f }, CVarFlags::NoUI };
 
         CVar<int> cvAutoCaptureWarmupFrames{
-            "stats.TimingCapture.WarmupFrames", 120,
+            "sys.TimingCapture.WarmupFrames", 120,
             "自動キャプチャのウォームアップフレーム数",
             CVarRange{ 0.0f, 1200.0f }, CVarFlags::NoUI };
 
         CVar<int> cvAutoCaptureFrames{
-            "stats.TimingCapture.Frames", 300,
+            "sys.TimingCapture.Frames", 300,
             "自動キャプチャの収集フレーム数",
             CVarRange{ 1.0f, static_cast<float>(GpuTimingStatsCollector::kMaxCaptureFrames) },
             CVarFlags::NoUI };
@@ -494,65 +495,7 @@ namespace CoreEngine
 
         ImGui::Spacing();
 
-        // パス別横棒グラフ（合計に対する割合でビジュアル化）
-        const float barMaxMs = (std::max)(gpuTotalMs, 1.0f);
-        ImGui::PushStyleColor(ImGuiCol_TableRowBg, ImVec4(0.13f, 0.13f, 0.13f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, ImVec4(0.16f, 0.16f, 0.16f, 1.0f));
-        if (ImGui::BeginTable("gpu_timing_table", 3,
-            ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_PadOuterX))
-        {
-            ImGui::TableSetupColumn("パス", ImGuiTableColumnFlags_WidthFixed, 100.0f);
-            ImGui::TableSetupColumn("ms", ImGuiTableColumnFlags_WidthFixed, 52.0f);
-            ImGui::TableSetupColumn("比率", ImGuiTableColumnFlags_WidthStretch);
-
-            // カテゴリ別に表示（パス名から解決した GpuTimingCategory でグルーピング。
-            // RenderGraph に新規パスを追加してもここは編集不要）
-            const std::vector<GpuTimingGroup> groups = BuildGpuTimingGroups(frozenGpu_);
-
-            for (const auto& group : groups)
-            {
-                // カテゴリヘッダー行
-                ImGui::TableNextRow();
-                ImGui::TableSetColumnIndex(0);
-                ImGui::TextColored(kHeaderColor, "%s", GpuTimestampProfiler::GetCategoryLabel(group.category));
-
-                for (uint32_t idx : group.slotIndices)
-                {
-                    const auto& r = frozenGpu_[idx];
-
-                    // 今フレーム走らなかったパスも行は残す（行の出入りで表全体がずれないように）。
-                    // 走っていないことは淡色で示す。
-                    const bool idle = IsIdleTimingSlot(r);
-
-                    float ratio = r.gpuMs / barMaxMs;
-                    ImVec4 barColor = ratio < 0.3f ? ImVec4(0.25f, 0.75f, 0.35f, 0.85f) :
-                        ratio < 0.6f ? ImVec4(0.85f, 0.70f, 0.15f, 0.85f) :
-                        ImVec4(0.90f, 0.30f, 0.25f, 0.85f);
-
-                    ImGui::TableNextRow();
-                    ImGui::TableSetColumnIndex(0);
-                    ImGui::Indent(12.0f);
-                    ImGui::TextColored(idle ? kIdleColor : kLabelColor, "%s", r.name);
-                    ImGui::Unindent(12.0f);
-                    ImGui::TableSetColumnIndex(1);
-                    ImGui::TextColored(idle ? kIdleColor : kValueColor, "%.3f", r.gpuMs);
-                    ImGui::TableSetColumnIndex(2);
-                    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, barColor);
-                    ImGui::ProgressBar(ratio, ImVec2(-1.0f, 0.0f), "");
-                    ImGui::PopStyleColor();
-                }
-            }
-
-            // Total 行
-            ImGui::TableNextRow();
-            ImGui::TableSetColumnIndex(0);
-            ImGui::TextColored(kHeaderColor, "合計");
-            ImGui::TableSetColumnIndex(1);
-            ImGui::TextColored(kHeaderColor, "%.3f", gpuTotalMs);
-
-            ImGui::EndTable();
-        }
-        ImGui::PopStyleColor(2);
+        UI::PassTimingTable("gpu_timing_table", frozenGpu_, true);
     }
 
     void EngineStatsWindow::DrawMeasurementSection()
@@ -716,58 +659,7 @@ namespace CoreEngine
         ImGui::Separator();
         ImGui::Spacing();
 
-        // カテゴリ別に表示（パス名から解決した GpuTimingCategory でグルーピング。
-        // RenderGraph に新規パスを追加してもここは編集不要）
-        const std::vector<GpuTimingGroup> groups = BuildGpuTimingGroups(frozenGpu_);
-
-        ImGui::PushStyleColor(ImGuiCol_TableRowBg, ImVec4(0.13f, 0.13f, 0.13f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, ImVec4(0.16f, 0.16f, 0.16f, 1.0f));
-        if (ImGui::BeginTable("pass_timing_table", 3,
-            ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg |
-            ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_PadOuterX | ImGuiTableFlags_BordersOuter))
-        {
-            ImGui::TableSetupColumn("パス", ImGuiTableColumnFlags_WidthStretch);
-            ImGui::TableSetupColumn("GPU ms", ImGuiTableColumnFlags_WidthFixed, 62.0f);
-            ImGui::TableSetupColumn("CPU ms", ImGuiTableColumnFlags_WidthFixed, 62.0f);
-            ImGui::TableSetupScrollFreeze(0, 1);
-            ImGui::TableHeadersRow();
-
-            for (const auto& group : groups)
-            {
-                // カテゴリヘッダー行
-                ImGui::TableNextRow();
-                ImGui::TableSetColumnIndex(0);
-                ImGui::TextColored(kHeaderColor, "%s", GpuTimestampProfiler::GetCategoryLabel(group.category));
-
-                for (uint32_t idx : group.slotIndices)
-                {
-                    const auto& r = frozenGpu_[idx];
-                    const bool idle = IsIdleTimingSlot(r);
-
-                    ImGui::TableNextRow();
-                    ImGui::TableSetColumnIndex(0);
-                    ImGui::Indent(12.0f);
-                    ImGui::TextColored(idle ? kIdleColor : kLabelColor, "%s", r.name);
-                    ImGui::Unindent(12.0f);
-
-                    ImGui::TableSetColumnIndex(1);
-                    ImVec4 gpuColor = idle ? kIdleColor :
-                        r.gpuMs > 5.0f ? ImVec4(1.0f, 0.4f, 0.4f, 1.0f) :
-                        r.gpuMs > 2.0f ? ImVec4(1.0f, 0.8f, 0.2f, 1.0f) :
-                        kValueColor;
-                    ImGui::TextColored(gpuColor, "%.3f", r.gpuMs);
-
-                    ImGui::TableSetColumnIndex(2);
-                    ImVec4 cpuColor = idle ? kIdleColor :
-                        r.cpuMs > 3.0f ? ImVec4(1.0f, 0.4f, 0.4f, 1.0f) :
-                        r.cpuMs > 1.0f ? ImVec4(1.0f, 0.8f, 0.2f, 1.0f) :
-                        kSubLabel;
-                    ImGui::TextColored(cpuColor, "%.3f", r.cpuMs);
-                }
-            }
-            ImGui::EndTable();
-        }
-        ImGui::PopStyleColor(2);
+        UI::PassTimingTable("pass_timing_table", frozenGpu_, false);
 
         ImGui::Spacing();
         ImGui::TextColored(kSubLabel, "※ GPU 値は 1 フレーム遅延あり / 表示は %.1f 秒間隔で更新", kTimingUpdateInterval);

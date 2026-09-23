@@ -5,6 +5,7 @@
 
 #pragma comment(lib, "dinput8.lib")
 #pragma comment(lib, "dxguid.lib")
+#pragma comment(lib, "user32.lib")
 
 
 namespace CoreEngine
@@ -58,6 +59,12 @@ namespace CoreEngine
                 OutputDebugStringW(L"Mouse GetDeviceState に失敗しました\n");
             }
         }
+    }
+
+    void MouseInput::Reset()
+    {
+        prevMouseState_ = mouseState_;
+        mouseState_ = {};
     }
 
     // マウスボタンが押されているかどうか

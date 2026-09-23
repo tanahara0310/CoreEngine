@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "ModelManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Texture/TextureManager.h"
@@ -14,6 +14,7 @@
 #include "Animation/SkeletonAnimatorFactory.h"
 #include "Threading/ThreadPool.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/Path/ProjectPaths.h"
 
 #include <cassert>
 #include <filesystem>
@@ -123,7 +124,8 @@ namespace CoreEngine
             return instance;
         }
 
-        // 初期アニメーションのコントローラーと切り替え用ファクトリーを持つプレイヤーを注入する
+        // スケルトンで頂点を変形して描き、初期アニメーションのコントローラーと切り替え用ファクトリーを持つプレイヤーを注入する
+        instance->EnableSkinning();
         auto factory = std::make_unique<SkeletonAnimatorFactory>();
         auto skeletonAnimator = factory->CreateSkeletonAnimator(*resource->GetSkeleton(), *animation, loop);
         instance->SetAnimationPlayer(std::make_unique<AnimationPlayer>(
@@ -145,12 +147,19 @@ namespace CoreEngine
             return false;
         }
 
-        const std::string& animFile = loadInfo.animationFile.empty()
-            ? resolvedFilename
-            : loadInfo.animationFile;
+        // アニメーションの置き場は、モデルと同じファイルのことも別ファイルのこともある。
+        // どちらもパスを解決してから分けないと、ディレクトリと二重に繋がって開けなくなる。
+        std::string animDirectory = resolvedDirectory;
+        std::string animFilename = resolvedFilename;
+        if (!loadInfo.animationFile.empty()) {
+            SplitPath(ResolveFilePath(loadInfo.animationFile), animDirectory, animFilename);
+        }
 
-        Animation animation = AnimationLoader::LoadAnimationFile(
-            resolvedDirectory, animFile, loadInfo.sourceAnimationName);
+        Animation animation;
+        if (!AnimationLoader::LoadAnimationFile(
+                animDirectory, animFilename, loadInfo.sourceAnimationName, animation)) {
+            return false;
+        }
         resource->AddAnimation(loadInfo.animationName, animation);
         return true;
     }
@@ -422,20 +431,12 @@ namespace CoreEngine
         }
 
         auto& assetDB = AssetDatabase::GetInstance();
-        std::filesystem::path assetPath = assetDB.FindAssetPath(searchName);
+        std::filesystem::path assetPath = assetDB.FindAssetPath(searchName, AssetType::Model);
         if (assetPath.empty() && inputPath.has_stem()) {
-            assetPath = assetDB.FindAssetPath(log.PathToUtf8(inputPath.stem()));
+            assetPath = assetDB.FindAssetPath(log.PathToUtf8(inputPath.stem()), AssetType::Model);
         }
         if (!assetPath.empty()) {
             return log.PathToUtf8(assetPath);
-        }
-
-        // Application/Assets または Engine/Assets で始まる場合はそのまま返す
-        if (normalized.starts_with("Application/Assets/")) {
-            return normalized;
-        }
-        if (normalized.starts_with("Engine/Assets/")) {
-            return normalized;
         }
 
         // 絶対パス（C:/ など）の場合はそのまま返す
@@ -443,8 +444,14 @@ namespace CoreEngine
             return normalized;
         }
 
-        // それ以外の場合はbasePath_を前に追加
-        return basePath_ + normalized;
+        // Application/Assets・Engine/Assets で始まらないものには basePath_ を足す
+        if (!normalized.starts_with("Application/Assets/") &&
+            !normalized.starts_with("Engine/Assets/")) {
+            normalized = basePath_ + normalized;
+        }
+
+        // 相対のまま返すと実行時のカレント基準になり、起動方法で読み先が変わる
+        return log.PathToUtf8(ProjectPaths::Resolve(normalized));
     }
 
     void ModelManager::UpdateResourceCacheStats()

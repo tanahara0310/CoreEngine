@@ -182,7 +182,7 @@ namespace CoreEngine
         }
 
         /// @brief 積まれたイベントをまとめて配信する
-        /// @note エンジンが BaseScene::Update() から毎フレーム 1 回呼ぶ。利用側は呼ばなくてよい。
+        /// @note エンジンが Scene::Update() から毎フレーム 1 回呼ぶ。利用側は呼ばなくてよい。
         void DispatchQueued();
 
         // ──────────────────────────────────────────────────────────
@@ -201,7 +201,7 @@ namespace CoreEngine
             return GetSubscriberCountRaw(EventDetail::TypeIdOf<E>());
         }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         /// @brief デバッグパネルを描画する（Window > Analysis > Event Bus）
         /// @note 疎結合の代償は「何が飛んでいるか見えなくなること」。この画面がその代償を払う。
         void DrawImGui();
@@ -251,7 +251,7 @@ namespace CoreEngine
             std::vector<Listener> listeners;
             std::vector<Listener> pendingAdd; ///< 配信中に来た購読（配信後に合流させる）
             bool needsCompact = false;        ///< alive == false を含むか
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
             std::uint64_t publishTotal = 0;   ///< 起動からの累計発行回数
             std::uint32_t publishThisFrame = 0;
             std::uint32_t publishLastFrame = 0;
@@ -282,7 +282,7 @@ namespace CoreEngine
 
         static constexpr int kMaxDispatchDepth = 32; ///< 相互 Publish の無限再帰を止める閾値
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         /// @brief 直近に流れたイベントの記録（デバッグパネル用のリングバッファ）
         struct TraceEntry {
             std::uint64_t frame = 0;

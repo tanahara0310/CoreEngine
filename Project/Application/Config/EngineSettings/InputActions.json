@@ -1,0 +1,184 @@
+{
+    "version": "1.0",
+    "actions": [
+        {
+            "id": "MoveForward",
+            "display": "前進",
+            "context": "Game",
+            "defaults": [
+                "Key:W",
+                "Key:Up",
+                "Axis:LeftStickY+",
+                "Gamepad:DPadUp"
+            ]
+        },
+        {
+            "id": "MoveBack",
+            "display": "後退",
+            "context": "Game",
+            "defaults": [
+                "Key:S",
+                "Key:Down",
+                "Axis:LeftStickY-",
+                "Gamepad:DPadDown"
+            ]
+        },
+        {
+            "id": "MoveLeft",
+            "display": "左移動",
+            "context": "Game",
+            "defaults": [
+                "Key:A",
+                "Key:Left",
+                "Axis:LeftStickX-",
+                "Gamepad:DPadLeft"
+            ]
+        },
+        {
+            "id": "MoveRight",
+            "display": "右移動",
+            "context": "Game",
+            "defaults": [
+                "Key:D",
+                "Key:Right",
+                "Axis:LeftStickX+",
+                "Gamepad:DPadRight"
+            ]
+        },
+        {
+            "id": "Jump",
+            "display": "ジャンプ",
+            "context": "Game",
+            "defaults": [
+                "Key:Space",
+                "Gamepad:A"
+            ]
+        },
+        {
+            "id": "Sprint",
+            "display": "ダッシュ",
+            "context": "Game",
+            "defaults": [
+                "Key:LShift",
+                "Gamepad:LeftThumb"
+            ]
+        },
+        {
+            "id": "Attack",
+            "display": "攻撃",
+            "context": "Game",
+            "defaults": [
+                "Mouse:Left",
+                "Gamepad:X"
+            ]
+        },
+        {
+            "id": "Interact",
+            "display": "インタラクト",
+            "context": "Game",
+            "defaults": [
+                "Key:E",
+                "Gamepad:B"
+            ]
+        },
+        {
+            "id": "UINavigateUp",
+            "display": "UI上",
+            "context": "UI",
+            "defaults": [
+                "Key:Up",
+                "Axis:LeftStickY+",
+                "Gamepad:DPadUp"
+            ]
+        },
+        {
+            "id": "UINavigateDown",
+            "display": "UI下",
+            "context": "UI",
+            "defaults": [
+                "Key:Down",
+                "Axis:LeftStickY-",
+                "Gamepad:DPadDown"
+            ]
+        },
+        {
+            "id": "UINavigateLeft",
+            "display": "UI左",
+            "context": "UI",
+            "defaults": [
+                "Key:Left",
+                "Axis:LeftStickX-",
+                "Gamepad:DPadLeft"
+            ]
+        },
+        {
+            "id": "UINavigateRight",
+            "display": "UI右",
+            "context": "UI",
+            "defaults": [
+                "Key:Right",
+                "Axis:LeftStickX+",
+                "Gamepad:DPadRight"
+            ]
+        },
+        {
+            "id": "UIConfirm",
+            "display": "UI決定",
+            "context": "UI",
+            "defaults": [
+                "Key:Enter",
+                "Gamepad:A"
+            ]
+        },
+        {
+            "id": "UICancel",
+            "display": "UIキャンセル",
+            "context": "UI",
+            "defaults": [
+                "Key:Escape",
+                "Gamepad:B"
+            ]
+        },
+        {
+            "id": "Pause",
+            "display": "ポーズ",
+            "context": "Game|UI",
+            "defaults": [
+                "Key:Escape",
+                "Gamepad:Start"
+            ]
+        },
+        {
+            "id": "EditorFocusSelection",
+            "display": "選択へ寄る",
+            "context": "Editor",
+            "defaults": [
+                "Key:F"
+            ]
+        },
+        {
+            "id": "EditorGizmoTranslate",
+            "display": "ギズモ：移動",
+            "context": "Editor",
+            "defaults": [
+                "Key:W"
+            ]
+        },
+        {
+            "id": "EditorGizmoRotate",
+            "display": "ギズモ：回転",
+            "context": "Editor",
+            "defaults": [
+                "Key:E"
+            ]
+        },
+        {
+            "id": "EditorGizmoScale",
+            "display": "ギズモ：拡縮",
+            "context": "Editor",
+            "defaults": [
+                "Key:R"
+            ]
+        }
+    ]
+}

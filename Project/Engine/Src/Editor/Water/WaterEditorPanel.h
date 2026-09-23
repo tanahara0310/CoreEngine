@@ -1,0 +1,56 @@
+#pragma once
+
+#ifdef CORE_EDITOR
+#include "Editor/Water/WaterEditorFacade.h"
+#include "Editor/Water/WaterSurfaceDebugPanel.h"
+#include "Editor/Water/WaterSurfaceParameterPanel.h"
+#endif
+
+namespace CoreEngine {
+	class EngineSystem;
+	class WaterRenderFeature;
+}
+
+namespace CoreEngine {
+
+/// @brief 水面エディタ UI の組み立てとインスペクタへの登録を担当する
+/// @details 水面本体・波シミュレーション・毎フレームのリソース結線は
+///          Engine 側の WaterRenderFeature が持つ。ここは UI だけを扱う。
+class WaterEditorPanel {
+public:
+	/// @brief インスペクタの登録を解除する
+	~WaterEditorPanel();
+
+	/// @brief 水面 UI の各パネルを初期化し、水面コンポーネントのインスペクタとして登録する
+	/// @param waterFeature シーンへ登録済みの水面 Feature（nullptr のとき UI は出ない）
+	/// @param engine エンジンシステム
+	void Initialize(CoreEngine::WaterRenderFeature* waterFeature, CoreEngine::EngineSystem& engine);
+
+	/// @brief UI 登録を解除し、Feature 参照を切る
+	/// @details Feature の所有者は Scene（Finalize で features_ が破棄される）なので、
+	///          それより先に呼ぶこと。WaterTestScene::OnFinalize() から呼ばれる。
+	///          冪等。デストラクタからも保険として呼ぶ。
+	void Shutdown();
+
+private:
+#ifdef CORE_EDITOR
+	/// @brief 水面制御用 UI の内容を描画する（Inspector 内に埋め込み）
+	void DrawImGuiContent();
+	/// @brief 水面の通常パラメータ編集パネル
+	WaterSurfaceParameterPanel parameterPanel_{};
+	/// @brief 水面のデバッグ表示・診断パネル
+	WaterSurfaceDebugPanel debugPanel_{};
+	/// @brief Water UI と Engine 内部設定の仲介 facade
+	WaterEditorFacade editorFacade_{};
+	/// @brief 環境エディタの登録解除に使うエンジン参照（非所有）
+	CoreEngine::EngineSystem* engine_ = nullptr;
+
+	// 旧 WaterSettingsSection（Water.json への専用シリアライズ）は Phase 5 で廃止。
+	// 全パラメータは WaterCVars として CVars.json（CVarSettingsSection）に保存される
+#endif
+
+	/// @brief UI の操作対象（所有権は Scene の Feature 一覧）
+	CoreEngine::WaterRenderFeature* waterFeature_ = nullptr;
+};
+
+}

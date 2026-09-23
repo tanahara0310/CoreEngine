@@ -29,6 +29,10 @@ namespace CollisionResolver
         if (a.IsTrigger() || b.IsTrigger()) {
             return false;
         }
+        // 物理が扱う接触は、速度と合わせて物理側が解消する
+        if (a.IsSimulated() || b.IsSimulated()) {
+            return false;
+        }
         if (contact.depth <= 0.0f) {
             return false;
         }

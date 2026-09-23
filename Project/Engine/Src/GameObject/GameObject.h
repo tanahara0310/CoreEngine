@@ -1,33 +1,32 @@
 #pragma once
 
-#include "Graphics/Render/RenderPassType.h"
+#include "GameObject/Component/Core/ComponentHost.h"
+#include "GameObject/IObjectSpawner.h"
+#include "GameObject/ObjectId.h"
+#include "Graphics/Asset/AssetRef.h"
 #include "Graphics/Render/RenderItem.h"
-#include "Graphics/Render/DrawViewInfo.h"
+#include "Graphics/Render/RenderPassType.h"
 #include "Graphics/Pipeline/PipelineStateManager.h"
 #include "Math/Vector/Vector3.h"
-#include "Collision/ColliderComponent.h"
-#include "GameObject/Component/Core/ComponentHost.h"
 #include "Utility/JsonManager/JsonManager.h"
-#include <functional>
-#include <d3d12.h>
+
 #include <memory>
 #include <optional>
 #include <string>
-#include <vector>
 
-#include "GameObject/IObjectSpawner.h"
-
-// Forward declaration
 namespace CoreEngine {
-    class Camera;
     class EngineSystem;
+    class GameObjectManager;
+    struct CollisionInfo;
+    struct DrawViewInfo;
 }
 
 namespace CoreEngine
 {
-    /// @brief すべてのゲームオブジェクトの共通基底（`ComponentHost` 継承）。
-    /// @details 機能は継承ではなく `AddComponent<T>()` で載せるのが方針。
-    ///          エンジン常駐サービスを引く `EngineSystem::GetService<T>()` とは別物。
+    /// @brief ID と名前を持ったコンポーネントの器
+    /// @details 機能は継承ではなく `AddComponent<T>()` で載せる。描画・当たり判定・トランスフォームは
+    ///          コンポーネントが受け持ち、この型は「どのコンポーネントを持つか」と
+    ///          「シーンの中でどれか（ID・名前）」だけを持つ。
     class GameObject : public ComponentHost {
     public:
         /// @brief コンストラクタ
@@ -37,371 +36,170 @@ namespace CoreEngine
             SetOwnerObject(this);
         }
 
-        virtual ~GameObject() = default;
+        ~GameObject() = default;
 
-        // ===== ライフサイクル =====
+        // ===== エンジン参照 =====
 
         /// @brief エンジンシステムへの静的参照を設定する
         /// @param engine アプリケーション全体で共有するエンジンシステムへのポインタ
         /// @note アプリケーション起動時に一度だけ呼び出す。
-        ///       以降は GetEngineSystem() で取得できる。
         static void SetEngine(EngineSystem* engine);
 
-        /// @brief オブジェクト固有の初期化処理
-        /// @note GameObjectManager::AddObject() の内部で自動的に呼び出される。
-        ///       派生クラスでオーバーライドして固有の初期化処理を実装する。
-        virtual void Initialize() {}
+        /// @brief エンジンシステムへのポインタを返す（未設定なら nullptr）
+        EngineSystem* GetEngineSystem() const;
 
-        /// @brief 毎フレームの更新処理
-        /// @note GameObjectManager::UpdateAll() から autoUpdate_ が true のとき自動的に呼ばれる。
-        ///       派生クラスでオーバーライドして固有のロジックを実装する。
-        virtual void Update();
+        // ===== アクティブ・破棄 =====
 
-        /// @brief 毎フレームの描画処理
-        /// @param camera 描画に使用するカメラ（2Dオブジェクトは nullptr 可）
-        /// @note 派生クラスでオーバーライドして描画コマンドを発行する。
-        virtual void Draw(const Camera* camera);
-
-        /// @brief ビュー/パス情報つきの描画処理（RenderManager からの本経路）
-        /// @param view カメラ・ビュー種別・パス種別をまとめた描画コンテキスト
-        /// @note 既定実装は `IRenderableComponent` を持つコンポーネントへ委譲する。
-        ///       コンポーネントが 1 つも無ければ Draw(カメラ) へフォールバックする。
-        virtual void Draw(const DrawViewInfo& view);
-
-        // ===== アクティブ =====
-
-        /// @brief アクティブ状態を設定する
-        /// @param active true にするとオブジェクトの更新・描画が有効になる
+        /// @brief アクティブ状態を設定する（false で更新・描画ともにスキップ）
         void SetActive(bool active);
 
         /// @brief アクティブ状態を取得する
-        /// @return true: アクティブ / false: 非アクティブ（更新・描画ともにスキップ）
         bool IsActive() const;
 
-        // ===== 破棄 =====
-
-        /// @brief オブジェクトに削除マークをつける
-        /// @note フレーム末の CleanupDestroyed() で実際にメモリから削除される。
-        ///       Update() 内部から安全に呼び出せる。
+        /// @brief 削除マークをつける（実際の削除はフレーム末）
+        /// @note Update() 内部から安全に呼び出せる。
         void Destroy();
 
-        /// @brief 削除マークが付いているか確認する
-        /// @return true: このフレーム末に削除される
+        /// @brief 削除マークが付いているか
         bool IsMarkedForDestroy() const;
 
-        // ===== 描画制御 =====
+        // ===== 描画 =====
 
-        /// @brief 描画順序オーバーライドを設定する
-        /// @param order 小さいほど先に描画される。RenderPassType の優先度より優先される。
+        /// @brief 描画コンポーネントへ描画を任せる（RenderManager からの入口）
+        void Draw(const DrawViewInfo& view);
+
+        /// @brief 現在の状態から RenderItem を構築する
+        RenderItem BuildRenderItem() const;
+
+        /// @brief 所属する描画パス（描画コンポーネントが答える。無ければ Model）
+        RenderPassType GetRenderPassType() const;
+
+        /// @brief ブレンドモード（描画コンポーネントが答える。無ければ なし）
+        BlendMode GetBlendMode() const;
+
+        /// @brief ブレンドモードを設定する（描画コンポーネントへ渡す）
+        void SetBlendMode(BlendMode blendMode);
+
+        /// @brief 描画順序オーバーライドを設定する（小さいほど先に描かれる）
         void SetRenderOrder(int order);
 
-        /// @brief 描画順序オーバーライドを取得する
-        /// @return オーバーライド値。未設定の場合は std::nullopt を返す。
+        /// @brief 描画順序オーバーライド（未設定なら std::nullopt）
         std::optional<int> GetRenderOrder() const;
 
         /// @brief 描画順序オーバーライドをリセットする
-        /// @note リセット後は RenderPassType の優先度で描画順が決まる。
         void ResetRenderOrder();
 
-        /// @brief 所属する描画パスを返す
-        /// @return デフォルトは RenderPassType::Model。派生クラスでオーバーライドして変更する。
-        virtual RenderPassType GetRenderPassType() const;
+        // ===== 当たり判定 =====
 
-        /// @brief 使用するブレンドモードを返す
-        /// @return デフォルトは kBlendModeNone。α合成が必要な派生クラスでオーバーライドする。
-        virtual BlendMode GetBlendMode() const;
+        /// @brief 接触の開始を伝える（`Collider` が呼び、コライダーの購読者と有効なコンポーネントへ配る）
+        void NotifyCollisionEnter(const CollisionInfo& info);
 
-        /// @brief ブレンドモードを設定する
-        /// @param blendMode 設定するブレンドモード
-        /// @note 派生クラスで保持・適用する。基底クラスの実装は何もしない。
-        virtual void SetBlendMode(BlendMode blendMode);
+        /// @brief 接触が続いていることを伝える
+        void NotifyCollisionStay(const CollisionInfo& info);
 
-        /// @brief 現在の描画状態から RenderItem を構築する
-        /// @return RenderManager に登録する描画項目
-        virtual RenderItem BuildRenderItem() const;
-
-        // ===== エンジン参照 =====
-
-        /// @brief エンジンシステムへのポインタを返す
-        /// @return Initialize() で設定されたエンジンシステム。未初期化なら nullptr。
-        EngineSystem* GetEngineSystem() const;
-
-        // ===== 衝突イベント =====
-
-        /// @brief 衝突開始時に一度だけ呼ばれるイベント
-        /// @param other 衝突相手のゲームオブジェクト
-        virtual void OnCollisionEnter(GameObject* other);
-
-        /// @brief 衝突が継続している間、毎フレーム呼ばれるイベント
-        /// @param other 衝突相手のゲームオブジェクト
-        virtual void OnCollisionStay(GameObject* other);
-
-        /// @brief 衝突が終了したときに一度だけ呼ばれるイベント
-        /// @param other 衝突相手のゲームオブジェクト
-        virtual void OnCollisionExit(GameObject* other);
-
-        // ----- 接触情報つきの衝突イベント -----
-        /// @details 判定システムはこちらを呼ぶ。既定実装は上の `GameObject*` 版へ転送する。
-        ///          法線・貫通深度・当たったコライダーが要る場合だけこちらを override する。
-        virtual void OnCollisionEnter(const CollisionInfo& info);
-        /// @brief 接触が続いている間、毎フレーム呼ばれる
-        virtual void OnCollisionStay(const CollisionInfo& info);
-        /// @brief 接触が切れたフレームに 1 回だけ呼ばれる
-        virtual void OnCollisionExit(const CollisionInfo& info);
-
-        // ===== 押し出し =====
+        /// @brief 接触の終わりを伝える
+        void NotifyCollisionExit(const CollisionInfo& info);
 
         /// @brief 衝突解決による移動を受け入れる
         /// @return 実際に動かせたら true。false なら解決側はもう一方を全量押し出す
-        /// @note 既定実装は `TransformComponent` があればそこへ委譲し、無ければ false
-        virtual bool TryApplyCollisionPush(const Vector3& delta);
+        /// @note `TransformComponent` があればそこへ委譲し、無ければ false
+        bool TryApplyCollisionPush(const Vector3& delta);
 
-        /// @brief ワールド空間での位置を返す（コライダー・ピッキングが参照する位置）
-        /// @note 既定実装は `ITransformSource` から読み、無ければ原点。
-        ///       コライダーを付けるオブジェクトは必ずトランスフォームを持つこと
-        virtual Vector3 GetWorldPosition() const;
+        /// @brief ワールド空間での位置（コライダー・ピッキングが参照する位置）
+        /// @note `TransformComponent` → `ITransformSource` の順に読み、どちらも無ければ原点
+        Vector3 GetWorldPosition() const;
 
-        /// @brief ワールド空間でのスケールを返す（コライダーのサイズ／半径に乗る）
-        /// @note 既定実装は `TransformComponent`（階層スケール込み）→ `ITransformSource` の
-        ///       順に読み、どちらも無ければ等倍。
-        virtual Vector3 GetWorldScale() const;
+        /// @brief ワールド空間でのスケール（コライダーのサイズ／半径に乗る）
+        Vector3 GetWorldScale() const;
 
-        // ===== コライダー =====
-        // 実体は `ColliderComponent`（IComponent 派生）で、必要なオブジェクトにだけ載る。
-        // 以下は移行期の互換 API で、内部は AddComponent / GetComponent へ転送している。
+        /// @brief ワールド空間での向き（正規化した 3 本の軸）
+        /// @param axisX X 軸の向きの書き出し先
+        /// @param axisY Y 軸の向きの書き出し先
+        /// @param axisZ Z 軸の向きの書き出し先
+        /// @note `TransformComponent` が無ければワールド軸をそのまま返す。
+        void GetWorldAxes(Vector3& axisX, Vector3& axisY, Vector3& axisZ) const;
 
-        /// @brief コライダー集合を取得する（無ければ生成する副作用あり）
-        /// @note 有無を調べたいだけなら `TryGetColliders()` を使うこと
-        ColliderComponent& GetColliders() {
-            return *GetOrAddComponent<ColliderComponent>();
-        }
+        // ===== 識別子 =====
 
-        /// @brief コライダー集合を取得する（**無ければ nullptr。生成しない**）
-        ColliderComponent* TryGetColliders() {
-            return GetComponent<ColliderComponent>();
-        }
+        /// @brief シーン内で重複しない ID
+        /// @note `GameObjectManager` への登録時に保存キーから決まり、保存したシーンを読むと保存時の値へ戻る。
+        ObjectId GetObjectId() const { return objectId_; }
 
-        /// @brief コライダー集合を取得する（const 版。生成しない）
-        const ColliderComponent* TryGetColliders() const {
-            return GetComponent<ColliderComponent>();
-        }
+        /// @brief 登録先の `GameObjectManager`（未登録なら nullptr）
+        GameObjectManager* GetObjectManager() const { return objectManager_; }
 
-        // ===== コライダー簡易設定 API（1 本だけで足りる場合の入口） =====
+        // ===== プレハブ =====
 
-    /// @brief 球体コライダーを追加する（radius はローカル。判定時にオーナーのスケールが乗る）
-    /// @note 複数回呼ぶと本数が増える。置き換えたいなら RemoveCollider() してから呼ぶこと
-        Collider& AddSphereCollider(float radius, CollisionLayer layer = CollisionLayer::Default);
+        /// @brief 元になったプレハブ（プレハブから作っていなければ何も指さない）
+        const AssetRef<PrefabAsset>& GetPrefab() const { return prefab_; }
 
-        /// @brief AABB コライダーを追加する
-        /// @param size 各軸のサイズ（ローカル。判定時にオーナーのスケールが乗る）
-        /// @param layer 衝突判定に使うレイヤー。デフォルトは CollisionLayer::Default。
-        /// @return 追加されたコライダーへの参照
-        Collider& AddAABBCollider(const Vector3& size, CollisionLayer layer = CollisionLayer::Default);
+        /// @brief 元になったプレハブを設定する
+        /// @note 設定したオブジェクトは、シーンへプレハブとの差分だけが保存される。
+        void SetPrefab(const Reflection::AssetRefValue& prefab) { prefab_.SetValue(prefab); }
 
-        /// @brief コライダーが 1 本以上あるか
-        bool HasCollider() const;
+        /// @brief プレハブから作ったオブジェクトか
+        bool IsPrefabInstance() const { return prefab_.IsSet(); }
 
-        /// @brief 先頭のコライダーを返す
-        /// @return コライダーへのポインタ。1 本も無ければ nullptr。
-        Collider* GetCollider();
-
-        /// @brief 先頭のコライダーを返す（const版）
-        const Collider* GetCollider() const;
-
-        /// @brief すべてのコライダーを取り外す
-        /// @note 実体の破棄はフレーム末（GameObjectManager::CleanupDestroyed）まで遅延する。
-        ///       衝突コールバックの中から呼んでも、判定ループが保持している生ポインタが
-        ///       宙に浮かない。
-        void RemoveCollider();
-
-        /// @brief 取り外し済みコライダーの実体を解放する
-        /// @note GameObjectManager がフレーム末（衝突判定の後）に呼ぶ。
-        void ReleaseRetiredColliders();
-
-        // ===== 名前 / シリアライズ =====
+        // ===== 名前 =====
 
         /// @brief オブジェクト識別名を設定する
-        /// @param name ImGui 表示やシーン保存のキーとして使われる名前
-        /// @note 初回呼び出し時にシリアライズキーも同時に設定される。
-        ///       以降の呼び出しでは表示名のみ変更される。
+        /// @note 初回呼び出し時に保存キーも同時に設定される。以降は表示名のみ変わる。
         void SetName(const std::string& name);
 
-        /// @brief オブジェクト識別名を返す
-        /// @return SetName() で設定した名前。未設定なら空文字列。
+        /// @brief オブジェクト識別名（未設定なら空文字列）
         const std::string& GetName() const;
 
-        /// @brief シリアライズ用の安定キーを返す
-        /// @return 初回 SetName() で設定された名前。ユーザーがリネームしても変わらない。
+        /// @brief 保存用の安定キー（初回 `SetName()` の名前。表示名を変えても変わらない）
         const std::string& GetSerializeKey() const;
 
-        /// @brief 表示用の名前を返す（フォールバック付き）
-        /// @return name_ → serializeKey_ → GetObjectName() の優先度で返す。
+        /// @brief 表示用の名前（名前 → 保存キー → "GameObject" の順）
         const char* GetDisplayName() const;
 
-        /// @brief オブジェクト種別名を返す
-        /// @return クラスを表す文字列リテラル。シリアライズキーや ImGui 表示に使う。
-        ///         派生クラスでオーバーライドして固有の名前を返すことを推奨する。
-        virtual const char* GetObjectName() const;
+        /// @brief 保存キーを差し替える
+        /// @note 1 シーンで重複しないよう `GameObjectManager` が登録時に調整する。
+        ///       消したオブジェクトを作り直すときは、元のキーへ戻すために呼ぶ。
+        void SetSerializeKey(const std::string& key) { serializeKey_ = key; }
 
-        /// @brief JSON シリアライズ対象かどうかを返す
-        /// @return true: シーン保存時にこのオブジェクトのデータが書き出される
+        // ===== シリアライズ =====
+
+        /// @brief シーン保存の対象か
         bool IsSerializeEnabled() const;
 
-        /// @brief JSON シリアライズ対象かどうかを設定する
-        /// @param enable false にするとシーンデータへの保存・復元がスキップされる
+        /// @brief シーン保存の対象かを設定する
         void SetSerializeEnabled(bool enable);
 
-        /// @brief シーン JSON から再生成するための型名
-        /// @return nullptr なら「シーン側のコードが生成する前提」で、
-        ///         マニフェストからは作られない（既存のオブジェクトはこちら）
-        /// @details エディタ上で追加した UI のように、コードに書かれていない
-        ///          オブジェクトを次回起動時に復活させるために使う。
-        ///          SceneSaveSystem::RegisterObjectType で同じ名前を登録しておくこと。
-        virtual const char* GetSerializeTypeName() const { return nullptr; }
+        /// @brief オブジェクトを JSON へ書き出す（SceneSaveSystem が呼ぶ唯一の入口）
+        /// @return 有効・名前・コンポーネント一覧
+        json Serialize() const;
 
-        /// @brief オブジェクトデータを JSON に書き出す
-        /// @return シリアライズ結果。保存不要な場合は空の json を返す。
-        /// @note SceneSaveSystem から自動的に呼び出される。
-        ///       派生クラスでオーバーライドして自分の保存処理を実装する。
-        virtual json OnSerialize() const { return {}; }
-
-        /// @brief JSON からオブジェクトデータを復元する
-        /// @param j 読み込み元の JSON オブジェクト
-        /// @note SceneSaveSystem から自動的に呼び出される。
-        ///       派生クラスでオーバーライドして自分の復元処理を実装する。
-        virtual void OnDeserialize(const json& j) { (void)j; }
+        /// @brief JSON からオブジェクトを復元する（SceneSaveSystem が呼ぶ唯一の入口）
+        void Deserialize(const json& j);
 
         // ===== スポーン =====
 
-        /// @brief 同じシーンに新しいオブジェクトをスポーンする（所有権は GameObjectManager）
-        /// @note GameObjectManager へ登録済みのオブジェクトからのみ呼べる。
-        ///       Update() 中に呼んでも安全（pending キューに積まれ次フレームから有効になる）。
-        template<typename T, typename... Args>
-        T* Spawn(Args&&... args) {
-            static_assert(std::is_base_of_v<GameObject, T>,
-                "T must derive from GameObject");
-            return static_cast<T*>(
-                spawner_->SpawnRaw(std::make_unique<T>(std::forward<Args>(args)...))
-                );
+        /// @brief 同じシーンに新しいオブジェクトを作る（所有権は GameObjectManager）
+        /// @note `GameObjectManager` へ登録済みのオブジェクトからのみ呼べる。
+        ///       Update() 中に呼んでも安全（次フレームから有効になる）。
+        GameObject* Spawn() {
+            return spawner_ ? spawner_->SpawnRaw(std::make_unique<GameObject>()) : nullptr;
         }
 
-#ifdef USE_IMGUI
-        // ===== プロパティインスペクター =====
-
-        /// @brief インスペクタータブの定義情報
-        struct InspectorTabDef {
-            const char* iconPath;    ///< アイコンテクスチャのファイル名
-            const char* tooltip;     ///< ツールチップテキスト
-            float tint[4];           ///< アイコン色 {R, G, B, A}
-            float selectedBg[4];     ///< 選択時背景色 {R, G, B, A}
-        };
-
-        /// @brief ImGui インスペクター UI を描画する（共通フレームワーク）
-        /// @return 値の変更があった場合 true を返す
-        /// @note 名前フィールド、Active トグル、タブストリップ、保存ボタンを自動描画する。
-        ///       タブの内容は GetInspectorTabs / DrawInspectorTabContent で制御する。
-        virtual bool DrawImGui();
-
-        /// @brief タブ未対応オブジェクト用のフォールバック描画
-        /// @return 値の変更があった場合 true を返す
-        /// @note GetInspectorTabs が 0 を返す場合にのみ呼び出される。
-        virtual bool DrawImGuiExtended();
-
-        /// @brief インスペクタータブの定義を取得する
-        /// @param outTabs 出力先配列
-        /// @param maxTabs 配列の最大要素数
-        /// @return タブ数（0 の場合はタブなしで DrawImGuiExtended にフォールバック）
-        virtual int GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const {
-            (void)outTabs; (void)maxTabs; return 0;
-        }
-
-        /// @brief 指定タブのコンテンツを描画する
-        /// @param tabIndex タブインデックス
-        /// @return 値が変更された場合 true
-        virtual bool DrawInspectorTabContent(int tabIndex) {
-            (void)tabIndex; return false;
-        }
-
-        /// @brief ImGui 編集コミット時コールバックの型
-        /// @note 編集前のトランスフォームを引数として受け取り、Undo/Redo システムへ渡す。
-        using EditCommitCallback = std::function<void(
-            GameObject*            /* 対象オブジェクト */,
-            const Vector3&         /* 編集前の位置 */,
-            const Vector3&         /* 編集前の回転 */,
-            const Vector3&         /* 編集前のスケール */,
-            bool                   /* 編集前のアクティブ状態 */)>;
-
-        /// @brief 編集コミット時コールバックを設定する
-        /// @param cb SceneDebugEditor が設定する Undo/Redo 記録用コールバック
-        void SetEditCommitCallback(EditCommitCallback cb);
-
-#ifdef USE_IMGUI
-        /// @brief インスペクタでの編集確定を Undo/Redo へ通知する
-        /// @param beforeTranslate 編集前の位置
-        /// @param beforeRotate 編集前の回転
-        /// @param beforeScale 編集前のスケール
-        /// @param beforeActive 編集前のアクティブ状態
-        /// @note コンポーネントのインスペクタ（TransformComponent など）から呼ぶ。
-        ///       onEditCommitted_ は protected なので、非派生のコンポーネントには
-        ///       この入口が必要になる。
-        void NotifyEditCommitted(const Vector3& beforeTranslate, const Vector3& beforeRotate,
-            const Vector3& beforeScale, bool beforeActive);
-#endif
-
-        /// @brief 個別保存リクエストコールバックの型
-        using SaveRequestCallback = std::function<void(GameObject*)>;
-
-        /// @brief 個別保存リクエストコールバックを設定する
-        /// @param cb 「このオブジェクトのみ保存」ボタン押下時に呼ばれるコールバック
-        void SetSaveRequestCallback(SaveRequestCallback cb);
-#endif
-
-    protected:
+    private:
         std::string               name_;          ///< オブジェクト表示名（ユーザー編集可能）
-        std::string               serializeKey_;  ///< シリアライズ用安定キー（初回 SetName で固定）
+        std::string               serializeKey_;  ///< 保存用の安定キー（初回 SetName で固定）
 
-        bool isActive_ = true;   ///< アクティブ状態（false: 更新・描画ともにスキップ）
+        bool isActive_ = true;           ///< アクティブ状態（false: 更新・描画ともにスキップ）
         bool markedForDestroy_ = false;  ///< 削除マーク（true: フレーム末に破棄）
-        bool shouldSerialize_ = true;   ///< JSON シリアライズ対象フラグ
+        bool shouldSerialize_ = true;    ///< シーン保存の対象か
 
         std::optional<int> renderOrder_;  ///< 描画順序オーバーライド（nullopt: パス優先度に従う）
 
-#ifdef USE_IMGUI
-        EditCommitCallback  onEditCommitted_;   ///< 編集確定時コールバック
-        SaveRequestCallback onSaveRequested_;   ///< 個別保存ボタン用コールバック
-
-        int inspectorTab_ = 0;  ///< 現在選択中のインスペクタータブインデックス
-
-        /// @brief アタッチされているコンポーネントからインスペクタのタブを組み立てる
-        /// @param outTabs 出力先
-        /// @param maxTabs 出力先の要素数
-        /// @return 追加したタブ数（コンポーネント数。maxTabs で頭打ち）
-        /// @note オブジェクト固有のタブを持つ場合も、その後ろへ追加できる。
-        ///       固有タブを持たないオブジェクトでは、コンポーネントタブがそのまま
-        ///       インスペクターのタブになる。
-        int BuildComponentTabs(InspectorTabDef* outTabs, int maxTabs) const;
-
-        /// @brief コンポーネントタブの中身を描画する
-        /// @param tabIndex `BuildComponentTabs` が並べた順のインデックス
-        /// @return 値が変更されたら true
-        /// @note `IComponent::DrawInspector()` を呼ぶ唯一の場所。
-        bool DrawComponentTabContent(int tabIndex);
-
-        /// @brief Active チェックボックス変更時に呼び出されるフック
-        /// @param prevActive 変更前のアクティブ状態
-        /// @note Undo/Redo を記録したい派生クラス（ModelGameObject / SpriteObject）でオーバーライドする。
-        virtual void OnImGuiActiveChanged(bool prevActive) { (void)prevActive; }
-
-        /// @brief 「このオブジェクトのみ保存」ボタンを ImGui に描画する
-        /// @note shouldSerialize_ が false または name_ が空の場合は何も描画しない。
-        ///       DrawImGui() の末尾から呼ばれる。
-        void DrawSaveButton();
-#endif
-
-    private:
         IObjectSpawner* spawner_ = nullptr;  ///< AddObject 時に GameObjectManager が注入するスポーナー
+        GameObjectManager* objectManager_ = nullptr;  ///< 登録先（AddObject 時に注入される）
+        ObjectId objectId_{};  ///< シーン内の ID（登録時に GameObjectManager が決める）
+        AssetRef<PrefabAsset> prefab_;  ///< 元になったプレハブ
 
-        friend class GameObjectManager;  ///< spawner_ への書き込みを許可
+        friend class GameObjectManager;  ///< spawner_ / objectManager_ / objectId_ への書き込みを許可
     };
 
     // ===== IComponent のインライン定義 =====

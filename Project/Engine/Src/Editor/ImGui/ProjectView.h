@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <vector>
 #include <filesystem>
@@ -33,12 +34,46 @@ namespace CoreEngine
         /// @return 表示状態
         bool IsVisible() const { return isVisible_; }
 
+        /// @brief 選択中のアセット（無ければ空）
+        const std::filesystem::path& GetSelectedAsset() const { return selectedPath_; }
+
+        /// @brief 開いているフォルダ（プロジェクトの根からの相対パス）
+        std::filesystem::path GetCurrentFolder() const;
+
+        /// @brief フォルダを開く（プロジェクトの根からの相対パス。根の外や無いフォルダなら何もしない）
+        void OpenFolder(const std::filesystem::path& relativeFolder);
+
+        /// @brief 一覧表示にしているか（false ならグリッド表示）
+        bool IsListView() const { return useListView_; }
+        void SetListView(bool listView) { useListView_ = listView; }
+
+        /// @brief 選択中のアセットの情報を Inspector へ描く
+        /// @note 種類・GUID・パスと、そのアセットを参照しているファイルの一覧を出す。
+        void DrawSelectedAssetInspector();
+
+        /// @brief アセットの種類（表示と絞り込みに使う）
+        enum class Kind {
+            Any,        ///< 絞り込みで「すべて」を表す（エントリには付かない）
+            Folder,
+            Model,
+            Texture,
+            Prefab,
+            Script,
+            Scene,
+            Audio,
+            Material,
+            Shader,
+            Data,
+            Other,
+        };
+
     private:
         /// @brief エントリ（ファイルまたはフォルダ）の情報
         struct Entry {
             std::string name;           // 名前
             std::filesystem::path path; // フルパス
             bool isDirectory;           // ディレクトリかどうか
+            Kind kind = Kind::Other;    // 種類
         };
 
         /// @brief PNGプレビューの情報
@@ -52,9 +87,13 @@ namespace CoreEngine
         /// @return エントリのリスト
         std::vector<Entry> GetCurrentDirectoryContents();
 
-        /// @brief ディレクトリに移動
+        /// @brief ディレクトリの移動を頼む
         /// @param path 移動先のパス
+        /// @note 実際に移るのはフレームの最後（描画の途中でキャッシュを捨てないため）。
         void NavigateToDirectory(const std::filesystem::path& path);
+
+        /// @brief 頼まれていた移動を行う
+        void ApplyPendingNavigation();
 
         /// @brief 親ディレクトリに戻る
         void NavigateUp();
@@ -62,6 +101,22 @@ namespace CoreEngine
         /// @brief グリッドレイアウトで項目を表示
         /// @param entries エントリのリスト
         void DrawGridLayout(const std::vector<Entry>& entries);
+
+        /// @brief 一覧（名前・種類・GUID の表）で項目を表示
+        void DrawListLayout(const std::vector<Entry>& entries);
+
+        /// @brief 検索欄と種類の絞り込みを描画
+        void DrawFilterBar();
+
+        /// @brief そのアセットを参照しているファイルを探し直す
+        void RebuildReferences(const std::filesystem::path& assetPath);
+
+        /// @brief 絞り込みを通ったエントリだけを集める
+        std::vector<Entry> FilterEntries(const std::vector<Entry>& entries) const;
+
+        /// @brief 1 件分のクリック・ダブルクリック・ドラッグ開始を処理する
+        /// @param index entries 内の位置
+        void HandleEntryInteraction(const Entry& entry, int index);
 
         /// @brief アイコンを描画
         /// @param entry エントリ情報
@@ -71,9 +126,6 @@ namespace CoreEngine
         /// @param filePath PNGファイルのパス
         /// @return テクスチャのGPUハンドルとサイズ
         PNGPreviewInfo GetPNGPreview(const std::filesystem::path& filePath);
-
-        /// @brief デフォルトアイコンテクスチャを読み込み
-        void LoadDefaultIcon();
 
         /// @brief フォルダツリーを再帰的に描画
         /// @param path 描画するフォルダのパス
@@ -92,6 +144,53 @@ namespace CoreEngine
         /// @param filePath 対象ファイルパス
         void OpenFile(const std::filesystem::path& filePath);
 
+        /// @brief 一覧の空きを右クリックしたときのメニュー（作成）
+        void DrawCreateContextMenu();
+
+        /// @brief 新しいスクリプトを作る窓
+        /// @note 置き先の既定は今開いているフォルダ。スクリプトのフォルダの外は断る。
+        void DrawNewScriptDialog();
+
+        /// @brief 新しいスクリプトを作る窓を開く（置き先を今のフォルダで埋める）
+        void OpenNewScriptDialog();
+
+        /// @brief 項目 1 件の右クリックメニュー（コピー・切り取り・名前の変更・削除）
+        void DrawEntryContextMenu(const Entry& entry);
+
+        /// @brief 選ばれているか
+        bool IsSelected(const std::filesystem::path& path) const;
+
+        /// @brief クリックに応じて選択を入れ替える（Ctrl で足し引き・Shift で範囲）
+        void UpdateSelection(const Entry& entry, int index);
+
+        /// @brief 操作の対象（複数選んでいればその全部。何も無ければ空）
+        std::vector<std::filesystem::path> SelectedPaths() const;
+
+        /// @brief 新しいフォルダを作る窓
+        void DrawNewFolderDialog();
+
+        /// @brief 新しいフォルダを作る窓を開く
+        void OpenNewFolderDialog();
+
+        /// @brief 名前を変える窓
+        void DrawRenameDialog();
+
+        /// @brief 削除の確認の窓
+        void DrawDeleteDialog();
+
+        /// @brief 名前を変える窓を開く
+        void OpenRenameDialog(const std::filesystem::path& target);
+
+        /// @brief 削除の確認の窓を開く
+        void OpenDeleteDialog(std::vector<std::filesystem::path> targets);
+
+        /// @brief 控えたものを今のフォルダへ貼る
+        void PasteIntoCurrentFolder();
+
+        /// @brief コピー・切り取り・貼り付け・名前の変更・削除のキー操作
+        /// @note Project の窓にフォーカスがあるときだけ効く。
+        void HandleFileShortcuts();
+
     private:
         GraphicsCore* dxCommon_ = nullptr;     // DirectX共通クラスへのポインタ
 
@@ -101,19 +200,6 @@ namespace CoreEngine
         std::filesystem::path currentPath_;     // 現在のパス
 
         bool isVisible_ = true;                 // 表示状態
-
-        // アイコンテクスチャ
-        Microsoft::WRL::ComPtr<ID3D12Resource> directoryIconTexture_;
-        D3D12_GPU_DESCRIPTOR_HANDLE directoryIconGpuHandle_ = {};
-        bool directoryIconLoaded_ = false;
-
-        Microsoft::WRL::ComPtr<ID3D12Resource> fileIconTexture_;
-        D3D12_GPU_DESCRIPTOR_HANDLE fileIconGpuHandle_ = {};
-        bool fileIconLoaded_ = false;
-
-        Microsoft::WRL::ComPtr<ID3D12Resource> shaderIconTexture_;
-        D3D12_GPU_DESCRIPTOR_HANDLE shaderIconGpuHandle_ = {};
-        bool shaderIconLoaded_ = false;
 
         // UI設定
         float iconSize_ = 64.0f;                // アイコンのサイズ
@@ -129,6 +215,24 @@ namespace CoreEngine
         // 右ペイン表示データ
         std::vector<Entry> currentEntries_;
 
+        // 絞り込みと表示形式
+        char searchFilter_[64] = {};            // 名前の絞り込み
+        Kind kindFilter_ = Kind::Any;           // 種類の絞り込み
+        bool useListView_ = false;              // 一覧表示にするか
+        std::filesystem::path selectedPath_;    // 選択中のエントリ
+        std::filesystem::path pendingNavigate_; // フレームの最後に移る先（空なら移らない）
+
+        // 参照しているファイルの控え（選択が変わったときだけ調べ直す）
+        struct Reference {
+            std::filesystem::path path;         // 参照している側のファイル
+            Kind kind = Kind::Other;            // その種類
+        };
+        std::filesystem::path referencesFor_;   // どのアセットについて調べたか
+        std::vector<Reference> references_;
+
+        // 最後に読み直したときの AssetDatabase の番号
+        uint64_t seenAssetRevision_ = 0;
+
         // 左ツリー展開アニメーション
         std::unordered_map<std::string, float> treeExpandAnimTime_;
         std::unordered_map<std::string, bool> treeExpandAnimOpening_;
@@ -138,6 +242,39 @@ namespace CoreEngine
         // PNGプレビューキャッシュ
         std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3D12Resource>> pngPreviewCache_;
         std::unordered_map<std::string, PNGPreviewInfo> pngPreviewInfoCache_;
+
+        // コピー／切り取りで控えたもの（空なら貼れない）
+        std::vector<std::filesystem::path> clipboardPaths_;
+        bool clipboardIsCut_ = false;
+
+        // 選んでいるもの（selectedPath_ はそのうち最後に触ったもの＝インスペクタに出す 1 件）
+        std::vector<std::filesystem::path> selection_;
+        int selectionAnchor_ = -1;            ///< Shift での範囲選択の起点
+        std::vector<Entry> shownEntries_;     ///< このフレームに並べたもの（範囲選択が使う）
+
+        // 名前を変える窓
+        bool showRenameDialog_ = false;
+        std::filesystem::path renameTarget_;
+        char renameBuffer_[260] = {};
+        std::string renameError_;
+
+        // 削除の確認の窓
+        bool showDeleteDialog_ = false;
+        std::vector<std::filesystem::path> deleteTargets_;
+        std::string deleteError_;
+
+        // 新しいフォルダを作る窓
+        bool showNewFolderDialog_ = false;
+        char newFolderName_[128] = {};
+        std::string newFolderError_;
+
+        // 新しいスクリプトを作る窓
+        bool showNewScriptDialog_ = false;
+        char newScriptName_[64] = {};        ///< クラス名（ファイル名にもなる）
+        char newScriptFolder_[260] = {};     ///< 置き先（プロジェクトの根からの相対パス）
+        std::string newScriptTemplate_;      ///< 選んでいる雛形の id
+        std::string newScriptError_;         ///< 作れなかったときの訳
+        bool openNewScriptAfterCreate_ = true; ///< 作ったら VS Code で開く
 
         // フォルダツリーキャッシュ（毎フレームのファイルシステムスキャンを抑止）
         std::unordered_map<std::string, bool> hasSubdirCache_;

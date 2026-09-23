@@ -1,0 +1,5 @@
+// {CLASS}
+[DisplayName("{CLASS}")]
+class {CLASS} : ScriptComponent
+{
+}

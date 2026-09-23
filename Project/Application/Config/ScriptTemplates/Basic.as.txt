@@ -1,0 +1,14 @@
+// {CLASS}
+[DisplayName("{CLASS}")]
+class {CLASS} : ScriptComponent
+{
+    // 最初の更新の前に 1 回
+    void Start()
+    {
+    }
+
+    // 毎フレーム
+    void Update()
+    {
+    }
+}

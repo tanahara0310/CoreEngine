@@ -4,7 +4,7 @@
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/CVar/CVar.h"
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
 #endif
 #include <cassert>
@@ -204,7 +204,7 @@ namespace CoreEngine
 
     void LoadingScreenEffect::DrawImGui()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         ImGui::PushID("LoadingScreenEffect");
         ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
         UI::Separator();
@@ -222,7 +222,7 @@ namespace CoreEngine
             timeAccumulator_ = 0.0f;
         }
         ImGui::PopID();
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
     }
 
     CVar<bool>* LoadingScreenEffect::GetEnabledCVar() const

@@ -4,16 +4,13 @@
 #include <EngineSystem/Startup/StartupSequence.h>
 #include "WinApp/WinApp.h"
 #include "Scene/SceneSaveSystem.h"
-#include "Graphics/PostEffect/Effect/PostEffectNames.h"
+#include "EngineSystem/Settings/ProjectSettings.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Utility/Logger/Logger.h"
 
-#include "Scenes/GameScene/GameScene.h"
-#include "Scenes/TestScene/TestScene.h"
-#include "Scenes/TitleScene/TitleScene.h"
-#include "Scenes/ResultScene/ResultScene.h"
-
-#include "Editor/Stage/StageEditorPanel.h"
+#include <algorithm>
+#include <string>
+#include <vector>
 
 using namespace CoreEngine;
 
@@ -26,19 +23,33 @@ void MyGame::Initialize()
     ConnectDebugUI();
 }
 
+std::string MyGame::ResolveInitialSceneName()
+{
+    const std::vector<std::string> scenes = CoreEngine::SceneSaveSystem::ListSavedScenes();
+    const std::string& wanted = CoreEngine::ProjectSettings::Get().GetInitialSceneName();
+
+    if (!wanted.empty()
+        && std::find(scenes.begin(), scenes.end(), wanted) != scenes.end()) {
+        return wanted;
+    }
+    // 設定が空か、指していたシーンが消えている。開けるものを出しておく
+    return scenes.empty() ? std::string{} : scenes.front();
+}
+
 void MyGame::BuildStartupTasks(CoreEngine::StartupSequence& sequence)
 {
     sequence.Add("シーン管理システム", [this] { CreateSceneManager(); });
-    sequence.Add(std::string("シーン構築: ") + kInitialSceneName, [this] { LoadInitialScene(); });
+    sequence.Add("シーン構築: " + ResolveInitialSceneName(), [this] { LoadInitialScene(); });
     sequence.Add("デバッグUI 接続", [this] { ConnectDebugUI(); });
 }
 
 void MyGame::BuildPreloadTasks(CoreEngine::StartupSequence& sequence)
 {
-    sequence.Add(std::string("モデル先読み開始: ") + kInitialSceneName, [this] {
+    const std::string sceneName = ResolveInitialSceneName();
+    sequence.Add("モデル先読み開始: " + sceneName, [this, sceneName] {
         // シーン JSON から modelPath だけを抜き出す（オブジェクトはまだ作らない）
         const std::vector<std::string> modelPaths =
-            CoreEngine::SceneSaveSystem::CollectModelPaths(kInitialSceneName);
+            CoreEngine::SceneSaveSystem::CollectModelPaths(sceneName);
 
         if (modelPaths.empty()) {
             return;
@@ -56,7 +67,7 @@ void MyGame::BuildPreloadTasks(CoreEngine::StartupSequence& sequence)
 
         CoreEngine::Logger::GetInstance().Logf(
             CoreEngine::LogLevel::Info, CoreEngine::LogCategory::Resource,
-            "モデル先読みを開始: {} 件（シーン: {}）", modelPaths.size(), kInitialSceneName);
+            "モデル先読みを開始: {} 件（シーン: {}）", modelPaths.size(), sceneName);
     });
 }
 
@@ -70,43 +81,36 @@ void MyGame::CreateSceneManager()
     sceneManager_->Initialize(GetEngineSystem());
     GetEngineSystem()->SetSceneManager(sceneManager_.get());
 
-    // ローディング画面をこのゲーム用（トロッコが走るもの）へ差し替える。
-    // 既定はエンジン汎用のスピナーで、ここを消せばそちらへ戻る
-    if (auto* transition = sceneManager_->GetTransition()) {
-        transition->SetLoadingScreen(CoreEngine::PostEffectNames::TrolleyLoading);
-    }
-
-    // 全シーンを登録（アプリ層で実装）
-    sceneManager_->RegisterScene<TitleScene::TitleScene>("TitleScene");
-    sceneManager_->RegisterScene<GameScene::GameScene>("GameScene");
-    sceneManager_->RegisterScene<ResultScene::ResultScene>("ResultScene");
-    sceneManager_->RegisterScene<CoreEngine::TestScene>("TestScene");
 }
 
 void MyGame::LoadInitialScene()
 {
+    const std::string sceneName = ResolveInitialSceneName();
+    if (sceneName.empty()) {
+        CoreEngine::Logger::GetInstance().Logf(
+            CoreEngine::LogLevel::Error, CoreEngine::LogCategory::System,
+            "開けるシーンがありません（Application/Assets/Scenes が空か、"
+            "プロジェクト設定の initialScene が指すシーンが見つかりません）");
+        return;
+    }
     // 初期シーンを設定（トランジション無し）
-    sceneManager_->SetInitialScene(kInitialSceneName);
+    sceneManager_->SetInitialScene(sceneName);
 }
 
 void MyGame::ConnectDebugUI()
 {
     // ===== コンソールログ出力とシーンマネージャーの設定 =====
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     // GameDebugUIにSceneManagerを設定
     auto gameDebugUI = GetEngineSystem()->GetDebugSubsystem()->GetGameDebugUI();
     if (gameDebugUI) {
         gameDebugUI->SetSceneManager(sceneManager_.get());
     }
 
-    // ステージ（区画CSV）エディタを Inspector のタブとして足す。
-    // 表示は Window > Application > Stage から。
-    GameEditors::StageEditorPanel::Register(gameDebugUI, sceneManager_.get());
-
     auto console = GetEngineSystem()->GetDebugSubsystem()->GetConsole();
     if (console) {
         console->LogInfo("MyGame: ゲーム初期化が完了しました");
-        console->LogInfo(std::string("MyGame: 初期シーン '") + kInitialSceneName + "' を読み込みました");
+        console->LogInfo("MyGame: 初期シーン '" + ResolveInitialSceneName() + "' を読み込みました");
     }
 #endif
 }
@@ -117,7 +121,7 @@ void MyGame::Finalize()
     // シーン管理システムの終了処理
     // ──────────────────────────────────────────────────────────
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     auto console = GetEngineSystem()->GetDebugSubsystem()->GetConsole();
     if (console) {
         console->LogInfo("MyGame: ゲーム終了処理を開始しました");
@@ -133,30 +137,6 @@ void MyGame::Finalize()
 
 void MyGame::Update()
 {
-    // ──────────────────────────────────────────────────────────
-    // デバッグUIからのシーン切り替えリクエストを処理
-    // ──────────────────────────────────────────────────────────
-#ifdef USE_IMGUI
-    auto gameDebugUI = GetEngineSystem()->GetDebugSubsystem()->GetGameDebugUI();
-    if (gameDebugUI) {
-        auto sceneManagerTab = gameDebugUI->GetSceneManagerTab();
-        if (sceneManagerTab && sceneManagerTab->IsChangeRequested()) {
-            std::string requestedScene = sceneManagerTab->GetRequestedSceneName();
-            if (sceneManager_ && sceneManager_->HasScene(requestedScene)) {
-                sceneManager_->ChangeScene(requestedScene);
-
-#ifdef USE_IMGUI
-                auto console = GetEngineSystem()->GetDebugSubsystem()->GetConsole();
-                if (console) {
-                    console->LogInfo("シーン切り替え: " + requestedScene);
-                }
-#endif
-            }
-            sceneManagerTab->ResetChangeRequest();
-        }
-    }
-#endif
-
     // ──────────────────────────────────────────────────────────
     // シーン更新処理を委譲
     // ──────────────────────────────────────────────────────────

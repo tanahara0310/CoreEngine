@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "CollisionModule.h"
-#include "../ParticleSystem.h" // Particle構造体のために必要
+#include "Particle/Core/Particle.h"
 
 #include <algorithm>
 
@@ -58,7 +58,7 @@ void CollisionModule::ApplyCollision(Particle& particle, float deltaTime)
         Cross(Vector3{ 0.0f, 1.0f, 0.0f }, horizontalVelocity) * (1.0f / radius);
 }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 bool CollisionModule::ShowImGui() {
     bool changed = false;
 

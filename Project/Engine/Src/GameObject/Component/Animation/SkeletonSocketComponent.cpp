@@ -1,7 +1,10 @@
 #include "pch.h"
 #include "SkeletonSocketComponent.h"
 
+#include "GameObject/Component/Core/ComponentFactory.h"
 #include "Math/MathCore.h"
+
+COMPONENT_REGISTER(CoreEngine::SkeletonSocketComponent)
 
 namespace CoreEngine
 {

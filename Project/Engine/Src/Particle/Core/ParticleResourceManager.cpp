@@ -3,14 +3,23 @@
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
-#include "Particle/ParticleSystem.h" // ParticleForGPU定義のため
+
+#include <utility>
 
 
 namespace CoreEngine
 {
-void ParticleResourceManager::Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory, uint32_t maxInstances) {
+ParticleResourceManager::~ParticleResourceManager() {
+    if (!dxCommon_) {
+        return;
+    }
+    dxCommon_->DeferFree(srvHandleGPU_);
+    dxCommon_->DeferRelease(std::move(instancingResource_));
+    instancingData_ = nullptr;
+}
+
+void ParticleResourceManager::Initialize(GraphicsCore* dxCommon, uint32_t maxInstances) {
     dxCommon_ = dxCommon;
-    resourceFactory_ = resourceFactory;
 
     // リソースの作成
     CreateInstancingResource(maxInstances);
@@ -19,7 +28,7 @@ void ParticleResourceManager::Initialize(GraphicsCore* dxCommon, ResourceFactory
 
 void ParticleResourceManager::CreateInstancingResource(uint32_t maxInstances) {
     // インスタンシング用のリソースを作成
-    instancingResource_ = resourceFactory_->CreateBufferResource(
+    instancingResource_ = ResourceFactory::CreateBufferResource(
         dxCommon_->GetDevice(),
         sizeof(ParticleForGPU) * maxInstances
     );

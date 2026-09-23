@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "NoiseModule.h"
-#include "../ParticleSystem.h" // Particle構造体のために必要
+#include "Particle/Core/Particle.h"
 #include <cmath>
 
 namespace CoreEngine
@@ -58,7 +58,7 @@ void NoiseModule::ApplyNoise(Particle& particle, float deltaTime) {
     particle.transform.translate.z += noiseOffset.z * deltaTime;
 }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 bool NoiseModule::ShowImGui() {
     bool changed = false;
 

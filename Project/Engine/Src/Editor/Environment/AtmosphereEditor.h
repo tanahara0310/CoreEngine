@@ -29,14 +29,15 @@ namespace CoreEngine {
     };
 
     /// @brief 大気散乱（Sky Atmosphere）のエンジン常駐エディタ
-    /// @details DebugSubsystem がエンジン寿命で 1 個所有し、どのシーンでも Environment ツリーから編集できる。
+    /// @details DebugSubsystem がエンジン寿命で 1 個所有し、シーンに置かれたコンポーネントの
+    ///          インスペクタとして中身を描く。
     /// @note 編集対象のライトはシーンごとに作り直されるため、描画のたびに UI モデルを再同期する。
     class AtmosphereEditor {
     public:
-        /// @brief 環境エディタの登録を解除する
+        /// @brief インスペクタの登録を解除する
         ~AtmosphereEditor();
 
-        /// @brief 参照先を初期化し、環境エディタとして登録する
+        /// @brief 参照先を初期化し、空のコンポーネントのインスペクタとして登録する
         void Initialize(EngineSystem& engine);
 
         /// @brief 現在の太陽設定を取得する
@@ -50,10 +51,6 @@ namespace CoreEngine {
 
         /// @brief 月設定を適用する（月ライトが無ければ有効化時に生成し、方向・色・強度へ反映）
         void ApplyMoonSettings(const AtmosphereEditorMoonSettings& settings);
-
-        /// @brief 高度角・方位角から太陽光の進行方向ベクトルを計算する
-        /// @return 正規化済みのライト方向（太陽から地表へ向かう方向）
-        static Vector3 ComputeSunLightDirection(float elevationDeg, float azimuthDeg);
 
     private:
         /// @brief 大気散乱の編集パネル内容を描画する（Inspector 内に埋め込み）

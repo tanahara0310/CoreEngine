@@ -11,13 +11,14 @@ namespace CoreEngine
     class SceneSaveSystem;
     class Camera;
 
-    /// @brief BaseScene::Update 内の Feature ディスパッチ位置
-    /// @details 従来 BaseScene::Update に暗黙の順序として埋まっていた更新タイミングを
+    /// @brief Scene::Update 内の Feature ディスパッチ位置
+    /// @details 従来 Scene::Update に暗黙の順序として埋まっていた更新タイミングを
     ///          明示化した論理フック。同一フェーズ内は priority（小さいほど先）、
     ///          同 priority は登録順（RenderPassPhase と同じ規約）。
     enum class SceneUpdatePhase : uint32_t {
         FrameStart = 0,   ///< カメラ更新後・OnUpdate() 前（ライト/影・エディタ等のフレーム前処理）
         PreObjectUpdate,  ///< OnUpdate() 後・GameObject 更新前（床のカメラ追従など位置の事前確定）
+        BetweenObjectUpdates, ///< GameObject の Update の後・LateUpdate の前（Update の中で始めたトゥイーンの前進）
         PostObjectUpdate, ///< GameObject 更新後・OnLateUpdate() 前（コリジョンなど結果の収集・判定）
         PostLogic,        ///< OnLateUpdate() 後（大気→雲など全ロジック確定後の反映）
     };
@@ -37,7 +38,7 @@ namespace CoreEngine
     inline constexpr int kLateFeaturePriority = 1000;
 
     /// @brief Feature へ渡すシーン側コンテキスト
-    /// @details BaseScene が所有し、各ディスパッチ直前に gameViewCamera3D を再解決する
+    /// @details Scene が所有し、各ディスパッチ直前に gameViewCamera3D を再解決する
     ///          （カメラオーバーライドがフレーム中に切り替わっても最新を参照させるため）。
     struct SceneContext {
         EngineSystem* engine = nullptr;
@@ -49,9 +50,9 @@ namespace CoreEngine
     };
 
     /// @brief シーン横断機能（ライト・コリジョン・環境等）の基底クラス
-    /// @details BaseScene::AddFeature() で登録すると、シーンのライフサイクルに合わせて
+    /// @details Scene::AddFeature() で登録すると、シーンのライフサイクルに合わせて
     ///          各フックが呼ばれる。エンジン機能の追加は Feature の追加のみで完結し、
-    ///          BaseScene 本体の編集を不要にする（RenderPipeline::AddPass と同じ思想）。
+    ///          Scene 本体の編集を不要にする（RenderPipeline::AddPass と同じ思想）。
     class ISceneFeature {
     public:
         virtual ~ISceneFeature() = default;
@@ -62,9 +63,11 @@ namespace CoreEngine
         /// @brief シーン初期化時（派生シーンの OnInitialize() より前）
         virtual void Initialize(SceneContext&) {}
 
-        /// @brief OnInitialize() 完了後・シーン JSON からの復元より前
-        /// @details シーンが生成したオブジェクトを見て挙動を決める Feature 用
-        ///          （SkyBox / 無限床の採用判定など）。
+        /// @brief シーンのオブジェクトが出そろった後
+        /// @details シーンのコードが作ったオブジェクトと、シーン JSON から復元したオブジェクトの
+        ///          両方を見て挙動を決める Feature 用（SkyBox / 無限床の採用判定など）。
+        /// @note 復元より前に置きたい処理——保存データで値を上書きされるオブジェクトの生成など——は
+        ///       Initialize() で行うこと（水面がこの形）。
         virtual void PostSceneInitialize(SceneContext&) {}
 
         /// @brief 毎フレーム更新（フェーズごとに 1 回ずつ呼ばれる）

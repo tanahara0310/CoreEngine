@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <d3d12.h>
 
@@ -28,7 +28,7 @@ namespace CoreEngine
         RenderViewType viewType = RenderViewType::GameView; ///< 実行中のビュー種別
         bool isGBufferPass = false;                    ///< true: GBuffer 蓄積パス / false: Forward 系パス
 
-        /// @brief 移行期の互換用カメラ取得（レガシーな Draw(const Camera*) 経路向け）
+        /// @brief このビューを作ったカメラを取得
         /// @return ビュー未設定なら nullptr
         const Camera* GetCamera() const;
     };

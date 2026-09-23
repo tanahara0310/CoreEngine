@@ -16,6 +16,9 @@ public:
     /// @brief 更新処理
     void Update() override;
 
+    /// @brief 全キーを離している状態にする
+    void Reset() override;
+
     /// @brief キーが押されてるかどうか
     /// @param keyNumber キー番号 (0-255)
     bool IsKeyPressed(uint8_t keyNumber) const;

@@ -14,7 +14,11 @@ namespace CoreEngine
         Material,
         Scene,
         Prefab,
-        Animation
+        Animation,
+        MaterialLibrary,
+        Json,
+        Csv,
+        PhysicsMaterial
     };
 
     // AssetType を文字列に変換
@@ -22,29 +26,37 @@ namespace CoreEngine
     {
         switch (type)
         {
-        case AssetType::Texture:    return "Texture";
-        case AssetType::Model:      return "Model";
-        case AssetType::Shader:     return "Shader";
-        case AssetType::Audio:      return "Audio";
-        case AssetType::Material:   return "Material";
-        case AssetType::Scene:      return "Scene";
-        case AssetType::Prefab:     return "Prefab";
-        case AssetType::Animation:  return "Animation";
-        default:                    return "Unknown";
+        case AssetType::Texture:         return "Texture";
+        case AssetType::Model:           return "Model";
+        case AssetType::Shader:          return "Shader";
+        case AssetType::Audio:           return "Audio";
+        case AssetType::Material:        return "Material";
+        case AssetType::Scene:           return "Scene";
+        case AssetType::Prefab:          return "Prefab";
+        case AssetType::Animation:       return "Animation";
+        case AssetType::MaterialLibrary: return "MaterialLibrary";
+        case AssetType::Json:            return "Json";
+        case AssetType::Csv:             return "Csv";
+        case AssetType::PhysicsMaterial: return "PhysicsMaterial";
+        default:                         return "Unknown";
         }
     }
 
     // 文字列を AssetType に変換
     inline AssetType StringToAssetType(const std::string& typeStr)
     {
-        if (typeStr == "Texture")   return AssetType::Texture;
-        if (typeStr == "Model")     return AssetType::Model;
-        if (typeStr == "Shader")    return AssetType::Shader;
-        if (typeStr == "Audio")     return AssetType::Audio;
-        if (typeStr == "Material")  return AssetType::Material;
-        if (typeStr == "Scene")     return AssetType::Scene;
-        if (typeStr == "Prefab")    return AssetType::Prefab;
-        if (typeStr == "Animation") return AssetType::Animation;
+        if (typeStr == "Texture")         return AssetType::Texture;
+        if (typeStr == "Model")           return AssetType::Model;
+        if (typeStr == "Shader")          return AssetType::Shader;
+        if (typeStr == "Audio")           return AssetType::Audio;
+        if (typeStr == "Material")        return AssetType::Material;
+        if (typeStr == "Scene")           return AssetType::Scene;
+        if (typeStr == "Prefab")          return AssetType::Prefab;
+        if (typeStr == "Animation")       return AssetType::Animation;
+        if (typeStr == "MaterialLibrary") return AssetType::MaterialLibrary;
+        if (typeStr == "Json")            return AssetType::Json;
+        if (typeStr == "Csv")             return AssetType::Csv;
+        if (typeStr == "PhysicsMaterial") return AssetType::PhysicsMaterial;
         return AssetType::Unknown;
     }
 }

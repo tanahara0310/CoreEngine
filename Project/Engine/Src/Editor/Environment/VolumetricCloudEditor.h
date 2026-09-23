@@ -6,7 +6,8 @@ namespace CoreEngine {
     class GameDebugUI;
 
     /// @brief ボリューメトリック雲のエンジン常駐エディタ
-    /// @details DebugSubsystem がエンジン寿命で 1 個所有し、どのシーンでも Environment ツリーから編集できる。
+    /// @details DebugSubsystem がエンジン寿命で 1 個所有し、シーンに置かれたコンポーネントの
+    ///          インスペクタとして中身を描く。
     ///          UI は「⓪ スタイル → ① 天候（プリセット + メタスライダー）→ ② 配置ペイント
     ///          → ③ 詳細設定」の順。⓪ 以外は全スタイル共通で、③ だけスタイルで出し分ける。
     class VolumetricCloudEditor {

@@ -4,13 +4,13 @@
 #include <cstdint>
 #include <functional>
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include <imgui.h>
 #include <imgui_impl_win32.h>
 
 // ImGuiのウィンドウプロシージャ（グローバル名前空間）
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
 
 namespace CoreEngine
 {
@@ -44,9 +44,15 @@ namespace CoreEngine
         /// @brief Esc キーでアプリケーションを終了するか
         /// @details 既定は false。ゲーム中の Esc はポーズメニューが受けるので、
         ///          エンジンが先にウィンドウを閉じてしまわないようにしてある。
-        ///          終了させたい場合は CVar `app.QuitOnEscape` を有効にする。
+        ///          終了させたい場合は CVar `sys.Window.QuitOnEscape` を有効にする。
         /// @note 無効にしても × ボタンと Alt+F4 では終了できる。
         static bool QuitsOnEscape();
+
+        /// @brief このアプリのウィンドウが前面にあるか
+        /// @details 別のアプリを触っている間に入力を取り込むと、切り替えた瞬間に
+        ///          押していたキーが押しっぱなしとして残る。`InputManager` がこれを見る。
+        /// @note ゲーム映像専用ウィンドウも同じアプリなので、そちらが前面でも true。
+        static bool IsAppActive() { return appActive_; }
 
         /// @brief 指定された幅、高さ、タイトルで初期化
         /// @note ここではウィンドウを表示しない。表示は起動シーケンス完了後の ShowMainWindow()
@@ -139,5 +145,8 @@ namespace CoreEngine
         // 現在のクライアント領域のサイズ（静的アクセス用）
         static int32_t currentClientWidthStatic_;
         static int32_t currentClientHeightStatic_;
+
+        // このアプリが前面にあるか（起動直後は前面に出る）
+        static bool appActive_;
     };
 };

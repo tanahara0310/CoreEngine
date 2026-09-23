@@ -1,14 +1,19 @@
 #include "pch.h"
 #include "MaterialComponent.h"
 
-#ifdef USE_IMGUI
-#include "Editor/ImGui/ImGuiAll.h"
-#endif
-
+#include "GameObject/Component/Core/ComponentFactory.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
+
+REFLECT_REGISTER(CoreEngine::MaterialComponent)
+COMPONENT_REGISTER(CoreEngine::MaterialComponent)
 
 namespace CoreEngine
 {
+    bool MaterialComponent::RequiresComponent(const IComponent& other) const
+    {
+        return dynamic_cast<const MeshRendererComponent*>(&other) != nullptr;
+    }
+
     void MaterialComponent::Start()
     {
         renderer_ = Sibling<MeshRendererComponent>();
@@ -22,6 +27,13 @@ namespace CoreEngine
         if (pendingNormalMap_) { SetNormalMapEnabled(*pendingNormalMap_); pendingNormalMap_.reset(); }
         if (pendingIBL_) { SetIBLIntensity(*pendingIBL_); pendingIBL_.reset(); }
         if (pendingLighting_) { SetLightingEnabled(*pendingLighting_); pendingLighting_.reset(); }
+        if (pendingEmissive_) {
+            const Vector3 emissive = *pendingEmissive_;
+            pendingEmissive_.reset();
+            SetEmissive({ emissive.x, emissive.y, emissive.z, 1.0f });
+        }
+        if (pendingDitheringScale_) { SetDitheringScale(*pendingDitheringScale_); pendingDitheringScale_.reset(); }
+        if (pendingDithering_) { SetDitheringEnabled(*pendingDithering_); pendingDithering_.reset(); }
     }
 
     bool MaterialComponent::ForEachMaterial(const std::function<void(MaterialInstance*)>& fn) const
@@ -51,6 +63,12 @@ namespace CoreEngine
         if (!renderer_) { return; }
         const MaterialInstance* mat = GetMaterial();
         if (!mat) { return; }
+
+        // 加算などを選んでいるときは変えない
+        const BlendMode current = renderer_->GetBlendMode();
+        if (current != BlendMode::kBlendModeNone && current != BlendMode::kBlendModeNormal) {
+            return;
+        }
 
         // α < 1 かつディザリング OFF → アルファブレンドで段階的透明。
         // ディザリング ON なら不透明のままディザに任せる。
@@ -105,60 +123,117 @@ namespace CoreEngine
         }
     }
 
-#ifdef USE_IMGUI
-    bool MaterialComponent::DrawInspector()
+    void MaterialComponent::SetMetallic(float value)
     {
-        MaterialInstance* material = GetMaterial();
-        if (!material) {
-            // モデルがまだ読めていないと実体が無い。値を持たないので編集もできない
-            UI::Hint("マテリアル未生成（メッシュの読み込み待ち）");
-            return false;
+        if (!ForEachMaterial([value](MaterialInstance* mat) { mat->SetMetallic(value); })) {
+            SetPBR(value, GetRoughness(), GetOcclusionStrength());
         }
-
-        bool changed = false;
-
-        Vector4 color = material->GetColor();
-        if (UI::ColorEdit("ベースカラー", color)) {
-            SetColor(color);
-            changed = true;
-        }
-
-        UI::SectionHeader("PBR");
-
-        float metallic = material->GetMetallic();
-        float roughness = material->GetRoughness();
-        float occlusion = material->GetOcclusionStrength();
-
-        bool pbrChanged = false;
-        pbrChanged |= UI::SliderFloat("メタリック", metallic, 0.0f, 1.0f);
-        pbrChanged |= UI::SliderFloat("ラフネス", roughness, 0.0f, 1.0f);
-        pbrChanged |= UI::SliderFloat("オクルージョン", occlusion, 0.0f, 1.0f);
-        if (pbrChanged) {
-            SetPBR(metallic, roughness, occlusion);
-            changed = true;
-        }
-
-        UI::SectionHeader("その他");
-
-        float iblIntensity = material->GetIBLIntensity();
-        if (UI::SliderFloat("IBL 強度", iblIntensity, 0.0f, 2.0f)) {
-            SetIBLIntensity(iblIntensity);
-            changed = true;
-        }
-
-        bool lighting = material->IsLightingEnabled();
-        if (ImGui::Checkbox("ライティング", &lighting)) {
-            SetLightingEnabled(lighting);
-            changed = true;
-        }
-
-        bool normalMap = material->IsNormalMapEnabled();
-        if (ImGui::Checkbox("法線マップ", &normalMap)) {
-            SetNormalMapEnabled(normalMap);
-            changed = true;
-        }
-
-        return changed;
     }
-#endif // USE_IMGUI
+
+    void MaterialComponent::SetRoughness(float value)
+    {
+        if (!ForEachMaterial([value](MaterialInstance* mat) { mat->SetRoughness(value); })) {
+            SetPBR(GetMetallic(), value, GetOcclusionStrength());
+        }
+    }
+
+    void MaterialComponent::SetOcclusionStrength(float value)
+    {
+        if (!ForEachMaterial([value](MaterialInstance* mat) { mat->SetOcclusionStrength(value); })) {
+            SetPBR(GetMetallic(), GetRoughness(), value);
+        }
+    }
+
+    void MaterialComponent::SetEmissive(const Vector4& color)
+    {
+        const Vector3 emissive = { color.x, color.y, color.z };
+        if (!ForEachMaterial([&emissive](MaterialInstance* mat) { mat->SetEmissiveFactor(emissive); })) {
+            pendingEmissive_ = emissive;
+        }
+    }
+
+    void MaterialComponent::SetDitheringEnabled(bool enable)
+    {
+        const bool applied = ForEachMaterial([enable](MaterialInstance* mat) {
+            mat->SetDitheringEnabled(enable);
+            });
+        if (applied) {
+            UpdateBlendModeForAlpha();
+        } else {
+            pendingDithering_ = enable;
+        }
+    }
+
+    void MaterialComponent::SetDitheringScale(float scale)
+    {
+        if (!ForEachMaterial([scale](MaterialInstance* mat) { mat->SetDitheringScale(scale); })) {
+            pendingDitheringScale_ = scale;
+        }
+    }
+
+    // ===== 取得 =====
+    // 実体（MaterialInstance）が出来るのはメッシュを読み終えた後なので、
+    // それまでは Start で流し込む控えを返す。どちらも無ければエンジン既定値
+
+    Vector4 MaterialComponent::GetColor() const
+    {
+        if (const MaterialInstance* mat = GetMaterial()) { return mat->GetColor(); }
+        return pendingColor_.value_or(Vector4{ 1.0f, 1.0f, 1.0f, 1.0f });
+    }
+
+    float MaterialComponent::GetMetallic() const
+    {
+        if (const MaterialInstance* mat = GetMaterial()) { return mat->GetMetallic(); }
+        return pendingPBR_ ? pendingPBR_->metallic : 0.0f;
+    }
+
+    float MaterialComponent::GetRoughness() const
+    {
+        if (const MaterialInstance* mat = GetMaterial()) { return mat->GetRoughness(); }
+        return pendingPBR_ ? pendingPBR_->roughness : 1.0f;
+    }
+
+    float MaterialComponent::GetOcclusionStrength() const
+    {
+        if (const MaterialInstance* mat = GetMaterial()) { return mat->GetOcclusionStrength(); }
+        return pendingPBR_ ? pendingPBR_->occlusion : 1.0f;
+    }
+
+    float MaterialComponent::GetIBLIntensity() const
+    {
+        if (const MaterialInstance* mat = GetMaterial()) { return mat->GetIBLIntensity(); }
+        return pendingIBL_.value_or(1.0f);
+    }
+
+    bool MaterialComponent::IsLightingEnabled() const
+    {
+        if (const MaterialInstance* mat = GetMaterial()) { return mat->IsLightingEnabled(); }
+        return pendingLighting_.value_or(true);
+    }
+
+    bool MaterialComponent::IsNormalMapEnabled() const
+    {
+        if (const MaterialInstance* mat = GetMaterial()) { return mat->IsNormalMapEnabled(); }
+        return pendingNormalMap_.value_or(false);
+    }
+
+    Vector4 MaterialComponent::GetEmissive() const
+    {
+        const Vector3 emissive = GetMaterial()
+            ? GetMaterial()->GetEmissiveFactor()
+            : pendingEmissive_.value_or(Vector3{ 0.0f, 0.0f, 0.0f });
+        return { emissive.x, emissive.y, emissive.z, 1.0f };
+    }
+
+    bool MaterialComponent::IsDitheringEnabled() const
+    {
+        if (const MaterialInstance* mat = GetMaterial()) { return mat->IsDitheringEnabled(); }
+        return pendingDithering_.value_or(true);
+    }
+
+    float MaterialComponent::GetDitheringScale() const
+    {
+        if (const MaterialInstance* mat = GetMaterial()) { return mat->GetDitheringScale(); }
+        return pendingDitheringScale_.value_or(1.0f);
+    }
 }

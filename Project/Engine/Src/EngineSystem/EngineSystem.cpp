@@ -1,7 +1,11 @@
 #include "pch.h"
 #include "EngineSystem.h"
 #include "Subsystem/RayTracingSubsystem.h"
-#ifdef USE_IMGUI
+#include "Script/ScriptSubsystem.h"
+#include "UI/UIPointer.h"
+#include "Graphics/Render/GameOutputWindow.h"
+
+#ifdef CORE_EDITOR
 #include "Settings/EditorSettingsSubsystem.h"
 #endif
 // ImGui 無しビルドでも CVar の保存値を適用するために常に必要
@@ -10,6 +14,7 @@
 #include "Factory/GraphicsComponentFactory.h"
 #include "Factory/CoreComponentFactory.h"
 #include "Startup/StartupSequence.h"
+#include "EngineSystem/PlaybackState.h"
 #include "Graphics/Shader/Cache/ShaderCacheStore.h"
 #include "Graphics/Shader/Cache/ShaderManifest.h"
 #include "Graphics/Shader/ShaderPrewarm.h"
@@ -37,8 +42,8 @@
 #include "Utility/FrameRate/FrameRateController.h"
 #include "Utility/FrameRate/Time.h"
 
-#if defined(USE_IMGUI) && defined(USE_PIX)
-#include "Editor/ImGui/PixCapture.h"
+#if defined(CORE_EDITOR) && defined(USE_PIX)
+#include "Graphics/RHI/Debug/PixCapture.h"
 #endif
 
 // レンダーパイプライン
@@ -58,7 +63,10 @@
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
 
+#include "GameObject/Component/Core/ComponentFactory.h"
 #include "GameObject/GameObject.h"
+#include "Reflection/TypeDescriptor.h"
+#include "Utility/Path/ProjectPaths.h"
 #include "Scene/SceneManager.h"
 #include "Camera/View/ViewInfo.h"
 #include "EngineSystem/EngineConfig.h"
@@ -94,17 +102,24 @@ namespace CoreEngine
             // このステップは必ず先頭に置くこと
             Logger::GetInstance().Initialize();
 
+            // どこへ読み書きするかを最初に残す。起動方法で保存先が変わって
+            // いないことを、ログだけで確かめられるようにするため
+            Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
+                "データの根: {} （{}）",
+                Logger::GetInstance().PathToUtf8(ProjectPaths::Root()),
+                ProjectPaths::ResolutionNote());
+
             // WinAppのインスタンスを保持
             winApp_ = winApp;
 
             // アセットデータベースの初期化（テクスチャ読み込みより先に必要）
-            AssetDatabase::GetInstance().Initialize(std::filesystem::current_path());
+            AssetDatabase::GetInstance().Initialize(ProjectPaths::Root());
 
             // コンパイル済み DXIL のディスクキャッシュ。
             // 最初のシェーダコンパイル（レンダードメインのステップ）より前に
             // 用意しておく必要がある
             ShaderCacheStore::GetInstance().Initialize(
-                std::filesystem::current_path() / "Cache" / "ShaderCache",
+                ProjectPaths::Intermediate("ShaderCache"),
                 config.enableShaderCache);
 
             // 「実際にコンパイルされるシェーダ」の一覧。次回の起動で並列に
@@ -112,7 +127,7 @@ namespace CoreEngine
             //（キャッシュを消して再コンパイルさせる操作で一覧まで消えると、
             //  一番効いてほしい場面で事前コンパイルが効かなくなる）
             ShaderManifest::GetInstance().Initialize(
-                std::filesystem::current_path() / "Cache" / "ShaderManifest.txt",
+                ProjectPaths::Intermediate("ShaderManifest.txt"),
                 config.enableShaderCache);
         });
 
@@ -123,7 +138,7 @@ namespace CoreEngine
         // 以降のシェーダコンパイル数秒の裏に隠れる（このステップ自体は即座に戻る）
         sequence.Add("オーディオ（非同期開始）", [this] { CreateAudioComponents(); });
 
-#if defined(USE_IMGUI) && defined(USE_PIX)
+#if defined(CORE_EDITOR) && defined(USE_PIX)
         // PIX GPU キャプチャ DLL をロード（D3D12 デバイス作成より前に必要）
         // DLL がロードされると全 D3D12 API がフックされ ~33% のオーバーヘッドが発生するため、
         // コンフィグで明示的に有効化された場合のみロードする
@@ -164,21 +179,22 @@ namespace CoreEngine
         // 初期化時点で全サブシステムが生成済みである前提のコードがある。
         sequence.Add("サブシステム生成", [this] {
             RegisterSubsystem<RayTracingSubsystem>();
-#ifdef USE_IMGUI
+            RegisterSubsystem<ScriptSubsystem>();
+#ifdef CORE_EDITOR
             // エディタ設定の自動保存（セクション登録元より先に生成しておく）
             RegisterSubsystem<EditorSettingsSubsystem>();
             RegisterSubsystem<DebugSubsystem>();
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
         });
 
         // 生成ステップが積む個数は静的に決まるので、インデックス指定で
         // 1 サブシステム 1 ステップに切り出せる。
         // （実行中にステップを追加すると StartupSequence の内部 vector が
         //   再確保され、実行中エントリの参照が壊れるので絶対にやらない）
-#ifdef USE_IMGUI
-        constexpr size_t kSubsystemCount = 3;
+#ifdef CORE_EDITOR
+        constexpr size_t kSubsystemCount = 4;
 #else
-        constexpr size_t kSubsystemCount = 1;
+        constexpr size_t kSubsystemCount = 2;
 #endif
         for (size_t i = 0; i < kSubsystemCount; ++i) {
             sequence.Add(
@@ -194,7 +210,7 @@ namespace CoreEngine
                 });
         }
 
-#ifndef USE_IMGUI
+#ifndef CORE_EDITOR
         // ImGui 無しビルドには EditorSettingsSubsystem が無く、セクション登録時の
         // CVar 復元経路ごと落ちるため、そのままだと全 CVar がコード既定値になる。
         // 較正済みのプロジェクト設定はゲームの見た目そのものなので、保存はせず
@@ -206,7 +222,27 @@ namespace CoreEngine
             CVarRegistry::Get().FlushPendingWarnings();
             CVarSettingsSection::LogOverriddenCVars();
         });
-#endif // !USE_IMGUI
+#endif // !CORE_EDITOR
+
+        sequence.Add("型記述子の登録確認", [] {
+            auto& registry = Reflection::TypeRegistry::Get();
+            registry.FlushPendingWarnings();
+
+            size_t propertyCount = 0;
+            for (const auto* type : registry.GetAll()) {
+                propertyCount += type->properties.size();
+            }
+            Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
+                "TypeRegistry: {} 型 / {} プロパティを登録",
+                registry.GetAll().size(), propertyCount);
+        });
+
+        sequence.Add("コンポーネントファクトリの解決", [] {
+            auto& factory = ComponentFactory::Get();
+            factory.Prime();
+            Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
+                "ComponentFactory: {} 型を登録", factory.GetRegisteredCount());
+        });
 
         sequence.Add("GameObject へのエンジン参照", [this] { GameObject::SetEngine(this); });
 
@@ -267,6 +303,9 @@ namespace CoreEngine
 
     void EngineSystem::BeginFrame()
     {
+        // 再生の開始・停止とコマ送りの要求を取り込む（停止ではシーンを再生前の状態へ読み直す）
+        PlaybackStateManager::GetInstance().BeginFrame();
+
         // フレームレート制御の開始
         if (auto* frameRate = GetService<FrameRateController>()) {
             frameRate->BeginFrame();
@@ -283,6 +322,15 @@ namespace CoreEngine
         //  本体ウィンドウに結び付いており、別ウィンドウにフォーカスがある間は拾えないため）
         if (auto* inputManager = GetService<InputManager>()) {
             inputManager->Update();
+
+            // ゲーム画面の上のポインタを決める（UI の当たり判定より前）
+            const GameOutputWindow* outputWindow = nullptr;
+#ifdef CORE_EDITOR
+            if (auto* debug = GetDebugSubsystem()) {
+                outputWindow = &debug->GetGameOutputWindow();
+            }
+#endif
+            UIPointer::Get().Update(winApp_, inputManager, outputWindow);
         }
 
         // オーディオの更新（フェードの進行と、鳴り終わった再生スロットの回収）。
@@ -295,6 +343,7 @@ namespace CoreEngine
         for (auto& sys : subsystems_) {
             sys->BeginFrame();
         }
+
     }
 
     void EngineSystem::EndFrame()
@@ -303,6 +352,9 @@ namespace CoreEngine
         for (auto it = subsystems_.rbegin(); it != subsystems_.rend(); ++it) {
             (*it)->EndFrame();
         }
+
+        // コマ送りで進めた 1 フレームをここで閉じ、一時停止へ戻す
+        PlaybackStateManager::GetInstance().EndFrame();
 
         // VSync有効時はフレームレート制御の終了処理は不要
         // Present(1, 0)が自動的に60Hzに同期してくれる
@@ -316,9 +368,6 @@ namespace CoreEngine
 
         // サブシステムキャッシュ（フレーム内再利用）
         auto* rayTracing = GetSubsystem<RayTracingSubsystem>();
-#ifdef USE_IMGUI
-        auto* debug = GetSubsystem<DebugSubsystem>();
-#endif
 
         auto* dx = GetService<GraphicsCore>();
         auto* renderManager = GetService<RenderManager>();
@@ -357,11 +406,6 @@ namespace CoreEngine
 
         // フレーム番号は FrameSync が単一ソース（EngineSystem 側で別に数えない）
         context.frameNumber = frame.frameNumber;
-#ifdef USE_IMGUI
-        // RenderGraph 内の各パスが自動でタイミング計測できるようプロファイラを渡す
-        // （nullptr の場合 RenderGraph::Execute は計測をスキップする）
-        context.gpuProfiler = debug ? &debug->GetGpuProfiler() : nullptr;
-#endif
 
         // RenderTargetManager はビュー確定より前に必要（TAA 履歴ターゲット等の判定に使う）
         if (render) {
@@ -399,11 +443,10 @@ namespace CoreEngine
                 &context.sceneDepth->Resource());
         }
 
-#ifdef USE_IMGUI
-        // プロファイラのリングスロットは今フレームのスロット番号に合わせる
-        const UINT currentFrameIndex = frame.frameIndex;
-        if (debug) debug->BeginRenderPipeline(cmdList, currentFrameIndex);
-#endif
+        // サブシステムへ描画の開始を伝える（計測器を文脈へ入れるなど）
+        for (const auto& subsystem : subsystems_) {
+            subsystem->BeginRender(context, frame);
+        }
 
         // Hi-Z オクルージョンカリング: 完了済みリングスロットの可視性 Readback を反映する。
         // AABB 収集と遮蔽スキップの適用はメイン GameView の構築中のみ有効化する
@@ -472,15 +515,10 @@ namespace CoreEngine
             sceneManager->FinalizeRenderFrame();
         }
 
-#ifdef USE_IMGUI
-        if (debug) debug->DrawImGuiWithProfiling(cmdList);
-
-        // ゲーム映像専用ウィンドウへの転写。ImGui を描いた後に別のレンダーターゲットへ
-        // 積むだけなので、メインバックバッファの内容には影響しない。
-        if (debug) debug->RecordGameOutputWindow();
-
-        if (debug) debug->EndRenderPipeline(cmdList, currentFrameIndex);
-#endif // USE_IMGUI
+        // サブシステムへ描画の終わりを伝える（登録の逆順・コマンドリストを閉じる前）
+        for (auto it = subsystems_.rbegin(); it != subsystems_.rend(); ++it) {
+            (*it)->EndRender(frame);
+        }
 
         // ===== フレーム終了 =====
         // バックバッファを PRESENT へ戻し、Close / Execute / Signal / Present / 次フレーム準備を行う
@@ -491,20 +529,16 @@ namespace CoreEngine
             dx->EndFrame();
         }
 
-#ifdef USE_IMGUI
-        // 転写コマンドの実行が済んだこの位置で専用ウィンドウを Present する
-        if (debug) debug->PresentGameOutputWindow();
-#endif // USE_IMGUI
-
         // DXR の退避リソースを遅延解放キューへ預ける
         // （EndFrame() で今フレームを Signal した後に呼ぶこと。前だとフェンス値がずれる）
         if (auto* asMgr = context.accelerationStructureManager; asMgr && dx) {
             asMgr->MoveRetiredResourcesTo(dx->DeferredRelease(), dx->Frame().LastSignaledValue());
         }
 
-#ifdef USE_IMGUI
-        if (debug) debug->PostFinalizeFrame(dx);
-#endif // USE_IMGUI
+        // サブシステムへフレームの提示が済んだことを伝える
+        for (const auto& subsystem : subsystems_) {
+            subsystem->AfterPresent();
+        }
 
         // frameViews はこの関数のローカル。フレーム外から参照されないよう参照を切る。
         if (renderManager) {

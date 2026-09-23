@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "CameraShakeEditorModule.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "Editor/ImGui/ImGuiAll.h"
 #include <algorithm>
@@ -267,4 +267,4 @@ namespace CoreEngine
     }
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

@@ -3,6 +3,7 @@
 #include "Collider.h"
 #include "CollisionInfo.h"
 #include "GameObject/Component/Core/IComponent.h"
+#include "Reflection/Reflect.h"
 
 #include <functional>
 #include <memory>
@@ -18,23 +19,12 @@ class GameObject;
 ///          （衝突コールバック中の着脱で判定ループの生ポインタが宙に浮かないため）。
 class ColliderComponent : public IComponent {
 public:
+    REFLECT_DECLARE(ColliderComponent)
+
     const char* GetTypeName() const override { return "Collider"; }
 
-#ifdef USE_IMGUI
-    const char* GetInspectorName() const override { return "コライダー"; }
-
-    const char* GetInspectorIcon() const override { return "obj.png"; }
-
-    void GetInspectorIconColor(float* outRgba) const override
-    {
-        outRgba[0] = 0.35f; outRgba[1] = 0.85f; outRgba[2] = 0.45f; outRgba[3] = 1.0f;
-    }
-
-    /// @brief コライダーの形状・レイヤー編集 UI
-    /// @return 値が変更されたら true
-    /// @note 実体は ColliderInspector（ModelGameObject のタブと同じものを共有する）。
-    bool DrawInspector() override;
-#endif
+    /// @brief トランスフォーム（ITransformSource）を使う
+    bool RequiresComponent(const IComponent& other) const override;
 
     // ===== 追加 =====
 
@@ -50,9 +40,14 @@ public:
     Collider& AddBox(const Vector3& size, CollisionLayer layer = CollisionLayer::Default,
                      const Vector3& offset = {});
 
+    /// @brief カプセルコライダーを追加する
+    /// @param height 両端の半球を含む全高
+    Collider& AddCapsule(float radius, float height, CollisionLayer layer = CollisionLayer::Default,
+                         const Vector3& offset = {});
+
     // ===== 衝突イベントの購読 =====
-    // 継承（GameObject::OnCollisionEnter の override）なしで衝突に反応するための入口。
-    // `CollisionWorld` はオーナーの仮想関数を呼び、その既定実装がここへ配る。
+    // C++ から関数を渡して衝突に反応する入口。コンポーネントなら OnTriggerEnter などを上書きする。
+    // 接触は `GameObject::NotifyCollision*` がここと有効なコンポーネントへ配る。
 
     using CollisionCallback = std::function<void(const CollisionInfo&)>;
 
@@ -60,7 +55,7 @@ public:
     void SetOnStay(CollisionCallback callback) { onStay_ = std::move(callback); }
     void SetOnExit(CollisionCallback callback) { onExit_ = std::move(callback); }
 
-    /// @brief 購読者へイベントを配る（`GameObject` の既定実装から呼ばれる）
+    /// @brief 購読者へイベントを配る（`GameObject::NotifyCollision*` から呼ばれる）
     void DispatchEnter(const CollisionInfo& info) const { if (onEnter_) onEnter_(info); }
     void DispatchStay(const CollisionInfo& info) const { if (onStay_) onStay_(info); }
     void DispatchExit(const CollisionInfo& info) const { if (onExit_) onExit_(info); }
@@ -77,6 +72,16 @@ public:
     /// @brief 取り外し済みコライダーの実体を解放する
     /// @note 衝突判定より後（GameObjectManager::CleanupDestroyed）で呼ぶこと。
     void ReleaseRetired();
+
+    // ===== 保存 =====
+
+    /// @brief 形の一覧を書き出す（記述子の口）
+    void SaveShapesToJson(json& parameters) const;
+
+    /// @brief 形の一覧を読み込む（記述子の口）
+    /// @details 数が同じ間は今のコライダーを書き換えるので、コライダーへの参照は変わらない。
+    ///          足りなければ足し、余れば取り外す（実体の解放はフレーム末）。
+    void LoadShapesFromJson(const json& parameters);
 
     // ===== アクセス =====
 

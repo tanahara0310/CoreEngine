@@ -1,10 +1,13 @@
 #include "pch.h"
+#include "Editor/Panel/EditorPanelRegistry.h"
 #include "DebugSubsystem.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "../EngineSystem.h"
 #include "EngineProfileScope.h"
+#include "Editor/Inspector/ComponentInspectors.h"
+#include "Editor/Scene/EditorSceneAccess.h"
 #include "../EngineConfig.h"
 #include "../Settings/EditorSettingsSubsystem.h"
 #include "Editor/ImGui/EditorSettingsPanel.h"
@@ -28,11 +31,17 @@
 #include "Graphics/Render/Render.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Diagnostics/EngineStats.h"
-#include "Graphics/Light/LightManager.h"
 #include "Graphics/Material/MaterialConstants.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include "Input/InputManager.h"
 #include "Scene/SceneManager.h"
+#include "Scene/SceneSaveSystem.h"
+#include "Collision/CollisionLayer.h"
+#include "EngineSystem/Settings/ProjectSettings.h"
+#include "Editor/ImGui/EditorTheme.h"
+#include <algorithm>
+#include <string>
+#include <vector>
 #include "GameObject/GameObjectManager.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/GameObjectManager.h"
@@ -40,6 +49,109 @@
 
 namespace CoreEngine
 {
+    namespace
+    {
+        /// @brief 当たり判定のレイヤーの名前を編集する欄
+        /// @details 実体は `Application/Config/EngineSettings/Layers.json`。
+        ///          添字 0 は `Default` 固定で、エンジンが名指しするのはこれだけ。
+        void DrawCollisionLayerSettings()
+        {
+            // 編集中の控え。確定するまで実体へは流さない（途中の空名で弾かれ続けないように）
+            static std::vector<std::string> editing;
+            static std::string error;
+            static bool loaded = false;
+            if (!loaded) {
+                editing = CollisionLayers::Names();
+                loaded = true;
+            }
+
+            UI::Hint("スクリプトの CollisionLayer と、シーンの当たり判定の表に出る名前です。");
+            UI::Hint("名前を変えても、保存済みのシーンは添字で覚えているので組み合わせは崩れません。");
+
+            for (std::size_t i = 0; i < editing.size(); ++i) {
+                ImGui::PushID(static_cast<int>(i));
+                char buffer[64] = {};
+                const std::size_t length = (std::min)(editing[i].size(), sizeof(buffer) - 1);
+                std::memcpy(buffer, editing[i].data(), length);
+
+                const bool isDefault = (i == 0);
+                ImGui::BeginDisabled(isDefault);
+                if (UI::InputText(("#" + std::to_string(i)).c_str(), buffer, sizeof(buffer))) {
+                    editing[i] = buffer;
+                }
+                ImGui::EndDisabled();
+
+                if (!isDefault) {
+                    UI::SameLine();
+                    if (ImGui::SmallButton("外す")) {
+                        editing.erase(editing.begin() + static_cast<std::ptrdiff_t>(i));
+                        ImGui::PopID();
+                        break;
+                    }
+                }
+                ImGui::PopID();
+            }
+
+            if (editing.size() < kMaxCollisionLayers && ImGui::Button("レイヤーを足す")) {
+                editing.push_back("Layer" + std::to_string(editing.size()));
+            }
+
+            UI::Separator();
+            if (ImGui::Button("適用")) {
+                if (CollisionLayers::SetNames(editing, &error)) {
+                    editing = CollisionLayers::Names();
+                }
+            }
+            UI::SameLine();
+            if (ImGui::Button("戻す")) {
+                editing = CollisionLayers::Names();
+                error.clear();
+            }
+
+            if (!error.empty()) {
+                ImGui::TextColored(Editor::Theme::kError, "%s", error.c_str());
+            }
+            UI::Hint("適用してもスクリプトの CollisionLayer は次の起動から変わります。");
+        }
+
+        /// @brief 起動時に開くシーンを選ぶ欄
+        /// @details 実体は `Application/Config/EngineSettings/Project.json`。
+        ///          選んだ時点で書き出すので、ここに保存ボタンは無い。
+        void DrawStartupSettings()
+        {
+            ProjectSettings& settings = ProjectSettings::Get();
+            const std::vector<std::string> scenes = SceneSaveSystem::ListSavedScenes();
+            const std::string& current = settings.GetInitialSceneName();
+
+            UI::Hint("ゲームを起動したときに最初に開くシーンです。");
+
+            if (scenes.empty()) {
+                ImGui::TextColored(Editor::Theme::kError, "シーンが 1 つもありません");
+                return;
+            }
+
+            const bool missing = !current.empty()
+                && std::find(scenes.begin(), scenes.end(), current) == scenes.end();
+            const char* const preview = current.empty() ? "（未設定）" : current.c_str();
+
+            if (ImGui::BeginCombo("起動シーン", preview)) {
+                for (const std::string& name : scenes) {
+                    if (ImGui::Selectable(name.c_str(), name == current)) {
+                        settings.SetInitialSceneName(name);
+                    }
+                }
+                ImGui::EndCombo();
+            }
+
+            if (current.empty()) {
+                UI::Hint("未設定のときは、保存されているシーンの先頭を開きます。");
+            } else if (missing) {
+                ImGui::TextColored(Editor::Theme::kError,
+                    "このシーンが見つかりません。先頭のシーンを開きます");
+            }
+        }
+    }
+
     DebugSubsystem::DebugSubsystem()
         : imGui_(std::make_unique<ImGuiManager>())
         , gameDebugUI_(std::make_unique<GameDebugUI>())
@@ -65,8 +177,17 @@ namespace CoreEngine
         // GPU タイムスタンププロファイラーの初期化
         gpuProfiler_.Initialize(dx->GetDevice());
 
+        // インスペクタにエンジンの型の出し方を登録する
+        Editor::ComponentInspectors::RegisterEngineTypes();
+
         // ゲームデバッグUIの初期化（DockingUIを渡す）
         gameDebugUI_->Initialize(engine_, imGui_->GetDockingUI());
+
+        // Undo / Redo が今のシーンを引けるようにし、再生の前にシーンを控え、停止したら控えから組み直す
+        Editor::SceneAccess::Bind(engine_);
+        playModeController_ = std::make_unique<Editor::PlayModeController>();
+        playModeController_->Initialize(engine_, gameDebugUI_.get());
+        gameDebugUI_->SetPlayModeController(playModeController_.get());
 
         // LoggerからConsoleUIへのログ転送を接続
         if (auto* console = GetConsole()) {
@@ -101,16 +222,41 @@ namespace CoreEngine
             if (auto* mm = engine_->GetService<ModelManager>()) { return mm->GetThreadPool(); }
             return nullptr;
             });
-        gameDebugUI_->RegisterEnginePanel("Thread Profiler", [this]() {
-            threadProfilerUI_->Draw();
-            }, EnginePanelCategory::Tools, EnginePanelGroup::Analysis);
+        Editor::EditorPanelRegistry::Get().Register({
+            .id = "Thread Profiler",
+            .placement = Editor::PanelPlacement::Window,
+            .group = Editor::PanelGroup::Analysis,
+            .owner = this,
+            .draw = [this]() { threadProfilerUI_->Draw(); },
+            });
+
+        // CPU・GPU・スクリプト・スレッドをまとめたプロファイラ（下段で Console と並べる）
+        profilerPanel_ = std::make_unique<ProfilerPanel>();
+        profilerPanel_->Initialize(engine_, &gpuProfiler_, threadProfilerUI_.get());
+        Editor::EditorPanelRegistry::Get().Register({
+            .id = "Profiler",
+            .placement = Editor::PanelPlacement::Window,
+            .group = Editor::PanelGroup::Analysis,
+            .defaultDock = Editor::DockArea::Bottom,
+            .defaultVisible = true,
+            .owner = this,
+            .defaultWidth = 900.0f,
+            .defaultHeight = 360.0f,
+            .draw = [this]() { profilerPanel_->Draw(); },
+            });
 
         // キーコンフィグUIの登録
-        gameDebugUI_->RegisterEnginePanel("Key Config", [this]() {
-            if (auto* inputManager = engine_->GetService<InputManager>()) {
-                keyConfigUI_.Draw(inputManager->GetQuery());
-            }
-            }, EnginePanelCategory::Tools, EnginePanelGroup::Editor);
+        Editor::EditorPanelRegistry::Get().Register({
+            .id = "Key Config",
+            .placement = Editor::PanelPlacement::Window,
+            .group = Editor::PanelGroup::Editor,
+            .owner = this,
+            .draw = [this]() {
+                if (auto* inputManager = engine_->GetService<InputManager>()) {
+                    keyConfigUI_.Draw(inputManager->GetQuery());
+                }
+            },
+            });
 
         // エンジン統計ウィンドウ（EngineDebug メニュー：カテゴリ別個別ウィンドウ）
         engineStatsWindow_ = std::make_unique<EngineStatsWindow>();
@@ -121,46 +267,26 @@ namespace CoreEngine
         }
 
         // Collect() はフレームごとに1回だけ呼ぶ（描画後に DrawImGuiWithProfiling 直前で実行）
-        gameDebugUI_->RegisterEngineEditor("パフォーマンス", [this]() {
-            engineStatsWindow_->DrawPerformanceTab();
-            });
-        gameDebugUI_->RegisterEngineEditor("レンダリング", [this]() {
-            engineStatsWindow_->DrawRenderingTab();
-            });
-        gameDebugUI_->RegisterEngineEditor("シーン", [this]() {
-            engineStatsWindow_->DrawSceneTab();
-            });
-        gameDebugUI_->RegisterEngineEditor("リソース", [this]() {
-            engineStatsWindow_->DrawResourceTab();
-            });
-        gameDebugUI_->RegisterEngineEditor("メモリ", [this]() {
-            engineStatsWindow_->DrawMemoryTab();
-            });
+        // 統計は Inspector のタブとして出す（Window > Analysis > Engine Stats で開閉）
+        const auto addStatsTab = [this](const char* id, void (EngineStatsWindow::*tab)()) {
+            Editor::EditorPanelRegistry::Get().Register({
+                .id = id,
+                .placement = Editor::PanelPlacement::InspectorTab,
+                .group = Editor::PanelGroup::Analysis,
+                .owner = this,
+                .draw = [this, tab]() { (engineStatsWindow_.get()->*tab)(); },
+                });
+            };
+        addStatsTab("パフォーマンス", &EngineStatsWindow::DrawPerformanceTab);
+        addStatsTab("レンダリング", &EngineStatsWindow::DrawRenderingTab);
+        addStatsTab("シーン", &EngineStatsWindow::DrawSceneTab);
+        addStatsTab("リソース", &EngineStatsWindow::DrawResourceTab);
+        addStatsTab("メモリ", &EngineStatsWindow::DrawMemoryTab);
 
         // ── ドメイン固有パネルの登録 ──
 
-        // Lighting は環境エディタとして Hierarchy の Environment ツリーから選択して編集する。
-        // 配下に各ライトを子行として列挙し、選択したライトを Inspector に表示する（Unity 風）
-        gameDebugUI_->RegisterEnvironmentEditor("Lighting", this,
-            [this]() {
-                if (auto* lightManager = engine_->GetService<LightManager>()) {
-                    lightManager->DrawAllImGui();
-                }
-            },
-            [this]() -> bool {
-                if (auto* lightManager = engine_->GetService<LightManager>()) {
-                    return lightManager->DrawLightTreeImGui();
-                }
-                return false;
-            },
-            [this]() {
-                if (auto* lightManager = engine_->GetService<LightManager>()) {
-                    lightManager->ClearLightUISelection();
-                }
-            });
-
         // 大気散乱・雲は全シーン既定の機能のため、シーン所有の facade ではなく
-        // エンジン寿命で常時登録する（どのシーンでも Environment ツリーから編集できる）
+        // エンジン寿命で常時登録する（どのシーンでもインスペクタから編集できる）
         atmosphereEditor_ = std::make_unique<AtmosphereEditor>();
         atmosphereEditor_->Initialize(*engine_);
         cloudEditor_ = std::make_unique<VolumetricCloudEditor>();
@@ -180,6 +306,21 @@ namespace CoreEngine
             editorSettings->RegisterSection(cvarConfigSection_.get(), this);
             cvarStateSection_ = std::make_unique<CVarSettingsSection>(/*userStatePart=*/true);
             editorSettings->RegisterSection(cvarStateSection_.get(), this);
+
+            // エディタ視点カメラの設定・姿勢（シーンの生成より前に読み込む）
+            sceneCameraSection_ = std::make_unique<Editor::SceneCameraSection>();
+            editorSettings->RegisterSection(sceneCameraSection_.get(), this);
+
+            // パネルの開閉。ここより後に登録されるパネルにも復元値が効く
+            panelStateSection_ = std::make_unique<Editor::EditorPanelStateSection>();
+            editorSettings->RegisterSection(panelStateSection_.get(), this);
+
+            // 画面の配置（ドックとウィンドウの位置・常設ウィンドウの開閉・Project のフォルダ）
+            if (DockingUI* const docking = imGui_->GetDockingUI()) {
+                layoutSection_ = std::make_unique<Editor::EditorLayoutSection>(
+                    *gameDebugUI_, *docking, imGui_->GetProjectView());
+                editorSettings->RegisterSection(layoutSection_.get(), this);
+            }
         }
 
         // 静的初期化中（main より前）に溜まった CVar の警告をログへ流す。
@@ -192,12 +333,24 @@ namespace CoreEngine
         // 全 CVar の一覧・検索パネル（機能別パネルとは別に、横断的に触るための入口）
         // Engine Settings ウィンドウの「Editor Settings」管理パネル
         // （自動保存セクションの一覧・最終保存時刻・リセット / バックアップ復元）
-        gameDebugUI_->RegisterEnginePanel("Editor Settings", [this]() {
-            EditorSettingsPanel::Draw(engine_ ? engine_->GetSubsystem<EditorSettingsSubsystem>() : nullptr);
-        }, EnginePanelCategory::Settings, EnginePanelGroup::Editor);
+        Editor::EditorPanelRegistry::Get().Register({
+            .id = "Editor Settings",
+            .placement = Editor::PanelPlacement::SettingsSection,
+            .group = Editor::PanelGroup::Editor,
+            .owner = this,
+            .draw = [this]() {
+                EditorSettingsPanel::Draw(
+                    engine_ ? engine_->GetSubsystem<EditorSettingsSubsystem>() : nullptr);
+            },
+            });
 
         // Shading パネル（IBL はシーン側で有効化され、マテリアルは強度のみ持つ）
-        gameDebugUI_->RegisterEnginePanel("Shading", [this]() {
+        Editor::EditorPanelRegistry::Get().Register({
+            .id = "Shading",
+            .placement = Editor::PanelPlacement::SettingsSection,
+            .group = Editor::PanelGroup::Rendering,
+            .owner = this,
+            .draw = [this]() {
             auto* sceneManager = engine_->GetSceneManager();
             auto* objManager = sceneManager ? sceneManager->GetCurrentGameObjectManager() : nullptr;
 
@@ -237,7 +390,7 @@ namespace CoreEngine
                         if (!mat) return;
 
                         ImGui::PushID(modelIndex++);
-                        const char* name = owner.GetObjectName();
+                        const char* name = owner.GetDisplayName();
                         ImGui::SetNextItemWidth(170.0f);
                         float intensity = mat->GetIBLIntensity();
                         if (ImGui::SliderFloat(name, &intensity, 0.0f, 2.0f)) {
@@ -251,21 +404,51 @@ namespace CoreEngine
             } else {
                 ImGui::TextDisabled("(シーンが存在しません)");
             }
-            }, EnginePanelCategory::Settings, EnginePanelGroup::Rendering);
+            },
+            });
 
-        // Post Effects セクション（Engine Settings 内）
-        gameDebugUI_->RegisterEnginePanel("Post Effects", [this]() {
-            if (auto* postEffect = engine_->GetService<PostEffectManager>()) {
-                postEffect->DrawImGuiContent();
-            }
-            }, EnginePanelCategory::Settings, EnginePanelGroup::Rendering);
+        // 起動時に開くシーン（CVar で表せない文字列なので Project.json が持つ）
+        Editor::EditorPanelRegistry::Get().Register({
+            .id = "Startup",
+            .placement = Editor::PanelPlacement::SettingsSection,
+            .group = Editor::PanelGroup::General,
+            .owner = this,
+            .draw = [] { DrawStartupSettings(); },
+            });
+
+        // 当たり判定のレイヤーの名前（CVar で表せないのでプロジェクト設定が持つ）
+        Editor::EditorPanelRegistry::Get().Register({
+            .id = "Collision Layers",
+            .placement = Editor::PanelPlacement::SettingsSection,
+            .group = Editor::PanelGroup::General,
+            .owner = this,
+            .draw = [] { DrawCollisionLayerSettings(); },
+            });
+
+        // ポストエフェクトはシーンが持つ見た目なので、シーンに置いた
+        // PostProcess コンポーネントのインスペクタとして出す（Engine Settings には出さない）
+        Editor::ComponentInspectors::Register("PostProcess", {
+            .displayName = "ポストエフェクト",
+            .drawBody = [this](IComponent&) {
+                if (auto* postEffect = engine_->GetService<PostEffectManager>()) {
+                    postEffect->DrawImGuiContent();
+                }
+                return false;
+            },
+            });
 
         // Rendering Techniques パネル（SSAO, TAA等のレンダリング技術）
-        gameDebugUI_->RegisterEnginePanel("Rendering Techniques", [this]() {
-            if (auto* renderingTechniqueManager = engine_->GetService<RenderingTechniqueManager>()) {
-                renderingTechniqueManager->DrawImGui();
-            }
-            }, EnginePanelCategory::Settings, EnginePanelGroup::Rendering);
+        Editor::EditorPanelRegistry::Get().Register({
+            .id = "Rendering Techniques",
+            .placement = Editor::PanelPlacement::SettingsSection,
+            .group = Editor::PanelGroup::Rendering,
+            .owner = this,
+            .draw = [this]() {
+                if (auto* renderingTechniqueManager = engine_->GetService<RenderingTechniqueManager>()) {
+                    renderingTechniqueManager->DrawImGui();
+                }
+            },
+            });
 
         // Render Pass デバッグパネル（各パスの中間バッファを可視化）
         {
@@ -276,9 +459,13 @@ namespace CoreEngine
             if (renderComp) {
                 renderPassDebugPanel_.SetRenderTargetManager(renderComp->GetRenderTargetManager());
             }
-            gameDebugUI_->RegisterEnginePanel("Render Pass", [this]() {
-                renderPassDebugPanel_.Draw();
-                }, EnginePanelCategory::Tools, EnginePanelGroup::Rendering);
+            Editor::EditorPanelRegistry::Get().Register({
+                .id = "Render Pass",
+                .placement = Editor::PanelPlacement::Window,
+                .group = Editor::PanelGroup::Rendering,
+                .owner = this,
+                .draw = [this]() { renderPassDebugPanel_.Draw(); },
+                });
         }
 
         // ゲーム映像だけを映す専用ウィンドウ（ImGui を経由しない自前の HWND＋スワップチェーン）
@@ -289,42 +476,61 @@ namespace CoreEngine
         // パスの依存・実行順・GPU 時間・バリアを 1 枚のグラフとして見せ、
         // ノードから直接パスの有効/無効を切り替えられるようにする。
         renderGraphEditorPanel_.Initialize(engine_, &gpuProfiler_);
-        gameDebugUI_->RegisterEnginePanel("Render Graph", [this]() {
-            renderGraphEditorPanel_.Draw();
-            }, EnginePanelCategory::Tools, EnginePanelGroup::Rendering);
+        Editor::EditorPanelRegistry::Get().Register({
+            .id = "Render Graph",
+            .placement = Editor::PanelPlacement::Window,
+            .group = Editor::PanelGroup::Rendering,
+            .owner = this,
+            .draw = [this]() { renderGraphEditorPanel_.Draw(); },
+            });
 
         // レイトレーシング専用デバッグパネル（Debug メニュー > Ray Tracing）
         // 加速構造の統計・RTシャドウのステージ別内訳・中間バッファ・設定をまとめる。
         rayTracingDebugPanel_.Initialize(engine_, &gpuProfiler_);
-        gameDebugUI_->RegisterEngineDebugPanel("Ray Tracing", [this]() {
-            rayTracingDebugPanel_.Draw();
-            }, EnginePanelGroup::Rendering);
+        Editor::EditorPanelRegistry::Get().Register({
+            .id = "Ray Tracing",
+            .placement = Editor::PanelPlacement::Window,
+            .group = Editor::PanelGroup::Rendering,
+            .owner = this,
+            .defaultWidth = 620.0f,
+            .defaultHeight = 620.0f,
+            .draw = [this]() { rayTracingDebugPanel_.Draw(); },
+            });
 
         // イベントバスのデバッグパネル（Debug メニュー > Event Bus）
         // 疎結合にすると「誰が誰に反応したか」がコードから読めなくなるので、
         // 型ごとの購読者数・発行回数と直近に流れたイベントを常に見えるようにしておく。
-        gameDebugUI_->RegisterEngineDebugPanel("Event Bus", []() {
-            EventBus::GetInstance().DrawImGui();
-            }, EnginePanelGroup::Analysis);
+        Editor::EditorPanelRegistry::Get().Register({
+            .id = "Event Bus",
+            .placement = Editor::PanelPlacement::Window,
+            .group = Editor::PanelGroup::Analysis,
+            .owner = this,
+            .defaultWidth = 620.0f,
+            .defaultHeight = 620.0f,
+            .draw = []() { EventBus::GetInstance().DrawImGui(); },
+            });
 
         // トゥイーンのデバッグパネル（Debug メニュー > Tween）
         // 再生中の本数・進捗・link 先を並べる。link 無しの行は警告色にしてある
         // （対象が破棄されたときに解放済みメモリを踏む唯一の経路がそれのため）。
-        gameDebugUI_->RegisterEngineDebugPanel("Tween", []() {
-            TweenManager::GetInstance().DrawImGui();
-            }, EnginePanelGroup::Analysis);
+        Editor::EditorPanelRegistry::Get().Register({
+            .id = "Tween",
+            .placement = Editor::PanelPlacement::Window,
+            .group = Editor::PanelGroup::Analysis,
+            .owner = this,
+            .defaultWidth = 620.0f,
+            .defaultHeight = 620.0f,
+            .draw = []() { TweenManager::GetInstance().DrawImGui(); },
+            });
 
         // その他の固定ウィンドウをドッキングシステムに登録
         DockingUI* dockingUI = imGui_->GetDockingUI();
         if (dockingUI) {
             // GameViewportが作成するウィンドウを中央に配置
-            dockingUI->RegisterWindow("Game", DockArea::Center);
+            dockingUI->RegisterWindow("Game", Editor::DockArea::Center);
 
             // Canvasプレビューウィンドウを Game と同じ位置にタブとして配置
-            dockingUI->RegisterWindow("Canvas", DockArea::Center);
-
-            // パーティクルシステムデバッグを右側に配置
-            dockingUI->RegisterWindow("Particle System Debug", DockArea::Right);
+            dockingUI->RegisterWindow("Canvas", Editor::DockArea::Center);
         }
 
     }
@@ -341,6 +547,17 @@ namespace CoreEngine
         }
         cvarConfigSection_.reset();
         cvarStateSection_.reset();
+        panelStateSection_.reset();
+        layoutSection_.reset();
+
+        // 再生の開始と停止に差し込んだ処理を外す
+        if (playModeController_) {
+            playModeController_->Finalize();
+        }
+        if (gameDebugUI_) {
+            gameDebugUI_->SetPlayModeController(nullptr);
+        }
+        Editor::SceneAccess::Bind(nullptr);
 
         // コンソールUIへのログ転送を解除（ImGui解放前に行う）
         Logger::GetInstance().ClearConsoleCallback();
@@ -370,6 +587,15 @@ namespace CoreEngine
         // フレーム開始時にレンダリング統計をリセット
         EngineStats::GetInstance().BeginFrame();
 
+        // 入力欄へ文字を打っている間は、その文字をゲームへ流さない
+        //（インスペクタで名前を打つとキャラが動いてしまう）。
+        // WantCaptureKeyboard はウィンドウを選んでいるだけでも立つので、
+        // 文字を受け取っているかだけを見る（エディタのカメラ操作を巻き添えにしない）
+        if (auto* inputManager = engine_->GetService<InputManager>()) {
+            const bool typing = ImGui::GetCurrentContext() && ImGui::GetIO().WantTextInput;
+            inputManager->GetQuery().SetKeyboardSuppressed(typing);
+        }
+
         // RenderGraph エディタが閉じられていればスナップショット複製を止める
         //（Draw() はウィンドウが開いている間しか呼ばれないため、止める判断はここでしかできない）
         renderGraphEditorPanel_.SyncCaptureState();
@@ -383,6 +609,11 @@ namespace CoreEngine
             gameOutputWindow_.RequestVisible(gameDebugUI_->IsStandaloneGameWindowVisible());
         }
         gameOutputWindow_.ApplyPendingRequests();
+
+        // 上下のバーが同じ値を出せるよう、描き始める前に状態を集める
+        if (gameDebugUI_) {
+            gameDebugUI_->RefreshEditorStatus();
+        }
 
         // ImGuiの開始（PostEffectManagerとGameDebugUIを渡す）
         if (auto* postEffect = engine_->GetService<PostEffectManager>()) {
@@ -407,49 +638,53 @@ namespace CoreEngine
         }
     }
 
-    void DebugSubsystem::BeginRenderPipeline(ID3D12GraphicsCommandList* cmdList, UINT frameIndex)
+    void DebugSubsystem::BeginRender(RenderContext& context, const FrameContext& frame)
     {
-        gpuProfiler_.NewFrame(frameIndex);
+        // RenderGraph 内の各パスが計測できるよう、計測器を文脈へ入れる
+        context.gpuProfiler = &gpuProfiler_;
+
+        // 計測のリングスロットを今フレームのスロット番号に合わせ、フレーム全体の計測を始める
+        gpuProfiler_.NewFrame(frame.frameIndex);
         gpuProfiler_.BeginCpuTimestamp(GpuTimestampSlot::Total);
-        gpuProfiler_.BeginGpuTimestamp(GpuTimestampSlot::Total, cmdList);
+        gpuProfiler_.BeginGpuTimestamp(GpuTimestampSlot::Total, frame.cmdList);
     }
 
-    void DebugSubsystem::DrawImGuiWithProfiling(ID3D12GraphicsCommandList* cmdList)
+    void DebugSubsystem::EndRender(const FrameContext& frame)
     {
         // 全描画完了後に統計を収集（ドローコール数等が確定した後）
         if (engineStatsWindow_) {
             engineStatsWindow_->Collect();
         }
-
-        EngineProfileScope scope(engine_, GpuTimestampSlot::ImGuiDraw, cmdList);
-        if (imGui_) {
-            // PostEffectPass完了後に最新の finalDisplayHandle_ でGameビューを描画
-            auto* dx = engine_->GetService<GraphicsCore>();
-            auto* postEffect = engine_->GetService<PostEffectManager>();
-            imGui_->DrawGameViewport(dx, postEffect, gameDebugUI_.get());
-            imGui_->Draw();
+        if (profilerPanel_) {
+            profilerPanel_->Collect();
         }
-    }
 
-    void DebugSubsystem::EndRenderPipeline(ID3D12GraphicsCommandList* cmdList, UINT frameIndex)
-    {
-        gpuProfiler_.EndCpuTimestamp(GpuTimestampSlot::Total);
-        gpuProfiler_.EndGpuTimestamp(GpuTimestampSlot::Total, cmdList);
-        gpuProfiler_.ResolveAll(cmdList, frameIndex);
-    }
+        {
+            EngineProfileScope scope(engine_, GpuTimestampSlot::ImGuiDraw, frame.cmdList);
+            if (imGui_) {
+                // PostEffectPass完了後に最新の finalDisplayHandle_ でGameビューを描画
+                auto* dx = engine_->GetService<GraphicsCore>();
+                auto* postEffect = engine_->GetService<PostEffectManager>();
+                imGui_->DrawGameViewport(dx, postEffect, gameDebugUI_.get());
+                imGui_->Draw();
+            }
+        }
 
-    void DebugSubsystem::RecordGameOutputWindow()
-    {
+        // ゲーム映像専用ウィンドウへ、ImGui を描いた後の映像を転写するコマンドを積む
         gameOutputWindow_.RecordDrawCommands();
+
+        // フレーム全体の計測を閉じ、今フレームの計測結果を読み出し用に解決する
+        gpuProfiler_.EndCpuTimestamp(GpuTimestampSlot::Total);
+        gpuProfiler_.EndGpuTimestamp(GpuTimestampSlot::Total, frame.cmdList);
+        gpuProfiler_.ResolveAll(frame.cmdList, frame.frameIndex);
     }
 
-    void DebugSubsystem::PresentGameOutputWindow()
+    void DebugSubsystem::AfterPresent()
     {
+        // メインの Present が済んだので、ゲーム映像専用ウィンドウを Present する
         gameOutputWindow_.Present();
-    }
 
-    void DebugSubsystem::PostFinalizeFrame(GraphicsCore* dx)
-    {
+        auto* dx = engine_ ? engine_->GetService<GraphicsCore>() : nullptr;
         if (!dx) {
             return;
         }
@@ -463,7 +698,7 @@ namespace CoreEngine
         }
 
         // メインウィンドウの Present が済んだこの位置で、外へ出された ImGui ウィンドウを描く。
-        // エンジンのコマンドリスト記録中（DrawImGuiWithProfiling など）では呼べない。
+        // エンジンのコマンドリスト記録中（EndRender など）では呼べない。
         if (imGui_) {
             imGui_->RenderPlatformWindows();
         }
@@ -471,4 +706,4 @@ namespace CoreEngine
 
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

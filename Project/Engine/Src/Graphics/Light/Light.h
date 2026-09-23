@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Math/MathCore.h"
+#include <cmath>
 #include <cstdint>
 #include <string>
 
@@ -27,7 +28,7 @@ namespace CoreEngine
         constexpr float kSunIlluminanceLux = 100000.0f;
 
         /// @brief 較正定数: 照度 [lx] → シェーダー単位の変換係数
-        /// @details 既存シーンの太陽（旧シェーダー単位 1.75 = 旧 BaseScene::kAtmosphereSurfaceSunIntensity）
+        /// @details 既存シーンの太陽（旧シェーダー単位 1.75 = 旧 Scene::kAtmosphereSurfaceSunIntensity）
         ///          を 100,000 lx に対応付ける。この係数を変えると全ライトの見た目の明るさが一斉に変わる。
         constexpr float kShaderUnitsPerLux = 1.75f / kSunIlluminanceLux;
 
@@ -88,4 +89,22 @@ namespace CoreEngine
         }
         bool operator!=(const LightHandle& rhs) const { return !(*this == rhs); }
     };
+
+    /// @brief 高度角と方位角から、太陽の光が進む向きを求める
+    /// @param elevationDeg 高度角 [deg]（90 で天頂）
+    /// @param azimuthDeg 方位角 [deg]（0 で +Z 側、90 で +X 側に太陽がある）
+    /// @return 太陽から地表へ向かう正規化済みの向き
+    inline Vector3 ComputeSunLightDirection(float elevationDeg, float azimuthDeg)
+    {
+        const float elevation = elevationDeg * MathCore::Constants::kDegToRad;
+        const float azimuth = azimuthDeg * MathCore::Constants::kDegToRad;
+
+        // 地表から太陽を見る向き
+        const Vector3 toSun = {
+            std::cos(elevation) * std::sin(azimuth),
+            std::sin(elevation),
+            std::cos(elevation) * std::cos(azimuth),
+        };
+        return Normalize(-toSun);
+    }
 }

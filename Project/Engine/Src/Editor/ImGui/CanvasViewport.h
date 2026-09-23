@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "Editor/ImGui/ImGuiAll.h"
 #include "UI/UIElement.h"
@@ -11,19 +11,19 @@
 namespace CoreEngine
 {
     class EngineSystem;
-    class GameObjectManager;
-    class TextureManager;
-    class UIImage;
-    class UIText;
     class GameObject;
+    class RectTransformComponent;
     class SceneDebugEditor;
+    class UIImageComponent;
+    class UITextComponent;
 
     /// @brief UI を配置するための ImGui ウィンドウ（Unity の Scene ビュー相当）
     /// @details
     ///  **背景にはゲームの描画結果そのもの**を敷き、その上へ選択枠とギズモだけを重ねる。
     ///  ImGui の DrawList で UI を模写すると、MSDF テキストの縁取り・回転・字形を
     ///  再現できず「Game ビューに戻らないと結果が分からない」状態になるため。
-    ///  背景が渡らなかった場合だけ、従来どおり DrawList による簡易表示へ落ちる。
+    ///  背景が渡らなかった場合だけ、DrawList による簡易表示へ落ちる。
+    ///  UI トランスフォームを持つオブジェクトを、ここで選んで動かす。
     class CanvasViewport
     {
     public:
@@ -40,30 +40,22 @@ namespace CoreEngine
         ///  0 を渡すと DrawList による簡易表示へ落ちる
         /// @param sceneDebugEditor
         ///  選択状態を Hierarchy / Inspector と共有するための参照。
-        ///  nullptr なら Canvas 内だけで選択を持つ
+        ///  nullptr なら Canvas 内だけで選択を持ち、UI の追加はできない
         void DrawCanvasViewport(unsigned long long gameTextureHandlePtr = 0,
             SceneDebugEditor* sceneDebugEditor = nullptr);
 
     private:
-        /// @brief Canvas 上で編集できる UI 要素
-        /// @details UIImage と UIText を同じ扱いにするための薄い受け皿。
-        ///          どちらか一方のポインタだけが入る
+        /// @brief Canvas 上で編集できる UI（UI トランスフォームを持つオブジェクト）
         struct CanvasElement
         {
             GameObject* object = nullptr;
-            UIImage* image = nullptr;
-            UIText* text = nullptr;
+            RectTransformComponent* rect = nullptr;
+            /// UI 画像（無ければ nullptr）
+            UIImageComponent* image = nullptr;
+            /// UI テキスト（無ければ nullptr）
+            UITextComponent* text = nullptr;
 
             const UILayout& Layout() const;
-            Vector2 Pivot() const;
-            UIAnchor Anchor() const;
-            void SetAnchoredPosition(const Vector2& position) const;
-            void SetRotation(float radians) const;
-            /// @brief 矩形の大きさを変える
-            /// @note テキストの場合はテキストフィールドの大きさになる
-            void SetSize(const Vector2& size) const;
-
-            bool IsText() const { return text != nullptr; }
         };
 
         /// @brief Edit モードの選択とギズモ操作
@@ -93,8 +85,8 @@ namespace CoreEngine
         /// @brief 現在選択中の要素を elements から引き直す（破棄済みなら nullptr）
         const CanvasElement* FindSelected(const std::vector<CanvasElement>& elements) const;
 
-        /// @brief 「テキストを追加」ボタン。Canvas 中央に UIText を 1 つ作る
-        void DrawCreateUI(GameObjectManager* gom);
+        /// @brief 「＋ テキスト」「＋ 画像」のボタン。画面の中央に UI を 1 つ作る
+        void DrawCreateUI();
 
         /// @brief 矢印キーで選択中の要素を 1px（Shift で 10px）動かす
         /// @details マウスドラッグだけだと 1px 単位の追い込みができないため
@@ -111,10 +103,19 @@ namespace CoreEngine
         bool editMode_ = false;
         /// 選択状態の共有先。null なら Canvas 内で完結する
         SceneDebugEditor* sceneDebugEditor_ = nullptr;
-        /// 共有先が無いときに使う選択（UIImage / UIText のどちらか）
+        /// 共有先が無いときに使う選択
         GameObject* selectedObject_ = nullptr;
+
+        /// 前のフレームでギズモを掴んでいたか
+        bool wasGizmoUsing_ = false;
+        /// ギズモを掴んだときの配置と、掴んだ UI トランスフォーム
+        UILayout gizmoStartLayout_{};
+        RectTransformComponent* gizmoTarget_ = nullptr;
+
+        /// 矢印キーを押している間の移動を履歴へ積んだか
+        bool nudgeRecorded_ = false;
     };
 
 } // namespace CoreEngine
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

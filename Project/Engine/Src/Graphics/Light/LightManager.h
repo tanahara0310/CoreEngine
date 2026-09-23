@@ -40,17 +40,16 @@ namespace CoreEngine
         /// @brief 全てのライトを更新（オーサリング表現 → GPU バッファへの変換・転送）
         void UpdateAll();
 
-        /// @brief ライトのImGuiを描画（Inspector: 選択ライトのプロパティ or 概要）
-        void DrawAllImGui();
-
-        /// @brief Hierarchy の Lighting 配下に各ライトの子行を描画する
-        /// @return 子行がクリックされた場合 true（Inspector を Lighting へルーティングする）
-        bool DrawLightTreeImGui();
-
-        /// @brief ライト編集 UI の選択を解除する（Lighting 親エントリ選択時＝概要表示へ戻す）
-        void ClearLightUISelection();
+        /// @brief 次のギズモ描画で詳細表示にするライトを指定する
+        /// @details 指定は 1 回の描画で使い切る。Inspector が選択中のライトを毎フレーム
+        ///          指し直すので、選択が外れれば次のフレームから簡略表示へ戻る。
+        void SetGizmoFocusLight(LightHandle handle) { gizmoFocus_ = handle; }
 
         // ==================== ライトの生成・破棄・参照 ====================
+
+        /// @brief 種類ごとの既定値（物理単位）を設定する
+        /// @note ライトの既定値の単一情報源。`LightComponent` も足した直後の値をここから取る。
+        static void SetupDefaults(Light& light, LightType type);
 
         /// @brief ライトを生成する
         /// @param type ライトの種類
@@ -191,9 +190,6 @@ namespace CoreEngine
         ///          GPU 転送・GetDirectionalLight・RT シャドウのインデックスがこの順で一致する。
         std::vector<uint16_t> CollectDirectionalSlotsCanonical() const;
 
-        /// @brief 種類ごとの既定値（物理単位）を設定する
-        static void SetupDefaults(Light& light, LightType type);
-
         std::vector<Slot> slots_;
 
         /// @brief 太陽ライトの GPU 転送色へ乗算する大気透過率（大気非アクティブ時は {1,1,1}）
@@ -204,5 +200,8 @@ namespace CoreEngine
 
         LightBufferManager bufferManager_;
         LightDebugVisualizer debugVisualizer_;
+
+        /// @brief 次のギズモ描画で詳細表示にするライト（無効ハンドルなら全て簡略表示）
+        LightHandle gizmoFocus_{};
     };
 }

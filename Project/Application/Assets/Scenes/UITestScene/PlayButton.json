@@ -1,0 +1,72 @@
+{
+    "id": "90493c7717bad62b",
+    "active": true,
+    "name": "PlayButton",
+    "components": [
+        {
+            "type": "RectTransform",
+            "enabled": true,
+            "parameters": {
+                "anchor": 4,
+                "anchoredPosition": [
+                    0.0,
+                    80.0
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "size": [
+                    320.0,
+                    96.0
+                ],
+                "rotation": 0.0,
+                "sortOrder": 10
+            }
+        },
+        {
+            "type": "UIImage",
+            "enabled": true,
+            "parameters": {
+                "texture": "Application/Assets/Textures/gradationLine.png",
+                "color": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "type": "UIButton",
+            "enabled": true,
+            "parameters": {
+                "interactable": true,
+                "normalColor": [
+                    0.25,
+                    0.55,
+                    0.95,
+                    1.0
+                ],
+                "hoveredColor": [
+                    0.4,
+                    0.68,
+                    1.0,
+                    1.0
+                ],
+                "pressedColor": [
+                    0.15,
+                    0.35,
+                    0.7,
+                    1.0
+                ],
+                "disabledColor": [
+                    0.45,
+                    0.45,
+                    0.45,
+                    0.6
+                ]
+            }
+        }
+    ]
+}

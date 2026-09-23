@@ -8,7 +8,7 @@
 #include "EngineConfig.h"
 #include "Subsystem/IEngineSubsystem.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Subsystem/DebugSubsystem.h"
 #endif
 
@@ -109,7 +109,7 @@ public:
         return serviceRegistry_.Has<T>();
     }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     // ──────────────────────────────────────────────────────────
     // デバッグ機能アクセッサ（デバッグビルドのみ）
     // ──────────────────────────────────────────────────────────

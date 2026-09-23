@@ -9,12 +9,12 @@
 
 #include <memory>
 
-class SkyBoxObject;
-
 namespace CoreEngine
 {
-    class WaterPlaneObject;
+    class SkyBoxComponent;
+    class WaterSurfaceComponent;
     class RenderDomainContext;
+    class WaterEditorPanel;
 
     /// @brief 水面描画一式（水面オブジェクト・波シミュレーション・外部リソース結線）を持つ Feature
     /// @details AddFeature() するだけで水面が成立する。結線を PostLogic で行うのは、
@@ -56,7 +56,7 @@ namespace CoreEngine
         void Finalize(SceneContext& ctx) override;
 
         /// @brief 管理中の水面オブジェクトを返す（未生成なら nullptr）
-        WaterPlaneObject* GetWaterPlane() const { return waterPlane_; }
+        WaterSurfaceComponent* GetWaterPlane() const { return waterPlane_; }
 
         /// @brief 現在の水面高さ（ワールド Y）を返す
         float GetWaterHeight() const;
@@ -76,6 +76,10 @@ namespace CoreEngine
         /// @brief 水面オブジェクトをシーンから採用、無ければ生成する
         void AcquireWaterPlane(SceneContext& ctx);
 
+        /// @brief 保存データで置かれた水面があれば、そちらへ乗り換える
+        /// @note 保存データのオブジェクトは AcquireWaterPlane の時点ではまだ生まれていない。
+        void AdoptSceneWaterPlane(SceneContext& ctx);
+
         /// @brief 生成直後の水面マテリアル既定値を設定する
         void ConfigureDefaultMaterial() const;
 
@@ -84,7 +88,7 @@ namespace CoreEngine
 
         /// @brief このフレームの外部リソース結線を組み立てる
         /// @brief WaterCVars（単一情報源）から全水面設定を各所へ反映する（毎フレーム）
-        /// @details 見た目/水質/泡 → WaterPlaneObject、FFT → FFTOceanManager（revision 変化時のみ）、
+        /// @details 見た目/水質/泡 → WaterSurfaceComponent、FFT → FFTOceanManager（revision 変化時のみ）、
         ///          コースティクス → Technique + RT設定、DXR屈折 → RT設定。
         ///          UI（CVarツリー / 水面パネル）はストレージを書くだけで、適用は必ずここを通る。
         void ApplySettingsFromCVars(SceneContext& ctx, RenderDomainContext& domain);
@@ -98,17 +102,20 @@ namespace CoreEngine
         void SyncFoamSettings(RenderDomainContext& domain) const;
 
         /// @brief 結線結果の診断ログ（デバッグ表示中のみ・低頻度）
-        /// @details 以前は WaterPlaneObject の setter 6 個と BindCustomResources に
+        /// @details 以前は WaterSurfaceComponent の setter 6 個と BindCustomResources に
         ///          散っていたログをここへ集約した。
         void LogFrameDiagnostics(const WaterFrameBinding& binding) const;
 
         Config config_{};
 
         /// @brief 水面描画本体（所有権は GameObjectManager）
-        WaterPlaneObject* waterPlane_ = nullptr;
+        WaterSurfaceComponent* waterPlane_ = nullptr;
+
+        /// この Feature が水面を作ったか（シーンが自前の水面を置いていたら引っ込める）
+        bool ownsWaterPlane_ = false;
 
         /// @brief 空気遠近感の適用可否判定に使う空（所有権は GameObjectManager）
-        SkyBoxObject* skyBox_ = nullptr;
+        SkyBoxComponent* skyBox_ = nullptr;
 
         /// @brief 現在フレームの水面状態（RenderDomainContext へ publish する実体）
         WaterSurfaceData waterSurfaceState_{};
@@ -130,6 +137,13 @@ namespace CoreEngine
         // 無条件で呼んではいけない。サニタイズ（風向正規化）で CVar 値と保持値が
         // 恒常的に食い違い、毎フレーム再構築になる事故も防ぐ）。~0u は初回強制適用。
         uint32_t lastFFTCVarRevisionSum_ = ~0u;
+
+#ifdef CORE_EDITOR
+        /// @brief 水面の調整画面（水面コンポーネントのインスペクタへ出す）
+        /// @details 実体はエディタ側にあるので前方宣言のまま持つ
+        ///          （コンストラクタとデストラクタは .cpp で定義する）。
+        std::unique_ptr<WaterEditorPanel> editorPanel_;
+#endif
 
         /// @brief 直近にログした白波被覆率の風速追従係数（変化時のみログするため）
         float lastFoamWindCoverageScale_ = -1.0f;

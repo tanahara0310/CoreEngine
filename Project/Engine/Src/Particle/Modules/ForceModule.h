@@ -40,10 +40,10 @@ public:
     /// @param gravityModifier 重力倍率（MainModuleから取得）
     void ApplyForces(Particle& particle, float deltaTime, float gravityModifier);
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     /// @brief ImGuiデバッグ表示
     /// @return UIに変更があった場合true
-    bool ShowImGui() override;
+    bool ShowImGui();
 #endif
 
 private:

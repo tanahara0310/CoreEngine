@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "Gizmo.h"
 #include "GameObject/GameObject.h"
-#include "GameObject/Sprite/SpriteObject.h"
 #include "GameObject/Component/Transform/ITransformSource.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
@@ -57,7 +56,7 @@ namespace CoreEngine
         }
 
         // 具象クラスではなく `ITransformSource` で引く。実体が WorldTransform でも
-        // EulerTransform でも同じ経路で通るので、ParticleSystem 等でもギズモが効く。
+        // EulerTransform でも同じ経路で通るので、スプライト等でもギズモが効く。
         // トランスフォームを持たないオブジェクト（デバッグ線など）は対象外。
         auto* source = object->GetComponent<ITransformSource>();
         if (!source) return false;
@@ -148,9 +147,10 @@ namespace CoreEngine
         return changed;
     }
 
-    bool Gizmo::Manipulate2D(SpriteObject* sprite, const Camera* camera, Mode mode)
+    bool Gizmo::Manipulate2D(GameObject* object, const Camera* camera, Mode mode)
     {
-        if (!sprite || !camera) {
+        ITransformSource* source = object ? object->GetComponent<ITransformSource>() : nullptr;
+        if (!source || !camera) {
             return false;
         }
 
@@ -176,13 +176,15 @@ namespace CoreEngine
         Matrix4x4 projectionMatrix = camera->GetProjectionMatrix();
 
         // スプライトのトランスフォームを取得
-        EulerTransform& spriteTransform = sprite->GetSpriteTransform();
+        Vector3& spriteTranslate = source->Translate();
+        Vector3& spriteRotate = source->Rotate();
+        Vector3& spriteScale = source->Scale();
 
         // 2D用ワールド行列を作成（Z座標は0で固定）
         Matrix4x4 worldMatrix = MathCore::Matrix::MakeAffine(
-            spriteTransform.scale,
-            spriteTransform.rotate,
-            spriteTransform.translate
+            spriteScale,
+            spriteRotate,
+            spriteTranslate
         );
 
         // ImGuizmoで操作（Orthographicモード）
@@ -208,13 +210,13 @@ namespace CoreEngine
             );
 
             // スプライトのトランスフォームを更新（Z座標は0に固定）
-            spriteTransform.translate = Vector3(translation.x, translation.y, 0.0f);
+            spriteTranslate = Vector3(translation.x, translation.y, 0.0f);
             
             // 回転は度数からラジアンに変換（Z軸回転のみ使用）
-            spriteTransform.rotate = Vector3(0.0f, 0.0f, rotationDegrees.z * kDegToRad);
+            spriteRotate = Vector3(0.0f, 0.0f, rotationDegrees.z * kDegToRad);
             
             // スケール（Z軸は1.0固定）
-            spriteTransform.scale = Vector3(scale.x, scale.y, 1.0f);
+            spriteScale = Vector3(scale.x, scale.y, 1.0f);
         }
 
         return changed;

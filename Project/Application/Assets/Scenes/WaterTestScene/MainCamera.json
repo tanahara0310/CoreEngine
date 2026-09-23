@@ -1,0 +1,43 @@
+{
+    "active": true,
+    "name": "MainCamera",
+    "components": [
+        {
+            "type": "Transform",
+            "enabled": true,
+            "parameters": {
+                "translate": [
+                    55.0,
+                    15.0,
+                    -180.0
+                ],
+                "rotate": [
+                    0.0166,
+                    0.0942,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "type": "Camera",
+            "enabled": true,
+            "parameters": {
+                "isMainCamera": true,
+                "projection": 0,
+                "fov": 50.0,
+                "nearClip": 0.1,
+                "farClip": 20000.0
+            }
+        },
+        {
+            "type": "WaterShowcase",
+            "enabled": true,
+            "parameters": {}
+        }
+    ]
+}

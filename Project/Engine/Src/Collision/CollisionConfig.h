@@ -11,6 +11,10 @@ class CollisionConfig {
 public:
    CollisionConfig();
 
+   /// @brief すべての組み合わせを衝突しないようにする
+   /// @note 保存データのマトリクスを当てる前に呼ぶ（保存された組み合わせだけを有効にするため）。
+   void DisableAll();
+
    /// @brief 指定したレイヤー間の衝突判定を有効/無効に設定
    /// @param a レイヤーA
    /// @param b レイヤーB
@@ -28,9 +32,11 @@ public:
    /// @note ブロードフェーズ前段で「そもそも当たりうるか」をビット演算 1 回で落とすために使う
    uint64_t GetLayerMask(CollisionLayer layer) const;
 
-   /// @brief レイヤー数（マスクのビット幅の上限チェック用）
-   static constexpr int kMaxLayers = static_cast<int>(CollisionLayer::Count);
-   static_assert(kMaxLayers <= 64, "CollisionLayer が 64 を超えると uint64_t のマスクに収まらない");
+   /// @brief 表の大きさ（マスクのビット幅の上限）
+   /// @note 使っている数（`CollisionLayers::Count()`）ではなく上限で持つ。
+   ///       名前を足しても表の形が変わらず、保存済みの組み合わせがずれない。
+   static constexpr int kMaxLayers = static_cast<int>(kMaxCollisionLayers);
+   static_assert(kMaxLayers <= 64, "レイヤーが 64 を超えると uint64_t のマスクに収まらない");
 
 private:
    std::array<std::array<bool, kMaxLayers>, kMaxLayers> matrix_;

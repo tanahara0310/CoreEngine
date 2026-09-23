@@ -3,6 +3,8 @@
 #include "ISceneFeature.h"
 #include "Math/Vector/Vector3.h"
 #include <memory>
+#include <string>
+#include <vector>
 
 namespace CoreEngine
 {
@@ -11,8 +13,8 @@ namespace CoreEngine
     class OrbitFlyController;
 
     /// @brief シーンのカメラ一式（ゲーム視点・エディタ視点・2D）を所有する Feature
-    /// @details 生成・毎フレームの操作反映・CVar への永続化までをここに閉じる。
-    ///          BaseScene は所有せず、SceneContext と GetGameViewCamera3D() へ
+    /// @details 生成・毎フレームの操作反映・エディタ視点の控えまでをここに閉じる。
+    ///          Scene は所有せず、SceneContext と GetGameViewCamera3D() へ
     ///          渡すための非所有ポインタだけを持つ。
     /// @note FrameStart の最初（kEarlyFeaturePriority）で回すこと。
     ///       他の Feature（ライト/影・床の追従・大気散乱）はいずれも
@@ -28,32 +30,26 @@ namespace CoreEngine
 
         const char* GetName() const override { return "Camera"; }
 
-        /// @brief カメラ一式を生成し、エディタ視点の前回状態を CVar から復元する
+        /// @brief カメラ一式を生成し、エディタ視点へ控えの設定・姿勢を当てる
         /// @note GraphicsCore が未登録の場合は何も生成しない（GetCameraManager() は nullptr）。
         void Initialize(SceneContext& ctx) override;
 
         /// @brief シーンに保存されたカメラ状態を復元する
-        /// @details シーン側の OnInitialize が構図を決めた後に走る。ここで復元すると、
+        /// @details シーンのオブジェクトが出そろった後に走る。ここで復元すると、
         ///          エディタで詰めた構図がシーンのコードより優先される。
         void PostSceneInitialize(SceneContext& ctx) override;
 
-        /// @brief FrameStart でカメラ操作を反映し、結果を CVar へ写す
+        /// @brief FrameStart でカメラ操作を反映し、エディタ視点の設定・姿勢を控える
         void Update(SceneContext& ctx, SceneUpdatePhase phase) override;
 
         /// @brief 停止中も回す（止めるとエディタカメラを動かせなくなる）
         bool RunsWhileStopped() const override { return true; }
 
-        /// @brief 最後の設定・姿勢を CVar へ写す（カメラの破棄より先に行う）
+        /// @brief 最後の設定・姿勢を控える（カメラの破棄より先に行う）
         void Finalize(SceneContext& ctx) override;
 
         /// @brief カメラマネージャーを取得（未生成なら nullptr）
         CameraManager* GetCameraManager() const { return cameraManager_.get(); }
-
-        /// @brief ゲーム視点カメラ（CameraNames::Game）の位置・回転を上書きする
-        void SetReleaseCameraTransform(const Vector3& translate, const Vector3& rotate);
-
-        /// @brief ゲーム視点カメラ（CameraNames::Game）のレンズを上書きする
-        void SetReleaseCameraLens(float fovDegrees, float farClip, float nearClip);
 
         /// 既定 GameView カメラの高さ。
         /// 大気散乱は「カメラ高度 - groundLevelY」を惑星中心距離へ変換するため、
@@ -61,14 +57,28 @@ namespace CoreEngine
         static constexpr float kDefaultCameraHeight = 3.0f;
 
     private:
-        /// @brief エディタ視点カメラの設定・姿勢を CVar へ写す
-        void MirrorEditorCameraToCVars();
+        /// @brief エディタ視点カメラの設定・姿勢を控える
+        void CaptureEditorCamera();
+
+        /// @brief シーンに置かれたカメラ（`CameraComponent`）を実体へ写す
+        /// @details オブジェクトが増減・改名したら実体を作り直し、姿勢とレンズを毎フレーム流す。
+        ///          ゲームの視点にするカメラの名前もここで決めて控える。
+        void SyncSceneCameras(SceneContext& ctx);
+
+        /// @brief 控えた「ゲームの視点」をカメラマネージャーへ当てる
+        /// @details シーンに候補が無いときは、エンジン既定のカメラへ戻す。
+        void ApplyMainCamera();
 
         std::unique_ptr<CameraManager> cameraManager_;
 
-        // エディタ視点カメラの CVar ミラー対象（所有は cameraManager_）。
-        // 設定・姿勢を毎フレーム CVar へ写して自動保存に載せる
+        // 設定・姿勢を毎フレーム控えるエディタ視点カメラ（所有は cameraManager_）
         Camera* sceneCamera_ = nullptr;
         OrbitFlyController* orbitController_ = nullptr;
+
+        // 実体を持っているシーンのカメラの名前（増減を見分けるための控え）
+        std::vector<std::string> sceneCameraNames_;
+
+        // ゲームの視点にするシーンのカメラの名前（候補が無ければ空）
+        std::string mainCameraName_;
     };
 }

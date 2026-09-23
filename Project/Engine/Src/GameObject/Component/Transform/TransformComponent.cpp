@@ -2,15 +2,16 @@
 #include "TransformComponent.h"
 
 #include "EngineSystem/EngineSystem.h"
+#include "GameObject/Component/Core/ComponentFactory.h"
 #include "GameObject/GameObject.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Math/MathCore.h"
+#include "Utility/Logger/Logger.h"
 
 #include <cmath>
 
-#ifdef USE_IMGUI
-#include "Editor/ImGui/ImGuiAll.h"
-#endif
+REFLECT_REGISTER(CoreEngine::TransformComponent)
+COMPONENT_REGISTER(CoreEngine::TransformComponent)
 
 namespace CoreEngine
 {
@@ -49,54 +50,67 @@ namespace CoreEngine
         }
 
         // 同一フレーム内の後続ペアが新しい位置で判定されるようワールド行列を更新する
-        transform_.TransferMatrix();
+        SyncWorldMatrix();
         return true;
     }
 
-#ifdef USE_IMGUI
-    bool TransformComponent::DrawInspector()
+    void TransformComponent::OnPropertyChanged(const Reflection::PropertyDescriptor& property)
     {
-        bool changed = false;
-
-        // ドラッグを始めた時点の値を控えておき、離した瞬間に Undo へ積む。
-        // 毎フレーム積むとドラッグ 1 回で履歴が数十件生えてしまう
-        auto captureSnapshot = [this]() {
-            editSnapTranslate_ = transform_.translate;
-            editSnapRotate_ = transform_.rotate;
-            editSnapScale_ = transform_.scale;
-            editSnapActive_ = GetOwner() ? GetOwner()->IsActive() : true;
-            };
-
-        auto commitIfFinished = [this]() {
-            if (ImGui::IsItemDeactivatedAfterEdit() && GetOwner()) {
-                GetOwner()->NotifyEditCommitted(
-                    editSnapTranslate_, editSnapRotate_, editSnapScale_, editSnapActive_);
-            }
-            };
-
-        if (UI::DragVec3("位置", transform_.translate, 0.05f)) { changed = true; }
-        if (ImGui::IsItemActivated()) { captureSnapshot(); }
-        commitIfFinished();
-
-        if (UI::DragVec3("回転", transform_.rotate, 0.01f)) { changed = true; }
-        if (ImGui::IsItemActivated()) { captureSnapshot(); }
-        commitIfFinished();
-
-        if (UI::DragVec3("スケール", transform_.scale, 0.01f)) { changed = true; }
-        if (ImGui::IsItemActivated()) { captureSnapshot(); }
-        commitIfFinished();
-
-        if (changed) {
-            // ギズモ・当たり判定が同じフレームで新しい値を見られるようにする
-            transform_.TransferMatrix();
-        }
-
-        UI::Separator();
-        const Vector3 worldPos = GetWorldPosition();
-        UI::Hint("回転はラジアン");
-        ImGui::Text("ワールド位置: %.3f, %.3f, %.3f", worldPos.x, worldPos.y, worldPos.z);
-
-        return changed;
+        (void)property;
+        // ギズモ・当たり判定・描画が同じフレームで新しい値を見られるようにする
+        SyncWorldMatrix();
     }
-#endif // USE_IMGUI
+
+    void TransformComponent::SyncWorldMatrix()
+    {
+        ApplyParent();
+        transform_.TransferMatrix();
+    }
+
+    bool TransformComponent::SetParent(TransformComponent* parent)
+    {
+        if (parent && IsSelfOrDescendant(parent)) {
+            const GameObject* owner = GetOwner();
+            Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
+                "Transform: \"{}\" の親に、自分自身か自分の子孫は指定できません",
+                owner ? owner->GetName() : std::string());
+            return false;
+        }
+        parent_.Set(parent);
+        SyncWorldMatrix();
+        return true;
+    }
+
+    void TransformComponent::ApplyParent()
+    {
+        const TransformComponent* parent = parent_.Get();
+        if (parent == appliedParent_) {
+            return;
+        }
+        if (parent && IsSelfOrDescendant(parent)) {
+            const GameObject* owner = GetOwner();
+            Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
+                "Transform: \"{}\" の親が自分自身か自分の子孫を指していたので、親を外しました",
+                owner ? owner->GetName() : std::string());
+            parent_.Reset();
+            parent = nullptr;
+        }
+        appliedParent_ = parent;
+        transform_.SetParent(parent ? &parent->Get() : nullptr);
+    }
+
+    bool TransformComponent::IsSelfOrDescendant(const TransformComponent* candidate) const
+    {
+        // candidate から親をたどって自分に着けば、candidate は自分か自分の子孫。
+        // 壊れた循環があっても止まるように、たどる段数に上限を置く
+        constexpr int kMaxDepth = 256;
+        const TransformComponent* node = candidate;
+        for (int depth = 0; node && depth < kMaxDepth; ++depth) {
+            if (node == this) {
+                return true;
+            }
+            node = node->parent_.Get();
+        }
+        return false;
+    }
 }

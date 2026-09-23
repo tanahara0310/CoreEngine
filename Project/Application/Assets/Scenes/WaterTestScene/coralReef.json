@@ -1,376 +1,391 @@
 {
     "active": false,
-    "materials": [
+    "components": [
         {
-            "alphaCutoff": 0.5,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "dithering": false,
-            "ditheringScale": 1.0,
-            "emissive": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "iblIntensity": 1.0,
-            "lighting": true,
-            "metallic": 0.0,
-            "normalMap": false,
-            "occlusionStrength": 1.0,
-            "roughness": 0.8500000238418579
+            "enabled": true,
+            "parameters": {
+                "rotate": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scale": [
+                    7.7911696434021,
+                    7.7911696434021,
+                    7.700564384460449
+                ],
+                "translate": [
+                    10.319631576538086,
+                    18.890594482421875,
+                    -11.46633243560791
+                ]
+            },
+            "type": "Transform"
         },
         {
-            "alphaCutoff": 0.5,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "dithering": false,
-            "ditheringScale": 1.0,
-            "emissive": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "iblIntensity": 1.0,
-            "lighting": true,
-            "metallic": 0.0,
-            "normalMap": false,
-            "occlusionStrength": 1.0,
-            "roughness": 0.8500000238418579
-        },
-        {
-            "alphaCutoff": 0.5,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "dithering": false,
-            "ditheringScale": 1.0,
-            "emissive": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "iblIntensity": 1.0,
-            "lighting": true,
-            "metallic": 0.0,
-            "normalMap": false,
-            "occlusionStrength": 1.0,
-            "roughness": 0.8500000238418579
-        },
-        {
-            "alphaCutoff": 0.5,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "dithering": false,
-            "ditheringScale": 1.0,
-            "emissive": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "iblIntensity": 1.0,
-            "lighting": true,
-            "metallic": 0.0,
-            "normalMap": false,
-            "occlusionStrength": 1.0,
-            "roughness": 0.8500000238418579
-        },
-        {
-            "alphaCutoff": 0.5,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "dithering": false,
-            "ditheringScale": 1.0,
-            "emissive": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "iblIntensity": 1.0,
-            "lighting": true,
-            "metallic": 0.0,
-            "normalMap": false,
-            "occlusionStrength": 1.0,
-            "roughness": 0.8500000238418579
-        },
-        {
-            "alphaCutoff": 0.5,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "dithering": false,
-            "ditheringScale": 1.0,
-            "emissive": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "iblIntensity": 1.0,
-            "lighting": true,
-            "metallic": 0.0,
-            "normalMap": false,
-            "occlusionStrength": 1.0,
-            "roughness": 0.8500000238418579
-        },
-        {
-            "alphaCutoff": 0.5,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "dithering": false,
-            "ditheringScale": 1.0,
-            "emissive": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "iblIntensity": 1.0,
-            "lighting": true,
-            "metallic": 0.0,
-            "normalMap": false,
-            "occlusionStrength": 1.0,
-            "roughness": 0.8500000238418579
-        },
-        {
-            "alphaCutoff": 0.5,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "dithering": false,
-            "ditheringScale": 1.0,
-            "emissive": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "iblIntensity": 1.0,
-            "lighting": true,
-            "metallic": 0.0,
-            "normalMap": false,
-            "occlusionStrength": 1.0,
-            "roughness": 0.8500000238418579
-        },
-        {
-            "alphaCutoff": 0.5,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "dithering": false,
-            "ditheringScale": 1.0,
-            "emissive": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "iblIntensity": 1.0,
-            "lighting": true,
-            "metallic": 0.0,
-            "normalMap": false,
-            "occlusionStrength": 1.0,
-            "roughness": 0.8500000238418579
-        },
-        {
-            "alphaCutoff": 0.5,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "dithering": false,
-            "ditheringScale": 1.0,
-            "emissive": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "iblIntensity": 1.0,
-            "lighting": true,
-            "metallic": 0.0,
-            "normalMap": false,
-            "occlusionStrength": 1.0,
-            "roughness": 0.8500000238418579
-        },
-        {
-            "alphaCutoff": 0.5,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "dithering": false,
-            "ditheringScale": 1.0,
-            "emissive": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "iblIntensity": 1.0,
-            "lighting": true,
-            "metallic": 0.0,
-            "normalMap": false,
-            "occlusionStrength": 1.0,
-            "roughness": 0.8500000238418579
-        },
-        {
-            "alphaCutoff": 0.5,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "dithering": false,
-            "ditheringScale": 1.0,
-            "emissive": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "iblIntensity": 1.0,
-            "lighting": true,
-            "metallic": 0.0,
-            "normalMap": false,
-            "occlusionStrength": 1.0,
-            "roughness": 0.8500000238418579
-        },
-        {
-            "alphaCutoff": 0.5,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "dithering": false,
-            "ditheringScale": 1.0,
-            "emissive": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "iblIntensity": 1.0,
-            "lighting": true,
-            "metallic": 0.0,
-            "normalMap": false,
-            "occlusionStrength": 1.0,
-            "roughness": 0.8500000238418579
-        },
-        {
-            "alphaCutoff": 0.5,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "dithering": false,
-            "ditheringScale": 1.0,
-            "emissive": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "iblIntensity": 1.0,
-            "lighting": true,
-            "metallic": 0.0,
-            "normalMap": false,
-            "occlusionStrength": 1.0,
-            "roughness": 0.8500000238418579
-        },
-        {
-            "alphaCutoff": 0.5,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "dithering": false,
-            "ditheringScale": 1.0,
-            "emissive": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "iblIntensity": 1.0,
-            "lighting": true,
-            "metallic": 0.0,
-            "normalMap": false,
-            "occlusionStrength": 1.0,
-            "roughness": 0.8500000238418579
-        },
-        {
-            "alphaCutoff": 0.5,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "dithering": false,
-            "ditheringScale": 1.0,
-            "emissive": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "iblIntensity": 1.0,
-            "lighting": true,
-            "metallic": 0.0,
-            "normalMap": false,
-            "occlusionStrength": 1.0,
-            "roughness": 0.8500000238418579
+            "enabled": true,
+            "parameters": {
+                "materials": [
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "dithering": false,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "iblIntensity": 1.0,
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.8500000238418579
+                    },
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "dithering": false,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "iblIntensity": 1.0,
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.8500000238418579
+                    },
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "dithering": false,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "iblIntensity": 1.0,
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.8500000238418579
+                    },
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "dithering": false,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "iblIntensity": 1.0,
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.8500000238418579
+                    },
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "dithering": false,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "iblIntensity": 1.0,
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.8500000238418579
+                    },
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "dithering": false,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "iblIntensity": 1.0,
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.8500000238418579
+                    },
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "dithering": false,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "iblIntensity": 1.0,
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.8500000238418579
+                    },
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "dithering": false,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "iblIntensity": 1.0,
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.8500000238418579
+                    },
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "dithering": false,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "iblIntensity": 1.0,
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.8500000238418579
+                    },
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "dithering": false,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "iblIntensity": 1.0,
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.8500000238418579
+                    },
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "dithering": false,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "iblIntensity": 1.0,
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.8500000238418579
+                    },
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "dithering": false,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "iblIntensity": 1.0,
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.8500000238418579
+                    },
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "dithering": false,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "iblIntensity": 1.0,
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.8500000238418579
+                    },
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "dithering": false,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "iblIntensity": 1.0,
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.8500000238418579
+                    },
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "dithering": false,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "iblIntensity": 1.0,
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.8500000238418579
+                    },
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "dithering": false,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "iblIntensity": 1.0,
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.8500000238418579
+                    }
+                ],
+                "model": {
+                    "guid": "85c31739-10f2-0382-46f7-f20b09f76bf3",
+                    "path": "Application/Assets/Models/CoralReef/coralReef.gltf"
+                }
+            },
+            "type": "MeshRenderer"
         }
     ],
-    "modelPath": "coralReef.gltf",
-    "name": "coralReef",
-    "transform": {
-        "rotate": [
-            0.0,
-            -0.0,
-            0.0
-        ],
-        "scale": [
-            7.7911696434021,
-            7.7911696434021,
-            7.700564384460449
-        ],
-        "translate": [
-            10.319631576538086,
-            18.890594482421875,
-            -11.46633243560791
-        ]
-    }
+    "name": "coralReef"
 }

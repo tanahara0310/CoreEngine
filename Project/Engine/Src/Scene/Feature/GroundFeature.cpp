@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Editor/Panel/EditorPanelRegistry.h"
 #include "GroundFeature.h"
 
 #include "Camera/Camera.h"
@@ -19,9 +20,9 @@
 #include <cmath>
 #include <memory>
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "EngineSystem/Subsystem/DebugSubsystem.h"
-#include "Utility/Debug/GameDebugUI.h"
+#include "Editor/ImGui/GameDebugUI.h"
 #include "Editor/ImGui/CVarPanel.h"
 #include "Editor/ImGui/ImGuiAll.h"
 #endif
@@ -30,7 +31,7 @@ namespace
 {
     using namespace CoreEngine;
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     /// 設定パネルの編集対象（シーン寿命のポインタをラムダに持たせないための
     /// ファイルスコープ変数。GridRenderer と同じ流儀）
     GroundFeature* s_activeGround = nullptr;
@@ -131,7 +132,7 @@ namespace CoreEngine
 {
     void GroundFeature::Initialize([[maybe_unused]] SceneContext& ctx)
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         // パラメータ UI は CVar から自動生成する。全 CVar を一覧する横断パネルは
         // 存在しない設計なので、機能ごとにこの登録をしないとどこにも出てこない
         EnsureSettingsPanelRegistered(ctx.engine);
@@ -185,7 +186,7 @@ namespace CoreEngine
 
     void GroundFeature::Finalize(SceneContext&)
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         // シーンと一緒に消えるので、パネルの参照を先に外す
         SetActiveForSettingsPanel(nullptr);
 #endif
@@ -228,7 +229,8 @@ namespace CoreEngine
         // コライダーの実効サイズ = shape.size × オーナーのワールドスケール。
         // XZ に 1 を渡すと床の全幅に一致し、Y は scale.y = 1 固定なので shape.size.y が厚みになる。
         // レイヤーは Default（既定の衝突マトリクスでは Default だけが全レイヤーと当たる）。
-        collider_ = &ground_->GetColliders().AddBox({ 1.0f, 1.0f, 1.0f }, CollisionLayer::Default);
+        collider_ = &ground_->GetOrAddComponent<ColliderComponent>()->AddBox(
+            { 1.0f, 1.0f, 1.0f }, CollisionLayer::Default);
         collider_->SetTrigger(false);  // 通知だけでなく押し出す（＝床の上に立てる）
         collider_->SetStatic(true);    // 床自身は押し返されない（相手を全量押し出す）
 
@@ -349,7 +351,7 @@ namespace CoreEngine
         return 0.0f;
     }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
     void GroundFeature::EnsureSettingsPanelRegistered(EngineSystem* engine)
     {
@@ -358,20 +360,18 @@ namespace CoreEngine
             return;
         }
 
-        auto* debug = engine->GetDebugSubsystem();
-        auto* gameDebugUI = debug ? debug->GetGameDebugUI() : nullptr;
-        if (!gameDebugUI) {
-            return;
-        }
-
         // ドロワーは何もキャプチャしない（ファイルスコープの s_activeGround を読むだけ）
-        gameDebugUI->RegisterEnginePanel("Ground", [] {
-            if (s_activeGround) {
-                s_activeGround->DrawSettingsImGui();
-            } else {
-                ImGui::TextDisabled("(シーンがありません)");
-            }
-        });
+        Editor::EditorPanelRegistry::Get().Register({
+            .id = "Ground",
+            .placement = Editor::PanelPlacement::SettingsSection,
+            .draw = [] {
+                if (s_activeGround) {
+                    s_activeGround->DrawSettingsImGui();
+                } else {
+                    ImGui::TextDisabled("(シーンがありません)");
+                }
+            },
+            });
 
         registered = true;
     }
@@ -403,5 +403,5 @@ namespace CoreEngine
         }
     }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
 }

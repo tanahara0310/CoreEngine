@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 // ── ラッパー群 ──────────────────────────────────────────────────────────
 #include "Wrappers/ImGuiScope.h"    // RAII スコープ（TreeScope, DisabledScope, ...）
@@ -19,4 +19,4 @@
 //   UI::Widgets::ToggleSwitch("Active", &flag);
 //
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

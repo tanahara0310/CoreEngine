@@ -4,7 +4,10 @@
 #include "Camera/View/ViewInfo.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/Texture/TextureManager.h"
+#include "GameObject/Component/Core/ComponentFactory.h"
 #include "GameObject/GameObject.h"
+#include "Graphics/Asset/AssetInfo.h"
+#include "Graphics/Material/MaterialInstance.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Model/ModelResource.h"
@@ -14,18 +17,52 @@
 #include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/Shader/ICustomShaderProvider.h"
 
-#ifdef USE_IMGUI
-#include "Editor/ImGui/ImGuiAll.h"
-#endif
+#include <algorithm>
+#include <iterator>
+#include <utility>
+
+COMPONENT_REGISTER(CoreEngine::MeshRendererComponent)
+
+namespace
+{
+    /// @brief ブレンドの名前（`BlendMode` の並び）
+    constexpr const char* kBlendModeNames[] = { "なし", "アルファ", "加算", "減算", "乗算", "スクリーン" };
+    static_assert(std::size(kBlendModeNames) == CoreEngine::kBlendModeCount);
+
+    /// @brief モデルファイルを指していないときにモデルの欄へ出す文字（プリミティブならその形）
+    std::string DescribeUnsetModel(const void* instance)
+    {
+        const std::string name = static_cast<const CoreEngine::MeshRendererComponent*>(instance)->GetPrimitiveName();
+        return name.empty() ? std::string{} : name + "（プリミティブ）";
+    }
+}
+
+REFLECT_DEFINE_BEGIN(CoreEngine::MeshRendererComponent, "メッシュ描画")
+    REFLECT_PARTIAL()
+    REFLECT_JSON(SaveMaterialsToJson, LoadMaterialsFromJson)
+    REFLECT_ACCESSOR("model", "モデル", GetModelAsset, SetModelAsset,
+        p.assetType = ::CoreEngine::AssetType::Model, p.emptyText = &DescribeUnsetModel)
+    REFLECT_ACCESSOR("texture", "テクスチャ", GetTextureAsset, SetTextureAsset,
+        p.assetType = ::CoreEngine::AssetType::Texture)
+    REFLECT_ENUM_ACCESSOR("blendMode", "ブレンド", GetBlendMode, SetBlendMode, kBlendModeNames)
+REFLECT_DEFINE_END()
+REFLECT_REGISTER(CoreEngine::MeshRendererComponent)
 
 namespace CoreEngine
 {
+    MeshRendererComponent::MeshRendererComponent(std::string modelPath)
+        : modelPath_(std::move(modelPath)), source_(Source::ModelFile)
+    {
+        modelAsset_.SetValue(Reflection::AssetRefValue{ {}, modelPath_ });
+    }
+
     MeshRendererComponent::~MeshRendererComponent() = default;
 
     void MeshRendererComponent::SetModelFile(std::string modelPath)
     {
         modelPath_ = std::move(modelPath);
         source_ = Source::ModelFile;
+        modelAsset_.SetValue(Reflection::AssetRefValue{ {}, modelPath_ });
     }
 
     void MeshRendererComponent::SetSkinnedModelFile(std::string modelPath, std::string initialClipName)
@@ -33,16 +70,88 @@ namespace CoreEngine
         modelPath_ = std::move(modelPath);
         initialClipName_ = std::move(initialClipName);
         source_ = Source::SkinnedModelFile;
+        modelAsset_.SetValue(Reflection::AssetRefValue{ {}, modelPath_ });
     }
 
     void MeshRendererComponent::SetPrimitive(std::unique_ptr<IPrimitiveMeshGenerator> generator)
     {
         generator_ = std::move(generator);
         source_ = Source::Primitive;
+        modelAsset_.Reset();
+    }
+
+    void MeshRendererComponent::SetModelAsset(const Reflection::AssetRefValue& value)
+    {
+        if (value == modelAsset_.GetValue()) {
+            return;
+        }
+
+        const bool fromFile = source_ == Source::ModelFile || source_ == Source::SkinnedModelFile;
+        const std::string previous = modelAsset_.GetPath();
+        modelAsset_.SetValue(value);
+
+        // 何も指さなくなったら、ファイルから作ったメッシュだけを外す
+        if (!modelAsset_.IsSet()) {
+            if (fromFile) {
+                modelPath_.clear();
+                source_ = Source::None;
+                model_.reset();
+            }
+            return;
+        }
+
+        // 引けないファイルとモデル以外は読み込まない（読み込み完了時の検証が警告する）
+        const AssetInfo* info = ResolveAssetRef(modelAsset_.GetValue());
+        if (!info || info->type != AssetType::Model) {
+            return;
+        }
+
+        // 同じファイルを指し直しただけなら読み込み直さない
+        const std::string next = ToAssetPath(*info);
+        if (fromFile && next == previous) {
+            return;
+        }
+
+        modelPath_ = next;
+        if (source_ != Source::SkinnedModelFile) {
+            source_ = Source::ModelFile;
+        }
+        if (awoken_) {
+            ReloadFromSpec();
+        }
+    }
+
+    std::string MeshRendererComponent::GetPrimitiveName() const
+    {
+        if (source_ != Source::Primitive || !generator_) {
+            return {};
+        }
+        return generator_->GetDisplayName();
     }
 
     void MeshRendererComponent::SetTexture(std::string texturePath)
     {
+        textureAsset_.SetPath(texturePath);
+        LoadTexture(textureAsset_.IsSet() ? textureAsset_.GetPath() : std::string{});
+    }
+
+    void MeshRendererComponent::SetTextureAsset(const Reflection::AssetRefValue& value)
+    {
+        if (value == textureAsset_.GetValue()) {
+            return;
+        }
+        textureAsset_.SetValue(value);
+        LoadTexture(textureAsset_.IsSet() ? textureAsset_.GetPath() : std::string{});
+    }
+
+    void MeshRendererComponent::LoadTexture(std::string texturePath)
+    {
+        if (texturePath.empty()) {
+            texture_ = {};
+            textureName_.clear();
+            pendingTexturePath_.clear();
+            return;
+        }
         if (TextureManager::GetInstance().IsInitialized()) {
             texture_ = TextureManager::GetInstance().Load(texturePath);
             textureName_ = std::move(texturePath);
@@ -57,24 +166,93 @@ namespace CoreEngine
         if (passTypeOverride_) {
             return *passTypeOverride_;
         }
-        // スケルトン付きモデルはスキニング経路（頂点変形を CS が行う）へ
+        // 頂点をスケルトンで変形するモデルはスキニング経路（頂点変形を CS が行う）へ
+        if (model_) {
+            return model_->HasSkinCluster() ? RenderPassType::SkinnedModel : RenderPassType::Model;
+        }
         return (source_ == Source::SkinnedModelFile)
             ? RenderPassType::SkinnedModel
             : RenderPassType::Model;
     }
 
+    void MeshRendererComponent::SaveMaterialsToJson(json& parameters) const
+    {
+        if (!model_) {
+            if (pendingMaterials_.is_array()) {
+                parameters["materials"] = pendingMaterials_;
+            }
+            return;
+        }
+
+        const ModelResource* resource = model_->GetModelResource();
+        json materials = json::array();
+        bool differs = false;
+        for (size_t i = 0; i < model_->GetMaterialCount(); ++i) {
+            const MaterialInstance* material = model_->GetMaterial(i);
+            if (!material) {
+                continue;
+            }
+            json value = material->ToJson();
+            const MaterialInstance* defaults =
+                resource ? resource->GetDefaultMaterial(static_cast<uint32_t>(i)) : nullptr;
+            if (!defaults || defaults->ToJson() != value) {
+                differs = true;
+            }
+            materials.push_back(std::move(value));
+        }
+        if (differs) {
+            parameters["materials"] = std::move(materials);
+        }
+    }
+
+    void MeshRendererComponent::LoadMaterialsFromJson(const json& parameters)
+    {
+        if (!parameters.is_object()) {
+            return;
+        }
+
+        if (const auto it = parameters.find("materials"); it != parameters.end() && it->is_array()) {
+            pendingMaterials_ = *it;
+            ApplyPendingMaterials();
+        }
+    }
+
+    void MeshRendererComponent::ApplyPendingMaterials()
+    {
+        if (!model_ || !pendingMaterials_.is_array()) {
+            return;
+        }
+
+        // モデルの既定と同じスロットは、モデル間で共有する既定のマテリアルのままにする
+        const ModelResource* resource = model_->GetModelResource();
+        const size_t count = (std::min)(pendingMaterials_.size(), static_cast<size_t>(model_->GetMaterialCount()));
+        for (size_t i = 0; i < count; ++i) {
+            const MaterialInstance* defaults =
+                resource ? resource->GetDefaultMaterial(static_cast<uint32_t>(i)) : nullptr;
+            if (defaults && defaults->ToJson() == pendingMaterials_[i]) {
+                continue;
+            }
+            if (MaterialInstance* material = model_->GetMaterial(i)) {
+                material->FromJson(pendingMaterials_[i]);
+            }
+        }
+        pendingMaterials_ = json();
+    }
+
     void MeshRendererComponent::Awake()
     {
+        awoken_ = true;
+
         // トランスフォームは描画に必須なので、無ければ自動で足す（Unity の RequireComponent 相当）
         if (GameObject* owner = GetOwner()) {
             transform_ = owner->GetOrAddComponent<TransformComponent>();
         }
 
         LoadMesh();
+        ApplyPendingMaterials();
 
         if (!pendingTexturePath_.empty()) {
-            SetTexture(std::move(pendingTexturePath_));
-            pendingTexturePath_.clear();
+            LoadTexture(std::exchange(pendingTexturePath_, {}));
         }
 
         BuildCustomShaderPipelineIfNeeded();
@@ -86,10 +264,10 @@ namespace CoreEngine
         if (source_ == Source::None) { return; }
 
         LoadMesh();
+        ApplyPendingMaterials();
 
         if (!pendingTexturePath_.empty()) {
-            SetTexture(std::move(pendingTexturePath_));
-            pendingTexturePath_.clear();
+            LoadTexture(std::exchange(pendingTexturePath_, {}));
         }
 
         BuildCustomShaderPipelineIfNeeded();
@@ -200,51 +378,4 @@ namespace CoreEngine
         model_->Draw(transform->Get(), view, texture_.gpuHandle);
         return true;
     }
-
-#ifdef USE_IMGUI
-    bool MeshRendererComponent::DrawInspector()
-    {
-        bool changed = false;
-
-        // ── メッシュの出どころ ────────────────────────────────
-        const char* sourceLabel = "なし";
-        switch (source_) {
-        case Source::ModelFile:        sourceLabel = "モデルファイル"; break;
-        case Source::SkinnedModelFile: sourceLabel = "スキン付きモデル"; break;
-        case Source::Primitive:        sourceLabel = "プリミティブ"; break;
-        default: break;
-        }
-        ImGui::Text("種類: %s", sourceLabel);
-
-        if (!modelPath_.empty()) {
-            ImGui::TextWrapped("パス: %s", modelPath_.c_str());
-        }
-        ImGui::Text("読み込み済み: %s", HasModel() ? "はい" : "いいえ");
-
-        ImGui::Text("テクスチャ: %s",
-            textureName_.empty() ? "（なし）" : textureName_.c_str());
-
-        // ── ブレンドモード ────────────────────────────────────
-        UI::SectionHeader("描画");
-
-        static const char* kBlendNames[] = {
-            "なし", "アルファ", "加算", "減算", "乗算", "スクリーン",
-        };
-        int blendIndex = static_cast<int>(blendMode_);
-        if (blendIndex >= 0 && blendIndex < static_cast<int>(kBlendModeCount)) {
-            if (ImGui::Combo("ブレンド", &blendIndex, kBlendNames,
-                static_cast<int>(kBlendModeCount))) {
-                blendMode_ = static_cast<BlendMode>(blendIndex);
-                changed = true;
-            }
-        }
-
-        if (ImGui::Button("メッシュを再読み込み")) {
-            ReloadFromSpec();
-            changed = true;
-        }
-
-        return changed;
-    }
-#endif // USE_IMGUI
 }

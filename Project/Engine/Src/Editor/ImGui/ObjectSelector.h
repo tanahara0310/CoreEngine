@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <functional>
+#include "Input/InputQuery.h"
 #include "Math/Vector/Vector2.h"
 #include "Math/Vector/Vector3.h"
 #include "Math/Matrix/Matrix4x4.h"
@@ -10,7 +11,6 @@
 namespace CoreEngine
 {
     class GameObject;
-    class SpriteObject;
     class Camera;
     class GameObjectManager;
 
@@ -19,6 +19,22 @@ namespace CoreEngine
     public:
         /// @brief 初期化
         void Initialize();
+
+        /// @brief ビューポートのクリックで選び直したか
+        /// @details ヒエラルキーが「その行まで送る」かを決めるのに使う。
+        ///          一覧の行をクリックしたときは送らない（すでに見えている）。
+        /// @return 呼んだら下ろす（1 回だけ true）
+        bool ConsumeViewportSelection()
+        {
+            const bool picked = viewportSelection_;
+            viewportSelection_ = false;
+            return picked;
+        }
+
+        /// @brief ギズモの切り替えを引く先を渡す
+        /// @details 割り当てはキーコンフィグで変えられる（`EditorGizmo*` のアクション）。
+        ///          渡されるまでは切り替わらない。
+        void SetInputQuery(const InputQuery* query) { input_ = query; }
 
         /// @brief 更新処理（マウスクリックによるオブジェクト選択）
         /// @param gameObjectManager ゲームオブジェクトマネージャー
@@ -50,7 +66,7 @@ namespace CoreEngine
 
         /// @brief 選択中のスプライトを取得
         /// @return 選択中のスプライト（nullptrの場合は未選択）
-        SpriteObject* GetSelectedSprite() const { return selectedSprite_; }
+        GameObject* GetSelectedSprite() const { return selectedSprite_; }
 
         /// @brief オブジェクトを選択
         /// @param object 選択するオブジェクト
@@ -58,7 +74,7 @@ namespace CoreEngine
 
         /// @brief スプライトを選択
         /// @param sprite 選択するスプライト
-        void SelectSprite(SpriteObject* sprite) { selectedSprite_ = sprite; selectedObject_ = nullptr; }
+        void SelectSprite(GameObject* sprite) { selectedSprite_ = sprite; selectedObject_ = nullptr; }
 
         /// @brief 選択を解除
         void ClearSelection() { selectedObject_ = nullptr; selectedSprite_ = nullptr; }
@@ -84,6 +100,10 @@ namespace CoreEngine
         }
 
     private:
+        /// @brief ギズモの種類を切り替える割り当てを見る
+        /// @param isViewportHovered ビューポートがホバー状態か（他の窓の操作で切り替わらないように）
+        void UpdateGizmoShortcut(bool isViewportHovered);
+
         /// @brief マウス位置からレイを飛ばしてオブジェクトを検出
         /// @param gameObjectManager ゲームオブジェクトマネージャー
         /// @param camera カメラ
@@ -97,7 +117,7 @@ namespace CoreEngine
         /// @param camera 2Dカメラ
         /// @param mousePos マウス座標（ビューポート座標系）
         /// @return 検出されたスプライト（nullptrの場合は検出失敗）
-        SpriteObject* RaycastSprite(GameObjectManager* gameObjectManager,
+        GameObject* RaycastSprite(GameObjectManager* gameObjectManager,
             const Camera* camera, const Vector2& mousePos);
 
         /// @brief スクリーン座標をワールド座標に変換（2D用）
@@ -142,8 +162,10 @@ namespace CoreEngine
         Vector3 TransformPoint(const Vector3& point, const Matrix4x4& matrix);
 
     private:
+        const InputQuery* input_ = nullptr;            // ギズモの切り替えを引く先
+        bool viewportSelection_ = false;               // ビューポートのクリックで選び直した
         GameObject* selectedObject_ = nullptr;         // 選択中の3Dオブジェクト
-        SpriteObject* selectedSprite_ = nullptr;       // 選択中のスプライト
+        GameObject* selectedSprite_ = nullptr;         // 選択中のスプライト
         Gizmo::Mode gizmoMode_ = Gizmo::Mode::Translate;  // ギズモモード
 
         /// @brief ギズモ操作完了時に呼び出すコールバック（isDirty_用）

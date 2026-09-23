@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include <d3d12.h>
 #include <imgui.h>
@@ -38,7 +38,7 @@ namespace CoreEngine
         ///          止める側の判断はフレーム先頭のこの関数が担う。
         void SyncCaptureState();
 
-        /// @brief ImGui コンテンツを描画（RegisterEnginePanel ラムダから呼ぶ）
+        /// @brief ImGui コンテンツを描画（EditorPanelRegistry のラムダから呼ぶ）
         void Draw();
 
     private:
@@ -172,4 +172,4 @@ namespace CoreEngine
     };
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

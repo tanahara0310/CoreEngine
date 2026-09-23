@@ -1,0 +1,45 @@
+{
+    "id": "23dd1cb3a142b832",
+    "active": true,
+    "name": "CountLabel",
+    "components": [
+        {
+            "type": "RectTransform",
+            "enabled": true,
+            "parameters": {
+                "anchor": 4,
+                "anchoredPosition": [
+                    0.0,
+                    -60.0
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "size": [
+                    700.0,
+                    60.0
+                ],
+                "rotation": 0.0,
+                "sortOrder": 11
+            }
+        },
+        {
+            "type": "UIText",
+            "enabled": true,
+            "parameters": {
+                "text": "押された回数: 0",
+                "fontSize": 32.0,
+                "color": [
+                    0.85,
+                    0.9,
+                    1.0,
+                    1.0
+                ],
+                "alignH": 1,
+                "alignV": 1,
+                "fieldAutoFit": true
+            }
+        }
+    ]
+}

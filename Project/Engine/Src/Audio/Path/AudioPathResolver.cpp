@@ -5,6 +5,7 @@
 #include <cctype>
 
 #include "Utility/Logger/Logger.h"
+#include "Utility/Path/ProjectPaths.h"
 
 namespace CoreEngine
 {
@@ -24,8 +25,8 @@ namespace CoreEngine
             normalized.insert(0, kDefaultBasePath);
         }
 
-        // UTF-8 → path。ここを narrow のまま渡すと ANSI 解釈されて非 ASCII が開けない
-        return Logger::GetInstance().Utf8ToPath(normalized);
+        // UTF-8 → path。相対のまま返すと実行時のカレント基準になるので根から解決する
+        return ProjectPaths::Resolve(normalized);
     }
 
     std::string AudioPathResolver::GetLowerExtension(const std::filesystem::path& path)

@@ -2,6 +2,7 @@
 #include <d3d12.h>
 #include <string>
 #include <functional>
+#include <memory>
 #include <vector>
 
 #include "Graphics/Water/WaterSurfaceData.h"
@@ -15,7 +16,7 @@ namespace CoreEngine {
     class SceneManager;
     class Camera;
     class GameObjectManager;
-    class RenderPipeline;
+    struct SceneSnapshot;
 }
 
 namespace CoreEngine
@@ -72,6 +73,8 @@ public:
     virtual void BuildLoadTasks(CoreEngine::StartupSequence& sequence, CoreEngine::EngineSystem* engine) = 0;
 
     virtual Camera* GetGameViewCamera3D() const { return nullptr; }
+    /// @brief ゲーム視点の 3D カメラ（エディタ視点で覗いていても変わらない）
+    virtual Camera* GetGameCamera3D() const { return nullptr; }
     virtual Camera* GetGameViewCamera2D() const { return nullptr; }
     virtual GameObjectManager* GetGameObjectManager() { return nullptr; }
 
@@ -79,17 +82,14 @@ public:
     /// @return Engine 側 RenderGraph で実行する補助 View 要求群
     virtual std::vector<RenderViewRequest> BuildRenderViewRequests() { return {}; }
 
-    /// @brief シーン固有のレンダーパスをパイプラインへ登録する（シーン初期化直後に自動呼び出し）
-    /// @details pipeline.AddPass(pass, phase, priority) で任意フェーズへ挿入できる。
-    ///          登録したパスはシーン破棄時に SceneManager が自動で除去するため、
-    ///          Finalize での手動削除は不要。エンジンコードの編集も不要。
-    /// @param pipeline エンジンのレンダーパイプライン
-    virtual void RegisterRenderPasses([[maybe_unused]] RenderPipeline& pipeline) {}
-
     /// @brief SceneManager への参照を設定（自動呼び出し）
     virtual void SetSceneManager(CoreEngine::SceneManager* sceneManager) {
         sceneManager_ = sceneManager;
     }
+
+    /// @brief オブジェクトの値を、保存ファイルではなくメモリの控えから戻すようにする
+    /// @note 読み込みを始める前に SceneManager が呼ぶ。
+    virtual void SetRestoreSnapshot(std::shared_ptr<const SceneSnapshot> snapshot) { (void)snapshot; }
 
 protected:
     SceneManager* sceneManager_ = nullptr;

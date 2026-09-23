@@ -2,12 +2,10 @@
 #include "GameObjectManager.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Collision/CollisionWorld.h"
+#include "Collision/ColliderComponent.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
+#include "Utility/Logger/Logger.h"
 #include <algorithm>
-
-#ifdef USE_IMGUI
-#include "Editor/ImGui/ImGuiAll.h"
-#endif
 
 
 namespace CoreEngine
@@ -17,18 +15,22 @@ namespace CoreEngine
 
         GameObject* ptr = obj.get();
 
-        // spawner_ を注入（このオブジェクトから Spawn<T>() が呼べるようになる）
+        // spawner_ を注入（このオブジェクトから Spawn() が呼べるようになる）
         ptr->spawner_ = this;
+        ptr->objectManager_ = this;
 
-        // 名前未設定の場合は GetObjectName() + 連番番号で自動付与
+        // 名前未設定の場合は既定名 + 連番番号で自動付与
         if (ptr->GetName().empty()) {
-            std::string baseName = ptr->GetObjectName();
+            const std::string baseName = "GameObject";
             int idx = nameCounters_[baseName]++;
             ptr->SetName(baseName + "_" + std::to_string(idx));
         }
 
-        // オブジェクト固有の初期化を自動実行
-        ptr->Initialize();
+        // 保存キーを 1 シーンで一意にする（名前は重複してよい）
+        EnsureUniqueSerializeKey(*ptr);
+
+        // 保存キーから ID を決めて登録する
+        RegisterObjectId(*ptr);
 
         // Update中は pending に積む（deque への push_back は全イテレータを無効化するため）
         if (isUpdating_) {
@@ -40,19 +42,110 @@ namespace CoreEngine
         return ptr;
     }
 
-    void GameObjectManager::UpdateAll() {
+    void GameObjectManager::EnsureUniqueSerializeKey(GameObject& object)
+    {
+        const std::string base = object.GetSerializeKey();
+        if (base.empty()) {
+            return;
+        }
+
+        // 初出はそのまま。既存の保存ファイルとの対応を切らないため
+        auto [entry, inserted] = serializeKeyCounters_.try_emplace(base, 0);
+        if (inserted) {
+            return;
+        }
+
+        std::string candidate;
+        do {
+            candidate = base + "_" + std::to_string(++entry->second);
+        } while (serializeKeyCounters_.find(candidate) != serializeKeyCounters_.end());
+
+        serializeKeyCounters_.emplace(candidate, 0);
+        object.SetSerializeKey(candidate);
+    }
+
+    void GameObjectManager::RegisterObjectId(GameObject& object)
+    {
+        const std::string& key = object.GetSerializeKey();
+        const ObjectId baseId = ObjectId::FromKey(key);
+
+        ObjectId id = baseId;
+        for (int salt = 1; objectsById_.contains(id); ++salt) {
+            id = ObjectId::FromKey(key + "#" + std::to_string(salt));
+        }
+        if (!(id == baseId)) {
+            Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
+                "GameObjectManager: \"{}\" の ID {} は使用中なので {} にしました",
+                key, baseId.ToString(), id.ToString());
+        }
+
+        object.objectId_ = id;
+        objectsById_.emplace(id, &object);
+    }
+
+    GameObject* GameObjectManager::FindObject(ObjectId id) const
+    {
+        const auto it = objectsById_.find(id);
+        return it != objectsById_.end() ? it->second : nullptr;
+    }
+
+    GameObject* GameObjectManager::FindObjectByName(const std::string& name) const
+    {
+        for (const auto& obj : objects_) {
+            if (obj && !obj->IsMarkedForDestroy() && obj->GetName() == name) {
+                return obj.get();
+            }
+        }
+        // UpdateAll() の途中で作られ、まだ objects_ へ移していないもの
+        for (const auto& obj : pendingAdd_) {
+            if (obj && !obj->IsMarkedForDestroy() && obj->GetName() == name) {
+                return obj.get();
+            }
+        }
+        return nullptr;
+    }
+
+    bool GameObjectManager::AssignObjectId(GameObject& object, ObjectId id)
+    {
+        if (!id.IsValid()) {
+            return false;
+        }
+        if (object.objectId_ == id) {
+            return true;
+        }
+        if (const auto used = objectsById_.find(id);
+            used != objectsById_.end() && used->second != &object) {
+            return false;
+        }
+
+        if (const auto current = objectsById_.find(object.objectId_);
+            current != objectsById_.end() && current->second == &object) {
+            objectsById_.erase(current);
+        }
+        object.objectId_ = id;
+        objectsById_[id] = &object;
+        ++referenceEpoch_;
+        return true;
+    }
+
+    void GameObjectManager::UpdateAll(const std::function<void()>& afterUpdatePass) {
         isUpdating_ = true;
         // アクティブかつ削除マークが無く、自動更新が有効なオブジェクトのみ更新する。
         // 呼び出し順は [パス1] Start → コンポーネント Update → GameObject::Update を全員分、
-        // [パス2] LateUpdate を全員分。別パスにすることで、他オブジェクトを参照する処理
-        // （ジョイント追従など）が生成順に依存しなくなる。
+        // afterUpdatePass とワールド行列の転送、[パス2] LateUpdate を全員分。別パスにすることで、
+        // 他オブジェクトを参照する処理（ジョイント追従など）が生成順に依存しなくなる。
+        // 転送はパス1 で書き換えた座標をこのフレームの描画と当たり判定に出すためのもので、
+        // パス2 より前に置くので、LateUpdate でワールド行列を上書きする処理（ソケット追従など）は残る
         for (auto& obj : objects_) {
             if (obj && obj->IsActive() && !obj->IsMarkedForDestroy()) {
                 obj->DispatchComponentStart();
                 obj->DispatchComponentUpdate();
-                obj->Update();
             }
         }
+        if (afterUpdatePass) {
+            afterUpdatePass();
+        }
+        SyncTransforms();
         for (auto& obj : objects_) {
             if (obj && obj->IsActive() && !obj->IsMarkedForDestroy()) {
                 obj->DispatchComponentLateUpdate();
@@ -60,7 +153,7 @@ namespace CoreEngine
         }
         isUpdating_ = false;
 
-        // Update中に Spawn<T>() されたオブジェクトをまとめて追加
+        // Update 中に Spawn() されたオブジェクトをまとめて追加
         FlushPendingAdds();
     }
 
@@ -68,12 +161,16 @@ namespace CoreEngine
         // 親を先に転送しないと子が古い親行列で合成されるが、走査順は UpdateAll() と
         // 同じ登録順なので、再生中と停止中で見え方が変わることはない
         ForEachComponent<TransformComponent>([](TransformComponent& transform) {
-            transform.Get().TransferMatrix();
+            transform.SyncWorldMatrix();
             });
     }
 
     void GameObjectManager::FlushPendingAdds() {
         for (auto& obj : pendingAdd_) {
+            // 作った直後に書いた座標を、次の TransformComponent::Update を待たずに描画へ出す
+            if (TransformComponent* const transform = obj ? obj->GetComponent<TransformComponent>() : nullptr) {
+                transform->SyncWorldMatrix();
+            }
             objects_.push_back(std::move(obj));
         }
         pendingAdd_.clear();
@@ -98,16 +195,21 @@ namespace CoreEngine
         // 取り外し済みコライダー／コンポーネントの実体を解放する。
         // 衝突判定（PostObjectUpdate）より後のこのタイミングでしか解放してはいけない
         // ——判定ループが colliders_ に生ポインタを保持しているため。
+        bool referencesChanged = false;
         for (auto& obj : objects_) {
             if (obj) {
-                obj->ReleaseRetiredColliders();
-                obj->ReleaseRetiredComponents();
+                if (auto* colliders = obj->GetComponent<ColliderComponent>()) {
+                    colliders->ReleaseRetired();
+                }
+                if (obj->ReleaseRetiredComponents()) {
+                    referencesChanged = true;
+                }
             }
         }
 
         objects_.erase(
             std::remove_if(objects_.begin(), objects_.end(),
-                [this](auto& obj) {
+                [this, &referencesChanged](auto& obj) {
                     // unique_ptrの有効性チェック
                     if (!obj) {
                         return true;
@@ -119,6 +221,14 @@ namespace CoreEngine
                         // OnDestroy() は「もう死んだ」と分かった今フレームで発行する
                         // （他コンポーネントがまだ生きているうちに後始末できる）。
                         obj->DispatchComponentDestroy();
+
+                        // ID から引けないようにする
+                        if (const auto it = objectsById_.find(obj->GetObjectId());
+                            it != objectsById_.end() && it->second == obj.get()) {
+                            objectsById_.erase(it);
+                        }
+                        referencesChanged = true;
+
                         destroyQueue_.push_back(std::move(obj));
                         return true;
                     }
@@ -127,6 +237,11 @@ namespace CoreEngine
                 }),
             objects_.end()
         );
+
+        // ObjectRef が控えている実体を引き直させる
+        if (referencesChanged) {
+            ++referenceEpoch_;
+        }
     }
 
     void GameObjectManager::Clear() {
@@ -135,6 +250,11 @@ namespace CoreEngine
         for (auto& obj : objects_) {
             if (obj) obj->DispatchComponentDestroy();
         }
+
+        // 捨てる前に ID から引けないようにする
+        objectsById_.clear();
+        ++referenceEpoch_;
+
         objects_.clear();
         destroyQueue_.clear();
         nameCounters_.clear();
@@ -167,34 +287,4 @@ namespace CoreEngine
         return false;
     }
 
-#ifdef USE_IMGUI
-    void GameObjectManager::DrawSingleObjectImGui(GameObject* obj)
-    {
-        if (!obj) {
-            UI::Hint("オブジェクトを選択してください");
-            return;
-        }
-
-        if (editCommitCallback_) {
-            obj->SetEditCommitCallback(editCommitCallback_);
-        }
-        if (onSaveRequestCallback_) {
-            obj->SetSaveRequestCallback(onSaveRequestCallback_);
-        }
-
-        if (obj->IsMarkedForDestroy()) {
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
-        }
-
-        bool changed = obj->DrawImGui();
-
-        if (obj->IsMarkedForDestroy()) {
-            ImGui::PopStyleColor();
-        }
-
-        if (changed && onChangedCallback_) {
-            onChangedCallback_(obj);
-        }
-    }
-#endif // USE_IMGUI
 }

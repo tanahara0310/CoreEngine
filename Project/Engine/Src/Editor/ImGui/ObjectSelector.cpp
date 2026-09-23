@@ -1,7 +1,8 @@
 #include "pch.h"
 #include "ObjectSelector.h"
 #include "GameObject/GameObject.h"
-#include "GameObject/Sprite/SpriteObject.h"
+#include "GameObject/Component/Render/SpriteRendererComponent.h"
+#include "GameObject/Component/Transform/ITransformSource.h"
 #include "GameObject/GameObjectManager.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
@@ -49,33 +50,49 @@ namespace CoreEngine
                 GameObject* hitObject = RaycastObject(gameObjectManager, camera, mousePos);
                 if (hitObject) {
                     SelectObject(hitObject);
+                    viewportSelection_ = true;
                 } else {
                     ClearSelection();
                 }
             }
         }
 
-        // キーボードでギズモモードを切り替え（W:移動 / E:回転 / R:拡縮）
-        if (isViewportHovered && ImGui::IsKeyPressed(ImGuiKey_W, false)) {
-            SetGizmoMode(Gizmo::Mode::Translate);
+        UpdateGizmoShortcut(isViewportHovered);
+    }
+
+    void ObjectSelector::UpdateGizmoShortcut(bool isViewportHovered)
+    {
+        // 他の窓を触っている最中に切り替わらないよう、ビューポートの上でだけ見る
+        if (!isViewportHovered || !input_) {
+            return;
         }
-        if (isViewportHovered && ImGui::IsKeyPressed(ImGuiKey_E, false)) {
-            SetGizmoMode(Gizmo::Mode::Rotate);
-        }
-        if (isViewportHovered && ImGui::IsKeyPressed(ImGuiKey_R, false)) {
-            SetGizmoMode(Gizmo::Mode::Scale);
+        struct Shortcut { const char* actionId; Gizmo::Mode mode; };
+        static constexpr Shortcut kShortcuts[] = {
+            { "EditorGizmoTranslate", Gizmo::Mode::Translate },
+            { "EditorGizmoRotate",    Gizmo::Mode::Rotate },
+            { "EditorGizmoScale",     Gizmo::Mode::Scale },
+        };
+        for (const Shortcut& shortcut : kShortcuts) {
+            const InputAction action = InputActionFromString(shortcut.actionId);
+            if (action != InputAction::Invalid && input_->IsActionTriggered(action)) {
+                SetGizmoMode(shortcut.mode);
+            }
         }
     }
 
     void ObjectSelector::DrawGizmo(const Camera* camera)
     {
         if (selectedObject_ && camera) {
-            auto* transformComponent = selectedObject_->GetComponent<TransformComponent>();
-            if (!Gizmo::IsUsing() && transformComponent) {
-                const WorldTransform& transform = transformComponent->Get();
-                beforeGizmoTranslate_ = transform.translate;
-                beforeGizmoRotate_ = transform.rotate;
-                beforeGizmoScale_ = transform.scale;
+            // ギズモはトランスフォームを持つものにだけ出る。持たないもの（UI など）では、
+            // 別の窓のギズモの操作を自分の操作と取り違えないように何もしない
+            ITransformSource* const source = selectedObject_->GetComponent<ITransformSource>();
+            if (!source) {
+                return;
+            }
+            if (!Gizmo::IsUsing()) {
+                beforeGizmoTranslate_ = source->Translate();
+                beforeGizmoRotate_ = source->Rotate();
+                beforeGizmoScale_ = source->Scale();
                 beforeGizmoActive_ = selectedObject_->IsActive();
             }
 
@@ -112,7 +129,7 @@ namespace CoreEngine
         if (isViewportHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
             // ギズモ上でクリックした場合は選択処理をスキップ
             if (!Gizmo::IsOver()) {
-                SpriteObject* hitSprite = RaycastSprite(gameObjectManager, camera, mousePos);
+                GameObject* hitSprite = RaycastSprite(gameObjectManager, camera, mousePos);
                 if (hitSprite) {
                     SelectSprite(hitSprite);
                 } else {
@@ -122,16 +139,7 @@ namespace CoreEngine
             }
         }
 
-        // キーボードでギズモモードを切り替え（W:移動 / E:回転 / R:拡縮）
-        if (isViewportHovered && ImGui::IsKeyPressed(ImGuiKey_W, false)) {
-            SetGizmoMode(Gizmo::Mode::Translate);
-        }
-        if (isViewportHovered && ImGui::IsKeyPressed(ImGuiKey_E, false)) {
-            SetGizmoMode(Gizmo::Mode::Rotate);
-        }
-        if (isViewportHovered && ImGui::IsKeyPressed(ImGuiKey_R, false)) {
-            SetGizmoMode(Gizmo::Mode::Scale);
-        }
+        UpdateGizmoShortcut(isViewportHovered);
     }
 
     void ObjectSelector::DrawGizmo2D(const Camera* camera)
@@ -139,9 +147,11 @@ namespace CoreEngine
         if (selectedSprite_ && camera) {
             // ギズモ非使用中は操作前スナップショットを連続更新する
             if (!Gizmo::IsUsing()) {
-                beforeGizmoTranslate_ = selectedSprite_->GetSpriteTransform().translate;
-                beforeGizmoRotate_ = selectedSprite_->GetSpriteTransform().rotate;
-                beforeGizmoScale_ = selectedSprite_->GetSpriteTransform().scale;
+                if (auto* source = selectedSprite_->GetComponent<ITransformSource>()) {
+                    beforeGizmoTranslate_ = source->Translate();
+                    beforeGizmoRotate_ = source->Rotate();
+                    beforeGizmoScale_ = source->Scale();
+                }
                 beforeGizmoActive_ = selectedSprite_->IsActive();
             }
 
@@ -190,14 +200,14 @@ namespace CoreEngine
         return Vector2(screenX / zoom + cameraPos.x, screenY / zoom + cameraPos.y);
     }
 
-    SpriteObject* ObjectSelector::RaycastSprite(GameObjectManager* gameObjectManager,
+    GameObject* ObjectSelector::RaycastSprite(GameObjectManager* gameObjectManager,
         const Camera* camera, const Vector2& mousePos)
     {
         // マウス位置をワールド座標に変換
         Vector2 worldMousePos = ScreenToWorld2D(mousePos, camera);
 
         const auto& objects = gameObjectManager->GetAllObjects();
-        SpriteObject* closestSprite = nullptr;
+        GameObject* closestSprite = nullptr;
         int highestOrder = INT_MIN;
 
         // スプライトオブジェクトのみをチェック
@@ -211,25 +221,27 @@ namespace CoreEngine
                 continue;
             }
 
-            SpriteObject* sprite = dynamic_cast<SpriteObject*>(obj.get());
-            if (!sprite) {
+            auto* sprite = obj->GetComponent<SpriteRendererComponent>();
+            auto* source = obj->GetComponent<ITransformSource>();
+            if (!sprite || !source) {
                 continue;
             }
 
             // スプライトの矩形との当たり判定
-            const EulerTransform& transform = sprite->GetSpriteTransform();
+            const Vector3& translate = source->Translate();
+            const Vector3& scale = source->Scale();
             Vector2 textureSize = sprite->GetTextureSize();
             Vector2 anchor = sprite->GetAnchor();
 
             // スプライトの実際のサイズを計算
-            float actualWidth = textureSize.x * transform.scale.x;
-            float actualHeight = textureSize.y * transform.scale.y;
+            float actualWidth = textureSize.x * scale.x;
+            float actualHeight = textureSize.y * scale.y;
 
             // アンカーポイントを考慮した矩形の範囲を計算
-            float left = transform.translate.x - anchor.x * actualWidth;
-            float right = transform.translate.x + (1.0f - anchor.x) * actualWidth;
-            float bottom = transform.translate.y - anchor.y * actualHeight;
-            float top = transform.translate.y + (1.0f - anchor.y) * actualHeight;
+            float left = translate.x - anchor.x * actualWidth;
+            float right = translate.x + (1.0f - anchor.x) * actualWidth;
+            float bottom = translate.y - anchor.y * actualHeight;
+            float top = translate.y + (1.0f - anchor.y) * actualHeight;
 
             // 矩形内にマウスがあるかチェック
             if (worldMousePos.x >= left && worldMousePos.x <= right &&
@@ -238,7 +250,7 @@ namespace CoreEngine
                 int order = sprite->GetSortingLayer() * 1000 + sprite->GetOrderInLayer();
                 if (order > highestOrder) {
                     highestOrder = order;
-                    closestSprite = sprite;
+                    closestSprite = obj.get();
                 }
             }
         }
@@ -460,6 +472,12 @@ namespace CoreEngine
 
         for (const auto& obj : objects) {
             if (!obj->IsActive()) {
+                continue;
+            }
+
+            // 3D の位置を持たないもの（UI・空・管理用のオブジェクト）はここでは選ばない。
+            // UI は Canvas で、それ以外は Hierarchy で選ぶ
+            if (!obj->GetComponent<ITransformSource>()) {
                 continue;
             }
 

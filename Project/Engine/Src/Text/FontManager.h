@@ -79,7 +79,7 @@ namespace CoreEngine
 
         /// @brief フォントフォルダに入っているフォントファイル名の一覧
         /// @return 拡張子付きのファイル名（例 "851Gkktt_005.ttf"）。
-        ///         そのまま AcquireNamed / UIText::SetFontByName へ渡せる
+        ///         そのまま AcquireNamed / UITextComponent::SetFontByName へ渡せる
         std::vector<std::string> GetFontFileNames() const;
 
         /// @brief エディタのフォント選択に出す名前の一覧

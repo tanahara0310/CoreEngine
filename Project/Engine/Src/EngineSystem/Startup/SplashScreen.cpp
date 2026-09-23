@@ -3,6 +3,9 @@
 
 #include <algorithm>
 
+#pragma comment(lib, "gdi32.lib")
+#pragma comment(lib, "user32.lib")
+
 namespace CoreEngine
 {
     namespace

@@ -10,7 +10,6 @@ namespace CoreEngine
 {
 // 前方宣言
 class GraphicsCore;
-class ResourceFactory;
 
 /// @brief GPU送信用パーティクルデータ
 struct ParticleForGPU {
@@ -24,13 +23,17 @@ struct ParticleForGPU {
 class ParticleResourceManager {
 public:
     ParticleResourceManager() = default;
-    ~ParticleResourceManager() = default;
+
+    /// @brief インスタンシングバッファと SRV を、描画中のフレームが終わってから返すよう預ける
+    ~ParticleResourceManager();
+
+    ParticleResourceManager(const ParticleResourceManager&) = delete;
+    ParticleResourceManager& operator=(const ParticleResourceManager&) = delete;
 
     /// @brief 初期化
     /// @param dxCommon GraphicsCore
-    /// @param resourceFactory リソースファクトリ
     /// @param maxInstances 最大インスタンス数
-    void Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory, uint32_t maxInstances);
+    void Initialize(GraphicsCore* dxCommon, uint32_t maxInstances);
 
     /// @brief インスタンシングデータへのポインタを取得
     /// @return インスタンシングデータのポインタ
@@ -55,7 +58,6 @@ private:
 
     // DirectX関連
     GraphicsCore* dxCommon_ = nullptr;
-    ResourceFactory* resourceFactory_ = nullptr;
 
     // GPUリソース
   Microsoft::WRL::ComPtr<ID3D12Resource> instancingResource_;

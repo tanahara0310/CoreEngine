@@ -2,14 +2,17 @@
 
 #include "Utility/JsonManager/JsonManager.h"
 
+namespace CoreEngine::Reflection { struct TypeDescriptor; struct PropertyDescriptor; }
+
 namespace CoreEngine
 {
 class GameObject;
 class ComponentHost;
+struct CollisionInfo;
 
 /// @brief GameObject にアタッチする機能単位の基底クラス。
 /// @details 呼び出し順は Awake（Add直後）→ Start（初回更新）→ Update →
-///          GameObject::Update → 全オブジェクトの後に LateUpdate → OnDestroy。
+///          全オブジェクトの後に LateUpdate → 当たり判定の通知 → OnDestroy。
 ///          他コンポーネントの参照は Start 以降に `Sibling<T>()` で行う。
 class IComponent {
 public:
@@ -29,10 +32,10 @@ public:
     /// @note 兄弟コンポーネントは揃っている。`Sibling<T>()` で取得できる。
     virtual void Start() {}
 
-    /// @brief 毎フレームの更新（GameObject::Update() より前）
+    /// @brief 毎フレームの更新
     virtual void Update() {}
 
-    /// @brief 毎フレームの更新（GameObject::Update() より後）
+    /// @brief 毎フレームの更新（全オブジェクトの Update の後）
     virtual void LateUpdate() {}
 
     /// @brief 取り外し時・オブジェクト破棄時に 1 回だけ呼ばれる
@@ -40,41 +43,66 @@ public:
     ///       生ポインタが宙に浮かないようにするため）。
     virtual void OnDestroy() {}
 
+    // ===== 当たり判定 =====
+    // 持ち主のコライダーが他のコライダーと触れたときに呼ばれる（無効なコンポーネントには届かない）。
+    // どちらかのコライダーがトリガーなら OnTrigger*、両方とも押し出す側なら OnCollision*。
+    // 呼ばれるのは全オブジェクトの LateUpdate の後の判定の中。
+
+    /// @brief 押し出す同士のコライダーが触れ始めた
+    virtual void OnCollisionEnter(const CollisionInfo&) {}
+
+    /// @brief 押し出す同士のコライダーが触れている（触れている間、毎フレーム）
+    virtual void OnCollisionStay(const CollisionInfo&) {}
+
+    /// @brief 押し出す同士のコライダーが離れた
+    virtual void OnCollisionExit(const CollisionInfo&) {}
+
+    /// @brief トリガーのコライダーと重なり始めた
+    virtual void OnTriggerEnter(const CollisionInfo&) {}
+
+    /// @brief トリガーのコライダーと重なっている（重なっている間、毎フレーム）
+    virtual void OnTriggerStay(const CollisionInfo&) {}
+
+    /// @brief トリガーのコライダーから離れた
+    virtual void OnTriggerExit(const CollisionInfo&) {}
+
     // ===== シリアライズ =====
-
-    /// @brief このコンポーネントの状態を JSON へ書き出す
-    /// @return 保存不要なら空の json を返す（呼び出し側が省略する）
-    virtual json OnSerialize() const { return {}; }
-
-    /// @brief JSON から状態を復元する
-    virtual void OnDeserialize(const json& j) { (void)j; }
 
     /// @brief シリアライズ時の型キー
     /// @return `{"type": ここの文字列}` として保存される。プレハブ復元の型名にもなる。
     virtual const char* GetTypeName() const = 0;
 
-    // ===== インスペクター =====
-#ifdef USE_IMGUI
-    /// @brief インスペクターのタブ名
-    /// @note 既定は GetTypeName() と同じ。日本語表示にしたい場合はオーバーライドする。
-    virtual const char* GetInspectorName() const { return GetTypeName(); }
+    // ===== リフレクション =====
 
-    /// @brief インスペクターの中身を描画する
-    /// @return 値が変更されたら true
-    virtual bool DrawInspector() { return false; }
+    /// @brief プロパティ一覧の記述子
+    /// @return REFLECT_BEGIN を書いていない型は nullptr（保存は `IRawSavedParameters`、インスペクタはエディタの登録へ落ちる）
+    virtual const Reflection::TypeDescriptor* GetTypeDescriptor() const { return nullptr; }
 
-    /// @brief インスペクタのタブアイコン（Engine/Assets/Textures/Icon 配下のファイル名）
-    /// @note タブを持たないオブジェクトは「コンポーネント 1 個 = 1 タブ」として
-    ///       インスペクタが組み立てられる。その左端に並ぶアイコン。
-    virtual const char* GetInspectorIcon() const { return "obj.png"; }
+    /// @brief 記述子が想定する派生クラスの先頭アドレス
+    /// @note 多重継承していると `IComponent*` と派生のアドレスがずれる。
+    ///       記述子の resolve は派生を基準に組み立てるので、必ずこれを通す。
+    virtual void* GetReflectionInstance() { return nullptr; }
 
-    /// @brief タブアイコンの色（RGBA 0..1）
-    /// @param outRgba 4 要素の配列
-    virtual void GetInspectorIconColor(float* outRgba) const
+    /// @brief 記述子経由でプロパティが書き換わった直後に呼ばれる
+    /// @param property 書き換わったプロパティ
+    /// @note 値から派生するもの（行列・キャッシュ）を作り直す場所。
+    ///       インスペクタでの編集と Undo / Redo の適用の両方で呼ばれる。
+    virtual void OnPropertyChanged(const Reflection::PropertyDescriptor& property)
     {
-        outRgba[0] = 0.75f; outRgba[1] = 0.78f; outRgba[2] = 0.85f; outRgba[3] = 1.0f;
+        (void)property;
     }
-#endif
+
+    // ===== 兄弟との依存 =====
+
+    /// @brief 同じオブジェクトに付いた別のコンポーネントを使っているか
+    /// @param other 同じオブジェクトに付いている別のコンポーネント
+    /// @return true を返されたコンポーネントは、エディタから外せない
+    /// @note 兄弟へのポインタを控えるコンポーネントは、控える型に対して true を返す。
+    virtual bool RequiresComponent(const IComponent& other) const
+    {
+        (void)other;
+        return false;
+    }
 
     // ===== アクセサ =====
 
@@ -92,12 +120,19 @@ public:
     bool IsEnabled() const { return isEnabled_; }
     void SetEnabled(bool enabled) { isEnabled_ = enabled; }
 
+    /// @brief コードが付けたか
+    /// @return シーン JSON・プレハブの復元とエディタの操作で付いたものは false
+    bool IsAttachedByCode() const { return attachedByCode_; }
+
 protected:
     IComponent() = default;
 
 private:
     GameObject* owner_ = nullptr;
     bool        isEnabled_ = true;
+
+    /// コードが付けたか（ComponentHost が付けるときに決める）
+    bool attachedByCode_ = true;
 
     /// Start() を呼んだか（ComponentHost が管理）
     bool startCalled_ = false;

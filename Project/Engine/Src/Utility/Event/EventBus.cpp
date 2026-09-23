@@ -10,7 +10,7 @@
 #include <thread>
 #endif
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/ImGuiAll.h"
 #include "Utility/FrameRate/Time.h"
 #include <cstring>
@@ -268,7 +268,7 @@ namespace CoreEngine
 
         Channel& channel = *slot;
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         SyncFrameStats();
         ++channel.publishTotal;
         ++channel.publishThisFrame;
@@ -315,7 +315,7 @@ namespace CoreEngine
         // ここを「空になるまで回す」にすると Queue し合うハンドラで無限ループになる。
         dispatching_.swap(queued_);
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         dispatchingQueued_ = true;
 #endif
 
@@ -323,7 +323,7 @@ namespace CoreEngine
             if (event) { event->Dispatch(*this); }
         }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         dispatchingQueued_ = false;
 #endif
 
@@ -362,7 +362,7 @@ namespace CoreEngine
     // デバッグ表示
     // ──────────────────────────────────────────────────────────────
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     void EventBus::SyncFrameStats()
     {
         const std::uint64_t frame = Time::FrameCount();

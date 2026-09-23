@@ -1,89 +1,63 @@
 #pragma once
+#include "InputContext.h"
+
 #include <cstdint>
+#include <string>
 #include <string_view>
+#include <vector>
 
 namespace CoreEngine {
 
     /// @brief 論理入力アクション識別子
+    /// @details 値は添字。名前と既定の割り当てはプロジェクト設定
+    ///          （`Application/Config/EngineSettings/InputActions.json`）が持つので、
+    ///          アクションを増やすのにエンジンの再ビルドは要らない。
+    /// @note エンジンはアクションを名指ししない（数だけ見て回す）。
+    ///       実体は `static_cast<InputAction>(添字)` で作る。
     enum class InputAction : uint32_t {
-        // 移動
-        MoveForward = 0,
-        MoveBack,
-        MoveLeft,
-        MoveRight,
-        // アクション
-        Jump,
-        Attack,
-        Interact,
-        // UI
-        UIConfirm,
-        UICancel,
-        Pause,      ///< ポーズの開閉。UICancel と分けてあるのは、
-                    ///< パッドの B が Interact と兼用で誤爆するため
-        // エディタ専用
-        EditorGizmoTranslate,
-        EditorGizmoRotate,
-        EditorGizmoScale,
-
-        Count ///< アクション総数（内部利用）
+        Invalid = 0xFFFFFFFFu,  ///< 見つからなかったときの値
     };
 
-    /// @brief アクションの識別文字列を返す（シリアライズ用）
-    inline std::string_view InputActionToString(InputAction action) {
-        switch (action) {
-        case InputAction::MoveForward:          return "MoveForward";
-        case InputAction::MoveBack:             return "MoveBack";
-        case InputAction::MoveLeft:             return "MoveLeft";
-        case InputAction::MoveRight:            return "MoveRight";
-        case InputAction::Jump:                 return "Jump";
-        case InputAction::Attack:               return "Attack";
-        case InputAction::Interact:             return "Interact";
-        case InputAction::UIConfirm:            return "UIConfirm";
-        case InputAction::UICancel:             return "UICancel";
-        case InputAction::Pause:                return "Pause";
-        case InputAction::EditorGizmoTranslate: return "EditorGizmoTranslate";
-        case InputAction::EditorGizmoRotate:    return "EditorGizmoRotate";
-        case InputAction::EditorGizmoScale:     return "EditorGizmoScale";
-        default:                                return "Unknown";
-        }
+    /// @brief 持てるアクションの上限
+    inline constexpr std::size_t kMaxInputActions = 64;
+
+    /// @brief アクション 1 つ分の定義
+    struct InputActionDef {
+        std::string id;                    ///< 保存データとスクリプトが使う綴り
+        std::string displayName;           ///< キーコンフィグ画面に出す名前
+        std::vector<std::string> defaults; ///< 既定の割り当て（"Key:W" などの綴り）
+        /// どの場面の操作か。今いる場面と重ならないアクションは押されていない扱いになる
+        InputContext contexts = InputContext::Game;
+    };
+
+    /// @brief アクションの定義の表
+    /// @details 初回の参照で `InputActions.json` を読む。無ければ既定の並びを使う。
+    namespace InputActions
+    {
+        /// @brief 使っているアクションの数（1 以上 kMaxInputActions 以下）
+        std::size_t Count();
+
+        /// @brief 定義の一覧（添字がそのままアクションの値）
+        const std::vector<InputActionDef>& All();
+
+        /// @brief 定義を決めて保存する
+        /// @param defs 空・id の重複・上限超えは断る
+        /// @param outError 断った訳（省略可）
+        bool SetAll(std::vector<InputActionDef> defs, std::string* outError = nullptr);
+
+        /// @brief ファイルから読み直す
+        void Reload();
     }
 
-    /// @brief アクションの日本語表示名を返す（UI 用）
-    inline std::string_view InputActionToDisplayName(InputAction action) {
-        switch (action) {
-        case InputAction::MoveForward:          return "前進";
-        case InputAction::MoveBack:             return "後退";
-        case InputAction::MoveLeft:             return "左移動";
-        case InputAction::MoveRight:            return "右移動";
-        case InputAction::Jump:                 return "ジャンプ";
-        case InputAction::Attack:               return "攻撃";
-        case InputAction::Interact:             return "インタラクト";
-        case InputAction::UIConfirm:            return "UI決定";
-        case InputAction::UICancel:             return "UIキャンセル";
-        case InputAction::Pause:                return "ポーズ";
-        case InputAction::EditorGizmoTranslate: return "ギズモ：移動";
-        case InputAction::EditorGizmoRotate:    return "ギズモ：回転";
-        case InputAction::EditorGizmoScale:     return "ギズモ：拡縮";
-        default:                                return "不明";
-        }
-    }
+    /// @brief アクションの識別文字列（範囲外なら "Unknown"）
+    std::string_view InputActionToString(InputAction action);
 
-    /// @brief 識別文字列からアクションを返す（不明な場合は Count を返す）
-    inline InputAction InputActionFromString(std::string_view str) {
-        if (str == "MoveForward")          return InputAction::MoveForward;
-        if (str == "MoveBack")             return InputAction::MoveBack;
-        if (str == "MoveLeft")             return InputAction::MoveLeft;
-        if (str == "MoveRight")            return InputAction::MoveRight;
-        if (str == "Jump")                 return InputAction::Jump;
-        if (str == "Attack")               return InputAction::Attack;
-        if (str == "Interact")             return InputAction::Interact;
-        if (str == "UIConfirm")            return InputAction::UIConfirm;
-        if (str == "UICancel")             return InputAction::UICancel;
-        if (str == "Pause")                return InputAction::Pause;
-        if (str == "EditorGizmoTranslate") return InputAction::EditorGizmoTranslate;
-        if (str == "EditorGizmoRotate")    return InputAction::EditorGizmoRotate;
-        if (str == "EditorGizmoScale")     return InputAction::EditorGizmoScale;
-        return InputAction::Count;
-    }
+    /// @brief アクションの表示名（範囲外なら "不明"）
+    std::string_view InputActionToDisplayName(InputAction action);
 
+    /// @brief 識別文字列からアクションを返す（不明なら Invalid）
+    InputAction InputActionFromString(std::string_view str);
+
+    /// @brief アクションが属する場面（範囲外なら Game）
+    InputContext InputActionToContexts(InputAction action);
 }

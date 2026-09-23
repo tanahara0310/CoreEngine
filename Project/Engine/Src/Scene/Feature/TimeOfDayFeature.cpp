@@ -1,24 +1,30 @@
 #include "pch.h"
+#include "Editor/Panel/EditorPanelRegistry.h"
 #include "TimeOfDayFeature.h"
 
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/Light/LightManager.h"
+#include "GameObject/GameObject.h"
+#include "GameObject/GameObjectManager.h"
+#include "GameObject/Component/Light/LightComponent.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/PostEffect/Effect/PostEffectNames.h"
 #include "Graphics/PostEffect/Effect/ToneMapping/ToneMapping.h"
+#include "Scene/Feature/SceneFeatureRegistry.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/CVar/CVarRegistry.h"
 #include "Utility/FrameRate/Time.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "EngineSystem/Subsystem/DebugSubsystem.h"
-#include "Utility/Debug/GameDebugUI.h"
+#include "Editor/ImGui/GameDebugUI.h"
 #include "Editor/ImGui/CVarPanel.h"
 #include "Editor/ImGui/ImGuiAll.h"
 #endif
 
 #include <algorithm>
 #include <cmath>
+#include <memory>
 
 namespace
 {
@@ -30,7 +36,7 @@ namespace
     /// パネルが扱う CVar の接頭辞
     constexpr const char* kCVarPrefix = "r.TimeOfDay";
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     /// 設定パネルの編集対象（GroundFeature と同じ流儀。ドロワーは何もキャプチャしない）
     TimeOfDayFeature* s_activeTimeOfDay = nullptr;
 #endif
@@ -114,6 +120,8 @@ namespace
     }
 }
 
+SCENE_FEATURE_REGISTER("TimeOfDay", [] { return std::make_unique<CoreEngine::TimeOfDayFeature>(); })
+
 namespace CoreEngine
 {
     // ==================== ライフサイクル ====================
@@ -122,7 +130,7 @@ namespace CoreEngine
     {
         timeOfDay_ = NormalizeHours(cvStartHour.Get());
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         // パラメータ UI は CVar から自動生成する。機能ごとにこの登録をしないと
         // どのパネルにも出てこない（全 CVar を一覧する横断パネルは無い設計）
         EnsureSettingsPanelRegistered(ctx.engine);
@@ -150,7 +158,7 @@ namespace CoreEngine
 
     void TimeOfDayFeature::Finalize(SceneContext& ctx)
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         // シーンと一緒に消えるので、パネルの参照を先に外す
         SetActiveForSettingsPanel(nullptr);
 #endif
@@ -179,10 +187,10 @@ namespace CoreEngine
             savedSunValid_ = false;
         }
 
-        if (createdMoon_.IsValid()) {
+        if (createdMoonObject_) {
             // 自分で足した月は片付ける（借り物のシーンに月を増やして返さない）
-            lightManager->DestroyLight(createdMoon_);
-            createdMoon_ = {};
+            createdMoonObject_->Destroy();
+            createdMoonObject_ = nullptr;
         } else if (savedMoonValid_) {
             if (Light* moon = lightManager->GetAtmosphereMoonLight()) {
                 moon->enabled = savedMoonEnabled_;
@@ -262,6 +270,42 @@ namespace CoreEngine
 
     // ==================== 反映 ====================
 
+    Light* TimeOfDayFeature::CreateMoonObject(SceneContext& ctx)
+    {
+        if (!ctx.gameObjectManager) {
+            return nullptr;
+        }
+
+        auto owned = std::make_unique<GameObject>();
+        owned->SetName("Moon");
+        GameObject* const object = ctx.gameObjectManager->AddObject(std::move(owned));
+        if (!object) {
+            return nullptr;
+        }
+        // サイクルが向きを毎フレーム書くので、シーンへ保存しても復元した値は残らない
+        object->SetSerializeEnabled(false);
+
+        LightComponent* const component = object->AddComponent<LightComponent>();
+        if (!component) {
+            object->Destroy();
+            return nullptr;
+        }
+
+        Light& light = component->Get();
+        light.type = LightType::Directional;
+        light.isAtmosphereMoon = true;
+        component->SyncWithManager();
+
+        Light* const live = component->GetLight();
+        if (!live) {
+            // ディレクショナルライトが上限（4 本）で実体を作れなかった
+            object->Destroy();
+            return nullptr;
+        }
+        createdMoonObject_ = object;
+        return live;
+    }
+
     void TimeOfDayFeature::ApplyToLights(SceneContext& ctx)
     {
         auto* lightManager = GetLightManager(ctx);
@@ -304,16 +348,15 @@ namespace CoreEngine
             if (!wantMoon) {
                 return;
             }
-            // 月はオプトイン。初回に第2ディレクショナルライトとして生成する
-            createdMoon_ = lightManager->CreateLight(LightType::Directional, "Moon");
-            moon = lightManager->GetLight(createdMoon_);
+            // 月はオプトイン。初回に第2ディレクショナルライトとして生成する。
+            // ライトはオブジェクトが持つので、Hierarchy から選んで Inspector で編集できる
+            moon = CreateMoonObject(ctx);
             if (!moon) {
-                return;  // ディレクショナルライトが上限（4 本）で作れなかった
+                return;  // シーンが無いか、ディレクショナルライトが上限（4 本）で作れなかった
             }
-            moon->isAtmosphereMoon = true;
         }
 
-        if (!savedMoonValid_ && !createdMoon_.IsValid()) {
+        if (!savedMoonValid_ && !createdMoonObject_) {
             // シーンが元から持っていた月は、借りている間の変更を Finalize で返す
             savedMoonEnabled_ = moon->enabled;
             savedMoonDirection_ = moon->direction;
@@ -435,7 +478,7 @@ namespace CoreEngine
 
     // ==================== 設定パネル ====================
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     void TimeOfDayFeature::EnsureSettingsPanelRegistered(EngineSystem* engine)
     {
         static bool registered = false;
@@ -443,20 +486,18 @@ namespace CoreEngine
             return;
         }
 
-        auto* debug = engine->GetDebugSubsystem();
-        auto* gameDebugUI = debug ? debug->GetGameDebugUI() : nullptr;
-        if (!gameDebugUI) {
-            return;
-        }
-
         // ドロワーは何もキャプチャしない（ファイルスコープの s_activeTimeOfDay を読むだけ）
-        gameDebugUI->RegisterEnginePanel("Time of Day", [] {
-            if (s_activeTimeOfDay) {
-                s_activeTimeOfDay->DrawSettingsImGui();
-            } else {
-                ImGui::TextDisabled("(このシーンには昼夜サイクルがありません)");
-            }
-        });
+        Editor::EditorPanelRegistry::Get().Register({
+            .id = "Time of Day",
+            .placement = Editor::PanelPlacement::SettingsSection,
+            .draw = [] {
+                if (s_activeTimeOfDay) {
+                    s_activeTimeOfDay->DrawSettingsImGui();
+                } else {
+                    ImGui::TextDisabled("(このシーンには昼夜サイクルがありません)");
+                }
+            },
+            });
 
         registered = true;
     }

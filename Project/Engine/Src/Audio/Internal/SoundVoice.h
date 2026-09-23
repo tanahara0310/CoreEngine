@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #include <xaudio2.h>
 
 namespace CoreEngine
@@ -36,6 +38,11 @@ namespace CoreEngine
         void SetPitch(float pitch);
         float GetPitch() const { return pitch_; }
 
+        /// @brief 左右の振り分けを設定する（-1 で左、0 で中央、+1 で右）
+        /// @note 出力が 2 ch でない、または音源が 3 ch 以上のときは何もしない。
+        void SetPan(float pan);
+        float GetPan() const { return pan_; }
+
         bool IsPlaying() const;
         bool IsPaused() const { return isPaused_; }
 
@@ -49,5 +56,10 @@ namespace CoreEngine
         bool isPaused_ = false;
         float volume_ = 1.0f;
         float pitch_ = 1.0f;
+        float pan_ = 0.0f;
+
+        // 振り分けの行列を組むのに要るチャンネル数（Initialize で読む）
+        uint32_t sourceChannels_ = 0;
+        uint32_t destinationChannels_ = 0;
     };
 }

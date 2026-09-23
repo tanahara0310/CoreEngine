@@ -1,8 +1,10 @@
 #pragma once
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include <imgui.h>
+#include <cstddef>
+#include <string>
 #include "Math/Vector/Vector2.h"
 #include "Math/Vector/Vector3.h"
 #include "Math/Vector/Vector4.h"
@@ -65,12 +67,56 @@ namespace CoreEngine {
             return ImGui::InputText(label, buf, buf_size, flags);
         }
 
+        /// @brief コールバック付きの文字列入力ボックス（履歴・補完に使う）
+        inline bool InputText(const char* label, char* buf, size_t buf_size,
+            ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* userData)
+        {
+            return ImGui::InputText(label, buf, buf_size, flags, callback, userData);
+        }
+
         /// @brief プレースホルダー付き文字列入力ボックス
         inline bool InputTextWithHint(const char* label, const char* hint,
             char* buf, size_t buf_size,
             ImGuiInputTextFlags flags = 0)
         {
             return ImGui::InputTextWithHint(label, hint, buf, buf_size, flags);
+        }
+
+        namespace Detail {
+            /// @brief 入力欄の文字数に合わせて std::string の長さを変える
+            inline int ResizeStringCallback(ImGuiInputTextCallbackData* data)
+            {
+                if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
+                    auto* const text = static_cast<std::string*>(data->UserData);
+                    text->resize(static_cast<std::size_t>(data->BufTextLen));
+                    data->Buf = text->data();
+                }
+                return 0;
+            }
+        }
+
+        /// @brief std::string をそのまま編集する入力欄（長さの上限なし）
+        inline bool InputString(const char* label, std::string& text,
+            ImGuiInputTextFlags flags = 0)
+        {
+            return ImGui::InputText(label, text.data(), text.capacity() + 1,
+                flags | ImGuiInputTextFlags_CallbackResize, Detail::ResizeStringCallback, &text);
+        }
+
+        /// @brief プレースホルダー付きの std::string の入力欄
+        inline bool InputStringWithHint(const char* label, const char* hint, std::string& text,
+            ImGuiInputTextFlags flags = 0)
+        {
+            return ImGui::InputTextWithHint(label, hint, text.data(), text.capacity() + 1,
+                flags | ImGuiInputTextFlags_CallbackResize, Detail::ResizeStringCallback, &text);
+        }
+
+        /// @brief std::string を複数行で編集する入力欄
+        inline bool InputStringMultiline(const char* label, std::string& text,
+            const ImVec2& size = ImVec2(0.0f, 0.0f), ImGuiInputTextFlags flags = 0)
+        {
+            return ImGui::InputTextMultiline(label, text.data(), text.capacity() + 1, size,
+                flags | ImGuiInputTextFlags_CallbackResize, Detail::ResizeStringCallback, &text);
         }
 
         // ─────────────── カラー入力 ───────────────
@@ -102,4 +148,4 @@ namespace CoreEngine {
     } // namespace UI
 } // namespace CoreEngine
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

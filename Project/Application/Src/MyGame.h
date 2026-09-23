@@ -2,6 +2,7 @@
 #include "EngineSystem/Framework.h"
 #include "Scene/SceneManager.h"
 #include <memory>
+#include <string>
 
 /// @brief ゲーム固有のアプリケーションクラス
 /// Framework を継承し、シーン管理を統合する
@@ -57,8 +58,12 @@ private:
     // ゲーム固有のデータ
     // ──────────────────────────────────────────────────────────
 
-    /// @brief 初期シーン名
-    static constexpr const char* kInitialSceneName = "TitleScene";
+    /// @brief 起動時に開くシーンの名前を決める
+    /// @details プロジェクト設定（`Application/Config/EngineSettings/Project.json`）が
+    ///          持つ。決まっていないか、そのシーンが無いときは、保存されているシーンの
+    ///          先頭を使う。
+    /// @note 起動タスクの名前にも使うので、タスクを組み立てる時点で呼べること。
+    static std::string ResolveInitialSceneName();
 
     /// @brief シーン管理システム
     std::unique_ptr<CoreEngine::SceneManager> sceneManager_;

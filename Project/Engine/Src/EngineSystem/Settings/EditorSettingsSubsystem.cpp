@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "EditorSettingsSubsystem.h"
+#include "Utility/Path/ProjectPaths.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include <ctime>
 #include <filesystem>
@@ -37,7 +38,7 @@ namespace CoreEngine
     // ===== パスヘルパー =====
 
     std::string EditorSettingsSubsystem::GetSettingsDir(IEditorSettingsSection::StorageArea area) const {
-        // SceneSaveSystem の "Application/Assets/Scenes" と同じく実行時カレント基準。
+        // 返すのは根からの相対。実体を開くときに ProjectPaths で絶対化する。
         // 2 層化（UE の Config/ と Saved/Config/ の分離に相当）:
         // - ProjectConfig: 較正値などプロジェクト資産。git にコミットして共有
         // - UserSaved: カメラ位置など個人の作業状態。git 管理外
@@ -291,11 +292,11 @@ namespace CoreEngine
         out["version"] = kSettingsVersion;
 
         try {
-            fs::create_directories(settingsDir);
+            fs::create_directories(ProjectPaths::Resolve(settingsDir));
 
             // 1. 一時ファイルへ全量書き込み（本体は書き込み途中のクラッシュから守る）
             {
-                std::ofstream file(tempPath, std::ios::trunc);
+                std::ofstream file(ProjectPaths::Resolve(tempPath), std::ios::trunc);
                 if (!file.is_open()) {
                     std::cerr << "[EditorSettings] Failed to open temp file: " << tempPath << std::endl;
                     return false;
@@ -309,14 +310,15 @@ namespace CoreEngine
 
             // 2. 旧ファイルを 1 世代バックアップへ退避（誤変更の復元用）
             std::error_code ec;
-            if (fs::exists(filePath, ec)) {
-                fs::create_directories(settingsDir + "/_backup", ec);
-                fs::copy_file(filePath, backupPath, fs::copy_options::overwrite_existing, ec);
+            if (fs::exists(ProjectPaths::Resolve(filePath), ec)) {
+                fs::create_directories(ProjectPaths::Resolve(settingsDir + "/_backup"), ec);
+                fs::copy_file(ProjectPaths::Resolve(filePath), ProjectPaths::Resolve(backupPath),
+                    fs::copy_options::overwrite_existing, ec);
                 // バックアップ失敗は本保存を妨げない（初回起動や読み取り専用時など）
             }
 
             // 3. rename による置換（既存ファイルは上書き）
-            fs::rename(tempPath, filePath);
+            fs::rename(ProjectPaths::Resolve(tempPath), ProjectPaths::Resolve(filePath));
             return true;
         }
         catch (const std::exception& e) {

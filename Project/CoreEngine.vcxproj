@@ -45,6 +45,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.props" />
   </ImportGroup>
   <ImportGroup Label="Shared">
   </ImportGroup>
@@ -84,7 +85,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <WarningLevel>Level4</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>MINMAX;_DEBUG;_WINDOWS;USE_IMGUI;USE_PIX;MSDFGEN_PUBLIC=;MSDFGEN_USE_CPP11;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>MINMAX;_DEBUG;_WINDOWS;CORE_EDITOR;USE_PIX;MSDFGEN_PUBLIC=;MSDFGEN_USE_CPP11;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
@@ -93,7 +94,7 @@
       <TreatWarningAsError>true</TreatWarningAsError>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <MinimalRebuild>false</MinimalRebuild>
-      <AdditionalIncludeDirectories>$(ProjectDir)Externals\assimp\include;$(ProjectDir)Externals\spdlog\include;$(ProjectDir)Externals\imgui;$(ProjectDir)Engine/Src;$(ProjectDir)Application/Src;$(ProjectDir)Externals</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Externals\assimp\include;$(ProjectDir)Externals\spdlog\include;$(ProjectDir)Externals\imgui;$(ProjectDir)Engine/Src;$(ProjectDir)Application/Src;$(ProjectDir)Externals;$(ProjectDir)Externals\angelscript\include;$(ProjectDir)Externals\angelscript\add_on</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -108,8 +109,6 @@
     </Link>
     <PostBuildEvent>
       <Command>copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
-xcopy "$(ProjectDir)Application\Assets" "$(TargetDir)Application\Assets\" /E /I /Y /D
-xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -127,7 +126,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(ProjectDir)Externals\assimp\include;$(ProjectDir)Externals\spdlog\include;$(ProjectDir)Externals\imgui;$(ProjectDir)Engine/Src;$(ProjectDir)Application/Src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Externals\assimp\include;$(ProjectDir)Externals\spdlog\include;$(ProjectDir)Externals\imgui;$(ProjectDir)Engine/Src;$(ProjectDir)Application/Src;$(ProjectDir)Externals\angelscript\include;$(ProjectDir)Externals\angelscript\add_on</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
@@ -142,7 +141,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D
     <PostBuildEvent>
       <Command>copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
 xcopy "$(ProjectDir)Application\Assets" "$(TargetDir)Application\Assets\" /E /I /Y /D
-xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Command>
+xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D
+xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I /Y /D</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'">
@@ -153,13 +153,13 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_WINDOWS;USE_IMGUI;USE_PIX;MSDFGEN_PUBLIC=;MSDFGEN_USE_CPP11;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;CORE_EDITOR;USE_PIX;MSDFGEN_PUBLIC=;MSDFGEN_USE_CPP11;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(ProjectDir)Externals\assimp\include;$(ProjectDir)Externals\spdlog\include;$(ProjectDir)Externals\imgui;$(ProjectDir)Engine/Src;$(ProjectDir)Application/Src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Externals\assimp\include;$(ProjectDir)Externals\spdlog\include;$(ProjectDir)Externals\imgui;$(ProjectDir)Engine/Src;$(ProjectDir)Application/Src;$(ProjectDir)Externals\angelscript\include;$(ProjectDir)Externals\angelscript\add_on</AdditionalIncludeDirectories>
       <Optimization>Disabled</Optimization>
       <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
@@ -174,18 +174,53 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
       <LinkTimeCodeGeneration />
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
-xcopy "$(ProjectDir)Application\Assets" "$(TargetDir)Application\Assets\" /E /I /Y /D
-xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Command>
+      <Command>copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\CameraShowcase.cpp" />
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.cpp" />
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSceneController.cpp" />
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceDebugPanel.cpp" />
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceParameterPanel.cpp" />
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Inspector\ComponentInspectors.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Script\ScriptTemplate.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Project\AssetFileOperations.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Inspector\InspectorLayout.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Inspector\InspectorRenderer.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Inspector\ObjectInspector.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Command\EditorCommandStack.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Panel\EditorPanelRegistry.cpp" />
+    <ClCompile Include="Engine\Src\Utility\Path\ProjectPaths.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Panel\EditorPanelStateSection.cpp" />
+    <ClCompile Include="Engine\Src\Reflection\PropertyValue.cpp" />
+    <ClCompile Include="Engine\Src\Reflection\PropertySerializer.cpp" />
+    <ClCompile Include="Engine\Src\Reflection\TypeDescriptor.cpp" />
+    <ClCompile Include="Engine\Src\Script\Binding\LogBinding.cpp" />
+    <ClCompile Include="Engine\Src\Script\Binding\BindingRegistrar.cpp" />
+    <ClCompile Include="Engine\Src\Script\Binding\MathBinding.cpp" />
+    <ClCompile Include="Engine\Src\Script\Binding\TimeBinding.cpp" />
+    <ClCompile Include="Engine\Src\Script\Binding\GameObjectBinding.cpp" />
+    <ClCompile Include="Engine\Src\Script\Binding\PhysicsBinding.cpp" />
+    <ClCompile Include="Engine\Src\Script\Binding\ComponentBinding.cpp" />
+    <ClCompile Include="Engine\Src\Script\Binding\ScriptInputBinding.cpp" />
+    <ClCompile Include="Engine\Src\Script\Binding\TweenBinding.cpp" />
+    <ClCompile Include="Engine\Src\Script\Binding\UIBinding.cpp" />
+    <ClCompile Include="Engine\Src\Script\Binding\AudioBinding.cpp" />
+    <ClCompile Include="Engine\Src\Script\Binding\CameraShakeBinding.cpp" />
+    <ClCompile Include="Engine\Src\Script\Binding\SceneBinding.cpp" />
+    <ClCompile Include="Engine\Src\Script\Binding\SessionBinding.cpp" />
+    <ClCompile Include="Engine\Src\Script\Binding\RandomBinding.cpp" />
+    <ClCompile Include="Engine\Src\Script\Binding\CVarBinding.cpp" />
+    <ClCompile Include="Engine\Src\Script\Binding\RenderingBinding.cpp" />
+    <ClCompile Include="Engine\Src\Script\Metadata\MetadataParser.cpp" />
+    <ClCompile Include="Engine\Src\Script\ScriptComponent.cpp" />
+    <ClCompile Include="Engine\Src\Script\ScriptComponentType.cpp" />
+    <ClCompile Include="Engine\Src\Script\ScriptDiagnostics.cpp" />
+    <ClCompile Include="Engine\Src\Script\ScriptFileWatcher.cpp" />
+    <ClCompile Include="Engine\Src\Script\ScriptHost.cpp" />
+    <ClCompile Include="Engine\Src\Script\ScriptPredefined.cpp" />
+    <ClCompile Include="Engine\Src\Script\ScriptCallback.cpp" />
+    <ClCompile Include="Engine\Src\Script\ScriptSubsystem.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Water\WaterEditorFacade.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Water\WaterEditorPanel.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Water\WaterSurfaceDebugPanel.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Water\WaterSurfaceParameterPanel.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterConstantBufferSet.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterRenderResources.cpp" />
@@ -241,18 +276,11 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Water\Simulation\FFTOceanSurfaceSimulator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Simulation\GerstnerWaterSimulator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Simulation\WaterSurfaceModelProvider.cpp" />
-    <ClCompile Include="Engine\Src\GameObject\Model\DynamicModelObject.cpp" />
-    <ClCompile Include="Engine\Src\Particle\Modules\LifetimeModule.cpp" />
     <ClCompile Include="Engine\Src\pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\CollisionTestScene.cpp" />
-    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\CollisionTestReport.cpp" />
-    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\GeometrySelfTest.cpp" />
-    <ClCompile Include="Application\Src\GameObjects\Effect\HitEffect.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterPlaneObject.cpp" />
-    <ClCompile Include="Application\Src\GameObjects\SkyBox\SkyBoxObject.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterSurfaceComponent.cpp" />
     <ClCompile Include="Engine\Src\Camera\CameraManager.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraClipPlayerModule.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\CameraDebugUI.cpp" />
@@ -261,7 +289,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraKeyframeEditorModule.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraListEditorModule.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraParametersEditorModule.cpp" />
-    <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraSequenceAssetIO.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraTransformEditorModule.cpp" />
     <ClCompile Include="Engine\Src\Collision\Collider.cpp" />
     <ClCompile Include="Engine\Src\Collision\ColliderComponent.cpp" />
@@ -269,18 +296,30 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Collision\BroadPhase\BruteForceBroadPhase.cpp" />
     <ClCompile Include="Engine\Src\Collision\BroadPhase\UniformGridBroadPhase.cpp" />
     <ClCompile Include="Engine\Src\Collision\Debug\ColliderDebugRenderer.cpp" />
-    <ClCompile Include="Engine\Src\Collision\Debug\ColliderInspector.cpp" />
-    <ClCompile Include="Engine\Src\Collision\Debug\CollisionMatrixPanel.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Inspector\ColliderInspector.cpp" />
+    <ClCompile Include="Engine\Src\Editor\ImGui\SceneSettingsPanel.cpp" />
     <ClCompile Include="Engine\Src\Collision\CollisionConfig.cpp" />
+    <ClCompile Include="Engine\Src\Collision\CollisionLayer.cpp" />
     <ClCompile Include="Engine\Src\Collision\CollisionWorld.cpp" />
+    <ClCompile Include="Engine\Src\Physics\PhysicsWorld.cpp" />
+    <ClCompile Include="Engine\Src\Physics\RigidbodyComponent.cpp" />
+    <ClCompile Include="Engine\Src\Physics\PhysicsMaterialComponent.cpp" />
+    <ClCompile Include="Engine\Src\Physics\CharacterControllerComponent.cpp" />
+    <ClCompile Include="Engine\Src\Physics\ContactSolver.cpp" />
+    <ClCompile Include="Engine\Src\Physics\Inertia.cpp" />
+    <ClCompile Include="Engine\Src\Physics\Debug\PhysicsDebugRenderer.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\EngineConfig.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\EngineSystem.cpp" />
+    <ClCompile Include="Engine\Src\EngineSystem\PlaybackState.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Factory\CoreComponentFactory.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Factory\GraphicsComponentFactory.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Settings\EditorSettingsSubsystem.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Settings\CVarSettingsSection.cpp" />
+    <ClCompile Include="Engine\Src\EngineSystem\Settings\ProjectSettings.cpp" />
     <ClCompile Include="Engine\Src\Utility\CVar\CVar.cpp" />
+    <ClCompile Include="Engine\Src\Utility\CVar\CVarConsole.cpp" />
     <ClCompile Include="Engine\Src\Utility\CVar\CVarRegistry.cpp" />
+    <ClCompile Include="Engine\Src\Utility\CVar\CVarScope.cpp" />
     <ClCompile Include="Engine\Src\Utility\CVar\CVarSerialization.cpp" />
     <ClCompile Include="Engine\Src\Utility\CVar\CVarUndoStack.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\CVarPanel.cpp" />
@@ -297,13 +336,13 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\EngineSystem\Startup\StartupSequence.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Asset\AssetDatabase.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Asset\AssetMetadata.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Asset\AssetRef.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\Debug\GpuMarker.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\Debug\GpuTimestampProfiler.cpp" />
     <ClCompile Include="Engine\Src\Diagnostics\GpuTimingStatsCollector.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\Barrier\BarrierBatch.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\Resource\GpuResource.cpp" />
     <ClCompile Include="Engine\Src\Graphics\IBL\IBLSystem.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Material\Debug\MaterialDebugUI.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\MaterialInstance.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\SpriteMaterialInstance.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\SkeletonAnimatorFactory.cpp" />
@@ -385,6 +424,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\BackBufferRenderTarget.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\OffscreenRenderTarget.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\RenderTargetManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxComponent.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Sprite\SpriteRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\UI\UIRenderer.cpp" />
@@ -404,79 +444,100 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Texture\Load\TextureMetadataLoader.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Texture\Path\TexturePathResolver.cpp" />
     <ClCompile Include="Engine\Src\Input\InputBinding.cpp" />
+    <ClCompile Include="Engine\Src\Input\InputAction.cpp" />
+    <ClCompile Include="Engine\Src\Input\InputContext.cpp" />
     <ClCompile Include="Engine\Src\Input\InputConfig.cpp" />
     <ClCompile Include="Engine\Src\Input\InputQuery.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Component\Core\ComponentFactory.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Core\ComponentHost.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Component\Core\MissingComponent.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Component\Core\ObjectRef.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Render\MaterialComponent.cpp" />
-    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\ProbeComponent.cpp" />
-    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\ProbeEvents.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Animation\AnimatorComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Render\MeshRendererComponent.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Component\Render\SpriteRendererComponent.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Component\Render\Text3DRendererComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Animation\SkeletonSocketComponent.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Component\Camera\CameraComponent.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Component\Environment\HeightFogComponent.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Component\Environment\PostProcessComponent.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Component\Environment\VolumetricCloudComponent.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Component\Light\LightComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Transform\TransformComponent.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Component\Transform\EulerTransformComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\GameObject.cpp" />
     <ClCompile Include="Engine\Src\GameObject\GameObjectManager.cpp" />
-    <ClCompile Include="Engine\Src\GameObject\Model\ModelGameObject.cpp" />
-    <ClCompile Include="Engine\Src\GameObject\Primitive\PrimitiveGameObject.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\ObjectId.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Sprite\SpriteAnimationClip.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Sprite\SpriteAnimator.cpp" />
-    <ClCompile Include="Engine\Src\GameObject\Sprite\SpriteObject.cpp" />
     <ClCompile Include="Engine\Src\Particle\Core\ParticleEmitter.cpp" />
     <ClCompile Include="Engine\Src\Particle\Core\ParticleRenderDataBuilder.cpp" />
     <ClCompile Include="Engine\Src\Particle\Core\ParticleResourceManager.cpp" />
     <ClCompile Include="Engine\Src\Particle\Core\ParticleUpdater.cpp" />
-    <ClCompile Include="Engine\Src\Particle\Debug\ParticleSystemDebugUI.cpp" />
+    <ClCompile Include="Engine\Src\Editor\ImGui\ParticleSystemDebugUI.cpp" />
     <ClCompile Include="Engine\Src\Particle\Modules\MainModule.cpp" />
     <ClCompile Include="Engine\Src\Particle\Modules\NoiseModule.cpp" />
     <ClCompile Include="Engine\Src\Particle\Modules\ShapeModule.cpp" />
     <ClCompile Include="Engine\Src\Particle\ParticlePresetManager.cpp" />
-    <ClCompile Include="Engine\Src\Scene\BaseScene.cpp" />
+    <ClCompile Include="Engine\Src\Particle\ParticleSystemComponent.cpp" />
+    <ClCompile Include="Engine\Src\Particle\Gpu\GpuParticleSystemComponent.cpp" />
+    <ClCompile Include="Engine\Src\Scene\Scene.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\LightingFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\EnvironmentFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\GroundFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\CollisionFeature.cpp" />
+    <ClCompile Include="Engine\Src\Scene\Feature\PhysicsFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\GridFeature.cpp" />
-    <ClCompile Include="Engine\Src\Scene\Feature\DebugEditorFeature.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Scene\DebugEditorFeature.cpp" />
     <ClCompile Include="Engine\Src\Editor\Environment\AtmosphereEditor.cpp" />
     <ClCompile Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Scene\ComponentEditing.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Scene\EditorSceneAccess.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Scene\ObjectEditing.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Scene\PlayModeController.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Scene\PrefabEditing.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\SceneDebugEditor.cpp" />
+    <ClCompile Include="Engine\Src\Scene\PrefabSystem.cpp" />
+    <ClCompile Include="Engine\Src\Scene\SceneEnvironmentIO.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneSaveSystem.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneTransition.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Model.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\ModelManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\ModelResource.cpp" />
-    <ClCompile Include="Application\Src\Scenes\TestScene\TestScene.cpp" />
-    <ClCompile Include="Application\Src\Scenes\SampleGameScene\SampleGameScene.cpp" />
-    <ClCompile Include="Application\Src\Scenes\ShootingSampleScene\ShootingSampleScene.cpp" />
-    <ClCompile Include="Application\Src\Scenes\Sprite2DSampleScene\Sprite2DSampleScene.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\UndoRedoHistory.cpp" />
     <ClCompile Include="Engine\Src\Threading\ThreadBudget.cpp" />
     <ClCompile Include="Engine\Src\Threading\ThreadPool.cpp" />
     <ClCompile Include="Engine\Src\TileMap\TileCollider.cpp" />
     <ClCompile Include="Engine\Src\TileMap\TileMap.cpp" />
-    <ClCompile Include="Engine\Src\UI\UICanvas.cpp" />
-    <ClCompile Include="Engine\Src\UI\UIImage.cpp" />
+    <ClCompile Include="Engine\Src\UI\RectTransformComponent.cpp" />
+    <ClCompile Include="Engine\Src\UI\UIImageComponent.cpp" />
+    <ClCompile Include="Engine\Src\UI\UIButtonComponent.cpp" />
+    <ClCompile Include="Engine\Src\UI\UIPointer.cpp" />
+    <ClCompile Include="Engine\Src\UI\UINavigation.cpp" />
+    <ClCompile Include="Engine\Src\UI\UISliderComponent.cpp" />
+    <ClCompile Include="Engine\Src\UI\UITextComponent.cpp" />
+    <ClCompile Include="Engine\Src\UI\UIToggleComponent.cpp" />
     <ClCompile Include="Engine\Src\Math\Geometry\Distance.cpp" />
     <ClCompile Include="Engine\Src\Math\Geometry\Intersect.cpp" />
     <ClCompile Include="Engine\Src\Math\Geometry\RayCast.cpp" />
-    <ClCompile Include="Engine\Src\Utility\Debug\ConsoleUI.cpp" />
+    <ClCompile Include="Engine\Src\Editor\ImGui\ConsoleUI.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\CanvasViewport.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\EditorSettingsPanel.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\EngineStatsWindow.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\Gizmo.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\KeyConfigUI.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\ObjectSelector.cpp" />
-    <ClCompile Include="Engine\Src\Editor\ImGui\PixCapture.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RHI\Debug\PixCapture.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\ProjectView.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\RayTracingDebugPanel.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\RenderGraphEditorPanel.cpp" />
-    <ClCompile Include="Engine\Src\Editor\Window\GameOutputWindow.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\GameOutputWindow.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\RenderPassDebugPanel.cpp" />
-    <ClCompile Include="Engine\Src\Editor\ImGui\SceneManagerTab.cpp" />
-    <ClCompile Include="Engine\Src\Editor\ImGui\ScreenCapture.cpp" />
+    <ClCompile Include="Engine\Src\WinApp\ScreenCapture.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\ThreadProfilerUI.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\LivePPAgent.cpp" />
     <ClCompile Include="Engine\Src\Utility\Random\RandomGenerator.cpp" />
+    <ClCompile Include="Engine\Src\Utility\Session\SessionValues.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\SceneDepth.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\Command\UploadContext.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\Command\CommandQueue.cpp" />
@@ -508,9 +569,14 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Particle\Modules\SizeModule.cpp" />
     <ClCompile Include="Engine\Src\Particle\Modules\VelocityModule.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\DockingUI.cpp" />
+    <ClCompile Include="Engine\Src\Editor\ImGui\EditorLayoutSection.cpp" />
+    <ClCompile Include="Engine\Src\Editor\External\ExternalCodeEditor.cpp" />
+    <ClCompile Include="Engine\Src\Editor\ImGui\ProfilerPanel.cpp" />
+    <ClCompile Include="Engine\Src\Editor\ImGui\ProjectSettingsWindow.cpp" />
+    <ClCompile Include="Engine\Src\Editor\ImGui\Widgets\PassTimingTable.cpp" />
     <ClCompile Include="Engine\Src\Camera\Camera.cpp" />
     <ClCompile Include="Engine\Src\Camera\Control\OrbitFlyController.cpp" />
-    <ClCompile Include="Engine\Src\Camera\Debug\DebugCameraCVars.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\DebugCameraState.cpp" />
     <ClCompile Include="Engine\Src\Camera\Control\FreeLookController.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\EditorCameraInput.cpp" />
     <ClCompile Include="Engine\Src\Camera\View\ViewBuilder.cpp" />
@@ -527,7 +593,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Editor\ImGui\ImGuiManager.cpp" />
     <ClCompile Include="Engine\Src\Input\KeyboardInput.cpp" />
     <ClCompile Include="Engine\Src\Input\GamepadInput.cpp" />
-    <ClCompile Include="Engine\Src\Utility\Debug\GameDebugUI.cpp" />
+    <ClCompile Include="Engine\Src\Editor\ImGui\GameDebugUI.cpp" />
     <ClCompile Include="Application\Src\MyGame.cpp" />
     <ClCompile Include="Application\Src\main.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
@@ -548,8 +614,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\RHI\Resource\UploadRing.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Render.cpp" />
     <ClCompile Include="Engine\Src\WorldTransform\WorldTransform.cpp" />
-    <ClCompile Include="Engine\Src\Particle\Gpu\GpuParticleSystem.cpp" />
-    <ClCompile Include="Engine\Src\Particle\ParticleSystem.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneManager.cpp" />
     <ClCompile Include="Engine\Src\Input\MouseInput.cpp" />
     <ClCompile Include="Externals\imgui\imgui.cpp">
@@ -699,6 +763,330 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
       <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <ClCompile Include="Externals\angelscript\add_on\scriptarray\scriptarray.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\add_on\scriptbuilder\scriptbuilder.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\add_on\scripthelper\scripthelper.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\add_on\scriptmath\scriptmath.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\add_on\scriptstdstring\scriptstdstring.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <DisableSpecificWarnings>4828;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_atomic.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_builder.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_bytecode.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_callfunc.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_callfunc_arm.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <DisableSpecificWarnings>4828;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_callfunc_arm64.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_callfunc_e2k.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_callfunc_mips.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_callfunc_ppc.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_callfunc_ppc_64.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_callfunc_riscv64.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_callfunc_sh4.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_callfunc_x64_gcc.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_callfunc_x64_mingw.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_callfunc_x64_msvc.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_callfunc_x86.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_callfunc_xenon.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_compiler.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_configgroup.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_context.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_datatype.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_gc.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_generic.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_globalproperty.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_memory.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_module.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_objecttype.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_outputbuffer.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_parser.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_restore.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_scriptcode.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_scriptengine.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_scriptfunction.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_scriptnode.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_scriptobject.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_string.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_string_util.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_thread.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_tokenizer.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_typeinfo.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_variablescope.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Text\DirectWriteFontFace.cpp" />
     <ClCompile Include="Engine\Src\Text\MsdfFontBaker.cpp" />
     <ClCompile Include="Engine\Src\Text\MsdfFont.cpp" />
@@ -706,8 +1094,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Text\MsdfAtlasAllocator.cpp" />
     <ClCompile Include="Engine\Src\Text\FontManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\UI\TextRenderer.cpp" />
-    <ClCompile Include="Engine\Src\UI\UIText.cpp" />
-    <ClCompile Include="Application\Src\Scenes\MsdfTextTestScene\MsdfTextTestScene.cpp" />
+    <ClCompile Include="Engine\Src\Audio\AudioListenerComponent.cpp" />
+    <ClCompile Include="Engine\Src\Audio\AudioSourceComponent.cpp" />
     <ClCompile Include="Engine\Src\Audio\AudioSystem.cpp" />
     <ClCompile Include="Engine\Src\Audio\Decoder\MediaFoundationDecoder.cpp" />
     <ClCompile Include="Engine\Src\Audio\Decoder\WavDecoder.cpp" />
@@ -735,7 +1123,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Editor\Camera\Widget\CameraIconOverlay.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Widget\CameraTimelineWidget.cpp" />
     <ClCompile Include="Engine\Src\Editor\Environment\FogEditor.cpp" />
-    <ClCompile Include="Engine\Src\GameObject\Text3D\Text3DObject.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Fog\FogManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Fog\Settings\FogCVars.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\DefaultRenderPipelineBuilder.cpp" />
@@ -750,83 +1137,74 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Scene\Feature\EventDispatchFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\TimeOfDayFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\TweenFeature.cpp" />
+    <ClCompile Include="Engine\Src\Scene\Feature\UIInteractionFeature.cpp" />
+    <ClCompile Include="Engine\Src\Scene\Feature\SceneFeatureRegistry.cpp" />
     <ClCompile Include="Engine\Src\Text\TextGeometryBuilder.cpp" />
     <ClCompile Include="Engine\Src\Utility\Event\EventBus.cpp" />
     <ClCompile Include="Engine\Src\Utility\Tween\Tween.cpp" />
     <ClCompile Include="Engine\Src\Utility\Tween\TweenManager.cpp" />
-    <ClCompile Include="Application\Src\Components\Building\MapGeneratorComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\Building\MapViewComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\Building\RockThrowComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\Building\WaterWaveViewComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\Camera\RockBreakShakeSettingsComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\GameCore\GameManagerComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\GameCore\GameRecordStore.cpp" />
-    <ClCompile Include="Application\Src\Components\GameCore\GameSettingsComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\GameCore\HungerComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\Rail\RailBuilderComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\Rail\RailPathComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\Rail\RailViewComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\Result\ResultButtonAnimationComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\Result\ResultMonkeyShakeComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\Result\ResultTipsComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\Title\TitleButtonAnimationComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\Title\TitleCameraShakeSettingsComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\Title\TitleLogoAnimationComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\Title\TitleMonkeyAnimationComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\Title\TitleTextAnimationComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\Title\TitleTrolleyAnimationComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\Train\SpawnPopComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\Train\TrainMovementComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\UI\GameStartPromptAnimationComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\UI\ObjectiveSignComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\UI\OffscreenTrainIndicatorUIComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\UI\PauseMenuUIComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\UI\ResultGaugeUIComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\UI\SpeedGaugeUIComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\UI\StaminaGaugeUIComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\Utility\ModelRenderPoolComponent.cpp" />
-    <ClCompile Include="Application\Src\Editor\Stage\StageCsvDocument.cpp" />
-    <ClCompile Include="Application\Src\Editor\Stage\StageEditorPanel.cpp" />
-    <ClCompile Include="Application\Src\Editor\Stage\StageProject.cpp" />
-    <ClCompile Include="Application\Src\GameObjects\Effect\BananaHarvestEffect.cpp" />
-    <ClCompile Include="Application\Src\GameObjects\Effect\RockBreakDebris.cpp" />
-    <ClCompile Include="Application\Src\GameObjects\Effect\StationSlowdownEffect.cpp" />
-    <ClCompile Include="Application\Src\GameObjects\GameSceneObject.cpp" />
-    <ClCompile Include="Application\Src\Scenes\GameScene\BananaTreeAuraFeature.cpp" />
-    <ClCompile Include="Application\Src\Scenes\GameScene\GameEntranceFeature.cpp" />
-    <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp" />
-    <ClCompile Include="Application\Src\Scenes\GameScene\OffscreenTrainIndicatorFeature.cpp" />
-    <ClCompile Include="Application\Src\Scenes\GameScene\PauseMenuFeature.cpp" />
-    <ClCompile Include="Application\Src\Scenes\GameScene\RailDirectionGuideFeature.cpp" />
-    <ClCompile Include="Application\Src\Scenes\GameScene\SkyFogFeature.cpp" />
-    <ClCompile Include="Application\Src\Scenes\GameScene\SpeedBlurFeature.cpp" />
-    <ClCompile Include="Application\Src\Scenes\GameScene\SpeedGaugeFeature.cpp" />
-    <ClCompile Include="Application\Src\Scenes\GameScene\StageLightsFeature.cpp" />
-    <ClCompile Include="Application\Src\Scenes\GameScene\StaminaGaugeFeature.cpp" />
-    <ClCompile Include="Application\Src\Scenes\ResultScene\ResultScene.cpp" />
-    <ClCompile Include="Application\Src\Scenes\ResultScene\ResultSceneUi.cpp" />
-    <ClCompile Include="Application\Src\Scenes\TitleScene\TitleScene.cpp" />
-    <ClCompile Include="Application\Src\Scenes\TitleScene\TitleSceneModelSetup.cpp" />
-    <ClCompile Include="Application\Src\Scenes\TitleScene\TitleSceneUi.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\TrolleyLoading\TrolleyLoading.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionTestScene.h" />
-    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionTestReport.h" />
-    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\GeometrySelfTest.h" />
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\CameraShowcase.h" />
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.h" />
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSceneController.h" />
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceDebugPanel.h" />
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceParameterPanel.h" />
-    <ClInclude Include="Application\Src\GameObjects\Effect\HitEffect.h" />
+    <ClInclude Include="Engine\Src\Editor\Inspector\ComponentInspectors.h" />
+    <ClInclude Include="Engine\Src\Editor\Script\ScriptTemplate.h" />
+    <ClInclude Include="Engine\Src\Editor\Project\AssetFileOperations.h" />
+    <ClInclude Include="Engine\Src\Editor\Inspector\InspectorLayout.h" />
+    <ClInclude Include="Engine\Src\Editor\Inspector\InspectorRenderer.h" />
+    <ClInclude Include="Engine\Src\Editor\Inspector\ObjectInspector.h" />
+    <ClInclude Include="Engine\Src\Editor\Command\EditorCommand.h" />
+    <ClInclude Include="Engine\Src\Editor\Command\EditorCommandStack.h" />
+    <ClInclude Include="Engine\Src\Editor\Panel\EditorPanelRegistry.h" />
+    <ClInclude Include="Engine\Src\Editor\Panel\EditorDockArea.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\EditorTheme.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\EditorBars.h" />
+    <ClInclude Include="Engine\Src\Editor\External\ExternalCodeEditor.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\ProfilerPanel.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\ProjectSettingsWindow.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\PassTimingTable.h" />
+    <ClInclude Include="Engine\Src\Utility\Path\ProjectPaths.h" />
+    <ClInclude Include="Engine\Src\Editor\Panel\EditorPanelStateSection.h" />
+    <ClInclude Include="Engine\Src\Reflection\PropertyValue.h" />
+    <ClInclude Include="Engine\Src\Reflection\PropertySerializer.h" />
+    <ClInclude Include="Engine\Src\Reflection\Reflect.h" />
+    <ClInclude Include="Engine\Src\Reflection\TypeDescriptor.h" />
+    <ClInclude Include="Engine\Src\Script\Binding\LogBinding.h" />
+    <ClInclude Include="Engine\Src\Script\Binding\BindingRegistrar.h" />
+    <ClInclude Include="Engine\Src\Script\Binding\MathBinding.h" />
+    <ClInclude Include="Engine\Src\Script\Binding\TimeBinding.h" />
+    <ClInclude Include="Engine\Src\Script\Binding\GameObjectBinding.h" />
+    <ClInclude Include="Engine\Src\Script\Binding\PhysicsBinding.h" />
+    <ClInclude Include="Engine\Src\Script\Binding\ComponentBinding.h" />
+    <ClInclude Include="Engine\Src\Reflection\MethodDescriptor.h" />
+    <ClInclude Include="Engine\Src\Script\Binding\ScriptInputBinding.h" />
+    <ClInclude Include="Engine\Src\Script\Binding\TweenBinding.h" />
+    <ClInclude Include="Engine\Src\Script\Binding\UIBinding.h" />
+    <ClInclude Include="Engine\Src\Script\Binding\AudioBinding.h" />
+    <ClInclude Include="Engine\Src\Script\Binding\CameraShakeBinding.h" />
+    <ClInclude Include="Engine\Src\Script\Binding\SceneBinding.h" />
+    <ClInclude Include="Engine\Src\Script\Binding\SessionBinding.h" />
+    <ClInclude Include="Engine\Src\Script\Binding\RandomBinding.h" />
+    <ClInclude Include="Engine\Src\Script\Binding\CVarBinding.h" />
+    <ClInclude Include="Engine\Src\Script\Binding\RenderingBinding.h" />
+    <ClInclude Include="Engine\Src\Script\Metadata\MetadataParser.h" />
+    <ClInclude Include="Engine\Src\Script\ScriptComponent.h" />
+    <ClInclude Include="Engine\Src\Script\ScriptComponentType.h" />
+    <ClInclude Include="Engine\Src\Script\ScriptDiagnostics.h" />
+    <ClInclude Include="Engine\Src\Script\ScriptFileWatcher.h" />
+    <ClInclude Include="Engine\Src\Script\ScriptHost.h" />
+    <ClInclude Include="Engine\Src\Script\ScriptPredefined.h" />
+    <ClInclude Include="Engine\Src\Script\ScriptCallback.h" />
+    <ClInclude Include="Engine\Src\Script\ScriptSubsystem.h" />
+    <ClInclude Include="Engine\Src\Reflection\PropertyDescriptor.h" />
+    <ClInclude Include="Engine\Src\Editor\Water\WaterEditorFacade.h" />
+    <ClInclude Include="Engine\Src\Editor\Water\WaterEditorPanel.h" />
+    <ClInclude Include="Engine\Src\Editor\Water\WaterSurfaceDebugPanel.h" />
+    <ClInclude Include="Engine\Src\Editor\Water\WaterSurfaceParameterPanel.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Render\IRenderableComponent.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterConstantBufferSet.h" />
-    <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterPlaneObject.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterSurfaceComponent.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterRenderResources.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterShaderResourceBinder.h" />
-    <ClInclude Include="Application\Src\GameObjects\SkyBox\SkyBoxObject.h" />
     <ClInclude Include="Engine\Src\Camera\CameraManager.h" />
     <ClInclude Include="Engine\Src\Camera\CameraStructs.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraClipPlayerModule.h" />
@@ -837,7 +1215,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraKeyframeEditorModule.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraListEditorModule.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraParametersEditorModule.h" />
-    <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraSequenceAssetIO.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraTransformEditorModule.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\ICameraEditorModule.h" />
     <ClInclude Include="Engine\Src\Collision\Collider.h" />
@@ -849,11 +1226,18 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Collision\BroadPhase\BruteForceBroadPhase.h" />
     <ClInclude Include="Engine\Src\Collision\BroadPhase\UniformGridBroadPhase.h" />
     <ClInclude Include="Engine\Src\Collision\Debug\ColliderDebugRenderer.h" />
-    <ClInclude Include="Engine\Src\Collision\Debug\ColliderInspector.h" />
-    <ClInclude Include="Engine\Src\Collision\Debug\CollisionMatrixPanel.h" />
+    <ClInclude Include="Engine\Src\Editor\Inspector\ColliderInspector.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\SceneSettingsPanel.h" />
     <ClInclude Include="Engine\Src\Collision\CollisionConfig.h" />
     <ClInclude Include="Engine\Src\Collision\CollisionLayer.h" />
     <ClInclude Include="Engine\Src\Collision\CollisionWorld.h" />
+    <ClInclude Include="Engine\Src\Physics\PhysicsWorld.h" />
+    <ClInclude Include="Engine\Src\Physics\RigidbodyComponent.h" />
+    <ClInclude Include="Engine\Src\Physics\PhysicsMaterialComponent.h" />
+    <ClInclude Include="Engine\Src\Physics\CharacterControllerComponent.h" />
+    <ClInclude Include="Engine\Src\Physics\ContactSolver.h" />
+    <ClInclude Include="Engine\Src\Physics\Inertia.h" />
+    <ClInclude Include="Engine\Src\Physics\Debug\PhysicsDebugRenderer.h" />
     <ClInclude Include="Engine\Src\EngineSystem\ServiceRegistry.h" />
     <ClInclude Include="Engine\Src\EngineSystem\EngineConfig.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Factory\CoreComponentFactory.h" />
@@ -862,8 +1246,12 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\EngineSystem\Settings\EditorSettingsSubsystem.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Settings\IEditorSettingsSection.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Settings\CVarSettingsSection.h" />
+    <ClInclude Include="Engine\Src\EngineSystem\Settings\ProjectSettings.h" />
+    <ClInclude Include="Engine\Src\Utility\Asset\NamedAssetLibrary.h" />
     <ClInclude Include="Engine\Src\Utility\CVar\CVar.h" />
+    <ClInclude Include="Engine\Src\Utility\CVar\CVarConsole.h" />
     <ClInclude Include="Engine\Src\Utility\CVar\CVarRegistry.h" />
+    <ClInclude Include="Engine\Src\Utility\CVar\CVarScope.h" />
     <ClInclude Include="Engine\Src\Utility\CVar\CVarSerialization.h" />
     <ClInclude Include="Engine\Src\Utility\CVar\CVarUndoStack.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\CVarPanel.h" />
@@ -875,6 +1263,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Asset\AssetDatabase.h" />
     <ClInclude Include="Engine\Src\Graphics\Asset\AssetInfo.h" />
     <ClInclude Include="Engine\Src\Graphics\Asset\AssetMetadata.h" />
+    <ClInclude Include="Engine\Src\Graphics\Asset\AssetRef.h" />
     <ClInclude Include="Engine\Src\Graphics\Asset\AssetType.h" />
     <ClInclude Include="Engine\Src\Graphics\RHI\Descriptor\DescriptorHandle.h" />
     <ClInclude Include="Engine\Src\Graphics\RHI\Debug\GpuMarker.h" />
@@ -886,7 +1275,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\RHI\Resource\GpuResource.h" />
     <ClInclude Include="Engine\Src\Diagnostics\EngineStats.h" />
     <ClInclude Include="Engine\Src\Graphics\IBL\IBLSystem.h" />
-    <ClInclude Include="Engine\Src\Graphics\Material\Debug\MaterialDebugUI.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\MaterialBase.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\MaterialConstants.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\MaterialInstance.h" />
@@ -1029,6 +1417,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\RenderTargetDescriptor.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\RenderTargetManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\RenderTargetNames.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxComponent.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Sprite\SpriteMaterial.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Sprite\SpriteRenderer.h" />
@@ -1095,61 +1484,76 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Water\WaterSurfaceData.h" />
     <ClInclude Include="Engine\Src\Input\IDirectInputDevice.h" />
     <ClInclude Include="Engine\Src\Input\InputAction.h" />
+    <ClInclude Include="Engine\Src\Input\InputContext.h" />
     <ClInclude Include="Engine\Src\Input\InputBinding.h" />
     <ClInclude Include="Engine\Src\Input\InputConfig.h" />
     <ClInclude Include="Engine\Src\Input\InputQuery.h" />
     <ClInclude Include="Engine\Src\Math\EulerTransform.h" />
     <ClInclude Include="Engine\Src\Math\Frustum.h" />
-    <ClInclude Include="Engine\Src\Math\Matrix\Matrix3x3.h" />
     <ClInclude Include="Engine\Src\Math\Matrix\Matrix4x4.h" />
     <ClInclude Include="Engine\Src\Math\QuaternionTransform.h" />
     <ClInclude Include="Engine\Src\Math\Vector\Vector2.h" />
     <ClInclude Include="Engine\Src\Math\Vector\Vector3.h" />
     <ClInclude Include="Engine\Src\Math\Vector\Vector4.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\Core\ComponentFactory.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Core\ComponentHost.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\Core\MissingComponent.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\Core\ObjectRef.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Animation\AnimatorComponent.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\Camera\CameraComponent.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\Environment\HeightFogComponent.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\Environment\PostProcessComponent.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\Environment\VolumetricCloudComponent.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\Light\LightComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Transform\EulerTransformComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Core\IComponent.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\Core\IRawSavedParameters.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Render\MaterialComponent.h" />
-    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\ProbeComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Animation\SkeletonSocketComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Transform\ITransformSource.h" />
-    <ClInclude Include="Engine\Src\GameObject\Component\Scene\SceneTagComponent.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Line\ILineSource.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Render\MeshRendererComponent.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\Render\SpriteRendererComponent.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\Render\Text3DRendererComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Transform\TransformComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\GameObject.h" />
     <ClInclude Include="Engine\Src\GameObject\GameObjectManager.h" />
     <ClInclude Include="Engine\Src\GameObject\IObjectSpawner.h" />
-    <ClInclude Include="Engine\Src\GameObject\Model\DynamicModelObject.h" />
-    <ClInclude Include="Engine\Src\GameObject\Model\ModelGameObject.h" />
-    <ClInclude Include="Engine\Src\GameObject\Primitive\PrimitiveGameObject.h" />
+    <ClInclude Include="Engine\Src\GameObject\ObjectId.h" />
     <ClInclude Include="Engine\Src\GameObject\Sprite\SpriteAnimationClip.h" />
     <ClInclude Include="Engine\Src\GameObject\Sprite\SpriteAnimator.h" />
-    <ClInclude Include="Engine\Src\GameObject\Sprite\SpriteObject.h" />
-    <ClInclude Include="Engine\Src\Particle\Gpu\GpuParticleSystem.h" />
     <ClInclude Include="Engine\Src\Particle\IParticleSystem.h" />
     <ClInclude Include="Engine\Src\Particle\Core\ParticleEmitter.h" />
     <ClInclude Include="Engine\Src\Particle\Core\ParticleRenderDataBuilder.h" />
     <ClInclude Include="Engine\Src\Particle\Core\ParticleResourceManager.h" />
     <ClInclude Include="Engine\Src\Particle\Core\ParticleUpdater.h" />
-    <ClInclude Include="Engine\Src\Particle\Debug\ParticleSystemDebugUI.h" />
-    <ClInclude Include="Engine\Src\Particle\Modules\LifetimeModule.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\ParticleSystemDebugUI.h" />
     <ClInclude Include="Engine\Src\Particle\Modules\MainModule.h" />
     <ClInclude Include="Engine\Src\Particle\Modules\NoiseModule.h" />
     <ClInclude Include="Engine\Src\Particle\Modules\ShapeModule.h" />
     <ClInclude Include="Engine\Src\Particle\ParticlePresetManager.h" />
-    <ClInclude Include="Engine\Src\Scene\BaseScene.h" />
+    <ClInclude Include="Engine\Src\Particle\ParticleSystemComponent.h" />
+    <ClInclude Include="Engine\Src\Particle\Gpu\GpuParticleSystemComponent.h" />
+    <ClInclude Include="Engine\Src\Particle\Core\Particle.h" />
+    <ClInclude Include="Engine\Src\Scene\Scene.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\ISceneFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\LightingFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\EnvironmentFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\GroundFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\CollisionFeature.h" />
+    <ClInclude Include="Engine\Src\Scene\Feature\PhysicsFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\GridFeature.h" />
-    <ClInclude Include="Engine\Src\Scene\Feature\DebugEditorFeature.h" />
+    <ClInclude Include="Engine\Src\Editor\Scene\DebugEditorFeature.h" />
     <ClInclude Include="Engine\Src\Editor\Environment\AtmosphereEditor.h" />
     <ClInclude Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.h" />
+    <ClInclude Include="Engine\Src\Editor\Scene\ComponentEditing.h" />
+    <ClInclude Include="Engine\Src\Editor\Scene\EditorSceneAccess.h" />
+    <ClInclude Include="Engine\Src\Editor\Scene\ObjectEditing.h" />
+    <ClInclude Include="Engine\Src\Editor\Scene\PlayModeController.h" />
+    <ClInclude Include="Engine\Src\Editor\Scene\PrefabEditing.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\SceneDebugEditor.h" />
+    <ClInclude Include="Engine\Src\Scene\PrefabSystem.h" />
+    <ClInclude Include="Engine\Src\Scene\SceneEnvironmentIO.h" />
     <ClInclude Include="Engine\Src\Scene\SceneSaveSystem.h" />
     <ClInclude Include="Engine\Src\Scene\SceneTransition.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Model.h" />
@@ -1163,14 +1567,21 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\TileMap\TileCollider.h" />
     <ClInclude Include="Engine\Src\TileMap\TileMap.h" />
     <ClInclude Include="Engine\Src\UI\UIAnchor.h" />
-    <ClInclude Include="Engine\Src\UI\UICanvas.h" />
     <ClInclude Include="Engine\Src\UI\UIElement.h" />
-    <ClInclude Include="Engine\Src\UI\UIImage.h" />
+    <ClInclude Include="Engine\Src\UI\RectTransformComponent.h" />
+    <ClInclude Include="Engine\Src\UI\UIImageComponent.h" />
+    <ClInclude Include="Engine\Src\UI\UIButtonComponent.h" />
+    <ClInclude Include="Engine\Src\UI\UIPointer.h" />
+    <ClInclude Include="Engine\Src\UI\IUIInteractable.h" />
+    <ClInclude Include="Engine\Src\UI\UINavigation.h" />
+    <ClInclude Include="Engine\Src\UI\UISliderComponent.h" />
+    <ClInclude Include="Engine\Src\UI\UITextComponent.h" />
+    <ClInclude Include="Engine\Src\UI\UIToggleComponent.h" />
     <ClInclude Include="Engine\Src\Math\Geometry\Distance.h" />
     <ClInclude Include="Engine\Src\Math\Geometry\Intersect.h" />
     <ClInclude Include="Engine\Src\Math\Geometry\RayCast.h" />
     <ClInclude Include="Engine\Src\Math\Geometry\Shapes.h" />
-    <ClInclude Include="Engine\Src\Utility\Debug\ConsoleUI.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\ConsoleUI.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\CanvasViewport.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\EditorSettingsPanel.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\EngineStatsWindow.h" />
@@ -1178,14 +1589,13 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Editor\ImGui\ImGuiAll.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\KeyConfigUI.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\ObjectSelector.h" />
-    <ClInclude Include="Engine\Src\Editor\ImGui\PixCapture.h" />
+    <ClInclude Include="Engine\Src\Graphics\RHI\Debug\PixCapture.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\ProjectView.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\RayTracingDebugPanel.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\RenderGraphEditorPanel.h" />
-    <ClInclude Include="Engine\Src\Editor\Window\GameOutputWindow.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\GameOutputWindow.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\RenderPassDebugPanel.h" />
-    <ClInclude Include="Engine\Src\Editor\ImGui\SceneManagerTab.h" />
-    <ClInclude Include="Engine\Src\Editor\ImGui\ScreenCapture.h" />
+    <ClInclude Include="Engine\Src\WinApp\ScreenCapture.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\ThreadProfilerUI.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\ImGuiWidgets.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\Wrappers\ImGuiInput.h" />
@@ -1194,6 +1604,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Utility\Debug\LivePPAgent.h" />
     <ClInclude Include="Engine\Src\Utility\FileErrorDialog\FileErrorDialog.h" />
     <ClInclude Include="Engine\Src\Utility\Random\RandomGenerator.h" />
+    <ClInclude Include="Engine\Src\Utility\Session\SessionValues.h" />
     <ClInclude Include="Engine\Src\EngineSystem\EngineSystem.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Startup\IStartupTask.h" />
     <ClInclude Include="Engine\Src\Utility\Profiler\CpuProfiler.h" />
@@ -1236,20 +1647,12 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Particle\Modules\RotationModule.h" />
     <ClInclude Include="Engine\Src\Particle\Modules\SizeModule.h" />
     <ClInclude Include="Engine\Src\Particle\Modules\VelocityModule.h" />
-    <ClInclude Include="Application\Src\Scenes\TestScene\TestScene.h" />
-    <ClInclude Include="Application\Src\Scenes\SampleGameScene\SampleGameScene.h" />
-    <ClInclude Include="Application\Src\Scenes\SampleGameScene\PlayerControllerComponent.h" />
-    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\ShootingSampleScene.h" />
-    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\BulletObject.h" />
-    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\EnemyObject.h" />
-    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\ShipControllerComponent.h" />
-    <ClInclude Include="Application\Src\Scenes\Sprite2DSampleScene\Sprite2DSampleScene.h" />
-    <ClInclude Include="Application\Src\Scenes\Sprite2DSampleScene\PaddleComponent.h" />
-    <ClInclude Include="Application\Src\Scenes\Sprite2DSampleScene\FallingItemComponent.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\DockingUI.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\EditorLayoutSection.h" />
     <ClInclude Include="Engine\Src\Camera\Camera.h" />
     <ClInclude Include="Engine\Src\Camera\Control\OrbitFlyController.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\DebugCameraCVars.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\DebugCameraState.h" />
+    <ClInclude Include="Engine\Src\Editor\Camera\SceneCameraSection.h" />
     <ClInclude Include="Engine\Src\Camera\Control\FreeLookController.h" />
     <ClInclude Include="Engine\Src\Camera\Control\ICameraController.h" />
     <ClInclude Include="Engine\Src\Camera\Control\CameraInputState.h" />
@@ -1264,6 +1667,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Utility\FrameRate\FrameRateController.h" />
     <ClInclude Include="Engine\Src\Utility\FrameRate\Time.h" />
     <ClInclude Include="Engine\Src\Utility\JsonManager\JsonManager.h" />
+    <ClInclude Include="Engine\Src\Utility\Macro\UniqueName.h" />
     <ClInclude Include="Engine\Src\Utility\Logger\Logger.h" />
     <ClInclude Include="Engine\Src\Math\Easing\EasingUtil.h" />
     <ClInclude Include="Engine\Src\Utility\Timer\GameTimer.h" />
@@ -1274,12 +1678,11 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Input\InputManager.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\ImGuiManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Light\LightManager.h" />
-    <ClInclude Include="Engine\Src\Particle\ParticleSystem.h" />
     <ClInclude Include="Engine\Src\Input\IInputDevice.h" />
     <ClInclude Include="Engine\Src\Input\KeyboardInput.h" />
     <ClInclude Include="Engine\Src\Input\MouseInput.h" />
     <ClInclude Include="Engine\Src\Input\GamepadInput.h" />
-    <ClInclude Include="Engine\Src\Utility\Debug\GameDebugUI.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\GameDebugUI.h" />
     <ClInclude Include="Engine\Src\WinApp\WinApp.h" />
     <ClInclude Include="Engine\Src\Graphics\RootSignature\RootSignatureManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\TextureManager.h" />
@@ -1298,7 +1701,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\WorldTransform\WorldTransform.h" />
     <ClInclude Include="Engine\Src\Scene\SceneManager.h" />
     <ClInclude Include="Application\Src\MyGame.h" />
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.h" />
     <ClInclude Include="Externals\imgui\imconfig.h" />
     <ClInclude Include="Externals\imgui\imgui.h" />
     <ClInclude Include="Externals\imgui\imgui_internal.h" />
@@ -1311,6 +1713,50 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Externals\imgui\imstb_textedit.h" />
     <ClInclude Include="Externals\imgui\imstb_truetype.h" />
     <ClInclude Include="Externals\meshoptimizer\src\meshoptimizer.h" />
+    <ClInclude Include="Externals\angelscript\add_on\autowrapper\aswrappedcall.h" />
+    <ClInclude Include="Externals\angelscript\add_on\scriptarray\scriptarray.h" />
+    <ClInclude Include="Externals\angelscript\add_on\scriptbuilder\scriptbuilder.h" />
+    <ClInclude Include="Externals\angelscript\add_on\scripthelper\scripthelper.h" />
+    <ClInclude Include="Externals\angelscript\add_on\scriptmath\scriptmath.h" />
+    <ClInclude Include="Externals\angelscript\add_on\scriptstdstring\scriptstdstring.h" />
+    <ClInclude Include="Externals\angelscript\include\angelscript.h" />
+    <ClInclude Include="Externals\angelscript\source\as_array.h" />
+    <ClInclude Include="Externals\angelscript\source\as_atomic.h" />
+    <ClInclude Include="Externals\angelscript\source\as_builder.h" />
+    <ClInclude Include="Externals\angelscript\source\as_bytecode.h" />
+    <ClInclude Include="Externals\angelscript\source\as_callfunc.h" />
+    <ClInclude Include="Externals\angelscript\source\as_compiler.h" />
+    <ClInclude Include="Externals\angelscript\source\as_config.h" />
+    <ClInclude Include="Externals\angelscript\source\as_configgroup.h" />
+    <ClInclude Include="Externals\angelscript\source\as_context.h" />
+    <ClInclude Include="Externals\angelscript\source\as_criticalsection.h" />
+    <ClInclude Include="Externals\angelscript\source\as_datatype.h" />
+    <ClInclude Include="Externals\angelscript\source\as_debug.h" />
+    <ClInclude Include="Externals\angelscript\source\as_gc.h" />
+    <ClInclude Include="Externals\angelscript\source\as_generic.h" />
+    <ClInclude Include="Externals\angelscript\source\as_map.h" />
+    <ClInclude Include="Externals\angelscript\source\as_memory.h" />
+    <ClInclude Include="Externals\angelscript\source\as_module.h" />
+    <ClInclude Include="Externals\angelscript\source\as_namespace.h" />
+    <ClInclude Include="Externals\angelscript\source\as_objecttype.h" />
+    <ClInclude Include="Externals\angelscript\source\as_outputbuffer.h" />
+    <ClInclude Include="Externals\angelscript\source\as_parser.h" />
+    <ClInclude Include="Externals\angelscript\source\as_property.h" />
+    <ClInclude Include="Externals\angelscript\source\as_restore.h" />
+    <ClInclude Include="Externals\angelscript\source\as_scriptcode.h" />
+    <ClInclude Include="Externals\angelscript\source\as_scriptengine.h" />
+    <ClInclude Include="Externals\angelscript\source\as_scriptfunction.h" />
+    <ClInclude Include="Externals\angelscript\source\as_scriptnode.h" />
+    <ClInclude Include="Externals\angelscript\source\as_scriptobject.h" />
+    <ClInclude Include="Externals\angelscript\source\as_string.h" />
+    <ClInclude Include="Externals\angelscript\source\as_string_util.h" />
+    <ClInclude Include="Externals\angelscript\source\as_symboltable.h" />
+    <ClInclude Include="Externals\angelscript\source\as_texts.h" />
+    <ClInclude Include="Externals\angelscript\source\as_thread.h" />
+    <ClInclude Include="Externals\angelscript\source\as_tokendef.h" />
+    <ClInclude Include="Externals\angelscript\source\as_tokenizer.h" />
+    <ClInclude Include="Externals\angelscript\source\as_typeinfo.h" />
+    <ClInclude Include="Externals\angelscript\source\as_variablescope.h" />
     <ClInclude Include="Engine\Src\Text\MsdfFontTypes.h" />
     <ClInclude Include="Engine\Src\Text\TextEncoding.h" />
     <ClInclude Include="Engine\Src\Text\TextLineBreak.h" />
@@ -1321,9 +1767,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Text\MsdfAtlasAllocator.h" />
     <ClInclude Include="Engine\Src\Text\FontManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\UI\TextRenderer.h" />
-    <ClInclude Include="Engine\Src\UI\UIText.h" />
-    <ClInclude Include="Application\Src\Scenes\MsdfTextTestScene\MsdfTextTestScene.h" />
     <ClInclude Include="Engine\Src\Audio\AudioBus.h" />
+    <ClInclude Include="Engine\Src\Audio\AudioListenerComponent.h" />
+    <ClInclude Include="Engine\Src\Audio\AudioSourceComponent.h" />
     <ClInclude Include="Engine\Src\Audio\AudioSystem.h" />
     <ClInclude Include="Engine\Src\Audio\Decoder\AudioData.h" />
     <ClInclude Include="Engine\Src\Audio\Decoder\IAudioDecoder.h" />
@@ -1358,7 +1804,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Editor\Camera\Widget\CameraIconOverlay.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Widget\CameraTimelineWidget.h" />
     <ClInclude Include="Engine\Src\Editor\Environment\FogEditor.h" />
-    <ClInclude Include="Engine\Src\GameObject\Text3D\Text3DObject.h" />
     <ClInclude Include="Engine\Src\Graphics\Fog\FogManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Fog\Settings\FogCVars.h" />
     <ClInclude Include="Engine\Src\Graphics\Fog\Settings\FogSettings.h" />
@@ -1375,70 +1820,13 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Scene\Feature\EventDispatchFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\TimeOfDayFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\TweenFeature.h" />
+    <ClInclude Include="Engine\Src\Scene\Feature\UIInteractionFeature.h" />
+    <ClInclude Include="Engine\Src\Scene\Feature\SceneFeatureRegistry.h" />
     <ClInclude Include="Engine\Src\Text\TextGeometryBuilder.h" />
     <ClInclude Include="Engine\Src\Utility\Event\EventBus.h" />
     <ClInclude Include="Engine\Src\Utility\Tween\Tween.h" />
     <ClInclude Include="Engine\Src\Utility\Tween\TweenManager.h" />
-    <ClInclude Include="Application\Src\Components\Building\MapChipData.h" />
-    <ClInclude Include="Application\Src\Components\Building\MapGeneratorComponent.h" />
-    <ClInclude Include="Application\Src\Components\Building\MapViewComponent.h" />
-    <ClInclude Include="Application\Src\Components\Building\RockThrowComponent.h" />
-    <ClInclude Include="Application\Src\Components\Building\WaterWaveViewComponent.h" />
-    <ClInclude Include="Application\Src\Components\Camera\RockBreakShakeSettingsComponent.h" />
-    <ClInclude Include="Application\Src\Components\GameCore\GameManagerComponent.h" />
-    <ClInclude Include="Application\Src\Components\GameCore\GameRecordStore.h" />
-    <ClInclude Include="Application\Src\Components\GameCore\GameResultData.h" />
-    <ClInclude Include="Application\Src\Components\GameCore\GameSettingsComponent.h" />
-    <ClInclude Include="Application\Src\Components\GameCore\HungerComponent.h" />
-    <ClInclude Include="Application\Src\Components\Rail\RailBuilderComponent.h" />
-    <ClInclude Include="Application\Src\Components\Rail\RailPathComponent.h" />
-    <ClInclude Include="Application\Src\Components\Rail\RailViewComponent.h" />
-    <ClInclude Include="Application\Src\Components\Result\ResultButtonAnimationComponent.h" />
-    <ClInclude Include="Application\Src\Components\Result\ResultMonkeyShakeComponent.h" />
-    <ClInclude Include="Application\Src\Components\Result\ResultTipsComponent.h" />
-    <ClInclude Include="Application\Src\Components\Title\TitleButtonAnimationComponent.h" />
-    <ClInclude Include="Application\Src\Components\Title\TitleCameraShakeSettingsComponent.h" />
-    <ClInclude Include="Application\Src\Components\Title\TitleLogoAnimationComponent.h" />
-    <ClInclude Include="Application\Src\Components\Title\TitleMonkeyAnimationComponent.h" />
-    <ClInclude Include="Application\Src\Components\Title\TitleTextAnimationComponent.h" />
-    <ClInclude Include="Application\Src\Components\Title\TitleTrolleyAnimationComponent.h" />
-    <ClInclude Include="Application\Src\Components\Train\SpawnPopComponent.h" />
-    <ClInclude Include="Application\Src\Components\Train\TrainMovementComponent.h" />
-    <ClInclude Include="Application\Src\Components\UI\GameStartPromptAnimationComponent.h" />
-    <ClInclude Include="Application\Src\Components\UI\ObjectiveSignComponent.h" />
-    <ClInclude Include="Application\Src\Components\UI\OffscreenTrainIndicatorUIComponent.h" />
-    <ClInclude Include="Application\Src\Components\UI\PauseMenuUIComponent.h" />
-    <ClInclude Include="Application\Src\Components\UI\ResultGaugeUIComponent.h" />
-    <ClInclude Include="Application\Src\Components\UI\SpeedGaugeUIComponent.h" />
-    <ClInclude Include="Application\Src\Components\UI\StaminaGaugeUIComponent.h" />
-    <ClInclude Include="Application\Src\Components\Utility\BlockModelLayout.h" />
-    <ClInclude Include="Application\Src\Components\Utility\ModelRenderPoolComponent.h" />
-    <ClInclude Include="Application\Src\Editor\Stage\StageChipPalette.h" />
-    <ClInclude Include="Application\Src\Editor\Stage\StageCsvDocument.h" />
-    <ClInclude Include="Application\Src\Editor\Stage\StageEditorPanel.h" />
-    <ClInclude Include="Application\Src\Editor\Stage\StageProject.h" />
-    <ClInclude Include="Application\Src\GameObjects\Effect\BananaHarvestEffect.h" />
-    <ClInclude Include="Application\Src\GameObjects\Effect\RockBreakDebris.h" />
-    <ClInclude Include="Application\Src\GameObjects\Effect\StationSlowdownEffect.h" />
-    <ClInclude Include="Application\Src\GameObjects\GameSceneObject.h" />
-    <ClInclude Include="Application\Src\Scenes\GameScene\BananaTreeAuraFeature.h" />
-    <ClInclude Include="Application\Src\Scenes\GameScene\GameEntranceFeature.h" />
-    <ClInclude Include="Application\Src\Scenes\GameScene\GameScene.h" />
-    <ClInclude Include="Application\Src\Scenes\GameScene\OffscreenTrainIndicatorFeature.h" />
-    <ClInclude Include="Application\Src\Scenes\GameScene\PauseMenuFeature.h" />
-    <ClInclude Include="Application\Src\Scenes\GameScene\RailDirectionGuideFeature.h" />
-    <ClInclude Include="Application\Src\Scenes\GameScene\SkyFogFeature.h" />
-    <ClInclude Include="Application\Src\Scenes\GameScene\SpeedBlurFeature.h" />
-    <ClInclude Include="Application\Src\Scenes\GameScene\SpeedGaugeFeature.h" />
-    <ClInclude Include="Application\Src\Scenes\GameScene\StageLightsFeature.h" />
-    <ClInclude Include="Application\Src\Scenes\GameScene\StaminaGaugeFeature.h" />
-    <ClInclude Include="Application\Src\Scenes\ResultScene\ResultScene.h" />
-    <ClInclude Include="Application\Src\Scenes\ResultScene\ResultSceneUi.h" />
-    <ClInclude Include="Application\Src\Scenes\TitleScene\TitleScene.h" />
-    <ClInclude Include="Application\Src\Scenes\TitleScene\TitleSceneModelSetup.h" />
-    <ClInclude Include="Application\Src\Scenes\TitleScene\TitleSceneUi.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ILoadingScreenEffect.h" />
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\TrolleyLoading\TrolleyLoading.h" />
     <ClInclude Include="Engine\Src\Utility\Random\Hash.h" />
   </ItemGroup>
   <ItemGroup>
@@ -1460,8 +1848,21 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <None Include="Engine\Src\Particle\README.md" />
     <!-- Shader files (runtime compiled via DXC, not build-time FxCompile) -->
   </ItemGroup>
+  <ItemGroup>
+    <MASM Include="Externals\angelscript\source\as_callfunc_x64_msvc_asm.asm" />
+  </ItemGroup>
+  <!-- エディタを含まない構成（CORE_EDITOR を定義しない Release）では、Editor 配下と ImGui 系の .cpp をビルドしない -->
+  <ItemGroup Condition="'$(Configuration)'=='Release'">
+    <ClCompile Update="Engine\Src\Editor\**\*.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Update="Externals\imgui\*.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />
     <Import Project="packages\WinPixEventRuntime.1.0.240308001\build\WinPixEventRuntime.targets" Condition="Exists('packages\WinPixEventRuntime.1.0.240308001\build\WinPixEventRuntime.targets')" />
   </ImportGroup>
   <Target Name="SyncVCXProjFilters" BeforeTargets="Build" Condition="Exists('$(ProjectDir)Build\Scripts\SyncFilters.ps1')">

@@ -17,7 +17,7 @@
 #include <cassert>
 #include <cstring>
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/ImguiManager.h"
 #endif
 
@@ -150,7 +150,7 @@ namespace CoreEngine
 
     void WaterCausticsTechnique::DrawImGui()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         bool changed = false;
         ImGui::PushID("WaterCausticsTechnique");
         changed |= UI::SliderFloat("Intensity", params_.intensity, 0.0f, 8.0f);

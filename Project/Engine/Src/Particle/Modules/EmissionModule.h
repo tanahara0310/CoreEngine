@@ -50,10 +50,10 @@ public:
     /// @return 再生中の場合true
     bool IsPlaying() const { return isPlaying_; }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     /// @brief ImGuiデバッグ表示
     /// @return UIに変更があった場合true
-    bool ShowImGui() override;
+    bool ShowImGui();
 #endif
 
 private:

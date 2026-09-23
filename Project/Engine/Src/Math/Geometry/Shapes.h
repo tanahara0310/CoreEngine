@@ -139,6 +139,90 @@ namespace Geometry
             : start(start), end(end), radius(radius) {}
     };
 
+    /// @brief 向きを持つ境界ボックス（OBB）
+    /// @note axes は正規直交であることを前提にする。halfExtents は各軸方向の半分の長さ。
+    struct OBB {
+        Vector3 center{ 0.0f, 0.0f, 0.0f };
+        Vector3 halfExtents{ 0.0f, 0.0f, 0.0f };
+        Vector3 axes[3] = { { 1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f, 1.0f } };
+
+        OBB() = default;
+
+        OBB(const Vector3& center, const Vector3& halfExtents)
+            : center(center), halfExtents(halfExtents) {}
+
+        OBB(const Vector3& center, const Vector3& halfExtents,
+            const Vector3& axisX, const Vector3& axisY, const Vector3& axisZ)
+            : center(center), halfExtents(halfExtents), axes{ axisX, axisY, axisZ } {}
+
+        /// @brief 軸方向の半分の長さを添字で引く
+        float Extent(int axis) const {
+            return (axis == 0) ? halfExtents.x : ((axis == 1) ? halfExtents.y : halfExtents.z);
+        }
+
+        /// @brief 点をこの箱のローカル座標へ落とす
+        Vector3 ToLocal(const Vector3& point) const {
+            const Vector3 d = point - center;
+            return Vector3{ Dot(d, axes[0]), Dot(d, axes[1]), Dot(d, axes[2]) };
+        }
+
+        /// @brief 箱の内部または表面で point に最も近い点
+        Vector3 ClosestPoint(const Vector3& point) const {
+            const Vector3 d = point - center;
+            Vector3 result = center;
+            for (int axis = 0; axis < 3; ++axis) {
+                const float extent = Extent(axis);
+                const float distance = std::clamp(Dot(d, axes[axis]), -extent, extent);
+                result = result + axes[axis] * distance;
+            }
+            return result;
+        }
+
+        /// @brief 8 つの頂点を書き出す
+        /// @param out 頂点の書き出し先（8 個ぶん）
+        void Corners(Vector3 out[8]) const {
+            const Vector3 extentX = axes[0] * halfExtents.x;
+            const Vector3 extentY = axes[1] * halfExtents.y;
+            const Vector3 extentZ = axes[2] * halfExtents.z;
+
+            for (int index = 0; index < 8; ++index) {
+                const float signX = (index & 1) ? 1.0f : -1.0f;
+                const float signY = (index & 2) ? 1.0f : -1.0f;
+                const float signZ = (index & 4) ? 1.0f : -1.0f;
+                out[index] = center + extentX * signX + extentY * signY + extentZ * signZ;
+            }
+        }
+
+        /// @brief 点が内部にあるか（境界も含む）
+        /// @param tolerance 境界の外側に許す幅
+        bool Contains(const Vector3& point, float tolerance = 0.0f) const {
+            const Vector3 local = ToLocal(point);
+            return std::abs(local.x) <= halfExtents.x + tolerance
+                && std::abs(local.y) <= halfExtents.y + tolerance
+                && std::abs(local.z) <= halfExtents.z + tolerance;
+        }
+
+        /// @brief 向き axis へ投影したときの、中心からの広がり
+        float ProjectedRadius(const Vector3& axis) const {
+            return halfExtents.x * std::abs(Dot(axis, axes[0]))
+                 + halfExtents.y * std::abs(Dot(axis, axes[1]))
+                 + halfExtents.z * std::abs(Dot(axis, axes[2]));
+        }
+
+        /// @brief 外接する AABB を作る
+        AABB ToAABB() const {
+            const Vector3 extent{
+                std::abs(axes[0].x) * halfExtents.x + std::abs(axes[1].x) * halfExtents.y
+                    + std::abs(axes[2].x) * halfExtents.z,
+                std::abs(axes[0].y) * halfExtents.x + std::abs(axes[1].y) * halfExtents.y
+                    + std::abs(axes[2].y) * halfExtents.z,
+                std::abs(axes[0].z) * halfExtents.x + std::abs(axes[1].z) * halfExtents.y
+                    + std::abs(axes[2].z) * halfExtents.z,
+            };
+            return AABB(center - extent, center + extent);
+        }
+    };
+
     /// @brief 線分
     struct LineSegment {
         Vector3 start;

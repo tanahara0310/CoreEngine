@@ -15,7 +15,7 @@ namespace CoreEngine
     ///
     /// @details
     /// 利用側が直接触ることはほとんどない。`Tween::To()` 等が内部で登録し、
-    /// `BaseScene::Update()` が `Update()` を、`BaseScene::Finalize()` が `Clear()` を呼ぶ。
+    /// `Scene::Update()` が `Update()` と `AdvanceAddedAfterUpdate()` を、`Scene::Finalize()` が `Clear()` を呼ぶ。
     ///
     /// @note **メインスレッド専用**。トゥイーンは GameObject の値を書き換えるため、
     ///       ゲームループのスレッド以外から生成・更新してはいけない。
@@ -28,6 +28,11 @@ namespace CoreEngine
         /// @brief 全トゥイーンを 1 フレーム進める
         /// @note link 先が破棄されたトゥイーンはここで自動的にキルされる。
         void Update();
+
+        /// @brief 前回の Update() の後に登録されたトゥイーンを、このフレームの分だけ進める
+        /// @details GameObject の Update の中で始めたトゥイーンを、次のフレームを待たずに動かす。
+        ///          Update() の走査中と、この関数の後に登録されたトゥイーンは、次のフレームの Update() から進む。
+        void AdvanceAddedAfterUpdate();
 
         /// @brief 全トゥイーンを破棄する（シーン遷移時）
         /// @note 値の書き戻しは行わない。
@@ -56,7 +61,7 @@ namespace CoreEngine
         /// @brief 再生中の本数
         std::size_t ActiveCount() const;
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         /// @brief デバッグパネルを描画する（Window > Analysis > Tween）
         void DrawImGui();
 #endif
@@ -72,6 +77,12 @@ namespace CoreEngine
 
         /// @brief スロットを空にして再利用待ちへ回す
         void ReleaseSlot(std::size_t index);
+
+        /// @brief 1 スロットのトゥイーンを進め、完了したら解放待ちへ積む
+        void AdvanceSlot(std::uint32_t index, float scaledDelta, float unscaledDelta);
+
+        /// @brief 解放待ちのスロットをまとめて解放する
+        void ReleaseFinishedSlots();
 
         struct Slot {
             std::unique_ptr<TweenDetail::TweenItem> item;
@@ -91,7 +102,13 @@ namespace CoreEngine
 
         bool updating_ = false;
 
-#ifdef USE_IMGUI
+        /// @brief Update() の後に登録されたトゥイーン（{インデックス, 世代番号}）
+        std::vector<std::pair<std::uint32_t, std::uint32_t>> addedAfterUpdate_;
+
+        /// @brief Update() の後、AdvanceAddedAfterUpdate() までの間か（この間の登録を控える）
+        bool collectingAddedAfterUpdate_ = false;
+
+#ifdef CORE_EDITOR
         char filter_[64] = {};
 #endif
     };

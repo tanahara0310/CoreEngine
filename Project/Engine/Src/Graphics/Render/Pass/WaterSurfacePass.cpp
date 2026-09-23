@@ -68,7 +68,7 @@ namespace CoreEngine
         // ---- SceneColor に加えて MotionVector も束ねる（MRT 2 枚）----
         // Begin() が済ませた遷移・ビューポート・DSV 選択はそのまま活かし、
         // OMSetRenderTargets だけを 2 枚版へ張り替える。
-        // ★水面 PSO（WaterPlaneObject::WritesMotionVector）と枚数が必ず一致すること★
+        // ★水面 PSO（WaterSurfaceComponent::WritesMotionVector）と枚数が必ず一致すること★
         const bool writeMotionVector = WaterCVars::WriteMotionVector.Get();
         auto* offscreenTarget = writeMotionVector ? dynamic_cast<OffscreenRenderTarget*>(targetToUse) : nullptr;
         // MRT を張れたかどうかは一度だけログする。張れないまま PSO だけ 2 枚だと

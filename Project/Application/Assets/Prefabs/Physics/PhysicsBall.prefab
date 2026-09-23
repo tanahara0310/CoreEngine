@@ -1,0 +1,72 @@
+{
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [ 0.0, 0.0, 0.0 ],
+                "scale": [ 1.0, 1.0, 1.0 ],
+                "translate": [ 0.0, 5.0, 0.0 ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "model": {
+                    "guid": "e16552a6-c74d-f458-71fe-2810a97c3777",
+                    "path": "Application/Assets/Models/Sphere/sphere.obj"
+                }
+            },
+            "type": "MeshRenderer"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [ 0.3, 0.6, 0.95, 1.0 ],
+                "emissive": [ 0.0, 0.0, 0.0, 1.0 ],
+                "metallic": 0.2,
+                "roughness": 0.45
+            },
+            "type": "Material"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "shapes": [
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [ 0.0, 0.0, 0.0 ],
+                        "radius": 1.0,
+                        "static": false,
+                        "trigger": false,
+                        "type": "Sphere"
+                    }
+                ]
+            },
+            "type": "Collider"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "friction": 0.5,
+                "frictionCombine": 3,
+                "restitution": 0.4,
+                "restitutionCombine": 2
+            },
+            "type": "PhysicsMaterial"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "bodyType": 0,
+                "freezeRotation": false,
+                "linearDamping": 0.0,
+                "mass": 1.0,
+                "useGravity": true
+            },
+            "type": "Rigidbody"
+        }
+    ]
+}

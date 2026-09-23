@@ -9,13 +9,13 @@ namespace CoreEngine
     class EngineSystem;
 
     /// @brief GPU/CPU プロファイル計測の RAII スコープラッパー
-    /// @details USE_IMGUI 有効時は内部で GpuTimestampProfiler::ProfileScope と同等の処理を行い、
-    ///　USE_IMGUI 無効時は完全な no-op となる。
-    ///　これにより呼び出し側から `#ifdef USE_IMGUI` ブロックを排除できる。
+    /// @details CORE_EDITOR 有効時は内部で GpuTimestampProfiler::ProfileScope と同等の処理を行い、
+    ///　CORE_EDITOR 無効時は完全な no-op となる。
+    ///　これにより呼び出し側から `#ifdef CORE_EDITOR` ブロックを排除できる。
     class EngineProfileScope
     {
     public:
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         EngineProfileScope(EngineSystem* engine, GpuTimestampSlot slot, ID3D12GraphicsCommandList* cmdList);
         ~EngineProfileScope();
 #else
@@ -26,7 +26,7 @@ namespace CoreEngine
         EngineProfileScope(const EngineProfileScope&) = delete;
         EngineProfileScope& operator=(const EngineProfileScope&) = delete;
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     private:
         GpuTimestampProfiler* profiler_ = nullptr;
         GpuTimestampSlot slot_;

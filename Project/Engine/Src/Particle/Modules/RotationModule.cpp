@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "RotationModule.h"
-#include "../ParticleSystem.h"
+#include "Particle/Core/Particle.h"
 #include "Math/MathCore.h"
 #include <numbers>
 #include <algorithm>
@@ -113,7 +113,7 @@ void RotationModule::UpdateRotation(Particle& particle, float deltaTime)
     }
 }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 bool RotationModule::ShowImGui() {
     bool changed = false;
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "ICameraEditorModule.h"
 #include "Camera/Sequence/CameraSequenceEvaluator.h"
@@ -201,11 +201,6 @@ namespace CoreEngine
         int selectedClipFileIndex_ = -1;
         bool needRefreshClipFileList_ = true;
 
-        // Undo/Redo
-        std::vector<EditorState> undoStack_;
-        std::vector<EditorState> redoStack_;
-        size_t maxHistoryCount_ = 64;
-
         // 掴んでいるウィジェットの ImGui ID と、掴んだ時点の状態。
         // ImGuiID を持つためだけにヘッダへ imgui.h を引き込みたくないので素の型で持つ。
         unsigned int activeEditItemId_ = 0;
@@ -251,4 +246,4 @@ namespace CoreEngine
     };
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

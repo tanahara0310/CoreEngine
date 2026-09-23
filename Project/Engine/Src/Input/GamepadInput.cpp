@@ -69,6 +69,13 @@ void GamepadInput::Update()
     // }
 }
 
+void GamepadInput::Reset()
+{
+    // 接続しているかは変わらないので触らない
+    prevState_ = state_;
+    ZeroMemory(&state_, sizeof(state_));
+}
+
 bool GamepadInput::IsConnected() const
 {
     return isConnected_;
@@ -162,6 +169,14 @@ bool GamepadInput::IsAxisTriggered(GamepadAxis axis, bool positive, float thresh
     const float current = GetAxisValue(axis) * sign;
     const float previous = GetPreviousAxisValue(axis) * sign;
     return current > threshold && previous <= threshold;
+}
+
+bool GamepadInput::IsAxisReleased(GamepadAxis axis, bool positive, float threshold) const
+{
+    const float sign = positive ? 1.0f : -1.0f;
+    const float current = GetAxisValue(axis) * sign;
+    const float previous = GetPreviousAxisValue(axis) * sign;
+    return current <= threshold && previous > threshold;
 }
 
 void GamepadInput::SetVibration(float leftMotorRatio, float rightMotorRatio)

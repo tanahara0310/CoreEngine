@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "ICameraEditorModule.h"
 #include "Camera/Sequence/CameraSequenceTypes.h"
@@ -54,4 +54,4 @@ namespace CoreEngine
     };
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "EditorCameraInput.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "Editor/ImGui/ImGuiAll.h"
 #include "EngineSystem/EngineSystem.h"
@@ -107,16 +107,4 @@ namespace CoreEngine
     }
 }
 
-#else // USE_IMGUI
-
-namespace CoreEngine
-{
-    CameraInputState EditorCameraInput::Collect(EngineSystem* engine)
-    {
-        // エディタ非搭載ビルドではビューポート操作が存在しない
-        (void)engine;
-        return CameraInputState::None();
-    }
-}
-
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

@@ -1,16 +1,22 @@
 #include "pch.h"
+#include "Editor/Inspector/ComponentInspectors.h"
+#include "Editor/Panel/EditorPanelRegistry.h"
 #include "AtmosphereEditor.h"
 
 #include "EngineSystem/EngineSystem.h"
+#include "GameObject/GameObject.h"
+#include "GameObject/GameObjectManager.h"
+#include "GameObject/Component/Light/LightComponent.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Light/LightManager.h"
+#include "Scene/SceneManager.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/PostEffect/Effect/PostEffectNames.h"
 #include "Graphics/PostEffect/Effect/ToneMapping/ToneMapping.h"
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Math/MathCore.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/ImGuiAll.h"
 #include "Editor/ImGui/CVarPanel.h"
 #include "EngineSystem/Subsystem/DebugSubsystem.h"
@@ -18,26 +24,58 @@
 
 #include <algorithm>
 #include <cmath>
+#include <memory>
 
 namespace CoreEngine {
 
     namespace {
         constexpr float kDegToRad = MathCore::Constants::kDegToRad;
         constexpr const char* kEditorLabel = "Sky Atmosphere";
+        /// @brief この設定を持つコンポーネントの型名
+        constexpr const char* kComponentTypeName = "SkyBox";
         /// @brief 大気パラメータの CVar 接頭辞（定義は AtmosphereManager.cpp）
         constexpr const char* kAtmosphereCVarPrefix = "r.Atmosphere";
+
+        /// @brief 今のシーンへ月のオブジェクトを作り、その実体を返す（作れなければ nullptr）
+        /// @note ライトはオブジェクトが持つので、ここで作った月もシーンに保存される。
+        Light* CreateMoonLightObject(EngineSystem* engine)
+        {
+            SceneManager* const sceneManager = engine ? engine->GetSceneManager() : nullptr;
+            GameObjectManager* const objects =
+                sceneManager ? sceneManager->GetCurrentGameObjectManager() : nullptr;
+            if (!objects) {
+                return nullptr;
+            }
+
+            auto owned = std::make_unique<GameObject>();
+            owned->SetName("Moon");
+            GameObject* const object = objects->AddObject(std::move(owned));
+            LightComponent* const component = object ? object->AddComponent<LightComponent>() : nullptr;
+            if (!component) {
+                return nullptr;
+            }
+
+            Light& light = component->Get();
+            light.type = LightType::Directional;
+            light.isAtmosphereMoon = true;
+            component->SyncWithManager();
+            return component->GetLight();
+        }
     }
 
     void AtmosphereEditor::Initialize(EngineSystem& engine)
     {
         engine_ = &engine;
-#ifdef USE_IMGUI
-        // Hierarchy の Environment ツリーへ登録し、選択時に Inspector で編集できるようにする。
+#ifdef CORE_EDITOR
+        // シーンに置かれたコンポーネントのインスペクタとして中身を描く。
         // GameDebugUI はここで一度だけ取得してキャッシュする（デストラクタで使うため）
         if (auto* debug = engine_->GetDebugSubsystem()) {
             gameDebugUI_ = debug->GetGameDebugUI();
             if (gameDebugUI_) {
-                gameDebugUI_->RegisterEnvironmentEditor(kEditorLabel, this, [this]() { DrawContent(); });
+                Editor::ComponentInspectors::Register(kComponentTypeName, {
+                    .displayName = "空と大気散乱",
+                    .drawBody = [this](IComponent&) { DrawContent(); return false; },
+                    });
             }
         }
 #endif
@@ -45,30 +83,14 @@ namespace CoreEngine {
 
     AtmosphereEditor::~AtmosphereEditor()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         // エンジン終了時にドロワーがダングリングしないよう登録を解除する。
         // engine_->GetDebugSubsystem() を呼び直さないこと（サブシステム一括破棄中に走るため、
         // 破棄済みサブシステムへの dynamic_cast でアクセス違反になる）。キャッシュ済みポインタのみ使う。
         if (gameDebugUI_) {
-            gameDebugUI_->UnregisterEnvironmentEditor(kEditorLabel, this);
+            Editor::ComponentInspectors::Unregister(kComponentTypeName);
         }
 #endif
-    }
-
-    Vector3 AtmosphereEditor::ComputeSunLightDirection(float elevationDeg, float azimuthDeg)
-    {
-        const float elevation = elevationDeg * kDegToRad;
-        const float azimuth = azimuthDeg * kDegToRad;
-
-        // 太陽の位置方向（地表から太陽を見る方向）
-        const Vector3 toSun = {
-            std::cos(elevation) * std::sin(azimuth),
-            std::sin(elevation),
-            std::cos(elevation) * std::cos(azimuth),
-        };
-
-        // ライト方向は光の進行方向（太陽 → 地表）なので逆ベクトル
-        return Normalize(-toSun);
     }
 
     void AtmosphereEditor::ApplySunSettings(const AtmosphereEditorSunSettings& settings)
@@ -99,12 +121,8 @@ namespace CoreEngine {
 
         Light* moon = lightManager->GetAtmosphereMoonLight();
         if (!moon && settings.enabled) {
-            // 月ライトはオプトイン。初回有効化時に第2ディレクショナルライトとして生成する
-            LightHandle moonHandle = lightManager->CreateLight(LightType::Directional, "Moon");
-            moon = lightManager->GetLight(moonHandle);
-            if (moon) {
-                moon->isAtmosphereMoon = true;
-            }
+            // 月ライトはオプトイン。初回有効化時に第2ディレクショナルライトのオブジェクトを作る
+            moon = CreateMoonLightObject(engine_);
         }
         if (!moon) {
             return;
@@ -155,7 +173,7 @@ namespace CoreEngine {
 
     void AtmosphereEditor::DrawContent()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         // エディタはエンジン寿命・ライトはシーン寿命。まず実体から UI モデルを同期する
         SyncFromLights();
 
@@ -199,10 +217,10 @@ namespace CoreEngine {
 
         // ===== 太陽設定 =====
         if (ImGui::CollapsingHeader("太陽", ImGuiTreeNodeFlags_DefaultOpen)) {
-            // ここは Lighting > Sun（大気の太陽フラグ付きライト）を操作する別ビュー。
+            // ここは Sun オブジェクト（大気の太陽フラグ付きライト）を操作する別ビュー。
             // 「空の明るさ」は大気散乱（空・雲）専用のスケールで、地面や物への
-            // 直接光の強さ（照度 [lx]）は Lighting > Sun 側で設定する
-            UI::Hint("Lighting > Sun と同じライトを操作します。地表への直接光は Lighting 側の「照度 [lx]」");
+            // 直接光の強さ（照度 [lx]）は Sun オブジェクトのライト側で設定する
+            UI::Hint("Sun オブジェクトと同じライトを操作します。地表への直接光はそちらの「強さ [lx]」");
             AtmosphereEditorSunSettings settings = sunSettings_;
             bool changed = false;
             changed |= ImGui::SliderFloat("高度角 [deg]", &settings.elevationDeg, -20.0f, 90.0f, "%.1f");
@@ -337,7 +355,7 @@ namespace CoreEngine {
 
     void AtmosphereEditor::DrawSunMoonPlacementWidget()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         // ===== スカイマップ: 上から見た天球の極座標表示 =====
         // 中心=天頂（高度90°）・内側の円=地平線（0°）・外周=高度-20°（スライダーの下限と一致）。
         // 方位はワールド軸準拠で上=+Z（方位角0°）・右=+X（+90°）。

@@ -36,17 +36,6 @@ namespace CoreEngine
         /// @param pass AddPass が返したパスポインタ
         void RemovePass(RenderPass* pass);
 
-        /// @brief 所有者タグが一致する全パスを削除（シーン破棄時のユーザーパス一括除去）
-        /// @param owner BeginOwnerScope で設定した所有者タグ
-        void RemovePassesByOwner(const void* owner);
-
-        /// @brief 以降の AddPass に所有者タグを付与する（SceneManager がシーン登録前後に呼ぶ）
-        /// @param owner 所有者タグ（通常はシーンのポインタ）
-        void BeginOwnerScope(const void* owner) { activeOwner_ = owner; }
-
-        /// @brief 所有者タグの付与を終了する
-        void EndOwnerScope() { activeOwner_ = nullptr; }
-
         /// @brief 名前でレンダーパスを取得
         /// @param name パス名
         /// @return レンダーパスのポインタ（見つからない場合nullptr）
@@ -179,7 +168,6 @@ namespace CoreEngine
             RenderPassPhase phase = RenderPassPhase::Overlay;
             int priority = 0;
             uint64_t sequence = 0;     ///< 登録順（同フェーズ・同 priority の安定ソート用）
-            const void* owner = nullptr; ///< nullptr = エンジン所有。シーン所有パスの一括除去に使う
             std::optional<GpuTimingCategory> timingCategoryOverride; ///< 未設定なら phase から決定
         };
 
@@ -194,7 +182,6 @@ namespace CoreEngine
 
         std::vector<RenderPassEntry> passes_;
         uint64_t nextSequence_ = 0;
-        const void* activeOwner_ = nullptr;
         RenderGraph renderGraph_{};
 
         std::vector<RenderGraphSnapshot> graphSnapshots_;

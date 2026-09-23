@@ -6,12 +6,6 @@
 #include "Graphics/Line/LineManager.h"
 #include <algorithm>
 #include <cmath>
-#include <cstring>
-#include <vector>
-
-#ifdef USE_IMGUI
-#include "Editor/ImGui/ImGuiAll.h"
-#endif
 
 namespace CoreEngine
 {
@@ -19,19 +13,7 @@ namespace CoreEngine
     {
         constexpr float kPi = MathCore::Constants::kPi;
 
-    /// @brief ライト種別のギズモ表示名
-        const char* GetTypeLabel(LightType type)
-        {
-            switch (type) {
-            case LightType::Directional: return "Directional";
-            case LightType::Point:       return "Point";
-            case LightType::Spot:        return "Spot";
-            case LightType::Area:        return "Area";
-            }
-            return "Unknown";
-        }
-
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         // ==================== ギズモ描画ヘルパー ====================
         // 注意: LineManager::DrawLine の第 4 引数は「太さ」ではなく「透明度(alpha)」。
 
@@ -93,272 +75,14 @@ namespace CoreEngine
 #endif
     }
 
-    // ==================== Hierarchy 子ツリー ====================
-
-    bool LightDebugVisualizer::DrawHierarchyChildren(LightManager& manager)
-    {
-#ifdef USE_IMGUI
-        bool clicked = false;
-
-        std::vector<LightHandle> handles;
-        manager.ForEachLight([&handles](LightHandle h, Light&) { handles.push_back(h); });
-
-        for (LightHandle handle : handles) {
-            const Light* light = manager.GetLight(handle);
-            if (!light) continue;
-
-            ImGui::PushID(static_cast<int>(handle.index));
-
-            // 無効ライトはラベルを暗くして状態を示す
-            if (!light->enabled) {
-                ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyle().Colors[ImGuiCol_TextDisabled]);
-            }
-            char label[96];
-            snprintf(label, sizeof(label), "%s  [%s]", light->name.c_str(), GetTypeLabel(light->type));
-            if (ImGui::Selectable(label, handle == selectedLight_)) {
-                selectedLight_ = handle;
-                clicked = true;
-            }
-            if (!light->enabled) {
-                ImGui::PopStyleColor();
-            }
-
-            ImGui::PopID();
-        }
-        return clicked;
-#else
-        (void)manager;
-        return false;
-#endif
-    }
-
-    // ==================== Inspector ====================
-
-    void LightDebugVisualizer::DrawImGui(LightManager& manager)
-    {
-#ifdef USE_IMGUI
-        if (manager.GetLight(selectedLight_)) {
-            DrawSelectedLightInspector(manager);
-        } else {
-            DrawOverview(manager);
-        }
-#else
-        (void)manager;
-#endif
-    }
-
-    void LightDebugVisualizer::DrawOverview(LightManager& manager)
-    {
-#ifdef USE_IMGUI
-        // ── 概要 ──
-        {
-            uint32_t total = 0;
-            constexpr LightType kTypes[] = {
-                LightType::Directional, LightType::Point, LightType::Spot, LightType::Area
-            };
-            for (LightType t : kTypes) {
-                total += manager.GetLightCount(t);
-            }
-            const uint32_t totalMax = LightManager::MAX_TOTAL_LIGHTS;
-
-            float fraction = static_cast<float>(total) / totalMax;
-            char overlay[32];
-            snprintf(overlay, sizeof(overlay), "%u / %u", total, totalMax);
-            ImGui::ProgressBar(fraction, ImVec2(-1, 0), overlay);
-
-            UI::Widgets::ToggleSwitch("デバッグ可視化", &enableVisualization_);
-
-            auto setAllEnabled = [&](bool enabled) {
-                manager.ForEachLight([enabled](LightHandle, Light& l) { l.enabled = enabled; });
-            };
-            if (ImGui::SmallButton("全て有効")) setAllEnabled(true);
-            UI::SameLine();
-            if (ImGui::SmallButton("全て無効")) setAllEnabled(false);
-        }
-
-        UI::Spacing();
-
-        // ── ライト追加（追加後は新しいライトを選択して即編集に入る） ──
-        {
-            constexpr LightType kTypes[] = {
-                LightType::Directional, LightType::Point, LightType::Spot, LightType::Area
-            };
-            bool first = true;
-            for (LightType t : kTypes) {
-                if (!first) UI::SameLine();
-                first = false;
-
-                const bool full = manager.GetLightCount(t) >= LightManager::GetMaxLightCount(t);
-                char label[32];
-                snprintf(label, sizeof(label), "+ %s", GetTypeLabel(t));
-                ImGui::BeginDisabled(full);
-                if (ImGui::SmallButton(label)) {
-                    LightHandle created = manager.CreateLight(t);
-                    if (created.IsValid()) {
-                        selectedLight_ = created;
-                    }
-                }
-                ImGui::EndDisabled();
-            }
-        }
-
-        UI::Spacing();
-        UI::Hint("Hierarchy の Environment > Lighting からライトを選択して編集");
-#else
-        (void)manager;
-#endif
-    }
-
-    void LightDebugVisualizer::DrawSelectedLightInspector(LightManager& manager)
-    {
-#ifdef USE_IMGUI
-        Light* light = manager.GetLight(selectedLight_);
-        if (!light) return;
-
-        // ── ヘッダー（有効トグル＋名前＋種類） ──
-        UI::Widgets::ToggleSwitch("##en", &light->enabled);
-        UI::SameLine();
-        char nameBuf[64];
-        snprintf(nameBuf, sizeof(nameBuf), "%s", light->name.c_str());
-        if (UI::InputText("##name", nameBuf, sizeof(nameBuf))) {
-            light->name = nameBuf;
-        }
-        UI::HintF("種類: %s", GetTypeLabel(light->type));
-
-        UI::Spacing();
-        DrawLightProperties(*light);
-
-        // ── 操作 ──
-        UI::Spacing();
-        UI::Separator();
-        if (ImGui::SmallButton("複製")) {
-            const Light srcCopy = *light;
-            LightHandle newHandle = manager.CreateLight(srcCopy.type, srcCopy.name + " Copy");
-            if (Light* dst = manager.GetLight(newHandle)) {
-                const std::string newName = dst->name;
-                *dst = srcCopy;
-                dst->name = newName;
-                // 太陽・月の役割は複製しない（大気の光源が二重にならないように）
-                dst->isAtmosphereSun = false;
-                dst->isAtmosphereMoon = false;
-                selectedLight_ = newHandle;
-            }
-        }
-        UI::SameLine();
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.15f, 0.15f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.2f, 0.2f, 1.0f));
-        if (ImGui::SmallButton("削除")) {
-            manager.DestroyLight(selectedLight_);
-            selectedLight_ = {};
-        }
-        ImGui::PopStyleColor(2);
-#else
-        (void)manager;
-#endif
-    }
-
-    void LightDebugVisualizer::DrawLightProperties(Light& light)
-    {
-#ifdef USE_IMGUI
-        // 物理量プリセットボタン列（現実の光源の目安値。対数スライダーの補助）
-        auto drawPresets = [](float& value, std::initializer_list<std::pair<const char*, float>> presets) {
-            bool first = true;
-            for (const auto& [label, preset] : presets) {
-                if (!first) UI::SameLine();
-                first = false;
-                if (ImGui::SmallButton(label)) {
-                    value = preset;
-                }
-            }
-        };
-
-        UI::ColorEdit3("色", light.color);
-
-        switch (light.type) {
-        case LightType::Directional:
-            UI::DragVec3("方向", light.direction, 0.01f, -1.0f, 1.0f);
-            ImGui::SliderFloat("照度 [lx]", &light.intensity, 0.0f, 150000.0f, "%.0f",
-                ImGuiSliderFlags_Logarithmic);
-            drawPresets(light.intensity, {
-                { "快晴 100k", 100000.0f }, { "薄曇り 30k", 30000.0f },
-                { "曇天 10k", 10000.0f }, { "夕暮れ 500", 500.0f } });
-            UI::DragVec3("位置（ギズモ表示用）", light.position, 0.1f, -50.0f, 50.0f);
-            UI::Hint("平行光なので位置は明るさに影響しません（ギズモの表示位置のみ）");
-            if (ImGui::SmallButton("方向を正規化")) {
-                light.direction = CoreEngine::Normalize(light.direction);
-            }
-            ImGui::Checkbox("大気の太陽", &light.isAtmosphereSun);
-            UI::SameLine();
-            ImGui::Checkbox("大気の月", &light.isAtmosphereMoon);
-            if (light.isAtmosphereSun || light.isAtmosphereMoon) {
-                UI::DragFloat("空の明るさ（散乱スケール）", light.atmosphereIntensity, 0.1f, 0.0f, 100.0f);
-                UI::Hint("空・雲の明るさ（無次元、太陽の目安 20）。0 = 照度から自動換算。\n"
-                         "方向とこの値は Sky Atmosphere エディタからも操作できます（同じライトを編集）");
-            }
-            break;
-
-        case LightType::Point:
-            UI::DragVec3("位置", light.position, 0.1f, -50.0f, 50.0f);
-            ImGui::SliderFloat("光度 [cd]", &light.intensity, 0.0f, 1000000.0f, "%.0f",
-                ImGuiSliderFlags_Logarithmic);
-            drawPresets(light.intensity, {
-                { "ろうそく 1", 1.0f }, { "電球 100", 100.0f },
-                { "街灯 1k", 1000.0f }, { "投光器 100k", 100000.0f } });
-            UI::DragFloat("到達距離 [m]", light.range, 0.1f, 0.1f, 200.0f);
-            UI::HintF("参考: 3m 先の照度 %.0f lx（快晴の太陽 = 100,000 lx）。\n"
-                      "昼シーンでは太陽より十分明るくないと視認できません", light.intensity / 9.0f);
-            break;
-
-        case LightType::Spot:
-            UI::DragVec3("位置", light.position, 0.1f, -50.0f, 50.0f);
-            UI::DragVec3("方向", light.direction, 0.01f, -1.0f, 1.0f);
-            ImGui::SliderFloat("光度 [cd]", &light.intensity, 0.0f, 1000000.0f, "%.0f",
-                ImGuiSliderFlags_Logarithmic);
-            drawPresets(light.intensity, {
-                { "懐中電灯 300", 300.0f }, { "車のHID 20k", 20000.0f },
-                { "サーチライト 100k", 100000.0f } });
-            UI::DragFloat("到達距離 [m]", light.range, 0.1f, 0.1f, 200.0f);
-            if (UI::SliderFloat("外角 [deg]", light.outerConeAngleDeg, 1.0f, 89.0f)) {
-                light.innerConeAngleDeg = std::min(light.innerConeAngleDeg, light.outerConeAngleDeg);
-            }
-            if (UI::SliderFloat("減衰開始角 [deg]", light.innerConeAngleDeg, 0.0f, 89.0f)) {
-                light.outerConeAngleDeg = std::max(light.outerConeAngleDeg, light.innerConeAngleDeg);
-            }
-            UI::HintF("参考: 3m 先の照度 %.0f lx（快晴の太陽 = 100,000 lx）", light.intensity / 9.0f);
-            if (ImGui::SmallButton("方向を正規化")) {
-                light.direction = CoreEngine::Normalize(light.direction);
-            }
-            break;
-
-        case LightType::Area:
-            UI::DragVec3("位置", light.position, 0.1f, -50.0f, 50.0f);
-            UI::DragVec3("法線", light.direction, 0.01f, -1.0f, 1.0f);
-            ImGui::SliderFloat("輝度 [nt]", &light.intensity, 0.0f, 100000.0f, "%.0f",
-                ImGuiSliderFlags_Logarithmic);
-            drawPresets(light.intensity, {
-                { "液晶画面 300", 300.0f }, { "照明パネル 8k", 8000.0f },
-                { "曇り空 25k", 25000.0f } });
-            UI::DragFloat("幅 [m]", light.areaWidth, 0.1f, 0.1f, 20.0f);
-            UI::DragFloat("高さ [m]", light.areaHeight, 0.1f, 0.1f, 20.0f);
-            UI::DragFloat("到達距離 [m]", light.range, 0.1f, 0.1f, 100.0f);
-            if (ImGui::SmallButton("法線を正規化")) {
-                light.direction = CoreEngine::Normalize(light.direction);
-            }
-            break;
-        }
-#else
-        (void)light;
-#endif
-    }
-
     // ==================== デバッグ可視化（UE 風ギズモ） ====================
     // 方針: 光源本体 = 小さなワイヤ球、方向 = 矢じり付き矢印、範囲 = ワイヤ形状。
     //       選択中は不透明で全要素、非選択は半透明でマーカー＋方向のみの簡略表示。
 
     void LightDebugVisualizer::DrawVisualization(const Light& light, bool selected)
     {
-#ifdef USE_IMGUI
-        if (!enableVisualization_ || !light.enabled) {
+#ifdef CORE_EDITOR
+        if (!light.enabled) {
             return;
         }
 
@@ -378,7 +102,7 @@ namespace CoreEngine
     {
         (void)light;
         (void)selected;
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         auto& lm = LineManager::GetInstance();
         const Vector3 color = light.color;
         const float alpha = selected ? 1.0f : 0.45f;
@@ -420,7 +144,7 @@ namespace CoreEngine
     {
         (void)light;
         (void)selected;
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         auto& lm = LineManager::GetInstance();
         const Vector3 color = light.color;
 
@@ -439,7 +163,7 @@ namespace CoreEngine
     {
         (void)light;
         (void)selected;
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         auto& lm = LineManager::GetInstance();
         const Vector3 color = light.color;
         const float alpha = selected ? 1.0f : 0.45f;
@@ -478,7 +202,7 @@ namespace CoreEngine
     {
         (void)light;
         (void)selected;
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         auto& lm = LineManager::GetInstance();
         const Vector3 color = light.color;
         const float alpha = selected ? 1.0f : 0.45f;

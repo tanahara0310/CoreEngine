@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "EngineProfileScope.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "../EngineSystem.h"
 #include "DebugSubsystem.h"
@@ -31,4 +31,4 @@ namespace CoreEngine
     }
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

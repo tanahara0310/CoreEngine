@@ -1,10 +1,11 @@
 #include "pch.h"
 #include "CVarPanel.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include "Utility/CVar/CVar.h"
 #include "Utility/CVar/CVarRegistry.h"
+#include "Utility/CVar/CVarScope.h"
 #include "Utility/CVar/CVarUndoStack.h"
 #include "Editor/ImGui/Wrappers/ImGuiInput.h"
 #include "Editor/ImGui/Wrappers/ImGuiLayout.h"
@@ -117,8 +118,9 @@ namespace CoreEngine
             // 分からないため、既定値をここで常に確認できるようにする
             ImGui::Separator();
             ImGui::TextDisabled("既定値: %s", cvar->DefaultToString().c_str());
-            if (HasFlag(cvar->GetFlags(), CVarFlags::Mirrored)) {
-                ImGui::TextDisabled("ミラー値（実体が毎フレーム上書き。Undo 対象外）");
+            // 同じ項目でもシーンごとに違う値になりうるので、持ち主をここで知らせる
+            if (CVarScopes::IsSceneOwned(cvar->GetName())) {
+                ImGui::TextDisabled("保存先: 今のシーン（_environment.json）");
             }
             // スライダーから移行したので、微調整・直接入力のやり方をここで案内する
             if (const char* hint = DragHint(cvar->GetType())) {
@@ -145,35 +147,6 @@ namespace CoreEngine
             return changed;
         }
 
-        /// @brief Ctrl+Z / Ctrl+Y による CVar の Undo / Redo
-        /// @details CVar ツリーを含むウィンドウにフォーカスがあるときだけ反応する
-        ///          （シーン編集など他系統の Undo と衝突させないためのスコープ）。
-        ///          同一フレームに複数の DrawTree が呼ばれても 1 回しか実行しない
-        void HandleUndoShortcuts()
-        {
-            static int lastHandledFrame = -1;
-            const int frame = ImGui::GetFrameCount();
-            if (frame == lastHandledFrame) {
-                return;
-            }
-            if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)) {
-                return;
-            }
-            // テキスト入力中は ImGui 自身の入力 Undo（Ctrl+Z）に譲る
-            if (ImGui::GetIO().WantTextInput) {
-                return;
-            }
-            if (!ImGui::GetIO().KeyCtrl) {
-                return;
-            }
-            if (ImGui::IsKeyPressed(ImGuiKey_Z, false)) {
-                lastHandledFrame = frame;
-                CVarUndoStack::Get().Undo();
-            } else if (ImGui::IsKeyPressed(ImGuiKey_Y, false)) {
-                lastHandledFrame = frame;
-                CVarUndoStack::Get().Redo();
-            }
-        }
     }
 
     float CVarUI::DragSpeed(const CVarRange& range)
@@ -350,9 +323,6 @@ namespace CoreEngine
 
     bool CVarUI::DrawTree(std::string_view prefix)
     {
-        // このツリーを含むウィンドウがフォーカス中なら Ctrl+Z / Ctrl+Y を処理する
-        HandleUndoShortcuts();
-
         std::vector<ICVar*> items = CVarRegistry::Get().GetByPrefix(prefix);
 
         // NoUI（別の UI が担当する項目・コンソール専用）を除外
@@ -366,8 +336,13 @@ namespace CoreEngine
         }
 
         // prefix で絞った場合、その分の階層はツリーに出さない（"r.Vignette" 指定なら
-        // "r" > "Vignette" のノードを重ねて表示しても情報量が無いため）
-        const size_t depth = prefix.empty() ? 0 : SegmentCount(prefix);
+        // "r" > "Vignette" のノードを重ねて表示しても情報量が無いため）。
+        // 末尾の点（"r.Water."＝そのグループだけ）は階層に数えない
+        std::string_view groupPath = prefix;
+        if (!groupPath.empty() && groupPath.back() == '.') {
+            groupPath.remove_suffix(1);
+        }
+        const size_t depth = groupPath.empty() ? 0 : SegmentCount(groupPath);
         return DrawGroup(items, depth);
     }
 
@@ -388,4 +363,4 @@ namespace CoreEngine
 
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

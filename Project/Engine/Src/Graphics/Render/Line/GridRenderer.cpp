@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Editor/Panel/EditorPanelRegistry.h"
 #include "GridRenderer.h"
 #include "Graphics/Render/Line/LineRendererPipeline.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
@@ -13,9 +14,9 @@
 #include <cmath>
 #include <stdexcept>
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "EngineSystem/Subsystem/DebugSubsystem.h"
-#include "Utility/Debug/GameDebugUI.h"
+#include "Editor/ImGui/GameDebugUI.h"
 #include "Editor/ImGui/ImGuiAll.h"
 #endif
 
@@ -23,7 +24,7 @@
 namespace CoreEngine
 {
 namespace {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     /// 設定パネルの編集対象（シーンの寿命に縛られるポインタをラムダに持たせないための
     /// ファイルスコープ変数。CollisionMatrixPanel と同じ流儀）
     GridRenderer* s_activeGrid = nullptr;
@@ -190,7 +191,7 @@ void GridRenderer::SubmitLines(LineRendererPipeline& pipeline, const Camera* cam
                            yAxisColor_, alpha });
 }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 void GridRenderer::EnsureSettingsPanelRegistered(EngineSystem* engine)
 {
     static bool registered = false;
@@ -198,20 +199,18 @@ void GridRenderer::EnsureSettingsPanelRegistered(EngineSystem* engine)
         return;
     }
 
-    auto* debug = engine->GetDebugSubsystem();
-    auto* gameDebugUI = debug ? debug->GetGameDebugUI() : nullptr;
-    if (!gameDebugUI) {
-        return;
-    }
-
     // ドロワーは何もキャプチャしない（ファイルスコープの s_activeGrid を読むだけ）
-    gameDebugUI->RegisterEnginePanel("Grid", [] {
-        if (s_activeGrid) {
-            s_activeGrid->DrawSettingsImGui();
-        } else {
-            ImGui::TextDisabled("(グリッドがありません)");
-        }
-    });
+    Editor::EditorPanelRegistry::Get().Register({
+        .id = "Grid",
+        .placement = Editor::PanelPlacement::SettingsSection,
+        .draw = [] {
+            if (s_activeGrid) {
+                s_activeGrid->DrawSettingsImGui();
+            } else {
+                ImGui::TextDisabled("(グリッドがありません)");
+            }
+        },
+        });
 
     registered = true;
 }
@@ -264,5 +263,5 @@ bool GridRenderer::DrawSettingsImGui()
 
     return changed;
 }
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
 }

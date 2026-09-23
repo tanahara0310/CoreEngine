@@ -26,6 +26,9 @@ public:
     /// @brief マウスの状態を更新
     void Update() override;
 
+    /// @brief 全ボタンを離し、移動量を 0 にする
+    void Reset() override;
+
     /// @brief ボタンが押されているかどうか
     bool IsButtonPressed(MouseButton button) const;
 

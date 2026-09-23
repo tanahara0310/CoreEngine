@@ -1,82 +1,63 @@
 #include "pch.h"
-#ifdef USE_IMGUI
+#include "Editor/Panel/EditorPanelRegistry.h"
+#ifdef CORE_EDITOR
 
 #include "SceneDebugEditor.h"
 #include "EngineSystem/EngineSystem.h"
+#include "EngineSystem/PlaybackState.h"
 #include "Input/InputManager.h"
 #include "Camera/CameraManager.h"
 #include "Camera/CameraSceneStateIO.h"
 #include "Editor/Camera/Module/CameraEditorContext.h"
+#include "Editor/Command/EditorCommandStack.h"
+#include "Editor/Inspector/InspectorRenderer.h"
+#include "Editor/Inspector/ObjectInspector.h"
 #include "GameObject/GameObjectManager.h"
-#include "GameObject/Model/DynamicModelObject.h"
+#include "GameObject/Component/Core/ComponentFactory.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "GameObject/Component/Transform/ITransformSource.h"
+#include "Scene/Scene.h"
+#include "Scene/PrefabSystem.h"
+#include "Scene/SceneManager.h"
 #include "Scene/SceneSaveSystem.h"
+#include "Editor/Command/EditorCommand.h"
+#include "Editor/Scene/EditorSceneAccess.h"
+#include "Editor/Scene/PrefabEditing.h"
 #include "Editor/ImGui/ObjectSelector.h"
+#include "Graphics/Asset/AssetInfo.h"
+#include "Graphics/Asset/AssetRef.h"
+#include "Editor/ImGui/EditorTheme.h"
 #include "Editor/ImGui/ImGuiAll.h"
+#include "Editor/ImGui/Widgets/EditorBars.h"
 #include "Editor/ImGui/Gizmo.h"
-#include "Graphics/Texture/TextureManager.h"
-#include "GameObject/Sprite/SpriteObject.h"
 #include "Math/Geometry/RayCast.h"
 #include "Utility/Logger/Logger.h"
-#include <cctype>
+#include <algorithm>
 #include <filesystem>
 
 namespace
 {
-    /// @brief 名前が " (n)" のコピー接尾辞で終わるか調べ、基底名を返す
-    bool EndsWithUnityCopySuffix(const std::string& name, std::string* outBaseName)
+    /// @brief 選んだ行へ送るのを続けるフレーム数
+    /// @details 一覧の高さが確定するまで待つ。1 フレームだと上限で丸められて届かない。
+    constexpr int kScrollFrames = 3;
+
+    /// @brief トランスフォームとモデルファイルのメッシュ描画を持つ素のオブジェクトを作ってシーンへ登録する
+    /// @return 登録できなければ nullptr
+    CoreEngine::GameObject* CreateModelObject(CoreEngine::GameObjectManager& manager,
+                                              const std::string& name, const std::string& modelPath)
     {
-        if (name.size() < 4 || name.back() != ')') {
-            return false;
+        auto owned = std::make_unique<CoreEngine::GameObject>();
+        owned->SetName(name);
+        CoreEngine::GameObject* object = manager.AddObject(std::move(owned));
+        if (!object) {
+            return nullptr;
         }
-
-        const size_t openParen = name.rfind(" (");
-        if (openParen == std::string::npos || openParen + 3 >= name.size()) {
-            return false;
-        }
-
-        for (size_t i = openParen + 2; i + 1 < name.size(); ++i) {
-            if (!std::isdigit(static_cast<unsigned char>(name[i]))) {
-                return false;
-            }
-        }
-
-        if (outBaseName) {
-            *outBaseName = name.substr(0, openParen);
-        }
-        return true;
-    }
-
-    /// @brief 同名のオブジェクトが既に登録されているか
-    bool HasObjectName(const CoreEngine::GameObjectManager* manager, const std::string& name)
-    {
-        if (!manager) {
-            return false;
-        }
-
-        for (const auto& obj : manager->GetAllObjects()) {
-            if (obj && obj->GetName() == name) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /// @brief Unity 風の重複しないコピー名（"Name (1)"）を作る
-    std::string GenerateUnityStyleCopyName(const CoreEngine::GameObjectManager* manager, const std::string& sourceName)
-    {
-        std::string baseName = sourceName;
-        EndsWithUnityCopySuffix(sourceName, &baseName);
-
-        for (int copyIndex = 1;; ++copyIndex) {
-            const std::string candidate = baseName + " (" + std::to_string(copyIndex) + ")";
-            if (!HasObjectName(manager, candidate)) {
-                return candidate;
-            }
-        }
+        // エディタが作るオブジェクトのコンポーネントとして付ける
+        CoreEngine::ComponentHost::DataAttachScope dataScope(*object);
+        object->AddComponent<CoreEngine::TransformComponent>();
+        object->AddComponent<CoreEngine::MeshRendererComponent>(modelPath);
+        return object;
     }
 
     /// @brief 動的生成モデルへ既定のマテリアル上書きを適用する
@@ -106,6 +87,9 @@ namespace CoreEngine
         cameraManager_ = camMgr;
         saveSystem_ = saveSystem;
 
+        // 読み込んだ直後のシーンは保存済みとして扱う
+        savedRevision_ = Editor::EditorCommandStack::Get().GetSceneRevision();
+
         // カメラエディター側で追従対象を参照できるよう、オブジェクトマネージャーを注入する。
         if (cameraManager_) {
             cameraManager_->SetDebugGameObjectManager(gameObjectManager_);
@@ -119,18 +103,14 @@ namespace CoreEngine
             ShowSaveNotification(msg);
             });
 
-        // 個別オブジェクト保存コールバック
-        mgr->SetOnSaveRequestCallback([this](GameObject* obj) {
-            saveSystem_->SaveObject(obj);
-            });
-
-        // ギズモ変更時コールバックを設定
+        // ギズモで動かし終えたら、移動を Undo に積む
         objectSelector_.SetOnGizmoEditCommitted([this](
             GameObject* obj,
             const Vector3& tBefore, const Vector3& rBefore,
             const Vector3& sBefore, bool aBefore) {
                 if (!obj) return;
                 TransformRecord record;
+                record.objectId = obj->GetObjectId();
                 record.objectName = obj->GetName();
                 record.translateBefore = tBefore;
                 record.rotateBefore = rBefore;
@@ -145,54 +125,39 @@ namespace CoreEngine
                 undoRedoHistory_.Push(record);
             });
 
-        // Undo/Redo 記録（ImGui 操作完了時）
-        mgr->SetEditCommitCallback([this](
-            GameObject* obj,
-            const Vector3& tBefore, const Vector3& rBefore,
-            const Vector3& sBefore, bool aBefore) {
-                if (!obj) return;
-                TransformRecord record;
-                record.objectName = obj->GetName();
-                record.translateBefore = tBefore;
-                record.rotateBefore = rBefore;
-                record.scaleBefore = sBefore;
-                record.activeBefore = aBefore;
-                if (auto* src = obj->GetComponent<ITransformSource>()) {
-                    record.translateAfter = src->Translate();
-                    record.rotateAfter = src->Rotate();
-                    record.scaleAfter = src->Scale();
-                }
-                record.activeAfter = obj->IsActive();
-                undoRedoHistory_.Push(record);
-            });
-
-        // Undo でオブジェクトが削除される直前に ObjectSelector の選択を解除する。
-        // 解除しないと削除済みオブジェクトへのダングリングポインタでクラッシュする。
-        undoRedoHistory_.SetOnBeforeDestroyCallback([this](const std::string& objectName) {
-            if (objectSelector_.GetSelectedObject() &&
-                objectSelector_.GetSelectedObject()->GetName() == objectName) {
-                objectSelector_.SelectObject(nullptr);
-            }
-        });
-
-        // Hierarchy/Inspectorパネル用の描画コールバックをGameDebugUIに登録
+        // Hierarchy / Inspector の中身とカメラエディタをパネルとして登録する
         if (auto* gameDebugUI = engine_->GetDebugSubsystem()->GetGameDebugUI()) {
             gameDebugUI->SetSceneDebugEditor(this);
-            if (auto* dockingUI = engine_->GetDebugSubsystem()->GetDockingUI()) {
-                dockingUI->SetSceneDebugEditor(this);
-            }
-            gameDebugUI->SetHierarchyContentDrawer([this]() {
-                DrawHierarchyContent();
+        }
+        if (auto* dockingUI = engine_->GetDebugSubsystem()->GetDockingUI()) {
+            dockingUI->SetSceneDebugEditor(this);
+        }
+
+        auto& panels = Editor::EditorPanelRegistry::Get();
+        panels.Register({
+            .id = "Hierarchy Content",
+            .placement = Editor::PanelPlacement::HierarchyContent,
+            .owner = this,
+            .draw = [this]() { DrawHierarchyContent(); },
             });
-            gameDebugUI->SetInspectorCameraDrawer([this]() {
+        panels.Register({
+            .id = "Inspector Object",
+            .placement = Editor::PanelPlacement::InspectorObject,
+            .owner = this,
+            .draw = [this]() { DrawInspectorContent(); },
+            });
+        // Camera Editor は単独ウィンドウ。エディタ視点カメラの設定なので Editor グループへ
+        panels.Register({
+            .id = "Camera Editor",
+            .placement = Editor::PanelPlacement::Window,
+            .group = Editor::PanelGroup::Editor,
+            .owner = this,
+            .draw = [this]() {
                 if (cameraManager_) {
                     cameraManager_->DrawImGuiContent();
                 }
+            },
             });
-            gameDebugUI->SetInspectorObjectDrawer([this]() {
-                DrawInspectorContent();
-            });
-        }
     }
 
     void SceneDebugEditor::DetachFromEngineUI()
@@ -208,18 +173,22 @@ namespace CoreEngine
 
         if (auto* gameDebugUI = debug->GetGameDebugUI()) {
             gameDebugUI->SetSceneDebugEditor(nullptr);
-            gameDebugUI->SetHierarchyContentDrawer(nullptr);
-            gameDebugUI->SetInspectorCameraDrawer(nullptr);
-            gameDebugUI->SetInspectorObjectDrawer(nullptr);
         }
         if (auto* dockingUI = debug->GetDockingUI()) {
             dockingUI->SetSceneDebugEditor(nullptr);
         }
+
+        // 解放済みの this を描かないよう、自分が登録したパネルを外す
+        auto& panels = Editor::EditorPanelRegistry::Get();
+        panels.Unregister("Hierarchy Content", this);
+        panels.Unregister("Inspector Object", this);
+        panels.Unregister("Camera Editor", this);
     }
 
     void SceneDebugEditor::ClearHistory()
     {
         undoRedoHistory_.Clear();
+        savedRevision_ = Editor::EditorCommandStack::Get().GetSceneRevision();
     }
 
     void SceneDebugEditor::Update()
@@ -227,6 +196,8 @@ namespace CoreEngine
         // デバッグ / リリースカメラの切り替え
         if (auto* inputManager = engine_->GetService<InputManager>()) {
             auto& input = inputManager->GetQuery();
+            // ギズモの切り替えは割り当てを引くので、問い合わせ先を渡しておく
+            objectSelector_.SetInputQuery(&input);
             // 「どちらの視点で覗くか」はフラグ 1 つ。以前は アクティブカメラ名 と
             // Gameビュー上書き名 の 2 状態を両方更新する必要があり、片方だけ変える UI が
             // あったせいで描画とギズモが別カメラを見る状態が起きていた。
@@ -242,33 +213,27 @@ namespace CoreEngine
             cameraManager_->UpdateDebugModules();
         }
 
-        // Ctrl+Z / Ctrl+Y によるキーボードショートカット（ウィンドウ外でも反応）。
-        // RouteGlobal にしてあるので、カメラエディタのように自分で Undo を持つ
-        // ウィンドウにフォーカスがあるときはそちらへ譲る。素の IsKeyChordPressed だと
-        // 両方が同じフレームで戻ってしまう。
-        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Z, ImGuiInputFlags_RouteGlobal)) {
-            undoRedoHistory_.Undo(gameObjectManager_);
-        }
-        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Y, ImGuiInputFlags_RouteGlobal)) {
-            undoRedoHistory_.Redo(gameObjectManager_);
-        }
-
-        // Ctrl+S でシーン全体保存
-        if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_S)) {
-            if (!saveSystem_->GetSceneName().empty()) {
-                saveSystem_->SaveScene(gameObjectManager_);
-
-                // カメラの構図もシーンの一部として一緒に保存する。
-                // これが無いと、エディタで詰めた画がアプリを閉じるたびに消える。
-                if (cameraManager_) {
-                    CameraSceneStateIO::Save(saveSystem_->GetSceneName(), *cameraManager_);
-                }
+        // Ctrl+Z / Ctrl+Y はここが唯一の受け口。オブジェクト・CVar・カメラ・ステージの
+        // 操作はすべて EditorCommandStack の 1 本に積まれている。
+        // テキスト入力中は ImGui 自身の入力 Undo に譲る。
+        if (!ImGui::GetIO().WantTextInput) {
+            if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Z, ImGuiInputFlags_RouteGlobal)) {
+                undoRedoHistory_.Undo();
+            }
+            if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Y, ImGuiInputFlags_RouteGlobal)) {
+                undoRedoHistory_.Redo();
             }
         }
 
-        // Ctrl+C で選択中オブジェクトをコピー（複製）
-        if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_C)) {
-            CopySelectedObject();
+        // Ctrl+S でシーン全体保存
+        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S, ImGuiInputFlags_RouteGlobal)) {
+            SaveScene();
+        }
+
+        // Ctrl+C でも選択中のオブジェクトを複製する（Ctrl+D と同じ）
+        if (!ImGui::GetIO().WantTextInput &&
+            ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_C, ImGuiInputFlags_RouteGlobal)) {
+            DuplicateSelectedObject();
         }
 
         // 保存通知オーバーレイの描画
@@ -284,6 +249,8 @@ namespace CoreEngine
             return;
         }
 
+        HandleSelectionShortcuts();
+
         if (viewportSize.x <= 0.0f || viewportSize.y <= 0.0f) {
             return;
         }
@@ -298,6 +265,17 @@ namespace CoreEngine
 
         const Camera* camera3D = cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera3D) : nullptr;
         const Camera* camera2D = cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera2D) : nullptr;
+
+        // 画面の中を指しているときだけ受ける（他の窓の操作でカメラが飛ばないように）
+        if (isViewportHovered) {
+            if (auto* const inputManager = engine_->GetService<InputManager>()) {
+                const InputAction focus = InputActionFromString("EditorFocusSelection");
+                if (focus != InputAction::Invalid
+                    && inputManager->GetQuery().IsActionTriggered(focus)) {
+                    FocusOnSelection();
+                }
+            }
+        }
 
         if (camera3D) {
             objectSelector_.Update(gameObjectManager_, camera3D, normalizedMousePos, isViewportHovered);
@@ -335,15 +313,23 @@ namespace CoreEngine
             return false;
         }
 
+        const ImVec2 mousePos = ImGui::GetMousePos();
+        const Vector2 normalizedDropPos(
+            std::clamp((mousePos.x - viewportPos.x) / viewportSize.x, 0.0f, 1.0f),
+            std::clamp((mousePos.y - viewportPos.y) / viewportSize.y, 0.0f, 1.0f));
+
         bool accepted = false;
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_FILE")) {
             const char* droppedFilename = static_cast<const char*>(payload->Data);
             if (droppedFilename && droppedFilename[0] != '\0') {
-                const ImVec2 mousePos = ImGui::GetMousePos();
-                const Vector2 normalizedDropPos(
-                    std::clamp((mousePos.x - viewportPos.x) / viewportSize.x, 0.0f, 1.0f),
-                    std::clamp((mousePos.y - viewportPos.y) / viewportSize.y, 0.0f, 1.0f));
                 SpawnModelFromFile(droppedFilename, &normalizedDropPos);
+                accepted = true;
+            }
+        }
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PREFAB_FILE")) {
+            const char* droppedFilename = static_cast<const char*>(payload->Data);
+            if (droppedFilename && droppedFilename[0] != '\0') {
+                SpawnPrefabFromFile(droppedFilename, &normalizedDropPos);
                 accepted = true;
             }
         }
@@ -362,95 +348,259 @@ namespace CoreEngine
         objectSelector_.SetGizmoMode(mode);
     }
 
+    bool SceneDebugEditor::SaveScene()
+    {
+        if (!saveSystem_ || saveSystem_->GetSceneName().empty()) {
+            return false;
+        }
+        if (RefuseSaveWhilePlaying()) {
+            return false;
+        }
+
+        saveSystem_->SaveScene(gameObjectManager_);
+
+        // Feature・既定の床・衝突マトリクスもシーンの一部として書く
+        SceneManager* const sceneManager = engine_ ? engine_->GetSceneManager() : nullptr;
+        if (auto* const scene = sceneManager ? dynamic_cast<Scene*>(sceneManager->GetCurrentScene()) : nullptr) {
+            scene->SaveSceneSettings();
+        }
+
+        // カメラの構図もシーンの一部として一緒に保存する。
+        // これが無いと、エディタで詰めた画がアプリを閉じるたびに消える。
+        if (cameraManager_) {
+            CameraSceneStateIO::Save(saveSystem_->GetSceneName(), *cameraManager_);
+        }
+
+        savedRevision_ = Editor::EditorCommandStack::Get().GetSceneRevision();
+        dirtyWithoutEdits_ = false;
+        return true;
+    }
+
+    bool SceneDebugEditor::IsSceneDirty() const
+    {
+        return dirtyWithoutEdits_ || Editor::EditorCommandStack::Get().GetSceneRevision() != savedRevision_;
+    }
+
+    bool SceneDebugEditor::RefuseSaveWhilePlaying() const
+    {
+        if (!PlaybackStateManager::GetInstance().IsInPlayMode()) {
+            return false;
+        }
+
+        constexpr const char* kMessage = "再生中は保存できません。停止してから保存してください";
+        if (DockingUI* const dockingUI = engine_ ? engine_->GetDebugSubsystem()->GetDockingUI() : nullptr) {
+            dockingUI->ShowStatusMessage(kMessage, Editor::Theme::kWarn);
+        }
+        Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System, "SceneDebugEditor: {}", kMessage);
+        return true;
+    }
+
+    std::string SceneDebugEditor::GetSceneName() const
+    {
+        return saveSystem_ ? saveSystem_->GetSceneName() : std::string{};
+    }
+
     void SceneDebugEditor::DrawHierarchyContent()
     {
-        // ツールバー：保存 / Undo / Redo
-        ImGui::BeginDisabled(saveSystem_->GetSceneName().empty());
-        if (ImGui::Button("Save Scene")) {
-            saveSystem_->SaveScene(gameObjectManager_);
+        // ビューポートで選び直したときだけ、その行まで送る
+        //（一覧の行をクリックしたときは送らない。すでに見えているので跳ねるだけになる）
+        if (objectSelector_.ConsumeViewportSelection()) {
+            scrollTarget_ = objectSelector_.GetSelectedObject();
+            scrollFramesLeft_ = kScrollFrames;
         }
-        ImGui::EndDisabled();
-        UI::SameLine();
-        ImGui::BeginDisabled(!undoRedoHistory_.CanUndo());
-        if (ImGui::Button("Undo")) {
-            undoRedoHistory_.Undo(gameObjectManager_);
-        }
-        ImGui::EndDisabled();
-        UI::SameLine();
-        {
-            UI::Scope::DisabledScope ds(!undoRedoHistory_.CanRedo());
-            if (ImGui::Button("Redo")) {
-                undoRedoHistory_.Redo(gameObjectManager_);
-            }
-        }
-        UI::SameLine();
-        UI::HintF("(%d/%d)",
-            undoRedoHistory_.GetUndoCount(),
-            undoRedoHistory_.GetUndoCount() + undoRedoHistory_.GetRedoCount());
-        UI::Separator();
 
-        const auto& objects = gameObjectManager_->GetAllObjects();
-        UI::Separator();
+        BuildHierarchyLinks();
 
         if (auto child = UI::Scope::ChildScope("##HierarchyObjectList")) {
-            // ── オブジェクトアイコンの初回ロード ──
-            static D3D12_GPU_DESCRIPTOR_HANDLE sObjIconHandle{};
-            static bool sObjIconLoaded = false;
-            if (!sObjIconLoaded && TextureManager::GetInstance().IsInitialized()) {
-                sObjIconHandle = TextureManager::GetInstance().Load("obj.png").gpuHandle;
-                sObjIconLoaded = true;
+            // シーンの名前の枝（保存していない変更があれば * を付ける）
+            std::string sceneLabel = GetSceneName();
+            if (sceneLabel.empty()) {
+                sceneLabel = "Scene";
             }
-
-            for (const auto& obj : objects) {
-                if (!obj) continue;
-
-                const bool isSelected = (objectSelector_.GetSelectedObject() == obj.get());
-
-                // 状態に応じた文字色
-                int colorsPushed = 0;
-                if (obj->IsMarkedForDestroy()) {
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.4f, 0.4f, 1.0f));
-                    ++colorsPushed;
-                } else if (!obj->IsActive()) {
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.55f, 0.55f, 0.55f, 1.0f));
-                    ++colorsPushed;
+            if (IsSceneDirty()) {
+                sceneLabel += " *";
+            }
+            if (ImGui::TreeNodeEx("##sceneRoot", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth,
+                    "%s", sceneLabel.c_str())) {
+                for (GameObject* const root : hierarchyRoots_) {
+                    DrawHierarchyRow(*root);
                 }
+                ImGui::TreePop();
+            }
+        }
 
-                // アイコンを表示
-                if (sObjIconLoaded) {
-                    ImGui::ImageWithBg((ImTextureID)sObjIconHandle.ptr, ImVec2(14, 14),
-                        ImVec2(0, 0), ImVec2(1, 1),
-                        ImVec4(0, 0, 0, 0),
-                        ImVec4(0.96f, 0.65f, 0.14f, 1.0f));
-                    ImGui::SameLine(0.0f, 4.0f);
-                }
+        // 送り終えたら手放す。見つからなかったとき（消えた・親が無効など）も持ち越さない
+        if (scrollFramesLeft_ > 0) {
+            --scrollFramesLeft_;
+        }
+        if (scrollFramesLeft_ <= 0) {
+            scrollTarget_ = nullptr;
+        }
+    }
 
-                const char* displayName = obj->GetDisplayName();
+    void SceneDebugEditor::BuildHierarchyLinks()
+    {
+        hierarchyChildren_.clear();
+        hierarchyRoots_.clear();
+        if (!gameObjectManager_) {
+            return;
+        }
 
-                char itemId[256];
-                snprintf(itemId, sizeof(itemId), "%s##obj_%p", displayName, (void*)obj.get());
-
-                if (ImGui::Selectable(itemId, isSelected)) {
-                    objectSelector_.SelectObject(obj.get());
-                }
-
-                if (colorsPushed > 0) {
-                    ImGui::PopStyleColor(colorsPushed);
-                }
+        for (const auto& object : gameObjectManager_->GetAllObjects()) {
+            if (!object) {
+                continue;
+            }
+            const TransformComponent* const transform = object->GetComponent<TransformComponent>();
+            const TransformComponent* const parent = transform ? transform->GetParent() : nullptr;
+            GameObject* const parentObject = parent ? parent->GetOwner() : nullptr;
+            // 親がいてもシーンから消えていれば根として出す（迷子にしない）
+            if (parentObject && parentObject != object.get()) {
+                hierarchyChildren_[parentObject].push_back(object.get());
+            }
+            else {
+                hierarchyRoots_.push_back(object.get());
             }
         }
     }
 
+    bool SceneDebugEditor::IsAncestorOf(const GameObject& object, const GameObject& descendant) const
+    {
+        const TransformComponent* transform = descendant.GetComponent<TransformComponent>();
+        for (int depth = 0; transform && depth < 64; ++depth) {
+            const TransformComponent* const parent = transform->GetParent();
+            if (!parent) {
+                return false;
+            }
+            if (parent->GetOwner() == &object) {
+                return true;
+            }
+            transform = parent;
+        }
+        return false;
+    }
+
+    void SceneDebugEditor::DrawHierarchyRow(GameObject& object)
+    {
+        namespace Theme = Editor::Theme;
+
+        const bool isSelected = objectSelector_.GetSelectedObject() == &object;
+        const bool isPrefab = object.IsPrefabInstance();
+        const ComponentFactory& factory = ComponentFactory::Get();
+        const bool hasScript = std::any_of(object.GetAllComponents().begin(), object.GetAllComponents().end(),
+            [&factory](const auto& component) {
+                return component && factory.IsRuntimeType(component->GetTypeName());
+            });
+
+        const auto found = hierarchyChildren_.find(&object);
+        const bool hasChildren = (found != hierarchyChildren_.end()) && !found->second.empty();
+
+        ImGui::PushID(&object);
+
+        // 送り先が閉じた親の中にいると行そのものが描かれない。先に道を開けておく
+        if (hasChildren && scrollTarget_ && IsAncestorOf(object, *scrollTarget_)) {
+            ImGui::SetNextItemOpen(true);
+        }
+
+        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth
+            | ImGuiTreeNodeFlags_OpenOnArrow
+            | ImGuiTreeNodeFlags_FramePadding;
+        if (isSelected) {
+            flags |= ImGuiTreeNodeFlags_Selected;
+        }
+        if (!hasChildren) {
+            // 子が無くても矢印の幅は空ける（名前の頭が揃う）
+            flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+        }
+
+        const ImVec2 rowMin = ImGui::GetCursorScreenPos();
+        const float rowHeight = ImGui::GetTextLineHeight();
+        const bool open = ImGui::TreeNodeEx("##row", flags, "%s", "");
+        // 矢印を押したときは開閉だけ。選び直さない
+        if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
+            objectSelector_.SelectObject(&object);
+        }
+        const float rowRight = ImGui::GetItemRectMax().x;
+
+        if (scrollTarget_ == &object && scrollFramesLeft_ > 0) {
+            ImGui::SetScrollHereY(0.5f);
+        }
+
+        // インスペクタの ObjectRef 欄へ落とせるように ID を運ぶ
+        if (ImGui::BeginDragDropSource()) {
+            const std::uint64_t idValue = object.GetObjectId().value;
+            ImGui::SetDragDropPayload(InspectorRenderer::kObjectDragPayload, &idValue, sizeof(idValue));
+            ImGui::TextUnformatted(object.GetDisplayName());
+            ImGui::EndDragDropSource();
+        }
+        DrawObjectContextMenu(object);
+
+        // 状態に応じた色（破棄待ちは赤、非アクティブは淡く）
+        ImVec4 textColor = Theme::kText;
+        ImVec4 glyphColor = isPrefab ? Theme::kAccentHover : Theme::kTextDim;
+        if (object.IsMarkedForDestroy()) {
+            textColor = glyphColor = Theme::kError;
+        } else if (!object.IsActive()) {
+            textColor = glyphColor = Theme::kTextMute;
+        }
+
+        // 種類の記号（プレハブから作ったものは ◈）
+        ImDrawList* const drawList = ImGui::GetWindowDrawList();
+        const char* const glyph = isPrefab ? "◈" : "◆";
+        // 矢印の分だけ右へずらす（子の有無で名前の頭がずれないように）
+        const ImVec2 glyphPos(rowMin.x + ImGui::GetTreeNodeToLabelSpacing(), rowMin.y);
+        drawList->AddText(glyphPos, ImGui::GetColorU32(glyphColor), glyph);
+        const float left = glyphPos.x + ImGui::CalcTextSize(glyph).x + 6.0f;
+
+        // 右端の札（名前の場所が無くなるほど狭いときは出さない）
+        float right = rowRight - 4.0f;
+        const auto placeTag = [&](const char* text, const ImVec4& color) {
+            const ImVec2 size = UI::Bar::TagSize(text);
+            if (size.x > (right - left) * 0.5f) {
+                return;
+            }
+            right -= size.x;
+            UI::Bar::DrawTag(drawList, ImVec2(right, rowMin.y + (rowHeight - size.y) * 0.5f), text, color);
+            right -= 4.0f;
+        };
+        if (isPrefab) {
+            placeTag("Prefab", Theme::kAccentHover);
+        }
+        if (hasScript) {
+            placeTag("AS", Theme::kScript);
+        }
+
+        // 名前（入りきらなければ省略記号で詰める）
+        UI::Bar::EllipsizedText(drawList, ImVec2(left, rowMin.y), ImVec2(right, rowMin.y + rowHeight),
+            object.GetDisplayName(), textColor);
+
+        // 子を続けて描く（開いているときだけ）
+        if (hasChildren && open) {
+            for (GameObject* const child : found->second) {
+                if (child) {
+                    DrawHierarchyRow(*child);
+                }
+            }
+            ImGui::TreePop();
+        }
+        ImGui::PopID();
+    }
+
     void SceneDebugEditor::DrawInspectorContent()
     {
-        GameObject* selected = objectSelector_.GetSelectedObject();
-        SpriteObject* selectedSprite = objectSelector_.GetSelectedSprite();
-
-        if (selectedSprite) {
-            gameObjectManager_->DrawSingleObjectImGui(selectedSprite);
-        } else {
-            gameObjectManager_->DrawSingleObjectImGui(selected);
+        GameObject* const selectedSprite = objectSelector_.GetSelectedSprite();
+        GameObject* const selected = selectedSprite ? selectedSprite : objectSelector_.GetSelectedObject();
+        if (!selected) {
+            UI::Hint("オブジェクトを選択してください");
+            return;
         }
+
+        Editor::ObjectInspector::Callbacks callbacks;
+        callbacks.saveObject = [this](GameObject& object) {
+            if (!RefuseSaveWhilePlaying()) {
+                saveSystem_->SaveObject(&object);
+            }
+            };
+        Editor::ObjectInspector::Draw(*selected, callbacks);
     }
 
     void SceneDebugEditor::ShowSaveNotification(const std::string& message)
@@ -501,139 +651,164 @@ namespace CoreEngine
         ImGui::PopStyleVar(2);
     }
 
-    bool SceneDebugEditor::CopySelectedObject()
+    void SceneDebugEditor::Deselect(const GameObject& object)
     {
-        // 選択中のオブジェクトを取得
-        GameObject* selected = objectSelector_.GetSelectedObject();
-        if (!selected) {
-            Logger::GetInstance().Log("コピー対象のオブジェクトが選択されていません", LogLevel::Warn, LogCategory::System);
+        if (objectSelector_.GetSelectedObject() == &object || objectSelector_.GetSelectedSprite() == &object) {
+            objectSelector_.ClearSelection();
+        }
+    }
+
+    ObjectEditing::Context SceneDebugEditor::MakeObjectEditingContext()
+    {
+        ObjectEditing::Context context;
+        context.manager = gameObjectManager_;
+        context.beforeDestroy = [this](const GameObject& object) { Deselect(object); };
+        return context;
+    }
+
+    void SceneDebugEditor::CreateEmptyObject()
+    {
+        if (!gameObjectManager_) {
+            return;
+        }
+        if (GameObject* const created = ObjectEditing::CreateEmpty(MakeObjectEditingContext(), ComputeDropPosition(nullptr))) {
+            objectSelector_.SelectObject(created);
+        }
+    }
+
+    void SceneDebugEditor::CreateParticleObject(ObjectEditing::ParticleKind kind)
+    {
+        if (!gameObjectManager_) {
+            return;
+        }
+        if (GameObject* const created = ObjectEditing::CreateParticle(
+                MakeObjectEditingContext(), kind, ComputeDropPosition(nullptr))) {
+            objectSelector_.SelectObject(created);
+        }
+    }
+
+    void SceneDebugEditor::CreateUIObject(ObjectEditing::UIElementKind kind)
+    {
+        if (!gameObjectManager_) {
+            return;
+        }
+        if (GameObject* const created = ObjectEditing::CreateUI(MakeObjectEditingContext(), kind)) {
+            objectSelector_.SelectObject(created);
+        }
+    }
+
+    bool SceneDebugEditor::ApplyToPrefab(GameObject& object)
+    {
+        if (!gameObjectManager_ || !object.IsPrefabInstance()) {
             return false;
         }
-
-        // メッシュを持つオブジェクトかどうか確認する（具象クラスではなくコンポーネントで判定）
-        if (!selected->HasComponent<MeshRendererComponent>()) {
-            Logger::GetInstance().Log("選択オブジェクトはメッシュを持たないためコピーできません", LogLevel::Warn, LogCategory::System);
+        if (!PrefabEditing::ApplyObject(*gameObjectManager_, object)) {
             return false;
         }
-
-        // シリアライズデータからモデルパスを取得する
-        json serializedData = selected->OnSerialize();
-        std::string modelPath;
-        if (serializedData.contains("modelPath")) {
-            modelPath = serializedData["modelPath"].get<std::string>();
-        }
-
-        if (modelPath.empty()) {
-            Logger::GetInstance().Log("モデルパスが取得できないためコピーできません", LogLevel::Warn, LogCategory::System);
-            return false;
-        }
-
-        // DynamicModelObject として複製を生成
-        auto newObj = std::make_unique<DynamicModelObject>();
-        newObj->SetModelPath(modelPath);
-
-        // 名前を設定（Unity 風の "Name (1)" 形式で一意化）
-        std::string copyName = GenerateUnityStyleCopyName(gameObjectManager_, selected->GetName());
-        newObj->SetName(copyName);
-
-        // 登録して Initialize
-        DynamicModelObject* raw = gameObjectManager_->AddObject(std::move(newObj));
-        if (!raw) {
-            Logger::GetInstance().Log("オブジェクトのコピーに失敗しました", LogLevel::Error, LogCategory::System);
-            return false;
-        }
-
-        // シリアライズデータを復元（トランスフォームを引き継ぐ）
-        if (!serializedData.empty()) {
-            raw->OnDeserialize(serializedData);
-        }
-
-        raw->SetName(copyName);
-        ApplyDynamicModelMaterialOverrides(raw->GetModel());
-
-        // 少しオフセットを加えて重ならないようにする
-        if (auto* src = raw->GetComponent<ITransformSource>()) {
-            src->Translate().x += 1.0f;
-        }
-
-        // コピー操作を Undo 履歴に記録する
-        ObjectSpawnRecord spawnRecord;
-        spawnRecord.objectName = raw->GetName(); // GameObjectManager で確定した名前を使う
-        spawnRecord.modelPath  = modelPath;
-        if (auto* src = raw->GetComponent<ITransformSource>()) {
-            spawnRecord.translate = src->Translate();
-            spawnRecord.rotate    = src->Rotate();
-            spawnRecord.scale     = src->Scale();
-        }
-        undoRedoHistory_.Push(spawnRecord);
-
-        // コピーしたオブジェクトを選択状態にする
-        objectSelector_.SelectObject(raw);
-
-        Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System, "オブジェクトをコピーしました: {}", raw->GetName());
+        ShowSaveNotification("プレハブへ適用しました: " + object.GetPrefab().GetPath());
         return true;
+    }
+
+    bool SceneDebugEditor::CanEditSelectedObject(std::string* reason) const
+    {
+        const GameObject* const selected = objectSelector_.GetSelectedObject();
+        if (!selected) {
+            if (reason) {
+                *reason = "オブジェクトを選んでいません";
+            }
+            return false;
+        }
+        return ObjectEditing::CanDuplicateOrDelete(*selected, reason);
+    }
+
+    bool SceneDebugEditor::DuplicateSelectedObject()
+    {
+        const GameObject* const selected = objectSelector_.GetSelectedObject();
+        if (!gameObjectManager_ || !selected) {
+            return false;
+        }
+        GameObject* const copy = ObjectEditing::Duplicate(MakeObjectEditingContext(), *selected);
+        if (!copy) {
+            return false;
+        }
+        objectSelector_.SelectObject(copy);
+        return true;
+    }
+
+    bool SceneDebugEditor::DeleteSelectedObject()
+    {
+        GameObject* const selected = objectSelector_.GetSelectedObject();
+        if (!gameObjectManager_ || !selected) {
+            return false;
+        }
+        return ObjectEditing::Delete(MakeObjectEditingContext(), *selected);
+    }
+
+    void SceneDebugEditor::HandleSelectionShortcuts()
+    {
+        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_D)) {
+            DuplicateSelectedObject();
+        }
+        if (ImGui::Shortcut(ImGuiKey_Delete)) {
+            DeleteSelectedObject();
+        }
+    }
+
+    void SceneDebugEditor::FocusOnSelection()
+    {
+        GameObject* const selected = objectSelector_.GetSelectedObject();
+        if (!selected || !cameraManager_) {
+            return;
+        }
+        auto* const orbit = cameraManager_->GetControllerAs<OrbitFlyController>(CameraNames::Scene);
+        if (!orbit) {
+            return;
+        }
+
+        // 大きさが分かるものはそれが収まる距離まで、分からないもの（空のオブジェクト・
+        // ライト・カメラなど）は手頃な距離で寄せる
+        constexpr float kDefaultRadius = 1.5f;
+        constexpr float kDistanceScale = 3.0f;
+        constexpr float kMinDistance = 1.0f;
+
+        const TransformComponent* const transform = selected->GetComponent<TransformComponent>();
+        Vector3 center = transform ? transform->GetWorldPosition() : Vector3{ 0.0f, 0.0f, 0.0f };
+        float radius = kDefaultRadius;
+
+        if (const auto* const mesh = selected->GetComponent<MeshRendererComponent>()) {
+            const BoundingBox box = mesh->GetWorldBoundingBox();
+            if (box.IsValid()) {
+                center = box.GetCenter();
+                const Vector3 size = box.GetSize();
+                radius = (std::max)({ size.x, size.y, size.z }) * 0.5f;
+            }
+        }
+
+        orbit->SetTarget(center);
+        orbit->SetDistance((std::max)(radius * kDistanceScale, kMinDistance));
     }
 
     void SceneDebugEditor::SpawnModelFromFile(const std::string& modelFileName, const Vector2* normalizedDropPos)
     {
         Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System, "モデルをスポーン: {}", modelFileName);
 
-        auto obj = std::make_unique<DynamicModelObject>();
-        obj->SetModelPath(modelFileName);
-
         // ファイル名から拡張子を除いたものを名前にする
         std::filesystem::path p(modelFileName);
         std::string name = p.stem().string();
-        obj->SetName(name);
 
-        DynamicModelObject* raw = gameObjectManager_->AddObject(std::move(obj));
+        GameObject* raw = CreateModelObject(*gameObjectManager_, name, modelFileName);
         if (!raw) {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System, "モデルのスポーンに失敗しました: {}", modelFileName);
             return;
         }
 
         // 動的スポーン時は PBR テクスチャを活かしつつ、問題のある法線マップのみ無効化する
-        ApplyDynamicModelMaterialOverrides(raw->GetModel());
+        if (auto* mesh = raw->GetComponent<MeshRendererComponent>()) {
+            ApplyDynamicModelMaterialOverrides(mesh->GetModel());
+        }
 
         if (auto* src = raw->GetComponent<ITransformSource>()) {
-            Vector3 spawnPosition = { 0.0f, 1.0f, 0.0f };
-
-            if (const Camera* camera3D = cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera3D) : nullptr) {
-                const Vector2 dropPos = normalizedDropPos ? *normalizedDropPos : Vector2{ 0.5f, 0.5f };
-                const Vector2 ndcPos(
-                    dropPos.x * 2.0f - 1.0f,
-                    1.0f - dropPos.y * 2.0f);
-
-                const Vector3 nearPoint = MathCore::Coordinate::NormalizedScreenToWorld(
-                    ndcPos,
-                    0.0f,
-                    camera3D->GetViewMatrix(),
-                    camera3D->GetProjectionMatrix(),
-                    1.0f,
-                    1.0f);
-                const Vector3 farPoint = MathCore::Coordinate::NormalizedScreenToWorld(
-                    ndcPos,
-                    1.0f,
-                    camera3D->GetViewMatrix(),
-                    camera3D->GetProjectionMatrix(),
-                    1.0f,
-                    1.0f);
-                const Vector3 forward = CoreEngine::Normalize(farPoint - nearPoint);
-
-                const Geometry::Ray ray{ camera3D->GetPosition(), forward };
-                const Geometry::Plane groundPlane{ { 0.0f, 1.0f, 0.0f }, 0.0f };   // y = 0
-                Geometry::RayHit hit{};
-                if (Geometry::Raycast(ray, groundPlane, &hit)) {
-                    spawnPosition = hit.point;
-                } else {
-                    spawnPosition = camera3D->GetPosition() + forward * 5.0f;
-                    if (spawnPosition.y < 0.5f) {
-                        spawnPosition.y = 0.5f;
-                    }
-                }
-            }
-
-            src->Translate() = spawnPosition;
+            src->Translate() = ComputeDropPosition(normalizedDropPos);
         }
 
         // スポーンしたオブジェクトを選択状態にする
@@ -641,7 +816,9 @@ namespace CoreEngine
 
         // スポーン操作を Undo 履歴に記録する
         ObjectSpawnRecord spawnRecord;
+        spawnRecord.objectId = raw->GetObjectId();
         spawnRecord.objectName = raw->GetName();
+        spawnRecord.serializeKey = raw->GetSerializeKey();
         spawnRecord.modelPath  = modelFileName;
         if (auto* src = raw->GetComponent<ITransformSource>()) {
             spawnRecord.translate = src->Translate();
@@ -650,6 +827,127 @@ namespace CoreEngine
         }
         undoRedoHistory_.Push(spawnRecord);
     }
+
+    void SceneDebugEditor::SpawnPrefabFromFile(const std::string& prefabFileName, const Vector2* normalizedDropPos)
+    {
+        const AssetInfo* info = FindAssetInfo(prefabFileName);
+        if (!info || info->type != AssetType::Prefab) {
+            Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
+                "プレハブが見つかりません: {}", prefabFileName);
+            return;
+        }
+
+        const Reflection::AssetRefValue prefab{ info->guid, ToAssetPath(*info) };
+        GameObject* placed = PrefabSystem::Instantiate(*gameObjectManager_, prefab, info->name);
+        if (!placed) {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System,
+                "プレハブからオブジェクトを作れませんでした: {}", prefab.path);
+            return;
+        }
+
+        if (auto* src = placed->GetComponent<ITransformSource>()) {
+            src->Translate() = ComputeDropPosition(normalizedDropPos);
+        }
+        objectSelector_.SelectObject(placed);
+
+        // 置いた操作を Undo 履歴に記録する（戻すと消し、やり直すと同じ ID と状態で置き直す）
+        const ObjectId id = placed->GetObjectId();
+        const std::string name = placed->GetName();
+        const std::string key = placed->GetSerializeKey();
+        const json state = placed->Serialize();
+        Editor::EditorCommandStack::Get().Push(std::make_unique<Editor::FunctionCommand>(
+            name + " の配置",
+            [id] {
+                GameObjectManager* const manager = Editor::SceneAccess::Objects();
+                if (GameObject* const target = manager ? manager->FindObject(id) : nullptr) {
+                    Editor::SceneAccess::Deselect(*target);
+                    target->Destroy();
+                    manager->InvalidateReferences();
+                }
+            },
+            [prefab, name, key, state, id] {
+                GameObjectManager* const manager = Editor::SceneAccess::Objects();
+                if (GameObject* const target = manager ? PrefabSystem::Instantiate(*manager, prefab, name) : nullptr) {
+                    target->SetSerializeKey(key);
+                    manager->AssignObjectId(*target, id);
+                    target->Deserialize(state);
+                    manager->InvalidateReferences();
+                }
+            },
+            true, true));
+
+        Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
+            "プレハブを置きました: {}（{}）", name, prefab.path);
+    }
+
+    Vector3 SceneDebugEditor::ComputeDropPosition(const Vector2* normalizedDropPos) const
+    {
+        Vector3 spawnPosition = { 0.0f, 1.0f, 0.0f };
+
+        const Camera* camera3D = cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera3D) : nullptr;
+        if (!camera3D) {
+            return spawnPosition;
+        }
+
+        const Vector2 dropPos = normalizedDropPos ? *normalizedDropPos : Vector2{ 0.5f, 0.5f };
+        const Vector2 ndcPos(
+            dropPos.x * 2.0f - 1.0f,
+            1.0f - dropPos.y * 2.0f);
+
+        const Vector3 nearPoint = MathCore::Coordinate::NormalizedScreenToWorld(
+            ndcPos,
+            0.0f,
+            camera3D->GetViewMatrix(),
+            camera3D->GetProjectionMatrix(),
+            1.0f,
+            1.0f);
+        const Vector3 farPoint = MathCore::Coordinate::NormalizedScreenToWorld(
+            ndcPos,
+            1.0f,
+            camera3D->GetViewMatrix(),
+            camera3D->GetProjectionMatrix(),
+            1.0f,
+            1.0f);
+        const Vector3 forward = CoreEngine::Normalize(farPoint - nearPoint);
+
+        const Geometry::Ray ray{ camera3D->GetPosition(), forward };
+        const Geometry::Plane groundPlane{ { 0.0f, 1.0f, 0.0f }, 0.0f };   // y = 0
+        Geometry::RayHit hit{};
+        if (Geometry::Raycast(ray, groundPlane, &hit)) {
+            spawnPosition = hit.point;
+        } else {
+            spawnPosition = camera3D->GetPosition() + forward * 5.0f;
+            if (spawnPosition.y < 0.5f) {
+                spawnPosition.y = 0.5f;
+            }
+        }
+        return spawnPosition;
+    }
+
+    void SceneDebugEditor::DrawObjectContextMenu(GameObject& object)
+    {
+        if (!ImGui::BeginPopupContextItem()) {
+            return;
+        }
+
+        if (object.IsPrefabInstance()) {
+            ImGui::TextDisabled("%s", object.GetPrefab().GetPath().c_str());
+            ImGui::Separator();
+            if (ImGui::MenuItem("プレハブへ適用")) {
+                ApplyToPrefab(object);
+            }
+            if (ImGui::MenuItem("プレハブとのつながりを外す")) {
+                PrefabEditing::Unlink(object);
+            }
+        } else {
+            if (ImGui::MenuItem("プレハブとして保存")) {
+                if (const AssetInfo* info = PrefabEditing::CreateFromObject(object)) {
+                    ShowSaveNotification("プレハブを作りました: " + ToAssetPath(*info));
+                }
+            }
+        }
+        ImGui::EndPopup();
+    }
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

@@ -7,7 +7,7 @@
 
 #include <algorithm>
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/ImGuiAll.h"
 #endif
 
@@ -34,6 +34,9 @@ namespace CoreEngine
 
         Slot& slot = slots_[index];
         slot.item = std::move(item);
+        if (collectingAddedAfterUpdate_ && !updating_) {
+            addedAfterUpdate_.emplace_back(index, slot.generation);
+        }
         return { index, slot.generation };
     }
 
@@ -89,37 +92,75 @@ namespace CoreEngine
         const float scaledDelta = Time::DeltaTime();
         const float unscaledDelta = Time::UnscaledDeltaTime();
 
+        // ここで全部を進めるので、前のフレームに控えた分は要らない
+        addedAfterUpdate_.clear();
+
         // このフレームに存在していた分だけを進める。
         // コールバックから生成されたトゥイーンは次フレームから動き出す（開始が 1 フレーム内で
         // 二重に進まないようにするため）。
         const std::size_t count = slots_.size();
 
         updating_ = true;
-
         for (std::size_t i = 0; i < count; ++i) {
-            TweenDetail::TweenItem* item = slots_[i].item.get();
-            if (!item) { continue; }
-
-            // link 先が死んでいたら、値を書かずに終わらせる。
-            // GameObject の実体解放は CleanupDestroyed の 1 フレーム後なので、
-            // ここで IsMarkedForDestroy を見れば解放済みメモリには触れない。
-            if (item->settings.link != nullptr && item->settings.link->IsMarkedForDestroy()) {
-                item->KillSilently();
-            }
-
-            advancingItem_ = item;
-            const bool finished = item->Advance(scaledDelta, unscaledDelta);
-            advancingItem_ = nullptr;
-
-            if (finished) {
-                // ここで解放すると、コールバックが確保し直したスロットを同じフレームで
-                // 走査してしまう。解放は走査後にまとめて行う。
-                pendingFree_.push_back(static_cast<std::uint32_t>(i));
-            }
+            AdvanceSlot(static_cast<std::uint32_t>(i), scaledDelta, unscaledDelta);
         }
-
         updating_ = false;
 
+        ReleaseFinishedSlots();
+
+        // ここから AdvanceAddedAfterUpdate() までに登録されたトゥイーンを控える
+        collectingAddedAfterUpdate_ = true;
+    }
+
+    void TweenManager::AdvanceAddedAfterUpdate()
+    {
+        collectingAddedAfterUpdate_ = false;
+        if (addedAfterUpdate_.empty()) { return; }
+
+        const float scaledDelta = Time::DeltaTime();
+        const float unscaledDelta = Time::UnscaledDeltaTime();
+
+        // 進めている間にコールバックから登録されたトゥイーンは、次フレームの Update() から動き出す
+        const std::vector<std::pair<std::uint32_t, std::uint32_t>> added = std::move(addedAfterUpdate_);
+        addedAfterUpdate_.clear();
+
+        updating_ = true;
+        for (const auto& [index, generation] : added) {
+            // 登録の後に Sequence へ移されたスロットは、世代番号が変わっている
+            if (index < slots_.size() && slots_[index].generation == generation) {
+                AdvanceSlot(index, scaledDelta, unscaledDelta);
+            }
+        }
+        updating_ = false;
+
+        ReleaseFinishedSlots();
+    }
+
+    void TweenManager::AdvanceSlot(std::uint32_t index, float scaledDelta, float unscaledDelta)
+    {
+        TweenDetail::TweenItem* item = slots_[index].item.get();
+        if (!item) { return; }
+
+        // link 先が死んでいたら、値を書かずに終わらせる。
+        // GameObject の実体解放は CleanupDestroyed の 1 フレーム後なので、
+        // ここで IsMarkedForDestroy を見れば解放済みメモリには触れない。
+        if (item->settings.link != nullptr && item->settings.link->IsMarkedForDestroy()) {
+            item->KillSilently();
+        }
+
+        advancingItem_ = item;
+        const bool finished = item->Advance(scaledDelta, unscaledDelta);
+        advancingItem_ = nullptr;
+
+        if (finished) {
+            // ここで解放すると、コールバックが確保し直したスロットを同じフレームで
+            // 走査してしまう。解放は走査後にまとめて行う。
+            pendingFree_.push_back(index);
+        }
+    }
+
+    void TweenManager::ReleaseFinishedSlots()
+    {
         for (std::uint32_t index : pendingFree_) {
             if (index < slots_.size() && slots_[index].item) {
                 ReleaseSlot(index);
@@ -151,6 +192,8 @@ namespace CoreEngine
         }
 
         pendingFree_.clear();
+        addedAfterUpdate_.clear();
+        collectingAddedAfterUpdate_ = false;
     }
 
     int TweenManager::KillById(const std::string& id, bool complete)
@@ -198,7 +241,7 @@ namespace CoreEngine
         return count;
     }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     void TweenManager::DrawImGui()
     {
         ImGui::Text("Active: %zu   Slots: %zu   Free: %zu",

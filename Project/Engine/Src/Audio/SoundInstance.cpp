@@ -64,6 +64,19 @@ namespace CoreEngine
         return slot ? slot->voice->GetPitch() : 1.0f;
     }
 
+    void SoundInstance::SetPan(float pan)
+    {
+        if (auto* slot = owner_ ? owner_->ResolveSlot(index_, generation_) : nullptr) {
+            slot->voice->SetPan(pan);
+        }
+    }
+
+    float SoundInstance::GetPan() const
+    {
+        const auto* slot = owner_ ? owner_->ResolveSlot(index_, generation_) : nullptr;
+        return slot ? slot->voice->GetPan() : 0.0f;
+    }
+
     bool SoundInstance::IsPlaying() const
     {
         const auto* slot = owner_ ? owner_->ResolveSlot(index_, generation_) : nullptr;

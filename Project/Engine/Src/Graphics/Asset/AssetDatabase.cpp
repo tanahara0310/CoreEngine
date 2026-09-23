@@ -1,14 +1,47 @@
 #include "pch.h"
 #include "AssetDatabase.h"
+#include "Utility/Path/ProjectPaths.h"
 #include "AssetMetadata.h"
 #include "Threading/ThreadPool.h"
 #include "Utility/Logger/Logger.h"
 #include <algorithm>
 #include <chrono>
 #include <optional>
+#include <string_view>
 
 namespace CoreEngine
 {
+    namespace
+    {
+        /// @brief パスを照合用のキーにする（区切りを '/'、ASCII の英字を小文字へ）
+        std::string MakePathKey(std::string_view path)
+        {
+            std::string key(path);
+            for (char& c : key) {
+                if (c == '\\') {
+                    c = '/';
+                } else if (c >= 'A' && c <= 'Z') {
+                    c = static_cast<char>(c - 'A' + 'a');
+                }
+            }
+            return key;
+        }
+
+        /// @brief `Assets/Scenes/` の下のファイル（シーンの保存データ）か
+        bool IsSceneSaveData(const std::filesystem::path& path)
+        {
+            bool afterAssets = false;
+            for (const auto& part : path) {
+                const std::string name = MakePathKey(Logger::GetInstance().PathToUtf8(part));
+                if (afterAssets && name == "scenes") {
+                    return true;
+                }
+                afterAssets = name == "assets";
+            }
+            return false;
+        }
+    }
+
     AssetDatabase& AssetDatabase::GetInstance()
     {
         static AssetDatabase instance;
@@ -139,6 +172,7 @@ namespace CoreEngine
     {
         assetsByGUID_.clear();
         assetsByName_.clear();
+        guidsByPath_.clear();
         categoryPriority_.clear();
         initialized_ = false;
 
@@ -148,36 +182,41 @@ namespace CoreEngine
 
     std::filesystem::path AssetDatabase::FindAssetPath(const std::string& name)
     {
-        // まず完全一致で検索
+        return FindAssetPath(name, AssetType::Unknown);
+    }
+
+    std::filesystem::path AssetDatabase::FindAssetPath(const std::string& name, AssetType type)
+    {
+        const auto matches = [this, type](const std::string& guid) {
+            return type == AssetType::Unknown || assetsByGUID_[guid].type == type;
+        };
+
+        // まず完全一致で検索（複数ある場合は優先順位の高いもの、同じ優先順位なら先に登録したもの）
         auto it = assetsByName_.find(name);
-        if (it != assetsByName_.end() && !it->second.empty())
+        if (it != assetsByName_.end())
         {
-            // 複数ある場合は優先順位の高いものを返す
-            if (it->second.size() == 1)
+            const std::string* bestGuid = nullptr;
+            int bestPriority = 0;
+            for (const std::string& guid : it->second)
             {
-                return assetsByGUID_[it->second[0]].fullPath;
-            } else
-            {
-                // 優先順位でソート
-                std::string bestGuid = it->second[0];
-                int bestPriority = categoryPriority_[assetsByGUID_[bestGuid].category];
-
-                for (size_t i = 1; i < it->second.size(); ++i)
+                if (!matches(guid))
                 {
-                    const std::string& guid = it->second[i];
-                    int priority = categoryPriority_[assetsByGUID_[guid].category];
-                    if (priority > bestPriority)
-                    {
-                        bestGuid = guid;
-                        bestPriority = priority;
-                    }
+                    continue;
                 }
-
-                return assetsByGUID_[bestGuid].fullPath;
+                const int priority = categoryPriority_[assetsByGUID_[guid].category];
+                if (!bestGuid || priority > bestPriority)
+                {
+                    bestGuid = &guid;
+                    bestPriority = priority;
+                }
+            }
+            if (bestGuid)
+            {
+                return assetsByGUID_[*bestGuid].fullPath;
             }
         }
 
-        // 拡張子なしで検索
+        // 拡張子なしで検索（先に登録したもの）
         std::string nameWithoutExt = name;
         size_t dotPos = name.find_last_of('.');
         if (dotPos != std::string::npos)
@@ -186,9 +225,15 @@ namespace CoreEngine
         }
 
         it = assetsByName_.find(nameWithoutExt);
-        if (it != assetsByName_.end() && !it->second.empty())
+        if (it != assetsByName_.end())
         {
-            return assetsByGUID_[it->second[0]].fullPath;
+            for (const std::string& guid : it->second)
+            {
+                if (matches(guid))
+                {
+                    return assetsByGUID_[guid].fullPath;
+                }
+            }
         }
 
         // 見つからない場合は空の path を返す
@@ -208,6 +253,76 @@ namespace CoreEngine
         return "";
     }
 
+    const AssetInfo* AssetDatabase::FindAssetByGUID(const std::string& guid) const
+    {
+        const auto it = assetsByGUID_.find(guid);
+        return it != assetsByGUID_.end() ? &it->second : nullptr;
+    }
+
+    const AssetInfo* AssetDatabase::FindAssetByPath(std::string_view path) const
+    {
+        if (path.empty()) {
+            return nullptr;
+        }
+
+        Logger& log = Logger::GetInstance();
+        std::string relative(path);
+        const std::filesystem::path asPath = log.Utf8ToPath(relative);
+        if (asPath.is_absolute()) {
+            // 根からの相対へ直す（根の外なら見つからない扱い）
+            const std::filesystem::path lexical = asPath.lexically_relative(projectRoot_);
+            if (lexical.empty() || *lexical.begin() == "..") {
+                return nullptr;
+            }
+            relative = log.PathToUtf8(lexical);
+        }
+
+        const std::string key = MakePathKey(relative);
+        auto it = guidsByPath_.find(key);
+        if (it == guidsByPath_.end() &&
+            !key.starts_with("application/assets/") && !key.starts_with("engine/assets/")) {
+            // Application/Assets/ を省いた相対パスとして引き直す
+            it = guidsByPath_.find("application/assets/" + key);
+        }
+        return it != guidsByPath_.end() ? FindAssetByGUID(it->second) : nullptr;
+    }
+
+    std::vector<const AssetInfo*> AssetDatabase::GetAssetsOfType(AssetType type) const
+    {
+        std::vector<const AssetInfo*> assets;
+        for (const auto& [guid, info] : assetsByGUID_) {
+            if (info.type == type) {
+                assets.push_back(&info);
+            }
+        }
+        std::sort(assets.begin(), assets.end(),
+            [](const AssetInfo* a, const AssetInfo* b) { return a->relativePath < b->relativePath; });
+        return assets;
+    }
+
+    const AssetInfo* AssetDatabase::ImportAsset(const std::filesystem::path& assetPath)
+    {
+        Logger& log = Logger::GetInstance();
+        const std::filesystem::path fullPath =
+            (assetPath.is_absolute() ? assetPath : projectRoot_ / assetPath).lexically_normal();
+        if (const AssetInfo* existing = FindAssetByPath(log.PathToUtf8(fullPath))) {
+            return existing;
+        }
+
+        // Engine/Assets の下なら Engine、それ以外は Application のアセットとして登録する
+        const std::string key = MakePathKey(log.PathToUtf8(fullPath.lexically_relative(projectRoot_)));
+        const std::string category = key.starts_with("engine/") ? "Engine" : "Application";
+        std::optional<AssetInfo> info = BuildAssetInfo(fullPath, category);
+        if (!info) {
+            return nullptr;
+        }
+
+        const std::string guid = info->guid;
+        MergeAssetInfo(std::move(*info));
+        ++revision_;
+        return FindAssetByGUID(guid);
+    }
+
     void AssetDatabase::Refresh()
     {
         Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}",
@@ -216,8 +331,10 @@ namespace CoreEngine
         initialized_ = false;
         assetsByGUID_.clear();
         assetsByName_.clear();
+        guidsByPath_.clear();
 
         Initialize(projectRoot_);
+        ++revision_;
     }
 
     std::optional<AssetInfo> AssetDatabase::BuildAssetInfo(
@@ -243,6 +360,10 @@ namespace CoreEngine
 
         // メタファイルからGUIDを取得または生成（ファイルI/O）
         std::string guid = AssetMetadata::LoadOrCreateMetaFile(assetPath, type);
+        if (guid.empty())
+        {
+            return std::nullopt;
+        }
 
         AssetInfo info;
         info.guid = guid;
@@ -274,8 +395,13 @@ namespace CoreEngine
         const std::string guid = info.guid;
         const std::string name = info.name;
         const std::string fileName = info.fileName;
+        Logger& log = Logger::GetInstance();
+        const std::string pathKey = MakePathKey(log.PathToUtf8(info.relativePath));
 
         assetsByGUID_[guid] = std::move(info);
+
+        // プロジェクトの根からの相対パスで登録
+        guidsByPath_[pathKey] = guid;
 
         // ベース名（例: GrayScale）で登録
         assetsByName_[name].push_back(guid);
@@ -284,7 +410,6 @@ namespace CoreEngine
         assetsByName_[fileName].push_back(guid);
 
         // 中間 stem（例: GrayScale.CS）でも検索できるよう全 stem を登録
-        Logger& log = Logger::GetInstance();
         std::filesystem::path stem = log.Utf8ToPath(fileName).stem();
         while (stem.has_extension()) {
             assetsByName_[log.PathToUtf8(stem)].push_back(guid);
@@ -334,10 +459,40 @@ namespace CoreEngine
             return AssetType::Scene;
         }
 
+        // 物理の材質
+        if (ext == ".physmat")
+        {
+            return AssetType::PhysicsMaterial;
+        }
+
+        // プレハブ
+        if (ext == ".prefab")
+        {
+            return AssetType::Prefab;
+        }
+
         // アニメーション
         if (ext == ".anim" || ext == ".animation")
         {
             return AssetType::Animation;
+        }
+
+        // モデルのマテリアル定義（.obj から参照される）
+        if (ext == ".mtl")
+        {
+            return AssetType::MaterialLibrary;
+        }
+
+        // 表形式のデータ
+        if (ext == ".csv")
+        {
+            return AssetType::Csv;
+        }
+
+        // JSON のデータ（シーンの保存データは登録しない）
+        if (ext == ".json")
+        {
+            return IsSceneSaveData(path) ? AssetType::Unknown : AssetType::Json;
         }
 
         return AssetType::Unknown;
@@ -361,7 +516,8 @@ namespace CoreEngine
 
     std::filesystem::path AssetDatabase::GetLibraryPath() const
     {
-        return projectRoot_ / "Cache";
+        // アセットから作り直せる派生物（テクスチャキャッシュ等）の置き場
+        return ProjectPaths::Intermediate();
     }
 
     std::vector<std::filesystem::path> AssetDatabase::GetShaderIncludeDirectories() const

@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cmath>
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/ImGuiAll.h"
 #endif
 
@@ -294,7 +294,7 @@ void GameTimer::ResetIntervalCheckers() {
     }
 }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 void GameTimer::DrawImGui(const char* label)
 {
     ImGui::PushID(this);  // 複数のタイマーがある場合のID衝突を防ぐ

@@ -8,7 +8,7 @@
 #include "Camera/View/ViewInfo.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/Logger/Logger.h"
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
 #endif
 #include <algorithm>
@@ -268,7 +268,7 @@ namespace CoreEngine
 
     void MotionBlur::DrawImGui()
     {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         ImGui::PushID("MotionBlurParams");
         ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
         UI::Separator();
@@ -283,12 +283,12 @@ namespace CoreEngine
             CVarUI::ResetTree(kCVarPrefix);
         }
         ImGui::PopID();
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
     }
 
     void MotionBlur::SetEnabled(bool /*enabled*/)
     {
-        // モーションブラーは常時無効。設定ファイルや SpeedBlurFeature から
+        // モーションブラーは常時無効。設定ファイルやシーンの処理から
         // 有効化要求が来ても、実行時の CVar も false に戻して描画へ入れない。
         cvEnabled.Set(false);
     }

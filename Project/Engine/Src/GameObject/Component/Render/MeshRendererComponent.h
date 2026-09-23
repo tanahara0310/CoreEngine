@@ -3,11 +3,13 @@
 #include "GameObject/Component/Core/IComponent.h"
 #include "GameObject/Component/Render/IRenderableComponent.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
+#include "Graphics/Asset/AssetRef.h"
 #include "Graphics/Model/Model.h"
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
 #include "Graphics/Primitive/IPrimitiveMeshGenerator.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Math/Geometry/Shapes.h"
+#include "Reflection/Reflect.h"
 
 #include <memory>
 #include <optional>
@@ -28,8 +30,7 @@ public:
     MeshRendererComponent() = default;
 
     /// @brief モデルファイルから静的メッシュを作る
-    explicit MeshRendererComponent(std::string modelPath)
-        : modelPath_(std::move(modelPath)), source_(Source::ModelFile) {}
+    explicit MeshRendererComponent(std::string modelPath);
 
     /// @brief 手続き的メッシュ（プリミティブ）を作る
     explicit MeshRendererComponent(std::unique_ptr<IPrimitiveMeshGenerator> generator)
@@ -39,20 +40,24 @@ public:
 
     const char* GetTypeName() const override { return "MeshRenderer"; }
 
-#ifdef USE_IMGUI
-    const char* GetInspectorName() const override { return "メッシュ描画"; }
-
-    const char* GetInspectorIcon() const override { return "scene.png"; }
-
-    void GetInspectorIconColor(float* outRgba) const override
+    /// @brief トランスフォームを使う
+    bool RequiresComponent(const IComponent& other) const override
     {
-        outRgba[0] = 0.34f; outRgba[1] = 0.67f; outRgba[2] = 0.88f; outRgba[3] = 1.0f;
+        return dynamic_cast<const TransformComponent*>(&other) != nullptr;
     }
 
-    /// @brief メッシュの取得元とテクスチャの表示 UI
-    /// @return 値が変更されたら true
-    bool DrawInspector() override;
-#endif
+    REFLECT_DECLARE(MeshRendererComponent)
+
+    // ===== シリアライズ =====
+    // モデル・テクスチャ・ブレンドは型記述子が保存する
+
+    /// @brief スロットごとのマテリアルを、どれか 1 つでもモデルの既定と違うときだけ書き出す
+    /// @details `materials` はスロットごとの配列で、書くときは全スロットを書く。
+    void SaveMaterialsToJson(json& parameters) const;
+
+    /// @brief スロットごとのマテリアルを読む
+    /// @note メッシュを読み込んだ後に当てる（まだ無ければ読み込むまで控える）。
+    void LoadMaterialsFromJson(const json& parameters);
 
     // ===== メッシュの指定（Awake より前に呼ぶ） =====
 
@@ -66,8 +71,24 @@ public:
     /// @brief 手続き的メッシュを指定する
     void SetPrimitive(std::unique_ptr<IPrimitiveMeshGenerator> generator);
 
-    /// @brief 上書きテクスチャを指定する（空ならモデル組み込みを使う）
+    /// @brief 指しているモデルファイル（型記述子とやり取りする値）
+    Reflection::AssetRefValue GetModelAsset() const { return modelAsset_.GetValue(); }
+
+    /// @brief モデルファイルを指し直す（Awake 済みなら読み込み直す）
+    /// @note 何も指さない値を渡すと、ファイルから作ったメッシュを外す。
+    void SetModelAsset(const Reflection::AssetRefValue& value);
+
+    /// @brief プリミティブで作ったメッシュの形の名前（ファイルのメッシュや無しなら空）
+    std::string GetPrimitiveName() const;
+
+    /// @brief 上書きテクスチャを指定する（パスかファイル名。空ならモデル組み込みを使う）
     void SetTexture(std::string texturePath);
+
+    /// @brief 指している上書きテクスチャ（型記述子とやり取りする値）
+    Reflection::AssetRefValue GetTextureAsset() const { return textureAsset_.GetValue(); }
+
+    /// @brief 上書きテクスチャを指し直す（何も指さない値ならモデル組み込みに戻す）
+    void SetTextureAsset(const Reflection::AssetRefValue& value);
 
     /// @brief カスタムシェーダーを使う場合のプロバイダを登録する（所有権は移さない）
     void SetCustomShaderProvider(ICustomShaderProvider* provider) { customShaderProvider_ = provider; }
@@ -88,8 +109,6 @@ public:
     void Awake() override;
 
     /// @brief 指定内容でメッシュを作り直す（`Awake()` より後に Set*Mesh した場合に呼ぶ）
-    /// @note 移行用シム（`ModelGameObject::Initialize()`）が、テンプレートメソッドの
-    ///       フックで得たパスを流し込んだ後に使う。
     void ReloadFromSpec();
 
     /// @brief カスタムシェーダー PSO を作り直す（シェーダー切替時。水面の FFT 切替など）
@@ -102,13 +121,7 @@ public:
     bool HasModel() const { return model_ != nullptr; }
     const std::string& GetModelPath() const { return modelPath_; }
 
-    /// @brief モデルの所有権を持つスマートポインタへの参照（移行用シムが束縛する）
-    std::unique_ptr<Model>& ModelPtr() { return model_; }
-
-    TextureManager::LoadedTexture& TextureRef() { return texture_; }
-    std::string& TextureNameRef() { return textureName_; }
     const std::string& GetTextureName() const { return textureName_; }
-    BlendMode& BlendModeRef() { return blendMode_; }
 
     /// @brief 視錐台カリングを行い、通過したらモデルを描画する
     /// @return 実際に描画したら true
@@ -130,6 +143,12 @@ private:
     /// @brief 指定に従ってモデルを生成する
     void LoadMesh();
 
+    /// @brief 控えたマテリアルをモデルの各スロットへ当てる（モデルの既定と同じスロットは当てない）
+    void ApplyPendingMaterials();
+
+    /// @brief テクスチャを読み込む（テクスチャ管理がまだ立っていなければ Awake まで控える。空なら外す）
+    void LoadTexture(std::string texturePath);
+
     /// @brief カスタムシェーダー用 PSO を構築する（プロバイダ登録時のみ）
     void BuildCustomShaderPipelineIfNeeded();
 
@@ -138,11 +157,16 @@ private:
     std::string modelPath_;
     std::string initialClipName_;
     Source source_ = Source::None;
+    AssetRef<ModelAsset> modelAsset_;  ///< 保存とインスペクタに出すモデルファイル
+    bool awoken_ = false;              ///< Awake を済ませたか
 
     TextureManager::LoadedTexture texture_{};
+    AssetRef<TextureAsset> textureAsset_;  ///< 保存とインスペクタに出す上書きテクスチャ
     std::string textureName_;
     std::string pendingTexturePath_;
     BlendMode blendMode_ = BlendMode::kBlendModeNone;
+
+    json pendingMaterials_;  ///< メッシュを読み込むまで控えるマテリアル（`materials` の配列）
 
     std::optional<RenderPassType> passTypeOverride_;
 

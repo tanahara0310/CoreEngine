@@ -3,7 +3,7 @@
 #include "Math/MathCore.h"
 #include "Utility/Random/RandomGenerator.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/ImguiManager.h"
 #endif
 
@@ -27,18 +27,12 @@ public:
     bool IsEnabled() const { return enabled_; }
 
     /// @brief GPUバックエンドで動作しているかを設定
-    /// @note GpuParticleSystem::Initialize が true を設定する。
+    /// @note GpuParticleSystemComponent のコンストラクタが true を設定する。
     ///       ImGui側でCPU専用項目（形状のデバッグ描画など）を隠すために使う。
     void SetGpuBackend(bool isGpu) { gpuBackend_ = isGpu; }
 
     /// @brief GPUバックエンドで動作しているか
     bool IsGpuBackend() const { return gpuBackend_; }
-
-#ifdef USE_IMGUI
-    /// @brief ImGuiデバッグ表示（純粋仮想関数）
-    /// @return UIに変更があった場合true
-    virtual bool ShowImGui() = 0;
-#endif
 
 protected:
     bool enabled_ = true;

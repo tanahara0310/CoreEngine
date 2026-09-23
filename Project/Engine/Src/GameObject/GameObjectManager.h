@@ -1,6 +1,8 @@
-#pragma once
+﻿#pragma once
 
 #include "GameObject.h"
+#include "GameObject/ObjectId.h"
+#include <cstdint>
 #include <memory>
 #include <vector>
 #include <deque>
@@ -8,6 +10,7 @@
 #include <map>
 #include <string>
 #include <type_traits>
+#include <unordered_map>
 
 // Forward declaration
 namespace CoreEngine {
@@ -40,13 +43,15 @@ namespace CoreEngine
         /// @brief 全オブジェクトの更新処理
         /// @note autoUpdate_ が true のオブジェクトのみ更新されます
         /// @note 手動更新したい場合は obj->SetAutoUpdate(false) を設定後、自分で obj->Update() を呼んでください
-        void UpdateAll();
+        /// @param afterUpdatePass 全員の Update の後、ワールド行列を転送し直す前に呼ぶ処理（無くてよい）
+        void UpdateAll(const std::function<void()>& afterUpdatePass = {});
 
         /// @brief 全オブジェクトのワールド行列だけを計算し直して GPU へ転送する
-        /// @details 再生を停止している間、`UpdateAll()` の代わりに呼ぶための軽い経路。
-        ///          ワールド行列の転送は `TransformComponent::Update()` が担っているので、
-        ///          更新を丸ごと止めるとギズモやインスペクタで座標を動かしても
-        ///          画面が変わらなくなる。それを避けるために転送だけを残す。
+        /// @details `UpdateAll()` が全員の Update の後に呼び、Update の中で書き換えた座標を
+        ///          そのフレームの描画と当たり判定に出す。
+        ///          再生を停止している間は `UpdateAll()` の代わりに呼ぶ。ワールド行列の転送は
+        ///          `TransformComponent::Update()` が担っているので、更新を丸ごと止めると
+        ///          ギズモやインスペクタで座標を動かしても画面が変わらなくなる。
         /// @note 走査対象は `UpdateAll()` と同じ（非アクティブ・削除マーク済みは除く）。
         void SyncTransforms();
 
@@ -105,8 +110,7 @@ namespace CoreEngine
 
         /// @brief シーン内で最初に見つかった指定型コンポーネントを返す
         /// @return 見つからなければ nullptr
-        /// @note アクティブ状態は問わない（「シーンに存在するか」の問い合わせ用。
-        ///       SceneTagComponent と組み合わせて具象型のシーン走査を置き換える）。
+        /// @note アクティブ状態は問わない（「シーンに存在するか」の問い合わせ用）。
         template <typename T>
         T* FindFirstComponent() {
             for (auto& obj : objects_) {
@@ -118,32 +122,34 @@ namespace CoreEngine
             return nullptr;
         }
 
+        // ===== ID =====
+
+        /// @brief ID からオブジェクトを引く
+        /// @return 見つからなければ nullptr（削除マーク済みでもフレーム末までは返す）
+        GameObject* FindObject(ObjectId id) const;
+
+        /// @brief 名前が一致する最初のオブジェクトを引く
+        /// @return 見つからなければ nullptr（削除マーク済みは返さない）
+        /// @note `UpdateAll()` の途中で作られ、まだ一覧に加わっていないオブジェクトも探す。
+        GameObject* FindObjectByName(const std::string& name) const;
+
+        /// @brief オブジェクトの ID を差し替える
+        /// @return 他のオブジェクトが使っている ID なら差し替えずに false
+        bool AssignObjectId(GameObject& object, ObjectId id);
+
+        /// @brief ID から引いた結果が変わる操作（破棄・ID の差し替え・コンポーネントの付け外しと解放）のたびに進む番号
+        const std::uint64_t& GetReferenceEpoch() const noexcept { return referenceEpoch_; }
+
+        /// @brief ID から引いた結果を引き直させる（コンポーネントを付け外ししたときに呼ぶ）
+        void InvalidateReferences() noexcept { ++referenceEpoch_; }
+
+        /// @brief この管理者が生きている間だけ期限切れにならない印
+        /// @note 管理者より長く残りうる参照（スクリプトのハンドルなど）が、管理者を触る前に確かめる。
+        std::weak_ptr<const GameObjectManager*> GetLifetimeToken() const noexcept { return lifetimeToken_; }
+
         /// @brief コライダーを持つ全オブジェクトのコライダーを CollisionWorld に登録
         /// @param collisionWorld 登録先の CollisionWorld
         void RegisterAllColliders(CollisionWorld* collisionWorld);
-
-#ifdef USE_IMGUI
-        /// @brief 指定オブジェクトのImGuiデバッグUI表示（Inspector埋め込み用）
-        /// @param obj 描画対象のオブジェクト（nullptrの場合はプレースホルダーを表示）
-        void DrawSingleObjectImGui(GameObject* obj);
-#endif
-
-        /// @brief オブジェクトの値が ImGui で変更されたときのコールバックを設定
-        void SetOnChangedCallback(std::function<void(GameObject*)> callback) {
-            onChangedCallback_ = std::move(callback);
-        }
-
-        /// @brief 個別オブジェクト保存コールバックを設定
-        void SetOnSaveRequestCallback(std::function<void(GameObject*)> callback) {
-            onSaveRequestCallback_ = std::move(callback);
-        }
-
-#ifdef USE_IMGUI
-        /// @brief ImGui 編集コミット時コールバックを設定（Undo/Redo 用）
-        void SetEditCommitCallback(GameObject::EditCommitCallback cb) {
-            editCommitCallback_ = std::move(cb);
-        }
-#endif
 
     private:
         /// @brief 管理中のオブジェクトリスト
@@ -161,18 +167,27 @@ namespace CoreEngine
         /// @brief オブジェクト名の連番番号管理（名前重複を防ぐ）
         std::map<std::string, int> nameCounters_;
 
-        /// @brief ImGui変更時コールバック（デバッグビルドのみ使用）
-        std::function<void(GameObject*)> onChangedCallback_;
+        /// @brief 保存キーの連番番号管理（1 ファイル 1 オブジェクトを保つ）
+        std::map<std::string, int> serializeKeyCounters_;
 
-        /// @brief 個別オブジェクト保存リクエスト時コールバック
-        std::function<void(GameObject*)> onSaveRequestCallback_;
+        /// @brief ID → オブジェクト（登録時に入れ、破棄を確定したときに外す）
+        std::unordered_map<ObjectId, GameObject*> objectsById_;
+
+        /// @brief `GetReferenceEpoch()` の実体
+        std::uint64_t referenceEpoch_ = 1;
+
+        /// @brief 保存キーが既出なら連番を足して重複を解く
+        /// @note 同じ名前で作られたオブジェクト（`CreateObject("Sphere")` を 49 回など）は
+        ///       そのままだと 1 ファイルへ上書きし合い、最後の 1 個しか残らない。
+        void EnsureUniqueSerializeKey(GameObject& object);
+
+        /// @brief 保存キーから ID を決めて登録する（使用中なら計算し直す）
+        void RegisterObjectId(GameObject& object);
 
         /// @brief pendingAdd_ を objects_ へ移動する
         void FlushPendingAdds();
 
-#ifdef USE_IMGUI
-        /// @brief ImGui 編集コミット時コールバック（Undo/Redo 用）
-        GameObject::EditCommitCallback editCommitCallback_;
-#endif
+        /// @brief `GetLifetimeToken()` の実体（最後に宣言し、ほかのメンバより先に壊す）
+        std::shared_ptr<const GameObjectManager*> lifetimeToken_ = std::make_shared<const GameObjectManager*>(this);
     };
 }

@@ -16,10 +16,35 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <utility>
 
 
 namespace CoreEngine
 {
+
+    Model::~Model() {
+        GraphicsCore* const graphics = renderContext_.dxCommon;
+        if (!graphics) {
+            return;
+        }
+
+        for (auto& buffer : gameTransformBuffers_) {
+            graphics->DeferRelease(std::move(buffer));
+        }
+
+        if (skinCluster_) {
+            SkinCluster& cluster = *skinCluster_;
+            graphics->DeferFree(cluster.influenceSrvHandle);
+            graphics->DeferFree(cluster.paletteSrvHandle);
+            graphics->DeferFree(cluster.sourceVertexSrvHandle);
+            graphics->DeferFree(cluster.outputUavHandle);
+            graphics->DeferRelease(std::move(cluster.influenceResource));
+            graphics->DeferRelease(std::move(cluster.paletteResource));
+            graphics->DeferRelease(cluster.outputVertexResource.Get());
+            cluster.outputVertexResource.Release();
+            graphics->DeferRelease(std::move(cluster.skinningParamsCB));
+        }
+    }
 
     bool Model::IsIBLAvailable() const {
         // 自身の renderContext_ 経由でレンダラーの IBL テクスチャ状態を確認
@@ -48,22 +73,29 @@ namespace CoreEngine
                 sizeof(TransformationMatrix)
             );
         }
+    }
 
-        // スケルトンを持つモデルは SkinCluster を作成する
-        // （スケルトンの実体はリソースまたはアニメーターが所有し、Model はコピーを持たない）
-        if (resource_->GetSkeleton()) {
-            const ModelData& modelData = resource_->GetModelData();
-            if (!modelData.skinClusterData.empty()) {
-                skinCluster_ = SkinClusterGenerator::CreateSkinCluster(
-                    renderContext_.dxCommon->GetDevice(),
-                    *resource_->GetSkeleton(),
-                    modelData,
-                    renderContext_.dxCommon->GetDescriptorAllocator(),
-                    resource_->GetVertexBuffer(),
-                    resource_->GetVertexCount()
-                );
-            }
+    bool Model::EnableSkinning() {
+        assert(IsInitialized());
+        if (skinCluster_) {
+            return true;
         }
+
+        // スケルトンの実体はリソースまたはアニメーターが所有し、Model はコピーを持たない
+        const auto& skeleton = resource_->GetSkeleton();
+        const ModelData& modelData = resource_->GetModelData();
+        if (!skeleton || modelData.skinClusterData.empty()) {
+            return false;
+        }
+        skinCluster_ = SkinClusterGenerator::CreateSkinCluster(
+            renderContext_.dxCommon->GetDevice(),
+            *skeleton,
+            modelData,
+            renderContext_.dxCommon->GetDescriptorAllocator(),
+            resource_->GetVertexBuffer(),
+            resource_->GetVertexCount()
+        );
+        return true;
     }
 
     void Model::SetAnimationPlayer(std::unique_ptr<AnimationPlayer> player) {

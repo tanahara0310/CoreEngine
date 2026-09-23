@@ -273,7 +273,6 @@ namespace CoreEngine
         entry.priority = priority;
         entry.timingCategoryOverride = timingCategoryOverride;
         entry.sequence = nextSequence_++;
-        entry.owner = activeOwner_;
         RenderPass* passPtr = entry.pass.get();
 
         // (phase, priority, 登録順) で決まる位置へ挿入し、passes_ を常にソート済みに保つ。
@@ -304,20 +303,6 @@ namespace CoreEngine
         InvalidateGraphSnapshots();
     }
 
-    void RenderPipeline::RemovePassesByOwner(const void* owner)
-    {
-        if (!owner) {
-            return;
-        }
-
-        passes_.erase(
-            std::remove_if(passes_.begin(), passes_.end(),
-                [owner](const RenderPassEntry& entry) { return entry.owner == owner; }),
-            passes_.end());
-
-        InvalidateGraphSnapshots();
-    }
-
     RenderPass* RenderPipeline::GetPass(const std::string& name)
     {
         for (auto& entry : passes_) {
@@ -331,7 +316,7 @@ namespace CoreEngine
     void RenderPipeline::PrepareFrameViews(const RenderContext& context, FrameViews& outViews)
     {
         // ===== 「どのカメラで描くか」を決める唯一の場所 =====
-        // 以前は BaseScene / RenderManager / RenderPipeline / SSAO がそれぞれ別の規則で
+        // 以前は Scene / RenderManager / RenderPipeline / SSAO がそれぞれ別の規則で
         // カメラを解決しており、「一致させること」というコメントで整合を守ろうとしていた。
         // ここで 1 回解決し、以降は ViewInfo という値を配る。
         Camera* camera = context.sceneManager

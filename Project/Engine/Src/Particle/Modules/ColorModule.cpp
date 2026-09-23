@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "ColorModule.h"
-#include "../ParticleSystem.h" // Particle構造体のために必要
+#include "Particle/Core/Particle.h"
 #include "Math/MathCore.h"
 #include <algorithm>
 
@@ -30,7 +30,7 @@ namespace CoreEngine
         particle.color = MathCore::Lerp(particle.initialColor, colorData_.endColor, t);
     }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     bool ColorModule::ShowImGui() {
         bool changed = false;
 

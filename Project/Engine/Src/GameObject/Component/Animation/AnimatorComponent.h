@@ -6,6 +6,7 @@
 #include "Graphics/Model/Skeleton/Skeleton.h"
 #include "Math/Matrix/Matrix4x4.h"
 #include "Math/Vector/Vector3.h"
+#include "Reflection/Reflect.h"
 
 #include <optional>
 #include <string>
@@ -46,9 +47,19 @@ public:
 
     const char* GetTypeName() const override { return "Animator"; }
 
-#ifdef USE_IMGUI
-    const char* GetInspectorName() const override { return "アニメーション"; }
-#endif
+    REFLECT_DECLARE(AnimatorComponent)
+
+    /// @brief スケルトンモデルのファイル名（空 = 兄弟が持っているモデルを使う）
+    const std::string& GetModelPath() const { return modelPath_; }
+
+    /// @brief スケルトンモデルのファイル名を差し替える（`Awake` より前に呼ぶ）
+    void SetModelPath(const std::string& modelPath) { modelPath_ = modelPath; }
+
+    /// @brief 読み込むクリップを書き出す（識別名・ファイル内の名前・読み込み元ファイル）
+    void SaveClipsToJson(json& parameters) const;
+
+    /// @brief 読み込むクリップを読む
+    void LoadClipsFromJson(const json& parameters);
 
     // ===== ライフサイクル =====
 
@@ -60,6 +71,13 @@ public:
 
     /// @brief 兄弟のメッシュ描画・トランスフォームを捕まえる
     void Start() override;
+
+    /// @brief 兄弟のメッシュ描画とトランスフォームを使う
+    bool RequiresComponent(const IComponent& other) const override
+    {
+        return dynamic_cast<const MeshRendererComponent*>(&other) != nullptr ||
+            dynamic_cast<const TransformComponent*>(&other) != nullptr;
+    }
 
     /// @brief アニメーションを 1 フレーム進める
     /// @note `GameObject::Update()` より前に走る。更新後の姿勢を読む処理は

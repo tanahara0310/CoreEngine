@@ -107,7 +107,13 @@ namespace CoreEngine
 
     void CollisionWorld::Step()
     {
-        currentCollisions_.clear();
+        CollectContacts(contacts_);
+        DispatchEvents(contacts_);
+    }
+
+    void CollisionWorld::CollectContacts(std::vector<ContactPair>& outPairs)
+    {
+        outPairs.clear();
 
         // ── ブロードフェーズ: AABB とレイヤーで候補を絞る ──────────────
         BuildBroadPhase();
@@ -126,22 +132,34 @@ namespace CoreEngine
                 continue;
             }
 
+            outPairs.push_back(ContactPair{ a, b, contact });
+        }
+    }
+
+    void CollisionWorld::DispatchEvents(const std::vector<ContactPair>& pairs)
+    {
+        currentCollisions_.clear();
+
+        for (const auto& pair : pairs) {
+            Collider* a = pair.a;
+            Collider* b = pair.b;
+
             const auto ids = Ordered(a->GetId(), b->GetId());
             const PairKey key{ ids.first, ids.second };
             currentCollisions_.emplace(key, PairColliders{ a, b });
 
             // めり込み解消はコールバックより先。コールバックには解決前の
             // 接触情報（どれだけめり込んでいたか）を渡す。
-            CollisionResolver::Resolve(*a, *b, contact);
+            CollisionResolver::Resolve(*a, *b, pair.contact);
 
-            Geometry::Contact reversed = contact;
-            reversed.normal = contact.normal * -1.0f;
+            Geometry::Contact reversed = pair.contact;
+            reversed.normal = pair.contact.normal * -1.0f;
 
             if (previousCollisions_.find(key) == previousCollisions_.end()) {
-                a->OnCollisionEnter(b, contact);
+                a->OnCollisionEnter(b, pair.contact);
                 b->OnCollisionEnter(a, reversed);
             } else {
-                a->OnCollisionStay(b, contact);
+                a->OnCollisionStay(b, pair.contact);
                 b->OnCollisionStay(a, reversed);
             }
         }
@@ -168,6 +186,11 @@ namespace CoreEngine
         previousCollisions_.swap(currentCollisions_);
     }
 
+    uint64_t CollisionWorld::GetLayerMask(CollisionLayer layer) const
+    {
+        return config_ ? config_->GetLayerMask(layer) : kAllLayers;
+    }
+
     bool CollisionWorld::IsColliding(const Collider& collider) const
     {
         return collidingIds_.find(collider.GetId()) != collidingIds_.end();
@@ -191,7 +214,10 @@ namespace CoreEngine
             if (collider.GetShapeType() == ColliderShapeType::Sphere) {
                 return Geometry::Raycast(ray, collider.GetWorldSphere(), &outHit, 0.0f, maxDistance);
             }
-            return Geometry::Raycast(ray, collider.GetWorldAABB(), &outHit, 0.0f, maxDistance);
+            if (collider.GetShapeType() == ColliderShapeType::Capsule) {
+                return Geometry::Raycast(ray, collider.GetWorldCapsule(), &outHit, 0.0f, maxDistance);
+            }
+            return Geometry::Raycast(ray, collider.GetWorldOBB(), &outHit, 0.0f, maxDistance);
         }
     }
 
@@ -249,9 +275,18 @@ namespace CoreEngine
         for (Collider* collider : colliders_) {
             if (!collider->IsEnabled() || !MatchesLayer(*collider, layerMask)) { continue; }
 
-            const bool hit = (collider->GetShapeType() == ColliderShapeType::Sphere)
-                ? Geometry::Intersect(sphere, collider->GetWorldSphere())
-                : Geometry::Intersect(sphere, collider->GetWorldAABB());
+            bool hit = false;
+            switch (collider->GetShapeType()) {
+            case ColliderShapeType::Sphere:
+                hit = Geometry::Intersect(sphere, collider->GetWorldSphere());
+                break;
+            case ColliderShapeType::Capsule:
+                hit = Geometry::Intersect(sphere, collider->GetWorldCapsule());
+                break;
+            default:
+                hit = Geometry::Intersect(sphere, collider->GetWorldOBB());
+                break;
+            }
             if (hit) { outColliders.push_back(collider); }
         }
     }
@@ -259,12 +294,24 @@ namespace CoreEngine
     void CollisionWorld::OverlapBox(const Geometry::AABB& box, uint64_t layerMask,
                                     std::vector<Collider*>& outColliders) const
     {
+        // 問い合わせの箱も向きを持つ形として扱い、判定を OBB へ一本化する
+        const Geometry::OBB queryBox{ box.GetCenter(), box.GetSize() * 0.5f };
+
         for (Collider* collider : colliders_) {
             if (!collider->IsEnabled() || !MatchesLayer(*collider, layerMask)) { continue; }
 
-            const bool hit = (collider->GetShapeType() == ColliderShapeType::Sphere)
-                ? Geometry::Intersect(box, collider->GetWorldSphere())
-                : Geometry::Intersect(box, collider->GetWorldAABB());
+            bool hit = false;
+            switch (collider->GetShapeType()) {
+            case ColliderShapeType::Sphere:
+                hit = Geometry::Intersect(collider->GetWorldSphere(), queryBox);
+                break;
+            case ColliderShapeType::Capsule:
+                hit = Geometry::Intersect(collider->GetWorldCapsule(), queryBox);
+                break;
+            default:
+                hit = Geometry::Intersect(queryBox, collider->GetWorldOBB());
+                break;
+            }
             if (hit) { outColliders.push_back(collider); }
         }
     }

@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <stdexcept>
+#include <utility>
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -230,6 +231,9 @@ namespace CoreEngine
         // 現在のフレームの完了をシグナル（非ブロッキング）
         frameSync_->SignalCurrentFrame();
 
+        // 記録中に預けた解放予約は、このフレームの GPU 作業が終わってから解放する
+        deferredRelease_->SealFrame(frameSync_->LastSignaledValue());
+
         // Present。GPU クラッシュを最初に報告してくる場所なので戻り値を捨てない
         static constexpr UINT kPresentFlags = 0;
         const HRESULT presentResult = swapChain_->Present(syncInterval, kPresentFlags);
@@ -258,6 +262,28 @@ namespace CoreEngine
 
     FrameSync& GraphicsCore::Frame() const { return *frameSync_; }
     DeferredReleaseQueue& GraphicsCore::DeferredRelease() const { return *deferredRelease_; }
+
+    void GraphicsCore::DeferRelease(Microsoft::WRL::ComPtr<ID3D12Resource> resource)
+    {
+        // 終了処理の後は GPU の作業が残っていないので、引数のまま手放す
+        if (!resource || !deferredRelease_) {
+            return;
+        }
+        deferredRelease_->PushForCurrentFrame(std::move(resource));
+    }
+
+    void GraphicsCore::DeferFree(DescriptorHandle& handle)
+    {
+        if (!handle.IsValid()) {
+            return;
+        }
+        // 終了処理の後はヒープごと無くなっているので、返す先が無い
+        if (!deferredRelease_ || !descriptorAllocator_) {
+            handle.Invalidate();
+            return;
+        }
+        deferredRelease_->PushForCurrentFrame(*descriptorAllocator_, handle);
+    }
 
     // ================================================================
     // アクセッサ（ヘッダを軽く保つため実装はここに置く）

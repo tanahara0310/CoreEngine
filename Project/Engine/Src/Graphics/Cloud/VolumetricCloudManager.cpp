@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "VolumetricCloudManager.h"
+#include "Utility/Path/ProjectPaths.h"
 
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Cloud/Settings/CloudCVars.h"
@@ -17,10 +18,6 @@ namespace CoreEngine
 {
     namespace
     {
-        /// @brief 配置ペイントの保存先（Config 層 = git 管理・チーム共有）
-        constexpr const char* kWeatherPaintFilePath =
-            "Application/Config/EngineSettings/CloudWeatherPaint.bin";
-
         /// @brief 配置ペイントの総バイト数（512²×RGBA8）
         constexpr size_t kWeatherPaintBytes = CloudResources::kPaintBytes;
 
@@ -71,11 +68,9 @@ namespace CoreEngine
             && resources_.CreateWeatherPaintTexture(device, descriptorAllocator);
         noisePipelinesReady_ = noiseResourcesReady && pipelines_.BuildNoisePasses(device);
 
-        // ペイントレイヤの CPU 実体を用意し、保存済みのペイントがあれば復元する
+        // ペイントレイヤの CPU 実体だけ用意する。中身はシーンごとに違うので、
+        // シーンを開くときに SetWeatherPaintPath で読み込む
         weatherPaintCpu_.assign(kWeatherPaintBytes, 0);
-        if (noiseResourcesReady) {
-            LoadWeatherPaint();
-        }
         pipelinesReady_ = pipelines_.BuildRenderPasses(device);
 
         // ゴッドレイ（失敗しても雲本体は無効化しない）
@@ -261,14 +256,31 @@ namespace CoreEngine
 
     void VolumetricCloudManager::ClearWeatherPaint()
     {
+        ResetWeatherPaintBuffer();
+
+        if (weatherPaintPath_.empty()) {
+            return;
+        }
+        std::error_code ec;
+        std::filesystem::remove(ProjectPaths::Resolve(weatherPaintPath_), ec);
+    }
+
+    void VolumetricCloudManager::ResetWeatherPaintBuffer()
+    {
         if (weatherPaintCpu_.size() != kWeatherPaintBytes) {
             return;
         }
         std::fill(weatherPaintCpu_.begin(), weatherPaintCpu_.end(), uint8_t(0));
         UploadWeatherPaint();
+    }
 
-        std::error_code ec;
-        std::filesystem::remove(kWeatherPaintFilePath, ec);
+    void VolumetricCloudManager::SetWeatherPaintPath(const std::string& path)
+    {
+        weatherPaintPath_ = path;
+        ResetWeatherPaintBuffer();
+        if (!weatherPaintPath_.empty()) {
+            LoadWeatherPaint();
+        }
     }
 
     void VolumetricCloudManager::SaveWeatherPaint() const
@@ -277,19 +289,25 @@ namespace CoreEngine
             return;
         }
 
-        // 空のペイントはファイルごと消す（1MB のゼロ埋めファイルをリポジトリに残さない）
-        std::error_code ec;
-        if (!weatherPaintUsed_) {
-            std::filesystem::remove(kWeatherPaintFilePath, ec);
+        // 書き先が決まっていない（シーンを開いていない）間は保存しない
+        if (weatherPaintPath_.empty()) {
             return;
         }
 
-        std::filesystem::create_directories(
-            std::filesystem::path(kWeatherPaintFilePath).parent_path(), ec);
-        std::ofstream file(kWeatherPaintFilePath, std::ios::binary | std::ios::trunc);
+        const std::filesystem::path paintPath = ProjectPaths::Resolve(weatherPaintPath_);
+
+        // 空のペイントはファイルごと消す（1MB のゼロ埋めファイルをリポジトリに残さない）
+        std::error_code ec;
+        if (!weatherPaintUsed_) {
+            std::filesystem::remove(paintPath, ec);
+            return;
+        }
+
+        std::filesystem::create_directories(paintPath.parent_path(), ec);
+        std::ofstream file(paintPath, std::ios::binary | std::ios::trunc);
         if (!file) {
             Logger::GetInstance().Warnf(LogCategory::Graphics,
-                "VolumetricCloudManager: 配置ペイントの保存に失敗 ({})", kWeatherPaintFilePath);
+                "VolumetricCloudManager: 配置ペイントの保存に失敗 ({})", weatherPaintPath_);
             return;
         }
 
@@ -304,7 +322,11 @@ namespace CoreEngine
 
     void VolumetricCloudManager::LoadWeatherPaint()
     {
-        std::ifstream file(kWeatherPaintFilePath, std::ios::binary);
+        if (weatherPaintPath_.empty()) {
+            return;
+        }
+
+        std::ifstream file(ProjectPaths::Resolve(weatherPaintPath_), std::ios::binary);
         if (!file) {
             return;
         }
@@ -316,7 +338,7 @@ namespace CoreEngine
             || header.size != CloudResources::kPaintSize) {
             Logger::GetInstance().Warnf(LogCategory::Graphics,
                 "VolumetricCloudManager: 配置ペイントの形式が一致しないため読み込みを破棄 ({})",
-                kWeatherPaintFilePath);
+                weatherPaintPath_);
             return;
         }
 

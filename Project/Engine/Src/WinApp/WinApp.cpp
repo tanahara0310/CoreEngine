@@ -3,6 +3,7 @@
 
 #include "Utility/CVar/CVar.h"
 
+#pragma comment(lib, "user32.lib")
 #pragma comment(lib, "winmm.lib")
 
 // 静的メンバの初期化
@@ -14,7 +15,7 @@ namespace
     // 既定を無効にしてあるのは、Esc がゲーム中のポーズに使われているため。
     // 有効にするとポーズを開く前にウィンドウが閉じる
     CVar<bool> cvQuitOnEscape{
-        "app.QuitOnEscape", false,
+        "sys.Window.QuitOnEscape", false,
         "Esc キーでアプリケーションを終了する（無効でも × ボタンと Alt+F4 では終了できる）" };
 }
 
@@ -26,6 +27,7 @@ bool WinApp::QuitsOnEscape()
 WinApp* WinApp::instance_ = nullptr;
 int32_t WinApp::currentClientWidthStatic_ = WinApp::kClientWidth;
 int32_t WinApp::currentClientHeightStatic_ = WinApp::kClientHeight;
+bool WinApp::appActive_ = true;
 
 void WinApp::Initialize(int32_t width, int32_t height, const wchar_t* title)
 {
@@ -168,16 +170,21 @@ void WinApp::SetFullscreen(bool fullscreen)
 LRESULT CALLBACK WinApp::WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     // ImGuiの処理を優先する
     if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam)) {
         return true;
     }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
 
     // メッセージに応じて固有の処理を行う
     switch (msg) {
+        // アプリが前面に出た／引っ込んだ（このアプリの全ウィンドウへ届く）
+    case WM_ACTIVATEAPP:
+        appActive_ = (wparam != FALSE);
+        break;
+
         // Alt+Enter で全画面 / 通常ウィンドウを切り替える
     case WM_SYSKEYDOWN:
         if (wparam == VK_RETURN && instance_ != nullptr) {
@@ -189,14 +196,14 @@ LRESULT CALLBACK WinApp::WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM l
         }
         break;
 
-        // Esc でアプリケーションを終了する（既定は無効。app.QuitOnEscape で切り替える）
+        // Esc でアプリケーションを終了する（既定は無効。sys.Window.QuitOnEscape で切り替える）
     case WM_KEYDOWN:
         if (wparam == VK_ESCAPE) {
             // ゲーム中の Esc はポーズメニューが受ける。ここで閉じてはいけない
             if (!QuitsOnEscape()) {
                 break;
             }
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
             // 名前入力などの最中に消えてしまわないよう、
             // ImGui がテキスト入力を受け取っている間は無視する
             if (ImGui::GetCurrentContext() && ImGui::GetIO().WantTextInput) {

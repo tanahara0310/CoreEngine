@@ -1,5 +1,7 @@
 #include "pch.h"
 #include "SceneManager.h"
+#include "Scene/Scene.h"
+#include "Scene/SceneSaveSystem.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Light/LightManager.h"
@@ -21,11 +23,22 @@ namespace CoreEngine
         // シーントランジションの初期化
         sceneTransition_ = std::make_unique<SceneTransition>();
         sceneTransition_->Initialize(engine);
+
+        // 保存データを持つシーンは、C++ のクラスが無くても開けるようにする
+        for (const std::string& name : SceneSaveSystem::ListSavedScenes()) {
+            if (!HasScene(name)) {
+                RegisterDataScene(name);
+            }
+        }
     }
 
     void SceneManager::SetInitialScene(const std::string& name) {
         // トランジション無しで即座にシーンを読み込む
         DoChangeScene(name);
+    }
+
+    void SceneManager::RegisterDataScene(const std::string& name) {
+        sceneNames_.insert(name);
     }
 
     void SceneManager::ChangeScene(std::string name) {
@@ -39,6 +52,20 @@ namespace CoreEngine
         nextTransitionType_ = transitionType;
         nextTransitionDuration_ = duration;
         isSceneChangeRequested_ = true;
+    }
+
+    bool SceneManager::CanLoadSceneNow() const {
+        return !IsSceneLoadInProgress() && !IsTransitioning();
+    }
+
+    bool SceneManager::LoadSceneFromSnapshot(const std::string& name, std::shared_ptr<const SceneSnapshot> snapshot) {
+        if (!CanLoadSceneNow() || !HasScene(name)) {
+            return false;
+        }
+
+        // まだ始まっていないシーン切り替えの依頼を取り消す
+        isSceneChangeRequested_ = false;
+        return DoChangeScene(name, std::move(snapshot));
     }
 
     void SceneManager::Update() {
@@ -120,22 +147,19 @@ namespace CoreEngine
         }
 
         if (currentScene_) {
-            if (auto* pipeline = engine_->GetRenderPipeline()) {
-                pipeline->RemovePassesByOwner(currentScene_.get());
-            }
             currentScene_->Finalize();
         }
 
         currentScene_.reset();
         currentSceneName_ = "None";
-        sceneFactories_.clear();
+        sceneNames_.clear();
 
         // トランジションの解放
         sceneTransition_.reset();
     }
 
     bool SceneManager::HasScene(const std::string& name) const {
-        return sceneFactories_.find(name) != sceneFactories_.end();
+        return sceneNames_.find(name) != sceneNames_.end();
     }
 
     std::string SceneManager::GetCurrentSceneName() const {
@@ -144,9 +168,9 @@ namespace CoreEngine
 
     std::vector<std::string> SceneManager::GetAllSceneNames() const {
         std::vector<std::string> sceneNames;
-        sceneNames.reserve(sceneFactories_.size());
-        for (const auto& pair : sceneFactories_) {
-            sceneNames.push_back(pair.first);
+        sceneNames.reserve(sceneNames_.size());
+        for (const std::string& name : sceneNames_) {
+            sceneNames.push_back(name);
         }
         return sceneNames;
     }
@@ -165,6 +189,10 @@ namespace CoreEngine
         return currentScene_ ? currentScene_->GetGameViewCamera3D() : nullptr;
     }
 
+    Camera* SceneManager::GetGameCamera3D() const {
+        return currentScene_ ? currentScene_->GetGameCamera3D() : nullptr;
+    }
+
     Camera* SceneManager::GetGameViewCamera2D() const {
         return currentScene_ ? currentScene_->GetGameViewCamera2D() : nullptr;
     }
@@ -178,9 +206,9 @@ namespace CoreEngine
         return currentScene_ ? currentScene_->BuildRenderViewRequests() : std::vector<RenderViewRequest>{};
     }
 
-    void SceneManager::DoChangeScene(const std::string& name) {
-        if (!BeginSceneLoad(name)) {
-            return;
+    bool SceneManager::DoChangeScene(const std::string& name, std::shared_ptr<const SceneSnapshot> snapshot) {
+        if (!BeginSceneLoad(name, std::move(snapshot))) {
+            return false;
         }
 
         // フレームを回さない経路なので、続きはその場で走り切らせる
@@ -189,18 +217,21 @@ namespace CoreEngine
             StepSceneLoad();
         }
         loadRunsSynchronously_ = false;
+        return true;
     }
 
-    bool SceneManager::BeginSceneLoad(const std::string& name) {
-        auto it = sceneFactories_.find(name);
-        if (it == sceneFactories_.end()) {
+    bool SceneManager::BeginSceneLoad(const std::string& name, std::shared_ptr<const SceneSnapshot> snapshot) {
+        if (!HasScene(name)) {
             return false;
         }
 
         // 実行を始めた列へはステップを足せないので、シーン実体を先に作ってから列を組む
-        pendingScene_ = it->second();
+        pendingScene_ = std::make_unique<Scene>(name);
         pendingSceneName_ = name;
         pendingScene_->SetSceneManager(this);
+        if (snapshot) {
+            pendingScene_->SetRestoreSnapshot(std::move(snapshot));
+        }
 
         loadContinuation_ = nullptr;
         loadStepProgress_ = nullptr;
@@ -283,11 +314,6 @@ namespace CoreEngine
         }
 
         if (currentScene_) {
-            // シーンが登録したユーザーレンダーパスを一括除去
-            if (auto* pipeline = engine_->GetRenderPipeline()) {
-                pipeline->RemovePassesByOwner(currentScene_.get());
-            }
-
             currentScene_->Finalize();
         }
 
@@ -310,12 +336,5 @@ namespace CoreEngine
     void SceneManager::AttachPendingScene() {
         currentScene_ = std::move(pendingScene_);
         currentSceneName_ = pendingSceneName_;
-
-        // シーン固有レンダーパスの登録（所有者タグ付きで、シーン破棄時に自動除去される）
-        if (auto* pipeline = engine_->GetRenderPipeline()) {
-            pipeline->BeginOwnerScope(currentScene_.get());
-            currentScene_->RegisterRenderPasses(*pipeline);
-            pipeline->EndOwnerScope();
-        }
     }
 }

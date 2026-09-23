@@ -329,18 +329,28 @@ std::vector<Line> LineManager::GenerateSphereLines(const Vector3& center, float 
 
 std::vector<Line> LineManager::GenerateBoxLines(const Vector3& center, const Vector3& size,
     const Vector3& color, float alpha) {
+    return GenerateBoxLines(center, size,
+        { 1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f, 1.0f }, color, alpha);
+}
+
+std::vector<Line> LineManager::GenerateBoxLines(const Vector3& center, const Vector3& size,
+    const Vector3& axisX, const Vector3& axisY, const Vector3& axisZ,
+    const Vector3& color, float alpha) {
     std::vector<Line> lines;
 
-    Vector3 halfSize = { size.x * 0.5f, size.y * 0.5f, size.z * 0.5f };
+    const Vector3 extentX = axisX * (size.x * 0.5f);
+    const Vector3 extentY = axisY * (size.y * 0.5f);
+    const Vector3 extentZ = axisZ * (size.z * 0.5f);
+
     Vector3 vertices[8] = {
-        { center.x - halfSize.x, center.y - halfSize.y, center.z - halfSize.z },
-        { center.x + halfSize.x, center.y - halfSize.y, center.z - halfSize.z },
-        { center.x + halfSize.x, center.y + halfSize.y, center.z - halfSize.z },
-        { center.x - halfSize.x, center.y + halfSize.y, center.z - halfSize.z },
-        { center.x - halfSize.x, center.y - halfSize.y, center.z + halfSize.z },
-        { center.x + halfSize.x, center.y - halfSize.y, center.z + halfSize.z },
-        { center.x + halfSize.x, center.y + halfSize.y, center.z + halfSize.z },
-        { center.x - halfSize.x, center.y + halfSize.y, center.z + halfSize.z }
+        center - extentX - extentY - extentZ,
+        center + extentX - extentY - extentZ,
+        center + extentX + extentY - extentZ,
+        center - extentX + extentY - extentZ,
+        center - extentX - extentY + extentZ,
+        center + extentX - extentY + extentZ,
+        center + extentX + extentY + extentZ,
+        center - extentX + extentY + extentZ
     };
 
     // 前面の4辺
@@ -517,6 +527,63 @@ std::vector<Line> LineManager::GenerateCylinderLines(const Vector3& center, floa
 
         if (i % (segments / 4) == 0) {
             lines.push_back({ topP1, bottomP1, color, alpha });
+        }
+    }
+
+    return lines;
+}
+
+std::vector<Line> LineManager::GenerateCapsuleLines(const Vector3& start, const Vector3& end,
+    float radius, const Vector3& color, float alpha, int segments) {
+    std::vector<Line> lines;
+
+    const int sides = (segments >= 4) ? segments : 4;
+    const float twoPi = 2.0f * std::numbers::pi_v<float>;
+
+    // 軸と、それに垂直な 2 本を作る
+    const Vector3 axis = end - start;
+    const float length = CoreEngine::Length(axis);
+    const Vector3 direction = (length > 1e-6f)
+        ? axis * (1.0f / length)
+        : Vector3{ 0.0f, 1.0f, 0.0f };
+
+    const Vector3 right = (std::abs(direction.y) > 0.999f)
+        ? Vector3{ 1.0f, 0.0f, 0.0f }
+        : CoreEngine::Normalize(CoreEngine::Cross(Vector3{ 0.0f, 1.0f, 0.0f }, direction));
+    const Vector3 up = CoreEngine::Normalize(CoreEngine::Cross(direction, right));
+
+    // 両端の円と、それを結ぶ側面
+    for (int i = 0; i < sides; ++i) {
+        const float angle1 = (static_cast<float>(i) / sides) * twoPi;
+        const float angle2 = (static_cast<float>(i + 1) / sides) * twoPi;
+
+        const Vector3 offset1 = (right * std::cos(angle1) + up * std::sin(angle1)) * radius;
+        const Vector3 offset2 = (right * std::cos(angle2) + up * std::sin(angle2)) * radius;
+
+        lines.push_back({ start + offset1, start + offset2, color, alpha });
+        lines.push_back({ end + offset1, end + offset2, color, alpha });
+
+        if (i % (sides / 4) == 0) {
+            lines.push_back({ start + offset1, end + offset1, color, alpha });
+        }
+    }
+
+    // 両端のドーム。直交する 2 枚の面で半円を描く
+    const int arcSegments = (sides / 2 >= 2) ? sides / 2 : 2;
+    const Vector3 planeAxes[2] = { right, up };
+
+    for (const Vector3& side : planeAxes) {
+        for (int i = 0; i < arcSegments; ++i) {
+            const float angle1 = (static_cast<float>(i) / arcSegments) * std::numbers::pi_v<float>;
+            const float angle2 = (static_cast<float>(i + 1) / arcSegments) * std::numbers::pi_v<float>;
+
+            const Vector3 flat1 = side * std::cos(angle1);
+            const Vector3 flat2 = side * std::cos(angle2);
+            const Vector3 rise1 = direction * std::sin(angle1);
+            const Vector3 rise2 = direction * std::sin(angle2);
+
+            lines.push_back({ end + (flat1 + rise1) * radius, end + (flat2 + rise2) * radius, color, alpha });
+            lines.push_back({ start + (flat1 - rise1) * radius, start + (flat2 - rise2) * radius, color, alpha });
         }
     }
 

@@ -24,8 +24,8 @@ namespace CoreEngine
         /// @brief Engine Settings に「Ground」パネルを登録する（デバッグビルドのみ）
         void Initialize(SceneContext& ctx) override;
 
-        /// @brief シーンの OnInitialize() 完了後に床オブジェクトを生成する
-        /// @details シーン側が `BaseScene::SetDefaultGroundEnabled(false)` で抑止したかを
+        /// @brief シーンのオブジェクトが出そろった後に床オブジェクトを生成する
+        /// @details シーン側が `Scene::SetDefaultGroundEnabled(false)` で抑止したかを
         ///          見てから作るので、`PostSceneInitialize` のタイミングでなければならない。
         void PostSceneInitialize(SceneContext& ctx) override;
 
@@ -45,7 +45,7 @@ namespace CoreEngine
         /// @brief 生成された床オブジェクト（抑止時・生成前は nullptr）
         GameObject* GetGroundObject() const { return ground_; }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         /// @brief Engine Settings に「Ground」パネルを登録する（プロセスで一度だけ）
         /// @details ドロワーはファイルスコープの「現在アクティブな床」を読むだけで何も
         ///          キャプチャしない（GameDebugUI に登録解除 API が無いため）。

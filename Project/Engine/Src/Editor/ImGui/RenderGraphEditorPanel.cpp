@@ -1,7 +1,8 @@
 #include "pch.h"
 #include "RenderGraphEditorPanel.h"
+#include "Editor/ImGui/Widgets/PassTimingTable.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include <imnodes.h>
 
@@ -225,7 +226,7 @@ namespace CoreEngine
         }
 
         // Tools パネル既定の 460x540 ではノードグラフには狭すぎるため、初回だけ広げる
-        //（ユーザーがリサイズすれば imgui.ini 側の値が優先される）
+        //（ユーザーがリサイズすれば、保存された配置の値が優先される）
         ImGui::SetWindowSize(ImVec2(1180.0f, 720.0f), ImGuiCond_FirstUseEver);
 
         drawnRecently_ = true;
@@ -603,7 +604,7 @@ namespace CoreEngine
         // 計測値（ピンを持たない静的行）
         ImNodes::BeginStaticAttribute(MakeAttributeId(passIndex, 127));
         if (pass.executed) {
-            ImGui::Text("GPU %.3f ms", gpuMs);
+            ImGui::TextColored(UI::GpuTimeColor(gpuMs), "GPU %.3f ms", gpuMs);
         } else {
             ImGui::TextDisabled("not executed");
         }
@@ -1125,4 +1126,4 @@ namespace CoreEngine
     }
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

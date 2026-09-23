@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "EmissionModule.h"
-#include "../ParticleSystem.h" // Particle構造体のために必要
+#include "Particle/Core/Particle.h"
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/ImguiManager.h"
 #endif
 
@@ -68,7 +68,7 @@ void EmissionModule::Stop() {
     isPlaying_ = false;
 }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 bool EmissionModule::ShowImGui() {
     bool changed = false;
 

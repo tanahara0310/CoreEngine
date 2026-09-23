@@ -1,9 +1,16 @@
 #include "pch.h"
 #include "EnvironmentFeature.h"
 #include "EngineSystem/EngineSystem.h"
+#include "EngineSystem/PlaybackState.h"
 #include "Camera/Camera.h"
 #include "GameObject/GameObjectManager.h"
-#include "GameObjects/SkyBox/SkyBoxObject.h"
+#include "GameObject/GameObject.h"
+#include "Graphics/Render/SkyBox/SkyBoxComponent.h"
+#include "GameObject/Component/Environment/VolumetricCloudComponent.h"
+#include "GameObject/Component/Environment/HeightFogComponent.h"
+#include "GameObject/Component/Environment/PostProcessComponent.h"
+#include "Graphics/Cloud/Settings/CloudCVars.h"
+#include "Graphics/Fog/Settings/FogCVars.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Cloud/VolumetricCloudManager.h"
 #include "Graphics/Fog/FogManager.h"
@@ -12,180 +19,163 @@
 #include "Graphics/PostEffect/Effect/PostEffectNames.h"
 #include "Graphics/PostEffect/Effect/ToneMapping/ToneMapping.h"
 #include "Graphics/Render/RenderDomainContext.h"
+#include "Scene/SceneEnvironmentIO.h"
+#include "Scene/SceneSaveSystem.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
-
-namespace
-{
-    using namespace CoreEngine;
-
-    /// 太陽・月ライトの保存用 CVar。値の実体は LightManager の Light（シーン寿命）側にあり、
-    /// これらはエンジン寿命の「鏡」として毎フレーム実体から写す。
-    /// 編集 UI は Atmosphere エディタが担当するので自動生成 UI には出さず、Undo からも外す。
-    constexpr CVarFlags kMirrorFlags =
-        CVarFlags::NoUI | CVarFlags::Mirrored | CVarFlags::NoSave;
-
-    CVar<Vector3> cvSunDirection{
-        "r.AtmosphereLights.SunDirection", { -0.45073172f, -0.65011942f, 0.61170721f },
-        "大気の太陽ライトの進行方向（太陽→地表）", {}, kMirrorFlags };
-    CVar<float> cvSunAtmosphereIntensity{
-        "r.AtmosphereLights.SunAtmosphereIntensity", 0.0f,
-        "太陽の空（大気散乱）輝度スケール。0 で照度からの自動換算",
-        CVarRange{ 0.0f, 100.0f }, kMirrorFlags };
-
-    CVar<bool> cvMoonEnabled{
-        "r.AtmosphereLights.MoonEnabled", false,
-        "月（第2大気ライト）の有効/無効", {}, kMirrorFlags };
-    CVar<Vector3> cvMoonDirection{
-        // 既定は高度角 30°・方位角 180°（太陽の反対側）を向けた進行方向
-        "r.AtmosphereLights.MoonDirection", { 0.0f, -0.5f, 0.8660254f },
-        "月ライトの進行方向（月→地表）", {}, kMirrorFlags };
-    CVar<Vector3> cvMoonColor{
-        "r.AtmosphereLights.MoonColor", { 0.55f, 0.65f, 0.85f },
-        "月光色（知覚的な青白さの美術値）", {}, kMirrorFlags };
-    CVar<float> cvMoonSurfaceIntensity{
-        "r.AtmosphereLights.MoonSurfaceIntensity", 114.0f,
-        "月光のサーフェス直接光 [lx]", CVarRange{ 0.0f, 1000.0f }, kMirrorFlags };
-    CVar<float> cvMoonAtmosphereIntensity{
-        "r.AtmosphereLights.MoonAtmosphereIntensity", 0.02f,
-        "月光の空（大気散乱）輝度スケール", CVarRange{ 0.0f, 1.0f }, kMirrorFlags };
-
-    /// @brief ゼロベクトル等の不正値を弾いて正規化する
-    Vector3 SafeDirection(const Vector3& dir, const Vector3& fallback)
-    {
-        const float lengthSq = dir.x * dir.x + dir.y * dir.y + dir.z * dir.z;
-        if (lengthSq < 1e-8f) {
-            return fallback;
-        }
-        return CoreEngine::Normalize(dir);
-    }
-}
 
 namespace CoreEngine
 {
     void EnvironmentFeature::PostSceneInitialize(SceneContext& ctx)
     {
-        // シーンが SkyBox を生成していない場合のみ自動生成するため OnInitialize() の後に行う
-        SetupDefaultSky(ctx);
+        // シーンが置いていないものだけを自動生成するため、オブジェクトが出そろった後に行う
+        SetupEnvironmentObject(ctx);
 
-        // 保存済みの太陽・月設定を復元する。ライト（LightingFeature 生成）と
-        // シーン OnInitialize の両方より後のこの時点で流し込むことで、
-        // 復元値が最終的な起点になる
-        RestoreAtmosphereLightsFromCVars(ctx);
+#ifdef CORE_EDITOR
+        // 復元直後の通番を基準にする（そろえないと、開いた直後に読んだ値をそのまま書き戻す）
+        lastEnvironmentRevision_ = SceneEnvironmentIO::GetChangeRevision();
+#endif
     }
 
     void EnvironmentFeature::Update(SceneContext& ctx, SceneUpdatePhase phase)
     {
         switch (phase) {
         case SceneUpdatePhase::PostLogic:
-            // 太陽・月ライトの現在値を保存用 CVar へ写す（エディタ・ギズモ・
-            // シーンコードのどこから変更されても拾えるよう、実体側から毎フレーム）
-            MirrorAtmosphereLightsToCVars(ctx);
+            // インスペクタのチェックと CVar をそろえてから描画側へ渡す
+            SyncComponentToggles();
             // 大気散乱の更新（全ロジック更新後の最新の太陽・カメラ情報を反映する）
             UpdateAtmosphere(ctx);
             // フォグは空・大気の有無に依存しないので、大気更新の成否と無関係に呼ぶ
             UpdateFog(ctx);
+#ifdef CORE_EDITOR
+            AutoSaveEnvironment(ctx);
+#endif
             break;
         default:
             break;
         }
     }
 
-    void EnvironmentFeature::Finalize(SceneContext& ctx)
+    void EnvironmentFeature::Finalize([[maybe_unused]] SceneContext& ctx)
     {
-        // 最後の状態を CVar へ写しておく（最終フレームの Update 以降の変更を取りこぼさない）。
-        // ライトのクリア（SceneManager::DoChangeScene の ClearAllLights）より前に行う
-        MirrorAtmosphereLightsToCVars(ctx);
+#ifdef CORE_EDITOR
+        // 書き待ちのまま閉じると最後の調整が消えるので、ここで書き切る
+        if (environmentDirty_ && ctx.saveSystem) {
+            environmentDirty_ = false;
+            SceneEnvironmentIO::Save(ctx.saveSystem->GetSceneName());
+        }
+#endif
 
-        // SkyBox は GameObjectManager が所有しているためポインタのみクリア
+        // どれも GameObjectManager が所有しているためポインタのみクリア
         skyBox_ = nullptr;
+        cloud_ = nullptr;
+        fog_ = nullptr;
+        postProcess_ = nullptr;
     }
 
-    void EnvironmentFeature::SetupDefaultSky(SceneContext& ctx)
+#ifdef CORE_EDITOR
+    void EnvironmentFeature::AutoSaveEnvironment(SceneContext& ctx)
     {
-        // シーン側（OnInitialize）で生成済みの SkyBox があればそれを採用する
-        // （具象型のダウンキャストではなく SceneTag で探す）
-        if (auto* tag = ctx.gameObjectManager->FindFirstComponent<SceneTagComponent<SkyBoxObject>>()) {
-            skyBox_ = tag->Get();
+        if (!ctx.saveSystem) {
+            return;
+        }
+
+        // 再生中に触った分はシーンへ書かない。停止すると再生前のシーンへ組み直すので、
+        // 環境だけがファイルに残ると「停止で戻す」と食い違う。
+        // 通番は追いかけておき、再生前との差だけを見る
+        if (PlaybackStateManager::GetInstance().IsInPlayMode()) {
+            lastEnvironmentRevision_ = SceneEnvironmentIO::GetChangeRevision();
+            environmentDirty_ = false;
+            return;
+        }
+
+        const uint64_t revision = SceneEnvironmentIO::GetChangeRevision();
+        if (revision != lastEnvironmentRevision_) {
+            lastEnvironmentRevision_ = revision;
+            lastEnvironmentChange_ = std::chrono::steady_clock::now();
+            environmentDirty_ = true;
+            return;
+        }
+        if (!environmentDirty_) {
+            return;
+        }
+
+        // 動かしている間は書かない（離してから 0.3 秒で 1 回だけ書く）
+        constexpr auto kQuietTime = std::chrono::milliseconds(300);
+        if (std::chrono::steady_clock::now() - lastEnvironmentChange_ < kQuietTime) {
+            return;
+        }
+
+        environmentDirty_ = false;
+        SceneEnvironmentIO::Save(ctx.saveSystem->GetSceneName());
+    }
+#endif
+
+    void EnvironmentFeature::SetupEnvironmentObject(SceneContext& ctx)
+    {
+        GameObjectManager* const objects = ctx.gameObjectManager;
+        if (!objects) {
+            return;
+        }
+
+        // シーン側が置いた分をまず採る
+        skyBox_ = objects->FindFirstComponent<SkyBoxComponent>();
+        cloud_ = objects->FindFirstComponent<VolumetricCloudComponent>();
+        fog_ = objects->FindFirstComponent<HeightFogComponent>();
+        postProcess_ = objects->FindFirstComponent<PostProcessComponent>();
+        if (skyBox_ && cloud_ && fog_ && postProcess_) {
             Logger::GetInstance().Infof(LogCategory::System,
-                "BaseScene: シーン生成の SkyBox を採用");
+                "EnvironmentFeature: シーンが置いた環境を採用");
+            SyncComponentToggles();
             return;
         }
 
-        // 未生成なら既定の背景として大気散乱モードの SkyBox を自動生成する
-        skyBox_ = ctx.gameObjectManager->AddObject(std::make_unique<SkyBoxObject>());
-        skyBox_->SetActive(true);
+        // 足りない分を載せる入れ物を用意する（シーンには保存しない）
+        GameObject* host = skyBox_ ? skyBox_->GetOwner() : nullptr;
+        if (!host) {
+            auto owned = std::make_unique<GameObject>();
+            owned->SetName("Environment");
+            host = objects->AddObject(std::move(owned));
+            if (!host) {
+                return;
+            }
+            host->SetSerializeEnabled(false);
+        }
+
+        if (!skyBox_) { skyBox_ = host->AddComponent<SkyBoxComponent>(); }
+        if (!cloud_) { cloud_ = host->AddComponent<VolumetricCloudComponent>(); }
+        if (!fog_) { fog_ = host->AddComponent<HeightFogComponent>(); }
+        if (!postProcess_) { postProcess_ = host->AddComponent<PostProcessComponent>(); }
+
+        // 実体の値（CVar）に合わせてチェックの初期状態を決める
+        if (cloud_) { cloud_->SetEnabled(CloudCVars::Enabled.Get()); }
+        if (fog_) { fog_->SetEnabled(FogCVars::Enabled.Get()); }
+        lastCloudEnabled_ = CloudCVars::Enabled.Get();
+        lastFogEnabled_ = FogCVars::Enabled.Get();
+
         Logger::GetInstance().Infof(LogCategory::System,
-            "BaseScene: 既定背景として大気散乱モードの SkyBox を自動生成");
+            "EnvironmentFeature: 既定の環境（空・雲・霧・ポストエフェクト）を {} に載せた",
+            host->GetName());
     }
 
-    void EnvironmentFeature::RestoreAtmosphereLightsFromCVars(SceneContext& ctx)
+    void EnvironmentFeature::SyncComponentToggles()
     {
-        auto* lightManager = ctx.engine ? ctx.engine->GetService<LightManager>() : nullptr;
-        if (!lightManager) {
-            return;
-        }
-
-        // ===== 太陽（LightingFeature の既定ライトへのフォールバック込みで取得） =====
-        // 太陽ライトはシーン側が独自の向き・強度を設定していることがあるため、
-        // 「コード既定から変更されている項目」だけを上書きする。全項目を無条件に
-        // 流し込むと、保存していない項目のコード既定値でシーンの設定を潰してしまう
-        if (Light* sun = lightManager->GetAtmosphereSunLight()) {
-            if (cvSunDirection.IsModified()) {
-                sun->direction = SafeDirection(cvSunDirection.Get(), sun->direction);
+        const auto sync = [](IComponent* component, CVar<bool>& cvar, bool& last) {
+            if (!component) {
+                return;
             }
-            if (cvSunAtmosphereIntensity.IsModified()) {
-                sun->atmosphereIntensity = cvSunAtmosphereIntensity.Get();
+            if (cvar.Get() != last) {
+                // CVar パネルやコンソールから変わった
+                component->SetEnabled(cvar.Get());
+            } else if (component->IsEnabled() != cvar.Get()) {
+                // インスペクタのチェックから変わった
+                cvar.Set(component->IsEnabled());
             }
-            // 変化は AtmosphereManager::Update() が自動検知して Sky-View LUT を再生成する
-        }
-
-        // ===== 月（オプトイン。有効で保存されていればライトを生成して復元） =====
-        Light* moon = lightManager->GetAtmosphereMoonLight();
-        if (!moon && cvMoonEnabled.Get()) {
-            // AtmosphereEditor::ApplyMoonSettings と同じ手順で第2ディレクショナルライトを生成する
-            LightHandle moonHandle = lightManager->CreateLight(LightType::Directional, "Moon");
-            moon = lightManager->GetLight(moonHandle);
-            if (moon) {
-                moon->isAtmosphereMoon = true;
-            }
-        }
-        if (moon) {
-            // 月は大気の月として作られた時点でシーン固有の初期状態を持たないため、
-            // 太陽と違い全項目を無条件に流し込む
-            moon->enabled = cvMoonEnabled.Get();
-            moon->direction = SafeDirection(cvMoonDirection.Get(), moon->direction);
-            moon->color = cvMoonColor.Get();
-            moon->intensity = cvMoonSurfaceIntensity.Get();
-            moon->atmosphereIntensity = cvMoonAtmosphereIntensity.Get();
-        }
-    }
-
-    void EnvironmentFeature::MirrorAtmosphereLightsToCVars(SceneContext& ctx)
-    {
-        auto* lightManager = ctx.engine ? ctx.engine->GetService<LightManager>() : nullptr;
-        if (!lightManager) {
-            return;
-        }
-
-        // CVar::Set は値が実際に変わったときだけ変更通番を進めるため、毎フレーム呼んでよい。
-        // 太陽のサーフェス照度・色は Lighting エディタ側の責務なので写さない
-        if (const Light* sun = lightManager->GetAtmosphereSunLight()) {
-            cvSunDirection.Set(sun->direction);
-            cvSunAtmosphereIntensity.Set(sun->atmosphereIntensity);
-        }
-
-        if (const Light* moon = lightManager->GetAtmosphereMoonLight()) {
-            cvMoonEnabled.Set(moon->enabled);
-            cvMoonDirection.Set(moon->direction);
-            cvMoonColor.Set(moon->color);
-            cvMoonSurfaceIntensity.Set(moon->intensity);
-            cvMoonAtmosphereIntensity.Set(moon->atmosphereIntensity);
-        } else {
-            // 月ライトが無いシーンでは無効として記録する（色などは次回有効化用に維持）
-            cvMoonEnabled.Set(false);
-        }
+            last = cvar.Get();
+            };
+        sync(cloud_, CloudCVars::Enabled, lastCloudEnabled_);
+        sync(fog_, FogCVars::Enabled, lastFogEnabled_);
     }
 
     void EnvironmentFeature::UpdateAtmosphere(SceneContext& ctx)

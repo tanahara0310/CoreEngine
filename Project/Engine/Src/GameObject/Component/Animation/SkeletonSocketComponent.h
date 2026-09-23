@@ -16,10 +16,6 @@ class SkeletonSocketComponent : public IComponent {
 public:
     const char* GetTypeName() const override { return "SkeletonSocket"; }
 
-#ifdef USE_IMGUI
-    const char* GetInspectorName() const override { return "ソケット追従"; }
-#endif
-
     // ===== 設定 =====
 
     /// @brief 追従先を指定する
@@ -47,6 +43,12 @@ public:
     // ===== ライフサイクル =====
 
     void Start() override { transform_ = Sibling<TransformComponent>(); }
+
+    /// @brief トランスフォームを使う
+    bool RequiresComponent(const IComponent& other) const override
+    {
+        return dynamic_cast<const TransformComponent*>(&other) != nullptr;
+    }
 
     /// @brief ジョイントのワールド行列にオフセットを掛けて自分のワールド行列を上書きする
     /// @note `LateUpdate()` なのは追従元のアニメーション更新（`AnimatorComponent::Update()`）が

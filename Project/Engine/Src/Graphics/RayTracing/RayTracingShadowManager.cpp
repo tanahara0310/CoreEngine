@@ -123,11 +123,11 @@ namespace CoreEngine
             "大きいほど深度が近い結果しか採用しない（輪郭はシャープだがエイリアスが出る）",
             CVarRange{ 0.5f, 40.0f } };
 
-        // 残像・ゴーストの切り分け用トグル。ON のまま保存されると品質低下に気づけないため保存しない
-        CVar<bool> cvDisableHistory{
-            "r.RTShadow.DisableHistory", false,
-            "テンポラル蓄積の履歴参照を強制的に無効化する（デバッグ用）。"
-            "ON にすると毎フレーム現フレームの空間前処理結果のみを使う",
+        // 残像・ゴーストの切り分け用の切り替え（保存しない）
+        CVar<bool> cvHistoryEnabled{
+            "r.RTShadow.HistoryEnabled", true,
+            "テンポラル蓄積の履歴を参照する（デバッグ用）。"
+            "OFF にすると毎フレーム現フレームの空間前処理結果のみを使う",
             CVarRange{}, CVarFlags::NoSave };
     }
 
@@ -149,7 +149,7 @@ namespace CoreEngine
         settings_.halfResolutionTrace = cvHalfResolutionTrace.Get();
         settings_.cycleTraceOffset = cvCycleTraceOffset.Get();
         settings_.upsamplePhiDepth = cvUpsamplePhiDepth.Get();
-        settings_.disableHistory = cvDisableHistory.Get();
+        settings_.disableHistory = !cvHistoryEnabled.Get();
     }
 
     void RayTracingShadowManager::SetSettings(const RayTracingShadowSettings& settings)
@@ -171,7 +171,7 @@ namespace CoreEngine
         cvHalfResolutionTrace.Set(settings.halfResolutionTrace);
         cvCycleTraceOffset.Set(settings.cycleTraceOffset);
         cvUpsamplePhiDepth.Set(settings.upsamplePhiDepth);
-        cvDisableHistory.Set(settings.disableHistory);
+        cvHistoryEnabled.Set(!settings.disableHistory);
         SyncSettingsFromCVars();
     }
     // =========================================================================

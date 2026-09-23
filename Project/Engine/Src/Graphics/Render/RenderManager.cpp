@@ -2,15 +2,8 @@
 #include "RenderManager.h"
 #include "IGBufferRenderer.h"
 #include "GameObject/GameObject.h"
-#include "Particle/ParticleSystem.h"
-#include "Particle/Gpu/GpuParticleSystem.h"
-#include "Graphics/Render/Particle/ParticleRenderer.h"
-#include "Graphics/Render/Particle/ModelParticleRenderer.h"
-#include "Graphics/Render/Particle/GpuParticleRenderer.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/Render/Model/IBLParameters.h"
-#include "Graphics/Render/SkyBox/SkyBoxRenderer.h"
-#include "GameObjects/SkyBox/SkyBoxObject.h"
 #include "Camera/Camera.h"
 #include "Camera/View/ViewInfo.h"
 #include "Math/MathCore.h"
@@ -27,14 +20,6 @@ namespace CoreEngine
 
     void RenderManager::RegisterRenderer(RenderPassType type, std::unique_ptr<IRenderer> renderer) {
         renderers_[type] = std::move(renderer);
-
-        // SkyBoxRendererが登録された場合、SkyBoxObject クラスに設定
-        if (type == RenderPassType::SkyBox) {
-            auto* skyBoxRenderer = dynamic_cast<SkyBoxRenderer*>(renderers_[type].get());
-            if (skyBoxRenderer) {
-                SkyBoxObject::SetSkyBoxRenderer(skyBoxRenderer);
-            }
-        }
 
         if (type == RenderPassType::Model || type == RenderPassType::SkinnedModel) {
             ApplyEnvironmentLightingToRenderers();
@@ -331,7 +316,8 @@ namespace CoreEngine
                 currentRenderer->BeginPass(cmdList, cmd.blendMode);
             }
 
-            // オブジェクトを描画（パス起動専用アイテムは object を持たない）
+            // オブジェクトを描画（パス起動専用アイテムは object を持たない）。
+            // パーティクルのようにレンダラーへ描画を頼む型も、頼むのはコンポーネントの側
             if (currentRenderer && cmd.object) {
                 DrawViewInfo view{};
                 view.view = currentView;
@@ -339,28 +325,6 @@ namespace CoreEngine
                 view.viewType = viewType;
                 view.isGBufferPass = false;
                 cmd.object->Draw(view);
-
-                // パーティクルの場合は、レンダラーに描画コマンド発行を委託
-                if (cmd.passType == RenderPassType::Particle) {
-                    if (auto* particleRenderer = static_cast<ParticleRenderer*>(currentRenderer)) {
-                        auto* particleSystem = static_cast<ParticleSystem*>(cmd.object);
-                        particleRenderer->Draw(particleSystem);
-                    }
-                }
-                // モデルパーティクルの場合
-                else if (cmd.passType == RenderPassType::ModelParticle) {
-                    if (auto* modelParticleRenderer = static_cast<ModelParticleRenderer*>(currentRenderer)) {
-                        auto* particleSystem = static_cast<ParticleSystem*>(cmd.object);
-                        modelParticleRenderer->Draw(particleSystem);
-                    }
-                }
-                // GPUパーティクルの場合（CSディスパッチ + 描画をレンダラーに委託）
-                else if (cmd.passType == RenderPassType::GpuParticle) {
-                    if (auto* gpuParticleRenderer = static_cast<GpuParticleRenderer*>(currentRenderer)) {
-                        auto* gpuParticleSystem = static_cast<GpuParticleSystem*>(cmd.object);
-                        gpuParticleRenderer->DrawGpu(gpuParticleSystem);
-                    }
-                }
             }
         }
 

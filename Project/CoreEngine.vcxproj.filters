@@ -1,23 +1,134 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\CameraShowcase.cpp">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
+    <ClCompile Include="Engine\Src\Editor\Inspector\ComponentInspectors.cpp">
+      <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.cpp">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
+    <ClCompile Include="Engine\Src\Editor\Script\ScriptTemplate.cpp">
+      <Filter>Engine\Src\Editor\Script</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSceneController.cpp">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
+    <ClCompile Include="Engine\Src\Editor\Project\AssetFileOperations.cpp">
+      <Filter>Engine\Src\Editor\Project</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceDebugPanel.cpp">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
+    <ClCompile Include="Engine\Src\Editor\Inspector\InspectorLayout.cpp">
+      <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceParameterPanel.cpp">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
+    <ClCompile Include="Engine\Src\Editor\Inspector\InspectorRenderer.cpp">
+      <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.cpp">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
+    <ClCompile Include="Engine\Src\Editor\Inspector\ObjectInspector.cpp">
+      <Filter>Engine\Src\Editor\Inspector</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Command\EditorCommandStack.cpp">
+      <Filter>Engine\Src\Editor\Command</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Panel\EditorPanelRegistry.cpp">
+      <Filter>Engine\Src\Editor\Panel</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\Path\ProjectPaths.cpp">
+      <Filter>Engine\Src\Utility\Path</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Panel\EditorPanelStateSection.cpp">
+      <Filter>Engine\Src\Editor\Panel</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Reflection\PropertyValue.cpp">
+      <Filter>Engine\Src\Reflection</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Reflection\PropertySerializer.cpp">
+      <Filter>Engine\Src\Reflection</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Reflection\TypeDescriptor.cpp">
+      <Filter>Engine\Src\Reflection</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\LogBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\BindingRegistrar.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\MathBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\TimeBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\GameObjectBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\PhysicsBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\ComponentBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\ScriptInputBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\TweenBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\UIBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\AudioBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\CameraShakeBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\SceneBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\SessionBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\RandomBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\CVarBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\RenderingBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Metadata\MetadataParser.cpp">
+      <Filter>Engine\Src\Script\Metadata</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\ScriptComponent.cpp">
+      <Filter>Engine\Src\Script</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\ScriptComponentType.cpp">
+      <Filter>Engine\Src\Script</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\ScriptDiagnostics.cpp">
+      <Filter>Engine\Src\Script</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\ScriptFileWatcher.cpp">
+      <Filter>Engine\Src\Script</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\ScriptHost.cpp">
+      <Filter>Engine\Src\Script</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\ScriptPredefined.cpp">
+      <Filter>Engine\Src\Script</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\ScriptCallback.cpp">
+      <Filter>Engine\Src\Script</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\ScriptSubsystem.cpp">
+      <Filter>Engine\Src\Script</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Water\WaterEditorFacade.cpp">
+      <Filter>Engine\Src\Editor\Water</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Water\WaterEditorPanel.cpp">
+      <Filter>Engine\Src\Editor\Water</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Water\WaterSurfaceDebugPanel.cpp">
+      <Filter>Engine\Src\Editor\Water</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Water\WaterSurfaceParameterPanel.cpp">
+      <Filter>Engine\Src\Editor\Water</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.cpp">
       <Filter>Engine\Src\Graphics\Water\Render</Filter>
@@ -184,32 +295,11 @@
     <ClCompile Include="Engine\Src\Graphics\Water\Simulation\WaterSurfaceModelProvider.cpp">
       <Filter>Engine\Src\Graphics\Water\Simulation</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\GameObject\Model\DynamicModelObject.cpp">
-      <Filter>Engine\Src\GameObject\Model</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Particle\Modules\LifetimeModule.cpp">
-      <Filter>Engine\Src\Particle\Modules</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\pch.cpp">
       <Filter>Engine\Src</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\CollisionTestScene.cpp">
-      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\CollisionTestReport.cpp">
-      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\GeometrySelfTest.cpp">
-      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\GameObjects\Effect\HitEffect.cpp">
-      <Filter>Application\Src\GameObjects\Effect</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterPlaneObject.cpp">
+    <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterSurfaceComponent.cpp">
       <Filter>Engine\Src\Graphics\Water\Surface</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\GameObjects\SkyBox\SkyBoxObject.cpp">
-      <Filter>Application\Src\GameObjects\SkyBox</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Camera\CameraManager.cpp">
       <Filter>Engine\Src\Camera</Filter>
@@ -235,9 +325,6 @@
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraParametersEditorModule.cpp">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraSequenceAssetIO.cpp">
-      <Filter>Engine\Src\Editor\Camera\Module</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraTransformEditorModule.cpp">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClCompile>
@@ -259,22 +346,49 @@
     <ClCompile Include="Engine\Src\Collision\Debug\ColliderDebugRenderer.cpp">
       <Filter>Engine\Src\Collision\Debug</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Collision\Debug\ColliderInspector.cpp">
-      <Filter>Engine\Src\Collision\Debug</Filter>
+    <ClCompile Include="Engine\Src\Editor\Inspector\ColliderInspector.cpp">
+      <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Collision\Debug\CollisionMatrixPanel.cpp">
-      <Filter>Engine\Src\Collision\Debug</Filter>
+    <ClCompile Include="Engine\Src\Editor\ImGui\SceneSettingsPanel.cpp">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Collision\CollisionConfig.cpp">
+      <Filter>Engine\Src\Collision</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Collision\CollisionLayer.cpp">
       <Filter>Engine\Src\Collision</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Collision\CollisionWorld.cpp">
       <Filter>Engine\Src\Collision</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Physics\PhysicsWorld.cpp">
+      <Filter>Engine\Src\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Physics\RigidbodyComponent.cpp">
+      <Filter>Engine\Src\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Physics\PhysicsMaterialComponent.cpp">
+      <Filter>Engine\Src\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Physics\CharacterControllerComponent.cpp">
+      <Filter>Engine\Src\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Physics\ContactSolver.cpp">
+      <Filter>Engine\Src\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Physics\Inertia.cpp">
+      <Filter>Engine\Src\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Physics\Debug\PhysicsDebugRenderer.cpp">
+      <Filter>Engine\Src\Physics\Debug</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\EngineSystem\EngineConfig.cpp">
       <Filter>Engine\Src\EngineSystem</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\EngineSystem\EngineSystem.cpp">
+      <Filter>Engine\Src\EngineSystem</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\EngineSystem\PlaybackState.cpp">
       <Filter>Engine\Src\EngineSystem</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\EngineSystem\Factory\CoreComponentFactory.cpp">
@@ -289,10 +403,19 @@
     <ClCompile Include="Engine\Src\EngineSystem\Settings\CVarSettingsSection.cpp">
       <Filter>Engine\Src\EngineSystem\Settings</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\EngineSystem\Settings\ProjectSettings.cpp">
+      <Filter>Engine\Src\EngineSystem\Settings</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Utility\CVar\CVar.cpp">
       <Filter>Engine\Src\Utility\CVar</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\CVar\CVarConsole.cpp">
+      <Filter>Engine\Src\Utility\CVar</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Utility\CVar\CVarRegistry.cpp">
+      <Filter>Engine\Src\Utility\CVar</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\CVar\CVarScope.cpp">
       <Filter>Engine\Src\Utility\CVar</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Utility\CVar\CVarSerialization.cpp">
@@ -343,6 +466,9 @@
     <ClCompile Include="Engine\Src\Graphics\Asset\AssetMetadata.cpp">
       <Filter>Engine\Src\Graphics\Asset</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Asset\AssetRef.cpp">
+      <Filter>Engine\Src\Graphics\Asset</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RHI\Debug\GpuMarker.cpp">
       <Filter>Engine\Src\Graphics\RHI\Debug</Filter>
     </ClCompile>
@@ -360,9 +486,6 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\IBL\IBLSystem.cpp">
       <Filter>Engine\Src\Graphics\IBL</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Material\Debug\MaterialDebugUI.cpp">
-      <Filter>Engine\Src\Graphics\Material\Debug</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Material\MaterialInstance.cpp">
       <Filter>Engine\Src\Graphics\Material</Filter>
@@ -607,6 +730,9 @@
     <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\RenderTargetManager.cpp">
       <Filter>Engine\Src\Graphics\Render\RenderTarget</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxComponent.cpp">
+      <Filter>Engine\Src\Graphics\Render\SkyBox</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxRenderer.cpp">
       <Filter>Engine\Src\Graphics\Render\SkyBox</Filter>
     </ClCompile>
@@ -664,23 +790,32 @@
     <ClCompile Include="Engine\Src\Input\InputBinding.cpp">
       <Filter>Engine\Src\Input</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Input\InputAction.cpp">
+      <Filter>Engine\Src\Input</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Input\InputContext.cpp">
+      <Filter>Engine\Src\Input</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Input\InputConfig.cpp">
       <Filter>Engine\Src\Input</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Input\InputQuery.cpp">
       <Filter>Engine\Src\Input</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\Core\ComponentFactory.cpp">
+      <Filter>Engine\Src\GameObject\Component\Core</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\Component\Core\ComponentHost.cpp">
+      <Filter>Engine\Src\GameObject\Component\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\Core\MissingComponent.cpp">
+      <Filter>Engine\Src\GameObject\Component\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\Core\ObjectRef.cpp">
       <Filter>Engine\Src\GameObject\Component\Core</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\Component\Render\MaterialComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\ProbeComponent.cpp">
-      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\ProbeEvents.cpp">
-      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\Component\Animation\AnimatorComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Animation</Filter>
@@ -688,10 +823,34 @@
     <ClCompile Include="Engine\Src\GameObject\Component\Render\MeshRendererComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\Render\SpriteRendererComponent.cpp">
+      <Filter>Engine\Src\GameObject\Component\Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\Render\Text3DRendererComponent.cpp">
+      <Filter>Engine\Src\GameObject\Component\Render</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\Component\Animation\SkeletonSocketComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Animation</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\Camera\CameraComponent.cpp">
+      <Filter>Engine\Src\GameObject\Component\Camera</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\Environment\HeightFogComponent.cpp">
+      <Filter>Engine\Src\GameObject\Component\Environment</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\Environment\PostProcessComponent.cpp">
+      <Filter>Engine\Src\GameObject\Component\Environment</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\Environment\VolumetricCloudComponent.cpp">
+      <Filter>Engine\Src\GameObject\Component\Environment</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\Light\LightComponent.cpp">
+      <Filter>Engine\Src\GameObject\Component\Light</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\Component\Transform\TransformComponent.cpp">
+      <Filter>Engine\Src\GameObject\Component\Transform</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\Transform\EulerTransformComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Transform</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\GameObject.cpp">
@@ -700,19 +859,13 @@
     <ClCompile Include="Engine\Src\GameObject\GameObjectManager.cpp">
       <Filter>Engine\Src\GameObject</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\GameObject\Model\ModelGameObject.cpp">
-      <Filter>Engine\Src\GameObject\Model</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\GameObject\Primitive\PrimitiveGameObject.cpp">
-      <Filter>Engine\Src\GameObject\Primitive</Filter>
+    <ClCompile Include="Engine\Src\GameObject\ObjectId.cpp">
+      <Filter>Engine\Src\GameObject</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\Sprite\SpriteAnimationClip.cpp">
       <Filter>Engine\Src\GameObject\Sprite</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\Sprite\SpriteAnimator.cpp">
-      <Filter>Engine\Src\GameObject\Sprite</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\GameObject\Sprite\SpriteObject.cpp">
       <Filter>Engine\Src\GameObject\Sprite</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Particle\Core\ParticleEmitter.cpp">
@@ -727,8 +880,8 @@
     <ClCompile Include="Engine\Src\Particle\Core\ParticleUpdater.cpp">
       <Filter>Engine\Src\Particle\Core</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Particle\Debug\ParticleSystemDebugUI.cpp">
-      <Filter>Engine\Src\Particle\Debug</Filter>
+    <ClCompile Include="Engine\Src\Editor\ImGui\ParticleSystemDebugUI.cpp">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Particle\Modules\MainModule.cpp">
       <Filter>Engine\Src\Particle\Modules</Filter>
@@ -742,7 +895,13 @@
     <ClCompile Include="Engine\Src\Particle\ParticlePresetManager.cpp">
       <Filter>Engine\Src\Particle</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Scene\BaseScene.cpp">
+    <ClCompile Include="Engine\Src\Particle\ParticleSystemComponent.cpp">
+      <Filter>Engine\Src\Particle</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Particle\Gpu\GpuParticleSystemComponent.cpp">
+      <Filter>Engine\Src\Particle\Gpu</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Scene\Scene.cpp">
       <Filter>Engine\Src\Scene</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Scene\Feature\LightingFeature.cpp">
@@ -757,11 +916,14 @@
     <ClCompile Include="Engine\Src\Scene\Feature\CollisionFeature.cpp">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Scene\Feature\PhysicsFeature.cpp">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Scene\Feature\GridFeature.cpp">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Scene\Feature\DebugEditorFeature.cpp">
-      <Filter>Engine\Src\Scene\Feature</Filter>
+    <ClCompile Include="Engine\Src\Editor\Scene\DebugEditorFeature.cpp">
+      <Filter>Engine\Src\Editor\Scene</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Environment\AtmosphereEditor.cpp">
       <Filter>Engine\Src\Editor\Environment</Filter>
@@ -769,8 +931,29 @@
     <ClCompile Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.cpp">
       <Filter>Engine\Src\Editor\Environment</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Scene\ComponentEditing.cpp">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Scene\EditorSceneAccess.cpp">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Scene\ObjectEditing.cpp">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Scene\PlayModeController.cpp">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Scene\PrefabEditing.cpp">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Scene\SceneDebugEditor.cpp">
       <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Scene\PrefabSystem.cpp">
+      <Filter>Engine\Src\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Scene\SceneEnvironmentIO.cpp">
+      <Filter>Engine\Src\Scene</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Scene\SceneSaveSystem.cpp">
       <Filter>Engine\Src\Scene</Filter>
@@ -787,18 +970,6 @@
     <ClCompile Include="Engine\Src\Graphics\Model\ModelResource.cpp">
       <Filter>Engine\Src\Graphics\Model</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\TestScene\TestScene.cpp">
-      <Filter>Application\Src\Scenes\TestScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\SampleGameScene\SampleGameScene.cpp">
-      <Filter>Application\Src\Scenes\SampleGameScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\ShootingSampleScene\ShootingSampleScene.cpp">
-      <Filter>Application\Src\Scenes\ShootingSampleScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\Sprite2DSampleScene\Sprite2DSampleScene.cpp">
-      <Filter>Application\Src\Scenes\Sprite2DSampleScene</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Scene\UndoRedoHistory.cpp">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClCompile>
@@ -814,10 +985,28 @@
     <ClCompile Include="Engine\Src\TileMap\TileMap.cpp">
       <Filter>Engine\Src\TileMap</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\UI\UICanvas.cpp">
+    <ClCompile Include="Engine\Src\UI\RectTransformComponent.cpp">
       <Filter>Engine\Src\UI</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\UI\UIImage.cpp">
+    <ClCompile Include="Engine\Src\UI\UIImageComponent.cpp">
+      <Filter>Engine\Src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\UI\UIButtonComponent.cpp">
+      <Filter>Engine\Src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\UI\UIPointer.cpp">
+      <Filter>Engine\Src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\UI\UINavigation.cpp">
+      <Filter>Engine\Src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\UI\UISliderComponent.cpp">
+      <Filter>Engine\Src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\UI\UITextComponent.cpp">
+      <Filter>Engine\Src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\UI\UIToggleComponent.cpp">
       <Filter>Engine\Src\UI</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Math\Geometry\Distance.cpp">
@@ -829,8 +1018,8 @@
     <ClCompile Include="Engine\Src\Math\Geometry\RayCast.cpp">
       <Filter>Engine\Src\Math\Geometry</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Utility\Debug\ConsoleUI.cpp">
-      <Filter>Engine\Src\Utility\Debug</Filter>
+    <ClCompile Include="Engine\Src\Editor\ImGui\ConsoleUI.cpp">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\ImGui\CanvasViewport.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
@@ -850,8 +1039,8 @@
     <ClCompile Include="Engine\Src\Editor\ImGui\ObjectSelector.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Editor\ImGui\PixCapture.cpp">
-      <Filter>Engine\Src\Editor\ImGui</Filter>
+    <ClCompile Include="Engine\Src\Graphics\RHI\Debug\PixCapture.cpp">
+      <Filter>Engine\Src\Graphics\RHI\Debug</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\ImGui\ProjectView.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
@@ -862,17 +1051,14 @@
     <ClCompile Include="Engine\Src\Editor\ImGui\RenderGraphEditorPanel.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Editor\Window\GameOutputWindow.cpp">
-      <Filter>Engine\Src\Editor\Window</Filter>
+    <ClCompile Include="Engine\Src\Graphics\Render\GameOutputWindow.cpp">
+      <Filter>Engine\Src\Graphics\Render</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\ImGui\RenderPassDebugPanel.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Editor\ImGui\SceneManagerTab.cpp">
-      <Filter>Engine\Src\Editor\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Editor\ImGui\ScreenCapture.cpp">
-      <Filter>Engine\Src\Editor\ImGui</Filter>
+    <ClCompile Include="Engine\Src\WinApp\ScreenCapture.cpp">
+      <Filter>Engine\Src\WinApp</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\ImGui\ThreadProfilerUI.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
@@ -882,6 +1068,9 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Random\RandomGenerator.cpp">
       <Filter>Engine\Src\Utility\Random</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\Session\SessionValues.cpp">
+      <Filter>Engine\Src\Utility\Session</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\SceneDepth.cpp">
       <Filter>Engine\Src\Graphics\Render\RenderTarget</Filter>
@@ -976,13 +1165,28 @@
     <ClCompile Include="Engine\Src\Editor\ImGui\DockingUI.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\ImGui\EditorLayoutSection.cpp">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\External\ExternalCodeEditor.cpp">
+      <Filter>Engine\Src\Editor\External</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\ImGui\ProfilerPanel.cpp">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\ImGui\ProjectSettingsWindow.cpp">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\ImGui\Widgets\PassTimingTable.cpp">
+      <Filter>Engine\Src\Editor\ImGui\Widgets</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Camera\Camera.cpp">
       <Filter>Engine\Src\Camera</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Camera\Control\OrbitFlyController.cpp">
       <Filter>Engine\Src\Camera\Control</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Camera\Debug\DebugCameraCVars.cpp">
+    <ClCompile Include="Engine\Src\Camera\Debug\DebugCameraState.cpp">
       <Filter>Engine\Src\Camera\Debug</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Camera\Control\FreeLookController.cpp">
@@ -1033,8 +1237,8 @@
     <ClCompile Include="Engine\Src\Input\GamepadInput.cpp">
       <Filter>Engine\Src\Input</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Utility\Debug\GameDebugUI.cpp">
-      <Filter>Engine\Src\Utility\Debug</Filter>
+    <ClCompile Include="Engine\Src\Editor\ImGui\GameDebugUI.cpp">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\MyGame.cpp">
       <Filter>Application\Src</Filter>
@@ -1086,12 +1290,6 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\WorldTransform\WorldTransform.cpp">
       <Filter>Engine\Src\WorldTransform</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Particle\Gpu\GpuParticleSystem.cpp">
-      <Filter>Engine\Src\Particle\Gpu</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Particle\ParticleSystem.cpp">
-      <Filter>Engine\Src\Particle</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Scene\SceneManager.cpp">
       <Filter>Engine\Src\Scene</Filter>
@@ -1186,6 +1384,144 @@
     <ClCompile Include="Externals\msdfgen\core\msdfgen.cpp">
       <Filter>Externals\msdfgen\core</Filter>
     </ClCompile>
+    <ClCompile Include="Externals\angelscript\add_on\scriptarray\scriptarray.cpp">
+      <Filter>Externals\angelscript\add_on\scriptarray</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\add_on\scriptbuilder\scriptbuilder.cpp">
+      <Filter>Externals\angelscript\add_on\scriptbuilder</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\add_on\scripthelper\scripthelper.cpp">
+      <Filter>Externals\angelscript\add_on\scripthelper</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\add_on\scriptmath\scriptmath.cpp">
+      <Filter>Externals\angelscript\add_on\scriptmath</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\add_on\scriptstdstring\scriptstdstring.cpp">
+      <Filter>Externals\angelscript\add_on\scriptstdstring</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_atomic.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_builder.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_bytecode.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_callfunc.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_callfunc_arm.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_callfunc_arm64.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_callfunc_e2k.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_callfunc_mips.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_callfunc_ppc.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_callfunc_ppc_64.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_callfunc_riscv64.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_callfunc_sh4.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_callfunc_x64_gcc.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_callfunc_x64_mingw.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_callfunc_x64_msvc.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_callfunc_x86.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_callfunc_xenon.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_compiler.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_configgroup.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_context.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_datatype.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_gc.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_generic.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_globalproperty.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_memory.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_module.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_objecttype.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_outputbuffer.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_parser.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_restore.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_scriptcode.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_scriptengine.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_scriptfunction.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_scriptnode.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_scriptobject.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_string.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_string_util.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_thread.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_tokenizer.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_typeinfo.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\angelscript\source\as_variablescope.cpp">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Text\DirectWriteFontFace.cpp">
       <Filter>Engine\Src\Text</Filter>
     </ClCompile>
@@ -1207,11 +1543,11 @@
     <ClCompile Include="Engine\Src\Graphics\Render\UI\TextRenderer.cpp">
       <Filter>Engine\Src\Graphics\Render\UI</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\UI\UIText.cpp">
-      <Filter>Engine\Src\UI</Filter>
+    <ClCompile Include="Engine\Src\Audio\AudioListenerComponent.cpp">
+      <Filter>Engine\Src\Audio</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\MsdfTextTestScene\MsdfTextTestScene.cpp">
-      <Filter>Application\Src\Scenes\MsdfTextTestScene</Filter>
+    <ClCompile Include="Engine\Src\Audio\AudioSourceComponent.cpp">
+      <Filter>Engine\Src\Audio</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Audio\AudioSystem.cpp">
       <Filter>Engine\Src\Audio</Filter>
@@ -1294,9 +1630,6 @@
     <ClCompile Include="Engine\Src\Editor\Environment\FogEditor.cpp">
       <Filter>Engine\Src\Editor\Environment</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\GameObject\Text3D\Text3DObject.cpp">
-      <Filter>Engine\Src\GameObject\Text3D</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Fog\FogManager.cpp">
       <Filter>Engine\Src\Graphics\Fog</Filter>
     </ClCompile>
@@ -1339,6 +1672,12 @@
     <ClCompile Include="Engine\Src\Scene\Feature\TweenFeature.cpp">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Scene\Feature\UIInteractionFeature.cpp">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Scene\Feature\SceneFeatureRegistry.cpp">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Text\TextGeometryBuilder.cpp">
       <Filter>Engine\Src\Text</Filter>
     </ClCompile>
@@ -1351,199 +1690,169 @@
     <ClCompile Include="Engine\Src\Utility\Tween\TweenManager.cpp">
       <Filter>Engine\Src\Utility\Tween</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Components\Building\MapGeneratorComponent.cpp">
-      <Filter>Application\Src\Components\Building</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Components\Building\MapViewComponent.cpp">
-      <Filter>Application\Src\Components\Building</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Components\Building\RockThrowComponent.cpp">
-      <Filter>Application\Src\Components\Building</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Components\Building\WaterWaveViewComponent.cpp">
-      <Filter>Application\Src\Components\Building</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Components\Camera\RockBreakShakeSettingsComponent.cpp">
-      <Filter>Application\Src\Components\Camera</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Components\GameCore\GameManagerComponent.cpp">
-      <Filter>Application\Src\Components\GameCore</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Components\GameCore\GameRecordStore.cpp">
-      <Filter>Application\Src\Components\GameCore</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Components\GameCore\GameSettingsComponent.cpp">
-      <Filter>Application\Src\Components\GameCore</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Components\GameCore\HungerComponent.cpp">
-      <Filter>Application\Src\Components\GameCore</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Components\Rail\RailBuilderComponent.cpp">
-      <Filter>Application\Src\Components\Rail</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Components\Rail\RailPathComponent.cpp">
-      <Filter>Application\Src\Components\Rail</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Components\Rail\RailViewComponent.cpp">
-      <Filter>Application\Src\Components\Rail</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Components\Result\ResultButtonAnimationComponent.cpp">
-      <Filter>Application\Src\Components\Result</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Components\Result\ResultMonkeyShakeComponent.cpp">
-      <Filter>Application\Src\Components\Result</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Components\Result\ResultTipsComponent.cpp">
-      <Filter>Application\Src\Components\Result</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Components\Title\TitleButtonAnimationComponent.cpp">
-      <Filter>Application\Src\Components\Title</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Components\Title\TitleCameraShakeSettingsComponent.cpp">
-      <Filter>Application\Src\Components\Title</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Components\Title\TitleLogoAnimationComponent.cpp">
-      <Filter>Application\Src\Components\Title</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Components\Title\TitleMonkeyAnimationComponent.cpp">
-      <Filter>Application\Src\Components\Title</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Components\Title\TitleTextAnimationComponent.cpp">
-      <Filter>Application\Src\Components\Title</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Components\Title\TitleTrolleyAnimationComponent.cpp">
-      <Filter>Application\Src\Components\Title</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Components\Train\SpawnPopComponent.cpp">
-      <Filter>Application\Src\Components\Train</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Components\Train\TrainMovementComponent.cpp">
-      <Filter>Application\Src\Components\Train</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Components\UI\GameStartPromptAnimationComponent.cpp">
-      <Filter>Application\Src\Components\UI</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Components\UI\ObjectiveSignComponent.cpp">
-      <Filter>Application\Src\Components\UI</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Components\UI\OffscreenTrainIndicatorUIComponent.cpp">
-      <Filter>Application\Src\Components\UI</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Components\UI\PauseMenuUIComponent.cpp">
-      <Filter>Application\Src\Components\UI</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Components\UI\ResultGaugeUIComponent.cpp">
-      <Filter>Application\Src\Components\UI</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Components\UI\SpeedGaugeUIComponent.cpp">
-      <Filter>Application\Src\Components\UI</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Components\UI\StaminaGaugeUIComponent.cpp">
-      <Filter>Application\Src\Components\UI</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Components\Utility\ModelRenderPoolComponent.cpp">
-      <Filter>Application\Src\Components\Utility</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Editor\Stage\StageCsvDocument.cpp">
-      <Filter>Application\Src\Editor\Stage</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Editor\Stage\StageEditorPanel.cpp">
-      <Filter>Application\Src\Editor\Stage</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Editor\Stage\StageProject.cpp">
-      <Filter>Application\Src\Editor\Stage</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\GameObjects\Effect\BananaHarvestEffect.cpp">
-      <Filter>Application\Src\GameObjects\Effect</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\GameObjects\Effect\RockBreakDebris.cpp">
-      <Filter>Application\Src\GameObjects\Effect</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\GameObjects\Effect\StationSlowdownEffect.cpp">
-      <Filter>Application\Src\GameObjects\Effect</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\GameObjects\GameSceneObject.cpp">
-      <Filter>Application\Src\GameObjects</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\GameScene\BananaTreeAuraFeature.cpp">
-      <Filter>Application\Src\Scenes\GameScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\GameScene\GameEntranceFeature.cpp">
-      <Filter>Application\Src\Scenes\GameScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp">
-      <Filter>Application\Src\Scenes\GameScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\GameScene\OffscreenTrainIndicatorFeature.cpp">
-      <Filter>Application\Src\Scenes\GameScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\GameScene\PauseMenuFeature.cpp">
-      <Filter>Application\Src\Scenes\GameScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\GameScene\RailDirectionGuideFeature.cpp">
-      <Filter>Application\Src\Scenes\GameScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\GameScene\SkyFogFeature.cpp">
-      <Filter>Application\Src\Scenes\GameScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\GameScene\SpeedBlurFeature.cpp">
-      <Filter>Application\Src\Scenes\GameScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\GameScene\SpeedGaugeFeature.cpp">
-      <Filter>Application\Src\Scenes\GameScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\GameScene\StageLightsFeature.cpp">
-      <Filter>Application\Src\Scenes\GameScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\GameScene\StaminaGaugeFeature.cpp">
-      <Filter>Application\Src\Scenes\GameScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\ResultScene\ResultScene.cpp">
-      <Filter>Application\Src\Scenes\ResultScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\ResultScene\ResultSceneUi.cpp">
-      <Filter>Application\Src\Scenes\ResultScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\TitleScene\TitleScene.cpp">
-      <Filter>Application\Src\Scenes\TitleScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\TitleScene\TitleSceneModelSetup.cpp">
-      <Filter>Application\Src\Scenes\TitleScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\TitleScene\TitleSceneUi.cpp">
-      <Filter>Application\Src\Scenes\TitleScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\TrolleyLoading\TrolleyLoading.cpp">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect\TrolleyLoading</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionTestScene.h">
-      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
+    <ClInclude Include="Engine\Src\Editor\Inspector\ComponentInspectors.h">
+      <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionTestReport.h">
-      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
+    <ClInclude Include="Engine\Src\Editor\Script\ScriptTemplate.h">
+      <Filter>Engine\Src\Editor\Script</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\GeometrySelfTest.h">
-      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
+    <ClInclude Include="Engine\Src\Editor\Project\AssetFileOperations.h">
+      <Filter>Engine\Src\Editor\Project</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\CameraShowcase.h">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
+    <ClInclude Include="Engine\Src\Editor\Inspector\InspectorLayout.h">
+      <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.h">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
+    <ClInclude Include="Engine\Src\Editor\Inspector\InspectorRenderer.h">
+      <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSceneController.h">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
+    <ClInclude Include="Engine\Src\Editor\Inspector\ObjectInspector.h">
+      <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceDebugPanel.h">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
+    <ClInclude Include="Engine\Src\Editor\Command\EditorCommand.h">
+      <Filter>Engine\Src\Editor\Command</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceParameterPanel.h">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
+    <ClInclude Include="Engine\Src\Editor\Command\EditorCommandStack.h">
+      <Filter>Engine\Src\Editor\Command</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\GameObjects\Effect\HitEffect.h">
-      <Filter>Application\Src\GameObjects\Effect</Filter>
+    <ClInclude Include="Engine\Src\Editor\Panel\EditorPanelRegistry.h">
+      <Filter>Engine\Src\Editor\Panel</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Panel\EditorDockArea.h">
+      <Filter>Engine\Src\Editor\Panel</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ImGui\EditorTheme.h">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\EditorBars.h">
+      <Filter>Engine\Src\Editor\ImGui\Widgets</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\External\ExternalCodeEditor.h">
+      <Filter>Engine\Src\Editor\External</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ImGui\ProfilerPanel.h">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ImGui\ProjectSettingsWindow.h">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\PassTimingTable.h">
+      <Filter>Engine\Src\Editor\ImGui\Widgets</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Path\ProjectPaths.h">
+      <Filter>Engine\Src\Utility\Path</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Panel\EditorPanelStateSection.h">
+      <Filter>Engine\Src\Editor\Panel</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Reflection\PropertyValue.h">
+      <Filter>Engine\Src\Reflection</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Reflection\PropertySerializer.h">
+      <Filter>Engine\Src\Reflection</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Reflection\Reflect.h">
+      <Filter>Engine\Src\Reflection</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Reflection\TypeDescriptor.h">
+      <Filter>Engine\Src\Reflection</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\LogBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\BindingRegistrar.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\MathBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\TimeBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\GameObjectBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\PhysicsBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\ComponentBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Reflection\MethodDescriptor.h">
+      <Filter>Engine\Src\Reflection</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\ScriptInputBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\TweenBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\UIBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\AudioBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\CameraShakeBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\SceneBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\SessionBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\RandomBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\CVarBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\RenderingBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Metadata\MetadataParser.h">
+      <Filter>Engine\Src\Script\Metadata</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\ScriptComponent.h">
+      <Filter>Engine\Src\Script</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\ScriptComponentType.h">
+      <Filter>Engine\Src\Script</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\ScriptDiagnostics.h">
+      <Filter>Engine\Src\Script</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\ScriptFileWatcher.h">
+      <Filter>Engine\Src\Script</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\ScriptHost.h">
+      <Filter>Engine\Src\Script</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\ScriptPredefined.h">
+      <Filter>Engine\Src\Script</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\ScriptCallback.h">
+      <Filter>Engine\Src\Script</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\ScriptSubsystem.h">
+      <Filter>Engine\Src\Script</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Reflection\PropertyDescriptor.h">
+      <Filter>Engine\Src\Reflection</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Water\WaterEditorFacade.h">
+      <Filter>Engine\Src\Editor\Water</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Water\WaterEditorPanel.h">
+      <Filter>Engine\Src\Editor\Water</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Water\WaterSurfaceDebugPanel.h">
+      <Filter>Engine\Src\Editor\Water</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Water\WaterSurfaceParameterPanel.h">
+      <Filter>Engine\Src\Editor\Water</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Render\IRenderableComponent.h">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
@@ -1554,7 +1863,7 @@
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterConstantBufferSet.h">
       <Filter>Engine\Src\Graphics\Water\Surface</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterPlaneObject.h">
+    <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterSurfaceComponent.h">
       <Filter>Engine\Src\Graphics\Water\Surface</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterRenderResources.h">
@@ -1562,9 +1871,6 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterShaderResourceBinder.h">
       <Filter>Engine\Src\Graphics\Water\Surface</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\GameObjects\SkyBox\SkyBoxObject.h">
-      <Filter>Application\Src\GameObjects\SkyBox</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Camera\CameraManager.h">
       <Filter>Engine\Src\Camera</Filter>
@@ -1594,9 +1900,6 @@
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraParametersEditorModule.h">
-      <Filter>Engine\Src\Editor\Camera\Module</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraSequenceAssetIO.h">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraTransformEditorModule.h">
@@ -1632,11 +1935,11 @@
     <ClInclude Include="Engine\Src\Collision\Debug\ColliderDebugRenderer.h">
       <Filter>Engine\Src\Collision\Debug</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Collision\Debug\ColliderInspector.h">
-      <Filter>Engine\Src\Collision\Debug</Filter>
+    <ClInclude Include="Engine\Src\Editor\Inspector\ColliderInspector.h">
+      <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Collision\Debug\CollisionMatrixPanel.h">
-      <Filter>Engine\Src\Collision\Debug</Filter>
+    <ClInclude Include="Engine\Src\Editor\ImGui\SceneSettingsPanel.h">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Collision\CollisionConfig.h">
       <Filter>Engine\Src\Collision</Filter>
@@ -1646,6 +1949,27 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Collision\CollisionWorld.h">
       <Filter>Engine\Src\Collision</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Physics\PhysicsWorld.h">
+      <Filter>Engine\Src\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Physics\RigidbodyComponent.h">
+      <Filter>Engine\Src\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Physics\PhysicsMaterialComponent.h">
+      <Filter>Engine\Src\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Physics\CharacterControllerComponent.h">
+      <Filter>Engine\Src\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Physics\ContactSolver.h">
+      <Filter>Engine\Src\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Physics\Inertia.h">
+      <Filter>Engine\Src\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Physics\Debug\PhysicsDebugRenderer.h">
+      <Filter>Engine\Src\Physics\Debug</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\EngineSystem\ServiceRegistry.h">
       <Filter>Engine\Src\EngineSystem</Filter>
@@ -1671,10 +1995,22 @@
     <ClInclude Include="Engine\Src\EngineSystem\Settings\CVarSettingsSection.h">
       <Filter>Engine\Src\EngineSystem\Settings</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\EngineSystem\Settings\ProjectSettings.h">
+      <Filter>Engine\Src\EngineSystem\Settings</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Asset\NamedAssetLibrary.h">
+      <Filter>Engine\Src\Utility\Asset</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Utility\CVar\CVar.h">
       <Filter>Engine\Src\Utility\CVar</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\CVar\CVarConsole.h">
+      <Filter>Engine\Src\Utility\CVar</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Utility\CVar\CVarRegistry.h">
+      <Filter>Engine\Src\Utility\CVar</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\CVar\CVarScope.h">
       <Filter>Engine\Src\Utility\CVar</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\CVar\CVarSerialization.h">
@@ -1710,6 +2046,9 @@
     <ClInclude Include="Engine\Src\Graphics\Asset\AssetMetadata.h">
       <Filter>Engine\Src\Graphics\Asset</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Asset\AssetRef.h">
+      <Filter>Engine\Src\Graphics\Asset</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Asset\AssetType.h">
       <Filter>Engine\Src\Graphics\Asset</Filter>
     </ClInclude>
@@ -1742,9 +2081,6 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\IBL\IBLSystem.h">
       <Filter>Engine\Src\Graphics\IBL</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Material\Debug\MaterialDebugUI.h">
-      <Filter>Engine\Src\Graphics\Material\Debug</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Material\MaterialBase.h">
       <Filter>Engine\Src\Graphics\Material</Filter>
@@ -2172,6 +2508,9 @@
     <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\RenderTargetNames.h">
       <Filter>Engine\Src\Graphics\Render\RenderTarget</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxComponent.h">
+      <Filter>Engine\Src\Graphics\Render\SkyBox</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxRenderer.h">
       <Filter>Engine\Src\Graphics\Render\SkyBox</Filter>
     </ClInclude>
@@ -2370,6 +2709,9 @@
     <ClInclude Include="Engine\Src\Input\InputAction.h">
       <Filter>Engine\Src\Input</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Input\InputContext.h">
+      <Filter>Engine\Src\Input</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Input\InputBinding.h">
       <Filter>Engine\Src\Input</Filter>
     </ClInclude>
@@ -2384,9 +2726,6 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Math\Frustum.h">
       <Filter>Engine\Src\Math</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Math\Matrix\Matrix3x3.h">
-      <Filter>Engine\Src\Math\Matrix</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Math\Matrix\Matrix4x4.h">
       <Filter>Engine\Src\Math\Matrix</Filter>
@@ -2403,11 +2742,35 @@
     <ClInclude Include="Engine\Src\Math\Vector\Vector4.h">
       <Filter>Engine\Src\Math\Vector</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\Core\ComponentFactory.h">
+      <Filter>Engine\Src\GameObject\Component\Core</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Core\ComponentHost.h">
+      <Filter>Engine\Src\GameObject\Component\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\Core\MissingComponent.h">
+      <Filter>Engine\Src\GameObject\Component\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\Core\ObjectRef.h">
       <Filter>Engine\Src\GameObject\Component\Core</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Animation\AnimatorComponent.h">
       <Filter>Engine\Src\GameObject\Component\Animation</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\Camera\CameraComponent.h">
+      <Filter>Engine\Src\GameObject\Component\Camera</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\Environment\HeightFogComponent.h">
+      <Filter>Engine\Src\GameObject\Component\Environment</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\Environment\PostProcessComponent.h">
+      <Filter>Engine\Src\GameObject\Component\Environment</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\Environment\VolumetricCloudComponent.h">
+      <Filter>Engine\Src\GameObject\Component\Environment</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\Light\LightComponent.h">
+      <Filter>Engine\Src\GameObject\Component\Light</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Transform\EulerTransformComponent.h">
       <Filter>Engine\Src\GameObject\Component\Transform</Filter>
@@ -2415,11 +2778,11 @@
     <ClInclude Include="Engine\Src\GameObject\Component\Core\IComponent.h">
       <Filter>Engine\Src\GameObject\Component\Core</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\Core\IRawSavedParameters.h">
+      <Filter>Engine\Src\GameObject\Component\Core</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Render\MaterialComponent.h">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\ProbeComponent.h">
-      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Animation\SkeletonSocketComponent.h">
       <Filter>Engine\Src\GameObject\Component\Animation</Filter>
@@ -2427,13 +2790,16 @@
     <ClInclude Include="Engine\Src\GameObject\Component\Transform\ITransformSource.h">
       <Filter>Engine\Src\GameObject\Component\Transform</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\GameObject\Component\Scene\SceneTagComponent.h">
-      <Filter>Engine\Src\GameObject\Component\Scene</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Line\ILineSource.h">
       <Filter>Engine\Src\Graphics\Render\Line</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Render\MeshRendererComponent.h">
+      <Filter>Engine\Src\GameObject\Component\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\Render\SpriteRendererComponent.h">
+      <Filter>Engine\Src\GameObject\Component\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\Render\Text3DRendererComponent.h">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Transform\TransformComponent.h">
@@ -2448,26 +2814,14 @@
     <ClInclude Include="Engine\Src\GameObject\IObjectSpawner.h">
       <Filter>Engine\Src\GameObject</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\GameObject\Model\DynamicModelObject.h">
-      <Filter>Engine\Src\GameObject\Model</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\GameObject\Model\ModelGameObject.h">
-      <Filter>Engine\Src\GameObject\Model</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\GameObject\Primitive\PrimitiveGameObject.h">
-      <Filter>Engine\Src\GameObject\Primitive</Filter>
+    <ClInclude Include="Engine\Src\GameObject\ObjectId.h">
+      <Filter>Engine\Src\GameObject</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Sprite\SpriteAnimationClip.h">
       <Filter>Engine\Src\GameObject\Sprite</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Sprite\SpriteAnimator.h">
       <Filter>Engine\Src\GameObject\Sprite</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\GameObject\Sprite\SpriteObject.h">
-      <Filter>Engine\Src\GameObject\Sprite</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Particle\Gpu\GpuParticleSystem.h">
-      <Filter>Engine\Src\Particle\Gpu</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Particle\IParticleSystem.h">
       <Filter>Engine\Src\Particle</Filter>
@@ -2484,11 +2838,8 @@
     <ClInclude Include="Engine\Src\Particle\Core\ParticleUpdater.h">
       <Filter>Engine\Src\Particle\Core</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Particle\Debug\ParticleSystemDebugUI.h">
-      <Filter>Engine\Src\Particle\Debug</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Particle\Modules\LifetimeModule.h">
-      <Filter>Engine\Src\Particle\Modules</Filter>
+    <ClInclude Include="Engine\Src\Editor\ImGui\ParticleSystemDebugUI.h">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Particle\Modules\MainModule.h">
       <Filter>Engine\Src\Particle\Modules</Filter>
@@ -2502,7 +2853,16 @@
     <ClInclude Include="Engine\Src\Particle\ParticlePresetManager.h">
       <Filter>Engine\Src\Particle</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Scene\BaseScene.h">
+    <ClInclude Include="Engine\Src\Particle\ParticleSystemComponent.h">
+      <Filter>Engine\Src\Particle</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Particle\Gpu\GpuParticleSystemComponent.h">
+      <Filter>Engine\Src\Particle\Gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Particle\Core\Particle.h">
+      <Filter>Engine\Src\Particle\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Scene\Scene.h">
       <Filter>Engine\Src\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Scene\Feature\ISceneFeature.h">
@@ -2520,11 +2880,14 @@
     <ClInclude Include="Engine\Src\Scene\Feature\CollisionFeature.h">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Scene\Feature\PhysicsFeature.h">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Scene\Feature\GridFeature.h">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Scene\Feature\DebugEditorFeature.h">
-      <Filter>Engine\Src\Scene\Feature</Filter>
+    <ClInclude Include="Engine\Src\Editor\Scene\DebugEditorFeature.h">
+      <Filter>Engine\Src\Editor\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Environment\AtmosphereEditor.h">
       <Filter>Engine\Src\Editor\Environment</Filter>
@@ -2532,8 +2895,29 @@
     <ClInclude Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.h">
       <Filter>Engine\Src\Editor\Environment</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Scene\ComponentEditing.h">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Scene\EditorSceneAccess.h">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Scene\ObjectEditing.h">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Scene\PlayModeController.h">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Scene\PrefabEditing.h">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Scene\SceneDebugEditor.h">
       <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Scene\PrefabSystem.h">
+      <Filter>Engine\Src\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Scene\SceneEnvironmentIO.h">
+      <Filter>Engine\Src\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Scene\SceneSaveSystem.h">
       <Filter>Engine\Src\Scene</Filter>
@@ -2574,13 +2958,34 @@
     <ClInclude Include="Engine\Src\UI\UIAnchor.h">
       <Filter>Engine\Src\UI</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\UI\UICanvas.h">
-      <Filter>Engine\Src\UI</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\UI\UIElement.h">
       <Filter>Engine\Src\UI</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\UI\UIImage.h">
+    <ClInclude Include="Engine\Src\UI\RectTransformComponent.h">
+      <Filter>Engine\Src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\UI\UIImageComponent.h">
+      <Filter>Engine\Src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\UI\UIButtonComponent.h">
+      <Filter>Engine\Src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\UI\UIPointer.h">
+      <Filter>Engine\Src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\UI\IUIInteractable.h">
+      <Filter>Engine\Src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\UI\UINavigation.h">
+      <Filter>Engine\Src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\UI\UISliderComponent.h">
+      <Filter>Engine\Src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\UI\UITextComponent.h">
+      <Filter>Engine\Src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\UI\UIToggleComponent.h">
       <Filter>Engine\Src\UI</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Math\Geometry\Distance.h">
@@ -2595,8 +3000,8 @@
     <ClInclude Include="Engine\Src\Math\Geometry\Shapes.h">
       <Filter>Engine\Src\Math\Geometry</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Utility\Debug\ConsoleUI.h">
-      <Filter>Engine\Src\Utility\Debug</Filter>
+    <ClInclude Include="Engine\Src\Editor\ImGui\ConsoleUI.h">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\CanvasViewport.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
@@ -2619,8 +3024,8 @@
     <ClInclude Include="Engine\Src\Editor\ImGui\ObjectSelector.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Editor\ImGui\PixCapture.h">
-      <Filter>Engine\Src\Editor\ImGui</Filter>
+    <ClInclude Include="Engine\Src\Graphics\RHI\Debug\PixCapture.h">
+      <Filter>Engine\Src\Graphics\RHI\Debug</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\ProjectView.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
@@ -2631,17 +3036,14 @@
     <ClInclude Include="Engine\Src\Editor\ImGui\RenderGraphEditorPanel.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Editor\Window\GameOutputWindow.h">
-      <Filter>Engine\Src\Editor\Window</Filter>
+    <ClInclude Include="Engine\Src\Graphics\Render\GameOutputWindow.h">
+      <Filter>Engine\Src\Graphics\Render</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\RenderPassDebugPanel.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Editor\ImGui\SceneManagerTab.h">
-      <Filter>Engine\Src\Editor\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Editor\ImGui\ScreenCapture.h">
-      <Filter>Engine\Src\Editor\ImGui</Filter>
+    <ClInclude Include="Engine\Src\WinApp\ScreenCapture.h">
+      <Filter>Engine\Src\WinApp</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\ThreadProfilerUI.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
@@ -2666,6 +3068,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Random\RandomGenerator.h">
       <Filter>Engine\Src\Utility\Random</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Session\SessionValues.h">
+      <Filter>Engine\Src\Utility\Session</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\EngineSystem\EngineSystem.h">
       <Filter>Engine\Src\EngineSystem</Filter>
@@ -2793,37 +3198,10 @@
     <ClInclude Include="Engine\Src\Particle\Modules\VelocityModule.h">
       <Filter>Engine\Src\Particle\Modules</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\TestScene\TestScene.h">
-      <Filter>Application\Src\Scenes\TestScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\SampleGameScene\SampleGameScene.h">
-      <Filter>Application\Src\Scenes\SampleGameScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\SampleGameScene\PlayerControllerComponent.h">
-      <Filter>Application\Src\Scenes\SampleGameScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\ShootingSampleScene.h">
-      <Filter>Application\Src\Scenes\ShootingSampleScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\BulletObject.h">
-      <Filter>Application\Src\Scenes\ShootingSampleScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\EnemyObject.h">
-      <Filter>Application\Src\Scenes\ShootingSampleScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\ShipControllerComponent.h">
-      <Filter>Application\Src\Scenes\ShootingSampleScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\Sprite2DSampleScene\Sprite2DSampleScene.h">
-      <Filter>Application\Src\Scenes\Sprite2DSampleScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\Sprite2DSampleScene\PaddleComponent.h">
-      <Filter>Application\Src\Scenes\Sprite2DSampleScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\Sprite2DSampleScene\FallingItemComponent.h">
-      <Filter>Application\Src\Scenes\Sprite2DSampleScene</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\DockingUI.h">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ImGui\EditorLayoutSection.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Camera\Camera.h">
@@ -2832,8 +3210,11 @@
     <ClInclude Include="Engine\Src\Camera\Control\OrbitFlyController.h">
       <Filter>Engine\Src\Camera\Control</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Camera\Debug\DebugCameraCVars.h">
+    <ClInclude Include="Engine\Src\Camera\Debug\DebugCameraState.h">
       <Filter>Engine\Src\Camera\Debug</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Camera\SceneCameraSection.h">
+      <Filter>Engine\Src\Editor\Camera</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Camera\Control\FreeLookController.h">
       <Filter>Engine\Src\Camera\Control</Filter>
@@ -2877,6 +3258,9 @@
     <ClInclude Include="Engine\Src\Utility\JsonManager\JsonManager.h">
       <Filter>Engine\Src\Utility\JsonManager</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Macro\UniqueName.h">
+      <Filter>Engine\Src\Utility\Macro</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Logger\Logger.h">
       <Filter>Engine\Src\Utility\Logger</Filter>
     </ClInclude>
@@ -2907,9 +3291,6 @@
     <ClInclude Include="Engine\Src\Graphics\Light\LightManager.h">
       <Filter>Engine\Src\Graphics\Light</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Particle\ParticleSystem.h">
-      <Filter>Engine\Src\Particle</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Input\IInputDevice.h">
       <Filter>Engine\Src\Input</Filter>
     </ClInclude>
@@ -2922,8 +3303,8 @@
     <ClInclude Include="Engine\Src\Input\GamepadInput.h">
       <Filter>Engine\Src\Input</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Utility\Debug\GameDebugUI.h">
-      <Filter>Engine\Src\Utility\Debug</Filter>
+    <ClInclude Include="Engine\Src\Editor\ImGui\GameDebugUI.h">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\WinApp\WinApp.h">
       <Filter>Engine\Src\WinApp</Filter>
@@ -2979,9 +3360,6 @@
     <ClInclude Include="Application\Src\MyGame.h">
       <Filter>Application\Src</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.h">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
-    </ClInclude>
     <ClInclude Include="Externals\imgui\imconfig.h">
       <Filter>Externals\imgui</Filter>
     </ClInclude>
@@ -3018,6 +3396,138 @@
     <ClInclude Include="Externals\meshoptimizer\src\meshoptimizer.h">
       <Filter>Externals\meshoptimizer\src</Filter>
     </ClInclude>
+    <ClInclude Include="Externals\angelscript\add_on\autowrapper\aswrappedcall.h">
+      <Filter>Externals\angelscript\add_on\autowrapper</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\add_on\scriptarray\scriptarray.h">
+      <Filter>Externals\angelscript\add_on\scriptarray</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\add_on\scriptbuilder\scriptbuilder.h">
+      <Filter>Externals\angelscript\add_on\scriptbuilder</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\add_on\scripthelper\scripthelper.h">
+      <Filter>Externals\angelscript\add_on\scripthelper</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\add_on\scriptmath\scriptmath.h">
+      <Filter>Externals\angelscript\add_on\scriptmath</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\add_on\scriptstdstring\scriptstdstring.h">
+      <Filter>Externals\angelscript\add_on\scriptstdstring</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\include\angelscript.h">
+      <Filter>Externals\angelscript\include</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_array.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_atomic.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_builder.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_bytecode.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_callfunc.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_compiler.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_config.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_configgroup.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_context.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_criticalsection.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_datatype.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_debug.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_gc.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_generic.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_map.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_memory.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_module.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_namespace.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_objecttype.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_outputbuffer.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_parser.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_property.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_restore.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_scriptcode.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_scriptengine.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_scriptfunction.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_scriptnode.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_scriptobject.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_string.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_string_util.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_symboltable.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_texts.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_thread.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_tokendef.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_tokenizer.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_typeinfo.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\angelscript\source\as_variablescope.h">
+      <Filter>Externals\angelscript\source</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Text\MsdfFontTypes.h">
       <Filter>Engine\Src\Text</Filter>
     </ClInclude>
@@ -3048,13 +3558,13 @@
     <ClInclude Include="Engine\Src\Graphics\Render\UI\TextRenderer.h">
       <Filter>Engine\Src\Graphics\Render\UI</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\UI\UIText.h">
-      <Filter>Engine\Src\UI</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\MsdfTextTestScene\MsdfTextTestScene.h">
-      <Filter>Application\Src\Scenes\MsdfTextTestScene</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Audio\AudioBus.h">
+      <Filter>Engine\Src\Audio</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Audio\AudioListenerComponent.h">
+      <Filter>Engine\Src\Audio</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Audio\AudioSourceComponent.h">
       <Filter>Engine\Src\Audio</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Audio\AudioSystem.h">
@@ -3159,9 +3669,6 @@
     <ClInclude Include="Engine\Src\Editor\Environment\FogEditor.h">
       <Filter>Engine\Src\Editor\Environment</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\GameObject\Text3D\Text3DObject.h">
-      <Filter>Engine\Src\GameObject\Text3D</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Fog\FogManager.h">
       <Filter>Engine\Src\Graphics\Fog</Filter>
     </ClInclude>
@@ -3210,6 +3717,12 @@
     <ClInclude Include="Engine\Src\Scene\Feature\TweenFeature.h">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Scene\Feature\UIInteractionFeature.h">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Scene\Feature\SceneFeatureRegistry.h">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Text\TextGeometryBuilder.h">
       <Filter>Engine\Src\Text</Filter>
     </ClInclude>
@@ -3222,185 +3735,8 @@
     <ClInclude Include="Engine\Src\Utility\Tween\TweenManager.h">
       <Filter>Engine\Src\Utility\Tween</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Components\Building\MapChipData.h">
-      <Filter>Application\Src\Components\Building</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\Building\MapGeneratorComponent.h">
-      <Filter>Application\Src\Components\Building</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\Building\MapViewComponent.h">
-      <Filter>Application\Src\Components\Building</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\Building\RockThrowComponent.h">
-      <Filter>Application\Src\Components\Building</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\Building\WaterWaveViewComponent.h">
-      <Filter>Application\Src\Components\Building</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\Camera\RockBreakShakeSettingsComponent.h">
-      <Filter>Application\Src\Components\Camera</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\GameCore\GameManagerComponent.h">
-      <Filter>Application\Src\Components\GameCore</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\GameCore\GameRecordStore.h">
-      <Filter>Application\Src\Components\GameCore</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\GameCore\GameResultData.h">
-      <Filter>Application\Src\Components\GameCore</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\GameCore\GameSettingsComponent.h">
-      <Filter>Application\Src\Components\GameCore</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\GameCore\HungerComponent.h">
-      <Filter>Application\Src\Components\GameCore</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\Rail\RailBuilderComponent.h">
-      <Filter>Application\Src\Components\Rail</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\Rail\RailPathComponent.h">
-      <Filter>Application\Src\Components\Rail</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\Rail\RailViewComponent.h">
-      <Filter>Application\Src\Components\Rail</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\Result\ResultButtonAnimationComponent.h">
-      <Filter>Application\Src\Components\Result</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\Result\ResultMonkeyShakeComponent.h">
-      <Filter>Application\Src\Components\Result</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\Result\ResultTipsComponent.h">
-      <Filter>Application\Src\Components\Result</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\Title\TitleButtonAnimationComponent.h">
-      <Filter>Application\Src\Components\Title</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\Title\TitleCameraShakeSettingsComponent.h">
-      <Filter>Application\Src\Components\Title</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\Title\TitleLogoAnimationComponent.h">
-      <Filter>Application\Src\Components\Title</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\Title\TitleMonkeyAnimationComponent.h">
-      <Filter>Application\Src\Components\Title</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\Title\TitleTextAnimationComponent.h">
-      <Filter>Application\Src\Components\Title</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\Title\TitleTrolleyAnimationComponent.h">
-      <Filter>Application\Src\Components\Title</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\Train\SpawnPopComponent.h">
-      <Filter>Application\Src\Components\Train</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\Train\TrainMovementComponent.h">
-      <Filter>Application\Src\Components\Train</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\UI\GameStartPromptAnimationComponent.h">
-      <Filter>Application\Src\Components\UI</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\UI\ObjectiveSignComponent.h">
-      <Filter>Application\Src\Components\UI</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\UI\OffscreenTrainIndicatorUIComponent.h">
-      <Filter>Application\Src\Components\UI</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\UI\PauseMenuUIComponent.h">
-      <Filter>Application\Src\Components\UI</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\UI\ResultGaugeUIComponent.h">
-      <Filter>Application\Src\Components\UI</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\UI\SpeedGaugeUIComponent.h">
-      <Filter>Application\Src\Components\UI</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\UI\StaminaGaugeUIComponent.h">
-      <Filter>Application\Src\Components\UI</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\Utility\BlockModelLayout.h">
-      <Filter>Application\Src\Components\Utility</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\Utility\ModelRenderPoolComponent.h">
-      <Filter>Application\Src\Components\Utility</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Editor\Stage\StageChipPalette.h">
-      <Filter>Application\Src\Editor\Stage</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Editor\Stage\StageCsvDocument.h">
-      <Filter>Application\Src\Editor\Stage</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Editor\Stage\StageEditorPanel.h">
-      <Filter>Application\Src\Editor\Stage</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Editor\Stage\StageProject.h">
-      <Filter>Application\Src\Editor\Stage</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\GameObjects\Effect\BananaHarvestEffect.h">
-      <Filter>Application\Src\GameObjects\Effect</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\GameObjects\Effect\RockBreakDebris.h">
-      <Filter>Application\Src\GameObjects\Effect</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\GameObjects\Effect\StationSlowdownEffect.h">
-      <Filter>Application\Src\GameObjects\Effect</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\GameObjects\GameSceneObject.h">
-      <Filter>Application\Src\GameObjects</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\GameScene\BananaTreeAuraFeature.h">
-      <Filter>Application\Src\Scenes\GameScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\GameScene\GameEntranceFeature.h">
-      <Filter>Application\Src\Scenes\GameScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\GameScene\GameScene.h">
-      <Filter>Application\Src\Scenes\GameScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\GameScene\OffscreenTrainIndicatorFeature.h">
-      <Filter>Application\Src\Scenes\GameScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\GameScene\PauseMenuFeature.h">
-      <Filter>Application\Src\Scenes\GameScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\GameScene\RailDirectionGuideFeature.h">
-      <Filter>Application\Src\Scenes\GameScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\GameScene\SkyFogFeature.h">
-      <Filter>Application\Src\Scenes\GameScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\GameScene\SpeedBlurFeature.h">
-      <Filter>Application\Src\Scenes\GameScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\GameScene\SpeedGaugeFeature.h">
-      <Filter>Application\Src\Scenes\GameScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\GameScene\StageLightsFeature.h">
-      <Filter>Application\Src\Scenes\GameScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\GameScene\StaminaGaugeFeature.h">
-      <Filter>Application\Src\Scenes\GameScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\ResultScene\ResultScene.h">
-      <Filter>Application\Src\Scenes\ResultScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\ResultScene\ResultSceneUi.h">
-      <Filter>Application\Src\Scenes\ResultScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\TitleScene\TitleScene.h">
-      <Filter>Application\Src\Scenes\TitleScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\TitleScene\TitleSceneModelSetup.h">
-      <Filter>Application\Src\Scenes\TitleScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\TitleScene\TitleSceneUi.h">
-      <Filter>Application\Src\Scenes\TitleScene</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ILoadingScreenEffect.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\TrolleyLoading\TrolleyLoading.h">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect\TrolleyLoading</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Random\Hash.h">
       <Filter>Engine\Src\Utility\Random</Filter>
@@ -3484,84 +3820,6 @@
     <Filter Include="Application\Src">
       <UniqueIdentifier>{8C016CA9-9773-40DE-8792-E8B53FB9372C}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Application\Src\Components">
-      <UniqueIdentifier>{1733D33F-71B1-42CB-A572-AF0B2B980EE4}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Components\Building">
-      <UniqueIdentifier>{927ACB07-8F13-44F9-ACE1-DCF099B7C975}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Components\Camera">
-      <UniqueIdentifier>{CD1D03D2-9AB6-4F59-B455-6833D4F68849}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Components\GameCore">
-      <UniqueIdentifier>{EF54935F-6035-4619-AF43-6C927EAC7699}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Components\Rail">
-      <UniqueIdentifier>{849DCF39-F2B9-4594-AAF2-083D9902F5C1}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Components\Result">
-      <UniqueIdentifier>{C8AB0B81-8531-4ABB-9540-A4243A581337}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Components\Title">
-      <UniqueIdentifier>{113641A0-21C5-4FA5-B8EB-E84FB19CA794}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Components\Train">
-      <UniqueIdentifier>{AC64EA6F-0684-4922-9C71-A7A71979A090}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Components\UI">
-      <UniqueIdentifier>{4DF98CEF-1553-49BA-AF94-F28F46A1556F}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Components\Utility">
-      <UniqueIdentifier>{DD552702-3EE0-4964-9090-9C176DEDA1EF}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Editor">
-      <UniqueIdentifier>{97E30E45-D6C0-471F-98E0-687AD59380B2}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Editor\Stage">
-      <UniqueIdentifier>{7A0C5ADC-15F3-4608-8068-0598A0709FC1}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\GameObjects">
-      <UniqueIdentifier>{2762868A-A4D7-448F-BAAD-024F9AF8F891}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\GameObjects\Effect">
-      <UniqueIdentifier>{884EAFBE-0EB1-4661-AFC6-20135218E67B}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\GameObjects\SkyBox">
-      <UniqueIdentifier>{FF839B3D-8C16-469D-91A5-1E40A85FE4CB}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Scenes">
-      <UniqueIdentifier>{E0897678-58CC-4A82-AA9F-47042D9CD67B}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Scenes\CollisionTestScene">
-      <UniqueIdentifier>{2C8F41A6-5B7D-4E93-9C10-6A4D2F8B7E51}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Scenes\GameScene">
-      <UniqueIdentifier>{3E720AD8-16BD-45B7-AC21-C7C0EF830957}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Scenes\MsdfTextTestScene">
-      <UniqueIdentifier>{15CA7471-23C7-4DAE-A320-F49B83CF292A}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Scenes\ResultScene">
-      <UniqueIdentifier>{21903413-3B2F-4FB4-BC72-15EEEC1C65FC}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Scenes\SampleGameScene">
-      <UniqueIdentifier>{296989A0-B084-4643-ABA9-184DA0DDC6E3}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Scenes\ShootingSampleScene">
-      <UniqueIdentifier>{65B4BE20-1815-46C3-91A4-0099398D063C}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Scenes\Sprite2DSampleScene">
-      <UniqueIdentifier>{0594C199-08F3-4021-B85A-4EC3C966081F}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Scenes\TestScene">
-      <UniqueIdentifier>{04EE1DAA-02F5-4253-9DBB-A28737391E46}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Scenes\TitleScene">
-      <UniqueIdentifier>{89F1EF62-281B-4423-A2BC-0D583EB44542}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Scenes\WaterTestScene">
-      <UniqueIdentifier>{BA0CCBB8-F2BE-4C5C-95A3-D52C8433C8F5}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Build">
       <UniqueIdentifier>{39C0671C-39F8-432F-BE2C-E14FDE0F3B36}</UniqueIdentifier>
     </Filter>
@@ -3631,8 +3889,14 @@
     <Filter Include="Engine\Src\Editor\Camera\Widget">
       <UniqueIdentifier>{CF2D6EC9-465F-43A8-BEB2-2A8B7F68F676}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Src\Editor\Command">
+      <UniqueIdentifier>{BB45EF97-C89C-424C-978D-4B7BD0CEB5AA}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Engine\Src\Editor\Environment">
       <UniqueIdentifier>{3E7B1A54-9C2D-4F86-B1E0-5A6D42C8F913}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Editor\External">
+      <UniqueIdentifier>{31C0E02C-827E-4C4A-9C42-8A38CBE83D4A}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Editor\ImGui">
       <UniqueIdentifier>{AC458439-F252-40B2-838E-13455FEB9AB5}</UniqueIdentifier>
@@ -3643,11 +3907,23 @@
     <Filter Include="Engine\Src\Editor\ImGui\Wrappers">
       <UniqueIdentifier>{C63188DC-6973-4768-BADA-DCF52132C66E}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Src\Editor\Inspector">
+      <UniqueIdentifier>{D91ACD79-3D27-4C04-A842-DDF8B8F6CB73}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Editor\Panel">
+      <UniqueIdentifier>{6938F710-F7A9-40BD-B443-83ED9B008474}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Editor\Project">
+      <UniqueIdentifier>{D793745C-C54E-49A6-A041-91222E1BC343}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Engine\Src\Editor\Scene">
       <UniqueIdentifier>{8EEC7EC7-38CE-4B25-84B4-1C1FD0F26A22}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Engine\Src\Editor\Window">
-      <UniqueIdentifier>{0ED5B9B7-469F-40E4-89F7-0AE0CE44302A}</UniqueIdentifier>
+    <Filter Include="Engine\Src\Editor\Script">
+      <UniqueIdentifier>{54D003EF-57AE-4DC4-B254-B1380C6F0D2E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Editor\Water">
+      <UniqueIdentifier>{32FE3850-C2E5-459D-A623-BB1E995134B0}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\EngineSystem">
       <UniqueIdentifier>{25A76813-6EF1-43E7-8910-74FA30780B0C}</UniqueIdentifier>
@@ -3673,29 +3949,26 @@
     <Filter Include="Engine\Src\GameObject\Component\Animation">
       <UniqueIdentifier>{889403D9-E46B-4A3C-B734-5D261DF9944D}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Src\GameObject\Component\Camera">
+      <UniqueIdentifier>{CEC9A913-B014-463D-BC68-CBADE00C538C}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Engine\Src\GameObject\Component\Core">
       <UniqueIdentifier>{74B1A113-B811-40A6-A9D1-A7192BC8431C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\GameObject\Component\Environment">
+      <UniqueIdentifier>{B59042EB-424A-4EB2-B2A7-AD2E9CD697E9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\GameObject\Component\Light">
+      <UniqueIdentifier>{0EA9EDE3-489E-46B8-AF55-B094DCDA4A5C}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\GameObject\Component\Render">
       <UniqueIdentifier>{91995376-8555-4326-8BF2-AE823BABD219}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Engine\Src\GameObject\Component\Scene">
-      <UniqueIdentifier>{AED89F0C-58A7-4CAE-825D-330886315211}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Engine\Src\GameObject\Component\Transform">
       <UniqueIdentifier>{D038A3B9-7746-4B74-9597-0D06389C3908}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Engine\Src\GameObject\Model">
-      <UniqueIdentifier>{3BDA1622-442D-4473-9600-3317565D72B4}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Engine\Src\GameObject\Primitive">
-      <UniqueIdentifier>{4EDF1521-D8FF-4496-9FE6-E7F302E98571}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Engine\Src\GameObject\Sprite">
       <UniqueIdentifier>{70079A16-C468-498A-BF3A-C14C52126902}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Engine\Src\GameObject\Text3D">
-      <UniqueIdentifier>{71EAF758-3541-4DCD-B613-4960A0EDEB25}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics">
       <UniqueIdentifier>{C8B50C5F-F075-4840-B95F-62CA73D35902}</UniqueIdentifier>
@@ -3741,9 +4014,6 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\Material">
       <UniqueIdentifier>{2DB1E047-AE58-44DD-8480-B82893379866}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Engine\Src\Graphics\Material\Debug">
-      <UniqueIdentifier>{10693903-59A0-4E5B-A93C-38B5BD0DECD2}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Model">
       <UniqueIdentifier>{B6A41025-2F8A-4DFB-9825-0D9F32E0D8E8}</UniqueIdentifier>
@@ -3828,9 +4098,6 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping">
       <UniqueIdentifier>{A92CDA78-6D07-45C2-9567-763B0BD66C3D}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\TrolleyLoading">
-      <UniqueIdentifier>{AB051751-FEBC-4AC5-A0DC-D8CED3347F94}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\Vignette">
       <UniqueIdentifier>{43286C64-BEC4-499A-B7AC-FF2EFBA50B15}</UniqueIdentifier>
@@ -3997,20 +4264,35 @@
     <Filter Include="Engine\Src\Particle\Core">
       <UniqueIdentifier>{0B5330CA-5D07-40BA-A04C-5B83D8196A96}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Engine\Src\Particle\Debug">
-      <UniqueIdentifier>{22576EEA-4D70-4394-9259-FB63EDAD61E0}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Engine\Src\Particle\Gpu">
       <UniqueIdentifier>{771131E5-303E-432F-8D22-A5F52B5121E6}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Particle\Modules">
       <UniqueIdentifier>{E550DB62-CBDA-4DBB-933B-B205EE3B0311}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Src\Physics">
+      <UniqueIdentifier>{28E028D4-0822-4468-90B5-F749BAA150B8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Physics\Debug">
+      <UniqueIdentifier>{EE2A29E4-20F4-4FF1-9AAA-E266593C0639}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Reflection">
+      <UniqueIdentifier>{AB16768F-1113-4F73-AE2B-95C2276C988E}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Engine\Src\Scene">
       <UniqueIdentifier>{863EA1EF-7BCF-42DB-9258-C0D9FAE56DED}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Scene\Feature">
       <UniqueIdentifier>{D4DC083E-4D17-492A-A32F-9CBA81EC3352}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Script">
+      <UniqueIdentifier>{62BF5B25-3C66-44A8-A9DF-F3264FCDDB27}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Script\Binding">
+      <UniqueIdentifier>{EA7349F4-A8D2-411B-9275-AB96C8B1B5F7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Script\Metadata">
+      <UniqueIdentifier>{5A8604F5-E363-460B-AB9B-F7961F037EF3}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Text">
       <UniqueIdentifier>{D1CFE8DD-8D72-4161-AEF2-974DDA844058}</UniqueIdentifier>
@@ -4026,6 +4308,9 @@
     </Filter>
     <Filter Include="Engine\Src\Utility">
       <UniqueIdentifier>{46B344B6-CF7F-4BA4-AD45-446450F55874}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Utility\Asset">
+      <UniqueIdentifier>{A8B005CD-2D36-4460-AE1A-C213375311C2}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Utility\CVar">
       <UniqueIdentifier>{3C1F7A62-5D48-4B0E-9E21-7A6C0B4D8F13}</UniqueIdentifier>
@@ -4048,11 +4333,20 @@
     <Filter Include="Engine\Src\Utility\Logger">
       <UniqueIdentifier>{AE65377C-9875-46C2-ACEB-A5583C82DCD3}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Src\Utility\Macro">
+      <UniqueIdentifier>{a7f3c1e2-5b84-4d19-9c26-3e8f0b7d4a51}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Utility\Path">
+      <UniqueIdentifier>{84A6DE07-7AEF-45F4-8920-E7F93EE3CB86}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Engine\Src\Utility\Profiler">
       <UniqueIdentifier>{EB718086-7172-4261-9E65-2364207C9F96}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Utility\Random">
       <UniqueIdentifier>{CE13D7F5-57F4-4CDF-BDA2-D844D244356B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Utility\Session">
+      <UniqueIdentifier>{A45F329B-F0A3-4B9E-BC5E-F9AEE2A0FF64}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Utility\Timer">
       <UniqueIdentifier>{139020EE-B17F-427B-AB95-76D25BBBABD6}</UniqueIdentifier>
@@ -4068,6 +4362,36 @@
     </Filter>
     <Filter Include="Externals">
       <UniqueIdentifier>{b3f1c8a2-6d47-4e0b-9a15-3c88e51f0d21}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\angelscript">
+      <UniqueIdentifier>{08B96EAD-6B4B-4906-AD33-5B48F1EA65E0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\angelscript\add_on">
+      <UniqueIdentifier>{CF3B6435-7869-49D8-84D4-E29015C0B7F2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\angelscript\add_on\autowrapper">
+      <UniqueIdentifier>{BA0F3567-8029-468A-BC54-A6EB93561C6F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\angelscript\add_on\scriptarray">
+      <UniqueIdentifier>{3DE59610-ABFD-4B30-991A-3CD6A304F480}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\angelscript\add_on\scriptbuilder">
+      <UniqueIdentifier>{44AD3161-55E4-4AAD-A6BD-29853104379C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\angelscript\add_on\scripthelper">
+      <UniqueIdentifier>{B961F070-8632-4E5E-8D60-50E2C0EDC75C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\angelscript\add_on\scriptmath">
+      <UniqueIdentifier>{DE7DAFDE-6970-4AF2-95A9-FD4B2D81863D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\angelscript\add_on\scriptstdstring">
+      <UniqueIdentifier>{0726E5EA-74AB-40A1-B2B8-F4608B3B15E4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\angelscript\include">
+      <UniqueIdentifier>{1128544F-67CD-4C9E-98DD-CCFD18AB5132}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\angelscript\source">
+      <UniqueIdentifier>{F5974DE7-BC2B-4606-8A98-16866B78A220}</UniqueIdentifier>
     </Filter>
     <Filter Include="Externals\imgui">
       <UniqueIdentifier>{31C3741B-D9E0-41B2-B9F0-1E40D59C0319}</UniqueIdentifier>

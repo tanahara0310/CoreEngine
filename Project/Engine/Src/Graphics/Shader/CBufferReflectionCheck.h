@@ -22,9 +22,9 @@
 #include <iterator>
 #include <string>
 
-// Release 構成には USE_IMGUI が無い（Debug / Development にはある）ので、
+// Release 構成には CORE_EDITOR が無い（Debug / Development にはある）ので、
 // 開発ビルドだけで走らせるための判定に使う
-#if defined(_DEBUG) || defined(USE_IMGUI)
+#if defined(_DEBUG) || defined(CORE_EDITOR)
 #define CB_REFLECTION_CHECK_ENABLED 1
 #else
 #define CB_REFLECTION_CHECK_ENABLED 0

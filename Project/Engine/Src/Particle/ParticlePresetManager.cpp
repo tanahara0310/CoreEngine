@@ -11,11 +11,10 @@
 #include "Modules/RotationModule.h"
 #include "Modules/NoiseModule.h"
 #include "Modules/CollisionModule.h"
-#include "ParticleSystem.h"   // 床との当たり判定は CPU 版だけが持つ
+#include "Utility/Logger/Logger.h"
 #include <filesystem>
-#include <iostream>
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 #include "Editor/ImGui/ImguiManager.h"
 #endif
 
@@ -24,25 +23,24 @@
 #undef CreateDirectory
 #endif
 
-// TODO: MainModule対応のため、Save/Load機能は一時的に無効化
-// 後でMainModuleからデータを取得・設定するように修正する必要があります
-
-
 namespace CoreEngine
 {
-bool ParticlePresetManager::SavePreset(IParticleSystem* particleSystem, const std::string& filePath)
+namespace
+{
+    /// @brief 書き出すプリセットの版（放出位置は持たない）
+    constexpr const char* kPresetVersion = "2.2";
+}
+
+json ParticlePresetManager::ToJson(IParticleSystem& particleSystem)
 {
     json presetData;
 
-    // エミッター位置の保存
-    presetData["emitterPosition"] = JsonManager::Vector3ToJson(particleSystem->GetEmitterPosition());
-
     // ビルボードタイプとブレンドモードの保存
-    presetData["billboardType"] = static_cast<int>(particleSystem->GetBillboardType());
-    presetData["blendMode"] = static_cast<int>(particleSystem->GetBlendMode());
+    presetData["billboardType"] = static_cast<int>(particleSystem.GetBillboardType());
+    presetData["blendMode"] = static_cast<int>(particleSystem.GetBlendMode());
 
     // MainModuleの保存
-    auto& mainModule = particleSystem->GetMainModule();
+    auto& mainModule = particleSystem.GetMainModule();
     auto mainData = mainModule.GetMainData();
     json mainJson;
     mainJson["duration"] = mainData.duration;
@@ -65,7 +63,7 @@ bool ParticlePresetManager::SavePreset(IParticleSystem* particleSystem, const st
     presetData["main"] = mainJson;
 
     // EmissionModuleの保存
-    auto& emissionModule = particleSystem->GetEmissionModule();
+    auto& emissionModule = particleSystem.GetEmissionModule();
     auto emissionData = emissionModule.GetEmissionData();
     json emissionJson;
     emissionJson["rateOverTime"] = emissionData.rateOverTime;
@@ -75,7 +73,7 @@ bool ParticlePresetManager::SavePreset(IParticleSystem* particleSystem, const st
     presetData["emission"] = emissionJson;
 
     // ShapeModuleの保存
-    auto& shapeModule = particleSystem->GetShapeModule();
+    auto& shapeModule = particleSystem.GetShapeModule();
     auto shapeData = shapeModule.GetShapeData();
     json shapeJson;
     shapeJson["shapeType"] = static_cast<int>(shapeData.shapeType);
@@ -92,7 +90,7 @@ bool ParticlePresetManager::SavePreset(IParticleSystem* particleSystem, const st
     presetData["shape"] = shapeJson;
 
     // VelocityModuleの保存
-    auto& velocityModule = particleSystem->GetVelocityModule();
+    auto& velocityModule = particleSystem.GetVelocityModule();
     auto velocityData = velocityModule.GetVelocityData();
     json velocityJson;
     velocityJson["startSpeed"] = JsonManager::Vector3ToJson(velocityData.startSpeed);
@@ -102,7 +100,7 @@ bool ParticlePresetManager::SavePreset(IParticleSystem* particleSystem, const st
     presetData["velocity"] = velocityJson;
 
     // ColorModuleの保存
-    auto& colorModule = particleSystem->GetColorModule();
+    auto& colorModule = particleSystem.GetColorModule();
     auto colorData = colorModule.GetColorData();
     json colorJson;
     colorJson["endColor"] = JsonManager::Vector4ToJson(colorData.endColor);
@@ -112,7 +110,7 @@ bool ParticlePresetManager::SavePreset(IParticleSystem* particleSystem, const st
     presetData["color"] = colorJson;
 
     // ForceModuleの保存
-    auto& forceModule = particleSystem->GetForceModule();
+    auto& forceModule = particleSystem.GetForceModule();
     auto forceData = forceModule.GetForceData();
     json forceJson;
     forceJson["gravity"] = JsonManager::Vector3ToJson(forceData.gravity);
@@ -126,7 +124,7 @@ bool ParticlePresetManager::SavePreset(IParticleSystem* particleSystem, const st
     presetData["force"] = forceJson;
 
     // SizeModuleの保存
-    auto& sizeModule = particleSystem->GetSizeModule();
+    auto& sizeModule = particleSystem.GetSizeModule();
     auto sizeData = sizeModule.GetSizeData();
     json sizeJson;
     sizeJson["endSize"] = sizeData.endSize;
@@ -141,7 +139,7 @@ bool ParticlePresetManager::SavePreset(IParticleSystem* particleSystem, const st
     presetData["size"] = sizeJson;
 
     // RotationModuleの保存
-    auto& rotationModule = particleSystem->GetRotationModule();
+    auto& rotationModule = particleSystem.GetRotationModule();
     auto rotationData = rotationModule.GetRotationData();
     json rotationJson;
     rotationJson["rotationSpeed"] = JsonManager::Vector3ToJson(rotationData.rotationSpeed);
@@ -162,7 +160,7 @@ bool ParticlePresetManager::SavePreset(IParticleSystem* particleSystem, const st
     presetData["rotation"] = rotationJson;
 
     // NoiseModuleの保存
-    auto& noiseModule = particleSystem->GetNoiseModule();
+    auto& noiseModule = particleSystem.GetNoiseModule();
     auto noiseData = noiseModule.GetNoiseData();
     json noiseJson;
     noiseJson["strength"] = noiseData.strength;
@@ -174,8 +172,8 @@ bool ParticlePresetManager::SavePreset(IParticleSystem* particleSystem, const st
     presetData["noise"] = noiseJson;
 
     // CollisionModuleの保存（床との当たり判定。CPU版だけが持つ）
-    if (auto* cpuSystem = dynamic_cast<ParticleSystem*>(particleSystem)) {
-        auto& collisionModule = cpuSystem->GetCollisionModule();
+    if (CollisionModule* const collision = particleSystem.GetCollisionModule()) {
+        auto& collisionModule = *collision;
         auto collisionData = collisionModule.GetCollisionData();
         json collisionJson;
         collisionJson["planeHeight"] = collisionData.planeHeight;
@@ -191,64 +189,49 @@ bool ParticlePresetManager::SavePreset(IParticleSystem* particleSystem, const st
     }
 
     // メタデータ
-    presetData["version"] = "2.1";  // モジュールの有効フラグ・床との当たり判定に対応
+    presetData["version"] = kPresetVersion;
+    return presetData;
+}
 
-    // ファイルに保存
-    bool success = JsonManager::GetInstance().SaveJson(filePath, presetData);
+bool ParticlePresetManager::SavePreset(IParticleSystem* particleSystem, const std::string& filePath)
+{
+    const bool success = particleSystem && JsonManager::GetInstance().SaveJson(filePath, ToJson(*particleSystem));
     if (success) {
-        std::cout << "Preset saved (v2.1): " << filePath << std::endl;
+        Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Resource,
+            "ParticlePresetManager: プリセットを保存しました: {}", filePath);
         needUpdateFileList_ = true;
 
         // 保存したファイルを現在のプリセットとして設定
         currentPresetPath_ = filePath;
         currentPresetName_ = GetFileNameWithoutExtension(std::filesystem::path(filePath).filename().string());
     } else {
-        std::cerr << "Failed to save preset: " << filePath << std::endl;
+        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Resource,
+            "ParticlePresetManager: プリセットを保存できませんでした: {}", filePath);
     }
 
     return success;
 }
 
-bool ParticlePresetManager::LoadPreset(IParticleSystem* particleSystem, const std::string& filePath)
+void ParticlePresetManager::FromJson(IParticleSystem& particleSystem, const json& presetData)
 {
-    // ファイルが存在するかチェック
-    if (!JsonManager::GetInstance().FileExists(filePath)) {
-        std::cerr << "Preset file not found: " << filePath << std::endl;
-        return false;
+    if (!presetData.is_object()) {
+        return;
     }
 
-    // ファイルを読み込み
-    json presetData = JsonManager::GetInstance().LoadJson(filePath);
-    if (presetData.empty()) {
-        std::cerr << "Failed to load preset: " << filePath << std::endl;
-        return false;
+    // ビルボードタイプとブレンドモードの読み込み（範囲外の値は無視する）
+    if (const int billboard = JsonManager::SafeGet(presetData, "billboardType", -1);
+        billboard >= 0 && billboard <= static_cast<int>(BillboardType::ScreenAligned)) {
+        particleSystem.SetBillboardType(static_cast<BillboardType>(billboard));
     }
-
-    // バージョンチェック
-    std::string version = "1.0";
-if (presetData.contains("version")) {
-        version = presetData["version"].get<std::string>();
-    }
-    std::cout << "Loading preset version: " << version << std::endl;
-
-    // エミッター位置の読み込み
-    if (presetData.contains("emitterPosition")) {
-        Vector3 position = JsonManager::JsonToVector3(presetData["emitterPosition"]);
-        particleSystem->SetEmitterPosition(position);
-    }
-
-    // ビルボードタイプとブレンドモードの読み込み
-    if (presetData.contains("billboardType")) {
-        particleSystem->SetBillboardType(static_cast<BillboardType>(presetData["billboardType"].get<int>()));
-    }
-    if (presetData.contains("blendMode")) {
-        particleSystem->SetBlendMode(static_cast<BlendMode>(presetData["blendMode"].get<int>()));
+    if (const int blend = JsonManager::SafeGet(presetData, "blendMode", -1);
+        blend >= 0 && blend < static_cast<int>(kBlendModeCount)) {
+        particleSystem.SetBlendMode(static_cast<BlendMode>(blend));
     }
 
     // MainModuleの読み込み
     if (presetData.contains("main")) {
         auto mainJson = presetData["main"];
-        auto& mainModule = particleSystem->GetMainModule();
+        auto& mainModule = particleSystem.GetMainModule();
         auto& mainData = mainModule.GetMainData();
 
         mainData.duration = JsonManager::SafeGet(mainJson, "duration", 5.0f);
@@ -284,8 +267,8 @@ if (presetData.contains("version")) {
         emissionData.rateOverTime = JsonManager::SafeGet(emissionJson, "rateOverTime", 10u);
         emissionData.burstCount = JsonManager::SafeGet(emissionJson, "burstCount", 0u);
         emissionData.burstTime = JsonManager::SafeGet(emissionJson, "burstTime", 0.0f);
-        particleSystem->GetEmissionModule().SetEmissionData(emissionData);
-        particleSystem->GetEmissionModule().SetEnabled(JsonManager::SafeGet(emissionJson, "enabled", true));
+        particleSystem.GetEmissionModule().SetEmissionData(emissionData);
+        particleSystem.GetEmissionModule().SetEnabled(JsonManager::SafeGet(emissionJson, "enabled", true));
     }
 
     // ShapeModuleの読み込み
@@ -304,8 +287,8 @@ if (presetData.contains("version")) {
         shapeData.emissionDirection = JsonManager::SafeGetVector3(shapeJson, "emissionDirection", { 0.0f, 1.0f, 0.0f });
         shapeData.circlePlane = static_cast<ShapeModule::CirclePlane>(
             JsonManager::SafeGet(shapeJson, "circlePlane", 0));
-        particleSystem->GetShapeModule().SetShapeData(shapeData);
-        particleSystem->GetShapeModule().SetEnabled(JsonManager::SafeGet(shapeJson, "enabled", true));
+        particleSystem.GetShapeModule().SetShapeData(shapeData);
+        particleSystem.GetShapeModule().SetEnabled(JsonManager::SafeGet(shapeJson, "enabled", true));
     }
 
     // VelocityModuleの読み込み
@@ -315,8 +298,8 @@ if (presetData.contains("version")) {
         velocityData.startSpeed = JsonManager::SafeGetVector3(velocityJson, "startSpeed", { 0.0f, 1.0f, 0.0f });
         velocityData.randomSpeedRange = JsonManager::SafeGetVector3(velocityJson, "randomSpeedRange", { 1.0f, 1.0f, 1.0f });
         velocityData.useRandomDirection = JsonManager::SafeGet(velocityJson, "useRandomDirection", true);
-        particleSystem->GetVelocityModule().SetVelocityData(velocityData);
-        particleSystem->GetVelocityModule().SetEnabled(JsonManager::SafeGet(velocityJson, "enabled", true));
+        particleSystem.GetVelocityModule().SetVelocityData(velocityData);
+        particleSystem.GetVelocityModule().SetEnabled(JsonManager::SafeGet(velocityJson, "enabled", true));
     }
 
     // ColorModuleの読み込み
@@ -326,8 +309,8 @@ if (presetData.contains("version")) {
         colorData.endColor = JsonManager::SafeGetVector4(colorJson, "endColor", { 1.0f, 1.0f, 1.0f, 0.0f });
         colorData.useGradient = JsonManager::SafeGet(colorJson, "useGradient", true);
         colorData.startRatio = JsonManager::SafeGet(colorJson, "startRatio", 0.0f);
-        particleSystem->GetColorModule().SetColorData(colorData);
-        particleSystem->GetColorModule().SetEnabled(JsonManager::SafeGet(colorJson, "enabled", true));
+        particleSystem.GetColorModule().SetColorData(colorData);
+        particleSystem.GetColorModule().SetEnabled(JsonManager::SafeGet(colorJson, "enabled", true));
     }
 
     // ForceModuleの読み込み
@@ -341,8 +324,8 @@ if (presetData.contains("version")) {
         forceData.area.min = JsonManager::SafeGetVector3(forceJson, "areaMin", { -1.0f, -1.0f, -1.0f });
         forceData.area.max = JsonManager::SafeGetVector3(forceJson, "areaMax", { 1.0f, 1.0f, 1.0f });
         forceData.useAccelerationField = JsonManager::SafeGet(forceJson, "useAccelerationField", false);
-        particleSystem->GetForceModule().SetForceData(forceData);
-        particleSystem->GetForceModule().SetEnabled(JsonManager::SafeGet(forceJson, "enabled", true));
+        particleSystem.GetForceModule().SetForceData(forceData);
+        particleSystem.GetForceModule().SetEnabled(JsonManager::SafeGet(forceJson, "enabled", true));
     }
 
     // SizeModuleの読み込み
@@ -358,8 +341,8 @@ if (presetData.contains("version")) {
         sizeData.minSize = JsonManager::SafeGet(sizeJson, "minSize", 0.01f);
         sizeData.maxSize = JsonManager::SafeGet(sizeJson, "maxSize", 10.0f);
         sizeData.uniformScaling = JsonManager::SafeGet(sizeJson, "uniformScaling", true);
-        particleSystem->GetSizeModule().SetSizeData(sizeData);
-        particleSystem->GetSizeModule().SetEnabled(JsonManager::SafeGet(sizeJson, "enabled", true));
+        particleSystem.GetSizeModule().SetSizeData(sizeData);
+        particleSystem.GetSizeModule().SetEnabled(JsonManager::SafeGet(sizeJson, "enabled", true));
     }
 
     // RotationModuleの読み込み
@@ -381,8 +364,8 @@ if (presetData.contains("version")) {
         rotationData.maxRotation = JsonManager::SafeGetVector3(rotationJson, "maxRotation", { 180.0f, 180.0f, 180.0f });
         rotationData.alignToVelocity = JsonManager::SafeGet(rotationJson, "alignToVelocity", false);
         rotationData.velocityAlignmentStrength = JsonManager::SafeGet(rotationJson, "velocityAlignmentStrength", 1.0f);
-        particleSystem->GetRotationModule().SetRotationData(rotationData);
-        particleSystem->GetRotationModule().SetEnabled(JsonManager::SafeGet(rotationJson, "enabled", true));
+        particleSystem.GetRotationModule().SetRotationData(rotationData);
+        particleSystem.GetRotationModule().SetEnabled(JsonManager::SafeGet(rotationJson, "enabled", true));
     }
 
     // NoiseModuleの読み込み
@@ -394,12 +377,12 @@ if (presetData.contains("version")) {
         noiseData.scrollSpeed = JsonManager::SafeGet(noiseJson, "scrollSpeed", 0.0f);
         noiseData.damping = JsonManager::SafeGet(noiseJson, "damping", true);
         noiseData.positionAmount = JsonManager::SafeGetVector3(noiseJson, "positionAmount", { 1.0f, 1.0f, 1.0f });
-        particleSystem->GetNoiseModule().SetNoiseData(noiseData);
-        particleSystem->GetNoiseModule().SetEnabled(JsonManager::SafeGet(noiseJson, "enabled", true));
+        particleSystem.GetNoiseModule().SetNoiseData(noiseData);
+        particleSystem.GetNoiseModule().SetEnabled(JsonManager::SafeGet(noiseJson, "enabled", true));
     }
 
     // CollisionModuleの読み込み（床との当たり判定。CPU版だけが持つ）
-    if (auto* cpuSystem = dynamic_cast<ParticleSystem*>(particleSystem)) {
+    if (CollisionModule* const collision = particleSystem.GetCollisionModule()) {
         if (presetData.contains("collision")) {
             auto collisionJson = presetData["collision"];
             CollisionModule::CollisionData collisionData;
@@ -411,18 +394,37 @@ if (presetData.contains("version")) {
             collisionData.roll = JsonManager::SafeGet(collisionJson, "roll", true);
             collisionData.rollRadius = JsonManager::SafeGet(collisionJson, "rollRadius", 0.2f);
             collisionData.useParticleScale = JsonManager::SafeGet(collisionJson, "useParticleScale", true);
-            cpuSystem->GetCollisionModule().SetCollisionData(collisionData);
+            collision->SetCollisionData(collisionData);
             // 既定は無効なので、collision セクションが無いプリセットは触らない
-            cpuSystem->GetCollisionModule().SetEnabled(
-                JsonManager::SafeGet(collisionJson, "enabled", false));
+            collision->SetEnabled(JsonManager::SafeGet(collisionJson, "enabled", false));
         }
     }
+}
+
+bool ParticlePresetManager::LoadPreset(IParticleSystem* particleSystem, const std::string& filePath)
+{
+    auto& jsonManager = JsonManager::GetInstance();
+    if (!particleSystem || !jsonManager.FileExists(filePath)) {
+        Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource,
+            "ParticlePresetManager: プリセットが見つかりません: {}", filePath);
+        return false;
+    }
+
+    const json presetData = jsonManager.LoadJson(filePath);
+    if (presetData.empty()) {
+        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Resource,
+            "ParticlePresetManager: プリセットを読めませんでした: {}", filePath);
+        return false;
+    }
+    FromJson(*particleSystem, presetData);
 
     // 現在のプリセット情報を保存
     currentPresetPath_ = filePath;
     currentPresetName_ = GetFileNameWithoutExtension(std::filesystem::path(filePath).filename().string());
 
-    std::cout << "Preset loaded (v" << version << "): " << filePath << std::endl;
+    Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Resource,
+        "ParticlePresetManager: プリセット（版 {}）を読み込みました: {}",
+        JsonManager::SafeGet<std::string>(presetData, "version", "1.0"), filePath);
     return true;
 }
 
@@ -442,7 +444,8 @@ std::vector<std::string> ParticlePresetManager::GetPresetList(const std::string&
         }
     }
     catch (const std::exception& e) {
-        std::cerr << "Error listing preset files: " << e.what() << std::endl;
+        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Resource,
+            "ParticlePresetManager: プリセットの一覧を作れませんでした: {}", e.what());
     }
 
     return fileList;
@@ -450,17 +453,8 @@ std::vector<std::string> ParticlePresetManager::GetPresetList(const std::string&
 
 void ParticlePresetManager::ShowImGui(IParticleSystem* particleSystem)
 {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     ImGui::PushID(this);
-
-    // キーボードショートカット: Ctrl+S で上書き保存（ウィンドウがフォーカスされている時のみ）
-    if (!currentPresetPath_.empty() &&
-        ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) &&
-        ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyPressed(ImGuiKey_S, false)) {
-        const bool ok = SaveCurrentPreset(particleSystem);
-        SetStatus(ok ? "上書き保存しました: " + currentPresetName_
-                     : "上書き保存に失敗しました", !ok);
-    }
 
     // ── ツールバー行: プリセット名 + 保存/読み込みボタン ──
     if (currentPresetPath_.empty()) {
@@ -480,7 +474,7 @@ void ParticlePresetManager::ShowImGui(IParticleSystem* particleSystem)
             SetStatus(ok ? "上書き保存しました: " + currentPresetName_
                          : "上書き保存に失敗しました", !ok);
         }
-        UI::Tooltip("現在のプリセットファイルに保存します（Ctrl+S）");
+        UI::Tooltip("現在のプリセットファイルに保存します");
     }
 
     UI::SameLine();
@@ -598,12 +592,12 @@ void ParticlePresetManager::ShowImGui(IParticleSystem* particleSystem)
     ImGui::PopID();
 #else
     (void)particleSystem; // 未使用警告を抑制
-#endif // USE_IMGUI
+#endif // CORE_EDITOR
 }
 
 void ParticlePresetManager::SetStatus(const std::string& message, bool isError)
 {
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
     statusMessage_ = message;
     statusIsError_ = isError;
     statusExpireTime_ = ImGui::GetTime() + 4.0; // 4秒間表示

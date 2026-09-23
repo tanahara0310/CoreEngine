@@ -5,9 +5,10 @@
 #include "Graphics/Render/Line/LineRendererPipeline.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Utility/CVar/CVar.h"
+#include "Utility/FrameRate/Time.h"
 
-#ifdef USE_IMGUI
-#include "Collision/Debug/CollisionMatrixPanel.h"
+#ifdef CORE_EDITOR
+#include "Editor/ImGui/SceneSettingsPanel.h"
 #endif
 
 namespace CoreEngine
@@ -47,10 +48,9 @@ namespace CoreEngine
             pipeline->RegisterLineSource(debugRenderer_.get());
         }
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         // コリジョンマトリクス編集ウィンドウ（Engine Settings）。編集対象を現在のシーンへ向ける。
-        CollisionMatrixPanel::EnsureRegistered(ctx.engine);
-        CollisionMatrixPanel::SetActiveConfig(&collisionConfig_);
+        SceneSettingsPanel::EnsureRegistered(ctx.engine);
 #endif
     }
 
@@ -78,15 +78,23 @@ namespace CoreEngine
         // ClearColliders() でコライダーリストのみリセット（衝突履歴は保持する）
         collisionWorld_.ClearColliders();
         ctx.gameObjectManager->RegisterAllColliders(&collisionWorld_);
+        registeredFrame_ = Time::FrameCount();
         collisionWorld_.Step();
+    }
+
+    CollisionWorld& CollisionFeature::GetQueryWorld(GameObjectManager& manager)
+    {
+        const uint64_t frame = Time::FrameCount();
+        if (registeredFrame_ != frame) {
+            collisionWorld_.ClearColliders();
+            manager.RegisterAllColliders(&collisionWorld_);
+            registeredFrame_ = frame;
+        }
+        return collisionWorld_;
     }
 
     void CollisionFeature::Finalize(SceneContext& ctx)
     {
-#ifdef USE_IMGUI
-        // シーンと一緒に消える CollisionConfig を UI が指したままにしない
-        CollisionMatrixPanel::SetActiveConfig(nullptr);
-#endif
         // 破棄前に Line パスの登録を外す（登録したまま消すとダングリング）
         if (auto* pipeline = GetLinePipeline(ctx)) {
             pipeline->UnregisterLineSource(debugRenderer_.get());

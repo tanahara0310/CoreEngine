@@ -42,7 +42,8 @@ namespace CoreEngine
         /// @brief デフォルトコンストラクタ
         Model() = default;
 
-        ~Model() = default;
+        /// @brief WVP バッファとスキニングのバッファ・SRV / UAV を、描画中のフレームが終わってから返すよう預ける
+        ~Model();
 
         /// @brief IBLテクスチャ（Irradiance/Prefiltered/BRDF LUT）がレンダラーに全て設定済みか確認
         bool IsIBLAvailable() const;
@@ -59,7 +60,13 @@ namespace CoreEngine
         /// @brief 初期化
         /// @param resource 共有するModelResourceのポインタ
         /// @param ctx 描画依存コンテキスト
+        /// @note スケルトンによる頂点の変形は作らない（`EnableSkinning()` で足す）
         void Initialize(ModelResource* resource, const ModelRenderContext& ctx);
+
+        /// @brief スケルトンで頂点を変形して描くようにする（SkinCluster を作る）
+        /// @return リソースがスケルトンとスキンの重みを持ち、SkinCluster を作れたら true
+        /// @note 呼ばなければ、スケルトンを持つリソースも初期姿勢の頂点のまま通常モデルとして描く
+        bool EnableSkinning();
 
         /// @brief モデルを描画（スキニングモデルか通常モデルかは内部で自動判別）
         /// @param transform ワールドトランスフォーム
@@ -131,19 +138,19 @@ namespace CoreEngine
         const ModelResource* GetModelResource() const;
 
         /// @brief カスタムシェーダー用フォワード PSO を設定する（nullptr = 既定シェーダーを使用）
-        /// @note ModelGameObject::Initialize() 内部から呼び出される。直接呼ぶ必要はない。
+        /// @note MeshRendererComponent がカスタムシェーダーの PSO を組むときに呼ぶ。直接呼ぶ必要はない。
         void SetCustomForwardPSO(ID3D12PipelineState* pso) { customForwardPSO_ = pso; }
 
         /// @brief カスタムシェーダー用 RootSignature を設定する（nullptr = 既定 RS を使用）
-        /// @note ModelGameObject::Initialize() 内部から呼び出される。直接呼ぶ必要はない。
+        /// @note MeshRendererComponent がカスタムシェーダーの PSO を組むときに呼ぶ。直接呼ぶ必要はない。
         void SetCustomRootSignature(ID3D12RootSignature* rs) { customRootSignature_ = rs; }
 
         /// @brief カスタムパイプラインオブジェクトを設定する（BindCustomResources に渡される）
-        /// @note ModelGameObject::Initialize() 内部から呼び出される。直接呼ぶ必要はない。
+        /// @note MeshRendererComponent がカスタムシェーダーの PSO を組むときに呼ぶ。直接呼ぶ必要はない。
         void SetCustomPipeline(const CustomShaderPipeline* pipeline) { customPipeline_ = pipeline; }
 
         /// @brief カスタムリソースバインドプロバイダを設定する（nullptr = なし）
-        /// @note SetCustomForwardPSO() と合わせて ModelGameObject::Initialize() 内部から呼び出される。
+        /// @note SetCustomForwardPSO() と合わせて MeshRendererComponent がカスタムシェーダーの PSO を組むときに呼ぶ。
         void SetCustomShaderProvider(const ICustomShaderProvider* provider) { customProvider_ = provider; }
 
     private:

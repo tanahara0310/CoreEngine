@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "JsonManager.h"
+#include "Utility/Path/ProjectPaths.h"
 #include <fstream>
 #include <iostream>
 
@@ -15,7 +16,7 @@ namespace CoreEngine
     // 呼び出し側は empty() で判定し、既定値へフォールバックする契約
     json JsonManager::LoadJson(const std::string& filePath) {
         try {
-            std::ifstream file(filePath);
+            std::ifstream file(ProjectPaths::Resolve(filePath));
             if (!file.is_open()) {
                 std::cerr << "Failed to open file: " << filePath << std::endl;
                 return json{};
@@ -35,12 +36,12 @@ namespace CoreEngine
     bool JsonManager::SaveJson(const std::string& filePath, const json& jsonData) {
         try {
             // ディレクトリの作成
-            std::filesystem::path path(filePath);
+            const std::filesystem::path path = ProjectPaths::Resolve(filePath);
             if (path.has_parent_path()) {
-                CreateJsonDirectory(path.parent_path().string());
+                std::filesystem::create_directories(path.parent_path());
             }
 
-            std::ofstream file(filePath);
+            std::ofstream file(path);
             if (!file.is_open()) {
                 std::cerr << "Failed to create file: " << filePath << std::endl;
                 return false;
@@ -57,7 +58,7 @@ namespace CoreEngine
 
     bool JsonManager::CreateJsonDirectory(const std::string& dirPath) {
         try {
-            return std::filesystem::create_directories(dirPath);
+            return std::filesystem::create_directories(ProjectPaths::Resolve(dirPath));
         }
         catch (const std::exception& e) {
             std::cerr << "Error creating directory " << dirPath << ": " << e.what() << std::endl;
@@ -66,7 +67,7 @@ namespace CoreEngine
     }
 
     bool JsonManager::FileExists(const std::string& filePath) {
-        return std::filesystem::exists(filePath);
+        return std::filesystem::exists(ProjectPaths::Resolve(filePath));
     }
 
     // ───────────────── 値型 ⇔ JSON の変換 ─────────────────

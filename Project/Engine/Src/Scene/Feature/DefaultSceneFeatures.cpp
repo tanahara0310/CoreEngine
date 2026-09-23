@@ -6,13 +6,15 @@
 #include "CameraSequenceFeature.h"
 #include "CameraShakeFeature.h"
 #include "CollisionFeature.h"
-#include "DebugEditorFeature.h"
+#include "Editor/Scene/DebugEditorFeature.h"
 #include "EnvironmentFeature.h"
 #include "EventDispatchFeature.h"
 #include "GridFeature.h"
 #include "GroundFeature.h"
 #include "LightingFeature.h"
+#include "PhysicsFeature.h"
 #include "TweenFeature.h"
+#include "UIInteractionFeature.h"
 
 namespace CoreEngine
 {
@@ -43,7 +45,7 @@ namespace CoreEngine
     {
         std::vector<DefaultSceneFeature> features;
 
-        // 並び順 = 同 priority 内の実行順。従来 BaseScene::Update に
+        // 並び順 = 同 priority 内の実行順。従来 Scene::Update に
         // 暗黙の順序として埋まっていた並びをそのまま再現している。
 
         // カメラは最優先。以降の Feature（ライト/影・床の追従・大気散乱）はいずれも
@@ -54,16 +56,24 @@ namespace CoreEngine
 
         Add<LightingFeature>(features);
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
         Add<GridFeature>(features);
         Add<DebugEditorFeature>(features);
 #endif
 
+        // 物理は当たり判定より先。同じ PostObjectUpdate に居るので、
+        // 登録の並びではなく priority で順序を決める
+        AddEarly<PhysicsFeature>(features);
+
         Add<CollisionFeature>(features);
         Add<EnvironmentFeature>(features);
 
+        // UI の当たり判定。オブジェクトの更新が終わってから見るので、
+        // 位置を動かした結果で押せる
+        Add<UIInteractionFeature>(features);
+
         // 既定の床。空（Environment）と対になる「必ずある地面」で、
-        // 生成はシーンの OnInitialize 完了後（PostSceneInitialize）に行われる
+        // 生成はシーンのオブジェクトが出そろった後（PostSceneInitialize）に行われる
         Add<GroundFeature>(features);
 
         // ここから下は「そのフェーズの全 Feature が終わってから 1 回だけ」動く。

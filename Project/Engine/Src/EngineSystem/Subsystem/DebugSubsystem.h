@@ -1,24 +1,29 @@
 #pragma once
 
-#ifdef USE_IMGUI
+#ifdef CORE_EDITOR
 
 #include <memory>
+#include "Editor/Camera/SceneCameraSection.h"
+#include "Editor/ImGui/EditorLayoutSection.h"
+#include "Editor/Panel/EditorPanelStateSection.h"
 #include <functional>
 
 #include "IEngineSubsystem.h"
 #include "Editor/ImGui/ImGuiManager.h"
-#include "Utility/Debug/GameDebugUI.h"
+#include "Editor/ImGui/GameDebugUI.h"
 #include "Graphics/RHI/Debug/GpuTimestampProfiler.h"
 #include "Editor/ImGui/ThreadProfilerUI.h"
 #include "Editor/ImGui/KeyConfigUI.h"
 #include "Editor/ImGui/EngineStatsWindow.h"
+#include "Editor/ImGui/ProfilerPanel.h"
 #include "Editor/ImGui/RenderPassDebugPanel.h"
 #include "Editor/ImGui/RenderGraphEditorPanel.h"
 #include "Editor/ImGui/RayTracingDebugPanel.h"
-#include "Editor/Window/GameOutputWindow.h"
+#include "Graphics/Render/GameOutputWindow.h"
 #include "Editor/Environment/AtmosphereEditor.h"
 #include "Editor/Environment/VolumetricCloudEditor.h"
 #include "Editor/Environment/FogEditor.h"
+#include "Editor/Scene/PlayModeController.h"
 #include "EngineSystem/Settings/CVarSettingsSection.h"
 #include "Graphics/Render/Pass/RenderPass.h"
 #include "Graphics/Render/Pass/RenderPipeline.h"
@@ -32,7 +37,7 @@ namespace CoreEngine
 
     /// @brief デバッグ機能（ImGui / プロファイラ / デバッグUI）の管理サブシステム
     /// @details EngineSystem からデバッグ関連の責務を分離し、肥大化を抑える。
-    ///          USE_IMGUI が定義されたビルドでのみ有効。
+    ///          CORE_EDITOR が定義されたビルドでのみ有効。
     class DebugSubsystem : public IEngineSubsystem
     {
     public:
@@ -56,31 +61,14 @@ namespace CoreEngine
         /// @brief フレーム終了処理（ImGui::End）
         void EndFrame() override;
 
-        /// @brief レンダーパイプライン開始時のプロファイル計測を開始する
-        /// @param cmdList      コマンドリスト
-        /// @param frameIndex   現在のバックバッファインデックス
-        void BeginRenderPipeline(ID3D12GraphicsCommandList* cmdList, UINT frameIndex);
+        /// @brief 計測器を描画の文脈へ渡し、フレーム全体の計測を始める
+        void BeginRender(RenderContext& context, const FrameContext& frame) override;
 
-        /// @brief ImGui の描画コマンドを積む（プロファイルスコープ付き）
-        /// @param cmdList コマンドリスト
-        void DrawImGuiWithProfiling(ID3D12GraphicsCommandList* cmdList);
+        /// @brief ImGui とゲーム映像専用ウィンドウの描画を積み、フレーム全体の計測を閉じる
+        void EndRender(const FrameContext& frame) override;
 
-        /// @brief レンダーパイプライン終了時のプロファイル計測を終了・解決する
-        /// @param cmdList      コマンドリスト
-        /// @param frameIndex   現在のバックバッファインデックス
-        void EndRenderPipeline(ID3D12GraphicsCommandList* cmdList, UINT frameIndex);
-
-        /// @brief FinalizeFrame 完了後にGPU計測結果を読み取り、DockingUI へ反映する
-        /// @param dx GraphicsCore（コマンドキュー・フレームインデックス取得用）
-        void PostFinalizeFrame(GraphicsCore* dx);
-
-        /// @brief ゲーム映像専用ウィンドウへの転写コマンドを積む
-        /// @details メインのコマンドリストを Close する直前に呼ぶこと。
-        void RecordGameOutputWindow();
-
-        /// @brief ゲーム映像専用ウィンドウを Present する
-        /// @details メインの ExecuteCommandLists / Present が済んだ後に呼ぶこと。
-        void PresentGameOutputWindow();
+        /// @brief ゲーム映像専用ウィンドウを提示し、計測結果を読み、外へ出した ImGui ウィンドウを描く
+        void AfterPresent() override;
 
         // ──────────────────────────────────────────────────────────
         // アクセサ
@@ -93,14 +81,23 @@ namespace CoreEngine
 
         GpuTimestampProfiler& GetGpuProfiler() { return gpuProfiler_; }
 
+        /// @brief ゲーム映像専用ウィンドウ
+        /// @note ポインタがその映像の上にあるかを調べるために外から引く。
+        const GameOutputWindow& GetGameOutputWindow() const { return gameOutputWindow_; }
+
     private:
         EngineSystem* engine_ = nullptr;
 
         std::unique_ptr<ImGuiManager> imGui_;
         std::unique_ptr<GameDebugUI> gameDebugUI_;
+
+        // 再生の前にシーンを控え、停止したら控えから組み直す（gameDebugUI_ より先に破棄される）
+        std::unique_ptr<Editor::PlayModeController> playModeController_;
+
         GpuTimestampProfiler gpuProfiler_;
         std::unique_ptr<ThreadProfilerUI> threadProfilerUI_;
         std::unique_ptr<EngineStatsWindow> engineStatsWindow_;
+        std::unique_ptr<ProfilerPanel> profilerPanel_;
         KeyConfigUI keyConfigUI_;
         RenderPassDebugPanel renderPassDebugPanel_;
         RenderGraphEditorPanel renderGraphEditorPanel_;
@@ -124,7 +121,16 @@ namespace CoreEngine
         // 「個人の作業状態（d. → Saved/）」の 2 パートに分かれる
         std::unique_ptr<CVarSettingsSection> cvarConfigSection_;
         std::unique_ptr<CVarSettingsSection> cvarStateSection_;
+
+        // 開いているパネルを次の起動へ持ち越す
+        std::unique_ptr<Editor::EditorPanelStateSection> panelStateSection_;
+
+        // 画面の配置を次の起動へ持ち越す
+        std::unique_ptr<Editor::EditorLayoutSection> layoutSection_;
+
+        // エディタ視点カメラの設定・姿勢を次の起動へ持ち越す
+        std::unique_ptr<Editor::SceneCameraSection> sceneCameraSection_;
     };
 }
 
-#endif // USE_IMGUI
+#endif // CORE_EDITOR

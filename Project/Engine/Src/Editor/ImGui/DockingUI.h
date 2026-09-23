@@ -1,14 +1,15 @@
 #pragma once
 
 #include "Editor/ImGui/ImGuiAll.h"
+#include "Editor/Panel/EditorDockArea.h"
+#include "EngineSystem/PlaybackState.h"
 #include "Graphics/RHI/Debug/GpuTimestampProfiler.h"
 #include <imgui_internal.h>
-#include <d3d12.h>
-#include <span>
-#include <string>
-#include <vector>
 #include <array>
-#include <unordered_map>
+#include <cstddef>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace CoreEngine
 {
@@ -19,40 +20,65 @@ namespace CoreEngine
         Standard
     };
 
-    /// @brief ドッキング先の領域
-    enum class DockArea {
-        LeftTop,        // 左上（エンジン情報など）
-        LeftBottom,     // 左下（カメラ情報など）
-        Center,         // 中央（シーンビュー）
-        Right,          // 右側（インスペクター）
-        BottomLeft,     // 下部左（ライティング）
-        BottomRight,    // 下部右（オブジェクト制御）
-        Bottom,         // 下部中央（プロジェクトビュー）
-        Hierarchy       // ヒエラルキー（シーン構造・オブジェクト一覧）
+    /// @brief 上下のバーに出すエディタの状態
+    struct EditorStatus {
+        float fps = 0.0f;                   ///< 直近のフレームレート
+        std::string sceneName;              ///< 開いているシーン名（空なら出さない）
+        bool sceneSaved = true;             ///< 最後の保存から編集していないか
+        std::size_t editsSinceSave = 0;     ///< 最後の保存からの編集回数
+        bool scriptOk = true;               ///< 直前のスクリプトの読み込みに成功したか
+        std::size_t scriptTypeCount = 0;    ///< 読み込めているスクリプトの型数
+        double scriptUpdateMs = 0.0;        ///< 直前のフレームでスクリプトの更新にかかった時間（ミリ秒）
+        std::size_t scriptComponents = 0;   ///< 生きているスクリプトのコンポーネントの数
+        std::size_t undoCount = 0;          ///< 取り消せる操作の数
+
+        PlaybackState playback = PlaybackState::Editing; ///< 再生の状態
+        std::size_t snapshotObjects = 0;    ///< 再生の前に控えたオブジェクトの数
+        double snapshotSeconds = 0.0;       ///< 控えるのにかかった秒数
+        float playTime = 0.0f;              ///< 再生を始めてから進んだゲームの時間（秒）
     };
 
-    /// @brief ドッキングUI管理クラス（改良版）
+    class DockingUI;
+
+    /// @brief ドックスペースのホストウィンドウが開いている間だけ生きるスコープ
+    /// @note 生存中に各パネルを提出する。抜けるとホストウィンドウを閉じる。
+    class DockSpaceHostScope {
+    public:
+        ~DockSpaceHostScope();
+        DockSpaceHostScope(const DockSpaceHostScope&) = delete;
+        DockSpaceHostScope& operator=(const DockSpaceHostScope&) = delete;
+
+    private:
+        DockSpaceHostScope() = default;
+        friend class DockingUI;
+    };
+
+    /// @brief メニューバー下の 3 段（ツールバー・ドックスペース・ステータスバー）を組む
     class DockingUI {
     public:
         /// @brief ドッキングエリアにウィンドウを登録
         /// @param windowName ウィンドウ名
-        /// @param area ドッキングエリア
-        void RegisterWindow(const std::string& windowName, DockArea area);
+        /// @param area ドッキングエリア（None は登録しない）
+        void RegisterWindow(const std::string& windowName, Editor::DockArea area);
 
         /// @brief ウィンドウの登録を解除
         /// @param windowName ウィンドウ名
         void UnregisterWindow(const std::string& windowName);
 
-        /// @brief ドッキングUIの初期化
-        void BeginDockSpaceHostWindow();
+        /// @brief 再生ツールバーを描き、ドックスペースのホストウィンドウを開く
+        /// @return ホストウィンドウのスコープ（破棄されるまでの間にパネルを提出する）
+        [[nodiscard]] DockSpaceHostScope BeginDockSpaceHost();
 
         /// @brief ドッキングのセットアップ
         void SetupDockSpace();
 
         /// @brief 次のフレームで標準レイアウトを組み直す
-        /// @details 配置を散らかしてしまったときの復帰手段。
-        ///          登録済みウィンドウはすべて既定位置へ戻る。
+        /// @details 登録済みウィンドウはすべて既定位置へ戻る。
         void RequestResetLayout() { layoutDirty_ = true; }
+
+        /// @brief 保存された配置を使う（最初のフレームで標準レイアウトを組まない）
+        /// @note 保存に載っていないウィンドウだけは、既定の場所へ入れる。
+        void UseSavedLayout() { useSavedLayout_ = true; }
 
         /// @brief レイアウトプリセットを設定
         void SetLayoutPreset(DockLayoutPreset preset);
@@ -60,14 +86,8 @@ namespace CoreEngine
         /// @brief 現在のレイアウトプリセットを取得
         DockLayoutPreset GetLayoutPreset() const { return layoutPreset_; }
 
-        /// @brief 再生制御ツールバーを描画（メニューバーの直下）
-        void DrawPlaybackToolbar();
-
-        /// @brief 再生制御アイコンを読み込む
-        void LoadPlaybackIcons();
-
-        /// @brief 登録されているウィンドウ一覧を取得（デバッグ用）
-        const std::unordered_map<std::string, DockArea>& GetRegisteredWindows() const { return registeredWindows_; }
+        /// @brief 登録されているウィンドウ一覧を取得（登録順）
+        const std::vector<std::pair<std::string, Editor::DockArea>>& GetRegisteredWindows() const { return registeredWindows_; }
 
         /// @brief ツールバーの高さを取得
         float GetToolbarHeight() const { return toolbarHeight_; }
@@ -78,10 +98,19 @@ namespace CoreEngine
         /// @brief グリッド表示状態を設定
         void SetGridVisible(bool visible) { isGridVisible_ = visible; }
 
+        /// @brief 上下のバーに出す状態を差し替える（フレームの先頭で呼ぶ）
+        void SetStatus(const EditorStatus& status) { status_ = status; }
+
+        /// @brief 今フレームの状態
+        const EditorStatus& GetStatus() const { return status_; }
+
         /// @brief 画面最下部のステータスバーを描画
-        /// @param fps 表示するFPS値
-        /// @param deltaTimeMs 表示するデルタタイム（ミリ秒）
-        void DrawStatusBar(float fps, float deltaTimeMs);
+        void DrawStatusBar();
+
+        /// @brief ステータスバーの左に、しばらくの間だけ知らせを出す
+        /// @param color 文字の色
+        /// @param seconds 出しておく秒数
+        void ShowStatusMessage(std::string message, const ImVec4& color, double seconds = 4.0);
 
         /// @brief GPU/CPU タイミングデータを設定（ステータスバーホバー時に表示）
         void SetTimingData(const std::array<GpuTimingResult, GpuTimestampProfiler::kSlotCount>& slots) { timingData_ = slots; }
@@ -90,40 +119,56 @@ namespace CoreEngine
         void SetSceneDebugEditor(SceneDebugEditor* sceneDebugEditor) { sceneDebugEditor_ = sceneDebugEditor; }
 
     private:
-        /// @brief エリアごとのノードIDを取得
-        ImGuiID GetNodeIdForArea(DockArea area) const;
+        /// @brief エリアのノードを探す
+        /// @details 標準レイアウトを組んだならそのノード。保存された配置なら、
+        ///          そのエリアへ登録したウィンドウが今いるノード。
+        /// @return 見つからなければ 0
+        ImGuiID FindNodeForArea(Editor::DockArea area) const;
 
-        /// @brief ウィンドウ名とエリアから実際のドッキング先ノードIDを解決
-        ImGuiID ResolveNodeIdForWindow(const std::string& windowName, DockArea area) const;
+        /// @brief 保存に載っていない登録ウィンドウを、エリアのノードへ入れる
+        void DockWindowsWithoutSettings();
 
         /// @brief ドッキングレイアウトを構築
         void BuildDockLayout();
 
+        /// @brief 再生ツールバーを描画（メニューバーの直下）
+        void DrawPlaybackToolbar();
+
+        /// @brief ツールバー左側の再生 / 一時停止 / コマ送り
+        void DrawPlaybackButtons();
+
+        /// @brief ツールバーのギズモ切り替えと表示トグル
+        void DrawGizmoButtons();
+        void DrawViewToggles();
+
+        /// @brief ツールバー右端のスクリプト状態と保存状態
+        void DrawToolbarStatusChips();
+
+        /// @brief ステータスバーのフレーム内訳ツールチップ
+        void DrawTimingTooltip();
+
     private:
-        std::unordered_map<std::string, DockArea> registeredWindows_; // 登録されたウィンドウとそのエリア
+        // 登録されたウィンドウとそのエリア。タブの並びが起動ごとに変わらないよう登録順を保つ
+        std::vector<std::pair<std::string, Editor::DockArea>> registeredWindows_;
         bool layoutInitialized_ = false; // レイアウトが初期化されたかどうか
         bool layoutDirty_ = false; // レイアウト再構築が必要かどうか
+        bool useSavedLayout_ = false; // 保存された配置を使うか
+        bool dockNewWindowsPending_ = false; // 保存に載っていないウィンドウを次のフレームで入れるか
         DockLayoutPreset layoutPreset_ = DockLayoutPreset::Standard;
 
         // エリアごとのノードID
-        ImGuiID nodeIds_[8] = { 0 }; // DockAreaの数だけ（Hierarchyを追加したため8に変更）
-        ImGuiID gameNodeId_ = 0;
-
-        // ツールバーアイコン用テクスチャハンドル
-        D3D12_GPU_DESCRIPTOR_HANDLE gridIcon_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE translateIcon_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE rotateIcon_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE scaleIcon_{};
-        bool playbackIconsLoaded_ = false;
-
-        // ステータスバーアイコン
-        D3D12_GPU_DESCRIPTOR_HANDLE fpsIcon_{};
-        bool fpsIconLoaded_ = false;
-        D3D12_GPU_DESCRIPTOR_HANDLE deltaTimeIcon_{};
-        bool deltaTimeIconLoaded_ = false;
+        ImGuiID nodeIds_[Editor::kDockAreaCount] = { 0 };
 
         // グリッド表示状態。既定はオフで、ツールバーのボタンから出す
         bool isGridVisible_ = false;
+
+        // 上下のバーに出す状態
+        EditorStatus status_{};
+
+        // ステータスバーに出す知らせ（出し終える時刻は ImGui::GetTime の値）
+        std::string statusMessage_;
+        ImVec4 statusMessageColor_{};
+        double statusMessageEndTime_ = 0.0;
 
         // GPU/CPU タイミングデータ（ステータスバーホバー時に表示）
         std::array<GpuTimingResult, GpuTimestampProfiler::kSlotCount> timingData_{};
@@ -135,6 +180,6 @@ namespace CoreEngine
         static constexpr float toolbarHeight_ = 32.0f;
 
         // ステータスバーの高さ
-        static constexpr float statusBarHeight_ = 28.0f;
+        static constexpr float statusBarHeight_ = 24.0f;
     };
 }
