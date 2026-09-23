@@ -56,15 +56,26 @@ namespace CoreEngine
             }
         }
 
-        // キーボードでギズモモードを切り替え（W:移動 / E:回転 / R:拡縮）
-        if (isViewportHovered && ImGui::IsKeyPressed(ImGuiKey_W, false)) {
-            SetGizmoMode(Gizmo::Mode::Translate);
+        UpdateGizmoShortcut(isViewportHovered);
+    }
+
+    void ObjectSelector::UpdateGizmoShortcut(bool isViewportHovered)
+    {
+        // 他の窓を触っている最中に切り替わらないよう、ビューポートの上でだけ見る
+        if (!isViewportHovered || !input_) {
+            return;
         }
-        if (isViewportHovered && ImGui::IsKeyPressed(ImGuiKey_E, false)) {
-            SetGizmoMode(Gizmo::Mode::Rotate);
-        }
-        if (isViewportHovered && ImGui::IsKeyPressed(ImGuiKey_R, false)) {
-            SetGizmoMode(Gizmo::Mode::Scale);
+        struct Shortcut { const char* actionId; Gizmo::Mode mode; };
+        static constexpr Shortcut kShortcuts[] = {
+            { "EditorGizmoTranslate", Gizmo::Mode::Translate },
+            { "EditorGizmoRotate",    Gizmo::Mode::Rotate },
+            { "EditorGizmoScale",     Gizmo::Mode::Scale },
+        };
+        for (const Shortcut& shortcut : kShortcuts) {
+            const InputAction action = InputActionFromString(shortcut.actionId);
+            if (action != InputAction::Invalid && input_->IsActionTriggered(action)) {
+                SetGizmoMode(shortcut.mode);
+            }
         }
     }
 
@@ -127,16 +138,7 @@ namespace CoreEngine
             }
         }
 
-        // キーボードでギズモモードを切り替え（W:移動 / E:回転 / R:拡縮）
-        if (isViewportHovered && ImGui::IsKeyPressed(ImGuiKey_W, false)) {
-            SetGizmoMode(Gizmo::Mode::Translate);
-        }
-        if (isViewportHovered && ImGui::IsKeyPressed(ImGuiKey_E, false)) {
-            SetGizmoMode(Gizmo::Mode::Rotate);
-        }
-        if (isViewportHovered && ImGui::IsKeyPressed(ImGuiKey_R, false)) {
-            SetGizmoMode(Gizmo::Mode::Scale);
-        }
+        UpdateGizmoShortcut(isViewportHovered);
     }
 
     void ObjectSelector::DrawGizmo2D(const Camera* camera)

@@ -171,6 +171,14 @@ bool GamepadInput::IsAxisTriggered(GamepadAxis axis, bool positive, float thresh
     return current > threshold && previous <= threshold;
 }
 
+bool GamepadInput::IsAxisReleased(GamepadAxis axis, bool positive, float threshold) const
+{
+    const float sign = positive ? 1.0f : -1.0f;
+    const float current = GetAxisValue(axis) * sign;
+    const float previous = GetPreviousAxisValue(axis) * sign;
+    return current <= threshold && previous > threshold;
+}
+
 void GamepadInput::SetVibration(float leftMotorRatio, float rightMotorRatio)
 {
     // 0.0～1.0の範囲にクランプ

@@ -31,6 +31,7 @@ namespace CoreEngine
                 { "MoveRight", "右移動",
                   { "Key:D", "Key:Right", "Axis:LeftStickX+", "Gamepad:DPadRight" } },
                 { "Jump", "ジャンプ", { "Key:Space", "Gamepad:A" } },
+                { "Sprint", "ダッシュ", { "Key:LShift", "Gamepad:LeftThumb" } },
                 { "Attack", "攻撃", { "Mouse:Left", "Gamepad:X" } },
                 { "Interact", "インタラクト", { "Key:E", "Gamepad:B" } },
                 // UI のフォーカス送りは移動と分けておく。同じ割り当てを共有すると、

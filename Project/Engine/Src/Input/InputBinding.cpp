@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "InputBinding.h"
+#include <cstring>
 #include <charconv>
 #include <format>
 
@@ -177,6 +178,14 @@ namespace CoreEngine {
     }
 
     std::string InputBinding::Serialize() const {
+        std::string prefix;
+        if (HasModifier(modifiers, InputModifier::Ctrl))  { prefix += "Ctrl+"; }
+        if (HasModifier(modifiers, InputModifier::Shift)) { prefix += "Shift+"; }
+        if (HasModifier(modifiers, InputModifier::Alt))   { prefix += "Alt+"; }
+        return prefix + SerializeBody();
+    }
+
+    std::string InputBinding::SerializeBody() const {
         switch (type) {
         case BindingType::Keyboard: {
             if (const char* name = KeyCodeToName(static_cast<uint8_t>(code))) {
@@ -202,8 +211,35 @@ namespace CoreEngine {
     }
 
     InputBinding InputBinding::Deserialize(const std::string& str) {
+        // 前に付いている修飾キーを剥がす
+        InputModifier modifiers = InputModifier::None;
+        std::string body = str;
+        for (bool found = true; found; ) {
+            found = false;
+            const struct { const char* text; InputModifier bit; } kHeads[] = {
+                { "Ctrl+",  InputModifier::Ctrl },
+                { "Shift+", InputModifier::Shift },
+                { "Alt+",   InputModifier::Alt },
+            };
+            for (const auto& head : kHeads) {
+                const std::size_t length = std::strlen(head.text);
+                if (body.compare(0, length, head.text) == 0) {
+                    modifiers |= head.bit;
+                    body = body.substr(length);
+                    found = true;
+                    break;
+                }
+            }
+        }
+
+        InputBinding result = DeserializeBody(body);
+        result.modifiers = modifiers;
+        return result;
+    }
+
+    InputBinding InputBinding::DeserializeBody(const std::string& str) {
         const auto colonPos = str.find(':');
-        if (colonPos == std::string::npos) return FromKey(DIK_A);
+        if (colonPos == std::string::npos) return FromKey(0);
 
         const std::string prefix = str.substr(0, colonPos);
         const std::string value = str.substr(colonPos + 1);
@@ -227,7 +263,7 @@ namespace CoreEngine {
             const bool positive = (sign != '-');
             return FromGamepadAxis(GamepadAxisFromName(value.substr(0, value.size() - 1)), positive);
         }
-        return FromKey(DIK_A);
+        return FromKey(0);
     }
 
 } // namespace CoreEngine

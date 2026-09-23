@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <functional>
+#include "Input/InputQuery.h"
 #include "Math/Vector/Vector2.h"
 #include "Math/Vector/Vector3.h"
 #include "Math/Matrix/Matrix4x4.h"
@@ -18,6 +19,11 @@ namespace CoreEngine
     public:
         /// @brief 初期化
         void Initialize();
+
+        /// @brief ギズモの切り替えを引く先を渡す
+        /// @details 割り当てはキーコンフィグで変えられる（`EditorGizmo*` のアクション）。
+        ///          渡されるまでは切り替わらない。
+        void SetInputQuery(const InputQuery* query) { input_ = query; }
 
         /// @brief 更新処理（マウスクリックによるオブジェクト選択）
         /// @param gameObjectManager ゲームオブジェクトマネージャー
@@ -83,6 +89,10 @@ namespace CoreEngine
         }
 
     private:
+        /// @brief ギズモの種類を切り替える割り当てを見る
+        /// @param isViewportHovered ビューポートがホバー状態か（他の窓の操作で切り替わらないように）
+        void UpdateGizmoShortcut(bool isViewportHovered);
+
         /// @brief マウス位置からレイを飛ばしてオブジェクトを検出
         /// @param gameObjectManager ゲームオブジェクトマネージャー
         /// @param camera カメラ
@@ -141,6 +151,7 @@ namespace CoreEngine
         Vector3 TransformPoint(const Vector3& point, const Matrix4x4& matrix);
 
     private:
+        const InputQuery* input_ = nullptr;            // ギズモの切り替えを引く先
         GameObject* selectedObject_ = nullptr;         // 選択中の3Dオブジェクト
         GameObject* selectedSprite_ = nullptr;         // 選択中のスプライト
         Gizmo::Mode gizmoMode_ = Gizmo::Mode::Translate;  // ギズモモード
