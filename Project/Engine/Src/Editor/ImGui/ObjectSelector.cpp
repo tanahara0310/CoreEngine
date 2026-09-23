@@ -50,6 +50,7 @@ namespace CoreEngine
                 GameObject* hitObject = RaycastObject(gameObjectManager, camera, mousePos);
                 if (hitObject) {
                     SelectObject(hitObject);
+                    viewportSelection_ = true;
                 } else {
                     ClearSelection();
                 }

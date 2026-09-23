@@ -50,6 +50,7 @@ namespace CoreEngine
                 // ポーズの開閉。開くのはゲーム中、閉じるのはメニュー中なので両方の場面に置く
                 { "Pause", "ポーズ", { "Key:Escape", "Gamepad:Start" },
                   InputContext::Game | InputContext::UI },
+                { "EditorFocusSelection", "選択へ寄る", { "Key:F" }, InputContext::Editor },
                 { "EditorGizmoTranslate", "ギズモ：移動", { "Key:W" }, InputContext::Editor },
                 { "EditorGizmoRotate", "ギズモ：回転", { "Key:E" }, InputContext::Editor },
                 { "EditorGizmoScale", "ギズモ：拡縮", { "Key:R" }, InputContext::Editor },

@@ -8,6 +8,8 @@
 #include "Editor/ImGui/ObjectSelector.h"
 #include <cstdint>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace CoreEngine
 {
@@ -155,7 +157,19 @@ namespace CoreEngine
         ObjectEditing::Context MakeObjectEditingContext();
 
         /// @brief Hierarchy の 1 行（種類の記号・名前・Prefab と AS の札）を描く
+        /// @details 子を持つ行は折りたためる。子は続けてここから描く。
         void DrawHierarchyRow(GameObject& object);
+
+        /// @brief 親子の対応をこのフレーム分だけ作る
+        /// @details Transform の親を逆に辿れるようにする。親を持たないものが根になる。
+        void BuildHierarchyLinks();
+
+        /// @brief `object` が `descendant` の先祖か（送り先までの道を開くのに使う）
+        bool IsAncestorOf(const GameObject& object, const GameObject& descendant) const;
+
+        /// @brief 選んでいるオブジェクトへエディタのカメラを寄せる
+        /// @details 大きさが分かるものはそれが収まる距離まで、分からないものは既定の距離。
+        void FocusOnSelection();
 
         /// @brief Hierarchy の行の右クリックメニュー（プレハブとして保存・プレハブへ適用・つながりを外す）
         void DrawObjectContextMenu(GameObject& object);
@@ -166,6 +180,18 @@ namespace CoreEngine
 
         UndoRedoHistory undoRedoHistory_;
         ObjectSelector objectSelector_;
+
+        // ヒエラルキーの親子（毎フレーム作り直す）
+        std::unordered_map<const GameObject*, std::vector<GameObject*>> hierarchyChildren_;
+        std::vector<GameObject*> hierarchyRoots_;
+
+        // ビューポートで選び直したとき、その行まで送る相手
+        GameObject* scrollTarget_ = nullptr;
+
+        // 送りを続ける残りフレーム数。
+        // 1 フレームで済ませると、折りたたみの開閉で一覧の高さが変わった直後に
+        // 送り先が上限でクランプされて届かない（ImGui は前のフレームの高さで丸める）
+        int scrollFramesLeft_ = 0;
 
         // 保存通知用
         std::string saveNotificationMessage_;

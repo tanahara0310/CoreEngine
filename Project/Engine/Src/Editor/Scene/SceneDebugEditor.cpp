@@ -38,6 +38,10 @@
 
 namespace
 {
+    /// @brief 選んだ行へ送るのを続けるフレーム数
+    /// @details 一覧の高さが確定するまで待つ。1 フレームだと上限で丸められて届かない。
+    constexpr int kScrollFrames = 3;
+
     /// @brief トランスフォームとモデルファイルのメッシュ描画を持つ素のオブジェクトを作ってシーンへ登録する
     /// @return 登録できなければ nullptr
     CoreEngine::GameObject* CreateModelObject(CoreEngine::GameObjectManager& manager,
@@ -262,6 +266,17 @@ namespace CoreEngine
         const Camera* camera3D = cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera3D) : nullptr;
         const Camera* camera2D = cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera2D) : nullptr;
 
+        // 画面の中を指しているときだけ受ける（他の窓の操作でカメラが飛ばないように）
+        if (isViewportHovered) {
+            if (auto* const inputManager = engine_->GetService<InputManager>()) {
+                const InputAction focus = InputActionFromString("EditorFocusSelection");
+                if (focus != InputAction::Invalid
+                    && inputManager->GetQuery().IsActionTriggered(focus)) {
+                    FocusOnSelection();
+                }
+            }
+        }
+
         if (camera3D) {
             objectSelector_.Update(gameObjectManager_, camera3D, normalizedMousePos, isViewportHovered);
             objectSelector_.DrawGizmo(camera3D);
@@ -387,6 +402,15 @@ namespace CoreEngine
 
     void SceneDebugEditor::DrawHierarchyContent()
     {
+        // ビューポートで選び直したときだけ、その行まで送る
+        //（一覧の行をクリックしたときは送らない。すでに見えているので跳ねるだけになる）
+        if (objectSelector_.ConsumeViewportSelection()) {
+            scrollTarget_ = objectSelector_.GetSelectedObject();
+            scrollFramesLeft_ = kScrollFrames;
+        }
+
+        BuildHierarchyLinks();
+
         if (auto child = UI::Scope::ChildScope("##HierarchyObjectList")) {
             // シーンの名前の枝（保存していない変更があれば * を付ける）
             std::string sceneLabel = GetSceneName();
@@ -398,14 +422,61 @@ namespace CoreEngine
             }
             if (ImGui::TreeNodeEx("##sceneRoot", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth,
                     "%s", sceneLabel.c_str())) {
-                for (const auto& obj : gameObjectManager_->GetAllObjects()) {
-                    if (obj) {
-                        DrawHierarchyRow(*obj);
-                    }
+                for (GameObject* const root : hierarchyRoots_) {
+                    DrawHierarchyRow(*root);
                 }
                 ImGui::TreePop();
             }
         }
+
+        // 送り終えたら手放す。見つからなかったとき（消えた・親が無効など）も持ち越さない
+        if (scrollFramesLeft_ > 0) {
+            --scrollFramesLeft_;
+        }
+        if (scrollFramesLeft_ <= 0) {
+            scrollTarget_ = nullptr;
+        }
+    }
+
+    void SceneDebugEditor::BuildHierarchyLinks()
+    {
+        hierarchyChildren_.clear();
+        hierarchyRoots_.clear();
+        if (!gameObjectManager_) {
+            return;
+        }
+
+        for (const auto& object : gameObjectManager_->GetAllObjects()) {
+            if (!object) {
+                continue;
+            }
+            const TransformComponent* const transform = object->GetComponent<TransformComponent>();
+            const TransformComponent* const parent = transform ? transform->GetParent() : nullptr;
+            GameObject* const parentObject = parent ? parent->GetOwner() : nullptr;
+            // 親がいてもシーンから消えていれば根として出す（迷子にしない）
+            if (parentObject && parentObject != object.get()) {
+                hierarchyChildren_[parentObject].push_back(object.get());
+            }
+            else {
+                hierarchyRoots_.push_back(object.get());
+            }
+        }
+    }
+
+    bool SceneDebugEditor::IsAncestorOf(const GameObject& object, const GameObject& descendant) const
+    {
+        const TransformComponent* transform = descendant.GetComponent<TransformComponent>();
+        for (int depth = 0; transform && depth < 64; ++depth) {
+            const TransformComponent* const parent = transform->GetParent();
+            if (!parent) {
+                return false;
+            }
+            if (parent->GetOwner() == &object) {
+                return true;
+            }
+            transform = parent;
+        }
+        return false;
     }
 
     void SceneDebugEditor::DrawHierarchyRow(GameObject& object)
@@ -420,13 +491,39 @@ namespace CoreEngine
                 return component && factory.IsRuntimeType(component->GetTypeName());
             });
 
+        const auto found = hierarchyChildren_.find(&object);
+        const bool hasChildren = (found != hierarchyChildren_.end()) && !found->second.empty();
+
         ImGui::PushID(&object);
+
+        // 送り先が閉じた親の中にいると行そのものが描かれない。先に道を開けておく
+        if (hasChildren && scrollTarget_ && IsAncestorOf(object, *scrollTarget_)) {
+            ImGui::SetNextItemOpen(true);
+        }
+
+        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth
+            | ImGuiTreeNodeFlags_OpenOnArrow
+            | ImGuiTreeNodeFlags_FramePadding;
+        if (isSelected) {
+            flags |= ImGuiTreeNodeFlags_Selected;
+        }
+        if (!hasChildren) {
+            // 子が無くても矢印の幅は空ける（名前の頭が揃う）
+            flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+        }
+
         const ImVec2 rowMin = ImGui::GetCursorScreenPos();
         const float rowHeight = ImGui::GetTextLineHeight();
-        if (ImGui::Selectable("##row", isSelected, ImGuiSelectableFlags_SpanAvailWidth, ImVec2(0.0f, rowHeight))) {
+        const bool open = ImGui::TreeNodeEx("##row", flags, "%s", "");
+        // 矢印を押したときは開閉だけ。選び直さない
+        if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
             objectSelector_.SelectObject(&object);
         }
         const float rowRight = ImGui::GetItemRectMax().x;
+
+        if (scrollTarget_ == &object && scrollFramesLeft_ > 0) {
+            ImGui::SetScrollHereY(0.5f);
+        }
 
         // インスペクタの ObjectRef 欄へ落とせるように ID を運ぶ
         if (ImGui::BeginDragDropSource()) {
@@ -449,8 +546,10 @@ namespace CoreEngine
         // 種類の記号（プレハブから作ったものは ◈）
         ImDrawList* const drawList = ImGui::GetWindowDrawList();
         const char* const glyph = isPrefab ? "◈" : "◆";
-        drawList->AddText(rowMin, ImGui::GetColorU32(glyphColor), glyph);
-        const float left = rowMin.x + ImGui::CalcTextSize(glyph).x + 6.0f;
+        // 矢印の分だけ右へずらす（子の有無で名前の頭がずれないように）
+        const ImVec2 glyphPos(rowMin.x + ImGui::GetTreeNodeToLabelSpacing(), rowMin.y);
+        drawList->AddText(glyphPos, ImGui::GetColorU32(glyphColor), glyph);
+        const float left = glyphPos.x + ImGui::CalcTextSize(glyph).x + 6.0f;
 
         // 右端の札（名前の場所が無くなるほど狭いときは出さない）
         float right = rowRight - 4.0f;
@@ -473,6 +572,16 @@ namespace CoreEngine
         // 名前（入りきらなければ省略記号で詰める）
         UI::Bar::EllipsizedText(drawList, ImVec2(left, rowMin.y), ImVec2(right, rowMin.y + rowHeight),
             object.GetDisplayName(), textColor);
+
+        // 子を続けて描く（開いているときだけ）
+        if (hasChildren && open) {
+            for (GameObject* const child : found->second) {
+                if (child) {
+                    DrawHierarchyRow(*child);
+                }
+            }
+            ImGui::TreePop();
+        }
         ImGui::PopID();
     }
 
@@ -643,6 +752,40 @@ namespace CoreEngine
         if (ImGui::Shortcut(ImGuiKey_Delete)) {
             DeleteSelectedObject();
         }
+    }
+
+    void SceneDebugEditor::FocusOnSelection()
+    {
+        GameObject* const selected = objectSelector_.GetSelectedObject();
+        if (!selected || !cameraManager_) {
+            return;
+        }
+        auto* const orbit = cameraManager_->GetControllerAs<OrbitFlyController>(CameraNames::Scene);
+        if (!orbit) {
+            return;
+        }
+
+        // 大きさが分かるものはそれが収まる距離まで、分からないもの（空のオブジェクト・
+        // ライト・カメラなど）は手頃な距離で寄せる
+        constexpr float kDefaultRadius = 1.5f;
+        constexpr float kDistanceScale = 3.0f;
+        constexpr float kMinDistance = 1.0f;
+
+        const TransformComponent* const transform = selected->GetComponent<TransformComponent>();
+        Vector3 center = transform ? transform->GetWorldPosition() : Vector3{ 0.0f, 0.0f, 0.0f };
+        float radius = kDefaultRadius;
+
+        if (const auto* const mesh = selected->GetComponent<MeshRendererComponent>()) {
+            const BoundingBox box = mesh->GetWorldBoundingBox();
+            if (box.IsValid()) {
+                center = box.GetCenter();
+                const Vector3 size = box.GetSize();
+                radius = (std::max)({ size.x, size.y, size.z }) * 0.5f;
+            }
+        }
+
+        orbit->SetTarget(center);
+        orbit->SetDistance((std::max)(radius * kDistanceScale, kMinDistance));
     }
 
     void SceneDebugEditor::SpawnModelFromFile(const std::string& modelFileName, const Vector2* normalizedDropPos)
