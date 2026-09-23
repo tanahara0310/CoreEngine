@@ -129,6 +129,12 @@ namespace CoreEngine
             pressed_->OnPressBegin();
         }
 
+        // ---- 押したまま動かしている ----
+        // つまみを掴んで引きずる UI はここで位置を受け取る
+        if (pressed_ && !pressedByKey_) {
+            pressed_->OnDrag(onCanvas, canvasSize);
+        }
+
         // ---- 離した ----
         if (pressed_) {
             // 押し始めた入力で離したかを見る（マウスで押して決定キーを離す、の取り違えを防ぐ）
@@ -299,6 +305,11 @@ namespace CoreEngine
             // まだどこも選んでいない。最初の入力では置くだけにする
             // （ポインタが指しているものがあれば、そこから続ける）
             SetFocus(hovered_ ? hovered_ : FindFirstFocusable(ctx, canvasSize));
+            return;
+        }
+
+        // 向きを自分で使う UI（スライダーなど）なら、そちらに譲って送らない
+        if (focused_->OnNavigate(direction)) {
             return;
         }
 

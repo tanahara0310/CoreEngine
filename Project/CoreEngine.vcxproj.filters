@@ -1000,7 +1000,13 @@
     <ClCompile Include="Engine\Src\UI\UINavigation.cpp">
       <Filter>Engine\Src\UI</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\UI\UISliderComponent.cpp">
+      <Filter>Engine\Src\UI</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\UI\UITextComponent.cpp">
+      <Filter>Engine\Src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\UI\UIToggleComponent.cpp">
       <Filter>Engine\Src\UI</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Math\Geometry\Distance.cpp">
@@ -2967,7 +2973,13 @@
     <ClInclude Include="Engine\Src\UI\UINavigation.h">
       <Filter>Engine\Src\UI</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\UI\UISliderComponent.h">
+      <Filter>Engine\Src\UI</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\UI\UITextComponent.h">
+      <Filter>Engine\Src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\UI\UIToggleComponent.h">
       <Filter>Engine\Src\UI</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Math\Geometry\Distance.h">

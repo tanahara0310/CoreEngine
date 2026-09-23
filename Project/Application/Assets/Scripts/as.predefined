@@ -340,6 +340,8 @@ class GameObject {
 	SkyBox@ get_skyBox() property;
 	SpriteRenderer@ get_spriteRenderer() property;
 	Text3DRenderer@ get_text3DRenderer() property;
+	UISlider@ get_uiSlider() property;
+	UIToggle@ get_uiToggle() property;
 	WaterSurface@ get_waterSurface() property;
 }
 class Transform {
@@ -854,6 +856,54 @@ class Text3DRenderer {
 	void set_billboard(int) property;
 	int get_depthMode() const property;
 	void set_depthMode(int) property;
+}
+class UISlider {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	bool get_interactable() const property;
+	void set_interactable(bool) property;
+	int get_direction() const property;
+	void set_direction(int) property;
+	float get_minValue() const property;
+	void set_minValue(float) property;
+	float get_maxValue() const property;
+	void set_maxValue(float) property;
+	float get_value() const property;
+	void set_value(float) property;
+	bool get_wholeNumbers() const property;
+	void set_wholeNumbers(bool) property;
+	float get_navigationStep() const property;
+	void set_navigationStep(float) property;
+	Vector4 get_normalColor() const property;
+	void set_normalColor(const Vector4&in) property;
+	Vector4 get_hoveredColor() const property;
+	void set_hoveredColor(const Vector4&in) property;
+	Vector4 get_pressedColor() const property;
+	void set_pressedColor(const Vector4&in) property;
+	Vector4 get_disabledColor() const property;
+	void set_disabledColor(const Vector4&in) property;
+}
+class UIToggle {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	bool get_isOn() const property;
+	void set_isOn(bool) property;
+	bool get_interactable() const property;
+	void set_interactable(bool) property;
+	string get_group() const property;
+	void set_group(const string&in) property;
+	Vector4 get_normalColor() const property;
+	void set_normalColor(const Vector4&in) property;
+	Vector4 get_hoveredColor() const property;
+	void set_hoveredColor(const Vector4&in) property;
+	Vector4 get_pressedColor() const property;
+	void set_pressedColor(const Vector4&in) property;
+	Vector4 get_disabledColor() const property;
+	void set_disabledColor(const Vector4&in) property;
 }
 class WaterSurface {
 	bool get_exists() const property;

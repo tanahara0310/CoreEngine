@@ -316,12 +316,24 @@ namespace CoreEngine::Script
             return true;
         }
 
-        /// @brief GameObject のプロパティの名前（型名の先頭を小文字にする）
+        /// @brief GameObject のプロパティの名前（型名の先頭の大文字続きを小文字にする）
+        /// @note "Camera" は "camera"、"UISlider" は "uiSlider"。
+        ///       先頭の大文字が続くときは、次の語の頭になる 1 文字だけ大文字で残す。
         std::string LowerFirst(const std::string& name)
         {
             std::string result = name;
-            if (!result.empty()) {
-                result[0] = static_cast<char>(std::tolower(static_cast<unsigned char>(result[0])));
+            std::size_t upperCount = 0;
+            while (upperCount < result.size()
+                   && std::isupper(static_cast<unsigned char>(result[upperCount]))) {
+                ++upperCount;
+            }
+            // UISlider の S は Slider の頭なので、大文字のまま残す
+            if (upperCount > 1 && upperCount < result.size()
+                && std::islower(static_cast<unsigned char>(result[upperCount]))) {
+                --upperCount;
+            }
+            for (std::size_t i = 0; i < std::max<std::size_t>(upperCount, 1) && i < result.size(); ++i) {
+                result[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(result[i])));
             }
             return result;
         }
