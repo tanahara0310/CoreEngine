@@ -966,14 +966,19 @@ Vector3 get_gravity() property;
 void set_gravity(const Vector3&in) property;
 }
 namespace Input {
-bool IsActionPressed(InputAction);
-bool IsActionTriggered(InputAction);
-bool IsActionReleased(InputAction);
-float GetAxisValue(InputAction);
-float GetAxis(InputAction negative, InputAction positive);
-Vector2 GetAxis2D(InputAction negativeX, InputAction positiveX, InputAction negativeY, InputAction positiveY);
-bool IsGamepadConnected();
-void SetVibration(float left, float right);
+bool IsActionPressed(InputAction, int player = -1);
+bool IsActionTriggered(InputAction, int player = -1);
+bool IsActionReleased(InputAction, int player = -1);
+float GetAxisValue(InputAction, int player = -1);
+float GetAxis(InputAction negative, InputAction positive, int player = -1);
+Vector2 GetAxis2D(InputAction negativeX, InputAction positiveX, InputAction negativeY, InputAction positiveY, int player = -1);
+bool IsGamepadConnected(int player = 0);
+int GetConnectedGamepadCount();
+Vector2 GetLeftStick(int player = 0);
+Vector2 GetRightStick(int player = 0);
+float GetLeftTrigger(int player = 0);
+float GetRightTrigger(int player = 0);
+void SetVibration(float left, float right, int player = 0);
 bool IsMouseButtonPressed(MouseButton);
 bool IsMouseButtonTriggered(MouseButton);
 bool IsMouseButtonReleased(MouseButton);

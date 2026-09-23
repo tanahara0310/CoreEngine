@@ -7,6 +7,7 @@
 #endif
 #include <dinput.h>
 #include <wrl/client.h>
+#include <array>
 #include <memory>
 #include <vector>
 
@@ -42,7 +43,8 @@ private:
     // デバイス所有（具体型 unique_ptr）
     std::unique_ptr<KeyboardInput> keyboard_;
     std::unique_ptr<MouseInput>    mouse_;
-    std::unique_ptr<GamepadInput>  gamepad_;
+    // 4 人まで同時に持つ。2 人目以降は問い合わせでプレイヤー番号を指定して使う
+    std::array<std::unique_ptr<GamepadInput>, kMaxGamepads> gamepads_;
 
     // 更新ループ用（非所有ポインタ、破棄順序は上の unique_ptr に依存）
     std::vector<IInputDevice*> devices_;

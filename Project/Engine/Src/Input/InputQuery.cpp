@@ -16,10 +16,11 @@ namespace {
     }
 }
 
-void InputQuery::Initialize(KeyboardInput* keyboard, MouseInput* mouse, GamepadInput* gamepad) {
+void InputQuery::Initialize(KeyboardInput* keyboard, MouseInput* mouse,
+                           const std::array<GamepadInput*, kMaxGamepads>& gamepads) {
     keyboard_ = keyboard;
     mouse_    = mouse;
-    gamepad_  = gamepad;
+    gamepads_ = gamepads;
 
     // 既定値を組んでから、保存済みのキーコンフィグがあれば重ねる。
     // ファイルが無い / 壊れている場合は LoadFromFile が false を返し、既定値のまま動く
@@ -33,48 +34,50 @@ bool InputQuery::IsActionActive(InputAction action) const {
     return Overlaps(InputActionToContexts(action), activeContexts_);
 }
 
-bool InputQuery::IsActionPressed(InputAction action) const {
+bool InputQuery::IsActionPressed(InputAction action, int player) const {
     if (!IsActionActive(action)) return false;
     for (const auto& b : config_.GetBindings(action)) {
-        if (EvaluatePressed(b)) return true;
+        if (EvaluatePressed(b, player)) return true;
     }
     return false;
 }
 
-bool InputQuery::IsActionTriggered(InputAction action) const {
+bool InputQuery::IsActionTriggered(InputAction action, int player) const {
     if (!IsActionActive(action)) return false;
     for (const auto& b : config_.GetBindings(action)) {
-        if (EvaluateTriggered(b)) return true;
+        if (EvaluateTriggered(b, player)) return true;
     }
     return false;
 }
 
-bool InputQuery::IsActionReleased(InputAction action) const {
+bool InputQuery::IsActionReleased(InputAction action, int player) const {
     // 場面が切り替わった瞬間に「離した」を取りこぼさないよう、ここだけは場面を見ない。
     // 押している途中でメニューへ移っても、指を離せば押し下げの後始末が回る
     for (const auto& b : config_.GetBindings(action)) {
-        if (EvaluateReleased(b)) return true;
+        if (EvaluateReleased(b, player)) return true;
     }
     return false;
 }
 
-float InputQuery::GetAxisValue(InputAction action) const {
+float InputQuery::GetAxisValue(InputAction action, int player) const {
     if (!IsActionActive(action)) return 0.0f;
     float maxVal = 0.0f;
     for (const auto& b : config_.GetBindings(action)) {
-        const float val = EvaluateAxis(b);
+        const float val = EvaluateAxis(b, player);
         if (val > maxVal) maxVal = val;
     }
     return maxVal;
 }
 
-float InputQuery::GetAxis(InputAction negative, InputAction positive) const {
-    return GetAxisValue(positive) - GetAxisValue(negative);
+float InputQuery::GetAxis(InputAction negative, InputAction positive, int player) const {
+    return GetAxisValue(positive, player) - GetAxisValue(negative, player);
 }
 
 Vector2 InputQuery::GetAxis2D(InputAction negativeX, InputAction positiveX,
-                              InputAction negativeY, InputAction positiveY) const {
-    Vector2 value{ GetAxis(negativeX, positiveX), GetAxis(negativeY, positiveY) };
+                              InputAction negativeY, InputAction positiveY,
+                              int player) const {
+    Vector2 value{ GetAxis(negativeX, positiveX, player),
+                   GetAxis(negativeY, positiveY, player) };
     // キーボードで斜めに入れると長さが √2 になる。スティックと速さを揃えるため丸める
     const float lengthSquared = value.x * value.x + value.y * value.y;
     if (lengthSquared > 1.0f) {
@@ -136,29 +139,51 @@ POINT InputQuery::GetCursorPosition() const {
 
 // ─── ゲームパッド直接アクセス ─────────────────────────────────
 
-bool InputQuery::IsGamepadConnected() const {
-    return gamepad_ && gamepad_->IsConnected();
+GamepadInput* InputQuery::GamepadAt(int player) const {
+    if (player < 0 || player >= kMaxGamepads) {
+        return nullptr;
+    }
+    GamepadInput* const pad = gamepads_[static_cast<std::size_t>(player)];
+    return (pad && pad->IsConnected()) ? pad : nullptr;
 }
 
-Stick InputQuery::GetLeftStick() const {
-    return (gamepad_ && gamepad_->IsConnected()) ? gamepad_->GetLeftStick() : Stick{ 0.0f, 0.0f };
+bool InputQuery::IsGamepadConnected(int player) const {
+    return GamepadAt(player) != nullptr;
 }
 
-Stick InputQuery::GetRightStick() const {
-    return (gamepad_ && gamepad_->IsConnected()) ? gamepad_->GetRightStick() : Stick{ 0.0f, 0.0f };
+int InputQuery::GetConnectedGamepadCount() const {
+    int count = 0;
+    for (GamepadInput* const pad : gamepads_) {
+        if (pad && pad->IsConnected()) {
+            ++count;
+        }
+    }
+    return count;
 }
 
-float InputQuery::GetLeftTrigger() const {
-    return (gamepad_ && gamepad_->IsConnected()) ? gamepad_->GetLeftTrigger() : 0.0f;
+Stick InputQuery::GetLeftStick(int player) const {
+    GamepadInput* const pad = GamepadAt(player);
+    return pad ? pad->GetLeftStick() : Stick{ 0.0f, 0.0f };
 }
 
-float InputQuery::GetRightTrigger() const {
-    return (gamepad_ && gamepad_->IsConnected()) ? gamepad_->GetRightTrigger() : 0.0f;
+Stick InputQuery::GetRightStick(int player) const {
+    GamepadInput* const pad = GamepadAt(player);
+    return pad ? pad->GetRightStick() : Stick{ 0.0f, 0.0f };
 }
 
-void InputQuery::SetVibration(float leftMotorRatio, float rightMotorRatio) {
-    if (gamepad_ && gamepad_->IsConnected()) {
-        gamepad_->SetVibration(leftMotorRatio, rightMotorRatio);
+float InputQuery::GetLeftTrigger(int player) const {
+    GamepadInput* const pad = GamepadAt(player);
+    return pad ? pad->GetLeftTrigger() : 0.0f;
+}
+
+float InputQuery::GetRightTrigger(int player) const {
+    GamepadInput* const pad = GamepadAt(player);
+    return pad ? pad->GetRightTrigger() : 0.0f;
+}
+
+void InputQuery::SetVibration(float leftMotorRatio, float rightMotorRatio, int player) {
+    if (GamepadInput* const pad = GamepadAt(player)) {
+        pad->SetVibration(leftMotorRatio, rightMotorRatio);
     }
 }
 
@@ -204,8 +229,11 @@ std::optional<InputBinding> InputQuery::DetectAnyInput() const {
         }
     }
 
-    // ゲームパッドボタン検出
-    if (gamepad_ && gamepad_->IsConnected()) {
+    // ゲームパッドボタン検出（どのパッドで押しても割り当てられる）
+    for (GamepadInput* const pad : gamepads_) {
+        if (!pad || !pad->IsConnected()) {
+            continue;
+        }
         static constexpr GamepadButton kGamepadButtons[] = {
             GamepadButton::A, GamepadButton::B, GamepadButton::X, GamepadButton::Y,
             GamepadButton::DPadUp, GamepadButton::DPadDown, GamepadButton::DPadLeft, GamepadButton::DPadRight,
@@ -214,8 +242,10 @@ std::optional<InputBinding> InputQuery::DetectAnyInput() const {
             GamepadButton::LeftShoulder, GamepadButton::RightShoulder,
         };
         for (GamepadButton btn : kGamepadButtons) {
-            if (gamepad_->IsButtonTriggered(btn)) {
-                return InputBinding::FromGamepadButton(btn);
+            if (pad->IsButtonTriggered(btn)) {
+                InputBinding binding = InputBinding::FromGamepadButton(btn);
+                binding.modifiers = modifiers;
+                return binding;
             }
         }
 
@@ -223,15 +253,15 @@ std::optional<InputBinding> InputQuery::DetectAnyInput() const {
         // ボタンのような「押した瞬間」が取れないので、倒し込み量のしきい値で拾う。
         // 遊び程度の傾きを誤って割り当てないよう、デッドゾーンより十分深い位置に敷居を置く
         constexpr float kAxisDetectThreshold = 0.6f;
-        const Stick leftStick  = gamepad_->GetLeftStick();
-        const Stick rightStick = gamepad_->GetRightStick();
+        const Stick leftStick  = pad->GetLeftStick();
+        const Stick rightStick = pad->GetRightStick();
         const struct { GamepadAxis axis; float value; } kAxes[] = {
             { GamepadAxis::LeftStickX,   leftStick.x                 },
             { GamepadAxis::LeftStickY,   leftStick.y                 },
             { GamepadAxis::RightStickX,  rightStick.x                },
             { GamepadAxis::RightStickY,  rightStick.y                },
-            { GamepadAxis::LeftTrigger,  gamepad_->GetLeftTrigger()  },
-            { GamepadAxis::RightTrigger, gamepad_->GetRightTrigger() },
+            { GamepadAxis::LeftTrigger,  pad->GetLeftTrigger()  },
+            { GamepadAxis::RightTrigger, pad->GetRightTrigger() },
         };
         for (const auto& [axis, value] : kAxes) {
             if (std::fabs(value) >= kAxisDetectThreshold) {
@@ -284,83 +314,87 @@ InputModifier InputQuery::CurrentModifiers() const {
     return modifiers;
 }
 
-bool InputQuery::EvaluatePressed(const InputBinding& b) const {
+bool InputQuery::EvaluatePressed(const InputBinding& b, int player) const {
     if (!ModifiersHeld(b.modifiers)) return false;
     switch (b.type) {
     case BindingType::Keyboard:
-        return !keyboardSuppressed_ && keyboard_ && keyboard_->IsKeyPressed(static_cast<uint8_t>(b.code));
+        // パッドを指名して読むときは、キーボードとマウスを混ぜない（2 人目が巻き込まれる）
+        return player == kAnyGamepad && !keyboardSuppressed_ && keyboard_
+            && keyboard_->IsKeyPressed(static_cast<uint8_t>(b.code));
     case BindingType::MouseButton:
-        return mouse_ && mouse_->IsButtonPressed(static_cast<MouseButton>(b.code));
+        return player == kAnyGamepad && mouse_
+            && mouse_->IsButtonPressed(static_cast<MouseButton>(b.code));
     case BindingType::GamepadButton:
-        return gamepad_ && gamepad_->IsConnected() &&
-               gamepad_->IsButtonPressed(static_cast<GamepadButton>(b.code));
+        return AnyGamepad(player, [&](GamepadInput& pad) {
+            return pad.IsButtonPressed(static_cast<GamepadButton>(b.code));
+            });
     case BindingType::GamepadAxis:
-        return EvaluateAxis(b) > 0.1f;
+        return EvaluateAxis(b, player) > 0.1f;
     }
     return false;
 }
 
-bool InputQuery::EvaluateTriggered(const InputBinding& b) const {
+bool InputQuery::EvaluateTriggered(const InputBinding& b, int player) const {
     if (!ModifiersHeld(b.modifiers)) return false;
     switch (b.type) {
     case BindingType::Keyboard:
-        return !keyboardSuppressed_ && keyboard_ && keyboard_->IsKeyTriggered(static_cast<uint8_t>(b.code));
+        return player == kAnyGamepad && !keyboardSuppressed_ && keyboard_
+            && keyboard_->IsKeyTriggered(static_cast<uint8_t>(b.code));
     case BindingType::MouseButton:
-        return mouse_ && mouse_->IsButtonTriggered(static_cast<MouseButton>(b.code));
+        return player == kAnyGamepad && mouse_
+            && mouse_->IsButtonTriggered(static_cast<MouseButton>(b.code));
     case BindingType::GamepadButton:
-        return gamepad_ && gamepad_->IsConnected() &&
-               gamepad_->IsButtonTriggered(static_cast<GamepadButton>(b.code));
+        return AnyGamepad(player, [&](GamepadInput& pad) {
+            return pad.IsButtonTriggered(static_cast<GamepadButton>(b.code));
+            });
     case BindingType::GamepadAxis:
-        return gamepad_ && gamepad_->IsConnected() &&
-               gamepad_->IsAxisTriggered(
-                   static_cast<GamepadAxis>(b.code), b.axisSign >= 0.0f);
+        return AnyGamepad(player, [&](GamepadInput& pad) {
+            return pad.IsAxisTriggered(static_cast<GamepadAxis>(b.code), b.axisSign >= 0.0f);
+            });
     }
     return false;
 }
 
-bool InputQuery::EvaluateReleased(const InputBinding& b) const {
+bool InputQuery::EvaluateReleased(const InputBinding& b, int player) const {
     // 離した瞬間は修飾キーを見ない。Ctrl を先に離しても押し下げの後始末が回るように
     switch (b.type) {
     case BindingType::Keyboard:
-        return keyboard_ && keyboard_->IsKeyReleased(static_cast<uint8_t>(b.code));
+        return player == kAnyGamepad && keyboard_
+            && keyboard_->IsKeyReleased(static_cast<uint8_t>(b.code));
     case BindingType::MouseButton:
-        return mouse_ && mouse_->IsButtonReleased(static_cast<MouseButton>(b.code));
+        return player == kAnyGamepad && mouse_
+            && mouse_->IsButtonReleased(static_cast<MouseButton>(b.code));
     case BindingType::GamepadButton:
-        return gamepad_ && gamepad_->IsConnected() &&
-               gamepad_->IsButtonReleased(static_cast<GamepadButton>(b.code));
+        return AnyGamepad(player, [&](GamepadInput& pad) {
+            return pad.IsButtonReleased(static_cast<GamepadButton>(b.code));
+            });
     case BindingType::GamepadAxis:
-        return gamepad_ && gamepad_->IsConnected() &&
-               gamepad_->IsAxisReleased(
-                   static_cast<GamepadAxis>(b.code), b.axisSign >= 0.0f);
+        return AnyGamepad(player, [&](GamepadInput& pad) {
+            return pad.IsAxisReleased(static_cast<GamepadAxis>(b.code), b.axisSign >= 0.0f);
+            });
     }
     return false;
 }
 
-float InputQuery::EvaluateAxis(const InputBinding& b) const {
+float InputQuery::EvaluateAxis(const InputBinding& b, int player) const {
     if (!ModifiersHeld(b.modifiers)) return 0.0f;
     switch (b.type) {
     case BindingType::Keyboard:
-        return (!keyboardSuppressed_ && keyboard_ && keyboard_->IsKeyPressed(static_cast<uint8_t>(b.code)))
-            ? 1.0f : 0.0f;
+        return (player == kAnyGamepad && !keyboardSuppressed_ && keyboard_
+                && keyboard_->IsKeyPressed(static_cast<uint8_t>(b.code))) ? 1.0f : 0.0f;
     case BindingType::MouseButton:
-        return (mouse_ && mouse_->IsButtonPressed(static_cast<MouseButton>(b.code))) ? 1.0f : 0.0f;
+        return (player == kAnyGamepad && mouse_
+                && mouse_->IsButtonPressed(static_cast<MouseButton>(b.code))) ? 1.0f : 0.0f;
     case BindingType::GamepadButton:
-        return (gamepad_ && gamepad_->IsConnected() &&
-                gamepad_->IsButtonPressed(static_cast<GamepadButton>(b.code))) ? 1.0f : 0.0f;
-    case BindingType::GamepadAxis: {
-        if (!gamepad_ || !gamepad_->IsConnected()) return 0.0f;
-        float val = 0.0f;
-        switch (static_cast<GamepadAxis>(b.code)) {
-        case GamepadAxis::LeftStickX:  val = gamepad_->GetLeftStick().x;  break;
-        case GamepadAxis::LeftStickY:  val = gamepad_->GetLeftStick().y;  break;
-        case GamepadAxis::RightStickX: val = gamepad_->GetRightStick().x; break;
-        case GamepadAxis::RightStickY: val = gamepad_->GetRightStick().y; break;
-        case GamepadAxis::LeftTrigger: val = gamepad_->GetLeftTrigger();  break;
-        case GamepadAxis::RightTrigger:val = gamepad_->GetRightTrigger(); break;
-        }
-        const float signedVal = val * b.axisSign;
-        return signedVal > 0.0f ? signedVal : 0.0f;
-    }
+        return AnyGamepad(player, [&](GamepadInput& pad) {
+            return pad.IsButtonPressed(static_cast<GamepadButton>(b.code));
+            }) ? 1.0f : 0.0f;
+    case BindingType::GamepadAxis:
+        // 割り当ては向きを持つ（"Axis:LeftStickX-" など）。逆向きに倒していれば 0
+        return MaxGamepad(player, [&](GamepadInput& pad) {
+            const float value = pad.GetAxisValue(static_cast<GamepadAxis>(b.code)) * b.axisSign;
+            return value > 0.0f ? value : 0.0f;
+            });
     }
     return 0.0f;
 }
