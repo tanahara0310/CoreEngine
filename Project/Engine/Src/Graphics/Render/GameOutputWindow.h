@@ -41,6 +41,10 @@ namespace CoreEngine
         /// @brief 現在ウィンドウが存在するか
         bool IsOpen() const { return hwnd_ != nullptr; }
 
+        /// @brief ウィンドウのハンドル（開いていなければ nullptr）
+        /// @note ここへ出した映像の上にポインタがあるかを外から調べるために使う。
+        HWND GetHwnd() const { return hwnd_; }
+
         /// @brief ユーザーが × で閉じたか（呼び出し側のトグル状態を同期するために使う）
         /// @return 閉じる操作があったなら true（呼び出すとフラグは落ちる）
         bool ConsumeCloseRequest();
