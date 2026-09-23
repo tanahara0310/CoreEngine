@@ -38,6 +38,14 @@ namespace CoreEngine
             return false;
         }
 
+        sourceChannels_ = audioData.Format()->nChannels;
+        destinationChannels_ = 2;
+        if (outputBus) {
+            XAUDIO2_VOICE_DETAILS details{};
+            outputBus->GetVoiceDetails(&details);
+            destinationChannels_ = details.InputChannels;
+        }
+
         buffer_.pAudioData = audioData.pcm.get();
         buffer_.AudioBytes = audioData.pcmSize;
         buffer_.Flags = XAUDIO2_END_OF_STREAM;
@@ -116,6 +124,32 @@ namespace CoreEngine
         pitch_ = std::clamp(pitch, XAUDIO2_MIN_FREQ_RATIO, XAUDIO2_DEFAULT_FREQ_RATIO);
         if (sourceVoice_) {
             sourceVoice_->SetFrequencyRatio(pitch_);
+        }
+    }
+
+    void SoundVoice::SetPan(float pan)
+    {
+        pan_ = std::clamp(pan, -1.0f, 1.0f);
+
+        // 2 ch 以外へ出しているときと 3 ch 以上の音源は、振り分けようがないので触らない
+        if (!sourceVoice_ || destinationChannels_ != 2 || sourceChannels_ < 1 || sourceChannels_ > 2) {
+            return;
+        }
+
+        // 中央で左右とも 1.0（XAudio2 の既定と同じ）になる配分にする。
+        // 二乗和を 1 に保つ配分にすると、中央に置いただけで音が小さくなる
+        const float left = std::clamp(1.0f - pan_, 0.0f, 1.0f);
+        const float right = std::clamp(1.0f + pan_, 0.0f, 1.0f);
+
+        // 行列の並びは pLevelMatrix[SourceChannels * 出力ch + 入力ch]
+        if (sourceChannels_ == 1) {
+            const float matrix[2] = { left, right };
+            sourceVoice_->SetOutputMatrix(nullptr, 1, 2, matrix);
+        }
+        else {
+            // ステレオ音源は左右の分かれをそのままに、全体を寄せる
+            const float matrix[4] = { left, 0.0f, 0.0f, right };
+            sourceVoice_->SetOutputMatrix(nullptr, 2, 2, matrix);
         }
     }
 

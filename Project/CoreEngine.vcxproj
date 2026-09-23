@@ -1092,6 +1092,8 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClCompile Include="Engine\Src\Text\MsdfAtlasAllocator.cpp" />
     <ClCompile Include="Engine\Src\Text\FontManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\UI\TextRenderer.cpp" />
+    <ClCompile Include="Engine\Src\Audio\AudioListenerComponent.cpp" />
+    <ClCompile Include="Engine\Src\Audio\AudioSourceComponent.cpp" />
     <ClCompile Include="Engine\Src\Audio\AudioSystem.cpp" />
     <ClCompile Include="Engine\Src\Audio\Decoder\MediaFoundationDecoder.cpp" />
     <ClCompile Include="Engine\Src\Audio\Decoder\WavDecoder.cpp" />
@@ -1762,6 +1764,8 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClInclude Include="Engine\Src\Text\FontManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\UI\TextRenderer.h" />
     <ClInclude Include="Engine\Src\Audio\AudioBus.h" />
+    <ClInclude Include="Engine\Src\Audio\AudioListenerComponent.h" />
+    <ClInclude Include="Engine\Src\Audio\AudioSourceComponent.h" />
     <ClInclude Include="Engine\Src\Audio\AudioSystem.h" />
     <ClInclude Include="Engine\Src\Audio\Decoder\AudioData.h" />
     <ClInclude Include="Engine\Src\Audio\Decoder\IAudioDecoder.h" />

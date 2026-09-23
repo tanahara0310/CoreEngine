@@ -326,6 +326,8 @@ class GameObject {
 	UIImage@ SpawnUIImage(const string&in texturePath, const string&in name) const;
 	UIButton@ get_uiButton() property;
 	Animator@ get_animator() property;
+	AudioListener@ get_audioListener() property;
+	AudioSource@ get_audioSource() property;
 	Camera@ get_camera() property;
 	CharacterController@ get_characterController() property;
 	EulerTransform@ get_eulerTransform() property;
@@ -566,6 +568,47 @@ class Animator {
 	bool Switch(const string&in, bool);
 	bool SwitchWithBlend(const string&in, float, bool);
 	string GetCurrentClipName();
+}
+class AudioListener {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+}
+class AudioSource {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	string get_clip() const property;
+	void set_clip(const string&in) property;
+	int get_bus() const property;
+	void set_bus(int) property;
+	bool get_playOnAwake() const property;
+	void set_playOnAwake(bool) property;
+	bool get_loop() const property;
+	void set_loop(bool) property;
+	float get_volume() const property;
+	void set_volume(float) property;
+	float get_pitch() const property;
+	void set_pitch(float) property;
+	bool get_mute() const property;
+	void set_mute(bool) property;
+	float get_fadeInTime() const property;
+	void set_fadeInTime(float) property;
+	float get_spatialBlend() const property;
+	void set_spatialBlend(float) property;
+	float get_minDistance() const property;
+	void set_minDistance(float) property;
+	float get_maxDistance() const property;
+	void set_maxDistance(float) property;
+	bool get_isPlaying() const property;
+	void Play();
+	void Stop();
+	void Pause();
+	void UnPause();
+	void PlayOneShot();
+	void FadeOut(float);
 }
 class Camera {
 	bool get_exists() const property;
@@ -1013,6 +1056,11 @@ void Register(const string&in name, const string&in filePath, const string[]&in 
 namespace Audio {
 void PlayOneShot(const string&in path, const PlayParams&in params = PlayParams());
 Sound@ PlayScoped(const string&in path, const PlayParams&in params = PlayParams());
+void SetBusVolume(AudioBus bus, float volume);
+float GetBusVolume(AudioBus bus);
+void SetMasterVolume(float volume);
+float GetMasterVolume();
+void StopAll();
 }
 namespace CameraShake {
 uint Play(const CameraShakeParams&in params);
