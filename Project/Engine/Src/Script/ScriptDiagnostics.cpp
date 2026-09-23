@@ -5,11 +5,13 @@
 
 #include <angelscript.h>
 
+#include <set>
+#include <string>
+
 namespace CoreEngine::Script
 {
     void OnCompilerMessage(const asSMessageInfo* message, void* userData)
     {
-        (void)userData;
         if (!message) {
             return;
         }
@@ -17,6 +19,10 @@ namespace CoreEngine::Script
         LogLevel level = LogLevel::Info;
         if (message->type == asMSGTYPE_ERROR) {
             level = LogLevel::Error;
+            // どのファイルが壊れているかを集める（差し戻す相手を決めるため）
+            if (userData && message->section && message->section[0] != '\0') {
+                static_cast<std::set<std::string>*>(userData)->insert(message->section);
+            }
         } else if (message->type == asMSGTYPE_WARNING) {
             level = LogLevel::Warn;
         }
