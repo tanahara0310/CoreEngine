@@ -17,6 +17,7 @@ namespace CoreEngine
     ///          押されたことは `WasClicked()` で問い合わせる（スクリプトは `Update()` で見る）。
     /// @note 当たりを取るのは同じオブジェクトの `RectTransform`。
     ///       クリックが立つのは「自分の上で押して、自分の上で離した」ときだけ。
+    ///       ポインタでも、キー・パッドのフォーカス＋決定でも同じように押せる。
     class UIButtonComponent final : public IComponent, public IUIInteractable
     {
     public:
@@ -28,7 +29,8 @@ namespace CoreEngine
             REFLECT_PROPERTY(normalColor_, "通常の色",
                 p.type = ::CoreEngine::Reflection::PropertyType::Color)
             REFLECT_PROPERTY(hoveredColor_, "乗せたときの色",
-                p.type = ::CoreEngine::Reflection::PropertyType::Color)
+                p.type = ::CoreEngine::Reflection::PropertyType::Color,
+                p.tooltip = "キー・パッドで選んでいるときもこの色になる")
             REFLECT_PROPERTY(pressedColor_, "押したときの色",
                 p.type = ::CoreEngine::Reflection::PropertyType::Color)
             REFLECT_PROPERTY(disabledColor_, "押せないときの色",
@@ -55,6 +57,9 @@ namespace CoreEngine
         /// @brief ポインタが乗っているか
         bool IsHovered() const { return hovered_; }
 
+        /// @brief キー・パッドで選ばれているか
+        bool IsFocused() const { return focused_; }
+
         /// @brief 押し下げられているか
         bool IsPressed() const { return pressed_; }
 
@@ -65,13 +70,15 @@ namespace CoreEngine
         // ===== IUIInteractable =====
 
         RectTransformComponent* GetRectTransform() const override;
-        bool AcceptsPointer() const override { return interactable_; }
+        bool AcceptsInput() const override { return interactable_; }
         int GetPointerSortOrder() const override;
 
         void OnPointerEnter() override;
         void OnPointerExit() override;
-        void OnPointerDown() override;
-        void OnPointerUp(bool onSelf) override;
+        void OnFocusEnter() override;
+        void OnFocusExit() override;
+        void OnPressBegin() override;
+        void OnPressEnd(bool onSelf) override;
 
     private:
         /// @brief 今の状態の色を `UIImage` へ書く
@@ -88,6 +95,7 @@ namespace CoreEngine
         Vector4 disabledColor_{ 0.45f, 0.45f, 0.45f, 0.6f };
 
         bool hovered_ = false;
+        bool focused_ = false;
         bool pressed_ = false;
 
         /// クリックが決まったフレーム（0 = まだ一度も押されていない）

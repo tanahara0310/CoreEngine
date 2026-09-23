@@ -994,6 +994,9 @@
     <ClCompile Include="Engine\Src\UI\UIPointer.cpp">
       <Filter>Engine\Src\UI</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\UI\UINavigation.cpp">
+      <Filter>Engine\Src\UI</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\UI\UITextComponent.cpp">
       <Filter>Engine\Src\UI</Filter>
     </ClCompile>
@@ -2953,6 +2956,9 @@
       <Filter>Engine\Src\UI</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\UI\IUIInteractable.h">
+      <Filter>Engine\Src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\UI\UINavigation.h">
       <Filter>Engine\Src\UI</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\UI\UITextComponent.h">

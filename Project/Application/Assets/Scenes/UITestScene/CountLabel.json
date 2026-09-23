@@ -10,14 +10,14 @@
                 "anchor": 4,
                 "anchoredPosition": [
                     0.0,
-                    30.0
+                    -60.0
                 ],
                 "pivot": [
                     0.5,
                     0.5
                 ],
                 "size": [
-                    500.0,
+                    700.0,
                     60.0
                 ],
                 "rotation": 0.0,

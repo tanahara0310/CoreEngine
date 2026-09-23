@@ -44,8 +44,9 @@ namespace CoreEngine
         }
         interactable_ = value;
         if (!interactable_) {
-            // 押せなくした瞬間は、乗っている・押している状態を持ち越さない
+            // 押せなくした瞬間は、乗っている・選んでいる・押している状態を持ち越さない
             hovered_ = false;
+            focused_ = false;
             pressed_ = false;
         }
         ApplyVisual();
@@ -74,13 +75,25 @@ namespace CoreEngine
         ApplyVisual();
     }
 
-    void UIButtonComponent::OnPointerDown()
+    void UIButtonComponent::OnFocusEnter()
+    {
+        focused_ = true;
+        ApplyVisual();
+    }
+
+    void UIButtonComponent::OnFocusExit()
+    {
+        focused_ = false;
+        ApplyVisual();
+    }
+
+    void UIButtonComponent::OnPressBegin()
     {
         pressed_ = true;
         ApplyVisual();
     }
 
-    void UIButtonComponent::OnPointerUp(bool onSelf)
+    void UIButtonComponent::OnPressEnd(bool onSelf)
     {
         pressed_ = false;
         if (onSelf && interactable_) {
@@ -91,9 +104,10 @@ namespace CoreEngine
 
     const Vector4& UIButtonComponent::CurrentColor() const
     {
-        if (!interactable_) { return disabledColor_; }
-        if (pressed_)       { return pressedColor_; }
-        if (hovered_)       { return hoveredColor_; }
+        if (!interactable_)        { return disabledColor_; }
+        if (pressed_)              { return pressedColor_; }
+        // 選んでいるときは乗せたときと同じ色にする（どちらも「今これが対象」を表す）
+        if (hovered_ || focused_)  { return hoveredColor_; }
         return normalColor_;
     }
 
