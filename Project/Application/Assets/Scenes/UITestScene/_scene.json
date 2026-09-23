@@ -6,6 +6,10 @@
         "Title",
         "Hint",
         "PlayButton",
+        "UpButton",
+        "DownButton",
+        "LeftButton",
+        "RightButton",
         "ButtonLabel",
         "CountLabel",
         "ButtonTester"

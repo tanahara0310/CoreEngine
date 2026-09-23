@@ -52,12 +52,16 @@ enum InputAction {
 	Jump = 4,
 	Attack = 5,
 	Interact = 6,
-	UIConfirm = 7,
-	UICancel = 8,
-	Pause = 9,
-	EditorGizmoTranslate = 10,
-	EditorGizmoRotate = 11,
-	EditorGizmoScale = 12
+	UINavigateUp = 7,
+	UINavigateDown = 8,
+	UINavigateLeft = 9,
+	UINavigateRight = 10,
+	UIConfirm = 11,
+	UICancel = 12,
+	Pause = 13,
+	EditorGizmoTranslate = 14,
+	EditorGizmoRotate = 15,
+	EditorGizmoScale = 16
 }
 enum Key {
 	Num0 = 11,
@@ -462,7 +466,9 @@ class UIButton {
 	bool get_exists() const property;
 	bool get_wasClicked() const property;
 	bool get_hovered() const property;
+	bool get_focused() const property;
 	bool get_pressed() const property;
+	void Focus();
 	bool get_interactable() const property;
 	void set_interactable(bool) property;
 	GameObject@ get_gameObject() const property;
@@ -973,6 +979,10 @@ TweenHandle RotateTo(GameObject@ object, const Vector3&in to, float duration);
 int KillById(const string&in id, bool complete = false);
 int KillByLink(GameObject@ owner, bool complete = false);
 TweenSequence Sequence();
+}
+namespace UI {
+void ClearFocus();
+bool HasFocus();
 }
 namespace Font {
 void Register(const string&in name, const string&in filePath, const string[]&in systemFamilies, const string&in charset = "");

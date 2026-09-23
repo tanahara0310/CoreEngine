@@ -6,6 +6,7 @@
 #include "GameObject/GameObjectManager.h"
 #include "Script/Binding/BindingRegistrar.h"
 #include "Script/Binding/GameObjectBinding.h"
+#include "Scene/Feature/UIInteractionFeature.h"
 #include "Text/FontManager.h"
 #include "UI/RectTransformComponent.h"
 #include "UI/UIImageComponent.h"
@@ -352,10 +353,29 @@ namespace CoreEngine::Script
                 return button && button->IsHovered();
             }
 
+            bool IsFocused() const
+            {
+                const UIButtonComponent* const button = FindOrWarn("選ばれているかの読み取り");
+                return button && button->IsFocused();
+            }
+
             bool IsPressed() const
             {
                 const UIButtonComponent* const button = FindOrWarn("押し下げの読み取り");
                 return button && button->IsPressed();
+            }
+
+            /// @brief キー・パッドの送り先をこのボタンにする
+            void Focus()
+            {
+                UIButtonComponent* const button = FindOrWarn("フォーカスの移動");
+                if (!button) {
+                    return;
+                }
+                if (UIInteractionFeature* const feature =
+                        UIInteractionFeature::FindCurrent(sEngineSystem)) {
+                    feature->SetFocus(button);
+                }
             }
 
             bool IsInteractable() const
@@ -622,11 +642,38 @@ namespace CoreEngine::Script
             r.Method("UIButton", "bool get_exists() const property", asMETHOD(Handle, Exists), asCALL_THISCALL);
             r.Method("UIButton", "bool get_wasClicked() const property", asMETHOD(Handle, WasClicked), asCALL_THISCALL);
             r.Method("UIButton", "bool get_hovered() const property", asMETHOD(Handle, IsHovered), asCALL_THISCALL);
+            r.Method("UIButton", "bool get_focused() const property", asMETHOD(Handle, IsFocused), asCALL_THISCALL);
             r.Method("UIButton", "bool get_pressed() const property", asMETHOD(Handle, IsPressed), asCALL_THISCALL);
+            r.Method("UIButton", "void Focus()", asMETHOD(Handle, Focus), asCALL_THISCALL);
             r.Method("UIButton", "bool get_interactable() const property", asMETHOD(Handle, IsInteractable), asCALL_THISCALL);
             r.Method("UIButton", "void set_interactable(bool) property", asMETHOD(Handle, SetInteractable), asCALL_THISCALL);
             r.Method("UIButton", "GameObject@ get_gameObject() const property", asMETHOD(Handle, GetGameObject), asCALL_THISCALL);
             r.Method("GameObject", "UIButton@ get_uiButton() property", asFUNCTION(GetButton), asCALL_CDECL_OBJLAST);
+        }
+
+        /// @brief キー・パッドの送り先を無くす（メニューを閉じたときなど）
+        void ClearFocus()
+        {
+            if (UIInteractionFeature* const feature =
+                    UIInteractionFeature::FindCurrent(sEngineSystem)) {
+                feature->ClearFocus();
+            }
+        }
+
+        /// @brief キー・パッドで何かを選んでいるか
+        bool HasFocus()
+        {
+            const UIInteractionFeature* const feature =
+                UIInteractionFeature::FindCurrent(sEngineSystem);
+            return feature && feature->GetFocused() != nullptr;
+        }
+
+        void RegisterUIFunctions(BindingRegistrar& r)
+        {
+            r.Namespace("UI");
+            r.Function("void ClearFocus()", asFUNCTION(ClearFocus));
+            r.Function("bool HasFocus()", asFUNCTION(HasFocus));
+            r.Namespace("");
         }
 
         void RegisterFontFunctions(BindingRegistrar& r)
@@ -650,6 +697,7 @@ namespace CoreEngine::Script
         RegisterText(r);
         RegisterImage(r);
         RegisterButton(r);
+        RegisterUIFunctions(r);
         RegisterFontFunctions(r);
         return r.Succeeded();
     }

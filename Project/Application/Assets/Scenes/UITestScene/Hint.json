@@ -9,7 +9,7 @@
                 "anchor": 4,
                 "anchoredPosition": [
                     0.0,
-                    -40.0
+                    -120.0
                 ],
                 "pivot": [
                     0.5,
@@ -27,7 +27,7 @@
             "type": "UIText",
             "enabled": true,
             "parameters": {
-                "text": "Canvas タブで掴んで動かせる",
+                "text": "方向キー / パッドで選び、Enter / A で押す",
                 "fontSize": 28.0,
                 "color": [
                     0.8,

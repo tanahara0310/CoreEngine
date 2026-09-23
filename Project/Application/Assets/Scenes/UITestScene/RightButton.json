@@ -1,7 +1,7 @@
 {
-    "id": "90493c7717bad62b",
+    "id": "fc7faf36c280d291",
     "active": true,
-    "name": "PlayButton",
+    "name": "RightButton",
     "components": [
         {
             "type": "RectTransform",
@@ -9,7 +9,7 @@
             "parameters": {
                 "anchor": 4,
                 "anchoredPosition": [
-                    0.0,
+                    260.0,
                     80.0
                 ],
                 "pivot": [
@@ -17,8 +17,8 @@
                     0.5
                 ],
                 "size": [
-                    320.0,
-                    96.0
+                    200.0,
+                    64.0
                 ],
                 "rotation": 0.0,
                 "sortOrder": 10
@@ -43,9 +43,9 @@
             "parameters": {
                 "interactable": true,
                 "normalColor": [
-                    0.25,
-                    0.55,
-                    0.95,
+                    0.32,
+                    0.38,
+                    0.5,
                     1.0
                 ],
                 "hoveredColor": [

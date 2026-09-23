@@ -33,6 +33,12 @@ namespace CoreEngine
                 { "Jump", "ジャンプ", { "Key:Space", "Gamepad:A" } },
                 { "Attack", "攻撃", { "Mouse:Left", "Gamepad:X" } },
                 { "Interact", "インタラクト", { "Key:E", "Gamepad:B" } },
+                // UI のフォーカス送りは移動と分けておく。同じ割り当てを共有すると、
+                // キーコンフィグで移動キーを変えたときに UI まで付いてきてしまう
+                { "UINavigateUp", "UI上", { "Key:Up", "Axis:LeftStickY+", "Gamepad:DPadUp" } },
+                { "UINavigateDown", "UI下", { "Key:Down", "Axis:LeftStickY-", "Gamepad:DPadDown" } },
+                { "UINavigateLeft", "UI左", { "Key:Left", "Axis:LeftStickX-", "Gamepad:DPadLeft" } },
+                { "UINavigateRight", "UI右", { "Key:Right", "Axis:LeftStickX+", "Gamepad:DPadRight" } },
                 { "UIConfirm", "UI決定", { "Key:Enter", "Gamepad:A" } },
                 { "UICancel", "UIキャンセル", { "Key:Escape", "Gamepad:B" } },
                 // ポーズの開閉。パッドは START を使う。B は Interact と兼用なので、

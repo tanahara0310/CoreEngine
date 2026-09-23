@@ -6,9 +6,25 @@
             "type": "UIButtonTester",
             "enabled": true,
             "parameters": {
-                "button": {
+                "center": {
                     "comp": "",
                     "ref": "90493c7717bad62b"
+                },
+                "up": {
+                    "comp": "",
+                    "ref": "847c8b1faab6ad54"
+                },
+                "down": {
+                    "comp": "",
+                    "ref": "e063e69275fd4701"
+                },
+                "left": {
+                    "comp": "",
+                    "ref": "c91b0c05d16876a4"
+                },
+                "right": {
+                    "comp": "",
+                    "ref": "fc7faf36c280d291"
                 },
                 "label": {
                     "comp": "",

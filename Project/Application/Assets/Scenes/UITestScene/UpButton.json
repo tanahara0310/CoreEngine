@@ -1,7 +1,7 @@
 {
-    "id": "90493c7717bad62b",
+    "id": "847c8b1faab6ad54",
     "active": true,
-    "name": "PlayButton",
+    "name": "UpButton",
     "components": [
         {
             "type": "RectTransform",
@@ -10,15 +10,15 @@
                 "anchor": 4,
                 "anchoredPosition": [
                     0.0,
-                    80.0
+                    0.0
                 ],
                 "pivot": [
                     0.5,
                     0.5
                 ],
                 "size": [
-                    320.0,
-                    96.0
+                    240.0,
+                    64.0
                 ],
                 "rotation": 0.0,
                 "sortOrder": 10
@@ -43,9 +43,9 @@
             "parameters": {
                 "interactable": true,
                 "normalColor": [
-                    0.25,
-                    0.55,
-                    0.95,
+                    0.32,
+                    0.38,
+                    0.5,
                     1.0
                 ],
                 "hoveredColor": [

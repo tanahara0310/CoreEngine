@@ -66,6 +66,42 @@
             ]
         },
         {
+            "id": "UINavigateUp",
+            "display": "UI上",
+            "defaults": [
+                "Key:Up",
+                "Axis:LeftStickY+",
+                "Gamepad:DPadUp"
+            ]
+        },
+        {
+            "id": "UINavigateDown",
+            "display": "UI下",
+            "defaults": [
+                "Key:Down",
+                "Axis:LeftStickY-",
+                "Gamepad:DPadDown"
+            ]
+        },
+        {
+            "id": "UINavigateLeft",
+            "display": "UI左",
+            "defaults": [
+                "Key:Left",
+                "Axis:LeftStickX-",
+                "Gamepad:DPadLeft"
+            ]
+        },
+        {
+            "id": "UINavigateRight",
+            "display": "UI右",
+            "defaults": [
+                "Key:Right",
+                "Axis:LeftStickX+",
+                "Gamepad:DPadRight"
+            ]
+        },
+        {
             "id": "UIConfirm",
             "display": "UI決定",
             "defaults": [
