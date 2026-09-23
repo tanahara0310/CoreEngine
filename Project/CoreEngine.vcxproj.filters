@@ -988,6 +988,9 @@
     <ClCompile Include="Engine\Src\UI\UIImageComponent.cpp">
       <Filter>Engine\Src\UI</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\UI\UIButtonComponent.cpp">
+      <Filter>Engine\Src\UI</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\UI\UIPointer.cpp">
       <Filter>Engine\Src\UI</Filter>
     </ClCompile>
@@ -1649,6 +1652,9 @@
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Scene\Feature\TweenFeature.cpp">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Scene\Feature\UIInteractionFeature.cpp">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Scene\Feature\SceneFeatureRegistry.cpp">
@@ -2940,7 +2946,13 @@
     <ClInclude Include="Engine\Src\UI\UIImageComponent.h">
       <Filter>Engine\Src\UI</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\UI\UIButtonComponent.h">
+      <Filter>Engine\Src\UI</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\UI\UIPointer.h">
+      <Filter>Engine\Src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\UI\IUIInteractable.h">
       <Filter>Engine\Src\UI</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\UI\UITextComponent.h">
@@ -3667,6 +3679,9 @@
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Scene\Feature\TweenFeature.h">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Scene\Feature\UIInteractionFeature.h">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Scene\Feature\SceneFeatureRegistry.h">

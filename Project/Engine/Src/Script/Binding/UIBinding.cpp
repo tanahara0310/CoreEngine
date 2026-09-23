@@ -9,6 +9,7 @@
 #include "Text/FontManager.h"
 #include "UI/RectTransformComponent.h"
 #include "UI/UIImageComponent.h"
+#include "UI/UIButtonComponent.h"
 #include "UI/UITextComponent.h"
 #include "Utility/Logger/Logger.h"
 
@@ -320,6 +321,94 @@ namespace CoreEngine::Script
         using ScriptUIText = ScriptUIElement<UITextComponent>;
         using ScriptUIImage = ScriptUIElement<UIImageComponent>;
 
+        /// @brief スクリプトから押せるボタンを見るためのハンドル
+        /// @details 押されたかは問い合わせで受け取る（関数を渡す形にすると、
+        ///          スクリプトを読み直したときに渡し直しが要る）。
+        class ScriptUIButton
+        {
+        public:
+            explicit ScriptUIButton(ScriptGameObject& owner) : owner_(owner)
+            {
+                owner_.AddRef();
+            }
+
+            ScriptUIButton(const ScriptUIButton&) = delete;
+            ScriptUIButton& operator=(const ScriptUIButton&) = delete;
+
+            void AddRef() const { ++refCount_; }
+            void Release() const { if (--refCount_ == 0) { delete this; } }
+
+            bool Exists() const { return Find() != nullptr; }
+
+            bool WasClicked() const
+            {
+                const UIButtonComponent* const button = FindOrWarn("押されたかの読み取り");
+                return button && button->WasClicked();
+            }
+
+            bool IsHovered() const
+            {
+                const UIButtonComponent* const button = FindOrWarn("乗っているかの読み取り");
+                return button && button->IsHovered();
+            }
+
+            bool IsPressed() const
+            {
+                const UIButtonComponent* const button = FindOrWarn("押し下げの読み取り");
+                return button && button->IsPressed();
+            }
+
+            bool IsInteractable() const
+            {
+                const UIButtonComponent* const button = FindOrWarn("押せるかの読み取り");
+                return button && button->IsInteractable();
+            }
+
+            void SetInteractable(bool value)
+            {
+                if (UIButtonComponent* const button = FindOrWarn("押せるかの変更")) {
+                    button->SetInteractable(value);
+                }
+            }
+
+            ScriptGameObject* GetGameObject() const
+            {
+                owner_.AddRef();
+                return &owner_;
+            }
+
+        private:
+            ~ScriptUIButton() { owner_.Release(); }
+
+            UIButtonComponent* Find() const
+            {
+                GameObject* const object = owner_.Resolve();
+                return object ? object->GetComponent<UIButtonComponent>() : nullptr;
+            }
+
+            UIButtonComponent* FindOrWarn(const char* action) const
+            {
+                UIButtonComponent* const button = Find();
+                if (!button && !warned_) {
+                    warned_ = true;
+                    Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Script,
+                        "UIButton で{}をしようとしましたが、GameObject が無いか UIButton ではありません",
+                        action);
+                }
+                return button;
+            }
+
+            ScriptGameObject& owner_;
+            mutable int refCount_ = 1;
+            mutable bool warned_ = false;
+        };
+
+        /// @brief GameObject のハンドルからボタンのハンドルを作る
+        ScriptUIButton* GetButton(ScriptGameObject& self)
+        {
+            return new ScriptUIButton(self);
+        }
+
         /// @brief GameObject のハンドルから UI 要素のハンドルを作る
         /// @return 参照を 1 つ持ったハンドル
         template <class Element>
@@ -524,6 +613,22 @@ namespace CoreEngine::Script
                 asFUNCTION(SpawnUIImage), asCALL_CDECL_OBJLAST);
         }
 
+        void RegisterButton(BindingRegistrar& r)
+        {
+            using Handle = ScriptUIButton;
+            r.ReferenceType("UIButton", asOBJ_REF);
+            r.Behaviour("UIButton", asBEHAVE_ADDREF, "void f()", asMETHOD(Handle, AddRef), asCALL_THISCALL);
+            r.Behaviour("UIButton", asBEHAVE_RELEASE, "void f()", asMETHOD(Handle, Release), asCALL_THISCALL);
+            r.Method("UIButton", "bool get_exists() const property", asMETHOD(Handle, Exists), asCALL_THISCALL);
+            r.Method("UIButton", "bool get_wasClicked() const property", asMETHOD(Handle, WasClicked), asCALL_THISCALL);
+            r.Method("UIButton", "bool get_hovered() const property", asMETHOD(Handle, IsHovered), asCALL_THISCALL);
+            r.Method("UIButton", "bool get_pressed() const property", asMETHOD(Handle, IsPressed), asCALL_THISCALL);
+            r.Method("UIButton", "bool get_interactable() const property", asMETHOD(Handle, IsInteractable), asCALL_THISCALL);
+            r.Method("UIButton", "void set_interactable(bool) property", asMETHOD(Handle, SetInteractable), asCALL_THISCALL);
+            r.Method("UIButton", "GameObject@ get_gameObject() const property", asMETHOD(Handle, GetGameObject), asCALL_THISCALL);
+            r.Method("GameObject", "UIButton@ get_uiButton() property", asFUNCTION(GetButton), asCALL_CDECL_OBJLAST);
+        }
+
         void RegisterFontFunctions(BindingRegistrar& r)
         {
             r.Namespace("Font");
@@ -544,6 +649,7 @@ namespace CoreEngine::Script
         RegisterTextAlign(r);
         RegisterText(r);
         RegisterImage(r);
+        RegisterButton(r);
         RegisterFontFunctions(r);
         return r.Succeeded();
     }

@@ -1,6 +1,6 @@
 {
     "active": true,
-    "name": "Hint",
+    "name": "ButtonLabel",
     "components": [
         {
             "type": "RectTransform",
@@ -9,30 +9,30 @@
                 "anchor": 4,
                 "anchoredPosition": [
                     0.0,
-                    -40.0
+                    120.0
                 ],
                 "pivot": [
                     0.5,
                     0.5
                 ],
                 "size": [
-                    600.0,
+                    300.0,
                     60.0
                 ],
                 "rotation": 0.0,
-                "sortOrder": 3
+                "sortOrder": 11
             }
         },
         {
             "type": "UIText",
             "enabled": true,
             "parameters": {
-                "text": "Canvas タブで掴んで動かせる",
-                "fontSize": 28.0,
+                "text": "押してみて",
+                "fontSize": 36.0,
                 "color": [
-                    0.8,
-                    0.85,
-                    0.95,
+                    1.0,
+                    1.0,
+                    1.0,
                     1.0
                 ],
                 "alignH": 1,

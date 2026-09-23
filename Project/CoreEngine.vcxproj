@@ -510,6 +510,7 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClCompile Include="Engine\Src\TileMap\TileMap.cpp" />
     <ClCompile Include="Engine\Src\UI\RectTransformComponent.cpp" />
     <ClCompile Include="Engine\Src\UI\UIImageComponent.cpp" />
+    <ClCompile Include="Engine\Src\UI\UIButtonComponent.cpp" />
     <ClCompile Include="Engine\Src\UI\UIPointer.cpp" />
     <ClCompile Include="Engine\Src\UI\UITextComponent.cpp" />
     <ClCompile Include="Engine\Src\Math\Geometry\Distance.cpp" />
@@ -1130,6 +1131,7 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClCompile Include="Engine\Src\Scene\Feature\EventDispatchFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\TimeOfDayFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\TweenFeature.cpp" />
+    <ClCompile Include="Engine\Src\Scene\Feature\UIInteractionFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\SceneFeatureRegistry.cpp" />
     <ClCompile Include="Engine\Src\Text\TextGeometryBuilder.cpp" />
     <ClCompile Include="Engine\Src\Utility\Event\EventBus.cpp" />
@@ -1561,7 +1563,9 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClInclude Include="Engine\Src\UI\UIElement.h" />
     <ClInclude Include="Engine\Src\UI\RectTransformComponent.h" />
     <ClInclude Include="Engine\Src\UI\UIImageComponent.h" />
+    <ClInclude Include="Engine\Src\UI\UIButtonComponent.h" />
     <ClInclude Include="Engine\Src\UI\UIPointer.h" />
+    <ClInclude Include="Engine\Src\UI\IUIInteractable.h" />
     <ClInclude Include="Engine\Src\UI\UITextComponent.h" />
     <ClInclude Include="Engine\Src\Math\Geometry\Distance.h" />
     <ClInclude Include="Engine\Src\Math\Geometry\Intersect.h" />
@@ -1804,6 +1808,7 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClInclude Include="Engine\Src\Scene\Feature\EventDispatchFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\TimeOfDayFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\TweenFeature.h" />
+    <ClInclude Include="Engine\Src\Scene\Feature\UIInteractionFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\SceneFeatureRegistry.h" />
     <ClInclude Include="Engine\Src\Text\TextGeometryBuilder.h" />
     <ClInclude Include="Engine\Src\Utility\Event\EventBus.h" />
