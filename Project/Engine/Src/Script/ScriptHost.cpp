@@ -265,6 +265,58 @@ namespace CoreEngine
     bool ScriptHost::CompileModule(const std::filesystem::path& root, CompiledModule& out)
     {
         Logger& logger = Logger::GetInstance();
+
+        // 1 回目は今の中身そのまま。壊れたファイルはメッセージの受け先が集める
+        std::set<std::string> broken;
+        std::unordered_map<std::string, std::string> sources;
+        engine_->SetMessageCallback(asFUNCTION(Script::OnCompilerMessage), &broken, asCALL_CDECL);
+        const bool built = TryBuild(root, out, {}, sources);
+        engine_->SetMessageCallback(asFUNCTION(Script::OnCompilerMessage), nullptr, asCALL_CDECL);
+
+        if (built) {
+            lastGoodSources_ = std::move(sources);
+            return true;
+        }
+
+        // 2 回目は、壊れたファイルだけ最後に通った版へ戻して組み直す。
+        // 書きかけの 1 つで、他のスクリプトまで前の状態へ戻るのを避けるため
+        std::set<std::string> fallback;
+        for (const std::string& section : broken) {
+            if (lastGoodSources_.find(section) != lastGoodSources_.end()) {
+                fallback.insert(section);
+            }
+        }
+        if (fallback.empty()) {
+            // 戻せる版が無い（起動して最初のコンパイルなど）
+            return false;
+        }
+
+        sources.clear();
+        if (!TryBuild(root, out, fallback, sources)) {
+            logger.Logf(LogLevel::Error, LogCategory::Script,
+                "壊れたファイルを前の版へ戻しても組めませんでした（{} 件）", fallback.size());
+            return false;
+        }
+
+        // 戻したファイルは古いままなので、控えを上書きしない
+        for (auto& [section, text] : sources) {
+            if (fallback.find(section) == fallback.end()) {
+                lastGoodSources_[section] = std::move(text);
+            }
+        }
+        out.staleSections.assign(fallback.begin(), fallback.end());
+        for (const std::string& section : out.staleSections) {
+            logger.Logf(LogLevel::Warn, LogCategory::Script,
+                "{} は直す前の版のまま動いています（このファイルのエラーを直すと入れ替わります）", section);
+        }
+        return true;
+    }
+
+    bool ScriptHost::TryBuild(const std::filesystem::path& root, CompiledModule& out,
+                              const std::set<std::string>& fallbackSections,
+                              std::unordered_map<std::string, std::string>& outSources)
+    {
+        Logger& logger = Logger::GetInstance();
         const auto started = std::chrono::steady_clock::now();
         const std::vector<std::filesystem::path> files = CollectScriptFiles(root);
         if (files.empty()) {
@@ -284,11 +336,16 @@ namespace CoreEngine
         std::string text;
         for (const std::filesystem::path& relative : files) {
             const std::string section = ToGenericUtf8(relative);
-            if (!ReadScriptText(root / relative, text)) {
+            if (fallbackSections.find(section) != fallbackSections.end()) {
+                // このファイルだけ、最後に通った版で組む
+                text = lastGoodSources_.at(section);
+            }
+            else if (!ReadScriptText(root / relative, text)) {
                 logger.Logf(LogLevel::Error, LogCategory::Script, "スクリプトを読めません: {}", section);
                 builder.GetModule()->Discard();
                 return false;
             }
+            outSources[section] = text;
             if (builder.AddSectionFromMemory(section.c_str(), text.c_str(), static_cast<unsigned int>(text.size())) < 0) {
                 logger.Logf(LogLevel::Error, LogCategory::Script, "スクリプトを追加できません: {}", section);
                 builder.GetModule()->Discard();

@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <functional>
 #include <memory>
+#include <set>
 #include <string>
 #include <string_view>
 #include <unordered_set>
@@ -177,15 +178,32 @@ namespace CoreEngine
         {
             asIScriptModule* module = nullptr;
             std::vector<std::unique_ptr<ScriptComponentType>> types;
+            /// 直る前の版のまま組んだファイル（エラーが残っているもの）
+            std::vector<std::string> staleSections;
         };
 
-        /// @brief フォルダの `.as` を、まだ使っていない名前のモジュールへコンパイルし、型を集める
+        /// @brief フォルダの `.as` をコンパイルする
+        /// @details 1 回目で失敗したら、★エラーの出たファイルだけ最後に通った版へ戻して
+        ///          もう一度組む★。全部が前の状態へ戻るのを避けるため。
         /// @return 失敗したら false（作りかけのモジュールは捨てる。今のモジュールは触らない）
         bool CompileModule(const std::filesystem::path& root, CompiledModule& out);
+
+        /// @brief 1 回分のコンパイル
+        /// @param fallbackSections この中のファイルは、今の中身ではなく最後に通った版で組む
+        /// @param outSources 組むのに使った中身（成功したときに控えるため）
+        /// @return 組めたら true
+        /// @note エラーの出たファイルを集めるのは呼び出し側（メッセージの受け先を差し替える）。
+        bool TryBuild(const std::filesystem::path& root, CompiledModule& out,
+                      const std::set<std::string>& fallbackSections,
+                      std::unordered_map<std::string, std::string>& outSources);
 
         asIScriptEngine* engine_ = nullptr;
         asIScriptModule* module_ = nullptr;
         std::uint32_t moduleGeneration_ = 0;
+
+        // 最後にコンパイルが通ったときの、ファイルごとの中身。
+        // 1 つが壊れても他を新しくできるよう、差し戻す先として持っておく
+        std::unordered_map<std::string, std::string> lastGoodSources_;
         int stringTypeId_ = 0;
         int vector2TypeId_ = 0;
         int vector3TypeId_ = 0;
