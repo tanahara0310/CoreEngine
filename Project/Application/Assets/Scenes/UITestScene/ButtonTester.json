@@ -1,0 +1,20 @@
+{
+    "active": true,
+    "name": "ButtonTester",
+    "components": [
+        {
+            "type": "UIButtonTester",
+            "enabled": true,
+            "parameters": {
+                "button": {
+                    "comp": "",
+                    "ref": "90493c7717bad62b"
+                },
+                "label": {
+                    "comp": "",
+                    "ref": "23dd1cb3a142b832"
+                }
+            }
+        }
+    ]
+}

@@ -14,6 +14,7 @@
 #include "LightingFeature.h"
 #include "PhysicsFeature.h"
 #include "TweenFeature.h"
+#include "UIInteractionFeature.h"
 
 namespace CoreEngine
 {
@@ -66,6 +67,10 @@ namespace CoreEngine
 
         Add<CollisionFeature>(features);
         Add<EnvironmentFeature>(features);
+
+        // UI の当たり判定。オブジェクトの更新が終わってから見るので、
+        // 位置を動かした結果で押せる
+        Add<UIInteractionFeature>(features);
 
         // 既定の床。空（Environment）と対になる「必ずある地面」で、
         // 生成はシーンのオブジェクトが出そろった後（PostSceneInitialize）に行われる

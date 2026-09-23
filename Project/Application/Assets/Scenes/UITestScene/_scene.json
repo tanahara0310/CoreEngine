@@ -4,7 +4,11 @@
         "Tilted",
         "PivotTopLeft",
         "Title",
-        "Hint"
+        "Hint",
+        "PlayButton",
+        "ButtonLabel",
+        "CountLabel",
+        "ButtonTester"
     ],
     "defaultGround": false
 }

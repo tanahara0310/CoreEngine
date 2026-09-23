@@ -1,6 +1,7 @@
 {
+    "id": "23dd1cb3a142b832",
     "active": true,
-    "name": "Hint",
+    "name": "CountLabel",
     "components": [
         {
             "type": "RectTransform",
@@ -9,30 +10,30 @@
                 "anchor": 4,
                 "anchoredPosition": [
                     0.0,
-                    -40.0
+                    30.0
                 ],
                 "pivot": [
                     0.5,
                     0.5
                 ],
                 "size": [
-                    600.0,
+                    500.0,
                     60.0
                 ],
                 "rotation": 0.0,
-                "sortOrder": 3
+                "sortOrder": 11
             }
         },
         {
             "type": "UIText",
             "enabled": true,
             "parameters": {
-                "text": "Canvas タブで掴んで動かせる",
-                "fontSize": 28.0,
+                "text": "押された回数: 0",
+                "fontSize": 32.0,
                 "color": [
-                    0.8,
                     0.85,
-                    0.95,
+                    0.9,
+                    1.0,
                     1.0
                 ],
                 "alignH": 1,

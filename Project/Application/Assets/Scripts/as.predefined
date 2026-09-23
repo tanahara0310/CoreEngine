@@ -311,6 +311,7 @@ class GameObject {
 	UIText@ SpawnUIText(const string&in fontName, const string&in text, const string&in name) const;
 	UIImage@ get_uiImage() property;
 	UIImage@ SpawnUIImage(const string&in texturePath, const string&in name) const;
+	UIButton@ get_uiButton() property;
 	Animator@ get_animator() property;
 	Camera@ get_camera() property;
 	CharacterController@ get_characterController() property;
@@ -456,6 +457,15 @@ class UIImage {
 	Vector2 get_size() const property;
 	void set_size(const Vector2&in) property;
 	Vector2 get_textureSize() const property;
+}
+class UIButton {
+	bool get_exists() const property;
+	bool get_wasClicked() const property;
+	bool get_hovered() const property;
+	bool get_pressed() const property;
+	bool get_interactable() const property;
+	void set_interactable(bool) property;
+	GameObject@ get_gameObject() const property;
 }
 class PlayParams {
 	PlayParams();
