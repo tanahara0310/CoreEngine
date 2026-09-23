@@ -1,5 +1,8 @@
 #pragma once
 
+#include "Math/Vector/Vector2.h"
+#include "UI/UINavigation.h"
+
 namespace CoreEngine
 {
     class RectTransformComponent;
@@ -43,5 +46,25 @@ namespace CoreEngine
         /// @param onSelf 自分の上で離したか
         ///        （false なら外へ逃げて離した・押している間にフォーカスが移った＝クリックにしない）
         virtual void OnPressEnd(bool onSelf) { (void)onSelf; }
+
+        /// @brief ポインタで押したまま動かしている（押し始めたフレームを含め、離すまで毎フレーム）
+        /// @param pointerOnCanvas キャンバス座標でのポインタの位置
+        /// @param canvasSize UI の基準解像度
+        /// @note 決定キーで押しているときは届かない（キーには位置が無いため）。
+        virtual void OnDrag(const Vector2& pointerOnCanvas, const Vector2& canvasSize)
+        {
+            (void)pointerOnCanvas;
+            (void)canvasSize;
+        }
+
+        /// @brief フォーカス中に向きの入力が来た
+        /// @param direction 入力された向き
+        /// @return true を返すと、その向きへのフォーカス送りは起きない
+        /// @note つまみを動かすスライダーのように、向きを自分で使う UI が true を返す。
+        virtual bool OnNavigate(UINavigationDirection direction)
+        {
+            (void)direction;
+            return false;
+        }
     };
 }

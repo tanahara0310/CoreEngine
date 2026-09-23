@@ -514,7 +514,9 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClCompile Include="Engine\Src\UI\UIButtonComponent.cpp" />
     <ClCompile Include="Engine\Src\UI\UIPointer.cpp" />
     <ClCompile Include="Engine\Src\UI\UINavigation.cpp" />
+    <ClCompile Include="Engine\Src\UI\UISliderComponent.cpp" />
     <ClCompile Include="Engine\Src\UI\UITextComponent.cpp" />
+    <ClCompile Include="Engine\Src\UI\UIToggleComponent.cpp" />
     <ClCompile Include="Engine\Src\Math\Geometry\Distance.cpp" />
     <ClCompile Include="Engine\Src\Math\Geometry\Intersect.cpp" />
     <ClCompile Include="Engine\Src\Math\Geometry\RayCast.cpp" />
@@ -1572,7 +1574,9 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClInclude Include="Engine\Src\UI\UIPointer.h" />
     <ClInclude Include="Engine\Src\UI\IUIInteractable.h" />
     <ClInclude Include="Engine\Src\UI\UINavigation.h" />
+    <ClInclude Include="Engine\Src\UI\UISliderComponent.h" />
     <ClInclude Include="Engine\Src\UI\UITextComponent.h" />
+    <ClInclude Include="Engine\Src\UI\UIToggleComponent.h" />
     <ClInclude Include="Engine\Src\Math\Geometry\Distance.h" />
     <ClInclude Include="Engine\Src\Math\Geometry\Intersect.h" />
     <ClInclude Include="Engine\Src\Math\Geometry\RayCast.h" />
