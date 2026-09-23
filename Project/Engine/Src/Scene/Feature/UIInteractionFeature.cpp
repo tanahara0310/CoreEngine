@@ -78,6 +78,7 @@ namespace CoreEngine
         if (!playing) {
             if (wasPlaying_) {
                 ClearAll();
+                RestoreGameContext(ctx);
                 wasPlaying_ = false;
             }
             return;
@@ -143,6 +144,24 @@ namespace CoreEngine
         // ---- キー・パッドでの送り ----
         if (query) {
             UpdateNavigation(ctx, canvasSize, *query);
+        }
+
+        // ---- 場面 ----
+        // 選んでいる相手がいる間はメニューの操作にする。
+        // これが無いと、決定ボタンでボタンを押した瞬間にキャラも跳ぶ
+        if (input) {
+            input->GetQuery().SetActiveContexts(
+                (focused_ ? InputContext::UI : InputContext::Game) | kEditorContext);
+        }
+    }
+
+    void UIInteractionFeature::RestoreGameContext(SceneContext& ctx)
+    {
+        if (!ctx.engine) {
+            return;
+        }
+        if (InputManager* const input = ctx.engine->GetService<InputManager>()) {
+            input->GetQuery().SetActiveContexts(InputContext::Game | kEditorContext);
         }
     }
 
@@ -375,7 +394,7 @@ namespace CoreEngine
     void UIInteractionFeature::Finalize(SceneContext& ctx)
     {
         // シーンと一緒に消えるので、通知を出さずにポインタだけ切る
-        (void)ctx;
+        RestoreGameContext(ctx);
         pressed_ = nullptr;
         hovered_ = nullptr;
         focused_ = nullptr;

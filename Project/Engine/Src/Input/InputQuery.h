@@ -17,6 +17,20 @@ namespace CoreEngine {
         InputConfig& GetConfig() { return config_; }
         const InputConfig& GetConfig() const { return config_; }
 
+        // ─── 場面 ─────────────────────────────────────────────────
+
+        /// @brief いま入力を受け付ける場面を決める
+        /// @details メニューを選んでいる間は `UI`、遊んでいる間は `Game`。
+        ///          重ならない場面のアクションは、押されていないものとして返る。
+        /// @note UI の場面へ移すのは `UIInteractionFeature`（選んでいる相手がいる間）。
+        void SetActiveContexts(InputContext contexts) { activeContexts_ = contexts; }
+
+        /// @brief いま入力を受け付けている場面
+        InputContext GetActiveContexts() const { return activeContexts_; }
+
+        /// @brief そのアクションがいまの場面で効くか
+        bool IsActionActive(InputAction action) const;
+
         // ─── アクションベース問い合わせ ───────────────────────────
 
         /// @brief アクションに対応するいずれかの入力が押されているか
@@ -85,6 +99,10 @@ namespace CoreEngine {
         float EvaluateAxis     (const InputBinding& b) const;
 
         InputConfig    config_;
+
+        // いま入力を受け付ける場面。エディタの操作はエディタのビルドでだけ効く
+        InputContext   activeContexts_ = InputContext::Game | kEditorContext;
+
         KeyboardInput* keyboard_ = nullptr;
         MouseInput*    mouse_    = nullptr;
         GamepadInput*  gamepad_  = nullptr;

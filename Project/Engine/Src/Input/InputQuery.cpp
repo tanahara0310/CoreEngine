@@ -20,7 +20,12 @@ void InputQuery::Initialize(KeyboardInput* keyboard, MouseInput* mouse, GamepadI
 
 // ─── アクションベース問い合わせ ───────────────────────────────
 
+bool InputQuery::IsActionActive(InputAction action) const {
+    return Overlaps(InputActionToContexts(action), activeContexts_);
+}
+
 bool InputQuery::IsActionPressed(InputAction action) const {
+    if (!IsActionActive(action)) return false;
     for (const auto& b : config_.GetBindings(action)) {
         if (EvaluatePressed(b)) return true;
     }
@@ -28,6 +33,7 @@ bool InputQuery::IsActionPressed(InputAction action) const {
 }
 
 bool InputQuery::IsActionTriggered(InputAction action) const {
+    if (!IsActionActive(action)) return false;
     for (const auto& b : config_.GetBindings(action)) {
         if (EvaluateTriggered(b)) return true;
     }
@@ -35,6 +41,8 @@ bool InputQuery::IsActionTriggered(InputAction action) const {
 }
 
 bool InputQuery::IsActionReleased(InputAction action) const {
+    // 場面が切り替わった瞬間に「離した」を取りこぼさないよう、ここだけは場面を見ない。
+    // 押している途中でメニューへ移っても、指を離せば押し下げの後始末が回る
     for (const auto& b : config_.GetBindings(action)) {
         if (EvaluateReleased(b)) return true;
     }
@@ -42,6 +50,7 @@ bool InputQuery::IsActionReleased(InputAction action) const {
 }
 
 float InputQuery::GetAxisValue(InputAction action) const {
+    if (!IsActionActive(action)) return 0.0f;
     float maxVal = 0.0f;
     for (const auto& b : config_.GetBindings(action)) {
         const float val = EvaluateAxis(b);

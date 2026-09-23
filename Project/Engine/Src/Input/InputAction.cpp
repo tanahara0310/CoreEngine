@@ -34,19 +34,24 @@ namespace CoreEngine
                 { "Attack", "攻撃", { "Mouse:Left", "Gamepad:X" } },
                 { "Interact", "インタラクト", { "Key:E", "Gamepad:B" } },
                 // UI のフォーカス送りは移動と分けておく。同じ割り当てを共有すると、
-                // キーコンフィグで移動キーを変えたときに UI まで付いてきてしまう
-                { "UINavigateUp", "UI上", { "Key:Up", "Axis:LeftStickY+", "Gamepad:DPadUp" } },
-                { "UINavigateDown", "UI下", { "Key:Down", "Axis:LeftStickY-", "Gamepad:DPadDown" } },
-                { "UINavigateLeft", "UI左", { "Key:Left", "Axis:LeftStickX-", "Gamepad:DPadLeft" } },
-                { "UINavigateRight", "UI右", { "Key:Right", "Axis:LeftStickX+", "Gamepad:DPadRight" } },
-                { "UIConfirm", "UI決定", { "Key:Enter", "Gamepad:A" } },
-                { "UICancel", "UIキャンセル", { "Key:Escape", "Gamepad:B" } },
-                // ポーズの開閉。パッドは START を使う。B は Interact と兼用なので、
-                // UICancel をそのまま開閉に使うとゲーム中に誤って開いてしまう
-                { "Pause", "ポーズ", { "Key:Escape", "Gamepad:Start" } },
-                { "EditorGizmoTranslate", "ギズモ：移動", { "Key:W" } },
-                { "EditorGizmoRotate", "ギズモ：回転", { "Key:E" } },
-                { "EditorGizmoScale", "ギズモ：拡縮", { "Key:R" } },
+                // キーコンフィグで移動キーを変えたときに UI まで付いてきてしまう。
+                // 場面が違うので、ゲームの操作と同じボタンを使っても二重には効かない
+                { "UINavigateUp", "UI上", { "Key:Up", "Axis:LeftStickY+", "Gamepad:DPadUp" },
+                  InputContext::UI },
+                { "UINavigateDown", "UI下", { "Key:Down", "Axis:LeftStickY-", "Gamepad:DPadDown" },
+                  InputContext::UI },
+                { "UINavigateLeft", "UI左", { "Key:Left", "Axis:LeftStickX-", "Gamepad:DPadLeft" },
+                  InputContext::UI },
+                { "UINavigateRight", "UI右", { "Key:Right", "Axis:LeftStickX+", "Gamepad:DPadRight" },
+                  InputContext::UI },
+                { "UIConfirm", "UI決定", { "Key:Enter", "Gamepad:A" }, InputContext::UI },
+                { "UICancel", "UIキャンセル", { "Key:Escape", "Gamepad:B" }, InputContext::UI },
+                // ポーズの開閉。開くのはゲーム中、閉じるのはメニュー中なので両方の場面に置く
+                { "Pause", "ポーズ", { "Key:Escape", "Gamepad:Start" },
+                  InputContext::Game | InputContext::UI },
+                { "EditorGizmoTranslate", "ギズモ：移動", { "Key:W" }, InputContext::Editor },
+                { "EditorGizmoRotate", "ギズモ：回転", { "Key:E" }, InputContext::Editor },
+                { "EditorGizmoScale", "ギズモ：拡縮", { "Key:R" }, InputContext::Editor },
             };
         }
 
@@ -114,6 +119,10 @@ namespace CoreEngine
                 if (def.displayName.empty()) {
                     def.displayName = def.id;
                 }
+                // 書かれていなければゲームの操作として扱う（昔のファイルをそのまま読める）
+                if (const auto scene = entry.find("context"); scene != entry.end() && scene->is_string()) {
+                    def.contexts = InputContextFromString(scene->get<std::string>());
+                }
                 if (const auto list = entry.find("defaults"); list != entry.end() && list->is_array()) {
                     for (const auto& binding : *list) {
                         if (binding.is_string()) {
@@ -150,6 +159,7 @@ namespace CoreEngine
                 nlohmann::json entry;
                 entry["id"] = def.id;
                 entry["display"] = def.displayName;
+                entry["context"] = InputContextToString(def.contexts);
                 entry["defaults"] = def.defaults;
                 actions.push_back(std::move(entry));
             }
@@ -210,6 +220,13 @@ namespace CoreEngine
         const std::vector<InputActionDef>& defs = Table();
         const auto index = static_cast<std::size_t>(action);
         return index < defs.size() ? std::string_view(defs[index].displayName) : std::string_view("不明");
+    }
+
+    InputContext InputActionToContexts(InputAction action)
+    {
+        const std::vector<InputActionDef>& defs = Table();
+        const auto index = static_cast<std::size_t>(action);
+        return index < defs.size() ? defs[index].contexts : InputContext::Game;
     }
 
     InputAction InputActionFromString(std::string_view str)

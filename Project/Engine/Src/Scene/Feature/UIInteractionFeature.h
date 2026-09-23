@@ -84,6 +84,9 @@ namespace CoreEngine
         /// @brief 覚えている相手をすべて手放し、通知を出す（再生をやめたとき）
         void ClearAll();
 
+        /// @brief 入力の場面をゲームへ戻す（再生をやめたとき・シーンを閉じるとき）
+        static void RestoreGameContext(SceneContext& ctx);
+
         // ポインタが指している相手（所有権は GameObjectManager）
         IUIInteractable* hovered_ = nullptr;
 

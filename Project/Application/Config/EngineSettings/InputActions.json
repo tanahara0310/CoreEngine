@@ -4,6 +4,7 @@
         {
             "id": "MoveForward",
             "display": "前進",
+            "context": "Game",
             "defaults": [
                 "Key:W",
                 "Key:Up",
@@ -14,6 +15,7 @@
         {
             "id": "MoveBack",
             "display": "後退",
+            "context": "Game",
             "defaults": [
                 "Key:S",
                 "Key:Down",
@@ -24,6 +26,7 @@
         {
             "id": "MoveLeft",
             "display": "左移動",
+            "context": "Game",
             "defaults": [
                 "Key:A",
                 "Key:Left",
@@ -34,6 +37,7 @@
         {
             "id": "MoveRight",
             "display": "右移動",
+            "context": "Game",
             "defaults": [
                 "Key:D",
                 "Key:Right",
@@ -44,6 +48,7 @@
         {
             "id": "Jump",
             "display": "ジャンプ",
+            "context": "Game",
             "defaults": [
                 "Key:Space",
                 "Gamepad:A"
@@ -52,6 +57,7 @@
         {
             "id": "Attack",
             "display": "攻撃",
+            "context": "Game",
             "defaults": [
                 "Mouse:Left",
                 "Gamepad:X"
@@ -60,6 +66,7 @@
         {
             "id": "Interact",
             "display": "インタラクト",
+            "context": "Game",
             "defaults": [
                 "Key:E",
                 "Gamepad:B"
@@ -68,6 +75,7 @@
         {
             "id": "UINavigateUp",
             "display": "UI上",
+            "context": "UI",
             "defaults": [
                 "Key:Up",
                 "Axis:LeftStickY+",
@@ -77,6 +85,7 @@
         {
             "id": "UINavigateDown",
             "display": "UI下",
+            "context": "UI",
             "defaults": [
                 "Key:Down",
                 "Axis:LeftStickY-",
@@ -86,6 +95,7 @@
         {
             "id": "UINavigateLeft",
             "display": "UI左",
+            "context": "UI",
             "defaults": [
                 "Key:Left",
                 "Axis:LeftStickX-",
@@ -95,6 +105,7 @@
         {
             "id": "UINavigateRight",
             "display": "UI右",
+            "context": "UI",
             "defaults": [
                 "Key:Right",
                 "Axis:LeftStickX+",
@@ -104,6 +115,7 @@
         {
             "id": "UIConfirm",
             "display": "UI決定",
+            "context": "UI",
             "defaults": [
                 "Key:Enter",
                 "Gamepad:A"
@@ -112,6 +124,7 @@
         {
             "id": "UICancel",
             "display": "UIキャンセル",
+            "context": "UI",
             "defaults": [
                 "Key:Escape",
                 "Gamepad:B"
@@ -120,6 +133,7 @@
         {
             "id": "Pause",
             "display": "ポーズ",
+            "context": "Game|UI",
             "defaults": [
                 "Key:Escape",
                 "Gamepad:Start"
@@ -128,6 +142,7 @@
         {
             "id": "EditorGizmoTranslate",
             "display": "ギズモ：移動",
+            "context": "Editor",
             "defaults": [
                 "Key:W"
             ]
@@ -135,6 +150,7 @@
         {
             "id": "EditorGizmoRotate",
             "display": "ギズモ：回転",
+            "context": "Editor",
             "defaults": [
                 "Key:E"
             ]
@@ -142,6 +158,7 @@
         {
             "id": "EditorGizmoScale",
             "display": "ギズモ：拡縮",
+            "context": "Editor",
             "defaults": [
                 "Key:R"
             ]
