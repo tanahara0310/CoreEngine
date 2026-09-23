@@ -162,13 +162,13 @@ class CharacterLab : ScriptComponent
         if (Input::IsKeyPressed(Key::Q)) { cameraYaw_ -= 2.0f * Time::DeltaTime(); }
         if (Input::IsKeyPressed(Key::E)) { cameraYaw_ += 2.0f * Time::DeltaTime(); }
 
-        // 入力はカメラの向きを前として扱う
-        float forwardInput = 0.0f;
-        float rightInput = 0.0f;
-        if (Input::IsKeyPressed(Key::W)) { forwardInput += 1.0f; }
-        if (Input::IsKeyPressed(Key::S)) { forwardInput -= 1.0f; }
-        if (Input::IsKeyPressed(Key::D)) { rightInput += 1.0f; }
-        if (Input::IsKeyPressed(Key::A)) { rightInput -= 1.0f; }
+        // 入力はカメラの向きを前として扱う。
+        // 割り当ては操作の名前で引く（キーコンフィグで変えられるようにするため）
+        const Vector2 stick = Input::GetAxis2D(
+            InputAction::MoveLeft, InputAction::MoveRight,
+            InputAction::MoveBack, InputAction::MoveForward);
+        const float rightInput = stick.x;
+        const float forwardInput = stick.y;
 
         const Vector3 forward = Vector3(sin(cameraYaw_), 0.0f, cos(cameraYaw_));
         const Vector3 right = Vector3(cos(cameraYaw_), 0.0f, -sin(cameraYaw_));
@@ -181,10 +181,10 @@ class CharacterLab : ScriptComponent
             character_.transform.rotation = Vector3(0.0f, atan2(move.x, move.z), 0.0f);
         }
 
-        const float speed = Input::IsKeyPressed(Key::Shift) ? runSpeed : walkSpeed;
+        const float speed = Input::IsActionPressed(InputAction::Sprint) ? runSpeed : walkSpeed;
         controller_.SimpleMove(move * speed);
 
-        if (Input::IsKeyTriggered(Key::Space)) {
+        if (Input::IsActionTriggered(InputAction::Jump)) {
             controller_.Jump(jumpSpeed);
         }
 

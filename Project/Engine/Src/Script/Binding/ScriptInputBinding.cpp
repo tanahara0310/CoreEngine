@@ -5,6 +5,7 @@
 #include "Input/InputManager.h"
 #include "Input/InputQuery.h"
 #include "Script/Binding/BindingRegistrar.h"
+#include "UI/UIPointer.h"
 
 #include <string>
 
@@ -47,6 +48,89 @@ namespace CoreEngine::Script
         {
             const InputQuery* const query = QueryFor(action);
             return query ? query->GetAxisValue(static_cast<InputAction>(action)) : 0.0f;
+        }
+
+        /// @brief 2 つの操作の差（-1〜1）。左右・前後をひとまとめに取る
+        float GetAxis(int negative, int positive)
+        {
+            const InputQuery* const query = QueryFor(negative);
+            if (!query || !QueryFor(positive)) {
+                return 0.0f;
+            }
+            return query->GetAxis(static_cast<InputAction>(negative),
+                                  static_cast<InputAction>(positive));
+        }
+
+        /// @brief 4 つの操作から 2 次元の入力を作る（斜めは丸める）
+        Vector2 GetAxis2D(int negativeX, int positiveX, int negativeY, int positiveY)
+        {
+            const InputQuery* const query = QueryFor(negativeX);
+            if (!query || !QueryFor(positiveX) || !QueryFor(negativeY) || !QueryFor(positiveY)) {
+                return Vector2{ 0.0f, 0.0f };
+            }
+            return query->GetAxis2D(static_cast<InputAction>(negativeX),
+                                    static_cast<InputAction>(positiveX),
+                                    static_cast<InputAction>(negativeY),
+                                    static_cast<InputAction>(positiveY));
+        }
+
+        /// @brief マウスのボタン番号を確かめる
+        const InputQuery* QueryForMouse(int button)
+        {
+            if (!sInput || button < 0 || button > static_cast<int>(MouseButton::XButton2)) {
+                return nullptr;
+            }
+            return &sInput->GetQuery();
+        }
+
+        bool IsMouseButtonPressed(int button)
+        {
+            const InputQuery* const query = QueryForMouse(button);
+            return query && query->IsMouseButtonPressed(static_cast<MouseButton>(button));
+        }
+
+        bool IsMouseButtonTriggered(int button)
+        {
+            const InputQuery* const query = QueryForMouse(button);
+            return query && query->IsMouseButtonTriggered(static_cast<MouseButton>(button));
+        }
+
+        bool IsMouseButtonReleased(int button)
+        {
+            const InputQuery* const query = QueryForMouse(button);
+            return query && query->IsMouseButtonReleased(static_cast<MouseButton>(button));
+        }
+
+        /// @brief 前のフレームからのマウスの移動量［px］
+        Vector2 GetMouseDelta()
+        {
+            if (!sInput) {
+                return Vector2{ 0.0f, 0.0f };
+            }
+            const InputQuery& query = sInput->GetQuery();
+            return Vector2{ static_cast<float>(query.GetMouseDragX()),
+                            static_cast<float>(query.GetMouseDragY()) };
+        }
+
+        /// @brief ホイールの回転（1 ノッチ = 1.0）
+        float GetWheelDelta()
+        {
+            constexpr float kPerNotch = 120.0f;
+            return sInput ? static_cast<float>(sInput->GetQuery().GetWheelDelta()) / kPerNotch : 0.0f;
+        }
+
+        /// @brief ポインタがゲーム画面の上にあるか
+        /// @details エディタでは、Game ビューの外にあるマウスで視点を回さないために使う。
+        bool IsPointerOverGame()
+        {
+            return UIPointer::Get().IsOver();
+        }
+
+        void SetVibration(float leftMotorRatio, float rightMotorRatio)
+        {
+            if (sInput) {
+                sInput->GetQuery().SetVibration(leftMotorRatio, rightMotorRatio);
+            }
         }
 
         bool IsGamepadConnected()
@@ -124,12 +208,29 @@ namespace CoreEngine::Script
             r.EnumValue("Key", key.name, key.code);
         }
 
+        r.Enum("MouseButton");
+        r.EnumValue("MouseButton", "Left", static_cast<int>(MouseButton::Left));
+        r.EnumValue("MouseButton", "Right", static_cast<int>(MouseButton::Right));
+        r.EnumValue("MouseButton", "Middle", static_cast<int>(MouseButton::Middle));
+        r.EnumValue("MouseButton", "XButton1", static_cast<int>(MouseButton::XButton1));
+        r.EnumValue("MouseButton", "XButton2", static_cast<int>(MouseButton::XButton2));
+
         r.Namespace("Input");
         r.Function("bool IsActionPressed(InputAction)", asFUNCTION(IsActionPressed));
         r.Function("bool IsActionTriggered(InputAction)", asFUNCTION(IsActionTriggered));
         r.Function("bool IsActionReleased(InputAction)", asFUNCTION(IsActionReleased));
         r.Function("float GetAxisValue(InputAction)", asFUNCTION(GetAxisValue));
+        r.Function("float GetAxis(InputAction negative, InputAction positive)", asFUNCTION(GetAxis));
+        r.Function("Vector2 GetAxis2D(InputAction negativeX, InputAction positiveX, "
+            "InputAction negativeY, InputAction positiveY)", asFUNCTION(GetAxis2D));
         r.Function("bool IsGamepadConnected()", asFUNCTION(IsGamepadConnected));
+        r.Function("void SetVibration(float left, float right)", asFUNCTION(SetVibration));
+        r.Function("bool IsMouseButtonPressed(MouseButton)", asFUNCTION(IsMouseButtonPressed));
+        r.Function("bool IsMouseButtonTriggered(MouseButton)", asFUNCTION(IsMouseButtonTriggered));
+        r.Function("bool IsMouseButtonReleased(MouseButton)", asFUNCTION(IsMouseButtonReleased));
+        r.Function("Vector2 GetMouseDelta()", asFUNCTION(GetMouseDelta));
+        r.Function("float GetWheelDelta()", asFUNCTION(GetWheelDelta));
+        r.Function("bool IsPointerOverGame()", asFUNCTION(IsPointerOverGame));
         r.Function("bool IsKeyPressed(Key)", asFUNCTION(IsKeyPressed));
         r.Function("bool IsKeyTriggered(Key)", asFUNCTION(IsKeyTriggered));
         r.Function("bool IsKeyReleased(Key)", asFUNCTION(IsKeyReleased));

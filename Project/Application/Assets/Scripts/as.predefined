@@ -50,18 +50,19 @@ enum InputAction {
 	MoveLeft = 2,
 	MoveRight = 3,
 	Jump = 4,
-	Attack = 5,
-	Interact = 6,
-	UINavigateUp = 7,
-	UINavigateDown = 8,
-	UINavigateLeft = 9,
-	UINavigateRight = 10,
-	UIConfirm = 11,
-	UICancel = 12,
-	Pause = 13,
-	EditorGizmoTranslate = 14,
-	EditorGizmoRotate = 15,
-	EditorGizmoScale = 16
+	Sprint = 5,
+	Attack = 6,
+	Interact = 7,
+	UINavigateUp = 8,
+	UINavigateDown = 9,
+	UINavigateLeft = 10,
+	UINavigateRight = 11,
+	UIConfirm = 12,
+	UICancel = 13,
+	Pause = 14,
+	EditorGizmoTranslate = 15,
+	EditorGizmoRotate = 16,
+	EditorGizmoScale = 17
 }
 enum Key {
 	Num0 = 11,
@@ -110,6 +111,13 @@ enum Key {
 	Right = 205,
 	Up = 200,
 	Down = 208
+}
+enum MouseButton {
+	Left = 0,
+	Right = 1,
+	Middle = 2,
+	XButton1 = 3,
+	XButton2 = 4
 }
 enum TweenLoop {
 	Restart = 0,
@@ -962,7 +970,16 @@ bool IsActionPressed(InputAction);
 bool IsActionTriggered(InputAction);
 bool IsActionReleased(InputAction);
 float GetAxisValue(InputAction);
+float GetAxis(InputAction negative, InputAction positive);
+Vector2 GetAxis2D(InputAction negativeX, InputAction positiveX, InputAction negativeY, InputAction positiveY);
 bool IsGamepadConnected();
+void SetVibration(float left, float right);
+bool IsMouseButtonPressed(MouseButton);
+bool IsMouseButtonTriggered(MouseButton);
+bool IsMouseButtonReleased(MouseButton);
+Vector2 GetMouseDelta();
+float GetWheelDelta();
+bool IsPointerOverGame();
 bool IsKeyPressed(Key);
 bool IsKeyTriggered(Key);
 bool IsKeyReleased(Key);

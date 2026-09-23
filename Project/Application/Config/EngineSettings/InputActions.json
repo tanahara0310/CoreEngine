@@ -55,6 +55,15 @@
             ]
         },
         {
+            "id": "Sprint",
+            "display": "ダッシュ",
+            "context": "Game",
+            "defaults": [
+                "Key:LShift",
+                "Gamepad:LeftThumb"
+            ]
+        },
+        {
             "id": "Attack",
             "display": "攻撃",
             "context": "Game",

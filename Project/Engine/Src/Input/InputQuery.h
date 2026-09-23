@@ -1,5 +1,6 @@
 #pragma once
 #include "InputConfig.h"
+#include "Math/Vector/Vector2.h"
 #include <optional>
 
 namespace CoreEngine {
@@ -52,6 +53,18 @@ namespace CoreEngine {
         /// @brief アクションのアナログ値を取得（0.0〜1.0）
         float GetAxisValue(InputAction action) const;
 
+        /// @brief 2 つのアクションの差（-1.0〜1.0）
+        /// @param negative 負の向き（左・下・後ろ）
+        /// @param positive 正の向き
+        /// @note 両方押していれば 0 になる。
+        float GetAxis(InputAction negative, InputAction positive) const;
+
+        /// @brief 4 つのアクションから 2 次元の入力を作る
+        /// @note 斜めが長くならないよう、長さが 1 を超えたら丸める
+        ///       （キーボードで斜めに動くと速くなるのを防ぐ）。
+        Vector2 GetAxis2D(InputAction negativeX, InputAction positiveX,
+                          InputAction negativeY, InputAction positiveY) const;
+
         // ─── キーボード直接アクセス ───────────────────────────────
 
         /// @brief キーが押され続けているか
@@ -96,6 +109,11 @@ namespace CoreEngine {
         /// @brief 右トリガーの踏み込み量（0.0〜1.0）
         float GetRightTrigger() const;
 
+        /// @brief 振動させる（0.0〜1.0）
+        /// @param leftMotorRatio 低い唸り
+        /// @param rightMotorRatio 高い震え
+        void SetVibration(float leftMotorRatio, float rightMotorRatio);
+
         // ─── キーコンフィグ用 ─────────────────────────────────────
 
         /// @brief 今フレームで押された物理入力をバインディングとして返す
@@ -105,6 +123,13 @@ namespace CoreEngine {
         std::optional<InputBinding> DetectAnyInput() const;
 
     private:
+        /// @brief 一緒に押すキーが揃っているか
+        /// @details 指定したものが押されていることだけを見る（指定していないキーは問わない）。
+        bool  ModifiersHeld(InputModifier modifiers) const;
+
+        /// @brief いま押している修飾キー
+        InputModifier CurrentModifiers() const;
+
         bool  EvaluatePressed  (const InputBinding& b) const;
         bool  EvaluateTriggered(const InputBinding& b) const;
         bool  EvaluateReleased (const InputBinding& b) const;

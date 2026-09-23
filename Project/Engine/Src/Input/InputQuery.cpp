@@ -7,6 +7,15 @@
 
 namespace CoreEngine {
 
+namespace {
+    /// @brief 組み合わせに使うキーか（これ自体も単体で割り当てられる）
+    bool IsModifierKey(uint8_t code) {
+        return code == DIK_LCONTROL || code == DIK_RCONTROL
+            || code == DIK_LSHIFT || code == DIK_RSHIFT
+            || code == DIK_LALT || code == DIK_RALT;
+    }
+}
+
 void InputQuery::Initialize(KeyboardInput* keyboard, MouseInput* mouse, GamepadInput* gamepad) {
     keyboard_ = keyboard;
     mouse_    = mouse;
@@ -57,6 +66,23 @@ float InputQuery::GetAxisValue(InputAction action) const {
         if (val > maxVal) maxVal = val;
     }
     return maxVal;
+}
+
+float InputQuery::GetAxis(InputAction negative, InputAction positive) const {
+    return GetAxisValue(positive) - GetAxisValue(negative);
+}
+
+Vector2 InputQuery::GetAxis2D(InputAction negativeX, InputAction positiveX,
+                              InputAction negativeY, InputAction positiveY) const {
+    Vector2 value{ GetAxis(negativeX, positiveX), GetAxis(negativeY, positiveY) };
+    // キーボードで斜めに入れると長さが √2 になる。スティックと速さを揃えるため丸める
+    const float lengthSquared = value.x * value.x + value.y * value.y;
+    if (lengthSquared > 1.0f) {
+        const float inverse = 1.0f / std::sqrt(lengthSquared);
+        value.x *= inverse;
+        value.y *= inverse;
+    }
+    return value;
 }
 
 // ─── キーボード直接アクセス ───────────────────────────────────
@@ -130,27 +156,35 @@ float InputQuery::GetRightTrigger() const {
     return (gamepad_ && gamepad_->IsConnected()) ? gamepad_->GetRightTrigger() : 0.0f;
 }
 
+void InputQuery::SetVibration(float leftMotorRatio, float rightMotorRatio) {
+    if (gamepad_ && gamepad_->IsConnected()) {
+        gamepad_->SetVibration(leftMotorRatio, rightMotorRatio);
+    }
+}
+
 // ─── キーコンフィグ用：任意の入力を検出 ──────────────────────
 
 std::optional<InputBinding> InputQuery::DetectAnyInput() const {
-    // キーボード検出（主要キーをスキャン）
+    // 一緒に押している修飾キー（Ctrl+S のような組み合わせを作るため）
+    const InputModifier modifiers = CurrentModifiers();
+
+    // キーボード検出（使える全キー。名前の無いキーは "Key:0x.." で保存される）
     if (keyboard_) {
-        static constexpr uint8_t kScanKeys[] = {
-            DIK_A, DIK_B, DIK_C, DIK_D, DIK_E, DIK_F, DIK_G, DIK_H,
-            DIK_I, DIK_J, DIK_K, DIK_L, DIK_M, DIK_N, DIK_O, DIK_P,
-            DIK_Q, DIK_R, DIK_S, DIK_T, DIK_U, DIK_V, DIK_W, DIK_X,
-            DIK_Y, DIK_Z,
-            DIK_1, DIK_2, DIK_3, DIK_4, DIK_5, DIK_6, DIK_7, DIK_8, DIK_9, DIK_0,
-            DIK_F1, DIK_F2, DIK_F3, DIK_F4, DIK_F5, DIK_F6,
-            DIK_F7, DIK_F8, DIK_F9, DIK_F10, DIK_F11, DIK_F12,
-            DIK_SPACE, DIK_RETURN, DIK_ESCAPE, DIK_BACK, DIK_TAB,
-            DIK_LSHIFT, DIK_RSHIFT, DIK_LCONTROL, DIK_RCONTROL, DIK_LALT, DIK_RALT,
-            DIK_UP, DIK_DOWN, DIK_LEFT, DIK_RIGHT,
-            DIK_DELETE, DIK_INSERT, DIK_HOME, DIK_END, DIK_PRIOR, DIK_NEXT,
-        };
-        for (uint8_t key : kScanKeys) {
-            if (keyboard_->IsKeyTriggered(key)) {
-                return InputBinding::FromKey(key);
+        // 修飾キー単体も割り当てられるよう、まず修飾キー以外を探す
+        for (int pass = 0; pass < 2; ++pass) {
+            const bool wantModifier = (pass == 1);
+            for (int code = 1; code < 256; ++code) {
+                const auto key = static_cast<uint8_t>(code);
+                if (IsModifierKey(key) != wantModifier) {
+                    continue;
+                }
+                if (keyboard_->IsKeyTriggered(key)) {
+                    InputBinding binding = InputBinding::FromKey(key);
+                    if (!wantModifier) {
+                        binding.modifiers = modifiers;
+                    }
+                    return binding;
+                }
             }
         }
     }
@@ -163,7 +197,9 @@ std::optional<InputBinding> InputQuery::DetectAnyInput() const {
         };
         for (MouseButton btn : kMouseButtons) {
             if (mouse_->IsButtonTriggered(btn)) {
-                return InputBinding::FromMouseButton(btn);
+                InputBinding binding = InputBinding::FromMouseButton(btn);
+                binding.modifiers = modifiers;
+                return binding;
             }
         }
     }
@@ -209,7 +245,47 @@ std::optional<InputBinding> InputQuery::DetectAnyInput() const {
 
 // ─── バインディング評価（内部） ───────────────────────────────
 
+bool InputQuery::ModifiersHeld(InputModifier modifiers) const {
+    if (modifiers == InputModifier::None) {
+        return true;
+    }
+    if (!keyboard_ || keyboardSuppressed_) {
+        return false;
+    }
+    if (HasModifier(modifiers, InputModifier::Ctrl)
+        && !keyboard_->IsKeyPressed(DIK_LCONTROL) && !keyboard_->IsKeyPressed(DIK_RCONTROL)) {
+        return false;
+    }
+    if (HasModifier(modifiers, InputModifier::Shift)
+        && !keyboard_->IsKeyPressed(DIK_LSHIFT) && !keyboard_->IsKeyPressed(DIK_RSHIFT)) {
+        return false;
+    }
+    if (HasModifier(modifiers, InputModifier::Alt)
+        && !keyboard_->IsKeyPressed(DIK_LALT) && !keyboard_->IsKeyPressed(DIK_RALT)) {
+        return false;
+    }
+    return true;
+}
+
+InputModifier InputQuery::CurrentModifiers() const {
+    InputModifier modifiers = InputModifier::None;
+    if (!keyboard_) {
+        return modifiers;
+    }
+    if (keyboard_->IsKeyPressed(DIK_LCONTROL) || keyboard_->IsKeyPressed(DIK_RCONTROL)) {
+        modifiers |= InputModifier::Ctrl;
+    }
+    if (keyboard_->IsKeyPressed(DIK_LSHIFT) || keyboard_->IsKeyPressed(DIK_RSHIFT)) {
+        modifiers |= InputModifier::Shift;
+    }
+    if (keyboard_->IsKeyPressed(DIK_LALT) || keyboard_->IsKeyPressed(DIK_RALT)) {
+        modifiers |= InputModifier::Alt;
+    }
+    return modifiers;
+}
+
 bool InputQuery::EvaluatePressed(const InputBinding& b) const {
+    if (!ModifiersHeld(b.modifiers)) return false;
     switch (b.type) {
     case BindingType::Keyboard:
         return !keyboardSuppressed_ && keyboard_ && keyboard_->IsKeyPressed(static_cast<uint8_t>(b.code));
@@ -225,6 +301,7 @@ bool InputQuery::EvaluatePressed(const InputBinding& b) const {
 }
 
 bool InputQuery::EvaluateTriggered(const InputBinding& b) const {
+    if (!ModifiersHeld(b.modifiers)) return false;
     switch (b.type) {
     case BindingType::Keyboard:
         return !keyboardSuppressed_ && keyboard_ && keyboard_->IsKeyTriggered(static_cast<uint8_t>(b.code));
@@ -242,6 +319,7 @@ bool InputQuery::EvaluateTriggered(const InputBinding& b) const {
 }
 
 bool InputQuery::EvaluateReleased(const InputBinding& b) const {
+    // 離した瞬間は修飾キーを見ない。Ctrl を先に離しても押し下げの後始末が回るように
     switch (b.type) {
     case BindingType::Keyboard:
         return keyboard_ && keyboard_->IsKeyReleased(static_cast<uint8_t>(b.code));
@@ -251,12 +329,15 @@ bool InputQuery::EvaluateReleased(const InputBinding& b) const {
         return gamepad_ && gamepad_->IsConnected() &&
                gamepad_->IsButtonReleased(static_cast<GamepadButton>(b.code));
     case BindingType::GamepadAxis:
-        return false;
+        return gamepad_ && gamepad_->IsConnected() &&
+               gamepad_->IsAxisReleased(
+                   static_cast<GamepadAxis>(b.code), b.axisSign >= 0.0f);
     }
     return false;
 }
 
 float InputQuery::EvaluateAxis(const InputBinding& b) const {
+    if (!ModifiersHeld(b.modifiers)) return 0.0f;
     switch (b.type) {
     case BindingType::Keyboard:
         return (!keyboardSuppressed_ && keyboard_ && keyboard_->IsKeyPressed(static_cast<uint8_t>(b.code)))

@@ -192,6 +192,8 @@ namespace CoreEngine
         // デバッグ / リリースカメラの切り替え
         if (auto* inputManager = engine_->GetService<InputManager>()) {
             auto& input = inputManager->GetQuery();
+            // ギズモの切り替えは割り当てを引くので、問い合わせ先を渡しておく
+            objectSelector_.SetInputQuery(&input);
             // 「どちらの視点で覗くか」はフラグ 1 つ。以前は アクティブカメラ名 と
             // Gameビュー上書き名 の 2 状態を両方更新する必要があり、片方だけ変える UI が
             // あったせいで描画とギズモが別カメラを見る状態が起きていた。
