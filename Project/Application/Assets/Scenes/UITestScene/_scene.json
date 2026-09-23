@@ -1,0 +1,10 @@
+{
+    "objects": [
+        "Panel",
+        "Tilted",
+        "PivotTopLeft",
+        "Title",
+        "Hint"
+    ],
+    "defaultGround": false
+}

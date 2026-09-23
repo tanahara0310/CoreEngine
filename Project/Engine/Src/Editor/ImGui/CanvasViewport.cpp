@@ -31,92 +31,70 @@ namespace CoreEngine
         // tile_black.png のパス（Engine 側固定）
         constexpr const char* kBackgroundTexturePath = "tile_black.png";
 
-        struct UIRect
+        /// @brief キャンバス座標を、いま描いている板の上の座標へ写す
+        ImVec2 ToScreen(const Vector2& canvasPoint, const ImVec2& canvasMin, const Vector2& scale)
         {
-            ImVec2 min;
-            ImVec2 max;
-        };
+            return ImVec2(canvasMin.x + canvasPoint.x * scale.x,
+                          canvasMin.y + canvasPoint.y * scale.y);
+        }
 
-        /// @brief 回転を考慮した4頂点クワッド（スクリーン座標）
-        struct UIQuad
+        /// @brief いま描いている板の上の座標を、キャンバス座標へ戻す
+        Vector2 ToCanvas(const ImVec2& screenPoint, const ImVec2& canvasMin, const Vector2& scale)
+        {
+            return { (screenPoint.x - canvasMin.x) / scale.x,
+                     (screenPoint.y - canvasMin.y) / scale.y };
+        }
+
+        /// @brief 画面上の 4 隅（回転込み）
+        struct ScreenQuad
         {
             ImVec2 tl, tr, bl, br;
             ImVec2 center;
         };
 
-        /// @brief 基準解像度上の UI 矩形（回転なし AABB）を計算
-        UIRect ComputeImageRect(const UILayout& layout,
-                                const ImVec2& canvasMin,
-                                const Vector2& referenceSize,
-                                const Vector2& scale)
+        /// @brief 画面上の矩形（回転を見ない）
+        struct ScreenRect
         {
-            Vector2 anchorPoint = GetAnchorPoint(layout.anchor, referenceSize);
-            float cx = anchorPoint.x + layout.anchoredPos.x;
-            float cy = anchorPoint.y + layout.anchoredPos.y;
+            ImVec2 min;
+            ImVec2 max;
+        };
 
-            float left   = cx - layout.pivot.x         * layout.size.x;
-            float top    = cy - layout.pivot.y         * layout.size.y;
-            float right  = cx + (1.0f - layout.pivot.x) * layout.size.x;
-            float bottom = cy + (1.0f - layout.pivot.y) * layout.size.y;
-
-            UIRect r;
-            r.min = ImVec2(canvasMin.x + left  * scale.x, canvasMin.y + top    * scale.y);
-            r.max = ImVec2(canvasMin.x + right * scale.x, canvasMin.y + bottom * scale.y);
-            return r;
+        /// @brief 形そのものは `UILayout` が持つ。ここは板の上へ写すだけ
+        /// @note 「基準解像度で回してから画面へ引き伸ばす」順序は実際の描画と同じ。
+        ///       逆にすると縦横比の違う画面で回転がずれる
+        ScreenQuad ComputeImageQuad(const UILayout& layout,
+                                    const ImVec2& canvasMin,
+                                    const Vector2& referenceSize,
+                                    const Vector2& scale)
+        {
+            const UIQuad quad = layout.CalculateQuad(referenceSize);
+            ScreenQuad out;
+            out.tl = ToScreen(quad.topLeft, canvasMin, scale);
+            out.tr = ToScreen(quad.topRight, canvasMin, scale);
+            out.br = ToScreen(quad.bottomRight, canvasMin, scale);
+            out.bl = ToScreen(quad.bottomLeft, canvasMin, scale);
+            out.center = ToScreen(layout.CalculateScreenPosition(referenceSize), canvasMin, scale);
+            return out;
         }
 
-        /// @brief 回転を考慮した4頂点クワッドを計算（スクリーン座標）
-        UIQuad ComputeImageQuad(const UILayout& layout,
-                                const ImVec2& canvasMin,
-                                const Vector2& referenceSize,
-                                const Vector2& scale)
+        ScreenRect ComputeImageRect(const UILayout& layout,
+                                    const ImVec2& canvasMin,
+                                    const Vector2& referenceSize,
+                                    const Vector2& scale)
         {
-            Vector2 anchorPoint = GetAnchorPoint(layout.anchor, referenceSize);
-            float cx = anchorPoint.x + layout.anchoredPos.x;
-            float cy = anchorPoint.y + layout.anchoredPos.y;
-
-            float lx = -layout.pivot.x         * layout.size.x;
-            float rx = (1.0f - layout.pivot.x)  * layout.size.x;
-            float ty = -layout.pivot.y         * layout.size.y;
-            float by = (1.0f - layout.pivot.y)  * layout.size.y;
-
-            float cosR = std::cos(layout.rotation);
-            float sinR = std::sin(layout.rotation);
-
-            auto rotPt = [&](float ox, float oy) -> ImVec2 {
-                float rx2 = ox * cosR - oy * sinR;
-                float ry2 = ox * sinR + oy * cosR;
-                // 「基準解像度で回してから画面へ引き伸ばす」順序は実際の描画と同じ。
-                // 逆にすると縦横比の違う画面で回転がずれる
-                return ImVec2(
-                    canvasMin.x + (cx + rx2) * scale.x,
-                    canvasMin.y + (cy + ry2) * scale.y);
-            };
-
-            UIQuad q;
-            q.tl     = rotPt(lx, ty);
-            q.tr     = rotPt(rx, ty);
-            q.bl     = rotPt(lx, by);
-            q.br     = rotPt(rx, by);
-            q.center = ImVec2(canvasMin.x + cx * scale.x, canvasMin.y + cy * scale.y);
-            return q;
+            const UIRect rect = layout.CalculateRect(referenceSize);
+            ScreenRect out;
+            out.min = ToScreen(rect.min, canvasMin, scale);
+            out.max = ToScreen(rect.max, canvasMin, scale);
+            return out;
         }
 
-        /// @brief 点が回転矩形（クワッド）内にあるか（各辺の法線 cross 判定）
-        bool PointInQuad(const ImVec2& p, const UIQuad& q)
+        /// @brief 点が要素の上にあるか（当たり判定は `UILayout` が持つ）
+        bool PointInElement(const ImVec2& point, const UILayout& layout,
+                            const ImVec2& canvasMin, const Vector2& referenceSize,
+                            const Vector2& scale)
         {
-            auto cross2D = [](ImVec2 e, ImVec2 v) {
-                return e.x * v.y - e.y * v.x;
-            };
-            ImVec2 verts[4] = { q.tl, q.tr, q.br, q.bl };
-            for (int i = 0; i < 4; ++i) {
-                ImVec2 a = verts[i];
-                ImVec2 b = verts[(i + 1) % 4];
-                ImVec2 edge = { b.x - a.x, b.y - a.y };
-                ImVec2 toP  = { p.x  - a.x, p.y  - a.y };
-                if (cross2D(edge, toP) < 0.0f) { return false; }
-            }
-            return true;
+            return layout.ContainsPoint(ToCanvas(point, canvasMin, scale), referenceSize);
         }
 
         /// @brief 控えた配置を UI トランスフォームへ書き戻す
@@ -306,7 +284,7 @@ namespace CoreEngine
             if (useLivePreview) { break; }
 
             const UILayout& layout = element.Layout();
-            UIQuad quad = ComputeImageQuad(layout, canvasMin, referenceSize, scale);
+            ScreenQuad quad = ComputeImageQuad(layout, canvasMin, referenceSize, scale);
 
             if (element.image && element.image->IsEnabled()) {
                 D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = element.image->GetTextureGpuHandle();
@@ -385,10 +363,9 @@ namespace CoreEngine
                 if (!image || !image->IsEnabled() || !image->IsInteractable()) { continue; }
 
                 const UILayout& layout = elements[i].Layout();
-                UIQuad quad = ComputeImageQuad(layout, canvasMin, referenceSize, scale);
-                if (!PointInQuad(mousePos, quad)) { continue; }
+                if (!PointInElement(mousePos, layout, canvasMin, referenceSize, scale)) { continue; }
 
-                UIRect rect = ComputeImageRect(layout, canvasMin, referenceSize, scale);
+                ScreenRect rect = ComputeImageRect(layout, canvasMin, referenceSize, scale);
                 drawList->AddRectFilled(rect.min, rect.max, IM_COL32(255, 255, 255, 30));
                 image->InvokeOnHover();
 
@@ -542,8 +519,10 @@ namespace CoreEngine
         {
             const CanvasElement* picked = nullptr;
             for (int i = static_cast<int>(elements.size()) - 1; i >= 0; --i) {
-                UIQuad q = ComputeImageQuad(elements[i].Layout(), canvasMin, referenceSize, scale);
-                if (PointInQuad(mousePos, q)) { picked = &elements[i]; break; }
+                if (PointInElement(mousePos, elements[i].Layout(), canvasMin, referenceSize, scale)) {
+                    picked = &elements[i];
+                    break;
+                }
             }
             SetSelection(picked ? picked->object : nullptr);
         }
@@ -552,7 +531,7 @@ namespace CoreEngine
         // 掴む場所はギズモなので、枠は「どこが選ばれているか」を示すだけ
         selected = FindSelected(elements);
         if (selected) {
-            UIQuad quad = ComputeImageQuad(selected->Layout(), canvasMin, referenceSize, scale);
+            ScreenQuad quad = ComputeImageQuad(selected->Layout(), canvasMin, referenceSize, scale);
             drawList->AddQuad(quad.tl, quad.tr, quad.br, quad.bl,
                 IM_COL32(0, 200, 255, 220), 2.0f);
         }
