@@ -149,6 +149,14 @@
             ]
         },
         {
+            "id": "EditorFocusSelection",
+            "display": "選択へ寄る",
+            "context": "Editor",
+            "defaults": [
+                "Key:F"
+            ]
+        },
+        {
             "id": "EditorGizmoTranslate",
             "display": "ギズモ：移動",
             "context": "Editor",

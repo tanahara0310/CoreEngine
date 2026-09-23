@@ -60,9 +60,10 @@ enum InputAction {
 	UIConfirm = 12,
 	UICancel = 13,
 	Pause = 14,
-	EditorGizmoTranslate = 15,
-	EditorGizmoRotate = 16,
-	EditorGizmoScale = 17
+	EditorFocusSelection = 15,
+	EditorGizmoTranslate = 16,
+	EditorGizmoRotate = 17,
+	EditorGizmoScale = 18
 }
 enum Key {
 	Num0 = 11,

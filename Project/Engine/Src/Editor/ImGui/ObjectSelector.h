@@ -20,6 +20,17 @@ namespace CoreEngine
         /// @brief 初期化
         void Initialize();
 
+        /// @brief ビューポートのクリックで選び直したか
+        /// @details ヒエラルキーが「その行まで送る」かを決めるのに使う。
+        ///          一覧の行をクリックしたときは送らない（すでに見えている）。
+        /// @return 呼んだら下ろす（1 回だけ true）
+        bool ConsumeViewportSelection()
+        {
+            const bool picked = viewportSelection_;
+            viewportSelection_ = false;
+            return picked;
+        }
+
         /// @brief ギズモの切り替えを引く先を渡す
         /// @details 割り当てはキーコンフィグで変えられる（`EditorGizmo*` のアクション）。
         ///          渡されるまでは切り替わらない。
@@ -152,6 +163,7 @@ namespace CoreEngine
 
     private:
         const InputQuery* input_ = nullptr;            // ギズモの切り替えを引く先
+        bool viewportSelection_ = false;               // ビューポートのクリックで選び直した
         GameObject* selectedObject_ = nullptr;         // 選択中の3Dオブジェクト
         GameObject* selectedSprite_ = nullptr;         // 選択中のスプライト
         Gizmo::Mode gizmoMode_ = Gizmo::Mode::Translate;  // ギズモモード
