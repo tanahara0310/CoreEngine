@@ -27,11 +27,14 @@ class CharacterLab : ScriptComponent
     private GameObject@ character_;
     private GameObject@ model_;
     private CharacterController@ controller_;
-    private Animator@ animator_;
     private array<GameObject@> mapParts_;
     private Text3DRenderer@ statusText_;
 
-    private float cameraYaw_ = 0.0f;
+    private GameObject@ cameraObject_;
+    private Vector3 cameraHomePosition_;
+    private Vector3 cameraHomeRotation_;
+    // 階段・坂・段差はエリアの -Z 側にあるので、最初からそちらを正面にする
+    private float cameraYaw_ = 3.14159265f;
     private int serial_ = 0;
 
     void Start()
@@ -39,6 +42,14 @@ class CharacterLab : ScriptComponent
         GameObject@ status = owner.FindObject("StatusBoard2");
         if (status !is null) {
             status.GetComponent(@statusText_);
+        }
+
+        @cameraObject_ = owner.FindObject("MainCamera");
+        if (cameraObject_ !is null) {
+            cameraHomePosition_ = cameraObject_.transform.position;
+            cameraHomeRotation_ = cameraObject_.transform.rotation;
+        } else {
+            Warn("CharacterLab: MainCamera が見つからないのでカメラが追いません");
         }
 
         BuildMap();
@@ -124,6 +135,7 @@ class CharacterLab : ScriptComponent
             return;
         }
         character_.transform.position = areaCenter + Vector3(0.0f, 1.0f, 0.0f);
+        character_.transform.rotation = Vector3(0.0f, cameraYaw_, 0.0f);   // カメラへ背を向ける
         character_.GetComponent(@controller_);
 
         // 見た目は子にする。当たりは親のカプセルだけが持つ
@@ -131,7 +143,6 @@ class CharacterLab : ScriptComponent
         if (model_ !is null) {
             model_.transform.SetParent(character_.transform);
             model_.transform.position = Vector3(0.0f, -0.9f, 0.0f);
-            model_.GetComponent(@animator_);
         }
     }
 
@@ -141,6 +152,7 @@ class CharacterLab : ScriptComponent
     {
         if (Input::IsKeyTriggered(Key::V)) {
             g_characterMode = !g_characterMode;
+            if (!g_characterMode) { RestoreCamera(); }
         }
         if (!g_characterMode || controller_ is null || !controller_.exists) {
             return;
@@ -184,16 +196,13 @@ class CharacterLab : ScriptComponent
             ResetCharacter();
         }
 
-        // 止まっている間は歩きのモーションを止める
-        if (animator_ !is null && animator_.exists) {
-            animator_.enabled = (length > 0.0001f);
-        }
     }
 
     private void ResetCharacter()
     {
         if (character_ is null) { return; }
         character_.transform.position = areaCenter + Vector3(0.0f, 1.0f, 0.0f);
+        character_.transform.rotation = Vector3(0.0f, cameraYaw_, 0.0f);
         if (controller_ !is null && controller_.exists) {
             controller_.velocity = Vector3(0.0f, 0.0f, 0.0f);
         }
@@ -201,20 +210,27 @@ class CharacterLab : ScriptComponent
 
     // ===== カメラ =====
 
+    // カメラの構図はオブジェクトの Transform が持つ。
+    // GameCamera へ直に書いても、毎フレーム Transform の値で上書きされる。
     private void UpdateCamera()
     {
-        if (!g_characterMode || character_ is null) { return; }
-
-        GameCamera@ camera = Scene::GetGameCamera();
-        if (camera is null || !camera.exists) { return; }
+        if (!g_characterMode || character_ is null || cameraObject_ is null) { return; }
 
         const Vector3 target = character_.transform.position;
-        const float distance = 8.0f;
-        const float height = 3.2f;
+        const float distance = 7.0f;
+        const float height = 2.6f;
 
-        camera.position = target
+        cameraObject_.transform.position = target
             + Vector3(-sin(cameraYaw_) * distance, height, -cos(cameraYaw_) * distance);
-        camera.rotation = Vector3(0.22f, cameraYaw_, 0.0f);
+        cameraObject_.transform.rotation = Vector3(0.25f, cameraYaw_, 0.0f);
+    }
+
+    // 物理デモへ戻すとき、起動時の構図に戻す
+    private void RestoreCamera()
+    {
+        if (cameraObject_ is null) { return; }
+        cameraObject_.transform.position = cameraHomePosition_;
+        cameraObject_.transform.rotation = cameraHomeRotation_;
     }
 
     private void UpdateStatus()
