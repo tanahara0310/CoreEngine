@@ -27,6 +27,7 @@ bool WinApp::QuitsOnEscape()
 WinApp* WinApp::instance_ = nullptr;
 int32_t WinApp::currentClientWidthStatic_ = WinApp::kClientWidth;
 int32_t WinApp::currentClientHeightStatic_ = WinApp::kClientHeight;
+bool WinApp::appActive_ = true;
 
 void WinApp::Initialize(int32_t width, int32_t height, const wchar_t* title)
 {
@@ -179,6 +180,11 @@ LRESULT CALLBACK WinApp::WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM l
 
     // メッセージに応じて固有の処理を行う
     switch (msg) {
+        // アプリが前面に出た／引っ込んだ（このアプリの全ウィンドウへ届く）
+    case WM_ACTIVATEAPP:
+        appActive_ = (wparam != FALSE);
+        break;
+
         // Alt+Enter で全画面 / 通常ウィンドウを切り替える
     case WM_SYSKEYDOWN:
         if (wparam == VK_RETURN && instance_ != nullptr) {

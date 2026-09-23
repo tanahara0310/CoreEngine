@@ -62,15 +62,20 @@ float InputQuery::GetAxisValue(InputAction action) const {
 // ─── キーボード直接アクセス ───────────────────────────────────
 
 bool InputQuery::IsKeyPressed(uint8_t dikCode) const {
-    return keyboard_ && keyboard_->IsKeyPressed(dikCode);
+    return !keyboardSuppressed_ && keyboard_ && keyboard_->IsKeyPressed(dikCode);
 }
 
 bool InputQuery::IsKeyTriggered(uint8_t dikCode) const {
-    return keyboard_ && keyboard_->IsKeyTriggered(dikCode);
+    return !keyboardSuppressed_ && keyboard_ && keyboard_->IsKeyTriggered(dikCode);
 }
 
 bool InputQuery::IsKeyReleased(uint8_t dikCode) const {
+    // 離した瞬間だけは外さない。読まない設定に変わった途端、押し下げが宙に浮くのを防ぐ
     return keyboard_ && keyboard_->IsKeyReleased(dikCode);
+}
+
+bool InputQuery::IsKeyTriggeredRaw(uint8_t dikCode) const {
+    return keyboard_ && keyboard_->IsKeyTriggered(dikCode);
 }
 
 // ─── マウス直接アクセス ───────────────────────────────────────
@@ -207,7 +212,7 @@ std::optional<InputBinding> InputQuery::DetectAnyInput() const {
 bool InputQuery::EvaluatePressed(const InputBinding& b) const {
     switch (b.type) {
     case BindingType::Keyboard:
-        return keyboard_ && keyboard_->IsKeyPressed(static_cast<uint8_t>(b.code));
+        return !keyboardSuppressed_ && keyboard_ && keyboard_->IsKeyPressed(static_cast<uint8_t>(b.code));
     case BindingType::MouseButton:
         return mouse_ && mouse_->IsButtonPressed(static_cast<MouseButton>(b.code));
     case BindingType::GamepadButton:
@@ -222,7 +227,7 @@ bool InputQuery::EvaluatePressed(const InputBinding& b) const {
 bool InputQuery::EvaluateTriggered(const InputBinding& b) const {
     switch (b.type) {
     case BindingType::Keyboard:
-        return keyboard_ && keyboard_->IsKeyTriggered(static_cast<uint8_t>(b.code));
+        return !keyboardSuppressed_ && keyboard_ && keyboard_->IsKeyTriggered(static_cast<uint8_t>(b.code));
     case BindingType::MouseButton:
         return mouse_ && mouse_->IsButtonTriggered(static_cast<MouseButton>(b.code));
     case BindingType::GamepadButton:
@@ -254,7 +259,8 @@ bool InputQuery::EvaluateReleased(const InputBinding& b) const {
 float InputQuery::EvaluateAxis(const InputBinding& b) const {
     switch (b.type) {
     case BindingType::Keyboard:
-        return (keyboard_ && keyboard_->IsKeyPressed(static_cast<uint8_t>(b.code))) ? 1.0f : 0.0f;
+        return (!keyboardSuppressed_ && keyboard_ && keyboard_->IsKeyPressed(static_cast<uint8_t>(b.code)))
+            ? 1.0f : 0.0f;
     case BindingType::MouseButton:
         return (mouse_ && mouse_->IsButtonPressed(static_cast<MouseButton>(b.code))) ? 1.0f : 0.0f;
     case BindingType::GamepadButton:

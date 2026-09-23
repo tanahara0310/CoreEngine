@@ -587,6 +587,15 @@ namespace CoreEngine
         // フレーム開始時にレンダリング統計をリセット
         EngineStats::GetInstance().BeginFrame();
 
+        // 入力欄へ文字を打っている間は、その文字をゲームへ流さない
+        //（インスペクタで名前を打つとキャラが動いてしまう）。
+        // WantCaptureKeyboard はウィンドウを選んでいるだけでも立つので、
+        // 文字を受け取っているかだけを見る（エディタのカメラ操作を巻き添えにしない）
+        if (auto* inputManager = engine_->GetService<InputManager>()) {
+            const bool typing = ImGui::GetCurrentContext() && ImGui::GetIO().WantTextInput;
+            inputManager->GetQuery().SetKeyboardSuppressed(typing);
+        }
+
         // RenderGraph エディタが閉じられていればスナップショット複製を止める
         //（Draw() はウィンドウが開いている間しか呼ばれないため、止める判断はここでしかできない）
         renderGraphEditorPanel_.SyncCaptureState();

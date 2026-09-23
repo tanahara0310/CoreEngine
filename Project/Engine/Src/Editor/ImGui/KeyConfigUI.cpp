@@ -75,7 +75,8 @@ namespace CoreEngine {
             // Escape は画面表記どおりキャンセルを優先する。
             // DetectAnyInput() は Escape も拾うため、先に判定しないと
             // キャンセルのつもりが Escape の割り当てになってしまう
-            if (query.IsKeyTriggered(DIK_ESCAPE)) {
+            // この画面は ImGui の上にあるので、普通に読むと必ず外される
+            if (query.IsKeyTriggeredRaw(DIK_ESCAPE)) {
                 StopListening();
             } else if (auto detected = query.DetectAnyInput()) {
                 std::vector<InputBinding> newBindings = config.GetBindings(listeningAction_);

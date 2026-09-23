@@ -343,6 +343,7 @@ namespace CoreEngine
         for (auto& sys : subsystems_) {
             sys->BeginFrame();
         }
+
     }
 
     void EngineSystem::EndFrame()
