@@ -793,6 +793,9 @@
     <ClCompile Include="Engine\Src\Input\InputAction.cpp">
       <Filter>Engine\Src\Input</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Input\InputContext.cpp">
+      <Filter>Engine\Src\Input</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Input\InputConfig.cpp">
       <Filter>Engine\Src\Input</Filter>
     </ClCompile>
@@ -2692,6 +2695,9 @@
       <Filter>Engine\Src\Input</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Input\InputAction.h">
+      <Filter>Engine\Src\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Input\InputContext.h">
       <Filter>Engine\Src\Input</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Input\InputBinding.h">

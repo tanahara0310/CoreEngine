@@ -17,6 +17,27 @@ namespace CoreEngine {
         InputConfig& GetConfig() { return config_; }
         const InputConfig& GetConfig() const { return config_; }
 
+        // ─── 場面 ─────────────────────────────────────────────────
+
+        /// @brief いま入力を受け付ける場面を決める
+        /// @details メニューを選んでいる間は `UI`、遊んでいる間は `Game`。
+        ///          重ならない場面のアクションは、押されていないものとして返る。
+        /// @note UI の場面へ移すのは `UIInteractionFeature`（選んでいる相手がいる間）。
+        void SetActiveContexts(InputContext contexts) { activeContexts_ = contexts; }
+
+        /// @brief いま入力を受け付けている場面
+        InputContext GetActiveContexts() const { return activeContexts_; }
+
+        /// @brief そのアクションがいまの場面で効くか
+        bool IsActionActive(InputAction action) const;
+
+        /// @brief キーボードを読まないようにする
+        /// @details エディタの入力欄へ文字を打っている間に使う。
+        ///          これが無いと、インスペクタで名前を打つ文字がゲームにも届く。
+        /// @note キーボードの割り当てだけを外す。マウスとパッドはそのまま読む。
+        void SetKeyboardSuppressed(bool suppressed) { keyboardSuppressed_ = suppressed; }
+        bool IsKeyboardSuppressed() const { return keyboardSuppressed_; }
+
         // ─── アクションベース問い合わせ ───────────────────────────
 
         /// @brief アクションに対応するいずれかの入力が押されているか
@@ -39,6 +60,11 @@ namespace CoreEngine {
         bool IsKeyTriggered(uint8_t dikCode) const;
         /// @brief キーが離された瞬間か
         bool IsKeyReleased(uint8_t dikCode) const;
+
+        /// @brief 読まない設定を無視してキーを見る
+        /// @details キーコンフィグ画面が「入力待ちのキャンセル」を拾うためのもの。
+        ///          その画面は ImGui の上にあるので、普通に読むと必ず外される。
+        bool IsKeyTriggeredRaw(uint8_t dikCode) const;
 
         // ─── マウス直接アクセス ───────────────────────────────────
 
@@ -85,6 +111,13 @@ namespace CoreEngine {
         float EvaluateAxis     (const InputBinding& b) const;
 
         InputConfig    config_;
+
+        // いま入力を受け付ける場面。エディタの操作はエディタのビルドでだけ効く
+        InputContext   activeContexts_ = InputContext::Game | kEditorContext;
+
+        // エディタの入力欄へ文字を打っている間だけ立つ
+        bool           keyboardSuppressed_ = false;
+
         KeyboardInput* keyboard_ = nullptr;
         MouseInput*    mouse_    = nullptr;
         GamepadInput*  gamepad_  = nullptr;

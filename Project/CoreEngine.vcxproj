@@ -445,6 +445,7 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClCompile Include="Engine\Src\Graphics\Texture\Path\TexturePathResolver.cpp" />
     <ClCompile Include="Engine\Src\Input\InputBinding.cpp" />
     <ClCompile Include="Engine\Src\Input\InputAction.cpp" />
+    <ClCompile Include="Engine\Src\Input\InputContext.cpp" />
     <ClCompile Include="Engine\Src\Input\InputConfig.cpp" />
     <ClCompile Include="Engine\Src\Input\InputQuery.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Core\ComponentFactory.cpp" />
@@ -1479,6 +1480,7 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClInclude Include="Engine\Src\Graphics\Water\WaterSurfaceData.h" />
     <ClInclude Include="Engine\Src\Input\IDirectInputDevice.h" />
     <ClInclude Include="Engine\Src\Input\InputAction.h" />
+    <ClInclude Include="Engine\Src\Input\InputContext.h" />
     <ClInclude Include="Engine\Src\Input\InputBinding.h" />
     <ClInclude Include="Engine\Src\Input\InputConfig.h" />
     <ClInclude Include="Engine\Src\Input\InputQuery.h" />

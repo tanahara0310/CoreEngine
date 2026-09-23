@@ -1,4 +1,6 @@
 #pragma once
+#include "InputContext.h"
+
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -24,6 +26,8 @@ namespace CoreEngine {
         std::string id;                    ///< 保存データとスクリプトが使う綴り
         std::string displayName;           ///< キーコンフィグ画面に出す名前
         std::vector<std::string> defaults; ///< 既定の割り当て（"Key:W" などの綴り）
+        /// どの場面の操作か。今いる場面と重ならないアクションは押されていない扱いになる
+        InputContext contexts = InputContext::Game;
     };
 
     /// @brief アクションの定義の表
@@ -53,4 +57,7 @@ namespace CoreEngine {
 
     /// @brief 識別文字列からアクションを返す（不明なら Invalid）
     InputAction InputActionFromString(std::string_view str);
+
+    /// @brief アクションが属する場面（範囲外なら Game）
+    InputContext InputActionToContexts(InputAction action);
 }

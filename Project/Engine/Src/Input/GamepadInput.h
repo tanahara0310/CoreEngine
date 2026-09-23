@@ -49,6 +49,9 @@ namespace CoreEngine
         /// @brief ゲームパッドの状態を更新
         void Update() override;
 
+        /// @brief 全ボタンを離し、スティックとトリガーを 0 にする
+        void Reset() override;
+
         /// @brief コントローラが接続されているか
         bool IsConnected() const;
 

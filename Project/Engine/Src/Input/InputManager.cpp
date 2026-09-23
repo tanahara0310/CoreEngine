@@ -5,6 +5,7 @@
 #include "GamepadInput.h"
 #include "KeyboardInput.h"
 #include "MouseInput.h"
+#include "WinApp/WinApp.h"
 
 #pragma comment(lib, "dinput8.lib")
 #pragma comment(lib, "dxguid.lib")
@@ -48,6 +49,16 @@ void InputManager::Initialize(HINSTANCE hInstance, HWND hwnd)
 
 void InputManager::Update()
 {
+    // 別のアプリを触っている間は取り込まない。
+    // 取り込むと、切り替えた瞬間に押していたキーが押しっぱなしとして残り、
+    // 戻ってきたときにメニューやキャラが勝手に動く
+    if (!WinApp::IsAppActive()) {
+        for (IInputDevice* device : devices_) {
+            device->Reset();
+        }
+        return;
+    }
+
     for (IInputDevice* device : devices_) {
         device->Update();
     }

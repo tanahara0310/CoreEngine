@@ -76,10 +76,26 @@ void KeyboardInput::Update()
     std::copy(std::begin(key_), std::end(key_), std::begin(preKey_));
 
     // キーボードの状態を取得開始
-    keyboard_->Acquire();
+    HRESULT hr = keyboard_->Acquire();
+    if (hr == DIERR_INPUTLOST) {
+        hr = keyboard_->Acquire();
+    }
 
     // キーボードの状態を取得
-    keyboard_->GetDeviceState(sizeof(key_), key_);
+    if (SUCCEEDED(hr)) {
+        hr = keyboard_->GetDeviceState(sizeof(key_), key_);
+    }
+
+    // 取り込めなかったときに前の状態が残ると、押しっぱなしとして扱われる
+    if (FAILED(hr)) {
+        std::fill(std::begin(key_), std::end(key_), static_cast<BYTE>(0));
+    }
+}
+
+void KeyboardInput::Reset()
+{
+    std::copy(std::begin(key_), std::end(key_), std::begin(preKey_));
+    std::fill(std::begin(key_), std::end(key_), static_cast<BYTE>(0));
 }
 
 bool KeyboardInput::IsKeyPressed(uint8_t keyNumber) const

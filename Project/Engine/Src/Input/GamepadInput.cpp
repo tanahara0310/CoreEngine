@@ -69,6 +69,13 @@ void GamepadInput::Update()
     // }
 }
 
+void GamepadInput::Reset()
+{
+    // 接続しているかは変わらないので触らない
+    prevState_ = state_;
+    ZeroMemory(&state_, sizeof(state_));
+}
+
 bool GamepadInput::IsConnected() const
 {
     return isConnected_;

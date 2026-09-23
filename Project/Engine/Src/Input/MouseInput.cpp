@@ -61,6 +61,12 @@ namespace CoreEngine
         }
     }
 
+    void MouseInput::Reset()
+    {
+        prevMouseState_ = mouseState_;
+        mouseState_ = {};
+    }
+
     // マウスボタンが押されているかどうか
     bool MouseInput::IsButtonPressed(MouseButton button) const
     {
