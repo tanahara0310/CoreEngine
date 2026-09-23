@@ -43,9 +43,9 @@
             "parameters": {
                 "interactable": true,
                 "normalColor": [
-                    0.22,
-                    0.26,
-                    0.34,
+                    0.32,
+                    0.38,
+                    0.5,
                     1.0
                 ],
                 "hoveredColor": [
