@@ -74,6 +74,37 @@ namespace CoreEngine::Script
             return sAudio ? new ScriptSound(sAudio->PlayScoped(path, params)) : nullptr;
         }
 
+        void SetBusVolume(int bus, float volume)
+        {
+            if (sAudio) {
+                sAudio->SetBusVolume(static_cast<AudioBus>(bus), volume);
+            }
+        }
+
+        float GetBusVolume(int bus)
+        {
+            return sAudio ? sAudio->GetBusVolume(static_cast<AudioBus>(bus)) : 0.0f;
+        }
+
+        void SetMasterVolume(float volume)
+        {
+            if (sAudio) {
+                sAudio->SetMasterVolume(volume);
+            }
+        }
+
+        float GetMasterVolume()
+        {
+            return sAudio ? sAudio->GetMasterVolume() : 0.0f;
+        }
+
+        void StopAll()
+        {
+            if (sAudio) {
+                sAudio->StopAll();
+            }
+        }
+
         void RegisterParams(BindingRegistrar& r)
         {
             r.Enum("AudioBus");
@@ -125,6 +156,11 @@ namespace CoreEngine::Script
         r.Namespace("Audio");
         r.Function("void PlayOneShot(const string &in path, const PlayParams &in params = PlayParams())", asFUNCTION(PlayOneShot));
         r.Function("Sound@ PlayScoped(const string &in path, const PlayParams &in params = PlayParams())", asFUNCTION(PlayScoped));
+        r.Function("void SetBusVolume(AudioBus bus, float volume)", asFUNCTION(SetBusVolume));
+        r.Function("float GetBusVolume(AudioBus bus)", asFUNCTION(GetBusVolume));
+        r.Function("void SetMasterVolume(float volume)", asFUNCTION(SetMasterVolume));
+        r.Function("float GetMasterVolume()", asFUNCTION(GetMasterVolume));
+        r.Function("void StopAll()", asFUNCTION(StopAll));
         r.Namespace("");
         return r.Succeeded();
     }

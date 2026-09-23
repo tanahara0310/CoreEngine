@@ -31,6 +31,9 @@ namespace CoreEngine
         /// @brief ピッチ（再生速度倍率）を設定
         void SetPitch(float pitch);
         float GetPitch() const;
+        /// @brief 左右の振り分けを設定する（-1 で左、0 で中央、+1 で右）
+        void SetPan(float pan);
+        float GetPan() const;
 
         bool IsPlaying() const;
         bool IsPaused() const;

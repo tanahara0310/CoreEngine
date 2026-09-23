@@ -1537,6 +1537,12 @@
     <ClCompile Include="Engine\Src\Graphics\Render\UI\TextRenderer.cpp">
       <Filter>Engine\Src\Graphics\Render\UI</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Audio\AudioListenerComponent.cpp">
+      <Filter>Engine\Src\Audio</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Audio\AudioSourceComponent.cpp">
+      <Filter>Engine\Src\Audio</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Audio\AudioSystem.cpp">
       <Filter>Engine\Src\Audio</Filter>
     </ClCompile>
@@ -3541,6 +3547,12 @@
       <Filter>Engine\Src\Graphics\Render\UI</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Audio\AudioBus.h">
+      <Filter>Engine\Src\Audio</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Audio\AudioListenerComponent.h">
+      <Filter>Engine\Src\Audio</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Audio\AudioSourceComponent.h">
       <Filter>Engine\Src\Audio</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Audio\AudioSystem.h">
