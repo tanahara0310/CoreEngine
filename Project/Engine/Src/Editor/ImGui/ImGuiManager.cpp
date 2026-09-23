@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "UI/UIPointer.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "ImGuiManager.h"
 #include "Editor/ImGui/EditorTheme.h"
@@ -304,6 +305,9 @@ namespace CoreEngine
             const ImVec2 imageSize(imageMax.x - imageMin.x, imageMax.y - imageMin.y);
             sceneDebugEditor->AcceptGameViewportModelDrop(imageMin, imageSize);
             const bool isImageHovered = ImGui::IsItemHovered();
+            // UI の当たり判定へ、ゲーム画像が画面上のどこにあるかを教える
+            UIPointer::Get().SetViewRect({ imageMin.x, imageMin.y },
+                                         { imageSize.x, imageSize.y }, isImageHovered);
             sceneDebugEditor->UpdateGameViewportInteraction(
                 imageMin,
                 imageSize,

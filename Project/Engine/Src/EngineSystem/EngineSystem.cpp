@@ -2,6 +2,9 @@
 #include "EngineSystem.h"
 #include "Subsystem/RayTracingSubsystem.h"
 #include "Script/ScriptSubsystem.h"
+#include "UI/UIPointer.h"
+#include "Graphics/Render/GameOutputWindow.h"
+
 #ifdef CORE_EDITOR
 #include "Settings/EditorSettingsSubsystem.h"
 #endif
@@ -319,6 +322,15 @@ namespace CoreEngine
         //  本体ウィンドウに結び付いており、別ウィンドウにフォーカスがある間は拾えないため）
         if (auto* inputManager = GetService<InputManager>()) {
             inputManager->Update();
+
+            // ゲーム画面の上のポインタを決める（UI の当たり判定より前）
+            const GameOutputWindow* outputWindow = nullptr;
+#ifdef CORE_EDITOR
+            if (auto* debug = GetDebugSubsystem()) {
+                outputWindow = &debug->GetGameOutputWindow();
+            }
+#endif
+            UIPointer::Get().Update(winApp_, inputManager, outputWindow);
         }
 
         // オーディオの更新（フェードの進行と、鳴り終わった再生スロットの回収）。

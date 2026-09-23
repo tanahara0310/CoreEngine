@@ -81,6 +81,10 @@ namespace CoreEngine
 
         GpuTimestampProfiler& GetGpuProfiler() { return gpuProfiler_; }
 
+        /// @brief ゲーム映像専用ウィンドウ
+        /// @note ポインタがその映像の上にあるかを調べるために外から引く。
+        const GameOutputWindow& GetGameOutputWindow() const { return gameOutputWindow_; }
+
     private:
         EngineSystem* engine_ = nullptr;
 
