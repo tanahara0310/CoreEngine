@@ -1,0 +1,2863 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CoreEngine ゲーム制作 設計書</title>
+<style>
+:root {
+  --bg: #ffffff;
+  --bg-sub: #f6f7f9;
+  --bg-code: #f3f4f7;
+  --text: #1f2430;
+  --text-weak: #5f6675;
+  --line: #d9dde4;
+  --line-strong: #b9c0cb;
+  --accent: #3a4fa8;
+  --accent-bg: #eaeefb;
+  --warn: #9a5a0c;
+  --warn-bg: #fdf3e4;
+  --danger: #9d2f2f;
+  --danger-bg: #fbecec;
+  --ok: #1f6b46;
+  --ok-bg: #e7f4ed;
+  --mono: "Consolas", "SFMono-Regular", "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #171a21;
+    --bg-sub: #1e222b;
+    --bg-code: #222732;
+    --text: #e6e9ef;
+    --text-weak: #a6adbb;
+    --line: #333945;
+    --line-strong: #4a5160;
+    --accent: #a7b4ef;
+    --accent-bg: #262d45;
+    --warn: #e5b578;
+    --warn-bg: #362c1d;
+    --danger: #e59a9a;
+    --danger-bg: #3a2525;
+    --ok: #8fd3b0;
+    --ok-bg: #1f332a;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; scroll-padding-top: 1rem; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
+  font-size: 15px;
+  line-height: 1.85;
+}
+
+/* ───── 枠組み ───── */
+
+.layout { display: flex; align-items: flex-start; }
+
+.toc {
+  position: sticky;
+  top: 0;
+  flex: 0 0 300px;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 1.6rem 1rem 3rem 1.4rem;
+  border-right: 1px solid var(--line);
+  background: var(--bg-sub);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.toc h2 {
+  margin: 0 0 0.2rem;
+  font-size: 15px;
+  font-weight: 600;
+}
+.toc .sub { margin: 0 0 1rem; color: var(--text-weak); font-size: 12px; }
+.toc ol { margin: 0; padding: 0; list-style: none; counter-reset: c1; }
+.toc li { margin: 0; }
+.toc a {
+  display: block;
+  padding: 3px 8px 3px 0;
+  color: var(--text-weak);
+  text-decoration: none;
+  border-radius: 4px;
+}
+.toc a:hover { color: var(--accent); background: var(--accent-bg); }
+.toc a.on { color: var(--accent); font-weight: 600; }
+.toc .lv1 > a { color: var(--text); font-weight: 600; margin-top: 0.7rem; }
+.toc .lv2 a { padding-left: 1.6em; }
+.toc .num { display: inline-block; min-width: 2.4em; color: var(--text-weak); font-variant-numeric: tabular-nums; }
+
+main {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 900px;
+  padding: 2rem 2.4rem 6rem;
+}
+
+/* ───── 見出し ───── */
+
+h1 {
+  margin: 0 0 0.4rem;
+  font-size: 27px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.lead { margin: 0 0 2rem; color: var(--text-weak); }
+
+h2 {
+  margin: 3.2rem 0 1rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 2px solid var(--line-strong);
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.4;
+  scroll-margin-top: 1rem;
+}
+h3 {
+  margin: 2.2rem 0 0.7rem;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.5;
+  scroll-margin-top: 1rem;
+}
+h4 {
+  margin: 1.6rem 0 0.5rem;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-weak);
+}
+h2 .num, h3 .num {
+  display: inline-block;
+  margin-right: 0.5em;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+p { margin: 0.8rem 0; }
+
+/* ───── 本文の要素 ───── */
+
+code {
+  padding: 0.12em 0.4em;
+  border-radius: 3px;
+  background: var(--bg-code);
+  font-family: var(--mono);
+  font-size: 0.88em;
+}
+
+pre {
+  margin: 1rem 0;
+  padding: 0.9rem 1.1rem;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg-code);
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.7;
+  tab-size: 4;
+}
+pre code { padding: 0; background: none; font-size: inherit; }
+pre .cm { color: var(--text-weak); }
+pre .kw { color: var(--accent); }
+pre .st { color: var(--ok); }
+
+.file {
+  margin: 1rem 0 -1rem;
+  padding: 0.35rem 0.9rem;
+  border: 1px solid var(--line);
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  background: var(--bg-sub);
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-weak);
+}
+.file + pre { border-radius: 0 0 6px 6px; }
+
+table {
+  width: 100%;
+  margin: 1rem 0;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+th, td {
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+th { background: var(--bg-sub); font-weight: 600; white-space: nowrap; }
+td code { white-space: nowrap; }
+
+ul, ol { margin: 0.8rem 0; padding-left: 1.6rem; }
+li { margin: 0.3rem 0; }
+
+figure { margin: 1.4rem 0; }
+/* 画像は元の大きさで出し、幅が余るものだけ縮める（小さな切り出しを引き伸ばさない） */
+figure img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+figure img.shot {
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+/* 画面全体の写真は本文幅いっぱいに */
+figure img.wide { width: 100%; }
+figcaption {
+  margin-top: 0.5rem;
+  color: var(--text-weak);
+  font-size: 13px;
+  text-align: center;
+}
+
+kbd {
+  display: inline-block;
+  min-width: 1.4em;
+  padding: 0.1em 0.45em;
+  border: 1px solid var(--line-strong);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--bg);
+  font-family: inherit;
+  font-size: 0.85em;
+  font-weight: 500;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* ───── 注記 ───── */
+
+.note {
+  margin: 1.2rem 0;
+  padding: 0.7rem 1rem;
+  border-left: 4px solid var(--accent);
+  border-radius: 0 5px 5px 0;
+  background: var(--accent-bg);
+}
+.note.warn { border-left-color: var(--warn); background: var(--warn-bg); }
+.note.danger { border-left-color: var(--danger); background: var(--danger-bg); }
+.note.ok { border-left-color: var(--ok); background: var(--ok-bg); }
+.note > .label {
+  display: block;
+  margin-bottom: 0.2rem;
+  font-size: 13px;
+  font-weight: 600;
+}
+.note > :last-child { margin-bottom: 0; }
+.note > p:first-of-type { margin-top: 0; }
+
+/* 仕様の定義（設計書の「項目：内容」の並び） */
+dl.spec { margin: 1rem 0; }
+dl.spec dt {
+  margin-top: 0.7rem;
+  font-weight: 600;
+}
+dl.spec dd { margin: 0.1rem 0 0 1.4rem; color: var(--text-weak); }
+
+/* 改訂履歴 */
+.meta {
+  margin: 0 0 2rem;
+  padding: 1rem 1.2rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg-sub);
+  font-size: 13.5px;
+}
+.meta table { margin: 0; font-size: 13px; }
+.meta th, .meta td { border-color: var(--line-strong); }
+
+hr {
+  margin: 3rem 0;
+  border: none;
+  border-top: 1px solid var(--line);
+}
+
+a { color: var(--accent); }
+
+/* ───── 画面が狭いとき ───── */
+
+@media (max-width: 980px) {
+  .layout { display: block; }
+  .toc {
+    position: static;
+    width: auto;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+  }
+  main { padding: 1.6rem 1rem 4rem; max-width: none; }
+}
+
+/* ───── 印刷 ───── */
+
+@media print {
+  .toc { display: none; }
+  main { max-width: none; padding: 0; }
+  h2 { page-break-after: avoid; }
+  pre, table, figure { page-break-inside: avoid; }
+  body { font-size: 11pt; }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<nav class="toc">
+  <h2>CoreEngine 設計書</h2>
+  <p class="sub">ゲーム制作の手引き</p>
+  <ol id="toc-list"></ol>
+</nav>
+
+<main>
+
+<h1>CoreEngine ゲーム制作 設計書</h1>
+<p class="lead">エディタとスクリプトだけでゲームを作るための仕様と手順をまとめた文書です。</p>
+
+<div class="meta">
+  <table>
+    <tr><th>対象</th><td>CoreEngine（<code>C:\CoreEngine</code>）でゲームを作る人</td></tr>
+    <tr><th>前提</th><td>C++ の知識は不要。プログラミングの基礎（変数・条件分岐・繰り返し）があること</td></tr>
+    <tr><th>根拠</th><td>この文書の仕様は、エンジンのソースと実機の動作から確認したものです。コード例はすべて実際にコンパイルして確かめています</td></tr>
+    <tr><th>改訂</th><td>2026-09-25　初版</td></tr>
+  </table>
+</div>
+
+<h2>全体の構成</h2>
+
+<h3>基本の考え方</h3>
+
+<p>このエンジンでは、ゲームを作るのに C++ を書きません。やることは 2 つです。</p>
+
+<ol>
+  <li><strong>エディタでオブジェクトを置き、コンポーネントを付ける</strong></li>
+  <li><strong>独自の動きだけをスクリプト（AngelScript）で書く</strong></li>
+</ol>
+
+<p><strong>オブジェクトは器です。</strong> それ自体は何もしません。付けたコンポーネントで中身が決まります。</p>
+
+<figure>
+  <img class="wide" src="assets/figures/overview.svg" alt="シーンがオブジェクトを持ち、オブジェクトがコンポーネントを持つ構成図">
+  <figcaption>シーン → オブジェクト → コンポーネントの入れ子</figcaption>
+</figure>
+
+<table>
+  <tr><th>やりたいこと</th><th>付けるコンポーネント</th></tr>
+  <tr><td>位置を持たせる</td><td><code>Transform</code></td></tr>
+  <tr><td>形を出す</td><td><code>MeshRenderer</code> と <code>Material</code></td></tr>
+  <tr><td>落として転がす</td><td><code>Collider</code> と <code>Rigidbody</code></td></tr>
+  <tr><td>操作するキャラにする</td><td><code>Collider</code> と <code>CharacterController</code></td></tr>
+  <tr><td>独自の動きをさせる</td><td>自分で書いたスクリプト</td></tr>
+</table>
+
+<div class="note">
+  <span class="label">Unity との関係</span>
+  <p>考え方は Unity とほぼ同じです。オブジェクトにコンポーネントを足し、スクリプトを 1 つのコンポーネントとして扱う点まで揃えてあります。Unity を触ったことがあれば、名前の違いを覚えるだけで済みます。</p>
+</div>
+
+<h3>データの置き場所</h3>
+
+<p><strong>シーンもプレハブも設定も、すべて JSON ファイルです。</strong> ビルドし直さなくても、エディタで変えればその場で反映されます。</p>
+
+<pre><code>Project/
+├── Application/
+│   ├── Assets/
+│   │   ├── Models/      <span class="cm">モデル（.obj .fbx .gltf .glb）</span>
+│   │   ├── Textures/    <span class="cm">画像（.png .jpg .hdr）</span>
+│   │   ├── Prefabs/     <span class="cm">プレハブ（.prefab）</span>
+│   │   ├── Scenes/      <span class="cm">シーン（フォルダ 1 つで 1 シーン）</span>
+│   │   ├── Scripts/     <span class="cm">スクリプト（.as）</span>
+│   │   ├── Physics/     <span class="cm">物理マテリアル</span>
+│   │   └── Presets/     <span class="cm">各種プリセット</span>
+│   ├── Config/
+│   │   ├── EngineSettings/  <span class="cm">起動シーン・入力・レイヤー</span>
+│   │   └── ScriptTemplates/ <span class="cm">スクリプトの雛形</span>
+│   └── Saved/           <span class="cm">エディタの状態（レイアウトなど）</span>
+└── Engine/              <span class="cm">エンジン本体（触らない）</span></code></pre>
+
+<p>エンジンが場所を決め打ちしているのは <code>Assets/Scripts</code>（スクリプトを探す場所）と <code>Assets/Scenes</code>（シーンを探す場所）だけです。その中の並べ方は自由です。</p>
+
+<h3>ビルド構成</h3>
+
+<table>
+  <tr><th>構成</th><th>エディタ</th><th>速さ</th><th>用途</th></tr>
+  <tr><td><code>Debug</code></td><td>あり</td><td>遅い</td><td>落ちる原因を追うとき</td></tr>
+  <tr><td><code>Development</code></td><td>あり</td><td>実用的</td><td><strong>普段の制作はこれ</strong></td></tr>
+  <tr><td><code>Release</code></td><td><strong>なし</strong></td><td>速い</td><td>完成したゲームを配るとき</td></tr>
+</table>
+
+<p><code>Release</code> だけ <code>CORE_EDITOR</code> が付かないため、エディタの画面が出ません。起動するといきなりゲームが始まります。</p>
+
+<div class="note warn">
+  <span class="label">作業フォルダ</span>
+  <p><code>Debug</code> と <code>Development</code> は <code>Project/Application/Assets</code> を読みます。コマンドから起動するときは<strong>作業フォルダを <code>Project</code> にしてください。</strong> <code>Release</code> は <strong>exe の隣</strong>のアセットを読みます。</p>
+</div>
+
+<div class="file">コマンドから起動する場合</div>
+<pre><code>cd C:\CoreEngine\Project
+..\generated\CoreEngine\outputs\Development\CoreEngine.exe</code></pre>
+
+<h3>用語</h3>
+
+<dl class="spec">
+  <dt>オブジェクト（GameObject）</dt>
+  <dd>シーンに置く「もの」。名前と有効・無効だけを持つ器で、中身はコンポーネントで決まる。</dd>
+
+  <dt>コンポーネント</dt>
+  <dd>オブジェクトに足す機能の単位。位置・見た目・当たり判定・音など。自分で書いたスクリプトもこの一種。</dd>
+
+  <dt>シーン</dt>
+  <dd>オブジェクトの集まり。フォルダ 1 つが 1 シーンで、中のオブジェクトは 1 個につき JSON 1 つ。</dd>
+
+  <dt>プレハブ</dt>
+  <dd>オブジェクトの設計図。一度作れば、シーンにいくつでも置ける。</dd>
+
+  <dt>アセット</dt>
+  <dd>モデル・画像・音・スクリプトなど、外から持ち込むファイル。</dd>
+
+  <dt>CVar</dt>
+  <dd>設定値。<code>r.Bloom.Intensity</code> のような名前を持ち、Engine Settings で編集する。</dd>
+</dl>
+
+<h2>エディタ</h2>
+
+<h3>画面構成</h3>
+
+<figure>
+  <img class="shot" src="assets/images/editor-full.png" alt="CoreEngine エディタの全体画面">
+  <figcaption>起動直後の画面（Development 構成）</figcaption>
+</figure>
+
+<figure>
+  <img class="wide" src="assets/figures/editor-layout.svg" alt="エディタの画面構成の模式図">
+  <figcaption>画面は 5 つに分かれている</figcaption>
+</figure>
+
+<table>
+  <tr><th>場所</th><th>名前</th><th>役割</th></tr>
+  <tr><td>最上段</td><td>メニューバー</td><td>File / Edit / GameObject / Component / Assets / Window / Help</td></tr>
+  <tr><td>2 段目</td><td>ツールバー</td><td>再生・ギズモの切り替え・グリッドとコライダーの表示</td></tr>
+  <tr><td>左</td><td>ヒエラルキー</td><td>シーンにあるものの一覧</td></tr>
+  <tr><td>中央</td><td>Game / Canvas</td><td>ゲームの画面。ここで選んで動かす</td></tr>
+  <tr><td>右</td><td>インスペクタ</td><td>選んだものの中身</td></tr>
+  <tr><td>下</td><td>Project / Console / Profiler</td><td>アセット・ログ・処理時間</td></tr>
+</table>
+
+<div class="note">
+  <span class="label">パネルを閉じてしまったら</span>
+  <p><strong>Window</strong> メニューから出し直せます。レイアウトが崩れたら <strong>Window → Layout → レイアウトを初期化</strong>です。レイアウトは自動で保存され、次の起動でも同じ配置になります。</p>
+</div>
+
+<h3>再生と停止</h3>
+
+<figure>
+  <img class="shot" src="assets/images/panel-toolbar.png" alt="ツールバー">
+  <figcaption>ツールバー</figcaption>
+</figure>
+
+<table>
+  <tr><th>ボタン</th><th>動作</th></tr>
+  <tr><td>▶</td><td>再生する／止める</td></tr>
+  <tr><td>⏸</td><td>一時停止する</td></tr>
+  <tr><td>⏭</td><td>一時停止したまま 1 フレームだけ進める</td></tr>
+</table>
+
+<p><strong>エディタは停止状態で起動します。</strong> 停止中は次のものが動きません。</p>
+
+<ul>
+  <li>スクリプトの <code>Update</code> / <code>FixedUpdate</code> / <code>LateUpdate</code></li>
+  <li>物理（落ちない・転がらない）</li>
+  <li><code>Time::DeltaTime()</code>（0 を返す）</li>
+</ul>
+
+<p>逆に、<strong>描画・カメラ操作・ギズモ・インスペクタの編集は止まっていても動きます。</strong> 止めたまま見た目を作り込めます。</p>
+
+<div class="note ok">
+  <span class="label">再生中の編集は元に戻る</span>
+  <p>再生を始めた瞬間のシーンを控えていて、止めるとそこへ戻します。<strong>再生中にいくら動かしても、保存したシーンは壊れません。</strong> 逆に、再生中に調整した値を残したいときは、止める前に値を控えてください。</p>
+</div>
+
+<h3>ヒエラルキー</h3>
+
+<figure>
+  <img class="shot" src="assets/images/panel-hierarchy.png" alt="ヒエラルキー">
+  <figcaption>シーンにあるものの一覧</figcaption>
+</figure>
+
+<table>
+  <tr><th>操作</th><th>方法</th></tr>
+  <tr><td>選ぶ</td><td>クリック</td></tr>
+  <tr><td>名前を変える</td><td>名前をダブルクリック</td></tr>
+  <tr><td>親子を開け閉め</td><td>左の ▶ / ▼</td></tr>
+  <tr><td>カメラを寄せる</td><td>選んでから <kbd>F</kbd></td></tr>
+  <tr><td>複製</td><td><kbd>Ctrl</kbd>+<kbd>D</kbd></td></tr>
+  <tr><td>削除</td><td><kbd>Del</kbd></td></tr>
+</table>
+
+<p>右端の <strong>AS</strong> の印は、そのオブジェクトにスクリプトが付いていることを表します。</p>
+
+<h4>オブジェクトが増えても迷わないための仕組み</h4>
+
+<ul>
+  <li><strong>親子は入れ子で表示されます。</strong> 子は親の下に字下げして並ぶので、まとまりが見えます</li>
+  <li><strong>Game ビューでクリックすると、ヒエラルキーの該当行まで自動でスクロールし、親も開きます。</strong> 「画面のこれはどれか」が一発で分かります</li>
+  <li><strong><kbd>F</kbd> でカメラが寄ります。</strong> 逆に「一覧のこれはどこか」も分かります</li>
+</ul>
+
+<h3>インスペクタ</h3>
+
+<figure>
+  <img class="shot" src="assets/images/panel-inspector.png" alt="インスペクタ">
+  <figcaption>選んだオブジェクトの中身</figcaption>
+</figure>
+
+<p>上から順に、</p>
+
+<ol>
+  <li><strong>Object</strong> … 名前と、有効・無効のチェック</li>
+  <li><strong>付いているコンポーネント</strong> … 上の例では「トランスフォーム」と「物理テスト：操作台」（スクリプト）</li>
+  <li><strong>＋ コンポーネント追加</strong> … 新しいコンポーネントを足す</li>
+</ol>
+
+<h4>値の編集</h4>
+
+<table>
+  <tr><th>型</th><th>見た目</th></tr>
+  <tr><td>数値</td><td>左右にドラッグで増減。ダブルクリックで直接入力</td></tr>
+  <tr><td>色</td><td>四角を押すとカラーピッカー</td></tr>
+  <tr><td>真偽</td><td>チェック</td></tr>
+  <tr><td>列挙</td><td>一覧から選ぶ</td></tr>
+  <tr><td>アセット</td><td>ファイルを選ぶ欄。Project からドラッグでも入る</td></tr>
+  <tr><td>オブジェクト参照</td><td>シーン内の別オブジェクトを選ぶ欄</td></tr>
+</table>
+
+<p>項目名にカーソルを乗せると説明が出るものがあります。</p>
+
+<h4>コンポーネントを無効にすると何が止まるか</h4>
+
+<dl class="spec">
+  <dt>スクリプト</dt>
+  <dd><code>Update</code> などが呼ばれなくなり、当たり判定の通知も届かなくなる。</dd>
+  <dt>描画するもの</dt>
+  <dd>描かれなくなる。</dd>
+  <dt>コライダー</dt>
+  <dd>当たらなくなる。</dd>
+</dl>
+
+<p>消すのとは違い、設定は残ります。一時的に切るのに使います。</p>
+
+<h4>コンポーネントのメニュー（⋮）</h4>
+
+<table>
+  <tr><th>項目</th><th>動作</th></tr>
+  <tr><td>スクリプトを開く</td><td>VS Code でそのファイルを開く（スクリプトのみ）</td></tr>
+  <tr><td>既定値へ戻す</td><td>書いた初期値に戻す</td></tr>
+  <tr><td>外す</td><td>そのコンポーネントを削除する</td></tr>
+  <tr><td>このオブジェクトだけ保存</td><td>シーンの中のこの 1 個だけを保存する</td></tr>
+  <tr><td>プレハブへ適用</td><td>この場の変更を元のプレハブへ書き戻す</td></tr>
+  <tr><td>プレハブとのつながりを外す</td><td>以後は独立したオブジェクトになる</td></tr>
+</table>
+
+<h3>Game ビューとギズモ</h3>
+
+<figure>
+  <img class="shot" src="assets/images/panel-gameview.png" alt="Game ビュー">
+  <figcaption>Game ビュー。中央の矢印がギズモ</figcaption>
+</figure>
+
+<ul>
+  <li><strong>Game</strong> … 3D の画面。ここでオブジェクトを選んだり動かしたりします</li>
+  <li><strong>Canvas</strong> … UI だけを平面で見る画面。UI の配置はこちらが楽です</li>
+</ul>
+
+<h4>ギズモ</h4>
+
+<table>
+  <tr><th>モード</th><th>キー</th><th>見た目</th></tr>
+  <tr><td>移動</td><td><kbd>W</kbd></td><td>3 本の矢印</td></tr>
+  <tr><td>回転</td><td><kbd>E</kbd></td><td>3 つの輪</td></tr>
+  <tr><td>拡縮</td><td><kbd>R</kbd></td><td>3 本の四角い棒</td></tr>
+</table>
+
+<p>色は軸に対応しています。<strong>赤 = X、緑 = Y、青 = Z</strong>。矢印 1 本を掴むとその軸だけ、中心の四角を掴むと画面に平行に動きます。</p>
+
+<p>きっちりした値を入れたいときは、ギズモではなくインスペクタの <code>Transform</code> に直接打ち込みます。</p>
+
+<h4>ツールバーの Grid と Collider</h4>
+
+<div class="note warn">
+  <span class="label">当たり判定が合わないときは Collider を押す</span>
+  <p>見た目とコライダーはまったく別物です。「当たらない」「変なところで当たる」と思ったら、まず <strong>Collider</strong> を押してコライダーの形を線で表示してください。ほとんどの場合これで原因が分かります。</p>
+</div>
+
+<h4>カメラ操作</h4>
+
+<p>Game ビューの上にカーソルを置いた状態で操作します。</p>
+
+<table>
+  <tr><th>操作</th><th>方法</th></tr>
+  <tr><td>回す（対象の周りを回る）</td><td>中ボタンドラッグ</td></tr>
+  <tr><td>平行移動</td><td><kbd>Shift</kbd> + 中ボタンドラッグ</td></tr>
+  <tr><td>寄る・引く</td><td>ホイール</td></tr>
+  <tr><td>視点を回す（その場で向きだけ）</td><td>右ボタンドラッグ</td></tr>
+  <tr><td>前後左右へ飛ぶ</td><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td></tr>
+  <tr><td>上下へ飛ぶ</td><td><kbd>Q</kbd>（下） <kbd>E</kbd>（上）</td></tr>
+  <tr><td>速く飛ぶ</td><td><kbd>Shift</kbd> を足す</td></tr>
+  <tr><td>選んだものへ寄る</td><td><kbd>F</kbd></td></tr>
+</table>
+
+<div class="note warn">
+  <span class="label"><kbd>W</kbd> <kbd>E</kbd> <kbd>R</kbd> はギズモと共用</span>
+  <p>オブジェクトを選んでいるときの <kbd>W</kbd><kbd>E</kbd><kbd>R</kbd> は<strong>ギズモの切り替え</strong>、右ドラッグでカメラを動かしている間の <kbd>W</kbd> は<strong>前進</strong>です。割り当ては <strong>Help → キー操作を見る</strong>で変えられます。</p>
+</div>
+
+<h4>エディタのカメラとゲームのカメラ</h4>
+
+<table>
+  <tr><th></th><th>エディタのカメラ</th><th>ゲームのカメラ</th></tr>
+  <tr><td>役割</td><td>編集中に見回す</td><td>実際にゲームで映る</td></tr>
+  <tr><td>実体</td><td>シーンに置かれていない</td><td><code>Camera</code> コンポーネントを持ったオブジェクト</td></tr>
+  <tr><td>動かし方</td><td>上のマウス操作</td><td>オブジェクトの <code>Transform</code> を動かす</td></tr>
+</table>
+
+<p>再生すると、<code>Camera</code> の<strong>メインカメラ</strong>にチェックが入っているオブジェクトの映像になります。</p>
+
+<div class="note warn">
+  <span class="label">カメラの位置は Transform が持つ</span>
+  <p><code>Camera</code> コンポーネント側に位置はありません。<strong>カメラのオブジェクトの <code>Transform</code></strong> を動かしてください。</p>
+</div>
+
+<h3>Project ビュー</h3>
+
+<figure>
+  <img class="shot" src="assets/images/panel-project.png" alt="Project ビュー">
+  <figcaption>アセットの一覧</figcaption>
+</figure>
+
+<table>
+  <tr><th>場所</th><th>内容</th></tr>
+  <tr><td>上のパンくず</td><td>今いるフォルダ（押すとその階層へ戻る）</td></tr>
+  <tr><td>名前で絞り込み</td><td>入れた文字を含むものだけ表示</td></tr>
+  <tr><td>種類のタブ</td><td>すべて / モデル / テクスチャ / プレハブ / スクリプト / シーン / 音 / データ</td></tr>
+  <tr><td>左のツリー</td><td>フォルダの階層</td></tr>
+  <tr><td>右の一覧</td><td>中身。グリッド表示と一覧表示を切り替えられる</td></tr>
+</table>
+
+<h4>操作</h4>
+
+<table>
+  <tr><th>操作</th><th>キー</th></tr>
+  <tr><td>コピー</td><td><kbd>Ctrl</kbd>+<kbd>C</kbd></td></tr>
+  <tr><td>切り取り</td><td><kbd>Ctrl</kbd>+<kbd>X</kbd></td></tr>
+  <tr><td>貼り付け</td><td><kbd>Ctrl</kbd>+<kbd>V</kbd></td></tr>
+  <tr><td>名前を変える</td><td><kbd>F2</kbd></td></tr>
+  <tr><td>削除</td><td><kbd>Del</kbd>（ごみ箱へ。完全削除はしない）</td></tr>
+</table>
+
+<p><strong>＋ 作成</strong>から、フォルダとスクリプトを作れます。触れるのは <code>Assets</code> の中だけです。</p>
+
+<h4>ドラッグでの配置</h4>
+
+<ul>
+  <li>モデル（<code>.obj</code> <code>.fbx</code> <code>.gltf</code> <code>.glb</code>）を <strong>Game ビューへドラッグ</strong> → そのモデルのオブジェクトができる</li>
+  <li>テクスチャ（<code>.png</code> <code>.jpg</code> <code>.hdr</code>）を <strong>インスペクタのテクスチャ欄へドラッグ</strong></li>
+  <li>ヒエラルキーのオブジェクトを <strong>Project ビューへドラッグ</strong> → プレハブになる</li>
+</ul>
+
+<h4>.meta ファイル</h4>
+
+<p>アセットの隣に <code>.meta</code> という同名ファイルができます。中に <strong>GUID</strong>（そのファイルを指す ID）が入っています。</p>
+
+<p><strong>参照は GUID で保存されます。</strong> そのため、ファイルの名前を変えても、場所を移しても、参照は切れません。</p>
+
+<div class="note danger">
+  <span class="label">.meta を消さないこと</span>
+  <p>消すと GUID が作り直され、<strong>そのファイルへの参照が全部切れます。</strong> エディタの Project ビューから操作すれば <code>.meta</code> も一緒に動くので安全です。エクスプローラで動かすときは <code>.meta</code> も一緒に動かしてください。</p>
+</div>
+
+<h3>コンソール</h3>
+
+<figure>
+  <img class="shot" src="assets/images/panel-console.png" alt="コンソール">
+  <figcaption>ログとエラー</figcaption>
+</figure>
+
+<table>
+  <tr><th>操作</th><th>動作</th></tr>
+  <tr><td>情報 / 警告 / エラー / デバッグ の数字</td><td>押すとその種類だけに絞る</td></tr>
+  <tr><td>クリア</td><td>今までのログを消す</td></tr>
+  <tr><td>同じ行を畳む</td><td>毎フレーム出る同じログを 1 行にまとめ、右に回数を出す</td></tr>
+  <tr><td>エラーで一時停止</td><td>エラーが出た瞬間に再生を止める</td></tr>
+  <tr><td>すべて ▼</td><td>カテゴリ（Script / Graphics / Audio など）で絞る</td></tr>
+  <tr><td>フィルタ…</td><td>入れた文字を含む行だけ表示</td></tr>
+</table>
+
+<p><strong>エラーの行をダブルクリックすると、VS Code がその行を開きます。</strong></p>
+
+<div class="note">
+  <span class="label">ログが流れて読めないとき</span>
+  <p>グラフィックスのログが毎フレーム出るため、スクリプトのログはすぐ流れます。カテゴリを <strong>Script</strong> に絞るか、<strong>同じ行を畳む</strong>を入れてください。</p>
+</div>
+
+<h3>設定</h3>
+
+<p>設定は置き場所が 3 つに分かれています。<strong>どこに保存されるか</strong>が違います。</p>
+
+<table>
+  <tr><th>何を決めるか</th><th>どこで</th><th>保存先</th></tr>
+  <tr><td>プロジェクト全体</td><td>Edit → Project Settings</td><td><code>Application/Config/EngineSettings/</code></td></tr>
+  <tr><td>操作の割り当て</td><td>Help → キー操作を見る</td><td><code>EngineSettings/InputActions.json</code></td></tr>
+  <tr><td>見た目・描画</td><td>Engine Settings</td><td>シーンの <code>_environment.json</code> ほか</td></tr>
+</table>
+
+<h4>Project Settings</h4>
+
+<dl class="spec">
+  <dt>起動シーン</dt>
+  <dd>最初に開くシーン。<code>Project.json</code> の <code>initialScene</code>。</dd>
+  <dt>レイヤー</dt>
+  <dd>当たり判定の分類。<code>Layers.json</code>。</dd>
+  <dt>衝突マトリクス</dt>
+  <dd><strong>どのレイヤーとどのレイヤーが当たるか</strong>を表で決める。「弾は敵にだけ当たる」といった制御が、スクリプトを書かずにできる。</dd>
+</dl>
+
+<h4>Engine Settings</h4>
+
+<p>描画まわりの設定です。ここで触る値の多くは <strong>CVar</strong> で、<code>r.Bloom.Intensity</code> のような名前を持ちます。</p>
+
+<table>
+  <tr><th>接頭辞</th><th>持ち主</th><th>保存先</th></tr>
+  <tr><td><code>r.</code> など</td><td><strong>シーンごと</strong></td><td>そのシーンの <code>_environment.json</code></td></tr>
+  <tr><td>その他</td><td>プロジェクト全体</td><td><code>Application/Config/</code></td></tr>
+</table>
+
+<p>このため、<strong>シーンごとに違う空・違う色味</strong>を持たせられます。夜のステージと昼のステージで別の設定、といった使い方です。</p>
+
+<h3>ショートカット一覧</h3>
+
+<h4>ファイル</h4>
+<table>
+  <tr><th>キー</th><th>動作</th></tr>
+  <tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>シーンを保存</td></tr>
+  <tr><td><kbd>Ctrl</kbd>+<kbd>R</kbd></td><td>スクリプトを再読み込み</td></tr>
+  <tr><td><kbd>Alt</kbd>+<kbd>F4</kbd></td><td>終了</td></tr>
+</table>
+
+<h4>編集</h4>
+<table>
+  <tr><th>キー</th><th>動作</th></tr>
+  <tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd></td><td>取り消す</td></tr>
+  <tr><td><kbd>Ctrl</kbd>+<kbd>Y</kbd></td><td>やり直す</td></tr>
+  <tr><td><kbd>Ctrl</kbd>+<kbd>D</kbd></td><td>複製</td></tr>
+  <tr><td><kbd>Del</kbd></td><td>削除</td></tr>
+</table>
+
+<p>インスペクタでの編集、オブジェクトの追加・削除、ギズモでの移動が取り消しの対象です。<strong>再生中の編集は対象外</strong>で、止めると再生開始時の状態へまとめて戻ります。</p>
+
+<h4>画面</h4>
+<table>
+  <tr><th>キー</th><th>動作</th></tr>
+  <tr><td><kbd>Alt</kbd>+<kbd>Enter</kbd></td><td>全画面</td></tr>
+  <tr><td><kbd>F11</kbd></td><td>エディタ UI を隠す（ゲーム画面だけ）</td></tr>
+</table>
+
+<h2>シーンとオブジェクト</h2>
+
+<h3>シーンの構成</h3>
+
+<p><code>Application/Assets/Scenes/</code> の下に、<strong>シーン名のフォルダが 1 つ</strong>あります。</p>
+
+<pre><code>Scenes/
+└── MyGame/
+    ├── _scene.json        <span class="cm">どのオブジェクトを読むか</span>
+    ├── _environment.json  <span class="cm">空・雲・霧・ポストエフェクトの設定</span>
+    ├── MainCamera.json    <span class="cm">オブジェクト 1 個</span>
+    ├── Player.json
+    └── Coin.json</code></pre>
+
+<p><strong>オブジェクト 1 個が JSON 1 つ</strong>です。これは意図した作りで、次の利点があります。</p>
+
+<ul>
+  <li><strong>どのオブジェクトを誰が変えたか、差分で分かります</strong></li>
+  <li>2 人が別のオブジェクトを同時に変えても、マージで衝突しません</li>
+  <li>1 つのオブジェクトをコピーして別のシーンへ持っていけます</li>
+</ul>
+
+<h4>_scene.json</h4>
+
+<div class="file">Assets/Scenes/MyGame/_scene.json</div>
+<pre><code>{
+    <span class="st">"objects"</span>: [
+        <span class="st">"MainCamera"</span>,
+        <span class="st">"Player"</span>,
+        <span class="st">"Coin"</span>
+    ],
+    <span class="st">"defaultGround"</span>: false
+}</code></pre>
+
+<table>
+  <tr><th>項目</th><th>意味</th></tr>
+  <tr><td><code>objects</code></td><td><strong>読む順番</strong>。上から順に作られる</td></tr>
+  <tr><td><code>defaultGround</code></td><td>自動の床を出すか（省略すると出る）</td></tr>
+  <tr><td><code>features</code></td><td>シーン独自の機能（水面など。省略可）</td></tr>
+</table>
+
+<div class="note ok">
+  <span class="label">新しいシーンには床が入っている</span>
+  <p><code>DefaultGround</code> が自動で置かれ、当たり判定も付いています。そのまま物を落とせます。要らないときは <code>"defaultGround": false</code> を書いてください。</p>
+</div>
+
+<h4>_environment.json</h4>
+
+<p>空・雲・霧・ポストエフェクトの設定です。中身は <strong>CVar の名前と値</strong>の一覧になります。</p>
+
+<div class="file">Assets/Scenes/MyGame/_environment.json</div>
+<pre><code>{
+    <span class="st">"r.Atmosphere.SkyAmbientScale"</span>: 0.51,
+    <span class="st">"r.AutoExposure.Enabled"</span>: true,
+    <span class="st">"r.Bloom.Intensity"</span>: 0.95,
+    <span class="st">"r.Cloud.DensityScale"</span>: 0.007
+}</code></pre>
+
+<div class="note">
+  <span class="label">環境のコンポーネントは「置き場所」</span>
+  <p><code>HeightFog</code> <code>VolumetricCloud</code> <code>PostProcess</code> をシーンに置けますが、<strong>中身の値はここ（CVar）が持っています。</strong> コンポーネント側は「このシーンに霧がある」という印と、有効・無効だけです。</p>
+</div>
+
+<h4>シーンの操作</h4>
+
+<table>
+  <tr><th>操作</th><th>方法</th></tr>
+  <tr><td>新しいシーン</td><td>File → 新しいシーン…</td></tr>
+  <tr><td>開く</td><td>File → シーンを開く</td></tr>
+  <tr><td>保存</td><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td></tr>
+  <tr><td>読み直す（保存前に戻す）</td><td>File → シーンを再読み込み</td></tr>
+</table>
+
+<h4>複数人で作るときの取り決め</h4>
+
+<ul>
+  <li><strong>1 人 1 オブジェクトずつ触る。</strong> 同じ <code>Player.json</code> を 2 人で同時に変えなければ衝突しません</li>
+  <li><strong><code>_scene.json</code> は最後に合わせる。</strong> オブジェクトの追加・削除でここだけは触ります</li>
+  <li><strong><code>_environment.json</code> は担当を決める。</strong> 1 ファイルに全部入っているので、同時に触ると衝突します</li>
+</ul>
+
+<h3>オブジェクトとコンポーネント</h3>
+
+<figure>
+  <img class="wide" src="assets/figures/object-is-container.svg" alt="GameObject にコンポーネントを足して中身を決める図">
+  <figcaption>オブジェクトは器。コンポーネントで中身が決まる</figcaption>
+</figure>
+
+<h4>作り方</h4>
+
+<ol>
+  <li><strong>GameObject → 空のオブジェクトを作成</strong>（<code>Transform</code> だけが付いた状態でできる）</li>
+  <li>インスペクタの <strong>＋ コンポーネント追加</strong>を押す</li>
+  <li>上の<strong>型を検索</strong>に文字を入れて絞り込み、選ぶ</li>
+</ol>
+
+<p><code>Assets/Scripts</code> の下に置いた <code>.as</code> のクラスも、この一覧に並びます。エンジンのコンポーネントと同じ扱いです。</p>
+
+<h4>よく使う組み合わせ</h4>
+
+<table>
+  <tr><th>作りたいもの</th><th>コンポーネント</th></tr>
+  <tr><td>ただ見えるだけの飾り</td><td><code>Transform</code> + <code>MeshRenderer</code> + <code>Material</code></td></tr>
+  <tr><td>落ちて転がるもの</td><td>上 + <code>Collider</code> + <code>Rigidbody</code></td></tr>
+  <tr><td>動かない壁・床</td><td>上から <code>Rigidbody</code> を外し、<code>Collider</code> の<strong>静的</strong>を入れる</td></tr>
+  <tr><td>通り抜けるが反応するもの</td><td><code>Collider</code> の<strong>トリガー</strong>を入れる</td></tr>
+  <tr><td>操作するキャラ</td><td><code>Transform</code> + <code>MeshRenderer</code> + <code>Collider</code> + <code>CharacterController</code></td></tr>
+  <tr><td>画面に出す文字</td><td><code>RectTransform</code> + <code>UIText</code></td></tr>
+</table>
+
+<h4>親子</h4>
+
+<p>インスペクタの <code>Transform</code> にある<strong>親</strong>の欄で、別のオブジェクトを選ぶと子になります。子は親について動きます。</p>
+
+<div class="note">
+  <span class="label">骨に付けたいときは SkeletonSocket</span>
+  <p>アニメーションする人型の<strong>手</strong>に武器を持たせたいときは、親子ではなく <code>SkeletonSocket</code> コンポーネントを使い、ジョイント名（<code>mixamorig:RightHand</code> など）を指定して追従させます。</p>
+</div>
+
+<h3>プレハブ</h3>
+
+<p><strong>プレハブはオブジェクトの設計図です。</strong> 一度作れば、シーンにいくつでも置けます。</p>
+
+<table>
+  <tr><th>操作</th><th>方法</th></tr>
+  <tr><td>作る</td><td>ヒエラルキーのオブジェクトを Project ビューへドラッグ</td></tr>
+  <tr><td>置く</td><td>Project ビューのプレハブを Game ビューへドラッグ</td></tr>
+  <tr><td>直す</td><td>置いたものを変えてから ⋮ → プレハブへ適用</td></tr>
+</table>
+
+<h4>中身</h4>
+
+<p>プレハブは JSON です。コンポーネントの並びがそのまま入っています。</p>
+
+<div class="file">Assets/Prefabs/Physics/PhysicsBall.prefab</div>
+<pre><code>{
+    <span class="st">"components"</span>: [
+        { <span class="st">"type"</span>: <span class="st">"Transform"</span>,    <span class="st">"parameters"</span>: { <span class="st">"translate"</span>: [0.0, 5.0, 0.0] } },
+        { <span class="st">"type"</span>: <span class="st">"MeshRenderer"</span>, <span class="st">"parameters"</span>: { <span class="st">"model"</span>: { <span class="st">"guid"</span>: <span class="st">"…"</span>, <span class="st">"path"</span>: <span class="st">"…"</span> } } },
+        { <span class="st">"type"</span>: <span class="st">"Material"</span>,     <span class="st">"parameters"</span>: { <span class="st">"color"</span>: [0.3, 0.6, 0.95, 1.0] } },
+        { <span class="st">"type"</span>: <span class="st">"Collider"</span>,     <span class="st">"parameters"</span>: { <span class="st">"shapes"</span>: [ { <span class="st">"type"</span>: <span class="st">"Sphere"</span>, <span class="st">"radius"</span>: 1.0 } ] } },
+        { <span class="st">"type"</span>: <span class="st">"Rigidbody"</span>,    <span class="st">"parameters"</span>: { <span class="st">"mass"</span>: 1.0, <span class="st">"useGravity"</span>: true } }
+    ]
+}</code></pre>
+
+<p>テキストなので、<strong>差分が読めますし、マージもできます。</strong></p>
+
+<h4>用意されている見本</h4>
+
+<p><code>Application/Assets/Prefabs/Physics/</code> に物理のプレハブが並んでいます。作りたいものに近いものを開いて中身を真似るのが早道です。</p>
+
+<table>
+  <tr><th>プレハブ</th><th>中身</th></tr>
+  <tr><td><code>PhysicsBall</code></td><td>球 + 球コライダー + 剛体 + 物理マテリアル</td></tr>
+  <tr><td><code>PhysicsBox</code></td><td>箱 + 箱コライダー + 剛体</td></tr>
+  <tr><td><code>PhysicsCapsule</code></td><td>カプセル</td></tr>
+  <tr><td><code>PhysicsPlatform</code></td><td>板（静的）</td></tr>
+  <tr><td><code>Character</code></td><td>当たりと操作を持つキャラ</td></tr>
+  <tr><td><code>HumanModel</code></td><td>見た目の人型</td></tr>
+</table>
+
+<h2>スクリプト</h2>
+
+<h3>言語と制約</h3>
+
+<p>スクリプトは <strong>AngelScript</strong> で書きます。C++ や C# に似た文法です。</p>
+
+<h4>決まりは 3 つ</h4>
+
+<ol>
+  <li><strong><code>ScriptComponent</code> を継ぐ</strong></li>
+  <li><strong>ファイル名とクラス名を同じにする</strong></li>
+  <li><strong>クラス名はプロジェクト全体で一意にする</strong></li>
+</ol>
+
+<p>これだけで、インスペクタの <strong>＋ コンポーネント追加</strong>の一覧に出ます。</p>
+
+<h4>#include は要らない</h4>
+
+<p><code>Assets/Scripts</code> の下の <code>.as</code> は<strong>全部まとめて 1 つ</strong>としてコンパイルされます。</p>
+
+<ul>
+  <li><strong>どのファイルのクラスでも、そのまま名前で使えます</strong></li>
+  <li><code>#include</code> を書いても読み飛ばされます</li>
+  <li>そのかわり、<strong>クラス名が重なるとコンパイルが全部止まります</strong></li>
+</ul>
+
+<div class="note">
+  <span class="label">名前の衝突を防ぐ方法</span>
+  <p>ファイル名とクラス名を揃えておけば、ファイル名は重複しないのでクラス名も衝突しません。ずれていると警告が出ます。</p>
+  <p><code>namespace</code> は文法としては通りますが、<strong>コンポーネントの型は名前空間を含まない素の名前で登録される</strong>ため、コンポーネントの名前分けには使えません。ヘルパー関数や非コンポーネントのクラスには有効です。</p>
+</div>
+
+<h4>基本の形</h4>
+
+<div class="file">Assets/Scripts/Spinner.as</div>
+<pre><code>[DisplayName(<span class="st">"回転させる"</span>)]
+<span class="kw">class</span> Spinner : ScriptComponent
+{
+    [Range(0.0f, 360.0f)] [Tooltip(<span class="st">"回る速さ（度/秒）"</span>)]
+    <span class="kw">float</span> speed = 90.0f;
+
+    <span class="kw">void</span> Update()
+    {
+        Vector3 rotation = owner.transform.rotation;
+        rotation.y += speed * 0.0174533f * Time::DeltaTime();
+        owner.transform.rotation = rotation;
+    }
+}</code></pre>
+
+<h3>ライフサイクル</h3>
+
+<figure>
+  <img class="wide" src="assets/figures/lifecycle.svg" alt="Awake から OnDestroy までの呼ばれる順番の図">
+  <figcaption>呼ばれる順番</figcaption>
+</figure>
+
+<table>
+  <tr><th>関数</th><th>呼ばれるとき</th><th>書く内容</th></tr>
+  <tr><td><code>Awake()</code></td><td>付いた直後に 1 回</td><td><strong>他のコンポーネントはまだ揃っていない。</strong> 自分だけで済む初期化</td></tr>
+  <tr><td><code>Start()</code></td><td>最初の更新の前に 1 回</td><td><strong>他を探す初期化はここ。</strong> 全オブジェクトが揃っている</td></tr>
+  <tr><td><code>Update()</code></td><td>毎フレーム</td><td>ふつうの処理</td></tr>
+  <tr><td><code>FixedUpdate()</code></td><td>物理の刻みごと</td><td><strong>力を加える処理。</strong> フレームによって 0 回にも複数回にもなる</td></tr>
+  <tr><td><code>LateUpdate()</code></td><td>全員の Update の後</td><td><strong>カメラの追従。</strong> 対象が動き終わってから</td></tr>
+  <tr><td><code>OnDestroy()</code></td><td>壊すときに 1 回</td><td>後片付け</td></tr>
+  <tr><td><code>OnScriptReloaded()</code></td><td>スクリプトを読み直した後</td><td>エンジンへ渡した関数の渡し直し</td></tr>
+</table>
+
+<div class="note danger">
+  <span class="label">Awake で他のコンポーネントを探さない</span>
+  <p><code>Awake</code> の時点では、自分が最初の 1 個かもしれません。<code>owner.rigidbody</code> が <code>null</code> になります。<strong>他を触るのは <code>Start</code> からです。</strong></p>
+</div>
+
+<h4>Update と FixedUpdate の使い分け</h4>
+
+<pre><code><span class="cm">// 悪い例：フレームレートで挙動が変わる</span>
+<span class="kw">void</span> Update()
+{
+    body.AddForce(Vector3(0.0f, 0.0f, 10.0f));
+}
+
+<span class="cm">// 良い例：刻みが一定なので、どんな環境でも同じ結果</span>
+<span class="kw">void</span> FixedUpdate()
+{
+    body.AddForce(Vector3(0.0f, 0.0f, 10.0f));
+}</code></pre>
+
+<p><strong>物理に力を加えるなら <code>FixedUpdate</code></strong>、入力を読むなら <code>Update</code> です。1 回分の時間は <code>Time::FixedDeltaTime()</code> です。</p>
+
+<h4>当たり判定の通知</h4>
+
+<table>
+  <tr><th>関数</th><th>呼ばれる条件</th></tr>
+  <tr><td><code>OnTriggerEnter / Stay / Exit</code></td><td><strong>どちらかがトリガー</strong>のとき（すり抜ける）</td></tr>
+  <tr><td><code>OnCollisionEnter / Stay / Exit</code></td><td><strong>両方とも押し出す側</strong>のとき（ぶつかる）</td></tr>
+</table>
+
+<p>全オブジェクトの <code>LateUpdate</code> の後に呼ばれます。持ち主にコライダーが要り、<strong>無効なコンポーネントには届きません。</strong></p>
+
+<h3>インスペクタへの公開</h3>
+
+<p><strong>公開したメンバ変数は、そのままインスペクタに出て、シーンに保存されます。</strong></p>
+
+<pre><code><span class="kw">float</span> speed = 5.0f;          <span class="cm">// 出る・保存される</span>
+<span class="kw">private float</span> timer_ = 0.0f; <span class="cm">// 出ない・保存されない</span></code></pre>
+
+<h4>出る型</h4>
+
+<table>
+  <tr><th>型</th><th>インスペクタでの見た目</th></tr>
+  <tr><td><code>bool</code></td><td>チェック</td></tr>
+  <tr><td><code>int</code> <code>float</code></td><td>数値（ドラッグで増減）</td></tr>
+  <tr><td><code>string</code></td><td>文字入力</td></tr>
+  <tr><td><code>Vector2</code> <code>Vector3</code> <code>Vector4</code></td><td>数値が 2〜4 個</td></tr>
+  <tr><td><code>array&lt;T&gt;</code></td><td>上の型の並び（増減できる）</td></tr>
+</table>
+
+<h4>属性</h4>
+
+<p><code>[A] [B]</code> と並べても、<code>[A, B]</code> とまとめても書けます。</p>
+
+<table>
+  <tr><th>属性</th><th>効果</th></tr>
+  <tr><td><code>[DisplayName("名前")]</code></td><td>インスペクタでの表示名（クラスにも付けられる）</td></tr>
+  <tr><td><code>[Range(最小, 最大)]</code></td><td>編集できる範囲。<code>[Range(最小, 最大, ドラッグ速度)]</code> も書ける</td></tr>
+  <tr><td><code>[Speed(速度)]</code></td><td>ドラッグしたときの増え方だけ決める</td></tr>
+  <tr><td><code>[ReadOnly]</code></td><td><strong>編集させない。保存もしない</strong>（実行中の値を見せる用）</td></tr>
+  <tr><td><code>[Hidden]</code></td><td>インスペクタに出さない（<strong>保存はする</strong>）</td></tr>
+  <tr><td><code>[Transient]</code></td><td>保存しない（<strong>インスペクタには出す</strong>）</td></tr>
+  <tr><td><code>[Color]</code></td><td><code>Vector4</code> を色として編集する</td></tr>
+  <tr><td><code>[Tooltip("説明")]</code></td><td>カーソルを乗せたときの説明</td></tr>
+  <tr><td><code>[Asset("種類")]</code></td><td><code>string</code> をアセットの参照にする</td></tr>
+  <tr><td><code>[ObjectRef]</code></td><td>シーン内の別オブジェクトへの参照にする</td></tr>
+</table>
+
+<h4>[Asset] — ファイルを選ばせる</h4>
+
+<pre><code>[Asset(<span class="st">"Prefab"</span>)] [Tooltip(<span class="st">"出す弾"</span>)]
+<span class="kw">string</span> bulletPrefab = <span class="st">""</span>;
+
+[Asset(<span class="st">"Audio"</span>)] [Tooltip(<span class="st">"当たったときの音"</span>)]
+<span class="kw">string</span> hitSound = <span class="st">""</span>;</code></pre>
+
+<p>使える種類は <code>Texture</code> <code>Model</code> <code>Shader</code> <code>Audio</code> <code>Material</code> <code>Scene</code> <code>Prefab</code> <code>Animation</code> <code>MaterialLibrary</code> <code>Json</code> <code>Csv</code> です。</p>
+
+<p><strong>GUID とパスの両方で保存する</strong>ので、ファイルの名前を変えても場所を移しても参照が切れません。</p>
+
+<h4>[ObjectRef] — 別のオブジェクトと繋ぐ</h4>
+
+<pre><code>[ObjectRef] [Tooltip(<span class="st">"追いかける相手"</span>)]
+GameObject@ target;
+
+[ObjectRef] [Tooltip(<span class="st">"スコアを持っている人"</span>)]
+ScoreKeeper@ keeper;</code></pre>
+
+<p>インスペクタに選ぶ欄が出ます。<strong>ID で保存する</strong>ので、相手の名前を変えても切れません。クラスのハンドルを書くと、<strong>そのクラスのコンポーネントだけ</strong>が候補になります。</p>
+
+<div class="note ok">
+  <span class="label">名前で探すより [ObjectRef] が確実</span>
+  <p><code>owner.FindObject("Player")</code> は、名前を変えた瞬間に壊れます。しかもエラーにならず、ただ動かなくなります。<code>[ObjectRef]</code> なら<strong>繋ぎ忘れがインスペクタで見えます。</strong></p>
+</div>
+
+<h4>書いた初期値の扱い</h4>
+
+<p><code>float speed = 5.0f;</code> の <code>5.0f</code> は「<strong>シーンにまだ値が無いときの値</strong>」です。一度インスペクタで変えてシーンを保存すると、以後はシーンの値が使われます。</p>
+
+<div class="note warn">
+  <span class="label">コードの初期値を変えても反映されない</span>
+  <p>保存済みのオブジェクトには反映されません。新しい初期値にしたいときは、インスペクタの ⋮ から <strong>既定値へ戻す</strong>を使ってください。</p>
+</div>
+
+<h3>参照の取り方</h3>
+
+<h4>自分に付いているコンポーネント</h4>
+
+<p><strong>型名の先頭を小文字にした名前</strong>で引けます。</p>
+
+<pre><code>Rigidbody@ body = owner.rigidbody;
+CharacterController@ controller = owner.characterController;
+UIText@ text = owner.uiText;
+UISlider@ slider = owner.uiSlider;   <span class="cm">// 大文字が続く型は UI までが小文字</span></code></pre>
+
+<p>引くのには手間がかかるので、<strong><code>Start</code> で控えて使い回します。</strong></p>
+
+<pre><code><span class="kw">private</span> Rigidbody@ body_;
+
+<span class="kw">void</span> Start()
+{
+    @body_ = owner.rigidbody;   <span class="cm">// ハンドルへの代入は @ を付ける</span>
+}
+
+<span class="kw">void</span> FixedUpdate()
+{
+    <span class="kw">if</span> (body_ <span class="kw">is null</span>) { <span class="kw">return</span>; }
+    body_.AddForce(Vector3(0.0f, 0.0f, 10.0f));
+}</code></pre>
+
+<div class="note danger">
+  <span class="label">@ を忘れると中身のコピーになる</span>
+  <p><code>body_ = owner.rigidbody;</code> と書くとハンドルの差し替えになりません。<strong>必ず <code>@body_ = ...</code> と書いてください。</strong></p>
+</div>
+
+<h4>他のスクリプト</h4>
+
+<pre><code><span class="kw">private</span> ScoreKeeper@ keeper_;
+
+<span class="kw">void</span> Start()
+{
+    GameObject@ manager = owner.FindObject(<span class="st">"GameManager"</span>);
+    <span class="kw">if</span> (manager !<span class="kw">is null</span>) {
+        manager.GetComponent(@keeper_);
+    }
+}</code></pre>
+
+<h4>繋ぎ方の使い分け</h4>
+
+<table>
+  <tr><th>方法</th><th>書き方</th><th>向いている場面</th></tr>
+  <tr><td>インスペクタで繋ぐ</td><td><code>[ObjectRef] GameObject@ target;</code></td><td><strong>繋ぎ先が決まっているとき（推奨）</strong></td></tr>
+  <tr><td>名前で探す</td><td><code>owner.FindObject("名前")</code></td><td>1 個しかないもの（マネージャなど）</td></tr>
+  <tr><td>当たった相手から</td><td><code>other.gameObject</code></td><td>触れたものに反応するとき</td></tr>
+</table>
+
+<h4>オブジェクトを作る・消す</h4>
+
+<pre><code><span class="cm">// プレハブから作る</span>
+GameObject@ made = owner.InstantiatePrefab(prefabPath, <span class="st">"Bullet"</span>);
+
+<span class="cm">// 消す</span>
+owner.Destroy();        <span class="cm">// 自分ごと</span>
+made.Destroy();         <span class="cm">// 他のもの</span></code></pre>
+
+<div class="note warn">
+  <span class="label">消した後のハンドルは触らない</span>
+  <p><code>Destroy()</code> を呼んだ後は <code>isAlive</code> が <code>false</code> になります。持ち続けるなら <code>if (target !is null &amp;&amp; target.isAlive)</code> で確かめてください。</p>
+</div>
+
+<h3>ホットリロードと部分差し戻し</h3>
+
+<p>エディタのあるビルドでは、<strong><code>.as</code> を保存した瞬間に読み直します。</strong> 再生を止める必要はありません。</p>
+
+<ul>
+  <li>インスペクタに出るメンバ変数の値は<strong>持ち越します</strong></li>
+  <li>それ以外のメンバ変数は<strong>書いた初期値に戻ります</strong></li>
+  <li>Tween などエンジンへ渡した関数は呼ばれなくなります（<code>OnScriptReloaded()</code> で渡し直す）</li>
+</ul>
+
+<figure>
+  <img class="wide" src="assets/figures/script-fallback.svg" alt="1 つ壊れても、そのファイルだけ前の版に戻して他は新しい版で動く図">
+  <figcaption>コンパイルに失敗したときの動き</figcaption>
+</figure>
+
+<div class="note ok">
+  <span class="label">1 つ壊れても、他は新しいまま動く</span>
+  <p>書きかけの 1 ファイルがコンパイルできなくても、<strong>そのファイルだけ直前の版に戻して</strong>他は新しい版で動きます。「ちょっと直している間、全部が古い状態に戻る」ということはありません。</p>
+</div>
+
+<p>警告にこう出ます。</p>
+
+<pre><code>A.as は直す前の版のまま動いています（このファイルのエラーを直すと入れ替わります）</code></pre>
+
+<div class="note warn">
+  <span class="label">効かない場合</span>
+  <p>戻したファイルのクラスを<strong>他のファイルが新しい形で使っている</strong>ときは、2 回目も失敗します（<code>A</code> に足したばかりのメンバを <code>B</code> が呼んでいる、など）。そのときは全体が前の状態のままになります。起動して最初のコンパイル（戻せる版が無い）も同じです。</p>
+</div>
+
+<h3>スクリプトを作る</h3>
+
+<p>Project ビューで <strong>＋ 作成 → スクリプトを作成…</strong>、または一覧の空きを右クリック。</p>
+
+<table>
+  <tr><th>雛形</th><th>中身</th></tr>
+  <tr><td><code>Basic</code></td><td><code>Start</code> と <code>Update</code></td></tr>
+  <tr><td><code>Collision</code></td><td><code>Start</code> <code>Update</code> と当たり判定の関数</td></tr>
+  <tr><td><code>Empty</code></td><td>クラスだけ</td></tr>
+</table>
+
+<p>雛形は <code>Application/Config/ScriptTemplates/*.as.txt</code> にあります。<strong>ファイルを足せば選択肢が増えます。</strong> 中の <code>{CLASS}</code> がクラス名に置き換わります。</p>
+
+<div class="note danger">
+  <span class="label">雛形の拡張子は必ず .as.txt</span>
+  <p><code>.as</code> にすると、雛形そのものがスクリプトとしてコンパイルされてしまいます。</p>
+</div>
+
+<h2>入力</h2>
+
+<h3>操作の名前で書く</h3>
+
+<figure>
+  <img class="wide" src="assets/figures/input-flow.svg" alt="デバイスの入力が操作の名前にまとまり、場面で仕分けてスクリプトへ届く図">
+  <figcaption>入力の流れ</figcaption>
+</figure>
+
+<div class="note danger">
+  <span class="label">キーコードを直接書かない</span>
+  <p><code>Input::IsKeyPressed(Key::W)</code> と書くこともできますが、この書き方だと<strong>ゲームパッドが効かず、キー割り当ても変えられず、UI を操作している最中にもキャラが動きます。</strong></p>
+</div>
+
+<p><strong>操作の名前（<code>InputAction</code>）で書く</strong>と、これが全部解決します。</p>
+
+<pre><code><span class="kw">if</span> (Input::IsActionTriggered(InputAction::Jump)) {
+    Jump();
+}</code></pre>
+
+<h3>3 つの聞き方</h3>
+
+<table>
+  <tr><th>関数</th><th>いつ true か</th><th>使いどころ</th></tr>
+  <tr><td><code>IsActionPressed</code></td><td>押している間ずっと</td><td>移動・ダッシュ・溜め</td></tr>
+  <tr><td><code>IsActionTriggered</code></td><td><strong>押した瞬間だけ</strong></td><td>ジャンプ・攻撃・決定</td></tr>
+  <tr><td><code>IsActionReleased</code></td><td><strong>離した瞬間だけ</strong></td><td>溜め撃ちを放つ</td></tr>
+</table>
+
+<div class="note warn">
+  <span class="label">ジャンプに Pressed を使わない</span>
+  <p><code>IsActionPressed</code> を使うと、押しっぱなしで跳び続けます。<code>IsActionTriggered</code> にしてください。</p>
+</div>
+
+<h3>軸でまとめて取る</h3>
+
+<p>反対向きの 2 つ（または 4 つ）をまとめて、<code>-1〜1</code> の値で取れます。<strong>キーでもスティックでも同じ値</strong>になります。</p>
+
+<pre><code><span class="cm">// 左右だけ</span>
+<span class="kw">float</span> x = Input::GetAxis(InputAction::MoveLeft, InputAction::MoveRight);
+
+<span class="cm">// 前後左右をまとめて</span>
+Vector2 stick = Input::GetAxis2D(
+    InputAction::MoveLeft, InputAction::MoveRight,
+    InputAction::MoveBack, InputAction::MoveForward);
+
+Vector3 move = Vector3(stick.x, 0.0f, stick.y) * speed;</code></pre>
+
+<p>スティックは倒した量に応じて途中の値になります。キーは <code>-1</code> か <code>0</code> か <code>1</code> です。</p>
+
+<h3>場面（Context）</h3>
+
+<p>各操作には<strong>場面</strong>が決まっています。</p>
+
+<table>
+  <tr><th>場面</th><th>いつ効くか</th></tr>
+  <tr><td><code>Game</code></td><td>ふつうに遊んでいる間</td></tr>
+  <tr><td><code>UI</code></td><td><strong>UI を選んでいる間</strong>（ボタンにフォーカスがある間）</td></tr>
+  <tr><td><code>Editor</code></td><td>エディタのあるビルドでだけ</td></tr>
+</table>
+
+<p>UI を選んでいる間は <code>Game</code> の操作が止まります。<strong>決定ボタンでボタンを押した瞬間にキャラも跳ぶ、ということが起きません。</strong></p>
+
+<h3>ゲームパッド</h3>
+
+<p><strong>最大 4 台</strong>まで見ます。プレイヤー番号は <code>0</code>〜<code>3</code> です。</p>
+
+<pre><code><span class="cm">// 誰が押しても反応する（既定）</span>
+Input::IsActionPressed(InputAction::Jump);
+
+<span class="cm">// 1 人目だけ</span>
+Input::IsActionPressed(InputAction::Jump, 0);
+
+Vector2 left = Input::GetLeftStick(0);
+<span class="kw">float</span> trigger = Input::GetRightTrigger(0);
+Input::SetVibration(0.6f, 0.6f, 0);   <span class="cm">// 左, 右, プレイヤー番号</span></code></pre>
+
+<div class="note">
+  <span class="label">プレイヤーを指定するとキーボードは混ざらない</span>
+  <p><code>player</code> を省くと「誰か 1 人でも押していれば」になります。<strong>番号を指定すると、そのパッドだけ</strong>を見ます。2 人プレイを作るときはこうします。</p>
+</div>
+
+<p>振動を止めるのは自分の仕事です。時間を数えて <code>SetVibration(0, 0, 0)</code> を入れてください。</p>
+
+<h3>入力アクション一覧</h3>
+
+<p><code>Application/Config/EngineSettings/InputActions.json</code> の中身です。<strong>Help → キー操作を見る</strong>（Key Config）から編集できます。スクリプトは書き換えません。</p>
+
+<table>
+  <tr><th>名前</th><th>表示</th><th>場面</th><th>既定の割り当て</th></tr>
+  <tr><td><code>MoveForward</code></td><td>前進</td><td><code>Game</code></td><td><kbd>W</kbd> <kbd>↑</kbd> 左スティック上 十字上</td></tr>
+  <tr><td><code>MoveBack</code></td><td>後退</td><td><code>Game</code></td><td><kbd>S</kbd> <kbd>↓</kbd> 左スティック下 十字下</td></tr>
+  <tr><td><code>MoveLeft</code></td><td>左移動</td><td><code>Game</code></td><td><kbd>A</kbd> <kbd>←</kbd> 左スティック左 十字左</td></tr>
+  <tr><td><code>MoveRight</code></td><td>右移動</td><td><code>Game</code></td><td><kbd>D</kbd> <kbd>→</kbd> 左スティック右 十字右</td></tr>
+  <tr><td><code>Jump</code></td><td>ジャンプ</td><td><code>Game</code></td><td><kbd>Space</kbd> A ボタン</td></tr>
+  <tr><td><code>Sprint</code></td><td>ダッシュ</td><td><code>Game</code></td><td><kbd>Shift</kbd> 左スティック押し込み</td></tr>
+  <tr><td><code>Attack</code></td><td>攻撃</td><td><code>Game</code></td><td>マウス左 X ボタン</td></tr>
+  <tr><td><code>Interact</code></td><td>インタラクト</td><td><code>Game</code></td><td><kbd>E</kbd> B ボタン</td></tr>
+  <tr><td><code>UINavigateUp</code></td><td>UI上</td><td><code>UI</code></td><td><kbd>↑</kbd> 左スティック上 十字上</td></tr>
+  <tr><td><code>UINavigateDown</code></td><td>UI下</td><td><code>UI</code></td><td><kbd>↓</kbd> 左スティック下 十字下</td></tr>
+  <tr><td><code>UINavigateLeft</code></td><td>UI左</td><td><code>UI</code></td><td><kbd>←</kbd> 左スティック左 十字左</td></tr>
+  <tr><td><code>UINavigateRight</code></td><td>UI右</td><td><code>UI</code></td><td><kbd>→</kbd> 左スティック右 十字右</td></tr>
+  <tr><td><code>UIConfirm</code></td><td>UI決定</td><td><code>UI</code></td><td><kbd>Enter</kbd> A ボタン</td></tr>
+  <tr><td><code>UICancel</code></td><td>UIキャンセル</td><td><code>UI</code></td><td><kbd>Esc</kbd> B ボタン</td></tr>
+  <tr><td><code>Pause</code></td><td>ポーズ</td><td><code>Game</code>+<code>UI</code></td><td><kbd>Esc</kbd> Start ボタン</td></tr>
+  <tr><td><code>EditorFocusSelection</code></td><td>選択へ寄る</td><td><code>Editor</code></td><td><kbd>F</kbd></td></tr>
+  <tr><td><code>EditorGizmoTranslate</code></td><td>ギズモ：移動</td><td><code>Editor</code></td><td><kbd>W</kbd></td></tr>
+  <tr><td><code>EditorGizmoRotate</code></td><td>ギズモ：回転</td><td><code>Editor</code></td><td><kbd>E</kbd></td></tr>
+  <tr><td><code>EditorGizmoScale</code></td><td>ギズモ：拡縮</td><td><code>Editor</code></td><td><kbd>R</kbd></td></tr>
+</table>
+
+<h4>綴りの読み方</h4>
+
+<table>
+  <tr><th>形</th><th>意味</th></tr>
+  <tr><td><code>Key:W</code></td><td>キーボードの W</td></tr>
+  <tr><td><code>Mouse:Left</code></td><td>マウスの左ボタン</td></tr>
+  <tr><td><code>Gamepad:A</code></td><td>パッドの A ボタン</td></tr>
+  <tr><td><code>Axis:LeftStickY+</code></td><td>左スティックの Y を倒した向き（<code>+</code> / <code>-</code>）</td></tr>
+  <tr><td><code>Ctrl+Key:S</code></td><td>組み合わせ（<code>Ctrl</code> <code>Shift</code> <code>Alt</code>）</td></tr>
+</table>
+
+<h4>足す</h4>
+
+<div class="file">Config/EngineSettings/InputActions.json</div>
+<pre><code>{
+    <span class="st">"id"</span>: <span class="st">"Dash"</span>,
+    <span class="st">"display"</span>: <span class="st">"回避"</span>,
+    <span class="st">"context"</span>: <span class="st">"Game"</span>,
+    <span class="st">"defaults"</span>: [<span class="st">"Key:LControl"</span>, <span class="st">"Gamepad:B"</span>]
+}</code></pre>
+
+<p>スクリプトからは <code>InputAction::Dash</code> で使えます。</p>
+
+<h2>物理と当たり判定</h2>
+
+<h3>3 つの動かし方</h3>
+
+<table>
+  <tr><th>動かし方</th><th>コンポーネント</th><th>用途</th></tr>
+  <tr><td><strong>物理に任せる</strong></td><td><code>Rigidbody</code>（動的）</td><td>落ちる・転がる・積み上がるもの</td></tr>
+  <tr><td><strong>自分で動かす（当たりは効く）</strong></td><td><code>CharacterController</code></td><td>操作キャラ・敵</td></tr>
+  <tr><td><strong>自分で動かす（当たりは無視）</strong></td><td><code>Transform</code> だけ</td><td>演出・カメラ・UI</td></tr>
+</table>
+
+<div class="note danger">
+  <span class="label">Rigidbody と CharacterController を同時に付けない</span>
+  <p>どちらも位置を動かすので、取り合いになります。</p>
+</div>
+
+<h3>Rigidbody</h3>
+
+<table>
+  <tr><th>項目</th><th>意味</th></tr>
+  <tr><td>種別</td><td><strong>動的</strong>（重力と力で動く）/ <strong>キネマティック</strong>（速度を指定して動かす）/ <strong>静的</strong>（動かない）</td></tr>
+  <tr><td>質量</td><td>kg。キネマティックと静的では無限として扱う</td></tr>
+  <tr><td>重力を受ける</td><td>落ちるか</td></tr>
+  <tr><td>抗力</td><td>大きいほど速度が早く落ちる（0 で減らさない）</td></tr>
+  <tr><td>回転の抗力</td><td>大きいほど回転が早く止まる（転がり続けるのを防ぐ）</td></tr>
+  <tr><td>回転を止める</td><td>接触で回らなくなる（向きは自分で指定する）</td></tr>
+</table>
+
+<table>
+  <tr><th>操作</th><th>意味</th></tr>
+  <tr><td><code>AddForce</code></td><td>力を加える（<strong>押し続ける</strong>イメージ。毎フレーム呼ぶ）</td></tr>
+  <tr><td><code>AddImpulse</code></td><td>撃力を加える（<strong>一発叩く</strong>イメージ。1 回だけ呼ぶ）</td></tr>
+  <tr><td><code>AddTorque</code></td><td>回す力を加える</td></tr>
+  <tr><td><code>WakeUp</code></td><td>眠っているものを起こす</td></tr>
+</table>
+
+<div class="note">
+  <span class="label">止まったものは眠る</span>
+  <p>ほとんど動かなくなった物体は計算から外れます。他の物がぶつかれば自動で起きますが、スクリプトから力を加えるときは <code>WakeUp()</code> が要ることがあります。眠っている数は <code>Physics::GetSleepingCount()</code> で見られます。</p>
+</div>
+
+<div class="note danger">
+  <span class="label">動かない床・壁に Rigidbody を付けない</span>
+  <p><code>Collider</code> の<strong>静的</strong>にチェックを入れるだけです。付けると床が落ちていきます。</p>
+</div>
+
+<h3>CharacterController</h3>
+
+<pre><code><span class="kw">private</span> CharacterController@ controller_;
+
+<span class="kw">void</span> Start()
+{
+    @controller_ = owner.characterController;
+}
+
+<span class="kw">void</span> Update()
+{
+    Vector2 stick = Input::GetAxis2D(
+        InputAction::MoveLeft, InputAction::MoveRight,
+        InputAction::MoveBack, InputAction::MoveForward);
+
+    controller_.SimpleMove(Vector3(stick.x, 0.0f, stick.y) * speed);
+
+    <span class="kw">if</span> (controller_.grounded &amp;&amp; Input::IsActionTriggered(InputAction::Jump)) {
+        controller_.Jump(jumpSpeed);
+    }
+}</code></pre>
+
+<table>
+  <tr><th>項目</th><th>既定</th><th>意味</th></tr>
+  <tr><td>登れる坂</td><td>45 度</td><td>これより急な坂では滑り落ちる</td></tr>
+  <tr><td>越えられる段差</td><td>0.3 m</td><td>これ以下の段差は歩いたまま上がる</td></tr>
+  <tr><td>表面の余白</td><td>0.02 m</td><td>壁との間に残す隙間</td></tr>
+  <tr><td>重力を受ける</td><td>有効</td><td>接地していないと落ちる</td></tr>
+  <tr><td><code>grounded</code></td><td>—</td><td>接地しているか（読むだけ）</td></tr>
+  <tr><td><code>velocity</code></td><td>—</td><td>今の速度</td></tr>
+</table>
+
+<p><code>SimpleMove</code> は<strong>重力を自動で足します</strong>。自分で扱いたいときは <code>Move</code> を使ってください。</p>
+
+<h3>当たり判定</h3>
+
+<figure>
+  <img class="wide" src="assets/figures/collision-branch.svg" alt="どちらかがトリガーなら OnTrigger、でなければ OnCollision の分岐図">
+  <figcaption>トリガーか、押し出すか</figcaption>
+</figure>
+
+<table>
+  <tr><th>使いたいもの</th><th>コライダーの設定</th><th>受け取る関数</th></tr>
+  <tr><td>アイテム・ゴール・判定エリア</td><td><strong>トリガーを入れる</strong></td><td><code>OnTriggerEnter</code></td></tr>
+  <tr><td>壁・床・ぶつかる敵</td><td>トリガーを外す</td><td><code>OnCollisionEnter</code></td></tr>
+</table>
+
+<pre><code><span class="cm">// アイテム・ゴール・判定エリア</span>
+<span class="kw">void</span> OnTriggerEnter(Collision@ other)
+{
+    <span class="kw">if</span> (other.layer != CollisionLayer::Player) { <span class="kw">return</span>; }
+    owner.Destroy();
+}
+
+<span class="cm">// ぶつかる</span>
+<span class="kw">void</span> OnCollisionEnter(Collision@ collision)
+{
+    <span class="kw">if</span> (collision.impulse &gt; 5.0f) {   <span class="cm">// ぶつかった強さ（N・s）</span>
+        PlayHitSound();
+    }
+}</code></pre>
+
+<h4>Collision から取れるもの</h4>
+
+<table>
+  <tr><th>項目</th><th>意味</th></tr>
+  <tr><td><code>gameObject</code></td><td>相手のオブジェクト</td></tr>
+  <tr><td><code>layer</code></td><td>相手のレイヤー</td></tr>
+  <tr><td><code>selfLayer</code></td><td>自分のレイヤー</td></tr>
+  <tr><td><code>normal</code></td><td>ぶつかった面の向き</td></tr>
+  <tr><td><code>point</code></td><td>ぶつかった位置</td></tr>
+  <tr><td><code>impulse</code></td><td>ぶつかった強さ（N・s）</td></tr>
+  <tr><td><code>depth</code></td><td>めり込んだ深さ</td></tr>
+  <tr><td><code>isTrigger</code></td><td>トリガーだったか</td></tr>
+</table>
+
+<div class="note ok">
+  <span class="label">相手は名前ではなくレイヤーで絞る</span>
+  <p>名前での判定はオブジェクト名を変えると壊れます。<code>other.layer == CollisionLayer::Enemy</code> のようにレイヤーで絞ってください。レイヤー同士が当たるかどうかは <strong>Project Settings の衝突マトリクス</strong>で決められるので、そもそも判定が要らなくなることもあります。</p>
+</div>
+
+<h3>光線と範囲の検索</h3>
+
+<pre><code><span class="cm">// 足元に床があるか</span>
+RaycastHit@ hit = Physics::Raycast(
+    owner.transform.position,
+    Vector3(0.0f, -1.0f, 0.0f),
+    2.0f,
+    Physics::LayerMask(CollisionLayer::Default));
+
+<span class="kw">if</span> (hit !<span class="kw">is null</span>) {
+    Log(<span class="st">"床まで "</span> + hit.distance + <span class="st">" m"</span>);
+}</code></pre>
+
+<table>
+  <tr><th>関数</th><th>返すもの</th></tr>
+  <tr><td><code>Raycast</code></td><td>いちばん手前に当たったもの 1 つ</td></tr>
+  <tr><td><code>RaycastAll</code></td><td>当たったもの全部</td></tr>
+  <tr><td><code>OverlapSphere</code></td><td>球の中にあるもの全部</td></tr>
+  <tr><td><code>OverlapBox</code></td><td>箱の中にあるもの全部</td></tr>
+</table>
+
+<pre><code><span class="cm">// 爆発：半径 5m の中の敵にダメージ</span>
+GameObject@[]@ hits = Physics::OverlapSphere(
+    owner.transform.position, 5.0f, Physics::LayerMask(CollisionLayer::Enemy));
+
+<span class="kw">for</span> (<span class="kw">uint</span> i = 0; i &lt; hits.length(); i++) {
+    Health@ health;
+    <span class="kw">if</span> (hits[i].GetComponent(@health)) {
+        health.Damage(50);
+    }
+}</code></pre>
+
+<h3>当たらないときの調べ方</h3>
+
+<ol>
+  <li><strong>ツールバーの Collider を押す。</strong> コライダーの形が線で出ます。見た目とコライダーは別物です</li>
+  <li><strong>トリガーのチェック</strong>を確かめる。呼ばれる関数が変わります</li>
+  <li><strong>衝突マトリクス</strong>を確かめる。そのレイヤー同士が切られているかもしれません</li>
+  <li><strong>コンポーネントが無効になっていないか</strong>確かめる。無効なスクリプトには通知が届きません</li>
+  <li><strong>どちらも静的になっていないか</strong>確かめる。静的なものは押し出されません</li>
+</ol>
+
+<h2>UI</h2>
+
+<h3>部品の構成</h3>
+
+<figure>
+  <img class="wide" src="assets/figures/ui-parts.svg" alt="RectTransform と見た目と操作を組み合わせる図">
+  <figcaption>UI は RectTransform と組で使う</figcaption>
+</figure>
+
+<table>
+  <tr><th>コンポーネント</th><th>役割</th></tr>
+  <tr><td><code>RectTransform</code></td><td><strong>どこに・どの大きさで</strong>（他の UI と必ず組で使う）</td></tr>
+  <tr><td><code>UIImage</code></td><td>画像や単色の四角を出す</td></tr>
+  <tr><td><code>UIText</code></td><td>文字を出す</td></tr>
+  <tr><td><code>UIButton</code></td><td>押せるようにする</td></tr>
+  <tr><td><code>UISlider</code></td><td>値をつまみで決める</td></tr>
+  <tr><td><code>UIToggle</code></td><td>入り切りを覚える</td></tr>
+</table>
+
+<p><code>UIImage</code> や <code>UIText</code> を足すと、<code>RectTransform</code> は自動で付きます。UI の配置は <strong>Canvas</strong> ビューで行うと楽です。</p>
+
+<h3>RectTransform</h3>
+
+<table>
+  <tr><th>項目</th><th>意味</th></tr>
+  <tr><td>アンカー</td><td><strong>画面のどこを基準にするか</strong>（9 か所）</td></tr>
+  <tr><td>位置</td><td>基準からのずらし（px）</td></tr>
+  <tr><td>基準点</td><td>自分のどこを位置に合わせるか（<code>(0,0)</code> = 左上、<code>(0.5,0.5)</code> = 中央）</td></tr>
+  <tr><td>大きさ</td><td>px</td></tr>
+  <tr><td>回転</td><td>ラジアン</td></tr>
+  <tr><td>描画順</td><td><strong>大きいほど手前</strong></td></tr>
+</table>
+
+<p>アンカーは <code>TopLeft</code> <code>TopCenter</code> <code>TopRight</code> <code>MiddleLeft</code> <code>Center</code> <code>MiddleRight</code> <code>BottomLeft</code> <code>BottomCenter</code> <code>BottomRight</code> です。</p>
+
+<div class="note">
+  <span class="label">アンカーは「画面が広がったときどこに残るか」</span>
+  <p>アンカーを <code>TopLeft</code> にすると、ウィンドウを大きくしても左上からの距離が保たれます。スコアは左上、体力バーは下中央、といった使い分けをします。</p>
+</div>
+
+<h3>文字（UIText）</h3>
+
+<pre><code>UIText@ text = owner.uiText;
+text.text = <span class="st">"スコア: "</span> + score;
+text.fontSize = 36.0f;
+text.SetOutline(Vector4(0.0f, 0.0f, 0.0f, 1.0f), 0.15f);
+text.SetAlign(TextAlignH::Center, TextAlignV::Middle);</code></pre>
+
+<div class="note">
+  <span class="label">縁取りを少し付ける</span>
+  <p>明るい空の上に白い文字を置くと読めません。黒い縁取りを <code>0.15</code> ほど付けるだけで、どんな背景でも読めるようになります。</p>
+</div>
+
+<div class="note warn">
+  <span class="label">毎フレーム書き換えない</span>
+  <p>文字列の組み立てとフォントの処理は重めです。<strong>値が変わったときだけ</strong>書き換えてください。</p>
+</div>
+
+<h3>ボタン（UIButton）</h3>
+
+<table>
+  <tr><th>項目</th><th>意味</th></tr>
+  <tr><td><code>wasClicked</code></td><td>押されたか（<strong>押された次のフレームだけ</strong> true）</td></tr>
+  <tr><td><code>hovered</code></td><td>ポインタが乗っているか</td></tr>
+  <tr><td><code>focused</code></td><td>キー・パッドで選ばれているか</td></tr>
+  <tr><td><code>pressed</code></td><td>押されている最中か</td></tr>
+  <tr><td><code>interactable</code></td><td>押せるか（<code>false</code> で灰色になる）</td></tr>
+  <tr><td><code>Focus()</code></td><td><strong>このボタンを選んだ状態にする</strong></td></tr>
+</table>
+
+<div class="note danger">
+  <span class="label">メニューを開いたら Focus() を 1 つ呼ぶ</span>
+  <p>これを呼ばないと、キーボードとパッドで選ぶ対象が決まりません。<strong>タイトル画面・ポーズ画面では必ず 1 つ選んでおきます。</strong></p>
+</div>
+
+<p>選ばれているボタンは「乗せたときの色」になります。方向キー・十字キー・左スティックで隣へ移り、<kbd>Enter</kbd> か A ボタンで押せます。</p>
+
+<h3>スライダー（UISlider）</h3>
+
+<figure>
+  <img class="wide" src="assets/figures/slider-parts.svg" alt="溝・伸びる帯・つまみの 3 つで作るスライダーの構造図">
+  <figcaption>スライダーは 3 つのオブジェクトで作る</figcaption>
+</figure>
+
+<table>
+  <tr><th>役</th><th>付けるもの</th></tr>
+  <tr><td>溝（当たり判定）</td><td><code>RectTransform</code> + <code>UIImage</code> + <strong><code>UISlider</code></strong></td></tr>
+  <tr><td>伸びる帯</td><td><code>RectTransform</code> + <code>UIImage</code></td></tr>
+  <tr><td>つまみ</td><td><code>RectTransform</code> + <code>UIImage</code></td></tr>
+</table>
+
+<table>
+  <tr><th>項目</th><th>意味</th></tr>
+  <tr><td><code>value</code></td><td>今の値</td></tr>
+  <tr><td><code>minValue</code> / <code>maxValue</code></td><td>範囲（外の値を入れると端で止まる）</td></tr>
+  <tr><td><code>wholeNumbers</code></td><td>整数に丸めるか</td></tr>
+  <tr><td><code>direction</code></td><td>値が増える向き（0 = 左から右、1 = 右から左、2 = 上から下、3 = 下から上）</td></tr>
+  <tr><td><code>navigationStep</code></td><td>キーで 1 回に動く量（0 なら範囲の 1/10）</td></tr>
+</table>
+
+<p><strong>帯のどこを押してもその位置の値になります。</strong> フォーカス中は左右キーで動き、上下キーではフォーカスが隣へ移ります。</p>
+
+<h3>トグル（UIToggle）</h3>
+
+<table>
+  <tr><th>項目</th><th>意味</th></tr>
+  <tr><td><code>isOn</code></td><td>入っているか</td></tr>
+  <tr><td><code>group</code></td><td><strong>同じ綴りのトグル同士で 1 つだけが入る</strong></td></tr>
+  <tr><td><code>interactable</code></td><td>押せるか</td></tr>
+</table>
+
+<p><strong>入りのときに出す印</strong>に <code>UIImage</code> を繋ぐと、入りのときだけ出ます。グループを使うと「低 / 中 / 高」のような択一の選択になります。グループに入っているトグルは、<strong>入っているものを押しても切れません</strong>（全部切りにならないように）。</p>
+
+<h3>フォーカスを外す</h3>
+
+<div class="note warn">
+  <span class="label">UI が選ばれたままだとゲームの操作が止まる</span>
+  <p>場面が <code>UI</code> になるためです。メニューを閉じるときは <code>UI::ClearFocus()</code> を呼んでください。</p>
+</div>
+
+<h2>音</h2>
+
+<h3>2 つの鳴らし方</h3>
+
+<table>
+  <tr><th>方法</th><th>用途</th></tr>
+  <tr><td><strong><code>AudioSource</code> コンポーネント</strong></td><td><strong>ふつうはこちら。</strong> 設定だけで鳴る</td></tr>
+  <tr><td><code>Audio::</code> の関数</td><td>音のファイルが実行時に決まるとき</td></tr>
+</table>
+
+<h3>AudioSource</h3>
+
+<table>
+  <tr><th>項目</th><th>意味</th></tr>
+  <tr><td>音</td><td>鳴らすファイル</td></tr>
+  <tr><td>出力先</td><td><strong>BGM / 効果音 / ボイス</strong>（音量設定の単位）</td></tr>
+  <tr><td>開始時に鳴らす</td><td>再生が始まったら自動で鳴らす</td></tr>
+  <tr><td>繰り返す</td><td>ループするか</td></tr>
+  <tr><td>音量 / 高さ / 消音</td><td>そのまま</td></tr>
+  <tr><td>フェードイン</td><td>音量 0 からここまで上げる秒数</td></tr>
+  <tr><td>距離で変える</td><td><strong>0 = どこでも同じ音量、1 = 距離と左右を反映</strong></td></tr>
+  <tr><td>減衰の始まり / 聞こえる限界</td><td>この距離までは下がらない / この距離で 0</td></tr>
+</table>
+
+<table>
+  <tr><th>操作</th><th>意味</th></tr>
+  <tr><td><code>Play()</code></td><td>先頭から鳴らす（鳴っていれば鳴らし直す）</td></tr>
+  <tr><td><code>Stop()</code></td><td>止める</td></tr>
+  <tr><td><code>Pause()</code> / <code>UnPause()</code></td><td>位置を保って止める / 再開</td></tr>
+  <tr><td><code>PlayOneShot()</code></td><td><strong>重ねて鳴らす</strong>（止められない）</td></tr>
+  <tr><td><code>FadeOut(秒)</code></td><td>下げてから止める</td></tr>
+  <tr><td><code>isPlaying</code></td><td>鳴っているか</td></tr>
+</table>
+
+<div class="note ok">
+  <span class="label">BGM はスクリプト不要</span>
+  <p><code>AudioSource</code> を足して、出力先 = <strong>BGM</strong>、開始時に鳴らす = 有効、繰り返す = 有効、フェードイン = <code>1.5</code> にするだけで鳴ります。</p>
+</div>
+
+<div class="note warn">
+  <span class="label">連打で切れるときは PlayOneShot</span>
+  <p><code>Play()</code> は鳴らし直しになるため、連打すると切れます。効果音は <code>PlayOneShot()</code> を使ってください。</p>
+</div>
+
+<h3>距離で音量を変える（3D 音）</h3>
+
+<ol>
+  <li><strong>カメラに <code>AudioListener</code> を付ける</strong>（シーンに 1 つ）</li>
+  <li>音を出す側の <code>AudioSource</code> で<strong>距離で変える</strong>を <code>1</code> にする</li>
+  <li><strong>減衰の始まり</strong>と<strong>聞こえる限界</strong>を決める</li>
+</ol>
+
+<p>これで、離れるほど小さくなり、右にあるものは右から鳴ります。</p>
+
+<div class="note warn">
+  <span class="label">AudioListener が無いと効かない</span>
+  <p>聞き手がいないと距離を測れないので、警告を 1 回出して距離を無視します。<strong>既定は 2D（距離で変える = 0）</strong>です。UI の音や BGM は 0 のままにしてください。</p>
+</div>
+
+<h3>バス</h3>
+
+<figure>
+  <img class="wide" src="assets/figures/audio-bus.svg" alt="AudioSource からバスを通ってマスターへ合流する図">
+  <figcaption>音の流れ</figcaption>
+</figure>
+
+<pre><code>Audio::SetMasterVolume(0.8f);
+Audio::SetBusVolume(AudioBus::BGM, 0.5f);
+Audio::SetBusVolume(AudioBus::SE, 0.9f);
+
+<span class="kw">float</span> now = Audio::GetBusVolume(AudioBus::BGM);
+Audio::StopAll();</code></pre>
+
+<p><strong>鳴っている音の本数に関係なく、まとめて効きます。</strong> 設定画面のスライダーはこれを動かします。</p>
+
+<h3>音が鳴らないときの調べ方</h3>
+
+<table>
+  <tr><th>症状</th><th>原因</th></tr>
+  <tr><td>まったく鳴らない</td><td><strong>停止中。</strong> ▶ を押す</td></tr>
+  <tr><td>ファイルを指していない</td><td>インスペクタの<strong>音</strong>の欄が空だと、警告を出して鳴らない</td></tr>
+  <tr><td>小さすぎる</td><td>バス音量かマスター音量が下がっている</td></tr>
+  <tr><td>遠くで鳴らない</td><td><strong>距離で変える</strong>が 1 で、<strong>聞こえる限界</strong>より遠い</td></tr>
+  <tr><td>連打で切れる</td><td><code>Play()</code> ではなく <code>PlayOneShot()</code> を使う</td></tr>
+  <tr><td>BGM が効果音の音量で変わる</td><td><strong>出力先</strong>が <code>SE</code> のまま</td></tr>
+</table>
+
+<p>対応している形式は WAV と、Media Foundation が読めるもの（MP3 など）です。</p>
+
+<h2>時間・動き・シーン遷移</h2>
+
+<h3>時間</h3>
+
+<pre><code><span class="kw">float</span> dt = Time::DeltaTime();            <span class="cm">// 前フレームからの秒数</span>
+<span class="kw">float</span> unscaled = Time::UnscaledDeltaTime();
+<span class="kw">float</span> fixed = Time::FixedDeltaTime();    <span class="cm">// 物理 1 刻み分</span>
+
+Time::SetTimeScale(0.2f);   <span class="cm">// スローモーション</span>
+Time::SetTimeScale(0.0f);   <span class="cm">// 完全に止める（ポーズ）</span></code></pre>
+
+<div class="note danger">
+  <span class="label">必ず DeltaTime を掛ける</span>
+  <p><code>position.x += 0.1f;</code> はフレームレートで速さが変わります。<code>position.x += 5.0f * Time::DeltaTime();</code> と書いてください（どの環境でも 5 m/s）。</p>
+</div>
+
+<p><code>DeltaTime</code> は <code>TimeScale</code> が掛かった値、<code>UnscaledDeltaTime</code> は<strong>掛かっていない</strong>値です。<strong>ポーズ中でも動かしたいもの</strong>（メニューの演出、暗転）は <code>UnscaledDeltaTime</code> を使ってください。</p>
+
+<h3>Tween</h3>
+
+<pre><code>Tween::MoveTo(owner, Vector3(0.0f, 5.0f, 0.0f), 2.0f)
+    .SetEase(EaseType::EaseOutBack)
+    .SetDelay(0.2f)
+    .SetLink(owner);            <span class="cm">// 消えたら Tween も止まる</span></code></pre>
+
+<table>
+  <tr><th>よく使う EaseType</th><th>見た目</th></tr>
+  <tr><td><code>Linear</code></td><td>一定速度</td></tr>
+  <tr><td><code>EaseOutQuad</code> <code>EaseOutCubic</code></td><td>勢いよく始まってゆっくり止まる（<strong>いちばん無難</strong>）</td></tr>
+  <tr><td><code>EaseInQuad</code></td><td>ゆっくり始まって加速</td></tr>
+  <tr><td><code>EaseOutBack</code></td><td>行き過ぎて戻る</td></tr>
+  <tr><td><code>EaseOutBounce</code></td><td>跳ねて止まる</td></tr>
+  <tr><td><code>EaseOutElastic</code></td><td>ぷるぷる揺れて止まる</td></tr>
+</table>
+
+<p><code>In</code> / <code>Out</code> / <code>InOut</code> と <code>Quad</code> <code>Cubic</code> <code>Quart</code> <code>Quint</code> <code>Sine</code> <code>Expo</code> <code>Circ</code> <code>Back</code> <code>Elastic</code> <code>Bounce</code> の組み合わせで、全部で 31 種類あります。</p>
+
+<div class="note warn">
+  <span class="label">スクリプトを保存し直すと Tween は切れる</span>
+  <p>読み直すとエンジンへ渡した関数は呼ばれなくなります。<strong>渡し直しは <code>OnScriptReloaded()</code> に書いてください。</strong></p>
+</div>
+
+<h3>カメラを揺らす</h3>
+
+<pre><code>CameraShake::PlayPreset(<span class="st">"Hit"</span>);
+CameraShake::PlayPreset(<span class="st">"Explosion"</span>, 1.5f);   <span class="cm">// 強さ 1.5 倍</span>
+
+<span class="cm">// 連続してぶつかるほど強く揺れる</span>
+CameraShake::AddTrauma(collision.impulse * 0.02f);</code></pre>
+
+<p>プリセットは <code>Hit</code> <code>HeavyHit</code> <code>Explosion</code> <code>Landing</code> <code>Recoil</code> <code>Earthquake</code> <code>Handheld</code> <code>Rumble</code> です。</p>
+
+<h3>乱数</h3>
+
+<pre><code><span class="kw">float</span> f = Random::Range(0.0f, 1.0f);   <span class="cm">// 0.0 以上 1.0 以下</span>
+<span class="kw">int</span> i = Random::Range(0, 10);          <span class="cm">// 0 以上 10 未満</span>
+<span class="kw">bool</span> hit = Random::Chance(0.3f);       <span class="cm">// 30% で true</span></code></pre>
+
+<p>毎回同じ並びにしたいときは <code>RandomStream</code>（同じ種から同じ並びが出る）を使います。</p>
+
+<h3>シーン遷移と値の保持</h3>
+
+<figure>
+  <img class="wide" src="assets/figures/value-storage.svg" alt="メンバ変数・Session・CVar の生きる範囲の違いの図">
+  <figcaption>値をどこに入れるか</figcaption>
+</figure>
+
+<table>
+  <tr><th>入れ物</th><th>生きる範囲</th><th>例</th></tr>
+  <tr><td>メンバ変数</td><td>そのオブジェクトが生きている間</td><td>残り HP・弾数</td></tr>
+  <tr><td><code>Session</code></td><td>アプリを閉じるまで</td><td>ステージ間のスコア・選んだキャラ</td></tr>
+  <tr><td><code>CVar</code></td><td><strong>次回の起動でも</strong></td><td>音量設定・ハイスコア・難易度</td></tr>
+</table>
+
+<pre><code><span class="cm">// ゲーム側</span>
+Session::SetInt(<span class="st">"score"</span>, score);
+Scene::ChangeScene(<span class="st">"Result"</span>);
+
+<span class="cm">// リザルト側</span>
+<span class="kw">int</span> score = Session::GetInt(<span class="st">"score"</span>, 0);</code></pre>
+
+<p>シーンを切り替えると<strong>オブジェクトは全部作り直されます。</strong> 持ち越したい値は <code>Session</code> に入れてください。</p>
+
+<figure>
+  <img class="wide" src="assets/figures/game-flow.svg" alt="タイトル・ゲーム・リザルト・設定をシーンで行き来する図">
+  <figcaption>ゲーム全体の流れ</figcaption>
+</figure>
+
+<h4>暗転を挟む</h4>
+
+<pre><code>Tween::To(0.0f, 1.0f, 0.5f, <span class="kw">function</span>(<span class="kw">float</span> value) {
+    Rendering::SetFadeAlpha(value);
+}).OnComplete(<span class="kw">function</span>() {
+    Scene::ChangeScene(<span class="st">"Result"</span>);
+});</code></pre>
+
+<h2>実装手順</h2>
+
+<p>ここから先は、実際に手を動かす順番です。5 つ通すと<strong>タイトル → ゲーム → 設定</strong>の形ができます。</p>
+
+<h3>手順 1：玉を転がす</h3>
+
+<p><strong>目的</strong> — 玉を落として跳ねさせる。スクリプトはまだ書かない。</p>
+
+<h4>1. シーンを作る</h4>
+
+<p><strong>File → 新しいシーン…</strong> で <code>BallTest</code> を作ります。床は最初から入っています。</p>
+
+<h4>2. 玉を置く</h4>
+
+<p><strong>GameObject → 空のオブジェクトを作成</strong>で <code>Ball</code> を作り、4 つのコンポーネントを足します。</p>
+
+<table>
+  <tr><th>コンポーネント</th><th>設定</th></tr>
+  <tr><td><code>MeshRenderer</code></td><td>モデルに <code>Assets/Models/Sphere/sphere.obj</code>（Project からドラッグ）</td></tr>
+  <tr><td><code>Material</code></td><td>色 = 好きな色、メタリック <code>0.2</code>、ラフネス <code>0.45</code></td></tr>
+  <tr><td><code>Collider</code></td><td><strong>球</strong>を 1 つ、半径 <code>1</code>、<strong>トリガーは外す</strong></td></tr>
+  <tr><td><code>Rigidbody</code></td><td>種別 = 動的、質量 <code>1</code>、重力を受ける = 有効</td></tr>
+</table>
+
+<p><code>Transform</code> の<strong>位置</strong>の Y を <code>5</code> にして、空中から落とします。</p>
+
+<h4>3. 跳ねさせる</h4>
+
+<p>▶ を押すと落ちて床で止まりますが、<strong>まだ跳ねません。</strong> <code>PhysicsMaterial</code> を足します。</p>
+
+<table>
+  <tr><th>項目</th><th>値</th><th>意味</th></tr>
+  <tr><td>反発</td><td><code>0.7</code></td><td>跳ね返る強さ（0 = 跳ねない、1 = 減らずに跳ね続ける）</td></tr>
+  <tr><td>摩擦</td><td><code>0.5</code></td><td>すべりにくさ</td></tr>
+</table>
+
+<h4>4. 坂を作る</h4>
+
+<p><code>Slope</code> を作り、<code>MeshRenderer</code> に板のモデル、<code>Collider</code> に<strong>箱</strong>を 1 つ、<strong>静的</strong>にチェック、<code>Transform</code> の回転 Z を <code>-0.3</code>（ラジアン）。</p>
+
+<h4>5. 使い回す</h4>
+
+<p><code>Ball</code> をヒエラルキーから Project ビューへドラッグするとプレハブになります。以後は何個でも置けます。</p>
+
+<h3>手順 2：キャラを動かす</h3>
+
+<p><strong>目的</strong> — キーボードとゲームパッドでキャラを歩かせ、跳ばせる。初めてスクリプトを書く。</p>
+
+<h4>1. キャラを置く</h4>
+
+<table>
+  <tr><th>コンポーネント</th><th>設定</th></tr>
+  <tr><td><code>MeshRenderer</code></td><td>カプセルか球のモデル</td></tr>
+  <tr><td><code>Material</code></td><td>好きな色</td></tr>
+  <tr><td><code>Collider</code></td><td><strong>球</strong>を 1 つ、半径 <code>0.5</code></td></tr>
+  <tr><td><code>CharacterController</code></td><td>既定のまま</td></tr>
+</table>
+
+<h4>2. スクリプトを作る</h4>
+
+<p>Project ビューで <code>Assets/Scripts</code> を開き、<strong>＋ 作成 → スクリプトを作成…</strong>（雛形 <code>Basic</code>、名前 <code>PlayerMove</code>）。</p>
+
+<div class="file">Assets/Scripts/PlayerMove.as</div>
+<pre><code>[DisplayName(<span class="st">"プレイヤー操作"</span>)]
+<span class="kw">class</span> PlayerMove : ScriptComponent
+{
+    [Range(1.0f, 12.0f)] [Tooltip(<span class="st">"歩く速さ m/s"</span>)]
+    <span class="kw">float</span> walkSpeed = 4.0f;
+
+    [Range(2.0f, 20.0f)] [Tooltip(<span class="st">"走る速さ m/s"</span>)]
+    <span class="kw">float</span> runSpeed = 8.0f;
+
+    [Range(2.0f, 15.0f)] [Tooltip(<span class="st">"跳び上がる速さ m/s"</span>)]
+    <span class="kw">float</span> jumpSpeed = 5.5f;
+
+    <span class="kw">private</span> CharacterController@ controller_;
+
+    <span class="kw">void</span> Start()
+    {
+        @controller_ = owner.characterController;
+    }
+
+    <span class="kw">void</span> Update()
+    {
+        <span class="kw">if</span> (controller_ <span class="kw">is null</span>) { <span class="kw">return</span>; }
+
+        <span class="cm">// 前後左右をまとめて -1〜1 の値で受け取る</span>
+        Vector2 stick = Input::GetAxis2D(
+            InputAction::MoveLeft, InputAction::MoveRight,
+            InputAction::MoveBack, InputAction::MoveForward);
+
+        <span class="kw">float</span> speed = Input::IsActionPressed(InputAction::Sprint) ? runSpeed : walkSpeed;
+        Vector3 move = Vector3(stick.x, 0.0f, stick.y) * speed;
+
+        controller_.SimpleMove(move);
+
+        <span class="kw">if</span> (controller_.grounded &amp;&amp; Input::IsActionTriggered(InputAction::Jump)) {
+            controller_.Jump(jumpSpeed);
+        }
+    }
+}</code></pre>
+
+<h4>3. 付けて動かす</h4>
+
+<p><code>Player</code> に <strong>＋ コンポーネント追加</strong>から <code>PlayerMove</code> を足し、▶ を押します。<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> で歩き、<kbd>Shift</kbd> で走り、<kbd>Space</kbd> で跳びます。<strong>ゲームパッドでもそのまま動きます。</strong></p>
+
+<h3>手順 3：集めて数える</h3>
+
+<p><strong>目的</strong> — アイテムに触ると消えて、数が増えるようにする。スクリプト同士でデータをやり取りする。</p>
+
+<h4>1. アイテムを作る</h4>
+
+<p><code>Coin</code> を作り、<code>MeshRenderer</code>・<code>Material</code>（金色、メタリック <code>0.9</code>）・<code>Collider</code>（球、半径 <code>0.6</code>、<strong>トリガーにチェック</strong>）。</p>
+
+<div class="note warn">
+  <span class="label">トリガーのチェックを忘れると押し出される</span>
+  <p>チェックを入れないと、プレイヤーがコインに乗り上げます。</p>
+</div>
+
+<h4>2. 数える側</h4>
+
+<p><code>GameManager</code> を作り、スクリプト <code>ScoreKeeper</code> を付けます。</p>
+
+<div class="file">Assets/Scripts/ScoreKeeper.as</div>
+<pre><code>[DisplayName(<span class="st">"スコア"</span>)]
+<span class="kw">class</span> ScoreKeeper : ScriptComponent
+{
+    [ReadOnly] [Tooltip(<span class="st">"集めた数"</span>)]
+    <span class="kw">int</span> collected = 0;
+
+    [ObjectRef] [Tooltip(<span class="st">"数を出すテキスト"</span>)]
+    GameObject@ label;
+
+    [Tooltip(<span class="st">"全部集めたときに出す文字"</span>)]
+    <span class="kw">string</span> clearMessage = <span class="st">"コンプリート！"</span>;
+
+    <span class="kw">private int</span> total_ = 0;
+    <span class="kw">private</span> UIText@ text_;
+
+    <span class="kw">void</span> Start()
+    {
+        collected = 0;
+        <span class="kw">if</span> (label !<span class="kw">is null</span>) {
+            @text_ = label.uiText;
+        }
+        Refresh();
+    }
+
+    <span class="kw">void</span> AddOne()
+    {
+        collected++;
+        Refresh();
+        <span class="kw">if</span> (total_ &gt; 0 &amp;&amp; collected &gt;= total_) {
+            <span class="kw">if</span> (text_ !<span class="kw">is null</span>) { text_.text = clearMessage; }
+        }
+    }
+
+    <span class="kw">void</span> Register()
+    {
+        total_++;
+        Refresh();
+    }
+
+    <span class="kw">private void</span> Refresh()
+    {
+        <span class="kw">if</span> (text_ !<span class="kw">is null</span>) {
+            text_.text = collected + <span class="st">" / "</span> + total_;
+        }
+    }
+}</code></pre>
+
+<h4>3. コイン側</h4>
+
+<div class="file">Assets/Scripts/Coin.as</div>
+<pre><code>[DisplayName(<span class="st">"コイン"</span>)]
+<span class="kw">class</span> Coin : ScriptComponent
+{
+    [Tooltip(<span class="st">"回る速さ（度/秒）"</span>)]
+    <span class="kw">float</span> spinSpeed = 90.0f;
+
+    <span class="kw">private</span> ScoreKeeper@ keeper_;
+
+    <span class="kw">void</span> Start()
+    {
+        GameObject@ manager = owner.FindObject(<span class="st">"GameManager"</span>);
+        <span class="kw">if</span> (manager !<span class="kw">is null</span>) {
+            manager.GetComponent(@keeper_);
+            <span class="kw">if</span> (keeper_ !<span class="kw">is null</span>) {
+                keeper_.Register();
+            }
+        }
+    }
+
+    <span class="kw">void</span> Update()
+    {
+        <span class="cm">// くるくる回して目立たせる（回転はラジアンなので度から直す）</span>
+        Vector3 rotation = owner.transform.rotation;
+        rotation.y += spinSpeed * 0.0174533f * Time::DeltaTime();
+        owner.transform.rotation = rotation;
+    }
+
+    <span class="kw">void</span> OnTriggerEnter(Collision@ other)
+    {
+        <span class="kw">if</span> (other.gameObject.name != <span class="st">"Player"</span>) { <span class="kw">return</span>; }
+
+        <span class="kw">if</span> (keeper_ !<span class="kw">is null</span>) {
+            keeper_.AddOne();
+        }
+        owner.Destroy();
+    }
+}</code></pre>
+
+<p><code>Coin</code> を <kbd>Ctrl</kbd>+<kbd>D</kbd> で何個か複製して散らばらせ、▶ を押します。</p>
+
+<h3>手順 4：画面に出す</h3>
+
+<p><strong>目的</strong> — 集めた数を画面の隅に表示する。</p>
+
+<h4>1. 文字を置く</h4>
+
+<p>上のタブを <strong>Canvas</strong> に切り替え、<strong>GameObject → UI → テキスト</strong>で <code>ScoreLabel</code> を作ります。</p>
+
+<table>
+  <tr><th>コンポーネント</th><th>項目</th><th>値</th></tr>
+  <tr><td rowspan="3"><code>RectTransform</code></td><td>アンカー</td><td>左上</td></tr>
+  <tr><td>位置</td><td><code>(40, 40)</code></td></tr>
+  <tr><td>基準点</td><td><code>(0, 0)</code></td></tr>
+  <tr><td rowspan="4"><code>UIText</code></td><td>テキスト</td><td><code>0 / 0</code></td></tr>
+  <tr><td>フォントサイズ</td><td><code>36</code></td></tr>
+  <tr><td>色 / 縁取りの色</td><td>白 / 黒</td></tr>
+  <tr><td>縁取りの太さ</td><td><code>0.15</code></td></tr>
+</table>
+
+<h4>2. 繋ぐ</h4>
+
+<p><code>GameManager</code> を選び、<code>ScoreKeeper</code> の<strong>数を出すテキスト</strong>の欄から <code>ScoreLabel</code> を選びます。▶ を押すと、コインを取るたびに左上の数字が増えます。</p>
+
+<h4>3. 体力バーを作る</h4>
+
+<p><code>UIImage</code> を 2 枚重ねると、伸び縮みするバーになります。<code>HpFill</code> の<strong>基準点</strong>を <code>(0, 0.5)</code> にすると、<strong>左端を固定したまま</strong>幅を変えられます。</p>
+
+<pre><code><span class="kw">void</span> SetHp(<span class="kw">float</span> ratio)   <span class="cm">// 0.0〜1.0</span>
+{
+    RectTransform@ rect = fill.rectTransform;
+    Vector2 size = rect.size;
+    size.x = 400.0f * ratio;
+    rect.size = size;
+}</code></pre>
+
+<h3>手順 5：タイトルと設定</h3>
+
+<p><strong>目的</strong> — タイトル画面から始めて、設定画面で音量を変えられるようにする。</p>
+
+<h4>1. タイトルのボタン</h4>
+
+<p><strong>File → 新しいシーン…</strong> で <code>Title</code> を作り、<strong>GameObject → UI → 画像</strong>で作ったオブジェクトに <code>UIButton</code> を足します。</p>
+
+<div class="file">Assets/Scripts/TitleMenu.as</div>
+<pre><code>[DisplayName(<span class="st">"タイトル"</span>)]
+<span class="kw">class</span> TitleMenu : ScriptComponent
+{
+    [ObjectRef] [Tooltip(<span class="st">"はじめる"</span>)]
+    GameObject@ startButton;
+
+    [ObjectRef] [Tooltip(<span class="st">"やめる"</span>)]
+    GameObject@ exitButton;
+
+    [Asset(<span class="st">"Scene"</span>)] [Tooltip(<span class="st">"はじめたときに行くシーン"</span>)]
+    <span class="kw">string</span> nextScene = <span class="st">""</span>;
+
+    <span class="kw">void</span> Start()
+    {
+        <span class="cm">// キーとパッドでも操作できるよう、最初のボタンを選んでおく</span>
+        <span class="kw">if</span> (startButton !<span class="kw">is null</span>) {
+            UIButton@ button = startButton.uiButton;
+            <span class="kw">if</span> (button !<span class="kw">is null</span>) { button.Focus(); }
+        }
+    }
+
+    <span class="kw">void</span> Update()
+    {
+        <span class="kw">if</span> (WasClicked(startButton) &amp;&amp; nextScene != <span class="st">""</span>) {
+            Scene::ChangeScene(nextScene);
+        }
+        <span class="kw">if</span> (WasClicked(exitButton)) {
+            Log(<span class="st">"やめる が押されました"</span>);
+        }
+    }
+
+    <span class="kw">private bool</span> WasClicked(GameObject@ object)
+    {
+        <span class="kw">if</span> (object <span class="kw">is null</span>) { <span class="kw">return false</span>; }
+        UIButton@ button = object.uiButton;
+        <span class="kw">return</span> button !<span class="kw">is null</span> &amp;&amp; button.wasClicked;
+    }
+}</code></pre>
+
+<h4>2. 設定画面</h4>
+
+<p>スライダーを 3 本（全体・BGM・効果音）と戻るボタンを置き、次のスクリプトを付けます。</p>
+
+<div class="file">Assets/Scripts/SettingsMenu.as</div>
+<pre><code>[DisplayName(<span class="st">"設定"</span>)]
+<span class="kw">class</span> SettingsMenu : ScriptComponent
+{
+    [ObjectRef] [Tooltip(<span class="st">"全体の音量"</span>)]
+    GameObject@ masterSlider;
+
+    [ObjectRef] [Tooltip(<span class="st">"BGM の音量"</span>)]
+    GameObject@ bgmSlider;
+
+    [ObjectRef] [Tooltip(<span class="st">"効果音の音量"</span>)]
+    GameObject@ seSlider;
+
+    [ObjectRef] [Tooltip(<span class="st">"戻るボタン"</span>)]
+    GameObject@ backButton;
+
+    [Tooltip(<span class="st">"戻る先のシーン"</span>)]
+    <span class="kw">string</span> titleScene = <span class="st">"Title"</span>;
+
+    <span class="kw">void</span> Start()
+    {
+        <span class="cm">// 前回の設定をつまみへ戻す</span>
+        Apply(masterSlider, Session::GetFloat(<span class="st">"vol.master"</span>, 1.0f));
+        Apply(bgmSlider, Session::GetFloat(<span class="st">"vol.bgm"</span>, 0.8f));
+        Apply(seSlider, Session::GetFloat(<span class="st">"vol.se"</span>, 0.8f));
+    }
+
+    <span class="kw">void</span> Update()
+    {
+        <span class="kw">float</span> master = Read(masterSlider, 1.0f);
+        <span class="kw">float</span> bgm = Read(bgmSlider, 0.8f);
+        <span class="kw">float</span> se = Read(seSlider, 0.8f);
+
+        <span class="cm">// 毎フレーム同じ値を入れても害はない（バス音量はただの倍率）</span>
+        Audio::SetMasterVolume(master);
+        Audio::SetBusVolume(AudioBus::BGM, bgm);
+        Audio::SetBusVolume(AudioBus::SE, se);
+
+        Session::SetFloat(<span class="st">"vol.master"</span>, master);
+        Session::SetFloat(<span class="st">"vol.bgm"</span>, bgm);
+        Session::SetFloat(<span class="st">"vol.se"</span>, se);
+
+        <span class="kw">if</span> (backButton !<span class="kw">is null</span>) {
+            UIButton@ button = backButton.uiButton;
+            <span class="kw">if</span> (button !<span class="kw">is null</span> &amp;&amp; button.wasClicked) {
+                Scene::ChangeScene(titleScene);
+            }
+        }
+    }
+
+    <span class="kw">private float</span> Read(GameObject@ object, <span class="kw">float</span> fallback)
+    {
+        <span class="kw">if</span> (object <span class="kw">is null</span>) { <span class="kw">return</span> fallback; }
+        UISlider@ slider = object.uiSlider;
+        <span class="kw">return</span> slider <span class="kw">is null</span> ? fallback : slider.value;
+    }
+
+    <span class="kw">private void</span> Apply(GameObject@ object, <span class="kw">float</span> value)
+    {
+        <span class="kw">if</span> (object <span class="kw">is null</span>) { <span class="kw">return</span>; }
+        UISlider@ slider = object.uiSlider;
+        <span class="kw">if</span> (slider !<span class="kw">is null</span>) { slider.value = value; }
+    }
+}</code></pre>
+
+<h4>3. 起動シーンを変える</h4>
+
+<div class="file">Config/EngineSettings/Project.json</div>
+<pre><code>{
+    <span class="st">"initialScene"</span>: <span class="st">"Title"</span>,</code></pre>
+
+<h2>エラーと対処</h2>
+
+<h3>壊れたことに気づく</h3>
+
+<p>右上の印が<strong>赤</strong>になります。</p>
+
+<figure>
+  <img class="shot" src="assets/images/chip-script-error.png" alt="コンパイル失敗の印">
+  <figcaption>画面右上の印</figcaption>
+</figure>
+
+<p>同時に、Console の<strong>エラー</strong>の数が増え、右下が <code>Script 失敗</code> になり、直したスクリプトのコンポーネントが<strong>「読み込めない型」</strong>になります。</p>
+
+<figure>
+  <img class="shot" src="assets/images/inspector-missing-type.png" alt="読み込めない型と表示されたインスペクタ">
+  <figcaption>コンパイルできないときのインスペクタ</figcaption>
+</figure>
+
+<div class="note ok">
+  <span class="label">保存データは残っている</span>
+  <p>「読み込めない型」と出ても<strong>保存したデータはそのまま持っています。</strong> 消さないでください。エラーを直せば元に戻ります。</p>
+</div>
+
+<h3>エラーを読む</h3>
+
+<pre><code>PhysicsTestScene/_BrokenSample.as(9, 14) : Can't implicitly convert from 'const string' to 'int&amp;'.
+スクリプトのコンパイルに失敗しました（12 ファイル）</code></pre>
+
+<table>
+  <tr><th>部分</th><th>意味</th></tr>
+  <tr><td><code>_BrokenSample.as</code></td><td><strong>どのファイルか</strong></td></tr>
+  <tr><td><code>(9, 14)</code></td><td><strong>9 行目の 14 文字目</strong></td></tr>
+  <tr><td>残り</td><td>何が悪いか</td></tr>
+</table>
+
+<p><strong>その行をダブルクリックすると、VS Code がその行を開きます。</strong></p>
+
+<h3>よく出るエラー</h3>
+
+<h4>Can't implicitly convert from 'X' to 'Y'</h4>
+
+<p>型が合っていません。</p>
+
+<pre><code><span class="kw">int</span> hp = <span class="st">"100"</span>;          <span class="cm">// 文字列は整数に入らない</span>
+<span class="kw">float</span> f = someInt;       <span class="cm">// これは通る（int → float）</span>
+<span class="kw">int</span> i = someFloat;       <span class="cm">// これは通らない（float → int は明示が要る）</span>
+<span class="kw">int</span> i = <span class="kw">int</span>(someFloat);  <span class="cm">// こう書く</span></code></pre>
+
+<h4>'X' is not a member of 'Y'</h4>
+
+<p>その名前のメンバがありません。綴りを確かめてください。型名の先頭を小文字にした名前で引きます（<code>UISlider</code> なら <code>owner.uiSlider</code>）。</p>
+
+<h4>Name conflict. 'X' is a class</h4>
+
+<p><strong>同じクラス名が 2 つあります。</strong> <code>.as</code> は全部まとめてコンパイルされるので、クラス名はプロジェクト全体で一意である必要があります。ファイル名とクラス名を揃えておけば起きません。</p>
+
+<h4>Null pointer access（実行中に出る）</h4>
+
+<p><code>null</code> のハンドルを触りました。<code>Awake</code> で他のコンポーネントを取ろうとしたときによく出ます。<strong><code>Start</code> に移してください。</strong></p>
+
+<pre><code><span class="cm">// 悪い</span>
+owner.rigidbody.AddForce(force);
+
+<span class="cm">// 良い</span>
+Rigidbody@ body = owner.rigidbody;
+<span class="kw">if</span> (body !<span class="kw">is null</span>) { body.AddForce(force); }</code></pre>
+
+<h3>エラーは出ないが動かないとき</h3>
+
+<table>
+  <tr><th>症状</th><th>まず疑うところ</th></tr>
+  <tr><td><code>Update</code> が呼ばれない</td><td><strong>停止中。</strong> ▶ を押す</td></tr>
+  <tr><td><code>Update</code> が呼ばれない（再生中）</td><td>コンポーネントのチェックが外れている</td></tr>
+  <tr><td>当たり判定が来ない</td><td>ツールバーの <strong>Collider</strong> で形を見る。トリガーのチェックを確かめる</td></tr>
+  <tr><td>入力が効かない</td><td>UI にフォーカスが残っている（<code>UI::ClearFocus()</code>）</td></tr>
+  <tr><td>値が反映されない</td><td><strong>コードの初期値ではなく、シーンに保存された値が使われている</strong></td></tr>
+  <tr><td>動きがカクつく</td><td><code>Update</code> で物理を触っている。<code>FixedUpdate</code> へ移す</td></tr>
+  <tr><td>カメラが 1 フレーム遅れる</td><td><code>Update</code> で追従している。<code>LateUpdate</code> へ移す</td></tr>
+  <tr><td>Tween が動かなくなった</td><td>スクリプトを読み直した。<code>OnScriptReloaded()</code> で渡し直す</td></tr>
+</table>
+
+<h3>調べ方</h3>
+
+<pre><code><span class="kw">void</span> Start()
+{
+    Log(<span class="st">"Start が呼ばれた"</span>);
+    @body_ = owner.rigidbody;
+    Log(<span class="st">"rigidbody: "</span> + (body_ <span class="kw">is null</span> ? <span class="st">"取れなかった"</span> : <span class="st">"取れた"</span>));
+}</code></pre>
+
+<p>ログの関数は <code>Log</code> / <code>Warn</code> / <code>Error</code> の 3 つです。</p>
+
+<div class="note warn">
+  <span class="label">毎フレーム Log を呼ばない</span>
+  <p><code>Update</code> の中で条件なしに書くと 1 秒に 60 行出ます。<strong>値が変わったときだけ</strong>出してください。どうしても毎フレーム見たいときは <strong>同じ行を畳む</strong>を入れます。</p>
+</div>
+
+<p><strong>エラーで一時停止</strong>を入れておくと、エラーが出た瞬間に止まるので、その時点の画面とインスペクタを確かめられます。</p>
+
+<h2>コンポーネント一覧</h2>
+<p>インスペクタの <strong>＋ コンポーネント追加</strong>から足せるものです。どれも、スクリプトから <code>owner.&lt;型名の先頭を小文字にした名前&gt;</code> で取れます。</p>
+<pre><code>Rigidbody@ body = owner.rigidbody;
+UISlider@ slider = owner.uiSlider;</code></pre>
+<div class="note"><span class="label">この表はソースから作っています</span><p>項目名と説明は、エンジンの型記述子（<code>REFLECT_*</code>）から機械的に抜き出したものです。インスペクタに出るものと一致します。</p></div>
+<h3>置き場所</h3>
+<h4>Transform（トランスフォーム）</h4>
+<table>
+<tr><th>項目</th><th>表示名</th><th>説明</th></tr>
+<tr><td><code>translate</code></td><td>位置</td><td></td></tr>
+<tr><td><code>rotate</code></td><td>回転</td><td></td></tr>
+<tr><td><code>scale</code></td><td>スケール</td><td></td></tr>
+<tr><td><code>parent</code></td><td>親</td><td></td></tr>
+</table>
+<h4>EulerTransform（トランスフォーム）</h4>
+<table>
+<tr><th>項目</th><th>表示名</th><th>説明</th></tr>
+<tr><td><code>translate</code></td><td>位置</td><td></td></tr>
+<tr><td><code>rotate</code></td><td>回転</td><td></td></tr>
+<tr><td><code>scale</code></td><td>スケール</td><td></td></tr>
+</table>
+<h4>RectTransform（UI トランスフォーム）</h4>
+<table>
+<tr><th>項目</th><th>表示名</th><th>説明</th></tr>
+<tr><td><code>anchor</code></td><td>アンカー</td><td></td></tr>
+<tr><td><code>anchoredPosition</code></td><td>位置</td><td></td></tr>
+<tr><td><code>pivot</code></td><td>基準点</td><td></td></tr>
+<tr><td><code>size</code></td><td>大きさ</td><td></td></tr>
+<tr><td><code>rotation</code></td><td>回転</td><td></td></tr>
+<tr><td><code>sortOrder</code></td><td>描画順</td><td></td></tr>
+</table>
+<h3>見た目</h3>
+<h4>MeshRenderer（メッシュ描画）</h4>
+<table>
+<tr><th>項目</th><th>表示名</th><th>説明</th></tr>
+<tr><td><code>model</code></td><td>モデル</td><td></td></tr>
+<tr><td><code>texture</code></td><td>テクスチャ</td><td></td></tr>
+<tr><td><code>blendMode</code></td><td>ブレンド</td><td></td></tr>
+</table>
+<h4>Material（マテリアル）</h4>
+<table>
+<tr><th>項目</th><th>表示名</th><th>説明</th></tr>
+<tr><td><code>color</code></td><td>ベースカラー</td><td></td></tr>
+<tr><td><code>metallic</code></td><td>メタリック</td><td></td></tr>
+<tr><td><code>roughness</code></td><td>ラフネス</td><td></td></tr>
+<tr><td><code>occlusionStrength</code></td><td>オクルージョン</td><td></td></tr>
+<tr><td><code>emissive</code></td><td>エミッシブ</td><td></td></tr>
+<tr><td><code>iblIntensity</code></td><td>IBL 強度</td><td></td></tr>
+<tr><td><code>lighting</code></td><td>ライティング</td><td></td></tr>
+<tr><td><code>normalMap</code></td><td>法線マップ</td><td></td></tr>
+<tr><td><code>dithering</code></td><td>ディザリング</td><td></td></tr>
+<tr><td><code>ditheringScale</code></td><td>ディザリングの細かさ</td><td></td></tr>
+</table>
+<h4>SpriteRenderer（スプライト描画）</h4>
+<table>
+<tr><th>項目</th><th>表示名</th><th>説明</th></tr>
+<tr><td><code>texture</code></td><td>テクスチャ</td><td></td></tr>
+<tr><td><code>color</code></td><td>カラー</td><td></td></tr>
+<tr><td><code>anchor</code></td><td>アンカー</td><td></td></tr>
+<tr><td><code>uvMin</code></td><td>UV 左上</td><td></td></tr>
+<tr><td><code>uvMax</code></td><td>UV 右下</td><td></td></tr>
+<tr><td><code>uvOffset</code></td><td>UV の移動</td><td></td></tr>
+<tr><td><code>uvScale</code></td><td>UV の倍率</td><td></td></tr>
+<tr><td><code>uvRotation</code></td><td>UV の回転</td><td></td></tr>
+<tr><td><code>flipX</code></td><td>左右反転</td><td></td></tr>
+<tr><td><code>flipY</code></td><td>上下反転</td><td></td></tr>
+<tr><td><code>blendMode</code></td><td>ブレンド</td><td></td></tr>
+</table>
+<h4>Text3DRenderer（3D テキスト描画）</h4>
+<table>
+<tr><th>項目</th><th>表示名</th><th>説明</th></tr>
+<tr><td><code>font</code></td><td>フォント</td><td></td></tr>
+<tr><td><code>text</code></td><td>文字列</td><td></td></tr>
+<tr><td><code>fontSize</code></td><td>文字の大きさ</td><td></td></tr>
+<tr><td><code>lineSpacing</code></td><td>行間</td><td></td></tr>
+<tr><td><code>wrapWidth</code></td><td>折り返し幅</td><td></td></tr>
+<tr><td><code>fieldAutoFit</code></td><td>枠を文字に合わせる</td><td></td></tr>
+<tr><td><code>fieldSize</code></td><td>枠の大きさ</td><td></td></tr>
+<tr><td><code>alignH</code></td><td>横揃え</td><td></td></tr>
+<tr><td><code>alignV</code></td><td>縦揃え</td><td></td></tr>
+<tr><td><code>pivot</code></td><td>中心</td><td></td></tr>
+<tr><td><code>color</code></td><td>カラー</td><td></td></tr>
+<tr><td><code>outlineColor</code></td><td>縁取りの色</td><td></td></tr>
+<tr><td><code>outlineWidth</code></td><td>縁取りの太さ</td><td></td></tr>
+<tr><td><code>weight</code></td><td>太さ調整</td><td></td></tr>
+<tr><td><code>billboard</code></td><td>ビルボード</td><td></td></tr>
+<tr><td><code>depthMode</code></td><td>深度</td><td></td></tr>
+</table>
+<h4>Animator（アニメーション）</h4>
+<table>
+<tr><th>項目</th><th>表示名</th><th>説明</th></tr>
+<tr><td><code>model</code></td><td>モデル</td><td></td></tr>
+</table>
+<table>
+<tr><th>スクリプトから呼べる操作</th><th>意味</th></tr>
+<tr><td><code>Switch()</code></td><td>クリップの切り替え</td></tr>
+<tr><td><code>SwitchWithBlend()</code></td><td>クリップの切り替え（ブレンド）</td></tr>
+<tr><td><code>GetCurrentClipName()</code></td><td>再生中のクリップ名</td></tr>
+</table>
+<h3>物理</h3>
+<h4>Collider（コライダー）</h4>
+<p>インスペクタで編集する項目はありません（専用の編集画面を持つか、印として置くだけのものです）。</p>
+<h4>Rigidbody（剛体）</h4>
+<table>
+<tr><th>項目</th><th>表示名</th><th>説明</th></tr>
+<tr><td><code>bodyType</code></td><td>種別</td><td>動的 = 重力と力で動く / キネマティック = 速度を指定して動かす / 静的 = 動かない</td></tr>
+<tr><td><code>mass</code></td><td>質量</td><td>kg。キネマティックと静的では無限として扱う</td></tr>
+<tr><td><code>useGravity</code></td><td>重力を受ける</td><td></td></tr>
+<tr><td><code>linearDamping</code></td><td>抗力</td><td>大きいほど速度が早く落ちる（0 で減らさない）</td></tr>
+<tr><td><code>angularDamping</code></td><td>回転の抗力</td><td>大きいほど回転が早く止まる（転がり続けるのを防ぐ）</td></tr>
+<tr><td><code>freezeRotation</code></td><td>回転を止める</td><td>接触で回らなくなる（向きは自分で指定する）</td></tr>
+<tr><td><code>velocity</code></td><td>速度</td><td>m/s。実行中の値なので保存しない</td></tr>
+<tr><td><code>angularVelocity</code></td><td>角速度</td><td>rad/s。実行中の値なので保存しない</td></tr>
+<tr><td><code>sleeping</code></td><td>眠っている</td><td>止まっている間は計算から外れる。触ると起きる</td></tr>
+</table>
+<table>
+<tr><th>スクリプトから呼べる操作</th><th>意味</th></tr>
+<tr><td><code>AddForce()</code></td><td>力を加える</td></tr>
+<tr><td><code>AddImpulse()</code></td><td>撃力を加える</td></tr>
+<tr><td><code>AddTorque()</code></td><td>トルクを加える</td></tr>
+<tr><td><code>WakeUp()</code></td><td>起こす</td></tr>
+</table>
+<h4>CharacterController（キャラクタコントローラ）</h4>
+<table>
+<tr><th>項目</th><th>表示名</th><th>説明</th></tr>
+<tr><td><code>slopeLimit</code></td><td>登れる坂</td><td>度。これより急な坂では滑り落ちる</td></tr>
+<tr><td><code>stepOffset</code></td><td>越えられる段差</td><td>m。これ以下の段差は歩いたまま上がる</td></tr>
+<tr><td><code>skinWidth</code></td><td>表面の余白</td><td>m。壁との間にこれだけ隙間を残す</td></tr>
+<tr><td><code>useGravity</code></td><td>重力を受ける</td><td>接地していないと落ちる</td></tr>
+<tr><td><code>grounded</code></td><td>接地している</td><td></td></tr>
+<tr><td><code>velocity</code></td><td>速度</td><td>m/s。実行中の値なので保存しない</td></tr>
+</table>
+<table>
+<tr><th>スクリプトから呼べる操作</th><th>意味</th></tr>
+<tr><td><code>Move()</code></td><td>動かす</td></tr>
+<tr><td><code>SimpleMove()</code></td><td>歩かせる</td></tr>
+<tr><td><code>Jump()</code></td><td>跳ぶ</td></tr>
+</table>
+<h4>PhysicsMaterial（物理マテリアル）</h4>
+<table>
+<tr><th>項目</th><th>表示名</th><th>説明</th></tr>
+<tr><td><code>materialAsset</code></td><td>材質ファイル</td><td></td></tr>
+<tr><td><code>restitution</code></td><td>反発係数</td><td>0 で跳ねず、1 で高さが落ちない</td></tr>
+<tr><td><code>friction</code></td><td>摩擦係数</td><td>0 で滑り続け、大きいほど早く止まる</td></tr>
+<tr><td><code>restitutionCombine</code></td><td>反発の合成</td><td></td></tr>
+<tr><td><code>frictionCombine</code></td><td>摩擦の合成</td><td></td></tr>
+</table>
+<h3>UI</h3>
+<h4>UIImage（UI 画像）</h4>
+<table>
+<tr><th>項目</th><th>表示名</th><th>説明</th></tr>
+<tr><td><code>texture</code></td><td>テクスチャ</td><td></td></tr>
+<tr><td><code>color</code></td><td>色</td><td></td></tr>
+</table>
+<h4>UIText（UI テキスト）</h4>
+<table>
+<tr><th>項目</th><th>表示名</th><th>説明</th></tr>
+<tr><td><code>text</code></td><td>テキスト</td><td></td></tr>
+<tr><td><code>font</code></td><td>フォント</td><td>一覧に無いフォントは、フォントフォルダのファイル名かインストール済みのフォント名を入力する</td></tr>
+<tr><td><code>fontSize</code></td><td>フォントサイズ</td><td></td></tr>
+<tr><td><code>lineSpacing</code></td><td>行間</td><td></td></tr>
+<tr><td><code>fieldAutoFit</code></td><td>枠を文字に合わせる</td><td>UI トランスフォームの大きさを文字列に合わせる。大きさを変えると切れ、その枠の中で折り返す</td></tr>
+<tr><td><code>wrapWidth</code></td><td>折り返し幅</td><td>0 で折り返さない。枠を文字に合わせていないときは枠の幅で折り返す</td></tr>
+<tr><td><code>alignH</code></td><td>横揃え</td><td></td></tr>
+<tr><td><code>alignV</code></td><td>縦揃え</td><td></td></tr>
+<tr><td><code>color</code></td><td>色</td><td></td></tr>
+<tr><td><code>outlineColor</code></td><td>縁取りの色</td><td></td></tr>
+<tr><td><code>outlineWidth</code></td><td>縁取りの太さ</td><td>em 単位。フォントの距離場の幅で上限が決まる</td></tr>
+<tr><td><code>weight</code></td><td>太さ調整</td><td></td></tr>
+</table>
+<h4>UIButton（UI ボタン）</h4>
+<table>
+<tr><th>項目</th><th>表示名</th><th>説明</th></tr>
+<tr><td><code>interactable</code></td><td>押せる</td><td>外すと押せない色になり、ポインタを受け付けなくなる</td></tr>
+<tr><td><code>normalColor</code></td><td>通常の色</td><td></td></tr>
+<tr><td><code>hoveredColor</code></td><td>乗せたときの色</td><td>キー・パッドで選んでいるときもこの色になる</td></tr>
+<tr><td><code>pressedColor</code></td><td>押したときの色</td><td></td></tr>
+<tr><td><code>disabledColor</code></td><td>押せないときの色</td><td></td></tr>
+</table>
+<h4>UISlider（UI スライダー）</h4>
+<table>
+<tr><th>項目</th><th>表示名</th><th>説明</th></tr>
+<tr><td><code>interactable</code></td><td>動かせる</td><td>外すと動かせない色になり、ポインタもフォーカスも受け付けなくなる</td></tr>
+<tr><td><code>direction</code></td><td>向き</td><td></td></tr>
+<tr><td><code>minValue</code></td><td>最小値</td><td></td></tr>
+<tr><td><code>maxValue</code></td><td>最大値</td><td></td></tr>
+<tr><td><code>value</code></td><td>値</td><td></td></tr>
+<tr><td><code>wholeNumbers</code></td><td>整数だけ</td><td>入れると値を整数に丸める</td></tr>
+<tr><td><code>navigationStep</code></td><td>キーで動く量</td><td>0 なら（最大値 − 最小値）の 1/10 ずつ動く</td></tr>
+<tr><td><code>fill</code></td><td>伸びる帯</td><td></td></tr>
+<tr><td><code>handle</code></td><td>つまみ</td><td></td></tr>
+<tr><td><code>normalColor</code></td><td>通常の色</td><td></td></tr>
+<tr><td><code>hoveredColor</code></td><td>乗せたときの色</td><td>キー・パッドで選んでいるときもこの色になる</td></tr>
+<tr><td><code>pressedColor</code></td><td>掴んでいるときの色</td><td></td></tr>
+<tr><td><code>disabledColor</code></td><td>動かせないときの色</td><td></td></tr>
+</table>
+<h4>UIToggle（UI トグル）</h4>
+<table>
+<tr><th>項目</th><th>表示名</th><th>説明</th></tr>
+<tr><td><code>isOn</code></td><td>入り</td><td></td></tr>
+<tr><td><code>interactable</code></td><td>押せる</td><td>外すと押せない色になり、ポインタもフォーカスも受け付けなくなる</td></tr>
+<tr><td><code>checkmark</code></td><td>入りのときに出す印</td><td></td></tr>
+<tr><td><code>group</code></td><td>グループ</td><td>同じ綴りのトグル同士で 1 つだけが入りになる。空なら他と関わらない</td></tr>
+<tr><td><code>normalColor</code></td><td>通常の色</td><td></td></tr>
+<tr><td><code>hoveredColor</code></td><td>乗せたときの色</td><td>キー・パッドで選んでいるときもこの色になる</td></tr>
+<tr><td><code>pressedColor</code></td><td>押したときの色</td><td></td></tr>
+<tr><td><code>disabledColor</code></td><td>押せないときの色</td><td></td></tr>
+</table>
+<h3>音</h3>
+<h4>AudioSource（音の再生）</h4>
+<table>
+<tr><th>項目</th><th>表示名</th><th>説明</th></tr>
+<tr><td><code>clip</code></td><td>音</td><td></td></tr>
+<tr><td><code>bus</code></td><td>出力先</td><td>音量の設定をまとめる単位。BGM だけ絞るといった操作がここで効く</td></tr>
+<tr><td><code>playOnAwake</code></td><td>開始時に鳴らす</td><td></td></tr>
+<tr><td><code>loop</code></td><td>繰り返す</td><td></td></tr>
+<tr><td><code>volume</code></td><td>音量</td><td></td></tr>
+<tr><td><code>pitch</code></td><td>高さ</td><td>再生速度の倍率。上げると速く高くなる</td></tr>
+<tr><td><code>mute</code></td><td>消音</td><td></td></tr>
+<tr><td><code>fadeInTime</code></td><td>フェードイン</td><td>鳴らし始めに音量 0 からここまで上げる秒数</td></tr>
+<tr><td><code>spatialBlend</code></td><td>距離で変える</td><td>0 で距離に関係なく同じ音量、1 で聞き手からの距離と左右を反映する</td></tr>
+<tr><td><code>minDistance</code></td><td>減衰の始まり</td><td>この距離までは音量が下がらない</td></tr>
+<tr><td><code>maxDistance</code></td><td>聞こえる限界</td><td>この距離で音量が 0 になる</td></tr>
+<tr><td><code>isPlaying</code></td><td>再生中</td><td></td></tr>
+</table>
+<table>
+<tr><th>スクリプトから呼べる操作</th><th>意味</th></tr>
+<tr><td><code>Play()</code></td><td>鳴らす</td></tr>
+<tr><td><code>Stop()</code></td><td>止める</td></tr>
+<tr><td><code>Pause()</code></td><td>一時停止</td></tr>
+<tr><td><code>UnPause()</code></td><td>再開</td></tr>
+<tr><td><code>PlayOneShot()</code></td><td>重ねて鳴らす</td></tr>
+<tr><td><code>FadeOut()</code></td><td>フェードアウト</td></tr>
+</table>
+<h4>AudioListener（音の聞き手）</h4>
+<p>インスペクタで編集する項目はありません（専用の編集画面を持つか、印として置くだけのものです）。</p>
+<h3>エフェクト</h3>
+<h4>ParticleSystem（パーティクル）</h4>
+<table>
+<tr><th>項目</th><th>表示名</th><th>説明</th></tr>
+<tr><td><code>texture</code></td><td>テクスチャ</td><td></td></tr>
+<tr><td><code>model</code></td><td>モデル</td><td>指すと、板ポリの代わりにこのモデルを粒として描く</td></tr>
+<tr><td><code>blendMode</code></td><td>ブレンド</td><td>背景との合成のしかた。炎や光は「加算」、煙は「アルファ」が向く</td></tr>
+<tr><td><code>billboard</code></td><td>ビルボード</td><td>板ポリの向き。草や炎の柱のように立てたいものは「Y 軸だけ回す」。モデルの粒では使わない</td></tr>
+</table>
+<table>
+<tr><th>スクリプトから呼べる操作</th><th>意味</th></tr>
+<tr><td><code>Play()</code></td><td>再生</td></tr>
+<tr><td><code>Stop()</code></td><td>停止</td></tr>
+<tr><td><code>IsPlaying()</code></td><td>再生中か</td></tr>
+<tr><td><code>Clear()</code></td><td>粒を消す</td></tr>
+<tr><td><code>Emit()</code></td><td>放出</td></tr>
+</table>
+<h4>GpuParticleSystem（GPU パーティクル）</h4>
+<table>
+<tr><th>項目</th><th>表示名</th><th>説明</th></tr>
+<tr><td><code>texture</code></td><td>テクスチャ</td><td></td></tr>
+<tr><td><code>blendMode</code></td><td>ブレンド</td><td>背景との合成のしかた。炎や光は「加算」、煙は「アルファ」が向く</td></tr>
+<tr><td><code>billboard</code></td><td>ビルボード</td><td>板ポリの向き。草や炎の柱のように立てたいものは「Y 軸だけ回す」</td></tr>
+</table>
+<table>
+<tr><th>スクリプトから呼べる操作</th><th>意味</th></tr>
+<tr><td><code>Play()</code></td><td>再生</td></tr>
+<tr><td><code>Stop()</code></td><td>停止</td></tr>
+<tr><td><code>IsPlaying()</code></td><td>再生中か</td></tr>
+</table>
+<h3>環境</h3>
+<h4>Light（ライト）</h4>
+<table>
+<tr><th>項目</th><th>表示名</th><th>説明</th></tr>
+<tr><td><code>type</code></td><td>種類</td><td></td></tr>
+<tr><td><code>color</code></td><td>色</td><td></td></tr>
+<tr><td><code>intensity</code></td><td>強さ</td><td>平行光源は照度 [lx]（快晴の太陽 = 100000）、点光源とスポットは光度 [cd]</td></tr>
+<tr><td><code>direction</code></td><td>向き</td><td></td></tr>
+<tr><td><code>range</code></td><td>届く距離</td><td></td></tr>
+<tr><td><code>innerConeAngleDeg</code></td><td>内側の角度</td><td></td></tr>
+<tr><td><code>outerConeAngleDeg</code></td><td>外側の角度</td><td></td></tr>
+<tr><td><code>areaWidth</code></td><td>発光面の幅</td><td></td></tr>
+<tr><td><code>areaHeight</code></td><td>発光面の高さ</td><td></td></tr>
+<tr><td><code>isAtmosphereSun</code></td><td>大気の太陽</td><td></td></tr>
+<tr><td><code>isAtmosphereMoon</code></td><td>大気の月</td><td></td></tr>
+<tr><td><code>atmosphereIntensity</code></td><td>空の明るさ</td><td>空・雲の明るさ（無次元。太陽の目安 20）。0 で照度から自動換算</td></tr>
+</table>
+<h4>SkyBox（空）</h4>
+<table>
+<tr><th>項目</th><th>表示名</th><th>説明</th></tr>
+<tr><td><code>rotation</code></td><td>向き</td><td></td></tr>
+<tr><td><code>environmentIntensity</code></td><td>環境光の強さ</td><td></td></tr>
+</table>
+<h4>WaterSurface（水面）</h4>
+<table>
+<tr><th>項目</th><th>表示名</th><th>説明</th></tr>
+<tr><td><code>size</code></td><td>一辺の長さ</td><td>メッシュの大きさ [m]。シーンを読み込むときに効く</td></tr>
+<tr><td><code>resolution</code></td><td>分割数</td><td>XZ 方向の分割数。シーンを読み込むときに効く</td></tr>
+<tr><td><code>useFFTOcean</code></td><td>FFT の海を使う</td><td>外洋のうねり（FFT）で波を作る。切ると Gerstner 波になる</td></tr>
+<tr><td><code>scrollSpeed</code></td><td>UV の流れる速さ</td><td></td></tr>
+<tr><td><code>uvTiling</code></td><td>UV の繰り返し</td><td></td></tr>
+</table>
+<h3>その他</h3>
+<h4>Camera（カメラ）</h4>
+<table>
+<tr><th>項目</th><th>表示名</th><th>説明</th></tr>
+<tr><td><code>isMainCamera</code></td><td>ゲームの視点</td><td>入れるとこのカメラがゲームビューに映る</td></tr>
+<tr><td><code>projection</code></td><td>投影</td><td></td></tr>
+<tr><td><code>fov</code></td><td>視野角</td><td>透視投影のときだけ使う [度]</td></tr>
+<tr><td><code>nearClip</code></td><td>手前の限界</td><td></td></tr>
+<tr><td><code>farClip</code></td><td>奥の限界</td><td></td></tr>
+</table>
+<h3>記述子を持たないもの</h3>
+<p>次のコンポーネントは、値を <strong>CVar</strong>（設定値）側が持っています。シーンに置くのは「ここに在る」という印で、中身は <strong>Engine Settings</strong> で編集し、シーンの <code>_environment.json</code> に保存されます。</p>
+<ul><li><code>HeightFog</code>（高さ霧）</li><li><code>VolumetricCloud</code>（ボリューム雲）</li><li><code>PostProcess</code>（ポストエフェクト）</li></ul>
+<p><code>SkeletonSocket</code>（ソケット追従）は、スクリプトから追従先を指定して使います。</p>
+<h2>スクリプト API</h2>
+<p>ここに載っているものは <code>Application/Assets/Scripts/as.predefined</code> から機械的に抜き出したものです。<strong>VS Code の補完に出るものと同じ</strong>です。</p>
+<div class="note"><span class="label">as.predefined は起動時に作り直されます</span><p>エンジン側に関数を足すと自動で更新されます。この章が古いと感じたら、エディタを 1 回起動してからこの章を作り直してください。</p></div>
+<h3>グローバル関数</h3>
+<pre><code>Log(<span class="st">"ふつうのログ"</span>);
+Warn(<span class="st">"気になること"</span>);
+Error(<span class="st">"まずいこと"</span>);</code></pre>
+<h3>名前空間</h3>
+<h4>Time::</h4>
+<p>時間。<code>DeltaTime()</code> を掛けないと、フレームレートで速さが変わります。</p>
+<pre><code>float DeltaTime();
+float UnscaledDeltaTime();
+float TimeSinceStartup();
+float UnscaledTimeSinceStartup();
+uint64 FrameCount();
+float FixedDeltaTime();
+float TimeScale();
+bool IsPaused();
+void SetTimeScale(float scale);</code></pre>
+<h4>Physics::</h4>
+<p>光線・範囲の検索と、レイヤー同士の当たり設定。</p>
+<pre><code>RaycastHit@ Raycast(const Vector3&amp;in origin, const Vector3&amp;in direction, float maxDistance, int layerMask = -1);
+RaycastHit@[]@ RaycastAll(const Vector3&amp;in origin, const Vector3&amp;in direction, float maxDistance, int layerMask = -1);
+GameObject@[]@ OverlapSphere(const Vector3&amp;in center, float radius, int layerMask = -1);
+GameObject@[]@ OverlapBox(const Vector3&amp;in center, const Vector3&amp;in size, int layerMask = -1);
+void SetLayerCollision(CollisionLayer a, CollisionLayer b, bool enabled);
+bool GetLayerCollision(CollisionLayer a, CollisionLayer b);
+int LayerMask(CollisionLayer layer);
+int GetBodyCount();
+int GetSleepingCount();
+int GetContactCount();
+Vector3 get_gravity() property;
+void set_gravity(const Vector3&amp;in) property;</code></pre>
+<h4>Input::</h4>
+<p>入力。<strong>操作の名前（<code>InputAction</code>）で書いてください。</strong></p>
+<pre><code>bool IsActionPressed(InputAction, int player = -1);
+bool IsActionTriggered(InputAction, int player = -1);
+bool IsActionReleased(InputAction, int player = -1);
+float GetAxisValue(InputAction, int player = -1);
+float GetAxis(InputAction negative, InputAction positive, int player = -1);
+Vector2 GetAxis2D(InputAction negativeX, InputAction positiveX, InputAction negativeY, InputAction positiveY, int player = -1);
+bool IsGamepadConnected(int player = 0);
+int GetConnectedGamepadCount();
+Vector2 GetLeftStick(int player = 0);
+Vector2 GetRightStick(int player = 0);
+float GetLeftTrigger(int player = 0);
+float GetRightTrigger(int player = 0);
+void SetVibration(float left, float right, int player = 0);
+bool IsMouseButtonPressed(MouseButton);
+bool IsMouseButtonTriggered(MouseButton);
+bool IsMouseButtonReleased(MouseButton);
+Vector2 GetMouseDelta();
+float GetWheelDelta();
+bool IsPointerOverGame();
+bool IsKeyPressed(Key);
+bool IsKeyTriggered(Key);
+bool IsKeyReleased(Key);</code></pre>
+<h4>Tween::</h4>
+<p>値をなめらかに動かす。<code>SetLink(owner)</code> を付けると、消えたときに止まります。</p>
+<pre><code>TweenHandle To(float from, float to, float duration, TweenFloatSetter@ setter);
+TweenHandle To(const Vector2&amp;in from, const Vector2&amp;in to, float duration, TweenVector2Setter@ setter);
+TweenHandle To(const Vector3&amp;in from, const Vector3&amp;in to, float duration, TweenVector3Setter@ setter);
+TweenHandle To(const Vector4&amp;in from, const Vector4&amp;in to, float duration, TweenVector4Setter@ setter);
+TweenHandle Delay(float seconds, TweenCallback@ action);
+TweenHandle MoveTo(GameObject@ object, const Vector3&amp;in to, float duration);
+TweenHandle ScaleTo(GameObject@ object, const Vector3&amp;in to, float duration);
+TweenHandle RotateTo(GameObject@ object, const Vector3&amp;in to, float duration);
+int KillById(const string&amp;in id, bool complete = false);
+int KillByLink(GameObject@ owner, bool complete = false);
+TweenSequence Sequence();</code></pre>
+<h4>UI::</h4>
+<p>UI のフォーカス。メニューを閉じるときは <code>ClearFocus()</code> を呼びます。</p>
+<pre><code>void ClearFocus();
+bool HasFocus();</code></pre>
+<h4>Font::</h4>
+<p>フォントの登録。</p>
+<pre><code>void Register(const string&amp;in name, const string&amp;in filePath, const string[]&amp;in systemFamilies, const string&amp;in charset = "");</code></pre>
+<h4>Audio::</h4>
+<p>音。ふつうは <code>AudioSource</code> コンポーネントを使ってください。</p>
+<pre><code>void PlayOneShot(const string&amp;in path, const PlayParams&amp;in params = PlayParams());
+Sound@ PlayScoped(const string&amp;in path, const PlayParams&amp;in params = PlayParams());
+void SetBusVolume(AudioBus bus, float volume);
+float GetBusVolume(AudioBus bus);
+void SetMasterVolume(float volume);
+float GetMasterVolume();
+void StopAll();</code></pre>
+<h4>CameraShake::</h4>
+<p>カメラを揺らす。</p>
+<pre><code>uint Play(const CameraShakeParams&amp;in params);
+uint Play(const CameraShakeParams&amp;in params, const Vector3&amp;in worldOrigin);
+uint PlayPreset(const string&amp;in name, float scale = 1.0f);
+void Stop(uint handle, float fadeOutSeconds = 0.0f);
+void StopAll(float fadeOutSeconds = 0.0f);
+void AddTrauma(float amount);</code></pre>
+<h4>CameraShakePresets::</h4>
+<p>揺れの見本。<code>CameraShake::PlayPreset("Hit")</code> でも呼べます。</p>
+<pre><code>CameraShakeParams Hit();
+CameraShakeParams HeavyHit();
+CameraShakeParams Explosion();
+CameraShakeParams Landing();
+CameraShakeParams Recoil();
+CameraShakeParams Earthquake();
+CameraShakeParams Handheld();
+CameraShakeParams Rumble();</code></pre>
+<h4>Scene::</h4>
+<p>シーンの切り替え。</p>
+<pre><code>void ChangeScene(const string&amp;in name);
+string GetCurrentName();
+GameCamera@ GetGameCamera();
+bool IsUsingEditorCamera();</code></pre>
+<h4>Rendering::</h4>
+<p>描画の一時的な操作（暗転など）。</p>
+<pre><code>float GetAutoExposureEV();
+void SetFadeAlpha(float alpha);</code></pre>
+<h4>Session::</h4>
+<p><strong>シーンをまたいで残る</strong>入れ物。アプリを閉じると消えます。</p>
+<pre><code>void SetInt(const string&amp;in key, int value);
+int GetInt(const string&amp;in key, int fallback = 0);
+void SetFloat(const string&amp;in key, float value);
+float GetFloat(const string&amp;in key, float fallback = 0.0f);
+void SetBool(const string&amp;in key, bool value);
+bool GetBool(const string&amp;in key, bool fallback = false);
+void SetString(const string&amp;in key, const string&amp;in value);
+string GetString(const string&amp;in key, const string&amp;in fallback = "");
+bool Has(const string&amp;in key);
+void Remove(const string&amp;in key);</code></pre>
+<h4>Random::</h4>
+<p>乱数。</p>
+<pre><code>float Range(float minimum, float maximum);
+int Range(int minimum, int maximum);
+bool Chance(float probability = 0.5f);</code></pre>
+<h4>CVar::</h4>
+<p><strong>次回の起動でも残る</strong>設定値。</p>
+<pre><code>bool Exists(const string&amp;in name);
+bool Reset(const string&amp;in name);
+bool GetBool(const string&amp;in name, bool fallback = false);
+int GetInt(const string&amp;in name, int fallback = 0);
+float GetFloat(const string&amp;in name, float fallback = 0.0f);
+Vector2 GetVector2(const string&amp;in name);
+Vector3 GetVector3(const string&amp;in name);
+Vector4 GetColor(const string&amp;in name);
+bool SetBool(const string&amp;in name, bool value);
+bool SetInt(const string&amp;in name, int value);
+bool SetFloat(const string&amp;in name, float value);
+bool SetVector2(const string&amp;in name, const Vector2&amp;in value);
+bool SetVector3(const string&amp;in name, const Vector3&amp;in value);
+bool SetColor(const string&amp;in name, const Vector4&amp;in value);</code></pre>
+<h3>列挙</h3>
+<table>
+<tr><th>名前</th><th>値</th></tr>
+<tr><td><code>EaseType</code></td><td><code>Linear</code> <code>EaseInQuad</code> <code>EaseOutQuad</code> <code>EaseInOutQuad</code> <code>EaseInCubic</code> <code>EaseOutCubic</code> <code>EaseInOutCubic</code> <code>EaseInQuart</code> <code>EaseOutQuart</code> <code>EaseInOutQuart</code> <code>EaseInQuint</code> <code>EaseOutQuint</code> <code>EaseInOutQuint</code> <code>EaseInSine</code> <code>EaseOutSine</code> <code>EaseInOutSine</code> <code>EaseInExpo</code> <code>EaseOutExpo</code> <code>EaseInOutExpo</code> <code>EaseInCirc</code> <code>EaseOutCirc</code> <code>EaseInOutCirc</code> <code>EaseInBack</code> <code>EaseOutBack</code> <code>EaseInOutBack</code> <code>EaseInElastic</code> <code>EaseOutElastic</code> <code>EaseInOutElastic</code> <code>EaseInBounce</code> <code>EaseOutBounce</code> <code>EaseInOutBounce</code></td></tr>
+<tr><td><code>CollisionLayer</code></td><td><code>Default</code> <code>Player</code> <code>Enemy</code> <code>PlayerBullet</code> <code>EnemyBullet</code> <code>Boss</code> <code>BossBullet</code> <code>BossAttack</code> <code>Item</code> <code>Environment</code></td></tr>
+<tr><td><code>InputAction</code></td><td><code>MoveForward</code> <code>MoveBack</code> <code>MoveLeft</code> <code>MoveRight</code> <code>Jump</code> <code>Sprint</code> <code>Attack</code> <code>Interact</code> <code>UINavigateUp</code> <code>UINavigateDown</code> <code>UINavigateLeft</code> <code>UINavigateRight</code> <code>UIConfirm</code> <code>UICancel</code> <code>Pause</code> <code>EditorFocusSelection</code> <code>EditorGizmoTranslate</code> <code>EditorGizmoRotate</code> <code>EditorGizmoScale</code></td></tr>
+<tr><td><code>Key</code></td><td><code>Num0</code> <code>Num1</code> <code>Num2</code> <code>Num3</code> <code>Num4</code> <code>Num5</code> <code>Num6</code> <code>Num7</code> <code>Num8</code> <code>Num9</code> <code>A</code> <code>B</code> <code>C</code> <code>D</code> <code>E</code> <code>F</code> <code>G</code> <code>H</code> <code>I</code> <code>J</code> <code>K</code> <code>L</code> <code>M</code> <code>N</code> <code>O</code> <code>P</code> <code>Q</code> <code>R</code> <code>S</code> <code>T</code> <code>U</code> <code>V</code> <code>W</code> <code>X</code> <code>Y</code> <code>Z</code> <code>Space</code> <code>Enter</code> <code>Escape</code> <code>Tab</code> <code>Shift</code> <code>Ctrl</code> <code>Left</code> <code>Right</code> <code>Up</code> <code>Down</code></td></tr>
+<tr><td><code>MouseButton</code></td><td><code>Left</code> <code>Right</code> <code>Middle</code> <code>XButton1</code> <code>XButton2</code></td></tr>
+<tr><td><code>TweenLoop</code></td><td><code>Restart</code> <code>Yoyo</code></td></tr>
+<tr><td><code>TweenUpdate</code></td><td><code>Scaled</code> <code>Unscaled</code></td></tr>
+<tr><td><code>UIAnchor</code></td><td><code>TopLeft</code> <code>TopCenter</code> <code>TopRight</code> <code>MiddleLeft</code> <code>Center</code> <code>MiddleRight</code> <code>BottomLeft</code> <code>BottomCenter</code> <code>BottomRight</code></td></tr>
+<tr><td><code>TextAlignH</code></td><td><code>Left</code> <code>Center</code> <code>Right</code></td></tr>
+<tr><td><code>TextAlignV</code></td><td><code>Top</code> <code>Middle</code> <code>Bottom</code></td></tr>
+<tr><td><code>AudioBus</code></td><td><code>BGM</code> <code>SE</code> <code>Voice</code></td></tr>
+<tr><td><code>ShakeWaveform</code></td><td><code>Perlin</code> <code>Random</code> <code>Sine</code> <code>Kick</code></td></tr>
+<tr><td><code>ShakeSpace</code></td><td><code>CameraLocal</code> <code>World</code></td></tr>
+<tr><td><code>ShakeTimeMode</code></td><td><code>Scaled</code> <code>Unscaled</code></td></tr>
+</table>
+
+</main>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // 見出しに章番号を振り、目次を組み立てる
+  var main = document.querySelector("main");
+  var list = document.getElementById("toc-list");
+  var heads = main.querySelectorAll("h2, h3");
+  var c1 = 0;
+  var c2 = 0;
+
+  for (var i = 0; i < heads.length; i++) {
+    var h = heads[i];
+    var num;
+    if (h.tagName === "H2") {
+      c1++;
+      c2 = 0;
+      num = String(c1) + ".";
+    } else {
+      c2++;
+      num = String(c1) + "." + String(c2);
+    }
+
+    if (!h.id) {
+      h.id = "s" + num.replace(/\./g, "-").replace(/-$/, "");
+    }
+
+    var tag = document.createElement("span");
+    tag.className = "num";
+    tag.textContent = num;
+    h.insertBefore(tag, h.firstChild);
+
+    var li = document.createElement("li");
+    li.className = h.tagName === "H2" ? "lv1" : "lv2";
+    var a = document.createElement("a");
+    a.href = "#" + h.id;
+    var n = document.createElement("span");
+    n.className = "num";
+    n.textContent = num;
+    a.appendChild(n);
+    a.appendChild(document.createTextNode(h.textContent.slice(num.length)));
+    li.appendChild(a);
+    list.appendChild(li);
+  }
+
+  // 見出しの id はここで初めて決まるので、URL の # は自分で処理し直す。
+  // 画像の高さが決まってからでないと行き先がずれるので load を待つ
+  if (location.hash.length > 1) {
+    window.addEventListener("load", function () {
+      var target = document.getElementById(location.hash.slice(1));
+      if (target) { target.scrollIntoView(); }
+    });
+  }
+
+  // 今読んでいる節を目次で光らせる
+  var links = list.querySelectorAll("a");
+  var byId = {};
+  for (var j = 0; j < links.length; j++) {
+    byId[links[j].getAttribute("href").slice(1)] = links[j];
+  }
+
+  if (!("IntersectionObserver" in window)) { return; }
+
+  var seen = {};
+  var observer = new IntersectionObserver(function (entries) {
+    for (var k = 0; k < entries.length; k++) {
+      seen[entries[k].target.id] = entries[k].isIntersecting;
+    }
+    var current = null;
+    for (var m = 0; m < heads.length; m++) {
+      if (seen[heads[m].id]) { current = heads[m].id; break; }
+    }
+    for (var id in byId) {
+      if (Object.prototype.hasOwnProperty.call(byId, id)) {
+        byId[id].classList.toggle("on", id === current);
+      }
+    }
+  }, { rootMargin: "0px 0px -75% 0px" });
+
+  for (var p = 0; p < heads.length; p++) {
+    observer.observe(heads[p]);
+  }
+}());
+</script>
+</body>
+</html>

@@ -92,9 +92,8 @@ CLAUDE.md
 Docs/
 !/Docs/
 /Docs/*
-# ゲーム制作ガイドのソースだけは追跡する（生成したサイトは追跡しない）
+# ゲーム制作の設計書だけは追跡する
 !/Docs/GameDevGuide/
-GameDevGuide_Site/
 
 # Chutzpah Test files
 _Chutzpah*
