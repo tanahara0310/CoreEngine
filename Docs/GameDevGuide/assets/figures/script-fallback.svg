@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 250" role="img" aria-labelledby="t d" width="100%">
+  <title id="t">スクリプトの部分的な差し戻し</title>
+  <desc id="d">1 つ壊れても、そのファイルだけ前の版に戻して他は新しい版で動く</desc>
+  <style>
+    .bx { fill: var(--fig-fill, #eef1f6); stroke: var(--fig-line, #5a6270); stroke-width: 1.2; }
+    .bx-a { fill: var(--fig-accent-fill, #dfe4f7); stroke: var(--fig-accent, #4257b2); stroke-width: 1.4; }
+    .bx-w { fill: var(--fig-warn-fill, #fbeedd); stroke: var(--fig-warn, #a8620f); stroke-width: 1.4; }
+    .t { fill: var(--fig-text, #1f2430); font-family: system-ui, sans-serif; font-size: 13px; }
+    .t-b { fill: var(--fig-text, #1f2430); font-family: system-ui, sans-serif; font-size: 13.5px; font-weight: 600; }
+    .t-s { fill: var(--fig-weak, #6b7382); font-family: system-ui, sans-serif; font-size: 11.5px; }
+    .t-a { fill: var(--fig-accent, #4257b2); font-family: system-ui, sans-serif; font-size: 13.5px; font-weight: 600; }
+    .ln { stroke: var(--fig-line, #5a6270); stroke-width: 1.3; fill: none; }
+    .ln-d { stroke: var(--fig-line, #5a6270); stroke-width: 1.2; fill: none; stroke-dasharray: 4 3; }
+  </style>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 4 L0 8 z" fill="var(--fig-line, #5a6270)"/>
+    </marker>
+  </defs>
+
+  <rect class="bx-w" x="20" y="100" rx="6" width="150" height="46"/>
+  <text class="t" x="95" y="127" text-anchor="middle">A.as を壊した</text>
+  <path class="ln" d="M170 123 L228 123" marker-end="url(#ar)"/>
+  <rect class="bx-a" x="228" y="100" rx="6" width="130" height="46"/>
+  <text class="t-b" x="293" y="127" text-anchor="middle">組み直す</text>
+  <path class="ln" d="M358 123 H394.0 V40 H430" marker-end="url(#ar)"/>
+  <text class="t-s" x="395" y="80" text-anchor="middle">失敗</text>
+  <rect class="bx" x="430" y="14" rx="6" width="300" height="52"/>
+  <text class="t" x="580" y="36" text-anchor="middle">A.as だけ前の版へ戻して</text>
+  <text class="t" x="580" y="52" text-anchor="middle">もう一度組む</text>
+  <path class="ln" d="M580 66 H580.0 V100 H580" marker-end="url(#ar)"/>
+  <rect class="bx-a" x="430" y="100" rx="6" width="300" height="52"/>
+  <text class="t" x="580" y="130" text-anchor="middle">A は前の版・他は新しい版で動く</text>
+  <text class="t-s" x="600" y="90" text-anchor="middle">成功</text>
+  <path class="ln" d="M430 152 H430.0 V186 H430" marker-end="url(#ar)"/>
+  <rect class="bx-w" x="430" y="186" rx="6" width="300" height="40"/>
+  <text class="t" x="580" y="210" text-anchor="middle">全体が前の状態のまま</text>
+  <text class="t-s" x="600" y="178" text-anchor="middle">それでも失敗</text>
+</svg>

@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 250" role="img" aria-labelledby="t d" width="100%">
+  <title id="t">オブジェクトは器</title>
+  <desc id="d">GameObject にコンポーネントを足して中身を決める</desc>
+  <style>
+    .bx { fill: var(--fig-fill, #eef1f6); stroke: var(--fig-line, #5a6270); stroke-width: 1.2; }
+    .bx-a { fill: var(--fig-accent-fill, #dfe4f7); stroke: var(--fig-accent, #4257b2); stroke-width: 1.4; }
+    .bx-w { fill: var(--fig-warn-fill, #fbeedd); stroke: var(--fig-warn, #a8620f); stroke-width: 1.4; }
+    .t { fill: var(--fig-text, #1f2430); font-family: system-ui, sans-serif; font-size: 13px; }
+    .t-b { fill: var(--fig-text, #1f2430); font-family: system-ui, sans-serif; font-size: 13.5px; font-weight: 600; }
+    .t-s { fill: var(--fig-weak, #6b7382); font-family: system-ui, sans-serif; font-size: 11.5px; }
+    .t-a { fill: var(--fig-accent, #4257b2); font-family: system-ui, sans-serif; font-size: 13.5px; font-weight: 600; }
+    .ln { stroke: var(--fig-line, #5a6270); stroke-width: 1.3; fill: none; }
+    .ln-d { stroke: var(--fig-line, #5a6270); stroke-width: 1.2; fill: none; stroke-dasharray: 4 3; }
+  </style>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 4 L0 8 z" fill="var(--fig-line, #5a6270)"/>
+    </marker>
+  </defs>
+
+  <rect class="bx-a" x="20" y="95" rx="6" width="170" height="60"/>
+  <text class="t-b" x="105" y="121" text-anchor="middle">GameObject</text>
+  <text class="t-s" x="105" y="137" text-anchor="middle">名前と有効・無効だけ</text>
+  <rect class="bx" x="300" y="10" rx="6" width="240" height="38"/>
+  <text class="t" x="420" y="25" text-anchor="middle">Transform</text>
+  <text class="t-s" x="420" y="41" text-anchor="middle">位置・回転・大きさ</text>
+  <path class="ln" d="M190 125 H245.0 V29 H300" marker-end="url(#ar)"/>
+  <rect class="bx" x="300" y="56" rx="6" width="240" height="38"/>
+  <text class="t" x="420" y="71" text-anchor="middle">MeshRenderer</text>
+  <text class="t-s" x="420" y="87" text-anchor="middle">形を出す</text>
+  <path class="ln" d="M190 125 H245.0 V75 H300" marker-end="url(#ar)"/>
+  <rect class="bx" x="300" y="102" rx="6" width="240" height="38"/>
+  <text class="t" x="420" y="117" text-anchor="middle">Collider</text>
+  <text class="t-s" x="420" y="133" text-anchor="middle">当たり判定</text>
+  <path class="ln" d="M190 125 H245.0 V121 H300" marker-end="url(#ar)"/>
+  <rect class="bx" x="300" y="148" rx="6" width="240" height="38"/>
+  <text class="t" x="420" y="163" text-anchor="middle">Rigidbody</text>
+  <text class="t-s" x="420" y="179" text-anchor="middle">物理で動かす</text>
+  <path class="ln" d="M190 125 H245.0 V167 H300" marker-end="url(#ar)"/>
+  <rect class="bx" x="300" y="194" rx="6" width="240" height="38"/>
+  <text class="t" x="420" y="209" text-anchor="middle">自分のスクリプト</text>
+  <text class="t-s" x="420" y="225" text-anchor="middle">独自の動き</text>
+  <path class="ln" d="M190 125 H245.0 V213 H300" marker-end="url(#ar)"/>
+</svg>
