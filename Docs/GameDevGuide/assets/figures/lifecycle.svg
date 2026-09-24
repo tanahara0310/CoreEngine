@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 340" role="img" aria-labelledby="t d" width="100%">
+  <title id="t">呼ばれる順番</title>
+  <desc id="d">Awake と Start は 1 回だけ。FixedUpdate から当たり判定までが毎フレーム繰り返される</desc>
+  <style>
+    .bx { fill: var(--fig-fill, #eef1f6); stroke: var(--fig-line, #5a6270); stroke-width: 1.2; }
+    .bx-a { fill: var(--fig-accent-fill, #dfe4f7); stroke: var(--fig-accent, #4257b2); stroke-width: 1.4; }
+    .bx-w { fill: var(--fig-warn-fill, #fbeedd); stroke: var(--fig-warn, #a8620f); stroke-width: 1.4; }
+    .t { fill: var(--fig-text, #1f2430); font-family: system-ui, sans-serif; font-size: 13px; }
+    .t-b { fill: var(--fig-text, #1f2430); font-family: system-ui, sans-serif; font-size: 13.5px; font-weight: 600; }
+    .t-s { fill: var(--fig-weak, #6b7382); font-family: system-ui, sans-serif; font-size: 11.5px; }
+    .t-a { fill: var(--fig-accent, #4257b2); font-family: system-ui, sans-serif; font-size: 13.5px; font-weight: 600; }
+    .ln { stroke: var(--fig-line, #5a6270); stroke-width: 1.3; fill: none; }
+    .ln-d { stroke: var(--fig-line, #5a6270); stroke-width: 1.2; fill: none; stroke-dasharray: 4 3; }
+  </style>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 4 L0 8 z" fill="var(--fig-line, #5a6270)"/>
+    </marker>
+  </defs>
+
+  <rect class="bx-a" x="210" y="14" rx="6" width="270" height="38"/>
+  <text class="t" x="345" y="29" text-anchor="middle">Awake()</text>
+  <text class="t-s" x="345" y="45" text-anchor="middle">付けた直後に 1 回</text>
+  <rect class="bx-a" x="210" y="62" rx="6" width="270" height="38"/>
+  <text class="t" x="345" y="77" text-anchor="middle">Start()</text>
+  <text class="t-s" x="345" y="93" text-anchor="middle">最初の更新の前に 1 回</text>
+  <path class="ln" d="M345 52 L345 61" marker-end="url(#ar)"/>
+  <rect class="bx" x="210" y="110" rx="6" width="270" height="38"/>
+  <text class="t" x="345" y="125" text-anchor="middle">FixedUpdate()</text>
+  <text class="t-s" x="345" y="141" text-anchor="middle">物理の刻みごと</text>
+  <path class="ln" d="M345 100 L345 109" marker-end="url(#ar)"/>
+  <rect class="bx" x="210" y="158" rx="6" width="270" height="38"/>
+  <text class="t" x="345" y="173" text-anchor="middle">Update()</text>
+  <text class="t-s" x="345" y="189" text-anchor="middle">毎フレーム</text>
+  <path class="ln" d="M345 148 L345 157" marker-end="url(#ar)"/>
+  <rect class="bx" x="210" y="206" rx="6" width="270" height="38"/>
+  <text class="t" x="345" y="221" text-anchor="middle">LateUpdate()</text>
+  <text class="t-s" x="345" y="237" text-anchor="middle">全員の Update の後</text>
+  <path class="ln" d="M345 196 L345 205" marker-end="url(#ar)"/>
+  <rect class="bx" x="210" y="254" rx="6" width="270" height="38"/>
+  <text class="t" x="345" y="269" text-anchor="middle">OnCollision* / OnTrigger*</text>
+  <text class="t-s" x="345" y="285" text-anchor="middle">当たり判定の通知</text>
+  <path class="ln" d="M345 244 L345 253" marker-end="url(#ar)"/>
+  <path class="ln" d="M210 269 H150 V129 H210" marker-end="url(#ar)"/>
+  <text class="t-s" x="142" y="192" text-anchor="end">毎フレーム</text>
+  <text class="t-s" x="142" y="208" text-anchor="end">ここへ戻る</text>
+  <path class="ln" d="M500 110 H520 V288 H500"/>
+  <text class="t-s" x="534" y="188" text-anchor="start">ここまでが 1 フレーム</text>
+  <text class="t-s" x="534" y="204" text-anchor="start">（FixedUpdate は 0 回にも</text>
+  <text class="t-s" x="534" y="220" text-anchor="start">複数回にもなる）</text>
+  <rect class="bx-w" x="210" y="300" rx="6" width="270" height="30"/>
+  <text class="t" x="345" y="319" text-anchor="middle">OnDestroy()　壊すときに 1 回</text>
+  <path class="ln-d" d="M480 33 H610 V315 H480" marker-end="url(#ar)"/>
+  <text class="t-s" x="624" y="60" text-anchor="start">壊すときは</text>
+  <text class="t-s" x="624" y="76" text-anchor="start">いつでも</text>
+</svg>
