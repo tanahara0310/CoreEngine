@@ -1,0 +1,54 @@
+{
+    "components": [
+        {
+            "type": "Transform",
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "type": "Text3DRenderer",
+            "enabled": true,
+            "parameters": {
+                "text": "+100",
+                "fontSize": 1.2,
+                "color": [
+                    1.0,
+                    0.95,
+                    0.5,
+                    1.0
+                ],
+                "outlineColor": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "outlineWidth": 0.1,
+                "billboard": 1,
+                "depthMode": 1
+            }
+        },
+        {
+            "type": "ShootingScorePopup",
+            "enabled": true,
+            "parameters": {}
+        }
+    ]
+}

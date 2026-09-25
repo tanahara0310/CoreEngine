@@ -1,0 +1,72 @@
+{
+    "id": "333dc56ddffd8ea0",
+    "active": true,
+    "name": "Player",
+    "components": [
+        {
+            "type": "Transform",
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    0.0,
+                    -5.0
+                ]
+            }
+        },
+        {
+            "type": "Collider",
+            "enabled": true,
+            "parameters": {
+                "shapes": [
+                    {
+                        "enabled": true,
+                        "layer": "Player",
+                        "offset": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "radius": 0.6,
+                        "static": false,
+                        "trigger": true,
+                        "type": "Sphere"
+                    }
+                ]
+            }
+        },
+        {
+            "type": "ShootingPlayer",
+            "enabled": true,
+            "parameters": {
+                "body": {
+                    "comp": "",
+                    "ref": "c6e9d04a7902f1cc"
+                },
+                "wing": {
+                    "comp": "",
+                    "ref": "dfa238f865cbb26b"
+                },
+                "cockpit": {
+                    "comp": "",
+                    "ref": "231f854062e74de5"
+                },
+                "engine": {
+                    "comp": "",
+                    "ref": "46202d2f55c5c532"
+                }
+            }
+        }
+    ]
+}

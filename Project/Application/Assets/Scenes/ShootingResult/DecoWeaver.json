@@ -1,0 +1,72 @@
+{
+    "id": "e1a469bea324f0b8",
+    "active": true,
+    "name": "DecoWeaver",
+    "components": [
+        {
+            "type": "Transform",
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.6,
+                    1.6,
+                    1.6
+                ],
+                "translate": [
+                    9.5,
+                    1.0,
+                    7.0
+                ]
+            }
+        },
+        {
+            "type": "MeshRenderer",
+            "enabled": true,
+            "parameters": {
+                "model": {
+                    "guid": "e8a79191-50ea-0673-1816-c257f280ba64",
+                    "path": "Application/Assets/Models/Box/cube.obj"
+                }
+            }
+        },
+        {
+            "type": "Material",
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    1.0,
+                    0.6,
+                    0.15,
+                    1.0
+                ],
+                "emissive": [
+                    0.35,
+                    0.15,
+                    0.0,
+                    1.0
+                ],
+                "metallic": 0.0,
+                "roughness": 0.4
+            }
+        },
+        {
+            "type": "ShootingSpinner",
+            "enabled": true,
+            "parameters": {
+                "spin": [
+                    1.0,
+                    1.4,
+                    0.0
+                ],
+                "bobHeight": 0.5,
+                "bobSpeed": 0.3
+            }
+        }
+    ]
+}

@@ -1,0 +1,62 @@
+{
+    "id": "209487e99acca861",
+    "active": true,
+    "name": "ShipEngine",
+    "components": [
+        {
+            "type": "Transform",
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "717e6324e40f47bf"
+                },
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    0.3,
+                    0.3,
+                    0.35
+                ],
+                "translate": [
+                    0.0,
+                    0.0,
+                    -1.05
+                ]
+            }
+        },
+        {
+            "type": "MeshRenderer",
+            "enabled": true,
+            "parameters": {
+                "model": {
+                    "guid": "e16552a6-c74d-f458-71fe-2810a97c3777",
+                    "path": "Application/Assets/Models/Sphere/sphere.obj"
+                }
+            }
+        },
+        {
+            "type": "Material",
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    1.0,
+                    0.6,
+                    0.2,
+                    1.0
+                ],
+                "emissive": [
+                    3.0,
+                    1.2,
+                    0.3,
+                    1.0
+                ],
+                "metallic": 0.0,
+                "roughness": 0.5
+            }
+        }
+    ]
+}

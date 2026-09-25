@@ -1,0 +1,52 @@
+{
+    "id": "cd7213523b2257b3",
+    "active": true,
+    "name": "TimeText",
+    "components": [
+        {
+            "type": "RectTransform",
+            "enabled": true,
+            "parameters": {
+                "anchor": 1,
+                "anchoredPosition": [
+                    0.0,
+                    18.0
+                ],
+                "pivot": [
+                    0.5,
+                    0.0
+                ],
+                "size": [
+                    400.0,
+                    50.0
+                ],
+                "rotation": 0.0,
+                "sortOrder": 10
+            }
+        },
+        {
+            "type": "UIText",
+            "enabled": true,
+            "parameters": {
+                "text": "TIME  60",
+                "fontSize": 40.0,
+                "color": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "alignH": 1,
+                "alignV": 1,
+                "fieldAutoFit": true,
+                "outlineColor": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "outlineWidth": 0.1
+            }
+        }
+    ]
+}

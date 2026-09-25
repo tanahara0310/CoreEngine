@@ -1,0 +1,59 @@
+{
+    "id": "b67f5c0accf1eb1d",
+    "active": true,
+    "name": "Floor",
+    "components": [
+        {
+            "type": "Transform",
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    40.0,
+                    1.0,
+                    40.0
+                ],
+                "translate": [
+                    0.0,
+                    -2.0,
+                    30.0
+                ]
+            }
+        },
+        {
+            "type": "MeshRenderer",
+            "enabled": true,
+            "parameters": {
+                "model": {
+                    "guid": "0d1f8569-e88c-4526-a1ab-d433360de878",
+                    "path": "Application/Assets/Models/Plane/plane.obj"
+                }
+            }
+        },
+        {
+            "type": "Material",
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    0.035,
+                    0.045,
+                    0.09,
+                    1.0
+                ],
+                "emissive": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "metallic": 0.0,
+                "roughness": 0.95
+            }
+        }
+    ]
+}

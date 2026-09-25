@@ -1,0 +1,71 @@
+{
+    "id": "3d564c035e5f582f",
+    "active": true,
+    "name": "StartButton",
+    "components": [
+        {
+            "type": "RectTransform",
+            "enabled": true,
+            "parameters": {
+                "anchor": 4,
+                "anchoredPosition": [
+                    0.0,
+                    250.0
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "size": [
+                    440.0,
+                    96.0
+                ],
+                "rotation": 0.0,
+                "sortOrder": 20
+            }
+        },
+        {
+            "type": "UIImage",
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "type": "UIButton",
+            "enabled": true,
+            "parameters": {
+                "interactable": true,
+                "normalColor": [
+                    0.02,
+                    0.05,
+                    0.14,
+                    0.95
+                ],
+                "hoveredColor": [
+                    0.1,
+                    0.3,
+                    0.8,
+                    1.0
+                ],
+                "pressedColor": [
+                    0.01,
+                    0.03,
+                    0.08,
+                    1.0
+                ],
+                "disabledColor": [
+                    0.45,
+                    0.45,
+                    0.45,
+                    0.6
+                ]
+            }
+        }
+    ]
+}

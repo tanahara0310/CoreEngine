@@ -1,0 +1,42 @@
+{
+    "id": "717e6324e40f47bf",
+    "active": true,
+    "name": "Ship",
+    "components": [
+        {
+            "type": "Transform",
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    0.9,
+                    0.0
+                ]
+            }
+        },
+        {
+            "type": "ShootingSpinner",
+            "enabled": true,
+            "parameters": {
+                "spin": [
+                    0.0,
+                    0.7,
+                    0.0
+                ],
+                "bobHeight": 0.2,
+                "bobSpeed": 0.35
+            }
+        }
+    ]
+}

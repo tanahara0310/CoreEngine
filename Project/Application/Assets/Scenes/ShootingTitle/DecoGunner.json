@@ -1,0 +1,72 @@
+{
+    "id": "149b2ea88d88ac17",
+    "active": true,
+    "name": "DecoGunner",
+    "components": [
+        {
+            "type": "Transform",
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    2.6,
+                    1.2,
+                    2.0
+                ],
+                "translate": [
+                    -3.0,
+                    1.5,
+                    22.0
+                ]
+            }
+        },
+        {
+            "type": "MeshRenderer",
+            "enabled": true,
+            "parameters": {
+                "model": {
+                    "guid": "e8a79191-50ea-0673-1816-c257f280ba64",
+                    "path": "Application/Assets/Models/Box/cube.obj"
+                }
+            }
+        },
+        {
+            "type": "Material",
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    0.6,
+                    0.3,
+                    1.0,
+                    1.0
+                ],
+                "emissive": [
+                    0.2,
+                    0.05,
+                    0.4,
+                    1.0
+                ],
+                "metallic": 0.0,
+                "roughness": 0.4
+            }
+        },
+        {
+            "type": "ShootingSpinner",
+            "enabled": true,
+            "parameters": {
+                "spin": [
+                    0.0,
+                    0.5,
+                    0.0
+                ],
+                "bobHeight": 0.3,
+                "bobSpeed": 0.3
+            }
+        }
+    ]
+}

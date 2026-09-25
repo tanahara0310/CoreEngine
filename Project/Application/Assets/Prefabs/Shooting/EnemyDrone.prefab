@@ -1,0 +1,93 @@
+{
+    "components": [
+        {
+            "type": "Transform",
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    0.9,
+                    0.9,
+                    0.9
+                ],
+                "translate": [
+                    0.0,
+                    0.0,
+                    23.0
+                ]
+            }
+        },
+        {
+            "type": "MeshRenderer",
+            "enabled": true,
+            "parameters": {
+                "model": {
+                    "guid": "e16552a6-c74d-f458-71fe-2810a97c3777",
+                    "path": "Application/Assets/Models/Sphere/sphere.obj"
+                }
+            }
+        },
+        {
+            "type": "Material",
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    0.95,
+                    0.25,
+                    0.2,
+                    1.0
+                ],
+                "emissive": [
+                    0.3,
+                    0.02,
+                    0.0,
+                    1.0
+                ],
+                "metallic": 0.0,
+                "roughness": 0.45
+            }
+        },
+        {
+            "type": "Collider",
+            "enabled": true,
+            "parameters": {
+                "shapes": [
+                    {
+                        "enabled": true,
+                        "layer": "Enemy",
+                        "offset": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "radius": 1.0,
+                        "static": false,
+                        "trigger": true,
+                        "type": "Sphere"
+                    }
+                ]
+            }
+        },
+        {
+            "type": "ShootingEnemy",
+            "enabled": true,
+            "parameters": {
+                "movement": 0,
+                "speed": 8.0,
+                "hitPoints": 1,
+                "points": 100,
+                "spin": [
+                    0.0,
+                    2.0,
+                    0.0
+                ],
+                "explosionSize": 36
+            }
+        }
+    ]
+}

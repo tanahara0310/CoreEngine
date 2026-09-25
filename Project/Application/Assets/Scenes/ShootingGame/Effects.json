@@ -1,0 +1,21 @@
+{
+    "id": "d004bbafa47097e5",
+    "active": true,
+    "name": "Effects",
+    "components": [
+        {
+            "type": "ShootingEffects",
+            "enabled": true,
+            "parameters": {
+                "explosion": {
+                    "comp": "",
+                    "ref": "00d2932d8f57b39e"
+                },
+                "spark": {
+                    "comp": "",
+                    "ref": "85971d1aedd02ab4"
+                }
+            }
+        }
+    ]
+}
