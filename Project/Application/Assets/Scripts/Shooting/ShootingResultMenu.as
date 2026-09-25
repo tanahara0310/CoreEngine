@@ -36,10 +36,10 @@ class ShootingResultMenu : ScriptComponent
     float countUpTime = 1.2f;
 
     [Color] [Tooltip("クリアしたときの見出しの色")]
-    Vector4 clearColor = Vector4(0.08f, 0.55f, 0.15f, 1.0f);
+    Vector4 clearColor = Vector4(0.45f, 1.0f, 0.55f, 1.0f);
 
     [Color] [Tooltip("ゲームオーバーのときの見出しの色")]
-    Vector4 gameOverColor = Vector4(0.6f, 0.06f, 0.05f, 1.0f);
+    Vector4 gameOverColor = Vector4(1.0f, 0.35f, 0.3f, 1.0f);
 
     private int score_ = 0;
     private bool isNewRecord_ = false;

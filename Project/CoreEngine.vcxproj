@@ -226,6 +226,7 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterRenderResources.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterShaderResourceBinder.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Outline\Outline.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\UIOverlay\UIOverlay.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Random\Random.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Primitive\CylinderMeshGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Primitive\RingMeshGenerator.cpp" />
@@ -1302,6 +1303,7 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\GrayScale\GrayScale.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Invert\Invert.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Outline\Outline.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\UIOverlay\UIOverlay.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectComputeBase.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectGraphicsBase.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\RadialBlur\RadialBlur.h" />

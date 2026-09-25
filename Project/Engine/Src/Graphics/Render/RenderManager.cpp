@@ -63,7 +63,10 @@ namespace CoreEngine
         item.registrationOrder = registrationCounter_++;
         item.sortKey = ResolveRenderOrder(item);
 
-        if (item.passType == RenderPassType::Line) {
+        if (item.passType == RenderPassType::UI || item.passType == RenderPassType::UIText) {
+            // 画面固定の UI はトーンマップと画面演出の後に重ねる
+            overlayDrawQueue_.push_back(std::move(item));
+        } else if (item.passType == RenderPassType::Line) {
             // ラインは水面より後の専用パスで描く。通常キューへ入れると、後段の
             // WaterSurfacePass に上書きされて水マス上のガイドだけ消えてしまう。
             lineDrawQueue_.push_back(std::move(item));
@@ -226,6 +229,15 @@ namespace CoreEngine
         RenderNormalPassQueue(cmdList, transparentDrawQueue_, viewType);
     }
 
+    void RenderManager::DrawOverlayQueuePass(ID3D12GraphicsCommandList* cmdList, RenderViewType viewType) {
+        if (overlayDrawQueue_.empty() || !cmdList) {
+            return;
+        }
+
+        EnsureQueueSorted();
+        RenderNormalPassQueue(cmdList, overlayDrawQueue_, viewType);
+    }
+
     void RenderManager::ApplyEnvironmentLightingToRenderers() {
         // IBL パラメータを構造体にまとめて一括適用
         IBLParameters params;
@@ -341,6 +353,7 @@ namespace CoreEngine
         transparentDrawQueue_.clear();
         waterDrawQueue_.clear();
         lineDrawQueue_.clear();
+        overlayDrawQueue_.clear();
 
         // Line パス起動用の合成アイテム。パス実行はアイテム駆動なので、これが無いと
         // Line アイテム 0 のフレームで EndPass（ラインソース回収とフラッシュ）が走らず、
@@ -406,6 +419,7 @@ namespace CoreEngine
         SortRenderQueue(transparentDrawQueue_);
         SortRenderQueue(waterDrawQueue_);
         SortRenderQueue(lineDrawQueue_);
+        SortRenderQueue(overlayDrawQueue_);
     }
 
     void RenderManager::SortRenderQueue(std::vector<RenderItem>& queue) {
