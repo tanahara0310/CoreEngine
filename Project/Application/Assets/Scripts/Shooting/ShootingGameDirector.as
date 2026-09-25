@@ -384,6 +384,6 @@ class ShootingGameDirector : ScriptComponent
         shownSeconds_ = seconds;
         timeText.uiText.text = "TIME  " + seconds;
         // 残り 10 秒からは赤くする
-        timeText.uiText.color = seconds <= 10 ? Vector4(0.8f, 0.08f, 0.05f, timeColor_.w) : timeColor_;
+        timeText.uiText.color = seconds <= 10 ? Vector4(1.0f, 0.3f, 0.25f, timeColor_.w) : timeColor_;
     }
 }

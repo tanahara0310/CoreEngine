@@ -101,6 +101,10 @@ namespace CoreEngine
         uint32_t BaseWidth() const { return baseWidth_; }
         uint32_t BaseHeight() const { return baseHeight_; }
 
+        /// @brief このフレーム・このビューの描画文脈
+        /// @note 参照はパスを積む間だけ有効。記録ラムダへはポインタや値を写して渡すこと
+        const RenderContext& Context() const { return context_; }
+
         /// @brief 積まれたパス列
         const std::vector<PostEffectStep>& Steps() const { return steps_; }
 
