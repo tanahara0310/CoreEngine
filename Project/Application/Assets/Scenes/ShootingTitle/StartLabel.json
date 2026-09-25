@@ -1,0 +1,52 @@
+{
+    "id": "286ff15f31e45f27",
+    "active": true,
+    "name": "StartLabel",
+    "components": [
+        {
+            "type": "RectTransform",
+            "enabled": true,
+            "parameters": {
+                "anchor": 4,
+                "anchoredPosition": [
+                    0.0,
+                    250.0
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "size": [
+                    420.0,
+                    80.0
+                ],
+                "rotation": 0.0,
+                "sortOrder": 21
+            }
+        },
+        {
+            "type": "UIText",
+            "enabled": true,
+            "parameters": {
+                "text": "ゲームスタート",
+                "fontSize": 44.0,
+                "color": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "alignH": 1,
+                "alignV": 1,
+                "fieldAutoFit": true,
+                "outlineColor": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "outlineWidth": 0.15
+            }
+        }
+    ]
+}

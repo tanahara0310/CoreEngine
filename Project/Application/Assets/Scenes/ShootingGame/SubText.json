@@ -1,0 +1,52 @@
+{
+    "id": "18438208614fef2e",
+    "active": true,
+    "name": "SubText",
+    "components": [
+        {
+            "type": "RectTransform",
+            "enabled": true,
+            "parameters": {
+                "anchor": 4,
+                "anchoredPosition": [
+                    0.0,
+                    40.0
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "size": [
+                    1000.0,
+                    60.0
+                ],
+                "rotation": 0.0,
+                "sortOrder": 20
+            }
+        },
+        {
+            "type": "UIText",
+            "enabled": true,
+            "parameters": {
+                "text": "",
+                "fontSize": 44.0,
+                "color": [
+                    0.1,
+                    0.5,
+                    0.15,
+                    1.0
+                ],
+                "alignH": 1,
+                "alignV": 1,
+                "fieldAutoFit": true,
+                "outlineColor": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "outlineWidth": 0.1
+            }
+        }
+    ]
+}

@@ -82,6 +82,17 @@
             ]
         },
         {
+            "id": "Fire",
+            "display": "ショット",
+            "context": "Game",
+            "defaults": [
+                "Key:Space",
+                "Key:Z",
+                "Gamepad:A",
+                "Gamepad:RightShoulder"
+            ]
+        },
+        {
             "id": "UINavigateUp",
             "display": "UI上",
             "context": "UI",

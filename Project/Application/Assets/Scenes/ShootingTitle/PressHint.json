@@ -1,0 +1,52 @@
+{
+    "id": "33f34c574ecd14cd",
+    "active": true,
+    "name": "PressHint",
+    "components": [
+        {
+            "type": "RectTransform",
+            "enabled": true,
+            "parameters": {
+                "anchor": 4,
+                "anchoredPosition": [
+                    0.0,
+                    170.0
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "size": [
+                    1000.0,
+                    50.0
+                ],
+                "rotation": 0.0,
+                "sortOrder": 10
+            }
+        },
+        {
+            "type": "UIText",
+            "enabled": true,
+            "parameters": {
+                "text": "Enter / A ボタン / クリック でスタート",
+                "fontSize": 30.0,
+                "color": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "alignH": 1,
+                "alignV": 1,
+                "fieldAutoFit": true,
+                "outlineColor": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "outlineWidth": 0.1
+            }
+        }
+    ]
+}

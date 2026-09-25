@@ -1,0 +1,52 @@
+{
+    "id": "fa9f95be756c4b0d",
+    "active": true,
+    "name": "HighScore",
+    "components": [
+        {
+            "type": "RectTransform",
+            "enabled": true,
+            "parameters": {
+                "anchor": 4,
+                "anchoredPosition": [
+                    0.0,
+                    340.0
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "size": [
+                    800.0,
+                    50.0
+                ],
+                "rotation": 0.0,
+                "sortOrder": 10
+            }
+        },
+        {
+            "type": "UIText",
+            "enabled": true,
+            "parameters": {
+                "text": "ハイスコア  0000000",
+                "fontSize": 34.0,
+                "color": [
+                    0.5,
+                    0.25,
+                    0.02,
+                    1.0
+                ],
+                "alignH": 1,
+                "alignV": 1,
+                "fieldAutoFit": true,
+                "outlineColor": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "outlineWidth": 0.1
+            }
+        }
+    ]
+}

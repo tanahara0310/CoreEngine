@@ -1,0 +1,41 @@
+{
+    "id": "891d7429de916bfe",
+    "active": true,
+    "name": "TitleMenu",
+    "components": [
+        {
+            "type": "ShootingTitleMenu",
+            "enabled": true,
+            "parameters": {
+                "logo": {
+                    "comp": "",
+                    "ref": "4f1af2b48a5e249a"
+                },
+                "subtitle": {
+                    "comp": "",
+                    "ref": "0f0202c2780ce439"
+                },
+                "startButton": {
+                    "comp": "",
+                    "ref": "3d564c035e5f582f"
+                },
+                "startLabel": {
+                    "comp": "",
+                    "ref": "286ff15f31e45f27"
+                },
+                "highScore": {
+                    "comp": "",
+                    "ref": "fa9f95be756c4b0d"
+                },
+                "pressHint": {
+                    "comp": "",
+                    "ref": "33f34c574ecd14cd"
+                },
+                "ship": {
+                    "comp": "",
+                    "ref": "717e6324e40f47bf"
+                }
+            }
+        }
+    ]
+}

@@ -1,0 +1,52 @@
+{
+    "id": "83cd32b685ccc9b7",
+    "active": true,
+    "name": "Controls",
+    "components": [
+        {
+            "type": "RectTransform",
+            "enabled": true,
+            "parameters": {
+                "anchor": 7,
+                "anchoredPosition": [
+                    0.0,
+                    -30.0
+                ],
+                "pivot": [
+                    0.5,
+                    1.0
+                ],
+                "size": [
+                    1800.0,
+                    44.0
+                ],
+                "rotation": 0.0,
+                "sortOrder": 10
+            }
+        },
+        {
+            "type": "UIText",
+            "enabled": true,
+            "parameters": {
+                "text": "移動：WASD・矢印キー・左スティック　　ショット：Space・Z・A ボタン（押しっぱなしで連射）",
+                "fontSize": 28.0,
+                "color": [
+                    0.8,
+                    0.85,
+                    0.95,
+                    1.0
+                ],
+                "alignH": 1,
+                "alignV": 1,
+                "fieldAutoFit": true,
+                "outlineColor": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "outlineWidth": 0.1
+            }
+        }
+    ]
+}

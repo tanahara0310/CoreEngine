@@ -1,0 +1,85 @@
+{
+    "components": [
+        {
+            "type": "Transform",
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    0.18,
+                    0.18,
+                    0.55
+                ],
+                "translate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "type": "MeshRenderer",
+            "enabled": true,
+            "parameters": {
+                "model": {
+                    "guid": "e16552a6-c74d-f458-71fe-2810a97c3777",
+                    "path": "Application/Assets/Models/Sphere/sphere.obj"
+                }
+            }
+        },
+        {
+            "type": "Material",
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    1.0,
+                    0.9,
+                    0.4,
+                    1.0
+                ],
+                "emissive": [
+                    2.0,
+                    1.6,
+                    0.5,
+                    1.0
+                ],
+                "metallic": 0.0,
+                "roughness": 0.5
+            }
+        },
+        {
+            "type": "Collider",
+            "enabled": true,
+            "parameters": {
+                "shapes": [
+                    {
+                        "enabled": true,
+                        "layer": "PlayerBullet",
+                        "offset": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "radius": 0.7,
+                        "static": false,
+                        "trigger": true,
+                        "type": "Sphere"
+                    }
+                ]
+            }
+        },
+        {
+            "type": "ShootingBullet",
+            "enabled": true,
+            "parameters": {
+                "lifetime": 1.5,
+                "maxZ": 24.0
+            }
+        }
+    ]
+}

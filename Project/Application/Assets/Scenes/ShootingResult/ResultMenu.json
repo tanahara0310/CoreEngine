@@ -1,0 +1,41 @@
+{
+    "id": "c4cc863ded314d3b",
+    "active": true,
+    "name": "ResultMenu",
+    "components": [
+        {
+            "type": "ShootingResultMenu",
+            "enabled": true,
+            "parameters": {
+                "headline": {
+                    "comp": "",
+                    "ref": "775056d1cb76fbe9"
+                },
+                "scoreValue": {
+                    "comp": "",
+                    "ref": "25d8043a01eadada"
+                },
+                "detail": {
+                    "comp": "",
+                    "ref": "8daa1db5187d4ad4"
+                },
+                "best": {
+                    "comp": "",
+                    "ref": "a0b24fa796b43e67"
+                },
+                "newRecord": {
+                    "comp": "",
+                    "ref": "e004f66dc54fb130"
+                },
+                "retryButton": {
+                    "comp": "",
+                    "ref": "7d1f4dd30a3cd56d"
+                },
+                "titleButton": {
+                    "comp": "",
+                    "ref": "2d036fbeeb1036dd"
+                }
+            }
+        }
+    ]
+}

@@ -1,0 +1,52 @@
+{
+    "id": "0da1694a1faade2e",
+    "active": true,
+    "name": "ScoreText",
+    "components": [
+        {
+            "type": "RectTransform",
+            "enabled": true,
+            "parameters": {
+                "anchor": 0,
+                "anchoredPosition": [
+                    40.0,
+                    18.0
+                ],
+                "pivot": [
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    600.0,
+                    50.0
+                ],
+                "rotation": 0.0,
+                "sortOrder": 10
+            }
+        },
+        {
+            "type": "UIText",
+            "enabled": true,
+            "parameters": {
+                "text": "SCORE  0000000",
+                "fontSize": 40.0,
+                "color": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "alignH": 0,
+                "alignV": 1,
+                "fieldAutoFit": true,
+                "outlineColor": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "outlineWidth": 0.1
+            }
+        }
+    ]
+}

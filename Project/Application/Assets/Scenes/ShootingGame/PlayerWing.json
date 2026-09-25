@@ -1,0 +1,62 @@
+{
+    "id": "dfa238f865cbb26b",
+    "active": true,
+    "name": "PlayerWing",
+    "components": [
+        {
+            "type": "Transform",
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "333dc56ddffd8ea0"
+                },
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    3.0,
+                    0.14,
+                    0.8
+                ],
+                "translate": [
+                    0.0,
+                    -0.05,
+                    -0.3
+                ]
+            }
+        },
+        {
+            "type": "MeshRenderer",
+            "enabled": true,
+            "parameters": {
+                "model": {
+                    "guid": "e8a79191-50ea-0673-1816-c257f280ba64",
+                    "path": "Application/Assets/Models/Box/cube.obj"
+                }
+            }
+        },
+        {
+            "type": "Material",
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    0.85,
+                    0.9,
+                    1.0,
+                    1.0
+                ],
+                "emissive": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "metallic": 0.2,
+                "roughness": 0.4
+            }
+        }
+    ]
+}

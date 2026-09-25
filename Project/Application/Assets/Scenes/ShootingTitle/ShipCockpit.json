@@ -1,0 +1,62 @@
+{
+    "id": "67176b5b504cdf10",
+    "active": true,
+    "name": "ShipCockpit",
+    "components": [
+        {
+            "type": "Transform",
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "717e6324e40f47bf"
+                },
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    0.3,
+                    0.22,
+                    0.5
+                ],
+                "translate": [
+                    0.0,
+                    0.25,
+                    0.3
+                ]
+            }
+        },
+        {
+            "type": "MeshRenderer",
+            "enabled": true,
+            "parameters": {
+                "model": {
+                    "guid": "e16552a6-c74d-f458-71fe-2810a97c3777",
+                    "path": "Application/Assets/Models/Sphere/sphere.obj"
+                }
+            }
+        },
+        {
+            "type": "Material",
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    0.3,
+                    0.9,
+                    1.0,
+                    1.0
+                ],
+                "emissive": [
+                    0.3,
+                    1.2,
+                    1.6,
+                    1.0
+                ],
+                "metallic": 0.0,
+                "roughness": 0.2
+            }
+        }
+    ]
+}

@@ -1,0 +1,52 @@
+{
+    "id": "e004f66dc54fb130",
+    "active": true,
+    "name": "NewRecord",
+    "components": [
+        {
+            "type": "RectTransform",
+            "enabled": true,
+            "parameters": {
+                "anchor": 4,
+                "anchoredPosition": [
+                    330.0,
+                    -170.0
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "size": [
+                    420.0,
+                    60.0
+                ],
+                "rotation": -0.2,
+                "sortOrder": 12
+            }
+        },
+        {
+            "type": "UIText",
+            "enabled": true,
+            "parameters": {
+                "text": "NEW RECORD!",
+                "fontSize": 44.0,
+                "color": [
+                    0.6,
+                    0.35,
+                    0.02,
+                    1.0
+                ],
+                "alignH": 1,
+                "alignV": 1,
+                "fieldAutoFit": true,
+                "outlineColor": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "outlineWidth": 0.12
+            }
+        }
+    ]
+}

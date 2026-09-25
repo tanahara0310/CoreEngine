@@ -1,0 +1,37 @@
+{
+    "id": "c62fb4bf471157b3",
+    "active": true,
+    "name": "GameDirector",
+    "components": [
+        {
+            "type": "ShootingGameDirector",
+            "enabled": true,
+            "parameters": {
+                "player": {
+                    "comp": "",
+                    "ref": "333dc56ddffd8ea0"
+                },
+                "scoreText": {
+                    "comp": "",
+                    "ref": "0da1694a1faade2e"
+                },
+                "timeText": {
+                    "comp": "",
+                    "ref": "cd7213523b2257b3"
+                },
+                "lifeText": {
+                    "comp": "",
+                    "ref": "698fdcc32962b4a8"
+                },
+                "centerText": {
+                    "comp": "",
+                    "ref": "323c55beb0753cf3"
+                },
+                "subText": {
+                    "comp": "",
+                    "ref": "18438208614fef2e"
+                }
+            }
+        }
+    ]
+}
