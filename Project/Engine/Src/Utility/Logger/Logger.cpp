@@ -109,16 +109,6 @@ namespace CoreEngine
 {
     namespace
     {
-        /// @brief ログの置き場（作り直せるものなので Intermediate 配下）
-        const std::filesystem::path& LogRoot()
-        {
-            static const std::filesystem::path root = ProjectPaths::Intermediate("Logs");
-            return root;
-        }
-    }
-
-    namespace
-    {
         constexpr const char* kLogPattern = "[%Y-%m-%d %H:%M:%S.%e] [tid:%t] [%n] [%^%l%$] %v";
     }
 
@@ -150,13 +140,6 @@ namespace CoreEngine
 
     Logger::Logger()
     {
-        // ログのディレクトリを用意
-        std::error_code logDirError;
-        std::filesystem::create_directories(LogRoot(), logDirError);
-
-        // 古いログファイルを削除
-        CleanupOldLogFiles();
-
         // フレーム時間サンプル配列を初期化
         frameTimeSamples_.resize(kMaxFrameSamples, 0.0);
     }
@@ -175,6 +158,12 @@ namespace CoreEngine
         }
 
         isShuttingDown_ = false;
+
+        // ログの置き場（開いているプロジェクトの Intermediate/Logs）を用意し、古いログを消す
+        logRoot_ = ProjectPaths::Intermediate("Logs");
+        std::error_code logDirError;
+        std::filesystem::create_directories(logRoot_, logDirError);
+        CleanupOldLogFiles();
 
         // カレントディレクトリを確認（ログフォルダが想定外の場所に作成されるトラブルを防ぐ）
         {
@@ -295,7 +284,7 @@ namespace CoreEngine
         std::string loggerName   = hasSub ? (categoryName + "/" + subCategory.value) : categoryName;
 
         // ログファイルのディレクトリ・パスを構築
-        std::filesystem::path logDirPath = LogRoot() / categoryName;
+        std::filesystem::path logDirPath = logRoot_ / categoryName;
         if (hasSub) {
             logDirPath /= subCategory.value;
         }
@@ -440,13 +429,13 @@ namespace CoreEngine
     void Logger::CleanupOldLogFiles()
     {
         std::error_code existsError;
-        if (!std::filesystem::exists(LogRoot(), existsError)) {
+        if (!std::filesystem::exists(logRoot_, existsError)) {
             return;
         }
 
         // ログの根を再帰的にスキャンし、ディレクトリごとに古いログを削除する。
         // サブカテゴリ対応で "Graphics/Device" のような階層も自動的に処理される。
-        for (const auto& dirEntry : std::filesystem::recursive_directory_iterator(LogRoot())) {
+        for (const auto& dirEntry : std::filesystem::recursive_directory_iterator(logRoot_)) {
             if (!dirEntry.is_directory()) {
                 continue;
             }

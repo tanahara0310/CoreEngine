@@ -194,8 +194,15 @@ namespace CoreEngine
         {
             std::filesystem::path engineRoot;
             std::filesystem::path projectRoot;
-            std::string note;
+            std::string engineNote;  ///< エンジンの根がどう決まったか
+            std::string projectNote; ///< プロジェクトの根がどう決まったか
+            std::string note;        ///< 2 つをつないだもの（起動ログ用）
             bool projectSpecified = false;
+
+            void ComposeNote()
+            {
+                note = engineNote + "・" + projectNote;
+            }
         };
 
         Resolved DetermineRoots()
@@ -203,7 +210,7 @@ namespace CoreEngine
             Resolved resolved;
             const std::filesystem::path exeDir = ExecutableDirectory();
             resolved.engineRoot = exeDir;
-            resolved.note = "エンジンは exe の隣";
+            resolved.engineNote = "エンジンは exe の隣";
 
 #ifdef CORE_EDITOR
             // エディタを持つビルドはソースツリーへ書く。調整した値がそのまま
@@ -220,7 +227,7 @@ namespace CoreEngine
                 }
                 if (std::filesystem::path found = FindSourceRoot(candidate); !found.empty()) {
                     resolved.engineRoot = found;
-                    resolved.note = "エンジンはソースツリー";
+                    resolved.engineNote = "エンジンはソースツリー";
                     break;
                 }
             }
@@ -232,21 +239,26 @@ namespace CoreEngine
                 if (!folder.empty() && ProjectPaths::IsProjectFolder(folder)) {
                     resolved.projectRoot = folder;
                     resolved.projectSpecified = true;
-                    resolved.note += "・プロジェクトは --project で指定";
+                    resolved.projectNote = "プロジェクトは --project で指定";
+                    resolved.ComposeNote();
                     return resolved;
                 }
-                resolved.note += "・--project の " + ToUtf8(option) + " はプロジェクトのフォルダではない";
             }
 
             std::string defaultNote;
             resolved.projectRoot = DefaultProjectRoot(resolved.engineRoot, defaultNote);
-            resolved.note += "・プロジェクトは" + defaultNote;
+            resolved.projectNote = "プロジェクトは" + defaultNote;
+            if (!option.empty()) {
+                resolved.projectNote = "--project の " + ToUtf8(option) +
+                    " はプロジェクトのフォルダではない・" + resolved.projectNote;
+            }
+            resolved.ComposeNote();
             return resolved;
         }
 
-        const Resolved& Store()
+        Resolved& Store()
         {
-            static const Resolved resolved = DetermineRoots();
+            static Resolved resolved = DetermineRoots();
             return resolved;
         }
     }
@@ -269,6 +281,20 @@ namespace CoreEngine
     bool ProjectPaths::IsProjectSpecified()
     {
         return Store().projectSpecified;
+    }
+
+    bool ProjectPaths::OpenProject(const std::filesystem::path& folder)
+    {
+        const std::filesystem::path absolute = ToAbsoluteFolder(folder);
+        if (absolute.empty() || !IsProjectFolder(absolute)) {
+            return false;
+        }
+        Resolved& resolved = Store();
+        resolved.projectRoot = absolute;
+        resolved.projectSpecified = true;
+        resolved.projectNote = "プロジェクトはランチャーで選んだもの";
+        resolved.ComposeNote();
+        return true;
     }
 
     const std::string& ProjectPaths::ResolutionNote()

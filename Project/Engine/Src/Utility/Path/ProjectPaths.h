@@ -32,8 +32,14 @@ namespace CoreEngine
         /// @brief 開いているプロジェクトの根（`Application/` の綴りの基準）
         static const std::filesystem::path& ProjectRoot();
 
-        /// @brief `--project` で指定したプロジェクトを開いているか
+        /// @brief 開くプロジェクトを `--project` かランチャーで決めたか
         static bool IsProjectSpecified();
+
+        /// @brief 開くプロジェクトを決める
+        /// @param folder プロジェクトのフォルダ（`Application/Config/EngineSettings/Project.json` があるもの）
+        /// @return 決められたら true
+        /// @note ログ・アセット・設定を読む前（エンジンの初期化の前）にだけ呼ぶこと
+        static bool OpenProject(const std::filesystem::path& folder);
 
         /// @brief 綴りを絶対パスにする
         /// @param relative `Application/Assets/Models/x.obj` のような綴り。

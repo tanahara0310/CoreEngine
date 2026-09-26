@@ -187,6 +187,8 @@ exit /b 0</Command>
   <ItemGroup>
     <ClCompile Include="Engine\Src\Editor\Inspector\ComponentInspectors.cpp" />
     <ClCompile Include="Engine\Src\Editor\Script\ScriptTemplate.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Launcher\ProjectLauncher.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Launcher\ProjectList.cpp" />
     <ClCompile Include="Engine\Src\Editor\Project\AssetFileOperations.cpp" />
     <ClCompile Include="Engine\Src\Editor\Inspector\InspectorLayout.cpp" />
     <ClCompile Include="Engine\Src\Editor\Inspector\InspectorRenderer.cpp" />
@@ -1155,6 +1157,8 @@ exit /b 0</Command>
   <ItemGroup>
     <ClInclude Include="Engine\Src\Editor\Inspector\ComponentInspectors.h" />
     <ClInclude Include="Engine\Src\Editor\Script\ScriptTemplate.h" />
+    <ClInclude Include="Engine\Src\Editor\Launcher\ProjectLauncher.h" />
+    <ClInclude Include="Engine\Src\Editor\Launcher\ProjectList.h" />
     <ClInclude Include="Engine\Src\Editor\Project\AssetFileOperations.h" />
     <ClInclude Include="Engine\Src\Editor\Inspector\InspectorLayout.h" />
     <ClInclude Include="Engine\Src\Editor\Inspector\InspectorRenderer.h" />
