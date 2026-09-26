@@ -13,6 +13,9 @@
 
 #ifdef CORE_EDITOR
 #include <chrono>
+#include <fstream>
+#include <iterator>
+#include <string>
 #include <vector>
 #endif
 
@@ -24,8 +27,57 @@ namespace CoreEngine
 #ifdef CORE_EDITOR
         constexpr const char* kPredefinedFileName = "as.predefined";
 
+        /// スクリプトの基底クラスの原本
+        constexpr const char* kBaseScriptSource = "Engine/Templates/Scripts/ScriptComponent.as";
+
+        /// 基底クラスをプロジェクトのスクリプトのフォルダへ書き出すときの名前
+        constexpr const char* kBaseScriptFileName = "ScriptComponent.as";
+
         /// 変更が落ち着いたと見なすまでの時間（エディタは 1 回の保存で何度も変更を出す）
         constexpr std::chrono::milliseconds kSettleTime{ 200 };
+
+        /// @brief ファイルの中身をそのまま読む（読めなければ false）
+        bool ReadAll(const std::filesystem::path& path, std::string& out)
+        {
+            std::ifstream in(path, std::ios::binary);
+            if (!in) {
+                return false;
+            }
+            out.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+            return true;
+        }
+
+        /// @brief 基底クラスの原本をプロジェクトのスクリプトのフォルダへ写す（中身が同じなら書かない）
+        void WriteBaseScript(const std::filesystem::path& scriptRoot)
+        {
+            Logger& logger = Logger::GetInstance();
+            const std::filesystem::path source = ProjectPaths::Resolve(kBaseScriptSource);
+            std::string text;
+            if (!ReadAll(source, text)) {
+                logger.Logf(LogLevel::Error, LogCategory::Script,
+                    "スクリプトの基底クラスの原本を読めません: {}", logger.PathToUtf8(source));
+                return;
+            }
+
+            const std::filesystem::path destination = scriptRoot / kBaseScriptFileName;
+            std::string existing;
+            if (ReadAll(destination, existing) && existing == text) {
+                return;
+            }
+
+            std::error_code ec;
+            std::filesystem::create_directories(scriptRoot, ec);
+            std::ofstream out(destination, std::ios::binary | std::ios::trunc);
+            out.write(text.data(), static_cast<std::streamsize>(text.size()));
+            out.close();
+            if (!out) {
+                logger.Logf(LogLevel::Error, LogCategory::Script,
+                    "スクリプトの基底クラスを書き出せませんでした: {}", logger.PathToUtf8(destination));
+                return;
+            }
+            logger.Logf(LogLevel::Info, LogCategory::Script,
+                "スクリプトの基底クラスを書き出しました: {}", logger.PathToUtf8(destination));
+        }
 #endif
     }
 
@@ -48,6 +100,7 @@ namespace CoreEngine
         scriptRoot_ = ProjectPaths::Resolve(kScriptRoot);
 
 #ifdef CORE_EDITOR
+        WriteBaseScript(scriptRoot_);
         host_->WritePredefined(scriptRoot_ / kPredefinedFileName);
 #endif
 

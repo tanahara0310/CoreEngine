@@ -9,7 +9,8 @@
 namespace CoreEngine::Editor
 {
     /// @brief エディタから新しいスクリプトを作る
-    /// @details 雛形は `Application/Config/ScriptTemplates/*.as.txt`。
+    /// @details 雛形はエンジンの `Engine/Templates/Scripts/*.as.txt` と、
+    ///          プロジェクトの `Application/Config/ScriptTemplates/*.as.txt`（同じ名前ならプロジェクトが優先）。
     ///          拡張子が `.as` でないのでスクリプト本体と一緒にコンパイルされない。
     ///          雛形の中の `{CLASS}` がクラス名に置き換わる。
     namespace ScriptTemplate
@@ -21,7 +22,7 @@ namespace CoreEngine::Editor
             std::string label; ///< 選択肢に出す名前
         };
 
-        /// @brief スクリプトを置くフォルダ（プロジェクトの根からの相対パス）
+        /// @brief スクリプトを置くフォルダ（`Application/…` の綴り）
         std::filesystem::path GetScriptRoot();
 
         /// @brief 使える雛形を並べる（ファイルが無ければ空）
@@ -35,7 +36,7 @@ namespace CoreEngine::Editor
         bool IsValidClassName(const std::string& name, std::string* outError = nullptr);
 
         /// @brief スクリプトを作る
-        /// @param folder 置き先（プロジェクトの根からの相対パス）。スクリプトのフォルダの外は断る
+        /// @param folder 置き先（`Application/…` の綴り）。スクリプトのフォルダの外は断る
         /// @param className クラス名。ファイル名は `<className>.as` になる
         /// @param templateId 雛形の id（空なら中身の無いクラス）
         /// @param outPath 作ったファイルのフルパス（省略可）

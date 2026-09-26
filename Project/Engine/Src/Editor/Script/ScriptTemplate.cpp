@@ -15,8 +15,11 @@ namespace CoreEngine::Editor::ScriptTemplate
 {
     namespace
     {
-        /// 雛形の置き場（プロジェクトの根からの相対パス）
-        constexpr const char* kTemplateRoot = "Application/Config/ScriptTemplates";
+        /// 雛形の置き場。先に書いた方が優先
+        constexpr const char* kTemplateRoots[] = {
+            "Application/Config/ScriptTemplates",
+            "Engine/Templates/Scripts",
+        };
 
         /// 雛形の拡張子。`.as` にするとスクリプト本体と一緒にコンパイルされてしまう
         constexpr const char* kTemplateExtension = ".txt";
@@ -53,6 +56,20 @@ namespace CoreEngine::Editor::ScriptTemplate
             return text;
         }
 
+        /// @brief 雛形のファイルを探す（無ければ空）
+        std::filesystem::path FindTemplateFile(const std::string& templateId)
+        {
+            std::error_code ec;
+            for (const char* root : kTemplateRoots) {
+                const std::filesystem::path candidate =
+                    ProjectPaths::Resolve(root) / (templateId + ".as" + kTemplateExtension);
+                if (std::filesystem::is_regular_file(candidate, ec)) {
+                    return candidate;
+                }
+            }
+            return {};
+        }
+
         /// @brief 置き先がスクリプトのフォルダの中か
         bool IsInsideScriptRoot(const std::filesystem::path& relativeFolder)
         {
@@ -72,23 +89,30 @@ namespace CoreEngine::Editor::ScriptTemplate
     {
         std::vector<Entry> entries;
         std::error_code ec;
-        const std::filesystem::path root = ProjectPaths::Resolve(kTemplateRoot);
-        if (!std::filesystem::is_directory(root, ec)) {
-            return entries;
-        }
-
-        for (const auto& item : std::filesystem::directory_iterator(root, ec)) {
-            if (ec) { break; }
-            if (!item.is_regular_file(ec) || item.path().extension() != kTemplateExtension) {
+        for (const char* rootText : kTemplateRoots) {
+            const std::filesystem::path root = ProjectPaths::Resolve(rootText);
+            if (!std::filesystem::is_directory(root, ec)) {
                 continue;
             }
-            // `Basic.as.txt` → `Basic`
-            std::filesystem::path stem = item.path().stem();  // Basic.as
-            if (stem.extension() == ".as") {
-                stem = stem.stem();                           // Basic
+
+            for (const auto& item : std::filesystem::directory_iterator(root, ec)) {
+                if (ec) { break; }
+                if (!item.is_regular_file(ec) || item.path().extension() != kTemplateExtension) {
+                    continue;
+                }
+                // `Basic.as.txt` → `Basic`
+                std::filesystem::path stem = item.path().stem();  // Basic.as
+                if (stem.extension() != ".as") {
+                    continue;
+                }
+                stem = stem.stem();                               // Basic
+                const std::string id = Logger::GetInstance().PathToUtf8(stem);
+                const bool listed = std::any_of(entries.begin(), entries.end(),
+                    [&id](const Entry& entry) { return entry.id == id; });
+                if (!listed) {
+                    entries.push_back(Entry{ id, LabelOf(id) });
+                }
             }
-            const std::string id = stem.string();
-            entries.push_back(Entry{ id, LabelOf(id) });
         }
 
         // 空 → 基本 → 当たり判定つき の順に出す（並びが実行ごとに変わらないように）
@@ -163,17 +187,15 @@ namespace CoreEngine::Editor::ScriptTemplate
 
         std::string text = FallbackText();
         if (!templateId.empty()) {
-            const std::filesystem::path templatePath =
-                ProjectPaths::Resolve(kTemplateRoot) / (templateId + ".as" + kTemplateExtension);
+            const std::filesystem::path templatePath = FindTemplateFile(templateId);
             std::ifstream in(templatePath, std::ios::binary);
-            if (in) {
+            if (!templatePath.empty() && in) {
                 std::ostringstream buffer;
                 buffer << in.rdbuf();
                 text = buffer.str();
             } else {
                 Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Script,
-                    "スクリプトの雛形を読めないので中身の無いクラスを作ります: {}",
-                    Logger::GetInstance().PathToUtf8(templatePath));
+                    "スクリプトの雛形 {} を読めないので中身の無いクラスを作ります", templateId);
             }
         }
 
