@@ -188,6 +188,12 @@ namespace CoreEngine
 
         ImGui::Separator();
 
+        if (ImGui::MenuItem("ゲームを書き出す…")) {
+            gameExportDialog_.Open(sceneDebugEditor_ && sceneDebugEditor_->IsSceneDirty());
+        }
+
+        ImGui::Separator();
+
         if (ImGui::MenuItem("スクリーンショット")) {
             screenCapture_.RequestCapture();
         }
@@ -923,6 +929,7 @@ namespace CoreEngine
         DrawAboutWindow();
         DrawNewSceneDialog();
         DrawProjectBrowser();
+        gameExportDialog_.Draw();
         DrawUnsavedChangesDialog();
 
         if (showConsole_) ShowConsoleUI();

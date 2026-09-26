@@ -11,10 +11,10 @@
 #include "Utility/Profiler/CpuProfiler.h"
 #include "Diagnostics/EngineStats.h"
 #include "EngineSystem/Relaunch.h"
+#include "EngineSystem/Settings/ProjectSettings.h"
 #ifdef CORE_EDITOR
 #include "Editor/Launcher/ProjectLauncher.h"
 #include "Editor/Launcher/ProjectList.h"
-#include "EngineSystem/Settings/ProjectSettings.h"
 #endif
 #include <chrono>
 
@@ -165,12 +165,14 @@ namespace CoreEngine
 
         RunStartupSequence(sequence, config);
 
+        // 窓のタイトルを、開いているプロジェクトの名前にする（エディタでは頭にエンジンの名前を付ける）
+        const std::wstring projectName = Logger::GetInstance().Utf8ToWide(ProjectSettings::Get().GetProjectName());
 #ifdef CORE_EDITOR
-        // 窓のタイトルに、開いているプロジェクトの名前を足す
-        const std::wstring title = config.GetWindowTitleWide() + L" — " +
-            Logger::GetInstance().Utf8ToWide(ProjectSettings::Get().GetProjectName());
-        ::SetWindowTextW(winApp_->GetHwnd(), title.c_str());
+        const std::wstring title = config.GetWindowTitleWide() + L" — " + projectName;
+#else
+        const std::wstring title = projectName;
 #endif
+        ::SetWindowTextW(winApp_->GetHwnd(), title.c_str());
 
         // 最初のフレームを描ける状態になったのでメインウィンドウを表示する
         winApp_->ShowMainWindow();
