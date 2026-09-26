@@ -7,6 +7,12 @@
     <ClCompile Include="Engine\Src\Editor\Script\ScriptTemplate.cpp">
       <Filter>Engine\Src\Editor\Script</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Export\GameExportDialog.cpp">
+      <Filter>Engine\Src\Editor\Export</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Export\GameExporter.cpp">
+      <Filter>Engine\Src\Editor\Export</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Launcher\ProjectBrowser.cpp">
       <Filter>Engine\Src\Editor\Launcher</Filter>
     </ClCompile>
@@ -1715,6 +1721,12 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Script\ScriptTemplate.h">
       <Filter>Engine\Src\Editor\Script</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Export\GameExportDialog.h">
+      <Filter>Engine\Src\Editor\Export</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Export\GameExporter.h">
+      <Filter>Engine\Src\Editor\Export</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Launcher\ProjectBrowser.h">
       <Filter>Engine\Src\Editor\Launcher</Filter>
@@ -3864,6 +3876,9 @@
     </Filter>
     <Filter Include="Engine\Src\Editor\Environment">
       <UniqueIdentifier>{3E7B1A54-9C2D-4F86-B1E0-5A6D42C8F913}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Editor\Export">
+      <UniqueIdentifier>{0476E081-4AA6-4A59-8257-D6A741A7E438}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Editor\External">
       <UniqueIdentifier>{31C0E02C-827E-4C4A-9C42-8A38CBE83D4A}</UniqueIdentifier>

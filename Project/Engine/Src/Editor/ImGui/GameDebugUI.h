@@ -5,6 +5,7 @@
 #include "Graphics/RHI/Debug/PixCapture.h"
 #include "WinApp/ScreenCapture.h"
 #include "Editor/ImGui/ProjectSettingsWindow.h"
+#include "Editor/Export/GameExportDialog.h"
 #include "Editor/Launcher/ProjectBrowser.h"
 #endif
 #include "Editor/Panel/EditorPanelRegistry.h"
@@ -139,6 +140,7 @@ namespace CoreEngine
         std::unique_ptr<Editor::ProjectBrowser> projectBrowser_; ///< プロジェクトの窓の中身（開いている間だけある）
         std::vector<Editor::ProjectEntry> recentProjects_;       ///< 最近のプロジェクトのメニューに出すもの
         std::filesystem::path pendingProjectFolder_;             ///< 確かめたあとに開くプロジェクト
+        Editor::GameExportDialog gameExportDialog_;              ///< 「ゲームを書き出す」の窓
 #endif
 
         static constexpr const char* consoleWindow = "Console";
