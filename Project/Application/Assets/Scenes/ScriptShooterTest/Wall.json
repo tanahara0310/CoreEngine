@@ -28,7 +28,7 @@
             "parameters": {
                 "model": {
                     "guid": "e16552a6-c74d-f458-71fe-2810a97c3777",
-                    "path": "Application/Assets/Models/Sphere/sphere.obj"
+                    "path": "Engine/Assets/Models/Primitives/Sphere/sphere.obj"
                 }
             },
             "type": "MeshRenderer"

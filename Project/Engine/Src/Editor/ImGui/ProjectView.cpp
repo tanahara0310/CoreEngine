@@ -1410,7 +1410,7 @@ namespace CoreEngine
 
         const std::vector<Editor::ScriptTemplate::Entry> templates = Editor::ScriptTemplate::List();
         if (templates.empty()) {
-            UI::Hint("雛形が見つかりません（Application/Config/ScriptTemplates）。中身の無いクラスを作ります。");
+            UI::Hint("雛形が見つかりません（Engine/Templates/Scripts）。中身の無いクラスを作ります。");
         } else {
             ImGui::TextUnformatted("雛形");
             for (const auto& entry : templates) {

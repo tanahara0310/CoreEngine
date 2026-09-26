@@ -1243,11 +1243,11 @@
     <ClCompile Include="Engine\Src\Editor\ImGui\GameDebugUI.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\MyGame.cpp">
-      <Filter>Application\Src</Filter>
+    <ClCompile Include="Engine\Src\Launch\MyGame.cpp">
+      <Filter>Engine\Src\Launch</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\main.cpp">
-      <Filter>Application\Src</Filter>
+    <ClCompile Include="Engine\Src\Launch\main.cpp">
+      <Filter>Engine\Src\Launch</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\WinApp\WinApp.cpp">
       <Filter>Engine\Src\WinApp</Filter>
@@ -3363,8 +3363,8 @@
     <ClInclude Include="Engine\Src\Scene\SceneManager.h">
       <Filter>Engine\Src\Scene</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\MyGame.h">
-      <Filter>Application\Src</Filter>
+    <ClInclude Include="Engine\Src\Launch\MyGame.h">
+      <Filter>Engine\Src\Launch</Filter>
     </ClInclude>
     <ClInclude Include="Externals\imgui\imconfig.h">
       <Filter>Externals\imgui</Filter>
@@ -3823,9 +3823,6 @@
     <Filter Include="Application\Assets\Models\sponza">
       <UniqueIdentifier>{20DBDF63-45F8-4BA0-9CDD-580001B33A3D}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Application\Src">
-      <UniqueIdentifier>{8C016CA9-9773-40DE-8792-E8B53FB9372C}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Build">
       <UniqueIdentifier>{39C0671C-39F8-432F-BE2C-E14FDE0F3B36}</UniqueIdentifier>
     </Filter>
@@ -4245,6 +4242,9 @@
     </Filter>
     <Filter Include="Engine\Src\Input">
       <UniqueIdentifier>{54C16D33-E6EA-45EA-BFD5-732F01D04340}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Launch">
+      <UniqueIdentifier>{84240DE3-AA0E-4F2D-BA41-EF8D374046DB}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Math">
       <UniqueIdentifier>{10281AD7-3C0B-4D9F-9151-EAF58987FA64}</UniqueIdentifier>

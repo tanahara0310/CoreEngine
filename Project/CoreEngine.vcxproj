@@ -94,7 +94,7 @@
       <TreatWarningAsError>true</TreatWarningAsError>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <MinimalRebuild>false</MinimalRebuild>
-      <AdditionalIncludeDirectories>$(ProjectDir)Externals\assimp\include;$(ProjectDir)Externals\spdlog\include;$(ProjectDir)Externals\imgui;$(ProjectDir)Engine/Src;$(ProjectDir)Application/Src;$(ProjectDir)Externals;$(ProjectDir)Externals\angelscript\include;$(ProjectDir)Externals\angelscript\add_on</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Externals\assimp\include;$(ProjectDir)Externals\spdlog\include;$(ProjectDir)Externals\imgui;$(ProjectDir)Engine/Src;$(ProjectDir)Externals;$(ProjectDir)Externals\angelscript\include;$(ProjectDir)Externals\angelscript\add_on</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -126,7 +126,7 @@
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(ProjectDir)Externals\assimp\include;$(ProjectDir)Externals\spdlog\include;$(ProjectDir)Externals\imgui;$(ProjectDir)Engine/Src;$(ProjectDir)Application/Src;$(ProjectDir)Externals\angelscript\include;$(ProjectDir)Externals\angelscript\add_on</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Externals\assimp\include;$(ProjectDir)Externals\spdlog\include;$(ProjectDir)Externals\imgui;$(ProjectDir)Engine/Src;$(ProjectDir)Externals\angelscript\include;$(ProjectDir)Externals\angelscript\add_on</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
@@ -159,7 +159,7 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(ProjectDir)Externals\assimp\include;$(ProjectDir)Externals\spdlog\include;$(ProjectDir)Externals\imgui;$(ProjectDir)Engine/Src;$(ProjectDir)Application/Src;$(ProjectDir)Externals\angelscript\include;$(ProjectDir)Externals\angelscript\add_on</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Externals\assimp\include;$(ProjectDir)Externals\spdlog\include;$(ProjectDir)Externals\imgui;$(ProjectDir)Engine/Src;$(ProjectDir)Externals\angelscript\include;$(ProjectDir)Externals\angelscript\add_on</AdditionalIncludeDirectories>
       <Optimization>Disabled</Optimization>
       <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
@@ -595,8 +595,8 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClCompile Include="Engine\Src\Input\KeyboardInput.cpp" />
     <ClCompile Include="Engine\Src\Input\GamepadInput.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\GameDebugUI.cpp" />
-    <ClCompile Include="Application\Src\MyGame.cpp" />
-    <ClCompile Include="Application\Src\main.cpp">
+    <ClCompile Include="Engine\Src\Launch\MyGame.cpp" />
+    <ClCompile Include="Engine\Src\Launch\main.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
       <WholeProgramOptimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</WholeProgramOptimization>
     </ClCompile>
@@ -1702,7 +1702,7 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClInclude Include="Engine\Src\Graphics\RHI\Resource\UploadRing.h" />
     <ClInclude Include="Engine\Src\WorldTransform\WorldTransform.h" />
     <ClInclude Include="Engine\Src\Scene\SceneManager.h" />
-    <ClInclude Include="Application\Src\MyGame.h" />
+    <ClInclude Include="Engine\Src\Launch\MyGame.h" />
     <ClInclude Include="Externals\imgui\imconfig.h" />
     <ClInclude Include="Externals\imgui\imgui.h" />
     <ClInclude Include="Externals\imgui\imgui_internal.h" />

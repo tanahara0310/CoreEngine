@@ -15,7 +15,7 @@
             "parameters": {
                 "model": {
                     "guid": "e8a79191-50ea-0673-1816-c257f280ba64",
-                    "path": "Application/Assets/Models/Box/cube.obj"
+                    "path": "Engine/Assets/Models/Primitives/Box/cube.obj"
                 }
             },
             "type": "MeshRenderer"
