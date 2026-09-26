@@ -1,0 +1,38 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    3.0,
+                    -30.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "farClip": 1000.0,
+                "fov": 45.0,
+                "isMainCamera": true,
+                "nearClip": 0.10000000149011612,
+                "projection": 0
+            },
+            "type": "Camera"
+        }
+    ],
+    "name": "MainCamera"
+}
