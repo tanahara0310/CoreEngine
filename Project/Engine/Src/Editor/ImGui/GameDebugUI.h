@@ -7,6 +7,7 @@
 #include "Editor/ImGui/ProjectSettingsWindow.h"
 #include "Editor/Export/GameExportDialog.h"
 #include "Editor/Launcher/ProjectBrowser.h"
+#include "Editor/Launcher/ProjectThumbnails.h"
 #endif
 #include "Editor/Panel/EditorPanelRegistry.h"
 #include <filesystem>
@@ -137,6 +138,7 @@ namespace CoreEngine
         ProjectSettingsWindow projectSettings_;  ///< Project Settings ウィンドウ
 
         Editor::ProjectList projectList_;                        ///< 最近のプロジェクトの一覧
+        std::unique_ptr<Editor::ProjectThumbnails> projectThumbnails_; ///< プロジェクトの窓に出すサムネイル
         std::unique_ptr<Editor::ProjectBrowser> projectBrowser_; ///< プロジェクトの窓の中身（開いている間だけある）
         std::vector<Editor::ProjectEntry> recentProjects_;       ///< 最近のプロジェクトのメニューに出すもの
         std::filesystem::path pendingProjectFolder_;             ///< 確かめたあとに開くプロジェクト

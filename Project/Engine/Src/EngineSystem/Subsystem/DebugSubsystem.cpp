@@ -39,6 +39,8 @@
 #include "Collision/CollisionLayer.h"
 #include "EngineSystem/Settings/ProjectSettings.h"
 #include "Editor/ImGui/EditorTheme.h"
+#include "Editor/Launcher/ProjectThumbnails.h"
+#include "Utility/Path/ProjectPaths.h"
 #include <algorithm>
 #include <string>
 #include <vector>
@@ -51,6 +53,24 @@ namespace CoreEngine
 {
     namespace
     {
+        /// @brief ゲーム画面の最後の絵を、開いているプロジェクトのサムネイルとして保存する
+        void CaptureProjectThumbnail(EngineSystem* engine)
+        {
+            GraphicsCore* const graphics = engine ? engine->GetService<GraphicsCore>() : nullptr;
+            Render* const render = engine ? engine->GetService<Render>() : nullptr;
+            RenderTargetManager* const targets = render ? render->GetRenderTargetManager() : nullptr;
+            RenderTarget* const target = targets ? targets->GetPostEffectFinalTarget() : nullptr;
+            if (!graphics || !target || !target->GetResource()) {
+                return;
+            }
+            const std::filesystem::path file = Editor::ProjectThumbnails::FilePath(ProjectPaths::ProjectRoot());
+            if (!Editor::ProjectThumbnails::Capture(*graphics, target->GetResource(), target->Resource().State(),
+                    WinApp::GetReferenceAspect(), file)) {
+                Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
+                    "プロジェクトのサムネイルを保存できませんでした: {}", Logger::GetInstance().PathToUtf8(file));
+            }
+        }
+
         /// @brief 当たり判定のレイヤーの名前を編集する欄
         /// @details 実体は `Application/Config/EngineSettings/Layers.json`。
         ///          添字 0 は `Default` 固定で、エンジンが名指しするのはこれだけ。
@@ -537,6 +557,9 @@ namespace CoreEngine
 
     void DebugSubsystem::Finalize()
     {
+        // 閉じる前のゲーム画面を、プロジェクトのサムネイルとして撮っておく
+        CaptureProjectThumbnail(engine_);
+
         // エディタ設定セクションの解除（解除時に最終保存が走る）。
         // EngineSystem::Finalize は登録の逆順で呼ぶため、この時点で
         // EditorSettingsSubsystem はまだ Finalize されていない

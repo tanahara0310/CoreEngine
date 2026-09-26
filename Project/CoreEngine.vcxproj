@@ -193,6 +193,7 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Editor\Launcher\ProjectCreator.cpp" />
     <ClCompile Include="Engine\Src\Editor\Launcher\ProjectLauncher.cpp" />
     <ClCompile Include="Engine\Src\Editor\Launcher\ProjectList.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Launcher\ProjectThumbnails.cpp" />
     <ClCompile Include="Engine\Src\Editor\Project\AssetFileOperations.cpp" />
     <ClCompile Include="Engine\Src\Editor\Inspector\InspectorLayout.cpp" />
     <ClCompile Include="Engine\Src\Editor\Inspector\InspectorRenderer.cpp" />
@@ -1168,6 +1169,7 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Editor\Launcher\ProjectCreator.h" />
     <ClInclude Include="Engine\Src\Editor\Launcher\ProjectLauncher.h" />
     <ClInclude Include="Engine\Src\Editor\Launcher\ProjectList.h" />
+    <ClInclude Include="Engine\Src\Editor\Launcher\ProjectThumbnails.h" />
     <ClInclude Include="Engine\Src\Editor\Project\AssetFileOperations.h" />
     <ClInclude Include="Engine\Src\Editor\Inspector\InspectorLayout.h" />
     <ClInclude Include="Engine\Src\Editor\Inspector\InspectorRenderer.h" />

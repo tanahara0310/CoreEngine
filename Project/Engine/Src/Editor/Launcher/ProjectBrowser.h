@@ -15,6 +15,8 @@
 
 namespace CoreEngine::Editor
 {
+    class ProjectThumbnails;
+
     /// @brief プロジェクトの一覧と新規作成の画面
     /// @details ランチャー（エンジンの初期化の前）とエディタ（File メニュー）の両方で使う。
     ///          今の窓の中を埋めて描く。開くプロジェクトが決まったら TakeChosen で受け取る。
@@ -41,6 +43,9 @@ namespace CoreEngine::Editor
         /// @brief 下端の一言を変える
         void SetStatus(std::string text, bool error = false);
 
+        /// @brief サムネイルを出すときに使う（無ければ色の面と頭文字を出す）
+        void SetThumbnails(ProjectThumbnails* thumbnails) { thumbnails_ = thumbnails; }
+
     private:
         /// @brief 右側に出している画面
         enum class View { Projects, NewProject };
@@ -51,6 +56,7 @@ namespace CoreEngine::Editor
         void Refresh(const std::filesystem::path& select = {});
         std::vector<int> VisibleIndices() const;
         bool IsCurrent(const ProjectEntry& entry) const;
+        ImTextureID ThumbnailOf(const ProjectEntry& entry) const;
 
         void DrawNav();
         void DrawProjects();
@@ -78,6 +84,7 @@ namespace CoreEngine::Editor
         ProjectList& list_;
         HWND owner_ = nullptr;
         std::filesystem::path current_;
+        ProjectThumbnails* thumbnails_ = nullptr;
         std::string engineRootText_;
         View view_ = View::Projects;
         std::vector<ProjectEntry> entries_;
