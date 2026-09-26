@@ -382,7 +382,7 @@ a { color: var(--accent); }
     <tr><th>対象</th><td>CoreEngine（<code>C:\CoreEngine</code>）でゲームを作る人</td></tr>
     <tr><th>前提</th><td>C++ の知識は不要。プログラミングの基礎（変数・条件分岐・繰り返し）があること</td></tr>
     <tr><th>根拠</th><td>この文書の仕様は、エンジンのソースと実機の動作から確認したものです。コード例はすべて実際にコンパイルして確かめています</td></tr>
-    <tr><th>改訂</th><td>2026-09-25　初版</td></tr>
+    <tr><th>改訂</th><td>2026-09-25　初版<br>2026-09-26　プロジェクトの分割（選ぶ画面・新規作成・書き出し）に合わせて直した</td></tr>
   </table>
 </div>
 
@@ -462,23 +462,69 @@ a { color: var(--accent); }
 
 <p><strong>シーンもプレハブも設定も、すべて JSON ファイルです。</strong> ビルドし直さなくても、エディタで変えればその場で反映されます。</p>
 
-<pre><code>Project/
-├── Application/
-│   ├── Assets/
-│   │   ├── Models/      <span class="cm">モデル（.obj .fbx .gltf .glb）</span>
-│   │   ├── Textures/    <span class="cm">画像（.png .jpg .hdr）</span>
-│   │   ├── Prefabs/     <span class="cm">プレハブ（.prefab）</span>
-│   │   ├── Scenes/      <span class="cm">シーン（フォルダ 1 つで 1 シーン）</span>
-│   │   ├── Scripts/     <span class="cm">スクリプト（.as）</span>
-│   │   ├── Physics/     <span class="cm">物理マテリアル</span>
-│   │   └── Presets/     <span class="cm">各種プリセット</span>
-│   ├── Config/
-│   │   ├── EngineSettings/  <span class="cm">起動シーン・入力・レイヤー</span>
-│   │   └── ScriptTemplates/ <span class="cm">スクリプトの雛形</span>
-│   └── Saved/           <span class="cm">エディタの状態（レイアウトなど）</span>
-└── Engine/              <span class="cm">エンジン本体（触らない）</span></code></pre>
+<p>エンジンとゲームは別のフォルダに分かれています。<strong>ゲームは 1 本ずつ「プロジェクト」として作り、エディタは一度に 1 つのプロジェクトだけを開きます。</strong> ほかのプロジェクトのスクリプトやシーンは混ざりません。</p>
 
-<p>エンジンが場所を決め打ちしているのは <code>Assets/Scripts</code>（スクリプトを探す場所）と <code>Assets/Scenes</code>（シーンを探す場所）だけです。その中の並べ方は自由です。</p>
+<pre><code>C:\CoreEngine\
+├── Project/                     <span class="cm">エンジン本体（触らない）</span>
+│   ├── Engine/
+│   │   ├── Assets/              <span class="cm">エンジンの素材（シェーダー・箱・球・板の形など）</span>
+│   │   └── Templates/           <span class="cm">新しいプロジェクトとスクリプトの雛形</span>
+│   └── Saved/                   <span class="cm">最近のプロジェクトの一覧（個人のもの）</span>
+└── Projects/                    <span class="cm">プロジェクトの既定の置き場</span>
+    ├── Sandbox/                 <span class="cm">試験用のシーンを集めたもの</span>
+    ├── Shooting/                <span class="cm">シューティングの見本</span>
+    └── MyGame/                  <span class="cm">自分のプロジェクト（名前は自由）</span>
+        ├── Application/
+        │   ├── Assets/
+        │   │   ├── Models/      <span class="cm">モデル（.obj .fbx .gltf .glb）</span>
+        │   │   ├── Textures/    <span class="cm">画像（.png .jpg .hdr）</span>
+        │   │   ├── Prefabs/     <span class="cm">プレハブ（.prefab）</span>
+        │   │   ├── Scenes/      <span class="cm">シーン（フォルダ 1 つで 1 シーン）</span>
+        │   │   ├── Scripts/     <span class="cm">スクリプト（.as）</span>
+        │   │   ├── Physics/     <span class="cm">物理マテリアル</span>
+        │   │   └── Presets/     <span class="cm">各種プリセット</span>
+        │   ├── Config/
+        │   │   ├── EngineSettings/  <span class="cm">名前・起動シーン・入力・レイヤー</span>
+        │   │   └── ScriptTemplates/ <span class="cm">このプロジェクトだけのスクリプトの雛形（無くてよい）</span>
+        │   └── Saved/           <span class="cm">エディタの状態・サムネイル（個人のもの）</span>
+        ├── Intermediate/        <span class="cm">ログ・テクスチャのキャッシュ（作り直せる）</span>
+        ├── Build/               <span class="cm">書き出したゲーム</span>
+        ├── .gitignore           <span class="cm">Saved・Intermediate・Build を git から外す</span>
+        └── MyGame.code-workspace <span class="cm">VS Code でスクリプトを開く</span></code></pre>
+
+<p>エンジンが場所を決め打ちしているのは <code>Assets/Scripts</code>（スクリプトを探す場所）と <code>Assets/Scenes</code>（シーンを探す場所）だけです。その中の並べ方は自由です。<code>Projects</code> の外にプロジェクトを置いてもかまいません。</p>
+
+<h3>プロジェクトを開く・作る</h3>
+
+<p>エディタを起動すると、まず<strong>プロジェクトを選ぶ画面</strong>が出ます。一覧から選んで「開く」を押すか、行をダブルクリックします。一覧のサムネイルは、そのプロジェクトを最後に閉じたときのゲーム画面です。</p>
+
+<table>
+  <tr><th>やりたいこと</th><th>操作</th></tr>
+  <tr><td>新しく作る</td><td>「＋ 新規作成」→ テンプレートを選び、名前と保存先を決めて「作成して開く」</td></tr>
+  <tr><td>ほかの場所のプロジェクトを一覧に足す</td><td>「追加…」でフォルダを選ぶ</td></tr>
+  <tr><td>毎回同じプロジェクトをすぐ開く</td><td>左下の「次から前回のプロジェクトを自動で開く」</td></tr>
+  <tr><td>エディタの中から切り替える</td><td><strong>File → 新しいプロジェクト… / プロジェクトを開く… / 最近のプロジェクト</strong></td></tr>
+</table>
+
+<dl class="spec">
+  <dt>空のプロジェクト</dt>
+  <dd>太陽とカメラと床だけの <code>Main</code> シーンが 1 つ。</dd>
+
+  <dt>3D の基本</dt>
+  <dd>それに、WASD・矢印キー・左スティックで動く箱と、そのスクリプト <code>PlayerMover</code> を足したもの。</dd>
+</dl>
+
+<p>名前はそのままフォルダ名になるので、<strong>英数字と <code>_</code> <code>-</code> だけ</strong>にしてください。保存先の既定は <code>C:\CoreEngine\Projects</code> です。</p>
+
+<div class="note">
+  <span class="label">切り替えるとエディタは開き直す</span>
+  <p>別のプロジェクトを開くと、保存していない変更を確かめてから、エディタがいったん閉じて開き直します。ウィンドウのタイトルとメニューバーの右端に、開いているプロジェクトの名前が出ます。</p>
+</div>
+
+<div class="file">コマンドから特定のプロジェクトを開く場合</div>
+<pre><code>C:\CoreEngine\generated\CoreEngine\outputs\Development\CoreEngine.exe --project C:\CoreEngine\Projects\Shooting</code></pre>
+
+<p><code>--project</code> を付けると、選ぶ画面を出さずにそのプロジェクトを開きます。<code>--launcher</code> を付けると、自動で開く設定に関係なく選ぶ画面を出します。</p>
 
 <h3>ビルド構成</h3>
 
@@ -491,14 +537,27 @@ a { color: var(--accent); }
 
 <p><code>Release</code> だけ <code>CORE_EDITOR</code> が付かないため、エディタの画面が出ません。起動するといきなりゲームが始まります。</p>
 
-<div class="note warn">
-  <span class="label">作業フォルダ</span>
-  <p><code>Debug</code> と <code>Development</code> は <code>Project/Application/Assets</code> を読みます。コマンドから起動するときは<strong>作業フォルダを <code>Project</code> にしてください。</strong> <code>Release</code> は <strong>exe の隣</strong>のアセットを読みます。</p>
+<div class="note">
+  <span class="label">読むフォルダ</span>
+  <p><code>Debug</code> と <code>Development</code> は、開いたプロジェクトのフォルダとエンジン（<code>C:\CoreEngine\Project</code>）を読みます。起動するときの作業フォルダは関係ありません。<code>Release</code> は <strong>exe の隣</strong>のアセットを読みます。</p>
 </div>
 
-<div class="file">コマンドから起動する場合</div>
-<pre><code>cd C:\CoreEngine\Project
-..\generated\CoreEngine\outputs\Development\CoreEngine.exe</code></pre>
+<h3>ゲームを書き出す</h3>
+
+<p>完成したゲームは <strong>File → ゲームを書き出す…</strong> で <code>&lt;プロジェクト&gt;\Build\Windows\</code> に書き出します。そのフォルダを丸ごと渡せば、エディタの無い環境でも遊べます。</p>
+
+<ol>
+  <li>Visual Studio で <code>Release</code> をビルドする（エディタからはビルドしません）</li>
+  <li>エディタで <strong>File → ゲームを書き出す…</strong> を開き、「書き出す」を押す</li>
+  <li><code>Build\Windows\CoreEngine.exe</code> を起動して確かめる</li>
+</ol>
+
+<p>写すのは Release の exe と DLL、エンジンの素材（<code>Engine\Assets</code>）、プロジェクトの <code>Application\Assets</code> と <code>Config</code> です。ゲームの窓のタイトルはプロジェクトの名前になります。</p>
+
+<div class="note warn">
+  <span class="label">保存してから書き出す</span>
+  <p>書き出すのはディスクにあるファイルです。保存していないシーンの変更は入りません。書き出す先の <code>Engine\Assets</code>・<code>Application\Assets</code>・<code>Application\Config</code> は消してから写し直し、ゲームが書く <code>Application\Saved</code> は残します。</p>
+</div>
 
 <h3>用語</h3>
 
@@ -566,7 +625,7 @@ a { color: var(--accent); }
 
 <table>
   <tr><th>場所</th><th>名前</th><th>役割</th></tr>
-  <tr><td>最上段</td><td>メニューバー</td><td>File / Edit / GameObject / Component / Assets / Window / Help</td></tr>
+  <tr><td>最上段</td><td>メニューバー</td><td>File / Edit / GameObject / Component / Assets / Window / Help。右端に開いているプロジェクト・シーン・ビルド構成</td></tr>
   <tr><td>2 段目</td><td>ツールバー</td><td>再生・ギズモの切り替え・グリッドとコライダーの表示</td></tr>
   <tr><td>左</td><td>ヒエラルキー</td><td>シーンにあるものの一覧</td></tr>
   <tr><td>中央</td><td>Game / Canvas</td><td>ゲームの画面。ここで選んで動かす</td></tr>
@@ -770,7 +829,7 @@ a { color: var(--accent); }
   <tr><td>上のパンくず</td><td>今いるフォルダ（押すとその階層へ戻る）</td></tr>
   <tr><td>名前で絞り込み</td><td>入れた文字を含むものだけ表示</td></tr>
   <tr><td>種類のタブ</td><td>すべて / モデル / テクスチャ / プレハブ / スクリプト / シーン / 音 / データ</td></tr>
-  <tr><td>左のツリー</td><td>フォルダの階層</td></tr>
+  <tr><td>左のツリー</td><td>フォルダの階層。根はプロジェクトの <code>Application</code> とエンジンの <code>Engine</code> の 2 つ</td></tr>
   <tr><td>右の一覧</td><td>中身。グリッド表示と一覧表示を切り替えられる</td></tr>
 </table>
 
@@ -785,7 +844,7 @@ a { color: var(--accent); }
   <tr><td>削除</td><td><kbd>Del</kbd>（ごみ箱へ。完全削除はしない）</td></tr>
 </table>
 
-<p><strong>＋ 作成</strong>から、フォルダとスクリプトを作れます。触れるのは <code>Assets</code> の中だけです。</p>
+<p><strong>＋ 作成</strong>から、フォルダとスクリプトを作れます。触れるのは 2 つの <code>Assets</code> の中だけです。<strong>スクリプトは、開いているプロジェクトの <code>Assets/Scripts</code> の中にだけ作れます</strong>（ほかの場所を置き先にすると断られます）。</p>
 
 <h4>ドラッグでの配置</h4>
 
@@ -1073,7 +1132,7 @@ a { color: var(--accent); }
 
 <h4>用意されている見本</h4>
 
-<p><code>Application/Assets/Prefabs/Physics/</code> に物理のプレハブが並んでいます。作りたいものに近いものを開いて中身を真似るのが早道です。</p>
+<p>Sandbox プロジェクトの <code>Application/Assets/Prefabs/Physics/</code> に物理のプレハブが並んでいます。作りたいものに近いものを開いて中身を真似るのが早道です。</p>
 
 <table>
   <tr><th>プレハブ</th><th>中身</th></tr>
@@ -1432,7 +1491,7 @@ made.Destroy();         <span class="cm">// 他のもの</span></code></pre>
   <tr><td><code>Empty</code></td><td>クラスだけ</td></tr>
 </table>
 
-<p>雛形は <code>Application/Config/ScriptTemplates/*.as.txt</code> にあります。<strong>ファイルを足せば選択肢が増えます。</strong> 中の <code>{CLASS}</code> がクラス名に置き換わります。</p>
+<p>雛形はエンジンの <code>Engine/Templates/Scripts/*.as.txt</code>（どのプロジェクトでも出るもの）にあります。<strong>プロジェクトの <code>Application/Config/ScriptTemplates/</code> にファイルを足せば、そのプロジェクトだけ選択肢が増えます</strong>（同じ名前ならプロジェクトのものを使います）。中の <code>{CLASS}</code> がクラス名に置き換わります。</p>
 
 <div class="note danger">
   <span class="label">雛形の拡張子は必ず .as.txt</span>
@@ -1555,7 +1614,7 @@ Input::SetVibration(0.6f, 0.6f, 0);   <span class="cm">// 左, 右, プレイヤ
 
 <h3>入力アクション一覧</h3>
 
-<p><code>Application/Config/EngineSettings/InputActions.json</code> の中身です。<strong>Help → キー操作を見る</strong>（Key Config）から編集できます。スクリプトは書き換えません。</p>
+<p>プロジェクトの <code>Application/Config/EngineSettings/InputActions.json</code> の既定の中身です。<strong>Help → キー操作を見る</strong>（Key Config）から編集できます。スクリプトは書き換えません。<code>Editor</code> の 4 つはエンジンが持つもので、どのプロジェクトでも同じです（ファイルには書きません）。</p>
 
 <table>
   <tr><th>名前</th><th>表示</th><th>場面</th><th>既定の割り当て</th></tr>
@@ -2236,6 +2295,10 @@ Scene::ChangeScene(<span class="st">"Result"</span>);
 
 <p><strong>目的</strong> — 玉を落として跳ねさせる。スクリプトはまだ書かない。</p>
 
+<h4>0. プロジェクトを作る</h4>
+
+<p>プロジェクトを選ぶ画面の「＋ 新規作成」で、テンプレート「空のプロジェクト」から作ります（名前は例えば <code>BallGame</code>）。以下の手順はすべてこのプロジェクトの中で行います。</p>
+
 <h4>1. シーンを作る</h4>
 
 <p><strong>File → 新しいシーン…</strong> で <code>BallTest</code> を作ります。床は最初から入っています。</p>
@@ -2246,7 +2309,7 @@ Scene::ChangeScene(<span class="st">"Result"</span>);
 
 <table>
   <tr><th>コンポーネント</th><th>設定</th></tr>
-  <tr><td><code>MeshRenderer</code></td><td>モデルに <code>Assets/Models/Sphere/sphere.obj</code>（Project からドラッグ）</td></tr>
+  <tr><td><code>MeshRenderer</code></td><td>モデルに <code>Engine/Assets/Models/Primitives/Sphere/sphere.obj</code>（Project からドラッグ）</td></tr>
   <tr><td><code>Material</code></td><td>色 = 好きな色、メタリック <code>0.2</code>、ラフネス <code>0.45</code></td></tr>
   <tr><td><code>Collider</code></td><td><strong>球</strong>を 1 つ、半径 <code>1</code>、<strong>トリガーは外す</strong></td></tr>
   <tr><td><code>Rigidbody</code></td><td>種別 = 動的、質量 <code>1</code>、重力を受ける = 有効</td></tr>
