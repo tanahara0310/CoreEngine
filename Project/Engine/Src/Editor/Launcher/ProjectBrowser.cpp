@@ -4,6 +4,7 @@
 #ifdef CORE_EDITOR
 
 #include "Editor/ImGui/EditorTheme.h"
+#include "Editor/Launcher/ProjectThumbnails.h"
 #include "Utility/Path/ProjectPaths.h"
 
 #include <shellapi.h>
@@ -146,10 +147,16 @@ namespace CoreEngine::Editor
             drawList->AddText(ImGui::GetFont(), fontSize, textPos, ImGui::GetColorU32(textColor), letter.c_str());
         }
 
-        /// @brief サムネイルの代わりに、色の面と名前の頭文字を描く
+        /// @brief サムネイルを描く（無ければ色の面と名前の頭文字を描く）
         void DrawThumbnail(ImDrawList* drawList, const ImVec2& min, const ImVec2& size,
-                           const ProjectEntry& entry, float letterScale)
+                           const ProjectEntry& entry, ImTextureID texture, float letterScale)
         {
+            if (texture) {
+                const ImVec2 max(min.x + size.x, min.y + size.y);
+                drawList->AddImageRounded(texture, min, max, ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f),
+                    IM_COL32_WHITE, 3.0f);
+                return;
+            }
             if (entry.missing) {
                 DrawTile(drawList, min, size, Theme::kField, "?", Theme::kTextMute, true, letterScale);
             } else {
@@ -219,6 +226,11 @@ namespace CoreEngine::Editor
     bool ProjectBrowser::IsCurrent(const ProjectEntry& entry) const
     {
         return !current_.empty() && ProjectList::IsSameFolder(entry.folder, current_);
+    }
+
+    ImTextureID ProjectBrowser::ThumbnailOf(const ProjectEntry& entry) const
+    {
+        return (thumbnails_ && !entry.missing) ? thumbnails_->Get(entry.folder) : ImTextureID{};
     }
 
     void ProjectBrowser::Refresh(const std::filesystem::path& select)
@@ -446,7 +458,7 @@ namespace CoreEngine::Editor
                 }
                 DrawThumbnail(ImGui::GetWindowDrawList(),
                     ImVec2(cellPos.x, cellPos.y + (rowHeight - thumbHeight) * 0.5f),
-                    ImVec2(thumbWidth, thumbHeight), entry, 1.3f);
+                    ImVec2(thumbWidth, thumbHeight), entry, ThumbnailOf(entry), 1.3f);
 
                 // 名前と印、場所
                 ImGui::TableSetColumnIndex(1);
@@ -512,7 +524,7 @@ namespace CoreEngine::Editor
 
         const float thumbWidth = ImGui::GetContentRegionAvail().x;
         const ImVec2 thumbSize(thumbWidth, thumbWidth * 9.0f / 16.0f);
-        DrawThumbnail(ImGui::GetWindowDrawList(), ImGui::GetCursorScreenPos(), thumbSize, entry, 3.0f);
+        DrawThumbnail(ImGui::GetWindowDrawList(), ImGui::GetCursorScreenPos(), thumbSize, entry, ThumbnailOf(entry), 3.0f);
         ImGui::Dummy(thumbSize);
         ImGui::Spacing();
 

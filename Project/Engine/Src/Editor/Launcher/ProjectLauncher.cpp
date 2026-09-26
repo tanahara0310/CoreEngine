@@ -7,6 +7,7 @@
 #include "Editor/ImGui/ImGuiManager.h"
 #include "Editor/Launcher/ProjectBrowser.h"
 #include "Editor/Launcher/ProjectList.h"
+#include "Editor/Launcher/ProjectThumbnails.h"
 #include "EngineSystem/EngineConfig.h"
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
@@ -24,6 +25,7 @@
 #include <shellapi.h>
 
 #include <algorithm>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -122,7 +124,7 @@ namespace CoreEngine::Editor
         desc.enableDebugLayer = config.enableDebugLayer;
         desc.enableGPUBasedValidation = config.enableGPUBasedValidation;
         desc.framesInFlight = 2;
-        desc.maxSRVDescriptors = 64;
+        desc.maxSRVDescriptors = 256;
         desc.maxRTVDescriptors = 16;
         desc.maxDSVDescriptors = 1;
         graphics.Initialize(desc);
@@ -151,7 +153,10 @@ namespace CoreEngine::Editor
         ::ShowWindow(hwnd, SW_SHOW);
         ::SetForegroundWindow(hwnd);
 
+        std::optional<ProjectThumbnails> thumbnails;
+        thumbnails.emplace(graphics);
         ProjectBrowser browser(list, hwnd);
+        browser.SetThumbnails(&*thumbnails);
         bool closed = false;
         while (true) {
             if (winApp.ProcessMessage()) {
@@ -193,6 +198,8 @@ namespace CoreEngine::Editor
         }
 
         graphics.WaitForGpuIdle();
+        browser.SetThumbnails(nullptr);
+        thumbnails.reset();
         ImGui_ImplDX12_Shutdown();
         ImGui_ImplWin32_Shutdown();
         ImGui::DestroyContext();

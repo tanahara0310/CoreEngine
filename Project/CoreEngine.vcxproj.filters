@@ -25,6 +25,9 @@
     <ClCompile Include="Engine\Src\Editor\Launcher\ProjectList.cpp">
       <Filter>Engine\Src\Editor\Launcher</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Launcher\ProjectThumbnails.cpp">
+      <Filter>Engine\Src\Editor\Launcher</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Project\AssetFileOperations.cpp">
       <Filter>Engine\Src\Editor\Project</Filter>
     </ClCompile>
@@ -1738,6 +1741,9 @@
       <Filter>Engine\Src\Editor\Launcher</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Launcher\ProjectList.h">
+      <Filter>Engine\Src\Editor\Launcher</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Launcher\ProjectThumbnails.h">
       <Filter>Engine\Src\Editor\Launcher</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Project\AssetFileOperations.h">

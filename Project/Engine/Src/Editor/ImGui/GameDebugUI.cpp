@@ -19,6 +19,7 @@
 #include "EngineSystem/Relaunch.h"
 #include "EngineSystem/Settings/ProjectSettings.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Scene/SceneManager.h"
 #include "Scene/SceneSaveSystem.h"
 #include "Script/ScriptHost.h"
@@ -775,9 +776,15 @@ namespace CoreEngine
     void GameDebugUI::OpenProjectBrowser(bool newProject)
     {
         WinApp* const winApp = engine_ ? engine_->GetWinApp() : nullptr;
+        if (!projectThumbnails_) {
+            if (GraphicsCore* const graphics = engine_ ? engine_->GetService<GraphicsCore>() : nullptr) {
+                projectThumbnails_ = std::make_unique<Editor::ProjectThumbnails>(*graphics);
+            }
+        }
         projectList_.Load();
         projectBrowser_ = std::make_unique<Editor::ProjectBrowser>(
             projectList_, winApp ? winApp->GetHwnd() : nullptr, ProjectPaths::ProjectRoot());
+        projectBrowser_->SetThumbnails(projectThumbnails_.get());
         if (newProject) {
             projectBrowser_->ShowNewProject();
         }
