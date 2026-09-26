@@ -1,0 +1,1175 @@
+// CoreEngine が起動時に、スクリプトへ登録した型と関数から書き出す補完用の宣言（手で書き換えない）
+enum EaseType {
+	Linear = 0,
+	EaseInQuad = 1,
+	EaseOutQuad = 2,
+	EaseInOutQuad = 3,
+	EaseInCubic = 4,
+	EaseOutCubic = 5,
+	EaseInOutCubic = 6,
+	EaseInQuart = 7,
+	EaseOutQuart = 8,
+	EaseInOutQuart = 9,
+	EaseInQuint = 10,
+	EaseOutQuint = 11,
+	EaseInOutQuint = 12,
+	EaseInSine = 13,
+	EaseOutSine = 14,
+	EaseInOutSine = 15,
+	EaseInExpo = 16,
+	EaseOutExpo = 17,
+	EaseInOutExpo = 18,
+	EaseInCirc = 19,
+	EaseOutCirc = 20,
+	EaseInOutCirc = 21,
+	EaseInBack = 22,
+	EaseOutBack = 23,
+	EaseInOutBack = 24,
+	EaseInElastic = 25,
+	EaseOutElastic = 26,
+	EaseInOutElastic = 27,
+	EaseInBounce = 28,
+	EaseOutBounce = 29,
+	EaseInOutBounce = 30
+}
+enum CollisionLayer {
+	Default = 0,
+	Player = 1,
+	Enemy = 2,
+	PlayerBullet = 3,
+	EnemyBullet = 4,
+	Boss = 5,
+	BossBullet = 6,
+	BossAttack = 7,
+	Item = 8,
+	Environment = 9
+}
+enum InputAction {
+	MoveForward = 0,
+	MoveBack = 1,
+	MoveLeft = 2,
+	MoveRight = 3,
+	Jump = 4,
+	Sprint = 5,
+	Attack = 6,
+	Interact = 7,
+	UINavigateUp = 8,
+	UINavigateDown = 9,
+	UINavigateLeft = 10,
+	UINavigateRight = 11,
+	UIConfirm = 12,
+	UICancel = 13,
+	Pause = 14,
+	EditorFocusSelection = 15,
+	EditorGizmoTranslate = 16,
+	EditorGizmoRotate = 17,
+	EditorGizmoScale = 18
+}
+enum Key {
+	Num0 = 11,
+	Num1 = 2,
+	Num2 = 3,
+	Num3 = 4,
+	Num4 = 5,
+	Num5 = 6,
+	Num6 = 7,
+	Num7 = 8,
+	Num8 = 9,
+	Num9 = 10,
+	A = 30,
+	B = 48,
+	C = 46,
+	D = 32,
+	E = 18,
+	F = 33,
+	G = 34,
+	H = 35,
+	I = 23,
+	J = 36,
+	K = 37,
+	L = 38,
+	M = 50,
+	N = 49,
+	O = 24,
+	P = 25,
+	Q = 16,
+	R = 19,
+	S = 31,
+	T = 20,
+	U = 22,
+	V = 47,
+	W = 17,
+	X = 45,
+	Y = 21,
+	Z = 44,
+	Space = 57,
+	Enter = 28,
+	Escape = 1,
+	Tab = 15,
+	Shift = 42,
+	Ctrl = 29,
+	Left = 203,
+	Right = 205,
+	Up = 200,
+	Down = 208
+}
+enum MouseButton {
+	Left = 0,
+	Right = 1,
+	Middle = 2,
+	XButton1 = 3,
+	XButton2 = 4
+}
+enum TweenLoop {
+	Restart = 0,
+	Yoyo = 1
+}
+enum TweenUpdate {
+	Scaled = 0,
+	Unscaled = 1
+}
+enum UIAnchor {
+	TopLeft = 0,
+	TopCenter = 1,
+	TopRight = 2,
+	MiddleLeft = 3,
+	Center = 4,
+	MiddleRight = 5,
+	BottomLeft = 6,
+	BottomCenter = 7,
+	BottomRight = 8
+}
+enum TextAlignH {
+	Left = 0,
+	Center = 1,
+	Right = 2
+}
+enum TextAlignV {
+	Top = 0,
+	Middle = 1,
+	Bottom = 2
+}
+enum AudioBus {
+	BGM = 0,
+	SE = 1,
+	Voice = 2
+}
+enum ShakeWaveform {
+	Perlin = 0,
+	Random = 1,
+	Sine = 2,
+	Kick = 3
+}
+enum ShakeSpace {
+	CameraLocal = 0,
+	World = 1
+}
+enum ShakeTimeMode {
+	Scaled = 0,
+	Unscaled = 1
+}
+funcdef void TweenCallback();
+funcdef void TweenProgressCallback(float progress);
+funcdef void TweenFloatSetter(float value);
+funcdef void TweenVector2Setter(const Vector2&in value);
+funcdef void TweenVector3Setter(const Vector3&in value);
+funcdef void TweenVector4Setter(const Vector4&in value);
+class array<T> {
+	T& opIndex(uint index);
+	const T& opIndex(uint index) const;
+	uint opForBegin() const;
+	bool opForEnd(uint) const;
+	uint opForNext(uint) const;
+	const T& opForValue0(uint index) const;
+	uint opForValue1(uint index) const;
+	T[]& opAssign(const T[]&in);
+	void insertAt(uint index, const T&in value);
+	void insertAt(uint index, const T[]&inout arr);
+	void insertLast(const T&in value);
+	void removeAt(uint index);
+	void removeLast();
+	void removeRange(uint start, uint count);
+	uint length() const;
+	void reserve(uint length);
+	void resize(uint length);
+	void sortAsc();
+	void sortAsc(uint startAt, uint count);
+	void sortDesc();
+	void sortDesc(uint startAt, uint count);
+	void reverse();
+	int find(const T&in value) const;
+	int find(uint startAt, const T&in value) const;
+	int findByRef(const T&in value) const;
+	int findByRef(uint startAt, const T&in value) const;
+	bool opEquals(const T[]&in) const;
+	bool isEmpty() const;
+	void sort(array<T>::less&in, uint startAt = 0, uint count = uint(-1));
+	funcdef bool less(const T&in a, const T&in b);
+}
+class string {
+	string();
+	string(const string&in);
+	string& opAssign(const string&in);
+	string& opAddAssign(const string&in);
+	bool opEquals(const string&in) const;
+	int opCmp(const string&in) const;
+	string opAdd(const string&in) const;
+	uint length() const;
+	void resize(uint);
+	bool isEmpty() const;
+	uint8& opIndex(uint);
+	const uint8& opIndex(uint) const;
+	string& opAssign(double);
+	string& opAddAssign(double);
+	string opAdd(double) const;
+	string opAdd_r(double) const;
+	string& opAssign(float);
+	string& opAddAssign(float);
+	string opAdd(float) const;
+	string opAdd_r(float) const;
+	string& opAssign(int64);
+	string& opAddAssign(int64);
+	string opAdd(int64) const;
+	string opAdd_r(int64) const;
+	string& opAssign(uint64);
+	string& opAddAssign(uint64);
+	string opAdd(uint64) const;
+	string opAdd_r(uint64) const;
+	string& opAssign(bool);
+	string& opAddAssign(bool);
+	string opAdd(bool) const;
+	string opAdd_r(bool) const;
+	string substr(uint start = 0, int count = -1) const;
+	int findFirst(const string&in, uint start = 0) const;
+	int findFirstOf(const string&in, uint start = 0) const;
+	int findFirstNotOf(const string&in, uint start = 0) const;
+	int findLast(const string&in, int start = -1) const;
+	int findLastOf(const string&in, int start = -1) const;
+	int findLastNotOf(const string&in, int start = -1) const;
+	void insert(uint pos, const string&in other);
+	void erase(uint pos, int count = -1);
+	int regexFind(const string&in regex, uint start = 0, uint&out lengthOfMatch = void) const;
+}
+class Vector2 {
+	Vector2();
+	Vector2(float x, float y);
+	Vector2 opAdd(const Vector2&in) const;
+	Vector2 opSub(const Vector2&in) const;
+	Vector2 opMul(float) const;
+	Vector2 opMul(const Vector2&in) const;
+	Vector2 opMul_r(float) const;
+	Vector2 opDiv(float) const;
+	Vector2 opNeg() const;
+	Vector2& opAddAssign(const Vector2&in);
+	Vector2& opSubAssign(const Vector2&in);
+	Vector2& opMulAssign(float);
+	Vector2& opDivAssign(float);
+	bool opEquals(const Vector2&in) const;
+	float x;
+	float y;
+}
+class Vector3 {
+	Vector3();
+	Vector3(float x, float y, float z);
+	Vector3 opAdd(const Vector3&in) const;
+	Vector3 opSub(const Vector3&in) const;
+	Vector3 opMul(float) const;
+	Vector3 opMul(const Vector3&in) const;
+	Vector3 opMul_r(float) const;
+	Vector3 opDiv(float) const;
+	Vector3 opNeg() const;
+	Vector3& opAddAssign(const Vector3&in);
+	Vector3& opSubAssign(const Vector3&in);
+	Vector3& opMulAssign(float);
+	Vector3& opDivAssign(float);
+	bool opEquals(const Vector3&in) const;
+	float x;
+	float y;
+	float z;
+}
+class Vector4 {
+	Vector4();
+	Vector4(float x, float y, float z, float w);
+	Vector4 opAdd(const Vector4&in) const;
+	Vector4 opSub(const Vector4&in) const;
+	Vector4 opMul(float) const;
+	Vector4 opMul(const Vector4&in) const;
+	Vector4 opMul_r(float) const;
+	Vector4 opDiv(float) const;
+	Vector4 opNeg() const;
+	Vector4& opAddAssign(const Vector4&in);
+	Vector4& opSubAssign(const Vector4&in);
+	Vector4& opMulAssign(float);
+	Vector4& opDivAssign(float);
+	bool opEquals(const Vector4&in) const;
+	float x;
+	float y;
+	float z;
+	float w;
+}
+class GameObject {
+	string get_name() const property;
+	void set_name(const string&in) property;
+	bool get_active() const property;
+	void set_active(bool) property;
+	bool get_isAlive() const property;
+	void Destroy();
+	bool opEquals(const GameObject&in) const;
+	Transform@ get_transform() property;
+	GameObject@ FindObject(const string&in name) const;
+	bool GetComponent(?&out component) const;
+	GameObject@ InstantiatePrefab(const string&in prefabPath, const string&in name) const;
+	Collider@ get_collider() property;
+	UIText@ get_uiText() property;
+	UIText@ SpawnUIText(const string&in fontName, const string&in text, const string&in name) const;
+	UIImage@ get_uiImage() property;
+	UIImage@ SpawnUIImage(const string&in texturePath, const string&in name) const;
+	UIButton@ get_uiButton() property;
+	Animator@ get_animator() property;
+	AudioListener@ get_audioListener() property;
+	AudioSource@ get_audioSource() property;
+	Camera@ get_camera() property;
+	CharacterController@ get_characterController() property;
+	EulerTransform@ get_eulerTransform() property;
+	GpuParticleSystem@ get_gpuParticleSystem() property;
+	Light@ get_light() property;
+	Material@ get_material() property;
+	MeshRenderer@ get_meshRenderer() property;
+	ParticleSystem@ get_particleSystem() property;
+	PhysicsMaterial@ get_physicsMaterial() property;
+	RectTransform@ get_rectTransform() property;
+	Rigidbody@ get_rigidbody() property;
+	SkyBox@ get_skyBox() property;
+	SpriteRenderer@ get_spriteRenderer() property;
+	Text3DRenderer@ get_text3DRenderer() property;
+	UISlider@ get_uiSlider() property;
+	UIToggle@ get_uiToggle() property;
+	WaterSurface@ get_waterSurface() property;
+}
+class Transform {
+	bool get_exists() const property;
+	Vector3 get_position() const property;
+	void set_position(const Vector3&in) property;
+	Vector3 get_rotation() const property;
+	void set_rotation(const Vector3&in) property;
+	Vector3 get_scale() const property;
+	void set_scale(const Vector3&in) property;
+	Vector3 get_worldPosition() const property;
+	void SetParent(Transform@ parent);
+	void UpdateMatrix();
+	GameObject@ get_gameObject() const property;
+}
+class Collision {
+	GameObject@ get_gameObject() const property;
+	Vector3 get_normal() const property;
+	float get_impulse() const property;
+	float get_depth() const property;
+	Vector3 get_point() const property;
+	CollisionLayer get_layer() const property;
+	CollisionLayer get_selfLayer() const property;
+	bool get_isTrigger() const property;
+}
+class RaycastHit {
+	GameObject@ get_gameObject() const property;
+	Vector3 get_point() const property;
+	Vector3 get_normal() const property;
+	float get_distance() const property;
+	CollisionLayer get_layer() const property;
+}
+class Collider {
+	bool get_exists() const property;
+	int get_count() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	CollisionLayer get_layer() const property;
+	void set_layer(CollisionLayer) property;
+	bool get_isTrigger() const property;
+	void set_isTrigger(bool) property;
+	bool get_isStatic() const property;
+	void set_isStatic(bool) property;
+	void AddSphere(float radius, CollisionLayer layer = CollisionLayer::Default, const Vector3&in offset = Vector3());
+	void AddBox(const Vector3&in size, CollisionLayer layer = CollisionLayer::Default, const Vector3&in offset = Vector3());
+	void RemoveAll();
+	GameObject@ get_gameObject() const property;
+}
+class TweenHandle {
+	TweenHandle();
+	TweenHandle& SetEase(EaseType ease);
+	TweenHandle& SetDelay(float seconds);
+	TweenHandle& SetLoops(int count, TweenLoop type = TweenLoop::Restart);
+	TweenHandle& SetLink(GameObject@ owner);
+	TweenHandle& SetUpdateType(TweenUpdate type);
+	TweenHandle& SetId(const string&in id);
+	TweenHandle& OnComplete(TweenCallback@ callback);
+	TweenHandle& OnStepComplete(TweenCallback@ callback);
+	TweenHandle& OnUpdate(TweenProgressCallback@ callback);
+	void Kill(bool complete = false);
+	void Complete();
+	bool get_isActive() const property;
+	float get_progress() const property;
+}
+class TweenSequence {
+	TweenSequence();
+	TweenSequence& Append(const TweenHandle&in tween);
+	TweenSequence& Join(const TweenHandle&in tween);
+	TweenSequence& AppendInterval(float seconds);
+	TweenSequence& AppendCallback(TweenCallback@ action);
+	TweenSequence& SetLoops(int count, TweenLoop type = TweenLoop::Restart);
+	TweenSequence& SetDelay(float seconds);
+	TweenSequence& SetLink(GameObject@ owner);
+	TweenSequence& SetUpdateType(TweenUpdate type);
+	TweenSequence& SetId(const string&in id);
+	TweenSequence& OnComplete(TweenCallback@ callback);
+	void Kill(bool complete = false);
+	TweenHandle get_handle() const property;
+}
+class UIText {
+	bool get_exists() const property;
+	Vector2 get_anchoredPosition() const property;
+	void set_anchoredPosition(const Vector2&in) property;
+	Vector2 get_pivot() const property;
+	void set_pivot(const Vector2&in) property;
+	Vector4 get_color() const property;
+	void set_color(const Vector4&in) property;
+	int get_sortOrder() const property;
+	void set_sortOrder(int) property;
+	UIAnchor get_anchor() const property;
+	void set_anchor(UIAnchor) property;
+	float get_rotation() const property;
+	void set_rotation(float) property;
+	GameObject@ get_gameObject() const property;
+	string get_text() const property;
+	void set_text(const string&in) property;
+	float get_fontSize() const property;
+	void set_fontSize(float) property;
+	string get_font() const property;
+	void set_font(const string&in) property;
+	Vector4 get_outlineColor() const property;
+	void set_outlineColor(const Vector4&in) property;
+	float get_outlineWidth() const property;
+	void set_outlineWidth(float) property;
+	void SetOutline(const Vector4&in color, float width);
+	TextAlignH get_alignH() const property;
+	void set_alignH(TextAlignH) property;
+	TextAlignV get_alignV() const property;
+	void set_alignV(TextAlignV) property;
+	void SetAlign(TextAlignH horizontal, TextAlignV vertical);
+	Vector2 get_measuredSize() const property;
+}
+class UIImage {
+	bool get_exists() const property;
+	Vector2 get_anchoredPosition() const property;
+	void set_anchoredPosition(const Vector2&in) property;
+	Vector2 get_pivot() const property;
+	void set_pivot(const Vector2&in) property;
+	Vector4 get_color() const property;
+	void set_color(const Vector4&in) property;
+	int get_sortOrder() const property;
+	void set_sortOrder(int) property;
+	UIAnchor get_anchor() const property;
+	void set_anchor(UIAnchor) property;
+	float get_rotation() const property;
+	void set_rotation(float) property;
+	GameObject@ get_gameObject() const property;
+	Vector2 get_size() const property;
+	void set_size(const Vector2&in) property;
+	Vector2 get_textureSize() const property;
+}
+class UIButton {
+	bool get_exists() const property;
+	bool get_wasClicked() const property;
+	bool get_hovered() const property;
+	bool get_focused() const property;
+	bool get_pressed() const property;
+	void Focus();
+	bool get_interactable() const property;
+	void set_interactable(bool) property;
+	GameObject@ get_gameObject() const property;
+}
+class PlayParams {
+	PlayParams();
+	AudioBus bus;
+	bool loop;
+	float volume;
+	float pitch;
+	float fadeInTime;
+}
+class Sound {
+	void Stop();
+	void Pause();
+	void Resume();
+	float get_volume() const property;
+	void set_volume(float) property;
+	float get_pitch() const property;
+	void set_pitch(float) property;
+	void FadeTo(float targetVolume, float duration, bool stopAfterFade = false);
+	void FadeIn(float duration, float targetVolume = 1.0f);
+	void FadeOut(float duration, bool stopAfterFade = true);
+	bool get_isPlaying() const property;
+	bool get_isPaused() const property;
+	bool get_isValid() const property;
+}
+class CameraShakeParams {
+	CameraShakeParams();
+	Vector3 positionAmplitude;
+	Vector3 rotationAmplitude;
+	float fovAmplitude;
+	float frequency;
+	Vector3 frequencyScale;
+	float duration;
+	float attack;
+	EaseType decayEase;
+	Vector3 direction;
+	float directionality;
+	bool useWorldFalloff;
+	float innerRadius;
+	float outerRadius;
+	EaseType falloffEase;
+	ShakeWaveform waveform;
+	ShakeSpace space;
+	ShakeTimeMode timeMode;
+	uint seed;
+}
+class GameCamera {
+	bool get_exists() const property;
+	Vector3 get_position() const property;
+	void set_position(const Vector3&in) property;
+	Vector3 get_rotation() const property;
+	void set_rotation(const Vector3&in) property;
+	void LookAt(const Vector3&in target);
+	void UpdateMatrix();
+}
+class SaveFile {
+	SaveFile(const string&in relativePath);
+	const string& get_path() const property;
+	bool Has(const string&in key) const;
+	int GetInt(const string&in key, int fallback = 0) const;
+	float GetFloat(const string&in key, float fallback = 0.0f) const;
+	bool GetBool(const string&in key, bool fallback = false) const;
+	string GetString(const string&in key, const string&in fallback = "") const;
+	void SetInt(const string&in key, int value);
+	void SetFloat(const string&in key, float value);
+	void SetBool(const string&in key, bool value);
+	void SetString(const string&in key, const string&in value);
+	void Remove(const string&in key);
+	bool Save() const;
+}
+class RandomStream {
+	RandomStream(uint seed);
+	uint Next();
+	float Uniform(float minimum, float maximum);
+	int UniformInt(int minimum, int maximum);
+}
+class Animator {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	string get_model() const property;
+	void set_model(const string&in) property;
+	bool Switch(const string&in, bool);
+	bool SwitchWithBlend(const string&in, float, bool);
+	string GetCurrentClipName();
+}
+class AudioListener {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+}
+class AudioSource {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	string get_clip() const property;
+	void set_clip(const string&in) property;
+	int get_bus() const property;
+	void set_bus(int) property;
+	bool get_playOnAwake() const property;
+	void set_playOnAwake(bool) property;
+	bool get_loop() const property;
+	void set_loop(bool) property;
+	float get_volume() const property;
+	void set_volume(float) property;
+	float get_pitch() const property;
+	void set_pitch(float) property;
+	bool get_mute() const property;
+	void set_mute(bool) property;
+	float get_fadeInTime() const property;
+	void set_fadeInTime(float) property;
+	float get_spatialBlend() const property;
+	void set_spatialBlend(float) property;
+	float get_minDistance() const property;
+	void set_minDistance(float) property;
+	float get_maxDistance() const property;
+	void set_maxDistance(float) property;
+	bool get_isPlaying() const property;
+	void Play();
+	void Stop();
+	void Pause();
+	void UnPause();
+	void PlayOneShot();
+	void FadeOut(float);
+}
+class Camera {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	bool get_isMainCamera() const property;
+	void set_isMainCamera(bool) property;
+	int get_projection() const property;
+	void set_projection(int) property;
+	float get_fov() const property;
+	void set_fov(float) property;
+	float get_nearClip() const property;
+	void set_nearClip(float) property;
+	float get_farClip() const property;
+	void set_farClip(float) property;
+}
+class CharacterController {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	float get_slopeLimit() const property;
+	void set_slopeLimit(float) property;
+	float get_stepOffset() const property;
+	void set_stepOffset(float) property;
+	float get_skinWidth() const property;
+	void set_skinWidth(float) property;
+	bool get_useGravity() const property;
+	void set_useGravity(bool) property;
+	bool get_grounded() const property;
+	Vector3 get_velocity() const property;
+	void set_velocity(const Vector3&in) property;
+	void Move(const Vector3&in);
+	void SimpleMove(const Vector3&in);
+	void Jump(float);
+}
+class EulerTransform {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	Vector3 get_translate() const property;
+	void set_translate(const Vector3&in) property;
+	Vector3 get_rotate() const property;
+	void set_rotate(const Vector3&in) property;
+	Vector3 get_scale() const property;
+	void set_scale(const Vector3&in) property;
+}
+class GpuParticleSystem {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	string get_texture() const property;
+	void set_texture(const string&in) property;
+	int get_blendMode() const property;
+	void set_blendMode(int) property;
+	int get_billboard() const property;
+	void set_billboard(int) property;
+	void Play();
+	void Stop();
+	bool IsPlaying();
+}
+class Light {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	int get_type() const property;
+	void set_type(int) property;
+	Vector4 get_color() const property;
+	void set_color(const Vector4&in) property;
+	float get_intensity() const property;
+	void set_intensity(float) property;
+	Vector3 get_direction() const property;
+	void set_direction(const Vector3&in) property;
+	float get_range() const property;
+	void set_range(float) property;
+	float get_innerConeAngleDeg() const property;
+	void set_innerConeAngleDeg(float) property;
+	float get_outerConeAngleDeg() const property;
+	void set_outerConeAngleDeg(float) property;
+	float get_areaWidth() const property;
+	void set_areaWidth(float) property;
+	float get_areaHeight() const property;
+	void set_areaHeight(float) property;
+	bool get_isAtmosphereSun() const property;
+	void set_isAtmosphereSun(bool) property;
+	bool get_isAtmosphereMoon() const property;
+	void set_isAtmosphereMoon(bool) property;
+	float get_atmosphereIntensity() const property;
+	void set_atmosphereIntensity(float) property;
+}
+class Material {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	Vector4 get_color() const property;
+	void set_color(const Vector4&in) property;
+	float get_metallic() const property;
+	void set_metallic(float) property;
+	float get_roughness() const property;
+	void set_roughness(float) property;
+	float get_occlusionStrength() const property;
+	void set_occlusionStrength(float) property;
+	Vector4 get_emissive() const property;
+	void set_emissive(const Vector4&in) property;
+	float get_iblIntensity() const property;
+	void set_iblIntensity(float) property;
+	bool get_lighting() const property;
+	void set_lighting(bool) property;
+	bool get_normalMap() const property;
+	void set_normalMap(bool) property;
+	bool get_dithering() const property;
+	void set_dithering(bool) property;
+	float get_ditheringScale() const property;
+	void set_ditheringScale(float) property;
+}
+class MeshRenderer {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	string get_model() const property;
+	void set_model(const string&in) property;
+	string get_texture() const property;
+	void set_texture(const string&in) property;
+	int get_blendMode() const property;
+	void set_blendMode(int) property;
+}
+class ParticleSystem {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	string get_texture() const property;
+	void set_texture(const string&in) property;
+	string get_model() const property;
+	void set_model(const string&in) property;
+	int get_blendMode() const property;
+	void set_blendMode(int) property;
+	int get_billboard() const property;
+	void set_billboard(int) property;
+	void Play();
+	void Stop();
+	bool IsPlaying();
+	void Clear();
+	void Emit(int);
+}
+class PhysicsMaterial {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	string get_materialAsset() const property;
+	void set_materialAsset(const string&in) property;
+	float get_restitution() const property;
+	void set_restitution(float) property;
+	float get_friction() const property;
+	void set_friction(float) property;
+	int get_restitutionCombine() const property;
+	void set_restitutionCombine(int) property;
+	int get_frictionCombine() const property;
+	void set_frictionCombine(int) property;
+}
+class RectTransform {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	int get_anchor() const property;
+	void set_anchor(int) property;
+	Vector2 get_anchoredPosition() const property;
+	void set_anchoredPosition(const Vector2&in) property;
+	Vector2 get_pivot() const property;
+	void set_pivot(const Vector2&in) property;
+	Vector2 get_size() const property;
+	void set_size(const Vector2&in) property;
+	float get_rotation() const property;
+	void set_rotation(float) property;
+	int get_sortOrder() const property;
+	void set_sortOrder(int) property;
+}
+class Rigidbody {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	int get_bodyType() const property;
+	void set_bodyType(int) property;
+	float get_mass() const property;
+	void set_mass(float) property;
+	bool get_useGravity() const property;
+	void set_useGravity(bool) property;
+	float get_linearDamping() const property;
+	void set_linearDamping(float) property;
+	float get_angularDamping() const property;
+	void set_angularDamping(float) property;
+	bool get_freezeRotation() const property;
+	void set_freezeRotation(bool) property;
+	Vector3 get_velocity() const property;
+	void set_velocity(const Vector3&in) property;
+	Vector3 get_angularVelocity() const property;
+	void set_angularVelocity(const Vector3&in) property;
+	bool get_sleeping() const property;
+	void set_sleeping(bool) property;
+	void AddForce(const Vector3&in);
+	void AddImpulse(const Vector3&in);
+	void AddTorque(const Vector3&in);
+	void WakeUp();
+}
+class SkyBox {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	Vector3 get_rotation() const property;
+	void set_rotation(const Vector3&in) property;
+	float get_environmentIntensity() const property;
+	void set_environmentIntensity(float) property;
+}
+class SpriteRenderer {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	string get_texture() const property;
+	void set_texture(const string&in) property;
+	Vector4 get_color() const property;
+	void set_color(const Vector4&in) property;
+	Vector2 get_anchor() const property;
+	void set_anchor(const Vector2&in) property;
+	Vector2 get_uvMin() const property;
+	void set_uvMin(const Vector2&in) property;
+	Vector2 get_uvMax() const property;
+	void set_uvMax(const Vector2&in) property;
+	Vector2 get_uvOffset() const property;
+	void set_uvOffset(const Vector2&in) property;
+	Vector2 get_uvScale() const property;
+	void set_uvScale(const Vector2&in) property;
+	float get_uvRotation() const property;
+	void set_uvRotation(float) property;
+	bool get_flipX() const property;
+	void set_flipX(bool) property;
+	bool get_flipY() const property;
+	void set_flipY(bool) property;
+	int get_blendMode() const property;
+	void set_blendMode(int) property;
+}
+class Text3DRenderer {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	string get_font() const property;
+	void set_font(const string&in) property;
+	string get_text() const property;
+	void set_text(const string&in) property;
+	float get_fontSize() const property;
+	void set_fontSize(float) property;
+	float get_lineSpacing() const property;
+	void set_lineSpacing(float) property;
+	float get_wrapWidth() const property;
+	void set_wrapWidth(float) property;
+	bool get_fieldAutoFit() const property;
+	void set_fieldAutoFit(bool) property;
+	Vector2 get_fieldSize() const property;
+	void set_fieldSize(const Vector2&in) property;
+	int get_alignH() const property;
+	void set_alignH(int) property;
+	int get_alignV() const property;
+	void set_alignV(int) property;
+	Vector2 get_pivot() const property;
+	void set_pivot(const Vector2&in) property;
+	Vector4 get_color() const property;
+	void set_color(const Vector4&in) property;
+	Vector4 get_outlineColor() const property;
+	void set_outlineColor(const Vector4&in) property;
+	float get_outlineWidth() const property;
+	void set_outlineWidth(float) property;
+	float get_weight() const property;
+	void set_weight(float) property;
+	int get_billboard() const property;
+	void set_billboard(int) property;
+	int get_depthMode() const property;
+	void set_depthMode(int) property;
+}
+class UISlider {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	bool get_interactable() const property;
+	void set_interactable(bool) property;
+	int get_direction() const property;
+	void set_direction(int) property;
+	float get_minValue() const property;
+	void set_minValue(float) property;
+	float get_maxValue() const property;
+	void set_maxValue(float) property;
+	float get_value() const property;
+	void set_value(float) property;
+	bool get_wholeNumbers() const property;
+	void set_wholeNumbers(bool) property;
+	float get_navigationStep() const property;
+	void set_navigationStep(float) property;
+	Vector4 get_normalColor() const property;
+	void set_normalColor(const Vector4&in) property;
+	Vector4 get_hoveredColor() const property;
+	void set_hoveredColor(const Vector4&in) property;
+	Vector4 get_pressedColor() const property;
+	void set_pressedColor(const Vector4&in) property;
+	Vector4 get_disabledColor() const property;
+	void set_disabledColor(const Vector4&in) property;
+}
+class UIToggle {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	bool get_isOn() const property;
+	void set_isOn(bool) property;
+	bool get_interactable() const property;
+	void set_interactable(bool) property;
+	string get_group() const property;
+	void set_group(const string&in) property;
+	Vector4 get_normalColor() const property;
+	void set_normalColor(const Vector4&in) property;
+	Vector4 get_hoveredColor() const property;
+	void set_hoveredColor(const Vector4&in) property;
+	Vector4 get_pressedColor() const property;
+	void set_pressedColor(const Vector4&in) property;
+	Vector4 get_disabledColor() const property;
+	void set_disabledColor(const Vector4&in) property;
+}
+class WaterSurface {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	float get_size() const property;
+	void set_size(float) property;
+	int get_resolution() const property;
+	void set_resolution(int) property;
+	bool get_useFFTOcean() const property;
+	void set_useFFTOcean(bool) property;
+	Vector2 get_scrollSpeed() const property;
+	void set_scrollSpeed(const Vector2&in) property;
+	Vector2 get_uvTiling() const property;
+	void set_uvTiling(const Vector2&in) property;
+}
+uint scan(const string&in str, ?&out...);
+string format(const string&in fmt, const ?&in...);
+string formatInt(int64 val, const string&in options = "", uint width = 0);
+string formatUInt(uint64 val, const string&in options = "", uint width = 0);
+string formatFloat(double val, const string&in options = "", uint width = 0, uint precision = 0);
+int64 parseInt(const string&in, uint base = 10, uint&out byteCount = 0);
+uint64 parseUInt(const string&in, uint base = 10, uint&out byteCount = 0);
+double parseFloat(const string&in, uint&out byteCount = 0);
+float fpFromIEEE(uint);
+uint fpToIEEE(float);
+double fpFromIEEE(uint64);
+uint64 fpToIEEE(double);
+bool closeTo(float, float, float = 0.00001f);
+bool closeTo(double, double, double = 0.0000000001);
+float cos(float);
+float sin(float);
+float tan(float);
+float acos(float);
+float asin(float);
+float atan(float);
+float atan2(float, float);
+float cosh(float);
+float sinh(float);
+float tanh(float);
+float log(float);
+float log10(float);
+float pow(float, float);
+float sqrt(float);
+float ceil(float);
+float abs(float);
+float floor(float);
+float fraction(float);
+void throw(const string&in);
+string getExceptionInfo();
+void Log(const string&in message);
+void Warn(const string&in message);
+void Error(const string&in message);
+float Dot(const Vector2&in, const Vector2&in);
+float Cross(const Vector2&in, const Vector2&in);
+float Length(const Vector2&in);
+float LengthSquared(const Vector2&in);
+float Distance(const Vector2&in, const Vector2&in);
+Vector2 Normalize(const Vector2&in);
+Vector2 Lerp(const Vector2&in, const Vector2&in, float);
+float Dot(const Vector3&in, const Vector3&in);
+Vector3 Cross(const Vector3&in, const Vector3&in);
+float Length(const Vector3&in);
+float LengthSquared(const Vector3&in);
+float Distance(const Vector3&in, const Vector3&in);
+float DistanceSquared(const Vector3&in, const Vector3&in);
+Vector3 Normalize(const Vector3&in);
+Vector3 Lerp(const Vector3&in, const Vector3&in, float);
+Vector3 Clamp(const Vector3&in, const Vector3&in, const Vector3&in);
+float Dot(const Vector4&in, const Vector4&in);
+float Length(const Vector4&in);
+float LengthSquared(const Vector4&in);
+Vector4 Normalize(const Vector4&in);
+Vector4 Lerp(const Vector4&in, const Vector4&in, float);
+float Lerp(float, float, float);
+float Clamp(float, float, float);
+int Clamp(int, int, int);
+float Saturate(float);
+float Min(float, float);
+float Max(float, float);
+int Min(int, int);
+int Max(int, int);
+float fmod(float, float);
+float exp(float);
+float exp2(float);
+float Ease(EaseType type, float t);
+namespace Time {
+float DeltaTime();
+float UnscaledDeltaTime();
+float TimeSinceStartup();
+float UnscaledTimeSinceStartup();
+uint64 FrameCount();
+float FixedDeltaTime();
+float TimeScale();
+bool IsPaused();
+void SetTimeScale(float scale);
+}
+namespace Physics {
+RaycastHit@ Raycast(const Vector3&in origin, const Vector3&in direction, float maxDistance, int layerMask = -1);
+RaycastHit@[]@ RaycastAll(const Vector3&in origin, const Vector3&in direction, float maxDistance, int layerMask = -1);
+GameObject@[]@ OverlapSphere(const Vector3&in center, float radius, int layerMask = -1);
+GameObject@[]@ OverlapBox(const Vector3&in center, const Vector3&in size, int layerMask = -1);
+void SetLayerCollision(CollisionLayer a, CollisionLayer b, bool enabled);
+bool GetLayerCollision(CollisionLayer a, CollisionLayer b);
+int LayerMask(CollisionLayer layer);
+int GetBodyCount();
+int GetSleepingCount();
+int GetContactCount();
+Vector3 get_gravity() property;
+void set_gravity(const Vector3&in) property;
+}
+namespace Input {
+bool IsActionPressed(InputAction, int player = -1);
+bool IsActionTriggered(InputAction, int player = -1);
+bool IsActionReleased(InputAction, int player = -1);
+float GetAxisValue(InputAction, int player = -1);
+float GetAxis(InputAction negative, InputAction positive, int player = -1);
+Vector2 GetAxis2D(InputAction negativeX, InputAction positiveX, InputAction negativeY, InputAction positiveY, int player = -1);
+bool IsGamepadConnected(int player = 0);
+int GetConnectedGamepadCount();
+Vector2 GetLeftStick(int player = 0);
+Vector2 GetRightStick(int player = 0);
+float GetLeftTrigger(int player = 0);
+float GetRightTrigger(int player = 0);
+void SetVibration(float left, float right, int player = 0);
+bool IsMouseButtonPressed(MouseButton);
+bool IsMouseButtonTriggered(MouseButton);
+bool IsMouseButtonReleased(MouseButton);
+Vector2 GetMouseDelta();
+float GetWheelDelta();
+bool IsPointerOverGame();
+bool IsKeyPressed(Key);
+bool IsKeyTriggered(Key);
+bool IsKeyReleased(Key);
+}
+namespace Tween {
+TweenHandle To(float from, float to, float duration, TweenFloatSetter@ setter);
+TweenHandle To(const Vector2&in from, const Vector2&in to, float duration, TweenVector2Setter@ setter);
+TweenHandle To(const Vector3&in from, const Vector3&in to, float duration, TweenVector3Setter@ setter);
+TweenHandle To(const Vector4&in from, const Vector4&in to, float duration, TweenVector4Setter@ setter);
+TweenHandle Delay(float seconds, TweenCallback@ action);
+TweenHandle MoveTo(GameObject@ object, const Vector3&in to, float duration);
+TweenHandle ScaleTo(GameObject@ object, const Vector3&in to, float duration);
+TweenHandle RotateTo(GameObject@ object, const Vector3&in to, float duration);
+int KillById(const string&in id, bool complete = false);
+int KillByLink(GameObject@ owner, bool complete = false);
+TweenSequence Sequence();
+}
+namespace UI {
+void ClearFocus();
+bool HasFocus();
+}
+namespace Font {
+void Register(const string&in name, const string&in filePath, const string[]&in systemFamilies, const string&in charset = "");
+}
+namespace Audio {
+void PlayOneShot(const string&in path, const PlayParams&in params = PlayParams());
+Sound@ PlayScoped(const string&in path, const PlayParams&in params = PlayParams());
+void SetBusVolume(AudioBus bus, float volume);
+float GetBusVolume(AudioBus bus);
+void SetMasterVolume(float volume);
+float GetMasterVolume();
+void StopAll();
+}
+namespace CameraShake {
+uint Play(const CameraShakeParams&in params);
+uint Play(const CameraShakeParams&in params, const Vector3&in worldOrigin);
+uint PlayPreset(const string&in name, float scale = 1.0f);
+void Stop(uint handle, float fadeOutSeconds = 0.0f);
+void StopAll(float fadeOutSeconds = 0.0f);
+void AddTrauma(float amount);
+}
+namespace CameraShakePresets {
+CameraShakeParams Hit();
+CameraShakeParams HeavyHit();
+CameraShakeParams Explosion();
+CameraShakeParams Landing();
+CameraShakeParams Recoil();
+CameraShakeParams Earthquake();
+CameraShakeParams Handheld();
+CameraShakeParams Rumble();
+}
+namespace Scene {
+void ChangeScene(const string&in name);
+string GetCurrentName();
+GameCamera@ GetGameCamera();
+bool IsUsingEditorCamera();
+}
+namespace Rendering {
+float GetAutoExposureEV();
+void SetFadeAlpha(float alpha);
+}
+namespace Session {
+void SetInt(const string&in key, int value);
+int GetInt(const string&in key, int fallback = 0);
+void SetFloat(const string&in key, float value);
+float GetFloat(const string&in key, float fallback = 0.0f);
+void SetBool(const string&in key, bool value);
+bool GetBool(const string&in key, bool fallback = false);
+void SetString(const string&in key, const string&in value);
+string GetString(const string&in key, const string&in fallback = "");
+bool Has(const string&in key);
+void Remove(const string&in key);
+}
+namespace Random {
+float Range(float minimum, float maximum);
+int Range(int minimum, int maximum);
+bool Chance(float probability = 0.5f);
+}
+namespace CVar {
+bool Exists(const string&in name);
+bool Reset(const string&in name);
+bool GetBool(const string&in name, bool fallback = false);
+int GetInt(const string&in name, int fallback = 0);
+float GetFloat(const string&in name, float fallback = 0.0f);
+Vector2 GetVector2(const string&in name);
+Vector3 GetVector3(const string&in name);
+Vector4 GetColor(const string&in name);
+bool SetBool(const string&in name, bool value);
+bool SetInt(const string&in name, int value);
+bool SetFloat(const string&in name, float value);
+bool SetVector2(const string&in name, const Vector2&in value);
+bool SetVector3(const string&in name, const Vector3&in value);
+bool SetColor(const string&in name, const Vector4&in value);
+}
