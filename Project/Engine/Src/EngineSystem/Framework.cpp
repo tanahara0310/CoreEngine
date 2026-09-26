@@ -10,8 +10,11 @@
 #include "Graphics/Shader/Cache/ShaderManifest.h"
 #include "Utility/Profiler/CpuProfiler.h"
 #include "Diagnostics/EngineStats.h"
+#include "EngineSystem/Relaunch.h"
 #ifdef CORE_EDITOR
 #include "Editor/Launcher/ProjectLauncher.h"
+#include "Editor/Launcher/ProjectList.h"
+#include "EngineSystem/Settings/ProjectSettings.h"
 #endif
 #include <chrono>
 
@@ -141,6 +144,12 @@ namespace CoreEngine
 #endif
             return;
         }
+
+        // 開くプロジェクトを最近のプロジェクトの一覧に記録する
+        Editor::ProjectList recentProjects;
+        recentProjects.Load();
+        recentProjects.MarkOpened(ProjectPaths::ProjectRoot());
+        recentProjects.Save();
 #endif
 
         // エンジンとゲームの初期化を「1 ステップずつ進められる列」に組み立ててから回す。
@@ -155,6 +164,13 @@ namespace CoreEngine
         BuildStartupTasks(sequence);   // ゲーム固有の初期化（派生クラスで実装）
 
         RunStartupSequence(sequence, config);
+
+#ifdef CORE_EDITOR
+        // 窓のタイトルに、開いているプロジェクトの名前を足す
+        const std::wstring title = config.GetWindowTitleWide() + L" — " +
+            Logger::GetInstance().Utf8ToWide(ProjectSettings::Get().GetProjectName());
+        ::SetWindowTextW(winApp_->GetHwnd(), title.c_str());
+#endif
 
         // 最初のフレームを描ける状態になったのでメインウィンドウを表示する
         winApp_->ShowMainWindow();
@@ -207,5 +223,8 @@ namespace CoreEngine
 #ifdef _DEBUG
         leakChecker_.reset();
 #endif
+
+        // 起動し直しを頼まれていれば、終わりの処理が済んだここで起動する
+        Relaunch::RunIfRequested();
     }
 }

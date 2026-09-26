@@ -1,15 +1,12 @@
 #include "pch.h"
 #include "EngineConfig.h"
+#include "EngineSystem/Relaunch.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
 
 #include <Windows.h>
-#include <shellapi.h>
 #include <iostream>
-
-#pragma comment(lib, "shell32.lib")
-#pragma comment(lib, "user32.lib")
 
 namespace CoreEngine
 {
@@ -115,19 +112,12 @@ namespace CoreEngine
         j["debug"]["enablePixRuntime"] = enable;
         jsonManager.SaveJson(kEngineConfigPath, j);
 
-        // 現在の実行ファイルのフルパスを取得して新しいインスタンスを起動
-        // （--project で開いていれば、同じプロジェクトを開き直す）
-        wchar_t exePath[MAX_PATH] = {};
-        GetModuleFileNameW(nullptr, exePath, MAX_PATH);
-        std::wstring parameters;
+        // 終わってから起動し直す（プロジェクトを指定して開いていれば、同じプロジェクトを開き直す）
         if (ProjectPaths::IsProjectSpecified()) {
-            parameters = L"--project \"" + ProjectPaths::ProjectRoot().wstring() + L"\"";
+            Relaunch::RequestProject(ProjectPaths::ProjectRoot());
+        } else {
+            Relaunch::Request({});
         }
-        ShellExecuteW(nullptr, L"open", exePath, parameters.empty() ? nullptr : parameters.c_str(),
-            nullptr, SW_SHOWDEFAULT);
-
-        // 現在のインスタンスを終了（次フレームの ProcessMessage で WM_QUIT を受け取り正常終了）
-        PostQuitMessage(0);
     }
 
 }
