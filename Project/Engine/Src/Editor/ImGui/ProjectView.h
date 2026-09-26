@@ -37,10 +37,10 @@ namespace CoreEngine
         /// @brief 選択中のアセット（無ければ空）
         const std::filesystem::path& GetSelectedAsset() const { return selectedPath_; }
 
-        /// @brief 開いているフォルダ（プロジェクトの根からの相対パス）
+        /// @brief 開いているフォルダ（`Application/…` か `Engine/…` の綴り。仮想ルートなら空）
         std::filesystem::path GetCurrentFolder() const;
 
-        /// @brief フォルダを開く（プロジェクトの根からの相対パス。根の外や無いフォルダなら何もしない）
+        /// @brief フォルダを開く（`Application/…` か `Engine/…` の綴り。アセットのフォルダの外や無いフォルダなら何もしない）
         void OpenFolder(const std::filesystem::path& relativeFolder);
 
         /// @brief 一覧表示にしているか（false ならグリッド表示）
@@ -135,9 +135,9 @@ namespace CoreEngine
         /// @brief パンくずリスト（ブレッドクラム）を描画
         void DrawBreadcrumb();
 
-        /// @brief 相対パスを取得
+        /// @brief 表示用のパスを取得
         /// @param fullPath フルパス
-        /// @return ルートからの相対パス
+        /// @return 「Assets > Application > …」の形の綴り
         std::string GetRelativePath(const std::filesystem::path& fullPath);
 
         /// @brief ファイルを関連付けアプリで開く
@@ -194,7 +194,7 @@ namespace CoreEngine
     private:
         GraphicsCore* dxCommon_ = nullptr;     // DirectX共通クラスへのポインタ
 
-        std::filesystem::path rootPath_;        // 仮想ルート（プロジェクトルート）
+        std::filesystem::path rootPath_;        // 仮想ルート（プロジェクトの根）
         std::filesystem::path appAssetsPath_;   // Application/Assets パス
         std::filesystem::path engineAssetsPath_; // Engine/Assets パス
         std::filesystem::path currentPath_;     // 現在のパス

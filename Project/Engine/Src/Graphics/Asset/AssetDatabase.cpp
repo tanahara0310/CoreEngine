@@ -48,7 +48,7 @@ namespace CoreEngine
         return instance;
     }
 
-    void AssetDatabase::Initialize(const std::filesystem::path& projectRoot)
+    void AssetDatabase::Initialize()
     {
         if (initialized_)
         {
@@ -57,14 +57,9 @@ namespace CoreEngine
             return;
         }
 
-        projectRoot_ = projectRoot;
-
         // カテゴリの優先順位を設定（数値が大きいほど優先）
         categoryPriority_["Application"] = 100;
         categoryPriority_["Engine"] = 50;
-
-        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}",
-            "Initializing AssetDatabase at: " + projectRoot_.string());
 
         // スキャン対象ディレクトリを収集する。
         struct ScanTarget {
@@ -73,8 +68,13 @@ namespace CoreEngine
         };
         std::vector<ScanTarget> targets;
 
-        std::filesystem::path appAssetsPath = projectRoot_ / "Application" / "Assets";
-        std::filesystem::path engineAssetsPath = projectRoot_ / "Engine" / "Assets";
+        const std::filesystem::path appAssetsPath = ProjectPaths::Resolve("Application/Assets");
+        const std::filesystem::path engineAssetsPath = ProjectPaths::Resolve("Engine/Assets");
+
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System,
+            "アセットデータベースを作ります（プロジェクト: {} ／ エンジン: {}）",
+            Logger::GetInstance().PathToUtf8(appAssetsPath),
+            Logger::GetInstance().PathToUtf8(engineAssetsPath));
 
         if (std::filesystem::exists(appAssetsPath)) {
             targets.push_back({ appAssetsPath, "Application" });
@@ -269,12 +269,12 @@ namespace CoreEngine
         std::string relative(path);
         const std::filesystem::path asPath = log.Utf8ToPath(relative);
         if (asPath.is_absolute()) {
-            // 根からの相対へ直す（根の外なら見つからない扱い）
-            const std::filesystem::path lexical = asPath.lexically_relative(projectRoot_);
-            if (lexical.empty() || *lexical.begin() == "..") {
+            // 綴りへ直す（どちらの根の下でもなければ見つからない扱い）
+            const std::filesystem::path spelled = ProjectPaths::MakeRelative(asPath);
+            if (spelled.empty()) {
                 return nullptr;
             }
-            relative = log.PathToUtf8(lexical);
+            relative = log.PathToUtf8(spelled);
         }
 
         const std::string key = MakePathKey(relative);
@@ -303,14 +303,18 @@ namespace CoreEngine
     const AssetInfo* AssetDatabase::ImportAsset(const std::filesystem::path& assetPath)
     {
         Logger& log = Logger::GetInstance();
-        const std::filesystem::path fullPath =
-            (assetPath.is_absolute() ? assetPath : projectRoot_ / assetPath).lexically_normal();
+        const std::filesystem::path fullPath = (assetPath.is_absolute()
+            ? assetPath
+            : ProjectPaths::Resolve(log.PathToUtf8(assetPath))).lexically_normal();
         if (const AssetInfo* existing = FindAssetByPath(log.PathToUtf8(fullPath))) {
             return existing;
         }
 
-        // Engine/Assets の下なら Engine、それ以外は Application のアセットとして登録する
-        const std::string key = MakePathKey(log.PathToUtf8(fullPath.lexically_relative(projectRoot_)));
+        // Engine/Assets の下なら Engine、Application/Assets の下なら Application のアセットとして登録する
+        const std::string key = MakePathKey(log.PathToUtf8(ProjectPaths::MakeRelative(fullPath)));
+        if (key.empty()) {
+            return nullptr;
+        }
         const std::string category = key.starts_with("engine/") ? "Engine" : "Application";
         std::optional<AssetInfo> info = BuildAssetInfo(fullPath, category);
         if (!info) {
@@ -333,7 +337,7 @@ namespace CoreEngine
         assetsByName_.clear();
         guidsByPath_.clear();
 
-        Initialize(projectRoot_);
+        Initialize();
         ++revision_;
     }
 
@@ -354,6 +358,13 @@ namespace CoreEngine
 
         AssetType type = GetAssetType(assetPath);
         if (type == AssetType::Unknown)
+        {
+            return std::nullopt;
+        }
+
+        // 綴り（Application/… か Engine/…）で引けないファイルは登録しない
+        std::filesystem::path relativePath = ProjectPaths::MakeRelative(assetPath);
+        if (relativePath.empty())
         {
             return std::nullopt;
         }
@@ -382,7 +393,7 @@ namespace CoreEngine
         }
         info.fileName = log.PathToUtf8(assetPath.filename());
         info.fullPath = assetPath;
-        info.relativePath = std::filesystem::relative(assetPath, projectRoot_);
+        info.relativePath = std::move(relativePath);
         info.type = type;
         info.category = category;
         info.lastModified = GetFileLastModified(assetPath);
@@ -400,7 +411,7 @@ namespace CoreEngine
 
         assetsByGUID_[guid] = std::move(info);
 
-        // プロジェクトの根からの相対パスで登録
+        // 綴り（Application/… か Engine/…）で登録
         guidsByPath_[pathKey] = guid;
 
         // ベース名（例: GrayScale）で登録
@@ -535,6 +546,8 @@ namespace CoreEngine
                 dirs.push_back(dir);
             }
         }
+        // 並びはパスの順にそろえる
+        std::sort(dirs.begin(), dirs.end());
         return dirs;
     }
 

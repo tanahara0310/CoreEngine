@@ -3,6 +3,7 @@
 
 #include <array>
 #include <windows.h>
+#include <shellapi.h>
 
 namespace CoreEngine
 {
@@ -13,6 +14,15 @@ namespace CoreEngine
 
         /// @brief 作り直せるものを入れるフォルダ名
         constexpr const char* kIntermediateDir = "Intermediate";
+
+        /// @brief プロジェクトの根を指定する起動の引数
+        constexpr std::wstring_view kProjectOption = L"--project";
+
+        /// @brief プロジェクトの根から辿る綴りの先頭
+        constexpr const wchar_t* kProjectTop = L"Application";
+
+        /// @brief エンジンの根から辿るアセットの綴りの先頭
+        constexpr const wchar_t* kEngineTop = L"Engine";
 
         /// @brief 上へ辿る段数の上限（辿り切らずに止めるための歯止め）
         constexpr int kMaxAscend = 8;
@@ -34,6 +44,30 @@ namespace CoreEngine
             MultiByteToWideChar(CP_UTF8, 0, utf8.data(), static_cast<int>(utf8.size()),
                 wide.data(), length);
             return std::filesystem::path(wide);
+        }
+
+        /// @brief path を UTF-8 の文字列にする
+        std::string ToUtf8(const std::filesystem::path& path)
+        {
+            const std::wstring& wide = path.native();
+            if (wide.empty()) {
+                return {};
+            }
+            const int length = WideCharToMultiByte(
+                CP_UTF8, 0, wide.data(), static_cast<int>(wide.size()), nullptr, 0, nullptr, nullptr);
+            if (length <= 0) {
+                return {};
+            }
+            std::string utf8(static_cast<size_t>(length), '\0');
+            WideCharToMultiByte(CP_UTF8, 0, wide.data(), static_cast<int>(wide.size()),
+                utf8.data(), length, nullptr, nullptr);
+            return utf8;
+        }
+
+        /// @brief パスの 1 要素が指定の名前か（大文字小文字は区別しない）
+        bool IsNamed(const std::filesystem::path& element, const wchar_t* name)
+        {
+            return ::_wcsicmp(element.c_str(), name) == 0;
         }
 
         std::filesystem::path ExecutableDirectory()
@@ -71,15 +105,64 @@ namespace CoreEngine
             return {};
         }
 
+        /// @brief 起動の引数から `--project` の値を取り出す
+        /// @return `--project <フォルダ>` か `--project=<フォルダ>` の値。無ければ空
+        std::filesystem::path ProjectOptionFromCommandLine()
+        {
+            int count = 0;
+            LPWSTR* const args = ::CommandLineToArgvW(::GetCommandLineW(), &count);
+            if (!args) {
+                return {};
+            }
+
+            std::filesystem::path value;
+            for (int i = 1; i < count; ++i) {
+                const std::wstring_view arg = args[i];
+                if (arg == kProjectOption) {
+                    if (i + 1 < count) {
+                        value = std::filesystem::path(args[i + 1]);
+                    }
+                    break;
+                }
+                if (arg.size() > kProjectOption.size() && arg.starts_with(kProjectOption) &&
+                    arg[kProjectOption.size()] == L'=') {
+                    value = std::filesystem::path(std::wstring(arg.substr(kProjectOption.size() + 1)));
+                    break;
+                }
+            }
+            ::LocalFree(args);
+            return value;
+        }
+
+        /// @brief 末尾の区切りを落とした絶対パスにする
+        std::filesystem::path ToAbsoluteFolder(const std::filesystem::path& path)
+        {
+            std::error_code ec;
+            std::filesystem::path absolute = std::filesystem::absolute(path, ec);
+            if (ec) {
+                return {};
+            }
+            absolute = absolute.lexically_normal();
+            if (!absolute.has_filename() && absolute.has_relative_path()) {
+                absolute = absolute.parent_path();
+            }
+            return absolute;
+        }
+
         struct Resolved
         {
-            std::filesystem::path root;
+            std::filesystem::path engineRoot;
+            std::filesystem::path projectRoot;
             std::string note;
+            bool projectSpecified = false;
         };
 
-        Resolved DetermineRoot()
+        Resolved DetermineRoots()
         {
+            Resolved resolved;
             const std::filesystem::path exeDir = ExecutableDirectory();
+            resolved.engineRoot = exeDir;
+            resolved.note = "エンジンは exe の隣";
 
 #ifdef CORE_EDITOR
             // エディタを持つビルドはソースツリーへ書く。調整した値がそのまま
@@ -95,17 +178,36 @@ namespace CoreEngine
                     continue;
                 }
                 if (std::filesystem::path found = FindSourceRoot(candidate); !found.empty()) {
-                    return { found, "ソースツリー" };
+                    resolved.engineRoot = found;
+                    resolved.note = "エンジンはソースツリー";
+                    break;
                 }
             }
 #endif
 
-            return { exeDir, "exe の隣" };
+            resolved.projectRoot = resolved.engineRoot;
+
+            const std::filesystem::path option = ProjectOptionFromCommandLine();
+            if (option.empty()) {
+                resolved.note += "・プロジェクトはエンジンと同じ根";
+                return resolved;
+            }
+
+            const std::filesystem::path folder = ToAbsoluteFolder(option);
+            if (!folder.empty() && ProjectPaths::IsProjectFolder(folder)) {
+                resolved.projectRoot = folder;
+                resolved.projectSpecified = true;
+                resolved.note += "・プロジェクトは --project で指定";
+            } else {
+                resolved.note += "・--project の " + ToUtf8(option) +
+                    " はプロジェクトのフォルダではないので、プロジェクトはエンジンと同じ根";
+            }
+            return resolved;
         }
 
-        Resolved& Store()
+        const Resolved& Store()
         {
-            static Resolved resolved = DetermineRoot();
+            static const Resolved resolved = DetermineRoots();
             return resolved;
         }
     }
@@ -115,9 +217,19 @@ namespace CoreEngine
         (void)Store();
     }
 
-    const std::filesystem::path& ProjectPaths::Root()
+    const std::filesystem::path& ProjectPaths::EngineRoot()
     {
-        return Store().root;
+        return Store().engineRoot;
+    }
+
+    const std::filesystem::path& ProjectPaths::ProjectRoot()
+    {
+        return Store().projectRoot;
+    }
+
+    bool ProjectPaths::IsProjectSpecified()
+    {
+        return Store().projectSpecified;
     }
 
     const std::string& ProjectPaths::ResolutionNote()
@@ -129,20 +241,55 @@ namespace CoreEngine
     {
         std::filesystem::path path = FromUtf8(relative);
         if (path.empty()) {
-            return Root();
+            return ProjectRoot();
         }
         if (path.is_absolute()) {
             return path;
         }
-        return Root() / path;
+        path = path.lexically_normal();
+        const bool inProject = !path.empty() && IsNamed(*path.begin(), kProjectTop);
+        return (inProject ? ProjectRoot() : EngineRoot()) / path;
+    }
+
+    std::filesystem::path ProjectPaths::MakeRelative(const std::filesystem::path& absolute)
+    {
+        const std::filesystem::path normalized = absolute.lexically_normal();
+        const auto relativeUnder = [&normalized](const std::filesystem::path& root, const wchar_t* top) {
+            std::filesystem::path relative = normalized.lexically_relative(root);
+            if (relative.empty() || !IsNamed(*relative.begin(), top)) {
+                relative.clear();
+            }
+            return relative;
+        };
+
+        if (std::filesystem::path relative = relativeUnder(ProjectRoot(), kProjectTop); !relative.empty()) {
+            return relative;
+        }
+        return relativeUnder(EngineRoot(), kEngineTop);
     }
 
     std::filesystem::path ProjectPaths::Intermediate(std::string_view relative)
     {
-        std::filesystem::path path = Root() / kIntermediateDir;
+        std::filesystem::path path = ProjectRoot() / kIntermediateDir;
         if (!relative.empty()) {
             path /= FromUtf8(relative);
         }
         return path;
+    }
+
+    std::filesystem::path ProjectPaths::EngineIntermediate(std::string_view relative)
+    {
+        std::filesystem::path path = EngineRoot() / kIntermediateDir;
+        if (!relative.empty()) {
+            path /= FromUtf8(relative);
+        }
+        return path;
+    }
+
+    bool ProjectPaths::IsProjectFolder(const std::filesystem::path& folder)
+    {
+        std::error_code ec;
+        return std::filesystem::is_regular_file(
+            folder / "Application" / "Config" / "EngineSettings" / "Project.json", ec);
     }
 }

@@ -10,6 +10,7 @@
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Threading/ThreadPool.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/Path/ProjectPaths.h"
 
 #include <algorithm>
 #include <cstring>
@@ -112,7 +113,10 @@ namespace CoreEngine
 
         if (desc.useDiskCache) {
             const uint64_t cacheKey = MsdfFontCache::ComputeKey(desc, fontChainNames_);
-            cachePath_ = MsdfFontCache::MakePath(desc.cacheDirectory, cacheKey);
+            const std::filesystem::path cacheDirectory = desc.cacheDirectory.is_absolute()
+                ? desc.cacheDirectory
+                : ProjectPaths::EngineIntermediate(Logger::GetInstance().PathToUtf8(desc.cacheDirectory));
+            cachePath_ = MsdfFontCache::MakePath(cacheDirectory, cacheKey);
             fromCache = MsdfFontCache::TryLoad(cachePath_, bake);
         }
 

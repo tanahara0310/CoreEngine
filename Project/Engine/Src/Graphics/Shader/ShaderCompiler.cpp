@@ -96,7 +96,7 @@ namespace CoreEngine
         std::filesystem::path fsPath(filePath);
         if (fsPath.is_relative()) {
             // カレント基準の absolute() だと、起動方法で読み先が変わる
-            fsPath = ProjectPaths::Root() / fsPath;
+            fsPath = ProjectPaths::Resolve(Logger::GetInstance().PathToUtf8(fsPath));
         }
         if (!std::filesystem::exists(fsPath)) {
             // 検索キーは UTF-8 のテキストとして渡す（AssetDatabase の登録名も UTF-8）
