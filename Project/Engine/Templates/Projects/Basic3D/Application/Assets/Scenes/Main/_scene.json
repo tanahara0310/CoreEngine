@@ -1,0 +1,8 @@
+{
+    "defaultGround": true,
+    "objects": [
+        "Sun",
+        "MainCamera",
+        "Player"
+    ]
+}

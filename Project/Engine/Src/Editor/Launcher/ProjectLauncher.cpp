@@ -5,6 +5,7 @@
 
 #include "Editor/ImGui/EditorTheme.h"
 #include "Editor/ImGui/ImGuiManager.h"
+#include "Editor/Launcher/ProjectCreator.h"
 #include "Editor/Launcher/ProjectList.h"
 #include "EngineSystem/EngineConfig.h"
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
@@ -28,6 +29,7 @@
 #include <cfloat>
 #include <chrono>
 #include <cstdio>
+#include <cstring>
 #include <format>
 #include <string>
 #include <string_view>
@@ -66,6 +68,21 @@ namespace CoreEngine::Editor
         {
             const std::u8string text = path.u8string();
             return std::string(text.begin(), text.end());
+        }
+
+        /// @brief UTF-8 の文字列を path にする
+        std::filesystem::path FromUtf8(const std::string& text)
+        {
+            return std::filesystem::path(std::u8string(text.begin(), text.end()));
+        }
+
+        /// @brief UTF-8 の文字列を入力欄の固定長の場所へ写す（入り切らない分は落とす）
+        template <size_t N>
+        void CopyToBuffer(char (&buffer)[N], const std::string& text)
+        {
+            const size_t length = std::min(text.size(), N - 1);
+            std::memcpy(buffer, text.data(), length);
+            buffer[length] = '\0';
         }
 
         /// @brief ASCII の英字だけ大文字小文字を無視して、text が query を含むか
@@ -134,11 +151,8 @@ namespace CoreEngine::Editor
         }
 
         /// @brief サムネイルの代わりに描く面の色（名前ごとに決まる）
-        ImVec4 ThumbnailColor(const ProjectEntry& entry)
+        ImVec4 TileColor(const std::string& name)
         {
-            if (entry.missing) {
-                return Theme::kField;
-            }
             static const ImVec4 kPalette[] = {
                 Theme::FromSrgb(52, 84, 122),
                 Theme::FromSrgb(84, 64, 120),
@@ -148,32 +162,41 @@ namespace CoreEngine::Editor
                 Theme::FromSrgb(62, 74, 96),
             };
             size_t hash = 0;
-            for (const char c : entry.name) {
+            for (const char c : name) {
                 hash = hash * 31 + static_cast<unsigned char>(c);
             }
             return kPalette[hash % std::size(kPalette)];
+        }
+
+        /// @brief 色の面と、真ん中に 1 文字を描く
+        void DrawTile(ImDrawList* drawList, const ImVec2& min, const ImVec2& size, const ImVec4& color,
+                      const std::string& letter, const ImVec4& textColor, bool outline, float letterScale)
+        {
+            const ImVec2 max(min.x + size.x, min.y + size.y);
+            drawList->AddRectFilled(min, max, ImGui::GetColorU32(color), 3.0f);
+            if (outline) {
+                drawList->AddRect(min, max, ImGui::GetColorU32(Theme::kOutline), 3.0f);
+            }
+
+            const float fontSize = ImGui::GetFontSize() * letterScale;
+            const ImVec2 textSize = ImGui::GetFont()->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, letter.c_str());
+            const ImVec2 textPos(min.x + (size.x - textSize.x) * 0.5f, min.y + (size.y - textSize.y) * 0.5f);
+            drawList->AddText(ImGui::GetFont(), fontSize, textPos, ImGui::GetColorU32(textColor), letter.c_str());
         }
 
         /// @brief サムネイルの代わりに、色の面と名前の頭文字を描く
         void DrawThumbnail(ImDrawList* drawList, const ImVec2& min, const ImVec2& size,
                            const ProjectEntry& entry, float letterScale)
         {
-            const ImVec2 max(min.x + size.x, min.y + size.y);
-            drawList->AddRectFilled(min, max, ImGui::GetColorU32(ThumbnailColor(entry)), 3.0f);
             if (entry.missing) {
-                drawList->AddRect(min, max, ImGui::GetColorU32(Theme::kOutline), 3.0f);
+                DrawTile(drawList, min, size, Theme::kField, "?", Theme::kTextMute, true, letterScale);
+            } else {
+                DrawTile(drawList, min, size, TileColor(entry.name), FirstLetter(entry.name), Theme::kText, false, letterScale);
             }
-
-            const std::string letter = entry.missing ? std::string("?") : FirstLetter(entry.name);
-            const float fontSize = ImGui::GetFontSize() * letterScale;
-            const ImVec2 textSize = ImGui::GetFont()->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, letter.c_str());
-            const ImVec2 textPos(min.x + (size.x - textSize.x) * 0.5f, min.y + (size.y - textSize.y) * 0.5f);
-            const ImVec4 textColor = entry.missing ? Theme::kTextMute : Theme::kText;
-            drawList->AddText(ImGui::GetFont(), fontSize, textPos, ImGui::GetColorU32(textColor), letter.c_str());
         }
 
         /// @brief フォルダを選ぶ窓を出す（選ばれなければ空）
-        std::filesystem::path PickFolder(HWND owner)
+        std::filesystem::path PickFolder(HWND owner, const wchar_t* title)
         {
             Microsoft::WRL::ComPtr<IFileOpenDialog> dialog;
             if (FAILED(::CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&dialog)))) {
@@ -182,7 +205,7 @@ namespace CoreEngine::Editor
             DWORD options = 0;
             dialog->GetOptions(&options);
             dialog->SetOptions(options | FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST);
-            dialog->SetTitle(L"プロジェクトのフォルダを選ぶ");
+            dialog->SetTitle(title);
             if (FAILED(dialog->Show(owner))) {
                 return {};
             }
@@ -216,31 +239,47 @@ namespace CoreEngine::Editor
             bool IsDone() const { return done_; }
 
         private:
+            /// @brief 右側に出している画面
+            enum class View { Projects, NewProject };
+
             /// @brief 押された操作（描き終えてから行う）
-            enum class Action { None, Open, ShowInExplorer, Remove, Add };
+            enum class Action { None, Open, ShowInExplorer, Remove, Add, Create, BrowseLocation };
 
             void Refresh(const std::filesystem::path& select = {});
             void SetStatus(std::string text, bool error = false);
             std::vector<int> VisibleIndices() const;
 
             void DrawNav();
-            void DrawMain();
+            void DrawProjects();
             void DrawList(const std::vector<int>& visible, const ImVec2& size);
             void DrawDetail(const ImVec2& size);
+            void DrawNewProject();
+            void DrawTemplates(const ImVec2& size);
+            void DrawCreateForm(const ImVec2& size);
+            void DrawStatus();
             void Request(Action action, const std::filesystem::path& folder);
             void RunPendingAction();
 
+            void ShowProjects();
+            void ShowNewProject();
             void Open(const std::filesystem::path& folder);
             void ShowInExplorer(const std::filesystem::path& folder);
             void Remove(const std::filesystem::path& folder);
             void AddExisting();
+            void CreateProject();
+            void BrowseLocation();
 
             ProjectList& list_;
             HWND hwnd_ = nullptr;
             std::string engineRootText_;
+            View view_ = View::Projects;
             std::vector<ProjectEntry> entries_;
             int selected_ = -1;
             char filter_[128] = {};
+            std::vector<ProjectTemplate> templates_;
+            int selectedTemplate_ = 0;
+            char name_[65] = {};
+            char location_[1024] = {};
             std::string status_ = "プロジェクトを選んで「開く」を押してください（行のダブルクリックでも開けます）";
             bool statusError_ = false;
             Action pending_ = Action::None;
@@ -309,13 +348,17 @@ namespace CoreEngine::Editor
             ImGui::PopStyleVar();
             DrawNav();
             ImGui::SameLine(0.0f, 0.0f);
-            DrawMain();
+            if (view_ == View::NewProject) {
+                DrawNewProject();
+            } else {
+                DrawProjects();
+            }
             ImGui::EndChild();
             ImGui::PopStyleVar();
             ImGui::PopStyleColor();
 
             // 一覧で選んだものを Enter で開く
-            if (!ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_Enter, false) &&
+            if (view_ == View::Projects && !ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_Enter, false) &&
                 selected_ >= 0 && selected_ < static_cast<int>(entries_.size())) {
                 Request(Action::Open, entries_[selected_].folder);
             }
@@ -343,7 +386,12 @@ namespace CoreEngine::Editor
             ImGui::Separator();
             ImGui::Spacing();
 
-            ImGui::Selectable("プロジェクト", true);
+            if (ImGui::Selectable("プロジェクト", view_ == View::Projects)) {
+                ShowProjects();
+            }
+            if (ImGui::Selectable("新規作成", view_ == View::NewProject)) {
+                ShowNewProject();
+            }
 
             // 下端に「前回のプロジェクトを自動で開く」を置く
             const float bottomHeight = ImGui::GetTextLineHeightWithSpacing() * 3.0f;
@@ -376,7 +424,7 @@ namespace CoreEngine::Editor
             ImGui::PopStyleColor();
         }
 
-        void LauncherScreen::DrawMain()
+        void LauncherScreen::DrawProjects()
         {
             const float fontSize = ImGui::GetFontSize();
             const ImGuiStyle& style = ImGui::GetStyle();
@@ -384,14 +432,16 @@ namespace CoreEngine::Editor
             ImGui::BeginChild("##Main", ImVec2(0.0f, 0.0f), ImGuiChildFlags_AlwaysUseWindowPadding);
             ImGui::PopStyleVar();
 
-            // 見出しと、絞り込み・追加
+            // 見出しと、絞り込み・追加・新規作成
             const float headerRight = ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x;
             ImGui::AlignTextToFramePadding();
             ImGui::TextUnformatted("プロジェクト");
             const float filterWidth = fontSize * 14.0f;
             const char* addLabel = "追加…";
+            const char* newLabel = "＋ 新規作成";
             const float addWidth = ImGui::CalcTextSize(addLabel).x + style.FramePadding.x * 2.0f;
-            ImGui::SameLine(headerRight - filterWidth - addWidth - style.ItemSpacing.x);
+            const float newWidth = ImGui::CalcTextSize(newLabel).x + style.FramePadding.x * 2.0f;
+            ImGui::SameLine(headerRight - filterWidth - addWidth - newWidth - style.ItemSpacing.x * 2.0f);
             ImGui::SetNextItemWidth(filterWidth);
             ImGui::InputTextWithHint("##Filter", "名前・場所で絞り込む", filter_, sizeof(filter_));
             ImGui::SameLine();
@@ -401,6 +451,14 @@ namespace CoreEngine::Editor
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("ほかの場所にあるプロジェクトのフォルダを選んで、一覧に足します");
             }
+            ImGui::SameLine();
+            ImGui::PushStyleColor(ImGuiCol_Button, Theme::kAccent);
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Theme::kAccentHover);
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, Theme::kAccentMuted);
+            if (ImGui::Button(newLabel)) {
+                ShowNewProject();
+            }
+            ImGui::PopStyleColor(3);
             ImGui::Spacing();
 
             // 一覧と詳細
@@ -415,7 +473,15 @@ namespace CoreEngine::Editor
             ImGui::SameLine();
             DrawDetail(ImVec2(detailWidth, body.y));
 
+            DrawStatus();
+
+            ImGui::EndChild();
+        }
+
+        void LauncherScreen::DrawStatus()
+        {
             // 状態の一言（件数に重なる分は切る）と件数
+            const float fontSize = ImGui::GetFontSize();
             const float statusRight = ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x;
             const std::string count = std::format("プロジェクト {} 件", entries_.size());
             const float countWidth = ImGui::CalcTextSize(count.c_str()).x;
@@ -429,8 +495,6 @@ namespace CoreEngine::Editor
             ImGui::PopClipRect();
             ImGui::SameLine(statusRight - countWidth);
             ImGui::TextDisabled("%s", count.c_str());
-
-            ImGui::EndChild();
         }
 
         void LauncherScreen::DrawList(const std::vector<int>& visible, const ImVec2& size)
@@ -601,6 +665,259 @@ namespace CoreEngine::Editor
             ImGui::PopStyleColor();
         }
 
+        void LauncherScreen::DrawNewProject()
+        {
+            const float fontSize = ImGui::GetFontSize();
+            const ImGuiStyle& style = ImGui::GetStyle();
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(fontSize, fontSize));
+            ImGui::BeginChild("##New", ImVec2(0.0f, 0.0f), ImGuiChildFlags_AlwaysUseWindowPadding);
+            ImGui::PopStyleVar();
+
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted("新しいプロジェクト");
+            ImGui::Spacing();
+
+            const float statusHeight = ImGui::GetTextLineHeightWithSpacing() + style.ItemSpacing.y;
+            const ImVec2 body(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y - statusHeight);
+            const float templatesWidth = fontSize * 17.0f;
+            DrawTemplates(ImVec2(templatesWidth, body.y));
+            ImGui::SameLine();
+            DrawCreateForm(ImVec2(body.x - templatesWidth - style.ItemSpacing.x, body.y));
+
+            DrawStatus();
+
+            ImGui::EndChild();
+        }
+
+        void LauncherScreen::DrawTemplates(const ImVec2& size)
+        {
+            const float fontSize = ImGui::GetFontSize();
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, Theme::kChild);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(fontSize * 0.6f, fontSize * 0.6f));
+            ImGui::BeginChild("##Templates", size, ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding);
+            ImGui::PopStyleVar();
+
+            ImGui::TextColored(Theme::kTextMute, "テンプレート");
+            ImGui::Spacing();
+
+            const float tileHeight = fontSize * 2.4f;
+            const float tileWidth = tileHeight * 16.0f / 9.0f;
+            const float rowHeight = tileHeight + fontSize * 0.6f;
+            for (int i = 0; i < static_cast<int>(templates_.size()); ++i) {
+                const ProjectTemplate& projectTemplate = templates_[i];
+                ImGui::PushID(i);
+                const ImVec2 rowPos = ImGui::GetCursorScreenPos();
+                if (ImGui::Selectable("##Template", i == selectedTemplate_, ImGuiSelectableFlags_None, ImVec2(0.0f, rowHeight))) {
+                    selectedTemplate_ = i;
+                }
+                ImDrawList* drawList = ImGui::GetWindowDrawList();
+                const ImVec2 tilePos(rowPos.x, rowPos.y + (rowHeight - tileHeight) * 0.5f);
+                DrawTile(drawList, tilePos, ImVec2(tileWidth, tileHeight), TileColor(projectTemplate.name),
+                    FirstLetter(projectTemplate.name), Theme::kText, false, 1.2f);
+
+                const float textX = rowPos.x + tileWidth + fontSize * 0.6f;
+                const float lineHeight = ImGui::GetTextLineHeight();
+                const float textY = rowPos.y + (rowHeight - lineHeight * 2.0f) * 0.5f;
+                drawList->AddText(ImVec2(textX, textY), ImGui::GetColorU32(Theme::kText), projectTemplate.name.c_str());
+                const std::string summary = std::format("シーン {} ・ スクリプト {}",
+                    projectTemplate.scenes.size(), projectTemplate.scripts.size());
+                drawList->AddText(ImVec2(textX, textY + lineHeight), ImGui::GetColorU32(Theme::kTextMute), summary.c_str());
+                ImGui::PopID();
+            }
+            if (templates_.empty()) {
+                ImGui::PushTextWrapPos(0.0f);
+                ImGui::TextDisabled("%s", "テンプレートがありません（Engine\\Templates\\Projects）");
+                ImGui::PopTextWrapPos();
+            }
+
+            ImGui::EndChild();
+            ImGui::PopStyleColor();
+        }
+
+        void LauncherScreen::DrawCreateForm(const ImVec2& size)
+        {
+            const float fontSize = ImGui::GetFontSize();
+            const ImGuiStyle& style = ImGui::GetStyle();
+            ImGui::BeginChild("##Form", size, ImGuiChildFlags_None);
+
+            if (templates_.empty()) {
+                ImGui::EndChild();
+                return;
+            }
+            const ProjectTemplate& projectTemplate = templates_[selectedTemplate_];
+
+            // テンプレートの説明
+            ImGui::TextUnformatted(projectTemplate.name.c_str());
+            ImGui::PushStyleColor(ImGuiCol_Text, Theme::kTextDim);
+            ImGui::PushTextWrapPos(0.0f);
+            ImGui::TextUnformatted(projectTemplate.description.c_str());
+            ImGui::PopTextWrapPos();
+            ImGui::PopStyleColor();
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            // 名前と保存先
+            const float labelWidth = fontSize * 4.0f;
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted("名前");
+            ImGui::SameLine(labelWidth);
+            ImGui::SetNextItemWidth(-FLT_MIN);
+            ImGui::InputText("##Name", name_, sizeof(name_));
+
+            const char* browseLabel = "参照…";
+            const float browseWidth = ImGui::CalcTextSize(browseLabel).x + style.FramePadding.x * 2.0f;
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted("保存先");
+            ImGui::SameLine(labelWidth);
+            ImGui::SetNextItemWidth(-(browseWidth + style.ItemSpacing.x));
+            ImGui::InputText("##Location", location_, sizeof(location_));
+            ImGui::SameLine();
+            if (ImGui::Button(browseLabel)) {
+                Request(Action::BrowseLocation, {});
+            }
+
+            // 作れるかどうか
+            const std::string name = name_;
+            const std::filesystem::path location = FromUtf8(location_);
+            std::string warning;
+            const std::string error = ProjectCreator::Check(name, location, &warning);
+            const std::filesystem::path folder = location / FromUtf8(name);
+            ImGui::PushTextWrapPos(0.0f);
+            if (!error.empty()) {
+                ImGui::TextColored(Theme::kError, "%s", error.c_str());
+            } else if (!warning.empty()) {
+                ImGui::TextColored(Theme::kWarn, "%s", warning.c_str());
+            } else {
+                ImGui::TextColored(Theme::kTextMute, "%s に作ります", ToDisplay(folder).c_str());
+            }
+            ImGui::PopTextWrapPos();
+            ImGui::Spacing();
+
+            // 作られるフォルダ
+            ImGui::TextColored(Theme::kTextMute, "作られるフォルダ");
+            const std::string shownName = name.empty() ? std::string("<名前>") : name;
+            std::string scenes;
+            for (const std::string& scene : projectTemplate.scenes) {
+                scenes += (scenes.empty() ? "" : "・") + scene;
+            }
+            std::string scripts;
+            for (const std::string& script : projectTemplate.scripts) {
+                scripts += (scripts.empty() ? "" : "・") + script;
+            }
+            struct Line { std::string path; std::string note; };
+            const Line lines[] = {
+                { shownName + "\\", "" },
+                { "├─ Application\\Assets\\Scenes\\", scenes },
+                { "├─ Application\\Assets\\Scripts\\",
+                  (scripts.empty() ? std::string{} : scripts + "（") + "基底クラスなどは開いたときに書く" +
+                  (scripts.empty() ? "" : "）") },
+                { "├─ Application\\Config\\EngineSettings\\Project.json",
+                  "名前 " + shownName + " ・ 起動シーン " + projectTemplate.initialScene },
+                { "├─ .gitignore", "Application\\Saved・Intermediate・Build を git から外す" },
+                { "└─ " + shownName + ".code-workspace", "VS Code でスクリプトを開く" },
+            };
+            // 説明の列は、説明のある行のうち一番長いパスの右に置く
+            float pathWidth = 0.0f;
+            float noteWidth = 0.0f;
+            for (const Line& line : lines) {
+                if (!line.note.empty()) {
+                    pathWidth = std::max(pathWidth, ImGui::CalcTextSize(line.path.c_str()).x);
+                    noteWidth = std::max(noteWidth, ImGui::CalcTextSize(line.note.c_str()).x);
+                }
+            }
+            const ImVec2 treePadding(fontSize * 0.6f, fontSize * 0.5f);
+            const float noteOffset = pathWidth + fontSize * 1.5f;
+            // 横にはみ出すときは、横のスクロールバーの分だけ高くする
+            const bool overflows = treePadding.x * 2.0f + noteOffset + noteWidth > ImGui::GetContentRegionAvail().x;
+            const float treeHeight = ImGui::GetTextLineHeightWithSpacing() * static_cast<float>(std::size(lines)) +
+                                     fontSize * 1.2f + (overflows ? style.ScrollbarSize : 0.0f);
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, Theme::kField);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, treePadding);
+            ImGui::BeginChild("##Tree", ImVec2(0.0f, treeHeight),
+                ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding, ImGuiWindowFlags_HorizontalScrollbar);
+            ImGui::PopStyleVar();
+            const float noteX = ImGui::GetCursorPosX() + noteOffset;
+            for (const Line& line : lines) {
+                ImGui::TextUnformatted(line.path.c_str());
+                if (!line.note.empty()) {
+                    ImGui::SameLine(noteX);
+                    ImGui::TextColored(Theme::kTextMute, "%s", line.note.c_str());
+                }
+            }
+            ImGui::EndChild();
+            ImGui::PopStyleColor();
+            ImGui::Spacing();
+
+            // 右寄せのボタン
+            const char* cancelLabel = "キャンセル";
+            const char* createLabel = "作成して開く";
+            const float buttonsWidth = ImGui::CalcTextSize(cancelLabel).x + ImGui::CalcTextSize(createLabel).x +
+                                       style.FramePadding.x * 4.0f + style.ItemSpacing.x;
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + std::max(0.0f, ImGui::GetContentRegionAvail().x - buttonsWidth));
+            if (ImGui::Button(cancelLabel)) {
+                ShowProjects();
+            }
+            ImGui::SameLine();
+            ImGui::BeginDisabled(!error.empty());
+            ImGui::PushStyleColor(ImGuiCol_Button, Theme::kAccent);
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Theme::kAccentHover);
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, Theme::kAccentMuted);
+            if (ImGui::Button(createLabel)) {
+                Request(Action::Create, {});
+            }
+            ImGui::PopStyleColor(3);
+            ImGui::EndDisabled();
+
+            ImGui::EndChild();
+        }
+
+        void LauncherScreen::ShowProjects()
+        {
+            view_ = View::Projects;
+            SetStatus("プロジェクトを選んで「開く」を押してください（行のダブルクリックでも開けます）");
+        }
+
+        void LauncherScreen::ShowNewProject()
+        {
+            view_ = View::NewProject;
+            templates_ = ProjectCreator::ListTemplates();
+            selectedTemplate_ = 0;
+
+            // 保存先の既定は同梱プロジェクトのフォルダ。名前は空いている MyGame・MyGame2…
+            const std::filesystem::path location = ProjectPaths::BundledProjectsDirectory();
+            CopyToBuffer(location_, ToDisplay(location));
+            std::error_code ec;
+            std::string name = "MyGame";
+            for (int number = 2; std::filesystem::exists(location / FromUtf8(name), ec) && number < 1000; ++number) {
+                name = "MyGame" + std::to_string(number);
+            }
+            CopyToBuffer(name_, name);
+            SetStatus("テンプレートを選び、名前と保存先を決めて「作成して開く」を押してください");
+        }
+
+        void LauncherScreen::CreateProject()
+        {
+            if (templates_.empty()) {
+                return;
+            }
+            std::filesystem::path folder;
+            std::string error;
+            if (!ProjectCreator::Create(templates_[selectedTemplate_], name_, FromUtf8(location_), &folder, &error)) {
+                SetStatus(error, true);
+                return;
+            }
+            Open(folder);
+        }
+
+        void LauncherScreen::BrowseLocation()
+        {
+            const std::filesystem::path folder = PickFolder(hwnd_, L"新しいプロジェクトを作る場所を選ぶ");
+            if (!folder.empty()) {
+                CopyToBuffer(location_, ToDisplay(folder));
+            }
+        }
+
         void LauncherScreen::Request(Action action, const std::filesystem::path& folder)
         {
             pending_ = action;
@@ -619,6 +936,8 @@ namespace CoreEngine::Editor
             case Action::ShowInExplorer: ShowInExplorer(folder); break;
             case Action::Remove:         Remove(folder); break;
             case Action::Add:            AddExisting(); break;
+            case Action::Create:         CreateProject(); break;
+            case Action::BrowseLocation: BrowseLocation(); break;
             default: break;
             }
         }
@@ -656,7 +975,7 @@ namespace CoreEngine::Editor
 
         void LauncherScreen::AddExisting()
         {
-            const std::filesystem::path folder = PickFolder(hwnd_);
+            const std::filesystem::path folder = PickFolder(hwnd_, L"プロジェクトのフォルダを選ぶ");
             if (folder.empty()) {
                 return;
             }

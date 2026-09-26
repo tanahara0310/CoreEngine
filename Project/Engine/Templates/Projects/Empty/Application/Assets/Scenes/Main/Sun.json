@@ -1,0 +1,48 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    5.0,
+                    0.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "atmosphereIntensity": 20.0,
+                "color": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "direction": [
+                    -0.45073172450065613,
+                    -0.650119423866272,
+                    0.6117072105407715
+                ],
+                "intensity": 100000.0,
+                "isAtmosphereSun": true,
+                "type": 0
+            },
+            "type": "Light"
+        }
+    ],
+    "name": "Sun"
+}
