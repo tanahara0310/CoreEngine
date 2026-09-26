@@ -3752,30 +3752,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Application\Assets\Models\BrainStem\glTF-Draco\BrainStem0.bin">
-      <Filter>Application\Assets\Models\BrainStem\glTF-Draco</Filter>
-    </None>
-    <None Include="Application\Assets\Models\BrainStem\glTF-Meshopt\BrainStem.bin">
-      <Filter>Application\Assets\Models\BrainStem\glTF-Meshopt</Filter>
-    </None>
-    <None Include="Application\Assets\Models\BrainStem\glTF\BrainStem0.bin">
-      <Filter>Application\Assets\Models\BrainStem\glTF</Filter>
-    </None>
-    <None Include="Application\Assets\Models\CoralReef\coralReef.bin">
-      <Filter>Application\Assets\Models\CoralReef</Filter>
-    </None>
-    <None Include="Application\Assets\Models\Fox\glTF\Fox.bin">
-      <Filter>Application\Assets\Models\Fox\glTF</Filter>
-    </None>
-    <None Include="Application\Assets\Models\Ground\ground.bin">
-      <Filter>Application\Assets\Models\Ground</Filter>
-    </None>
-    <None Include="Application\Assets\Models\human\walk.bin">
-      <Filter>Application\Assets\Models\human</Filter>
-    </None>
-    <None Include="Application\Assets\Models\sponza\Sponza.bin">
-      <Filter>Application\Assets\Models\sponza</Filter>
-    </None>
     <None Include="Build\Scripts\SyncFilters.ps1">
       <Filter>Build\Scripts</Filter>
     </None>
@@ -3784,45 +3760,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <Filter Include="Application">
-      <UniqueIdentifier>{a6d9c513-d1e3-44be-a485-2950bd8c02a7}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Assets">
-      <UniqueIdentifier>{E38AC559-8E3B-462C-A939-BAA5AA622FDA}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Assets\Models">
-      <UniqueIdentifier>{4AD6DADC-83B6-46FB-9BA2-06F83BD35CD0}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Assets\Models\BrainStem">
-      <UniqueIdentifier>{4EB14F91-DD5B-4CE4-A8BA-A724B91F61D5}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Assets\Models\BrainStem\glTF">
-      <UniqueIdentifier>{261ADABC-D611-4532-9233-E41DE30BBCB5}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Assets\Models\BrainStem\glTF-Draco">
-      <UniqueIdentifier>{39A159CB-9B05-4321-9606-89EC6F891F63}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Assets\Models\BrainStem\glTF-Meshopt">
-      <UniqueIdentifier>{A19FB50C-AC1C-4C87-BEB7-4654AA8C5361}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Assets\Models\CoralReef">
-      <UniqueIdentifier>{8115CC28-DD1B-4935-B721-BA30D2D5AA44}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Assets\Models\Fox">
-      <UniqueIdentifier>{EECDD533-25C4-4429-83D5-338739D12A5C}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Assets\Models\Fox\glTF">
-      <UniqueIdentifier>{4825F58D-FD89-4D26-B9B9-88B48F921057}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Assets\Models\Ground">
-      <UniqueIdentifier>{BA5C0660-8AE9-4DCC-9EF0-7DAFB2596962}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Assets\Models\human">
-      <UniqueIdentifier>{426FC420-35FD-4168-B68A-5AEF6441C635}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Assets\Models\sponza">
-      <UniqueIdentifier>{20DBDF63-45F8-4BA0-9CDD-580001B33A3D}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Build">
       <UniqueIdentifier>{39C0671C-39F8-432F-BE2C-E14FDE0F3B36}</UniqueIdentifier>
     </Filter>

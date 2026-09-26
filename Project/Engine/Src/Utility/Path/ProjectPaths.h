@@ -17,7 +17,9 @@ namespace CoreEngine
     ///            それ以外のビルド     … exe の隣
     ///          プロジェクトの根:
     ///            起動の引数 `--project <フォルダ>` で指定したフォルダ。
-    ///            指定が無いか、指定したフォルダがプロジェクトでなければエンジンの根と同じ
+    ///            指定が無いか、指定したフォルダがプロジェクトでなければ、エンジンの根がプロジェクトなら
+    ///            エンジンの根。そうでなければ（エディタのあるビルドのみ）同梱プロジェクトのフォルダで
+    ///            名前が最初のプロジェクト
     class ProjectPaths
     {
     public:
@@ -54,6 +56,9 @@ namespace CoreEngine
 
         /// @brief フォルダがプロジェクトか（`Application/Config/EngineSettings/Project.json` があるか）
         static bool IsProjectFolder(const std::filesystem::path& folder);
+
+        /// @brief 同梱プロジェクトのフォルダ（エンジンの根の隣の `Projects`）
+        static std::filesystem::path BundledProjectsDirectory();
 
         /// @brief 根がどう決まったかの説明（起動ログ用）
         static const std::string& ResolutionNote();

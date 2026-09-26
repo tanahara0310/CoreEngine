@@ -1,7 +1,9 @@
 #include "pch.h"
 #include "Utility/Path/ProjectPaths.h"
 
+#include <algorithm>
 #include <array>
+#include <vector>
 #include <windows.h>
 #include <shellapi.h>
 
@@ -149,6 +151,45 @@ namespace CoreEngine
             return absolute;
         }
 
+        /// @brief 同梱プロジェクトのフォルダ名
+        constexpr const char* kBundledProjectsDir = "Projects";
+
+        /// @brief フォルダの直下にあるプロジェクトのうち、名前が最初のもの（無ければ空）
+        std::filesystem::path FirstProjectIn(const std::filesystem::path& directory)
+        {
+            std::error_code ec;
+            std::vector<std::filesystem::path> projects;
+            for (const auto& entry : std::filesystem::directory_iterator(directory, ec)) {
+                if (entry.is_directory(ec) && ProjectPaths::IsProjectFolder(entry.path())) {
+                    projects.push_back(entry.path());
+                }
+            }
+            if (projects.empty()) {
+                return {};
+            }
+            std::sort(projects.begin(), projects.end());
+            return projects.front();
+        }
+
+        /// @brief `--project` を使わないときのプロジェクトの根
+        /// @param note どう決まったか（起動ログ用）を受け取る
+        std::filesystem::path DefaultProjectRoot(const std::filesystem::path& engineRoot, std::string& note)
+        {
+            if (ProjectPaths::IsProjectFolder(engineRoot)) {
+                note = "エンジンと同じ根";
+                return engineRoot;
+            }
+#ifdef CORE_EDITOR
+            if (std::filesystem::path first = FirstProjectIn(engineRoot.parent_path() / kBundledProjectsDir);
+                !first.empty()) {
+                note = "Projects の中で名前が最初のもの";
+                return first;
+            }
+#endif
+            note = "エンジンと同じ根（プロジェクトが見つからない）";
+            return engineRoot;
+        }
+
         struct Resolved
         {
             std::filesystem::path engineRoot;
@@ -185,23 +226,21 @@ namespace CoreEngine
             }
 #endif
 
-            resolved.projectRoot = resolved.engineRoot;
-
             const std::filesystem::path option = ProjectOptionFromCommandLine();
-            if (option.empty()) {
-                resolved.note += "・プロジェクトはエンジンと同じ根";
-                return resolved;
+            if (!option.empty()) {
+                const std::filesystem::path folder = ToAbsoluteFolder(option);
+                if (!folder.empty() && ProjectPaths::IsProjectFolder(folder)) {
+                    resolved.projectRoot = folder;
+                    resolved.projectSpecified = true;
+                    resolved.note += "・プロジェクトは --project で指定";
+                    return resolved;
+                }
+                resolved.note += "・--project の " + ToUtf8(option) + " はプロジェクトのフォルダではない";
             }
 
-            const std::filesystem::path folder = ToAbsoluteFolder(option);
-            if (!folder.empty() && ProjectPaths::IsProjectFolder(folder)) {
-                resolved.projectRoot = folder;
-                resolved.projectSpecified = true;
-                resolved.note += "・プロジェクトは --project で指定";
-            } else {
-                resolved.note += "・--project の " + ToUtf8(option) +
-                    " はプロジェクトのフォルダではないので、プロジェクトはエンジンと同じ根";
-            }
+            std::string defaultNote;
+            resolved.projectRoot = DefaultProjectRoot(resolved.engineRoot, defaultNote);
+            resolved.note += "・プロジェクトは" + defaultNote;
             return resolved;
         }
 
@@ -291,5 +330,10 @@ namespace CoreEngine
         std::error_code ec;
         return std::filesystem::is_regular_file(
             folder / "Application" / "Config" / "EngineSettings" / "Project.json", ec);
+    }
+
+    std::filesystem::path ProjectPaths::BundledProjectsDirectory()
+    {
+        return EngineRoot().parent_path() / kBundledProjectsDir;
     }
 }

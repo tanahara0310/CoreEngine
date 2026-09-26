@@ -1,4 +1,5 @@
 {
     "initialScene": "ShootingTitle",
+    "name": "Shooting",
     "version": "1.0"
 }

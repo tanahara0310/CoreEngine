@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -14,6 +14,10 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <PropertyGroup>
+    <!-- Release の出力フォルダへ写すプロジェクト（Projects の下のフォルダ名。-p:ReleaseProject=名前 で変えられる） -->
+    <ReleaseProject Condition="'$(ReleaseProject)' == ''">Shooting</ReleaseProject>
+  </PropertyGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
@@ -47,8 +51,7 @@
   <ImportGroup Label="ExtensionSettings">
     <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.props" />
   </ImportGroup>
-  <ImportGroup Label="Shared">
-  </ImportGroup>
+  <ImportGroup Label="Shared"></ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
@@ -140,9 +143,13 @@
     </Link>
     <PostBuildEvent>
       <Command>copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
-xcopy "$(ProjectDir)Application\Assets" "$(TargetDir)Application\Assets\" /E /I /Y /D
-xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D
-xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I /Y /D</Command>
+robocopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets" /MIR /NFL /NDL /NJH /NJS /NP
+if errorlevel 8 exit /b 1
+robocopy "$(ProjectDir)..\Projects\$(ReleaseProject)\Application\Assets" "$(TargetDir)Application\Assets" /MIR /NFL /NDL /NJH /NJS /NP
+if errorlevel 8 exit /b 1
+robocopy "$(ProjectDir)..\Projects\$(ReleaseProject)\Application\Config" "$(TargetDir)Application\Config" /MIR /NFL /NDL /NJH /NJS /NP
+if errorlevel 8 exit /b 1
+exit /b 0</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'">
@@ -1837,15 +1844,7 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Application\Assets\Models\BrainStem\glTF-Draco\BrainStem0.bin" />
-    <None Include="Application\Assets\Models\BrainStem\glTF-Meshopt\BrainStem.bin" />
-    <None Include="Application\Assets\Models\BrainStem\glTF\BrainStem0.bin" />
-    <None Include="Application\Assets\Models\CoralReef\coralReef.bin" />
-    <None Include="Application\Assets\Models\Fox\glTF\Fox.bin" />
-    <None Include="Application\Assets\Models\Ground\ground.bin" />
-    <None Include="Application\Assets\Models\human\walk.bin" />
     <ClInclude Include="Engine\Src\pch.h" />
-    <None Include="Application\Assets\Models\sponza\Sponza.bin" />
     <None Include="Build\Scripts\SyncFilters.ps1" />
     <None Include="Engine\Src\Particle\README.md" />
     <!-- Shader files (runtime compiled via DXC, not build-time FxCompile) -->

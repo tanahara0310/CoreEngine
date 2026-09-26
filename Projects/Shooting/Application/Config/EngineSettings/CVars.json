@@ -1,0 +1,44 @@
+{
+    "r.CAS.Enabled": false,
+    "r.RTShadow.DenoisePhiDepth": 1.034000039100647,
+    "r.RTShadow.MaxRayDistance": 2682.326904296875,
+    "r.RTShadow.ShadowBias": 0.15800000727176666,
+    "r.SSAO.Enabled": false,
+    "r.SSAOBlur.Enabled": false,
+    "r.TAA.Enabled": false,
+    "r.Water.AbsorptionBase": [
+        0.3499999940395355,
+        0.07000000029802322,
+        0.019999999552965164
+    ],
+    "r.Water.Caustics.DepthAttenuation": 1.5169999599456787,
+    "r.Water.Caustics.Intensity": 1.128000020980835,
+    "r.Water.FFT.ActiveComponentCount": 8,
+    "r.Water.FFT.Choppiness": 0.10000000149011612,
+    "r.Water.FFT.WindDirection": [
+        1.0,
+        0.0
+    ],
+    "r.Water.FFT.WindSpeed": 2.0,
+    "r.Water.Foam.Bias": 0.8600000143051147,
+    "r.Water.Foam.CascadeWeights": [
+        1.0,
+        1.0,
+        1.0
+    ],
+    "r.Water.Foam.Gain": 3.5199999809265137,
+    "r.Water.ScatteringBase": [
+        0.003000000026077032,
+        0.00800000037997961,
+        0.01600000075995922
+    ],
+    "r.Water.ScrollSpeed": [
+        -0.04100000113248825,
+        0.009999999776482582
+    ],
+    "r.Water.UVTiling": [
+        1.0,
+        4.0
+    ],
+    "version": 1
+}
