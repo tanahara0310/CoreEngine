@@ -187,6 +187,7 @@ exit /b 0</Command>
   <ItemGroup>
     <ClCompile Include="Engine\Src\Editor\Inspector\ComponentInspectors.cpp" />
     <ClCompile Include="Engine\Src\Editor\Script\ScriptTemplate.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Launcher\ProjectBrowser.cpp" />
     <ClCompile Include="Engine\Src\Editor\Launcher\ProjectCreator.cpp" />
     <ClCompile Include="Engine\Src\Editor\Launcher\ProjectLauncher.cpp" />
     <ClCompile Include="Engine\Src\Editor\Launcher\ProjectList.cpp" />
@@ -322,6 +323,7 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\EngineSystem\EngineConfig.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\EngineSystem.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\PlaybackState.cpp" />
+    <ClCompile Include="Engine\Src\EngineSystem\Relaunch.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Factory\CoreComponentFactory.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Factory\GraphicsComponentFactory.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Settings\EditorSettingsSubsystem.cpp" />
@@ -1158,6 +1160,7 @@ exit /b 0</Command>
   <ItemGroup>
     <ClInclude Include="Engine\Src\Editor\Inspector\ComponentInspectors.h" />
     <ClInclude Include="Engine\Src\Editor\Script\ScriptTemplate.h" />
+    <ClInclude Include="Engine\Src\Editor\Launcher\ProjectBrowser.h" />
     <ClInclude Include="Engine\Src\Editor\Launcher\ProjectCreator.h" />
     <ClInclude Include="Engine\Src\Editor\Launcher\ProjectLauncher.h" />
     <ClInclude Include="Engine\Src\Editor\Launcher\ProjectList.h" />
@@ -1257,6 +1260,7 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\EngineSystem\Factory\CoreComponentFactory.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Factory\GraphicsComponentFactory.h" />
     <ClInclude Include="Engine\Src\EngineSystem\PlaybackState.h" />
+    <ClInclude Include="Engine\Src\EngineSystem\Relaunch.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Settings\EditorSettingsSubsystem.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Settings\IEditorSettingsSection.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Settings\CVarSettingsSection.h" />

@@ -16,6 +16,8 @@
 #include "EngineSystem/EngineSystem.h"
 #include "EngineSystem/EngineConfig.h"
 #include "EngineSystem/PlaybackState.h"
+#include "EngineSystem/Relaunch.h"
+#include "EngineSystem/Settings/ProjectSettings.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
 #include "Scene/SceneManager.h"
 #include "Scene/SceneSaveSystem.h"
@@ -23,8 +25,10 @@
 #include "Script/ScriptSubsystem.h"
 #include "Utility/FrameRate/FrameRateController.h"
 #include "Utility/FrameRate/Time.h"
+#include "Utility/Path/ProjectPaths.h"
 #include "WinApp/WinApp.h"
 #include <imgui.h>
+#include <algorithm>
 
 
 namespace CoreEngine
@@ -119,14 +123,37 @@ namespace CoreEngine
             return;
         }
 
+        // 再生中はプロジェクトもシーンも開かせない
+        const bool editing = PlaybackStateManager::GetInstance().IsEditing();
+        constexpr const char* kStopFirst = "再生中は開けません。停止してから開いてください";
+
+        // プロジェクト（切り替えるときはエディタを起動し直す）
+        if (ImGui::MenuItem("新しいプロジェクト…", nullptr, false, editing)) {
+            OpenProjectBrowser(true);
+        }
+        if (!editing && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::SetTooltip("%s", kStopFirst);
+        }
+        if (ImGui::MenuItem("プロジェクトを開く…", nullptr, false, editing)) {
+            OpenProjectBrowser(false);
+        }
+        if (!editing && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::SetTooltip("%s", kStopFirst);
+        }
+        if (ImGui::BeginMenu("最近のプロジェクト", editing)) {
+            DrawRecentProjectsMenu();
+            ImGui::EndMenu();
+        }
+        if (!editing && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::SetTooltip("%s", kStopFirst);
+        }
+
+        ImGui::Separator();
+
         const bool hasScene = sceneDebugEditor_ && !sceneDebugEditor_->GetSceneName().empty();
         if (ImGui::MenuItem("シーンを保存", "Ctrl+S", false, hasScene)) {
             sceneDebugEditor_->SaveScene();
         }
-
-        // 再生中はシーンを開かせない
-        const bool editing = PlaybackStateManager::GetInstance().IsEditing();
-        constexpr const char* kStopFirst = "再生中は開けません。停止してから開いてください";
 
         if (ImGui::MenuItem("新しいシーン…", nullptr, false, editing && sceneManager_ != nullptr)) {
             newSceneName_[0] = '\0';
@@ -336,13 +363,14 @@ namespace CoreEngine
     {
         namespace Theme = Editor::Theme;
 
+        const std::string project = ProjectSettings::Get().GetProjectName();
         const std::string scene = sceneManager_ ? sceneManager_->GetCurrentSceneName() : std::string{};
         const char* const build = BuildConfigName();
         const bool inPlayMode = PlaybackStateManager::GetInstance().IsInPlayMode();
         constexpr const char* kPlayMode = "Play Mode";
         const float spacing = ImGui::GetStyle().ItemSpacing.x;
 
-        float width = UI::Bar::ChipWidth(build);
+        float width = UI::Bar::ChipWidth(build) + UI::Bar::ChipWidth(project.c_str()) + spacing;
         if (!scene.empty()) {
             width += UI::Bar::ChipWidth(scene.c_str()) + spacing;
         }
@@ -357,6 +385,11 @@ namespace CoreEngine
 
         if (inPlayMode) {
             UI::Bar::Chip(kPlayMode, Theme::kWarm, Theme::WithAlpha(Theme::kWarm, 0.6f));
+        }
+        UI::Bar::Chip(project.c_str(), Theme::kAccentHover, Theme::WithAlpha(Theme::kAccentHover, 0.45f));
+        if (ImGui::IsItemHovered()) {
+            const std::u8string folder = ProjectPaths::ProjectRoot().u8string();
+            ImGui::SetTooltip("開いているプロジェクト\n%s", std::string(folder.begin(), folder.end()).c_str());
         }
         if (!scene.empty()) {
             UI::Bar::Chip(scene.c_str(), Theme::kTextDim, Theme::kOutline);
@@ -650,6 +683,7 @@ namespace CoreEngine
         if (ImGui::Button("やめる")) {
             pendingSceneAction_ = PendingSceneAction::None;
             pendingSceneName_.clear();
+            pendingProjectFolder_.clear();
             ImGui::CloseCurrentPopup();
         }
 
@@ -687,8 +721,10 @@ namespace CoreEngine
     {
         const PendingSceneAction action = pendingSceneAction_;
         const std::string name = pendingSceneName_;
+        const std::filesystem::path projectFolder = pendingProjectFolder_;
         pendingSceneAction_ = PendingSceneAction::None;
         pendingSceneName_.clear();
+        pendingProjectFolder_.clear();
 
         switch (action) {
         case PendingSceneAction::Open:
@@ -698,6 +734,9 @@ namespace CoreEngine
             break;
         case PendingSceneAction::Create:
             CreateAndOpenScene(name, pendingSceneTemplate_);
+            break;
+        case PendingSceneAction::SwitchProject:
+            Relaunch::RequestProject(projectFolder);
             break;
         default:
             break;
@@ -725,6 +764,116 @@ namespace CoreEngine
         sceneManager_->RegisterDataScene(name);
         sceneManager_->ChangeScene(name);
         return true;
+    }
+
+    void GameDebugUI::OpenProjectBrowser(bool newProject)
+    {
+        WinApp* const winApp = engine_ ? engine_->GetWinApp() : nullptr;
+        projectList_.Load();
+        projectBrowser_ = std::make_unique<Editor::ProjectBrowser>(
+            projectList_, winApp ? winApp->GetHwnd() : nullptr, ProjectPaths::ProjectRoot());
+        if (newProject) {
+            projectBrowser_->ShowNewProject();
+        }
+    }
+
+    void GameDebugUI::DrawProjectBrowser()
+    {
+        constexpr const char* kTitle = "プロジェクト";
+        if (!projectBrowser_) {
+            return;
+        }
+        if (!ImGui::IsPopupOpen(kTitle)) {
+            ImGui::OpenPopup(kTitle);
+        }
+
+        // 画面の真ん中に、ランチャーと同じ大きさと地の色で出す
+        const float fontSize = ImGui::GetFontSize();
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        const ImVec2 size(std::min(viewport->WorkSize.x - fontSize * 2.0f, fontSize * 92.0f),
+                          std::min(viewport->WorkSize.y - fontSize * 2.0f, fontSize * 56.0f));
+        ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+        ImGui::SetNextWindowSize(size, ImGuiCond_Appearing);
+        ImGui::PushStyleColor(ImGuiCol_PopupBg, Editor::Theme::kWindow);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+        bool open = true;
+        const bool visible = ImGui::BeginPopupModal(kTitle, &open,
+            ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings);
+        ImGui::PopStyleVar();
+        ImGui::PopStyleColor();
+        if (!visible) {
+            // × で閉じたときだけ中身を捨てる
+            if (!open) {
+                projectBrowser_.reset();
+            }
+            return;
+        }
+
+        projectBrowser_->Draw();
+
+        // 開くプロジェクトが決まるか、Esc で閉じる
+        const std::filesystem::path chosen = projectBrowser_->TakeChosen();
+        const bool escape = !ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_Escape, false);
+        const bool close = !chosen.empty() || escape;
+        if (close) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+
+        if (close) {
+            projectBrowser_.reset();
+            if (!chosen.empty()) {
+                RequestSwitchProject(chosen);
+            }
+        }
+    }
+
+    void GameDebugUI::DrawRecentProjectsMenu()
+    {
+        // サブメニューが開いたときに一覧を読み直す
+        if (ImGui::IsWindowAppearing()) {
+            projectList_.Load();
+            recentProjects_ = projectList_.Collect();
+        }
+
+        // 名前と場所を、最近開いた順に 10 件まで並べる
+        constexpr size_t kMaxItems = 10;
+        const std::filesystem::path current = ProjectPaths::ProjectRoot();
+        for (size_t i = 0; i < recentProjects_.size() && i < kMaxItems; ++i) {
+            const Editor::ProjectEntry& entry = recentProjects_[i];
+            const bool isCurrent = Editor::ProjectList::IsSameFolder(entry.folder, current);
+            const std::u8string folderText = entry.folder.u8string();
+            const std::string folder(folderText.begin(), folderText.end());
+
+            ImGui::PushID(static_cast<int>(i));
+            if (ImGui::MenuItem(entry.name.c_str(), folder.c_str(), isCurrent, !isCurrent && !entry.missing)) {
+                RequestSwitchProject(entry.folder);
+            }
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                if (isCurrent) {
+                    ImGui::SetTooltip("開いているプロジェクトです");
+                } else if (entry.missing) {
+                    ImGui::SetTooltip("フォルダが見つかりません");
+                }
+            }
+            ImGui::PopID();
+        }
+        if (recentProjects_.empty()) {
+            ImGui::TextDisabled("まだありません");
+        }
+    }
+
+    void GameDebugUI::RequestSwitchProject(const std::filesystem::path& folder)
+    {
+        if (Editor::ProjectList::IsSameFolder(folder, ProjectPaths::ProjectRoot())) {
+            return;
+        }
+        if (sceneDebugEditor_ && sceneDebugEditor_->IsSceneDirty()) {
+            pendingSceneAction_ = PendingSceneAction::SwitchProject;
+            pendingProjectFolder_ = folder;
+            return;
+        }
+        Relaunch::RequestProject(folder);
     }
 
     void GameDebugUI::DrawPanelGroupMenu(Editor::PanelGroup group, const char* label,
@@ -773,6 +922,7 @@ namespace CoreEngine
         projectSettings_.Draw(showProjectSettings_);
         DrawAboutWindow();
         DrawNewSceneDialog();
+        DrawProjectBrowser();
         DrawUnsavedChangesDialog();
 
         if (showConsole_) ShowConsoleUI();

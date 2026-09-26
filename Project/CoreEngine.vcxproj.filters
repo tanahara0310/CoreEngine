@@ -7,6 +7,9 @@
     <ClCompile Include="Engine\Src\Editor\Script\ScriptTemplate.cpp">
       <Filter>Engine\Src\Editor\Script</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Launcher\ProjectBrowser.cpp">
+      <Filter>Engine\Src\Editor\Launcher</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Launcher\ProjectCreator.cpp">
       <Filter>Engine\Src\Editor\Launcher</Filter>
     </ClCompile>
@@ -401,6 +404,9 @@
       <Filter>Engine\Src\EngineSystem</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\EngineSystem\PlaybackState.cpp">
+      <Filter>Engine\Src\EngineSystem</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\EngineSystem\Relaunch.cpp">
       <Filter>Engine\Src\EngineSystem</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\EngineSystem\Factory\CoreComponentFactory.cpp">
@@ -1710,6 +1716,9 @@
     <ClInclude Include="Engine\Src\Editor\Script\ScriptTemplate.h">
       <Filter>Engine\Src\Editor\Script</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Launcher\ProjectBrowser.h">
+      <Filter>Engine\Src\Editor\Launcher</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Launcher\ProjectCreator.h">
       <Filter>Engine\Src\Editor\Launcher</Filter>
     </ClInclude>
@@ -2005,6 +2014,9 @@
       <Filter>Engine\Src\EngineSystem\Factory</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\EngineSystem\PlaybackState.h">
+      <Filter>Engine\Src\EngineSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\EngineSystem\Relaunch.h">
       <Filter>Engine\Src\EngineSystem</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\EngineSystem\Settings\EditorSettingsSubsystem.h">
