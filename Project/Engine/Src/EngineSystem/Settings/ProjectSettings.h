@@ -15,6 +15,9 @@ namespace CoreEngine
     public:
         static ProjectSettings& Get();
 
+        /// @brief プロジェクトの名前（`name` が無ければプロジェクトのフォルダ名）
+        std::string GetProjectName() const;
+
         /// @brief 起動時に開くシーンの名前（決まっていなければ空）
         const std::string& GetInitialSceneName() const { return initialSceneName_; }
 
@@ -22,7 +25,7 @@ namespace CoreEngine
         /// @return 保存できたら true
         bool SetInitialSceneName(std::string sceneName);
 
-        /// @brief ファイルへ書き出す
+        /// @brief ファイルへ書き出す（ファイルにある他の項目は残す）
         bool Save() const;
 
         /// @brief ファイルから読み直す
@@ -34,6 +37,7 @@ namespace CoreEngine
         ProjectSettings(const ProjectSettings&) = delete;
         ProjectSettings& operator=(const ProjectSettings&) = delete;
 
+        std::string name_;
         std::string initialSceneName_;
     };
 }

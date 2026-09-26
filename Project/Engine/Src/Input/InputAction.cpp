@@ -18,8 +18,8 @@ namespace CoreEngine
         constexpr const char* kVersionKey = "version";
         constexpr const char* kVersion = "1.0";
 
-        /// @brief ファイルが無いときの並び（これまでエンジンが持っていたもの）
-        std::vector<InputActionDef> DefaultDefs()
+        /// @brief ファイルが無いときのゲームと UI の操作の並び
+        std::vector<InputActionDef> ProjectDefaultDefs()
         {
             return {
                 { "MoveForward", "前進",
@@ -50,11 +50,41 @@ namespace CoreEngine
                 // ポーズの開閉。開くのはゲーム中、閉じるのはメニュー中なので両方の場面に置く
                 { "Pause", "ポーズ", { "Key:Escape", "Gamepad:Start" },
                   InputContext::Game | InputContext::UI },
+            };
+        }
+
+        /// @brief エディタの操作の並び（エンジンが持ち、プロジェクトのファイルには書かない）
+        std::vector<InputActionDef> EditorDefs()
+        {
+            return {
                 { "EditorFocusSelection", "選択へ寄る", { "Key:F" }, InputContext::Editor },
                 { "EditorGizmoTranslate", "ギズモ：移動", { "Key:W" }, InputContext::Editor },
                 { "EditorGizmoRotate", "ギズモ：回転", { "Key:E" }, InputContext::Editor },
                 { "EditorGizmoScale", "ギズモ：拡縮", { "Key:R" }, InputContext::Editor },
             };
+        }
+
+        /// @brief エンジンが持つ操作か（エディタの場面だけの操作）
+        bool IsEngineOwned(const InputActionDef& def)
+        {
+            return def.contexts == InputContext::Editor;
+        }
+
+        /// @brief プロジェクトの操作の後ろにエディタの操作を並べる
+        /// @note プロジェクトの並びにあるエディタの場面だけの操作は、エンジンのものに置き換える
+        std::vector<InputActionDef> WithEditorDefs(std::vector<InputActionDef> defs)
+        {
+            std::erase_if(defs, IsEngineOwned);
+            for (InputActionDef& def : EditorDefs()) {
+                defs.push_back(std::move(def));
+            }
+            return defs;
+        }
+
+        /// @brief ファイルが無いときの並び
+        std::vector<InputActionDef> DefaultDefs()
+        {
+            return WithEditorDefs(ProjectDefaultDefs());
         }
 
         bool Validate(const std::vector<InputActionDef>& defs, std::string* outError)
@@ -137,13 +167,23 @@ namespace CoreEngine
             return loaded;
         }
 
+        /// @brief ファイルを読み、後ろにエディタの操作を並べる
+        /// @return ファイルが無いか壊れていれば既定の並び
+        std::vector<InputActionDef> LoadDefs()
+        {
+            std::vector<InputActionDef> loaded = ReadFile();
+            std::erase_if(loaded, IsEngineOwned);
+            if (loaded.empty()) {
+                return DefaultDefs();
+            }
+            loaded = WithEditorDefs(std::move(loaded));
+            // 壊れていたら既定へ倒す（ここはログの初期化より前に走りうる）
+            return Validate(loaded, nullptr) ? loaded : DefaultDefs();
+        }
+
         std::vector<InputActionDef>& Table()
         {
-            static std::vector<InputActionDef> defs = [] {
-                std::vector<InputActionDef> loaded = ReadFile();
-                // 壊れていたら既定へ倒す（ここはログの初期化より前に走りうる）
-                return Validate(loaded, nullptr) ? loaded : DefaultDefs();
-            }();
+            static std::vector<InputActionDef> defs = LoadDefs();
             return defs;
         }
 
@@ -158,6 +198,9 @@ namespace CoreEngine
 
             nlohmann::json actions = nlohmann::json::array();
             for (const InputActionDef& def : defs) {
+                if (IsEngineOwned(def)) {
+                    continue;
+                }
                 nlohmann::json entry;
                 entry["id"] = def.id;
                 entry["display"] = def.displayName;
@@ -191,6 +234,11 @@ namespace CoreEngine
 
     bool InputActions::SetAll(std::vector<InputActionDef> defs, std::string* outError)
     {
+        defs = WithEditorDefs(std::move(defs));
+        if (std::all_of(defs.begin(), defs.end(), IsEngineOwned)) {
+            if (outError) { *outError = "アクションが 1 つもありません"; }
+            return false;
+        }
         if (!Validate(defs, outError)) {
             return false;
         }
@@ -206,8 +254,7 @@ namespace CoreEngine
 
     void InputActions::Reload()
     {
-        std::vector<InputActionDef> loaded = ReadFile();
-        Table() = Validate(loaded, nullptr) ? std::move(loaded) : DefaultDefs();
+        Table() = LoadDefs();
     }
 
     std::string_view InputActionToString(InputAction action)
