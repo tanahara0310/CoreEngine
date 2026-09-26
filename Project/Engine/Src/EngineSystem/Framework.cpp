@@ -10,6 +10,9 @@
 #include "Graphics/Shader/Cache/ShaderManifest.h"
 #include "Utility/Profiler/CpuProfiler.h"
 #include "Diagnostics/EngineStats.h"
+#ifdef CORE_EDITOR
+#include "Editor/Launcher/ProjectLauncher.h"
+#endif
 #include <chrono>
 
 
@@ -127,6 +130,18 @@ namespace CoreEngine
         // この時点ではウィンドウを表示しない（WinApp::ShowMainWindow のコメント参照）
         winApp_ = std::make_unique<WinApp>();
         winApp_->Initialize(config.windowWidth, config.windowHeight, config.GetWindowTitleWide().c_str());
+
+#ifdef CORE_EDITOR
+        // 開くプロジェクトが決まっていなければ、ランチャーで選ぶ（閉じられたら終わる）
+        if (!ProjectPaths::IsProjectSpecified() && !Editor::ProjectLauncher::Run(*winApp_, config)) {
+            winApp_->CloseAppWindow();
+            winApp_.reset();
+#ifdef _DEBUG
+            leakChecker_.reset();
+#endif
+            return;
+        }
+#endif
 
         // エンジンとゲームの初期化を「1 ステップずつ進められる列」に組み立ててから回す。
         // 一息に実行するとその間メッセージポンプが回らず「応答なし」になるため

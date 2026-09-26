@@ -114,7 +114,33 @@ namespace CoreEngine
         }
 
         // DPIスケールを取得してフォントサイズに反映
-        float dpiScale = ImGui_ImplWin32_GetDpiScaleForHwnd(hwnd);
+        LoadFonts(ImGui_ImplWin32_GetDpiScaleForHwnd(hwnd));
+
+        ImGui_ImplWin32_Init(hwnd_);
+
+        // ImGui のフォント用スロットは DescriptorAllocator から正規に確保する
+        // （ヒープ先頭を決め打ちで使うと他の SRV と衝突する）
+        fontDescriptor_ = dxCommon_->GetDescriptorAllocator()->AllocateSRVHandle("ImGuiFont");
+        ImGui_ImplDX12_Init(
+            dxCommon_->GetDevice(),
+            static_cast<int>(swapChain.BufferCount()),
+            swapChain.RTVFormat(),
+            dxCommon_->GetSRVHeap(),
+            fontDescriptor_.cpuHandle,
+            fontDescriptor_.gpuHandle);
+
+        ImGui::GetIO().Fonts->GetTexDataAsRGBA32(nullptr, nullptr, nullptr);
+        ImGui_ImplDX12_CreateDeviceObjects(); // これがないとアクセス違反が起きる
+
+#ifdef CORE_EDITOR
+        // ProjectViewの初期化
+        projectView_->Initialize(dxCommon_);
+#endif
+    }
+
+    void ImGuiManager::LoadFonts(float dpiScale)
+    {
+        ImGuiIO& io = ImGui::GetIO();
         float baseFontSize = 12.0f;
 
         ImFontConfig config = {};
@@ -180,27 +206,6 @@ namespace CoreEngine
         } else {
             OutputDebugStringA("フォントファイルが存在しません: YuGothB.ttc\n");
         }
-
-        ImGui_ImplWin32_Init(hwnd_);
-
-        // ImGui のフォント用スロットは DescriptorAllocator から正規に確保する
-        // （ヒープ先頭を決め打ちで使うと他の SRV と衝突する）
-        fontDescriptor_ = dxCommon_->GetDescriptorAllocator()->AllocateSRVHandle("ImGuiFont");
-        ImGui_ImplDX12_Init(
-            dxCommon_->GetDevice(),
-            static_cast<int>(swapChain.BufferCount()),
-            swapChain.RTVFormat(),
-            dxCommon_->GetSRVHeap(),
-            fontDescriptor_.cpuHandle,
-            fontDescriptor_.gpuHandle);
-
-        ImGui::GetIO().Fonts->GetTexDataAsRGBA32(nullptr, nullptr, nullptr);
-        ImGui_ImplDX12_CreateDeviceObjects(); // これがないとアクセス違反が起きる
-
-#ifdef CORE_EDITOR
-        // ProjectViewの初期化
-        projectView_->Initialize(dxCommon_);
-#endif
     }
 
     void ImGuiManager::Begin([[maybe_unused]] PostEffectManager* postEffectManager, [[maybe_unused]] GameDebugUI* gameDebugUI)

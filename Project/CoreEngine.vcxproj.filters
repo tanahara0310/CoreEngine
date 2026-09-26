@@ -7,6 +7,12 @@
     <ClCompile Include="Engine\Src\Editor\Script\ScriptTemplate.cpp">
       <Filter>Engine\Src\Editor\Script</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Launcher\ProjectLauncher.cpp">
+      <Filter>Engine\Src\Editor\Launcher</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Launcher\ProjectList.cpp">
+      <Filter>Engine\Src\Editor\Launcher</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Project\AssetFileOperations.cpp">
       <Filter>Engine\Src\Editor\Project</Filter>
     </ClCompile>
@@ -1700,6 +1706,12 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Script\ScriptTemplate.h">
       <Filter>Engine\Src\Editor\Script</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Launcher\ProjectLauncher.h">
+      <Filter>Engine\Src\Editor\Launcher</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Launcher\ProjectList.h">
+      <Filter>Engine\Src\Editor\Launcher</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Project\AssetFileOperations.h">
       <Filter>Engine\Src\Editor\Project</Filter>
@@ -3849,6 +3861,9 @@
     </Filter>
     <Filter Include="Engine\Src\Editor\Inspector">
       <UniqueIdentifier>{D91ACD79-3D27-4C04-A842-DDF8B8F6CB73}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Editor\Launcher">
+      <UniqueIdentifier>{B8380931-089D-4B6D-91A4-3683D465330D}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Editor\Panel">
       <UniqueIdentifier>{6938F710-F7A9-40BD-B443-83ED9B008474}</UniqueIdentifier>
