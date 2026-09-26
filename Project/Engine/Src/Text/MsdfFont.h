@@ -66,8 +66,8 @@ namespace CoreEngine
         ///          最初から焼かれた状態で立ち上がる（□ が出る時間が消える）。
         bool writeBackRuntimeGlyphs = true;
 
-        /// @brief キャッシュの置き場所（作業ディレクトリからの相対でよい）
-        std::filesystem::path cacheDirectory = "Cache/FontCache";
+        /// @brief キャッシュの置き場所（相対ならエンジンの Intermediate から辿る）
+        std::filesystem::path cacheDirectory = "FontCache";
 
         /// @brief 空でなければアトラス 0 枚目を PNG に書き出す（目視確認用）
         std::filesystem::path debugAtlasDumpPath;
