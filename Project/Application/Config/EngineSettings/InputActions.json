@@ -158,38 +158,6 @@
                 "Key:Escape",
                 "Gamepad:Start"
             ]
-        },
-        {
-            "id": "EditorFocusSelection",
-            "display": "選択へ寄る",
-            "context": "Editor",
-            "defaults": [
-                "Key:F"
-            ]
-        },
-        {
-            "id": "EditorGizmoTranslate",
-            "display": "ギズモ：移動",
-            "context": "Editor",
-            "defaults": [
-                "Key:W"
-            ]
-        },
-        {
-            "id": "EditorGizmoRotate",
-            "display": "ギズモ：回転",
-            "context": "Editor",
-            "defaults": [
-                "Key:E"
-            ]
-        },
-        {
-            "id": "EditorGizmoScale",
-            "display": "ギズモ：拡縮",
-            "context": "Editor",
-            "defaults": [
-                "Key:R"
-            ]
         }
     ]
 }
