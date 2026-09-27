@@ -3,6 +3,8 @@
 
 #include "Utility/CVar/CVar.h"
 
+#include <algorithm>
+
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "winmm.lib")
 
@@ -22,6 +24,13 @@ namespace
 bool WinApp::QuitsOnEscape()
 {
     return cvQuitOnEscape.Get();
+}
+
+HMONITOR WinApp::GetPrimaryMonitor()
+{
+    // 主ディスプレイは仮想画面の原点 (0, 0) を含む
+    const POINT origin{ 0, 0 };
+    return MonitorFromPoint(origin, MONITOR_DEFAULTTOPRIMARY);
 }
 
 WinApp* WinApp::instance_ = nullptr;
@@ -73,6 +82,20 @@ void WinApp::CreateAppWindow(const wchar_t* title)
 
     RECT windowRect = { 0, 0, currentClientWidth_, currentClientHeight_ };
     AdjustWindowRect(&windowRect, style, FALSE);
+    const int windowWidth = windowRect.right - windowRect.left;
+    const int windowHeight = windowRect.bottom - windowRect.top;
+
+    // メインのモニター（主ディスプレイ）の作業領域の中央に置く。
+    // 後の全画面化はウィンドウのあるモニターを使うので、全画面もメインのモニターになる
+    int x = CW_USEDEFAULT;
+    int y = CW_USEDEFAULT;
+    MONITORINFO monitorInfo{};
+    monitorInfo.cbSize = sizeof(MONITORINFO);
+    if (GetMonitorInfo(GetPrimaryMonitor(), &monitorInfo)) {
+        const RECT& work = monitorInfo.rcWork;
+        x = work.left + (std::max)(0, static_cast<int>(work.right - work.left - windowWidth) / 2);
+        y = work.top + (std::max)(0, static_cast<int>(work.bottom - work.top - windowHeight) / 2);
+    }
 
     // ウィンドウの生成
     hwnd_ = CreateWindowEx(
@@ -80,10 +103,10 @@ void WinApp::CreateAppWindow(const wchar_t* title)
         wc_.lpszClassName,             // ウィンドウクラス名
         title,                         // タイトルバーの文字列
         style, // ウィンドウスタイル
-        CW_USEDEFAULT,                 // ウィンドウのX座標
-        CW_USEDEFAULT,                 // ウィンドウのY座標
-        windowRect.right - windowRect.left,   // ウィンドウの横幅
-        windowRect.bottom - windowRect.top,   // ウィンドウの縦幅
+        x,                             // ウィンドウのX座標
+        y,                             // ウィンドウのY座標
+        windowWidth,                   // ウィンドウの横幅
+        windowHeight,                  // ウィンドウの縦幅
         nullptr,                       // 親ウィンドウのハンドル
         nullptr,                       // メニューハンドル
         wc_.hInstance,                 // インスタンスハンドル

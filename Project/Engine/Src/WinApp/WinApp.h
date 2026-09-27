@@ -54,6 +54,10 @@ namespace CoreEngine
         /// @note ゲーム映像専用ウィンドウも同じアプリなので、そちらが前面でも true。
         static bool IsAppActive() { return appActive_; }
 
+        /// @brief メインのモニター（主ディスプレイ）
+        /// @note 起動の画面とメインウィンドウはここに出す。
+        static HMONITOR GetPrimaryMonitor();
+
         /// @brief 指定された幅、高さ、タイトルで初期化
         /// @note ここではウィンドウを表示しない。表示は起動シーケンス完了後の ShowMainWindow()
         void Initialize(int32_t width, int32_t height, const wchar_t* title);
