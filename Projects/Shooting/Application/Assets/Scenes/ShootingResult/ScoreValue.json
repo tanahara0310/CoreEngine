@@ -48,5 +48,6 @@
         }
     ],
     "id": "25d8043a01eadada",
-    "name": "ScoreValue"
+    "name": "ScoreValue",
+    "order": 10
 }

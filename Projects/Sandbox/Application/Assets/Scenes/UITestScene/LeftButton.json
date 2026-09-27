@@ -68,5 +68,6 @@
         }
     ],
     "id": "c91b0c05d16876a4",
-    "name": "LeftButton"
+    "name": "LeftButton",
+    "order": 9
 }

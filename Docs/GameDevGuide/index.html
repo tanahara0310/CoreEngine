@@ -959,37 +959,38 @@ a { color: var(--accent); }
 
 <pre><code>Scenes/
 └── MyGame/
-    ├── _scene.json        <span class="cm">どのオブジェクトを読むか</span>
-    ├── _environment.json  <span class="cm">空・雲・霧・ポストエフェクトの設定</span>
-    ├── MainCamera.json    <span class="cm">オブジェクト 1 個</span>
+    ├── _scene.json            <span class="cm">シーンの設定（床・当たり判定など）</span>
+    ├── _environment.json      <span class="cm">空・雲・霧・ポストエフェクトの設定</span>
+    ├── MainCamera.json        <span class="cm">オブジェクト 1 個</span>
     ├── Player.json
-    └── Coin.json</code></pre>
+    └── Coin_7f3a91c2.json     <span class="cm">エディタで作ったオブジェクト（名前の後ろに重ならない印）</span></code></pre>
 
-<p><strong>オブジェクト 1 個が JSON 1 つ</strong>です。これは意図した作りで、次の利点があります。</p>
+<p><strong>オブジェクト 1 個が JSON 1 つ</strong>です。フォルダにある JSON（名前が <code>_</code> で始まるものを除く）を全部読みます。これは意図した作りで、次の利点があります。</p>
 
 <ul>
   <li><strong>どのオブジェクトを誰が変えたか、差分で分かります</strong></li>
-  <li>2 人が別のオブジェクトを同時に変えても、マージで衝突しません</li>
+  <li>2 人が別のオブジェクトを同時に変えても、足しても消しても、マージで衝突しません</li>
   <li>1 つのオブジェクトをコピーして別のシーンへ持っていけます</li>
 </ul>
+
+<p>ファイル名は、そのオブジェクトを作ったときの名前です（あとで名前を変えてもファイル名は変わりません）。エディタで作ったオブジェクトには、ほかの人が同じ名前で作っても重ならないよう、後ろに印が付きます。並び順は各 JSON の <code>order</code>（小さい順。同じならファイル名の順）です。</p>
 
 <h4>_scene.json</h4>
 
 <div class="file">Assets/Scenes/MyGame/_scene.json</div>
 <pre><code>{
-    <span class="st">"objects"</span>: [
-        <span class="st">"MainCamera"</span>,
-        <span class="st">"Player"</span>,
-        <span class="st">"Coin"</span>
-    ],
-    <span class="st">"defaultGround"</span>: false
+    <span class="st">"defaultGround"</span>: false,
+    <span class="st">"collision"</span>: {
+        <span class="st">"pairs"</span>: [ [<span class="st">"Player"</span>, <span class="st">"Enemy"</span>] ]
+    }
 }</code></pre>
 
 <table>
   <tr><th>項目</th><th>意味</th></tr>
-  <tr><td><code>objects</code></td><td><strong>読む順番</strong>。上から順に作られる</td></tr>
   <tr><td><code>defaultGround</code></td><td>自動の床を出すか（省略すると出る）</td></tr>
+  <tr><td><code>collision</code></td><td>当たるレイヤーの組み合わせ（衝突マトリクス）</td></tr>
   <tr><td><code>features</code></td><td>シーン独自の機能（水面など。省略可）</td></tr>
+  <tr><td><code>cameraRig</code></td><td>シーンの開始時に動かすカメラリグ（省略可）</td></tr>
 </table>
 
 <div class="note ok">
@@ -1029,8 +1030,8 @@ a { color: var(--accent); }
 
 <ul>
   <li><strong>1 人 1 オブジェクトずつ触る。</strong> 同じ <code>Player.json</code> を 2 人で同時に変えなければ衝突しません</li>
-  <li><strong><code>_scene.json</code> は最後に合わせる。</strong> オブジェクトの追加・削除でここだけは触ります</li>
-  <li><strong><code>_environment.json</code> は担当を決める。</strong> 1 ファイルに全部入っているので、同時に触ると衝突します</li>
+  <li><strong>オブジェクトの追加・削除は自由。</strong> 触るのはそのオブジェクトの JSON だけで、<code>_scene.json</code> は変わりません</li>
+  <li><strong><code>_scene.json</code> と <code>_environment.json</code> は担当を決める。</strong> シーンの設定は 1 ファイルに入っているので、同時に触ると衝突します</li>
 </ul>
 
 <h3>オブジェクトとコンポーネント</h3>

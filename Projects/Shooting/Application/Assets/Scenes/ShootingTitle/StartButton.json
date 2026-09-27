@@ -68,5 +68,6 @@
         }
     ],
     "id": "3d564c035e5f582f",
-    "name": "StartButton"
+    "name": "StartButton",
+    "order": 14
 }

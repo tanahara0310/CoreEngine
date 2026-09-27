@@ -62,9 +62,10 @@ namespace CoreEngine
         json MakePrefabComponents(const GameObject& object);
 
         /// @brief プレハブからオブジェクトを 1 体作ってシーンへ登録する
+        /// @param serializeKey 保存キー（空なら名前から決める）
         /// @return プレハブを読めなければ nullptr
         GameObject* Instantiate(GameObjectManager& manager, const Reflection::AssetRefValue& prefab,
-                                const std::string& name);
+                                const std::string& name, const std::string& serializeKey = {});
 
         /// @brief `components` 配列を新しいプレハブファイルに書き出し、AssetDatabase へ登録する
         /// @param path プロジェクトの根からの相対パス（`Application/Assets/Prefabs/Rock.prefab` など）

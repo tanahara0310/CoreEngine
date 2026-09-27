@@ -68,5 +68,6 @@
         }
     ],
     "id": "fc7faf36c280d291",
-    "name": "RightButton"
+    "name": "RightButton",
+    "order": 10
 }

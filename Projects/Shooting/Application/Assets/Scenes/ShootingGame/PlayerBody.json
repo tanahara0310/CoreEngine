@@ -112,5 +112,6 @@
         }
     ],
     "id": "c6e9d04a7902f1cc",
-    "name": "PlayerBody"
+    "name": "PlayerBody",
+    "order": 8
 }

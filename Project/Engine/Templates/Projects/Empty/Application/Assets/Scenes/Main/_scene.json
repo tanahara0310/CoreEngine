@@ -7,9 +7,5 @@
             ]
         ]
     },
-    "defaultGround": true,
-    "objects": [
-        "Sun",
-        "MainCamera"
-    ]
+    "defaultGround": true
 }

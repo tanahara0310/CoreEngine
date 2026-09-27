@@ -90,5 +90,6 @@
         }
     ],
     "id": "231f854062e74de5",
-    "name": "PlayerCockpit"
+    "name": "PlayerCockpit",
+    "order": 10
 }

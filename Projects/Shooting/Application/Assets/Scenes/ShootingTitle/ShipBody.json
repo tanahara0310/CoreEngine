@@ -112,5 +112,6 @@
         }
     ],
     "id": "a3ff209f79eff757",
-    "name": "ShipBody"
+    "name": "ShipBody",
+    "order": 5
 }

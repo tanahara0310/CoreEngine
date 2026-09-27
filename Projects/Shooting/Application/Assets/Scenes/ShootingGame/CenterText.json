@@ -48,5 +48,6 @@
         }
     ],
     "id": "323c55beb0753cf3",
-    "name": "CenterText"
+    "name": "CenterText",
+    "order": 16
 }

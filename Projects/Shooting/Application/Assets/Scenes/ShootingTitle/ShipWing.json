@@ -112,5 +112,6 @@
         }
     ],
     "id": "931b4ff2b39efb90",
-    "name": "ShipWing"
+    "name": "ShipWing",
+    "order": 6
 }

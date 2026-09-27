@@ -48,5 +48,6 @@
         }
     ],
     "id": "c4c9fa50a7a2d4d5",
-    "name": "ScoreCaption"
+    "name": "ScoreCaption",
+    "order": 9
 }

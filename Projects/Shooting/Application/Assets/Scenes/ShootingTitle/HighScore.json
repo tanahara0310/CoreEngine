@@ -48,5 +48,6 @@
         }
     ],
     "id": "fa9f95be756c4b0d",
-    "name": "HighScore"
+    "name": "HighScore",
+    "order": 16
 }
