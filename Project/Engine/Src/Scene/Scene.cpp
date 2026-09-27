@@ -4,6 +4,7 @@
 #include "EngineSystem/PlaybackState.h"
 #include "Camera/CameraManager.h"
 #include "Camera/Camera.h"
+#include "Camera/Rig/CameraRig.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Scene/SceneManager.h"
@@ -166,6 +167,9 @@ namespace CoreEngine
             }
             settings.collisionPairs = std::move(pairs);
         }
+
+        // 保存した時点で動かしているリグを、このシーンの開始リグにする（動かしていなければ外す）
+        settings.cameraRig = CameraRig::GetActiveName();
 
         return settings;
     }

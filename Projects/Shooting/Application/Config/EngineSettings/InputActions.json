@@ -138,7 +138,8 @@
             "context": "UI",
             "defaults": [
                 "Key:Enter",
-                "Gamepad:A"
+                "Gamepad:A",
+                "Key:Space"
             ]
         },
         {

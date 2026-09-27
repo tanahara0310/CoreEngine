@@ -143,7 +143,7 @@ namespace CoreEngine
             const std::vector<std::string> scenes = SceneSaveSystem::ListSavedScenes();
             const std::string& current = settings.GetInitialSceneName();
 
-            UI::Hint("ゲームを起動したときに最初に開くシーンです。");
+            UI::Hint("ゲームを起動したときに最初に開くシーンです。エディタは前回開いていたシーンから始めます。");
 
             if (scenes.empty()) {
                 ImGui::TextColored(Editor::Theme::kError, "シーンが 1 つもありません");

@@ -23,6 +23,7 @@
 #include "Scene/SceneSaveSystem.h"
 #include "Editor/Command/EditorCommand.h"
 #include "Editor/Scene/EditorSceneAccess.h"
+#include "Editor/Scene/LastOpenedScene.h"
 #include "Editor/Scene/PrefabEditing.h"
 #include "Editor/ImGui/ObjectSelector.h"
 #include "Graphics/Asset/AssetInfo.h"
@@ -89,6 +90,11 @@ namespace CoreEngine
 
         // 読み込んだ直後のシーンは保存済みとして扱う
         savedRevision_ = Editor::EditorCommandStack::Get().GetSceneRevision();
+
+        // 編集で開いたシーンを、次にエディタを起動したときに開くシーンとして控える
+        if (!PlaybackStateManager::GetInstance().IsInPlayMode()) {
+            Editor::LastOpenedScene::Save(saveSystem_->GetSceneName());
+        }
 
         // カメラエディター側で追従対象を参照できるよう、オブジェクトマネージャーを注入する。
         if (cameraManager_) {
@@ -365,8 +371,7 @@ namespace CoreEngine
             scene->SaveSceneSettings();
         }
 
-        // カメラの構図もシーンの一部として一緒に保存する。
-        // これが無いと、エディタで詰めた画がアプリを閉じるたびに消える。
+        // エディタの視点を自分だけの状態として控える
         if (cameraManager_) {
             CameraSceneStateIO::Save(saveSystem_->GetSceneName(), *cameraManager_);
         }

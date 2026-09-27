@@ -166,7 +166,7 @@ namespace ColliderInspector
             changed = true;
         }
 
-        UI::Hint("ワイヤ表示は Engine Settings の r.Collision.DebugDraw で切り替える。");
+        UI::Hint("ワイヤ表示はツールバーの Collider（d.Collision.DebugDraw）で切り替える。");
         return changed;
     }
 }

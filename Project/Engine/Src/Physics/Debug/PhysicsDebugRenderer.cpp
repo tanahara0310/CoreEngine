@@ -16,47 +16,47 @@ namespace CoreEngine
         // CVar はファイルスコープの static で定義する（レジストリへの登録が起動時に済む）
 
         CVar<bool> cvDebugDraw{
-            "sys.Physics.DebugDraw", false,
+            "d.Physics.DebugDraw", false,
             "剛体の速度と接触点を線で表示する" };
 
         CVar<bool> cvDrawVelocity{
-            "sys.Physics.DebugDrawVelocity", true,
+            "d.Physics.DebugDrawVelocity", true,
             "速度と角速度の向きを描く" };
 
         CVar<bool> cvDrawContacts{
-            "sys.Physics.DebugDrawContacts", true,
+            "d.Physics.DebugDrawContacts", true,
             "接触点と法線を描く" };
 
         CVar<float> cvVelocityScale{
-            "sys.Physics.DebugVelocityScale", 0.15f,
+            "d.Physics.DebugVelocityScale", 0.15f,
             "速度 1m/s を何 m の線で描くか", CVarRange{ 0.01f, 2.0f } };
 
         CVar<float> cvNormalLength{
-            "sys.Physics.DebugNormalLength", 0.4f,
+            "d.Physics.DebugNormalLength", 0.4f,
             "接触法線の長さ（m）", CVarRange{ 0.05f, 3.0f } };
 
         CVar<float> cvMarkerSize{
-            "sys.Physics.DebugMarkerSize", 0.12f,
+            "d.Physics.DebugMarkerSize", 0.12f,
             "接触点と眠りの印の大きさ（m）", CVarRange{ 0.02f, 1.0f } };
 
         CVar<Vector3> cvColorVelocity{
-            "sys.Physics.DebugColorVelocity", Vector3{ 0.30f, 0.95f, 0.45f },
+            "d.Physics.DebugColorVelocity", Vector3{ 0.30f, 0.95f, 0.45f },
             "速度の線の色" };
 
         CVar<Vector3> cvColorSpin{
-            "sys.Physics.DebugColorSpin", Vector3{ 0.95f, 0.85f, 0.25f },
+            "d.Physics.DebugColorSpin", Vector3{ 0.95f, 0.85f, 0.25f },
             "角速度の線の色" };
 
         CVar<Vector3> cvColorContact{
-            "sys.Physics.DebugColorContact", Vector3{ 0.95f, 0.45f, 0.15f },
+            "d.Physics.DebugColorContact", Vector3{ 0.95f, 0.45f, 0.15f },
             "接触点と法線の色" };
 
         CVar<Vector3> cvColorSleeping{
-            "sys.Physics.DebugColorSleeping", Vector3{ 0.45f, 0.50f, 0.60f },
+            "d.Physics.DebugColorSleeping", Vector3{ 0.45f, 0.50f, 0.60f },
             "眠っている剛体の印の色" };
 
         CVar<float> cvLineAlpha{
-            "sys.Physics.DebugLineAlpha", 0.9f,
+            "d.Physics.DebugLineAlpha", 0.9f,
             "線の不透明度", CVarRange{ 0.0f, 1.0f } };
 
         /// @brief 3 軸に伸びる十字を足す

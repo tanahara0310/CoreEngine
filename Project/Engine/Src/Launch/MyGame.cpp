@@ -7,6 +7,9 @@
 #include "EngineSystem/Settings/ProjectSettings.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Utility/Logger/Logger.h"
+#ifdef CORE_EDITOR
+#include "Editor/Scene/LastOpenedScene.h"
+#endif
 
 #include <algorithm>
 #include <string>
@@ -26,10 +29,19 @@ void MyGame::Initialize()
 std::string MyGame::ResolveInitialSceneName()
 {
     const std::vector<std::string> scenes = CoreEngine::SceneSaveSystem::ListSavedScenes();
-    const std::string& wanted = CoreEngine::ProjectSettings::Get().GetInitialSceneName();
+    const auto exists = [&scenes](const std::string& name) {
+        return !name.empty() && std::find(scenes.begin(), scenes.end(), name) != scenes.end();
+    };
 
-    if (!wanted.empty()
-        && std::find(scenes.begin(), scenes.end(), wanted) != scenes.end()) {
+#ifdef CORE_EDITOR
+    // エディタは前回開いていたシーンから始める
+    if (const std::string last = CoreEngine::Editor::LastOpenedScene::Load(); exists(last)) {
+        return last;
+    }
+#endif
+
+    const std::string& wanted = CoreEngine::ProjectSettings::Get().GetInitialSceneName();
+    if (exists(wanted)) {
         return wanted;
     }
     // 設定が空か、指していたシーンが消えている。開けるものを出しておく

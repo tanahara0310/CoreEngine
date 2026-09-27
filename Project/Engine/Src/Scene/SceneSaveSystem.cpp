@@ -711,6 +711,9 @@ namespace CoreEngine
                 settings.collisionPairs = std::move(parsed);
             }
         }
+        if (const auto rig = manifest.find("cameraRig"); rig != manifest.end() && rig->is_string()) {
+            settings.cameraRig = rig->get<std::string>();
+        }
         return settings;
     }
 
@@ -752,6 +755,12 @@ namespace CoreEngine
             manifest["collision"] = json{ { "pairs", std::move(pairs) } };
         } else {
             manifest.erase("collision");
+        }
+
+        if (settings.cameraRig.empty()) {
+            manifest.erase("cameraRig");
+        } else {
+            manifest["cameraRig"] = settings.cameraRig;
         }
 
         jm.SaveJson(GetManifestPath(), manifest);

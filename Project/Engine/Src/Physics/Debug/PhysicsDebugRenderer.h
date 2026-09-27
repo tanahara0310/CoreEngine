@@ -6,7 +6,7 @@ namespace CoreEngine
 {
 class PhysicsWorld;
 
-/// @brief 剛体の速度・接触点・眠りのワイヤ表示（`sys.Physics.DebugDraw` で切り替え）。
+/// @brief 剛体の速度・接触点・眠りのワイヤ表示（`d.Physics.DebugDraw` で切り替え）。
 /// @details `PhysicsFeature` が所有して Line パスへ登録し、`PhysicsWorld` の状態を毎フレーム描く。
 class PhysicsDebugRenderer : public ILineSource {
 public:
