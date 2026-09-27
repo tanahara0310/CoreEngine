@@ -382,7 +382,7 @@ a { color: var(--accent); }
     <tr><th>対象</th><td>CoreEngine（<code>C:\CoreEngine</code>）でゲームを作る人</td></tr>
     <tr><th>前提</th><td>C++ の知識は不要。プログラミングの基礎（変数・条件分岐・繰り返し）があること</td></tr>
     <tr><th>根拠</th><td>この文書の仕様は、エンジンのソースと実機の動作から確認したものです。コード例はすべて実際にコンパイルして確かめています</td></tr>
-    <tr><th>改訂</th><td>2026-09-25　初版<br>2026-09-26　プロジェクトの分割（選ぶ画面・新規作成・書き出し）に合わせて直した</td></tr>
+    <tr><th>改訂</th><td>2026-09-25　初版<br>2026-09-26　プロジェクトの分割（選ぶ画面・新規作成・書き出し）に合わせて直した<br>2026-09-28　「チームで作る」の章を足した（共有と自分だけの分け方・担当・名前・pull と保存・衝突の直し方）</td></tr>
   </table>
 </div>
 
@@ -1026,14 +1026,9 @@ a { color: var(--accent); }
   <tr><td>全部のシーンを今の書き方で保存し直す（エンジンの保存の書き方が変わったとき）</td><td>File → すべてのシーンと設定を保存し直す…</td></tr>
 </table>
 
-<h4>複数人で作るときの取り決め</h4>
+<h4>複数人で作るとき</h4>
 
-<ul>
-  <li><strong>1 人 1 オブジェクトずつ触る。</strong> 同じ <code>Player.json</code> を 2 人で同時に変えなければ衝突しません</li>
-  <li><strong>オブジェクトの追加・削除は自由。</strong> 触るのはそのオブジェクトの JSON だけで、<code>_scene.json</code> は変わりません</li>
-  <li><strong>エディタを開いたまま pull してよい。</strong> 外でシーンのファイルが変わると、エディタが読み直します（保存していない変更があるときは、読み直すか続けるかを聞きます）。保存でほかの人の変更を消してしまうときは、保存を止めて聞きます</li>
-  <li><strong><code>_scene.json</code> と <code>_environment.json</code> は担当を決める。</strong> シーンの設定は 1 ファイルに入っているので、同時に触ると衝突します</li>
-</ul>
+<p>別々のオブジェクトなら、何人で同時に足しても消しても変えても衝突しません。<code>_scene.json</code> と <code>_environment.json</code> は担当を決めます。pull と保存のときにエディタが何をするかは、<a href="#team">チームで作る</a>にまとめてあります。</p>
 
 <h3>オブジェクトとコンポーネント</h3>
 
@@ -1175,8 +1170,8 @@ a { color: var(--accent); }
 
 <div class="note">
   <span class="label">名前の衝突を防ぐ方法</span>
-  <p>ファイル名とクラス名を揃えておけば、ファイル名は重複しないのでクラス名も衝突しません。ずれていると警告が出ます。</p>
-  <p><code>namespace</code> は文法としては通りますが、<strong>コンポーネントの型は名前空間を含まない素の名前で登録される</strong>ため、コンポーネントの名前分けには使えません。ヘルパー関数や非コンポーネントのクラスには有効です。</p>
+  <p>ファイル名とクラス名を揃えておけば、同じフォルダの中では衝突しません（ずれていると警告が出ます）。<strong>フォルダが違うと同じファイル名を置けるので、クラス名も重なり得ます。</strong> 頭に機能の名前を付けて防ぎます（<a href="#team">チームで作る</a>）。</p>
+  <p><code>namespace</code> は文法としては通りますが、<strong>コンポーネントの型は名前空間を含まない素の名前で登録される</strong>ため、コンポーネントの名前分けには使えません。名前空間違いで同じ名前のコンポーネントがあると、ファイル名とクラス名が同じ方が使われ、もう片方は使えません（コンソールに両方のファイルが出ます）。ヘルパー関数や非コンポーネントのクラスには有効です。</p>
 </div>
 
 <h4>基本の形</h4>
@@ -1427,7 +1422,7 @@ made.Destroy();         <span class="cm">// 他のもの</span></code></pre>
   <p><code>Destroy()</code> を呼んだ後は <code>isAlive</code> が <code>false</code> になります。持ち続けるなら <code>if (target !is null &amp;&amp; target.isAlive)</code> で確かめてください。</p>
 </div>
 
-<h3>ホットリロードと部分差し戻し</h3>
+<h3 id="hot-reload">ホットリロードと部分差し戻し</h3>
 
 <p>エディタのあるビルドでは、<strong><code>.as</code> を保存した瞬間に読み直します。</strong> 再生を止める必要はありません。</p>
 
@@ -1493,6 +1488,8 @@ made.Destroy();         <span class="cm">// 他のもの</span></code></pre>
   <tr><td><code>Collision</code></td><td><code>Start</code> <code>Update</code> と当たり判定の関数</td></tr>
   <tr><td><code>Empty</code></td><td>クラスだけ</td></tr>
 </table>
+
+<p>ほかのフォルダも含めて同じ名前の <code>.as</code> があるときと、同じ名前のコンポーネント（エンジンのものかスクリプトのもの）があるときは、作らずに理由を出します。</p>
 
 <p>雛形はエンジンの <code>Engine/Templates/Scripts/*.as.txt</code>（どのプロジェクトでも出るもの）にあります。<strong>プロジェクトの <code>Application/Config/ScriptTemplates/</code> にファイルを足せば、そのプロジェクトだけ選択肢が増えます</strong>（同じ名前ならプロジェクトのものを使います）。中の <code>{CLASS}</code> がクラス名に置き換わります。</p>
 
@@ -2666,6 +2663,154 @@ Scene::ChangeScene(<span class="st">"Result"</span>);
 <pre><code>{
     <span class="st">"initialScene"</span>: <span class="st">"Title"</span>,</code></pre>
 
+<h2 id="team">チームで作る</h2>
+
+<p>プロジェクトは <strong>git で共有して、何人かで同時に作れます。</strong> ファイルはそのための分け方にしてあるので、この章の決まりを守れば、同じシーンを触っていてもほとんど衝突しません。</p>
+
+<h3>共有するものと自分だけのもの</h3>
+
+<table>
+  <tr><th>場所</th><th>中身</th><th>git</th></tr>
+  <tr><td><code>Application/Assets/</code></td><td>シーン・スクリプト・プレハブ・モデル・画像</td><td>共有する</td></tr>
+  <tr><td><code>Application/Config/</code></td><td>名前・起動シーン・入力アクション・レイヤー・プロジェクト全体の設定（CVar）</td><td>共有する</td></tr>
+  <tr><td><code>Application/Saved/</code></td><td>Scene ビューの視点・最後に開いたシーン・キーの割り当て・エディタの配置・設定の控え・サムネイル・ゲームのセーブデータ</td><td><strong>自分だけ</strong>（<code>.gitignore</code> で外してある）</td></tr>
+  <tr><td><code>Intermediate/</code></td><td>ログ・テクスチャのキャッシュ</td><td>外してある（作り直せる）</td></tr>
+  <tr><td><code>Build/</code></td><td>書き出したゲーム</td><td>外してある</td></tr>
+</table>
+
+<p>Scene ビューの視点は、シーンごとに <code>Saved/EditorSettings/SceneViews/&lt;シーン名&gt;.json</code> へ保存します。<strong>ほかの人がシーンを保存しても、自分の視点は動きません。</strong> 最後に開いたシーン（<code>Saved/EditorSettings/LastScene.json</code>）とキーの割り当て（<code>Saved/keybindings.json</code>）も自分だけのものです。</p>
+
+<h3>誰が何を持つか</h3>
+
+<p>git は、<strong>別々のファイルなら何人が同時に変えても自動でまとめます。</strong> 衝突するのは、同じファイルの近いところを 2 人が変えたときだけです。</p>
+
+<table>
+  <tr><th>ファイル</th><th>中身</th><th>決まり</th></tr>
+  <tr><td>オブジェクトの JSON（<code>Scenes/MyGame/Player.json</code> など）</td><td>オブジェクト 1 個</td><td><strong>自由。</strong> 足す・消すも自由。同じオブジェクトを 2 人で同時に変えなければ衝突しない</td></tr>
+  <tr><td><code>_scene.json</code></td><td>床・当たるレイヤーの組み合わせ・Feature・カメラリグ</td><td>担当を決める</td></tr>
+  <tr><td><code>_environment.json</code></td><td>空・雲・霧・ポストエフェクト</td><td>担当を決める</td></tr>
+  <tr><td><code>_cloudPaint.bin</code></td><td>雲の配置ペイント</td><td>担当を決める（<strong>バイナリなので git がまとめられない</strong>）</td></tr>
+  <tr><td><code>Config/EngineSettings/*.json</code></td><td>起動シーン・入力アクション・レイヤー・プロジェクト全体の設定</td><td>担当を決める</td></tr>
+  <tr><td>スクリプト（<code>.as</code>）・プレハブ（<code>.prefab</code>）</td><td>クラス 1 つ・プレハブ 1 つ</td><td>作った人が持つ</td></tr>
+  <tr><td>モデル・画像</td><td>素材</td><td>作った人が持つ（<strong>バイナリなので git がまとめられない</strong>）</td></tr>
+</table>
+
+<div class="note">
+  <span class="label">担当はファイルごとに 1 人</span>
+  <p>「<code>_environment.json</code> は A さん、<code>InputActions.json</code> は B さん」のように決めます。担当でない人が変えたくなったら、担当の人に頼みます。</p>
+</div>
+
+<h3>名前の付け方</h3>
+
+<h4>オブジェクト</h4>
+
+<p>エディタで作ったオブジェクトのファイル名には、後ろに印が付きます（<code>Coin_7f3a91c2.json</code>）。<strong>2 人が同じ名前でオブジェクトを作っても、ファイルは重なりません。</strong></p>
+
+<p>インスペクタで繋いだ参照（<code>[ObjectRef]</code>）は、名前ではなくオブジェクトの ID を覚えています。名前が重なっても繋ぎ先は変わりません。<strong><code>owner.FindObject("名前")</code> で探すオブジェクトだけは、シーンに 1 つにしてください。</strong> 同じ名前が 2 つあると、思った方が返るとは限りません。</p>
+
+<h4>スクリプトのクラス</h4>
+
+<p><strong>クラス名は、フォルダが違ってもプロジェクト全体で 1 つです。</strong> <code>.as</code> を全部まとめてコンパイルするので、<code>Enemies/Enemy.as</code> と <code>Boss/Enemy.as</code> の両方に <code>class Enemy</code> があると、コンパイルできません。</p>
+
+<ul>
+  <li><strong>頭に機能の名前を付けます。</strong> 見本のシューティングは <code>ShootingPlayer</code> <code>ShootingEnemy</code> のように、全部に <code>Shooting</code> を付けています</li>
+  <li><strong>Project ビューの「スクリプトを作成…」から作ります。</strong> ほかのフォルダに同じ名前の <code>.as</code> があるときや、同じ名前のコンポーネント（エンジンの <code>Rigidbody</code> なども）があるときは、作らずに理由を出します</li>
+</ul>
+
+<p>それでもぶつかったとき（2 人が同じ名前を同時に作り、pull で出会ったときなど）は、コンソールに<strong>両方の場所</strong>が出ます。</p>
+
+<pre><code>Shooting/Enemy.as(3, 7) : Name conflict. 'Enemy' is a class.
+スクリプトのコンパイルに失敗しました（14 ファイル）
+クラス Enemy が 2 か所で宣言されています（Boss/Enemy.as 3 行目・Shooting/Enemy.as 3 行目）。…</code></pre>
+
+<p><strong>まだシーンで使っていない方</strong>の、ファイル名とクラス名を変えてください。シーンの JSON はコンポーネントを型の名前（<code>"type": "Enemy"</code>）で覚えています。使っている方を変えると、そのコンポーネントは「読み込めない型」になります（値は残るので、名前を戻せば元に戻ります）。</p>
+
+<h3>pull と保存</h3>
+
+<h4>いつもの流れ</h4>
+
+<ol>
+  <li><strong>作業の前に pull</strong> します。エディタは開いたままでかまいません</li>
+  <li>作業して <kbd>Ctrl</kbd>+<kbd>S</kbd> で保存します</li>
+  <li><strong>シーンのフォルダを丸ごと commit</strong> します。消したオブジェクトは JSON が消えているので、その削除も一緒に入れます</li>
+  <li>もう一度 pull してから push します</li>
+</ol>
+
+<h4>エディタを開いたまま pull したとき</h4>
+
+<p>エディタは、開いているシーンのフォルダを 1 秒ごとに見ています（再生中は見ず、止めたときに確かめます）。外でファイルが変わっていたら、次のようにします。</p>
+
+<table>
+  <tr><th>自分の状態</th><th>エディタがすること</th></tr>
+  <tr><td>保存していない変更が無い</td><td><strong>何も聞かずに読み直します。</strong> Scene ビューの視点はそのままです</td></tr>
+  <tr><td>保存していない変更がある</td><td>「外でシーンのファイルが変わりました」と、変わったファイルの一覧を出して聞きます</td></tr>
+</table>
+
+<dl class="spec">
+  <dt>このまま続ける</dt>
+  <dd>自分の変更を残して作業を続けます。あとで保存したとき、<strong>自分が変えていないファイルは外のもの（ほかの人の変更）を残します。</strong> 自分も変えたファイルは、保存のときに確かめます。</dd>
+
+  <dt>読み直す（自分の変更は捨てる）</dt>
+  <dd>ファイルから読み直します。保存していない自分の変更は消えます。</dd>
+</dl>
+
+<p>スクリプト（<code>.as</code>）は、pull で変わると自動でコンパイルし直します（<a href="#hot-reload">ホットリロード</a>）。</p>
+
+<h4>保存でほかの人の変更を消しそうなとき</h4>
+
+<p><strong>自分も変えたファイルを、ほかの人も変えていたら</strong>、書く前に「ほかの人の変更とぶつかります」と聞きます。自分が変えていないファイルは、黙って外のものを残します。</p>
+
+<table>
+  <tr><th>ボタン</th><th>すること</th></tr>
+  <tr><td>保存をやめる</td><td>何も書きません</td></tr>
+  <tr><td>読み直す</td><td>ほかの人の変更を読み込みます。保存していない自分の変更は消えます</td></tr>
+  <tr><td>上書きして保存</td><td>自分の値で書きます。<strong>そのファイルへのほかの人の変更は消えます</strong></td></tr>
+</table>
+
+<p>保存で JSON を消すのは、<strong>自分がエディタで消したオブジェクトだけ</strong>です。ほかの人が足したオブジェクトの JSON は消しません。</p>
+
+<h3>エンジンを更新したあと</h3>
+
+<p>エンジンの保存の書き方が変わると、シーンを開いて保存しただけで、触っていないオブジェクトの JSON まで書き換わることがあります。そのままだと、みんなの差分に関係の無い行が混ざります。</p>
+
+<ol>
+  <li><strong>1 人が</strong> File → すべてのシーンと設定を保存し直す… を実行します</li>
+  <li>その変更<strong>だけ</strong>で commit して push します</li>
+  <li>ほかの人は、自分の作業を commit してから pull します</li>
+</ol>
+
+<p>コマンドからも実行できます。全部のシーンを保存し直すと、エディタは自分で閉じます。</p>
+
+<pre><code>C:\CoreEngine\generated\CoreEngine\outputs\Development\CoreEngine.exe --project C:\CoreEngine\Projects\MyGame --resave-scenes</code></pre>
+
+<p>一度保存し直したあとは、もう一度実行しても差分は出ません。</p>
+
+<h3>衝突したら</h3>
+
+<table>
+  <tr><th>ファイル</th><th>直し方</th></tr>
+  <tr><td>オブジェクトの JSON・<code>_scene.json</code>・<code>_environment.json</code></td><td>テキストなので、どちらかを選ぶか、手で合わせます。<strong>git の印（<code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code> など）が残ったまま</strong>だと、そのオブジェクトは読み込みのときにエラーで飛ばされます（コンソールにファイルの名前が出ます）</td></tr>
+  <tr><td>バイナリ（<code>_cloudPaint.bin</code>・画像・モデル）</td><td>まとめられないので、<strong>どちらか一方</strong>を選びます</td></tr>
+</table>
+
+<pre><code>git checkout --ours   -- &lt;ファイル&gt;   <span class="cm">自分のものを残す</span>
+git checkout --theirs -- &lt;ファイル&gt;   <span class="cm">相手のものを残す</span>
+git add &lt;ファイル&gt;</code></pre>
+
+<div class="note warn">
+  <span class="label">rebase のときは ours と theirs が逆</span>
+  <p><code>git pull --rebase</code> の途中では、<code>--ours</code> が相手（取り込んだ側）、<code>--theirs</code> が自分になります。</p>
+</div>
+
+<h3>できないこと</h3>
+
+<ul>
+  <li><strong>同じオブジェクトを 2 人で同時に変えると衝突します。</strong> 1 個のオブジェクトは 1 ファイルなので、エンジンでは防げません</li>
+  <li><strong>バイナリはまとめられません。</strong> 雲の配置ペイント・画像・モデルは、担当を決めて 1 人ずつ変えます</li>
+  <li><strong>大きな素材を何度も上書きすると、リポジトリが重くなります。</strong> git は古い版もすべて持ち続けます（Git LFS は使っていません）。仮の素材で作り、本番の素材は数を絞って入れます</li>
+  <li><strong>設定のファイルは、別々の項目を変えても同じファイルです。</strong> 近い行を変えると衝突するので、担当を決めます</li>
+</ul>
+
 <h2>エラーと対処</h2>
 
 <h3>壊れたことに気づく</h3>
@@ -2720,7 +2865,11 @@ Scene::ChangeScene(<span class="st">"Result"</span>);
 
 <h4>Name conflict. 'X' is a class</h4>
 
-<p><strong>同じクラス名が 2 つあります。</strong> <code>.as</code> は全部まとめてコンパイルされるので、クラス名はプロジェクト全体で一意である必要があります。ファイル名とクラス名を揃えておけば起きません。</p>
+<p><strong>同じクラス名が 2 つあります。</strong> <code>.as</code> は全部まとめてコンパイルされるので、クラス名はフォルダが違ってもプロジェクト全体で 1 つにします。このエラーは後から読んだ方のファイルにしか出ませんが、続けて<strong>両方の場所</strong>が出ます。</p>
+
+<pre><code>クラス Enemy が 2 か所で宣言されています（Boss/Enemy.as 3 行目・Shooting/Enemy.as 3 行目）。…</code></pre>
+
+<p>エンジンの型（<code>Transform</code> など）と同じ名前だと <code>Name conflict. 'X' is an extended data type.</code> になり、続けて「エンジンの型と同じ名前なので使えません」と出ます。直し方は<a href="#team">チームで作る</a>を見てください。</p>
 
 <h4>Null pointer access（実行中に出る）</h4>
 
