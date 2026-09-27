@@ -3,6 +3,7 @@
 
 #ifdef CORE_EDITOR
 
+#include "GameObject/Component/Core/ComponentFactory.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
 
@@ -77,6 +78,22 @@ namespace CoreEngine::Editor::ScriptTemplate
             const std::filesystem::path normalized = relativeFolder.lexically_normal();
             const std::filesystem::path fromRoot = normalized.lexically_relative(root);
             return !fromRoot.empty() && *fromRoot.begin() != "..";
+        }
+
+        /// @brief スクリプトのフォルダ全体から `<className>.as` を探す
+        /// @return 見つけたファイルのフルパス（無ければ空）
+        std::filesystem::path FindScriptByClassName(const std::filesystem::path& scriptRoot,
+                                                    const std::string& className)
+        {
+            std::error_code ec;
+            for (auto it = std::filesystem::recursive_directory_iterator(scriptRoot, ec);
+                 !ec && it != std::filesystem::recursive_directory_iterator(); it.increment(ec)) {
+                if (it->is_regular_file(ec) && it->path().extension() == ".as" &&
+                    it->path().stem() == className) {
+                    return it->path();
+                }
+            }
+            return {};
         }
     }
 
@@ -183,6 +200,16 @@ namespace CoreEngine::Editor::ScriptTemplate
         const std::filesystem::path path = directory / (className + ".as");
         if (std::filesystem::exists(path, ec)) {
             return fail("同じ名前のスクリプトがもうあります");
+        }
+
+        // クラス名はフォルダが違ってもスクリプト全体で 1 つにする
+        const std::filesystem::path scriptRoot = ProjectPaths::Resolve(GetScriptRoot().generic_string());
+        if (const std::filesystem::path existing = FindScriptByClassName(scriptRoot, className); !existing.empty()) {
+            return fail("同じ名前のスクリプトが " +
+                        Logger::GetInstance().PathToUtf8(existing.lexically_relative(scriptRoot)) + " にあります");
+        }
+        if (ComponentFactory::Get().IsRegistered(className)) {
+            return fail("同じ名前のコンポーネント " + className + " がもうあります");
         }
 
         std::string text = FallbackText();
