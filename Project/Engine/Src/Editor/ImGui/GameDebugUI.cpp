@@ -689,11 +689,15 @@ namespace CoreEngine
         ImGui::Separator();
 
         if (ImGui::Button("保存して続ける")) {
-            if (sceneDebugEditor_) {
-                sceneDebugEditor_->SaveScene();
-            }
             ImGui::CloseCurrentPopup();
-            RunPendingSceneAction();
+            if (!sceneDebugEditor_ || sceneDebugEditor_->SaveScene()) {
+                RunPendingSceneAction();
+            } else {
+                // 保存できなかった（外の変更とぶつかったなど）ので、待たせていた操作はやめる
+                pendingSceneAction_ = PendingSceneAction::None;
+                pendingSceneName_.clear();
+                pendingProjectFolder_.clear();
+            }
         }
         UI::SameLine();
         if (ImGui::Button("保存せずに続ける")) {
@@ -953,6 +957,7 @@ namespace CoreEngine
         gameExportDialog_.Draw();
         sceneResaveDialog_.Draw(sceneManager_, sceneDebugEditor_,
             engine_ ? engine_->GetSubsystem<EditorSettingsSubsystem>() : nullptr);
+        sceneFileDialogs_.Draw(sceneDebugEditor_);
         DrawUnsavedChangesDialog();
 
         if (showConsole_) ShowConsoleUI();

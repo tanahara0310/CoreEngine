@@ -77,6 +77,8 @@ namespace CoreEngine
 
         const SceneSaveSystem::ManifestSettings settings =
             SceneSaveSystem::LoadManifestSettings(GetSceneName());
+        // 読んだ中身を、外の変更を見分けるための控えにする
+        SceneSaveSystem::RememberSettingsFile(GetSceneName(), SceneSaveSystem::kManifestFileName);
         Logger& log = Logger::GetInstance();
 
         if (settings.defaultGround) {
@@ -176,13 +178,28 @@ namespace CoreEngine
         return settings;
     }
 
-    void Scene::SaveSceneSettings()
+    void Scene::SaveSceneSettings(bool overwrite)
     {
         if (!sceneSaveSystem_ || GetSceneName().empty()) {
             return;
         }
-        sceneSaveSystem_->SaveManifestSettings(CollectManifestSettings());
-        SceneEnvironmentIO::Save(GetSceneName());
+        sceneSaveSystem_->SaveManifestSettings(CollectManifestSettings(), overwrite);
+        SceneEnvironmentIO::Save(GetSceneName(), overwrite);
+    }
+
+    std::vector<std::string> Scene::CheckSceneSettingsConflicts() const
+    {
+        std::vector<std::string> conflicts;
+        if (!sceneSaveSystem_ || GetSceneName().empty()) {
+            return conflicts;
+        }
+        if (sceneSaveSystem_->CheckManifestSettings(CollectManifestSettings()) == SceneSaveSystem::FileWrite::Conflict) {
+            conflicts.emplace_back(SceneSaveSystem::kManifestFileName);
+        }
+        if (SceneEnvironmentIO::HasConflict(GetSceneName())) {
+            conflicts.emplace_back(SceneEnvironmentIO::kFileName);
+        }
+        return conflicts;
     }
 
     void Scene::RunPostSceneInitialize()
