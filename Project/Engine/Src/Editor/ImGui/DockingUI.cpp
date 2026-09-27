@@ -27,7 +27,7 @@ namespace CoreEngine
         constexpr float kProjectRatio = 0.40f;   // Project（左列の高さに対して）
 
         /// コライダー表示の切り替え先
-        constexpr const char* kColliderCVar = "r.Collision.DebugDraw";
+        constexpr const char* kColliderCVar = "d.Collision.DebugDraw";
 
         /// @brief bool の CVar を Undo に積んで書き換える
         void SetBoolCVar(const char* name, bool value)
@@ -384,7 +384,7 @@ namespace CoreEngine
         ImGui::SameLine();
         const bool collider = GetBoolCVar(kColliderCVar);
         if (UI::Bar::Button("◍ Collider", collider,
-            "当たり判定の形を描く（r.Collision.DebugDraw）")) {
+            "当たり判定の形を描く（d.Collision.DebugDraw）")) {
             SetBoolCVar(kColliderCVar, !collider);
         }
 #endif

@@ -2,7 +2,6 @@
 #include "CameraSceneStateIO.h"
 
 #include "Camera/Camera.h"
-#include "Camera/Rig/CameraRig.h"
 #include "Camera/CameraManager.h"
 #include "Utility/JsonManager/JsonManager.h"
 
@@ -12,8 +11,8 @@ namespace CoreEngine
 {
     namespace
     {
-        /// @brief シーンフォルダ（SceneSaveSystem がオブジェクトを置く場所と同じ）
-        constexpr const char* kSceneRoot = "Application/Assets/Scenes/";
+        /// @brief シーンごとのエディタの視点を置くフォルダ（自分だけの状態）
+        constexpr const char* kViewRoot = "Application/Saved/EditorSettings/SceneViews/";
 
         json SnapshotToJson(const CameraSnapshot& snapshot)
         {
@@ -59,7 +58,7 @@ namespace CoreEngine
 
     std::string CameraSceneStateIO::GetFilePath(const std::string& sceneName)
     {
-        return (std::filesystem::path(kSceneRoot) / sceneName / "_camera.json").string();
+        return std::string(kViewRoot) + sceneName + ".json";
     }
 
     CameraSceneState CameraSceneStateIO::Capture(const CameraManager& cameraManager)
@@ -67,10 +66,6 @@ namespace CoreEngine
         CameraSceneState state{};
         state.sceneCameraName = cameraManager.GetSceneCameraName();
         state.gameCameraName = cameraManager.GetGameCameraName();
-
-        // 保存した時点で動かしているリグを、このシーンの開始リグとして控える。
-        // 何も動かしていなければ空になり、次回は自動起動しない（外し方も兼ねる）。
-        state.startupRigName = CameraRig::GetActiveName();
 
         for (const auto& [name, camera] : cameraManager.GetAllCameras()) {
             if (!camera) {
@@ -142,7 +137,6 @@ namespace CoreEngine
         root["version"] = "1.0";
         root["sceneCameraName"] = state.sceneCameraName;
         root["gameCameraName"] = state.gameCameraName;
-        root["startupRigName"] = state.startupRigName;
 
         json camerasJson = json::array();
         for (const auto& entry : state.cameras) {
@@ -188,7 +182,6 @@ namespace CoreEngine
         CameraSceneState state{};
         state.sceneCameraName = JsonManager::SafeGet(root, "sceneCameraName", std::string());
         state.gameCameraName = JsonManager::SafeGet(root, "gameCameraName", std::string());
-        state.startupRigName = JsonManager::SafeGet(root, "startupRigName", std::string());
 
         for (const auto& cameraJson : root["cameras"]) {
             CameraSceneStateEntry entry{};
@@ -219,22 +212,5 @@ namespace CoreEngine
 
         Apply(state, cameraManager);
         return true;
-    }
-    std::string CameraSceneStateIO::LoadStartupRigName(const std::string& sceneName)
-    {
-        if (sceneName.empty()) {
-            return {};
-        }
-
-        const std::string path = GetFilePath(sceneName);
-        if (!JsonManager::GetInstance().FileExists(path)) {
-            return {};
-        }
-
-        const json root = JsonManager::GetInstance().LoadJson(path);
-        if (root.empty()) {
-            return {};
-        }
-        return JsonManager::SafeGet(root, "startupRigName", std::string());
     }
 }

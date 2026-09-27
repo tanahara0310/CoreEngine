@@ -6,7 +6,7 @@ namespace CoreEngine
 {
 class CollisionWorld;
 
-/// @brief コライダーのワイヤ表示（`r.Collision.DebugDraw` で切り替え）。
+/// @brief コライダーのワイヤ表示（`d.Collision.DebugDraw` で切り替え）。
 /// @details GameObject ではなく `ILineSource`。CollisionFeature が所有して Line パスへ登録し、
 ///          `CollisionWorld` の登録内容を毎フレーム描く。`Collider` 側はレンダラを一切知らない。
 class ColliderDebugRenderer : public ILineSource {

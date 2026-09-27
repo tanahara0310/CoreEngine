@@ -509,6 +509,7 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\ComponentEditing.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\EditorSceneAccess.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Scene\LastOpenedScene.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\ObjectEditing.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\PlayModeController.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\PrefabEditing.cpp" />
@@ -1573,6 +1574,7 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\ComponentEditing.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\EditorSceneAccess.h" />
+    <ClInclude Include="Engine\Src\Editor\Scene\LastOpenedScene.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\ObjectEditing.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\PlayModeController.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\PrefabEditing.h" />

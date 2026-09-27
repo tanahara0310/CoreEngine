@@ -77,6 +77,8 @@ namespace CoreEngine
 
             /// `collision.pairs`：当たるレイヤーの組み合わせ（書かれていなければ空＝エンジンの既定とシーンのコードのまま）
             std::optional<std::vector<std::pair<std::string, std::string>>> collisionPairs;
+
+            std::string cameraRig; ///< `cameraRig`：シーンの開始時に動かすカメラリグの名前（空なら動かさない）
         };
 
         /// @brief マニフェストの設定を読む（オブジェクトは生成しない）

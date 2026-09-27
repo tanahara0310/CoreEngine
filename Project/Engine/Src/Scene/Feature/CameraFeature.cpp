@@ -92,8 +92,10 @@ namespace CoreEngine
         // シーンに置かれたカメラを先に実体にする（保存ファイルが名前で指せるようにする）
         SyncSceneCameras(ctx);
 
-        // 保存が無ければ何もしない。エディタ視点は控えの値がそのまま残る。
+#ifdef CORE_EDITOR
+        // 自分のエディタの視点を戻す。控えが無ければ何もしない
         CameraSceneStateIO::Load(ctx.saveSystem->GetSceneName(), *cameraManager_);
+#endif
 
         // シーンに置かれたカメラが勝つ（保存ファイルの指定より後に当てる）
         ApplyMainCamera();

@@ -56,7 +56,8 @@ namespace CoreEngine
     }
 
     std::string EditorSettingsSubsystem::GetBackupPath(const IEditorSettingsSection* section) const {
-        return GetSettingsDir(section->GetStorageArea()) + "/_backup/"
+        // 控えはどちらの層のものも自分だけの状態に置く
+        return GetSettingsDir(IEditorSettingsSection::StorageArea::UserSaved) + "/_backup/"
              + std::string(section->GetSectionName()) + ".json.bak";
     }
 
@@ -311,7 +312,7 @@ namespace CoreEngine
             // 2. 旧ファイルを 1 世代バックアップへ退避（誤変更の復元用）
             std::error_code ec;
             if (fs::exists(ProjectPaths::Resolve(filePath), ec)) {
-                fs::create_directories(ProjectPaths::Resolve(settingsDir + "/_backup"), ec);
+                fs::create_directories(ProjectPaths::Resolve(backupPath).parent_path(), ec);
                 fs::copy_file(ProjectPaths::Resolve(filePath), ProjectPaths::Resolve(backupPath),
                     fs::copy_options::overwrite_existing, ec);
                 // バックアップ失敗は本保存を妨げない（初回起動や読み取り専用時など）

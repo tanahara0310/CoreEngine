@@ -14,31 +14,31 @@ namespace CoreEngine
         // CVar はファイルスコープの static で定義する（レジストリへの登録が起動時に済む）
 
         CVar<bool> cvDebugDraw{
-            "r.Collision.DebugDraw", false,
+            "d.Collision.DebugDraw", false,
             "コライダーのワイヤ表示" };
 
         CVar<bool> cvDrawOnlyColliding{
-            "r.Collision.DebugDrawOnlyColliding", false,
+            "d.Collision.DebugDrawOnlyColliding", false,
             "接触中のコライダーだけを描く" };
 
         CVar<Vector3> cvColorIdle{
-            "r.Collision.DebugColorIdle", Vector3{ 0.25f, 0.85f, 0.35f },
+            "d.Collision.DebugColorIdle", Vector3{ 0.25f, 0.85f, 0.35f },
             "非接触のコライダーの線色" };
 
         CVar<Vector3> cvColorHit{
-            "r.Collision.DebugColorHit", Vector3{ 0.95f, 0.30f, 0.20f },
+            "d.Collision.DebugColorHit", Vector3{ 0.95f, 0.30f, 0.20f },
             "接触中のコライダーの線色" };
 
         CVar<Vector3> cvColorTrigger{
-            "r.Collision.DebugColorTrigger", Vector3{ 0.30f, 0.65f, 0.95f },
+            "d.Collision.DebugColorTrigger", Vector3{ 0.30f, 0.65f, 0.95f },
             "トリガー（通知専用）のコライダーの線色" };
 
         CVar<float> cvLineAlpha{
-            "r.Collision.DebugLineAlpha", 0.85f,
+            "d.Collision.DebugLineAlpha", 0.85f,
             "コライダー線の不透明度", CVarRange{ 0.0f, 1.0f } };
 
         CVar<int> cvSphereSegments{
-            "r.Collision.DebugSphereSegments", 16,
+            "d.Collision.DebugSphereSegments", 16,
             "球コライダーの分割数", CVarRange{ 4.0f, 48.0f } };
     }
 
