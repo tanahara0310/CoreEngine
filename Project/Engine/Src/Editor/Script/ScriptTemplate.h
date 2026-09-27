@@ -42,6 +42,8 @@ namespace CoreEngine::Editor
         /// @param outPath 作ったファイルのフルパス（省略可）
         /// @param outError 作れなかったときの訳（省略可）
         /// @return 作れたら true
+        /// @note スクリプトのフォルダのどこかに同じ名前の `.as` があるときと、
+        ///       同じ名前のコンポーネント（エンジンのものとスクリプトのもの）があるときは作らない。
         bool Create(const std::filesystem::path& folder, const std::string& className,
                     const std::string& templateId, std::filesystem::path* outPath = nullptr,
                     std::string* outError = nullptr);

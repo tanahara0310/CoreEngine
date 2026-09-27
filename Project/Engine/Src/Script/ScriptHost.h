@@ -75,6 +75,8 @@ namespace CoreEngine
 
         /// @brief 名前からコンポーネントの型を引く
         /// @return 無ければ nullptr
+        /// @note 名前空間違いで同じ名前が 2 つあるときは、ファイル名とクラス名が同じ方
+        ///       （どちらも同じか、どちらも違うならパスの綴りが先の方）。
         const ScriptComponentType* FindType(std::string_view name) const;
 
         /// @brief エンジンを終える
@@ -187,6 +189,11 @@ namespace CoreEngine
         ///          もう一度組む★。全部が前の状態へ戻るのを避けるため。
         /// @return 失敗したら false（作りかけのモジュールは捨てる。今のモジュールは触らない）
         bool CompileModule(const std::filesystem::path& root, CompiledModule& out);
+
+        /// @brief 同じ名前のクラスを宣言した場所と、エンジンの型と同じ名前のクラスをログへ出す
+        /// @param sources ファイルごとの中身
+        /// @note コンパイルに失敗したときに呼ぶ。同じ名前の宣言は、すべての場所を 1 行にまとめて出す。
+        void ReportNameConflicts(const std::unordered_map<std::string, std::string>& sources) const;
 
         /// @brief 1 回分のコンパイル
         /// @param fallbackSections この中のファイルは、今の中身ではなく最後に通った版で組む

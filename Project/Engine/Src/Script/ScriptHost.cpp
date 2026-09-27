@@ -36,7 +36,10 @@
 #include <exception>
 #include <fstream>
 #include <iterator>
+#include <map>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <system_error>
 #include <unordered_map>
 #include <vector>
@@ -189,6 +192,97 @@ namespace CoreEngine
             const std::size_t end = (dot == std::string::npos || dot < begin) ? path.size() : dot;
             return path.substr(begin, end - begin);
         }
+
+        /// @brief スクリプトに書かれたクラスの宣言 1 つ
+        struct ClassDeclaration
+        {
+            std::string nameSpace; ///< 名前空間（`A::B`。無ければ空）
+            std::string name;      ///< クラス名
+            std::string section;   ///< ファイル
+            int row = 0;           ///< 行（1 から）
+
+            /// @brief 名前空間つきの名前
+            std::string QualifiedName() const { return nameSpace.empty() ? name : nameSpace + "::" + name; }
+
+            /// @brief 場所（`ファイル N 行目`）
+            std::string Place() const { return section + " " + std::to_string(row) + " 行目"; }
+        };
+
+        /// @brief ソースの字句を順に読み、クラスの宣言を集める（コメントと文字列の中は見ない）
+        void CollectClassDeclarations(const asIScriptEngine& engine, const std::string& section,
+                                      const std::string& text, std::vector<ClassDeclaration>& out)
+        {
+            struct Token
+            {
+                std::string_view text;
+                asETokenClass kind = asTC_UNKNOWN;
+                int row = 0;
+            };
+
+            std::vector<Token> tokens;
+            int row = 1;
+            for (std::size_t at = 0; at < text.size();) {
+                asUINT length = 0;
+                const asETokenClass kind = engine.ParseToken(text.data() + at, text.size() - at, &length);
+                const std::size_t step = (std::min)(static_cast<std::size_t>((std::max)(length, 1u)), text.size() - at);
+                const std::string_view piece(text.data() + at, step);
+                if (kind != asTC_WHITESPACE && kind != asTC_COMMENT) {
+                    tokens.push_back(Token{ piece, kind, row });
+                }
+                row += static_cast<int>(std::count(piece.begin(), piece.end(), '\n'));
+                at += step;
+            }
+
+            // 開いている波かっこごとに、名前空間ならその名前、それ以外なら空を積む
+            std::vector<std::optional<std::string>> scopes;
+            const auto isKeyword = [&tokens](std::size_t index, std::string_view word) {
+                return index < tokens.size() && tokens[index].kind == asTC_KEYWORD && tokens[index].text == word;
+                };
+
+            for (std::size_t i = 0; i < tokens.size(); ++i) {
+                if (isKeyword(i, "namespace")) {
+                    std::string name;
+                    std::size_t open = i + 1;
+                    for (; open < tokens.size() && !isKeyword(open, "{"); ++open) {
+                        name += tokens[open].text;
+                    }
+                    if (open < tokens.size()) {
+                        scopes.emplace_back(std::move(name));
+                        i = open;
+                    }
+                    continue;
+                }
+                if (isKeyword(i, "{")) {
+                    scopes.emplace_back(std::nullopt);
+                    continue;
+                }
+                if (isKeyword(i, "}")) {
+                    if (!scopes.empty()) {
+                        scopes.pop_back();
+                    }
+                    continue;
+                }
+                if (!isKeyword(i, "class") || i + 1 >= tokens.size() || tokens[i + 1].kind != asTC_IDENTIFIER) {
+                    continue;
+                }
+
+                // `external shared class A;` のように `;` で終わるものは、ほかで書いたクラスを指すだけ
+                const bool definition = !isKeyword(i + 2, ";");
+                const bool atNamespaceScope = std::all_of(scopes.begin(), scopes.end(),
+                    [](const std::optional<std::string>& scope) { return scope.has_value(); });
+                if (definition && atNamespaceScope) {
+                    ClassDeclaration declaration;
+                    for (const std::optional<std::string>& scope : scopes) {
+                        declaration.nameSpace += (declaration.nameSpace.empty() ? "" : "::") + *scope;
+                    }
+                    declaration.name = std::string(tokens[i + 1].text);
+                    declaration.section = section;
+                    declaration.row = tokens[i + 1].row;
+                    out.push_back(std::move(declaration));
+                }
+                ++i;
+            }
+        }
     }
 
     ScriptHost::ScriptHost() = default;
@@ -277,6 +371,7 @@ namespace CoreEngine
             lastGoodSources_ = std::move(sources);
             return true;
         }
+        ReportNameConflicts(sources);
 
         // 2 回目は、壊れたファイルだけ最後に通った版へ戻して組み直す。
         // 書きかけの 1 つで、他のスクリプトまで前の状態へ戻るのを避けるため
@@ -310,6 +405,49 @@ namespace CoreEngine
                 "{} は直す前の版のまま動いています（このファイルのエラーを直すと入れ替わります）", section);
         }
         return true;
+    }
+
+    void ScriptHost::ReportNameConflicts(const std::unordered_map<std::string, std::string>& sources) const
+    {
+        std::vector<std::string> sections;
+        sections.reserve(sources.size());
+        for (const auto& [section, text] : sources) {
+            sections.push_back(section);
+        }
+        std::sort(sections.begin(), sections.end());
+
+        std::vector<ClassDeclaration> declarations;
+        for (const std::string& section : sections) {
+            CollectClassDeclarations(*engine_, section, sources.at(section), declarations);
+        }
+
+        Logger& logger = Logger::GetInstance();
+        std::map<std::string, std::vector<const ClassDeclaration*>> byName;
+        for (const ClassDeclaration& declaration : declarations) {
+            byName[declaration.QualifiedName()].push_back(&declaration);
+
+            const std::string lookup = "::" + declaration.QualifiedName();
+            const asITypeInfo* const registered = engine_->GetTypeInfoByName(lookup.c_str());
+            if (registered && declaration.name == registered->GetName() &&
+                declaration.nameSpace == (registered->GetNamespace() ? registered->GetNamespace() : "")) {
+                logger.Logf(LogLevel::Error, LogCategory::Script,
+                    "クラス {}（{}）はエンジンの型と同じ名前なので使えません。名前を変えてください",
+                    declaration.QualifiedName(), declaration.Place());
+            }
+        }
+
+        for (const auto& [name, found] : byName) {
+            if (found.size() < 2) {
+                continue;
+            }
+            std::string places;
+            for (const ClassDeclaration* declaration : found) {
+                places += (places.empty() ? "" : "・") + declaration->Place();
+            }
+            logger.Logf(LogLevel::Error, LogCategory::Script,
+                "クラス {} が {} か所で宣言されています（{}）。クラス名はフォルダが違ってもスクリプト全体で 1 つにしてください",
+                name, found.size(), places);
+        }
     }
 
     bool ScriptHost::TryBuild(const std::filesystem::path& root, CompiledModule& out,
@@ -411,6 +549,11 @@ namespace CoreEngine
                 "{} にコンポーネントのクラスが {} 個あります（{}）。1 ファイルに 1 つにしてください",
                 section, names.size(), joined);
         }
+
+        // ファイル名とクラス名が同じ型を先に並べる（名前空間違いで同じ名前のコンポーネントは、先の方が使われる）
+        std::stable_partition(out.types.begin(), out.types.end(), [](const std::unique_ptr<ScriptComponentType>& type) {
+            return FileStem(type->GetSourceSection()) == type->GetName();
+            });
 
         out.module = module;
         const double elapsedMs =

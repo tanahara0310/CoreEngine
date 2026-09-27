@@ -11,11 +11,12 @@
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
 
+#include <string>
+
 #ifdef CORE_EDITOR
 #include <chrono>
 #include <fstream>
 #include <iterator>
-#include <string>
 #include <vector>
 #endif
 
@@ -24,6 +25,28 @@ namespace CoreEngine
     namespace
     {
         constexpr const char* kScriptRoot = "Application/Assets/Scripts";
+
+        /// @brief ファクトリに登録できなかったスクリプトのクラスについて、何とぶつかったかをログへ出す
+        void ReportRejectedType(const ScriptHost& host, const ScriptComponentType& rejected)
+        {
+            const auto where = [](const ScriptComponentType& type) {
+                return type.GetSourceSection().empty() ? std::string("場所不明") : type.GetSourceSection();
+                };
+
+            Logger& logger = Logger::GetInstance();
+            const ScriptComponentType* const first = host.FindType(rejected.GetName());
+            if (ComponentFactory::Get().IsRuntimeType(rejected.GetName()) && first && first != &rejected) {
+                logger.Logf(LogLevel::Error, LogCategory::Script,
+                    "コンポーネント {} がスクリプトに 2 つあります（{} と {}）。{} の方は使えません。"
+                    "名前空間が違っても、コンポーネントのクラス名はスクリプト全体で 1 つにしてください",
+                    rejected.GetName(), where(*first), where(rejected), where(rejected));
+                return;
+            }
+            logger.Logf(LogLevel::Error, LogCategory::Script,
+                "スクリプトのクラス {}（{}）は、エンジンのコンポーネントと同じ名前なので使えません。名前を変えてください",
+                rejected.GetName(), where(rejected));
+        }
+
 #ifdef CORE_EDITOR
         constexpr const char* kPredefinedFileName = "as.predefined";
 
@@ -170,8 +193,7 @@ namespace CoreEngine
                 &raw->GetDescriptor(),
                 sourceFile);
             if (!registered) {
-                Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Script,
-                    "スクリプトのクラス {} は、同じ名前のコンポーネントが既にあるので使えません", raw->GetName());
+                ReportRejectedType(*host_, *raw);
             }
         }
     }
