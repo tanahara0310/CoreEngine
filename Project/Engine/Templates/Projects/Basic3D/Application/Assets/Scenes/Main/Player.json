@@ -4,6 +4,7 @@
         {
             "enabled": true,
             "parameters": {
+                "parent": null,
                 "rotate": [
                     0.0,
                     0.0,
@@ -25,10 +26,58 @@
         {
             "enabled": true,
             "parameters": {
+                "blendMode": 0,
+                "materials": [
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            0.95,
+                            0.62,
+                            0.22,
+                            1.0
+                        ],
+                        "dithering": true,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "iblIntensity": 1.0,
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.5
+                    },
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            0.95,
+                            0.62,
+                            0.22,
+                            1.0
+                        ],
+                        "dithering": true,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "iblIntensity": 1.0,
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.5
+                    }
+                ],
                 "model": {
                     "guid": "e8a79191-50ea-0673-1816-c257f280ba64",
                     "path": "Engine/Assets/Models/Primitives/Box/cube.obj"
-                }
+                },
+                "texture": null
             },
             "type": "MeshRenderer"
         },
@@ -41,13 +90,19 @@
                     0.22,
                     1.0
                 ],
+                "dithering": true,
+                "ditheringScale": 1.0,
                 "emissive": [
                     0.0,
                     0.0,
                     0.0,
                     1.0
                 ],
+                "iblIntensity": 1.0,
+                "lighting": true,
                 "metallic": 0.0,
+                "normalMap": false,
+                "occlusionStrength": 1.0,
                 "roughness": 0.5
             },
             "type": "Material"
@@ -60,5 +115,6 @@
             "type": "PlayerMover"
         }
     ],
+    "id": "333dc56ddffd8ea0",
     "name": "Player"
 }

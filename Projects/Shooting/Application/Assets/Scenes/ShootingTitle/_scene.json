@@ -1,5 +1,51 @@
 {
+    "collision": {
+        "pairs": [
+            [
+                "Default",
+                "Default"
+            ],
+            [
+                "Player",
+                "Default"
+            ],
+            [
+                "Enemy",
+                "Default"
+            ],
+            [
+                "PlayerBullet",
+                "Default"
+            ],
+            [
+                "EnemyBullet",
+                "Default"
+            ],
+            [
+                "Boss",
+                "Default"
+            ],
+            [
+                "BossBullet",
+                "Default"
+            ],
+            [
+                "BossAttack",
+                "Default"
+            ],
+            [
+                "Item",
+                "Default"
+            ],
+            [
+                "Environment",
+                "Default"
+            ]
+        ]
+    },
+    "defaultGround": false,
     "objects": [
+        "Sun",
         "MainCamera",
         "Floor",
         "StarField",
@@ -19,6 +65,5 @@
         "PressHint",
         "Controls",
         "TitleMenu"
-    ],
-    "defaultGround": false
+    ]
 }

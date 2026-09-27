@@ -1,9 +1,7 @@
 {
     "active": true,
-    "name": "Title",
     "components": [
         {
-            "type": "RectTransform",
             "enabled": true,
             "parameters": {
                 "anchor": 4,
@@ -15,30 +13,40 @@
                     0.5,
                     0.5
                 ],
-                "size": [
-                    600.0,
-                    80.0
-                ],
                 "rotation": 0.0,
                 "sortOrder": 3
-            }
+            },
+            "type": "RectTransform"
         },
         {
-            "type": "UIText",
             "enabled": true,
             "parameters": {
-                "text": "UI テスト",
-                "fontSize": 56.0,
+                "alignH": 1,
+                "alignV": 1,
                 "color": [
                     1.0,
                     1.0,
                     1.0,
                     1.0
                 ],
-                "alignH": 1,
-                "alignV": 1,
-                "fieldAutoFit": true
-            }
+                "fieldAutoFit": true,
+                "font": "Default",
+                "fontSize": 56.0,
+                "lineSpacing": 1.0,
+                "outlineColor": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "outlineWidth": 0.0,
+                "text": "UI テスト",
+                "weight": 0.0,
+                "wrapWidth": 0.0
+            },
+            "type": "UIText"
         }
-    ]
+    ],
+    "id": "99f110d27e30b289",
+    "name": "Title"
 }

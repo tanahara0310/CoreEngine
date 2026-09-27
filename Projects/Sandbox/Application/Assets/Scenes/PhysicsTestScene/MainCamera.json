@@ -1,6 +1,5 @@
 {
     "active": true,
-    "name": "MainCamera",
     "components": [
         {
             "enabled": true,
@@ -27,13 +26,15 @@
         {
             "enabled": true,
             "parameters": {
-                "isMainCamera": true,
-                "projection": 0,
+                "farClip": 1000.0,
                 "fov": 45.0,
+                "isMainCamera": true,
                 "nearClip": 0.1,
-                "farClip": 1000.0
+                "projection": 0
             },
             "type": "Camera"
         }
-    ]
+    ],
+    "id": "5134b2c6ef0d2a47",
+    "name": "MainCamera"
 }

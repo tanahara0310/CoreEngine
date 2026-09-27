@@ -1,6 +1,5 @@
 {
     "active": true,
-    "name": "PhysicsLab",
     "components": [
         {
             "enabled": true,
@@ -26,8 +25,33 @@
         },
         {
             "enabled": true,
-            "parameters": {},
+            "parameters": {
+                "ballPrefab": {
+                    "guid": "bef1f1a2-2c6f-1939-80ac-a146425843bf",
+                    "path": "Application/Assets/Prefabs/Physics/PhysicsBall.prefab"
+                },
+                "boxPrefab": {
+                    "guid": "2b5c74ef-e66f-9c0c-5ad9-cabe4471506c",
+                    "path": "Application/Assets/Prefabs/Physics/PhysicsBox.prefab"
+                },
+                "capsulePrefab": {
+                    "guid": "d5fea4a5-6ced-19b1-05ce-de102b3cb413",
+                    "path": "Application/Assets/Prefabs/Physics/PhysicsCapsule.prefab"
+                },
+                "dropHeight": 9.0,
+                "icePlatformPrefab": {
+                    "guid": "ae143b00-e03c-b8d2-8fd6-b51aae67b6b1",
+                    "path": "Application/Assets/Prefabs/Physics/PhysicsIcePlatform.prefab"
+                },
+                "platformPrefab": {
+                    "guid": "16a4d833-86b0-c01d-b820-e91290d90dda",
+                    "path": "Application/Assets/Prefabs/Physics/PhysicsPlatform.prefab"
+                },
+                "shootSpeed": 28.0
+            },
             "type": "PhysicsLab"
         }
-    ]
+    ],
+    "id": "8db6c257dff2fe49",
+    "name": "PhysicsLab"
 }

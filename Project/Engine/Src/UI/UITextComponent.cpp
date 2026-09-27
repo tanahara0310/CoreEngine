@@ -16,10 +16,6 @@
 
 namespace
 {
-    /// @brief 距離場で表せる縁取りの上限（距離場の値）
-    /// @note MsdfText.PS.hlsl の kMaxOutlineSd と同じ値にしておく
-    constexpr float kMaxOutlineSd = 0.375f;
-
     /// @brief コンポーネントの持ち主からフォントの管理を引く
     CoreEngine::FontManager* FindFontManager(const CoreEngine::IComponent& component)
     {
@@ -85,6 +81,9 @@ namespace CoreEngine
 
         // 配置は兄弟の UI トランスフォームから取る。無ければ足す
         rect_ = owner->GetOrAddComponent<RectTransformComponent>();
+        if (rect_) {
+            rect_->SetSizeDriven(fieldAutoFit_);
+        }
 
         if (EngineSystem* const engine = owner->GetEngineSystem()) {
             if (auto* const renderManager = engine->GetService<RenderManager>()) {
@@ -94,6 +93,13 @@ namespace CoreEngine
 
         // フォントは直後にコードから名前を変えられることがあるので、最初に描くときに引く
         geometryDirty_ = true;
+    }
+
+    void UITextComponent::OnDestroy()
+    {
+        if (RectTransformComponent* const rect = Sibling<RectTransformComponent>()) {
+            rect->SetSizeDriven(false);
+        }
     }
 
     void UITextComponent::ResolveFont()
@@ -155,6 +161,9 @@ namespace CoreEngine
         fieldAutoFit_ = enable;
         hasFitted_ = false;
         geometryDirty_ = true;
+        if (RectTransformComponent* const rect = GetRectTransform()) {
+            rect->SetSizeDriven(enable);
+        }
     }
 
     void UITextComponent::SetWrapWidth(float pixelWidth)
@@ -187,28 +196,13 @@ namespace CoreEngine
 
     void UITextComponent::SetOutlineWidth(float widthEm)
     {
-        widthEm = (std::max)(widthEm, 0.0f);
-        if (font_) {
-            widthEm = (std::min)(widthEm, GetMaxOutlineWidth());
-        }
-        style_.outlineWidthEm = widthEm;
+        style_.outlineWidthEm = (std::max)(widthEm, 0.0f);
     }
 
     void UITextComponent::SetOutline(const Vector4& color, float widthEm)
     {
         SetOutlineColor(color);
         SetOutlineWidth(widthEm);
-    }
-
-    float UITextComponent::GetMaxOutlineWidth() const
-    {
-        if (!font_) { return 0.0f; }
-        const float pxRange = font_->GetPxRange();
-        if (pxRange <= 0.0f) { return 0.0f; }
-
-        // em を距離場の値へ直す係数の逆数に、上限の値を掛ける
-        const float sdUnitsPerEm = static_cast<float>(font_->GetGlyphPixelSize()) / pxRange;
-        return (sdUnitsPerEm > 0.0f) ? (kMaxOutlineSd / sdUnitsPerEm) : 0.0f;
     }
 
     Vector2 UITextComponent::GetMeasuredSize() const
@@ -238,6 +232,7 @@ namespace CoreEngine
                 fieldAutoFit_ = false;
                 hasFitted_ = false;
                 geometryDirty_ = true;
+                rect.SetSizeDriven(false);
             }
         }
 

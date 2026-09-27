@@ -4,6 +4,7 @@
         {
             "enabled": true,
             "parameters": {
+                "parent": null,
                 "rotate": [
                     0.0,
                     0.0,
@@ -28,11 +29,12 @@
                 "farClip": 1000.0,
                 "fov": 45.0,
                 "isMainCamera": true,
-                "nearClip": 0.10000000149011612,
+                "nearClip": 0.1,
                 "projection": 0
             },
             "type": "Camera"
         }
     ],
+    "id": "5134b2c6ef0d2a47",
     "name": "MainCamera"
 }

@@ -1,10 +1,7 @@
 {
-    "id": "e1a469bea324f0b8",
     "active": true,
-    "name": "DecoWeaver",
     "components": [
         {
-            "type": "Transform",
             "enabled": true,
             "parameters": {
                 "parent": null,
@@ -23,20 +20,68 @@
                     1.0,
                     7.0
                 ]
-            }
+            },
+            "type": "Transform"
         },
         {
-            "type": "MeshRenderer",
             "enabled": true,
             "parameters": {
+                "blendMode": 0,
+                "materials": [
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            1.0,
+                            0.6,
+                            0.15,
+                            1.0
+                        ],
+                        "dithering": true,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.35,
+                            0.15,
+                            0.0
+                        ],
+                        "iblIntensity": 1.0,
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.4
+                    },
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            1.0,
+                            0.6,
+                            0.15,
+                            1.0
+                        ],
+                        "dithering": true,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.35,
+                            0.15,
+                            0.0
+                        ],
+                        "iblIntensity": 1.0,
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.4
+                    }
+                ],
                 "model": {
                     "guid": "e8a79191-50ea-0673-1816-c257f280ba64",
                     "path": "Engine/Assets/Models/Primitives/Box/cube.obj"
-                }
-            }
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
         },
         {
-            "type": "Material",
             "enabled": true,
             "parameters": {
                 "color": [
@@ -45,28 +90,37 @@
                     0.15,
                     1.0
                 ],
+                "dithering": true,
+                "ditheringScale": 1.0,
                 "emissive": [
                     0.35,
                     0.15,
                     0.0,
                     1.0
                 ],
+                "iblIntensity": 1.0,
+                "lighting": true,
                 "metallic": 0.0,
+                "normalMap": false,
+                "occlusionStrength": 1.0,
                 "roughness": 0.4
-            }
+            },
+            "type": "Material"
         },
         {
-            "type": "ShootingSpinner",
             "enabled": true,
             "parameters": {
+                "bobHeight": 0.5,
+                "bobSpeed": 0.3,
                 "spin": [
                     1.0,
                     1.4,
                     0.0
-                ],
-                "bobHeight": 0.5,
-                "bobSpeed": 0.3
-            }
+                ]
+            },
+            "type": "ShootingSpinner"
         }
-    ]
+    ],
+    "id": "e1a469bea324f0b8",
+    "name": "DecoWeaver"
 }

@@ -1,41 +1,50 @@
 {
-    "id": "c4cc863ded314d3b",
     "active": true,
-    "name": "ResultMenu",
     "components": [
         {
-            "type": "ShootingResultMenu",
             "enabled": true,
             "parameters": {
-                "headline": {
-                    "comp": "",
-                    "ref": "775056d1cb76fbe9"
-                },
-                "scoreValue": {
-                    "comp": "",
-                    "ref": "25d8043a01eadada"
-                },
-                "detail": {
-                    "comp": "",
-                    "ref": "8daa1db5187d4ad4"
-                },
                 "best": {
-                    "comp": "",
                     "ref": "a0b24fa796b43e67"
                 },
+                "clearColor": [
+                    0.45,
+                    1.0,
+                    0.55,
+                    1.0
+                ],
+                "countUpTime": 1.2,
+                "detail": {
+                    "ref": "8daa1db5187d4ad4"
+                },
+                "gameOverColor": [
+                    1.0,
+                    0.35,
+                    0.3,
+                    1.0
+                ],
+                "gameScene": "ShootingGame",
+                "headline": {
+                    "ref": "775056d1cb76fbe9"
+                },
                 "newRecord": {
-                    "comp": "",
                     "ref": "e004f66dc54fb130"
                 },
+                "recordFile": "Shooting/Record.json",
                 "retryButton": {
-                    "comp": "",
                     "ref": "7d1f4dd30a3cd56d"
                 },
+                "scoreValue": {
+                    "ref": "25d8043a01eadada"
+                },
                 "titleButton": {
-                    "comp": "",
                     "ref": "2d036fbeeb1036dd"
-                }
-            }
+                },
+                "titleScene": "ShootingTitle"
+            },
+            "type": "ShootingResultMenu"
         }
-    ]
+    ],
+    "id": "c4cc863ded314d3b",
+    "name": "ResultMenu"
 }

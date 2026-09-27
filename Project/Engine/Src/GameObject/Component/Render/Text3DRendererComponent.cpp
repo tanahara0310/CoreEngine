@@ -48,8 +48,9 @@ REFLECT_DEFINE_BEGIN(CoreEngine::Text3DRendererComponent, "3D テキスト描画
     REFLECT_ACCESSOR("fontSize", "文字の大きさ", GetFontSize, SetFontSize, p.flags = kHidden)
     REFLECT_ACCESSOR("lineSpacing", "行間", GetLineSpacing, SetLineSpacing, p.flags = kHidden)
     REFLECT_ACCESSOR("wrapWidth", "折り返し幅", GetWrapWidth, SetWrapWidth, p.flags = kHidden)
+    REFLECT_ACCESSOR("fieldSize", "枠の大きさ", GetFieldSize, SetFieldSize, p.flags = kHidden,
+        p.saveWhen = [](const void* o) { return !static_cast<const Self*>(o)->IsFieldAutoFit(); })
     REFLECT_ACCESSOR("fieldAutoFit", "枠を文字に合わせる", IsFieldAutoFit, SetFieldAutoFit, p.flags = kHidden)
-    REFLECT_ACCESSOR("fieldSize", "枠の大きさ", GetFieldSize, SetFieldSize, p.flags = kHidden)
     REFLECT_ENUM_ACCESSOR("alignH", "横揃え", GetAlignH, SetAlignH, kAlignHNames, p.flags = kHidden)
     REFLECT_ENUM_ACCESSOR("alignV", "縦揃え", GetAlignV, SetAlignV, kAlignVNames, p.flags = kHidden)
     REFLECT_ACCESSOR("pivot", "中心", GetPivot, SetPivot, p.flags = kHidden)

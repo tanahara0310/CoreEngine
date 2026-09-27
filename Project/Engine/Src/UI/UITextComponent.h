@@ -43,6 +43,9 @@ namespace CoreEngine
         /// @brief UI トランスフォームを確保し、レンダラーを引く（名前で指したフォントは最初に描くときに引く）
         void Awake() override;
 
+        /// @brief UI トランスフォームの大きさを決めるのをやめる
+        void OnDestroy() override;
+
         // ===== IRenderableComponent =====
 
         RenderPassType GetRenderPassType() const override { return RenderPassType::UIText; }
@@ -109,7 +112,7 @@ namespace CoreEngine
         void SetOutlineColor(const Vector4& color) { style_.outlineColor = color; }
 
         /// @brief 縁取りの太さ（em 単位）
-        /// @note フォントがあれば `GetMaxOutlineWidth()` で頭打ちにする
+        /// @note 描くときは、フォントの距離場で表せる太さで頭打ちになる（シェーダーが切る）
         float GetOutlineWidth() const { return style_.outlineWidthEm; }
         void SetOutlineWidth(float widthEm);
 
@@ -119,10 +122,6 @@ namespace CoreEngine
         /// @brief 文字の太さの調整（em 単位。正で太く）
         float GetWeight() const { return style_.weightEm; }
         void SetWeight(float weightEm) { style_.weightEm = weightEm; }
-
-        /// @brief 縁取りとして表せる最大の太さ（em 単位。フォントが無ければ 0）
-        /// @note 距離場が持つ幅で決まる。太くしたいときはフォントを焼くときの pxRange を上げる
-        float GetMaxOutlineWidth() const;
 
         // ===== 組んだ結果 =====
 

@@ -1,5 +1,59 @@
 {
+    "collision": {
+        "pairs": [
+            [
+                "Default",
+                "Default"
+            ],
+            [
+                "Player",
+                "Default"
+            ],
+            [
+                "Enemy",
+                "Default"
+            ],
+            [
+                "Enemy",
+                "Player"
+            ],
+            [
+                "PlayerBullet",
+                "Default"
+            ],
+            [
+                "PlayerBullet",
+                "Enemy"
+            ],
+            [
+                "EnemyBullet",
+                "Default"
+            ],
+            [
+                "Boss",
+                "Default"
+            ],
+            [
+                "BossBullet",
+                "Default"
+            ],
+            [
+                "BossAttack",
+                "Default"
+            ],
+            [
+                "Item",
+                "Default"
+            ],
+            [
+                "Environment",
+                "Default"
+            ]
+        ]
+    },
+    "defaultGround": true,
     "objects": [
+        "Sun",
         "Director",
         "Turret",
         "Wall",

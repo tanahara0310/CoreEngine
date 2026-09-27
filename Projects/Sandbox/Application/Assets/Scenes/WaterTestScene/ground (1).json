@@ -4,6 +4,7 @@
         {
             "enabled": true,
             "parameters": {
+                "parent": null,
                 "rotate": [
                     0.0,
                     0.0,
@@ -15,9 +16,9 @@
                     1.0
                 ],
                 "translate": [
-                    2.4609811305999756,
-                    4.091399192810059,
-                    0.05477547645568848
+                    2.4609811,
+                    4.091399,
+                    0.054775476
                 ]
             },
             "type": "Transform"
@@ -25,6 +26,7 @@
         {
             "enabled": true,
             "parameters": {
+                "blendMode": 0,
                 "materials": [
                     {
                         "alphaCutoff": 0.5,
@@ -74,10 +76,12 @@
                 "model": {
                     "guid": "33bbc725-9b20-d397-937c-444c29985eed",
                     "path": "Application/Assets/Models/Ground/ground.gltf"
-                }
+                },
+                "texture": null
             },
             "type": "MeshRenderer"
         }
     ],
+    "id": "8ea3d3e046a24384",
     "name": "ground (1)"
 }

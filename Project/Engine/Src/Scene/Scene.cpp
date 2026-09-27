@@ -5,6 +5,7 @@
 #include "Camera/CameraManager.h"
 #include "Camera/Camera.h"
 #include "Camera/Rig/CameraRig.h"
+#include "Collision/CollisionLayer.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Scene/SceneManager.h"
@@ -155,8 +156,9 @@ namespace CoreEngine
         if (auto* const collision = GetFeature<CollisionFeature>()) {
             const CollisionConfig& config = collision->GetConfig();
             std::vector<std::pair<std::string, std::string>> pairs;
-            // 対称なので下三角だけを書く
-            for (int row = 0; row < CollisionConfig::kMaxLayers; ++row) {
+            // 名前のあるレイヤーどうしを、対称なので下三角だけ書く
+            const int namedLayers = static_cast<int>(CollisionLayers::Count());
+            for (int row = 0; row < namedLayers; ++row) {
                 for (int col = 0; col <= row; ++col) {
                     const auto a = static_cast<CollisionLayer>(row);
                     const auto b = static_cast<CollisionLayer>(col);

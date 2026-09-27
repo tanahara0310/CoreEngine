@@ -1,5 +1,23 @@
 {
+    "collision": {
+        "pairs": [
+            [
+                "Enemy",
+                "Player"
+            ],
+            [
+                "PlayerBullet",
+                "Enemy"
+            ],
+            [
+                "EnemyBullet",
+                "Player"
+            ]
+        ]
+    },
+    "defaultGround": false,
     "objects": [
+        "Sun",
         "MainCamera",
         "Floor",
         "StarField",
@@ -19,22 +37,5 @@
         "SubText",
         "ControlsText",
         "GameDirector"
-    ],
-    "defaultGround": false,
-    "collision": {
-        "pairs": [
-            [
-                "Player",
-                "Enemy"
-            ],
-            [
-                "Player",
-                "EnemyBullet"
-            ],
-            [
-                "PlayerBullet",
-                "Enemy"
-            ]
-        ]
-    }
+    ]
 }

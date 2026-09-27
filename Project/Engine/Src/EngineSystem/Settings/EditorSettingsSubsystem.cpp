@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 
 namespace CoreEngine
 {
@@ -202,6 +203,42 @@ namespace CoreEngine
         }
     }
 
+    std::size_t EditorSettingsSubsystem::RewriteAll()
+    {
+        std::size_t rewritten = 0;
+        for (auto& entry : entries_) {
+            json current;
+            entry.section->Serialize(current);
+
+            json out = current;
+            out["version"] = kSettingsVersion;
+            std::string onDisk;
+            {
+                std::ifstream file(ProjectPaths::Resolve(GetFilePath(entry.section)), std::ios::binary);
+                onDisk.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
+            }
+            // 改行の CR を除いてから比べる
+            const std::string expected = JsonManager::ToFileText(out);
+            std::string normalizedDisk;
+            normalizedDisk.reserve(onDisk.size());
+            for (const char c : onDisk) {
+                if (c != '\r') {
+                    normalizedDisk.push_back(c);
+                }
+            }
+            if (normalizedDisk == expected) {
+                continue;
+            }
+
+            if (WriteAtomic(entry.section, current)) {
+                entry.lastSaved = std::move(current);
+                entry.lastSaveTime = FormatNowTime();
+                ++rewritten;
+            }
+        }
+        return rewritten;
+    }
+
     // ===== 管理操作 =====
 
     bool EditorSettingsSubsystem::ResetSectionToDefault(const std::string& sectionName)
@@ -302,7 +339,7 @@ namespace CoreEngine
                     std::cerr << "[EditorSettings] Failed to open temp file: " << tempPath << std::endl;
                     return false;
                 }
-                file << out.dump(4);
+                file << JsonManager::ToFileText(out);
                 if (!file.good()) {
                     std::cerr << "[EditorSettings] Failed to write temp file: " << tempPath << std::endl;
                     return false;

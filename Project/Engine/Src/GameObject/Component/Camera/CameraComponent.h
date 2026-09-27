@@ -45,8 +45,13 @@ namespace CoreEngine
         CameraProjectionType GetProjectionType() const { return parameters_.projectionType; }
         void SetProjectionType(CameraProjectionType type) { parameters_.projectionType = type; }
 
-        float GetFovDegrees() const { return parameters_.GetFovDegrees(); }
-        void SetFovDegrees(float degrees) { parameters_.SetFovDegrees(degrees); }
+        /// @brief 視野角（度。入れた値をそのまま持ち、実体へはラジアンにして渡す）
+        float GetFovDegrees() const { return fovDegrees_; }
+        void SetFovDegrees(float degrees)
+        {
+            fovDegrees_ = degrees;
+            parameters_.SetFovDegrees(degrees);
+        }
 
         bool IsMainCamera() const { return isMainCamera_; }
         void SetMainCamera(bool value) { isMainCamera_ = value; }
@@ -61,6 +66,7 @@ namespace CoreEngine
 
     private:
         CameraParameters parameters_{};
+        float fovDegrees_ = parameters_.GetFovDegrees();
         bool isMainCamera_ = true;
 
         // CameraFeature が持つ実体（非所有）

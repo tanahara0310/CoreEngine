@@ -14,6 +14,7 @@
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/GraphicsCoreDesc.h"
 #include "Graphics/RHI/SwapChain/SwapChain.h"
+#include "Utility/CommandLine/CommandLine.h"
 #include "Utility/Path/ProjectPaths.h"
 #include "WinApp/WinApp.h"
 
@@ -22,7 +23,6 @@
 #include <imgui_impl_win32.h>
 
 #include <Windows.h>
-#include <shellapi.h>
 
 #include <algorithm>
 #include <optional>
@@ -37,25 +37,6 @@ namespace CoreEngine::Editor
 
         /// 画面を出させる起動の引数
         constexpr std::wstring_view kLauncherOption = L"--launcher";
-
-        /// @brief 起動の引数に `--launcher` があるか
-        bool HasLauncherOption()
-        {
-            int count = 0;
-            LPWSTR* const args = ::CommandLineToArgvW(::GetCommandLineW(), &count);
-            if (!args) {
-                return false;
-            }
-            bool found = false;
-            for (int i = 1; i < count; ++i) {
-                if (std::wstring_view(args[i]) == kLauncherOption) {
-                    found = true;
-                    break;
-                }
-            }
-            ::LocalFree(args);
-            return found;
-        }
 
         /// @brief path を表示用の UTF-8 にする（区切りは Windows の '\'）
         std::string ToDisplay(const std::filesystem::path& path)
@@ -105,7 +86,7 @@ namespace CoreEngine::Editor
         list.Load();
 
         // 前回のプロジェクトを自動で開く
-        if (!HasLauncherOption() && list.GetOpenLastOnStartup()) {
+        if (!CommandLine::HasOption(kLauncherOption) && list.GetOpenLastOnStartup()) {
             const std::filesystem::path last = list.LastOpened();
             if (!last.empty() && ProjectPaths::OpenProject(last)) {
                 return true;

@@ -4,6 +4,24 @@
         {
             "enabled": true,
             "parameters": {
+                "resolution": 256,
+                "scrollSpeed": [
+                    -0.041,
+                    0.01
+                ],
+                "size": 100.0,
+                "useFFTOcean": true,
+                "uvTiling": [
+                    1.0,
+                    4.0
+                ]
+            },
+            "type": "WaterSurface"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
                 "rotate": [
                     0.0,
                     -0.0,
@@ -15,9 +33,9 @@
                     40.0
                 ],
                 "translate": [
-                    0.09734535217285156,
-                    5.768860816955566,
-                    -8.508995056152344
+                    0.09734535,
+                    5.768861,
+                    -8.508995
                 ]
             },
             "type": "Transform"
@@ -25,14 +43,15 @@
         {
             "enabled": true,
             "parameters": {
+                "blendMode": 1,
                 "materials": [
                     {
                         "alphaCutoff": 0.5,
                         "color": [
-                            0.0,
-                            0.21960784494876862,
-                            0.3490196168422699,
-                            0.7803921699523926
+                            0.04,
+                            0.18,
+                            0.28,
+                            0.85
                         ],
                         "dithering": true,
                         "ditheringScale": 1.0,
@@ -46,12 +65,15 @@
                         "metallic": 0.0,
                         "normalMap": false,
                         "occlusionStrength": 1.0,
-                        "roughness": 0.009999999776482582
+                        "roughness": 0.03
                     }
-                ]
+                ],
+                "model": null,
+                "texture": null
             },
             "type": "MeshRenderer"
         }
     ],
+    "id": "712f9db384ecd8d2",
     "name": "WaterPlane"
 }

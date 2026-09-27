@@ -17,6 +17,7 @@
 #include "EngineSystem/EngineConfig.h"
 #include "EngineSystem/PlaybackState.h"
 #include "EngineSystem/Relaunch.h"
+#include "EngineSystem/Settings/EditorSettingsSubsystem.h"
 #include "EngineSystem/Settings/ProjectSettings.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
 #include "Graphics/RHI/GraphicsCore.h"
@@ -24,6 +25,7 @@
 #include "Scene/SceneSaveSystem.h"
 #include "Script/ScriptHost.h"
 #include "Script/ScriptSubsystem.h"
+#include "Utility/CommandLine/CommandLine.h"
 #include "Utility/FrameRate/FrameRateController.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Path/ProjectPaths.h"
@@ -65,6 +67,11 @@ namespace CoreEngine
 
         if (dockingUI_) {
             RegisterWindowsForDocking();
+        }
+
+        // 起動の引数で頼まれたら、すべてのシーンと設定を保存し直してから閉じる
+        if (CommandLine::HasOption(L"--resave-scenes")) {
+            sceneResaveDialog_.StartAndQuit();
         }
 
         // 単独ウィンドウのドック先は記述子の defaultDock だけが決める。
@@ -184,6 +191,13 @@ namespace CoreEngine
             sceneManager_->ChangeScene(currentScene);
         }
         if (!editing && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::SetTooltip("%s", kStopFirst);
+        }
+
+        if (ImGui::MenuItem("すべてのシーンと設定を保存し直す…", nullptr, false, editing && sceneManager_ != nullptr)) {
+            sceneResaveDialog_.Open();
+        }
+        if (sceneManager_ && !editing && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
             ImGui::SetTooltip("%s", kStopFirst);
         }
 
@@ -937,6 +951,8 @@ namespace CoreEngine
         DrawNewSceneDialog();
         DrawProjectBrowser();
         gameExportDialog_.Draw();
+        sceneResaveDialog_.Draw(sceneManager_, sceneDebugEditor_,
+            engine_ ? engine_->GetSubsystem<EditorSettingsSubsystem>() : nullptr);
         DrawUnsavedChangesDialog();
 
         if (showConsole_) ShowConsoleUI();

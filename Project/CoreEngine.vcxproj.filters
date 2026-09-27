@@ -49,6 +49,9 @@
     <ClCompile Include="Engine\Src\Utility\Path\ProjectPaths.cpp">
       <Filter>Engine\Src\Utility\Path</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\CommandLine\CommandLine.cpp">
+      <Filter>Engine\Src\Utility\CommandLine</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Panel\EditorPanelStateSection.cpp">
       <Filter>Engine\Src\Editor\Panel</Filter>
     </ClCompile>
@@ -979,6 +982,9 @@
     <ClCompile Include="Engine\Src\Editor\Scene\SceneDebugEditor.cpp">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Scene\SceneResaveDialog.cpp">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Scene\PrefabSystem.cpp">
       <Filter>Engine\Src\Scene</Filter>
     </ClCompile>
@@ -1793,6 +1799,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Path\ProjectPaths.h">
       <Filter>Engine\Src\Utility\Path</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\CommandLine\CommandLine.h">
+      <Filter>Engine\Src\Utility\CommandLine</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Panel\EditorPanelStateSection.h">
       <Filter>Engine\Src\Editor\Panel</Filter>
@@ -2971,6 +2980,9 @@
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Scene\SceneDebugEditor.h">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Scene\SceneResaveDialog.h">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Scene\PrefabSystem.h">
@@ -4317,6 +4329,9 @@
     </Filter>
     <Filter Include="Engine\Src\Utility\Asset">
       <UniqueIdentifier>{A8B005CD-2D36-4460-AE1A-C213375311C2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Utility\CommandLine">
+      <UniqueIdentifier>{882D8E9A-9339-42AB-8001-6E7A64556FC7}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Utility\CVar">
       <UniqueIdentifier>{3C1F7A62-5D48-4B0E-9E21-7A6C0B4D8F13}</UniqueIdentifier>
