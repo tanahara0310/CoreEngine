@@ -4,20 +4,21 @@
         {
             "enabled": true,
             "parameters": {
+                "parent": null,
                 "rotate": [
                     0.0,
                     -0.0,
                     0.0
                 ],
                 "scale": [
-                    7.7911696434021,
-                    7.7911696434021,
-                    7.700564384460449
+                    7.7911696,
+                    7.7911696,
+                    7.7005644
                 ],
                 "translate": [
-                    10.319631576538086,
-                    18.890594482421875,
-                    -11.46633243560791
+                    10.319632,
+                    18.890594,
+                    -11.466332
                 ]
             },
             "type": "Transform"
@@ -25,6 +26,7 @@
         {
             "enabled": true,
             "parameters": {
+                "blendMode": 0,
                 "materials": [
                     {
                         "alphaCutoff": 0.5,
@@ -46,7 +48,7 @@
                         "metallic": 0.0,
                         "normalMap": false,
                         "occlusionStrength": 1.0,
-                        "roughness": 0.8500000238418579
+                        "roughness": 0.85
                     },
                     {
                         "alphaCutoff": 0.5,
@@ -68,7 +70,7 @@
                         "metallic": 0.0,
                         "normalMap": false,
                         "occlusionStrength": 1.0,
-                        "roughness": 0.8500000238418579
+                        "roughness": 0.85
                     },
                     {
                         "alphaCutoff": 0.5,
@@ -90,7 +92,7 @@
                         "metallic": 0.0,
                         "normalMap": false,
                         "occlusionStrength": 1.0,
-                        "roughness": 0.8500000238418579
+                        "roughness": 0.85
                     },
                     {
                         "alphaCutoff": 0.5,
@@ -112,7 +114,7 @@
                         "metallic": 0.0,
                         "normalMap": false,
                         "occlusionStrength": 1.0,
-                        "roughness": 0.8500000238418579
+                        "roughness": 0.85
                     },
                     {
                         "alphaCutoff": 0.5,
@@ -134,7 +136,7 @@
                         "metallic": 0.0,
                         "normalMap": false,
                         "occlusionStrength": 1.0,
-                        "roughness": 0.8500000238418579
+                        "roughness": 0.85
                     },
                     {
                         "alphaCutoff": 0.5,
@@ -156,7 +158,7 @@
                         "metallic": 0.0,
                         "normalMap": false,
                         "occlusionStrength": 1.0,
-                        "roughness": 0.8500000238418579
+                        "roughness": 0.85
                     },
                     {
                         "alphaCutoff": 0.5,
@@ -178,7 +180,7 @@
                         "metallic": 0.0,
                         "normalMap": false,
                         "occlusionStrength": 1.0,
-                        "roughness": 0.8500000238418579
+                        "roughness": 0.85
                     },
                     {
                         "alphaCutoff": 0.5,
@@ -200,7 +202,7 @@
                         "metallic": 0.0,
                         "normalMap": false,
                         "occlusionStrength": 1.0,
-                        "roughness": 0.8500000238418579
+                        "roughness": 0.85
                     },
                     {
                         "alphaCutoff": 0.5,
@@ -222,7 +224,7 @@
                         "metallic": 0.0,
                         "normalMap": false,
                         "occlusionStrength": 1.0,
-                        "roughness": 0.8500000238418579
+                        "roughness": 0.85
                     },
                     {
                         "alphaCutoff": 0.5,
@@ -244,7 +246,7 @@
                         "metallic": 0.0,
                         "normalMap": false,
                         "occlusionStrength": 1.0,
-                        "roughness": 0.8500000238418579
+                        "roughness": 0.85
                     },
                     {
                         "alphaCutoff": 0.5,
@@ -266,7 +268,7 @@
                         "metallic": 0.0,
                         "normalMap": false,
                         "occlusionStrength": 1.0,
-                        "roughness": 0.8500000238418579
+                        "roughness": 0.85
                     },
                     {
                         "alphaCutoff": 0.5,
@@ -288,7 +290,7 @@
                         "metallic": 0.0,
                         "normalMap": false,
                         "occlusionStrength": 1.0,
-                        "roughness": 0.8500000238418579
+                        "roughness": 0.85
                     },
                     {
                         "alphaCutoff": 0.5,
@@ -310,7 +312,7 @@
                         "metallic": 0.0,
                         "normalMap": false,
                         "occlusionStrength": 1.0,
-                        "roughness": 0.8500000238418579
+                        "roughness": 0.85
                     },
                     {
                         "alphaCutoff": 0.5,
@@ -332,7 +334,7 @@
                         "metallic": 0.0,
                         "normalMap": false,
                         "occlusionStrength": 1.0,
-                        "roughness": 0.8500000238418579
+                        "roughness": 0.85
                     },
                     {
                         "alphaCutoff": 0.5,
@@ -354,7 +356,7 @@
                         "metallic": 0.0,
                         "normalMap": false,
                         "occlusionStrength": 1.0,
-                        "roughness": 0.8500000238418579
+                        "roughness": 0.85
                     },
                     {
                         "alphaCutoff": 0.5,
@@ -376,16 +378,18 @@
                         "metallic": 0.0,
                         "normalMap": false,
                         "occlusionStrength": 1.0,
-                        "roughness": 0.8500000238418579
+                        "roughness": 0.85
                     }
                 ],
                 "model": {
                     "guid": "85c31739-10f2-0382-46f7-f20b09f76bf3",
                     "path": "Application/Assets/Models/CoralReef/coralReef.gltf"
-                }
+                },
+                "texture": null
             },
             "type": "MeshRenderer"
         }
     ],
+    "id": "a50c3c5d77616b18",
     "name": "coralReef"
 }

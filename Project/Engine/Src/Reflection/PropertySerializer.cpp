@@ -152,7 +152,7 @@ namespace CoreEngine::Reflection
     {
         PropertyValue current;
         for (const auto& p : type.properties) {
-            if (!p.IsSaved() || !p.IsValid()) {
+            if (!p.IsSaved() || !p.IsValid() || (p.saveWhen && !p.saveWhen(instance))) {
                 continue;
             }
             current.LoadFrom(p, instance);

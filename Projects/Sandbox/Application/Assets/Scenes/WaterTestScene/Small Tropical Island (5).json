@@ -4,20 +4,21 @@
         {
             "enabled": true,
             "parameters": {
+                "parent": null,
                 "rotate": [
-                    -3.141551971435547,
-                    1.436449646949768,
-                    -3.1415460109710693
+                    -3.141552,
+                    1.4364496,
+                    -3.141546
                 ],
                 "scale": [
-                    0.30000004172325134,
-                    0.30000001192092896,
-                    0.30000004172325134
+                    0.30000004,
+                    0.3,
+                    0.30000004
                 ],
                 "translate": [
-                    135.98956298828125,
-                    1.5261965990066528,
-                    -353.78814697265625
+                    135.98956,
+                    1.5261966,
+                    -353.78815
                 ]
             },
             "type": "Transform"
@@ -25,169 +26,16 @@
         {
             "enabled": true,
             "parameters": {
-                "materials": [
-                    {
-                        "alphaCutoff": 0.5,
-                        "color": [
-                            0.6000000238418579,
-                            0.6000000238418579,
-                            0.6000000238418579,
-                            1.0
-                        ],
-                        "dithering": true,
-                        "ditheringScale": 1.0,
-                        "emissive": [
-                            0.0,
-                            0.0,
-                            0.0
-                        ],
-                        "iblIntensity": 1.0,
-                        "lighting": true,
-                        "metallic": 0.0,
-                        "normalMap": false,
-                        "occlusionStrength": 1.0,
-                        "roughness": 0.5
-                    },
-                    {
-                        "alphaCutoff": 0.5,
-                        "color": [
-                            1.0,
-                            1.0,
-                            1.0,
-                            1.0
-                        ],
-                        "dithering": true,
-                        "ditheringScale": 1.0,
-                        "emissive": [
-                            0.0,
-                            0.0,
-                            0.0
-                        ],
-                        "iblIntensity": 1.0,
-                        "lighting": true,
-                        "metallic": 0.0,
-                        "normalMap": false,
-                        "occlusionStrength": 1.0,
-                        "roughness": 0.5
-                    },
-                    {
-                        "alphaCutoff": 0.5,
-                        "color": [
-                            1.0,
-                            1.0,
-                            1.0,
-                            1.0
-                        ],
-                        "dithering": true,
-                        "ditheringScale": 1.0,
-                        "emissive": [
-                            0.0,
-                            0.0,
-                            0.0
-                        ],
-                        "iblIntensity": 1.0,
-                        "lighting": true,
-                        "metallic": 0.0,
-                        "normalMap": false,
-                        "occlusionStrength": 1.0,
-                        "roughness": 0.5
-                    },
-                    {
-                        "alphaCutoff": 0.5,
-                        "color": [
-                            1.0,
-                            1.0,
-                            1.0,
-                            1.0
-                        ],
-                        "dithering": true,
-                        "ditheringScale": 1.0,
-                        "emissive": [
-                            0.0,
-                            0.0,
-                            0.0
-                        ],
-                        "iblIntensity": 1.0,
-                        "lighting": true,
-                        "metallic": 0.0,
-                        "normalMap": false,
-                        "occlusionStrength": 1.0,
-                        "roughness": 0.5
-                    },
-                    {
-                        "alphaCutoff": 0.5,
-                        "color": [
-                            1.0,
-                            1.0,
-                            1.0,
-                            1.0
-                        ],
-                        "dithering": true,
-                        "ditheringScale": 1.0,
-                        "emissive": [
-                            0.0,
-                            0.0,
-                            0.0
-                        ],
-                        "iblIntensity": 1.0,
-                        "lighting": true,
-                        "metallic": 0.0,
-                        "normalMap": false,
-                        "occlusionStrength": 1.0,
-                        "roughness": 0.5
-                    },
-                    {
-                        "alphaCutoff": 0.5,
-                        "color": [
-                            1.0,
-                            1.0,
-                            1.0,
-                            1.0
-                        ],
-                        "dithering": true,
-                        "ditheringScale": 1.0,
-                        "emissive": [
-                            0.0,
-                            0.0,
-                            0.0
-                        ],
-                        "iblIntensity": 1.0,
-                        "lighting": true,
-                        "metallic": 0.0,
-                        "normalMap": false,
-                        "occlusionStrength": 1.0,
-                        "roughness": 0.5
-                    },
-                    {
-                        "alphaCutoff": 0.5,
-                        "color": [
-                            1.0,
-                            1.0,
-                            1.0,
-                            1.0
-                        ],
-                        "dithering": true,
-                        "ditheringScale": 1.0,
-                        "emissive": [
-                            0.0,
-                            0.0,
-                            0.0
-                        ],
-                        "iblIntensity": 1.0,
-                        "lighting": true,
-                        "metallic": 0.0,
-                        "normalMap": false,
-                        "occlusionStrength": 1.0,
-                        "roughness": 0.5
-                    }
-                ],
+                "blendMode": 0,
                 "model": {
                     "guid": "515c141e-5e6a-ef7e-32c4-5277248b28bd",
                     "path": "Application/Assets/Models/sandModel/Small Tropical Island/Small Tropical Island.obj"
-                }
+                },
+                "texture": null
             },
             "type": "MeshRenderer"
         }
     ],
+    "id": "3ebd74f78e154fff",
     "name": "Small Tropical Island (5)"
 }

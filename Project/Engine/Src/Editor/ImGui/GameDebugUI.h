@@ -8,6 +8,7 @@
 #include "Editor/Export/GameExportDialog.h"
 #include "Editor/Launcher/ProjectBrowser.h"
 #include "Editor/Launcher/ProjectThumbnails.h"
+#include "Editor/Scene/SceneResaveDialog.h"
 #endif
 #include "Editor/Panel/EditorPanelRegistry.h"
 #include <filesystem>
@@ -143,6 +144,7 @@ namespace CoreEngine
         std::vector<Editor::ProjectEntry> recentProjects_;       ///< 最近のプロジェクトのメニューに出すもの
         std::filesystem::path pendingProjectFolder_;             ///< 確かめたあとに開くプロジェクト
         Editor::GameExportDialog gameExportDialog_;              ///< 「ゲームを書き出す」の窓
+        Editor::SceneResaveDialog sceneResaveDialog_;            ///< 「すべてのシーンと設定を保存し直す」の窓
 #endif
 
         static constexpr const char* consoleWindow = "Console";

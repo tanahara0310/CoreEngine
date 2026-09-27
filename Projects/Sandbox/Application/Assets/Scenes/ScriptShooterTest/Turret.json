@@ -26,10 +26,36 @@
         {
             "enabled": true,
             "parameters": {
+                "blendMode": 0,
+                "materials": [
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            0.25,
+                            0.45,
+                            0.9,
+                            1.0
+                        ],
+                        "dithering": true,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "iblIntensity": 1.0,
+                        "lighting": true,
+                        "metallic": 0.6,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.35
+                    }
+                ],
                 "model": {
                     "guid": "e16552a6-c74d-f458-71fe-2810a97c3777",
                     "path": "Engine/Assets/Models/Primitives/Sphere/sphere.obj"
-                }
+                },
+                "texture": null
             },
             "type": "MeshRenderer"
         },
@@ -42,13 +68,19 @@
                     0.9,
                     1.0
                 ],
+                "dithering": true,
+                "ditheringScale": 1.0,
                 "emissive": [
                     0.0,
                     0.0,
                     0.0,
                     1.0
                 ],
+                "iblIntensity": 1.0,
+                "lighting": true,
                 "metallic": 0.6,
+                "normalMap": false,
+                "occlusionStrength": 1.0,
                 "roughness": 0.35
             },
             "type": "Material"
@@ -76,9 +108,18 @@
         },
         {
             "enabled": true,
-            "parameters": {},
+            "parameters": {
+                "bulletPrefab": {
+                    "guid": "a24c5822-caf8-48e8-04e5-1549e569cd81",
+                    "path": "Application/Assets/Prefabs/ScriptShooterTest/Bullet.prefab"
+                },
+                "bulletSpeed": 32.0,
+                "fireInterval": 0.25,
+                "range": 45.0
+            },
             "type": "ShooterTurret"
         }
     ],
+    "id": "35e53bc341129217",
     "name": "Turret"
 }

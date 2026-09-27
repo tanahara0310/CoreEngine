@@ -4,20 +4,21 @@
         {
             "enabled": true,
             "parameters": {
+                "parent": null,
                 "rotate": [
-                    3.1415908336639404,
-                    0.2868642807006836,
-                    3.1415908336639404
+                    3.1415908,
+                    0.28686428,
+                    3.1415908
                 ],
                 "scale": [
-                    2.6999990940093994,
-                    2.6999998092651367,
-                    2.6999990940093994
+                    2.699999,
+                    2.6999998,
+                    2.699999
                 ],
                 "translate": [
-                    -13.872363090515137,
-                    1.1791162490844727,
-                    -6.0422749519348145
+                    -13.872363,
+                    1.1791162,
+                    -6.042275
                 ]
             },
             "type": "Transform"
@@ -25,6 +26,7 @@
         {
             "enabled": true,
             "parameters": {
+                "blendMode": 0,
                 "materials": [
                     {
                         "alphaCutoff": 0.5,
@@ -74,10 +76,12 @@
                 "model": {
                     "guid": "33bbc725-9b20-d397-937c-444c29985eed",
                     "path": "Application/Assets/Models/Ground/ground.gltf"
-                }
+                },
+                "texture": null
             },
             "type": "MeshRenderer"
         }
     ],
+    "id": "8e8bcbe0468da40b",
     "name": "ground (6)"
 }

@@ -4,6 +4,34 @@
         {
             "enabled": true,
             "parameters": {
+                "areaHeight": 2.0,
+                "areaWidth": 2.0,
+                "atmosphereIntensity": 20.0,
+                "color": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "direction": [
+                    -0.45073172,
+                    -0.6501194,
+                    0.6117072
+                ],
+                "innerConeAngleDeg": 30.0,
+                "intensity": 100000.0,
+                "isAtmosphereMoon": false,
+                "isAtmosphereSun": true,
+                "outerConeAngleDeg": 45.0,
+                "range": 10.0,
+                "type": 0
+            },
+            "type": "Light"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
                 "rotate": [
                     0.0,
                     0.0,
@@ -21,28 +49,8 @@
                 ]
             },
             "type": "Transform"
-        },
-        {
-            "enabled": true,
-            "parameters": {
-                "atmosphereIntensity": 20.0,
-                "color": [
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "direction": [
-                    -0.45073172450065613,
-                    -0.650119423866272,
-                    0.6117072105407715
-                ],
-                "intensity": 100000.0,
-                "isAtmosphereSun": true,
-                "type": 0
-            },
-            "type": "Light"
         }
     ],
+    "id": "987ac119fac8d621",
     "name": "Sun"
 }

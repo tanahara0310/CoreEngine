@@ -878,10 +878,10 @@ class Text3DRenderer {
 	void set_lineSpacing(float) property;
 	float get_wrapWidth() const property;
 	void set_wrapWidth(float) property;
-	bool get_fieldAutoFit() const property;
-	void set_fieldAutoFit(bool) property;
 	Vector2 get_fieldSize() const property;
 	void set_fieldSize(const Vector2&in) property;
+	bool get_fieldAutoFit() const property;
+	void set_fieldAutoFit(bool) property;
 	int get_alignH() const property;
 	void set_alignH(int) property;
 	int get_alignV() const property;

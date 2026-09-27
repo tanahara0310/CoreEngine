@@ -1,10 +1,7 @@
 {
-    "id": "56ba064d577b3e21",
     "active": true,
-    "name": "TitleLabel",
     "components": [
         {
-            "type": "RectTransform",
             "enabled": true,
             "parameters": {
                 "anchor": 4,
@@ -16,37 +13,40 @@
                     0.5,
                     0.5
                 ],
-                "size": [
-                    400.0,
-                    70.0
-                ],
                 "rotation": 0.0,
                 "sortOrder": 21
-            }
+            },
+            "type": "RectTransform"
         },
         {
-            "type": "UIText",
             "enabled": true,
             "parameters": {
-                "text": "タイトルへ",
-                "fontSize": 40.0,
+                "alignH": 1,
+                "alignV": 1,
                 "color": [
                     1.0,
                     1.0,
                     1.0,
                     1.0
                 ],
-                "alignH": 1,
-                "alignV": 1,
                 "fieldAutoFit": true,
+                "font": "Default",
+                "fontSize": 40.0,
+                "lineSpacing": 1.0,
                 "outlineColor": [
                     0.0,
                     0.0,
                     0.0,
                     1.0
                 ],
-                "outlineWidth": 0.15
-            }
+                "outlineWidth": 0.15,
+                "text": "タイトルへ",
+                "weight": 0.0,
+                "wrapWidth": 0.0
+            },
+            "type": "UIText"
         }
-    ]
+    ],
+    "id": "56ba064d577b3e21",
+    "name": "TitleLabel"
 }

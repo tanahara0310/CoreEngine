@@ -1,10 +1,7 @@
 {
-    "id": "25d8043a01eadada",
     "active": true,
-    "name": "ScoreValue",
     "components": [
         {
-            "type": "RectTransform",
             "enabled": true,
             "parameters": {
                 "anchor": 4,
@@ -16,37 +13,40 @@
                     0.5,
                     0.5
                 ],
-                "size": [
-                    800.0,
-                    110.0
-                ],
                 "rotation": 0.0,
                 "sortOrder": 10
-            }
+            },
+            "type": "RectTransform"
         },
         {
-            "type": "UIText",
             "enabled": true,
             "parameters": {
-                "text": "0000000",
-                "fontSize": 96.0,
+                "alignH": 1,
+                "alignV": 1,
                 "color": [
                     1.0,
                     1.0,
                     1.0,
                     1.0
                 ],
-                "alignH": 1,
-                "alignV": 1,
                 "fieldAutoFit": true,
+                "font": "Default",
+                "fontSize": 96.0,
+                "lineSpacing": 1.0,
                 "outlineColor": [
                     0.0,
                     0.0,
                     0.0,
                     1.0
                 ],
-                "outlineWidth": 0.1
-            }
+                "outlineWidth": 0.1,
+                "text": "0000000",
+                "weight": 0.0,
+                "wrapWidth": 0.0
+            },
+            "type": "UIText"
         }
-    ]
+    ],
+    "id": "25d8043a01eadada",
+    "name": "ScoreValue"
 }

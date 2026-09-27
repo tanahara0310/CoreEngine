@@ -1,10 +1,7 @@
 {
-    "id": "717e6324e40f47bf",
     "active": true,
-    "name": "Ship",
     "components": [
         {
-            "type": "Transform",
             "enabled": true,
             "parameters": {
                 "parent": null,
@@ -23,20 +20,23 @@
                     0.9,
                     0.0
                 ]
-            }
+            },
+            "type": "Transform"
         },
         {
-            "type": "ShootingSpinner",
             "enabled": true,
             "parameters": {
+                "bobHeight": 0.2,
+                "bobSpeed": 0.35,
                 "spin": [
                     0.0,
                     0.7,
                     0.0
-                ],
-                "bobHeight": 0.2,
-                "bobSpeed": 0.35
-            }
+                ]
+            },
+            "type": "ShootingSpinner"
         }
-    ]
+    ],
+    "id": "717e6324e40f47bf",
+    "name": "Ship"
 }

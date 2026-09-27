@@ -1,9 +1,7 @@
 {
     "active": true,
-    "name": "PivotTopLeft",
     "components": [
         {
-            "type": "RectTransform",
             "enabled": true,
             "parameters": {
                 "anchor": 0,
@@ -15,26 +13,29 @@
                     0.0,
                     0.0
                 ],
+                "rotation": 0.0,
                 "size": [
                     200.0,
                     120.0
                 ],
-                "rotation": 0.0,
                 "sortOrder": 2
-            }
+            },
+            "type": "RectTransform"
         },
         {
-            "type": "UIImage",
             "enabled": true,
             "parameters": {
-                "texture": "Application/Assets/Textures/circle.png",
                 "color": [
                     0.25,
                     0.75,
                     0.95,
                     1.0
-                ]
-            }
+                ],
+                "texture": null
+            },
+            "type": "UIImage"
         }
-    ]
+    ],
+    "id": "87a33b7dbcb9d953",
+    "name": "PivotTopLeft"
 }

@@ -27,7 +27,12 @@ namespace CoreEngine
         /// @param filePath ファイルパス
         /// @param jsonData 保存するJSONオブジェクト
         /// @return 保存に成功した場合true
+        /// @note 中身は ToFileText の形で書く。
         bool SaveJson(const std::string& filePath, const json& jsonData);
+
+        /// @brief ファイルへ書く文字列にする（インデント 4・末尾に改行）
+        /// @details float で表せる数は、float として最も短い 10 進の形で書く（0.550000011920929 → 0.55）。
+        static std::string ToFileText(const json& jsonData);
 
         /// @brief ディレクトリを作成（存在しない場合）
         /// @param dirPath ディレクトリパス

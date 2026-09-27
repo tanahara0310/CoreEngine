@@ -1,10 +1,7 @@
 {
-    "id": "209487e99acca861",
     "active": true,
-    "name": "ShipEngine",
     "components": [
         {
-            "type": "Transform",
             "enabled": true,
             "parameters": {
                 "parent": {
@@ -26,20 +23,46 @@
                     0.0,
                     -1.05
                 ]
-            }
+            },
+            "type": "Transform"
         },
         {
-            "type": "MeshRenderer",
             "enabled": true,
             "parameters": {
+                "blendMode": 0,
+                "materials": [
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            1.0,
+                            0.6,
+                            0.2,
+                            1.0
+                        ],
+                        "dithering": true,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            3.0,
+                            1.2,
+                            0.3
+                        ],
+                        "iblIntensity": 1.0,
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.5
+                    }
+                ],
                 "model": {
                     "guid": "e16552a6-c74d-f458-71fe-2810a97c3777",
                     "path": "Engine/Assets/Models/Primitives/Sphere/sphere.obj"
-                }
-            }
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
         },
         {
-            "type": "Material",
             "enabled": true,
             "parameters": {
                 "color": [
@@ -48,15 +71,24 @@
                     0.2,
                     1.0
                 ],
+                "dithering": true,
+                "ditheringScale": 1.0,
                 "emissive": [
                     3.0,
                     1.2,
                     0.3,
                     1.0
                 ],
+                "iblIntensity": 1.0,
+                "lighting": true,
                 "metallic": 0.0,
+                "normalMap": false,
+                "occlusionStrength": 1.0,
                 "roughness": 0.5
-            }
+            },
+            "type": "Material"
         }
-    ]
+    ],
+    "id": "209487e99acca861",
+    "name": "ShipEngine"
 }

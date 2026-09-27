@@ -1,10 +1,7 @@
 {
-    "id": "845b5c68471bbe9b",
     "active": true,
-    "name": "StarField",
     "components": [
         {
-            "type": "Transform",
             "enabled": true,
             "parameters": {
                 "parent": null,
@@ -23,10 +20,10 @@
                     -2.5,
                     28.0
                 ]
-            }
+            },
+            "type": "Transform"
         },
         {
-            "type": "ParticleSystem",
             "enabled": true,
             "parameters": {
                 "billboard": 1,
@@ -66,14 +63,14 @@
                         0.0
                     ],
                     "areaMax": [
-                        -3.4028234663852886e+38,
-                        -3.4028234663852886e+38,
-                        -3.4028234663852886e+38
+                        -3.4028235e+38,
+                        -3.4028235e+38,
+                        -3.4028235e+38
                     ],
                     "areaMin": [
-                        3.4028234663852886e+38,
-                        3.4028234663852886e+38,
-                        3.4028234663852886e+38
+                        3.4028235e+38,
+                        3.4028235e+38,
+                        3.4028235e+38
                     ],
                     "drag": 0.0,
                     "enabled": false,
@@ -222,7 +219,10 @@
                     "useRandomDirection": false
                 },
                 "version": "2.2"
-            }
+            },
+            "type": "ParticleSystem"
         }
-    ]
+    ],
+    "id": "845b5c68471bbe9b",
+    "name": "StarField"
 }

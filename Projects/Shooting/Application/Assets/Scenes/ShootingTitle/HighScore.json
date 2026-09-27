@@ -1,10 +1,7 @@
 {
-    "id": "fa9f95be756c4b0d",
     "active": true,
-    "name": "HighScore",
     "components": [
         {
-            "type": "RectTransform",
             "enabled": true,
             "parameters": {
                 "anchor": 4,
@@ -16,37 +13,40 @@
                     0.5,
                     0.5
                 ],
-                "size": [
-                    800.0,
-                    50.0
-                ],
                 "rotation": 0.0,
                 "sortOrder": 10
-            }
+            },
+            "type": "RectTransform"
         },
         {
-            "type": "UIText",
             "enabled": true,
             "parameters": {
-                "text": "ハイスコア  0000000",
-                "fontSize": 34.0,
+                "alignH": 1,
+                "alignV": 1,
                 "color": [
                     1.0,
                     0.82,
                     0.3,
                     1.0
                 ],
-                "alignH": 1,
-                "alignV": 1,
                 "fieldAutoFit": true,
+                "font": "Default",
+                "fontSize": 34.0,
+                "lineSpacing": 1.0,
                 "outlineColor": [
                     0.0,
                     0.0,
                     0.0,
                     1.0
                 ],
-                "outlineWidth": 0.1
-            }
+                "outlineWidth": 0.1,
+                "text": "ハイスコア  0000000",
+                "weight": 0.0,
+                "wrapWidth": 0.0
+            },
+            "type": "UIText"
         }
-    ]
+    ],
+    "id": "fa9f95be756c4b0d",
+    "name": "HighScore"
 }

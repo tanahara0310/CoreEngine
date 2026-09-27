@@ -1,4 +1,12 @@
 {
+    "collision": {
+        "pairs": [
+            [
+                "Default",
+                "Default"
+            ]
+        ]
+    },
     "defaultGround": true,
     "objects": [
         "Sun",

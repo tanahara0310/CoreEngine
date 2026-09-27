@@ -1,10 +1,7 @@
 {
-    "id": "85971d1aedd02ab4",
     "active": true,
-    "name": "SparkFx",
     "components": [
         {
-            "type": "Transform",
             "enabled": true,
             "parameters": {
                 "parent": null,
@@ -23,10 +20,10 @@
                     -50.0,
                     0.0
                 ]
-            }
+            },
+            "type": "Transform"
         },
         {
-            "type": "ParticleSystem",
             "enabled": true,
             "parameters": {
                 "billboard": 1,
@@ -66,14 +63,14 @@
                         0.0
                     ],
                     "areaMax": [
-                        -3.4028234663852886e+38,
-                        -3.4028234663852886e+38,
-                        -3.4028234663852886e+38
+                        -3.4028235e+38,
+                        -3.4028235e+38,
+                        -3.4028235e+38
                     ],
                     "areaMin": [
-                        3.4028234663852886e+38,
-                        3.4028234663852886e+38,
-                        3.4028234663852886e+38
+                        3.4028235e+38,
+                        3.4028235e+38,
+                        3.4028235e+38
                     ],
                     "drag": 4.0,
                     "enabled": true,
@@ -222,7 +219,10 @@
                     "useRandomDirection": true
                 },
                 "version": "2.2"
-            }
+            },
+            "type": "ParticleSystem"
         }
-    ]
+    ],
+    "id": "85971d1aedd02ab4",
+    "name": "SparkFx"
 }

@@ -1,16 +1,10 @@
 {
     "active": true,
-    "name": "ShakeTester",
     "components": [
         {
-            "type": "Transform",
             "enabled": true,
             "parameters": {
-                "translate": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
+                "parent": null,
                 "rotate": [
                     0.0,
                     0.0,
@@ -20,13 +14,28 @@
                     1.0,
                     1.0,
                     1.0
+                ],
+                "translate": [
+                    0.0,
+                    0.0,
+                    0.0
                 ]
-            }
+            },
+            "type": "Transform"
         },
         {
-            "type": "CameraShakeTester",
             "enabled": true,
-            "parameters": {}
+            "parameters": {
+                "explosionOrigin": [
+                    0.0,
+                    9.0,
+                    0.0
+                ],
+                "traumaPerFrame": 0.06
+            },
+            "type": "CameraShakeTester"
         }
-    ]
+    ],
+    "id": "a3ff19d5855510a6",
+    "name": "ShakeTester"
 }

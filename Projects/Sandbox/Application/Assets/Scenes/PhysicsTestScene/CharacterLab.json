@@ -1,6 +1,5 @@
 {
     "active": true,
-    "name": "CharacterLab",
     "components": [
         {
             "enabled": true,
@@ -26,8 +25,31 @@
         },
         {
             "enabled": true,
-            "parameters": {},
+            "parameters": {
+                "areaCenter": [
+                    34.0,
+                    0.0,
+                    0.0
+                ],
+                "characterPrefab": {
+                    "guid": "b3560778-fd99-f086-100d-b0bfabdeb0cf",
+                    "path": "Application/Assets/Prefabs/Physics/Character.prefab"
+                },
+                "humanPrefab": {
+                    "guid": "e5ba53d2-f28e-bd82-9219-1af9872b86cb",
+                    "path": "Application/Assets/Prefabs/Physics/HumanModel.prefab"
+                },
+                "jumpSpeed": 5.5,
+                "platformPrefab": {
+                    "guid": "16a4d833-86b0-c01d-b820-e91290d90dda",
+                    "path": "Application/Assets/Prefabs/Physics/PhysicsPlatform.prefab"
+                },
+                "runSpeed": 7.0,
+                "walkSpeed": 3.5
+            },
             "type": "CharacterLab"
         }
-    ]
+    ],
+    "id": "26ca7a8ad6e1c377",
+    "name": "CharacterLab"
 }

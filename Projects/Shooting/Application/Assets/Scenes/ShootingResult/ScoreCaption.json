@@ -1,10 +1,7 @@
 {
-    "id": "c4c9fa50a7a2d4d5",
     "active": true,
-    "name": "ScoreCaption",
     "components": [
         {
-            "type": "RectTransform",
             "enabled": true,
             "parameters": {
                 "anchor": 4,
@@ -16,30 +13,40 @@
                     0.5,
                     0.5
                 ],
-                "size": [
-                    400.0,
-                    50.0
-                ],
                 "rotation": 0.0,
                 "sortOrder": 10
-            }
+            },
+            "type": "RectTransform"
         },
         {
-            "type": "UIText",
             "enabled": true,
             "parameters": {
-                "text": "SCORE",
-                "fontSize": 36.0,
+                "alignH": 1,
+                "alignV": 1,
                 "color": [
                     0.8,
                     0.85,
                     0.95,
                     1.0
                 ],
-                "alignH": 1,
-                "alignV": 1,
-                "fieldAutoFit": true
-            }
+                "fieldAutoFit": true,
+                "font": "Default",
+                "fontSize": 36.0,
+                "lineSpacing": 1.0,
+                "outlineColor": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "outlineWidth": 0.0,
+                "text": "SCORE",
+                "weight": 0.0,
+                "wrapWidth": 0.0
+            },
+            "type": "UIText"
         }
-    ]
+    ],
+    "id": "c4c9fa50a7a2d4d5",
+    "name": "ScoreCaption"
 }
