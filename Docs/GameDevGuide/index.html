@@ -1031,6 +1031,7 @@ a { color: var(--accent); }
 <ul>
   <li><strong>1 人 1 オブジェクトずつ触る。</strong> 同じ <code>Player.json</code> を 2 人で同時に変えなければ衝突しません</li>
   <li><strong>オブジェクトの追加・削除は自由。</strong> 触るのはそのオブジェクトの JSON だけで、<code>_scene.json</code> は変わりません</li>
+  <li><strong>エディタを開いたまま pull してよい。</strong> 外でシーンのファイルが変わると、エディタが読み直します（保存していない変更があるときは、読み直すか続けるかを聞きます）。保存でほかの人の変更を消してしまうときは、保存を止めて聞きます</li>
   <li><strong><code>_scene.json</code> と <code>_environment.json</code> は担当を決める。</strong> シーンの設定は 1 ファイルに入っているので、同時に触ると衝突します</li>
 </ul>
 

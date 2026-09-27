@@ -985,6 +985,9 @@
     <ClCompile Include="Engine\Src\Editor\Scene\SceneResaveDialog.cpp">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Scene\SceneFileDialogs.cpp">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Scene\PrefabSystem.cpp">
       <Filter>Engine\Src\Scene</Filter>
     </ClCompile>
@@ -2983,6 +2986,9 @@
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Scene\SceneResaveDialog.h">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Scene\SceneFileDialogs.h">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Scene\PrefabSystem.h">

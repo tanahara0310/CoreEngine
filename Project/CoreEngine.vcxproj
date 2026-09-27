@@ -516,6 +516,7 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Editor\Scene\PrefabEditing.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\SceneDebugEditor.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\SceneResaveDialog.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Scene\SceneFileDialogs.cpp" />
     <ClCompile Include="Engine\Src\Scene\PrefabSystem.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneEnvironmentIO.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneSaveSystem.cpp" />
@@ -1583,6 +1584,7 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Editor\Scene\PrefabEditing.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\SceneDebugEditor.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\SceneResaveDialog.h" />
+    <ClInclude Include="Engine\Src\Editor\Scene\SceneFileDialogs.h" />
     <ClInclude Include="Engine\Src\Scene\PrefabSystem.h" />
     <ClInclude Include="Engine\Src\Scene\SceneEnvironmentIO.h" />
     <ClInclude Include="Engine\Src\Scene\SceneSaveSystem.h" />

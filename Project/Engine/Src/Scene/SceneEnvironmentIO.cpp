@@ -8,6 +8,7 @@
 #include "Utility/CVar/CVarRegistry.h"
 #include "Utility/CVar/CVarScope.h"
 #include "Utility/CVar/CVarSerialization.h"
+#include "Scene/SceneSaveSystem.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
 
@@ -26,11 +27,21 @@ namespace CoreEngine
             auto* domainContext = engine ? engine->GetRenderDomainContext() : nullptr;
             return domainContext ? domainContext->GetVolumetricCloudManager() : nullptr;
         }
+
+        /// @brief 今の見た目を、ファイルに書く形にする（コード既定のままの項目は書かない）
+        json BuildRoot()
+        {
+            json root;
+            root["version"] = "1.0";
+            CVarSerialization::Save(root, "", /*skipDefaults=*/true, /*excludePrefix=*/{},
+                                    CVarScope::Scene);
+            return root;
+        }
     }
 
     std::string SceneEnvironmentIO::GetFilePath(const std::string& sceneName)
     {
-        return (std::filesystem::path(kSceneRoot) / sceneName / "_environment.json").string();
+        return (std::filesystem::path(kSceneRoot) / sceneName / kFileName).string();
     }
 
     std::string SceneEnvironmentIO::GetCloudPaintFilePath(const std::string& sceneName)
@@ -65,6 +76,9 @@ namespace CoreEngine
             cloudManager->SetWeatherPaintPath(GetCloudPaintFilePath(sceneName));
         }
 
+        // 読んだ中身を、外の変更を見分けるための控えにする（ファイルが無ければ控えも消す）
+        SceneSaveSystem::RememberSettingsFile(sceneName, kFileName);
+
         const std::string path = GetFilePath(sceneName);
         auto& jsonManager = JsonManager::GetInstance();
         if (!jsonManager.FileExists(path)) {
@@ -89,21 +103,37 @@ namespace CoreEngine
         return true;
     }
 
-    bool SceneEnvironmentIO::Save(const std::string& sceneName)
+    bool SceneEnvironmentIO::Save(const std::string& sceneName, bool overwrite)
     {
         if (sceneName.empty()) {
             return false;
         }
 
-        json root;
-        root["version"] = "1.0";
-        CVarSerialization::Save(root, "", /*skipDefaults=*/true, /*excludePrefix=*/{},
-                                CVarScope::Scene);
+        const json root = BuildRoot();
+        const SceneSaveSystem::FileWrite action =
+            SceneSaveSystem::DecideSettingsFileWrite(sceneName, kFileName, JsonManager::ToFileText(root));
+        if (action == SceneSaveSystem::FileWrite::KeepOutside
+            || (action == SceneSaveSystem::FileWrite::Conflict && !overwrite)) {
+            Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
+                "シーン {} の見た目のファイルは外で変わったので書きませんでした", sceneName);
+            return false;
+        }
 
         const std::string path = GetFilePath(sceneName);
         auto& jsonManager = JsonManager::GetInstance();
         jsonManager.CreateJsonDirectory(std::filesystem::path(path).parent_path().string());
-        return jsonManager.SaveJson(path, root);
+        if (!jsonManager.SaveJson(path, root)) {
+            return false;
+        }
+        SceneSaveSystem::RememberSettingsFile(sceneName, kFileName);
+        return true;
+    }
+
+    bool SceneEnvironmentIO::HasConflict(const std::string& sceneName)
+    {
+        return !sceneName.empty()
+            && SceneSaveSystem::DecideSettingsFileWrite(sceneName, kFileName, JsonManager::ToFileText(BuildRoot()))
+                == SceneSaveSystem::FileWrite::Conflict;
     }
 
     uint64_t SceneEnvironmentIO::GetChangeRevision()

@@ -32,6 +32,25 @@ namespace CoreEngine
     ///          オブジェクト単位の `{serializeKey}.json`（並び順 `order` を持つ）を分けて置く。
     class SceneSaveSystem {
     public:
+        /// @brief シーンの設定のファイル名
+        static constexpr const char* kManifestFileName = "_scene.json";
+
+        /// @brief 保存で 1 つのファイルをどうするか
+        enum class FileWrite {
+            Write,       ///< 書く（外で変わっていない・書く中身と同じ）
+            KeepOutside, ///< 書かない（外で変わっていて、自分は変えていない）
+            Conflict,    ///< 自分も外も変えている（書くと外の変更が消える）
+        };
+
+        /// @brief この実行で最後に読み書きした後に、外で変わったシーンのファイル
+        struct ExternalChange {
+            /// @brief 変わり方
+            enum class Kind { Added, Changed, Removed };
+
+            std::string fileName; ///< ファイル名（`Player.json` など）
+            Kind kind = Kind::Changed;
+        };
+
         /// @brief シーン名を設定（JSON ファイルパスに使用）
         void SetSceneName(const std::string& name) { sceneName_ = name; }
 
@@ -86,7 +105,12 @@ namespace CoreEngine
         static ManifestSettings LoadManifestSettings(const std::string& sceneName);
 
         /// @brief マニフェストのシーンの設定を書き換える（ここで扱わない項目はそのまま）
-        void SaveManifestSettings(const ManifestSettings& settings);
+        /// @param overwrite 外で変わっていても自分の値で書くか
+        /// @return 書いたら true（外で変わったので書かなかったときは false）
+        bool SaveManifestSettings(const ManifestSettings& settings, bool overwrite = false);
+
+        /// @brief マニフェストのシーンの設定を書いたら、外の変更とぶつかるかを調べる（書かない）
+        FileWrite CheckManifestSettings(const ManifestSettings& settings) const;
 
         /// @brief 保存データを持つシーンの名前（`Application/Assets/Scenes/<名前>/_scene.json` があるフォルダ）
         /// @return 名前順
@@ -113,15 +137,34 @@ namespace CoreEngine
         static bool CreateScene(const std::string& sceneName, SceneTemplate templateKind,
                                 std::string* error = nullptr);
 
-        /// @brief シーン全体を保存（マニフェスト + 全オブジェクトの個別ファイル）
+        /// @brief シーン全体を保存（全オブジェクトの個別ファイル。古い形ならマニフェストの一覧も外す）
+        /// @param overwrite 外で変わったファイルでも、自分も変えたものは自分の値で書く・消すか
         /// @note 並び順は、前に読み書きしたオブジェクトはその番号、新しいものは続きの番号にする。
         ///       この実行で読み書きしたのに今は無いオブジェクト（消したもの）の JSON は消す。
         ///       この実行で読み書きしていない JSON（ほかの人が足したものなど）は消さない。
+        ///       外で変わったファイルは、自分が変えていなければ書かずに残す。
         ///       削除の印が付いたオブジェクトは保存しない。
-        void SaveScene(GameObjectManager* mgr);
+        void SaveScene(GameObjectManager* mgr, bool overwrite = false);
 
-        /// @brief 指定オブジェクト1体だけを個別ファイルに保存
+        /// @brief 指定オブジェクト1体だけを個別ファイルに保存（外で変わっていたら書かない）
         void SaveObject(GameObject* obj);
+
+        /// @brief 保存したら外の変更を消してしまうオブジェクトのファイル名（自分も外も変えた・自分が消したのに外で変わった）
+        /// @note ファイルは書かない。
+        std::vector<std::string> CheckSaveConflicts(const GameObjectManager& mgr) const;
+
+        /// @brief シーンのフォルダの設定のファイル（`_scene.json` など）の今の中身を、この実行で最後に読み書きした中身として控える
+        /// @note 読んだ直後と書いた直後に呼ぶ。ファイルが無ければ控えを消す。
+        static void RememberSettingsFile(const std::string& sceneName, const std::string& fileName);
+
+        /// @brief シーンのフォルダの設定のファイルを書く前に、外の変更とぶつかるかを決める
+        /// @param text 書こうとしている中身（`JsonManager::ToFileText` の形）
+        static FileWrite DecideSettingsFileWrite(const std::string& sceneName, const std::string& fileName,
+                                                 const std::string& text);
+
+        /// @brief シーンのフォルダを調べ、この実行で最後に読み書きした後に外で足された・変わった・消えたファイルを返す
+        /// @note 対象はオブジェクトの JSON と、控えのある設定のファイル。ファイル名の順に並べる。
+        static std::vector<ExternalChange> FindExternalChanges(const std::string& sceneName);
 
         /// @brief 保存完了時に呼ばれる通知コールバックを設定
         void SetSaveNotificationCallback(std::function<void(const std::string&)> cb) {
@@ -136,6 +179,9 @@ namespace CoreEngine
 
         /// @brief マニフェストファイルのパスを返す  (例: ".../TestScene/_scene.json")
         std::string GetManifestPath() const;
+
+        /// @brief 今のマニフェストにシーンの設定を当てた中身を作る（ここで扱わない項目はそのまま）
+        json BuildManifest(const ManifestSettings& settings) const;
 
         /// @brief 復元待ちのオブジェクト 1 体分
         struct PendingObject {

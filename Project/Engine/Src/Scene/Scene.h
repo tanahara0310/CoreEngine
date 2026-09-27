@@ -61,9 +61,13 @@ namespace CoreEngine
         /// @brief オブジェクトの値を、保存ファイルではなくメモリの控えから戻すようにする
         void SetRestoreSnapshot(std::shared_ptr<const SceneSnapshot> snapshot) override { restoreSnapshot_ = std::move(snapshot); }
 
-        /// @brief 今のシーンの設定（足した Feature・既定の床・衝突マトリクス）をマニフェストへ書く
-        /// @note エディタがシーンを保存するときに呼ぶ。
-        void SaveSceneSettings();
+        /// @brief 今のシーンの設定（足した Feature・既定の床・衝突マトリクス）と見た目をシーンのファイルへ書く
+        /// @param overwrite 外で変わっていても自分の値で書くか
+        /// @note エディタがシーンを保存するときに呼ぶ。外で変わったファイルは、自分が変えていなければ書かずに残す。
+        void SaveSceneSettings(bool overwrite = false);
+
+        /// @brief シーンの設定と見た目を書いたら外の変更を消してしまうファイル名（書かない）
+        std::vector<std::string> CheckSceneSettingsConflicts() const;
 
     private:
 

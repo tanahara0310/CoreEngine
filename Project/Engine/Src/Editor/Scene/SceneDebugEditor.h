@@ -6,6 +6,8 @@
 #include "Editor/Scene/UndoRedoHistory.h"
 #include "Editor/ImGui/Gizmo.h"
 #include "Editor/ImGui/ObjectSelector.h"
+#include "Scene/SceneSaveSystem.h"
+#include <chrono>
 #include <cstdint>
 #include <string>
 #include <unordered_map>
@@ -67,9 +69,30 @@ namespace CoreEngine
         bool CanRedo() const { return undoRedoHistory_.CanRedo(); }
 
         /// @brief シーンとカメラの構図を保存する
-        /// @return 保存したら true（シーン名が無い・再生中なら false）
+        /// @return 保存したら true（シーン名が無い・再生中・外の変更とぶつかるなら false）
         /// @note 再生中は保存せず、ステータスバーに理由を出す。
+        ///       外の変更を消してしまうファイルがあれば保存せず、そのファイル名を控える（GetSaveConflicts）。
         bool SaveScene();
+
+        /// @brief 外の変更とぶつかるファイルも、自分の値で上書きして保存する
+        /// @return 保存したら true
+        bool SaveSceneOverwriting();
+
+        /// @brief 保存しようとして外の変更とぶつかったファイル名（無ければ空）
+        const std::vector<std::string>& GetSaveConflicts() const { return saveConflicts_; }
+
+        /// @brief ぶつかった保存をやめる
+        void CancelSaveConflicts() { saveConflicts_.clear(); }
+
+        /// @brief 保存していない変更があるときに、外で変わったシーンのファイル（無ければ空）
+        /// @note 保存していない変更が無ければ、見つけた時点で読み直すのでここには入らない。
+        const std::vector<SceneSaveSystem::ExternalChange>& GetExternalChanges() const { return externalChanges_; }
+
+        /// @brief 外の変更を取り込むために、開いているシーンを読み直す（保存していない変更は捨てる）
+        void ReloadFromDisk();
+
+        /// @brief 外の変更を知ったうえで、読み直さずに続ける（同じ変更はもう知らせない）
+        void KeepEditingDespiteExternalChanges();
 
         /// @brief 最後の保存から編集したか
         bool IsSceneDirty() const;
@@ -178,6 +201,17 @@ namespace CoreEngine
         /// @return 再生中で断ったら true
         bool RefuseSaveWhilePlaying() const;
 
+        /// @brief シーンとカメラの構図を書く
+        /// @param overwrite 外の変更とぶつかるファイルも自分の値で書くか
+        bool WriteScene(bool overwrite);
+
+        /// @brief ステータスバーに知らせを出す
+        void ShowStatus(const char* message, const ImVec4& color) const;
+
+        /// @brief 外でシーンのファイルが変わったかを 1 秒ごとに調べる
+        /// @details 保存していない変更が無ければその場で読み直し、あれば知らせる分として控える。
+        void CheckExternalChanges();
+
         UndoRedoHistory undoRedoHistory_;
         ObjectSelector objectSelector_;
 
@@ -203,6 +237,18 @@ namespace CoreEngine
 
         // 操作をしていなくても未保存として扱うか（保存すると外れる）
         bool dirtyWithoutEdits_ = false;
+
+        // 保存しようとして外の変更とぶつかったファイル名
+        std::vector<std::string> saveConflicts_;
+
+        // 保存していない変更があるときに見つけた、外で変わったファイル
+        std::vector<SceneSaveSystem::ExternalChange> externalChanges_;
+
+        // 「このまま続ける」を選んだときの外の変更（同じ変更はもう知らせない）
+        std::vector<SceneSaveSystem::ExternalChange> acknowledgedChanges_;
+
+        // 次に外の変更を調べる時刻
+        std::chrono::steady_clock::time_point nextExternalCheck_{};
 
         // 非所有参照
         EngineSystem* engine_ = nullptr;
