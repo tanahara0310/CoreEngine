@@ -19,7 +19,10 @@
 #include "Utility/Logger/Logger.h"
 
 #include <cctype>
+#include <cstdint>
+#include <format>
 #include <memory>
+#include <random>
 #include <utility>
 
 namespace CoreEngine::ObjectEditing
@@ -113,15 +116,17 @@ namespace CoreEngine::ObjectEditing
         }
 
         /// @brief 控えからオブジェクトを作ってシーンへ置く
-        /// @param keepIdentity 控えた ID と保存キーで置くか（消したものを戻すとき）
+        /// @param keepIdentity 控えた ID と保存キーで置くか（消したものを戻すとき）。false なら新しい保存キーを付ける
         GameObject* Recreate(GameObjectManager& manager, const Snapshot& snapshot, const std::string& name,
                              bool keepIdentity)
         {
+            const std::string key = keepIdentity ? snapshot.serializeKey : MakeNewObjectKey(name);
             GameObject* object = nullptr;
             if (!snapshot.prefab.guid.empty() || !snapshot.prefab.path.empty()) {
-                object = PrefabSystem::Instantiate(manager, snapshot.prefab, name);
+                object = PrefabSystem::Instantiate(manager, snapshot.prefab, name, key);
             } else {
                 auto owned = std::make_unique<GameObject>();
+                owned->SetSerializeKey(key);
                 owned->SetName(name);
                 object = manager.AddObject(std::move(owned));
             }
@@ -185,6 +190,28 @@ namespace CoreEngine::ObjectEditing
         }
     }
 
+    std::string MakeNewObjectKey(const std::string& name)
+    {
+        // 英数字と '-' を残し、ほかの文字の並びは '_' 1 つにする
+        std::string base;
+        for (const char c : name) {
+            if (std::isalnum(static_cast<unsigned char>(c)) || c == '-') {
+                base.push_back(c);
+            } else if (!base.empty() && base.back() != '_') {
+                base.push_back('_');
+            }
+        }
+        while (!base.empty() && base.back() == '_') {
+            base.pop_back();
+        }
+        if (base.empty()) {
+            base = "Object";
+        }
+
+        static std::mt19937_64 random{ std::random_device{}() };
+        return std::format("{}_{:08x}", base, static_cast<std::uint32_t>(random()));
+    }
+
     bool CanDuplicateOrDelete(const GameObject& object, std::string* reason)
     {
         const auto fail = [reason](const char* message) {
@@ -211,9 +238,11 @@ namespace CoreEngine::ObjectEditing
     GameObject* CreateEmpty(const Context& context, const Vector3& position)
     {
         GameObjectManager& manager = *context.manager;
+        const std::string name = HasObjectNamed(manager, kEmptyObjectName)
+            ? MakeCopyName(manager, kEmptyObjectName) : std::string(kEmptyObjectName);
         auto owned = std::make_unique<GameObject>();
-        owned->SetName(HasObjectNamed(manager, kEmptyObjectName)
-            ? MakeCopyName(manager, kEmptyObjectName) : std::string(kEmptyObjectName));
+        owned->SetSerializeKey(MakeNewObjectKey(name));
+        owned->SetName(name);
         GameObject* const object = manager.AddObject(std::move(owned));
         if (!object) {
             return nullptr;
@@ -238,9 +267,11 @@ namespace CoreEngine::ObjectEditing
     {
         GameObjectManager& manager = *context.manager;
         const char* const baseName = (kind == ParticleKind::Gpu) ? kGpuParticleObjectName : kParticleObjectName;
+        const std::string name = HasObjectNamed(manager, baseName)
+            ? MakeCopyName(manager, baseName) : std::string(baseName);
         auto owned = std::make_unique<GameObject>();
-        owned->SetName(HasObjectNamed(manager, baseName)
-            ? MakeCopyName(manager, baseName) : std::string(baseName));
+        owned->SetSerializeKey(MakeNewObjectKey(name));
+        owned->SetName(name);
         GameObject* const object = manager.AddObject(std::move(owned));
         if (!object) {
             return nullptr;
@@ -270,9 +301,11 @@ namespace CoreEngine::ObjectEditing
     {
         GameObjectManager& manager = *context.manager;
         const char* const baseName = (kind == UIElementKind::Text) ? kTextObjectName : kImageObjectName;
+        const std::string name = HasObjectNamed(manager, baseName)
+            ? MakeCopyName(manager, baseName) : std::string(baseName);
         auto owned = std::make_unique<GameObject>();
-        owned->SetName(HasObjectNamed(manager, baseName)
-            ? MakeCopyName(manager, baseName) : std::string(baseName));
+        owned->SetSerializeKey(MakeNewObjectKey(name));
+        owned->SetName(name);
         GameObject* const object = manager.AddObject(std::move(owned));
         if (!object) {
             return nullptr;

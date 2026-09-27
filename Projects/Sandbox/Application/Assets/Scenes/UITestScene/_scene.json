@@ -43,21 +43,5 @@
             ]
         ]
     },
-    "defaultGround": false,
-    "objects": [
-        "Sun",
-        "Panel",
-        "Tilted",
-        "PivotTopLeft",
-        "Title",
-        "Hint",
-        "PlayButton",
-        "UpButton",
-        "DownButton",
-        "LeftButton",
-        "RightButton",
-        "ButtonLabel",
-        "CountLabel",
-        "ButtonTester"
-    ]
+    "defaultGround": false
 }

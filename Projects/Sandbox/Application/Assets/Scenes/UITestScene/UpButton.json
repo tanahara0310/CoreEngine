@@ -68,5 +68,6 @@
         }
     ],
     "id": "847c8b1faab6ad54",
-    "name": "UpButton"
+    "name": "UpButton",
+    "order": 7
 }

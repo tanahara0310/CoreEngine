@@ -59,5 +59,6 @@
         }
     ],
     "id": "38b429bf239b38db",
-    "name": "ScoreBoard"
+    "name": "ScoreBoard",
+    "order": 4
 }

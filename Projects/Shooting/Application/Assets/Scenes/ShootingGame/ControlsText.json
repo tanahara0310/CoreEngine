@@ -48,5 +48,6 @@
         }
     ],
     "id": "4290e2f4e6843e90",
-    "name": "ControlsText"
+    "name": "ControlsText",
+    "order": 18
 }

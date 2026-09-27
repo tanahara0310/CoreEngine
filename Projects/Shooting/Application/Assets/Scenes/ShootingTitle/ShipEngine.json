@@ -90,5 +90,6 @@
         }
     ],
     "id": "209487e99acca861",
-    "name": "ShipEngine"
+    "name": "ShipEngine",
+    "order": 8
 }

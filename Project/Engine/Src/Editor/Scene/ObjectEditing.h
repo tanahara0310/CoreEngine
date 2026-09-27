@@ -25,6 +25,11 @@ namespace CoreEngine
             std::function<void(const GameObject&)> beforeDestroy;
         };
 
+        /// @brief エディタで新しく作るオブジェクトの保存キー（ファイル名と ID の元）を作る
+        /// @details 名前の英数字と `-` を残し、ほかの人が作ったものと重ならない印を付ける
+        ///          （例：「Enemy (1)」→「Enemy_1_7f3a91c2」）。
+        std::string MakeNewObjectKey(const std::string& name);
+
         /// @brief 複製・削除できるか
         /// @param reason できないときの理由を書く先（要らなければ nullptr）
         /// @note 保存形から作り直せるものだけを扱う。コードが付けたコンポーネントを持つものは、

@@ -37,5 +37,6 @@
         }
     ],
     "id": "04e8fd0b1505491f",
-    "name": "HudBar"
+    "name": "HudBar",
+    "order": 12
 }

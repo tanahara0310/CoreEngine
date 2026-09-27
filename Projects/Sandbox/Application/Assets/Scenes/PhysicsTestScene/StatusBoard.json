@@ -59,5 +59,6 @@
         }
     ],
     "id": "f721ae63f9a7b9cd",
-    "name": "StatusBoard"
+    "name": "StatusBoard",
+    "order": 3
 }

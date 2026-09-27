@@ -1,4 +1,10 @@
 #include "pch.h"
+#include <cstdint>
+#include <fstream>
+#include <iterator>
+#include <limits>
+#include <optional>
+#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -25,14 +31,14 @@ namespace CoreEngine
 {
     namespace
     {
-        // ──────────────────────────────────────────────────────────
-        // シーンフォルダのスキーマ（_scene.json の "objects" 配列 → <key>.json）を
-        // 読む処理はここに集約する。Load と CollectModelPaths が別々に解析していると、
-        // スキーマ変更で先読みだけが静かに空振りする（遅くなるだけで気づけない）。
-        // ──────────────────────────────────────────────────────────
-
         /// @brief シーンの保存データを置くフォルダ
         constexpr const char* kScenesRoot = "Application/Assets/Scenes";
+
+        /// @brief オブジェクトのファイルが持つ並び順の項目
+        constexpr const char* kOrderKey = "order";
+
+        /// @brief 古い形のマニフェストが持っていたオブジェクトの一覧
+        constexpr const char* kLegacyObjectsKey = "objects";
 
         std::string MakeSceneDir(const std::string& sceneName) {
             return std::string(kScenesRoot) + "/" + sceneName;
@@ -48,39 +54,193 @@ namespace CoreEngine
             return MakeSceneDir(sceneName) + "/" + key + ".json";
         }
 
-        /// @brief マニフェストに列挙された各オブジェクトの JSON を順に訪問する
-        /// @param sceneName シーン名
-        /// @param visitor   (キー, 読み込んだ JSON) を受け取る。読めなかった項目は来ない
-        void ForEachManifestObject(
-            const std::string& sceneName,
-            const std::function<void(const std::string& key, const json& data)>& visitor)
+        /// @brief 文字列のハッシュ（64bit FNV-1a）
+        std::uint64_t HashText(std::string_view text)
+        {
+            std::uint64_t hash = 14695981039346656037ull;
+            for (const char c : text) {
+                hash ^= static_cast<unsigned char>(c);
+                hash *= 1099511628211ull;
+            }
+            return hash;
+        }
+
+        /// @brief ファイルを文字列で読む（改行の CR は除く）
+        bool ReadText(const std::filesystem::path& path, std::string& out)
+        {
+            std::ifstream file(path, std::ios::binary);
+            if (!file) {
+                return false;
+            }
+            const std::string raw{ std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>() };
+            out.clear();
+            out.reserve(raw.size());
+            for (const char c : raw) {
+                if (c != '\r') {
+                    out.push_back(c);
+                }
+            }
+            return true;
+        }
+
+        /// @brief オブジェクトのファイル 1 つ分
+        struct ObjectFile
+        {
+            std::string key;                   ///< 保存キー（ファイル名）
+            json data;                         ///< 中身
+            std::uint64_t hash = 0;            ///< 中身（改行の CR を除いた文字列）のハッシュ
+            std::optional<std::int64_t> order; ///< 並び順（書かれていなければ空）
+            bool listed = true;                ///< 古い形のマニフェストの一覧に載っているか（新しい形では常に true）
+        };
+
+        /// @brief この実行で最後に読み書きしたオブジェクトのファイル 1 つ分
+        struct KnownFile
+        {
+            std::uint64_t hash = 0;            ///< 中身のハッシュ
+            std::optional<std::int64_t> order; ///< 並び順
+        };
+
+        /// @brief 保存キー → この実行で最後に読み書きしたファイル
+        using KnownFiles = std::unordered_map<std::string, KnownFile>;
+
+        /// @brief シーンごとの、この実行で最後に読み書きしたファイル（シーンを組み直しても残す）
+        KnownFiles& KnownFilesOf(const std::string& sceneName)
+        {
+            static std::unordered_map<std::string, KnownFiles> known;
+            return known[sceneName];
+        }
+
+        /// @brief 次に振る並び順（これまでで一番大きい番号の次。無ければ 0）
+        std::int64_t NextOrder(const KnownFiles& known)
+        {
+            std::int64_t next = 0;
+            for (const auto& [key, file] : known) {
+                if (file.order && *file.order >= next) {
+                    next = *file.order + 1;
+                }
+            }
+            return next;
+        }
+
+        /// @brief 古い形のマニフェストのオブジェクトの一覧（新しい形なら空）
+        std::optional<std::vector<std::string>> ReadLegacyObjectList(const std::string& sceneName)
         {
             auto& jm = JsonManager::GetInstance();
-
             const std::string manifestPath = MakeManifestPath(sceneName);
             if (!jm.FileExists(manifestPath)) {
-                return;
+                return std::nullopt;
+            }
+            const json manifest = jm.LoadJson(manifestPath);
+            const auto found = manifest.is_object() ? manifest.find(kLegacyObjectsKey) : manifest.end();
+            if (found == manifest.end() || !found->is_array()) {
+                return std::nullopt;
+            }
+            std::vector<std::string> keys;
+            for (const auto& entry : *found) {
+                if (entry.is_string() && !entry.get<std::string>().empty()) {
+                    keys.push_back(entry.get<std::string>());
+                }
+            }
+            return keys;
+        }
+
+        /// @brief シーンのフォルダにあるオブジェクトのファイルを、並び順で読む
+        /// @details 並び順は order の小さい順、同じなら保存キーの順。order の無いものは後ろに置く。
+        ///          古い形（マニフェストに一覧がある）なら一覧の順番を order にし、一覧に無いファイルは listed を false にする。
+        ///          名前が `_` で始まるファイルは読まない。読めないファイルは名前を挙げて飛ばす。
+        std::vector<ObjectFile> ReadObjectFiles(const std::string& sceneName)
+        {
+            namespace fs = std::filesystem;
+            std::vector<ObjectFile> files;
+
+            std::error_code ec;
+            const fs::path dir = ProjectPaths::Resolve(MakeSceneDir(sceneName));
+            if (!fs::is_directory(dir, ec)) {
+                return files;
             }
 
-            json manifest = jm.LoadJson(manifestPath);
-            if (!manifest.contains("objects") || !manifest["objects"].is_array()) {
-                return;
+            const std::optional<std::vector<std::string>> legacy = ReadLegacyObjectList(sceneName);
+            std::unordered_map<std::string, std::int64_t> legacyOrder;
+            if (legacy) {
+                for (std::size_t i = 0; i < legacy->size(); ++i) {
+                    legacyOrder.emplace((*legacy)[i], static_cast<std::int64_t>(i));
+                }
             }
 
-            for (const auto& entry : manifest["objects"]) {
-                if (!entry.is_string()) continue;
+            Logger& log = Logger::GetInstance();
+            for (const auto& entry : fs::directory_iterator(dir, ec)) {
+                if (!entry.is_regular_file(ec) || entry.path().extension() != ".json") {
+                    continue;
+                }
+                const std::string key = log.PathToUtf8(entry.path().stem());
+                if (key.empty() || key.front() == '_') {
+                    continue;
+                }
 
-                const std::string key = entry.get<std::string>();
-                if (key.empty()) continue;
+                std::string text;
+                ObjectFile file;
+                file.key = key;
+                if (ReadText(entry.path(), text)) {
+                    file.data = json::parse(text, nullptr, false);
+                }
+                if (file.data.is_discarded() || !file.data.is_object()) {
+                    log.Logf(LogLevel::Error, LogCategory::Resource,
+                        "SceneSaveSystem: \"{}\" の {}.json を読めないので飛ばします", sceneName, key);
+                    continue;
+                }
+                file.hash = HashText(text);
 
-                const std::string objPath = MakeObjectPath(sceneName, key);
-                if (!jm.FileExists(objPath)) continue;
-
-                json data = jm.LoadJson(objPath);
-                if (data.is_null()) continue;
-
-                visitor(key, data);
+                if (legacy) {
+                    const auto found = legacyOrder.find(key);
+                    file.listed = (found != legacyOrder.end());
+                    if (file.listed) {
+                        file.order = found->second;
+                    }
+                } else if (const auto order = file.data.find(kOrderKey);
+                           order != file.data.end() && order->is_number_integer()) {
+                    file.order = order->get<std::int64_t>();
+                }
+                files.push_back(std::move(file));
             }
+
+            std::sort(files.begin(), files.end(), [](const ObjectFile& a, const ObjectFile& b) {
+                if (a.order.has_value() != b.order.has_value()) {
+                    return a.order.has_value();
+                }
+                if (a.order && *a.order != *b.order) {
+                    return *a.order < *b.order;
+                }
+                return a.key < b.key;
+            });
+            return files;
+        }
+
+        /// @brief シーンのフォルダのオブジェクトを控えの形で読み、読んだ中身をこの実行の控えに記す
+        std::shared_ptr<SceneSnapshot> LoadObjectFiles(const std::string& sceneName)
+        {
+            auto snapshot = std::make_shared<SceneSnapshot>();
+            KnownFiles& known = KnownFilesOf(sceneName);
+            known.clear();
+
+            // 古い形で一覧に無いファイルは読まず、次に保存するときに消す
+            std::string unlisted;
+            std::size_t unlistedCount = 0;
+            for (ObjectFile& file : ReadObjectFiles(sceneName)) {
+                known[file.key] = KnownFile{ file.hash, file.order };
+                if (!file.listed) {
+                    unlisted += unlisted.empty() ? file.key : ", " + file.key;
+                    ++unlistedCount;
+                    continue;
+                }
+                snapshot->objects.push_back(SceneSnapshot::Object{ file.key, std::move(file.data) });
+            }
+            if (unlistedCount > 0) {
+                Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Resource,
+                    "SceneSaveSystem: \"{}\" にマニフェストの一覧に無いオブジェクトの JSON が {} 件あります"
+                    "（読み込まず、次に保存するときに消します）: {}",
+                    sceneName, unlistedCount, unlisted);
+            }
+            return snapshot;
         }
 
         /// @brief 保存された ID をオブジェクトへ戻す
@@ -316,97 +476,55 @@ namespace CoreEngine
             return text;
         }
 
-        /// @brief シーンフォルダにある、指定したキーに含まれないオブジェクト JSON のキーを集める
-        /// @param keys マニフェストに載っているキー
-        /// @return 綴り順のキー（名前が `_` で始まるファイルとフォルダは含めない）
-        std::vector<std::string> CollectOrphanObjectKeys(const std::string& sceneName,
-                                                         const std::unordered_set<std::string>& keys)
+        /// @brief この実行で読み書きしたのに、保存したものに無いオブジェクト（消したもの）のファイルを消す
+        /// @param savedKeys 今回保存したオブジェクトの保存キー
+        /// @note この実行で読み書きしていないファイル（ほかの人が足したものなど）は消さない。
+        void RemoveDeletedObjectFiles(const std::string& sceneName, const std::unordered_set<std::string>& savedKeys)
         {
-            namespace fs = std::filesystem;
-            std::vector<std::string> orphans;
-
-            std::error_code ec;
-            const fs::path dir = ProjectPaths::Resolve(MakeSceneDir(sceneName));
-            if (!fs::is_directory(dir, ec)) {
-                return orphans;
-            }
-
-            for (const auto& entry : fs::directory_iterator(dir, ec)) {
-                if (!entry.is_regular_file(ec)) continue;
-
-                const fs::path& file = entry.path();
-                if (file.extension() != ".json") continue;
-
-                const std::string stem = Logger::GetInstance().PathToUtf8(file.stem());
-                if (stem.empty() || stem.front() == '_') continue;
-
-                if (keys.find(stem) == keys.end()) {
-                    orphans.push_back(stem);
-                }
-            }
-
-            std::sort(orphans.begin(), orphans.end());
-            return orphans;
-        }
-
-        /// @brief マニフェストに載っていないオブジェクト JSON を、エラーとして名前を挙げる
-        void ReportOrphanObjectFiles(const std::string& sceneName)
-        {
-            auto& jm = JsonManager::GetInstance();
-
-            const std::string manifestPath = MakeManifestPath(sceneName);
-            if (!jm.FileExists(manifestPath)) {
-                return;
-            }
-
-            json manifest = jm.LoadJson(manifestPath);
-            if (!manifest.contains("objects") || !manifest["objects"].is_array()) {
-                return;
-            }
-
-            std::unordered_set<std::string> keys;
-            for (const auto& entry : manifest["objects"]) {
-                if (entry.is_string()) {
-                    keys.insert(entry.get<std::string>());
-                }
-            }
-
-            const std::vector<std::string> orphans = CollectOrphanObjectKeys(sceneName, keys);
-            if (orphans.empty()) {
-                return;
-            }
-
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Resource,
-                "SceneSaveSystem: \"{}\" にマニフェストに無いオブジェクトの JSON が {} 件あります"
-                "（読み込まれません）: {}",
-                sceneName, orphans.size(), JoinKeys(orphans));
-        }
-
-        /// @brief マニフェストに載せたキー以外のオブジェクト JSON を消す
-        void RemoveOrphanObjectFiles(const std::string& sceneName, const std::unordered_set<std::string>& keys)
-        {
-            const std::vector<std::string> orphans = CollectOrphanObjectKeys(sceneName, keys);
-            if (orphans.empty()) {
-                return;
-            }
-
+            KnownFiles& known = KnownFilesOf(sceneName);
             std::vector<std::string> removed;
-            for (const std::string& key : orphans) {
-                std::error_code ec;
-                if (std::filesystem::remove(ProjectPaths::Resolve(MakeObjectPath(sceneName, key)), ec)) {
-                    removed.push_back(key);
+            for (auto it = known.begin(); it != known.end();) {
+                if (savedKeys.contains(it->first)) {
+                    ++it;
                     continue;
                 }
-                Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Resource,
-                    "SceneSaveSystem: \"{}\" の {}.json を消せませんでした（エラー {}）",
-                    sceneName, key, ec.value());
+                std::error_code ec;
+                std::filesystem::remove(ProjectPaths::Resolve(MakeObjectPath(sceneName, it->first)), ec);
+                if (ec) {
+                    Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Resource,
+                        "SceneSaveSystem: \"{}\" の {}.json を消せませんでした（エラー {}）",
+                        sceneName, it->first, ec.value());
+                    ++it;
+                    continue;
+                }
+                removed.push_back(it->first);
+                it = known.erase(it);
             }
 
             if (!removed.empty()) {
+                std::sort(removed.begin(), removed.end());
                 Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Resource,
-                    "SceneSaveSystem: \"{}\" のマニフェストに無いオブジェクトの JSON を {} 件消しました: {}",
+                    "SceneSaveSystem: \"{}\" から消したオブジェクトの JSON を {} 件消しました: {}",
                     sceneName, removed.size(), JoinKeys(removed));
             }
+        }
+
+        /// @brief オブジェクトの保存 JSON に並び順を書いてファイルへ保存し、この実行の控えに記す
+        /// @param nextOrder 並び順が決まっていないときに振る番号（振ったら進める）
+        bool WriteObjectFile(const std::string& sceneName, const std::string& key, json data,
+                             std::int64_t& nextOrder)
+        {
+            KnownFile& file = KnownFilesOf(sceneName)[key];
+            if (!file.order) {
+                file.order = nextOrder++;
+            }
+            data[kOrderKey] = *file.order;
+
+            if (!JsonManager::GetInstance().SaveJson(MakeObjectPath(sceneName, key), data)) {
+                return false;
+            }
+            file.hash = HashText(JsonManager::ToFileText(data));
+            return true;
         }
     }
 
@@ -420,10 +538,6 @@ namespace CoreEngine
         return MakeManifestPath(sceneName_);
     }
 
-    std::string SceneSaveSystem::GetObjectPath(const std::string& key) const {
-        return MakeObjectPath(sceneName_, key);
-    }
-
     // ===== 先読み用のパス列挙 =====
 
     std::vector<std::string> SceneSaveSystem::CollectModelPaths(const std::string& sceneName)
@@ -433,9 +547,11 @@ namespace CoreEngine
             return modelPaths;
         }
 
-        ForEachManifestObject(sceneName, [&modelPaths](const std::string&, const json& data) {
-            CollectObjectModelRefs(data, modelPaths);
-        });
+        for (const ObjectFile& file : ReadObjectFiles(sceneName)) {
+            if (file.listed) {
+                CollectObjectModelRefs(file.data, modelPaths);
+            }
+        }
 
         return modelPaths;
     }
@@ -481,13 +597,8 @@ namespace CoreEngine
     {
         if (loadIndex_ < pendingObjects_.size()) {
             const PendingObject& pending = pendingObjects_[loadIndex_++];
-            json loaded;
             const json* data = pending.data;
-            if (!data) {
-                loaded = JsonManager::GetInstance().LoadJson(pending.path);
-                data = &loaded;
-            }
-            if (!data->is_null() && pending.object) {
+            if (data && !data->is_null() && pending.object) {
                 if (loadManager_) {
                     RestoreObjectId(*loadManager_, *pending.object, *data);
                 }
@@ -584,13 +695,13 @@ namespace CoreEngine
         }
 
         json manifest = json::object();
-        manifest["objects"] = json::array();
 
         if (templateKind == SceneTemplate::Basic) {
             // 太陽をシーンのオブジェクトとして置く（値は LightingFeature の既定と同じ）
             const json sun = {
                 { "active", true },
                 { "name", "Sun" },
+                { kOrderKey, 0 },
                 { "components", json::array({
                     json{
                         { "type", "Transform" },
@@ -621,12 +732,12 @@ namespace CoreEngine
                 }
                 return false;
             }
-            manifest["objects"].push_back("Sun");
 
             // ゲームの視点をシーンのオブジェクトとして置く（構図は Transform が持つ）
             const json camera = {
                 { "active", true },
                 { "name", "MainCamera" },
+                { kOrderKey, 1 },
                 { "components", json::array({
                     json{
                         { "type", "Transform" },
@@ -656,7 +767,6 @@ namespace CoreEngine
                 }
                 return false;
             }
-            manifest["objects"].push_back("MainCamera");
 
             manifest["defaultGround"] = true;
         }
@@ -726,13 +836,10 @@ namespace CoreEngine
         auto& jm = JsonManager::GetInstance();
         jm.CreateJsonDirectory(GetSceneDir());
 
-        // オブジェクトの一覧と、ここで扱わない項目はそのまま残す
+        // ここで扱わない項目はそのまま残す
         json manifest = jm.FileExists(GetManifestPath()) ? jm.LoadJson(GetManifestPath()) : json::object();
         if (!manifest.is_object()) {
             manifest = json::object();
-        }
-        if (!manifest.contains("objects") || !manifest["objects"].is_array()) {
-            manifest["objects"] = json::array();
         }
 
         if (settings.features.empty()) {
@@ -774,7 +881,10 @@ namespace CoreEngine
 
         if (!mgr || (sceneName_.empty() && !restoreSnapshot_)) return;
 
-        auto& jm = JsonManager::GetInstance();
+        // 保存ファイルから読むときも、フォルダの中身を控えの形にしてから同じ手順で組む
+        if (!restoreSnapshot_) {
+            restoreSnapshot_ = LoadObjectFiles(sceneName_);
+        }
 
         auto findObjectBySerializeKey = [mgr](const std::string& key) -> GameObject* {
             for (const auto& obj : mgr->GetAllObjects()) {
@@ -787,7 +897,7 @@ namespace CoreEngine
 
         const auto placeDataObject =
             [mgr, &findObjectBySerializeKey](const std::string& key, const json& data) {
-                // 既にシーン側が同じキーで生成済みならマニフェストからは作らない
+                // 既にシーン側が同じキーで生成済みなら保存データからは作らない
                 if (findObjectBySerializeKey(key)) {
                     return;
                 }
@@ -802,16 +912,11 @@ namespace CoreEngine
                 }
             };
 
-        // 控えから読むときは、キーから控えの値を引けるようにする
+        // キーから控えの値を引けるようにし、控えの並びどおりにオブジェクトを置く
         std::unordered_map<std::string, const json*> snapshotData;
-        if (restoreSnapshot_) {
-            for (const SceneSnapshot::Object& entry : restoreSnapshot_->objects) {
-                snapshotData.emplace(entry.key, &entry.data);
-                placeDataObject(entry.key, entry.data);
-            }
-        } else {
-            ReportOrphanObjectFiles(sceneName_);
-            ForEachManifestObject(sceneName_, placeDataObject);
+        for (const SceneSnapshot::Object& entry : restoreSnapshot_->objects) {
+            snapshotData.emplace(entry.key, &entry.data);
+            placeDataObject(entry.key, entry.data);
         }
 
         // 復元対象を確定させる（実際のデシリアライズは StepLoad が 1 体ずつ行う）
@@ -820,18 +925,10 @@ namespace CoreEngine
             const std::string& key = obj->GetSerializeKey();
             if (key.empty()) continue;
 
-            if (restoreSnapshot_) {
-                const auto found = snapshotData.find(key);
-                if (found == snapshotData.end()) continue;
+            const auto found = snapshotData.find(key);
+            if (found == snapshotData.end()) continue;
 
-                pendingObjects_.push_back(PendingObject{ obj.get(), std::string{}, found->second });
-                continue;
-            }
-
-            std::string objPath = GetObjectPath(key);
-            if (!jm.FileExists(objPath)) continue;
-
-            pendingObjects_.push_back(PendingObject{ obj.get(), std::move(objPath) });
+            pendingObjects_.push_back(PendingObject{ obj.get(), found->second });
         }
     }
 
@@ -844,25 +941,24 @@ namespace CoreEngine
         auto& jm = JsonManager::GetInstance();
         jm.CreateJsonDirectory(GetSceneDir());
 
-        // マニフェスト（オブジェクトキー一覧を書き直し、ほかの項目は読み込んだまま残す）
+        // マニフェスト（古い形のオブジェクトの一覧は外し、ほかの項目は読み込んだまま残す）
         json manifest = jm.FileExists(GetManifestPath()) ? jm.LoadJson(GetManifestPath()) : json::object();
         if (!manifest.is_object()) {
             manifest = json::object();
         }
-        manifest["objects"] = json::array();
-        std::unordered_set<std::string> savedKeys;
+        manifest.erase(kLegacyObjectsKey);
+        jm.SaveJson(GetManifestPath(), manifest);
 
-        // 各オブジェクトを個別ファイルに保存
-        ForEachSavedObject(*mgr, [this, &jm, &manifest, &savedKeys](const std::string& key, json data) {
-            jm.SaveJson(GetObjectPath(key), data);
-            manifest["objects"].push_back(key);
+        // 各オブジェクトを個別ファイルに保存する（並び順は前に読み書きした番号、新しいものは続きの番号）
+        std::int64_t nextOrder = NextOrder(KnownFilesOf(sceneName_));
+        std::unordered_set<std::string> savedKeys;
+        ForEachSavedObject(*mgr, [this, &nextOrder, &savedKeys](const std::string& key, json data) {
+            WriteObjectFile(sceneName_, key, std::move(data), nextOrder);
             savedKeys.insert(key);
         });
 
-        // マニフェストを保存し、載らなかったオブジェクトの JSON を消す
-        if (jm.SaveJson(GetManifestPath(), manifest)) {
-            RemoveOrphanObjectFiles(sceneName_, savedKeys);
-        }
+        // この実行で読み書きしたのに今は無いオブジェクト（消したもの）の JSON を消す
+        RemoveDeletedObjectFiles(sceneName_, savedKeys);
 
         if (onSaveNotification_) {
             onSaveNotification_("シーンを保存しました: " + sceneName_);
@@ -881,30 +977,19 @@ namespace CoreEngine
         jm.CreateJsonDirectory(GetSceneDir());
 
         // オブジェクトデータを個別ファイルに保存
-        const json data = BuildObjectJson(*obj);
+        json data = BuildObjectJson(*obj);
         if (!data.empty()) {
-            jm.SaveJson(GetObjectPath(key), data);
+            std::int64_t nextOrder = NextOrder(KnownFilesOf(sceneName_));
+            WriteObjectFile(sceneName_, key, std::move(data), nextOrder);
         }
 
-        // マニフェストにキーが含まれていなければ追加
-        std::string manifestPath = GetManifestPath();
-        json manifest;
-        if (jm.FileExists(manifestPath)) {
-            manifest = jm.LoadJson(manifestPath);
-        }
-        if (!manifest.contains("objects") || !manifest["objects"].is_array()) {
-            manifest["objects"] = json::array();
-        }
-
-        bool found = false;
-        for (const auto& k : manifest["objects"]) {
-            if (k.is_string() && k.get<std::string>() == key) {
-                found = true;
-                break;
-            }
-        }
-        if (!found) {
-            manifest["objects"].push_back(key);
+        // 古い形のシーンなら、一覧に載せる（載っていないと次に読まない）
+        const std::string manifestPath = GetManifestPath();
+        json manifest = jm.FileExists(manifestPath) ? jm.LoadJson(manifestPath) : json::object();
+        const auto legacy = manifest.is_object() ? manifest.find(kLegacyObjectsKey) : manifest.end();
+        if (legacy != manifest.end() && legacy->is_array()
+            && std::find(legacy->begin(), legacy->end(), json(key)) == legacy->end()) {
+            legacy->push_back(key);
             jm.SaveJson(manifestPath, manifest);
         }
 

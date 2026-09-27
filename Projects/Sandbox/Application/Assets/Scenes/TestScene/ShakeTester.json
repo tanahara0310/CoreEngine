@@ -37,5 +37,6 @@
         }
     ],
     "id": "a3ff19d5855510a6",
-    "name": "ShakeTester"
+    "name": "ShakeTester",
+    "order": 2
 }

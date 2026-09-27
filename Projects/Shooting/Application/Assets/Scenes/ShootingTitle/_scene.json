@@ -43,27 +43,5 @@
             ]
         ]
     },
-    "defaultGround": false,
-    "objects": [
-        "Sun",
-        "MainCamera",
-        "Floor",
-        "StarField",
-        "Ship",
-        "ShipBody",
-        "ShipWing",
-        "ShipCockpit",
-        "ShipEngine",
-        "DecoDrone",
-        "DecoWeaver",
-        "DecoGunner",
-        "Logo",
-        "Subtitle",
-        "StartButton",
-        "StartLabel",
-        "HighScore",
-        "PressHint",
-        "Controls",
-        "TitleMenu"
-    ]
+    "defaultGround": false
 }

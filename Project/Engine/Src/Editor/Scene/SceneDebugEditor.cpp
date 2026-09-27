@@ -49,6 +49,7 @@ namespace
                                               const std::string& name, const std::string& modelPath)
     {
         auto owned = std::make_unique<CoreEngine::GameObject>();
+        owned->SetSerializeKey(CoreEngine::ObjectEditing::MakeNewObjectKey(name));
         owned->SetName(name);
         CoreEngine::GameObject* object = manager.AddObject(std::move(owned));
         if (!object) {
@@ -843,7 +844,8 @@ namespace CoreEngine
         }
 
         const Reflection::AssetRefValue prefab{ info->guid, ToAssetPath(*info) };
-        GameObject* placed = PrefabSystem::Instantiate(*gameObjectManager_, prefab, info->name);
+        GameObject* placed = PrefabSystem::Instantiate(*gameObjectManager_, prefab, info->name,
+            ObjectEditing::MakeNewObjectKey(info->name));
         if (!placed) {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System,
                 "プレハブからオブジェクトを作れませんでした: {}", prefab.path);

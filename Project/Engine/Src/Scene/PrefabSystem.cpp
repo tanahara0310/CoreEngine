@@ -536,7 +536,7 @@ namespace CoreEngine::PrefabSystem
     }
 
     GameObject* Instantiate(GameObjectManager& manager, const Reflection::AssetRefValue& prefab,
-                            const std::string& name)
+                            const std::string& name, const std::string& serializeKey)
     {
         const json* components = LoadComponents(prefab);
         const AssetInfo* info = components ? ResolveAssetRef(prefab) : nullptr;
@@ -545,6 +545,7 @@ namespace CoreEngine::PrefabSystem
         }
 
         auto owned = std::make_unique<GameObject>();
+        owned->SetSerializeKey(serializeKey);
         owned->SetName(name);
         GameObject* object = manager.AddObject(std::move(owned));
 

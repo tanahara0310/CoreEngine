@@ -43,13 +43,5 @@
             ]
         ]
     },
-    "defaultGround": true,
-    "objects": [
-        "Sun",
-        "MainCamera",
-        "PhysicsLab",
-        "StatusBoard",
-        "CharacterLab",
-        "StatusBoard2"
-    ]
+    "defaultGround": true
 }

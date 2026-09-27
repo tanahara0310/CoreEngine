@@ -121,5 +121,6 @@
         }
     ],
     "id": "35e53bc341129217",
-    "name": "Turret"
+    "name": "Turret",
+    "order": 2
 }

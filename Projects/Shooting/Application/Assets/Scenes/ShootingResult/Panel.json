@@ -37,5 +37,6 @@
         }
     ],
     "id": "1e85480db1ab92e5",
-    "name": "Panel"
+    "name": "Panel",
+    "order": 7
 }

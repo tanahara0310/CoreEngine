@@ -36,5 +36,6 @@
         }
     ],
     "id": "5134b2c6ef0d2a47",
-    "name": "MainCamera"
+    "name": "MainCamera",
+    "order": 1
 }

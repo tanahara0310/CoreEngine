@@ -48,5 +48,6 @@
         }
     ],
     "id": "23dd1cb3a142b832",
-    "name": "CountLabel"
+    "name": "CountLabel",
+    "order": 12
 }

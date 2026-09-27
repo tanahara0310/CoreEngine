@@ -48,5 +48,6 @@
         }
     ],
     "id": "8daa1db5187d4ad4",
-    "name": "Detail"
+    "name": "Detail",
+    "order": 12
 }

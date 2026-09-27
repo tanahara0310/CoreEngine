@@ -68,5 +68,6 @@
         }
     ],
     "id": "90493c7717bad62b",
-    "name": "PlayButton"
+    "name": "PlayButton",
+    "order": 6
 }

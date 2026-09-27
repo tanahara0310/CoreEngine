@@ -90,5 +90,6 @@
         }
     ],
     "id": "67176b5b504cdf10",
-    "name": "ShipCockpit"
+    "name": "ShipCockpit",
+    "order": 7
 }

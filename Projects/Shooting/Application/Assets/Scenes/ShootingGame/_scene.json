@@ -15,27 +15,5 @@
             ]
         ]
     },
-    "defaultGround": false,
-    "objects": [
-        "Sun",
-        "MainCamera",
-        "Floor",
-        "StarField",
-        "ExplosionFx",
-        "SparkFx",
-        "Effects",
-        "Player",
-        "PlayerBody",
-        "PlayerWing",
-        "PlayerCockpit",
-        "PlayerEngine",
-        "HudBar",
-        "ScoreText",
-        "TimeText",
-        "LifeText",
-        "CenterText",
-        "SubText",
-        "ControlsText",
-        "GameDirector"
-    ]
+    "defaultGround": false
 }
