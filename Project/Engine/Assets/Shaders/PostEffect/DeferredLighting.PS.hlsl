@@ -615,6 +615,14 @@ PixelShaderOutput main(PixelShaderInput input)
             }
             waterCaustics = CompositeUnderwaterCaustics(
                 waterCausticsSample.rgb, albedo, F0, metallic, causticsShadow);
+            // 置き換えたメインライトの直接光と同じ雲の影を掛ける
+            if (useCloudShadow && gLightCounts.directionalLightCount > 0 && gDirectionalLights[0].enabled)
+            {
+                const float3 mainLightL = normalize(-gDirectionalLights[0].direction);
+                const float cloudShadow = SampleCloudShadow(
+                    gCloudShadowMap, gSampler, worldPos, mainLightL, gCloudShadow);
+                waterCaustics *= lerp(1.0f, cloudShadow, gCloudShadow.sceneStrength);
+            }
         }
         else
         {
