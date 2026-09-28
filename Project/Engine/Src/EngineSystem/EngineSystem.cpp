@@ -105,21 +105,22 @@ namespace CoreEngine
             // どこへ読み書きするかを最初に残す。起動方法で保存先が変わって
             // いないことを、ログだけで確かめられるようにするため
             Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
-                "データの根: {} （{}）",
-                Logger::GetInstance().PathToUtf8(ProjectPaths::Root()),
+                "エンジンの根: {} ／ プロジェクトの根: {} （{}）",
+                Logger::GetInstance().PathToUtf8(ProjectPaths::EngineRoot()),
+                Logger::GetInstance().PathToUtf8(ProjectPaths::ProjectRoot()),
                 ProjectPaths::ResolutionNote());
 
             // WinAppのインスタンスを保持
             winApp_ = winApp;
 
             // アセットデータベースの初期化（テクスチャ読み込みより先に必要）
-            AssetDatabase::GetInstance().Initialize(ProjectPaths::Root());
+            AssetDatabase::GetInstance().Initialize();
 
             // コンパイル済み DXIL のディスクキャッシュ。
             // 最初のシェーダコンパイル（レンダードメインのステップ）より前に
             // 用意しておく必要がある
             ShaderCacheStore::GetInstance().Initialize(
-                ProjectPaths::Intermediate("ShaderCache"),
+                ProjectPaths::EngineIntermediate("ShaderCache"),
                 config.enableShaderCache);
 
             // 「実際にコンパイルされるシェーダ」の一覧。次回の起動で並列に
@@ -127,7 +128,7 @@ namespace CoreEngine
             //（キャッシュを消して再コンパイルさせる操作で一覧まで消えると、
             //  一番効いてほしい場面で事前コンパイルが効かなくなる）
             ShaderManifest::GetInstance().Initialize(
-                ProjectPaths::Intermediate("ShaderManifest.txt"),
+                ProjectPaths::EngineIntermediate("ShaderManifest.txt"),
                 config.enableShaderCache);
         });
 

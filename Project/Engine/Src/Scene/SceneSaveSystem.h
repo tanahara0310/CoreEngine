@@ -28,10 +28,29 @@ namespace CoreEngine
     };
 
     /// @brief シーンのオブジェクトデータ JSON 保存 / 読み込みを担当するクラス
-    /// @details `Assets/Scenes/{sceneName}/` にマニフェスト `_scene.json` と
-    ///          オブジェクト単位の `{serializeKey}.json` を分けて置く。
+    /// @details `Assets/Scenes/{sceneName}/` に、シーンの設定 `_scene.json` と
+    ///          オブジェクト単位の `{serializeKey}.json`（並び順 `order` を持つ）を分けて置く。
     class SceneSaveSystem {
     public:
+        /// @brief シーンの設定のファイル名
+        static constexpr const char* kManifestFileName = "_scene.json";
+
+        /// @brief 保存で 1 つのファイルをどうするか
+        enum class FileWrite {
+            Write,       ///< 書く（外で変わっていない・書く中身と同じ）
+            KeepOutside, ///< 書かない（外で変わっていて、自分は変えていない）
+            Conflict,    ///< 自分も外も変えている（書くと外の変更が消える）
+        };
+
+        /// @brief この実行で最後に読み書きした後に、外で変わったシーンのファイル
+        struct ExternalChange {
+            /// @brief 変わり方
+            enum class Kind { Added, Changed, Removed };
+
+            std::string fileName; ///< ファイル名（`Player.json` など）
+            Kind kind = Kind::Changed;
+        };
+
         /// @brief シーン名を設定（JSON ファイルパスに使用）
         void SetSceneName(const std::string& name) { sceneName_ = name; }
 
@@ -42,8 +61,9 @@ namespace CoreEngine
         /// @note 完了まで戻らない。フレームを回しながら読むなら BeginLoad / StepLoad を使う
         void Load(GameObjectManager* mgr);
 
-        /// @brief 読み込みを開始する（マニフェストからの生成と復元対象の確定まで）
-        /// @note マニフェストに無いオブジェクトの JSON があれば、エラーとして名前を挙げる。
+        /// @brief 読み込みを開始する（保存データからの生成と復元対象の確定まで）
+        /// @note フォルダにあるオブジェクトの JSON を並び順（order、同じなら保存キーの順）で読む。
+        ///       読めない JSON は、エラーとして名前を挙げて飛ばす。
         void BeginLoad(GameObjectManager* mgr);
 
         /// @brief 復元を 1 体分だけ進める
@@ -70,20 +90,27 @@ namespace CoreEngine
         /// @note BeginLoad より前に呼ぶ。読み終えたら控えを手放す。
         void SetRestoreSnapshot(std::shared_ptr<const SceneSnapshot> snapshot) { restoreSnapshot_ = std::move(snapshot); }
 
-        /// @brief マニフェスト（`_scene.json`）の、オブジェクトの一覧のほかに書ける設定
+        /// @brief マニフェスト（`_scene.json`）に書くシーンの設定
         struct ManifestSettings {
             std::vector<std::string> features; ///< `features`：足す Feature の名前（並び順に足す）
             std::optional<bool> defaultGround; ///< `defaultGround`：既定の床を使うか（書かれていなければ空）
 
             /// `collision.pairs`：当たるレイヤーの組み合わせ（書かれていなければ空＝エンジンの既定とシーンのコードのまま）
             std::optional<std::vector<std::pair<std::string, std::string>>> collisionPairs;
+
+            std::string cameraRig; ///< `cameraRig`：シーンの開始時に動かすカメラリグの名前（空なら動かさない）
         };
 
         /// @brief マニフェストの設定を読む（オブジェクトは生成しない）
         static ManifestSettings LoadManifestSettings(const std::string& sceneName);
 
-        /// @brief マニフェストのシーンの設定を書き換える（オブジェクトの一覧はそのまま）
-        void SaveManifestSettings(const ManifestSettings& settings);
+        /// @brief マニフェストのシーンの設定を書き換える（ここで扱わない項目はそのまま）
+        /// @param overwrite 外で変わっていても自分の値で書くか
+        /// @return 書いたら true（外で変わったので書かなかったときは false）
+        bool SaveManifestSettings(const ManifestSettings& settings, bool overwrite = false);
+
+        /// @brief マニフェストのシーンの設定を書いたら、外の変更とぶつかるかを調べる（書かない）
+        FileWrite CheckManifestSettings(const ManifestSettings& settings) const;
 
         /// @brief 保存データを持つシーンの名前（`Application/Assets/Scenes/<名前>/_scene.json` があるフォルダ）
         /// @return 名前順
@@ -110,13 +137,34 @@ namespace CoreEngine
         static bool CreateScene(const std::string& sceneName, SceneTemplate templateKind,
                                 std::string* error = nullptr);
 
-        /// @brief シーン全体を保存（マニフェスト + 全オブジェクトの個別ファイル）
-        /// @note マニフェストに載らなかったオブジェクトの JSON（名前が `_` で始まるものを除く）は消す。
+        /// @brief シーン全体を保存（全オブジェクトの個別ファイル。古い形ならマニフェストの一覧も外す）
+        /// @param overwrite 外で変わったファイルでも、自分も変えたものは自分の値で書く・消すか
+        /// @note 並び順は、前に読み書きしたオブジェクトはその番号、新しいものは続きの番号にする。
+        ///       この実行で読み書きしたのに今は無いオブジェクト（消したもの）の JSON は消す。
+        ///       この実行で読み書きしていない JSON（ほかの人が足したものなど）は消さない。
+        ///       外で変わったファイルは、自分が変えていなければ書かずに残す。
         ///       削除の印が付いたオブジェクトは保存しない。
-        void SaveScene(GameObjectManager* mgr);
+        void SaveScene(GameObjectManager* mgr, bool overwrite = false);
 
-        /// @brief 指定オブジェクト1体だけを個別ファイルに保存
+        /// @brief 指定オブジェクト1体だけを個別ファイルに保存（外で変わっていたら書かない）
         void SaveObject(GameObject* obj);
+
+        /// @brief 保存したら外の変更を消してしまうオブジェクトのファイル名（自分も外も変えた・自分が消したのに外で変わった）
+        /// @note ファイルは書かない。
+        std::vector<std::string> CheckSaveConflicts(const GameObjectManager& mgr) const;
+
+        /// @brief シーンのフォルダの設定のファイル（`_scene.json` など）の今の中身を、この実行で最後に読み書きした中身として控える
+        /// @note 読んだ直後と書いた直後に呼ぶ。ファイルが無ければ控えを消す。
+        static void RememberSettingsFile(const std::string& sceneName, const std::string& fileName);
+
+        /// @brief シーンのフォルダの設定のファイルを書く前に、外の変更とぶつかるかを決める
+        /// @param text 書こうとしている中身（`JsonManager::ToFileText` の形）
+        static FileWrite DecideSettingsFileWrite(const std::string& sceneName, const std::string& fileName,
+                                                 const std::string& text);
+
+        /// @brief シーンのフォルダを調べ、この実行で最後に読み書きした後に外で足された・変わった・消えたファイルを返す
+        /// @note 対象はオブジェクトの JSON と、控えのある設定のファイル。ファイル名の順に並べる。
+        static std::vector<ExternalChange> FindExternalChanges(const std::string& sceneName);
 
         /// @brief 保存完了時に呼ばれる通知コールバックを設定
         void SetSaveNotificationCallback(std::function<void(const std::string&)> cb) {
@@ -124,8 +172,7 @@ namespace CoreEngine
         }
 
     private:
-        // パス組み立てとマニフェスト走査の実体は .cpp の無名名前空間にある
-        //（Load と CollectModelPaths が同じスキーマ解析を共有するため）
+        // パス組み立てとオブジェクトのファイルの読み書きの実体は .cpp の無名名前空間にある
 
         /// @brief シーンフォルダのパスを返す  (例: "Application/Assets/Scenes/TestScene")
         std::string GetSceneDir() const;
@@ -133,14 +180,13 @@ namespace CoreEngine
         /// @brief マニフェストファイルのパスを返す  (例: ".../TestScene/_scene.json")
         std::string GetManifestPath() const;
 
-        /// @brief 個別オブジェクトファイルのパスを返す  (例: ".../TestScene/Model_0.json")
-        std::string GetObjectPath(const std::string& key) const;
+        /// @brief 今のマニフェストにシーンの設定を当てた中身を作る（ここで扱わない項目はそのまま）
+        json BuildManifest(const ManifestSettings& settings) const;
 
         /// @brief 復元待ちのオブジェクト 1 体分
         struct PendingObject {
             GameObject* object = nullptr;
-            std::string path;          ///< 保存ファイルから読むときのパス
-            const json* data = nullptr; ///< 控えから読むときの値（restoreSnapshot_ の中を指す）
+            const json* data = nullptr; ///< 復元する値（restoreSnapshot_ の中を指す）
         };
 
         std::string sceneName_;
@@ -151,7 +197,7 @@ namespace CoreEngine
         /// @brief 読み込み中のシーンのオブジェクト（復元し終えたら参照を確かめる）
         GameObjectManager* loadManager_ = nullptr;
 
-        /// @brief 保存ファイルの代わりに読む控え（空ならファイルから読む）
+        /// @brief 復元する値の元（保存ファイルから読むときは、読み始めにフォルダの中身から作る）
         std::shared_ptr<const SceneSnapshot> restoreSnapshot_;
     };
 }

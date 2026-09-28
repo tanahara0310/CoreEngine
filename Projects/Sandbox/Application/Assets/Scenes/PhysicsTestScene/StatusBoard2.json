@@ -1,0 +1,64 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    34.0,
+                    3.2,
+                    0.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "alignH": 1,
+                "alignV": 1,
+                "billboard": 1,
+                "color": [
+                    0.8,
+                    1.0,
+                    0.9,
+                    1.0
+                ],
+                "depthMode": 0,
+                "fieldAutoFit": true,
+                "font": "Default",
+                "fontSize": 0.3,
+                "lineSpacing": 1.25,
+                "outlineColor": [
+                    0.05,
+                    0.08,
+                    0.15,
+                    1.0
+                ],
+                "outlineWidth": 0.35,
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "text": "CharacterLab",
+                "weight": 0.0,
+                "wrapWidth": 0.0
+            },
+            "type": "Text3DRenderer"
+        }
+    ],
+    "id": "95f552e138010c4d",
+    "name": "StatusBoard2",
+    "order": 5
+}

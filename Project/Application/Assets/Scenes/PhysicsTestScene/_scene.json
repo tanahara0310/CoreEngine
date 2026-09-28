@@ -1,9 +1,0 @@
-{
-    "objects": [
-        "MainCamera",
-        "PhysicsLab",
-        "StatusBoard",
-        "CharacterLab",
-        "StatusBoard2"
-    ]
-}

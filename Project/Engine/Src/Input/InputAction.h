@@ -31,7 +31,9 @@ namespace CoreEngine {
     };
 
     /// @brief アクションの定義の表
-    /// @details 初回の参照で `InputActions.json` を読む。無ければ既定の並びを使う。
+    /// @details 初回の参照でプロジェクトの `InputActions.json` を読む。無ければ既定の並びを使う。
+    ///          エディタの場面だけの操作はエンジンが持ち、プロジェクトの操作の後ろに並べる
+    ///          （ファイルには書かず、ファイルにあっても使わない）。
     namespace InputActions
     {
         /// @brief 使っているアクションの数（1 以上 kMaxInputActions 以下）
@@ -41,7 +43,7 @@ namespace CoreEngine {
         const std::vector<InputActionDef>& All();
 
         /// @brief 定義を決めて保存する
-        /// @param defs 空・id の重複・上限超えは断る
+        /// @param defs 空・id の重複・上限超えは断る。エディタの場面だけの操作はエンジンのものに置き換わる
         /// @param outError 断った訳（省略可）
         bool SetAll(std::vector<InputActionDef> defs, std::string* outError = nullptr);
 

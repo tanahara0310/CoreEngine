@@ -29,6 +29,9 @@ namespace CoreEngine
 
         constexpr const char* kPhysicsCVarPrefix = "sys.Physics";
 
+        /// 線の表示の CVar の接頭辞（定義は PhysicsDebugRenderer.cpp）
+        constexpr const char* kPhysicsDebugCVarPrefix = "d.Physics";
+
         CVar<bool> cvEnabled{
             "sys.Physics.Enabled", true,
             "物理シミュレーションを進める" };
@@ -304,6 +307,9 @@ namespace CoreEngine
         if (ImGui::Button("パラメータを既定値にリセット")) {
             CVarUI::ResetTree(kPhysicsCVarPrefix);
         }
+
+        ImGui::SeparatorText("線の表示（自分だけ）");
+        CVarUI::DrawTree(kPhysicsDebugCVarPrefix);
     }
 
 #endif

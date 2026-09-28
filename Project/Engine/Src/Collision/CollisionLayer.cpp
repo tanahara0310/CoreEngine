@@ -21,10 +21,7 @@ namespace CoreEngine
         /// @brief ファイルが無いときの並び
         std::vector<std::string> DefaultNames()
         {
-            return {
-                "Default", "Player", "Enemy", "PlayerBullet", "EnemyBullet",
-                "Boss", "BossBullet", "BossAttack", "Item", "Environment",
-            };
+            return { "Default" };
         }
 
         /// @brief 名前の並びとして成り立っているか

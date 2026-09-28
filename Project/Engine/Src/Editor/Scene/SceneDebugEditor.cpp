@@ -23,6 +23,7 @@
 #include "Scene/SceneSaveSystem.h"
 #include "Editor/Command/EditorCommand.h"
 #include "Editor/Scene/EditorSceneAccess.h"
+#include "Editor/Scene/LastOpenedScene.h"
 #include "Editor/Scene/PrefabEditing.h"
 #include "Editor/ImGui/ObjectSelector.h"
 #include "Graphics/Asset/AssetInfo.h"
@@ -48,6 +49,7 @@ namespace
                                               const std::string& name, const std::string& modelPath)
     {
         auto owned = std::make_unique<CoreEngine::GameObject>();
+        owned->SetSerializeKey(CoreEngine::ObjectEditing::MakeNewObjectKey(name));
         owned->SetName(name);
         CoreEngine::GameObject* object = manager.AddObject(std::move(owned));
         if (!object) {
@@ -89,6 +91,11 @@ namespace CoreEngine
 
         // 読み込んだ直後のシーンは保存済みとして扱う
         savedRevision_ = Editor::EditorCommandStack::Get().GetSceneRevision();
+
+        // 編集で開いたシーンを、次にエディタを起動したときに開くシーンとして控える
+        if (!PlaybackStateManager::GetInstance().IsInPlayMode()) {
+            Editor::LastOpenedScene::Save(saveSystem_->GetSceneName());
+        }
 
         // カメラエディター側で追従対象を参照できるよう、オブジェクトマネージャーを注入する。
         if (cameraManager_) {
@@ -236,8 +243,85 @@ namespace CoreEngine
             DuplicateSelectedObject();
         }
 
+        // 外でシーンのファイルが変わったか（git の pull など）
+        CheckExternalChanges();
+
         // 保存通知オーバーレイの描画
         DrawSaveNotification();
+    }
+
+    void SceneDebugEditor::CheckExternalChanges()
+    {
+        const auto now = std::chrono::steady_clock::now();
+        if (now < nextExternalCheck_) {
+            return;
+        }
+        nextExternalCheck_ = now + std::chrono::seconds(1);
+
+        const std::string sceneName = GetSceneName();
+        SceneManager* const sceneManager = engine_ ? engine_->GetSceneManager() : nullptr;
+        if (sceneName.empty() || !sceneManager || !sceneManager->CanLoadSceneNow()
+            || !PlaybackStateManager::GetInstance().IsEditing()) {
+            return;
+        }
+
+        std::vector<SceneSaveSystem::ExternalChange> changes = SceneSaveSystem::FindExternalChanges(sceneName);
+        const auto sameChanges = [](const std::vector<SceneSaveSystem::ExternalChange>& a,
+                                    const std::vector<SceneSaveSystem::ExternalChange>& b) {
+            return std::equal(a.begin(), a.end(), b.begin(), b.end(),
+                [](const SceneSaveSystem::ExternalChange& x, const SceneSaveSystem::ExternalChange& y) {
+                    return x.fileName == y.fileName && x.kind == y.kind;
+                });
+        };
+        if (changes.empty()) {
+            externalChanges_.clear();
+            acknowledgedChanges_.clear();
+            return;
+        }
+        if (sameChanges(changes, acknowledgedChanges_) || sameChanges(changes, externalChanges_)) {
+            return;
+        }
+
+        // 保存していない変更が無ければ、その場で読み直す（ドラッグなどの操作の途中は待つ）
+        if (!IsSceneDirty()) {
+            if (ImGui::IsAnyItemActive()) {
+                return;
+            }
+            Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
+                "SceneDebugEditor: シーン {} のファイルが外で {} 件変わったので読み直します", sceneName, changes.size());
+            ShowStatus("外でシーンのファイルが変わったので読み直しました", Editor::Theme::kOk);
+            ReloadFromDisk();
+            return;
+        }
+
+        Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
+            "SceneDebugEditor: シーン {} のファイルが外で {} 件変わりました（保存していない変更があるので確かめます）",
+            sceneName, changes.size());
+        externalChanges_ = std::move(changes);
+    }
+
+    void SceneDebugEditor::ReloadFromDisk()
+    {
+        const std::string sceneName = GetSceneName();
+        SceneManager* const sceneManager = engine_ ? engine_->GetSceneManager() : nullptr;
+        if (sceneName.empty() || !sceneManager) {
+            return;
+        }
+
+        // 読み直した後も同じ視点で見られるよう、エディタの視点を控えておく
+        if (cameraManager_) {
+            CameraSceneStateIO::Save(sceneName, *cameraManager_);
+        }
+        externalChanges_.clear();
+        acknowledgedChanges_.clear();
+        saveConflicts_.clear();
+        sceneManager->ChangeScene(sceneName, SceneTransition::TransitionType::None, 0.0f);
+    }
+
+    void SceneDebugEditor::KeepEditingDespiteExternalChanges()
+    {
+        acknowledgedChanges_ = std::move(externalChanges_);
+        externalChanges_.clear();
     }
 
     void SceneDebugEditor::UpdateGameViewportInteraction(
@@ -350,30 +434,70 @@ namespace CoreEngine
 
     bool SceneDebugEditor::SaveScene()
     {
-        if (!saveSystem_ || saveSystem_->GetSceneName().empty()) {
+        if (!saveSystem_ || saveSystem_->GetSceneName().empty() || !gameObjectManager_) {
             return false;
         }
         if (RefuseSaveWhilePlaying()) {
             return false;
         }
 
-        saveSystem_->SaveScene(gameObjectManager_);
+        // 外で変わったファイルを消してしまうなら、書く前に止めて選ばせる
+        std::vector<std::string> conflicts = saveSystem_->CheckSaveConflicts(*gameObjectManager_);
+        SceneManager* const sceneManager = engine_ ? engine_->GetSceneManager() : nullptr;
+        if (const auto* const scene = sceneManager ? dynamic_cast<Scene*>(sceneManager->GetCurrentScene()) : nullptr) {
+            for (std::string& file : scene->CheckSceneSettingsConflicts()) {
+                conflicts.push_back(std::move(file));
+            }
+        }
+        if (!conflicts.empty()) {
+            Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
+                "SceneDebugEditor: 外で変わったファイル {} 件とぶつかるので、保存を止めました", conflicts.size());
+            ShowStatus("外で変わったファイルとぶつかるので、保存を止めました", Editor::Theme::kWarn);
+            saveConflicts_ = std::move(conflicts);
+            return false;
+        }
+        return WriteScene(false);
+    }
+
+    bool SceneDebugEditor::SaveSceneOverwriting()
+    {
+        if (!saveSystem_ || saveSystem_->GetSceneName().empty() || !gameObjectManager_) {
+            return false;
+        }
+        if (RefuseSaveWhilePlaying()) {
+            return false;
+        }
+        return WriteScene(true);
+    }
+
+    bool SceneDebugEditor::WriteScene(bool overwrite)
+    {
+        saveSystem_->SaveScene(gameObjectManager_, overwrite);
 
         // Feature・既定の床・衝突マトリクスもシーンの一部として書く
         SceneManager* const sceneManager = engine_ ? engine_->GetSceneManager() : nullptr;
         if (auto* const scene = sceneManager ? dynamic_cast<Scene*>(sceneManager->GetCurrentScene()) : nullptr) {
-            scene->SaveSceneSettings();
+            scene->SaveSceneSettings(overwrite);
         }
 
-        // カメラの構図もシーンの一部として一緒に保存する。
-        // これが無いと、エディタで詰めた画がアプリを閉じるたびに消える。
+        // エディタの視点を自分だけの状態として控える
         if (cameraManager_) {
             CameraSceneStateIO::Save(saveSystem_->GetSceneName(), *cameraManager_);
         }
 
         savedRevision_ = Editor::EditorCommandStack::Get().GetSceneRevision();
         dirtyWithoutEdits_ = false;
+        saveConflicts_.clear();
+        // 残した外の変更は、保存していない変更が無くなった次の見回りで読み直す
+        acknowledgedChanges_.clear();
         return true;
+    }
+
+    void SceneDebugEditor::ShowStatus(const char* message, const ImVec4& color) const
+    {
+        if (DockingUI* const dockingUI = engine_ ? engine_->GetDebugSubsystem()->GetDockingUI() : nullptr) {
+            dockingUI->ShowStatusMessage(message, color);
+        }
     }
 
     bool SceneDebugEditor::IsSceneDirty() const
@@ -838,7 +962,8 @@ namespace CoreEngine
         }
 
         const Reflection::AssetRefValue prefab{ info->guid, ToAssetPath(*info) };
-        GameObject* placed = PrefabSystem::Instantiate(*gameObjectManager_, prefab, info->name);
+        GameObject* placed = PrefabSystem::Instantiate(*gameObjectManager_, prefab, info->name,
+            ObjectEditing::MakeNewObjectKey(info->name));
         if (!placed) {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System,
                 "プレハブからオブジェクトを作れませんでした: {}", prefab.path);

@@ -11,9 +11,9 @@ namespace CoreEngine {
     /// @brief アクション↔バインディングのマッピングを管理するクラス
     class InputConfig {
     public:
-        /// @brief キーコンフィグの既定の保存先（実行時カレント基準）
+        /// @brief キーコンフィグで変えた割り当ての保存先（自分だけの状態。既定の割り当ては InputActions.json）
         /// 起動時の自動読み込みと ImGui のキーコンフィグ画面が同じファイルを指すための共有定数
-        static constexpr std::string_view kDefaultFilePath = "Application/Config/keybindings.json";
+        static constexpr std::string_view kDefaultFilePath = "Application/Saved/keybindings.json";
 
         /// @brief アクションのバインディングを一括設定
         void SetBindings(InputAction action, std::vector<InputBinding> bindings);

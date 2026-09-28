@@ -1,0 +1,19 @@
+{
+    "collision": {
+        "pairs": [
+            [
+                "Enemy",
+                "Player"
+            ],
+            [
+                "PlayerBullet",
+                "Enemy"
+            ],
+            [
+                "EnemyBullet",
+                "Player"
+            ]
+        ]
+    },
+    "defaultGround": false
+}

@@ -3,7 +3,6 @@
 
 #include "Camera/Camera.h"
 #include "Camera/CameraManager.h"
-#include "Camera/CameraSceneStateIO.h"
 #include "Scene/SceneSaveSystem.h"
 #include "Camera/Rig/CameraRig.h"
 #include "Camera/Sequence/CameraSequenceEvaluator.h"
@@ -80,7 +79,7 @@ namespace CoreEngine
         }
 
         const std::string rigName =
-            CameraSceneStateIO::LoadStartupRigName(ctx.saveSystem->GetSceneName());
+            SceneSaveSystem::LoadManifestSettings(ctx.saveSystem->GetSceneName()).cameraRig;
         if (rigName.empty()) {
             return;
         }

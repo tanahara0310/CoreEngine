@@ -5,8 +5,14 @@
 #include "Graphics/RHI/Debug/PixCapture.h"
 #include "WinApp/ScreenCapture.h"
 #include "Editor/ImGui/ProjectSettingsWindow.h"
+#include "Editor/Export/GameExportDialog.h"
+#include "Editor/Launcher/ProjectBrowser.h"
+#include "Editor/Launcher/ProjectThumbnails.h"
+#include "Editor/Scene/SceneFileDialogs.h"
+#include "Editor/Scene/SceneResaveDialog.h"
 #endif
 #include "Editor/Panel/EditorPanelRegistry.h"
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <string>
@@ -91,11 +97,12 @@ namespace CoreEngine
         void RefreshEditorStatus();
 
     private:
-        /// @brief シーンを切り替える前に確かめる操作
+        /// @brief 保存していない変更を確かめてから行う操作
         enum class PendingSceneAction {
             None,
-            Open,    ///< 別のシーンを開く
-            Create,  ///< 新しいシーンを作って開く
+            Open,          ///< 別のシーンを開く
+            Create,        ///< 新しいシーンを作って開く
+            SwitchProject, ///< 別のプロジェクトを開く（エディタを起動し直す）
         };
 
         EngineSystem* engine_ = nullptr;
@@ -131,6 +138,15 @@ namespace CoreEngine
         ScreenCapture screenCapture_;  ///< スクリーンキャプチャ機能
         PixCapture pixCapture_;  ///< PIX GPU キャプチャ機能
         ProjectSettingsWindow projectSettings_;  ///< Project Settings ウィンドウ
+
+        Editor::ProjectList projectList_;                        ///< 最近のプロジェクトの一覧
+        std::unique_ptr<Editor::ProjectThumbnails> projectThumbnails_; ///< プロジェクトの窓に出すサムネイル
+        std::unique_ptr<Editor::ProjectBrowser> projectBrowser_; ///< プロジェクトの窓の中身（開いている間だけある）
+        std::vector<Editor::ProjectEntry> recentProjects_;       ///< 最近のプロジェクトのメニューに出すもの
+        std::filesystem::path pendingProjectFolder_;             ///< 確かめたあとに開くプロジェクト
+        Editor::GameExportDialog gameExportDialog_;              ///< 「ゲームを書き出す」の窓
+        Editor::SceneResaveDialog sceneResaveDialog_;            ///< 「すべてのシーンと設定を保存し直す」の窓
+        Editor::SceneFileDialogs sceneFileDialogs_;              ///< シーンのファイルが外で変わったときの窓
 #endif
 
         static constexpr const char* consoleWindow = "Console";
@@ -147,7 +163,7 @@ namespace CoreEngine
         void DrawWindowMenu();
         void DrawHelpMenu();
 
-        /// @brief メニューバー右端の再生モード・シーン名・ビルド構成
+        /// @brief メニューバー右端の再生モード・プロジェクト名・シーン名・ビルド構成
         void DrawMenuBarChips();
 
         /// @brief グローバルなショートカット（再生・一時停止・コマ送り・レイアウト）
@@ -174,6 +190,19 @@ namespace CoreEngine
         /// @brief 新しいシーンを作って登録し、開く
         /// @return 作れたら true（作れなければ newSceneError_ に理由が入る）
         bool CreateAndOpenScene(const std::string& name, int templateIndex);
+
+        /// @brief プロジェクトの窓（一覧と新規作成）を開く
+        /// @param newProject 新規作成の画面から始めるなら true
+        void OpenProjectBrowser(bool newProject);
+
+        /// @brief プロジェクトの窓
+        void DrawProjectBrowser();
+
+        /// @brief 「最近のプロジェクト」のサブメニューの中身
+        void DrawRecentProjectsMenu();
+
+        /// @brief エディタを folder のプロジェクトで起動し直す（保存していない変更があれば先に確認する）
+        void RequestSwitchProject(const std::filesystem::path& folder);
 
         /// @brief プロジェクトビュー（取れなければ nullptr）
         ProjectView* FindProjectView() const;

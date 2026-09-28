@@ -1,0 +1,43 @@
+{
+    "r.Atmosphere.SkyAmbientScale": 0.51,
+    "r.AutoExposure.Enabled": true,
+    "r.AutoExposure.MaxEV": 7.5,
+    "r.Bloom.Intensity": 0.948,
+    "r.Bloom.SoftKnee": 0.351,
+    "r.Blur.Intensity": 2.529,
+    "r.Cloud.DensityScale": 0.007,
+    "r.Cloud.DetailErosionStrength": 0.15399998,
+    "r.Cloud.GlobalCoverage": 0.48,
+    "r.Cloud.LayerThickness": 1941.0,
+    "r.Cloud.PaintRegionSize": 200000.0,
+    "r.Cloud.SceneShadowStrength": 0.65,
+    "r.Cloud.Style": 1,
+    "r.Cloud.WindDirX": -0.017452352,
+    "r.Cloud.WindDirZ": 0.9998477,
+    "r.Cloud.WindSpeed": 100.0,
+    "r.Fog.Color": [
+        0.8,
+        0.81,
+        0.84,
+        1.0
+    ],
+    "r.Fog.ColorIntensity": 0.1,
+    "r.Fog.Density": 1.3,
+    "r.Fog.Enabled": true,
+    "r.Fog.HeightFalloff": 2.2,
+    "r.Fog.HeightRef": -2.0,
+    "r.Fog.SkyColorBlend": 0.0,
+    "r.Fog.SunScatteringExponent": 8.0,
+    "r.Fog.SunScatteringGain": 1.6,
+    "r.Fog.SunTint": [
+        1.0,
+        0.95,
+        0.86,
+        1.0
+    ],
+    "r.LensFlare.Enabled": false,
+    "r.TimeOfDay.Advance": false,
+    "r.Vignette.Intensity": 2.0,
+    "r.Vignette.Smoothness": 0.1,
+    "version": "1.0"
+}

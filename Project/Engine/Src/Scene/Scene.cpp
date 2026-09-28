@@ -4,6 +4,8 @@
 #include "EngineSystem/PlaybackState.h"
 #include "Camera/CameraManager.h"
 #include "Camera/Camera.h"
+#include "Camera/Rig/CameraRig.h"
+#include "Collision/CollisionLayer.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Scene/SceneManager.h"
@@ -75,6 +77,8 @@ namespace CoreEngine
 
         const SceneSaveSystem::ManifestSettings settings =
             SceneSaveSystem::LoadManifestSettings(GetSceneName());
+        // 読んだ中身を、外の変更を見分けるための控えにする
+        SceneSaveSystem::RememberSettingsFile(GetSceneName(), SceneSaveSystem::kManifestFileName);
         Logger& log = Logger::GetInstance();
 
         if (settings.defaultGround) {
@@ -154,8 +158,9 @@ namespace CoreEngine
         if (auto* const collision = GetFeature<CollisionFeature>()) {
             const CollisionConfig& config = collision->GetConfig();
             std::vector<std::pair<std::string, std::string>> pairs;
-            // 対称なので下三角だけを書く
-            for (int row = 0; row < CollisionConfig::kMaxLayers; ++row) {
+            // 名前のあるレイヤーどうしを、対称なので下三角だけ書く
+            const int namedLayers = static_cast<int>(CollisionLayers::Count());
+            for (int row = 0; row < namedLayers; ++row) {
                 for (int col = 0; col <= row; ++col) {
                     const auto a = static_cast<CollisionLayer>(row);
                     const auto b = static_cast<CollisionLayer>(col);
@@ -167,16 +172,34 @@ namespace CoreEngine
             settings.collisionPairs = std::move(pairs);
         }
 
+        // 保存した時点で動かしているリグを、このシーンの開始リグにする（動かしていなければ外す）
+        settings.cameraRig = CameraRig::GetActiveName();
+
         return settings;
     }
 
-    void Scene::SaveSceneSettings()
+    void Scene::SaveSceneSettings(bool overwrite)
     {
         if (!sceneSaveSystem_ || GetSceneName().empty()) {
             return;
         }
-        sceneSaveSystem_->SaveManifestSettings(CollectManifestSettings());
-        SceneEnvironmentIO::Save(GetSceneName());
+        sceneSaveSystem_->SaveManifestSettings(CollectManifestSettings(), overwrite);
+        SceneEnvironmentIO::Save(GetSceneName(), overwrite);
+    }
+
+    std::vector<std::string> Scene::CheckSceneSettingsConflicts() const
+    {
+        std::vector<std::string> conflicts;
+        if (!sceneSaveSystem_ || GetSceneName().empty()) {
+            return conflicts;
+        }
+        if (sceneSaveSystem_->CheckManifestSettings(CollectManifestSettings()) == SceneSaveSystem::FileWrite::Conflict) {
+            conflicts.emplace_back(SceneSaveSystem::kManifestFileName);
+        }
+        if (SceneEnvironmentIO::HasConflict(GetSceneName())) {
+            conflicts.emplace_back(SceneEnvironmentIO::kFileName);
+        }
+        return conflicts;
     }
 
     void Scene::RunPostSceneInitialize()

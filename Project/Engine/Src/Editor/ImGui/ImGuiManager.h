@@ -110,10 +110,15 @@ private: // メンバ関数
     void DrawFullscreenGameViewport(D3D12_GPU_DESCRIPTOR_HANDLE textureHandle);
 
 
-    /// @brief レイアウトや見た目を変更
-    void ApplyCustomTheme();
-
     /// @brief フレームの開始
     void StartNewFrame();
+
+public: // エディタの外（ランチャー）でも同じ見た目にするための関数
+    /// @brief エディタの配色と余白を今の ImGui のコンテキストへ当てる
+    static void ApplyCustomTheme();
+
+    /// @brief エディタのフォント（日本語と記号）を今の ImGui のコンテキストへ読む
+    /// @param dpiScale ウィンドウの DPI の倍率
+    static void LoadFonts(float dpiScale);
 };
 }

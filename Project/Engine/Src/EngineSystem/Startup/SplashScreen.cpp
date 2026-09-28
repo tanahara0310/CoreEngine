@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "SplashScreen.h"
 
+#include "WinApp/WinApp.h"
+
 #include <algorithm>
 
 #pragma comment(lib, "gdi32.lib")
@@ -91,14 +93,11 @@ namespace CoreEngine
             isClassRegistered = true;
         }
 
-        // マウスカーソルのあるモニタの中央に出す（作業領域基準）
-        POINT cursor{};
-        GetCursorPos(&cursor);
-        HMONITOR monitor = MonitorFromPoint(cursor, MONITOR_DEFAULTTOPRIMARY);
+        // メインのモニター（メインウィンドウを出すモニター）の中央に出す（作業領域基準）
         MONITORINFO monitorInfo{};
         monitorInfo.cbSize = sizeof(MONITORINFO);
         RECT area{ 0, 0, 1280, 720 };
-        if (GetMonitorInfo(monitor, &monitorInfo)) {
+        if (GetMonitorInfo(WinApp::GetPrimaryMonitor(), &monitorInfo)) {
             area = monitorInfo.rcWork;
         }
 

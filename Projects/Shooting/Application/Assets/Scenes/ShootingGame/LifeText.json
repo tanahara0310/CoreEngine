@@ -1,0 +1,53 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchor": 2,
+                "anchoredPosition": [
+                    -40.0,
+                    18.0
+                ],
+                "pivot": [
+                    1.0,
+                    0.0
+                ],
+                "rotation": 0.0,
+                "sortOrder": 10
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "alignH": 2,
+                "alignV": 1,
+                "color": [
+                    0.45,
+                    0.8,
+                    1.0,
+                    1.0
+                ],
+                "fieldAutoFit": true,
+                "font": "Default",
+                "fontSize": 40.0,
+                "lineSpacing": 1.0,
+                "outlineColor": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "outlineWidth": 0.1,
+                "text": "LIFE  ■■■",
+                "weight": 0.0,
+                "wrapWidth": 0.0
+            },
+            "type": "UIText"
+        }
+    ],
+    "id": "698fdcc32962b4a8",
+    "name": "LifeText",
+    "order": 15
+}

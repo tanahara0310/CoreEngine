@@ -10,6 +10,12 @@
 #include "Graphics/Shader/Cache/ShaderManifest.h"
 #include "Utility/Profiler/CpuProfiler.h"
 #include "Diagnostics/EngineStats.h"
+#include "EngineSystem/Relaunch.h"
+#include "EngineSystem/Settings/ProjectSettings.h"
+#ifdef CORE_EDITOR
+#include "Editor/Launcher/ProjectLauncher.h"
+#include "Editor/Launcher/ProjectList.h"
+#endif
 #include <chrono>
 
 
@@ -128,6 +134,24 @@ namespace CoreEngine
         winApp_ = std::make_unique<WinApp>();
         winApp_->Initialize(config.windowWidth, config.windowHeight, config.GetWindowTitleWide().c_str());
 
+#ifdef CORE_EDITOR
+        // 開くプロジェクトが決まっていなければ、ランチャーで選ぶ（閉じられたら終わる）
+        if (!ProjectPaths::IsProjectSpecified() && !Editor::ProjectLauncher::Run(*winApp_, config)) {
+            winApp_->CloseAppWindow();
+            winApp_.reset();
+#ifdef _DEBUG
+            leakChecker_.reset();
+#endif
+            return;
+        }
+
+        // 開くプロジェクトを最近のプロジェクトの一覧に記録する
+        Editor::ProjectList recentProjects;
+        recentProjects.Load();
+        recentProjects.MarkOpened(ProjectPaths::ProjectRoot());
+        recentProjects.Save();
+#endif
+
         // エンジンとゲームの初期化を「1 ステップずつ進められる列」に組み立ててから回す。
         // 一息に実行するとその間メッセージポンプが回らず「応答なし」になるため
         engineSystem_ = std::make_unique<EngineSystem>();
@@ -140,6 +164,15 @@ namespace CoreEngine
         BuildStartupTasks(sequence);   // ゲーム固有の初期化（派生クラスで実装）
 
         RunStartupSequence(sequence, config);
+
+        // 窓のタイトルを、開いているプロジェクトの名前にする（エディタでは頭にエンジンの名前を付ける）
+        const std::wstring projectName = Logger::GetInstance().Utf8ToWide(ProjectSettings::Get().GetProjectName());
+#ifdef CORE_EDITOR
+        const std::wstring title = config.GetWindowTitleWide() + L" — " + projectName;
+#else
+        const std::wstring title = projectName;
+#endif
+        ::SetWindowTextW(winApp_->GetHwnd(), title.c_str());
 
         // 最初のフレームを描ける状態になったのでメインウィンドウを表示する
         winApp_->ShowMainWindow();
@@ -192,5 +225,8 @@ namespace CoreEngine
 #ifdef _DEBUG
         leakChecker_.reset();
 #endif
+
+        // 起動し直しを頼まれていれば、終わりの処理が済んだここで起動する
+        Relaunch::RunIfRequested();
     }
 }

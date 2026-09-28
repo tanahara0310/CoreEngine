@@ -1,0 +1,7 @@
+{
+    "r.Bloom.Enabled": true,
+    "r.Bloom.Intensity": 0.6,
+    "r.Bloom.Threshold": 1.0,
+    "r.Cloud.Enabled": false,
+    "version": "1.0"
+}

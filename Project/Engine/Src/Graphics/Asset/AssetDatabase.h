@@ -18,8 +18,8 @@ namespace CoreEngine
     public:
         static AssetDatabase& GetInstance();
 
-        /// @brief 初期化：指定ディレクトリをスキャン
-        void Initialize(const std::filesystem::path& projectRoot);
+        /// @brief 初期化：プロジェクトの `Application/Assets` とエンジンの `Engine/Assets` をスキャン
+        void Initialize();
 
         /// @brief 終了処理
         void Finalize();
@@ -44,7 +44,7 @@ namespace CoreEngine
         const AssetInfo* FindAssetByGUID(const std::string& guid) const;
 
         /// @brief パスでアセット情報を引く
-        /// @param path プロジェクトの根からの相対パス（`Application/Assets/` を省いたものも可）か絶対パス。UTF-8
+        /// @param path `Application/…` か `Engine/…` の綴り（`Application/Assets/` を省いたものも可）か絶対パス。UTF-8
         /// @return 見つからなければ nullptr
         const AssetInfo* FindAssetByPath(std::string_view path) const;
 
@@ -52,8 +52,8 @@ namespace CoreEngine
         std::vector<const AssetInfo*> GetAssetsOfType(AssetType type) const;
 
         /// @brief ファイルを 1 件登録する（登録済みならその情報を返す）
-        /// @param assetPath プロジェクトの根からの相対パスか絶対パス
-        /// @return 登録できない種類・存在しないファイルなら nullptr
+        /// @param assetPath `Application/…` か `Engine/…` の綴りか絶対パス
+        /// @return 登録できない種類・存在しないファイル・根の外のファイルなら nullptr
         const AssetInfo* ImportAsset(const std::filesystem::path& assetPath);
 
         /// @brief 登録内容が変わるたびに進む番号
@@ -68,7 +68,7 @@ namespace CoreEngine
         /// @brief GUID からキャッシュファイルパスを生成
         std::filesystem::path GetCachedTexturePath(const std::string& guid, const std::string& extension = ".dds") const;
 
-        /// @brief シェーダーファイルが存在するディレクトリ一覧を重複なしで返す
+        /// @brief シェーダーファイルが存在するディレクトリ一覧を、重複なしでパスの順に返す
         std::vector<std::filesystem::path> GetShaderIncludeDirectories() const;
 
     private:
@@ -89,15 +89,13 @@ namespace CoreEngine
         static uint64_t GetFileLastModified(const std::filesystem::path& path);
         std::filesystem::path GetLibraryPath() const;
 
-        std::filesystem::path projectRoot_;
-
         // GUID -> AssetInfo のマップ
         std::unordered_map<std::string, AssetInfo> assetsByGUID_;
 
         // ファイル名 -> GUIDs のマップ（同名ファイル対応）
         std::unordered_map<std::string, std::vector<std::string>> assetsByName_;
 
-        // 相対パス（区切りは '/'、ASCII の英字は小文字）-> GUID のマップ
+        // 綴り（区切りは '/'、ASCII の英字は小文字）-> GUID のマップ
         std::unordered_map<std::string, std::string> guidsByPath_;
 
         // カテゴリ別の優先順位（Application > Engine など）

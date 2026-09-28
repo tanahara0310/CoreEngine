@@ -30,6 +30,7 @@
 #include "ColorLUT/ColorLUT.h"
 #include "DepthOfField/DepthOfField.h"
 #include "Outline/Outline.h"
+#include "UIOverlay/UIOverlay.h"
 #include "PostEffectPresetManager.h"
 #include "Editor/ImGui/ImguiManager.h"
 #include "Utility/Logger/Logger.h"
@@ -91,6 +92,7 @@ void PostEffectManager::RegisterAllEffects()
     RegisterEffect<ColorLUT>(PostEffectNames::ColorLUT);
     RegisterEffect<DepthOfField>(PostEffectNames::DepthOfField);
     RegisterEffect<ToneMapping>(PostEffectNames::ToneMapping);
+    RegisterEffect<UIOverlay>(PostEffectNames::UIOverlay);
     RegisterEffect<LoadingScreenEffect>(PostEffectNames::LoadingScreen);
 
     // エフェクトチェーンの順序を登録と同じ場所で定義（二重管理を防ぐ）
@@ -115,7 +117,6 @@ void PostEffectManager::RegisterAllEffects()
         // ---- PostTonemap: 表示色に対して効く演出系 ----
         // LUT はトーンマップ直後の表示色に対するルック。演出系より前に置く
         PostEffectNames::ColorLUT,
-        PostEffectNames::FadeEffect,
         PostEffectNames::Shockwave,
         PostEffectNames::Blur,
         PostEffectNames::Random,
@@ -128,7 +129,10 @@ void PostEffectManager::RegisterAllEffects()
         PostEffectNames::FilmGrain,
         PostEffectNames::Outline,
         PostEffectNames::Dissolve,
-        // ローディング画面は他の演出より前に出す。
+        // 画面固定の UI は画面演出の後に重ねる
+        PostEffectNames::UIOverlay,
+        // フェードとローディング画面は UI も含めた画面全体に掛ける
+        PostEffectNames::FadeEffect,
         PostEffectNames::LoadingScreen,
     };
 

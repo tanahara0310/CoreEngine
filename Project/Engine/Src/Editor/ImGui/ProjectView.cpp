@@ -28,6 +28,13 @@ namespace CoreEngine
     {
         namespace Theme = Editor::Theme;
 
+        /// @brief path が base そのものか、その下にあるか
+        bool IsWithin(const std::filesystem::path& path, const std::filesystem::path& base)
+        {
+            const std::filesystem::path relative = path.lexically_normal().lexically_relative(base.lexically_normal());
+            return !relative.empty() && *relative.begin() != "..";
+        }
+
         /// @brief 種類ごとの記号と色
         struct KindStyle
         {
@@ -120,10 +127,10 @@ namespace CoreEngine
     {
         dxCommon_ = dxCommon;
 
-        // ルートパスをプロジェクトルート（仮想ルート）に設定
-        rootPath_ = ProjectPaths::Root();
-        appAssetsPath_ = rootPath_ / "Application" / "Assets";
-        engineAssetsPath_ = rootPath_ / "Engine" / "Assets";
+        // 仮想ルートはプロジェクトの根。その下にプロジェクトとエンジンのアセットを並べる
+        rootPath_ = ProjectPaths::ProjectRoot();
+        appAssetsPath_ = ProjectPaths::Resolve("Application/Assets");
+        engineAssetsPath_ = ProjectPaths::Resolve("Engine/Assets");
         currentPath_ = rootPath_;
 
         currentEntries_ = GetCurrentDirectoryContents();
@@ -944,7 +951,10 @@ namespace CoreEngine
 
     std::filesystem::path ProjectView::GetCurrentFolder() const
     {
-        return currentPath_.lexically_relative(rootPath_);
+        if (currentPath_ == rootPath_) {
+            return {};
+        }
+        return ProjectPaths::MakeRelative(currentPath_);
     }
 
     void ProjectView::OpenFolder(const std::filesystem::path& relativeFolder)
@@ -956,7 +966,11 @@ namespace CoreEngine
         if (!relative.empty() && *relative.begin() == "..") {
             return;
         }
-        const std::filesystem::path folder = (rootPath_ / relative).lexically_normal();
+        const std::filesystem::path folder =
+            ProjectPaths::Resolve(Logger::GetInstance().PathToUtf8(relative)).lexically_normal();
+        if (!IsWithin(folder, appAssetsPath_) && !IsWithin(folder, engineAssetsPath_)) {
+            return;
+        }
         std::error_code error;
         if (std::filesystem::is_directory(folder, error)) {
             NavigateToDirectory(folder);
@@ -1396,7 +1410,7 @@ namespace CoreEngine
 
         const std::vector<Editor::ScriptTemplate::Entry> templates = Editor::ScriptTemplate::List();
         if (templates.empty()) {
-            UI::Hint("雛形が見つかりません（Application/Config/ScriptTemplates）。中身の無いクラスを作ります。");
+            UI::Hint("雛形が見つかりません（Engine/Templates/Scripts）。中身の無いクラスを作ります。");
         } else {
             ImGui::TextUnformatted("雛形");
             for (const auto& entry : templates) {
@@ -1461,12 +1475,12 @@ namespace CoreEngine
             return result;
         }
 
-        // 相対パスを取得
-        auto relativePath = std::filesystem::relative(fullPath, rootPath_);
+        // 綴り（Application/… か Engine/…）を取得
+        const std::filesystem::path relativePath = ProjectPaths::MakeRelative(fullPath);
 
         // パスの各要素を " > " で連結
         for (const auto& part : relativePath) {
-            result += " > " + part.string();
+            result += " > " + Logger::GetInstance().PathToUtf8(part);
         }
 
         return result;
@@ -1489,8 +1503,8 @@ namespace CoreEngine
         try {
             auto& textureManager = TextureManager::GetInstance();
             
-            // 相対パスに変換（プロジェクトルートから）
-            std::filesystem::path relativePath = std::filesystem::relative(filePath, rootPath_);
+            // 綴り（Application/… か Engine/…）に変換
+            std::filesystem::path relativePath = ProjectPaths::MakeRelative(filePath);
             std::string relativePathStr = relativePath.generic_string();
 
             // テクスチャを読み込む

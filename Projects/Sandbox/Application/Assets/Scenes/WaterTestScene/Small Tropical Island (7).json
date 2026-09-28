@@ -1,0 +1,42 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    -3.1415672,
+                    -0.086934574,
+                    -3.1415722
+                ],
+                "scale": [
+                    0.30000013,
+                    0.29999995,
+                    0.3000004
+                ],
+                "translate": [
+                    -246.68312,
+                    1.5237786,
+                    -419.94122
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "515c141e-5e6a-ef7e-32c4-5277248b28bd",
+                    "path": "Application/Assets/Models/sandModel/Small Tropical Island/Small Tropical Island.obj"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "3ec490f78e1b9e41",
+    "name": "Small Tropical Island (7)",
+    "order": 23
+}

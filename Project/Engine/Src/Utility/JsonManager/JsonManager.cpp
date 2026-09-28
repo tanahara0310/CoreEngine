@@ -1,12 +1,48 @@
 #include "pch.h"
 #include "JsonManager.h"
 #include "Utility/Path/ProjectPaths.h"
+#include <charconv>
+#include <cmath>
 #include <fstream>
 #include <iostream>
+#include <system_error>
 
 
 namespace CoreEngine
 {
+    namespace
+    {
+        /// @brief float で表せる数を、float として最も短い 10 進の値へ置き換える（下の階層もたどる）
+        void ShortenFloats(json& value)
+        {
+            if (value.is_structured()) {
+                for (json& child : value) {
+                    ShortenFloats(child);
+                }
+                return;
+            }
+            if (!value.is_number_float()) {
+                return;
+            }
+
+            const double original = value.get<double>();
+            const float narrowed = static_cast<float>(original);
+            if (!std::isfinite(narrowed) || static_cast<double>(narrowed) != original) {
+                return;
+            }
+
+            char text[32];
+            const std::to_chars_result written = std::to_chars(text, text + sizeof(text), narrowed);
+            if (written.ec != std::errc{}) {
+                return;
+            }
+            double shortest = original;
+            if (std::from_chars(text, written.ptr, shortest).ec == std::errc{}) {
+                value = shortest;
+            }
+        }
+    }
+
     JsonManager& JsonManager::GetInstance() {
         static JsonManager instance;
         return instance;
@@ -47,13 +83,19 @@ namespace CoreEngine
                 return false;
             }
 
-            file << jsonData.dump(4); // インデント4でフォーマット
+            file << ToFileText(jsonData);
             return true;
         }
         catch (const std::exception& e) {
             std::cerr << "Error saving JSON to " << filePath << ": " << e.what() << std::endl;
             return false;
         }
+    }
+
+    std::string JsonManager::ToFileText(const json& jsonData) {
+        json shortened = jsonData;
+        ShortenFloats(shortened);
+        return shortened.dump(4) + "\n";
     }
 
     bool JsonManager::CreateJsonDirectory(const std::string& dirPath) {

@@ -148,6 +148,10 @@ namespace CoreEngine::Reflection
         /// @param instance 型記述子の持ち主（`GetReflectionInstance()` の値）
         using StringChoices = std::vector<std::string> (*)(const void* instance);
 
+        /// @brief 今の状態で保存するかを返す
+        /// @param instance 型記述子の持ち主（`GetReflectionInstance()` の値）
+        using SaveCondition = bool (*)(const void* instance);
+
         /// @brief 保存キー兼 UI の識別子（既定はメンバ式の末尾トークン）
         std::string     name;
         const char*     displayName = "";
@@ -167,6 +171,7 @@ namespace CoreEngine::Reflection
         int             enumCount = 0;         ///< `enumNames` の数
         EmptyText       emptyText = nullptr;   ///< AssetRef が何も指していないときに欄へ出す文字（nullptr なら「（なし）」）
         StringChoices   stringChoices = nullptr;  ///< String を候補の一覧から選ぶときの候補（nullptr なら入力欄）
+        SaveCondition   saveWhen = nullptr;       ///< 保存するかを持ち主の状態で決める（nullptr なら常に保存。ほかの値から決まる値に使う）
 
         /// @brief 読み書きの口が揃っているか
         bool IsValid() const { return get != nullptr && set != nullptr; }

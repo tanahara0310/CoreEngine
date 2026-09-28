@@ -10,8 +10,6 @@ SamplerState           gSampler : register(s0);
 // 縁取り用にしきい値をずらせる量の上限（距離場の値）。
 // 距離場は輪郭の外側 pxRange/2 px ぶんしか持たないので、これ以上ずらすと
 // クワッドの端で α が 0 に落ちきらず、文字のまわりに矩形が出る。
-// UITextComponent.cpp の kMaxOutlineSd と同じ値にしておくこと
-//（CPU 側はエディタのスライダー上限、こちらが最後の砦）
 static const float kMaxOutlineSd = 0.375f;
 
 // 太さ調整でずらせる量の上限（距離場の値）

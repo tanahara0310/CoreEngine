@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -14,6 +14,10 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <PropertyGroup>
+    <!-- Release の出力フォルダへ写すプロジェクト（Projects の下のフォルダ名。-p:ReleaseProject=名前 で変えられる） -->
+    <ReleaseProject Condition="'$(ReleaseProject)' == ''">Shooting</ReleaseProject>
+  </PropertyGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
@@ -47,8 +51,7 @@
   <ImportGroup Label="ExtensionSettings">
     <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.props" />
   </ImportGroup>
-  <ImportGroup Label="Shared">
-  </ImportGroup>
+  <ImportGroup Label="Shared"></ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
@@ -94,7 +97,7 @@
       <TreatWarningAsError>true</TreatWarningAsError>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <MinimalRebuild>false</MinimalRebuild>
-      <AdditionalIncludeDirectories>$(ProjectDir)Externals\assimp\include;$(ProjectDir)Externals\spdlog\include;$(ProjectDir)Externals\imgui;$(ProjectDir)Engine/Src;$(ProjectDir)Application/Src;$(ProjectDir)Externals;$(ProjectDir)Externals\angelscript\include;$(ProjectDir)Externals\angelscript\add_on</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Externals\assimp\include;$(ProjectDir)Externals\spdlog\include;$(ProjectDir)Externals\imgui;$(ProjectDir)Engine/Src;$(ProjectDir)Externals;$(ProjectDir)Externals\angelscript\include;$(ProjectDir)Externals\angelscript\add_on</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -126,7 +129,7 @@
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(ProjectDir)Externals\assimp\include;$(ProjectDir)Externals\spdlog\include;$(ProjectDir)Externals\imgui;$(ProjectDir)Engine/Src;$(ProjectDir)Application/Src;$(ProjectDir)Externals\angelscript\include;$(ProjectDir)Externals\angelscript\add_on</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Externals\assimp\include;$(ProjectDir)Externals\spdlog\include;$(ProjectDir)Externals\imgui;$(ProjectDir)Engine/Src;$(ProjectDir)Externals\angelscript\include;$(ProjectDir)Externals\angelscript\add_on</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
@@ -140,9 +143,13 @@
     </Link>
     <PostBuildEvent>
       <Command>copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
-xcopy "$(ProjectDir)Application\Assets" "$(TargetDir)Application\Assets\" /E /I /Y /D
-xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D
-xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I /Y /D</Command>
+robocopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets" /MIR /NFL /NDL /NJH /NJS /NP
+if errorlevel 8 exit /b 1
+robocopy "$(ProjectDir)..\Projects\$(ReleaseProject)\Application\Assets" "$(TargetDir)Application\Assets" /MIR /NFL /NDL /NJH /NJS /NP
+if errorlevel 8 exit /b 1
+robocopy "$(ProjectDir)..\Projects\$(ReleaseProject)\Application\Config" "$(TargetDir)Application\Config" /MIR /NFL /NDL /NJH /NJS /NP
+if errorlevel 8 exit /b 1
+exit /b 0</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'">
@@ -159,7 +166,7 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(ProjectDir)Externals\assimp\include;$(ProjectDir)Externals\spdlog\include;$(ProjectDir)Externals\imgui;$(ProjectDir)Engine/Src;$(ProjectDir)Application/Src;$(ProjectDir)Externals\angelscript\include;$(ProjectDir)Externals\angelscript\add_on</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Externals\assimp\include;$(ProjectDir)Externals\spdlog\include;$(ProjectDir)Externals\imgui;$(ProjectDir)Engine/Src;$(ProjectDir)Externals\angelscript\include;$(ProjectDir)Externals\angelscript\add_on</AdditionalIncludeDirectories>
       <Optimization>Disabled</Optimization>
       <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
@@ -180,6 +187,13 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
   <ItemGroup>
     <ClCompile Include="Engine\Src\Editor\Inspector\ComponentInspectors.cpp" />
     <ClCompile Include="Engine\Src\Editor\Script\ScriptTemplate.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Export\GameExportDialog.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Export\GameExporter.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Launcher\ProjectBrowser.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Launcher\ProjectCreator.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Launcher\ProjectLauncher.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Launcher\ProjectList.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Launcher\ProjectThumbnails.cpp" />
     <ClCompile Include="Engine\Src\Editor\Project\AssetFileOperations.cpp" />
     <ClCompile Include="Engine\Src\Editor\Inspector\InspectorLayout.cpp" />
     <ClCompile Include="Engine\Src\Editor\Inspector\InspectorRenderer.cpp" />
@@ -187,6 +201,7 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClCompile Include="Engine\Src\Editor\Command\EditorCommandStack.cpp" />
     <ClCompile Include="Engine\Src\Editor\Panel\EditorPanelRegistry.cpp" />
     <ClCompile Include="Engine\Src\Utility\Path\ProjectPaths.cpp" />
+    <ClCompile Include="Engine\Src\Utility\CommandLine\CommandLine.cpp" />
     <ClCompile Include="Engine\Src\Editor\Panel\EditorPanelStateSection.cpp" />
     <ClCompile Include="Engine\Src\Reflection\PropertyValue.cpp" />
     <ClCompile Include="Engine\Src\Reflection\PropertySerializer.cpp" />
@@ -226,6 +241,7 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterRenderResources.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterShaderResourceBinder.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Outline\Outline.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\UIOverlay\UIOverlay.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Random\Random.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Primitive\CylinderMeshGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Primitive\RingMeshGenerator.cpp" />
@@ -311,6 +327,7 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClCompile Include="Engine\Src\EngineSystem\EngineConfig.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\EngineSystem.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\PlaybackState.cpp" />
+    <ClCompile Include="Engine\Src\EngineSystem\Relaunch.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Factory\CoreComponentFactory.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Factory\GraphicsComponentFactory.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Settings\EditorSettingsSubsystem.cpp" />
@@ -493,10 +510,13 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClCompile Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\ComponentEditing.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\EditorSceneAccess.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Scene\LastOpenedScene.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\ObjectEditing.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\PlayModeController.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\PrefabEditing.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\SceneDebugEditor.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Scene\SceneResaveDialog.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Scene\SceneFileDialogs.cpp" />
     <ClCompile Include="Engine\Src\Scene\PrefabSystem.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneEnvironmentIO.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneSaveSystem.cpp" />
@@ -594,8 +614,8 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClCompile Include="Engine\Src\Input\KeyboardInput.cpp" />
     <ClCompile Include="Engine\Src\Input\GamepadInput.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\GameDebugUI.cpp" />
-    <ClCompile Include="Application\Src\MyGame.cpp" />
-    <ClCompile Include="Application\Src\main.cpp">
+    <ClCompile Include="Engine\Src\Launch\MyGame.cpp" />
+    <ClCompile Include="Engine\Src\Launch\main.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
       <WholeProgramOptimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</WholeProgramOptimization>
     </ClCompile>
@@ -1147,6 +1167,13 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
   <ItemGroup>
     <ClInclude Include="Engine\Src\Editor\Inspector\ComponentInspectors.h" />
     <ClInclude Include="Engine\Src\Editor\Script\ScriptTemplate.h" />
+    <ClInclude Include="Engine\Src\Editor\Export\GameExportDialog.h" />
+    <ClInclude Include="Engine\Src\Editor\Export\GameExporter.h" />
+    <ClInclude Include="Engine\Src\Editor\Launcher\ProjectBrowser.h" />
+    <ClInclude Include="Engine\Src\Editor\Launcher\ProjectCreator.h" />
+    <ClInclude Include="Engine\Src\Editor\Launcher\ProjectLauncher.h" />
+    <ClInclude Include="Engine\Src\Editor\Launcher\ProjectList.h" />
+    <ClInclude Include="Engine\Src\Editor\Launcher\ProjectThumbnails.h" />
     <ClInclude Include="Engine\Src\Editor\Project\AssetFileOperations.h" />
     <ClInclude Include="Engine\Src\Editor\Inspector\InspectorLayout.h" />
     <ClInclude Include="Engine\Src\Editor\Inspector\InspectorRenderer.h" />
@@ -1162,6 +1189,7 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClInclude Include="Engine\Src\Editor\ImGui\ProjectSettingsWindow.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\PassTimingTable.h" />
     <ClInclude Include="Engine\Src\Utility\Path\ProjectPaths.h" />
+    <ClInclude Include="Engine\Src\Utility\CommandLine\CommandLine.h" />
     <ClInclude Include="Engine\Src\Editor\Panel\EditorPanelStateSection.h" />
     <ClInclude Include="Engine\Src\Reflection\PropertyValue.h" />
     <ClInclude Include="Engine\Src\Reflection\PropertySerializer.h" />
@@ -1243,6 +1271,7 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClInclude Include="Engine\Src\EngineSystem\Factory\CoreComponentFactory.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Factory\GraphicsComponentFactory.h" />
     <ClInclude Include="Engine\Src\EngineSystem\PlaybackState.h" />
+    <ClInclude Include="Engine\Src\EngineSystem\Relaunch.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Settings\EditorSettingsSubsystem.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Settings\IEditorSettingsSection.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Settings\CVarSettingsSection.h" />
@@ -1302,6 +1331,7 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\GrayScale\GrayScale.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Invert\Invert.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Outline\Outline.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\UIOverlay\UIOverlay.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectComputeBase.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectGraphicsBase.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\RadialBlur\RadialBlur.h" />
@@ -1548,10 +1578,13 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClInclude Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\ComponentEditing.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\EditorSceneAccess.h" />
+    <ClInclude Include="Engine\Src\Editor\Scene\LastOpenedScene.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\ObjectEditing.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\PlayModeController.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\PrefabEditing.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\SceneDebugEditor.h" />
+    <ClInclude Include="Engine\Src\Editor\Scene\SceneResaveDialog.h" />
+    <ClInclude Include="Engine\Src\Editor\Scene\SceneFileDialogs.h" />
     <ClInclude Include="Engine\Src\Scene\PrefabSystem.h" />
     <ClInclude Include="Engine\Src\Scene\SceneEnvironmentIO.h" />
     <ClInclude Include="Engine\Src\Scene\SceneSaveSystem.h" />
@@ -1700,7 +1733,7 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     <ClInclude Include="Engine\Src\Graphics\RHI\Resource\UploadRing.h" />
     <ClInclude Include="Engine\Src\WorldTransform\WorldTransform.h" />
     <ClInclude Include="Engine\Src\Scene\SceneManager.h" />
-    <ClInclude Include="Application\Src\MyGame.h" />
+    <ClInclude Include="Engine\Src\Launch\MyGame.h" />
     <ClInclude Include="Externals\imgui\imconfig.h" />
     <ClInclude Include="Externals\imgui\imgui.h" />
     <ClInclude Include="Externals\imgui\imgui_internal.h" />
@@ -1835,15 +1868,7 @@ xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I 
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Application\Assets\Models\BrainStem\glTF-Draco\BrainStem0.bin" />
-    <None Include="Application\Assets\Models\BrainStem\glTF-Meshopt\BrainStem.bin" />
-    <None Include="Application\Assets\Models\BrainStem\glTF\BrainStem0.bin" />
-    <None Include="Application\Assets\Models\CoralReef\coralReef.bin" />
-    <None Include="Application\Assets\Models\Fox\glTF\Fox.bin" />
-    <None Include="Application\Assets\Models\Ground\ground.bin" />
-    <None Include="Application\Assets\Models\human\walk.bin" />
     <ClInclude Include="Engine\Src\pch.h" />
-    <None Include="Application\Assets\Models\sponza\Sponza.bin" />
     <None Include="Build\Scripts\SyncFilters.ps1" />
     <None Include="Engine\Src\Particle\README.md" />
     <!-- Shader files (runtime compiled via DXC, not build-time FxCompile) -->

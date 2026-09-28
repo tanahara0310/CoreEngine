@@ -11,8 +11,12 @@
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
 
+#include <string>
+
 #ifdef CORE_EDITOR
 #include <chrono>
+#include <fstream>
+#include <iterator>
 #include <vector>
 #endif
 
@@ -21,11 +25,82 @@ namespace CoreEngine
     namespace
     {
         constexpr const char* kScriptRoot = "Application/Assets/Scripts";
+
+        /// @brief ファクトリに登録できなかったスクリプトのクラスについて、何とぶつかったかをログへ出す
+        void ReportRejectedType(const ScriptHost& host, const ScriptComponentType& rejected)
+        {
+            const auto where = [](const ScriptComponentType& type) {
+                return type.GetSourceSection().empty() ? std::string("場所不明") : type.GetSourceSection();
+                };
+
+            Logger& logger = Logger::GetInstance();
+            const ScriptComponentType* const first = host.FindType(rejected.GetName());
+            if (ComponentFactory::Get().IsRuntimeType(rejected.GetName()) && first && first != &rejected) {
+                logger.Logf(LogLevel::Error, LogCategory::Script,
+                    "コンポーネント {} がスクリプトに 2 つあります（{} と {}）。{} の方は使えません。"
+                    "名前空間が違っても、コンポーネントのクラス名はスクリプト全体で 1 つにしてください",
+                    rejected.GetName(), where(*first), where(rejected), where(rejected));
+                return;
+            }
+            logger.Logf(LogLevel::Error, LogCategory::Script,
+                "スクリプトのクラス {}（{}）は、エンジンのコンポーネントと同じ名前なので使えません。名前を変えてください",
+                rejected.GetName(), where(rejected));
+        }
+
 #ifdef CORE_EDITOR
         constexpr const char* kPredefinedFileName = "as.predefined";
 
+        /// スクリプトの基底クラスの原本
+        constexpr const char* kBaseScriptSource = "Engine/Templates/Scripts/ScriptComponent.as";
+
+        /// 基底クラスをプロジェクトのスクリプトのフォルダへ書き出すときの名前
+        constexpr const char* kBaseScriptFileName = "ScriptComponent.as";
+
         /// 変更が落ち着いたと見なすまでの時間（エディタは 1 回の保存で何度も変更を出す）
         constexpr std::chrono::milliseconds kSettleTime{ 200 };
+
+        /// @brief ファイルの中身をそのまま読む（読めなければ false）
+        bool ReadAll(const std::filesystem::path& path, std::string& out)
+        {
+            std::ifstream in(path, std::ios::binary);
+            if (!in) {
+                return false;
+            }
+            out.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+            return true;
+        }
+
+        /// @brief 基底クラスの原本をプロジェクトのスクリプトのフォルダへ写す（中身が同じなら書かない）
+        void WriteBaseScript(const std::filesystem::path& scriptRoot)
+        {
+            Logger& logger = Logger::GetInstance();
+            const std::filesystem::path source = ProjectPaths::Resolve(kBaseScriptSource);
+            std::string text;
+            if (!ReadAll(source, text)) {
+                logger.Logf(LogLevel::Error, LogCategory::Script,
+                    "スクリプトの基底クラスの原本を読めません: {}", logger.PathToUtf8(source));
+                return;
+            }
+
+            const std::filesystem::path destination = scriptRoot / kBaseScriptFileName;
+            std::string existing;
+            if (ReadAll(destination, existing) && existing == text) {
+                return;
+            }
+
+            std::error_code ec;
+            std::filesystem::create_directories(scriptRoot, ec);
+            std::ofstream out(destination, std::ios::binary | std::ios::trunc);
+            out.write(text.data(), static_cast<std::streamsize>(text.size()));
+            out.close();
+            if (!out) {
+                logger.Logf(LogLevel::Error, LogCategory::Script,
+                    "スクリプトの基底クラスを書き出せませんでした: {}", logger.PathToUtf8(destination));
+                return;
+            }
+            logger.Logf(LogLevel::Info, LogCategory::Script,
+                "スクリプトの基底クラスを書き出しました: {}", logger.PathToUtf8(destination));
+        }
 #endif
     }
 
@@ -48,6 +123,7 @@ namespace CoreEngine
         scriptRoot_ = ProjectPaths::Resolve(kScriptRoot);
 
 #ifdef CORE_EDITOR
+        WriteBaseScript(scriptRoot_);
         host_->WritePredefined(scriptRoot_ / kPredefinedFileName);
 #endif
 
@@ -117,8 +193,7 @@ namespace CoreEngine
                 &raw->GetDescriptor(),
                 sourceFile);
             if (!registered) {
-                Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Script,
-                    "スクリプトのクラス {} は、同じ名前のコンポーネントが既にあるので使えません", raw->GetName());
+                ReportRejectedType(*host_, *raw);
             }
         }
     }

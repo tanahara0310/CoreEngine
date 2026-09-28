@@ -1,0 +1,88 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    0.0,
+                    -5.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "shapes": [
+                    {
+                        "enabled": true,
+                        "layer": "Player",
+                        "offset": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "radius": 0.6,
+                        "static": false,
+                        "trigger": true,
+                        "type": "Sphere"
+                    }
+                ]
+            },
+            "type": "Collider"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "areaMax": [
+                    16.0,
+                    10.0
+                ],
+                "areaMin": [
+                    -16.0,
+                    -8.0
+                ],
+                "bankAngle": 0.5,
+                "body": {
+                    "ref": "c6e9d04a7902f1cc"
+                },
+                "bulletPrefab": {
+                    "guid": "62235146-8ad7-431b-96a1-be2c6b47f5f9",
+                    "path": "Application/Assets/Prefabs/Shooting/PlayerBullet.prefab"
+                },
+                "bulletSpeed": 34.0,
+                "cockpit": {
+                    "ref": "231f854062e74de5"
+                },
+                "engine": {
+                    "ref": "46202d2f55c5c532"
+                },
+                "fireInterval": 0.11,
+                "gunSpacing": 0.55,
+                "invincibleTime": 2.0,
+                "lives": 3,
+                "moveSpeed": 14.0,
+                "wing": {
+                    "ref": "dfa238f865cbb26b"
+                }
+            },
+            "type": "ShootingPlayer"
+        }
+    ],
+    "id": "333dc56ddffd8ea0",
+    "name": "Player",
+    "order": 7
+}

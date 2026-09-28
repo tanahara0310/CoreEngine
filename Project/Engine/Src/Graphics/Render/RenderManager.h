@@ -85,6 +85,11 @@ namespace CoreEngine
     /// @brief Transparent RenderItem キューのみ描画する
     void DrawTransparentQueuePass(ID3D12GraphicsCommandList* cmdList, RenderViewType viewType = RenderViewType::GameView);
 
+    /// @brief 画面固定の UI（UI / UIText）のキューのみ描画する
+    /// @details トーンマップと画面演出の後の色へ重ねる（UIOverlay エフェクトが呼ぶ）。
+    ///          指定色は sRGB として扱い、UI のシェーダーがリニアへ直して書く
+    void DrawOverlayQueuePass(ID3D12GraphicsCommandList* cmdList, RenderViewType viewType = RenderViewType::GameView);
+
     /// @brief 描画パスタイプの描画順序優先度を設定（小さいほど先に描画）
     /// @param type 描画パスタイプ
     /// @param priority 優先度値
@@ -139,6 +144,7 @@ namespace CoreEngine
         std::vector<RenderItem> transparentDrawQueue_;
         std::vector<RenderItem> waterDrawQueue_;
         std::vector<RenderItem> lineDrawQueue_; ///< 水面合成後に描くライン専用キュー
+        std::vector<RenderItem> overlayDrawQueue_; ///< トーンマップ後に重ねる画面固定の UI
         std::unordered_map<RenderPassType, std::unique_ptr<IRenderer>> renderers_;
         std::unordered_map<RenderPassType, int> passTypePriorities_;  ///< 描画パスタイプごとの描画順序優先度
         size_t registrationCounter_ = 0;

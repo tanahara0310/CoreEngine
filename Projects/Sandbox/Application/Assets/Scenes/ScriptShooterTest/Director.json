@@ -1,0 +1,44 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "enemyPrefab": {
+                    "guid": "16aed42d-f8f3-2af9-6c78-e79d233f8efb",
+                    "path": "Application/Assets/Prefabs/ScriptShooterTest/Enemy.prefab"
+                },
+                "reportInterval": 10.0,
+                "spawnDistance": 40.0,
+                "spawnInterval": 1.0,
+                "spawnWidth": 18.0
+            },
+            "type": "ShooterDirector"
+        }
+    ],
+    "id": "95d7ec72b3229ba1",
+    "name": "Director",
+    "order": 1
+}

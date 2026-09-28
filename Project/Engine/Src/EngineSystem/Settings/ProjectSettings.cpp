@@ -12,6 +12,7 @@ namespace CoreEngine
     namespace
     {
         constexpr const char* kSettingsPath = "Application/Config/EngineSettings/Project.json";
+        constexpr const char* kNameKey = "name";
         constexpr const char* kInitialSceneKey = "initialScene";
         constexpr const char* kVersionKey = "version";
         constexpr const char* kVersion = "1.0";
@@ -23,8 +24,18 @@ namespace CoreEngine
         return instance;
     }
 
+    std::string ProjectSettings::GetProjectName() const
+    {
+        if (!name_.empty()) {
+            return name_;
+        }
+        const std::u8string folder = ProjectPaths::ProjectRoot().filename().u8string();
+        return std::string(folder.begin(), folder.end());
+    }
+
     void ProjectSettings::Reload()
     {
+        name_.clear();
         initialSceneName_.clear();
 
         const std::filesystem::path path = ProjectPaths::Resolve(kSettingsPath);
@@ -37,6 +48,10 @@ namespace CoreEngine
         nlohmann::json root = nlohmann::json::parse(in, nullptr, /*allow_exceptions=*/false);
         if (root.is_discarded() || !root.is_object()) {
             return;
+        }
+        if (const auto found = root.find(kNameKey);
+            found != root.end() && found->is_string()) {
+            name_ = found->get<std::string>();
         }
         if (const auto found = root.find(kInitialSceneKey);
             found != root.end() && found->is_string()) {
@@ -63,7 +78,14 @@ namespace CoreEngine
             return false;
         }
 
-        nlohmann::json root;
+        // ファイルにある項目は残し、この設定が持つ項目だけを書き換える
+        nlohmann::json root = nlohmann::json::object();
+        if (std::ifstream in(path, std::ios::binary); in) {
+            nlohmann::json existing = nlohmann::json::parse(in, nullptr, /*allow_exceptions=*/false);
+            if (!existing.is_discarded() && existing.is_object()) {
+                root = std::move(existing);
+            }
+        }
         root[kVersionKey] = kVersion;
         root[kInitialSceneKey] = initialSceneName_;
 

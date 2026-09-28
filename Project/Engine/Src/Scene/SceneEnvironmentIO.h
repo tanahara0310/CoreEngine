@@ -20,6 +20,9 @@ namespace CoreEngine
     /// どれをシーンが持つかは `CVarScopes::SceneOwnedPrefixes()` が決める。
     class SceneEnvironmentIO {
     public:
+        /// @brief 見た目のファイル名（シーンのフォルダに置く）
+        static constexpr const char* kFileName = "_environment.json";
+
         /// @brief シーン名から見た目のファイルのパスを作る
         /// @details オブジェクトの保存先（Assets/Scenes/{scene}/）と同じ場所に置く。
         static std::string GetFilePath(const std::string& sceneName);
@@ -38,7 +41,12 @@ namespace CoreEngine
 
         /// @brief 今の見た目をシーンへ書く
         /// @details コード既定のままの項目は書かない。ファイルが「このシーンの変更点一覧」になる。
-        static bool Save(const std::string& sceneName);
+        /// @param overwrite 外で変わっていても自分の値で書くか
+        /// @return 書いたら true（外で変わったので書かなかったときは false）
+        static bool Save(const std::string& sceneName, bool overwrite = false);
+
+        /// @brief 今の見た目を書いたら、外の変更とぶつかるかを調べる（書かない）
+        static bool HasConflict(const std::string& sceneName);
 
         /// @brief シーンが持つ CVar の変更通番の合計
         /// @details 「シーンが持つ値のどれかが変わったか」を毎フレーム安く見るために使う。

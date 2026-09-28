@@ -252,6 +252,9 @@ namespace CoreEngine
         // ビルドタイムスタンプ（Initialize 時に確定し、遅延生成ロガーでも同じ値を使う）
         std::string buildTimestamp_;
 
+        // ログの置き場（Initialize 時に開いているプロジェクトから決める）
+        std::filesystem::path logRoot_;
+
         // コンソールUI転送用コールバックSink
         spdlog::sink_ptr consoleSink_;
 

@@ -31,7 +31,8 @@ namespace CoreEngine
             REFLECT_ACCESSOR("anchoredPosition", "位置", GetAnchoredPosition, SetAnchoredPosition,
                 p.range = Speed(1.0f))
             REFLECT_ACCESSOR("pivot", "基準点", GetPivot, SetPivot, p.range = Range(0.0f, 1.0f, 0.01f))
-            REFLECT_ACCESSOR("size", "大きさ", GetSize, SetSize, p.range = Range(0.0f, 16384.0f, 1.0f))
+            REFLECT_ACCESSOR("size", "大きさ", GetSize, SetSize, p.range = Range(0.0f, 16384.0f, 1.0f),
+                p.saveWhen = [](const void* o) { return !static_cast<const Self*>(o)->IsSizeDriven(); })
             REFLECT_ACCESSOR("rotation", "回転", GetRotation, SetRotation,
                 p.range = Speed(0.01f), p.displayScale = kDegreesPerRadian)
             REFLECT_ACCESSOR("sortOrder", "描画順", GetSortOrder, SetSortOrder)
@@ -61,6 +62,10 @@ namespace CoreEngine
         Vector2 GetSize() const { return layout_.size; }
         void SetSize(const Vector2& size);
 
+        /// @brief 大きさを中身（文字）が決めているか（決めている間は大きさを保存しない）
+        bool IsSizeDriven() const { return sizeDriven_; }
+        void SetSizeDriven(bool driven) { sizeDriven_ = driven; }
+
         /// @brief 回転（ラジアン）
         float GetRotation() const { return layout_.rotation; }
         void SetRotation(float radians) { layout_.rotation = radians; }
@@ -82,5 +87,6 @@ namespace CoreEngine
 
         UILayout layout_;
         uint32_t shapeRevision_ = 0;
+        bool sizeDriven_ = false;
     };
 }

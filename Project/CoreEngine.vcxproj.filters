@@ -7,6 +7,27 @@
     <ClCompile Include="Engine\Src\Editor\Script\ScriptTemplate.cpp">
       <Filter>Engine\Src\Editor\Script</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Export\GameExportDialog.cpp">
+      <Filter>Engine\Src\Editor\Export</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Export\GameExporter.cpp">
+      <Filter>Engine\Src\Editor\Export</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Launcher\ProjectBrowser.cpp">
+      <Filter>Engine\Src\Editor\Launcher</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Launcher\ProjectCreator.cpp">
+      <Filter>Engine\Src\Editor\Launcher</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Launcher\ProjectLauncher.cpp">
+      <Filter>Engine\Src\Editor\Launcher</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Launcher\ProjectList.cpp">
+      <Filter>Engine\Src\Editor\Launcher</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Launcher\ProjectThumbnails.cpp">
+      <Filter>Engine\Src\Editor\Launcher</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Project\AssetFileOperations.cpp">
       <Filter>Engine\Src\Editor\Project</Filter>
     </ClCompile>
@@ -27,6 +48,9 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Path\ProjectPaths.cpp">
       <Filter>Engine\Src\Utility\Path</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\CommandLine\CommandLine.cpp">
+      <Filter>Engine\Src\Utility\CommandLine</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Panel\EditorPanelStateSection.cpp">
       <Filter>Engine\Src\Editor\Panel</Filter>
@@ -144,6 +168,9 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Outline\Outline.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\Outline</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\UIOverlay\UIOverlay.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\UIOverlay</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Random\Random.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\Random</Filter>
@@ -389,6 +416,9 @@
       <Filter>Engine\Src\EngineSystem</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\EngineSystem\PlaybackState.cpp">
+      <Filter>Engine\Src\EngineSystem</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\EngineSystem\Relaunch.cpp">
       <Filter>Engine\Src\EngineSystem</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\EngineSystem\Factory\CoreComponentFactory.cpp">
@@ -937,6 +967,9 @@
     <ClCompile Include="Engine\Src\Editor\Scene\EditorSceneAccess.cpp">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Scene\LastOpenedScene.cpp">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Scene\ObjectEditing.cpp">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClCompile>
@@ -947,6 +980,12 @@
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Scene\SceneDebugEditor.cpp">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Scene\SceneResaveDialog.cpp">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Scene\SceneFileDialogs.cpp">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Scene\PrefabSystem.cpp">
@@ -1240,11 +1279,11 @@
     <ClCompile Include="Engine\Src\Editor\ImGui\GameDebugUI.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\MyGame.cpp">
-      <Filter>Application\Src</Filter>
+    <ClCompile Include="Engine\Src\Launch\MyGame.cpp">
+      <Filter>Engine\Src\Launch</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\main.cpp">
-      <Filter>Application\Src</Filter>
+    <ClCompile Include="Engine\Src\Launch\main.cpp">
+      <Filter>Engine\Src\Launch</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\WinApp\WinApp.cpp">
       <Filter>Engine\Src\WinApp</Filter>
@@ -1698,6 +1737,27 @@
     <ClInclude Include="Engine\Src\Editor\Script\ScriptTemplate.h">
       <Filter>Engine\Src\Editor\Script</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Export\GameExportDialog.h">
+      <Filter>Engine\Src\Editor\Export</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Export\GameExporter.h">
+      <Filter>Engine\Src\Editor\Export</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Launcher\ProjectBrowser.h">
+      <Filter>Engine\Src\Editor\Launcher</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Launcher\ProjectCreator.h">
+      <Filter>Engine\Src\Editor\Launcher</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Launcher\ProjectLauncher.h">
+      <Filter>Engine\Src\Editor\Launcher</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Launcher\ProjectList.h">
+      <Filter>Engine\Src\Editor\Launcher</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Launcher\ProjectThumbnails.h">
+      <Filter>Engine\Src\Editor\Launcher</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Project\AssetFileOperations.h">
       <Filter>Engine\Src\Editor\Project</Filter>
     </ClInclude>
@@ -1742,6 +1802,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Path\ProjectPaths.h">
       <Filter>Engine\Src\Utility\Path</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\CommandLine\CommandLine.h">
+      <Filter>Engine\Src\Utility\CommandLine</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Panel\EditorPanelStateSection.h">
       <Filter>Engine\Src\Editor\Panel</Filter>
@@ -1986,6 +2049,9 @@
     <ClInclude Include="Engine\Src\EngineSystem\PlaybackState.h">
       <Filter>Engine\Src\EngineSystem</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\EngineSystem\Relaunch.h">
+      <Filter>Engine\Src\EngineSystem</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\EngineSystem\Settings\EditorSettingsSubsystem.h">
       <Filter>Engine\Src\EngineSystem\Settings</Filter>
     </ClInclude>
@@ -2162,6 +2228,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Outline\Outline.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\Outline</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\UIOverlay\UIOverlay.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\UIOverlay</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectComputeBase.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
@@ -2901,6 +2970,9 @@
     <ClInclude Include="Engine\Src\Editor\Scene\EditorSceneAccess.h">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Scene\LastOpenedScene.h">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Scene\ObjectEditing.h">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClInclude>
@@ -2911,6 +2983,12 @@
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Scene\SceneDebugEditor.h">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Scene\SceneResaveDialog.h">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Scene\SceneFileDialogs.h">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Scene\PrefabSystem.h">
@@ -3357,8 +3435,8 @@
     <ClInclude Include="Engine\Src\Scene\SceneManager.h">
       <Filter>Engine\Src\Scene</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\MyGame.h">
-      <Filter>Application\Src</Filter>
+    <ClInclude Include="Engine\Src\Launch\MyGame.h">
+      <Filter>Engine\Src\Launch</Filter>
     </ClInclude>
     <ClInclude Include="Externals\imgui\imconfig.h">
       <Filter>Externals\imgui</Filter>
@@ -3746,30 +3824,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Application\Assets\Models\BrainStem\glTF-Draco\BrainStem0.bin">
-      <Filter>Application\Assets\Models\BrainStem\glTF-Draco</Filter>
-    </None>
-    <None Include="Application\Assets\Models\BrainStem\glTF-Meshopt\BrainStem.bin">
-      <Filter>Application\Assets\Models\BrainStem\glTF-Meshopt</Filter>
-    </None>
-    <None Include="Application\Assets\Models\BrainStem\glTF\BrainStem0.bin">
-      <Filter>Application\Assets\Models\BrainStem\glTF</Filter>
-    </None>
-    <None Include="Application\Assets\Models\CoralReef\coralReef.bin">
-      <Filter>Application\Assets\Models\CoralReef</Filter>
-    </None>
-    <None Include="Application\Assets\Models\Fox\glTF\Fox.bin">
-      <Filter>Application\Assets\Models\Fox\glTF</Filter>
-    </None>
-    <None Include="Application\Assets\Models\Ground\ground.bin">
-      <Filter>Application\Assets\Models\Ground</Filter>
-    </None>
-    <None Include="Application\Assets\Models\human\walk.bin">
-      <Filter>Application\Assets\Models\human</Filter>
-    </None>
-    <None Include="Application\Assets\Models\sponza\Sponza.bin">
-      <Filter>Application\Assets\Models\sponza</Filter>
-    </None>
     <None Include="Build\Scripts\SyncFilters.ps1">
       <Filter>Build\Scripts</Filter>
     </None>
@@ -3778,48 +3832,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <Filter Include="Application">
-      <UniqueIdentifier>{a6d9c513-d1e3-44be-a485-2950bd8c02a7}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Assets">
-      <UniqueIdentifier>{E38AC559-8E3B-462C-A939-BAA5AA622FDA}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Assets\Models">
-      <UniqueIdentifier>{4AD6DADC-83B6-46FB-9BA2-06F83BD35CD0}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Assets\Models\BrainStem">
-      <UniqueIdentifier>{4EB14F91-DD5B-4CE4-A8BA-A724B91F61D5}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Assets\Models\BrainStem\glTF">
-      <UniqueIdentifier>{261ADABC-D611-4532-9233-E41DE30BBCB5}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Assets\Models\BrainStem\glTF-Draco">
-      <UniqueIdentifier>{39A159CB-9B05-4321-9606-89EC6F891F63}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Assets\Models\BrainStem\glTF-Meshopt">
-      <UniqueIdentifier>{A19FB50C-AC1C-4C87-BEB7-4654AA8C5361}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Assets\Models\CoralReef">
-      <UniqueIdentifier>{8115CC28-DD1B-4935-B721-BA30D2D5AA44}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Assets\Models\Fox">
-      <UniqueIdentifier>{EECDD533-25C4-4429-83D5-338739D12A5C}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Assets\Models\Fox\glTF">
-      <UniqueIdentifier>{4825F58D-FD89-4D26-B9B9-88B48F921057}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Assets\Models\Ground">
-      <UniqueIdentifier>{BA5C0660-8AE9-4DCC-9EF0-7DAFB2596962}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Assets\Models\human">
-      <UniqueIdentifier>{426FC420-35FD-4168-B68A-5AEF6441C635}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Assets\Models\sponza">
-      <UniqueIdentifier>{20DBDF63-45F8-4BA0-9CDD-580001B33A3D}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src">
-      <UniqueIdentifier>{8C016CA9-9773-40DE-8792-E8B53FB9372C}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Build">
       <UniqueIdentifier>{39C0671C-39F8-432F-BE2C-E14FDE0F3B36}</UniqueIdentifier>
     </Filter>
@@ -3895,6 +3907,9 @@
     <Filter Include="Engine\Src\Editor\Environment">
       <UniqueIdentifier>{3E7B1A54-9C2D-4F86-B1E0-5A6D42C8F913}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Src\Editor\Export">
+      <UniqueIdentifier>{0476E081-4AA6-4A59-8257-D6A741A7E438}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Engine\Src\Editor\External">
       <UniqueIdentifier>{31C0E02C-827E-4C4A-9C42-8A38CBE83D4A}</UniqueIdentifier>
     </Filter>
@@ -3909,6 +3924,9 @@
     </Filter>
     <Filter Include="Engine\Src\Editor\Inspector">
       <UniqueIdentifier>{D91ACD79-3D27-4C04-A842-DDF8B8F6CB73}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Editor\Launcher">
+      <UniqueIdentifier>{B8380931-089D-4B6D-91A4-3683D465330D}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Editor\Panel">
       <UniqueIdentifier>{6938F710-F7A9-40BD-B443-83ED9B008474}</UniqueIdentifier>
@@ -4099,6 +4117,9 @@
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping">
       <UniqueIdentifier>{A92CDA78-6D07-45C2-9567-763B0BD66C3D}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\UIOverlay">
+      <UniqueIdentifier>{0E7DB89D-7222-4B70-9B43-AE63ABD3F28B}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\Vignette">
       <UniqueIdentifier>{43286C64-BEC4-499A-B7AC-FF2EFBA50B15}</UniqueIdentifier>
     </Filter>
@@ -4237,6 +4258,9 @@
     <Filter Include="Engine\Src\Input">
       <UniqueIdentifier>{54C16D33-E6EA-45EA-BFD5-732F01D04340}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Src\Launch">
+      <UniqueIdentifier>{84240DE3-AA0E-4F2D-BA41-EF8D374046DB}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Engine\Src\Math">
       <UniqueIdentifier>{10281AD7-3C0B-4D9F-9151-EAF58987FA64}</UniqueIdentifier>
     </Filter>
@@ -4311,6 +4335,9 @@
     </Filter>
     <Filter Include="Engine\Src\Utility\Asset">
       <UniqueIdentifier>{A8B005CD-2D36-4460-AE1A-C213375311C2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Utility\CommandLine">
+      <UniqueIdentifier>{882D8E9A-9339-42AB-8001-6E7A64556FC7}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Utility\CVar">
       <UniqueIdentifier>{3C1F7A62-5D48-4B0E-9E21-7A6C0B4D8F13}</UniqueIdentifier>

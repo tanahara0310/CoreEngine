@@ -1,0 +1,73 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchor": 4,
+                "anchoredPosition": [
+                    0.0,
+                    0.0
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "rotation": 0.0,
+                "size": [
+                    240.0,
+                    64.0
+                ],
+                "sortOrder": 10
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    0.32,
+                    0.38,
+                    0.5,
+                    1.0
+                ],
+                "texture": null
+            },
+            "type": "UIImage"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "disabledColor": [
+                    0.45,
+                    0.45,
+                    0.45,
+                    0.6
+                ],
+                "hoveredColor": [
+                    0.4,
+                    0.68,
+                    1.0,
+                    1.0
+                ],
+                "interactable": true,
+                "normalColor": [
+                    0.32,
+                    0.38,
+                    0.5,
+                    1.0
+                ],
+                "pressedColor": [
+                    0.15,
+                    0.35,
+                    0.7,
+                    1.0
+                ]
+            },
+            "type": "UIButton"
+        }
+    ],
+    "id": "847c8b1faab6ad54",
+    "name": "UpButton",
+    "order": 7
+}
