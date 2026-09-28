@@ -23,6 +23,9 @@ static const float MIP_LEVEL_PER_ROUGHNESS = float(MAX_PREFILTERED_MIP_LEVELS - 
 /// @brief F0の非金属デフォルト値（一般的な誘電体の反射率）
 static const float DIELECTRIC_F0 = 0.04f;
 
+/// @brief 解析光源の視半径の sin（太陽・月の視半径 0.27° 相当）
+static const float LIGHT_SOURCE_SIN_ALPHA = 0.0047f;
+
 // ===================================================================
 // ユーティリティ関数: Y軸回転
 // ===================================================================
@@ -61,19 +64,23 @@ float3 RotateVector(float3 v, float3 euler)
 // ===================================================================
 /// @brief マイクロファセットの分布を計算（GGX分布）
 /// @param NdotH 法線とハーフベクトルの内積
-/// @param roughness 粗さ (0.0 = 滑らか, 1.0 = 粗い)
+/// @param alpha2 GGX の α²（α = roughness²）
 /// @return 法線分布の強度
-float DistributionGGX(float NdotH, float roughness)
+float DistributionGGX(float NdotH, float alpha2)
 {
-	float a = roughness * roughness;
-	float a2 = a * a;
-	float NdotH2 = NdotH * NdotH;
-    
-	float nom = a2;
-	float denom = (NdotH2 * (a2 - 1.0f) + 1.0f);
-	denom = PI * denom * denom;
-    
-	return nom / max(denom, EPSILON);
+	float a2 = max(alpha2, 1.0e-7f);
+	float NdotH2 = saturate(NdotH * NdotH);
+	float denom = (1.0f - NdotH2) + NdotH2 * a2;
+	return a2 / (PI * denom * denom);
+}
+
+/// @brief 光源の視半径の分だけ GGX の α² を広げる
+/// @param alpha2 GGX の α²
+/// @param HdotV ハーフベクトルと視線方向の内積
+/// @return 広げた α²
+float WidenAlpha2ForLightSource(float alpha2, float HdotV)
+{
+	return alpha2 + 0.25f * LIGHT_SOURCE_SIN_ALPHA * LIGHT_SOURCE_SIN_ALPHA / (HdotV + 0.001f);
 }
 
 // ===================================================================
@@ -156,8 +163,9 @@ float3 CookTorranceBRDF(float3 N, float3 V, float3 L, float roughness, float3 F0
 	float NdotH = max(dot(N, H), 0.0f);
 	float HdotV = max(dot(H, V), 0.0f);
     
-    // D項: 法線分布関数（GGX）
-	float D = DistributionGGX(NdotH, roughness);
+    // D項: 法線分布関数（GGX）。ハイライトは光源の視半径より細くしない
+	float a = roughness * roughness;
+	float D = DistributionGGX(NdotH, WidenAlpha2ForLightSource(a * a, HdotV));
     
     // F項: Fresnel反射
 	float3 F = FresnelSchlick(HdotV, F0);

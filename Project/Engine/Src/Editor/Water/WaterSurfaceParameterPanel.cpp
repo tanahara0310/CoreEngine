@@ -236,7 +236,7 @@ void WaterSurfaceParameterPanel::DrawCommonParameterSection(WaterRenderFeature& 
 	// 実際の水面への適用は WaterRenderFeature::ApplySettingsFromCVars（毎フレーム）が行う。
 	ImGui::Spacing();
 	ImGui::SeparatorText("共通の見た目");
-	EditCVar(WaterCVars::BaseColor, [](Vector4* v) { return ImGui::ColorEdit4("ベースカラー", &v->x); });
+	EditCVar(WaterCVars::BaseColor, [](Vector4* v) { return ImGui::ColorEdit3("ベースカラー", &v->x); });
 	EditCVar(WaterCVars::Roughness, [](float* v) { return ImGui::SliderFloat("ラフネス", v, 0.0f, 1.0f); });
 	EditCVar(WaterCVars::Metallic, [](float* v) { return ImGui::SliderFloat("メタリック", v, 0.0f, 1.0f); });
 	EditCVar(WaterCVars::IBLEnabled, [](bool* v) { return ImGui::Checkbox("IBLを有効にする", v); });

@@ -27,14 +27,10 @@ cbuffer PrefilteredParams : register(b0)
 float DistributionGGX(float NdotH, float roughness)
 {
     float a = roughness * roughness;
-    float a2 = a * a;
-    float NdotH2 = NdotH * NdotH;
-    
-    float nom = a2;
-    float denom = (NdotH2 * (a2 - 1.0f) + 1.0f);
-    denom = PI * denom * denom;
-    
-    return nom / max(denom, 0.0001f);
+    float a2 = max(a * a, 1.0e-7f);
+    float NdotH2 = saturate(NdotH * NdotH);
+    float denom = (1.0f - NdotH2) + NdotH2 * a2;
+    return a2 / (PI * denom * denom);
 }
 
 // ===== メインコンピュートシェーダー =====

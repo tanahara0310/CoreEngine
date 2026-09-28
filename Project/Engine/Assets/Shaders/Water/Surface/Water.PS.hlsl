@@ -101,18 +101,9 @@ float FresnelSchlick(float cosTheta, float f0)
 
 
 
-// ===== 反射のグロッシー化（ラフネスを考慮した反射）=====
-// 平面反射(gReflectionTexture)は完全な鏡像であり、明るい空がそのままフレネルで
-// 波面へ塗られるため、うねりの向きに沿ってハードな明暗の斑（水色/青のまだら）が出る。
-// 実際の水面は未解像の微細なさざ波が「ラフネス」として働き、
-//  (1) 反射をにじませ（グロッシー反射）、
-//  (2) かすめ角では微細斜面同士の幾何遮蔽で反射スパイクを抑える。
-// この 2 つを再現して、穏やかな海が均一に見えるようにする。
-// 0.55 → 0.20: 実際の穏やかな水面の実効マイクロラフネスは 0.02〜0.1 程度で、
-// 0.55 は嵐の海に相当する過大な値だった。かすめ角の「鏡のような空の映り込み」が
-// 幾何遮蔽で半減し、水面の輝き・透明感を大きく損なっていたため緩和
-// （まだらの真因＝反射ビューへの水面自己描画は修正済み）。
-static const float kWaterReflectionMicroRoughness = 0.20f; // 未解像さざ波の実効ラフネス
+// ===== 反射のにじみ =====
+/// @brief 未解像のさざ波の実効ラフネス（空キューブマップのミップ選択に使う）
+static const float kWaterReflectionMicroRoughness = 0.20f;
 
 // ===== グロッシー反射サンプリング（本体の合成で必ず通す）=====
 // ★水面すれすれで出る黒いギザギザの本命対策★（2026-08-09 本体へ接続）
@@ -187,15 +178,6 @@ float3 SampleGlossyReflection(float2 screenUV, float grazing)
     return SampleGlossyReflectionRGBA(screenUV, grazing).rgb;
 }
 
-/// @brief かすめ角の反射スパイクを微細さざ波の幾何遮蔽で抑える係数
-/// @details Schlick-GGX の視線側幾何項に相当。cosθ→0（かすめ角）で 0 に近づき、
-///          明るい空の反射が波の裏面へハードに乗るのを弱める。cosθ→1 では 1（無影響）。
-float ReflectionGeometricOcclusion(float cosTheta)
-{
-    const float k = kWaterReflectionMicroRoughness;
-    return cosTheta / max(cosTheta * (1.0f - k) + k, 1.0e-4f);
-}
-
 // ===== 太陽のスペキュラグリッター（解析的 GGX）=====
 // 反射有効時、PBR フォワード出力（太陽の解析的スペキュラを含む）は平面反射像で
 // 「置き換え」られるため、太陽ハイライトは鏡像の太陽ディスク頼みになる。
@@ -264,14 +246,13 @@ PixelShaderOutput WaterForwardMain(WaterPSInput input, float3 surfaceNormal)
 
     forwardInput.normal = surfaceNormal;
 
-    // 視線方向と alpha
+    // 視線方向
     float3 toEye = normalize(gCamera.worldPosition - forwardInput.worldPosition);
-    float finalAlpha = gMaterial.color.a;
 
     // アンリット
     if (gMaterial.enableLighting == 0)
     {
-        output.color = gMaterial.color;
+        output.color = float4(gMaterial.color.rgb, 1.0f);
         return output;
     }
 
@@ -284,7 +265,7 @@ PixelShaderOutput WaterForwardMain(WaterPSInput input, float3 surfaceNormal)
 
     // PBR ライティング
     output.color.rgb = CalculateAllLighting(forwardInput, albedo, metallic, roughness, ao, toEye, float4(1.0f, 1.0f, 1.0f, 1.0f));
-    output.color.a = finalAlpha;
+    output.color.a = 1.0f;
 
     // IBL
     output.color.rgb += ApplyIBL(forwardInput, albedo, metallic, roughness, ao, toEye);
@@ -349,13 +330,12 @@ WaterPixelOutput main(WaterPSInput input)
     PixelShaderOutput output;
     if (forwardColorUnused)
     {
-        output.color = float4(0.0f, 0.0f, 0.0f, gMaterial.color.a);
+        output.color = float4(0.0f, 0.0f, 0.0f, 1.0f);
     }
     else
     {
         output = WaterForwardMain(input, surfaceNormal);
     }
-    float baseCoverage = saturate(output.color.a);
 
     // ---- 4. 波長依存 Beer-Lambert による透過率の計算 ----
     // σ が RGB で異なるため、同じ光路長でも赤→緑→青の順に減衰し、
@@ -380,14 +360,10 @@ WaterPixelOutput main(WaterPSInput input)
     float3 viewDir = normalize(gCamera.worldPosition - input.worldPosition);
     float3 geomNormal = surfaceNormal;
 
-    // フレネルは反射像・透過像と同じ面法線から評価する（ResolveFresnelNormal 参照）。
-    // 未解像のさざ波斜面は surfaceNormal のフットプリントフェードで既に平均済み。
-    float3 fresnelNormal = ResolveFresnelNormal(surfaceNormal);
-    float cosTheta = saturate(dot(fresnelNormal, viewDir));
+    // フレネルは反射像・透過像と同じ面法線で評価する
+    float cosTheta = saturate(dot(surfaceNormal, viewDir));
     float fresnel = FresnelSchlick(cosTheta, saturate(gFresnelBaseReflectance));
-    // 微細さざ波の幾何遮蔽でかすめ角の反射スパイクを抑え、うねりに沿った
-    // ハードな明暗の斑（水色/青のまだら）を和らげる。
-    float reflectanceWeight = saturate(fresnel * ReflectionGeometricOcclusion(cosTheta) * gFresnelReflectanceScale);
+    float reflectanceWeight = saturate(fresnel * gFresnelReflectanceScale);
 
     // ---- 5.5. 泡マスク（dissolve 方式）----
     // 泡は拡散層でフレネル反射を持たないため、泡の被覆分だけ反射の混合比を抑える。
@@ -487,21 +463,8 @@ WaterPixelOutput main(WaterPSInput input)
         }
     }
 
-    float3 desiredWaterView = lerp(transmissionColor, reflectColor, reflectanceWeight);
-    // 水面ピクセルは常に「水面越しに見える像」（屈折 or 反射）そのものであるべきで、
-    // 屈折で曲げていない生のスクリーン座標の背景（gSceneColor.Sample(screenUV)）を
-    // 混ぜてはいけない（以前はそれが原因で二重像ゴーストが出ていた）。
-    // さらに、透明側の端点には「生の屈折色（refractionColor）」ではなく
-    // 「吸収・散乱を通した透過色（transmissionColor）」を使う。
-    // 以前は lerp(refractionColor, desiredWaterView, α=0.85) だったため、
-    // Beer-Lambert もフレネルも迂回した水底の色が常に約15%そのまま混入し、
-    // 深い水でも水底（市松床＋コースティクスのセル模様）が薄い水色の斑として
-    // 浮き出ていた（穏やかな海ほどセルが大きく明瞭になり顕著）。
-    // transmissionColor は refractionColor から導出されるため「同じ位置を指す像」
-    // 同士のブレンドであることは変わらず、ゴーストは発生しない。
-    // これにより gMaterial.color.a は実質「フレネル反射成分の不透明度」として働く。
-    float surfaceCoverage = saturate(baseCoverage);
-    float3 finalWaterComposite = lerp(transmissionColor, desiredWaterView, surfaceCoverage);
+    // 透過像（吸収・散乱を通した色）と反射像をフレネルで合成する
+    float3 finalWaterComposite = lerp(transmissionColor, reflectColor, reflectanceWeight);
 
     // 泡レイヤを重ねる（白ベタ禁止: gFoamOpacity < 1 で水面下の情報を残す）
     if (foamCoverage > 0.0f)
@@ -538,7 +501,6 @@ WaterPixelOutput main(WaterPSInput input)
         debugContext.reflectColor = reflectColor;
         debugContext.reflectanceWeight = reflectanceWeight;
         debugContext.finalWaterComposite = finalWaterComposite;
-        debugContext.surfaceCoverage = surfaceCoverage;
         debugContext.geomNormal = geomNormal;
         debugContext.viewDir = viewDir;
         debugContext.cosTheta = cosTheta;

@@ -90,7 +90,6 @@ struct WaterDebugContext
     float3 reflectColor;
     float reflectanceWeight;
     float3 finalWaterComposite;
-    float surfaceCoverage;
 
     // 幾何
     float3 geomNormal;
@@ -156,7 +155,7 @@ float3 ResolveWaterDebugColor(WaterDebugContext ctx)
         return gReflectionEnabled ? ctx.reflectColor : float3(1.0f, 0.0f, 1.0f);
     }
 
-    // 7: 面法線（平坦化前）で見たフレネル。合成に使う値はモード 13。
+    // 7: 面法線で見たフレネル（スケールと泡の抑制を掛ける前）。合成に使う値はモード 13。
     if (gDepthDebugViewMode == 7)
     {
         float debugCosTheta = saturate(dot(ctx.geomNormal, ctx.viewDir));
@@ -199,7 +198,7 @@ float3 ResolveWaterDebugColor(WaterDebugContext ctx)
         return ctx.hasValidDepthFade ? saturate(ctx.transmittance) : float3(1.0f, 0.0f, 1.0f);
     }
 
-    // 13: 実際の反射率（フレネル × 幾何遮蔽 × スケール）
+    // 13: 実際の反射率（フレネル × スケール × 泡の抑制）
     if (gDepthDebugViewMode == 13)
     {
         return VisualizeDepthValue(ctx.reflectanceWeight);
@@ -271,13 +270,13 @@ float3 ResolveWaterDebugColor(WaterDebugContext ctx)
     // 20: reflectanceWeight = 0（純透過）の最終合成
     if (gDepthDebugViewMode == 20)
     {
-        return lerp(ctx.transmissionColor, ctx.transmissionColor, ctx.surfaceCoverage);
+        return ctx.transmissionColor;
     }
 
     // 21: reflectanceWeight = 1（純反射）の最終合成
     if (gDepthDebugViewMode == 21)
     {
-        return lerp(ctx.transmissionColor, ctx.reflectColor, ctx.surfaceCoverage);
+        return ctx.reflectColor;
     }
 
     // 22: 反射と透過の輝度差。明るいほど、そこでフレネルが振れると斑が見える。
