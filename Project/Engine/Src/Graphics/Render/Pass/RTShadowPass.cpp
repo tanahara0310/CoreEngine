@@ -4,7 +4,10 @@
 #include "EngineSystem/Subsystem/RayTracingSubsystem.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
+#include "Graphics/Render/Pass/RTWaterCausticsPass.h"
 #include "Graphics/Render/RenderGraph.h"
+#include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
+#include "Graphics/Water/WaterSurfaceData.h"
 
 namespace CoreEngine
 {
@@ -28,6 +31,31 @@ namespace CoreEngine
             }
             return context.cmdList;
         }
+
+        /// @brief 水中の受光点を屈折した経路で調べるための水面を作る
+        /// @details RT コースティクスが水中の直接光を置き換える GameView のときだけ有効にする
+        ///          （コースティクスが水中の区間の遮蔽を、影が水より上の区間の遮蔽を受け持つ）
+        RayTracingShadowWaterSurface BuildShadowWaterSurface(
+            const RenderContext& context, RayTracingShadowManager::ViewID viewId)
+        {
+            RayTracingShadowWaterSurface water{};
+            if (viewId != RayTracingShadowManager::ViewID::GameView
+                || !IsRayTracedWaterCausticsSelected(context)
+                || !context.rtWaterCausticsManager
+                || !context.rtWaterCausticsManager->IsInitialized()) {
+                return water;
+            }
+
+            const WaterSurfaceData& surface = *context.waterSurfaceState;
+            water.enabled = true;
+            water.height = surface.waterHeight;
+            water.refractiveIndex = context.rtWaterCausticsManager->GetSettings().refractiveIndex;
+            water.regionCenterXZ[0] = surface.regionCenterXZ[0];
+            water.regionCenterXZ[1] = surface.regionCenterXZ[1];
+            water.regionHalfExtentXZ[0] = surface.regionHalfExtentXZ[0];
+            water.regionHalfExtentXZ[1] = surface.regionHalfExtentXZ[1];
+            return water;
+        }
     }
 
     void RTShadowPass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
@@ -46,8 +74,9 @@ namespace CoreEngine
             return;
         }
 
+        const RayTracingShadowManager::ViewID viewId = ResolveRTShadowViewId(context);
         context.rayTracingSubsystem->DispatchRTShadowTrace(
-            context, context.dxCommon, cmdList, ResolveRTShadowViewId(context));
+            context, context.dxCommon, cmdList, viewId, BuildShadowWaterSurface(context, viewId));
     }
 
     void RTShadowTemporalPass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)

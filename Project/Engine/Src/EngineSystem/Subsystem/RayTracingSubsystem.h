@@ -49,11 +49,13 @@ namespace CoreEngine
         /// @brief RT シャドウの DispatchRays ステージ（全ディレクショナルライト分）
         /// @details RenderGraph 上では RTShadowTracePass として実行される。
         ///　ライト別の内部リソースバリアはマネージャ内で処理する。
+        /// @param waterSurface 水中の受光点を屈折した経路で調べるための水面
         void DispatchRTShadowTrace(
             const RenderContext& context,
             GraphicsCore* dx,
             ID3D12GraphicsCommandList* cmdList,
-            RayTracingShadowManager::ViewID viewId);
+            RayTracingShadowManager::ViewID viewId,
+            const RayTracingShadowWaterSurface& waterSurface);
 
         /// @brief RT シャドウのテンポラル蓄積ステージ（全ディレクショナルライト分）
         /// @details RenderGraph 上では RTShadowTemporalPass として実行される。

@@ -48,6 +48,15 @@ cbuffer ShadowRayConstants : register(b0)
     int gHistoryValid; // 履歴テクスチャが有効なら 1（初回フレームは 0）
     int gPad2_;
     float4x4 gInvViewProj; // WorldPosition ターゲット廃止に伴う深度復元用
+    // 水面（水中の受光点は、屈折して届く光が水面へ入る点から光源へ向けて調べる）
+    float gWaterHeight; // 平らな水面の高さ
+    float gWaterRefractiveIndex; // 水の屈折率
+    float gWaterRegionCenterX; // 水域の中心（XZ）
+    float gWaterRegionCenterZ;
+    float gWaterRegionHalfExtentX; // 水域の半径（XZ）
+    float gWaterRegionHalfExtentZ;
+    int gWaterEnabled; // 1 なら水中の受光点を屈折した経路で調べる
+    int gPad3_;
 };
 
 // ============================================================
@@ -117,6 +126,35 @@ float3 SampleConeDirection(float3 dir, float coneAngle, float r1, float r2)
     return normalize(lx * tangent + ly * bitan + lz * dir);
 }
 
+/// @brief 水中の受光点へ屈折して届く光が、平らな水面へ入る点を求める
+/// @param worldPos   受光点
+/// @param toLight    受光点から光源へ向かう方向（空気中）
+/// @param entryPoint 水面上の入射点
+/// @return 受光点が水域の水面より下にあり、光が水面の上から来るとき true
+bool TryFindWaterEntryPoint(float3 worldPos, float3 toLight, out float3 entryPoint)
+{
+    entryPoint = worldPos;
+    if (gWaterEnabled == 0 || toLight.y <= 0.0f || worldPos.y >= gWaterHeight)
+    {
+        return false;
+    }
+    const float2 offset = abs(worldPos.xz - float2(gWaterRegionCenterX, gWaterRegionCenterZ));
+    if (any(offset > float2(gWaterRegionHalfExtentX, gWaterRegionHalfExtentZ)))
+    {
+        return false;
+    }
+
+    // スネルの法則で水中の光の向きを求める（水平成分が 1/n 倍になる）
+    const float2 horizontal = toLight.xz / max(gWaterRefractiveIndex, 1.0f);
+    const float vertical = sqrt(saturate(1.0f - dot(horizontal, horizontal)));
+    const float travel = (gWaterHeight - worldPos.y) / max(vertical, 1.0e-4f);
+    entryPoint = float3(
+        worldPos.x + horizontal.x * travel,
+        gWaterHeight,
+        worldPos.z + horizontal.y * travel);
+    return true;
+}
+
 // ============================================================
 // Ray Generation シェーダー：生シャドウ値を出力するのみ。
 // テンポラル蓄積は RTShadowTemporal.CS.hlsl で行う。
@@ -172,6 +210,14 @@ void RTShadowRayGen()
 
     // 法線方向 + ライト方向のバイアスでセルフシャドウを防止
     float3 origin = worldPos + N * bias + rayDir * bias * 0.5f;
+
+    // 水中の受光点は、水面の入射点から光源へ向けて水より上の遮蔽だけを調べる。
+    // 水中の区間の遮蔽は RT コースティクスが屈折した経路で調べる
+    float3 waterEntryPoint;
+    if (TryFindWaterEntryPoint(worldPos, rayDir, waterEntryPoint))
+    {
+        origin = waterEntryPoint;
+    }
 
     // ソフトシャドウ：コーン内ジッターレイの平均（N=1 はバイナリ）
     static const int kMaxSamples = 16;

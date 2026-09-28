@@ -120,6 +120,17 @@ namespace CoreEngine
         bool  disableHistory = false;
     };
 
+    /// @brief 水中の受光点へ屈折して届く光の経路を求めるための水面
+    /// @details enabled のとき、水域の水面より下の受光点は、水面の入射点から光源へ向けて
+    ///          水より上の遮蔽だけを調べる（水中の区間は RT コースティクスが調べる）。
+    struct RayTracingShadowWaterSurface {
+        bool  enabled = false;
+        float height = 0.0f;                          ///< 平らな水面の高さ
+        float refractiveIndex = 1.333f;               ///< 水の屈折率
+        float regionCenterXZ[2] = { 0.0f, 0.0f };     ///< 水域の中心（XZ）
+        float regionHalfExtentXZ[2] = { 0.0f, 0.0f }; ///< 水域の半径（XZ）
+    };
+
     /// @brief DXR レイトレーシングシャドウ
     /// @details 出力テクスチャ・ガード判定・DXR オブジェクトは基盤 RayTracingPassBase 側が持つ。
     ///          ここに残るのは RayGen / テンポラル / A-Trous の 3 ステージと、view × ライトの状態だけ。
@@ -146,6 +157,7 @@ namespace CoreEngine
         /// @param sceneDepthSRV WorldPosition ターゲット廃止に伴い深度から復元する
         /// @param invViewProj 深度復元用 View*Projection の逆行列
         /// @param width,height フル解像度。ハーフ解像度時のトレース解像度はここから導出する
+        /// @param waterSurface 水中の受光点を屈折した経路で調べるための水面
         void Dispatch(ID3D12GraphicsCommandList* cmdList,
             D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
             D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
@@ -153,7 +165,8 @@ namespace CoreEngine
             const Matrix4x4& invViewProj,
             UINT width, UINT height,
             ViewID viewId = ViewID::GameView,
-            uint32_t lightIndex = 0);
+            uint32_t lightIndex = 0,
+            const RayTracingShadowWaterSurface& waterSurface = {});
 
         /// @brief 空間前処理＋テンポラル蓄積パスを実行する（Dispatch の直後に呼ぶ）
         /// @param projection 投影行列。深度重みの線形化にのみ使う（Stage 1 で invViewProj から変更）
