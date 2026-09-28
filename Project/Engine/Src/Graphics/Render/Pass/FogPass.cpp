@@ -12,11 +12,26 @@
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/RenderTarget/OffscreenRenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
+#include "Graphics/Water/WaterSurfaceData.h"
 
 namespace CoreEngine
 {
     namespace
     {
+        /// @brief 今フレームの水面の高さと範囲を集める（水面が無ければ valid = false のまま）
+        FogWaterInfo BuildWaterInfo(const WaterSurfaceData* surface)
+        {
+            FogWaterInfo water{};
+            if (!surface || surface->regionValid == 0) {
+                return water;
+            }
+            water.height = surface->waterHeight;
+            water.regionCenterXZ = Vector2{ surface->regionCenterXZ[0], surface->regionCenterXZ[1] };
+            water.regionHalfExtentXZ = Vector2{ surface->regionHalfExtentXZ[0], surface->regionHalfExtentXZ[1] };
+            water.valid = true;
+            return water;
+        }
+
         /// @brief 大気から空色ブレンド用の値を集める（LUT が無ければ valid = false のまま）
         FogSkyInfo BuildSkyInfo(const AtmosphereManager* atmosphere)
         {
@@ -95,7 +110,7 @@ namespace CoreEngine
 
         // 前方描画（半透明・水面）は全画面合成の有無に関わらず gFog を差すので、
         // フォグが無効なフレーム・合成しない補助 View でも定数だけは必ず用意する
-        context.fogManager->PrepareConstants(view, sky);
+        context.fogManager->PrepareConstants(view, sky, BuildWaterInfo(context.waterSurfaceState));
         PublishFogConstants(context);
 
         // ここから先は SceneColor への合成。メイン GameView かつ有効なときだけ

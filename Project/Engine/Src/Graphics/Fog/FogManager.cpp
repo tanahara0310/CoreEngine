@@ -124,7 +124,8 @@ namespace CoreEngine
         hasSun_ = hasSun && directionValid;
     }
 
-    FogManager::FogConstants FogManager::BuildConstants(const ViewInfo& view, const FogSkyInfo& sky) const
+    FogManager::FogConstants FogManager::BuildConstants(
+        const ViewInfo& view, const FogSkyInfo& sky, const FogWaterInfo& water) const
     {
         FogConstants constants{};
         constants.invViewProj = view.invViewProjection;
@@ -155,10 +156,15 @@ namespace CoreEngine
         constants.cameraRadiusKm = sky.cameraRadiusKm;
         constants.planetRadiusKm = sky.planetRadiusKm;
 
+        constants.waterHeight = water.height;
+        constants.waterClipEnabled = water.valid ? 1u : 0u;
+        constants.waterRegionCenterXZ = water.regionCenterXZ;
+        constants.waterRegionHalfExtentXZ = water.regionHalfExtentXZ;
+
         return constants;
     }
 
-    void FogManager::PrepareConstants(const ViewInfo& view, const FogSkyInfo& sky)
+    void FogManager::PrepareConstants(const ViewInfo& view, const FogSkyInfo& sky, const FogWaterInfo& water)
     {
         if (!graphicsCore_ || !view.isValid) {
             return;
@@ -168,7 +174,7 @@ namespace CoreEngine
         // GPU が前フレームのディスパッチを実行する前に CPU が書き潰す）
         UploadRing& ring = graphicsCore_->GetUploadRing();
 
-        const FogConstants full = BuildConstants(view, sky);
+        const FogConstants full = BuildConstants(view, sky, water);
         frameConstants_[static_cast<size_t>(FogVariant::Full)] = ring.AllocateConstants(full);
 
         // 加算・スクリーン合成用: 内散乱色を 0 にすると ApplyFog の lerp が
