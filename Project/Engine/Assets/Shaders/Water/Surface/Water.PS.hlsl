@@ -105,28 +105,16 @@ float FresnelSchlick(float cosTheta, float f0)
 /// @brief 未解像のさざ波の実効ラフネス（空キューブマップのミップ選択に使う）
 static const float kWaterReflectionMicroRoughness = 0.20f;
 
-// ===== グロッシー反射サンプリング（本体の合成で必ず通す）=====
-// ★水面すれすれで出る黒いギザギザの本命対策★（2026-08-09 本体へ接続）
-// DXR 反射は 1 ピクセル 1 レイで、しかも反射方向をフルディテールの波法線から
-// 求めている（RT 側にはフットプリントの概念が無い）。隣接ピクセルが空・木・遠方の
-// 水と全く別のものに当たるため、点サンプルするとピクセル単位の硬いノイズになる。
-// 実際の水面も微細ラフネスで反射はにじみ、かすめ角ほど鉛直方向へ伸びるので、
-// にじませるのは AA の都合ではなく物理的にも正しい。
-// （この関数自体は以前から存在したが、可視化モード 19 からしか呼ばれていなかった）
-static const float kWaterReflectionBlurTexels = 3.0f; // にじみ半径（テクセル基準）
+// ===== 反射の画素ならし（本体の合成で必ず通す）=====
+/// @brief 反射テクスチャを引くタップの間隔（テクセル）
+/// @warning 2 テクセルを超えると、ずれた像が離散的に重なって見える
+static const float kWaterReflectionTapSpacingTexels = 1.0f;
 
-/// @brief 反射テクスチャをラフネス相当でにじませて取得する（rgb=色 / a=信頼度）
+/// @brief 反射テクスチャを 3×3 のテントでならして取得する（rgb=色 / a=信頼度）
 /// @param screenUV スクリーンUV
-/// @param grazing  かすめ具合 = 1 - cosθ（大きいほど反射が伸び・ぼける）
-/// @details ★信頼度（a）はぼかさず中心タップの値をそのまま返す★
-///          a は「そのピクセルに反射色があるか」の判定であって画像ではない。
-///          平均すると水面と非水面の境界のまわりに中間値の帯ができ、そこで
-///          RT 反射像（RT 側の波法線で解決）と呼び出し側の空キューブ
-///          （ラスタ側の波法線で解決）という別々の面に沿った 2 枚が重なる
-///          ＝反射が二重に見える。かすめ角では境界が画面上で圧縮されるため
-///          帯が水面の広い範囲を覆う。
-///          rgb 側は各タップ自身の信頼度で重み付けして平均する。非水面タップの
-///          rgb は黒なので、素の平均では境界のまわりが暗く引きずられる。
+/// @param grazing  かすめ具合 = 1 - cosθ（大きいほど縦の間隔を広げる）
+/// @details 信頼度（a）はぼかさず中心タップの値を返す。
+///          rgb は各タップ自身の信頼度で重み付けして平均する（非水面のタップは入れない）。
 float4 SampleGlossyReflectionRGBA(float2 screenUV, float grazing)
 {
     uint reflWidth = 1;
@@ -134,8 +122,9 @@ float4 SampleGlossyReflectionRGBA(float2 screenUV, float grazing)
     gReflectionTexture.GetDimensions(reflWidth, reflHeight);
     const float2 texel = 1.0f / float2(reflWidth, reflHeight);
 
-    // 反射像は面が寝るほど鉛直方向へ伸びるため縦を強めに、かすめ角ほど広くぼかす。
-    const float2 radius = kWaterReflectionBlurTexels * texel * float2(1.0f, 2.0f) * (1.0f + grazing * 2.0f);
+    // かすめ角ほど縦の間隔を 1.5 倍まで広げる（双線形で行の間を補間する）
+    const float2 radius = kWaterReflectionTapSpacingTexels * texel
+        * float2(1.0f, 1.0f + 0.5f * saturate(grazing));
 
     const float2 kOffsets[9] = {
         float2( 0.0f,  0.0f),
