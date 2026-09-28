@@ -13,7 +13,7 @@ namespace CoreEngine
         // ---- 見た目 ----
         CVar<Vector4> BaseColor{ "r.Water.BaseColor",
             Vector4{ 0.04f, 0.18f, 0.28f, 0.85f },
-            "水面のベースカラー（αはフレネル反射成分の不透明度として働く）" };
+            "水面のベースカラー（反射を切ったときの PBR の色。αは使わない）" };
         CVar<float> Roughness{ "r.Water.Roughness", 0.03f,
             "水面マテリアルのラフネス", CVarRange{ 0.0f, 1.0f } };
         CVar<float> Metallic{ "r.Water.Metallic", 0.0f,
