@@ -430,6 +430,7 @@ WaterPixelOutput main(WaterPSInput input)
             const float kEnvMipCount = 5.0f;
             const float kEnvMip = kWaterReflectionMicroRoughness * (kEnvMipCount - 1.0f);
             float3 envReflectDir = reflect(-viewDir, geomNormal);
+            envReflectDir.y = max(abs(envReflectDir.y), 0.01f);
             fallbackReflectColor =
                 gSkyEnvironmentMap.SampleLevel(gLinearClamp, envReflectDir, kEnvMip).rgb;
         }
