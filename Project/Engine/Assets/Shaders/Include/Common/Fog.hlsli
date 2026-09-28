@@ -38,6 +38,12 @@ struct FogParameters
     float    skyColorBlend;   ///< フォグ色を空の色へ寄せる量 [0,1]。大気が無ければ 0
     float    cameraRadiusKm;  ///< Sky-View LUT サンプル用: 惑星中心からのカメラ距離 [km]
     float    planetRadiusKm;  ///< Sky-View LUT サンプル用: 惑星半径 [km]
+    float    waterHeight;     ///< 水面の基準高さ [m]
+    uint     waterClipEnabled;///< 1 なら水面の範囲内で水面より下の面に全画面フォグを掛けない
+    float2   waterRegionCenterXZ;     ///< 水面の範囲の中心（ワールド XZ）[m]
+    float2   waterRegionHalfExtentXZ; ///< 水面の範囲の半分の大きさ（ワールド XZ）[m]
+    float    pad0;            ///< 16 バイト境界までの詰め物
+    float    pad1;            ///< 16 バイト境界までの詰め物
 };
 
 /// @brief 光学的深さの上限。exp(-32) = 1.3e-14 で、これ以上は完全に不透明と区別できない

@@ -52,6 +52,12 @@ namespace CoreEngine
         // ライティングより前のこのフェーズで生成する（GameView のみ）
         pipeline.AddPass(std::make_unique<CloudShadowMapPass>(), RenderPassPhase::FrameSetup, 30);
 
+        // フレーム前処理: FFT 波面を 1 フレーム進める。コースティクス・RT 反射/屈折・水面は
+        // どれもこの結果を読むので、その前に置く（コストの分類は水面）
+        pipeline.AddPass(
+            std::make_unique<FFTOceanPass>(), RenderPassPhase::FrameSetup, 40,
+            GpuTimingCategory::Water);
+
         // G-Buffer 蓄積（不透明 Model / SkinnedModel の描画）
         pipeline.AddPass(std::make_unique<GBufferPass>(), RenderPassPhase::GBuffer);
 
@@ -79,12 +85,7 @@ namespace CoreEngine
         // Deferred ライティング: G-Buffer を読み取り SceneColor を生成
         pipeline.AddPass(std::make_unique<DeferredLightingPass>(), RenderPassPhase::Lighting);
 
-        // ライティング後: FFT 波面更新と空気遠近感の合成（GameView のみ）
-        // 波面生成は実行順の都合で PostLighting に置いているが、コストの分類としては水面。
-        // 計測カテゴリを Water へ寄せないと「水面がフレームに占める割合」を数え漏らす。
-        pipeline.AddPass(
-            std::make_unique<FFTOceanPass>(), RenderPassPhase::PostLighting, 0,
-            GpuTimingCategory::Water);
+        // ライティング後: 空気遠近感の合成（GameView のみ）
         pipeline.AddPass(std::make_unique<AerialPerspectivePass>(), RenderPassPhase::PostLighting, 10);
 
         // Forward 合成（従来の大箱 GeometryPass をキュー単位の 3 パスへ分割）

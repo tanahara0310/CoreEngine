@@ -286,7 +286,8 @@ namespace CoreEngine
         cmdList->CopyTextureRegion(&displacementDst, 0, 0, 0, &displacementSrc, nullptr);
         cmdList->CopyTextureRegion(&normalDst, 0, 0, 0, &normalSrc, nullptr);
         Barrier::Transition(cmdList, displacement, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        Barrier::Transition(cmdList, normal, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::Transition(cmdList, normal,
+            D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
         surfacePending_ = true;
         ++surfaceSequence_;

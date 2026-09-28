@@ -36,6 +36,15 @@ namespace CoreEngine
         bool  valid = false;                         ///< LUT が生成済みで参照してよいか
     };
 
+    /// @brief 全画面フォグを水面より下の面に掛けないための、水面の高さと範囲
+    /// @details 組み立ては FogPass の責務（今フレームの水面状態は RenderContext が持つ）。
+    struct FogWaterInfo {
+        float   height = 0.0f;          ///< 水面の基準高さ [m]
+        Vector2 regionCenterXZ{};       ///< 水面の範囲の中心（ワールド XZ）[m]
+        Vector2 regionHalfExtentXZ{};   ///< 水面の範囲の半分の大きさ（ワールド XZ）[m]
+        bool    valid = false;          ///< 水面があるか
+    };
+
     /// @brief 高さフォグシステムの窓口
     /// @details 設定・パイプラインを所有し、フレーム状態を定数バッファへ詰めて
     ///          SceneColor へ合成する。数式の実体はシェーダー側
@@ -66,6 +75,12 @@ namespace CoreEngine
             float     skyColorBlend;    ///< 空色へ寄せる量 [0,1]。LUT が無いフレームは 0
             float     cameraRadiusKm;   ///< Sky-View LUT サンプル用
             float     planetRadiusKm;   ///< Sky-View LUT サンプル用
+            float     waterHeight;      ///< 水面の基準高さ [m]
+            uint32_t  waterClipEnabled; ///< 1 なら水面の範囲内で水面より下の面に全画面フォグを掛けない
+            Vector2   waterRegionCenterXZ;     ///< 水面の範囲の中心（ワールド XZ）[m]
+            Vector2   waterRegionHalfExtentXZ; ///< 水面の範囲の半分の大きさ（ワールド XZ）[m]
+            float     pad0;             ///< 16 バイト境界までの詰め物
+            float     pad1;             ///< 16 バイト境界までの詰め物
         };
 
         static constexpr Cb::Field kFogConstantsFields[] = {
@@ -77,7 +92,10 @@ namespace CoreEngine
             CB_FIELD(FogConstants, sunDirection),  CB_FIELD(FogConstants, sunExponent),
             CB_FIELD(FogConstants, sunTint),       CB_FIELD(FogConstants, sunGain),
             CB_FIELD(FogConstants, skyColorBlend), CB_FIELD(FogConstants, cameraRadiusKm),
-            CB_FIELD(FogConstants, planetRadiusKm),
+            CB_FIELD(FogConstants, planetRadiusKm), CB_FIELD(FogConstants, waterHeight),
+            CB_FIELD(FogConstants, waterClipEnabled), CB_FIELD(FogConstants, waterRegionCenterXZ),
+            CB_FIELD(FogConstants, waterRegionHalfExtentXZ), CB_FIELD(FogConstants, pad0),
+            CB_FIELD(FogConstants, pad1),
         };
         CB_VERIFY_LAYOUT(FogConstants, kFogConstantsFields);
         CB_BIND_HLSL(FogConstants, kFogConstantsFields, "gFog");
@@ -106,7 +124,8 @@ namespace CoreEngine
         /// @brief 今フレームの定数バッファ 3 本を確保する
         /// @details 前方描画（半透明・水面）が読むので、フォグが無効なフレームでも必ず呼ぶこと。
         ///          無効なフレームは 3 本とも恒等（密度 0）になる。
-        void PrepareConstants(const ViewInfo& view, const FogSkyInfo& sky);
+        /// @param water 水面の高さと範囲（valid == false なら水面で打ち切らない）
+        void PrepareConstants(const ViewInfo& view, const FogSkyInfo& sky, const FogWaterInfo& water);
 
         /// @brief このフレームでフォグが要求されているか（Update() が呼ばれ、かつ有効かつ構築済み）
         bool IsFogActive() const { return fogActive_ && settings_.enabled && pipelineReady_; }
@@ -148,8 +167,8 @@ namespace CoreEngine
         }
 
     private:
-        /// @brief 設定・ビュー・大気情報から今フレームの定数バッファ内容を作る
-        FogConstants BuildConstants(const ViewInfo& view, const FogSkyInfo& sky) const;
+        /// @brief 設定・ビュー・大気情報・水面から今フレームの定数バッファ内容を作る
+        FogConstants BuildConstants(const ViewInfo& view, const FogSkyInfo& sky, const FogWaterInfo& water) const;
 
         GraphicsCore* graphicsCore_ = nullptr;
 

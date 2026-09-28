@@ -200,6 +200,8 @@ void RTWaterReflectionRayGen()
         gReflectionOutput[launchIndex] = MakeFallbackOutput(kRTReasonInvalidBounceVector);
         return;
     }
+    // 下を向いた反射は隣の波でもう一度はね返るとみなし、水平面で折り返して上へ向ける
+    reflectedDir.y = max(abs(reflectedDir.y), 0.01f);
 
     RayDesc ray;
     // 反射レイは空気側（+waterNormal）へ進むため、自己交差回避のバイアスも +waterNormal。

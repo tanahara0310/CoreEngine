@@ -44,6 +44,18 @@ float3 SampleSkyLuminance(float3 dir)
     return gSkyViewLUT.SampleLevel(gLUTSampler, uv, 0).rgb;
 }
 
+/// @brief カメラが水上にいるとき、水面の範囲内で水面より下にある点か
+/// @details この点は水越しに見えるので、空気のフォグは水面の描画が水面までの距離で掛ける
+bool IsBelowWaterSurface(float3 worldPos)
+{
+    if (gFog.waterClipEnabled == 0 || gFog.cameraWorldPos.y <= gFog.waterHeight)
+    {
+        return false;
+    }
+    const float2 offset = abs(worldPos.xz - gFog.waterRegionCenterXZ);
+    return worldPos.y < gFog.waterHeight && all(offset <= gFog.waterRegionHalfExtentXZ);
+}
+
 [numthreads(8, 8, 1)]
 void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
@@ -67,6 +79,10 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     const float2 uv = (float2(dispatchThreadId.xy) + 0.5f) / float2(width, height);
     const float3 worldPos = ReconstructWorldPosition(
         ScreenUVToNDC(uv), ndcDepth, gFog.invViewProj);
+    if (!isBackground && IsBelowWaterSurface(worldPos))
+    {
+        return;
+    }
 
     const float3 toSurface = worldPos - gFog.cameraWorldPos;
     const float surfaceDistance = length(toSurface);
