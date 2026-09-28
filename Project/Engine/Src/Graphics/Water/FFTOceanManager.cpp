@@ -155,7 +155,15 @@ namespace CoreEngine
             sanitized.windSpeed != settings_.windSpeed ||
             sanitized.choppiness != settings_.choppiness ||
             sanitized.activeComponentCount != settings_.activeComponentCount ||
-            sanitized.gravity != settings_.gravity;
+            sanitized.gravity != settings_.gravity ||
+            sanitized.fetchMeters != settings_.fetchMeters ||
+            sanitized.swellEnabled != settings_.swellEnabled ||
+            sanitized.swellHeightMeters != settings_.swellHeightMeters ||
+            sanitized.swellPeriodSeconds != settings_.swellPeriodSeconds ||
+            sanitized.swellDirection[0] != settings_.swellDirection[0] ||
+            sanitized.swellDirection[1] != settings_.swellDirection[1] ||
+            sanitized.swellRelativeWidth != settings_.swellRelativeWidth ||
+            sanitized.swellSpreadExponent != settings_.swellSpreadExponent;
 
         if (!settingsChanged) {
             return;
