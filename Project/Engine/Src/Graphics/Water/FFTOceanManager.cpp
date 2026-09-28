@@ -287,10 +287,12 @@ namespace CoreEngine
             Barrier::UAV(cmdList, jacobianMap_);
         }
 
-        // 後段シェーダー参照用にSRV状態へ戻す（法線ミップ連鎖は廃止済み）。
+        // 後段シェーダー参照用にSRV状態へ戻す。変位は VS と DXR、法線とヤコビアンは水面の PS も読む
+        constexpr D3D12_RESOURCE_STATES kAnyShaderResource =
+            D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
         Barrier::Transition(cmdList, displacementMap_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        Barrier::Transition(cmdList, normalMap_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        Barrier::Transition(cmdList, jacobianMap_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::Transition(cmdList, normalMap_, kAnyShaderResource);
+        Barrier::Transition(cmdList, jacobianMap_, kAnyShaderResource);
 
         // 泡の蓄積・減衰（ヤコビアンが SRV 状態になった後に実行する）
         {
