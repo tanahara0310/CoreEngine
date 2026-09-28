@@ -28,8 +28,7 @@ Texture2DArray<float4> gFFTOceanNormal : register(t4);
 TextureCube<float4> gSkyEnvironmentMap : register(t5);
 
 // DXR グローバルルートシグネチャの静的サンプラ（GlobalRootSignatureManager）。
-// Texture2D 系は Load による手動バイリニアなのでサンプラ不要だが、
-// TextureCube は SampleLevel が要るためこれを使う。
+// 空キューブと、再投影先のシーン色の双線形取得に使う。
 SamplerState gLinearClamp : register(s0);
 
 cbuffer WaterReflectionConstants : register(b0)
@@ -187,8 +186,7 @@ void RTWaterReflectionRayGen()
     // 反射レイの向きは「うねりスケールの法線」だけで決める。
     // 反射は再投影のてこ（レイ長）が長く、フットプリント内で解像できている
     // 細かなさざ波の傾きでも、隣接ピクセル間で再投影先が別の物体へ飛ぶ。
-    // 解像できない微細斜面は方向ジッタではなくグロッシーぼかし
-    // （Water.PS の SampleGlossyReflectionRGBA）が受け持つ。
+    // 画素単位のばらつきは Water.PS の SampleGlossyReflectionRGBA がならす。
     // 1.0m で最細カスケードが消え、中間カスケードは減衰して通る。
     const float kReflectionDirectionMinFootprint = 1.0f;
     const float directionFootprint = max(surfaceFootprintMeters, kReflectionDirectionMinFootprint);
@@ -263,7 +261,7 @@ void RTWaterReflectionRayGen()
     // 別の物体に隠れており色を取得できない → フォールバック。
     // 同じレイ向きで引いた空。以降のフォールバック／混合の端点は必ずこれを使う。
     const bool hasSkyCube = (gSkyEnvReflectionEnabled >= 0.5f);
-    const float3 sceneColorAtTarget = gSceneColor.Load(int3(sampleCoord, 0)).rgb;
+    const float3 sceneColorAtTarget = gSceneColor.SampleLevel(gLinearClamp, reflectedUV, 0.0f).rgb;
     const float3 skyAlongRay = hasSkyCube ? SampleSkyEnvironment(ray.Direction) : sceneColorAtTarget;
 
     float sampledDepth = gSceneDepth.Load(int3(sampleCoord, 0));
