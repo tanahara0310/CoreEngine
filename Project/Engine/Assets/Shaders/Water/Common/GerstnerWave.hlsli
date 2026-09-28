@@ -47,8 +47,9 @@ void ResolveGerstnerWaveTerms(
     const float kA = max(waveNumber * wave.amplitude, 1.0e-4f);
     safeSteepness = min(wave.steepness, 0.95f / kA);
 
+    // direction の向きへ進む（位相 k·x − ωt）
     const float phase = waveNumber * dot(wave.direction, worldXZ)
-        + angularFrequency * time + wave.phaseOffset;
+        - angularFrequency * time + wave.phaseOffset;
     sinPhase = sin(phase);
     cosPhase = cos(phase);
 }

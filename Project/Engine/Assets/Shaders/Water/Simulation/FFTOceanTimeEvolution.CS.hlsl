@@ -46,8 +46,9 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     const float2 positiveRotation = float2(cos(angularPhase), sin(angularPhase));
     const float2 negativeRotation = float2(positiveRotation.x, -positiveRotation.y);
 
-    float2 heightSpectrum = ComplexMultiply(sample.h0, positiveRotation)
-        + ComplexMultiply(sample.h0Minus, negativeRotation);
+    // H(k,t) = h0(k)·e^{-iωt} + conj(h0(-k))·e^{+iωt}。IFFT は e^{+ik·x} なので +k̂ の向きへ進む
+    float2 heightSpectrum = ComplexMultiply(sample.h0, negativeRotation)
+        + ComplexMultiply(sample.h0Minus, positiveRotation);
 
     const float bandLimit = max((float)gActiveComponentCount / 64.0f, 1.0f / 64.0f);
     const float bandFade = saturate((bandLimit - sample.directionalWeight) * 16.0f + 1.0f);
