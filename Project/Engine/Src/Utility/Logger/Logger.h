@@ -4,6 +4,7 @@
 #include <string>
 #include <unordered_map>
 #include <chrono>
+#include <filesystem>
 #include <mutex>
 #include <utility>
 #include <vector>
@@ -288,7 +289,7 @@ namespace CoreEngine
         /// @brief ロガーを作成する（キー・ファイルパスはサブカテゴリを考慮）
         std::shared_ptr<spdlog::logger> CreateLogger(
             const std::string& loggerName,
-            const std::string& logFilePath,
+            const std::filesystem::path& logFilePath,
             spdlog::level::level_enum defaultLevel);
 
         /// @brief カテゴリごとの既定ログレベルを返す
