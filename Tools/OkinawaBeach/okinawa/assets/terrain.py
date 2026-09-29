@@ -74,13 +74,14 @@ N_SHORE = PNoise(101, 1, 3, n=6, beta=1.0, xonly=True)   # 汀線のうねり
 N_BAR = PNoise(102, 3, 8, n=60, beta=1.2)                  # 水中の砂州
 N_MICRO = PNoise(103, 12, 40, n=260, beta=1.0)             # 細かな起伏
 N_B1 = PNoise(104, 1, 4, n=30, beta=1.0)                   # 後浜の大きなうねり
-N_B2 = PNoise(105, 3, 7, n=40, beta=0.5, aniso=2.2)        # 小さな砂丘（汀線方向に長い）
+N_B2 = PNoise(105, 3, 7, n=40, beta=0.5, aniso=1.6)        # 小さな砂丘（汀線方向に長い）
 
 
 def backshore(x, y):
     """後浜（Flat 全体 / Shore の陸側縁）。X, Y とも周期 40 m"""
-    dunes = 1.0 - np.exp(-0.9 * np.maximum(0.0, N_B2(x, y) - 0.2) ** 2)
-    return 1.6 + 0.17 * N_B1(x, y) + 0.6 * dunes + 0.03 * N_MICRO(x, y)
+    # なだらかに連続する起伏（孤立したこぶにならないよう tanh で頭を抑える）
+    dunes = np.tanh(0.5 * N_B2(x, y) + 0.15)
+    return 1.62 + 0.13 * N_B1(x, y) + 0.4 * dunes + 0.03 * N_MICRO(x, y)
 
 
 def _shift(x, y):
@@ -241,7 +242,7 @@ def sand_material(name, shore):
             depth = nb.smooth(dz_top, -0.05, nb.mul(top, -1.0))       # 上端 0 → 水際 1
             wet = nb.mul(edge, nb.add(0.45, nb.mul(depth, 0.55)))
             under = nb.smooth(z, -0.25, -0.75)
-            wet_col = nb.hsv(nb.mix(col, srgb("#bdb39c"), 0.3), 0.5, 0.92, 0.7)
+            wet_col = nb.hsv(nb.mix(col, srgb("#c2b69c"), 0.3), 0.5, 1.0, 0.7)
             # 上端の細い濡れ線
             wline = nb.mul(nb.smooth(nb.math("ABSOLUTE", nb.add(dz_top, 0.01)), 0.03, 0.0),
                            nb.smooth(T.noise(0.8, 2, 0.5, off=77.0), 0.3, 0.5))
@@ -346,7 +347,7 @@ def _preview_extra(objs):
     sand = bpy.data.materials.new("PreviewSand")
     sand.use_nodes = True
     sand.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (*srgb("#e3d9c2"), 1)
-    plane("PreviewSeaFloor", (600, 400), (0, -TILE / 2 - 200.3, -3.3), sand)
+    plane("PreviewSeaFloor", (600, 400), (0, -TILE / 2 - 198.0, -2.95), sand)
     plane("PreviewInland", (600, 400), (0, TILE * 1.5 + 200, 1.5), sand)
     bpy.ops.mesh.primitive_cube_add(size=1.0)
     water = bpy.context.object

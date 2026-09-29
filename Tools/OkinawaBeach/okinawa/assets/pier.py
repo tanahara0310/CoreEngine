@@ -50,8 +50,8 @@ def _preview_extra(objs):
     for o in end:
         o.location = (0, 0.0, lift)
     cam = bpy.context.scene.camera
-    tgt = Vector((0.0, -1.5, lift - 0.5))
-    cam.location = tgt + Vector((7.0, 8.0, 2.6))
+    tgt = Vector((0.3, -2.2, lift - 1.0))
+    cam.location = tgt + Vector((8.6, 9.0, 3.2))
     cam.data.lens = 30
     C.look_at(cam, tgt)
 

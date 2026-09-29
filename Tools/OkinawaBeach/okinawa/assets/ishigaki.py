@@ -31,8 +31,8 @@ from ..common import pbr_material, srgb
 PREVIEW = dict(cam_dir=(0.45, -1.0, 0.42), lens=45)
 
 GAP = 0.014        # 目地幅（平均）
-SKIRT = 0.12       # 石の奥行き（壁の中へ）
-CORE_IN = 0.065    # 心材の面の後退量
+SKIRT = 0.08       # 石の奥行き（壁の中へ）
+CORE_IN = 0.06     # 心材の面の後退量
 DELTA = 0.9        # 端で共有する石の範囲(m)
 
 
@@ -162,7 +162,10 @@ def _pillow(outline, spacing, hfn, skirt, fine_u=None):
     faces = []
     for t in tri.simplices:
         a, b, c = pts[t]
-        if (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]) < 0:
+        cr = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+        if abs(cr) < 1e-9:
+            continue  # 輪郭上の一直線の 3 点（面積ゼロ）はベイクの法線を壊すので捨てる
+        if cr < 0:
             t = t[::-1]
         faces.append(tuple(int(i) for i in t))
     d = np.concatenate([np.zeros(len(outline)), _inside_dist(grid, outline)]) if len(grid) else np.zeros(len(outline))
@@ -189,6 +192,7 @@ def _cut(verts, faces, u, keep_below):
     geom = bm.verts[:] + bm.edges[:] + bm.faces[:]
     bmesh.ops.bisect_plane(bm, geom=geom, dist=1e-7, plane_co=(u, 0, 0), plane_no=(1, 0, 0),
                            clear_outer=keep_below, clear_inner=not keep_below)
+    bmesh.ops.dissolve_degenerate(bm, dist=1e-5, edges=bm.edges[:])
     bm.verts.ensure_lookup_table()
     bm.verts.index_update()
     v = np.array([x.co[:] for x in bm.verts]) if bm.verts else np.zeros((0, 3))
@@ -518,6 +522,32 @@ def _core_box(acc, x0, x1, y0, y1, z0, z1):
     acc.add(V, F, sc, sid)
 
 
+def _finish(name, acc, cores):
+    """石のメッシュを先に UV 展開し（uv="keep"）、目地の奥にしか見えない心材は UV の隅の小さな区画に押し込む
+    （心材に普通にテクスチャを割り当てると面積の 1/3 近くを無駄にするため）"""
+    obj = acc.build(name)
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    bmesh.ops.dissolve_degenerate(bm, dist=1e-5, edges=bm.edges[:])
+    bm.to_mesh(obj.data)
+    bm.free()
+    C.set_smooth(obj, True, angle=55)
+    C.smart_uv(obj, angle=60, margin=0.003, uv_name="Bake")
+    layer = obj.data.uv_layers["Bake"]
+    uv = np.empty(len(layer.data) * 2, np.float32)
+    layer.data.foreach_get("uv", uv)
+    layer.data.foreach_set("uv", uv * 0.97)
+    cacc = Acc()
+    for box in cores:
+        _core_box(cacc, *box)
+    core = cacc.build(name + "_core")
+    cl = core.data.uv_layers.new(name="Bake")
+    for p in core.data.polygons:
+        for k, li in enumerate(p.loop_indices):
+            cl.data[li].uv = (0.975 + 0.02 * (k in (1, 2)), 0.975 + 0.02 * (k in (2, 3)))
+    return [obj, core]
+
+
 class Wall:
     def __init__(self, L, H, T, seed, cap_h=0.24):
         self.L, self.H, self.T, self.seed = L, H, T, seed
@@ -545,8 +575,7 @@ def build_straight(name, w):
             _add_face(acc, pieces, mapper, flip=(sgn > 0), tex_off=0.0, rnd_val=rv, layer=0 if sgn < 0 else 1)
     _cap_row(acc, L, w.Hb, w.H, T, (w.seed, "C"), w.seed * 31,
              lambda x0, x1, y0, y1: ((x0, x1, y0, y1), True))
-    _core_box(acc, 0.0, L, -T / 2 + CORE_IN, T / 2 - CORE_IN, -0.08, w.Hb + 0.01)
-    return acc.build(name)
+    return _finish(name, acc, [(0.0, L, -T / 2 + CORE_IN, T / 2 - CORE_IN, -0.08, w.Hb + 0.01)])
 
 
 def _path_mapper(segs, rho=0.0):
@@ -638,9 +667,8 @@ def build_corner(name, w, La=2.0, Lb=2.0):
     cap_stone(acc, La - h + GAP * 0.5, La + h + ov, -h - ov, h, w.Hb, w.H, (w.seed, "CC"), 0, 50.0)
     _cap_row(acc, Lb - h, w.Hb, w.H, T, (w.seed, "CB"), w.seed * 41,
              lambda x0, x1, y0, y1: ((La - y1, La - y0, h + x0, h + x1), False), start_gap=True)
-    _core_box(acc, 0.0, La + h - CORE_IN, -h + CORE_IN, h - CORE_IN, -0.08, w.Hb + 0.01)
-    _core_box(acc, La - h + CORE_IN, La + h - CORE_IN, -h + CORE_IN, Lb, -0.08, w.Hb + 0.01)
-    return acc.build(name)
+    return _finish(name, acc, [(0.0, La + h - CORE_IN, -h + CORE_IN, h - CORE_IN, -0.08, w.Hb + 0.01),
+                               (La - h + CORE_IN, La + h - CORE_IN, -h + CORE_IN, Lb, -0.08, w.Hb + 0.01)])
 
 
 # ---------------------------------------------------------------------------
@@ -694,22 +722,18 @@ def ishigaki_material(name, res=2048):
         cavity = nb.mul(nb.maprange(pits, 0, 1, 1.0, 0.55), nb.maprange(edge, 0, 1, 0.75, 1.0))
         return dict(color=col, rough=rough, height=height, height_scale=0.03, cavity=cavity)
 
-    return pbr_material(name, fn, res=res, ao_distance=0.35)
+    return pbr_material(name, fn, res=res, ao_distance=0.35, uv="keep")
 
 
 def build():
     std = Wall(4.0, 1.4, 0.7, seed=3)
     low = Wall(2.0, 0.7, 0.6, seed=5, cap_h=0.2)
     out = {}
-    s = build_straight("Ishigaki_Straight", std)
-    C.assign(s, ishigaki_material("IshigakiStraight"))
-    out["Ishigaki_Straight"] = [s]
-    c = build_corner("Ishigaki_Corner", std)
-    C.assign(c, ishigaki_material("IshigakiCorner"))
-    out["Ishigaki_Corner"] = [c]
-    lo = build_straight("Ishigaki_Low", low)
-    C.assign(lo, ishigaki_material("IshigakiLow", res=1024))
-    out["Ishigaki_Low"] = [lo]
-    for o in out.values():
-        C.set_smooth(o[0], True, angle=55)
+    for vname, objs, mat in (
+            ("Ishigaki_Straight", build_straight("Ishigaki_Straight", std), ishigaki_material("IshigakiStraight")),
+            ("Ishigaki_Corner", build_corner("Ishigaki_Corner", std), ishigaki_material("IshigakiCorner")),
+            ("Ishigaki_Low", build_straight("Ishigaki_Low", low), ishigaki_material("IshigakiLow", res=1024))):
+        for o in objs:
+            C.assign(o, mat)
+        out[vname] = objs
     return out

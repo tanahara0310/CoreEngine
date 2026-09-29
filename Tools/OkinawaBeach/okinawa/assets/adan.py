@@ -44,6 +44,20 @@ def rotate_toward(d, axis_perp, ang):
     return (d * math.cos(ang) + axis_perp * math.sin(ang)).normalized()
 
 
+def register_cutout_aliases(variants):
+    """フレームワークの回避策: bake_part は AO ベイク時にアルファ付きパーツを隠すが、
+    判定が _REGISTRY の元マテリアル名で行われるため、先にベイク済みで最終マテリアル
+    （"<Variant>_<Mat>"）に差し替わった葉パーツが隠れず、幹の AO が真っ黒になる。
+    最終マテリアル名もカットアウトとして登録しておく"""
+    for vname, objs in variants.items():
+        for o in objs:
+            for m in o.data.materials:
+                info = C._REGISTRY.get(m.name) if m else None
+                if info and info["out"].get("alpha") is not None:
+                    C._REGISTRY.setdefault(f"{vname}_{m.name.split('.')[0]}", {"out": {"alpha": 1.0}})
+    return variants
+
+
 class MeshAcc:
     """多数の小さな部品を 1 メッシュにまとめる（Proc UV 付き）"""
 
@@ -330,10 +344,10 @@ def bark_material():
         height = nb.add(height, nb.mul(crack_line, -0.5))
         height = nb.add(height, nb.mul(mid, 0.25))
         rough = nb.maprange(mid, 0.3, 0.7, 0.78, 0.92)
-        cavity = nb.maprange(nb.add(nb.mul(ring_line, 0.7), nb.mul(crack_line, 0.4)), 0, 1, 1.0, 0.6)
+        cavity = nb.maprange(nb.add(nb.mul(ring_line, 0.7), nb.mul(crack_line, 0.3)), 0, 1, 1.0, 0.75)
         return dict(color=col, rough=rough, height=height, height_scale=0.006, cavity=cavity)
 
-    return pbr_material("AdanBark", fn, res=1024, ao_distance=0.5, uv="keep")
+    return pbr_material("AdanBark", fn, res=1024, ao_distance=0.35, uv="keep")
 
 
 def fruit_material():
@@ -652,7 +666,7 @@ def adan(prefix, seed, trunks_spec, spec, n_leaves, fruits, root_n, root_h, leaf
 def build():
     spec_a = dict(photo=0.35, fork=(22, 38), ratio=(0.6, 0.78), taper=0.78, p3=0.15)
     spec_b = dict(photo=0.3, fork=(28, 45), ratio=(0.7, 0.85), taper=0.78, p3=0.25)
-    return {
+    return register_cutout_aliases({
         "Adan_A": adan("AdanA", 11,
                        [((0, 0, -0.25), (0.35, 0.1, 1.0), 1.55, 0.1, 2),
                         ((0.12, -0.1, -0.25), (-0.6, -0.35, 1.0), 1.25, 0.085, 1)],
@@ -660,4 +674,4 @@ def build():
         "Adan_B": adan("AdanB", 5,
                        [((0, 0, -0.2), (0.1, 0.15, 1.0), 0.75, 0.075, 2)],
                        spec_b, n_leaves=27, fruits=[0.85], root_n=[5], root_h=(0.15, 0.5), leaf_scale=0.9),
-    }
+    })

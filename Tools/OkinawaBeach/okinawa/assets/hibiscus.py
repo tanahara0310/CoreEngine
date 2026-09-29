@@ -17,7 +17,7 @@ from scipy import ndimage
 from .. import common as C
 from .. import geo
 from ..common import pbr_material, srgb
-from .adan import BarkPacker, MeshAcc, perp, rotate_toward
+from .adan import BarkPacker, MeshAcc, perp, register_cutout_aliases, rotate_toward
 
 PREVIEW = dict(cam_dir=(0.35, -1.0, 0.28), lens=70, spacing=1.1)
 
@@ -297,7 +297,7 @@ def draw_spray(cv, rnd, cell, kind, n_leaves=7, bud=False, bracts=0):
     twig = _bez2(P(0.5, 0.0), P(0.5 + bend, top_y * 0.5), P(0.5 - bend * 0.3, top_y), 24)
     if kind == "hib":
         tc0, tc1 = _lin("#5a4a36"), _lin("#5f7a36")
-        dark, light, vein = _lin("#27561f"), _lin("#44792c"), _lin("#7ea653")
+        dark, light, vein = _lin("#2d6024"), _lin("#4c8430"), _lin("#86ad58")
         hw, W, rough = hib_hw(W=0.36), 0.36, 0.3
     else:
         tc0, tc1 = _lin("#6a5540"), _lin("#6d8040")
@@ -785,8 +785,8 @@ def bougainvillea(prefix, seed, H, n_leaf, n_bract):
     anchors += _shell_anchors(rnd, n_leaf - len(anchors), center, radii, H * 0.15)
     _dress(leaves, rnd, anchors, center, [(0.0, 0.0), (0.5, 0.0)], droop=0.2, size=CARD * 1.1)
     # 苞の房は上側・外側に多く（外殻の外寄り）
-    bracts = [(p, d) for p, d in _shell_anchors(rnd, n_bract * 2, center, radii, H * 0.3, 0.75, 1.0)]
-    bracts.sort(key=lambda a: -(a[0].z - center.z + rnd.uniform(-0.3, 0.3)))
+    bracts = [(p, d) for p, d in _shell_anchors(rnd, n_bract * 2, center, radii, H * 0.25, 0.75, 1.0)]
+    bracts.sort(key=lambda a: -(a[0].z - center.z + rnd.uniform(-0.5, 0.5)))
     bracts = bracts[:n_bract]
     _dress(leaves, rnd, bracts, center, [(0.0, 0.5), (0.5, 0.5)], up_bias=0.5, droop=0.25, size=CARD * 1.1)
     parts = []
@@ -805,8 +805,8 @@ def bougainvillea(prefix, seed, H, n_leaf, n_bract):
 
 def build():
     _MATS.clear()
-    return {
+    return register_cutout_aliases({
         "Hibiscus_A": hibiscus("HibA", 3, 1.6, 6, 340, 22, "red"),
         "Hibiscus_B": hibiscus("HibB", 8, 1.0, 5, 170, 10, "yellow"),
-        "Bougainvillea_A": bougainvillea("BougA", 5, 1.8, 250, 200),
-    }
+        "Bougainvillea_A": bougainvillea("BougA", 5, 1.8, 240, 240),
+    })
