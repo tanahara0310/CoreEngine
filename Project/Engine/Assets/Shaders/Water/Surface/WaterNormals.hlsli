@@ -27,8 +27,7 @@
 /// @details 各カスケードの傾き（勾配 = nLocal.xz / nLocal.y）を加算してから鉛直へ再構成する。
 ///          小さいパッチ（高周波）は遠方でフェードアウトさせ、法線ミップ連鎖の代わりに
 ///          遠距離・かすめ角のスペックル（フレネルの高周波ノイズ）を抑える。
-/// @param unresolvedMeanSquareSlope フェードで法線から外した分の平均二乗傾斜。
-///        外した波は 1 ピクセルの中に入る見えない凹凸なので、呼び出し側でラフネスへ足す
+/// @param unresolvedMeanSquareSlope フェードで法線から外した分の平均二乗傾斜（呼び出し側でラフネスへ足す）
 float3 ResolveSurfaceNormal(WaterPSInput input, out float unresolvedMeanSquareSlope)
 {
     unresolvedMeanSquareSlope = 0.0f;

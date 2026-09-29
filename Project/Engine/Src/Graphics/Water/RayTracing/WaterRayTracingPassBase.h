@@ -37,7 +37,7 @@ namespace CoreEngine
             D3D12_GPU_DESCRIPTOR_HANDLE normalSRV{};
             uint32_t resolution = 0;
             uint32_t enabled = 0;
-            /// @brief カスケードごとの平均二乗傾斜（法線から外した波をラフネスへ換算するのに使う）
+            /// @brief カスケードごとの平均二乗傾斜（x・z の傾きの二乗和の平均）
             float cascadeMeanSquareSlope[3] = { 0.0f, 0.0f, 0.0f };
         };
 

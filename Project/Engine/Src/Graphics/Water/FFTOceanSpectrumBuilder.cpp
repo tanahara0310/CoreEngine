@@ -330,7 +330,7 @@ namespace CoreEngine
                     ++stats.activeSpectrumSampleCount;
                     accumulatedSpectralAmplitude += spectralAmplitude;
                     accumulatedAmplitudeSquared += static_cast<double>(spectralAmplitude) * spectralAmplitude;
-                    // 傾きの成分は i·k·h なので、分散は k² 倍になる
+                    // 傾きの分散は高さの分散の k² 倍
                     const float bandFade = (std::clamp)(
                         (bandLimit - sample.normalizedBand) * 16.0f + 1.0f, 0.0f, 1.0f);
                     accumulatedSlopeSquared += static_cast<double>(waveNumberSquared)

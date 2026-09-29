@@ -1,23 +1,17 @@
 // ============================================================
-// 水面反射の元画像の縮小段（WaterReflectionColorPyramid・WaterReflectionRayTracingManager 専用）
-// ------------------------------------------------------------
-// 1 段上の画像を 2x2 平均して次の段を作る。RTWaterReflection は反射レイが当たった点を、
-// 水面の荒さに合った段から引いてぼかす。
-// 段 0 は水面を描く前の画面の写しから作り、画素を「水面より上の物」「空」「水域の水面より下」に分ける。
-// 反射に水の下の物は映らないので、水面より下の画素はどちらにも数えない。
-// 空の画素はカメラから見た向きの空なので色には混ぜず、割合だけを別の縮小段に書く
-// （反射では、ぼかした範囲のうち空の分を反射の向きの空で埋める）。
-// 色の出力は乗算済みアルファ: rgb = 物の画素の色の平均 × a、a = 物の画素の割合。
-// 空の出力: 空の画素の割合。
+// 水面反射の元画像の縮小段（WaterReflectionRayTracingManager 専用）
 // ============================================================
 
 #include "../../Include/Common/DepthReconstruction.hlsli"
 
+// 段 0 は水面を描く前の画面の写し、段 1 以降は 1 段上の色
 Texture2D<float4> gPyramidSource : register(t0);
 Texture2D<float> gPyramidSceneDepth : register(t1);
 // 1 段上の空の割合（段 1 以降だけ読む）
 Texture2D<float> gPyramidSkySource : register(t2);
+// 物の色（乗算済みアルファ）: rgb = 物の画素の色の平均 × a、a = 物の画素の割合
 RWTexture2D<float4> gPyramidDest : register(u0);
+// 空の画素の割合
 RWTexture2D<float> gPyramidSkyDest : register(u1);
 SamplerState gLinearClamp : register(s0);
 
@@ -35,7 +29,7 @@ cbuffer PyramidConstants : register(b0)
     float4x4 gInvViewProjection;    // 深度から位置を戻す
 };
 
-/// @brief fp16 の範囲外と負の値を落とす（1 画素の異常値が縮小で周りへ広がらないようにする）
+/// @brief fp16 の範囲外と負の値を落とす
 float4 SanitizeColor(float4 color)
 {
     return min(max(color, 0.0f), 65000.0f);
@@ -78,6 +72,7 @@ float2 ClassifySourcePixel(uint2 pixel, uint2 sourceSize)
     return IsInsideWaterRegion(worldPos.xz) ? float2(0.0f, 0.0f) : float2(1.0f, 0.0f);
 }
 
+/// @brief 1 段上を 2x2 平均して次の段の色と空の割合を書く
 [numthreads(8, 8, 1)]
 void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
@@ -88,7 +83,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 
     if (gFromSceneColor != 0)
     {
-        // 段 0: 画面の写しの 2x2 画素から、物の色（乗算済みアルファ）と空の割合を平均する
+        // 段 0: 画面の写しの 2x2 画素を物・空・水面より下に分け、物の色（乗算済みアルファ）と空の割合を平均する
         uint sourceWidth = 1;
         uint sourceHeight = 1;
         gPyramidSource.GetDimensions(sourceWidth, sourceHeight);
@@ -110,8 +105,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         return;
     }
 
-    // 段 1 以降: 出力 1 画素の中心 ＝ 入力 2x2 画素の中心なので、双線形 1 回で 2x2 の平均になる
-    // （乗算済みアルファのまま平均してよい）
+    // 段 1 以降: 入力 2x2 画素の中心を双線形で 1 回引いて 2x2 の平均にする（乗算済みアルファのまま）
     const float2 uv = (float2(dispatchThreadId.xy) + 0.5f) * float2(gDestInvWidth, gDestInvHeight);
     gPyramidDest[dispatchThreadId.xy] = gPyramidSource.SampleLevel(gLinearClamp, uv, 0.0f);
     gPyramidSkyDest[dispatchThreadId.xy] = gPyramidSkySource.SampleLevel(gLinearClamp, uv, 0.0f);

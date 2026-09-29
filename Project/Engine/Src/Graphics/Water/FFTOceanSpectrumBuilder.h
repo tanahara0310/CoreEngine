@@ -92,7 +92,7 @@ namespace CoreEngine
 
             // 描画される面の平均二乗傾斜（x・z の傾きの二乗和の平均）。
             // GPU の時間発展（FFTOceanTimeEvolution.CS）と同じ成分数の打ち切りを含む。
-            // 振幅倍率（amplitudeScale）は含まないので、使う側で 2 乗を掛ける。
+            // 振幅倍率（amplitudeScale）は含まない（使う側で 2 乗を掛ける）。
             float meanSquareSlope = 0.0f;
         };
 

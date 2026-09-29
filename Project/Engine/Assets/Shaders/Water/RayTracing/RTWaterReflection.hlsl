@@ -145,10 +145,8 @@ float ComputeReflectionPyramidLevel(float blurPixels, uint pyramidLevels)
 /// @return rgb = 物の色の平均、a = 水面より上の画素のうち物の割合（残りは空）。
 ///         範囲の画素がすべて水面より下なら a は負
 /// @details 縦に並べたタップで縦の広がりを、縮小段の選び方で横の広がりを作る。
-///          タップの間隔より細かい段を引くと、ずれた像が離れて重なって見えるので、
 ///          段のぼかし幅はタップの間隔以上にする。
-///          空の画素はカメラから見た向きの空なので色には使わず、割合だけを返す。
-///          水面より下の画素は反射に映らないので、割合の分母からも外す。
+///          空の画素は色に使わず、割合だけを返す。水面より下の画素は割合の分母からも外す。
 float4 SampleReflectedGeometryStreak(
     float2 uv, float verticalSigmaPixels, float horizontalSigmaPixels, uint pyramidLevels)
 {
@@ -325,11 +323,10 @@ void RTWaterReflectionRayGen()
 
     float3 waterNormal = EvaluateWaterNormal(gFFTOceanNormal, waterPos.xz, directionFootprint);
 
-    // 1 ピクセルより細かくて見えない波の傾きは、反射のぼけとして戻す。
-    // 画素より大きい波は、反射の向きから外していても揺らぎとして見えるものなのでぼかさない。
+    // 1 ピクセルより細かくて見えない波の傾きを、反射のぼけとして戻す（画素より大きい波はぼかさない）。
     // 空はそのラフネスに合ったミップで、物は反射の向きのばらつき（1σ・rad）の幅でぼかして引く。
     // 軸ごとの傾きの分散は平均二乗傾斜の半分。視線を含む縦の面では反射の向きが傾きの 2 倍ぶれ、
-    // 横へは視線と水面のなす角 γ の sin 倍に縮む（かすめて見るほど映り込みが縦に伸びる）
+    // 横へは視線と水面のなす角 γ の sin 倍に縮む
     const float excludedMeanSquareSlope = EvaluateExcludedMeanSquareSlope(waterPos.xz, surfaceFootprintMeters);
     const float skyRoughness = AddSlopeVarianceToRoughness(kSkyEnvMicroRoughness, excludedMeanSquareSlope);
     const float verticalReflectionSpread = 2.0f * sqrt(0.5f * excludedMeanSquareSlope);
@@ -416,7 +413,7 @@ void RTWaterReflectionRayGen()
     const float depthMismatchThreshold = max(0.08f, hitViewDistance * 0.03f);
 
     // 投影先の画素に当たった物が写っている度合い。背景（空）なら 0、
-    // 奥行きが食い違うほど下げる（2 値で棄却すると成否の境がギザギザになる）
+    // 奥行きが食い違うほどなめらかに下げる
     float mismatchConfidence = 0.0f;
     const float sampledDepth = gSceneDepth.Load(int3(sampleCoord, 0));
     if (!IsBackgroundDepth(sampledDepth))
@@ -428,8 +425,7 @@ void RTWaterReflectionRayGen()
             1.0f - smoothstep(depthMismatchThreshold, depthMismatchThreshold * 4.0f, depthMismatch);
     }
 
-    // 反射レイは物に当たっているので、投影先に写っていなくても反射先は空ではない。
-    // 画素に満たない細い葉や裏向きで描かれない面は投影先に写らないので、
+    // 投影先に当たった物が写っていないとき（画素に満たない細い葉・裏向きで描かれない面）は、
     // まわりの画素から同じ奥行きの物を探してその色を使う
     float3 hitColor = colorAtTarget;
     float hitConfidence = mismatchConfidence;
@@ -451,8 +447,7 @@ void RTWaterReflectionRayGen()
     float3 resolvedColor = lerp(skyAlongRay, hitColor, sceneWeight);
 
     // 反射の向きのばらつきが 1 画素を超えるときは、ばらつきが当たった物のまわりで覆う範囲に
-    // 写っている物の色と割合で置き換える。範囲の残りは空なので、カメラから見た空の色ではなく
-    // 同じレイ向きの空（荒さに合ったミップ）で埋める
+    // 写っている物の色と割合で置き換え、範囲の残りを同じレイ向きの空（荒さに合ったミップ）で埋める
     const float hitPixelMeters = ComputePixelPerpendicularWidth(
         reflectedUV, saturate(ndc.z), float2(gScreenWidth, gScreenHeight), gInvViewProjection);
     const float pixelsPerRadian = payload.hitT / max(hitPixelMeters, 1.0e-4f);

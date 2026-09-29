@@ -232,7 +232,7 @@ namespace CoreEngine
         desc.SampleDesc.Count = 1;
         desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
-        // 段ごとに状態が変わるので、段数ぶんのサブリソースを個別に追跡させる
+        // 段数ぶんのサブリソースを個別に追跡させる
         texture.Reset(
             ResourceFactory::CreateTextureResource(
                 dxCommon_->GetDevice(), desc, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE),
@@ -284,7 +284,7 @@ namespace CoreEngine
         Barrier::Transition(cmdList, skyCoveragePyramid_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         for (uint32_t mip = 0; mip < colorPyramidMipCount_; ++mip) {
             D3D12_GPU_DESCRIPTOR_HANDLE source = sourceSRV;
-            // 段 0 は空の割合を深度から求めるので 1 段上の空は読まない（差すのは同じ型の深度）
+            // 段 0 は 1 段上の空を読まない（同じ型の深度を差しておく）
             D3D12_GPU_DESCRIPTOR_HANDLE skySource = sceneDepthSRV;
             if (mip > 0) {
                 Barrier::Transition(cmdList, colorPyramid_,
@@ -323,7 +323,7 @@ namespace CoreEngine
             binder.ValidateBeforeDraw(colorPyramidBindings_);
             cmdList->Dispatch((destWidth + 7) / 8, (destHeight + 7) / 8, 1);
 
-            // 次の段がこの段を読むので書き込みの完了を待つ
+            // 次の段が読む前に書き込みの完了を待つ
             Barrier::UAV(cmdList, colorPyramid_);
             Barrier::UAV(cmdList, skyCoveragePyramid_);
         }

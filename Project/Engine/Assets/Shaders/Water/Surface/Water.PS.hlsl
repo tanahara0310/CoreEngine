@@ -198,7 +198,6 @@ float3 ComputeSunGlintSpecular(
     // 泡域は微細気泡の散乱でハイライトが大きく柔らかくなるためラフネスを引き上げる
     // （泡被覆による輝度の抑制は呼び出し側の (1-coverage) 倍が担当する）。
     // 遠方で法線から外した細かい波の傾きは、1 ピクセルの中の凹凸としてラフネスへ足す
-    // （荒れた海の遠方ほどきらめきが広い光の帯になる）。
     const float glintRoughness = max(AddSlopeVarianceToRoughness(
         lerp(gMaterial.roughness, kFoamGlintRoughness, saturate(foamCoverage)),
         unresolvedMeanSquareSlope), 0.04f);

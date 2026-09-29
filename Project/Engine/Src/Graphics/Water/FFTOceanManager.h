@@ -121,8 +121,7 @@ namespace CoreEngine
         const Settings& GetSettings() const { return settings_; }
 
         /// @brief 描画される面のカスケードごとの平均二乗傾斜（x・z の傾きの二乗和の平均）を返す
-        /// @details 振幅倍率を含む。遠方で見えなくなった細かい波の傾きのばらつきを
-        ///          ラフネスへ換算するのに使う
+        /// @details 振幅倍率を含む
         float GetCascadeMeanSquareSlope(uint32_t cascadeIndex) const {
             if (cascadeIndex >= kCascadeCount) {
                 return 0.0f;

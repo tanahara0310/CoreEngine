@@ -240,8 +240,7 @@ float3 EvaluateWaterNormal(Texture2DArray<float4> normalTex, float2 worldXZ, flo
 }
 
 /// @brief EvaluateWaterNormal がフットプリントで法線から外した分の平均二乗傾斜を返す
-/// @details 外した波はレイのフットプリントの中の凹凸なので、反射のぼけ（ラフネス）に使う。
-///          Gerstner の波面は外す波を持たないので 0
+/// @details Gerstner の波面では 0
 float EvaluateExcludedMeanSquareSlope(float2 worldXZ, float footprintMeters)
 {
     if (!UseFFTOceanSurface())
