@@ -89,7 +89,7 @@
 		{
 			"bufferView":0,
 			"componentType":5126,
-			"count":9314,
+			"count":12336,
 			"max":[
 				2.4541304111480713,
 				3.4848039150238037,
@@ -105,19 +105,19 @@
 		{
 			"bufferView":1,
 			"componentType":5126,
-			"count":9314,
+			"count":12336,
 			"type":"VEC3"
 		},
 		{
 			"bufferView":2,
 			"componentType":5126,
-			"count":9314,
+			"count":12336,
 			"type":"VEC2"
 		},
 		{
 			"bufferView":3,
 			"componentType":5126,
-			"count":9314,
+			"count":12336,
 			"type":"VEC4"
 		},
 		{
@@ -130,32 +130,32 @@
 	"bufferViews":[
 		{
 			"buffer":0,
-			"byteLength":111768,
+			"byteLength":148032,
 			"byteOffset":0,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":111768,
-			"byteOffset":111768,
+			"byteLength":148032,
+			"byteOffset":148032,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":74512,
-			"byteOffset":223536,
+			"byteLength":98688,
+			"byteOffset":296064,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":149024,
-			"byteOffset":298048,
+			"byteLength":197376,
+			"byteOffset":394752,
 			"target":34962
 		},
 		{
 			"buffer":0,
 			"byteLength":48000,
-			"byteOffset":447072,
+			"byteOffset":592128,
 			"target":34963
 		}
 	],
@@ -167,7 +167,7 @@
 	],
 	"buffers":[
 		{
-			"byteLength":495072,
+			"byteLength":640128,
 			"uri":"NotchRock_B.bin"
 		}
 	]

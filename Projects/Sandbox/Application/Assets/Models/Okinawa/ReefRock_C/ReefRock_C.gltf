@@ -89,7 +89,7 @@
 		{
 			"bufferView":0,
 			"componentType":5126,
-			"count":3585,
+			"count":4324,
 			"max":[
 				0.6752633452415466,
 				0.4579217731952667,
@@ -105,19 +105,19 @@
 		{
 			"bufferView":1,
 			"componentType":5126,
-			"count":3585,
+			"count":4324,
 			"type":"VEC3"
 		},
 		{
 			"bufferView":2,
 			"componentType":5126,
-			"count":3585,
+			"count":4324,
 			"type":"VEC2"
 		},
 		{
 			"bufferView":3,
 			"componentType":5126,
-			"count":3585,
+			"count":4324,
 			"type":"VEC4"
 		},
 		{
@@ -130,32 +130,32 @@
 	"bufferViews":[
 		{
 			"buffer":0,
-			"byteLength":43020,
+			"byteLength":51888,
 			"byteOffset":0,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":43020,
-			"byteOffset":43020,
+			"byteLength":51888,
+			"byteOffset":51888,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":28680,
-			"byteOffset":86040,
+			"byteLength":34592,
+			"byteOffset":103776,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":57360,
-			"byteOffset":114720,
+			"byteLength":69184,
+			"byteOffset":138368,
 			"target":34962
 		},
 		{
 			"buffer":0,
 			"byteLength":15000,
-			"byteOffset":172080,
+			"byteOffset":207552,
 			"target":34963
 		}
 	],
@@ -167,7 +167,7 @@
 	],
 	"buffers":[
 		{
-			"byteLength":187080,
+			"byteLength":222552,
 			"uri":"ReefRock_C.bin"
 		}
 	]
