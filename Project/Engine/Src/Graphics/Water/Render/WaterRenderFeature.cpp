@@ -363,6 +363,9 @@ namespace CoreEngine
         if (auto* reflection = domain.GetWaterReflectionRayTracingManager()) {
             binding.resources.reflectionSRV = reflection->GetReflectionSRVHandle(
                 WaterReflectionRayTracingManager::ViewID::GameView);
+            // 同じパスが書く水面の日向率（ヤシや岩の影を水面の太陽の項へ掛ける）
+            binding.resources.sunVisibilitySRV = reflection->GetSunVisibilitySRVHandle(
+                WaterReflectionRayTracingManager::ViewID::GameView);
         }
 
         if (auto* fftOcean = domain.GetFFTOceanManager()) {

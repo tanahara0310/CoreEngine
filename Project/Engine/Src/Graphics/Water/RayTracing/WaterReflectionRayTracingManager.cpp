@@ -18,21 +18,15 @@ namespace CoreEngine
             Matrix4x4 invViewProjection;
             float cameraPosition[3];
             float waterHeight;
+            float sunDirection[3];            // メインライトの向き（光源→シーン・正規化済み）
             float surfaceBias;
             float maxRayDistance;
-            // 旧 unused0 の転用。1 = 空キューブマップが有効。
-            // RT パス側が「トレースしたレイの向き」で空を解決するのに使う
-            // （Water.PS が平面法線で空を引いて二重像になる問題の対策）。
+            // 1 = 空キューブマップが有効。RT パス側が「トレースしたレイの向き」で空を解決するのに使う
             float skyEnvReflectionEnabled;
-            float unused1;
             float screenWidth;
             float screenHeight;
             float maxReflectionOffsetPixels;
-            // 旧 FFT 有効情報 3 スロット。実体は b1（WaterSurfaceConstants）へ一本化済み。
-            // レイアウト維持のためスロットだけ残す
-            uint32_t fftOceanPad1;
-            float fftOceanPad0;
-            uint32_t fftOceanPad2;
+            uint32_t sunShadowEnabled;        // 1 なら水面の点から光源へ影のレイを撃つ
             float debugDisplayScale;
             uint32_t debugViewMode;
         };
@@ -41,13 +35,12 @@ namespace CoreEngine
             CB_FIELD(WaterReflectionConstants, viewProjection),
             CB_FIELD(WaterReflectionConstants, invViewProjection),
             CB_FIELD(WaterReflectionConstants, cameraPosition), CB_FIELD(WaterReflectionConstants, waterHeight),
-            CB_FIELD(WaterReflectionConstants, surfaceBias), CB_FIELD(WaterReflectionConstants, maxRayDistance),
+            CB_FIELD(WaterReflectionConstants, sunDirection), CB_FIELD(WaterReflectionConstants, surfaceBias),
+            CB_FIELD(WaterReflectionConstants, maxRayDistance),
             CB_FIELD(WaterReflectionConstants, skyEnvReflectionEnabled),
-            CB_FIELD(WaterReflectionConstants, unused1), CB_FIELD(WaterReflectionConstants, screenWidth),
-            CB_FIELD(WaterReflectionConstants, screenHeight),
+            CB_FIELD(WaterReflectionConstants, screenWidth), CB_FIELD(WaterReflectionConstants, screenHeight),
             CB_FIELD(WaterReflectionConstants, maxReflectionOffsetPixels),
-            CB_FIELD(WaterReflectionConstants, fftOceanPad1), CB_FIELD(WaterReflectionConstants, fftOceanPad0),
-            CB_FIELD(WaterReflectionConstants, fftOceanPad2),
+            CB_FIELD(WaterReflectionConstants, sunShadowEnabled),
             CB_FIELD(WaterReflectionConstants, debugDisplayScale),
             CB_FIELD(WaterReflectionConstants, debugViewMode),
         };
@@ -80,12 +73,25 @@ namespace CoreEngine
         desc.srvTableNames = kSrvTableNames;
         desc.constantsName = "WaterReflectionConstants";
         desc.constantsBytes = sizeof(WaterReflectionConstants);
+        desc.secondaryOutputUavName = "gSunVisibilityOutput";
         return InitializeFromDesc(dxCommon, descriptorAllocator, asMgr, shaderProgramCache, desc);
     }
 
     void WaterReflectionRayTracingManager::Resize(UINT width, UINT height, ViewID viewId)
     {
-        ReleaseOutputIfSizeMismatchBase(width, height, static_cast<uint32_t>(viewId));
+        const uint32_t viewIndex = static_cast<uint32_t>(viewId);
+        ReleaseOutputIfSizeMismatchBase(width, height, viewIndex);
+        outputViews_.ReleaseIfSizeMismatch(width, height, kSunVisibilitySlotBase + viewIndex);
+    }
+
+    D3D12_GPU_DESCRIPTOR_HANDLE WaterReflectionRayTracingManager::GetSunVisibilitySRVHandle(ViewID viewId) const
+    {
+        return outputViews_.GetSRVHandle(kSunVisibilitySlotBase + static_cast<uint32_t>(viewId));
+    }
+
+    GpuResource& WaterReflectionRayTracingManager::GetSunVisibilityResource(ViewID viewId)
+    {
+        return outputViews_.Resource(kSunVisibilitySlotBase + static_cast<uint32_t>(viewId));
     }
 
     D3D12_GPU_DESCRIPTOR_HANDLE WaterReflectionRayTracingManager::GetReflectionSRVHandle(ViewID viewId) const
@@ -107,6 +113,7 @@ namespace CoreEngine
         const WaterSurfaceData& surfaceData,
         const FFTOceanInput& fftOceanInput,
         D3D12_GPU_DESCRIPTOR_HANDLE skyEnvironmentSRV,
+        const WaterSunShadowInput& sunShadow,
         UINT width,
         UINT height,
         ViewID viewId)
@@ -123,6 +130,22 @@ namespace CoreEngine
             return;
         }
 
+        // 水面の日向率（反射と同じ解像度の 1 チャンネル）
+        const uint32_t sunVisibilitySlot = kSunVisibilitySlotBase + viewIndex;
+        RayTracingOutputViewSet::TextureOptions sunVisibilityOptions{};
+        sunVisibilityOptions.format = DXGI_FORMAT_R8_UNORM;
+        if (!outputViews_.EnsureTexture(
+                dxCommon_, descriptorAllocator_, width, height, sunVisibilitySlot, GetOwnerName(),
+                "RTWaterSunVisibility_v" + std::to_string(viewIndex), sunVisibilityOptions)) {
+            lastDispatchInfo_.status = RayTracingDispatchStatus::OutputAllocationFailed;
+            Logger::GetInstance().Warnf(
+                LogCategory::Graphics,
+                LogSubCategory::Pipeline,
+                "{}: sun visibility texture allocation failed. dispatch skipped.",
+                GetOwnerName());
+            return;
+        }
+
         WaterReflectionConstants constants{};
         constants.viewProjection = viewProjection;
         constants.invViewProjection = MathCore::Matrix::Inverse(viewProjection);
@@ -130,16 +153,19 @@ namespace CoreEngine
         constants.cameraPosition[1] = cameraPosition.y;
         constants.cameraPosition[2] = cameraPosition.z;
         constants.waterHeight = dispatchSurfaceData.waterHeight;
+        constants.sunDirection[0] = sunShadow.direction.x;
+        constants.sunDirection[1] = sunShadow.direction.y;
+        constants.sunDirection[2] = sunShadow.direction.z;
         constants.surfaceBias = settings_.surfaceBias;
         constants.maxRayDistance = settings_.maxRayDistance;
         // 空キューブが渡っていないフレームはシェーダー側が理由コードへ落とし、
         // Water.PS の保険フォールバック（波法線で引く空 / PBR 出力）が動く。
         const bool hasSkyEnvironment = (skyEnvironmentSRV.ptr != 0);
         constants.skyEnvReflectionEnabled = hasSkyEnvironment ? 1.0f : 0.0f;
-        constants.unused1 = 0.0f;
         constants.screenWidth = static_cast<float>(width);
         constants.screenHeight = static_cast<float>(height);
         constants.maxReflectionOffsetPixels = settings_.maxReflectionOffsetPixels;
+        constants.sunShadowEnabled = sunShadow.enabled ? 1u : 0u;
         constants.debugDisplayScale = settings_.debugDisplayScale;
         constants.debugViewMode = settings_.debugViewMode;
 
@@ -167,6 +193,7 @@ namespace CoreEngine
             &constants,
             width,
             height,
-            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+            { &outputViews_.Resource(sunVisibilitySlot), outputViews_.GetUAVHandle(sunVisibilitySlot) });
     }
 }

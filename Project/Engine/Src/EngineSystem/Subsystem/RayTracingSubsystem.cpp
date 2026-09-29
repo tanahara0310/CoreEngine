@@ -374,6 +374,16 @@ namespace CoreEngine
             }
         }
 
+        // 水面の影はメインライト（0 番）で調べる（Water.PS が掛けるのも 0 番の項だけ）
+        WaterSunShadowInput sunShadow{};
+        if (context.lightManager) {
+            if (Light* mainLight = context.lightManager->GetDirectionalLight(0);
+                mainLight && mainLight->enabled) {
+                sunShadow.direction = CoreEngine::Normalize(mainLight->direction);
+                sunShadow.enabled = true;
+            }
+        }
+
         rtWaterReflection->Dispatch(
             cmdList,
             dispatchContext.sceneDepthSRV,
@@ -383,6 +393,7 @@ namespace CoreEngine
             surfaceData,
             dispatchContext.fftOceanInput,
             skyEnvironmentSRV,
+            sunShadow,
             dispatchContext.width,
             dispatchContext.height,
             viewId);

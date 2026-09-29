@@ -63,12 +63,19 @@ namespace CoreEngine
         declStorage_.push_back({ "WaterSurfaceData", ShaderBindingType::CBV, BindingUsage::Required });
         declStorage_.push_back({ desc.constantsName,  ShaderBindingType::CBV, BindingUsage::Required });
 
+        // 2 枚目の出力は末尾に置く（それ以外の添字は 1 枚だけのパスと同じ）
+        hasSecondaryOutput_ = (desc.secondaryOutputUavName != nullptr);
+        if (hasSecondaryOutput_) {
+            declStorage_.push_back({ desc.secondaryOutputUavName, ShaderBindingType::UAV, BindingUsage::Required });
+        }
+
         // 添字は宣言した順。ディスパッチ側はこれで引く
         slotOutputUav_ = 0;
         slotScene_ = 1;
         slotSrvFirst_ = 2;
         slotSurfaceData_ = 2 + desc.srvTableNames.size();
         slotConstants_ = slotSurfaceData_ + 1;
+        slotSecondaryOutputUav_ = slotConstants_ + 1;
 
         RootSignatureConfig config;
         config.SetFlags(D3D12_ROOT_SIGNATURE_FLAG_NONE);  // DXR に入力アセンブラは無い
@@ -135,17 +142,27 @@ namespace CoreEngine
         const void* constantsBlob,
         UINT width,
         UINT height,
-        D3D12_RESOURCE_STATES finalState)
+        D3D12_RESOURCE_STATES finalState,
+        const RTWaterSecondaryOutput& secondaryOutput)
     {
         resources.cmdList4->SetComputeRootSignature(globalRootSigMgr_.GetRootSignature());
         resources.cmdList4->SetPipelineState1(stateObject_.Get());
 
+        const bool writesSecondaryOutput = hasSecondaryOutput_ && secondaryOutput.resource;
+        assert((!hasSecondaryOutput_ || writesSecondaryOutput) && "2 枚目の出力が渡されていない");
+
         BeginOutputWrite(cmdList, *resources.output);
+        if (writesSecondaryOutput) {
+            BeginOutputWrite(cmdList, *secondaryOutput.resource);
+        }
 
         // 差し方は RootSlot の種別から ShaderBinder が決める
         ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
         binder.Set(bindings_[slotOutputUav_], resources.outputUavHandle);
         binder.Set(bindings_[slotScene_], asMgr_->GetTLASSRVHandle());
+        if (writesSecondaryOutput) {
+            binder.Set(bindings_[slotSecondaryOutputUav_], secondaryOutput.uavHandle);
+        }
 
         // srvBindings は宣言表（desc.srvTableNames）と同じ並びで渡される契約。
         // 並びが食い違うと別のテクスチャが差さるので、名前で照合して落とす
@@ -168,6 +185,9 @@ namespace CoreEngine
         lastDispatchInfo_.status = RayTracingDispatchStatus::Dispatched;
 
         EndOutputWrite(cmdList, *resources.output, finalState);
+        if (writesSecondaryOutput) {
+            EndOutputWrite(cmdList, *secondaryOutput.resource, finalState);
+        }
     }
 
     // 共通基盤のガード判定に、水面固有の前提（供給元の有無）を足したもの

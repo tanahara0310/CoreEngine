@@ -28,8 +28,14 @@ namespace CoreEngine
         // ---- 空スペキュラキューブマップ（空＋雲。平面反射への雲合成用）----
         D3D12_GPU_DESCRIPTOR_HANDLE skyEnvironmentSRV = { 0 };
 
+        // ---- 水面の日向率（RT 反射パスの 2 枚目の出力。0=影 / 1=日向）----
+        D3D12_GPU_DESCRIPTOR_HANDLE sunVisibilitySRV = { 0 };
+
         /// @brief 反射テクスチャが接続済みか返す
         bool HasReflectionTexture() const;
+
+        /// @brief 水面の日向率テクスチャが接続済みか返す
+        bool HasSunVisibility() const;
 
         /// @brief シーン深度テクスチャが接続済みか返す
         bool HasSceneDepth() const;

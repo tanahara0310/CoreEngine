@@ -67,6 +67,13 @@ namespace CoreEngine
             const char* constantsName = nullptr;     ///< 32bit root constants の名前
             uint32_t constantsBytes = 0;             ///< root constants のサイズ（4 の倍数）
             uint32_t payloadBytes = sizeof(float) * 2; ///< RTWaterPayload {hitT, hitFlag}
+            const char* secondaryOutputUavName = nullptr; ///< u1 の UAV テーブル名（2 枚目の出力を持つパスだけ）
+        };
+
+        /// @brief 2 枚目の出力テクスチャ（BindAndDispatchRays へ渡す）
+        struct RTWaterSecondaryOutput {
+            GpuResource* resource = nullptr;
+            D3D12_GPU_DESCRIPTOR_HANDLE uavHandle{};
         };
 
         /// @brief SRV バインド 1 本分（BindAndDispatchRays へ渡す）
@@ -87,7 +94,8 @@ namespace CoreEngine
         /// @brief ディスパッチ末尾の共通処理（バインド → DispatchRays → 出力ステート遷移）
         /// @details gScene（TLAS）と gWaterSurfaceData（b1）は内部でバインドする。
         /// @param constantsBlob InitializeFromDesc で渡した constantsBytes と同サイズの定数ブロック
-        /// @param finalState    出力テクスチャの最終ステート
+        /// @param finalState    出力テクスチャの最終ステート（2 枚目の出力も同じステートへ）
+        /// @param secondaryOutput 2 枚目の出力（desc.secondaryOutputUavName を持つパスは必須）
         void BindAndDispatchRays(
             ID3D12GraphicsCommandList* cmdList,
             DispatchResources& resources,
@@ -95,7 +103,8 @@ namespace CoreEngine
             const void* constantsBlob,
             UINT width,
             UINT height,
-            D3D12_RESOURCE_STATES finalState);
+            D3D12_RESOURCE_STATES finalState,
+            const RTWaterSecondaryOutput& secondaryOutput = {});
 
         struct alignas(16) WaterSurfaceConstants {
             float waterHeight = 0.0f;
@@ -182,6 +191,8 @@ namespace CoreEngine
         size_t slotSrvFirst_ = 0;
         size_t slotSurfaceData_ = 0;
         size_t slotConstants_ = 0;
+        size_t slotSecondaryOutputUav_ = 0;
+        bool hasSecondaryOutput_ = false;
         uint32_t constantsBytes_ = 0;
 
         float lastWaterHeight_ = 0.0f;

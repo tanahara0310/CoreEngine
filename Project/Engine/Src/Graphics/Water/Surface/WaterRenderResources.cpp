@@ -7,6 +7,10 @@ namespace CoreEngine
         return reflectionSRV.ptr != 0;
     }
 
+    bool WaterRenderResources::HasSunVisibility() const {
+        return sunVisibilitySRV.ptr != 0;
+    }
+
     bool WaterRenderResources::HasSceneDepth() const {
         return sceneDepthSRV.ptr != 0;
     }

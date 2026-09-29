@@ -162,6 +162,7 @@ namespace CoreEngine
             (binding.skyAmbientEnabled && renderResources_.skyIrradianceSRV.ptr != 0) ? 1 : 0;
         frameCB_.skyEnvReflectionEnabled =
             (binding.skyEnvReflectionEnabled && renderResources_.skyEnvironmentSRV.ptr != 0) ? 1 : 0;
+        frameCB_.sunVisibilityEnabled = renderResources_.HasSunVisibility() ? 1 : 0;
         frameCB_.skyAmbientScale = binding.skyAmbientScale;
 
         // 不正なクリップ距離（0 や逆転）はシェーダーの LinearizeDepth を破綻させるため、

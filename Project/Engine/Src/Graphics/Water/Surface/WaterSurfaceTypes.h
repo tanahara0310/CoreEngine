@@ -111,7 +111,8 @@ struct WaterFrameConstants {
 	// 高風速で合わせると低風速で出すぎ、低風速で合わせると高風速で出なくなる。
 	// そこで基準風速での較正はそのまま活かし、Monahan 比を白波マスクへ掛けて追従させる。
 	float foamWindCoverageScale = 1.0f;
-	float cameraClipPadding = 0.0f;
+	// 1 = 水面の日向率テクスチャ（RT 反射パスの 2 枚目の出力）をメインライトの項へ掛ける
+	int sunVisibilityEnabled = 0;
 	// ---- 泡（whitecap）。FFTOcean 専用（Gerstner はヤコビアンを持たないため無効）----
 	// 既定値は WaterFoamDefaults が唯一の情報源。CVar / FoamSettings / FoamConstants と
 	// 同じ定数を参照するので、片側だけ直して割れることが構造上ない。
@@ -147,7 +148,7 @@ static constexpr Cb::Field kWaterFrameConstantsFields[] = {
     CB_FIELD(WaterFrameConstants, aerialPerspectiveEnabled),
     CB_FIELD(WaterFrameConstants, skyEnvReflectionEnabled), CB_FIELD(WaterFrameConstants, cameraNearZ),
     CB_FIELD(WaterFrameConstants, cameraFarZ), CB_FIELD(WaterFrameConstants, foamWindCoverageScale),
-    CB_FIELD(WaterFrameConstants, cameraClipPadding), CB_FIELD(WaterFrameConstants, foamEnabled),
+    CB_FIELD(WaterFrameConstants, sunVisibilityEnabled), CB_FIELD(WaterFrameConstants, foamEnabled),
     CB_FIELD(WaterFrameConstants, foamBias), CB_FIELD(WaterFrameConstants, foamGain),
     CB_FIELD(WaterFrameConstants, foamOpacity), CB_FIELD(WaterFrameConstants, foamCascadeWeights),
     CB_FIELD(WaterFrameConstants, foamDecaySeconds),

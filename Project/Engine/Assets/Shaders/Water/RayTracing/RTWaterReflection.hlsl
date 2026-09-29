@@ -20,6 +20,8 @@
 #include "../../Include/Common/DepthReconstruction.hlsli"
 
 RWTexture2D<float4> gReflectionOutput : register(u0);
+// 水面の日向率（0=影 / 1=日向）。水面ではない画素は 1
+RWTexture2D<float> gSunVisibilityOutput : register(u1);
 RaytracingAccelerationStructure gScene : register(t0);
 Texture2D<float> gSceneDepth : register(t1);
 Texture2D<float4> gSceneColor : register(t2);
@@ -37,17 +39,14 @@ cbuffer WaterReflectionConstants : register(b0)
     float4x4 gInvViewProjection; // 深度復元用
     float3 gCameraPosition;
     float gWaterHeight;
+    float3 gSunDirection; // メインライトの向き（光源→シーン・正規化済み）
     float gSurfaceBias;
     float gMaxRayDistance;
-    float gSkyEnvReflectionEnabled; // 1 = gSkyEnvironmentMap が有効（旧 gUnused0 のスロットを転用）
-    float gUnused1; // （屈折の absorptionCoeff 相当。反射では未使用）
+    float gSkyEnvReflectionEnabled; // 1 = gSkyEnvironmentMap が有効
     float gScreenWidth;
     float gScreenHeight;
     float gMaxReflectionOffsetPixels;
-    // 旧 FFT 有効情報 3 スロット。実体は b1（RTWaterSurfaceCommon.hlsli）へ一本化済み。
-    uint gFFTOceanPad1;
-    float gFFTOceanPad0;
-    uint gFFTOceanPad2;
+    uint gSunShadowEnabled; // 1 なら水面の点から光源へ影のレイを撃つ
     float gDebugDisplayScale;
     uint gDebugViewMode;
 };
@@ -114,10 +113,40 @@ float4 MakeSkyResolvedOutput(float3 rayDir, float reasonCodeIfNoSky)
     return float4(SampleSkyEnvironment(rayDir), MakeSuccessAlpha(1.0f));
 }
 
+/// @brief 水面の点から光源が見えるかを返す（1=日向 / 0=水より上の遮蔽物の影）
+/// @param waterPos    水面の点
+/// @param waterNormal 水面の法線（自己交差を避けるずらしに使う）
+float TraceSunVisibility(float3 waterPos, float3 waterNormal)
+{
+    const float3 toSun = -gSunDirection;
+    if (gSunShadowEnabled == 0 || toSun.y <= 0.0f)
+    {
+        return 1.0f;
+    }
+
+    RayDesc ray;
+    ray.Origin = waterPos + waterNormal * gSurfaceBias;
+    ray.Direction = toSun;
+    ray.TMin = 0.001f;
+    ray.TMax = gMaxRayDistance;
+
+    // 当たりはヒットシェーダーを通さずに終えるので、当たった扱いで初期化してミスだけが 0 に戻す
+    RTWaterPayload payload;
+    payload.hitT = 0.0f;
+    payload.hitFlag = 1.0f;
+    TraceRay(
+        gScene,
+        RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER,
+        0xFF, 0, 1, 0, ray, payload);
+    return 1.0f - payload.hitFlag;
+}
+
 [shader("raygeneration")]
 void RTWaterReflectionRayGen()
 {
     uint2 launchIndex = DispatchRaysIndex().xy;
+    // 水面ではない画素は日向のまま（水面の点が求まった後で上書きする）
+    gSunVisibilityOutput[launchIndex] = 1.0f;
     float ndcDepth = gSceneDepth.Load(int3(launchIndex, 0));
     float2 screenUV = (float2(launchIndex) + 0.5f.xx) / float2(gScreenWidth, gScreenHeight);
 
@@ -192,6 +221,10 @@ void RTWaterReflectionRayGen()
     const float directionFootprint = max(surfaceFootprintMeters, kReflectionDirectionMinFootprint);
 
     float3 waterNormal = EvaluateWaterNormal(gFFTOceanNormal, waterPos.xz, directionFootprint);
+
+    // この水面の点がヤシや岩の影に入っているか（Water.PS がメインライトの項へ掛ける）
+    gSunVisibilityOutput[launchIndex] = TraceSunVisibility(waterPos, waterNormal);
+
     // 視線（primaryDir）を水面法線で鏡面反射。カメラは水面を上から見下ろすため
     // primaryDir は下向き、reflectedDir は上向き（空・水上ジオメトリ方向）になる。
     float3 reflectedDir = reflect(primaryDir, waterNormal);

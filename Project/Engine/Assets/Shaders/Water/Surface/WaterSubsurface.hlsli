@@ -47,6 +47,7 @@ static const float kSubsurfaceScale = 1.0f;
 /// @param sigmaS        散乱係数 σs [1/m]
 /// @param sigmaT        消散係数 σt = σa + σs [1/m]
 /// @param foamCoverage  泡の被覆率（泡は不透明な散乱層なので透過を持たない）
+/// @param mainLightVisibility メインライト（0 番）の日向率（0=影 / 1=日向）
 /// @return 水面から視点へ出てくる放射輝度（合成後に加算する）
 float3 ComputeWaterSubsurfaceScattering(
     float3 surfaceNormal,
@@ -54,7 +55,8 @@ float3 ComputeWaterSubsurfaceScattering(
     float waveHeight,
     float3 sigmaS,
     float3 sigmaT,
-    float foamCoverage)
+    float foamCoverage,
+    float mainLightVisibility)
 {
     // 静止水面より上に持ち上がった部分だけが「薄い水」。谷は下に厚い水があるので通さない。
     // 二乗して波頭寄りへ偏らせる。線形だと「海面より上」全部が均等に光ってしまい、
@@ -93,8 +95,9 @@ float3 ComputeWaterSubsurfaceScattering(
 
         // 太陽色には大気の Transmittance 減衰が乗算済みなので、日没では透過光も赤みへ寄る。
         // 拡散的な射出なので放射照度 → 放射輝度の /π を掛ける（ComputeFoamColor と同じ規約）。
+        const float visibility = (i == 0) ? mainLightVisibility : 1.0f;
         transmitted += gDirectionalLights[i].color.rgb
-            * gDirectionalLights[i].intensity * backLit / PI;
+            * gDirectionalLights[i].intensity * backLit * visibility / PI;
     }
 
     // 泡は不透明な気泡層なので透過しない。

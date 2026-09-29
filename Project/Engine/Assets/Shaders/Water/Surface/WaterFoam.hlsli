@@ -178,7 +178,8 @@ float ComputeShoreFoamMask(float analyticColumn)
 ///          ソース・同じスケールを使い、空との明るさを常に整合させる。
 ///          太陽ライトの色には大気の Transmittance 減衰が乗算済みなので、
 ///          日没時は泡も自動的に赤みを帯びて暗くなる。
-float3 ComputeFoamColor(float3 normal)
+/// @param mainLightVisibility メインライト（0 番）の日向率（0=影 / 1=日向）
+float3 ComputeFoamColor(float3 normal, float mainLightVisibility)
 {
     // 平行光源（太陽・月）の直達成分: E·NdotL / π
     float3 lighting = float3(0.0f, 0.0f, 0.0f);
@@ -189,8 +190,9 @@ float3 ComputeFoamColor(float3 normal)
             continue;
         }
         float3 lightVec = -normalize(gDirectionalLights[i].direction);
+        const float visibility = (i == 0) ? mainLightVisibility : 1.0f;
         lighting += gDirectionalLights[i].color.rgb * gDirectionalLights[i].intensity
-            * saturate(dot(normal, lightVec)) / PI;
+            * saturate(dot(normal, lightVec)) * visibility / PI;
     }
 
     // 天空光（大気アクティブ時は Sky Irradiance SH、なければ静的 IBL へフォールバック）
