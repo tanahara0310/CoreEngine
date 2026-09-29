@@ -29,8 +29,11 @@ Texture2DArray<float4> gFFTOceanDisplacement : register(t3);
 Texture2DArray<float4> gFFTOceanNormal : register(t4);
 TextureCube<float4> gSkyEnvironmentMap : register(t5);
 // 反射の元画像（gSceneColor）の縮小段。段 0 は半分の解像度（WaterReflectionColorPyramid.CS）。
+// rgb = 物の画素の色の平均 × a、a = 物の画素の割合（空と水域の水面より下の画素は物に数えない）。
 // 段を作れなかったフレームは gSceneColor そのもの（段数 1）が入る
 Texture2D<float4> gSceneColorPyramid : register(t6);
+// 同じ縮小段の空の画素の割合。段を作れなかったフレームは読まない
+Texture2D<float> gSkyCoveragePyramid : register(t7);
 
 // DXR グローバルルートシグネチャの静的サンプラ（GlobalRootSignatureManager）。
 // 空キューブと、再投影先のシーン色の双線形取得に使う。
@@ -127,73 +130,53 @@ uint GetReflectionPyramidLevels()
     return pyramidLevels;
 }
 
-/// @brief 縮小段を引く（rgb = 映りうる画素の色の平均 × a、a = 映りうる画素の割合）
+/// @brief ぼかしの幅に合った縮小段の段
 /// @param blurPixels ぼかしの幅（フル解像度の画素数。段 0 の 2 画素より細かくはしない）
-float4 SampleReflectionPyramid(float2 uv, float blurPixels, uint pyramidLevels)
+float ComputeReflectionPyramidLevel(float blurPixels, uint pyramidLevels)
 {
     // 段 L の 1 画素はフル解像度の 2^(L+1) 画素
-    const float level = clamp(log2(max(blurPixels, 2.0f)) - 1.0f, 0.0f, (float)(pyramidLevels - 1));
-    return gSceneColorPyramid.SampleLevel(gLinearClamp, uv, level);
+    return clamp(log2(max(blurPixels, 2.0f)) - 1.0f, 0.0f, (float)(pyramidLevels - 1));
 }
 
-/// @brief 反射の元画像を、指定した幅でぼかして引く
-/// @param uv         引く位置（スクリーン UV）
-/// @param blurPixels ぼかしの幅（フル解像度の画素数。1 以下ならぼかさない）
-float3 SampleReflectionSource(float2 uv, float blurPixels)
-{
-    const float3 sharp = gSceneColor.SampleLevel(gLinearClamp, uv, 0.0f).rgb;
-    const uint pyramidLevels = GetReflectionPyramidLevels();
-    if (pyramidLevels <= 1 || blurPixels <= 1.0f)
-    {
-        return sharp;
-    }
-
-    const float4 blurred = SampleReflectionPyramid(uv, blurPixels, pyramidLevels);
-    if (blurred.a <= 1.0e-3f)
-    {
-        return sharp;
-    }
-    // 1〜2 画素の間は元画像と段 0 をなめらかにつなぐ
-    return lerp(sharp, blurred.rgb / blurred.a, saturate(log2(blurPixels)));
-}
-
-/// @brief 反射の元画像を、縦と横で別の広がりでぼかして引く
+/// @brief 反射の元画像を縦と横で別の広がりでぼかし、写っている物の色と割合を引く
 /// @param uv                    引く位置（スクリーン UV）
 /// @param verticalSigmaPixels   縦の広がり（1σ・フル解像度の画素数）
 /// @param horizontalSigmaPixels 横の広がり（1σ・フル解像度の画素数）
+/// @return rgb = 物の色の平均、a = 水面より上の画素のうち物の割合（残りは空）。
+///         範囲の画素がすべて水面より下なら a は負
 /// @details 縦に並べたタップで縦の広がりを、縮小段の選び方で横の広がりを作る。
 ///          タップの間隔より細かい段を引くと、ずれた像が離れて重なって見えるので、
 ///          段のぼかし幅はタップの間隔以上にする。
-///          水面より下の画素は縮小段の割合 a で外れるので、映りうる画素だけで平均する。
-float3 SampleReflectionSourceStreak(float2 uv, float verticalSigmaPixels, float horizontalSigmaPixels)
+///          空の画素はカメラから見た向きの空なので色には使わず、割合だけを返す。
+///          水面より下の画素は反射に映らないので、割合の分母からも外す。
+float4 SampleReflectedGeometryStreak(
+    float2 uv, float verticalSigmaPixels, float horizontalSigmaPixels, uint pyramidLevels)
 {
-    const uint pyramidLevels = GetReflectionPyramidLevels();
-    if (verticalSigmaPixels <= 0.5f || pyramidLevels <= 1)
-    {
-        return SampleReflectionSource(uv, 2.0f * horizontalSigmaPixels);
-    }
-
     // ±2σ の範囲に等間隔でタップを置き、正規分布の重みで平均する
     static const int kTapCount = 8;
     const float tapSpacingPixels = 4.0f * verticalSigmaPixels / (float)kTapCount;
-    const float blurPixels = max(2.0f * horizontalSigmaPixels, tapSpacingPixels);
-    float3 colorSum = float3(0.0f, 0.0f, 0.0f);
-    float weightSum = 0.0f;
+    const float level = ComputeReflectionPyramidLevel(
+        max(2.0f * horizontalSigmaPixels, tapSpacingPixels), pyramidLevels);
+    float3 geometryColorSum = float3(0.0f, 0.0f, 0.0f);
+    float geometrySum = 0.0f;
+    float skySum = 0.0f;
     [unroll]
     for (int i = 0; i < kTapCount; ++i)
     {
         const float offsetSigma = ((float(i) + 0.5f) / (float)kTapCount) * 4.0f - 2.0f;
         const float weight = exp(-0.5f * offsetSigma * offsetSigma);
         const float2 tapUV = saturate(uv + float2(0.0f, offsetSigma * verticalSigmaPixels / gScreenHeight));
-        const float4 tap = SampleReflectionPyramid(tapUV, blurPixels, pyramidLevels);
-        colorSum += tap.rgb * weight;
-        weightSum += tap.a * weight;
+        const float4 geometry = gSceneColorPyramid.SampleLevel(gLinearClamp, tapUV, level);
+        geometryColorSum += geometry.rgb * weight;
+        geometrySum += geometry.a * weight;
+        skySum += gSkyCoveragePyramid.SampleLevel(gLinearClamp, tapUV, level) * weight;
     }
-    if (weightSum <= 1.0e-3f)
+    const float aboveWaterSum = geometrySum + skySum;
+    if (aboveWaterSum <= 1.0e-3f)
     {
-        return SampleReflectionSource(uv, 2.0f * horizontalSigmaPixels);
+        return float4(0.0f, 0.0f, 0.0f, -1.0f);
     }
-    return colorSum / weightSum;
+    return float4(geometryColorSum / max(geometrySum, 1.0e-4f), geometrySum / aboveWaterSum);
 }
 
 /// @brief 投影先のまわりの画素から、当たった点と同じ奥行きに写っている物の色を探す
@@ -421,19 +404,14 @@ void RTWaterReflectionRayGen()
     uint2 sampleCoord = uint2(reflectedUV * float2(gScreenWidth, gScreenHeight));
     sampleCoord = min(sampleCoord, uint2(gScreenWidth - 1.0f, gScreenHeight - 1.0f));
 
+    // 同じレイ向きで引いた空。以降のフォールバック／混合の端点は必ずこれを使う。
+    const bool hasSkyCube = (gSkyEnvReflectionEnabled >= 0.5f);
+    const float3 colorAtTarget = gSceneColor.SampleLevel(gLinearClamp, reflectedUV, 0.0f).rgb;
+    const float3 skyAlongRay = hasSkyCube ? SampleSkyEnvironment(ray.Direction, skyRoughness) : colorAtTarget;
+
     // スクリーン空間オクルージョン判定（SSR の要）。反射ヒット点の深度が、
     // 再投影先ピクセルの SceneDepth と食い違う場合、その反射点は画面上で
     // 別の物体に隠れており色を取得できない → フォールバック。
-    // 同じレイ向きで引いた空。以降のフォールバック／混合の端点は必ずこれを使う。
-    const bool hasSkyCube = (gSkyEnvReflectionEnabled >= 0.5f);
-    // 反射の向きのばらつきが当たった物の上で覆う幅を、画面の画素数へ換算してぼかす
-    const float hitPixelMeters = ComputePixelPerpendicularWidth(
-        reflectedUV, saturate(ndc.z), float2(gScreenWidth, gScreenHeight), gInvViewProjection);
-    const float pixelsPerRadian = payload.hitT / max(hitPixelMeters, 1.0e-4f);
-    const float3 sceneColorAtTarget = SampleReflectionSourceStreak(
-        reflectedUV, verticalReflectionSpread * pixelsPerRadian, horizontalReflectionSpread * pixelsPerRadian);
-    const float3 skyAlongRay = hasSkyCube ? SampleSkyEnvironment(ray.Direction, skyRoughness) : sceneColorAtTarget;
-
     const float hitViewDistance = length(hitWorldPos - gCameraPosition);
     const float depthMismatchThreshold = max(0.08f, hitViewDistance * 0.03f);
 
@@ -453,7 +431,7 @@ void RTWaterReflectionRayGen()
     // 反射レイは物に当たっているので、投影先に写っていなくても反射先は空ではない。
     // 画素に満たない細い葉や裏向きで描かれない面は投影先に写らないので、
     // まわりの画素から同じ奥行きの物を探してその色を使う
-    float3 hitColor = sceneColorAtTarget;
+    float3 hitColor = colorAtTarget;
     float hitConfidence = mismatchConfidence;
     if (mismatchConfidence < 1.0f)
     {
@@ -462,7 +440,7 @@ void RTWaterReflectionRayGen()
             reflectedUV, hitViewDistance, depthMismatchThreshold * 4.0f, nearbyColor);
         if (nearbyConfidence > 0.0f)
         {
-            hitColor = lerp(nearbyColor, sceneColorAtTarget, mismatchConfidence);
+            hitColor = lerp(nearbyColor, colorAtTarget, mismatchConfidence);
             hitConfidence = max(mismatchConfidence, nearbyConfidence);
         }
     }
@@ -470,7 +448,28 @@ void RTWaterReflectionRayGen()
     // 端点はどちらも「反射レイの向きの色」なので混ぜても面が食い違わない。
     // 当たった物の色が見つからないときは、同じレイ向きの空へ寄せる
     const float sceneWeight = saturate(edgeFade * hitConfidence);
-    const float3 resolvedColor = lerp(skyAlongRay, hitColor, sceneWeight);
+    float3 resolvedColor = lerp(skyAlongRay, hitColor, sceneWeight);
+
+    // 反射の向きのばらつきが 1 画素を超えるときは、ばらつきが当たった物のまわりで覆う範囲に
+    // 写っている物の色と割合で置き換える。範囲の残りは空なので、カメラから見た空の色ではなく
+    // 同じレイ向きの空（荒さに合ったミップ）で埋める
+    const float hitPixelMeters = ComputePixelPerpendicularWidth(
+        reflectedUV, saturate(ndc.z), float2(gScreenWidth, gScreenHeight), gInvViewProjection);
+    const float pixelsPerRadian = payload.hitT / max(hitPixelMeters, 1.0e-4f);
+    const float verticalSigmaPixels = verticalReflectionSpread * pixelsPerRadian;
+    const uint pyramidLevels = GetReflectionPyramidLevels();
+    // 広がり 0.5〜1 画素の間でぼかさない色からなめらかにつなぐ
+    const float blurBlend = saturate(log2(max(2.0f * verticalSigmaPixels, 1.0f)));
+    if (blurBlend > 0.0f && pyramidLevels > 1)
+    {
+        const float4 geometry = SampleReflectedGeometryStreak(
+            reflectedUV, verticalSigmaPixels, horizontalReflectionSpread * pixelsPerRadian, pyramidLevels);
+        if (geometry.a >= 0.0f)
+        {
+            const float3 blurredColor = lerp(skyAlongRay, geometry.rgb, saturate(geometry.a * sceneWeight));
+            resolvedColor = lerp(resolvedColor, blurredColor, blurBlend);
+        }
+    }
 
     // Water.PS へは常に「解決済みの 1 枚」を渡す（alpha は成功固定）。
     gReflectionOutput[launchIndex] = float4(resolvedColor, MakeSuccessAlpha(1.0f));

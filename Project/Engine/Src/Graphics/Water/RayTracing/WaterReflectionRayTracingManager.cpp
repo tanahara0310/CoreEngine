@@ -62,7 +62,7 @@ namespace CoreEngine
             uint32_t destHeight;
             float destInvWidth;
             float destInvHeight;
-            uint32_t fromSceneColor;          // 1 = 段 0（画面の写しから作り、水面より下の画素を外す）
+            uint32_t fromSceneColor;          // 1 = 段 0（画面の写しから作り、画素を物・空・水面より下に分ける）
             float waterHeight;
             float waterRegionCenterXZ[2];
             float waterRegionHalfExtentXZ[2]; // 0 なら水域の制限なし
@@ -82,11 +82,15 @@ namespace CoreEngine
 
         /// @brief 縮小段のコンピュートが要求するリソースの契約
         namespace ColorPyramidBind {
-            enum Slot : size_t { gPyramidSource, gPyramidSceneDepth, gPyramidDest, PyramidConstants, Count };
+            enum Slot : size_t {
+                gPyramidSource, gPyramidSceneDepth, gPyramidSkySource, gPyramidDest, gPyramidSkyDest,
+                PyramidConstants, Count };
             inline constexpr ShaderBindingDecl kDecls[] = {
                 { "gPyramidSource",     ShaderBindingType::SRV, BindingUsage::Required },
                 { "gPyramidSceneDepth", ShaderBindingType::SRV, BindingUsage::Required },
+                { "gPyramidSkySource",  ShaderBindingType::SRV, BindingUsage::Required },
                 { "gPyramidDest",       ShaderBindingType::UAV, BindingUsage::Required },
+                { "gPyramidSkyDest",    ShaderBindingType::UAV, BindingUsage::Required },
                 { "PyramidConstants",   ShaderBindingType::CBV, BindingUsage::Required },
             };
             static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
@@ -115,7 +119,7 @@ namespace CoreEngine
         // （Water.PS 側で平面法線の空と混ぜると二重像になるため）。
         static constexpr const char* kSrvTableNames[] = {
             "gSceneDepth", "gSceneColor", "gFFTOceanDisplacement", "gFFTOceanNormal", "gSkyEnvironmentMap",
-            "gSceneColorPyramid" };
+            "gSceneColorPyramid", "gSkyCoveragePyramid" };
         desc.srvTableNames = kSrvTableNames;
         desc.constantsName = "WaterReflectionConstants";
         desc.constantsBytes = sizeof(WaterReflectionConstants);
@@ -184,60 +188,84 @@ namespace CoreEngine
             ++mipCount;
         }
 
-        D3D12_RESOURCE_DESC desc{};
-        desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-        desc.Width = width;
-        desc.Height = height;
-        desc.DepthOrArraySize = 1;
-        desc.MipLevels = static_cast<UINT16>(mipCount);
-        desc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
-        desc.SampleDesc.Count = 1;
-        desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-
-        // 段ごとに状態が変わるので、段数ぶんのサブリソースを個別に追跡させる
-        colorPyramid_.Reset(
-            ResourceFactory::CreateTextureResource(
-                dxCommon_->GetDevice(), desc, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE),
-            D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
-            mipCount);
-        if (!colorPyramid_) {
+        const bool created =
+            CreatePyramidTexture(
+                colorPyramid_, colorPyramidMipSrv_, colorPyramidMipUav_, colorPyramidFullSrv_,
+                DXGI_FORMAT_R16G16B16A16_FLOAT, width, height, mipCount, "RTWaterReflectionPyramid") &&
+            CreatePyramidTexture(
+                skyCoveragePyramid_, skyCoveragePyramidMipSrv_, skyCoveragePyramidMipUav_,
+                skyCoveragePyramidFullSrv_, DXGI_FORMAT_R16_FLOAT, width, height, mipCount,
+                "RTWaterReflectionSkyPyramid");
+        if (!created) {
+            colorPyramid_.Release();
+            skyCoveragePyramid_.Release();
             colorPyramidWidth_ = 0;
             colorPyramidHeight_ = 0;
             colorPyramidMipCount_ = 0;
             return false;
         }
 
+        colorPyramidWidth_ = width;
+        colorPyramidHeight_ = height;
+        colorPyramidMipCount_ = mipCount;
+        return true;
+    }
+
+    bool WaterReflectionRayTracingManager::CreatePyramidTexture(
+        GpuResource& texture,
+        std::array<DescriptorHandle, kColorPyramidMaxMips>& mipSrv,
+        std::array<DescriptorHandle, kColorPyramidMaxMips>& mipUav,
+        DescriptorHandle& fullSrv,
+        DXGI_FORMAT format,
+        UINT width,
+        UINT height,
+        uint32_t mipCount,
+        const char* debugName)
+    {
+        D3D12_RESOURCE_DESC desc{};
+        desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+        desc.Width = width;
+        desc.Height = height;
+        desc.DepthOrArraySize = 1;
+        desc.MipLevels = static_cast<UINT16>(mipCount);
+        desc.Format = format;
+        desc.SampleDesc.Count = 1;
+        desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+        // 段ごとに状態が変わるので、段数ぶんのサブリソースを個別に追跡させる
+        texture.Reset(
+            ResourceFactory::CreateTextureResource(
+                dxCommon_->GetDevice(), desc, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE),
+            D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+            mipCount);
+        if (!texture) {
+            return false;
+        }
+
+        const std::string name(debugName);
         for (uint32_t mip = 0; mip < mipCount; ++mip) {
             D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-            srvDesc.Format = desc.Format;
+            srvDesc.Format = format;
             srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
             srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
             srvDesc.Texture2D.MostDetailedMip = mip;
             srvDesc.Texture2D.MipLevels = 1;
-            descriptorAllocator_->EnsureSRV(
-                colorPyramidMipSrv_[mip], colorPyramid_.Get(), srvDesc, "RTWaterReflectionPyramidMipSRV");
+            descriptorAllocator_->EnsureSRV(mipSrv[mip], texture.Get(), srvDesc, name + "MipSRV");
 
             D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
-            uavDesc.Format = desc.Format;
+            uavDesc.Format = format;
             uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
             uavDesc.Texture2D.MipSlice = mip;
-            descriptorAllocator_->EnsureUAV(
-                colorPyramidMipUav_[mip], colorPyramid_.Get(), uavDesc, "RTWaterReflectionPyramidMipUAV");
-        }
-        {
-            D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-            srvDesc.Format = desc.Format;
-            srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-            srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-            srvDesc.Texture2D.MostDetailedMip = 0;
-            srvDesc.Texture2D.MipLevels = mipCount;
-            descriptorAllocator_->EnsureSRV(
-                colorPyramidFullSrv_, colorPyramid_.Get(), srvDesc, "RTWaterReflectionPyramidSRV");
+            descriptorAllocator_->EnsureUAV(mipUav[mip], texture.Get(), uavDesc, name + "MipUAV");
         }
 
-        colorPyramidWidth_ = width;
-        colorPyramidHeight_ = height;
-        colorPyramidMipCount_ = mipCount;
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+        srvDesc.Format = format;
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        srvDesc.Texture2D.MostDetailedMip = 0;
+        srvDesc.Texture2D.MipLevels = mipCount;
+        descriptorAllocator_->EnsureSRV(fullSrv, texture.Get(), srvDesc, name + "SRV");
         return true;
     }
 
@@ -253,12 +281,18 @@ namespace CoreEngine
 
         // 全段を書き込み状態にし、段を進めるたびに 1 段上だけを読み取り状態へ移す
         Barrier::Transition(cmdList, colorPyramid_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, skyCoveragePyramid_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         for (uint32_t mip = 0; mip < colorPyramidMipCount_; ++mip) {
             D3D12_GPU_DESCRIPTOR_HANDLE source = sourceSRV;
+            // 段 0 は空の割合を深度から求めるので 1 段上の空は読まない（差すのは同じ型の深度）
+            D3D12_GPU_DESCRIPTOR_HANDLE skySource = sceneDepthSRV;
             if (mip > 0) {
                 Barrier::Transition(cmdList, colorPyramid_,
                     D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, mip - 1);
+                Barrier::Transition(cmdList, skyCoveragePyramid_,
+                    D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, mip - 1);
                 source = colorPyramidMipSrv_[mip - 1].gpuHandle;
+                skySource = skyCoveragePyramidMipSrv_[mip - 1].gpuHandle;
             }
 
             const UINT destWidth = (std::max)(colorPyramidWidth_ >> mip, 1u);
@@ -281,15 +315,21 @@ namespace CoreEngine
             ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
             binder.Set(colorPyramidBindings_[ColorPyramidBind::gPyramidSource], source);
             binder.Set(colorPyramidBindings_[ColorPyramidBind::gPyramidSceneDepth], sceneDepthSRV);
+            binder.Set(colorPyramidBindings_[ColorPyramidBind::gPyramidSkySource], skySource);
             binder.Set(colorPyramidBindings_[ColorPyramidBind::gPyramidDest], colorPyramidMipUav_[mip].gpuHandle);
+            binder.Set(colorPyramidBindings_[ColorPyramidBind::gPyramidSkyDest],
+                skyCoveragePyramidMipUav_[mip].gpuHandle);
             binder.SetConstants(colorPyramidBindings_[ColorPyramidBind::PyramidConstants], constants);
             binder.ValidateBeforeDraw(colorPyramidBindings_);
             cmdList->Dispatch((destWidth + 7) / 8, (destHeight + 7) / 8, 1);
 
             // 次の段がこの段を読むので書き込みの完了を待つ
             Barrier::UAV(cmdList, colorPyramid_);
+            Barrier::UAV(cmdList, skyCoveragePyramid_);
         }
         Barrier::Transition(cmdList, colorPyramid_,
+            D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, colorPyramidMipCount_ - 1);
+        Barrier::Transition(cmdList, skyCoveragePyramid_,
             D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, colorPyramidMipCount_ - 1);
     }
 
@@ -396,13 +436,15 @@ namespace CoreEngine
 
         UploadSurfaceDataForDispatch(dispatchSurfaceData, fftOceanInput);
 
-        // 反射の元画像の縮小段を作る。作れないフレームは元画像そのもの（段数 1）を差し、
+        // 反射の元画像の縮小段を作る。作れないフレームは元画像そのもの（段数 1）と深度を差し、
         // シェーダーはぼかさずに引く
         D3D12_GPU_DESCRIPTOR_HANDLE colorPyramidSRV = sceneColorSRV;
+        D3D12_GPU_DESCRIPTOR_HANDLE skyCoveragePyramidSRV = sceneDepthSRV;
         if (colorPyramidPipelineReady_ && EnsureColorPyramid(width, height)) {
             BuildColorPyramid(
                 cmdList, sceneColorSRV, sceneDepthSRV, constants.invViewProjection, dispatchSurfaceData);
             colorPyramidSRV = colorPyramidFullSrv_.gpuHandle;
+            skyCoveragePyramidSRV = skyCoveragePyramidFullSrv_.gpuHandle;
         }
 
         BindAndDispatchRays(
@@ -415,6 +457,7 @@ namespace CoreEngine
                 { "gFFTOceanNormal", fftNormalSRV },
                 { "gSkyEnvironmentMap", skyEnvSRV },
                 { "gSceneColorPyramid", colorPyramidSRV },
+                { "gSkyCoveragePyramid", skyCoveragePyramidSRV },
             },
             &constants,
             width,
