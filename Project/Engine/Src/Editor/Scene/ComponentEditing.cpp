@@ -30,11 +30,19 @@ namespace CoreEngine::ComponentEditing
     {
         constexpr const char* kAddButtonLabel = "＋ コンポーネント追加";
         constexpr const char* kAddPopupId = "##AddComponentPopup";
-        constexpr float kDisplayNameWidth = 160.0f;
         constexpr float kFilterWidth = 280.0f;
 
         /// @brief 足せる型の一覧を絞り込む文字列
         char sAddFilter[64] = "";
+
+        /// @brief 一覧で選んでいる分類の名前
+        std::string sAddCategory;
+
+        /// @brief 分類の欄の幅
+        constexpr float kCategoryWidth = 110.0f;
+
+        /// @brief 分類と型の欄の高さに使う行数の上限（超えたら欄の中で送る）
+        constexpr std::size_t kMaxVisibleRows = 12;
 
         /// @brief 付け外しするコンポーネント 1 つ分
         struct Slot
@@ -205,8 +213,30 @@ namespace CoreEngine::ComponentEditing
             return result;
         }
 
+        /// @brief 一覧の列幅
+        struct AddColumns
+        {
+            float name = 0.0f; ///< 表示名の列（型名との間の余白を含む）
+            float type = 0.0f; ///< 型名の列
+        };
+
+        /// @brief 全分類の表示名と型名で最も長いものに合わせた列幅を求める
+        AddColumns MeasureAddColumns(const std::vector<Category>& categories)
+        {
+            AddColumns columns;
+            for (const Category& category : categories) {
+                for (const std::string& typeName : category.types) {
+                    const std::string displayName = Editor::ComponentInspectors::DisplayNameOf(typeName);
+                    columns.name = (std::max)(columns.name, ImGui::CalcTextSize(displayName.c_str()).x);
+                    columns.type = (std::max)(columns.type, ImGui::CalcTextSize(typeName.c_str()).x);
+                }
+            }
+            columns.name += ImGui::GetStyle().ItemSpacing.x * 2.0f;
+            return columns;
+        }
+
         /// @brief 一覧の 1 行を描き、選ばれたら型名を chosen に入れる
-        void DrawAddItem(const GameObject& object, const std::string& typeName, std::string& chosen)
+        void DrawAddItem(const GameObject& object, const std::string& typeName, float nameWidth, std::string& chosen)
         {
             const std::string displayName = Editor::ComponentInspectors::DisplayNameOf(typeName);
             std::string reason;
@@ -214,7 +244,7 @@ namespace CoreEngine::ComponentEditing
             const std::string label = displayName + "##" + typeName;
             {
                 UI::Scope::DisabledScope disabled(!addable);
-                if (ImGui::Selectable(label.c_str(), false, 0, ImVec2(kDisplayNameWidth, 0.0f))) {
+                if (ImGui::Selectable(label.c_str(), false, 0, ImVec2(nameWidth, 0.0f))) {
                     chosen = typeName;
                     ImGui::CloseCurrentPopup();
                 }
@@ -402,19 +432,42 @@ namespace CoreEngine::ComponentEditing
             UI::Separator();
 
             const std::vector<Category> categories = BuildAddCategories();
+            const AddColumns columns = MeasureAddColumns(categories);
             if (sAddFilter[0] == '\0') {
-                // 検索していないときは分類ごとのタブに分ける
-                if (ImGui::BeginTabBar("##AddComponentTabs", ImGuiTabBarFlags_FittingPolicyScroll)) {
+                // 検索していないときは、左に分類を縦に並べ、選んだ分類の型を右に並べる
+                const auto selected = std::find_if(categories.begin(), categories.end(),
+                    [](const Category& category) { return sAddCategory == category.label; });
+                const Category* current = selected != categories.end() ? &*selected
+                    : (categories.empty() ? nullptr : &categories.front());
+
+                std::size_t rows = categories.size();
+                for (const Category& category : categories) {
+                    rows = (std::max)(rows, category.types.size());
+                }
+                rows = (std::min)(rows, kMaxVisibleRows);
+                const float height = ImGui::GetTextLineHeightWithSpacing() * static_cast<float>(rows)
+                    + ImGui::GetStyle().WindowPadding.y * 2.0f;
+
+                if (ImGui::BeginChild("##AddCategories", ImVec2(kCategoryWidth, height), ImGuiChildFlags_Borders)) {
                     for (const Category& category : categories) {
-                        if (ImGui::BeginTabItem(category.label)) {
-                            for (const std::string& typeName : category.types) {
-                                DrawAddItem(object, typeName, chosen);
-                            }
-                            ImGui::EndTabItem();
+                        if (ImGui::Selectable(category.label, current == &category)) {
+                            sAddCategory = category.label;
+                            current = &category;
                         }
                     }
-                    ImGui::EndTabBar();
                 }
+                ImGui::EndChild();
+                UI::SameLine();
+                const ImGuiStyle& style = ImGui::GetStyle();
+                const float typeListWidth = columns.name + columns.type + style.WindowPadding.x * 2.0f + style.ScrollbarSize;
+                if (ImGui::BeginChild("##AddTypes", ImVec2(typeListWidth, height), ImGuiChildFlags_Borders)) {
+                    if (current) {
+                        for (const std::string& typeName : current->types) {
+                            DrawAddItem(object, typeName, columns.name, chosen);
+                        }
+                    }
+                }
+                ImGui::EndChild();
             } else {
                 // 検索しているときは、当てはまるものを分類の見出しつきで全部並べる
                 int shown = 0;
@@ -428,7 +481,7 @@ namespace CoreEngine::ComponentEditing
                             ImGui::SeparatorText(category.label);
                             headed = true;
                         }
-                        DrawAddItem(object, typeName, chosen);
+                        DrawAddItem(object, typeName, columns.name, chosen);
                         ++shown;
                     }
                 }
