@@ -73,8 +73,9 @@ float3 ComputeUnderwaterAmbientLight(float mainLightVisibility)
     if (gSkyAmbientEnabled != 0)
     {
         // 大気散乱の空を SH9 で評価（上向き法線＝水面へ降り注ぐ天空放射照度/π）。
-        // DeferredLighting と同じスケールでサーフェス光単位へ変換する
-        skyAmbient = EvaluateWaterSkyIrradiance(float3(0.0f, 1.0f, 0.0f)) * gSkyAmbientScale;
+        // 水面に映る空（空キューブマップ）と同じ輝度の単位のまま使い、
+        // 地面の環境光に掛ける gSkyAmbientScale は掛けない
+        skyAmbient = EvaluateWaterSkyIrradiance(float3(0.0f, 1.0f, 0.0f));
     }
     else if (gIBLParams.sceneIBLEnabled != 0)
     {

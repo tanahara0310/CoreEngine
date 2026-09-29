@@ -174,8 +174,8 @@ float ComputeShoreFoamMask(float analyticColumn)
 }
 
 /// @brief 泡レイヤの表面色（Lambert 白 × 太陽直達 + 天空光）
-/// @details 天空光は水中インスキャッタ（ComputeUnderwaterAmbientLight）と同じ
-///          ソース・同じスケールを使い、空との明るさを常に整合させる。
+/// @details 泡は水面の上の白い面なので、天空光は地面の環境光と同じく
+///          Sky Irradiance SH に gSkyAmbientScale を掛けて使う。
 ///          太陽ライトの色には大気の Transmittance 減衰が乗算済みなので、
 ///          日没時は泡も自動的に赤みを帯びて暗くなる。
 /// @param mainLightVisibility メインライト（0 番）の日向率（0=影 / 1=日向）
