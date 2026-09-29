@@ -302,7 +302,7 @@ def unwrap(obj, angle=62.0, margin=0.004, shrink=None, shrink_scale=0.25, proxy_
 
 
 def _buried(zcut=-0.02):
-    """面の中心が地面より下にあり、ほぼ下向き・水平の面（埋まる底）"""
+    """面の中心が地面より下にある面（砂に埋まって見えない底）"""
     return lambda c, n: c[:, 2] < zcut
 
 
@@ -664,10 +664,10 @@ def porites(name, seed, radii, zc, pal, bodies=(), lobes=7, hummocks=24, knobs=4
     return [low]
 
 
-PAL_PORITES_A = dict(lo="#98804a", mid="#b0965a", hi="#c6ae74", crest="#d9cba0", groove="#6c6641",
-                     pit="#5d5132", dead="#8d8a7b", turf="#6e6d4f", bare="#cdc5ae", green="#8f9258")
-PAL_PORITES_B = dict(lo="#9c9163", mid="#b3a874", hi="#c8bf8d", crest="#dcd6b2", groove="#666a44",
-                     pit="#56523a", dead="#8a877a", turf="#68694c", bare="#cfc9b6", green="#8c9a66")
+PAL_PORITES_A = dict(lo="#a18752", mid="#b99f62", hi="#ceb87e", crest="#ddd0a8", groove="#716b44",
+                     pit="#62553a", dead="#918e80", turf="#727151", bare="#d0c8b2", green="#96995f")
+PAL_PORITES_B = dict(lo="#a39869", mid="#bbb07b", hi="#d0c794", crest="#e0dab8", groove="#6a6e47",
+                     pit="#5a563d", dead="#8e8b7e", turf="#6c6d50", bare="#d3cdba", green="#93a16c")
 
 
 def massive_a():
@@ -675,8 +675,8 @@ def massive_a():
     return porites("Coral_Massive_A", 21, (0.92, 0.82, 0.74), 0.34, PAL_PORITES_A,
                    bodies=[((0.42, 0.22, 0.2), (0.6, 0.55, 0.62)), ((-0.35, -0.3, 0.12), (0.55, 0.5, 0.5))],
                    lobes=7, hummocks=26, knobs=34, h=0.012, target_tris=12500, res=2048,
-                   lobe_r=(0.3, 0.46), lobe_out=0.42, lobe_k=0.16, hum_r=(0.14, 0.28), knob_r=(0.06, 0.1),
-                   lump=0.05)
+                   lobe_r=(0.32, 0.48), lobe_out=0.3, lobe_k=0.24, hum_r=(0.14, 0.28), knob_r=(0.06, 0.1),
+                   lump=0.045)
 
 
 def massive_b():
@@ -728,11 +728,11 @@ def brain_material(name, nimg, fimg, res=2048):
         big = nb.noise(co, 2.5, 4, 0.6)
         fine = nb.noise(co, 90.0, 4, 0.6)
         t = nb.add(nb.mul(tint, 0.6), nb.mul(big, 0.4))
-        wall = nb.ramp(t, [(0.25, srgb("#83704a")), (0.5, srgb("#957f54")), (0.8, srgb("#a68f62"))])
-        valley = nb.ramp(t, [(0.25, srgb("#687a4b")), (0.5, srgb("#758756")), (0.8, srgb("#83925d"))])
+        wall = nb.ramp(t, [(0.25, srgb("#8d7a51")), (0.5, srgb("#9f895b")), (0.8, srgb("#b09969"))])
+        valley = nb.ramp(t, [(0.25, srgb("#71844f")), (0.5, srgb("#7f915c")), (0.8, srgb("#8d9c64"))])
         w = nb.smooth(ridge, 0.3, 0.72)
         col = nb.mix(valley, wall, w)
-        col = nb.mix(col, srgb("#bcab7c"), nb.mul(nb.smooth(ridge, 0.82, 0.98), 0.35))
+        col = nb.mix(col, srgb("#c3b385"), nb.mul(nb.smooth(ridge, 0.82, 0.98), 0.35))
         col = nb.mix(col, srgb("#4f5a38"), nb.mul(nb.smooth(ridge, 0.14, 0.02), 0.6))
         col = nb.hsv(col, 0.5, 1.0, nb.maprange(fine, 0.3, 0.7, 0.92, 1.06))
         # 隔壁（壁の側面の細かい縦筋）はノイズで粗さとして
@@ -827,7 +827,7 @@ def microatoll_material(name, nimg, fimg, res=2048):
         kv = nb.voronoi(nb.mapping(co, loc=(1.7, 0.3, 2.2)), 30.0, rand=0.9)
         knob = nb.smooth(kv, 0.85, 0.15)
         live = nb.ramp(nb.add(nb.mul(big, 0.6), nb.mul(mid, 0.4)),
-                       [(0.25, srgb("#826b40")), (0.5, srgb("#9a8250")), (0.78, srgb("#ae9762"))])
+                       [(0.25, srgb("#8b7446")), (0.5, srgb("#a38b56")), (0.78, srgb("#b8a068"))])
         hue = nb.noise(nb.mapping(co, loc=(3.3, 7.1, 1.9)), 0.8, 3, 0.55)
         live = nb.mix(live, srgb("#858a55"), nb.mul(nb.smooth(hue, 0.5, 0.7), 0.45))
         live = nb.mix(live, srgb("#c4b387"), nb.mul(nb.smooth(curv, 0.56, 0.85), 0.5))
@@ -838,7 +838,7 @@ def microatoll_material(name, nimg, fimg, res=2048):
         rimz = nb.smooth(z, 0.62, 0.86)
         live = nb.mix(live, srgb("#bfae80"), nb.mul(rimz, 0.15))
         # 死んだ頂面
-        turf = nb.ramp(mid, [(0.3, srgb("#6a6a4c")), (0.5, srgb("#7b7a5a")), (0.7, srgb("#8e8c77"))])
+        turf = nb.ramp(mid, [(0.3, srgb("#727254")), (0.5, srgb("#858464")), (0.7, srgb("#989680"))])
         blot = nb.smooth(nb.noise(co, 3.0, 4, 0.65, distortion=0.5), 0.55, 0.7)
         turf = nb.mix(turf, srgb("#4d4c3a"), nb.mul(blot, 0.65))
         bare = nb.smooth(nb.noise(nb.mapping(co, loc=(4, 4, 4)), 2.5, 4, 0.6), 0.6, 0.72)
@@ -846,7 +846,7 @@ def microatoll_material(name, nimg, fimg, res=2048):
         cca = nb.smooth(nb.noise(nb.mapping(co, loc=(9, 1, 3)), 6.0, 4, 0.6), 0.58, 0.68)
         turf = nb.mix(turf, srgb("#a88790"), nb.mul(cca, 0.5))
         turf = nb.hsv(turf, 0.5, 1.0, nb.maprange(fine, 0.3, 0.7, 0.88, 1.1))
-        sand = nb.mix(srgb("#9b9476"), srgb("#7d7a5c"), nb.mul(fine, 0.8))
+        sand = nb.mix(srgb("#a8a185"), srgb("#8c8a6c"), nb.mul(fine, 0.8))
         turf = nb.mix(turf, sand, nb.smooth(pool, 0.3, 0.7))
         dm = nb.smooth(dead, 0.4, 0.6)
         edge = nb.mul(nb.smooth(dead, 0.15, 0.4), nb.smooth(dead, 0.75, 0.45))
@@ -1211,7 +1211,6 @@ class Plate:
         rows += [("t", v) for v in st]
         rows += [("r", v) for v in phis]
         rows += [("b", v) for v in sb]
-        self.rows = rows
         V, kind, sval, phiv = [], [], [], []
         re = R - rr                                # 上下の面が終わる半径
         cosA, sinA = np.cos(ang), np.sin(ang)
@@ -1264,7 +1263,7 @@ class Plate:
         z = self.H + self.dish * (r / self.R0) ** 2 + self.tilt[0] * dx + self.tilt[1] * dy
         z = z + 0.016 * nz.fbm(P2 * 1.4 + 1.0, 3)
         if not smooth:
-            f1, f2, _ = worley(P2 * 26.0 + np.array([0, 0, 0.5]), seed=7)
+            f1, _, _ = worley(P2 * 26.0 + np.array([0, 0, 0.5]), seed=7)
             dome = 1 - _sstep(f1, 0.05, 0.75)
             rib = self.rib(x, y)
             z = z + self.dome_amp * (0.75 * dome + 0.35 * rib) * _sstep(s, 1.0, 0.9)
@@ -1488,12 +1487,12 @@ def table(name, seed, tiers, pal, res=2048, plate_tris=9000, tip_spacing=0.03):
     return [low]
 
 
-PAL_TABLE_A = dict(top_lo="#6f6444", top_mid="#84784f", top_hi="#988b5e", top_alt="#76805a", polyp="#c4bea0",
-                   crev="#3b3526", rim="#9a96ab", tip="#c6c2d6", under_lo="#5a5443", under_mid="#6b644e",
-                   under_hi="#857c60")
-PAL_TABLE_B = dict(top_lo="#836f4c", top_mid="#978159", top_hi="#aa9468", top_alt="#8f7d63", polyp="#d2c5a8",
-                   crev="#4a3f2f", rim="#c5aab0", tip="#e0ccd1", under_lo="#625847", under_mid="#736853",
-                   under_hi="#8c7f65")
+PAL_TABLE_A = dict(top_lo="#786d4b", top_mid="#8e8156", top_hi="#a39565", top_alt="#7f8a61", polyp="#cdc7a9",
+                   crev="#3f3928", rim="#a39fb5", tip="#cfcbdf", under_lo="#5f5947", under_mid="#716a53",
+                   under_hi="#8c8366")
+PAL_TABLE_B = dict(top_lo="#8b774f", top_mid="#a08a5e", top_hi="#b39d6d", top_alt="#978568", polyp="#d8cbad",
+                   crev="#453a2c", rim="#c3adb0", tip="#e0cfd1", under_lo="#665c4a", under_mid="#776c56",
+                   under_hi="#918468")
 
 
 def table_a():
@@ -1689,9 +1688,9 @@ def branch_a(name="Coral_Branch_A", seed=77, res=2048):
     """スギノキミドリイシ型の枝の茂み（幅約 1.4m・高さ約 0.8m）。太さ 2〜3cm の枝が上外向きに反り、
     二又・側枝を繰り返して鹿の角のように込み合う。根元の古い枝は死んでいる。先は淡い青紫"""
     rnd = random.Random(seed)
-    th = Thicket(rnd, env=(0.72, 0.68, 0.82), step=0.06, gap=0.016)
+    th = Thicket(rnd, env=(0.72, 0.68, 0.82), step=0.063, gap=0.016)
     spec = dict(seg=(0.1, 0.18), max_len=(0.42, 0.38, 0.32, 0.27, 0.22, 0.18), gens=5, photo=1.6, spread=0.3,
-                wander=0.7, taper=0.012, r_tip=0.0095, child_r=0.92, fork=(24, 44), bend_back=0.4, dome=2)
+                wander=0.7, taper=0.012, r_tip=0.0105, child_r=0.92, fork=(24, 44), bend_back=0.4, dome=2)
     n0 = 14
     for k in range(n0):
         az = (k + rnd.uniform(-0.4, 0.4)) / n0 * math.tau
@@ -1699,7 +1698,7 @@ def branch_a(name="Coral_Branch_A", seed=77, res=2048):
         rb = rnd.uniform(0.02, 0.26)
         base = Vector((math.cos(az) * rb, math.sin(az) * rb * 0.9, -0.07))
         d = Vector((math.cos(az) * math.cos(el), math.sin(az) * math.cos(el), math.sin(el)))
-        th.queue.append(((base + d * 0.015, d, rnd.uniform(0.0155, 0.018), 0), spec))
+        th.queue.append(((base + d * 0.015, d, rnd.uniform(0.017, 0.0195), 0), spec))
     th.run()
     print(f"  [branch] {name}: {len(th.limbs)} limbs")
     return _branch_tubes(name, th.limbs, lambda r: 6, branch_material(name, PAL_BRANCH_A, res))
@@ -1711,7 +1710,7 @@ def branch_b(name="Coral_Branch_B", seed=91, res=2048):
     rnd = random.Random(seed)
     th = Thicket(rnd, env=(0.41, 0.39, 0.36), step=0.032, gap=0.009)
     spec = dict(seg=(0.045, 0.085), max_len=(0.16, 0.15, 0.13, 0.11, 0.09, 0.08), gens=5, photo=3.0, spread=0.15,
-                wander=0.6, taper=0.012, r_tip=0.0062, child_r=0.93, fork=(20, 36), bend_back=0.45, dome=2)
+                wander=0.6, taper=0.012, r_tip=0.0068, child_r=0.93, fork=(20, 36), bend_back=0.45, dome=2)
     n0 = 18
     for k in range(n0):
         az = (k + rnd.uniform(-0.4, 0.4)) / n0 * math.tau
@@ -1719,16 +1718,16 @@ def branch_b(name="Coral_Branch_B", seed=91, res=2048):
         rb = rnd.uniform(0.01, 0.05) if k % 3 == 0 else rnd.uniform(0.03, 0.09)
         base = Vector((math.cos(az) * rb, math.sin(az) * rb, -0.05))
         d = Vector((math.cos(az) * math.cos(el), math.sin(az) * math.cos(el), math.sin(el)))
-        th.queue.append(((base + d * 0.01, d, rnd.uniform(0.0085, 0.0095), 0), spec))
+        th.queue.append(((base + d * 0.01, d, rnd.uniform(0.0093, 0.0105), 0), spec))
     th.run()
     print(f"  [branch] {name}: {len(th.limbs)} limbs")
     return _branch_tubes(name, th.limbs, lambda r: 6 if r > 0.0075 else 5, branch_material(name, PAL_BRANCH_B, res))
 
 
-PAL_BRANCH_A = dict(lo="#9e8659", mid="#b39b6d", hi="#c6b186", cup="#d5c7a2", hole="#6a5a3d", tip="#b9bbdc",
-                    tip2="#e4e3f3", tip_len=0.05, dead_z=0.16)
-PAL_BRANCH_B = dict(lo="#7f7a4b", mid="#918a59", hi="#a39c69", cup="#bdb58f", hole="#554f33", tip="#c79fbc",
-                    tip2="#eed9e6", tip_len=0.03, dead_z=0.1)
+PAL_BRANCH_A = dict(lo="#8a6f45", mid="#a0845a", hi="#b59b6e", cup="#c9b58c", hole="#5a4a30", tip="#a9b6e6",
+                    tip2="#dde6f7", tip_len=0.05, dead_z=0.16)
+PAL_BRANCH_B = dict(lo="#6f6f3f", mid="#83844f", hi="#979960", cup="#aeae82", hole="#4a4a2c", tip="#c28cb4",
+                    tip2="#ebd3e3", tip_len=0.03, dead_z=0.1)
 
 
 # ---------------------------------------------------------------------------

@@ -11,7 +11,7 @@
   - X 方向は周期 40 m（PNoise と整数波数の縁溝）
   - Lagoon の +Y 縁は shore() と値・勾配とも一致（Y -20..-26 で shore() から切り替え）
   - Edge は X 256 分割。128 分割の隣と接する縁の奇数頂点は隣の辺の中点に置き、T 字の隙間を作らない
-  - 法線は解析的な勾配（カスタム法線）、AO は高さ関数から水平線法で求めて頂点属性で渡す
+  - 法線は解析的な勾配（float のカスタム法線）、AO は高さ関数から水平線法で求めて頂点属性で渡す
     （ベイクの AO はタイル単体しか見えず、縁で隣の斜面の陰りが切れるため）
   - テクスチャは世界座標のプロシージャル模様。浜寄りは Shore の水中の砂と同じノード
 """
@@ -272,7 +272,13 @@ def tile_mesh(name, y_off, nx, ny, arc=True):
     uv = np.stack([u, v], -1)[loops_v]
     layer.data.foreach_set("uv", uv.astype(np.float32).ravel())
     me.polygons.foreach_set("use_smooth", np.ones(len(me.polygons), bool))
-    me.normals_split_custom_set_from_vertices([tuple(q) for q in N.reshape(-1, 3)])
+    if bpy.app.version >= (4, 5, 0):
+        # float の自由法線（custom_normal 属性）。従来の 16bit 符号化は方位角を丸めるため
+        # 継ぎ目の両側で最大 0.08° ほど食い違う。float なら隣のタイルと完全に一致する
+        at = me.attributes.new("custom_normal", "FLOAT_VECTOR", "POINT")
+        at.data.foreach_set("vector", N.reshape(-1).astype(np.float32))
+    else:
+        me.normals_split_custom_set_from_vertices([tuple(q) for q in N.reshape(-1, 3)])
     for aname, A in (("Terr", A1), ("Terr2", A2)):
         at = me.color_attributes.new(aname, "FLOAT_COLOR", "POINT")
         rgba = np.concatenate([A.reshape(-1, 3), np.ones((len(verts), 1))], -1).astype(np.float32)

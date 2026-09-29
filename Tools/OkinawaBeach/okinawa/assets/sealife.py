@@ -16,6 +16,7 @@
 原点: 底生生物は接地点（z=0, 少し砂に埋める）。ウミガメは体の中心で頭が +X（中層に置く）。
 """
 import math
+import os
 import random
 
 import bmesh
@@ -812,7 +813,7 @@ def sea_urchin():
             r0 = 0.0015
         p0 = base - radial * 0.002
         if d[2] < 0:
-            L = min(L, (p0[2] - 0.0015) / -d[2])
+            L = min(L, (p0[2] + 0.001) / -d[2])          # 下向きの棘の先は砂に少し刺さる
         ts = [0.0, 0.05, 0.3, 0.65, 1.0]
         pts = [Vector(p0 + d * L * t) for t in ts]
         radii = [r0, r0 * 1.15, r0 * 0.78, r0 * 0.45, 0.00022]
@@ -1046,7 +1047,7 @@ def anemone_tentacles(rnd):
     acc = MeshAcc()
     sides = 5
     flow = Vector((0.35, 0.12, 0.0))                  # ゆるい流れで同じ向きにそよぐ
-    base_pts = _poisson_disc(rnd, 0.03, 0.205, 0.0151, 400, tries=40000)
+    base_pts = _poisson_disc(rnd, 0.024, 0.205, 0.0151, 410, tries=40000)
     for (x, y) in base_pts:
         r = math.hypot(x, y)
         ph = math.atan2(y, x)
@@ -1146,7 +1147,7 @@ def anemone_body_material():
         cold = nb.mix(srgb("#6e7342"), srgb("#8b8a55"), nb.noise(co, 40.0, 3, 0.5))
         cold = nb.hsv(cold, 0.5, 1.0, nb.maprange(rad, -1.0, 1.0, 0.85, 1.08))
         # 口: 淡い口丘と暗い口の裂け目
-        mouth = nb.smooth(rho, 0.03, 0.012)
+        mouth = nb.smooth(rho, 0.021, 0.009)
         cold = nb.mix(cold, srgb("#c9b995"), mouth)
         slit = nb.mul(nb.smooth(nb.math("ABSOLUTE", nb.sub(nb.mul(x, 0.8), nb.mul(y, 0.6))), 0.0022, 0.0008),
                       nb.smooth(rho, 0.012, 0.009))
@@ -1426,6 +1427,7 @@ TU_H = 0.2          # 背甲の高さ（縁から）
 TU_ZP = -0.142       # 腹甲の底
 TU_EXT = 0.56        # 甲羅の模様画像の範囲（±m）
 TU_POSE = (math.radians(-5.0), math.radians(3.0))   # 頭上げ（Y 軸）と横の傾き（X 軸）
+TU_ZC = 0.035        # 甲羅の上下の中央（ここを原点に下げる）
 
 
 def _tu_R(ph):
@@ -1501,12 +1503,8 @@ def _value_noise(shape, cells, rng, octaves=3):
     return np.clip(out / tot, 0, 1)
 
 
-def _tu_scute_images(res):
-    """甲羅を真上・真下から見た模様画像（RGB = リニアの色, A = 高さ）を作る。
-    上: 鱗板ごとに成長の中心（小甲）から放射状に伸びる黄褐色の縞、淡い継ぎ目。下: 淡黄色の腹甲"""
-    rng = np.random.default_rng(7)
-    xs = (np.arange(res) + 0.5) / res * 2 * TU_EXT - TU_EXT
-    X, Y = np.meshgrid(xs, xs)                    # 行 = y（下から）、列 = x
+def _tu_scute_geom(X, Y):
+    """画素ごとの鱗板の幾何: 継ぎ目までの距離、縁甲板か、鱗板番号、成長の中心からの位置"""
     ph = np.arctan2(Y, X - TU_X0)
     R = _tu_R(ph)
     rho = np.hypot(X - TU_X0, Y) / R
@@ -1526,61 +1524,72 @@ def _tu_scute_images(res):
     marg = rho > TU_RHO_M
     rim_d = np.abs(rho - TU_RHO_M) * R
     dph = np.min(np.abs(np.angle(np.exp(1j * (ph[..., None] - ang[None, None])))), axis=-1)
-    edge_m = dph * R
-    mid = np.searchsorted(ang, ph)                  # 縁甲板の番号
-    edge = np.where(marg, np.minimum(edge_m, rim_d), np.minimum(edge_v, rim_d))
-    # 放射状の縞: 鱗板ごとに乱数の周波数・位相の和
-    sid = np.where(marg, 100 + mid, i1)
-    ax = np.where(marg[..., None], P * 0 + np.stack([TU_X0 + np.cos(ph) * R * 1.02, np.sin(ph) * R * 1.02], -1),
-                  areo[i1])
+    edge_m = np.minimum(dph * R, rim_d)
+    edge = np.where(marg, edge_m, np.minimum(edge_v, rim_d))
+    sid = np.where(marg, 100 + np.searchsorted(ang, ph), i1)
+    # 縁甲板の縞の中心は外縁、それ以外は小甲
+    ax = np.where(marg[..., None], np.stack([TU_X0 + np.cos(ph) * R * 1.02, np.sin(ph) * R * 1.02], -1), areo[i1])
     rel = P - ax
-    rr = np.linalg.norm(rel, axis=-1)
-    noise = _value_noise(X.shape, 18, rng, 4)
-    fine = _value_noise(X.shape, 90, rng, 2)
-    warp = _value_noise(X.shape, 9, rng, 2)
-    # 縞は中心から離れるほど少し蛇行する
-    th = np.arctan2(rel[..., 1], rel[..., 0]) + (warp - 0.5) * 0.6 * np.clip(rr / 0.1, 0, 1)
-    streak = np.zeros(X.shape)
-    for k, mul in enumerate((1.0, 1.9, 3.3)):
-        fr = np.round(rng.uniform(5, 10, 200) * mul)[sid % 200]
-        pv = rng.uniform(0, 6.28, 200)[sid % 200]
-        wv = 1.2 * np.sin(rr * (20 + 12 * k) + pv * 2)
-        streak += np.sin(th * fr + pv + wv) / (1 + k * 0.7)
-    streak = streak / 2.0 * 0.5 + 0.5
-    streak = streak * (0.55 + 0.9 * _value_noise(X.shape, 26, rng, 3))           # 縞は途切れ途切れ
-    sc_var = rng.uniform(0.85, 1.12, 200)[sid % 200]
+    return edge, edge_m, marg, sid, np.linalg.norm(rel, axis=-1), np.arctan2(rel[..., 1], rel[..., 0])
+
+
+def _tu_scute_images(res, chunk=128):
+    """甲羅を真上・真下から見た模様画像（RGB = リニアの色, A = 高さ）を作る。
+    上: 鱗板ごとに成長の中心（小甲）から放射状に伸びる黄褐色の縞、淡い継ぎ目。下: 淡黄色の腹甲。
+    メモリを抑えるため行のまとまりごとに計算する（ノイズだけは画像全体で作る）"""
+    rng = np.random.default_rng(7)
+    xs = (np.arange(res) + 0.5) / res * 2 * TU_EXT - TU_EXT
+    noise = _value_noise((res, res), 18, rng, 4).astype(np.float32)
+    fine = _value_noise((res, res), 90, rng, 2).astype(np.float32)
+    warp = _value_noise((res, res), 9, rng, 2).astype(np.float32)
+    brk = _value_noise((res, res), 26, rng, 3).astype(np.float32)
+    # 鱗板ごとの縞の周波数・位相と明るさ
+    tabs = [(np.round(rng.uniform(5, 10, 200) * mul), rng.uniform(0, 6.28, 200)) for mul in (1.0, 1.9, 3.3)]
+    sc_tab = rng.uniform(0.85, 1.12, 200)
     lin = lambda h: np.array(srgb(h))              # noqa: E731
     dark, mid_c, light = lin("#3a3520"), lin("#6a5a30"), lin("#ab8a47")
-    # 小甲（成長の中心）のまわりは縞が消えてまだらになる
-    t = np.clip((streak - 0.35) / 0.5, 0, 1) * (0.12 + 0.88 * _smooth01(rr, 0.012, 0.085))
-    t = np.clip(t + (noise - 0.5) * 0.6 + (fine - 0.5) * 0.25 * (1 - _smooth01(rr, 0.02, 0.07)), 0, 1)
-    col = dark * (1 - t[..., None]) + light * t[..., None]
-    col = col * 0.7 + mid_c * 0.3 * (1 - t[..., None]) + col * 0.3 * t[..., None] * 0.0
-    col = col * (sc_var * (0.85 + 0.3 * fine))[..., None]
-    # 継ぎ目: 内側に暗い縁、中心に淡い線
-    seam = np.clip(1 - edge / 0.0017, 0, 1)
-    halo = np.clip(1 - edge / 0.012, 0, 1) * (1 - seam)
-    col = col * (1 - 0.35 * halo[..., None])
-    col = col * (1 - seam[..., None] * 0.85) + lin("#b3a47a") * seam[..., None] * 0.85
-    grow = 0.5 + 0.5 * np.sin(rr / 0.01 * math.tau + noise * 4)
-    height = 0.55 + 0.2 * noise + 0.04 * grow - 0.5 * np.clip(1 - edge / 0.004, 0, 1)
-    top = np.concatenate([col, height[..., None]], -1)
-    # --- 腹甲（下から見た図）: 淡黄色、中線と横の継ぎ目、橋の下縁甲板 ---
-    ay = np.abs(Y)
-    pl_col = lin("#e2cf93") * (0.9 + 0.2 * noise[..., None]) * (0.95 + 0.1 * fine[..., None])
-    lines = [0.3, 0.17, -0.02, -0.2, -0.32]
-    dl = np.min(np.abs(X[..., None] - np.array(lines)[None, None]), axis=-1)
-    e2 = np.minimum(dl, ay)
-    infra = (ay > 0.25) & (ay < 0.34) & (np.abs(X) < 0.22)
-    e2 = np.where(infra, np.minimum(np.abs(ay - 0.25), np.min(np.abs(X[..., None] - np.array(
-        [-0.11, 0.0, 0.11])[None, None]), axis=-1)), e2)
-    e2 = np.where(marg, np.minimum(edge_m, rim_d), e2)
-    seam2 = np.clip(1 - e2 / 0.0025, 0, 1)
-    pl_col = pl_col * (1 - 0.3 * seam2[..., None]) + lin("#a89266") * 0.3 * seam2[..., None]
-    pl_col = np.where(marg[..., None], lin("#d4bc84") * (0.9 + 0.2 * noise[..., None]), pl_col)
-    pl_col = pl_col * (1 - 0.25 * seam2[..., None])
-    bot = np.concatenate([pl_col, (0.6 + 0.2 * noise - 0.4 * seam2)[..., None]], -1)
-    return top.astype(np.float32), bot.astype(np.float32)
+    top = np.zeros((res, res, 4), np.float32)
+    bot = np.zeros((res, res, 4), np.float32)
+    for r0 in range(0, res, chunk):
+        r1 = min(res, r0 + chunk)
+        X, Y = np.meshgrid(xs, xs[r0:r1])          # 行 = y（下から）、列 = x
+        nz, fn, wp, bk = noise[r0:r1], fine[r0:r1], warp[r0:r1], brk[r0:r1]
+        edge, edge_m, marg, sid, rr, th = _tu_scute_geom(X, Y)
+        # 縞は中心から離れるほど少し蛇行し、ところどころ途切れる
+        th = th + (wp - 0.5) * 0.6 * np.clip(rr / 0.1, 0, 1)
+        streak = np.zeros(X.shape)
+        for k, (fr, pv) in enumerate(tabs):
+            f, v = fr[sid % 200], pv[sid % 200]
+            streak += np.sin(th * f + v + 1.2 * np.sin(rr * (20 + 12 * k) + v * 2)) / (1 + k * 0.7)
+        streak = (streak / 2.0 * 0.5 + 0.5) * (0.55 + 0.9 * bk)
+        # 小甲（成長の中心）のまわりは縞が消えてまだらになる
+        t = np.clip((streak - 0.35) / 0.5, 0, 1) * (0.12 + 0.88 * _smooth01(rr, 0.012, 0.085))
+        t = np.clip(t + (nz - 0.5) * 0.6 + (fn - 0.5) * 0.25 * (1 - _smooth01(rr, 0.02, 0.07)), 0, 1)[..., None]
+        col = (dark * (1 - t) + light * t) * 0.7 + mid_c * 0.3 * (1 - t)
+        col = col * (sc_tab[sid % 200] * (0.85 + 0.3 * fn))[..., None]
+        # 継ぎ目: 内側に暗い縁、中心に淡い線
+        seam = np.clip(1 - edge / 0.0017, 0, 1)[..., None]
+        halo = np.clip(1 - edge / 0.012, 0, 1)[..., None] * (1 - seam)
+        col = col * (1 - 0.35 * halo)
+        col = col * (1 - seam * 0.85) + lin("#b3a47a") * seam * 0.85
+        grow = 0.5 + 0.5 * np.sin(rr / 0.01 * math.tau + nz * 4)
+        top[r0:r1, :, :3] = col
+        top[r0:r1, :, 3] = 0.55 + 0.2 * nz + 0.04 * grow - 0.5 * np.clip(1 - edge / 0.004, 0, 1)
+        # --- 腹甲（下から見た図）: 淡黄色、中線と横の継ぎ目、橋の下縁甲板 ---
+        ay = np.abs(Y)
+        dl = np.min(np.abs(X[..., None] - np.array([0.3, 0.17, -0.02, -0.2, -0.32])), axis=-1)
+        e2 = np.minimum(dl, ay)
+        infra = (ay > 0.25) & (ay < 0.34) & (np.abs(X) < 0.22)
+        e2 = np.where(infra, np.minimum(np.abs(ay - 0.25),
+                                        np.min(np.abs(X[..., None] - np.array([-0.11, 0.0, 0.11])), axis=-1)), e2)
+        e2 = np.where(marg, edge_m, e2)
+        seam2 = np.clip(1 - e2 / 0.0025, 0, 1)[..., None]
+        pl = lin("#e2cf93") * (0.9 + 0.2 * nz[..., None]) * (0.95 + 0.1 * fn[..., None])
+        pl = pl * (1 - 0.3 * seam2) + lin("#a89266") * 0.3 * seam2
+        pl = np.where(marg[..., None], lin("#d4bc84") * (0.9 + 0.2 * nz[..., None]), pl)
+        bot[r0:r1, :, :3] = pl * (1 - 0.25 * seam2)
+        bot[r0:r1, :, 3] = 0.6 + 0.2 * nz - 0.4 * seam2[..., 0]
+    return top, bot
 
 
 def _np_image(name, arr):
@@ -1593,7 +1602,8 @@ def _np_image(name, arr):
 
 
 def turtle_shell_material():
-    res = max(256, int(1024 * float(__import__("os").environ.get("OKI_RES_SCALE", "1")) * 2))
+    # 模様画像はベイク解像度に合わせる（試し焼きでは小さく）
+    res = max(256, int(2048 * float(os.environ.get("OKI_RES_SCALE", "1"))))
     top, bot = _tu_scute_images(min(res, 2048))
     itop, ibot = _np_image("TurtleScuteTop", top), _np_image("TurtleScuteBottom", bot)
 
@@ -1989,7 +1999,8 @@ def sea_turtle():
     C.assign(skin, smat)
     parts = [shell, skin]
     pitch, roll = TU_POSE
-    M = Matrix.Rotation(pitch, 4, "Y") @ Matrix.Rotation(roll, 4, "X")
+    M = (Matrix.Rotation(pitch, 4, "Y") @ Matrix.Rotation(roll, 4, "X") @
+         Matrix.Translation((0.0, 0.0, -TU_ZC)))
     for o in parts:
         o.matrix_world = M @ o.matrix_world
     return parts
@@ -2004,7 +2015,7 @@ LAYOUT = {
     "SeaUrchin": ((0.78, 0.6, 0.0), 0),
     "BlueStarfish": ((0.55, -0.28, 0.0), 12),
     "SeaCucumber": ((-0.36, -0.34, 0.0), -24),
-    "SeaTurtle": ((0.12, 1.25, 0.72), -24),
+    "SeaTurtle": ((0.1, 1.15, 0.72), -24),
 }
 
 
@@ -2021,9 +2032,9 @@ def _preview_extra(objs):
         o.location = (x, y, z)
         o.rotation_euler.z += math.radians(rz)
     cam = scene.camera
-    cam.location = (0.22, -2.05, 1.2)
-    C.look_at(cam, (0.05, 0.42, 0.33))
-    cam.data.lens = 30
+    cam.location = (0.25, -1.95, 1.1)
+    C.look_at(cam, (0.06, 0.4, 0.27))
+    cam.data.lens = 29
 
 
 PREVIEW = dict(cam_dir=(0.1, -1.0, 0.55), lens=32, extra=_preview_extra)
