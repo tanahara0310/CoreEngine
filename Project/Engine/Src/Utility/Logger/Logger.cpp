@@ -300,7 +300,7 @@ namespace CoreEngine
         }
 
         std::string fileName = (hasSub ? std::string(subCategory.value) : categoryName) + "_" + buildTimestamp_ + ".log";
-        std::string logFilePath = logDir + "/" + fileName;
+        const std::filesystem::path logFilePath = logDirPath / Utf8ToPath(fileName);
 
         auto logger = CreateLogger(loggerName, logFilePath, GetDefaultCategoryLevel(category));
         loggers_[key] = logger;
@@ -336,16 +336,16 @@ namespace CoreEngine
 
     std::shared_ptr<spdlog::logger> Logger::CreateLogger(
         const std::string& loggerName,
-        const std::string& logFilePath,
+        const std::filesystem::path& logFilePath,
         spdlog::level::level_enum defaultLevel)
     {
         // シンクの作成（ローテーションファイル + Visual Studio出力 + コンソールUI転送）
         std::vector<spdlog::sink_ptr> sinks;
         sinks.reserve(3);
 
-        // ファイルサイズが上限を超えたらローテーションする。
+        // ファイルサイズが上限を超えたらローテーションする。ファイル名はワイド文字で渡す
         auto rotatingFileSink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
-            logFilePath,
+            logFilePath.wstring(),
             kMaxLogFileSizeBytes,
             kMaxLogFiles);
         sinks.push_back(rotatingFileSink);
