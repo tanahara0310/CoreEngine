@@ -548,9 +548,11 @@ def bake_part(obj, mat, out_dir, prefix):
     bpy.data.images.remove(nimg)
 
     # AO（自己遮蔽。葉の透過は無視されるので強さを調整できるようにする）
-    if info["uv"] == "atlas":
+    if info["uv"] == "atlas" or info["ao_strength"] == 0.0:
+        # atlas は平面に焼くので AO は無意味。ao_strength=0 の材質（地形など自前で陰影を持つもの）も焼かない
         ao = np.ones((res, res), np.float32)
-        bpy.data.objects.remove(obj)
+        if info["uv"] == "atlas":
+            bpy.data.objects.remove(obj)
     else:
         # AO はなだらかな陰影なので、2048 以上は半分の解像度で焼いて拡大する（ベイク時間の大半を占めるため）。
         # 細かい溝の陰影は cavity（フル解像度）が受け持つ。OKI_AO_FULL=1 で常にフル解像度
