@@ -77,10 +77,13 @@ def build(module_name):
     C.seed(zlib.crc32(module_name.encode()) & 0xFFFF)
     variants = mod.build()
     exported = []
+    finals = []
     for vname, objs in variants.items():
-        _, path, tris = C.bake_and_export(vname, objs)
+        obj, path, tris = C.bake_and_export(vname, objs)
         exported.append((vname, path))
+        finals.append(obj)
         print(f"  {vname}: {tris} tris ({time.time() - t0:.0f}s)")
+    C.slim_scene(finals)
     C.save_blend(module_name)
     os.makedirs(C.PREVIEW_DIR, exist_ok=True)
     C.contact_sheet(os.path.join(C.MODELS_DIR, exported[0][0]),

@@ -915,6 +915,36 @@ def contact_sheet(asset_dir, out_path, thumb=256):
     return out_path
 
 
+def slim_scene(keep_objs):
+    """.blend を保存する前に、書き出した最終メッシュとその画像だけを残す
+
+    ベイク前のプロシージャル材質・高解像度の中間メッシュ・埋め込み画像（模様を描いた作業用画像など）で
+    .blend が 100 MB を超えることがあるため
+    """
+    keep = set(keep_objs)
+    for o in list(bpy.data.objects):
+        if o not in keep:
+            bpy.data.objects.remove(o, do_unlink=True)
+    used_mats = {m for o in keep if o.type == "MESH" for m in o.data.materials if m}
+    for m in list(bpy.data.materials):
+        if m not in used_mats:
+            bpy.data.materials.remove(m)
+    used_imgs = {n.image for m in used_mats if m.node_tree for n in m.node_tree.nodes
+                 if n.type == "TEX_IMAGE" and n.image}
+    for im in list(bpy.data.images):
+        if im not in used_imgs:
+            bpy.data.images.remove(im)
+    bpy.data.orphans_purge(do_local_ids=True, do_linked_ids=True, do_recursive=True)
+
+
+def slim_blend_file(path):
+    """保存済みの .blend を開き、Models/Okinawa に書き出したバリエーション名のオブジェクトだけ残して保存し直す"""
+    bpy.ops.wm.open_mainfile(filepath=path)
+    names = set(os.listdir(MODELS_DIR)) if os.path.isdir(MODELS_DIR) else set()
+    slim_scene([o for o in bpy.data.objects if o.name in names])
+    bpy.ops.wm.save_as_mainfile(filepath=path, relative_remap=True, compress=True)
+
+
 def save_blend(name):
     os.makedirs(BLEND_DIR, exist_ok=True)
     path = os.path.join(BLEND_DIR, f"{name}.blend")
