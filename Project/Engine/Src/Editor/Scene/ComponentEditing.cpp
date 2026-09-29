@@ -144,6 +144,94 @@ namespace CoreEngine::ComponentEditing
             return std::search(text.begin(), text.end(), pattern.begin(), pattern.end(),
                 [&toLower](char a, char b) { return toLower(a) == toLower(b); }) != text.end();
         }
+
+        /// @brief 追加の一覧の分類 1 つ
+        struct Category
+        {
+            const char* label;              ///< タブと見出しに出す名前
+            std::vector<std::string> types; ///< 並べる型名（この順に出す）
+        };
+
+        /// @brief エンジンのコンポーネントの分類（型名の並びがそのまま一覧の並び）
+        const std::vector<Category>& EngineCategories()
+        {
+            static const std::vector<Category> categories = {
+                { "基本", { "Transform", "EulerTransform", "Camera" } },
+                { "描画", { "MeshRenderer", "Material", "SpriteRenderer", "Text3DRenderer", "Animator", "SkeletonSocket" } },
+                { "環境", { "Light", "SkyBox", "VolumetricCloud", "HeightFog", "PostProcess", "WaterSurface" } },
+                { "エフェクト", { "ParticleSystem", "GpuParticleSystem" } },
+                { "物理", { "Collider", "Rigidbody", "CharacterController", "PhysicsMaterial" } },
+                { "UI", { "RectTransform", "UIImage", "UIText", "UIButton", "UISlider", "UIToggle" } },
+                { "音", { "AudioSource", "AudioListener" } },
+            };
+            return categories;
+        }
+
+        /// @brief 登録済みの型を分類に振り分ける
+        /// @details エンジンの分類に無いエンジンの型は「その他」、スクリプトのクラスは「スクリプト」へ入れる。
+        ///          型が 1 つも無い分類は含めない。
+        std::vector<Category> BuildAddCategories()
+        {
+            const ComponentFactory& factory = ComponentFactory::Get();
+            std::vector<Category> result;
+            std::vector<std::string> placed;
+            for (const Category& category : EngineCategories()) {
+                Category filled{ category.label, {} };
+                for (const std::string& type : category.types) {
+                    if (factory.IsRegistered(type) && !factory.IsRuntimeType(type)) {
+                        filled.types.push_back(type);
+                        placed.push_back(type);
+                    }
+                }
+                if (!filled.types.empty()) {
+                    result.push_back(std::move(filled));
+                }
+            }
+
+            Category others{ "その他", {} };
+            Category scripts{ "スクリプト", {} };
+            for (const std::string& type : factory.GetRegisteredTypeNames()) {
+                if (factory.IsRuntimeType(type)) {
+                    scripts.types.push_back(type);
+                } else if (std::find(placed.begin(), placed.end(), type) == placed.end()) {
+                    others.types.push_back(type);
+                }
+            }
+            for (Category* rest : { &others, &scripts }) {
+                if (!rest->types.empty()) {
+                    result.push_back(std::move(*rest));
+                }
+            }
+            return result;
+        }
+
+        /// @brief 一覧の 1 行を描き、選ばれたら型名を chosen に入れる
+        void DrawAddItem(const GameObject& object, const std::string& typeName, std::string& chosen)
+        {
+            const std::string displayName = Editor::ComponentInspectors::DisplayNameOf(typeName);
+            std::string reason;
+            const bool addable = CanAdd(object, typeName, &reason);
+            const std::string label = displayName + "##" + typeName;
+            {
+                UI::Scope::DisabledScope disabled(!addable);
+                if (ImGui::Selectable(label.c_str(), false, 0, ImVec2(kDisplayNameWidth, 0.0f))) {
+                    chosen = typeName;
+                    ImGui::CloseCurrentPopup();
+                }
+            }
+            if (!addable && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                ImGui::SetTooltip("%s", reason.c_str());
+            }
+            UI::SameLine();
+            UI::Hint(typeName.c_str());
+        }
+
+        /// @brief 型の表示名か型名が検索の文字を含むか
+        bool MatchesFilter(const std::string& typeName)
+        {
+            return ContainsIgnoreCase(Editor::ComponentInspectors::DisplayNameOf(typeName), sAddFilter)
+                || ContainsIgnoreCase(typeName, sAddFilter);
+        }
     }
 
     bool CanAdd(const GameObject& object, const std::string& typeName, std::string* reason)
@@ -313,32 +401,40 @@ namespace CoreEngine::ComponentEditing
             ImGui::InputTextWithHint("##filter", "型を検索", sAddFilter, sizeof(sAddFilter));
             UI::Separator();
 
-            int shown = 0;
-            for (const std::string& typeName : ComponentFactory::Get().GetRegisteredTypeNames()) {
-                const std::string displayName = Editor::ComponentInspectors::DisplayNameOf(typeName);
-                if (!ContainsIgnoreCase(displayName, sAddFilter) && !ContainsIgnoreCase(typeName, sAddFilter)) {
-                    continue;
+            const std::vector<Category> categories = BuildAddCategories();
+            if (sAddFilter[0] == '\0') {
+                // 検索していないときは分類ごとのタブに分ける
+                if (ImGui::BeginTabBar("##AddComponentTabs", ImGuiTabBarFlags_FittingPolicyScroll)) {
+                    for (const Category& category : categories) {
+                        if (ImGui::BeginTabItem(category.label)) {
+                            for (const std::string& typeName : category.types) {
+                                DrawAddItem(object, typeName, chosen);
+                            }
+                            ImGui::EndTabItem();
+                        }
+                    }
+                    ImGui::EndTabBar();
                 }
-                ++shown;
-
-                std::string reason;
-                const bool addable = CanAdd(object, typeName, &reason);
-                const std::string label = displayName + "##" + typeName;
-                {
-                    UI::Scope::DisabledScope disabled(!addable);
-                    if (ImGui::Selectable(label.c_str(), false, 0, ImVec2(kDisplayNameWidth, 0.0f))) {
-                        chosen = typeName;
-                        ImGui::CloseCurrentPopup();
+            } else {
+                // 検索しているときは、当てはまるものを分類の見出しつきで全部並べる
+                int shown = 0;
+                for (const Category& category : categories) {
+                    bool headed = false;
+                    for (const std::string& typeName : category.types) {
+                        if (!MatchesFilter(typeName)) {
+                            continue;
+                        }
+                        if (!headed) {
+                            ImGui::SeparatorText(category.label);
+                            headed = true;
+                        }
+                        DrawAddItem(object, typeName, chosen);
+                        ++shown;
                     }
                 }
-                if (!addable && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-                    ImGui::SetTooltip("%s", reason.c_str());
+                if (shown == 0) {
+                    UI::Hint("該当する型がありません");
                 }
-                UI::SameLine();
-                UI::Hint(typeName.c_str());
-            }
-            if (shown == 0) {
-                UI::Hint("該当する型がありません");
             }
         }
         return chosen;
