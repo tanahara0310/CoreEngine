@@ -186,6 +186,19 @@ namespace CoreEngine
         return MakeHandle(index);
     }
 
+    uint32_t DescriptorHeapAllocator::IndexOf(D3D12_GPU_DESCRIPTOR_HANDLE handle) const
+    {
+        if (!shaderVisible_ || descriptorSize_ == 0 || handle.ptr < gpuStart_.ptr) {
+            return UINT32_MAX;
+        }
+        const UINT64 offset = handle.ptr - gpuStart_.ptr;
+        const UINT64 index = offset / descriptorSize_;
+        if (offset % descriptorSize_ != 0 || index >= capacity_) {
+            return UINT32_MAX;
+        }
+        return static_cast<uint32_t>(index);
+    }
+
     uint32_t DescriptorHeapAllocator::LiveCount() const
     {
         std::lock_guard<std::mutex> lock(mutex_);

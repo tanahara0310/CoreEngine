@@ -148,5 +148,8 @@ namespace CoreEngine
             const char* debugLabel,
             bool requireSceneColor,
             WaterDispatchContext& outDispatchContext);
+
+        /// @brief 反射レイが当たった点を照らすための入力を集める（表が無いフレームは enabled = false）
+        static WaterHitShadingInput BuildWaterHitShadingInput(const RenderContext& context, GraphicsCore* dx);
     };
 }

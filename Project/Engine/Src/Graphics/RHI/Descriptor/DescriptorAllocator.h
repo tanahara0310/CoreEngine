@@ -88,6 +88,9 @@ namespace CoreEngine
 
         // ── ヒープ参照 ──────────────────────────────────────────
         ID3D12DescriptorHeap* GetSRVHeap() const { return srvHeap_.Heap(); }
+        /// @brief SRV/CBV/UAV ヒープ内のインデックスを GPU ハンドルから求める（ヒープの外なら UINT32_MAX）
+        /// @details シェーダーの ResourceDescriptorHeap[] に渡す番号
+        uint32_t GetSRVHeapIndex(D3D12_GPU_DESCRIPTOR_HANDLE handle) const { return srvHeap_.IndexOf(handle); }
         ID3D12DescriptorHeap* GetRTVHeap() const { return rtvHeap_.Heap(); }
         ID3D12DescriptorHeap* GetDSVHeap() const { return dsvHeap_.Heap(); }
 
