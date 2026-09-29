@@ -28,6 +28,8 @@ from okinawa import common as C  # noqa: E402
 ASSETS = [
     "rocks", "palm", "adan", "hibiscus", "azumaya", "shisa", "ishigaki",
     "sabani", "pier", "parasol", "props", "tetrapod", "terrain",
+    # 海の中・リーフ地形
+    "reef_terrain", "beachrock", "coral", "sealife", "seagrass", "fish",
 ]
 
 

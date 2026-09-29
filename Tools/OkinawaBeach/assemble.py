@@ -20,11 +20,16 @@ from okinawa import common as C  # noqa: E402
 
 # (アセット名, (x, y, z), Z 回転[度], 一様スケール)
 # SNAP 以外のアセットは z を「地形の高さからのオフセット」として扱う（負で埋める）
-NO_SNAP = {"BeachTerrain_Shore", "BeachTerrain_Flat", "Pier_Straight", "Pier_End"}
+NO_SNAP = {"BeachTerrain_Shore", "BeachTerrain_Flat", "Pier_Straight", "Pier_End",
+           "ReefTerrain_Lagoon", "ReefTerrain_Edge", "ReefTerrain_Deep"}
+REEF_TILES = ("ReefTerrain_Lagoon", "ReefTerrain_Edge", "ReefTerrain_Deep")
 LAYOUT = [
     # 地形: 40m 角タイル。Shore の陸側に Flat をつなぐ
     *[("BeachTerrain_Shore", (x, 0, 0), 0, 1.0) for x in (-80, -40, 0, 40, 80)],
     *[("BeachTerrain_Flat", (x, y, 0), 0, 1.0) for x in (-80, -40, 0, 40, 80) for y in (40, 80)],
+    # リーフ地形: Shore の沖側に 礁池 → リーフエッジ → 深場 をつなぐ
+    *[(t, (x, y, 0), 0, 1.0) for x in (-80, -40, 0, 40, 80)
+      for t, y in (("ReefTerrain_Lagoon", -40), ("ReefTerrain_Edge", -80), ("ReefTerrain_Deep", -120))],
     # 左: 石灰岩の岩場（浅瀬に立つノッチ岩）
     ("NotchRock_A", (-25, -4.5, -0.2), 20, 1.0),
     ("NotchRock_B", (-16, -6.5, -0.15), -35, 1.0),
@@ -79,6 +84,67 @@ LAYOUT = [
     ("Pier_Straight", (20, -5.5, 0), 180, 1.0),
     ("Pier_Straight", (20, -9.5, 0), 180, 1.0),
     ("Pier_End", (20, -13.5, 0), 180, 1.0),
+    # ビーチロック（波打ち際）
+    ("BeachRock_A", (-9, -1.2, -0.05), 0, 1.0),
+    ("BeachRock_B", (-3.5, -1.8, -0.05), 8, 1.0),
+    ("BeachRock_C", (-13.5, -2.2, -0.05), -10, 1.0),
+    # 礁池: 岸寄りの海草藻場と砂地の生き物
+    ("Seagrass_Patch_A", (-10, -26, 0), 0, 1.0),
+    ("Seagrass_Patch_A", (6, -28, 0), 70, 1.1),
+    ("Seagrass_Patch_A", (28, -25, 0), 150, 0.9),
+    ("Seagrass_Patch_B", (-2, -24, 0), 0, 1.0),
+    ("Seagrass_Patch_B", (14, -31, 0), 40, 1.0),
+    ("Seagrass_Patch_B", (-18, -30, 0), 200, 1.2),
+    ("SeaCucumber", (-6, -32, 0), 20, 1.0),
+    ("SeaCucumber", (2, -36, 0), 110, 1.0),
+    ("SeaCucumber", (12, -33.5, 0), 250, 0.9),
+    ("SeaCucumber", (-10, -40, 0), 60, 1.1),
+    ("SeaCucumber", (18, -36, 0), 300, 1.0),
+    ("BlueStarfish", (-8, -36, 0), 0, 1.0),
+    ("BlueStarfish", (15, -30, 0), 72, 1.0),
+    ("BlueStarfish", (21, -34.5, 0), 140, 0.9),
+    ("SeaTurtle", (-3, -44, 1.3), 30, 1.0),
+    # パッチリーフ A（マイクロアトールを中心とした群落）
+    ("Coral_MicroAtoll", (-18, -46, 0), 0, 1.0),
+    ("Coral_Table_A", (-14.2, -43.2, 0), 20, 1.0),
+    ("Coral_Table_B", (-21.8, -49.2, 0), 100, 1.0),
+    ("Coral_Branch_A", (-14.8, -49.6, 0), 45, 1.0),
+    ("Coral_Branch_B", (-20.8, -42.6, 0), 200, 1.0),
+    ("Coral_Massive_B", (-22.6, -45.8, 0), 0, 1.0),
+    ("Coral_Brain", (-16.6, -51.8, 0), 0, 1.0),
+    ("Coral_Soft", (-13.2, -46.8, 0), 0, 1.0),
+    ("Coral_Branch_B", (-18.5, -52.3, 0), 120, 0.9),
+    ("GiantClam", (-16.0, -43.9, 0), 160, 1.0),
+    ("SeaUrchin", (-19.8, -51.2, 0), 0, 1.0),
+    ("SeaUrchin", (-12.9, -44.6, 0), 0, 0.9),
+    ("Anemone_Clownfish", (-12.6, -48.9, 0), 90, 1.0),
+    ("FishSchool_Green", (-14.8, -49.6, 1.2), 30, 1.0),
+    # パッチリーフ B（枝サンゴ中心）
+    ("Coral_Branch_A", (26, -40, 0), 0, 1.0),
+    ("Coral_Branch_B", (28.6, -37.8, 0), 60, 1.0),
+    ("Coral_Branch_A", (23.2, -38.2, 0), 170, 0.8),
+    ("Coral_Table_A", (23.4, -42.4, 0), 80, 0.9),
+    ("Coral_Massive_A", (29.2, -43.2, 0), 30, 0.8),
+    ("Coral_Brain", (24.2, -36.2, 0), 90, 0.8),
+    ("Coral_Soft", (27.6, -44.6, 0), 0, 1.0),
+    ("SeaUrchin", (24.6, -44.2, 0), 0, 1.0),
+    ("FishSchool_Blue", (26, -40, 1.4), 200, 1.0),
+    # パッチリーフ C（ハマサンゴとテーブルサンゴ）
+    ("Coral_Massive_A", (6, -54, 0), 0, 1.0),
+    ("Coral_Table_B", (2.8, -51.4, 0), 40, 1.0),
+    ("Coral_Table_A", (9.6, -56.6, 0), 150, 1.1),
+    ("Coral_Branch_A", (2.4, -56.2, 0), 250, 0.9),
+    ("Coral_Branch_B", (9.2, -51.0, 0), 10, 1.0),
+    ("Coral_Brain", (6.6, -58.8, 0), 0, 1.0),
+    ("Coral_Soft", (3.8, -58.2, 0), 0, 0.9),
+    ("Coral_Massive_B", (10.8, -53.4, 0), 70, 0.9),
+    ("GiantClam", (8.2, -53.2, 0), 300, 1.0),
+    ("Fish_Butterfly", (7, -52, 0.9), 120, 1.0),
+    # リーフエッジの外側斜面（上空から濃い影として見える）
+    ("Coral_Table_A", (-10, -86, 0), 0, 1.3),
+    ("Coral_Massive_A", (15, -87, 0), 0, 1.2),
+    ("Coral_Branch_A", (0, -85.5, 0), 0, 1.2),
+    ("Coral_Table_B", (30, -86, 0), 0, 1.3),
     # 小物
     ("Driftwood_A", (-6, 2.5, 0), 30, 1.0),
     ("Driftwood_B", (12, 4.2, 0), -60, 1.0),
@@ -99,11 +165,19 @@ CAMERAS = {
     "rocks": ((-8, -20, 2.6), (-23, -5, 2.2), 30),
     "village": ((3, 7, 2.4), (10, 17.5, 2.6), 30),
     "pier": ((29, -21, 3.5), (17, 0, 1.2), 28),
+    # 海の中・リーフ地形
+    "reef_aerial": ((6, 45, 40), (4, -58, -6), 26),
+    "reef_lagoon": ((-9, -37, 3.0), (-18, -49, -1.8), 30),
+    "reef_under": ((-11, -39.5, -1.3), (-19, -49, -1.0), 24),
 }
 
 
 def water_material():
-    """確認用の海（Cycles）。浅瀬ほど砂の色が透ける透過 + 体積吸収"""
+    """確認用の海（Cycles）
+
+    - 体積吸収: 赤が最も速く、青が最も遅く吸収される → 浅瀬はターコイズ、深場は紺碧
+    - 影のレイは素通し: Cycles は屈折面越しの太陽光を拾えず海底が暗くなるため（コースティクスはエンジン側）
+    """
     mat = bpy.data.materials.new("PreviewWater")
     mat.use_nodes = True
     nt = mat.node_tree
@@ -125,15 +199,27 @@ def water_material():
     wv.inputs["Roughness"].default_value = 0.6
     nt.links.new(mp.outputs[0], wv.inputs["Vector"])
     bump = nt.nodes.new("ShaderNodeBump")
-    bump.inputs["Strength"].default_value = 0.25
+    bump.inputs["Strength"].default_value = 0.2
     bump.inputs["Distance"].default_value = 0.05
     nt.links.new(wv.outputs["Fac"], bump.inputs["Height"])
     nt.links.new(bump.outputs[0], bsdf.inputs["Normal"])
-    nt.links.new(bsdf.outputs[0], out.inputs["Surface"])
-    vol = nt.nodes.new("ShaderNodeVolumeAbsorption")
-    vol.inputs["Color"].default_value = (0.35, 0.86, 0.84, 1)
-    vol.inputs["Density"].default_value = 0.35
-    nt.links.new(vol.outputs[0], out.inputs["Volume"])
+    lp = nt.nodes.new("ShaderNodeLightPath")
+    tr = nt.nodes.new("ShaderNodeBsdfTransparent")
+    mix = nt.nodes.new("ShaderNodeMixShader")
+    nt.links.new(lp.outputs["Is Shadow Ray"], mix.inputs[0])
+    nt.links.new(bsdf.outputs[0], mix.inputs[1])
+    nt.links.new(tr.outputs[0], mix.inputs[2])
+    nt.links.new(mix.outputs[0], out.inputs["Surface"])
+    ab = nt.nodes.new("ShaderNodeVolumeAbsorption")
+    ab.inputs["Color"].default_value = (0.64, 0.93, 0.975, 1)
+    ab.inputs["Density"].default_value = 1.2
+    sc = nt.nodes.new("ShaderNodeVolumeScatter")
+    sc.inputs["Color"].default_value = (0.04, 0.30, 0.90, 1)
+    sc.inputs["Density"].default_value = 0.003
+    add = nt.nodes.new("ShaderNodeAddShader")
+    nt.links.new(ab.outputs[0], add.inputs[0])
+    nt.links.new(sc.outputs[0], add.inputs[1])
+    nt.links.new(add.outputs[0], out.inputs["Volume"])
     return mat
 
 
@@ -141,8 +227,8 @@ def add_water():
     bpy.ops.mesh.primitive_cube_add(size=1)
     w = bpy.context.object
     w.name = "PreviewWater"
-    w.scale = (3000, 3000, 10)
-    w.location = (0, 0, -5.0)
+    w.scale = (3000, 3000, 80)
+    w.location = (0, 0, -40.0)
     C.apply_transform(w)  # 波ノイズを実寸で効かせる
     C.assign(w, water_material())
     return w
@@ -159,8 +245,12 @@ def add_seabed():
     bpy.ops.mesh.primitive_plane_add(size=1)
     g = bpy.context.object
     g.name = "PreviewSeabed"
-    g.scale = (2000, 1000, 1)
-    g.location = (0, -519.9, -3.05)
+    if os.path.exists(os.path.join(C.MODELS_DIR, "ReefTerrain_Deep", "ReefTerrain_Deep.gltf")):
+        g.scale = (2000, 1000, 1)
+        g.location = (0, -639.9, -36.0)
+    else:
+        g.scale = (2000, 1000, 1)
+        g.location = (0, -519.9, -3.05)
     C.apply_transform(g)
     C.assign(g, mat)
     return g
@@ -233,7 +323,10 @@ def main():
     C.setup_preview_world(strength=1.0, sun_elev=52, sun_rot=200)
     scene = bpy.context.scene
     scene.cycles.volume_bounces = 1
-    scene.cycles.transmission_bounces = 6
+    scene.cycles.transmission_bounces = 8
+    scene.cycles.max_bounces = 10
+    scene.cycles.volume_step_rate = 4.0
+    scene.view_settings.look = "AgX - Punchy"
     print("placed:", sorted(set(placed)))
     for cam_name, (loc, tgt, lens) in CAMERAS.items():
         if args and cam_name not in args:
