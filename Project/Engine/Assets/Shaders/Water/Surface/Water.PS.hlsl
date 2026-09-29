@@ -94,6 +94,10 @@ struct WaterPSInput
 // この順に include する（WaterFoam は WaterVolume の EvaluateWaterSkyIrradiance を使う。
 // 依存の一覧は各ファイル冒頭に明記）。
 #include "WaterColumn.hlsli"
+
+/// @brief 水中の放射輝度が水面から空気へ出るときの倍率（1/n²）
+static const float kWaterRadianceExitScale = 1.0f / (kWaterRefractiveIndex * kWaterRefractiveIndex);
+
 #include "WaterVolume.hlsli"
 #include "WaterFoam.hlsli"
 #include "WaterNormals.hlsli"
@@ -406,6 +410,8 @@ WaterPixelOutput main(WaterPSInput input)
         sigmaS,
         sigmaT,
         underwaterAmbient);
+    // 水中の放射輝度は、水面から空気へ出るときに屈折で立体角が広がって 1/n² になる
+    transmissionColor *= kWaterRadianceExitScale;
 
     // 反射有効時、環境反射は平面反射像で「置き換える」（加算しない）。
     // 平面反射像には空・雲・太陽そのものが含まれるため、PBR 出力（太陽スペキュラ＋
@@ -535,10 +541,10 @@ WaterPixelOutput main(WaterPSInput input)
 
     // ---- 波峰のサブサーフェス透過（逆光で波の背が緑に光る）----
     // 波を透過して視点へ出てくる光なので、水面で反射されずに「抜けてきた」分だけ、
-    // つまり (1 - フレネル反射率) を掛けて加算する。
+    // つまり (1 - フレネル反射率) と、水から空気へ出る 1/n² を掛けて加算する。
     output.color.rgb += ComputeWaterSubsurfaceScattering(
         surfaceNormal, viewDir, input.waveHeight, sigmaS, sigmaT, foamCoverage, sunDiffuseVisibility)
-        * (1.0f - reflectanceWeight);
+        * (1.0f - reflectanceWeight) * kWaterRadianceExitScale;
 
     // ---- 5. 空気遠近感（Aerial Perspective）----
     // 不透明パスへの合成（AerialPerspective.CS）は水面より前に終わっているため、
