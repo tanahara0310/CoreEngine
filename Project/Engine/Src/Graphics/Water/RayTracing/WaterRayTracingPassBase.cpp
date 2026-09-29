@@ -63,10 +63,14 @@ namespace CoreEngine
         declStorage_.push_back({ "WaterSurfaceData", ShaderBindingType::CBV, BindingUsage::Required });
         declStorage_.push_back({ desc.constantsName,  ShaderBindingType::CBV, BindingUsage::Required });
 
-        // 2 枚目の出力は末尾に置く（それ以外の添字は 1 枚だけのパスと同じ）
+        // 2 枚目の出力と追加の CBV は末尾に置く（それ以外の添字は 1 枚だけのパスと同じ）
         hasSecondaryOutput_ = (desc.secondaryOutputUavName != nullptr);
         if (hasSecondaryOutput_) {
             declStorage_.push_back({ desc.secondaryOutputUavName, ShaderBindingType::UAV, BindingUsage::Required });
+        }
+        hasExtraConstantBuffer_ = (desc.extraConstantBufferName != nullptr);
+        if (hasExtraConstantBuffer_) {
+            declStorage_.push_back({ desc.extraConstantBufferName, ShaderBindingType::CBV, BindingUsage::Required });
         }
 
         // 添字は宣言した順。ディスパッチ側はこれで引く
@@ -76,9 +80,13 @@ namespace CoreEngine
         slotSurfaceData_ = 2 + desc.srvTableNames.size();
         slotConstants_ = slotSurfaceData_ + 1;
         slotSecondaryOutputUav_ = slotConstants_ + 1;
+        slotExtraConstantBuffer_ = slotConstants_ + (hasSecondaryOutput_ ? 2 : 1);
 
         RootSignatureConfig config;
-        config.SetFlags(D3D12_ROOT_SIGNATURE_FLAG_NONE);  // DXR に入力アセンブラは無い
+        // DXR に入力アセンブラは無い。ヒープを直接引くパスだけフラグを立てる
+        config.SetFlags(desc.directlyIndexedHeap
+            ? D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED
+            : D3D12_ROOT_SIGNATURE_FLAG_NONE);
         {
             ResourceBindingConfig rc(desc.constantsName, BindingStrategy::RootConstants);
             rc.rootConstantsCount = static_cast<UINT>(desc.constantsBytes / sizeof(uint32_t));
@@ -86,6 +94,8 @@ namespace CoreEngine
         }
         // 空キューブマップの SampleLevel 用。宣言しないシェーダーには影響しない
         config.ConfigureSampler("gLinearClamp", SamplerConfig::LinearClamp());
+        // 物のテクスチャを繰り返して引く。宣言しないシェーダーには影響しない
+        config.ConfigureSampler("gLinearWrap", SamplerConfig::Linear());
 
         if (!BuildGlobalRootSignature(*program, declStorage_.data(), declStorage_.size(), config)) {
             return false;
@@ -143,13 +153,15 @@ namespace CoreEngine
         UINT width,
         UINT height,
         D3D12_RESOURCE_STATES finalState,
-        const RTWaterSecondaryOutput& secondaryOutput)
+        const RTWaterSecondaryOutput& secondaryOutput,
+        D3D12_GPU_VIRTUAL_ADDRESS extraConstantBuffer)
     {
         resources.cmdList4->SetComputeRootSignature(globalRootSigMgr_.GetRootSignature());
         resources.cmdList4->SetPipelineState1(stateObject_.Get());
 
         const bool writesSecondaryOutput = hasSecondaryOutput_ && secondaryOutput.resource;
         assert((!hasSecondaryOutput_ || writesSecondaryOutput) && "2 枚目の出力が渡されていない");
+        assert((!hasExtraConstantBuffer_ || extraConstantBuffer != 0) && "追加の CBV が渡されていない");
 
         BeginOutputWrite(cmdList, *resources.output);
         if (writesSecondaryOutput) {
@@ -178,6 +190,9 @@ namespace CoreEngine
         binder.Set(bindings_[slotSurfaceData_], constantBuffer_->GetGPUVirtualAddress());
         binder.SetConstants(
             bindings_[slotConstants_], constantsBlob, constantsBytes_ / sizeof(uint32_t));
+        if (hasExtraConstantBuffer_ && extraConstantBuffer != 0) {
+            binder.Set(bindings_[slotExtraConstantBuffer_], extraConstantBuffer);
+        }
         binder.ValidateBeforeDraw(bindings_);
 
         auto dispatchDesc = shaderTableBuilder_.BuildDispatchDesc(width, height);

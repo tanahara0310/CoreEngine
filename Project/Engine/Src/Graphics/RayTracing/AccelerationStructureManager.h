@@ -3,6 +3,7 @@
 #include <d3d12.h>
 #include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include "Graphics/RHI/Command/FrameSync.h" // kMaxFramesInFlight（インスタンスバッファのリング段数）
+#include "Graphics/RayTracing/RayTracingHitData.h"
 #include <wrl.h>
 #include <array>
 #include <vector>
@@ -90,6 +91,28 @@ namespace CoreEngine
         UINT GetBLASCount() const { return static_cast<UINT>(blasList_.size()); }
 
         // ──────────────────────────────────────────────────────────
+        // ヒットシェーディング（当たった三角形の頂点と材質をシェーダーから引く）
+        // ──────────────────────────────────────────────────────────
+
+        /// @brief BLAS の頂点バッファ（ByteAddressBuffer）のヒープ内インデックス（無ければ UINT32_MAX）
+        uint32_t GetBLASVertexBufferIndex(UINT blasIndex) const;
+        /// @brief BLAS の索引バッファ（ByteAddressBuffer）のヒープ内インデックス（無ければ UINT32_MAX）
+        uint32_t GetBLASIndexBufferIndex(UINT blasIndex) const;
+
+        /// @brief TLAS のインスタンスと同じ並びの表を送る（BuildTLAS の直後に、同じインスタンスの並びで呼ぶ）
+        /// @param instances TLAS のインスタンスと 1:1 の行
+        /// @param subMeshes instances の firstSubMesh / subMeshCount が指すサブメッシュの行
+        void UploadHitShadingTables(
+            const std::vector<RTHitInstance>& instances, const std::vector<RTHitSubMesh>& subMeshes);
+
+        /// @brief 今フレームの表が送られているか
+        bool HasHitShadingTables() const { return hitTablesValid_; }
+        /// @brief 今フレームのインスタンス表（StructuredBuffer）のヒープ内インデックス
+        uint32_t GetHitInstanceTableIndex() const;
+        /// @brief 今フレームのサブメッシュ表（StructuredBuffer）のヒープ内インデックス
+        uint32_t GetHitSubMeshTableIndex() const;
+
+        // ──────────────────────────────────────────────────────────
         // デバッグ表示用の統計（Stage 0: RayTracingDebugPanel が参照する）
         // ──────────────────────────────────────────────────────────
 
@@ -120,8 +143,24 @@ namespace CoreEngine
         /// @brief BLAS 1 本分の GPU リソース
         struct BLASEntry {
             Microsoft::WRL::ComPtr<ID3D12Resource> result;
+            DescriptorHandle vertexBufferSrv;   ///< 頂点バッファの ByteAddressBuffer SRV
+            DescriptorHandle indexBufferSrv;    ///< 索引バッファの ByteAddressBuffer SRV
         };
         std::vector<BLASEntry> blasList_;
+
+        /// @brief ヒットシェーディングの表 1 本分（フレームインフライトぶんのリング）
+        struct HitTableRing {
+            std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kMaxFramesInFlight> buffers{};
+            std::array<DescriptorHandle, kMaxFramesInFlight> srvs{};
+            std::array<UINT, kMaxFramesInFlight> capacities{};
+        };
+        HitTableRing hitInstanceTables_;
+        HitTableRing hitSubMeshTables_;
+        bool hitTablesValid_ = false;
+
+        /// @brief 表の 1 本を今のリングスロットへ書き、SRV を張る
+        bool UploadHitTable(HitTableRing& ring, const void* data, UINT elementCount, UINT elementStride,
+            const char* debugName);
 
         // TLAS リソース
         /// @brief TLAS 結果バッファと、その SRV（フレームインフライトぶんのリング）

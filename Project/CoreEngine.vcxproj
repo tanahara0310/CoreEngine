@@ -1348,6 +1348,7 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Graphics\Primitive\RingMeshGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\Primitive\SphereMeshGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\AccelerationStructureManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingHitData.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingDispatchInfo.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingOutputViewSet.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingPassBase.h" />

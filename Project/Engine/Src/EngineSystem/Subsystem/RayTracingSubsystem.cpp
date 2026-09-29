@@ -1,9 +1,13 @@
 #include "pch.h"
 #include "RayTracingSubsystem.h"
 #include <algorithm>
+#include <utility>
 #include <vector>
 
 #include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
+#include "Graphics/Model/Model.h"
+#include "Graphics/Model/ModelResource.h"
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/FrameBlackboard.h"
@@ -25,6 +29,102 @@
 
 namespace CoreEngine
 {
+    namespace
+    {
+        /// @brief サブメッシュ 1 つぶんの材質をヒットシェーディングのサブメッシュ表の行へ詰める
+        /// @param material          そのスロットの材質（無ければ既定値）
+        /// @param baseColorOverride 全サブメッシュのベースカラーを差し替えるテクスチャ（無ければ ptr = 0）
+        RTHitSubMesh MakeHitSubMesh(
+            const SubMeshData& subMesh,
+            const MaterialInstance* material,
+            const ModelResource& resource,
+            D3D12_GPU_DESCRIPTOR_HANDLE baseColorOverride,
+            const DescriptorAllocator& descriptors)
+        {
+            RTHitSubMesh row{};
+            row.firstTriangle = subMesh.startIndex / 3;
+            row.triangleCount = subMesh.indexCount / 3;
+            row.baseColorTextureIndex = kRTHitNoTexture;
+            row.emissiveTextureIndex = kRTHitNoTexture;
+
+            D3D12_GPU_DESCRIPTOR_HANDLE baseColorTexture = baseColorOverride;
+            if (subMesh.materialIndex < resource.GetMaterials().size()) {
+                const ModelResource::PBRTextureHandles& textures = resource.GetMaterialTextures(subMesh.materialIndex);
+                if (baseColorTexture.ptr == 0) {
+                    baseColorTexture = textures.baseColor;
+                }
+                if (textures.hasEmissive && textures.emissive.ptr != 0) {
+                    row.emissiveTextureIndex = descriptors.GetSRVHeapIndex(textures.emissive);
+                }
+            }
+            if (baseColorTexture.ptr != 0) {
+                row.baseColorTextureIndex = descriptors.GetSRVHeapIndex(baseColorTexture);
+            }
+
+            row.baseColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+            row.uvTransformU = { 1.0f, 0.0f, 0.0f, 0.0f };
+            row.uvTransformV = { 0.0f, 1.0f, 0.0f, 0.0f };
+            row.roughness = 0.5f;
+            row.alphaCutoff = 0.5f;
+            row.flags = kRTHitSubMeshFlagLit;
+            if (material) {
+                // HLSL 側は mul(float4(uv, 0, 1), uvTransform)
+                const Matrix4x4 uvTransform = material->GetUVTransform();
+                row.baseColor = material->GetColor();
+                row.uvTransformU = { uvTransform.m[0][0], uvTransform.m[1][0], uvTransform.m[3][0], 0.0f };
+                row.uvTransformV = { uvTransform.m[0][1], uvTransform.m[1][1], uvTransform.m[3][1], 0.0f };
+                row.emissive = material->GetEmissiveFactor();
+                row.metallic = material->GetMetallic();
+                row.roughness = material->GetRoughness();
+                row.alphaCutoff = material->GetAlphaCutoff();
+                row.flags = (material->IsLightingEnabled() ? kRTHitSubMeshFlagLit : 0u)
+                    | (material->IsDitheringEnabled() ? kRTHitSubMeshFlagDither : 0u);
+            }
+            return row;
+        }
+
+        /// @brief TLAS のインスタンス 1 つぶんの行と、そのサブメッシュの行を足す
+        /// @param model 材質の持ち主（無ければモデルリソースの既定の材質）
+        void AppendHitInstance(
+            const AccelerationStructureManager& asMgr,
+            const AccelerationStructureManager::InstanceDesc& instance,
+            const ModelResource& resource,
+            const Model* model,
+            D3D12_GPU_DESCRIPTOR_HANDLE baseColorOverride,
+            const DescriptorAllocator& descriptors,
+            std::vector<RTHitInstance>& outInstances,
+            std::vector<RTHitSubMesh>& outSubMeshes)
+        {
+            RTHitInstance row{};
+            for (int r = 0; r < 3; ++r) {
+                row.objectToWorld[r] = {
+                    instance.transform[r][0], instance.transform[r][1],
+                    instance.transform[r][2], instance.transform[r][3] };
+            }
+            row.vertexBufferIndex = asMgr.GetBLASVertexBufferIndex(instance.blasIndex);
+            row.indexBufferIndex = asMgr.GetBLASIndexBufferIndex(instance.blasIndex);
+            row.firstSubMesh = static_cast<uint32_t>(outSubMeshes.size());
+
+            for (const SubMeshData& subMesh : resource.GetSubMeshes()) {
+                const MaterialInstance* material = model
+                    ? model->GetMaterial(subMesh.materialIndex)
+                    : resource.GetDefaultMaterial(subMesh.materialIndex);
+                outSubMeshes.push_back(MakeHitSubMesh(subMesh, material, resource, baseColorOverride, descriptors));
+            }
+            if (outSubMeshes.size() == row.firstSubMesh) {
+                // サブメッシュを持たないモデルは全三角形を 1 行で覆う
+                SubMeshData whole{};
+                whole.startIndex = 0;
+                whole.indexCount = resource.GetIndexCount();
+                whole.materialIndex = 0;
+                outSubMeshes.push_back(MakeHitSubMesh(
+                    whole, resource.GetDefaultMaterial(0), resource, baseColorOverride, descriptors));
+            }
+            row.subMeshCount = static_cast<uint32_t>(outSubMeshes.size()) - row.firstSubMesh;
+            outInstances.push_back(row);
+        }
+    }
+
     void RayTracingSubsystem::BuildAccelerationStructures(
         const RenderContext& context,
         GraphicsCore* dx,
@@ -61,17 +161,23 @@ namespace CoreEngine
 
         std::vector<AccelerationStructureManager::InstanceDesc> tlasInstances;
 
+        // ヒットシェーディングの表（TLAS のインスタンスと同じ並び）
+        std::vector<RTHitInstance> hitInstances;
+        std::vector<RTHitSubMesh> hitSubMeshes;
+        const DescriptorAllocator* descriptors = dx->GetDescriptorAllocator();
+
         // 「メッシュを持つか」はコンポーネントの有無で決まるので、具象クラスを知る必要はない。
         // 非アクティブ／削除マーク済みのスキップは ForEachComponent が行う。
         objMgr->ForEachComponent<MeshRendererComponent>(
-            [&tlasInstances](MeshRendererComponent& renderer) {
+            [&](MeshRendererComponent& renderer) {
                 // 半透明オブジェクト（水面など）は RT シャドウのキャスターから除外する
                 if (renderer.GetBlendMode() != BlendMode::kBlendModeNone) return;
 
-                auto* model = renderer.GetModel();
+                // 材質は const の取得口で読む（書き込み用の取得口は材質を複製する）
+                const Model* model = std::as_const(renderer).GetModel();
                 if (!model) return;
 
-                auto* resource = model->GetModelResource();
+                const ModelResource* resource = model->GetModelResource();
                 if (!resource || !resource->HasBLAS()) return;
 
                 auto* transform = renderer.GetTransformComponent();
@@ -81,13 +187,17 @@ namespace CoreEngine
                 inst.blasIndex = resource->GetBLASIndex();
                 inst.SetTransform(transform->Get().GetWorldMatrix());
                 tlasInstances.push_back(inst);
+                if (descriptors) {
+                    AppendHitInstance(*asMgr, inst, *resource, model, renderer.GetTextureOverrideHandle(),
+                        *descriptors, hitInstances, hitSubMeshes);
+                }
             });
 
         // ===== モデルの粒もキャスターとして載せる =====
         // BLAS はモデル単位で構築済みなので、ここで足すのはインスタンスだけ。
         std::vector<Matrix4x4> particleMatrices;
         objMgr->ForEachComponent<ParticleSystemComponent>(
-            [&tlasInstances, &particleMatrices](ParticleSystemComponent& particleSystem) {
+            [&](ParticleSystemComponent& particleSystem) {
                 // 加算・半透明の粒が真っ黒な影を落とすと不自然なので、不透明のものだけ。
                 // メッシュ側の除外条件と揃えている。
                 if (particleSystem.GetBlendMode() != BlendMode::kBlendModeNone) return;
@@ -107,11 +217,16 @@ namespace CoreEngine
                     inst.blasIndex = resource->GetBLASIndex();
                     inst.SetTransform(particleMatrices[i]);
                     tlasInstances.push_back(inst);
+                    if (descriptors) {
+                        AppendHitInstance(*asMgr, inst, *resource, nullptr, D3D12_GPU_DESCRIPTOR_HANDLE{},
+                            *descriptors, hitInstances, hitSubMeshes);
+                    }
                 }
             });
 
         if (!tlasInstances.empty()) {
             asMgr->BuildTLAS(dx->GetCommandList(), tlasInstances);
+            asMgr->UploadHitShadingTables(hitInstances, hitSubMeshes);
         }
     }
 
@@ -399,9 +514,57 @@ namespace CoreEngine
             dispatchContext.fftOceanInput,
             skyEnvironmentSRV,
             sunShadow,
+            BuildWaterHitShadingInput(context, dx),
             dispatchContext.width,
             dispatchContext.height,
             viewId);
+    }
+
+    WaterHitShadingInput RayTracingSubsystem::BuildWaterHitShadingInput(
+        const RenderContext& context, GraphicsCore* dx)
+    {
+        WaterHitShadingInput input{};
+        const DescriptorAllocator* descriptors = dx ? dx->GetDescriptorAllocator() : nullptr;
+        const AccelerationStructureManager* asMgr = context.accelerationStructureManager;
+        if (!descriptors || !asMgr || !asMgr->HasHitShadingTables()) {
+            return input;
+        }
+        input.instanceTableIndex = asMgr->GetHitInstanceTableIndex();
+        input.subMeshTableIndex = asMgr->GetHitSubMeshTableIndex();
+        input.enabled = (input.instanceTableIndex != UINT32_MAX && input.subMeshTableIndex != UINT32_MAX);
+
+        // DeferredLighting と同じライトの配列（0 番がメインライト）
+        if (context.lightManager) {
+            input.directionalLightsIndex =
+                descriptors->GetSRVHeapIndex(context.lightManager->GetDirectionalLightsSRVHandle());
+            if (input.directionalLightsIndex != UINT32_MAX) {
+                input.directionalLightCount = (std::min)(
+                    context.lightManager->GetLightCount(LightType::Directional),
+                    LightManager::GetMaxLightCount(LightType::Directional));
+            }
+        }
+
+        // 空の光（DeferredLighting と同じ有効条件）
+        if (auto* atmosphere = context.atmosphereManager) {
+            const bool skyAmbientUsable = atmosphere->IsAtmosphereActive()
+                && atmosphere->IsSkyAmbientEnabled()
+                && atmosphere->IsSkyAmbientReady()
+                && atmosphere->GetSkyIrradianceSHSRVHandle().ptr != 0;
+            if (skyAmbientUsable) {
+                input.skyIrradianceSHIndex = descriptors->GetSRVHeapIndex(atmosphere->GetSkyIrradianceSHSRVHandle());
+                input.skyAmbientEnabled = (input.skyIrradianceSHIndex != UINT32_MAX);
+                input.skyAmbientScale = atmosphere->GetSkyAmbientScale();
+
+                const bool skySpecularUsable = atmosphere->IsSkySpecularEnabled()
+                    && atmosphere->IsSkyEnvironmentReady()
+                    && atmosphere->GetSkySpecularSRVHandle().ptr != 0;
+                if (skySpecularUsable) {
+                    input.skySpecularMapIndex = descriptors->GetSRVHeapIndex(atmosphere->GetSkySpecularSRVHandle());
+                    input.skySpecularEnabled = (input.skySpecularMapIndex != UINT32_MAX);
+                }
+            }
+        }
+        return input;
     }
 
     void RayTracingSubsystem::DispatchWaterCaustics(

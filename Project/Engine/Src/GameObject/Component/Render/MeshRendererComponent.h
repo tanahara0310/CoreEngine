@@ -90,6 +90,9 @@ public:
     /// @brief 上書きテクスチャを指し直す（何も指さない値ならモデル組み込みに戻す）
     void SetTextureAsset(const Reflection::AssetRefValue& value);
 
+    /// @brief 全サブメッシュのベースカラーを差し替える上書きテクスチャの SRV（無ければ ptr = 0）
+    D3D12_GPU_DESCRIPTOR_HANDLE GetTextureOverrideHandle() const { return texture_.gpuHandle; }
+
     /// @brief カスタムシェーダーを使う場合のプロバイダを登録する（所有権は移さない）
     void SetCustomShaderProvider(ICustomShaderProvider* provider) { customShaderProvider_ = provider; }
 
