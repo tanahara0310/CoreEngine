@@ -92,6 +92,7 @@ def apply_modifiers(obj):
 
 
 def apply_transform(obj):
+    bpy.context.view_layer.update()  # 直前に設定した location/rotation を matrix_world に反映
     mw = obj.matrix_world.copy()
     obj.data.transform(mw)
     obj.matrix_world.identity()
@@ -108,6 +109,7 @@ def assign(obj, mat):
 
 def join(objs, name):
     objs = [o for o in objs if o is not None]
+    bpy.context.view_layer.update()
     for o in objs:
         apply_transform(o)
     base = objs[0]
@@ -393,9 +395,17 @@ def _new_bake_image(name, res):
     return img
 
 
-def _filled(arr):
-    """ベイクされなかった画素（alpha=0）を最寄りの画素で埋める"""
+def _filled(arr, erode=0):
+    """ベイクされなかった画素（alpha=0）を最寄りの画素で埋める
+
+    erode: 島の縁の画素を何 px 捨ててから埋めるか（AO は縁が 0 に焼けやすい）
+    """
     mask = arr[..., 3] > 0.5
+    if erode:
+        from scipy import ndimage
+        eroded = ndimage.binary_erosion(mask, iterations=erode)
+        if eroded.any():
+            mask = eroded
     return dilate(arr, mask)
 
 
@@ -553,7 +563,7 @@ def bake_part(obj, mat, out_dir, prefix):
         _bake(obj, aimg, "AO", info["ao_samples"], mat)
         for o in cutouts:
             o.hide_render = False
-        ao = _filled(_img_to_np(aimg))[..., 0]
+        ao = _filled(_img_to_np(aimg), erode=1)[..., 0]
         bpy.data.images.remove(aimg)
         ao = 1.0 - (1.0 - ao) * info["ao_strength"]
     if cavity is not None:
