@@ -552,7 +552,10 @@ def bake_part(obj, mat, out_dir, prefix):
         ao = np.ones((res, res), np.float32)
         bpy.data.objects.remove(obj)
     else:
-        aimg = _new_bake_image("_bake_ao", res)
+        # AO はなだらかな陰影なので、2048 以上は半分の解像度で焼いて拡大する（ベイク時間の大半を占めるため）。
+        # 細かい溝の陰影は cavity（フル解像度）が受け持つ。OKI_AO_FULL=1 で常にフル解像度
+        ao_res = res if (res <= 1024 or os.environ.get("OKI_AO_FULL")) else res // 2
+        aimg = _new_bake_image("_bake_ao", ao_res)
         bpy.context.scene.world.light_settings.distance = info["ao_distance"]
         # 葉カードなどアルファ付きのパーツは AO を真っ黒にするので隠す
         cutouts = [o for o in bpy.context.scene.objects if o is not obj and o.type == "MESH" and not o.hide_render
@@ -565,6 +568,9 @@ def bake_part(obj, mat, out_dir, prefix):
             o.hide_render = False
         ao = _filled(_img_to_np(aimg), erode=1)[..., 0]
         bpy.data.images.remove(aimg)
+        if ao_res != res:
+            ao = np.clip(np.asarray(Image.fromarray(ao.astype(np.float32), mode="F").resize((res, res), Image.BICUBIC)),
+                         0.0, 1.0)
         ao = 1.0 - (1.0 - ao) * info["ao_strength"]
     if cavity is not None:
         ao = ao * cavity
