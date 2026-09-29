@@ -114,14 +114,27 @@ def _finish_sdf(obj, target_tris, uv_angle=62.0, disp=None, smooth_angle=None):
 
 
 def _fill_holes(obj):
-    """デシメートが非多様体の所に開ける小さな穴を塞ぐ（エンジンは裏面カリングで穴が抜けて見える）"""
+    """デシメートが非多様体の所に残すひれ状の面や小さな穴を片付ける（エンジンは裏面カリングで穴が抜けて見える）。
+    境界辺と非多様体辺（3 面以上）の両方に接する面を消してから、残った穴を塞ぐ"""
     bm = bmesh.new()
     bm.from_mesh(obj.data)
+    n0 = sum(1 for e in bm.edges if e.is_boundary)
+    for _ in range(6):
+        bad = [f for f in bm.faces if any(e.is_boundary for e in f.edges)
+               and any(len(e.link_faces) > 2 for e in f.edges)]
+        if not bad:
+            break
+        bmesh.ops.delete(bm, geom=bad, context="FACES")
+    loose = [v for v in bm.verts if not v.link_faces]
+    if loose:
+        bmesh.ops.delete(bm, geom=loose, context="VERTS")
     holes = [e for e in bm.edges if e.is_boundary]
     if holes:
-        ret = bmesh.ops.holes_fill(bm, edges=holes, sides=16)
+        ret = bmesh.ops.holes_fill(bm, edges=holes, sides=24)
         bmesh.ops.triangulate(bm, faces=ret["faces"])
-        print(f"  [{obj.name}] filled {len(holes)} boundary edges")
+    n1 = sum(1 for e in bm.edges if e.is_boundary)
+    if n0 or n1:
+        print(f"  [{obj.name}] open edges {n0} -> {n1}")
     bm.to_mesh(obj.data)
     bm.free()
     obj.data.update()
@@ -249,7 +262,7 @@ def _cl_a(th):
 
 
 def _cl_R(th):
-    """殻頂から殻縁までの距離（楕円 + 襞の山で少し波打つ）"""
+    """殻頂から殻縁までの距離（楕円。襞による波打ちは呼び出し側で掛ける）"""
     return 1.0 / np.sqrt((np.sin(th) / _cl_a(th)) ** 2 + (np.cos(th) / CL_B) ** 2)
 
 
@@ -413,7 +426,8 @@ def _clam_attrs(obj):
     sip = np.array([0.0, float(ycs), CL_ZU]) + rad * (Rs + CL_M0 + CL_MT)
     rel = V - sip
     d_sip = np.linalg.norm(rel - np.outer(rel @ rad, rad), axis=1)
-    inslit = _smooth01(th, CL_SLIT[0] - 0.02, CL_SLIT[0] + 0.03) * (1 - _smooth01(th, CL_SLIT[1] - 0.03, CL_SLIT[1] + 0.02))
+    inslit = (_smooth01(th, CL_SLIT[0] - 0.02, CL_SLIT[0] + 0.03) *
+              (1 - _smooth01(th, CL_SLIT[1] - 0.03, CL_SLIT[1] + 0.02)))
     d_slit = np.abs(y - yc) + (1.0 - inslit) * 0.05
     _set_attr(obj, "ClamA", np.stack([th, s, v], -1))
     _set_attr(obj, "ClamB", np.stack([mask, d_sip, d_slit], -1))

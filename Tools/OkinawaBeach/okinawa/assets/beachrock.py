@@ -12,6 +12,7 @@ import math
 import os
 import random
 
+import bmesh
 import bpy
 import numpy as np
 from mathutils import Matrix, Vector
@@ -107,7 +108,6 @@ def _block(name, prisms, xform, rnd, tris, erosion=1.0):
     層理の縞や小さな穴は細かすぎて減らすと崩れるので、マテリアル（法線マップ）で付ける。
     変形（傾き）はその後にかけてから減らす
     """
-    import bmesh
     bm = bmesh.new()
     for poly, zt, zb in prisms:
         _prism(bm, poly, zt, zb)
@@ -192,7 +192,8 @@ def slab_group(name, length, width, beds, dip, seed, tris, col_step=(1.2, 2.0), 
 
     blocks = []
     for k, (b0, b1) in enumerate(beds):
-        ex = (-hx + k * rnd.uniform(0.2, 0.4) + rnd.uniform(0, 0.2), hx - k * rnd.uniform(0.2, 0.4) - rnd.uniform(0, 0.2))
+        ex0 = -hx + k * rnd.uniform(0.2, 0.4) + rnd.uniform(0, 0.2)      # 両端（上の層ほど内側）
+        ex = (ex0, hx - k * rnd.uniform(0.2, 0.4) - rnd.uniform(0, 0.2))
         for i in range(len(xs) - 1):
             for j in range(len(ys) - 1):
                 cell = [corner(i, j), corner(i + 1, j), corner(i + 1, j + 1), corner(i, j + 1)]
@@ -307,7 +308,7 @@ def beachrock_material(name, res, dip):
         fine = nb.noise(co, 55.0, 3, 0.6)
         # 層ごとの色の違い（層理に沿った縞）
         band = nb.noise(nb.comb(nb.mul(s[0], 0.15), nb.mul(y, 0.15), nb.mul(zb, 9.0)), 1.0, 3, 0.5)
-        col = nb.ramp(big, [(0.3, srgb("#8f897c")), (0.5, srgb("#a59e8e")), (0.72, srgb("#b8b09e"))])
+        col = nb.ramp(big, [(0.3, srgb("#958b79")), (0.5, srgb("#aa9f8b")), (0.72, srgb("#bdb29c"))])
         col = nb.hsv(col, 0.5, 1.0, nb.maprange(band, 0.3, 0.7, 0.86, 1.1))
         col = nb.mix(col, srgb("#8b8579"), nb.mul(nb.smooth(mid, 0.5, 0.7), 0.5))
         # ざらざらの砂粒（明暗の粒）
@@ -432,7 +433,7 @@ def _preview_extra(objs):
         return loc.z if hit else 0.0
 
     # 汀線（z ≈ 0）の少し下に置く: 陸側は砂に埋まり、海側の段が水に浸かる
-    for name, (x, rot) in (("BeachRock_A", (-4.5, 4)), ("BeachRock_B", (3.5, -8)), ("BeachRock_C", (8.2, 20))):
+    for name, (x, rot) in (("BeachRock_A", (-3.8, 4)), ("BeachRock_B", (3.2, -8)), ("BeachRock_C", (7.4, 20))):
         o = roots.get(name)
         if o is None:
             continue
@@ -456,9 +457,9 @@ def _preview_extra(objs):
             C.look_at(cam, a.location + Vector((0, 0.3, 0.1)))
             cam.data.lens = 35
             C.render(os.path.join(dbg, "beachrock_close.jpg"), samples=32)
-    cam.location = (2.0, -17.0, 4.2)
-    C.look_at(cam, (1.5, -2.0, 0.0))
-    cam.data.lens = 32
+    cam.location = (1.8, -12.5, 3.6)
+    C.look_at(cam, (1.8, -2.4, 0.0))
+    cam.data.lens = 28
 
 
 PREVIEW = dict(cam_dir=(0.35, -1.0, 0.5), lens=40, spacing=1.2, extra=_preview_extra)
