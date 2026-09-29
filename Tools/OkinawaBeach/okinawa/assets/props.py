@@ -96,6 +96,90 @@ def _wander(rnd, start, direction, length, n, bend=0.3, zdamp=1.0, zbias=0.0):
     return pts
 
 
+def _pack_tubes(objs, margin=0.008):
+    """複数の tube_along を 1 枚の Bake UV に詰める（Smart UV は細長い筒で無駄が多いため）
+
+    各チューブを長さ方向に短冊に切り、キャップ（n 角形）と一緒に同じ texel 密度で
+    縦の列へ first-fit で詰める。Proc UV (u=周, v=長さ m) から計算する。
+    """
+    tubes = []
+    for o in objs:
+        me = o.data
+        proc = me.uv_layers["Proc"].data
+        quads = [p for p in me.polygons if p.loop_total == 4]
+        caps = [p for p in me.polygons if p.loop_total > 4]
+        vs = [[proc[li].uv[1] for li in p.loop_indices] for p in quads]
+        L = max(max(v) for v in vs)
+        seg = max(max(v) - min(v) for v in vs)
+        c = sum(p.area for p in quads) / max(L, 1e-6)  # 平均周長
+        tubes.append((o, quads, caps, L, c, seg))
+    H = 1.0 - 2 * margin
+    seg = max(t[5] for t in tubes)
+
+    def items(s):
+        cl = H / s - seg
+        out = []
+        for ti, (o, quads, caps, L, c, _) in enumerate(tubes):
+            n = math.ceil(L / cl)
+            for k in range(n):
+                out.append((c * s, (min(cl, L - k * cl) + seg) * s, ("q", ti, k, cl)))
+            for p in caps:
+                d = c / math.pi * s
+                out.append((d, d, ("c", ti, p.index, d)))
+        return out
+
+    def pack(s):
+        if H / s - seg <= 0:
+            return None
+        its = sorted(items(s), key=lambda it: (-it[0], -it[1]))
+        cols = []  # [x, 幅, 使用高さ]
+        place = []
+        x = margin
+        for w, h, tag in its:
+            if h > H:
+                return None
+            for col in cols:
+                if w <= col[1] + 1e-9 and col[2] + h <= H + 1e-9:
+                    place.append((col[0], margin + col[2], tag))
+                    col[2] += h + margin
+                    break
+            else:
+                cols.append([x, w, h + margin])
+                place.append((x, margin, tag))
+                x += w + margin
+        return place if x <= 1.0 else None
+
+    lo, hi = 0.01, 200.0
+    for _ in range(50):
+        mid = (lo + hi) / 2
+        if pack(mid) is not None:
+            lo = mid
+        else:
+            hi = mid
+    s = lo
+    for x0, y0, tag in pack(s):
+        o, quads, caps, L, c, _ = tubes[tag[1]]
+        me = o.data
+        proc = me.uv_layers["Proc"].data
+        bake = (me.uv_layers.get("Bake") or me.uv_layers.new(name="Bake")).data
+        if tag[0] == "q":
+            k, cl = tag[2], tag[3]
+            n = math.ceil(L / cl)
+            for p in quads:
+                vmid = sum(proc[li].uv[1] for li in p.loop_indices) / 4
+                if min(n - 1, int(vmid / cl)) != k:
+                    continue
+                for li in p.loop_indices:
+                    u, v = proc[li].uv
+                    bake[li].uv = (x0 + u * c * s, y0 + (v - k * cl + seg * 0.5) * s)
+        else:
+            d = tag[3]
+            for li in me.polygons[tag[2]].loop_indices:
+                u, v = proc[li].uv
+                bake[li].uv = (x0 + u * d, y0 + v * d)
+    return s
+
+
 def _cyl_coords(nb, twist=0.0, radius=0.3):
     """tube_along の Proc UV (u=周, v=長さ m) → 継ぎ目の無い円筒座標"""
     uv = nb.sep(nb.uv("Proc"))
@@ -136,7 +220,7 @@ def driftwood_material(name):
         return dict(color=col, rough=rough, height=height, height_scale=0.004,
                     cavity=nb.maprange(crack, 0, 1, 1.0, 0.5))
 
-    return pbr_material(name, fn, res=1024, ao_distance=0.3)
+    return pbr_material(name, fn, res=1024, ao_distance=0.3, uv="keep")
 
 
 def _dw_tube(name, pts, r0, r1, rnd, sides=14, round_end=True, flare=None):
@@ -211,9 +295,11 @@ def driftwood(prefix, length, seed, roots=False):
     for o in parts:
         C.set_smooth(o, True)
         C.assign(o, mat)
+    _pack_tubes(parts)
     # 少し回転させて置く
+    rz = rnd.uniform(-0.2, 0.2)
     for o in parts:
-        o.rotation_euler = (0, 0, rnd.uniform(-0.2, 0.2))
+        o.rotation_euler = (0, 0, rz)
     return _ground(parts)
 
 
@@ -224,7 +310,7 @@ def cowrie_material():
     def fn(nb):
         co = nb.coord("Object")
         s = nb.sep(co)
-        x, y, z = s[0], s[1], s[2]
+        x, y = s[0], s[1]
         nz = nb.sep(nb.node("ShaderNodeNewGeometry").outputs["Normal"])[2]
         # 斑点（大小 2 層、セルごとに半径が違う）
         spots = None
@@ -328,7 +414,6 @@ def _spine(name, pts, r0, r1):
 
 
 def spider_conch():
-    rnd = random.Random(7)
     parts = []
     # 胴（体層）: x+ が前（水管溝）, 外唇は y+ 側に張り出す
     body = _sphere("sc_body", 1.0, (0.0, 0.0, 0.034), scale=(0.075, 0.048, 0.036), subdiv=4)
@@ -627,7 +712,7 @@ def rope_material():
         return dict(color=col, rough=0.9, height=height, height_scale=0.0015,
                     cavity=nb.maprange(strand, 0.0, 0.6, 0.55, 1.0))
 
-    return pbr_material("FloatRope", fn, res=1024, ao_distance=0.05)
+    return pbr_material("FloatRope", fn, res=1024, ao_distance=0.05, uv="keep")
 
 
 def glass_float():
@@ -676,6 +761,7 @@ def glass_float():
     for p in parts[1:]:
         C.set_smooth(p, True)
         C.assign(p, rm)
+    _pack_tubes(parts[1:])
     for p in parts:
         p.rotation_euler = (math.radians(25), math.radians(-10), math.radians(15))
     return _ground(parts)

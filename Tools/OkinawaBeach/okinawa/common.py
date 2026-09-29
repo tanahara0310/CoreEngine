@@ -546,7 +546,7 @@ def bake_part(obj, mat, out_dir, prefix):
         bpy.context.scene.world.light_settings.distance = info["ao_distance"]
         # 葉カードなどアルファ付きのパーツは AO を真っ黒にするので隠す
         cutouts = [o for o in bpy.context.scene.objects if o is not obj and o.type == "MESH" and not o.hide_render
-                   and any(m and _REGISTRY.get(m.name, {}).get("out", {}).get("alpha") is not None
+                   and any(m and (m.get("cutout") or _REGISTRY.get(m.name, {}).get("out", {}).get("alpha") is not None)
                            for m in o.data.materials)]
         for o in cutouts:
             o.hide_render = True
@@ -609,6 +609,8 @@ def final_material(name, paths, double_sided=False):
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True
     mat.use_backface_culling = not double_sided
+    # ベイク済みの葉パーツも、後続パーツの AO ベイクで隠せるように印を付ける
+    mat["cutout"] = bool(paths.get("alpha"))
     nt = mat.node_tree
     bsdf = nt.nodes["Principled BSDF"]
 

@@ -14,7 +14,6 @@ import math
 
 import bpy
 import numpy as np
-from mathutils import Vector
 from scipy.interpolate import PchipInterpolator
 
 from .. import common as C

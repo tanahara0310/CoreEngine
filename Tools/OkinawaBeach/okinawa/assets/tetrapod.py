@@ -11,7 +11,6 @@
 import math
 import random
 
-import bmesh
 import bpy
 import numpy as np
 from mathutils import Vector
