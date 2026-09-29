@@ -10,7 +10,6 @@
 原点: 床（基壇）の底面の中心。正面は -Y（シーサーが向く方向）。
 """
 import math
-import random
 
 import bmesh
 import bpy
@@ -371,7 +370,6 @@ def tile_material():
         # 瓦ごとの焼き色
         base = nb.ramp(tid, [(0.0, srgb("#9c4a2f")), (0.3, srgb("#b35a37")), (0.6, srgb("#c26a42")),
                              (0.85, srgb("#a9553a")), (1.0, srgb("#8a3f2a"))])
-        big = nb.noise(co, 0.8, 4, 0.6)
         mid = nb.noise(co, 6.0, 5, 0.6)
         fine = nb.noise(co, 60.0, 4, 0.6)
         col = nb.hsv(base, 0.5, 0.9, nb.maprange(mid, 0.3, 0.7, 0.88, 1.08))
@@ -416,7 +414,6 @@ def plaster_material():
 
     def fn(nb):
         co = nb.coord("Object")
-        z = nb.sep(co)[2]
         geom = nb.node("ShaderNodeNewGeometry")
         up = nb.sep(geom.outputs["Normal"])[2]
         mid = nb.noise(co, 5.0, 5, 0.6)

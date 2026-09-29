@@ -22,13 +22,13 @@ import bmesh
 import bpy
 import numpy as np
 from mathutils import Vector
-from scipy.spatial import Delaunay, Voronoi
+from scipy.spatial import ConvexHull, Delaunay, Voronoi
 
 from .. import common as C
 from .. import geo
 from ..common import pbr_material, srgb
 
-PREVIEW = dict(cam_dir=(0.45, -1.0, 0.42), lens=45)
+PREVIEW = dict(cam_dir=(0.3, -1.0, 0.3), lens=45)
 
 GAP = 0.014        # 目地幅（平均）
 SKIRT = 0.08       # 石の奥行き（壁の中へ）
@@ -192,6 +192,20 @@ def _cut(verts, faces, u, keep_below):
     geom = bm.verts[:] + bm.edges[:] + bm.faces[:]
     bmesh.ops.bisect_plane(bm, geom=geom, dist=1e-7, plane_co=(u, 0, 0), plane_no=(1, 0, 0),
                            clear_outer=keep_below, clear_inner=not keep_below)
+    # 切り口をふさぐ（壁の端で石の中が見えないように。裏面カリング対策）
+    # 断面上の頂点の凸包で 1 枚の面を張る（石は凸に近いので十分）
+    on = [v for v in bm.verts if abs(v.co.x - u) < 1e-6]
+    if len(on) >= 3:
+        pts2 = np.array([(v.co.y, v.co.z) for v in on])
+        try:
+            hull = ConvexHull(pts2)
+            ring = [on[i] for i in hull.vertices]
+            f = bm.faces.new(ring)
+            f.normal_update()
+            if f.normal.x * (1.0 if keep_below else -1.0) < 0:
+                f.normal_flip()
+        except Exception:
+            pass
     bmesh.ops.dissolve_degenerate(bm, dist=1e-5, edges=bm.edges[:])
     bm.verts.ensure_lookup_table()
     bm.verts.index_update()
@@ -478,6 +492,8 @@ def cap_stone(acc, x0, x1, y0, y1, zb, H, tag, sid, tex, axis_x=True):
 
     v, f = _pillow(outline, 0.075, hfn, 0.0, None)
     v[:, 2] = np.where(np.arange(len(v)) >= len(v) - len(outline), -0.03, v[:, 2])
+    # 底面（笠石は面の石より張り出すので、下から覗いても中が見えないよう閉じる）
+    f.append(tuple(range(len(v) - 1, len(v) - len(outline) - 1, -1)))
     P = np.column_stack([v[:, 0], v[:, 1], zb + v[:, 2]])
     d = _inside_dist(v[:, :2], outline)
     edge = np.clip(d / 0.05, 0, 1)
@@ -575,7 +591,8 @@ def build_straight(name, w):
             _add_face(acc, pieces, mapper, flip=(sgn > 0), tex_off=0.0, rnd_val=rv, layer=0 if sgn < 0 else 1)
     _cap_row(acc, L, w.Hb, w.H, T, (w.seed, "C"), w.seed * 31,
              lambda x0, x1, y0, y1: ((x0, x1, y0, y1), True))
-    return _finish(name, acc, [(0.0, L, -T / 2 + CORE_IN, T / 2 - CORE_IN, -0.08, w.Hb + 0.01)])
+    # 心材は端から少し下げる（壁の端で石の切り口と同一平面になって Z ファイトしないように）
+    return _finish(name, acc, [(0.004, L - 0.004, -T / 2 + CORE_IN, T / 2 - CORE_IN, -0.08, w.Hb + 0.01)])
 
 
 def _path_mapper(segs, rho=0.0):
@@ -667,8 +684,8 @@ def build_corner(name, w, La=2.0, Lb=2.0):
     cap_stone(acc, La - h + GAP * 0.5, La + h + ov, -h - ov, h, w.Hb, w.H, (w.seed, "CC"), 0, 50.0)
     _cap_row(acc, Lb - h, w.Hb, w.H, T, (w.seed, "CB"), w.seed * 41,
              lambda x0, x1, y0, y1: ((La - y1, La - y0, h + x0, h + x1), False), start_gap=True)
-    return _finish(name, acc, [(0.0, La + h - CORE_IN, -h + CORE_IN, h - CORE_IN, -0.08, w.Hb + 0.01),
-                               (La - h + CORE_IN, La + h - CORE_IN, -h + CORE_IN, Lb, -0.08, w.Hb + 0.01)])
+    return _finish(name, acc, [(0.004, La + h - CORE_IN, -h + CORE_IN, h - CORE_IN, -0.08, w.Hb + 0.01),
+                               (La - h + CORE_IN, La + h - CORE_IN, -h + CORE_IN, Lb - 0.004, -0.08, w.Hb + 0.01)])
 
 
 # ---------------------------------------------------------------------------

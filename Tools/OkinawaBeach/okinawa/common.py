@@ -714,6 +714,12 @@ def bake_and_export(name, objs, out_root=MODELS_DIR, keep_other_visible=False):
         for poly in p.data.polygons:
             poly.material_index = 0
         mname = mat.name.split(".")[0]
+        # 面積 0 の三角形は Cycles が壊れた法線を焼き、それが隙間埋めで広がるので消す
+        bm = bmesh.new()
+        bm.from_mesh(p.data)
+        bmesh.ops.dissolve_degenerate(bm, dist=1e-6, edges=bm.edges)
+        bm.to_mesh(p.data)
+        bm.free()
         paths = bake_part(p, mat, out_dir, f"{name}_{mname}")
         fm = final_material(f"{name}_{mname}", paths, double_sided=paths["double_sided"])
         p.data.materials[0] = fm
