@@ -214,7 +214,7 @@ namespace CoreEngine
         const float peakAngularFrequency =
             ComputePeakAngularFrequency(windSpeed, settings.fetchMeters, gravity);
 
-        // ★カスケード間の相対エネルギーを正しくするための離散化正規化★
+        // カスケード間の相対エネルギーを正しくするための離散化正規化★
         // スペクトル密度 Ψ(k) は単位波数面積あたりの分散なので、離散和にはセル面積 Δk² が要る。
         // Δk = 2π/patchLength はカスケードごとに違うため、掛けないと大パッチだけ (L/2π)² 倍に膨れる。
         const float deltaWaveNumber = kTwoPi / patchLength;

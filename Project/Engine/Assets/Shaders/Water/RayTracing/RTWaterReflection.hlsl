@@ -196,6 +196,43 @@ float3 SampleReflectionSourceStreak(float2 uv, float verticalSigmaPixels, float 
     return colorSum / weightSum;
 }
 
+/// @brief 投影先のまわりの画素から、当たった点と同じ奥行きに写っている物の色を探す
+/// @param uv              当たった点を画面へ投影した位置
+/// @param hitViewDistance カメラから当たった点までの距離
+/// @param tolerance       同じ物とみなす距離の差
+/// @param color           見つかった画素の色の平均
+/// @return 見つかった度合い（0 = 見つからない、1 = 3 画素以上見つかった）
+float FindHitColorNearby(float2 uv, float hitViewDistance, float tolerance, out float3 color)
+{
+    static const int kSearchTapCount = 12;
+    const float2 screenSize = float2(gScreenWidth, gScreenHeight);
+    float3 colorSum = float3(0.0f, 0.0f, 0.0f);
+    float foundCount = 0.0f;
+    [unroll]
+    for (int i = 0; i < kSearchTapCount; ++i)
+    {
+        // 黄金角のらせんで半径 1〜6 画素に散らす
+        const float angle = float(i) * 2.39996323f;
+        const float radiusPixels = 1.0f + 5.0f * sqrt((float(i) + 0.5f) / (float)kSearchTapCount);
+        const float2 tapUV = saturate(uv + float2(cos(angle), sin(angle)) * radiusPixels / screenSize);
+        const uint2 tapCoord = min(uint2(tapUV * screenSize), uint2(screenSize - 1.0f));
+        const float tapDepth = gSceneDepth.Load(int3(tapCoord, 0));
+        if (IsBackgroundDepth(tapDepth))
+        {
+            continue;
+        }
+        const float3 tapWorldPos = ReconstructWorldPosition(ScreenUVToNDC(tapUV), tapDepth, gInvViewProjection);
+        if (abs(length(tapWorldPos - gCameraPosition) - hitViewDistance) > tolerance)
+        {
+            continue;
+        }
+        colorSum += gSceneColor.Load(int3(tapCoord, 0)).rgb;
+        foundCount += 1.0f;
+    }
+    color = (foundCount > 0.0f) ? colorSum / foundCount : float3(0.0f, 0.0f, 0.0f);
+    return saturate(foundCount / 3.0f);
+}
+
 /// @brief 水面の点から光源が見えるかを返す（1=日向 / 0=水より上の遮蔽物の影）
 /// @param waterPos    水面の点
 /// @param waterNormal 水面の法線（自己交差を避けるずらしに使う）
@@ -397,32 +434,43 @@ void RTWaterReflectionRayGen()
         reflectedUV, verticalReflectionSpread * pixelsPerRadian, horizontalReflectionSpread * pixelsPerRadian);
     const float3 skyAlongRay = hasSkyCube ? SampleSkyEnvironment(ray.Direction, skyRoughness) : sceneColorAtTarget;
 
-    float sampledDepth = gSceneDepth.Load(int3(sampleCoord, 0));
-    if (IsBackgroundDepth(sampledDepth))
+    const float hitViewDistance = length(hitWorldPos - gCameraPosition);
+    const float depthMismatchThreshold = max(0.08f, hitViewDistance * 0.03f);
+
+    // 投影先の画素に当たった物が写っている度合い。背景（空）なら 0、
+    // 奥行きが食い違うほど下げる（2 値で棄却すると成否の境がギザギザになる）
+    float mismatchConfidence = 0.0f;
+    const float sampledDepth = gSceneDepth.Load(int3(sampleCoord, 0));
+    if (!IsBackgroundDepth(sampledDepth))
     {
-        // 再投影先が空（背景）＝反射先は空。SceneColor の空は雲・太陽まで
-        // 描かれているのでキューブより情報が多い。画面端だけキューブへ寄せる。
-        gReflectionOutput[launchIndex] =
-            float4(lerp(skyAlongRay, sceneColorAtTarget, edgeFade), MakeSuccessAlpha(1.0f));
-        return;
+        const float3 sampledWorldPos =
+            ReconstructWorldPosition(ScreenUVToNDC(reflectedUV), sampledDepth, gInvViewProjection);
+        const float depthMismatch = abs(length(sampledWorldPos - gCameraPosition) - hitViewDistance);
+        mismatchConfidence =
+            1.0f - smoothstep(depthMismatchThreshold, depthMismatchThreshold * 4.0f, depthMismatch);
     }
 
-    float3 sampledWorldPos = ReconstructWorldPosition(ScreenUVToNDC(reflectedUV), sampledDepth, gInvViewProjection);
-    float sampledViewDistance = length(sampledWorldPos - gCameraPosition);
-    float hitViewDistance = length(hitWorldPos - gCameraPosition);
-    float depthMismatch = abs(sampledViewDistance - hitViewDistance);
-    float depthMismatchThreshold = max(0.08f, hitViewDistance * 0.03f);
-
-    // ★2 値棄却をやめて信頼度へ★
-    // 旧実装は depthMismatch > 閾値 でハード棄却しており、かすめ角では
-    // 成否がピクセル単位で反転してギザギザ・二重像の原因になっていた
-    // （水面まわりの「線」が毎回 2 値切替から出ていたのと同じ構図）。
-    const float mismatchConfidence =
-        1.0f - smoothstep(depthMismatchThreshold, depthMismatchThreshold * 4.0f, depthMismatch);
+    // 反射レイは物に当たっているので、投影先に写っていなくても反射先は空ではない。
+    // 画素に満たない細い葉や裏向きで描かれない面は投影先に写らないので、
+    // まわりの画素から同じ奥行きの物を探してその色を使う
+    float3 hitColor = sceneColorAtTarget;
+    float hitConfidence = mismatchConfidence;
+    if (mismatchConfidence < 1.0f)
+    {
+        float3 nearbyColor;
+        const float nearbyConfidence = FindHitColorNearby(
+            reflectedUV, hitViewDistance, depthMismatchThreshold * 4.0f, nearbyColor);
+        if (nearbyConfidence > 0.0f)
+        {
+            hitColor = lerp(nearbyColor, sceneColorAtTarget, mismatchConfidence);
+            hitConfidence = max(mismatchConfidence, nearbyConfidence);
+        }
+    }
 
     // 端点はどちらも「反射レイの向きの色」なので混ぜても面が食い違わない。
-    const float sceneWeight = saturate(edgeFade * mismatchConfidence);
-    const float3 resolvedColor = lerp(skyAlongRay, sceneColorAtTarget, sceneWeight);
+    // 当たった物の色が見つからないときは、同じレイ向きの空へ寄せる
+    const float sceneWeight = saturate(edgeFade * hitConfidence);
+    const float3 resolvedColor = lerp(skyAlongRay, hitColor, sceneWeight);
 
     // Water.PS へは常に「解決済みの 1 枚」を渡す（alpha は成功固定）。
     gReflectionOutput[launchIndex] = float4(resolvedColor, MakeSuccessAlpha(1.0f));
