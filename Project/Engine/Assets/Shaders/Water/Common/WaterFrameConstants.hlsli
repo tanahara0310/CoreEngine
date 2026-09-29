@@ -55,7 +55,8 @@ cbuffer WaterFrameConstants : register(b5)
     // 白波被覆率の風速追従係数（Monahan W ∝ U^3.41 の基準風速比）。
     // C++ 側 WaterFrameConstants::foamWindCoverageScale と一致必須。
     float gFoamWindCoverageScale;
-    float gCameraClipPadding;
+    // 1 = 水面の日向率テクスチャ（gWaterSunVisibility）をメインライトの項へ掛ける
+    int gSunVisibilityEnabled;
 
     // ---- 泡（whitecap）。FFTOcean 専用（Gerstner はヤコビアンを持たない）----
     int gFoamEnabled;      // 1 = 泡合成を行う

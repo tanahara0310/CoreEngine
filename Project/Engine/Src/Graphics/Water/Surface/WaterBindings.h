@@ -23,6 +23,7 @@ namespace CoreEngine::WaterBind
         gSkyViewLUTAP,
         gWaterSkyIrradianceSH,
         gSkyEnvironmentMap,
+        gWaterSunVisibility,
         Count
     };
 
@@ -59,6 +60,9 @@ namespace CoreEngine::WaterBind
         // 空アンビエント SH・空スペキュラキューブマップ
         { "gWaterSkyIrradianceSH",   kSRV, kCond },
         { "gSkyEnvironmentMap",      kSRV, kCond },
+
+        // 水面の日向率（RT 反射パスの 2 枚目の出力）
+        { "gWaterSunVisibility",     kSRV, kCond },
     };
 
     static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");

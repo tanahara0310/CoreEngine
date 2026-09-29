@@ -47,14 +47,15 @@ float3 EvaluateWaterSkyIrradiance(float3 n)
 ///          減衰（日没の赤方偏移・減光）を乗算済みのため、ここで読むだけで大気に追従する。
 ///          天空光は大気アクティブ時は Sky Irradiance SH（時刻・太陽高度に連動）、
 ///          非アクティブ時は静的な拡散 IBL キューブマップへフォールバックする。
-float3 ComputeUnderwaterAmbientLight()
+/// @param mainLightVisibility メインライト（0 番）の日向率（0=影 / 1=日向）。
+///        影になった水面の下の水柱には太陽の光が入らないので、太陽の分だけに掛ける
+float3 ComputeUnderwaterAmbientLight(float mainLightVisibility)
 {
 
     // 太陽など平行光源: 水平な水面へ入る下向き放射照度を Lambert 面の放射輝度へ換算（/π）
     // downwelling は太陽高度に対してほぼ線形に 0 へ落ちる（sin(elevation) 相当）ため、
     // 太陽を下げていくと直射成分だけが急激に暗転する。
     float3 sunAmbient = float3(0.0f, 0.0f, 0.0f);
-    float maxDownwelling = 0.0f;
     for (uint i = 0; i < gLightCounts.directionalLightCount; ++i)
     {
         if (gDirectionalLights[i].enabled == 0)
@@ -62,8 +63,9 @@ float3 ComputeUnderwaterAmbientLight()
             continue;
         }
         float downwelling = saturate(-normalize(gDirectionalLights[i].direction).y);
-        maxDownwelling = max(maxDownwelling, downwelling);
-        sunAmbient += gDirectionalLights[i].color.rgb * gDirectionalLights[i].intensity * downwelling / PI;
+        const float visibility = (i == 0) ? mainLightVisibility : 1.0f;
+        sunAmbient += gDirectionalLights[i].color.rgb * gDirectionalLights[i].intensity * downwelling
+            * visibility / PI;
     }
 
     // 天空拡散光

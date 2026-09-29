@@ -92,5 +92,11 @@ void WaterShaderResourceBinder::Bind(
     if (renderResources.skyEnvironmentSRV.ptr != 0) {
         binder.Set(table_[WaterBind::gSkyEnvironmentMap], renderResources.skyEnvironmentSRV);
     }
+
+    // 水面の日向率
+    // （未接続のフレームはシェーダー側フラグ gSunVisibilityEnabled=0 で参照されない）
+    if (renderResources.HasSunVisibility()) {
+        binder.Set(table_[WaterBind::gWaterSunVisibility], renderResources.sunVisibilitySRV);
+    }
 }
 }

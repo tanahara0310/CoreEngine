@@ -55,6 +55,14 @@ StructuredBuffer<float4> gWaterSkyIrradianceSH : register(t24);
 // α には雲の透過率が入っており、平面反射（雲を含まない）へ雲を被せる不透明度に使う。
 TextureCube<float4> gSkyEnvironmentMap : register(t25);
 
+// ===== 水面の日向率（RTWaterReflectionPass の 2 枚目の出力）=====
+// 0 = 水より上の遮蔽物（ヤシ・岩・島）の影 / 1 = 日向。メインライト（0 番）の項だけに掛ける。
+// gSunVisibilityEnabled が 1 のフレームだけ読む。
+Texture2D<float> gWaterSunVisibility : register(t26);
+
+/// @brief 影の中に残す直接光の割合（DeferredLighting・水中コースティクスの影と同じ値）
+static const float kShadowedSunFloor = 0.3f;
+
 struct WaterPSInput
 {
     float4 position : SV_POSITION;
@@ -176,7 +184,7 @@ float3 SampleGlossyReflection(float2 screenUV, float grazing)
 // フレネル合成後に加算で復元する。空・環境光は平面反射側にのみ含まれるので
 // エネルギーの二重計上はない（太陽ディスク分の平面反射側エネルギーは
 // ぼかし・圧縮で実質失われているため、加算しても過大にならない）。
-float3 ComputeSunGlintSpecular(float3 normal, float3 viewDir, float foamCoverage)
+float3 ComputeSunGlintSpecular(float3 normal, float3 viewDir, float foamCoverage, float mainLightVisibility)
 {
     // 水の垂直入射反射率 F0 ≈ 0.02
     const float3 kWaterF0 = float3(0.02f, 0.02f, 0.02f);
@@ -201,7 +209,9 @@ float3 ComputeSunGlintSpecular(float3 normal, float3 viewDir, float foamCoverage
             continue;
         }
         float3 brdf = CookTorranceBRDF(normal, viewDir, lightVec, glintRoughness, kWaterF0);
-        totalGlint += brdf * gDirectionalLights[i].color.rgb * gDirectionalLights[i].intensity * ndotl;
+        const float visibility = (i == 0) ? mainLightVisibility : 1.0f;
+        totalGlint += brdf * gDirectionalLights[i].color.rgb * gDirectionalLights[i].intensity * ndotl
+            * visibility;
     }
     return totalGlint;
 }
@@ -308,6 +318,15 @@ WaterPixelOutput main(WaterPSInput input)
     screenUV = saturate(screenUV);
     uint2 pixelCoord = min(uint2(input.position.xy), uint2(sceneDepthWidth - 1, sceneDepthHeight - 1));
 
+    // ---- 2.5. メインライトの日向率（水より上の遮蔽物の影が水面に落ちているか）----
+    // 太陽の鏡面反射（きらめき）は遮られたら残らないので日向率をそのまま掛ける。
+    // 拡散の項（泡・水中の散乱・波頭の透過）は、DeferredLighting と水中コースティクスの
+    // 影と同じく、影の中でも直接光を kShadowedSunFloor だけ残す。
+    const float sunVisibility = (gSunVisibilityEnabled != 0)
+        ? gWaterSunVisibility.Load(int3(pixelCoord, 0))
+        : 1.0f;
+    const float sunDiffuseVisibility = lerp(kShadowedSunFloor, 1.0f, sunVisibility);
+
     // ---- 3. 水面専用 PBR フォワード出力をベースにする（discard なし）----
     // 反射有効かつ空環境マップ有効のフレームでは、下の合成で reflectColor が
     // 必ず「RT 反射色」か「空キューブマップ色」で置き換わるため、
@@ -378,7 +397,7 @@ WaterPixelOutput main(WaterPSInput input)
     reflectanceWeight *= (1.0f - foamCoverage);
 
     float3 refractionColor = ResolveWaterTransmissionColor(pixelCoord, screenUV);
-    float3 underwaterAmbient = ComputeUnderwaterAmbientLight();
+    float3 underwaterAmbient = ComputeUnderwaterAmbientLight(sunDiffuseVisibility);
     // refractionColor には既に太陽の下り光路の減衰が織り込まれている（上のコメント参照）。
     // ここで掛けるのは視線の上り光路 transmittance のみ。
     float3 transmissionColor = ComputeWaterVolumetricColor(
@@ -463,7 +482,7 @@ WaterPixelOutput main(WaterPSInput input)
         const float grain = lerp(
             kFoamGrainMin, 1.0f,
             FoamValueNoise(input.baseWorldXZ * kFoamGrainScale));
-        const float3 foamColor = ComputeFoamColor(surfaceNormal) * grain;
+        const float3 foamColor = ComputeFoamColor(surfaceNormal, sunDiffuseVisibility) * grain;
         // 白濁（haze）: レースの穴の間の気泡層。泡色より暗く、粒状に変調済み
         finalWaterComposite = lerp(
             finalWaterComposite,
@@ -511,14 +530,14 @@ WaterPixelOutput main(WaterPSInput input)
     if (gReflectionEnabled)
     {
         output.color.rgb +=
-            ComputeSunGlintSpecular(geomNormal, viewDir, foamCoverage) * (1.0f - foamCoverage);
+            ComputeSunGlintSpecular(geomNormal, viewDir, foamCoverage, sunVisibility) * (1.0f - foamCoverage);
     }
 
     // ---- 波峰のサブサーフェス透過（逆光で波の背が緑に光る）----
     // 波を透過して視点へ出てくる光なので、水面で反射されずに「抜けてきた」分だけ、
     // つまり (1 - フレネル反射率) を掛けて加算する。
     output.color.rgb += ComputeWaterSubsurfaceScattering(
-        surfaceNormal, viewDir, input.waveHeight, sigmaS, sigmaT, foamCoverage)
+        surfaceNormal, viewDir, input.waveHeight, sigmaS, sigmaT, foamCoverage, sunDiffuseVisibility)
         * (1.0f - reflectanceWeight);
 
     // ---- 5. 空気遠近感（Aerial Perspective）----

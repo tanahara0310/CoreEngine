@@ -21,6 +21,7 @@ namespace CoreEngine
         builder.Read(FrameBlackboard::SceneDepth, D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         builder.Read(FrameBlackboard::SceneColorSnapshot, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         builder.Read(FrameBlackboard::RTWaterRefractionColor, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        builder.Read(FrameBlackboard::RTWaterSunVisibility, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         builder.Write(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_RENDER_TARGET);
         // 水面も自分のモーションベクターを書く（TAA の再投影用）。
         // GBuffer が書いた値は「水の背後の地形」の動きなので、上書きしないと

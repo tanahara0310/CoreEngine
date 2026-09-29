@@ -14,6 +14,7 @@ namespace CoreEngine
         builder.Read(FrameBlackboard::SceneDepth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         builder.Read(FrameBlackboard::SceneColorSnapshot, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         builder.Write(FrameBlackboard::RTWaterReflectionColor, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        builder.Write(FrameBlackboard::RTWaterSunVisibility, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     }
 
     void RTWaterReflectionPass::Execute(const RenderContext& context)
@@ -48,14 +49,15 @@ namespace CoreEngine
             dispatchSurfaceData);
 
         if (context.frameBlackboard) {
-            D3D12_GPU_DESCRIPTOR_HANDLE handle =
-                context.rtWaterReflectionManager->GetReflectionSRVHandle(
-                    WaterReflectionRayTracingManager::ViewID::GameView);
+            constexpr auto kView = WaterReflectionRayTracingManager::ViewID::GameView;
             context.frameBlackboard->SetResource(
                 FrameBlackboard::RTWaterReflectionColor,
-                handle,
-                &context.rtWaterReflectionManager->GetReflectionResource(
-                    WaterReflectionRayTracingManager::ViewID::GameView));
+                context.rtWaterReflectionManager->GetReflectionSRVHandle(kView),
+                &context.rtWaterReflectionManager->GetReflectionResource(kView));
+            context.frameBlackboard->SetResource(
+                FrameBlackboard::RTWaterSunVisibility,
+                context.rtWaterReflectionManager->GetSunVisibilitySRVHandle(kView),
+                &context.rtWaterReflectionManager->GetSunVisibilityResource(kView));
         }
     }
 }

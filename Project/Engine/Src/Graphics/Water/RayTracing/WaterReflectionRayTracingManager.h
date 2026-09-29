@@ -30,9 +30,17 @@ namespace CoreEngine
         uint32_t debugLogEnabled = 0;
     };
 
+    /// @brief 水面の点から光源が見えるかを調べるための光源
+    struct WaterSunShadowInput {
+        Vector3 direction{ 0.0f, -1.0f, 0.0f }; ///< 光源→シーン
+        bool enabled = false;                  ///< false なら全画素を日向（1）にする
+    };
+
     /// @brief DXR による水面反射マネージャー。
     /// @details RTWaterRefractionRayTracingManager の対称形。反射レイをトレースし、
     ///          ヒット点を SceneColor へ再投影して水面反射カラーを生成する。
+    ///          同じ画素で水面の点から光源へ影のレイも撃ち、日向率（0=影 / 1=日向）を
+    ///          2 枚目の出力に書く。
     ///          反射は GameView のみで必要なため ViewID は GameView 1 本。
     class WaterReflectionRayTracingManager : public WaterRayTracingPassBase {
     public:
@@ -41,8 +49,10 @@ namespace CoreEngine
         using ViewID = RTWaterViewID;
 
         static constexpr uint32_t kViewCount = static_cast<uint32_t>(ViewID::Count);
-        static_assert(kViewCount <= RayTracingOutputViewSet::kMaxSlotCount,
-            "WaterReflectionRayTracingManager: ViewID::Count exceeds RayTracingOutputViewSet::kMaxSlotCount");
+        /// @brief 日向率テクスチャのスロット（反射出力のスロット 0〜kViewCount-1 の後ろ）
+        static constexpr uint32_t kSunVisibilitySlotBase = kViewCount;
+        static_assert(kSunVisibilitySlotBase + kViewCount <= RayTracingOutputViewSet::kMaxSlotCount,
+            "WaterReflectionRayTracingManager: slot count exceeds RayTracingOutputViewSet::kMaxSlotCount");
 
         bool Initialize(
             GraphicsCore* dxCommon,
@@ -61,6 +71,7 @@ namespace CoreEngine
             /// 空キューブマップ（AtmosphereManager::GetSkySpecularSRVHandle）。
             /// ptr==0 なら空を解決せず理由コードを返し、Water.PS の保険が動く。
             D3D12_GPU_DESCRIPTOR_HANDLE skyEnvironmentSRV,
+            const WaterSunShadowInput& sunShadow,
             UINT width,
             UINT height,
             ViewID viewId = ViewID::GameView);
@@ -70,11 +81,13 @@ namespace CoreEngine
 
         /// @brief 反射出力テクスチャの SRV ハンドル
         D3D12_GPU_DESCRIPTOR_HANDLE GetReflectionSRVHandle(ViewID viewId = ViewID::GameView) const;
-        /// @brief 反射出力テクスチャのリソース
-        /// @brief 出力テクスチャをステート追跡つきで返す（バリア発行はこれを渡す）
+        /// @brief 反射出力テクスチャをステート追跡つきで返す（バリア発行はこれを渡す）
         GpuResource& GetReflectionResource(ViewID viewId = ViewID::GameView);
-        /// @brief 反射出力の現在ステートへの参照（バリア時に更新される）
 
+        /// @brief 水面の日向率テクスチャ（R8_UNORM・0=影 / 1=日向）の SRV ハンドル
+        D3D12_GPU_DESCRIPTOR_HANDLE GetSunVisibilitySRVHandle(ViewID viewId = ViewID::GameView) const;
+        /// @brief 水面の日向率テクスチャをステート追跡つきで返す
+        GpuResource& GetSunVisibilityResource(ViewID viewId = ViewID::GameView);
 
         void SetSettings(const WaterReflectionRayTracingSettings& settings) { settings_ = settings; }
         const WaterReflectionRayTracingSettings& GetSettings() const { return settings_; }
