@@ -332,7 +332,8 @@ def main():
         if args and cam_name not in args:
             continue
         C.add_camera(loc, tgt, lens)
-        C.render(os.path.join(C.PREVIEW_DIR, f"scene_{cam_name}.jpg"), res=(1600, 900), samples=96)
+        C.render(os.path.join(C.PREVIEW_DIR, f"scene_{cam_name}.jpg"), res=(1600, 900),
+                 samples=int(os.environ.get("OKI_SCENE_SAMPLES", "96")))
     C.save_blend("OkinawaBeachScene")
 
 
