@@ -129,8 +129,9 @@ def add_water():
     bpy.ops.mesh.primitive_cube_add(size=1)
     w = bpy.context.object
     w.name = "PreviewWater"
-    w.scale = (400, 400, 10)
-    w.location = (0, -180, -5.0)
+    w.scale = (3000, 3000, 10)
+    w.location = (0, 0, -5.0)
+    C.apply_transform(w)  # 波ノイズを実寸で効かせる
     C.assign(w, water_material())
     return w
 
