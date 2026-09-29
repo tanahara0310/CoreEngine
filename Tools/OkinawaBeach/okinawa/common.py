@@ -839,7 +839,8 @@ def render(path, res=(1280, 720), samples=64):
 
 def import_gltf(path):
     before = set(bpy.data.objects)
-    bpy.ops.import_scene.gltf(filepath=path)
+    # 画像を .blend に埋め込まず、Models フォルダの PNG を参照させる
+    bpy.ops.import_scene.gltf(filepath=path, import_pack_images=False)
     return [o for o in bpy.data.objects if o not in before]
 
 
