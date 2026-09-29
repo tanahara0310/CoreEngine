@@ -82,6 +82,7 @@ def _sdf_mesh(name, grid, smooth=(0.4, 2), remesh=False):
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=grid.h * 0.05)
     bm.to_mesh(obj.data)
     bm.free()
+    _fill_holes(obj)
     if remesh:
         m = obj.modifiers.new("Remesh", "REMESH")
         m.mode = "VOXEL"
@@ -107,8 +108,23 @@ def _finish_sdf(obj, target_tris, uv_angle=62.0, disp=None, smooth_angle=None):
     m.use_collapse_triangulate = True
     m.delimit = {"UV"}
     C.apply_modifiers(obj)
+    _fill_holes(obj)
     C.set_smooth(obj, True, angle=smooth_angle)
     return obj
+
+
+def _fill_holes(obj):
+    """デシメートが非多様体の所に開ける小さな穴を塞ぐ（エンジンは裏面カリングで穴が抜けて見える）"""
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    holes = [e for e in bm.edges if e.is_boundary]
+    if holes:
+        ret = bmesh.ops.holes_fill(bm, edges=holes, sides=16)
+        bmesh.ops.triangulate(bm, faces=ret["faces"])
+        print(f"  [{obj.name}] filled {len(holes)} boundary edges")
+    bm.to_mesh(obj.data)
+    bm.free()
+    obj.data.update()
 
 
 def _weld(obj, dist=1e-5):
@@ -345,7 +361,7 @@ def _clam_sdf(h=0.0016):
                     u2 = -n * math.sin(lean) + u * math.cos(lean)
                     c = p + n2 * 0.0006
                     wid = (0.0085 if len(offs) == 1 else 0.0062) + 0.004 * grow
-                    radii = (wid * rnd.uniform(0.85, 1.1), 0.0024 + 0.0016 * grow, 0.0019)
+                    radii = (wid * rnd.uniform(0.85, 1.1), 0.0021 + 0.0013 * grow, 0.0024)
                     g.ellipsoid(c, radii, k=0.0018, R=_ellipsoid_R(t, n2, u2))
     # 出水管: 外套膜の上に立つ短い筒と、その穴
     th = CL_SIPHON
@@ -421,8 +437,10 @@ def clam_material():
         big = nb.noise(co, 9.0, 4, 0.6)
         fine = nb.noise(co, 140.0, 3, 0.6)
         gl_w = nb.noise(co, 30.0, 2, 0.5)
-        growth = nb.math("FRACT", nb.add(nb.mul(s, 75.0), nb.mul(gl_w, 3.0)))
-        gline = nb.smooth(nb.math("ABSOLUTE", nb.sub(growth, 0.5)), 0.5, 0.25)
+        gl_n = nb.noise(nb.comb(nb.mul(th, 6.0), nb.mul(s, 40.0), 0.0), 2.0, 3, 0.6)
+        growth = nb.math("FRACT", nb.add(nb.mul(s, 42.0), nb.add(nb.mul(gl_w, 2.0), nb.mul(gl_n, 1.5))))
+        gline = nb.mul(nb.smooth(nb.math("ABSOLUTE", nb.sub(growth, 0.5)), 0.5, 0.3),
+                       nb.smooth(nb.noise(co, 25.0, 2, 0.5), 0.3, 0.5))
         gband = nb.noise(nb.comb(nb.mul(s, 9.0), 0.3, 0.7), 1.0, 3, 0.5)
         riblet = nb.mul(nb.noise(nb.comb(nb.mul(th, 55.0), nb.mul(s, 3.0), 0.0), 1.0, 3, 0.5),
                         nb.smooth(nb.noise(co, 8.0, 2, 0.5), 0.4, 0.6))
@@ -446,8 +464,8 @@ def clam_material():
         warp = nb.noise(nb.comb(nb.mul(th, 6.0), nb.mul(v, 1.5), 0.0), 3.0, 4, 0.6)
         mco = nb.comb(nb.mul(th, 0.2), nb.mul(v, 0.035), nb.mul(s, 0.05))
         patch = nb.noise(co, 20.0, 4, 0.6, distortion=0.8)
-        mcol = nb.ramp(av, [(0.0, srgb("#1e4ea8")), (0.3, srgb("#2262c8")), (0.58, srgb("#2a86de")),
-                            (0.82, srgb("#2aa9cf")), (1.0, srgb("#39b9b2"))])
+        mcol = nb.ramp(av, [(0.0, srgb("#1e4ea8")), (0.3, srgb("#2262c8")), (0.62, srgb("#2a86de")),
+                            (0.88, srgb("#2a9fd6")), (1.0, srgb("#33b3b4"))])
         mcol = nb.mix(mcol, srgb("#3aa77e"), nb.mul(nb.smooth(patch, 0.58, 0.72), 0.7))   # 緑の斑
         mcol = nb.mix(mcol, srgb("#16408f"), nb.mul(nb.smooth(patch, 0.42, 0.3), 0.55))
         # 縁に平行な波縞（ところどころ途切れる）
@@ -470,10 +488,11 @@ def clam_material():
         sparkle = nb.mul(nb.smooth(sk_d, 0.3, 0.1), nb.math("GREATER_THAN", sk_r, 0.5))
         mcol = nb.mix(mcol, srgb("#9fe9ff"), nb.mul(sparkle, 0.45))
         # 縁の眼点（小さな淡い点が縁に並ぶ）と縁の細い黄緑の線
-        eye_t = nb.math("FRACT", nb.mul(th, 1.0 / 0.026))
-        eyes = nb.mul(nb.smooth(nb.math("ABSOLUTE", nb.sub(eye_t, 0.5)), 0.2, 0.08),
-                      nb.smooth(nb.math("ABSOLUTE", nb.sub(av, 0.86)), 0.045, 0.015))
-        mcol = nb.mix(mcol, srgb("#d4ecee"), nb.mul(eyes, 0.8))
+        eye_t = nb.math("FRACT", nb.add(nb.mul(th, 1.0 / 0.024), nb.mul(warp, 0.6)))
+        eyes = nb.mul(nb.smooth(nb.math("ABSOLUTE", nb.sub(eye_t, 0.5)), 0.14, 0.05),
+                      nb.smooth(nb.math("ABSOLUTE", nb.sub(av, 0.87)), 0.035, 0.01))
+        eyes = nb.mul(eyes, nb.smooth(nb.noise(nb.comb(nb.mul(th, 40.0), 0.0, 0.0), 1.0, 2, 0.5), 0.35, 0.5))
+        mcol = nb.mix(mcol, srgb("#b9dfe6"), nb.mul(eyes, 0.6))
         rim = nb.mul(nb.smooth(av, 0.94, 0.985), nb.smooth(av, 1.06, 1.0))
         mcol = nb.mix(mcol, srgb("#8fc98e"), nb.mul(rim, 0.45))
         # 出水管: 縁は淡く、穴の中は暗い
@@ -491,7 +510,7 @@ def clam_material():
         # 高さ: 殻の成長線・放射肋、外套膜の細かい乳頭と縁のしわ
         pap = nb.smooth(nb.voronoi(co, 260.0), 0.35, 0.0)
         wr = nb.math("SINE", nb.add(nb.mul(th, 180.0), nb.mul(warp, 4.0)))
-        h_shell = nb.add(nb.add(nb.mul(gline, -0.9), nb.mul(riblet, 0.35)), nb.mul(fine, 0.45))
+        h_shell = nb.add(nb.add(nb.mul(gline, -0.8), nb.mul(riblet, 0.15)), nb.mul(fine, 0.45))
         h_mant = nb.add(nb.mul(pap, 0.35), nb.mul(nb.mul(wr, nb.smooth(av, 0.75, 0.95)), 0.35))
         height = nb.mixf(h_shell, h_mant, mant)
         rough = nb.mixf(nb.maprange(fine, 0.3, 0.7, 0.72, 0.86), 0.28, mant)
@@ -504,7 +523,7 @@ def clam_material():
 
 def giant_clam():
     g = _clam_sdf()
-    obj = _sdf_mesh("GiantClam", g, smooth=(0.4, 2), remesh=True)
+    obj = _sdf_mesh("GiantClam", g, smooth=(0.4, 2))
     print(f"  clam sdf: {len(obj.data.vertices)} verts")
     off = Vector((1.7, 3.3, 0.4))
     _finish_sdf(obj, 9000, uv_angle=60,
@@ -1525,12 +1544,12 @@ def _tu_scute_images(res):
     col = col * 0.7 + mid_c * 0.3 * (1 - t[..., None]) + col * 0.3 * t[..., None] * 0.0
     col = col * (sc_var * (0.85 + 0.3 * fine))[..., None]
     # 継ぎ目: 内側に暗い縁、中心に淡い線
-    seam = np.clip(1 - edge / 0.0022, 0, 1)
+    seam = np.clip(1 - edge / 0.0017, 0, 1)
     halo = np.clip(1 - edge / 0.012, 0, 1) * (1 - seam)
     col = col * (1 - 0.35 * halo[..., None])
-    col = col * (1 - seam[..., None]) + lin("#c8b88c") * seam[..., None]
-    grow = 0.5 + 0.5 * np.sin(rr / 0.006 * math.tau + noise * 4)
-    height = 0.55 + 0.2 * noise + 0.1 * grow - 0.5 * np.clip(1 - edge / 0.004, 0, 1)
+    col = col * (1 - seam[..., None] * 0.85) + lin("#b3a47a") * seam[..., None] * 0.85
+    grow = 0.5 + 0.5 * np.sin(rr / 0.01 * math.tau + noise * 4)
+    height = 0.55 + 0.2 * noise + 0.04 * grow - 0.5 * np.clip(1 - edge / 0.004, 0, 1)
     top = np.concatenate([col, height[..., None]], -1)
     # --- 腹甲（下から見た図）: 淡黄色、中線と横の継ぎ目、橋の下縁甲板 ---
     ay = np.abs(Y)
@@ -1706,7 +1725,7 @@ def turtle_head(h=0.0034):
                 e + np.array([-0.016, sy * 0.001, 0.006]) * TU_HS], [0.004, 0.0048, 0.0035], k=0.004)
     obj = _sdf_mesh("TurtleHead", g, smooth=(0.45, 3), remesh=True)
     off = Vector((3.3, 1.1, 0.4))
-    _finish_sdf(obj, 2600, uv_angle=64, disp=lambda co, n: 0.0008 * geo.fbm(co * 40.0 + off, 3))
+    _finish_sdf(obj, 3000, uv_angle=64, disp=lambda co, n: 0.0008 * geo.fbm(co * 40.0 + off, 3))
     V = _np_verts(obj.data)
     _set_attr(obj, "SkinA", V)
     _set_attr(obj, "SkinB", np.zeros((len(V), 3)))
@@ -1792,7 +1811,7 @@ def turtle_skin_material():
     return pbr_material("TurtleSkin", fn, res=2048, ao_distance=0.25, uv="keep")
 
 
-def _flipper(name, L, table, bend, sections=16, stations=None):
+def _flipper(name, L, table, bend, sections=18, stations=None):
     """翼断面のヒレをロフトで作る（ローカル: X = 付け根→先, Y = 前縁側, Z = 背側）。
     table: u の各点での (翼弦, 厚み)。bend(u) -> (上下の曲げ角, 前後の曲げ角)（付け根からの累積, rad）
     戻り値: 頂点、面、頂点ごとの (u, 翼弦上の位置 0 前縁 → 1 後縁, 背側 ±1)"""

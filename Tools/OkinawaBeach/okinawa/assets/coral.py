@@ -3,7 +3,7 @@
   Coral_Table_A / B  : テーブルサンゴ（ミドリイシ属）。短く太い幹の上に、上向きの小枝が密生した
                        ほぼ水平の板。A は約 1.6m、B は約 1.0m で 2 段に重なる
   Coral_Branch_A     : 枝サンゴ（スギノキミドリイシ型）。鹿の角のように二又に分かれる枝の茂み
-  Coral_Branch_B     : 散房状〜ボトルブラシ状の小枝の茂み
+  Coral_Branch_B     : 散房状のミドリイシ。根元近くで何度も分かれた短い枝が上を向き、丸い茂みになる
   Coral_Massive_A / B: ハマサンゴ（塊状）。こぶ・丸いローブのある岩のような群体
   Coral_MicroAtoll   : マイクロアトール。平らに死んだ頂面（灰色、藻の膜、小さな潮だまり）と生きた縁・側面
   Coral_Brain        : ノウサンゴ。反応拡散（Gray-Scott）で迷路状の谷と稜を作る
@@ -205,14 +205,11 @@ def _clean_sdf_mesh(obj, h):
     return obj
 
 
-def _decimate(obj, target_tris, vgroup=None, vfactor=1.0):
+def _decimate(obj, target_tris):
     tris = sum(len(p.vertices) - 2 for p in obj.data.polygons)
     m = obj.modifiers.new("Decimate", "DECIMATE")
     m.ratio = min(1.0, target_tris / max(tris, 1))
     m.use_collapse_triangulate = True
-    if vgroup:
-        m.vertex_group = vgroup
-        m.vertex_group_factor = vfactor
     C.apply_modifiers(obj)
     return obj
 
@@ -401,18 +398,23 @@ def transfer(low, high, res, cage=0.03, fields=(), name="xfer"):
     htri = _tris(hme)
     hn = _vnormals(hme)
     bvh = BVHTree.FromPolygons(hv.tolist(), htri.tolist(), all_triangles=True)
-    O = (P + N * cage).tolist()
-    D = (-N).tolist()
-    Pl = P.tolist()
     hit_i = np.empty(len(P), np.int64)
     hit_p = np.empty((len(P), 3))
     far = 2.0 * cage
-    for k in range(len(P)):
-        loc, nrm, idx, _ = bvh.ray_cast(O[k], D[k], far)
-        if idx is None or (nrm[0] * D[k][0] + nrm[1] * D[k][1] + nrm[2] * D[k][2]) > 0.0:
-            loc, nrm, idx, _ = bvh.find_nearest(Pl[k])
-        hit_i[k] = idx
-        hit_p[k] = loc
+    ch = 1 << 16           # Python のリストに直す量を抑える（フル解像度で数百万テクセル）
+    for c0 in range(0, len(P), ch):
+        O = (P[c0:c0 + ch] + N[c0:c0 + ch] * cage).tolist()
+        D = (-N[c0:c0 + ch]).tolist()
+        Pl = P[c0:c0 + ch].tolist()
+        ii, pp = [], []
+        for k in range(len(O)):
+            loc, nrm, idx, _ = bvh.ray_cast(O[k], D[k], far)
+            if idx is None or (nrm[0] * D[k][0] + nrm[1] * D[k][1] + nrm[2] * D[k][2]) > 0.0:
+                loc, nrm, idx, _ = bvh.find_nearest(Pl[k])
+            ii.append(idx)
+            pp.append((loc[0], loc[1], loc[2]))
+        hit_i[c0:c0 + len(O)] = ii
+        hit_p[c0:c0 + len(O)] = pp
     tv = htri[hit_i]
     w = _bary(hit_p, hv[tv[:, 0]], hv[tv[:, 1]], hv[tv[:, 2]])
     w = np.clip(w, 0.0, 1.0)
@@ -672,7 +674,7 @@ def massive_a():
     """約 2m のハマサンゴの岩: 2 つの塊が合わさったヘルメット形。なだらかなこぶが重なり、裾はややえぐれる"""
     return porites("Coral_Massive_A", 21, (0.92, 0.82, 0.74), 0.34, PAL_PORITES_A,
                    bodies=[((0.42, 0.22, 0.2), (0.6, 0.55, 0.62)), ((-0.35, -0.3, 0.12), (0.55, 0.5, 0.5))],
-                   lobes=7, hummocks=22, knobs=14, h=0.012, target_tris=12500, res=2048,
+                   lobes=7, hummocks=26, knobs=34, h=0.012, target_tris=12500, res=2048,
                    lobe_r=(0.3, 0.46), lobe_out=0.42, lobe_k=0.16, hum_r=(0.14, 0.28), knob_r=(0.06, 0.1),
                    lump=0.05)
 
@@ -911,8 +913,10 @@ def microatoll(name="Coral_MicroAtoll", seed=9, res=2048, target_tris=13500):
         r = rnd.uniform(0.07, 0.17)
         g.sphere(p - n * r * 0.58, r, k=r * 0.6)
     for i in range(36):
+        # 縁の肩: 半径の半ばから外へ（中心から撃つと平らな頂面から抜けてしまう）
         az = rnd.uniform(0, math.tau)
-        hit = g.surf((0.0, 0.0, zt - 0.06), np.array([math.cos(az), math.sin(az), 0.3]), max_d=2.6)
+        o = np.array([math.cos(az) * R0 * 0.5, math.sin(az) * R0 * 0.5, zt - 0.1])
+        hit = g.surf(o, np.array([math.cos(az), math.sin(az), 0.12]), max_d=2.0)
         if hit is None:
             continue
         p, n = hit
@@ -1658,12 +1662,21 @@ class Thicket:
             self.grow(p - d * r, d, r, gen, spec)
 
 
-def _branch_tubes(name, limbs, sides_fn, mat):
+def _branch_tubes(name, limbs, sides_fn, mat, seed=0):
     bp = BarkPacker(chunk_len=0.5)
+    rnd = random.Random(seed)
     for i, (pts, radii) in enumerate(limbs):
+        n = len(pts)
+        ph = rnd.uniform(0, math.tau)
+
+        def ring(ii, jj, a, n=n, ph=ph):
+            # 枝の太さのわずかなむら（先端の丸みの輪では弱める）
+            w = min(1.0, max(0.0, (n - 3 - ii) / 3.0))
+            return 1.0 + w * (0.055 * math.sin(3 * a + ii * 1.7 + ph) + 0.035 * math.sin(5 * a - ii * 0.9 + 2 * ph))
+
         # 先端からの距離を V に（色の成長部）。付け根は親に埋まるので開いたまま
         bp.tube(pts, radii, sides_fn(radii[0]), f"{name}_b{i}", kind=0, v_from_end=True, cap_start=False,
-                cap_end=True)
+                cap_end=True, ring_fn=ring)
     objs = bp.pack(margin=0.004)
     for o in objs:
         _triangulate(o)

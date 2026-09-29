@@ -107,8 +107,9 @@ def _zones(Y):
 
 
 def _pool(x, Y):
-    """礁原の潮だまり（くぼみ）0..1"""
-    return _smoothstep(1.05, 1.75, N_POOL(x, Y)) * _smoothstep(-68.0, -71.0, Y) * (1 - _smoothstep(-79.0, -81.5, Y))
+    """礁原の潮だまり（くぼみ）0..1。縁は細かいノイズで不規則に"""
+    p = N_POOL(x, Y) + 0.35 * N_FLAT(x, Y)
+    return _smoothstep(1.15, 1.8, p) * _smoothstep(-68.0, -71.0, Y) * (1 - _smoothstep(-79.0, -81.5, Y))
 
 
 def reef_h(x, Y):
@@ -469,11 +470,11 @@ def _rubble_layer(nb, V, tb):
 def _flat_layer(nb, V, ta, tb):
     """礁原: 死サンゴの石灰岩の舗床。芝状の藻、ピンク紫の石灰藻、割れ目と穴、小さなサンゴ、潮だまり"""
     big = V.noise(0.4, 4, 0.6, off=501.0)
-    col = nb.ramp(big, [(0.3, srgb("#9d937b")), (0.55, srgb("#b2a78d")), (0.75, srgb("#c3b99f"))])
+    col = nb.ramp(big, [(0.3, srgb("#8f8570")), (0.55, srgb("#a3987f")), (0.75, srgb("#b5ab91"))])
     col = nb.mix(col, srgb("#8c8573"), nb.mul(nb.smooth(V.noise(2.2, 4, 0.6, off=503.0), 0.52, 0.7), 0.5))
     # 芝状の藻（オリーブ〜茶。ムラと細かい毛羽）
     tn = V.noise(0.28, 4, 0.6, off=505.0)
-    turf = nb.smooth(tn, 0.44, 0.56)
+    turf = nb.smooth(tn, 0.4, 0.54)
     tcol = nb.ramp(V.noise(2.6, 3, 0.6, off=507.0), [(0.3, srgb("#5e5936")), (0.5, srgb("#6e6641")),
                                                      (0.66, srgb("#806c46")), (0.8, srgb("#8d7f53"))])
     fuzz = V.noise(14.0, 2, 0.6, off=509.0)
@@ -516,7 +517,7 @@ def _flat_layer(nb, V, ta, tb):
     ppiece, ppc = _pieces(nb, V, 8.0, 535.0, cover=0.36)
     psand = nb.mix(psand, nb.mix(srgb("#b2a893"), srgb("#ddd6c7"), ppc[0]), nb.mul(ppiece, 0.7))
     # 暗い潮だまり（底にサンゴと藻）
-    dark_pool = nb.smooth(V.noise(0.25, 2, 0.5, off=543.0), 0.45, 0.55)
+    dark_pool = nb.smooth(V.noise(0.25, 2, 0.5, off=543.0), 0.36, 0.48)
     psand = nb.mix(psand, nb.mix(srgb("#5f5a3c"), srgb("#7e6a48"), V.noise(4.0, 3, 0.6, off=545.0)), dark_pool)
     # 窪みの砂
     hol = nb.smooth(tb[1], 0.025, 0.07)

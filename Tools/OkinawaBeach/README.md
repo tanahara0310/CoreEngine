@@ -108,4 +108,50 @@ def my_material():
 
 ## 収録アセット
 
-`build.py` の `ASSETS` を参照。
+座標は Blender（Z-up）。z=0 は平均水面、+Y が陸側、-Y が沖側。エンジンへは (x, z, y) で対応する。
+
+### 浜と陸
+
+| モジュール | バリエーション | 原点・置き方 |
+|---|---|---|
+| `rocks` | NotchRock_A/B（キノコ岩）, ReefRock_A/B/C（磯の岩） | 接地点 |
+| `palm` | CoconutPalm_A/B/C | 接地点 |
+| `adan` | Adan_A/B | 接地点 |
+| `hibiscus` | Hibiscus_A/B, Bougainvillea_A | 接地点 |
+| `azumaya` | Azumaya_A（赤瓦の東屋。屋根にシーサー） | 床の中心。正面は -Y |
+| `shisa` | Shisa_Agyo, Shisa_Ungyo | 台座の底の中心。正面は -Y |
+| `ishigaki` | Ishigaki_Straight/Corner/Low | 壁の始点の中心線。+X へ伸びる |
+| `sabani` | Sabani_A/B | 船体の中心。船首は +X |
+| `pier` | Pier_Straight, Pier_End | z=0 が水面。モジュールは +Y へ 4 m |
+| `parasol` | BeachParasol_A/B, DeckChair_A | 接地点。チェアは頭側が -X |
+| `props` | Driftwood_A/B, Shell_Cowrie, Shell_SpiderConch, CoralPiece_A/B, Coconut_Husk, GlassFloat | 接地点 |
+| `tetrapod` | Tetrapod_A/B | 接地面 |
+| `terrain` | BeachTerrain_Shore, BeachTerrain_Flat | 40 m 角タイルの中心。X 方向に周期的 |
+
+### 海の中・リーフ地形
+
+| モジュール | バリエーション | 原点・置き方 |
+|---|---|---|
+| `reef_terrain` | ReefTerrain_Lagoon（礁池）, ReefTerrain_Edge（リーフエッジ〜ドロップオフ）, ReefTerrain_Deep（深場） | 40 m 角タイルの中心。Shore を (x, 0) に置いたら Lagoon を (x, -40)、Edge を (x, -80)、Deep を (x, -120) |
+| `beachrock` | BeachRock_A/B/C | 砂との接地点。波打ち際に置く |
+| `coral` | Coral_Table_A/B, Coral_Branch_A/B, Coral_Massive_A/B, Coral_MicroAtoll, Coral_Brain, Coral_Soft | 根元の中心（少し埋まる） |
+| `sealife` | GiantClam, SeaCucumber, SeaUrchin, BlueStarfish, Anemone_Clownfish, SeaTurtle | 海底の生き物は接地点。ウミガメは体の中心（水中に浮かべる） |
+| `seagrass` | Seagrass_Patch_A/B | 藻場の中心（砂面） |
+| `fish` | FishSchool_Blue, FishSchool_Green, Fish_Butterfly | 群れの中心（水中に浮かべる）。アニメーションは無い |
+
+## 他のモジュールで使い回せる補助
+
+| 場所 | 内容 |
+|---|---|
+| `terrain.py` | `PNoise`（40 m で厳密に周期的なノイズ）, `_grid_mesh`（格子 + 平面 UV + 解析的法線）, `Torus`（模様を周期化する 4D ノイズ座標）, `shore()` |
+| `shisa.py` | `unwrap_smooth_proxy()`（有機的な形を大きな UV 島で展開） |
+| `adan.py` | `MeshAcc`（小さな部品を 1 メッシュに集める）, `BarkPacker`（複数チューブのベイク UV を 1 枚に詰める） |
+| `props.py` | `_union` / `_remesh`（ボクセルで形を合成）, `_pack_tubes` |
+| `_timber.py` | `MeshBuilder`, `loft`, `lathe`, `sweep`, 板の木目 |
+
+`geo.tube_along` はチューブごとに 0..1 全体を使う `Bake` UV を作るので、同じ uv="keep" マテリアルで複数のチューブを使うときは `BarkPacker` などで詰め直すこと。
+
+## 確認用シーン
+
+`python3 Tools/OkinawaBeach/assemble.py [カメラ名 ...]` で全アセットを配置してレンダリングする（`Blend/OkinawaBeachScene.blend` も保存）。
+確認用の海は Cycles の体積吸収で、浅瀬はターコイズ、深場は紺碧になる。コースティクスはエンジン側の表現なので、ここでは影のレイだけ水面を素通しにしている。
