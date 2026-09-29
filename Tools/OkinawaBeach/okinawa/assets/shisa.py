@@ -4,7 +4,9 @@
 smooth union / subtraction で粘土をこねたように繋げる。
 SDF をボクセル格子で評価し Surface Nets でメッシュ化 → スムーズ → 細部の凹凸 → デシメート。
 
-材質: 風化した素焼きの赤土色。窪みに黒カビ、ところどころ白い漆喰の残り。
+胸を張って頭を高く上げた座り姿（高さ ~0.85m、頭は全高の約 4 割）。たてがみは巻貝状の渦を
+顔の周りから胸の前掛けへ段々に流し、尾は渦を積んだ炎形。渦は表面を探って（SDF 上のレイマーチ）置く。
+材質: 素焼きの赤土色。出っ張りは明るく窪みは暗い赤茶、黒カビと漆喰は控えめ。
 台座: 琉球石灰岩の二段ブロック。
 
 原点: 台座底面の中心（接地点）。正面は -Y。
@@ -13,6 +15,7 @@ import math
 import random
 
 import bmesh
+import bpy
 import numpy as np
 from mathutils import Matrix, Vector
 
@@ -21,7 +24,7 @@ from .. import geo
 from ..common import pbr_material, srgb
 from ..materials import limestone
 
-PREVIEW = dict(cam_dir=(0.25, -1.0, 0.32), lens=55)
+PREVIEW = dict(cam_dir=(0.35, -1.0, 0.22), lens=55)
 
 PEDESTAL_H = 0.22
 
@@ -106,6 +109,31 @@ class SDFGrid:
         self.F = np.full(tuple(n), 1.0, dtype=np.float64)
         self.tf = None   # (pin, R, s, pout): ローカル形状を pin 中心に s 倍・R 回転して pout へ置く
 
+
+    def sample(self, P):
+        from scipy.ndimage import map_coordinates
+        idx = ((np.atleast_2d(P) - self.o) / self.h).T
+        return map_coordinates(self.F, idx, order=1, mode="nearest")
+
+    def surf(self, origin, direction, max_d=0.5):
+        """origin（内側）から direction へ進んで表面に当たる点と外向き法線"""
+        o = np.asarray(origin, dtype=np.float64)
+        d = np.asarray(direction, dtype=np.float64)
+        d = d / np.linalg.norm(d)
+        ts = np.arange(0.0, max_d, self.h * 0.5)
+        v = self.sample(o[None] + ts[:, None] * d[None])
+        inside = np.nonzero(v < 0)[0]
+        if not len(inside):
+            return None
+        out = np.nonzero(v[inside[0]:] > 0)[0]
+        if not len(out):
+            return None
+        i = inside[0] + out[0]
+        t = ts[i - 1] + (ts[i] - ts[i - 1]) * (-v[i - 1]) / (v[i] - v[i - 1])
+        p = o + d * t
+        e = self.h
+        gr = np.array([self.sample(p + e * ax)[0] - self.sample(p - e * ax)[0] for ax in np.eye(3)])
+        return p, gr / max(np.linalg.norm(gr), 1e-9)
 
     def _slices(self, lo, hi):
         i0 = np.clip(np.floor((np.asarray(lo) - self.o) / self.h).astype(int), 0, self.n - 1)
@@ -271,34 +299,6 @@ def _frame(normal, up_hint):
     return n, t1, t2
 
 
-def _curl_pts(center, normal, up_hint, r_out, turns=1.35, tail=1.6, hand=1, n=26, lift=0.35):
-    """巴形の渦巻き（外へ伸びる尾 → 内側へ巻く）。center は渦の中心"""
-    nrm, t1, t2 = _frame(normal, up_hint)
-    c = Vector(center)
-    pts = []
-    # 尾（t1 方向の外側から渦の外周へ流れ込む）
-    for i in range(4):
-        s = i / 4
-        a = -0.9 + 0.9 * s
-        r = r_out * (tail - (tail - 1.0) * s)
-        pts.append(c + (t1 * math.cos(a * hand) * 1.0 + t2 * math.sin(a * hand) * 0.6) * r
-                   + nrm * r_out * lift * 0.2 * (1 - s))
-    for i in range(n):
-        s = i / (n - 1)
-        a = hand * s * turns * math.tau
-        r = r_out * (1.0 - 0.82 * s)
-        pts.append(c + (t1 * math.cos(a) + t2 * math.sin(a)) * r + nrm * r_out * lift * s)
-    return [tuple(p) for p in pts]
-
-
-def _curl(g, center, normal, up_hint, r_out, tube0, tube1, hand=1, k=0.006, turns=1.35, tail=1.6):
-    pts = _curl_pts(center, normal, up_hint, r_out, turns=turns, tail=tail, hand=hand)
-    m = len(pts)
-    radii = [tube0 * (1 - i / (m - 1)) + tube1 * i / (m - 1) for i in range(m)]
-    radii[0] *= 0.6
-    g.tube(pts, radii, k=k)
-
-
 def _axis_frame(zdir):
     """ローカル z 軸が zdir を向く回転（列 = ローカル軸）"""
     z = Vector(zdir).normalized()
@@ -310,143 +310,270 @@ def _axis_frame(zdir):
     return np.array([[x[i], y[i], z[i]] for i in range(3)])
 
 
-def shisa_sdf(open_mouth, turn_deg=0.0, h=0.004, seed=0):
-    """シーサーの SDF 格子。高さ ~0.68m、正面 -Y、足元 z=0"""
+def _nrm(v):
+    v = np.asarray(v, dtype=np.float64)
+    return v / max(np.linalg.norm(v), 1e-9)
+
+
+def whorl(g, c, n, r, up=(0, 0, 1), hand=1, turns=1.6, dome=0.35, k=0.008, **_):
+    """巻貝のような渦巻きの房: 低い土台の上に、中心へ向かって高くなる太い渦の帯を巻く（溝に深さが出る）"""
+    nrm, t1, t2 = _frame(n, up)
+    c = np.asarray(c, dtype=np.float64)
+    nrm, t1, t2 = np.asarray(nrm), np.asarray(t1), np.asarray(t2)
+    R = np.column_stack([t1, t2, nrm])
+    g.ellipsoid(c, (r * 0.95, r * 0.95, r * dome), k=k, R=R)
+    pts, radii = [], []
+    m = 34
+    for i in range(m):
+        s = i / (m - 1)
+        rho = r * (0.8 - 0.72 * s)
+        a = hand * s * turns * math.tau
+        hh = r * (dome * 0.6 + 0.35 * s)
+        pts.append(c + (t1 * math.cos(a) + t2 * math.sin(a)) * rho + nrm * hh)
+        radii.append(r * (0.26 - 0.1 * s))
+    g.tube(pts, radii, k=g.h * 0.5)
+
+
+def shisa_sdf(open_mouth, turn_deg=0.0, h=0.0035, seed=0):
+    """シーサーの SDF 格子。高さ ~0.85m、正面 -Y、足元 z=0。
+    胸を張って頭を高く上げた座り姿。たてがみは巻貝状の渦を顔の周りから胸へ流す"""
     rnd = random.Random(seed)
-    g = SDFGrid((-0.3, -0.42, -0.01), (0.3, 0.32, 0.84), h)
+    g = SDFGrid((-0.3, -0.42, -0.01), (0.3, 0.42, 0.92), h)
+    hand = lambda x: 1 if x >= 0 else -1  # noqa: E731
 
-    # --- 胴（ずんぐり）----------------------------------------------------------
-    g.round_box((0, -0.02, 0.022), (0.18, 0.22, 0.022), 0.012)                       # 一体の台
+    # --- 胴: 背筋を斜めに伸ばし、胸を前へ張る -------------------------------------
+    g.round_box((0, -0.03, 0.025), (0.2, 0.27, 0.025), 0.015)                        # 一体の台
     for sx in (-1, 1):
-        g.ellipsoid((sx * 0.1, 0.05, 0.12), (0.092, 0.13, 0.1), k=0.03)               # 後ろ脚の腿
-        g.ellipsoid((sx * 0.132, -0.06, 0.035), (0.052, 0.08, 0.034), k=0.02)         # 後ろ足
-    g.cone((0, 0.055, 0.13), (0, -0.03, 0.3), 0.13, 0.11, k=0.04)                    # 胴
-    g.ellipsoid((0, -0.08, 0.28), (0.12, 0.09, 0.1), k=0.04)                         # 胸
-    for sx in (-1, 1):
-        g.cone((sx * 0.072, -0.09, 0.28), (sx * 0.08, -0.13, 0.06), 0.058, 0.048, k=0.025)  # 前脚
-        g.ellipsoid((sx * 0.08, -0.165, 0.035), (0.056, 0.07, 0.035), k=0.02)         # 前足
+        g.ellipsoid((sx * 0.115, 0.1, 0.15), (0.1, 0.16, 0.14), k=0.04)                # 腿
+        g.ellipsoid((sx * 0.16, -0.05, 0.04), (0.055, 0.1, 0.04), k=0.02)              # 後ろ足
         for t in (-1, 0, 1):
-            g.sphere((sx * 0.08 + t * 0.032, -0.222, 0.029), 0.019, k=0.01)            # 指
-        # 腿・肘の巻き毛
-        _curl(g, (sx * 0.185, 0.06, 0.15), (sx, 0.1, 0.1), (0, -1, 0.6), 0.055, 0.019, 0.007,
-              hand=sx, k=0.008)
-        _curl(g, (sx * 0.122, -0.095, 0.215), (sx, -0.45, 0.0), (0, 0.2, 1), 0.036, 0.014, 0.005,
-              hand=-sx, k=0.006)
-    g.cone((0, -0.03, 0.29), (0, -0.07, 0.40), 0.11, 0.11, k=0.04)                   # 首
+            g.sphere((sx * 0.16 + t * 0.028, -0.14, 0.03), 0.018, k=0.008)
+    g.cone((0, 0.11, 0.17), (0, -0.03, 0.47), 0.14, 0.115, k=0.05)                    # 胴
+    g.ellipsoid((0, -0.09, 0.41), (0.13, 0.115, 0.16), k=0.05)                        # 胸
+    for sx in (-1, 1):
+        g.ellipsoid((sx * 0.092, -0.11, 0.34), (0.064, 0.078, 0.125), k=0.03)          # 上腕の筋肉
+        g.cone((sx * 0.09, -0.13, 0.3), (sx * 0.094, -0.172, 0.07), 0.052, 0.042, k=0.025)  # 前腕
+        g.ellipsoid((sx * 0.094, -0.2, 0.045), (0.062, 0.08, 0.045), k=0.02)           # 前足
+        for t in (-1.5, -0.5, 0.5, 1.5):
+            g.sphere((sx * 0.094 + t * 0.025, -0.265, 0.03), 0.019, k=0.006)          # 指
+    g.cone((0, -0.04, 0.44), (0, -0.09, 0.58), 0.12, 0.105, k=0.05)                   # 首
 
-    # --- 尾（背中を立ち上がり、渦を巻いて炎のように広がる）---------------------
-    tail = geo.bezier_points((0, 0.16, 0.10), (0, 0.25, 0.16), (0, 0.24, 0.29), (0, 0.21, 0.37), 8)
-    g.tube([tuple(p) for p in tail], [0.038 - 0.012 * i / 7 for i in range(8)], k=0.02)
-    _curl(g, (0, 0.225, 0.405), (0, 1, 0.15), (0, 0, 1), 0.064, 0.024, 0.008, hand=1, k=0.01, turns=1.5)
-    for sx in (-1, 1):
-        _curl(g, (sx * 0.08, 0.21, 0.32), (sx * 0.4, 1, 0.1), (sx, 0, 0.8), 0.046, 0.018, 0.006,
-              hand=sx, k=0.008)
-        _curl(g, (sx * 0.065, 0.22, 0.225), (sx * 0.3, 1, -0.1), (sx, 0, 0.3), 0.036, 0.015, 0.005,
-              hand=-sx, k=0.007)
+    # --- 頭（首の付け根を軸に少し振り向く）---------------------------------------
+    pivot = np.array([0.0, -0.08, 0.56])
+    Rh = _rot_z(turn_deg)
+    g.tf = (pivot, Rh, 1.0, pivot)
 
-    # --- 頭（大きめに拡大し、首の付け根を軸に少し振り向く）-------------------------
-    g.tf = (np.array([0.0, -0.05, 0.36]), _rot_z(turn_deg), 1.2, np.array([0.0, -0.06, 0.345]))
-    g.ellipsoid((0, -0.08, 0.47), (0.152, 0.13, 0.13), k=0.04)                      # 頭
-    g.ellipsoid((0, -0.11, 0.535), (0.13, 0.10, 0.075), k=0.03)                     # 額
-    g.ellipsoid((0, -0.03, 0.585), (0.15, 0.13, 0.115), k=0.05)                     # 頭頂（たてがみの内側を埋める）
+    def T(p):
+        return Rh @ (np.asarray(p, dtype=np.float64) - pivot) + pivot
+
+    def TD(d):
+        return Rh @ np.asarray(d, dtype=np.float64)
+
+    g.ellipsoid((0, -0.08, 0.68), (0.125, 0.13, 0.11), k=0.04)                        # 頭蓋
     for sx in (-1, 1):
-        g.sphere((sx * 0.105, -0.175, 0.445), 0.066, k=0.03)                         # 頬
-    g.ellipsoid((0, -0.195, 0.445), (0.12, 0.08, 0.075), k=0.03)                    # 鼻面
-    # 鼻（幅広の団子鼻）と鼻筋
-    g.ellipsoid((0, -0.272, 0.484), (0.072, 0.044, 0.036), k=0.018)
-    g.cone((0, -0.255, 0.5), (0, -0.235, 0.575), 0.028, 0.02, k=0.02)
-    # 眉（太く、外側で巻き上がる）
+        g.sphere((sx * 0.1, -0.17, 0.635), 0.055, k=0.03)                              # 頬
+    g.ellipsoid((0, -0.19, 0.636), (0.106, 0.088, 0.044), k=0.03)                    # 上あご（鼻面）
+    g.ellipsoid((0, -0.278, 0.664), (0.068, 0.033, 0.03), k=0.012)                   # 鼻（平たく広い）
+    g.cone((0, -0.262, 0.688), (0, -0.228, 0.742), 0.022, 0.016, k=0.018)            # 鼻筋
     for sx in (-1, 1):
-        brow = [(sx * 0.016, -0.238, 0.598), (sx * 0.06, -0.248, 0.616), (sx * 0.102, -0.232, 0.618),
-                (sx * 0.132, -0.205, 0.608), (sx * 0.142, -0.185, 0.588), (sx * 0.128, -0.185, 0.572)]
-        g.tube(brow, [0.022, 0.029, 0.028, 0.023, 0.017, 0.01], k=0.012)
-    # 耳（垂れ耳）
+        g.sphere((sx * 0.062, -0.272, 0.656), 0.02, k=0.008)                           # 小鼻の張り
+        g.sphere((sx * 0.034, -0.31, 0.653), 0.015, k=0.004, op="sub")                # 鼻の穴
+    # 眉の土台（その上に渦を並べる）
+    g.ellipsoid((0, -0.2, 0.745), (0.135, 0.055, 0.026), k=0.02)
+    # 上唇（めくれ上がり、口角で巻く）
+    lip = []
+    for i in range(13):
+        a = (i - 6) / 6.0
+        x = a * 0.115
+        lip.append((x, -0.19 - 0.09 * math.sqrt(max(0.0, 1 - (x / 0.13) ** 2)), 0.614 + 0.035 * a * a))
+    g.tube(lip, [0.015] * len(lip), k=0.008)
     for sx in (-1, 1):
-        g.ellipsoid((sx * 0.158, -0.05, 0.55), (0.03, 0.058, 0.04), k=0.012, R=_euler(y=sx * 35, z=-sx * 20))
-    # 目（丸く飛び出した目 + まぶたの縁）
-    for sx in (-1, 1):
-        ec = np.array([sx * 0.074, -0.236, 0.55])
-        gaze = np.array([sx * 0.25, -1.0, 0.05])
-        g.sphere(ec, 0.048, k=0.01)
-        g.torus(ec + gaze / np.linalg.norm(gaze) * 0.014, _axis_frame(gaze), 0.043, 0.009, k=0.006)
-    # 口
+        g.tube([(sx * 0.115, -0.215, 0.649), (sx * 0.13, -0.205, 0.672), (sx * 0.12, -0.215, 0.688),
+                (sx * 0.106, -0.225, 0.675)], [0.014, 0.012, 0.009, 0.006], k=0.006)
     if open_mouth:
-        # 阿形: 大きく開いた口、上下の歯と牙、舌
-        g.ellipsoid((0, -0.2, 0.378), (0.105, 0.075, 0.042), k=0.02)                # 下あご
-        g.ellipsoid((0, -0.258, 0.425), (0.092, 0.075, 0.03), k=0.012, op="sub")
-        g.ellipsoid((0, -0.215, 0.425), (0.075, 0.05, 0.024), k=0.01, op="sub")
-        g.ellipsoid((0, -0.215, 0.404), (0.055, 0.05, 0.012), k=0.008)              # 舌
-        for row_z, dz in ((0.449, -1), (0.401, 1)):
-            for i in range(7):
-                a = (i - 3) / 3.0
-                x = a * 0.062
-                y = -0.2 - 0.064 * math.sqrt(max(0.0, 1 - (x / 0.085) ** 2))
-                g.ellipsoid((x, y, row_z + dz * 0.004), (0.0085, 0.008, 0.011), k=0.004)
+        # 阿形: 大きく開いた口、上下の歯列と牙、舌
+        g.ellipsoid((0, -0.245, 0.572), (0.106, 0.1, 0.042), k=0.012, op="sub")
+        g.ellipsoid((0, -0.185, 0.58), (0.085, 0.07, 0.034), k=0.01, op="sub")
+        g.ellipsoid((0, -0.19, 0.52), (0.1, 0.085, 0.035), k=0.02)                   # 下あご
+        low = []
+        for i in range(11):
+            a = (i - 5) / 5.0
+            x = a * 0.1
+            low.append((x, -0.195 - 0.08 * math.sqrt(max(0.0, 1 - (x / 0.115) ** 2)), 0.54 + 0.012 * a * a))
+        g.tube(low, [0.013] * len(low), k=0.008)                                      # 下唇
+        g.ellipsoid((0, -0.21, 0.543), (0.06, 0.062, 0.013), k=0.008)               # 舌
+        g.sphere((0, -0.262, 0.548), 0.016, k=0.01)                                  # 舌先
+        for row_z, dz in ((0.598, -1), (0.552, 1)):
+            for i in range(8):
+                a = (i - 3.5) / 3.5
+                x = a * 0.055
+                y = -0.195 - 0.07 * math.sqrt(max(0.0, 1 - (x / 0.085) ** 2))
+                g.cone((x, y, row_z), (x, y - 0.002, row_z + dz * 0.016), 0.008, 0.003, k=0.003)
         for sx in (-1, 1):
-            g.cone((sx * 0.066, -0.245, 0.458), (sx * 0.07, -0.262, 0.418), 0.012, 0.004, k=0.005)
-            g.cone((sx * 0.062, -0.24, 0.39), (sx * 0.064, -0.258, 0.43), 0.011, 0.004, k=0.005)
+            g.cone((sx * 0.074, -0.255, 0.612), (sx * 0.076, -0.268, 0.556), 0.013, 0.003, k=0.004)  # 上の牙
+            g.cone((sx * 0.066, -0.25, 0.534), (sx * 0.068, -0.264, 0.582), 0.012, 0.003, k=0.004)   # 下の牙
     else:
         # 吽形: 口を結び、上の牙が下唇にかかる
-        g.ellipsoid((0, -0.195, 0.39), (0.1, 0.075, 0.04), k=0.02)
-        lip = []
-        for i in range(13):
-            a = (i - 6) / 6.0
-            x = a * 0.1
-            y = -0.195 - 0.078 * math.sqrt(max(0.0, 1 - (x / 0.115) ** 2))
-            lip.append((x, y, 0.425 + 0.018 * a * a))
-        g.tube(lip, [0.0065] * len(lip), k=0.004, op="sub")
+        g.ellipsoid((0, -0.195, 0.568), (0.1, 0.085, 0.036), k=0.02)
+        g.tube([(x, -0.19 - 0.087 * math.sqrt(max(0.0, 1 - (x / 0.12) ** 2)), 0.592 + 0.02 * (x / 0.1) ** 2)
+                for x in np.linspace(-0.1, 0.1, 11)], [0.006] * 11, k=0.004, op="sub")
+        low = [(x, -0.19 - 0.083 * math.sqrt(max(0.0, 1 - (x / 0.12) ** 2)), 0.573) for x in np.linspace(-0.09, 0.09, 9)]
+        g.tube(low, [0.013] * len(low), k=0.008)
         for sx in (-1, 1):
-            g.cone((sx * 0.058, -0.258, 0.432), (sx * 0.06, -0.272, 0.402), 0.012, 0.004, k=0.004)
-    # 鼻の穴と瞳（彫り込み）
+            g.cone((sx * 0.066, -0.27, 0.606), (sx * 0.067, -0.284, 0.56), 0.013, 0.003, k=0.004)
+    # 目: 眉の下の深い眼窩に、にらみつける目
     for sx in (-1, 1):
-        g.sphere((sx * 0.032, -0.312, 0.472), 0.016, k=0.006, op="sub")
-        g.sphere((sx * 0.087, -0.283, 0.551), 0.02, k=0.004, op="sub")
-    # あごひげの巻き毛
-    for sx in (-1, 0, 1):
-        _curl(g, (sx * 0.065, -0.185 + abs(sx) * 0.03, 0.332 - (0.012 if sx == 0 else 0)),
-              (sx * 0.4, -1, -0.5), (0, 0, -1), 0.036, 0.015, 0.005, hand=1 if sx >= 0 else -1, k=0.006)
-
-    # たてがみ: 頭の後ろの襟巻き + 渦巻きの房（3 重）
-    g.torus((0, -0.01, 0.47), _axis_frame((0, 1, 0)), 0.13, 0.055, k=0.035)
-    hc = np.array([0, -0.04, 0.47])
-    for ring, (yb, rr, count, span, r0) in enumerate(((-0.01, 0.19, 11, 260, 0.052),
-                                                     (0.06, 0.165, 9, 240, 0.05),
-                                                     (0.12, 0.11, 6, 220, 0.045))):
-        for i in range(count):
-            phi = math.radians(90 - span / 2 + span * i / (count - 1) + (ring % 2) * 6)
-            d = np.array([math.cos(phi), 0.0, math.sin(phi)])
-            c = hc + np.array([0, yb, 0]) + d * rr
-            nrm = d + np.array([0, 0.2 + ring * 0.7, 0])
-            tang = np.array([-math.sin(phi), 0, math.cos(phi)])
-            hand = 1 if math.cos(phi) >= 0 else -1
-            _curl(g, c, nrm, np.array([0, 1, 0]) + tang * 0.3 * hand, r0 * rnd.uniform(0.9, 1.1),
-                  0.021, 0.007, hand=hand, k=0.01)
-    # 頭頂の巻き毛（前髪の列）
-    for i in range(5):
-        a = math.radians(-52 + 26 * i)
-        for row, (yy, rz, r0) in enumerate(((-0.11, 0.1, 0.034), (-0.04, 0.112, 0.038))):
-            if row == 1 and i in (0, 4):
-                continue
-            c = (0.135 * math.sin(a), yy, 0.585 + rz * math.cos(a))
-            _curl(g, c, (math.sin(a), -0.35 + row * 0.2, math.cos(a)), (0, 1, 0), r0, 0.015, 0.005,
-                  hand=1 if (i + row) % 2 else -1, k=0.008)
+        g.ellipsoid((sx * 0.058, -0.235, 0.705), (0.036, 0.03, 0.026), k=0.008, op="sub")
+        g.ellipsoid((sx * 0.058, -0.228, 0.703), (0.029, 0.026, 0.021), k=0.004)
+        g.sphere((sx * 0.061, -0.256, 0.702), 0.009, k=0.003, op="sub")
+        # 上まぶたの厚いひさし（目尻が吊り上がる）
+        g.tube([(sx * 0.028, -0.248, 0.716), (sx * 0.06, -0.252, 0.724), (sx * 0.092, -0.232, 0.73)],
+               [0.008, 0.01, 0.007], k=0.005)
     g.tf = None
+
+    # --- たてがみ: 表面に沿って渦を並べる（現在の形から表面位置と法線を求める）--------
+    def put(origin, d, r, up=(0, 0, 1), head=False, **kw):
+        if head:
+            origin, d, up = T(origin), TD(d), TD(up)
+        hit = g.surf(origin, d)
+        if hit is None:
+            return
+        p, n = hit
+        whorl(g, p - n * r * 0.2, n, r * rnd.uniform(0.92, 1.08), up=up, **kw)
+
+    hc = np.array([0.0, -0.08, 0.68])
+    # 眉の渦
+    for sx in (-1, 1):
+        for x in (0.032, 0.085, 0.13):
+            put((sx * x, -0.16, 0.745), (sx * x * 2, -1.0, 0.15), 0.03 - x * 0.06, up=(0, 0, 1), head=True,
+                hand=hand(sx))
+    # 頭頂と耳（小さな炎）
+    for i, a in enumerate((-45, -15, 15, 45)):
+        ar = math.radians(a)
+        put(hc, (math.sin(ar), -0.3, math.cos(ar)), 0.038, up=(0, -1, 0), head=True, hand=1 if i % 2 else -1)
+    for a in (-60, -30, 0, 30, 60):
+        ar = math.radians(a)
+        put(hc, (math.sin(ar), 0.35, math.cos(ar)), 0.04, up=(0, -1, 0), head=True, hand=hand(a))
+    for sx in (-1, 1):
+        put(hc + np.array([sx * 0.02, 0, 0]), (sx * 0.8, -0.25, 0.75), 0.03, up=(0, 0, 1), head=True, hand=sx)
+        g.ellipsoid(T((sx * 0.135, -0.07, 0.755)), (0.016, 0.042, 0.034), k=0.01,
+                    R=Rh @ _euler(x=-30, y=sx * 35))                                   # 小さな炎形の耳
+    # 顔を縁取る頬のたてがみ
+    for sx in (-1, 1):
+        for th in (50, 72, 94, 116, 138):
+            tr = math.radians(th)
+            put(hc + np.array([0, -0.07, 0]), (sx * math.sin(tr), -0.45, math.cos(tr)), 0.045, up=(0, -1, 0),
+                head=True, hand=hand(sx))
+        for th in (60, 95, 130):
+            tr = math.radians(th)
+            put(hc + np.array([0, 0.06, 0]), (sx * math.sin(tr), 0.45, math.cos(tr)), 0.048, up=(0, -1, 0),
+                head=True, hand=-hand(sx))
+        for th in (40, 75, 110, 145):
+            tr = math.radians(th)
+            put(hc + np.array([0, 0.0, 0]), (sx * math.sin(tr), 0.05, math.cos(tr)), 0.044, up=(0, -1, 0),
+                head=True, hand=hand(sx) * (1 if th % 2 else -1))
+    put(hc, (0, 1, 0.3), 0.05, up=(0, 0, 1), head=True)
+    # あごひげ
+    jaw_z = 0.52 if open_mouth else 0.568
+    for x in (-0.05, 0.0, 0.05):
+        put((x, -0.16, jaw_z - 0.02), (x * 5, -0.3, -1), 0.028, up=(0, -1, 0), head=True, hand=hand(x))
+    # 胸へ流れ落ちる前掛け（V 字に段々）
+    rows = [(0.515, (-0.11, -0.037, 0.037, 0.11)), (0.465, (-0.14, -0.07, 0.0, 0.07, 0.14)),
+            (0.41, (-0.105, -0.035, 0.035, 0.105)), (0.35, (-0.07, 0.0, 0.07)), (0.295, (-0.035, 0.035)),
+            (0.245, (0.0,))]
+    for ri, (z, xs) in enumerate(rows):
+        for x in xs:
+            put((x * 0.5, -0.02, z), (x * 4.0, -1, -0.12), 0.048 - ri * 0.003, up=(0, 0, 1),
+                hand=1 if (ri % 2) else -1)
+    for sx in (-1, 1):
+        for z in (0.53, 0.46, 0.39):
+            put((0, -0.03, z), (sx, -0.25, 0.1), 0.044, up=(0, 0, 1), hand=sx)
+        for z in (0.55, 0.48):
+            put((0, 0.0, z), (sx * 0.6, 0.8, 0.2), 0.045, up=(0, 0, 1), hand=-sx)
+    # 渦の間を流れる長い毛筋（首の脇を胸へ）
+    for sx in (-1, 1):
+        for x0 in (0.1, 0.145):
+            pts = []
+            for i, z in enumerate(np.linspace(0.56, 0.36, 6)):
+                o = np.array([sx * x0 * 0.4, -0.03, z])
+                hit = g.surf(o, np.array([sx * (x0 + 0.02 * i) * 6, -0.6, 0.0]))
+                if hit is not None:
+                    pts.append(hit[0] - hit[1] * 0.001)
+            if len(pts) >= 3:
+                g.tube(pts, list(np.linspace(0.009, 0.004, len(pts))), k=0.005)
+    # 肘・足首・腿の房
+    for sx in (-1, 1):
+        put((sx * 0.09, -0.11, 0.3), (sx, 0.35, 0.0), 0.03, up=(0, 0, 1), hand=sx)
+        put((sx * 0.09, -0.11, 0.24), (sx, 0.6, -0.1), 0.026, up=(0, 0, 1), hand=-sx)
+        put((sx * 0.094, -0.17, 0.1), (sx, 0.3, 0.0), 0.022, up=(0, 0, 1), hand=sx)
+        put((sx * 0.1, 0.1, 0.16), (sx, 0.1, 0.3), 0.045, up=(0, 1, 0), hand=sx)
+        put((sx * 0.1, 0.12, 0.1), (sx, 0.5, -0.2), 0.034, up=(0, 1, 0), hand=-sx)
+
+    # --- 尾: 背後に高く立ち上がる炎。平たい炎の芯に渦を積み重ねる -------------------
+    spine = geo.bezier_points((0, 0.2, 0.1), (0, 0.34, 0.2), (0, 0.34, 0.46), (0, 0.27, 0.64), 12)
+    g.tube([tuple(p) for p in spine], [0.06 - 0.03 * i / 11 for i in range(12)], k=0.035)
+    for i in range(2, 12, 2):
+        p = np.asarray(spine[i])
+        w = 0.075 - 0.004 * i
+        g.ellipsoid(p + np.array([0, 0.025, 0]), (0.04, w, w * 1.1), k=0.03, R=_euler(x=-20 + 4 * i))
+    g.tube([tuple(spine[-1]), (0, 0.24, 0.7), (0, 0.19, 0.72), (0, 0.16, 0.7)], [0.028, 0.02, 0.012, 0.005],
+           k=0.01)                                                                     # 炎の先（前へ巻く）
+    for i, t in enumerate((0.2, 0.36, 0.52, 0.68, 0.84)):
+        p = np.asarray(spine[int(round(t * 11))])
+        r = 0.05 - 0.004 * i
+        for sx in (-1, 1):
+            put(p, (sx, 0.35, 0.1), r, up=(0, 1, 0.6), hand=sx)
+        put(p + np.array([0, 0, 0.03]), (0, 1, 0.25), r * 0.9, up=(0, 0, 1), hand=1 if i % 2 else -1)
+    put(np.asarray(spine[-1]), (0, 0.6, 1), 0.036, up=(0, 1, 0))
     return g
 
 
-def shisa_mesh(name, open_mouth, turn_deg=0.0, height=0.68, target_tris=12000, h=0.004, seed=0, uv_angle=62):
+def unwrap_smooth_proxy(obj, angle, margin=0.003):
+    """渦の多い形は Smart UV が 1 面ずつの島に砕けるので、
+    強くならした複製で島を決め（渦が消えて大きな島になる）、その島の中で実形状に沿って等角展開し直す"""
+    proxy = obj.copy()
+    proxy.data = obj.data.copy()
+    C.link_object(proxy)
+    m = proxy.modifiers.new("Smooth", "SMOOTH")
+    m.factor = 1.0
+    m.iterations = 40
+    C.apply_modifiers(proxy)
+    C.smart_uv(proxy, angle=angle, margin=margin, uv_name="Bake")
+    src = proxy.data.uv_layers["Bake"].data
+    arr = np.empty(len(src) * 2, np.float32)
+    src.foreach_get("uv", arr)
+    layer = obj.data.uv_layers.get("Bake") or obj.data.uv_layers.new(name="Bake")
+    layer.data.foreach_set("uv", arr)
+    obj.data.uv_layers.active = layer
+    C._select_only([obj], obj)
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.uv.select_all(action="SELECT")
+    bpy.ops.uv.seams_from_islands()
+    bpy.ops.uv.unwrap(method="CONFORMAL", margin=margin)
+    try:
+        bpy.ops.uv.pack_islands(udim_source="CLOSEST_UDIM", rotate=True, margin=margin, shape_method="CONCAVE")
+    except TypeError:
+        bpy.ops.uv.pack_islands(rotate=True, margin=margin)
+    bpy.ops.object.mode_set(mode="OBJECT")
+    me = proxy.data
+    bpy.data.objects.remove(proxy)
+    bpy.data.meshes.remove(me)
+
+
+def shisa_mesh(name, open_mouth, turn_deg=0.0, height=0.85, target_tris=20000, h=0.0035, seed=0, uv_angle=62):
     """height: 仕上がりの高さ(m)。uv_angle: ベイク用 Smart UV の角度（有機形状は大きめで島を減らす）"""
     g = shisa_sdf(open_mouth, turn_deg, h=h, seed=seed)
     obj = mesh_from_sdf(name, g)
     bm = bmesh.new()
     bm.from_mesh(obj.data)
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=h * 0.05)
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    # 面の向きは Surface Nets の符号から正しく決まっている（recalc は非多様体の所で逆に裏返すので使わない）
     bm.to_mesh(obj.data)
     bm.free()
-    geo.smooth_mod(obj, factor=0.5, iterations=3)
-    # 高密度で滑らかなうちに UV 展開（島が大きくまとまる）。デシメートは UV の境界を保つ
-    C.smart_uv(obj, angle=uv_angle, margin=0.004, uv_name="Bake")
+    geo.smooth_mod(obj, factor=0.4, iterations=2)
+    # 高密度のうちに UV 展開してからデシメート（UV の境界は保つ）
+    unwrap_smooth_proxy(obj, uv_angle)
     # 細部: 手びねりのムラと素焼きの肌
     off = Vector((seed * 3.1, seed * 1.7, 0.3))
     bm = bmesh.new()
@@ -454,7 +581,7 @@ def shisa_mesh(name, open_mouth, turn_deg=0.0, height=0.68, target_tris=12000, h
 
     def disp(co, n):
         p = co * 22.0 + off
-        return geo.fbm(p, 3) * 0.0022 + geo.fbm(co * 90.0 + off, 2) * 0.0006
+        return geo.fbm(p, 3) * 0.0012 + geo.fbm(co * 90.0 + off, 2) * 0.0004
 
     geo.displace_along_normals(bm, disp)
     bm.to_mesh(obj.data)
@@ -474,8 +601,8 @@ def shisa_mesh(name, open_mouth, turn_deg=0.0, height=0.68, target_tris=12000, h
 # ---------------------------------------------------------------------------
 # 材質
 # ---------------------------------------------------------------------------
-def terracotta(name="ShisaClay", res=2048, mould=1.0, plaster=1.0, scale=1.0):
-    """風化した素焼き。窪み（局所 AO）に黒カビ、ところどころ白い漆喰"""
+def terracotta(name="ShisaClay", res=2048, mould=0.35, plaster=0.3, scale=1.0):
+    """素焼きの赤土色。出っ張りは明るく、窪み（局所 AO）は暗い赤茶。mould/plaster で黒カビ・漆喰の量"""
 
     def fn(nb):
         co = nb.mapping(nb.coord("Object"), scale=(1 / scale,) * 3)
@@ -488,11 +615,15 @@ def terracotta(name="ShisaClay", res=2048, mould=1.0, plaster=1.0, scale=1.0):
         big = nb.noise(co, 5.0, 5, 0.6)
         mid = nb.noise(co, 16.0, 5, 0.6)
         fine = nb.noise(co, 90.0, 4, 0.6)
-        base = nb.ramp(big, [(0.25, srgb("#7c3421")), (0.5, srgb("#9b4529")), (0.75, srgb("#b35a34"))])
-        base = nb.hsv(base, 0.5, 0.88, nb.maprange(mid, 0.3, 0.7, 0.85, 1.1))
-        # 雨風で灰色がかった汚れ（大きなムラ）
-        grime = nb.smooth(nb.noise(co, 2.2, 4, 0.6, distortion=0.4), 0.45, 0.75)
-        col = nb.mix(base, srgb("#665046"), nb.mul(grime, 0.7))
+        base = nb.ramp(big, [(0.25, srgb("#a2482a")), (0.5, srgb("#bb5b34")), (0.75, srgb("#c96c42"))])
+        base = nb.hsv(base, 0.5, 0.95, nb.maprange(mid, 0.3, 0.7, 0.9, 1.07))
+        # 出っ張り（渦の稜線など）は擦れて明るく、窪みは焼きむらで暗い赤茶
+        pt = nb.node("ShaderNodeNewGeometry").outputs["Pointiness"]
+        col = nb.mix(base, srgb("#dd9166"), nb.mul(nb.smooth(pt, 0.52, 0.62), 0.55))
+        col = nb.mix(col, srgb("#5e2716"), nb.mul(crev, 0.65))
+        # 雨風でくすんだ大きなムラ（控えめ）
+        grime = nb.smooth(nb.noise(co, 2.2, 4, 0.6, distortion=0.4), 0.5, 0.8)
+        col = nb.mix(col, srgb("#7a5a4a"), nb.mul(grime, 0.3))
         # 日焼けで白っぽく褪せたところ（上向き・出っ張り）
         faded = nb.mul(nb.smooth(nb.noise(co, 3.0, 4, 0.6, distortion=0.6), 0.4, 0.68),
                        nb.smooth(ao, 0.8, 1.0))
@@ -515,7 +646,7 @@ def terracotta(name="ShisaClay", res=2048, mould=1.0, plaster=1.0, scale=1.0):
         mcol = nb.mix(srgb("#24221d"), srgb("#3b3d2b"), nb.smooth(mid, 0.4, 0.7))
         mcol = nb.mix(mcol, srgb("#56504a"), nb.mul(nb.smooth(fine, 0.5, 0.8), 0.5))
         col = nb.mix(col, mcol, nb.math("MINIMUM", nb.mul(m, nb.maprange(fine, 0.2, 0.8, 0.75, 1.0)), 0.95))
-        rough = nb.maprange(nb.add(nb.mul(pl, 0.1), nb.mul(fine, 0.1)), 0.0, 0.2, 0.78, 0.95)
+        rough = nb.maprange(nb.add(nb.mul(pl, 0.1), nb.mul(fine, 0.1)), 0.0, 0.2, 0.76, 0.88)
         pits = nb.smooth(nb.voronoi(co, 70.0), 0.12, 0.0)
         height = nb.add(nb.add(nb.mul(mid, 0.5), nb.mul(fine, 0.35)), nb.mul(pits, -0.5))
         height = nb.add(height, nb.mul(pl, 0.4))
@@ -530,8 +661,8 @@ def terracotta(name="ShisaClay", res=2048, mould=1.0, plaster=1.0, scale=1.0):
 # ---------------------------------------------------------------------------
 def pedestal(name, seed):
     rnd = random.Random(seed)
-    lo = geo.box(name + "_lo", (0.52, 0.58, 0.11), loc=(0, -0.02, 0.055 - 0.02))
-    hi = geo.box(name + "_hi", (0.44, 0.50, 0.13), loc=(0, -0.02, 0.09 + 0.065))
+    lo = geo.box(name + "_lo", (0.6, 0.72, 0.11), loc=(0, -0.03, 0.055 - 0.02))
+    hi = geo.box(name + "_hi", (0.5, 0.62, 0.13), loc=(0, -0.03, 0.09 + 0.065))
     parts = []
     for o in (lo, hi):
         C.apply_transform(o)
@@ -552,8 +683,8 @@ def build():
     clay = terracotta("ShisaClay", res=2048)
     stone = limestone("ShisaPedestal", res=1024, tide_top=-10, dark_top=0.5)
     out = {}
-    for vname, open_mouth, turn, seed in (("Shisa_Agyo", True, -12.0, 3), ("Shisa_Ungyo", False, 12.0, 7)):
-        s = shisa_mesh(vname + "_body", open_mouth, turn, seed=seed, target_tris=12500)
+    for vname, open_mouth, turn, seed in (("Shisa_Agyo", True, -10.0, 3), ("Shisa_Ungyo", False, 10.0, 7)):
+        s = shisa_mesh(vname + "_body", open_mouth, turn, seed=seed, target_tris=24000)
         s.location.z = PEDESTAL_H - 0.004
         C.assign(s, clay)
         p = pedestal(vname + "_ped", seed)

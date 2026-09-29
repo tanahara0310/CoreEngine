@@ -567,9 +567,9 @@ def build():
     for o in parts[-5:]:
         C.assign(o, plaster)
     # 屋根のシーサー（棟の中央、正面向き）
-    sh = shisa_mesh("RoofShisa", True, 0.0, height=0.42, target_tris=3000, seed=11, uv_angle=62)
+    sh = shisa_mesh("RoofShisa", True, 0.0, height=0.45, target_tris=4000, h=0.006, seed=11, uv_angle=62)
     sh.location = (0, 0.02, zr + 0.13 + 0.17)
-    C.assign(sh, terracotta("AzumayaShisa", res=1024, mould=1.25, plaster=0.6))
+    C.assign(sh, terracotta("AzumayaShisa", res=1024, mould=0.6, plaster=0.3))
     parts.append(sh)
 
     # 柱・桁・梁
