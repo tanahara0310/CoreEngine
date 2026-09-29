@@ -27,8 +27,10 @@
 /// @details 各カスケードの傾き（勾配 = nLocal.xz / nLocal.y）を加算してから鉛直へ再構成する。
 ///          小さいパッチ（高周波）は遠方でフェードアウトさせ、法線ミップ連鎖の代わりに
 ///          遠距離・かすめ角のスペックル（フレネルの高周波ノイズ）を抑える。
-float3 ResolveSurfaceNormal(WaterPSInput input)
+/// @param unresolvedMeanSquareSlope フェードで法線から外した分の平均二乗傾斜（呼び出し側でラフネスへ足す）
+float3 ResolveSurfaceNormal(WaterPSInput input, out float unresolvedMeanSquareSlope)
 {
+    unresolvedMeanSquareSlope = 0.0f;
     float3 vertexNormal = normalize(input.normal);
     if (gUseFFTOceanNormalMap == 0)
     {
@@ -75,11 +77,16 @@ float3 ResolveSurfaceNormal(WaterPSInput input)
         // テクスチャ格子系の傾きをワールドへ逆回転してから合算する
         float2 slopeTex = nLocal.xz / max(nLocal.y, 1.0e-3f);
         slope += RotateFromFFTCascadeGrid(slopeTex, ci) * fade;
+
+        // 傾きを fade 倍に弱めた分の分散（全体の分散 = 残した分 fade² ＋ 外した分）
+        unresolvedMeanSquareSlope += (1.0f - fade * fade) * gFFTCascadeMeanSquareSlope[ci];
     }
 
     // 波群エンベロープ: 変位（FFTWater.VS）と同じ変調を傾きへ掛け、幾何と法線を一致させる
     // （VS は baseWorldPos.xz で評価しているので引数も揃える）
-    slope *= ComputeFFTWaveGroupEnvelope(input.baseWorldXZ);
+    const float waveGroupEnvelope = ComputeFFTWaveGroupEnvelope(input.baseWorldXZ);
+    slope *= waveGroupEnvelope;
+    unresolvedMeanSquareSlope *= waveGroupEnvelope * waveGroupEnvelope;
 
     float3 combinedLocal = normalize(float3(slope.x, 1.0f, slope.y));
     return normalize(combinedLocal.x * tangent + combinedLocal.y * vertexNormal + combinedLocal.z * bitangent);

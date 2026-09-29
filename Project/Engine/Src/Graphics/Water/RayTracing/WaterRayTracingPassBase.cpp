@@ -240,6 +240,9 @@ namespace CoreEngine
         surfaceConstants.fftOceanEnabled = fftOceanInput.enabled;
         surfaceConstants.fftOceanResolution = fftOceanInput.resolution;
         surfaceConstants.meshSubdivisions = surfaceData.meshSubdivisions;
+        for (int c = 0; c < 3; ++c) {
+            surfaceConstants.cascadeMeanSquareSlope[c] = fftOceanInput.cascadeMeanSquareSlope[c];
+        }
         return surfaceConstants;
     }
 

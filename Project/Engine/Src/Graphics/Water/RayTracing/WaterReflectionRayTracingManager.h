@@ -3,6 +3,7 @@
 #include <d3d12.h>
 #include <dxcapi.h>
 #include <wrl.h>
+#include <array>
 #include <cstdint>
 #include <memory>
 
@@ -94,5 +95,49 @@ namespace CoreEngine
 
     private:
         WaterReflectionRayTracingSettings settings_{};
+
+        // ---- 反射の元画像の縮小段（段 0 = 半分の解像度）----
+        // 荒れた水面の反射は、法線から外した細かい波の分だけ当たった物をぼかして引く。
+        // 色の段は物の画素の色（乗算済みアルファ）、空の段は空の画素の割合を持つ
+        static constexpr uint32_t kColorPyramidMaxMips = 6;
+        GpuResource colorPyramid_;
+        std::array<DescriptorHandle, kColorPyramidMaxMips> colorPyramidMipSrv_{};
+        std::array<DescriptorHandle, kColorPyramidMaxMips> colorPyramidMipUav_{};
+        DescriptorHandle colorPyramidFullSrv_{};
+        GpuResource skyCoveragePyramid_;
+        std::array<DescriptorHandle, kColorPyramidMaxMips> skyCoveragePyramidMipSrv_{};
+        std::array<DescriptorHandle, kColorPyramidMaxMips> skyCoveragePyramidMipUav_{};
+        DescriptorHandle skyCoveragePyramidFullSrv_{};
+        UINT colorPyramidWidth_ = 0;
+        UINT colorPyramidHeight_ = 0;
+        uint32_t colorPyramidMipCount_ = 0;
+        RootSignatureManager colorPyramidRootSigMgr_;
+        Microsoft::WRL::ComPtr<ID3D12PipelineState> colorPyramidPipelineState_;
+        BindingTable colorPyramidBindings_;
+        bool colorPyramidPipelineReady_ = false;
+
+        /// @brief 縮小段を作るコンピュートパイプラインを用意する
+        bool InitializeColorPyramid();
+        /// @brief 画面の大きさに合わせて縮小段のテクスチャを用意する（大きさが同じなら何もしない）
+        bool EnsureColorPyramid(UINT screenWidth, UINT screenHeight);
+        /// @brief 縮小段のテクスチャ 1 枚と、段ごとの SRV / UAV、全段の SRV を作る
+        bool CreatePyramidTexture(
+            GpuResource& texture,
+            std::array<DescriptorHandle, kColorPyramidMaxMips>& mipSrv,
+            std::array<DescriptorHandle, kColorPyramidMaxMips>& mipUav,
+            DescriptorHandle& fullSrv,
+            DXGI_FORMAT format,
+            UINT width,
+            UINT height,
+            uint32_t mipCount,
+            const char* debugName);
+        /// @brief 反射の元画像から色と空の全段を作り、全段を NON_PIXEL_SHADER_RESOURCE にして終える
+        /// @details 段 0 では画素を水面より上の物・空・水域の水面より下に分ける（深度から位置を戻して判定する）
+        void BuildColorPyramid(
+            ID3D12GraphicsCommandList* cmdList,
+            D3D12_GPU_DESCRIPTOR_HANDLE sourceSRV,
+            D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
+            const Matrix4x4& invViewProjection,
+            const WaterSurfaceData& surfaceData);
     };
 }

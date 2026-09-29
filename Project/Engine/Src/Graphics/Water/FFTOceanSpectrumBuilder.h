@@ -89,6 +89,11 @@ namespace CoreEngine
             // 正規化前の推定波高RMS（m）と、targetRmsHeight 適用時のスケール係数。
             float measuredRmsHeight = 0.0f;
             float appliedHeightScale = 1.0f;
+
+            // 描画される面の平均二乗傾斜（x・z の傾きの二乗和の平均）。
+            // GPU の時間発展（FFTOceanTimeEvolution.CS）と同じ成分数の打ち切りを含む。
+            // 振幅倍率（amplitudeScale）は含まない（使う側で 2 乗を掛ける）。
+            float meanSquareSlope = 0.0f;
         };
 
         /// @brief FFT Ocean 設定値を有効範囲へ正規化する

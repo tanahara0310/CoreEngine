@@ -129,14 +129,18 @@ struct WaterFrameConstants {
 	// 泡の寿命 τ [s]。PS 未使用だが実行時の値の単一情報源としてここに持ち、
 	// WaterRenderFeature が毎フレーム FFTOceanManager::SetFoamSettings へ転送する
 	float foamDecaySeconds = CoreEngine::WaterFoamDefaults::kDecaySeconds;
+	// ---- 見えない細かい波のラフネス換算 ----
+	// FFT カスケードごとの平均二乗傾斜（x・z の傾きの二乗和の平均。FFTOceanManager が求める）
+	float fftCascadeMeanSquareSlope[3] = { 0.0f, 0.0f, 0.0f };
+	float fftCascadeMeanSquareSlopePad = 0.0f;
 };
 
-// 全 26 フィールドのオフセットを HLSL packing 規則から機械的に導出して検証する。
+// 全 28 フィールドのオフセットを HLSL packing 規則から機械的に導出して検証する。
 // ずれると水柱厚さ・光学係数が別のフィールドを読み、波打ち際の段差として現れる
 // （RTシャドウの cbuffer 配列ずれ事故と同型）。
 // 以前はここに「absorptionCoeff は 16B 境界」「cameraNearZ は 80」といった個別 assert を
 // 人手で並べていたが、下の表が全フィールドを検査するので不要になった。
-static_assert(sizeof(WaterFrameConstants) == 128, "WaterFrameConstants size mismatch with HLSL cbuffer");
+static_assert(sizeof(WaterFrameConstants) == 144, "WaterFrameConstants size mismatch with HLSL cbuffer");
 static constexpr Cb::Field kWaterFrameConstantsFields[] = {
     CB_FIELD(WaterFrameConstants, reflectionEnabled), CB_FIELD(WaterFrameConstants, fresnelReflectanceScale),
     CB_FIELD(WaterFrameConstants, fresnelBaseReflectance), CB_FIELD(WaterFrameConstants, depthFadeEnabled),
@@ -152,6 +156,8 @@ static constexpr Cb::Field kWaterFrameConstantsFields[] = {
     CB_FIELD(WaterFrameConstants, foamBias), CB_FIELD(WaterFrameConstants, foamGain),
     CB_FIELD(WaterFrameConstants, foamOpacity), CB_FIELD(WaterFrameConstants, foamCascadeWeights),
     CB_FIELD(WaterFrameConstants, foamDecaySeconds),
+    CB_FIELD(WaterFrameConstants, fftCascadeMeanSquareSlope),
+    CB_FIELD(WaterFrameConstants, fftCascadeMeanSquareSlopePad),
 };
 CB_VERIFY_LAYOUT(WaterFrameConstants, kWaterFrameConstantsFields);
 CB_BIND_HLSL(WaterFrameConstants, kWaterFrameConstantsFields, "WaterFrameConstants");

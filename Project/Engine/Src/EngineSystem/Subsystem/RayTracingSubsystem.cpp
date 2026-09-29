@@ -311,6 +311,11 @@ namespace CoreEngine
             outDispatchContext.fftOceanInput.normalSRV = context.fftOceanManager->GetNormalSRVHandle();
             outDispatchContext.fftOceanInput.resolution = fftSettings.resolution;
             outDispatchContext.fftOceanInput.enabled = 1;
+            static_assert(FFTOceanManager::kCascadeCount == 3, "cascadeMeanSquareSlope のカスケード数と一致させる");
+            for (uint32_t c = 0; c < FFTOceanManager::kCascadeCount; ++c) {
+                outDispatchContext.fftOceanInput.cascadeMeanSquareSlope[c] =
+                    context.fftOceanManager->GetCascadeMeanSquareSlope(c);
+            }
         }
 
         return true;

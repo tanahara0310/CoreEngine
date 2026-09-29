@@ -120,6 +120,15 @@ namespace CoreEngine
         /// @return 設定参照
         const Settings& GetSettings() const { return settings_; }
 
+        /// @brief 描画される面のカスケードごとの平均二乗傾斜（x・z の傾きの二乗和の平均）を返す
+        /// @details 振幅倍率を含む
+        float GetCascadeMeanSquareSlope(uint32_t cascadeIndex) const {
+            if (cascadeIndex >= kCascadeCount) {
+                return 0.0f;
+            }
+            return cascadeMeanSquareSlope_[cascadeIndex] * settings_.amplitudeScale * settings_.amplitudeScale;
+        }
+
         // マルチスケール・カスケード数。各カスケードは異なるパッチ長の独立したFFTで、
         // 周期が噛み合わないため単一タイルの「格子状の繰り返し」を打ち消す。
         // 出力は Texture2DArray（スライス = カスケード）にまとめ、水面シェーダ側で
@@ -372,6 +381,9 @@ namespace CoreEngine
         // 初期スペクトル（h0）はパッチ長依存のためカスケードごとに独立して持つ。
         std::array<FFTOceanSpectrumBufferSet, kCascadeCount> spectrumBuffers_{};
         bool spectrumBufferDirty_ = false;
+
+        /// @brief カスケードごとの平均二乗傾斜（振幅倍率を掛ける前。スペクトル生成時に更新）
+        std::array<float, kCascadeCount> cascadeMeanSquareSlope_{};
 
         /// @brief カスケードの UPLOAD 側マップ先を要素型付きで返す
         SpectrumSample* MappedSpectrumSamples(uint32_t cascadeIndex) const {

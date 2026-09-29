@@ -37,6 +37,8 @@ namespace CoreEngine
             D3D12_GPU_DESCRIPTOR_HANDLE normalSRV{};
             uint32_t resolution = 0;
             uint32_t enabled = 0;
+            /// @brief カスケードごとの平均二乗傾斜（x・z の傾きの二乗和の平均）
+            float cascadeMeanSquareSlope[3] = { 0.0f, 0.0f, 0.0f };
         };
 
         /// @brief RT 側が参照する水面モデルの供給元を差し替える
@@ -121,9 +123,12 @@ namespace CoreEngine
             // シーン側の変更で静かに壊れる構造だった）
             float meshSubdivisions = 256.0f;
             float pad0 = 0.0f;
+            // FFT カスケードごとの平均二乗傾斜（x・z の傾きの二乗和の平均）
+            float cascadeMeanSquareSlope[3] = { 0.0f, 0.0f, 0.0f };
+            float pad1 = 0.0f;
         };
 
-        static_assert(sizeof(WaterSurfaceConstants) == 16 + 32 * kMaxWaterSurfaceWaveCount + 16,
+        static_assert(sizeof(WaterSurfaceConstants) == 16 + 32 * kMaxWaterSurfaceWaveCount + 32,
             "WaterSurfaceConstants layout mismatch with RTWaterSurfaceCommon.hlsli cbuffer");
 
         static constexpr Cb::Field kWaterSurfaceConstantsFields[] = {
@@ -131,7 +136,8 @@ namespace CoreEngine
             CB_FIELD(WaterSurfaceConstants, time), CB_FIELD(WaterSurfaceConstants, simulationType),
             CB_FIELD(WaterSurfaceConstants, waves), CB_FIELD(WaterSurfaceConstants, fftOceanEnabled),
             CB_FIELD(WaterSurfaceConstants, fftOceanResolution), CB_FIELD(WaterSurfaceConstants, meshSubdivisions),
-            CB_FIELD(WaterSurfaceConstants, pad0),
+            CB_FIELD(WaterSurfaceConstants, pad0), CB_FIELD(WaterSurfaceConstants, cascadeMeanSquareSlope),
+            CB_FIELD(WaterSurfaceConstants, pad1),
         };
         CB_VERIFY_LAYOUT(WaterSurfaceConstants, kWaterSurfaceConstantsFields);
         CB_BIND_HLSL(WaterSurfaceConstants, kWaterSurfaceConstantsFields, "WaterSurfaceData");
