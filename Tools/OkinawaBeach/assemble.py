@@ -18,75 +18,86 @@ from mathutils import Vector  # noqa: E402
 
 from okinawa import common as C  # noqa: E402
 
-# (アセット名, 位置, Z 回転[度], 一様スケール)
+# (アセット名, (x, y, z), Z 回転[度], 一様スケール)
+# SNAP 以外のアセットは z を「地形の高さからのオフセット」として扱う（負で埋める）
+NO_SNAP = {"BeachTerrain_Shore", "BeachTerrain_Flat", "Pier_Straight", "Pier_End"}
 LAYOUT = [
-    # 地形（Shore を X 方向に並べ、陸側に Flat）
-    ("BeachTerrain_Shore", (-40, 0, 0), 0, 1.0),
-    ("BeachTerrain_Shore", (0, 0, 0), 0, 1.0),
-    ("BeachTerrain_Shore", (40, 0, 0), 0, 1.0),
-    ("BeachTerrain_Flat", (-40, 40, 0), 0, 1.0),
-    ("BeachTerrain_Flat", (0, 40, 0), 0, 1.0),
-    ("BeachTerrain_Flat", (40, 40, 0), 0, 1.0),
-    # 岬側の岩場（左）
-    ("NotchRock_A", (-24, -9, -0.3), 20, 1.0),
-    ("NotchRock_B", (-16, -14, -0.5), -35, 1.0),
-    ("ReefRock_A", (-19, -6, -0.1), 10, 1.0),
-    ("ReefRock_B", (-13, -8, -0.3), 70, 1.0),
-    ("ReefRock_C", (-21, -3.5, 0.0), 0, 1.0),
-    ("ReefRock_B", (-27, -4, 0.1), 140, 1.2),
-    ("ReefRock_C", (-11, -11, -0.4), 45, 1.3),
-    ("Tetrapod_B", (30, -9, -0.6), 15, 1.0),
-    ("Tetrapod_A", (32.5, -7.5, -0.4), 70, 1.0),
-    ("Tetrapod_B", (34, -10.5, -0.9), 130, 1.0),
-    # 植生
-    ("CoconutPalm_A", (-8, 10, 1.2), 0, 1.0),
-    ("CoconutPalm_B", (-4, 13, 1.5), 60, 1.0),
-    ("CoconutPalm_C", (-12, 14, 1.6), 200, 1.0),
-    ("CoconutPalm_A", (14, 15, 1.6), 150, 0.9),
-    ("Adan_A", (-18, 11, 1.4), 0, 1.0),
-    ("Adan_B", (-22, 9, 1.2), 90, 1.0),
-    ("Adan_B", (6, 17, 1.7), 200, 1.0),
-    ("Hibiscus_A", (2, 18, 1.7), 0, 1.0),
-    ("Hibiscus_B", (4, 19, 1.7), 40, 1.0),
-    ("Bougainvillea_A", (24, 18, 1.7), 0, 1.0),
-    # 東屋と石垣・シーサー
-    ("Azumaya_A", (10, 20, 1.8), 10, 1.0),
-    ("Ishigaki_Straight", (18, 24, 1.8), 0, 1.0),
-    ("Ishigaki_Straight", (22, 24, 1.8), 0, 1.0),
-    ("Ishigaki_Corner", (26, 24, 1.8), 0, 1.0),
-    ("Ishigaki_Low", (2, 24, 1.8), 0, 1.0),
-    ("Shisa_Agyo", (15.2, 23, 1.8), 190, 1.0),
-    ("Shisa_Ungyo", (17.0, 23, 1.8), 170, 1.0),
-    # 浜辺
-    ("Sabani_A", (3, 2.2, 0.35), 75, 1.0),
-    ("Sabani_B", (6, 3.5, 0.5), 95, 1.0),
-    ("BeachParasol_A", (-2, 6, 0.9), 0, 1.0),
-    ("DeckChair_A", (-2.5, 4.8, 0.85), 185, 1.0),
-    ("DeckChair_A", (-0.8, 4.9, 0.85), 175, 1.0),
-    ("BeachParasol_B", (9, 8, 1.1), 0, 1.0),
-    # 桟橋（z=0 が水面）
-    ("Pier_Straight", (18, 2, 0), 0, 1.0),
-    ("Pier_Straight", (18, -2, 0), 0, 1.0),
-    ("Pier_Straight", (18, -6, 0), 0, 1.0),
-    ("Pier_End", (18, -10, 0), 0, 1.0),
+    # 地形: 40m 角タイル。Shore の陸側に Flat をつなぐ
+    *[("BeachTerrain_Shore", (x, 0, 0), 0, 1.0) for x in (-80, -40, 0, 40, 80)],
+    *[("BeachTerrain_Flat", (x, y, 0), 0, 1.0) for x in (-80, -40, 0, 40, 80) for y in (40, 80)],
+    # 左: 石灰岩の岩場（浅瀬に立つノッチ岩）
+    ("NotchRock_A", (-26, -7, -0.6), 20, 1.0),
+    ("NotchRock_B", (-17, -11, -0.5), -35, 1.0),
+    ("NotchRock_B", (-33, -12, -0.5), 120, 0.8),
+    ("ReefRock_A", (-21, -3.5, -0.15), 10, 1.0),
+    ("ReefRock_B", (-14, -6, -0.1), 70, 1.0),
+    ("ReefRock_C", (-22, -1.0, -0.05), 0, 1.0),
+    ("ReefRock_B", (-29, -2.5, -0.1), 140, 1.2),
+    ("ReefRock_C", (-11, -9, -0.1), 45, 1.3),
+    ("ReefRock_A", (-36, -5, -0.2), 200, 1.3),
+    # 右: 消波ブロック
+    ("Tetrapod_B", (36, -6, -0.3), 15, 1.0),
+    ("Tetrapod_A", (38.2, -4.3, -0.2), 70, 1.0),
+    ("Tetrapod_B", (39.5, -7.5, -0.3), 130, 1.0),
+    ("Tetrapod_A", (41.5, -5.0, -0.3), 200, 1.0),
+    ("Tetrapod_B", (37.5, -9.0, -0.4), 300, 1.0),
+    # 植生（後浜）
+    ("CoconutPalm_A", (-8, 8, -0.05), 0, 1.0),
+    ("CoconutPalm_B", (-3.5, 11, -0.05), 60, 1.0),
+    ("CoconutPalm_C", (-11, 12.5, -0.05), 200, 1.0),
+    ("CoconutPalm_A", (15, 12, -0.05), 150, 0.9),
+    ("CoconutPalm_B", (27, 9, -0.05), 250, 1.05),
+    ("CoconutPalm_C", (30, 14, -0.05), 20, 1.1),
+    ("Adan_A", (-19, 8, -0.1), 0, 1.0),
+    ("Adan_B", (-23, 6.5, -0.1), 90, 1.0),
+    ("Adan_A", (-30, 9, -0.1), 160, 0.9),
+    ("Adan_B", (4, 14, -0.1), 200, 1.0),
+    ("Hibiscus_A", (1.0, 17, -0.05), 0, 1.0),
+    ("Hibiscus_B", (3.2, 18, -0.05), 40, 1.0),
+    ("Hibiscus_A", (19.5, 19, -0.05), 90, 0.9),
+    ("Bougainvillea_A", (22.5, 19.6, -0.05), 0, 1.0),
+    # 東屋・石垣・シーサー
+    ("Azumaya_A", (10, 16, -0.02), 10, 1.0),
+    ("Ishigaki_Straight", (14, 21, -0.05), 0, 1.0),
+    ("Ishigaki_Straight", (18, 21, -0.05), 0, 1.0),
+    ("Ishigaki_Corner", (22, 21, -0.05), 0, 1.0),
+    ("Ishigaki_Low", (4, 21, -0.05), 0, 1.0),
+    ("Ishigaki_Straight", (-2, 21, -0.05), 0, 1.0),
+    ("Shisa_Agyo", (7.6, 20.2, -0.02), 180, 1.0),
+    ("Shisa_Ungyo", (12.4, 20.2, -0.02), 180, 1.0),
+    # 浜辺（サバニは船首 +X、チェアは頭側 -X）
+    ("Sabani_A", (4, 1.2, -0.02), 100, 1.0),
+    ("Sabani_B", (7.5, 2.4, -0.02), 80, 1.0),
+    ("BeachParasol_A", (-2, 6.5, 0), 0, 1.0),
+    ("DeckChair_A", (-3.2, 5.6, 0), 80, 1.0),
+    ("DeckChair_A", (-1.0, 5.4, 0), 95, 1.0),
+    ("BeachParasol_B", (8.5, 7.5, 0), 0, 1.0),
+    ("DeckChair_A", (8.0, 6.2, 0), 90, 1.0),
+    # 桟橋（z=0 が水面。モジュールは +Y へ 4m 伸びるので 180 度回して沖へ）
+    ("Pier_Straight", (20, 3, 0), 180, 1.0),
+    ("Pier_Straight", (20, -1, 0), 180, 1.0),
+    ("Pier_Straight", (20, -5, 0), 180, 1.0),
+    ("Pier_End", (20, -9, 0), 180, 1.0),
     # 小物
-    ("Driftwood_A", (-6, 3, 0.45), 30, 1.0),
-    ("Driftwood_B", (11, 4.5, 0.6), -60, 1.0),
-    ("Coconut_Husk", (-7, 8.5, 1.0), 0, 1.0),
-    ("Coconut_Husk", (-9.2, 9.0, 1.1), 90, 1.0),
-    ("GlassFloat", (1, 3.6, 0.5), 0, 1.0),
-    ("Shell_SpiderConch", (0.2, 2.2, 0.3), 40, 1.0),
-    ("Shell_Cowrie", (-0.4, 2.5, 0.32), 0, 1.0),
-    ("CoralPiece_A", (-3, 1.5, 0.2), 0, 1.0),
-    ("CoralPiece_B", (4.5, 1.2, 0.18), 90, 1.0),
+    ("Driftwood_A", (-6, 2.5, 0), 30, 1.0),
+    ("Driftwood_B", (12, 4.2, 0), -60, 1.0),
+    ("Coconut_Husk", (-7, 7.0, 0), 0, 1.0),
+    ("Coconut_Husk", (-9.2, 7.6, 0), 90, 1.0),
+    ("GlassFloat", (1, 3.2, 0), 0, 1.0),
+    ("Shell_SpiderConch", (0.2, 1.8, 0), 40, 1.0),
+    ("Shell_Cowrie", (-0.4, 2.1, 0), 0, 1.0),
+    ("CoralPiece_A", (-3, 1.0, 0), 0, 1.0),
+    ("CoralPiece_B", (5.5, 0.6, 0), 90, 1.0),
+    ("CoralPiece_A", (13, 1.5, 0), 120, 1.0),
 ]
 
 CAMERAS = {
     # 名前: (位置, 注視点, レンズ)
-    "main": ((6, -38, 7.5), (2, 4, 1.5), 28),
-    "beach": ((-3, -6, 1.8), (-8, 10, 3.0), 24),
-    "rocks": ((-8, -24, 3.2), (-19, -8, 1.5), 32),
-    "village": ((4, 6, 2.2), (14, 21, 2.2), 26),
+    "main": ((2, -40, 8.0), (2, 6, 2.0), 26),
+    "beach": ((-1, -3, 2.2), (-8, 12, 3.5), 22),
+    "rocks": ((-10, -22, 2.8), (-24, -6, 2.0), 30),
+    "village": ((5, 4, 2.6), (12, 18, 2.4), 24),
+    "pier": ((26, -18, 3.0), (18, 2, 1.5), 28),
 }
 
 
@@ -136,6 +147,24 @@ def add_water():
     return w
 
 
+def add_seabed():
+    """地形タイルより沖の海底（確認用）"""
+    def fn(nb):
+        co = nb.coord("Object")
+        n = nb.noise(co, 0.3, 4, 0.6)
+        return dict(color=nb.mix(C.srgb("#d9cfb4"), C.srgb("#b9ab86"), nb.mul(n, 0.6)), rough=0.8)
+
+    mat = C.pbr_material("PreviewSeabed", fn, bake=False)
+    bpy.ops.mesh.primitive_plane_add(size=1)
+    g = bpy.context.object
+    g.name = "PreviewSeabed"
+    g.scale = (2000, 1000, 1)
+    g.location = (0, -519.9, -3.05)
+    C.apply_transform(g)
+    C.assign(g, mat)
+    return g
+
+
 def add_fallback_ground():
     """地形アセットがまだ無いときの仮の浜"""
     def fn(nb):
@@ -152,6 +181,12 @@ def add_fallback_ground():
         v.co.z = max(-4.0, min(1.8, 0.12 * y + 0.2))
     C.assign(g, mat)
     return g
+
+
+def terrain_height(x, y):
+    dg = bpy.context.evaluated_depsgraph_get()
+    hit, loc, *_ = bpy.context.scene.ray_cast(dg, Vector((x, y, 100)), Vector((0, 0, -1)))
+    return loc.z if hit else 0.0
 
 
 def place(name, loc, rot, scale, cache):
@@ -171,6 +206,8 @@ def place(name, loc, rot, scale, cache):
     else:
         obj = cache[name].copy()  # メッシュは共有（リンク複製）
         C.link_object(obj)
+    if name not in NO_SNAP:
+        loc = (loc[0], loc[1], terrain_height(loc[0], loc[1]) + loc[2])
     obj.location = loc
     obj.rotation_euler = (0, 0, math.radians(rot))
     obj.scale = (scale, scale, scale)
@@ -181,9 +218,13 @@ def main():
     args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
     C.reset_scene()
     cache = {}
-    placed = [n for n, *rest in LAYOUT if place(n, *rest, cache) is not None]
+    # 先に地形を置き、ほかはその高さに合わせる
+    placed = [n for n, *rest in LAYOUT if n in NO_SNAP and place(n, *rest, cache) is not None]
     if not any(n.startswith("BeachTerrain") for n in placed):
         add_fallback_ground()
+    add_seabed()
+    bpy.context.view_layer.update()
+    placed += [n for n, *rest in LAYOUT if n not in NO_SNAP and place(n, *rest, cache) is not None]
     add_water()
     C.setup_preview_world(strength=1.0, sun_elev=52, sun_rot=200)
     scene = bpy.context.scene
