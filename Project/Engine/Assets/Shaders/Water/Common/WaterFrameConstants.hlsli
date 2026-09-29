@@ -67,6 +67,11 @@ cbuffer WaterFrameConstants : register(b5)
     // 泡の寿命 τ [s]。PS では未使用（FFTOceanFoamAccumulate.CS が使う）。
     // WaterRenderFeature が毎フレーム FFTOceanManager::SetFoamSettings へ転送する。
     float gFoamDecaySeconds;
+
+    // ---- 見えない細かい波のラフネス換算 ----
+    // FFT カスケードごとの平均二乗傾斜（x・z の傾きの二乗和の平均）
+    float3 gFFTCascadeMeanSquareSlope;
+    float gFFTCascadeMeanSquareSlopePad;
 };
 
 #endif // WATER_FRAME_CONSTANTS_INCLUDED

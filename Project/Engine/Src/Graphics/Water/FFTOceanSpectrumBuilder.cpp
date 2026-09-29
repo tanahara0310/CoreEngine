@@ -234,6 +234,11 @@ namespace CoreEngine
         std::normal_distribution<float> gaussianDistribution(0.0f, 1.0f);
         float accumulatedSpectralAmplitude = 0.0f;
         double accumulatedAmplitudeSquared = 0.0;
+        double accumulatedSlopeSquared = 0.0;
+
+        // GPU の時間発展と同じ成分数の打ち切り（正規化波数が bandLimit を超える成分を消す）
+        const float bandLimit = (std::max)(
+            static_cast<float>(settings.activeComponentCount) / 64.0f, 1.0f / 64.0f);
 
         for (uint32_t y = 0; y < resolution; ++y) {
             for (uint32_t x = 0; x < resolution; ++x) {
@@ -325,6 +330,11 @@ namespace CoreEngine
                     ++stats.activeSpectrumSampleCount;
                     accumulatedSpectralAmplitude += spectralAmplitude;
                     accumulatedAmplitudeSquared += static_cast<double>(spectralAmplitude) * spectralAmplitude;
+                    // 傾きの成分は i·k·h なので、分散は k² 倍になる
+                    const float bandFade = (std::clamp)(
+                        (bandLimit - sample.normalizedBand) * 16.0f + 1.0f, 0.0f, 1.0f);
+                    accumulatedSlopeSquared += static_cast<double>(waveNumberSquared)
+                        * spectralAmplitude * spectralAmplitude * bandFade * bandFade;
                     stats.maxSpectralAmplitude = (std::max)(stats.maxSpectralAmplitude, spectralAmplitude);
                     stats.maxAngularFrequency = (std::max)(stats.maxAngularFrequency, sample.angularFrequency);
                 }
@@ -337,9 +347,13 @@ namespace CoreEngine
         // targetRmsHeight が指定されたら全モードを一様スケールして目標 RMS へ合わせる。
         stats.measuredRmsHeight = static_cast<float>(
             2.0 * std::sqrt(accumulatedAmplitudeSquared) / static_cast<double>(resolution));
+        // 波高 RMS と同じ正規化で平均二乗傾斜を求める（RMS² = 4Σsa²/N² に対し 4Σk²sa²/N²）
+        stats.meanSquareSlope = static_cast<float>(
+            4.0 * accumulatedSlopeSquared / (static_cast<double>(resolution) * resolution));
         if (settings.targetRmsHeight > 0.0f && stats.measuredRmsHeight > 1.0e-6f) {
             const float heightScale = settings.targetRmsHeight / stats.measuredRmsHeight;
             stats.appliedHeightScale = heightScale;
+            stats.meanSquareSlope *= heightScale * heightScale;
             for (TempSpectrumSample& sample : tempSpectrum) {
                 sample.real *= heightScale;
                 sample.imag *= heightScale;

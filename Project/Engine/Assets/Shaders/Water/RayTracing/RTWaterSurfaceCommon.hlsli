@@ -30,6 +30,9 @@ cbuffer WaterSurfaceData : register(b1)
     // 以前は RTWaterCaustics.hlsl に 256 がハードコードされていた）
     float gSurfaceMeshSubdivisions;
     float gSurfacePad0;
+    // FFT カスケードごとの平均二乗傾斜（x・z の傾きの二乗和の平均）
+    float3 gSurfaceCascadeMeanSquareSlope;
+    float gSurfacePad1;
 };
 
 static const uint kWaterSurfaceModelTypeGerstner = 0;
@@ -175,6 +178,13 @@ float3 SampleFFTOceanCascadeDisplacement(Texture2DArray<float4> textureData, flo
     return displacement * ComputeFFTWaveGroupEnvelope(worldXZ);
 }
 
+/// @brief フットプリントに対するカスケードの傾きの残し具合（1=そのまま / 0=外す）
+float ComputeFFTCascadeFootprintFade(int cascade, uint resolution, float footprintMeters)
+{
+    const float texelMeters = max(kFFTCascadePatch[cascade] / (float)max(resolution, 1u), 1.0e-4f);
+    return 1.0f - smoothstep(1.0f, 4.0f, footprintMeters / texelMeters);
+}
+
 /// @brief 全カスケードの法線（傾き）を合算したワールド法線を返す
 /// @param footprintMeters このレイが水面上で覆う幅 [m]
 /// @details フットプリントがテクセル幅を超えるカスケードは傾きへの寄与をフェードする。
@@ -184,12 +194,10 @@ float3 SampleFFTOceanCascadeNormal(
     Texture2DArray<float4> textureData, float2 worldXZ, uint resolution, float footprintMeters)
 {
     float2 slope = float2(0.0f, 0.0f);
-    const float texelCount = (float)max(resolution, 1u);
     [unroll]
     for (int c = 0; c < kFFTCascadeCount; ++c)
     {
-        const float texelMeters = max(kFFTCascadePatch[c] / texelCount, 1.0e-4f);
-        const float fade = 1.0f - smoothstep(1.0f, 4.0f, footprintMeters / texelMeters);
+        const float fade = ComputeFFTCascadeFootprintFade(c, resolution, footprintMeters);
         const float2 gridXZ = RotateToFFTCascadeGrid(worldXZ, c);
         const float3 enc = SampleFFTOceanArraySlice(textureData, gridXZ, kFFTCascadePatch[c], (uint)c, resolution).xyz;
         const float3 nLocal = normalize(enc * 2.0f - 1.0f);
@@ -229,6 +237,27 @@ float3 EvaluateWaterNormal(Texture2DArray<float4> normalTex, float2 worldXZ, flo
     }
     return SampleFFTOceanCascadeNormal(
         normalTex, worldXZ, gSurfaceFFTOceanResolution, footprintMeters);
+}
+
+/// @brief EvaluateWaterNormal がフットプリントで法線から外した分の平均二乗傾斜を返す
+/// @details 外した波はレイのフットプリントの中の凹凸なので、反射のぼけ（ラフネス）に使う。
+///          Gerstner の波面は外す波を持たないので 0
+float EvaluateExcludedMeanSquareSlope(float2 worldXZ, float footprintMeters)
+{
+    if (!UseFFTOceanSurface())
+    {
+        return 0.0f;
+    }
+    float excluded = 0.0f;
+    [unroll]
+    for (int c = 0; c < kFFTCascadeCount; ++c)
+    {
+        const float fade = ComputeFFTCascadeFootprintFade(c, gSurfaceFFTOceanResolution, footprintMeters);
+        // 傾きを fade 倍に弱めた分の分散（全体の分散 = 残した分 fade² ＋ 外した分）
+        excluded += (1.0f - fade * fade) * gSurfaceCascadeMeanSquareSlope[c];
+    }
+    const float envelope = ComputeFFTWaveGroupEnvelope(worldXZ);
+    return excluded * envelope * envelope;
 }
 
 // ============================================================

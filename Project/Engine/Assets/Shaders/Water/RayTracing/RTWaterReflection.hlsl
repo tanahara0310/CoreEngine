@@ -28,6 +28,9 @@ Texture2D<float4> gSceneColor : register(t2);
 Texture2DArray<float4> gFFTOceanDisplacement : register(t3);
 Texture2DArray<float4> gFFTOceanNormal : register(t4);
 TextureCube<float4> gSkyEnvironmentMap : register(t5);
+// 反射の元画像（gSceneColor）の縮小段。段 0 は半分の解像度（WaterReflectionColorPyramid.CS）。
+// 段を作れなかったフレームは gSceneColor そのもの（段数 1）が入る
+Texture2D<float4> gSceneColorPyramid : register(t6);
 
 // DXR グローバルルートシグネチャの静的サンプラ（GlobalRootSignatureManager）。
 // 空キューブと、再投影先のシーン色の双線形取得に使う。
@@ -95,22 +98,102 @@ float4 MakeFallbackOutput(float reasonCode)
 static const float kSkyEnvMipCount = 5.0f;
 static const float kSkyEnvMicroRoughness = 0.20f;
 
-float3 SampleSkyEnvironment(float3 dir)
+/// @param perceptualRoughness 空をぼかすラフネス（ミップ = ラフネス × (段数 - 1)）
+float3 SampleSkyEnvironment(float3 dir, float perceptualRoughness)
 {
-    const float mip = kSkyEnvMicroRoughness * (kSkyEnvMipCount - 1.0f);
+    const float mip = saturate(perceptualRoughness) * (kSkyEnvMipCount - 1.0f);
     return gSkyEnvironmentMap.SampleLevel(gLinearClamp, dir, mip).rgb;
 }
 
 /// @brief トレースしたレイの向きで空を引いた「解決済みの反射色」を返す。
 /// @details 空キューブが無いフレームだけ理由コード（alpha<0.5）へ落とす。
 ///          その場合のみ Water.PS の保険フォールバックが動く。
-float4 MakeSkyResolvedOutput(float3 rayDir, float reasonCodeIfNoSky)
+float4 MakeSkyResolvedOutput(float3 rayDir, float reasonCodeIfNoSky, float perceptualRoughness)
 {
     if (gSkyEnvReflectionEnabled < 0.5f)
     {
         return MakeFallbackOutput(reasonCodeIfNoSky);
     }
-    return float4(SampleSkyEnvironment(rayDir), MakeSuccessAlpha(1.0f));
+    return float4(SampleSkyEnvironment(rayDir, perceptualRoughness), MakeSuccessAlpha(1.0f));
+}
+
+/// @brief 縮小段の段数（縮小段が無いフレームは 1）
+uint GetReflectionPyramidLevels()
+{
+    uint pyramidWidth = 1;
+    uint pyramidHeight = 1;
+    uint pyramidLevels = 1;
+    gSceneColorPyramid.GetDimensions(0, pyramidWidth, pyramidHeight, pyramidLevels);
+    return pyramidLevels;
+}
+
+/// @brief 縮小段を引く（rgb = 映りうる画素の色の平均 × a、a = 映りうる画素の割合）
+/// @param blurPixels ぼかしの幅（フル解像度の画素数。段 0 の 2 画素より細かくはしない）
+float4 SampleReflectionPyramid(float2 uv, float blurPixels, uint pyramidLevels)
+{
+    // 段 L の 1 画素はフル解像度の 2^(L+1) 画素
+    const float level = clamp(log2(max(blurPixels, 2.0f)) - 1.0f, 0.0f, (float)(pyramidLevels - 1));
+    return gSceneColorPyramid.SampleLevel(gLinearClamp, uv, level);
+}
+
+/// @brief 反射の元画像を、指定した幅でぼかして引く
+/// @param uv         引く位置（スクリーン UV）
+/// @param blurPixels ぼかしの幅（フル解像度の画素数。1 以下ならぼかさない）
+float3 SampleReflectionSource(float2 uv, float blurPixels)
+{
+    const float3 sharp = gSceneColor.SampleLevel(gLinearClamp, uv, 0.0f).rgb;
+    const uint pyramidLevels = GetReflectionPyramidLevels();
+    if (pyramidLevels <= 1 || blurPixels <= 1.0f)
+    {
+        return sharp;
+    }
+
+    const float4 blurred = SampleReflectionPyramid(uv, blurPixels, pyramidLevels);
+    if (blurred.a <= 1.0e-3f)
+    {
+        return sharp;
+    }
+    // 1〜2 画素の間は元画像と段 0 をなめらかにつなぐ
+    return lerp(sharp, blurred.rgb / blurred.a, saturate(log2(blurPixels)));
+}
+
+/// @brief 反射の元画像を、縦と横で別の広がりでぼかして引く
+/// @param uv                    引く位置（スクリーン UV）
+/// @param verticalSigmaPixels   縦の広がり（1σ・フル解像度の画素数）
+/// @param horizontalSigmaPixels 横の広がり（1σ・フル解像度の画素数）
+/// @details 縦に並べたタップで縦の広がりを、縮小段の選び方で横の広がりを作る。
+///          タップの間隔より細かい段を引くと、ずれた像が離れて重なって見えるので、
+///          段のぼかし幅はタップの間隔以上にする。
+///          水面より下の画素は縮小段の割合 a で外れるので、映りうる画素だけで平均する。
+float3 SampleReflectionSourceStreak(float2 uv, float verticalSigmaPixels, float horizontalSigmaPixels)
+{
+    const uint pyramidLevels = GetReflectionPyramidLevels();
+    if (verticalSigmaPixels <= 0.5f || pyramidLevels <= 1)
+    {
+        return SampleReflectionSource(uv, 2.0f * horizontalSigmaPixels);
+    }
+
+    // ±2σ の範囲に等間隔でタップを置き、正規分布の重みで平均する
+    static const int kTapCount = 8;
+    const float tapSpacingPixels = 4.0f * verticalSigmaPixels / (float)kTapCount;
+    const float blurPixels = max(2.0f * horizontalSigmaPixels, tapSpacingPixels);
+    float3 colorSum = float3(0.0f, 0.0f, 0.0f);
+    float weightSum = 0.0f;
+    [unroll]
+    for (int i = 0; i < kTapCount; ++i)
+    {
+        const float offsetSigma = ((float(i) + 0.5f) / (float)kTapCount) * 4.0f - 2.0f;
+        const float weight = exp(-0.5f * offsetSigma * offsetSigma);
+        const float2 tapUV = saturate(uv + float2(0.0f, offsetSigma * verticalSigmaPixels / gScreenHeight));
+        const float4 tap = SampleReflectionPyramid(tapUV, blurPixels, pyramidLevels);
+        colorSum += tap.rgb * weight;
+        weightSum += tap.a * weight;
+    }
+    if (weightSum <= 1.0e-3f)
+    {
+        return SampleReflectionSource(uv, 2.0f * horizontalSigmaPixels);
+    }
+    return colorSum / weightSum;
 }
 
 /// @brief 水面の点から光源が見えるかを返す（1=日向 / 0=水より上の遮蔽物の影）
@@ -222,6 +305,16 @@ void RTWaterReflectionRayGen()
 
     float3 waterNormal = EvaluateWaterNormal(gFFTOceanNormal, waterPos.xz, directionFootprint);
 
+    // 1 ピクセルより細かくて見えない波の傾きは、反射のぼけとして戻す。
+    // 画素より大きい波は、反射の向きから外していても揺らぎとして見えるものなのでぼかさない。
+    // 空はそのラフネスに合ったミップで、物は反射の向きのばらつき（1σ・rad）の幅でぼかして引く。
+    // 軸ごとの傾きの分散は平均二乗傾斜の半分。視線を含む縦の面では反射の向きが傾きの 2 倍ぶれ、
+    // 横へは視線と水面のなす角 γ の sin 倍に縮む（かすめて見るほど映り込みが縦に伸びる）
+    const float excludedMeanSquareSlope = EvaluateExcludedMeanSquareSlope(waterPos.xz, surfaceFootprintMeters);
+    const float skyRoughness = AddSlopeVarianceToRoughness(kSkyEnvMicroRoughness, excludedMeanSquareSlope);
+    const float verticalReflectionSpread = 2.0f * sqrt(0.5f * excludedMeanSquareSlope);
+    const float horizontalReflectionSpread = verticalReflectionSpread * saturate(-primaryDir.y);
+
     // この水面の点がヤシや岩の影に入っているか（Water.PS がメインライトの項へ掛ける）
     gSunVisibilityOutput[launchIndex] = TraceSunVisibility(waterPos, waterNormal);
 
@@ -254,7 +347,7 @@ void RTWaterReflectionRayGen()
     {
         // 反射レイが何にも当たらず空へ抜けた。
         // ★トレースした向きそのもので空を引く（物理的にこれが正しい反射先）★
-        gReflectionOutput[launchIndex] = MakeSkyResolvedOutput(ray.Direction, kRTReasonTraceMiss);
+        gReflectionOutput[launchIndex] = MakeSkyResolvedOutput(ray.Direction, kRTReasonTraceMiss, skyRoughness);
         return;
     }
 
@@ -262,7 +355,7 @@ void RTWaterReflectionRayGen()
     float4 clip = mul(float4(hitWorldPos, 1.0f), gViewProjection);
     if (clip.w <= 1.0e-5f)
     {
-        gReflectionOutput[launchIndex] = MakeSkyResolvedOutput(ray.Direction, kRTReasonInvalidClip);
+        gReflectionOutput[launchIndex] = MakeSkyResolvedOutput(ray.Direction, kRTReasonInvalidClip, skyRoughness);
         return;
     }
 
@@ -275,7 +368,7 @@ void RTWaterReflectionRayGen()
     float edgeFade = ComputeRTScreenBoundsFade(uv, float2(gScreenWidth, gScreenHeight));
     if (edgeFade <= 1.0e-4f)
     {
-        gReflectionOutput[launchIndex] = MakeSkyResolvedOutput(ray.Direction, kRTReasonInvalidClip);
+        gReflectionOutput[launchIndex] = MakeSkyResolvedOutput(ray.Direction, kRTReasonInvalidClip, skyRoughness);
         return;
     }
 
@@ -296,8 +389,13 @@ void RTWaterReflectionRayGen()
     // 別の物体に隠れており色を取得できない → フォールバック。
     // 同じレイ向きで引いた空。以降のフォールバック／混合の端点は必ずこれを使う。
     const bool hasSkyCube = (gSkyEnvReflectionEnabled >= 0.5f);
-    const float3 sceneColorAtTarget = gSceneColor.SampleLevel(gLinearClamp, reflectedUV, 0.0f).rgb;
-    const float3 skyAlongRay = hasSkyCube ? SampleSkyEnvironment(ray.Direction) : sceneColorAtTarget;
+    // 反射の向きのばらつきが当たった物の上で覆う幅を、画面の画素数へ換算してぼかす
+    const float hitPixelMeters = ComputePixelPerpendicularWidth(
+        reflectedUV, saturate(ndc.z), float2(gScreenWidth, gScreenHeight), gInvViewProjection);
+    const float pixelsPerRadian = payload.hitT / max(hitPixelMeters, 1.0e-4f);
+    const float3 sceneColorAtTarget = SampleReflectionSourceStreak(
+        reflectedUV, verticalReflectionSpread * pixelsPerRadian, horizontalReflectionSpread * pixelsPerRadian);
+    const float3 skyAlongRay = hasSkyCube ? SampleSkyEnvironment(ray.Direction, skyRoughness) : sceneColorAtTarget;
 
     float sampledDepth = gSceneDepth.Load(int3(sampleCoord, 0));
     if (IsBackgroundDepth(sampledDepth))
