@@ -12,6 +12,27 @@
 
 namespace CoreEngine
 {
+    bool IsRayTracedWaterCausticsSelected(const RenderContext& context)
+    {
+        // 水面が存在しない・非表示のフレーム（regionValid=0 = 有効な水域なし）
+        if (!context.waterSurfaceState
+            || context.waterSurfaceState->regionValid == 0) {
+            return false;
+        }
+
+        // 生成方式の選択に従う（無効時・スクリーンスペース選択時は false）
+        if (context.renderingTechniqueManager) {
+            if (auto* caustics = context.renderingTechniqueManager->GetTechnique<WaterCausticsTechnique>(
+                    RenderingTechniqueNames::WaterCaustics)) {
+                if (!caustics->IsEnabled()
+                    || caustics->GetBackend() != WaterCausticsTechnique::Backend::RayTracing) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     void RTWaterCausticsPass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
     {
         builder.Read(FrameBlackboard::SceneDepth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -31,25 +52,11 @@ namespace CoreEngine
             return;
         }
 
-        // 水面が存在しない・非表示のフレームはディスパッチしない
-        // （regionValid=0 = 有効な水域なし）。出力を Blackboard へ登録しないため、
-        // DeferredLighting のコースティクス合成と水中ライティングも自動的に無効化される。
-        if (!context.waterSurfaceState
-            || context.waterSurfaceState->regionValid == 0) {
+        // 水面が無いフレームと、無効時・スクリーンスペース選択時は DispatchRays ごと省く。
+        // 出力を Blackboard へ登録しないため、DeferredLighting のコースティクス合成と
+        // 水中ライティングも自動的に無効化される（WaterCausticsPass の出力側を使う）。
+        if (!IsRayTracedWaterCausticsSelected(context)) {
             return;
-        }
-
-        // 生成方式の選択に従う。無効時・スクリーンスペース選択時は DispatchRays ごと省く
-        // （出力を Blackboard へ登録しないため、DeferredLighting は自動的に
-        //   WaterCausticsPass の出力側を使う）。
-        if (context.renderingTechniqueManager) {
-            if (auto* caustics = context.renderingTechniqueManager->GetTechnique<WaterCausticsTechnique>(
-                    RenderingTechniqueNames::WaterCaustics)) {
-                if (!caustics->IsEnabled()
-                    || caustics->GetBackend() != WaterCausticsTechnique::Backend::RayTracing) {
-                    return;
-                }
-            }
         }
 
         if (!context.rtWaterCausticsManager->IsInitialized()) {

@@ -166,12 +166,15 @@ namespace CoreEngine
         const RenderContext& context,
         GraphicsCore* dx,
         ID3D12GraphicsCommandList* cmdList,
-        RayTracingShadowManager::ViewID viewId)
+        RayTracingShadowManager::ViewID viewId,
+        const RayTracingShadowWaterSurface& waterSurface)
     {
         ShadowStageContext stage;
         if (!BuildShadowStageContext(context, dx, cmdList, stage)) return;
 
         // 全ライト分 DispatchRays を先に実行（GPU パイプラインを詰めるため）
+        // 水中の直接光を RT コースティクスが置き換えるのはメインライト（0 番）だけなので、
+        // 水面を渡すのも 0 番だけ
         ForEachShadowCastingLight(context, [&](uint32_t li, const Light& light) {
             stage.rtShadow->Dispatch(
                 cmdList,
@@ -182,7 +185,8 @@ namespace CoreEngine
                 stage.width,
                 stage.height,
                 viewId,
-                li);
+                li,
+                (li == 0) ? waterSurface : RayTracingShadowWaterSurface{});
             });
 
         // GBuffer 入力の前後状態遷移は RenderGraph 側の自動遷移へ委譲する。

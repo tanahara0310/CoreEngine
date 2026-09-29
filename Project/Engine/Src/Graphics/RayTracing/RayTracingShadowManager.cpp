@@ -197,8 +197,16 @@ namespace CoreEngine
         int      historyValid;       // offset 56  履歴テクスチャが有効なら 1
         int      pad2;               // offset 60  → row4 終了(64)
         Matrix4x4 invViewProj;       // offset 64  深度復元用 → 128
+        float    waterHeight;        // offset 128 平らな水面の高さ
+        float    waterRefractiveIndex; // offset 132
+        float    waterRegionCenterX; // offset 136
+        float    waterRegionCenterZ; // offset 140 → row9 終了(144)
+        float    waterRegionHalfExtentX; // offset 144
+        float    waterRegionHalfExtentZ; // offset 148
+        int      waterEnabled;       // offset 152 1 なら水中の受光点を屈折した経路で調べる
+        int      pad3;               // offset 156 → row10 終了(160)
     };
-    static_assert(sizeof(ShadowRayConstants) == 128, "ShadowRayConstants size mismatch with HLSL cbuffer");
+    static_assert(sizeof(ShadowRayConstants) == 160, "ShadowRayConstants size mismatch with HLSL cbuffer");
 
     static constexpr Cb::Field kShadowRayConstantsFields[] = {
         CB_FIELD(ShadowRayConstants, lightDir), CB_FIELD(ShadowRayConstants, shadowBias),
@@ -209,6 +217,10 @@ namespace CoreEngine
         CB_FIELD(ShadowRayConstants, traceScale), CB_FIELD(ShadowRayConstants, penumbraSamples),
         CB_FIELD(ShadowRayConstants, historyValid), CB_FIELD(ShadowRayConstants, pad2),
         CB_FIELD(ShadowRayConstants, invViewProj),
+        CB_FIELD(ShadowRayConstants, waterHeight), CB_FIELD(ShadowRayConstants, waterRefractiveIndex),
+        CB_FIELD(ShadowRayConstants, waterRegionCenterX), CB_FIELD(ShadowRayConstants, waterRegionCenterZ),
+        CB_FIELD(ShadowRayConstants, waterRegionHalfExtentX), CB_FIELD(ShadowRayConstants, waterRegionHalfExtentZ),
+        CB_FIELD(ShadowRayConstants, waterEnabled), CB_FIELD(ShadowRayConstants, pad3),
     };
     CB_VERIFY_LAYOUT(ShadowRayConstants, kShadowRayConstantsFields);
     CB_BIND_HLSL(ShadowRayConstants, kShadowRayConstantsFields, "ShadowRayConstants");
@@ -717,7 +729,8 @@ namespace CoreEngine
         const Matrix4x4& invViewProj,
         UINT width, UINT height,
         ViewID viewId,
-        uint32_t lightIndex)
+        uint32_t lightIndex,
+        const RayTracingShadowWaterSurface& waterSurface)
     {
         // 設定は CVar が保持する。UI・設定復元・コンソールのどの経路で変わってもここで取り込む
         SyncSettingsFromCVars();
@@ -816,6 +829,13 @@ namespace CoreEngine
         // 初回フレームや履歴無効化中は適応サンプリングの判定材料が無いので基本本数で撃つ
         constants.historyValid = (view.isHistoryValid && !settings_.disableHistory) ? 1 : 0;
         constants.invViewProj = invViewProj;
+        constants.waterHeight = waterSurface.height;
+        constants.waterRefractiveIndex = waterSurface.refractiveIndex;
+        constants.waterRegionCenterX = waterSurface.regionCenterXZ[0];
+        constants.waterRegionCenterZ = waterSurface.regionCenterXZ[1];
+        constants.waterRegionHalfExtentX = waterSurface.regionHalfExtentXZ[0];
+        constants.waterRegionHalfExtentZ = waterSurface.regionHalfExtentXZ[1];
+        constants.waterEnabled = waterSurface.enabled ? 1 : 0;
 
         // CommandList4 を取得
         Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> cmdList4;
