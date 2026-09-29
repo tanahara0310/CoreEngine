@@ -26,9 +26,9 @@ LAYOUT = [
     *[("BeachTerrain_Shore", (x, 0, 0), 0, 1.0) for x in (-80, -40, 0, 40, 80)],
     *[("BeachTerrain_Flat", (x, y, 0), 0, 1.0) for x in (-80, -40, 0, 40, 80) for y in (40, 80)],
     # 左: 石灰岩の岩場（浅瀬に立つノッチ岩）
-    ("NotchRock_A", (-26, -7, -0.6), 20, 1.0),
-    ("NotchRock_B", (-17, -11, -0.5), -35, 1.0),
-    ("NotchRock_B", (-33, -12, -0.5), 120, 0.8),
+    ("NotchRock_A", (-25, -4.5, -0.2), 20, 1.0),
+    ("NotchRock_B", (-16, -6.5, -0.15), -35, 1.0),
+    ("NotchRock_B", (-33, -8, -0.2), 120, 0.8),
     ("ReefRock_A", (-21, -3.5, -0.15), 10, 1.0),
     ("ReefRock_B", (-14, -6, -0.1), 70, 1.0),
     ("ReefRock_C", (-22, -1.0, -0.05), 0, 1.0),
@@ -74,10 +74,11 @@ LAYOUT = [
     ("BeachParasol_B", (8.5, 7.5, 0), 0, 1.0),
     ("DeckChair_A", (8.0, 6.2, 0), 90, 1.0),
     # 桟橋（z=0 が水面。モジュールは +Y へ 4m 伸びるので 180 度回して沖へ）
-    ("Pier_Straight", (20, 3, 0), 180, 1.0),
-    ("Pier_Straight", (20, -1, 0), 180, 1.0),
-    ("Pier_Straight", (20, -5, 0), 180, 1.0),
-    ("Pier_End", (20, -9, 0), 180, 1.0),
+    ("Pier_Straight", (20, 2.5, 0), 180, 1.0),
+    ("Pier_Straight", (20, -1.5, 0), 180, 1.0),
+    ("Pier_Straight", (20, -5.5, 0), 180, 1.0),
+    ("Pier_Straight", (20, -9.5, 0), 180, 1.0),
+    ("Pier_End", (20, -13.5, 0), 180, 1.0),
     # 小物
     ("Driftwood_A", (-6, 2.5, 0), 30, 1.0),
     ("Driftwood_B", (12, 4.2, 0), -60, 1.0),
@@ -95,9 +96,9 @@ CAMERAS = {
     # 名前: (位置, 注視点, レンズ)
     "main": ((2, -40, 8.0), (2, 6, 2.0), 26),
     "beach": ((-1, -3, 2.2), (-8, 12, 3.5), 22),
-    "rocks": ((-10, -22, 2.8), (-24, -6, 2.0), 30),
-    "village": ((5, 4, 2.6), (12, 18, 2.4), 24),
-    "pier": ((26, -18, 3.0), (18, 2, 1.5), 28),
+    "rocks": ((-8, -20, 2.6), (-23, -5, 2.2), 30),
+    "village": ((3, 7, 2.4), (10, 17.5, 2.6), 30),
+    "pier": ((29, -21, 3.5), (17, 0, 1.2), 28),
 }
 
 
@@ -189,7 +190,7 @@ def terrain_height(x, y):
     return loc.z if hit else 0.0
 
 
-def place(name, loc, rot, scale, cache):
+def place(name, loc, rot, scale, cache, snap=True):
     path = os.path.join(C.MODELS_DIR, name, f"{name}.gltf")
     if not os.path.exists(path):
         return None
@@ -206,7 +207,7 @@ def place(name, loc, rot, scale, cache):
     else:
         obj = cache[name].copy()  # メッシュは共有（リンク複製）
         C.link_object(obj)
-    if name not in NO_SNAP:
+    if snap and name not in NO_SNAP:
         loc = (loc[0], loc[1], terrain_height(loc[0], loc[1]) + loc[2])
     obj.location = loc
     obj.rotation_euler = (0, 0, math.radians(rot))
@@ -224,7 +225,10 @@ def main():
         add_fallback_ground()
     add_seabed()
     bpy.context.view_layer.update()
-    placed += [n for n, *rest in LAYOUT if n not in NO_SNAP and place(n, *rest, cache) is not None]
+    # 高さは地形だけがある状態で先に全部調べる（後から置いた物にレイが当たらないように）
+    items = [(n, (loc[0], loc[1], terrain_height(loc[0], loc[1]) + loc[2]), rot, sc)
+             for n, loc, rot, sc in LAYOUT if n not in NO_SNAP]
+    placed += [n for n, *rest in items if place(n, *rest, cache, snap=False) is not None]
     add_water()
     C.setup_preview_world(strength=1.0, sun_elev=52, sun_rot=200)
     scene = bpy.context.scene
