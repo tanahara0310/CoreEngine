@@ -423,7 +423,7 @@ def _grid(cv, rect):
 
 
 def _put(cv, sl, col, alpha, h, r, cav=1.0):
-    a = np.clip(alpha, 0, 1).astype(np.float32)
+    a = np.clip(np.nan_to_num(alpha), 0, 1).astype(np.float32)
     cv.col[sl] = np.where(a[..., None] > 0, col, cv.col[sl])
     cv.a[sl] = np.maximum(cv.a[sl], a)
     cv.h[sl] = np.where(a > 0, h, cv.h[sl])
@@ -540,7 +540,7 @@ def _paddle(cv, rect, paint, kind):
     else:
         # 前縁（b 大）が棘でまっすぐ、後縁へ細く尖る
         lead = 0.93 - 0.2 * A
-        trail = 0.2 + 0.72 * A ** 0.8
+        trail = 0.2 + 0.72 * np.clip(A, 0, 1) ** 0.8
         inside_d = np.minimum((lead - B) * ph, (B - trail) * ph)
         inside_d = np.minimum(inside_d, (0.99 - A) * pw)
         ang = np.arctan2(B - 0.75, A + 0.05)

@@ -696,6 +696,13 @@ def bake_and_export(name, objs, out_root=MODELS_DIR, keep_other_visible=False):
         if "Proc" not in o.data.uv_layers:
             o.data.uv_layers.new(name="Proc")
     obj = join([o for o in objs], name)
+    # 5 角以上の面（チューブのキャップなど）があると glTF 書き出しでタンジェントの計算に失敗するので、
+    # その面だけ三角形に割る（エンジンは読み込み時に計算し直すが、他のツールでも使えるように）
+    if any(len(p.vertices) > 4 for p in obj.data.polygons):
+        tri = obj.modifiers.new("TriangulateNgons", "TRIANGULATE")
+        tri.min_vertices = 5
+        tri.keep_custom_normals = True
+        apply_modifiers(obj)
 
     # マテリアルごとに分割
     _select_only([obj], obj)

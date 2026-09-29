@@ -465,7 +465,7 @@ def _rhizome(rnd, density, p, step=0.065, max_steps=11):
                 miss += 1
                 if miss > 2:
                     break
-            elif rnd.random() < d:
+            elif rnd.random() < d ** 1.3:   # 芯ほど株が混む（縁は疎ら）
                 out.append((p, d))
             if rnd.random() < 0.08:
                 stack.append((p, ang + rnd.choice([-1, 1]) * rnd.uniform(0.7, 1.2), steps // 2))
@@ -480,7 +480,7 @@ def _start(rnd, density, bounds, starts, rmin):
     x0, y0, x1, y1 = bounds
     for k in range(3000):
         p = (rnd.uniform(x0, x1), rnd.uniform(y0, y1))
-        if rnd.random() >= density(*p):
+        if rnd.random() >= density(*p) ** 1.3:
             continue
         r = rmin * (0.9 ** (k // 150))
         if all((p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2 >= r * r for q in starts):
