@@ -39,6 +39,8 @@ namespace CoreEngine
             config.SetDefaultSamplerStrategy(BindingStrategy::StaticSampler);
             // gInstanceData は SetGraphicsRootShaderResourceView で渡すため RootDescriptor に設定する
             config.ConfigureResource("gInstanceData", BindingStrategy::RootDescriptor);
+            // Object3dVertex.hlsli の頂点アニメーション（時間・風）。既定のモデル描画と同じくルート定数
+            config.ConfigureResource("gVertexAnim", BindingStrategy::RootConstants);
             config.ConfigureSampler("gSampler", SamplerConfig::Anisotropic());
             config.ConfigureSampler("gShadowSampler", SamplerConfig::Shadow());
             config.ConfigureSampler("gLinearClamp", SamplerConfig::LinearClamp());

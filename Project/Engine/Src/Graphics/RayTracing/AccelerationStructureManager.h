@@ -6,6 +6,7 @@
 #include "Graphics/RayTracing/RayTracingHitData.h"
 #include <wrl.h>
 #include <array>
+#include <unordered_map>
 #include <vector>
 #include <cstdint>
 #include "Math/Matrix/Matrix4x4.h"
@@ -35,6 +36,8 @@ namespace CoreEngine
         /// @brief TLAS インスタンス情報
         struct InstanceDesc {
             UINT blasIndex = 0;
+            /// @brief 0 以外なら blasIndex の代わりにこの BLAS を使う（BuildOrUpdateDynamicBLAS の戻り値）
+            D3D12_GPU_VIRTUAL_ADDRESS blasAddress = 0;
             float transform[3][4] = {};   ///< DXR 準拠の行優先 3×4 アフィン行列
             UINT instanceMask = 0xFF;
 
@@ -66,6 +69,25 @@ namespace CoreEngine
         /// @brief ModelResource から BLAS を構築し、インデックスを ModelResource に設定する
         /// @return 成功した場合 true（既に構築済みの場合も true）
         bool BuildBLASFromModelResource(ID3D12GraphicsCommandList* cmdList, ModelResource* resource);
+
+        /// @brief 形が毎フレーム変わるメッシュの BLAS を構築・更新する（揺れる植物・スキニングモデル）
+        /// @param cmdList 積み先
+        /// @param owner   持ち主の識別子（コンポーネントのアドレスなど。持ち主ごとに 1 本持つ）
+        /// @param desc    頂点とインデックス。頂点バッファは NON_PIXEL_SHADER_RESOURCE を含む状態にしておくこと
+        /// @param frame   今フレームの番号（使われなくなった BLAS の回収に使う）
+        /// @param geometryChanged 前フレームから頂点が動いたか（false なら作り直さずに前の BLAS を使う）
+        /// @return BLAS の GPU 仮想アドレス（InstanceDesc::blasAddress へ入れる）。作れなければ 0
+        /// @details 初回と形（頂点数・インデックス数・バッファ）が変わったときは ALLOW_UPDATE 付きで構築し、
+        ///          以後は前回の結果をその場で更新（refit）する。更新を重ねると木構造が緩んで
+        ///          トレースが遅くなるので、kDynamicRebuildInterval 回に 1 回は構築し直す（持ち主ごとにずらす）。
+        D3D12_GPU_VIRTUAL_ADDRESS BuildOrUpdateDynamicBLAS(ID3D12GraphicsCommandList* cmdList,
+            const void* owner, const BLASDesc& desc, uint64_t frame, bool geometryChanged = true);
+
+        /// @brief 今フレーム使われなかった動的 BLAS を退避リストへ回す（BuildTLAS の後に呼ぶ）
+        void RetireUnusedDynamicBLAS(uint64_t frame);
+
+        /// @brief 動的 BLAS の数
+        UINT GetDynamicBLASCount() const { return static_cast<UINT>(dynamicBlas_.size()); }
 
         /// @brief TLAS の SRV GPU ハンドルを取得
         D3D12_GPU_DESCRIPTOR_HANDLE GetTLASSRVHandle() const {
@@ -137,6 +159,12 @@ namespace CoreEngine
     private:
         void EnsureScratchBuffer(UINT64 requiredSize);
 
+        /// @brief BLASDesc から三角形ジオメトリの記述子を作る（BuildBLAS と動的 BLAS で共通）
+        static D3D12_RAYTRACING_GEOMETRY_DESC MakeGeometryDesc(const BLASDesc& desc);
+
+        /// @brief 結果バッファ（DEFAULT・UAV・加速構造ステート）を作る
+        Microsoft::WRL::ComPtr<ID3D12Resource> CreateASBuffer(UINT64 size) const;
+
         Microsoft::WRL::ComPtr<ID3D12Device5> device5_;
         DescriptorAllocator* descriptorAllocator_ = nullptr;
 
@@ -190,6 +218,26 @@ namespace CoreEngine
         /// @brief 次に書き込むリングスロット（BuildTLAS 呼び出しごとに 1 つ進む）
         /// @details インスタンス記述子バッファ・結果バッファ・SRV の 3 つで共有する。
         uint32_t tlasInstanceRingIndex_ = 0;
+
+        /// @brief 動的 BLAS 1 本分（持ち主ごと）
+        struct DynamicBLASEntry {
+            Microsoft::WRL::ComPtr<ID3D12Resource> result;
+            UINT64 resultSize = 0;
+            // 構築したときの形（変わったら更新でなく構築し直す）
+            D3D12_GPU_VIRTUAL_ADDRESS vertexAddress = 0;
+            UINT vertexCount = 0;
+            UINT vertexStride = 0;
+            D3D12_GPU_VIRTUAL_ADDRESS indexAddress = 0;
+            UINT indexCount = 0;
+            uint32_t updatesSinceBuild = 0;  ///< 最後に構築し直してからの更新回数
+            uint64_t lastUsedFrame = 0;
+        };
+        std::unordered_map<const void*, DynamicBLASEntry> dynamicBlas_;
+
+        /// @brief 動的 BLAS をこの回数更新したら構築し直す
+        static constexpr uint32_t kDynamicRebuildInterval = 120;
+        /// @brief このフレーム数使われなかった動的 BLAS を捨てる
+        static constexpr uint64_t kDynamicKeepFrames = 2;
 
         // BLAS 構築用スクラッチ（再利用）
         Microsoft::WRL::ComPtr<ID3D12Resource> blasScratch_;

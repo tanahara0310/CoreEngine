@@ -145,6 +145,13 @@ namespace CoreEngine
         if (const D3D12_GPU_VIRTUAL_ADDRESS fogCBV = SelectFogConstants(); fogCBV != 0) {
             binder.Set(table[ModelBind::gFog], fogCBV);
         }
+        // RS を差し替えるとルート定数も消えるので、シーンリソースと一緒に差し直す
+        BindVertexAnimation(binder, table);
+    }
+
+    void BaseModelRenderer::BindVertexAnimation(ShaderBinder& binder, const BindingTable& table) const
+    {
+        binder.SetConstants(table[ModelBind::gVertexAnim], vertexAnimParams_);
     }
 
     D3D12_GPU_VIRTUAL_ADDRESS BaseModelRenderer::SelectFogConstants() const
@@ -173,6 +180,7 @@ namespace CoreEngine
     void BaseModelRenderer::BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMode blendMode) {
         currentCommandList_ = cmdList;
         isInGBufferPass_ = false;
+        vertexAnimParams_ = VertexAnimationParams::Build();
 
         if (blendMode != currentBlendMode_) {
             currentBlendMode_ = blendMode;
@@ -213,6 +221,11 @@ namespace CoreEngine
         cmdList->SetGraphicsRootSignature(gBufferRootSignatureMg_->GetRootSignature());
         cmdList->SetPipelineState(gBufferPipelineState_);
         cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+        // 頂点アニメーション（植物の揺れ・魚の泳ぎ）の時間・風。GBuffer の VS も Object3dVertex.hlsli を使う
+        vertexAnimParams_ = VertexAnimationParams::Build();
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Graphics);
+        BindVertexAnimation(binder, gBufferBindings_);
 
         // gTexture の存在検証は起動時の契約照合（kGBuffer で Required 宣言）が行う
     }

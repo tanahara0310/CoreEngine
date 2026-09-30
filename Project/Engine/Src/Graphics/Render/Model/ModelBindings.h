@@ -31,6 +31,7 @@ namespace CoreEngine::ModelBind
         gEmissiveMap,
         gAOMap,
         gMatrixPalette,
+        gVertexAnim,
         Count
     };
 
@@ -65,6 +66,7 @@ namespace CoreEngine::ModelBind
         { "gEmissiveMap",          kSRV, kCond },
         { "gAOMap",                kSRV, kCond },
         { "gMatrixPalette",        kSRV, kOpt  },  // 実体なし（スキニングは CS 側）
+        { "gVertexAnim",           kCBV, kOpt  },  // 頂点アニメーションの時間・風（ルート定数）
     };
 
     /// @brief GBuffer.VS/PS（通常モデル・G-Buffer）
@@ -92,6 +94,7 @@ namespace CoreEngine::ModelBind
         { "gEmissiveMap",          kSRV, kCond },
         { "gAOMap",                kSRV, kCond },
         { "gMatrixPalette",        kSRV, kOpt  },
+        { "gVertexAnim",           kCBV, kOpt  },  // 頂点アニメーションの時間・風（ルート定数）
     };
 
     /// @brief スキニングモデル・フォワード（gInstanceData の代わりに gTransformationMatrix）
@@ -118,6 +121,7 @@ namespace CoreEngine::ModelBind
         { "gEmissiveMap",          kSRV, kCond },
         { "gAOMap",                kSRV, kCond },
         { "gMatrixPalette",        kSRV, kOpt  },
+        { "gVertexAnim",           kCBV, kOpt  },  // 頂点アニメーションの時間・風（ルート定数）
     };
 
     /// @brief スキニングモデル・G-Buffer
@@ -144,6 +148,7 @@ namespace CoreEngine::ModelBind
         { "gEmissiveMap",          kSRV, kCond },
         { "gAOMap",                kSRV, kCond },
         { "gMatrixPalette",        kSRV, kOpt  },
+        { "gVertexAnim",           kCBV, kOpt  },  // 頂点アニメーションの時間・風（ルート定数）
     };
 
     /// @brief カスタムシェーダー用。宣言されているものだけエンジンが差すのですべて Optional
@@ -170,6 +175,7 @@ namespace CoreEngine::ModelBind
         { "gEmissiveMap",          kSRV, kOpt },
         { "gAOMap",                kSRV, kOpt },
         { "gMatrixPalette",        kSRV, kOpt },
+        { "gVertexAnim",           kCBV, kOpt  },  // 頂点アニメーションの時間・風（ルート定数）
     };
 
     static_assert(std::size(kCustom) == Slot::Count, "kCustom と Slot の並びがずれている");

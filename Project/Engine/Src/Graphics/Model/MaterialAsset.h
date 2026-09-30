@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 
+#include "Graphics/Material/MaterialConstants.h" // VertexAnimationType
 #include "Math/Vector/Vector3.h"
 #include "Math/Vector/Vector4.h"
 
@@ -29,6 +30,12 @@ namespace CoreEngine
         float roughnessFactor = 0.5f;                         // 粗さファクター（非PBR形式向けに中間デフォルト）
         Vector3 emissiveFactor = { 0.0f, 0.0f, 0.0f };        // エミッシブファクター
         float alphaCutoff = 0.5f;                             // アルファカットオフしきい値
+
+        // ===== 頂点アニメーション（glTF のマテリアルの extras。ModelLoader::ApplyGltfMaterialExtras） =====
+        // モデル側で「置くだけで揺れる・泳ぐ」ようにするための既定値。MaterialComponent で個別に上書きできる。
+        VertexAnimationType vertexAnimation = VertexAnimationType::None; // 種類
+        float vertexAnimStrength = 1.0f;                                 // 振幅の倍率
+        float vertexAnimSpeed = 1.0f;                                    // 速さの倍率
     };
 
 

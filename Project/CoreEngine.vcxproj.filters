@@ -595,6 +595,9 @@
     <ClCompile Include="Engine\Src\Graphics\RayTracing\AccelerationStructureManager.cpp">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\VertexAnimationDeformer.cpp">
+      <Filter>Engine\Src\Graphics\RayTracing</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingDispatchInfo.cpp">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClCompile>
@@ -665,6 +668,9 @@
       <Filter>Engine\Src\Graphics\Render\Line</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Model\BaseModelRenderer.cpp">
+      <Filter>Engine\Src\Graphics\Render\Model</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Model\VertexAnimation.cpp">
       <Filter>Engine\Src\Graphics\Render\Model</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Model\Instancing\InstanceBatchManager.cpp">
@@ -845,6 +851,9 @@
       <Filter>Engine\Src\GameObject\Component\Core</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\Component\Render\MaterialComponent.cpp">
+      <Filter>Engine\Src\GameObject\Component\Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\Render\FishSchoolComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\Component\Animation\AnimatorComponent.cpp">
@@ -2280,6 +2289,9 @@
     <ClInclude Include="Engine\Src\Graphics\RayTracing\AccelerationStructureManager.h">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\VertexAnimationDeformer.h">
+      <Filter>Engine\Src\Graphics\RayTracing</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingHitData.h">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClInclude>
@@ -2404,6 +2416,9 @@
       <Filter>Engine\Src\Graphics\Render\Line</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Model\BaseModelRenderer.h">
+      <Filter>Engine\Src\Graphics\Render\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Model\VertexAnimation.h">
       <Filter>Engine\Src\Graphics\Render\Model</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Model\IBLParameters.h">
@@ -2854,6 +2869,9 @@
       <Filter>Engine\Src\GameObject\Component\Core</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Render\MaterialComponent.h">
+      <Filter>Engine\Src\GameObject\Component\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\Render\FishSchoolComponent.h">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Animation\SkeletonSocketComponent.h">

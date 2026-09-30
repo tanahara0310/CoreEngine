@@ -2,6 +2,7 @@
 #include "Model.h"
 #include "ModelRenderContext.h"
 #include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Camera/Camera.h"
 #include "Camera/View/ViewInfo.h"
@@ -38,6 +39,7 @@ namespace CoreEngine
             graphics->DeferFree(cluster.paletteSrvHandle);
             graphics->DeferFree(cluster.sourceVertexSrvHandle);
             graphics->DeferFree(cluster.outputUavHandle);
+            graphics->DeferFree(cluster.outputRawSrvHandle);
             graphics->DeferRelease(std::move(cluster.influenceResource));
             graphics->DeferRelease(std::move(cluster.paletteResource));
             graphics->DeferRelease(cluster.outputVertexResource.Get());
@@ -127,6 +129,30 @@ namespace CoreEngine
         }
     }
 
+
+    ID3D12Resource* Model::PrepareSkinnedVerticesForRayTracing(ID3D12GraphicsCommandList* cmdList, bool& outChanged)
+    {
+        outChanged = false;
+        if (!skinCluster_ || !cmdList) {
+            return nullptr;
+        }
+        // 描画より先に今フレームの姿勢で変形しておく（描画側はフラグを見て再計算しない）
+        outChanged = skinCluster_->needsGPUSkinning;
+        EnsureGPUSkinning(cmdList, nullptr);
+        // BLAS の入力は NON_PIXEL_SHADER_RESOURCE を含む状態でなければならない。
+        // このあと頂点バッファとしても読むので両方を立てる（次のスキニングの先頭で UAV へ戻る）
+        Barrier::Transition(cmdList, skinCluster_->outputVertexResource,
+            D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        return skinCluster_->outputVertexResource.Get();
+    }
+
+    uint32_t Model::GetSkinnedVertexBufferHeapIndex() const
+    {
+        if (!skinCluster_ || !skinCluster_->outputRawSrvHandle.IsValid()) {
+            return UINT32_MAX;
+        }
+        return skinCluster_->outputRawSrvHandle.index;
+    }
 
     void Model::OnTeleported()
     {
@@ -287,6 +313,64 @@ namespace CoreEngine
                 customForwardPSO_, customRootSignature_, customProvider_, customPipeline_);
 
             batch->Submit(key, mtx, materialCBV);
+        }
+    }
+
+    void Model::DrawInstances(std::span<const Matrix4x4> worlds, std::span<const Matrix4x4> prevWVPs,
+        const DrawViewInfo& view, D3D12_GPU_DESCRIPTOR_HANDLE textureHandle)
+    {
+        assert(IsInitialized());
+        assert(view.view && view.view->isValid);
+        assert((prevWVPs.empty() || prevWVPs.size() == worlds.size()) && "prevWVPs must match worlds");
+
+        // スキニングモデルは変形後の頂点を 1 体ぶんしか持たないので、まとめて描けない
+        if (worlds.empty() || HasSkinCluster()) {
+            return;
+        }
+
+        InstanceBatchManager* batch = renderContext_.instanceBatchManager;
+        assert(batch);
+        const Camera* camera = view.GetCamera();
+        const auto& subMeshes = resource_->GetSubMeshes();
+        const bool isGBufferPass = view.isGBufferPass;
+        const bool hasPrev = prevWVPs.size() == worlds.size();
+
+        // バッチキーはサブメッシュと LOD で決まるので、(サブメッシュ, LOD) ごとに 1 回だけ組む
+        constexpr uint32_t kLods = SubMeshData::kMaxLodCount;
+        std::vector<std::optional<InstanceBatchKey>> keys(subMeshes.size() * kLods);
+        std::vector<D3D12_GPU_VIRTUAL_ADDRESS> materialCBVs(subMeshes.size());
+        for (uint32_t i = 0; i < subMeshes.size(); ++i) {
+            materialCBVs[i] = MaterialCBVForSlot(subMeshes[i].materialIndex);
+        }
+
+        for (size_t n = 0; n < worlds.size(); ++n) {
+            const Matrix4x4& worldMatrix = worlds[n];
+            const Matrix4x4 wvp = worldMatrix * view.view->viewProjection;
+
+            TransformationMatrix mtx{};
+            mtx.world = worldMatrix;
+            mtx.WVP = wvp;
+            mtx.prevWVP = hasPrev ? prevWVPs[n] : wvp;
+            mtx.worldInverseTranspose = MathCore::Matrix::Transpose(MathCore::Matrix::Inverse(worldMatrix));
+            // 従来型シャドウマップ廃止に伴い lightViewProjection はレイアウト維持のみ（単位行列）
+            mtx.lightViewProjection = MathCore::Matrix::Identity();
+
+            const uint32_t lodIndex = (std::min)(ModelVisibility::SelectLod(*resource_, worldMatrix, camera), kLods - 1);
+            for (uint32_t i = 0; i < subMeshes.size(); ++i) {
+                std::optional<InstanceBatchKey>& key = keys[i * kLods + lodIndex];
+                if (!key) {
+                    const auto& textures = resource_->GetMaterialTextures(subMeshes[i].materialIndex);
+                    const D3D12_GPU_DESCRIPTOR_HANDLE baseColorTex = (textureHandle.ptr != 0)
+                        ? textureHandle : textures.baseColor;
+                    key = InstanceBatchKey::Make(
+                        resource_, i, lodIndex,
+                        baseColorTex, textures.normal, textures.metallicRoughness,
+                        textures.occlusion, textures.emissive,
+                        materialCBVs[i], isGBufferPass,
+                        customForwardPSO_, customRootSignature_, customProvider_, customPipeline_);
+                }
+                batch->Submit(*key, mtx, materialCBVs[i]);
+            }
         }
     }
 

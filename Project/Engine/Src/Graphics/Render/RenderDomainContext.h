@@ -14,6 +14,7 @@ namespace CoreEngine
     class SceneDepth;
     class GBufferManager;
     class AccelerationStructureManager;
+    class VertexAnimationDeformer;
     class RayTracingShadowManager;
     class WaterRefractionRayTracingManager;
     class WaterReflectionRayTracingManager;
@@ -107,6 +108,7 @@ namespace CoreEngine
         std::unique_ptr<SceneDepth>                   sceneDepth_;
         std::unique_ptr<GBufferManager>               gBufferManager_;
         std::unique_ptr<AccelerationStructureManager> accelerationStructureManager_;
+        std::unique_ptr<VertexAnimationDeformer>      vertexAnimationDeformer_;  ///< 揺れる植物の BLAS 用の頂点変形
         std::unique_ptr<RayTracingShadowManager>      rtShadowManager_;
         std::unique_ptr<WaterRefractionRayTracingManager> rtWaterRefractionManager_;
         std::unique_ptr<WaterReflectionRayTracingManager> rtWaterReflectionManager_;

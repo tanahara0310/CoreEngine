@@ -5,6 +5,7 @@
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
+#include "Graphics/RayTracing/VertexAnimationDeformer.h"
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterReflectionRayTracingManager.h"
@@ -58,6 +59,12 @@ namespace CoreEngine
         Logger::GetInstance().Infof(LogCategory::Graphics,
             "RenderDomainContext: AccelerationStructureManager 初期化完了 (DXR対応: %s)\n",
             accelerationStructureManager_->IsSupported() ? "true" : "false");
+
+        // 揺れる植物・海草の形をレイトレーシングへ反映する頂点変形（CS は初めて使うときに組む）
+        vertexAnimationDeformer_ = std::make_unique<VertexAnimationDeformer>();
+        if (accelerationStructureManager_->IsSupported()) {
+            vertexAnimationDeformer_->Initialize(dxCommon);
+        }
 
         // レイトレーシングシャドウマネージャーの初期化（DXR対応時のみ）
         rtShadowManager_ = std::make_unique<RayTracingShadowManager>();
@@ -140,6 +147,7 @@ namespace CoreEngine
         rtWaterRefractionManager_.reset();
         rtShadowManager_.reset();
         fftOceanManager_.reset();
+        vertexAnimationDeformer_.reset();
         accelerationStructureManager_.reset();
         gBufferManager_.reset();
         sceneDepth_.reset();
@@ -172,6 +180,7 @@ namespace CoreEngine
         context.sceneDepth = sceneDepth_.get();
         context.gBufferManager = gBufferManager_.get();
         context.accelerationStructureManager = accelerationStructureManager_.get();
+        context.vertexAnimationDeformer = vertexAnimationDeformer_.get();
         context.rtShadowManager = rtShadowManager_.get();
         context.rtWaterCausticsManager = rtWaterCausticsManager_.get();
         context.rtWaterRefractionManager = rtWaterRefractionManager_.get();

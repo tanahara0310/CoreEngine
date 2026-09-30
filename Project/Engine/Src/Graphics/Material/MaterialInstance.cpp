@@ -25,6 +25,11 @@ namespace CoreEngine
         materialData_->ditheringScale = 1.0f;
         materialData_->alphaCutoff = 0.5f;
         materialData_->iblIntensity = 1.0f;
+        // 頂点アニメーションは既定で動かさない（植物・魚のモデルでマテリアルから選ぶ）
+        materialData_->vertexAnimation = static_cast<int32_t>(VertexAnimationType::None);
+        materialData_->vertexAnimStrength = 1.0f;
+        materialData_->vertexAnimSpeed = 1.0f;
+        materialData_->vertexAnimPadding = 0.0f;
     }
 
     nlohmann::json MaterialInstance::ToJson() const
@@ -41,6 +46,9 @@ namespace CoreEngine
         m["ditheringScale"] = GetDitheringScale();
         m["alphaCutoff"] = GetAlphaCutoff();
         m["iblIntensity"] = GetIBLIntensity();
+        m["vertexAnimation"] = static_cast<int>(GetVertexAnimation());
+        m["vertexAnimStrength"] = GetVertexAnimStrength();
+        m["vertexAnimSpeed"] = GetVertexAnimSpeed();
         return m;
     }
 
@@ -70,6 +78,14 @@ namespace CoreEngine
         if (m.contains("ibl") && !JsonManager::SafeGet<bool>(m, "ibl", true)) {
             SetIBLIntensity(0.0f);
         }
+
+        // 頂点アニメーション（キーが無い旧データは「動かさない」のまま）
+        const int animType = JsonManager::SafeGet<int>(m, "vertexAnimation", static_cast<int>(GetVertexAnimation()));
+        if (animType >= static_cast<int>(VertexAnimationType::None) && animType <= static_cast<int>(VertexAnimationType::Fish)) {
+            SetVertexAnimation(static_cast<VertexAnimationType>(animType));
+        }
+        SetVertexAnimStrength(JsonManager::SafeGet<float>(m, "vertexAnimStrength", GetVertexAnimStrength()));
+        SetVertexAnimSpeed(JsonManager::SafeGet<float>(m, "vertexAnimSpeed", GetVertexAnimSpeed()));
     }
 
 } // namespace CoreEngine

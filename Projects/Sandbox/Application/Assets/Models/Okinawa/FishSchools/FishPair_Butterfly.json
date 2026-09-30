@@ -1,0 +1,53 @@
+{
+ "name": "FishPair_Butterfly",
+ "description": "トゲチョウチョウウオのペア。サンゴの縁を並んで泳ぐ",
+ "coordinates": "エンジン座標（glTF を Assimp の ConvertToLeftHanded で読んだときと同じ Y-up・左手系、m）。Blender の (x, y, z) は (x, z, y)。position は群れの中心からの位置",
+ "rotation": "クォータニオン [x, y, z, w]（エンジン座標）。モデルは頭が +X、背が +Y、体の左側が +Z を向いたまっすぐな姿勢",
+ "scale": "モデルの全長に対する倍率（一様）",
+ "phase": "泳ぎの位相 0..1（個体ごとの時間のずれ。2π を掛けて使う）",
+ "models": {
+  "Fish_ThreadfinButterfly": "../Fish_ThreadfinButterfly/Fish_ThreadfinButterfly.gltf"
+ },
+ "swim": {
+  "bodyWaveHz": 1.4,
+  "finHz": 3.0,
+  "wavelength": 1.1,
+  "cruiseSpeed": 0.15,
+  "note": "体の横揺れ: 体の横方向（エンジンのローカル +Z = 左）に TEXCOORD_1.y * sin(2π(t / wavelength - bodyWaveHz * time + phase))、t = TEXCOORD_1.x。胸びれ: 同じ横方向に TEXCOORD_2.y * TEXCOORD_2.x * sin(2π(finHz * time + 1.7 phase))（TEXCOORD_2.y は左 +1 / 右 -1）。cruiseSpeed は前進するときの速さ m/s の目安"
+ },
+ "count": 2,
+ "instances": [
+  {
+   "model": "Fish_ThreadfinButterfly",
+   "position": [
+    0.05,
+    0.0,
+    -0.06
+   ],
+   "rotation": [
+    0.012514,
+    -0.034535,
+    0.026497,
+    0.998974
+   ],
+   "scale": 1.0133,
+   "phase": 0.1847
+  },
+  {
+   "model": "Fish_ThreadfinButterfly",
+   "position": [
+    -0.09,
+    0.035,
+    0.08
+   ],
+   "rotation": [
+    -0.011425,
+    0.052094,
+    0.019103,
+    0.998394
+   ],
+   "scale": 0.94,
+   "phase": 0.6934
+  }
+ ]
+}

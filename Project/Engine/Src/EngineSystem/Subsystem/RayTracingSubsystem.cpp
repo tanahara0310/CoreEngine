@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "RayTracingSubsystem.h"
 #include <algorithm>
+#include <cstddef>
 #include <utility>
 #include <vector>
 
@@ -15,22 +16,54 @@
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
+#include "Graphics/RayTracing/VertexAnimationDeformer.h"
+#include "Graphics/Render/Model/VertexAnimation.h"
+#include "Graphics/Material/MaterialInstance.h"
+#include "Graphics/Model/VertexData.h"
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
 #include "Graphics/Render/Pass/RenderPass.h"
 #include "Graphics/Water/FFTOceanManager.h"
+#include "GameObject/Component/Render/FishSchoolComponent.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/GameObjectManager.h"
 #include "Particle/ParticleSystemComponent.h"
 #include "Camera/View/ViewInfo.h"
 #include "Math/MathCore.h"
 #include "Scene/SceneManager.h"
+#include "Utility/CVar/CVar.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
 {
     namespace
     {
+        CVar<bool> cvDynamicGeometry{ "r.RT.DynamicGeometry", true,
+            "揺れる植物・海草とスキニングモデルの今の形を、レイトレーシング（影・水面の反射・コースティクス）へ"
+            "毎フレーム反映する（off なら静止形の BLAS を使う）" };
+
+        /// @brief 今フレーム風や波で揺れる（植物・海草の）マテリアルを持つか
+        /// @note 魚の泳ぎは 1 cm ほどしか動かないので、影は静止形（共有の BLAS）で足りる
+        bool SwaysWithWindOrWater(const Model& model, const VertexAnimationParams& params)
+        {
+            const ModelResource* resource = model.GetModelResource();
+            if (!resource || !resource->HasVertexAnimationData()) {
+                return false;
+            }
+            for (size_t i = 0; i < model.GetMaterialCount(); ++i) {
+                const MaterialInstance* material = model.GetMaterial(i);
+                if (!material || material->GetVertexAnimStrength() <= 0.0f) {
+                    continue;
+                }
+                const VertexAnimationType type = material->GetVertexAnimation();
+                if ((type == VertexAnimationType::Plant && params.windStrength > 0.0f)
+                    || (type == VertexAnimationType::Seagrass && params.waterStrength > 0.0f)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         /// @brief サブメッシュ 1 つぶんの材質をヒットシェーディングのサブメッシュ表の行へ詰める
         /// @param material          そのスロットの材質（無ければ既定値）
         /// @param baseColorOverride 全サブメッシュのベースカラーを差し替えるテクスチャ（無ければ ptr = 0）
@@ -83,8 +116,14 @@ namespace CoreEngine
             return row;
         }
 
+        // ヒットシェーディング（Include/RayTracing/RTHitShading.hlsli）は頂点を VertexData の並びで読む
+        static_assert(sizeof(VertexData) == 64 && offsetof(VertexData, texcoord) == 16
+            && offsetof(VertexData, normal) == 24,
+            "RTHitShading.hlsli の kRTHitVertexStride / kRTHitVertex*Offset と一致させること");
+
         /// @brief TLAS のインスタンス 1 つぶんの行と、そのサブメッシュの行を足す
         /// @param model 材質の持ち主（無ければモデルリソースの既定の材質）
+        /// @param vertexBufferIndexOverride 頂点バッファのヒープ内インデックス（UINT32_MAX = BLAS の静止形の頂点）
         void AppendHitInstance(
             const AccelerationStructureManager& asMgr,
             const AccelerationStructureManager::InstanceDesc& instance,
@@ -93,7 +132,8 @@ namespace CoreEngine
             D3D12_GPU_DESCRIPTOR_HANDLE baseColorOverride,
             const DescriptorAllocator& descriptors,
             std::vector<RTHitInstance>& outInstances,
-            std::vector<RTHitSubMesh>& outSubMeshes)
+            std::vector<RTHitSubMesh>& outSubMeshes,
+            uint32_t vertexBufferIndexOverride = UINT32_MAX)
         {
             RTHitInstance row{};
             for (int r = 0; r < 3; ++r) {
@@ -101,7 +141,10 @@ namespace CoreEngine
                     instance.transform[r][0], instance.transform[r][1],
                     instance.transform[r][2], instance.transform[r][3] };
             }
-            row.vertexBufferIndex = asMgr.GetBLASVertexBufferIndex(instance.blasIndex);
+            // 動く形（スキニング・揺れる植物）は、BLAS と同じ変形後の頂点を読む
+            row.vertexBufferIndex = (vertexBufferIndexOverride != UINT32_MAX)
+                ? vertexBufferIndexOverride
+                : asMgr.GetBLASVertexBufferIndex(instance.blasIndex);
             row.indexBufferIndex = asMgr.GetBLASIndexBufferIndex(instance.blasIndex);
             row.firstSubMesh = static_cast<uint32_t>(outSubMeshes.size());
 
@@ -166,6 +209,51 @@ namespace CoreEngine
         std::vector<RTHitSubMesh> hitSubMeshes;
         const DescriptorAllocator* descriptors = dx->GetDescriptorAllocator();
 
+        // ===== 動く形（スキニング・揺れる植物）は持ち主ごとの BLAS を毎フレーム更新する =====
+        // 静止形の BLAS のままだと、影が揺れに付いてこないうえ、揺れた面から出たレイが
+        // 動く前の自分の面に当たって縞状の影（セルフシャドウ）が出る。
+        // 変形は描画と同じ時間・同じ式なので、今フレームの画面の形と一致する。
+        // 水面の映り込みのヒットシェーディングにも変形後の頂点（VertexData の並び）を読ませるので、
+        // 当たった点の位置・法線（そこから撃つ影のレイ）も画面の形と一致する。
+        ID3D12GraphicsCommandList* asCmdList = dx->GetCommandList();
+        const uint64_t frame = context.frameNumber;
+        const bool dynamicGeometry = cvDynamicGeometry.Get();
+        VertexAnimationDeformer* deformer = context.vertexAnimationDeformer;
+        const VertexAnimationParams animParams = VertexAnimationParams::Build();
+        const bool swaying = dynamicGeometry && deformer;
+
+        /// 動く形の BLAS と、ヒットシェーディングが読む頂点バッファ（UINT32_MAX = 静止形の頂点を読む）
+        struct DynamicGeometry {
+            D3D12_GPU_VIRTUAL_ADDRESS blas = 0;
+            uint32_t vertexBufferIndex = UINT32_MAX;
+        };
+        auto buildDynamicBLAS = [&](const void* owner, Model& model, const Matrix4x4& world) -> DynamicGeometry {
+            ModelResource* resource = model.GetModelResource();
+            AccelerationStructureManager::BLASDesc desc{};
+            desc.vertexCount = resource->GetVertexCount();
+            desc.vertexStride = sizeof(VertexData);  // スキニングの出力も頂点変形の出力も VertexData の並び（位置が先頭）
+            desc.vertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
+            desc.indexBuffer = resource->GetIndexBuffer();
+            desc.indexCount = resource->GetIndexCount();  // 静止形の BLAS と同じく LOD0 全体
+            desc.indexFormat = DXGI_FORMAT_R32_UINT;
+            bool changed = true;
+            uint32_t vertexBufferIndex = UINT32_MAX;
+            if (model.HasSkinCluster()) {
+                desc.vertexBuffer = model.PrepareSkinnedVerticesForRayTracing(asCmdList, changed);
+                vertexBufferIndex = model.GetSkinnedVertexBufferHeapIndex();
+            } else if (swaying && SwaysWithWindOrWater(model, animParams)) {
+                const VertexAnimationDeformer::Output deformed =
+                    deformer->Deform(asCmdList, owner, model, world, animParams, frame);
+                desc.vertexBuffer = deformed.vertices;
+                vertexBufferIndex = deformed.vertexBufferIndex;
+            }
+            if (!desc.vertexBuffer) {
+                return {};
+            }
+            const D3D12_GPU_VIRTUAL_ADDRESS blas = asMgr->BuildOrUpdateDynamicBLAS(asCmdList, owner, desc, frame, changed);
+            return blas ? DynamicGeometry{ blas, vertexBufferIndex } : DynamicGeometry{};
+        };
+
         // 「メッシュを持つか」はコンポーネントの有無で決まるので、具象クラスを知る必要はない。
         // 非アクティブ／削除マーク済みのスキップは ForEachComponent が行う。
         objMgr->ForEachComponent<MeshRendererComponent>(
@@ -173,9 +261,11 @@ namespace CoreEngine
                 // 半透明オブジェクト（水面など）は RT シャドウのキャスターから除外する
                 if (renderer.GetBlendMode() != BlendMode::kBlendModeNone) return;
 
-                // 材質は const の取得口で読む（書き込み用の取得口は材質を複製する）
+                // 材質は const の取得口で読む（書き込み用の取得口は材質を複製する）。
+                // 書き込み用のモデルは、スキニングを今フレームぶん済ませるためだけに使う
+                Model* mutableModel = renderer.GetModel();
                 const Model* model = std::as_const(renderer).GetModel();
-                if (!model) return;
+                if (!model || !mutableModel) return;
 
                 const ModelResource* resource = model->GetModelResource();
                 if (!resource || !resource->HasBLAS()) return;
@@ -183,13 +273,21 @@ namespace CoreEngine
                 auto* transform = renderer.GetTransformComponent();
                 if (!transform) return;
 
+                const Matrix4x4& world = transform->Get().GetWorldMatrix();
                 AccelerationStructureManager::InstanceDesc inst;
                 inst.blasIndex = resource->GetBLASIndex();
-                inst.SetTransform(transform->Get().GetWorldMatrix());
+                inst.SetTransform(world);
+                uint32_t hitVertexBufferIndex = UINT32_MAX;
+                if (dynamicGeometry) {
+                    // 作れなければ 0 のまま（静止形の BLAS を使う）
+                    const DynamicGeometry dynamic = buildDynamicBLAS(&renderer, *mutableModel, world);
+                    inst.blasAddress = dynamic.blas;
+                    hitVertexBufferIndex = dynamic.vertexBufferIndex;
+                }
                 tlasInstances.push_back(inst);
                 if (descriptors) {
                     AppendHitInstance(*asMgr, inst, *resource, model, renderer.GetTextureOverrideHandle(),
-                        *descriptors, hitInstances, hitSubMeshes);
+                        *descriptors, hitInstances, hitSubMeshes, hitVertexBufferIndex);
                 }
             });
 
@@ -224,9 +322,34 @@ namespace CoreEngine
                 }
             });
 
+        // ===== 魚の群れも 1 匹ずつキャスターとして載せる =====
+        // BLAS は種類（モデル）ごとに共有する。体のくねりは 1 cm ほどなので静止形で足りる。
+        objMgr->ForEachComponent<FishSchoolComponent>(
+            [&](FishSchoolComponent& school) {
+                school.ForEachRayTracingInstance([&](const Model& fishModel, const Matrix4x4& world) {
+                    const ModelResource* resource = fishModel.GetModelResource();
+                    if (!resource || !resource->HasBLAS()) return;
+
+                    AccelerationStructureManager::InstanceDesc inst;
+                    inst.blasIndex = resource->GetBLASIndex();
+                    inst.SetTransform(world);
+                    tlasInstances.push_back(inst);
+                    if (descriptors) {
+                        AppendHitInstance(*asMgr, inst, *resource, &fishModel, D3D12_GPU_DESCRIPTOR_HANDLE{},
+                            *descriptors, hitInstances, hitSubMeshes);
+                    }
+                });
+            });
+
         if (!tlasInstances.empty()) {
             asMgr->BuildTLAS(dx->GetCommandList(), tlasInstances);
             asMgr->UploadHitShadingTables(hitInstances, hitSubMeshes);
+        }
+
+        // 消えた・動かなくなった持ち主の動的 BLAS と頂点バッファを捨てる（GPU が使い終わってから解放）
+        asMgr->RetireUnusedDynamicBLAS(frame);
+        if (deformer) {
+            deformer->RetireUnused(frame);
         }
     }
 

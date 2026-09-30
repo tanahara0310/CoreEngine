@@ -32,8 +32,9 @@ static const uint kRTHitNoTexture = 0xFFFFFFFFu;
 static const uint kRTHitSubMeshFlagLit = 1u << 0;
 static const uint kRTHitSubMeshFlagDither = 1u << 1;
 
-// 頂点の並び（C++ 側 VertexData）
-static const uint kRTHitVertexStride = 48u;
+// 頂点の並び（C++ 側 VertexData: 位置 16 + UV 8 + 法線 12 + 接線 12 + 頂点アニメーションの値 16。
+// RayTracingSubsystem.cpp の static_assert と一致させる）
+static const uint kRTHitVertexStride = 64u;
 static const uint kRTHitVertexTexcoordOffset = 16u;
 static const uint kRTHitVertexNormalOffset = 24u;
 

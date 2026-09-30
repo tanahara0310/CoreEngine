@@ -3,10 +3,18 @@
 
 #include <assimp/GltfMaterial.h> // AI_MATKEY_GLTF_ALPHACUTOFF
 
+#include <algorithm>
 #include <cassert>
+#include <cctype>
+#include <cstdint>
+#include <cstring>
 #include <format>
+#include <fstream>
+#include <iterator>
+#include <optional>
 #include "Graphics/Model/VertexData.h"
 #include "Math/MathCore.h"
+#include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/FileErrorDialog/FileErrorDialog.h"
 
@@ -31,6 +39,7 @@ namespace CoreEngine
 
         // ===== フェーズ2: マテリアル読み込み =====
         result.materials = LoadMaterials(scene, directoryPath);
+        ApplyGltfMaterialExtras(fullPath, result.materials);
 
         // ===== フェーズ3: メッシュデータ読み込み =====
         LoadMeshData(scene, result);
@@ -213,6 +222,135 @@ namespace CoreEngine
         return materials;
     }
 
+    namespace
+    {
+        /// @brief glTF の JSON 部分を読む（.gltf はファイル全体、.glb は先頭の JSON チャンク）
+        /// @return 読めなければ空
+        std::string ReadGltfJsonText(const std::string& filepath)
+        {
+            std::string ext;
+            if (const size_t dot = filepath.find_last_of('.'); dot != std::string::npos) {
+                ext = filepath.substr(dot + 1);
+                std::transform(ext.begin(), ext.end(), ext.begin(),
+                    [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            }
+            if (ext != "gltf" && ext != "glb") {
+                return {};
+            }
+
+            // パスは UTF-8。std::filesystem::path(std::string) は ANSI とみなすので Logger の変換を通す
+            std::ifstream file(Logger::GetInstance().Utf8ToPath(filepath), std::ios::binary);
+            if (!file) {
+                return {};
+            }
+            std::string bytes((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+            if (ext == "gltf") {
+                return bytes;
+            }
+
+            // GLB: 12 バイトのヘッダ（magic "glTF", version, length）の後に
+            // チャンク（長さ 4 バイト, 種類 4 バイト "JSON", 中身）が続く
+            constexpr uint32_t kMagic = 0x46546C67u;     // "glTF"
+            constexpr uint32_t kChunkJson = 0x4E4F534Au; // "JSON"
+            if (bytes.size() < 20) {
+                return {};
+            }
+            uint32_t magic = 0, chunkLength = 0, chunkType = 0;
+            std::memcpy(&magic, bytes.data(), 4);
+            std::memcpy(&chunkLength, bytes.data() + 12, 4);
+            std::memcpy(&chunkType, bytes.data() + 16, 4);
+            if (magic != kMagic || chunkType != kChunkJson || 20ull + chunkLength > bytes.size()) {
+                return {};
+            }
+            return bytes.substr(20, chunkLength);
+        }
+
+        /// @brief extras の "vertexAnimation"（名前か整数）を種類にする
+        std::optional<VertexAnimationType> ParseVertexAnimationType(const json& value)
+        {
+            if (value.is_number_integer()) {
+                const int v = value.get<int>();
+                if (v >= static_cast<int>(VertexAnimationType::None) && v <= static_cast<int>(VertexAnimationType::Fish)) {
+                    return static_cast<VertexAnimationType>(v);
+                }
+                return std::nullopt;
+            }
+            if (!value.is_string()) {
+                return std::nullopt;
+            }
+            std::string name = value.get<std::string>();
+            std::transform(name.begin(), name.end(), name.begin(),
+                [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            if (name == "none") { return VertexAnimationType::None; }
+            if (name == "plant") { return VertexAnimationType::Plant; }
+            if (name == "seagrass") { return VertexAnimationType::Seagrass; }
+            if (name == "fish") { return VertexAnimationType::Fish; }
+            return std::nullopt;
+        }
+    }
+
+    void ModelLoader::ApplyGltfMaterialExtras(const std::string& filepath, std::vector<MaterialAsset>& materials)
+    {
+        const std::string text = ReadGltfJsonText(filepath);
+        if (text.empty()) {
+            return;
+        }
+        // 読めない・壊れているときは extras が無いのと同じ扱い（Assimp の読み込み結果はそのまま使う）
+        const json gltf = json::parse(text, nullptr, false);
+        if (gltf.is_discarded() || !gltf.contains("materials") || !gltf["materials"].is_array()) {
+            return;
+        }
+
+        const json& gltfMaterials = gltf["materials"];
+        for (size_t i = 0; i < gltfMaterials.size(); ++i) {
+            const json& gm = gltfMaterials[i];
+            if (!gm.is_object() || !gm.contains("extras") || !gm["extras"].is_object()) {
+                continue;
+            }
+            const json& extras = gm["extras"];
+            if (!extras.contains("vertexAnimation")) {
+                continue;
+            }
+            const std::optional<VertexAnimationType> type = ParseVertexAnimationType(extras["vertexAnimation"]);
+            if (!type) {
+                Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource, "{}", std::format(
+                    "  glTF material[{}]: unknown extras.vertexAnimation (ignored)", i));
+                continue;
+            }
+
+            // Assimp の glTF 読み込みはマテリアルの名前と並び順を保つ。名前で引き、無ければ並び順で対応させる
+            MaterialAsset* target = nullptr;
+            std::string name;
+            if (const auto it = gm.find("name"); it != gm.end() && it->is_string()) {
+                name = it->get<std::string>();
+            }
+            if (!name.empty()) {
+                const auto it = std::find_if(materials.begin(), materials.end(),
+                    [&name](const MaterialAsset& m) { return m.name == name; });
+                if (it != materials.end()) {
+                    target = &*it;
+                }
+            }
+            if (!target && i < materials.size()) {
+                target = &materials[i];
+            }
+            if (!target) {
+                continue;
+            }
+
+            target->vertexAnimation = *type;
+            if (const auto it = extras.find("vertexAnimStrength"); it != extras.end() && it->is_number()) {
+                target->vertexAnimStrength = it->get<float>();
+            }
+            if (const auto it = extras.find("vertexAnimSpeed"); it != extras.end() && it->is_number()) {
+                target->vertexAnimSpeed = it->get<float>();
+            }
+            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}", std::format(
+                "    - VertexAnimation: {} (strength={:.2f} speed={:.2f})", static_cast<int>(*type),
+                target->vertexAnimStrength, target->vertexAnimSpeed));
+        }
+    }
+
     void ModelLoader::LoadMeshData(const aiScene* scene, ModelData& outResult)
     {
         Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}", std::format("Loading {} meshes...", scene->mNumMeshes));
@@ -311,6 +449,20 @@ namespace CoreEngine
         } else {
             // Tangentがない場合はデフォルト値（X軸方向）
             vertex.tangent = { 1.0f, 0.0f, 0.0f };
+        }
+
+        // 頂点アニメーション用の値（TEXCOORD_1 / TEXCOORD_2）。持たないモデルは 0 のまま。
+        // aiProcess_FlipUVs は全 UV チャンネルの v を 1 - v にするが、glTF 側も v を 1 - v で
+        // 格納しているので、ここで読める値は書き出したツール側の元の値に戻っている
+        if (mesh->HasTextureCoords(1)) {
+            const aiVector3D& uv1 = mesh->mTextureCoords[1][vertexIndex];
+            vertex.animData.x = uv1.x;
+            vertex.animData.y = uv1.y;
+        }
+        if (mesh->HasTextureCoords(2)) {
+            const aiVector3D& uv2 = mesh->mTextureCoords[2][vertexIndex];
+            vertex.animData.z = uv2.x;
+            vertex.animData.w = uv2.y;
         }
 
         return vertex;
