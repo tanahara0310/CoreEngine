@@ -320,7 +320,10 @@ namespace CoreEngine
 
             // Assimp の glTF 読み込みはマテリアルの名前と並び順を保つ。名前で引き、無ければ並び順で対応させる
             MaterialAsset* target = nullptr;
-            const std::string name = gm.value("name", std::string{});
+            std::string name;
+            if (const auto it = gm.find("name"); it != gm.end() && it->is_string()) {
+                name = it->get<std::string>();
+            }
             if (!name.empty()) {
                 const auto it = std::find_if(materials.begin(), materials.end(),
                     [&name](const MaterialAsset& m) { return m.name == name; });
