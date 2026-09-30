@@ -4,6 +4,8 @@
     pip install slangpy numpy
     python3 Tools/OkinawaBeach/verify_engine_anim.py
 
+0. エンジンに届く頂点アニメーションの値（ModelLoader までの UV の反転を再現したもの）が、物として正しい範囲に
+   あるかを見る（植物・海草は根元の曲げが 0、魚は体の横揺れが体長に比べて小さく、胸びれの左右が ±1）。
 1. Shaders/RayTracing/VertexAnimationDeform.CS.hlsl（描画の頂点シェーダーと同じ VertexAnimation.hlsli の
    ApplyVertexAnimation を呼ぶ）を slang の CPU バックエンドで実行し、書き出した glTF の全頂点について
    okinawa/motion.py のジオメトリノードと同じ式（numpy 版、Blender 座標）の結果と比べる。
@@ -13,7 +15,9 @@
    Blender の確認用シーン（assemble.place_school: T(p) R S、列ベクトル）の配置と一致するかを見る。
 
 座標: エンジン = glTF の (x, y, -z)（Assimp の ConvertToLeftHanded）、Blender = glTF の (x, -z, y)。
-つまりエンジン = Blender の (x, z, y)。UV は Assimp の FlipUVs で v → 1 - v。
+つまりエンジン = Blender の (x, z, y)。
+UV の v: Blender の値 → glTF の書き出しで 1 - v → Assimp の glTF 読み込みで 1 - v → aiProcess_FlipUVs で 1 - v。
+テクスチャ座標はこのまま使い、頂点アニメーションの値（TEXCOORD_1/2）は ModelLoader が 1 - v で Blender の値に戻す。
 """
 import json
 import math
@@ -69,9 +73,24 @@ def load_gltf(name):
         start += len(idx)
         base += len(p)
     P, N, U1, U2, I = (np.concatenate(parts[k]) for k in ("P", "N", "U1", "U2", "I"))
-    # FlipUVs で元の値 (R, G), (B, A) に戻る
-    anim = np.concatenate([np.stack([U1[:, 0], 1.0 - U1[:, 1]], 1), np.stack([U2[:, 0], 1.0 - U2[:, 1]], 1)], 1)
+    anim = np.concatenate([np.stack([U1[:, 0], engine_anim_v(U1[:, 1])], 1),
+                           np.stack([U2[:, 0], engine_anim_v(U2[:, 1])], 1)], 1)
     return P * [1.0, 1.0, -1.0], N * [1.0, 1.0, -1.0], anim, I, ranges
+
+
+def engine_anim_v(v):
+    """glTF の v → エンジンの VertexData::animData に入る値（ModelLoader までの流れのとおりに反転する）"""
+    v = 1.0 - v      # Assimp の glTF 読み込み（UV を左下原点にそろえる）
+    v = 1.0 - v      # aiProcess_FlipUVs（左上原点にする）
+    return 1.0 - v   # ModelLoader::ConvertVertex（頂点アニメーションの値だけ元に戻す）
+
+
+def vertex_animation_mode(name):
+    """glTF のマテリアルの extras に書いた頂点アニメーションの種類（無ければ None）"""
+    with open(os.path.join(MODELS, name, name + ".gltf"), encoding="utf-8") as f:
+        g = json.load(f)
+    modes = {m.get("extras", {}).get("vertexAnimation") for m in g.get("materials", [])} - {None}
+    return modes.pop() if len(modes) == 1 else None
 
 
 def swap_yz(v):
@@ -157,6 +176,44 @@ def blender_quaternion_matrix(w, x, y, z):
 # ---------------------------------------------------------------------------
 # 1. 頂点アニメーション
 # ---------------------------------------------------------------------------
+def check_anim_values():
+    """エンジンに届く頂点アニメーションの値が、物として正しい範囲にあるか → 外れたモデルの数
+
+    UV の反転の数を 1 つ間違えると値が 1 - v になり、ここで必ず外れる
+    （根元が 1 m 曲がる植物・1 m 横に揺れる魚になる）"""
+    print("0. 頂点アニメーションの値の範囲（エンジンに届く値）")
+    bad = 0
+    for name in sorted(os.listdir(MODELS)):
+        if not os.path.exists(os.path.join(MODELS, name, name + ".gltf")):
+            continue
+        mode = vertex_animation_mode(name)
+        if mode is None:
+            continue
+        P, _, anim, _, _ = load_gltf(name)
+        if mode == "fish":
+            length = np.ptp(P[:, 0])  # 頭が +X
+            checks = {
+                "t が 0..1": (anim[:, 0].min() >= -1e-4) and (anim[:, 0].max() <= 1.0 + 1e-4),
+                "体の横揺れ ≤ 体長の 20%": (anim[:, 1].min() >= 0.0) and (anim[:, 1].max() <= 0.2 * length),
+                "胸びれの振幅 ≤ 体長の 20%": (anim[:, 2].min() >= 0.0) and (anim[:, 2].max() <= 0.2 * length),
+                "胸びれの左右が ±1 か 0": np.all(np.min(np.abs(anim[:, 3:4] - [-1.0, 0.0, 1.0]), axis=1) < 1e-4),
+            }
+            detail = f"体長 {length:.3f} m、横揺れ 最大 {anim[:, 1].max():.4f} m"
+        else:
+            height = P[:, 1] - P[:, 1].min()
+            root = height <= 0.02 * height.max()
+            checks = {
+                "位相が 0..1": (anim[:, 1].min() >= -1e-4) and (anim[:, 1].max() <= 1.0 + 1e-4),
+                "根元の曲げが 0": anim[root, 3].max() <= 0.02 * height.max(),
+                "振幅が 0 以上": anim[:, [0, 2, 3]].min() >= -1e-4,
+            }
+            detail = f"高さ {height.max():.2f} m、根元の曲げ 最大 {anim[root, 3].max():.4f} m"
+        failed = [k for k, ok in checks.items() if not ok]
+        bad += bool(failed)
+        print(f"  {mode:<8} {name:<26} {detail}  {'OK' if not failed else '外れ: ' + '、'.join(failed)}")
+    return bad
+
+
 def check_vertex_animation():
     import slangpy as spy
 
@@ -271,9 +328,10 @@ def check_schools():
 
 
 def main():
+    bad = check_anim_values()
     worst = max(check_vertex_animation(), check_schools())
-    ok = worst < TOLERANCE
-    print("OK" if ok else "MISMATCH", f"（最大の差 {worst:.2e} m、許容 {TOLERANCE:g} m）")
+    ok = worst < TOLERANCE and bad == 0
+    print("OK" if ok else "MISMATCH", f"（最大の差 {worst:.2e} m、許容 {TOLERANCE:g} m。値の範囲を外れたモデル {bad} 個）")
     return 0 if ok else 1
 
 
