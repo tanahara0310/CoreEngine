@@ -45,6 +45,13 @@ namespace CoreEngine
         /// @param directoryPath ディレクトリパス
         /// @return マテリアルアセット配列
         static std::vector<MaterialAsset> LoadMaterials(const aiScene* scene, const std::string& directoryPath);
+
+        /// @brief glTF のマテリアルの extras から、Assimp が読まない値を読む（今は頂点アニメーションの既定値）
+        /// @param filepath モデルファイルのパス（UTF-8）。.gltf / .glb 以外は何もしない
+        /// @param materials LoadMaterials の結果（名前で対応を取り、見つからなければ同じ並び順とみなす）
+        /// @details 例: `"extras": {"vertexAnimation": "plant", "vertexAnimSpeed": 1.0}`。
+        ///          種類は "none" / "plant" / "seagrass" / "fish"（VertexAnimationType と同じ並びの整数も可）
+        static void ApplyGltfMaterialExtras(const std::string& filepath, std::vector<MaterialAsset>& materials);
         
         /// @brief メッシュデータを読み込む
         /// @param scene Assimpシーン

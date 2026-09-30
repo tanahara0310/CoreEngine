@@ -31,6 +31,9 @@ from .hibiscus import Canvas, image_material
 
 PREVIEW_CAM = dict(cam_dir=(0.2, -1.0, 0.9), lens=50)
 
+# エンジンの頂点アニメーションの種類（glTF のマテリアルの extras に書く。置くだけで波に寄せ返す）
+VERTEX_ANIMATION = "seagrass"
+
 RES_SCALE = float(os.environ.get("OKI_RES_SCALE", "1"))
 ATLAS_RES = 2048
 N_COL = 16         # アトラスの列数（葉の種類）

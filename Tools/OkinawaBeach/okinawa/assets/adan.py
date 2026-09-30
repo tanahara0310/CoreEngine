@@ -19,6 +19,9 @@ from ..common import pbr_material, srgb
 
 PREVIEW = dict(cam_dir=(0.45, -1.0, 0.3), lens=38)
 
+# エンジンの頂点アニメーションの種類（glTF のマテリアルの extras に書く。置くだけで風に揺れる）
+VERTEX_ANIMATION = "plant"
+
 N_COL = 8        # 葉アトラスの列数
 LEAF_L = 1.35    # 葉の標準長(m)
 LEAF_W = 0.095   # 葉カードの幅(m, 棘込み)

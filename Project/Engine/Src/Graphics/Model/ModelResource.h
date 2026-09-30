@@ -98,6 +98,12 @@ namespace CoreEngine
         /// @return ローカル空間AABB
         const BoundingBox& GetLocalBoundingBox() const { return localBoundingBox_; }
 
+        /// @brief 頂点アニメーション用の値（VertexData::animData）を持つ頂点があるか
+        /// @details 持たないモデルはマテリアルで種類を指定しても形が変わらないので、
+        ///          レイトレーシングの変形 BLAS も作らない。
+        /// @note ローカル AABB（全体・サブメッシュ）はマテリアルの既定の種類で動く分だけ広げてある。
+        bool HasVertexAnimationData() const { return hasVertexAnimationData_; }
+
         /// @brief サブメッシュ単位のローカル AABB を取得（Hi-Z オクルージョンカリングの判定単位）
         /// @details LOD0 のインデックス範囲から算出する（簡略化 LOD は部分集合なので保守的に覆える）。
         /// @note 範囲外は対応ズレのバグ。Debug では assert、Release では全体 AABB へフォールバックする。
@@ -212,6 +218,9 @@ namespace CoreEngine
 
         // ローカル空間のバウンディングボックス（頂点データから算出）
         BoundingBox localBoundingBox_;
+
+        // 頂点アニメーション用の値を持つ頂点があるか（CreateGeometryBuffers で算出）
+        bool hasVertexAnimationData_ = false;
 
         // サブメッシュ単位のローカル AABB（LOD0 範囲から算出）
         // SubMeshData 本体でなく別配列で持つのは、値コピーされる SubMeshData のレイアウトを

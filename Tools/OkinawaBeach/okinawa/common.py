@@ -19,7 +19,7 @@ import numpy as np
 from mathutils import Vector
 from PIL import Image
 
-from . import anim
+from . import anim, gltf_extras
 
 TOOL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REPO_ROOT = os.path.dirname(os.path.dirname(TOOL_DIR))
@@ -685,11 +685,14 @@ def _ensure_world():
     return scene.world
 
 
-def bake_and_export(name, objs, out_root=MODELS_DIR, keep_other_visible=False):
+def bake_and_export(name, objs, out_root=MODELS_DIR, keep_other_visible=False, vertex_animation=None,
+                    anim_speed=1.0):
     """objs を 1 メッシュにまとめ、マテリアルごとにベイクして glTF を書き出す
 
     objs に ARMATURE を 1 つ含めると、メッシュをその子にしてスキン（骨と同名の頂点グループ）と
-    アーマチュアのアクションも書き出す（ウミガメ）"""
+    アーマチュアのアクションも書き出す（ウミガメ）。
+    vertex_animation（"plant" / "seagrass" / "fish"）を渡すと、揺れの値を持つモデルのマテリアルの extras に
+    エンジンの頂点アニメーションの既定値を書く（gltf_extras.py。anim_speed は速さの倍率）"""
     rig = next((o for o in objs if o.type == "ARMATURE"), None)
     objs = [o for o in objs if o.type == "MESH"]
     _ensure_world()
@@ -786,6 +789,8 @@ def bake_and_export(name, objs, out_root=MODELS_DIR, keep_other_visible=False):
         export_animation_mode="ACTIONS", export_force_sampling=True, export_def_bones=False,
         export_leaf_bone=False, export_rest_position_armature=True, export_anim_slide_to_zero=False,
         export_influence_nb=4)
+    if vertex_animation and gltf_extras.tag_vertex_animation(path, vertex_animation, speed=anim_speed):
+        print(f"  [anim] {name}: extras.vertexAnimation = {vertex_animation} (speed {anim_speed:.3f})")
     tris = sum(len(p.vertices) - 2 for p in obj.data.polygons)
     print(f"[export] {name}: {tris} tris -> {path}")
     return obj, path, tris

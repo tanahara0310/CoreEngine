@@ -78,8 +78,12 @@ def build(module_name):
     variants = mod.build()
     exported = []
     finals = []
+    # エンジンの頂点アニメーションの種類と、バリエーションごとの速さの倍率（アセットのモジュールが決める）
+    anim_mode = getattr(mod, "VERTEX_ANIMATION", None)
+    anim_speed = getattr(mod, "VERTEX_ANIM_SPEED", {})
     for vname, objs in variants.items():
-        obj, path, tris = C.bake_and_export(vname, objs)
+        obj, path, tris = C.bake_and_export(vname, objs, vertex_animation=anim_mode,
+                                            anim_speed=anim_speed.get(vname, 1.0))
         exported.append((vname, path))
         finals.append(obj)
         print(f"  {vname}: {tris} tris ({time.time() - t0:.0f}s)")

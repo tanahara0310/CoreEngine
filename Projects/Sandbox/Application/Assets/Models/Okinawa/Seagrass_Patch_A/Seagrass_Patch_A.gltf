@@ -36,6 +36,9 @@
 				"metallicRoughnessTexture":{
 					"index":1
 				}
+			},
+			"extras":{
+				"vertexAnimation":"seagrass"
 			}
 		}
 	],

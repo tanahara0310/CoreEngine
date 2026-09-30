@@ -930,6 +930,11 @@ SWIM = {
     "viridis": dict(bodyWaveHz=2.2, finHz=4.5, wavelength=0.95, cruiseSpeed=0.1),
     "auriga": dict(bodyWaveHz=1.4, finHz=3.0, wavelength=1.1, cruiseSpeed=0.15),
 }
+# エンジンの頂点アニメーション（glTF のマテリアルの extras に書く。置くだけで泳ぐ）。
+# エンジンの基準の周波数（体の波 2.2 Hz・胸びれ 4.5 Hz。VertexAnimation.hlsli）に対する倍率を既定の速さにする
+VERTEX_ANIMATION = "fish"
+ENGINE_BODY_HZ = 2.2
+VERTEX_ANIM_SPEED = {name: SWIM[key]["bodyWaveHz"] / ENGINE_BODY_HZ for name, (key, _v, _tl) in MODELS.items()}
 
 
 def single_fish(name, sp, variant, TL):

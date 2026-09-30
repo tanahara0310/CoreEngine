@@ -15,6 +15,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <format>
 #include <limits>
 
@@ -203,6 +204,40 @@ namespace CoreEngine
         }
     }
 
+    namespace
+    {
+        /// @brief 頂点アニメーションで頂点が元の位置から動きうる距離の目安 [m]
+        /// @details VertexAnimation.hlsli の式の各項の振幅の上限を、風の強さ 2（VertexAnimationParams の上限）・
+        ///          マテリアルの強さ 1 で見積もる（カリング用の箱を広げる量なので大きめでよい）。
+        ///          植物・海草: 全体の曲げ ≦ 1.25 S A、しなり ≦ (1.2 + 0.6 S) S B、震え ≦ S R
+        ///          魚        : 体の横揺れ ≦ 振幅、胸びれ ≦ 1.12 × 振幅
+        float EstimateVertexAnimationReach(VertexAnimationType type, const Vector4& anim)
+        {
+            constexpr float kStrength = 2.0f;
+            switch (type) {
+            case VertexAnimationType::Plant:
+            case VertexAnimationType::Seagrass:
+                return 1.25f * kStrength * std::abs(anim.w)
+                    + (1.2f + 0.6f * kStrength) * kStrength * std::abs(anim.z)
+                    + kStrength * std::abs(anim.x);
+            case VertexAnimationType::Fish:
+                return std::abs(anim.y) + 1.12f * std::abs(anim.z);
+            default:
+                return 0.0f;
+            }
+        }
+
+        /// @brief 箱を各方向へ reach だけ広げる（無効な箱はそのまま）
+        void ExpandBounds(BoundingBox& bounds, float reach)
+        {
+            if (reach <= 0.0f || !bounds.IsValid()) {
+                return;
+            }
+            bounds.min = bounds.min - Vector3{ reach, reach, reach };
+            bounds.max = bounds.max + Vector3{ reach, reach, reach };
+        }
+    }
+
     void ModelResource::CreateGeometryBuffers()
     {
         // LOD0（原型）のインデックス数を先に確定してから簡略化インデックスを末尾へ追記する。
@@ -300,9 +335,15 @@ namespace CoreEngine
         // LOD0 のインデックス範囲が参照する頂点のみ集計する。簡略化 LOD（lods[1..]）は
         // 同一頂点バッファの部分集合を参照するため、LOD0 の AABB で保守的に覆える。
         subMeshLocalBounds_.assign(modelData_.subMeshes.size(), BoundingBox());
+        float modelAnimationReach = 0.0f;
         for (size_t s = 0; s < modelData_.subMeshes.size(); ++s) {
             const SubMeshData& subMesh = modelData_.subMeshes[s];
             BoundingBox& bounds = subMeshLocalBounds_[s];
+            // 頂点アニメーションの種類はマテリアルの既定値（glTF の extras）で決まる
+            const VertexAnimationType animationType = (subMesh.materialIndex < modelData_.materials.size())
+                ? modelData_.materials[subMesh.materialIndex].vertexAnimation
+                : VertexAnimationType::None;
+            float animationReach = 0.0f;
             const size_t endIndex = (std::min)(
                 static_cast<size_t>(subMesh.startIndex) + subMesh.indexCount,
                 modelData_.indices.size());
@@ -319,8 +360,22 @@ namespace CoreEngine
                 if (p.x > bounds.max.x) bounds.max.x = p.x;
                 if (p.y > bounds.max.y) bounds.max.y = p.y;
                 if (p.z > bounds.max.z) bounds.max.z = p.z;
+                if (animationType != VertexAnimationType::None) {
+                    animationReach = (std::max)(animationReach,
+                        EstimateVertexAnimationReach(animationType, modelData_.vertices[vertexIndex].animData));
+                }
             }
+            // 揺れ・泳ぎで箱からはみ出した葉先やひれが、視錐台・Hi-Z の判定で欠けないように広げる
+            ExpandBounds(bounds, animationReach);
+            modelAnimationReach = (std::max)(modelAnimationReach, animationReach);
         }
+        ExpandBounds(localBoundingBox_, modelAnimationReach);
+
+        // 頂点アニメーション用の値を持つか（持たなければ種類を指定しても形は変わらない）
+        hasVertexAnimationData_ = std::any_of(modelData_.vertices.begin(), modelData_.vertices.end(),
+            [](const VertexData& v) {
+                return v.animData.x != 0.0f || v.animData.y != 0.0f || v.animData.z != 0.0f || v.animData.w != 0.0f;
+            });
 
         // 不変条件の検証: 添字対応の配列は必ずサブメッシュ数と一致させる。
         // AABB が無効なサブメッシュ（空範囲・全インデックス不正）は描画には害がない
@@ -508,6 +563,10 @@ namespace CoreEngine
                 instance->SetRoughness(asset.roughnessFactor);
                 instance->SetEmissiveFactor(asset.emissiveFactor);
                 instance->SetAlphaCutoff(asset.alphaCutoff);
+                // 頂点アニメーション（glTF の extras。植物・海草・魚のモデルは置くだけで動く）
+                instance->SetVertexAnimation(asset.vertexAnimation);
+                instance->SetVertexAnimStrength(asset.vertexAnimStrength);
+                instance->SetVertexAnimSpeed(asset.vertexAnimSpeed);
             }
 
             // 法線マップのみフラグ制御（法線はファクター乗算で無効化できないため）

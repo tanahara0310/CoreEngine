@@ -36,6 +36,9 @@
 				"metallicRoughnessTexture":{
 					"index":1
 				}
+			},
+			"extras":{
+				"vertexAnimation":"plant"
 			}
 		},
 		{
@@ -53,6 +56,9 @@
 				"metallicRoughnessTexture":{
 					"index":4
 				}
+			},
+			"extras":{
+				"vertexAnimation":"plant"
 			}
 		},
 		{
@@ -72,6 +78,9 @@
 				"metallicRoughnessTexture":{
 					"index":7
 				}
+			},
+			"extras":{
+				"vertexAnimation":"plant"
 			}
 		}
 	],

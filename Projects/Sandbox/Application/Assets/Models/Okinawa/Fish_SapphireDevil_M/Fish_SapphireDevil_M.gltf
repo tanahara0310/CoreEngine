@@ -35,6 +35,10 @@
 				"metallicRoughnessTexture":{
 					"index":1
 				}
+			},
+			"extras":{
+				"vertexAnimation":"fish",
+				"vertexAnimSpeed":1.0909
 			}
 		}
 	],

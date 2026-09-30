@@ -24,6 +24,9 @@ from .adan import BarkPacker, MeshAcc, perp, register_cutout_aliases, rotate_tow
 
 PREVIEW = dict(cam_dir=(0.35, -1.0, 0.28), lens=70, spacing=1.1)
 
+# エンジンの頂点アニメーションの種類（glTF のマテリアルの extras に書く。置くだけで風に揺れる）
+VERTEX_ANIMATION = "plant"
+
 UP = Vector((0, 0, 1))
 CARD = 0.3          # 葉の房カードの一辺(m)
 RES_SCALE = float(os.environ.get("OKI_RES_SCALE", "1"))

@@ -19,6 +19,9 @@ from ..common import pbr_material, srgb
 
 PREVIEW = dict(cam_dir=(0.25, -1.0, 0.28), lens=40)
 
+# エンジンの頂点アニメーションの種類（glTF のマテリアルの extras に書く。置くだけで風に揺れる）
+VERTEX_ANIMATION = "plant"
+
 FROND_W = 1.9  # 羽片の左右幅(m)
 FROND_L = 4.4  # 葉の長さ(m)
 
