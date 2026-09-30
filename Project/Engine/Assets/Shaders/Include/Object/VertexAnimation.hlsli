@@ -63,7 +63,9 @@ float3 VertexAnimWind(float3 pos, float3 nrm, float4 anim, float3 dirOS, float s
 {
     const float w0 = kVertexAnimTau * VertexAnimQuantizeHz(baseHz);
     const float3 up = float3(0.0f, 1.0f, 0.0f);
-    const float3 side = cross(up, dirOS);
+    // 横方向。Blender（Z-up・右手系）の cross(Z, 風向き) を、軸を入れ替えたエンジン座標で表すと
+    // 外積の向きが反転するので cross(風向き, Y) になる（Blender の確認用デモと同じ側へ揺れる）
+    const float3 side = cross(dirOS, up);
 
     // 1) 株全体の曲げ。根元からの距離を保って幹が伸びないようにする
     const float gust = strength * (0.55f + 0.30f * sin(w0 * t + objPhase)
