@@ -271,3 +271,5 @@ Blender の `(x, y, z)` は `(x, z, y)`、回転は Assimp の変換と同じ（
 
 `python3 Tools/OkinawaBeach/assemble.py [カメラ名 ...]` で全アセットを配置してレンダリングする（`Blend/OkinawaBeachScene.blend` も保存）。
 確認用の海は Cycles の体積吸収で、浅瀬はターコイズ、深場は紺碧になる。コースティクスはエンジン側の表現なので、ここでは影のレイだけ水面を素通しにしている。
+魚の群れは `SCHOOLS`（配置 JSON の名前・群れの中心・向き）から 1 匹ずつのモデルを並べ、泳ぎのジオメトリノードで個体ごとに体を曲げる。
+`python3 Tools/OkinawaBeach/assemble.py none` のように存在しないカメラ名を渡すと、描かずに `.blend` だけ保存する。
