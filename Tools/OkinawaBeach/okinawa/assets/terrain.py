@@ -75,6 +75,17 @@ N_MICRO = PNoise(103, 12, 40, n=260, beta=1.0)             # 細かな起伏
 N_B1 = PNoise(104, 1, 4, n=30, beta=1.0)                   # 後浜の大きなうねり
 N_B2 = PNoise(105, 3, 7, n=40, beta=0.5, aniso=1.6)        # 小さな砂丘（汀線方向に長い）
 
+# 水中の砂漣（Shore と ReefTerrain で共通）。断面はなめらかな波形にし、凹凸も色の差も控えめにする。
+# 峰を尖らせた細い凹凸は、エンジン（TAA なし）では遠目に砂漣の線が画素と干渉して、太陽とコースティクスに
+# 照らされた水色の細かなちらつきになる
+RIPPLE_HEIGHT = 0.005  # 峰と谷の高さの差 [m]
+RIPPLE_TINT = 0.05     # 谷の明るさ（細かい貝片のたまり）の強さ
+
+
+def ripple(nb, ph):
+    """砂漣の断面（峰 1・谷 0）。ph は位相 [rad]（ph = 0 が峰）"""
+    return nb.add(0.5, nb.mul(nb.math("COSINE", ph), 0.5))
+
 
 def backshore(x, y):
     """後浜（Flat 全体 / Shore の陸側縁）。X, Y とも周期 40 m"""
@@ -242,25 +253,12 @@ def sand_material(name, shore):
             wet = nb.mul(edge, nb.add(0.45, nb.mul(depth, 0.55)))
             under = nb.smooth(z, -0.25, -0.75)
             wet_col = nb.hsv(nb.mix(col, srgb("#c2b69c"), 0.3), 0.5, 1.0, 0.7)
-            # 上端の細い濡れ線
-            wline = nb.mul(nb.smooth(nb.math("ABSOLUTE", nb.add(dz_top, 0.01)), 0.03, 0.0),
-                           nb.smooth(T.noise(0.8, 2, 0.5, off=77.0), 0.3, 0.5))
             # 水中: 暖かく澄んだ白砂（粒の明暗も弱い）
             uw_col = nb.ramp(d["big"], [(0.3, srgb("#e2d7bf")), (0.5, srgb("#eadfc6")), (0.7, srgb("#efe6cf"))])
             uw_col = nb.mix(uw_col, srgb("#f7f2e4"), nb.mul(d["white"], 0.6))
             uw_col = nb.mix(uw_col, srgb("#efe4d0"), nb.mul(d["frag"], 0.8))
-            # 浜の汀線の筋（遡上限界の線）
-            swash = None
-            for zk, off in ((0.22, 81.0), (0.42, 83.0), (0.66, 87.0)):
-                n = T.noise(0.4, 2, 0.5, off=off)
-                dz = nb.math("ABSOLUTE", nb.sub(nb.sub(z, zk), nb.mul(nb.sub(n, 0.5), 0.16)))
-                line = nb.mul(nb.smooth(dz, 0.02, 0.004), nb.smooth(T.noise(0.6, 2, 0.5, off=off + 1), 0.4, 0.55))
-                swash = line if swash is None else nb.math("MAXIMUM", swash, line)
-            grit = nb.smooth(T.noise(40.0, 2, 0.5, off=91.0), 0.45, 0.65)
-            swash_col = nb.mix(srgb("#c3baa5"), srgb("#8e8674"), nb.mul(grit, 0.6))
+            # 遡上限界の筋・濡れた範囲の上端の細い線は描かない（エンジンでは乾いた砂の上の黒い波の跡に見える）
             col = nb.mix(col, wet_col, wet)
-            col = nb.mix(col, srgb("#a69d88"), nb.mul(wline, 0.35))
-            col = nb.mix(col, swash_col, nb.mul(swash, 0.55))
             col = nb.mix(col, uw_col, under)
             # 打ち上げられた海藻・漂着物（バーム頂部）
             clump = nb.smooth(T.noise(2.2, 4, 0.6, off=101.0), 0.56, 0.66)
@@ -271,23 +269,22 @@ def sand_material(name, shore):
             bits = nb.mul(nb.smooth(T.voronoi(9.0, off=9.0), 0.12, 0.05), nb.smooth(wrack_band, 0.3, 0.8))
             col = nb.mix(col, srgb("#f4efe3"), nb.mul(bits, nb.mul(patch, 0.7)))
 
-            # 水中の砂漣（汀線に平行、先端の尖った断面）
+            # 水中の砂漣（汀線に平行、なめらかな断面）
             warp = nb.add(nb.mul(T.noise(0.22, 3, 0.5, off=121.0), 10.0), nb.mul(T.noise(1.4, 2, 0.5, off=123.0), 1.6))
             ph = nb.add(nb.mul(T.y, math.tau / 0.34), warp)
-            rip = nb.sub(1.0, nb.math("ABSOLUTE", nb.math("SINE", nb.mul(ph, 0.5))))
+            rip = ripple(nb, ph)
             rip_mask = nb.mul(nb.smooth(z, -0.45, -1.3), nb.maprange(T.noise(0.15, 2, 0.5, off=127.0), 0.3, 0.6, 0.45, 1.0))
             # 砂漣の谷には細かい貝片がたまり少し明るい
-            col = nb.mix(col, srgb("#f3ecdc"), nb.mul(nb.mul(nb.sub(1.0, rip), rip_mask), 0.12))
+            col = nb.mix(col, srgb("#f3ecdc"), nb.mul(nb.mul(nb.sub(1.0, rip), rip_mask), RIPPLE_TINT))
 
             dry_h = nb.mul(height, nb.sub(1.0, nb.math("MAXIMUM", wet, under)))
-            height = nb.add(dry_h, nb.mul(nb.mul(rip, rip_mask), 0.014))
-            height = nb.add(height, nb.mul(swash, 0.002))
+            height = nb.add(dry_h, nb.mul(nb.mul(rip, rip_mask), RIPPLE_HEIGHT))
             height = nb.add(height, nb.mul(wrack, 0.012))
             height = nb.add(height, nb.mul(nb.mul(d["fine"], nb.math("MAXIMUM", wet, under)), 0.002))
             rough = nb.mixf(rough, nb.mixf(0.6, 0.35, depth), edge)
             rough = nb.mixf(rough, 0.5, under)
             rough = nb.mixf(rough, 0.85, wrack)
-            cavity = nb.maprange(nb.mul(nb.sub(1.0, rip), rip_mask), 0.0, 1.0, 1.0, 0.9)
+            cavity = nb.maprange(nb.mul(nb.sub(1.0, rip), rip_mask), 0.0, 1.0, 1.0, 0.96)
         else:
             cavity = nb.maprange(d["ripple"], -0.7, 0.7, 0.95, 1.0)
         return dict(color=col, rough=rough, height=height, height_scale=1.0, cavity=cavity)
