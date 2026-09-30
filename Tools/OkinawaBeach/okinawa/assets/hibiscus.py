@@ -4,6 +4,8 @@
 葉: 小枝ごと描いた「葉の房」アトラス（2x2）を、V 字に少し折ったカードとして枝先・枝沿いに散らす
     アトラスは numpy で 2D 描画（鋸歯のある卵形の葉・葉脈・重なりの影）して画像ノードから焼く
 花: ハイビスカスは 5 枚の花弁ジオメトリ + 突き出た雄しべ筒、ブーゲンビリアは苞の房をカードで表現
+揺れ: 株全体は高さの 2 乗で曲がり、葉カードは付け根から先へしなる。花は 1 輪ごとに一体で揺れ、
+      花弁の先が震える（okinawa/anim.py）
 """
 import math
 import os
@@ -14,6 +16,7 @@ import numpy as np
 from mathutils import Vector
 from scipy import ndimage
 
+from .. import anim
 from .. import common as C
 from .. import geo
 from ..common import pbr_material, srgb
@@ -508,8 +511,9 @@ def _uvmap(rect, x, y):
     return (u0 + (u1 - u0) * x, v0 + (v1 - v0) * y)
 
 
-def _card(acc, base, d, normal_hint, cell, rnd, size=CARD, fold=18.0, droop=0.15, rows=4):
-    """葉の房カード。セル下端中央 = base、d 方向へ伸びる。V 字に少し折り、先を垂らす"""
+def _card(acc, base, d, normal_hint, cell, rnd, size=CARD, fold=18.0, droop=0.15, rows=4, wind=None):
+    """葉の房カード。セル下端中央 = base、d 方向へ伸びる。V 字に少し折り、先を垂らす。
+    wind = dict(G, A, b, r)"""
     d = d.normalized()
     side = normal_hint.cross(d)
     if side.length < 1e-3:
@@ -533,6 +537,10 @@ def _card(acc, base, d, normal_hint, cell, rnd, size=CARD, fold=18.0, droop=0.15
             ruv.append((x0 + (0.004 + x * 0.492), y0 + (0.004 + y * 0.492)))
         rows_v.append(row)
         rows_uv.append(ruv)
+    if wind:
+        acc.set_anim(len(acc.verts), [(wind["r"] * (i / (rows - 1)) * (0.5 + 0.5 * abs(x - 0.5) * 2), wind["G"],
+                                       wind["b"] * (i / (rows - 1)) ** 1.5, wind["A"])
+                                      for i in range(rows) for x in (0.0, 0.5, 1.0)])
     acc.grid(rows_v, rows_uv)
 
 
@@ -682,9 +690,9 @@ def _anchors(rnd, segs, tips, n_extra, center, min_depth_frac=0.35, tip_cards=2)
     return out
 
 
-def _dress(acc, rnd, anchors, center, cells, up_bias=0.35, out_bias=0.7, size=CARD, droop=0.15):
-    """アンカーごとに外向き・上向きの葉カードを付ける"""
-    for p, d in anchors:
+def _dress(acc, rnd, anchors, center, cells, up_bias=0.35, out_bias=0.7, size=CARD, droop=0.15, wind=None):
+    """アンカーごとに外向き・上向きの葉カードを付ける。wind = dict(key, bend_at, b, r)"""
+    for k, (p, d) in enumerate(anchors):
         out = p - center
         out.z *= 0.5
         out = out.normalized() if out.length > 1e-3 else Vector((1, 0, 0))
@@ -693,7 +701,10 @@ def _dress(acc, rnd, anchors, center, cells, up_bias=0.35, out_bias=0.7, size=CA
         hint = (UP * 0.8 + out * 0.6 + jit * 0.6).normalized()
         base = p - dd * 0.03
         s = size * rnd.uniform(0.8, 1.1)
-        _card(acc, base, dd, hint, rnd.choice(cells), rnd, size=s, droop=droop * rnd.uniform(0.5, 1.5))
+        w = None
+        if wind:
+            w = dict(G=anim.hash01(wind["key"], k), A=wind["bend_at"](p.z), b=wind["b"] * s / size, r=wind["r"])
+        _card(acc, base, dd, hint, rnd.choice(cells), rnd, size=s, droop=droop * rnd.uniform(0.5, 1.5), wind=w)
 
 
 def _shell_anchors(rnd, n, center, radii, zmin, rmin=0.55, rmax=0.9):
@@ -714,15 +725,29 @@ def _shell_anchors(rnd, n, center, radii, zmin, rmin=0.55, rmax=0.9):
     return out
 
 
-def _flowers_on_shell(fl, rnd, n, center, radii, color, size, zmin):
-    for p, nrm in _shell_anchors(rnd, n, center, radii, zmin, 0.92, 1.0):
+def _flowers_on_shell(fl, rnd, n, center, radii, color, size, zmin, wind=None):
+    """wind = dict(key, bend_at, b, r) — 花は 1 輪（花弁・雄しべ筒・萼・花柄）ごとに一体で揺れる"""
+    for k, (p, nrm) in enumerate(_shell_anchors(rnd, n, center, radii, zmin, 0.92, 1.0)):
         nrm = (nrm + UP * 0.35 + Vector((rnd.uniform(-1, 1), rnd.uniform(-1, 1), 0)) * 0.25).normalized()
         c = p + nrm * 0.02
+        start = len(fl.verts)
         _flower(fl, c, nrm, rnd, color=color, size=size)
         # 花柄（葉の中へ）
         q = c - nrm * 0.026
         _tube_acc(fl, [q - nrm * 0.12 - UP * 0.03, q - nrm * 0.05, q], [0.0035, 0.003, 0.0035], 4, UV_CALYX,
                   cap=False)
+        if wind:
+            G, A = anim.hash01(wind["key"], k), wind["bend_at"](c.z)
+            # 先頭の 5 枚の花弁（各 PETAL_ROWS x 3 頂点）は先ほど震える。筒・萼・花柄は震えない
+            vals = [(wind["r"] * u, G, wind["b"], A) for _ in range(5) for u, _hw in PETAL_ROWS for _x in range(3)]
+            vals += [(0.0, G, wind["b"], A)] * (len(fl.verts) - start - len(vals))
+            fl.set_anim(start, vals)
+
+
+def _wood_wind(parts, H, main):
+    """幹・枝（BarkPacker のチューブ）: 高さの 2 乗で曲がる"""
+    for o in parts:
+        anim.write(o, 0.0, anim.hash01(o.name), 0.0, anim.main_bend(anim.world_co(o)[:, 2], H, main))
 
 
 def hibiscus(prefix, seed, H, n_stems, n_cards, n_flowers, color, depth=2):
@@ -736,18 +761,30 @@ def hibiscus(prefix, seed, H, n_stems, n_cards, n_flowers, color, depth=2):
     anchors = [(p, d) for p, d in tips if p.z > 0.25]
     anchors += _anchors(rnd, segs, [], n_cards // 4, center)
     anchors += _shell_anchors(rnd, n_cards - len(anchors), center, radii, H * 0.2)
-    _dress(leaves, rnd, anchors, center, cells, size=CARD * (1.0 if H > 1.2 else 0.85))
+    # 揺れ: 株の高さ H で main（小さな低木なので数 cm）
+    main = 0.03 * H
+
+    def bend_at(z):
+        return float(anim.main_bend(z, H, main))
+
+    _dress(leaves, rnd, anchors, center, cells, size=CARD * (1.0 if H > 1.2 else 0.85),
+           wind=dict(key=(prefix, "leaf"), bend_at=bend_at, b=0.035, r=0.012))
     # 花: 外殻に外向きに咲く。つぼみは枝先に
     fl = MeshAcc()
-    _flowers_on_shell(fl, rnd, n_flowers, center, radii, color, 0.068 if H > 1.2 else 0.06, H * 0.4)
-    for p, d in rnd.sample(tips, min(len(tips), max(3, n_flowers // 3))):
+    _flowers_on_shell(fl, rnd, n_flowers, center, radii, color, 0.068 if H > 1.2 else 0.06, H * 0.4,
+                      wind=dict(key=(prefix, "flower"), bend_at=bend_at, b=0.02, r=0.006))
+    for k, (p, d) in enumerate(rnd.sample(tips, min(len(tips), max(3, n_flowers // 3)))):
+        start = len(fl.verts)
         _bud(fl, p + d * 0.04, (d + UP * 0.5).normalized(), rnd, color=color)
+        # つぼみは枝先に付いたまま（しならない）
+        fl.set_anim(start, [(0.0, anim.hash01(prefix, "bud", k), 0.0, bend_at(p.z))] * (len(fl.verts) - start))
     parts = []
     bmat = _mat("bark", bark_material)
     for o in bp.pack(margin=0.008):
         C.set_smooth(o, True)
         C.assign(o, bmat)
         parts.append(o)
+    _wood_wind(parts, H, main)
     lo = leaves.build(f"{prefix}_leaves")
     C.set_smooth(lo, True)
     C.assign(lo, _mat("hleaf", hibiscus_leaf_material))
@@ -783,18 +820,27 @@ def bougainvillea(prefix, seed, H, n_leaf, n_bract):
     anchors = [(p, d) for p, d in tips if p.z > 0.25]
     anchors += _anchors(rnd, segs, [], n_leaf // 3, center)
     anchors += _shell_anchors(rnd, n_leaf - len(anchors), center, radii, H * 0.15)
-    _dress(leaves, rnd, anchors, center, [(0.0, 0.0), (0.5, 0.0)], droop=0.2, size=CARD * 1.1)
+    # 揺れ: 弓なりの枝なので低木よりやや大きく
+    main = 0.035 * H
+
+    def bend_at(z):
+        return float(anim.main_bend(z, H, main))
+
+    _dress(leaves, rnd, anchors, center, [(0.0, 0.0), (0.5, 0.0)], droop=0.2, size=CARD * 1.1,
+           wind=dict(key=(prefix, "leaf"), bend_at=bend_at, b=0.045, r=0.012))
     # 苞の房は上側・外側に多く（外殻の外寄り）
     bracts = [(p, d) for p, d in _shell_anchors(rnd, n_bract * 2, center, radii, H * 0.25, 0.75, 1.0)]
     bracts.sort(key=lambda a: -(a[0].z - center.z + rnd.uniform(-0.5, 0.5)))
     bracts = bracts[:n_bract]
-    _dress(leaves, rnd, bracts, center, [(0.0, 0.5), (0.5, 0.5)], up_bias=0.5, droop=0.25, size=CARD * 1.1)
+    _dress(leaves, rnd, bracts, center, [(0.0, 0.5), (0.5, 0.5)], up_bias=0.5, droop=0.25, size=CARD * 1.1,
+           wind=dict(key=(prefix, "bract"), bend_at=bend_at, b=0.045, r=0.015))
     parts = []
     bmat = _mat("bark", bark_material)
     for o in bp.pack(margin=0.008):
         C.set_smooth(o, True)
         C.assign(o, bmat)
         parts.append(o)
+    _wood_wind(parts, H, main)
     lo = leaves.build(f"{prefix}_leaves")
     C.set_smooth(lo, True)
     C.assign(lo, _mat("bleaf", boug_leaf_material))

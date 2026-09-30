@@ -1,29 +1,37 @@
-"""熱帯魚の群れ（静止メッシュ）3 バリエーション
+"""熱帯魚 3 種の 1 匹ずつのモデル（泳ぎの頂点データ付き）と、群れの配置データ
 
-FishSchool_Blue : ルリスズメダイ（Chrysiptera cyanea）5〜7cm × 34 匹のゆるい群れ
-                  （オスは尾びれが橙黄、メスは尾びれが淡い青で背びれ後端の付け根に黒点）
-FishSchool_Green: デバスズメダイ（Chromis viridis）6〜8cm × 52 匹の密な群れ（枝サンゴの上でホバリング）
-Fish_Butterfly  : トゲチョウチョウウオ（Chaetodon auriga）約 15cm のペア
+モデル（1 匹 = 1 フォルダ。まっすぐな姿勢、体の中央が原点、頭が +X、背が +Z）
+  Fish_SapphireDevil_F / _M : ルリスズメダイ（Chrysiptera cyanea）。メスは尾びれが淡い青で背びれ後端に黒点、
+                              オスは尾びれが橙黄
+  Fish_BlueGreenChromis_A / _B: デバスズメダイ（Chromis viridis）。ひれの縁の色だけ違う 2 種
+  Fish_ThreadfinButterfly   : トゲチョウチョウウオ（Chaetodon auriga）
+群れの配置（Models/Okinawa/FishSchools/*.json。エンジン座標で位置・回転・大きさ・位相）
+  FishSchool_Blue : ルリスズメダイ 5〜7cm × 34 匹のゆるい群れ（オス 35%）
+  FishSchool_Green: デバスズメダイ 6〜8cm × 52 匹の密な群れ（枝サンゴの上でホバリング）
+  FishPair_Butterfly: トゲチョウチョウウオ約 15cm のペア
 
 魚 1 匹: 側扁した胴（断面 8 頂点のリングを吻端から尾柄まで繋ぐ）+ 背・臀・尾・胸・腹びれ
          （薄い板を表裏 2 枚。輪郭はアルファで切り抜く）。1 匹 約 220〜300 三角形
 アトラス: 種ごとに 1 枚（上半分 = 胴の側面展開、下半分 = ひれ）を numpy で描いて焼く。
          胴は左右で同じ UV を共有し、V は断面の周長比。模様は実寸の側面座標 (s, z) で描くので
          目・鱗・縞が歪まない
-群れ: 楕円体の雲にポアソン円盤で散らし、向きはなめらかなノイズ場で揃えつつばらつかせる。
-      体はわずかに C 字・S 字に曲げ、大きさも変える
-原点: 群れの中心（水中に浮かせて置く）
+泳ぎ: 頂点シェーダーで動かす。TEXCOORD_1 = (t: 吻端 0 → 尾の先 1, 体の横揺れの振幅 m)、
+      TEXCOORD_2 = (胸びれの羽ばたきの振幅 m, 左右 +1 = 左 / -1 = 右 / 0 = それ以外)。
+      群れはこのモデルをインスタンス描画する
+群れの配置: 楕円体の雲にポアソン円盤で散らし、向きはなめらかなノイズ場で揃えつつばらつかせる
 """
+import json
 import math
 import os
 import random
 
 import numpy as np
-from mathutils import Matrix, Vector
+from mathutils import Matrix, Quaternion, Vector
 from mathutils import noise as mnoise
 from scipy import ndimage
 from scipy.interpolate import PchipInterpolator
 
+from .. import anim
 from .. import common as C
 from ..common import pbr_material, srgb
 from .hibiscus import Canvas
@@ -207,6 +215,7 @@ def _caudal_spread(sp, c):
 class _Mesh:
     def __init__(self):
         self.v, self.f, self.uv = [], [], []
+        self.pec = {}  # 胸びれの頂点番号 → 付け根 0 / 先 1（泳ぎの羽ばたき）
 
     def add_v(self, p):
         self.v.append(tuple(p))
@@ -216,12 +225,25 @@ class _Mesh:
         self.f.append(tuple(idx))
         self.uv.append([tuple(u) for u in uvs])
 
-    def grid2(self, rows, uvs):
-        """表裏 2 枚の格子（ひれ）。rows[i][j] = 頂点"""
+    def grid2(self, rows, uvs, eps=0.0015):
+        """表裏 2 枚の格子（ひれ）。rows[i][j] = 頂点。
+        2 枚は面の向きへ eps（SL 単位）ずつ離す（ぴったり重ねるとレイトレーシングで互いの影になる）"""
+        n, m = len(rows), len(rows[0])
+        nrm = []
+        for i in range(n):
+            row = []
+            for j in range(m):
+                du = Vector(rows[i][min(j + 1, m - 1)]) - Vector(rows[i][max(j - 1, 0)])
+                dv = Vector(rows[min(i + 1, n - 1)][j]) - Vector(rows[max(i - 1, 0)][j])
+                c = du.cross(dv)
+                row.append(c.normalized() * eps if c.length > 1e-12 else Vector())
+            nrm.append(row)
         for flip in (False, True):
-            R = [r[::-1] for r in rows] if flip else rows
+            if flip:
+                R = [[Vector(p) - d for p, d in zip(r, dn)][::-1] for r, dn in zip(rows, nrm)]
+            else:
+                R = [[Vector(p) + d for p, d in zip(r, dn)] for r, dn in zip(rows, nrm)]
             U = [u[::-1] for u in uvs] if flip else uvs
-            n, m = len(R), len(R[0])
             ids = [[self.add_v(p) for p in r] for r in R]
             for i in range(n - 1):
                 for j in range(m - 1):
@@ -359,7 +381,10 @@ def fish_mesh(sp, variant=0):
         rows = [[A - E * pf["w"] / 2, A + E * pf["w"] / 2],
                 [A - E * pf["w"] / 2 + D * pf["len"], A + E * pf["w"] / 2 + D * pf["len"]]]
         uvs = [[_ruv(R_PECT, 0, 0), _ruv(R_PECT, 0, 1)], [_ruv(R_PECT, 1, 0), _ruv(R_PECT, 1, 1)]]
+        n0 = len(M.v)
         M.grid2(rows, uvs)
+        for k, i in enumerate(range(n0, len(M.v))):
+            M.pec[i] = float((k // 2) % 2)  # 表裏それぞれ 2 行 x 2 列の順
         s = vf["s"]
         A = Vector((-s, sd * 0.012, float(bot(s)) + 0.014))
         D = Vector((-math.cos(vf["drop"]), sd * 0.22, -math.sin(vf["drop"]))).normalized()
@@ -886,15 +911,58 @@ def _place(mesh, sp, SL, pos, yaw, pitch, roll, bend_c, bend_s, phase, depth=1.0
     return P @ R.T + np.array(pos)
 
 
-_SHOW = {}
+# ---------------------------------------------------------------------------
+# 1 匹ずつのモデル
+# ---------------------------------------------------------------------------
+SPECIES = {"cyanea": CYANEA, "viridis": VIRIDIS, "auriga": AURIGA}
+MATNAME = {"cyanea": "SapphireDevil", "viridis": "BlueGreenChromis", "auriga": "ThreadfinButterfly"}
+# モデル名 → (種, アトラスの背びれ・尾びれの領域 0/1, 基準の全長 m)
+MODELS = {
+    "Fish_SapphireDevil_F": ("cyanea", 0, 0.06),
+    "Fish_SapphireDevil_M": ("cyanea", 1, 0.066),
+    "Fish_BlueGreenChromis_A": ("viridis", 0, 0.07),
+    "Fish_BlueGreenChromis_B": ("viridis", 1, 0.07),
+    "Fish_ThreadfinButterfly": ("auriga", 0, 0.15),
+}
+# 泳ぎの目安（シェーダーの定数）。スズメダイの仲間は胸びれで漕いでホバリングし、体は小さく波打つ
+SWIM = {
+    "cyanea": dict(bodyWaveHz=2.4, finHz=5.0, wavelength=0.95, cruiseSpeed=0.12),
+    "viridis": dict(bodyWaveHz=2.2, finHz=4.5, wavelength=0.95, cruiseSpeed=0.1),
+    "auriga": dict(bodyWaveHz=1.4, finHz=3.0, wavelength=1.1, cruiseSpeed=0.15),
+}
 
 
-def school(name, sp, n, radii, dmin, heading_sd, pitch=(0.0, 0.12), roll_sd=0.12, male_frac=0.0,
-           seed=0, weight=None, fixed=None):
-    """群れ 1 つ分のオブジェクト。fixed = [(pos, yaw, TL), ...] なら配置を指定"""
+def single_fish(name, sp, variant, TL):
+    """まっすぐな 1 匹（全長 TL m。体の中央が原点、頭 +X、背 +Z）と泳ぎの頂点データ
+
+    anim の Anim 属性に R = t（吻端 0 → 尾の先 1）, G = 体の横揺れの振幅 m（頭で小さく尾で大きい）,
+    B = 胸びれの羽ばたきの振幅 m（付け根 0 → 先）, A = 胸びれの左右（+1 左 = +Y / -1 右、ほかは 0）を書く"""
+    _prep(sp)
+    mesh = fish_mesh(sp, variant)
+    SL = TL / sp["TL"]
+    P = _place(mesh, sp, SL, (0.0, 0.0, 0.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+    obj = C.mesh_object(name, [tuple(v) for v in P], mesh.f, mesh.uv)
+    C.set_smooth(obj, True)
+    t = np.clip((TL / 2 - P[:, 0]) / TL, 0.0, 1.0)
+    body = TL * (0.015 - 0.03 * t + 0.115 * t * t)  # 頭 1.5% → 最小 1.3%（t≈0.13）→ 尾の先 10%
+    pec = np.zeros(len(P))
+    side = np.zeros(len(P))
+    for i, w in mesh.pec.items():
+        pec[i] = w * 0.35 * sp["pect"]["len"] * SL
+        side[i] = 1.0 if P[i, 1] > 0 else -1.0
+    anim.write(obj, t, body, pec, side)
+    return obj
+
+
+# ---------------------------------------------------------------------------
+# 群れの配置
+# ---------------------------------------------------------------------------
+def school_data(sp, n, radii, dmin, heading_sd, pitch=(0.0, 0.12), roll_sd=0.12, male_frac=0.0,
+                seed=0, weight=None, fixed=None):
+    """群れの個体ごとの (領域 0/1, 位置, 回転 3x3, 全長 m, 位相 0..1)。Blender 座標、群れの中心が原点。
+    fixed = [(pos, yaw, TL), ...] なら配置を指定"""
     _prep(sp)
     rnd = random.Random(seed)
-    meshes = [fish_mesh(sp, 0), fish_mesh(sp, 1)]
     if fixed:
         items = fixed
     else:
@@ -905,93 +973,132 @@ def school(name, sp, n, radii, dmin, heading_sd, pitch=(0.0, 0.12), roll_sd=0.12
             f = mnoise.noise(Vector((p.x * 1.6, p.y * 1.6, p.z * 1.6 + seed)))
             yaw = heading_sd * (1.5 * f + 0.45 * rnd.gauss(0, 1))
             items.append((p, yaw, rnd.uniform(*sp["tl"])))
-    verts, faces, uvs = [], [], []
-    for k, (p, yaw, TL) in enumerate(items):
+    out = []
+    for p, yaw, TL in items:
         male = rnd.random() < male_frac
         if male:
             TL = max(TL, rnd.uniform(sp["tl"][0] + 0.6 * (sp["tl"][1] - sp["tl"][0]), sp["tl"][1]))
-        mesh = meshes[1 if (male or (male_frac == 0 and rnd.random() < 0.5)) else 0]
-        SL = TL / sp["TL"]
+        variant = 1 if (male or (male_frac == 0 and rnd.random() < 0.5)) else 0
         pit = rnd.gauss(*pitch)
-        P = _place(mesh, sp, SL, p, yaw, pit, rnd.gauss(0, roll_sd), rnd.gauss(0, 0.1), rnd.gauss(0, 0.035),
-                   rnd.uniform(0, math.tau), depth=rnd.uniform(0.95, 1.05))
-        o = len(verts)
-        verts += [tuple(v) for v in P]
-        faces += [tuple(i + o for i in f) for f in mesh.f]
-        uvs += mesh.uv
-        if k == 0:
-            _SHOW[name] = (Vector(p), yaw, TL)
-    obj = C.mesh_object(name, verts, faces, uvs)
-    C.set_smooth(obj, True)
-    tris = sum(len(f) - 2 for f in faces)
-    print(f"  {name}: {len(items)} fish, {tris} tris ({tris // max(1, len(items))} / fish)")
-    return obj
+        roll = rnd.gauss(0, roll_sd)
+        rnd.gauss(0, 0.1), rnd.gauss(0, 0.035)  # 以前の静止メッシュの C 字・S 字の曲げ（乱数の並びを保つ）
+        phase = rnd.uniform(0, math.tau) / math.tau
+        rnd.uniform(0.95, 1.05)                  # 以前の体高のばらつき
+        R = Matrix.Rotation(yaw, 3, "Z") @ Matrix.Rotation(-pit, 3, "Y") @ Matrix.Rotation(roll, 3, "X")
+        out.append((variant, Vector(p), R, TL, phase))
+    return out
+
+
+def to_engine_pos(v):
+    """Blender (Z-up 右手系) → エンジン（glTF を Assimp の ConvertToLeftHanded で読んだ Y-up 左手系）"""
+    return [round(float(v.x), 5), round(float(v.z), 5), round(float(v.y), 5)]
+
+
+def to_engine_quat(R):
+    """回転（Blender）→ エンジン座標のクォータニオン [x, y, z, w]（Assimp の変換と同じ）"""
+    q = R.to_quaternion()
+    return [round(-q.x, 6), round(-q.z, 6), round(-q.y, 6), round(q.w, 6)]
+
+
+def from_engine(pos, quat):
+    """配置 JSON の値 → Blender の位置と回転 3x3（確認用シーンで使う）"""
+    x, y, z = pos
+    qx, qy, qz, qw = quat
+    return Vector((x, z, y)), Quaternion((qw, -qx, -qz, -qy)).to_matrix()
+
+
+def write_school(name, key, items, models, desc):
+    """群れの配置 JSON を Models/Okinawa/FishSchools/<name>.json に書く"""
+    sp = SPECIES[key]
+    ref = {m: MODELS[m][2] for m in set(models.values())}
+    inst = []
+    for variant, p, R, TL, phase in items:
+        m = models[variant]
+        inst.append(dict(model=m, position=to_engine_pos(p), rotation=to_engine_quat(R),
+                         scale=round(TL / ref[m], 4), phase=round(phase, 4)))
+    data = dict(
+        name=name,
+        description=desc,
+        coordinates=("エンジン座標（glTF を Assimp の ConvertToLeftHanded で読んだときと同じ Y-up・左手系、m）。"
+                     "Blender の (x, y, z) は (x, z, y)。position は群れの中心からの位置"),
+        rotation=("クォータニオン [x, y, z, w]（エンジン座標）。モデルは頭が +X、背が +Y、"
+                  "体の左側が +Z を向いたまっすぐな姿勢"),
+        scale="モデルの全長に対する倍率（一様）",
+        phase="泳ぎの位相 0..1（個体ごとの時間のずれ。2π を掛けて使う）",
+        models={m: f"../{m}/{m}.gltf" for m in sorted(set(models.values()))},
+        swim=dict(SWIM[key], note=("体の横揺れ: 体の横方向（エンジンのローカル +Z = 左）に TEXCOORD_1.y * "
+                                   "sin(2π(t / wavelength - bodyWaveHz * time + phase))、t = TEXCOORD_1.x。"
+                                   "胸びれ: 同じ横方向に TEXCOORD_2.y * TEXCOORD_2.x * sin(2π(finHz * time + 1.7 phase))"
+                                   "（TEXCOORD_2.y は左 +1 / 右 -1）。cruiseSpeed は前進するときの速さ m/s の目安")),
+        count=len(inst),
+        instances=inst,
+    )
+    out_dir = os.path.join(C.MODELS_DIR, "FishSchools")
+    os.makedirs(out_dir, exist_ok=True)
+    path = os.path.join(out_dir, f"{name}.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=1)
+    print(f"  [school] {name}: {len(inst)} fish -> {path}")
+    return path
+
+
+def load_school(path):
+    """配置 JSON → [(モデル名, 位置, 回転 3x3, 倍率, 位相)]（Blender 座標）"""
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    out = []
+    for it in data["instances"]:
+        p, R = from_engine(it["position"], it["rotation"])
+        out.append((it["model"], p, R, it["scale"], it["phase"]))
+    return data, out
 
 
 # ---------------------------------------------------------------------------
 # プレビュー
 # ---------------------------------------------------------------------------
 def _preview_extra(objs):
-    """3 種を寄せて並べ（青の群れ・緑の群れ・手前にチョウチョウウオ）、斜め横から撮る。
-    OKI_DEBUG_DIR があれば 1 匹ずつの近景も撮る"""
+    """1 匹ずつ横に並べたモデルを斜め横から撮る（地面は下げる）"""
     import bpy
     meshes = [o for o in objs if o.type == "MESH"]
-    place = {"FishSchool_Blue": (-0.75, 0.3, 0.05), "FishSchool_Green": (0.75, 0.35, 0.0),
-             "Fish_Butterfly": (0.05, -0.75, -0.12)}
-    for o in meshes:
-        tag = o.name.split(".")[0]
-        if tag in place:
-            mn, mx = C.bounds([o])
-            o.location += Vector(place[tag]) - (mn + mx) / 2
-    bpy.context.view_layer.update()
     mn, mx = C.bounds(meshes)
     g = bpy.data.objects.get("PreviewGround")
     if g:
-        g.location.z = mn.z - 1.2
+        g.location.z = mn.z - 0.35
+    c = (mn + mx) / 2
     cam = bpy.context.scene.camera
-    cam.location = Vector((0.55, -3.1, 0.75))
-    cam.data.lens = 36
-    C.look_at(cam, Vector((0.0, 0.0, -0.05)))
-    dbg = os.environ.get("OKI_DEBUG_DIR")
-    if not dbg:
-        return
-    keep = (cam.location.copy(), cam.rotation_euler.copy(), cam.data.lens)
-    for o in meshes:
-        tag = o.name.split(".")[0]
-        if tag not in _SHOW:
-            continue
-        p, yaw, TL = _SHOW[tag]
-        c = o.matrix_world @ p
-        fwd = Vector((math.cos(yaw), math.sin(yaw), 0))
-        left = Vector((-fwd.y, fwd.x, 0))
-        for k, (d, dist, lens) in enumerate([(left * 1.0 + UP * 0.15, TL * 3.2, 50),
-                                             (left * 0.7 + fwd * 0.6 + UP * 0.35, TL * 3.2, 50)]):
-            cam.location = c + d.normalized() * dist
-            cam.data.lens = lens
-            C.look_at(cam, c)
-            C.render(os.path.join(dbg, f"fish_{tag}_{k}.jpg"), res=(800, 450), samples=16)
-    cam.location, cam.rotation_euler, cam.data.lens = keep
+    cam.location = c + Vector((0.08, -1.0, 0.22)).normalized() * (mx.x - mn.x) * 1.55
+    cam.data.lens = 50
+    C.look_at(cam, c)
 
 
-PREVIEW = dict(cam_dir=(0.2, -1.0, 0.3), lens=50, extra=_preview_extra)
+PREVIEW = dict(cam_dir=(0.1, -1.0, 0.2), lens=50, spacing=1.15, extra=_preview_extra)
 
 
 def build():
-    _SHOW.clear()
-    for sp in (CYANEA, VIRIDIS, AURIGA):
+    for sp in SPECIES.values():
         for k in [k for k in sp if k.startswith("_")]:
             del sp[k]
-    blue = school("FishSchool_Blue", CYANEA, 34, (0.74, 0.54, 0.32), 0.1, math.radians(24),
-                  pitch=(0.0, math.radians(7)), roll_sd=math.radians(8), male_frac=0.35, seed=3)
-    C.assign(blue, atlas_material(CYANEA, "SapphireDevil"))
+    out = {}
+    for name, (key, variant, TL) in MODELS.items():
+        out[name] = [single_fish(name, SPECIES[key], variant, TL)]
+    # アトラスは形状を作ったあと（ひれの高さの基準が決まってから）描く
+    mats = {key: atlas_material(sp, MATNAME[key]) for key, sp in SPECIES.items()}
+    for name, (key, _v, _tl) in MODELS.items():
+        C.assign(out[name][0], mats[key])
+
+    blue = school_data(CYANEA, 34, (0.74, 0.54, 0.32), 0.1, math.radians(24),
+                       pitch=(0.0, math.radians(7)), roll_sd=math.radians(8), male_frac=0.35, seed=3)
+    write_school("FishSchool_Blue", "cyanea", blue, {0: "Fish_SapphireDevil_F", 1: "Fish_SapphireDevil_M"},
+                 "ルリスズメダイ 34 匹のゆるい群れ（オス 35%）。サンゴの上 0.5〜1.5 m に浮かべる")
     # デバスズメダイ: 枝サンゴの上にかたまる（下ほど密）
-    green = school("FishSchool_Green", VIRIDIS, 52, (0.52, 0.46, 0.34), 0.085, math.radians(32),
-                   pitch=(math.radians(4), math.radians(10)), roll_sd=math.radians(9), seed=7,
-                   weight=lambda p: 0.45 + 0.55 * (0.5 - p.z / 0.68))
-    C.assign(green, atlas_material(VIRIDIS, "BlueGreenChromis"))
-    pair = school("Fish_Butterfly", AURIGA, 2, None, None, 0.0, pitch=(0.0, math.radians(3)),
-                  roll_sd=math.radians(3), seed=11,
-                  fixed=[(Vector((0.05, -0.06, 0.0)), math.radians(4), 0.152),
-                         (Vector((-0.09, 0.08, 0.035)), math.radians(-6), 0.141)])
-    C.assign(pair, atlas_material(AURIGA, "ThreadfinButterfly"))
-    return {"FishSchool_Blue": [blue], "FishSchool_Green": [green], "Fish_Butterfly": [pair]}
+    green = school_data(VIRIDIS, 52, (0.52, 0.46, 0.34), 0.085, math.radians(32),
+                        pitch=(math.radians(4), math.radians(10)), roll_sd=math.radians(9), seed=7,
+                        weight=lambda p: 0.45 + 0.55 * (0.5 - p.z / 0.68))
+    write_school("FishSchool_Green", "viridis", green, {0: "Fish_BlueGreenChromis_A", 1: "Fish_BlueGreenChromis_B"},
+                 "デバスズメダイ 52 匹の密な群れ。枝サンゴの真上（群れの底がサンゴの 10〜20 cm 上）に置く")
+    pair = school_data(AURIGA, 2, None, None, 0.0, pitch=(0.0, math.radians(3)), roll_sd=math.radians(3), seed=11,
+                       fixed=[(Vector((0.05, -0.06, 0.0)), math.radians(4), 0.152),
+                              (Vector((-0.09, 0.08, 0.035)), math.radians(-6), 0.141)])
+    write_school("FishPair_Butterfly", "auriga", pair, {0: "Fish_ThreadfinButterfly", 1: "Fish_ThreadfinButterfly"},
+                 "トゲチョウチョウウオのペア。サンゴの縁を並んで泳ぐ")
+    return out

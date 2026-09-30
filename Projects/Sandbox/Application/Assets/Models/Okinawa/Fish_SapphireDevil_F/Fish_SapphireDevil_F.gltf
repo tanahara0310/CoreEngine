@@ -15,13 +15,13 @@
 	"nodes":[
 		{
 			"mesh":0,
-			"name":"Fish_Butterfly"
+			"name":"Fish_SapphireDevil_F"
 		}
 	],
 	"materials":[
 		{
 			"alphaMode":"MASK",
-			"name":"Fish_Butterfly_ThreadfinButterfly",
+			"name":"Fish_SapphireDevil_F_SapphireDevil",
 			"normalTexture":{
 				"index":0
 			},
@@ -40,16 +40,18 @@
 	],
 	"meshes":[
 		{
-			"name":"Fish_Butterfly",
+			"name":"Fish_SapphireDevil_F",
 			"primitives":[
 				{
 					"attributes":{
 						"POSITION":0,
 						"NORMAL":1,
 						"TEXCOORD_0":2,
-						"TANGENT":3
+						"TEXCOORD_1":3,
+						"TEXCOORD_2":4,
+						"TANGENT":5
 					},
-					"indices":4,
+					"indices":6,
 					"material":0
 				}
 			]
@@ -72,91 +74,115 @@
 	"images":[
 		{
 			"mimeType":"image/png",
-			"name":"Fish_Butterfly_ThreadfinButterfly_Normal",
-			"uri":"Fish_Butterfly_ThreadfinButterfly_Normal.png"
+			"name":"Fish_SapphireDevil_F_SapphireDevil_Normal",
+			"uri":"Fish_SapphireDevil_F_SapphireDevil_Normal.png"
 		},
 		{
 			"mimeType":"image/png",
-			"name":"Fish_Butterfly_ThreadfinButterfly_ORM",
-			"uri":"Fish_Butterfly_ThreadfinButterfly_ORM.png"
+			"name":"Fish_SapphireDevil_F_SapphireDevil_ORM",
+			"uri":"Fish_SapphireDevil_F_SapphireDevil_ORM.png"
 		},
 		{
 			"mimeType":"image/png",
-			"name":"Fish_Butterfly_ThreadfinButterfly_BaseColor",
-			"uri":"Fish_Butterfly_ThreadfinButterfly_BaseColor.png"
+			"name":"Fish_SapphireDevil_F_SapphireDevil_BaseColor",
+			"uri":"Fish_SapphireDevil_F_SapphireDevil_BaseColor.png"
 		}
 	],
 	"accessors":[
 		{
 			"bufferView":0,
 			"componentType":5126,
-			"count":506,
+			"count":195,
 			"max":[
-				0.12570209801197052,
-				0.08525204658508301,
-				0.08231934159994125
+				0.029999999329447746,
+				0.01472590770572424,
+				0.009749948978424072
 			],
 			"min":[
-				-0.1650010347366333,
-				-0.05078436806797981,
-				-0.10024678707122803
+				-0.028615383431315422,
+				-0.014146114699542522,
+				-0.009749948978424072
 			],
 			"type":"VEC3"
 		},
 		{
 			"bufferView":1,
 			"componentType":5126,
-			"count":506,
+			"count":195,
 			"type":"VEC3"
 		},
 		{
 			"bufferView":2,
 			"componentType":5126,
-			"count":506,
+			"count":195,
 			"type":"VEC2"
 		},
 		{
 			"bufferView":3,
 			"componentType":5126,
-			"count":506,
-			"type":"VEC4"
+			"count":195,
+			"type":"VEC2"
 		},
 		{
 			"bufferView":4,
+			"componentType":5126,
+			"count":195,
+			"type":"VEC2"
+		},
+		{
+			"bufferView":5,
+			"componentType":5126,
+			"count":195,
+			"type":"VEC4"
+		},
+		{
+			"bufferView":6,
 			"componentType":5123,
-			"count":1776,
+			"count":672,
 			"type":"SCALAR"
 		}
 	],
 	"bufferViews":[
 		{
 			"buffer":0,
-			"byteLength":6072,
+			"byteLength":2340,
 			"byteOffset":0,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":6072,
-			"byteOffset":6072,
+			"byteLength":2340,
+			"byteOffset":2340,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":4048,
-			"byteOffset":12144,
+			"byteLength":1560,
+			"byteOffset":4680,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":8096,
-			"byteOffset":16192,
+			"byteLength":1560,
+			"byteOffset":6240,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":3552,
-			"byteOffset":24288,
+			"byteLength":1560,
+			"byteOffset":7800,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":3120,
+			"byteOffset":9360,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":1344,
+			"byteOffset":12480,
 			"target":34963
 		}
 	],
@@ -168,8 +194,8 @@
 	],
 	"buffers":[
 		{
-			"byteLength":27840,
-			"uri":"Fish_Butterfly.bin"
+			"byteLength":13824,
+			"uri":"Fish_SapphireDevil_F.bin"
 		}
 	]
 }

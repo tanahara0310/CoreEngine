@@ -8,6 +8,8 @@
 | 種類 | 場所 |
 |---|---|
 | glTF モデル（.gltf + .bin + PNG） | `Projects/Sandbox/Application/Assets/Models/Okinawa/<Variant>/` |
+| 魚の群れの配置（JSON） | `Projects/Sandbox/Application/Assets/Models/Okinawa/FishSchools/` |
+| アニメーションのデモ（MP4 / GIF） | `Tools/OkinawaBeach/Previews/anim_*.mp4`, `anim_*.gif` |
 | Blender ファイル | `Tools/OkinawaBeach/Blend/<module>.blend` |
 | プレビュー画像 | `Tools/OkinawaBeach/Previews/<module>.jpg`, `<module>_textures.jpg` |
 
@@ -135,9 +137,121 @@ def my_material():
 | `reef_terrain` | ReefTerrain_Lagoon（礁池）, ReefTerrain_Edge（リーフエッジ〜ドロップオフ）, ReefTerrain_Deep（深場） | 40 m 角タイルの中心。Shore を (x, 0) に置いたら Lagoon を (x, -40)、Edge を (x, -80)、Deep を (x, -120) |
 | `beachrock` | BeachRock_A/B/C | 砂との接地点。波打ち際に置く |
 | `coral` | Coral_Table_A/B, Coral_Branch_A/B, Coral_Massive_A/B, Coral_MicroAtoll, Coral_Brain, Coral_Soft | 根元の中心（少し埋まる） |
-| `sealife` | GiantClam, SeaCucumber, SeaUrchin, BlueStarfish, Anemone_Clownfish, SeaTurtle | 海底の生き物は接地点。ウミガメは体の中心（水中に浮かべる） |
+| `sealife` | GiantClam, SeaCucumber, SeaUrchin, BlueStarfish, Anemone_Clownfish, SeaTurtle | 海底の生き物は接地点。ウミガメは体の中心（水中に浮かべる）。ウミガメは骨と泳ぎのアニメーション付き |
 | `seagrass` | Seagrass_Patch_A/B | 藻場の中心（砂面） |
-| `fish` | FishSchool_Blue, FishSchool_Green, Fish_Butterfly | 群れの中心（水中に浮かべる）。アニメーションは無い |
+| `fish` | Fish_SapphireDevil_F/M, Fish_BlueGreenChromis_A/B, Fish_ThreadfinButterfly（1 匹ずつ） | 体の中央。頭が +X。群れは `FishSchools/*.json` の配置で並べる |
+
+## アニメーション用のデータ
+
+植物・海草・魚は **頂点シェーダーで動かす** ための値を頂点に焼き込み、ウミガメは **骨（スキン）とアニメーション** を持つ。
+Blender 上での確認は `demo_anim.py`（下記）。
+
+### 植物・海草の揺れ（CoconutPalm / Adan / Hibiscus / Bougainvillea / Seagrass_Patch）
+
+| glTF | 値 | 内容 |
+|---|---|---|
+| `TEXCOORD_1.x` | R | 葉先・葉縁の細かい震えの振幅 [m]（付け根 0） |
+| `TEXCOORD_1.y` | G | 位相 0..1（葉・葉柄ごとの乱数。同じ葉の頂点は同じ値） |
+| `TEXCOORD_2.x` | B | 葉・枝のしなりの振幅 [m]（付け根 0 → 先端で最大） |
+| `TEXCOORD_2.y` | A | 株全体の曲げの振幅 [m]（根元 0 → 樹冠で最大。葉と実は付け根の値を引き継ぐ。海草は 0） |
+
+- 振幅は「風の強さ 1（やや強い海風）」での目安（ヤシの樹冠で約 0.3 m、葉先で約 0.35 m）。シェーダーで強さを掛ける
+- 幹と葉のようにつながる部品はつなぎ目の値が一致しているので、揺らしても裂けない
+- glTF の UV は v を `1 - v` で格納する規約なので、ファイル上は `(R, 1-G)`, `(B, 1-A)`。
+  エンジンの Assimp は `aiProcess_FlipUVs` で読むので、読み込み後は元の `(R, G)`, `(B, A)` に戻る
+- テクスチャ用の UV は従来どおり `TEXCOORD_0`（マテリアルもこれを参照）
+
+エンジン側で使うには `ModelLoader::ConvertVertex` で `mTextureCoords[1]`, `[2]` を読み、`VertexData` と入力レイアウトに
+`TEXCOORD1`, `TEXCOORD2`（float2）を足す。頂点シェーダーの例（オブジェクト空間、Y-up、原点 = 根元）:
+
+```hlsl
+// windDirOS: 風向き（オブジェクト空間の水平な単位ベクトル）, strength: 風の強さ, objPhase: 個体ごとの位相（ワールド位置から作る等）
+// 木:   branchUp = 0.8, bias = 0.6,  freq = (4, 9, 28), period = 4 秒
+// 海草: branchUp = 0,   bias = 0.25, freq = (1, 3, 10), period = 6 秒（波の寄せ返しでゆっくり往復）
+float3 WindDisplace(float3 posOS, float3 nrmOS, float2 uv1, float2 uv2, float3 windDirOS,
+                    float strength, float time, float objPhase, float branchUp, float bias,
+                    float3 freq, float period)
+{
+    const float TAU = 6.2831853;
+    float w0 = TAU / period;                         // 基本の角振動数（各揺れはこの整数倍）
+    float R = uv1.x, G = uv1.y, B = uv2.x, A = uv2.y;
+    float3 up = float3(0, 1, 0);
+    float3 side = cross(up, windDirOS);
+    // 1) 株全体の曲げ。根元からの距離を保って幹が伸びないようにする
+    float gust = strength * (0.55 + 0.30 * sin(w0 * time + objPhase) + 0.15 * sin(3 * w0 * time + 1.3 * objPhase));
+    float sway = strength * 0.25 * sin(2 * w0 * time + 2.0 * objPhase);
+    float len = length(posOS);
+    float3 p = posOS + (windDirOS * gust + side * sway) * A;
+    p = len > 1e-5 ? normalize(p) * len : p;
+    // 2) 葉・枝のしなり（葉ごとの位相 G で少しずつずらす）
+    float phB = G * TAU + objPhase;
+    float wb = 0.65 * sin(freq.x * w0 * time + phB) + 0.35 * sin(freq.y * w0 * time + 1.7 * phB);
+    p += (up * (wb * branchUp) + windDirOS * (strength * bias + 0.4 * wb)) * (B * strength);
+    // 3) 葉先の震え。両面化した裏の面（法線が逆）と同じ向きに動かす
+    float3 n = nrmOS * (nrmOS.y >= 0 ? 1.0 : -1.0);
+    float wf = sin(freq.z * w0 * time + G * 5 * TAU + dot(posOS, float3(1.3, 2.1, 1.7)) * 3);
+    p += n * (R * strength * wf);
+    return p;
+}
+```
+
+### 魚（Fish_*）と群れの配置（FishSchools/*.json）
+
+1 匹ずつのまっすぐなモデル（頭 +X、背 +Z。エンジン座標では頭 +X・背 +Y・体の左 +Z）を、
+群れの配置 JSON どおりにインスタンス描画する。
+
+| glTF | 内容 |
+|---|---|
+| `TEXCOORD_1.x` | t: 吻端 0 → 尾の先 1 |
+| `TEXCOORD_1.y` | 体の横揺れの振幅 [m]（頭 1.5% → 尾の先 10%（全長比）） |
+| `TEXCOORD_2.x` | 胸びれの羽ばたきの振幅 [m]（付け根 0 → 先） |
+| `TEXCOORD_2.y` | 胸びれの左右（左 +1 / 右 -1 / それ以外 0） |
+
+```hlsl
+// posOS: 頭 +X・背 +Y・左 +Z。phase は配置 JSON の個体ごとの値、bodyHz / finHz / wavelength は JSON の swim
+float3 SwimDisplace(float3 posOS, float2 uv1, float2 uv2, float time, float phase,
+                    float bodyHz, float finHz, float wavelength)
+{
+    const float TAU = 6.2831853;
+    float flap = TAU * (finHz * time + 1.7 * phase);
+    posOS.z += uv1.y * sin(TAU * (uv1.x / wavelength - bodyHz * time + phase))   // 頭から尾へ進む波
+             + uv2.y * uv2.x * sin(flap);                                        // 胸びれ（外側が正）
+    posOS.x -= 0.5 * uv2.x * cos(flap);                                           // 前後へ少し漕ぐ
+    return posOS;
+}
+```
+
+配置 JSON（`Models/Okinawa/FishSchools/<名前>.json`）:
+
+| キー | 内容 |
+|---|---|
+| `models` | 使うモデル名 → glTF の相対パス |
+| `swim` | `bodyWaveHz`, `finHz`, `wavelength`, `cruiseSpeed` の目安 |
+| `instances[]` | `model`, `position` [m], `rotation` [x, y, z, w], `scale`（モデルの全長に対する倍率）, `phase` 0..1 |
+
+座標は **エンジン座標**（glTF を Assimp の `ConvertToLeftHanded` で読んだときと同じ Y-up・左手系）で、群れの中心が原点。
+Blender の `(x, y, z)` は `(x, z, y)`、回転は Assimp の変換と同じ（Blender のクォータニオン `(w, x, y, z)` → `[-x, -z, -y, w]`）。
+
+| 群れ | 内容 |
+|---|---|
+| `FishSchool_Blue` | ルリスズメダイ 34 匹（オス 35%）のゆるい群れ |
+| `FishSchool_Green` | デバスズメダイ 52 匹の密な群れ（枝サンゴの真上に置く） |
+| `FishPair_Butterfly` | トゲチョウチョウウオのペア |
+
+### ウミガメ（SeaTurtle）
+
+- 骨 13 本: `Root`（体）→ `Neck` → `Head`、前ヒレ `FlipperFR1..3` / `FlipperFL1..3`（肩・手首・先）、後ろヒレ `FlipperRR1..2` / `FlipperRL1..2`
+- 1 頂点あたりの重みは最大 2 本（エンジンの上限 4 本以内）。甲羅はすべて `Root`
+- アニメーション `Swim`: 3 秒でループする泳ぎ（24 fps で 73 キー。最初と最後が同じ姿勢）。
+  前ヒレは翼のように打ち下ろして後ろへ掃き（先の節ほど遅れてしなる）、後ろヒレはかじ取りのように小さく漕ぎ、首と体がわずかに上下する。
+  その場で泳ぐので、前へ進める移動はゲーム側で行う（目安 0.3〜0.6 m/s）
+- レストポーズは前ヒレを振り上げた姿勢（アニメーションの 0 フレームと同じ）
+
+### 確認用デモ
+
+`python3 Tools/OkinawaBeach/demo_anim.py [beach] [underwater]` で、書き出した glTF を読み込んで動かし、
+`Previews/anim_<clip>.mp4` / `.gif` と `Blend/AnimDemo_<clip>.blend`（開いて再生できる）を作る。
+植物と魚は `okinawa/motion.py` のジオメトリノード（上の HLSL と同じ式）、ウミガメは glTF のアクション `Swim` で動かしている。
 
 ## 他のモジュールで使い回せる補助
 
@@ -148,6 +262,8 @@ def my_material():
 | `adan.py` | `MeshAcc`（小さな部品を 1 メッシュに集める）, `BarkPacker`（複数チューブのベイク UV を 1 枚に詰める） |
 | `props.py` | `_union` / `_remesh`（ボクセルで形を合成）, `_pack_tubes` |
 | `_timber.py` | `MeshBuilder`, `loft`, `lathe`, `sweep`, 板の木目 |
+| `okinawa/anim.py` | 揺れの頂点データ（`Anim` 属性 → TEXCOORD_1/2）の書き込み・変換 |
+| `okinawa/motion.py` | 揺れ・泳ぎのジオメトリノード（Blender での確認用） |
 
 `geo.tube_along` はチューブごとに 0..1 全体を使う `Bake` UV を作るので、同じ uv="keep" マテリアルで複数のチューブを使うときは `BarkPacker` などで詰め直すこと。
 

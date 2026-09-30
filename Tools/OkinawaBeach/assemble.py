@@ -14,9 +14,11 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import bpy  # noqa: E402
-from mathutils import Vector  # noqa: E402
+from mathutils import Matrix, Vector  # noqa: E402
 
 from okinawa import common as C  # noqa: E402
+from okinawa import motion  # noqa: E402
+from okinawa.assets import fish as F  # noqa: E402
 
 # (アセット名, (x, y, z), Z 回転[度], 一様スケール)
 # SNAP 以外のアセットは z を「地形の高さからのオフセット」として扱う（負で埋める）
@@ -118,9 +120,6 @@ LAYOUT = [
     ("SeaUrchin", (-19.8, -51.2, 0), 0, 1.0),
     ("SeaUrchin", (-12.9, -44.6, 0), 0, 0.9),
     ("Anemone_Clownfish", (-12.6, -48.9, 0), 90, 1.0),
-    ("FishSchool_Green", (-14.8, -49.6, 1.2), 30, 1.0),
-    ("Fish_Butterfly", (-16.4, -45.8, 0.9), 200, 1.0),
-    ("FishSchool_Blue", (-19.6, -44.6, 1.0), 120, 1.0),
     # パッチリーフ B（枝サンゴ中心）
     ("Coral_Branch_A", (26, -40, 0), 0, 1.0),
     ("Coral_Branch_B", (28.6, -37.8, 0), 60, 1.0),
@@ -130,7 +129,6 @@ LAYOUT = [
     ("Coral_Brain", (24.2, -36.2, 0), 90, 0.8),
     ("Coral_Soft", (27.6, -44.6, 0), 0, 1.0),
     ("SeaUrchin", (24.6, -44.2, 0), 0, 1.0),
-    ("FishSchool_Blue", (26, -40, 1.4), 200, 1.0),
     # パッチリーフ C（ハマサンゴとテーブルサンゴ）
     ("Coral_Massive_A", (6, -54, 0), 0, 1.0),
     ("Coral_Table_B", (2.8, -51.4, 0), 40, 1.0),
@@ -141,7 +139,6 @@ LAYOUT = [
     ("Coral_Soft", (3.8, -58.2, 0), 0, 0.9),
     ("Coral_Massive_B", (10.8, -53.4, 0), 70, 0.9),
     ("GiantClam", (8.2, -53.2, 0), 300, 1.0),
-    ("Fish_Butterfly", (7, -52, 0.9), 120, 1.0),
     # 礁原の手前（バックリーフ、水深約 2 m）。外側の急斜面は傾きが 40° を超え、立てた群体の根元が浮くので置かない
     ("Coral_Table_A", (-10, -62, 0), 0, 1.3),
     ("Coral_Massive_A", (15, -62.5, 0), 0, 1.1),
@@ -158,6 +155,15 @@ LAYOUT = [
     ("CoralPiece_A", (-3, 1.0, 0), 0, 1.0),
     ("CoralPiece_B", (5.5, 0.6, 0), 90, 1.0),
     ("CoralPiece_A", (13, 1.5, 0), 120, 1.0),
+]
+
+# 魚の群れ: (配置 JSON の名前, (x, y, 地形からの高さ), Z 回転[度])。1 匹ずつのモデルを JSON どおりに並べる
+SCHOOLS = [
+    ("FishSchool_Green", (-14.8, -49.6, 1.2), 30),
+    ("FishPair_Butterfly", (-16.4, -45.8, 0.9), 200),
+    ("FishSchool_Blue", (-19.6, -44.6, 1.0), 120),
+    ("FishSchool_Blue", (26, -40, 1.4), 200),
+    ("FishPair_Butterfly", (7, -52, 0.9), 120),
 ]
 
 CAMERAS = {
@@ -308,6 +314,31 @@ def place(name, loc, rot, scale, cache, snap=True):
     return obj
 
 
+def place_school(name, loc, rot, cache, swim=True):
+    """配置 JSON の個体ごとに 1 匹のモデルをリンク複製して並べる（群れの中心 = loc）。
+    swim=True なら泳ぎのジオメトリノードを付ける（静止画でも個体ごとに体の曲がりが変わる）"""
+    path = os.path.join(C.MODELS_DIR, "FishSchools", f"{name}.json")
+    if not os.path.exists(path):
+        return []
+    data, items = F.load_school(path)
+    M = Matrix.Translation(Vector(loc)) @ Matrix.Rotation(math.radians(rot), 4, "Z")
+    group = motion.swim_group() if swim and "OkiFishSwim" not in bpy.data.node_groups else \
+        bpy.data.node_groups.get("OkiFishSwim")
+    out = []
+    for model, p, R, s, phase in items:
+        o = place(model, (0, 0, 0), 0, 1.0, cache, snap=False)
+        if o is None:
+            continue
+        o.matrix_world = M @ Matrix.Translation(p) @ R.to_4x4() @ Matrix.Scale(s, 4)
+        o["phase"] = phase
+        if swim:
+            sw = data["swim"]
+            motion.add_modifier(o, group, **{"Phase": phase, "Body Hz": sw["bodyWaveHz"], "Fin Hz": sw["finHz"],
+                                             "Wavelength": sw["wavelength"]})
+        out.append(o)
+    return out
+
+
 def main():
     args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
     C.reset_scene()
@@ -321,7 +352,9 @@ def main():
     # 高さは地形だけがある状態で先に全部調べる（後から置いた物にレイが当たらないように）
     items = [(n, (loc[0], loc[1], terrain_height(loc[0], loc[1]) + loc[2]), rot, sc)
              for n, loc, rot, sc in LAYOUT if n not in NO_SNAP]
+    schools = [(n, (loc[0], loc[1], terrain_height(loc[0], loc[1]) + loc[2]), rot) for n, loc, rot in SCHOOLS]
     placed += [n for n, *rest in items if place(n, *rest, cache, snap=False) is not None]
+    placed += [n for n, *rest in schools if place_school(n, *rest, cache)]
     add_water()
     C.setup_preview_world(strength=1.0, sun_elev=52, sun_rot=200)
     scene = bpy.context.scene

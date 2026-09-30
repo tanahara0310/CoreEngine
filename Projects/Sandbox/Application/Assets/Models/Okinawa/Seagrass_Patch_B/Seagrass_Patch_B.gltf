@@ -48,9 +48,11 @@
 						"POSITION":0,
 						"NORMAL":1,
 						"TEXCOORD_0":2,
-						"TANGENT":3
+						"TEXCOORD_1":3,
+						"TEXCOORD_2":4,
+						"TANGENT":5
 					},
-					"indices":4,
+					"indices":6,
 					"material":0
 				}
 			]
@@ -120,10 +122,22 @@
 			"bufferView":3,
 			"componentType":5126,
 			"count":14870,
-			"type":"VEC4"
+			"type":"VEC2"
 		},
 		{
 			"bufferView":4,
+			"componentType":5126,
+			"count":14870,
+			"type":"VEC2"
+		},
+		{
+			"bufferView":5,
+			"componentType":5126,
+			"count":14870,
+			"type":"VEC4"
+		},
+		{
+			"bufferView":6,
 			"componentType":5123,
 			"count":29394,
 			"type":"SCALAR"
@@ -150,14 +164,26 @@
 		},
 		{
 			"buffer":0,
-			"byteLength":237920,
+			"byteLength":118960,
 			"byteOffset":475840,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":58788,
+			"byteLength":118960,
+			"byteOffset":594800,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":237920,
 			"byteOffset":713760,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":58788,
+			"byteOffset":951680,
 			"target":34963
 		}
 	],
@@ -169,7 +195,7 @@
 	],
 	"buffers":[
 		{
-			"byteLength":772548,
+			"byteLength":1010468,
 			"uri":"Seagrass_Patch_B.bin"
 		}
 	]

@@ -4,6 +4,7 @@
 葉: 細長い帯状の葉を V 字断面の短冊ジオメトリで作り、枝先にらせん状のロゼットとして付ける
     アトラス（8 列: 緑 5 種 / 黄緑 / 橙黄 / 枯れ）に縁の棘をアルファで描く
 実: 多角形の核果が集まったパイナップル状の集合果（熟すと橙色、未熟は緑）
+揺れ: 幹・枝・支柱根は高さの 2 乗で曲がり、葉はロゼットの付け根から先へしなる（okinawa/anim.py）
 """
 import math
 import random
@@ -11,6 +12,7 @@ import random
 import numpy as np
 from mathutils import Matrix, Vector
 
+from .. import anim
 from .. import common as C
 from .. import geo
 from ..common import pbr_material, srgb
@@ -63,6 +65,11 @@ class MeshAcc:
 
     def __init__(self):
         self.verts, self.faces, self.uvs = [], [], []
+        self.anim = {}  # 開始頂点番号 → [(R, G, B, A), ...]（揺れデータ。okinawa/anim.py）
+
+    def set_anim(self, start, values):
+        """verts[start:] に揺れデータを割り当てる"""
+        self.anim[start] = list(values)
 
     def add(self, verts, faces, uvs):
         o = len(self.verts)
@@ -85,7 +92,17 @@ class MeshAcc:
     def build(self, name):
         if not self.faces:
             return None
-        return C.mesh_object(name, self.verts, self.faces, self.uvs)
+        obj = C.mesh_object(name, self.verts, self.faces, self.uvs)
+        if self.anim:
+            data = np.zeros((len(self.verts), 4))
+            done = np.zeros(len(self.verts), dtype=bool)
+            for start, vals in self.anim.items():
+                data[start:start + len(vals)] = vals
+                done[start:start + len(vals)] = True
+            if not done.all():
+                print(f"[warn] {name}: 揺れデータの無い頂点 {int((~done).sum())} 個")
+            anim.write(obj, *data.T)
+        return obj
 
 
 class BarkPacker:
@@ -389,8 +406,9 @@ def fruit_material():
 # ---------------------------------------------------------------------------
 # 形状
 # ---------------------------------------------------------------------------
-def _leaf(acc, base, d0, length, col, rnd, droop, fold=34.0, twist=0.0, kink=None, segs=7, width=1.0):
-    """V 字断面の帯状の葉を acc に追加。重力で先へいくほど垂れる"""
+def _leaf(acc, base, d0, length, col, rnd, droop, fold=34.0, twist=0.0, kink=None, segs=7, width=1.0,
+          wind=None):
+    """V 字断面の帯状の葉を acc に追加。重力で先へいくほど垂れる。wind = dict(G, A, b, r)"""
     ds = length / segs
     pts = [Vector(base)]
     d = Vector(d0).normalized()
@@ -436,11 +454,23 @@ def _leaf(acc, base, d0, length, col, rnd, droop, fold=34.0, twist=0.0, kink=Non
             row.append(p + sd * (xk * w * math.cos(f)) + upn * (abs(xk) * w * math.sin(f)))
         rows.append(row)
         uvs.append([(u0 + xx / N_COL, y) for xx in xs])
+    if wind:
+        # 先ほど・縁ほど震え、付け根からの 2 乗でしなる
+        acc.set_anim(len(acc.verts), [(wind["r"] * (0.4 + 0.6 * abs(xk)) * (i / (n - 1)) ** 1.2, wind["G"],
+                                       wind["b"] * (i / (n - 1)) ** 2, wind["A"])
+                                      for i in range(n) for xk in (-1, 0, 1)])
     acc.grid(rows, uvs)
 
 
-def _rosette(acc, tip, axis, rnd, n_leaves=22, n_dry=3, scale=1.0, fruit_side=None):
-    """枝先のロゼット。若い葉は上向きの束、外側ほど開いて垂れる"""
+def _rosette(acc, tip, axis, rnd, n_leaves=22, n_dry=3, scale=1.0, fruit_side=None, wind=None):
+    """枝先のロゼット。若い葉は上向きの束、外側ほど開いて垂れる。
+    wind = dict(key, A) — 葉はすべて枝先の曲げ A を持ち、葉ごとに位相を変える"""
+
+    def leaf_wind(tag, k, L, b, r):
+        if not wind:
+            return None
+        return dict(G=anim.hash01(wind["key"], tag, k), A=wind["A"], b=b * L, r=r)
+
     axis = axis.normalized()
     golden = math.radians(137.5)
     p0 = perp(axis)
@@ -461,15 +491,17 @@ def _rosette(acc, tip, axis, rnd, n_leaves=22, n_dry=3, scale=1.0, fruit_side=No
             col = rnd.randrange(0, 5)
         kink = (rnd.uniform(0.35, 0.6), math.radians(rnd.uniform(15, 35))) if age > 0.6 and rnd.random() < 0.35 \
             else None
-        _leaf(acc, base, d, L, col, rnd, droop, twist=rnd.uniform(-0.8, 0.8), kink=kink)
+        _leaf(acc, base, d, L, col, rnd, droop, twist=rnd.uniform(-0.8, 0.8), kink=kink,
+              wind=leaf_wind("leaf", k, L, 0.1, 0.02))
     # 枯れて垂れ下がった葉（スカート状）
     for k in range(n_dry):
         az = rnd.uniform(0, math.tau)
         radial = p0 * math.cos(az) + p1 * math.sin(az)
         d = (radial * 0.55 - UP * 0.85 + axis * 0.1).normalized()
         base = tip - axis * (0.2 * scale + rnd.uniform(0, 0.08)) + radial * 0.03
-        _leaf(acc, base, d, LEAF_L * scale * rnd.uniform(0.7, 0.95), rnd.choice([7, 7, 6]), rnd,
-              droop=0.4, fold=55.0, twist=rnd.uniform(-1.5, 1.5), width=0.8)
+        L = LEAF_L * scale * rnd.uniform(0.7, 0.95)
+        _leaf(acc, base, d, L, rnd.choice([7, 7, 6]), rnd,
+              droop=0.4, fold=55.0, twist=rnd.uniform(-1.5, 1.5), width=0.8, wind=leaf_wind("dry", k, L, 0.05, 0.005))
 
 
 def _fruit(name, center, radius, height, ripeness, rnd, n_cells=48):
@@ -628,10 +660,17 @@ def adan(prefix, seed, trunks_spec, spec, n_leaves, fruits, root_n, root_h, leaf
     for ti, (pts, radii) in enumerate(trunks):
         _prop_roots(bp, rnd, pts, radii, root_n[ti], root_h[0], root_h[1], f"{prefix}_t{ti}",
                     az0=rnd.uniform(0, math.tau))
+    # 揺れ: 一番高い枝先で main_amp。葉・実は枝先の値を引き継ぐ
+    top_z = max(t[0].z for t in tips)
+    main_amp = 0.03 * top_z
+
+    def bend_at(z):
+        return float(anim.main_bend(z, top_z, main_amp))
+
     acc = MeshAcc()
     for k, (tip, d, r) in enumerate(tips):
         _rosette(acc, tip, d, rnd, n_leaves=n_leaves + rnd.randrange(-2, 3), n_dry=rnd.choice([2, 3, 3, 4]),
-                 scale=leaf_scale * rnd.uniform(0.9, 1.05))
+                 scale=leaf_scale * rnd.uniform(0.9, 1.05), wind=dict(key=(prefix, k), A=bend_at(tip.z)))
     parts = []
     # 実: ロゼットの中から太い果柄で垂れ下がる
     fmat = fruit_material()
@@ -643,17 +682,25 @@ def adan(prefix, seed, trunks_spec, spec, n_leaves, fruits, root_n, root_h, leaf
         s0 = tip - d * 0.08
         s3 = s0 + o * 0.28 - UP * 0.42
         sp = geo.bezier_points(s0, s0 + d * 0.08 + o * 0.08, s3 + UP * 0.12, s3, 6)
-        bp.tube(sp, [0.022, 0.02, 0.019, 0.018, 0.018, 0.018], 6, f"{prefix}_stalk{fi}", kind=2)
+        stalk = bp.tube(sp, [0.022, 0.02, 0.019, 0.018, 0.018, 0.018], 6, f"{prefix}_stalk{fi}", kind=2)
         h = rnd.uniform(0.19, 0.22)
         fr = _fruit(f"{prefix}_fruit{fi}", s3 - UP * (h * 0.5 - 0.01), h * 0.43, h, ripeness, rnd)
         fr.rotation_euler = (rnd.uniform(-0.2, 0.2), rnd.uniform(-0.2, 0.2), 0)
         C.assign(fr, fmat)
+        # 実は果柄の先で振り子のように揺れる（果柄の付け根 0 → 実で 0.04 m）
+        g = anim.hash01(prefix, "fruit", fi)
+        s = anim.nearest_param(stalk, sp)
+        anim.write(stalk, 0.0, g, 0.04 * s * s, bend_at(tip.z))
+        anim.write(fr, 0.0, g, 0.04, bend_at(tip.z))
         print(f"  fruit {fi}: {tuple(round(x, 2) for x in s3)}")
         parts.append(fr)
     bmat = bark_material()
     for o in bp.pack():
         C.set_smooth(o, True)
         C.assign(o, bmat)
+        if not anim.has(o):
+            # 幹・枝・支柱根（砂に刺さる先は z < 0 で動かない）
+            anim.write(o, 0.0, anim.hash01(o.name), 0.0, anim.main_bend(anim.world_co(o)[:, 2], top_z, main_amp))
         parts.append(o)
     leaves = acc.build(f"{prefix}_leaves")
     C.assign(leaves, leaf_material())

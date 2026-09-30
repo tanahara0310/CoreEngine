@@ -1,0 +1,566 @@
+{
+ "name": "FishSchool_Blue",
+ "description": "ルリスズメダイ 34 匹のゆるい群れ（オス 35%）。サンゴの上 0.5〜1.5 m に浮かべる",
+ "coordinates": "エンジン座標（glTF を Assimp の ConvertToLeftHanded で読んだときと同じ Y-up・左手系、m）。Blender の (x, y, z) は (x, z, y)。position は群れの中心からの位置",
+ "rotation": "クォータニオン [x, y, z, w]（エンジン座標）。モデルは頭が +X、背が +Y、体の左側が +Z を向いたまっすぐな姿勢",
+ "scale": "モデルの全長に対する倍率（一様）",
+ "phase": "泳ぎの位相 0..1（個体ごとの時間のずれ。2π を掛けて使う）",
+ "models": {
+  "Fish_SapphireDevil_F": "../Fish_SapphireDevil_F/Fish_SapphireDevil_F.gltf",
+  "Fish_SapphireDevil_M": "../Fish_SapphireDevil_M/Fish_SapphireDevil_M.gltf"
+ },
+ "swim": {
+  "bodyWaveHz": 2.4,
+  "finHz": 5.0,
+  "wavelength": 0.95,
+  "cruiseSpeed": 0.12,
+  "note": "体の横揺れ: 体の横方向（エンジンのローカル +Z = 左）に TEXCOORD_1.y * sin(2π(t / wavelength - bodyWaveHz * time + phase))、t = TEXCOORD_1.x。胸びれ: 同じ横方向に TEXCOORD_2.y * TEXCOORD_2.x * sin(2π(finHz * time + 1.7 phase))（TEXCOORD_2.y は左 +1 / 右 -1）。cruiseSpeed は前進するときの速さ m/s の目安"
+ },
+ "count": 34,
+ "instances": [
+  {
+   "model": "Fish_SapphireDevil_F",
+   "position": [
+    -0.38781,
+    -0.08323,
+    0.04777
+   ],
+   "rotation": [
+    -0.054548,
+    -0.041512,
+    -0.023681,
+    0.997367
+   ],
+   "scale": 1.1478,
+   "phase": 0.5866
+  },
+  {
+   "model": "Fish_SapphireDevil_M",
+   "position": [
+    0.1538,
+    -0.27806,
+    0.13578
+   ],
+   "rotation": [
+    -0.06666,
+    -0.087146,
+    0.049877,
+    0.992711
+   ],
+   "scale": 1.0242,
+   "phase": 0.0799
+  },
+  {
+   "model": "Fish_SapphireDevil_F",
+   "position": [
+    0.49796,
+    0.089,
+    -0.02554
+   ],
+   "rotation": [
+    0.082893,
+    -0.115541,
+    -0.075565,
+    0.986949
+   ],
+   "scale": 1.1501,
+   "phase": 0.6229
+  },
+  {
+   "model": "Fish_SapphireDevil_F",
+   "position": [
+    0.03431,
+    0.1097,
+    0.26055
+   ],
+   "rotation": [
+    0.009461,
+    -0.126099,
+    -0.094563,
+    0.987455
+   ],
+   "scale": 1.1425,
+   "phase": 0.4608
+  },
+  {
+   "model": "Fish_SapphireDevil_F",
+   "position": [
+    -0.04033,
+    0.24244,
+    0.23633
+   ],
+   "rotation": [
+    0.026025,
+    -0.106682,
+    -0.005206,
+    0.993939
+   ],
+   "scale": 1.1122,
+   "phase": 0.8797
+  },
+  {
+   "model": "Fish_SapphireDevil_F",
+   "position": [
+    0.31691,
+    -0.06722,
+    0.45479
+   ],
+   "rotation": [
+    0.055143,
+    -0.189707,
+    0.099047,
+    0.975275
+   ],
+   "scale": 1.0543,
+   "phase": 0.1231
+  },
+  {
+   "model": "Fish_SapphireDevil_F",
+   "position": [
+    0.18744,
+    0.00464,
+    -0.21489
+   ],
+   "rotation": [
+    0.084841,
+    0.065296,
+    0.077069,
+    0.991261
+   ],
+   "scale": 0.947,
+   "phase": 0.5638
+  },
+  {
+   "model": "Fish_SapphireDevil_F",
+   "position": [
+    -0.16892,
+    0.05445,
+    -0.16102
+   ],
+   "rotation": [
+    0.003163,
+    0.127868,
+    0.033854,
+    0.991208
+   ],
+   "scale": 0.9092,
+   "phase": 0.0918
+  },
+  {
+   "model": "Fish_SapphireDevil_F",
+   "position": [
+    0.12469,
+    0.11647,
+    0.43654
+   ],
+   "rotation": [
+    -0.014662,
+    -0.220134,
+    0.00257,
+    0.975356
+   ],
+   "scale": 0.929,
+   "phase": 0.8439
+  },
+  {
+   "model": "Fish_SapphireDevil_F",
+   "position": [
+    0.31645,
+    0.21223,
+    -0.31199
+   ],
+   "rotation": [
+    0.024927,
+    -0.024368,
+    0.07738,
+    0.996392
+   ],
+   "scale": 1.1034,
+   "phase": 0.7674
+  },
+  {
+   "model": "Fish_SapphireDevil_F",
+   "position": [
+    0.10883,
+    -0.27939,
+    -0.23225
+   ],
+   "rotation": [
+    -0.087999,
+    -0.231703,
+    0.060855,
+    0.966885
+   ],
+   "scale": 1.0646,
+   "phase": 0.3242
+  },
+  {
+   "model": "Fish_SapphireDevil_F",
+   "position": [
+    0.44488,
+    -0.22351,
+    -0.0967
+   ],
+   "rotation": [
+    -0.043693,
+    -0.145576,
+    -0.004511,
+    0.988371
+   ],
+   "scale": 1.1413,
+   "phase": 0.7535
+  },
+  {
+   "model": "Fish_SapphireDevil_F",
+   "position": [
+    0.32329,
+    0.24378,
+    -0.18257
+   ],
+   "rotation": [
+    -0.032857,
+    -0.130014,
+    -0.049905,
+    0.98971
+   ],
+   "scale": 1.0257,
+   "phase": 0.5003
+  },
+  {
+   "model": "Fish_SapphireDevil_F",
+   "position": [
+    -0.28169,
+    0.06385,
+    -0.45687
+   ],
+   "rotation": [
+    0.039696,
+    0.261978,
+    -0.011396,
+    0.96419
+   ],
+   "scale": 0.8377,
+   "phase": 0.6739
+  },
+  {
+   "model": "Fish_SapphireDevil_F",
+   "position": [
+    0.58706,
+    -0.02534,
+    -0.13199
+   ],
+   "rotation": [
+    0.119493,
+    -0.055259,
+    -0.075123,
+    0.988446
+   ],
+   "scale": 0.9333,
+   "phase": 0.7482
+  },
+  {
+   "model": "Fish_SapphireDevil_F",
+   "position": [
+    0.02971,
+    0.06122,
+    0.1554
+   ],
+   "rotation": [
+    -0.034184,
+    -0.046217,
+    -0.092787,
+    0.994025
+   ],
+   "scale": 1.0543,
+   "phase": 0.1992
+  },
+  {
+   "model": "Fish_SapphireDevil_M",
+   "position": [
+    0.08771,
+    0.282,
+    0.12974
+   ],
+   "rotation": [
+    0.160103,
+    -0.005787,
+    -0.054439,
+    0.985581
+   ],
+   "scale": 1.0421,
+   "phase": 0.4132
+  },
+  {
+   "model": "Fish_SapphireDevil_F",
+   "position": [
+    0.0104,
+    0.141,
+    -0.07431
+   ],
+   "rotation": [
+    -0.048775,
+    0.05086,
+    -0.002133,
+    0.997512
+   ],
+   "scale": 1.0374,
+   "phase": 0.3828
+  },
+  {
+   "model": "Fish_SapphireDevil_F",
+   "position": [
+    0.03127,
+    -0.31267,
+    0.0523
+   ],
+   "rotation": [
+    -0.107928,
+    0.003764,
+    -0.045937,
+    0.99309
+   ],
+   "scale": 1.1206,
+   "phase": 0.4796
+  },
+  {
+   "model": "Fish_SapphireDevil_F",
+   "position": [
+    -0.12549,
+    -0.30717,
+    0.08636
+   ],
+   "rotation": [
+    0.103248,
+    -0.118496,
+    0.070664,
+    0.985041
+   ],
+   "scale": 0.9924,
+   "phase": 0.7207
+  },
+  {
+   "model": "Fish_SapphireDevil_F",
+   "position": [
+    0.18846,
+    0.11474,
+    -0.03645
+   ],
+   "rotation": [
+    0.176134,
+    -0.082972,
+    -0.00138,
+    0.980862
+   ],
+   "scale": 0.8991,
+   "phase": 0.2348
+  },
+  {
+   "model": "Fish_SapphireDevil_F",
+   "position": [
+    -0.21819,
+    0.15234,
+    0.22351
+   ],
+   "rotation": [
+    0.045863,
+    0.099868,
+    0.111564,
+    0.987662
+   ],
+   "scale": 1.0115,
+   "phase": 0.2586
+  },
+  {
+   "model": "Fish_SapphireDevil_F",
+   "position": [
+    0.13715,
+    -0.08707,
+    -0.19437
+   ],
+   "rotation": [
+    0.113396,
+    -0.016051,
+    0.084935,
+    0.989783
+   ],
+   "scale": 1.0972,
+   "phase": 0.3134
+  },
+  {
+   "model": "Fish_SapphireDevil_F",
+   "position": [
+    -0.27725,
+    0.0612,
+    -0.14131
+   ],
+   "rotation": [
+    -0.012768,
+    0.126156,
+    0.024916,
+    0.991615
+   ],
+   "scale": 1.1406,
+   "phase": 0.3567
+  },
+  {
+   "model": "Fish_SapphireDevil_F",
+   "position": [
+    -0.2954,
+    0.17425,
+    -0.13267
+   ],
+   "rotation": [
+    -0.003205,
+    -0.008919,
+    0.055053,
+    0.998438
+   ],
+   "scale": 0.8358,
+   "phase": 0.2101
+  },
+  {
+   "model": "Fish_SapphireDevil_F",
+   "position": [
+    -0.28118,
+    0.19444,
+    -0.29966
+   ],
+   "rotation": [
+    -0.06828,
+    0.251524,
+    -0.043531,
+    0.964458
+   ],
+   "scale": 1.0429,
+   "phase": 0.6654
+  },
+  {
+   "model": "Fish_SapphireDevil_F",
+   "position": [
+    -0.38673,
+    -0.04145,
+    -0.33761
+   ],
+   "rotation": [
+    0.018245,
+    0.051126,
+    0.022269,
+    0.998277
+   ],
+   "scale": 0.9238,
+   "phase": 0.7724
+  },
+  {
+   "model": "Fish_SapphireDevil_M",
+   "position": [
+    0.29314,
+    -0.11394,
+    -0.43001
+   ],
+   "rotation": [
+    0.107037,
+    -0.06096,
+    -0.056549,
+    0.990772
+   ],
+   "scale": 1.0213,
+   "phase": 0.9613
+  },
+  {
+   "model": "Fish_SapphireDevil_F",
+   "position": [
+    -0.24604,
+    -0.0394,
+    0.36022
+   ],
+   "rotation": [
+    -0.045561,
+    0.128492,
+    0.060402,
+    0.98882
+   ],
+   "scale": 0.991,
+   "phase": 0.6785
+  },
+  {
+   "model": "Fish_SapphireDevil_M",
+   "position": [
+    0.22234,
+    -0.03129,
+    0.41569
+   ],
+   "rotation": [
+    0.034621,
+    -0.102899,
+    -0.022682,
+    0.99383
+   ],
+   "scale": 1.0177,
+   "phase": 0.1231
+  },
+  {
+   "model": "Fish_SapphireDevil_M",
+   "position": [
+    -0.46829,
+    0.19662,
+    -0.23912
+   ],
+   "rotation": [
+    0.092913,
+    -0.038009,
+    -0.011724,
+    0.994879
+   ],
+   "scale": 0.9796,
+   "phase": 0.4577
+  },
+  {
+   "model": "Fish_SapphireDevil_M",
+   "position": [
+    0.21007,
+    -0.09902,
+    0.33076
+   ],
+   "rotation": [
+    0.115988,
+    -0.148737,
+    -0.004633,
+    0.98204
+   ],
+   "scale": 0.9477,
+   "phase": 0.3592
+  },
+  {
+   "model": "Fish_SapphireDevil_F",
+   "position": [
+    -0.33866,
+    -0.05318,
+    -0.16594
+   ],
+   "rotation": [
+    0.011875,
+    -0.202058,
+    0.015187,
+    0.979184
+   ],
+   "scale": 1.1181,
+   "phase": 0.7689
+  },
+  {
+   "model": "Fish_SapphireDevil_M",
+   "position": [
+    -0.11874,
+    0.26919,
+    -0.09772
+   ],
+   "rotation": [
+    0.03469,
+    -0.041865,
+    -0.099949,
+    0.993506
+   ],
+   "scale": 0.9883,
+   "phase": 0.1121
+  }
+ ]
+}

@@ -64,18 +64,24 @@
 					"attributes":{
 						"POSITION":0,
 						"NORMAL":1,
-						"TEXCOORD_0":2
+						"TEXCOORD_0":2,
+						"TEXCOORD_1":3,
+						"TEXCOORD_2":4,
+						"TANGENT":5
 					},
-					"indices":3,
+					"indices":6,
 					"material":0
 				},
 				{
 					"attributes":{
-						"POSITION":4,
-						"NORMAL":5,
-						"TEXCOORD_0":6
+						"POSITION":7,
+						"NORMAL":8,
+						"TEXCOORD_0":9,
+						"TEXCOORD_1":10,
+						"TEXCOORD_2":11,
+						"TANGENT":12
 					},
-					"indices":7,
+					"indices":13,
 					"material":1
 				}
 			]
@@ -170,12 +176,30 @@
 		},
 		{
 			"bufferView":3,
+			"componentType":5126,
+			"count":11520,
+			"type":"VEC2"
+		},
+		{
+			"bufferView":4,
+			"componentType":5126,
+			"count":11520,
+			"type":"VEC2"
+		},
+		{
+			"bufferView":5,
+			"componentType":5126,
+			"count":11520,
+			"type":"VEC4"
+		},
+		{
+			"bufferView":6,
 			"componentType":5123,
 			"count":34560,
 			"type":"SCALAR"
 		},
 		{
-			"bufferView":4,
+			"bufferView":7,
 			"componentType":5126,
 			"count":2741,
 			"max":[
@@ -191,19 +215,37 @@
 			"type":"VEC3"
 		},
 		{
-			"bufferView":5,
+			"bufferView":8,
 			"componentType":5126,
 			"count":2741,
 			"type":"VEC3"
 		},
 		{
-			"bufferView":6,
+			"bufferView":9,
 			"componentType":5126,
 			"count":2741,
 			"type":"VEC2"
 		},
 		{
-			"bufferView":7,
+			"bufferView":10,
+			"componentType":5126,
+			"count":2741,
+			"type":"VEC2"
+		},
+		{
+			"bufferView":11,
+			"componentType":5126,
+			"count":2741,
+			"type":"VEC2"
+		},
+		{
+			"bufferView":12,
+			"componentType":5126,
+			"count":2741,
+			"type":"VEC4"
+		},
+		{
+			"bufferView":13,
 			"componentType":5123,
 			"count":7908,
 			"type":"SCALAR"
@@ -230,32 +272,68 @@
 		},
 		{
 			"buffer":0,
-			"byteLength":69120,
+			"byteLength":92160,
 			"byteOffset":368640,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":92160,
+			"byteOffset":460800,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":184320,
+			"byteOffset":552960,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":69120,
+			"byteOffset":737280,
 			"target":34963
 		},
 		{
 			"buffer":0,
 			"byteLength":32892,
-			"byteOffset":437760,
+			"byteOffset":806400,
 			"target":34962
 		},
 		{
 			"buffer":0,
 			"byteLength":32892,
-			"byteOffset":470652,
+			"byteOffset":839292,
 			"target":34962
 		},
 		{
 			"buffer":0,
 			"byteLength":21928,
-			"byteOffset":503544,
+			"byteOffset":872184,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":21928,
+			"byteOffset":894112,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":21928,
+			"byteOffset":916040,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":43856,
+			"byteOffset":937968,
 			"target":34962
 		},
 		{
 			"buffer":0,
 			"byteLength":15816,
-			"byteOffset":525472,
+			"byteOffset":981824,
 			"target":34963
 		}
 	],
@@ -267,7 +345,7 @@
 	],
 	"buffers":[
 		{
-			"byteLength":541288,
+			"byteLength":997640,
 			"uri":"Bougainvillea_A.bin"
 		}
 	]

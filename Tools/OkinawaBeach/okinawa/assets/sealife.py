@@ -7,7 +7,8 @@
                        肛門のオレンジの輪と青い斑点
   BlueStarfish       : アオヒトデ（Linckia laevigata, 差し渡し ~30 cm）。円柱状の 5 本の腕、鮮やかな青、細かい顆粒
   Anemone_Clownfish  : センジュイソギンチャク（Heteractis magnifica, ~50 cm）＋ 上に浮かぶカクレクマノミ 3 匹
-  SeaTurtle          : アオウミガメ（甲長 ~1.0 m）。前ヒレを振り上げた遊泳姿勢
+  SeaTurtle          : アオウミガメ（甲長 ~1.0 m）。前ヒレを振り上げた遊泳姿勢。
+                       骨 13 本（体・首・頭・前ヒレ 3 節 x2・後ろヒレ 2 節 x2）とループする泳ぎ "Swim"（3 秒）付き
 
 有機的な形は符号付き距離関数 (SDF) を格子で評価して Surface Nets でメッシュ化する（shisa と同じ仕組み）。
 細長い部品（棘・触手・ヒレ）はパラメトリックに組む。模様は頂点属性（部位ごとのローカル座標）から
@@ -1986,6 +1987,186 @@ def turtle_flippers():
     return out
 
 
+# ---------------------------------------------------------------------------
+# ウミガメの骨（リグ）と泳ぎのアニメーション
+# ---------------------------------------------------------------------------
+TU_FPS = 24
+TU_SWIM_FRAMES = 72          # 1 ストローク = 3 秒でループ
+# ヒレの部品名 → (骨の名前, 骨の境目の u)。u はヒレの付け根（甲羅の縁）0 → 先 1
+TU_CHAINS = {
+    "FlipFR": (("FlipperFR1", "FlipperFR2", "FlipperFR3"), (0.0, 0.34, 0.68)),
+    "FlipFL": (("FlipperFL1", "FlipperFL2", "FlipperFL3"), (0.0, 0.34, 0.68)),
+    "FlipRR": (("FlipperRR1", "FlipperRR2"), (0.0, 0.45)),
+    "FlipRL": (("FlipperRL1", "FlipperRL2"), (0.0, 0.45)),
+}
+TU_CLAW_U = 0.37             # 前ヒレの爪の位置（手首のあたり）
+TU_NECK = ((0.40, 0.0, -0.03), (0.545, 0.0, 0.012), (0.75, 0.0, 0.01))   # 首の付け根・頭の付け根・吻の先
+
+
+def _read_attr(obj, name):
+    a = obj.data.color_attributes[name]
+    arr = np.empty(len(obj.data.vertices) * 4, np.float32)
+    a.data.foreach_get("color", arr)
+    return arr.reshape(-1, 4)
+
+
+def _add_weights(obj, weights):
+    """weights: {骨の名前: 頂点ごとの重み}。結合すると同名の頂点グループがまとまる"""
+    for bname, w in weights.items():
+        idx = np.nonzero(w > 1e-4)[0]
+        if len(idx) == 0:
+            continue
+        vg = obj.vertex_groups.get(bname) or obj.vertex_groups.new(name=bname)
+        for i in idx:
+            vg.add([int(i)], float(w[i]), "REPLACE")
+
+
+def _chain_weights(u, edges, blend=0.06):
+    """付け根から先へ骨を切り替える重み。境目の前後 blend で隣の骨と 2 本で分け合う"""
+    S = [_smooth01(u, e - blend, e + blend) for e in edges]
+    ws = [S[k] - (S[k + 1] if k + 1 < len(S) else 0.0) for k in range(len(S))]
+    return 1.0 - S[0], ws
+
+
+def _turtle_weights(shell, head, flippers):
+    """部品ごとに骨の重みを付け、骨の位置（体の座標）を返す"""
+    _add_weights(shell, {"Root": np.ones(len(shell.data.vertices))})
+    V = _np_verts(head.data)
+    x = V[:, 0]
+    w_neck = _smooth01(x, 0.38, 0.46)
+    w_head = _smooth01(x, 0.52, 0.58)
+    _add_weights(head, {"Root": 1.0 - w_neck, "Neck": w_neck - w_head, "Head": w_head})
+    chains = {}
+    for o in flippers:
+        names, edges = TU_CHAINS[o.name.split(".")[0]]
+        V = _np_verts(o.data)
+        u = _read_attr(o, "SkinC")[:, 0].astype(np.float64)
+        part = _read_attr(o, "SkinB")[:, 0]
+        claw = part > 2.5
+        u[claw] = TU_CLAW_U
+        w_root, ws = _chain_weights(u, edges)
+        _add_weights(o, {"Root": w_root, **dict(zip(names, ws))})
+        # 骨の位置: 各断面の中心を u に沿って補間（爪は除く）
+        keep = ~claw
+        us = np.unique(np.round(u[keep], 5))
+        cl = np.array([V[keep & (np.abs(u - s) < 1e-4)].mean(0) for s in us])
+
+        def at(t, us=us, cl=cl):
+            return Vector([float(np.interp(t, us, cl[:, k])) for k in range(3)])
+
+        chains[names] = [at(e) for e in edges] + [at(1.0)]
+    return chains
+
+
+def _stroke(w):
+    """前ヒレの打ち下ろし量: 0 = 振り上げ（レストポーズ）→ 1 = 打ち下ろし。打ち下ろし 45%、戻し 55%"""
+    w = w % 1.0
+    return float(_smooth01(w, 0.0, 0.45)) if w < 0.45 else 1.0 - float(_smooth01(w, 0.45, 1.0))
+
+
+def _stroke_twist(w, e=1e-3):
+    """回内（前縁を下げる）量 -1..1。打ち下ろしの途中で最大、戻しでは逆向き"""
+    d = (_stroke(w + e) - _stroke(w - e)) / (2 * e)
+    return max(-1.0, min(1.0, d / 3.3))
+
+
+def _swim_pose(w):
+    """体の座標での各骨の回転（親に対する相対、レストの向きの軸）と Root の移動。w = 0..1 のストローク位相"""
+    rad = math.radians
+    tau = 2 * math.pi
+    sn = math.sin
+    rot = {}
+    # 前ヒレ: 翼のように打ち下ろして後ろへ掃き、回内してから戻る。先の節ほど遅れてしなる
+    s0, s1, s2 = _stroke(w), _stroke(w - 0.07), _stroke(w - 0.13)
+    front = [dict(dep=rad(48) * s0, sweep=rad(28) * _stroke(w - 0.06), twist=rad(16) * _stroke_twist(w)),
+             dict(dep=rad(48) * 0.7 * (s1 - s0), sweep=0.0, twist=rad(10) * _stroke_twist(w - 0.07)),
+             dict(dep=rad(48) * 0.6 * (s2 - s1), sweep=0.0, twist=rad(6) * _stroke_twist(w - 0.13))]
+    # 後ろヒレ: かじ取りのように小さく漕ぐ
+    r0 = sn(tau * (w + 0.1))
+    r1 = sn(tau * (w + 0.02))
+    rear = [dict(dep=rad(9) * r0, sweep=rad(5) * sn(tau * (w - 0.15)), twist=rad(6) * sn(tau * w)),
+            dict(dep=rad(7) * (r1 - r0), sweep=0.0, twist=0.0)]
+    for side in ("R", "L"):
+        for k in range(3):
+            rot[f"FlipperF{side}{k + 1}"] = front[k]
+        for k in range(2):
+            rot[f"FlipperR{side}{k + 1}"] = rear[k]
+    # 首・頭: 打ち下ろしに合わせてわずかにうなずく
+    rot["Neck"] = dict(pitch=rad(3.5) * sn(tau * (w - 0.3)), yaw=rad(1.5) * sn(tau * w))
+    rot["Head"] = dict(pitch=rad(2.5) * sn(tau * (w - 0.42)), yaw=0.0)
+    # 体: 打ち下ろしで持ち上がり、少し前後に揺れる
+    rot["Root"] = dict(pitch=rad(2.2) * sn(tau * (w - 0.05)), yaw=0.0)
+    move = Vector((0.008 * sn(tau * (w - 0.3)), 0.0, 0.012 * sn(tau * (w - 0.15))))
+    return rot, move
+
+
+def _turtle_rig(chains, M):
+    """アーマチュア（骨の位置はメッシュと同じ最終の座標）と泳ぎのアクション"""
+    M3 = M.to_3x3()
+    arm_data = bpy.data.armatures.new("TurtleRig")
+    rig = bpy.data.objects.new("TurtleRig", arm_data)
+    C.link_object(rig)
+    up = M3 @ Vector((0, 0, 1))
+    C._select_only([rig], rig)
+    bpy.ops.object.mode_set(mode="EDIT")
+    eb = arm_data.edit_bones
+
+    def bone(name, head, tail, parent=None):
+        b = eb.new(name)
+        b.head, b.tail = M @ Vector(head), M @ Vector(tail)
+        b.align_roll(up)
+        if parent is not None:
+            b.parent = eb[parent]
+            b.use_connect = (b.head - eb[parent].tail).length < 1e-5
+        return b
+
+    bone("Root", (0.0, 0.0, 0.0), (0.25, 0.0, 0.0))
+    bone("Neck", TU_NECK[0], TU_NECK[1], "Root")
+    bone("Head", TU_NECK[1], TU_NECK[2], "Neck")
+    for names, pts in chains.items():
+        parent = "Root"
+        for k, nm in enumerate(names):
+            bone(nm, pts[k], pts[k + 1], parent)
+            parent = nm
+    bpy.ops.object.mode_set(mode="OBJECT")
+
+    # 軸は体の座標で決めてから最終の座標へ回す
+    X, Y, Z = (M3 @ Vector(a) for a in ((1, 0, 0), (0, 1, 0), (0, 0, 1)))
+    rests = {b.name: b.matrix_local.to_3x3() for b in arm_data.bones}
+    prev = {}
+    for pb in rig.pose.bones:
+        pb.rotation_mode = "QUATERNION"
+    for f in range(TU_SWIM_FRAMES + 1):
+        rot, move = _swim_pose(f / TU_SWIM_FRAMES)
+        for pb in rig.pose.bones:
+            R0 = rests[pb.name]
+            r = rot[pb.name]
+            if "dep" in r:
+                d = (R0 @ Vector((0, 1, 0))).normalized()           # 骨の向き（付け根 → 先）
+                side = 1.0 if d.dot(Y) < 0 else -1.0                 # 右 +1 / 左 -1
+                h = Z.cross(d).normalized()                          # 正で先が下がる軸
+                R = (Matrix.Rotation(-side * r["sweep"], 3, Z) @ Matrix.Rotation(r["dep"], 3, h) @
+                     Matrix.Rotation(-side * r["twist"], 3, d))
+            else:
+                R = Matrix.Rotation(r["yaw"], 3, Z) @ Matrix.Rotation(r["pitch"], 3, Y)
+            q = (R0.transposed() @ R @ R0).to_quaternion()
+            if pb.name in prev:
+                q.make_compatible(prev[pb.name])
+            prev[pb.name] = q
+            pb.rotation_quaternion = q
+            pb.keyframe_insert("rotation_quaternion", frame=f)
+            if pb.name == "Root":
+                pb.location = R0.transposed() @ (M3 @ move)
+                pb.keyframe_insert("location", frame=f)
+    act = rig.animation_data.action
+    act.name = "Swim"
+    scene = bpy.context.scene
+    scene.render.fps = TU_FPS
+    scene.frame_start, scene.frame_end = 0, TU_SWIM_FRAMES
+    scene.frame_set(0)
+    return rig
+
+
 def sea_turtle():
     shell = turtle_shell()
     head = turtle_head()
@@ -1994,6 +2175,8 @@ def sea_turtle():
     smat = turtle_skin_material()
     C.assign(head, smat)
     fl = turtle_flippers()
+    # 骨の重み（頂点グループ）は結合前の部品ごとに付ける（結合で同名のグループがまとまる）
+    chains = _turtle_weights(shell, head, fl)
     skin = _join_repack([head] + fl, "TurtleSkin")
     C.set_smooth(skin, True)
     C.assign(skin, smat)
@@ -2003,7 +2186,7 @@ def sea_turtle():
          Matrix.Translation((0.0, 0.0, -TU_ZC)))
     for o in parts:
         o.matrix_world = M @ o.matrix_world
-    return parts
+    return parts + [_turtle_rig(chains, M)]
 
 
 # ---------------------------------------------------------------------------
@@ -2028,6 +2211,8 @@ def _preview_extra(objs):
         if key is None:
             continue
         (x, y, z), rz = LAYOUT[key]
+        if o.parent is not None and o.parent.type == "ARMATURE":
+            o = o.parent  # ウミガメはアーマチュアごと動かす
         o.parent = None
         o.location = (x, y, z)
         o.rotation_euler.z += math.radians(rz)

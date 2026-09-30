@@ -15,13 +15,13 @@
 	"nodes":[
 		{
 			"mesh":0,
-			"name":"FishSchool_Blue"
+			"name":"Fish_BlueGreenChromis_B"
 		}
 	],
 	"materials":[
 		{
 			"alphaMode":"MASK",
-			"name":"FishSchool_Blue_SapphireDevil",
+			"name":"Fish_BlueGreenChromis_B_BlueGreenChromis",
 			"normalTexture":{
 				"index":0
 			},
@@ -40,16 +40,18 @@
 	],
 	"meshes":[
 		{
-			"name":"FishSchool_Blue",
+			"name":"Fish_BlueGreenChromis_B",
 			"primitives":[
 				{
 					"attributes":{
 						"POSITION":0,
 						"NORMAL":1,
 						"TEXCOORD_0":2,
-						"TANGENT":3
+						"TEXCOORD_1":3,
+						"TEXCOORD_2":4,
+						"TANGENT":5
 					},
-					"indices":4,
+					"indices":6,
 					"material":0
 				}
 			]
@@ -72,91 +74,115 @@
 	"images":[
 		{
 			"mimeType":"image/png",
-			"name":"FishSchool_Blue_SapphireDevil_Normal",
-			"uri":"FishSchool_Blue_SapphireDevil_Normal.png"
+			"name":"Fish_BlueGreenChromis_B_BlueGreenChromis_Normal",
+			"uri":"Fish_BlueGreenChromis_B_BlueGreenChromis_Normal.png"
 		},
 		{
 			"mimeType":"image/png",
-			"name":"FishSchool_Blue_SapphireDevil_ORM",
-			"uri":"FishSchool_Blue_SapphireDevil_ORM.png"
+			"name":"Fish_BlueGreenChromis_B_BlueGreenChromis_ORM",
+			"uri":"Fish_BlueGreenChromis_B_BlueGreenChromis_ORM.png"
 		},
 		{
 			"mimeType":"image/png",
-			"name":"FishSchool_Blue_SapphireDevil_BaseColor",
-			"uri":"FishSchool_Blue_SapphireDevil_BaseColor.png"
+			"name":"Fish_BlueGreenChromis_B_BlueGreenChromis_BaseColor",
+			"uri":"Fish_BlueGreenChromis_B_BlueGreenChromis_BaseColor.png"
 		}
 	],
 	"accessors":[
 		{
 			"bufferView":0,
 			"componentType":5126,
-			"count":6630,
+			"count":195,
 			"max":[
-				0.6145499348640442,
-				0.2996639609336853,
-				0.4698614180088043
+				0.03500000014901161,
+				0.018675127997994423,
+				0.012011261656880379
 			],
 			"min":[
-				-0.4988129436969757,
-				-0.3297855257987976,
-				-0.46760642528533936
+				-0.0334782637655735,
+				-0.01811191998422146,
+				-0.012011261656880379
 			],
 			"type":"VEC3"
 		},
 		{
 			"bufferView":1,
 			"componentType":5126,
-			"count":6630,
+			"count":195,
 			"type":"VEC3"
 		},
 		{
 			"bufferView":2,
 			"componentType":5126,
-			"count":6630,
+			"count":195,
 			"type":"VEC2"
 		},
 		{
 			"bufferView":3,
 			"componentType":5126,
-			"count":6630,
-			"type":"VEC4"
+			"count":195,
+			"type":"VEC2"
 		},
 		{
 			"bufferView":4,
+			"componentType":5126,
+			"count":195,
+			"type":"VEC2"
+		},
+		{
+			"bufferView":5,
+			"componentType":5126,
+			"count":195,
+			"type":"VEC4"
+		},
+		{
+			"bufferView":6,
 			"componentType":5123,
-			"count":22848,
+			"count":672,
 			"type":"SCALAR"
 		}
 	],
 	"bufferViews":[
 		{
 			"buffer":0,
-			"byteLength":79560,
+			"byteLength":2340,
 			"byteOffset":0,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":79560,
-			"byteOffset":79560,
+			"byteLength":2340,
+			"byteOffset":2340,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":53040,
-			"byteOffset":159120,
+			"byteLength":1560,
+			"byteOffset":4680,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":106080,
-			"byteOffset":212160,
+			"byteLength":1560,
+			"byteOffset":6240,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":45696,
-			"byteOffset":318240,
+			"byteLength":1560,
+			"byteOffset":7800,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":3120,
+			"byteOffset":9360,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":1344,
+			"byteOffset":12480,
 			"target":34963
 		}
 	],
@@ -168,8 +194,8 @@
 	],
 	"buffers":[
 		{
-			"byteLength":363936,
-			"uri":"FishSchool_Blue.bin"
+			"byteLength":13824,
+			"uri":"Fish_BlueGreenChromis_B.bin"
 		}
 	]
 }

@@ -19,6 +19,8 @@ import numpy as np
 from mathutils import Vector
 from PIL import Image
 
+from . import anim
+
 TOOL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REPO_ROOT = os.path.dirname(os.path.dirname(TOOL_DIR))
 MODELS_DIR = os.path.join(REPO_ROOT, "Projects", "Sandbox", "Application", "Assets", "Models", "Okinawa")
@@ -684,7 +686,12 @@ def _ensure_world():
 
 
 def bake_and_export(name, objs, out_root=MODELS_DIR, keep_other_visible=False):
-    """objs を 1 メッシュにまとめ、マテリアルごとにベイクして glTF を書き出す"""
+    """objs を 1 メッシュにまとめ、マテリアルごとにベイクして glTF を書き出す
+
+    objs に ARMATURE を 1 つ含めると、メッシュをその子にしてスキン（骨と同名の頂点グループ）と
+    アーマチュアのアクションも書き出す（ウミガメ）"""
+    rig = next((o for o in objs if o.type == "ARMATURE"), None)
+    objs = [o for o in objs if o.type == "MESH"]
     _ensure_world()
     out_dir = os.path.join(out_root, name)
     os.makedirs(out_dir, exist_ok=True)
@@ -703,6 +710,10 @@ def bake_and_export(name, objs, out_root=MODELS_DIR, keep_other_visible=False):
     for o in objs:
         if "Proc" not in o.data.uv_layers:
             o.data.uv_layers.new(name="Proc")
+    # 揺れデータ（anim.py）は全パーツに無いと、結合で 0 が入って付け根から千切れる
+    with_anim = [o.name for o in objs if anim.has(o)]
+    if with_anim and len(with_anim) != len(objs):
+        print(f"[warn] {name}: Anim 属性の無いパーツ: {[o.name for o in objs if not anim.has(o)]}")
     obj = join([o for o in objs], name)
     # 5 角以上の面（チューブのキャップなど）があると glTF 書き出しでタンジェントの計算に失敗するので、
     # その面だけ三角形に割る（エンジンは読み込み時に計算し直すが、他のツールでも使えるように）
@@ -746,22 +757,35 @@ def bake_and_export(name, objs, out_root=MODELS_DIR, keep_other_visible=False):
         for lname in [l.name for l in me.uv_layers if l.name != bake_uv and not l.name.startswith(".")]:
             me.uv_layers.remove(me.uv_layers[lname])
         me.uv_layers[bake_uv].name = "UVMap"
-        for aname in [a.name for a in me.color_attributes]:
+        for aname in [a.name for a in me.color_attributes if a.name != anim.ATTR]:
             me.color_attributes.remove(me.color_attributes[aname])
         finals.append(p)
 
     obj = join(finals, name)
+    # 揺れデータを TEXCOORD_1 / TEXCOORD_2 用の UV レイヤーへ
+    anim.to_uv_layers(obj)
     for o in hidden:
         o.hide_render = False
 
+    sel = [obj]
+    if rig is not None:
+        # メッシュもアーマチュアも変形なし（骨はメッシュと同じ座標で作ってある）
+        obj.parent = rig
+        mod = obj.modifiers.new("Armature", "ARMATURE")
+        mod.object = rig
+        sel.append(rig)
     path = os.path.join(out_dir, f"{name}.gltf")
-    _select_only([obj], obj)
+    _select_only(sel, obj)
+    # スキンの書き出しでは Armature モディファイアは適用されない（レストポーズのメッシュ + 骨の重み）
     bpy.ops.export_scene.gltf(
         filepath=path, export_format="GLTF_SEPARATE", use_selection=True, export_apply=True,
         export_yup=True, export_texcoords=True, export_normals=True, export_tangents=True,
         export_materials="EXPORT", export_image_format="AUTO", export_texture_dir="",
-        export_animations=False, export_skins=False, export_morph=False, export_extras=False,
-        export_cameras=False, export_lights=False)
+        export_animations=rig is not None, export_skins=rig is not None, export_morph=False,
+        export_extras=False, export_cameras=False, export_lights=False,
+        export_animation_mode="ACTIONS", export_force_sampling=True, export_def_bones=False,
+        export_leaf_bone=False, export_rest_position_armature=True, export_anim_slide_to_zero=False,
+        export_influence_nb=4)
     tris = sum(len(p.vertices) - 2 for p in obj.data.polygons)
     print(f"[export] {name}: {tris} tris -> {path}")
     return obj, path, tris
@@ -924,6 +948,7 @@ def slim_scene(keep_objs):
     .blend が 100 MB を超えることがあるため
     """
     keep = set(keep_objs)
+    keep |= {o.parent for o in keep if o.parent}  # スキンのアーマチュア
     for o in list(bpy.data.objects):
         if o not in keep:
             bpy.data.objects.remove(o, do_unlink=True)

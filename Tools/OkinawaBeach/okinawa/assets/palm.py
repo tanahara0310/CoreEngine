@@ -3,12 +3,16 @@
 幹: 曲がった円柱に葉痕のリング模様
 葉: 羽状葉をアルファ付きアトラス（左半分=緑葉 / 右半分=枯れ葉）で表現し、V 字に折れたカードに貼る
 実: 樹冠の下に房状
+揺れ: 幹は高さの 2 乗で曲がり、葉は付け根（樹冠）から先へしなる。羽片は葉軸から離れるほど震える
+      （頂点データの意味は okinawa/anim.py）
 """
 import math
 import random
 
+import numpy as np
 from mathutils import Vector
 
+from .. import anim
 from .. import common as C
 from .. import geo
 from ..common import pbr_material, srgb
@@ -132,8 +136,8 @@ def coconut_material():
     return pbr_material("Coconut", fn, res=512, ao_distance=0.3)
 
 
-def _frond(name, top, azim, elev, length, droop, width, dry=False, twist=0.0, rnd=None):
-    """V 字に折れた葉カード + 葉軸チューブ"""
+def _frond(name, top, azim, elev, length, droop, width, dry=False, twist=0.0, rnd=None, wind=None):
+    """V 字に折れた葉カード + 葉軸チューブ。wind = dict(G, A, b, r) で揺れデータを書く"""
     rnd = rnd or random.Random(0)
     d_h = Vector((math.cos(azim), math.sin(azim), 0.0))
     up = Vector((0, 0, 1))
@@ -180,6 +184,14 @@ def _frond(name, top, azim, elev, length, droop, width, dry=False, twist=0.0, rn
     total = sum((pts[i] - pts[i - 1]).length for i in range(1, n))
     for d in layer.data:
         d.uv = (u0 + 0.25 + (d.uv[0] - 0.5) * 0.006, min(0.98, d.uv[1] / total))
+    if wind:
+        # 羽片: 葉軸から離れるほど震え（羽片の無い付け根は震えない）、しなりは付け根からの 2 乗
+        y = np.repeat(np.arange(n) / (n - 1), len(xs))
+        lat = np.tile([abs(x - 0.5) * 2.0 for x in xs], n)
+        t = np.clip((y - 0.05) / 0.3, 0.0, 1.0)
+        anim.write(card, wind["r"] * lat * t * t * (3 - 2 * t), wind["G"], wind["b"] * y * y, wind["A"])
+        y = anim.nearest_param(tube, pts)
+        anim.write(tube, 0.0, wind["G"], wind["b"] * y * y, wind["A"])
     return [card, tube]
 
 
@@ -211,6 +223,15 @@ def palm(prefix, height, lean, n_fronds, n_dry, n_nuts, seed, bend=0.0):
                            ring_fn=ring_fn)
     C.set_smooth(trunk, True)
     C.assign(trunk, trunk_material(total))
+    # 揺れ: 樹冠（幹の先端）で main_amp。葉と実は付け根の高さの値をそのまま持つ
+    crown_z = pts[-1].z
+    main_amp = 0.035 * height
+
+    def bend_at(z):
+        return float(anim.main_bend(z, crown_z, main_amp))
+
+    anim.write(trunk, 0.0, anim.hash01(prefix, "trunk"), 0.0,
+               anim.main_bend(anim.world_co(trunk)[:, 2], crown_z, main_amp))
 
     top = pts[-1] + Vector((0, 0, 0.05))
     frond_mat = frond_material()
@@ -222,15 +243,18 @@ def palm(prefix, height, lean, n_fronds, n_dry, n_nuts, seed, bend=0.0):
         elev = math.radians(70 - 95 * age + rnd.uniform(-8, 8))
         L = FROND_L * rnd.uniform(0.85, 1.05) * (height / 8.0) ** 0.25
         droop = 0.6 + 2.2 * age
+        wind = dict(G=anim.hash01(prefix, "frond", k), A=bend_at(top.z), b=0.085 * L, r=0.035)
         for o in _frond(f"{prefix}_frond{k}", top, az, elev, L, droop, FROND_W * rnd.uniform(0.9, 1.05),
-                        twist=rnd.uniform(-0.4, 0.4), rnd=rnd):
+                        twist=rnd.uniform(-0.4, 0.4), rnd=rnd, wind=wind):
             C.assign(o, frond_mat)
             parts.append(o)
     for k in range(n_dry):
         az = rnd.uniform(0, math.tau)
         L = FROND_L * 0.8
+        # 枯れ葉は垂れ下がって振り子のように小さく揺れる
+        wind = dict(G=anim.hash01(prefix, "dry", k), A=bend_at(top.z - 0.3), b=0.045 * L, r=0.012)
         for o in _frond(f"{prefix}_dry{k}", top - Vector((0, 0, 0.3)), az, math.radians(-78), L, 0.2,
-                        FROND_W * 0.6, dry=True, twist=rnd.uniform(-0.6, 0.6), rnd=rnd):
+                        FROND_W * 0.6, dry=True, twist=rnd.uniform(-0.6, 0.6), rnd=rnd, wind=wind):
             C.assign(o, frond_mat)
             parts.append(o)
     nut_mat = coconut_material()
@@ -250,6 +274,7 @@ def palm(prefix, height, lean, n_fronds, n_dry, n_nuts, seed, bend=0.0):
         nut.rotation_euler = (rnd.uniform(-0.5, 0.5), rnd.uniform(-0.5, 0.5), rnd.uniform(0, 6))
         C.set_smooth(nut, True)
         C.assign(nut, nut_mat)
+        anim.write(nut, 0.0, anim.hash01(prefix, "nut", k), 0.0, bend_at(c.z))
         parts.append(nut)
     return parts
 

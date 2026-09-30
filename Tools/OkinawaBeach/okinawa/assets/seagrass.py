@@ -12,6 +12,7 @@ Seagrass_Patch_B: 約 1.5 m の小さな株立ち
 配置: 密度場（ノイズで崩した楕円 + むら + 食み跡）に沿って地下茎をランダムウォークさせ、
       株を置く。縁ほど疎らで葉も短く、砂地へ溶け込む
 原点: パッチ中心の砂面（z=0）。葉鞘の付け根は砂の中（z=-0.025）
+揺れ: 葉は付け根から先へしなる（振幅は葉の長さに比例）。株全体の曲げ A は 0（okinawa/anim.py）
 """
 import math
 import os
@@ -22,6 +23,7 @@ from mathutils import Matrix, Vector
 from mathutils import noise as mnoise
 from scipy import ndimage
 
+from .. import anim
 from .. import common as C
 from ..common import srgb
 from .adan import MeshAcc
@@ -270,12 +272,13 @@ def _sss(e0, e1, x):
     return t * t * (3 - 2 * t)
 
 
-def _leaf(acc, base, t_dir, n_dir, length, width, col, bend, twist, falc, segs, v0=0.0):
+def _leaf(acc, base, t_dir, n_dir, length, width, col, bend, twist, falc, segs, v0=0.0, G=None):
     """帯状の葉 1 枚を acc に追加（片面。両面化はマテリアル側）
 
     t_dir: 付け根の向き, n_dir: 葉の面の法線（bend > 0 でこちらへなびく）
     bend: 面外のなびきの全角, falc: 面内の鎌形の反りの全角, twist: ねじれの全角（ラジアン）
     v0: 付け根の V（葉鞘の上から出る葉は淡色部の途中から始める）
+    G: 揺れの位相（None なら揺れデータを書かない）
     """
     T = t_dir.normalized()
     N = (n_dir - T * n_dir.dot(T)).normalized()
@@ -313,6 +316,10 @@ def _leaf(acc, base, t_dir, n_dir, length, width, col, bend, twist, falc, segs, 
             Q.z = max(Q.z, 0.01)
         P = Q
         row(P, W, ds * (i + 1))
+    if G is not None:
+        # 付け根から先へ s^1.5 でしなる。長い葉ほど大きく揺れる
+        acc.set_anim(len(acc.verts), [(0.03 * length * (i / segs), G, 0.3 * length * (i / segs) ** 1.5, 0.0)
+                                      for i in range(segs + 1) for _ in range(2)])
     acc.grid(rows, uvs)
 
 
@@ -364,7 +371,7 @@ def _shoot_tris(sp):
     return 2 + 4 * sum(lf["segs"] for lf in sp["leaves"])
 
 
-def _build_shoot(acc, rnd, sp):
+def _build_shoot(acc, rnd, sp, key=None):
     x, y = sp["p"]
     Fh = Vector((math.cos(sp["az"]), math.sin(sp["az"]), 0.0))  # 扇の広がる向き（葉の面内・水平）
     Nf = Vector((-Fh.y, Fh.x, 0.0))                               # 葉の面の法線
@@ -377,6 +384,9 @@ def _build_shoot(acc, rnd, sp):
     hw = sp["wmax"] / FILL * 0.55
     col0 = sp["leaves"][0]["col"]
     u0, u1 = (col0 + 0.004) / N_COL, (col0 + 0.996) / N_COL
+    G0 = anim.hash01(key) if key is not None else None
+    if key is not None:
+        acc.set_anim(len(acc.verts), [(0.0, G0, 0.0, 0.0)] * 3)  # 葉鞘は動かない
     acc.add([base, top + W * hw, top - W * hw], [(0, 1, 2)], [[((u0 + u1) / 2, 0.0), (u1, 0.07), (u0, 0.07)]])
     # 面外のなびきは流れの向きへ（2 割は逆向き＝渦や揺り戻し）
     sgn = 1.0 if Nf.dot(CURRENT) >= 0 else -1.0
@@ -389,8 +399,9 @@ def _build_shoot(acc, rnd, sp):
         # 重なった葉の面がちらつかないよう、面の向きを少しずつ変えて厚み方向にずらす
         n_dir = tilt @ (Matrix.Rotation(rnd.uniform(-0.14, 0.14), 3, UP) @ Nf)
         start = top - axis * 0.006 + W * (lf["pos"] * hw * 0.45) + tilt @ Nf * ((k - (n - 1) / 2) * 0.0012)
+        # 同じ株の葉は少しずつ位相をずらす
         _leaf(acc, start, t_dir, n_dir, lf["L"], lf["w"], lf["col"], sgn * lf["bend"], lf["twist"], lf["falc"],
-              lf["segs"], v0=0.08)
+              lf["segs"], v0=0.08, G=None if G0 is None else (G0 + 0.07 * k) % 1.0)
 
 
 def _dist_polyline(x, y, pts):
@@ -508,8 +519,8 @@ def patch(name, seed, density, bounds, budget):
         idle = 0 if added else idle + 1
     acc = MeshAcc()
     n_leaves = 0
-    for sp in specs:
-        _build_shoot(acc, rnd, sp)
+    for i, sp in enumerate(specs):
+        _build_shoot(acc, rnd, sp, key=(name, i))
         n_leaves += len(sp["leaves"])
     obj = acc.build(name)
     C.set_smooth(obj, True)
