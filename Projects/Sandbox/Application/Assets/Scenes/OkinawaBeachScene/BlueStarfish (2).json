@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "741b622bbe75c30b"
+                },
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    0.9,
+                    0.9,
+                    0.9
+                ],
+                "translate": [
+                    21.0,
+                    -3.0016785,
+                    -34.5
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "e2ec4f89-4640-565d-aa3f-71160259c4d6",
+                    "path": "Application/Assets/Models/Okinawa/BlueStarfish/BlueStarfish.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "bedf8a1b43bb079a",
+    "name": "BlueStarfish (2)",
+    "order": 114
+}

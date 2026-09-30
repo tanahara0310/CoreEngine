@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "12f98c8539acc743"
+                },
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    22.0,
+                    1.7133515,
+                    21.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "0a51ff5f-c25e-56bb-a28f-14e81876b77c",
+                    "path": "Application/Assets/Models/Okinawa/Ishigaki_Corner/Ishigaki_Corner.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "9a0e18f18adc0bda",
+    "name": "Ishigaki_Corner",
+    "order": 71
+}

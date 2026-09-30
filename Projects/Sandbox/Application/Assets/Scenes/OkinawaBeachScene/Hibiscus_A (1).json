@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "ba1087ebe62f770d"
+                },
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    0.9,
+                    0.9,
+                    0.9
+                ],
+                "translate": [
+                    19.5,
+                    2.012622,
+                    19.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "f3755dfc-f674-507a-b26a-f276185b0dc2",
+                    "path": "Application/Assets/Models/Okinawa/Hibiscus_A/Hibiscus_A.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "0a2608a3f5bd2ac7",
+    "name": "Hibiscus_A (1)",
+    "order": 65
+}

@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "cd1ba6a7e39c7ea5"
+                },
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    -13.5,
+                    0.14761658,
+                    -2.2
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "36bc52a2-66e1-5b78-95ac-a9c400435b48",
+                    "path": "Application/Assets/Models/Okinawa/BeachRock_C/BeachRock_C.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "75fef36af3cdc5fb",
+    "name": "BeachRock_C",
+    "order": 51
+}

@@ -9,6 +9,7 @@
 |---|---|
 | glTF モデル（.gltf + .bin + PNG） | `Projects/Sandbox/Application/Assets/Models/Okinawa/<Variant>/` |
 | 魚の群れの配置（JSON） | `Projects/Sandbox/Application/Assets/Models/Okinawa/FishSchools/` |
+| エンジンのシーン（確認用シーンと同じ配置） | `Projects/Sandbox/Application/Assets/Scenes/OkinawaBeachScene/` |
 | アニメーションのデモ（MP4 / GIF） | `Tools/OkinawaBeach/Previews/anim_*.mp4`, `anim_*.gif` |
 | Blender ファイル | `Tools/OkinawaBeach/Blend/<module>.blend` |
 | プレビュー画像 | `Tools/OkinawaBeach/Previews/<module>.jpg`, `<module>_textures.jpg` |
@@ -255,6 +256,28 @@ Blender の `(x, y, z)` は `(x, z, y)`、回転は Assimp の変換と同じ（
 
 ## エンジン（CoreEngine）での使い方
 
+### シーン（OkinawaBeachScene）
+
+Sandbox のエディタで「シーンを開く」→ `OkinawaBeachScene` を選ぶと、確認用シーン（`Blend/OkinawaBeachScene.blend`）と
+同じ配置で全アセットが並ぶ。
+
+| オブジェクト | 中身 |
+|---|---|
+| `Sun` | 太陽。向きは確認用シーンの太陽と同じ（高さ 52°）。明るさは WaterTestScene と同じ |
+| `MainCamera` | ゲームの視点。確認用カメラ `main`（全景）と同じ位置・向き・縦の視野角 |
+| `WaterPlane` | FFT の海（WaterTestScene と同じ設定、4 km 四方）。平均水面の高さ 0 に置く |
+| `Terrain` / `Rocks` / `Vegetation` / `Village` / `BeachProps` / `Pier` / `Reef` | 種類ごとのグループ（空のオブジェクト）。下に 1 つずつのモデル（MeshRenderer） |
+| `SeaLife` | 魚の群れ 5 つ（魚の群れ コンポーネント）と、ウミガメ（Animator で `Swim` を流す） |
+
+見た目の設定（`_environment.json`）と `_scene.json` は WaterTestScene と同じ。
+作り直すときは `python3 Tools/OkinawaBeach/export_engine_scene.py` を実行する（`export_engine_scene.py` の説明を参照）。
+- 置く物は `.blend` のワールド行列をそのまま使い、`assemble.py` の配置表から求めた位置・大きさ、魚は行列まで突き合わせてから書く。
+  書いた値をエンジンと同じ式で組み直し、Blender の配置と一致することも確かめる。
+- シーンは GUID とパスでアセットを指すので、`Models/Okinawa` のアセットに `.meta` が無ければ作る
+  （GUID はパスから決まるので、作り直しても同じ値）。
+- 書き出し先のオブジェクトの JSON は作り直す（エディタで動かした内容は上書きされる）。
+- ウミガメは骨を入れた後に `.blend` を組み直していないので `.blend` に無く、配置表の位置に置く。
+
 ### 置くだけで動く（glTF のマテリアルの extras）
 
 揺れ・泳ぎの値を持つモデルは、glTF のマテリアルに頂点アニメーションの種類と速さを書いてある
@@ -365,3 +388,5 @@ turtle->AddComponent<AnimatorComponent>("SeaTurtle.gltf", "Swim");
 確認用の海は Cycles の体積吸収で、浅瀬はターコイズ、深場は紺碧になる。コースティクスはエンジン側の表現なので、ここでは影のレイだけ水面を素通しにしている。
 魚の群れは `SCHOOLS`（配置 JSON の名前・群れの中心・向き）から 1 匹ずつのモデルを並べ、泳ぎのジオメトリノードで個体ごとに体を曲げる。
 `python3 Tools/OkinawaBeach/assemble.py none` のように存在しないカメラ名を渡すと、描かずに `.blend` だけ保存する。
+配置表（`LAYOUT`）の回転（3 つ目の値）は今の確認用シーンでは効いていない（glTF から読んだ物は回転をクォータニオンで持つので、
+`place()` が入れる `rotation_euler` が使われない）。そのため置いた物はすべて回転 0 で、エンジンのシーンも同じにしている。

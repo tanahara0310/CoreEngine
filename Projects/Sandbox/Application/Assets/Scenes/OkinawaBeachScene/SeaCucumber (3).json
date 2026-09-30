@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "741b622bbe75c30b"
+                },
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.1,
+                    1.1,
+                    1.1
+                ],
+                "translate": [
+                    -10.0,
+                    -2.9567032,
+                    -40.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "8e795280-fe1d-5c3d-826c-cae49c78b9ab",
+                    "path": "Application/Assets/Models/Okinawa/SeaCucumber/SeaCucumber.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "372c9265b8c69d38",
+    "name": "SeaCucumber (3)",
+    "order": 110
+}

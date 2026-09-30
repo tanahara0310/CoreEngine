@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "741b622bbe75c30b"
+                },
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    0.9,
+                    0.9,
+                    0.9
+                ],
+                "translate": [
+                    28.0,
+                    -2.9656067,
+                    -25.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "31c9985f-334b-5b59-86ae-a685ee9c6a57",
+                    "path": "Application/Assets/Models/Okinawa/Seagrass_Patch_A/Seagrass_Patch_A.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "d9897dcc01bac08e",
+    "name": "Seagrass_Patch_A (2)",
+    "order": 103
+}

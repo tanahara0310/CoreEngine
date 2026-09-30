@@ -1,0 +1,57 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    20.0,
+                    0.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "areaHeight": 2.0,
+                "areaWidth": 2.0,
+                "atmosphereIntensity": 20.0,
+                "color": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "direction": [
+                    0.2105687,
+                    -0.7880107,
+                    0.5785326
+                ],
+                "innerConeAngleDeg": 30.0,
+                "intensity": 100000.0,
+                "isAtmosphereMoon": false,
+                "isAtmosphereSun": true,
+                "outerConeAngleDeg": 45.0,
+                "range": 10.0,
+                "type": 0
+            },
+            "type": "Light"
+        }
+    ],
+    "id": "987ac119fac8d621",
+    "name": "Sun",
+    "order": 0
+}

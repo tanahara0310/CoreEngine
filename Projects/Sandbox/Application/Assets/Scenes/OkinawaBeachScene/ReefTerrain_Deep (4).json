@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "6a63c902245f5e0e"
+                },
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    80.0,
+                    0.0,
+                    -120.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "0d5d6db0-1eaa-574a-bb4e-3cb191983da9",
+                    "path": "Application/Assets/Models/Okinawa/ReefTerrain_Deep/ReefTerrain_Deep.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "2702459e8516c8e4",
+    "name": "ReefTerrain_Deep (4)",
+    "order": 33
+}
