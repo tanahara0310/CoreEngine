@@ -63,6 +63,7 @@ struct SkinCluster {
     GpuResource outputVertexResource;                // CSが書き込むスキニング後頂点バッファ（UAV・ステート追跡込み）
     D3D12_VERTEX_BUFFER_VIEW outputVertexBufferView; // 上記をそのまま描画時の頂点バッファとして使う
     DescriptorHandle outputUavHandle;                // 出力バッファのUAV
+    DescriptorHandle outputRawSrvHandle;             // 出力バッファの ByteAddressBuffer SRV（レイトレーシングのヒットシェーディングが読む）
 
     Microsoft::WRL::ComPtr<ID3D12Resource> skinningParamsCB; // SkinningParams（頂点数）用定数バッファ
 

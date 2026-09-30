@@ -70,6 +70,9 @@ namespace CoreEngine
         /// @brief 空アンビエント（Sky Irradiance SH）の輝度スケール
         float skyAmbientScale = 0.3f;
 
+        /// @brief FFT カスケードごとの平均二乗傾斜（FFT を使わないときは 0）
+        float fftCascadeMeanSquareSlope[3] = { 0.0f, 0.0f, 0.0f };
+
         /// @brief 大気アクティブ＋SH 生成済みか（シェーダー側の参照可否）
         bool skyAmbientEnabled = false;
 

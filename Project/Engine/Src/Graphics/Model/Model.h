@@ -148,6 +148,10 @@ namespace CoreEngine
         /// @note ここで済ませたスキニングは描画で再計算しない（フレーム 1 回のガードを共有する）
         ID3D12Resource* PrepareSkinnedVerticesForRayTracing(ID3D12GraphicsCommandList* cmdList, bool& outChanged);
 
+        /// @brief 変形後の頂点バッファの ByteAddressBuffer SRV のヒープ内インデックス（スキニングしないモデルは UINT32_MAX）
+        /// @note 水面の映り込みのヒットシェーディングが、BLAS と同じ変形後の頂点を読むのに使う
+        uint32_t GetSkinnedVertexBufferHeapIndex() const;
+
         /// @brief アニメーションプレイヤーを設定する（ModelManager::CreateSkeletonModel が注入する）
         void SetAnimationPlayer(std::unique_ptr<AnimationPlayer> player);
 

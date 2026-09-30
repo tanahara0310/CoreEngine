@@ -16,6 +16,9 @@
 #ifndef WATER_COLUMN_INCLUDED
 #define WATER_COLUMN_INCLUDED
 
+/// @brief 水の屈折率（空気 1 に対する比）
+static const float kWaterRefractiveIndex = 1.333f;
+
 /// @brief NDC 深度値をビュー空間線形深度（メートル単位）に変換する
 /// @param ndcDepth  深度テクスチャから読んだ NDC 深度 [0,1]
 /// @param nearZ     ニアクリップ距離
@@ -54,7 +57,7 @@ float ComputeWaterOpticalPathLength(float viewDepthDelta, float waterDepthView, 
 ///          かすめ角ほど屈折線は立つ（|refracted.y| が大きい）ので係数は 1 未満になる。
 float ComputeRefractedPathScale(float3 viewDir, float3 surfaceNormal)
 {
-    const float kEtaAirToWater = 1.0f / 1.333f;
+    const float kEtaAirToWater = 1.0f / kWaterRefractiveIndex;
     const float3 refractedView = refract(-viewDir, surfaceNormal, kEtaAirToWater);
     // 全反射・上向き屈折（荒れた波面法線で起こりうる）は換算不能なので等倍に落とす
     if (dot(refractedView, refractedView) <= 1.0e-6f || refractedView.y >= -1.0e-4f)
@@ -73,7 +76,7 @@ float ComputeRefractedPathScale(float3 viewDir, float3 surfaceNormal)
 ///          水中では屈折角が臨界角 48.6° に制限されるため、正常時の -y は 0.66 以上になる。
 float3 ComputeRefractedViewDir(float3 viewDir, float3 surfaceNormal)
 {
-    const float kEtaAirToWater = 1.0f / 1.333f;
+    const float kEtaAirToWater = 1.0f / kWaterRefractiveIndex;
     const float3 refractedView = refract(-viewDir, surfaceNormal, kEtaAirToWater);
     if (dot(refractedView, refractedView) <= 1.0e-6f || refractedView.y >= -1.0e-4f)
     {

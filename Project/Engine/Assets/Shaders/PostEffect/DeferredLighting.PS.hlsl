@@ -128,40 +128,10 @@ static const float kSkySpecularMipCount = 5.0f;
 Texture2D<float> gCloudShadowMap : register(t20);
 ConstantBuffer<CloudShadowConstants> gCloudShadow : register(b8);
 
-/// @brief 解析的 EnvBRDF 近似（Karis "Physically Based Shading on Mobile"）
-/// @details Split-Sum の BRDF 積分項を LUT 無しで近似する。シーン IBL の gBRDFLUT は
-///          IBLSystem がセットアップされたシーン専用資産のため、大気スペキュラでは使わない。
-float2 EnvBRDFApprox(float roughness, float NdotV)
-{
-    const float4 c0 = float4(-1.0f, -0.0275f, -0.572f, 0.022f);
-    const float4 c1 = float4(1.0f, 0.0425f, 1.04f, -0.04f);
-    float4 r = roughness * c0 + c1;
-    float a004 = min(r.x * r.x, exp2(-9.28f * NdotV)) * r.x + r.y;
-    return float2(-1.04f, 1.04f) * a004 + r.zw;
-}
-
 /// @brief SH9 係数から法線方向の空の放射照度/π を評価する
 float3 EvaluateSkyIrradiance(float3 n)
 {
-    float basis[9];
-    basis[0] = 0.282095f;
-    basis[1] = 0.488603f * n.y;
-    basis[2] = 0.488603f * n.z;
-    basis[3] = 0.488603f * n.x;
-    basis[4] = 1.092548f * n.x * n.y;
-    basis[5] = 1.092548f * n.y * n.z;
-    basis[6] = 0.315392f * (3.0f * n.z * n.z - 1.0f);
-    basis[7] = 1.092548f * n.x * n.z;
-    basis[8] = 0.546274f * (n.x * n.x - n.y * n.y);
-
-    float3 irradiance = float3(0.0f, 0.0f, 0.0f);
-    [unroll]
-    for (int i = 0; i < 9; ++i)
-    {
-        irradiance += gSkyIrradianceSH[i].rgb * basis[i];
-    }
-    // SH の帯域打ち切りによる負のリンギングを防ぐ
-    return max(irradiance, 0.0f);
+    return EvaluateSkyIrradianceSH9(gSkyIrradianceSH, n);
 }
 
 SamplerState gSampler : register(s0);

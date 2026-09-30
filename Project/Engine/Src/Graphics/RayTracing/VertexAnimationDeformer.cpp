@@ -5,7 +5,9 @@
 #include "Graphics/Model/ModelResource.h"
 #include "Graphics/Pipeline/ComputePipelineUtil.h"
 #include "Graphics/Render/Model/VertexAnimation.h"
+#include "Graphics/Model/VertexData.h"
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
@@ -31,14 +33,23 @@ namespace CoreEngine
     VertexAnimationDeformer::~VertexAnimationDeformer()
     {
         // 実行待ちのフレームがまだ読んでいるかもしれないので、フェンスを待ってから解放する
-        if (graphicsCore_) {
-            for (auto& [owner, entry] : entries_) {
-                (void)owner;
-                if (entry.positions) {
-                    graphicsCore_->DeferRelease(entry.positions.Get());
-                    entry.positions.Release();
-                }
-            }
+        for (auto& [owner, entry] : entries_) {
+            (void)owner;
+            ReleaseEntry(entry);
+        }
+    }
+
+    void VertexAnimationDeformer::ReleaseEntry(Entry& entry)
+    {
+        if (!graphicsCore_) {
+            return;
+        }
+        if (entry.rawSrv.IsValid()) {
+            graphicsCore_->DeferFree(entry.rawSrv);
+        }
+        if (entry.vertices) {
+            graphicsCore_->DeferRelease(entry.vertices.Get());
+            entry.vertices.Release();
         }
     }
 
@@ -83,7 +94,7 @@ namespace CoreEngine
             config.ConfigureResource("gDeform", BindingStrategy::RootConstants);
             config.ConfigureResource("gSourceVertices", BindingStrategy::RootDescriptor);
             config.ConfigureResource("gIndices", BindingStrategy::RootDescriptor);
-            config.ConfigureResource("gOutputPositions", BindingStrategy::RootDescriptor);
+            config.ConfigureResource("gOutputVertices", BindingStrategy::RootDescriptor);
 
             rootSignatureMg_ = std::make_unique<RootSignatureManager>();
             const auto buildResult = rootSignatureMg_->Build(device, *reflectionData_, config);
@@ -113,36 +124,34 @@ namespace CoreEngine
         }
 
         pipelineReady_ = true;
-        log.Infof(LogCategory::Graphics, "VertexAnimationDeformer: 揺れる植物の BLAS 用 CS を構築");
+        log.Infof(LogCategory::Graphics, "VertexAnimationDeformer: 揺れる植物のレイトレーシング用 CS を構築");
         return true;
     }
 
-    ID3D12Resource* VertexAnimationDeformer::Deform(ID3D12GraphicsCommandList* cmdList, const void* owner,
-        const Model& model, const Matrix4x4& world, const VertexAnimationParams& params, uint64_t frame)
+    VertexAnimationDeformer::Output VertexAnimationDeformer::Deform(ID3D12GraphicsCommandList* cmdList,
+        const void* owner, const Model& model, const Matrix4x4& world, const VertexAnimationParams& params,
+        uint64_t frame)
     {
         if (!cmdList || !owner || !EnsurePipeline()) {
-            return nullptr;
+            return {};
         }
         const ModelResource* resource = model.GetModelResource();
         if (!resource || !resource->IsLoaded() || !resource->GetVertexBuffer() || !resource->GetIndexBuffer()) {
-            return nullptr;
+            return {};
         }
         const uint32_t vertexCount = resource->GetVertexCount();
         if (vertexCount == 0 || resource->GetIndexCount() == 0) {
-            return nullptr;
+            return {};
         }
 
-        // ===== 持ち主ごとの位置バッファ（頂点数が変わったら張り直す） =====
+        // ===== 持ち主ごとの頂点バッファ（頂点数が変わったら張り直す） =====
         Entry& entry = entries_[owner];
         entry.lastUsedFrame = frame;
-        if (!entry.positions || entry.vertexCount != vertexCount) {
-            if (entry.positions) {
-                graphicsCore_->DeferRelease(entry.positions.Get());
-                entry.positions.Release();
-            }
+        if (!entry.vertices || entry.vertexCount != vertexCount) {
+            ReleaseEntry(entry);
             D3D12_RESOURCE_DESC desc{};
             desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-            desc.Width = static_cast<UINT64>(vertexCount) * sizeof(float) * 3;
+            desc.Width = static_cast<UINT64>(vertexCount) * sizeof(VertexData);
             desc.Height = 1;
             desc.DepthOrArraySize = 1;
             desc.MipLevels = 1;
@@ -154,15 +163,27 @@ namespace CoreEngine
                 graphicsCore_->GetDevice(), desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             if (!buffer) {
                 entries_.erase(owner);
-                return nullptr;
+                return {};
             }
-            buffer->SetName(L"VertexAnimationDeform Positions");
-            entry.positions.Reset(buffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            buffer->SetName(L"VertexAnimationDeform Vertices");
+            entry.vertices.Reset(buffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             entry.vertexCount = vertexCount;
+
+            // 水面の映り込みのヒットシェーディングが読む ByteAddressBuffer SRV（静止形の BLAS の頂点と同じ作り）
+            if (DescriptorAllocator* descriptors = graphicsCore_->GetDescriptorAllocator()) {
+                D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+                srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+                srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+                srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+                srvDesc.Buffer.FirstElement = 0;
+                srvDesc.Buffer.NumElements = static_cast<UINT>(desc.Width / sizeof(uint32_t));
+                srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
+                entry.rawSrv = descriptors->CreateSRV(buffer.Get(), srvDesc, "VertexAnimationDeform VerticesRawSRV");
+            }
         }
 
         // ===== サブメッシュ（マテリアル）ごとに、そのインデックスが指す頂点を書く =====
-        Barrier::Transition(cmdList, entry.positions, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, entry.vertices, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         cmdList->SetComputeRootSignature(rootSignatureMg_->GetRootSignature());
         cmdList->SetPipelineState(pso_.Get());
 
@@ -170,7 +191,7 @@ namespace CoreEngine
         binder.SetConstants(bindings_[VertexAnimationDeformBind::gVertexAnim], params);
         binder.Set(bindings_[VertexAnimationDeformBind::gSourceVertices], resource->GetVertexBuffer()->GetGPUVirtualAddress());
         binder.Set(bindings_[VertexAnimationDeformBind::gIndices], resource->GetIndexBuffer()->GetGPUVirtualAddress());
-        binder.Set(bindings_[VertexAnimationDeformBind::gOutputPositions], entry.positions.GpuAddress());
+        binder.Set(bindings_[VertexAnimationDeformBind::gOutputVertices], entry.vertices.GpuAddress());
 
         DeformConstants constants{};
         constants.world = world;
@@ -180,7 +201,7 @@ namespace CoreEngine
             if (subMesh.indexCount == 0) {
                 continue;
             }
-            // 揺れないマテリアル（なし・魚）のサブメッシュも、元の位置を書くために回す
+            // 揺れないマテリアル（なし・魚）のサブメッシュも、元の頂点を書くために回す
             constants.indexStart = subMesh.startIndex;
             constants.indexCount = subMesh.indexCount;
             binder.Set(bindings_[VertexAnimationDeformBind::gMaterial], model.GetMaterialCBVAddress(subMesh.materialIndex));
@@ -189,19 +210,20 @@ namespace CoreEngine
             cmdList->Dispatch((subMesh.indexCount + kThreadGroupSize - 1) / kThreadGroupSize, 1, 1);
         }
 
-        // BLAS の入力は NON_PIXEL_SHADER_RESOURCE（UAV の書き込みの完了もこの遷移が保証する）
-        Barrier::Transition(cmdList, entry.positions, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        return entry.positions.Get();
+        // BLAS の入力とレイトレーシングのシェーダーからの読み取りは NON_PIXEL_SHADER_RESOURCE
+        // （UAV の書き込みの完了もこの遷移が保証する）
+        Barrier::Transition(cmdList, entry.vertices, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Output output;
+        output.vertices = entry.vertices.Get();
+        output.vertexBufferIndex = entry.rawSrv.IsValid() ? entry.rawSrv.index : UINT32_MAX;
+        return output;
     }
 
     void VertexAnimationDeformer::RetireUnused(uint64_t frame)
     {
         for (auto it = entries_.begin(); it != entries_.end();) {
             if (it->second.lastUsedFrame + kKeepFrames < frame) {
-                if (it->second.positions && graphicsCore_) {
-                    graphicsCore_->DeferRelease(it->second.positions.Get());
-                    it->second.positions.Release();
-                }
+                ReleaseEntry(it->second);
                 it = entries_.erase(it);
             } else {
                 ++it;

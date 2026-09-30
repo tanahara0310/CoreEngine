@@ -5,7 +5,6 @@
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "Graphics/Asset/AssetRef.h"
 #include "Graphics/Model/Model.h"
-#include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Math/Geometry/Shapes.h"
 #include "Reflection/Reflect.h"
 
@@ -26,7 +25,7 @@ class ModelManager;
 ///          体のくねりと胸びれはモデルのマテリアルの頂点アニメーション（魚）が動かし、
 ///          ここでは 1 匹ずつの小さな漂い（上下・前後・首振り）を足す。
 ///          群れ全体の位置・向き・大きさは TransformComponent で決め、泳がせて移動するのはゲーム側で行う。
-/// @note レイトレーシングの影には個体ごとに載る（`CollectRayTracingInstances`）。
+/// @note レイトレーシング（影・水面の映り込み）には個体ごとに載る（`ForEachRayTracingInstance`）。
 ///       体のくねりは 1 cm ほどなので、影の形は静止したモデル（共有の BLAS）で足りる。
 class FishSchoolComponent : public IComponent, public IRenderableComponent {
 public:
@@ -83,8 +82,23 @@ public:
 
     // ===== レイトレーシング =====
 
-    /// @brief TLAS へ載せる個体を足す（影を落とす設定のときだけ。RayTracingSubsystem が呼ぶ）
-    void CollectRayTracingInstances(std::vector<AccelerationStructureManager::InstanceDesc>& out);
+    /// @brief レイトレーシング（TLAS）へ載せる個体を 1 匹ずつ渡す（影を落とす設定のときだけ）
+    /// @param fn `void(const Model& model, const Matrix4x4& world)`。RayTracingSubsystem が
+    ///           TLAS のインスタンスと、同じ並びのヒットシェーディングの行を作る
+    template <class Fn>
+    void ForEachRayTracingInstance(Fn&& fn)
+    {
+        if (!castShadow_ || instances_.empty()) {
+            return;
+        }
+        const std::vector<Matrix4x4>& worlds = UpdateWorldMatrices();
+        for (size_t i = 0; i < instances_.size(); ++i) {
+            const Species& species = species_[instances_[i].species];
+            if (species.model) {
+                fn(static_cast<const Model&>(*species.model), worlds[i]);
+            }
+        }
+    }
 
     /// @brief 群れ全体のワールド空間の AABB（無ければ無効な箱）
     BoundingBox GetWorldBoundingBox();

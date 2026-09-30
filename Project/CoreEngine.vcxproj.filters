@@ -2292,6 +2292,9 @@
     <ClInclude Include="Engine\Src\Graphics\RayTracing\VertexAnimationDeformer.h">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingHitData.h">
+      <Filter>Engine\Src\Graphics\RayTracing</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingDispatchInfo.h">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClInclude>

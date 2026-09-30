@@ -7,6 +7,7 @@
 1. Shaders/RayTracing/VertexAnimationDeform.CS.hlsl（描画の頂点シェーダーと同じ VertexAnimation.hlsli の
    ApplyVertexAnimation を呼ぶ）を slang の CPU バックエンドで実行し、書き出した glTF の全頂点について
    okinawa/motion.py のジオメトリノードと同じ式（numpy 版、Blender 座標）の結果と比べる。
+   出力は VertexData の並び（位置だけ差し替え）なので、位置以外がそのまま写っていることも確かめる。
 2. 群れの配置 JSON の位置・回転を、FishSchoolComponent と同じ MathCore::Matrix::MakeAffine
    （DirectXMath の XMMatrixAffineTransformation = S R T、行ベクトル）で行列にし、
    Blender の確認用シーン（assemble.place_school: T(p) R S、列ベクトル）の配置と一致するかを見る。
@@ -179,7 +180,7 @@ def check_vertex_animation():
                                    usage=spy.BufferUsage.shader_resource, data=verts)
         idx = device.create_buffer(element_count=len(I), struct_size=4,
                                    usage=spy.BufferUsage.shader_resource, data=I.astype(np.uint32))
-        out = device.create_buffer(element_count=len(P), struct_size=12, usage=spy.BufferUsage.unordered_access)
+        out = device.create_buffer(element_count=len(P), struct_size=64, usage=spy.BufferUsage.unordered_access)
         material = {"color": spy.float4(1, 1, 1, 1), "uvTransform": spy.float4x4(np.eye(4, dtype=np.float32)),
                     "metallic": 0.0, "roughness": 0.5, "occlusionStrength": 1.0, "useNormalMap": 0,
                     "emissiveFactor": spy.float3(0, 0, 0), "enableLighting": 1, "enableDithering": 0,
@@ -188,12 +189,17 @@ def check_vertex_animation():
                     "vertexAnimPadding": 0.0}
         for start, count in ranges:  # エンジンと同じくサブメッシュ（マテリアル）ごとに 1 回
             kernel.dispatch(thread_count=[count, 1, 1], vars={
-                "gSourceVertices": src, "gIndices": idx, "gOutputPositions": out,
+                "gSourceVertices": src, "gIndices": idx, "gOutputVertices": out,
                 "gMaterial": material, "gVertexAnim": anim_params,
                 "gDeform": {"world": spy.float4x4(world.astype(np.float32)),
                             "worldInverseTranspose": spy.float4x4(np.linalg.inv(world).T.astype(np.float32)),
                             "indexStart": start, "indexCount": count, "vertexCount": len(P), "padding": 0}})
-        return P, N, anim, out.to_numpy().view(np.float32).reshape(len(P), 3).astype(np.float64)
+        result = out.to_numpy().view(np.float32).reshape(len(P), 16)
+        # 位置（先頭 3 つ）以外は元の頂点と同じはず（w・UV・法線・接線・頂点アニメーションの値）
+        copied = np.abs(result[:, 3:] - verts[:, 3:]).max()
+        if copied != 0.0:
+            raise AssertionError(f"{name}: 位置以外の値が変わっている（最大 {copied}）")
+        return P, N, anim, result[:, :3].astype(np.float64)
 
     def wind_in_object_space(world, xz):
         d = np.linalg.inv(world).T[:3, :3] @ np.array([xz[0], 0.0, xz[1]])

@@ -164,6 +164,9 @@ namespace CoreEngine
             (binding.skyEnvReflectionEnabled && renderResources_.skyEnvironmentSRV.ptr != 0) ? 1 : 0;
         frameCB_.sunVisibilityEnabled = renderResources_.HasSunVisibility() ? 1 : 0;
         frameCB_.skyAmbientScale = binding.skyAmbientScale;
+        for (int c = 0; c < 3; ++c) {
+            frameCB_.fftCascadeMeanSquareSlope[c] = binding.fftCascadeMeanSquareSlope[c];
+        }
 
         // 不正なクリップ距離（0 や逆転）はシェーダーの LinearizeDepth を破綻させるため、
         // 直前の有効値を維持する

@@ -1,7 +1,9 @@
 // VertexAnimationDeform.CS.hlsl
-// 頂点アニメーション（植物の揺れ・海草の寄せ返し）をかけた位置を、レイトレーシングの BLAS 用に書き出す。
+// 頂点アニメーション（植物の揺れ・海草の寄せ返し）をかけた頂点を、レイトレーシング用に書き出す。
 // 描画の頂点シェーダー（Include/Object/Object3dVertex.hlsli の VertexMain）と同じ ApplyVertexAnimation を
 // 同じマテリアル定数・同じ時間（gVertexAnim）で呼ぶので、影や水面の反射に映る形が画面の揺れと一致する。
+// 出力は元と同じ VertexData の並び（位置だけ差し替え）で、BLAS の頂点と、水面の映り込みの
+// ヒットシェーディング（Include/RayTracing/RTHitShading.hlsli）の両方がこれを読む。
 //
 // サブメッシュ（マテリアル）ごとに 1 回ディスパッチし、そのインデックス範囲が指す頂点を書く
 // （BLAS はインデックスが指す頂点しか読まない）。同じ頂点を複数のスレッドが書くことがあるが、値は同じ。
@@ -32,7 +34,7 @@ struct DeformConstants
 
 StructuredBuffer<SourceVertex> gSourceVertices : register(t0);
 StructuredBuffer<uint> gIndices : register(t1);
-RWStructuredBuffer<float3> gOutputPositions : register(u0); // BLAS の頂点（R32G32B32_FLOAT、12 バイト）
+RWStructuredBuffer<SourceVertex> gOutputVertices : register(u0); // 揺れた頂点（VertexData の並び。位置が先頭）
 ConstantBuffer<DeformConstants> gDeform : register(b1); // b0 = gMaterial, b9 = gVertexAnim
 
 [numthreads(64, 1, 1)]
@@ -48,10 +50,14 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID)
         return;
     }
 
-    const SourceVertex src = gSourceVertices[vertexIndex];
-    float3 position = float3(src.px, src.py, src.pz);
+    SourceVertex vertex = gSourceVertices[vertexIndex];
+    float3 position = float3(vertex.px, vertex.py, vertex.pz);
     float3 prevPosition; // 使わない（コンパイラが計算ごと消す）
-    ApplyVertexAnimation(float4(src.a0, src.a1, src.a2, src.a3), float3(src.nx, src.ny, src.nz),
+    ApplyVertexAnimation(float4(vertex.a0, vertex.a1, vertex.a2, vertex.a3), float3(vertex.nx, vertex.ny, vertex.nz),
         gDeform.world, gDeform.worldInverseTranspose, position, prevPosition);
-    gOutputPositions[vertexIndex] = position;
+    // 位置だけ差し替える（法線・UV は元のまま。揺れは小さいので映り込みの見た目の差は小さい）
+    vertex.px = position.x;
+    vertex.py = position.y;
+    vertex.pz = position.z;
+    gOutputVertices[vertexIndex] = vertex;
 }

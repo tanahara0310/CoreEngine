@@ -39,6 +39,10 @@ namespace CoreEngine
         /// @brief 確保済みインデックスからハンドルを再構成する
         DescriptorHandle HandleAt(uint32_t index) const;
 
+        /// @brief GPU ハンドルからヒープ内のインデックスを求める（シェーダー可視のヒープのみ）
+        /// @return ヒープの外・シェーダー不可視のときは UINT32_MAX
+        uint32_t IndexOf(D3D12_GPU_DESCRIPTOR_HANDLE handle) const;
+
         // ── 参照 ────────────────────────────────────────────────
         ID3D12DescriptorHeap* Heap() const { return heap_.Get(); }
         DescriptorHeapType Type() const noexcept { return type_; }

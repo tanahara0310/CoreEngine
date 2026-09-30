@@ -56,6 +56,15 @@ float ComputeFFTWaveGroupEnvelope(float2 worldXZ)
     return 1.0f + kFFTWaveGroupStrength * g;
 }
 
+/// @brief ラフネスに、法線から外した傾きの分散を足したラフネスを返す
+/// @param perceptualRoughness 足す前のラフネス（GGX の α = ラフネス²）
+/// @param meanSquareSlope     足す傾きの分散（x・z の傾きの二乗和の平均。α² へ加算する）
+float AddSlopeVarianceToRoughness(float perceptualRoughness, float meanSquareSlope)
+{
+    const float alpha = perceptualRoughness * perceptualRoughness;
+    return sqrt(sqrt(alpha * alpha + max(meanSquareSlope, 0.0f)));
+}
+
 /// @brief 全カスケードのヤコビアン勾配をワールド系で合成し、変位後サーフェスの detJ を返す
 /// @param worldXZ        評価点のワールド XZ
 /// @param jacobianTex    FFTOceanFinalize.CS 出力。各スライス = (Jxx, Jzz, Jxy, detJ_cascade)

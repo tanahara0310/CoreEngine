@@ -39,6 +39,7 @@ namespace CoreEngine
             graphics->DeferFree(cluster.paletteSrvHandle);
             graphics->DeferFree(cluster.sourceVertexSrvHandle);
             graphics->DeferFree(cluster.outputUavHandle);
+            graphics->DeferFree(cluster.outputRawSrvHandle);
             graphics->DeferRelease(std::move(cluster.influenceResource));
             graphics->DeferRelease(std::move(cluster.paletteResource));
             graphics->DeferRelease(cluster.outputVertexResource.Get());
@@ -143,6 +144,14 @@ namespace CoreEngine
         Barrier::Transition(cmdList, skinCluster_->outputVertexResource,
             D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         return skinCluster_->outputVertexResource.Get();
+    }
+
+    uint32_t Model::GetSkinnedVertexBufferHeapIndex() const
+    {
+        if (!skinCluster_ || !skinCluster_->outputRawSrvHandle.IsValid()) {
+            return UINT32_MAX;
+        }
+        return skinCluster_->outputRawSrvHandle.index;
     }
 
     void Model::OnTeleported()

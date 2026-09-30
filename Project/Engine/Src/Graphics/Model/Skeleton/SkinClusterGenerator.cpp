@@ -111,6 +111,17 @@ CoreEngine::SkinCluster SkinClusterGenerator::CreateSkinCluster(
         outputUavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
         skinCluster.outputUavHandle = descriptorAllocator->CreateUAV(skinCluster.outputVertexResource.Get(), outputUavDesc, "SkinCluster OutputVertexUAV");
 
+        // 水面の映り込みのヒットシェーディングが、変形後の頂点（VertexData の並び）を読むための SRV
+        D3D12_SHADER_RESOURCE_VIEW_DESC outputRawSrvDesc{};
+        outputRawSrvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+        outputRawSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+        outputRawSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        outputRawSrvDesc.Buffer.FirstElement = 0;
+        outputRawSrvDesc.Buffer.NumElements = UINT(outputSizeInBytes / sizeof(uint32_t));
+        outputRawSrvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
+        skinCluster.outputRawSrvHandle = descriptorAllocator->CreateSRV(
+            skinCluster.outputVertexResource.Get(), outputRawSrvDesc, "SkinCluster OutputVertexRawSRV");
+
         skinCluster.outputVertexBufferView.BufferLocation = skinCluster.outputVertexResource.GpuAddress();
         skinCluster.outputVertexBufferView.SizeInBytes = UINT(outputSizeInBytes);
         skinCluster.outputVertexBufferView.StrideInBytes = UINT(kSkinnedVertexStride);

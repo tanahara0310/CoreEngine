@@ -467,26 +467,4 @@ namespace CoreEngine
                 isGameView ? std::span<const Matrix4x4>(drawPrevWVPs_) : std::span<const Matrix4x4>{}, view);
         }
     }
-
-    // ===== レイトレーシング =====
-
-    void FishSchoolComponent::CollectRayTracingInstances(
-        std::vector<AccelerationStructureManager::InstanceDesc>& out)
-    {
-        if (!castShadow_ || instances_.empty()) {
-            return;
-        }
-        const std::vector<Matrix4x4>& worlds = UpdateWorldMatrices();
-        for (size_t i = 0; i < instances_.size(); ++i) {
-            const Species& species = species_[instances_[i].species];
-            const ModelResource* resource = species.model ? species.model->GetModelResource() : nullptr;
-            if (!resource || !resource->HasBLAS()) {
-                continue;
-            }
-            AccelerationStructureManager::InstanceDesc inst;
-            inst.blasIndex = resource->GetBLASIndex();
-            inst.SetTransform(worlds[i]);
-            out.push_back(inst);
-        }
-    }
 }

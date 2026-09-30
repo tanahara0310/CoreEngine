@@ -37,6 +37,8 @@ namespace CoreEngine
             D3D12_GPU_DESCRIPTOR_HANDLE normalSRV{};
             uint32_t resolution = 0;
             uint32_t enabled = 0;
+            /// @brief カスケードごとの平均二乗傾斜（x・z の傾きの二乗和の平均）
+            float cascadeMeanSquareSlope[3] = { 0.0f, 0.0f, 0.0f };
         };
 
         /// @brief RT 側が参照する水面モデルの供給元を差し替える
@@ -68,6 +70,8 @@ namespace CoreEngine
             uint32_t constantsBytes = 0;             ///< root constants のサイズ（4 の倍数）
             uint32_t payloadBytes = sizeof(float) * 2; ///< RTWaterPayload {hitT, hitFlag}
             const char* secondaryOutputUavName = nullptr; ///< u1 の UAV テーブル名（2 枚目の出力を持つパスだけ）
+            const char* extraConstantBufferName = nullptr; ///< 追加の CBV 名（持つパスだけ。ディスパッチ時にアドレスを渡す）
+            bool directlyIndexedHeap = false;         ///< シェーダーが ResourceDescriptorHeap でヒープを直接引く
         };
 
         /// @brief 2 枚目の出力テクスチャ（BindAndDispatchRays へ渡す）
@@ -96,6 +100,7 @@ namespace CoreEngine
         /// @param constantsBlob InitializeFromDesc で渡した constantsBytes と同サイズの定数ブロック
         /// @param finalState    出力テクスチャの最終ステート（2 枚目の出力も同じステートへ）
         /// @param secondaryOutput 2 枚目の出力（desc.secondaryOutputUavName を持つパスは必須）
+        /// @param extraConstantBuffer 追加の CBV のアドレス（desc.extraConstantBufferName を持つパスは必須）
         void BindAndDispatchRays(
             ID3D12GraphicsCommandList* cmdList,
             DispatchResources& resources,
@@ -104,7 +109,8 @@ namespace CoreEngine
             UINT width,
             UINT height,
             D3D12_RESOURCE_STATES finalState,
-            const RTWaterSecondaryOutput& secondaryOutput = {});
+            const RTWaterSecondaryOutput& secondaryOutput = {},
+            D3D12_GPU_VIRTUAL_ADDRESS extraConstantBuffer = 0);
 
         struct alignas(16) WaterSurfaceConstants {
             float waterHeight = 0.0f;
@@ -121,9 +127,12 @@ namespace CoreEngine
             // シーン側の変更で静かに壊れる構造だった）
             float meshSubdivisions = 256.0f;
             float pad0 = 0.0f;
+            // FFT カスケードごとの平均二乗傾斜（x・z の傾きの二乗和の平均）
+            float cascadeMeanSquareSlope[3] = { 0.0f, 0.0f, 0.0f };
+            float pad1 = 0.0f;
         };
 
-        static_assert(sizeof(WaterSurfaceConstants) == 16 + 32 * kMaxWaterSurfaceWaveCount + 16,
+        static_assert(sizeof(WaterSurfaceConstants) == 16 + 32 * kMaxWaterSurfaceWaveCount + 32,
             "WaterSurfaceConstants layout mismatch with RTWaterSurfaceCommon.hlsli cbuffer");
 
         static constexpr Cb::Field kWaterSurfaceConstantsFields[] = {
@@ -131,7 +140,8 @@ namespace CoreEngine
             CB_FIELD(WaterSurfaceConstants, time), CB_FIELD(WaterSurfaceConstants, simulationType),
             CB_FIELD(WaterSurfaceConstants, waves), CB_FIELD(WaterSurfaceConstants, fftOceanEnabled),
             CB_FIELD(WaterSurfaceConstants, fftOceanResolution), CB_FIELD(WaterSurfaceConstants, meshSubdivisions),
-            CB_FIELD(WaterSurfaceConstants, pad0),
+            CB_FIELD(WaterSurfaceConstants, pad0), CB_FIELD(WaterSurfaceConstants, cascadeMeanSquareSlope),
+            CB_FIELD(WaterSurfaceConstants, pad1),
         };
         CB_VERIFY_LAYOUT(WaterSurfaceConstants, kWaterSurfaceConstantsFields);
         CB_BIND_HLSL(WaterSurfaceConstants, kWaterSurfaceConstantsFields, "WaterSurfaceData");
@@ -192,7 +202,9 @@ namespace CoreEngine
         size_t slotSurfaceData_ = 0;
         size_t slotConstants_ = 0;
         size_t slotSecondaryOutputUav_ = 0;
+        size_t slotExtraConstantBuffer_ = 0;
         bool hasSecondaryOutput_ = false;
+        bool hasExtraConstantBuffer_ = false;
         uint32_t constantsBytes_ = 0;
 
         float lastWaterHeight_ = 0.0f;

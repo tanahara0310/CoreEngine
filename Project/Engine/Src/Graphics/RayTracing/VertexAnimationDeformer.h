@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include "Graphics/RHI/Resource/GpuResource.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/ShaderBindingContract.h"
@@ -32,7 +33,7 @@ namespace CoreEngine
             gDeform,
             gSourceVertices,
             gIndices,
-            gOutputPositions,
+            gOutputVertices,
             Count
         };
 
@@ -42,17 +43,18 @@ namespace CoreEngine
             { "gDeform",          ShaderBindingType::CBV, BindingUsage::Required },  // b1（ルート定数）
             { "gSourceVertices",  ShaderBindingType::SRV, BindingUsage::Required },  // t0
             { "gIndices",         ShaderBindingType::SRV, BindingUsage::Required },  // t1
-            { "gOutputPositions", ShaderBindingType::UAV, BindingUsage::Required },  // u0
+            { "gOutputVertices",  ShaderBindingType::UAV, BindingUsage::Required },  // u0
         };
 
         static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
     }
 
-    /// @brief 頂点アニメーション（植物の揺れ・海草）をかけた形を、レイトレーシングの BLAS 用に毎フレーム作る
+    /// @brief 頂点アニメーション（植物の揺れ・海草）をかけた形を、レイトレーシング用に毎フレーム作る
     /// @details 描画の頂点シェーダーと同じ式（Shaders/Include/Object/VertexAnimation.hlsli）を同じマテリアル定数・
-    ///          同じ時間で CS 実行し、持ち主（コンポーネント）ごとの位置バッファ（float3）へ書く。
-    ///          AccelerationStructureManager::BuildOrUpdateDynamicBLAS がこれを頂点にして BLAS を更新するので、
-    ///          影・水面の反射・コースティクスに映る形が画面の揺れと一致する。
+    ///          同じ時間で CS 実行し、持ち主（コンポーネント）ごとの頂点バッファ（VertexData の並び）へ書く。
+    ///          AccelerationStructureManager::BuildOrUpdateDynamicBLAS がこれを頂点にして BLAS を更新し、
+    ///          水面の映り込みのヒットシェーディングも同じ頂点を読むので、影・水面の反射・コースティクスに
+    ///          映る形が画面の揺れと一致する。
     /// @note CS は初めて使うときに組む（揺れるモデルを置かないシーンではコンパイルもしない）。
     class VertexAnimationDeformer {
     public:
@@ -66,6 +68,12 @@ namespace CoreEngine
             uint32_t padding = 0;
         };
 
+        /// @brief Deform の結果
+        struct Output {
+            ID3D12Resource* vertices = nullptr;       ///< 揺れた頂点（VertexData の並び。NON_PIXEL_SHADER_RESOURCE 状態）
+            uint32_t vertexBufferIndex = UINT32_MAX;  ///< その ByteAddressBuffer SRV のヒープ内インデックス
+        };
+
         VertexAnimationDeformer();
         ~VertexAnimationDeformer();
 
@@ -75,33 +83,37 @@ namespace CoreEngine
         /// @brief 使う GraphicsCore を控える（CS は初回の Deform で組む）
         void Initialize(GraphicsCore* graphicsCore);
 
-        /// @brief 頂点アニメーションをかけた位置を書く
+        /// @brief 頂点アニメーションをかけた頂点を書く
         /// @param cmdList 積み先（加速構造の構築と同じリスト）
-        /// @param owner   持ち主の識別子（コンポーネントのアドレス。持ち主ごとに位置バッファを持つ）
+        /// @param owner   持ち主の識別子（コンポーネントのアドレス。持ち主ごとに頂点バッファを持つ）
         /// @param model   変形するモデル（マテリアルの頂点アニメーションの種類・倍率を読む）
         /// @param world   ワールド行列（個体ごとの位相と風向き）
         /// @param params  時間・風（描画と同じ VertexAnimationParams::Build() の値）
         /// @param frame   今フレームの番号（使われなくなったバッファの回収用）
-        /// @return 位置バッファ（R32G32B32_FLOAT・頂点数ぶん。NON_PIXEL_SHADER_RESOURCE 状態）。失敗なら nullptr
-        ID3D12Resource* Deform(ID3D12GraphicsCommandList* cmdList, const void* owner, const Model& model,
+        /// @return 揺れた頂点と、その SRV。失敗なら vertices = nullptr
+        Output Deform(ID3D12GraphicsCommandList* cmdList, const void* owner, const Model& model,
             const Matrix4x4& world, const VertexAnimationParams& params, uint64_t frame);
 
-        /// @brief 今フレーム使われなかった位置バッファを捨てる（GPU が使い終わってから解放される）
+        /// @brief 今フレーム使われなかった頂点バッファを捨てる（GPU が使い終わってから解放される）
         void RetireUnused(uint64_t frame);
 
-        /// @brief 持っている位置バッファの数
+        /// @brief 持っている頂点バッファの数
         size_t GetBufferCount() const { return entries_.size(); }
 
     private:
         /// @brief CS・ルートシグネチャ・PSO を組む（1 回だけ試す）
         bool EnsurePipeline();
 
-        /// @brief 持ち主 1 つぶんの位置バッファ
+        /// @brief 持ち主 1 つぶんの頂点バッファ
         struct Entry {
-            GpuResource positions;
+            GpuResource vertices;
+            DescriptorHandle rawSrv;  ///< ヒットシェーディング用の ByteAddressBuffer SRV
             uint32_t vertexCount = 0;
             uint64_t lastUsedFrame = 0;
         };
+
+        /// @brief 頂点バッファと SRV を、GPU が使い終わってから手放す
+        void ReleaseEntry(Entry& entry);
 
         /// @brief このフレーム数使われなかったバッファを捨てる
         static constexpr uint64_t kKeepFrames = 2;

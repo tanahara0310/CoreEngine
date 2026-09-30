@@ -94,6 +94,10 @@ struct WaterPSInput
 // この順に include する（WaterFoam は WaterVolume の EvaluateWaterSkyIrradiance を使う。
 // 依存の一覧は各ファイル冒頭に明記）。
 #include "WaterColumn.hlsli"
+
+/// @brief 水中の放射輝度が水面から空気へ出るときの倍率（1/n²）
+static const float kWaterRadianceExitScale = 1.0f / (kWaterRefractiveIndex * kWaterRefractiveIndex);
+
 #include "WaterVolume.hlsli"
 #include "WaterFoam.hlsli"
 #include "WaterNormals.hlsli"
@@ -184,7 +188,8 @@ float3 SampleGlossyReflection(float2 screenUV, float grazing)
 // フレネル合成後に加算で復元する。空・環境光は平面反射側にのみ含まれるので
 // エネルギーの二重計上はない（太陽ディスク分の平面反射側エネルギーは
 // ぼかし・圧縮で実質失われているため、加算しても過大にならない）。
-float3 ComputeSunGlintSpecular(float3 normal, float3 viewDir, float foamCoverage, float mainLightVisibility)
+float3 ComputeSunGlintSpecular(
+    float3 normal, float3 viewDir, float foamCoverage, float mainLightVisibility, float unresolvedMeanSquareSlope)
 {
     // 水の垂直入射反射率 F0 ≈ 0.02
     const float3 kWaterF0 = float3(0.02f, 0.02f, 0.02f);
@@ -192,8 +197,10 @@ float3 ComputeSunGlintSpecular(float3 normal, float3 viewDir, float foamCoverage
     // （小さいほど鋭く狭いきらめき、大きいほど広く柔らかい光の帯）。
     // 泡域は微細気泡の散乱でハイライトが大きく柔らかくなるためラフネスを引き上げる
     // （泡被覆による輝度の抑制は呼び出し側の (1-coverage) 倍が担当する）。
-    const float glintRoughness = max(
-        lerp(gMaterial.roughness, kFoamGlintRoughness, saturate(foamCoverage)), 0.04f);
+    // 遠方で法線から外した細かい波の傾きは、1 ピクセルの中の凹凸としてラフネスへ足す
+    const float glintRoughness = max(AddSlopeVarianceToRoughness(
+        lerp(gMaterial.roughness, kFoamGlintRoughness, saturate(foamCoverage)),
+        unresolvedMeanSquareSlope), 0.04f);
 
     float3 totalGlint = float3(0.0f, 0.0f, 0.0f);
     for (uint i = 0; i < gLightCounts.directionalLightCount; ++i)
@@ -308,7 +315,8 @@ WaterPixelOutput main(WaterPSInput input)
     // ---- 1. 水面法線を 1 度だけ解決する ----
     // FFT 経路では 3 カスケード分のテクスチャサンプルを伴うため、
     // 以降の PBR・水柱厚さ・フレネル・グリッターで使い回す。
-    const float3 surfaceNormal = ResolveSurfaceNormal(input);
+    float unresolvedMeanSquareSlope;
+    const float3 surfaceNormal = ResolveSurfaceNormal(input, unresolvedMeanSquareSlope);
 
     // ---- 2. スクリーン UV を計算する ----
     uint sceneDepthWidth = 1;
@@ -406,6 +414,8 @@ WaterPixelOutput main(WaterPSInput input)
         sigmaS,
         sigmaT,
         underwaterAmbient);
+    // 水中の放射輝度は、水面から空気へ出るときに屈折で立体角が広がって 1/n² になる
+    transmissionColor *= kWaterRadianceExitScale;
 
     // 反射有効時、環境反射は平面反射像で「置き換える」（加算しない）。
     // 平面反射像には空・雲・太陽そのものが含まれるため、PBR 出力（太陽スペキュラ＋
@@ -447,11 +457,12 @@ WaterPixelOutput main(WaterPSInput input)
         if (gSkyEnvReflectionEnabled != 0)
         {
             const float kEnvMipCount = 5.0f;
-            const float kEnvMip = kWaterReflectionMicroRoughness * (kEnvMipCount - 1.0f);
+            const float envMip = AddSlopeVarianceToRoughness(
+                kWaterReflectionMicroRoughness, unresolvedMeanSquareSlope) * (kEnvMipCount - 1.0f);
             float3 envReflectDir = reflect(-viewDir, geomNormal);
             envReflectDir.y = max(abs(envReflectDir.y), 0.01f);
             fallbackReflectColor =
-                gSkyEnvironmentMap.SampleLevel(gLinearClamp, envReflectDir, kEnvMip).rgb;
+                gSkyEnvironmentMap.SampleLevel(gLinearClamp, envReflectDir, envMip).rgb;
         }
 
         reflectColor = lerp(fallbackReflectColor, rtReflection.rgb, rtConfidence);
@@ -530,15 +541,17 @@ WaterPixelOutput main(WaterPSInput input)
     if (gReflectionEnabled)
     {
         output.color.rgb +=
-            ComputeSunGlintSpecular(geomNormal, viewDir, foamCoverage, sunVisibility) * (1.0f - foamCoverage);
+            ComputeSunGlintSpecular(
+                geomNormal, viewDir, foamCoverage, sunVisibility, unresolvedMeanSquareSlope)
+            * (1.0f - foamCoverage);
     }
 
     // ---- 波峰のサブサーフェス透過（逆光で波の背が緑に光る）----
     // 波を透過して視点へ出てくる光なので、水面で反射されずに「抜けてきた」分だけ、
-    // つまり (1 - フレネル反射率) を掛けて加算する。
+    // つまり (1 - フレネル反射率) と、水から空気へ出る 1/n² を掛けて加算する。
     output.color.rgb += ComputeWaterSubsurfaceScattering(
         surfaceNormal, viewDir, input.waveHeight, sigmaS, sigmaT, foamCoverage, sunDiffuseVisibility)
-        * (1.0f - reflectanceWeight);
+        * (1.0f - reflectanceWeight) * kWaterRadianceExitScale;
 
     // ---- 5. 空気遠近感（Aerial Perspective）----
     // 不透明パスへの合成（AerialPerspective.CS）は水面より前に終わっているため、

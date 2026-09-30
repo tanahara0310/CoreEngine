@@ -1,9 +1,14 @@
 #include "pch.h"
 #include "RayTracingSubsystem.h"
 #include <algorithm>
+#include <cstddef>
+#include <utility>
 #include <vector>
 
 #include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
+#include "Graphics/Model/Model.h"
+#include "Graphics/Model/ModelResource.h"
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/FrameBlackboard.h"
@@ -58,6 +63,109 @@ namespace CoreEngine
             }
             return false;
         }
+
+        /// @brief サブメッシュ 1 つぶんの材質をヒットシェーディングのサブメッシュ表の行へ詰める
+        /// @param material          そのスロットの材質（無ければ既定値）
+        /// @param baseColorOverride 全サブメッシュのベースカラーを差し替えるテクスチャ（無ければ ptr = 0）
+        RTHitSubMesh MakeHitSubMesh(
+            const SubMeshData& subMesh,
+            const MaterialInstance* material,
+            const ModelResource& resource,
+            D3D12_GPU_DESCRIPTOR_HANDLE baseColorOverride,
+            const DescriptorAllocator& descriptors)
+        {
+            RTHitSubMesh row{};
+            row.firstTriangle = subMesh.startIndex / 3;
+            row.triangleCount = subMesh.indexCount / 3;
+            row.baseColorTextureIndex = kRTHitNoTexture;
+            row.emissiveTextureIndex = kRTHitNoTexture;
+
+            D3D12_GPU_DESCRIPTOR_HANDLE baseColorTexture = baseColorOverride;
+            if (subMesh.materialIndex < resource.GetMaterials().size()) {
+                const ModelResource::PBRTextureHandles& textures = resource.GetMaterialTextures(subMesh.materialIndex);
+                if (baseColorTexture.ptr == 0) {
+                    baseColorTexture = textures.baseColor;
+                }
+                if (textures.hasEmissive && textures.emissive.ptr != 0) {
+                    row.emissiveTextureIndex = descriptors.GetSRVHeapIndex(textures.emissive);
+                }
+            }
+            if (baseColorTexture.ptr != 0) {
+                row.baseColorTextureIndex = descriptors.GetSRVHeapIndex(baseColorTexture);
+            }
+
+            row.baseColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+            row.uvTransformU = { 1.0f, 0.0f, 0.0f, 0.0f };
+            row.uvTransformV = { 0.0f, 1.0f, 0.0f, 0.0f };
+            row.roughness = 0.5f;
+            row.alphaCutoff = 0.5f;
+            row.flags = kRTHitSubMeshFlagLit;
+            if (material) {
+                // HLSL 側は mul(float4(uv, 0, 1), uvTransform)
+                const Matrix4x4 uvTransform = material->GetUVTransform();
+                row.baseColor = material->GetColor();
+                row.uvTransformU = { uvTransform.m[0][0], uvTransform.m[1][0], uvTransform.m[3][0], 0.0f };
+                row.uvTransformV = { uvTransform.m[0][1], uvTransform.m[1][1], uvTransform.m[3][1], 0.0f };
+                row.emissive = material->GetEmissiveFactor();
+                row.metallic = material->GetMetallic();
+                row.roughness = material->GetRoughness();
+                row.alphaCutoff = material->GetAlphaCutoff();
+                row.flags = (material->IsLightingEnabled() ? kRTHitSubMeshFlagLit : 0u)
+                    | (material->IsDitheringEnabled() ? kRTHitSubMeshFlagDither : 0u);
+            }
+            return row;
+        }
+
+        // ヒットシェーディング（Include/RayTracing/RTHitShading.hlsli）は頂点を VertexData の並びで読む
+        static_assert(sizeof(VertexData) == 64 && offsetof(VertexData, texcoord) == 16
+            && offsetof(VertexData, normal) == 24,
+            "RTHitShading.hlsli の kRTHitVertexStride / kRTHitVertex*Offset と一致させること");
+
+        /// @brief TLAS のインスタンス 1 つぶんの行と、そのサブメッシュの行を足す
+        /// @param model 材質の持ち主（無ければモデルリソースの既定の材質）
+        /// @param vertexBufferIndexOverride 頂点バッファのヒープ内インデックス（UINT32_MAX = BLAS の静止形の頂点）
+        void AppendHitInstance(
+            const AccelerationStructureManager& asMgr,
+            const AccelerationStructureManager::InstanceDesc& instance,
+            const ModelResource& resource,
+            const Model* model,
+            D3D12_GPU_DESCRIPTOR_HANDLE baseColorOverride,
+            const DescriptorAllocator& descriptors,
+            std::vector<RTHitInstance>& outInstances,
+            std::vector<RTHitSubMesh>& outSubMeshes,
+            uint32_t vertexBufferIndexOverride = UINT32_MAX)
+        {
+            RTHitInstance row{};
+            for (int r = 0; r < 3; ++r) {
+                row.objectToWorld[r] = {
+                    instance.transform[r][0], instance.transform[r][1],
+                    instance.transform[r][2], instance.transform[r][3] };
+            }
+            // 動く形（スキニング・揺れる植物）は、BLAS と同じ変形後の頂点を読む
+            row.vertexBufferIndex = (vertexBufferIndexOverride != UINT32_MAX)
+                ? vertexBufferIndexOverride
+                : asMgr.GetBLASVertexBufferIndex(instance.blasIndex);
+            row.indexBufferIndex = asMgr.GetBLASIndexBufferIndex(instance.blasIndex);
+            row.firstSubMesh = static_cast<uint32_t>(outSubMeshes.size());
+
+            for (const SubMeshData& subMesh : resource.GetSubMeshes()) {
+                const MaterialInstance* material = model
+                    ? model->GetMaterial(subMesh.materialIndex)
+                    : resource.GetDefaultMaterial(subMesh.materialIndex);
+                outSubMeshes.push_back(MakeHitSubMesh(subMesh, material, resource, baseColorOverride, descriptors));
+            }
+            if (outSubMeshes.size() == row.firstSubMesh) {
+                // サブメッシュを持たないモデルは全三角形を 1 行で覆う
+                SubMeshData whole{};
+                whole.startIndex = 0;
+                whole.indexCount = resource.GetIndexCount();
+                whole.materialIndex = 0;
+                outSubMeshes.push_back(MakeHitSubMesh(
+                    whole, resource.GetDefaultMaterial(0), resource, baseColorOverride, descriptors));
+            }
+            row.subMeshCount = static_cast<uint32_t>(outSubMeshes.size()) - row.firstSubMesh;
+            outInstances.push_back(row);
+        }
     }
 
     void RayTracingSubsystem::BuildAccelerationStructures(
@@ -96,10 +204,17 @@ namespace CoreEngine
 
         std::vector<AccelerationStructureManager::InstanceDesc> tlasInstances;
 
+        // ヒットシェーディングの表（TLAS のインスタンスと同じ並び）
+        std::vector<RTHitInstance> hitInstances;
+        std::vector<RTHitSubMesh> hitSubMeshes;
+        const DescriptorAllocator* descriptors = dx->GetDescriptorAllocator();
+
         // ===== 動く形（スキニング・揺れる植物）は持ち主ごとの BLAS を毎フレーム更新する =====
         // 静止形の BLAS のままだと、影が揺れに付いてこないうえ、揺れた面から出たレイが
         // 動く前の自分の面に当たって縞状の影（セルフシャドウ）が出る。
         // 変形は描画と同じ時間・同じ式なので、今フレームの画面の形と一致する。
+        // 水面の映り込みのヒットシェーディングにも変形後の頂点（VertexData の並び）を読ませるので、
+        // 当たった点の位置・法線（そこから撃つ影のレイ）も画面の形と一致する。
         ID3D12GraphicsCommandList* asCmdList = dx->GetCommandList();
         const uint64_t frame = context.frameNumber;
         const bool dynamicGeometry = cvDynamicGeometry.Get();
@@ -107,41 +222,52 @@ namespace CoreEngine
         const VertexAnimationParams animParams = VertexAnimationParams::Build();
         const bool swaying = dynamicGeometry && deformer;
 
-        auto buildDynamicBLAS = [&](const void* owner, Model& model, const Matrix4x4& world)
-            -> D3D12_GPU_VIRTUAL_ADDRESS {
+        /// 動く形の BLAS と、ヒットシェーディングが読む頂点バッファ（UINT32_MAX = 静止形の頂点を読む）
+        struct DynamicGeometry {
+            D3D12_GPU_VIRTUAL_ADDRESS blas = 0;
+            uint32_t vertexBufferIndex = UINT32_MAX;
+        };
+        auto buildDynamicBLAS = [&](const void* owner, Model& model, const Matrix4x4& world) -> DynamicGeometry {
             ModelResource* resource = model.GetModelResource();
             AccelerationStructureManager::BLASDesc desc{};
             desc.vertexCount = resource->GetVertexCount();
+            desc.vertexStride = sizeof(VertexData);  // スキニングの出力も頂点変形の出力も VertexData の並び（位置が先頭）
             desc.vertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
             desc.indexBuffer = resource->GetIndexBuffer();
             desc.indexCount = resource->GetIndexCount();  // 静止形の BLAS と同じく LOD0 全体
             desc.indexFormat = DXGI_FORMAT_R32_UINT;
             bool changed = true;
+            uint32_t vertexBufferIndex = UINT32_MAX;
             if (model.HasSkinCluster()) {
-                // GPU スキニングの出力（VertexData の並び。位置が先頭）をそのまま頂点にする
                 desc.vertexBuffer = model.PrepareSkinnedVerticesForRayTracing(asCmdList, changed);
-                desc.vertexStride = sizeof(VertexData);
+                vertexBufferIndex = model.GetSkinnedVertexBufferHeapIndex();
             } else if (swaying && SwaysWithWindOrWater(model, animParams)) {
-                desc.vertexBuffer = deformer->Deform(asCmdList, owner, model, world, animParams, frame);
-                desc.vertexStride = sizeof(float) * 3;
+                const VertexAnimationDeformer::Output deformed =
+                    deformer->Deform(asCmdList, owner, model, world, animParams, frame);
+                desc.vertexBuffer = deformed.vertices;
+                vertexBufferIndex = deformed.vertexBufferIndex;
             }
             if (!desc.vertexBuffer) {
-                return 0;
+                return {};
             }
-            return asMgr->BuildOrUpdateDynamicBLAS(asCmdList, owner, desc, frame, changed);
+            const D3D12_GPU_VIRTUAL_ADDRESS blas = asMgr->BuildOrUpdateDynamicBLAS(asCmdList, owner, desc, frame, changed);
+            return blas ? DynamicGeometry{ blas, vertexBufferIndex } : DynamicGeometry{};
         };
 
         // 「メッシュを持つか」はコンポーネントの有無で決まるので、具象クラスを知る必要はない。
         // 非アクティブ／削除マーク済みのスキップは ForEachComponent が行う。
         objMgr->ForEachComponent<MeshRendererComponent>(
-            [&tlasInstances, &buildDynamicBLAS, dynamicGeometry](MeshRendererComponent& renderer) {
+            [&](MeshRendererComponent& renderer) {
                 // 半透明オブジェクト（水面など）は RT シャドウのキャスターから除外する
                 if (renderer.GetBlendMode() != BlendMode::kBlendModeNone) return;
 
-                auto* model = renderer.GetModel();
-                if (!model) return;
+                // 材質は const の取得口で読む（書き込み用の取得口は材質を複製する）。
+                // 書き込み用のモデルは、スキニングを今フレームぶん済ませるためだけに使う
+                Model* mutableModel = renderer.GetModel();
+                const Model* model = std::as_const(renderer).GetModel();
+                if (!model || !mutableModel) return;
 
-                auto* resource = model->GetModelResource();
+                const ModelResource* resource = model->GetModelResource();
                 if (!resource || !resource->HasBLAS()) return;
 
                 auto* transform = renderer.GetTransformComponent();
@@ -151,18 +277,25 @@ namespace CoreEngine
                 AccelerationStructureManager::InstanceDesc inst;
                 inst.blasIndex = resource->GetBLASIndex();
                 inst.SetTransform(world);
+                uint32_t hitVertexBufferIndex = UINT32_MAX;
                 if (dynamicGeometry) {
                     // 作れなければ 0 のまま（静止形の BLAS を使う）
-                    inst.blasAddress = buildDynamicBLAS(&renderer, *model, world);
+                    const DynamicGeometry dynamic = buildDynamicBLAS(&renderer, *mutableModel, world);
+                    inst.blasAddress = dynamic.blas;
+                    hitVertexBufferIndex = dynamic.vertexBufferIndex;
                 }
                 tlasInstances.push_back(inst);
+                if (descriptors) {
+                    AppendHitInstance(*asMgr, inst, *resource, model, renderer.GetTextureOverrideHandle(),
+                        *descriptors, hitInstances, hitSubMeshes, hitVertexBufferIndex);
+                }
             });
 
         // ===== モデルの粒もキャスターとして載せる =====
         // BLAS はモデル単位で構築済みなので、ここで足すのはインスタンスだけ。
         std::vector<Matrix4x4> particleMatrices;
         objMgr->ForEachComponent<ParticleSystemComponent>(
-            [&tlasInstances, &particleMatrices](ParticleSystemComponent& particleSystem) {
+            [&](ParticleSystemComponent& particleSystem) {
                 // 加算・半透明の粒が真っ黒な影を落とすと不自然なので、不透明のものだけ。
                 // メッシュ側の除外条件と揃えている。
                 if (particleSystem.GetBlendMode() != BlendMode::kBlendModeNone) return;
@@ -182,21 +315,38 @@ namespace CoreEngine
                     inst.blasIndex = resource->GetBLASIndex();
                     inst.SetTransform(particleMatrices[i]);
                     tlasInstances.push_back(inst);
+                    if (descriptors) {
+                        AppendHitInstance(*asMgr, inst, *resource, nullptr, D3D12_GPU_DESCRIPTOR_HANDLE{},
+                            *descriptors, hitInstances, hitSubMeshes);
+                    }
                 }
             });
 
         // ===== 魚の群れも 1 匹ずつキャスターとして載せる =====
         // BLAS は種類（モデル）ごとに共有する。体のくねりは 1 cm ほどなので静止形で足りる。
         objMgr->ForEachComponent<FishSchoolComponent>(
-            [&tlasInstances](FishSchoolComponent& school) {
-                school.CollectRayTracingInstances(tlasInstances);
+            [&](FishSchoolComponent& school) {
+                school.ForEachRayTracingInstance([&](const Model& fishModel, const Matrix4x4& world) {
+                    const ModelResource* resource = fishModel.GetModelResource();
+                    if (!resource || !resource->HasBLAS()) return;
+
+                    AccelerationStructureManager::InstanceDesc inst;
+                    inst.blasIndex = resource->GetBLASIndex();
+                    inst.SetTransform(world);
+                    tlasInstances.push_back(inst);
+                    if (descriptors) {
+                        AppendHitInstance(*asMgr, inst, *resource, &fishModel, D3D12_GPU_DESCRIPTOR_HANDLE{},
+                            *descriptors, hitInstances, hitSubMeshes);
+                    }
+                });
             });
 
         if (!tlasInstances.empty()) {
             asMgr->BuildTLAS(dx->GetCommandList(), tlasInstances);
+            asMgr->UploadHitShadingTables(hitInstances, hitSubMeshes);
         }
 
-        // 消えた・動かなくなった持ち主の動的 BLAS と位置バッファを捨てる（GPU が使い終わってから解放）
+        // 消えた・動かなくなった持ち主の動的 BLAS と頂点バッファを捨てる（GPU が使い終わってから解放）
         asMgr->RetireUnusedDynamicBLAS(frame);
         if (deformer) {
             deformer->RetireUnused(frame);
@@ -399,6 +549,11 @@ namespace CoreEngine
             outDispatchContext.fftOceanInput.normalSRV = context.fftOceanManager->GetNormalSRVHandle();
             outDispatchContext.fftOceanInput.resolution = fftSettings.resolution;
             outDispatchContext.fftOceanInput.enabled = 1;
+            static_assert(FFTOceanManager::kCascadeCount == 3, "cascadeMeanSquareSlope のカスケード数と一致させる");
+            for (uint32_t c = 0; c < FFTOceanManager::kCascadeCount; ++c) {
+                outDispatchContext.fftOceanInput.cascadeMeanSquareSlope[c] =
+                    context.fftOceanManager->GetCascadeMeanSquareSlope(c);
+            }
         }
 
         return true;
@@ -482,9 +637,57 @@ namespace CoreEngine
             dispatchContext.fftOceanInput,
             skyEnvironmentSRV,
             sunShadow,
+            BuildWaterHitShadingInput(context, dx),
             dispatchContext.width,
             dispatchContext.height,
             viewId);
+    }
+
+    WaterHitShadingInput RayTracingSubsystem::BuildWaterHitShadingInput(
+        const RenderContext& context, GraphicsCore* dx)
+    {
+        WaterHitShadingInput input{};
+        const DescriptorAllocator* descriptors = dx ? dx->GetDescriptorAllocator() : nullptr;
+        const AccelerationStructureManager* asMgr = context.accelerationStructureManager;
+        if (!descriptors || !asMgr || !asMgr->HasHitShadingTables()) {
+            return input;
+        }
+        input.instanceTableIndex = asMgr->GetHitInstanceTableIndex();
+        input.subMeshTableIndex = asMgr->GetHitSubMeshTableIndex();
+        input.enabled = (input.instanceTableIndex != UINT32_MAX && input.subMeshTableIndex != UINT32_MAX);
+
+        // DeferredLighting と同じライトの配列（0 番がメインライト）
+        if (context.lightManager) {
+            input.directionalLightsIndex =
+                descriptors->GetSRVHeapIndex(context.lightManager->GetDirectionalLightsSRVHandle());
+            if (input.directionalLightsIndex != UINT32_MAX) {
+                input.directionalLightCount = (std::min)(
+                    context.lightManager->GetLightCount(LightType::Directional),
+                    LightManager::GetMaxLightCount(LightType::Directional));
+            }
+        }
+
+        // 空の光（DeferredLighting と同じ有効条件）
+        if (auto* atmosphere = context.atmosphereManager) {
+            const bool skyAmbientUsable = atmosphere->IsAtmosphereActive()
+                && atmosphere->IsSkyAmbientEnabled()
+                && atmosphere->IsSkyAmbientReady()
+                && atmosphere->GetSkyIrradianceSHSRVHandle().ptr != 0;
+            if (skyAmbientUsable) {
+                input.skyIrradianceSHIndex = descriptors->GetSRVHeapIndex(atmosphere->GetSkyIrradianceSHSRVHandle());
+                input.skyAmbientEnabled = (input.skyIrradianceSHIndex != UINT32_MAX);
+                input.skyAmbientScale = atmosphere->GetSkyAmbientScale();
+
+                const bool skySpecularUsable = atmosphere->IsSkySpecularEnabled()
+                    && atmosphere->IsSkyEnvironmentReady()
+                    && atmosphere->GetSkySpecularSRVHandle().ptr != 0;
+                if (skySpecularUsable) {
+                    input.skySpecularMapIndex = descriptors->GetSRVHeapIndex(atmosphere->GetSkySpecularSRVHandle());
+                    input.skySpecularEnabled = (input.skySpecularMapIndex != UINT32_MAX);
+                }
+            }
+        }
+        return input;
     }
 
     void RayTracingSubsystem::DispatchWaterCaustics(
