@@ -15,7 +15,8 @@ common.bake_and_export が書き出し直前に 2 本の UV レイヤーへ移�
 幹と葉のようにつながる部品は、つなぎ目の値が一致するように作ってあるので、揺らしても裂けない。
 
 glTF の UV は v を 1 - v で格納する規約なので、ファイル上の値は (R, 1 - G), (B, 1 - A)。
-Assimp の aiProcess_FlipUVs を使うと読み込み後は元の (R, G), (B, A) に戻る。
+Assimp は glTF の読み込みと aiProcess_FlipUVs で v を 2 回 1 - v にするので、読み込み後もファイル上の値のまま。
+CoreEngine の ModelLoader が TEXCOORD_1/2 の v を 1 - v にして元の (R, G), (B, A) に戻す。
 """
 import bpy
 import numpy as np
