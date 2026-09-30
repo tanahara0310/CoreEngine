@@ -1,7 +1,7 @@
 
 
-// 頂点データ（position/texcoord/normal/tangent）
-// C++側 VertexData (Vector4 + Vector2 + Vector3 + Vector3 = 48byte) とタイトパッキングを一致させるため、
+// 頂点データ（position/texcoord/normal/tangent/animData）
+// C++側 VertexData (Vector4 + Vector2 + Vector3 + Vector3 + Vector4 = 64byte) とタイトパッキングを一致させるため、
 // StructuredBufferでのベクトル型16byte境界パディングを避け、全てスカラーで宣言する。
 struct SkinnedVertexGPU
 {
@@ -9,6 +9,7 @@ struct SkinnedVertexGPU
     float u, v;
     float nX, nY, nZ;
     float tX, tY, tZ;
+    float a0, a1, a2, a3; // 頂点アニメーション用の値（スキニングでは使わず、そのまま出力へ写す）
 };
 
 // 頂点ごとのボーン影響情報（C++側 VertexInfluence と一致）
@@ -88,6 +89,10 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID)
     dst.tX = skinnedTangent.x;
     dst.tY = skinnedTangent.y;
     dst.tZ = skinnedTangent.z;
+    dst.a0 = src.a0;
+    dst.a1 = src.a1;
+    dst.a2 = src.a2;
+    dst.a3 = src.a3;
 
     gOutputVertices[vertexIndex] = dst;
 }

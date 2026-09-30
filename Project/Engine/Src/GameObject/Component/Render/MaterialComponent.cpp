@@ -34,6 +34,12 @@ namespace CoreEngine
         }
         if (pendingDitheringScale_) { SetDitheringScale(*pendingDitheringScale_); pendingDitheringScale_.reset(); }
         if (pendingDithering_) { SetDitheringEnabled(*pendingDithering_); pendingDithering_.reset(); }
+        if (pendingVertexAnimation_) { SetVertexAnimation(*pendingVertexAnimation_); pendingVertexAnimation_.reset(); }
+        if (pendingVertexAnimStrength_) {
+            SetVertexAnimStrength(*pendingVertexAnimStrength_);
+            pendingVertexAnimStrength_.reset();
+        }
+        if (pendingVertexAnimSpeed_) { SetVertexAnimSpeed(*pendingVertexAnimSpeed_); pendingVertexAnimSpeed_.reset(); }
     }
 
     bool MaterialComponent::ForEachMaterial(const std::function<void(MaterialInstance*)>& fn) const
@@ -171,6 +177,27 @@ namespace CoreEngine
         }
     }
 
+    void MaterialComponent::SetVertexAnimation(VertexAnimationType type)
+    {
+        if (!ForEachMaterial([type](MaterialInstance* mat) { mat->SetVertexAnimation(type); })) {
+            pendingVertexAnimation_ = type;
+        }
+    }
+
+    void MaterialComponent::SetVertexAnimStrength(float strength)
+    {
+        if (!ForEachMaterial([strength](MaterialInstance* mat) { mat->SetVertexAnimStrength(strength); })) {
+            pendingVertexAnimStrength_ = strength;
+        }
+    }
+
+    void MaterialComponent::SetVertexAnimSpeed(float speed)
+    {
+        if (!ForEachMaterial([speed](MaterialInstance* mat) { mat->SetVertexAnimSpeed(speed); })) {
+            pendingVertexAnimSpeed_ = speed;
+        }
+    }
+
     // ===== 取得 =====
     // 実体（MaterialInstance）が出来るのはメッシュを読み終えた後なので、
     // それまでは Start で流し込む控えを返す。どちらも無ければエンジン既定値
@@ -235,5 +262,23 @@ namespace CoreEngine
     {
         if (const MaterialInstance* mat = GetMaterial()) { return mat->GetDitheringScale(); }
         return pendingDitheringScale_.value_or(1.0f);
+    }
+
+    VertexAnimationType MaterialComponent::GetVertexAnimation() const
+    {
+        if (const MaterialInstance* mat = GetMaterial()) { return mat->GetVertexAnimation(); }
+        return pendingVertexAnimation_.value_or(VertexAnimationType::None);
+    }
+
+    float MaterialComponent::GetVertexAnimStrength() const
+    {
+        if (const MaterialInstance* mat = GetMaterial()) { return mat->GetVertexAnimStrength(); }
+        return pendingVertexAnimStrength_.value_or(1.0f);
+    }
+
+    float MaterialComponent::GetVertexAnimSpeed() const
+    {
+        if (const MaterialInstance* mat = GetMaterial()) { return mat->GetVertexAnimSpeed(); }
+        return pendingVertexAnimSpeed_.value_or(1.0f);
     }
 }

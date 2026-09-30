@@ -10,6 +10,7 @@
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
 #include "Graphics/Shader/ShaderBindingContract.h"
 #include "Graphics/Render/Model/ModelBindings.h"
+#include "Graphics/Render/Model/VertexAnimation.h"
 #include "Math/Vector/Vector3.h"
 #include <d3d12.h>
 #include <wrl.h>
@@ -146,6 +147,9 @@ namespace CoreEngine
         Microsoft::WRL::ComPtr<ID3D12Resource> iblParamsBuffer_;
         D3D12_GPU_VIRTUAL_ADDRESS iblParamsCBVAddress_ = 0;
 
+        // 頂点アニメーションの時間・風（ルート定数 gVertexAnim。パスの開始時に作り直す）
+        VertexAnimationParams vertexAnimParams_{};
+
         // シェーダーリフレクションデータ
         std::unique_ptr<ShaderReflectionData> forwardReflectionData_;
         std::unique_ptr<ShaderReflectionData> gBufferReflectionData_;
@@ -172,9 +176,13 @@ namespace CoreEngine
             size_t count,
             const std::string& debugName);
 
-        /// @brief フォワードパスのシーンレベルリソース（カメラ・ライト・IBL）を差す
+        /// @brief フォワードパスのシーンレベルリソース（カメラ・ライト・IBL・頂点アニメーション）を差す
         /// @param table エンジン既定 RS の表、またはカスタムシェーダーの表
         /// @note 既定パスとカスタムパスで処理が同じなので 1 箇所に集約している
         void BindForwardSceneResources(ShaderBinder& binder, const BindingTable& table);
+
+        /// @brief 頂点アニメーションの時間・風（ルート定数 gVertexAnim）を差す
+        /// @note 宣言していないシェーダー（スキニング・カスタム）では表のスロットが無効なので何もしない
+        void BindVertexAnimation(ShaderBinder& binder, const BindingTable& table) const;
     };
 }

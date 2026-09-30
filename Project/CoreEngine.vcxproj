@@ -410,6 +410,7 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectPresetManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Line\LineRendererPipeline.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Model\BaseModelRenderer.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Model\VertexAnimation.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Model\Instancing\InstanceBatchManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Model\ModelRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Model\SkinnedModelRenderer.cpp" />
@@ -1389,6 +1390,7 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Graphics\Render\IRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Line\LineRendererPipeline.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\BaseModelRenderer.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Model\VertexAnimation.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\IBLParameters.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\IBLSceneParams.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\Instancing\InstanceBatch.h" />

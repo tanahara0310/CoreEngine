@@ -64,6 +64,17 @@ namespace CoreEngine
         void SetIBLIntensity(float intensity) { materialData_->iblIntensity = intensity; }
         float GetIBLIntensity() const      { return materialData_->iblIntensity; }
 
+        // ===== 頂点アニメーション（Shaders/Include/Object/VertexAnimation.hlsli） =====
+        /// @brief 頂点アニメーションの種類（モデルが TEXCOORD_1 / TEXCOORD_2 の値を持つときだけ動く）
+        void SetVertexAnimation(VertexAnimationType type) { materialData_->vertexAnimation = static_cast<int32_t>(type); }
+        VertexAnimationType GetVertexAnimation() const { return static_cast<VertexAnimationType>(materialData_->vertexAnimation); }
+        /// @brief 振幅の倍率（1 = モデル作成時の想定）
+        void SetVertexAnimStrength(float strength) { materialData_->vertexAnimStrength = strength; }
+        float GetVertexAnimStrength() const        { return materialData_->vertexAnimStrength; }
+        /// @brief 速さの倍率（1 = 既定の周期）
+        void SetVertexAnimSpeed(float speed) { materialData_->vertexAnimSpeed = speed; }
+        float GetVertexAnimSpeed() const     { return materialData_->vertexAnimSpeed; }
+
         // ===== Serialization =====
         /// @brief マテリアルパラメータを JSON に書き出す
         nlohmann::json ToJson() const;

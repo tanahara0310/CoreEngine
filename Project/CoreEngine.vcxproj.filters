@@ -667,6 +667,9 @@
     <ClCompile Include="Engine\Src\Graphics\Render\Model\BaseModelRenderer.cpp">
       <Filter>Engine\Src\Graphics\Render\Model</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Model\VertexAnimation.cpp">
+      <Filter>Engine\Src\Graphics\Render\Model</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Model\Instancing\InstanceBatchManager.cpp">
       <Filter>Engine\Src\Graphics\Render\Model\Instancing</Filter>
     </ClCompile>
@@ -2401,6 +2404,9 @@
       <Filter>Engine\Src\Graphics\Render\Line</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Model\BaseModelRenderer.h">
+      <Filter>Engine\Src\Graphics\Render\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Model\VertexAnimation.h">
       <Filter>Engine\Src\Graphics\Render\Model</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Model\IBLParameters.h">

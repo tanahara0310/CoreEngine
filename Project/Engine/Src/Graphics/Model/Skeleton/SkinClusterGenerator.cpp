@@ -12,7 +12,11 @@ namespace CoreEngine
 {
 namespace {
     // GPUスキニング用頂点1つ分のバイトサイズ（Skinning.CS.hlsl の SkinnedVertexGPU と一致）
-    constexpr size_t kSkinnedVertexStride = sizeof(float) * 12; // position(4) + texcoord(2) + normal(3) + tangent(3)
+    // 元の頂点バッファ（VertexData）をそのまま StructuredBuffer として読むので、VertexData と同じにする
+    constexpr size_t kSkinnedVertexStride = sizeof(VertexData);
+    // position(4) + texcoord(2) + normal(3) + tangent(3) + animData(4) を全てスカラーで並べた SkinnedVertexGPU
+    static_assert(kSkinnedVertexStride == sizeof(float) * 16,
+        "VertexData を変えたら Skinning.CS.hlsl の SkinnedVertexGPU も合わせること");
     // GPUスキニング用Influence1つ分のバイトサイズ（Skinning.CS.hlsl の InfluenceGPU と一致）
     constexpr size_t kInfluenceStride = sizeof(VertexInfluence);
 }

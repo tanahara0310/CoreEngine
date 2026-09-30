@@ -9,6 +9,9 @@ namespace CoreEngine
 {
 class MeshRendererComponent;
 
+/// @brief 頂点アニメーションの種類の表示名（VertexAnimationType の値の順）
+inline constexpr const char* kVertexAnimationTypeNames[] = { "なし", "植物（風）", "海草（波の寄せ返し）", "魚（泳ぎ）" };
+
 /// @brief 兄弟の `MeshRendererComponent` が持つマテリアルをまとめて操作するコンポーネント。
 /// @details 実体（`MaterialInstance`）は `Model` が持つため、ここは全スロットへ一括適用する
 ///          操作の側だけを担う。α<1 のときブレンドモードを自動でアルファブレンドへ切り替える。
@@ -37,6 +40,13 @@ public:
         REFLECT_ACCESSOR("dithering", "ディザリング", IsDitheringEnabled, SetDitheringEnabled)
         REFLECT_ACCESSOR("ditheringScale", "ディザリングの細かさ", GetDitheringScale, SetDitheringScale,
             p.range = Range(0.1f, 5.0f))
+        REFLECT_ENUM_ACCESSOR("vertexAnimation", "頂点アニメーション", GetVertexAnimation, SetVertexAnimation,
+            kVertexAnimationTypeNames,
+            p.tooltip = "TEXCOORD_1/2 に揺れ・泳ぎのデータを持つモデル（Tools/OkinawaBeach の植物・海草・魚）を動かす")
+        REFLECT_ACCESSOR("vertexAnimStrength", "揺れの強さ", GetVertexAnimStrength, SetVertexAnimStrength,
+            p.range = Range(0.0f, 3.0f))
+        REFLECT_ACCESSOR("vertexAnimSpeed", "揺れの速さ", GetVertexAnimSpeed, SetVertexAnimSpeed,
+            p.range = Range(0.1f, 3.0f))
     REFLECT_END()
 
     /// @brief 兄弟のメッシュ描画を捕まえ、遅延適用していた値を反映する
@@ -79,6 +89,11 @@ public:
     /// @brief ディザリングの細かさ
     void SetDitheringScale(float scale);
 
+    /// @brief 頂点アニメーションの種類・振幅の倍率・速さの倍率（全マテリアルスロットへ適用）
+    void SetVertexAnimation(VertexAnimationType type);
+    void SetVertexAnimStrength(float strength);
+    void SetVertexAnimSpeed(float speed);
+
     // ===== 取得 =====
 
     /// @brief 代表マテリアル（スロット 0）。モデル未ロードなら nullptr
@@ -97,6 +112,9 @@ public:
     Vector4 GetEmissive() const;
     bool IsDitheringEnabled() const;
     float GetDitheringScale() const;
+    VertexAnimationType GetVertexAnimation() const;
+    float GetVertexAnimStrength() const;
+    float GetVertexAnimSpeed() const;
 
 private:
     /// @brief 全マテリアルスロットへ関数を適用する（未ロードなら false）
@@ -119,5 +137,8 @@ private:
     std::optional<Vector3> pendingEmissive_;
     std::optional<bool> pendingDithering_;
     std::optional<float> pendingDitheringScale_;
+    std::optional<VertexAnimationType> pendingVertexAnimation_;
+    std::optional<float> pendingVertexAnimStrength_;
+    std::optional<float> pendingVertexAnimSpeed_;
 };
 }

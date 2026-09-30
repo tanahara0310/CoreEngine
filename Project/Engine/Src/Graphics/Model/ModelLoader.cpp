@@ -313,6 +313,20 @@ namespace CoreEngine
             vertex.tangent = { 1.0f, 0.0f, 0.0f };
         }
 
+        // 頂点アニメーション用の値（TEXCOORD_1 / TEXCOORD_2）。持たないモデルは 0 のまま。
+        // aiProcess_FlipUVs は全 UV チャンネルの v を 1 - v にするが、glTF 側も v を 1 - v で
+        // 格納しているので、ここで読める値は書き出したツール側の元の値に戻っている
+        if (mesh->HasTextureCoords(1)) {
+            const aiVector3D& uv1 = mesh->mTextureCoords[1][vertexIndex];
+            vertex.animData.x = uv1.x;
+            vertex.animData.y = uv1.y;
+        }
+        if (mesh->HasTextureCoords(2)) {
+            const aiVector3D& uv2 = mesh->mTextureCoords[2][vertexIndex];
+            vertex.animData.z = uv2.x;
+            vertex.animData.w = uv2.y;
+        }
+
         return vertex;
     }
 

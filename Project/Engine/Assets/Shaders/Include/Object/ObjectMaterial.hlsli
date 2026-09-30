@@ -6,33 +6,8 @@
 #define OBJECT_MATERIAL_HLSLI
 
 // ===== マテリアル =====
-// glTF 準拠の「ファクター × テクスチャ」乗算方式。
-// テクスチャが無いマテリアルには白1x1がバインドされるため、ファクター値がそのまま最終値になる。
-// IBL の有効/無効はシーン側（IBLマップの有無）で決まり、iblIntensity=0 で個別オプトアウトする。
-struct Material
-{
-    float4 color; // ベースカラーファクター
-    float4x4 uvTransform;
-
-    // ===== PBR Factors =====
-    float metallic; // 金属性ファクター（MRテクスチャの B チャネルと乗算）
-    float roughness; // 粗さファクター（MRテクスチャの G チャネルと乗算）
-    float occlusionStrength; // AOマップ適用強度 (0=無効, 1=フル適用)
-    int useNormalMap;
-
-    float3 emissiveFactor; // エミッシブファクター（エミッシブテクスチャと乗算）
-    int enableLighting;
-
-    // ===== Alpha =====
-    int enableDithering;
-    float ditheringScale;
-    float alphaCutoff; // discard 判定に使用するアルファしきい値
-
-    // ===== IBL =====
-    float iblIntensity; // IBL強度（0=このマテリアルはIBL無効）
-};
-
-ConstantBuffer<Material> gMaterial : register(b0);
+// 定数（struct Material / gMaterial）は頂点シェーダーとも共有するため別ファイルに置いている
+#include "ObjectMaterialConstants.hlsli"
 
 // ===== マテリアルテクスチャ & サンプラー =====
 Texture2D<float4> gTexture : register(t0); // ベースカラー

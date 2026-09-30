@@ -42,6 +42,8 @@ namespace CoreEngine
         config.ConfigureResource("gInstanceData", BindingStrategy::RootDescriptor); // インスタンスデータは Root SRV
         config.ConfigureSampler("gShadowSampler", SamplerConfig::Shadow());
         config.ConfigureSampler("gSampler", SamplerConfig::Anisotropic());
+        // 頂点アニメーションの時間・風はパスごとに差す 8 個の 32bit 値なのでルート定数にする
+        config.ConfigureResource("gVertexAnim", BindingStrategy::RootConstants);
 
         // フォワードパス用 RootSignature を構築
         auto buildResult = forwardRootSignatureMg_->Build(device, *forwardReflectionData_, config);
