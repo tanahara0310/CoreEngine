@@ -312,8 +312,17 @@ void RTWaterRefractionRayGen()
     const float depthConfidence =
         1.0f - smoothstep(depthMismatchThreshold, depthMismatchThreshold * 4.0f, depthMismatch);
 
+    // ===== 水面より上の物は屈折先にならない =====
+    // 再投影先に写っている面が水面より上（空気中）なら、それは屈折レイのヒット点を手前で隠している
+    // 水上の物（水面から出た岩・テトラポッドの脚など）で、水中の色ではない。深度差が小さいと上の
+    // 信頼度が残るので、そのままだと水上の物の色が水面へ混ざり、物の形に沿った半透明の像になる。
+    // 水面からの高さで落とす（水際の砂のように水面すれすれの面で段差が出ないよう、数 cm でなだらかに）。
+    const float sampledSurfaceY =
+        gSurfaceWaterHeight + EvaluateWaterOffset(gFFTOceanDisplacement, sampledWorldPos.xz).y;
+    const float underwaterConfidence = 1.0f - smoothstep(0.02f, 0.10f, sampledWorldPos.y - sampledSurfaceY);
+
     // 画面端フェードと合成した「屈折色をどれだけ信用するか」の重み
-    const float colorWeight = saturate(edgeFade * depthConfidence);
+    const float colorWeight = saturate(edgeFade * depthConfidence * underwaterConfidence);
 
     if (gDebugViewMode != kRTRefractionDebugNone)
     {
