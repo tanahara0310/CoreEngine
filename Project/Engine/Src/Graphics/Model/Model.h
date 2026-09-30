@@ -9,6 +9,7 @@
 #include <memory>
 #include <vector>
 #include <optional>
+#include <span>
 
 #include "Graphics/RHI/Command/FrameSync.h" // kMaxFramesInFlight
 #include "ModelResource.h"
@@ -76,6 +77,20 @@ namespace CoreEngine
         void Draw(const WorldTransform& transform, const DrawViewInfo& view,
             D3D12_GPU_DESCRIPTOR_HANDLE textureHandle = {});
 
+        /// @brief 同じモデルを複数のワールド行列でまとめて描く（インスタンシング。魚の群れ・散布物用）
+        /// @param worlds   インスタンスごとのワールド行列
+        /// @param prevWVPs インスタンスごとの前フレーム WVP（モーションベクター用。worlds と同じ数）。
+        ///                 空なら「動いていない」（今フレームの WVP と同じ）として描く。
+        ///                 前フレームに描いていない・GameView 以外のビューでは空を渡すこと
+        /// @param view     ビュー/パス情報
+        /// @param textureHandle ベースカラーの上書き（省略時はモデル組み込み）
+        /// @details 行列をインスタンシングバッチへ積むだけなので、同じマテリアルの全インスタンスが
+        ///          サブメッシュ・LOD ごとに 1 回の DrawIndexedInstanced になる。LOD はインスタンスごとに選ぶ。
+        /// @note 視錐台カリングは呼び出し側で行う（ここでは全部積む）。Hi-Z の遮蔽判定と、
+        ///       Draw が持つモデル単位のモーションベクター履歴は使わない。スキニングモデルは描かない。
+        void DrawInstances(std::span<const Matrix4x4> worlds, std::span<const Matrix4x4> prevWVPs,
+            const DrawViewInfo& view, D3D12_GPU_DESCRIPTOR_HANDLE textureHandle = {});
+
         /// @brief このモデルが「前フレームと連続しない位置」へ飛ばされたことを伝える
         /// @details プールで別の場所へ使い回した・ワープさせたときに呼ぶ。フレーム間で
         ///          持ち越している状態を 2 つとも捨てる。
@@ -117,6 +132,21 @@ namespace CoreEngine
         /// @brief SkinClusterを持っているか確認
         /// @return SkinClusterがあればtrue
         bool HasSkinCluster() const;
+
+        // ===== レイトレーシング（動く形の BLAS） =====
+
+        /// @brief マテリアルスロットの定数バッファの GPU アドレス（オーバーライドしていなければ共有の既定）
+        /// @note レイトレーシング用の頂点変形（VertexAnimationDeformer）が描画と同じマテリアルを読むのに使う
+        D3D12_GPU_VIRTUAL_ADDRESS GetMaterialCBVAddress(uint32_t materialIndex) const {
+            return MaterialCBVForSlot(materialIndex);
+        }
+
+        /// @brief 今フレームの GPU スキニングを済ませ、変形後の頂点バッファを BLAS の入力に使える状態にする
+        /// @param cmdList 積み先（加速構造の構築と同じリスト）
+        /// @param outChanged [out] このフレームに形が変わったか（スキニングを実行したか）
+        /// @return 変形後の頂点バッファ（VertexData の並びで位置が先頭）。スキニングしないモデルは nullptr
+        /// @note ここで済ませたスキニングは描画で再計算しない（フレーム 1 回のガードを共有する）
+        ID3D12Resource* PrepareSkinnedVerticesForRayTracing(ID3D12GraphicsCommandList* cmdList, bool& outChanged);
 
         /// @brief アニメーションプレイヤーを設定する（ModelManager::CreateSkeletonModel が注入する）
         void SetAnimationPlayer(std::unique_ptr<AnimationPlayer> player);

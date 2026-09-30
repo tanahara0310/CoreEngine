@@ -161,8 +161,8 @@ Blender 上での確認は `demo_anim.py`（下記）。
   エンジンの Assimp は `aiProcess_FlipUVs` で読むので、読み込み後は元の `(R, G)`, `(B, A)` に戻る
 - テクスチャ用の UV は従来どおり `TEXCOORD_0`（マテリアルもこれを参照）
 
-エンジン側で使うには `ModelLoader::ConvertVertex` で `mTextureCoords[1]`, `[2]` を読み、`VertexData` と入力レイアウトに
-`TEXCOORD1`, `TEXCOORD2`（float2）を足す。頂点シェーダーの例（オブジェクト空間、Y-up、原点 = 根元）:
+CoreEngine では実装済み（下の「[エンジン（CoreEngine）での使い方](#エンジンcoreengineでの使い方)」）。
+ほかのエンジンで使うときの頂点シェーダーの例（オブジェクト空間、Y-up、原点 = 根元。CoreEngine の `VertexAnimation.hlsli` と同じ式）:
 
 ```hlsl
 // windDirOS: 風向き（オブジェクト空間の水平な単位ベクトル）, strength: 風の強さ, objPhase: 個体ごとの位相（ワールド位置から作る等）
@@ -176,7 +176,7 @@ float3 WindDisplace(float3 posOS, float3 nrmOS, float2 uv1, float2 uv2, float3 w
     float w0 = TAU / period;                         // 基本の角振動数（各揺れはこの整数倍）
     float R = uv1.x, G = uv1.y, B = uv2.x, A = uv2.y;
     float3 up = float3(0, 1, 0);
-    float3 side = cross(up, windDirOS);
+    float3 side = cross(windDirOS, up);              // Blender の cross(Z, 風向き) をエンジン座標にしたもの
     // 1) 株全体の曲げ。根元からの距離を保って幹が伸びないようにする
     float gust = strength * (0.55 + 0.30 * sin(w0 * time + objPhase) + 0.15 * sin(3 * w0 * time + 1.3 * objPhase));
     float sway = strength * 0.25 * sin(2 * w0 * time + 2.0 * objPhase);
@@ -198,7 +198,7 @@ float3 WindDisplace(float3 posOS, float3 nrmOS, float2 uv1, float2 uv2, float3 w
 ### 魚（Fish_*）と群れの配置（FishSchools/*.json）
 
 1 匹ずつのまっすぐなモデル（頭 +X、背 +Z。エンジン座標では頭 +X・背 +Y・体の左 +Z）を、
-群れの配置 JSON どおりにインスタンス描画する。
+群れの配置 JSON どおりにインスタンス描画する（CoreEngine では「魚の群れ」コンポーネント）。
 
 | glTF | 内容 |
 |---|---|
@@ -252,6 +252,95 @@ Blender の `(x, y, z)` は `(x, z, y)`、回転は Assimp の変換と同じ（
 `python3 Tools/OkinawaBeach/demo_anim.py [beach] [underwater]` で、書き出した glTF を読み込んで動かし、
 `Previews/anim_<clip>.mp4` / `.gif` と `Blend/AnimDemo_<clip>.blend`（開いて再生できる）を作る。
 植物と魚は `okinawa/motion.py` のジオメトリノード（上の HLSL と同じ式）、ウミガメは glTF のアクション `Swim` で動かしている。
+
+## エンジン（CoreEngine）での使い方
+
+### 置くだけで動く（glTF のマテリアルの extras）
+
+揺れ・泳ぎの値を持つモデルは、glTF のマテリアルに頂点アニメーションの種類と速さを書いてある
+（`okinawa/gltf_extras.py`。`build.py` がアセットのモジュールの `VERTEX_ANIMATION` / `VERTEX_ANIM_SPEED` から書く）。
+
+```json
+"extras": {"vertexAnimation": "fish", "vertexAnimSpeed": 0.6364}
+```
+
+`ModelLoader::ApplyGltfMaterialExtras` がこれを読んでモデルの既定のマテリアルに入れるので、
+**メッシュ描画（MeshRenderer）にモデルを置くだけで揺れる・泳ぐ**。
+
+| モデル | 種類 | 速さ | 動き |
+|---|---|---|---|
+| CoconutPalm_A/B/C, Adan_A/B, Hibiscus_A/B, Bougainvillea_A | `plant`（植物） | 1 | 風で株が曲がり、葉がしなり、葉先が震える（基本 4 秒周期） |
+| Seagrass_Patch_A/B | `seagrass`（海草） | 1 | うねりの向きにゆっくり寄せ返す（6 秒周期） |
+| Fish_SapphireDevil_F/M | `fish`（魚） | 1.091 | 体の波 2.4 Hz・胸びれ 4.9 Hz |
+| Fish_BlueGreenChromis_A/B | `fish` | 1 | 体の波 2.2 Hz・胸びれ 4.5 Hz（エンジンの基準） |
+| Fish_ThreadfinButterfly | `fish` | 0.636 | 体の波 1.4 Hz・胸びれ 2.9 Hz（ゆったり） |
+
+- 個体ごとの位相はワールド位置から作るので、同じモデルを並べてもそろって動かない（同じモデルはまとめてインスタンス描画される）
+- 揺れで元の形からはみ出す分だけモデルの AABB を広げてある（視錐台・Hi-Z で葉先が欠けない）
+
+### 個体ごとの調整（マテリアル コンポーネント）
+
+「マテリアル」コンポーネントの **頂点アニメーション**（なし / 植物（風） / 海草（波の寄せ返し） / 魚（泳ぎ））、
+**揺れの強さ**（振幅の倍率 0〜3）、**揺れの速さ**（0.1〜3）で上書きできる（全マテリアルスロットに入り、シーンに保存される）。
+止めたい個体は「なし」にする。
+
+### 風と波（CVar）
+
+植物は海（FFT）と同じ風で揺れる。風速が `r.VertexAnim.ReferenceWindSpeed`（既定 15 m/s）のとき「強さ 1」（上限 2）。
+
+| CVar | 既定 | 内容 |
+|---|---|---|
+| `r.Water.FFT.WindDirection` / `r.Water.FFT.WindSpeed` | 海と共通 | 植物の風下の向きと強さ |
+| `r.Water.Swell.Direction`（`r.Water.Swell.Enabled` のとき） | 海と共通 | 海草の寄せ返しの向き（うねりが無ければ風向き） |
+| `r.VertexAnim.Enabled` | on | 頂点アニメーション全体（off で止まる） |
+| `r.VertexAnim.WindScale` / `r.VertexAnim.WaterScale` | 1 | 植物 / 海草の揺れの倍率 |
+| `r.RT.DynamicGeometry` | on | 揺れる植物・海草とスキンモデルの今の形をレイトレーシングに反映する |
+
+### 魚の群れ（魚の群れ コンポーネント）
+
+空のオブジェクトに「魚の群れ」（`FishSchool`）を足し、**群れの配置** に `FishSchools/FishSchool_Blue.json` などを指す。
+オブジェクトの位置・向き・大きさが群れの中心になる（群れを移動させるのはゲーム側でオブジェクトを動かす）。
+
+| 項目 | 内容 |
+|---|---|
+| 群れの配置 | 配置 JSON。使うモデルは JSON のフォルダからの相対パスで読む |
+| 泳ぎの速さ | 体のくねり・胸びれの速さの倍率（種類ごとの既定の速さに掛ける） |
+| 漂い | 1 匹ずつ小さく上下・前後に漂い、首を振る大きさ（0 で配置どおりに止まる） |
+| 影を落とす | レイトレーシングの影（と水中のコースティクス）に 1 匹ずつ入れる |
+
+種類（モデル）ごとに `Model::DrawInstances` で全個体をまとめて積むので、34 匹の群れでもサブメッシュ 1 つにつき
+1 回のインスタンス描画になる。1 匹ずつ視錐台で棄却し、モーションベクター用の前フレームの行列も個体ごとに持つ。
+
+### ウミガメ（スキンモデル）
+
+「アニメーション」（`Animator`）コンポーネントでスキンモデルとして読み、`Swim` を再生する。コードからは:
+
+```cpp
+// turtle: シーンに登録した GameObject。メッシュ描画は Animator が自動で足してスキンモデルにする
+turtle->AddComponent<AnimatorComponent>("SeaTurtle.gltf", "Swim");
+```
+
+### レイトレーシング（影・水面の反射・コースティクス）
+
+- 揺れる植物・海草: 描画と同じ式（`VertexAnimation.hlsli`）を CS（`Shaders/RayTracing/VertexAnimationDeform.CS.hlsl`）で実行して
+  個体ごとの位置バッファを作り、個体ごとの BLAS を毎フレーム更新（refit）する。影が揺れに付いてくるうえ、
+  揺れた葉から出たレイが動く前の葉に当たる縞状のセルフシャドウも出ない
+- スキンモデル（ウミガメ）: GPU スキニングの出力をそのまま BLAS の頂点にして更新する（姿勢が変わったフレームだけ）
+- 魚: 体のくねりは 1 cm ほど（影のバイアス 5 cm より小さい）なので、種類ごとに共有する静止形の BLAS を個体の行列で置く
+- 120 回更新するごとに BLAS を作り直して木構造の質を保つ（個体ごとにずらす）
+
+### 検証
+
+エンジンは Windows（MSVC・DXC・D3D12）でしかビルドできないため、Linux では次の方法で確かめた
+（`pip install slangpy` のうえ `python3 Tools/OkinawaBeach/verify_engine_anim.py` で再現できる）:
+
+- `VertexAnimationDeform.CS.hlsl`（= 描画の頂点シェーダーと同じ `ApplyVertexAnimation`）を slang の CPU バックエンドで実行し、
+  書き出した glTF（CoconutPalm_A, Adan_A, Hibiscus_A, Seagrass_Patch_A, Fish_SapphireDevil_F, Fish_ThreadfinButterfly）の全頂点で、
+  Blender の確認用ジオメトリノード（`okinawa/motion.py`）と同じ式の結果と比べた。
+  回転・移動した個体、風向き・強さ・速さの倍率を変えても差は最大 2.6 µm（float の丸め誤差）
+- 群れの配置 JSON の回転を `XMMatrixAffineTransformation`（`MathCore::Matrix::MakeAffine`）と同じ式で行列にし、
+  Blender の確認用シーンの配置と一致することを確かめた
+- C++ は clang（MinGW ターゲット）の構文チェックで、変更前と比べて新しいエラーが無いことを確かめた（MSVC でのビルドと実行は未確認）
 
 ## 他のモジュールで使い回せる補助
 

@@ -11,20 +11,55 @@
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
+#include "Graphics/RayTracing/VertexAnimationDeformer.h"
+#include "Graphics/Render/Model/VertexAnimation.h"
+#include "Graphics/Material/MaterialInstance.h"
+#include "Graphics/Model/VertexData.h"
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
 #include "Graphics/Render/Pass/RenderPass.h"
 #include "Graphics/Water/FFTOceanManager.h"
+#include "GameObject/Component/Render/FishSchoolComponent.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/GameObjectManager.h"
 #include "Particle/ParticleSystemComponent.h"
 #include "Camera/View/ViewInfo.h"
 #include "Math/MathCore.h"
 #include "Scene/SceneManager.h"
+#include "Utility/CVar/CVar.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
 {
+    namespace
+    {
+        CVar<bool> cvDynamicGeometry{ "r.RT.DynamicGeometry", true,
+            "揺れる植物・海草とスキニングモデルの今の形を、レイトレーシング（影・水面の反射・コースティクス）へ"
+            "毎フレーム反映する（off なら静止形の BLAS を使う）" };
+
+        /// @brief 今フレーム風や波で揺れる（植物・海草の）マテリアルを持つか
+        /// @note 魚の泳ぎは 1 cm ほどしか動かないので、影は静止形（共有の BLAS）で足りる
+        bool SwaysWithWindOrWater(const Model& model, const VertexAnimationParams& params)
+        {
+            const ModelResource* resource = model.GetModelResource();
+            if (!resource || !resource->HasVertexAnimationData()) {
+                return false;
+            }
+            for (size_t i = 0; i < model.GetMaterialCount(); ++i) {
+                const MaterialInstance* material = model.GetMaterial(i);
+                if (!material || material->GetVertexAnimStrength() <= 0.0f) {
+                    continue;
+                }
+                const VertexAnimationType type = material->GetVertexAnimation();
+                if ((type == VertexAnimationType::Plant && params.windStrength > 0.0f)
+                    || (type == VertexAnimationType::Seagrass && params.waterStrength > 0.0f)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
     void RayTracingSubsystem::BuildAccelerationStructures(
         const RenderContext& context,
         GraphicsCore* dx,
@@ -61,10 +96,45 @@ namespace CoreEngine
 
         std::vector<AccelerationStructureManager::InstanceDesc> tlasInstances;
 
+        // ===== 動く形（スキニング・揺れる植物）は持ち主ごとの BLAS を毎フレーム更新する =====
+        // 静止形の BLAS のままだと、影が揺れに付いてこないうえ、揺れた面から出たレイが
+        // 動く前の自分の面に当たって縞状の影（セルフシャドウ）が出る。
+        // 変形は描画と同じ時間・同じ式なので、今フレームの画面の形と一致する。
+        ID3D12GraphicsCommandList* asCmdList = dx->GetCommandList();
+        const uint64_t frame = context.frameNumber;
+        const bool dynamicGeometry = cvDynamicGeometry.Get();
+        VertexAnimationDeformer* deformer = context.vertexAnimationDeformer;
+        const VertexAnimationParams animParams = VertexAnimationParams::Build();
+        const bool swaying = dynamicGeometry && deformer;
+
+        auto buildDynamicBLAS = [&](const void* owner, Model& model, const Matrix4x4& world)
+            -> D3D12_GPU_VIRTUAL_ADDRESS {
+            ModelResource* resource = model.GetModelResource();
+            AccelerationStructureManager::BLASDesc desc{};
+            desc.vertexCount = resource->GetVertexCount();
+            desc.vertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
+            desc.indexBuffer = resource->GetIndexBuffer();
+            desc.indexCount = resource->GetIndexCount();  // 静止形の BLAS と同じく LOD0 全体
+            desc.indexFormat = DXGI_FORMAT_R32_UINT;
+            bool changed = true;
+            if (model.HasSkinCluster()) {
+                // GPU スキニングの出力（VertexData の並び。位置が先頭）をそのまま頂点にする
+                desc.vertexBuffer = model.PrepareSkinnedVerticesForRayTracing(asCmdList, changed);
+                desc.vertexStride = sizeof(VertexData);
+            } else if (swaying && SwaysWithWindOrWater(model, animParams)) {
+                desc.vertexBuffer = deformer->Deform(asCmdList, owner, model, world, animParams, frame);
+                desc.vertexStride = sizeof(float) * 3;
+            }
+            if (!desc.vertexBuffer) {
+                return 0;
+            }
+            return asMgr->BuildOrUpdateDynamicBLAS(asCmdList, owner, desc, frame, changed);
+        };
+
         // 「メッシュを持つか」はコンポーネントの有無で決まるので、具象クラスを知る必要はない。
         // 非アクティブ／削除マーク済みのスキップは ForEachComponent が行う。
         objMgr->ForEachComponent<MeshRendererComponent>(
-            [&tlasInstances](MeshRendererComponent& renderer) {
+            [&tlasInstances, &buildDynamicBLAS, dynamicGeometry](MeshRendererComponent& renderer) {
                 // 半透明オブジェクト（水面など）は RT シャドウのキャスターから除外する
                 if (renderer.GetBlendMode() != BlendMode::kBlendModeNone) return;
 
@@ -77,9 +147,14 @@ namespace CoreEngine
                 auto* transform = renderer.GetTransformComponent();
                 if (!transform) return;
 
+                const Matrix4x4& world = transform->Get().GetWorldMatrix();
                 AccelerationStructureManager::InstanceDesc inst;
                 inst.blasIndex = resource->GetBLASIndex();
-                inst.SetTransform(transform->Get().GetWorldMatrix());
+                inst.SetTransform(world);
+                if (dynamicGeometry) {
+                    // 作れなければ 0 のまま（静止形の BLAS を使う）
+                    inst.blasAddress = buildDynamicBLAS(&renderer, *model, world);
+                }
                 tlasInstances.push_back(inst);
             });
 
@@ -110,8 +185,21 @@ namespace CoreEngine
                 }
             });
 
+        // ===== 魚の群れも 1 匹ずつキャスターとして載せる =====
+        // BLAS は種類（モデル）ごとに共有する。体のくねりは 1 cm ほどなので静止形で足りる。
+        objMgr->ForEachComponent<FishSchoolComponent>(
+            [&tlasInstances](FishSchoolComponent& school) {
+                school.CollectRayTracingInstances(tlasInstances);
+            });
+
         if (!tlasInstances.empty()) {
             asMgr->BuildTLAS(dx->GetCommandList(), tlasInstances);
+        }
+
+        // 消えた・動かなくなった持ち主の動的 BLAS と位置バッファを捨てる（GPU が使い終わってから解放）
+        asMgr->RetireUnusedDynamicBLAS(frame);
+        if (deformer) {
+            deformer->RetireUnused(frame);
         }
     }
 

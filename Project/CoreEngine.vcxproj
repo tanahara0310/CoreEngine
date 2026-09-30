@@ -386,6 +386,7 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Graphics\Primitive\PlaneMeshGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Primitive\SphereMeshGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\AccelerationStructureManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\VertexAnimationDeformer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingDispatchInfo.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingPassBase.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingPipelineBuilder.cpp" />
@@ -471,6 +472,7 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\GameObject\Component\Core\MissingComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Core\ObjectRef.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Render\MaterialComponent.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Component\Render\FishSchoolComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Animation\AnimatorComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Render\MeshRendererComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Render\SpriteRendererComponent.cpp" />
@@ -1349,6 +1351,7 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Graphics\Primitive\RingMeshGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\Primitive\SphereMeshGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\AccelerationStructureManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\VertexAnimationDeformer.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingDispatchInfo.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingOutputViewSet.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingPassBase.h" />
@@ -1541,6 +1544,7 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\GameObject\Component\Core\IComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Core\IRawSavedParameters.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Render\MaterialComponent.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\Render\FishSchoolComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Animation\SkeletonSocketComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Transform\ITransformSource.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Line\ILineSource.h" />
