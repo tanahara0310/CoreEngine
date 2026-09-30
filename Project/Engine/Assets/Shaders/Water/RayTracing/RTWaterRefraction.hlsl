@@ -74,6 +74,76 @@ float4 MakeColorFallbackWithPath(float3 fallbackColor, float opticalPathLength)
     return float4(fallbackColor, EncodeHitAlpha(opticalPathLength, false));
 }
 
+/// @brief HeightAboveWaterAt が背景（空）に返す高さ（水中の面として扱わない）
+static const float kBackgroundHeightAboveWater = 1.0e4f;
+/// @brief この高さ [m] までの面は水中の面として扱う（波込みの水面との誤差の分）
+static const float kUnderwaterMarginMeters = 0.02f;
+
+uint2 ScreenUVToCoord(float2 uv)
+{
+    const uint2 size = uint2((uint)gScreenWidth, (uint)gScreenHeight);
+    return min(uint2(saturate(uv) * float2(size)), size - 1u);
+}
+
+/// @brief 画面のその画素に写っている面が、波込みの水面よりどれだけ上にあるか [m]
+float HeightAboveWaterAt(uint2 coord)
+{
+    const float depth = gSceneDepth.Load(int3(coord, 0));
+    if (IsBackgroundDepth(depth))
+    {
+        return kBackgroundHeightAboveWater;
+    }
+    const float2 uv = (float2(coord) + 0.5f.xx) / float2(gScreenWidth, gScreenHeight);
+    const float3 pos = ReconstructWorldPosition(ScreenUVToNDC(uv), depth, gInvViewProjection);
+    return pos.y - (gSurfaceWaterHeight + EvaluateWaterOffset(gFFTOceanDisplacement, pos.xz).y);
+}
+
+/// @brief 屈折先が水上の物に隠れているときの代わりの色。屈折先から自分の画素へ画面を戻り、
+///        隠している物の縁のすぐ外に写っている水中の面の色を返す（見つからなければ fallbackColor）
+/// @details 自分の画素の色（屈折させていない色）で埋めると、隠れている範囲の内と外で見える海底の場所が
+///          食い違い、隠している物の形の線（枠線）になる。縁のすぐ外の色は、隠れていない隣の画素が
+///          屈折先として使う色とつながるので線にならない（範囲の内側は縁の色が伸びた見た目になる）。
+///          自分の画素には水中の面（または背景）が写っているので、戻る途中で必ず縁を越える。
+float3 FindUnderwaterColorBeside(float2 occludedUV, float2 selfUV, float3 fallbackColor)
+{
+    static const int kSearchSteps = 12;
+    static const int kRefineSteps = 4;
+
+    float occludedT = 0.0f;  // 隠れている側（0 = 屈折先）
+    float foundT = -1.0f;    // 水中の面が写っている側
+    [loop]
+    for (int i = 1; i <= kSearchSteps; ++i)
+    {
+        const float t = (float)i / (float)kSearchSteps;
+        if (HeightAboveWaterAt(ScreenUVToCoord(lerp(occludedUV, selfUV, t))) <= kUnderwaterMarginMeters)
+        {
+            foundT = t;
+            break;
+        }
+        occludedT = t;
+    }
+    if (foundT < 0.0f)
+    {
+        return fallbackColor;
+    }
+
+    // 縁の位置を二分法で詰める（隣の画素が屈折先として使う色との間に段差を残さない）
+    [unroll]
+    for (int j = 0; j < kRefineSteps; ++j)
+    {
+        const float midT = 0.5f * (occludedT + foundT);
+        if (HeightAboveWaterAt(ScreenUVToCoord(lerp(occludedUV, selfUV, midT))) <= kUnderwaterMarginMeters)
+        {
+            foundT = midT;
+        }
+        else
+        {
+            occludedT = midT;
+        }
+    }
+    return gSceneColor.Load(int3(ScreenUVToCoord(lerp(occludedUV, selfUV, foundT)), 0)).rgb;
+}
+
 float3 EncodeSignedVector(float3 vectorValue)
 {
     return normalize(vectorValue) * 0.5f + 0.5f;
@@ -312,17 +382,22 @@ void RTWaterRefractionRayGen()
     const float depthConfidence =
         1.0f - smoothstep(depthMismatchThreshold, depthMismatchThreshold * 4.0f, depthMismatch);
 
-    // ===== 水面より上の物は屈折先にならない =====
+    // ===== 水上の物に隠れた屈折先 =====
     // 再投影先に写っている面が水面より上（空気中）なら、それは屈折レイのヒット点を手前で隠している
-    // 水上の物（水面から出た岩・テトラポッドの脚など）で、水中の色ではない。深度差が小さいと上の
-    // 信頼度が残るので、そのままだと水上の物の色が水面へ混ざり、物の形に沿った半透明の像になる。
-    // 水面からの高さで落とす（水際の砂のように水面すれすれの面で段差が出ないよう、数 cm でなだらかに）。
+    // 水上の物（水面から出た岩・テトラポッドの脚・桟橋など）で、水中の色ではない。その色を混ぜると
+    // 物の形の半透明の像に、自分の画素の色（屈折させていない色）へ切り替えると物の形の枠線になるので、
+    // 隠している物の縁のすぐ外に写っている水中の面の色で置き換える（FindUnderwaterColorBeside）。
+    // 水面から 2〜10 cm でなだらかに切り替える（水際の砂のように水面すれすれの面で段差を出さない）。
+    // 背景（空）はこれまでどおり深度の信頼度で扱う。
     const float sampledSurfaceY =
         gSurfaceWaterHeight + EvaluateWaterOffset(gFFTOceanDisplacement, sampledWorldPos.xz).y;
-    const float underwaterConfidence = 1.0f - smoothstep(0.02f, 0.10f, sampledWorldPos.y - sampledSurfaceY);
+    const float aboveWater = IsBackgroundDepth(sampledDepth)
+        ? 0.0f
+        : smoothstep(kUnderwaterMarginMeters, 0.10f, sampledWorldPos.y - sampledSurfaceY);
 
-    // 画面端フェードと合成した「屈折色をどれだけ信用するか」の重み
-    const float colorWeight = saturate(edgeFade * depthConfidence * underwaterConfidence);
+    // 画面端フェードと合成した「屈折色をどれだけ信用するか」の重み。
+    // 置き換えた色は隠れていない隣の画素の屈折先とつながる色なので、深度の一致は見ない
+    const float colorWeight = saturate(edgeFade * lerp(depthConfidence, 1.0f, aboveWater));
 
     if (gDebugViewMode != kRTRefractionDebugNone)
     {
@@ -338,7 +413,12 @@ void RTWaterRefractionRayGen()
         return;
     }
 
-    const float3 refractedColor = gSceneColor.Load(int3(sampleCoord, 0)).rgb;
+    float3 refractedColor = gSceneColor.Load(int3(sampleCoord, 0)).rgb;
+    if (aboveWater > 0.0f)
+    {
+        refractedColor = lerp(refractedColor,
+            FindUnderwaterColorBeside(refractedUV, screenUV, fallbackSample.rgb), aboveWater);
+    }
     const float3 blendedColor = lerp(fallbackSample.rgb, refractedColor, colorWeight);
 
     // アルファの colorValid ビットは診断用（デバッグ表示・統計）に残すが、
