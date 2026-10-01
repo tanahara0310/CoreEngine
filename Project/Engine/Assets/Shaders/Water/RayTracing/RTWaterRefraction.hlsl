@@ -483,11 +483,11 @@ void RTWaterRefractionRayGen()
     const float hitViewDistance = length(hitWorldPos - gCameraPosition);
     const float depthMismatch =
         IsBackgroundDepth(sampledDepth) ? 1.0e8f : abs(sampledViewDistance - hitViewDistance);
-    const float depthMismatchThreshold = max(0.08f, hitViewDistance * 0.03f);
+    const float depthMismatchThreshold = max(0.02f, hitViewDistance * 0.0075f);
 
-    // 再投影先に写っている面が当たった点そのものか（距離の差が閾値の 1〜4 倍でなだらかに 0 へ）
+    // 再投影先に写っている面が当たった点そのものか（距離の差が閾値の 1〜2 倍でなだらかに 0 へ）
     const float depthConfidence =
-        1.0f - smoothstep(depthMismatchThreshold, depthMismatchThreshold * 4.0f, depthMismatch);
+        1.0f - smoothstep(depthMismatchThreshold, depthMismatchThreshold * 2.0f, depthMismatch);
 
     // ===== 画面に写っていない屈折先 =====
     // 次の画素では当たった点の色が画面に無いので、当たった点を材質と光で照らした色で埋める
