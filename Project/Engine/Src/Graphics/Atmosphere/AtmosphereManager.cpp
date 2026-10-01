@@ -340,7 +340,7 @@ namespace CoreEngine
             cubeDesc.Width = kSkyCubemapSize;
             cubeDesc.Height = kSkyCubemapSize;
             cubeDesc.DepthOrArraySize = 6;
-            cubeDesc.MipLevels = 1;
+            cubeDesc.MipLevels = static_cast<UINT16>(kSkyCubemapMipCount);
             cubeDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
             cubeDesc.SampleDesc.Count = 1;
             cubeDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
@@ -360,17 +360,19 @@ namespace CoreEngine
             cubeSrvDesc.Format = cubeDesc.Format;
             cubeSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
             cubeSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-            cubeSrvDesc.TextureCube.MipLevels = 1;
-
-            D3D12_UNORDERED_ACCESS_VIEW_DESC cubeUavDesc{};
-            cubeUavDesc.Format = cubeDesc.Format;
-            cubeUavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
-            cubeUavDesc.Texture2DArray.MipSlice = 0;
-            cubeUavDesc.Texture2DArray.FirstArraySlice = 0;
-            cubeUavDesc.Texture2DArray.ArraySize = 6;
+            cubeSrvDesc.TextureCube.MipLevels = kSkyCubemapMipCount;
 
             skyCubemapSrvHandle_ = descriptorAllocator->CreateSRV(skyCubemap_.Get(), cubeSrvDesc, "AtmosphereSkyCubemapSRV");
-            skyCubemapUavHandle_ = descriptorAllocator->CreateUAV(skyCubemap_.Get(), cubeUavDesc, "AtmosphereSkyCubemapUAV");
+
+            for (uint32_t mip = 0; mip < kSkyCubemapMipCount; ++mip) {
+                D3D12_UNORDERED_ACCESS_VIEW_DESC cubeUavDesc{};
+                cubeUavDesc.Format = cubeDesc.Format;
+                cubeUavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+                cubeUavDesc.Texture2DArray.MipSlice = mip;
+                cubeUavDesc.Texture2DArray.FirstArraySlice = 0;
+                cubeUavDesc.Texture2DArray.ArraySize = 6;
+                skyCubemapUavHandles_[mip] = descriptorAllocator->CreateUAV(skyCubemap_.Get(), cubeUavDesc, "AtmosphereSkyCubemapUAV");
+            }
         }
 
         // ===== プリフィルタ済み空スペキュラキューブマップ =====
@@ -517,6 +519,15 @@ namespace CoreEngine
         if (!skyEnvCaptureBuilt || !skyEnvironmentCapturePipeline_.HasComputePSO()) {
             Logger::GetInstance().Warnf(LogCategory::Graphics,
                 "AtmosphereManager: 空キューブマップ焼き込みコンピュートパイプラインの構築に失敗");
+            return false;
+        }
+
+        const bool skyEnvDownsampleBuilt = skyEnvironmentDownsamplePipeline_.Build(
+            device, shaderCompiler, reflectionBuilder, skyEnvironmentDownsampleShaderProvider_);
+
+        if (!skyEnvDownsampleBuilt || !skyEnvironmentDownsamplePipeline_.HasComputePSO()) {
+            Logger::GetInstance().Warnf(LogCategory::Graphics,
+                "AtmosphereManager: 空キューブマップのミップ生成コンピュートパイプラインの構築に失敗");
             return false;
         }
 
@@ -739,7 +750,7 @@ namespace CoreEngine
         const int uavSlot = skyEnvironmentCapturePipeline_.GetComputeRootParamIndex("gSkyCubemap");
         if (uavSlot >= 0) {
             cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(uavSlot), skyCubemapUavHandle_.gpuHandle);
+                static_cast<UINT>(uavSlot), skyCubemapUavHandles_[0].gpuHandle);
         }
 
         cmdList->Dispatch(
@@ -756,6 +767,8 @@ namespace CoreEngine
         if (!cmdList || !skyCubemap_ || !skySpecularMap_ || !skyPrefilterParamsCB_) {
             return;
         }
+
+        GenerateSkyCubemapMips(cmdList);
 
         // 入力（空＋雲キューブマップ）を SRV、出力ミップ群を UAV へ
         Barrier::Transition(cmdList, skyCubemap_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -793,6 +806,34 @@ namespace CoreEngine
         Barrier::Transition(cmdList, skySpecularMap_, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
         skyEnvironmentGenerated_ = true;
+    }
+
+    void AtmosphereManager::GenerateSkyCubemapMips(ID3D12GraphicsCommandList* cmdList)
+    {
+        // mip0 への雲の合成の書き込みを待ってから読む
+        Barrier::Transition(cmdList, skyCubemap_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::UAV(cmdList, skyCubemap_);
+
+        cmdList->SetPipelineState(skyEnvironmentDownsamplePipeline_.GetComputePSO());
+        cmdList->SetComputeRootSignature(skyEnvironmentDownsamplePipeline_.GetComputeRootSignature());
+
+        const int sourceSlot = skyEnvironmentDownsamplePipeline_.GetComputeRootParamIndex("gSourceMip");
+        const int destSlot = skyEnvironmentDownsamplePipeline_.GetComputeRootParamIndex("gDestMip");
+        for (uint32_t mip = 1; mip < kSkyCubemapMipCount; ++mip) {
+            if (sourceSlot >= 0) {
+                cmdList->SetComputeRootDescriptorTable(
+                    static_cast<UINT>(sourceSlot), skyCubemapUavHandles_[mip - 1].gpuHandle);
+            }
+            if (destSlot >= 0) {
+                cmdList->SetComputeRootDescriptorTable(
+                    static_cast<UINT>(destSlot), skyCubemapUavHandles_[mip].gpuHandle);
+            }
+            const uint32_t mipSize = kSkyCubemapSize >> mip;
+            cmdList->Dispatch((mipSize + 7) / 8, (mipSize + 7) / 8, 6);
+
+            // 次の段はこの段を読むので UAV バリアで区切る
+            Barrier::UAV(cmdList, skyCubemap_);
+        }
     }
 
     void AtmosphereManager::GenerateCameraVolumeLUT(ID3D12GraphicsCommandList* cmdList)
