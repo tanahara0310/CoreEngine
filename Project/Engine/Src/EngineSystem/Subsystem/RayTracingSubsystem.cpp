@@ -823,4 +823,30 @@ namespace CoreEngine
             dispatchContext.height,
             viewId);
     }
+
+    void RayTracingSubsystem::DispatchWaterSeabed(
+        const RenderContext& context,
+        GraphicsCore* dx,
+        ID3D12GraphicsCommandList* cmdList,
+        WaterSeabedRayTracingManager::ViewID viewId,
+        const WaterSurfaceData& surfaceData)
+    {
+        auto* rtWaterSeabed = context.rtWaterSeabedManager;
+        if (!rtWaterSeabed || !rtWaterSeabed->IsInitialized()) {
+            return;
+        }
+        WaterDispatchContext dispatchContext;
+        if (!BuildWaterDispatchContext(
+            context, dx, cmdList, surfaceData, "water seabed", false, dispatchContext)) {
+            return;
+        }
+
+        // Gerstner 経路では変位テクスチャを読まないが、宣言されたスロットには何かを差す
+        WaterRayTracingPassBase::FFTOceanInput fftOceanInput = dispatchContext.fftOceanInput;
+        if (fftOceanInput.displacementSRV.ptr == 0) {
+            fftOceanInput.displacementSRV = dispatchContext.sceneDepthSRV;
+        }
+
+        rtWaterSeabed->Dispatch(cmdList, surfaceData, fftOceanInput, viewId);
+    }
 }

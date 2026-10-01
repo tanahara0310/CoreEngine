@@ -7,6 +7,7 @@
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
 #include "Graphics/RayTracing/VertexAnimationDeformer.h"
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
+#include "Graphics/Water/RayTracing/WaterSeabedRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterReflectionRayTracingManager.h"
 #include "Graphics/Water/FFTOceanManager.h"
@@ -99,6 +100,14 @@ namespace CoreEngine
                 "RenderDomainContext: WaterCausticsRayTracingManager 初期化完了\n");
         }
 
+        rtWaterSeabedManager_ = std::make_unique<WaterSeabedRayTracingManager>();
+        if (accelerationStructureManager_->IsSupported()) {
+            rtWaterSeabedManager_->Initialize(dxCommon, descriptorAllocator,
+                accelerationStructureManager_.get(), shaderProgramCache);
+            Logger::GetInstance().Infof(LogCategory::Graphics,
+                "RenderDomainContext: WaterSeabedRayTracingManager 初期化完了\n");
+        }
+
         fftOceanManager_ = std::make_unique<FFTOceanManager>();
         if (fftOceanManager_->Initialize(dxCommon, descriptorAllocator)) {
             Logger::GetInstance().Infof(LogCategory::Graphics,
@@ -142,6 +151,7 @@ namespace CoreEngine
         fogManager_.reset();
         volumetricCloudManager_.reset();
         atmosphereManager_.reset();
+        rtWaterSeabedManager_.reset();
         rtWaterCausticsManager_.reset();
         rtWaterReflectionManager_.reset();
         rtWaterRefractionManager_.reset();
@@ -185,6 +195,7 @@ namespace CoreEngine
         context.rtWaterCausticsManager = rtWaterCausticsManager_.get();
         context.rtWaterRefractionManager = rtWaterRefractionManager_.get();
         context.rtWaterReflectionManager = rtWaterReflectionManager_.get();
+        context.rtWaterSeabedManager = rtWaterSeabedManager_.get();
         context.fftOceanManager = fftOceanManager_.get();
         context.atmosphereManager = atmosphereManager_.get();
         context.volumetricCloudManager = volumetricCloudManager_.get();

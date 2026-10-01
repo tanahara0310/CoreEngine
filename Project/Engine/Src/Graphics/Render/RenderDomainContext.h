@@ -19,6 +19,7 @@ namespace CoreEngine
     class WaterRefractionRayTracingManager;
     class WaterReflectionRayTracingManager;
     class WaterCausticsRayTracingManager;
+    class WaterSeabedRayTracingManager;
     class FFTOceanManager;
     class AtmosphereManager;
     class VolumetricCloudManager;
@@ -78,6 +79,7 @@ namespace CoreEngine
         WaterRefractionRayTracingManager* GetWaterRefractionRayTracingManager() { return rtWaterRefractionManager_.get(); }
         WaterReflectionRayTracingManager* GetWaterReflectionRayTracingManager() { return rtWaterReflectionManager_.get(); }
         WaterCausticsRayTracingManager* GetWaterCausticsRayTracingManager() { return rtWaterCausticsManager_.get(); }
+        WaterSeabedRayTracingManager* GetWaterSeabedRayTracingManager() { return rtWaterSeabedManager_.get(); }
         FFTOceanManager* GetFFTOceanManager() { return fftOceanManager_.get(); }
         AtmosphereManager* GetAtmosphereManager() { return atmosphereManager_.get(); }
         VolumetricCloudManager* GetVolumetricCloudManager() { return volumetricCloudManager_.get(); }
@@ -113,6 +115,7 @@ namespace CoreEngine
         std::unique_ptr<WaterRefractionRayTracingManager> rtWaterRefractionManager_;
         std::unique_ptr<WaterReflectionRayTracingManager> rtWaterReflectionManager_;
         std::unique_ptr<WaterCausticsRayTracingManager> rtWaterCausticsManager_;
+        std::unique_ptr<WaterSeabedRayTracingManager> rtWaterSeabedManager_;
         std::unique_ptr<FFTOceanManager> fftOceanManager_;
         std::unique_ptr<AtmosphereManager> atmosphereManager_;
         std::unique_ptr<VolumetricCloudManager> volumetricCloudManager_;
