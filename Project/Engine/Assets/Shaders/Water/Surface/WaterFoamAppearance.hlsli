@@ -1,25 +1,20 @@
 // ============================================================
-// 泡（whitecap / shore foam）シェーディング（Water.PS.hlsl 専用）
+// 泡の見た目（模様・形・色）（Water.PS.hlsl 専用）
 // ------------------------------------------------------------
+// 被覆率（WaterFoamCoverage.hlsli）を、レース状の泡の形・水面下の白濁・泡の色へ変える。
 // 泡は水そのものの色ではなく、砕波で空気が混入した「白い散乱層」。ほぼ Lambert な
 // 拡散面として扱い、フレネル反射・鏡面はほぼ持たないため、合成時に
 // reflectanceWeight とサングリッターを (1 - 泡被覆) 倍へ抑制する。
 //
-// 【飽和対策 3 点セットの一角】瞬時マスクはカスケード重み付き合成 detJ
-// （ComputeFFTCombinedDetJ）を必ず通すこと。波群エンベロープは蓄積項のみに掛ける
-// （瞬時項は合成 detJ 内で適用済み＝二重適用禁止）。
-//
 // 【include 位置の契約】Water.PS.hlsl のリソース宣言・WaterFrameConstants(b5)・
 // WaterVolume.hlsli（EvaluateWaterSkyIrradiance）の後で include すること。以下に暗黙依存:
-//   資源    : gFFTOceanJacobian / gFFTOceanFoam / gSampler / gIrradianceMap /
-//             gLightCounts / gDirectionalLights / gIBLParams（Object3dForward.hlsli）
-//   cbuffer : gFoamEnabled / gFoamBias / gFoamGain / gFoamOpacity /
-//             gFoamCascadeWeights / gUseFFTOceanNormalMap / gSkyAmbientEnabled / gSkyAmbientScale
-//   関数    : ComputeFFTCombinedDetJ / ComputeFFTCascadeUV / ComputeFFTWaveGroupEnvelope
-//             （Common/FFTOceanCascade.hlsli）・EvaluateWaterSkyIrradiance（WaterVolume.hlsli）
+//   資源    : gSampler / gIrradianceMap / gLightCounts / gDirectionalLights /
+//             gIBLParams（Object3dForward.hlsli）
+//   cbuffer : gSkyAmbientEnabled / gSkyAmbientScale
+//   関数    : EvaluateWaterSkyIrradiance（WaterVolume.hlsli）
 // ============================================================
-#ifndef WATER_FOAM_INCLUDED
-#define WATER_FOAM_INCLUDED
+#ifndef WATER_FOAM_APPEARANCE_INCLUDED
+#define WATER_FOAM_APPEARANCE_INCLUDED
 
 // アルベドはわずかに青白い（気泡層の多重散乱による短波長優位）。
 static const float3 kFoamAlbedo = float3(0.90f, 0.93f, 0.95f);
@@ -39,20 +34,8 @@ static const float kFoamHazePatternMin = 0.25f; // パターン変調の下限�
 // 泡内部の粒状の明度変調（気泡の粒感。周期 ≈ 8cm）
 static const float kFoamGrainScale = 13.0f;
 static const float kFoamGrainMin = 0.82f;
-// 蓄積泡へ掛ける波群エンベロープの写像（瞬時項は合成 detJ 内で適用済み）。
-// envelope² × この係数で、波群の強い所ほど泡が濃く、弱い所は薄くなる
-static const float kFoamEnvelopeScale = 0.7f;
 // 泡域でのグリッター用ラフネス（泡は微細気泡でハイライトが大きく柔らかくなる）
 static const float kFoamGlintRoughness = 0.45f;
-
-// ---- 岸際泡（shore foam）----
-// 泡帯が消える水深 [m]。解析的鉛直水深は波の変位を含むため、
-// 波が寄せる/引くのに合わせて帯が自然に脈動する
-static const float kShoreFoamDepthMeters = 0.6f;
-// 汀線エッジ（この水深以浅）は被覆率満量＝ほぼ連続した白いシートになる
-static const float kShoreFoamEdgeMeters = 0.15f;
-// 外側の泡帯の最大被覆率。dissolve が形状を作るため 1 未満でもレース状に割れる
-static const float kShoreFoamStrength = 0.9f;
 
 /// @brief 泡分断用の 2D ハッシュ（[0,1]）
 float FoamHash(float2 p)
@@ -101,76 +84,31 @@ float ComputeFoamLace(float mask, float pattern)
     return smoothstep(1.0f - mask, 1.0f - mask + kFoamLaceSoftness, pattern);
 }
 
-/// @brief 泡マスク [0,1] を求める（FFTOcean 専用）
-/// @details 2 つの項の max で構成する:
-///          - 瞬時項: 合成ヤコビアン detJ < gFoamBias（波頭の圧縮）。カスケード間の
-///            強め合いを含む正確な砕波判定で、砕けている「今」を捉える。
-///          - 蓄積項: FFTOceanFoamAccumulate.CS が時間発展させた泡。波が通過した
-///            後に白い筋が数秒残る（発生時は瞬時項と同源なので max で二重計上しない）。
-///          Gerstner 経路はヤコビアンを持たないため常に 0
-///          （gUseFFTOceanNormalMap は FFT 使用フラグと同値で更新される）。
-float ComputeFoamMask(float2 worldXZ)
+/// @brief 水面の 1 点の泡の見た目の割合
+struct WaterFoamLayer
 {
-    if (gFoamEnabled == 0 || gUseFFTOceanNormalMap == 0)
-    {
-        return 0.0f;
-    }
-    const float detJ = ComputeFFTCombinedDetJ(
-        worldXZ, gFFTOceanJacobian, gSampler, gFoamCascadeWeights);
-    const float instant = saturate((gFoamBias - detJ) * gFoamGain);
+    float lace;    ///< 水面の上の白い泡（レース）[0,1]
+    float haze;    ///< レースの穴の間と縁の外側の白濁 [0,1]
+    float pattern; ///< 泡の内部パターン [0,1]
+};
 
-    // 蓄積泡（カスケード毎の格子空間）。重みは発生時に織り込み済みなのでそのまま max。
-    float accumulated = 0.0f;
-    [unroll]
-    for (int ci = 0; ci < kFFTCascadeCount; ++ci)
-    {
-        const float2 cuv = ComputeFFTCascadeUV(worldXZ, ci);
-        accumulated = max(accumulated, gFFTOceanFoam.SampleLevel(gSampler, float3(cuv, (float)ci), 0.0f));
-    }
-
-    // 蓄積泡へ波群エンベロープを掛け、泡の濃淡を波のセット（うねりの群）と同期させる。
-    // 瞬時項は合成 detJ の勾配へ適用済みなのでここでは掛けない（二重適用禁止）。
-    // 蓄積パスは格子空間で走るためワールド位置を知らず、表示側で変調するしかない。
-    const float envelope = ComputeFFTWaveGroupEnvelope(worldXZ);
-    accumulated = saturate(accumulated * envelope * envelope * kFoamEnvelopeScale);
-
-    // ★白波の量を風速へ追従させる★
-    // detJ のしきい値は固定なので、これだけでは実海の風速依存
-    // （Monahan: 白波被覆率 W ∝ U^3.41）に全く足りない。実測でも、高風速で
-    // 合わせた設定のまま風速 4m/s にすると被覆率が実海推定の約 40 倍出ていた。
-    // 被覆率へ Monahan 比を掛けることで、しきい値を触らずに風速追従させる
-    // （dissolve のしきい値カットが効くため、マスクを下げると面積も減る）。
-    // 岸際泡は砕波ではなく地形起因なので、ここでは掛けない（呼び出し側で max）。
-    const float windScaledMask = max(instant, accumulated) * gFoamWindCoverageScale;
-
-    // 返り値は滑らかな「被覆率」の場。レース状の形への変換（dissolve）は
-    // 表示側の ComputeFoamLace が行うため、ここではノイズを掛けない。
-    return saturate(windScaledMask);
+/// @brief 被覆率から、その点の泡のレースと白濁の割合を求める
+/// @param mask     泡の被覆率 [0,1]
+/// @param baseWorldXZ 変位前の参照格子座標（泡の模様は泡の塊と一緒に運ばれる）
+WaterFoamLayer EvaluateFoamLayer(float mask, float2 baseWorldXZ)
+{
+    WaterFoamLayer layer;
+    layer.pattern = FoamPattern(baseWorldXZ);
+    layer.lace = ComputeFoamLace(mask, layer.pattern);
+    layer.haze = saturate(mask * 1.2f) * (1.0f - layer.lace)
+        * lerp(kFoamHazePatternMin, 1.0f, layer.pattern);
+    return layer;
 }
 
-/// @brief 岸際泡（shore foam）の被覆率 [0,1] を求める
-/// @param analyticColumn 解析的な鉛直水深 [m]（ResolveWaterColumn の連続場）
-/// @details ★入力は解析的鉛直水深のみ★
-///          過去の「波打ち際の線」10 連発の教訓により、岸際に新しい 2 値切替を
-///          持ち込まない。RT の成功/失敗・スクリーン空間の深度分岐などの離散量は
-///          一切使わず、分岐のない連続場（解析水深）だけから作る。
-///          水深は波の変位を含むため、波の寄せ引きで帯が自然に脈動し、
-///          追加の時間変調は不要。
-///          2 段構造: 汀線エッジ（〜0.15m）は被覆率満量＝連続した白いシート、
-///          外側（〜0.6m）は被覆率 0.9→0 のフェード＝dissolve でレース状に割れる。
-float ComputeShoreFoamMask(float analyticColumn)
+/// @brief 泡の内部の粒状の明度変調 [kFoamGrainMin, 1]
+float FoamGrain(float2 baseWorldXZ)
 {
-    if (gFoamEnabled == 0 || gUseFFTOceanNormalMap == 0)
-    {
-        return 0.0f;
-    }
-
-    // 外側の泡帯: 水深 0 → kShoreFoamDepthMeters の連続フェード
-    const float band = 1.0f - smoothstep(0.0f, kShoreFoamDepthMeters, analyticColumn);
-    // 汀線エッジ: ごく浅い所は満量（レースの穴が埋まり白いシートになる）
-    const float edge = 1.0f - smoothstep(0.0f, kShoreFoamEdgeMeters, analyticColumn);
-
-    return max(band * kShoreFoamStrength, edge);
+    return lerp(kFoamGrainMin, 1.0f, FoamValueNoise(baseWorldXZ * kFoamGrainScale));
 }
 
 /// @brief 泡レイヤの表面色（Lambert 白 × 太陽直達 + 天空光）
@@ -209,4 +147,4 @@ float3 ComputeFoamColor(float3 normal, float mainLightVisibility)
     return kFoamAlbedo * lighting;
 }
 
-#endif // WATER_FOAM_INCLUDED
+#endif // WATER_FOAM_APPEARANCE_INCLUDED

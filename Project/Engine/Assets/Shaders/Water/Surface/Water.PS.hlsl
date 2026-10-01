@@ -89,9 +89,9 @@ struct WaterPSInput
 #include "../Common/WaterFrameConstants.hlsli"
 
 // ===== 責務別の分割 hlsli =====
-// 水柱厚さ（「線を出さない」中核）・体積色・泡・法線は専用ファイルへ分離している。
+// 水柱厚さ（「線を出さない」中核）・体積色・泡（被覆率と見た目）・法線は専用ファイルへ分離している。
 // いずれもこのファイルのリソース宣言・b5 に暗黙依存するため、必ずこの位置で
-// この順に include する（WaterFoam は WaterVolume の EvaluateWaterSkyIrradiance を使う。
+// この順に include する（WaterFoamAppearance は WaterVolume の EvaluateWaterSkyIrradiance を使う。
 // 依存の一覧は各ファイル冒頭に明記）。
 #include "WaterColumn.hlsli"
 
@@ -99,7 +99,8 @@ struct WaterPSInput
 static const float kWaterRadianceExitScale = 1.0f / (kWaterRefractiveIndex * kWaterRefractiveIndex);
 
 #include "WaterVolume.hlsli"
-#include "WaterFoam.hlsli"
+#include "WaterFoamCoverage.hlsli"
+#include "WaterFoamAppearance.hlsli"
 #include "WaterNormals.hlsli"
 #include "WaterSubsurface.hlsli"
 
@@ -395,10 +396,9 @@ WaterPixelOutput main(WaterPSInput input)
     const float foamMask = max(
         ComputeFoamMask(input.baseWorldXZ),
         ComputeShoreFoamMask(waterColumnResult.analyticColumn));
-    const float foamPattern = FoamPattern(input.baseWorldXZ);
-    const float foamLace = ComputeFoamLace(foamMask, foamPattern);
-    const float foamHaze = saturate(foamMask * 1.2f) * (1.0f - foamLace)
-        * lerp(kFoamHazePatternMin, 1.0f, foamPattern);
+    const WaterFoamLayer foamLayer = EvaluateFoamLayer(foamMask, input.baseWorldXZ);
+    const float foamLace = foamLayer.lace;
+    const float foamHaze = foamLayer.haze;
     // フレネル・グリッター抑制に使う実効被覆率（白濁は水面がまだ見えるので弱く）
     const float foamCoverage =
         saturate(foamLace + 0.4f * foamHaze) * saturate(gFoamOpacity);
@@ -490,10 +490,8 @@ WaterPixelOutput main(WaterPSInput input)
     if (foamCoverage > 0.0f)
     {
         // 気泡の粒感: 泡内部の明度を高周波ノイズで揺らす（周期 ≈ 8cm）
-        const float grain = lerp(
-            kFoamGrainMin, 1.0f,
-            FoamValueNoise(input.baseWorldXZ * kFoamGrainScale));
-        const float3 foamColor = ComputeFoamColor(surfaceNormal, sunDiffuseVisibility) * grain;
+        const float3 foamColor =
+            ComputeFoamColor(surfaceNormal, sunDiffuseVisibility) * FoamGrain(input.baseWorldXZ);
         // 白濁（haze）: レースの穴の間の気泡層。泡色より暗く、粒状に変調済み
         finalWaterComposite = lerp(
             finalWaterComposite,
