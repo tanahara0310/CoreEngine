@@ -17,6 +17,16 @@ namespace CoreEngine
     class ModelResource;
     class DeferredReleaseQueue;
 
+    /// @brief TLAS インスタンスの種類の印（InstanceMask のビット）
+    /// @details レイは当てたい種類の印の OR を TraceRay の InstanceInclusionMask に渡す（全部なら kAll）
+    namespace RayTracingInstanceMask {
+        inline constexpr UINT kSolid = 0x01;      ///< 形の決まった物（地形・岩・建物など、下の 3 つ以外のメッシュ）
+        inline constexpr UINT kVegetation = 0x02; ///< 風や波で揺れる材質（植物・海草）を持つメッシュ
+        inline constexpr UINT kParticle = 0x04;   ///< モデルの粒
+        inline constexpr UINT kCreature = 0x08;   ///< 泳ぐ生き物（魚の群れ・魚の動きの材質を持つメッシュ）
+        inline constexpr UINT kAll = 0xFF;
+    }
+
     /// @brief BLAS/TLAS を管理するクラス（DXR レイトレーシング用）
     /// @note ID3D12Device5 が必須。非対応 GPU では Initialize() が false を返す
     class AccelerationStructureManager {
