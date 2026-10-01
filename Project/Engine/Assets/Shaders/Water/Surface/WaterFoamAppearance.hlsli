@@ -37,10 +37,20 @@ static const float kFoamGrainMin = 0.82f;
 // 泡域でのグリッター用ラフネス（泡は微細気泡でハイライトが大きく柔らかくなる）
 static const float kFoamGlintRoughness = 0.45f;
 
-/// @brief 泡分断用の 2D ハッシュ（[0,1]）
+/// @brief 泡分断用の 2D ハッシュ（[0,1)）
+/// @param p 格子点（整数値の float2）
+/// @details 格子点の整数座標から整数演算で作るので、原点から遠くても値の分布が変わらない。
+///          Tools/Water/generate_foam_coverage_table.py が同じ式を使う
 float FoamHash(float2 p)
 {
-    return frac(sin(dot(p, float2(127.1f, 311.7f))) * 43758.5453f);
+    const uint2 q = asuint(int2(p));
+    uint h = (q.x * 0x8da6b343u) ^ (q.y * 0xd8163841u);
+    h ^= h >> 16;
+    h *= 0x7feb352du;
+    h ^= h >> 15;
+    h *= 0x846ca68bu;
+    h ^= h >> 16;
+    return (float)(h >> 8) * (1.0f / 16777216.0f);
 }
 
 /// @brief 泡分断用の value noise（[0,1]・C1 連続）
@@ -84,6 +94,26 @@ float ComputeFoamLace(float mask, float pattern)
     return smoothstep(1.0f - mask, 1.0f - mask + kFoamLaceSoftness, pattern);
 }
 
+/// @brief 被覆率 c に対する dissolve のマスク。レースの面積の期待値がちょうど c になる
+/// @details √c の等間隔（c = (k / 32)²）で並べる。Tools/Water/generate_foam_coverage_table.py が
+///          FoamPattern の値の分布から作る。
+/// @warning FoamPattern か kFoamLaceSoftness を変えたら作り直すこと
+static const float kFoamLaceMaskForCoverage[33] = {
+    0.0000f, 0.2371f, 0.2765f, 0.3043f, 0.3269f, 0.3465f, 0.3642f, 0.3806f,
+    0.3961f, 0.4108f, 0.4251f, 0.4390f, 0.4527f, 0.4663f, 0.4798f, 0.4933f,
+    0.5069f, 0.5206f, 0.5345f, 0.5486f, 0.5631f, 0.5779f, 0.5931f, 0.6089f,
+    0.6254f, 0.6426f, 0.6609f, 0.6806f, 0.7024f, 0.7273f, 0.7578f, 0.8007f,
+    1.1170f,
+};
+
+/// @brief 被覆率 [0,1] を、レースの面積がその割合になる dissolve のマスクへ変える
+float FoamLaceMaskForCoverage(float coverage)
+{
+    const float x = sqrt(saturate(coverage)) * 32.0f;
+    const uint i = min((uint)x, 31u);
+    return lerp(kFoamLaceMaskForCoverage[i], kFoamLaceMaskForCoverage[i + 1], x - (float)i);
+}
+
 /// @brief 水面の 1 点の泡の見た目の割合
 struct WaterFoamLayer
 {
@@ -93,13 +123,13 @@ struct WaterFoamLayer
 };
 
 /// @brief 被覆率から、その点の泡のレースと白濁の割合を求める
-/// @param mask     泡の被覆率 [0,1]
+/// @param mask     泡の被覆率 [0,1]（水面のうち泡のレースが占める面積の割合）
 /// @param baseWorldXZ 変位前の参照格子座標（泡の模様は泡の塊と一緒に運ばれる）
 WaterFoamLayer EvaluateFoamLayer(float mask, float2 baseWorldXZ)
 {
     WaterFoamLayer layer;
     layer.pattern = FoamPattern(baseWorldXZ);
-    layer.lace = ComputeFoamLace(mask, layer.pattern);
+    layer.lace = ComputeFoamLace(FoamLaceMaskForCoverage(mask), layer.pattern);
     layer.haze = saturate(mask * 1.2f) * (1.0f - layer.lace)
         * lerp(kFoamHazePatternMin, 1.0f, layer.pattern);
     return layer;
