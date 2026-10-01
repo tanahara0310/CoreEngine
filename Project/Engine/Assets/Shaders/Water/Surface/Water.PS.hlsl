@@ -383,12 +383,10 @@ WaterPixelOutput main(WaterPSInput input)
     float reflectanceWeight = saturate(fresnel * gFresnelReflectanceScale);
 
     // ---- 5.5. 泡マスク（dissolve 方式）----
-    // 泡は拡散層でフレネル反射を持たないため、泡の被覆分だけ反射の混合比を抑える。
-    // （泡レイヤ自体の色は最終合成後に重ねる。サングリッターも同様に抑制する）
     // foamMask は滑らかな「被覆率」の場（砕波泡と岸際泡の max）。表示形状は
     // 高周波パターンへのしきい値カット（ComputeFoamLace）でレース状に変換する:
-    //   lace ＝ 表面の白い泡そのもの（縁が鋭いレース・筋・粒）
-    //   haze ＝ レースの穴の間と縁の外側の白濁（パターンで粒状に変調し霧化を防ぐ）
+    //   lace ＝ 水面の上の白い泡そのもの（縁が鋭いレース・筋・粒）
+    //   haze ＝ レースの穴の間と縁の外側の水面下の気泡（白濁。パターンで粒状に変調し霧化を防ぐ）
     // 泡マスク・泡パターンはどちらも参照格子座標で評価する。
     // マスクは FFT ヤコビアン／蓄積泡テクスチャの読み出しなので x0 が必須。
     // パターン（dissolve のしきい値場）も x0 に揃えることで、泡の模様が泡の塊と
@@ -397,12 +395,19 @@ WaterPixelOutput main(WaterPSInput input)
         ComputeFoamMask(input.baseWorldXZ),
         ComputeShoreFoamMask(waterColumnResult.analyticColumn));
     const WaterFoamLayer foamLayer = EvaluateFoamLayer(foamMask, input.baseWorldXZ);
-    const float foamLace = foamLayer.lace;
-    const float foamHaze = foamLayer.haze;
-    // フレネル・グリッター抑制に使う実効被覆率（白濁は水面がまだ見えるので弱く）
-    const float foamCoverage =
-        saturate(foamLace + 0.4f * foamHaze) * saturate(gFoamOpacity);
-    reflectanceWeight *= (1.0f - foamCoverage);
+    // 水面の上の泡の割合。拡散層でフレネル反射を持たないので、反射・サングリッター・
+    // 波頭の透過光をこの割合だけ遮る
+    const float surfaceFoam = foamLayer.lace * saturate(gFoamOpacity);
+    // 水面下の気泡の割合。水面より下にあるので、透過してくる光にだけ混ざる
+    const float bubbleHaze = foamLayer.haze * saturate(gFoamOpacity) * kFoamHazeOpacity;
+    reflectanceWeight *= (1.0f - surfaceFoam);
+
+    // 泡の色（Lambert 白 × 太陽直達 + 天空光）。気泡の粒感として明度を高周波ノイズで揺らす
+    float3 foamColor = float3(0.0f, 0.0f, 0.0f);
+    if (foamMask > 0.0f)
+    {
+        foamColor = ComputeFoamColor(surfaceNormal, sunDiffuseVisibility) * FoamGrain(input.baseWorldXZ);
+    }
 
     float3 refractionColor = ResolveWaterTransmissionColor(pixelCoord, screenUV);
     float3 underwaterAmbient = ComputeUnderwaterAmbientLight(sunDiffuseVisibility);
@@ -414,6 +419,8 @@ WaterPixelOutput main(WaterPSInput input)
         sigmaS,
         sigmaT,
         underwaterAmbient);
+    // 水面下の気泡は、その奥から透過してくる光を遮り、自分が散乱した光に置き換える
+    transmissionColor = lerp(transmissionColor, foamColor * kFoamHazeTint, bubbleHaze);
     // 水中の放射輝度は、水面から空気へ出るときに屈折で立体角が広がって 1/n² になる
     transmissionColor *= kWaterRadianceExitScale;
 
@@ -486,20 +493,8 @@ WaterPixelOutput main(WaterPSInput input)
     // 透過像（吸収・散乱を通した色）と反射像をフレネルで合成する
     float3 finalWaterComposite = lerp(transmissionColor, reflectColor, reflectanceWeight);
 
-    // 泡レイヤを重ねる（白ベタ禁止: gFoamOpacity < 1 で水面下の情報を残す）
-    if (foamCoverage > 0.0f)
-    {
-        // 気泡の粒感: 泡内部の明度を高周波ノイズで揺らす（周期 ≈ 8cm）
-        const float3 foamColor =
-            ComputeFoamColor(surfaceNormal, sunDiffuseVisibility) * FoamGrain(input.baseWorldXZ);
-        // 白濁（haze）: レースの穴の間の気泡層。泡色より暗く、粒状に変調済み
-        finalWaterComposite = lerp(
-            finalWaterComposite,
-            foamColor * kFoamHazeTint,
-            foamHaze * saturate(gFoamOpacity) * kFoamHazeOpacity);
-        // レース: 表面の白い泡そのもの
-        finalWaterComposite = lerp(finalWaterComposite, foamColor, foamLace * saturate(gFoamOpacity));
-    }
+    // 水面の上の泡（レース）を重ねる（白ベタ禁止: gFoamOpacity < 1 で水面下の情報を残す）
+    finalWaterComposite = lerp(finalWaterComposite, foamColor, surfaceFoam);
 
     if (gDepthFadeDebugEnabled != 0)
     {
@@ -540,15 +535,15 @@ WaterPixelOutput main(WaterPSInput input)
     {
         output.color.rgb +=
             ComputeSunGlintSpecular(
-                geomNormal, viewDir, foamCoverage, sunVisibility, unresolvedMeanSquareSlope)
-            * (1.0f - foamCoverage);
+                geomNormal, viewDir, surfaceFoam, sunVisibility, unresolvedMeanSquareSlope)
+            * (1.0f - surfaceFoam);
     }
 
     // ---- 波峰のサブサーフェス透過（逆光で波の背が緑に光る）----
     // 波を透過して視点へ出てくる光なので、水面で反射されずに「抜けてきた」分だけ、
     // つまり (1 - フレネル反射率) と、水から空気へ出る 1/n² を掛けて加算する。
     output.color.rgb += ComputeWaterSubsurfaceScattering(
-        surfaceNormal, viewDir, input.waveHeight, sigmaS, sigmaT, foamCoverage, sunDiffuseVisibility)
+        surfaceNormal, viewDir, input.waveHeight, sigmaS, sigmaT, surfaceFoam, sunDiffuseVisibility)
         * (1.0f - reflectanceWeight) * kWaterRadianceExitScale;
 
     // ---- 5. 空気遠近感（Aerial Perspective）----
