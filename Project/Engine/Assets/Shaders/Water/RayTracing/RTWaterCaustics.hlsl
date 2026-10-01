@@ -6,6 +6,8 @@
 #include "RTWaterSurfaceCommon.hlsli"
 #include "../../Include/Common/DepthReconstruction.hlsli"
 #include "ColorSpace.hlsli" // Luminance
+// フレネル透過率・受光面の幾何項（RTWaterRefraction のヒットシェーディングと共有）
+#include "../Common/WaterSunTransmission.hlsli"
 
 RWTexture2D<float4> gCausticsOutput : register(u0);
 RaytracingAccelerationStructure gScene : register(t0);
@@ -213,47 +215,6 @@ float3 EvaluateCausticsWaterNormal(float2 worldXZ, float footprintMeters)
     return EvaluateWaterNormal(gFFTOceanNormal, worldXZ, footprintMeters);
 }
 
-/// @brief Schlick 近似のフレネル透過率 (1 - F) を返す
-/// @param cosIncident 入射角の余弦（dot(-光の進行方向, 水面法線)）
-float FresnelTransmittanceSchlick(float cosIncident)
-{
-    const float f0 = ((gRefractiveIndex - 1.0f) / (gRefractiveIndex + 1.0f))
-                   * ((gRefractiveIndex - 1.0f) / (gRefractiveIndex + 1.0f));
-    const float oneMinusCos = 1.0f - saturate(cosIncident);
-    const float oneMinusCos2 = oneMinusCos * oneMinusCos;
-    return 1.0f - (f0 + (1.0f - f0) * oneMinusCos2 * oneMinusCos2 * oneMinusCos);
-}
-
-// ★水面線での明るさの不連続（岸に張り付く明るい帯）の対策★（2026-07-27）
-// 受光面の幾何項は「水平面照度 → 受光面照度」の換算で、屈折後の光線方向 r を使う:
-//     G_refract = dot(N, -r) / (-r.y)
-// 一方その隣（乾いた砂）は通常の直接光 dot(N, -L) で照らされる。r は屈折で鉛直側へ
-// 立つため、太陽が低いほど、また斜面が太陽と反対を向くほど、この 2 つは大きく食い違う
-// （実測: 水面線をまたいだ瞬間に約 +1EV = 2 倍明るくなる）。水深 0 でも成立してしまう
-// 段差なので、汀線に沿った「明るく平坦な帯」として必ず見える。
-//
-// 水深 0 の極限では水は膜でしかなく、光の角度分布はまだ空中と同じであるべき
-// （屈折後の光束が「別方向から来る光」として意味を持つのは、水柱が光路として
-//   成立する深さから）。そこで幾何項を
-//     G(0)   = dot(N, -L) / (-L.y)     ← 空中と同じ角度応答（水面線で連続）
-//     G(深)  = dot(N, -r) / (-r.y)     ← 屈折後の正しい幾何
-// の間で水深によりブレンドする。これで水深 0 での比が
-//     cosZ × T_fresnel × G(0) / dot(N,-L) = T_fresnel ≈ 0.95
-// となり、水面線をまたぐ明るさが連続する（残る 5% はフレネル反射の分で物理的に正しい）。
-static const float kGeometryBlendDepthMeters = 0.6f;
-
-/// @brief 空中（屈折なし）と同じ角度応答の幾何項
-float ComputeAerialGeometryFactor(float3 receiverNormal, float3 lightDir)
-{
-    return saturate(dot(receiverNormal, -lightDir)) / max(-lightDir.y, 0.05f);
-}
-
-/// @brief 屈折後の幾何項をどれだけ採用するか（水深 0 で 0、kGeometryBlendDepthMeters で 1）
-float ComputeRefractedGeometryWeight(float submergedDepth)
-{
-    return smoothstep(0.0f, kGeometryBlendDepthMeters, submergedDepth);
-}
-
 /// @brief 受光点で 1 ピクセルが覆うワールド空間の幅 [m] を返す
 /// @param screenUV        受光ピクセル中心の UV
 /// @param ndcDepth        受光ピクセルの NDC 深度
@@ -403,7 +364,7 @@ void RTWaterCausticsRayGen()
         if (dot(flatRefracted, flatRefracted) > 1.0e-6f && flatRefracted.y < -1.0e-4f)
         {
             flatRefracted = normalize(flatRefracted);
-            const float flatFresnelT = FresnelTransmittanceSchlick(-lightDir.y);
+            const float flatFresnelT = FresnelTransmittanceSchlick(-lightDir.y, gRefractiveIndex);
             // 光路長は波込みの実水深基準（早期リターン済みなので常に正）
             const float flatPath = submergedDepth / max(-flatRefracted.y, 1.0e-4f);
             const float3 flatTransmittance = exp(-gAbsorptionCoeff * flatPath);
@@ -601,7 +562,7 @@ void RTWaterCausticsRayGen()
     // 入射光の一部は水面で反射されて水中へ入らない。透過分 T = 1 - F(θi) を掛ける。
     // Schlick 近似。F0 は屈折率から導出（n=1.333 → F0 ≈ 0.02）。
     // 太陽が低いほど（入射角が大きいほど）反射が増え、コースティクスは自然に弱まる。
-    const float fresnelTransmittance = FresnelTransmittanceSchlick(dot(-lightDir, waterNormal));
+    const float fresnelTransmittance = FresnelTransmittanceSchlick(dot(-lightDir, waterNormal), gRefractiveIndex);
 
     // ===== Beer–Lambert 吸収（波長依存） =====
     // 水面描画と同じ σa [1/m] を、入射点から受光点までの実光路長（receiverRayT）に適用する。

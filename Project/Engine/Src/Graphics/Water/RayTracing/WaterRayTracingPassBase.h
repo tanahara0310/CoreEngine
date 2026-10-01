@@ -26,6 +26,26 @@ namespace CoreEngine
         Count
     };
 
+    /// @brief レイが当たった点を照らすための入力（番号はすべてシェーダー可視ヒープ内のインデックス）
+    struct WaterHitShadingInput {
+        bool enabled = false;                         ///< false なら当たった点を照らさない
+        uint32_t instanceTableIndex = UINT32_MAX;     ///< RTHitInstance の表
+        uint32_t subMeshTableIndex = UINT32_MAX;      ///< RTHitSubMesh の表
+        uint32_t directionalLightsIndex = UINT32_MAX; ///< DirectionalLightData の配列
+        uint32_t directionalLightCount = 0;
+        uint32_t skyIrradianceSHIndex = UINT32_MAX;   ///< 空の放射照度の SH9
+        bool skyAmbientEnabled = false;
+        float skyAmbientScale = 0.0f;                 ///< 空の輝度単位 → サーフェス光単位
+        uint32_t skySpecularMapIndex = UINT32_MAX;    ///< 空のスペキュラキューブマップ
+        bool skySpecularEnabled = false;
+        uint32_t cloudShadowMapIndex = UINT32_MAX;    ///< 雲の影のマップ（UINT32_MAX = 雲の影なし）
+        float cloudShadowStrength = 0.0f;             ///< 雲の影の強さ
+        float cloudShadowRegionCenterXZ[2] = {};      ///< 雲の影のマップが覆う範囲の中心
+        float cloudShadowRegionSize = 0.0f;           ///< 雲の影のマップが覆う範囲の幅 [m]
+        float cloudShadowAnchorY = 0.0f;              ///< 雲の影のマップを置く高さ（雲底）
+        float cloudShadowEdgeFadeStart = 1.0f;        ///< 範囲の端で雲の影を消し始める正規化半径
+    };
+
     /// @brief DXR 水面パス（屈折・反射・コースティクス）の共通基盤
     /// @details 水面固有の要素だけを持つ。水面に限らない部分は RayTracingPassBase 側にある。
     class WaterRayTracingPassBase : public RayTracingPassBase {
@@ -181,9 +201,20 @@ namespace CoreEngine
             const WaterSurfaceData& fallbackSurfaceData,
             WaterSurfaceData& outResolvedSurfaceData) const;
 
+        /// @brief ヒットシェーディングの定数バッファ（RTHitShadingConstants）を作る
+        bool InitializeHitShadingConstants();
+        /// @brief 今フレーム・このビューの枠へヒットシェーディングの定数を書き、その GPU アドレスを返す
+        D3D12_GPU_VIRTUAL_ADDRESS UploadHitShadingConstants(const WaterHitShadingInput& input, uint32_t viewIndex);
+
         std::weak_ptr<const IWaterSurfaceModelProvider> surfaceModelProvider_;
 
     private:
+        // ---- ヒットシェーディングの定数（b2）----
+        // フレームインフライト×ビューぶんの枠を 1 本の UPLOAD バッファに並べ、写像したまま書く
+        static constexpr UINT kHitShadingConstantsStride = 256;
+        Microsoft::WRL::ComPtr<ID3D12Resource> hitShadingConstants_;
+        uint8_t* hitShadingConstantsMapped_ = nullptr;
+
         WaterSurfaceConstants BuildSurfaceConstants(
             const WaterSurfaceData& surfaceData,
             const FFTOceanInput& fftOceanInput) const;

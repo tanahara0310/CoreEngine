@@ -7,6 +7,10 @@
 
 #include "../Lighting/LightStructures.hlsli"
 #include "../PBR/PBR.hlsli"
+#include "../Common/ColorSpace.hlsli"
+// 濡れ暗色化・水面を通った日光の合成（DeferredLighting の水中ライティングと同じ式）
+#include "../Lighting/UnderwaterLighting.hlsli"
+#include "../../Cloud/Common/CloudShadowCommon.hlsli"
 
 // 表・テクスチャ・ライトは ResourceDescriptorHeap からヒープ内インデックスで引く
 // （ルートシグネチャに CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED が要る）
@@ -22,7 +26,14 @@ cbuffer RTHitShadingConstants : register(b2)
     uint gHitShadingEnabled;       // 1 = 表がそろっている
     uint gSkySpecularMapIndex;     // 空のスペキュラキューブマップ（5 ミップ）
     uint gSkySpecularEnabled;      // 1 = 空の映り込みを足す
-    float2 gHitShadingPad;
+    uint gCloudShadowMapIndex;     // 雲の影のマップ（kRTHitNoTexture = 雲の影なし）
+    float gCloudShadowStrength;    // 雲の影の強さ
+    // 雲の影のマップが覆う範囲（CloudShadowConstants と同じ値）
+    float2 gCloudShadowRegionCenterXZ;
+    float gCloudShadowRegionSize;
+    float gCloudShadowAnchorY;
+    float gCloudShadowEdgeFadeStart;
+    float3 gHitShadingPad;
 };
 
 // テクスチャを繰り返して引くサンプラ
@@ -65,7 +76,7 @@ struct RTHitSubMesh
     float roughness;
     float alphaCutoff;
     uint flags;
-    float pad;
+    uint metallicRoughnessTextureIndex;  // 金属性（B）・粗さ（G）テクスチャ（kRTHitNoTexture = 無し）
 };
 
 /// @brief 当たった点の面の情報
@@ -206,29 +217,87 @@ RTHitSurface FetchHitSurface(
             gLinearWrap, uv, ComputeHitTextureLod(emissiveTexture, uvPerMeterLog2, footprintLog2)).rgb;
     }
 
+    // 金属性・粗さはファクター × テクスチャ（B = 金属性・G = 粗さ。GBuffer.PS と同じ）
+    float metallic = subMesh.metallic;
+    float roughness = subMesh.roughness;
+    if (subMesh.metallicRoughnessTextureIndex != kRTHitNoTexture)
+    {
+        Texture2D<float4> metallicRoughnessTexture =
+            ResourceDescriptorHeap[NonUniformResourceIndex(subMesh.metallicRoughnessTextureIndex)];
+        const float4 metallicRoughnessSample = metallicRoughnessTexture.SampleLevel(
+            gLinearWrap, uv, ComputeHitTextureLod(metallicRoughnessTexture, uvPerMeterLog2, footprintLog2));
+        metallic *= metallicRoughnessSample.b;
+        roughness *= metallicRoughnessSample.g;
+    }
+
     const float alphaThreshold = ((subMesh.flags & kRTHitSubMeshFlagDither) != 0) ? 0.5f : subMesh.alphaCutoff;
     surface.cutout = (baseColor.a <= alphaThreshold);
     surface.albedo = saturate(baseColor.rgb);
     surface.emissive = emissive;
-    surface.metallic = saturate(subMesh.metallic);
-    surface.roughness = saturate(max(subMesh.roughness, 0.01f));
+    surface.metallic = saturate(metallic);
+    surface.roughness = saturate(max(roughness, 0.01f));
     surface.lit = (subMesh.flags & kRTHitSubMeshFlagLit) != 0;
     return surface;
+}
+
+/// @brief 光源からの光に掛ける雲の影を返す（DeferredLighting と同じ。1 = 雲の影なし）
+/// @param position 照らす点
+/// @param toLight  光源の方向（正規化済み）
+float SampleHitCloudShadow(float3 position, float3 toLight)
+{
+    if (gCloudShadowMapIndex == kRTHitNoTexture || gCloudShadowStrength <= 0.0f)
+    {
+        return 1.0f;
+    }
+    Texture2D<float> cloudShadowMap = ResourceDescriptorHeap[gCloudShadowMapIndex];
+    CloudShadowConstants cloudShadow;
+    cloudShadow.regionCenterX = gCloudShadowRegionCenterXZ.x;
+    cloudShadow.regionCenterZ = gCloudShadowRegionCenterXZ.y;
+    cloudShadow.regionSizeM = gCloudShadowRegionSize;
+    cloudShadow.anchorWorldY = gCloudShadowAnchorY;
+    cloudShadow.edgeFadeStart = gCloudShadowEdgeFadeStart;
+    cloudShadow.sceneStrength = gCloudShadowStrength;
+    cloudShadow.pad0 = 0.0f;
+    cloudShadow.pad1 = 0.0f;
+    return lerp(1.0f, SampleCloudShadow(cloudShadowMap, gLinearWrap, position, toLight, cloudShadow), gCloudShadowStrength);
+}
+
+/// @brief 水中の点を照らすときの値（DeferredLighting の水中ライティングと同じ扱い）
+struct RTHitUnderwaterLighting
+{
+    float factor;                 // 0 = 水上 / 1 = 水中（メインライトの直接光を透過光へ置き換える割合）
+    float3 ambientTransmittance;  // 空の光と補助ライトに掛ける水の透過率
+    float3 transmittedMainLight;  // 水面を通って届くメインライトの放射照度（factor を掛けた値）
+};
+
+/// @brief 水上の点の値（水中ライティングを使わない）
+RTHitUnderwaterLighting AboveWaterLighting()
+{
+    RTHitUnderwaterLighting lighting;
+    lighting.factor = 0.0f;
+    lighting.ambientTransmittance = float3(1.0f, 1.0f, 1.0f);
+    lighting.transmittedMainLight = float3(0.0f, 0.0f, 0.0f);
+    return lighting;
 }
 
 /// @brief 当たった面の放射輝度を返す（DeferredLighting と同じ式。影はメインライトだけ）
 /// @param toViewer            面から見る側への向き（レイの向きの逆）
 /// @param mainLightVisibility メインライトの日向率（1 = 日向 / 0 = 影）
-float3 ShadeHitSurface(RTHitSurface surface, float3 toViewer, float mainLightVisibility)
+/// @param underwater          水中の点を照らす値（水上の点は AboveWaterLighting()）
+float3 ShadeHitSurface(
+    RTHitSurface surface, float3 toViewer, float mainLightVisibility, RTHitUnderwaterLighting underwater)
 {
     if (!surface.lit)
     {
         return surface.albedo;
     }
 
+    const float3 F0 = lerp(float3(DIELECTRIC_F0, DIELECTRIC_F0, DIELECTRIC_F0), surface.albedo, surface.metallic);
+    const float3 albedo = ApplyWetDarkening(surface.albedo, underwater.factor);
     const float mainLightShadow = lerp(0.3f, 1.0f, mainLightVisibility);
     float3 color = surface.emissive;
     bool mainLightEnabled = false;
+    float mainLightCloudShadow = 1.0f;
     if (gDirectionalLightCount > 0)
     {
         StructuredBuffer<DirectionalLightData> lights = ResourceDescriptorHeap[gDirectionalLightsIndex];
@@ -241,35 +310,54 @@ float3 ShadeHitSurface(RTHitSurface surface, float3 toViewer, float mainLightVis
             }
             const float3 L = normalize(-light.direction);
             const float shadow = (i == 0) ? mainLightShadow : 1.0f;
+            const float cloudShadow = SampleHitCloudShadow(surface.position, L);
+            // メインライトの直接光は水中の割合だけ消し、補助ライトは水の透過率で弱める
+            const float3 lightScale = (i == 0)
+                ? float3(1.0f, 1.0f, 1.0f) * (1.0f - underwater.factor)
+                : underwater.ambientTransmittance;
             color += CalculatePBRLighting(
                 surface.normal, toViewer, L, light.color.rgb, light.intensity,
-                surface.albedo, surface.metallic, surface.roughness, 1.0f) * shadow;
+                albedo, surface.metallic, surface.roughness, 1.0f) * shadow * cloudShadow * lightScale;
             if (gSkyAmbientEnabled == 0)
             {
                 color += CalculateHalfLambertAmbient(
-                    surface.normal, L, light.color.rgb, light.intensity, surface.albedo, surface.metallic, 1.0f) * shadow;
+                    surface.normal, L, light.color.rgb, light.intensity, albedo, surface.metallic, 1.0f) * shadow
+                    * underwater.ambientTransmittance;
             }
-            mainLightEnabled = mainLightEnabled || (i == 0);
+            if (i == 0)
+            {
+                mainLightEnabled = true;
+                mainLightCloudShadow = cloudShadow;
+            }
         }
+    }
+
+    // 消したメインライトの代わりに、水面を通って届くメインライトで照らす
+    if (underwater.factor > 0.0f)
+    {
+        color += CompositeUnderwaterCaustics(
+            underwater.transmittedMainLight, albedo, F0, surface.metallic, mainLightVisibility)
+            * mainLightCloudShadow;
     }
 
     if (gSkyAmbientEnabled != 0)
     {
         const float skyShadow = mainLightEnabled ? mainLightShadow : 1.0f;
         StructuredBuffer<float4> skyIrradianceSH = ResourceDescriptorHeap[gSkyIrradianceSHIndex];
-        color += surface.albedo * (1.0f - surface.metallic)
-            * EvaluateSkyIrradianceSH9(skyIrradianceSH, surface.normal) * gSkyAmbientScale * skyShadow;
+        color += albedo * (1.0f - surface.metallic)
+            * EvaluateSkyIrradianceSH9(skyIrradianceSH, surface.normal) * gSkyAmbientScale * skyShadow
+            * underwater.ambientTransmittance;
 
         if (gSkySpecularEnabled != 0)
         {
             TextureCube<float4> skySpecularMap = ResourceDescriptorHeap[gSkySpecularMapIndex];
-            const float3 F0 = lerp(float3(DIELECTRIC_F0, DIELECTRIC_F0, DIELECTRIC_F0), surface.albedo, surface.metallic);
             const float NdotV = saturate(dot(surface.normal, toViewer));
             const float3 R = reflect(-toViewer, surface.normal);
             const float3 prefiltered = skySpecularMap.SampleLevel(
                 gLinearWrap, R, surface.roughness * (kRTHitSkySpecularMipCount - 1.0f)).rgb;
             const float2 envBRDF = EnvBRDFApprox(surface.roughness, NdotV);
-            color += prefiltered * (F0 * envBRDF.x + envBRDF.y) * gSkyAmbientScale * skyShadow;
+            color += prefiltered * (F0 * envBRDF.x + envBRDF.y) * gSkyAmbientScale * skyShadow
+                * underwater.ambientTransmittance;
         }
     }
     return color;

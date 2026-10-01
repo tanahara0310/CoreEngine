@@ -39,7 +39,7 @@ namespace CoreEngine
         float roughness;                 ///< 粗さファクター
         float alphaCutoff;               ///< アルファがこれ以下の所は抜く
         uint32_t flags;                  ///< kRTHitSubMeshFlag*
-        float pad;
+        uint32_t metallicRoughnessTextureIndex; ///< 金属性（B）・粗さ（G）テクスチャのヒープ内インデックス（kRTHitNoTexture = 無し）
     };
     static constexpr Cb::Field kRTHitSubMeshFields[] = {
         CB_FIELD(RTHitSubMesh, firstTriangle), CB_FIELD(RTHitSubMesh, triangleCount),
@@ -47,7 +47,8 @@ namespace CoreEngine
         CB_FIELD(RTHitSubMesh, baseColor), CB_FIELD(RTHitSubMesh, uvTransformU),
         CB_FIELD(RTHitSubMesh, uvTransformV), CB_FIELD(RTHitSubMesh, emissive),
         CB_FIELD(RTHitSubMesh, metallic), CB_FIELD(RTHitSubMesh, roughness),
-        CB_FIELD(RTHitSubMesh, alphaCutoff), CB_FIELD(RTHitSubMesh, flags), CB_FIELD(RTHitSubMesh, pad),
+        CB_FIELD(RTHitSubMesh, alphaCutoff), CB_FIELD(RTHitSubMesh, flags),
+        CB_FIELD(RTHitSubMesh, metallicRoughnessTextureIndex),
     };
     CB_VERIFY_STRIDE(RTHitSubMesh, kRTHitSubMeshFields);
 

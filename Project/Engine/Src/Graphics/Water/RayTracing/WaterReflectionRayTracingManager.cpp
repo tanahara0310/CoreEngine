@@ -57,36 +57,6 @@ namespace CoreEngine
         CB_VERIFY_LAYOUT(WaterReflectionConstants, kWaterReflectionConstantsFields);
         CB_BIND_HLSL(WaterReflectionConstants, kWaterReflectionConstantsFields, "WaterReflectionConstants");
 
-        /// @brief ヒットシェーディングの定数（Include/RayTracing/RTHitShading.hlsli の RTHitShadingConstants）
-        struct RTHitShadingConstants {
-            uint32_t hitInstanceTableIndex;
-            uint32_t hitSubMeshTableIndex;
-            uint32_t directionalLightsIndex;
-            uint32_t directionalLightCount;
-            uint32_t skyIrradianceSHIndex;
-            uint32_t skyAmbientEnabled;
-            float skyAmbientScale;
-            uint32_t hitShadingEnabled;
-            uint32_t skySpecularMapIndex;
-            uint32_t skySpecularEnabled;
-            float pad[2];
-        };
-        static constexpr Cb::Field kRTHitShadingConstantsFields[] = {
-            CB_FIELD(RTHitShadingConstants, hitInstanceTableIndex),
-            CB_FIELD(RTHitShadingConstants, hitSubMeshTableIndex),
-            CB_FIELD(RTHitShadingConstants, directionalLightsIndex),
-            CB_FIELD(RTHitShadingConstants, directionalLightCount),
-            CB_FIELD(RTHitShadingConstants, skyIrradianceSHIndex),
-            CB_FIELD(RTHitShadingConstants, skyAmbientEnabled),
-            CB_FIELD(RTHitShadingConstants, skyAmbientScale),
-            CB_FIELD(RTHitShadingConstants, hitShadingEnabled),
-            CB_FIELD(RTHitShadingConstants, skySpecularMapIndex),
-            CB_FIELD(RTHitShadingConstants, skySpecularEnabled),
-            CB_FIELD(RTHitShadingConstants, pad),
-        };
-        CB_VERIFY_LAYOUT(RTHitShadingConstants, kRTHitShadingConstantsFields);
-        CB_BIND_HLSL(RTHitShadingConstants, kRTHitShadingConstantsFields, "RTHitShadingConstants");
-
         /// @brief 縮小段のコンピュート（WaterReflectionColorPyramid.CS.hlsl）の PyramidConstants
         struct ColorPyramidConstants {
             uint32_t destWidth;
@@ -170,49 +140,6 @@ namespace CoreEngine
         // 縮小段が作れなくても反射そのものは動く（当たった物をぼかさずに引く）
         colorPyramidPipelineReady_ = InitializeColorPyramid();
         return true;
-    }
-
-    bool WaterReflectionRayTracingManager::InitializeHitShadingConstants()
-    {
-        static_assert(sizeof(RTHitShadingConstants) <= kHitShadingConstantsStride,
-            "RTHitShadingConstants does not fit in one constant buffer slot");
-        const size_t totalBytes = static_cast<size_t>(kHitShadingConstantsStride) * kMaxFramesInFlight * kViewCount;
-        hitShadingConstants_ = ResourceFactory::CreateBufferResource(dxCommon_->GetDevice(), totalBytes);
-        if (!hitShadingConstants_) {
-            Logger::GetInstance().Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
-                "{}: hit shading constant buffer creation failed.", GetOwnerName());
-            return false;
-        }
-        void* mapped = nullptr;
-        if (FAILED(hitShadingConstants_->Map(0, nullptr, &mapped)) || !mapped) {
-            hitShadingConstants_.Reset();
-            return false;
-        }
-        hitShadingConstantsMapped_ = static_cast<uint8_t*>(mapped);
-        return true;
-    }
-
-    D3D12_GPU_VIRTUAL_ADDRESS WaterReflectionRayTracingManager::UploadHitShadingConstants(
-        const WaterHitShadingInput& input, uint32_t viewIndex)
-    {
-        RTHitShadingConstants constants{};
-        constants.hitInstanceTableIndex = input.instanceTableIndex;
-        constants.hitSubMeshTableIndex = input.subMeshTableIndex;
-        constants.directionalLightsIndex = input.directionalLightsIndex;
-        constants.directionalLightCount = input.directionalLightCount;
-        constants.skyIrradianceSHIndex = input.skyIrradianceSHIndex;
-        constants.skyAmbientEnabled = input.skyAmbientEnabled ? 1u : 0u;
-        constants.skyAmbientScale = input.skyAmbientScale;
-        constants.hitShadingEnabled = input.enabled ? 1u : 0u;
-        constants.skySpecularMapIndex = input.skySpecularMapIndex;
-        constants.skySpecularEnabled = input.skySpecularEnabled ? 1u : 0u;
-
-        // 実行待ちのフレームが読んでいる枠を書き換えないよう、フレームとビューごとに別の枠へ書く
-        const uint32_t frameIndex = dxCommon_->Frame().FrameIndex();
-        const size_t offset =
-            static_cast<size_t>(kHitShadingConstantsStride) * (frameIndex * kViewCount + viewIndex);
-        std::memcpy(hitShadingConstantsMapped_ + offset, &constants, sizeof(constants));
-        return hitShadingConstants_->GetGPUVirtualAddress() + offset;
     }
 
     bool WaterReflectionRayTracingManager::InitializeColorPyramid()

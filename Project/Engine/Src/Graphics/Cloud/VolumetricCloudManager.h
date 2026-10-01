@@ -90,6 +90,9 @@ namespace CoreEngine
             return cloudShadowConstantBuffer_ ? cloudShadowConstantBuffer_->GetGPUVirtualAddress() : 0;
         }
 
+        /// @brief 雲シャドウ CB に書いた値（レイトレのヒットシェーディングが同じ値で雲の影を引く）
+        const CloudShadowShaderConstants& GetCloudShadowConstants() const { return cloudShadowConstants_; }
+
         /// @brief 保持している GPU テクスチャ一式
         /// @note パスが CloudBuffer / CloudShadowMap を FrameBlackboard へ公開するために使う
         CloudResources& GetResources() { return resources_; }
@@ -244,6 +247,7 @@ namespace CoreEngine
         GodRayShaderConstants* godRayConstantData_ = nullptr;
         Microsoft::WRL::ComPtr<ID3D12Resource> cloudShadowConstantBuffer_;
         CloudShadowShaderConstants* cloudShadowConstantData_ = nullptr;
+        CloudShadowShaderConstants cloudShadowConstants_{};
 
         CloudResources resources_{};
         CloudPipelines pipelines_{};

@@ -82,6 +82,9 @@ namespace CoreEngine
         /// @brief Water Caustics デバッグ表示設定を設定
         void SetWaterCausticsDebugSettings(const WaterCausticsDebugSettings& settings);
 
+        /// @brief 水中ライティングの設定（このフレームで水中の点を照らすのに使った値）
+        const WaterCausticsDebugSettings& GetWaterCausticsDebugSettings() const { return waterCausticsDebugSettings_; }
+
         /// @brief RT シャドウマスク SRV を設定（DXR レイトレーシングシャドウ結果）
         /// @param handle  SRV ハンドル（無効時は {} を渡す）
         /// @param lightIndex  ディレクショナルライトのインデックス（0〜3）

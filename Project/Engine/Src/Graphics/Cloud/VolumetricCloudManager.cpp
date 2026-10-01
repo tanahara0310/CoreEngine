@@ -519,6 +519,7 @@ namespace CoreEngine
         s.pad1 = 0.0f;
 
         *cloudShadowConstantData_ = s;
+        cloudShadowConstants_ = s;
     }
 
     CloudRenderContext VolumetricCloudManager::MakeRenderContext(

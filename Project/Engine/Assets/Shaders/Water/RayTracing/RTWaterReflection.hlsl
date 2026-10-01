@@ -259,7 +259,7 @@ float4 ShadeReflectionHit(RayDesc ray, RTReflectionPayload payload, float coneWi
         {
             const float bias = max(0.02f, payload.hitT * 1.0e-4f);
             const float visibility = TraceSunVisibility(surface.position, surface.normal, bias);
-            return float4(ShadeHitSurface(surface, -ray.Direction, visibility), 1.0f);
+            return float4(ShadeHitSurface(surface, -ray.Direction, visibility, AboveWaterLighting()), 1.0f);
         }
         if (attempt == kMaxCutoutRetrace)
         {

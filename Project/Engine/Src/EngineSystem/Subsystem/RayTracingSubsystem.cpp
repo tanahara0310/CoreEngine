@@ -12,9 +12,13 @@
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/FrameBlackboard.h"
+#include "Graphics/Render/RenderingTechnique/Lighting/DeferredLightingTechnique.h"
+#include "Graphics/Render/RenderingTechnique/RenderingTechniqueManager.h"
+#include "Graphics/Render/RenderingTechnique/RenderingTechniqueNames.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
+#include "Graphics/Cloud/VolumetricCloudManager.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/RayTracing/VertexAnimationDeformer.h"
 #include "Graphics/Render/Model/VertexAnimation.h"
@@ -79,6 +83,7 @@ namespace CoreEngine
             row.triangleCount = subMesh.indexCount / 3;
             row.baseColorTextureIndex = kRTHitNoTexture;
             row.emissiveTextureIndex = kRTHitNoTexture;
+            row.metallicRoughnessTextureIndex = kRTHitNoTexture;
 
             D3D12_GPU_DESCRIPTOR_HANDLE baseColorTexture = baseColorOverride;
             if (subMesh.materialIndex < resource.GetMaterials().size()) {
@@ -88,6 +93,9 @@ namespace CoreEngine
                 }
                 if (textures.hasEmissive && textures.emissive.ptr != 0) {
                     row.emissiveTextureIndex = descriptors.GetSRVHeapIndex(textures.emissive);
+                }
+                if (textures.hasMetallicRoughness && textures.metallicRoughness.ptr != 0) {
+                    row.metallicRoughnessTextureIndex = descriptors.GetSRVHeapIndex(textures.metallicRoughness);
                 }
             }
             if (baseColorTexture.ptr != 0) {
@@ -577,6 +585,22 @@ namespace CoreEngine
             return;
         }
 
+        // 水中の点の照らし方は、このフレームの DeferredLighting が水中の点に使った値にそろえる
+        WaterUnderwaterLightingInput underwaterLighting{};
+        if (context.renderingTechniqueManager && context.rtWaterCausticsManager) {
+            if (auto* deferredLighting = context.renderingTechniqueManager->GetTechnique<DeferredLightingTechnique>(
+                    RenderingTechniqueNames::DeferredLighting)) {
+                const DeferredLightingTechnique::WaterCausticsDebugSettings& waterLighting =
+                    deferredLighting->GetWaterCausticsDebugSettings();
+                underwaterLighting.enabled = (waterLighting.waterVolumeEnabled != 0);
+                for (int c = 0; c < 3; ++c) {
+                    underwaterLighting.absorptionCoeff[c] = waterLighting.absorptionCoeff[c];
+                }
+                underwaterLighting.causticsIntensityScale =
+                    context.rtWaterCausticsManager->GetSettings().intensityScale;
+            }
+        }
+
         rtWaterRefraction->Dispatch(
             cmdList,
             dispatchContext.sceneDepthSRV,
@@ -585,6 +609,8 @@ namespace CoreEngine
             dispatchContext.cameraPosition,
             surfaceData,
             dispatchContext.fftOceanInput,
+            BuildWaterHitShadingInput(context, dx),
+            underwaterLighting,
             dispatchContext.width,
             dispatchContext.height,
             viewId);
@@ -685,6 +711,21 @@ namespace CoreEngine
                     input.skySpecularMapIndex = descriptors->GetSRVHeapIndex(atmosphere->GetSkySpecularSRVHandle());
                     input.skySpecularEnabled = (input.skySpecularMapIndex != UINT32_MAX);
                 }
+            }
+        }
+
+        // 雲の影（DeferredLighting と同じマップと範囲）
+        if (auto* clouds = context.volumetricCloudManager; clouds && clouds->AreCloudsActive() && context.frameBlackboard) {
+            D3D12_GPU_DESCRIPTOR_HANDLE cloudShadowMap{};
+            if (context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::CloudShadowMap, cloudShadowMap)) {
+                const CloudShadowShaderConstants& cloudShadow = clouds->GetCloudShadowConstants();
+                input.cloudShadowMapIndex = descriptors->GetSRVHeapIndex(cloudShadowMap);
+                input.cloudShadowStrength = cloudShadow.sceneStrength;
+                input.cloudShadowRegionCenterXZ[0] = cloudShadow.regionCenterX;
+                input.cloudShadowRegionCenterXZ[1] = cloudShadow.regionCenterZ;
+                input.cloudShadowRegionSize = cloudShadow.regionSizeM;
+                input.cloudShadowAnchorY = cloudShadow.anchorWorldY;
+                input.cloudShadowEdgeFadeStart = cloudShadow.edgeFadeStart;
             }
         }
         return input;

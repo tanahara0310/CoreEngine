@@ -37,20 +37,6 @@ namespace CoreEngine
         bool enabled = false;                  ///< false なら全画素を日向（1）にする
     };
 
-    /// @brief 反射レイが当たった点を照らすための入力（番号はすべてシェーダー可視ヒープ内のインデックス）
-    struct WaterHitShadingInput {
-        bool enabled = false;                         ///< false なら当たった点を照らさない（画面に無い分は空）
-        uint32_t instanceTableIndex = UINT32_MAX;     ///< RTHitInstance の表
-        uint32_t subMeshTableIndex = UINT32_MAX;      ///< RTHitSubMesh の表
-        uint32_t directionalLightsIndex = UINT32_MAX; ///< DirectionalLightData の配列
-        uint32_t directionalLightCount = 0;
-        uint32_t skyIrradianceSHIndex = UINT32_MAX;   ///< 空の放射照度の SH9
-        bool skyAmbientEnabled = false;
-        float skyAmbientScale = 0.0f;                 ///< 空の輝度単位 → サーフェス光単位
-        uint32_t skySpecularMapIndex = UINT32_MAX;    ///< 空のスペキュラキューブマップ
-        bool skySpecularEnabled = false;
-    };
-
     /// @brief DXR による水面反射マネージャー。
     /// @details RTWaterRefractionRayTracingManager の対称形。反射レイをトレースし、
     ///          ヒット点が画面に写っていればその色を、写っていなければ当たった点を
@@ -111,17 +97,6 @@ namespace CoreEngine
 
     private:
         WaterReflectionRayTracingSettings settings_{};
-
-        // ---- ヒットシェーディングの定数（b2）----
-        // フレームインフライト×ビューぶんの枠を 1 本の UPLOAD バッファに並べ、写像したまま書く
-        static constexpr UINT kHitShadingConstantsStride = 256;
-        Microsoft::WRL::ComPtr<ID3D12Resource> hitShadingConstants_;
-        uint8_t* hitShadingConstantsMapped_ = nullptr;
-
-        /// @brief ヒットシェーディングの定数バッファを作る
-        bool InitializeHitShadingConstants();
-        /// @brief 今フレーム・このビューの枠へ定数を書き、その GPU アドレスを返す
-        D3D12_GPU_VIRTUAL_ADDRESS UploadHitShadingConstants(const WaterHitShadingInput& input, uint32_t viewIndex);
 
         // ---- 反射の元画像の縮小段（段 0 = 半分の解像度）----
         // 荒れた水面の反射は、法線から外した細かい波の分だけ当たった物をぼかして引く。

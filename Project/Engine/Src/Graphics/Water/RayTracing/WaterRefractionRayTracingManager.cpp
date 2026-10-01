@@ -21,17 +21,16 @@ namespace CoreEngine
             float surfaceBias;
             float maxRayDistance;
             float refractionEta;
-            float absorptionCoeff;
             float screenWidth;
             float screenHeight;
             float maxRefractionOffsetPixels;
-            // 旧 FFT 有効情報 3 スロット。実体は b1（WaterSurfaceConstants）へ一本化済み。
-            // レイアウト維持のためスロットだけ残す
-            uint32_t fftOceanPad1;
-            float fftOceanPad0;
-            uint32_t fftOceanPad2;
             float debugDisplayScale;
             uint32_t debugViewMode;
+            // 水中の点を照らす値（DeferredLighting の水中ライティング・RT コースティクスと同じ値）
+            float underwaterAbsorption[3];
+            uint32_t underwaterLightingEnabled;
+            float causticsIntensityScale;
+            float pad[3];
         };
 
         static constexpr Cb::Field kWaterRefractionConstantsFields[] = {
@@ -39,19 +38,21 @@ namespace CoreEngine
             CB_FIELD(WaterRefractionConstants, invViewProjection),
             CB_FIELD(WaterRefractionConstants, cameraPosition), CB_FIELD(WaterRefractionConstants, waterHeight),
             CB_FIELD(WaterRefractionConstants, surfaceBias), CB_FIELD(WaterRefractionConstants, maxRayDistance),
-            CB_FIELD(WaterRefractionConstants, refractionEta), CB_FIELD(WaterRefractionConstants, absorptionCoeff),
+            CB_FIELD(WaterRefractionConstants, refractionEta),
             CB_FIELD(WaterRefractionConstants, screenWidth), CB_FIELD(WaterRefractionConstants, screenHeight),
             CB_FIELD(WaterRefractionConstants, maxRefractionOffsetPixels),
-            CB_FIELD(WaterRefractionConstants, fftOceanPad1), CB_FIELD(WaterRefractionConstants, fftOceanPad0),
-            CB_FIELD(WaterRefractionConstants, fftOceanPad2),
             CB_FIELD(WaterRefractionConstants, debugDisplayScale),
             CB_FIELD(WaterRefractionConstants, debugViewMode),
+            CB_FIELD(WaterRefractionConstants, underwaterAbsorption),
+            CB_FIELD(WaterRefractionConstants, underwaterLightingEnabled),
+            CB_FIELD(WaterRefractionConstants, causticsIntensityScale),
+            CB_FIELD(WaterRefractionConstants, pad),
         };
         CB_VERIFY_LAYOUT(WaterRefractionConstants, kWaterRefractionConstantsFields);
         CB_BIND_HLSL(WaterRefractionConstants, kWaterRefractionConstantsFields, "WaterRefractionConstants");
     }
 
-    static_assert(sizeof(WaterRefractionConstants) == 192,
+    static_assert(sizeof(WaterRefractionConstants) == 208,
         "WaterRefractionConstants size mismatch with HLSL cbuffer");
     static_assert(sizeof(WaterWaveParam) == 32,
         "WaterWaveParam size mismatch with HLSL wave struct");
@@ -77,7 +78,15 @@ namespace CoreEngine
         desc.srvTableNames = kSrvTableNames;
         desc.constantsName = "WaterRefractionConstants";
         desc.constantsBytes = sizeof(WaterRefractionConstants);
-        return InitializeFromDesc(dxCommon, descriptorAllocator, asMgr, shaderProgramCache, desc);
+        // RTRefractionPayload {hitT, hitFlag, instanceIndex, primitiveIndex, barycentrics}
+        desc.payloadBytes = sizeof(float) * 2 + sizeof(uint32_t) * 2 + sizeof(float) * 2;
+        // 隠れた屈折先で当たった点を照らすときに表・テクスチャ・ライトをヒープから番号で引く
+        desc.extraConstantBufferName = "RTHitShadingConstants";
+        desc.directlyIndexedHeap = true;
+        if (!InitializeFromDesc(dxCommon, descriptorAllocator, asMgr, shaderProgramCache, desc)) {
+            return false;
+        }
+        return InitializeHitShadingConstants();
     }
 
     void WaterRefractionRayTracingManager::Resize(UINT width, UINT height, ViewID viewId)
@@ -105,6 +114,8 @@ namespace CoreEngine
         const Vector3& cameraPosition,
         const WaterSurfaceData& surfaceData,
         const FFTOceanInput& fftOceanInput,
+        const WaterHitShadingInput& hitShading,
+        const WaterUnderwaterLightingInput& underwaterLighting,
         UINT width,
         UINT height,
         ViewID viewId)
@@ -131,12 +142,16 @@ namespace CoreEngine
         constants.surfaceBias = settings_.surfaceBias;
         constants.maxRayDistance = settings_.maxRayDistance;
         constants.refractionEta = 1.0f / (std::max)(settings_.waterRefractiveIndex, 1.0e-4f);
-        constants.absorptionCoeff = settings_.absorptionCoeff;
         constants.screenWidth = static_cast<float>(width);
         constants.screenHeight = static_cast<float>(height);
         constants.maxRefractionOffsetPixels = settings_.maxRefractionOffsetPixels;
         constants.debugDisplayScale = settings_.debugDisplayScale;
         constants.debugViewMode = settings_.debugViewMode;
+        for (int c = 0; c < 3; ++c) {
+            constants.underwaterAbsorption[c] = underwaterLighting.absorptionCoeff[c];
+        }
+        constants.underwaterLightingEnabled = underwaterLighting.enabled ? 1u : 0u;
+        constants.causticsIntensityScale = underwaterLighting.causticsIntensityScale;
 
         const D3D12_GPU_DESCRIPTOR_HANDLE fftDisplacementSRV =
             (fftOceanInput.displacementSRV.ptr != 0) ? fftOceanInput.displacementSRV : sceneColorSRV;
@@ -190,6 +205,8 @@ namespace CoreEngine
             &constants,
             width,
             height,
-            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+            {},
+            UploadHitShadingConstants(hitShading, viewIndex));
     }
 }
