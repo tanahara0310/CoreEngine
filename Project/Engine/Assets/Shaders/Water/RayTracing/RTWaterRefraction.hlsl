@@ -496,7 +496,7 @@ void RTWaterRefractionRayGen()
     //   - 再投影先が画面の外
     //   - 再投影先に当たった点とは別の面が写っている: 物の水中の部分などの陰（深度の信頼度）
     const float sampledSurfaceY =
-        gSurfaceWaterHeight + EvaluateWaterOffset(gFFTOceanDisplacement, sampledWorldPos.xz).y;
+        gSurfaceWaterHeight + EvaluateDrawnSurfaceHeight(gFFTOceanDisplacement, sampledWorldPos.xz);
     const float aboveWater = IsBackgroundDepth(sampledDepth)
         ? 0.0f
         : smoothstep(kUnderwaterMarginMeters, 0.10f, sampledWorldPos.y - sampledSurfaceY);

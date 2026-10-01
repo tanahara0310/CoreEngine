@@ -229,6 +229,59 @@ float3 EvaluateWaterOffset(Texture2DArray<float4> displacementTex, float2 worldX
     return SampleFFTOceanCascadeDisplacement(displacementTex, worldXZ, gSurfaceFFTOceanResolution);
 }
 
+/// @brief 水面メッシュの頂点 1 点の変位（FFTWater.VS と同じ式: ジオメトリ用のカスケード＋波群エンベロープ）
+float3 SampleMeshVertexDisplacement(Texture2DArray<float4> displacementTex, float2 baseXZ)
+{
+    float3 disp = 0.0f.xxx;
+    [unroll]
+    for (int c = 0; c < kFFTGeometryCascadeCount; ++c)
+    {
+        const float2 gridXZ = RotateToFFTCascadeGrid(baseXZ, c);
+        const float3 d = SampleFFTOceanArraySlice(
+            displacementTex, gridXZ, kFFTCascadePatch[c], (uint)c, gSurfaceFFTOceanResolution).xyz;
+        const float2 horizontal = RotateFromFFTCascadeGrid(float2(d.x, d.z), c);
+        disp += float3(horizontal.x, d.y, horizontal.y);
+    }
+    return disp * ComputeFFTWaveGroupEnvelope(baseXZ);
+}
+
+/// @brief ラスタライザが実際に描く水面の高さ（基準面からのオフセット）を返す
+/// @details 水面メッシュの頂点（PlaneMeshGenerator の格子）でだけ変位を評価し、
+///          ラスタライザと同じ三角形（対角は (0,1)-(1,0)）で補間する
+float EvaluateDrawnSurfaceHeight(Texture2DArray<float4> displacementTex, float2 worldXZ)
+{
+    if (!UseFFTOceanSurface())
+    {
+        return EvaluateWaterOffsetGerstner(worldXZ).y;
+    }
+    if (gSurfaceRegionValid == 0)
+    {
+        // 格子が分からないときは頂点の変位をその点で評価する
+        return SampleMeshVertexDisplacement(displacementTex, worldXZ).y;
+    }
+
+    // 水平変位を 1 回だけ逆にたどって、変位前の格子上の位置を求める
+    const float2 baseXZ = worldXZ - SampleMeshVertexDisplacement(displacementTex, worldXZ).xz;
+
+    const float2 gridOrigin = gSurfaceRegionCenterXZ - gSurfaceRegionHalfExtentXZ;
+    const float2 cellSize = max((2.0f * gSurfaceRegionHalfExtentXZ) / max(gSurfaceMeshSubdivisions, 1.0f), 1.0e-4f.xx);
+    const float2 gridCoord = (baseXZ - gridOrigin) / cellSize;
+    const float2 cellIndex = floor(gridCoord);
+    const float2 cellFrac = gridCoord - cellIndex;
+    const float2 cellCorner = gridOrigin + cellIndex * cellSize;
+
+    // 対角上の 2 頂点は両方の三角形で共通なので、評価するのは 3 頂点
+    const float h10 = SampleMeshVertexDisplacement(displacementTex, cellCorner + float2(cellSize.x, 0.0f)).y;
+    const float h01 = SampleMeshVertexDisplacement(displacementTex, cellCorner + float2(0.0f, cellSize.y)).y;
+    if (cellFrac.x + cellFrac.y <= 1.0f)
+    {
+        const float h00 = SampleMeshVertexDisplacement(displacementTex, cellCorner).y;
+        return h00 + cellFrac.x * (h10 - h00) + cellFrac.y * (h01 - h00);
+    }
+    const float h11 = SampleMeshVertexDisplacement(displacementTex, cellCorner + cellSize).y;
+    return h11 + (1.0f - cellFrac.x) * (h01 - h11) + (1.0f - cellFrac.y) * (h10 - h11);
+}
+
 /// @brief 波面のワールド法線を評価する
 /// @param footprintMeters このレイが水面上で覆う幅 [m]（カスケードの縮小フィルタに使う）
 float3 EvaluateWaterNormal(Texture2DArray<float4> normalTex, float2 worldXZ, float footprintMeters)
@@ -303,8 +356,8 @@ float3 VisualizeRTScalar(float value, float displayScale)
     return scaled.xxx;
 }
 
-/// @brief フラット水面平面での交点をシードに、波を反映した固定点反復（3回）で
-///        実際の水面交点を求める（屈折・反射で完全同一のロジック）
+/// @brief フラット水面平面での交点をシードに、固定点反復（3回）で
+///        ラスタライザが描く水面（EvaluateDrawnSurfaceHeight）との交点を求める（屈折・反射で完全同一のロジック）
 /// @return シードが有限値なら true。waterPos に精密化後の交点が入る
 bool RefineWaterSurfaceIntersection(
     Texture2DArray<float4> displacementTex,
@@ -338,8 +391,7 @@ bool RefineWaterSurfaceIntersection(
     [unroll]
     for (int iteration = 0; iteration < 3; ++iteration)
     {
-        const float3 waveOffset = EvaluateWaterOffset(displacementTex, waterPos.xz);
-        const float surfaceY = gSurfaceWaterHeight + waveOffset.y;
+        const float surfaceY = gSurfaceWaterHeight + EvaluateDrawnSurfaceHeight(displacementTex, waterPos.xz);
         const float deltaY = waterPos.y - surfaceY;
         waterPos -= primaryDir * (deltaY / safeDenom);
     }
