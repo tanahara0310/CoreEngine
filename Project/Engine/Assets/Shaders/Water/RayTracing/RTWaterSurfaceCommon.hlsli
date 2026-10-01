@@ -29,10 +29,12 @@ cbuffer WaterSurfaceData : register(b1)
     // 水面メッシュの頂点グリッド分割数（coverage 判定のメッシュ同一基準化用。
     // 以前は RTWaterCaustics.hlsl に 256 がハードコードされていた）
     float gSurfaceMeshSubdivisions;
-    float gSurfacePad0;
+    uint gSurfaceRegionValid;              // 0 = 水面メッシュの範囲が分からない
     // FFT カスケードごとの平均二乗傾斜（x・z の傾きの二乗和の平均）
     float3 gSurfaceCascadeMeanSquareSlope;
     float gSurfacePad1;
+    float2 gSurfaceRegionCenterXZ;         // 水面メッシュのワールド XZ 範囲
+    float2 gSurfaceRegionHalfExtentXZ;
 };
 
 static const uint kWaterSurfaceModelTypeGerstner = 0;

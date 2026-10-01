@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "cd1ba6a7e39c7ea5"
+                },
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.2,
+                    1.2,
+                    1.2
+                ],
+                "translate": [
+                    -29.0,
+                    0.40443268,
+                    -2.5
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "54c3e842-2641-5474-adcf-6f6d9669e1f7",
+                    "path": "Application/Assets/Models/Okinawa/ReefRock_B/ReefRock_B.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "6f40285f0ce99ee9",
+    "name": "ReefRock_B (1)",
+    "order": 41
+}

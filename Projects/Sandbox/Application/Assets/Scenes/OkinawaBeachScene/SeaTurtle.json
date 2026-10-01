@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "3275cd39b845ff96"
+                },
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    -14.0,
+                    -1.0914596,
+                    -45.2
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "clips": [
+                    {
+                        "name": "Swim"
+                    }
+                ],
+                "model": "Application/Assets/Models/Okinawa/SeaTurtle/SeaTurtle.gltf"
+            },
+            "type": "Animator"
+        }
+    ],
+    "id": "df1283c41cacfd16",
+    "name": "SeaTurtle",
+    "order": 150
+}

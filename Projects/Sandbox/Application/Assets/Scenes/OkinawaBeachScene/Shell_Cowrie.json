@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "01ac57967148c8be"
+                },
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    -0.4,
+                    1.3420944,
+                    2.1
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "41732991-b690-52d5-910b-9a695ee6cf0a",
+                    "path": "Application/Assets/Models/Okinawa/Shell_Cowrie/Shell_Cowrie.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "1743a4d4b844438f",
+    "name": "Shell_Cowrie",
+    "order": 90
+}

@@ -25,7 +25,7 @@ from scipy.interpolate import PchipInterpolator, RegularGridInterpolator
 
 from .. import common as C
 from ..common import pbr_material, srgb
-from .terrain import PNoise, TILE, Torus, _dry_sand, _smoothstep, shore
+from .terrain import RIPPLE_HEIGHT, RIPPLE_TINT, PNoise, TILE, Torus, _dry_sand, _smoothstep, ripple, shore
 
 R_T = TILE / math.tau
 Y_SHORE_EDGE = -20.0                  # Shore の -Y 縁（世界 Y）
@@ -389,7 +389,7 @@ def _lagoon_layer(nb, T, V):
     # 砂漣（Shore と同じ式。位相は世界 Y で続ける）
     warp = nb.add(nb.mul(T.noise(0.22, 3, 0.5, off=121.0), 10.0), nb.mul(T.noise(1.4, 2, 0.5, off=123.0), 1.6))
     ph = nb.add(nb.mul(V.yw, math.tau / 0.34), warp)
-    rip = nb.sub(1.0, nb.math("ABSOLUTE", nb.math("SINE", nb.mul(ph, 0.5))))
+    rip = ripple(nb, ph)
     rip_mask = nb.maprange(T.noise(0.15, 2, 0.5, off=127.0), 0.3, 0.6, 0.45, 1.0)
 
     # ここから礁池の追加要素（浜の縁 Y=-20 では 0）
@@ -413,16 +413,16 @@ def _lagoon_layer(nb, T, V):
     alg_col = nb.mix(srgb("#a49a70"), srgb("#7f7a52"), T.noise(6.0, 3, 0.6, off=215.0))
 
     rip_mask = nb.mul(rip_mask, nb.sub(1.0, nb.mul(patch, 0.8)))
-    col = nb.mix(uw, srgb("#f3ecdc"), nb.mul(nb.mul(nb.sub(1.0, rip), rip_mask), 0.12))
+    col = nb.mix(uw, srgb("#f3ecdc"), nb.mul(nb.mul(nb.sub(1.0, rip), rip_mask), RIPPLE_TINT))
     # 砂漣の峰はわずかに暗い（藻の付く面）
-    col = nb.mix(col, srgb("#d8cdb2"), nb.mul(nb.mul(nb.smooth(rip, 0.75, 1.0), rip_mask), nb.mul(b, 0.18)))
+    col = nb.mix(col, srgb("#d8cdb2"), nb.mul(nb.mul(nb.smooth(rip, 0.75, 1.0), rip_mask), nb.mul(b, 0.08)))
     col = nb.mix(col, rub, nb.mul(patch, 0.92))
     col = nb.mix(col, alg_col, nb.mul(alg, 0.6))
-    h = nb.add(nb.mul(nb.mul(rip, rip_mask), 0.014), nb.mul(d["fine"], 0.002))
+    h = nb.add(nb.mul(nb.mul(rip, rip_mask), RIPPLE_HEIGHT), nb.mul(d["fine"], 0.002))
     h = nb.add(h, nb.mul(patch, nb.add(nb.mul(piece, 0.035), nb.mul(small, 0.008))))
     r = nb.mixf(0.5, 0.72, patch)
     r = nb.mixf(r, 0.62, alg)
-    cav = nb.maprange(nb.mul(nb.sub(1.0, rip), rip_mask), 0.0, 1.0, 1.0, 0.9)
+    cav = nb.maprange(nb.mul(nb.sub(1.0, rip), rip_mask), 0.0, 1.0, 1.0, 0.96)
     cav = nb.mul(cav, nb.mixf(1.0, nb.maprange(piece, 0.0, 1.0, 0.7, 1.0), patch))
     return dict(col=col, h=h, r=r, cav=cav)
 
@@ -569,15 +569,15 @@ def _sand2(nb, V, tb, deep):
     film = nb.smooth(V.noise(0.14, 3, 0.55, off=605.0), 0.54, 0.66)
     film = nb.mul(film, nb.maprange(V.noise(2.0, 3, 0.6, off=625.0), 0.3, 0.7, 0.4, 1.0))
     col = nb.mix(col, nb.mix(srgb("#a39975"), srgb("#8e7d5f"), V.noise(1.5, 2, 0.5, off=617.0)), nb.mul(film, 0.5))
-    # 深場の砂漣（礁縁に平行）
+    # 深場の砂漣（礁縁に平行。礁池より大きいので凹凸も少し大きい）
     warp = nb.add(nb.mul(V.noise(0.12, 3, 0.5, off=607.0), 9.0), nb.mul(V.noise(0.9, 2, 0.5, off=609.0), 1.2))
     ph = nb.add(nb.mul(V.yw, math.tau / 0.62), warp)
-    rip = nb.sub(1.0, nb.math("ABSOLUTE", nb.math("SINE", nb.mul(ph, 0.5))))
+    rip = ripple(nb, ph)
     rmask = nb.mul(nb.maprange(V.noise(0.2, 2, 0.5, off=611.0), 0.3, 0.65, 0.2, 1.0), deep)
-    col = nb.mix(col, srgb("#e6dfcd"), nb.mul(nb.mul(nb.sub(1.0, rip), rmask), 0.12))
-    h = nb.add(nb.mul(nb.mul(rip, rmask), 0.022), nb.mul(grain, 0.002))
+    col = nb.mix(col, srgb("#e6dfcd"), nb.mul(nb.mul(nb.sub(1.0, rip), rmask), RIPPLE_TINT))
+    h = nb.add(nb.mul(nb.mul(rip, rmask), RIPPLE_HEIGHT * 1.6), nb.mul(grain, 0.002))
     h = nb.add(h, nb.add(nb.mul(V.noise(2.0, 3, 0.6, off=613.0), 0.01), nb.mul(rmix, 0.03)))
-    cav = nb.maprange(nb.mul(nb.sub(1.0, rip), rmask), 0.0, 1.0, 1.0, 0.88)
+    cav = nb.maprange(nb.mul(nb.sub(1.0, rip), rmask), 0.0, 1.0, 1.0, 0.95)
     return dict(col=col, h=h, r=0.55, cav=cav)
 
 

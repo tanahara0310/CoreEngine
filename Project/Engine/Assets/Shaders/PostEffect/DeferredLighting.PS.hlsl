@@ -211,7 +211,7 @@ PixelShaderOutput main(PixelShaderInput input)
         gWaterCaustics.GetDimensions(causticsW, causticsH);
         if (causticsW > 1.0f && causticsH > 1.0f)
         {
-            float2 causticsUV = (input.position.xy + 0.5f.xx) / float2(causticsW, causticsH);
+            float2 causticsUV = input.position.xy / float2(causticsW, causticsH);
             rawCaustics = gWaterCaustics.SampleLevel(gSampler, causticsUV, 0.0f).rgb * gWaterCausticsDebug.debugDisplayScale;
         }
 
@@ -316,7 +316,8 @@ PixelShaderOutput main(PixelShaderInput input)
         if (causticsW > 1.0f && causticsH > 1.0f)
         {
             hasWaterCaustics = true;
-            float2 causticsUV = (input.position.xy + 0.5f.xx) / float2(causticsW, causticsH);
+            // SV_POSITION は画素の中心なので、そのまま割ると自分の画素の中心を引く（隣の画素と混ぜない）
+            float2 causticsUV = input.position.xy / float2(causticsW, causticsH);
             waterCausticsSample = gWaterCaustics.SampleLevel(gSampler, causticsUV, 0.0f);
         }
     }

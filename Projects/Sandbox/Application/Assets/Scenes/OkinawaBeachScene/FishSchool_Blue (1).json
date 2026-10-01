@@ -1,0 +1,46 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "3275cd39b845ff96"
+                },
+                "rotate": [
+                    0.0,
+                    2.792527,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    26.0,
+                    -1.1560913,
+                    -40.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "castShadow": true,
+                "drift": 1.0,
+                "school": {
+                    "guid": "a4efdb2b-3bd7-5e9c-9054-cf931cbc045b",
+                    "path": "Application/Assets/Models/Okinawa/FishSchools/FishSchool_Blue.json"
+                },
+                "swimSpeed": 1.0
+            },
+            "type": "FishSchool"
+        }
+    ],
+    "id": "25c5076ce89d084a",
+    "name": "FishSchool_Blue (1)",
+    "order": 154
+}

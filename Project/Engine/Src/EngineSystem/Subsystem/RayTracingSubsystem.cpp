@@ -12,9 +12,13 @@
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/FrameBlackboard.h"
+#include "Graphics/Render/RenderingTechnique/Lighting/DeferredLightingTechnique.h"
+#include "Graphics/Render/RenderingTechnique/RenderingTechniqueManager.h"
+#include "Graphics/Render/RenderingTechnique/RenderingTechniqueNames.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
+#include "Graphics/Cloud/VolumetricCloudManager.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/RayTracing/VertexAnimationDeformer.h"
 #include "Graphics/Render/Model/VertexAnimation.h"
@@ -79,8 +83,13 @@ namespace CoreEngine
             row.triangleCount = subMesh.indexCount / 3;
             row.baseColorTextureIndex = kRTHitNoTexture;
             row.emissiveTextureIndex = kRTHitNoTexture;
+            row.metallicRoughnessTextureIndex = kRTHitNoTexture;
+            row.normalTextureIndex = kRTHitNoTexture;
+            row.occlusionTextureIndex = kRTHitNoTexture;
+            row.occlusionStrength = 0.0f;
 
             D3D12_GPU_DESCRIPTOR_HANDLE baseColorTexture = baseColorOverride;
+            D3D12_GPU_DESCRIPTOR_HANDLE normalTexture{};
             if (subMesh.materialIndex < resource.GetMaterials().size()) {
                 const ModelResource::PBRTextureHandles& textures = resource.GetMaterialTextures(subMesh.materialIndex);
                 if (baseColorTexture.ptr == 0) {
@@ -88,6 +97,15 @@ namespace CoreEngine
                 }
                 if (textures.hasEmissive && textures.emissive.ptr != 0) {
                     row.emissiveTextureIndex = descriptors.GetSRVHeapIndex(textures.emissive);
+                }
+                if (textures.hasMetallicRoughness && textures.metallicRoughness.ptr != 0) {
+                    row.metallicRoughnessTextureIndex = descriptors.GetSRVHeapIndex(textures.metallicRoughness);
+                }
+                if (textures.hasNormal) {
+                    normalTexture = textures.normal;
+                }
+                if (textures.hasOcclusion && textures.occlusion.ptr != 0) {
+                    row.occlusionTextureIndex = descriptors.GetSRVHeapIndex(textures.occlusion);
                 }
             }
             if (baseColorTexture.ptr != 0) {
@@ -110,15 +128,20 @@ namespace CoreEngine
                 row.metallic = material->GetMetallic();
                 row.roughness = material->GetRoughness();
                 row.alphaCutoff = material->GetAlphaCutoff();
+                row.occlusionStrength = material->GetOcclusionStrength();
                 row.flags = (material->IsLightingEnabled() ? kRTHitSubMeshFlagLit : 0u)
                     | (material->IsDitheringEnabled() ? kRTHitSubMeshFlagDither : 0u);
+                // 法線テクスチャは材質が法線マップを使うときだけ（GBuffer.PS と同じ）
+                if (material->IsNormalMapEnabled() && normalTexture.ptr != 0) {
+                    row.normalTextureIndex = descriptors.GetSRVHeapIndex(normalTexture);
+                }
             }
             return row;
         }
 
         // ヒットシェーディング（Include/RayTracing/RTHitShading.hlsli）は頂点を VertexData の並びで読む
         static_assert(sizeof(VertexData) == 64 && offsetof(VertexData, texcoord) == 16
-            && offsetof(VertexData, normal) == 24,
+            && offsetof(VertexData, normal) == 24 && offsetof(VertexData, tangent) == 36,
             "RTHitShading.hlsli の kRTHitVertexStride / kRTHitVertex*Offset と一致させること");
 
         /// @brief TLAS のインスタンス 1 つぶんの行と、そのサブメッシュの行を足す
@@ -577,6 +600,22 @@ namespace CoreEngine
             return;
         }
 
+        // 水中の点の照らし方は、このフレームの DeferredLighting が水中の点に使った値にそろえる
+        WaterUnderwaterLightingInput underwaterLighting{};
+        if (context.renderingTechniqueManager && context.rtWaterCausticsManager) {
+            if (auto* deferredLighting = context.renderingTechniqueManager->GetTechnique<DeferredLightingTechnique>(
+                    RenderingTechniqueNames::DeferredLighting)) {
+                const DeferredLightingTechnique::WaterCausticsDebugSettings& waterLighting =
+                    deferredLighting->GetWaterCausticsDebugSettings();
+                underwaterLighting.enabled = (waterLighting.waterVolumeEnabled != 0);
+                for (int c = 0; c < 3; ++c) {
+                    underwaterLighting.absorptionCoeff[c] = waterLighting.absorptionCoeff[c];
+                }
+                underwaterLighting.causticsIntensityScale =
+                    context.rtWaterCausticsManager->GetSettings().intensityScale;
+            }
+        }
+
         rtWaterRefraction->Dispatch(
             cmdList,
             dispatchContext.sceneDepthSRV,
@@ -585,6 +624,8 @@ namespace CoreEngine
             dispatchContext.cameraPosition,
             surfaceData,
             dispatchContext.fftOceanInput,
+            BuildWaterHitShadingInput(context, dx),
+            underwaterLighting,
             dispatchContext.width,
             dispatchContext.height,
             viewId);
@@ -685,6 +726,21 @@ namespace CoreEngine
                     input.skySpecularMapIndex = descriptors->GetSRVHeapIndex(atmosphere->GetSkySpecularSRVHandle());
                     input.skySpecularEnabled = (input.skySpecularMapIndex != UINT32_MAX);
                 }
+            }
+        }
+
+        // 雲の影（DeferredLighting と同じマップと範囲）
+        if (auto* clouds = context.volumetricCloudManager; clouds && clouds->AreCloudsActive() && context.frameBlackboard) {
+            D3D12_GPU_DESCRIPTOR_HANDLE cloudShadowMap{};
+            if (context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::CloudShadowMap, cloudShadowMap)) {
+                const CloudShadowShaderConstants& cloudShadow = clouds->GetCloudShadowConstants();
+                input.cloudShadowMapIndex = descriptors->GetSRVHeapIndex(cloudShadowMap);
+                input.cloudShadowStrength = cloudShadow.sceneStrength;
+                input.cloudShadowRegionCenterXZ[0] = cloudShadow.regionCenterX;
+                input.cloudShadowRegionCenterXZ[1] = cloudShadow.regionCenterZ;
+                input.cloudShadowRegionSize = cloudShadow.regionSizeM;
+                input.cloudShadowAnchorY = cloudShadow.anchorWorldY;
+                input.cloudShadowEdgeFadeStart = cloudShadow.edgeFadeStart;
             }
         }
         return input;

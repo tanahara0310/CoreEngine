@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "741b622bbe75c30b"
+                },
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.3,
+                    1.3,
+                    1.3
+                ],
+                "translate": [
+                    30.0,
+                    -1.8651123,
+                    -62.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "743c3451-ee97-5cf2-a4c7-dc751809214b",
+                    "path": "Application/Assets/Models/Okinawa/Coral_Table_B/Coral_Table_B.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "48cd6aaf8c100d75",
+    "name": "Coral_Table_B (2)",
+    "order": 148
+}

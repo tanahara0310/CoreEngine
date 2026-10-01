@@ -8,6 +8,7 @@
 #include <dxcapi.h>
 
 #include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/RayTracing/RayTracingPipelineBuilder.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
@@ -17,6 +18,50 @@
 
 namespace CoreEngine
 {
+    namespace {
+        /// @brief ヒットシェーディングの定数（Include/RayTracing/RTHitShading.hlsli の RTHitShadingConstants）
+        struct RTHitShadingConstants {
+            uint32_t hitInstanceTableIndex;
+            uint32_t hitSubMeshTableIndex;
+            uint32_t directionalLightsIndex;
+            uint32_t directionalLightCount;
+            uint32_t skyIrradianceSHIndex;
+            uint32_t skyAmbientEnabled;
+            float skyAmbientScale;
+            uint32_t hitShadingEnabled;
+            uint32_t skySpecularMapIndex;
+            uint32_t skySpecularEnabled;
+            uint32_t cloudShadowMapIndex;
+            float cloudShadowStrength;
+            float cloudShadowRegionCenterXZ[2];
+            float cloudShadowRegionSize;
+            float cloudShadowAnchorY;
+            float cloudShadowEdgeFadeStart;
+            float pad[3];
+        };
+        static constexpr Cb::Field kRTHitShadingConstantsFields[] = {
+            CB_FIELD(RTHitShadingConstants, hitInstanceTableIndex),
+            CB_FIELD(RTHitShadingConstants, hitSubMeshTableIndex),
+            CB_FIELD(RTHitShadingConstants, directionalLightsIndex),
+            CB_FIELD(RTHitShadingConstants, directionalLightCount),
+            CB_FIELD(RTHitShadingConstants, skyIrradianceSHIndex),
+            CB_FIELD(RTHitShadingConstants, skyAmbientEnabled),
+            CB_FIELD(RTHitShadingConstants, skyAmbientScale),
+            CB_FIELD(RTHitShadingConstants, hitShadingEnabled),
+            CB_FIELD(RTHitShadingConstants, skySpecularMapIndex),
+            CB_FIELD(RTHitShadingConstants, skySpecularEnabled),
+            CB_FIELD(RTHitShadingConstants, cloudShadowMapIndex),
+            CB_FIELD(RTHitShadingConstants, cloudShadowStrength),
+            CB_FIELD(RTHitShadingConstants, cloudShadowRegionCenterXZ),
+            CB_FIELD(RTHitShadingConstants, cloudShadowRegionSize),
+            CB_FIELD(RTHitShadingConstants, cloudShadowAnchorY),
+            CB_FIELD(RTHitShadingConstants, cloudShadowEdgeFadeStart),
+            CB_FIELD(RTHitShadingConstants, pad),
+        };
+        CB_VERIFY_LAYOUT(RTHitShadingConstants, kRTHitShadingConstantsFields);
+        CB_BIND_HLSL(RTHitShadingConstants, kRTHitShadingConstantsFields, "RTHitShadingConstants");
+    }
+
     // 構成データ 1 つから DXR パイプライン・シェーダーテーブル・出力ビューを丸ごと組む。
     // 屈折・反射・コースティクスの 3 マネージャはこの関数への引数だけが違う
     bool WaterRayTracingPassBase::InitializeFromDesc(
@@ -258,6 +303,11 @@ namespace CoreEngine
         for (int c = 0; c < 3; ++c) {
             surfaceConstants.cascadeMeanSquareSlope[c] = fftOceanInput.cascadeMeanSquareSlope[c];
         }
+        surfaceConstants.regionValid = surfaceData.regionValid;
+        for (int c = 0; c < 2; ++c) {
+            surfaceConstants.regionCenterXZ[c] = surfaceData.regionCenterXZ[c];
+            surfaceConstants.regionHalfExtentXZ[c] = surfaceData.regionHalfExtentXZ[c];
+        }
         return surfaceConstants;
     }
 
@@ -284,6 +334,57 @@ namespace CoreEngine
         const WaterSurfaceConstants surfaceConstants = BuildSurfaceConstants(surfaceData, fftOceanInput);
         UploadSurfaceConstants(surfaceConstants);
         return surfaceConstants;
+    }
+
+    bool WaterRayTracingPassBase::InitializeHitShadingConstants()
+    {
+        static_assert(sizeof(RTHitShadingConstants) <= kHitShadingConstantsStride,
+            "RTHitShadingConstants does not fit in one constant buffer slot");
+        const size_t totalBytes = static_cast<size_t>(kHitShadingConstantsStride) * kMaxFramesInFlight
+            * static_cast<size_t>(RTWaterViewID::Count);
+        hitShadingConstants_ = ResourceFactory::CreateBufferResource(dxCommon_->GetDevice(), totalBytes);
+        if (!hitShadingConstants_) {
+            Logger::GetInstance().Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
+                "{}: hit shading constant buffer creation failed.", GetOwnerName());
+            return false;
+        }
+        void* mapped = nullptr;
+        if (FAILED(hitShadingConstants_->Map(0, nullptr, &mapped)) || !mapped) {
+            hitShadingConstants_.Reset();
+            return false;
+        }
+        hitShadingConstantsMapped_ = static_cast<uint8_t*>(mapped);
+        return true;
+    }
+
+    D3D12_GPU_VIRTUAL_ADDRESS WaterRayTracingPassBase::UploadHitShadingConstants(
+        const WaterHitShadingInput& input, uint32_t viewIndex)
+    {
+        RTHitShadingConstants constants{};
+        constants.hitInstanceTableIndex = input.instanceTableIndex;
+        constants.hitSubMeshTableIndex = input.subMeshTableIndex;
+        constants.directionalLightsIndex = input.directionalLightsIndex;
+        constants.directionalLightCount = input.directionalLightCount;
+        constants.skyIrradianceSHIndex = input.skyIrradianceSHIndex;
+        constants.skyAmbientEnabled = input.skyAmbientEnabled ? 1u : 0u;
+        constants.skyAmbientScale = input.skyAmbientScale;
+        constants.hitShadingEnabled = input.enabled ? 1u : 0u;
+        constants.skySpecularMapIndex = input.skySpecularMapIndex;
+        constants.skySpecularEnabled = input.skySpecularEnabled ? 1u : 0u;
+        constants.cloudShadowMapIndex = input.cloudShadowMapIndex;
+        constants.cloudShadowStrength = input.cloudShadowStrength;
+        constants.cloudShadowRegionCenterXZ[0] = input.cloudShadowRegionCenterXZ[0];
+        constants.cloudShadowRegionCenterXZ[1] = input.cloudShadowRegionCenterXZ[1];
+        constants.cloudShadowRegionSize = input.cloudShadowRegionSize;
+        constants.cloudShadowAnchorY = input.cloudShadowAnchorY;
+        constants.cloudShadowEdgeFadeStart = input.cloudShadowEdgeFadeStart;
+
+        // 実行待ちのフレームが読んでいる枠を書き換えないよう、フレームとビューごとに別の枠へ書く
+        const uint32_t frameIndex = dxCommon_->Frame().FrameIndex();
+        const size_t offset = static_cast<size_t>(kHitShadingConstantsStride)
+            * (frameIndex * static_cast<uint32_t>(RTWaterViewID::Count) + viewIndex);
+        std::memcpy(hitShadingConstantsMapped_ + offset, &constants, sizeof(constants));
+        return hitShadingConstants_->GetGPUVirtualAddress() + offset;
     }
 
     void WaterRayTracingPassBase::SetSurfaceModelProvider(

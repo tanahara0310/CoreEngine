@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "12f98c8539acc743"
+                },
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    -2.0,
+                    1.5946534,
+                    21.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "a4a15003-25d1-5e0b-87b8-9f9357ef876d",
+                    "path": "Application/Assets/Models/Okinawa/Ishigaki_Straight/Ishigaki_Straight.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "efbb76bd514739e8",
+    "name": "Ishigaki_Straight (2)",
+    "order": 73
+}

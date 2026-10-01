@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "01ac57967148c8be"
+                },
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    12.0,
+                    1.6835098,
+                    4.2
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "d68ff289-e717-5d2f-a37d-3d84f14e62cf",
+                    "path": "Application/Assets/Models/Okinawa/Driftwood_B/Driftwood_B.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "d026c3d67c4d7190",
+    "name": "Driftwood_B",
+    "order": 85
+}

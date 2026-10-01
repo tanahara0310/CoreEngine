@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "741b622bbe75c30b"
+                },
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.1,
+                    1.1,
+                    1.1
+                ],
+                "translate": [
+                    15.0,
+                    -1.7427444,
+                    -62.5
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "71576332-f3d7-50b9-9dde-44008503e297",
+                    "path": "Application/Assets/Models/Okinawa/Coral_Massive_A/Coral_Massive_A.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "9f2a98179cfb470e",
+    "name": "Coral_Massive_A (2)",
+    "order": 146
+}

@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "12f98c8539acc743"
+                },
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    7.6,
+                    1.4204526,
+                    20.2
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "4784fbd0-4243-53e2-964b-b2963c2155ea",
+                    "path": "Application/Assets/Models/Okinawa/Shisa_Agyo/Shisa_Agyo.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "21c501d50df4dd02",
+    "name": "Shisa_Agyo",
+    "order": 74
+}

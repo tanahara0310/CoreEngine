@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "ba1087ebe62f770d"
+                },
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    0.9,
+                    0.9,
+                    0.9
+                ],
+                "translate": [
+                    -30.0,
+                    1.5443252,
+                    9.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "908e7adc-12ac-5c7b-b5ce-a3e2671a7cae",
+                    "path": "Application/Assets/Models/Okinawa/Adan_A/Adan_A.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "94f75974933baa0d",
+    "name": "Adan_A (1)",
+    "order": 61
+}

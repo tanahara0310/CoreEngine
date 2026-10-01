@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "6a63c902245f5e0e"
+                },
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    80.0,
+                    0.0,
+                    40.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "a5677444-6359-5cf1-9266-e64738dca21d",
+                    "path": "Application/Assets/Models/Okinawa/BeachTerrain_Flat/BeachTerrain_Flat.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "5227d4c08f5f213a",
+    "name": "BeachTerrain_Flat (8)",
+    "order": 17
+}

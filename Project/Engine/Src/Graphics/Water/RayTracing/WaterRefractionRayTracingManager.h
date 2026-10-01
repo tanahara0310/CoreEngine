@@ -23,7 +23,6 @@ namespace CoreEngine
         float maxRayDistance = 500.0f;
         float waterRefractiveIndex = 1.333f;
         float surfaceBias = 0.02f;
-        float absorptionCoeff = 0.3f;
         // 屈折ヒット点のスクリーン再投影ずれ量の上限（ピクセル）。
         // 0 = 無制限（RT で求めた正確な位置をそのまま使う。既定）。
         // 正の値を指定した場合のみ暴発防止の安全クランプとして機能する。
@@ -31,6 +30,13 @@ namespace CoreEngine
         float debugDisplayScale = 1.0f;
         uint32_t debugViewMode = 0;
         uint32_t debugLogEnabled = 0;
+    };
+
+    /// @brief 屈折レイが当たった水中の点を照らすための値（DeferredLighting の水中ライティングと同じ値）
+    struct WaterUnderwaterLightingInput {
+        bool enabled = false;                  ///< true なら水中の点のメインライトを水面を通った日光で照らす
+        float absorptionCoeff[3] = {};         ///< 吸収係数 σa [1/m]
+        float causticsIntensityScale = 1.0f;   ///< RT コースティクスの強さの倍率
     };
 
     /// @brief 水面の屈折をレイトレーシングで生成するマネージャ
@@ -57,6 +63,8 @@ namespace CoreEngine
             const Vector3& cameraPosition,
             const WaterSurfaceData& surfaceData,
             const FFTOceanInput& fftOceanInput,
+            const WaterHitShadingInput& hitShading,
+            const WaterUnderwaterLightingInput& underwaterLighting,
             UINT width,
             UINT height,
             ViewID viewId = ViewID::GameView);

@@ -9,6 +9,7 @@
 |---|---|
 | glTF モデル（.gltf + .bin + PNG） | `Projects/Sandbox/Application/Assets/Models/Okinawa/<Variant>/` |
 | 魚の群れの配置（JSON） | `Projects/Sandbox/Application/Assets/Models/Okinawa/FishSchools/` |
+| エンジンのシーン（確認用シーンと同じ配置） | `Projects/Sandbox/Application/Assets/Scenes/OkinawaBeachScene/` |
 | アニメーションのデモ（MP4 / GIF） | `Tools/OkinawaBeach/Previews/anim_*.mp4`, `anim_*.gif` |
 | Blender ファイル | `Tools/OkinawaBeach/Blend/<module>.blend` |
 | プレビュー画像 | `Tools/OkinawaBeach/Previews/<module>.jpg`, `<module>_textures.jpg` |
@@ -158,7 +159,9 @@ Blender 上での確認は `demo_anim.py`（下記）。
 - 振幅は「風の強さ 1（やや強い海風）」での目安（ヤシの樹冠で約 0.3 m、葉先で約 0.35 m）。シェーダーで強さを掛ける
 - 幹と葉のようにつながる部品はつなぎ目の値が一致しているので、揺らしても裂けない
 - glTF の UV は v を `1 - v` で格納する規約なので、ファイル上は `(R, 1-G)`, `(B, 1-A)`。
-  エンジンの Assimp は `aiProcess_FlipUVs` で読むので、読み込み後は元の `(R, G)`, `(B, A)` に戻る
+  Assimp は glTF の読み込みで v を `1 - v`（左下原点）にし、`aiProcess_FlipUVs` でさらに `1 - v` にするので、
+  テクスチャ座標と同じく読み込み後もファイル上の値のまま。CoreEngine の `ModelLoader` は `TEXCOORD_1/2` の
+  v だけ `1 - v` で元の `(R, G)`, `(B, A)` に戻している（ほかのエンジンでも、読み込み後の v の向きに合わせて戻すこと）
 - テクスチャ用の UV は従来どおり `TEXCOORD_0`（マテリアルもこれを参照）
 
 CoreEngine では実装済み（下の「[エンジン（CoreEngine）での使い方](#エンジンcoreengineでの使い方)」）。
@@ -254,6 +257,28 @@ Blender の `(x, y, z)` は `(x, z, y)`、回転は Assimp の変換と同じ（
 植物と魚は `okinawa/motion.py` のジオメトリノード（上の HLSL と同じ式）、ウミガメは glTF のアクション `Swim` で動かしている。
 
 ## エンジン（CoreEngine）での使い方
+
+### シーン（OkinawaBeachScene）
+
+Sandbox のエディタで「シーンを開く」→ `OkinawaBeachScene` を選ぶと、確認用シーン（`Blend/OkinawaBeachScene.blend`）と
+同じ配置で全アセットが並ぶ。
+
+| オブジェクト | 中身 |
+|---|---|
+| `Sun` | 太陽。向きは確認用シーンの太陽と同じ（高さ 52°）。明るさは WaterTestScene と同じ |
+| `MainCamera` | ゲームの視点。確認用カメラ `main`（全景）と同じ位置・向き・縦の視野角 |
+| `WaterPlane` | FFT の海（WaterTestScene と同じ設定、4 km 四方）。平均水面の高さ 0 に置く |
+| `Terrain` / `Rocks` / `Vegetation` / `Village` / `BeachProps` / `Pier` / `Reef` | 種類ごとのグループ（空のオブジェクト）。下に 1 つずつのモデル（MeshRenderer） |
+| `SeaLife` | 魚の群れ 5 つ（魚の群れ コンポーネント）と、ウミガメ（Animator で `Swim` を流す） |
+
+見た目の設定（`_environment.json`）と `_scene.json` は WaterTestScene と同じ。
+作り直すときは `python3 Tools/OkinawaBeach/export_engine_scene.py` を実行する（`export_engine_scene.py` の説明を参照）。
+- 置く物は `.blend` のワールド行列をそのまま使い、`assemble.py` の配置表から求めた位置・大きさ、魚は行列まで突き合わせてから書く。
+  書いた値をエンジンと同じ式で組み直し、Blender の配置と一致することも確かめる。
+- シーンは GUID とパスでアセットを指すので、`Models/Okinawa` のアセットに `.meta` が無ければ作る
+  （GUID はパスから決まるので、作り直しても同じ値）。
+- 書き出し先のオブジェクトの JSON は作り直す（エディタで動かした内容は上書きされる）。
+- ウミガメは骨を入れた後に `.blend` を組み直していないので `.blend` に無く、配置表の位置に置く。
 
 ### 置くだけで動く（glTF のマテリアルの extras）
 
@@ -365,3 +390,5 @@ turtle->AddComponent<AnimatorComponent>("SeaTurtle.gltf", "Swim");
 確認用の海は Cycles の体積吸収で、浅瀬はターコイズ、深場は紺碧になる。コースティクスはエンジン側の表現なので、ここでは影のレイだけ水面を素通しにしている。
 魚の群れは `SCHOOLS`（配置 JSON の名前・群れの中心・向き）から 1 匹ずつのモデルを並べ、泳ぎのジオメトリノードで個体ごとに体を曲げる。
 `python3 Tools/OkinawaBeach/assemble.py none` のように存在しないカメラ名を渡すと、描かずに `.blend` だけ保存する。
+配置表（`LAYOUT`）の回転（3 つ目の値）は今の確認用シーンでは効いていない（glTF から読んだ物は回転をクォータニオンで持つので、
+`place()` が入れる `rotation_euler` が使われない）。そのため置いた物はすべて回転 0 で、エンジンのシーンも同じにしている。

@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "cd1ba6a7e39c7ea5"
+                },
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    0.8,
+                    0.8,
+                    0.8
+                ],
+                "translate": [
+                    -33.0,
+                    -1.1646302,
+                    -8.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "11ae3eed-84f9-5bd5-af4d-74eac3e6a921",
+                    "path": "Application/Assets/Models/Okinawa/NotchRock_B/NotchRock_B.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "86dc5062a2dfff27",
+    "name": "NotchRock_B (1)",
+    "order": 37
+}

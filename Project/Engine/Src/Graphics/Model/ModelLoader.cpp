@@ -452,17 +452,18 @@ namespace CoreEngine
         }
 
         // 頂点アニメーション用の値（TEXCOORD_1 / TEXCOORD_2）。持たないモデルは 0 のまま。
-        // aiProcess_FlipUVs は全 UV チャンネルの v を 1 - v にするが、glTF 側も v を 1 - v で
-        // 格納しているので、ここで読める値は書き出したツール側の元の値に戻っている
+        // Assimp は読み込みで UV を左下原点（glTF は読み込み時に 1 - v）にそろえ、aiProcess_FlipUVs で
+        // 左上原点へ 1 - v にするので、どの形式でも v は書き出したツールの値の 1 - v になる。
+        // テクスチャ座標（TEXCOORD_0）はそれで正しいが、ここは数値なので 1 - v で元の値に戻す
         if (mesh->HasTextureCoords(1)) {
             const aiVector3D& uv1 = mesh->mTextureCoords[1][vertexIndex];
             vertex.animData.x = uv1.x;
-            vertex.animData.y = uv1.y;
+            vertex.animData.y = 1.0f - uv1.y;
         }
         if (mesh->HasTextureCoords(2)) {
             const aiVector3D& uv2 = mesh->mTextureCoords[2][vertexIndex];
             vertex.animData.z = uv2.x;
-            vertex.animData.w = uv2.y;
+            vertex.animData.w = 1.0f - uv2.y;
         }
 
         return vertex;

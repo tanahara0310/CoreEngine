@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "12f98c8539acc743"
+                },
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    12.4,
+                    1.7873654,
+                    20.2
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "5f937524-215e-5322-91f1-ca6fd5104008",
+                    "path": "Application/Assets/Models/Okinawa/Shisa_Ungyo/Shisa_Ungyo.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "e5e5936160188d7a",
+    "name": "Shisa_Ungyo",
+    "order": 75
+}
