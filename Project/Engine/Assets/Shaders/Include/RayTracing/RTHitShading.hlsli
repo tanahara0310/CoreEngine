@@ -48,6 +48,7 @@ static const uint kRTHitSubMeshFlagDither = 1u << 1;
 static const uint kRTHitVertexStride = 64u;
 static const uint kRTHitVertexTexcoordOffset = 16u;
 static const uint kRTHitVertexNormalOffset = 24u;
+static const uint kRTHitVertexTangentOffset = 36u;
 
 static const float kRTHitSkySpecularMipCount = 5.0f;
 
@@ -77,17 +78,22 @@ struct RTHitSubMesh
     float alphaCutoff;
     uint flags;
     uint metallicRoughnessTextureIndex;  // 金属性（B）・粗さ（G）テクスチャ（kRTHitNoTexture = 無し）
+    uint normalTextureIndex;             // 法線テクスチャ（kRTHitNoTexture = 使わない）
+    uint occlusionTextureIndex;          // AO テクスチャ（R。kRTHitNoTexture = 無し）
+    float occlusionStrength;             // AO の強さ
+    float pad;
 };
 
 /// @brief 当たった点の面の情報
 struct RTHitSurface
 {
     float3 position;   // ワールド座標
-    float3 normal;     // 補間した法線（レイが来た側を向く）
+    float3 normal;     // 補間した法線に法線マップを掛けたもの（レイが来た側を向く）
     float3 albedo;     // アンリットの材質では出す色そのもの
     float3 emissive;
     float metallic;
     float roughness;
+    float ao;          // 環境光に掛ける AO（1 = 遮蔽なし）
     bool lit;          // false ならアンリット
     bool cutout;       // アルファで抜ける所に当たった
 };
@@ -99,6 +105,15 @@ float3 TransformHitPosition(RTHitInstance instance, float3 position)
         dot(instance.objectToWorld[0].xyz, position) + instance.objectToWorld[0].w,
         dot(instance.objectToWorld[1].xyz, position) + instance.objectToWorld[1].w,
         dot(instance.objectToWorld[2].xyz, position) + instance.objectToWorld[2].w);
+}
+
+/// @brief 向き（接線）をワールドへ移す（3×3 部分を掛ける。長さは正規化しない）
+float3 TransformHitDirection(RTHitInstance instance, float3 direction)
+{
+    return float3(
+        dot(instance.objectToWorld[0].xyz, direction),
+        dot(instance.objectToWorld[1].xyz, direction),
+        dot(instance.objectToWorld[2].xyz, direction));
 }
 
 /// @brief 法線をワールドへ移す（3×3 部分の余因子行列を掛ける。長さは正規化しない）
@@ -142,6 +157,7 @@ RTHitSurface FetchHitSurface(
     float3 positions[3];
     float2 texcoords[3];
     float3 normals[3];
+    float3 tangents[3];
     [unroll]
     for (uint v = 0; v < 3; ++v)
     {
@@ -149,6 +165,7 @@ RTHitSurface FetchHitSurface(
         positions[v] = TransformHitPosition(instance, asfloat(vertexBuffer.Load3(vertexOffset)));
         texcoords[v] = asfloat(vertexBuffer.Load2(vertexOffset + kRTHitVertexTexcoordOffset));
         normals[v] = asfloat(vertexBuffer.Load3(vertexOffset + kRTHitVertexNormalOffset));
+        tangents[v] = asfloat(vertexBuffer.Load3(vertexOffset + kRTHitVertexTangentOffset));
     }
     const float3 weights = float3(1.0f - barycentrics.x - barycentrics.y, barycentrics.x, barycentrics.y);
 
@@ -217,6 +234,29 @@ RTHitSurface FetchHitSurface(
             gLinearWrap, uv, ComputeHitTextureLod(emissiveTexture, uvPerMeterLog2, footprintLog2)).rgb;
     }
 
+    // 法線マップ（GBuffer.PS と同じ。接線を法線に直交させ、従法線 = 法線 × 接線）
+    if (subMesh.normalTextureIndex != kRTHitNoTexture)
+    {
+        float3 tangent = TransformHitDirection(
+            instance, tangents[0] * weights.x + tangents[1] * weights.y + tangents[2] * weights.z);
+        tangent -= dot(tangent, normal) * normal;
+        if (dot(tangent, tangent) > 1.0e-12f)
+        {
+            tangent = normalize(tangent);
+            Texture2D<float4> normalTexture = ResourceDescriptorHeap[NonUniformResourceIndex(subMesh.normalTextureIndex)];
+            const float3 tangentSpaceNormal = normalTexture.SampleLevel(
+                gLinearWrap, uv, ComputeHitTextureLod(normalTexture, uvPerMeterLog2, footprintLog2)).rgb * 2.0f - 1.0f;
+            const float3 mappedNormal = normalize(
+                tangent * tangentSpaceNormal.x + cross(normal, tangent) * tangentSpaceNormal.y
+                + normal * tangentSpaceNormal.z);
+            // 面の裏へ回り込んだ法線は使わない
+            if (dot(mappedNormal, faceNormal) > 0.0f)
+            {
+                surface.normal = mappedNormal;
+            }
+        }
+    }
+
     // 金属性・粗さはファクター × テクスチャ（B = 金属性・G = 粗さ。GBuffer.PS と同じ）
     float metallic = subMesh.metallic;
     float roughness = subMesh.roughness;
@@ -228,6 +268,16 @@ RTHitSurface FetchHitSurface(
             gLinearWrap, uv, ComputeHitTextureLod(metallicRoughnessTexture, uvPerMeterLog2, footprintLog2));
         metallic *= metallicRoughnessSample.b;
         roughness *= metallicRoughnessSample.g;
+    }
+
+    // AO（GBuffer.PS と同じく強さで 1 と混ぜる）
+    surface.ao = 1.0f;
+    if (subMesh.occlusionTextureIndex != kRTHitNoTexture)
+    {
+        Texture2D<float4> occlusionTexture = ResourceDescriptorHeap[NonUniformResourceIndex(subMesh.occlusionTextureIndex)];
+        const float occlusion = occlusionTexture.SampleLevel(
+            gLinearWrap, uv, ComputeHitTextureLod(occlusionTexture, uvPerMeterLog2, footprintLog2)).r;
+        surface.ao = saturate(lerp(1.0f, occlusion, subMesh.occlusionStrength));
     }
 
     const float alphaThreshold = ((subMesh.flags & kRTHitSubMeshFlagDither) != 0) ? 0.5f : subMesh.alphaCutoff;
@@ -321,7 +371,7 @@ float3 ShadeHitSurface(
             if (gSkyAmbientEnabled == 0)
             {
                 color += CalculateHalfLambertAmbient(
-                    surface.normal, L, light.color.rgb, light.intensity, albedo, surface.metallic, 1.0f) * shadow
+                    surface.normal, L, light.color.rgb, light.intensity, albedo, surface.metallic, surface.ao) * shadow
                     * underwater.ambientTransmittance;
             }
             if (i == 0)
@@ -345,7 +395,7 @@ float3 ShadeHitSurface(
         const float skyShadow = mainLightEnabled ? mainLightShadow : 1.0f;
         StructuredBuffer<float4> skyIrradianceSH = ResourceDescriptorHeap[gSkyIrradianceSHIndex];
         color += albedo * (1.0f - surface.metallic)
-            * EvaluateSkyIrradianceSH9(skyIrradianceSH, surface.normal) * gSkyAmbientScale * skyShadow
+            * EvaluateSkyIrradianceSH9(skyIrradianceSH, surface.normal) * gSkyAmbientScale * surface.ao * skyShadow
             * underwater.ambientTransmittance;
 
         if (gSkySpecularEnabled != 0)
@@ -356,7 +406,7 @@ float3 ShadeHitSurface(
             const float3 prefiltered = skySpecularMap.SampleLevel(
                 gLinearWrap, R, surface.roughness * (kRTHitSkySpecularMipCount - 1.0f)).rgb;
             const float2 envBRDF = EnvBRDFApprox(surface.roughness, NdotV);
-            color += prefiltered * (F0 * envBRDF.x + envBRDF.y) * gSkyAmbientScale * skyShadow
+            color += prefiltered * (F0 * envBRDF.x + envBRDF.y) * gSkyAmbientScale * surface.ao * skyShadow
                 * underwater.ambientTransmittance;
         }
     }

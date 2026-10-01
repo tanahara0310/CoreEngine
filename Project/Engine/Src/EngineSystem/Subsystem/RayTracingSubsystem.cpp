@@ -84,8 +84,12 @@ namespace CoreEngine
             row.baseColorTextureIndex = kRTHitNoTexture;
             row.emissiveTextureIndex = kRTHitNoTexture;
             row.metallicRoughnessTextureIndex = kRTHitNoTexture;
+            row.normalTextureIndex = kRTHitNoTexture;
+            row.occlusionTextureIndex = kRTHitNoTexture;
+            row.occlusionStrength = 0.0f;
 
             D3D12_GPU_DESCRIPTOR_HANDLE baseColorTexture = baseColorOverride;
+            D3D12_GPU_DESCRIPTOR_HANDLE normalTexture{};
             if (subMesh.materialIndex < resource.GetMaterials().size()) {
                 const ModelResource::PBRTextureHandles& textures = resource.GetMaterialTextures(subMesh.materialIndex);
                 if (baseColorTexture.ptr == 0) {
@@ -96,6 +100,12 @@ namespace CoreEngine
                 }
                 if (textures.hasMetallicRoughness && textures.metallicRoughness.ptr != 0) {
                     row.metallicRoughnessTextureIndex = descriptors.GetSRVHeapIndex(textures.metallicRoughness);
+                }
+                if (textures.hasNormal) {
+                    normalTexture = textures.normal;
+                }
+                if (textures.hasOcclusion && textures.occlusion.ptr != 0) {
+                    row.occlusionTextureIndex = descriptors.GetSRVHeapIndex(textures.occlusion);
                 }
             }
             if (baseColorTexture.ptr != 0) {
@@ -118,15 +128,20 @@ namespace CoreEngine
                 row.metallic = material->GetMetallic();
                 row.roughness = material->GetRoughness();
                 row.alphaCutoff = material->GetAlphaCutoff();
+                row.occlusionStrength = material->GetOcclusionStrength();
                 row.flags = (material->IsLightingEnabled() ? kRTHitSubMeshFlagLit : 0u)
                     | (material->IsDitheringEnabled() ? kRTHitSubMeshFlagDither : 0u);
+                // 法線テクスチャは材質が法線マップを使うときだけ（GBuffer.PS と同じ）
+                if (material->IsNormalMapEnabled() && normalTexture.ptr != 0) {
+                    row.normalTextureIndex = descriptors.GetSRVHeapIndex(normalTexture);
+                }
             }
             return row;
         }
 
         // ヒットシェーディング（Include/RayTracing/RTHitShading.hlsli）は頂点を VertexData の並びで読む
         static_assert(sizeof(VertexData) == 64 && offsetof(VertexData, texcoord) == 16
-            && offsetof(VertexData, normal) == 24,
+            && offsetof(VertexData, normal) == 24 && offsetof(VertexData, tangent) == 36,
             "RTHitShading.hlsli の kRTHitVertexStride / kRTHitVertex*Offset と一致させること");
 
         /// @brief TLAS のインスタンス 1 つぶんの行と、そのサブメッシュの行を足す

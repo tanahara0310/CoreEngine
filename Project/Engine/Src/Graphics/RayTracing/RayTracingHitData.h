@@ -40,6 +40,10 @@ namespace CoreEngine
         float alphaCutoff;               ///< アルファがこれ以下の所は抜く
         uint32_t flags;                  ///< kRTHitSubMeshFlag*
         uint32_t metallicRoughnessTextureIndex; ///< 金属性（B）・粗さ（G）テクスチャのヒープ内インデックス（kRTHitNoTexture = 無し）
+        uint32_t normalTextureIndex;     ///< 法線テクスチャのヒープ内インデックス（kRTHitNoTexture = 使わない）
+        uint32_t occlusionTextureIndex;  ///< AO テクスチャ（R）のヒープ内インデックス（kRTHitNoTexture = 無し）
+        float occlusionStrength;         ///< AO の強さ（0 = AO なし）
+        float pad;
     };
     static constexpr Cb::Field kRTHitSubMeshFields[] = {
         CB_FIELD(RTHitSubMesh, firstTriangle), CB_FIELD(RTHitSubMesh, triangleCount),
@@ -48,7 +52,9 @@ namespace CoreEngine
         CB_FIELD(RTHitSubMesh, uvTransformV), CB_FIELD(RTHitSubMesh, emissive),
         CB_FIELD(RTHitSubMesh, metallic), CB_FIELD(RTHitSubMesh, roughness),
         CB_FIELD(RTHitSubMesh, alphaCutoff), CB_FIELD(RTHitSubMesh, flags),
-        CB_FIELD(RTHitSubMesh, metallicRoughnessTextureIndex),
+        CB_FIELD(RTHitSubMesh, metallicRoughnessTextureIndex), CB_FIELD(RTHitSubMesh, normalTextureIndex),
+        CB_FIELD(RTHitSubMesh, occlusionTextureIndex), CB_FIELD(RTHitSubMesh, occlusionStrength),
+        CB_FIELD(RTHitSubMesh, pad),
     };
     CB_VERIFY_STRIDE(RTHitSubMesh, kRTHitSubMeshFields);
 
