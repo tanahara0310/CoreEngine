@@ -1,8 +1,8 @@
 // ============================================================
 // DXR 水面屈折シェーダー
 // フラットな水面平面を近似し、屈折レイの最初のヒット位置を SceneColor に再投影して
-// 水面屈折用のカラー出力を生成する。ヒット位置が水上の物に隠れているときは、
-// 当たった点を材質と光で照らして色を決める。
+// 水面屈折用のカラー出力を生成する。ヒット位置が画面に写っていない（水上の物に隠れている・
+// 画面の外）ときは、当たった点を材質と光で照らして色を決める。
 // ============================================================
 
 #include "RTWaterSurfaceCommon.hlsli"
@@ -395,27 +395,16 @@ void RTWaterRefractionRayGen()
     // （捨てると Water.PS.hlsl が別の推定量へ切り替わり、境界が線として見える）。
     const float opticalPathLength = length(hitWorldPos - ray.Origin);
 
-    float4 clip = mul(float4(hitWorldPos, 1.0f), gViewProjection);
-    if (clip.w <= 1.0e-5f)
+    // ヒット点を画面へ投影する。カメラの後ろは画面の外と同じに扱う
+    const float4 clip = mul(float4(hitWorldPos, 1.0f), gViewProjection);
+    float2 uv = screenUV;
+    float edgeFade = 0.0f;
+    if (clip.w > 1.0e-5f)
     {
-        gRefractionOutput[launchIndex] = MakeColorFallbackWithPath(fallbackSample.rgb, opticalPathLength);
-        return;
-    }
-
-    float3 ndc = clip.xyz / clip.w;
-    float2 uv = ndc.xy * float2(0.5f, -0.5f) + 0.5f;
-
-    // スクリーン空間で SceneColor を再利用する都合上、屈折先が画面外に出た場合は
-    // その位置の色を物理的に取得できない（この手法の原理的な制約）。
-    // ただし画面端に近いだけの有効な屈折まで減衰させると、特定方向だけ
-    // 不自然に途切れて見える。そこでフェードは「画面外へ実際にはみ出した距離」に対してのみ
-    // 適用し、画面内に留まっている屈折は上下左右で等しく保持する。
-    float edgeFade = ComputeRTScreenBoundsFade(uv, float2(gScreenWidth, gScreenHeight));
-
-    if (edgeFade <= 1.0e-4f)
-    {
-        gRefractionOutput[launchIndex] = MakeColorFallbackWithPath(fallbackSample.rgb, opticalPathLength);
-        return;
+        const float3 ndc = clip.xyz / clip.w;
+        uv = ndc.xy * float2(0.5f, -0.5f) + 0.5f;
+        // 画面の外へはみ出した距離だけ下げる（画面内の屈折先は上下左右とも 1）
+        edgeFade = ComputeRTScreenBoundsFade(uv, float2(gScreenWidth, gScreenHeight));
     }
 
     // サンプル座標の算出には必ず [0,1] にクランプした値を使う。
@@ -469,19 +458,20 @@ void RTWaterRefractionRayGen()
     const float depthConfidence =
         1.0f - smoothstep(depthMismatchThreshold, depthMismatchThreshold * 4.0f, depthMismatch);
 
-    // ===== 水上の物に隠れた屈折先 =====
+    // ===== 画面に写っていない屈折先 =====
     // 再投影先に写っている面が水面より上（空気中）なら、その画素は屈折レイのヒット点を手前で隠している
-    // 水上の物（岩・テトラポッドの脚・桟橋など）で、ヒット点の色は画面に無い。その分は当たった点を
-    // 材質と光で照らした色で埋める（照らせないときは屈折させない色）。
-    // 水面から 2〜10 cm でなだらかに切り替える。背景（空）は深度の信頼度で扱う。
+    // 水上の物（岩・テトラポッドの脚・桟橋など）で、ヒット点の色は画面に無い。屈折先が画面の外のときも
+    // 同じく色は画面に無い。この分は当たった点を材質と光で照らした色で埋める（照らせないときは
+    // 屈折させない色）。水上の物は水面から 2〜10 cm でなだらかに切り替える。背景（空）は深度の信頼度で扱う。
     const float sampledSurfaceY =
         gSurfaceWaterHeight + EvaluateWaterOffset(gFFTOceanDisplacement, sampledWorldPos.xz).y;
     const float aboveWater = IsBackgroundDepth(sampledDepth)
         ? 0.0f
         : smoothstep(kUnderwaterMarginMeters, 0.10f, sampledWorldPos.y - sampledSurfaceY);
+    const float hiddenWeight = max(aboveWater, 1.0f - edgeFade);
 
-    // 画面の屈折先の色をどれだけ信用するか（画面端フェードと深度の信頼度）
-    const float sceneWeight = saturate(edgeFade * depthConfidence);
+    // 画面の屈折先の色をどれだけ信用するか（深度の信頼度）
+    const float sceneWeight = depthConfidence;
 
     if (gDebugViewMode != kRTRefractionDebugNone)
     {
@@ -491,16 +481,16 @@ void RTWaterRefractionRayGen()
             depthMismatch,
             waterNormal,
             refractedDir);
-        const float debugColorWeight = lerp(sceneWeight, (gHitShadingEnabled != 0) ? 1.0f : 0.0f, aboveWater);
+        const float debugColorWeight = lerp(sceneWeight, (gHitShadingEnabled != 0) ? 1.0f : 0.0f, hiddenWeight);
         gRefractionOutput[launchIndex] = float4(
             debugColor,
             EncodeHitAlpha(opticalPathLength, debugColorWeight >= 0.5f));
         return;
     }
 
-    // 隠れた屈折先を埋める色（rgb）と、当たった点を照らせたか（a）
+    // 画面に写っていない屈折先を埋める色（rgb）と、当たった点を照らせたか（a）
     float4 hiddenColor = float4(fallbackSample.rgb, 0.0f);
-    if (aboveWater > 0.0f && gHitShadingEnabled != 0)
+    if (hiddenWeight > 0.0f && gHitShadingEnabled != 0)
     {
         // 屈折レイの広がり。始点の幅は水面の 1 画素ぶん、角度は視線の 1 画素ぶん
         const float4 shaded = ShadeRefractionHit(
@@ -515,8 +505,8 @@ void RTWaterRefractionRayGen()
     }
 
     const float3 visibleColor = lerp(fallbackSample.rgb, gSceneColor.Load(int3(sampleCoord, 0)).rgb, sceneWeight);
-    const float3 blendedColor = lerp(visibleColor, hiddenColor.rgb, aboveWater);
-    const float colorWeight = lerp(sceneWeight, hiddenColor.a, aboveWater);
+    const float3 blendedColor = lerp(visibleColor, hiddenColor.rgb, hiddenWeight);
+    const float colorWeight = lerp(sceneWeight, hiddenColor.a, hiddenWeight);
 
     // アルファの colorValid ビットは診断用（デバッグ表示・統計）に残すが、
     // rgb は既に連続ブレンド済みなので Water.PS.hlsl はこのビットで
