@@ -10,9 +10,10 @@
 //
 // 【include 位置の契約】Water.PS.hlsl のリソース宣言・WaterFrameConstants(b5) の後で
 // include すること。以下に暗黙依存:
-//   資源    : gFFTOceanJacobian / gFFTOceanFoam / gSampler
+//   資源    : gFFTOceanJacobian / gFFTOceanFoam / gSampler / gWaterSeabedHeight / gLinearClamp
 //   cbuffer : gFoamEnabled / gFoamBias / gFoamGain / gFoamCascadeWeights /
-//             gFoamWindCoverageScale / gUseFFTOceanNormalMap
+//             gFoamWindCoverageScale / gUseFFTOceanNormalMap /
+//             gSeabedEnabled / gSeabedOriginXZ / gSeabedInvSize
 //   関数    : ComputeFFTCombinedDetJ / ComputeFFTCascadeUV / ComputeFFTWaveGroupEnvelope
 //             （Common/FFTOceanCascade.hlsli）
 // ============================================================
@@ -24,13 +25,15 @@
 static const float kFoamEnvelopeScale = 0.7f;
 
 // ---- 岸際泡（shore foam）----
-// 泡帯が消える水深 [m]。解析的鉛直水深は波の変位を含むため、
+// 泡帯が消える水深 [m]（水面の点の真下の鉛直水深）。水深は波の変位を含むため、
 // 波が寄せる/引くのに合わせて帯が自然に脈動する
 static const float kShoreFoamDepthMeters = 0.6f;
 // 汀線エッジ（この水深以浅）は被覆率満量＝ほぼ連続した白いシートになる
 static const float kShoreFoamEdgeMeters = 0.15f;
 // 外側の泡帯の最大被覆率。dissolve が形状を作るため 1 未満でもレース状に割れる
 static const float kShoreFoamStrength = 0.9f;
+// 海底の高さの範囲の端で、視線の延長で測った水深へ移す幅（範囲の一辺に対する割合）
+static const float kSeabedWindowEdgeFade = 0.1f;
 
 /// @brief 泡マスク [0,1] を求める（FFTOcean 専用）
 /// @details 2 つの項の max で構成する:
@@ -79,17 +82,35 @@ float ComputeFoamMask(float2 worldXZ)
     return saturate(windScaledMask);
 }
 
+/// @brief 岸の泡に使う、水面の点の真下の鉛直水深 [m] を返す
+/// @param surfacePosition 水面の点（頂点変位後のワールド座標）
+/// @param fallbackDepth   海底の高さの範囲の外で使う水深（視線の延長で測った鉛直水深）
+/// @details 範囲の中は RTWaterSeabedPass が真上から測った海底の高さとの差。
+///          範囲の端の kSeabedWindowEdgeFade の幅で fallbackDepth へなだらかに移す。
+///          水面の点が物や陸に占められている所は負になる
+float ResolveShoreFoamDepth(float3 surfacePosition, float fallbackDepth)
+{
+    if (gSeabedEnabled == 0)
+    {
+        return fallbackDepth;
+    }
+    const float2 uv = (surfacePosition.xz - gSeabedOriginXZ) * gSeabedInvSize;
+    const float2 edgeDistance = min(uv, 1.0f - uv);
+    const float inside = saturate(min(edgeDistance.x, edgeDistance.y) / kSeabedWindowEdgeFade);
+    if (inside <= 0.0f)
+    {
+        return fallbackDepth;
+    }
+    const float seabedY = gWaterSeabedHeight.SampleLevel(gLinearClamp, uv, 0.0f);
+    return lerp(fallbackDepth, surfacePosition.y - seabedY, inside);
+}
+
 /// @brief 岸際泡（shore foam）の被覆率 [0,1] を求める
-/// @param analyticColumn 解析的な鉛直水深 [m]（ResolveWaterColumn の連続場）
-/// @details ★入力は解析的鉛直水深のみ★
-///          過去の「波打ち際の線」10 連発の教訓により、岸際に新しい 2 値切替を
-///          持ち込まない。RT の成功/失敗・スクリーン空間の深度分岐などの離散量は
-///          一切使わず、分岐のない連続場（解析水深）だけから作る。
-///          水深は波の変位を含むため、波の寄せ引きで帯が自然に脈動し、
-///          追加の時間変調は不要。
+/// @param verticalDepth 水面の点の真下の鉛直水深 [m]（ResolveShoreFoamDepth）
+/// @details 水深は波の変位を含むため、波の寄せ引きで帯が自然に脈動する。
 ///          2 段構造: 汀線エッジ（〜0.15m）は被覆率満量＝連続した白いシート、
 ///          外側（〜0.6m）は被覆率 0.9→0 のフェード＝dissolve でレース状に割れる。
-float ComputeShoreFoamMask(float analyticColumn)
+float ComputeShoreFoamMask(float verticalDepth)
 {
     if (gFoamEnabled == 0 || gUseFFTOceanNormalMap == 0)
     {
@@ -97,9 +118,9 @@ float ComputeShoreFoamMask(float analyticColumn)
     }
 
     // 外側の泡帯: 水深 0 → kShoreFoamDepthMeters の連続フェード
-    const float band = 1.0f - smoothstep(0.0f, kShoreFoamDepthMeters, analyticColumn);
+    const float band = 1.0f - smoothstep(0.0f, kShoreFoamDepthMeters, verticalDepth);
     // 汀線エッジ: ごく浅い所は満量（レースの穴が埋まり白いシートになる）
-    const float edge = 1.0f - smoothstep(0.0f, kShoreFoamEdgeMeters, analyticColumn);
+    const float edge = 1.0f - smoothstep(0.0f, kShoreFoamEdgeMeters, verticalDepth);
 
     return max(band * kShoreFoamStrength, edge);
 }

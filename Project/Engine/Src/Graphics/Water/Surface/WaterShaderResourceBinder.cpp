@@ -98,5 +98,11 @@ void WaterShaderResourceBinder::Bind(
     if (renderResources.HasSunVisibility()) {
         binder.Set(table_[WaterBind::gWaterSunVisibility], renderResources.sunVisibilitySRV);
     }
+
+    // 海底の高さ
+    // （未接続のフレームはシェーダー側フラグ gSeabedEnabled=0 で参照されない）
+    if (renderResources.HasSeabedHeight()) {
+        binder.Set(table_[WaterBind::gWaterSeabedHeight], renderResources.seabedHeightSRV);
+    }
 }
 }

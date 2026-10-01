@@ -375,7 +375,14 @@ namespace CoreEngine
         // 海底の高さ。範囲はゲームのカメラの真下を中心にここで決め、同じフレームの RTWaterSeabedPass が測る
         if (auto* seabed = domain.GetWaterSeabedRayTracingManager(); seabed && ctx.gameViewCamera3D) {
             const Vector3 cameraPosition = ctx.gameViewCamera3D->GetPosition();
-            seabed->UpdateWindow(cameraPosition.x, cameraPosition.z);
+            const WaterSeabedWindow& window = seabed->UpdateWindow(cameraPosition.x, cameraPosition.z);
+            if (window.valid) {
+                binding.resources.seabedHeightSRV =
+                    seabed->GetSeabedSRVHandle(WaterSeabedRayTracingManager::ViewID::GameView);
+                binding.seabedOriginXZ[0] = window.originX;
+                binding.seabedOriginXZ[1] = window.originZ;
+                binding.seabedSize = window.size;
+            }
         }
 
         if (auto* fftOcean = domain.GetFFTOceanManager()) {

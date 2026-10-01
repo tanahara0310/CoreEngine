@@ -163,6 +163,10 @@ namespace CoreEngine
         frameCB_.skyEnvReflectionEnabled =
             (binding.skyEnvReflectionEnabled && renderResources_.skyEnvironmentSRV.ptr != 0) ? 1 : 0;
         frameCB_.sunVisibilityEnabled = renderResources_.HasSunVisibility() ? 1 : 0;
+        frameCB_.seabedEnabled = (renderResources_.HasSeabedHeight() && binding.seabedSize > 0.0f) ? 1 : 0;
+        frameCB_.seabedOriginXZ[0] = binding.seabedOriginXZ[0];
+        frameCB_.seabedOriginXZ[1] = binding.seabedOriginXZ[1];
+        frameCB_.seabedInvSize = (binding.seabedSize > 0.0f) ? 1.0f / binding.seabedSize : 0.0f;
         frameCB_.skyAmbientScale = binding.skyAmbientScale;
         for (int c = 0; c < 3; ++c) {
             frameCB_.fftCascadeMeanSquareSlope[c] = binding.fftCascadeMeanSquareSlope[c];

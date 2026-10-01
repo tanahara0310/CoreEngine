@@ -83,24 +83,11 @@ float3 ComputeRefractedViewDir(float3 viewDir, float3 surfaceNormal)
     return normalize(refractedView);
 }
 
-/// @brief 水面と海底の「高さの差」から水中光路長を解析的に求める
+/// @brief 水面の点と、視線の延長が海底に当たる点の高さの差（鉛直水深 [m]）を返す
 /// @param worldPos       水面ピクセルのワールド座標（頂点変位適用後 ＝ 水面の高さそのもの）
 /// @param sceneDepthView 背景（海底）のビュー空間線形深度 [m]
 /// @param waterDepthView 水面自身のビュー空間線形深度 [m]
-/// @param refractedView  水中へ屈折した視線（ComputeRefractedViewDir）
-/// @details ★波打ち際に線が出続けた問題の恒久対策★（2026-07-27）
-///          浅瀬は吸収がゼロ（exp(-σt·d), d≈0 → 1）なので、水柱厚さの推定誤差が
-///          そのまま素通しで見える。そこで水柱厚さが「RT実測光路長 / スクリーン空間近似 /
-///          無限水柱 / ゼロ」に分岐すると、分岐の境界が必ず 1 ピクセルの等高線＝線になる。
-///          過去の白線・二重線・紺色のヘアラインは全てこの構図だった。
-///
-///          この関数は分岐を一切持たない連続場として水柱厚さを与える:
-///            鉛直水深 = 水面の高さ − 海底の高さ
-///          水面の高さは変位適用後の worldPos.y がそのまま使える。海底の高さは
-///          シーン深度から視線に沿って復元する（レイ距離 = ビュー空間Z / cos(視線軸角)）。
-///          汀線は「この場のゼロ等高線」になるため、段差が原理的に発生しない。
-float ComputeAnalyticWaterColumn(
-    float3 worldPos, float sceneDepthView, float waterDepthView, float3 refractedView)
+float ComputeViewRayVerticalDepth(float3 worldPos, float sceneDepthView, float waterDepthView)
 {
     const float3 cameraToWater = worldPos - gCamera.worldPosition;
     const float distanceToWater = length(cameraToWater);
@@ -113,10 +100,7 @@ float ComputeAnalyticWaterColumn(
     // ビュー空間Z（深度）からレイ長へ戻す係数。視線とカメラ前方軸のなす角の余弦。
     const float cosAxis = max(waterDepthView / distanceToWater, 1.0e-4f);
     const float3 groundPos = gCamera.worldPosition + rayDir * (sceneDepthView / cosAxis);
-
-    const float verticalDepth = max(worldPos.y - groundPos.y, 0.0f);
-    // 鉛直水深 → 屈折後の光路長。臨界角があるので -y は 0.66 以上のはずだが安全側に切る
-    return verticalDepth / max(-refractedView.y, 0.2f);
+    return max(worldPos.y - groundPos.y, 0.0f);
 }
 
 // 屈折レイが当たらなかった画素で、解析水柱厚さとスクリーン空間近似をブレンドする範囲 [m]。
@@ -140,10 +124,9 @@ struct WaterColumnResult
     float sceneDepthNDC;  ///< 背景の NDC 深度
     float sceneDepthView; ///< 背景のビュー空間線形深度 [m]
     float waterDepthView; ///< 水面自身のビュー空間線形深度 [m]
-    /// 解析的な鉛直水深 [m]（分岐のない連続場）。岸際泡の唯一の入力。
-    /// 背景ジオメトリが無い（far plane）/ Depth Fade 無効時は「十分深い」として
-    /// kInfiniteWaterColumnMeters が入る（岸泡ゼロ側へ倒す保守的既定）
-    float analyticColumn;
+    /// 視線の延長で測った鉛直水深 [m]。海底の高さが無い所の岸の泡に使う。
+    /// 背景ジオメトリが無い / Depth Fade 無効時は kInfiniteWaterColumnMeters
+    float viewRayVerticalDepth;
     bool hasValidDepth;   ///< 水柱厚さが有効に求まったか
 };
 
@@ -165,7 +148,7 @@ WaterColumnResult ResolveWaterColumn(
     result.sceneDepthNDC = 1.0f;
     result.sceneDepthView = 0.0f;
     result.waterDepthView = 0.0f;
-    result.analyticColumn = kInfiniteWaterColumnMeters;
+    result.viewRayVerticalDepth = kInfiniteWaterColumnMeters;
     result.hasValidDepth = false;
 
     if (!gDepthFadeEnabled)
@@ -197,9 +180,10 @@ WaterColumnResult ResolveWaterColumn(
         result.sceneDepthView = LinearizeDepth(result.sceneDepthNDC, kNear, kFar);
 
         // (D) 解析的な鉛直水深（分岐なしの連続場）
-        analyticColumn = ComputeAnalyticWaterColumn(
-            input.worldPosition, result.sceneDepthView, result.waterDepthView, refractedView);
-        result.analyticColumn = analyticColumn;
+        result.viewRayVerticalDepth = ComputeViewRayVerticalDepth(
+            input.worldPosition, result.sceneDepthView, result.waterDepthView);
+        // 鉛直水深 → 屈折後の光路長。臨界角があるので -y は 0.66 以上のはずだが安全側に切る
+        analyticColumn = result.viewRayVerticalDepth / max(-refractedView.y, 0.2f);
 
         if (result.sceneDepthView > result.waterDepthView + 1.0e-4f)
         {

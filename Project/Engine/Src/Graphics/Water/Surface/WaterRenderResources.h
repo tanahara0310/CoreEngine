@@ -31,11 +31,17 @@ namespace CoreEngine
         // ---- 水面の日向率（RT 反射パスの 2 枚目の出力。0=影 / 1=日向）----
         D3D12_GPU_DESCRIPTOR_HANDLE sunVisibilitySRV = { 0 };
 
+        // ---- 海底の高さ（カメラの周りの範囲。R32_FLOAT のワールド Y）----
+        D3D12_GPU_DESCRIPTOR_HANDLE seabedHeightSRV = { 0 };
+
         /// @brief 反射テクスチャが接続済みか返す
         bool HasReflectionTexture() const;
 
         /// @brief 水面の日向率テクスチャが接続済みか返す
         bool HasSunVisibility() const;
+
+        /// @brief 海底の高さテクスチャが接続済みか返す
+        bool HasSeabedHeight() const;
 
         /// @brief シーン深度テクスチャが接続済みか返す
         bool HasSceneDepth() const;
@@ -90,5 +96,11 @@ namespace CoreEngine
 
         /// @brief 深度線形化に使う描画カメラの far クリップ
         float cameraFarZ = 1000.0f;
+
+        /// @brief 海底の高さを測った範囲の XZ の最小の角 [m]
+        float seabedOriginXZ[2] = { 0.0f, 0.0f };
+
+        /// @brief 海底の高さを測った範囲の一辺の長さ [m]（0 なら範囲なし）
+        float seabedSize = 0.0f;
     };
 }
