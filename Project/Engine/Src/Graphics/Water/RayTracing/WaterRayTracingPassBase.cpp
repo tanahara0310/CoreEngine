@@ -303,6 +303,11 @@ namespace CoreEngine
         for (int c = 0; c < 3; ++c) {
             surfaceConstants.cascadeMeanSquareSlope[c] = fftOceanInput.cascadeMeanSquareSlope[c];
         }
+        surfaceConstants.regionValid = surfaceData.regionValid;
+        for (int c = 0; c < 2; ++c) {
+            surfaceConstants.regionCenterXZ[c] = surfaceData.regionCenterXZ[c];
+            surfaceConstants.regionHalfExtentXZ[c] = surfaceData.regionHalfExtentXZ[c];
+        }
         return surfaceConstants;
     }
 

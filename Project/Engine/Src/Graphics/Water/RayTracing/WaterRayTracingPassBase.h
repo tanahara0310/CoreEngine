@@ -146,13 +146,15 @@ namespace CoreEngine
             // 以前はシェーダー側の kWaterMeshSubdivisions=256 ハードコードで、
             // シーン側の変更で静かに壊れる構造だった）
             float meshSubdivisions = 256.0f;
-            float pad0 = 0.0f;
+            uint32_t regionValid = 0;                     ///< 0 = 水面メッシュの範囲が分からない
             // FFT カスケードごとの平均二乗傾斜（x・z の傾きの二乗和の平均）
             float cascadeMeanSquareSlope[3] = { 0.0f, 0.0f, 0.0f };
             float pad1 = 0.0f;
+            float regionCenterXZ[2] = { 0.0f, 0.0f };     ///< 水面メッシュのワールド XZ 範囲の中心
+            float regionHalfExtentXZ[2] = { 0.0f, 0.0f }; ///< 水面メッシュのワールド XZ 範囲の半分の大きさ
         };
 
-        static_assert(sizeof(WaterSurfaceConstants) == 16 + 32 * kMaxWaterSurfaceWaveCount + 32,
+        static_assert(sizeof(WaterSurfaceConstants) == 16 + 32 * kMaxWaterSurfaceWaveCount + 48,
             "WaterSurfaceConstants layout mismatch with RTWaterSurfaceCommon.hlsli cbuffer");
 
         static constexpr Cb::Field kWaterSurfaceConstantsFields[] = {
@@ -160,8 +162,9 @@ namespace CoreEngine
             CB_FIELD(WaterSurfaceConstants, time), CB_FIELD(WaterSurfaceConstants, simulationType),
             CB_FIELD(WaterSurfaceConstants, waves), CB_FIELD(WaterSurfaceConstants, fftOceanEnabled),
             CB_FIELD(WaterSurfaceConstants, fftOceanResolution), CB_FIELD(WaterSurfaceConstants, meshSubdivisions),
-            CB_FIELD(WaterSurfaceConstants, pad0), CB_FIELD(WaterSurfaceConstants, cascadeMeanSquareSlope),
-            CB_FIELD(WaterSurfaceConstants, pad1),
+            CB_FIELD(WaterSurfaceConstants, regionValid), CB_FIELD(WaterSurfaceConstants, cascadeMeanSquareSlope),
+            CB_FIELD(WaterSurfaceConstants, pad1), CB_FIELD(WaterSurfaceConstants, regionCenterXZ),
+            CB_FIELD(WaterSurfaceConstants, regionHalfExtentXZ),
         };
         CB_VERIFY_LAYOUT(WaterSurfaceConstants, kWaterSurfaceConstantsFields);
         CB_BIND_HLSL(WaterSurfaceConstants, kWaterSurfaceConstantsFields, "WaterSurfaceData");
