@@ -1,10 +1,8 @@
 // ============================================================
 // 水柱厚さ（水中光路長）の解決（Water.PS.hlsl 専用）
 // ------------------------------------------------------------
-// 「波打ち際に線を出さない」ための中核ロジック。水柱厚さの 4 供給源
-// （RT実測 / スクリーン空間近似 / 無限水柱 / 解析的鉛直水深）を
-// 連続場として合成する。分岐・2値切替を持ち込む変更は厳禁
-// （過去の白線・二重線・紺のヘアラインは全てその構図だった）。
+// 水柱厚さの 4 供給源（RT実測 / スクリーン空間近似 / 無限水柱 / 解析的鉛直水深）から、
+// 屈折像と同じ経路の水柱厚さを求める。屈折レイがヒットしなかった画素は残りの 3 つを合成する。
 //
 // 【include 位置の契約】Water.PS.hlsl のリソース宣言・WaterPSInput・
 // WaterFrameConstants(b5) の後で include すること。以下に暗黙依存する:
@@ -121,14 +119,8 @@ float ComputeAnalyticWaterColumn(
     return verticalDepth / max(-refractedView.y, 0.2f);
 }
 
-// 解析水柱厚さと RT 実測光路長のブレンド範囲 [m]。
-// 浅い側（〜1m）は解析値 100%: 分岐が無いので線が出ない。ここは吸収がほぼ効かず
-// 誤差が丸見えになる領域なので、連続性を最優先する。
-// 深い側（4m〜）は RT 実測 100%: 屈折で曲がった先の距離が効くので水中オブジェクトの
-// 見え方が正しくなる。
-// 0.3〜1.5m から 1.0〜4.0m へ拡大（2026-07-27）: 遷移域では RT 実測値の不連続が
-// 重み分だけ漏れて薄い線として残るため、その重みが立ち上がる深さを、吸収が十分効いて
-// 差が視覚的に潰れる所まで押し出す（赤の σa≈0.45/m なら 4m で透過率 0.16）。
+// 屈折レイが当たらなかった画素で、解析水柱厚さとスクリーン空間近似をブレンドする範囲 [m]。
+// 浅い側（〜1m）は解析値 100%、深い側（4m〜）はスクリーン空間近似 100%。
 static const float kAnalyticColumnFullMeters = 1.0f;
 static const float kAnalyticColumnBlendEndMeters = 4.0f;
 
@@ -158,19 +150,13 @@ struct WaterColumnResult
 /// @brief 水中光路長（水柱厚さ）を解決する
 /// @param surfaceNormal main() で 1 度だけ解決した水面法線
 /// @details 水柱厚さの供給源は 4 つあり、この順で上書き・合成される。
-///          いずれも「ピクセル単位で切り替わると境界が線になる」性質があるため、
-///          最後に解析値との連続ブレンドで浅瀬側を吸収している。
 ///
 ///   (A) スクリーン空間近似  … 背景と水面のビュー空間Z差 × 屈折換算。
-///                             背景ジオメトリがあり RT がミスした場合に効く。
 ///   (B) 無限水柱            … 背景が far plane（外洋・水平線）。透過ゼロへ収束させる。
-///   (C) RT 実測光路長       … 屈折レイがヒットしていれば最優先。表示内容と吸収量が一致する。
-///   (D) 解析的な鉛直水深    … 分岐を持たない連続場。浅瀬（〜1m）では 100% これを使い、
-///                             4m へ向けて (A)/(C) へ滑らかに移行する。
-///
-///          浅瀬は吸収がほぼ効かないため (A)/(C) の切り替え段差が減衰されずそのまま
-///          見えてしまう。(D) で置き換えることで、RT の成功/失敗や深度不一致がどう
-///          転んでも波打ち際の見た目に影響しなくなる（白線・二重線の恒久対策）。
+///   (C) RT 実測光路長       … 屈折レイがヒットしていれば水深によらずこれを使う。
+///                             表示している屈折像と同じ経路の厚みになる。
+///   (D) 解析的な鉛直水深    … 屈折レイがヒットしなかった画素で、浅瀬（〜1m）では 100% これを使い、
+///                             4m へ向けて (A) へ滑らかに移行する。
 WaterColumnResult ResolveWaterColumn(
     WaterPSInput input, float3 surfaceNormal, float2 screenUV, uint2 pixelCoord)
 {
@@ -234,22 +220,19 @@ WaterColumnResult ResolveWaterColumn(
         result.column = kInfiniteWaterColumnMeters;
     }
 
-    // (C) RT 実測光路長。ヒットしていれば (A)/(B) より優先する。
-    // スクリーン空間近似は水面ピクセル直下の素の深度（屈折前）を使っており、
-    // 屈折で表示位置がズレた分だけ吸収量が表示内容と食い違う
-    // （＝水中オブジェクトが水面に浮いて見える一因）。
-    // RT は「色が取れなかった（画面外・DepthMismatch）」ケースでも光路長は有効なので、
-    // ここで別の推定量へ切り替える必要はない（切り替えると境界が透過率の段差になる）。
+    // (C) RT 実測光路長。ヒットしていれば (A)/(B)/(D) より優先する。
+    // 色が取れなかった（画面外・深度の不一致）画素でも光路長は有効なのでそのまま使う。
     const float rtAlpha = SampleRTWaterRefraction(pixelCoord).a;
-    if (IsRTPathValid(rtAlpha) > 0.5f)
+    const bool hasRTPath = IsRTPathValid(rtAlpha) > 0.5f;
+    if (hasRTPath)
     {
         result.column = DecodeRTOpticalPath(rtAlpha);
         result.hasValidDepth = true;
     }
 
-    // 浅瀬を (D) へ寄せる。背景が far plane のときは海底が無く解析値が定義できない
-    // ため除外する（そこは (B) の無限水柱が連続的に効く）。
-    if (hasBackgroundGeometry)
+    // 屈折レイがヒットしなかった画素は、浅瀬を (D) へ寄せる。背景が far plane のときは
+    // 海底が無く解析値が定義できないため除外する（そこは (B) の無限水柱が効く）。
+    if (hasBackgroundGeometry && !hasRTPath)
     {
         const float deepWeight = smoothstep(
             kAnalyticColumnFullMeters, kAnalyticColumnBlendEndMeters, analyticColumn);
