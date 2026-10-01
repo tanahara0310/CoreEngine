@@ -2,7 +2,8 @@
 /// @brief 空キューブマップ（空＋雲）を GGX プリフィルタしてスペキュラIBLミップ群を生成する
 /// @details IBL/PrefilterEnvironment.CS.hlsl のランタイム軽量版。
 ///          - 雲アニメーション中は毎フレーム走るため、サンプル数を 64 に抑える
-///            （入力の空は低周波なのでこれで十分。雲の高周波はミップのブラーで均される）
+///          - 各サンプルは、そのサンプルが受け持つ立体角を覆うミップから読む
+///            （入力のミップは SkyEnvironmentDownsample.CS.hlsl が作る）
 ///          - α（雲透過率）も同じ重みでフィルタする。水面が「平面反射に雲を
 ///            ブレンドする不透明度」として使うため（Water.PS.hlsl 参照）。
 ///          評価側は mip = roughness × (ミップ数-1) で SampleLevel する。
@@ -11,8 +12,10 @@
 #include "Cubemap.hlsli"  // GetCubemapDirection
 
 static const uint SAMPLE_COUNT = 64u;
+// サンプルの立体角から決めたミップに足す段数（隣のサンプルとの間を埋める広がり）
+static const float kSampleLodBias = 1.0f;
 
-TextureCube<float4> gSkyCubemap : register(t0);   // 入力: 空＋雲キューブマップ（mip0 のみ）
+TextureCube<float4> gSkyCubemap : register(t0);   // 入力: 空＋雲キューブマップ（全ミップ）
 RWTexture2DArray<float4> gSkySpecularMap : register(u0); // 出力: 対象ミップの 6 面
 SamplerState gLUTSampler : register(s0);
 
@@ -46,6 +49,15 @@ void main(uint3 dtid : SV_DispatchThreadID)
     const float3 R = N;
     const float3 V = R;
 
+    // 入力のミップ 0 の 1 テクセルが覆う立体角
+    uint inputWidth, inputHeight, inputMipCount;
+    gSkyCubemap.GetDimensions(0, inputWidth, inputHeight, inputMipCount);
+    const float texelSolidAngle = 4.0f * PI / (6.0f * float(inputWidth) * float(inputHeight));
+
+    // ImportanceSampleGGX と同じ α（= roughness²）
+    const float alpha = gRoughness * gRoughness;
+    const float alpha2 = alpha * alpha;
+
     float4 prefiltered = float4(0.0f, 0.0f, 0.0f, 0.0f);
     float totalWeight = 0.0f;
 
@@ -58,9 +70,14 @@ void main(uint3 dtid : SV_DispatchThreadID)
         float NdotL = max(dot(N, L), 0.0f);
         if (NdotL > 0.0f)
         {
-            // 入力は 1 ミップのみのため SampleLevel(…, 0) 固定。
-            // 空は低周波・雲は後段ミップのブラーで均されるためエイリアシングは実用上出ない
-            prefiltered += gSkyCubemap.SampleLevel(gLUTSampler, L, 0.0f) * NdotL;
+            // GGX の確率密度（N = V なので D·NdotH / (4·VdotH) = D / 4）から
+            // このサンプルが受け持つ立体角を求め、それを覆うミップから読む
+            const float NdotH = saturate(dot(N, H));
+            const float d = NdotH * NdotH * (alpha2 - 1.0f) + 1.0f;
+            const float pdf = alpha2 / (PI * d * d) * 0.25f;
+            const float sampleSolidAngle = 1.0f / (float(SAMPLE_COUNT) * pdf + 1.0e-6f);
+            const float lod = max(0.5f * log2(sampleSolidAngle / texelSolidAngle) + kSampleLodBias, 0.0f);
+            prefiltered += gSkyCubemap.SampleLevel(gLUTSampler, L, lod) * NdotL;
             totalWeight += NdotL;
         }
     }
