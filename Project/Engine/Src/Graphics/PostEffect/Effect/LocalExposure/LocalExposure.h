@@ -106,18 +106,6 @@ private:
     CustomShaderPipeline blurPipeline_;
     bool internalPipelinesReady_ = false;
 
-    // 定数バッファはパスごとに別実体が要る（GPU が読むのは記録より後なので使い回せない）
-    Microsoft::WRL::ComPtr<ID3D12Resource> downsampleParamsCB_;
-    DownsampleParams* mappedDownsampleParams_ = nullptr;
-
-    Microsoft::WRL::ComPtr<ID3D12Resource> blurHParamsCB_;
-    BlurParams* mappedBlurHParams_ = nullptr;
-    Microsoft::WRL::ComPtr<ID3D12Resource> blurVParamsCB_;
-    BlurParams* mappedBlurVParams_ = nullptr;
-
-    Microsoft::WRL::ComPtr<ID3D12Resource> applyParamsCB_;
-    ApplyParams* mappedApplyParams_ = nullptr;
-
     /// @brief BuildPasses が確定させた解像度（record から参照する）
     uint32_t baseWidth_  = 0;
     uint32_t baseHeight_ = 0;

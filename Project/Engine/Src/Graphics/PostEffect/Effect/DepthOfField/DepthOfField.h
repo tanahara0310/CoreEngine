@@ -126,14 +126,6 @@ private:
     CustomShaderPipeline gatherPipeline_;
     bool internalPipelinesReady_ = false;
 
-    // 定数バッファはパスごとに別実体が要る（GPU が読むのは記録より後なので使い回せない）
-    Microsoft::WRL::ComPtr<ID3D12Resource> prefilterParamsCB_;
-    PrefilterParams* mappedPrefilterParams_ = nullptr;
-    Microsoft::WRL::ComPtr<ID3D12Resource> gatherParamsCB_;
-    GatherParams* mappedGatherParams_ = nullptr;
-    Microsoft::WRL::ComPtr<ID3D12Resource> compositeParamsCB_;
-    CompositeParams* mappedCompositeParams_ = nullptr;
-
     /// @brief BuildPasses が確定させた解像度（record から参照する）
     uint32_t fullWidth_  = 0;
     uint32_t fullHeight_ = 0;

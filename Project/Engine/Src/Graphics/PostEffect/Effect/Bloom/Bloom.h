@@ -140,20 +140,8 @@ private:
     GpuResource dirtTexture_;
     DescriptorHandle dirtSrvHandle_{};
     DescriptorHandle dirtUavHandle_{};
-    Microsoft::WRL::ComPtr<ID3D12Resource> dirtGenParamsCB_;
-    DirtGenParams* mappedDirtGenParams_ = nullptr;
     bool dirtResourcesReady_ = false;
     bool dirtGenerated_ = false;
-
-    // 定数バッファはパスごとに別実体が要る（GPU が読むのは記録より後なので使い回せない）
-    std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kMipCount> downParamsCB_;
-    std::array<DownsampleParams*, kMipCount> mappedDownParams_{};
-
-    std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kMipCount - 1> upParamsCB_;
-    std::array<UpsampleParams*, kMipCount - 1> mappedUpParams_{};
-
-    Microsoft::WRL::ComPtr<ID3D12Resource> compositeParamsCB_;
-    CompositeParams* mappedCompositeParams_ = nullptr;
 
     /// @brief BuildPasses が計算した各段の解像度（record から参照する）
     std::array<uint32_t, kMipCount> mipWidth_{};

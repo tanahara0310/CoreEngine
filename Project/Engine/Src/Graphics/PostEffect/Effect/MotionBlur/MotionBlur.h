@@ -129,16 +129,6 @@ private:
     CustomShaderPipeline neighborMaxPipeline_;
     bool internalPipelinesReady_ = false;
 
-    // 定数バッファはパスごとに別実体が要る（GPU が読むのは記録より後なので使い回せない）
-    Microsoft::WRL::ComPtr<ID3D12Resource> tileMaxParamsCB_;
-    TileMaxParams* mappedTileMaxParams_ = nullptr;
-
-    Microsoft::WRL::ComPtr<ID3D12Resource> neighborMaxParamsCB_;
-    NeighborMaxParams* mappedNeighborMaxParams_ = nullptr;
-
-    Microsoft::WRL::ComPtr<ID3D12Resource> gatherParamsCB_;
-    GatherParams* mappedGatherParams_ = nullptr;
-
     /// @brief BuildPasses が確定させたフル解像度（record から参照する）
     uint32_t baseWidth_  = 0;
     uint32_t baseHeight_ = 0;

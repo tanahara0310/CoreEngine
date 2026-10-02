@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "DepthOfField.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h"
 #include "Graphics/Render/FrameBlackboard.h"
@@ -12,7 +11,6 @@
 #include "Editor/ImGui/CVarPanel.h"
 #endif
 #include <algorithm>
-#include <cassert>
 
 
 namespace CoreEngine
@@ -56,27 +54,10 @@ namespace CoreEngine
 
         /// @brief 8x8 スレッドグループでの必要グループ数
         constexpr uint32_t DispatchCount(uint32_t size) { return (size + 7) / 8; }
-
-        /// @brief 定数バッファを 1 本作って永続マップする
-        template <typename T>
-    /// @brief 定数バッファを確保して常時 Map したまま保持する
-        void CreateMappedCB(ID3D12Device* device, Microsoft::WRL::ComPtr<ID3D12Resource>& buffer, T*& mapped)
-        {
-            const UINT size = (sizeof(T) + 255) & ~255u;
-            buffer = ResourceFactory::CreateBufferResource(device, size);
-            [[maybe_unused]] HRESULT hr = buffer->Map(0, nullptr, reinterpret_cast<void**>(&mapped));
-            assert(SUCCEEDED(hr));
-        }
     }
 
     void DepthOfField::OnCreateConstantBuffers()
     {
-        auto* device = graphicsCore_->GetDevice();
-
-        CreateMappedCB(device, prefilterParamsCB_, mappedPrefilterParams_);
-        CreateMappedCB(device, gatherParamsCB_, mappedGatherParams_);
-        CreateMappedCB(device, compositeParamsCB_, mappedCompositeParams_);
-
         internalPipelinesReady_ = CreateInternalPipelines();
         if (!internalPipelinesReady_) {
             Logger::GetInstance().Warnf(LogCategory::Graphics,
@@ -179,7 +160,7 @@ namespace CoreEngine
 
     void DepthOfField::RecordPrefilter(const PostEffectPassContext& context)
     {
-        if (!mappedPrefilterParams_ || context.reads.size() < 2) {
+        if (context.reads.size() < 2) {
             return;
         }
 
@@ -187,16 +168,16 @@ namespace CoreEngine
         halfWidth_  = context.width;
         halfHeight_ = context.height;
 
-        PrefilterParams* params = mappedPrefilterParams_;
-        params->outputSize[0] = halfWidth_;
-        params->outputSize[1] = halfHeight_;
-        params->fullSize[0]   = fullWidth_;
-        params->fullSize[1]   = fullHeight_;
-        params->focusDistance = cvFocusDistance.Get();
-        params->cocScalePx    = ComputeCocScalePx();
-        params->maxCocPx      = cvMaxCoc.Get();
-        params->nearPlane     = nearPlane_;
-        params->farPlane      = farPlane_;
+        PrefilterParams params{};
+        params.outputSize[0] = halfWidth_;
+        params.outputSize[1] = halfHeight_;
+        params.fullSize[0]   = fullWidth_;
+        params.fullSize[1]   = fullHeight_;
+        params.focusDistance = cvFocusDistance.Get();
+        params.cocScalePx    = ComputeCocScalePx();
+        params.maxCocPx      = cvMaxCoc.Get();
+        params.nearPlane     = nearPlane_;
+        params.farPlane      = farPlane_;
 
         auto* cmdList = context.cmdList;
         cmdList->SetComputeRootSignature(prefilterPipeline_.GetComputeRootSignature());
@@ -210,22 +191,22 @@ namespace CoreEngine
         if (textureIdx >= 0) cmdList->SetComputeRootDescriptorTable(textureIdx, context.reads[0]);
         if (depthIdx >= 0)   cmdList->SetComputeRootDescriptorTable(depthIdx, context.reads[1]);
         if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
-        if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, prefilterParamsCB_->GetGPUVirtualAddress());
+        if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
 
         cmdList->Dispatch(DispatchCount(halfWidth_), DispatchCount(halfHeight_), 1);
     }
 
     void DepthOfField::RecordGather(const PostEffectPassContext& context)
     {
-        if (!mappedGatherParams_ || context.reads.empty()) {
+        if (context.reads.empty()) {
             return;
         }
 
-        GatherParams* params = mappedGatherParams_;
-        params->textureSize[0] = halfWidth_;
-        params->textureSize[1] = halfHeight_;
-        params->maxCocHalfPx   = cvMaxCoc.Get() * 0.5f;
-        params->sampleCount    = static_cast<uint32_t>(std::max(1, cvSampleCount.Get()));
+        GatherParams params{};
+        params.textureSize[0] = halfWidth_;
+        params.textureSize[1] = halfHeight_;
+        params.maxCocHalfPx   = cvMaxCoc.Get() * 0.5f;
+        params.sampleCount    = static_cast<uint32_t>(std::max(1, cvSampleCount.Get()));
 
         auto* cmdList = context.cmdList;
         cmdList->SetComputeRootSignature(gatherPipeline_.GetComputeRootSignature());
@@ -237,27 +218,27 @@ namespace CoreEngine
 
         if (sourceIdx >= 0) cmdList->SetComputeRootDescriptorTable(sourceIdx, context.reads[0]);
         if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
-        if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, gatherParamsCB_->GetGPUVirtualAddress());
+        if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
 
         cmdList->Dispatch(DispatchCount(halfWidth_), DispatchCount(halfHeight_), 1);
     }
 
     void DepthOfField::RecordComposite(const PostEffectPassContext& context)
     {
-        if (!mappedCompositeParams_ || context.reads.size() < 3) {
+        if (context.reads.size() < 3) {
             return;
         }
 
-        CompositeParams* params = mappedCompositeParams_;
-        params->fullSize[0]   = context.width;
-        params->fullSize[1]   = context.height;
-        params->halfSize[0]   = halfWidth_;
-        params->halfSize[1]   = halfHeight_;
-        params->focusDistance = cvFocusDistance.Get();
-        params->cocScalePx    = ComputeCocScalePx();
-        params->maxCocPx      = cvMaxCoc.Get();
-        params->nearPlane     = nearPlane_;
-        params->farPlane      = farPlane_;
+        CompositeParams params{};
+        params.fullSize[0]   = context.width;
+        params.fullSize[1]   = context.height;
+        params.halfSize[0]   = halfWidth_;
+        params.halfSize[1]   = halfHeight_;
+        params.focusDistance = cvFocusDistance.Get();
+        params.cocScalePx    = ComputeCocScalePx();
+        params.maxCocPx      = cvMaxCoc.Get();
+        params.nearPlane     = nearPlane_;
+        params.farPlane      = farPlane_;
 
         // 合成は基底が構築した PSO（GetComputeShaderPath が返す DoFComposite.CS.hlsl）を使う
         auto* cmdList = context.cmdList;
@@ -274,7 +255,7 @@ namespace CoreEngine
         if (blurredIdx >= 0) cmdList->SetComputeRootDescriptorTable(blurredIdx, context.reads[1]);
         if (depthIdx >= 0)   cmdList->SetComputeRootDescriptorTable(depthIdx, context.reads[2]);
         if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
-        if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, compositeParamsCB_->GetGPUVirtualAddress());
+        if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
 
         cmdList->Dispatch(DispatchCount(context.width), DispatchCount(context.height), 1);
     }
