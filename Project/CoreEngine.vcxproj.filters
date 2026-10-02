@@ -3465,6 +3465,9 @@
     <ClInclude Include="Engine\Src\Graphics\RHI\Resource\UploadRing.h">
       <Filter>Engine\Src\Graphics\RHI\Resource</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RHI\Resource\PerFrameConstants.h">
+      <Filter>Engine\Src\Graphics\RHI\Resource</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\WorldTransform\WorldTransform.h">
       <Filter>Engine\Src\WorldTransform</Filter>
     </ClInclude>

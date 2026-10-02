@@ -5,7 +5,6 @@
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Cloud/Settings/CloudCVars.h"
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Utility/Logger/Logger.h"
 
 #include <algorithm>
@@ -45,23 +44,17 @@ namespace CoreEngine
             return;
         }
 
-        // CB を作る前に設定を取り込む（既定値の実体は CVar なので、読む前は全て 0）
+        // 定数を作る前に設定を取り込む（既定値の実体は CVar なので、読む前は全て 0）
         CloudCVars::LoadInto(parameters_);
         enabled_ = CloudCVars::Enabled.Get();
 
-        // 雲定数バッファ（永続マップ）
-        constantBuffer_ = ResourceFactory::CreateBufferResource(device, sizeof(VolumetricCloudShaderConstants));
-        constantBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&constantData_));
-        UploadConstants();
-
-        // ゴッドレイ定数バッファ（永続マップ）
-        godRayConstantBuffer_ = ResourceFactory::CreateBufferResource(device, sizeof(GodRayShaderConstants));
-        godRayConstantBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&godRayConstantData_));
-
-        // 雲シャドウ定数バッファ（永続マップ）
-        cloudShadowConstantBuffer_ = ResourceFactory::CreateBufferResource(device, sizeof(CloudShadowShaderConstants));
-        cloudShadowConstantBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&cloudShadowConstantData_));
-        UploadCloudShadowConstants();
+        // 定数は毎フレーム UploadRing に置く
+        UploadRing& uploadRing = graphicsCore->GetUploadRing();
+        constants_.Initialize(uploadRing);
+        godRayConstants_.Initialize(uploadRing);
+        cloudShadowConstants_.Initialize(uploadRing);
+        UpdateConstants();
+        UpdateCloudShadowConstants();
 
         // ノイズテクスチャ・配置ペイントと生成パイプライン
         const bool noiseResourcesReady = resources_.CreateNoiseTextures(device, descriptorAllocator)
@@ -143,8 +136,8 @@ namespace CoreEngine
             groundLevelY_ = atmosphereManager->GetParameters().groundLevelY;
         }
 
-        UploadConstants();
-        UploadCloudShadowConstants();
+        UpdateConstants();
+        UpdateCloudShadowConstants();
     }
 
     void VolumetricCloudManager::PaintWeather(const WeatherPaintStamp& stamp)
@@ -369,12 +362,8 @@ namespace CoreEngine
         noiseBaker_.MarkPaintDirty();
     }
 
-    void VolumetricCloudManager::UploadConstants()
+    void VolumetricCloudManager::UpdateConstants()
     {
-        if (!constantData_) {
-            return;
-        }
-
         const uint32_t styleIndex = ClampCloudStyleIndex(parameters_.styleIndex);
 
         // ブロック雲では意味を失う機能をここで落とす。CVar の値は書き換えないので、
@@ -473,15 +462,11 @@ namespace CoreEngine
         c.pad8 = 0.0f;
         c.pad9 = 0.0f;
 
-        *constantData_ = c;
+        constants_.Set(c);
     }
 
-    void VolumetricCloudManager::UploadGodRayConstants()
+    void VolumetricCloudManager::UpdateGodRayConstants()
     {
-        if (!godRayConstantData_) {
-            return;
-        }
-
         GodRayShaderConstants g{};
         g.invViewProj = invViewProj_;
         g.cameraWorldPos = cameraWorldPos_;
@@ -495,15 +480,11 @@ namespace CoreEngine
         g.outputWidth = resources_.TargetsWidth();
         g.outputHeight = resources_.TargetsHeight();
 
-        *godRayConstantData_ = g;
+        godRayConstants_.Set(g);
     }
 
-    void VolumetricCloudManager::UploadCloudShadowConstants()
+    void VolumetricCloudManager::UpdateCloudShadowConstants()
     {
-        if (!cloudShadowConstantData_) {
-            return;
-        }
-
         CloudShadowShaderConstants s{};
 
         // 範囲の中心はテクセルサイズへスナップする（カメラ移動での泳ぎ防止）
@@ -518,8 +499,7 @@ namespace CoreEngine
         s.pad0 = 0.0f;
         s.pad1 = 0.0f;
 
-        *cloudShadowConstantData_ = s;
-        cloudShadowConstants_ = s;
+        cloudShadowConstants_.Set(s);
     }
 
     CloudRenderContext VolumetricCloudManager::MakeRenderContext(
@@ -532,9 +512,9 @@ namespace CoreEngine
         ctx.pipelines = &pipelines_;
         ctx.atmosphere = atmosphereManager;
         ctx.profiler = profiler;
-        ctx.cloudConstants = constantBuffer_ ? constantBuffer_->GetGPUVirtualAddress() : 0;
-        ctx.godRayConstants = godRayConstantBuffer_ ? godRayConstantBuffer_->GetGPUVirtualAddress() : 0;
-        ctx.cloudShadowConstants = cloudShadowConstantBuffer_ ? cloudShadowConstantBuffer_->GetGPUVirtualAddress() : 0;
+        ctx.cloudConstants = constants_.Address();
+        ctx.godRayConstants = godRayConstants_.Address();
+        ctx.cloudShadowConstants = cloudShadowConstants_.Address();
         ctx.styleIndex = ClampCloudStyleIndex(parameters_.styleIndex);
         return ctx;
     }
@@ -587,7 +567,7 @@ namespace CoreEngine
         }
 
         // 出力サイズ（半解像度）を CB へ反映してから Dispatch する
-        UploadConstants();
+        UpdateConstants();
 
         cloudRenderer_.Render(MakeRenderContext(cmdList, atmosphereManager, profiler),
             sceneColor, sceneColorUavHandle, depthSrvHandle);
@@ -626,7 +606,7 @@ namespace CoreEngine
         }
 
         // 出力サイズ（半解像度）確定後に CB を更新する
-        UploadGodRayConstants();
+        UpdateGodRayConstants();
 
         godRayRenderer_.Render(MakeRenderContext(cmdList, atmosphereManager, profiler),
             sceneColor, sceneColorUavHandle, depthSrvHandle);

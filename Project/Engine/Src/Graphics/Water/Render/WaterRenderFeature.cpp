@@ -428,7 +428,7 @@ namespace CoreEngine
                 && atmosphere->IsConstantBufferReady()
                 && atmosphere->AreLUTsReady();
 
-            binding.resources.atmosphereCB = atmosphere->GetConstantBufferGPUAddress();
+            binding.resources.atmosphere = atmosphere;
             binding.resources.cameraVolumeSRV = atmosphere->GetCameraVolumeLUTSRVHandle();
             binding.resources.skyViewSRV = atmosphere->GetSkyViewLUTSRVHandle();
             binding.aerialPerspectiveEnabled = apEnabled;

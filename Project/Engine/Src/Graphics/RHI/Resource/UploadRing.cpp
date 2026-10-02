@@ -104,6 +104,7 @@ namespace CoreEngine
         peakBytesPerFrame_ = (std::max)(peakBytesPerFrame_, slots_[currentSlot_].bytesUsed);
 
         currentSlot_ = frameIndex % static_cast<uint32_t>(slots_.size());
+        ++generation_;
 
         FrameSlot& slot = slots_[currentSlot_];
         slot.pageIndex = 0;

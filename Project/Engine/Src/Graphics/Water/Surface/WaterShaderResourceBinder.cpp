@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "WaterShaderResourceBinder.h"
 
+#include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
 #include "Graphics/RootSignature/ShaderBinder.h"
 #include "Graphics/Water/Surface/WaterBindings.h"
@@ -76,7 +77,7 @@ void WaterShaderResourceBinder::Bind(
     // 大気散乱（Aerial Perspective）
     // （未接続のフレームはシェーダー側フラグ gAerialPerspectiveEnabled=0 で参照されない）
     if (renderResources.HasAtmosphere()) {
-        binder.Set(table_[WaterBind::gAtmosphereAP], renderResources.atmosphereCB);
+        binder.Set(table_[WaterBind::gAtmosphereAP], renderResources.atmosphere->GetConstantBufferGPUAddress());
         binder.Set(table_[WaterBind::gCameraVolumeLUT], renderResources.cameraVolumeSRV);
         binder.Set(table_[WaterBind::gSkyViewLUTAP], renderResources.skyViewSRV);
     }

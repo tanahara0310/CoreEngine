@@ -11,6 +11,7 @@
 #include "Graphics/Cloud/Shader/CloudPipelines.h"
 #include "Graphics/Cloud/Shader/CloudShaderConstants.h"
 #include "Graphics/RHI/Resource/GpuResource.h"
+#include "Graphics/RHI/Resource/PerFrameConstants.h"
 #include "Math/MathCore.h"
 
 #include <d3d12.h>
@@ -85,13 +86,12 @@ namespace CoreEngine
             const AtmosphereManager* atmosphereManager,
             GpuTimestampProfiler* profiler = nullptr);
 
-        /// @brief 雲シャドウ CB の GPU 仮想アドレス（Deferred ライティングが差す）
-        D3D12_GPU_VIRTUAL_ADDRESS GetCloudShadowConstantsAddress() const {
-            return cloudShadowConstantBuffer_ ? cloudShadowConstantBuffer_->GetGPUVirtualAddress() : 0;
-        }
+        /// @brief 雲シャドウ定数を記録中のフレームの UploadRing に置き、GPU 仮想アドレスを返す（Deferred ライティングが差す）
+        /// @note 返したアドレスはそのフレームの記録中だけ有効。控えずに、バインドするときに取ること
+        D3D12_GPU_VIRTUAL_ADDRESS GetCloudShadowConstantsAddress() const { return cloudShadowConstants_.Address(); }
 
-        /// @brief 雲シャドウ CB に書いた値（レイトレのヒットシェーディングが同じ値で雲の影を引く）
-        const CloudShadowShaderConstants& GetCloudShadowConstants() const { return cloudShadowConstants_; }
+        /// @brief 雲シャドウ定数の今の値（レイトレのヒットシェーディングが同じ値で雲の影を引く）
+        const CloudShadowShaderConstants& GetCloudShadowConstants() const { return cloudShadowConstants_.Get(); }
 
         /// @brief 保持している GPU テクスチャ一式
         /// @note パスが CloudBuffer / CloudShadowMap を FrameBlackboard へ公開するために使う
@@ -179,14 +179,14 @@ namespace CoreEngine
             GpuTimestampProfiler* profiler = nullptr);
 
     private:
-        /// @brief 現在のパラメータ・カメラ・太陽情報から定数バッファを更新する
-        void UploadConstants();
+        /// @brief 現在のパラメータ・カメラ・太陽情報から雲の定数を作る
+        void UpdateConstants();
 
-        /// @brief ゴッドレイ CB を現在のカメラ・パラメータで更新する
-        void UploadGodRayConstants();
+        /// @brief 現在のカメラ・パラメータからゴッドレイの定数を作る
+        void UpdateGodRayConstants();
 
-        /// @brief 雲シャドウ CB をカメラ追従の範囲でスナップして更新する
-        void UploadCloudShadowConstants();
+        /// @brief カメラ追従の範囲をスナップして雲シャドウの定数を作る
+        void UpdateCloudShadowConstants();
 
         /// @brief フレームターゲットを現在の SceneColor サイズと分割数で確保する
         bool EnsureFrameTargets(GpuResource& sceneColor);
@@ -240,14 +240,10 @@ namespace CoreEngine
         ID3D12Device* device_ = nullptr;
         DescriptorAllocator* descriptorAllocator_ = nullptr;
 
-        // 定数バッファ（永続マップ）
-        Microsoft::WRL::ComPtr<ID3D12Resource> constantBuffer_;
-        VolumetricCloudShaderConstants* constantData_ = nullptr;
-        Microsoft::WRL::ComPtr<ID3D12Resource> godRayConstantBuffer_;
-        GodRayShaderConstants* godRayConstantData_ = nullptr;
-        Microsoft::WRL::ComPtr<ID3D12Resource> cloudShadowConstantBuffer_;
-        CloudShadowShaderConstants* cloudShadowConstantData_ = nullptr;
-        CloudShadowShaderConstants cloudShadowConstants_{};
+        // 定数（毎フレーム UploadRing に置く）
+        PerFrameConstants<VolumetricCloudShaderConstants> constants_;
+        PerFrameConstants<GodRayShaderConstants> godRayConstants_;
+        PerFrameConstants<CloudShadowShaderConstants> cloudShadowConstants_;
 
         CloudResources resources_{};
         CloudPipelines pipelines_{};

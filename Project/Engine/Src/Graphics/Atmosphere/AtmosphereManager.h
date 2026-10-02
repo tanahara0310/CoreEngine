@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Graphics/RHI/Resource/GpuResource.h"
+#include "Graphics/RHI/Resource/PerFrameConstants.h"
 #include <d3d12.h>
 #include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include <wrl.h>
@@ -156,7 +157,8 @@ namespace CoreEngine
         /// @brief 初期化
         /// @param device D3D12デバイス
         /// @param descriptorAllocator LUT の SRV/UAV 登録先（メインのシェーダー可視ヒープ）
-        void Initialize(ID3D12Device* device, DescriptorAllocator* descriptorAllocator);
+        /// @param uploadRing 毎フレームの大気散乱定数の置き場所
+        void Initialize(ID3D12Device* device, DescriptorAllocator* descriptorAllocator, UploadRing& uploadRing);
 
         /// @brief フレーム更新
         /// @param cameraWorldPosition カメラのワールド座標 [m]
@@ -248,13 +250,12 @@ namespace CoreEngine
         /// @brief パラメータへの直接アクセス（変更した場合は MarkLUTDirty() を呼ぶこと）
         AtmosphereParameters& GetParametersMutable() { return parameters_; }
 
-        /// @brief 大気散乱定数バッファの GPU 仮想アドレスを取得（ルート CBV バインド用）
-        D3D12_GPU_VIRTUAL_ADDRESS GetConstantBufferGPUAddress() const {
-            return constantBuffer_ ? constantBuffer_->GetGPUVirtualAddress() : 0;
-        }
+        /// @brief 大気散乱定数を記録中のフレームの UploadRing に置き、GPU 仮想アドレスを返す（ルート CBV バインド用）
+        /// @note 返したアドレスはそのフレームの記録中だけ有効。控えずに、バインドするときに取ること
+        D3D12_GPU_VIRTUAL_ADDRESS GetConstantBufferGPUAddress() const { return constants_.Address(); }
 
         /// @brief 定数バッファが利用可能か
-        bool IsConstantBufferReady() const { return constantData_ != nullptr; }
+        bool IsConstantBufferReady() const { return constants_.IsReady(); }
 
         // ===== LUT =====
 
@@ -355,8 +356,8 @@ namespace CoreEngine
         void EndFrame(LightManager* lightManager);
 
     private:
-        /// @brief 現在のパラメータ・太陽情報から定数バッファを更新する
-        void UploadConstants();
+        /// @brief 現在のパラメータ・太陽情報から大気散乱定数を作る（GPU へは GetConstantBufferGPUAddress() で置く）
+        void UpdateConstants();
 
         /// @brief 照明駆動露出用のシーン代表輝度を計算する（太陽・月の高度・強度から解析）
         float ComputeSceneIlluminationLuminance() const;
@@ -488,9 +489,8 @@ namespace CoreEngine
         Matrix4x4 invViewProj_{};
         Vector3 cameraWorldPos_{};
 
-        // GPU リソース
-        Microsoft::WRL::ComPtr<ID3D12Resource> constantBuffer_;
-        AtmosphereShaderConstants* constantData_ = nullptr; // 永続マップ先
+        // 大気散乱定数（毎フレーム UploadRing に置く）
+        PerFrameConstants<AtmosphereShaderConstants> constants_;
 
         // Transmittance LUT
         GpuResource transmittanceLUT_;
