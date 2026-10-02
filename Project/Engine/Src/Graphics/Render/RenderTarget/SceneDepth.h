@@ -4,7 +4,7 @@
 #include <wrl.h>
 #include <cstdint>
 
-#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
+#include "Graphics/RHI/Descriptor/UniqueDescriptor.h"
 #include "Graphics/RHI/Resource/GpuResource.h"
 
 namespace CoreEngine
@@ -16,9 +16,6 @@ namespace CoreEngine
     /// @note DSV / SRV のスロットはリサイズしても変わらないので、取得済みハンドルは常に有効
     class SceneDepth {
     public:
-        /// @brief デストラクタ（確保したディスクリプタスロットを解放）
-        ~SceneDepth();
-
         /// @brief 初期化
         /// @param device D3D12デバイス
         /// @param descriptorAllocator ディスクリプタの確保先
@@ -44,9 +41,9 @@ namespace CoreEngine
         // アクセッサ
         // ---------------------------------------------------------------
         ID3D12Resource* GetResource() const { return depthStencilResource_.Get(); }
-        D3D12_CPU_DESCRIPTOR_HANDLE GetDSVHandle() const { return dsvDescriptor_.cpuHandle; }
+        D3D12_CPU_DESCRIPTOR_HANDLE GetDSVHandle() const { return dsvDescriptor_.Cpu(); }
         /// @brief 深度テクスチャの SRV GPU ハンドルを返す（シェーダーからサンプリングするために使用）
-        D3D12_GPU_DESCRIPTOR_HANDLE GetDepthSRVHandle() const { return depthSRVDescriptor_.gpuHandle; }
+        D3D12_GPU_DESCRIPTOR_HANDLE GetDepthSRVHandle() const { return depthSRVDescriptor_.Gpu(); }
         /// @brief 深度リソースをステート追跡つきで返す（バリア発行はこれを渡す）
         GpuResource& Resource() { return depthStencilResource_; }
 
@@ -70,10 +67,10 @@ namespace CoreEngine
         // 深度ステンシルリソース（現在ステートは GpuResource が内包する）
         GpuResource depthStencilResource_;
 
-        // DSV / SRV スロット（DescriptorHandle がハンドルとスロット番号をまとめて持つ）
-        DescriptorHandle dsvDescriptor_{};
+        // DSV / SRV スロット（破棄すると GPU が使い終わってから返る）
+        UniqueDescriptor dsvDescriptor_;
         // 深度 SRV（Water Depth Fade 等でシェーダーからサンプリングするために使用）
-        DescriptorHandle depthSRVDescriptor_{};
+        UniqueDescriptor depthSRVDescriptor_;
 
         // 初期化パラメータ
         ID3D12Device* device_ = nullptr;

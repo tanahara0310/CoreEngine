@@ -13,7 +13,6 @@ ParticleResourceManager::~ParticleResourceManager() {
     if (!dxCommon_) {
         return;
     }
-    dxCommon_->DeferFree(srvHandleGPU_);
     dxCommon_->DeferRelease(std::move(instancingResource_));
     instancingData_ = nullptr;
 }
@@ -49,7 +48,8 @@ void ParticleResourceManager::CreateSRV(uint32_t maxInstances) {
     srvDesc.Buffer.StructureByteStride = sizeof(ParticleForGPU);
 
     // SRVの作成
-    srvHandleGPU_ = dxCommon_->GetDescriptorAllocator()->CreateSRV(
-        instancingResource_.Get(), srvDesc, "ParticleInstancingSRV");
+    DescriptorAllocator& descriptorAllocator = *dxCommon_->GetDescriptorAllocator();
+    srvHandleGPU_ = UniqueDescriptor(descriptorAllocator, descriptorAllocator.CreateSRV(
+        instancingResource_.Get(), srvDesc, "ParticleInstancingSRV"));
 }
 }

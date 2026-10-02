@@ -67,16 +67,16 @@ namespace CoreEngine
         cmdList->SetPipelineState(computePso_.Get());
 
         if (sourceVerticesIdx_ >= 0) {
-            cmdList->SetComputeRootDescriptorTable(sourceVerticesIdx_, skinCluster.sourceVertexSrvHandle.gpuHandle);
+            cmdList->SetComputeRootDescriptorTable(sourceVerticesIdx_, skinCluster.sourceVertexSrvHandle.Gpu());
         }
         if (influencesIdx_ >= 0) {
-            cmdList->SetComputeRootDescriptorTable(influencesIdx_, skinCluster.influenceSrvHandle.gpuHandle);
+            cmdList->SetComputeRootDescriptorTable(influencesIdx_, skinCluster.influenceSrvHandle.Gpu());
         }
         if (matrixPaletteIdx_ >= 0) {
-            cmdList->SetComputeRootDescriptorTable(matrixPaletteIdx_, skinCluster.paletteSrvHandle.gpuHandle);
+            cmdList->SetComputeRootDescriptorTable(matrixPaletteIdx_, skinCluster.paletteSrvHandle.Gpu());
         }
         if (outputVerticesIdx_ >= 0) {
-            cmdList->SetComputeRootDescriptorTable(outputVerticesIdx_, skinCluster.outputUavHandle.gpuHandle);
+            cmdList->SetComputeRootDescriptorTable(outputVerticesIdx_, skinCluster.outputUavHandle.Gpu());
         }
         if (skinningParamsIdx_ >= 0) {
             cmdList->SetComputeRootConstantBufferView(skinningParamsIdx_, skinCluster.skinningParamsCB->GetGPUVirtualAddress());

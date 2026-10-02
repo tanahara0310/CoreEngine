@@ -2,7 +2,7 @@
 
 #include "Graphics/RHI/Resource/GpuResource.h"
 #include <vector>
-#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
+#include "Graphics/RHI/Descriptor/UniqueDescriptor.h"
 #include <span>
 #include <array>
 #include <d3d12.h>
@@ -50,20 +50,20 @@ struct SkinCluster {
     Microsoft::WRL::ComPtr<ID3D12Resource> influenceResource;  // Influence用リソース
     D3D12_VERTEX_BUFFER_VIEW influenceBufferView;              // InfluenceのBufferView
     std::span<VertexInfluence> mappedInfluence;                // Influenceデータをマップしたもの
-    DescriptorHandle influenceSrvHandle; // InfluenceのSRV（CS読み取り用）
+    UniqueDescriptor influenceSrvHandle; // InfluenceのSRV（CS読み取り用）
 
     Microsoft::WRL::ComPtr<ID3D12Resource> paletteResource;    // Palette用リソース
     std::span<WellForGPU> mappedPalette;                       // Paletteデータをマップしたもの
-    DescriptorHandle paletteSrvHandle; // PaletteのSRV
+    UniqueDescriptor paletteSrvHandle; // PaletteのSRV
 
     // ===== GPUスキニング（ComputeShader）関連 =====
 
-    DescriptorHandle sourceVertexSrvHandle; // 元頂点バッファのSRV（CS読み取り用）
+    UniqueDescriptor sourceVertexSrvHandle; // 元頂点バッファのSRV（CS読み取り用）
 
     GpuResource outputVertexResource;                // CSが書き込むスキニング後頂点バッファ（UAV・ステート追跡込み）
     D3D12_VERTEX_BUFFER_VIEW outputVertexBufferView; // 上記をそのまま描画時の頂点バッファとして使う
-    DescriptorHandle outputUavHandle;                // 出力バッファのUAV
-    DescriptorHandle outputRawSrvHandle;             // 出力バッファの ByteAddressBuffer SRV（レイトレーシングのヒットシェーディングが読む）
+    UniqueDescriptor outputUavHandle;                // 出力バッファのUAV
+    UniqueDescriptor outputRawSrvHandle;             // 出力バッファの ByteAddressBuffer SRV（レイトレーシングのヒットシェーディングが読む）
 
     Microsoft::WRL::ComPtr<ID3D12Resource> skinningParamsCB; // SkinningParams（頂点数）用定数バッファ
 

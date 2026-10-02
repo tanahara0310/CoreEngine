@@ -4,7 +4,7 @@
 #include "Text/MsdfAtlasAllocator.h"
 #include "Text/MsdfFontBaker.h"
 #include "Text/MsdfFontTypes.h"
-#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
+#include "Graphics/RHI/Descriptor/UniqueDescriptor.h"
 #include "Graphics/RHI/Resource/GpuResource.h"
 #include "Math/Vector/Vector2.h"
 
@@ -106,7 +106,7 @@ namespace CoreEngine
         bool Build(GraphicsCore* graphicsCore, ThreadPool* threadPool, const MsdfFontDesc& desc);
 
         /// @brief 使用可能か
-        bool IsValid() const { return atlasHandle_.gpuHandle.ptr != 0; }
+        bool IsValid() const { return atlasHandle_.Gpu().ptr != 0; }
 
         /// @brief 未登録の文字を焼くよう要求する
         /// @details 既に登録済み・要求済みの文字は無視する。
@@ -132,7 +132,7 @@ namespace CoreEngine
         const MsdfFontMetrics& GetMetrics() const { return metrics_; }
 
         /// @brief アトラス SRV の GPU ハンドル（Texture2DArray）
-        D3D12_GPU_DESCRIPTOR_HANDLE GetAtlasGpuHandle() const { return atlasHandle_.gpuHandle; }
+        D3D12_GPU_DESCRIPTOR_HANDLE GetAtlasGpuHandle() const { return atlasHandle_.Gpu(); }
 
         /// @brief アトラス 1 枚あたりの画素サイズ（シェーダーの screenPxRange 計算に要る）
         Vector2 GetAtlasSize() const { return atlasSize_; }
@@ -213,7 +213,7 @@ namespace CoreEngine
         // ステートは GENERIC_READ が既定で、部分アップロードのときだけ
         // COPY_DEST へ落として戻す。触るのはベイクワーカーのみ
         GpuResource atlas_;
-        DescriptorHandle atlasHandle_{};
+        UniqueDescriptor atlasHandle_;
 
         // ── ワーカーと共有する状態（glyphMutex_ が守る）──────────
         // @warning このロックは描画スレッドの ResolveGlyph も取る。

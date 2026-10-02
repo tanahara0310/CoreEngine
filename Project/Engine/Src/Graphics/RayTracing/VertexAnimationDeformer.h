@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
+#include "Graphics/RHI/Descriptor/UniqueDescriptor.h"
 #include "Graphics/RHI/Resource/GpuResource.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/ShaderBindingContract.h"
@@ -107,7 +107,7 @@ namespace CoreEngine
         /// @brief 持ち主 1 つぶんの頂点バッファ
         struct Entry {
             GpuResource vertices;
-            DescriptorHandle rawSrv;  ///< ヒットシェーディング用の ByteAddressBuffer SRV
+            UniqueDescriptor rawSrv;  ///< ヒットシェーディング用の ByteAddressBuffer SRV
             uint32_t vertexCount = 0;
             uint64_t lastUsedFrame = 0;
         };

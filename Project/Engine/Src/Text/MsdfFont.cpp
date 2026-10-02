@@ -45,12 +45,6 @@ namespace CoreEngine
         if (writeBackEnabled_ && unsavedGlyphCount_.load(std::memory_order_relaxed) > 0) {
             SaveCacheSnapshot();
         }
-
-        if (graphicsCore_ && atlasHandle_.IsValid()) {
-            if (auto* allocator = graphicsCore_->GetDescriptorAllocator()) {
-                allocator->Free(atlasHandle_);
-            }
-        }
     }
 
     bool MsdfFont::Build(GraphicsCore* graphicsCore, ThreadPool* threadPool, const MsdfFontDesc& desc)
@@ -248,9 +242,10 @@ namespace CoreEngine
 
         auto* descriptorAllocator = graphicsCore_->GetDescriptorAllocator();
         if (!descriptorAllocator) { return false; }
-        atlasHandle_ = descriptorAllocator->CreateSRV(atlas_.Get(), srvDesc, "MsdfFontAtlas");
+        atlasHandle_ = UniqueDescriptor(*descriptorAllocator,
+            descriptorAllocator->CreateSRV(atlas_.Get(), srvDesc, "MsdfFontAtlas"));
 
-        return atlasHandle_.gpuHandle.ptr != 0;
+        return atlasHandle_.Gpu().ptr != 0;
     }
 
     void MsdfFont::UploadRegions(const std::vector<AtlasUploadRegion>& regions)

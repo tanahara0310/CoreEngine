@@ -74,8 +74,8 @@ namespace CoreEngine
 
         rtvs_.resize(desc_.bufferCount);
         for (uint32_t i = 0; i < desc_.bufferCount; ++i) {
-            rtvs_[i] = descriptorAllocator_->CreateRTV(
-                backBuffers_[i].Get(), rtvDesc, std::format("{}_BackBuffer{}", desc_.debugName, i));
+            rtvs_[i] = UniqueDescriptor(*descriptorAllocator_, descriptorAllocator_->CreateRTV(
+                backBuffers_[i].Get(), rtvDesc, std::format("{}_BackBuffer{}", desc_.debugName, i)));
         }
 
         logger.Infof(LogCategory::Graphics, LogSubCategory::SwapChain,
@@ -87,12 +87,7 @@ namespace CoreEngine
 
     void SwapChain::Shutdown()
     {
-        if (descriptorAllocator_) {
-            // Free は未確保ハンドルを無視するので IsValid チェックは要らない
-            for (DescriptorHandle& rtv : rtvs_) {
-                descriptorAllocator_->Free(rtv);
-            }
-        }
+        // RTV のスロットは手放すと GPU が使い終わってから返る
         rtvs_.clear();
         backBuffers_.clear();
         swapChain_.Reset();
@@ -132,7 +127,7 @@ namespace CoreEngine
         rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 
         for (uint32_t i = 0; i < desc_.bufferCount; ++i) {
-            descriptorAllocator_->WriteRTV(rtvs_[i], backBuffers_[i].Get(), rtvDesc);
+            descriptorAllocator_->WriteRTV(rtvs_[i].Get(), backBuffers_[i].Get(), rtvDesc);
         }
     }
 
@@ -188,6 +183,6 @@ namespace CoreEngine
     D3D12_CPU_DESCRIPTOR_HANDLE SwapChain::RTV(uint32_t index) const
     {
         assert(index < rtvs_.size());
-        return rtvs_[index].cpuHandle;
+        return rtvs_[index].Cpu();
     }
 }

@@ -9,14 +9,17 @@
 
 namespace CoreEngine
 {
+    class DeferredReleaseQueue;
+
     /// @brief SRV/CBV/UAV・RTV・DSV の 3 ヒープを束ねるディスクリプタ確保器
-    /// @details すべての生成 API は所有権の表明として `DescriptorHandle` を返す。
+    /// @details すべての生成 API は確保したスロットを `DescriptorHandle` で返す。
     ///
     /// 使い分け:
     /// - `CreateXxx()`  … スロットを確保してビューを書く（新規）
     /// - `WriteXxx()`   … 確保済みスロットへビューだけ書き直す（リソース再作成時。スロット番号は変わらない）
     /// - `EnsureXxx()`  … 未確保なら Create、確保済みなら Write（リサイズ経路の定型）
-    /// - `Free()`       … スロットを返す。**GPU がそのスロットを読み終えた後**に呼ぶこと
+    ///
+    /// 返すスロットは `UniqueDescriptor` に持たせる。手放すと GPU が使い終わってから返る。
     class DescriptorAllocator
     {
     public:
@@ -82,9 +85,9 @@ namespace CoreEngine
         DescriptorHandle AllocateRTVHandle(std::string_view debugName = "Unknown");
         DescriptorHandle AllocateDSVHandle(std::string_view debugName = "Unknown");
 
-        /// @brief スロットを解放する（種別はハンドルが持っているので自動で振り分ける）
-        /// @note GPU がそのスロットを参照し終えた後（フェンス完了後）に呼ぶこと
-        void Free(DescriptorHandle& handle);
+        /// @brief 手放したスロットを預ける遅延解放キューをつなぐ（nullptr で外す）
+        /// @note つないでいない間に手放されたスロットは返さない（終了処理でヒープごと消える）。
+        void SetDeferredReleaseQueue(DeferredReleaseQueue* queue) { deferredRelease_ = queue; }
 
         // ── ヒープ参照 ──────────────────────────────────────────
         ID3D12DescriptorHeap* GetSRVHeap() const { return srvHeap_.Heap(); }
@@ -100,10 +103,23 @@ namespace CoreEngine
         const DescriptorHeapAllocator& DSV() const { return dsvHeap_; }
 
     private:
+        friend class DeferredReleaseQueue;
+        friend class UniqueDescriptor;
+
+        /// @brief スロットを今すぐ返す（種別はハンドルが持っているので自動で振り分ける）
+        /// @note GPU がそのスロットを読み終えた後に、遅延解放キューから呼ばれる。
+        void Free(DescriptorHandle& handle);
+
+        /// @brief 記録中のフレームの GPU 作業が終わってからスロットを返す（UniqueDescriptor が手放すときに呼ぶ）
+        void Retire(DescriptorHandle& handle);
+
         ID3D12Device* device_ = nullptr;
 
         DescriptorHeapAllocator srvHeap_;
         DescriptorHeapAllocator rtvHeap_;
         DescriptorHeapAllocator dsvHeap_;
+
+        // 手放したスロットを預ける先（GraphicsCore がつなぐ）
+        DeferredReleaseQueue* deferredRelease_ = nullptr;
     };
 }

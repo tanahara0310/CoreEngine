@@ -105,9 +105,9 @@ namespace CoreEngine
     {
         if (!graphics_) { return; }
 
-        for (DescriptorHandle* const handle : {
+        for (UniqueDescriptor* const descriptor : {
                 &particleUavGPU_, &counterUavGPU_, &freeListUavGPU_, &instancingUavGPU_, &instancingSrvGPU_ }) {
-            graphics_->DeferFree(*handle);
+            descriptor->Reset();
         }
 
         graphics_->DeferRelease(std::move(particleResource_));
@@ -229,14 +229,14 @@ namespace CoreEngine
             uavDesc.Buffer.StructureByteStride = stride;
             return uavDesc;
         };
-        particleUavGPU_ = descriptorAllocator->CreateUAV(particleResource_.Get(),
-            makeUavDesc(kMaxParticles, sizeof(GpuParticleData)), "GpuParticleUAV");
-        counterUavGPU_ = descriptorAllocator->CreateUAV(counterResource_.Get(),
-            makeUavDesc(kCounterCount, sizeof(uint32_t)), "GpuParticleCounterUAV");
-        freeListUavGPU_ = descriptorAllocator->CreateUAV(freeListResource_.Get(),
-            makeUavDesc(kMaxParticles, sizeof(uint32_t)), "GpuParticleFreeListUAV");
-        instancingUavGPU_ = descriptorAllocator->CreateUAV(instancingResource_.Get(),
-            makeUavDesc(kMaxParticles, sizeof(ParticleForGPU)), "GpuParticleInstancingUAV");
+        particleUavGPU_ = UniqueDescriptor(*descriptorAllocator, descriptorAllocator->CreateUAV(particleResource_.Get(),
+            makeUavDesc(kMaxParticles, sizeof(GpuParticleData)), "GpuParticleUAV"));
+        counterUavGPU_ = UniqueDescriptor(*descriptorAllocator, descriptorAllocator->CreateUAV(counterResource_.Get(),
+            makeUavDesc(kCounterCount, sizeof(uint32_t)), "GpuParticleCounterUAV"));
+        freeListUavGPU_ = UniqueDescriptor(*descriptorAllocator, descriptorAllocator->CreateUAV(freeListResource_.Get(),
+            makeUavDesc(kMaxParticles, sizeof(uint32_t)), "GpuParticleFreeListUAV"));
+        instancingUavGPU_ = UniqueDescriptor(*descriptorAllocator, descriptorAllocator->CreateUAV(instancingResource_.Get(),
+            makeUavDesc(kMaxParticles, sizeof(ParticleForGPU)), "GpuParticleInstancingUAV"));
         {
             D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
             srvDesc.Format = DXGI_FORMAT_UNKNOWN;
@@ -245,7 +245,8 @@ namespace CoreEngine
             srvDesc.Buffer.FirstElement = 0;
             srvDesc.Buffer.NumElements = kMaxParticles;
             srvDesc.Buffer.StructureByteStride = sizeof(ParticleForGPU);
-            instancingSrvGPU_ = descriptorAllocator->CreateSRV(instancingResource_.Get(), srvDesc, "GpuParticleInstancingSRV");
+            instancingSrvGPU_ = UniqueDescriptor(*descriptorAllocator,
+                descriptorAllocator->CreateSRV(instancingResource_.Get(), srvDesc, "GpuParticleInstancingSRV"));
         }
 
         // 定数バッファ（UPLOAD・永続Map）

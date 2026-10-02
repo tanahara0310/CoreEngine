@@ -35,11 +35,6 @@ namespace CoreEngine
 
         if (skinCluster_) {
             SkinCluster& cluster = *skinCluster_;
-            graphics->DeferFree(cluster.influenceSrvHandle);
-            graphics->DeferFree(cluster.paletteSrvHandle);
-            graphics->DeferFree(cluster.sourceVertexSrvHandle);
-            graphics->DeferFree(cluster.outputUavHandle);
-            graphics->DeferFree(cluster.outputRawSrvHandle);
             graphics->DeferRelease(std::move(cluster.influenceResource));
             graphics->DeferRelease(std::move(cluster.paletteResource));
             graphics->DeferRelease(cluster.outputVertexResource.Get());
@@ -151,7 +146,7 @@ namespace CoreEngine
         if (!skinCluster_ || !skinCluster_->outputRawSrvHandle.IsValid()) {
             return UINT32_MAX;
         }
-        return skinCluster_->outputRawSrvHandle.index;
+        return skinCluster_->outputRawSrvHandle.Index();
     }
 
     void Model::OnTeleported()

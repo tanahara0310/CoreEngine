@@ -1150,6 +1150,9 @@
     <ClCompile Include="Engine\Src\Graphics\RHI\Descriptor\DescriptorAllocator.cpp">
       <Filter>Engine\Src\Graphics\RHI\Descriptor</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RHI\Descriptor\UniqueDescriptor.cpp">
+      <Filter>Engine\Src\Graphics\RHI\Descriptor</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RHI\Descriptor\DescriptorHeapAllocator.cpp">
       <Filter>Engine\Src\Graphics\RHI\Descriptor</Filter>
     </ClCompile>
@@ -3238,6 +3241,9 @@
       <Filter>Engine\Src\Graphics\RHI\Command</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RHI\Descriptor\DescriptorAllocator.h">
+      <Filter>Engine\Src\Graphics\RHI\Descriptor</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RHI\Descriptor\UniqueDescriptor.h">
       <Filter>Engine\Src\Graphics\RHI\Descriptor</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RHI\Descriptor\DescriptorHeapAllocator.h">
