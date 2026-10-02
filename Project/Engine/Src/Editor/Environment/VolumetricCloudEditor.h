@@ -1,9 +1,10 @@
 #pragma once
 
+#include "Utility/Lifetime/ScopedRegistration.h"
+
 namespace CoreEngine {
     class EngineSystem;
     class VolumetricCloudManager;
-    class GameDebugUI;
 
     /// @brief ボリューメトリック雲のエンジン常駐エディタ
     /// @details DebugSubsystem がエンジン寿命で 1 個所有し、シーンに置かれたコンポーネントの
@@ -12,9 +13,6 @@ namespace CoreEngine {
     ///          → ③ 詳細設定」の順。⓪ 以外は全スタイル共通で、③ だけスタイルで出し分ける。
     class VolumetricCloudEditor {
     public:
-        /// @brief 環境エディタの登録を解除する
-        ~VolumetricCloudEditor();
-
         /// @brief 参照先を初期化し、環境エディタとして登録する
         void Initialize(EngineSystem& engine);
 
@@ -41,14 +39,8 @@ namespace CoreEngine {
 
         EngineSystem* engine_ = nullptr;
 
-        /// @brief Initialize 時にキャッシュした GameDebugUI（デストラクタでの登録解除用）
-        /// @details デストラクタで engine_->GetDebugSubsystem() を呼び直すと、この
-        ///          エディタ自体を所有する DebugSubsystem が EngineSystem::Finalize() の
-        ///          サブシステム一括破棄の途中（デストラクタ実行中）に自分自身を
-        ///          dynamic_cast で探しに行くことになり、その時点で破棄済みの他サブシステムに
-        ///          当たってアクセス違反になる（RTTI 読み取り不可 → std::terminate）。
-        ///          そのため参照は Initialize 時に一度だけ取得してキャッシュする。
-        GameDebugUI* gameDebugUI_ = nullptr;
+        /// @brief インスペクタの出し方の登録（破棄すると外れる）
+        ScopedRegistration inspector_;
 
         /// 現在の値に一致するプリセット（-1=カスタム）。DrawPresetSelector が毎フレーム導出する
         int activePresetIndex_ = -1;
