@@ -82,17 +82,23 @@ public:
     // ===== 状態 =====
 
     Vector3 GetVelocity() const { return velocity_; }
-    void SetVelocity(const Vector3& velocity) { velocity_ = velocity; }
+
+    /// @brief 速度を設定する（眠っていれば起こす）
+    void SetVelocity(const Vector3& velocity);
 
     Vector3 GetAngularVelocity() const { return angularVelocity_; }
-    void SetAngularVelocity(const Vector3& angularVelocity) { angularVelocity_ = angularVelocity; }
+
+    /// @brief 角速度を設定する（眠っていれば起こす）
+    void SetAngularVelocity(const Vector3& angularVelocity);
 
     /// @brief 回転を止めているか
     bool IsRotationFrozen() const { return freezeRotation_; }
     void SetRotationFrozen(bool frozen) { freezeRotation_ = frozen; }
 
     BodyType GetBodyType() const { return bodyType_; }
-    void SetBodyType(BodyType type) { bodyType_ = type; }
+
+    /// @brief 種別を設定する（眠っていれば起こす）
+    void SetBodyType(BodyType type);
 
     float GetMass() const { return mass_; }
 
@@ -163,6 +169,9 @@ private:
 
     /// @brief 慣性の計算に使う先頭のコライダー（無ければ nullptr）
     const Collider* GetColliderShape() const;
+
+    /// @brief 眠っていれば起こす（起きている剛体の止まっていた時間は数え直さない）
+    void WakeIfSleeping();
 
     BodyType bodyType_ = BodyType::Dynamic;
     float    mass_ = 1.0f;
