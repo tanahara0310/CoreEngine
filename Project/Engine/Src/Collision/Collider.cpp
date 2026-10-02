@@ -3,6 +3,7 @@
 #include "GameObject/GameObject.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 
 namespace CoreEngine
@@ -13,9 +14,7 @@ namespace {
     // 形状ペアごとの判定ディスパッチ
     //================================================
     /// 実装は Math/Geometry 側の 1 箇所にあり、ここはワールド形状を作って渡すだけ。
-    /// 表の形にしてあるので、形状を増やすと次元が合わずコンパイルエラーで埋め忘れに気づける。
-
-    using IntersectFn = bool(*)(const Collider&, const Collider&, Geometry::Contact*);
+    /// 表の行と列の数は並べた関数の数で決まる。形状の数と合わないと（行ごとに数が違っても）コンパイルが止まる。
 
     bool SphereVsSphere(const Collider& a, const Collider& b, Geometry::Contact* c) {
         return Geometry::Intersect(a.GetWorldSphere(), b.GetWorldSphere(), c);
@@ -47,12 +46,15 @@ namespace {
 
     constexpr int kShapeCount = static_cast<int>(ColliderShapeType::Count);
 
-    constexpr IntersectFn kDispatch[kShapeCount][kShapeCount] = {
-        /*            相手: Sphere      Box           Capsule          */
-        /* Sphere  */ { SphereVsSphere,  SphereVsBox,  SphereVsCapsule  },
-        /* Box     */ { BoxVsSphere,     BoxVsBox,     BoxVsCapsule     },
-        /* Capsule */ { CapsuleVsSphere, CapsuleVsBox, CapsuleVsCapsule },
+    constexpr std::array kDispatch = {
+        /*                       相手: Sphere      Box           Capsule          */
+        /* Sphere  */ std::array{ SphereVsSphere,  SphereVsBox,  SphereVsCapsule  },
+        /* Box     */ std::array{ BoxVsSphere,     BoxVsBox,     BoxVsCapsule     },
+        /* Capsule */ std::array{ CapsuleVsSphere, CapsuleVsBox, CapsuleVsCapsule },
     };
+    static_assert(kDispatch.size() == static_cast<size_t>(kShapeCount) &&
+                  kDispatch.front().size() == static_cast<size_t>(kShapeCount),
+        "形状の組み合わせの判定が埋まっていない（ColliderShapeType を足したら kDispatch に行と列を足す）");
 }
 
 namespace {
@@ -89,7 +91,7 @@ bool Collider::Intersects(const Collider& other, Geometry::Contact* outContact) 
     if (a < 0 || a >= kShapeCount || b < 0 || b >= kShapeCount) {
         return false;
     }
-    return kDispatch[a][b](*this, other, outContact);
+    return kDispatch[static_cast<size_t>(a)][static_cast<size_t>(b)](*this, other, outContact);
 }
 
 //================================================
