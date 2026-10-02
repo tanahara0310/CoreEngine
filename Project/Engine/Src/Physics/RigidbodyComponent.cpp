@@ -57,6 +57,25 @@ namespace CoreEngine
             const Vector3 lever = worldPoint - GetOwner()->GetWorldPosition();
             angularVelocity_ += ApplyInverseInertia(Cross(lever, impulse));
         }
+        WakeIfSleeping();
+    }
+
+    void RigidbodyComponent::SetVelocity(const Vector3& velocity)
+    {
+        velocity_ = velocity;
+        WakeIfSleeping();
+    }
+
+    void RigidbodyComponent::SetAngularVelocity(const Vector3& angularVelocity)
+    {
+        angularVelocity_ = angularVelocity;
+        WakeIfSleeping();
+    }
+
+    void RigidbodyComponent::SetBodyType(BodyType type)
+    {
+        bodyType_ = type;
+        WakeIfSleeping();
     }
 
     void RigidbodyComponent::SetMass(float mass)
@@ -162,6 +181,13 @@ namespace CoreEngine
     {
         sleeping_ = false;
         stillTime_ = 0.0f;
+    }
+
+    void RigidbodyComponent::WakeIfSleeping()
+    {
+        if (sleeping_) {
+            WakeUp();
+        }
     }
 
     void RigidbodyComponent::UpdateSleepState(float deltaTime, float linearThreshold,
