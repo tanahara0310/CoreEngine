@@ -1,8 +1,11 @@
 #include "pch.h"
 #include "AnimationPlayer.h"
 
+#include "AnimationUtils.h"
 #include "Graphics/Model/ModelResource.h"
 #include "Utility/Logger/Logger.h"
+
+#include <algorithm>
 
 namespace CoreEngine
 {
@@ -16,8 +19,30 @@ namespace CoreEngine
     }
 
     void AnimationPlayer::Update(float deltaTime) {
-        if (controller_) {
-            controller_->Update(deltaTime);
+        if (!controller_) {
+            return;
+        }
+        controller_->Update(deltaTime);
+        if (!blend_) {
+            return;
+        }
+
+        // 切り替え先も同じ時間だけ進め、経過の割合を切り替え先の重みにして姿勢を混ぜる
+        blend_->target->Update(deltaTime);
+        blend_->elapsed += deltaTime;
+        const float weight = blend_->duration > 0.0f
+            ? (std::min)(1.0f, blend_->elapsed / blend_->duration)
+            : 1.0f;
+        const Skeleton* from = controller_->GetSkeleton();
+        const Skeleton* to = blend_->target->GetSkeleton();
+        if (from && to) {
+            blend_->pose = AnimationUtils::BlendSkeletons(*from, *to, weight);
+        }
+
+        // ブレンドし終えたら、切り替え先をそのまま再生中のコントローラーにする
+        if (blend_->elapsed >= blend_->duration) {
+            controller_ = std::move(blend_->target);
+            blend_.reset();
         }
     }
 
@@ -25,6 +50,7 @@ namespace CoreEngine
         if (controller_) {
             controller_->Reset();
         }
+        blend_.reset();
     }
 
     float AnimationPlayer::GetTime() const {
@@ -36,10 +62,13 @@ namespace CoreEngine
     }
 
     bool AnimationPlayer::IsBlending() const {
-        return controller_ ? controller_->IsBlending() : false;
+        return blend_.has_value();
     }
 
     const Skeleton* AnimationPlayer::GetSkeleton() const {
+        if (blend_ && blend_->pose) {
+            return &*blend_->pose;
+        }
         return controller_ ? controller_->GetSkeleton() : nullptr;
     }
 
@@ -85,8 +114,10 @@ namespace CoreEngine
             return false;
         }
 
-        // 現在のスケルトン状態から新しいコントローラーを生成（ファクトリーがコピーを保持する）
-        controller_ = factory_->CreateSkeletonAnimator(*controller_->GetSkeleton(), *newAnimation, loop);
+        // 今の姿勢から新しいコントローラーを生成し（ファクトリーがコピーを保持する）、ブレンド中ならやめる
+        auto next = factory_->CreateSkeletonAnimator(*GetSkeleton(), *newAnimation, loop);
+        blend_.reset();
+        controller_ = std::move(next);
 
         Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}",
             "Switched to animation: " + animationName);
@@ -99,17 +130,14 @@ namespace CoreEngine
             return false;
         }
 
-        // ブレンド先コントローラーを生成（現在のスケルトン状態を初期姿勢として引き継ぐ）
-        auto newAnimator = factory_->CreateSkeletonAnimator(*controller_->GetSkeleton(), *newAnimation, loop);
-
-        if (controller_->IsBlending()) {
-            // 既に AnimationBlender として動作中 → ターゲットだけ切り替える（dynamic_cast 不要）
-            controller_->AddBlendTarget(std::move(newAnimator), blendDuration);
-        } else {
-            // SkeletonAnimator からブレンダーへ置き換え
-            controller_ = factory_->CreateBlenderWithTarget(
-                std::move(controller_), std::move(newAnimator), blendDuration);
+        // 切り替え先は今の姿勢を初期姿勢として作る。ブレンド中なら切り替え先だけ差し替え、時間を数え直す
+        auto target = factory_->CreateSkeletonAnimator(*GetSkeleton(), *newAnimation, loop);
+        if (!blend_) {
+            blend_.emplace();
         }
+        blend_->target = std::move(target);
+        blend_->elapsed = 0.0f;
+        blend_->duration = blendDuration;
 
         Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}",
             "Started blend to animation: " + animationName);

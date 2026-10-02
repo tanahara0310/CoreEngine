@@ -33,17 +33,5 @@ public:
     /// @return スケルトンへのポインタ（非対応の場合はnullptr）
     virtual Skeleton* GetSkeleton() { return nullptr; }
     virtual const Skeleton* GetSkeleton() const { return nullptr; }
-
-    /// @brief 現在ブレンド遷移中か確認
-    /// @return ブレンド中なら true（デフォルト: false）
-    virtual bool IsBlending() const { return false; }
-
-    /// @brief ブレンド先ターゲットを追加（AnimationBlender のみ有効）
-    /// @param target ブレンド先コントローラー
-    /// @param blendDuration ブレンド時間（秒）
-    virtual void AddBlendTarget(std::unique_ptr<IAnimationController> target, float blendDuration) {
-        (void)target;
-        (void)blendDuration;
-    }
 };
 }

@@ -10,7 +10,7 @@ namespace CoreEngine {
 namespace CoreEngine
 {
     /// @brief アニメーションコントローラー生成のファクトリインターフェース
-    /// Model が SkeletonAnimator / AnimationBlender の具体型に依存しないよう
+    /// Model が SkeletonAnimator の具体型に依存しないよう
     /// 生成責任をこのインターフェースに集約する（DIP）
     class IAnimationControllerFactory {
     public:
@@ -24,14 +24,5 @@ namespace CoreEngine
             const Skeleton& skeleton,
             const Animation& animation,
             bool loop) const = 0;
-
-        /// @brief AnimationBlender を生成し、ブレンド開始状態で返す
-        /// @param from 現在のコントローラー（Blender に移譲）
-        /// @param to ブレンド先のコントローラー
-        /// @param blendDuration ブレンド時間（秒）
-        virtual std::unique_ptr<IAnimationController> CreateBlenderWithTarget(
-            std::unique_ptr<IAnimationController> from,
-            std::unique_ptr<IAnimationController> to,
-            float blendDuration) const = 0;
     };
 }
