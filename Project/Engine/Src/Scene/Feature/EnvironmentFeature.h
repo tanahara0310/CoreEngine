@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ISceneFeature.h"
+#include "GameObject/Component/Core/ObjectRef.h"
 
 #include <chrono>
 #include <cstdint>
@@ -32,9 +33,6 @@ namespace CoreEngine
         bool RunsWhileStopped() const override { return true; }
         void Finalize(SceneContext& ctx) override;
 
-        /// @brief シーンの SkyBox（大気散乱で描く空）を取得
-        SkyBoxComponent* GetSkyBox() const { return skyBox_; }
-
     private:
         /// @brief 環境のコンポーネントを採用する（足りなければ `Environment` を作って載せる）
         void SetupEnvironmentObject(SceneContext& ctx);
@@ -61,11 +59,11 @@ namespace CoreEngine
         ///          FogManager::Update が「このフレームはフォグを使う」フラグを立てる。
         void UpdateFog(SceneContext& ctx);
 
-        // 環境のコンポーネント（所有権は GameObjectManager。Finalize でポインタをクリアする）
-        SkyBoxComponent* skyBox_ = nullptr;
-        VolumetricCloudComponent* cloud_ = nullptr;
-        HeightFogComponent* fog_ = nullptr;
-        PostProcessComponent* postProcess_ = nullptr;
+        // 環境のコンポーネント（所有権は GameObjectManager。使うたびに ID から引き直す）
+        ObjectRef<SkyBoxComponent> skyBox_;
+        ObjectRef<VolumetricCloudComponent> cloud_;
+        ObjectRef<HeightFogComponent> fog_;
+        ObjectRef<PostProcessComponent> postProcess_;
 
         // 前回そろえた時点の有効・無効（どちら側が変わったかを見分けるための控え）
         bool lastCloudEnabled_ = false;

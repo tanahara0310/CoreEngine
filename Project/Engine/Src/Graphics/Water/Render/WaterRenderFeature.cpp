@@ -78,10 +78,10 @@ namespace CoreEngine
         }
 #endif
 
-        if (waterPlane_) {
+        if (WaterSurfaceComponent* const waterPlane = waterPlane_.Get()) {
             // 初期フレームでも水面シェーダーの時間が不定にならないよう即時反映する
             if (auto* activeSimulator = GetActiveSimulator()) {
-                waterPlane_->SetSimulationTime(activeSimulator->GetElapsedTime());
+                waterPlane->SetSimulationTime(activeSimulator->GetElapsedTime());
             }
         }
 
@@ -105,7 +105,7 @@ namespace CoreEngine
         // AtmosphereManager::IsAtmosphereActive() はフレーム後半まで立たないため、
         // 空の有無そのものを見る（EnvironmentFeature が先に SkyBox を確定させている）。
         if (auto* skyBox = ctx.gameObjectManager->FindFirstComponent<SkyBoxComponent>()) {
-            skyBox_ = skyBox;
+            skyBox_.Set(skyBox);
         }
     }
 
@@ -113,14 +113,15 @@ namespace CoreEngine
     {
         // 保存データで置いた水面があれば、そちらを使ってこの Feature が作った水面は消す
         // （結線は毎フレームの RefreshWaterSurfaceState が張り直す）
-        if (!ownsWaterPlane_ || !waterPlane_) {
+        WaterSurfaceComponent* const ownWaterPlane = waterPlane_.Get();
+        if (!ownsWaterPlane_ || !ownWaterPlane) {
             return;
         }
 
         WaterSurfaceComponent* sceneWaterPlane = nullptr;
         ctx.gameObjectManager->ForEachComponent<WaterSurfaceComponent>(
             [&](WaterSurfaceComponent& component) {
-                if (&component != waterPlane_) {
+                if (&component != ownWaterPlane) {
                     sceneWaterPlane = &component;
                 }
             });
@@ -128,10 +129,10 @@ namespace CoreEngine
             return;
         }
 
-        if (GameObject* const owner = waterPlane_->GetOwner()) {
+        if (GameObject* const owner = ownWaterPlane->GetOwner()) {
             owner->Destroy();
         }
-        waterPlane_ = sceneWaterPlane;
+        waterPlane_.Set(sceneWaterPlane);
         ownsWaterPlane_ = false;
     }
 
@@ -148,17 +149,18 @@ namespace CoreEngine
                 fftOceanSimulator_->AdvanceSimulation(deltaTime);
             }
 
-            if (!waterPlane_) {
+            WaterSurfaceComponent* const waterPlane = waterPlane_.Get();
+            if (!waterPlane) {
                 break;
             }
 
             // Gerstner 側の時間進行と表示用 UV アニメーションを同期させる
-            if (!waterPlane_->IsUsingFFTOcean() && gerstnerSimulator_) {
+            if (!waterPlane->IsUsingFFTOcean() && gerstnerSimulator_) {
                 gerstnerSimulator_->AdvanceSimulation(deltaTime);
             }
             if (auto* activeSimulator = GetActiveSimulator()) {
-                waterPlane_->UpdateUVAnimation(deltaTime);
-                waterPlane_->SetSimulationTime(activeSimulator->GetElapsedTime());
+                waterPlane->UpdateUVAnimation(deltaTime);
+                waterPlane->SetSimulationTime(activeSimulator->GetElapsedTime());
             }
             break;
         }
@@ -178,11 +180,12 @@ namespace CoreEngine
             ConnectSurfaceModelProvider(*domain);
 
             // FFT の時刻とサーフェス状態を描画側へ publish する
+            WaterSurfaceComponent* const waterPlane = waterPlane_.Get();
             domain->PublishFFTOceanSimulationTime(
                 fftOceanSimulator_ ? fftOceanSimulator_->GetElapsedTime() : 0.0f);
-            domain->PublishWaterSurfaceState(waterPlane_ ? &waterSurfaceState_ : nullptr);
+            domain->PublishWaterSurfaceState(waterPlane ? &waterSurfaceState_ : nullptr);
 
-            if (!waterPlane_) {
+            if (!waterPlane) {
                 break;
             }
 
@@ -194,7 +197,7 @@ namespace CoreEngine
             SyncFoamSettings(*domain);
 
             const WaterFrameBinding binding = BuildFrameBinding(ctx, *domain);
-            waterPlane_->ApplyFrameBinding(binding);
+            waterPlane->ApplyFrameBinding(binding);
             LogFrameDiagnostics(binding);
             break;
         }
@@ -212,11 +215,11 @@ namespace CoreEngine
         }
 #endif
 
-        // 水面オブジェクトは GameObjectManager が所有しているためポインタのみクリア。
+        // 水面オブジェクトは GameObjectManager が所有しているため参照だけ外す。
         // ConnectSurfaceModelProvider は waterPlane_ の有無で接続/切断を決めるので、
-        // 切断のためには **先に** null にしておく必要がある。
-        waterPlane_ = nullptr;
-        skyBox_ = nullptr;
+        // 切断のためには **先に** 外しておく必要がある。
+        waterPlane_.Reset();
+        skyBox_.Reset();
 
         if (surfaceModelProvider_) {
             surfaceModelProvider_->ClearSurfaceData();
@@ -237,17 +240,24 @@ namespace CoreEngine
         return publishTarget_ ? publishTarget_->GetWaterFoamSystem() : nullptr;
     }
 
+    WaterSurfaceComponent* WaterRenderFeature::GetWaterPlane() const
+    {
+        return waterPlane_.Get();
+    }
+
     float WaterRenderFeature::GetWaterHeight() const
     {
-        return waterPlane_ ? waterPlane_->GetTransform().translate.y : 0.0f;
+        const WaterSurfaceComponent* const waterPlane = waterPlane_.Get();
+        return waterPlane ? waterPlane->GetTransform().translate.y : 0.0f;
     }
 
     WaterSurfaceSimulator* WaterRenderFeature::GetActiveSimulator() const
     {
-        if (!waterPlane_) {
+        const WaterSurfaceComponent* const waterPlane = waterPlane_.Get();
+        if (!waterPlane) {
             return nullptr;
         }
-        return waterPlane_->IsUsingFFTOcean()
+        return waterPlane->IsUsingFFTOcean()
             ? fftOceanSimulator_.get()
             : gerstnerSimulator_.get();
     }
@@ -261,7 +271,7 @@ namespace CoreEngine
         // シーンのコードが既に水面を置いていればそれを採用する（EnvironmentFeature と同じ規約）。
         // 保存データで置いた水面はこの時点ではまだ生まれていないので、PostSceneInitialize で見直す
         if (auto* existing = ctx.gameObjectManager->FindFirstComponent<WaterSurfaceComponent>()) {
-            waterPlane_ = existing;
+            waterPlane_.Set(existing);
             return;
         }
 
@@ -271,27 +281,29 @@ namespace CoreEngine
         if (!object) {
             return;
         }
-        waterPlane_ = object->AddComponent<WaterSurfaceComponent>(
+        WaterSurfaceComponent* const waterPlane = object->AddComponent<WaterSurfaceComponent>(
             config_.size, config_.resolution, config_.useFFTOcean);
-        if (!waterPlane_) {
+        if (!waterPlane) {
             return;
         }
+        waterPlane_.Set(waterPlane);
         ownsWaterPlane_ = true;
 
-        waterPlane_->GetTransform().translate = config_.translate;
-        waterPlane_->GetTransform().scale = config_.scale;
+        waterPlane->GetTransform().translate = config_.translate;
+        waterPlane->GetTransform().scale = config_.scale;
         // 既定のスクロール/タイリングは Lake プリセットを単一情報源とする
         // （以前はここと WaterSurfaceComponent コンストラクタに同値のハードコードが重複していた）
         const WaterPresetData& defaultPreset = GetWaterPresetData(WaterPresetType::Lake);
-        waterPlane_->SetScrollSpeed(defaultPreset.scrollSpeed);
-        waterPlane_->SetUVTiling(defaultPreset.uvTiling);
+        waterPlane->SetScrollSpeed(defaultPreset.scrollSpeed);
+        waterPlane->SetUVTiling(defaultPreset.uvTiling);
         ConfigureDefaultMaterial();
     }
 
     void WaterRenderFeature::ConfigureDefaultMaterial() const
     {
-        auto* material = (waterPlane_ && waterPlane_->GetModel())
-            ? waterPlane_->GetModel()->GetMaterial()
+        WaterSurfaceComponent* const waterPlane = waterPlane_.Get();
+        auto* material = (waterPlane && waterPlane->GetModel())
+            ? waterPlane->GetModel()->GetMaterial()
             : nullptr;
         if (!material) {
             return;
@@ -314,7 +326,7 @@ namespace CoreEngine
     {
         // 水面不在のフレームは provider を外し、RT 側をフォールバックへ切り替える
         const std::shared_ptr<const IWaterSurfaceModelProvider> provider =
-            waterPlane_ ? std::static_pointer_cast<const IWaterSurfaceModelProvider>(surfaceModelProvider_)
+            waterPlane_.Get() ? std::static_pointer_cast<const IWaterSurfaceModelProvider>(surfaceModelProvider_)
             : std::shared_ptr<const IWaterSurfaceModelProvider>{};
 
         if (auto* refraction = domain.GetWaterRefractionRayTracingManager()) {
@@ -411,7 +423,7 @@ namespace CoreEngine
 
         // 大気散乱（Aerial Perspective）・空アンビエント・空スペキュラの接続
         if (auto* atmosphere = domain.GetAtmosphereManager()) {
-            const bool atmosphereSky = (skyBox_ != nullptr);
+            const bool atmosphereSky = (skyBox_.Get() != nullptr);
             const bool apEnabled = atmosphereSky
                 && atmosphere->IsConstantBufferReady()
                 && atmosphere->AreLUTsReady();
@@ -441,23 +453,24 @@ namespace CoreEngine
 
     void WaterRenderFeature::ApplySettingsFromCVars(SceneContext& ctx, RenderDomainContext& domain)
     {
-        if (!waterPlane_) {
+        WaterSurfaceComponent* const waterPlane = waterPlane_.Get();
+        if (!waterPlane) {
             return;
         }
 
         // ---- 見た目・水質・泡 → WaterSurfaceComponent ----
         // setter は CPU 側ミラーの更新のみで安価なため毎フレーム呼んでよい
         // （cbuffer 転送は描画時に一括で行われる）。
-        waterPlane_->SetBaseColor(WaterCVars::BaseColor.Get());
-        waterPlane_->SetRoughness(WaterCVars::Roughness.Get());
-        waterPlane_->SetMetallic(WaterCVars::Metallic.Get());
-        waterPlane_->SetIBLEnabled(WaterCVars::IBLEnabled.Get());
-        waterPlane_->SetFresnelParameters(WaterCVars::FresnelScale.Get(), WaterCVars::FresnelF0.Get());
-        waterPlane_->SetScrollSpeed(WaterCVars::ScrollSpeed.Get());
-        waterPlane_->SetUVTiling(WaterCVars::UVTiling.Get());
-        waterPlane_->SetDepthFade(WaterCVars::DepthFadeEnabled.Get());
+        waterPlane->SetBaseColor(WaterCVars::BaseColor.Get());
+        waterPlane->SetRoughness(WaterCVars::Roughness.Get());
+        waterPlane->SetMetallic(WaterCVars::Metallic.Get());
+        waterPlane->SetIBLEnabled(WaterCVars::IBLEnabled.Get());
+        waterPlane->SetFresnelParameters(WaterCVars::FresnelScale.Get(), WaterCVars::FresnelF0.Get());
+        waterPlane->SetScrollSpeed(WaterCVars::ScrollSpeed.Get());
+        waterPlane->SetUVTiling(WaterCVars::UVTiling.Get());
+        waterPlane->SetDepthFade(WaterCVars::DepthFadeEnabled.Get());
         // 実効 σa/σs = ベース + 濁度ゲイン（合成は WaterCVars 側。永続化はベース値のみ）
-        waterPlane_->SetWaterOpticalCoefficients(
+        waterPlane->SetWaterOpticalCoefficients(
             WaterCVars::EffectiveAbsorption(), WaterCVars::EffectiveScattering());
         // 白波のしきい値は WaterFoamSystem が白波の被覆率から較正した値を使う
         float foamBias = WaterFoamDefaults::kBias;
@@ -466,7 +479,7 @@ namespace CoreEngine
             foamBias = foam->GetWhitecapBias();
             foamGain = foam->GetWhitecapGain();
         }
-        waterPlane_->SetFoamParameters(
+        waterPlane->SetFoamParameters(
             WaterCVars::FoamEnabled.Get(),
             foamBias,
             foamGain,
@@ -476,13 +489,13 @@ namespace CoreEngine
 
         // 波群エンベロープの位相（FFT の時刻までに波のエネルギーが群速度で進んだ分）
         if (const FFTOceanManager* fftOcean = domain.GetFFTOceanManager(); fftOcean && fftOceanSimulator_) {
-            waterPlane_->SetWaveGroupPhase(fftOcean->ComputeWaveGroupPhase(fftOceanSimulator_->GetElapsedTime()));
+            waterPlane->SetWaveGroupPhase(fftOcean->ComputeWaveGroupPhase(fftOceanSimulator_->GetElapsedTime()));
         }
 
         // ---- FFT Ocean 経路の有効/無効（変化時のみ。PSO 再構築を伴う）----
         const bool fftEnabled = WaterCVars::FFTEnabled.Get();
-        if (waterPlane_->IsUsingFFTOcean() != fftEnabled) {
-            waterPlane_->SetUseFFTOcean(fftEnabled);
+        if (waterPlane->IsUsingFFTOcean() != fftEnabled) {
+            waterPlane->SetUseFFTOcean(fftEnabled);
         }
 
         // ---- FFT シミュレーション設定（revision 変化時のみ）----
@@ -561,17 +574,18 @@ namespace CoreEngine
 
     void WaterRenderFeature::SyncFoamSettings(RenderDomainContext& domain) const
     {
+        WaterSurfaceComponent* const waterPlane = waterPlane_.Get();
         // 泡パラメータの単一情報源は WaterFrameConstants（UI / 永続化と同経路）。
         // 泡の時間変化を進める WaterFoamSystem へ毎フレーム渡す。
         // 白波の被覆率の目標を決める風速と倍率は CVar から渡す。
         auto* foam = domain.GetWaterFoamSystem();
-        if (!foam || !waterPlane_) {
+        if (!foam || !waterPlane) {
             return;
         }
 
-        const WaterFrameConstants& frameConstants = waterPlane_->GetFrameConstants();
+        const WaterFrameConstants& frameConstants = waterPlane->GetFrameConstants();
         WaterFoamSystem::Settings foamSettings{};
-        foamSettings.enabled = frameConstants.foamEnabled != 0 && waterPlane_->IsUsingFFTOcean();
+        foamSettings.enabled = frameConstants.foamEnabled != 0 && waterPlane->IsUsingFFTOcean();
         foamSettings.windSpeed = WaterCVars::FFTWindSpeed.Get();
         foamSettings.whitecapScale = WaterCVars::FoamWhitecapScale.Get();
         if (const FFTOceanManager* fftOcean = domain.GetFFTOceanManager()) {
@@ -587,19 +601,20 @@ namespace CoreEngine
         // 白波の泡が FFT の時刻までに風下へ流れた距離（模様と残っている泡をこれだけずらして読む）と、
         // 模様を風の向きに伸ばす軸
         const float fftTimeSeconds = fftOceanSimulator_ ? fftOceanSimulator_->GetElapsedTime() : 0.0f;
-        waterPlane_->SetFoamMotion(foam->ComputeFoamDriftOffset(fftTimeSeconds), foam->ComputeFoamStretchAxis());
+        waterPlane->SetFoamMotion(foam->ComputeFoamDriftOffset(fftTimeSeconds), foam->ComputeFoamStretchAxis());
     }
 
     void WaterRenderFeature::SyncCausticsAbsorption(RenderDomainContext& domain) const
     {
+        WaterSurfaceComponent* const waterPlane = waterPlane_.Get();
         // 水面描画と同じ波長依存吸収係数 σa を RT コースティクスへ同期する
         // （Jerlov プリセット / 濁度 UI の変更に Beer–Lambert 減衰を追従させる）
         auto* caustics = domain.GetWaterCausticsRayTracingManager();
-        if (!caustics || !waterPlane_) {
+        if (!caustics || !waterPlane) {
             return;
         }
 
-        const WaterFrameConstants& frameConstants = waterPlane_->GetFrameConstants();
+        const WaterFrameConstants& frameConstants = waterPlane->GetFrameConstants();
         WaterCausticsRayTracingSettings settings = caustics->GetSettings();
         settings.absorptionCoeff[0] = frameConstants.absorptionCoeff[0];
         settings.absorptionCoeff[1] = frameConstants.absorptionCoeff[1];
@@ -609,17 +624,18 @@ namespace CoreEngine
 
     void WaterRenderFeature::RefreshWaterSurfaceState()
     {
+        WaterSurfaceComponent* const waterPlane = waterPlane_.Get();
         // 前フレームの値を破棄し、現在の水面状態から再構築する
         waterSurfaceState_ = {};
-        if (!waterPlane_) {
+        if (!waterPlane) {
             return;
         }
 
         // 水面が無効なフレームは「水なし」として扱う。
         // regionValid=0 を publish しないと RT コースティクスと水中ライティングが動き続け、
         // 非表示のはずの水の光学効果（薄い青色）が床に乗り続ける。
-        const GameObject* const waterObject = waterPlane_->GetOwner();
-        if (!waterPlane_->IsEnabled() || !waterObject || !waterObject->IsActive()) {
+        const GameObject* const waterObject = waterPlane->GetOwner();
+        if (!waterPlane->IsEnabled() || !waterObject || !waterObject->IsActive()) {
             if (surfaceModelProvider_) {
                 surfaceModelProvider_->ClearSurfaceData();
             }
@@ -627,8 +643,8 @@ namespace CoreEngine
         }
 
         WaterSurfaceSimulationInput simulationInput{};
-        simulationInput.waterHeight = waterPlane_->GetTransform().translate.y;
-        simulationInput.gerstnerConstants = &waterPlane_->GetWaterConstants();
+        simulationInput.waterHeight = waterPlane->GetTransform().translate.y;
+        simulationInput.gerstnerConstants = &waterPlane->GetWaterConstants();
 
         auto* activeSimulator = GetActiveSimulator();
         if (!activeSimulator) {
@@ -646,9 +662,9 @@ namespace CoreEngine
         // 水面メッシュのワールド XZ 範囲。コースティクスが水域の外（無限市松床など）へ
         // 漏れないようにするための受光マスク。メッシュはローカル ±localSize/2 に広がる
         // 正方形（回転は非対応＝ゼロ前提）なので、ワールド半径は 0.5 * localSize * scale。
-        const float localSize = waterPlane_->GetSize();
+        const float localSize = waterPlane->GetSize();
         if (localSize > 1.0e-4f) {
-            const auto& transform = waterPlane_->GetTransform();
+            const auto& transform = waterPlane->GetTransform();
             waterSurfaceState_.regionCenterXZ[0] = transform.translate.x;
             waterSurfaceState_.regionCenterXZ[1] = transform.translate.z;
             waterSurfaceState_.regionHalfExtentXZ[0] = 0.5f * localSize * transform.scale.x;
@@ -656,7 +672,7 @@ namespace CoreEngine
             waterSurfaceState_.regionValid = 1;
         }
         // coverage 判定のメッシュ同一基準化に使う実際の頂点グリッド分割数
-        waterSurfaceState_.meshSubdivisions = static_cast<float>(waterPlane_->GetResolution());
+        waterSurfaceState_.meshSubdivisions = static_cast<float>(waterPlane->GetResolution());
 
         if (surfaceModelProvider_) {
             surfaceModelProvider_->SetSurfaceData(
@@ -666,9 +682,10 @@ namespace CoreEngine
 
     void WaterRenderFeature::LogFrameDiagnostics(const WaterFrameBinding& binding) const
     {
+        WaterSurfaceComponent* const waterPlane = waterPlane_.Get();
         // デバッグ表示中のみ。以前は SRV setter 6 個・BindCustomResources・
         // サーフェス更新に散らばった 8 種類のログがそれぞれ独自の頻度で出ていた。
-        if (!waterPlane_ || waterPlane_->GetFrameConstants().depthFadeDebugEnabled == 0) {
+        if (!waterPlane || waterPlane->GetFrameConstants().depthFadeDebugEnabled == 0) {
             return;
         }
 
@@ -677,7 +694,7 @@ namespace CoreEngine
             return;
         }
 
-        const WaterFrameConstants& frameConstants = waterPlane_->GetFrameConstants();
+        const WaterFrameConstants& frameConstants = waterPlane->GetFrameConstants();
         const WaterRenderResources& resources = binding.resources;
         Logger::GetInstance().Infof(
             LogCategory::Graphics,
@@ -705,6 +722,6 @@ namespace CoreEngine
             waterSurfaceState_.activeWaveCount,
             waterSurfaceState_.time,
             waterSurfaceState_.regionValid,
-            waterPlane_->IsUsingFFTOcean());
+            waterPlane->IsUsingFFTOcean());
     }
 }

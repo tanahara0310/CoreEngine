@@ -4,13 +4,15 @@
 #include "GameObject/Component/Core/ComponentFactory.h"
 #include "Math/MathCore.h"
 
+REFLECT_REGISTER(CoreEngine::SkeletonSocketComponent)
 COMPONENT_REGISTER(CoreEngine::SkeletonSocketComponent)
 
 namespace CoreEngine
 {
     void SkeletonSocketComponent::LateUpdate()
     {
-        if (!IsAttached()) {
+        const AnimatorComponent* const animator = animator_.Get();
+        if (!animator || jointName_.empty()) {
             return;
         }
         if (!transform_) {
@@ -18,7 +20,7 @@ namespace CoreEngine
             if (!transform_) { return; }
         }
 
-        const std::optional<Matrix4x4> jointWorld = animator_->GetJointWorldMatrix(jointName_);
+        const std::optional<Matrix4x4> jointWorld = animator->GetJointWorldMatrix(jointName_);
         if (!jointWorld) {
             return;
         }

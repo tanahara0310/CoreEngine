@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Scene/Feature/ISceneFeature.h"
+#include "GameObject/Component/Core/ObjectRef.h"
 #include "Graphics/Water/Simulation/WaterSurfaceModelProvider.h"
 #include "Graphics/Water/Simulation/WaterSurfaceSimulator.h"
 #include "Graphics/Water/Surface/WaterRenderResources.h"
@@ -56,8 +57,8 @@ namespace CoreEngine
         bool RunsWhileStopped() const override { return true; }
         void Finalize(SceneContext& ctx) override;
 
-        /// @brief 管理中の水面オブジェクトを返す（未生成なら nullptr）
-        WaterSurfaceComponent* GetWaterPlane() const { return waterPlane_; }
+        /// @brief 管理中の水面オブジェクトを返す（未生成か、消えていれば nullptr）
+        WaterSurfaceComponent* GetWaterPlane() const;
 
         /// @brief 泡の時間変化を進めるシステムを返す（描画側に無ければ nullptr）
         const WaterFoamSystem* GetWaterFoamSystem() const;
@@ -112,14 +113,14 @@ namespace CoreEngine
 
         Config config_{};
 
-        /// @brief 水面描画本体（所有権は GameObjectManager）
-        WaterSurfaceComponent* waterPlane_ = nullptr;
+        /// @brief 水面描画本体（所有権は GameObjectManager。使うたびに ID から引き直す）
+        ObjectRef<WaterSurfaceComponent> waterPlane_;
 
         /// この Feature が水面を作ったか（シーンが自前の水面を置いていたら引っ込める）
         bool ownsWaterPlane_ = false;
 
-        /// @brief 空気遠近感の適用可否判定に使う空（所有権は GameObjectManager）
-        SkyBoxComponent* skyBox_ = nullptr;
+        /// @brief 空気遠近感の適用可否判定に使う空（所有権は GameObjectManager。使うたびに ID から引き直す）
+        ObjectRef<SkyBoxComponent> skyBox_;
 
         /// @brief 現在フレームの水面状態（RenderDomainContext へ publish する実体）
         WaterSurfaceData waterSurfaceState_{};
