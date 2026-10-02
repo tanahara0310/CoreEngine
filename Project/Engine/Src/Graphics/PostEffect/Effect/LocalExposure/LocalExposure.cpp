@@ -54,7 +54,7 @@ namespace CoreEngine
         constexpr uint32_t DispatchCount(uint32_t size) { return (size + 7) / 8; }
     }
 
-    void LocalExposure::OnCreateConstantBuffers()
+    void LocalExposure::OnCreateResources()
     {
         internalPipelinesReady_ = CreateInternalPipelines();
         if (!internalPipelinesReady_) {

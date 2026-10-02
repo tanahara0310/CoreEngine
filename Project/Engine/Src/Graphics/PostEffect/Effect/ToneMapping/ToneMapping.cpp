@@ -13,7 +13,6 @@
 #include "Editor/ImGui/CVarPanel.h"
 #endif
 #include <algorithm>
-#include <cassert>
 #include <cmath>
 
 
@@ -115,13 +114,8 @@ namespace CoreEngine
         cvReferenceLuminance.Set(std::max(adaptedLuminance_, 1e-6f));
     }
 
-    void ToneMapping::OnCreateConstantBuffers()
+    void ToneMapping::OnCreateResources()
     {
-        UINT size = (sizeof(ScreenParams) + 255) & ~255;
-        screenParamsCB_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), size);
-        [[maybe_unused]] HRESULT hr = screenParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedScreenParams_));
-        assert(SUCCEEDED(hr));
-
         CreateAutoExposureResources();
     }
 
@@ -161,16 +155,6 @@ namespace CoreEngine
             reductionShaderBlob_, "ToneMapping_LuminanceReduction");
         if (!reductionPso_) {
             return;
-        }
-
-        // ===== ヒストグラム測光の設定バッファ（b1・永続マップ） =====
-        {
-            const UINT size = (sizeof(HistogramMeteringParams) + 255) & ~255u;
-            histogramParamsCB_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), size);
-            if (!histogramParamsCB_ ||
-                FAILED(histogramParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedHistogramParams_)))) {
-                return;
-            }
         }
 
         // ===== 測光結果の出力バッファ（DEFAULT ヒープ・UAV） =====
@@ -278,14 +262,14 @@ namespace CoreEngine
     }
 
     void ToneMapping::RecordLuminanceReduction(
-        ID3D12GraphicsCommandList* cmdList, D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle)
+        ID3D12GraphicsCommandList* cmdList, D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle,
+        D3D12_GPU_VIRTUAL_ADDRESS screenParams)
     {
-        // 百分位カットの設定を書き込む（low >= high の設定ミスは境界を離して救済する）
-        if (mappedHistogramParams_) {
-            const float high = cvHighPercentile.Get();
-            mappedHistogramParams_->lowPercentile = std::min(cvLowPercentile.Get(), high - 0.01f);
-            mappedHistogramParams_->highPercentile = high;
-        }
+        // 百分位カットの設定（low >= high の設定ミスは境界を離して救済する）
+        HistogramMeteringParams histogram{};
+        const float high = cvHighPercentile.Get();
+        histogram.lowPercentile = std::min(cvLowPercentile.Get(), high - 0.01f);
+        histogram.highPercentile = high;
 
         cmdList->SetComputeRootSignature(reductionRootSignature_->GetRootSignature());
         cmdList->SetPipelineState(reductionPso_.Get());
@@ -295,8 +279,8 @@ namespace CoreEngine
         const int histIdx = reductionReflection_->GetRootParameterIndexByName("HistogramParams");
         const int uavIdx = reductionReflection_->GetRootParameterIndexByName("gAvgLuminance");
         if (texIdx >= 0) cmdList->SetComputeRootDescriptorTable(texIdx, inputSrvHandle);
-        if (cbIdx >= 0) cmdList->SetComputeRootConstantBufferView(cbIdx, screenParamsCB_->GetGPUVirtualAddress());
-        if (histIdx >= 0) cmdList->SetComputeRootConstantBufferView(histIdx, histogramParamsCB_->GetGPUVirtualAddress());
+        if (cbIdx >= 0) cmdList->SetComputeRootConstantBufferView(cbIdx, screenParams);
+        if (histIdx >= 0) cmdList->SetComputeRootConstantBufferView(histIdx, UploadConstants(histogram));
         if (uavIdx >= 0) cmdList->SetComputeRootUnorderedAccessView(uavIdx, avgLogLumBuffer_.GpuAddress());
 
         // 1グループのみ（シェーダー側が 64x64 グリッドを分担して groupshared で縮約する）
@@ -318,17 +302,16 @@ namespace CoreEngine
         ++reductionFrameCounter_;
     }
 
-    void ToneMapping::UpdateScreenConstantBuffer(uint32_t width, uint32_t height)
+    ToneMapping::ScreenParams ToneMapping::MakeScreenParams(uint32_t width, uint32_t height) const
     {
-        if (mappedScreenParams_) {
-            mappedScreenParams_->screenWidth = width;
-            mappedScreenParams_->screenHeight = height;
-            // 自動露出有効時: 自動EV + 手動EV（補正オフセット）。無効時: 手動EVのみ（従来動作）
-            const bool useAuto = cvAutoExposureEnabled.Get() && autoExposureReady_;
-            mappedScreenParams_->exposureEV = cvExposureEV.Get() + (useAuto ? autoEV_ : 0.0f);
-            mappedScreenParams_->toneMapOperator =
-                static_cast<uint32_t>(std::clamp(cvToneMapOperator.Get(), 0, 2));
-        }
+        ScreenParams params{};
+        params.screenWidth = width;
+        params.screenHeight = height;
+        // 自動露出有効時: 自動EV + 手動EV（補正オフセット）。無効時: 手動EVのみ
+        const bool useAuto = cvAutoExposureEnabled.Get() && autoExposureReady_;
+        params.exposureEV = cvExposureEV.Get() + (useAuto ? autoEV_ : 0.0f);
+        params.toneMapOperator = static_cast<uint32_t>(std::clamp(cvToneMapOperator.Get(), 0, 2));
+        return params;
     }
 
     void ToneMapping::Dispatch(
@@ -340,20 +323,20 @@ namespace CoreEngine
         const bool useAutoExposure = cvAutoExposureEnabled.Get() && autoExposureReady_;
         const bool useIlluminationMetering = cvMeteringIllumination.Get() && illuminationValid_;
 
-        // 過去フレームの計測値で順応を進めてから、今フレームの露出を CB へ書き込む。
+        // 過去フレームの計測値で順応を進めてから、今フレームの露出を定数へ置く。
         // 暗転で塗り潰されている間（シーン切り替え）は、見えていない絵＝シーンの無い
         // 真っ黒な SceneColor へ順応してしまうので、順応も計測も止めて値を保持する
         if (useAutoExposure && !adaptationPaused_) {
             UpdateAutoExposureAdaptation();
         }
-        UpdateScreenConstantBuffer(width, height);
+        const D3D12_GPU_VIRTUAL_ADDRESS screenParams = UploadConstants(MakeScreenParams(width, height));
 
         auto* cmdList = graphicsCore_->GetCommandList();
 
         // 今フレームの入力輝度を計測する（結果は2フレーム後の順応更新で使われる）。
         // 照明駆動測光が有効な間は GPU 計測が不要なのでスキップする
         if (useAutoExposure && !useIlluminationMetering && !adaptationPaused_) {
-            RecordLuminanceReduction(cmdList, inputSrvHandle);
+            RecordLuminanceReduction(cmdList, inputSrvHandle, screenParams);
         }
 
         // 照明輝度は毎フレーム供給される前提の消費型フラグ。
@@ -370,7 +353,7 @@ namespace CoreEngine
 
         if (textureIdx >= 0)      cmdList->SetComputeRootDescriptorTable(textureIdx, inputSrvHandle);
         if (outputIdx >= 0)       cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
-        if (screenParamsIdx >= 0) cmdList->SetComputeRootConstantBufferView(screenParamsIdx, screenParamsCB_->GetGPUVirtualAddress());
+        if (screenParamsIdx >= 0) cmdList->SetComputeRootConstantBufferView(screenParamsIdx, screenParams);
 
         uint32_t groupX = (width + 7) / 8;
         uint32_t groupY = (height + 7) / 8;

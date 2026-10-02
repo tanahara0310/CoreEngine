@@ -36,7 +36,7 @@ namespace CoreEngine
         constexpr const char* kCVarPrefix = "r.Dissolve";
     }
 
-    void Dissolve::OnCreateConstantBuffers()
+    void Dissolve::OnCreateResources()
     {
         // ノイズテクスチャ読み込み
         auto& textureManager = TextureManager::GetInstance();

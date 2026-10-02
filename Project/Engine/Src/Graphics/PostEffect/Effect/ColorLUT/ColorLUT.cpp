@@ -13,7 +13,6 @@
 #include "Editor/ImGui/CVarPanel.h"
 #endif
 #include <algorithm>
-#include <cassert>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -36,23 +35,8 @@ namespace CoreEngine
         constexpr const char* kCVarPrefix = "r.ColorLUT";
     }
 
-    void ColorLUT::OnCreateConstantBuffers()
+    void ColorLUT::OnCreateResources()
     {
-        auto* device = graphicsCore_->GetDevice();
-
-        {
-            const UINT size = (sizeof(ColorLUTParams) + 255) & ~255u;
-            colorLutParamsCB_ = ResourceFactory::CreateBufferResource(device, size);
-            [[maybe_unused]] HRESULT hr = colorLutParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedColorLutParams_));
-            assert(SUCCEEDED(hr));
-        }
-        {
-            const UINT size = (sizeof(FillParams) + 255) & ~255u;
-            fillParamsCB_ = ResourceFactory::CreateBufferResource(device, size);
-            [[maybe_unused]] HRESULT hr = fillParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedFillParams_));
-            assert(SUCCEEDED(hr));
-        }
-
         lutResourcesReady_ = CreateLutResources() && CreateFillPipeline();
         if (!lutResourcesReady_) {
             Logger::GetInstance().Warnf(LogCategory::Graphics,
@@ -275,7 +259,8 @@ namespace CoreEngine
             return;
         }
 
-        mappedFillParams_->lutSize = lutSizeLoaded_;
+        FillParams params{};
+        params.lutSize = lutSizeLoaded_;
 
         // SRV 状態のままなら UAV へ戻す（初回は生成時から UAV。冗長なら発行されない）
         Barrier::Transition(cmdList, lutTexture_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -288,7 +273,7 @@ namespace CoreEngine
         const int paramsIdx = fillPipeline_.GetComputeRootParamIndex("FillParams");
         if (dataIdx >= 0)   cmdList->SetComputeRootDescriptorTable(dataIdx, lutDataSrvHandle_.gpuHandle);
         if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, lutUavHandle_.gpuHandle);
-        if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, fillParamsCB_->GetGPUVirtualAddress());
+        if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
 
         const uint32_t groups = (lutSizeLoaded_ + 3) / 4;
         cmdList->Dispatch(groups, groups, groups);
@@ -309,14 +294,15 @@ namespace CoreEngine
         uint32_t width,
         uint32_t height)
     {
-        if (!lutResourcesReady_ || !mappedColorLutParams_) {
+        if (!lutResourcesReady_) {
             return;
         }
 
-        mappedColorLutParams_->screenWidth  = width;
-        mappedColorLutParams_->screenHeight = height;
-        mappedColorLutParams_->lutSize      = lutSizeLoaded_;
-        mappedColorLutParams_->blend        = cvBlend.Get();
+        ColorLUTParams params{};
+        params.screenWidth  = width;
+        params.screenHeight = height;
+        params.lutSize      = lutSizeLoaded_;
+        params.blend        = cvBlend.Get();
 
         auto* cmdList = graphicsCore_->GetCommandList();
 
@@ -334,7 +320,7 @@ namespace CoreEngine
         if (textureIdx >= 0) cmdList->SetComputeRootDescriptorTable(textureIdx, inputSrvHandle);
         if (lutIdx >= 0)     cmdList->SetComputeRootDescriptorTable(lutIdx, lutSrvHandle_.gpuHandle);
         if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
-        if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, colorLutParamsCB_->GetGPUVirtualAddress());
+        if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
 
         cmdList->Dispatch((width + 7) / 8, (height + 7) / 8, 1);
     }

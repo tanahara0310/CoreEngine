@@ -46,12 +46,8 @@ namespace CoreEngine
             throw std::runtime_error(GetEffectName() + ": Failed to create Compute PSO");
         }
 
-        // 画面サイズ定数は全 CS エフェクト共通だが、実体は毎フレーム UploadRing から取る。
-        // （専用バッファを 1 本持って毎フレーム上書きすると、GPU が前フレームの
-        //   ディスパッチを実行する前に CPU が書き潰す）
-
-        // 派生クラスの定数バッファ生成
-        OnCreateConstantBuffers();
+        // 派生クラス固有のリソース生成
+        OnCreateResources();
     }
 
     void PostEffectComputeBase::UpdateScreenSizeConstants(uint32_t width, uint32_t height)

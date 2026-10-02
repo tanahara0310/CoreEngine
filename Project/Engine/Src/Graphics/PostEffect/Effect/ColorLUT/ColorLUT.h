@@ -85,7 +85,7 @@ protected:
 
     std::string  GetEffectName()        const override { return "ColorLUT"; }
     std::wstring GetComputeShaderPath() const override { return L"ColorLUT.CS.hlsl"; }
-    void OnCreateConstantBuffers() override;
+    void OnCreateResources() override;
 
 private:
     /// @brief Texture3D・アップロードバッファ・ビューを構築する
@@ -126,11 +126,6 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> lutDataBuffer_; ///< アップロードヒープ（永続マップ）
     LutTexel* mappedLutData_ = nullptr;
     DescriptorHandle lutDataSrvHandle_{};
-
-    Microsoft::WRL::ComPtr<ID3D12Resource> colorLutParamsCB_;
-    ColorLUTParams* mappedColorLutParams_ = nullptr;
-    Microsoft::WRL::ComPtr<ID3D12Resource> fillParamsCB_;
-    FillParams* mappedFillParams_ = nullptr;
 
     uint32_t lutSizeLoaded_ = 33;
     bool lutDirty_ = true;           ///< アップロードバッファの内容が Texture3D 未反映

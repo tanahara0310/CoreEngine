@@ -81,7 +81,7 @@ protected:
     std::string  GetEffectName()        const override { return "LocalExposure"; }
     /// @note 基底が要求する 1 本目の CS。適用パスとして使う
     std::wstring GetComputeShaderPath() const override { return L"LocalExposure.CS.hlsl"; }
-    void OnCreateConstantBuffers() override;
+    void OnCreateResources() override;
 
 private:
     /// @brief Downsample / Blur 用の追加パイプラインを構築する

@@ -104,7 +104,7 @@ protected:
     std::string  GetEffectName()        const override { return "MotionBlur"; }
     /// @note 基底が要求する 1 本目の CS。ギャザー本体として使う
     std::wstring GetComputeShaderPath() const override { return L"MotionBlur.CS.hlsl"; }
-    void OnCreateConstantBuffers() override;
+    void OnCreateResources() override;
 
 private:
     /// @brief TileMax / NeighborMax 用の追加パイプラインを構築する
