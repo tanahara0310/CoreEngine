@@ -15,15 +15,12 @@
 //   cbuffer : gFoamEnabled / gFoamBias / gFoamGain / gFoamCascadeWeights /
 //             gFoamWindCoverageScale / gUseFFTOceanNormalMap /
 //             gSeabedEnabled / gSeabedOriginXZ / gSeabedInvSize / gShoreFoamEnabled
-//   関数    : ComputeFFTCombinedDetJ / ComputeFFTCascadeUV / ComputeFFTWaveGroupEnvelope
-//             （Common/FFTOceanCascade.hlsli）
+//   関数    : ComputeFFTCombinedDetJ（Common/FFTOceanCascade.hlsli）
 // ============================================================
 #ifndef WATER_FOAM_COVERAGE_INCLUDED
 #define WATER_FOAM_COVERAGE_INCLUDED
 
-// 蓄積泡へ掛ける波群エンベロープの写像（瞬時項は合成 detJ 内で適用済み）。
-// envelope² × この係数で、波群の強い所ほど泡が濃く、弱い所は薄くなる
-static const float kFoamEnvelopeScale = 0.7f;
+#include "../Common/WaterWhitecapCoverage.hlsli"
 
 // ---- 岸際泡（shore foam）----
 // 範囲の外で泡帯が消える水深 [m]（水面の点の真下の鉛直水深）
@@ -51,22 +48,8 @@ float ComputeFoamMask(float2 worldXZ)
     }
     const float detJ = ComputeFFTCombinedDetJ(
         worldXZ, gFFTOceanJacobian, gSampler, gFoamCascadeWeights);
-    const float instant = saturate((gFoamBias - detJ) * gFoamGain);
-
-    // 蓄積泡（カスケード毎の格子空間）。重みは発生時に織り込み済みなのでそのまま max。
-    float accumulated = 0.0f;
-    [unroll]
-    for (int ci = 0; ci < kFFTCascadeCount; ++ci)
-    {
-        const float2 cuv = ComputeFFTCascadeUV(worldXZ, ci);
-        accumulated = max(accumulated, gFFTOceanFoam.SampleLevel(gSampler, float3(cuv, (float)ci), 0.0f));
-    }
-
-    // 蓄積泡へ波群エンベロープを掛け、泡の濃淡を波のセット（うねりの群）と同期させる。
-    // 瞬時項は合成 detJ の勾配へ適用済みなのでここでは掛けない（二重適用禁止）。
-    // 蓄積パスは格子空間で走るためワールド位置を知らず、表示側で変調するしかない。
-    const float envelope = ComputeFFTWaveGroupEnvelope(worldXZ);
-    accumulated = saturate(accumulated * envelope * envelope * kFoamEnvelopeScale);
+    const float instant = ComputeWhitecapInstant(detJ, gFoamBias, gFoamGain);
+    const float accumulated = SampleWhitecapAccumulated(worldXZ, gFFTOceanFoam, gSampler);
 
     // ★白波の量を風速へ追従させる★
     // detJ のしきい値は固定なので、これだけでは実海の風速依存
