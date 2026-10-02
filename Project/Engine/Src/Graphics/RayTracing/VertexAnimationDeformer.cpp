@@ -44,9 +44,7 @@ namespace CoreEngine
         if (!graphicsCore_) {
             return;
         }
-        if (entry.rawSrv.IsValid()) {
-            graphicsCore_->DeferFree(entry.rawSrv);
-        }
+        entry.rawSrv.Reset();
         if (entry.vertices) {
             graphicsCore_->DeferRelease(entry.vertices.Get());
             entry.vertices.Release();
@@ -178,7 +176,8 @@ namespace CoreEngine
                 srvDesc.Buffer.FirstElement = 0;
                 srvDesc.Buffer.NumElements = static_cast<UINT>(desc.Width / sizeof(uint32_t));
                 srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
-                entry.rawSrv = descriptors->CreateSRV(buffer.Get(), srvDesc, "VertexAnimationDeform VerticesRawSRV");
+                entry.rawSrv = UniqueDescriptor(*descriptors,
+                    descriptors->CreateSRV(buffer.Get(), srvDesc, "VertexAnimationDeform VerticesRawSRV"));
             }
         }
 
@@ -215,7 +214,7 @@ namespace CoreEngine
         Barrier::Transition(cmdList, entry.vertices, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         Output output;
         output.vertices = entry.vertices.Get();
-        output.vertexBufferIndex = entry.rawSrv.IsValid() ? entry.rawSrv.index : UINT32_MAX;
+        output.vertexBufferIndex = entry.rawSrv.IsValid() ? entry.rawSrv.Index() : UINT32_MAX;
         return output;
     }
 

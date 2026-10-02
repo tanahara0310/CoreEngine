@@ -1,6 +1,6 @@
 #pragma once
 #include "RenderTarget.h"
-#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
+#include "Graphics/RHI/Descriptor/UniqueDescriptor.h"
 #include "Graphics/Render/RenderTarget/RenderTargetDescriptor.h"
 
 #include <wrl.h>
@@ -16,7 +16,6 @@ namespace CoreEngine
     class OffscreenRenderTarget : public RenderTarget {
     public:
         OffscreenRenderTarget() = default;
-        ~OffscreenRenderTarget() override;
 
         /// @brief 初期化
         /// @param dx GraphicsCore
@@ -98,7 +97,6 @@ namespace CoreEngine
         void CreateOrResizeResource(uint32_t width, uint32_t height);
         void CreateViews();
         void UpdateViews() const;
-        void ReleaseDescriptorHandles();
 
         /// @brief Begin() で実際に束縛する DSV（カスタム指定があればそれ、無ければ共有シーン深度）
         D3D12_CPU_DESCRIPTOR_HANDLE ResolveDsvHandle() const;
@@ -107,9 +105,9 @@ namespace CoreEngine
         DescriptorAllocator* descriptorAllocator_ = nullptr;
         SceneDepth* sharedDepth_ = nullptr;
         GpuResource resource_;
-        DescriptorHandle rtvDescriptor_{};
-        DescriptorHandle srvDescriptor_{};
-        DescriptorHandle uavDescriptor_{};
+        UniqueDescriptor rtvDescriptor_;
+        UniqueDescriptor srvDescriptor_;
+        UniqueDescriptor uavDescriptor_;
         mutable D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle_{};
         int32_t width_ = 0;
         int32_t height_ = 0;

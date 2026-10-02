@@ -12,11 +12,6 @@
 
 namespace CoreEngine
 {
-    OffscreenRenderTarget::~OffscreenRenderTarget()
-    {
-        ReleaseDescriptorHandles();
-    }
-
     void OffscreenRenderTarget::Initialize(GraphicsCore* dx, DescriptorAllocator* descriptorAllocator, SceneDepth* sharedDepth,
                                            const RenderTargetDescriptor& desc, int index)
     {
@@ -95,9 +90,12 @@ namespace CoreEngine
         assert(descriptorAllocator_);
         assert(resource_);
 
-        rtvDescriptor_ = descriptorAllocator_->AllocateRTVHandle(std::format("RenderTarget{}RTV", index_));
-        srvDescriptor_ = descriptorAllocator_->AllocateSRVHandle(std::format("RenderTarget{}SRV", index_));
-        uavDescriptor_ = descriptorAllocator_->AllocateSRVHandle(std::format("RenderTarget{}UAV", index_));
+        rtvDescriptor_ = UniqueDescriptor(*descriptorAllocator_,
+            descriptorAllocator_->AllocateRTVHandle(std::format("RenderTarget{}RTV", index_)));
+        srvDescriptor_ = UniqueDescriptor(*descriptorAllocator_,
+            descriptorAllocator_->AllocateSRVHandle(std::format("RenderTarget{}SRV", index_)));
+        uavDescriptor_ = UniqueDescriptor(*descriptorAllocator_,
+            descriptorAllocator_->AllocateSRVHandle(std::format("RenderTarget{}UAV", index_)));
 
         UpdateViews();
     }
@@ -112,19 +110,19 @@ namespace CoreEngine
         D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
         rtvDesc.Format = format_;
         rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-        device->CreateRenderTargetView(resource_.Get(), &rtvDesc, rtvDescriptor_.cpuHandle);
+        device->CreateRenderTargetView(resource_.Get(), &rtvDesc, rtvDescriptor_.Cpu());
 
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
         srvDesc.Format = format_;
         srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
         srvDesc.Texture2D.MipLevels = 1;
         srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        device->CreateShaderResourceView(resource_.Get(), &srvDesc, srvDescriptor_.cpuHandle);
+        device->CreateShaderResourceView(resource_.Get(), &srvDesc, srvDescriptor_.Cpu());
 
         D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
         uavDesc.Format = format_;
         uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-        device->CreateUnorderedAccessView(resource_.Get(), nullptr, &uavDesc, uavDescriptor_.cpuHandle);
+        device->CreateUnorderedAccessView(resource_.Get(), nullptr, &uavDesc, uavDescriptor_.Cpu());
 
         dsvHandle_ = ResolveDsvHandle();
     }
@@ -136,23 +134,6 @@ namespace CoreEngine
         }
         // 共有シーン深度の DSV スロットはリサイズしても変わらない（同じスロットへ書き直される）
         return sharedDepth_ ? sharedDepth_->GetDSVHandle() : D3D12_CPU_DESCRIPTOR_HANDLE{};
-    }
-
-    void OffscreenRenderTarget::ReleaseDescriptorHandles()
-    {
-        if (!descriptorAllocator_) {
-            return;
-        }
-
-        if (rtvDescriptor_.IsValid()) {
-            descriptorAllocator_->Free(rtvDescriptor_);
-        }
-        if (srvDescriptor_.IsValid()) {
-            descriptorAllocator_->Free(srvDescriptor_);
-        }
-        if (uavDescriptor_.IsValid()) {
-            descriptorAllocator_->Free(uavDescriptor_);
-        }
     }
 
     void OffscreenRenderTarget::Begin(ID3D12GraphicsCommandList* cmdList)
@@ -170,16 +151,16 @@ namespace CoreEngine
         // useDepthBuffer_=false の場合（SSAOなどポストプロセス専用パス）は
         // 共有DSVをバインドしない。これによりGBufferPassが書き込んだ深度値を保護する。
         if (useDepthBuffer_) {
-            cmdList->OMSetRenderTargets(1, &rtvDescriptor_.cpuHandle, false, &dsvHandle_);
+            cmdList->OMSetRenderTargets(1, &rtvDescriptor_.Cpu(), false, &dsvHandle_);
         } else {
-            cmdList->OMSetRenderTargets(1, &rtvDescriptor_.cpuHandle, false, nullptr);
+            cmdList->OMSetRenderTargets(1, &rtvDescriptor_.Cpu(), false, nullptr);
         }
 
         // clearEnabled_=true のときのみRTVと深度をクリアする。
         // clearEnabled_=false は DeferredLightingPass が書き込んだ結果を
         // GeometryPass が上書きする際など、直前パスの内容を保持したい場合に使用する。
         if (clearEnabled_) {
-            cmdList->ClearRenderTargetView(rtvDescriptor_.cpuHandle, clearColor_, 0, nullptr);
+            cmdList->ClearRenderTargetView(rtvDescriptor_.Cpu(), clearColor_, 0, nullptr);
             if (useDepthBuffer_) {
                 cmdList->ClearDepthStencilView(dsvHandle_, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
             }
@@ -217,7 +198,7 @@ namespace CoreEngine
 
     D3D12_GPU_DESCRIPTOR_HANDLE OffscreenRenderTarget::GetUAVHandle() const
     {
-        return uavDescriptor_.gpuHandle;
+        return uavDescriptor_.Gpu();
     }
 
     void OffscreenRenderTarget::BeginCS(ID3D12GraphicsCommandList* cmdList)
@@ -246,12 +227,12 @@ namespace CoreEngine
 
     D3D12_CPU_DESCRIPTOR_HANDLE OffscreenRenderTarget::GetRTVHandle() const
     {
-        return rtvDescriptor_.cpuHandle;
+        return rtvDescriptor_.Cpu();
     }
 
     D3D12_GPU_DESCRIPTOR_HANDLE OffscreenRenderTarget::GetSRVHandle() const
     {
-        return srvDescriptor_.gpuHandle;
+        return srvDescriptor_.Gpu();
     }
 
     ID3D12Resource* OffscreenRenderTarget::GetResource() const

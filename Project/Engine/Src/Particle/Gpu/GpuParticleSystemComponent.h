@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Graphics/RHI/Resource/GpuResource.h"
-#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
+#include "Graphics/RHI/Descriptor/UniqueDescriptor.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 
@@ -330,11 +330,11 @@ public:
     ID3D12Resource* GetUploadInitResource() const { return uploadInitResource_.Get(); }
     ID3D12Resource* GetReadbackResource() const { return readbackResource_.Get(); }
 
-    D3D12_GPU_DESCRIPTOR_HANDLE GetParticleUavHandleGPU() const { return particleUavGPU_.gpuHandle; }
-    D3D12_GPU_DESCRIPTOR_HANDLE GetCounterUavHandleGPU() const { return counterUavGPU_.gpuHandle; }
-    D3D12_GPU_DESCRIPTOR_HANDLE GetFreeListUavHandleGPU() const { return freeListUavGPU_.gpuHandle; }
-    D3D12_GPU_DESCRIPTOR_HANDLE GetInstancingUavHandleGPU() const { return instancingUavGPU_.gpuHandle; }
-    D3D12_GPU_DESCRIPTOR_HANDLE GetInstancingSrvHandleGPU() const { return instancingSrvGPU_.gpuHandle; }
+    D3D12_GPU_DESCRIPTOR_HANDLE GetParticleUavHandleGPU() const { return particleUavGPU_.Gpu(); }
+    D3D12_GPU_DESCRIPTOR_HANDLE GetCounterUavHandleGPU() const { return counterUavGPU_.Gpu(); }
+    D3D12_GPU_DESCRIPTOR_HANDLE GetFreeListUavHandleGPU() const { return freeListUavGPU_.Gpu(); }
+    D3D12_GPU_DESCRIPTOR_HANDLE GetInstancingUavHandleGPU() const { return instancingUavGPU_.Gpu(); }
+    D3D12_GPU_DESCRIPTOR_HANDLE GetInstancingSrvHandleGPU() const { return instancingSrvGPU_.Gpu(); }
 
     ID3D12Resource* GetFreeListResource() const { return freeListResource_.Get(); }
 
@@ -381,11 +381,11 @@ private:
     GpuParticleParams* paramsData_ = nullptr;
     uint32_t* readbackData_ = nullptr;                          // readbackResource_ の永続Map
 
-    DescriptorHandle particleUavGPU_ = {};
-    DescriptorHandle counterUavGPU_ = {};
-    DescriptorHandle freeListUavGPU_ = {};
-    DescriptorHandle instancingUavGPU_ = {};
-    DescriptorHandle instancingSrvGPU_ = {};
+    UniqueDescriptor particleUavGPU_;
+    UniqueDescriptor counterUavGPU_;
+    UniqueDescriptor freeListUavGPU_;
+    UniqueDescriptor instancingUavGPU_;
+    UniqueDescriptor instancingSrvGPU_;
 
     GraphicsCore* graphics_ = nullptr;  // GPU バッファを作った先（破棄時に返す）
     GpuParticleRenderer* renderer_ = nullptr;

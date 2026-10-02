@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 
+#include "Graphics/RHI/Command/DeferredReleaseQueue.h"
 #include "Utility/Logger/Logger.h"
 
 #include <cassert>
@@ -160,6 +161,19 @@ namespace CoreEngine
     DescriptorHandle DescriptorAllocator::AllocateDSVHandle(std::string_view debugName)
     {
         return dsvHeap_.Allocate(debugName);
+    }
+
+    void DescriptorAllocator::Retire(DescriptorHandle& handle)
+    {
+        if (!handle.IsValid()) {
+            return;
+        }
+        // 終了処理の後はヒープごと消えるので、返す先が無い
+        if (!deferredRelease_) {
+            handle.Invalidate();
+            return;
+        }
+        deferredRelease_->PushForCurrentFrame(*this, handle);
     }
 
     void DescriptorAllocator::Free(DescriptorHandle& handle)

@@ -22,7 +22,6 @@ namespace CoreEngine
     class CommandContext;
     class DeferredReleaseQueue;
     class DescriptorAllocator;
-    struct DescriptorHandle;
     class SwapChain;
     class UploadContext;
     class UploadRing;
@@ -84,10 +83,6 @@ namespace CoreEngine
         /// @brief 記録中のフレームまでの GPU 作業が終わってからリソースを手放す
         /// @details 描画に使ったリソースを破棄するときに使う。終了処理の後はその場で手放す
         void DeferRelease(Microsoft::WRL::ComPtr<ID3D12Resource> resource);
-
-        /// @brief 記録中のフレームまでの GPU 作業が終わってからディスクリプタのスロットを返す
-        /// @param handle 返すスロット（預けた後は無効になる。終了処理の後は無効にするだけ）
-        void DeferFree(DescriptorHandle& handle);
 
         // ── コマンド ────────────────────────────────────────────
         ID3D12CommandQueue* GetCommandQueue() const;

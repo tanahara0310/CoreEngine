@@ -61,6 +61,7 @@ namespace CoreEngine
 
         descriptorAllocator_->Initialize(device,
             desc.maxSRVDescriptors, desc.maxRTVDescriptors, desc.maxDSVDescriptors);
+        descriptorAllocator_->SetDeferredReleaseQueue(deferredRelease_.get());
 
         // フレーム 0 は EndFrame を経ずに記録が始まるので、ここでシェーダ可視ヒープをバインドする
         commandContext_->BindDescriptorHeap(descriptorAllocator_->GetSRVHeap());
@@ -112,8 +113,11 @@ namespace CoreEngine
         if (deferredRelease_) {
             deferredRelease_->ReleaseAll(); // GPU 待ち済みなのでここで捨ててよい
         }
+        if (descriptorAllocator_) {
+            descriptorAllocator_->SetDeferredReleaseQueue(nullptr);
+        }
         deferredRelease_.reset();
-        // スワップチェーンは RTV を DescriptorAllocator へ返すので、アロケータより先に落とす
+        // スワップチェーンは RTV を DescriptorAllocator へ手放すので、アロケータより先に落とす
         if (swapChain_) {
             swapChain_->Shutdown();
         }
@@ -270,19 +274,6 @@ namespace CoreEngine
             return;
         }
         deferredRelease_->PushForCurrentFrame(std::move(resource));
-    }
-
-    void GraphicsCore::DeferFree(DescriptorHandle& handle)
-    {
-        if (!handle.IsValid()) {
-            return;
-        }
-        // 終了処理の後はヒープごと無くなっているので、返す先が無い
-        if (!deferredRelease_ || !descriptorAllocator_) {
-            handle.Invalidate();
-            return;
-        }
-        deferredRelease_->PushForCurrentFrame(*descriptorAllocator_, handle);
     }
 
     // ================================================================

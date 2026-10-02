@@ -15,16 +15,6 @@ namespace CoreEngine
         Logger& logger = Logger::GetInstance();
     }
 
-    SceneDepth::~SceneDepth()
-    {
-        if (!descriptorAllocator_) {
-            return;
-        }
-        // ハンドルが所有スロットを知っているので、種別の指定も未確保チェックも要らない
-        descriptorAllocator_->Free(dsvDescriptor_);
-        descriptorAllocator_->Free(depthSRVDescriptor_);
-    }
-
     void SceneDepth::Initialize(ID3D12Device* device, DescriptorAllocator* descriptorAllocator,
         std::int32_t width, std::int32_t height)
     {
@@ -81,7 +71,7 @@ namespace CoreEngine
         Barrier::Transition(cmdList, depthStencilResource_, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
         // 深度バッファをクリア
-        cmdList->ClearDepthStencilView(dsvDescriptor_.cpuHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+        cmdList->ClearDepthStencilView(dsvDescriptor_.Cpu(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
 #ifdef _DEBUG
         if (BarrierBatch::IsLoggingEnabled()) {
@@ -130,9 +120,9 @@ namespace CoreEngine
         dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
         dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
 
-        // DSV を作成（初回のみ）。戻り値のハンドルがスロットの所有権を表す
-        dsvDescriptor_ = descriptorAllocator_->CreateDSV(
-            depthStencilResource_.Get(), dsvDesc, "SceneDepth");
+        // DSV を作成（初回のみ）
+        dsvDescriptor_ = UniqueDescriptor(*descriptorAllocator_, descriptorAllocator_->CreateDSV(
+            depthStencilResource_.Get(), dsvDesc, "SceneDepth"));
 
         // 深度リソースの SRV を作成（初回のみ）
         CreateDepthShaderResourceView();
@@ -145,7 +135,7 @@ namespace CoreEngine
         dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
 
         // 既存スロットへビューだけ書き直す（スロット番号は変えない＝シェーダ側のバインドを保つ）
-        descriptorAllocator_->WriteDSV(dsvDescriptor_, depthStencilResource_.Get(), dsvDesc);
+        descriptorAllocator_->WriteDSV(dsvDescriptor_.Get(), depthStencilResource_.Get(), dsvDesc);
 
         if (depthSRVDescriptor_.IsValid()) {
             D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
@@ -153,7 +143,7 @@ namespace CoreEngine
             srvDesc.ViewDimension             = D3D12_SRV_DIMENSION_TEXTURE2D;
             srvDesc.Shader4ComponentMapping   = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
             srvDesc.Texture2D.MipLevels       = 1;
-            descriptorAllocator_->WriteSRV(depthSRVDescriptor_, depthStencilResource_.Get(), srvDesc);
+            descriptorAllocator_->WriteSRV(depthSRVDescriptor_.Get(), depthStencilResource_.Get(), srvDesc);
         }
     }
 
@@ -166,7 +156,7 @@ namespace CoreEngine
         srvDesc.Shader4ComponentMapping   = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
         srvDesc.Texture2D.MipLevels       = 1;
 
-        depthSRVDescriptor_ = descriptorAllocator_->CreateSRV(
-            depthStencilResource_.Get(), srvDesc, "SceneDepthSRV");
+        depthSRVDescriptor_ = UniqueDescriptor(*descriptorAllocator_, descriptorAllocator_->CreateSRV(
+            depthStencilResource_.Get(), srvDesc, "SceneDepthSRV"));
     }
 }

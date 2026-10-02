@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
+#include "Graphics/RHI/Descriptor/UniqueDescriptor.h"
 #include "Graphics/RHI/Resource/GpuResource.h"
 
 namespace CoreEngine
@@ -83,7 +83,7 @@ namespace CoreEngine
 
         Microsoft::WRL::ComPtr<IDXGISwapChain4> swapChain_;
         std::vector<GpuResource> backBuffers_;
-        std::vector<DescriptorHandle> rtvs_;
+        std::vector<UniqueDescriptor> rtvs_;
         DescriptorAllocator* descriptorAllocator_ = nullptr;
         SwapChainDesc desc_{};
     };
