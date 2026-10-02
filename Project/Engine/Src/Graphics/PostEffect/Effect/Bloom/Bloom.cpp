@@ -12,7 +12,6 @@
 #include "Editor/ImGui/CVarPanel.h"
 #endif
 #include <algorithm>
-#include <cassert>
 #include <string>
 
 
@@ -55,34 +54,10 @@ namespace CoreEngine
     namespace {
         /// @brief 8x8 スレッドグループでの必要グループ数
         constexpr uint32_t DispatchCount(uint32_t size) { return (size + 7) / 8; }
-
-        /// @brief 定数バッファを 1 本作って永続マップする
-        template <typename T>
-    /// @brief 定数バッファを確保して常時 Map したまま保持する
-        void CreateMappedCB(ID3D12Device* device, Microsoft::WRL::ComPtr<ID3D12Resource>& buffer, T*& mapped)
-        {
-            const UINT size = (sizeof(T) + 255) & ~255u;
-            buffer = ResourceFactory::CreateBufferResource(device, size);
-            [[maybe_unused]] HRESULT hr = buffer->Map(0, nullptr, reinterpret_cast<void**>(&mapped));
-            assert(SUCCEEDED(hr));
-        }
     }
 
     void Bloom::OnCreateConstantBuffers()
     {
-        auto* device = graphicsCore_->GetDevice();
-
-        // パスごとに解像度と役割が違うので、定数バッファもパスの数だけ要る。
-        // 1 本を使い回すと、GPU が読むのは記録より後なので最後のパスの値で全段が実行される
-        for (int i = 0; i < kMipCount; ++i) {
-            CreateMappedCB(device, downParamsCB_[i], mappedDownParams_[i]);
-        }
-        for (int i = 0; i < kMipCount - 1; ++i) {
-            CreateMappedCB(device, upParamsCB_[i], mappedUpParams_[i]);
-        }
-        CreateMappedCB(device, compositeParamsCB_, mappedCompositeParams_);
-        CreateMappedCB(device, dirtGenParamsCB_, mappedDirtGenParams_);
-
         internalPipelinesReady_ = CreateInternalPipelines();
         if (!internalPipelinesReady_) {
             Logger::GetInstance().Warnf(LogCategory::Graphics,
@@ -145,7 +120,8 @@ namespace CoreEngine
             return;
         }
 
-        mappedDirtGenParams_->textureSize = kDirtTextureSize;
+        DirtGenParams params{};
+        params.textureSize = kDirtTextureSize;
 
         cmdList->SetComputeRootSignature(dirtGenPipeline_.GetComputeRootSignature());
         cmdList->SetPipelineState(dirtGenPipeline_.GetComputePSO());
@@ -153,7 +129,7 @@ namespace CoreEngine
         const int outputIdx = dirtGenPipeline_.GetComputeRootParamIndex("gOutput");
         const int paramsIdx = dirtGenPipeline_.GetComputeRootParamIndex("DirtGenParams");
         if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, dirtUavHandle_.gpuHandle);
-        if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, dirtGenParamsCB_->GetGPUVirtualAddress());
+        if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
 
         cmdList->Dispatch(DispatchCount(kDirtTextureSize), DispatchCount(kDirtTextureSize), 1);
 
@@ -258,21 +234,21 @@ namespace CoreEngine
 
     void Bloom::RecordDownsample(const PostEffectPassContext& context, int mipIndex)
     {
-        DownsampleParams* params = mappedDownParams_[mipIndex];
-        if (!params || context.reads.empty()) {
+        if (context.reads.empty()) {
             return;
         }
         const uint32_t sourceWidth  = (mipIndex == 0) ? baseWidth_  : mipWidth_[mipIndex - 1];
         const uint32_t sourceHeight = (mipIndex == 0) ? baseHeight_ : mipHeight_[mipIndex - 1];
 
-        params->outputSize[0]  = context.width;
-        params->outputSize[1]  = context.height;
-        params->sourceSize[0]  = sourceWidth;
-        params->sourceSize[1]  = sourceHeight;
-        params->threshold      = cvThreshold.Get();
-        params->softKnee       = cvSoftKnee.Get();
+        DownsampleParams params{};
+        params.outputSize[0]  = context.width;
+        params.outputSize[1]  = context.height;
+        params.sourceSize[0]  = sourceWidth;
+        params.sourceSize[1]  = sourceHeight;
+        params.threshold      = cvThreshold.Get();
+        params.softKnee       = cvSoftKnee.Get();
         // 閾値は最初の 1 回だけ。各段で掛けるとぼかすほど二重に削られる
-        params->applyPrefilter = (mipIndex == 0) ? 1u : 0u;
+        params.applyPrefilter = (mipIndex == 0) ? 1u : 0u;
 
         auto* cmdList = context.cmdList;
         cmdList->SetComputeRootSignature(downsamplePipeline_.GetComputeRootSignature());
@@ -284,21 +260,21 @@ namespace CoreEngine
 
         if (sourceIdx >= 0) cmdList->SetComputeRootDescriptorTable(sourceIdx, context.reads[0]);
         if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
-        if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, downParamsCB_[mipIndex]->GetGPUVirtualAddress());
+        if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
 
         cmdList->Dispatch(DispatchCount(context.width), DispatchCount(context.height), 1);
     }
 
     void Bloom::RecordUpsample(const PostEffectPassContext& context, int upIndex)
     {
-        UpsampleParams* params = mappedUpParams_[upIndex];
-        if (!params || context.reads.size() < 2) {
+        if (context.reads.size() < 2) {
             return;
         }
-        params->outputSize[0] = context.width;
-        params->outputSize[1] = context.height;
-        params->lowerSize[0]  = mipWidth_[upIndex + 1];
-        params->lowerSize[1]  = mipHeight_[upIndex + 1];
+        UpsampleParams params{};
+        params.outputSize[0] = context.width;
+        params.outputSize[1] = context.height;
+        params.lowerSize[0]  = mipWidth_[upIndex + 1];
+        params.lowerSize[1]  = mipHeight_[upIndex + 1];
 
         auto* cmdList = context.cmdList;
         cmdList->SetComputeRootSignature(upsamplePipeline_.GetComputeRootSignature());
@@ -312,23 +288,24 @@ namespace CoreEngine
         if (lowerIdx >= 0)  cmdList->SetComputeRootDescriptorTable(lowerIdx, context.reads[0]);
         if (sameIdx >= 0)   cmdList->SetComputeRootDescriptorTable(sameIdx, context.reads[1]);
         if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
-        if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, upParamsCB_[upIndex]->GetGPUVirtualAddress());
+        if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
 
         cmdList->Dispatch(DispatchCount(context.width), DispatchCount(context.height), 1);
     }
 
     void Bloom::RecordComposite(const PostEffectPassContext& context)
     {
-        if (!mappedCompositeParams_ || context.reads.size() < 2) {
+        if (context.reads.size() < 2) {
             return;
         }
-        mappedCompositeParams_->outputSize[0] = context.width;
-        mappedCompositeParams_->outputSize[1] = context.height;
-        mappedCompositeParams_->bloomSize[0]  = mipWidth_[0];
-        mappedCompositeParams_->bloomSize[1]  = mipHeight_[0];
-        mappedCompositeParams_->intensity     = cvIntensity.Get();
-        mappedCompositeParams_->dirtIntensity = dirtResourcesReady_ ? cvDirtIntensity.Get() : 0.0f;
-        mappedCompositeParams_->dirtSize      = kDirtTextureSize;
+        CompositeParams params{};
+        params.outputSize[0] = context.width;
+        params.outputSize[1] = context.height;
+        params.bloomSize[0]  = mipWidth_[0];
+        params.bloomSize[1]  = mipHeight_[0];
+        params.intensity     = cvIntensity.Get();
+        params.dirtIntensity = dirtResourcesReady_ ? cvDirtIntensity.Get() : 0.0f;
+        params.dirtSize      = kDirtTextureSize;
 
         auto* cmdList = context.cmdList;
 
@@ -349,7 +326,7 @@ namespace CoreEngine
         if (bloomIdx >= 0)  cmdList->SetComputeRootDescriptorTable(bloomIdx, context.reads[1]);
         if (dirtIdx >= 0 && dirtResourcesReady_) cmdList->SetComputeRootDescriptorTable(dirtIdx, dirtSrvHandle_.gpuHandle);
         if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
-        if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, compositeParamsCB_->GetGPUVirtualAddress());
+        if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
 
         cmdList->Dispatch(DispatchCount(context.width), DispatchCount(context.height), 1);
     }

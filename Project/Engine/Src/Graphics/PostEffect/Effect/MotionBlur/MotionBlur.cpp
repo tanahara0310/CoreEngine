@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "MotionBlur.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h"
 #include "Graphics/Render/FrameBlackboard.h"
@@ -12,7 +11,6 @@
 #include "Editor/ImGui/CVarPanel.h"
 #endif
 #include <algorithm>
-#include <cassert>
 
 
 namespace CoreEngine
@@ -48,27 +46,10 @@ namespace CoreEngine
 
         /// @brief 8x8 スレッドグループでの必要グループ数
         constexpr uint32_t DispatchCount(uint32_t size) { return (size + 7) / 8; }
-
-        /// @brief 定数バッファを 1 本作って永続マップする
-        template <typename T>
-    /// @brief 定数バッファを確保して常時 Map したまま保持する
-        void CreateMappedCB(ID3D12Device* device, Microsoft::WRL::ComPtr<ID3D12Resource>& buffer, T*& mapped)
-        {
-            const UINT size = (sizeof(T) + 255) & ~255u;
-            buffer = ResourceFactory::CreateBufferResource(device, size);
-            [[maybe_unused]] HRESULT hr = buffer->Map(0, nullptr, reinterpret_cast<void**>(&mapped));
-            assert(SUCCEEDED(hr));
-        }
     }
 
     void MotionBlur::OnCreateConstantBuffers()
     {
-        auto* device = graphicsCore_->GetDevice();
-
-        CreateMappedCB(device, tileMaxParamsCB_, mappedTileMaxParams_);
-        CreateMappedCB(device, neighborMaxParamsCB_, mappedNeighborMaxParams_);
-        CreateMappedCB(device, gatherParamsCB_, mappedGatherParams_);
-
         internalPipelinesReady_ = CreateInternalPipelines();
         if (!internalPipelinesReady_) {
             Logger::GetInstance().Warnf(LogCategory::Graphics,
@@ -168,7 +149,7 @@ namespace CoreEngine
 
     void MotionBlur::RecordTileMax(const PostEffectPassContext& context)
     {
-        if (!mappedTileMaxParams_ || context.reads.empty()) {
+        if (context.reads.empty()) {
             return;
         }
 
@@ -176,14 +157,14 @@ namespace CoreEngine
         tileCountX_ = context.width;
         tileCountY_ = context.height;
 
-        TileMaxParams* params = mappedTileMaxParams_;
-        params->screenSize[0]   = baseWidth_;
-        params->screenSize[1]   = baseHeight_;
-        params->tileCount[0]    = tileCountX_;
-        params->tileCount[1]    = tileCountY_;
-        params->shutterFraction = cvShutterAngle.Get() / 360.0f;
-        params->maxBlurPixels   = cvMaxBlurPixels.Get();
-        params->tileSize        = kTileSize;
+        TileMaxParams params{};
+        params.screenSize[0]   = baseWidth_;
+        params.screenSize[1]   = baseHeight_;
+        params.tileCount[0]    = tileCountX_;
+        params.tileCount[1]    = tileCountY_;
+        params.shutterFraction = cvShutterAngle.Get() / 360.0f;
+        params.maxBlurPixels   = cvMaxBlurPixels.Get();
+        params.tileSize        = kTileSize;
 
         auto* cmdList = context.cmdList;
         cmdList->SetComputeRootSignature(tileMaxPipeline_.GetComputeRootSignature());
@@ -195,20 +176,20 @@ namespace CoreEngine
 
         if (velocityIdx >= 0) cmdList->SetComputeRootDescriptorTable(velocityIdx, context.reads[0]);
         if (outputIdx >= 0)   cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
-        if (paramsIdx >= 0)   cmdList->SetComputeRootConstantBufferView(paramsIdx, tileMaxParamsCB_->GetGPUVirtualAddress());
+        if (paramsIdx >= 0)   cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
 
         cmdList->Dispatch(DispatchCount(tileCountX_), DispatchCount(tileCountY_), 1);
     }
 
     void MotionBlur::RecordNeighborMax(const PostEffectPassContext& context)
     {
-        if (!mappedNeighborMaxParams_ || context.reads.empty()) {
+        if (context.reads.empty()) {
             return;
         }
 
-        NeighborMaxParams* params = mappedNeighborMaxParams_;
-        params->tileCount[0] = tileCountX_;
-        params->tileCount[1] = tileCountY_;
+        NeighborMaxParams params{};
+        params.tileCount[0] = tileCountX_;
+        params.tileCount[1] = tileCountY_;
 
         auto* cmdList = context.cmdList;
         cmdList->SetComputeRootSignature(neighborMaxPipeline_.GetComputeRootSignature());
@@ -220,29 +201,29 @@ namespace CoreEngine
 
         if (tileMaxIdx >= 0) cmdList->SetComputeRootDescriptorTable(tileMaxIdx, context.reads[0]);
         if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
-        if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, neighborMaxParamsCB_->GetGPUVirtualAddress());
+        if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
 
         cmdList->Dispatch(DispatchCount(tileCountX_), DispatchCount(tileCountY_), 1);
     }
 
     void MotionBlur::RecordGather(const PostEffectPassContext& context)
     {
-        if (!mappedGatherParams_ || context.reads.size() < 4) {
+        if (context.reads.size() < 4) {
             return;
         }
 
-        GatherParams* params = mappedGatherParams_;
-        params->screenSize[0]   = context.width;
-        params->screenSize[1]   = context.height;
-        params->tileCount[0]    = tileCountX_;
-        params->tileCount[1]    = tileCountY_;
-        params->shutterFraction = cvShutterAngle.Get() / 360.0f;
-        params->maxBlurPixels   = cvMaxBlurPixels.Get();
-        params->sampleCount     = static_cast<uint32_t>(std::max(1, cvSampleCount.Get()));
-        params->tileSize        = kTileSize;
-        params->nearPlane       = nearPlane_;
-        params->farPlane        = farPlane_;
-        params->depthExtent     = cvDepthExtent.Get();
+        GatherParams params{};
+        params.screenSize[0]   = context.width;
+        params.screenSize[1]   = context.height;
+        params.tileCount[0]    = tileCountX_;
+        params.tileCount[1]    = tileCountY_;
+        params.shutterFraction = cvShutterAngle.Get() / 360.0f;
+        params.maxBlurPixels   = cvMaxBlurPixels.Get();
+        params.sampleCount     = static_cast<uint32_t>(std::max(1, cvSampleCount.Get()));
+        params.tileSize        = kTileSize;
+        params.nearPlane       = nearPlane_;
+        params.farPlane        = farPlane_;
+        params.depthExtent     = cvDepthExtent.Get();
 
         // ギャザーは基底が構築した PSO（GetComputeShaderPath が返す MotionBlur.CS.hlsl）を使う
         auto* cmdList = context.cmdList;
@@ -261,7 +242,7 @@ namespace CoreEngine
         if (depthIdx >= 0)       cmdList->SetComputeRootDescriptorTable(depthIdx, context.reads[2]);
         if (neighborMaxIdx >= 0) cmdList->SetComputeRootDescriptorTable(neighborMaxIdx, context.reads[3]);
         if (outputIdx >= 0)      cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
-        if (paramsIdx >= 0)      cmdList->SetComputeRootConstantBufferView(paramsIdx, gatherParamsCB_->GetGPUVirtualAddress());
+        if (paramsIdx >= 0)      cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
 
         cmdList->Dispatch(DispatchCount(context.width), DispatchCount(context.height), 1);
     }

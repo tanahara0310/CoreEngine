@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "LocalExposure.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h"
 #include "Utility/CVar/CVar.h"
@@ -10,7 +9,6 @@
 #include "Editor/ImGui/CVarPanel.h"
 #endif
 #include <algorithm>
-#include <cassert>
 
 
 namespace CoreEngine
@@ -54,28 +52,10 @@ namespace CoreEngine
 
         /// @brief 8x8 スレッドグループでの必要グループ数
         constexpr uint32_t DispatchCount(uint32_t size) { return (size + 7) / 8; }
-
-        /// @brief 定数バッファを 1 本作って永続マップする
-        template <typename T>
-    /// @brief 定数バッファを確保して常時 Map したまま保持する
-        void CreateMappedCB(ID3D12Device* device, Microsoft::WRL::ComPtr<ID3D12Resource>& buffer, T*& mapped)
-        {
-            const UINT size = (sizeof(T) + 255) & ~255u;
-            buffer = ResourceFactory::CreateBufferResource(device, size);
-            [[maybe_unused]] HRESULT hr = buffer->Map(0, nullptr, reinterpret_cast<void**>(&mapped));
-            assert(SUCCEEDED(hr));
-        }
     }
 
     void LocalExposure::OnCreateConstantBuffers()
     {
-        auto* device = graphicsCore_->GetDevice();
-
-        CreateMappedCB(device, downsampleParamsCB_, mappedDownsampleParams_);
-        CreateMappedCB(device, blurHParamsCB_, mappedBlurHParams_);
-        CreateMappedCB(device, blurVParamsCB_, mappedBlurVParams_);
-        CreateMappedCB(device, applyParamsCB_, mappedApplyParams_);
-
         internalPipelinesReady_ = CreateInternalPipelines();
         if (!internalPipelinesReady_) {
             Logger::GetInstance().Warnf(LogCategory::Graphics,
@@ -157,7 +137,7 @@ namespace CoreEngine
     // ベース層の生成。1/8 解像度の対数輝度へ落とす
     void LocalExposure::RecordDownsample(const PostEffectPassContext& context)
     {
-        if (!mappedDownsampleParams_ || context.reads.empty()) {
+        if (context.reads.empty()) {
             return;
         }
 
@@ -165,10 +145,11 @@ namespace CoreEngine
         lowResWidth_  = context.width;
         lowResHeight_ = context.height;
 
-        mappedDownsampleParams_->outputSize[0] = lowResWidth_;
-        mappedDownsampleParams_->outputSize[1] = lowResHeight_;
-        mappedDownsampleParams_->sourceSize[0] = baseWidth_;
-        mappedDownsampleParams_->sourceSize[1] = baseHeight_;
+        DownsampleParams params{};
+        params.outputSize[0] = lowResWidth_;
+        params.outputSize[1] = lowResHeight_;
+        params.sourceSize[0] = baseWidth_;
+        params.sourceSize[1] = baseHeight_;
 
         auto* cmdList = context.cmdList;
         cmdList->SetComputeRootSignature(downsamplePipeline_.GetComputeRootSignature());
@@ -180,7 +161,7 @@ namespace CoreEngine
 
         if (textureIdx >= 0) cmdList->SetComputeRootDescriptorTable(textureIdx, context.reads[0]);
         if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
-        if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, downsampleParamsCB_->GetGPUVirtualAddress());
+        if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
 
         cmdList->Dispatch(DispatchCount(lowResWidth_), DispatchCount(lowResHeight_), 1);
     }
@@ -188,16 +169,15 @@ namespace CoreEngine
     // 分離ガウス。横 → 縦の 2 回に分けることで、サンプル数が O(n^2) から O(n) になる
     void LocalExposure::RecordBlur(const PostEffectPassContext& context, bool horizontal)
     {
-        BlurParams* params = horizontal ? mappedBlurHParams_ : mappedBlurVParams_;
-        ID3D12Resource* paramsCB = horizontal ? blurHParamsCB_.Get() : blurVParamsCB_.Get();
-        if (!params || context.reads.empty()) {
+        if (context.reads.empty()) {
             return;
         }
 
-        params->textureSize[0] = lowResWidth_;
-        params->textureSize[1] = lowResHeight_;
-        params->direction[0]   = horizontal ? 1u : 0u;
-        params->direction[1]   = horizontal ? 0u : 1u;
+        BlurParams params{};
+        params.textureSize[0] = lowResWidth_;
+        params.textureSize[1] = lowResHeight_;
+        params.direction[0]   = horizontal ? 1u : 0u;
+        params.direction[1]   = horizontal ? 0u : 1u;
 
         auto* cmdList = context.cmdList;
         cmdList->SetComputeRootSignature(blurPipeline_.GetComputeRootSignature());
@@ -209,7 +189,7 @@ namespace CoreEngine
 
         if (sourceIdx >= 0) cmdList->SetComputeRootDescriptorTable(sourceIdx, context.reads[0]);
         if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
-        if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, paramsCB->GetGPUVirtualAddress());
+        if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
 
         cmdList->Dispatch(DispatchCount(lowResWidth_), DispatchCount(lowResHeight_), 1);
     }
@@ -218,20 +198,20 @@ namespace CoreEngine
     // （素直に拡大するとエッジでハロー（縁の光り）が出る）
     void LocalExposure::RecordApply(const PostEffectPassContext& context)
     {
-        if (!mappedApplyParams_ || context.reads.size() < 2) {
+        if (context.reads.size() < 2) {
             return;
         }
 
-        ApplyParams* params = mappedApplyParams_;
-        params->screenSize[0]     = context.width;
-        params->screenSize[1]     = context.height;
-        params->baseSize[0]       = lowResWidth_;
-        params->baseSize[1]       = lowResHeight_;
-        params->highlightContrast = cvHighlightContrast.Get();
-        params->shadowContrast    = cvShadowContrast.Get();
-        params->detailStrength    = cvDetailStrength.Get();
-        params->middleGreyBias    = cvMiddleGreyBias.Get();
-        params->rangeSigma        = cvRangeSigma.Get();
+        ApplyParams params{};
+        params.screenSize[0]     = context.width;
+        params.screenSize[1]     = context.height;
+        params.baseSize[0]       = lowResWidth_;
+        params.baseSize[1]       = lowResHeight_;
+        params.highlightContrast = cvHighlightContrast.Get();
+        params.shadowContrast    = cvShadowContrast.Get();
+        params.detailStrength    = cvDetailStrength.Get();
+        params.middleGreyBias    = cvMiddleGreyBias.Get();
+        params.rangeSigma        = cvRangeSigma.Get();
 
         // 適用は基底が構築した PSO（GetComputeShaderPath が返す LocalExposure.CS.hlsl）を使う
         auto* cmdList = context.cmdList;
@@ -246,7 +226,7 @@ namespace CoreEngine
         if (textureIdx >= 0) cmdList->SetComputeRootDescriptorTable(textureIdx, context.reads[0]);
         if (baseIdx >= 0)    cmdList->SetComputeRootDescriptorTable(baseIdx, context.reads[1]);
         if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
-        if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, applyParamsCB_->GetGPUVirtualAddress());
+        if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
 
         cmdList->Dispatch(DispatchCount(context.width), DispatchCount(context.height), 1);
     }
