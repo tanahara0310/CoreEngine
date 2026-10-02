@@ -34,9 +34,10 @@ namespace CoreEngine
         ~CameraManager();
 
         /// @brief カメラを登録
-        /// @param name カメラの名前
+        /// @param name カメラの名前（登録のキー）
         /// @param camera 登録するカメラのユニークポインタ
-        void RegisterCamera(const std::string& name, std::unique_ptr<Camera> camera);
+        /// @return 登録できたら true。同じ名前が登録済みなら差し替えずに警告を出して false
+        bool RegisterCamera(const std::string& name, std::unique_ptr<Camera> camera);
 
         /// @brief カメラを登録解除
         /// @param name カメラの名前
@@ -49,6 +50,12 @@ namespace CoreEngine
 
         /// @brief そのカメラをシーンのオブジェクトが持っているか
         bool IsObjectOwnedCamera(const std::string& name) const;
+
+        /// @brief 画面に出す名前を付ける
+        void SetDisplayName(const std::string& name, const std::string& displayName);
+
+        /// @brief 画面に出す名前（付けていなければ登録の名前）
+        std::string GetDisplayName(const std::string& name) const;
 
         /// @brief カメラへコントローラを取り付ける（1 カメラにつき 1 つ・既存があれば置き換え）
         /// @tparam T ICameraController の派生型
@@ -191,6 +198,9 @@ namespace CoreEngine
 
         /// @brief シーンのオブジェクトが持つカメラの名前
         std::unordered_set<std::string> objectOwnedCameras_;
+
+        /// @brief カメラ名 → 画面に出す名前（付けたカメラだけ）
+        std::unordered_map<std::string, std::string> displayNames_;
 
         /// @brief 役割ごとのカメラ名
         std::string sceneCameraName_ = CameraNames::Scene;

@@ -61,8 +61,8 @@ namespace CoreEngine
         void CaptureEditorCamera();
 
         /// @brief シーンに置かれたカメラ（`CameraComponent`）を実体へ写す
-        /// @details オブジェクトが増減・改名したら実体を作り直し、姿勢とレンズを毎フレーム流す。
-        ///          ゲームの視点にするカメラの名前もここで決めて控える。
+        /// @details 実体はオブジェクトの ID をキーに登録し、オブジェクトが増減したら作り直す。
+        ///          姿勢とレンズを毎フレーム流し、ゲームの視点にするカメラもここで決めて控える。
         void SyncSceneCameras(SceneContext& ctx);
 
         /// @brief 控えた「ゲームの視点」をカメラマネージャーへ当てる
@@ -75,10 +75,10 @@ namespace CoreEngine
         Camera* sceneCamera_ = nullptr;
         OrbitFlyController* orbitController_ = nullptr;
 
-        // 実体を持っているシーンのカメラの名前（増減を見分けるための控え）
-        std::vector<std::string> sceneCameraNames_;
+        // 実体を持っているシーンのカメラのキー（増減を見分けるための控え）
+        std::vector<std::string> sceneCameraKeys_;
 
-        // ゲームの視点にするシーンのカメラの名前（候補が無ければ空）
-        std::string mainCameraName_;
+        // ゲームの視点にするシーンのカメラのキー（候補が無ければ空）
+        std::string mainCameraKey_;
     };
 }

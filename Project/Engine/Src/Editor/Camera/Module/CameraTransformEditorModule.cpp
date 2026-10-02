@@ -36,7 +36,8 @@ namespace CoreEngine
             return;
         }
 
-        const std::string& activeName = context.cameraManager->GetActiveCameraName(CameraType::Camera3D);
+        const std::string activeName = context.cameraManager->GetDisplayName(
+            context.cameraManager->GetActiveCameraName(CameraType::Camera3D));
         ImGui::Text("アクティブ3D: %s", activeName.c_str());
         UI::Separator();
 

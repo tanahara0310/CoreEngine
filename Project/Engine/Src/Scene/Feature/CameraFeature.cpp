@@ -128,7 +128,7 @@ namespace CoreEngine
 
     void CameraFeature::SyncSceneCameras(SceneContext& ctx)
     {
-        mainCameraName_.clear();
+        mainCameraKey_.clear();
         if (!cameraManager_ || !ctx.gameObjectManager) {
             return;
         }
@@ -148,49 +148,51 @@ namespace CoreEngine
                     continue;
                 }
 
-                const std::string& name = object->GetName();
-                if (name == CameraNames::Game || name == CameraNames::Scene
-                    || name == CameraNames::Camera2D) {
-                    Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
-                        "カメラのオブジェクト名 {} はエンジンが使っているので、実体を作りません",
-                        name);
+                // 登録のキーはオブジェクトの ID。オブジェクトの名前は画面に出す名前にする
+                const std::string key = object->GetObjectId().ToString();
+                if (component->GetRegisteredKey() != key) {
+                    // 初めて見つけた、または ID が変わった。実体を作り直す
+                    if (!component->GetRegisteredKey().empty()) {
+                        cameraManager_->UnregisterCamera(component->GetRegisteredKey());
+                        component->SetRegisteredKey({});
+                        component->SetCamera(nullptr);
+                    }
+                    // 同じオブジェクトの 2 つ目以降のカメラには実体を作らない
+                    if (!cameraManager_->GetCamera(key)) {
+                        auto created = std::make_unique<Camera>();
+                        created->Initialize(dxCommon ? dxCommon->GetDevice() : nullptr);
+                        Camera* const raw = created.get();
+                        if (cameraManager_->RegisterCamera(key, std::move(created))) {
+                            cameraManager_->SetObjectOwnedCamera(key, true);
+                            component->SetRegisteredKey(key);
+                            component->SetCamera(raw);
+                        }
+                    }
+                }
+
+                Camera* const camera = component->GetCamera();
+                if (!camera) {
                     continue;
                 }
+                cameraManager_->SetDisplayName(key, object->GetName());
+                component->ApplyTo(*camera);
+                camera->UpdateMatrix();
+                alive.push_back(key);
 
-                if (component->GetRegisteredName() != name) {
-                    // 初めて見つけた、または名前が変わった。実体を作り直す
-                    if (!component->GetRegisteredName().empty()) {
-                        cameraManager_->UnregisterCamera(component->GetRegisteredName());
-                    }
-                    auto created = std::make_unique<Camera>();
-                    created->Initialize(dxCommon ? dxCommon->GetDevice() : nullptr);
-                    Camera* const raw = created.get();
-                    cameraManager_->RegisterCamera(name, std::move(created));
-                    cameraManager_->SetObjectOwnedCamera(name, true);
-                    component->SetRegisteredName(name);
-                    component->SetCamera(raw);
-                }
-
-                if (Camera* const camera = component->GetCamera()) {
-                    component->ApplyTo(*camera);
-                    camera->UpdateMatrix();
-                }
-                alive.push_back(name);
-
-                if (mainCameraName_.empty() && component->IsMainCamera()
+                if (mainCameraKey_.empty() && component->IsMainCamera()
                     && component->IsEnabled() && object->IsActive()) {
-                    mainCameraName_ = name;
+                    mainCameraKey_ = key;
                 }
             }
         }
 
         // 消えたオブジェクトのカメラを外す
-        for (const std::string& name : sceneCameraNames_) {
-            if (std::find(alive.begin(), alive.end(), name) == alive.end()) {
-                cameraManager_->UnregisterCamera(name);
+        for (const std::string& key : sceneCameraKeys_) {
+            if (std::find(alive.begin(), alive.end(), key) == alive.end()) {
+                cameraManager_->UnregisterCamera(key);
             }
         }
-        sceneCameraNames_ = std::move(alive);
+        sceneCameraKeys_ = std::move(alive);
     }
 
     void CameraFeature::ApplyMainCamera()
@@ -199,8 +201,8 @@ namespace CoreEngine
             return;
         }
 
-        if (!mainCameraName_.empty()) {
-            cameraManager_->SetGameCameraName(mainCameraName_);
+        if (!mainCameraKey_.empty()) {
+            cameraManager_->SetGameCameraName(mainCameraKey_);
             return;
         }
 

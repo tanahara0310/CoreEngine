@@ -16,6 +16,7 @@ namespace CoreEngine
     ///          `CameraFeature` が引き受けるので、ここは値と実体への橋だけを持つ。
     /// @note 「ゲームの視点」を入れたカメラがゲームビューに映る。入っているものが複数あれば
     ///       最初の 1 台を使う。1 台も無ければエンジン既定のカメラに戻る。
+    ///       実体は 1 つのオブジェクトに 1 台（2 つ目以降のコンポーネントには作らない）。
     class CameraComponent : public IComponent
     {
     public:
@@ -60,9 +61,9 @@ namespace CoreEngine
         Camera* GetCamera() const { return camera_; }
         void SetCamera(Camera* camera) { camera_ = camera; }
 
-        /// @brief 実体を登録した名前（オブジェクトの名前。まだ登録していなければ空）
-        const std::string& GetRegisteredName() const { return registeredName_; }
-        void SetRegisteredName(std::string name) { registeredName_ = std::move(name); }
+        /// @brief 実体を登録したキー（オブジェクトの ID。まだ登録していなければ空）
+        const std::string& GetRegisteredKey() const { return registeredKey_; }
+        void SetRegisteredKey(std::string key) { registeredKey_ = std::move(key); }
 
     private:
         CameraParameters parameters_{};
@@ -72,7 +73,7 @@ namespace CoreEngine
         // CameraFeature が持つ実体（非所有）
         Camera* camera_ = nullptr;
 
-        // 実体を登録した名前（オブジェクトの名前が変わったら登録し直すために控える）
-        std::string registeredName_;
+        // 実体を登録したキー（オブジェクトの ID）
+        std::string registeredKey_;
     };
 }

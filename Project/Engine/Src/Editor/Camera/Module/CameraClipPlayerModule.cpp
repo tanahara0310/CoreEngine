@@ -77,7 +77,8 @@ namespace CoreEngine
             RefreshClipFileList();
         }
 
-        ImGui::Text("アクティブ3D: %s", context.cameraManager->GetActiveCameraName(CameraType::Camera3D).c_str());
+        ImGui::Text("アクティブ3D: %s", context.cameraManager->GetDisplayName(
+            context.cameraManager->GetActiveCameraName(CameraType::Camera3D)).c_str());
         ImGui::Text("読み込み中シーケンス: %s", loadedClipName_.empty() ? "なし" : loadedClipName_.c_str());
         UI::Hint("ここで読み込んだシーケンスがゲームカメラ再生データです。");
         UI::Separator();

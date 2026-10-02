@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "CameraManager.h"
 
+#include "Utility/Logger/Logger.h"
+
 #ifdef CORE_EDITOR
 #include "Editor/Camera/CameraDebugUI.h"
 #include "GameObject/GameObjectManager.h"
@@ -13,28 +15,28 @@ namespace CoreEngine
 
     CameraManager::~CameraManager() = default;
 
-    void CameraManager::RegisterCamera(const std::string& name, std::unique_ptr<Camera> camera)
+    bool CameraManager::RegisterCamera(const std::string& name, std::unique_ptr<Camera> camera)
     {
         if (!camera) {
-            return;
+            return false;
+        }
+
+        // 登録済みの名前なら差し替えずに断る
+        if (cameras_.find(name) != cameras_.end()) {
+            Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
+                "カメラ {} は登録済みなので、新しいカメラを登録しない", name);
+            return false;
         }
 
         const CameraType cameraType = camera->GetCameraType();
-
-        // 既存の同名カメラがあればアクティブ参照をクリアしてから差し替える
-        if (cameras_.find(name) != cameras_.end()
-            && cameraType == CameraType::Camera2D && activeCamera2DName_ == name) {
-            activeCamera2DName_.clear();
-            activeCamera2D_ = nullptr;
-        }
-
-        cameras_[name] = std::move(camera);
+        cameras_.emplace(name, std::move(camera));
 
         // 2D は最初に登録されたものを自動的にアクティブにする。
         // 3D は役割（Scene / Game）で引くため、ここでアクティブ指定は行わない。
         if (cameraType == CameraType::Camera2D && !activeCamera2D_) {
             SetActiveCamera(name, CameraType::Camera2D);
         }
+        return true;
     }
 
     void CameraManager::UnregisterCamera(const std::string& name)
@@ -51,6 +53,7 @@ namespace CoreEngine
 
         controllers_.erase(name);
         objectOwnedCameras_.erase(name);
+        displayNames_.erase(name);
         cameras_.erase(it);
     }
 
@@ -66,6 +69,20 @@ namespace CoreEngine
     bool CameraManager::IsObjectOwnedCamera(const std::string& name) const
     {
         return objectOwnedCameras_.find(name) != objectOwnedCameras_.end();
+    }
+
+    void CameraManager::SetDisplayName(const std::string& name, const std::string& displayName)
+    {
+        if (cameras_.find(name) == cameras_.end()) {
+            return;
+        }
+        displayNames_[name] = displayName;
+    }
+
+    std::string CameraManager::GetDisplayName(const std::string& name) const
+    {
+        auto it = displayNames_.find(name);
+        return (it != displayNames_.end()) ? it->second : name;
     }
 
     ICameraController* CameraManager::GetController(const std::string& name) const
