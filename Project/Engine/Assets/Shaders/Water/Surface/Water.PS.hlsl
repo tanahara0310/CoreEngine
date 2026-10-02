@@ -395,15 +395,27 @@ WaterPixelOutput main(WaterPSInput input)
     // 高周波パターンへのしきい値カット（ComputeFoamLace）でレース状に変換する:
     //   lace ＝ 水面の上の白い泡そのもの（縁が鋭いレース・筋・粒）
     //   haze ＝ レースの穴の間と縁の外側の水面下の気泡（白濁。パターンで粒状に変調し霧化を防ぐ）
-    // 白波の泡のマスクと模様は FFT の参照格子座標（x0）で評価し、泡の模様を泡の塊と一緒に運ぶ。
-    // 岸の泡は水の粒の静止位置で読み、模様もそこで評価する。
+    // 白波の泡のマスクは FFT の参照格子座標（x0）で評価し、模様は泡と一緒に風下へ流す。
+    // 岸の泡は水の粒の静止位置で読み、模様もそこで評価する（寄せ・引きと一緒に動く）。
+    // 2 つの泡は模様の動きが違うので、別々にレースを作って重ねる。
     const float whitecapFoam = ComputeFoamMask(input.baseWorldXZ);
     const ShoreFoamResult shoreFoam = ResolveShoreFoam(input.worldPosition, waterColumnResult.viewRayVerticalDepth);
     const float foamMask = max(whitecapFoam, shoreFoam.coverage);
-    // 岸の泡が占める分だけ、模様を水の粒の静止位置で評価する（模様が寄せ・引きと一緒に動く）
-    const float shoreFoamShare = shoreFoam.coverage / max(foamMask, 0.05f);
-    const float2 foamPatternXZ = input.baseWorldXZ + shoreFoam.patternShift * shoreFoamShare;
-    const WaterFoamLayer foamLayer = EvaluateFoamLayer(foamMask, foamPatternXZ);
+    const float2 whitecapPatternXZ = ComputeWhitecapPatternXZ(input.baseWorldXZ);
+    const float2 shorePatternXZ = input.baseWorldXZ + shoreFoam.patternShift;
+    WaterFoamLayer whitecapLayer = (WaterFoamLayer)0;
+    [branch]
+    if (whitecapFoam > 0.0f)
+    {
+        whitecapLayer = EvaluateFoamLayer(whitecapFoam, whitecapPatternXZ);
+    }
+    WaterFoamLayer shoreLayer = (WaterFoamLayer)0;
+    [branch]
+    if (shoreFoam.coverage > 0.0f)
+    {
+        shoreLayer = EvaluateFoamLayer(shoreFoam.coverage, shorePatternXZ);
+    }
+    const WaterFoamLayer foamLayer = CombineFoamLayers(whitecapLayer, shoreLayer);
     // 水面の上の泡の割合。拡散層でフレネル反射を持たないので、反射・サングリッター・
     // 波頭の透過光をこの割合だけ遮る
     const float surfaceFoam = foamLayer.lace * saturate(gFoamOpacity);
@@ -415,7 +427,9 @@ WaterPixelOutput main(WaterPSInput input)
     float3 foamColor = float3(0.0f, 0.0f, 0.0f);
     if (foamMask > 0.0f)
     {
-        foamColor = ComputeFoamColor(surfaceNormal, sunDiffuseVisibility) * FoamGrain(foamPatternXZ);
+        const float shoreFoamShare = shoreFoam.coverage / max(whitecapFoam + shoreFoam.coverage, 1.0e-4f);
+        const float foamGrain = lerp(FoamGrain(whitecapPatternXZ), FoamGrain(shorePatternXZ), shoreFoamShare);
+        foamColor = ComputeFoamColor(surfaceNormal, sunDiffuseVisibility) * foamGrain;
     }
 
     float3 refractionColor = ResolveWaterTransmissionColor(pixelCoord, screenUV);

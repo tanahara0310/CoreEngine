@@ -80,6 +80,10 @@ cbuffer WaterFrameConstants : register(b5)
     int gShoreFoamEnabled;  // 1 = 範囲の中の岸の泡を gWaterShoreFoam から読む
     // 波群エンベロープの位相のずれ [rad]（ComputeFFTWaveGroupEnvelope。FFTWater.VS も読む）
     float3 gWaveGroupPhase;
+
+    // 白波の泡が風下へ流れた距離 [m]（WaterFoamSystem::ComputeFoamDriftOffset）
+    float2 gFoamDriftOffsetXZ;
+    float2 gFoamMotionPad;
 };
 
 #endif // WATER_FRAME_CONSTANTS_INCLUDED

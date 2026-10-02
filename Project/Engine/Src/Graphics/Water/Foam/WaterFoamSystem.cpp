@@ -77,6 +77,12 @@ namespace CoreEngine
         ++calibrationEpoch_;
     }
 
+    std::array<float, 2> WaterFoamSystem::ComputeFoamDriftOffset(float timeSeconds) const
+    {
+        const float distance = kWindDriftFactor * (std::max)(settings_.windSpeed, 0.0f) * timeSeconds;
+        return { settings_.windDirection[0] * distance, settings_.windDirection[1] * distance };
+    }
+
     float WaterFoamSystem::GetTargetWhitecapCoverage() const
     {
         const float windSpeed = settings_.windSpeed;
@@ -408,6 +414,9 @@ namespace CoreEngine
         constants.decaySeconds = settings_.decaySeconds;
         constants.resetFoam = whitecapResetPending_ ? 1u : 0u;
         whitecapResetPending_ = false;
+        whitecapDriftOffset_ = ComputeFoamDriftOffset(timeSeconds);
+        constants.driftOffsetXZ[0] = whitecapDriftOffset_[0];
+        constants.driftOffsetXZ[1] = whitecapDriftOffset_[1];
 
         // 書き込み先はフレームの偶奇で決める。読む側は前のフレームの結果で、
         // 同じフレームの水面のピクセルシェーダーも読む
@@ -576,6 +585,8 @@ namespace CoreEngine
         for (size_t i = 0; i < waveGroupPhase.size(); ++i) {
             constants.waveGroupPhase[i] = waveGroupPhase[i];
         }
+        constants.driftOffsetXZ[0] = whitecapDriftOffset_[0];
+        constants.driftOffsetXZ[1] = whitecapDriftOffset_[1];
 
         constexpr UINT64 kBytes = sizeof(uint32_t) * kStatisticsWords;
         Barrier::Transition(cmdList, statistics_, D3D12_RESOURCE_STATE_COPY_DEST);

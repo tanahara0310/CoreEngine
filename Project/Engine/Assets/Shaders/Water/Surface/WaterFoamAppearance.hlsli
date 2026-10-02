@@ -10,7 +10,7 @@
 // WaterVolume.hlsli（EvaluateWaterSkyIrradiance）の後で include すること。以下に暗黙依存:
 //   資源    : gSampler / gIrradianceMap / gLightCounts / gDirectionalLights /
 //             gIBLParams（Object3dForward.hlsli）
-//   cbuffer : gSkyAmbientEnabled / gSkyAmbientScale
+//   cbuffer : gSkyAmbientEnabled / gSkyAmbientScale / gFoamDriftOffsetXZ
 //   関数    : EvaluateWaterSkyIrradiance（WaterVolume.hlsli）
 // ============================================================
 #ifndef WATER_FOAM_APPEARANCE_INCLUDED
@@ -124,14 +124,31 @@ struct WaterFoamLayer
 
 /// @brief 被覆率から、その点の泡のレースと白濁の割合を求める
 /// @param mask     泡の被覆率 [0,1]（水面のうち泡のレースが占める面積の割合）
-/// @param baseWorldXZ 変位前の参照格子座標（泡の模様は泡の塊と一緒に運ばれる）
-WaterFoamLayer EvaluateFoamLayer(float mask, float2 baseWorldXZ)
+/// @param patternXZ 模様を評価する位置（泡の塊と一緒に運ばれる座標）
+WaterFoamLayer EvaluateFoamLayer(float mask, float2 patternXZ)
 {
     WaterFoamLayer layer;
-    layer.pattern = FoamPattern(baseWorldXZ);
+    layer.pattern = FoamPattern(patternXZ);
     layer.lace = ComputeFoamLace(FoamLaceMaskForCoverage(mask), layer.pattern);
     layer.haze = saturate(mask * 1.2f) * (1.0f - layer.lace)
         * lerp(kFoamHazePatternMin, 1.0f, layer.pattern);
+    return layer;
+}
+
+/// @brief 白波の泡の模様を評価する位置（泡と一緒に風下へ流す）
+/// @param baseWorldXZ 変位前の参照格子座標
+float2 ComputeWhitecapPatternXZ(float2 baseWorldXZ)
+{
+    return baseWorldXZ - gFoamDriftOffsetXZ;
+}
+
+/// @brief 2 つの泡の層を重ねる（レースは和集合。白濁は相手のレースの下に隠れる）
+WaterFoamLayer CombineFoamLayers(WaterFoamLayer a, WaterFoamLayer b)
+{
+    WaterFoamLayer layer;
+    layer.lace = 1.0f - (1.0f - a.lace) * (1.0f - b.lace);
+    layer.haze = max(a.haze * (1.0f - b.lace), b.haze * (1.0f - a.lace));
+    layer.pattern = max(a.pattern, b.pattern);
     return layer;
 }
 

@@ -52,6 +52,8 @@ namespace CoreEngine
             float windSpeed = 0.0f;
             /// @brief 白波の被覆率の目標に掛ける倍率（1.0 = Monahan の観測式）
             float whitecapScale = WaterFoamDefaults::kWhitecapScale;
+            /// @brief 風下の向き（ワールド XZ・正規化済み）
+            float windDirection[2] = { 1.0f, 0.0f };
             float cascadeWeights[3] = {
                 WaterFoamDefaults::kCascadeWeights[0],
                 WaterFoamDefaults::kCascadeWeights[1],
@@ -103,6 +105,10 @@ namespace CoreEngine
         /// @brief 白波の被覆率の目標（Monahan の観測式 W = 3.84e-6·U^3.41 に倍率を掛けたもの）
         float GetTargetWhitecapCoverage() const;
 
+        /// @brief 白波の泡が風下へ流れた距離（ワールド XZ）[m]
+        /// @param timeSeconds FFT のシミュレーション時刻 [s]
+        std::array<float, 2> ComputeFoamDriftOffset(float timeSeconds) const;
+
         /// @brief 較正した砕けるしきい値（合成ヤコビアンがこれを下回ると砕ける）
         float GetWhitecapBias() const { return whitecapBias_; }
 
@@ -130,6 +136,8 @@ namespace CoreEngine
 
     private:
         static constexpr uint32_t kCascadeCount = 3;
+        /// @brief 泡が風下へ流れる速さ ÷ 風速（海面の吹送流とストークスドリフトの和）
+        static constexpr float kWindDriftFactor = 0.03f;
 
         /// @brief 白波の蓄積パスの定数（FFTOceanFoamAccumulate.CS.hlsl の FFTOceanFoamConstants）
         struct WhitecapConstants {
@@ -144,14 +152,16 @@ namespace CoreEngine
             };
             float decaySeconds = WaterFoamDefaults::kDecaySeconds;
             uint32_t resetFoam = 0;
-            float padding[3] = {};
+            float driftOffsetXZ[2] = { 0.0f, 0.0f };
+            float padding = 0.0f;
         };
 
         static constexpr Cb::Field kWhitecapConstantsFields[] = {
             CB_FIELD(WhitecapConstants, resolution), CB_FIELD(WhitecapConstants, deltaSeconds),
             CB_FIELD(WhitecapConstants, foamBias), CB_FIELD(WhitecapConstants, foamGain),
             CB_FIELD(WhitecapConstants, cascadeWeights), CB_FIELD(WhitecapConstants, decaySeconds),
-            CB_FIELD(WhitecapConstants, resetFoam), CB_FIELD(WhitecapConstants, padding),
+            CB_FIELD(WhitecapConstants, resetFoam), CB_FIELD(WhitecapConstants, driftOffsetXZ),
+            CB_FIELD(WhitecapConstants, padding),
         };
         CB_VERIFY_LAYOUT(WhitecapConstants, kWhitecapConstantsFields);
         CB_BIND_HLSL(WhitecapConstants, kWhitecapConstantsFields, "FFTOceanFoamConstants");
@@ -260,6 +270,8 @@ namespace CoreEngine
             uint32_t histogramBins = kHistogramBins;
             float waveGroupPhase[3] = { 0.0f, 0.0f, 0.0f };
             float padding = 0.0f;
+            float driftOffsetXZ[2] = { 0.0f, 0.0f };
+            float padding2[2] = { 0.0f, 0.0f };
         };
 
         static constexpr Cb::Field kStatisticsConstantsFields[] = {
@@ -268,7 +280,8 @@ namespace CoreEngine
             CB_FIELD(StatisticsConstants, bias), CB_FIELD(StatisticsConstants, gain),
             CB_FIELD(StatisticsConstants, histogramMin), CB_FIELD(StatisticsConstants, histogramInvWidth),
             CB_FIELD(StatisticsConstants, histogramBins), CB_FIELD(StatisticsConstants, waveGroupPhase),
-            CB_FIELD(StatisticsConstants, padding),
+            CB_FIELD(StatisticsConstants, padding), CB_FIELD(StatisticsConstants, driftOffsetXZ),
+            CB_FIELD(StatisticsConstants, padding2),
         };
         CB_VERIFY_LAYOUT(StatisticsConstants, kStatisticsConstantsFields);
         CB_BIND_HLSL(StatisticsConstants, kStatisticsConstantsFields, "WaterWhitecapStatisticsConstants");
@@ -346,6 +359,8 @@ namespace CoreEngine
         bool whitecapResetPending_ = true;
         float whitecapPreviousTimeSeconds_ = 0.0f;
         uint32_t whitecapSpectrumRevision_ = 0;
+        /// @brief このフレームで白波の泡が風下へ流れた距離 [m]（DispatchWhitecap が求める）
+        std::array<float, 2> whitecapDriftOffset_{};
 
         // ---- 沖の白波の統計（フレームの枠ごとに読み戻す）----
         CustomShaderPipeline statisticsPipeline_{};

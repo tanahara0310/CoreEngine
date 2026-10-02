@@ -574,11 +574,19 @@ namespace CoreEngine
         foamSettings.enabled = frameConstants.foamEnabled != 0 && waterPlane_->IsUsingFFTOcean();
         foamSettings.windSpeed = WaterCVars::FFTWindSpeed.Get();
         foamSettings.whitecapScale = WaterCVars::FoamWhitecapScale.Get();
+        if (const FFTOceanManager* fftOcean = domain.GetFFTOceanManager()) {
+            foamSettings.windDirection[0] = fftOcean->GetSettings().windDirection[0];
+            foamSettings.windDirection[1] = fftOcean->GetSettings().windDirection[1];
+        }
         foamSettings.cascadeWeights[0] = frameConstants.foamCascadeWeights[0];
         foamSettings.cascadeWeights[1] = frameConstants.foamCascadeWeights[1];
         foamSettings.cascadeWeights[2] = frameConstants.foamCascadeWeights[2];
         foamSettings.decaySeconds = frameConstants.foamDecaySeconds;
         foam->SetSettings(foamSettings);
+
+        // 白波の泡が FFT の時刻までに風下へ流れた距離（模様と残っている泡をこれだけずらして読む）
+        const float fftTimeSeconds = fftOceanSimulator_ ? fftOceanSimulator_->GetElapsedTime() : 0.0f;
+        waterPlane_->SetFoamDriftOffset(foam->ComputeFoamDriftOffset(fftTimeSeconds));
     }
 
     void WaterRenderFeature::SyncCausticsAbsorption(RenderDomainContext& domain) const
