@@ -87,11 +87,6 @@ namespace CoreEngine
         CVar<float> cvRestitutionThreshold{
             "sys.Physics.RestitutionThreshold", 1.0f,
             "この速さ未満の接近では跳ね返らせない（m/s）", CVarRange{ 0.0f, 5.0f } };
-
-#ifdef CORE_EDITOR
-        /// 設定パネルが編集する Feature（ドロワーは何もキャプチャせずこれを読む）
-        PhysicsFeature* s_activePhysics = nullptr;
-#endif
     }
 
     namespace {
@@ -118,10 +113,12 @@ namespace CoreEngine
         }
 
 #ifdef CORE_EDITOR
-        EnsureSettingsPanelRegistered(ctx.engine);
-        SetActiveForSettingsPanel(this);
-#else
-        (void)ctx;
+        // Engine Settings に「Physics」パネルを登録する
+        settingsPanel_ = Editor::EditorPanelRegistry::Get().Register({
+            .id = "Physics",
+            .placement = Editor::PanelPlacement::SettingsSection,
+            .draw = [this] { DrawSettingsImGui(); },
+            });
 #endif
     }
 
@@ -218,12 +215,6 @@ namespace CoreEngine
         debugRenderer_.reset();
 
         world_.Reset();
-
-#ifdef CORE_EDITOR
-        if (s_activePhysics == this) {
-            SetActiveForSettingsPanel(nullptr);
-        }
-#endif
     }
 
     Vector3 PhysicsFeature::GetGravity()
@@ -255,33 +246,6 @@ namespace CoreEngine
     }
 
 #ifdef CORE_EDITOR
-
-    void PhysicsFeature::EnsureSettingsPanelRegistered(EngineSystem* engine)
-    {
-        static bool registered = false;
-        if (registered || !engine) {
-            return;
-        }
-
-        Editor::EditorPanelRegistry::Get().Register({
-            .id = "Physics",
-            .placement = Editor::PanelPlacement::SettingsSection,
-            .draw = [] {
-                if (s_activePhysics) {
-                    s_activePhysics->DrawSettingsImGui();
-                } else {
-                    ImGui::TextDisabled("(シーンがありません)");
-                }
-            },
-            });
-
-        registered = true;
-    }
-
-    void PhysicsFeature::SetActiveForSettingsPanel(PhysicsFeature* physics)
-    {
-        s_activePhysics = physics;
-    }
 
     void PhysicsFeature::DrawSettingsImGui()
     {

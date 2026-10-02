@@ -7,10 +7,6 @@
 #include "Utility/CVar/CVar.h"
 #include "Utility/FrameRate/Time.h"
 
-#ifdef CORE_EDITOR
-#include "Editor/ImGui/SceneSettingsPanel.h"
-#endif
-
 namespace CoreEngine
 {
     namespace {
@@ -47,11 +43,6 @@ namespace CoreEngine
         if (auto* pipeline = GetLinePipeline(ctx)) {
             pipeline->RegisterLineSource(debugRenderer_.get());
         }
-
-#ifdef CORE_EDITOR
-        // コリジョンマトリクス編集ウィンドウ（Engine Settings）。編集対象を現在のシーンへ向ける。
-        SceneSettingsPanel::EnsureRegistered(ctx.engine);
-#endif
     }
 
     void CollisionFeature::ApplyCVars()

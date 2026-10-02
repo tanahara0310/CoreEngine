@@ -132,64 +132,36 @@ namespace CoreEngine
                 undoRedoHistory_.Push(record);
             });
 
-        // Hierarchy / Inspector の中身とカメラエディタをパネルとして登録する
+        // エンジン常駐の UI に結びつけ、Hierarchy / Inspector の中身とカメラエディタをパネルとして登録する
         if (auto* gameDebugUI = engine_->GetDebugSubsystem()->GetGameDebugUI()) {
-            gameDebugUI->SetSceneDebugEditor(this);
+            engineUIRegistrations_.push_back(gameDebugUI->BindSceneDebugEditor(*this));
         }
         if (auto* dockingUI = engine_->GetDebugSubsystem()->GetDockingUI()) {
-            dockingUI->SetSceneDebugEditor(this);
+            engineUIRegistrations_.push_back(dockingUI->BindSceneDebugEditor(*this));
         }
 
         auto& panels = Editor::EditorPanelRegistry::Get();
-        panels.Register({
+        engineUIRegistrations_.push_back(panels.Register({
             .id = "Hierarchy Content",
             .placement = Editor::PanelPlacement::HierarchyContent,
-            .owner = this,
             .draw = [this]() { DrawHierarchyContent(); },
-            });
-        panels.Register({
+            }));
+        engineUIRegistrations_.push_back(panels.Register({
             .id = "Inspector Object",
             .placement = Editor::PanelPlacement::InspectorObject,
-            .owner = this,
             .draw = [this]() { DrawInspectorContent(); },
-            });
+            }));
         // Camera Editor は単独ウィンドウ。エディタ視点カメラの設定なので Editor グループへ
-        panels.Register({
+        engineUIRegistrations_.push_back(panels.Register({
             .id = "Camera Editor",
             .placement = Editor::PanelPlacement::Window,
             .group = Editor::PanelGroup::Editor,
-            .owner = this,
             .draw = [this]() {
                 if (cameraManager_) {
                     cameraManager_->DrawImGuiContent();
                 }
             },
-            });
-    }
-
-    void SceneDebugEditor::DetachFromEngineUI()
-    {
-        if (!engine_) {
-            return;
-        }
-
-        auto* debug = engine_->GetDebugSubsystem();
-        if (!debug) {
-            return;
-        }
-
-        if (auto* gameDebugUI = debug->GetGameDebugUI()) {
-            gameDebugUI->SetSceneDebugEditor(nullptr);
-        }
-        if (auto* dockingUI = debug->GetDockingUI()) {
-            dockingUI->SetSceneDebugEditor(nullptr);
-        }
-
-        // 解放済みの this を描かないよう、自分が登録したパネルを外す
-        auto& panels = Editor::EditorPanelRegistry::Get();
-        panels.Unregister("Hierarchy Content", this);
-        panels.Unregister("Inspector Object", this);
-        panels.Unregister("Camera Editor", this);
+            }));
     }
 
     void SceneDebugEditor::ClearHistory()

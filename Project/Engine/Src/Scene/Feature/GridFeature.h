@@ -3,6 +3,7 @@
 #ifdef CORE_EDITOR
 
 #include "ISceneFeature.h"
+#include "Utility/Lifetime/ScopedRegistration.h"
 #include <memory>
 
 namespace CoreEngine
@@ -31,6 +32,9 @@ namespace CoreEngine
     private:
         /// グリッド本体（所有者は RenderManager。ここは参照するだけ）
         GridRenderer* gridRenderer_ = nullptr;
+
+        /// Engine Settings の「Grid」パネルの登録（破棄すると外れる）
+        ScopedRegistration settingsPanel_;
     };
 }
 

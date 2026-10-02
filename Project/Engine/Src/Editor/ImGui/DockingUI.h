@@ -4,6 +4,7 @@
 #include "Editor/Panel/EditorDockArea.h"
 #include "EngineSystem/PlaybackState.h"
 #include "Graphics/RHI/Debug/GpuTimestampProfiler.h"
+#include "Utility/Lifetime/ScopedRegistration.h"
 #include <imgui_internal.h>
 #include <array>
 #include <cstddef>
@@ -115,8 +116,9 @@ namespace CoreEngine
         /// @brief GPU/CPU タイミングデータを設定（ステータスバーホバー時に表示）
         void SetTimingData(const std::array<GpuTimingResult, GpuTimestampProfiler::kSlotCount>& slots) { timingData_ = slots; }
 
-        /// @brief Gameビュー編集用のSceneDebugEditorを設定する
-        void SetSceneDebugEditor(SceneDebugEditor* sceneDebugEditor) { sceneDebugEditor_ = sceneDebugEditor; }
+        /// @brief Gameビュー編集用のSceneDebugEditorを結びつける
+        /// @return 結びつきを握るハンドル。破棄すると外れる（後から別のエディタを結んでいれば、そちらを残す）
+        ScopedRegistration BindSceneDebugEditor(SceneDebugEditor& sceneDebugEditor);
 
     private:
         /// @brief エリアのノードを探す

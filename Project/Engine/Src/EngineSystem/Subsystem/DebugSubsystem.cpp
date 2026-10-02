@@ -11,6 +11,7 @@
 #include "../EngineConfig.h"
 #include "../Settings/EditorSettingsSubsystem.h"
 #include "Editor/ImGui/EditorSettingsPanel.h"
+#include "Editor/ImGui/SceneSettingsPanel.h"
 #include "Utility/CVar/CVarRegistry.h"
 #include "Utility/Event/EventBus.h"
 #include "Utility/Tween/TweenManager.h"
@@ -242,35 +243,32 @@ namespace CoreEngine
             if (auto* mm = engine_->GetService<ModelManager>()) { return mm->GetThreadPool(); }
             return nullptr;
             });
-        Editor::EditorPanelRegistry::Get().Register({
+        AddPanel({
             .id = "Thread Profiler",
             .placement = Editor::PanelPlacement::Window,
             .group = Editor::PanelGroup::Analysis,
-            .owner = this,
             .draw = [this]() { threadProfilerUI_->Draw(); },
             });
 
         // CPU・GPU・スクリプト・スレッドをまとめたプロファイラ（下段で Console と並べる）
         profilerPanel_ = std::make_unique<ProfilerPanel>();
         profilerPanel_->Initialize(engine_, &gpuProfiler_, threadProfilerUI_.get());
-        Editor::EditorPanelRegistry::Get().Register({
+        AddPanel({
             .id = "Profiler",
             .placement = Editor::PanelPlacement::Window,
             .group = Editor::PanelGroup::Analysis,
             .defaultDock = Editor::DockArea::Bottom,
             .defaultVisible = true,
-            .owner = this,
             .defaultWidth = 900.0f,
             .defaultHeight = 360.0f,
             .draw = [this]() { profilerPanel_->Draw(); },
             });
 
         // キーコンフィグUIの登録
-        Editor::EditorPanelRegistry::Get().Register({
+        AddPanel({
             .id = "Key Config",
             .placement = Editor::PanelPlacement::Window,
             .group = Editor::PanelGroup::Editor,
-            .owner = this,
             .draw = [this]() {
                 if (auto* inputManager = engine_->GetService<InputManager>()) {
                     keyConfigUI_.Draw(inputManager->GetQuery());
@@ -289,11 +287,10 @@ namespace CoreEngine
         // Collect() はフレームごとに1回だけ呼ぶ（描画後に DrawImGuiWithProfiling 直前で実行）
         // 統計は Inspector のタブとして出す（Window > Analysis > Engine Stats で開閉）
         const auto addStatsTab = [this](const char* id, void (EngineStatsWindow::*tab)()) {
-            Editor::EditorPanelRegistry::Get().Register({
+            AddPanel({
                 .id = id,
                 .placement = Editor::PanelPlacement::InspectorTab,
                 .group = Editor::PanelGroup::Analysis,
-                .owner = this,
                 .draw = [this, tab]() { (engineStatsWindow_.get()->*tab)(); },
                 });
             };
@@ -353,11 +350,10 @@ namespace CoreEngine
         // 全 CVar の一覧・検索パネル（機能別パネルとは別に、横断的に触るための入口）
         // Engine Settings ウィンドウの「Editor Settings」管理パネル
         // （自動保存セクションの一覧・最終保存時刻・リセット / バックアップ復元）
-        Editor::EditorPanelRegistry::Get().Register({
+        AddPanel({
             .id = "Editor Settings",
             .placement = Editor::PanelPlacement::SettingsSection,
             .group = Editor::PanelGroup::Editor,
-            .owner = this,
             .draw = [this]() {
                 EditorSettingsPanel::Draw(
                     engine_ ? engine_->GetSubsystem<EditorSettingsSubsystem>() : nullptr);
@@ -365,11 +361,10 @@ namespace CoreEngine
             });
 
         // Shading パネル（IBL はシーン側で有効化され、マテリアルは強度のみ持つ）
-        Editor::EditorPanelRegistry::Get().Register({
+        AddPanel({
             .id = "Shading",
             .placement = Editor::PanelPlacement::SettingsSection,
             .group = Editor::PanelGroup::Rendering,
-            .owner = this,
             .draw = [this]() {
             auto* sceneManager = engine_->GetSceneManager();
             auto* objManager = sceneManager ? sceneManager->GetCurrentGameObjectManager() : nullptr;
@@ -428,20 +423,18 @@ namespace CoreEngine
             });
 
         // 起動時に開くシーン（CVar で表せない文字列なので Project.json が持つ）
-        Editor::EditorPanelRegistry::Get().Register({
+        AddPanel({
             .id = "Startup",
             .placement = Editor::PanelPlacement::SettingsSection,
             .group = Editor::PanelGroup::General,
-            .owner = this,
             .draw = [] { DrawStartupSettings(); },
             });
 
         // 当たり判定のレイヤーの名前（CVar で表せないのでプロジェクト設定が持つ）
-        Editor::EditorPanelRegistry::Get().Register({
+        AddPanel({
             .id = "Collision Layers",
             .placement = Editor::PanelPlacement::SettingsSection,
             .group = Editor::PanelGroup::General,
-            .owner = this,
             .draw = [] { DrawCollisionLayerSettings(); },
             });
 
@@ -458,16 +451,22 @@ namespace CoreEngine
             });
 
         // Rendering Techniques パネル（SSAO, TAA等のレンダリング技術）
-        Editor::EditorPanelRegistry::Get().Register({
+        AddPanel({
             .id = "Rendering Techniques",
             .placement = Editor::PanelPlacement::SettingsSection,
             .group = Editor::PanelGroup::Rendering,
-            .owner = this,
             .draw = [this]() {
                 if (auto* renderingTechniqueManager = engine_->GetService<RenderingTechniqueManager>()) {
                     renderingTechniqueManager->DrawImGui();
                 }
             },
+            });
+
+        // 開いているシーンの設定（足した Feature・既定の床・衝突マトリクス）
+        AddPanel({
+            .id = "Scene Settings",
+            .placement = Editor::PanelPlacement::SettingsSection,
+            .draw = [this] { SceneSettingsPanel::Draw(*engine_); },
             });
 
         // Render Pass デバッグパネル（各パスの中間バッファを可視化）
@@ -479,11 +478,10 @@ namespace CoreEngine
             if (renderComp) {
                 renderPassDebugPanel_.SetRenderTargetManager(renderComp->GetRenderTargetManager());
             }
-            Editor::EditorPanelRegistry::Get().Register({
+            AddPanel({
                 .id = "Render Pass",
                 .placement = Editor::PanelPlacement::Window,
                 .group = Editor::PanelGroup::Rendering,
-                .owner = this,
                 .draw = [this]() { renderPassDebugPanel_.Draw(); },
                 });
         }
@@ -496,22 +494,20 @@ namespace CoreEngine
         // パスの依存・実行順・GPU 時間・バリアを 1 枚のグラフとして見せ、
         // ノードから直接パスの有効/無効を切り替えられるようにする。
         renderGraphEditorPanel_.Initialize(engine_, &gpuProfiler_);
-        Editor::EditorPanelRegistry::Get().Register({
+        AddPanel({
             .id = "Render Graph",
             .placement = Editor::PanelPlacement::Window,
             .group = Editor::PanelGroup::Rendering,
-            .owner = this,
             .draw = [this]() { renderGraphEditorPanel_.Draw(); },
             });
 
         // レイトレーシング専用デバッグパネル（Debug メニュー > Ray Tracing）
         // 加速構造の統計・RTシャドウのステージ別内訳・中間バッファ・設定をまとめる。
         rayTracingDebugPanel_.Initialize(engine_, &gpuProfiler_);
-        Editor::EditorPanelRegistry::Get().Register({
+        AddPanel({
             .id = "Ray Tracing",
             .placement = Editor::PanelPlacement::Window,
             .group = Editor::PanelGroup::Rendering,
-            .owner = this,
             .defaultWidth = 620.0f,
             .defaultHeight = 620.0f,
             .draw = [this]() { rayTracingDebugPanel_.Draw(); },
@@ -520,11 +516,10 @@ namespace CoreEngine
         // イベントバスのデバッグパネル（Debug メニュー > Event Bus）
         // 疎結合にすると「誰が誰に反応したか」がコードから読めなくなるので、
         // 型ごとの購読者数・発行回数と直近に流れたイベントを常に見えるようにしておく。
-        Editor::EditorPanelRegistry::Get().Register({
+        AddPanel({
             .id = "Event Bus",
             .placement = Editor::PanelPlacement::Window,
             .group = Editor::PanelGroup::Analysis,
-            .owner = this,
             .defaultWidth = 620.0f,
             .defaultHeight = 620.0f,
             .draw = []() { EventBus::GetInstance().DrawImGui(); },
@@ -533,11 +528,10 @@ namespace CoreEngine
         // トゥイーンのデバッグパネル（Debug メニュー > Tween）
         // 再生中の本数・進捗・link 先を並べる。link 無しの行は警告色にしてある
         // （対象が破棄されたときに解放済みメモリを踏む唯一の経路がそれのため）。
-        Editor::EditorPanelRegistry::Get().Register({
+        AddPanel({
             .id = "Tween",
             .placement = Editor::PanelPlacement::Window,
             .group = Editor::PanelGroup::Analysis,
-            .owner = this,
             .defaultWidth = 620.0f,
             .defaultHeight = 620.0f,
             .draw = []() { TweenManager::GetInstance().DrawImGui(); },
@@ -553,6 +547,11 @@ namespace CoreEngine
             dockingUI->RegisterWindow("Canvas", Editor::DockArea::Center);
         }
 
+    }
+
+    void DebugSubsystem::AddPanel(Editor::EditorPanelDesc desc)
+    {
+        panelRegistrations_.push_back(Editor::EditorPanelRegistry::Get().Register(std::move(desc)));
     }
 
     void DebugSubsystem::Finalize()

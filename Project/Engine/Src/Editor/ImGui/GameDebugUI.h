@@ -12,6 +12,7 @@
 #include "Editor/Scene/SceneResaveDialog.h"
 #endif
 #include "Editor/Panel/EditorPanelRegistry.h"
+#include "Utility/Lifetime/ScopedRegistration.h"
 #include <filesystem>
 #include <functional>
 #include <memory>
@@ -60,8 +61,9 @@ namespace CoreEngine
         ConsoleUI* GetConsole() { return console_.get(); }
 #endif
 
-        /// @brief Gameビュー用のSceneDebugEditorを設定
-        void SetSceneDebugEditor(SceneDebugEditor* sceneDebugEditor) { sceneDebugEditor_ = sceneDebugEditor; }
+        /// @brief Gameビュー用のSceneDebugEditorを結びつける
+        /// @return 結びつきを握るハンドル。破棄すると外れる（後から別のエディタを結んでいれば、そちらを残す）
+        ScopedRegistration BindSceneDebugEditor(SceneDebugEditor& sceneDebugEditor);
 
         /// @brief 常設ウィンドウ（Hierarchy・Inspector・Console）の開閉
         struct CoreWindows

@@ -16,8 +16,6 @@
 #include "Utility/FrameRate/Time.h"
 
 #ifdef CORE_EDITOR
-#include "EngineSystem/Subsystem/DebugSubsystem.h"
-#include "Editor/ImGui/GameDebugUI.h"
 #include "Editor/ImGui/CVarPanel.h"
 #include "Editor/ImGui/ImGuiAll.h"
 #endif
@@ -35,11 +33,6 @@ namespace
 
     /// パネルが扱う CVar の接頭辞
     constexpr const char* kCVarPrefix = "r.TimeOfDay";
-
-#ifdef CORE_EDITOR
-    /// 設定パネルの編集対象（GroundFeature と同じ流儀。ドロワーは何もキャプチャしない）
-    TimeOfDayFeature* s_activeTimeOfDay = nullptr;
-#endif
 
     // ───────────────────────────────────────────────────────────────
     // 昼夜サイクルのパラメータ（CVar。Engine Settings と Saved JSON に自動で載る）
@@ -126,15 +119,17 @@ namespace CoreEngine
 {
     // ==================== ライフサイクル ====================
 
-    void TimeOfDayFeature::Initialize([[maybe_unused]] SceneContext& ctx)
+    void TimeOfDayFeature::Initialize(SceneContext&)
     {
         timeOfDay_ = NormalizeHours(cvStartHour.Get());
 
 #ifdef CORE_EDITOR
-        // パラメータ UI は CVar から自動生成する。機能ごとにこの登録をしないと
-        // どのパネルにも出てこない（全 CVar を一覧する横断パネルは無い設計）
-        EnsureSettingsPanelRegistered(ctx.engine);
-        SetActiveForSettingsPanel(this);
+        // Engine Settings に「Time of Day」パネルを登録する（パラメータ UI は CVar から自動生成する）
+        settingsPanel_ = Editor::EditorPanelRegistry::Get().Register({
+            .id = "Time of Day",
+            .placement = Editor::PanelPlacement::SettingsSection,
+            .draw = [this] { DrawSettingsImGui(); },
+            });
 #endif
     }
 
@@ -158,11 +153,6 @@ namespace CoreEngine
 
     void TimeOfDayFeature::Finalize(SceneContext& ctx)
     {
-#ifdef CORE_EDITOR
-        // シーンと一緒に消えるので、パネルの参照を先に外す
-        SetActiveForSettingsPanel(nullptr);
-#endif
-
         // 自動露出を元へ戻す（サイクルが触っていた場合のみ）
         if (autoExposureOverridden_) {
             if (ToneMapping* toneMapping = GetToneMapping(ctx)) {
@@ -485,34 +475,6 @@ namespace CoreEngine
     // ==================== 設定パネル ====================
 
 #ifdef CORE_EDITOR
-    void TimeOfDayFeature::EnsureSettingsPanelRegistered(EngineSystem* engine)
-    {
-        static bool registered = false;
-        if (registered || !engine) {
-            return;
-        }
-
-        // ドロワーは何もキャプチャしない（ファイルスコープの s_activeTimeOfDay を読むだけ）
-        Editor::EditorPanelRegistry::Get().Register({
-            .id = "Time of Day",
-            .placement = Editor::PanelPlacement::SettingsSection,
-            .draw = [] {
-                if (s_activeTimeOfDay) {
-                    s_activeTimeOfDay->DrawSettingsImGui();
-                } else {
-                    ImGui::TextDisabled("(このシーンには昼夜サイクルがありません)");
-                }
-            },
-            });
-
-        registered = true;
-    }
-
-    void TimeOfDayFeature::SetActiveForSettingsPanel(TimeOfDayFeature* feature)
-    {
-        s_activeTimeOfDay = feature;
-    }
-
     void TimeOfDayFeature::DrawSettingsImGui()
     {
         const int hour = static_cast<int>(timeOfDay_);

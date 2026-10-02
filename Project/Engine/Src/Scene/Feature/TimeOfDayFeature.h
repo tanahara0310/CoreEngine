@@ -3,10 +3,10 @@
 #include "ISceneFeature.h"
 #include "Graphics/Light/Light.h"
 #include "Math/MathCore.h"
+#include "Utility/Lifetime/ScopedRegistration.h"
 
 namespace CoreEngine
 {
-    class EngineSystem;
     class GameObject;
     class ICVar;
     class LightManager;
@@ -86,12 +86,6 @@ namespace CoreEngine
         static Vector3 ComputeLightDirection(float elevationDeg, float azimuthDeg);
 
 #ifdef CORE_EDITOR
-        /// @brief Engine Settings に「Time of Day」パネルを登録する（プロセスで一度だけ）
-        static void EnsureSettingsPanelRegistered(EngineSystem* engine);
-
-        /// @brief このサイクルをパネルの編集対象にする（nullptr で解除）
-        static void SetActiveForSettingsPanel(TimeOfDayFeature* feature);
-
         /// @brief 設定パネルの中身を描画する
         void DrawSettingsImGui();
 #endif
@@ -162,5 +156,10 @@ namespace CoreEngine
         // ---- 夜の暗さのために借りている他機能の CVar（Finalize で返す）----
         BorrowedCVar maxAutoEV_;        ///< r.AutoExposure.MaxEV
         BorrowedCVar skyAmbientScale_;  ///< r.Atmosphere.SkyAmbientScale
+
+#ifdef CORE_EDITOR
+        /// Engine Settings の「Time of Day」パネルの登録（破棄すると外れる）
+        ScopedRegistration settingsPanel_;
+#endif
     };
 }

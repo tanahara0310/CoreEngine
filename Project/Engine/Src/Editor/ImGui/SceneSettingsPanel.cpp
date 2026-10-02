@@ -1,5 +1,4 @@
 #include "pch.h"
-#include "Editor/Panel/EditorPanelRegistry.h"
 #include "SceneSettingsPanel.h"
 
 #ifdef CORE_EDITOR
@@ -25,9 +24,6 @@ namespace CoreEngine
 namespace SceneSettingsPanel
 {
     namespace {
-        /// 描くたびにシーンを引き直すための、エンジンへの参照（プロセスの寿命）
-        EngineSystem* s_engine = nullptr;
-
         /// @brief 今使っているレイヤーの数（プロジェクト設定で変わる）
         int LayerCount()
         {
@@ -35,9 +31,9 @@ namespace SceneSettingsPanel
         }
 
         /// @brief 今のシーン（無ければ nullptr）
-        Scene* ResolveScene()
+        Scene* ResolveScene(EngineSystem& engine)
         {
-            SceneManager* const manager = s_engine ? s_engine->GetSceneManager() : nullptr;
+            SceneManager* const manager = engine.GetSceneManager();
             return manager ? dynamic_cast<Scene*>(manager->GetCurrentScene()) : nullptr;
         }
 
@@ -145,45 +141,28 @@ namespace SceneSettingsPanel
                 ImGui::EndTable();
             }
         }
-
-        void Draw()
-        {
-            Scene* const scene = ResolveScene();
-            if (!scene) {
-                UI::Hint("シーンがありません");
-                return;
-            }
-
-            UI::Hint("ここの設定は Ctrl+S でシーン（_scene.json）と一緒に保存されます。");
-            UI::Separator();
-
-            if (ImGui::CollapsingHeader("Feature", ImGuiTreeNodeFlags_DefaultOpen)) {
-                DrawFeatures(*scene);
-            }
-            if (ImGui::CollapsingHeader("床", ImGuiTreeNodeFlags_DefaultOpen)) {
-                DrawGround(*scene);
-            }
-            if (ImGui::CollapsingHeader("当たり判定のレイヤー", ImGuiTreeNodeFlags_DefaultOpen)) {
-                DrawCollisionMatrix(*scene);
-            }
-        }
     }
 
-    void EnsureRegistered(EngineSystem* engine)
+    void Draw(EngineSystem& engine)
     {
-        static bool registered = false;
-        if (registered || !engine) {
+        Scene* const scene = ResolveScene(engine);
+        if (!scene) {
+            UI::Hint("シーンがありません");
             return;
         }
-        s_engine = engine;
 
-        Editor::EditorPanelRegistry::Get().Register({
-            .id = "Scene Settings",
-            .placement = Editor::PanelPlacement::SettingsSection,
-            .draw = [] { Draw(); },
-            });
+        UI::Hint("ここの設定は Ctrl+S でシーン（_scene.json）と一緒に保存されます。");
+        UI::Separator();
 
-        registered = true;
+        if (ImGui::CollapsingHeader("Feature", ImGuiTreeNodeFlags_DefaultOpen)) {
+            DrawFeatures(*scene);
+        }
+        if (ImGui::CollapsingHeader("床", ImGuiTreeNodeFlags_DefaultOpen)) {
+            DrawGround(*scene);
+        }
+        if (ImGui::CollapsingHeader("当たり判定のレイヤー", ImGuiTreeNodeFlags_DefaultOpen)) {
+            DrawCollisionMatrix(*scene);
+        }
     }
 }
 }

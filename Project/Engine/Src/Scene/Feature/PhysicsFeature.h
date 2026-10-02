@@ -3,6 +3,7 @@
 #include "ISceneFeature.h"
 #include "Physics/Debug/PhysicsDebugRenderer.h"
 #include "Physics/PhysicsWorld.h"
+#include "Utility/Lifetime/ScopedRegistration.h"
 
 #include <memory>
 
@@ -36,12 +37,6 @@ namespace CoreEngine
         static void SetGravity(const Vector3& gravity);
 
 #ifdef CORE_EDITOR
-        /// @brief 設定パネルを 1 回だけ登録する
-        static void EnsureSettingsPanelRegistered(EngineSystem* engine);
-
-        /// @brief 設定パネルが編集する Feature を差し替える
-        static void SetActiveForSettingsPanel(PhysicsFeature* physics);
-
         /// @brief 設定パネルの中身を描く
         void DrawSettingsImGui();
 #endif
@@ -60,5 +55,10 @@ namespace CoreEngine
 
         /// 速度と接触点のワイヤ表示（この Feature が所有し、Line パスへはポインタを渡すだけ）
         std::unique_ptr<PhysicsDebugRenderer> debugRenderer_;
+
+#ifdef CORE_EDITOR
+        /// Engine Settings の「Physics」パネルの登録（破棄すると外れる）
+        ScopedRegistration settingsPanel_;
+#endif
     };
 }

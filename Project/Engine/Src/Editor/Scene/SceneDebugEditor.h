@@ -7,6 +7,7 @@
 #include "Editor/ImGui/Gizmo.h"
 #include "Editor/ImGui/ObjectSelector.h"
 #include "Scene/SceneSaveSystem.h"
+#include "Utility/Lifetime/ScopedRegistration.h"
 #include <chrono>
 #include <cstdint>
 #include <string>
@@ -38,10 +39,6 @@ namespace CoreEngine
 
         /// @brief 履歴をすべてクリア（シーン切り替え時）
         void ClearHistory();
-
-        /// @brief エンジン常駐 UI から自分への参照を外す
-        /// @note 外さずに破棄すると、次のフレームで解放済みの this が呼ばれる
-        void DetachFromEngineUI();
 
         /// @brief シーンオブジェクト（3D/スプライト）が選択中かどうか
         bool HasSelection() const {
@@ -259,6 +256,9 @@ namespace CoreEngine
         GameObjectManager* gameObjectManager_ = nullptr;
         CameraManager* cameraManager_ = nullptr;
         SceneSaveSystem* saveSystem_ = nullptr;
+
+        // エンジン常駐の UI への結びつきとパネルの登録（破棄すると外れる。ほかのメンバより先に破棄される）
+        std::vector<ScopedRegistration> engineUIRegistrations_;
     };
 }
 
