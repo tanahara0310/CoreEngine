@@ -1,13 +1,11 @@
 #include "pch.h"
 #include "RasterScroll.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/CVar/CVar.h"
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
 #endif
-#include <cassert>
 
 
 namespace CoreEngine
@@ -47,35 +45,23 @@ namespace CoreEngine
         constexpr const char* kCVarPrefix = "r.RasterScroll";
     }
 
-    void RasterScroll::OnCreateConstantBuffers()
+    RasterScroll::RasterScrollParams RasterScroll::MakeParams() const
     {
-        UINT rsSize = (sizeof(RasterScrollParams) + 255) & ~255;
-        rasterScrollParamsCB_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), rsSize);
-        [[maybe_unused]] HRESULT hr = rasterScrollParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedRasterScrollParams_));
-        assert(SUCCEEDED(hr));
-        UpdateConstantBuffer();
-
-    }
-
-    void RasterScroll::UpdateConstantBuffer()
-    {
-        if (!mappedRasterScrollParams_) {
-            return;
-        }
-        mappedRasterScrollParams_->scrollSpeed        = cvScrollSpeed.Get();
-        mappedRasterScrollParams_->lineHeight         = cvLineHeight.Get();
-        mappedRasterScrollParams_->amplitude          = cvAmplitude.Get();
-        mappedRasterScrollParams_->frequency          = cvFrequency.Get();
-        mappedRasterScrollParams_->distortionStrength = cvDistortionStrength.Get();
+        RasterScrollParams params{};
+        params.scrollSpeed        = cvScrollSpeed.Get();
+        params.lineHeight         = cvLineHeight.Get();
+        params.amplitude          = cvAmplitude.Get();
+        params.frequency          = cvFrequency.Get();
+        params.distortionStrength = cvDistortionStrength.Get();
         // time / lineOffset は Update が計算した実行時値
-        mappedRasterScrollParams_->time       = accumulatedTime_;
-        mappedRasterScrollParams_->lineOffset = accumulatedTime_ * cvScrollSpeed.Get();
+        params.time       = accumulatedTime_;
+        params.lineOffset = accumulatedTime_ * cvScrollSpeed.Get();
+        return params;
     }
 
     void RasterScroll::PrepareFrame(const PostEffectFrameContext& ctx)
     {
         accumulatedTime_ += ctx.deltaTime;
-        UpdateConstantBuffer();
     }
 
     void RasterScroll::Dispatch(
@@ -84,7 +70,6 @@ namespace CoreEngine
         uint32_t width,
         uint32_t height)
     {
-        UpdateConstantBuffer();
         UpdateScreenSizeConstants(width, height);
 
         auto* cmdList = graphicsCore_->GetCommandList();
@@ -98,7 +83,7 @@ namespace CoreEngine
 
         if (textureIdx >= 0) cmdList->SetComputeRootDescriptorTable(textureIdx, inputSrvHandle);
         if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
-        if (rsIdx >= 0)      cmdList->SetComputeRootConstantBufferView(rsIdx, rasterScrollParamsCB_->GetGPUVirtualAddress());
+        if (rsIdx >= 0)      cmdList->SetComputeRootConstantBufferView(rsIdx, UploadConstants(MakeParams()));
         if (screenIdx >= 0)  cmdList->SetComputeRootConstantBufferView(screenIdx, GetScreenSizeCbAddress());
 
         uint32_t groupX = (width  + 7) / 8;

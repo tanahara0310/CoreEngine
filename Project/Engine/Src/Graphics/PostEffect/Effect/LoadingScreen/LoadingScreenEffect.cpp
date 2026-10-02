@@ -1,13 +1,11 @@
 #include "pch.h"
 #include "LoadingScreenEffect.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/CVar/CVar.h"
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
 #endif
-#include <cassert>
 #include <algorithm>
 
 
@@ -110,68 +108,54 @@ namespace CoreEngine
         constexpr float kMaxDeltaSeconds = 1.0f / 30.0f;
     }
 
-    void LoadingScreenEffect::OnCreateConstantBuffers()
+    LoadingScreenEffect::LoadingParams LoadingScreenEffect::MakeParams() const
     {
-        UINT paramsSize = (sizeof(LoadingParams) + 255) & ~255;
-        loadingParamsCB_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), paramsSize);
-        [[maybe_unused]] HRESULT hr = loadingParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedLoadingParams_));
-        assert(SUCCEEDED(hr));
-        UpdateConstantBuffer();
-    }
-
-    void LoadingScreenEffect::UpdateConstantBuffer()
-    {
-        if (!mappedLoadingParams_) {
-            return;
-        }
-        mappedLoadingParams_->speed        = cvSpeed.Get();
-        mappedLoadingParams_->spring       = cvSpring.Get();
-        mappedLoadingParams_->stepTurn     = cvStepTurn.Get();
-        mappedLoadingParams_->arcCount     = static_cast<float>(cvArcCount.Get());
-        mappedLoadingParams_->arcLength    = cvArcLength.Get();
-        mappedLoadingParams_->arcPulse     = cvArcPulse.Get();
-        mappedLoadingParams_->thickness    = cvThickness.Get();
-        mappedLoadingParams_->radius       = cvRadius.Get();
-        mappedLoadingParams_->tipDot       = cvTipDot.Get() ? 1.0f : 0.0f;
-        mappedLoadingParams_->trackEnabled = cvTrack.Get() ? 1.0f : 0.0f;
-        mappedLoadingParams_->trackAlpha   = cvTrackAlpha.Get();
-        mappedLoadingParams_->hueCycle     = cvHueCycle.Get() ? 1.0f : 0.0f;
-        mappedLoadingParams_->centerX      = cvCenterX.Get();
-        mappedLoadingParams_->centerY      = cvCenterY.Get();
-        mappedLoadingParams_->arcColor0    = cvArcColor0.Get();
-        mappedLoadingParams_->arcColor1    = cvArcColor1.Get();
-        mappedLoadingParams_->arcColor2    = cvArcColor2.Get();
-        mappedLoadingParams_->trackColor   = cvTrackColor.Get();
+        LoadingParams params{};
+        params.speed        = cvSpeed.Get();
+        params.spring       = cvSpring.Get();
+        params.stepTurn     = cvStepTurn.Get();
+        params.arcCount     = static_cast<float>(cvArcCount.Get());
+        params.arcLength    = cvArcLength.Get();
+        params.arcPulse     = cvArcPulse.Get();
+        params.thickness    = cvThickness.Get();
+        params.radius       = cvRadius.Get();
+        params.tipDot       = cvTipDot.Get() ? 1.0f : 0.0f;
+        params.trackEnabled = cvTrack.Get() ? 1.0f : 0.0f;
+        params.trackAlpha   = cvTrackAlpha.Get();
+        params.hueCycle     = cvHueCycle.Get() ? 1.0f : 0.0f;
+        params.centerX      = cvCenterX.Get();
+        params.centerY      = cvCenterY.Get();
+        params.arcColor0    = cvArcColor0.Get();
+        params.arcColor1    = cvArcColor1.Get();
+        params.arcColor2    = cvArcColor2.Get();
+        params.trackColor   = cvTrackColor.Get();
         // 表示強度と経過時間はシーン遷移が制御する実行時値
-        mappedLoadingParams_->screenAlpha  = screenAlpha_;
-        mappedLoadingParams_->time         = timeAccumulator_;
-        mappedLoadingParams_->progress     = progress_;
-        mappedLoadingParams_->gaugeAlpha   = gaugeAlpha_;
+        params.screenAlpha  = screenAlpha_;
+        params.time         = timeAccumulator_;
+        params.progress     = progress_;
+        params.gaugeAlpha   = gaugeAlpha_;
+        return params;
     }
 
     // デルタタイムに上限を掛けて積算する
     void LoadingScreenEffect::PrepareFrame(const PostEffectFrameContext& ctx)
     {
         timeAccumulator_ += std::min(ctx.deltaTime, kMaxDeltaSeconds);
-        UpdateConstantBuffer();
     }
 
     void LoadingScreenEffect::SetScreenAlpha(float alpha)
     {
         screenAlpha_ = std::clamp(alpha, 0.0f, 1.0f);
-        UpdateConstantBuffer();
     }
 
     void LoadingScreenEffect::SetProgress(float progress)
     {
         progress_ = std::clamp(progress, 0.0f, 1.0f);
-        UpdateConstantBuffer();
     }
 
     void LoadingScreenEffect::SetGaugeAlpha(float alpha)
     {
         gaugeAlpha_ = std::clamp(alpha, 0.0f, 1.0f);
-        UpdateConstantBuffer();
     }
 
     void LoadingScreenEffect::Dispatch(
@@ -180,7 +164,6 @@ namespace CoreEngine
         uint32_t width,
         uint32_t height)
     {
-        UpdateConstantBuffer();
         UpdateScreenSizeConstants(width, height);
 
         auto* cmdList = graphicsCore_->GetCommandList();
@@ -194,7 +177,7 @@ namespace CoreEngine
 
         if (textureIdx >= 0) cmdList->SetComputeRootDescriptorTable(textureIdx, inputSrvHandle);
         if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
-        if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, loadingParamsCB_->GetGPUVirtualAddress());
+        if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(MakeParams()));
         if (screenIdx >= 0)  cmdList->SetComputeRootConstantBufferView(screenIdx, GetScreenSizeCbAddress());
 
         uint32_t groupX = (width  + 7) / 8;
@@ -210,9 +193,7 @@ namespace CoreEngine
         UI::Separator();
 
         // 表示強度はシーン遷移が制御する実行時状態のため、CVar ではなくここで直接編集する
-        if (UI::SliderFloat("表示強度（実行時）", screenAlpha_, 0.0f, 1.0f)) {
-            UpdateConstantBuffer();
-        }
+        UI::SliderFloat("表示強度（実行時）", screenAlpha_, 0.0f, 1.0f);
 
         CVarUI::DrawTree(kCVarPrefix);
 

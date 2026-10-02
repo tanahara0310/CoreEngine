@@ -79,15 +79,12 @@ namespace CoreEngine
 
         std::string  GetEffectName()        const override { return "FadeEffect"; }
         std::wstring GetComputeShaderPath() const override { return L"FadeEffect.CS.hlsl"; }
-        void OnCreateConstantBuffers() override;
 
     private:
-        void UpdateConstantBuffer();
+        /// @brief 今の CVar と実行時の値から定数を作る
+        FadeParams MakeParams() const;
 
     private:
-        Microsoft::WRL::ComPtr<ID3D12Resource> fadeParamsCB_;
-        FadeParams* mappedFadeParams_ = nullptr;
-
         // 実行時状態（保存対象ではない）
         float fadeAlpha_ = 0.0f;
         float fadeType_ = 0.0f;

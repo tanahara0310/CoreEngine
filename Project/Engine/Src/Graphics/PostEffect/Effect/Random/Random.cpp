@@ -1,13 +1,11 @@
 #include "pch.h"
 #include "Random.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/CVar/CVar.h"
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
 #endif
-#include <cassert>
 
 
 namespace CoreEngine
@@ -52,34 +50,22 @@ namespace CoreEngine
 		constexpr const char* kCVarPrefix = "r.Random";
 	}
 
-	void Random::OnCreateConstantBuffers()
+	Random::RandomParams Random::MakeParams() const
 	{
-		UINT randomSize = (sizeof(RandomParams) + 255) & ~255;
-		randomParamsCB_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), randomSize);
-		[[maybe_unused]] HRESULT hr = randomParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedRandomParams_));
-		assert(SUCCEEDED(hr));
-		UpdateConstantBuffer();
-
-	}
-
-	void Random::UpdateConstantBuffer()
-	{
-		if (!mappedRandomParams_) {
-			return;
-		}
-		mappedRandomParams_->intensity = cvIntensity.Get();
-		mappedRandomParams_->blend = cvBlend.Get();
-		mappedRandomParams_->speed = cvSpeed.Get();
-		mappedRandomParams_->time = accumulatedTime_;  // 実行時に累積される値
-		mappedRandomParams_->grainScale = cvGrainScale.Get();
-		mappedRandomParams_->luminanceInfluence = cvLuminanceInfluence.Get();
-		mappedRandomParams_->chromaAmount = cvChromaAmount.Get();
+		RandomParams params{};
+		params.intensity = cvIntensity.Get();
+		params.blend = cvBlend.Get();
+		params.speed = cvSpeed.Get();
+		params.time = accumulatedTime_;  // 実行時に累積される値
+		params.grainScale = cvGrainScale.Get();
+		params.luminanceInfluence = cvLuminanceInfluence.Get();
+		params.chromaAmount = cvChromaAmount.Get();
+		return params;
 	}
 
 	void Random::PrepareFrame(const PostEffectFrameContext& ctx)
 	{
 		accumulatedTime_ += ctx.deltaTime * cvSpeed.Get();
-		UpdateConstantBuffer();
 	}
 
 	void Random::Dispatch(
@@ -88,7 +74,6 @@ namespace CoreEngine
 		uint32_t width,
 		uint32_t height)
 	{
-		UpdateConstantBuffer();
 		UpdateScreenSizeConstants(width, height);
 
 		auto* cmdList = graphicsCore_->GetCommandList();
@@ -102,7 +87,7 @@ namespace CoreEngine
 
 		if (textureIdx >= 0) cmdList->SetComputeRootDescriptorTable(textureIdx, inputSrvHandle);
 		if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
-		if (randomIdx >= 0)  cmdList->SetComputeRootConstantBufferView(randomIdx, randomParamsCB_->GetGPUVirtualAddress());
+		if (randomIdx >= 0)  cmdList->SetComputeRootConstantBufferView(randomIdx, UploadConstants(MakeParams()));
 		if (screenIdx >= 0)  cmdList->SetComputeRootConstantBufferView(screenIdx, GetScreenSizeCbAddress());
 
 		uint32_t groupX = (width + 7) / 8;

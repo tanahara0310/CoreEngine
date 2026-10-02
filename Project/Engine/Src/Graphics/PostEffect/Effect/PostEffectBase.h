@@ -1,8 +1,10 @@
 #pragma once
 #include <d3d12.h>
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <memory>
+#include <type_traits>
 #include <vector>
 
 #include "Graphics/RHI/GraphicsCore.h"
@@ -145,6 +147,18 @@ namespace CoreEngine {
         /// @param slot DeclareExtraInputs で指定したシェーダーリソース名
         /// @return 解決済み SRV。未解決なら ptr == 0
         D3D12_GPU_DESCRIPTOR_HANDLE GetExtraInput(const char* slot) const;
+
+        /// @brief 定数を記録中のフレームの UploadRing へ置き、ルートへ渡す GPU アドレスを返す（失敗時は 0）
+        /// @note 置いた場所はそのフレームの記録中だけ有効。フレームをまたいで持ち越さないこと
+        template <class T>
+        D3D12_GPU_VIRTUAL_ADDRESS UploadConstants(const T& constants) const
+        {
+            static_assert(std::is_trivially_copyable_v<T>, "定数は trivially copyable であること");
+            return UploadConstantBytes(&constants, static_cast<uint32_t>(sizeof(T)));
+        }
+
+        /// @brief バイト列を記録中のフレームの UploadRing へ置き、GPU アドレスを返す（失敗時は 0）
+        D3D12_GPU_VIRTUAL_ADDRESS UploadConstantBytes(const void* data, uint32_t size) const;
 
         GraphicsCore* graphicsCore_ = nullptr;
         std::unique_ptr<RootSignatureManager> rootSignatureManager_;

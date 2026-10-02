@@ -61,15 +61,12 @@ protected:
 
     std::string  GetEffectName()        const override { return "FilmGrain"; }
     std::wstring GetComputeShaderPath() const override { return L"FilmGrain.CS.hlsl"; }
-    void OnCreateConstantBuffers() override;
 
 private:
-    void UpdateConstantBuffer();
+    /// @brief 今の CVar と実行時の値から定数を作る
+    FilmGrainParams MakeParams() const;
 
 private:
-    Microsoft::WRL::ComPtr<ID3D12Resource> filmGrainParamsCB_;
-    FilmGrainParams* mappedFilmGrainParams_ = nullptr;
-
     /// @brief 経過時間（保存対象ではない実行時値）
     float elapsedTime_ = 0.0f;
 };

@@ -58,15 +58,12 @@ protected:
 
     std::string  GetEffectName()        const override { return "Shockwave"; }
     std::wstring GetComputeShaderPath() const override { return L"Shockwave.CS.hlsl"; }
-    void OnCreateConstantBuffers() override;
 
 private:
-    void UpdateConstantBuffer();
+    /// @brief 今の CVar と実行時の値から定数を作る
+    ShockwaveParams MakeParams() const;
 
 private:
-    Microsoft::WRL::ComPtr<ID3D12Resource> shockwaveParamsCB_;
-    ShockwaveParams* mappedShockwaveParams_ = nullptr;
-
     // 発動状態（実行時のみ。保存対象ではない）
     float centerX_   = 0.5f;
     float centerY_   = 0.5f;

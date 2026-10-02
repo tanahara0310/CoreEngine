@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "PostEffectBase.h"
+#include "Graphics/RHI/Resource/UploadRing.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h"
 
@@ -71,5 +72,10 @@ namespace CoreEngine
             }
         }
         return {};
+    }
+
+    D3D12_GPU_VIRTUAL_ADDRESS PostEffectBase::UploadConstantBytes(const void* data, uint32_t size) const
+    {
+        return graphicsCore_->GetUploadRing().AllocateConstants(data, size);
     }
 }

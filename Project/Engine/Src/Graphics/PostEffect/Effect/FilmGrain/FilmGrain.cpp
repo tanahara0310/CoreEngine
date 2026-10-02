@@ -1,13 +1,11 @@
 #include "pch.h"
 #include "FilmGrain.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/CVar/CVar.h"
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
 #endif
-#include <cassert>
 
 
 namespace CoreEngine
@@ -62,28 +60,17 @@ namespace CoreEngine
         constexpr const char* kCVarPrefix = "r.FilmGrain";
     }
 
-    void FilmGrain::OnCreateConstantBuffers()
+    FilmGrain::FilmGrainParams FilmGrain::MakeParams() const
     {
-        UINT size = (sizeof(FilmGrainParams) + 255) & ~255;
-        filmGrainParamsCB_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), size);
-        [[maybe_unused]] HRESULT hr =
-            filmGrainParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedFilmGrainParams_));
-        assert(SUCCEEDED(hr));
-        UpdateConstantBuffer();
-    }
-
-    void FilmGrain::UpdateConstantBuffer()
-    {
-        if (!mappedFilmGrainParams_) {
-            return;
-        }
-        mappedFilmGrainParams_->intensity           = cvIntensity.Get();
-        mappedFilmGrainParams_->intensityShadows    = cvIntensityShadows.Get();
-        mappedFilmGrainParams_->intensityMidtones   = cvIntensityMidtones.Get();
-        mappedFilmGrainParams_->intensityHighlights = cvIntensityHighlights.Get();
-        mappedFilmGrainParams_->grainSize           = cvGrainSize.Get();
-        mappedFilmGrainParams_->chromaAmount        = cvChromaAmount.Get();
-        mappedFilmGrainParams_->time                = elapsedTime_;
+        FilmGrainParams params{};
+        params.intensity           = cvIntensity.Get();
+        params.intensityShadows    = cvIntensityShadows.Get();
+        params.intensityMidtones   = cvIntensityMidtones.Get();
+        params.intensityHighlights = cvIntensityHighlights.Get();
+        params.grainSize           = cvGrainSize.Get();
+        params.chromaAmount        = cvChromaAmount.Get();
+        params.time                = elapsedTime_;
+        return params;
     }
 
     void FilmGrain::PrepareFrame(const PostEffectFrameContext& ctx)
@@ -102,7 +89,6 @@ namespace CoreEngine
         uint32_t width,
         uint32_t height)
     {
-        UpdateConstantBuffer();
         UpdateScreenSizeConstants(width, height);
 
         auto* cmdList = graphicsCore_->GetCommandList();
@@ -116,7 +102,7 @@ namespace CoreEngine
 
         if (textureIdx >= 0) cmdList->SetComputeRootDescriptorTable(textureIdx, inputSrvHandle);
         if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
-        if (grainIdx >= 0)   cmdList->SetComputeRootConstantBufferView(grainIdx, filmGrainParamsCB_->GetGPUVirtualAddress());
+        if (grainIdx >= 0)   cmdList->SetComputeRootConstantBufferView(grainIdx, UploadConstants(MakeParams()));
         if (screenIdx >= 0)  cmdList->SetComputeRootConstantBufferView(screenIdx, GetScreenSizeCbAddress());
 
         uint32_t groupX = (width  + 7) / 8;
