@@ -13,7 +13,7 @@ namespace {
     // 形状ペアごとの判定ディスパッチ
     //================================================
     /// 実装は Math/Geometry 側の 1 箇所にあり、ここはワールド形状を作って渡すだけ。
-    /// 表の形にしてあるので、形状を増やすと次元が合わずコンパイルエラーで埋め忘れに気づける。
+    /// 表に空き（nullptr）があると、下の static_assert でコンパイルが止まる。
 
     using IntersectFn = bool(*)(const Collider&, const Collider&, Geometry::Contact*);
 
@@ -53,6 +53,21 @@ namespace {
         /* Box     */ { BoxVsSphere,     BoxVsBox,     BoxVsCapsule     },
         /* Capsule */ { CapsuleVsSphere, CapsuleVsBox, CapsuleVsCapsule },
     };
+
+    /// @brief 判定表のすべての組み合わせに関数が入っているか
+    constexpr bool IsDispatchComplete()
+    {
+        for (const auto& row : kDispatch) {
+            for (const IntersectFn fn : row) {
+                if (fn == nullptr) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+    static_assert(IsDispatchComplete(),
+        "形状の組み合わせの判定が埋まっていない（ColliderShapeType を足したら kDispatch に行と列を足す）");
 }
 
 namespace {

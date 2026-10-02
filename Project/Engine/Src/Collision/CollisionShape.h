@@ -13,8 +13,8 @@
 namespace CoreEngine
 {
     /// @brief コライダーの形状種別
-    /// @note 追加するときは Collider の判定ディスパッチ表も必ず埋めること
-    ///       （表のサイズが合わなくなるのでコンパイルエラーで気づける）。
+    /// @note 追加するときは Collider の判定ディスパッチ表も埋めること
+    ///       （埋め忘れは Collider.cpp の static_assert でコンパイルが止まる）。
     enum class ColliderShapeType {
         Sphere,    ///< 球
         Box,       ///< ボックス（オーナーの向きに合わせて回る）
