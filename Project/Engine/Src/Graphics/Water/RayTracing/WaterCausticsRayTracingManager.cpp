@@ -160,11 +160,12 @@ namespace CoreEngine
                 settings_.refractiveIndex);
         }
 
-        UploadSurfaceDataForDispatch(dispatchSurfaceData, fftOceanInput);
+        const SurfaceConstantsUpload surface = UploadSurfaceDataForDispatch(dispatchSurfaceData, fftOceanInput);
 
         BindAndDispatchRays(
             cmdList,
             resources,
+            surface.address,
             {
                 { "gSceneDepth", sceneDepthSRV },
                 { "gNormalRoughness", normalRoughnessSRV },

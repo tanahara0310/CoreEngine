@@ -28,18 +28,5 @@ namespace CoreEngine
             uint32_t resolution,
             uint32_t sampleStride,
             FFTOceanSpectrumBufferSet& outSet);
-
-        static bool CreateSimulationConstantBuffer(
-            ID3D12Device* device,
-            uint32_t constantSize,
-            Microsoft::WRL::ComPtr<ID3D12Resource>& simulationConstantsBuffer,
-            void*& mappedSimulationConstants);
-
-        static bool CreateIFFTConstantBuffer(
-            ID3D12Device* device,
-            uint32_t constantSize,
-            uint32_t maxPassCount,
-            Microsoft::WRL::ComPtr<ID3D12Resource>& ifftConstantsBuffer,
-            uint8_t*& mappedIFFTConstantsData);
     };
 }

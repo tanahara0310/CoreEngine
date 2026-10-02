@@ -83,10 +83,7 @@ namespace CoreEngine
         // 隠れた屈折先で当たった点を照らすときに表・テクスチャ・ライトをヒープから番号で引く
         desc.extraConstantBufferName = "RTHitShadingConstants";
         desc.directlyIndexedHeap = true;
-        if (!InitializeFromDesc(dxCommon, descriptorAllocator, asMgr, shaderProgramCache, desc)) {
-            return false;
-        }
-        return InitializeHitShadingConstants();
+        return InitializeFromDesc(dxCommon, descriptorAllocator, asMgr, shaderProgramCache, desc);
     }
 
     void WaterRefractionRayTracingManager::Resize(UINT width, UINT height, ViewID viewId)
@@ -158,8 +155,7 @@ namespace CoreEngine
         const D3D12_GPU_DESCRIPTOR_HANDLE fftNormalSRV =
             (fftOceanInput.normalSRV.ptr != 0) ? fftOceanInput.normalSRV : sceneColorSRV;
 
-        const WaterSurfaceConstants surfaceConstants =
-            UploadSurfaceDataForDispatch(dispatchSurfaceData, fftOceanInput);
+        const SurfaceConstantsUpload surface = UploadSurfaceDataForDispatch(dispatchSurfaceData, fftOceanInput);
 
         // 診断ログは UI の「RT屈折ログを有効にする」でのみ出す。
         // 以前は毎フレーム無条件に 3 本（うち 1 本は引数 26 個）流れており、
@@ -178,7 +174,7 @@ namespace CoreEngine
                 lastDispatchInfo_.blasCount,
                 dispatchSurfaceData.waterHeight,
                 dispatchSurfaceData.simulationType,
-                surfaceConstants.activeWaveCount,
+                surface.constants.activeWaveCount,
                 dispatchSurfaceData.time,
                 constants.refractionEta,
                 constants.maxRayDistance,
@@ -196,6 +192,7 @@ namespace CoreEngine
         BindAndDispatchRays(
             cmdList,
             resources,
+            surface.address,
             {
                 { "gSceneDepth", sceneDepthSRV },
                 { "gSceneColor", sceneColorSRV },
@@ -207,6 +204,6 @@ namespace CoreEngine
             height,
             D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
             {},
-            UploadHitShadingConstants(hitShading, viewIndex));
+            UploadHitShadingConstants(hitShading));
     }
 }

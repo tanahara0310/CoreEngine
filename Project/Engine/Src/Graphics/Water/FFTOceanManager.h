@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
+#include "Graphics/RHI/Resource/PerFrameConstants.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Graphics/Shader/ICustomShaderProvider.h"
@@ -121,9 +122,6 @@ namespace CoreEngine
     private:
         static constexpr uint32_t kMaxSpectrumComponents = 64;
         static constexpr uint32_t kPingPongCount = 2;
-        // IFFT定数のリングスロット数。1フレームで全カスケードのIFFTパスを積むため、
-        // （2 * log2(最大解像度512=9) * 2系統 = 36）× kCascadeCount 分を余裕を持って確保する。
-        static constexpr uint32_t kMaxIFFTPassCount = 36 * kCascadeCount + 8;
 
         // スペクトルサンプルの型は SpectrumBuilder に一本化した
         // （以前は同一レイアウト 32B の重複定義＋無検証 reinterpret_cast だった）。
@@ -210,12 +208,6 @@ namespace CoreEngine
         /// @brief 初期スペクトル格納用バッファを作成する
         bool CreateSpectrumBuffer();
 
-        /// @brief シミュレーション定数バッファを作成する
-        bool CreateSimulationConstantBuffer();
-
-        /// @brief IFFT用定数バッファを作成する
-        bool CreateIFFTConstantBuffer();
-
         /// @brief IFFTピンポン用中間テクスチャを作成する
         bool CreateIntermediateTextures();
 
@@ -225,14 +217,14 @@ namespace CoreEngine
         /// @brief 現在設定から初期スペクトルを再構築する
         void BuildSpectrum();
 
-        /// @brief 指定カスケードのフレーム時刻・パッチ長を含むシミュレーション定数を更新する
+        /// @brief 指定カスケードのフレーム時刻・パッチ長を含むシミュレーション定数を作る
         void UpdateSimulationConstants(uint32_t cascadeIndex, float timeSeconds);
 
-        /// @brief 指定カスケードのシミュレーション定数スロットのGPU仮想アドレスを返す
+        /// @brief 指定カスケードのシミュレーション定数を記録中のフレームの UploadRing に置き、GPU仮想アドレスを返す
         D3D12_GPU_VIRTUAL_ADDRESS GetSimulationConstantsAddress(uint32_t cascadeIndex) const;
 
-        /// @brief IFFT 1パス分の定数を書き込み、GPU仮想アドレスを返す
-        D3D12_GPU_VIRTUAL_ADDRESS UpdateIFFTConstants(uint32_t stageIndex, bool isHorizontal, float normalizationScale);
+        /// @brief IFFT 1パス分の定数を記録中のフレームの UploadRing に置き、GPU仮想アドレスを返す
+        D3D12_GPU_VIRTUAL_ADDRESS UploadIFFTConstants(uint32_t stageIndex, bool isHorizontal, float normalizationScale) const;
 
         /// @brief 指定カスケードの時間発展パスをDispatchする
         void DispatchEvolutionPass(ID3D12GraphicsCommandList* cmdList, uint32_t cascadeIndex);
@@ -320,14 +312,8 @@ namespace CoreEngine
         }
 
         // ──────────────────────────────────────────────────────────
-        // シミュレーション/IFFT定数バッファと書き込みカーソル
+        // シミュレーション定数（カスケードごと。毎フレーム UploadRing に置く）
         // ──────────────────────────────────────────────────────────
-        // シミュレーション定数はカスケードごとに patchLength / amplitudeScale が異なるため、
-        // 1フレームで全カスケードのDispatchを積むには kCascadeCount スロットのリングにする。
-        Microsoft::WRL::ComPtr<ID3D12Resource> simulationConstantsBuffer_;
-        uint8_t* mappedSimulationConstants_ = nullptr;
-        Microsoft::WRL::ComPtr<ID3D12Resource> ifftConstantsBuffer_;
-        uint8_t* mappedIFFTConstantsData_ = nullptr;
-        uint32_t ifftConstantsWriteIndex_ = 0;
+        std::array<PerFrameConstants<SimulationConstants>, kCascadeCount> simulationConstants_{};
     };
 }

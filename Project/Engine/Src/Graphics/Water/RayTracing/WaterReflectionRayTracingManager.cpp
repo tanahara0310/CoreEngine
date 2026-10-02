@@ -133,9 +133,6 @@ namespace CoreEngine
         if (!InitializeFromDesc(dxCommon, descriptorAllocator, asMgr, shaderProgramCache, desc)) {
             return false;
         }
-        if (!InitializeHitShadingConstants()) {
-            return false;
-        }
 
         // 縮小段が作れなくても反射そのものは動く（当たった物をぼかさずに引く）
         colorPyramidPipelineReady_ = InitializeColorPyramid();
@@ -444,7 +441,7 @@ namespace CoreEngine
         const D3D12_GPU_DESCRIPTOR_HANDLE skyEnvSRV =
             hasSkyEnvironment ? skyEnvironmentSRV : sceneColorSRV;
 
-        UploadSurfaceDataForDispatch(dispatchSurfaceData, fftOceanInput);
+        const SurfaceConstantsUpload surface = UploadSurfaceDataForDispatch(dispatchSurfaceData, fftOceanInput);
 
         // 反射の元画像の縮小段を作る。作れないフレームは元画像そのもの（段数 1）と深度を差し、
         // シェーダーはぼかさずに引く
@@ -460,6 +457,7 @@ namespace CoreEngine
         BindAndDispatchRays(
             cmdList,
             resources,
+            surface.address,
             {
                 { "gSceneDepth", sceneDepthSRV },
                 { "gSceneColor", sceneColorSRV },
@@ -474,6 +472,6 @@ namespace CoreEngine
             height,
             D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
             { &outputViews_.Resource(sunVisibilitySlot), outputViews_.GetUAVHandle(sunVisibilitySlot) },
-            UploadHitShadingConstants(hitShading, viewIndex));
+            UploadHitShadingConstants(hitShading));
     }
 }

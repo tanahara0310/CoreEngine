@@ -78,11 +78,11 @@ namespace CoreEngine
         // 水面は半透明オブジェクトとして描画する
         meshRenderer_->SetBlendMode(BlendMode::kBlendModeNormal);
 
-        // 定数バッファを作成する
+        // 定数の置き場所をつなぐ
         auto* engine = owner->GetEngineSystem();
         auto* dxCommon = engine ? engine->GetService<GraphicsCore>() : nullptr;
         if (dxCommon) {
-            constantBuffers_.Initialize(dxCommon->GetDevice());
+            constantBuffers_.Initialize(dxCommon->GetUploadRing());
             constantBuffers_.UpdateWaterConstants(waterCB_);
             constantBuffers_.UpdateFrameConstants(frameCB_);
         }

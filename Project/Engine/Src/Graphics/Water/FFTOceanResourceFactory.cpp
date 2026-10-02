@@ -12,12 +12,6 @@ namespace CoreEngine
 {
     namespace
     {
-        /// @brief 定数バッファ要件の 256 バイト境界へ切り上げる
-        constexpr UINT Align256(UINT value)
-        {
-            return (value + 255) & ~255;
-        }
-
         /// @brief FFT 中間テクスチャ用の 2D リソース記述を作る（UAV 兼 SRV）
         D3D12_RESOURCE_DESC MakeTexture2DDesc(uint32_t resolution, DXGI_FORMAT format, uint32_t mipLevels = 1)
         {
@@ -163,81 +157,6 @@ namespace CoreEngine
         // CPU が書いた UPLOAD 側は spectrumBufferDirty 経由で次の Dispatch 時にコピーされる。
         spectrumSrvHandle = descriptorAllocator->CreateSRV(spectrumBuffer.Get(), srvDesc, "FFTOceanSpectrumSamplesSRV");
 
-        return true;
-    }
-
-    // シミュレーション定数バッファ。UPLOAD ヒープで常時 Map したまま毎フレーム書き換える
-    bool FFTOceanResourceFactory::CreateSimulationConstantBuffer(
-        ID3D12Device* device,
-        uint32_t constantSize,
-        Microsoft::WRL::ComPtr<ID3D12Resource>& simulationConstantsBuffer,
-        void*& mappedSimulationConstants)
-    {
-        if (!device || constantSize == 0) {
-            return false;
-        }
-
-        Microsoft::WRL::ComPtr<ID3D12Device> deviceRef = device;
-        try {
-            simulationConstantsBuffer = ResourceFactory::CreateBufferResource(
-                deviceRef,
-                Align256(constantSize),
-                D3D12_HEAP_TYPE_UPLOAD);
-        }
-        catch (const std::exception&) {
-            return false;
-        }
-
-        D3D12_RANGE readRange{ 0, 0 };
-        void* mapped = nullptr;
-        const HRESULT mapHr = simulationConstantsBuffer->Map(0, &readRange, &mapped);
-        if (FAILED(mapHr) || !mapped) {
-            Logger::GetInstance().Errorf(LogCategory::Graphics, LogSubCategory::Buffer,
-                "FFTOceanResourceFactory: simulation constant buffer map failed. hr={:#x}",
-                static_cast<uint32_t>(mapHr));
-            return false;
-        }
-
-        std::memset(mapped, 0, constantSize);
-        mappedSimulationConstants = mapped;
-        return true;
-    }
-
-    bool FFTOceanResourceFactory::CreateIFFTConstantBuffer(
-        ID3D12Device* device,
-        uint32_t constantSize,
-        uint32_t maxPassCount,
-        Microsoft::WRL::ComPtr<ID3D12Resource>& ifftConstantsBuffer,
-        uint8_t*& mappedIFFTConstantsData)
-    {
-        if (!device || constantSize == 0 || maxPassCount == 0) {
-            return false;
-        }
-
-        const size_t ifftBufferBytes = static_cast<size_t>(Align256(constantSize)) * maxPassCount;
-        Microsoft::WRL::ComPtr<ID3D12Device> deviceRef = device;
-        try {
-            ifftConstantsBuffer = ResourceFactory::CreateBufferResource(
-                deviceRef,
-                ifftBufferBytes,
-                D3D12_HEAP_TYPE_UPLOAD);
-        }
-        catch (const std::exception&) {
-            return false;
-        }
-
-        D3D12_RANGE readRange{ 0, 0 };
-        void* mapped = nullptr;
-        const HRESULT mapHr = ifftConstantsBuffer->Map(0, &readRange, &mapped);
-        if (FAILED(mapHr) || !mapped) {
-            Logger::GetInstance().Errorf(LogCategory::Graphics, LogSubCategory::Buffer,
-                "FFTOceanResourceFactory: IFFT constant buffer map failed. hr={:#x}",
-                static_cast<uint32_t>(mapHr));
-            return false;
-        }
-
-        std::memset(mapped, 0, ifftBufferBytes);
-        mappedIFFTConstantsData = static_cast<uint8_t*>(mapped);
         return true;
     }
 }

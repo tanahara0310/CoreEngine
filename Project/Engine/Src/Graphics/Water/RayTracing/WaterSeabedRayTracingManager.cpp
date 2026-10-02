@@ -92,11 +92,12 @@ namespace CoreEngine
         constants.maxDepth = kMaxDepth;
         constants.instanceMask = RayTracingInstanceMask::kSolid;
 
-        UploadSurfaceDataForDispatch(dispatchSurfaceData, fftOceanInput);
+        const SurfaceConstantsUpload surface = UploadSurfaceDataForDispatch(dispatchSurfaceData, fftOceanInput);
 
         BindAndDispatchRays(
             cmdList,
             resources,
+            surface.address,
             {
                 { "gFFTOceanDisplacement", fftOceanInput.displacementSRV },
             },

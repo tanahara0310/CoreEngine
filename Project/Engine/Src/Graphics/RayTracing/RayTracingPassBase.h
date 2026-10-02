@@ -72,8 +72,7 @@ namespace CoreEngine
             size_t declCount,
             const RootSignatureConfig& config);
 
-        /// @brief ディスパッチ前の共通処理（ガード判定 → 出力・定数バッファの確保 → CommandList4 取得）
-        /// @param constantBufferSize 0 以外なら、そのサイズのアップロード定数バッファを確保する
+        /// @brief ディスパッチ前の共通処理（ガード判定 → 出力の確保 → CommandList4 取得）
         /// @note 失敗時は lastDispatchInfo_ と警告ログまで済ませるので、false なら即 return してよい
         bool BeginDispatchBase(
             ID3D12GraphicsCommandList* cmdList,
@@ -81,14 +80,10 @@ namespace CoreEngine
             UINT height,
             uint32_t viewIndex,
             DispatchResources& outResources,
-            DXGI_FORMAT format,
-            UINT constantBufferSize);
+            DXGI_FORMAT format);
 
         /// @brief 診断情報の共通項目を初期化する（ディスパッチの冒頭で呼ぶ）
         void BeginDiagnosticsBase(uint32_t viewIndex, UINT width, UINT height);
-
-        /// @brief アップロードヒープの定数バッファを確保しマップする（確保済みなら何もしない）
-        bool EnsureConstantBuffer(UINT bufferSize);
 
         void ReleaseOutputIfSizeMismatchBase(UINT width, UINT height, uint32_t viewIndex);
 
@@ -110,8 +105,6 @@ namespace CoreEngine
         DescriptorAllocator* descriptorAllocator_ = nullptr;
         AccelerationStructureManager* asMgr_ = nullptr;
 
-        Microsoft::WRL::ComPtr<ID3D12Resource> constantBuffer_;
-        uint8_t* constantBufferMapped_ = nullptr;
         ShaderProgramCache* shaderProgramCache_ = nullptr;
         /// @brief リフレクションから構築したグローバルルートシグネチャ
         RootSignatureManager globalRootSigMgr_;

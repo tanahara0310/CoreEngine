@@ -8,7 +8,7 @@
 #include <dxcapi.h>
 
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/UploadRing.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/RayTracing/RayTracingPipelineBuilder.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
@@ -193,6 +193,7 @@ namespace CoreEngine
     void WaterRayTracingPassBase::BindAndDispatchRays(
         ID3D12GraphicsCommandList* cmdList,
         DispatchResources& resources,
+        D3D12_GPU_VIRTUAL_ADDRESS surfaceConstants,
         std::initializer_list<RTWaterSrvBinding> srvBindings,
         const void* constantsBlob,
         UINT width,
@@ -204,6 +205,7 @@ namespace CoreEngine
         resources.cmdList4->SetComputeRootSignature(globalRootSigMgr_.GetRootSignature());
         resources.cmdList4->SetPipelineState1(stateObject_.Get());
 
+        assert(surfaceConstants != 0 && "水面サーフェス定数が置かれていない");
         const bool writesSecondaryOutput = hasSecondaryOutput_ && secondaryOutput.resource;
         assert((!hasSecondaryOutput_ || writesSecondaryOutput) && "2 枚目の出力が渡されていない");
         assert((!hasExtraConstantBuffer_ || extraConstantBuffer != 0) && "追加の CBV が渡されていない");
@@ -232,7 +234,7 @@ namespace CoreEngine
 #endif
             binder.Set(bindings_[srvIndex++], binding.handle);
         }
-        binder.Set(bindings_[slotSurfaceData_], constantBuffer_->GetGPUVirtualAddress());
+        binder.Set(bindings_[slotSurfaceData_], surfaceConstants);
         binder.SetConstants(
             bindings_[slotConstants_], constantsBlob, constantsBytes_ / sizeof(uint32_t));
         if (hasExtraConstantBuffer_ && extraConstantBuffer != 0) {
@@ -259,8 +261,7 @@ namespace CoreEngine
         DispatchResources& outResources,
         DXGI_FORMAT format)
     {
-        return BeginDispatchBase(
-            cmdList, width, height, viewIndex, outResources, format, GetSurfaceConstantBufferSize());
+        return BeginDispatchBase(cmdList, width, height, viewIndex, outResources, format);
     }
 
     // 水面固有の診断情報（水面高さ・有効波数）を記録する
@@ -312,54 +313,19 @@ namespace CoreEngine
         return surfaceConstants;
     }
 
-    // 水面定数を GPU へ転送する（バッファ未確保なら警告して何もしない）
-    void WaterRayTracingPassBase::UploadSurfaceConstants(const WaterSurfaceConstants& surfaceConstants) const
-    {
-        if (!constantBufferMapped_) {
-            Logger::GetInstance().Warnf(
-                LogCategory::Graphics,
-                LogSubCategory::Buffer,
-                "{}: surface constant upload skipped. constant buffer is not mapped.",
-                GetOwnerName());
-            return;
-        }
-
-        std::memcpy(constantBufferMapped_, &surfaceConstants, sizeof(surfaceConstants));
-    }
-
-    // 供給元から水面状態を取り出して定数バッファへ載せ、載せた内容を返す
-    WaterRayTracingPassBase::WaterSurfaceConstants WaterRayTracingPassBase::UploadSurfaceDataForDispatch(
+    // 供給元から水面状態を取り出して記録中のフレームの UploadRing に置き、内容と場所を返す
+    WaterRayTracingPassBase::SurfaceConstantsUpload WaterRayTracingPassBase::UploadSurfaceDataForDispatch(
         const WaterSurfaceData& surfaceData,
         const FFTOceanInput& fftOceanInput) const
     {
-        const WaterSurfaceConstants surfaceConstants = BuildSurfaceConstants(surfaceData, fftOceanInput);
-        UploadSurfaceConstants(surfaceConstants);
-        return surfaceConstants;
-    }
-
-    bool WaterRayTracingPassBase::InitializeHitShadingConstants()
-    {
-        static_assert(sizeof(RTHitShadingConstants) <= kHitShadingConstantsStride,
-            "RTHitShadingConstants does not fit in one constant buffer slot");
-        const size_t totalBytes = static_cast<size_t>(kHitShadingConstantsStride) * kMaxFramesInFlight
-            * static_cast<size_t>(RTWaterViewID::Count);
-        hitShadingConstants_ = ResourceFactory::CreateBufferResource(dxCommon_->GetDevice(), totalBytes);
-        if (!hitShadingConstants_) {
-            Logger::GetInstance().Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
-                "{}: hit shading constant buffer creation failed.", GetOwnerName());
-            return false;
-        }
-        void* mapped = nullptr;
-        if (FAILED(hitShadingConstants_->Map(0, nullptr, &mapped)) || !mapped) {
-            hitShadingConstants_.Reset();
-            return false;
-        }
-        hitShadingConstantsMapped_ = static_cast<uint8_t*>(mapped);
-        return true;
+        SurfaceConstantsUpload upload{};
+        upload.constants = BuildSurfaceConstants(surfaceData, fftOceanInput);
+        upload.address = dxCommon_->GetUploadRing().AllocateConstants(upload.constants);
+        return upload;
     }
 
     D3D12_GPU_VIRTUAL_ADDRESS WaterRayTracingPassBase::UploadHitShadingConstants(
-        const WaterHitShadingInput& input, uint32_t viewIndex)
+        const WaterHitShadingInput& input) const
     {
         RTHitShadingConstants constants{};
         constants.hitInstanceTableIndex = input.instanceTableIndex;
@@ -379,13 +345,7 @@ namespace CoreEngine
         constants.cloudShadowRegionSize = input.cloudShadowRegionSize;
         constants.cloudShadowAnchorY = input.cloudShadowAnchorY;
         constants.cloudShadowEdgeFadeStart = input.cloudShadowEdgeFadeStart;
-
-        // 実行待ちのフレームが読んでいる枠を書き換えないよう、フレームとビューごとに別の枠へ書く
-        const uint32_t frameIndex = dxCommon_->Frame().FrameIndex();
-        const size_t offset = static_cast<size_t>(kHitShadingConstantsStride)
-            * (frameIndex * static_cast<uint32_t>(RTWaterViewID::Count) + viewIndex);
-        std::memcpy(hitShadingConstantsMapped_ + offset, &constants, sizeof(constants));
-        return hitShadingConstants_->GetGPUVirtualAddress() + offset;
+        return dxCommon_->GetUploadRing().AllocateConstants(constants);
     }
 
     void WaterRayTracingPassBase::SetSurfaceModelProvider(
