@@ -157,15 +157,14 @@ namespace CoreEngine
         }
     }
 
-    void AtmosphereManager::Initialize(ID3D12Device* device, DescriptorAllocator* descriptorAllocator)
+    void AtmosphereManager::Initialize(ID3D12Device* device, DescriptorAllocator* descriptorAllocator,
+        UploadRing& uploadRing)
     {
         device_ = device;
         descriptorAllocator_ = descriptorAllocator;
 
-        // 大気散乱定数バッファ（永続マップ）
-        constantBuffer_ = ResourceFactory::CreateBufferResource(device, sizeof(AtmosphereShaderConstants));
-        constantBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&constantData_));
-        UploadConstants();
+        constants_.Initialize(uploadRing);
+        UpdateConstants();
 
         // LUT リソースとコンピュートパイプライン
         const bool lutResourcesReady = CreateLUTResources(device, descriptorAllocator);
@@ -584,7 +583,7 @@ namespace CoreEngine
         const int cbSlot = transmittancePipeline_.GetComputeRootParamIndex("gAtmosphere");
         if (cbSlot >= 0) {
             cmdList->SetComputeRootConstantBufferView(
-                static_cast<UINT>(cbSlot), constantBuffer_->GetGPUVirtualAddress());
+                static_cast<UINT>(cbSlot), constants_.Address());
         }
         const int uavSlot = transmittancePipeline_.GetComputeRootParamIndex("gTransmittanceLUT");
         if (uavSlot >= 0) {
@@ -610,7 +609,7 @@ namespace CoreEngine
         const int msCbSlot = multiScatteringPipeline_.GetComputeRootParamIndex("gAtmosphere");
         if (msCbSlot >= 0) {
             cmdList->SetComputeRootConstantBufferView(
-                static_cast<UINT>(msCbSlot), constantBuffer_->GetGPUVirtualAddress());
+                static_cast<UINT>(msCbSlot), constants_.Address());
         }
         const int msSrvSlot = multiScatteringPipeline_.GetComputeRootParamIndex("gTransmittanceLUT");
         if (msSrvSlot >= 0) {
@@ -643,7 +642,7 @@ namespace CoreEngine
         const int cbSlot = skyViewPipeline_.GetComputeRootParamIndex("gAtmosphere");
         if (cbSlot >= 0) {
             cmdList->SetComputeRootConstantBufferView(
-                static_cast<UINT>(cbSlot), constantBuffer_->GetGPUVirtualAddress());
+                static_cast<UINT>(cbSlot), constants_.Address());
         }
         const int transmittanceSlot = skyViewPipeline_.GetComputeRootParamIndex("gTransmittanceLUT");
         if (transmittanceSlot >= 0) {
@@ -685,7 +684,7 @@ namespace CoreEngine
         const int cbSlot = skyIrradiancePipeline_.GetComputeRootParamIndex("gAtmosphere");
         if (cbSlot >= 0) {
             cmdList->SetComputeRootConstantBufferView(
-                static_cast<UINT>(cbSlot), constantBuffer_->GetGPUVirtualAddress());
+                static_cast<UINT>(cbSlot), constants_.Address());
         }
         const int skyViewSlot = skyIrradiancePipeline_.GetComputeRootParamIndex("gSkyViewLUT");
         if (skyViewSlot >= 0) {
@@ -740,7 +739,7 @@ namespace CoreEngine
         const int cbSlot = skyEnvironmentCapturePipeline_.GetComputeRootParamIndex("gAtmosphere");
         if (cbSlot >= 0) {
             cmdList->SetComputeRootConstantBufferView(
-                static_cast<UINT>(cbSlot), constantBuffer_->GetGPUVirtualAddress());
+                static_cast<UINT>(cbSlot), constants_.Address());
         }
         const int skyViewSlot = skyEnvironmentCapturePipeline_.GetComputeRootParamIndex("gSkyViewLUT");
         if (skyViewSlot >= 0) {
@@ -846,7 +845,7 @@ namespace CoreEngine
         const int cbSlot = cameraVolumePipeline_.GetComputeRootParamIndex("gAtmosphere");
         if (cbSlot >= 0) {
             cmdList->SetComputeRootConstantBufferView(
-                static_cast<UINT>(cbSlot), constantBuffer_->GetGPUVirtualAddress());
+                static_cast<UINT>(cbSlot), constants_.Address());
         }
         const int transmittanceSlot = cameraVolumePipeline_.GetComputeRootParamIndex("gTransmittanceLUT");
         if (transmittanceSlot >= 0) {
@@ -934,7 +933,7 @@ namespace CoreEngine
         const int cbSlot = aerialPerspectivePipeline_.GetComputeRootParamIndex("gAtmosphere");
         if (cbSlot >= 0) {
             cmdList->SetComputeRootConstantBufferView(
-                static_cast<UINT>(cbSlot), constantBuffer_->GetGPUVirtualAddress());
+                static_cast<UINT>(cbSlot), constants_.Address());
         }
         const int sceneColorSlot = aerialPerspectivePipeline_.GetComputeRootParamIndex("gSceneColor");
         if (sceneColorSlot >= 0) {
@@ -1184,7 +1183,7 @@ namespace CoreEngine
         sceneIlluminationLuminance_ = ComputeSceneIlluminationLuminance();
 
         // ===== 定数バッファ更新 =====
-        UploadConstants();
+        UpdateConstants();
     }
 
     void AtmosphereManager::EndFrame(LightManager* lightManager)
@@ -1269,7 +1268,7 @@ namespace CoreEngine
             return { visibility, visibility, visibility };
         }
 
-        // 係数を 1/km へ変換（UploadConstants と同じ変換）
+        // 係数を 1/km へ変換（UpdateConstants と同じ変換）
         const Vector3 rayleigh = {
             parameters_.rayleighScattering.x * kPerMeterToPerKm,
             parameters_.rayleighScattering.y * kPerMeterToPerKm,
@@ -1313,12 +1312,8 @@ namespace CoreEngine
             std::exp(-opticalDepth.z) * visibility };
     }
 
-    void AtmosphereManager::UploadConstants()
+    void AtmosphereManager::UpdateConstants()
     {
-        if (!constantData_) {
-            return;
-        }
-
         AtmosphereShaderConstants constants{};
         constants.sunDirection = sunDirection_;
         constants.sunIntensity = sunIntensity_;
@@ -1356,6 +1351,6 @@ namespace CoreEngine
         // ===== 星空（SkyAtmosphere.PS が消費。LUT には影響しない） =====
         constants.starIntensity = parameters_.starIntensity;
 
-        *constantData_ = constants;
+        constants_.Set(constants);
     }
 }

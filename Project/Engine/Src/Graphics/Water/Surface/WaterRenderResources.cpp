@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "WaterRenderResources.h"
+#include "Graphics/Atmosphere/AtmosphereManager.h"
 
 namespace CoreEngine
 {
@@ -36,7 +37,8 @@ namespace CoreEngine
     }
 
     bool WaterRenderResources::HasAtmosphere() const {
-        return atmosphereCB != 0 && cameraVolumeSRV.ptr != 0 && skyViewSRV.ptr != 0;
+        return atmosphere != nullptr && atmosphere->IsConstantBufferReady()
+            && cameraVolumeSRV.ptr != 0 && skyViewSRV.ptr != 0;
     }
 
     void WaterRenderResources::SetFFTOceanTextureSRVs(

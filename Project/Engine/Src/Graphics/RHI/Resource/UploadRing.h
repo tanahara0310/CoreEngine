@@ -71,6 +71,9 @@ namespace CoreEngine
             return AllocateConstants(&value, static_cast<uint32_t>(sizeof(T)));
         }
 
+        /// @brief Reset のたびに 1 つ進む番号（確保した場所が記録中のフレームのものかを見分ける）
+        uint64_t Generation() const noexcept { return generation_; }
+
         // ── 統計（デバッグ表示用） ──────────────────────────────
         /// @brief 今フレームで確保したバイト数
         uint32_t BytesUsedThisFrame() const noexcept;
@@ -105,6 +108,7 @@ namespace CoreEngine
         std::vector<FrameSlot> slots_;
         uint32_t currentSlot_ = 0;
         uint32_t bytesPerPage_ = kDefaultBytesPerFrame;
+        uint64_t generation_ = 1;
 
         uint32_t peakBytesPerFrame_ = 0;
         uint32_t growCount_ = 0;

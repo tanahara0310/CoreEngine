@@ -4,6 +4,8 @@
 
 namespace CoreEngine
 {
+    class AtmosphereManager;
+
     /// @brief 水面描画で使用する GPU ディスクリプタ群をまとめた構造体
     /// @details WaterSurfaceComponent から描画リソース保持責務を切り離すための中間構造。
     struct WaterRenderResources {
@@ -18,7 +20,8 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE fftFoamSRV = { 0 };
 
         // ---- 大気散乱（Aerial Perspective）----
-        D3D12_GPU_VIRTUAL_ADDRESS atmosphereCB = 0;
+        /// @brief 大気散乱定数の持ち主（定数のアドレスはバインドするときに取る）
+        const AtmosphereManager* atmosphere = nullptr;
         D3D12_GPU_DESCRIPTOR_HANDLE cameraVolumeSRV = { 0 };
         D3D12_GPU_DESCRIPTOR_HANDLE skyViewSRV = { 0 };
 

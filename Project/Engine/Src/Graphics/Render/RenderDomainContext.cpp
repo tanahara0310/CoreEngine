@@ -123,7 +123,7 @@ namespace CoreEngine
         }
 
         atmosphereManager_ = std::make_unique<AtmosphereManager>();
-        atmosphereManager_->Initialize(device, descriptorAllocator);
+        atmosphereManager_->Initialize(device, descriptorAllocator, dxCommon->GetUploadRing());
         Logger::GetInstance().Infof(LogCategory::Graphics,
             "RenderDomainContext: AtmosphereManager 初期化完了\n");
 
