@@ -48,9 +48,6 @@ public:
     /// @brief ImGuiでパラメータを調整
     void DrawImGui() override;
 
-    /// @brief CVar の現在値を定数バッファへ書き込む
-    void UpdateConstantBuffer();
-
 protected:
     /// @brief 有効/無効は CVar "r.<Effect>.Enabled" が保持する
     CVar<bool>* GetEnabledCVar() const override;
@@ -58,16 +55,14 @@ protected:
     std::string  GetEffectName()        const override { return "Dissolve"; }
     std::wstring GetComputeShaderPath() const override { return L"Dissolve.CS.hlsl"; }
 
-    /// @brief 定数バッファ生成・ノイズテクスチャ読み込み（両方を一括で実施）
+    /// @brief ノイズテクスチャを読み込む
     void OnCreateConstantBuffers() override;
 
 private:
+    /// @brief 今の CVar から定数を作る
+    DissolveParams MakeParams() const;
 
 private:
-    Microsoft::WRL::ComPtr<ID3D12Resource> dissolveParamsCB_;
-    /// @brief マップ先。構造体ポインタではなく生アドレスで持つ（レイアウトが HLSL 側だけのものなので）
-    void* mappedDissolveParams_ = nullptr;
-
     D3D12_GPU_DESCRIPTOR_HANDLE noiseTextureHandle_ = {};
 };
 }

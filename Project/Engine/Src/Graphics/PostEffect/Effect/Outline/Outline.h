@@ -51,9 +51,6 @@ public:
 	/// @brief ImGuiでパラメータを調整
 	void DrawImGui() override;
 
-	/// @brief CVar の現在値を定数バッファへ書き込む
-	void UpdateConstantBuffer();
-
 	/// @brief 今フレームのカメラからクリップ距離を取り込む（線形深度変換に使用）
 	void PrepareFrame(const PostEffectFrameContext& ctx) override;
 
@@ -66,17 +63,12 @@ protected:
 
 	std::string  GetEffectName()        const override { return "Outline"; }
 	std::wstring GetComputeShaderPath() const override { return L"Outline.CS.hlsl"; }
-	void OnCreateConstantBuffers() override;
 
 private:
-	/// @brief クリップ距離を更新する（変化したときだけ定数バッファへ転送する）
-	void SetCameraClipPlanes(float nearPlane, float farPlane);
-
+	/// @brief 今の CVar とクリップ距離から定数を作る
+	OutlineParams MakeParams() const;
 
 private:
-	Microsoft::WRL::ComPtr<ID3D12Resource> outlineParamsCB_;
-	OutlineParams* mappedOutlineParams_ = nullptr;
-
 	// カメラから毎フレーム設定される実行時値（保存対象ではない）
 	float nearPlane_ = 0.1f;
 	float farPlane_  = 1000.0f;

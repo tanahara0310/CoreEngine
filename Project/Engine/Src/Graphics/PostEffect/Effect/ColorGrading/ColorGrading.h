@@ -76,17 +76,9 @@ protected:
 
     std::string  GetEffectName()        const override { return "ColorGrading"; }
     std::wstring GetComputeShaderPath() const override { return L"ColorGrading.CS.hlsl"; }
-    void OnCreateConstantBuffers() override;
 
 private:
-    void UpdateConstantBuffer();
-
-private:
-    Microsoft::WRL::ComPtr<ID3D12Resource> colorGradingParamsCB_;
-    ColorGradingParams* mappedColorGradingParams_ = nullptr;
-
-    /// @brief WB 行列の再計算判定用（0 初期値は必ず初回計算を走らせる）
-    float lastKelvin_ = 0.0f;
-    float lastTint_   = -1000.0f;
+    /// @brief 今の CVar から定数を作る（ホワイトバランス行列も色温度とティントから計算する）
+    ColorGradingParams MakeParams() const;
 };
 }

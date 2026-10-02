@@ -1,14 +1,12 @@
 #include "pch.h"
 #include "Dissolve.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/CVar/CVar.h"
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
 #endif
-#include <cassert>
 
 
 namespace CoreEngine
@@ -40,27 +38,14 @@ namespace CoreEngine
 
     void Dissolve::OnCreateConstantBuffers()
     {
-        // 確保サイズは C++ の sizeof ではなく「HLSL 上のサイズ」から取る
-        // （C++ 側はパディングを持たないので sizeof の方が小さい）
-        UINT dissolveSize = (static_cast<UINT>(Cb::HlslSizeOf(kDissolveParamsFields)) + 255) & ~255;
-        dissolveParamsCB_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), dissolveSize);
-        [[maybe_unused]] HRESULT hr = dissolveParamsCB_->Map(0, nullptr, &mappedDissolveParams_);
-        assert(SUCCEEDED(hr));
-        UpdateConstantBuffer();
-
-
         // ノイズテクスチャ読み込み
         auto& textureManager = TextureManager::GetInstance();
         auto texture = textureManager.Load("noise0.png");
         noiseTextureHandle_ = texture.gpuHandle;
     }
 
-    void Dissolve::UpdateConstantBuffer()
+    Dissolve::DissolveParams Dissolve::MakeParams() const
     {
-        if (!mappedDissolveParams_) {
-            return;
-        }
-
         DissolveParams params{};
         params.threshold = cvThreshold.Get();
         params.edgeWidth = cvEdgeWidth.Get();
@@ -69,9 +54,7 @@ namespace CoreEngine
         params.edgeColorR = edgeColor.x;
         params.edgeColorG = edgeColor.y;
         params.edgeColorB = edgeColor.z;
-
-        // フィールド表を見て HLSL のオフセットへ配置する
-        Cb::Upload(mappedDissolveParams_, params, kDissolveParamsFields);
+        return params;
     }
 
     void Dissolve::Dispatch(
@@ -80,7 +63,6 @@ namespace CoreEngine
         uint32_t width,
         uint32_t height)
     {
-        UpdateConstantBuffer();
         UpdateScreenSizeConstants(width, height);
 
         auto* cmdList = graphicsCore_->GetCommandList();
@@ -96,7 +78,8 @@ namespace CoreEngine
         if (inputTextureIdx >= 0)   cmdList->SetComputeRootDescriptorTable(inputTextureIdx, inputSrvHandle);
         if (noiseTextureIdx >= 0)   cmdList->SetComputeRootDescriptorTable(noiseTextureIdx, noiseTextureHandle_);
         if (outputIdx >= 0)         cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
-        if (dissolveParamsIdx >= 0) cmdList->SetComputeRootConstantBufferView(dissolveParamsIdx, dissolveParamsCB_->GetGPUVirtualAddress());
+        // フィールド表を見て HLSL のオフセットへ配置する
+        if (dissolveParamsIdx >= 0) cmdList->SetComputeRootConstantBufferView(dissolveParamsIdx, UploadConstants(MakeParams(), kDissolveParamsFields));
         if (screenParamsIdx >= 0)   cmdList->SetComputeRootConstantBufferView(screenParamsIdx, GetScreenSizeCbAddress());
 
         uint32_t groupX = (width  + 7) / 8;

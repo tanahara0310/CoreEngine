@@ -47,13 +47,9 @@ protected:
 
     std::string  GetEffectName()        const override { return "RadialBlur"; }
     std::wstring GetComputeShaderPath() const override { return L"RadialBlur.CS.hlsl"; }
-    void OnCreateConstantBuffers() override;
 
 private:
-    void UpdateConstantBuffer();
-
-private:
-    Microsoft::WRL::ComPtr<ID3D12Resource> radialBlurParamsCB_;
-    RadialBlurParams* mappedRadialBlurParams_ = nullptr;
+    /// @brief 今の CVar から定数を作る
+    RadialBlurParams MakeParams() const;
 };
 }

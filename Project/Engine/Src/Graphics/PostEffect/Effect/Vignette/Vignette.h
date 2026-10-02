@@ -54,21 +54,11 @@ public:
     /// @details 内部では CVar を更新するため、UI 表示と自動保存にも即座に反映される
     void SetParams(const VignetteParams& params);
 
-    /// @brief CVar の現在値を定数バッファへ書き込む
-    void UpdateConstantBuffer();
-
 protected:
     /// @brief 有効/無効は CVar "r.<Effect>.Enabled" が保持する
     CVar<bool>* GetEnabledCVar() const override;
 
     std::string  GetEffectName()        const override { return "Vignette"; }
     std::wstring GetComputeShaderPath() const override { return L"Vignette.CS.hlsl"; }
-    void OnCreateConstantBuffers() override;
-
-private:
-
-private:
-    Microsoft::WRL::ComPtr<ID3D12Resource> vignetteParamsCB_;
-    VignetteParams* mappedVignetteParams_ = nullptr;
 };
 }

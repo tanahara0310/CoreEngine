@@ -1,13 +1,11 @@
 #include "pch.h"
 #include "RadialBlur.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/CVar/CVar.h"
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
 #endif
-#include <cassert>
 
 
 namespace CoreEngine
@@ -42,25 +40,14 @@ namespace CoreEngine
         constexpr const char* kCVarPrefix = "r.RadialBlur";
     }
 
-    void RadialBlur::OnCreateConstantBuffers()
+    RadialBlur::RadialBlurParams RadialBlur::MakeParams() const
     {
-        UINT rbSize = (sizeof(RadialBlurParams) + 255) & ~255;
-        radialBlurParamsCB_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), rbSize);
-        [[maybe_unused]] HRESULT hr = radialBlurParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedRadialBlurParams_));
-        assert(SUCCEEDED(hr));
-        UpdateConstantBuffer();
-
-    }
-
-    void RadialBlur::UpdateConstantBuffer()
-    {
-        if (!mappedRadialBlurParams_) {
-            return;
-        }
-        mappedRadialBlurParams_->intensity   = cvIntensity.Get();
-        mappedRadialBlurParams_->sampleCount = cvSampleCount.Get();
-        mappedRadialBlurParams_->centerX     = cvCenterX.Get();
-        mappedRadialBlurParams_->centerY     = cvCenterY.Get();
+        RadialBlurParams params{};
+        params.intensity   = cvIntensity.Get();
+        params.sampleCount = cvSampleCount.Get();
+        params.centerX     = cvCenterX.Get();
+        params.centerY     = cvCenterY.Get();
+        return params;
     }
 
     void RadialBlur::Dispatch(
@@ -69,7 +56,6 @@ namespace CoreEngine
         uint32_t width,
         uint32_t height)
     {
-        UpdateConstantBuffer();
         UpdateScreenSizeConstants(width, height);
 
         auto* cmdList = graphicsCore_->GetCommandList();
@@ -83,7 +69,7 @@ namespace CoreEngine
 
         if (textureIdx >= 0) cmdList->SetComputeRootDescriptorTable(textureIdx, inputSrvHandle);
         if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
-        if (rbIdx >= 0)      cmdList->SetComputeRootConstantBufferView(rbIdx, radialBlurParamsCB_->GetGPUVirtualAddress());
+        if (rbIdx >= 0)      cmdList->SetComputeRootConstantBufferView(rbIdx, UploadConstants(MakeParams()));
         if (screenIdx >= 0)  cmdList->SetComputeRootConstantBufferView(screenIdx, GetScreenSizeCbAddress());
 
         uint32_t groupX = (width  + 7) / 8;
