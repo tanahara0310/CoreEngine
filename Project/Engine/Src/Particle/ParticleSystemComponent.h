@@ -91,6 +91,7 @@ namespace CoreEngine
 
         // ===== 再生 =====
 
+        /// @brief 最初から再生する（経過時間とバーストを戻す）
         void Play() override;
         void Stop() override;
         bool IsPlaying() const override;

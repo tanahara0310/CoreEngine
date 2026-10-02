@@ -226,8 +226,9 @@ namespace CoreEngine
 
     void ParticleSystemComponent::Play()
     {
-        mainModule_->Play();
+        mainModule_->Restart();
         emissionModule_->Play();
+        lastElapsedTime_ = 0.0f;
     }
 
     void ParticleSystemComponent::Stop()
