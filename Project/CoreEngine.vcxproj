@@ -286,6 +286,7 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Graphics\Water\WaterCVars.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanDispatchHelper.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\Foam\WaterFoamSystem.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanManagerLogHelper.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanReadbackHelper.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanResourceFactory.cpp" />
@@ -1509,6 +1510,7 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanDispatchHelper.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanGpuResources.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\Foam\WaterFoamSystem.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanManagerLogHelper.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanReadbackHelper.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanResourceFactory.h" />

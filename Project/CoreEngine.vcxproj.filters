@@ -304,6 +304,9 @@
     <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanManager.cpp">
       <Filter>Engine\Src\Graphics\Water</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\Foam\WaterFoamSystem.cpp">
+      <Filter>Engine\Src\Graphics\Water\Foam</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanManagerLogHelper.cpp">
       <Filter>Engine\Src\Graphics\Water</Filter>
     </ClCompile>
@@ -2763,6 +2766,9 @@
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanManager.h">
       <Filter>Engine\Src\Graphics\Water</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\Foam\WaterFoamSystem.h">
+      <Filter>Engine\Src\Graphics\Water\Foam</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanManagerLogHelper.h">
       <Filter>Engine\Src\Graphics\Water</Filter>
     </ClInclude>
@@ -4275,6 +4281,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\Water">
       <UniqueIdentifier>{79C2596E-AEE7-4E3F-AAC7-C231E50A7DFA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Water\Foam">
+      <UniqueIdentifier>{DB866FDF-576A-4499-AD88-3D9DBE5E2D06}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Water\RayTracing">
       <UniqueIdentifier>{01A8FFFF-937C-46E3-98EF-476A65F5EEAC}</UniqueIdentifier>

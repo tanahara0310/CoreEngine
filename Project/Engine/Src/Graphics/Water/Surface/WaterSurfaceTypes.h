@@ -114,7 +114,7 @@ struct WaterFrameConstants {
 	// 1 = 水面の日向率テクスチャ（RT 反射パスの 2 枚目の出力）をメインライトの項へ掛ける
 	int sunVisibilityEnabled = 0;
 	// ---- 泡（whitecap）。FFTOcean 専用（Gerstner はヤコビアンを持たないため無効）----
-	// 既定値は WaterFoamDefaults が唯一の情報源。CVar / FoamSettings / FoamConstants と
+	// 既定値は WaterFoamDefaults が唯一の情報源。CVar / WaterFoamSystem::Settings / WhitecapConstants と
 	// 同じ定数を参照するので、片側だけ直して割れることが構造上ない。
 	// 各パラメータの意味と較正根拠は WaterFoamDefaults.h を参照。
 	int foamEnabled = CoreEngine::WaterFoamDefaults::kEnabled ? 1 : 0;
@@ -127,7 +127,7 @@ struct WaterFrameConstants {
 		CoreEngine::WaterFoamDefaults::kCascadeWeights[2],
 	};
 	// 泡の寿命 τ [s]。PS 未使用だが実行時の値の単一情報源としてここに持ち、
-	// WaterRenderFeature が毎フレーム FFTOceanManager::SetFoamSettings へ転送する
+	// WaterRenderFeature が毎フレーム WaterFoamSystem::SetSettings へ渡す
 	float foamDecaySeconds = CoreEngine::WaterFoamDefaults::kDecaySeconds;
 	// ---- 見えない細かい波のラフネス換算 ----
 	// FFT カスケードごとの平均二乗傾斜（x・z の傾きの二乗和の平均。FFTOceanManager が求める）

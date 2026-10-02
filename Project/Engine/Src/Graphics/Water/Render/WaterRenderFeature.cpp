@@ -24,6 +24,7 @@
 #include "Graphics/Water/RayTracing/WaterReflectionRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterSeabedRayTracingManager.h"
+#include "Graphics/Water/Foam/WaterFoamSystem.h"
 #include "Graphics/Water/WaterCVars.h"
 #include "Graphics/Water/Simulation/FFTOceanSurfaceSimulator.h"
 #include "Graphics/Water/Simulation/GerstnerWaterSimulator.h"
@@ -386,11 +387,12 @@ namespace CoreEngine
         }
 
         if (auto* fftOcean = domain.GetFFTOceanManager()) {
+            const WaterFoamSystem* foam = domain.GetWaterFoamSystem();
             binding.resources.SetFFTOceanTextureSRVs(
                 fftOcean->GetDisplacementSRVHandle(),
                 fftOcean->GetNormalSRVHandle(),
                 fftOcean->GetJacobianSRVHandle(),
-                fftOcean->GetFoamSRVHandle());
+                (foam && foam->IsInitialized()) ? foam->GetWhitecapSRVHandle() : D3D12_GPU_DESCRIPTOR_HANDLE{});
             static_assert(FFTOceanManager::kCascadeCount == 3, "fftCascadeMeanSquareSlope のカスケード数と一致させる");
             for (uint32_t c = 0; c < FFTOceanManager::kCascadeCount; ++c) {
                 binding.fftCascadeMeanSquareSlope[c] = fftOcean->GetCascadeMeanSquareSlope(c);
@@ -553,14 +555,14 @@ namespace CoreEngine
     void WaterRenderFeature::SyncFoamSettings(RenderDomainContext& domain) const
     {
         // 泡パラメータの単一情報源は WaterFrameConstants（UI / 永続化と同経路）。
-        // 蓄積パス（FFTOceanFoamAccumulate.CS）が使う分を毎フレーム転送する。
-        auto* fftOcean = domain.GetFFTOceanManager();
-        if (!fftOcean || !waterPlane_) {
+        // 泡の時間変化を進める WaterFoamSystem へ毎フレーム渡す。
+        auto* foam = domain.GetWaterFoamSystem();
+        if (!foam || !waterPlane_) {
             return;
         }
 
         const WaterFrameConstants& frameConstants = waterPlane_->GetFrameConstants();
-        FFTOceanManager::FoamSettings foamSettings{};
+        WaterFoamSystem::Settings foamSettings{};
         foamSettings.enabled = frameConstants.foamEnabled != 0 && waterPlane_->IsUsingFFTOcean();
         foamSettings.bias = frameConstants.foamBias;
         foamSettings.gain = frameConstants.foamGain;
@@ -568,7 +570,7 @@ namespace CoreEngine
         foamSettings.cascadeWeights[1] = frameConstants.foamCascadeWeights[1];
         foamSettings.cascadeWeights[2] = frameConstants.foamCascadeWeights[2];
         foamSettings.decaySeconds = frameConstants.foamDecaySeconds;
-        fftOcean->SetFoamSettings(foamSettings);
+        foam->SetSettings(foamSettings);
     }
 
     void WaterRenderFeature::SyncCausticsAbsorption(RenderDomainContext& domain) const
