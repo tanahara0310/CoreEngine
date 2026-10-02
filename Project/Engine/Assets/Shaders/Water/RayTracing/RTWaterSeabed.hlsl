@@ -1,8 +1,5 @@
 // ============================================================
 // DXR 海底の高さ
-// カメラの周りの範囲の各テクセルで、今の水面のすぐ上から真下へレイを撃ち、
-// 水面より下で最初に当たる面（海底・水中の物）の高さを書く。
-// 水面より上の物（桟橋の床・船の上部）はレイの出発点より上にあるので当たらない。
 // ============================================================
 
 #include "RTWaterSurfaceCommon.hlsli"
@@ -42,9 +39,9 @@ void TraceRay(
 
 /// @brief レイの出発点の、水面からの高さ [m]
 static const float kStartAboveSurface = 0.02f;
-/// @brief 水面の位置が物や陸の中のとき、海底の代わりに書く水面からの高さ [m]（水深が負になる）
+/// @brief 水面の位置が物の中で上の面が見つからないとき、海底の代わりに書く水面からの高さ [m]
 static const float kOccupiedHeightAboveSurface = 0.5f;
-/// @brief 陸の下かを調べる上向きのレイの長さ [m]
+/// @brief 陸や物の上の面を探す上向きのレイの長さ [m]
 static const float kDryLandProbeDistance = 20.0f;
 
 RTSeabedPayload TraceSeabedRay(float3 origin, float3 direction, float maxDistance)
@@ -62,6 +59,10 @@ RTSeabedPayload TraceSeabedRay(float3 origin, float3 direction, float maxDistanc
     return payload;
 }
 
+/// @brief テクセルごとに、今の水面のすぐ上から真下へレイを撃ち、水面より下で最初に当たる面
+///        （海底・水中の物）の高さを書く
+/// @details 水面より上の物（桟橋の床など）は出発点より上にあるので当たらない。
+///          水面の点が陸の下や物の中のときは、上向きのレイで陸や物の上の面の高さを書く（水深が負になる）
 [shader("raygeneration")]
 void RTWaterSeabedRayGen()
 {
@@ -78,16 +79,16 @@ void RTWaterSeabedRayGen()
     {
         seabedY = origin.y - down.hitT;
     }
-    else if (down.hitKind == 2.0f)
-    {
-        // 物の中から撃った（水面のこの点は物に占められている）
-        seabedY = waterY + kOccupiedHeightAboveSurface;
-    }
     else
     {
-        // 下に何も無いとき、上に地面の裏があれば陸の下（ここに水は無い）
+        // 物の中（下へ撃って裏に当たった）か、下に何も無く上に地面の裏がある（陸の下）とき、
+        // 上の面の高さを書く
         const RTSeabedPayload up = TraceSeabedRay(origin, float3(0.0f, 1.0f, 0.0f), kDryLandProbeDistance);
         if (up.hitKind == 2.0f)
+        {
+            seabedY = origin.y + up.hitT;
+        }
+        else if (down.hitKind == 2.0f)
         {
             seabedY = waterY + kOccupiedHeightAboveSurface;
         }
