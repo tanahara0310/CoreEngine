@@ -31,11 +31,6 @@ namespace CoreEngine
 {
     namespace
     {
-        constexpr UINT Align256(UINT value)
-        {
-            return (value + 255) & ~255;
-        }
-
         // 計測スロット名。カスケードごとに別スロットにする必要がある
         // （同一スロットへ Begin/End を複数回積むと、最後の 1 回だけが残り
         //   他カスケード分の時間が計測から消えるため）。
@@ -121,18 +116,16 @@ namespace CoreEngine
         if (!CreatePipelines()
             || !CreateOutputTextures()
             || !CreateIntermediateTextures()
-            || !CreateSpectrumBuffer()
-            || !CreateSimulationConstantBuffer()
-            || !CreateIFFTConstantBuffer()) {
+            || !CreateSpectrumBuffer()) {
             return false;
         }
 
         // 初期スペクトルと定数を作成して、初回Dispatch可能な状態へ揃える。
         BuildSpectrum();
         for (uint32_t c = 0; c < kCascadeCount; ++c) {
+            simulationConstants_[c].Initialize(dxCommon_->GetUploadRing());
             UpdateSimulationConstants(c, 0.0f);
         }
-        UpdateIFFTConstants(0, true, 1.0f);
         isInitialized_ = true;
 
         FFTOceanManagerLogHelper::LogInitialize(
@@ -211,12 +204,11 @@ namespace CoreEngine
             return;
         }
 
-        // フレーム時刻・パッチ長を全カスケードのスロットへ書き込む。
+        // フレーム時刻・パッチ長を全カスケードの定数へ反映する。
         currentSimulationTime_ = timeSeconds;
         for (uint32_t c = 0; c < kCascadeCount; ++c) {
             UpdateSimulationConstants(c, timeSeconds);
         }
-        ifftConstantsWriteIndex_ = 0;
 
         // デバッグ計測（CVar オプトイン。無効時は全メソッドが即 return）
         debugProbe_.FlushPendingLogs(settings_.resolution);
@@ -435,29 +427,6 @@ namespace CoreEngine
         }
         spectrumBufferDirty_ = true;
         return true;
-    }
-
-    bool FFTOceanManager::CreateSimulationConstantBuffer()
-    {
-        // 1フレームで全カスケードのDispatchを積むため、256B境界の kCascadeCount スロットを確保する。
-        void* mappedSimulationConstants = nullptr;
-        const bool created = FFTOceanResourceFactory::CreateSimulationConstantBuffer(
-            dxCommon_->GetDevice(),
-            Align256(sizeof(SimulationConstants)) * kCascadeCount,
-            simulationConstantsBuffer_,
-            mappedSimulationConstants);
-        mappedSimulationConstants_ = reinterpret_cast<uint8_t*>(mappedSimulationConstants);
-        return created;
-    }
-
-    bool FFTOceanManager::CreateIFFTConstantBuffer()
-    {
-        return FFTOceanResourceFactory::CreateIFFTConstantBuffer(
-            dxCommon_->GetDevice(),
-            sizeof(IFFTConstants),
-            kMaxIFFTPassCount,
-            ifftConstantsBuffer_,
-            mappedIFFTConstantsData_);
     }
 
     void FFTOceanManager::SanitizeSettings(Settings& settings) const
@@ -695,63 +664,41 @@ namespace CoreEngine
 
     void FFTOceanManager::UpdateSimulationConstants(uint32_t cascadeIndex, float timeSeconds)
     {
-        if (!mappedSimulationConstants_ || cascadeIndex >= kCascadeCount) {
+        if (cascadeIndex >= kCascadeCount) {
             return;
         }
 
-        // カスケード固有の patchLength / 振幅を各スロットへ転送する。
-        const UINT slotSize = Align256(sizeof(SimulationConstants));
-        SimulationConstants* slot = reinterpret_cast<SimulationConstants*>(
-            mappedSimulationConstants_ + static_cast<size_t>(slotSize) * cascadeIndex);
-        slot->resolution = settings_.resolution;
-        slot->activeComponentCount = (std::min)(settings_.activeComponentCount, kMaxSpectrumComponents);
-        slot->patchLength = kCascadePatchLength[cascadeIndex];
-        slot->timeSeconds = timeSeconds;
-        slot->choppiness = settings_.choppiness;
-        slot->gravity = settings_.gravity;
+        // カスケード固有の patchLength / 振幅を詰める。
+        SimulationConstants constants{};
+        constants.resolution = settings_.resolution;
+        constants.activeComponentCount = (std::min)(settings_.activeComponentCount, kMaxSpectrumComponents);
+        constants.patchLength = kCascadePatchLength[cascadeIndex];
+        constants.timeSeconds = timeSeconds;
+        constants.choppiness = settings_.choppiness;
+        constants.gravity = settings_.gravity;
         // カスケード配分はスペクトル生成時の targetRmsHeight 正規化で織り込み済み。
         // ここはユーザー/プリセットの倍率（較正済み波高に対する相対値）だけを掛ける。
-        slot->amplitudeScale = settings_.amplitudeScale;
+        constants.amplitudeScale = settings_.amplitudeScale;
+        simulationConstants_[cascadeIndex].Set(constants);
     }
 
     D3D12_GPU_VIRTUAL_ADDRESS FFTOceanManager::GetSimulationConstantsAddress(uint32_t cascadeIndex) const
     {
-        if (!simulationConstantsBuffer_ || cascadeIndex >= kCascadeCount) {
+        if (cascadeIndex >= kCascadeCount) {
             return 0;
         }
-        const UINT slotSize = Align256(sizeof(SimulationConstants));
-        return simulationConstantsBuffer_->GetGPUVirtualAddress() + static_cast<UINT64>(slotSize) * cascadeIndex;
+        return simulationConstants_[cascadeIndex].Address();
     }
 
-    D3D12_GPU_VIRTUAL_ADDRESS FFTOceanManager::UpdateIFFTConstants(uint32_t stageIndex, bool isHorizontal, float normalizationScale)
+    D3D12_GPU_VIRTUAL_ADDRESS FFTOceanManager::UploadIFFTConstants(
+        uint32_t stageIndex, bool isHorizontal, float normalizationScale) const
     {
-        if (!mappedIFFTConstantsData_ || !ifftConstantsBuffer_) {
-            return 0;
-        }
-
-        if (ifftConstantsWriteIndex_ >= kMaxIFFTPassCount) {
-            Logger::GetInstance().Warnf(
-                LogCategory::Graphics,
-                LogSubCategory::Buffer,
-                "FFTOceanManager: IFFT constant slot overflow. writeIndex={} maxPassCount={}",
-                ifftConstantsWriteIndex_,
-                kMaxIFFTPassCount);
-            ifftConstantsWriteIndex_ = kMaxIFFTPassCount - 1;
-        }
-
-        // IFFTの1パス分定数をリングバッファ上に書き込み、GPUアドレスを返す。
-        const UINT slotSize = Align256(sizeof(IFFTConstants));
-        IFFTConstants* constants = reinterpret_cast<IFFTConstants*>(
-            mappedIFFTConstantsData_ + static_cast<size_t>(slotSize) * ifftConstantsWriteIndex_);
-        constants->resolution = settings_.resolution;
-        constants->stageIndex = stageIndex;
-        constants->isHorizontal = isHorizontal ? 1 : 0;
-        constants->normalizationScale = normalizationScale;
-
-        const D3D12_GPU_VIRTUAL_ADDRESS gpuAddress =
-            ifftConstantsBuffer_->GetGPUVirtualAddress() + static_cast<UINT64>(slotSize) * ifftConstantsWriteIndex_;
-        ++ifftConstantsWriteIndex_;
-        return gpuAddress;
+        IFFTConstants constants{};
+        constants.resolution = settings_.resolution;
+        constants.stageIndex = stageIndex;
+        constants.isHorizontal = isHorizontal ? 1 : 0;
+        constants.normalizationScale = normalizationScale;
+        return dxCommon_->GetUploadRing().AllocateConstants(constants);
     }
 
     void FFTOceanManager::DispatchEvolutionPass(ID3D12GraphicsCommandList* cmdList, uint32_t cascadeIndex)
@@ -803,7 +750,7 @@ namespace CoreEngine
 
         auto dispatchStage = [&](uint32_t stageIndex, bool isHorizontal, float normalizationScale) {
             const D3D12_GPU_VIRTUAL_ADDRESS constantsAddress =
-                UpdateIFFTConstants(stageIndex, isHorizontal, normalizationScale);
+                UploadIFFTConstants(stageIndex, isHorizontal, normalizationScale);
             FFTOceanDispatchHelper::DispatchIFFTPass(
                 cmdList,
                 textures[readIndex],

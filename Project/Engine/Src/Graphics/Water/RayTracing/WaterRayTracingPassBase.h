@@ -118,7 +118,8 @@ namespace CoreEngine
             const RTWaterPipelineDesc& desc);
 
         /// @brief ディスパッチ末尾の共通処理（バインド → DispatchRays → 出力ステート遷移）
-        /// @details gScene（TLAS）と gWaterSurfaceData（b1）は内部でバインドする。
+        /// @details gScene（TLAS）は内部でバインドする。
+        /// @param surfaceConstants UploadSurfaceDataForDispatch が置いた gWaterSurfaceData（b1）の場所
         /// @param constantsBlob InitializeFromDesc で渡した constantsBytes と同サイズの定数ブロック
         /// @param finalState    出力テクスチャの最終ステート（2 枚目の出力も同じステートへ）
         /// @param secondaryOutput 2 枚目の出力（desc.secondaryOutputUavName を持つパスは必須）
@@ -126,6 +127,7 @@ namespace CoreEngine
         void BindAndDispatchRays(
             ID3D12GraphicsCommandList* cmdList,
             DispatchResources& resources,
+            D3D12_GPU_VIRTUAL_ADDRESS surfaceConstants,
             std::initializer_list<RTWaterSrvBinding> srvBindings,
             const void* constantsBlob,
             UINT width,
@@ -175,7 +177,6 @@ namespace CoreEngine
         CB_BIND_HLSL(WaterSurfaceConstants, kWaterSurfaceConstantsFields, "WaterSurfaceData");
 
         /// @brief ディスパッチ前の共通処理（RayTracingPassBase::BeginDispatchBase の水面版）
-        /// @details 水面サーフェス定数バッファのサイズを自動で渡す。
         bool BeginDispatch(
             ID3D12GraphicsCommandList* cmdList,
             UINT width,
@@ -193,14 +194,15 @@ namespace CoreEngine
             D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
             D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSRV);
 
-        static constexpr UINT GetSurfaceConstantBufferSize()
-        {
-            return (sizeof(WaterSurfaceConstants) + 255) & ~255;
-        }
+        /// @brief b1 の水面サーフェス定数を記録中のフレームの UploadRing に置いた結果
+        struct SurfaceConstantsUpload {
+            WaterSurfaceConstants constants{};     ///< 置いた内容
+            D3D12_GPU_VIRTUAL_ADDRESS address = 0; ///< BindAndDispatchRays へ渡す場所（そのフレームの記録中だけ有効）
+        };
 
-        /// @brief b1 の水面サーフェス定数を構築・アップロードする
-        /// @param fftOceanInput FFT 有効フラグ/解像度を b1 へ載せる（Phase 3 で b0 から移動）
-        WaterSurfaceConstants UploadSurfaceDataForDispatch(
+        /// @brief b1 の水面サーフェス定数を構築し、記録中のフレームの UploadRing に置く
+        /// @param fftOceanInput FFT 有効フラグ/解像度を b1 へ載せる
+        SurfaceConstantsUpload UploadSurfaceDataForDispatch(
             const WaterSurfaceData& surfaceData,
             const FFTOceanInput& fftOceanInput) const;
 
@@ -209,24 +211,15 @@ namespace CoreEngine
             const WaterSurfaceData& fallbackSurfaceData,
             WaterSurfaceData& outResolvedSurfaceData) const;
 
-        /// @brief ヒットシェーディングの定数バッファ（RTHitShadingConstants）を作る
-        bool InitializeHitShadingConstants();
-        /// @brief 今フレーム・このビューの枠へヒットシェーディングの定数を書き、その GPU アドレスを返す
-        D3D12_GPU_VIRTUAL_ADDRESS UploadHitShadingConstants(const WaterHitShadingInput& input, uint32_t viewIndex);
+        /// @brief ヒットシェーディングの定数（RTHitShadingConstants）を記録中のフレームの UploadRing に置き、GPU アドレスを返す
+        D3D12_GPU_VIRTUAL_ADDRESS UploadHitShadingConstants(const WaterHitShadingInput& input) const;
 
         std::weak_ptr<const IWaterSurfaceModelProvider> surfaceModelProvider_;
 
     private:
-        // ---- ヒットシェーディングの定数（b2）----
-        // フレームインフライト×ビューぶんの枠を 1 本の UPLOAD バッファに並べ、写像したまま書く
-        static constexpr UINT kHitShadingConstantsStride = 256;
-        Microsoft::WRL::ComPtr<ID3D12Resource> hitShadingConstants_;
-        uint8_t* hitShadingConstantsMapped_ = nullptr;
-
         WaterSurfaceConstants BuildSurfaceConstants(
             const WaterSurfaceData& surfaceData,
             const FFTOceanInput& fftOceanInput) const;
-        void UploadSurfaceConstants(const WaterSurfaceConstants& surfaceConstants) const;
 
         // InitializeFromDesc で受けた構成のうち、ディスパッチ時にも要るもの
         const char* outputUavName_ = nullptr;

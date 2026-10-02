@@ -1,8 +1,6 @@
 #include "pch.h"
 #include "RayTracingPassBase.h"
 
-#include <cstring>
-
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/GraphicsCore.h"
@@ -68,60 +66,6 @@ namespace CoreEngine
                 "{}: バインド契約違反: {}", ownerName_, e.what());
             return false;
         }
-        return true;
-    }
-
-    bool RayTracingPassBase::EnsureConstantBuffer(UINT bufferSize)
-    {
-        // 1 度作ったら使い回す。UPLOAD ヒープなので毎フレーム CPU から直接書き換えられる
-        if (constantBuffer_) {
-            return true;
-        }
-
-        D3D12_HEAP_PROPERTIES heapProps{};
-        heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
-
-        D3D12_RESOURCE_DESC desc{};
-        desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-        desc.Width = bufferSize;
-        desc.Height = 1;
-        desc.DepthOrArraySize = 1;
-        desc.MipLevels = 1;
-        desc.SampleDesc.Count = 1;
-        desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-        HRESULT hr = dxCommon_->GetDevice()->CreateCommittedResource(
-            &heapProps,
-            D3D12_HEAP_FLAG_NONE,
-            &desc,
-            D3D12_RESOURCE_STATE_GENERIC_READ,
-            nullptr,
-            IID_PPV_ARGS(&constantBuffer_));
-        if (FAILED(hr)) {
-            Logger::GetInstance().Errorf(
-                LogCategory::Graphics,
-                LogSubCategory::Buffer,
-                "{}: constant buffer allocation failed. hr={:#x}",
-                ownerName_,
-                static_cast<uint32_t>(hr));
-            return false;
-        }
-
-        D3D12_RANGE readRange = { 0, 0 };
-        hr = constantBuffer_->Map(0, &readRange, reinterpret_cast<void**>(&constantBufferMapped_));
-        if (FAILED(hr) || !constantBufferMapped_) {
-            Logger::GetInstance().Errorf(
-                LogCategory::Graphics,
-                LogSubCategory::Buffer,
-                "{}: constant buffer map failed. hr={:#x}",
-                ownerName_,
-                static_cast<uint32_t>(hr));
-            constantBuffer_.Reset();
-            constantBufferMapped_ = nullptr;
-            return false;
-        }
-
-        std::memset(constantBufferMapped_, 0, bufferSize);
         return true;
     }
 
@@ -263,14 +207,11 @@ namespace CoreEngine
         UINT height,
         uint32_t viewIndex,
         DispatchResources& outResources,
-        DXGI_FORMAT format,
-        UINT constantBufferSize)
+        DXGI_FORMAT format)
     {
         DispatchGuardStatus guardStatus = ValidateDispatchPreconditions(cmdList);
         if (guardStatus == DispatchGuardStatus::Ok) {
             if (!EnsureOutputTextureBase(width, height, viewIndex, format)) {
-                guardStatus = DispatchGuardStatus::OutputAllocationFailed;
-            } else if (constantBufferSize != 0 && !EnsureConstantBuffer(constantBufferSize)) {
                 guardStatus = DispatchGuardStatus::OutputAllocationFailed;
             } else if (!QueryCommandList4(cmdList, outResources.cmdList4)) {
                 guardStatus = DispatchGuardStatus::CommandList4Unavailable;

@@ -10,20 +10,15 @@
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/UploadRing.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
-#include "Graphics/Water/FFTOceanResourceFactory.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
 {
     namespace
     {
-        constexpr UINT Align256(UINT value)
-        {
-            return (value + 255) & ~255;
-        }
-
         /// @brief フレーム間の時間の差の上限 [s]（シーンの切り替え直後などの大きな差を丸める）
         constexpr float kMaxDeltaSeconds = 0.1f;
 
@@ -202,14 +197,8 @@ namespace CoreEngine
             whitecap_[i].uav = descriptorAllocator_->CreateUAV(whitecap_[i].Get(), u, "WaterWhitecapFoamUAV_" + idx);
         }
 
-        // 定数は 1 枠を毎フレーム上書きする
-        void* mapped = nullptr;
-        const bool created = FFTOceanResourceFactory::CreateSimulationConstantBuffer(
-            device.Get(), Align256(sizeof(WhitecapConstants)), whitecapConstantsBuffer_, mapped);
-        mappedWhitecapConstants_ = static_cast<WhitecapConstants*>(mapped);
-
         whitecapResetPending_ = true;
-        return created && mappedWhitecapConstants_;
+        return true;
     }
 
     bool WaterFoamSystem::CreateShoreResources()
@@ -256,11 +245,6 @@ namespace CoreEngine
             shore_[i].uav = descriptorAllocator_->CreateUAV(shore_[i].Get(), u, "WaterShoreFoamUAV_" + idx);
         }
 
-        void* mapped = nullptr;
-        const bool created = FFTOceanResourceFactory::CreateSimulationConstantBuffer(
-            device.Get(), Align256(sizeof(ShoreConstants)), shoreConstantsBuffer_, mapped);
-        mappedShoreConstants_ = static_cast<ShoreConstants*>(mapped);
-
         // ならした海底の高さ
         const DXGI_FORMAT smoothFormat = DXGI_FORMAT_R32_FLOAT;
         D3D12_RESOURCE_DESC smoothDesc = desc;
@@ -286,11 +270,6 @@ namespace CoreEngine
         smoothUav.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
         smoothSeabed_.uav = descriptorAllocator_->CreateUAV(smoothSeabed_.Get(), smoothUav, "WaterShoreSmoothSeabedUAV");
 
-        void* mappedSmooth = nullptr;
-        const bool smoothCreated = FFTOceanResourceFactory::CreateSimulationConstantBuffer(
-            device.Get(), Align256(sizeof(SmoothSeabedConstants)), smoothSeabedConstantsBuffer_, mappedSmooth);
-        mappedSmoothSeabedConstants_ = static_cast<SmoothSeabedConstants*>(mappedSmooth);
-
         // 寄せ・引きのずれ（x, z）
         const DXGI_FORMAT swashFormat = DXGI_FORMAT_R32G32_FLOAT;
         D3D12_RESOURCE_DESC swashDesc = smoothDesc;
@@ -314,14 +293,8 @@ namespace CoreEngine
         swashUav.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
         swash_.uav = descriptorAllocator_->CreateUAV(swash_.Get(), swashUav, "WaterShoreSwashUAV");
 
-        void* mappedSwash = nullptr;
-        const bool swashCreated = FFTOceanResourceFactory::CreateSimulationConstantBuffer(
-            device.Get(), Align256(sizeof(SwashConstants)), swashConstantsBuffer_, mappedSwash);
-        mappedSwashConstants_ = static_cast<SwashConstants*>(mappedSwash);
-
         shoreResetPending_ = true;
-        return created && mappedShoreConstants_ && smoothCreated && mappedSmoothSeabedConstants_
-            && swashCreated && mappedSwashConstants_;
+        return true;
     }
 
     bool WaterFoamSystem::CreateStatisticsResources()
@@ -378,12 +351,7 @@ namespace CoreEngine
         }
         statisticsPending_.fill(false);
         whitecapHistogram_.assign(kHistogramBins, 0u);
-
-        void* mapped = nullptr;
-        const bool created = FFTOceanResourceFactory::CreateSimulationConstantBuffer(
-            device.Get(), Align256(sizeof(StatisticsConstants)), statisticsConstantsBuffer_, mapped);
-        mappedStatisticsConstants_ = static_cast<StatisticsConstants*>(mapped);
-        return created && mappedStatisticsConstants_;
+        return true;
     }
 
     void WaterFoamSystem::DispatchWhitecap(
@@ -412,7 +380,7 @@ namespace CoreEngine
         whitecapPreviousTimeSeconds_ = timeSeconds;
         whitecapElapsedSeconds_ += deltaSeconds;
 
-        WhitecapConstants& constants = *mappedWhitecapConstants_;
+        WhitecapConstants constants{};
         constants.resolution = fftResolution_;
         constants.deltaSeconds = deltaSeconds;
         constants.foamBias = whitecapBias_;
@@ -450,7 +418,7 @@ namespace CoreEngine
         }
         if (const int slot = whitecapPipeline_.GetComputeRootParamIndex("FFTOceanFoamConstants"); slot >= 0) {
             cmdList->SetComputeRootConstantBufferView(
-                static_cast<UINT>(slot), whitecapConstantsBuffer_->GetGPUVirtualAddress());
+                static_cast<UINT>(slot), dxCommon_->GetUploadRing().AllocateConstants(constants));
         }
 
         const UINT groups = (fftResolution_ + 7) / 8;
@@ -577,7 +545,7 @@ namespace CoreEngine
         }
         statisticsFrameCounter_ = 0;
 
-        StatisticsConstants& constants = *mappedStatisticsConstants_;
+        StatisticsConstants constants{};
         constexpr float kSampleExtent = kStatisticsSampleSpacing * static_cast<float>(kStatisticsSampleResolution);
         constants.sampleOriginXZ[0] = -0.5f * kSampleExtent;
         constants.sampleOriginXZ[1] = -0.5f * kSampleExtent;
@@ -615,7 +583,7 @@ namespace CoreEngine
         }
         if (const int slot = statisticsPipeline_.GetComputeRootParamIndex("WaterWhitecapStatisticsConstants"); slot >= 0) {
             cmdList->SetComputeRootConstantBufferView(
-                static_cast<UINT>(slot), statisticsConstantsBuffer_->GetGPUVirtualAddress());
+                static_cast<UINT>(slot), dxCommon_->GetUploadRing().AllocateConstants(constants));
         }
         const UINT groups = (kStatisticsSampleResolution + 7) / 8;
         cmdList->Dispatch(groups, groups, 1);
@@ -652,7 +620,7 @@ namespace CoreEngine
         const float deltaSeconds = ComputeDeltaSeconds(input.timeSeconds, shorePreviousTimeSeconds_);
         shorePreviousTimeSeconds_ = input.timeSeconds;
 
-        ShoreConstants& constants = *mappedShoreConstants_;
+        ShoreConstants constants{};
         constants.windowOriginXZ[0] = input.windowOriginXZ[0];
         constants.windowOriginXZ[1] = input.windowOriginXZ[1];
         constants.prevWindowOriginXZ[0] = shorePrevWindowOriginXZ_[0];
@@ -676,8 +644,9 @@ namespace CoreEngine
 
         // 海底の高さをならす
         {
-            mappedSmoothSeabedConstants_->outputResolution = kSmoothSeabedResolution;
-            mappedSmoothSeabedConstants_->inputResolution = input.seabedResolution;
+            SmoothSeabedConstants smoothConstants{};
+            smoothConstants.outputResolution = kSmoothSeabedResolution;
+            smoothConstants.inputResolution = input.seabedResolution;
 
             Barrier::Transition(cmdList, smoothSeabed_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             cmdList->SetPipelineState(smoothSeabedPipeline_.GetComputePSO());
@@ -690,7 +659,7 @@ namespace CoreEngine
             }
             if (const int slot = smoothSeabedPipeline_.GetComputeRootParamIndex("WaterShoreSeabedSmoothConstants"); slot >= 0) {
                 cmdList->SetComputeRootConstantBufferView(
-                    static_cast<UINT>(slot), smoothSeabedConstantsBuffer_->GetGPUVirtualAddress());
+                    static_cast<UINT>(slot), dxCommon_->GetUploadRing().AllocateConstants(smoothConstants));
             }
             const UINT smoothGroups = (kSmoothSeabedResolution + 7) / 8;
             cmdList->Dispatch(smoothGroups, smoothGroups, 1);
@@ -699,7 +668,7 @@ namespace CoreEngine
 
         // 寄せ・引きのずれ
         {
-            SwashConstants& swashConstants = *mappedSwashConstants_;
+            SwashConstants swashConstants{};
             swashConstants.windowOriginXZ[0] = input.windowOriginXZ[0];
             swashConstants.windowOriginXZ[1] = input.windowOriginXZ[1];
             swashConstants.windowSize = input.windowSize;
@@ -723,7 +692,7 @@ namespace CoreEngine
             }
             if (const int slot = swashPipeline_.GetComputeRootParamIndex("WaterShoreSwashConstants"); slot >= 0) {
                 cmdList->SetComputeRootConstantBufferView(
-                    static_cast<UINT>(slot), swashConstantsBuffer_->GetGPUVirtualAddress());
+                    static_cast<UINT>(slot), dxCommon_->GetUploadRing().AllocateConstants(swashConstants));
             }
             const UINT swashGroups = (kSmoothSeabedResolution + 7) / 8;
             cmdList->Dispatch(swashGroups, swashGroups, 1);
@@ -755,7 +724,7 @@ namespace CoreEngine
         }
         if (const int slot = shorePipeline_.GetComputeRootParamIndex("WaterShoreFoamConstants"); slot >= 0) {
             cmdList->SetComputeRootConstantBufferView(
-                static_cast<UINT>(slot), shoreConstantsBuffer_->GetGPUVirtualAddress());
+                static_cast<UINT>(slot), dxCommon_->GetUploadRing().AllocateConstants(constants));
         }
 
         const UINT groups = (kShoreResolution + 7) / 8;

@@ -362,8 +362,6 @@ namespace CoreEngine
         uint32_t fftResolution_ = 0;
         /// @brief 書き込み先は whitecapFrameIndex_ & 1。SRV / UAV とも全カスケードを 1 ビューで見せる
         FFTOceanPingPong whitecap_{};
-        Microsoft::WRL::ComPtr<ID3D12Resource> whitecapConstantsBuffer_;
-        WhitecapConstants* mappedWhitecapConstants_ = nullptr;
         uint32_t whitecapFrameIndex_ = 0;
         bool whitecapResetPending_ = true;
         float whitecapPreviousTimeSeconds_ = 0.0f;
@@ -382,8 +380,6 @@ namespace CoreEngine
         std::array<bool, kMaxFramesInFlight> statisticsPending_{};
         /// @brief 枠ごとの、記録したときの calibrationEpoch_
         std::array<uint32_t, kMaxFramesInFlight> statisticsEpoch_{};
-        Microsoft::WRL::ComPtr<ID3D12Resource> statisticsConstantsBuffer_;
-        StatisticsConstants* mappedStatisticsConstants_ = nullptr;
         /// @brief 最後に読み戻した合成ヤコビアンのヒストグラム
         std::vector<uint32_t> whitecapHistogram_;
         float measuredWhitecapCoverage_ = 0.0f;
@@ -407,8 +403,6 @@ namespace CoreEngine
         ShoreShaderProvider shoreShaderProvider_{};
         /// @brief 書き込み先は shoreFrameIndex_ & 1
         FFTOceanPingPong shore_{};
-        Microsoft::WRL::ComPtr<ID3D12Resource> shoreConstantsBuffer_;
-        ShoreConstants* mappedShoreConstants_ = nullptr;
         uint32_t shoreFrameIndex_ = 0;
         bool shoreResetPending_ = true;
         float shorePreviousTimeSeconds_ = 0.0f;
@@ -420,14 +414,10 @@ namespace CoreEngine
         CustomShaderPipeline smoothSeabedPipeline_{};
         SmoothSeabedShaderProvider smoothSeabedShaderProvider_{};
         FFTOceanGpuTexture smoothSeabed_{};
-        Microsoft::WRL::ComPtr<ID3D12Resource> smoothSeabedConstantsBuffer_;
-        SmoothSeabedConstants* mappedSmoothSeabedConstants_ = nullptr;
 
         // ---- 寄せ・引きのずれ（ならした海底と同じ粗い格子）----
         CustomShaderPipeline swashPipeline_{};
         SwashShaderProvider swashShaderProvider_{};
         FFTOceanGpuTexture swash_{};
-        Microsoft::WRL::ComPtr<ID3D12Resource> swashConstantsBuffer_;
-        SwashConstants* mappedSwashConstants_ = nullptr;
     };
 }

@@ -1,52 +1,38 @@
 #pragma once
 
+#include "Graphics/RHI/Resource/PerFrameConstants.h"
 #include "Graphics/Water/Surface/WaterSurfaceTypes.h"
 
 #include <d3d12.h>
-#include <wrl.h>
 
 namespace CoreEngine
 {
-/// @brief Water 描画用の定数バッファ群をまとめて管理する helper
-/// @details WaterSurfaceComponent から GPU バッファ生成・マップ・更新責務を切り離す。
+/// @brief Water 描画用の定数（WaterConstants / WaterFrameConstants）をまとめて持つ helper
+/// @details 値は CPU 側に持ち、GPU へは記録中のフレームの UploadRing から渡す。
 class WaterConstantBufferSet {
 public:
-    /// @brief Water 用定数バッファ群を作成する
-    /// @param device D3D12 デバイス
-    void Initialize(ID3D12Device* device);
+    /// @brief 置き場所の UploadRing をつなぐ
+    /// @param uploadRing 毎フレームの定数の置き場所
+    void Initialize(UploadRing& uploadRing);
 
-    /// @brief WaterConstants の GPU 仮想アドレスを返す
+    /// @brief WaterConstants を記録中のフレームの UploadRing に置き、GPU 仮想アドレスを返す
+    /// @note 返したアドレスはそのフレームの記録中だけ有効
     D3D12_GPU_VIRTUAL_ADDRESS GetWaterCBGpuAddress() const;
 
-    /// @brief WaterFrameConstants の GPU 仮想アドレスを返す
+    /// @brief WaterFrameConstants を記録中のフレームの UploadRing に置き、GPU 仮想アドレスを返す
+    /// @note 返したアドレスはそのフレームの記録中だけ有効
     D3D12_GPU_VIRTUAL_ADDRESS GetFrameCBGpuAddress() const;
 
-    /// @brief WaterConstants を GPU へ転送する
-    /// @param waterConstants 転送元の CPU 側定数
+    /// @brief WaterConstants を差し替える
+    /// @param waterConstants CPU 側定数
     void UpdateWaterConstants(const WaterConstants& waterConstants);
 
-    /// @brief WaterFrameConstants を GPU へ転送する
-    /// @param frameConstants 転送元の CPU 側定数
+    /// @brief WaterFrameConstants を差し替える
+    /// @param frameConstants CPU 側定数
     void UpdateFrameConstants(const WaterFrameConstants& frameConstants);
 
 private:
-    static constexpr UINT kWaterCBSize = (sizeof(WaterConstants) + 255) & ~255;
-    static constexpr UINT kFrameCBSize = (sizeof(WaterFrameConstants) + 255) & ~255;
-
-    /// @brief Upload Heap 上のバッファを 1 本作成してマップする
-    void CreateBuffer(
-        ID3D12Device* device,
-        UINT bufferSize,
-        Microsoft::WRL::ComPtr<ID3D12Resource>& resource,
-        D3D12_GPU_VIRTUAL_ADDRESS& gpuAddress,
-        uint8_t*& mappedData);
-
-    Microsoft::WRL::ComPtr<ID3D12Resource> waterCBResource_;
-    D3D12_GPU_VIRTUAL_ADDRESS waterCBGpuAddress_ = 0;
-    uint8_t* waterCBMapped_ = nullptr;
-
-    Microsoft::WRL::ComPtr<ID3D12Resource> frameCBResource_;
-    D3D12_GPU_VIRTUAL_ADDRESS frameCBGpuAddress_ = 0;
-    uint8_t* frameCBMapped_ = nullptr;
+    PerFrameConstants<WaterConstants> waterConstants_;
+    PerFrameConstants<WaterFrameConstants> frameConstants_;
 };
 }
