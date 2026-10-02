@@ -10,7 +10,6 @@
 namespace CoreEngine {
     class ParticleSystemComponent;
     class Camera;
-    class ResourceFactory;
     class ShaderReflectionData;
 }
 
@@ -44,10 +43,6 @@ public:
     ///          加算合成なので、内散乱を足さない「減衰のみ」バリアントを渡すこと。
     void SetFogConstants(D3D12_GPU_VIRTUAL_ADDRESS attenuationOnly) { fogCBV_ = attenuationOnly; }
 
-    /// @brief ResourceFactoryを設定（初期化前に呼び出す必要がある）
-    /// @param resourceFactory リソースファクトリ
-    void SetResourceFactory(ResourceFactory* resourceFactory) { resourceFactory_ = resourceFactory; }
-
     /// @brief パーティクルを描画（派生クラスで実装）
     /// @param particle パーティクルのコンポーネント
     /// @note コンポーネントの Render から呼ぶ。パスの開始はキューを流す側が済ませている
@@ -64,7 +59,6 @@ protected:
     // 共通リソース
     // ──────────────────────────────────────────────────────────
     
-    CoreEngine::ResourceFactory* resourceFactory_ = nullptr;
     ID3D12Device* device_ = nullptr;
     ID3D12GraphicsCommandList* cmdList_ = nullptr;
     const CoreEngine::Camera* camera_ = nullptr;

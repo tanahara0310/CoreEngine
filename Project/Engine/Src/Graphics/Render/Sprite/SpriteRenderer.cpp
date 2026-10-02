@@ -51,7 +51,7 @@ namespace CoreEngine
     }
 
     void SpriteRenderer::Initialize(ID3D12Device* /*device*/) {
-        assert(false && "SpriteRenderer: Use Initialize(GraphicsCore*, ResourceFactory*) instead of Initialize(ID3D12Device*).");
+        assert(false && "SpriteRenderer: Use Initialize(GraphicsCore*) instead of Initialize(ID3D12Device*).");
     }
 
     int SpriteRenderer::GetRootParamIndex(const std::string& resourceName) const {
@@ -61,9 +61,8 @@ namespace CoreEngine
         return reflectionData_->GetRootParameterIndexByName(resourceName);
     }
 
-    void SpriteRenderer::Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory) {
+    void SpriteRenderer::Initialize(GraphicsCore* dxCommon) {
         dxCommon_ = dxCommon;
-        resourceFactory_ = resourceFactory;
 
         // パイプラインをデバイスで初期化
         InitializePipeline(dxCommon->GetDevice());
@@ -82,14 +81,14 @@ namespace CoreEngine
 
             for (size_t i = 0; i < kMaxSpriteCount; ++i) {
                 // マテリアル用定数バッファを作成してマップ
-                matResources[i] = resourceFactory_->CreateBufferResource(dxCommon_->GetDevice(), sizeof(SpriteMaterial));
+                matResources[i] = ResourceFactory::CreateBufferResource(dxCommon_->GetDevice(), sizeof(SpriteMaterial));
                 // 永続マッピング（D3D12_HEAP_TYPE_UPLOADでは推奨される方法）
                 // Microsoft公式: UPLOAD_BUFFERは永続的にマップしたままにするべき
                 // https://learn.microsoft.com/en-us/windows/win32/direct3d12/upload-and-readback-of-resources
                 matResources[i]->Map(0, nullptr, reinterpret_cast<void**>(&matData[i]));
 
                 // トランスフォーム用定数バッファを作成してマップ
-                tfResources[i] = resourceFactory_->CreateBufferResource(dxCommon_->GetDevice(), sizeof(TransformationMatrix));
+                tfResources[i] = ResourceFactory::CreateBufferResource(dxCommon_->GetDevice(), sizeof(TransformationMatrix));
                 // 永続マッピング（D3D12_HEAP_TYPE_UPLOADでは推奨される方法）
                 tfResources[i]->Map(0, nullptr, reinterpret_cast<void**>(&tfData[i]));
             }

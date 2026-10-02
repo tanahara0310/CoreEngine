@@ -56,17 +56,16 @@ namespace CoreEngine
         if (!renderer_) { return; }
 
         GraphicsCore* const graphics = renderer_->GetGraphicsCore();
-        ResourceFactory* const factory = renderer_->GetResourceFactory();
-        if (!graphics || !factory) { return; }
+        if (!graphics) { return; }
 
         // 頂点バッファ（4 頂点の矩形）
-        vertexResource_ = factory->CreateBufferResource(graphics->GetDevice(), sizeof(VertexData) * 4);
+        vertexResource_ = ResourceFactory::CreateBufferResource(graphics->GetDevice(), sizeof(VertexData) * 4);
         vertexBufferView_.BufferLocation = vertexResource_->GetGPUVirtualAddress();
         vertexBufferView_.SizeInBytes = sizeof(VertexData) * 4;
         vertexBufferView_.StrideInBytes = sizeof(VertexData);
 
         // インデックスバッファ
-        indexResource_ = factory->CreateBufferResource(graphics->GetDevice(), sizeof(uint32_t) * 6);
+        indexResource_ = ResourceFactory::CreateBufferResource(graphics->GetDevice(), sizeof(uint32_t) * 6);
         uint32_t* indexData = nullptr;
         indexResource_->Map(0, nullptr, reinterpret_cast<void**>(&indexData));
         indexData[0] = 0; indexData[1] = 1; indexData[2] = 2;

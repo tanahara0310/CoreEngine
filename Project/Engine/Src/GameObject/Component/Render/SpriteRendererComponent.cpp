@@ -100,11 +100,10 @@ namespace CoreEngine
         if (!spriteRenderer_) { return; }
 
         GraphicsCore* dxCommon = spriteRenderer_->GetGraphicsCore();
-        ResourceFactory* resourceFactory = spriteRenderer_->GetResourceFactory();
-        if (!dxCommon || !resourceFactory) { return; }
+        if (!dxCommon) { return; }
 
         // 頂点バッファ（4 頂点のクワッド）
-        vertexResource_ = resourceFactory->CreateBufferResource(
+        vertexResource_ = ResourceFactory::CreateBufferResource(
             dxCommon->GetDevice(),
             sizeof(VertexData) * 4);
 
@@ -113,7 +112,7 @@ namespace CoreEngine
         vertexBufferView_.StrideInBytes = sizeof(VertexData);
 
         // インデックスバッファ
-        indexResource_ = resourceFactory->CreateBufferResource(
+        indexResource_ = ResourceFactory::CreateBufferResource(
             dxCommon->GetDevice(),
             sizeof(uint32_t) * 6);
 

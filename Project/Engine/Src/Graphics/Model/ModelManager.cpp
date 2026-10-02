@@ -31,11 +31,10 @@ namespace CoreEngine
         WaitForPreload();
     }
 
-    void ModelManager::Initialize(GraphicsCore* dxCommon, ResourceFactory* factory)
+    void ModelManager::Initialize(GraphicsCore* dxCommon)
     {
-        assert(dxCommon && factory);
+        assert(dxCommon);
         dxCommon_ = dxCommon;
-        resourceFactory_ = factory;
         customShaderPipelineCache_ = std::make_unique<CustomShaderPipelineCache>();
     }
 
@@ -194,7 +193,7 @@ namespace CoreEngine
 
         auto resource = std::make_unique<ModelResource>();
         auto& textureManager = TextureManager::GetInstance();
-        resource->Initialize(dxCommon_, resourceFactory_, &textureManager);
+        resource->Initialize(dxCommon_, &textureManager);
         resource->LoadFromModelData(std::move(modelData), key);
 
         ModelResource* resourcePtr = nullptr;
@@ -246,7 +245,7 @@ namespace CoreEngine
         try {
             resource = std::make_unique<ModelResource>();
             auto& textureManager = TextureManager::GetInstance();
-            resource->Initialize(dxCommon_, resourceFactory_, &textureManager);
+            resource->Initialize(dxCommon_, &textureManager);
             resource->LoadFromFile(directoryPath, filename);
         }
         catch (...) {

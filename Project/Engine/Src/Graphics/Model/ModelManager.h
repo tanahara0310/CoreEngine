@@ -25,7 +25,6 @@ namespace CoreEngine
 {
 // 前方宣言
 class GraphicsCore;
-class ResourceFactory;
 
 /// @brief アニメーション読み込み情報
 /// @note パスはファイル名のみ指定。ディレクトリは AssetDatabase が自動解決する。
@@ -49,8 +48,7 @@ public:
 
     /// @brief 初期化
     /// @param dxCommon GraphicsCoreのポインタ
-    /// @param factory リソースファクトリのポインタ
-    void Initialize(GraphicsCore* dxCommon, ResourceFactory* factory);
+    void Initialize(GraphicsCore* dxCommon);
 
     /// @brief 描画依存コンテキストを設定（全レンダラー登録後に一度呼び出す）
     /// @param ctx レンダラー・デバイス等の固定依存コンテキスト
@@ -131,8 +129,6 @@ private:
     // GraphicsCore
     GraphicsCore* dxCommon_ = nullptr;
 
-    // リソースファクトリ
-    ResourceFactory* resourceFactory_ = nullptr;
 
     // Model インスタンス生成時に注入する描画依存コンテキスト
     ModelRenderContext renderContext_;

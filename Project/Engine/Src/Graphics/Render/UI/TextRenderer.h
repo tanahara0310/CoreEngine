@@ -100,7 +100,7 @@ namespace CoreEngine
 
         RenderPassType GetRenderPassType() const override { return RenderPassType::UIText; }
 
-        /// @brief 基底の Initialize(GraphicsCore*, ResourceFactory*) を隠さない
+        /// @brief 基底の Initialize(GraphicsCore*) を隠さない
         /// @note 下で Initialize(ID3D12Device*) を宣言すると、同名の基底オーバーロードが
         ///       名前隠蔽で見えなくなる（呼び出し側は 2 引数版を使う）
         using UIRenderer::Initialize;

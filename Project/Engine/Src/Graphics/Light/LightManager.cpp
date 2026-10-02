@@ -32,12 +32,11 @@ namespace CoreEngine
         }
     }
 
-    void LightManager::Initialize(ID3D12Device* device, ResourceFactory* resourceFactory, DescriptorAllocator* descriptorAllocator)
+    void LightManager::Initialize(ID3D12Device* device, DescriptorAllocator* descriptorAllocator)
     {
         bufferManager_.Initialize(
             device,
             descriptorAllocator,
-            resourceFactory,
             MAX_DIRECTIONAL_LIGHTS,
             MAX_POINT_LIGHTS,
             MAX_SPOT_LIGHTS,

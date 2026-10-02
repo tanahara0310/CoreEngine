@@ -14,7 +14,6 @@ namespace CoreEngine
     void LightBufferManager::Initialize(
         ID3D12Device* device,
         DescriptorAllocator* descriptorAllocator,
-        [[maybe_unused]] ResourceFactory* resourceFactory,
         uint32_t maxDirectionalLights,
         uint32_t maxPointLights,
         uint32_t maxSpotLights,

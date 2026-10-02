@@ -57,9 +57,8 @@ namespace CoreEngine
         return reflectionData_->GetRootParameterIndexByName(resourceName);
     }
 
-    void UIRenderer::Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory) {
+    void UIRenderer::Initialize(GraphicsCore* dxCommon) {
         dxCommon_ = dxCommon;
-        resourceFactory_ = resourceFactory;
 
         Initialize(dxCommon->GetDevice());
 
@@ -78,11 +77,11 @@ namespace CoreEngine
 
             for (size_t i = 0; i < poolCount; ++i) {
                 // マテリアル定数バッファ（永続マッピング）
-                matResources[i] = resourceFactory_->CreateBufferResource(dxCommon_->GetDevice(), sizeof(UIMaterial));
+                matResources[i] = ResourceFactory::CreateBufferResource(dxCommon_->GetDevice(), sizeof(UIMaterial));
                 matResources[i]->Map(0, nullptr, reinterpret_cast<void**>(&matData[i]));
 
                 // トランスフォーム定数バッファ（永続マッピング）
-                tfResources[i] = resourceFactory_->CreateBufferResource(dxCommon_->GetDevice(), sizeof(TransformationMatrix));
+                tfResources[i] = ResourceFactory::CreateBufferResource(dxCommon_->GetDevice(), sizeof(TransformationMatrix));
                 tfResources[i]->Map(0, nullptr, reinterpret_cast<void**>(&tfData[i]));
             }
         }

@@ -46,10 +46,9 @@ namespace CoreEngine
         RenderPassType GetRenderPassType() const override { return RenderPassType::Sprite; }
         void SetCamera(const Camera* camera) override;
 
-        /// @brief 初期化（GraphicsCoreとResourceFactory付き）
+        /// @brief 初期化（GraphicsCore 付き）
         /// @param dxCommon GraphicsCore
-        /// @param resourceFactory ResourceFactory
-        void Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory);
+        void Initialize(GraphicsCore* dxCommon);
 
         /// @brief ルートシグネチャを取得
         ID3D12RootSignature* GetRootSignature() const { return rootSignatureMg_->GetRootSignature(); }
@@ -71,8 +70,6 @@ namespace CoreEngine
         /// @brief GraphicsCoreを取得
         GraphicsCore* GetGraphicsCore() { return dxCommon_; }
 
-        /// @brief ResourceFactoryを取得
-        ResourceFactory* GetResourceFactory() { return resourceFactory_; }
 
         /// @brief マテリアルデータプールを取得
         std::vector<SpriteMaterial*>& GetMaterialDataPool() { return materialDataPool_[currentFrameIndex_]; }
@@ -92,9 +89,7 @@ namespace CoreEngine
     private:
         // BaseRenderer から継承したサブシステムを使用（rootSignatureMg_, psoMg_, shaderCompiler_, reflectionBuilder_ は削除）
 
-        // GraphicsCoreとResourceFactory
         GraphicsCore* dxCommon_ = nullptr;
-        ResourceFactory* resourceFactory_ = nullptr;
 
         // 定数バッファプール（フレームごとに分離）
         std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> materialResources_[kFrameCount];
@@ -109,7 +104,7 @@ namespace CoreEngine
         // シェーダーリフレクションデータ
         std::unique_ptr<ShaderReflectionData> reflectionData_;
 
-        /// @brief パイプラインのみを初期化（Initialize(GraphicsCore*, ResourceFactory*) から呼び出す）
+        /// @brief パイプラインのみを初期化（Initialize(GraphicsCore*) から呼び出す）
         void InitializePipeline(ID3D12Device* device);
 
         /// @brief IRenderer::Initialize(ID3D12Device*) のオーバーライド（直接呼び出し禁止）

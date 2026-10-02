@@ -13,8 +13,6 @@ namespace CoreEngine
     void BaseParticleRenderer::Initialize(ID3D12Device* device) {
         device_ = device;
 
-        // リソースファクトリが設定されているか確認
-        assert(resourceFactory_ != nullptr && "ResourceFactory must be set before initialization");
 
         // BaseRenderer から継承したサブシステムはすでに初期化済み
 

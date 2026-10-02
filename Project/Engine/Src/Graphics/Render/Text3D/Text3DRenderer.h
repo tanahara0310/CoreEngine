@@ -123,7 +123,7 @@ namespace CoreEngine
         void Initialize(ID3D12Device* device) override;
 
         /// @brief 初期化（GraphicsCore 付き。こちらを使うこと）
-        void Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory);
+        void Initialize(GraphicsCore* dxCommon);
 
         /// @brief 溜まっているバッチを描いてから、ルートシグネチャを張り直す
         /// @note ブレンドモードが変わると RenderManager がここを再度呼ぶ。
@@ -180,7 +180,6 @@ namespace CoreEngine
         ID3D12PipelineState* ResolvePipelineState(Text3DDepthMode depthMode, BlendMode blendMode) const;
 
         GraphicsCore* dxCommon_ = nullptr;
-        ResourceFactory* resourceFactory_ = nullptr;
 
         /// 深度テストを切った PSO（オーバーレイ描画用）。psoMg_ が深度テスト版
         std::unique_ptr<PipelineStateManager> overlayPsoMg_ = std::make_unique<PipelineStateManager>();

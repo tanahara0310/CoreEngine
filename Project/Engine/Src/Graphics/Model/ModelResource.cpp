@@ -22,10 +22,9 @@
 
 namespace CoreEngine
 {
-    void ModelResource::Initialize(GraphicsCore* dxCommon, ResourceFactory* factory, TextureManager* textureMg)
+    void ModelResource::Initialize(GraphicsCore* dxCommon, TextureManager* textureMg)
     {
         dxCommon_ = dxCommon;
-        resourceFactory_ = factory;
         textureManager_ = textureMg;
     }
 
@@ -410,7 +409,7 @@ namespace CoreEngine
 
     void ModelResource::LoadFromFile(const std::string& directoryPath, const std::string& filename)
     {
-        assert(dxCommon_ && resourceFactory_ && textureManager_);
+        assert(dxCommon_ && textureManager_);
 
         // Assimp のパースは重いモデルで数百 ms かかる。起動中はローディング画面を刻む
         if (StartupProgress::IsActive()) {
@@ -518,7 +517,7 @@ namespace CoreEngine
 
     void ModelResource::LoadFromModelData(ModelData&& data, const std::string& name)
     {
-        assert(dxCommon_ && resourceFactory_ && textureManager_);
+        assert(dxCommon_ && textureManager_);
 
         modelData_ = std::move(data);
 

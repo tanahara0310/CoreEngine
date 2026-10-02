@@ -12,7 +12,6 @@ namespace CoreEngine
 {
     class ShaderBinder;
 
-    class ResourceFactory;
     class DescriptorAllocator;
 
     /// @brief ライトバッファの管理クラス
@@ -24,7 +23,6 @@ namespace CoreEngine
         void Initialize(
             ID3D12Device* device,
             DescriptorAllocator* descriptorAllocator,
-            ResourceFactory* resourceFactory,
             uint32_t maxDirectionalLights,
             uint32_t maxPointLights,
             uint32_t maxSpotLights,

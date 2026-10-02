@@ -41,10 +41,9 @@ namespace CoreEngine
         RenderPassType GetRenderPassType() const override { return RenderPassType::Line; }
         void SetCamera(const Camera* camera) override;
 
-        /// @brief 初期化（GraphicsCoreとResourceFactory付き）
+        /// @brief 初期化（GraphicsCore 付き）
         /// @param dxCommon GraphicsCore
-        /// @param resourceFactory ResourceFactory
-        void Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory);
+        void Initialize(GraphicsCore* dxCommon);
 
         /// @brief ラインをバッチに追加
         /// @param line ライン
@@ -103,9 +102,7 @@ namespace CoreEngine
         ID3D12PipelineState* pipelineState_ = nullptr;
         BlendMode currentBlendMode_ = BlendMode::kBlendModeNormal;
 
-        // GraphicsCoreとResourceFactory
         GraphicsCore* dxCommon_ = nullptr;
-        ResourceFactory* resourceFactory_ = nullptr;
 
         // カメラ
         const Camera* camera_ = nullptr;

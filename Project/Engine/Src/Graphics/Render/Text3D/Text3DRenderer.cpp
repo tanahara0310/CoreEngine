@@ -90,10 +90,9 @@ namespace CoreEngine
         batchVertices_.reserve(static_cast<size_t>(kMaxGlyphsPerBatch) * 4);
     }
 
-    void Text3DRenderer::Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory)
+    void Text3DRenderer::Initialize(GraphicsCore* dxCommon)
     {
         dxCommon_ = dxCommon;
-        resourceFactory_ = resourceFactory;
 
         Initialize(dxCommon->GetDevice());
     }
