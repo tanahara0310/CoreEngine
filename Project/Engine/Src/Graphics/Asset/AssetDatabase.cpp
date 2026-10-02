@@ -58,8 +58,11 @@ namespace CoreEngine
         }
 
         // カテゴリの優先順位を設定（数値が大きいほど優先）
-        categoryPriority_["Application"] = 100;
-        categoryPriority_["Engine"] = 50;
+        {
+            std::unique_lock lock(mutex_);
+            categoryPriority_["Application"] = 100;
+            categoryPriority_["Engine"] = 50;
+        }
 
         // スキャン対象ディレクトリを収集する。
         struct ScanTarget {
@@ -150,69 +153,92 @@ namespace CoreEngine
             ));
         }
 
-        // フェーズ3: 全結果をメインスレッドでインデックスに登録する。
+        // フェーズ3: 全結果を集め、メインスレッドでまとめてインデックスに登録する。
+        std::vector<AssetInfo> built;
+        built.reserve(buildFutures.size());
         for (auto& future : buildFutures) {
             threadPool_->Wait(future);
             auto result = future.get();
             if (result.has_value()) {
-                MergeAssetInfo(std::move(result.value()));
+                built.push_back(std::move(result.value()));
             }
         }
 
         threadPool_->Shutdown();
         threadPool_.reset();
 
+        size_t totalAssets = 0;
+        {
+            std::unique_lock lock(mutex_);
+            for (AssetInfo& info : built) {
+                MergeAssetInfo(std::move(info));
+            }
+            totalAssets = assetsByGUID_.size();
+        }
+
         initialized_ = true;
 
         Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}",
-            "AssetDatabase initialized. Total assets: " + std::to_string(assetsByGUID_.size()));
+            "AssetDatabase initialized. Total assets: " + std::to_string(totalAssets));
     }
 
     void AssetDatabase::Finalize()
     {
-        assetsByGUID_.clear();
-        assetsByName_.clear();
-        guidsByPath_.clear();
-        categoryPriority_.clear();
+        {
+            std::unique_lock lock(mutex_);
+            assetsByGUID_.clear();
+            assetsByName_.clear();
+            guidsByPath_.clear();
+            categoryPriority_.clear();
+        }
         initialized_ = false;
 
         Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}",
             "AssetDatabase finalized");
     }
 
-    std::filesystem::path AssetDatabase::FindAssetPath(const std::string& name)
+    std::filesystem::path AssetDatabase::FindAssetPath(const std::string& name) const
     {
         return FindAssetPath(name, AssetType::Unknown);
     }
 
-    std::filesystem::path AssetDatabase::FindAssetPath(const std::string& name, AssetType type)
+    std::filesystem::path AssetDatabase::FindAssetPath(const std::string& name, AssetType type) const
     {
-        const auto matches = [this, type](const std::string& guid) {
-            return type == AssetType::Unknown || assetsByGUID_[guid].type == type;
+        std::shared_lock lock(mutex_);
+
+        // 種類が合うアセット情報（合わなければ nullptr）
+        const auto matching = [this, type](const std::string& guid) -> const AssetInfo* {
+            const AssetInfo* info = FindByGUIDUnlocked(guid);
+            return (info && (type == AssetType::Unknown || info->type == type)) ? info : nullptr;
+        };
+        const auto priorityOf = [this](const std::string& category) {
+            const auto it = categoryPriority_.find(category);
+            return it != categoryPriority_.end() ? it->second : 0;
         };
 
         // まず完全一致で検索（複数ある場合は優先順位の高いもの、同じ優先順位なら先に登録したもの）
         auto it = assetsByName_.find(name);
         if (it != assetsByName_.end())
         {
-            const std::string* bestGuid = nullptr;
+            const AssetInfo* best = nullptr;
             int bestPriority = 0;
             for (const std::string& guid : it->second)
             {
-                if (!matches(guid))
+                const AssetInfo* info = matching(guid);
+                if (!info)
                 {
                     continue;
                 }
-                const int priority = categoryPriority_[assetsByGUID_[guid].category];
-                if (!bestGuid || priority > bestPriority)
+                const int priority = priorityOf(info->category);
+                if (!best || priority > bestPriority)
                 {
-                    bestGuid = &guid;
+                    best = info;
                     bestPriority = priority;
                 }
             }
-            if (bestGuid)
+            if (best)
             {
-                return assetsByGUID_[*bestGuid].fullPath;
+                return best->fullPath;
             }
         }
 
@@ -229,9 +255,9 @@ namespace CoreEngine
         {
             for (const std::string& guid : it->second)
             {
-                if (matches(guid))
+                if (const AssetInfo* info = matching(guid))
                 {
-                    return assetsByGUID_[guid].fullPath;
+                    return info->fullPath;
                 }
             }
         }
@@ -240,8 +266,10 @@ namespace CoreEngine
         return {};
     }
 
-    std::string AssetDatabase::GetGUID(const std::filesystem::path& assetPath)
+    std::string AssetDatabase::GetGUID(const std::filesystem::path& assetPath) const
     {
+        std::shared_lock lock(mutex_);
+
         // パスからGUIDを逆引き
         for (const auto& pair : assetsByGUID_)
         {
@@ -255,11 +283,23 @@ namespace CoreEngine
 
     const AssetInfo* AssetDatabase::FindAssetByGUID(const std::string& guid) const
     {
+        std::shared_lock lock(mutex_);
+        return FindByGUIDUnlocked(guid);
+    }
+
+    const AssetInfo* AssetDatabase::FindAssetByPath(std::string_view path) const
+    {
+        std::shared_lock lock(mutex_);
+        return FindByPathUnlocked(path);
+    }
+
+    const AssetInfo* AssetDatabase::FindByGUIDUnlocked(const std::string& guid) const
+    {
         const auto it = assetsByGUID_.find(guid);
         return it != assetsByGUID_.end() ? &it->second : nullptr;
     }
 
-    const AssetInfo* AssetDatabase::FindAssetByPath(std::string_view path) const
+    const AssetInfo* AssetDatabase::FindByPathUnlocked(std::string_view path) const
     {
         if (path.empty()) {
             return nullptr;
@@ -284,11 +324,12 @@ namespace CoreEngine
             // Application/Assets/ を省いた相対パスとして引き直す
             it = guidsByPath_.find("application/assets/" + key);
         }
-        return it != guidsByPath_.end() ? FindAssetByGUID(it->second) : nullptr;
+        return it != guidsByPath_.end() ? FindByGUIDUnlocked(it->second) : nullptr;
     }
 
     std::vector<const AssetInfo*> AssetDatabase::GetAssetsOfType(AssetType type) const
     {
+        std::shared_lock lock(mutex_);
         std::vector<const AssetInfo*> assets;
         for (const auto& [guid, info] : assetsByGUID_) {
             if (info.type == type) {
@@ -306,7 +347,8 @@ namespace CoreEngine
         const std::filesystem::path fullPath = (assetPath.is_absolute()
             ? assetPath
             : ProjectPaths::Resolve(log.PathToUtf8(assetPath))).lexically_normal();
-        if (const AssetInfo* existing = FindAssetByPath(log.PathToUtf8(fullPath))) {
+        const std::string fullPathUtf8 = log.PathToUtf8(fullPath);
+        if (const AssetInfo* existing = FindAssetByPath(fullPathUtf8)) {
             return existing;
         }
 
@@ -321,10 +363,15 @@ namespace CoreEngine
             return nullptr;
         }
 
+        std::unique_lock lock(mutex_);
+        // 情報を作っている間に別のスレッドが同じファイルを登録していれば、そちらを返す
+        if (const AssetInfo* existing = FindByPathUnlocked(fullPathUtf8)) {
+            return existing;
+        }
         const std::string guid = info->guid;
         MergeAssetInfo(std::move(*info));
         ++revision_;
-        return FindAssetByGUID(guid);
+        return FindByGUIDUnlocked(guid);
     }
 
     void AssetDatabase::Refresh()
@@ -332,10 +379,13 @@ namespace CoreEngine
         Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}",
             "Refreshing AssetDatabase...");
 
+        {
+            std::unique_lock lock(mutex_);
+            assetsByGUID_.clear();
+            assetsByName_.clear();
+            guidsByPath_.clear();
+        }
         initialized_ = false;
-        assetsByGUID_.clear();
-        assetsByName_.clear();
-        guidsByPath_.clear();
 
         Initialize();
         ++revision_;
@@ -533,6 +583,7 @@ namespace CoreEngine
 
     std::vector<std::filesystem::path> AssetDatabase::GetShaderIncludeDirectories() const
     {
+        std::shared_lock lock(mutex_);
         std::vector<std::filesystem::path> dirs;
         for (const auto& [guid, info] : assetsByGUID_)
         {
