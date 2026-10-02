@@ -109,6 +109,10 @@ namespace CoreEngine
         /// @param timeSeconds FFT のシミュレーション時刻 [s]
         std::array<float, 2> ComputeFoamDriftOffset(float timeSeconds) const;
 
+        /// @brief 白波の泡の模様を風の向きに伸ばす軸（風下の向き × √(1 − 1/伸び率)）
+        /// @details 模様の座標 p を p − a·(a·p) にすると、風の向きの成分だけが 1/伸び率 倍になる
+        std::array<float, 2> ComputeFoamStretchAxis() const;
+
         /// @brief 較正した砕けるしきい値（合成ヤコビアンがこれを下回ると砕ける）
         float GetWhitecapBias() const { return whitecapBias_; }
 
@@ -138,6 +142,11 @@ namespace CoreEngine
         static constexpr uint32_t kCascadeCount = 3;
         /// @brief 泡が風下へ流れる速さ ÷ 風速（海面の吹送流とストークスドリフトの和）
         static constexpr float kWindDriftFactor = 0.03f;
+        /// @brief 模様を風の向きに伸ばし始める風速と、伸び率が最大になる風速 [m/s]
+        static constexpr float kStretchStartWindSpeed = 8.0f;
+        static constexpr float kStretchFullWindSpeed = 18.0f;
+        /// @brief 模様の伸び率の最大
+        static constexpr float kMaxFoamStretch = 3.0f;
 
         /// @brief 白波の蓄積パスの定数（FFTOceanFoamAccumulate.CS.hlsl の FFTOceanFoamConstants）
         struct WhitecapConstants {

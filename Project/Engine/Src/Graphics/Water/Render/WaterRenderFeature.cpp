@@ -584,9 +584,10 @@ namespace CoreEngine
         foamSettings.decaySeconds = frameConstants.foamDecaySeconds;
         foam->SetSettings(foamSettings);
 
-        // 白波の泡が FFT の時刻までに風下へ流れた距離（模様と残っている泡をこれだけずらして読む）
+        // 白波の泡が FFT の時刻までに風下へ流れた距離（模様と残っている泡をこれだけずらして読む）と、
+        // 模様を風の向きに伸ばす軸
         const float fftTimeSeconds = fftOceanSimulator_ ? fftOceanSimulator_->GetElapsedTime() : 0.0f;
-        waterPlane_->SetFoamDriftOffset(foam->ComputeFoamDriftOffset(fftTimeSeconds));
+        waterPlane_->SetFoamMotion(foam->ComputeFoamDriftOffset(fftTimeSeconds), foam->ComputeFoamStretchAxis());
     }
 
     void WaterRenderFeature::SyncCausticsAbsorption(RenderDomainContext& domain) const

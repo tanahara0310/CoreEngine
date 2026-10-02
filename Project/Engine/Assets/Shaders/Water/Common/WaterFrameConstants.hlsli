@@ -83,7 +83,8 @@ cbuffer WaterFrameConstants : register(b5)
 
     // 白波の泡が風下へ流れた距離 [m]（WaterFoamSystem::ComputeFoamDriftOffset）
     float2 gFoamDriftOffsetXZ;
-    float2 gFoamMotionPad;
+    // 白波の泡の模様を風の向きに伸ばす軸（風下 × √(1 − 1/伸び率)。WaterFoamSystem::ComputeFoamStretchAxis）
+    float2 gFoamStretchAxis;
 };
 
 #endif // WATER_FRAME_CONSTANTS_INCLUDED

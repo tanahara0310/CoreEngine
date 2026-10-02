@@ -83,6 +83,15 @@ namespace CoreEngine
         return { settings_.windDirection[0] * distance, settings_.windDirection[1] * distance };
     }
 
+    std::array<float, 2> WaterFoamSystem::ComputeFoamStretchAxis() const
+    {
+        const float t = (std::clamp)(
+            (settings_.windSpeed - kStretchStartWindSpeed) / (kStretchFullWindSpeed - kStretchStartWindSpeed), 0.0f, 1.0f);
+        const float stretch = 1.0f + (kMaxFoamStretch - 1.0f) * t * t * (3.0f - 2.0f * t);
+        const float axisLength = std::sqrt(1.0f - 1.0f / stretch);
+        return { settings_.windDirection[0] * axisLength, settings_.windDirection[1] * axisLength };
+    }
+
     float WaterFoamSystem::GetTargetWhitecapCoverage() const
     {
         const float windSpeed = settings_.windSpeed;

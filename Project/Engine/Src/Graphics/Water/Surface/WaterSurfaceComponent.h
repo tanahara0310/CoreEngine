@@ -147,8 +147,10 @@ namespace CoreEngine
         /// @brief 波群エンベロープの位相のずれ [rad] を設定する（FFTOceanManager::ComputeWaveGroupPhase）
         void SetWaveGroupPhase(const std::array<float, 3>& phase);
 
-        /// @brief 白波の泡が風下へ流れた距離 [m] を設定する（WaterFoamSystem::ComputeFoamDriftOffset）
-        void SetFoamDriftOffset(const std::array<float, 2>& offsetXZ);
+        /// @brief 白波の泡の動きを設定する
+        /// @param driftOffsetXZ 泡が風下へ流れた距離 [m]（WaterFoamSystem::ComputeFoamDriftOffset）
+        /// @param stretchAxis   模様を風の向きに伸ばす軸（WaterFoamSystem::ComputeFoamStretchAxis）
+        void SetFoamMotion(const std::array<float, 2>& driftOffsetXZ, const std::array<float, 2>& stretchAxis);
 
         /// @brief FFT Ocean 描画経路を切り替える
         void SetUseFFTOcean(bool useFFTOcean);

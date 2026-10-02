@@ -139,7 +139,8 @@ struct WaterFrameConstants {
 	float waveGroupPhase[3] = { 0.0f, 0.0f, 0.0f };
 	// 白波の泡が風下へ流れた距離 [m]（WaterFoamSystem::ComputeFoamDriftOffset）
 	float foamDriftOffsetXZ[2] = { 0.0f, 0.0f };
-	float foamMotionPad[2] = { 0.0f, 0.0f };
+	// 白波の泡の模様を風の向きに伸ばす軸（WaterFoamSystem::ComputeFoamStretchAxis）
+	float foamStretchAxis[2] = { 0.0f, 0.0f };
 };
 
 // 全 35 フィールドのオフセットを HLSL packing 規則から機械的に導出して検証する。
@@ -168,7 +169,7 @@ static constexpr Cb::Field kWaterFrameConstantsFields[] = {
     CB_FIELD(WaterFrameConstants, seabedOriginXZ), CB_FIELD(WaterFrameConstants, seabedInvSize),
     CB_FIELD(WaterFrameConstants, seabedEnabled),
     CB_FIELD(WaterFrameConstants, shoreFoamEnabled), CB_FIELD(WaterFrameConstants, waveGroupPhase),
-    CB_FIELD(WaterFrameConstants, foamDriftOffsetXZ), CB_FIELD(WaterFrameConstants, foamMotionPad),
+    CB_FIELD(WaterFrameConstants, foamDriftOffsetXZ), CB_FIELD(WaterFrameConstants, foamStretchAxis),
 };
 CB_VERIFY_LAYOUT(WaterFrameConstants, kWaterFrameConstantsFields);
 CB_BIND_HLSL(WaterFrameConstants, kWaterFrameConstantsFields, "WaterFrameConstants");

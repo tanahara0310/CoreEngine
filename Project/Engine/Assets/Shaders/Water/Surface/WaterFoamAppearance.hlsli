@@ -10,7 +10,7 @@
 // WaterVolume.hlsli（EvaluateWaterSkyIrradiance）の後で include すること。以下に暗黙依存:
 //   資源    : gSampler / gIrradianceMap / gLightCounts / gDirectionalLights /
 //             gIBLParams（Object3dForward.hlsli）
-//   cbuffer : gSkyAmbientEnabled / gSkyAmbientScale / gFoamDriftOffsetXZ
+//   cbuffer : gSkyAmbientEnabled / gSkyAmbientScale / gFoamDriftOffsetXZ / gFoamStretchAxis
 //   関数    : EvaluateWaterSkyIrradiance（WaterVolume.hlsli）
 // ============================================================
 #ifndef WATER_FOAM_APPEARANCE_INCLUDED
@@ -135,11 +135,14 @@ WaterFoamLayer EvaluateFoamLayer(float mask, float2 patternXZ)
     return layer;
 }
 
-/// @brief 白波の泡の模様を評価する位置（泡と一緒に風下へ流す）
+/// @brief 白波の泡の模様を評価する位置（泡と一緒に風下へ流し、風の向きに伸ばす）
 /// @param baseWorldXZ 変位前の参照格子座標
+/// @details 風の向きの成分だけを 1/伸び率 倍に縮める。座標の一次変換なので、模様の値の分布
+///          （kFoamLaceMaskForCoverage の前提）は変わらない
 float2 ComputeWhitecapPatternXZ(float2 baseWorldXZ)
 {
-    return baseWorldXZ - gFoamDriftOffsetXZ;
+    const float2 driftedXZ = baseWorldXZ - gFoamDriftOffsetXZ;
+    return driftedXZ - gFoamStretchAxis * dot(gFoamStretchAxis, driftedXZ);
 }
 
 /// @brief 2 つの泡の層を重ねる（レースは和集合。白濁は相手のレースの下に隠れる）

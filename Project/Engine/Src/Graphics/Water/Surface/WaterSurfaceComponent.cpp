@@ -275,9 +275,12 @@ namespace CoreEngine
         }
     }
 
-    void WaterSurfaceComponent::SetFoamDriftOffset(const std::array<float, 2>& offsetXZ) {
-        frameCB_.foamDriftOffsetXZ[0] = offsetXZ[0];
-        frameCB_.foamDriftOffsetXZ[1] = offsetXZ[1];
+    void WaterSurfaceComponent::SetFoamMotion(
+        const std::array<float, 2>& driftOffsetXZ, const std::array<float, 2>& stretchAxis) {
+        for (size_t i = 0; i < 2; ++i) {
+            frameCB_.foamDriftOffsetXZ[i] = driftOffsetXZ[i];
+            frameCB_.foamStretchAxis[i] = stretchAxis[i];
+        }
     }
 
     void WaterSurfaceComponent::SetWaterOpticalCoefficients(const Vector3& absorptionCoeff, const Vector3& scatteringCoeff) {
