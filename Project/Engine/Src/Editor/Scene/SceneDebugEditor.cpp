@@ -729,7 +729,11 @@ namespace CoreEngine
                 saveSystem_->SaveObject(&object);
             }
             };
-        Editor::ObjectInspector::Draw(*selected, callbacks);
+        // 値を変えた操作が Undo を通っていなくても、編集中なら未保存として数える
+        if (Editor::ObjectInspector::Draw(*selected, callbacks)
+            && !PlaybackStateManager::GetInstance().IsInPlayMode()) {
+            MarkSceneDirty();
+        }
     }
 
     void SceneDebugEditor::ShowSaveNotification(const std::string& message)

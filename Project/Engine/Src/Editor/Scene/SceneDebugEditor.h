@@ -98,7 +98,8 @@ namespace CoreEngine
         bool IsSceneDirty() const;
 
         /// @brief 操作をしていなくても、保存するまで未保存の変更があることにする
-        /// @note 未保存の変更があったシーンを、再生の前の控えから組み直したときに使う。
+        /// @note 未保存の変更があったシーンを再生の前の控えから組み直したときと、
+        ///       インスペクタで値を変えたとき（Undo を通らない編集も数える）に使う。
         void MarkSceneDirty() { dirtyWithoutEdits_ = true; }
 
         /// @brief シーンのカメラ一式（無ければ nullptr）

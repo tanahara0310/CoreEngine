@@ -9,7 +9,7 @@ namespace CoreEngine
     class GameObject;
     class IComponent;
 
-    /// @brief インスペクタからコンポーネントを足す・外す操作（どちらも Undo に積む）
+    /// @brief インスペクタからコンポーネントを足す・外す・有効を切り替える操作（どれも Undo に積む）
     namespace ComponentEditing
     {
         /// @brief 型名のコンポーネントを足せるか
@@ -30,6 +30,10 @@ namespace CoreEngine
         /// @brief コンポーネントを外す
         /// @note 実体はオブジェクトが控え、Undo で同じ位置へ付け直す。
         bool Remove(GameObject& object, IComponent& component);
+
+        /// @brief コンポーネントの有効・無効を切り替えて Undo に積む
+        /// @return 積んだら true（今と同じなら何もしない）
+        bool SetEnabled(const GameObject& object, IComponent& component, bool enabled);
 
         /// @brief 「＋ コンポーネント追加」ボタンと、足せる型の一覧を今の行の右端に描く
         /// @return 一覧で選ばれた型名（選ばれなければ空）

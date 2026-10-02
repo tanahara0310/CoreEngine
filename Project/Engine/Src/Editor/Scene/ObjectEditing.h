@@ -12,7 +12,7 @@ namespace CoreEngine
     class GameObject;
     class GameObjectManager;
 
-    /// @brief エディタからオブジェクトを作る・複製する・消す操作（どれも Undo に積む）
+    /// @brief エディタからオブジェクトを作る・複製する・消す・名前と有効を変える操作（どれも Undo に積む）
     namespace ObjectEditing
     {
         /// @brief 操作に要るもの
@@ -71,6 +71,15 @@ namespace CoreEngine
         /// @return 消したら true
         /// @note Undo で、同じ ID・保存キー・値のオブジェクトを作り直す。
         bool Delete(const Context& context, GameObject& object);
+
+        /// @brief 名前を after にし、before からの変更として Undo に積む
+        /// @param before 変える前の名前（入力欄で打っている間に書き換えた分を 1 回の操作にまとめるときは、打ち始める前の名前）
+        /// @return 積んだら true（before と after が同じなら積まない）
+        bool Rename(GameObject& object, const std::string& before, const std::string& after);
+
+        /// @brief 有効・無効を切り替えて Undo に積む
+        /// @return 積んだら true（今と同じなら何もしない）
+        bool SetActive(GameObject& object, bool active);
     }
 }
 

@@ -271,6 +271,31 @@ namespace CoreEngine::ComponentEditing
         return true;
     }
 
+    bool SetEnabled(const GameObject& object, IComponent& component, bool enabled)
+    {
+        if (component.IsEnabled() == enabled) {
+            return false;
+        }
+        component.SetEnabled(enabled);
+
+        const Editor::ComponentHandle handle = Editor::ComponentHandle::Of(component);
+        const std::string displayName = Editor::ComponentInspectors::DisplayNameOf(component);
+        Editor::EditorCommandStack::Get().Push(std::make_unique<Editor::FunctionCommand>(
+            object.GetName() + " の" + displayName + (enabled ? "を有効にする" : "を無効にする"),
+            [handle, enabled] {
+                if (IComponent* const target = handle.Resolve()) {
+                    target->SetEnabled(!enabled);
+                }
+            },
+            [handle, enabled] {
+                if (IComponent* const target = handle.Resolve()) {
+                    target->SetEnabled(enabled);
+                }
+            },
+            true, true));
+        return true;
+    }
+
     std::string DrawAddButton(const GameObject& object)
     {
         InspectorLayout::AlignToRight(UI::Bar::ButtonWidth(kAddButtonLabel));

@@ -385,6 +385,54 @@ namespace CoreEngine::ObjectEditing
             "ObjectEditing: \"{}\" を削除しました", name);
         return true;
     }
+
+    bool Rename(GameObject& object, const std::string& before, const std::string& after)
+    {
+        object.SetName(after);
+        if (before == after) {
+            return false;
+        }
+
+        const ObjectId id = object.GetObjectId();
+        Editor::EditorCommandStack::Get().Push(std::make_unique<Editor::FunctionCommand>(
+            before + " の名前を " + after + " に変える",
+            [id, before] {
+                if (GameObject* const target = Editor::SceneAccess::FindObject(id)) {
+                    target->SetName(before);
+                }
+            },
+            [id, after] {
+                if (GameObject* const target = Editor::SceneAccess::FindObject(id)) {
+                    target->SetName(after);
+                }
+            },
+            true, true));
+        return true;
+    }
+
+    bool SetActive(GameObject& object, bool active)
+    {
+        if (object.IsActive() == active) {
+            return false;
+        }
+        object.SetActive(active);
+
+        const ObjectId id = object.GetObjectId();
+        Editor::EditorCommandStack::Get().Push(std::make_unique<Editor::FunctionCommand>(
+            object.GetName() + (active ? " を有効にする" : " を無効にする"),
+            [id, active] {
+                if (GameObject* const target = Editor::SceneAccess::FindObject(id)) {
+                    target->SetActive(!active);
+                }
+            },
+            [id, active] {
+                if (GameObject* const target = Editor::SceneAccess::FindObject(id)) {
+                    target->SetActive(active);
+                }
+            },
+            true, true));
+        return true;
+    }
 }
 
 #endif // CORE_EDITOR
