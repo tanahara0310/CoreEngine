@@ -4,6 +4,8 @@
 
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
+#include "Utility/Logger/Logger.h"
+#include <algorithm>
 #include <cstring>
 
 namespace CoreEngine
@@ -19,12 +21,50 @@ namespace CoreEngine
         uint32_t maxAreaLights
     )
     {
+        directionalCapacity_.max = maxDirectionalLights;
+        pointCapacity_.max = maxPointLights;
+        spotCapacity_.max = maxSpotLights;
+        areaCapacity_.max = maxAreaLights;
+
         CreateBufferResources(device, maxDirectionalLights, maxPointLights, maxSpotLights, maxAreaLights);
 
         if (descriptorAllocator)
         {
             CreateBufferSRVs(descriptorAllocator, maxDirectionalLights, maxPointLights, maxSpotLights, maxAreaLights);
         }
+    }
+
+    template <typename T>
+    uint32_t LightBufferManager::CopyLights(
+        ID3D12Resource* buffer,
+        const std::vector<T>& lights,
+        Capacity& capacity,
+        const char* typeName
+    )
+    {
+        // 確保した数を超えた分は写さない。警告は超えている間に 1 回だけ出す
+        if (lights.size() > capacity.max) {
+            if (!capacity.overflowLogged) {
+                Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Graphics,
+                    "{} のライトが {} 個あり、バッファに入る {} 個を超えた分は描かない",
+                    typeName, lights.size(), capacity.max);
+                capacity.overflowLogged = true;
+            }
+        } else {
+            capacity.overflowLogged = false;
+        }
+
+        const uint32_t count = static_cast<uint32_t>((std::min)(lights.size(), static_cast<size_t>(capacity.max)));
+
+        // 空の種別は Map ごと省く（0 バイトの memcpy を避け、未使用バッファを触らない）
+        if (count == 0) {
+            return 0;
+        }
+        T* mappedData = nullptr;
+        buffer->Map(0, nullptr, reinterpret_cast<void**>(&mappedData));
+        std::memcpy(mappedData, lights.data(), sizeof(T) * count);
+        buffer->Unmap(0, nullptr);
+        return count;
     }
 
     void LightBufferManager::UpdateBuffers(
@@ -34,46 +74,19 @@ namespace CoreEngine
         const std::vector<AreaLightData>& areaLights
     )
     {
-        // 種別ごとに StructuredBuffer を持つ。空の種別は Map ごと省く
-        // （0 バイトの memcpy を避けるためと、未使用バッファを触らないため）
-        if (!directionalLights.empty())
-        {
-            DirectionalLightData* mappedData = nullptr;
-            directionalLightsBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mappedData));
-            std::memcpy(mappedData, directionalLights.data(), sizeof(DirectionalLightData) * directionalLights.size());
-            directionalLightsBuffer_->Unmap(0, nullptr);
-        }
-
-        if (!pointLights.empty())
-        {
-            PointLightData* mappedData = nullptr;
-            pointLightsBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mappedData));
-            std::memcpy(mappedData, pointLights.data(), sizeof(PointLightData) * pointLights.size());
-            pointLightsBuffer_->Unmap(0, nullptr);
-        }
-
-        if (!spotLights.empty())
-        {
-            SpotLightData* mappedData = nullptr;
-            spotLightsBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mappedData));
-            std::memcpy(mappedData, spotLights.data(), sizeof(SpotLightData) * spotLights.size());
-            spotLightsBuffer_->Unmap(0, nullptr);
-        }
-
-        if (!areaLights.empty())
-        {
-            AreaLightData* mappedData = nullptr;
-            areaLightsBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mappedData));
-            std::memcpy(mappedData, areaLights.data(), sizeof(AreaLightData) * areaLights.size());
-            areaLightsBuffer_->Unmap(0, nullptr);
-        }
+        // 種別ごとに StructuredBuffer を持つ。シェーダーへ渡す数は写した数
+        const uint32_t directionalCount =
+            CopyLights(directionalLightsBuffer_.Get(), directionalLights, directionalCapacity_, "Directional");
+        const uint32_t pointCount = CopyLights(pointLightsBuffer_.Get(), pointLights, pointCapacity_, "Point");
+        const uint32_t spotCount = CopyLights(spotLightsBuffer_.Get(), spotLights, spotCapacity_, "Spot");
+        const uint32_t areaCount = CopyLights(areaLightsBuffer_.Get(), areaLights, areaCapacity_, "Area");
 
         if (lightCountsData_)
         {
-            lightCountsData_->directionalLightCount = static_cast<uint32_t>(directionalLights.size());
-            lightCountsData_->pointLightCount = static_cast<uint32_t>(pointLights.size());
-            lightCountsData_->spotLightCount = static_cast<uint32_t>(spotLights.size());
-            lightCountsData_->areaLightCount = static_cast<uint32_t>(areaLights.size());
+            lightCountsData_->directionalLightCount = directionalCount;
+            lightCountsData_->pointLightCount = pointCount;
+            lightCountsData_->spotLightCount = spotCount;
+            lightCountsData_->areaLightCount = areaCount;
         }
     }
 

@@ -13,9 +13,14 @@ COMPONENT_REGISTER(CoreEngine::LightComponent)
 namespace CoreEngine
 {
     LightComponent::LightComponent()
+        : LightComponent(LightType::Point)
+    {
+    }
+
+    LightComponent::LightComponent(LightType type)
     {
         // 足した直後から見える値にする（種類ごとの既定は LightManager が単一情報源）
-        LightManager::SetupDefaults(light_, LightType::Point);
+        LightManager::SetupDefaults(light_, type);
     }
 
     LightComponent::~LightComponent()
@@ -57,6 +62,11 @@ namespace CoreEngine
         }
 
         AdoptExternalEdits(*live);
+
+        // 種類は LightManager を通して変える。断られたら実体の種類へ戻す
+        if (light_.type != live->type && !manager->ChangeType(handle_, light_.type)) {
+            light_.type = live->type;
+        }
         ApplyToLight(*live);
         lastWritten_ = *live;
     }
@@ -147,8 +157,11 @@ namespace CoreEngine
     {
         GameObject* const owner = GetOwner();
 
+        // 種類は ChangeType だけが変えるので、実体の値を残す
+        const LightType type = live.type;
         std::string name = std::move(live.name);
         live = light_;
+        live.type = type;
         live.name = std::move(name);
 
         // 名前・位置・有効はオブジェクト側が持つ

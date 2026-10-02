@@ -32,6 +32,7 @@ namespace CoreEngine
         );
 
         /// @brief ライトバッファを更新
+        /// @note 種類ごとに、確保した数を超えた分は写さない（超えている間に 1 回だけ警告する）。
         void UpdateBuffers(
             const std::vector<DirectionalLightData>& directionalLights,
             const std::vector<PointLightData>& pointLights,
@@ -78,6 +79,22 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE GetAreaLightsSRVHandle() const { return areaLightsSRVHandle_.gpuHandle; }
 
     private:
+        /// @brief 種類ごとのバッファに入るライトの数
+        struct Capacity {
+            uint32_t max = 0;             ///< 確保した数
+            bool overflowLogged = false;  ///< 超えている間に警告を出したか
+        };
+
+        /// @brief ライトをバッファに入る数まで写す
+        /// @return 写した数
+        template <typename T>
+        static uint32_t CopyLights(
+            ID3D12Resource* buffer,
+            const std::vector<T>& lights,
+            Capacity& capacity,
+            const char* typeName
+        );
+
         /// @brief StructuredBuffer用のリソースを作成
         void CreateBufferResources(
             ID3D12Device* device,
@@ -109,6 +126,12 @@ namespace CoreEngine
         DescriptorHandle pointLightsSRVHandle_{};
         DescriptorHandle spotLightsSRVHandle_{};
         DescriptorHandle areaLightsSRVHandle_{};
+
+        // 種類ごとのバッファに入る数
+        Capacity directionalCapacity_{};
+        Capacity pointCapacity_{};
+        Capacity spotCapacity_{};
+        Capacity areaCapacity_{};
 
         // マップされたライトカウントデータ
         LightCounts* lightCountsData_ = nullptr;
