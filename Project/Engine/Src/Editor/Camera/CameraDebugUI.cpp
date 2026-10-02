@@ -106,7 +106,7 @@ namespace CoreEngine {
         ImGui::Text("描画中");
         UI::SameLine();
         ImGui::TextColored(ImVec4(0.26f, 0.72f, 0.98f, 1.0f), "%s",
-            cameraManager->GetViewCameraName().c_str());
+            cameraManager->GetDisplayName(cameraManager->GetViewCameraName()).c_str());
 
         // ===== 今このカメラを動かしているのは誰か =====
         // 追従やコントローラが効かないとき、原因がここで分かるようにしておく。

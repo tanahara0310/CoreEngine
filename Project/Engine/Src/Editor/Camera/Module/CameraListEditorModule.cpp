@@ -35,7 +35,7 @@ namespace CoreEngine
         if (ImGui::RadioButton("ゲーム視点 (キー 2)", !useScene)) {
             cameraManager->SetUseSceneCamera(false);
         }
-        ImGui::Text("描画中: %s", cameraManager->GetViewCameraName().c_str());
+        ImGui::Text("描画中: %s", cameraManager->GetDisplayName(cameraManager->GetViewCameraName()).c_str());
         UI::Hint("描画・ギズモ・ピッキングはすべてこのカメラを使います。");
 
         UI::Spacing();
@@ -49,7 +49,7 @@ namespace CoreEngine
             }
 
             ImGui::PushID(name.c_str());
-            ImGui::Text("%s", name.c_str());
+            ImGui::Text("%s", cameraManager->GetDisplayName(name).c_str());
             UI::SameLine();
             if (ImGui::SmallButton("エディタ視点にする")) {
                 cameraManager->SetSceneCameraName(name);
@@ -70,9 +70,11 @@ namespace CoreEngine
             }
 
             bool isActive = (context.cameraManager->GetActiveCameraName(CameraType::Camera2D) == name);
-            if (ImGui::RadioButton(name.c_str(), isActive)) {
+            ImGui::PushID(name.c_str());
+            if (ImGui::RadioButton(cameraManager->GetDisplayName(name).c_str(), isActive)) {
                 context.cameraManager->SetActiveCamera(name, CameraType::Camera2D);
             }
+            ImGui::PopID();
         }
     }
 }
