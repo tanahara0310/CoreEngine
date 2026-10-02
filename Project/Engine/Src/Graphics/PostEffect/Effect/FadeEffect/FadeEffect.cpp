@@ -1,13 +1,11 @@
 #include "pch.h"
 #include "FadeEffect.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/CVar/CVar.h"
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
 #endif
-#include <cassert>
 #include <algorithm>
 
 
@@ -50,50 +48,36 @@ namespace CoreEngine
         constexpr const char* kCVarPrefix = "r.Fade";
     }
 
-    void FadeEffect::OnCreateConstantBuffers()
-    {
-        UINT fadeSize = (sizeof(FadeParams) + 255) & ~255;
-        fadeParamsCB_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), fadeSize);
-        [[maybe_unused]] HRESULT hr = fadeParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedFadeParams_));
-        assert(SUCCEEDED(hr));
-        UpdateConstantBuffer();
-
-    }
-
     // CVar ではなく実行時値（fadeAlpha_）を送る。演出中は毎フレーム変わるため
-    void FadeEffect::UpdateConstantBuffer()
+    FadeEffect::FadeParams FadeEffect::MakeParams() const
     {
-        if (!mappedFadeParams_) {
-            return;
-        }
-        mappedFadeParams_->spiralPower     = cvSpiralPower.Get();
-        mappedFadeParams_->rippleFreq      = cvRippleFreq.Get();
-        mappedFadeParams_->glitchIntensity = cvGlitchIntensity.Get();
-        mappedFadeParams_->portalSize      = cvPortalSize.Get();
-        mappedFadeParams_->colorShift      = cvColorShift.Get();
+        FadeParams params{};
+        params.spiralPower     = cvSpiralPower.Get();
+        params.rippleFreq      = cvRippleFreq.Get();
+        params.glitchIntensity = cvGlitchIntensity.Get();
+        params.portalSize      = cvPortalSize.Get();
+        params.colorShift      = cvColorShift.Get();
         // 遷移の進行状態は SceneTransition が制御する実行時値
-        mappedFadeParams_->fadeAlpha = fadeAlpha_;
-        mappedFadeParams_->fadeType  = fadeType_;
-        mappedFadeParams_->time      = timeAccumulator_;
+        params.fadeAlpha = fadeAlpha_;
+        params.fadeType  = fadeType_;
+        params.time      = timeAccumulator_;
+        return params;
     }
 
     // フェード量は演出側（シーン遷移）が毎フレーム決めるので、ここで文脈から拾う
     void FadeEffect::PrepareFrame(const PostEffectFrameContext& ctx)
     {
         timeAccumulator_ += ctx.deltaTime;
-        UpdateConstantBuffer();
     }
 
     void FadeEffect::SetFadeAlpha(float alpha)
     {
         fadeAlpha_ = std::clamp(alpha, 0.0f, 1.0f);
-        UpdateConstantBuffer();
     }
 
     void FadeEffect::SetFadeType(FadeType type)
     {
         fadeType_ = static_cast<float>(type);
-        UpdateConstantBuffer();
     }
 
     void FadeEffect::Dispatch(
@@ -102,7 +86,6 @@ namespace CoreEngine
         uint32_t width,
         uint32_t height)
     {
-        UpdateConstantBuffer();
         UpdateScreenSizeConstants(width, height);
 
         auto* cmdList = graphicsCore_->GetCommandList();
@@ -116,7 +99,7 @@ namespace CoreEngine
 
         if (textureIdx >= 0) cmdList->SetComputeRootDescriptorTable(textureIdx, inputSrvHandle);
         if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
-        if (fadeIdx >= 0)    cmdList->SetComputeRootConstantBufferView(fadeIdx, fadeParamsCB_->GetGPUVirtualAddress());
+        if (fadeIdx >= 0)    cmdList->SetComputeRootConstantBufferView(fadeIdx, UploadConstants(MakeParams()));
         if (screenIdx >= 0)  cmdList->SetComputeRootConstantBufferView(screenIdx, GetScreenSizeCbAddress());
 
         uint32_t groupX = (width  + 7) / 8;
@@ -137,11 +120,8 @@ namespace CoreEngine
         int currentType = static_cast<int>(fadeType_);
         if (ImGui::Combo("フェードタイプ", &currentType, typeNames, 6)) {
             fadeType_ = static_cast<float>(currentType);
-            UpdateConstantBuffer();
         }
-        if (UI::SliderFloat("フェード強度（実行時）", fadeAlpha_, 0.0f, 1.0f)) {
-            UpdateConstantBuffer();
-        }
+        UI::SliderFloat("フェード強度（実行時）", fadeAlpha_, 0.0f, 1.0f);
 
         CVarUI::DrawTree(kCVarPrefix);
 

@@ -54,15 +54,12 @@ namespace CoreEngine
 
         std::string  GetEffectName()        const override { return "Random"; }
         std::wstring GetComputeShaderPath() const override { return L"Random.CS.hlsl"; }
-        void OnCreateConstantBuffers() override;
 
     private:
-        void UpdateConstantBuffer();
+        /// @brief 今の CVar と実行時の値から定数を作る
+        RandomParams MakeParams() const;
 
     private:
-        Microsoft::WRL::ComPtr<ID3D12Resource> randomParamsCB_;
-        RandomParams* mappedRandomParams_ = nullptr;
-
         float accumulatedTime_ = 0.0f;
     };
 }

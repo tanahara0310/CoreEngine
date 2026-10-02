@@ -1,13 +1,11 @@
 #include "pch.h"
 #include "Shockwave.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/CVar/CVar.h"
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
 #endif
-#include <cassert>
 
 
 namespace CoreEngine
@@ -37,28 +35,17 @@ namespace CoreEngine
         constexpr const char* kCVarPrefix = "r.Shockwave";
     }
 
-    void Shockwave::OnCreateConstantBuffers()
+    Shockwave::ShockwaveParams Shockwave::MakeParams() const
     {
-        UINT swSize = (sizeof(ShockwaveParams) + 255) & ~255;
-        shockwaveParamsCB_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), swSize);
-        [[maybe_unused]] HRESULT hr = shockwaveParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedShockwaveParams_));
-        assert(SUCCEEDED(hr));
-        UpdateConstantBuffer();
-
-    }
-
-    void Shockwave::UpdateConstantBuffer()
-    {
-        if (!mappedShockwaveParams_) {
-            return;
-        }
-        mappedShockwaveParams_->strength  = cvStrength.Get();
-        mappedShockwaveParams_->thickness = cvThickness.Get();
-        mappedShockwaveParams_->speed     = cvSpeed.Get();
+        ShockwaveParams params{};
+        params.strength  = cvStrength.Get();
+        params.thickness = cvThickness.Get();
+        params.speed     = cvSpeed.Get();
         // 発動状態は実行時の値
-        mappedShockwaveParams_->center[0] = centerX_;
-        mappedShockwaveParams_->center[1] = centerY_;
-        mappedShockwaveParams_->time      = time_;
+        params.center[0] = centerX_;
+        params.center[1] = centerY_;
+        params.time      = time_;
+        return params;
     }
 
     void Shockwave::StartShockwave(float centerX, float centerY)
@@ -67,7 +54,6 @@ namespace CoreEngine
         centerY_  = centerY;
         time_     = 0.0f;
         isActive_ = true;
-        UpdateConstantBuffer();
     }
 
     void Shockwave::PrepareFrame(const PostEffectFrameContext& ctx)
@@ -79,7 +65,6 @@ namespace CoreEngine
             isActive_ = false;
             time_     = 0.0f;
         }
-        UpdateConstantBuffer();
     }
 
     void Shockwave::Dispatch(
@@ -88,7 +73,6 @@ namespace CoreEngine
         uint32_t width,
         uint32_t height)
     {
-        UpdateConstantBuffer();
         UpdateScreenSizeConstants(width, height);
 
         auto* cmdList = graphicsCore_->GetCommandList();
@@ -102,7 +86,7 @@ namespace CoreEngine
 
         if (textureIdx >= 0) cmdList->SetComputeRootDescriptorTable(textureIdx, inputSrvHandle);
         if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
-        if (swIdx >= 0)      cmdList->SetComputeRootConstantBufferView(swIdx, shockwaveParamsCB_->GetGPUVirtualAddress());
+        if (swIdx >= 0)      cmdList->SetComputeRootConstantBufferView(swIdx, UploadConstants(MakeParams()));
         if (screenIdx >= 0)  cmdList->SetComputeRootConstantBufferView(screenIdx, GetScreenSizeCbAddress());
 
         uint32_t groupX = (width  + 7) / 8;

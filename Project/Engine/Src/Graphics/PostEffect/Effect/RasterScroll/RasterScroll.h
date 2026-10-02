@@ -58,15 +58,12 @@ protected:
 
     std::string  GetEffectName()        const override { return "RasterScroll"; }
     std::wstring GetComputeShaderPath() const override { return L"RasterScroll.CS.hlsl"; }
-    void OnCreateConstantBuffers() override;
 
 private:
-    void UpdateConstantBuffer();
+    /// @brief 今の CVar と実行時の値から定数を作る
+    RasterScrollParams MakeParams() const;
 
 private:
-    Microsoft::WRL::ComPtr<ID3D12Resource> rasterScrollParamsCB_;
-    RasterScrollParams* mappedRasterScrollParams_ = nullptr;
-
     float accumulatedTime_ = 0.0f;
 };
 }

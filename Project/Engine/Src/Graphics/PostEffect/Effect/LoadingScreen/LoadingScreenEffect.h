@@ -100,15 +100,12 @@ namespace CoreEngine
 
         std::string  GetEffectName()        const override { return "LoadingScreen"; }
         std::wstring GetComputeShaderPath() const override { return L"LoadingScreen.CS.hlsl"; }
-        void OnCreateConstantBuffers() override;
 
     private:
-        void UpdateConstantBuffer();
+        /// @brief 今の CVar と実行時の値から定数を作る
+        LoadingParams MakeParams() const;
 
     private:
-        Microsoft::WRL::ComPtr<ID3D12Resource> loadingParamsCB_;
-        LoadingParams* mappedLoadingParams_ = nullptr;
-
         // 実行時状態（保存対象ではない）
         float screenAlpha_ = 0.0f;
         float timeAccumulator_ = 0.0f;

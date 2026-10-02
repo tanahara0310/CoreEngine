@@ -59,6 +59,6 @@ namespace CoreEngine
         ScreenSizeConstants constants{};
         constants.screenWidth  = width;
         constants.screenHeight = height;
-        screenSizeCbAddress_ = graphicsCore_->GetUploadRing().AllocateConstants(constants);
+        screenSizeCbAddress_ = UploadConstants(constants);
     }
 }
