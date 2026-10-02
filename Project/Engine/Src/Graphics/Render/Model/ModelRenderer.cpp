@@ -31,8 +31,8 @@ namespace CoreEngine
 
         // シェーダーリフレクションを構築（RootSignature 自動生成に使用）
         reflectionBuilder_->Initialize(shaderCompiler_->GetDxcUtils());
-        forwardReflectionData_ = reflectionBuilder_->BuildFromShaders(vertexShaderBlob, pixelShaderBlob, "ModelRenderer");
-        gBufferReflectionData_ = reflectionBuilder_->BuildFromShaders(gBufferVertexShaderBlob, gBufferPixelShaderBlob, "ModelRenderer_GBuffer");
+        forwardReflectionData_ = reflectionBuilder_->BuildFromShaders(vertexShaderBlob.Get(), pixelShaderBlob.Get(), "ModelRenderer");
+        gBufferReflectionData_ = reflectionBuilder_->BuildFromShaders(gBufferVertexShaderBlob.Get(), gBufferPixelShaderBlob.Get(), "ModelRenderer_GBuffer");
 
         // RootSignature 構成: CBV は高速な Root Descriptor、SRV は Descriptor Table
         // ただし gInstanceData のみ Root Descriptor（インスタンシング用バッファは頻繁に変わるため）
@@ -88,7 +88,7 @@ namespace CoreEngine
             .SetRasterizer(D3D12_CULL_MODE_BACK, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(true, true)
             .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
-            .BuildAllBlendModes(device, vertexShaderBlob, pixelShaderBlob, forwardRootSignatureMg_->GetRootSignature());
+            .BuildAllBlendModes(device, vertexShaderBlob.Get(), pixelShaderBlob.Get(), forwardRootSignatureMg_->GetRootSignature());
 
         // GBuffer パス PSO: マルチレンダーターゲットフォーマットを指定して生成
         bool gBufferResult = gBufferPsoMg_->CreateBuilder()
@@ -98,7 +98,7 @@ namespace CoreEngine
             .SetDepthStencil(true, true)
             .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
             .SetRenderTargetFormats(GBufferManager::kRenderTargetFormats, static_cast<UINT>(std::size(GBufferManager::kRenderTargetFormats)))
-            .BuildGBuffer(device, gBufferVertexShaderBlob, gBufferPixelShaderBlob, gBufferRootSignatureMg_->GetRootSignature());
+            .BuildGBuffer(device, gBufferVertexShaderBlob.Get(), gBufferPixelShaderBlob.Get(), gBufferRootSignatureMg_->GetRootSignature());
 
         if (!result || !gBufferResult) {
             throw std::runtime_error("Failed to create Pipeline State Object");

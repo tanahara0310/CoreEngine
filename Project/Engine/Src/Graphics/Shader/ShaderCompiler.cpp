@@ -122,7 +122,7 @@ namespace CoreEngine
         return includeArgs;
     }
 
-    IDxcBlob* ShaderCompiler::CreateBlobFromBytes(const std::vector<uint8_t>& bytes) const
+    Microsoft::WRL::ComPtr<IDxcBlob> ShaderCompiler::CreateBlobFromBytes(const std::vector<uint8_t>& bytes) const
     {
         if (bytes.empty() || !dxcUtils) {
             return nullptr;
@@ -135,9 +135,8 @@ namespace CoreEngine
             return nullptr;
         }
 
-        // IDxcBlobEncoding は IDxcBlob を継承しているので、そのまま返せる。
-        // 呼び出し元から見た型・所有権はコンパイル経路とまったく同じ
-        return blob.Detach();
+        // IDxcBlobEncoding は IDxcBlob を継承しているので、そのまま返せる
+        return blob;
     }
 
     std::vector<std::wstring> ShaderCompiler::BuildArgumentStrings(
@@ -181,18 +180,18 @@ namespace CoreEngine
         return prepared;
     }
 
-    IDxcBlob* ShaderCompiler::CompileShader(const std::wstring& filePath, const wchar_t* profile)
+    Microsoft::WRL::ComPtr<IDxcBlob> ShaderCompiler::CompileShader(const std::wstring& filePath, const wchar_t* profile)
     {
         return CompileInternal(filePath, profile, L"main");
     }
 
-    IDxcBlob* ShaderCompiler::CompileShaderLibrary(const std::wstring& filePath)
+    Microsoft::WRL::ComPtr<IDxcBlob> ShaderCompiler::CompileShaderLibrary(const std::wstring& filePath)
     {
         // DXRライブラリはlib_6_6でコンパイル（-Eによるエントリーポイント指定なし）
         return CompileInternal(filePath, L"lib_6_6", nullptr);
     }
 
-    IDxcBlob* ShaderCompiler::CompileInternal(
+    Microsoft::WRL::ComPtr<IDxcBlob> ShaderCompiler::CompileInternal(
         const std::wstring& filePath,
         const wchar_t* profile,
         const wchar_t* entryPoint)
@@ -205,7 +204,7 @@ namespace CoreEngine
         return CompilePrepared(Prepare(filePath, profile, entryPoint));
     }
 
-    IDxcBlob* ShaderCompiler::CompilePrepared(const PreparedShaderCompile& prepared)
+    Microsoft::WRL::ComPtr<IDxcBlob> ShaderCompiler::CompilePrepared(const PreparedShaderCompile& prepared)
     {
         if (!prepared.IsValid()) {
             return nullptr;
@@ -222,7 +221,7 @@ namespace CoreEngine
             std::vector<uint8_t> memoryBytes;
             if (ShaderBlobCache::GetInstance().TryGet(
                 resolvedPath, profile, prepared.entryPoint, memoryBytes)) {
-                if (IDxcBlob* blob = CreateBlobFromBytes(memoryBytes)) {
+                if (Microsoft::WRL::ComPtr<IDxcBlob> blob = CreateBlobFromBytes(memoryBytes)) {
                     return blob;
                 }
             }
@@ -285,7 +284,7 @@ namespace CoreEngine
 
             std::vector<uint8_t> cachedBytes;
             if (cacheStore.TryLoad(cacheEntry, cachedBytes)) {
-                if (IDxcBlob* cachedBlob = CreateBlobFromBytes(cachedBytes)) {
+                if (Microsoft::WRL::ComPtr<IDxcBlob> cachedBlob = CreateBlobFromBytes(cachedBytes)) {
                     // 同じ要求が同一プロセス内で再度来たときに、ここまでの
                     // 読み込み + SHA-256 + .deps 照合を省けるようメモリへ載せる
                     ShaderBlobCache::GetInstance().Store(
@@ -327,7 +326,7 @@ namespace CoreEngine
         }
 
         // コンパイル結果から実行用のバイナリを取得
-        IDxcBlob* shaderBlob = nullptr;
+        Microsoft::WRL::ComPtr<IDxcBlob> shaderBlob;
         hr = shaderResult->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shaderBlob), nullptr);
         // バイナリが取得できなかったら落とす
         assert(SUCCEEDED(hr));

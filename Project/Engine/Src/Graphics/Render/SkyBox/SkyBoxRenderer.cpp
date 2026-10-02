@@ -21,7 +21,7 @@ namespace CoreEngine
         assert(pixelShaderBlob != nullptr);
 
         // リフレクション
-        reflectionData_ = reflectionBuilder_->BuildFromShaders(vertexShaderBlob, pixelShaderBlob, "SkyBoxRenderer");
+        reflectionData_ = reflectionBuilder_->BuildFromShaders(vertexShaderBlob.Get(), pixelShaderBlob.Get(), "SkyBoxRenderer");
 
         RootSignatureConfig config;
         // Sky-View / Transmittance LUT は u(方位: 太陽↔反太陽)・v(天頂↔地面)の両端が
@@ -44,7 +44,7 @@ namespace CoreEngine
             .SetRasterizer(D3D12_CULL_MODE_BACK, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(true, false, D3D12_COMPARISON_FUNC_LESS_EQUAL)
             .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
-            .Build(device, vertexShaderBlob, pixelShaderBlob, rootSignatureMg_->GetRootSignature());
+            .Build(device, vertexShaderBlob.Get(), pixelShaderBlob.Get(), rootSignatureMg_->GetRootSignature());
 
         if (!result) {
             throw std::runtime_error("Failed to create SkyBox Pipeline State Object");

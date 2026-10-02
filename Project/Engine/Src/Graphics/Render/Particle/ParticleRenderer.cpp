@@ -57,7 +57,7 @@ namespace CoreEngine
             .SetRasterizer(D3D12_CULL_MODE_BACK, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(true, false)
             .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
-            .BuildAllBlendModes(device_, vertexShaderBlob, pixelShaderBlob, rootSignatureMg_->GetRootSignature());
+            .BuildAllBlendModes(device_, vertexShaderBlob.Get(), pixelShaderBlob.Get(), rootSignatureMg_->GetRootSignature());
 
         if (!result) {
             throw std::runtime_error("Failed to create PSO in ParticleRenderer");

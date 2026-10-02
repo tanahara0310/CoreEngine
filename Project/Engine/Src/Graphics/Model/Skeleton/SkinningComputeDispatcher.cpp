@@ -15,11 +15,11 @@ namespace CoreEngine
         assert(device);
 
         shaderCompiler_->Initialize();
-        IDxcBlob* csBlob = shaderCompiler_->CompileShader(L"Engine/Assets/Shaders/Skinning/Skinning.CS.hlsl", L"cs_6_0");
+        Microsoft::WRL::ComPtr<IDxcBlob> csBlob = shaderCompiler_->CompileShader(L"Engine/Assets/Shaders/Skinning/Skinning.CS.hlsl", L"cs_6_0");
         assert(csBlob != nullptr);
 
         reflectionBuilder_->Initialize(shaderCompiler_->GetDxcUtils());
-        reflectionData_ = reflectionBuilder_->BuildFromComputeShader(csBlob, "SkinningComputeDispatcher");
+        reflectionData_ = reflectionBuilder_->BuildFromComputeShader(csBlob.Get(), "SkinningComputeDispatcher");
 
         // RootSignature構成: CBVはRootDescriptor、SRV/UAVはDescriptorTable
         RootSignatureConfig config;
@@ -33,7 +33,7 @@ namespace CoreEngine
         }
 
         computePso_ = ComputePipelineUtil::Create(
-            device, rootSignatureMg_->GetRootSignature(), csBlob, "SkinningCompute");
+            device, rootSignatureMg_->GetRootSignature(), csBlob.Get(), "SkinningCompute");
         if (!computePso_) {
             throw std::runtime_error("Failed to create Skinning Compute PSO");
         }

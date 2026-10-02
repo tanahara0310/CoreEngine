@@ -35,12 +35,12 @@ namespace CoreEngine
         /// @param profile コンパイルプロファイル（例: L"vs_6_0", L"ps_6_0"）
         /// @return コンパイル済みバイナリ（失敗時 nullptr）
         /// @note 同じ内容・同じ引数なら ShaderCacheStore から読み出して DXC 呼び出しを省く
-        IDxcBlob* CompileShader(
+        Microsoft::WRL::ComPtr<IDxcBlob> CompileShader(
             const std::wstring& filePath,
             const wchar_t* profile);
 
         /// @brief シェーダーライブラリのコンパイル（エントリーポイントなし・lib_6_6）
-        IDxcBlob* CompileShaderLibrary(const std::wstring& filePath);
+        Microsoft::WRL::ComPtr<IDxcBlob> CompileShaderLibrary(const std::wstring& filePath);
 
         /// @brief DXCユーティリティを取得（リフレクション用）
         /// @return IDxcUtilsポインタ
@@ -58,11 +58,11 @@ namespace CoreEngine
         /// @warning ShaderCompiler のインスタンスはスレッドごとに 1 つ用意すること。
         ///          IDxcCompiler3 はスレッドセーフとして文書化されておらず、
         ///          RecordingIncludeHandler もインスタンス状態を持つため .deps が混ざる。
-        IDxcBlob* CompilePrepared(const PreparedShaderCompile& prepared);
+        Microsoft::WRL::ComPtr<IDxcBlob> CompilePrepared(const PreparedShaderCompile& prepared);
 
     private:
         /// @brief コンパイルの実体（通常シェーダとライブラリの共通経路）
-        IDxcBlob* CompileInternal(
+        Microsoft::WRL::ComPtr<IDxcBlob> CompileInternal(
             const std::wstring& filePath,
             const wchar_t* profile,
             const wchar_t* entryPoint);
@@ -88,9 +88,7 @@ namespace CoreEngine
         std::string QueryCompilerVersion() const;
 
         /// @brief バイト列を IDxcBlob として包む（キャッシュヒット時の返却用）
-        /// @details 呼び出し元から見た戻り値の型と所有権はコンパイル時とまったく同じ。
-        ///          このため全呼び出し元は無改修で済む。
-        IDxcBlob* CreateBlobFromBytes(const std::vector<uint8_t>& bytes) const;
+        Microsoft::WRL::ComPtr<IDxcBlob> CreateBlobFromBytes(const std::vector<uint8_t>& bytes) const;
 
         Microsoft::WRL::ComPtr<IDxcUtils> dxcUtils = nullptr;
         Microsoft::WRL::ComPtr<IDxcCompiler3> dxcCompiler = nullptr;

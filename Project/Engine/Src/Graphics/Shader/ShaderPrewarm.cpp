@@ -122,10 +122,8 @@ namespace CoreEngine::ShaderPrewarm
                     // 本来の PSO 生成コードが同じシェーダを要求したときに
                     // 通常経路でコンパイルされるので、ここでは記録して先へ進む
                     try {
-                        IDxcBlob* blob = GetThreadLocalCompiler().CompilePrepared(request);
-                        if (blob) {
-                            // 欲しいのはキャッシュへの副作用だけなので、参照は即座に返す
-                            blob->Release();
+                        // 欲しいのはキャッシュへの副作用だけなので、結果はすぐ捨てる
+                        if (GetThreadLocalCompiler().CompilePrepared(request)) {
                             succeeded.fetch_add(1, std::memory_order_relaxed);
                         } else {
                             failed.fetch_add(1, std::memory_order_relaxed);

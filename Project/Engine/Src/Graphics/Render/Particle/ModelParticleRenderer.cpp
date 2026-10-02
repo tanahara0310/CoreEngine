@@ -101,7 +101,7 @@ namespace CoreEngine
             // SceneDepth を DEPTH_WRITE で持つように直してある。
             .SetDepthStencil(true, true)
             .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
-            .BuildAllBlendModes(device_, vertexShaderBlob, pixelShaderBlob, rootSignatureMg_->GetRootSignature());
+            .BuildAllBlendModes(device_, vertexShaderBlob.Get(), pixelShaderBlob.Get(), rootSignatureMg_->GetRootSignature());
 
         if (!result) {
             throw std::runtime_error("Failed to create PSO in ModelParticleRenderer");

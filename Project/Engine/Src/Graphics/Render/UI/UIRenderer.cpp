@@ -21,7 +21,7 @@ namespace CoreEngine
 
         reflectionBuilder_->Initialize(shaderCompiler_->GetDxcUtils());
         reflectionData_ = reflectionBuilder_->BuildFromShaders(
-            vertexShaderBlob, pixelShaderBlob, debugName + "Renderer");
+            vertexShaderBlob.Get(), pixelShaderBlob.Get(), debugName + "Renderer");
 
         // SpriteRenderer と同じシンプル構成
         RootSignatureConfig config;
@@ -41,7 +41,7 @@ namespace CoreEngine
             .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(false, false)
             .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
-            .BuildAllBlendModes(device, vertexShaderBlob, pixelShaderBlob, rootSignatureMg_->GetRootSignature());
+            .BuildAllBlendModes(device, vertexShaderBlob.Get(), pixelShaderBlob.Get(), rootSignatureMg_->GetRootSignature());
 
         if (!result) {
             throw std::runtime_error("Failed to create " + debugName + " Pipeline State Object");

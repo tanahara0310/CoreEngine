@@ -91,7 +91,7 @@ namespace CoreEngine
         bool depthWriteEnable,
         bool writesMotionVector)
     {
-        IDxcBlob* vsBlob = compiler.CompileShader(vsPath, L"vs_6_0");
+        Microsoft::WRL::ComPtr<IDxcBlob> vsBlob = compiler.CompileShader(vsPath, L"vs_6_0");
         if (!vsBlob) {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics,
                 "CustomShaderPipeline: Failed to compile vertex shader: {}",
@@ -99,7 +99,7 @@ namespace CoreEngine
             return false;
         }
 
-        IDxcBlob* psBlob = compiler.CompileShader(psPath, L"ps_6_0");
+        Microsoft::WRL::ComPtr<IDxcBlob> psBlob = compiler.CompileShader(psPath, L"ps_6_0");
         if (!psBlob) {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics,
                 "CustomShaderPipeline: Failed to compile pixel shader: {}",
@@ -108,7 +108,7 @@ namespace CoreEngine
         }
 
         // シェーダーリフレクションから入力レイアウトとリソースバインディングを取得する
-        auto reflectionData = reflectionBuilder.BuildFromShaders(vsBlob, psBlob, "CustomShader");
+        auto reflectionData = reflectionBuilder.BuildFromShaders(vsBlob.Get(), psBlob.Get(), "CustomShader");
 
         // リフレクション結果から独自 RootSignature を構築する
         forwardRootSignatureMg_ = std::make_unique<RootSignatureManager>();
@@ -143,7 +143,7 @@ namespace CoreEngine
         }
 
         const bool psoResult =
-            builder.BuildAllBlendModes(device, vsBlob, psBlob, forwardRootSignatureMg_->GetRootSignature());
+            builder.BuildAllBlendModes(device, vsBlob.Get(), psBlob.Get(), forwardRootSignatureMg_->GetRootSignature());
 
         if (!psoResult) {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics,
@@ -170,7 +170,7 @@ namespace CoreEngine
         ShaderReflectionBuilder& reflectionBuilder,
         const std::wstring& csPath)
     {
-        IDxcBlob* csBlob = compiler.CompileShader(csPath, L"cs_6_0");
+        Microsoft::WRL::ComPtr<IDxcBlob> csBlob = compiler.CompileShader(csPath, L"cs_6_0");
         if (!csBlob) {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics,
                 "CustomShaderPipeline: Failed to compile compute shader: {}",
@@ -178,7 +178,7 @@ namespace CoreEngine
             return;
         }
 
-        auto csReflection = reflectionBuilder.BuildFromComputeShader(csBlob, "CustomComputeShader");
+        auto csReflection = reflectionBuilder.BuildFromComputeShader(csBlob.Get(), "CustomComputeShader");
 
         // コンピュート用 RootSignature を構築する
         computeRootSignatureMg_ = std::make_unique<RootSignatureManager>();
@@ -204,7 +204,7 @@ namespace CoreEngine
 
         // コンピュートパイプラインステートを構築する
         computePSO_ = ComputePipelineUtil::Create(
-            device, computeRootSignatureMg_->GetRootSignature(), csBlob,
+            device, computeRootSignatureMg_->GetRootSignature(), csBlob.Get(),
             "CustomShaderCS_" + std::filesystem::path(csPath).filename().string());
         if (!computePSO_) {
             computeRootSignatureMg_.reset();
