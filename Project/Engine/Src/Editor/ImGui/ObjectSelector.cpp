@@ -24,11 +24,39 @@
 
 namespace CoreEngine
 {
-    void ObjectSelector::Initialize()
+    void ObjectSelector::Initialize(const GameObjectManager* objects)
     {
-        selectedObject_ = nullptr;
-        selectedSprite_ = nullptr;
+        objects_ = objects;
+        selectedObjectId_ = {};
+        selectedSpriteId_ = {};
         gizmoMode_ = Gizmo::Mode::Translate;
+    }
+
+    GameObject* ObjectSelector::GetSelectedObject() const
+    {
+        return Resolve(selectedObjectId_);
+    }
+
+    GameObject* ObjectSelector::GetSelectedSprite() const
+    {
+        return Resolve(selectedSpriteId_);
+    }
+
+    void ObjectSelector::SelectObject(GameObject* object)
+    {
+        selectedObjectId_ = object ? object->GetObjectId() : ObjectId{};
+        selectedSpriteId_ = {};
+    }
+
+    void ObjectSelector::SelectSprite(GameObject* sprite)
+    {
+        selectedSpriteId_ = sprite ? sprite->GetObjectId() : ObjectId{};
+        selectedObjectId_ = {};
+    }
+
+    GameObject* ObjectSelector::Resolve(ObjectId id) const
+    {
+        return (objects_ && id.IsValid()) ? objects_->FindObject(id) : nullptr;
     }
 
     void ObjectSelector::Update(GameObjectManager* gameObjectManager, const Camera* camera,
@@ -82,10 +110,11 @@ namespace CoreEngine
 
     void ObjectSelector::DrawGizmo(const Camera* camera)
     {
-        if (selectedObject_ && camera) {
+        GameObject* const selected = GetSelectedObject();
+        if (selected && camera) {
             // ギズモはトランスフォームを持つものにだけ出る。持たないもの（UI など）では、
             // 別の窓のギズモの操作を自分の操作と取り違えないように何もしない
-            ITransformSource* const source = selectedObject_->GetComponent<ITransformSource>();
+            ITransformSource* const source = selected->GetComponent<ITransformSource>();
             if (!source) {
                 return;
             }
@@ -93,19 +122,19 @@ namespace CoreEngine
                 beforeGizmoTranslate_ = source->Translate();
                 beforeGizmoRotate_ = source->Rotate();
                 beforeGizmoScale_ = source->Scale();
-                beforeGizmoActive_ = selectedObject_->IsActive();
+                beforeGizmoActive_ = selected->IsActive();
             }
 
-            Gizmo::Manipulate(selectedObject_, camera, gizmoMode_);
+            Gizmo::Manipulate(selected, camera, gizmoMode_);
 
             // ギズモ操作中→操作完了の遷移を検出
             bool isUsing = Gizmo::IsUsing();
             if (wasGizmoUsing_ && !isUsing) {
                 if (onTransformChanged_) {
-                    onTransformChanged_(selectedObject_);
+                    onTransformChanged_(selected);
                 }
                 if (onGizmoEditCommitted_) {
-                    onGizmoEditCommitted_(selectedObject_,
+                    onGizmoEditCommitted_(selected,
                         beforeGizmoTranslate_, beforeGizmoRotate_, beforeGizmoScale_, beforeGizmoActive_);
                 }
             }
@@ -134,7 +163,7 @@ namespace CoreEngine
                     SelectSprite(hitSprite);
                 } else {
                     // スプライト選択のみクリア（3Dオブジェクトの選択はUpdate()側で管理する）
-                    selectedSprite_ = nullptr;
+                    selectedSpriteId_ = {};
                 }
             }
         }
@@ -144,27 +173,28 @@ namespace CoreEngine
 
     void ObjectSelector::DrawGizmo2D(const Camera* camera)
     {
-        if (selectedSprite_ && camera) {
+        GameObject* const selected = GetSelectedSprite();
+        if (selected && camera) {
             // ギズモ非使用中は操作前スナップショットを連続更新する
             if (!Gizmo::IsUsing()) {
-                if (auto* source = selectedSprite_->GetComponent<ITransformSource>()) {
+                if (auto* source = selected->GetComponent<ITransformSource>()) {
                     beforeGizmoTranslate_ = source->Translate();
                     beforeGizmoRotate_ = source->Rotate();
                     beforeGizmoScale_ = source->Scale();
                 }
-                beforeGizmoActive_ = selectedSprite_->IsActive();
+                beforeGizmoActive_ = selected->IsActive();
             }
 
-            Gizmo::Manipulate2D(selectedSprite_, camera, gizmoMode_);
+            Gizmo::Manipulate2D(selected, camera, gizmoMode_);
 
             // ギズモ操作中→操作完了の遷移を検出
             bool isUsing = Gizmo::IsUsing();
             if (wasGizmoUsing_ && !isUsing) {
                 if (onTransformChanged_) {
-                    onTransformChanged_(selectedSprite_);
+                    onTransformChanged_(selected);
                 }
                 if (onGizmoEditCommitted_) {
-                    onGizmoEditCommitted_(selectedSprite_,
+                    onGizmoEditCommitted_(selected,
                         beforeGizmoTranslate_, beforeGizmoRotate_, beforeGizmoScale_, beforeGizmoActive_);
                 }
             }

@@ -220,6 +220,9 @@ namespace CoreEngine
         std::vector<GameObject*> hierarchyRoots_;
 
         // ビューポートで選び直したとき、その行まで送る相手
+        ObjectId scrollTargetId_{};
+
+        // このフレームの送り先（scrollTargetId_ から毎フレーム引き直す）
         GameObject* scrollTarget_ = nullptr;
 
         // 送りを続ける残りフレーム数。

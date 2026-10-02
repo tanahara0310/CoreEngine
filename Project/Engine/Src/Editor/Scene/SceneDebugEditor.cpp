@@ -103,7 +103,7 @@ namespace CoreEngine
             cameraManager_->SetEngineSystem(engine_);
         }
 
-        objectSelector_.Initialize();
+        objectSelector_.Initialize(gameObjectManager_);
 
         // 保存通知コールバックを設定
         saveSystem_->SetSaveNotificationCallback([this](const std::string& msg) {
@@ -529,9 +529,13 @@ namespace CoreEngine
         // ビューポートで選び直したときだけ、その行まで送る
         //（一覧の行をクリックしたときは送らない。すでに見えているので跳ねるだけになる）
         if (objectSelector_.ConsumeViewportSelection()) {
-            scrollTarget_ = objectSelector_.GetSelectedObject();
+            GameObject* const selected = objectSelector_.GetSelectedObject();
+            scrollTargetId_ = selected ? selected->GetObjectId() : ObjectId{};
             scrollFramesLeft_ = kScrollFrames;
         }
+        // 送り先は ID からこのフレームの分を引き直す（消えていれば送らない）
+        scrollTarget_ = (gameObjectManager_ && scrollTargetId_.IsValid())
+            ? gameObjectManager_->FindObject(scrollTargetId_) : nullptr;
 
         BuildHierarchyLinks();
 
@@ -558,6 +562,7 @@ namespace CoreEngine
             --scrollFramesLeft_;
         }
         if (scrollFramesLeft_ <= 0) {
+            scrollTargetId_ = {};
             scrollTarget_ = nullptr;
         }
     }
