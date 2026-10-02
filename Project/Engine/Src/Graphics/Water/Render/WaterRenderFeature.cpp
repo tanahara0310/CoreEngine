@@ -474,6 +474,11 @@ namespace CoreEngine
             WaterCVars::FoamCascadeWeights.Get(),
             WaterCVars::FoamDecaySeconds.Get());
 
+        // 波群エンベロープの位相（FFT の時刻までに波のエネルギーが群速度で進んだ分）
+        if (const FFTOceanManager* fftOcean = domain.GetFFTOceanManager(); fftOcean && fftOceanSimulator_) {
+            waterPlane_->SetWaveGroupPhase(fftOcean->ComputeWaveGroupPhase(fftOceanSimulator_->GetElapsedTime()));
+        }
+
         // ---- FFT Ocean 経路の有効/無効（変化時のみ。PSO 再構築を伴う）----
         const bool fftEnabled = WaterCVars::FFTEnabled.Get();
         if (waterPlane_->IsUsingFFTOcean() != fftEnabled) {

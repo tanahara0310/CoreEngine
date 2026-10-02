@@ -84,7 +84,7 @@ float3 ResolveSurfaceNormal(WaterPSInput input, out float unresolvedMeanSquareSl
 
     // 波群エンベロープ: 変位（FFTWater.VS）と同じ変調を傾きへ掛け、幾何と法線を一致させる
     // （VS は baseWorldPos.xz で評価しているので引数も揃える）
-    const float waveGroupEnvelope = ComputeFFTWaveGroupEnvelope(input.baseWorldXZ);
+    const float waveGroupEnvelope = ComputeFFTWaveGroupEnvelope(input.baseWorldXZ, gWaveGroupPhase);
     slope *= waveGroupEnvelope;
     unresolvedMeanSquareSlope *= waveGroupEnvelope * waveGroupEnvelope;
 

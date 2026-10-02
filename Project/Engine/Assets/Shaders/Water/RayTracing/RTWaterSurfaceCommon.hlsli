@@ -35,6 +35,8 @@ cbuffer WaterSurfaceData : register(b1)
     float gSurfacePad1;
     float2 gSurfaceRegionCenterXZ;         // 水面メッシュのワールド XZ 範囲
     float2 gSurfaceRegionHalfExtentXZ;
+    float3 gSurfaceWaveGroupPhase;         // 波群エンベロープの位相のずれ [rad]
+    float gSurfacePad2;
 };
 
 static const uint kWaterSurfaceModelTypeGerstner = 0;
@@ -177,7 +179,7 @@ float3 SampleFFTOceanCascadeDisplacement(Texture2DArray<float4> textureData, flo
         displacement += float3(horizontal.x, d.y, horizontal.y);
     }
     // 波群エンベロープでタイル周期を崩す（ラスタ描画と同一の変調）
-    return displacement * ComputeFFTWaveGroupEnvelope(worldXZ);
+    return displacement * ComputeFFTWaveGroupEnvelope(worldXZ, gSurfaceWaveGroupPhase);
 }
 
 /// @brief フットプリントに対するカスケードの傾きの残し具合（1=そのまま / 0=外す）
@@ -207,7 +209,7 @@ float3 SampleFFTOceanCascadeNormal(
         slope += RotateFromFFTCascadeGrid(nLocal.xz / max(nLocal.y, 1.0e-3f), c) * fade;
     }
     // 波群エンベロープ: 変位と同じ変調を傾きへ掛けて波面の幾何と一致させる
-    slope *= ComputeFFTWaveGroupEnvelope(worldXZ);
+    slope *= ComputeFFTWaveGroupEnvelope(worldXZ, gSurfaceWaveGroupPhase);
     float3 n = normalize(float3(slope.x, 1.0f, slope.y));
     return n.y < 0.0f ? -n : n;
 }
@@ -242,7 +244,7 @@ float3 SampleMeshVertexDisplacement(Texture2DArray<float4> displacementTex, floa
         const float2 horizontal = RotateFromFFTCascadeGrid(float2(d.x, d.z), c);
         disp += float3(horizontal.x, d.y, horizontal.y);
     }
-    return disp * ComputeFFTWaveGroupEnvelope(baseXZ);
+    return disp * ComputeFFTWaveGroupEnvelope(baseXZ, gSurfaceWaveGroupPhase);
 }
 
 /// @brief ラスタライザが実際に描く水面の高さ（基準面からのオフセット）を返す
@@ -310,7 +312,7 @@ float EvaluateExcludedMeanSquareSlope(float2 worldXZ, float footprintMeters)
         // 傾きを fade 倍に弱めた分の分散（全体の分散 = 残した分 fade² ＋ 外した分）
         excluded += (1.0f - fade * fade) * gSurfaceCascadeMeanSquareSlope[c];
     }
-    const float envelope = ComputeFFTWaveGroupEnvelope(worldXZ);
+    const float envelope = ComputeFFTWaveGroupEnvelope(worldXZ, gSurfaceWaveGroupPhase);
     return excluded * envelope * envelope;
 }
 

@@ -269,6 +269,12 @@ namespace CoreEngine
         frameCB_.foamDecaySeconds = decaySeconds;
     }
 
+    void WaterSurfaceComponent::SetWaveGroupPhase(const std::array<float, 3>& phase) {
+        for (size_t i = 0; i < phase.size(); ++i) {
+            frameCB_.waveGroupPhase[i] = phase[i];
+        }
+    }
+
     void WaterSurfaceComponent::SetWaterOpticalCoefficients(const Vector3& absorptionCoeff, const Vector3& scatteringCoeff) {
         frameCB_.absorptionCoeff[0] = absorptionCoeff.x;
         frameCB_.absorptionCoeff[1] = absorptionCoeff.y;

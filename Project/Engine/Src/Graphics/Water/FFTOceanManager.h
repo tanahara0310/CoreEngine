@@ -93,6 +93,13 @@ namespace CoreEngine
         /// @return 設定参照
         const Settings& GetSettings() const { return settings_; }
 
+        /// @brief 波のエネルギーが進む速度（エネルギーで重み付けした群速度。ワールド XZ）[m/s]
+        const std::array<float, 2>& GetWaveGroupVelocity() const { return waveGroupVelocity_; }
+
+        /// @brief 波群エンベロープの 3 つの正弦の位相のずれ [rad]（波のエネルギーが群速度で進んだ分）
+        /// @param timeSeconds FFT のシミュレーション時刻 [s]
+        std::array<float, 3> ComputeWaveGroupPhase(float timeSeconds) const;
+
         /// @brief 描画される面のカスケードごとの平均二乗傾斜（x・z の傾きの二乗和の平均）を返す
         /// @details 振幅倍率を含む
         float GetCascadeMeanSquareSlope(uint32_t cascadeIndex) const {
@@ -303,6 +310,9 @@ namespace CoreEngine
 
         /// @brief カスケードごとの平均二乗傾斜（振幅倍率を掛ける前。スペクトル生成時に更新）
         std::array<float, kCascadeCount> cascadeMeanSquareSlope_{};
+
+        /// @brief 波のエネルギーが進む速度（ワールド XZ）[m/s]（スペクトル生成時に更新）
+        std::array<float, 2> waveGroupVelocity_{};
 
         /// @brief カスケードの UPLOAD 側マップ先を要素型付きで返す
         SpectrumSample* MappedSpectrumSamples(uint32_t cascadeIndex) const {

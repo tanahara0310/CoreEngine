@@ -135,7 +135,8 @@ struct WaterFrameConstants {
 	int seabedEnabled = 0;                     // 1 = 範囲の中の岸の泡の水深を海底の高さから求める
 	// ---- 岸の泡（WaterShoreFoamPass が進めたもの。gWaterShoreFoam・範囲は海底の高さと同じ）----
 	int shoreFoamEnabled = 0;                  // 1 = 範囲の中の岸の泡を gWaterShoreFoam から読む
-	float shoreFoamPad[3] = { 0.0f, 0.0f, 0.0f };
+	// 波群エンベロープの位相のずれ [rad]（FFTOceanManager::ComputeWaveGroupPhase）
+	float waveGroupPhase[3] = { 0.0f, 0.0f, 0.0f };
 };
 
 // 全 33 フィールドのオフセットを HLSL packing 規則から機械的に導出して検証する。
@@ -163,7 +164,7 @@ static constexpr Cb::Field kWaterFrameConstantsFields[] = {
     CB_FIELD(WaterFrameConstants, fftCascadeMeanSquareSlopePad),
     CB_FIELD(WaterFrameConstants, seabedOriginXZ), CB_FIELD(WaterFrameConstants, seabedInvSize),
     CB_FIELD(WaterFrameConstants, seabedEnabled),
-    CB_FIELD(WaterFrameConstants, shoreFoamEnabled), CB_FIELD(WaterFrameConstants, shoreFoamPad),
+    CB_FIELD(WaterFrameConstants, shoreFoamEnabled), CB_FIELD(WaterFrameConstants, waveGroupPhase),
 };
 CB_VERIFY_LAYOUT(WaterFrameConstants, kWaterFrameConstantsFields);
 CB_BIND_HLSL(WaterFrameConstants, kWaterFrameConstantsFields, "WaterFrameConstants");

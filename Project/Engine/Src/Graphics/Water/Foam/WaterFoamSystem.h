@@ -42,6 +42,7 @@ namespace CoreEngine
             float timeSeconds = 0.0f;                      ///< FFT のシミュレーション時刻 [s]
             uint32_t spectrumRevision = 0;                 ///< FFT のスペクトルの版。変わったフレームは泡を捨てる
             uint64_t frameNumber = 0;                      ///< 同じフレームで 2 回進めないための番号
+            float waveGroupPhase[3] = { 0.0f, 0.0f, 0.0f }; ///< 波群エンベロープの位相のずれ [rad]
         };
 
         /// @brief 泡の設定（WaterRenderFeature が毎フレーム渡す）
@@ -88,11 +89,13 @@ namespace CoreEngine
         /// @details 同じフレームの枠で前に記録した測定（GPU の処理が済んだもの）を読み、
         ///          白波の被覆率の平均が目標になるようにしきい値を合わせ直す。
         ///          測定の記録は kStatisticsFrameInterval フレームに 1 回。DispatchWhitecap の後に呼ぶ
-        /// @param frameIndex フレームの枠の番号（FrameSync::FrameIndex）
+        /// @param frameIndex     フレームの枠の番号（FrameSync::FrameIndex）
+        /// @param waveGroupPhase 波群エンベロープの位相のずれ [rad]（FFTOceanManager::ComputeWaveGroupPhase）
         void DispatchWhitecapStatistics(
             ID3D12GraphicsCommandList* cmdList,
             D3D12_GPU_DESCRIPTOR_HANDLE jacobianSRV,
-            uint32_t frameIndex);
+            uint32_t frameIndex,
+            const std::array<float, 3>& waveGroupPhase);
 
         /// @brief 最後に読み戻した、沖の白波の被覆率の平均
         float GetMeasuredWhitecapCoverage() const { return measuredWhitecapCoverage_; }
@@ -165,6 +168,8 @@ namespace CoreEngine
             float decaySeconds = WaterFoamDefaults::kDecaySeconds;
             uint32_t resetFoam = 0;
             float padding = 0.0f;
+            float waveGroupPhase[3] = { 0.0f, 0.0f, 0.0f };
+            float padding2 = 0.0f;
         };
 
         static constexpr Cb::Field kShoreConstantsFields[] = {
@@ -173,6 +178,7 @@ namespace CoreEngine
             CB_FIELD(ShoreConstants, resolution), CB_FIELD(ShoreConstants, waterRestHeight),
             CB_FIELD(ShoreConstants, deltaSeconds), CB_FIELD(ShoreConstants, decaySeconds),
             CB_FIELD(ShoreConstants, resetFoam), CB_FIELD(ShoreConstants, padding),
+            CB_FIELD(ShoreConstants, waveGroupPhase), CB_FIELD(ShoreConstants, padding2),
         };
         CB_VERIFY_LAYOUT(ShoreConstants, kShoreConstantsFields);
         CB_BIND_HLSL(ShoreConstants, kShoreConstantsFields, "WaterShoreFoamConstants");
@@ -252,6 +258,8 @@ namespace CoreEngine
             float histogramMin = kHistogramMin;
             float histogramInvWidth = 0.0f;
             uint32_t histogramBins = kHistogramBins;
+            float waveGroupPhase[3] = { 0.0f, 0.0f, 0.0f };
+            float padding = 0.0f;
         };
 
         static constexpr Cb::Field kStatisticsConstantsFields[] = {
@@ -259,7 +267,8 @@ namespace CoreEngine
             CB_FIELD(StatisticsConstants, sampleResolution), CB_FIELD(StatisticsConstants, cascadeWeights),
             CB_FIELD(StatisticsConstants, bias), CB_FIELD(StatisticsConstants, gain),
             CB_FIELD(StatisticsConstants, histogramMin), CB_FIELD(StatisticsConstants, histogramInvWidth),
-            CB_FIELD(StatisticsConstants, histogramBins),
+            CB_FIELD(StatisticsConstants, histogramBins), CB_FIELD(StatisticsConstants, waveGroupPhase),
+            CB_FIELD(StatisticsConstants, padding),
         };
         CB_VERIFY_LAYOUT(StatisticsConstants, kStatisticsConstantsFields);
         CB_BIND_HLSL(StatisticsConstants, kStatisticsConstantsFields, "WaterWhitecapStatisticsConstants");
@@ -280,13 +289,13 @@ namespace CoreEngine
             float windowSize = 0.0f;
             uint32_t resolution = kSmoothSeabedResolution;
             float waterRestHeight = 0.0f;
-            float padding[3] = {};
+            float waveGroupPhase[3] = { 0.0f, 0.0f, 0.0f };
         };
 
         static constexpr Cb::Field kSwashConstantsFields[] = {
             CB_FIELD(SwashConstants, windowOriginXZ), CB_FIELD(SwashConstants, windowSize),
             CB_FIELD(SwashConstants, resolution), CB_FIELD(SwashConstants, waterRestHeight),
-            CB_FIELD(SwashConstants, padding),
+            CB_FIELD(SwashConstants, waveGroupPhase),
         };
         CB_VERIFY_LAYOUT(SwashConstants, kSwashConstantsFields);
         CB_BIND_HLSL(SwashConstants, kSwashConstantsFields, "WaterShoreSwashConstants");

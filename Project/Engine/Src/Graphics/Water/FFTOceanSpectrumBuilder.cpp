@@ -335,6 +335,13 @@ namespace CoreEngine
                         (bandLimit - sample.normalizedBand) * 16.0f + 1.0f, 0.0f, 1.0f);
                     accumulatedSlopeSquared += static_cast<double>(waveNumberSquared)
                         * spectralAmplitude * spectralAmplitude * bandFade * bandFade;
+                    // この成分の振幅のエネルギーで、+k̂ の向きの群速度を重み付けする
+                    const double energy = (static_cast<double>(sample.real) * sample.real
+                        + static_cast<double>(sample.imag) * sample.imag) * bandFade * bandFade;
+                    const double groupSpeed = 0.5 * angularFrequency / waveNumber;
+                    stats.energySum += energy;
+                    stats.energyWeightedGroupVelocity[0] += energy * groupSpeed * directionX;
+                    stats.energyWeightedGroupVelocity[1] += energy * groupSpeed * directionY;
                     stats.maxSpectralAmplitude = (std::max)(stats.maxSpectralAmplitude, spectralAmplitude);
                     stats.maxAngularFrequency = (std::max)(stats.maxAngularFrequency, sample.angularFrequency);
                 }

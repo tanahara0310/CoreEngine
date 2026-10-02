@@ -94,6 +94,11 @@ namespace CoreEngine
             // GPU の時間発展（FFTOceanTimeEvolution.CS）と同じ成分数の打ち切りを含む。
             // 振幅倍率（amplitudeScale）は含まない（使う側で 2 乗を掛ける）。
             float meanSquareSlope = 0.0f;
+
+            // 波のエネルギー（|h0|² に成分数の打ち切りを掛けたもの）の和と、
+            // それで重み付けした群速度の和（回転格子系。深水波の ½ω/k を +k̂ の向きに）
+            double energySum = 0.0;
+            double energyWeightedGroupVelocity[2] = { 0.0, 0.0 };
         };
 
         /// @brief FFT Ocean 設定値を有効範囲へ正規化する

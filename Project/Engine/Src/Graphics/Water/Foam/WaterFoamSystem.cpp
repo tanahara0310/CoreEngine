@@ -542,7 +542,8 @@ namespace CoreEngine
     void WaterFoamSystem::DispatchWhitecapStatistics(
         ID3D12GraphicsCommandList* cmdList,
         D3D12_GPU_DESCRIPTOR_HANDLE jacobianSRV,
-        uint32_t frameIndex)
+        uint32_t frameIndex,
+        const std::array<float, 3>& waveGroupPhase)
     {
         if (!isInitialized_ || !cmdList || jacobianSRV.ptr == 0 || frameIndex >= kMaxFramesInFlight) {
             return;
@@ -572,6 +573,9 @@ namespace CoreEngine
         constants.histogramMin = kHistogramMin;
         constants.histogramInvWidth = static_cast<float>(kHistogramBins) / (kHistogramMax - kHistogramMin);
         constants.histogramBins = kHistogramBins;
+        for (size_t i = 0; i < waveGroupPhase.size(); ++i) {
+            constants.waveGroupPhase[i] = waveGroupPhase[i];
+        }
 
         constexpr UINT64 kBytes = sizeof(uint32_t) * kStatisticsWords;
         Barrier::Transition(cmdList, statistics_, D3D12_RESOURCE_STATE_COPY_DEST);
@@ -641,6 +645,9 @@ namespace CoreEngine
         constants.decaySeconds = settings_.decaySeconds;
         constants.resetFoam = shoreResetPending_ ? 1u : 0u;
         shoreResetPending_ = false;
+        for (int i = 0; i < 3; ++i) {
+            constants.waveGroupPhase[i] = input.waveGroupPhase[i];
+        }
         shorePrevWindowOriginXZ_[0] = input.windowOriginXZ[0];
         shorePrevWindowOriginXZ_[1] = input.windowOriginXZ[1];
 
@@ -678,6 +685,9 @@ namespace CoreEngine
             swashConstants.windowSize = input.windowSize;
             swashConstants.resolution = kSmoothSeabedResolution;
             swashConstants.waterRestHeight = input.waterRestHeight;
+            for (int i = 0; i < 3; ++i) {
+                swashConstants.waveGroupPhase[i] = input.waveGroupPhase[i];
+            }
 
             Barrier::Transition(cmdList, swash_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             cmdList->SetPipelineState(swashPipeline_.GetComputePSO());

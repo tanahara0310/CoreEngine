@@ -19,8 +19,10 @@ float ComputeWhitecapInstant(float detJ, float bias, float gain)
 }
 
 /// @brief 砕けた後に残っている白波の被覆率 [0,1]（FFTOceanFoamAccumulate.CS が進めたもの）
+/// @param groupPhase 波群エンベロープの位相のずれ（ComputeFFTWaveGroupEnvelope）
 /// @details カスケードごとの格子の値の最大に、波群エンベロープを掛けて泡の濃淡を波のセットと揃える
-float SampleWhitecapAccumulated(float2 worldXZ, Texture2DArray<float> accumulatedFoam, SamplerState wrapSampler)
+float SampleWhitecapAccumulated(
+    float2 worldXZ, Texture2DArray<float> accumulatedFoam, SamplerState wrapSampler, float3 groupPhase)
 {
     float accumulated = 0.0f;
     [unroll]
@@ -29,7 +31,7 @@ float SampleWhitecapAccumulated(float2 worldXZ, Texture2DArray<float> accumulate
         const float2 cuv = ComputeFFTCascadeUV(worldXZ, ci);
         accumulated = max(accumulated, accumulatedFoam.SampleLevel(wrapSampler, float3(cuv, (float)ci), 0.0f));
     }
-    const float envelope = ComputeFFTWaveGroupEnvelope(worldXZ);
+    const float envelope = ComputeFFTWaveGroupEnvelope(worldXZ, groupPhase);
     return saturate(accumulated * envelope * envelope * kWhitecapEnvelopeScale);
 }
 

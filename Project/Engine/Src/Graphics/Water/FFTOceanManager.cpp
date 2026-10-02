@@ -74,6 +74,10 @@ namespace CoreEngine
         constexpr float kCascadeRotCos[FFTOceanManager::kCascadeCount] = FFT_OCEAN_CASCADE_ROT_COS;
         constexpr float kCascadeRotSin[FFTOceanManager::kCascadeCount] = FFT_OCEAN_CASCADE_ROT_SIN;
 
+        // 波群エンベロープの正弦の波数ベクトル（ワールド XZ）[rad/m]
+        constexpr float kWaveGroupWaveVectorX[3] = FFT_OCEAN_WAVE_GROUP_WAVE_VECTOR_X;
+        constexpr float kWaveGroupWaveVectorZ[3] = FFT_OCEAN_WAVE_GROUP_WAVE_VECTOR_Z;
+
         // カスケードごとの乱数シード。同一シードだと全カスケードの位相パターンが
         // 完全相関し「同じ波の配置が縮尺違いで繰り返される」自己相似模様になる。
         constexpr uint32_t kCascadeRandomSeed[FFTOceanManager::kCascadeCount] = {
@@ -579,9 +583,13 @@ namespace CoreEngine
 
         // 全カスケードを一度生成して総RMS（二乗和平方根）を返す。
         // カスケードは互いに素な波数帯 × 独立位相なので分散が加算される。
+        // outGroupVelocity には、全カスケードのエネルギーで重み付けした群速度（ワールド XZ）を書く。
         const auto buildAndMeasure =
-            [&](float windWeight, float swellWeight, float* outPerCascadeRms, float* outPerCascadeMss) {
+            [&](float windWeight, float swellWeight, float* outPerCascadeRms, float* outPerCascadeMss,
+                float* outGroupVelocity) {
                 double sumOfSquares = 0.0;
+                double energySum = 0.0;
+                double groupVelocitySum[2] = { 0.0, 0.0 };
                 for (uint32_t c = 0; c < kCascadeCount; ++c) {
                     if (!MappedSpectrumSamples(c)) {
                         continue;
@@ -599,14 +607,25 @@ namespace CoreEngine
                     }
                     sumOfSquares +=
                         static_cast<double>(stats.measuredRmsHeight) * stats.measuredRmsHeight;
+
+                    // 回転格子系の群速度をワールドへ逆回転して足す
+                    const double gx = stats.energyWeightedGroupVelocity[0];
+                    const double gz = stats.energyWeightedGroupVelocity[1];
+                    groupVelocitySum[0] += kCascadeRotCos[c] * gx + kCascadeRotSin[c] * gz;
+                    groupVelocitySum[1] += -kCascadeRotSin[c] * gx + kCascadeRotCos[c] * gz;
+                    energySum += stats.energySum;
+                }
+                if (outGroupVelocity) {
+                    outGroupVelocity[0] = energySum > 0.0 ? static_cast<float>(groupVelocitySum[0] / energySum) : 0.0f;
+                    outGroupVelocity[1] = energySum > 0.0 ? static_cast<float>(groupVelocitySum[1] / energySum) : 0.0f;
                 }
                 return static_cast<float>(std::sqrt(sumOfSquares));
             };
 
         // ---- パス1: 風波のみの生RMS ----
-        const float rawWindSeaRms = buildAndMeasure(1.0f, 0.0f, nullptr, nullptr);
+        const float rawWindSeaRms = buildAndMeasure(1.0f, 0.0f, nullptr, nullptr, nullptr);
         // ---- パス2: うねりのみの生RMS ----
-        const float rawSwellRms = swellActive ? buildAndMeasure(0.0f, 1.0f, nullptr, nullptr) : 0.0f;
+        const float rawSwellRms = swellActive ? buildAndMeasure(0.0f, 1.0f, nullptr, nullptr, nullptr) : 0.0f;
 
         // 成分ごとの分散重み。密度に掛かるので (目標RMS / 生RMS)² になる。
         // これで合成後の総RMSが sqrt(windTarget² + swellTarget²) に厳密に一致する。
@@ -618,7 +637,7 @@ namespace CoreEngine
         // ---- パス3: 較正済みの重みで本生成 ----
         float finalRmsHeight[kCascadeCount] = {};
         const float finalTotalRms = buildAndMeasure(
-            windSeaWeight, swellWeight, finalRmsHeight, cascadeMeanSquareSlope_.data());
+            windSeaWeight, swellWeight, finalRmsHeight, cascadeMeanSquareSlope_.data(), waveGroupVelocity_.data());
 
         // 診断用のピーク波長 λp = 2πg/ωp²。ビルダーと同じ式でピーク角周波数を求める
         // （ここが帯 [60,521]m の中に入っていないと、支配波がカスケード0 から外れる）。
@@ -635,7 +654,7 @@ namespace CoreEngine
             "FFTOceanManager: spectrum calibrated (JONSWAP). windSpeed={:.2f} fetch={:.0f}km windSeaLambda={:.1f}m windSeaHs={:.2f} | "
             "swell={} swellHs={:.2f} swellPeriod={:.1f}s swellLambda={:.1f}m | totalRms={:.3f} (target {:.3f}) "
             "cascadeRms=[{:.3f}, {:.3f}, {:.3f}] share=[{:.1f}%, {:.1f}%, {:.1f}%] "
-            "meanSquareSlope=[{:.5f}, {:.5f}, {:.5f}]",
+            "meanSquareSlope=[{:.5f}, {:.5f}, {:.5f}] groupVelocity=({:.2f}, {:.2f})m/s",
             heightWindSpeed,
             settings_.fetchMeters / 1000.0f,
             peakWaveLength,
@@ -654,9 +673,24 @@ namespace CoreEngine
             100.0f * finalRmsHeight[2] / (std::max)(finalTotalRms, 1.0e-6f),
             GetCascadeMeanSquareSlope(0),
             GetCascadeMeanSquareSlope(1),
-            GetCascadeMeanSquareSlope(2));
+            GetCascadeMeanSquareSlope(2),
+            waveGroupVelocity_[0],
+            waveGroupVelocity_[1]);
 
         spectrumBufferDirty_ = true;
+    }
+
+    std::array<float, 3> FFTOceanManager::ComputeWaveGroupPhase(float timeSeconds) const
+    {
+        constexpr double kTwoPi = 6.283185307179586;
+        std::array<float, 3> phase{};
+        for (size_t i = 0; i < phase.size(); ++i) {
+            const double angularSpeed =
+                static_cast<double>(waveGroupVelocity_[0]) * kWaveGroupWaveVectorX[i]
+                + static_cast<double>(waveGroupVelocity_[1]) * kWaveGroupWaveVectorZ[i];
+            phase[i] = static_cast<float>(std::fmod(angularSpeed * static_cast<double>(timeSeconds), kTwoPi));
+        }
+        return phase;
     }
 
     void FFTOceanManager::UpdateSimulationConstants(uint32_t cascadeIndex, float timeSeconds)

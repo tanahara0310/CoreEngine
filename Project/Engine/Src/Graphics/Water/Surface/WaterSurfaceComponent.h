@@ -10,6 +10,8 @@
 #include "Math/Vector/Vector4.h"
 #include "Graphics/Water/Surface/WaterConstantBufferSet.h"
 #include "Graphics/Water/Surface/WaterRenderResources.h"
+
+#include <array>
 #include "Graphics/Water/Surface/WaterSurfaceTypes.h"
 #include "Graphics/Water/Surface/WaterShaderResourceBinder.h"
 #include "Reflection/Reflect.h"
@@ -141,6 +143,9 @@ namespace CoreEngine
         void SetFoamParameters(
             bool enabled, float bias, float gain, float opacity,
             const Vector3& cascadeWeights, float decaySeconds);
+
+        /// @brief 波群エンベロープの位相のずれ [rad] を設定する（FFTOceanManager::ComputeWaveGroupPhase）
+        void SetWaveGroupPhase(const std::array<float, 3>& phase);
 
         /// @brief FFT Ocean 描画経路を切り替える
         void SetUseFFTOcean(bool useFFTOcean);
