@@ -4,6 +4,7 @@
 #include "CollisionLayer.h"
 #include "CollisionShape.h"
 #include "Math/Geometry/Intersect.h"
+#include "Physics/PhysicsKey.h"
 
 #include <cstdint>
 
@@ -93,17 +94,17 @@ public:
     float GetLastImpulse() const { return lastImpulse_; }
 
     /// @brief ぶつかった強さを記録する（大きい方を残す）
-    void AccumulateImpulse(float impulse)
+    void AccumulateImpulse(PhysicsKey, float impulse)
     {
         if (impulse > lastImpulse_) { lastImpulse_ = impulse; }
     }
 
     /// @brief 記録した強さを消す
-    void ClearImpulse() { lastImpulse_ = 0.0f; }
+    void ClearImpulse(PhysicsKey) { lastImpulse_ = 0.0f; }
 
     /// @brief 物理が扱うコライダーか
     /// @note 物理側が毎フレーム立てる。立っているものが絡む接触は、めり込みの解消を物理へ任せる。
-    void SetSimulated(bool isSimulated) { isSimulated_ = isSimulated; }
+    void SetSimulated(PhysicsKey, bool isSimulated) { isSimulated_ = isSimulated; }
     bool IsSimulated() const { return isSimulated_; }
 
     // ===== 衝突イベント（オーナーへ転送） =====

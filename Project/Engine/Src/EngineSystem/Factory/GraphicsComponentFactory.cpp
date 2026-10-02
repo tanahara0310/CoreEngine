@@ -96,7 +96,7 @@ namespace CoreEngine
                 dx->OnWindowResize(width, height);
             });
 
-            enginePtr->RegisterComponent(std::move(graphicsCore));
+            enginePtr->RegisterComponent(EngineSystem::FactoryKey{}, std::move(graphicsCore));
         });
 
         // ──────────────────────────────────────────────────────────
@@ -111,20 +111,20 @@ namespace CoreEngine
             // ResourceFactory の作成（コンストラクタで初期化済み）
             auto resourceFactory = std::make_unique<ResourceFactory>();
             state->resourceFactory = resourceFactory.get();
-            enginePtr->RegisterComponent(std::move(resourceFactory));
+            enginePtr->RegisterComponent(EngineSystem::FactoryKey{}, std::move(resourceFactory));
 
             // ModelManager の生成。描画依存コンテキスト（SetRenderContext）は
             // 全レンダラーの登録後でないと作れないので、後段の別ステップで行う。
             // リソースのロード自体はここまでで足りる
             auto modelManager = std::make_unique<ModelManager>();
             modelManager->Initialize(state->dx, state->resourceFactory);
-            enginePtr->RegisterComponent(std::move(modelManager));
+            enginePtr->RegisterComponent(EngineSystem::FactoryKey{}, std::move(modelManager));
 
             // MSDF フォントの所有・共有・キャッシュはここが一元管理する。
             // シーンが MsdfFont を直接持つと、シーンをまたぐたびに焼き直しになる
             auto fontManager = std::make_unique<FontManager>();
             fontManager->Initialize(state->dx);
-            enginePtr->RegisterComponent(std::move(fontManager));
+            enginePtr->RegisterComponent(EngineSystem::FactoryKey{}, std::move(fontManager));
         });
 
         return state;
@@ -142,13 +142,13 @@ namespace CoreEngine
             auto cache = std::make_unique<ShaderProgramCache>();
             cache->Initialize();
             state->shaderProgramCache = cache.get();
-            enginePtr->RegisterComponent(std::move(cache));
+            enginePtr->RegisterComponent(EngineSystem::FactoryKey{}, std::move(cache));
         });
 
         sequence.Add("レンダードメイン（GBuffer / シャドウ / RT）", [enginePtr, state] {
-            enginePtr->renderDomainContext_ = std::make_unique<RenderDomainContext>();
+            auto domain = std::make_unique<RenderDomainContext>();
             // RenderDomainContext は自分で RegisterResizable / UnregisterResizable する
-            enginePtr->renderDomainContext_->Initialize(
+            domain->Initialize(
                 state->dx,
                 enginePtr->GetWinApp()->GetClientWidth(),
                 enginePtr->GetWinApp()->GetClientHeight(),
@@ -157,16 +157,17 @@ namespace CoreEngine
             // Hi-Z オクルージョンカリングシステムの作成
             //（GPU リソースは初回 ExecuteCulling で遅延生成。
             //  解放タイミングは EngineSystem::Finalize 参照）
-            enginePtr->hiZOcclusionSystem_ = std::make_unique<HiZOcclusionSystem>();
+            enginePtr->AdoptRenderDomain(EngineSystem::FactoryKey{}, std::move(domain),
+                std::make_unique<HiZOcclusionSystem>());
         });
 
         sequence.Add("Render（RTV / DSV）", [enginePtr, state] {
             // Render の作成と初期化（オフスクリーンターゲットが共有するシーン深度が必要）。
             // Render は自分で RegisterResizable / UnregisterResizable する
             auto render = std::make_unique<Render>();
-            render->Initialize(state->dx, enginePtr->renderDomainContext_->GetSceneDepth());
+            render->Initialize(state->dx, enginePtr->GetRenderDomainContext()->GetSceneDepth());
             state->render = render.get();
-            enginePtr->RegisterComponent(std::move(render));
+            enginePtr->RegisterComponent(EngineSystem::FactoryKey{}, std::move(render));
         });
 
         // ──────────────────────────────────────────────────────────
@@ -179,7 +180,7 @@ namespace CoreEngine
             // 元は全レンダラー登録後にまとめて登録していたが、ステップをまたいで
             // unique_ptr を持ち回すのを避けるためここで先に登録する。
             // 間で RenderManager を読む処理は無いので順序上の影響はない
-            enginePtr->RegisterComponent(std::move(renderManager));
+            enginePtr->RegisterComponent(EngineSystem::FactoryKey{}, std::move(renderManager));
 
             // フォワード受影用 RT シャドウマスクの初期値: white1x1（= 影なし）。
             // 実マスクは毎フレーム DeferredLightingPass::Setup が供給する。
@@ -266,13 +267,13 @@ namespace CoreEngine
         sequence.Add("ポストエフェクト", [enginePtr, state] {
             auto postEffectManager = std::make_unique<PostEffectManager>();
             postEffectManager->Initialize(state->dx, state->render, state->shaderProgramCache);
-            enginePtr->RegisterComponent(std::move(postEffectManager));
+            enginePtr->RegisterComponent(EngineSystem::FactoryKey{}, std::move(postEffectManager));
         });
 
         sequence.Add("レンダリング技術", [enginePtr, state] {
             auto renderingTechniqueManager = std::make_unique<RenderingTechniqueManager>();
             renderingTechniqueManager->Initialize(state->dx, state->shaderProgramCache);
-            enginePtr->RegisterComponent(std::move(renderingTechniqueManager));
+            enginePtr->RegisterComponent(EngineSystem::FactoryKey{}, std::move(renderingTechniqueManager));
 
             // ポストエフェクトとレンダリング技術を作り終えた時点での効き具合を残す
             state->shaderProgramCache->LogSummary();
@@ -288,7 +289,7 @@ namespace CoreEngine
                 dynamic_cast<BaseModelRenderer*>(state->renderManager->GetRenderer(RenderPassType::Model));
             modelCtx.skinnedRenderer =
                 dynamic_cast<BaseModelRenderer*>(state->renderManager->GetRenderer(RenderPassType::SkinnedModel));
-            modelCtx.hiZOcclusion = enginePtr->hiZOcclusionSystem_.get();
+            modelCtx.hiZOcclusion = enginePtr->GetHiZOcclusionSystem();
             enginePtr->GetService<ModelManager>()->SetRenderContext(modelCtx);
         });
 
@@ -301,15 +302,15 @@ namespace CoreEngine
             state->shaderCompiler = shaderCompiler.get();
 
             iblGenerator->Initialize(state->dx, state->shaderCompiler);
-            enginePtr->RegisterComponent(std::move(iblGenerator));
-            enginePtr->RegisterComponent(std::move(shaderCompiler));
+            enginePtr->RegisterComponent(EngineSystem::FactoryKey{}, std::move(iblGenerator));
+            enginePtr->RegisterComponent(EngineSystem::FactoryKey{}, std::move(shaderCompiler));
 
             auto iblSystem = std::make_unique<IBLSystem>();
             if (!iblSystem->Initialize(state->dx, state->iblGenerator, state->renderManager)) {
                 Logger::GetInstance().Logf(
                     LogLevel::Error, LogCategory::Graphics, "{}", "Failed to initialize IBLSystem");
             }
-            enginePtr->RegisterComponent(std::move(iblSystem));
+            enginePtr->RegisterComponent(EngineSystem::FactoryKey{}, std::move(iblSystem));
         });
     }
 }

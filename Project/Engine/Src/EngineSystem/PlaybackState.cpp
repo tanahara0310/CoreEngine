@@ -124,6 +124,6 @@ namespace CoreEngine
 
     void PlaybackStateManager::SyncTime() const
     {
-        Time::SetPaused(!IsAdvancing());
+        Time::SetPaused(Time::DriverKey{}, !IsAdvancing());
     }
 }

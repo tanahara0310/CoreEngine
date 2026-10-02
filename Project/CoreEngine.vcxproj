@@ -1265,6 +1265,7 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Collision\CollisionConfig.h" />
     <ClInclude Include="Engine\Src\Collision\CollisionLayer.h" />
     <ClInclude Include="Engine\Src\Collision\CollisionWorld.h" />
+    <ClInclude Include="Engine\Src\Physics\PhysicsKey.h" />
     <ClInclude Include="Engine\Src\Physics\PhysicsWorld.h" />
     <ClInclude Include="Engine\Src\Physics\RigidbodyComponent.h" />
     <ClInclude Include="Engine\Src\Physics\PhysicsMaterialComponent.h" />

@@ -8,6 +8,13 @@ namespace CoreEngine
 /// @note 更新も参照もメインスレッドから行う。
 class Time {
 public:
+    /// @brief 時間を進める・止める操作を呼ぶための鍵（FrameRateController と PlaybackStateManager だけが作れる）
+    class DriverKey {
+        friend class FrameRateController;
+        friend class PlaybackStateManager;
+        DriverKey() = default;
+    };
+
     /// @brief 固定ステップ幅と、計測が始まる前に返すデルタタイムの既定値（秒）
     static constexpr float kDefaultFixedDeltaTime = 1.0f / 60.0f;
 
@@ -50,7 +57,7 @@ public:
     ///       UnscaledDeltaTime() は実測のまま流れ続ける（エディタ・UI 用）。
     /// @note 切り替えるのは PlaybackStateManager の役目。ゲームコードから直接呼ぶと
     ///       メニューバーのボタンの状態と食い違う。
-    static void SetPaused(bool paused) { paused_ = paused; }
+    static void SetPaused(DriverKey, bool paused) { paused_ = paused; }
 
     // ===== 固定ステップ =====
 
@@ -67,7 +74,7 @@ public:
 
     /// @brief 実測の経過時間を 1 フレーム分進める
     /// @note FrameRateController::BeginFrame() から毎フレーム 1 回だけ呼ぶ。
-    static void Advance(float unscaledDeltaTime)
+    static void Advance(DriverKey, float unscaledDeltaTime)
     {
         unscaledDeltaTime_ = unscaledDeltaTime;
         deltaTime_ = paused_ ? 0.0f : unscaledDeltaTime * timeScale_;
@@ -77,7 +84,7 @@ public:
     }
 
     /// @brief 累積時間とフレーム数を初期状態へ戻す（timeScale・ポーズ・固定ステップ幅は保持する）
-    static void Reset()
+    static void Reset(DriverKey)
     {
         deltaTime_ = paused_ ? 0.0f : kDefaultFixedDeltaTime;
         unscaledDeltaTime_ = kDefaultFixedDeltaTime;

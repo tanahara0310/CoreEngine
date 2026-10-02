@@ -220,10 +220,10 @@ namespace CoreEngine
     {
         for (const ContactConstraint& constraint : constraints_) {
             if (constraint.colliderA) {
-                constraint.colliderA->AccumulateImpulse(constraint.normalImpulse);
+                constraint.colliderA->AccumulateImpulse(PhysicsKey{}, constraint.normalImpulse);
             }
             if (constraint.colliderB) {
-                constraint.colliderB->AccumulateImpulse(constraint.normalImpulse);
+                constraint.colliderB->AccumulateImpulse(PhysicsKey{}, constraint.normalImpulse);
             }
         }
     }
@@ -240,11 +240,11 @@ namespace CoreEngine
             const float correction = excess * correctionRate / constraint.inverseMassSum;
 
             if (constraint.bodyA) {
-                constraint.bodyA->ApplyPositionDelta(
+                constraint.bodyA->ApplyPositionDelta(PhysicsKey{},
                     constraint.normal * (-correction * constraint.inverseMassA));
             }
             if (constraint.bodyB) {
-                constraint.bodyB->ApplyPositionDelta(
+                constraint.bodyB->ApplyPositionDelta(PhysicsKey{},
                     constraint.normal * (correction * constraint.inverseMassB));
             }
         }

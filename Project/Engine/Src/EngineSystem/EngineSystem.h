@@ -46,6 +46,13 @@ class StartupSequence;
 /// @brief エンジンの常駐サービスとサブシステムを所有し、フレームを駆動する中核クラス
 class EngineSystem {
 public:
+    /// @brief 部品を登録する操作を呼ぶための鍵（ファクトリだけが作れる）
+    class FactoryKey {
+        friend class GraphicsComponentFactory;
+        friend class CoreComponentFactory;
+        FactoryKey() = default;
+    };
+
     EngineSystem(); // 前方宣言型の unique_ptr メンバがあるため .cpp で定義する
     ~EngineSystem();
 
@@ -87,6 +94,20 @@ public:
 
     /// @brief Hi-Zオクルージョンカリングシステムを取得
     HiZOcclusionSystem* GetHiZOcclusionSystem() { return hiZOcclusionSystem_.get(); }
+
+    /// @brief 描画ドメインと Hi-Z のオクルージョンカリングを受け取る（ファクトリだけが呼べる）
+    void AdoptRenderDomain(FactoryKey, std::unique_ptr<RenderDomainContext> domain,
+        std::unique_ptr<HiZOcclusionSystem> hiZOcclusion);
+
+    /// @brief コンポーネントを登録する（ファクトリだけが呼べる）
+    /// @tparam T コンポーネントの型
+    /// @param component コンポーネントのunique_ptr
+    template<typename T>
+    void RegisterComponent(FactoryKey, std::unique_ptr<T> component) {
+        T* ptr = component.get();
+        componentOwners_.push_back(std::make_unique<ComponentHolder<T>>(std::move(component)));
+        serviceRegistry_.Register(ptr);
+    }
 
     // ──────────────────────────────────────────────────────────
     // コンポーネントアクセッサ
@@ -133,9 +154,6 @@ public:
     }
 
 private:
-    friend class GraphicsComponentFactory; // RegisterComponent への限定アクセス許可
-    friend class CoreComponentFactory;     // RegisterComponent への限定アクセス許可
-
     // ──────────────────────────────────────────────────────────
     // コンポーネント登録ヘルパー
     // ──────────────────────────────────────────────────────────
@@ -150,16 +168,6 @@ private:
         std::unique_ptr<T> ptr;
         explicit ComponentHolder(std::unique_ptr<T> p) : ptr(std::move(p)) {}
     };
-
-    /// @brief コンポーネントを登録
-    /// @tparam T コンポーネントの型
-    /// @param component コンポーネントのunique_ptr
-    template<typename T>
-    void RegisterComponent(std::unique_ptr<T> component) {
-        T* ptr = component.get();
-        componentOwners_.push_back(std::make_unique<ComponentHolder<T>>(std::move(component)));
-        serviceRegistry_.Register(ptr);
-    }
 
     /// @brief サブシステムを生成して登録する
     /// @tparam T IEngineSubsystem を継承する具象型

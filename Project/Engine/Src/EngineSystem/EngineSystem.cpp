@@ -87,6 +87,13 @@ namespace CoreEngine
         return serviceRegistry_.Get<SceneManager>();
     }
 
+    void EngineSystem::AdoptRenderDomain(FactoryKey, std::unique_ptr<RenderDomainContext> domain,
+        std::unique_ptr<HiZOcclusionSystem> hiZOcclusion)
+    {
+        renderDomainContext_ = std::move(domain);
+        hiZOcclusionSystem_ = std::move(hiZOcclusion);
+    }
+
     void EngineSystem::BuildStartupTasks(
         StartupSequence& sequence,
         WinApp* winApp,

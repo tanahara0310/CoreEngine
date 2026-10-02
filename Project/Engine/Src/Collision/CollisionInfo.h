@@ -14,10 +14,10 @@ struct CollisionInfo {
     GameObject* other = nullptr;
 
     /// @brief 自分側のコライダー（1 オブジェクトが複数持つときの識別に使う）
-    Collider* selfCollider = nullptr;
+    const Collider* selfCollider = nullptr;
 
     /// @brief 相手側のコライダー
-    Collider* otherCollider = nullptr;
+    const Collider* otherCollider = nullptr;
 
     /// @brief 自分 → 相手 の押し出し方向（正規化済み）
     /// @note Exit では接触が既に切れているためゼロベクトル。
