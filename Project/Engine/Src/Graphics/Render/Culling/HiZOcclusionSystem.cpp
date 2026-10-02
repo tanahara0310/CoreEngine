@@ -224,12 +224,12 @@ namespace CoreEngine
         config.SetDefaultSRVStrategy(BindingStrategy::DescriptorTable);
 
         // ---- Hi-Z 構築 CS ----
-        IDxcBlob* buildBlob = shaderCompiler_->CompileShader(
+        Microsoft::WRL::ComPtr<IDxcBlob> buildBlob = shaderCompiler_->CompileShader(
             L"Engine/Assets/Shaders/Culling/HiZBuild.CS.hlsl", L"cs_6_0");
         if (!buildBlob) {
             return false;
         }
-        buildReflectionData_ = reflectionBuilder_->BuildFromComputeShader(buildBlob, "HiZBuild");
+        buildReflectionData_ = reflectionBuilder_->BuildFromComputeShader(buildBlob.Get(), "HiZBuild");
         if (!buildReflectionData_) {
             return false;
         }
@@ -237,7 +237,7 @@ namespace CoreEngine
             return false;
         }
         buildPso_ = ComputePipelineUtil::Create(
-            device, buildRootSignatureMg_->GetRootSignature(), buildBlob, "HiZ_Build");
+            device, buildRootSignatureMg_->GetRootSignature(), buildBlob.Get(), "HiZ_Build");
         if (!buildPso_) {
             return false;
         }
@@ -249,12 +249,12 @@ namespace CoreEngine
         }
 
         // ---- 遮蔽判定 CS ----
-        IDxcBlob* cullBlob = shaderCompiler_->CompileShader(
+        Microsoft::WRL::ComPtr<IDxcBlob> cullBlob = shaderCompiler_->CompileShader(
             L"Engine/Assets/Shaders/Culling/HiZOcclusionCull.CS.hlsl", L"cs_6_0");
         if (!cullBlob) {
             return false;
         }
-        cullReflectionData_ = reflectionBuilder_->BuildFromComputeShader(cullBlob, "HiZOcclusionCull");
+        cullReflectionData_ = reflectionBuilder_->BuildFromComputeShader(cullBlob.Get(), "HiZOcclusionCull");
         if (!cullReflectionData_) {
             return false;
         }
@@ -262,7 +262,7 @@ namespace CoreEngine
             return false;
         }
         cullPso_ = ComputePipelineUtil::Create(
-            device, cullRootSignatureMg_->GetRootSignature(), cullBlob, "HiZ_OcclusionCull");
+            device, cullRootSignatureMg_->GetRootSignature(), cullBlob.Get(), "HiZ_OcclusionCull");
         if (!cullPso_) {
             return false;
         }

@@ -30,7 +30,7 @@ void GridRenderer::Initialize(ID3D12Device* device)
     auto pixelShaderBlob = shaderCompiler_->CompileShader(L"Engine/Assets/Shaders/Grid/Grid.PS.hlsl", L"ps_6_0");
     assert(pixelShaderBlob != nullptr);
 
-    reflectionData_ = reflectionBuilder_->BuildFromShaders(vertexShaderBlob, pixelShaderBlob, "GridRenderer");
+    reflectionData_ = reflectionBuilder_->BuildFromShaders(vertexShaderBlob.Get(), pixelShaderBlob.Get(), "GridRenderer");
 
     RootSignatureConfig config;
     const auto buildResult = rootSignatureMg_->Build(device, *reflectionData_, config);
@@ -47,7 +47,7 @@ void GridRenderer::Initialize(ID3D12Device* device)
         .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
         .SetDepthStencil(true, false, D3D12_COMPARISON_FUNC_LESS_EQUAL)
         .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
-        .Build(device, vertexShaderBlob, pixelShaderBlob, rootSignatureMg_->GetRootSignature(),
+        .Build(device, vertexShaderBlob.Get(), pixelShaderBlob.Get(), rootSignatureMg_->GetRootSignature(),
                { BlendMode::kBlendModeNormal });
 
     if (!result) {

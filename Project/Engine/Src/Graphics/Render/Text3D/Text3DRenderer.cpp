@@ -30,7 +30,7 @@ namespace CoreEngine
 
         reflectionBuilder_->Initialize(shaderCompiler_->GetDxcUtils());
         reflectionData_ = reflectionBuilder_->BuildFromShaders(
-            vertexShaderBlob, pixelShaderBlob, "Text3DRenderer");
+            vertexShaderBlob.Get(), pixelShaderBlob.Get(), "Text3DRenderer");
 
         RootSignatureConfig config;
 
@@ -61,7 +61,7 @@ namespace CoreEngine
             .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(true, false)
             .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
-            .BuildAllBlendModes(device, vertexShaderBlob, pixelShaderBlob,
+            .BuildAllBlendModes(device, vertexShaderBlob.Get(), pixelShaderBlob.Get(),
                 rootSignatureMg_->GetRootSignature());
 
         if (!result) {
@@ -76,7 +76,7 @@ namespace CoreEngine
             .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(false, false)
             .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
-            .BuildAllBlendModes(device, vertexShaderBlob, pixelShaderBlob,
+            .BuildAllBlendModes(device, vertexShaderBlob.Get(), pixelShaderBlob.Get(),
                 rootSignatureMg_->GetRootSignature());
 
         if (!overlayResult) {

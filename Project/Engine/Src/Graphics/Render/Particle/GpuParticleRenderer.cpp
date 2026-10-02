@@ -56,10 +56,10 @@ namespace CoreEngine
 
     void GpuParticleRenderer::CreateComputePass(ID3D12Device* device, ComputePass& pass, const wchar_t* shaderPath, const char* debugName)
     {
-        IDxcBlob* csBlob = shaderCompiler_->CompileShader(shaderPath, L"cs_6_0");
+        Microsoft::WRL::ComPtr<IDxcBlob> csBlob = shaderCompiler_->CompileShader(shaderPath, L"cs_6_0");
         assert(csBlob != nullptr);
 
-        pass.reflectionData = reflectionBuilder_->BuildFromComputeShader(csBlob, debugName);
+        pass.reflectionData = reflectionBuilder_->BuildFromComputeShader(csBlob.Get(), debugName);
 
         // SkinningComputeDispatcher と同じ構成: CBVはRootDescriptor、SRV/UAVはDescriptorTable
         RootSignatureConfig config;
@@ -73,7 +73,7 @@ namespace CoreEngine
         }
 
         pass.pso = ComputePipelineUtil::Create(
-            device, pass.rootSignatureMg->GetRootSignature(), csBlob,
+            device, pass.rootSignatureMg->GetRootSignature(), csBlob.Get(),
             std::string("GpuParticle_") + debugName);
         if (!pass.pso) {
             throw std::runtime_error(std::string("Failed to create Compute PSO: ") + debugName);

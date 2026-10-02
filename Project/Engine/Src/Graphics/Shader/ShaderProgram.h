@@ -91,7 +91,7 @@ namespace CoreEngine
         ShaderCompiler compiler_;
         ShaderReflectionBuilder reflectionBuilder_;
         std::map<std::wstring, std::unique_ptr<ShaderProgram>> programs_;
-        std::map<std::wstring, IDxcBlob*> blobs_;
+        std::map<std::wstring, Microsoft::WRL::ComPtr<IDxcBlob>> blobs_;
         size_t hitCount_ = 0;
         size_t blobHitCount_ = 0;
         bool initialized_ = false;

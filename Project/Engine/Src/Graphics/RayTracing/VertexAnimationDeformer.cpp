@@ -74,7 +74,7 @@ namespace CoreEngine
         try {
             shaderCompiler_ = std::make_unique<ShaderCompiler>();
             shaderCompiler_->Initialize();
-            IDxcBlob* csBlob = shaderCompiler_->CompileShader(
+            Microsoft::WRL::ComPtr<IDxcBlob> csBlob = shaderCompiler_->CompileShader(
                 L"Engine/Assets/Shaders/RayTracing/VertexAnimationDeform.CS.hlsl", L"cs_6_0");
             if (!csBlob) {
                 log.Warnf(LogCategory::Graphics, "VertexAnimationDeformer: CS のコンパイルに失敗（揺れは影に反映しない）");
@@ -83,7 +83,7 @@ namespace CoreEngine
 
             reflectionBuilder_ = std::make_unique<ShaderReflectionBuilder>();
             reflectionBuilder_->Initialize(shaderCompiler_->GetDxcUtils());
-            reflectionData_ = reflectionBuilder_->BuildFromComputeShader(csBlob, "VertexAnimationDeform");
+            reflectionData_ = reflectionBuilder_->BuildFromComputeShader(csBlob.Get(), "VertexAnimationDeform");
 
             // すべてルート引数で渡す（ディスクリプタを確保しない）。
             // 定数: gVertexAnim 8 + gDeform 36、ディスクリプタ: CBV / SRV x2 / UAV で計 52 DWORD（上限 64）
@@ -105,7 +105,7 @@ namespace CoreEngine
             }
 
             pso_ = ComputePipelineUtil::Create(
-                device, rootSignatureMg_->GetRootSignature(), csBlob, "VertexAnimationDeform");
+                device, rootSignatureMg_->GetRootSignature(), csBlob.Get(), "VertexAnimationDeform");
             if (!pso_) {
                 return false;
             }

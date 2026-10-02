@@ -30,7 +30,7 @@ namespace CoreEngine
         }
 
         // ライブラリはエントリーポイント指定なし（-E を付けない）
-        IDxcBlob* lib = compiler_.CompileShaderLibrary(libPath);
+        Microsoft::WRL::ComPtr<IDxcBlob> lib = compiler_.CompileShaderLibrary(libPath);
         if (!lib) {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Shader,
                 "シェーダーライブラリのコンパイルに失敗しました: name={}", debugName);
@@ -38,9 +38,10 @@ namespace CoreEngine
         }
 
         auto program = std::make_unique<ShaderProgram>();
-        program->cs_ = lib;   // DXR の State Object へ渡す blob はここから取る
+        program->cs_ = lib.Get();   // DXR の State Object へ渡す blob はここから取る
         program->debugName_ = debugName;
-        program->reflection_ = reflectionBuilder_.BuildFromLibrary(lib, debugName);
+        program->reflection_ = reflectionBuilder_.BuildFromLibrary(lib.Get(), debugName);
+        blobs_.emplace(key, std::move(lib));
 
         const ShaderProgram* result = program.get();
         programs_.emplace(key, std::move(program));
@@ -60,13 +61,13 @@ namespace CoreEngine
         const std::wstring key = MakeKey(path, profile);
         if (auto it = blobs_.find(key); it != blobs_.end()) {
             ++blobHitCount_;
-            return it->second;
+            return it->second.Get();
         }
-        IDxcBlob* blob = compiler_.CompileShader(path, profile);
-        if (blob) {
-            blobs_.emplace(key, blob);
+        Microsoft::WRL::ComPtr<IDxcBlob> blob = compiler_.CompileShader(path, profile);
+        if (!blob) {
+            return nullptr;
         }
-        return blob;
+        return blobs_.emplace(key, std::move(blob)).first->second.Get();
     }
 
     std::wstring ShaderProgramCache::MakeKey(const std::wstring& a, const std::wstring& b)

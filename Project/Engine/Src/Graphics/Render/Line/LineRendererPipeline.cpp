@@ -22,7 +22,7 @@ namespace CoreEngine
         assert(pixelShaderBlob != nullptr);
 
         reflectionBuilder_->Initialize(shaderCompiler_->GetDxcUtils());
-        reflectionData_ = reflectionBuilder_->BuildFromShaders(vertexShaderBlob, pixelShaderBlob, "LineRenderer");
+        reflectionData_ = reflectionBuilder_->BuildFromShaders(vertexShaderBlob.Get(), pixelShaderBlob.Get(), "LineRenderer");
 
         // 新しいAPIでRootSignatureを構築
         RootSignatureConfig config;
@@ -41,7 +41,7 @@ namespace CoreEngine
             // ここで SetDepthBias を足しても意味がない
             .SetDepthStencil(true, true)
             .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE)
-            .BuildAllBlendModes(device, vertexShaderBlob, pixelShaderBlob, rootSignatureMg_->GetRootSignature());
+            .BuildAllBlendModes(device, vertexShaderBlob.Get(), pixelShaderBlob.Get(), rootSignatureMg_->GetRootSignature());
 
         if (!result) {
             throw std::runtime_error("Failed to create pipeline state for LineRendererPipeline.");
@@ -54,7 +54,7 @@ namespace CoreEngine
             .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(false, false)
             .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE)
-            .BuildAllBlendModes(device, vertexShaderBlob, pixelShaderBlob, rootSignatureMg_->GetRootSignature());
+            .BuildAllBlendModes(device, vertexShaderBlob.Get(), pixelShaderBlob.Get(), rootSignatureMg_->GetRootSignature());
 
         if (!overlayResult) {
             throw std::runtime_error("Failed to create overlay pipeline state for LineRendererPipeline.");

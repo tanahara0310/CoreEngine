@@ -85,17 +85,15 @@ namespace CoreEngine
 
     void IBLGenerator::CreateBRDFLUTPipeline()
     {
-        IDxcBlob* computeShader = shaderCompiler_->CompileShader(
+        Microsoft::WRL::ComPtr<IDxcBlob> computeShader = shaderCompiler_->CompileShader(
             L"Engine/Assets/Shaders/IBL/BRDFLUT.CS.hlsl",
             L"cs_6_0");
 
         assert(computeShader != nullptr);
 
         brdfLutPSO_ = ComputePipelineUtil::Create(
-            dxCommon_->GetDevice(), brdfLutRootSignature_.Get(), computeShader, "IBL_BRDFLUT");
+            dxCommon_->GetDevice(), brdfLutRootSignature_.Get(), computeShader.Get(), "IBL_BRDFLUT");
         assert(brdfLutPSO_);
-
-        computeShader->Release();
     }
 
     void IBLGenerator::CreateIrradianceRootSignature()
@@ -158,17 +156,15 @@ namespace CoreEngine
 
     void IBLGenerator::CreateIrradiancePipeline()
     {
-        IDxcBlob* computeShader = shaderCompiler_->CompileShader(
+        Microsoft::WRL::ComPtr<IDxcBlob> computeShader = shaderCompiler_->CompileShader(
             L"Engine/Assets/Shaders/IBL/IrradianceConvolution.CS.hlsl",
             L"cs_6_0");
 
         assert(computeShader != nullptr);
 
         irradiancePSO_ = ComputePipelineUtil::Create(
-            dxCommon_->GetDevice(), irradianceRootSignature_.Get(), computeShader, "IBL_Irradiance");
+            dxCommon_->GetDevice(), irradianceRootSignature_.Get(), computeShader.Get(), "IBL_Irradiance");
         assert(irradiancePSO_);
-
-        computeShader->Release();
     }
 
     Microsoft::WRL::ComPtr<ID3D12Resource> IBLGenerator::CreateUAVCubemap(
@@ -671,17 +667,15 @@ namespace CoreEngine
 
     void IBLGenerator::CreatePrefilteredPipeline()
     {
-        IDxcBlob* computeShader = shaderCompiler_->CompileShader(
+        Microsoft::WRL::ComPtr<IDxcBlob> computeShader = shaderCompiler_->CompileShader(
             L"Engine/Assets/Shaders/IBL/PrefilterEnvironment.CS.hlsl",
             L"cs_6_0");
 
         assert(computeShader != nullptr);
 
         prefilteredPSO_ = ComputePipelineUtil::Create(
-            dxCommon_->GetDevice(), prefilteredRootSignature_.Get(), computeShader, "IBL_PrefilterEnv");
+            dxCommon_->GetDevice(), prefilteredRootSignature_.Get(), computeShader.Get(), "IBL_PrefilterEnv");
         assert(prefilteredPSO_);
-
-        computeShader->Release();
     }
 
     Microsoft::WRL::ComPtr<ID3D12Resource> IBLGenerator::CreateUAVCubemapWithMips(

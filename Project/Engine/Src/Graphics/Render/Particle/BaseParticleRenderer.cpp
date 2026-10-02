@@ -61,7 +61,7 @@ namespace CoreEngine
 
         reflectionBuilder_->Initialize(shaderCompiler_->GetDxcUtils());
         reflectionData_ = reflectionBuilder_->BuildFromShaders(
-            vertexShaderBlob, pixelShaderBlob, RenderPassTypeToString(GetRenderPassType()));
+            vertexShaderBlob.Get(), pixelShaderBlob.Get(), RenderPassTypeToString(GetRenderPassType()));
 
         // シンプルな設定でRootSignatureを構築
         RootSignatureConfig config;
