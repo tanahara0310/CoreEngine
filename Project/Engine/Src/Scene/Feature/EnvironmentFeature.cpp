@@ -67,11 +67,11 @@ namespace CoreEngine
         }
 #endif
 
-        // どれも GameObjectManager が所有しているためポインタのみクリア
-        skyBox_ = nullptr;
-        cloud_ = nullptr;
-        fog_ = nullptr;
-        postProcess_ = nullptr;
+        // どれも GameObjectManager が所有しているため参照だけ外す
+        skyBox_.Reset();
+        cloud_.Reset();
+        fog_.Reset();
+        postProcess_.Reset();
     }
 
 #ifdef CORE_EDITOR
@@ -120,11 +120,15 @@ namespace CoreEngine
         }
 
         // シーン側が置いた分をまず採る
-        skyBox_ = objects->FindFirstComponent<SkyBoxComponent>();
-        cloud_ = objects->FindFirstComponent<VolumetricCloudComponent>();
-        fog_ = objects->FindFirstComponent<HeightFogComponent>();
-        postProcess_ = objects->FindFirstComponent<PostProcessComponent>();
-        if (skyBox_ && cloud_ && fog_ && postProcess_) {
+        SkyBoxComponent* skyBox = objects->FindFirstComponent<SkyBoxComponent>();
+        VolumetricCloudComponent* cloud = objects->FindFirstComponent<VolumetricCloudComponent>();
+        HeightFogComponent* fog = objects->FindFirstComponent<HeightFogComponent>();
+        PostProcessComponent* postProcess = objects->FindFirstComponent<PostProcessComponent>();
+        if (skyBox && cloud && fog && postProcess) {
+            skyBox_.Set(skyBox);
+            cloud_.Set(cloud);
+            fog_.Set(fog);
+            postProcess_.Set(postProcess);
             Logger::GetInstance().Infof(LogCategory::System,
                 "EnvironmentFeature: シーンが置いた環境を採用");
             SyncComponentToggles();
@@ -132,7 +136,7 @@ namespace CoreEngine
         }
 
         // 足りない分を載せる入れ物を用意する（シーンには保存しない）
-        GameObject* host = skyBox_ ? skyBox_->GetOwner() : nullptr;
+        GameObject* host = skyBox ? skyBox->GetOwner() : nullptr;
         if (!host) {
             auto owned = std::make_unique<GameObject>();
             owned->SetName("Environment");
@@ -143,14 +147,18 @@ namespace CoreEngine
             host->SetSerializeEnabled(false);
         }
 
-        if (!skyBox_) { skyBox_ = host->AddComponent<SkyBoxComponent>(); }
-        if (!cloud_) { cloud_ = host->AddComponent<VolumetricCloudComponent>(); }
-        if (!fog_) { fog_ = host->AddComponent<HeightFogComponent>(); }
-        if (!postProcess_) { postProcess_ = host->AddComponent<PostProcessComponent>(); }
+        if (!skyBox) { skyBox = host->AddComponent<SkyBoxComponent>(); }
+        if (!cloud) { cloud = host->AddComponent<VolumetricCloudComponent>(); }
+        if (!fog) { fog = host->AddComponent<HeightFogComponent>(); }
+        if (!postProcess) { postProcess = host->AddComponent<PostProcessComponent>(); }
+        skyBox_.Set(skyBox);
+        cloud_.Set(cloud);
+        fog_.Set(fog);
+        postProcess_.Set(postProcess);
 
         // 実体の値（CVar）に合わせてチェックの初期状態を決める
-        if (cloud_) { cloud_->SetEnabled(CloudCVars::Enabled.Get()); }
-        if (fog_) { fog_->SetEnabled(FogCVars::Enabled.Get()); }
+        if (cloud) { cloud->SetEnabled(CloudCVars::Enabled.Get()); }
+        if (fog) { fog->SetEnabled(FogCVars::Enabled.Get()); }
         lastCloudEnabled_ = CloudCVars::Enabled.Get();
         lastFogEnabled_ = FogCVars::Enabled.Get();
 
@@ -174,15 +182,15 @@ namespace CoreEngine
             }
             last = cvar.Get();
             };
-        sync(cloud_, CloudCVars::Enabled, lastCloudEnabled_);
-        sync(fog_, FogCVars::Enabled, lastFogEnabled_);
+        sync(cloud_.Get(), CloudCVars::Enabled, lastCloudEnabled_);
+        sync(fog_.Get(), FogCVars::Enabled, lastFogEnabled_);
     }
 
     void EnvironmentFeature::UpdateAtmosphere(SceneContext& ctx)
     {
         // 空（SkyBox）が無いシーンでは AtmosphereManager を非アクティブのままにし、
         // LUT 生成・Aerial Perspective 合成をスキップさせる
-        if (!skyBox_) {
+        if (!skyBox_.Get()) {
             return;
         }
 
