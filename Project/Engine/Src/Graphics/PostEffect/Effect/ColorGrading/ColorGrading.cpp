@@ -1,14 +1,12 @@
 #include "pch.h"
 #include "ColorGrading.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/CVar/CVar.h"
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
 #endif
 #include <algorithm>
-#include <cassert>
 #include <cmath>
 
 
@@ -169,56 +167,38 @@ namespace CoreEngine
         }
     }
 
-    void ColorGrading::OnCreateConstantBuffers()
+    ColorGrading::ColorGradingParams ColorGrading::MakeParams() const
     {
-        UINT cgSize = (sizeof(ColorGradingParams) + 255) & ~255;
-        colorGradingParamsCB_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), cgSize);
-        [[maybe_unused]] HRESULT hr = colorGradingParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedColorGradingParams_));
-        assert(SUCCEEDED(hr));
-        UpdateConstantBuffer();
+        ColorGradingParams params{};
+        params.hue        = cvHue.Get();
+        params.saturation = cvSaturation.Get();
+        params.value      = cvValue.Get();
+        params.contrast   = cvContrast.Get();
+        params.gamma      = cvGamma.Get();
+        params.exposure   = cvExposure.Get();
 
-    }
-
-    void ColorGrading::UpdateConstantBuffer()
-    {
-        if (!mappedColorGradingParams_) {
-            return;
-        }
-        mappedColorGradingParams_->hue        = cvHue.Get();
-        mappedColorGradingParams_->saturation = cvSaturation.Get();
-        mappedColorGradingParams_->value      = cvValue.Get();
-        mappedColorGradingParams_->contrast   = cvContrast.Get();
-        mappedColorGradingParams_->gamma      = cvGamma.Get();
-        mappedColorGradingParams_->exposure   = cvExposure.Get();
-
-        // WB 行列は Kelvin/Tint が変わったときだけ再計算する（毎フレームの 3x3 積を避ける）
-        const float kelvin = cvTemperatureK.Get();
-        const float tint = cvTint.Get();
-        if (kelvin != lastKelvin_ || tint != lastTint_) {
-            lastKelvin_ = kelvin;
-            lastTint_ = tint;
-            const Mat3 wb = ComputeWhiteBalanceMatrix(kelvin, tint);
-            for (int i = 0; i < 3; ++i) {
-                mappedColorGradingParams_->whiteBalanceRow0[i] = wb.m[0][i];
-                mappedColorGradingParams_->whiteBalanceRow1[i] = wb.m[1][i];
-                mappedColorGradingParams_->whiteBalanceRow2[i] = wb.m[2][i];
-            }
+        const Mat3 wb = ComputeWhiteBalanceMatrix(cvTemperatureK.Get(), cvTint.Get());
+        for (int i = 0; i < 3; ++i) {
+            params.whiteBalanceRow0[i] = wb.m[0][i];
+            params.whiteBalanceRow1[i] = wb.m[1][i];
+            params.whiteBalanceRow2[i] = wb.m[2][i];
         }
 
         const Vector3& shadowLift = cvShadowLift.Get();
-        mappedColorGradingParams_->shadowLift[0] = shadowLift.x;
-        mappedColorGradingParams_->shadowLift[1] = shadowLift.y;
-        mappedColorGradingParams_->shadowLift[2] = shadowLift.z;
+        params.shadowLift[0] = shadowLift.x;
+        params.shadowLift[1] = shadowLift.y;
+        params.shadowLift[2] = shadowLift.z;
 
         const Vector3& midtoneGamma = cvMidtoneGamma.Get();
-        mappedColorGradingParams_->midtoneGamma[0] = midtoneGamma.x;
-        mappedColorGradingParams_->midtoneGamma[1] = midtoneGamma.y;
-        mappedColorGradingParams_->midtoneGamma[2] = midtoneGamma.z;
+        params.midtoneGamma[0] = midtoneGamma.x;
+        params.midtoneGamma[1] = midtoneGamma.y;
+        params.midtoneGamma[2] = midtoneGamma.z;
 
         const Vector3& highlightGain = cvHighlightGain.Get();
-        mappedColorGradingParams_->highlightGain[0] = highlightGain.x;
-        mappedColorGradingParams_->highlightGain[1] = highlightGain.y;
-        mappedColorGradingParams_->highlightGain[2] = highlightGain.z;
+        params.highlightGain[0] = highlightGain.x;
+        params.highlightGain[1] = highlightGain.y;
+        params.highlightGain[2] = highlightGain.z;
+        return params;
     }
 
     void ColorGrading::Dispatch(
@@ -227,7 +207,6 @@ namespace CoreEngine
         uint32_t width,
         uint32_t height)
     {
-        UpdateConstantBuffer();
         UpdateScreenSizeConstants(width, height);
 
         auto* cmdList = graphicsCore_->GetCommandList();
@@ -241,7 +220,7 @@ namespace CoreEngine
 
         if (textureIdx >= 0) cmdList->SetComputeRootDescriptorTable(textureIdx, inputSrvHandle);
         if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
-        if (cgIdx >= 0)      cmdList->SetComputeRootConstantBufferView(cgIdx, colorGradingParamsCB_->GetGPUVirtualAddress());
+        if (cgIdx >= 0)      cmdList->SetComputeRootConstantBufferView(cgIdx, UploadConstants(MakeParams()));
         if (screenIdx >= 0)  cmdList->SetComputeRootConstantBufferView(screenIdx, GetScreenSizeCbAddress());
 
         uint32_t groupX = (width  + 7) / 8;

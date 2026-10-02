@@ -57,13 +57,9 @@ protected:
 
     std::string  GetEffectName()        const override { return "ChromaticAberration"; }
     std::wstring GetComputeShaderPath() const override { return L"ChromaticAberration.CS.hlsl"; }
-    void OnCreateConstantBuffers() override;
 
 private:
-    void UpdateConstantBuffer();
-
-private:
-    Microsoft::WRL::ComPtr<ID3D12Resource> caParamsCB_;
-    ChromaticAberrationParams* mappedCAParams_ = nullptr;
+    /// @brief 今の CVar から定数を作る
+    ChromaticAberrationParams MakeParams() const;
 };
 }

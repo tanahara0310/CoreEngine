@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/RootSignature/RootSignatureManager.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/Shader/ShaderProgram.h"
@@ -159,6 +160,18 @@ namespace CoreEngine {
 
         /// @brief バイト列を記録中のフレームの UploadRing へ置き、GPU アドレスを返す（失敗時は 0）
         D3D12_GPU_VIRTUAL_ADDRESS UploadConstantBytes(const void* data, uint32_t size) const;
+
+        /// @brief フィールド表が示す HLSL のオフセットへ並べ直して UploadRing へ置き、GPU アドレスを返す（失敗時は 0）
+        /// @note C++ 側の並びが HLSL と違う構造体（CB_VERIFY_TYPES で検査するもの）に使う
+        template <class T, size_t N>
+        D3D12_GPU_VIRTUAL_ADDRESS UploadConstants(const T& constants, const Cb::Field (&fields)[N]) const
+        {
+            return UploadConstantFields(&constants, fields, N, static_cast<uint32_t>(Cb::HlslSizeOf(fields)));
+        }
+
+        /// @brief UploadConstants（フィールド表つき）の本体
+        D3D12_GPU_VIRTUAL_ADDRESS UploadConstantFields(
+            const void* src, const Cb::Field* fields, size_t count, uint32_t hlslSize) const;
 
         GraphicsCore* graphicsCore_ = nullptr;
         std::unique_ptr<RootSignatureManager> rootSignatureManager_;

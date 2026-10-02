@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "Outline.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Camera/View/ViewInfo.h"
 #include "Graphics/Render/FrameBlackboard.h"
@@ -9,7 +8,6 @@
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
 #endif
-#include <cassert>
 
 
 namespace CoreEngine
@@ -43,35 +41,22 @@ namespace CoreEngine
         constexpr const char* kCVarPrefix = "r.Outline";
     }
 
-    void Outline::OnCreateConstantBuffers()
+    Outline::OutlineParams Outline::MakeParams() const
     {
-        // アウトラインパラメータ用定数バッファ
-        UINT outlineSize = (sizeof(OutlineParams) + 255) & ~255;
-        outlineParamsCB_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), outlineSize);
-        [[maybe_unused]] HRESULT hr = outlineParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedOutlineParams_));
-        assert(SUCCEEDED(hr));
-        UpdateConstantBuffer();
-
-        // 画面サイズ用定数バッファ
-    }
-
-    void Outline::UpdateConstantBuffer()
-    {
-        if (!mappedOutlineParams_) {
-            return;
-        }
+        OutlineParams params{};
         const Vector4& color = cvOutlineColor.Get();
-        mappedOutlineParams_->outlineColor[0] = color.x;
-        mappedOutlineParams_->outlineColor[1] = color.y;
-        mappedOutlineParams_->outlineColor[2] = color.z;
-        mappedOutlineParams_->outlineColor[3] = color.w;
+        params.outlineColor[0] = color.x;
+        params.outlineColor[1] = color.y;
+        params.outlineColor[2] = color.z;
+        params.outlineColor[3] = color.w;
 
-        mappedOutlineParams_->depthThreshold = cvDepthThreshold.Get();
-        mappedOutlineParams_->depthStrength  = cvDepthStrength.Get();
-        mappedOutlineParams_->outlineWidth   = cvOutlineWidth.Get();
+        params.depthThreshold = cvDepthThreshold.Get();
+        params.depthStrength  = cvDepthStrength.Get();
+        params.outlineWidth   = cvOutlineWidth.Get();
         // クリップ距離はカメラから設定される実行時値
-        mappedOutlineParams_->nearPlane = nearPlane_;
-        mappedOutlineParams_->farPlane  = farPlane_;
+        params.nearPlane = nearPlane_;
+        params.farPlane  = farPlane_;
+        return params;
     }
 
     void Outline::PrepareFrame(const PostEffectFrameContext& ctx)
@@ -79,7 +64,8 @@ namespace CoreEngine
         // 線形深度への復元には描画に使われたカメラと同じ near/far が要る。
         // ビューが未確定のフレームは前回値を維持する（0 で割る事故を避ける）。
         if (ctx.view && ctx.view->isValid) {
-            SetCameraClipPlanes(ctx.view->nearZ, ctx.view->farZ);
+            nearPlane_ = ctx.view->nearZ;
+            farPlane_  = ctx.view->farZ;
         }
     }
 
@@ -89,23 +75,12 @@ namespace CoreEngine
         out.push_back({ "gDepth", FrameBlackboard::SceneDepth, /*required*/ true });
     }
 
-    void Outline::SetCameraClipPlanes(float nearPlane, float farPlane)
-    {
-        // near/farが変わった場合のみ更新してGPU転送コストを抑える
-        if (nearPlane_ != nearPlane || farPlane_ != farPlane) {
-            nearPlane_ = nearPlane;
-            farPlane_  = farPlane;
-            UpdateConstantBuffer();
-        }
-    }
-
     void Outline::Dispatch(
         D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle,
         D3D12_GPU_DESCRIPTOR_HANDLE outputUavHandle,
         uint32_t width,
         uint32_t height)
     {
-        UpdateConstantBuffer();
         UpdateScreenSizeConstants(width, height);
 
         auto* cmdList = graphicsCore_->GetCommandList();
@@ -133,7 +108,7 @@ namespace CoreEngine
         }
         // アウトラインパラメータ (b0)
         if (outlineParamsIdx >= 0) {
-            cmdList->SetComputeRootConstantBufferView(outlineParamsIdx, outlineParamsCB_->GetGPUVirtualAddress());
+            cmdList->SetComputeRootConstantBufferView(outlineParamsIdx, UploadConstants(MakeParams()));
         }
         // 画面サイズパラメータ (b1)
         if (screenParamsIdx >= 0) {

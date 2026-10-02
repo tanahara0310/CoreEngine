@@ -1,13 +1,11 @@
 #include "pch.h"
 #include "ChromaticAberration.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/CVar/CVar.h"
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
 #endif
-#include <cassert>
 
 
 namespace CoreEngine
@@ -52,29 +50,18 @@ namespace CoreEngine
         constexpr const char* kCVarPrefix = "r.ChromaticAberration";
     }
 
-    void ChromaticAberration::OnCreateConstantBuffers()
+    ChromaticAberration::ChromaticAberrationParams ChromaticAberration::MakeParams() const
     {
-        UINT caSize = (sizeof(ChromaticAberrationParams) + 255) & ~255;
-        caParamsCB_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), caSize);
-        [[maybe_unused]] HRESULT hr = caParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedCAParams_));
-        assert(SUCCEEDED(hr));
-        UpdateConstantBuffer();
-
-    }
-
-    void ChromaticAberration::UpdateConstantBuffer()
-    {
-        if (!mappedCAParams_) {
-            return;
-        }
-        mappedCAParams_->intensity       = cvIntensity.Get();
-        mappedCAParams_->radialFactor    = cvRadialFactor.Get();
-        mappedCAParams_->centerX         = cvCenterX.Get();
-        mappedCAParams_->centerY         = cvCenterY.Get();
-        mappedCAParams_->distortionScale = cvDistortionScale.Get();
-        mappedCAParams_->falloff         = cvFalloff.Get();
-        mappedCAParams_->samples         = 1.0f;  // 未使用フィールド
-        mappedCAParams_->padding         = 0.0f;
+        ChromaticAberrationParams params{};
+        params.intensity       = cvIntensity.Get();
+        params.radialFactor    = cvRadialFactor.Get();
+        params.centerX         = cvCenterX.Get();
+        params.centerY         = cvCenterY.Get();
+        params.distortionScale = cvDistortionScale.Get();
+        params.falloff         = cvFalloff.Get();
+        params.samples         = 1.0f;  // 未使用フィールド
+        params.padding         = 0.0f;
+        return params;
     }
 
     void ChromaticAberration::Dispatch(
@@ -83,7 +70,6 @@ namespace CoreEngine
         uint32_t width,
         uint32_t height)
     {
-        UpdateConstantBuffer();
         UpdateScreenSizeConstants(width, height);
 
         auto* cmdList = graphicsCore_->GetCommandList();
@@ -97,7 +83,7 @@ namespace CoreEngine
 
         if (textureIdx >= 0) cmdList->SetComputeRootDescriptorTable(textureIdx, inputSrvHandle);
         if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
-        if (caIdx >= 0)      cmdList->SetComputeRootConstantBufferView(caIdx, caParamsCB_->GetGPUVirtualAddress());
+        if (caIdx >= 0)      cmdList->SetComputeRootConstantBufferView(caIdx, UploadConstants(MakeParams()));
         if (screenIdx >= 0)  cmdList->SetComputeRootConstantBufferView(screenIdx, GetScreenSizeCbAddress());
 
         uint32_t groupX = (width  + 7) / 8;

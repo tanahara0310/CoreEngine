@@ -78,4 +78,15 @@ namespace CoreEngine
     {
         return graphicsCore_->GetUploadRing().AllocateConstants(data, size);
     }
+
+    D3D12_GPU_VIRTUAL_ADDRESS PostEffectBase::UploadConstantFields(
+        const void* src, const Cb::Field* fields, size_t count, uint32_t hlslSize) const
+    {
+        const UploadAllocation allocation = graphicsCore_->GetUploadRing().Allocate(hlslSize);
+        if (!allocation.IsValid()) {
+            return 0;
+        }
+        Cb::Upload(allocation.cpu, src, fields, count);
+        return allocation.gpuAddress;
+    }
 }

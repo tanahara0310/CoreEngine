@@ -1,13 +1,11 @@
 #include "pch.h"
 #include "Sepia.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/CVar/CVar.h"
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
 #endif
-#include <cassert>
 
 
 namespace CoreEngine
@@ -32,29 +30,16 @@ namespace CoreEngine
         constexpr const char* kCVarPrefix = "r.Sepia";
     }
 
-    void Sepia::OnCreateConstantBuffers()
+    Sepia::SepiaParams Sepia::MakeParams() const
     {
-        // SepiaParams 定数バッファ
-        UINT sepiaSize = (sizeof(SepiaParams) + 255) & ~255;
-        sepiaParamsCB_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), sepiaSize);
-        [[maybe_unused]] HRESULT hr = sepiaParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedSepiaParams_));
-        assert(SUCCEEDED(hr));
-        UpdateConstantBuffer();
-
-        // ScreenParams 定数バッファ
-    }
-
-    void Sepia::UpdateConstantBuffer()
-    {
-        if (!mappedSepiaParams_) {
-            return;
-        }
-        mappedSepiaParams_->intensity = cvIntensity.Get();
+        SepiaParams params{};
+        params.intensity = cvIntensity.Get();
 
         const Vector3& tone = cvTone.Get();
-        mappedSepiaParams_->toneRed   = tone.x;
-        mappedSepiaParams_->toneGreen = tone.y;
-        mappedSepiaParams_->toneBlue  = tone.z;
+        params.toneRed   = tone.x;
+        params.toneGreen = tone.y;
+        params.toneBlue  = tone.z;
+        return params;
     }
 
     void Sepia::Dispatch(
@@ -63,7 +48,6 @@ namespace CoreEngine
         uint32_t width,
         uint32_t height)
     {
-        UpdateConstantBuffer();
         UpdateScreenSizeConstants(width, height);
 
         auto* cmdList = graphicsCore_->GetCommandList();
@@ -77,7 +61,7 @@ namespace CoreEngine
 
         if (textureIdx >= 0)      cmdList->SetComputeRootDescriptorTable(textureIdx, inputSrvHandle);
         if (outputIdx >= 0)       cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
-        if (sepiaParamsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(sepiaParamsIdx, sepiaParamsCB_->GetGPUVirtualAddress());
+        if (sepiaParamsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(sepiaParamsIdx, UploadConstants(MakeParams()));
         if (screenParamsIdx >= 0) cmdList->SetComputeRootConstantBufferView(screenParamsIdx, GetScreenSizeCbAddress());
 
         uint32_t groupX = (width  + 7) / 8;

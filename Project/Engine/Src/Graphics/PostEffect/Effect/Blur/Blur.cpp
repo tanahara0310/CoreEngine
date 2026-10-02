@@ -1,13 +1,11 @@
 #include "pch.h"
 #include "Blur.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/CVar/CVar.h"
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
 #endif
-#include <cassert>
 
 
 namespace CoreEngine
@@ -32,23 +30,12 @@ namespace CoreEngine
         constexpr const char* kCVarPrefix = "r.Blur";
     }
 
-    void Blur::OnCreateConstantBuffers()
+    Blur::BlurParams Blur::MakeParams() const
     {
-        UINT blurSize = (sizeof(BlurParams) + 255) & ~255;
-        blurParamsCB_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), blurSize);
-        [[maybe_unused]] HRESULT hr = blurParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedBlurParams_));
-        assert(SUCCEEDED(hr));
-        UpdateBlurConstantBuffer();
-
-    }
-
-    void Blur::UpdateBlurConstantBuffer()
-    {
-        if (!mappedBlurParams_) {
-            return;
-        }
-        mappedBlurParams_->intensity  = cvIntensity.Get();
-        mappedBlurParams_->kernelSize = cvKernelSize.Get();
+        BlurParams params{};
+        params.intensity  = cvIntensity.Get();
+        params.kernelSize = cvKernelSize.Get();
+        return params;
     }
 
     void Blur::Dispatch(
@@ -57,8 +44,6 @@ namespace CoreEngine
         uint32_t width,
         uint32_t height)
     {
-        // CVar の現在値を取り込む（UI・コンソール・設定復元のいずれの変更もここで反映される）
-        UpdateBlurConstantBuffer();
         UpdateScreenSizeConstants(width, height);
 
         auto* cmdList = graphicsCore_->GetCommandList();
@@ -79,7 +64,7 @@ namespace CoreEngine
             cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
         }
         if (blurParamsIdx >= 0) {
-            cmdList->SetComputeRootConstantBufferView(blurParamsIdx, blurParamsCB_->GetGPUVirtualAddress());
+            cmdList->SetComputeRootConstantBufferView(blurParamsIdx, UploadConstants(MakeParams()));
         }
         if (screenParamsIdx >= 0) {
             cmdList->SetComputeRootConstantBufferView(screenParamsIdx, GetScreenSizeCbAddress());

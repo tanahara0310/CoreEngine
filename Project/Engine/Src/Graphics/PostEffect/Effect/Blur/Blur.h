@@ -47,13 +47,9 @@ namespace CoreEngine
 
         std::string  GetEffectName()        const override { return "Blur"; }
         std::wstring GetComputeShaderPath() const override { return L"Blur.CS.hlsl"; }
-        void OnCreateConstantBuffers() override;
 
     private:
-        void UpdateBlurConstantBuffer();
-
-    private:
-        Microsoft::WRL::ComPtr<ID3D12Resource> blurParamsCB_;
-        BlurParams* mappedBlurParams_ = nullptr;
+        /// @brief 今の CVar から定数を作る
+        BlurParams MakeParams() const;
     };
 }
