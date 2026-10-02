@@ -41,13 +41,9 @@ namespace CoreEngine
         RenderPassType GetRenderPassType() const override { return RenderPassType::Line; }
         void SetCamera(const Camera* camera) override;
 
-        /// @brief 初期化（GraphicsCoreとResourceFactory付き）
+        /// @brief 初期化（GraphicsCore 付き）
         /// @param dxCommon GraphicsCore
-        /// @param resourceFactory ResourceFactory
-        void Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory);
-
-        /// @brief ルートシグネチャを取得
-        ID3D12RootSignature* GetRootSignature() const { return rootSignatureMg_->GetRootSignature(); }
+        void Initialize(GraphicsCore* dxCommon);
 
         /// @brief ラインをバッチに追加
         /// @param line ライン
@@ -68,38 +64,32 @@ namespace CoreEngine
         /// @brief ラインソースの登録を解除する
         void UnregisterLineSource(class ILineSource* source);
 
+    private:
         /// @brief バッチをフラッシュして描画
         void FlushBatch();
 
         /// @brief バッチをクリア
         void ClearBatch();
 
-        /// @brief 頂点バッファを更新（低レベルAPI - 通常は使用しない）
+        /// @brief 頂点バッファを更新
         /// @param vertices 頂点データ
         void UpdateVertexBuffer(const std::vector<LineVertex>& vertices);
 
-        /// @brief ラインを描画（低レベルAPI - 通常は使用しない）
+        /// @brief ラインを描画
         /// @param cmdList コマンドリスト
         /// @param vertexCount 頂点数
         /// @param startVertexLocation 頂点バッファ内の開始位置（深度あり／なしを分けて描くため）
         void DrawLines(ID3D12GraphicsCommandList* cmdList, uint32_t vertexCount,
             uint32_t startVertexLocation = 0);
 
-        /// @brief WVP行列を設定（低レベルAPI - 通常は使用しない）
+        /// @brief WVP行列を設定
         /// @param view ビュー行列
         /// @param proj プロジェクション行列
         void SetWVPMatrix(const Matrix4x4& view, const Matrix4x4& proj);
 
-        /// @brief GraphicsCoreを取得
-        GraphicsCore* GetGraphicsCore() { return dxCommon_; }
-
-        /// @brief ResourceFactoryを取得
-        ResourceFactory* GetResourceFactory() { return resourceFactory_; }
-
         /// @brief シェーダーリソース名からルートパラメータインデックスを取得
         int GetRootParamIndex(const std::string& resourceName) const;
 
-    private:
         std::unique_ptr<RootSignatureManager> rootSignatureMg_ = std::make_unique<RootSignatureManager>();
         std::unique_ptr<PipelineStateManager> psoMg_ = std::make_unique<PipelineStateManager>();
 
@@ -112,9 +102,7 @@ namespace CoreEngine
         ID3D12PipelineState* pipelineState_ = nullptr;
         BlendMode currentBlendMode_ = BlendMode::kBlendModeNormal;
 
-        // GraphicsCoreとResourceFactory
         GraphicsCore* dxCommon_ = nullptr;
-        ResourceFactory* resourceFactory_ = nullptr;
 
         // カメラ
         const Camera* camera_ = nullptr;

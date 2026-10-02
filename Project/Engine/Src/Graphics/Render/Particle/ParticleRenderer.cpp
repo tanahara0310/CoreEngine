@@ -79,7 +79,7 @@ namespace CoreEngine
         size_t vertexBufferSize = sizeof(VertexData) * particleVertices.size();
 
         // 頂点バッファのリソースを作成
-        vertexBuffer_ = resourceFactory_->CreateBufferResource(device_, vertexBufferSize);
+        vertexBuffer_ = ResourceFactory::CreateBufferResource(device_, vertexBufferSize);
 
         // 頂点バッファにデータをコピー
         VertexData* vertexData = nullptr;

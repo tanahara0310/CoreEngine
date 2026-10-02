@@ -65,9 +65,8 @@ namespace CoreEngine
         vbView_.StrideInBytes = sizeof(LineVertex);
     }
 
-    void LineRendererPipeline::Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory) {
+    void LineRendererPipeline::Initialize(GraphicsCore* dxCommon) {
         dxCommon_ = dxCommon;
-        resourceFactory_ = resourceFactory;
         Initialize(dxCommon->GetDevice());
     }
 

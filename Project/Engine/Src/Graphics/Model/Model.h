@@ -27,7 +27,6 @@
 namespace CoreEngine {
     class Camera;
     class GraphicsCore;
-    class ResourceFactory;
     class LightBase;
     class ICustomShaderProvider;
     class CustomShaderPipeline;

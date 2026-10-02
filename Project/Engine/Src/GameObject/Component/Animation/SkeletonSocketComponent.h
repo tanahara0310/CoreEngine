@@ -28,30 +28,6 @@ public:
         REFLECT_PROPERTY(offsetScale_, "スケール", p.range = Speed(0.01f))
     REFLECT_END()
 
-    // ===== 設定 =====
-
-    /// @brief 追従先を指定する
-    /// @param animator 追従元の `AnimatorComponent`（所有権は持たない。nullptr で解除）
-    /// @param jointName ジョイント名（例: "mixamorig:RightHand"）
-    void Attach(AnimatorComponent* animator, const std::string& jointName) {
-        animator_.Set(animator);
-        jointName_ = jointName;
-    }
-
-    /// @brief ジョイントから見た相対姿勢（ソケットオフセット）を設定する
-    /// @param translate ジョイントローカルでの位置ずらし [m]
-    /// @param rotate    ジョイントローカルでの回転（ラジアン）
-    /// @param scale     スケール
-    void SetOffset(const Vector3& translate, const Vector3& rotate,
-                   const Vector3& scale = { 1.0f, 1.0f, 1.0f }) {
-        offsetTranslate_ = translate;
-        offsetRotate_ = rotate;
-        offsetScale_ = scale;
-    }
-
-    /// @brief 追従が有効か（追従元とジョイント名が揃っているか）
-    bool IsAttached() const { return animator_.Get() != nullptr && !jointName_.empty(); }
-
     // ===== ライフサイクル =====
 
     void Start() override { transform_ = Sibling<TransformComponent>(); }

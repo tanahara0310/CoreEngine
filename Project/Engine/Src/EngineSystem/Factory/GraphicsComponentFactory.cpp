@@ -47,7 +47,6 @@ namespace CoreEngine
     /// @note 所有権は EngineSystem 側（RegisterComponent 済み）。ここが持つのは生ポインタだけ。
     struct GraphicsSetupState {
         GraphicsCore* dx = nullptr;
-        ResourceFactory* resourceFactory = nullptr;
         Render* render = nullptr;
         RenderManager* renderManager = nullptr;
         LineRendererPipeline* lineRenderer = nullptr;
@@ -104,20 +103,15 @@ namespace CoreEngine
         // ──────────────────────────────────────────────────────────
         // この 3 つが揃わないとアセット先読みを始められない。ここへ前倒しすることで、
         // シェーダコンパイル約 6 秒の裏にモデルロードを隠せる。
-        sequence.Add("テクスチャ管理 / リソースファクトリ / モデル管理", [enginePtr, state] {
+        sequence.Add("テクスチャ管理 / モデル管理", [enginePtr, state] {
             // TextureManager の初期化（シングルトン）
             TextureManager::GetInstance().Initialize(state->dx);
-
-            // ResourceFactory の作成（コンストラクタで初期化済み）
-            auto resourceFactory = std::make_unique<ResourceFactory>();
-            state->resourceFactory = resourceFactory.get();
-            enginePtr->RegisterComponent(EngineSystem::FactoryKey{}, std::move(resourceFactory));
 
             // ModelManager の生成。描画依存コンテキスト（SetRenderContext）は
             // 全レンダラーの登録後でないと作れないので、後段の別ステップで行う。
             // リソースのロード自体はここまでで足りる
             auto modelManager = std::make_unique<ModelManager>();
-            modelManager->Initialize(state->dx, state->resourceFactory);
+            modelManager->Initialize(state->dx);
             enginePtr->RegisterComponent(EngineSystem::FactoryKey{}, std::move(modelManager));
 
             // MSDF フォントの所有・共有・キャッシュはここが一元管理する。
@@ -206,46 +200,43 @@ namespace CoreEngine
             state->renderManager->RegisterRenderer(RenderPassType::SkyBox, std::move(skyBoxRenderer));
 
             auto spriteRenderer = std::make_unique<SpriteRenderer>();
-            spriteRenderer->Initialize(state->dx, state->resourceFactory);
+            spriteRenderer->Initialize(state->dx);
             state->renderManager->RegisterRenderer(RenderPassType::Sprite, std::move(spriteRenderer));
 
             // UI パスは最前面・スクリーン固定座標
             auto uiRenderer = std::make_unique<UIRenderer>();
-            uiRenderer->Initialize(state->dx, state->resourceFactory);
+            uiRenderer->Initialize(state->dx);
             state->renderManager->RegisterRenderer(RenderPassType::UI, std::move(uiRenderer));
 
             // MSDF テキストは UI と同じ座標系だが PSO が別なので独立パスにする
             auto textRenderer = std::make_unique<TextRenderer>();
-            textRenderer->Initialize(state->dx, state->resourceFactory);
+            textRenderer->Initialize(state->dx);
             state->renderManager->RegisterRenderer(RenderPassType::UIText, std::move(textRenderer));
 
             // 同じ MSDF フォントをワールド空間へ描くパス。
             // アトラスと距離場は UI 版と共有し、変換と深度の扱いだけが違う
             auto text3DRenderer = std::make_unique<Text3DRenderer>();
-            text3DRenderer->Initialize(state->dx, state->resourceFactory);
+            text3DRenderer->Initialize(state->dx);
             state->renderManager->RegisterRenderer(RenderPassType::Text3D, std::move(text3DRenderer));
         });
 
         sequence.Add("レンダラー: パーティクル", [state] {
             auto particleRenderer = std::make_unique<ParticleRenderer>();
-            particleRenderer->SetResourceFactory(state->resourceFactory);
             particleRenderer->Initialize(state->dx->GetDevice());
             state->renderManager->RegisterRenderer(RenderPassType::Particle, std::move(particleRenderer));
 
             auto modelParticleRenderer = std::make_unique<ModelParticleRenderer>();
-            modelParticleRenderer->SetResourceFactory(state->resourceFactory);
             modelParticleRenderer->Initialize(state->dx->GetDevice());
             state->renderManager->RegisterRenderer(RenderPassType::ModelParticle, std::move(modelParticleRenderer));
 
             auto gpuParticleRenderer = std::make_unique<GpuParticleRenderer>();
-            gpuParticleRenderer->SetResourceFactory(state->resourceFactory);
             gpuParticleRenderer->Initialize(state->dx->GetDevice());
             state->renderManager->RegisterRenderer(RenderPassType::GpuParticle, std::move(gpuParticleRenderer));
         });
 
         sequence.Add("レンダラー: ライン", [state] {
             auto lineRendererPipeline = std::make_unique<LineRendererPipeline>();
-            lineRendererPipeline->Initialize(state->dx, state->resourceFactory);
+            lineRendererPipeline->Initialize(state->dx);
             state->lineRenderer = lineRendererPipeline.get();
             state->renderManager->RegisterRenderer(RenderPassType::Line, std::move(lineRendererPipeline));
 

@@ -31,11 +31,10 @@ namespace CoreEngine
         WaitForPreload();
     }
 
-    void ModelManager::Initialize(GraphicsCore* dxCommon, ResourceFactory* factory)
+    void ModelManager::Initialize(GraphicsCore* dxCommon)
     {
-        assert(dxCommon && factory);
+        assert(dxCommon);
         dxCommon_ = dxCommon;
-        resourceFactory_ = factory;
         customShaderPipelineCache_ = std::make_unique<CustomShaderPipelineCache>();
     }
 
@@ -164,16 +163,6 @@ namespace CoreEngine
         return true;
     }
 
-    void ModelManager::ClearCache()
-    {
-        // 先読み中のリソースをキャッシュから消すと、完了したワーカーが
-        // 消えた後のエントリへ書き戻して迷子になる。先に合流させる
-        WaitForPreload();
-
-        std::lock_guard<std::mutex> lock(cacheMutex_);
-        resourceCache_.clear();
-    }
-
     void ModelManager::ForEachResource(const std::function<void(ModelResource*)>& callback)
     {
         std::lock_guard<std::mutex> lock(cacheMutex_);
@@ -204,7 +193,7 @@ namespace CoreEngine
 
         auto resource = std::make_unique<ModelResource>();
         auto& textureManager = TextureManager::GetInstance();
-        resource->Initialize(dxCommon_, resourceFactory_, &textureManager);
+        resource->Initialize(dxCommon_, &textureManager);
         resource->LoadFromModelData(std::move(modelData), key);
 
         ModelResource* resourcePtr = nullptr;
@@ -256,7 +245,7 @@ namespace CoreEngine
         try {
             resource = std::make_unique<ModelResource>();
             auto& textureManager = TextureManager::GetInstance();
-            resource->Initialize(dxCommon_, resourceFactory_, &textureManager);
+            resource->Initialize(dxCommon_, &textureManager);
             resource->LoadFromFile(directoryPath, filename);
         }
         catch (...) {

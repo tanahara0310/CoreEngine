@@ -38,8 +38,8 @@ namespace CoreEngine
         RenderPassType GetRenderPassType() const override { return RenderPassType::UI; }
         void SetCamera(const Camera* camera) override;
 
-        /// @brief 初期化（GraphicsCore と ResourceFactory 付き）
-        void Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory);
+        /// @brief 初期化（GraphicsCore 付き）
+        void Initialize(GraphicsCore* dxCommon);
 
         /// @brief ルートシグネチャを取得
         ID3D12RootSignature* GetRootSignature() const { return rootSignatureMg_->GetRootSignature(); }
@@ -68,8 +68,6 @@ namespace CoreEngine
         /// @brief GraphicsCore を取得
         GraphicsCore* GetGraphicsCore() { return dxCommon_; }
 
-        /// @brief ResourceFactory を取得
-        ResourceFactory* GetResourceFactory() { return resourceFactory_; }
 
         /// @brief マテリアルデータプールを取得
         std::vector<UIMaterial*>& GetMaterialDataPool() { return materialDataPool_[currentFrameIndex_]; }
@@ -117,9 +115,7 @@ namespace CoreEngine
     private:
         // BaseRenderer から継承したサブシステムを使用（rootSignatureMg_, psoMg_, shaderCompiler_, reflectionBuilder_ は削除）
 
-        // GraphicsCoreとResourceFactory
         GraphicsCore* dxCommon_ = nullptr;
-        ResourceFactory* resourceFactory_ = nullptr;
 
         // 定数バッファプール（フレームごとに分離）
         std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> materialResources_[kFrameCount];
