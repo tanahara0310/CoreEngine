@@ -3,6 +3,7 @@
 
 #include "Math/MathCore.h"
 #include "Utility/CVar/CVar.h"
+#include "Utility/Logger/Logger.h"
 
 #include <algorithm>
 #include <cmath>
@@ -93,7 +94,10 @@ namespace CoreEngine
 
     LightHandle LightManager::CreateLight(LightType type, std::string name)
     {
-        if (GetLightCount(type) >= GetMaxLightCount(type)) {
+        if (!HasRoomFor(type)) {
+            Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Graphics,
+                "ライト「{}」を作れない（{} のライトは {} 個まで）",
+                name, GetLightTypeName(type), GetMaxLightCount(type));
             return {};
         }
 
@@ -139,6 +143,31 @@ namespace CoreEngine
         slot.generation++;  // 世代を進めて既存ハンドル・ポインタを無効化する
         slot.light = Light{};
         return true;
+    }
+
+    bool LightManager::ChangeType(LightHandle handle, LightType type)
+    {
+        Light* const light = GetLight(handle);
+        if (!light) {
+            return false;
+        }
+        if (light->type == type) {
+            return true;
+        }
+        if (!HasRoomFor(type)) {
+            Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Graphics,
+                "ライト「{}」を {} に変えられない（{} のライトは {} 個まで。{} のまま）",
+                light->name, GetLightTypeName(type), GetLightTypeName(type), GetMaxLightCount(type),
+                GetLightTypeName(light->type));
+            return false;
+        }
+        light->type = type;
+        return true;
+    }
+
+    bool LightManager::HasRoomFor(LightType type) const
+    {
+        return GetLightCount(type) < GetMaxLightCount(type);
     }
 
     Light* LightManager::GetLight(LightHandle handle)

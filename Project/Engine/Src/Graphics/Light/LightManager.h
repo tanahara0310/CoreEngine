@@ -54,12 +54,17 @@ namespace CoreEngine
         /// @brief ライトを生成する
         /// @param type ライトの種類
         /// @param name エディタ表示名（空なら "Point 1" のように自動命名）
-        /// @return 生成されたライトのハンドル（種類ごとの最大数を超えた場合は無効ハンドル）
+        /// @return 生成されたライトのハンドル（種類ごとの最大数を超えた場合は警告を出して無効ハンドル）
         LightHandle CreateLight(LightType type, std::string name = {});
 
         /// @brief ライトを破棄する
         /// @return 破棄できた場合 true（無効ハンドル・破棄済みの場合 false）
         bool DestroyLight(LightHandle handle);
+
+        /// @brief ライトの種類を変える
+        /// @return 変えられたら true。無効ハンドルのときと、変える先の種類が最大数に達しているとき
+        ///         （警告を出す）は false で、種類は変わらない
+        bool ChangeType(LightHandle handle, LightType type);
 
         /// @brief ハンドルからライトを取得する
         /// @return ライトへのポインタ（破棄済み・無効ハンドルの場合は nullptr）。
@@ -178,6 +183,9 @@ namespace CoreEngine
             uint16_t generation = 0;
             bool alive = false;
         };
+
+        /// @brief 指定種類のライトをもう 1 灯置けるか
+        bool HasRoomFor(LightType type) const;
 
         /// @brief GetAtmosphereSunLight と同じ選択規則の const 版（透過率の適用先判定に共用）
         const Light* FindAtmosphereSunLight() const;

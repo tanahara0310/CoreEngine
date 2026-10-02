@@ -276,6 +276,14 @@ namespace CoreEngine
             return nullptr;
         }
 
+        // ディレクショナルライトが上限（4 本）なら作らない
+        LightManager* const lightManager = GetLightManager(ctx);
+        if (!lightManager ||
+            lightManager->GetLightCount(LightType::Directional) >=
+                LightManager::GetMaxLightCount(LightType::Directional)) {
+            return nullptr;
+        }
+
         auto owned = std::make_unique<GameObject>();
         owned->SetName("Moon");
         GameObject* const object = ctx.gameObjectManager->AddObject(std::move(owned));
@@ -285,20 +293,18 @@ namespace CoreEngine
         // サイクルが向きを毎フレーム書くので、シーンへ保存しても復元した値は残らない
         object->SetSerializeEnabled(false);
 
-        LightComponent* const component = object->AddComponent<LightComponent>();
+        LightComponent* const component = object->AddComponent<LightComponent>(LightType::Directional);
         if (!component) {
             object->Destroy();
             return nullptr;
         }
 
         Light& light = component->Get();
-        light.type = LightType::Directional;
         light.isAtmosphereMoon = true;
         component->SyncWithManager();
 
         Light* const live = component->GetLight();
         if (!live) {
-            // ディレクショナルライトが上限（4 本）で実体を作れなかった
             object->Destroy();
             return nullptr;
         }

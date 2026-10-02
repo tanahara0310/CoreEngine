@@ -50,16 +50,22 @@ namespace CoreEngine {
             auto owned = std::make_unique<GameObject>();
             owned->SetName("Moon");
             GameObject* const object = objects->AddObject(std::move(owned));
-            LightComponent* const component = object ? object->AddComponent<LightComponent>() : nullptr;
+            LightComponent* const component =
+                object ? object->AddComponent<LightComponent>(LightType::Directional) : nullptr;
             if (!component) {
                 return nullptr;
             }
 
             Light& light = component->Get();
-            light.type = LightType::Directional;
             light.isAtmosphereMoon = true;
             component->SyncWithManager();
-            return component->GetLight();
+
+            Light* const live = component->GetLight();
+            if (!live) {
+                // ディレクショナルライトが上限で実体を作れなかった
+                object->Destroy();
+            }
+            return live;
         }
     }
 

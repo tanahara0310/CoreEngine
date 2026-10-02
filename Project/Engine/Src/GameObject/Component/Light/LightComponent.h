@@ -46,7 +46,12 @@ namespace CoreEngine
                 p.tooltip = "空・雲の明るさ（無次元。太陽の目安 20）。0 で照度から自動換算")
         REFLECT_END()
 
+        /// @brief 点光源として作る
         LightComponent();
+
+        /// @brief 種類を決めて作る（種類ごとの既定値が入る）
+        explicit LightComponent(LightType type);
+
         ~LightComponent() override;
 
         /// @brief ライトの実体を作る（値が流し込まれた後に呼ばれる）
@@ -58,6 +63,10 @@ namespace CoreEngine
         void SyncWithManager();
 
         LightType GetLightType() const { return light_.type; }
+
+        /// @brief 種類を変える
+        /// @note 実体へは次の同期で `LightManager::ChangeType` を通して写す。
+        ///       変える先の種類が最大数に達していれば断られ、実体の種類へ戻る。
         void SetLightType(LightType type) { light_.type = type; }
 
         /// @brief 色（α は使わない）

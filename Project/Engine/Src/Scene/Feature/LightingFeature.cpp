@@ -26,13 +26,13 @@ namespace CoreEngine
         auto owned = std::make_unique<GameObject>();
         owned->SetName(kDefaultSunObjectName);
         GameObject* const object = ctx.gameObjectManager->AddObject(std::move(owned));
-        LightComponent* const component = object ? object->AddComponent<LightComponent>() : nullptr;
+        LightComponent* const component =
+            object ? object->AddComponent<LightComponent>(LightType::Directional) : nullptr;
         if (!component) {
             return;
         }
 
         Light& light = component->Get();
-        light.type = LightType::Directional;
         light.color = { 1.0f, 1.0f, 1.0f };
         // 高度約 40 度・南西向き
         light.direction = CoreEngine::Normalize(Vector3{ -0.45073172f, -0.65011942f, 0.61170721f });
