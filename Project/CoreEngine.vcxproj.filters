@@ -2031,6 +2031,9 @@
     <ClInclude Include="Engine\Src\Collision\CollisionWorld.h">
       <Filter>Engine\Src\Collision</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Physics\PhysicsKey.h">
+      <Filter>Engine\Src\Physics</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Physics\PhysicsWorld.h">
       <Filter>Engine\Src\Physics</Filter>
     </ClInclude>

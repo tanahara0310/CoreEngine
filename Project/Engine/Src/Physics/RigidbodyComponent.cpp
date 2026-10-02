@@ -88,7 +88,7 @@ namespace CoreEngine
         return IsDynamic() ? (1.0f / mass_) : 0.0f;
     }
 
-    void RigidbodyComponent::IntegrateVelocity(const Vector3& gravity, float deltaTime)
+    void RigidbodyComponent::IntegrateVelocity(PhysicsKey, const Vector3& gravity, float deltaTime)
     {
         if (!IsDynamic()) {
             accumulatedForce_ = {};
@@ -107,7 +107,7 @@ namespace CoreEngine
         }
     }
 
-    void RigidbodyComponent::IntegrateAngularVelocity(float deltaTime)
+    void RigidbodyComponent::IntegrateAngularVelocity(PhysicsKey, float deltaTime)
     {
         if (!IsDynamic() || freezeRotation_) {
             accumulatedTorque_ = {};
@@ -124,7 +124,7 @@ namespace CoreEngine
         }
     }
 
-    void RigidbodyComponent::IntegrateRotation(float deltaTime)
+    void RigidbodyComponent::IntegrateRotation(PhysicsKey, float deltaTime)
     {
         if (bodyType_ == BodyType::Static || freezeRotation_) {
             return;
@@ -151,15 +151,15 @@ namespace CoreEngine
         world.QuaternionToEuler();
     }
 
-    void RigidbodyComponent::IntegratePosition(float deltaTime)
+    void RigidbodyComponent::IntegratePosition(PhysicsKey key, float deltaTime)
     {
         if (bodyType_ == BodyType::Static) {
             return;
         }
-        ApplyPositionDelta(velocity_ * deltaTime);
+        ApplyPositionDelta(key, velocity_ * deltaTime);
     }
 
-    void RigidbodyComponent::ApplyPositionDelta(const Vector3& delta)
+    void RigidbodyComponent::ApplyPositionDelta(PhysicsKey, const Vector3& delta)
     {
         if (TransformComponent* const transform = FindTransform()) {
             transform->ApplyWorldDelta(delta);
@@ -190,7 +190,7 @@ namespace CoreEngine
         }
     }
 
-    void RigidbodyComponent::UpdateSleepState(float deltaTime, float linearThreshold,
+    void RigidbodyComponent::UpdateSleepState(PhysicsKey, float deltaTime, float linearThreshold,
                                               float angularThreshold, float timeToSleep)
     {
         if (!IsDynamic() || sleeping_) {

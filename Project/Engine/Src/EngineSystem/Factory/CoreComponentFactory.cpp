@@ -19,14 +19,14 @@ namespace CoreEngine
     {
         auto frameRate = std::make_unique<FrameRateController>();
         frameRate->Initialize(); // 60FPS固定
-        engine.RegisterComponent(std::move(frameRate));
+        engine.RegisterComponent(EngineSystem::FactoryKey{}, std::move(frameRate));
     }
 
     void CoreComponentFactory::SetupInput(EngineSystem& engine)
     {
         auto inputManager = std::make_unique<InputManager>();
         inputManager->Initialize(engine.GetWinApp()->GetInstance(), engine.GetWinApp()->GetHwnd());
-        engine.RegisterComponent(std::move(inputManager));
+        engine.RegisterComponent(EngineSystem::FactoryKey{}, std::move(inputManager));
     }
 
     void CoreComponentFactory::SetupAudio(EngineSystem& engine)
@@ -40,7 +40,7 @@ namespace CoreEngine
         // （SetMasterVolume は待たずに値だけ覚えて初期化完了時に反映する）
         audioSystem->BeginInitializeAsync();
 
-        engine.RegisterComponent(std::move(audioSystem));
+        engine.RegisterComponent(EngineSystem::FactoryKey{}, std::move(audioSystem));
     }
 
     void CoreComponentFactory::SetupLight(EngineSystem& engine)
@@ -55,7 +55,7 @@ namespace CoreEngine
         // デフォルトライトは作成しない（各シーンで個別に作成する）
 
         LightManager* lightManagerPtr = lightManager.get();
-        engine.RegisterComponent(std::move(lightManager));
+        engine.RegisterComponent(EngineSystem::FactoryKey{}, std::move(lightManager));
 
         // Model / SkinnedModel の両レンダラーに LightManager を一括設定
         if (auto* renderManager = engine.GetService<RenderManager>()) {

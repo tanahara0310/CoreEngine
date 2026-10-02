@@ -13,7 +13,7 @@ void FrameRateController::Initialize()
 
     // デルタタイムの初期化
     deltaTime_ = kFixedDeltaTime;
-    Time::Reset();
+    Time::Reset(Time::DriverKey{});
 
     // FPS計測用の初期化
     std::fill(fpsSamples_, fpsSamples_ + kFPSSampleCount, kTargetFPS);
@@ -37,7 +37,7 @@ void FrameRateController::BeginFrame()
         lastFrameTime_ = currentTime;
         // FPS表示は60で固定
         currentFPS_ = kTargetFPS;
-        Time::Advance(deltaTime_);
+        Time::Advance(Time::DriverKey{}, deltaTime_);
         return;
     }
 
@@ -56,7 +56,7 @@ void FrameRateController::BeginFrame()
     }
 
     // 計測結果を Time へ渡す（ゲームロジックはここから読む）
-    Time::Advance(deltaTime_);
+    Time::Advance(Time::DriverKey{}, deltaTime_);
 
     // FPS計測を更新
     UpdateFPSCalculation();

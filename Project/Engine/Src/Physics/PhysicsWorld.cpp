@@ -125,8 +125,8 @@ namespace CoreEngine
             if (body->IsSleeping()) {
                 continue;
             }
-            body->IntegrateVelocity(gravity_, fixedDeltaTime);
-            body->IntegrateAngularVelocity(fixedDeltaTime);
+            body->IntegrateVelocity(PhysicsKey{}, gravity_, fixedDeltaTime);
+            body->IntegrateAngularVelocity(PhysicsKey{}, fixedDeltaTime);
         }
 
         if (collisionWorld_) {
@@ -145,9 +145,9 @@ namespace CoreEngine
                 continue;
             }
             if (!continuousEnabled_ || !IntegrateWithSweep(*body, fixedDeltaTime)) {
-                body->IntegratePosition(fixedDeltaTime);
+                body->IntegratePosition(PhysicsKey{}, fixedDeltaTime);
             }
-            body->IntegrateRotation(fixedDeltaTime);
+            body->IntegrateRotation(PhysicsKey{}, fixedDeltaTime);
         }
 
         solver_.SolvePositions(correctionRate_, penetrationSlop_);
@@ -155,7 +155,7 @@ namespace CoreEngine
         // 止まったものを計算から外す（接している相手が動けば ContactSolver が起こす）
         if (sleepEnabled_) {
             for (RigidbodyComponent* body : bodies_) {
-                body->UpdateSleepState(fixedDeltaTime, sleepLinearThreshold_,
+                body->UpdateSleepState(PhysicsKey{}, fixedDeltaTime, sleepLinearThreshold_,
                     sleepAngularThreshold_, timeToSleep_);
             }
         }
@@ -198,7 +198,7 @@ namespace CoreEngine
 
             // 表面の手前で止める。残ったすき間は次のステップの接触で詰まる
             const float stopDistance = (hit.distance > extent) ? (hit.distance - extent) : 0.0f;
-            body.ApplyPositionDelta(ray.direction * stopDistance);
+            body.ApplyPositionDelta(PhysicsKey{}, ray.direction * stopDistance);
 
             // 面へ食い込む向きの速度を消す
             const Vector3 velocity = body.GetVelocity();

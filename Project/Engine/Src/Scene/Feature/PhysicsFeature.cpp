@@ -157,8 +157,8 @@ namespace CoreEngine
         if (collisionWorld) {
             // 前のフレームに立てた印とぶつかった強さを落としてから、剛体を持つものへ立て直す
             for (Collider* collider : collisionWorld->GetAllColliders()) {
-                collider->SetSimulated(false);
-                collider->ClearImpulse();
+                collider->SetSimulated(PhysicsKey{}, false);
+                collider->ClearImpulse(PhysicsKey{});
             }
         }
 
@@ -170,7 +170,7 @@ namespace CoreEngine
 
                 if (auto* const colliders = owner.GetComponent<ColliderComponent>()) {
                     colliders->ForEachEnabled(
-                        [](Collider& collider) { collider.SetSimulated(true); });
+                        [](Collider& collider) { collider.SetSimulated(PhysicsKey{}, true); });
                 }
             });
 
@@ -182,7 +182,7 @@ namespace CoreEngine
 
                 if (auto* const colliders = owner.GetComponent<ColliderComponent>()) {
                     colliders->ForEachEnabled(
-                        [](Collider& collider) { collider.SetSimulated(true); });
+                        [](Collider& collider) { collider.SetSimulated(PhysicsKey{}, true); });
                 }
             });
 

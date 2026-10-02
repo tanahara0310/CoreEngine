@@ -2,6 +2,7 @@
 
 #include "GameObject/Component/Core/IComponent.h"
 #include "Math/Vector/Vector3.h"
+#include "Physics/PhysicsKey.h"
 #include "Reflection/Reflect.h"
 
 namespace CoreEngine
@@ -122,12 +123,12 @@ public:
     /// @brief 起こす（止まっていた時間も数え直す）
     void WakeUp();
 
-    /// @brief 止まっている時間を数え、続いていれば眠らせる
+    /// @brief 止まっている時間を数え、続いていれば眠らせる（PhysicsWorld が呼ぶ）
     /// @param deltaTime         このステップの秒数
     /// @param linearThreshold   眠ってよい速さ（m/s）
     /// @param angularThreshold  眠ってよい角速度（rad/s）
     /// @param timeToSleep       この秒数だけ止まり続けたら眠る
-    void UpdateSleepState(float deltaTime, float linearThreshold,
+    void UpdateSleepState(PhysicsKey, float deltaTime, float linearThreshold,
                           float angularThreshold, float timeToSleep);
 
     /// @brief ワールド空間の点が持つ速度（並進 ＋ 回転の寄与）
@@ -146,22 +147,22 @@ public:
     /// @note 兄弟のコライダーを見る。コライダーが無ければ半径 0.5 の球として扱う。
     void RefreshInertia();
 
-    // ===== 物理ステップ（PhysicsWorld が呼ぶ） =====
+    // ===== 物理ステップ（PhysicsWorld と ContactSolver が呼ぶ） =====
 
     /// @brief 重力と溜まった力を速度へ積み、抗力を掛ける
-    void IntegrateVelocity(const Vector3& gravity, float deltaTime);
+    void IntegrateVelocity(PhysicsKey, const Vector3& gravity, float deltaTime);
 
     /// @brief 速度の分だけ位置を進める
-    void IntegratePosition(float deltaTime);
+    void IntegratePosition(PhysicsKey key, float deltaTime);
 
     /// @brief ワールド空間で位置をずらす（めり込みの押し戻し）
-    void ApplyPositionDelta(const Vector3& delta);
+    void ApplyPositionDelta(PhysicsKey, const Vector3& delta);
 
     /// @brief 溜まったトルクを角速度へ積む
-    void IntegrateAngularVelocity(float deltaTime);
+    void IntegrateAngularVelocity(PhysicsKey, float deltaTime);
 
     /// @brief 角速度の分だけ向きを回す
-    void IntegrateRotation(float deltaTime);
+    void IntegrateRotation(PhysicsKey, float deltaTime);
 
 private:
     /// @brief 兄弟のトランスフォームを引く（控えが無ければ引き直す）
