@@ -12,6 +12,7 @@
 #include "Editor/Inspector/InspectorRenderer.h"
 #include "Editor/Scene/ComponentEditing.h"
 #include "Editor/Scene/EditorSceneAccess.h"
+#include "Editor/Scene/ObjectEditing.h"
 #include "Editor/Scene/PrefabEditing.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
 #include "GameObject/GameObject.h"
@@ -42,6 +43,9 @@ namespace CoreEngine::Editor::ObjectInspector
 
         /// スクリプトのセクションの末尾のボタン
         constexpr const char* kOpenScriptLabel = "◇ スクリプトを開く";
+
+        /// 名前の入力欄で打ち始める前の名前
+        std::string sNameBeforeEdit;
 
         /// @brief パスからフォルダと拡張子を除いた名前（UTF-8 のまま扱う）
         std::string StemOf(const std::string& path)
@@ -74,7 +78,7 @@ namespace CoreEngine::Editor::ObjectInspector
             ImGui::SameLine();
             bool active = object.IsActive();
             if (ImGui::Checkbox("##active", &active)) {
-                object.SetActive(active);
+                ObjectEditing::SetActive(object, active);
                 changed = true;
             }
             if (ImGui::IsItemHovered()) {
@@ -88,9 +92,17 @@ namespace CoreEngine::Editor::ObjectInspector
             char nameBuf[128];
             const std::string& shownName = object.GetName().empty() ? object.GetSerializeKey() : object.GetName();
             snprintf(nameBuf, sizeof(nameBuf), "%s", shownName.c_str());
+            const std::string nameBeforeInput = object.GetName();
             if (ImGui::InputText("##objName", nameBuf, sizeof(nameBuf))) {
                 object.SetName(nameBuf);
                 changed = true;
+            }
+            // 打っている間は名前をそのまま書き換え、入力欄を離れたときに打ち始める前からの変更を 1 回の操作として積む
+            if (ImGui::IsItemActivated()) {
+                sNameBeforeEdit = nameBeforeInput;
+            }
+            if (ImGui::IsItemDeactivatedAfterEdit()) {
+                ObjectEditing::Rename(object, sNameBeforeEdit, object.GetName());
             }
 
             ImGui::SameLine();
@@ -163,7 +175,7 @@ namespace CoreEngine::Editor::ObjectInspector
             header.menuId = kComponentMenuId;
             const bool open = InspectorLayout::DrawSectionHeader(header, enabledChanged);
             if (enabledChanged) {
-                component.SetEnabled(enabled);
+                ComponentEditing::SetEnabled(object, component, enabled);
                 changed = true;
             }
 
