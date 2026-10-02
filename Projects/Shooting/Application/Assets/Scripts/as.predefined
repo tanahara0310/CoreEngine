@@ -332,6 +332,7 @@ class GameObject {
 	Camera@ get_camera() property;
 	CharacterController@ get_characterController() property;
 	EulerTransform@ get_eulerTransform() property;
+	FishSchool@ get_fishSchool() property;
 	GpuParticleSystem@ get_gpuParticleSystem() property;
 	Light@ get_light() property;
 	Material@ get_material() property;
@@ -340,6 +341,7 @@ class GameObject {
 	PhysicsMaterial@ get_physicsMaterial() property;
 	RectTransform@ get_rectTransform() property;
 	Rigidbody@ get_rigidbody() property;
+	SkeletonSocket@ get_skeletonSocket() property;
 	SkyBox@ get_skyBox() property;
 	SpriteRenderer@ get_spriteRenderer() property;
 	Text3DRenderer@ get_text3DRenderer() property;
@@ -661,6 +663,21 @@ class EulerTransform {
 	Vector3 get_scale() const property;
 	void set_scale(const Vector3&in) property;
 }
+class FishSchool {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	string get_school() const property;
+	void set_school(const string&in) property;
+	float get_swimSpeed() const property;
+	void set_swimSpeed(float) property;
+	float get_drift() const property;
+	void set_drift(float) property;
+	bool get_castShadow() const property;
+	void set_castShadow(bool) property;
+	int get_fishCount() const property;
+}
 class GpuParticleSystem {
 	bool get_exists() const property;
 	bool get_enabled() const property;
@@ -731,6 +748,12 @@ class Material {
 	void set_dithering(bool) property;
 	float get_ditheringScale() const property;
 	void set_ditheringScale(float) property;
+	int get_vertexAnimation() const property;
+	void set_vertexAnimation(int) property;
+	float get_vertexAnimStrength() const property;
+	void set_vertexAnimStrength(float) property;
+	float get_vertexAnimSpeed() const property;
+	void set_vertexAnimSpeed(float) property;
 }
 class MeshRenderer {
 	bool get_exists() const property;
@@ -824,6 +847,20 @@ class Rigidbody {
 	void AddImpulse(const Vector3&in);
 	void AddTorque(const Vector3&in);
 	void WakeUp();
+}
+class SkeletonSocket {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	GameObject@ get_gameObject() const property;
+	string get_jointName() const property;
+	void set_jointName(const string&in) property;
+	Vector3 get_offsetTranslate() const property;
+	void set_offsetTranslate(const Vector3&in) property;
+	Vector3 get_offsetRotate() const property;
+	void set_offsetRotate(const Vector3&in) property;
+	Vector3 get_offsetScale() const property;
+	void set_offsetScale(const Vector3&in) property;
 }
 class SkyBox {
 	bool get_exists() const property;
