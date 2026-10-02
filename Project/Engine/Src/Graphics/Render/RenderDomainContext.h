@@ -21,6 +21,7 @@ namespace CoreEngine
     class WaterCausticsRayTracingManager;
     class WaterSeabedRayTracingManager;
     class FFTOceanManager;
+    class WaterFoamSystem;
     class AtmosphereManager;
     class VolumetricCloudManager;
     class FogManager;
@@ -81,6 +82,7 @@ namespace CoreEngine
         WaterCausticsRayTracingManager* GetWaterCausticsRayTracingManager() { return rtWaterCausticsManager_.get(); }
         WaterSeabedRayTracingManager* GetWaterSeabedRayTracingManager() { return rtWaterSeabedManager_.get(); }
         FFTOceanManager* GetFFTOceanManager() { return fftOceanManager_.get(); }
+        WaterFoamSystem* GetWaterFoamSystem() { return waterFoamSystem_.get(); }
         AtmosphereManager* GetAtmosphereManager() { return atmosphereManager_.get(); }
         VolumetricCloudManager* GetVolumetricCloudManager() { return volumetricCloudManager_.get(); }
         FogManager* GetFogManager() { return fogManager_.get(); }
@@ -117,6 +119,7 @@ namespace CoreEngine
         std::unique_ptr<WaterCausticsRayTracingManager> rtWaterCausticsManager_;
         std::unique_ptr<WaterSeabedRayTracingManager> rtWaterSeabedManager_;
         std::unique_ptr<FFTOceanManager> fftOceanManager_;
+        std::unique_ptr<WaterFoamSystem> waterFoamSystem_;
         std::unique_ptr<AtmosphereManager> atmosphereManager_;
         std::unique_ptr<VolumetricCloudManager> volumetricCloudManager_;
         std::unique_ptr<FogManager> fogManager_;

@@ -64,6 +64,10 @@ Texture2D<float> gWaterSunVisibility : register(t26);
 // gSeabedEnabled が 1 のフレームだけ読む。
 Texture2D<float> gWaterSeabedHeight : register(t27);
 
+// ===== 岸の泡（WaterShoreFoamPass の出力。(被覆率, 寄せ・引きのずれ x, z, 0)）=====
+// gShoreFoamEnabled が 1 のフレームだけ読む。
+Texture2D<float4> gWaterShoreFoam : register(t28);
+
 /// @brief 影の中に残す直接光の割合（DeferredLighting・水中コースティクスの影と同じ値）
 static const float kShadowedSunFloor = 0.3f;
 
@@ -391,14 +395,15 @@ WaterPixelOutput main(WaterPSInput input)
     // 高周波パターンへのしきい値カット（ComputeFoamLace）でレース状に変換する:
     //   lace ＝ 水面の上の白い泡そのもの（縁が鋭いレース・筋・粒）
     //   haze ＝ レースの穴の間と縁の外側の水面下の気泡（白濁。パターンで粒状に変調し霧化を防ぐ）
-    // 泡マスク・泡パターンはどちらも参照格子座標で評価する。
-    // マスクは FFT ヤコビアン／蓄積泡テクスチャの読み出しなので x0 が必須。
-    // パターン（dissolve のしきい値場）も x0 に揃えることで、泡の模様が泡の塊と
-    // 一緒に運ばれる（実際の泡は水に乗って運ばれるので、こちらが正しい）。
-    const float foamMask = max(
-        ComputeFoamMask(input.baseWorldXZ),
-        ComputeShoreFoamMask(ResolveShoreFoamDepth(input.worldPosition, waterColumnResult.viewRayVerticalDepth)));
-    const WaterFoamLayer foamLayer = EvaluateFoamLayer(foamMask, input.baseWorldXZ);
+    // 白波の泡のマスクと模様は FFT の参照格子座標（x0）で評価し、泡の模様を泡の塊と一緒に運ぶ。
+    // 岸の泡は水の粒の静止位置で読み、模様もそこで評価する。
+    const float whitecapFoam = ComputeFoamMask(input.baseWorldXZ);
+    const ShoreFoamResult shoreFoam = ResolveShoreFoam(input.worldPosition, waterColumnResult.viewRayVerticalDepth);
+    const float foamMask = max(whitecapFoam, shoreFoam.coverage);
+    // 岸の泡が占める分だけ、模様を水の粒の静止位置で評価する（模様が寄せ・引きと一緒に動く）
+    const float shoreFoamShare = shoreFoam.coverage / max(foamMask, 0.05f);
+    const float2 foamPatternXZ = input.baseWorldXZ + shoreFoam.patternShift * shoreFoamShare;
+    const WaterFoamLayer foamLayer = EvaluateFoamLayer(foamMask, foamPatternXZ);
     // 水面の上の泡の割合。拡散層でフレネル反射を持たないので、反射・サングリッター・
     // 波頭の透過光をこの割合だけ遮る
     const float surfaceFoam = foamLayer.lace * saturate(gFoamOpacity);
@@ -410,7 +415,7 @@ WaterPixelOutput main(WaterPSInput input)
     float3 foamColor = float3(0.0f, 0.0f, 0.0f);
     if (foamMask > 0.0f)
     {
-        foamColor = ComputeFoamColor(surfaceNormal, sunDiffuseVisibility) * FoamGrain(input.baseWorldXZ);
+        foamColor = ComputeFoamColor(surfaceNormal, sunDiffuseVisibility) * FoamGrain(foamPatternXZ);
     }
 
     float3 refractionColor = ResolveWaterTransmissionColor(pixelCoord, screenUV);

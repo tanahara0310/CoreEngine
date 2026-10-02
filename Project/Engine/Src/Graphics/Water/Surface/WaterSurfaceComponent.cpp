@@ -167,6 +167,7 @@ namespace CoreEngine
         frameCB_.seabedOriginXZ[0] = binding.seabedOriginXZ[0];
         frameCB_.seabedOriginXZ[1] = binding.seabedOriginXZ[1];
         frameCB_.seabedInvSize = (binding.seabedSize > 0.0f) ? 1.0f / binding.seabedSize : 0.0f;
+        frameCB_.shoreFoamEnabled = (frameCB_.seabedEnabled != 0 && renderResources_.HasShoreFoam()) ? 1 : 0;
         frameCB_.skyAmbientScale = binding.skyAmbientScale;
         for (int c = 0; c < 3; ++c) {
             frameCB_.fftCascadeMeanSquareSlope[c] = binding.fftCascadeMeanSquareSlope[c];

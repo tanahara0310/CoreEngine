@@ -15,6 +15,10 @@ namespace CoreEngine
         return seabedHeightSRV.ptr != 0;
     }
 
+    bool WaterRenderResources::HasShoreFoam() const {
+        return shoreFoamSRV.ptr != 0;
+    }
+
     bool WaterRenderResources::HasSceneDepth() const {
         return sceneDepthSRV.ptr != 0;
     }

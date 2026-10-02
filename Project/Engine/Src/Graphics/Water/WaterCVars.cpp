@@ -55,7 +55,7 @@ namespace CoreEngine
 
         // ---- 泡（whitecap）----
         // 既定値は WaterFoamDefaults を参照する（WaterFrameConstants /
-        // FoamSettings / FoamConstants と同じ定数）。以前はここだけ旧 Water.json の
+        // WaterFoamSystem::Settings / WhitecapConstants と同じ定数）。以前はここだけ旧 Water.json の
         // 調整値（Bias 0.806 / DecaySeconds 3.07）が残り、他 3 か所と食い違っていた。
         CVar<bool> FoamEnabled{ "r.Water.Foam.Enabled", WaterFoamDefaults::kEnabled,
             "泡（whitecap / 岸際泡）を有効にする（FFTOcean 専用）" };

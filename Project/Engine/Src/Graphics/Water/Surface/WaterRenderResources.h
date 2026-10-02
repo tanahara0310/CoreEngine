@@ -34,6 +34,9 @@ namespace CoreEngine
         // ---- 海底の高さ（カメラの周りの範囲。R32_FLOAT のワールド Y）----
         D3D12_GPU_DESCRIPTOR_HANDLE seabedHeightSRV = { 0 };
 
+        // ---- 岸の泡（海底の高さと同じ範囲。(被覆率, 寄せ・引きのずれ x, z, 0)）----
+        D3D12_GPU_DESCRIPTOR_HANDLE shoreFoamSRV = { 0 };
+
         /// @brief 反射テクスチャが接続済みか返す
         bool HasReflectionTexture() const;
 
@@ -42,6 +45,9 @@ namespace CoreEngine
 
         /// @brief 海底の高さテクスチャが接続済みか返す
         bool HasSeabedHeight() const;
+
+        /// @brief 岸の泡テクスチャが接続済みか返す
+        bool HasShoreFoam() const;
 
         /// @brief シーン深度テクスチャが接続済みか返す
         bool HasSceneDepth() const;

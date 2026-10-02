@@ -25,6 +25,7 @@ namespace CoreEngine::WaterBind
         gSkyEnvironmentMap,
         gWaterSunVisibility,
         gWaterSeabedHeight,
+        gWaterShoreFoam,
         Count
     };
 
@@ -67,6 +68,9 @@ namespace CoreEngine::WaterBind
 
         // 海底の高さ（カメラの周りの範囲を RT で真上から測ったもの）
         { "gWaterSeabedHeight",      kSRV, kCond },
+
+        // 岸の泡（WaterShoreFoamPass の出力。海底の高さと同じ範囲）
+        { "gWaterShoreFoam",         kSRV, kCond },
     };
 
     static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");

@@ -77,6 +77,10 @@ cbuffer WaterFrameConstants : register(b5)
     float2 gSeabedOriginXZ; // 範囲の XZ の最小の角 [m]
     float gSeabedInvSize;   // 範囲の一辺の長さの逆数 [1/m]
     int gSeabedEnabled;     // 1 = 範囲の中の岸の泡の水深を海底の高さから求める
+
+    // ---- 岸の泡（WaterShoreFoamPass が進めたもの。gWaterShoreFoam・範囲は海底の高さと同じ）----
+    int gShoreFoamEnabled;  // 1 = 範囲の中の岸の泡を gWaterShoreFoam から読む
+    float3 gShoreFoamPad;
 };
 
 #endif // WATER_FRAME_CONSTANTS_INCLUDED

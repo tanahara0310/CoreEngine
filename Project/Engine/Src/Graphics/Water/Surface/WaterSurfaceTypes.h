@@ -114,7 +114,7 @@ struct WaterFrameConstants {
 	// 1 = 水面の日向率テクスチャ（RT 反射パスの 2 枚目の出力）をメインライトの項へ掛ける
 	int sunVisibilityEnabled = 0;
 	// ---- 泡（whitecap）。FFTOcean 専用（Gerstner はヤコビアンを持たないため無効）----
-	// 既定値は WaterFoamDefaults が唯一の情報源。CVar / FoamSettings / FoamConstants と
+	// 既定値は WaterFoamDefaults が唯一の情報源。CVar / WaterFoamSystem::Settings / WhitecapConstants と
 	// 同じ定数を参照するので、片側だけ直して割れることが構造上ない。
 	// 各パラメータの意味と較正根拠は WaterFoamDefaults.h を参照。
 	int foamEnabled = CoreEngine::WaterFoamDefaults::kEnabled ? 1 : 0;
@@ -127,7 +127,7 @@ struct WaterFrameConstants {
 		CoreEngine::WaterFoamDefaults::kCascadeWeights[2],
 	};
 	// 泡の寿命 τ [s]。PS 未使用だが実行時の値の単一情報源としてここに持ち、
-	// WaterRenderFeature が毎フレーム FFTOceanManager::SetFoamSettings へ転送する
+	// WaterRenderFeature が毎フレーム WaterFoamSystem::SetSettings へ渡す
 	float foamDecaySeconds = CoreEngine::WaterFoamDefaults::kDecaySeconds;
 	// ---- 見えない細かい波のラフネス換算 ----
 	// FFT カスケードごとの平均二乗傾斜（x・z の傾きの二乗和の平均。FFTOceanManager が求める）
@@ -137,14 +137,17 @@ struct WaterFrameConstants {
 	float seabedOriginXZ[2] = { 0.0f, 0.0f }; // 範囲の XZ の最小の角 [m]
 	float seabedInvSize = 0.0f;                // 範囲の一辺の長さの逆数 [1/m]
 	int seabedEnabled = 0;                     // 1 = 範囲の中の岸の泡の水深を海底の高さから求める
+	// ---- 岸の泡（WaterShoreFoamPass が進めたもの。gWaterShoreFoam・範囲は海底の高さと同じ）----
+	int shoreFoamEnabled = 0;                  // 1 = 範囲の中の岸の泡を gWaterShoreFoam から読む
+	float shoreFoamPad[3] = { 0.0f, 0.0f, 0.0f };
 };
 
-// 全 31 フィールドのオフセットを HLSL packing 規則から機械的に導出して検証する。
+// 全 33 フィールドのオフセットを HLSL packing 規則から機械的に導出して検証する。
 // ずれると水柱厚さ・光学係数が別のフィールドを読み、波打ち際の段差として現れる
 // （RTシャドウの cbuffer 配列ずれ事故と同型）。
 // 以前はここに「absorptionCoeff は 16B 境界」「cameraNearZ は 80」といった個別 assert を
 // 人手で並べていたが、下の表が全フィールドを検査するので不要になった。
-static_assert(sizeof(WaterFrameConstants) == 160, "WaterFrameConstants size mismatch with HLSL cbuffer");
+static_assert(sizeof(WaterFrameConstants) == 176, "WaterFrameConstants size mismatch with HLSL cbuffer");
 static constexpr Cb::Field kWaterFrameConstantsFields[] = {
     CB_FIELD(WaterFrameConstants, reflectionEnabled), CB_FIELD(WaterFrameConstants, fresnelReflectanceScale),
     CB_FIELD(WaterFrameConstants, fresnelBaseReflectance), CB_FIELD(WaterFrameConstants, depthFadeEnabled),
@@ -164,6 +167,7 @@ static constexpr Cb::Field kWaterFrameConstantsFields[] = {
     CB_FIELD(WaterFrameConstants, fftCascadeMeanSquareSlopePad),
     CB_FIELD(WaterFrameConstants, seabedOriginXZ), CB_FIELD(WaterFrameConstants, seabedInvSize),
     CB_FIELD(WaterFrameConstants, seabedEnabled),
+    CB_FIELD(WaterFrameConstants, shoreFoamEnabled), CB_FIELD(WaterFrameConstants, shoreFoamPad),
 };
 CB_VERIFY_LAYOUT(WaterFrameConstants, kWaterFrameConstantsFields);
 CB_BIND_HLSL(WaterFrameConstants, kWaterFrameConstantsFields, "WaterFrameConstants");

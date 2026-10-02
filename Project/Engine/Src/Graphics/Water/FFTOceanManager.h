@@ -7,7 +7,6 @@
 #include "Graphics/Water/FFTOceanDebugProbe.h"
 #include "Graphics/Water/FFTOceanGpuResources.h"
 #include "Graphics/Water/FFTOceanSpectrumBuilder.h"
-#include "Graphics/Water/WaterFoamDefaults.h"
 
 #include <array>
 #include <cstddef>
@@ -57,23 +56,6 @@ namespace CoreEngine
             float swellSpreadExponent = 24.0f; ///< 指向の鋭さ（大きいほど一方向）
         };
 
-        /// @brief 泡（whitecap）蓄積パスの設定
-        /// @details 実行時の値の単一情報源は WaterFrameConstants（UI / 永続化も同経路）。
-        ///          WaterRenderFeature が毎フレーム SetFoamSettings で転送する。
-        ///          転送前に読まれることは無いが、既定値は WaterFoamDefaults を参照して
-        ///          他段（CVar / WaterFrameConstants / FoamConstants）と割れないようにする。
-        struct FoamSettings {
-            bool enabled = WaterFoamDefaults::kEnabled;
-            float bias = WaterFoamDefaults::kBias;
-            float gain = WaterFoamDefaults::kGain;
-            float cascadeWeights[3] = {
-                WaterFoamDefaults::kCascadeWeights[0],
-                WaterFoamDefaults::kCascadeWeights[1],
-                WaterFoamDefaults::kCascadeWeights[2],
-            };
-            float decaySeconds = WaterFoamDefaults::kDecaySeconds;
-        };
-
         /// @brief 必要なGPUリソースとComputeパイプラインを初期化する
         bool Initialize(GraphicsCore* dxCommon, DescriptorAllocator* descriptorAllocator);
 
@@ -87,9 +69,6 @@ namespace CoreEngine
 
         /// @brief シミュレーション設定を更新し、必要に応じてスペクトルを再構築する
         void SetSettings(const Settings& settings);
-
-        /// @brief 泡蓄積パスの設定を更新する（毎フレーム呼んでよい。無効→有効でリセット）
-        void SetFoamSettings(const FoamSettings& settings);
 
         /// @brief 初期化済みかどうかを返す
         /// @return 初期化済みの場合 true
@@ -107,14 +86,8 @@ namespace CoreEngine
         /// @return ヤコビアンSRVのGPUディスクリプタハンドル
         D3D12_GPU_DESCRIPTOR_HANDLE GetJacobianSRVHandle() const { return jacobianMap_.srv.gpuHandle; }
 
-        /// @brief 蓄積泡テクスチャのSRVハンドルを返す
-        /// @details ping-pong の「直近で書き終わった側」= (foamFrameIndex_ + 1) & 1。
-        ///          フレーム内の呼び出し順は 結線(PostLogic) → 泡Dispatch(描画記録) なので、
-        ///          この式は常に「今フレームの書き込み先ではない方」を指し、
-        ///          読み書きハザードが起きない。
-        D3D12_GPU_DESCRIPTOR_HANDLE GetFoamSRVHandle() const {
-            return foam_[(foamFrameIndex_ + 1u) & 1u].srv.gpuHandle;
-        }
+        /// @brief スペクトルの版（波面を作り直すたびに増える）
+        uint32_t GetSpectrumRevision() const { return spectrumRevision_; }
 
         /// @brief 現在のシミュレーション設定を返す
         /// @return 設定参照
@@ -172,23 +145,6 @@ namespace CoreEngine
             float normalizationScale = 1.0f;
         };
 
-        /// @brief 泡蓄積パスの定数（HLSL 側 FFTOceanFoamAccumulate.CS.hlsl と一致必須）
-        /// @note 既定値は WaterFoamDefaults 参照（Dispatch 時に FoamSettings で上書きされる）
-        struct FoamConstants {
-            uint32_t resolution = 0;
-            float deltaSeconds = 0.0f;
-            float foamBias = WaterFoamDefaults::kBias;
-            float foamGain = WaterFoamDefaults::kGain;
-            float cascadeWeights[3] = {
-                WaterFoamDefaults::kCascadeWeights[0],
-                WaterFoamDefaults::kCascadeWeights[1],
-                WaterFoamDefaults::kCascadeWeights[2],
-            };
-            float decaySeconds = WaterFoamDefaults::kDecaySeconds;
-            uint32_t resetFoam = 0;
-            float padding[3] = {};
-        };
-
         // GPU へそのまま転送する構造体のレイアウト検証（HLSL 側との一致は目視だが、
         // C++ 側の不用意なフィールド追加・並び替えはここで検出する。
         // RTシャドウの cbuffer 配列ずれ事故と同型の予防）。
@@ -196,8 +152,6 @@ namespace CoreEngine
             "SpectrumSample must be 40 bytes (StructuredBuffer stride in FFTOceanTimeEvolution.CS.hlsl)");
         static_assert(sizeof(SimulationConstants) == 32,
             "SimulationConstants layout mismatch with FFTOceanSimulationConstants cbuffer");
-        static_assert(sizeof(FoamConstants) == 48,
-            "FoamConstants layout mismatch with FFTOceanFoamAccumulate.CS.hlsl cbuffer");
 
         static constexpr Cb::Field kSpectrumSampleFields[] = {
             CB_FIELD(SpectrumSample, h0), CB_FIELD(SpectrumSample, h0Minus), CB_FIELD(SpectrumSample, waveVector),
@@ -222,15 +176,6 @@ namespace CoreEngine
         CB_VERIFY_LAYOUT(IFFTConstants, kIFFTConstantsFields);
         CB_BIND_HLSL(IFFTConstants, kIFFTConstantsFields, "FFTOceanIFFTConstants");
 
-        static constexpr Cb::Field kFoamConstantsFields[] = {
-            CB_FIELD(FoamConstants, resolution), CB_FIELD(FoamConstants, deltaSeconds),
-            CB_FIELD(FoamConstants, foamBias), CB_FIELD(FoamConstants, foamGain),
-            CB_FIELD(FoamConstants, cascadeWeights), CB_FIELD(FoamConstants, decaySeconds),
-            CB_FIELD(FoamConstants, resetFoam), CB_FIELD(FoamConstants, padding),
-        };
-        CB_VERIFY_LAYOUT(FoamConstants, kFoamConstantsFields);
-        CB_BIND_HLSL(FoamConstants, kFoamConstantsFields, "FFTOceanFoamConstants");
-
         /// @brief 時間発展パス用Compute Shaderのパスを提供する
         struct TimeEvolutionShaderProvider final : ICustomShaderProvider {
             /// @brief 時間発展CSのファイルパスを返す
@@ -249,23 +194,11 @@ namespace CoreEngine
             std::wstring GetComputeShaderPath() const override { return L"FFTOceanFinalize.CS.hlsl"; }
         };
 
-        /// @brief 泡蓄積パス用Compute Shaderのパスを提供する
-        struct FoamAccumulateShaderProvider final : ICustomShaderProvider {
-            /// @brief 泡蓄積CSのファイルパスを返す
-            std::wstring GetComputeShaderPath() const override { return L"FFTOceanFoamAccumulate.CS.hlsl"; }
-        };
-
         /// @brief Computeパイプライン群を作成する
         bool CreatePipelines();
 
         /// @brief 最終出力テクスチャ(変位/法線/ヤコビアン)を作成する
         bool CreateOutputTextures();
-
-        /// @brief 泡蓄積用の ping-pong テクスチャと定数バッファを作成する
-        bool CreateFoamResources();
-
-        /// @brief 泡の蓄積・減衰パスをDispatchする（Finalize 完了後・SRV遷移後に呼ぶ）
-        void DispatchFoamPass(ID3D12GraphicsCommandList* cmdList, float timeSeconds);
 
         /// @brief 初期スペクトル格納用バッファを作成する
         bool CreateSpectrumBuffer();
@@ -323,13 +256,12 @@ namespace CoreEngine
         CustomShaderPipeline evolutionPipeline_{};
         CustomShaderPipeline ifftPipeline_{};
         CustomShaderPipeline finalizePipeline_{};
-        CustomShaderPipeline foamPipeline_{};
         TimeEvolutionShaderProvider timeEvolutionShaderProvider_{};
         IFFTShaderProvider ifftShaderProvider_{};
         FinalizeShaderProvider finalizeShaderProvider_{};
-        FoamAccumulateShaderProvider foamShaderProvider_{};
         Settings settings_{};
-        FoamSettings foamSettings_{};
+        /// @brief スペクトルの版（SetSettings で波面を作り直すたびに増やす）
+        uint32_t spectrumRevision_ = 0;
         bool isInitialized_ = false;
         // 最後に Dispatch へ渡されたシミュレーション時刻。SetSettings がスペクトル
         // 再構築時に時刻を引き継ぐために使う（マップ済み UPLOAD からの読み戻し禁止）。
@@ -342,19 +274,6 @@ namespace CoreEngine
             DescriptorHandle srv{};
             std::array<DescriptorHandle, kCascadeCount> sliceUav{};
         };
-
-        // ──────────────────────────────────────────────────────────
-        // 泡蓄積の ping-pong テクスチャ・定数・状態
-        // ──────────────────────────────────────────────────────────
-        // 書き込み先 = foamFrameIndex_ & 1（フレームカウンタの純粋関数。TAA の規約に合わせ、
-        // トグル変数を持たない）。SRV/UAV とも全スライスを 1 ビューで見せる。
-        FFTOceanPingPong foam_{};
-        Microsoft::WRL::ComPtr<ID3D12Resource> foamConstantsBuffer_;
-        uint8_t* mappedFoamConstants_ = nullptr;
-        uint32_t foamFrameIndex_ = 0;
-        // 生成直後・スペクトル再構築後・無効→有効の遷移で 1 フレームだけ前回値を捨てる
-        bool foamResetPending_ = true;
-        float foamPreviousTimeSeconds_ = 0.0f;
 
         // ──────────────────────────────────────────────────────────
         // 最終出力テクスチャ（変位 / 法線 / ヤコビアン）
