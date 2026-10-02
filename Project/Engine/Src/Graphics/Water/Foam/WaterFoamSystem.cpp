@@ -390,13 +390,12 @@ namespace CoreEngine
         // 無効の間はパスを飛ばす（水面のシェーダーも gFoamEnabled = 0 で読まない）
         if (!settings_.enabled) {
             whitecapPreviousTimeSeconds_ = timeSeconds;
-            whitecapDeltaSeconds_ = 0.0f;
             return;
         }
 
         const float deltaSeconds = ComputeDeltaSeconds(timeSeconds, whitecapPreviousTimeSeconds_);
         whitecapPreviousTimeSeconds_ = timeSeconds;
-        whitecapDeltaSeconds_ = deltaSeconds;
+        whitecapElapsedSeconds_ += deltaSeconds;
 
         WhitecapConstants& constants = *mappedWhitecapConstants_;
         constants.resolution = fftResolution_;
@@ -497,6 +496,9 @@ namespace CoreEngine
 
     void WaterFoamSystem::UpdateWhitecapCalibration()
     {
+        const float elapsedSeconds = whitecapElapsedSeconds_;
+        whitecapElapsedSeconds_ = 0.0f;
+
         const float target = GetTargetWhitecapCoverage();
         if (target < kMinTargetCoverage) {
             whitecapBias_ = kNoWhitecapBias;
@@ -505,11 +507,11 @@ namespace CoreEngine
         }
 
         // 測った被覆率を目標へ寄せる（シミュレーション時間が止まっている間は学ばない）
-        if (whitecapCalibrated_ && whitecapDeltaSeconds_ > 0.0f) {
+        if (whitecapCalibrated_ && elapsedSeconds > 0.0f) {
             const float measured = (std::max)(measuredWhitecapCoverage_, kMinTargetCoverage);
             const float error = (std::clamp)(std::log(target) - std::log(measured), -kMaxCalibrationError, kMaxCalibrationError);
             logBreakingRatio_ = (std::clamp)(
-                logBreakingRatio_ + kCalibrationRate * whitecapDeltaSeconds_ * error,
+                logBreakingRatio_ + kCalibrationRate * elapsedSeconds * error,
                 std::log(kMinBreakingRatio), std::log(kMaxBreakingRatio));
         }
 
@@ -524,7 +526,7 @@ namespace CoreEngine
             whitecapGain_ = gain;
             whitecapCalibrated_ = true;
         } else {
-            const float blend = 1.0f - std::exp(-whitecapDeltaSeconds_ / kThresholdSmoothingSeconds);
+            const float blend = 1.0f - std::exp(-elapsedSeconds / kThresholdSmoothingSeconds);
             whitecapBias_ += (bias - whitecapBias_) * blend;
             whitecapGain_ += (gain - whitecapGain_) * blend;
         }
@@ -551,6 +553,10 @@ namespace CoreEngine
         if (!settings_.enabled) {
             return;
         }
+        if (++statisticsFrameCounter_ < kStatisticsFrameInterval) {
+            return;
+        }
+        statisticsFrameCounter_ = 0;
 
         StatisticsConstants& constants = *mappedStatisticsConstants_;
         constexpr float kSampleExtent = kStatisticsSampleSpacing * static_cast<float>(kStatisticsSampleResolution);

@@ -86,8 +86,8 @@ namespace CoreEngine
 
         /// @brief 沖の白波の統計（合成ヤコビアンのヒストグラムと白波の被覆率の平均）を測る
         /// @details 同じフレームの枠で前に記録した測定（GPU の処理が済んだもの）を読み、
-        ///          白波の被覆率の平均が目標になるようにしきい値を合わせ直してから、今の分を記録する。
-        ///          DispatchWhitecap の後に呼ぶ
+        ///          白波の被覆率の平均が目標になるようにしきい値を合わせ直す。
+        ///          測定の記録は kStatisticsFrameInterval フレームに 1 回。DispatchWhitecap の後に呼ぶ
         /// @param frameIndex フレームの枠の番号（FrameSync::FrameIndex）
         void DispatchWhitecapStatistics(
             ID3D12GraphicsCommandList* cmdList,
@@ -204,8 +204,10 @@ namespace CoreEngine
         static constexpr uint32_t kStatisticsWords = kHistogramBins + 1;
         /// @brief 被覆率の和の整数の倍率（WaterWhitecapStatistics.CS.hlsl と同じ値）
         static constexpr float kCoverageFixedPointScale = 16384.0f;
+        /// @brief 統計を測る間隔 [フレーム]
+        static constexpr uint32_t kStatisticsFrameInterval = 4;
         /// @brief 測った被覆率をログへ出す間隔（読み戻しの回数）
-        static constexpr uint32_t kStatisticsLogInterval = 600;
+        static constexpr uint32_t kStatisticsLogInterval = 150;
 
         // ---- 白波のしきい値の較正 ----
         /// @brief Monahan の観測式 W = kMonahanCoefficient·U^kMonahanExponent
@@ -352,6 +354,7 @@ namespace CoreEngine
         /// @brief 最後に読み戻した合成ヤコビアンのヒストグラム
         std::vector<uint32_t> whitecapHistogram_;
         float measuredWhitecapCoverage_ = 0.0f;
+        uint32_t statisticsFrameCounter_ = 0;
         uint32_t statisticsLogCounter_ = 0;
 
         // ---- 白波のしきい値の較正 ----
@@ -363,8 +366,8 @@ namespace CoreEngine
         bool whitecapCalibrated_ = false;
         /// @brief 白波の蓄積と較正をやり直した回数（やり直す前に記録した統計は使わない）
         uint32_t calibrationEpoch_ = 0;
-        /// @brief このフレームで白波が進んだシミュレーション時間 [s]（止まっている間は 0）
-        float whitecapDeltaSeconds_ = 0.0f;
+        /// @brief 前にしきい値を求めてから白波が進んだシミュレーション時間 [s]
+        float whitecapElapsedSeconds_ = 0.0f;
 
         // ---- 岸の泡（カメラの周りの範囲。水の粒の静止位置ごと）----
         CustomShaderPipeline shorePipeline_{};
