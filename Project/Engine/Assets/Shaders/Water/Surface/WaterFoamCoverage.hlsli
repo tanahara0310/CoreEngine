@@ -10,10 +10,11 @@
 //
 // 【include 位置の契約】Water.PS.hlsl のリソース宣言・WaterFrameConstants(b5) の後で
 // include すること。以下に暗黙依存:
-//   資源    : gFFTOceanJacobian / gFFTOceanFoam / gSampler / gWaterSeabedHeight / gLinearClamp
+//   資源    : gFFTOceanJacobian / gFFTOceanFoam / gSampler / gWaterSeabedHeight /
+//             gWaterShoreFoam / gLinearClamp
 //   cbuffer : gFoamEnabled / gFoamBias / gFoamGain / gFoamCascadeWeights /
 //             gFoamWindCoverageScale / gUseFFTOceanNormalMap /
-//             gSeabedEnabled / gSeabedOriginXZ / gSeabedInvSize
+//             gSeabedEnabled / gSeabedOriginXZ / gSeabedInvSize / gShoreFoamEnabled
 //   関数    : ComputeFFTCombinedDetJ / ComputeFFTCascadeUV / ComputeFFTWaveGroupEnvelope
 //             （Common/FFTOceanCascade.hlsli）
 // ============================================================
@@ -25,8 +26,7 @@
 static const float kFoamEnvelopeScale = 0.7f;
 
 // ---- 岸際泡（shore foam）----
-// 泡帯が消える水深 [m]（水面の点の真下の鉛直水深）。水深は波の変位を含むため、
-// 波が寄せる/引くのに合わせて帯が自然に脈動する
+// 範囲の外で泡帯が消える水深 [m]（水面の点の真下の鉛直水深）
 static const float kShoreFoamDepthMeters = 0.6f;
 // 汀線エッジ（この水深以浅）は被覆率満量＝ほぼ連続した白いシートになる
 static const float kShoreFoamEdgeMeters = 0.15f;
@@ -105,10 +105,9 @@ float ResolveShoreFoamDepth(float3 surfacePosition, float fallbackDepth)
     return lerp(fallbackDepth, surfacePosition.y - seabedY, inside);
 }
 
-/// @brief 岸際泡（shore foam）の被覆率 [0,1] を求める
+/// @brief 水深だけで決める岸際泡（shore foam）の被覆率 [0,1]（岸の泡を進める範囲の外で使う）
 /// @param verticalDepth 水面の点の真下の鉛直水深 [m]（ResolveShoreFoamDepth）
-/// @details 水深は波の変位を含むため、波の寄せ引きで帯が自然に脈動する。
-///          2 段構造: 汀線エッジ（〜0.15m）は被覆率満量＝連続した白いシート、
+/// @details 2 段構造: 汀線エッジ（〜0.15m）は被覆率満量＝連続した白いシート、
 ///          外側（〜0.6m）は被覆率 0.9→0 のフェード＝dissolve でレース状に割れる。
 float ComputeShoreFoamMask(float verticalDepth)
 {
@@ -123,6 +122,66 @@ float ComputeShoreFoamMask(float verticalDepth)
     const float edge = 1.0f - smoothstep(0.0f, kShoreFoamEdgeMeters, verticalDepth);
 
     return max(band * kShoreFoamStrength, edge);
+}
+
+/// @brief 岸の泡の被覆率と、模様を評価する位置へのずれ
+struct ShoreFoamResult
+{
+    float coverage;      ///< 被覆率 [0,1]
+    float2 patternShift; ///< 模様を評価する位置へ足すずれ [m]（今の位置 → 水の粒の静止位置）
+};
+
+/// @brief 岸の泡の状態（被覆率, 寄せ・引きのずれ x, z）を読む
+float3 SampleShoreFoamState(float2 worldXZ)
+{
+    return gWaterShoreFoam.SampleLevel(gLinearClamp, (worldXZ - gSeabedOriginXZ) * gSeabedInvSize, 0.0f).xyz;
+}
+
+/// @brief 岸の泡の被覆率を求める
+/// @param surfacePosition 水面の点（頂点変位後のワールド座標）
+/// @param fallbackDepth   範囲の外で使う水深（視線の延長で測った鉛直水深）
+/// @details 範囲の中は WaterShoreFoamPass が進めた泡を、この点に今いる水の粒の静止位置
+///          （静止位置＋寄せ・引きのずれ＝今の位置 を反復で解く）で読む。水深 kShoreFoamEdgeMeters より
+///          浅い水際はその瞬間の水深で満量にする。範囲の外と範囲の端は ComputeShoreFoamMask へ移す
+ShoreFoamResult ResolveShoreFoam(float3 surfacePosition, float fallbackDepth)
+{
+    ShoreFoamResult result;
+    result.coverage = 0.0f;
+    result.patternShift = float2(0.0f, 0.0f);
+    if (gFoamEnabled == 0 || gUseFFTOceanNormalMap == 0)
+    {
+        return result;
+    }
+
+    const float verticalDepth = ResolveShoreFoamDepth(surfacePosition, fallbackDepth);
+    const float depthOnly = ComputeShoreFoamMask(verticalDepth);
+    if (gShoreFoamEnabled == 0 || gSeabedEnabled == 0)
+    {
+        result.coverage = depthOnly;
+        return result;
+    }
+
+    const float2 uv = (surfacePosition.xz - gSeabedOriginXZ) * gSeabedInvSize;
+    const float2 edgeDistance = min(uv, 1.0f - uv);
+    const float inside = saturate(min(edgeDistance.x, edgeDistance.y) / kSeabedWindowEdgeFade);
+    if (inside <= 0.0f)
+    {
+        result.coverage = depthOnly;
+        return result;
+    }
+
+    float2 restXZ = surfacePosition.xz;
+    [unroll]
+    for (int i = 0; i < 2; ++i)
+    {
+        restXZ = surfacePosition.xz - SampleShoreFoamState(restXZ).yz;
+    }
+    const float simulated = SampleShoreFoamState(restXZ).x;
+    const float edge = 1.0f - smoothstep(0.0f, kShoreFoamEdgeMeters, verticalDepth);
+
+    result.coverage = lerp(depthOnly, max(simulated, edge), inside);
+    result.patternShift = (restXZ - surfacePosition.xz) * inside;
+    return result;
 }
 
 #endif // WATER_FOAM_COVERAGE_INCLUDED

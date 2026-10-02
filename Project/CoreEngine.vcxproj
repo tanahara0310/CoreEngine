@@ -274,6 +274,7 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTShadowPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterCausticsPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterSeabedPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\WaterShoreFoamPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterReflectionPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\SceneColorCopyPass.cpp" />
@@ -1426,6 +1427,7 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTShadowPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterCausticsPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterSeabedPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\WaterShoreFoamPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterReflectionPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\SceneColorCopyPass.h" />

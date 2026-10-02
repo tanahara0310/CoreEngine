@@ -104,5 +104,11 @@ void WaterShaderResourceBinder::Bind(
     if (renderResources.HasSeabedHeight()) {
         binder.Set(table_[WaterBind::gWaterSeabedHeight], renderResources.seabedHeightSRV);
     }
+
+    // 岸の泡
+    // （未接続のフレームはシェーダー側フラグ gShoreFoamEnabled=0 で参照されない）
+    if (renderResources.HasShoreFoam()) {
+        binder.Set(table_[WaterBind::gWaterShoreFoam], renderResources.shoreFoamSRV);
+    }
 }
 }

@@ -31,6 +31,8 @@ namespace CoreEngine
         static constexpr uint32_t kResolution = 1024;
         /// @brief 1 テクセルの幅 [m]
         static constexpr float kTexelSize = 0.25f;
+        /// @brief 範囲の角を揃える格子の幅 [m]（テクセルの幅の整数倍）
+        static constexpr float kWindowSnapMeters = 0.5f;
         /// @brief 海底を探す水面からの深さの上限 [m]
         static constexpr float kMaxDepth = 50.0f;
 
@@ -40,7 +42,7 @@ namespace CoreEngine
             AccelerationStructureManager* asMgr,
             ShaderProgramCache* shaderProgramCache);
 
-        /// @brief 範囲をカメラの真下を中心に置き直す（範囲の角はテクセルの格子に揃える）
+        /// @brief 範囲をカメラの真下を中心に置き直す（範囲の角は kWindowSnapMeters の格子に揃える）
         /// @return 置き直した範囲（初期化されていなければ valid = false）
         const WaterSeabedWindow& UpdateWindow(float cameraX, float cameraZ);
 

@@ -56,8 +56,8 @@ namespace CoreEngine
             return window_;
         }
         const float size = static_cast<float>(kResolution) * kTexelSize;
-        window_.originX = std::floor((cameraX - 0.5f * size) / kTexelSize) * kTexelSize;
-        window_.originZ = std::floor((cameraZ - 0.5f * size) / kTexelSize) * kTexelSize;
+        window_.originX = std::floor((cameraX - 0.5f * size) / kWindowSnapMeters) * kWindowSnapMeters;
+        window_.originZ = std::floor((cameraZ - 0.5f * size) / kWindowSnapMeters) * kWindowSnapMeters;
         window_.size = size;
         window_.valid = true;
         return window_;

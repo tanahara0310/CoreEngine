@@ -383,6 +383,11 @@ namespace CoreEngine
                 binding.seabedOriginXZ[0] = window.originX;
                 binding.seabedOriginXZ[1] = window.originZ;
                 binding.seabedSize = window.size;
+
+                // 岸の泡。同じフレームの WaterShoreFoamPass が同じ範囲で書く側
+                if (const WaterFoamSystem* foam = domain.GetWaterFoamSystem(); foam && foam->IsShoreActive()) {
+                    binding.resources.shoreFoamSRV = foam->GetShoreSRVHandle();
+                }
             }
         }
 
