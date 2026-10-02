@@ -72,6 +72,11 @@ cbuffer WaterFrameConstants : register(b5)
     // FFT カスケードごとの平均二乗傾斜（x・z の傾きの二乗和の平均）
     float3 gFFTCascadeMeanSquareSlope;
     float gFFTCascadeMeanSquareSlopePad;
+
+    // ---- 海底の高さ（カメラの周りの範囲を RT で真上から測ったもの。gWaterSeabedHeight）----
+    float2 gSeabedOriginXZ; // 範囲の XZ の最小の角 [m]
+    float gSeabedInvSize;   // 範囲の一辺の長さの逆数 [1/m]
+    int gSeabedEnabled;     // 1 = 範囲の中の岸の泡の水深を海底の高さから求める
 };
 
 #endif // WATER_FRAME_CONSTANTS_INCLUDED

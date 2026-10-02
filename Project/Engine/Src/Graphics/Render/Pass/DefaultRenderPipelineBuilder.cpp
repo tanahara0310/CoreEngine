@@ -14,6 +14,7 @@
 #include "Graphics/Render/Pass/DeferredLightingPass.h"
 #include "Graphics/Render/Pass/RTShadowPass.h"
 #include "Graphics/Render/Pass/RTWaterCausticsPass.h"
+#include "Graphics/Render/Pass/RTWaterSeabedPass.h"
 #include "Graphics/Render/Pass/RTWaterRefractionPass.h"
 #include "Graphics/Render/Pass/RTWaterReflectionPass.h"
 #include "Graphics/Render/Pass/FFTOceanPass.h"
@@ -105,8 +106,9 @@ namespace CoreEngine
 
         pipeline.AddPass(std::make_unique<TransparentQueuePass>(), RenderPassPhase::Transparent, 0);
 
-        // 水面: 背景 SceneColor の複製 → RT 屈折 → RT 反射 → 水面合成（データフロー順）
+        // 水面: 背景 SceneColor の複製 → 海底の高さ → RT 屈折 → RT 反射 → 水面合成（データフロー順）
         pipeline.AddPass(std::make_unique<SceneColorCopyPass>(), RenderPassPhase::Water, 0);
+        pipeline.AddPass(std::make_unique<RTWaterSeabedPass>(), RenderPassPhase::Water, 5);
         pipeline.AddPass(std::make_unique<RTWaterRefractionPass>(), RenderPassPhase::Water, 10);
         pipeline.AddPass(std::make_unique<RTWaterReflectionPass>(), RenderPassPhase::Water, 15);
         pipeline.AddPass(std::make_unique<WaterSurfacePass>(), RenderPassPhase::Water, 20);

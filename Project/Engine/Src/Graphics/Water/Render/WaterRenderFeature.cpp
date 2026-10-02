@@ -23,6 +23,7 @@
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterReflectionRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
+#include "Graphics/Water/RayTracing/WaterSeabedRayTracingManager.h"
 #include "Graphics/Water/WaterCVars.h"
 #include "Graphics/Water/Simulation/FFTOceanSurfaceSimulator.h"
 #include "Graphics/Water/Simulation/GerstnerWaterSimulator.h"
@@ -319,6 +320,9 @@ namespace CoreEngine
         if (auto* reflection = domain.GetWaterReflectionRayTracingManager()) {
             reflection->SetSurfaceModelProvider(provider);
         }
+        if (auto* seabed = domain.GetWaterSeabedRayTracingManager()) {
+            seabed->SetSurfaceModelProvider(provider);
+        }
     }
 
     WaterFrameBinding WaterRenderFeature::BuildFrameBinding(SceneContext& ctx, RenderDomainContext& domain) const
@@ -366,6 +370,19 @@ namespace CoreEngine
             // 同じパスが書く水面の日向率（ヤシや岩の影を水面の太陽の項へ掛ける）
             binding.resources.sunVisibilitySRV = reflection->GetSunVisibilitySRVHandle(
                 WaterReflectionRayTracingManager::ViewID::GameView);
+        }
+
+        // 海底の高さ。範囲はゲームのカメラの真下を中心にここで決め、同じフレームの RTWaterSeabedPass が測る
+        if (auto* seabed = domain.GetWaterSeabedRayTracingManager(); seabed && ctx.gameViewCamera3D) {
+            const Vector3 cameraPosition = ctx.gameViewCamera3D->GetPosition();
+            const WaterSeabedWindow& window = seabed->UpdateWindow(cameraPosition.x, cameraPosition.z);
+            if (window.valid) {
+                binding.resources.seabedHeightSRV =
+                    seabed->GetSeabedSRVHandle(WaterSeabedRayTracingManager::ViewID::GameView);
+                binding.seabedOriginXZ[0] = window.originX;
+                binding.seabedOriginXZ[1] = window.originZ;
+                binding.seabedSize = window.size;
+            }
         }
 
         if (auto* fftOcean = domain.GetFFTOceanManager()) {

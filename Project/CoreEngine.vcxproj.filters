@@ -187,6 +187,9 @@
     <ClCompile Include="Engine\Src\Graphics\Water\RayTracing\WaterCausticsRayTracingManager.cpp">
       <Filter>Engine\Src\Graphics\Water\RayTracing</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\RayTracing\WaterSeabedRayTracingManager.cpp">
+      <Filter>Engine\Src\Graphics\Water\RayTracing</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\RayTracing\WaterRayTracingPassBase.cpp">
       <Filter>Engine\Src\Graphics\Water\RayTracing</Filter>
     </ClCompile>
@@ -260,6 +263,9 @@
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterCausticsPass.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterSeabedPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.cpp">
@@ -2316,6 +2322,9 @@
     <ClInclude Include="Engine\Src\Graphics\Water\RayTracing\WaterCausticsRayTracingManager.h">
       <Filter>Engine\Src\Graphics\Water\RayTracing</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\RayTracing\WaterSeabedRayTracingManager.h">
+      <Filter>Engine\Src\Graphics\Water\RayTracing</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\RayTracing\WaterRayTracingPassBase.h">
       <Filter>Engine\Src\Graphics\Water\RayTracing</Filter>
     </ClInclude>
@@ -2497,6 +2506,9 @@
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterCausticsPass.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterSeabedPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.h">

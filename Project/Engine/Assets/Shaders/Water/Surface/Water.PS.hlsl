@@ -60,6 +60,10 @@ TextureCube<float4> gSkyEnvironmentMap : register(t25);
 // gSunVisibilityEnabled が 1 のフレームだけ読む。
 Texture2D<float> gWaterSunVisibility : register(t26);
 
+// ===== 海底の高さ（RTWaterSeabedPass の出力。カメラの周りの範囲のワールド Y）=====
+// gSeabedEnabled が 1 のフレームだけ読む。
+Texture2D<float> gWaterSeabedHeight : register(t27);
+
 /// @brief 影の中に残す直接光の割合（DeferredLighting・水中コースティクスの影と同じ値）
 static const float kShadowedSunFloor = 0.3f;
 
@@ -393,7 +397,7 @@ WaterPixelOutput main(WaterPSInput input)
     // 一緒に運ばれる（実際の泡は水に乗って運ばれるので、こちらが正しい）。
     const float foamMask = max(
         ComputeFoamMask(input.baseWorldXZ),
-        ComputeShoreFoamMask(waterColumnResult.analyticColumn));
+        ComputeShoreFoamMask(ResolveShoreFoamDepth(input.worldPosition, waterColumnResult.viewRayVerticalDepth)));
     const WaterFoamLayer foamLayer = EvaluateFoamLayer(foamMask, input.baseWorldXZ);
     // 水面の上の泡の割合。拡散層でフレネル反射を持たないので、反射・サングリッター・
     // 波頭の透過光をこの割合だけ遮る

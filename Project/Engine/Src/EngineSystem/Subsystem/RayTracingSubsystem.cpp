@@ -68,6 +68,27 @@ namespace CoreEngine
             return false;
         }
 
+        /// @brief メッシュのインスタンスの種類の印（材質の頂点の動きで決める）
+        UINT ClassifyMeshInstanceMask(const Model& model)
+        {
+            for (size_t i = 0; i < model.GetMaterialCount(); ++i) {
+                const MaterialInstance* material = model.GetMaterial(i);
+                if (!material) {
+                    continue;
+                }
+                switch (material->GetVertexAnimation()) {
+                case VertexAnimationType::Plant:
+                case VertexAnimationType::Seagrass:
+                    return RayTracingInstanceMask::kVegetation;
+                case VertexAnimationType::Fish:
+                    return RayTracingInstanceMask::kCreature;
+                default:
+                    break;
+                }
+            }
+            return RayTracingInstanceMask::kSolid;
+        }
+
         /// @brief サブメッシュ 1 つぶんの材質をヒットシェーディングのサブメッシュ表の行へ詰める
         /// @param material          そのスロットの材質（無ければ既定値）
         /// @param baseColorOverride 全サブメッシュのベースカラーを差し替えるテクスチャ（無ければ ptr = 0）
@@ -300,6 +321,7 @@ namespace CoreEngine
                 AccelerationStructureManager::InstanceDesc inst;
                 inst.blasIndex = resource->GetBLASIndex();
                 inst.SetTransform(world);
+                inst.instanceMask = ClassifyMeshInstanceMask(*model);
                 uint32_t hitVertexBufferIndex = UINT32_MAX;
                 if (dynamicGeometry) {
                     // 作れなければ 0 のまま（静止形の BLAS を使う）
@@ -337,6 +359,7 @@ namespace CoreEngine
                     AccelerationStructureManager::InstanceDesc inst;
                     inst.blasIndex = resource->GetBLASIndex();
                     inst.SetTransform(particleMatrices[i]);
+                    inst.instanceMask = RayTracingInstanceMask::kParticle;
                     tlasInstances.push_back(inst);
                     if (descriptors) {
                         AppendHitInstance(*asMgr, inst, *resource, nullptr, D3D12_GPU_DESCRIPTOR_HANDLE{},
@@ -356,6 +379,7 @@ namespace CoreEngine
                     AccelerationStructureManager::InstanceDesc inst;
                     inst.blasIndex = resource->GetBLASIndex();
                     inst.SetTransform(world);
+                    inst.instanceMask = RayTracingInstanceMask::kCreature;
                     tlasInstances.push_back(inst);
                     if (descriptors) {
                         AppendHitInstance(*asMgr, inst, *resource, &fishModel, D3D12_GPU_DESCRIPTOR_HANDLE{},
@@ -798,5 +822,31 @@ namespace CoreEngine
             dispatchContext.width,
             dispatchContext.height,
             viewId);
+    }
+
+    void RayTracingSubsystem::DispatchWaterSeabed(
+        const RenderContext& context,
+        GraphicsCore* dx,
+        ID3D12GraphicsCommandList* cmdList,
+        WaterSeabedRayTracingManager::ViewID viewId,
+        const WaterSurfaceData& surfaceData)
+    {
+        auto* rtWaterSeabed = context.rtWaterSeabedManager;
+        if (!rtWaterSeabed || !rtWaterSeabed->IsInitialized()) {
+            return;
+        }
+        WaterDispatchContext dispatchContext;
+        if (!BuildWaterDispatchContext(
+            context, dx, cmdList, surfaceData, "water seabed", false, dispatchContext)) {
+            return;
+        }
+
+        // Gerstner 経路では変位テクスチャを読まないが、宣言されたスロットには何かを差す
+        WaterRayTracingPassBase::FFTOceanInput fftOceanInput = dispatchContext.fftOceanInput;
+        if (fftOceanInput.displacementSRV.ptr == 0) {
+            fftOceanInput.displacementSRV = dispatchContext.sceneDepthSRV;
+        }
+
+        rtWaterSeabed->Dispatch(cmdList, surfaceData, fftOceanInput, viewId);
     }
 }

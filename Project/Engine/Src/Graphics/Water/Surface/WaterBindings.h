@@ -24,6 +24,7 @@ namespace CoreEngine::WaterBind
         gWaterSkyIrradianceSH,
         gSkyEnvironmentMap,
         gWaterSunVisibility,
+        gWaterSeabedHeight,
         Count
     };
 
@@ -63,6 +64,9 @@ namespace CoreEngine::WaterBind
 
         // 水面の日向率（RT 反射パスの 2 枚目の出力）
         { "gWaterSunVisibility",     kSRV, kCond },
+
+        // 海底の高さ（カメラの周りの範囲を RT で真上から測ったもの）
+        { "gWaterSeabedHeight",      kSRV, kCond },
     };
 
     static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");

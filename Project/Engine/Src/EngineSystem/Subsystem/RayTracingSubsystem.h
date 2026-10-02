@@ -5,6 +5,7 @@
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterReflectionRayTracingManager.h"
+#include "Graphics/Water/RayTracing/WaterSeabedRayTracingManager.h"
 #include "Graphics/Water/WaterSurfaceData.h"
 #include "Math/Matrix/Matrix4x4.h"
 #include "Math/Vector/Vector3.h"
@@ -95,6 +96,14 @@ namespace CoreEngine
             GraphicsCore* dx,
             ID3D12GraphicsCommandList* cmdList,
             WaterCausticsRayTracingManager::ViewID viewId,
+            const WaterSurfaceData& surfaceData);
+
+        /// @brief 海底の高さ（カメラの周りの範囲）のディスパッチ
+        void DispatchWaterSeabed(
+            const RenderContext& context,
+            GraphicsCore* dx,
+            ID3D12GraphicsCommandList* cmdList,
+            WaterSeabedRayTracingManager::ViewID viewId,
             const WaterSurfaceData& surfaceData);
 
     private:

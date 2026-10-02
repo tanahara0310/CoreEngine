@@ -19,6 +19,7 @@ namespace CoreEngine
     const char* const FrameBlackboard::RTWaterRefractionColor = "RTWaterRefractionColor";
     const char* const FrameBlackboard::RTWaterReflectionColor = "RTWaterReflectionColor";
     const char* const FrameBlackboard::RTWaterSunVisibility = "RTWaterSunVisibility";
+    const char* const FrameBlackboard::RTWaterSeabedHeight = "RTWaterSeabedHeight";
     const char* const FrameBlackboard::BackBuffer = "BackBuffer";
     const char* const FrameBlackboard::PostEffectFinal = "PostEffectFinal";
     const char* const FrameBlackboard::GBufferAlbedoAO = "GBufferAlbedoAO";

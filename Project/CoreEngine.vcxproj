@@ -247,6 +247,7 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Graphics\Primitive\RingMeshGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingOutputViewSet.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\RayTracing\WaterCausticsRayTracingManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\RayTracing\WaterSeabedRayTracingManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\RayTracing\WaterRayTracingPassBase.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\RayTracing\WaterRefractionRayTracingManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\RayTracing\WaterReflectionRayTracingManager.cpp" />
@@ -272,6 +273,7 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\ASBuildPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTShadowPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterCausticsPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterSeabedPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterReflectionPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\SceneColorCopyPass.cpp" />
@@ -1360,6 +1362,7 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingShadowManager.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\ShaderTableBuilder.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\RayTracing\WaterCausticsRayTracingManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\RayTracing\WaterSeabedRayTracingManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\RayTracing\WaterRayTracingPassBase.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\RayTracing\WaterRefractionRayTracingManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\RayTracing\WaterReflectionRayTracingManager.h" />
@@ -1421,6 +1424,7 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\ASBuildPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTShadowPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterCausticsPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterSeabedPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterReflectionPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\SceneColorCopyPass.h" />
