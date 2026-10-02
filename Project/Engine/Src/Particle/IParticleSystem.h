@@ -34,7 +34,7 @@ public:
     virtual ~IParticleSystem() = default;
 
     // ===== 再生制御 =====
-    /// @brief 再生を開始する
+    /// @brief 最初から再生する（経過時間とバーストを戻す）
     virtual void Play() = 0;
     /// @brief 再生を停止する
     virtual void Stop() = 0;
