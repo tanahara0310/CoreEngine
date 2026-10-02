@@ -419,7 +419,8 @@ void SceneTransition::ApplyBGMVolume() {
 
     case TransitionPhase::Loading:
     case TransitionPhase::Changing:
-        // ローディング中・シーン切替中：完全に無音
+    case TransitionPhase::Hold:
+        // ローディング中・シーン切替中・最低表示時間の待ち：完全に無音
         volumeMultiplier = 0.0f;
         break;
 
