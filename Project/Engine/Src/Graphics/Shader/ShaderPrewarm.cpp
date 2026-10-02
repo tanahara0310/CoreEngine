@@ -53,9 +53,7 @@ namespace CoreEngine::ShaderPrewarm
         // ここを有効化しないと、同じ検証コストを 2 回払うだけで速くならない
         ShaderBlobCache::GetInstance().SetEnabled(true);
 
-        // ===== パス解決はメインスレッドで済ませる =====
-        // AssetDatabase::FindAssetPath は unordered_map::operator[] で挿入するため
-        // 並列に呼ぶとレースする。ワーカーへ渡すのは解決済みの要求だけにする
+        // ===== パス解決はメインスレッドで済ませ、ワーカーへは解決済みの要求だけを渡す =====
         ShaderCompiler mainThreadCompiler;
         mainThreadCompiler.Initialize();
 

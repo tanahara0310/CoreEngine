@@ -1,18 +1,22 @@
 #pragma once
 #include "AssetInfo.h"
 #include "AssetType.h"
+#include <atomic>
 #include <string>
 #include <unordered_map>
 #include <vector>
 #include <filesystem>
 #include <memory>
+#include <optional>
+#include <shared_mutex>
 #include <string_view>
 
 namespace CoreEngine
 {
     class ThreadPool;
 
-    // アセットデータベース
+    /// @brief アセットのファイルを GUID・名前・綴りで引く索引
+    /// @note 検索は複数のスレッドから同時に呼べる（共有ロック）。登録・作り直し・終了は排他ロックで行う。
     class AssetDatabase
     {
     public:
@@ -28,16 +32,16 @@ namespace CoreEngine
         /// @param name 検索キー（ファイル名・ステム。パスではなく照合用の名前）
         /// @return 見つかった絶対パス。見つからなければ空の path
         /// @note 戻り値を narrow 文字列に落とさないこと（ANSI と UTF-8 の取り違えを避けるため）
-        std::filesystem::path FindAssetPath(const std::string& name);
+        std::filesystem::path FindAssetPath(const std::string& name) const;
 
         /// @brief ファイル名で、指定した種類のアセットパスだけを検索
         /// @param name 検索キー（ファイル名・ステム）
         /// @param type 探す種類（`AssetType::Unknown` なら種類を問わない）
         /// @return 見つかった絶対パス。見つからなければ空の path
-        std::filesystem::path FindAssetPath(const std::string& name, AssetType type);
+        std::filesystem::path FindAssetPath(const std::string& name, AssetType type) const;
 
         /// @brief ファイルパスから GUID を取得
-        std::string GetGUID(const std::filesystem::path& assetPath);
+        std::string GetGUID(const std::filesystem::path& assetPath) const;
 
         /// @brief GUID でアセット情報を引く
         /// @return 見つからなければ nullptr
@@ -57,7 +61,7 @@ namespace CoreEngine
         const AssetInfo* ImportAsset(const std::filesystem::path& assetPath);
 
         /// @brief 登録内容が変わるたびに進む番号
-        uint64_t GetRevision() const noexcept { return revision_; }
+        uint64_t GetRevision() const noexcept { return revision_.load(std::memory_order_relaxed); }
 
         /// @brief アセットの再スキャン
         void Refresh();
@@ -83,7 +87,14 @@ namespace CoreEngine
             const std::string& category) const;
 
         /// @brief 構築済みの AssetInfo を内部インデックスに登録する
+        /// @note 呼ぶ側が排他ロックを持っていること
         void MergeAssetInfo(AssetInfo&& info);
+
+        /// @brief GUID でアセット情報を引く（呼ぶ側がロックを持っていること）
+        const AssetInfo* FindByGUIDUnlocked(const std::string& guid) const;
+
+        /// @brief パスでアセット情報を引く（呼ぶ側がロックを持っていること）
+        const AssetInfo* FindByPathUnlocked(std::string_view path) const;
 
         static AssetType GetAssetType(const std::filesystem::path& path);
         static uint64_t GetFileLastModified(const std::filesystem::path& path);
@@ -104,7 +115,10 @@ namespace CoreEngine
         bool initialized_ = false;
 
         // 登録内容が変わるたびに進む番号
-        uint64_t revision_ = 0;
+        std::atomic<uint64_t> revision_{ 0 };
+
+        // 索引の 4 つの表（assetsByGUID_ など）を守るロック
+        mutable std::shared_mutex mutex_;
 
         // 並列スキャン用スレッドプール（初回スキャン時に生成、完了後解放）
         std::unique_ptr<ThreadPool> threadPool_;

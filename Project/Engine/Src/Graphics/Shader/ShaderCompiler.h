@@ -15,8 +15,7 @@ namespace CoreEngine {
 namespace CoreEngine
 {
     /// @brief パス解決と引数構築まで終わったコンパイル要求
-    /// @details 分けてあるのは AssetDatabase をワーカースレッドから触らせないため。
-    ///          `FindAssetPath` は operator[] で挿入するので並列に呼ぶとレースする。
+    /// @details ワーカースレッドはこれを受け取って DXC の呼び出しだけを行う。
     struct PreparedShaderCompile {
         std::wstring resolvedPath;                  ///< 解決済みの .hlsl フルパス
         std::wstring profile;                       ///< "ps_6_0" など
