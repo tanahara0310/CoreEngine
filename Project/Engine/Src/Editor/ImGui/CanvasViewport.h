@@ -3,6 +3,7 @@
 #ifdef CORE_EDITOR
 
 #include "Editor/ImGui/ImGuiAll.h"
+#include "GameObject/ObjectId.h"
 #include "UI/UIElement.h"
 #include "Math/Vector/Vector2.h"
 #include <string>
@@ -92,10 +93,10 @@ namespace CoreEngine
         /// @details マウスドラッグだけだと 1px 単位の追い込みができないため
         void HandleKeyboardNudge(const std::vector<CanvasElement>& elements);
 
-        /// @brief 選択中のオブジェクトを取得する
+        /// @brief 選択中のオブジェクトの ID を取得する（未選択なら無効な ID）
         /// @details SceneDebugEditor があればそちらの選択を正とする。
         ///          Canvas で掴んだ要素がそのまま Inspector に出るようにするため
-        GameObject* GetSelection() const;
+        ObjectId GetSelectionId() const;
         /// @brief オブジェクトを選択する
         void SetSelection(GameObject* object);
 
@@ -104,13 +105,13 @@ namespace CoreEngine
         /// 選択状態の共有先。null なら Canvas 内で完結する
         SceneDebugEditor* sceneDebugEditor_ = nullptr;
         /// 共有先が無いときに使う選択
-        GameObject* selectedObject_ = nullptr;
+        ObjectId selectedObjectId_{};
 
         /// 前のフレームでギズモを掴んでいたか
         bool wasGizmoUsing_ = false;
-        /// ギズモを掴んだときの配置と、掴んだ UI トランスフォーム
+        /// ギズモを掴んだときの配置と、掴んだ UI のオブジェクト
         UILayout gizmoStartLayout_{};
-        RectTransformComponent* gizmoTarget_ = nullptr;
+        ObjectId gizmoTargetId_{};
 
         /// 矢印キーを押している間の移動を履歴へ積んだか
         bool nudgeRecorded_ = false;

@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <functional>
+#include "GameObject/ObjectId.h"
 #include "Input/InputQuery.h"
 #include "Math/Vector/Vector2.h"
 #include "Math/Vector/Vector3.h"
@@ -15,10 +16,13 @@ namespace CoreEngine
     class GameObjectManager;
 
     /// @brief シーン内のオブジェクト選択と操作を管理するクラス
+    /// @details 選択はオブジェクトの ID で持ち、取り出すたびにマネージャーから引き直す。
+    ///          消えたオブジェクトは引けなくなり、選択が外れたのと同じになる。
     class ObjectSelector {
     public:
         /// @brief 初期化
-        void Initialize();
+        /// @param objects 選択を引き直すマネージャー
+        void Initialize(const GameObjectManager* objects);
 
         /// @brief ビューポートのクリックで選び直したか
         /// @details ヒエラルキーが「その行まで送る」かを決めるのに使う。
@@ -61,23 +65,23 @@ namespace CoreEngine
         void DrawGizmo2D(const Camera* camera);
 
         /// @brief 選択中のオブジェクトを取得
-        /// @return 選択中のオブジェクト（nullptrの場合は未選択）
-        GameObject* GetSelectedObject() const { return selectedObject_; }
+        /// @return 選択中のオブジェクト（未選択か、選んだオブジェクトが消えていれば nullptr）
+        GameObject* GetSelectedObject() const;
 
         /// @brief 選択中のスプライトを取得
-        /// @return 選択中のスプライト（nullptrの場合は未選択）
-        GameObject* GetSelectedSprite() const { return selectedSprite_; }
+        /// @return 選択中のスプライト（未選択か、選んだスプライトが消えていれば nullptr）
+        GameObject* GetSelectedSprite() const;
 
         /// @brief オブジェクトを選択
-        /// @param object 選択するオブジェクト
-        void SelectObject(GameObject* object) { selectedObject_ = object; selectedSprite_ = nullptr; }
+        /// @param object 選択するオブジェクト（nullptr なら選択を解除）
+        void SelectObject(GameObject* object);
 
         /// @brief スプライトを選択
-        /// @param sprite 選択するスプライト
-        void SelectSprite(GameObject* sprite) { selectedSprite_ = sprite; selectedObject_ = nullptr; }
+        /// @param sprite 選択するスプライト（nullptr なら選択を解除）
+        void SelectSprite(GameObject* sprite);
 
         /// @brief 選択を解除
-        void ClearSelection() { selectedObject_ = nullptr; selectedSprite_ = nullptr; }
+        void ClearSelection() { selectedObjectId_ = {}; selectedSpriteId_ = {}; }
 
         /// @brief ギズモモードを設定
         /// @param mode ギズモモード
@@ -100,6 +104,9 @@ namespace CoreEngine
         }
 
     private:
+        /// @brief ID からオブジェクトを引き直す（引けなければ nullptr）
+        GameObject* Resolve(ObjectId id) const;
+
         /// @brief ギズモの種類を切り替える割り当てを見る
         /// @param isViewportHovered ビューポートがホバー状態か（他の窓の操作で切り替わらないように）
         void UpdateGizmoShortcut(bool isViewportHovered);
@@ -163,9 +170,10 @@ namespace CoreEngine
 
     private:
         const InputQuery* input_ = nullptr;            // ギズモの切り替えを引く先
+        const GameObjectManager* objects_ = nullptr;   // 選択を引き直すマネージャー
         bool viewportSelection_ = false;               // ビューポートのクリックで選び直した
-        GameObject* selectedObject_ = nullptr;         // 選択中の3Dオブジェクト
-        GameObject* selectedSprite_ = nullptr;         // 選択中のスプライト
+        ObjectId selectedObjectId_{};                  // 選択中の3Dオブジェクト
+        ObjectId selectedSpriteId_{};                  // 選択中のスプライト
         Gizmo::Mode gizmoMode_ = Gizmo::Mode::Translate;  // ギズモモード
 
         /// @brief ギズモ操作完了時に呼び出すコールバック（isDirty_用）

@@ -138,24 +138,28 @@ namespace CoreEngine
         return rect->GetLayout();
     }
 
-    GameObject* CanvasViewport::GetSelection() const
+    ObjectId CanvasViewport::GetSelectionId() const
     {
-        return sceneDebugEditor_ ? sceneDebugEditor_->GetSelectedObject() : selectedObject_;
+        if (!sceneDebugEditor_) {
+            return selectedObjectId_;
+        }
+        const GameObject* const selected = sceneDebugEditor_->GetSelectedObject();
+        return selected ? selected->GetObjectId() : ObjectId{};
     }
 
     void CanvasViewport::SetSelection(GameObject* object)
     {
-        selectedObject_ = object;
+        selectedObjectId_ = object ? object->GetObjectId() : ObjectId{};
         if (sceneDebugEditor_) { sceneDebugEditor_->SelectObject(object); }
     }
 
     const CanvasViewport::CanvasElement* CanvasViewport::FindSelected(
         const std::vector<CanvasElement>& elements) const
     {
-        GameObject* selection = GetSelection();
-        if (!selection) { return nullptr; }
+        const ObjectId selection = GetSelectionId();
+        if (!selection.IsValid()) { return nullptr; }
         for (const CanvasElement& element : elements) {
-            if (element.object == selection) { return &element; }
+            if (element.object->GetObjectId() == selection) { return &element; }
         }
         return nullptr;
     }
@@ -484,7 +488,7 @@ namespace CoreEngine
             // 掴む前の配置を控えておき、離したときに履歴へ積む
             if (!Gizmo::IsUsing()) {
                 gizmoStartLayout_ = selected->Layout();
-                gizmoTarget_ = selected->rect;
+                gizmoTargetId_ = selected->object->GetObjectId();
             }
 
             UILayout layout = selected->Layout();
@@ -501,14 +505,14 @@ namespace CoreEngine
             }
 
             const bool isUsing = Gizmo::IsUsing();
-            if (wasGizmoUsing_ && !isUsing && gizmoTarget_ == selected->rect &&
+            if (wasGizmoUsing_ && !isUsing && gizmoTargetId_ == selected->object->GetObjectId() &&
                 !SameLayout(gizmoStartLayout_, selected->Layout())) {
                 PushLayoutCommand(*selected->rect, gizmoStartLayout_, selected->object->GetName() + " を動かす");
             }
             wasGizmoUsing_ = isUsing;
         } else {
             wasGizmoUsing_ = false;
-            gizmoTarget_ = nullptr;
+            gizmoTargetId_ = {};
         }
 
         // ─── ②クリックで選択 ───────────────────────────────────
