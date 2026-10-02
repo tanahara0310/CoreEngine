@@ -104,7 +104,7 @@ protected:
     std::string  GetEffectName()        const override { return "Bloom"; }
     /// @note 基底が要求する 1 本目の CS。合成パスとして使う
     std::wstring GetComputeShaderPath() const override { return L"BloomComposite.CS.hlsl"; }
-    void OnCreateConstantBuffers() override;
+    void OnCreateResources() override;
 
 private:
     /// @brief ダウンサンプル／アップサンプル用の追加パイプラインを構築する

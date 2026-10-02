@@ -105,10 +105,11 @@ namespace CoreEngine
     protected:
         std::string  GetEffectName() const override { return "ToneMapping"; }
         std::wstring GetComputeShaderPath() const override { return L"ToneMapping.CS.hlsl"; }
-        void OnCreateConstantBuffers() override;
+        void OnCreateResources() override;
 
     private:
-        void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
+        /// @brief 今の CVar と自動露出の値から画面の定数を作る
+        ScreenParams MakeScreenParams(uint32_t width, uint32_t height) const;
 
         // ===== 自動露出（Auto Exposure） =====
 
@@ -119,8 +120,10 @@ namespace CoreEngine
         void UpdateAutoExposureAdaptation();
 
         /// @brief 入力テクスチャの平均対数輝度の計測をコマンドリストへ記録する
+        /// @param screenParams 今フレームの画面の定数（UploadRing 上の GPU アドレス）
         void RecordLuminanceReduction(
-            ID3D12GraphicsCommandList* cmdList, D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle);
+            ID3D12GraphicsCommandList* cmdList, D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle,
+            D3D12_GPU_VIRTUAL_ADDRESS screenParams);
 
         /// @brief 順応輝度に対するターゲットキーを返す（Krawczyk 自動キー）
         /// @details 自動EVの基準点を求めるときにも同じ式を使う必要があるため関数に切り出している
@@ -129,9 +132,6 @@ namespace CoreEngine
         float KeyForLuminance(float luminance) const;
 
     private:
-        Microsoft::WRL::ComPtr<ID3D12Resource> screenParamsCB_;
-        ScreenParams* mappedScreenParams_ = nullptr;
-
         // ----- 自動露出: 輝度計測パイプライン -----
         IDxcBlob* reductionShaderBlob_ = nullptr;  ///< 所有者は ShaderProgramCache
         std::unique_ptr<RootSignatureManager> reductionRootSignature_;
@@ -139,8 +139,6 @@ namespace CoreEngine
         Microsoft::WRL::ComPtr<ID3D12PipelineState> reductionPso_;
 
         // ----- 自動露出: 計測バッファ -----
-        Microsoft::WRL::ComPtr<ID3D12Resource> histogramParamsCB_; ///< 百分位カット設定（b1）
-        HistogramMeteringParams* mappedHistogramParams_ = nullptr;
         GpuResource avgLogLumBuffer_; ///< 測光結果の輝度（DEFAULT/UAV・1要素。ステート追跡込み）
         static constexpr uint32_t kReadbackCount = 3; ///< リードバックリング数（GPU遅延2フレームまで安全）
         Microsoft::WRL::ComPtr<ID3D12Resource> readbackBuffers_[kReadbackCount];

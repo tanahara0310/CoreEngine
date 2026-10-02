@@ -161,22 +161,16 @@ namespace CoreEngine
         config.ConfigureSampler("gLinearClamp", SamplerConfig::LinearClamp());
     }
 
-    void LensFlare::OnCreateConstantBuffers()
+    void LensFlare::OnCreateResources()
     {
         auto* device = graphicsCore_->GetDevice();
-
-        const UINT paramsSize = (sizeof(LensFlareConstants) + 255) & ~255u;
-        paramsCB_ = ResourceFactory::CreateBufferResource(device, paramsSize);
-        HRESULT hr = paramsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedParams_));
-        assert(SUCCEEDED(hr));
-        *mappedParams_ = BuildConstants(0, 0, 0, 0);
 
         // ブラー方向 CB（水平/垂直。内容は不変なので初期化時に書いて以後更新しない）
         const UINT dirSize = (sizeof(BlurDirection) + 255) & ~255u;
         blurDirHCB_ = ResourceFactory::CreateBufferResource(device, dirSize);
         blurDirVCB_ = ResourceFactory::CreateBufferResource(device, dirSize);
         BlurDirection* mappedDir = nullptr;
-        hr = blurDirHCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedDir));
+        HRESULT hr = blurDirHCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedDir));
         assert(SUCCEEDED(hr));
         *mappedDir = BlurDirection{ { 1.0f, 0.0f }, {} };
         blurDirHCB_->Unmap(0, nullptr);
@@ -383,14 +377,6 @@ namespace CoreEngine
         return c;
     }
 
-    void LensFlare::UploadConstants(uint32_t width, uint32_t height)
-    {
-        if (!mappedParams_) {
-            return;
-        }
-        *mappedParams_ = BuildConstants(width, height, targetsWidth_, targetsHeight_);
-    }
-
     void LensFlare::Dispatch(
         D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle,
         D3D12_GPU_DESCRIPTOR_HANDLE outputUavHandle,
@@ -409,7 +395,6 @@ namespace CoreEngine
                 std::max(width / kFlareResolutionDivisor, 1u),
                 std::max(height / kFlareResolutionDivisor, 1u));
             c.intensity = 0.0f;
-            if (mappedParams_) { *mappedParams_ = c; }
 
             cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
             cmdList->SetPipelineState(computePso_.Get());
@@ -420,12 +405,14 @@ namespace CoreEngine
             if (texIdx >= 0)   cmdList->SetComputeRootDescriptorTable(texIdx, inputSrvHandle);
             if (flareIdx >= 0) cmdList->SetComputeRootDescriptorTable(flareIdx, inputSrvHandle);
             if (outIdx >= 0)   cmdList->SetComputeRootDescriptorTable(outIdx, outputUavHandle);
-            if (cbIdx >= 0)    cmdList->SetComputeRootConstantBufferView(cbIdx, paramsCB_->GetGPUVirtualAddress());
+            if (cbIdx >= 0)    cmdList->SetComputeRootConstantBufferView(cbIdx, UploadConstants(c));
             cmdList->Dispatch(DispatchCount(width), DispatchCount(height), 1);
             return;
         }
 
-        UploadConstants(width, height);
+        // 全パスで同じ定数を読む
+        const D3D12_GPU_VIRTUAL_ADDRESS paramsAddress =
+            UploadConstants(BuildConstants(width, height, targetsWidth_, targetsHeight_));
 
         const uint32_t flareGroupsX = DispatchCount(targetsWidth_);
         const uint32_t flareGroupsY = DispatchCount(targetsHeight_);
@@ -437,7 +424,7 @@ namespace CoreEngine
         cmdList->SetComputeRootSignature(downsamplePipeline_.GetComputeRootSignature());
         {
             const int cbSlot = downsamplePipeline_.GetComputeRootParamIndex("LensFlareParams");
-            if (cbSlot >= 0) cmdList->SetComputeRootConstantBufferView(cbSlot, paramsCB_->GetGPUVirtualAddress());
+            if (cbSlot >= 0) cmdList->SetComputeRootConstantBufferView(cbSlot, paramsAddress);
             const int inSlot = downsamplePipeline_.GetComputeRootParamIndex("gSceneColor");
             if (inSlot >= 0) cmdList->SetComputeRootDescriptorTable(inSlot, inputSrvHandle);
             const int outSlot = downsamplePipeline_.GetComputeRootParamIndex("gBright");
@@ -457,7 +444,7 @@ namespace CoreEngine
         cmdList->SetComputeRootSignature(findSourcePipeline_.GetComputeRootSignature());
         {
             const int cbSlot = findSourcePipeline_.GetComputeRootParamIndex("LensFlareParams");
-            if (cbSlot >= 0) cmdList->SetComputeRootConstantBufferView(cbSlot, paramsCB_->GetGPUVirtualAddress());
+            if (cbSlot >= 0) cmdList->SetComputeRootConstantBufferView(cbSlot, paramsAddress);
             const int inSlot = findSourcePipeline_.GetComputeRootParamIndex("gBright");
             if (inSlot >= 0) cmdList->SetComputeRootDescriptorTable(inSlot, brightSrvHandle_.gpuHandle);
             const int outSlot = findSourcePipeline_.GetComputeRootParamIndex("gSourcePos");
@@ -475,7 +462,7 @@ namespace CoreEngine
         cmdList->SetComputeRootSignature(ghostsPipeline_.GetComputeRootSignature());
         {
             const int cbSlot = ghostsPipeline_.GetComputeRootParamIndex("LensFlareParams");
-            if (cbSlot >= 0) cmdList->SetComputeRootConstantBufferView(cbSlot, paramsCB_->GetGPUVirtualAddress());
+            if (cbSlot >= 0) cmdList->SetComputeRootConstantBufferView(cbSlot, paramsAddress);
             const int inSlot = ghostsPipeline_.GetComputeRootParamIndex("gBright");
             if (inSlot >= 0) cmdList->SetComputeRootDescriptorTable(inSlot, brightSrvHandle_.gpuHandle);
             const int srcPosSlot = ghostsPipeline_.GetComputeRootParamIndex("gSourcePos");
@@ -499,7 +486,7 @@ namespace CoreEngine
         // 水平
         Barrier::Transition(cmdList, featureBuffer_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         Barrier::Transition(cmdList, blurBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        if (blurCbSlot >= 0)  cmdList->SetComputeRootConstantBufferView(blurCbSlot, paramsCB_->GetGPUVirtualAddress());
+        if (blurCbSlot >= 0)  cmdList->SetComputeRootConstantBufferView(blurCbSlot, paramsAddress);
         if (blurDirSlot >= 0) cmdList->SetComputeRootConstantBufferView(blurDirSlot, blurDirHCB_->GetGPUVirtualAddress());
         if (blurInSlot >= 0)  cmdList->SetComputeRootDescriptorTable(blurInSlot, featureSrvHandle_.gpuHandle);
         if (blurOutSlot >= 0) cmdList->SetComputeRootDescriptorTable(blurOutSlot, blurUavHandle_.gpuHandle);
@@ -529,7 +516,7 @@ namespace CoreEngine
             if (texIdx >= 0)   cmdList->SetComputeRootDescriptorTable(texIdx, inputSrvHandle);
             if (flareIdx >= 0) cmdList->SetComputeRootDescriptorTable(flareIdx, featureSrvHandle_.gpuHandle);
             if (outIdx >= 0)   cmdList->SetComputeRootDescriptorTable(outIdx, outputUavHandle);
-            if (cbIdx >= 0)    cmdList->SetComputeRootConstantBufferView(cbIdx, paramsCB_->GetGPUVirtualAddress());
+            if (cbIdx >= 0)    cmdList->SetComputeRootConstantBufferView(cbIdx, paramsAddress);
         }
         cmdList->Dispatch(DispatchCount(width), DispatchCount(height), 1);
 

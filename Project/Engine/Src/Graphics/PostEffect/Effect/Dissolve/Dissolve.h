@@ -56,7 +56,7 @@ protected:
     std::wstring GetComputeShaderPath() const override { return L"Dissolve.CS.hlsl"; }
 
     /// @brief ノイズテクスチャを読み込む
-    void OnCreateConstantBuffers() override;
+    void OnCreateResources() override;
 
 private:
     /// @brief 今の CVar から定数を作る

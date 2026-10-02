@@ -48,7 +48,7 @@ namespace CoreEngine
         constexpr uint32_t DispatchCount(uint32_t size) { return (size + 7) / 8; }
     }
 
-    void MotionBlur::OnCreateConstantBuffers()
+    void MotionBlur::OnCreateResources()
     {
         internalPipelinesReady_ = CreateInternalPipelines();
         if (!internalPipelinesReady_) {

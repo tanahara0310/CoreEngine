@@ -43,9 +43,9 @@ namespace CoreEngine {
         /// @brief CS シェーダーのファイルパスを返す（派生クラスで必ずオーバーライドする）
         virtual std::wstring GetComputeShaderPath() const = 0;
 
-        /// @brief 定数バッファ生成フック（Initialize の最後に呼ばれる）
-        /// @note 画面サイズ用バッファは基底が先に用意するので、派生は自分固有のものだけ作ればよい
-        virtual void OnCreateConstantBuffers() {}
+        /// @brief エフェクト固有のリソース（追加のパイプライン・テクスチャなど）を作るフック（Initialize の最後に呼ばれる）
+        /// @note 毎フレーム変わる定数はここで作らず、記録時に UploadConstants で置く
+        virtual void OnCreateResources() {}
 
         /// @brief 画面サイズ定数を今フレームの UploadRing へ確保する
         /// @param width  出力幅

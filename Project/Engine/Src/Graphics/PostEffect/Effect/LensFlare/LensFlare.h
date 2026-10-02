@@ -122,7 +122,7 @@ protected:
     std::string  GetEffectName()        const override { return "LensFlare"; }
     std::wstring GetComputeShaderPath() const override { return L"LensFlareComposite.CS.hlsl"; }
     void OnConfigureRootSignature(RootSignatureConfig& config) override;
-    void OnCreateConstantBuffers() override;
+    void OnCreateResources() override;
 
 private:
     /// @brief 太陽のスクリーン位置を設定する
@@ -140,9 +140,6 @@ private:
 
     /// @brief 1/4 解像度の中間テクスチャ群を画面サイズ追従で確保する
     bool EnsureTargets(uint32_t width, uint32_t height);
-
-    /// @brief 定数バッファへ現在のパラメータと画面サイズを書き込む
-    void UploadConstants(uint32_t width, uint32_t height);
 
     /// @brief CVar の調整値と実行時値（太陽位置・解像度）から定数を組み立てる
     /// @param width  フル解像度幅
@@ -176,10 +173,6 @@ private:
     // 太陽のスクリーン位置（毎フレーム描画パイプラインが設定する実行時値。保存対象ではない）
     float sunUv_[2] = { 0.5f, 0.5f };
     float sunValid_ = 0.0f;
-
-    // 定数バッファ（永続マップ）
-    Microsoft::WRL::ComPtr<ID3D12Resource> paramsCB_;
-    LensFlareConstants* mappedParams_ = nullptr;
 
     // ブラー方向 CB（水平/垂直で別バッファ。同一フレーム内の 2 ディスパッチで
     // 同じ CB を書き換えると GPU 実行時に後勝ちになるため分ける）
