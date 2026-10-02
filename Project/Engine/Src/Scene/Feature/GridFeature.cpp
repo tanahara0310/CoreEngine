@@ -6,6 +6,7 @@
 #include "EngineSystem/EngineSystem.h"
 #include "EngineSystem/Subsystem/DebugSubsystem.h"
 #include "Editor/ImGui/DockingUI.h"
+#include "Editor/Panel/EditorPanelRegistry.h"
 #include "Graphics/Render/Line/GridRenderer.h"
 #include "Graphics/Render/Line/LineRendererPipeline.h"
 #include "Graphics/Render/RenderManager.h"
@@ -49,9 +50,16 @@ namespace CoreEngine
             pipeline->RegisterLineSource(gridRenderer_);
         }
 
-        // Engine Settings の「Grid」パネル（設定 UI）を向ける
-        GridRenderer::EnsureSettingsPanelRegistered(ctx.engine);
-        GridRenderer::SetActiveForSettingsPanel(gridRenderer_);
+        // Engine Settings に「Grid」パネル（設定 UI）を登録する
+        settingsPanel_ = Editor::EditorPanelRegistry::Get().Register({
+            .id = "Grid",
+            .placement = Editor::PanelPlacement::SettingsSection,
+            .draw = [this] {
+                if (gridRenderer_) {
+                    gridRenderer_->DrawSettingsImGui();
+                }
+            },
+            });
     }
 
     void GridFeature::Update(SceneContext& ctx, SceneUpdatePhase phase)
@@ -72,8 +80,7 @@ namespace CoreEngine
 
     void GridFeature::Finalize(SceneContext& ctx)
     {
-        // シーンと一緒に消えるので、パイプラインの登録とパネルの参照を先に外す
-        GridRenderer::SetActiveForSettingsPanel(nullptr);
+        // シーンと一緒に消えるので、パイプラインの登録を先に外す
         if (auto* pipeline = GetLinePipeline(ctx)) {
             pipeline->UnregisterLineSource(gridRenderer_);
         }

@@ -1,12 +1,10 @@
 #include "pch.h"
-#include "Editor/Panel/EditorPanelRegistry.h"
 #include "GridRenderer.h"
 #include "Graphics/Render/Line/LineRendererPipeline.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
-#include "EngineSystem/EngineSystem.h"
 #include "Camera/Camera.h"
 #include "Math/MathCore.h"
 #include <algorithm>
@@ -15,22 +13,12 @@
 #include <stdexcept>
 
 #ifdef CORE_EDITOR
-#include "EngineSystem/Subsystem/DebugSubsystem.h"
-#include "Editor/ImGui/GameDebugUI.h"
 #include "Editor/ImGui/ImGuiAll.h"
 #endif
 
 
 namespace CoreEngine
 {
-namespace {
-#ifdef CORE_EDITOR
-    /// 設定パネルの編集対象（シーンの寿命に縛られるポインタをラムダに持たせないための
-    /// ファイルスコープ変数。CollisionMatrixPanel と同じ流儀）
-    GridRenderer* s_activeGrid = nullptr;
-#endif
-}
-
 void GridRenderer::Initialize(ID3D12Device* device)
 {
     shaderCompiler_->Initialize();
@@ -192,34 +180,6 @@ void GridRenderer::SubmitLines(LineRendererPipeline& pipeline, const Camera* cam
 }
 
 #ifdef CORE_EDITOR
-void GridRenderer::EnsureSettingsPanelRegistered(EngineSystem* engine)
-{
-    static bool registered = false;
-    if (registered || !engine) {
-        return;
-    }
-
-    // ドロワーは何もキャプチャしない（ファイルスコープの s_activeGrid を読むだけ）
-    Editor::EditorPanelRegistry::Get().Register({
-        .id = "Grid",
-        .placement = Editor::PanelPlacement::SettingsSection,
-        .draw = [] {
-            if (s_activeGrid) {
-                s_activeGrid->DrawSettingsImGui();
-            } else {
-                ImGui::TextDisabled("(グリッドがありません)");
-            }
-        },
-        });
-
-    registered = true;
-}
-
-void GridRenderer::SetActiveForSettingsPanel(GridRenderer* grid)
-{
-    s_activeGrid = grid;
-}
-
 bool GridRenderer::DrawSettingsImGui()
 {
     bool changed = false;

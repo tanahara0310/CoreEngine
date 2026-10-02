@@ -28,11 +28,11 @@ namespace CoreEngine
 
     void DebugEditorFeature::Finalize(SceneContext&)
     {
-        // 破棄前にエンジン常駐 UI からの参照を外す（外さないとダングリング）
         if (debugEditor_) {
-            debugEditor_->DetachFromEngineUI();
             debugEditor_->ClearHistory();
         }
+        // 破棄するとエンジン常駐の UI への結びつきとパネルの登録が外れる
+        debugEditor_.reset();
     }
 }
 

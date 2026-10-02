@@ -1714,6 +1714,7 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Utility\FrameRate\FrameRateController.h" />
     <ClInclude Include="Engine\Src\Utility\FrameRate\Time.h" />
     <ClInclude Include="Engine\Src\Utility\JsonManager\JsonManager.h" />
+    <ClInclude Include="Engine\Src\Utility\Lifetime\ScopedRegistration.h" />
     <ClInclude Include="Engine\Src\Utility\Macro\UniqueName.h" />
     <ClInclude Include="Engine\Src\Utility\Logger\Logger.h" />
     <ClInclude Include="Engine\Src\Math\Easing\EasingUtil.h" />

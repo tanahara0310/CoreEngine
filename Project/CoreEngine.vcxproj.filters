@@ -3378,6 +3378,9 @@
     <ClInclude Include="Engine\Src\Utility\JsonManager\JsonManager.h">
       <Filter>Engine\Src\Utility\JsonManager</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Lifetime\ScopedRegistration.h">
+      <Filter>Engine\Src\Utility\Lifetime</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Macro\UniqueName.h">
       <Filter>Engine\Src\Utility\Macro</Filter>
     </ClInclude>
@@ -4401,6 +4404,9 @@
     </Filter>
     <Filter Include="Engine\Src\Utility\JsonManager">
       <UniqueIdentifier>{DDF59094-F412-4879-A350-D360A6435BCD}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Utility\Lifetime">
+      <UniqueIdentifier>{493632C3-CEA0-49F1-AF3B-5049BBF61529}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Utility\Logger">
       <UniqueIdentifier>{AE65377C-9875-46C2-ACEB-A5583C82DCD3}</UniqueIdentifier>

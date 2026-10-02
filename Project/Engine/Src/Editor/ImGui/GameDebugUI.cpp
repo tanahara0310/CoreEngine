@@ -93,6 +93,16 @@ namespace CoreEngine
         sceneManager_ = sceneManager;
     }
 
+    ScopedRegistration GameDebugUI::BindSceneDebugEditor(SceneDebugEditor& sceneDebugEditor)
+    {
+        sceneDebugEditor_ = &sceneDebugEditor;
+        return ScopedRegistration([this, bound = &sceneDebugEditor] {
+            if (sceneDebugEditor_ == bound) {
+                sceneDebugEditor_ = nullptr;
+            }
+        });
+    }
+
     void GameDebugUI::Update()
     {
         // メニューバーと他のパネルをまとめて呼び出す

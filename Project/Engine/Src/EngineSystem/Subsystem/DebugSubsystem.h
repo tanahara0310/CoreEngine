@@ -5,8 +5,11 @@
 #include <memory>
 #include "Editor/Camera/SceneCameraSection.h"
 #include "Editor/ImGui/EditorLayoutSection.h"
+#include "Editor/Panel/EditorPanelRegistry.h"
 #include "Editor/Panel/EditorPanelStateSection.h"
+#include "Utility/Lifetime/ScopedRegistration.h"
 #include <functional>
+#include <vector>
 
 #include "IEngineSubsystem.h"
 #include "Editor/ImGui/ImGuiManager.h"
@@ -86,6 +89,9 @@ namespace CoreEngine
         const GameOutputWindow& GetGameOutputWindow() const { return gameOutputWindow_; }
 
     private:
+        /// @brief パネルを登録し、登録をこのサブシステムの寿命に結びつける
+        void AddPanel(Editor::EditorPanelDesc desc);
+
         EngineSystem* engine_ = nullptr;
 
         std::unique_ptr<ImGuiManager> imGui_;
@@ -130,6 +136,9 @@ namespace CoreEngine
 
         // エディタ視点カメラの設定・姿勢を次の起動へ持ち越す
         std::unique_ptr<Editor::SceneCameraSection> sceneCameraSection_;
+
+        // 登録したパネル（破棄すると外れる）
+        std::vector<ScopedRegistration> panelRegistrations_;
     };
 }
 

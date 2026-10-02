@@ -9,7 +9,6 @@
 
 namespace CoreEngine
 {
-class EngineSystem;
 class GraphicsCore;
 
 /// @brief XZ 平面へ広がるエディタ用グリッド（Blender / 商用エンジンと同じ解析グリッド）
@@ -79,23 +78,13 @@ public:
     int GetRootParamIndex(const std::string& resourceName) const;
 
 #ifdef CORE_EDITOR
-    /// @brief Engine Settings に「Grid」パネルを登録する（プロセスで一度だけ）
-    /// @details パネルはファイルスコープの「現在アクティブなグリッド」を読むだけで
-    ///          何もキャプチャしない（GameDebugUI に登録解除 API が無いため）。
-    static void EnsureSettingsPanelRegistered(EngineSystem* engine);
-
-    /// @brief このグリッドをパネルの編集対象にする（nullptr で解除）
-    static void SetActiveForSettingsPanel(GridRenderer* grid);
+    /// @brief 設定パネルの中身を描画する
+    bool DrawSettingsImGui();
 #endif
 
 private:
     /// @brief 画面全体を覆う三角形 1 枚を描く
     void DrawGrid();
-
-#ifdef CORE_EDITOR
-    /// @brief 設定パネルの中身を描画する
-    bool DrawSettingsImGui();
-#endif
 
     GraphicsCore* dxCommon_ = nullptr;
     const Camera* camera_ = nullptr;

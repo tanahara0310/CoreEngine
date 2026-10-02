@@ -12,12 +12,9 @@ namespace CoreEngine::Editor
     void EditorPanelStateSection::Serialize(nlohmann::json& out) const
     {
         nlohmann::json visible = nlohmann::json::object();
-        for (const auto& panel : EditorPanelRegistry::Get().GetAll()) {
-            if (!panel || !EditorPanelRegistry::IsVisibilityPersisted(*panel)) {
-                continue;
-            }
-            visible[panel->desc.id] = panel->visible;
-        }
+        EditorPanelRegistry::Get().ForEachPersistedVisibility([&visible](const std::string& id, bool shown) {
+            visible[id] = shown;
+            });
         out["visible"] = std::move(visible);
     }
 

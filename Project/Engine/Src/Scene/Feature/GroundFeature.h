@@ -2,6 +2,7 @@
 
 #include "ISceneFeature.h"
 #include "Math/Vector/Vector2.h"
+#include "Utility/Lifetime/ScopedRegistration.h"
 #include <cstdint>
 
 namespace CoreEngine
@@ -11,7 +12,6 @@ namespace CoreEngine
     class MaterialComponent;
     class Collider;
     class Camera;
-    class EngineSystem;
 
     /// @brief どのシーンにも必ず存在する既定の床（ベース地面）を提供する Feature
     /// @details 受け持つのは近〜中景のみで、地平線より遠方は今も大気散乱が描く。
@@ -46,14 +46,6 @@ namespace CoreEngine
         GameObject* GetGroundObject() const { return ground_; }
 
 #ifdef CORE_EDITOR
-        /// @brief Engine Settings に「Ground」パネルを登録する（プロセスで一度だけ）
-        /// @details ドロワーはファイルスコープの「現在アクティブな床」を読むだけで何も
-        ///          キャプチャしない（GameDebugUI に登録解除 API が無いため）。
-        static void EnsureSettingsPanelRegistered(EngineSystem* engine);
-
-        /// @brief この床をパネルの編集対象にする（nullptr で解除）
-        static void SetActiveForSettingsPanel(GroundFeature* ground);
-
         /// @brief 設定パネルの中身を描画する
         void DrawSettingsImGui();
 #endif
@@ -99,5 +91,10 @@ namespace CoreEngine
         /// （毎フレームのスナップは床の瞬間移動＝偽のモーションベクタになるため）
         Vector2 groundCenterXZ_{ 0.0f, 0.0f };
         bool recentered_ = false;
+
+#ifdef CORE_EDITOR
+        /// Engine Settings の「Ground」パネルの登録（破棄すると外れる）
+        ScopedRegistration settingsPanel_;
+#endif
     };
 }

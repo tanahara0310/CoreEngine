@@ -21,38 +21,54 @@ namespace CoreEngine::Editor
         return instance;
     }
 
-    EditorPanel& EditorPanelRegistry::Register(EditorPanelDesc desc)
+    ScopedRegistration EditorPanelRegistry::Register(EditorPanelDesc desc)
     {
-        if (EditorPanel* existing = Find(desc.id)) {
+        const uint64_t registration = ++lastRegistration_;
+        const std::string id = desc.id;
+
+        if (EditorPanel* existing = Find(id)) {
             // 表示状態は残したまま中身だけ差し替える
-            // （シーンを切り替えても開いていたパネルが閉じないようにする）
             existing->desc = std::move(desc);
-            return *existing;
+            existing->registration_ = registration;
+        } else {
+            auto panel = std::make_unique<EditorPanel>();
+            panel->desc = std::move(desc);
+            panel->registration_ = registration;
+            panel->visible = panel->desc.defaultVisible;
+
+            // 外したときの開閉状態、無ければ前回の開閉状態を当てる
+            if (const auto it = unregisteredVisibility_.find(id); it != unregisteredVisibility_.end()) {
+                panel->visible = it->second;
+                unregisteredVisibility_.erase(it);
+            } else if (const auto saved = savedVisibility_.find(id); saved != savedVisibility_.end()) {
+                panel->visible = saved->second;
+            }
+            EditorPanel& ref = *panel;
+            panels_.push_back(std::move(panel));
+
+            if (ref.desc.placement == PanelPlacement::Window && dockRegistrar_) {
+                dockRegistrar_(ref.desc);
+            }
         }
 
-        auto panel = std::make_unique<EditorPanel>();
-        panel->desc = std::move(desc);
-        panel->visible = panel->desc.defaultVisible;
-
-        // 前回の開閉状態が残っていればそちらを優先する
-        if (const auto it = savedVisibility_.find(panel->desc.id); it != savedVisibility_.end()) {
-            panel->visible = it->second;
-        }
-        EditorPanel& ref = *panel;
-        panels_.push_back(std::move(panel));
-
-        if (ref.desc.placement == PanelPlacement::Window && dockRegistrar_) {
-            dockRegistrar_(ref.desc);
-        }
-        return ref;
+        return ScopedRegistration([this, id, registration] { Unregister(id, registration); });
     }
 
-    void EditorPanelRegistry::Unregister(const std::string& id, const void* owner)
+    void EditorPanelRegistry::Unregister(const std::string& id, uint64_t registration)
     {
-        std::erase_if(panels_, [&](const std::unique_ptr<EditorPanel>& panel) {
-            return panel && panel->desc.id == id
-                && (owner == nullptr || panel->desc.owner == owner);
+        const auto it = std::find_if(panels_.begin(), panels_.end(),
+            [&](const std::unique_ptr<EditorPanel>& panel) {
+                return panel && panel->desc.id == id && panel->registration_ == registration;
             });
+        if (it == panels_.end()) {
+            return;
+        }
+
+        // 開閉を覚えるパネルは、外したときの状態を次の登録と保存へ回す
+        if (IsVisibilityPersisted(**it)) {
+            unregisteredVisibility_[id] = (*it)->visible;
+        }
+        panels_.erase(it);
     }
 
     EditorPanel* EditorPanelRegistry::Find(const std::string& id)
@@ -119,12 +135,29 @@ namespace CoreEngine::Editor
     void EditorPanelRegistry::ApplySavedVisibility(std::unordered_map<std::string, bool> saved)
     {
         savedVisibility_ = std::move(saved);
+        for (const auto& [id, visible] : savedVisibility_) {
+            unregisteredVisibility_.erase(id);
+        }
         for (auto& panel : panels_) {
             if (!panel || !IsVisibilityPersisted(*panel)) { continue; }
             if (const auto it = savedVisibility_.find(panel->desc.id);
                 it != savedVisibility_.end()) {
                 panel->visible = it->second;
             }
+        }
+    }
+
+    void EditorPanelRegistry::ForEachPersistedVisibility(
+        const std::function<void(const std::string& id, bool visible)>& fn) const
+    {
+        if (!fn) { return; }
+        for (const auto& panel : panels_) {
+            if (panel && IsVisibilityPersisted(*panel)) {
+                fn(panel->desc.id, panel->visible);
+            }
+        }
+        for (const auto& [id, visible] : unregisteredVisibility_) {
+            fn(id, visible);
         }
     }
 }

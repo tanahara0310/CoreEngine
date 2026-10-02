@@ -64,6 +64,16 @@ namespace CoreEngine
         ImGui::End();
     }
 
+    ScopedRegistration DockingUI::BindSceneDebugEditor(SceneDebugEditor& sceneDebugEditor)
+    {
+        sceneDebugEditor_ = &sceneDebugEditor;
+        return ScopedRegistration([this, bound = &sceneDebugEditor] {
+            if (sceneDebugEditor_ == bound) {
+                sceneDebugEditor_ = nullptr;
+            }
+        });
+    }
+
     void DockingUI::RegisterWindow(const std::string& windowName, Editor::DockArea area)
     {
         if (area == Editor::DockArea::None) {

@@ -10,10 +10,8 @@ class EngineSystem;
 /// @note ここで変えた値は Ctrl+S でシーンのマニフェスト（`_scene.json`）へ保存される。
 namespace SceneSettingsPanel
 {
-    /// @brief Engine Settings へパネルを登録する（プロセス中 1 回だけ実行される）
-    /// @note ドロワーはエンジンだけを覚え、シーンは描くたびに引き直す
-    ///       （パネルの登録解除の口が無いので、シーンの寿命に縛られるものを持たない）。
-    void EnsureRegistered(EngineSystem* engine);
+    /// @brief 開いているシーンの設定を描く（シーンは描くたびにエンジンから引き直す）
+    void Draw(EngineSystem& engine);
 }
 }
 

@@ -21,8 +21,6 @@
 #include <memory>
 
 #ifdef CORE_EDITOR
-#include "EngineSystem/Subsystem/DebugSubsystem.h"
-#include "Editor/ImGui/GameDebugUI.h"
 #include "Editor/ImGui/CVarPanel.h"
 #include "Editor/ImGui/ImGuiAll.h"
 #endif
@@ -32,10 +30,6 @@ namespace
     using namespace CoreEngine;
 
 #ifdef CORE_EDITOR
-    /// 設定パネルの編集対象（シーン寿命のポインタをラムダに持たせないための
-    /// ファイルスコープ変数。GridRenderer と同じ流儀）
-    GroundFeature* s_activeGround = nullptr;
-
     /// パネルが扱う CVar の接頭辞
     constexpr const char* kGroundCVarPrefix = "r.Ground";
 #endif
@@ -130,13 +124,15 @@ namespace
 
 namespace CoreEngine
 {
-    void GroundFeature::Initialize([[maybe_unused]] SceneContext& ctx)
+    void GroundFeature::Initialize(SceneContext&)
     {
 #ifdef CORE_EDITOR
-        // パラメータ UI は CVar から自動生成する。全 CVar を一覧する横断パネルは
-        // 存在しない設計なので、機能ごとにこの登録をしないとどこにも出てこない
-        EnsureSettingsPanelRegistered(ctx.engine);
-        SetActiveForSettingsPanel(this);
+        // Engine Settings に「Ground」パネルを登録する（パラメータ UI は CVar から自動生成する）
+        settingsPanel_ = Editor::EditorPanelRegistry::Get().Register({
+            .id = "Ground",
+            .placement = Editor::PanelPlacement::SettingsSection,
+            .draw = [this] { DrawSettingsImGui(); },
+            });
 #endif
     }
 
@@ -186,10 +182,6 @@ namespace CoreEngine
 
     void GroundFeature::Finalize(SceneContext&)
     {
-#ifdef CORE_EDITOR
-        // シーンと一緒に消えるので、パネルの参照を先に外す
-        SetActiveForSettingsPanel(nullptr);
-#endif
         // 実体は GameObjectManager が持っているのでポインタを切るだけ
         ground_ = nullptr;
         mesh_ = nullptr;
@@ -352,34 +344,6 @@ namespace CoreEngine
     }
 
 #ifdef CORE_EDITOR
-
-    void GroundFeature::EnsureSettingsPanelRegistered(EngineSystem* engine)
-    {
-        static bool registered = false;
-        if (registered || !engine) {
-            return;
-        }
-
-        // ドロワーは何もキャプチャしない（ファイルスコープの s_activeGround を読むだけ）
-        Editor::EditorPanelRegistry::Get().Register({
-            .id = "Ground",
-            .placement = Editor::PanelPlacement::SettingsSection,
-            .draw = [] {
-                if (s_activeGround) {
-                    s_activeGround->DrawSettingsImGui();
-                } else {
-                    ImGui::TextDisabled("(シーンがありません)");
-                }
-            },
-            });
-
-        registered = true;
-    }
-
-    void GroundFeature::SetActiveForSettingsPanel(GroundFeature* ground)
-    {
-        s_activeGround = ground;
-    }
 
     void GroundFeature::DrawSettingsImGui()
     {
