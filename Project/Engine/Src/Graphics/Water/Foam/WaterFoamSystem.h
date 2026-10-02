@@ -1,14 +1,17 @@
 #pragma once
 
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
+#include "Graphics/RHI/Command/FrameSync.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Graphics/Shader/ICustomShaderProvider.h"
 #include "Graphics/Water/FFTOceanGpuResources.h"
 #include "Graphics/Water/WaterFoamDefaults.h"
 
+#include <array>
 #include <cstdint>
 #include <d3d12.h>
+#include <vector>
 #include <wrl.h>
 
 namespace CoreEngine
@@ -78,6 +81,18 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE GetWhitecapSRVHandle() const {
             return whitecap_[(whitecapFrameIndex_ + 1u) & 1u].srv.gpuHandle;
         }
+
+        /// @brief 沖の白波の統計（合成ヤコビアンのヒストグラムと白波の被覆率の平均）を測る
+        /// @details 同じフレームの枠で前に記録した測定（GPU の処理が済んだもの）を読んでから、今の分を記録する。
+        ///          DispatchWhitecap の後に呼ぶ
+        /// @param frameIndex フレームの枠の番号（FrameSync::FrameIndex）
+        void DispatchWhitecapStatistics(
+            ID3D12GraphicsCommandList* cmdList,
+            D3D12_GPU_DESCRIPTOR_HANDLE jacobianSRV,
+            uint32_t frameIndex);
+
+        /// @brief 最後に読み戻した、沖の白波の被覆率の平均
+        float GetMeasuredWhitecapCoverage() const { return measuredWhitecapCoverage_; }
 
         /// @brief 岸の泡を 1 フレーム進める（海底の高さを測った後・水面の合成の前に呼ぶ）
         void DispatchShore(ID3D12GraphicsCommandList* cmdList, const ShoreInput& input);
@@ -164,6 +179,54 @@ namespace CoreEngine
         CB_VERIFY_LAYOUT(SmoothSeabedConstants, kSmoothSeabedConstantsFields);
         CB_BIND_HLSL(SmoothSeabedConstants, kSmoothSeabedConstantsFields, "WaterShoreSeabedSmoothConstants");
 
+        // ---- 沖の白波の統計 ----
+        /// @brief 標本の格子の一辺の数
+        static constexpr uint32_t kStatisticsSampleResolution = 256;
+        /// @brief 標本の間隔 [m]
+        static constexpr float kStatisticsSampleSpacing = 4.0f;
+        /// @brief 合成ヤコビアンのヒストグラムの段の数と範囲
+        static constexpr uint32_t kHistogramBins = 1024;
+        static constexpr float kHistogramMin = -0.5f;
+        static constexpr float kHistogramMax = 1.5f;
+        /// @brief 統計のバッファの語数（段ごとの数 ＋ 被覆率の和）
+        static constexpr uint32_t kStatisticsWords = kHistogramBins + 1;
+        /// @brief 被覆率の和の整数の倍率（WaterWhitecapStatistics.CS.hlsl と同じ値）
+        static constexpr float kCoverageFixedPointScale = 16384.0f;
+        /// @brief 測った被覆率をログへ出す間隔（読み戻しの回数）
+        static constexpr uint32_t kStatisticsLogInterval = 600;
+
+        /// @brief 白波の統計のパスの定数（WaterWhitecapStatistics.CS.hlsl の WaterWhitecapStatisticsConstants）
+        struct StatisticsConstants {
+            float sampleOriginXZ[2] = { 0.0f, 0.0f };
+            float sampleSpacing = kStatisticsSampleSpacing;
+            uint32_t sampleResolution = kStatisticsSampleResolution;
+            float cascadeWeights[3] = {
+                WaterFoamDefaults::kCascadeWeights[0],
+                WaterFoamDefaults::kCascadeWeights[1],
+                WaterFoamDefaults::kCascadeWeights[2],
+            };
+            float bias = WaterFoamDefaults::kBias;
+            float gain = WaterFoamDefaults::kGain;
+            float histogramMin = kHistogramMin;
+            float histogramInvWidth = 0.0f;
+            uint32_t histogramBins = kHistogramBins;
+        };
+
+        static constexpr Cb::Field kStatisticsConstantsFields[] = {
+            CB_FIELD(StatisticsConstants, sampleOriginXZ), CB_FIELD(StatisticsConstants, sampleSpacing),
+            CB_FIELD(StatisticsConstants, sampleResolution), CB_FIELD(StatisticsConstants, cascadeWeights),
+            CB_FIELD(StatisticsConstants, bias), CB_FIELD(StatisticsConstants, gain),
+            CB_FIELD(StatisticsConstants, histogramMin), CB_FIELD(StatisticsConstants, histogramInvWidth),
+            CB_FIELD(StatisticsConstants, histogramBins),
+        };
+        CB_VERIFY_LAYOUT(StatisticsConstants, kStatisticsConstantsFields);
+        CB_BIND_HLSL(StatisticsConstants, kStatisticsConstantsFields, "WaterWhitecapStatisticsConstants");
+
+        /// @brief 白波の統計のパスの計算シェーダー
+        struct StatisticsShaderProvider final : ICustomShaderProvider {
+            std::wstring GetComputeShaderPath() const override { return L"WaterWhitecapStatistics.CS.hlsl"; }
+        };
+
         /// @brief 白波の蓄積パスの計算シェーダー
         struct WhitecapShaderProvider final : ICustomShaderProvider {
             std::wstring GetComputeShaderPath() const override { return L"FFTOceanFoamAccumulate.CS.hlsl"; }
@@ -204,6 +267,9 @@ namespace CoreEngine
         bool CreatePipelines();
         bool CreateWhitecapResources();
         bool CreateShoreResources();
+        bool CreateStatisticsResources();
+        /// @brief フレームの枠に記録してあった白波の統計を読む
+        void ReadWhitecapStatistics(uint32_t frameIndex);
 
         GraphicsCore* dxCommon_ = nullptr;
         DescriptorAllocator* descriptorAllocator_ = nullptr;
@@ -222,6 +288,22 @@ namespace CoreEngine
         bool whitecapResetPending_ = true;
         float whitecapPreviousTimeSeconds_ = 0.0f;
         uint32_t whitecapSpectrumRevision_ = 0;
+
+        // ---- 沖の白波の統計（フレームの枠ごとに読み戻す）----
+        CustomShaderPipeline statisticsPipeline_{};
+        StatisticsShaderProvider statisticsShaderProvider_{};
+        GpuResource statistics_{};
+        DescriptorHandle statisticsUav_{};
+        /// @brief 統計のバッファを 0 にするための写し元（作ったまま書かない）
+        Microsoft::WRL::ComPtr<ID3D12Resource> statisticsZero_;
+        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kMaxFramesInFlight> statisticsReadback_{};
+        std::array<bool, kMaxFramesInFlight> statisticsPending_{};
+        Microsoft::WRL::ComPtr<ID3D12Resource> statisticsConstantsBuffer_;
+        StatisticsConstants* mappedStatisticsConstants_ = nullptr;
+        /// @brief 最後に読み戻した合成ヤコビアンのヒストグラム
+        std::vector<uint32_t> whitecapHistogram_;
+        float measuredWhitecapCoverage_ = 0.0f;
+        uint32_t statisticsLogCounter_ = 0;
 
         // ---- 岸の泡（カメラの周りの範囲。水の粒の静止位置ごと）----
         CustomShaderPipeline shorePipeline_{};

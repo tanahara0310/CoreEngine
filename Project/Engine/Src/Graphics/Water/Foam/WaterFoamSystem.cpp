@@ -2,6 +2,7 @@
 #include "WaterFoamSystem.h"
 
 #include <algorithm>
+#include <cstring>
 #include <string>
 
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
@@ -47,7 +48,8 @@ namespace CoreEngine
             return false;
         }
 
-        if (!CreatePipelines() || !CreateWhitecapResources() || !CreateShoreResources()) {
+        if (!CreatePipelines() || !CreateWhitecapResources() || !CreateShoreResources()
+            || !CreateStatisticsResources()) {
             return false;
         }
         isInitialized_ = true;
@@ -100,6 +102,14 @@ namespace CoreEngine
         if (!swashBuilt || !swashPipeline_.HasComputePSO()) {
             Logger::GetInstance().Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
                 "WaterFoamSystem: failed to build swash compute pipeline.");
+            return false;
+        }
+
+        const bool statisticsBuilt = statisticsPipeline_.Build(
+            dxCommon_->GetDevice(), shaderCompiler, reflectionBuilder, statisticsShaderProvider_);
+        if (!statisticsBuilt || !statisticsPipeline_.HasComputePSO()) {
+            Logger::GetInstance().Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
+                "WaterFoamSystem: failed to build whitecap statistics compute pipeline.");
             return false;
         }
         return true;
@@ -277,6 +287,68 @@ namespace CoreEngine
             && swashCreated && mappedSwashConstants_;
     }
 
+    bool WaterFoamSystem::CreateStatisticsResources()
+    {
+        Microsoft::WRL::ComPtr<ID3D12Device> device = dxCommon_->GetDevice();
+        constexpr UINT64 kBytes = sizeof(uint32_t) * kStatisticsWords;
+
+        D3D12_HEAP_PROPERTIES heapProps{};
+        heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+
+        D3D12_RESOURCE_DESC desc{};
+        desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        desc.Width = kBytes;
+        desc.Height = 1;
+        desc.DepthOrArraySize = 1;
+        desc.MipLevels = 1;
+        desc.Format = DXGI_FORMAT_UNKNOWN;
+        desc.SampleDesc.Count = 1;
+        desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+        // 毎フレームの最初は 0 を写し込むので、写し先の状態で作る
+        Microsoft::WRL::ComPtr<ID3D12Resource> buffer;
+        if (FAILED(device->CreateCommittedResource(
+                &heapProps, D3D12_HEAP_FLAG_NONE, &desc,
+                D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(&buffer)))) {
+            return false;
+        }
+        statistics_.Reset(std::move(buffer), D3D12_RESOURCE_STATE_COPY_DEST);
+
+        D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
+        uavDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+        uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+        uavDesc.Buffer.FirstElement = 0;
+        uavDesc.Buffer.NumElements = kStatisticsWords;
+        uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
+        statisticsUav_ = descriptorAllocator_->CreateUAV(statistics_.Get(), uavDesc, "WaterWhitecapStatisticsUAV");
+
+        try {
+            statisticsZero_ = ResourceFactory::CreateBufferResource(device, kBytes);
+            void* zeroMapped = nullptr;
+            if (FAILED(statisticsZero_->Map(0, nullptr, &zeroMapped))) {
+                return false;
+            }
+            std::memset(zeroMapped, 0, static_cast<size_t>(kBytes));
+            statisticsZero_->Unmap(0, nullptr);
+
+            for (auto& readback : statisticsReadback_) {
+                readback = ResourceFactory::CreateBufferResource(device, kBytes, D3D12_HEAP_TYPE_READBACK);
+            }
+        }
+        catch (const std::exception&) {
+            return false;
+        }
+        statisticsPending_.fill(false);
+        whitecapHistogram_.assign(kHistogramBins, 0u);
+
+        void* mapped = nullptr;
+        const bool created = FFTOceanResourceFactory::CreateSimulationConstantBuffer(
+            device.Get(), Align256(sizeof(StatisticsConstants)), statisticsConstantsBuffer_, mapped);
+        mappedStatisticsConstants_ = static_cast<StatisticsConstants*>(mapped);
+        return created && mappedStatisticsConstants_;
+    }
+
     void WaterFoamSystem::DispatchWhitecap(
         ID3D12GraphicsCommandList* cmdList,
         D3D12_GPU_DESCRIPTOR_HANDLE jacobianSRV,
@@ -345,6 +417,94 @@ namespace CoreEngine
 
         Barrier::Transition(cmdList, whitecap_[writeIndex], kAnyShaderResource);
         ++whitecapFrameIndex_;
+    }
+
+    void WaterFoamSystem::ReadWhitecapStatistics(uint32_t frameIndex)
+    {
+        if (!statisticsPending_[frameIndex]) {
+            return;
+        }
+        statisticsPending_[frameIndex] = false;
+
+        // 同じ枠が回ってきた時点で、前にこの枠へ記録した GPU の処理は済んでいる
+        uint32_t* words = nullptr;
+        const D3D12_RANGE readRange{ 0, sizeof(uint32_t) * kStatisticsWords };
+        if (FAILED(statisticsReadback_[frameIndex]->Map(0, &readRange, reinterpret_cast<void**>(&words)))) {
+            return;
+        }
+        std::memcpy(whitecapHistogram_.data(), words, sizeof(uint32_t) * kHistogramBins);
+        const uint32_t coverageSum = words[kHistogramBins];
+        const D3D12_RANGE writtenRange{ 0, 0 };
+        statisticsReadback_[frameIndex]->Unmap(0, &writtenRange);
+
+        constexpr float kSampleCount =
+            static_cast<float>(kStatisticsSampleResolution) * static_cast<float>(kStatisticsSampleResolution);
+        measuredWhitecapCoverage_ = static_cast<float>(coverageSum) / (kCoverageFixedPointScale * kSampleCount);
+
+        if (++statisticsLogCounter_ >= kStatisticsLogInterval) {
+            statisticsLogCounter_ = 0;
+            Logger::GetInstance().Logf(LogLevel::Debug, LogCategory::Graphics, LogSubCategory::Pipeline,
+                "WaterFoamSystem: whitecap coverage measured={:.5f} bias={:.4f} gain={:.3f}",
+                measuredWhitecapCoverage_, settings_.bias, settings_.gain);
+        }
+    }
+
+    void WaterFoamSystem::DispatchWhitecapStatistics(
+        ID3D12GraphicsCommandList* cmdList,
+        D3D12_GPU_DESCRIPTOR_HANDLE jacobianSRV,
+        uint32_t frameIndex)
+    {
+        if (!isInitialized_ || !cmdList || jacobianSRV.ptr == 0 || frameIndex >= kMaxFramesInFlight) {
+            return;
+        }
+        ReadWhitecapStatistics(frameIndex);
+        if (!settings_.enabled) {
+            return;
+        }
+
+        StatisticsConstants& constants = *mappedStatisticsConstants_;
+        constexpr float kSampleExtent = kStatisticsSampleSpacing * static_cast<float>(kStatisticsSampleResolution);
+        constants.sampleOriginXZ[0] = -0.5f * kSampleExtent;
+        constants.sampleOriginXZ[1] = -0.5f * kSampleExtent;
+        constants.sampleSpacing = kStatisticsSampleSpacing;
+        constants.sampleResolution = kStatisticsSampleResolution;
+        for (int c = 0; c < 3; ++c) {
+            constants.cascadeWeights[c] = settings_.cascadeWeights[c];
+        }
+        constants.bias = settings_.bias;
+        constants.gain = settings_.gain;
+        constants.histogramMin = kHistogramMin;
+        constants.histogramInvWidth = static_cast<float>(kHistogramBins) / (kHistogramMax - kHistogramMin);
+        constants.histogramBins = kHistogramBins;
+
+        constexpr UINT64 kBytes = sizeof(uint32_t) * kStatisticsWords;
+        Barrier::Transition(cmdList, statistics_, D3D12_RESOURCE_STATE_COPY_DEST);
+        cmdList->CopyBufferRegion(statistics_.Get(), 0, statisticsZero_.Get(), 0, kBytes);
+        Barrier::Transition(cmdList, statistics_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
+        cmdList->SetPipelineState(statisticsPipeline_.GetComputePSO());
+        cmdList->SetComputeRootSignature(statisticsPipeline_.GetComputeRootSignature());
+        if (const int slot = statisticsPipeline_.GetComputeRootParamIndex("gJacobian"); slot >= 0) {
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), jacobianSRV);
+        }
+        if (const int slot = statisticsPipeline_.GetComputeRootParamIndex("gWhitecapFoam"); slot >= 0) {
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), GetWhitecapSRVHandle());
+        }
+        if (const int slot = statisticsPipeline_.GetComputeRootParamIndex("gStatistics"); slot >= 0) {
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), statisticsUav_.gpuHandle);
+        }
+        if (const int slot = statisticsPipeline_.GetComputeRootParamIndex("WaterWhitecapStatisticsConstants"); slot >= 0) {
+            cmdList->SetComputeRootConstantBufferView(
+                static_cast<UINT>(slot), statisticsConstantsBuffer_->GetGPUVirtualAddress());
+        }
+        const UINT groups = (kStatisticsSampleResolution + 7) / 8;
+        cmdList->Dispatch(groups, groups, 1);
+
+        // CPU は同じ枠が回ってきたフレームで読む。最後は次のフレームの 0 の写し込みに備えて写し先へ戻す
+        Barrier::Transition(cmdList, statistics_, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        cmdList->CopyBufferRegion(statisticsReadback_[frameIndex].Get(), 0, statistics_.Get(), 0, kBytes);
+        Barrier::Transition(cmdList, statistics_, D3D12_RESOURCE_STATE_COPY_DEST);
+        statisticsPending_[frameIndex] = true;
     }
 
     void WaterFoamSystem::DispatchShore(ID3D12GraphicsCommandList* cmdList, const ShoreInput& input)
