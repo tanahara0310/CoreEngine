@@ -1,12 +1,12 @@
 #pragma once
 
 #include "Math/MathCore.h"
+#include "Utility/Lifetime/ScopedRegistration.h"
 
 namespace CoreEngine {
     class EngineSystem;
     class AtmosphereManager;
     class LightManager;
-    class GameDebugUI;
     class ToneMapping;
 
     /// @brief Atmosphere UI から扱う太陽設定の読み書きモデル
@@ -34,9 +34,6 @@ namespace CoreEngine {
     /// @note 編集対象のライトはシーンごとに作り直されるため、描画のたびに UI モデルを再同期する。
     class AtmosphereEditor {
     public:
-        /// @brief インスペクタの登録を解除する
-        ~AtmosphereEditor();
-
         /// @brief 参照先を初期化し、空のコンポーネントのインスペクタとして登録する
         void Initialize(EngineSystem& engine);
 
@@ -91,14 +88,8 @@ namespace CoreEngine {
         AtmosphereEditorMoonSettings moonSettings_{};
         EngineSystem* engine_ = nullptr;
 
-        /// @brief Initialize 時にキャッシュした GameDebugUI（デストラクタでの登録解除用）
-        /// @details デストラクタで engine_->GetDebugSubsystem() を呼び直すと、この
-        ///          エディタ自体を所有する DebugSubsystem が EngineSystem::Finalize() の
-        ///          サブシステム一括破棄の途中（DebugSubsystem 自身のデストラクタの最中）に
-        ///          自分自身を dynamic_cast で探しに行くことになり、その時点で破棄済みの
-        ///          他サブシステムに当たってアクセス違反になる（RTTI 読み取り不可 →
-        ///          std::terminate）。そのため参照は Initialize 時に一度だけ取得してキャッシュする。
-        GameDebugUI* gameDebugUI_ = nullptr;
+        /// @brief インスペクタの出し方の登録（破棄すると外れる）
+        ScopedRegistration inspector_;
 
         // 時刻ベースの太陽配置（UE の Sun Position 相当の簡易版）
         float timeOfDay_ = 12.0f;            ///< 時刻 [h]（0-24）

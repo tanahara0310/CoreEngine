@@ -113,7 +113,6 @@ namespace CoreEngine
         GameOutputWindow gameOutputWindow_;
 
         // 環境エディタ（大気・雲はエンジン既定機能のため、シーンに依存せずエンジン寿命で保持する）
-        // gameDebugUI_ より後に宣言し、デストラクタでの登録解除が UI 解放前に走るようにする
         std::unique_ptr<AtmosphereEditor> atmosphereEditor_;
         std::unique_ptr<VolumetricCloudEditor> cloudEditor_;
         std::unique_ptr<FogEditor> fogEditor_;
@@ -137,8 +136,8 @@ namespace CoreEngine
         // エディタ視点カメラの設定・姿勢を次の起動へ持ち越す
         std::unique_ptr<Editor::SceneCameraSection> sceneCameraSection_;
 
-        // 登録したパネル（破棄すると外れる）
-        std::vector<ScopedRegistration> panelRegistrations_;
+        // 登録したパネルとインスペクタの出し方（破棄すると外れる）
+        std::vector<ScopedRegistration> registrations_;
     };
 }
 

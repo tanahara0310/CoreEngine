@@ -1,9 +1,10 @@
 #pragma once
 
+#include "Utility/Lifetime/ScopedRegistration.h"
+
 namespace CoreEngine {
     class EngineSystem;
     class FogManager;
-    class GameDebugUI;
 
     /// @brief 高さフォグのエンジン常駐エディタ
     /// @details DebugSubsystem がエンジン寿命で 1 個所有し、シーンに置かれたコンポーネントの
@@ -11,9 +12,6 @@ namespace CoreEngine {
     ///          UI は「① プリセット → ② 詳細設定（CVar 自動生成）」の 2 層。
     class FogEditor {
     public:
-        /// @brief 環境エディタの登録を解除する
-        ~FogEditor();
-
         /// @brief 参照先を初期化し、環境エディタとして登録する
         void Initialize(EngineSystem& engine);
 
@@ -28,10 +26,7 @@ namespace CoreEngine {
 
         EngineSystem* engine_ = nullptr;
 
-        /// @brief Initialize 時にキャッシュした GameDebugUI（デストラクタでの登録解除用）
-        /// @details デストラクタで engine_->GetDebugSubsystem() を呼び直すと、サブシステム
-        ///          一括破棄の途中で破棄済みサブシステムへ dynamic_cast することになり
-        ///          アクセス違反になる。参照は Initialize 時に一度だけ取得してキャッシュする。
-        GameDebugUI* gameDebugUI_ = nullptr;
+        /// @brief インスペクタの出し方の登録（破棄すると外れる）
+        ScopedRegistration inspector_;
     };
 }

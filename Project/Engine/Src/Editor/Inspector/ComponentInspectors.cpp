@@ -22,6 +22,7 @@
 #include "Graphics/Light/LightManager.h"
 #include "Reflection/TypeDescriptor.h"
 
+#include <cstdint>
 #include <memory>
 #include <unordered_map>
 #include <utility>
@@ -30,11 +31,31 @@ namespace CoreEngine::Editor::ComponentInspectors
 {
     namespace
     {
-        /// @brief 型名 → 出し方
-        std::unordered_map<std::string, Entry>& Entries()
+        /// @brief 登録した出し方と、その登録の番号（0 は外さない登録）
+        struct Slot
         {
-            static std::unordered_map<std::string, Entry> entries;
+            Entry entry;
+            uint64_t registration = 0;
+        };
+
+        /// @brief 型名 → 出し方
+        std::unordered_map<std::string, Slot>& Entries()
+        {
+            static std::unordered_map<std::string, Slot> entries;
             return entries;
+        }
+
+        /// @brief 最後に振った登録の番号
+        uint64_t& LastRegistration()
+        {
+            static uint64_t last = 0;
+            return last;
+        }
+
+        /// @brief 型の出し方を外さない登録にする（エンジンの型用）
+        void AddPermanent(const std::string& typeName, Entry entry)
+        {
+            Entries()[typeName] = Slot{ std::move(entry), 0 };
         }
 
         /// @brief 読み込めない型のコンポーネントの出し方（保存データをそのまま見せる）
@@ -113,20 +134,20 @@ namespace CoreEngine::Editor::ComponentInspectors
 
     void RegisterEngineTypes()
     {
-        Register("Transform", { .shownFirst = true });
-        Register("EulerTransform", { .shownFirst = true });
-        Register("RectTransform", { .shownFirst = true });
-        Register("Animator", { .displayName = "アニメーション" });
-        Register("SkeletonSocket", { .displayName = "ソケット追従" });
+        AddPermanent("Transform", { .shownFirst = true });
+        AddPermanent("EulerTransform", { .shownFirst = true });
+        AddPermanent("RectTransform", { .shownFirst = true });
+        AddPermanent("Animator", { .displayName = "アニメーション" });
+        AddPermanent("SkeletonSocket", { .displayName = "ソケット追従" });
 
-        Register("Light", {
+        AddPermanent("Light", {
             .drawExtra = [](IComponent& component) {
                 // 出ている＝選ばれている。ギズモを詳細表示にするライトとして毎フレーム指す
                 static_cast<LightComponent&>(component).FocusGizmo();
             },
             });
 
-        Register("Collider", {
+        AddPermanent("Collider", {
             .displayName = "コライダー",
             .drawBody = [](IComponent& component) {
                 return DrawWithJsonUndo<ColliderComponent>(component,
@@ -139,21 +160,21 @@ namespace CoreEngine::Editor::ComponentInspectors
             },
             });
 
-        Register("SpriteRenderer", {
+        AddPermanent("SpriteRenderer", {
             .displayName = "スプライト描画",
             .drawBody = [](IComponent& component) {
                 return static_cast<SpriteRendererComponent&>(component).DrawEditorUI();
             },
             });
 
-        Register("Text3DRenderer", {
+        AddPermanent("Text3DRenderer", {
             .displayName = "3D テキスト",
             .drawBody = [](IComponent& component) {
                 return static_cast<Text3DRendererComponent&>(component).DrawEditorUI();
             },
             });
 
-        Register("Material", {
+        AddPermanent("Material", {
             .drawExtra = [](IComponent& component) {
                 if (!static_cast<MaterialComponent&>(component).GetMaterial()) {
                     UI::Hint("マテリアル未生成（メッシュの読み込み待ち）。編集した値は生成時に反映される");
@@ -161,22 +182,26 @@ namespace CoreEngine::Editor::ComponentInspectors
             },
             });
 
-        Register("ParticleSystem", {
+        AddPermanent("ParticleSystem", {
             .drawBody = [](IComponent& component) { return DrawParticleModules<ParticleSystemComponent>(component); },
             });
-        Register("GpuParticleSystem", {
+        AddPermanent("GpuParticleSystem", {
             .drawBody = [](IComponent& component) { return DrawParticleModules<GpuParticleSystemComponent>(component); },
             });
     }
 
-    void Register(const std::string& typeName, Entry entry)
+    ScopedRegistration Register(const std::string& typeName, Entry entry)
     {
-        Entries()[typeName] = std::move(entry);
-    }
+        const uint64_t registration = ++LastRegistration();
+        Entries()[typeName] = Slot{ std::move(entry), registration };
 
-    void Unregister(const std::string& typeName)
-    {
-        Entries().erase(typeName);
+        return ScopedRegistration([typeName, registration] {
+            auto& entries = Entries();
+            const auto found = entries.find(typeName);
+            if (found != entries.end() && found->second.registration == registration) {
+                entries.erase(found);
+            }
+            });
     }
 
     const Entry* Find(const IComponent& component)
@@ -185,7 +210,7 @@ namespace CoreEngine::Editor::ComponentInspectors
             return &MissingEntry();
         }
         const auto found = Entries().find(component.GetTypeName());
-        return found != Entries().end() ? &found->second : nullptr;
+        return found != Entries().end() ? &found->second.entry : nullptr;
     }
 
     std::string DisplayNameOf(const IComponent& component)
@@ -207,8 +232,8 @@ namespace CoreEngine::Editor::ComponentInspectors
     std::string DisplayNameOf(const std::string& typeName)
     {
         const auto found = Entries().find(typeName);
-        if (found != Entries().end() && !found->second.displayName.empty()) {
-            return found->second.displayName;
+        if (found != Entries().end() && !found->second.entry.displayName.empty()) {
+            return found->second.entry.displayName;
         }
         const Reflection::TypeDescriptor* const descriptor = ComponentFactory::Get().FindDescriptor(typeName);
         if (descriptor && descriptor->displayName && descriptor->displayName[0] != '\0') {

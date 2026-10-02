@@ -2,6 +2,8 @@
 
 #ifdef CORE_EDITOR
 
+#include "Utility/Lifetime/ScopedRegistration.h"
+
 #include <functional>
 #include <string>
 
@@ -27,11 +29,8 @@ namespace CoreEngine::Editor::ComponentInspectors
     void RegisterEngineTypes();
 
     /// @brief 型の出し方を登録する（同じ型名は上書きする）
-    void Register(const std::string& typeName, Entry entry);
-
-    /// @brief 型の出し方の登録を外す
-    /// @note 登録元より先に描かれないよう、登録した側のデストラクタから呼ぶ。
-    void Unregister(const std::string& typeName);
+    /// @return 登録を握るハンドル。破棄すると外れる（後から同じ型名を登録し直していれば、そちらを残す）
+    ScopedRegistration Register(const std::string& typeName, Entry entry);
 
     /// @brief コンポーネントの出し方（登録が無ければ nullptr）
     const Entry* Find(const IComponent& component);

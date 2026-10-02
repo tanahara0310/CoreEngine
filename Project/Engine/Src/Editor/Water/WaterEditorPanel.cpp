@@ -21,20 +21,10 @@ namespace {
 
 namespace CoreEngine {
 
-WaterEditorPanel::~WaterEditorPanel() {
-	Shutdown();
-}
-
 void WaterEditorPanel::Shutdown() {
 	waterFeature_ = nullptr;
 #ifdef CORE_EDITOR
-	// シーン破棄後にドロワーがダングリングしないよう登録を解除する
-	// （パラメータの永続化は CVars.json が担うため、ここで保存処理は不要）
-	if (engine_) {
-		Editor::ComponentInspectors::Unregister(kComponentTypeName);
-		// 解除済みなので、保険で呼ばれるデストラクタ側では何もしない
-		engine_ = nullptr;
-	}
+	inspector_.Reset();
 #endif
 }
 
@@ -47,7 +37,6 @@ void WaterEditorPanel::Initialize(
 	}
 
 #ifdef CORE_EDITOR
-	engine_ = &engine;
 	// UI は facade 経由で Water 設定を取得・適用する
 	editorFacade_.Initialize(*waterFeature_, engine);
 	// 通常パラメータ編集とデバッグ表示の各パネルを初期化する
@@ -55,7 +44,7 @@ void WaterEditorPanel::Initialize(
 	debugPanel_.Initialize(*waterFeature_);
 
 	// シーンに置かれた水面コンポーネントのインスペクタとして中身を描く
-	Editor::ComponentInspectors::Register(kComponentTypeName, {
+	inspector_ = Editor::ComponentInspectors::Register(kComponentTypeName, {
 		.displayName = "水面",
 		.drawBody = [this](IComponent&) { DrawImGuiContent(); return false; },
 		});

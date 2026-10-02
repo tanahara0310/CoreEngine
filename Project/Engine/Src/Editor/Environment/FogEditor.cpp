@@ -11,7 +11,6 @@
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
 #include "Editor/ImGui/ImGuiAll.h"
-#include "EngineSystem/Subsystem/DebugSubsystem.h"
 #include <iterator>
 #endif
 
@@ -104,28 +103,11 @@ namespace CoreEngine {
     {
         engine_ = &engine;
 #ifdef CORE_EDITOR
-        // シーンに置かれたコンポーネントのインスペクタとして中身を描く。
-        // GameDebugUI はここで一度だけ取得してキャッシュする（デストラクタで使うため）
-        if (auto* debug = engine_->GetDebugSubsystem()) {
-            gameDebugUI_ = debug->GetGameDebugUI();
-            if (gameDebugUI_) {
-                Editor::ComponentInspectors::Register(kComponentTypeName, {
-                    .displayName = "高さフォグ",
-                    .drawBody = [this](IComponent&) { DrawContent(); return false; },
-                    });
-            }
-        }
-#endif
-    }
-
-    FogEditor::~FogEditor()
-    {
-#ifdef CORE_EDITOR
-        // エンジン終了時にドロワーがダングリングしないよう登録を解除する。
-        // engine_->GetDebugSubsystem() を呼び直さないこと（サブシステム一括破棄中に走るため）
-        if (gameDebugUI_) {
-            Editor::ComponentInspectors::Unregister(kComponentTypeName);
-        }
+        // シーンに置かれたコンポーネントのインスペクタとして中身を描く
+        inspector_ = Editor::ComponentInspectors::Register(kComponentTypeName, {
+            .displayName = "高さフォグ",
+            .drawBody = [this](IComponent&) { DrawContent(); return false; },
+            });
 #endif
     }
 

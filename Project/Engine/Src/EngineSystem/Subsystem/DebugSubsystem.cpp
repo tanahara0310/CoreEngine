@@ -440,7 +440,7 @@ namespace CoreEngine
 
         // ポストエフェクトはシーンが持つ見た目なので、シーンに置いた
         // PostProcess コンポーネントのインスペクタとして出す（Engine Settings には出さない）
-        Editor::ComponentInspectors::Register("PostProcess", {
+        registrations_.push_back(Editor::ComponentInspectors::Register("PostProcess", {
             .displayName = "ポストエフェクト",
             .drawBody = [this](IComponent&) {
                 if (auto* postEffect = engine_->GetService<PostEffectManager>()) {
@@ -448,7 +448,7 @@ namespace CoreEngine
                 }
                 return false;
             },
-            });
+            }));
 
         // Rendering Techniques パネル（SSAO, TAA等のレンダリング技術）
         AddPanel({
@@ -551,7 +551,7 @@ namespace CoreEngine
 
     void DebugSubsystem::AddPanel(Editor::EditorPanelDesc desc)
     {
-        panelRegistrations_.push_back(Editor::EditorPanelRegistry::Get().Register(std::move(desc)));
+        registrations_.push_back(Editor::EditorPanelRegistry::Get().Register(std::move(desc)));
     }
 
     void DebugSubsystem::Finalize()

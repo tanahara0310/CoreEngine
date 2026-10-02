@@ -4,6 +4,7 @@
 #include "Editor/Water/WaterEditorFacade.h"
 #include "Editor/Water/WaterSurfaceDebugPanel.h"
 #include "Editor/Water/WaterSurfaceParameterPanel.h"
+#include "Utility/Lifetime/ScopedRegistration.h"
 #endif
 
 namespace CoreEngine {
@@ -18,18 +19,13 @@ namespace CoreEngine {
 ///          Engine 側の WaterRenderFeature が持つ。ここは UI だけを扱う。
 class WaterEditorPanel {
 public:
-	/// @brief インスペクタの登録を解除する
-	~WaterEditorPanel();
-
 	/// @brief 水面 UI の各パネルを初期化し、水面コンポーネントのインスペクタとして登録する
 	/// @param waterFeature シーンへ登録済みの水面 Feature（nullptr のとき UI は出ない）
 	/// @param engine エンジンシステム
 	void Initialize(CoreEngine::WaterRenderFeature* waterFeature, CoreEngine::EngineSystem& engine);
 
-	/// @brief UI 登録を解除し、Feature 参照を切る
-	/// @details Feature の所有者は Scene（Finalize で features_ が破棄される）なので、
-	///          それより先に呼ぶこと。WaterTestScene::OnFinalize() から呼ばれる。
-	///          冪等。デストラクタからも保険として呼ぶ。
+	/// @brief インスペクタの登録を外し、Feature 参照を切る
+	/// @note 水面の Feature の Finalize から呼ぶ。何度呼んでもよい。
 	void Shutdown();
 
 private:
@@ -42,8 +38,8 @@ private:
 	WaterSurfaceDebugPanel debugPanel_{};
 	/// @brief Water UI と Engine 内部設定の仲介 facade
 	WaterEditorFacade editorFacade_{};
-	/// @brief 環境エディタの登録解除に使うエンジン参照（非所有）
-	CoreEngine::EngineSystem* engine_ = nullptr;
+	/// @brief インスペクタの出し方の登録（破棄すると外れる）
+	ScopedRegistration inspector_;
 
 	// 旧 WaterSettingsSection（Water.json への専用シリアライズ）は Phase 5 で廃止。
 	// 全パラメータは WaterCVars として CVars.json（CVarSettingsSection）に保存される
