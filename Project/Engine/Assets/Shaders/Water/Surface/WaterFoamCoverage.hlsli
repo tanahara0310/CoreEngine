@@ -13,7 +13,7 @@
 //   資源    : gFFTOceanJacobian / gFFTOceanFoam / gSampler / gWaterSeabedHeight /
 //             gWaterShoreFoam / gLinearClamp
 //   cbuffer : gFoamEnabled / gFoamBias / gFoamGain / gFoamCascadeWeights /
-//             gUseFFTOceanNormalMap /
+//             gUseFFTOceanNormalMap / gWaveGroupPhase / gFoamDriftOffsetXZ /
 //             gSeabedEnabled / gSeabedOriginXZ / gSeabedInvSize / gShoreFoamEnabled
 //   関数    : ComputeFFTCombinedDetJ（Common/FFTOceanCascade.hlsli）
 // ============================================================
@@ -47,9 +47,10 @@ float ComputeFoamMask(float2 worldXZ)
         return 0.0f;
     }
     const float detJ = ComputeFFTCombinedDetJ(
-        worldXZ, gFFTOceanJacobian, gSampler, gFoamCascadeWeights);
+        worldXZ, gFFTOceanJacobian, gSampler, gFoamCascadeWeights, gWaveGroupPhase);
     const float instant = ComputeWhitecapInstant(detJ, gFoamBias, gFoamGain);
-    const float accumulated = SampleWhitecapAccumulated(worldXZ, gFFTOceanFoam, gSampler);
+    const float accumulated = SampleWhitecapAccumulated(
+        worldXZ, gFFTOceanFoam, gSampler, gWaveGroupPhase, gFoamDriftOffsetXZ);
 
     // 返り値は滑らかな「被覆率」の場。レース状の形への変換（dissolve）は
     // 表示側の ComputeFoamLace が行うため、ここではノイズを掛けない。

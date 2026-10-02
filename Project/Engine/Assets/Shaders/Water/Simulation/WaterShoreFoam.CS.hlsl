@@ -24,6 +24,8 @@ cbuffer WaterShoreFoamConstants : register(b0)
     float gDecaySeconds;        // 泡の寿命 τ [s]（e^-1 になるまでの時間）
     uint gResetFoam;            // 1 = 前のフレームの泡を捨てる
     float gShoreFoamPad;
+    float3 gWaveGroupPhase;     // 波群エンベロープの位相のずれ [rad]
+    float gShoreFoamPad2;
 };
 
 /// @brief 波が砕ける波高と静水深の比（H / h）
@@ -47,7 +49,7 @@ float SampleWaveElevation(float2 worldXZ)
         const float2 cuv = ComputeFFTCascadeUV(worldXZ, c);
         height += gFFTOceanDisplacement.SampleLevel(gLinearWrap, float3(cuv, (float)c), 0.0f).y;
     }
-    return height * ComputeFFTWaveGroupEnvelope(worldXZ);
+    return height * ComputeFFTWaveGroupEnvelope(worldXZ, gWaveGroupPhase);
 }
 
 /// @brief 海底の高さ（ワールド Y）[m]

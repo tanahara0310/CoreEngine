@@ -10,7 +10,7 @@ SamplerState gLinearClamp : register(s2);
 // WRAP サンプラ（カスケードのワールドタイリング用）。gSampler は Anisotropic=WRAP。
 SamplerState gSampler : register(s0);
 
-// VS では実際には使用しないが、PS（Water.PS.hlsl）と同一レイアウトを保つために宣言する。
+// 波群エンベロープの位相（gWaveGroupPhase）を読む。レイアウトは Water.PS.hlsl と同じ。
 #include "../Common/WaterFrameConstants.hlsli"
 
 struct FFTWaterVSOutput
@@ -61,7 +61,7 @@ FFTWaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     }
 
     // 波群エンベロープでタイル周期を崩す（PS の法線・RT の波面評価と同一の変調）
-    displacement *= ComputeFFTWaveGroupEnvelope(baseWorldPos.xz);
+    displacement *= ComputeFFTWaveGroupEnvelope(baseWorldPos.xz, gWaveGroupPhase);
 
     float3 worldPos = baseWorldPos + displacement;
 

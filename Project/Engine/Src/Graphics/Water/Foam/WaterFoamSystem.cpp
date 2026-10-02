@@ -77,6 +77,21 @@ namespace CoreEngine
         ++calibrationEpoch_;
     }
 
+    std::array<float, 2> WaterFoamSystem::ComputeFoamDriftOffset(float timeSeconds) const
+    {
+        const float distance = kWindDriftFactor * (std::max)(settings_.windSpeed, 0.0f) * timeSeconds;
+        return { settings_.windDirection[0] * distance, settings_.windDirection[1] * distance };
+    }
+
+    std::array<float, 2> WaterFoamSystem::ComputeFoamStretchAxis() const
+    {
+        const float t = (std::clamp)(
+            (settings_.windSpeed - kStretchStartWindSpeed) / (kStretchFullWindSpeed - kStretchStartWindSpeed), 0.0f, 1.0f);
+        const float stretch = 1.0f + (kMaxFoamStretch - 1.0f) * t * t * (3.0f - 2.0f * t);
+        const float axisLength = std::sqrt(1.0f - 1.0f / stretch);
+        return { settings_.windDirection[0] * axisLength, settings_.windDirection[1] * axisLength };
+    }
+
     float WaterFoamSystem::GetTargetWhitecapCoverage() const
     {
         const float windSpeed = settings_.windSpeed;
@@ -408,6 +423,9 @@ namespace CoreEngine
         constants.decaySeconds = settings_.decaySeconds;
         constants.resetFoam = whitecapResetPending_ ? 1u : 0u;
         whitecapResetPending_ = false;
+        whitecapDriftOffset_ = ComputeFoamDriftOffset(timeSeconds);
+        constants.driftOffsetXZ[0] = whitecapDriftOffset_[0];
+        constants.driftOffsetXZ[1] = whitecapDriftOffset_[1];
 
         // 書き込み先はフレームの偶奇で決める。読む側は前のフレームの結果で、
         // 同じフレームの水面のピクセルシェーダーも読む
@@ -542,7 +560,8 @@ namespace CoreEngine
     void WaterFoamSystem::DispatchWhitecapStatistics(
         ID3D12GraphicsCommandList* cmdList,
         D3D12_GPU_DESCRIPTOR_HANDLE jacobianSRV,
-        uint32_t frameIndex)
+        uint32_t frameIndex,
+        const std::array<float, 3>& waveGroupPhase)
     {
         if (!isInitialized_ || !cmdList || jacobianSRV.ptr == 0 || frameIndex >= kMaxFramesInFlight) {
             return;
@@ -572,6 +591,11 @@ namespace CoreEngine
         constants.histogramMin = kHistogramMin;
         constants.histogramInvWidth = static_cast<float>(kHistogramBins) / (kHistogramMax - kHistogramMin);
         constants.histogramBins = kHistogramBins;
+        for (size_t i = 0; i < waveGroupPhase.size(); ++i) {
+            constants.waveGroupPhase[i] = waveGroupPhase[i];
+        }
+        constants.driftOffsetXZ[0] = whitecapDriftOffset_[0];
+        constants.driftOffsetXZ[1] = whitecapDriftOffset_[1];
 
         constexpr UINT64 kBytes = sizeof(uint32_t) * kStatisticsWords;
         Barrier::Transition(cmdList, statistics_, D3D12_RESOURCE_STATE_COPY_DEST);
@@ -641,6 +665,9 @@ namespace CoreEngine
         constants.decaySeconds = settings_.decaySeconds;
         constants.resetFoam = shoreResetPending_ ? 1u : 0u;
         shoreResetPending_ = false;
+        for (int i = 0; i < 3; ++i) {
+            constants.waveGroupPhase[i] = input.waveGroupPhase[i];
+        }
         shorePrevWindowOriginXZ_[0] = input.windowOriginXZ[0];
         shorePrevWindowOriginXZ_[1] = input.windowOriginXZ[1];
 
@@ -678,6 +705,9 @@ namespace CoreEngine
             swashConstants.windowSize = input.windowSize;
             swashConstants.resolution = kSmoothSeabedResolution;
             swashConstants.waterRestHeight = input.waterRestHeight;
+            for (int i = 0; i < 3; ++i) {
+                swashConstants.waveGroupPhase[i] = input.waveGroupPhase[i];
+            }
 
             Barrier::Transition(cmdList, swash_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             cmdList->SetPipelineState(swashPipeline_.GetComputePSO());

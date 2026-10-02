@@ -15,7 +15,7 @@ cbuffer WaterShoreSwashConstants : register(b0)
     float gWindowSize;       // 範囲の一辺 [m]
     uint gResolution;        // ならした海底の高さと出力の一辺のテクセル数
     float gWaterRestHeight;  // 静水面の高さ [m]
-    float3 gSwashPad;
+    float3 gWaveGroupPhase;  // 波群エンベロープの位相のずれ [rad]
 };
 
 /// @brief これより緩い海底の上では寄せ・引きでずらさない（勾配）
@@ -39,7 +39,7 @@ float SampleWaveElevation(float2 worldXZ)
         const float2 cuv = ComputeFFTCascadeUV(worldXZ, c);
         height += gFFTOceanDisplacement.SampleLevel(gLinearWrap, float3(cuv, (float)c), 0.0f).y;
     }
-    return height * ComputeFFTWaveGroupEnvelope(worldXZ);
+    return height * ComputeFFTWaveGroupEnvelope(worldXZ, gWaveGroupPhase);
 }
 
 /// @brief 1 テクセルの中の水面の上下の平均 [m]（3×3 点。うねりのような長い波だけを残す）

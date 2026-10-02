@@ -39,7 +39,7 @@ float3 VisualizeDepthValue(float value)
 float3 VisualizeJacobian(float2 worldXZ)
 {
     const float detJ = ComputeFFTCombinedDetJ(
-        worldXZ, gFFTOceanJacobian, gSampler, gFoamCascadeWeights);
+        worldXZ, gFFTOceanJacobian, gSampler, gFoamCascadeWeights, gWaveGroupPhase);
 
     const float detVisualization = saturate((1.0f - detJ) * 0.5f + 0.5f);
     const float breakingCandidate = saturate(1.0f - detJ);

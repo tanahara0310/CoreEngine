@@ -78,7 +78,13 @@ cbuffer WaterFrameConstants : register(b5)
 
     // ---- 岸の泡（WaterShoreFoamPass が進めたもの。gWaterShoreFoam・範囲は海底の高さと同じ）----
     int gShoreFoamEnabled;  // 1 = 範囲の中の岸の泡を gWaterShoreFoam から読む
-    float3 gShoreFoamPad;
+    // 波群エンベロープの位相のずれ [rad]（ComputeFFTWaveGroupEnvelope。FFTWater.VS も読む）
+    float3 gWaveGroupPhase;
+
+    // 白波の泡が風下へ流れた距離 [m]（WaterFoamSystem::ComputeFoamDriftOffset）
+    float2 gFoamDriftOffsetXZ;
+    // 白波の泡の模様を風の向きに伸ばす軸（風下 × √(1 − 1/伸び率)。WaterFoamSystem::ComputeFoamStretchAxis）
+    float2 gFoamStretchAxis;
 };
 
 #endif // WATER_FRAME_CONSTANTS_INCLUDED

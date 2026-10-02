@@ -56,7 +56,8 @@ namespace CoreEngine
             foam->DispatchWhitecapStatistics(
                 cmdList,
                 context.fftOceanManager->GetJacobianSRVHandle(),
-                context.dxCommon->Frame().FrameIndex());
+                context.dxCommon->Frame().FrameIndex(),
+                context.fftOceanManager->ComputeWaveGroupPhase(context.fftOceanSimulationTime));
         }
     }
 }

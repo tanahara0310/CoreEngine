@@ -22,6 +22,9 @@ static const float kFFTCascadeRotS[FFT_OCEAN_CASCADE_COUNT] = FFT_OCEAN_CASCADE_
 static const int kFFTGeometryCascadeCount = FFT_OCEAN_GEOMETRY_CASCADE_COUNT;
 
 static const float kFFTWaveGroupStrength = FFT_OCEAN_WAVE_GROUP_STRENGTH;
+static const float kFFTWaveGroupWaveVectorX[3] = FFT_OCEAN_WAVE_GROUP_WAVE_VECTOR_X;
+static const float kFFTWaveGroupWaveVectorZ[3] = FFT_OCEAN_WAVE_GROUP_WAVE_VECTOR_Z;
+static const float kFFTWaveGroupInitialPhase[3] = FFT_OCEAN_WAVE_GROUP_INITIAL_PHASE;
 
 /// @brief ワールドXZ を指定カスケードの回転格子系へ変換する
 float2 RotateToFFTCascadeGrid(float2 worldXZ, int cascade)
@@ -45,14 +48,19 @@ float2 ComputeFFTCascadeUV(float2 worldXZ, int cascade)
     return RotateToFFTCascadeGrid(worldXZ, cascade) / kFFTCascadePatch[cascade];
 }
 
-/// @brief 波群エンベロープ（タイル周期を崩す空間振幅変調）
+/// @brief 波群エンベロープ（タイル周期を崩す空間振幅変調。波のエネルギーと一緒に群速度で進む）
+/// @param groupPhase 3 つの正弦の位相のずれ [rad]（FFTOceanManager::ComputeWaveGroupPhase）
 /// @details 変位（FFTWater.VS）と傾き（Water.PS / RT）へ同じ係数を掛けること。
 ///          片方だけに掛けると幾何と法線が食い違う。
-float ComputeFFTWaveGroupEnvelope(float2 worldXZ)
+float ComputeFFTWaveGroupEnvelope(float2 worldXZ, float3 groupPhase)
 {
-    float g = sin(dot(worldXZ, float2(0.01071f, 0.01353f)) + 0.917f)
-            + sin(dot(worldXZ, float2(-0.01409f, 0.00893f)) + 2.618f)
-            + sin(dot(worldXZ, float2(0.00531f, -0.00713f)) + 4.523f);
+    float g = 0.0f;
+    [unroll]
+    for (int i = 0; i < 3; ++i)
+    {
+        const float2 waveVector = float2(kFFTWaveGroupWaveVectorX[i], kFFTWaveGroupWaveVectorZ[i]);
+        g += sin(dot(worldXZ, waveVector) + kFFTWaveGroupInitialPhase[i] - groupPhase[i]);
+    }
     return 1.0f + kFFTWaveGroupStrength * g;
 }
 
@@ -73,6 +81,7 @@ float AddSlopeVarianceToRoughness(float perceptualRoughness, float meanSquareSlo
 ///                       比例するため、無重み（1,1,1）では最小パッチ（31m のさざ波）が
 ///                       合成を支配し、海面の広範囲で detJ ≤ 0 に飽和してしまう
 ///                       （2026-08-02 Phase 0 実測）。泡の見た目調整はこの重みで行う。
+/// @param groupPhase     波群エンベロープの位相のずれ（ComputeFFTWaveGroupEnvelope）
 /// @details 泡（whitecap）の発生判定 detJ = det(I + ∂D/∂x) の正準評価関数。
 ///          カスケード単体の detJ(.w) は和に分配されないため合成には使えない。
 ///          各カスケードの勾配テンソル J（対称 2×2: [Jxx Jxy; Jxy Jzz]）を
@@ -82,7 +91,8 @@ float AddSlopeVarianceToRoughness(float perceptualRoughness, float meanSquareSlo
 ///          ここで乗算する（エンベロープ自身の空間勾配は波長 364m〜 なので無視できる）。
 ///          detJ < 1 が波頭の圧縮、detJ < 0 が折り返し（foldover ＝ 砕波）。
 float ComputeFFTCombinedDetJ(
-    float2 worldXZ, Texture2DArray<float4> jacobianTex, SamplerState samp, float3 cascadeWeights)
+    float2 worldXZ, Texture2DArray<float4> jacobianTex, SamplerState samp, float3 cascadeWeights,
+    float3 groupPhase)
 {
     float jxx = 0.0f;
     float jzz = 0.0f;
@@ -101,7 +111,7 @@ float ComputeFFTCombinedDetJ(
         jxy += j.z * (rc * rc - rs * rs) + (j.y - j.x) * rc * rs;
     }
 
-    const float envelope = ComputeFFTWaveGroupEnvelope(worldXZ);
+    const float envelope = ComputeFFTWaveGroupEnvelope(worldXZ, groupPhase);
     jxx *= envelope;
     jzz *= envelope;
     jxy *= envelope;

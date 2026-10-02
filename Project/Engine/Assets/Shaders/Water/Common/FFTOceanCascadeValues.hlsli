@@ -69,4 +69,10 @@
 // 現れなくなる（実海面の波群＝セット波の見た目にも一致）。
 #define FFT_OCEAN_WAVE_GROUP_STRENGTH 0.12f
 
+// 波群エンベロープの 3 つの正弦の波数ベクトル（ワールド XZ）[rad/m] と初期位相 [rad]。
+// 位相は波のエネルギーが群速度で進んだ分だけずらす（FFTOceanManager::ComputeWaveGroupPhase）。
+#define FFT_OCEAN_WAVE_GROUP_WAVE_VECTOR_X { 0.01071f, -0.01409f, 0.00531f }
+#define FFT_OCEAN_WAVE_GROUP_WAVE_VECTOR_Z { 0.01353f, 0.00893f, -0.00713f }
+#define FFT_OCEAN_WAVE_GROUP_INITIAL_PHASE { 0.917f, 2.618f, 4.523f }
+
 #endif // FFT_OCEAN_CASCADE_VALUES_INCLUDED

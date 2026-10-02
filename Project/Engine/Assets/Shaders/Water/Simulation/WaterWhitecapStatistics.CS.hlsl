@@ -20,6 +20,10 @@ cbuffer WaterWhitecapStatisticsConstants : register(b0)
     float gHistogramMin;       // ヒストグラムの detJ の下端
     float gHistogramInvWidth;  // ヒストグラムの 1 段の幅の逆数
     uint gHistogramBins;       // ヒストグラムの段の数
+    float3 gWaveGroupPhase;    // 波群エンベロープの位相のずれ [rad]
+    float gStatisticsPad;
+    float2 gDriftOffsetXZ;     // 白波の泡が風下へ流れた距離 [m]
+    float2 gStatisticsPad2;
 };
 
 /// @brief 被覆率の和を整数で足すときの倍率
@@ -36,10 +40,10 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     }
 
     const float2 worldXZ = gSampleOriginXZ + (float2(dispatchThreadId.xy) + 0.5f) * gSampleSpacing;
-    const float detJ = ComputeFFTCombinedDetJ(worldXZ, gJacobian, gLinearWrap, gCascadeWeights);
+    const float detJ = ComputeFFTCombinedDetJ(worldXZ, gJacobian, gLinearWrap, gCascadeWeights, gWaveGroupPhase);
     const float coverage = max(
         ComputeWhitecapInstant(detJ, gBias, gGain),
-        SampleWhitecapAccumulated(worldXZ, gWhitecapFoam, gLinearWrap));
+        SampleWhitecapAccumulated(worldXZ, gWhitecapFoam, gLinearWrap, gWaveGroupPhase, gDriftOffsetXZ));
 
     const uint bin = (uint)clamp((detJ - gHistogramMin) * gHistogramInvWidth, 0.0f, (float)(gHistogramBins - 1u));
     uint original;

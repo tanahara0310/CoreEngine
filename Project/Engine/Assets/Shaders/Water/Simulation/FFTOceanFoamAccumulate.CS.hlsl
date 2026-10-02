@@ -24,6 +24,7 @@ Texture2DArray<float4> gJacobian : register(t0);
 Texture2DArray<float> gFoamPrev : register(t1);
 // 出力は全スライスを 1 ビューで見せる UAV（Dispatch z = カスケード）
 RWTexture2DArray<float> gFoamOutput : register(u0);
+SamplerState gLinearWrap : register(s0);
 
 // C++ 側 WaterFoamSystem::WhitecapConstants とレイアウト一致必須
 cbuffer FFTOceanFoamConstants : register(b0)
@@ -35,7 +36,8 @@ cbuffer FFTOceanFoamConstants : register(b0)
     float3 gFoamCascadeWeights; // カスケード別の勾配寄与（無重みは31mカスケードが飽和）
     float gFoamDecaySeconds;    // 泡の寿命 τ（e^-1 に減衰するまでの秒数）
     uint gResetFoam;            // 1 = 前フレームを無視して初期化（生成直後・設定変更後）
-    float3 gFoamPadding;
+    float2 gDriftOffsetXZ;      // 泡が風下へ流れた距離 [m]（泡はこの距離だけ流れる座標系の格子に置く）
+    float gFoamPadding;
 };
 
 // 蓄積（持続泡）へのカスケード別の参加率。
@@ -59,7 +61,10 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 
     // 重み付き detJ = det(I + w·J)。勾配テンソルへ重みを掛けてから行列式を取る
     // （Water.PS の ComputeFFTCombinedDetJ と同じ流儀。detJ の線形補間より正確）。
-    const float3 j = gJacobian.Load(int4(dispatchThreadId.xy, slice, 0)).xyz * w;
+    // 格子点の泡が今いる参照格子の位置（流れた分だけ風下）でヤコビアンを読む
+    const float2 uv = (float2(dispatchThreadId.xy) + 0.5f) / (float)gResolution
+        + RotateToFFTCascadeGrid(gDriftOffsetXZ, (int)slice) / kFFTCascadePatch[slice];
+    const float3 j = gJacobian.SampleLevel(gLinearWrap, float3(uv, (float)slice), 0.0f).xyz * w;
     const float detJ = (1.0f + j.x) * (1.0f + j.y) - j.z * j.z;
 
     // 注入は二乗特性で「弱い圧縮」を非線形に抑圧する。カスケード単体の圧縮域は

@@ -52,6 +52,10 @@ namespace CoreEngine
         input.timeSeconds = context.fftOceanSimulationTime;
         input.spectrumRevision = fftOcean->GetSpectrumRevision();
         input.frameNumber = context.frameNumber;
+        const std::array<float, 3> waveGroupPhase = fftOcean->ComputeWaveGroupPhase(context.fftOceanSimulationTime);
+        for (size_t i = 0; i < waveGroupPhase.size(); ++i) {
+            input.waveGroupPhase[i] = waveGroupPhase[i];
+        }
         foam->DispatchShore(context.cmdList, input);
 
         if (context.frameBlackboard) {
