@@ -91,7 +91,7 @@ public:
     bool Switch(const std::string& clipName, bool loop = true);
 
     /// @brief アニメーションをブレンドしながら切り替える
-    /// @details 内部では `AnimationBlender` が現在姿勢と切り替え先姿勢をジョイント単位で
+    /// @details 内部では `AnimationPlayer` が現在姿勢と切り替え先姿勢をジョイント単位で
     ///          補間する（平行移動・スケールは Lerp、回転は Slerp）。
     bool SwitchWithBlend(const std::string& clipName, float blendDuration = 0.3f, bool loop = true);
 

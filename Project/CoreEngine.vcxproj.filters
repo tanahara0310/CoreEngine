@@ -649,9 +649,6 @@
     <ClCompile Include="Engine\Src\Graphics\Line\LineManager.cpp">
       <Filter>Engine\Src\Graphics\Line</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Model\Animation\AnimationBlender.cpp">
-      <Filter>Engine\Src\Graphics\Model\Animation</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\AnimationLoader.cpp">
       <Filter>Engine\Src\Graphics\Model\Animation</Filter>
     </ClCompile>
@@ -2380,9 +2377,6 @@
       <Filter>Engine\Src\Graphics\Line</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Model\Animation\Animation.h">
-      <Filter>Engine\Src\Graphics\Model\Animation</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Model\Animation\AnimationBlender.h">
       <Filter>Engine\Src\Graphics\Model\Animation</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Model\Animation\AnimationLoader.h">

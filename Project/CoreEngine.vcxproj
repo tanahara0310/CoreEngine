@@ -404,7 +404,6 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Graphics\Light\LightDebugVisualizer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Light\LightManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Line\LineManager.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Model\Animation\AnimationBlender.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\AnimationLoader.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\AnimationPlayer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\AnimationUtils.cpp" />
@@ -1382,7 +1381,6 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Graphics\Line\Line.h" />
     <ClInclude Include="Engine\Src\Graphics\Line\LineManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Animation\Animation.h" />
-    <ClInclude Include="Engine\Src\Graphics\Model\Animation\AnimationBlender.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Animation\AnimationLoader.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Animation\AnimationPlayer.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Animation\AnimationUtils.h" />

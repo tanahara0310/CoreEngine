@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "AnimationUtils.h"
+#include "Graphics/Model/Skeleton/Skeleton.h"
 #include <Math/MathCore.h>
 #include <cassert>
 #include <algorithm>
@@ -86,6 +87,53 @@ Quaternion CalculateQuaternion(const std::vector<Keyframe<Quaternion>>& keyframe
     );
     
     return MathCore::QuaternionMath::Slerp(keyframes[index].value, keyframes[nextIndex].value, t);
+}
+
+Skeleton BlendSkeletons(const Skeleton& from, const Skeleton& to, float weight) {
+    Skeleton result = from;
+
+    // 各ジョイントをブレンド
+    for (size_t i = 0; i < result.joints.size() && i < to.joints.size(); ++i) {
+        Joint& joint = result.joints[i];
+        const Joint& toJoint = to.joints[i];
+
+        // 平行移動の線形補間
+        joint.transform.translate = MathCore::Lerp(
+            joint.transform.translate,
+            toJoint.transform.translate,
+            weight
+        );
+
+        // 回転のSlerp（球面線形補間）
+        joint.transform.rotate = MathCore::QuaternionMath::Slerp(
+            joint.transform.rotate,
+            toJoint.transform.rotate,
+            weight
+        );
+
+        // スケールの線形補間
+        joint.transform.scale = MathCore::Lerp(
+            joint.transform.scale,
+            toJoint.transform.scale,
+            weight
+        );
+
+        // TransformからlocalMatrixを更新
+        joint.localMatrix = MathCore::Matrix::MakeAffine(
+            joint.transform.scale,
+            joint.transform.rotate,
+            joint.transform.translate
+        );
+
+        // 親がいれば親の行列を掛ける
+        if (joint.parent) {
+            joint.skeletonSpaceMatrix = joint.localMatrix * result.joints[*joint.parent].skeletonSpaceMatrix;
+        } else {
+            joint.skeletonSpaceMatrix = joint.localMatrix;
+        }
+    }
+
+    return result;
 }
 
 } // namespace AnimationUtils
