@@ -1,14 +1,17 @@
 #pragma once
 
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
+#include "Graphics/RHI/Command/FrameSync.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Graphics/Shader/ICustomShaderProvider.h"
 #include "Graphics/Water/FFTOceanGpuResources.h"
 #include "Graphics/Water/WaterFoamDefaults.h"
 
+#include <array>
 #include <cstdint>
 #include <d3d12.h>
+#include <vector>
 #include <wrl.h>
 
 namespace CoreEngine
@@ -41,11 +44,13 @@ namespace CoreEngine
             uint64_t frameNumber = 0;                      ///< 同じフレームで 2 回進めないための番号
         };
 
-        /// @brief 泡の設定（WaterRenderFeature が WaterFrameConstants の値を毎フレーム渡す）
+        /// @brief 泡の設定（WaterRenderFeature が毎フレーム渡す）
         struct Settings {
             bool enabled = WaterFoamDefaults::kEnabled;
-            float bias = WaterFoamDefaults::kBias;
-            float gain = WaterFoamDefaults::kGain;
+            /// @brief 海面から 10 m の高さの風速 [m/s]。白波の被覆率の目標を決める
+            float windSpeed = 0.0f;
+            /// @brief 白波の被覆率の目標に掛ける倍率（1.0 = Monahan の観測式）
+            float whitecapScale = WaterFoamDefaults::kWhitecapScale;
             float cascadeWeights[3] = {
                 WaterFoamDefaults::kCascadeWeights[0],
                 WaterFoamDefaults::kCascadeWeights[1],
@@ -61,7 +66,7 @@ namespace CoreEngine
         /// @brief 初期化済みか
         bool IsInitialized() const { return isInitialized_; }
 
-        /// @brief 設定を更新する（毎フレーム呼んでよい。無効から有効へ変わると蓄積を捨てる）
+        /// @brief 設定を更新する（毎フレーム呼んでよい。無効から有効へ変わるか白波の倍率が変わると蓄積を捨てる）
         void SetSettings(const Settings& settings);
 
         /// @brief 白波の泡を 1 フレーム進める（FFT のヤコビアンが読み取り状態になった後に呼ぶ）
@@ -78,6 +83,28 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE GetWhitecapSRVHandle() const {
             return whitecap_[(whitecapFrameIndex_ + 1u) & 1u].srv.gpuHandle;
         }
+
+        /// @brief 沖の白波の統計（合成ヤコビアンのヒストグラムと白波の被覆率の平均）を測る
+        /// @details 同じフレームの枠で前に記録した測定（GPU の処理が済んだもの）を読み、
+        ///          白波の被覆率の平均が目標になるようにしきい値を合わせ直す。
+        ///          測定の記録は kStatisticsFrameInterval フレームに 1 回。DispatchWhitecap の後に呼ぶ
+        /// @param frameIndex フレームの枠の番号（FrameSync::FrameIndex）
+        void DispatchWhitecapStatistics(
+            ID3D12GraphicsCommandList* cmdList,
+            D3D12_GPU_DESCRIPTOR_HANDLE jacobianSRV,
+            uint32_t frameIndex);
+
+        /// @brief 最後に読み戻した、沖の白波の被覆率の平均
+        float GetMeasuredWhitecapCoverage() const { return measuredWhitecapCoverage_; }
+
+        /// @brief 白波の被覆率の目標（Monahan の観測式 W = 3.84e-6·U^3.41 に倍率を掛けたもの）
+        float GetTargetWhitecapCoverage() const;
+
+        /// @brief 較正した砕けるしきい値（合成ヤコビアンがこれを下回ると砕ける）
+        float GetWhitecapBias() const { return whitecapBias_; }
+
+        /// @brief 較正した、しきい値からの立ち上がりの傾き
+        float GetWhitecapGain() const { return whitecapGain_; }
 
         /// @brief 岸の泡を 1 フレーム進める（海底の高さを測った後・水面の合成の前に呼ぶ）
         void DispatchShore(ID3D12GraphicsCommandList* cmdList, const ShoreInput& input);
@@ -164,6 +191,84 @@ namespace CoreEngine
         CB_VERIFY_LAYOUT(SmoothSeabedConstants, kSmoothSeabedConstantsFields);
         CB_BIND_HLSL(SmoothSeabedConstants, kSmoothSeabedConstantsFields, "WaterShoreSeabedSmoothConstants");
 
+        // ---- 沖の白波の統計 ----
+        /// @brief 標本の格子の一辺の数
+        static constexpr uint32_t kStatisticsSampleResolution = 256;
+        /// @brief 標本の間隔 [m]
+        static constexpr float kStatisticsSampleSpacing = 4.0f;
+        /// @brief 合成ヤコビアンのヒストグラムの段の数と範囲
+        static constexpr uint32_t kHistogramBins = 1024;
+        static constexpr float kHistogramMin = -0.5f;
+        static constexpr float kHistogramMax = 1.5f;
+        /// @brief 統計のバッファの語数（段ごとの数 ＋ 被覆率の和）
+        static constexpr uint32_t kStatisticsWords = kHistogramBins + 1;
+        /// @brief 被覆率の和の整数の倍率（WaterWhitecapStatistics.CS.hlsl と同じ値）
+        static constexpr float kCoverageFixedPointScale = 16384.0f;
+        /// @brief 統計を測る間隔 [フレーム]
+        static constexpr uint32_t kStatisticsFrameInterval = 4;
+        /// @brief 測った被覆率をログへ出す間隔（読み戻しの回数）
+        static constexpr uint32_t kStatisticsLogInterval = 150;
+
+        // ---- 白波のしきい値の較正 ----
+        /// @brief Monahan の観測式 W = kMonahanCoefficient·U^kMonahanExponent
+        static constexpr float kMonahanCoefficient = 3.84e-6f;
+        static constexpr float kMonahanExponent = 3.41f;
+        /// @brief 白波が立ち始める風速 [m/s]（これ未満は白波を出さない）
+        static constexpr float kMinWhitecapWindSpeed = 3.0f;
+        /// @brief 目標の被覆率の範囲（下限未満は白波を出さない）
+        static constexpr float kMinTargetCoverage = 1.0e-6f;
+        static constexpr float kMaxTargetCoverage = 0.5f;
+        /// @brief 砕ける点の割合 ÷ 目標の被覆率 の初期値と範囲
+        static constexpr float kInitialBreakingRatio = 1.5f;
+        static constexpr float kMinBreakingRatio = 0.25f;
+        static constexpr float kMaxBreakingRatio = 8.0f;
+        /// @brief 砕ける点の割合の上限
+        static constexpr float kMaxBreakingFraction = 0.6f;
+        /// @brief 被覆率が 1 になる点の、砕ける点に対する割合
+        static constexpr float kFullCoverageShare = 0.25f;
+        /// @brief 測った被覆率を目標へ寄せる速さ [1/s]（被覆率の log の差に掛ける）
+        static constexpr float kCalibrationRate = 0.3f;
+        /// @brief 被覆率の log の差の上限（1 回の読み戻しで動かす量を抑える）
+        static constexpr float kMaxCalibrationError = 2.0f;
+        /// @brief しきい値をならす時定数 [s]
+        static constexpr float kThresholdSmoothingSeconds = 0.5f;
+        /// @brief しきい値から被覆率 1 までの detJ の幅の下限
+        static constexpr float kMinRampWidth = 5.0e-4f;
+        /// @brief 白波を出さないときのしきい値
+        static constexpr float kNoWhitecapBias = -10.0f;
+
+        /// @brief 白波の統計のパスの定数（WaterWhitecapStatistics.CS.hlsl の WaterWhitecapStatisticsConstants）
+        struct StatisticsConstants {
+            float sampleOriginXZ[2] = { 0.0f, 0.0f };
+            float sampleSpacing = kStatisticsSampleSpacing;
+            uint32_t sampleResolution = kStatisticsSampleResolution;
+            float cascadeWeights[3] = {
+                WaterFoamDefaults::kCascadeWeights[0],
+                WaterFoamDefaults::kCascadeWeights[1],
+                WaterFoamDefaults::kCascadeWeights[2],
+            };
+            float bias = WaterFoamDefaults::kBias;
+            float gain = WaterFoamDefaults::kGain;
+            float histogramMin = kHistogramMin;
+            float histogramInvWidth = 0.0f;
+            uint32_t histogramBins = kHistogramBins;
+        };
+
+        static constexpr Cb::Field kStatisticsConstantsFields[] = {
+            CB_FIELD(StatisticsConstants, sampleOriginXZ), CB_FIELD(StatisticsConstants, sampleSpacing),
+            CB_FIELD(StatisticsConstants, sampleResolution), CB_FIELD(StatisticsConstants, cascadeWeights),
+            CB_FIELD(StatisticsConstants, bias), CB_FIELD(StatisticsConstants, gain),
+            CB_FIELD(StatisticsConstants, histogramMin), CB_FIELD(StatisticsConstants, histogramInvWidth),
+            CB_FIELD(StatisticsConstants, histogramBins),
+        };
+        CB_VERIFY_LAYOUT(StatisticsConstants, kStatisticsConstantsFields);
+        CB_BIND_HLSL(StatisticsConstants, kStatisticsConstantsFields, "WaterWhitecapStatisticsConstants");
+
+        /// @brief 白波の統計のパスの計算シェーダー
+        struct StatisticsShaderProvider final : ICustomShaderProvider {
+            std::wstring GetComputeShaderPath() const override { return L"WaterWhitecapStatistics.CS.hlsl"; }
+        };
+
         /// @brief 白波の蓄積パスの計算シェーダー
         struct WhitecapShaderProvider final : ICustomShaderProvider {
             std::wstring GetComputeShaderPath() const override { return L"FFTOceanFoamAccumulate.CS.hlsl"; }
@@ -204,6 +309,16 @@ namespace CoreEngine
         bool CreatePipelines();
         bool CreateWhitecapResources();
         bool CreateShoreResources();
+        bool CreateStatisticsResources();
+        /// @brief 白波の蓄積と較正をやり直す（波面か白波の目標が変わったとき）
+        void RequestWhitecapReset();
+        /// @brief フレームの枠に記録してあった白波の統計を読む
+        /// @return やり直した後に記録した統計を読めたか
+        bool ReadWhitecapStatistics(uint32_t frameIndex);
+        /// @brief 読み戻した統計から、白波の被覆率の平均が目標になるしきい値を求め直す
+        void UpdateWhitecapCalibration();
+        /// @brief 合成ヤコビアンのヒストグラムで、小さい方から数えた割合が fraction になる detJ
+        float FindHistogramQuantile(float fraction) const;
 
         GraphicsCore* dxCommon_ = nullptr;
         DescriptorAllocator* descriptorAllocator_ = nullptr;
@@ -222,6 +337,37 @@ namespace CoreEngine
         bool whitecapResetPending_ = true;
         float whitecapPreviousTimeSeconds_ = 0.0f;
         uint32_t whitecapSpectrumRevision_ = 0;
+
+        // ---- 沖の白波の統計（フレームの枠ごとに読み戻す）----
+        CustomShaderPipeline statisticsPipeline_{};
+        StatisticsShaderProvider statisticsShaderProvider_{};
+        GpuResource statistics_{};
+        DescriptorHandle statisticsUav_{};
+        /// @brief 統計のバッファを 0 にするための写し元（作ったまま書かない）
+        Microsoft::WRL::ComPtr<ID3D12Resource> statisticsZero_;
+        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kMaxFramesInFlight> statisticsReadback_{};
+        std::array<bool, kMaxFramesInFlight> statisticsPending_{};
+        /// @brief 枠ごとの、記録したときの calibrationEpoch_
+        std::array<uint32_t, kMaxFramesInFlight> statisticsEpoch_{};
+        Microsoft::WRL::ComPtr<ID3D12Resource> statisticsConstantsBuffer_;
+        StatisticsConstants* mappedStatisticsConstants_ = nullptr;
+        /// @brief 最後に読み戻した合成ヤコビアンのヒストグラム
+        std::vector<uint32_t> whitecapHistogram_;
+        float measuredWhitecapCoverage_ = 0.0f;
+        uint32_t statisticsFrameCounter_ = 0;
+        uint32_t statisticsLogCounter_ = 0;
+
+        // ---- 白波のしきい値の較正 ----
+        float whitecapBias_ = WaterFoamDefaults::kBias;
+        float whitecapGain_ = WaterFoamDefaults::kGain;
+        /// @brief 砕ける点の割合 ÷ 目標の被覆率 の log（測った被覆率から学ぶ）
+        float logBreakingRatio_ = 0.0f;
+        /// @brief やり直した後に一度しきい値を求めたか（最初の 1 回はならさずに合わせる）
+        bool whitecapCalibrated_ = false;
+        /// @brief 白波の蓄積と較正をやり直した回数（やり直す前に記録した統計は使わない）
+        uint32_t calibrationEpoch_ = 0;
+        /// @brief 前にしきい値を求めてから白波が進んだシミュレーション時間 [s]
+        float whitecapElapsedSeconds_ = 0.0f;
 
         // ---- 岸の泡（カメラの周りの範囲。水の粒の静止位置ごと）----
         CustomShaderPipeline shorePipeline_{};

@@ -30,8 +30,7 @@ namespace CoreEngine
 
         // ---- 泡（whitecap）----
         extern CVar<bool>    FoamEnabled;
-        extern CVar<float>   FoamBias;
-        extern CVar<float>   FoamGain;
+        extern CVar<float>   FoamWhitecapScale;
         extern CVar<float>   FoamOpacity;
         extern CVar<Vector3> FoamCascadeWeights;
         extern CVar<float>   FoamDecaySeconds;

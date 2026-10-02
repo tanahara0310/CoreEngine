@@ -256,19 +256,9 @@ namespace CoreEngine
             frameCB_.depthFadeDebugScale);
     }
 
-    float WaterSurfaceComponent::ComputeFoamWindCoverageScale(float windSpeed) {
-        // Monahan の白波被覆率 W = 3.84e-6 · U^3.41。基準風速との比を取ると係数が消える。
-        // 基準風速 = FoamBias を較正した風速。ここを変えるなら Bias も較正し直すこと。
-        constexpr float kReferenceWindSpeed = 18.0f;
-        constexpr float kMonahanExponent = 3.41f;
-        const float ratio = (std::max)(windSpeed, 0.0f) / kReferenceWindSpeed;
-        return (std::min)(std::pow(ratio, kMonahanExponent), 1.0f);
-    }
-
     void WaterSurfaceComponent::SetFoamParameters(
         bool enabled, float bias, float gain, float opacity,
-        const Vector3& cascadeWeights, float decaySeconds,
-        float windCoverageScale) {
+        const Vector3& cascadeWeights, float decaySeconds) {
         frameCB_.foamEnabled = enabled ? 1 : 0;
         frameCB_.foamBias = bias;
         frameCB_.foamGain = gain;
@@ -277,7 +267,6 @@ namespace CoreEngine
         frameCB_.foamCascadeWeights[1] = cascadeWeights.y;
         frameCB_.foamCascadeWeights[2] = cascadeWeights.z;
         frameCB_.foamDecaySeconds = decaySeconds;
-        frameCB_.foamWindCoverageScale = windCoverageScale;
     }
 
     void WaterSurfaceComponent::SetWaterOpticalCoefficients(const Vector3& absorptionCoeff, const Vector3& scatteringCoeff) {

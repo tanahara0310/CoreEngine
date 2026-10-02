@@ -53,6 +53,10 @@ namespace CoreEngine
                 context.fftOceanManager->GetJacobianSRVHandle(),
                 context.fftOceanSimulationTime,
                 context.fftOceanManager->GetSpectrumRevision());
+            foam->DispatchWhitecapStatistics(
+                cmdList,
+                context.fftOceanManager->GetJacobianSRVHandle(),
+                context.dxCommon->Frame().FrameIndex());
         }
     }
 }

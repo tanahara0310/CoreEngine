@@ -59,10 +59,8 @@ namespace CoreEngine
         // 調整値（Bias 0.806 / DecaySeconds 3.07）が残り、他 3 か所と食い違っていた。
         CVar<bool> FoamEnabled{ "r.Water.Foam.Enabled", WaterFoamDefaults::kEnabled,
             "泡（whitecap / 岸際泡）を有効にする（FFTOcean 専用）" };
-        CVar<float> FoamBias{ "r.Water.Foam.Bias", WaterFoamDefaults::kBias,
-            "発生しきい値（合成 detJ がこれ未満で泡）", CVarRange{ 0.0f, 1.5f } };
-        CVar<float> FoamGain{ "r.Water.Foam.Gain", WaterFoamDefaults::kGain,
-            "しきい値からの立ち上がり勾配", CVarRange{ 0.5f, 16.0f } };
+        CVar<float> FoamWhitecapScale{ "r.Water.Foam.WhitecapScale", WaterFoamDefaults::kWhitecapScale,
+            "白波の被覆率の倍率（1.0 = Monahan の観測式 W = 3.84e-6·U^3.41）", CVarRange{ 0.0f, 4.0f } };
         CVar<float> FoamOpacity{ "r.Water.Foam.Opacity", WaterFoamDefaults::kOpacity,
             "泡レイヤの不透明度（1.0 の白ベタは禁止・水面下の情報を残す）", CVarRange{ 0.0f, 1.0f } };
         CVar<Vector3> FoamCascadeWeights{ "r.Water.Foam.CascadeWeights",

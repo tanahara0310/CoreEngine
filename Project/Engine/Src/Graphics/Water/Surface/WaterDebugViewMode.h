@@ -28,7 +28,7 @@ enum class WaterDebugViewMode : uint32_t {
     CompositeTransmissionOnly = 20, // reflectanceWeight=0 の最終合成（透過のみ）
     CompositeReflectionOnly = 21,   // reflectanceWeight=1 の最終合成（反射のみ）
     ReflectionMinusTransmission = 22, // |反射 - 透過| ×3（斑を生む輝度差の分布）
-    FFTOceanFoam = 23, // 泡マスク（グレースケール。foamBias/foamGain の較正用）
+    FFTOceanFoam = 23, // 泡マスク（グレースケール）
 
     Count, // 末尾に追加すること（名前テーブルの static_assert が個数一致を検証する）
 };

@@ -17,13 +17,15 @@ namespace CoreEngine
         /// @brief 泡（whitecap / 岸際泡）を有効にするか
         inline constexpr bool kEnabled = true;
 
-        /// @brief 発生しきい値。合成ヤコビアン detJ がこれを下回ると泡が立つ
-        /// @details Tessendorf 系実装の常用域 0.7〜1.0。値域ログの実測から 0.85 に較正した。
-        ///          風速依存は Bias ではなく foamWindCoverageScale（Monahan W ∝ U^3.41）が担う。
+        /// @brief 砕けるしきい値の初期値。合成ヤコビアン detJ がこれを下回ると泡が立つ
+        /// @details WaterFoamSystem が白波の被覆率から較正するまで使う
         inline constexpr float kBias = 0.85f;
 
-        /// @brief しきい値からの立ち上がり勾配
+        /// @brief しきい値からの立ち上がり勾配の初期値（WaterFoamSystem が較正するまで使う）
         inline constexpr float kGain = 4.0f;
+
+        /// @brief 白波の被覆率の目標に掛ける倍率（1.0 = Monahan の観測式 W = 3.84e-6·U^3.41）
+        inline constexpr float kWhitecapScale = 1.0f;
 
         /// @brief 泡レイヤの不透明度（1.0 の白ベタは禁止・水面下の情報を残す）
         inline constexpr float kOpacity = 0.9f;

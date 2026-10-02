@@ -18,12 +18,14 @@
 // （Water.PS 側の瞬時項 ComputeFFTCombinedDetJ が補完する）。
 // ============================================================
 
+#include "../Common/WaterWhitecapCoverage.hlsli"
+
 Texture2DArray<float4> gJacobian : register(t0);
 Texture2DArray<float> gFoamPrev : register(t1);
 // 出力は全スライスを 1 ビューで見せる UAV（Dispatch z = カスケード）
 RWTexture2DArray<float> gFoamOutput : register(u0);
 
-// C++ 側 FFTOceanManager::FoamConstants とレイアウト一致必須
+// C++ 側 WaterFoamSystem::WhitecapConstants とレイアウト一致必須
 cbuffer FFTOceanFoamConstants : register(b0)
 {
     uint gResolution;
@@ -65,8 +67,9 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     // 波峰が参照格子上を位相速度で掃引しながら毎フレーム注入するので、線形のまま
     // 蓄積すると数周期で海面全体が泡の包絡に埋まり真っ白に飽和する（実測）。
     // 二乗にすると「強く砕けた峰」だけが持続泡として残り、弱い圧縮は跡を残さない。
-    const float breaking = saturate((gFoamBias - detJ) * gFoamGain);
-    const float injection = breaking * breaking * kAccumulationShare[slice];
+    // シミュレーション時間が止まっている間は注入しない（しきい値が動いても蓄積は止まったまま）
+    const float breaking = ComputeWhitecapInstant(detJ, gFoamBias, gFoamGain);
+    const float injection = (gDeltaSeconds > 0.0f) ? breaking * breaking * kAccumulationShare[slice] : 0.0f;
 
     const float prev = (gResetFoam != 0)
         ? 0.0f
