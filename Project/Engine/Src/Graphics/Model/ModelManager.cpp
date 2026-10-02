@@ -164,16 +164,6 @@ namespace CoreEngine
         return true;
     }
 
-    void ModelManager::ClearCache()
-    {
-        // 先読み中のリソースをキャッシュから消すと、完了したワーカーが
-        // 消えた後のエントリへ書き戻して迷子になる。先に合流させる
-        WaitForPreload();
-
-        std::lock_guard<std::mutex> lock(cacheMutex_);
-        resourceCache_.clear();
-    }
-
     void ModelManager::ForEachResource(const std::function<void(ModelResource*)>& callback)
     {
         std::lock_guard<std::mutex> lock(cacheMutex_);

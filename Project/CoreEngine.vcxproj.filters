@@ -1036,12 +1036,6 @@
     <ClCompile Include="Engine\Src\Threading\ThreadPool.cpp">
       <Filter>Engine\Src\Threading</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\TileMap\TileCollider.cpp">
-      <Filter>Engine\Src\TileMap</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\TileMap\TileMap.cpp">
-      <Filter>Engine\Src\TileMap</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\UI\RectTransformComponent.cpp">
       <Filter>Engine\Src\UI</Filter>
     </ClCompile>
@@ -3069,15 +3063,6 @@
     <ClInclude Include="Engine\Src\Threading\ThreadPool.h">
       <Filter>Engine\Src\Threading</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\TileMap\TileAttribute.h">
-      <Filter>Engine\Src\TileMap</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\TileMap\TileCollider.h">
-      <Filter>Engine\Src\TileMap</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\TileMap\TileMap.h">
-      <Filter>Engine\Src\TileMap</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\UI\UIAnchor.h">
       <Filter>Engine\Src\UI</Filter>
     </ClInclude>
@@ -4377,9 +4362,6 @@
     </Filter>
     <Filter Include="Engine\Src\Threading">
       <UniqueIdentifier>{BA947100-DF5F-4273-BD5F-45D5B7B58B7B}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Engine\Src\TileMap">
-      <UniqueIdentifier>{006CEB16-4690-47CB-A5CC-CDD573EC9F87}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\UI">
       <UniqueIdentifier>{6516A180-C27B-40D5-913A-17E4771C1275}</UniqueIdentifier>

@@ -22,9 +22,7 @@ public:
     enum class TransitionType {
         None,       // トランジションなし（即座に切り替え）
         Fade,       // フェード
-        Loading,    // ローディング画面（デフォルト）
-        Slide,      // スライド（未実装）
-        Dissolve    // ディゾルブ（未実装）
+        Loading     // ローディング画面（デフォルト）
     };
 
     /// @brief トランジションフェーズ

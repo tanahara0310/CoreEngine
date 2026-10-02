@@ -84,9 +84,6 @@ public:
     /// @return 成功したらtrue
     bool LoadAnimation(const AnimationLoadInfo& loadInfo);
 
-    /// @brief 全てのキャッシュをクリア
-    void ClearCache();
-
     /// @brief 初期化されているか確認
     /// @return 初期化済みならtrue
     bool IsInitialized() const { return dxCommon_ != nullptr; }

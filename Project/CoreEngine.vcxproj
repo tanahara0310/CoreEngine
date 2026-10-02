@@ -533,8 +533,6 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Editor\Scene\UndoRedoHistory.cpp" />
     <ClCompile Include="Engine\Src\Threading\ThreadBudget.cpp" />
     <ClCompile Include="Engine\Src\Threading\ThreadPool.cpp" />
-    <ClCompile Include="Engine\Src\TileMap\TileCollider.cpp" />
-    <ClCompile Include="Engine\Src\TileMap\TileMap.cpp" />
     <ClCompile Include="Engine\Src\UI\RectTransformComponent.cpp" />
     <ClCompile Include="Engine\Src\UI\UIImageComponent.cpp" />
     <ClCompile Include="Engine\Src\UI\UIButtonComponent.cpp" />
@@ -1611,9 +1609,6 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Editor\Scene\UndoRedoHistory.h" />
     <ClInclude Include="Engine\Src\Threading\ThreadBudget.h" />
     <ClInclude Include="Engine\Src\Threading\ThreadPool.h" />
-    <ClInclude Include="Engine\Src\TileMap\TileAttribute.h" />
-    <ClInclude Include="Engine\Src\TileMap\TileCollider.h" />
-    <ClInclude Include="Engine\Src\TileMap\TileMap.h" />
     <ClInclude Include="Engine\Src\UI\UIAnchor.h" />
     <ClInclude Include="Engine\Src\UI\UIElement.h" />
     <ClInclude Include="Engine\Src\UI\RectTransformComponent.h" />
