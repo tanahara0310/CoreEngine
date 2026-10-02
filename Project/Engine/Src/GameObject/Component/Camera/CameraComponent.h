@@ -13,7 +13,7 @@ namespace CoreEngine
     /// @brief シーンのカメラ 1 台を持つコンポーネント
     /// @details 構図はオブジェクトの Transform が持ち、レンズ（投影・視野角・手前と奥の限界）を
     ///          このコンポーネントが持つ。実体（`Camera`）の生成・登録・毎フレームの反映は
-    ///          `CameraFeature` が引き受けるので、ここは値と実体への橋だけを持つ。
+    ///          `CameraFeature` が引き受けるので、ここは値と登録のキーだけを持つ。
     /// @note 「ゲームの視点」を入れたカメラがゲームビューに映る。入っているものが複数あれば
     ///       最初の 1 台を使う。1 台も無ければエンジン既定のカメラに戻る。
     ///       実体は 1 つのオブジェクトに 1 台（2 つ目以降のコンポーネントには作らない）。
@@ -57,11 +57,8 @@ namespace CoreEngine
         bool IsMainCamera() const { return isMainCamera_; }
         void SetMainCamera(bool value) { isMainCamera_ = value; }
 
-        /// @brief `CameraFeature` が割り当てる実体（まだ無ければ nullptr）
-        Camera* GetCamera() const { return camera_; }
-        void SetCamera(Camera* camera) { camera_ = camera; }
-
         /// @brief 実体を登録したキー（オブジェクトの ID。まだ登録していなければ空）
+        /// @note 実体は `CameraManager` が持ち、`CameraFeature` がこのキーで毎回引く。
         const std::string& GetRegisteredKey() const { return registeredKey_; }
         void SetRegisteredKey(std::string key) { registeredKey_ = std::move(key); }
 
@@ -69,9 +66,6 @@ namespace CoreEngine
         CameraParameters parameters_{};
         float fovDegrees_ = parameters_.GetFovDegrees();
         bool isMainCamera_ = true;
-
-        // CameraFeature が持つ実体（非所有）
-        Camera* camera_ = nullptr;
 
         // 実体を登録したキー（オブジェクトの ID）
         std::string registeredKey_;

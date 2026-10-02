@@ -148,30 +148,33 @@ namespace CoreEngine
                     continue;
                 }
 
-                // 登録のキーはオブジェクトの ID。オブジェクトの名前は画面に出す名前にする
+                // 登録のキーはオブジェクトの ID。オブジェクトの名前は画面に出す名前にする。
+                // 実体は CameraManager だけが持ち、コンポーネントはキーだけを持つ
                 const std::string key = object->GetObjectId().ToString();
                 if (component->GetRegisteredKey() != key) {
-                    // 初めて見つけた、または ID が変わった。実体を作り直す
+                    // 初めて見つけた、または ID が変わった。前の実体を外す
                     if (!component->GetRegisteredKey().empty()) {
                         cameraManager_->UnregisterCamera(component->GetRegisteredKey());
                         component->SetRegisteredKey({});
-                        component->SetCamera(nullptr);
                     }
                     // 同じオブジェクトの 2 つ目以降のカメラには実体を作らない
                     if (!cameraManager_->GetCamera(key)) {
                         auto created = std::make_unique<Camera>();
                         created->Initialize(dxCommon ? dxCommon->GetDevice() : nullptr);
-                        Camera* const raw = created.get();
                         if (cameraManager_->RegisterCamera(key, std::move(created))) {
                             cameraManager_->SetObjectOwnedCamera(key, true);
                             component->SetRegisteredKey(key);
-                            component->SetCamera(raw);
                         }
                     }
                 }
 
-                Camera* const camera = component->GetCamera();
+                if (component->GetRegisteredKey() != key) {
+                    continue;
+                }
+                Camera* const camera = cameraManager_->GetCamera(key);
                 if (!camera) {
+                    // 外から登録を外された。次の同期で作り直す
+                    component->SetRegisteredKey({});
                     continue;
                 }
                 cameraManager_->SetDisplayName(key, object->GetName());
