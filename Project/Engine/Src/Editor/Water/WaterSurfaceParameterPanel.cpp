@@ -3,6 +3,7 @@
 
 #ifdef CORE_EDITOR
 
+#include "Graphics/Water/Foam/WaterFoamSystem.h"
 #include "Graphics/Water/Render/WaterRenderFeature.h"
 #include "Graphics/Water/Surface/WaterSurfaceComponent.h"
 #include "Graphics/Water/WaterCVars.h"
@@ -251,15 +252,22 @@ void WaterSurfaceParameterPanel::DrawCommonParameterSection(WaterRenderFeature& 
 	ImGui::Spacing();
 	ImGui::SeparatorText("泡 / Whitecap（FFTOcean 専用）");
 	EditCVar(WaterCVars::FoamEnabled, [](bool* v) { return ImGui::Checkbox("泡を有効にする", v); });
-	EditCVar(WaterCVars::FoamBias, [](float* v) { return ImGui::SliderFloat("発生しきい値 detJ", v, 0.0f, 1.5f, "%.3f"); });
-	EditCVar(WaterCVars::FoamGain, [](float* v) { return ImGui::SliderFloat("立ち上がり勾配", v, 0.5f, 16.0f, "%.2f"); });
+	EditCVar(WaterCVars::FoamWhitecapScale,
+		[](float* v) { return ImGui::SliderFloat("白波の量（観測式の倍率）", v, 0.0f, 4.0f, "%.2f"); });
+	if (const WaterFoamSystem* foam = runtimeController.GetWaterFoamSystem()) {
+		ImGui::Text("白波の被覆率  目標 %.3f%%  /  実測 %.3f%%",
+			foam->GetTargetWhitecapCoverage() * 100.0f, foam->GetMeasuredWhitecapCoverage() * 100.0f);
+		ImGui::Text("砕けるしきい値 detJ %.3f  /  立ち上がり勾配 %.1f",
+			foam->GetWhitecapBias(), foam->GetWhitecapGain());
+	}
 	EditCVar(WaterCVars::FoamOpacity, [](float* v) { return ImGui::SliderFloat("泡の不透明度", v, 0.0f, 1.0f, "%.3f"); });
 	EditCVar(WaterCVars::FoamCascadeWeights,
 		[](Vector3* v) { return ImGui::SliderFloat3("カスケード重み (大/中/小)", &v->x, 0.0f, 1.0f, "%.3f"); });
 	EditCVar(WaterCVars::FoamDecaySeconds, [](float* v) { return ImGui::SliderFloat("泡の寿命 [秒]", v, 0.2f, 10.0f, "%.2f"); });
 	ImGui::TextDisabled(
-		"detJ（波頭の圧縮率）がしきい値を下回ると泡。可視化は水面デバッグの\n"
-		"『FFT Jacobian』『FFT 泡マスク』を使用。小パッチの重みを上げすぎると海面全体が白くなります");
+		"白波の被覆率は風速から Monahan の観測式（W = 3.84e-6·U^3.41）で決まり、\n"
+		"detJ（波頭の圧縮率）のしきい値はその被覆率になるよう自動で合わせます（風速 3m/s 未満は白波なし）。\n"
+		"可視化は水面デバッグの『FFT Jacobian』『FFT 泡マスク』を使用");
 
 	ImGui::Spacing();
 	ImGui::SeparatorText("透過 / 水質（光学特性）");

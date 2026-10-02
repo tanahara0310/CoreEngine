@@ -15,6 +15,7 @@ namespace CoreEngine
     class WaterSurfaceComponent;
     class RenderDomainContext;
     class WaterEditorPanel;
+    class WaterFoamSystem;
 
     /// @brief 水面描画一式（水面オブジェクト・波シミュレーション・外部リソース結線）を持つ Feature
     /// @details AddFeature() するだけで水面が成立する。結線を PostLogic で行うのは、
@@ -57,6 +58,9 @@ namespace CoreEngine
 
         /// @brief 管理中の水面オブジェクトを返す（未生成なら nullptr）
         WaterSurfaceComponent* GetWaterPlane() const { return waterPlane_; }
+
+        /// @brief 泡の時間変化を進めるシステムを返す（描画側に無ければ nullptr）
+        const WaterFoamSystem* GetWaterFoamSystem() const;
 
         /// @brief 現在の水面高さ（ワールド Y）を返す
         float GetWaterHeight() const;
@@ -144,8 +148,5 @@ namespace CoreEngine
         ///          （コンストラクタとデストラクタは .cpp で定義する）。
         std::unique_ptr<WaterEditorPanel> editorPanel_;
 #endif
-
-        /// @brief 直近にログした白波被覆率の風速追従係数（変化時のみログするため）
-        float lastFoamWindCoverageScale_ = -1.0f;
     };
 }

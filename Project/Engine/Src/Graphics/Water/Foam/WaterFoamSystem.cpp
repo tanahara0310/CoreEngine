@@ -2,6 +2,7 @@
 #include "WaterFoamSystem.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <string>
 
@@ -52,6 +53,7 @@ namespace CoreEngine
             || !CreateStatisticsResources()) {
             return false;
         }
+        logBreakingRatio_ = std::log(kInitialBreakingRatio);
         isInitialized_ = true;
         return true;
     }
@@ -59,10 +61,30 @@ namespace CoreEngine
     void WaterFoamSystem::SetSettings(const Settings& settings)
     {
         if (!settings_.enabled && settings.enabled) {
-            whitecapResetPending_ = true;
+            RequestWhitecapReset();
             shoreResetPending_ = true;
         }
+        if (settings.whitecapScale != settings_.whitecapScale) {
+            RequestWhitecapReset();
+        }
         settings_ = settings;
+    }
+
+    void WaterFoamSystem::RequestWhitecapReset()
+    {
+        whitecapResetPending_ = true;
+        whitecapCalibrated_ = false;
+        ++calibrationEpoch_;
+    }
+
+    float WaterFoamSystem::GetTargetWhitecapCoverage() const
+    {
+        const float windSpeed = settings_.windSpeed;
+        if (windSpeed < kMinWhitecapWindSpeed) {
+            return 0.0f;
+        }
+        const float coverage = settings_.whitecapScale * kMonahanCoefficient * std::pow(windSpeed, kMonahanExponent);
+        return (std::clamp)(coverage, 0.0f, kMaxTargetCoverage);
     }
 
     bool WaterFoamSystem::CreatePipelines()
@@ -362,23 +384,25 @@ namespace CoreEngine
         // 波面が別物になったフレームは蓄積を捨てる
         if (spectrumRevision != whitecapSpectrumRevision_) {
             whitecapSpectrumRevision_ = spectrumRevision;
-            whitecapResetPending_ = true;
+            RequestWhitecapReset();
         }
 
         // 無効の間はパスを飛ばす（水面のシェーダーも gFoamEnabled = 0 で読まない）
         if (!settings_.enabled) {
             whitecapPreviousTimeSeconds_ = timeSeconds;
+            whitecapDeltaSeconds_ = 0.0f;
             return;
         }
 
         const float deltaSeconds = ComputeDeltaSeconds(timeSeconds, whitecapPreviousTimeSeconds_);
         whitecapPreviousTimeSeconds_ = timeSeconds;
+        whitecapDeltaSeconds_ = deltaSeconds;
 
         WhitecapConstants& constants = *mappedWhitecapConstants_;
         constants.resolution = fftResolution_;
         constants.deltaSeconds = deltaSeconds;
-        constants.foamBias = settings_.bias;
-        constants.foamGain = settings_.gain;
+        constants.foamBias = whitecapBias_;
+        constants.foamGain = whitecapGain_;
         for (int c = 0; c < 3; ++c) {
             constants.cascadeWeights[c] = settings_.cascadeWeights[c];
         }
@@ -419,18 +443,21 @@ namespace CoreEngine
         ++whitecapFrameIndex_;
     }
 
-    void WaterFoamSystem::ReadWhitecapStatistics(uint32_t frameIndex)
+    bool WaterFoamSystem::ReadWhitecapStatistics(uint32_t frameIndex)
     {
         if (!statisticsPending_[frameIndex]) {
-            return;
+            return false;
         }
         statisticsPending_[frameIndex] = false;
+        if (statisticsEpoch_[frameIndex] != calibrationEpoch_) {
+            return false;
+        }
 
         // 同じ枠が回ってきた時点で、前にこの枠へ記録した GPU の処理は済んでいる
         uint32_t* words = nullptr;
         const D3D12_RANGE readRange{ 0, sizeof(uint32_t) * kStatisticsWords };
         if (FAILED(statisticsReadback_[frameIndex]->Map(0, &readRange, reinterpret_cast<void**>(&words)))) {
-            return;
+            return false;
         }
         std::memcpy(whitecapHistogram_.data(), words, sizeof(uint32_t) * kHistogramBins);
         const uint32_t coverageSum = words[kHistogramBins];
@@ -440,12 +467,73 @@ namespace CoreEngine
         constexpr float kSampleCount =
             static_cast<float>(kStatisticsSampleResolution) * static_cast<float>(kStatisticsSampleResolution);
         measuredWhitecapCoverage_ = static_cast<float>(coverageSum) / (kCoverageFixedPointScale * kSampleCount);
+        return true;
+    }
+
+    float WaterFoamSystem::FindHistogramQuantile(float fraction) const
+    {
+        uint64_t total = 0;
+        for (const uint32_t count : whitecapHistogram_) {
+            total += count;
+        }
+        if (total == 0) {
+            return whitecapBias_;
+        }
+
+        const double target = static_cast<double>(fraction) * static_cast<double>(total);
+        const double binWidth = static_cast<double>(kHistogramMax - kHistogramMin) / kHistogramBins;
+        double cumulative = 0.0;
+        for (uint32_t i = 0; i < kHistogramBins; ++i) {
+            const double count = whitecapHistogram_[i];
+            if (count > 0.0 && cumulative + count >= target) {
+                // 段の中は一様に分布しているとみなして補間する
+                const double t = (std::clamp)((target - cumulative) / count, 0.0, 1.0);
+                return static_cast<float>(kHistogramMin + (i + t) * binWidth);
+            }
+            cumulative += count;
+        }
+        return kHistogramMax;
+    }
+
+    void WaterFoamSystem::UpdateWhitecapCalibration()
+    {
+        const float target = GetTargetWhitecapCoverage();
+        if (target < kMinTargetCoverage) {
+            whitecapBias_ = kNoWhitecapBias;
+            whitecapCalibrated_ = false;
+            return;
+        }
+
+        // 測った被覆率を目標へ寄せる（シミュレーション時間が止まっている間は学ばない）
+        if (whitecapCalibrated_ && whitecapDeltaSeconds_ > 0.0f) {
+            const float measured = (std::max)(measuredWhitecapCoverage_, kMinTargetCoverage);
+            const float error = (std::clamp)(std::log(target) - std::log(measured), -kMaxCalibrationError, kMaxCalibrationError);
+            logBreakingRatio_ = (std::clamp)(
+                logBreakingRatio_ + kCalibrationRate * whitecapDeltaSeconds_ * error,
+                std::log(kMinBreakingRatio), std::log(kMaxBreakingRatio));
+        }
+
+        // 合成ヤコビアンの小さい方から fraction の点が砕け、そのうち kFullCoverageShare が被覆率 1 になる
+        const float fraction = (std::min)(target * std::exp(logBreakingRatio_), kMaxBreakingFraction);
+        const float bias = FindHistogramQuantile(fraction);
+        const float fullCoverageBias = FindHistogramQuantile(fraction * kFullCoverageShare);
+        const float gain = 1.0f / (std::max)(bias - fullCoverageBias, kMinRampWidth);
+
+        if (!whitecapCalibrated_) {
+            whitecapBias_ = bias;
+            whitecapGain_ = gain;
+            whitecapCalibrated_ = true;
+        } else {
+            const float blend = 1.0f - std::exp(-whitecapDeltaSeconds_ / kThresholdSmoothingSeconds);
+            whitecapBias_ += (bias - whitecapBias_) * blend;
+            whitecapGain_ += (gain - whitecapGain_) * blend;
+        }
 
         if (++statisticsLogCounter_ >= kStatisticsLogInterval) {
             statisticsLogCounter_ = 0;
             Logger::GetInstance().Logf(LogLevel::Debug, LogCategory::Graphics, LogSubCategory::Pipeline,
-                "WaterFoamSystem: whitecap coverage measured={:.5f} bias={:.4f} gain={:.3f}",
-                measuredWhitecapCoverage_, settings_.bias, settings_.gain);
+                "WaterFoamSystem: whitecap coverage target={:.5f} measured={:.5f} ratio={:.3f} bias={:.4f} gain={:.2f}",
+                target, measuredWhitecapCoverage_, std::exp(logBreakingRatio_), whitecapBias_, whitecapGain_);
         }
     }
 
@@ -457,7 +545,9 @@ namespace CoreEngine
         if (!isInitialized_ || !cmdList || jacobianSRV.ptr == 0 || frameIndex >= kMaxFramesInFlight) {
             return;
         }
-        ReadWhitecapStatistics(frameIndex);
+        if (ReadWhitecapStatistics(frameIndex)) {
+            UpdateWhitecapCalibration();
+        }
         if (!settings_.enabled) {
             return;
         }
@@ -471,8 +561,8 @@ namespace CoreEngine
         for (int c = 0; c < 3; ++c) {
             constants.cascadeWeights[c] = settings_.cascadeWeights[c];
         }
-        constants.bias = settings_.bias;
-        constants.gain = settings_.gain;
+        constants.bias = whitecapBias_;
+        constants.gain = whitecapGain_;
         constants.histogramMin = kHistogramMin;
         constants.histogramInvWidth = static_cast<float>(kHistogramBins) / (kHistogramMax - kHistogramMin);
         constants.histogramBins = kHistogramBins;
@@ -505,6 +595,7 @@ namespace CoreEngine
         cmdList->CopyBufferRegion(statisticsReadback_[frameIndex].Get(), 0, statistics_.Get(), 0, kBytes);
         Barrier::Transition(cmdList, statistics_, D3D12_RESOURCE_STATE_COPY_DEST);
         statisticsPending_[frameIndex] = true;
+        statisticsEpoch_[frameIndex] = calibrationEpoch_;
     }
 
     void WaterFoamSystem::DispatchShore(ID3D12GraphicsCommandList* cmdList, const ShoreInput& input)

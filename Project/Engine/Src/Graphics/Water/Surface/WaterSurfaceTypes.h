@@ -105,12 +105,7 @@ struct WaterFrameConstants {
 	// RT屈折の実測光路長との差が波打ち際の段差（白線の二重）として見えていた。
 	float cameraNearZ = 0.1f;
 	float cameraFarZ = 1000.0f;
-	// 白波被覆率の風速追従係数（既存パディングを 1 枠転用。構造体サイズは 128B のまま）。
-	// FoamBias は「detJ がいくつを下回ったら砕波か」という固定しきい値なので、
-	// 風速を変えると被覆率が実海の風速依存（Monahan: W ∝ U^3.41）から外れる。
-	// 高風速で合わせると低風速で出すぎ、低風速で合わせると高風速で出なくなる。
-	// そこで基準風速での較正はそのまま活かし、Monahan 比を白波マスクへ掛けて追従させる。
-	float foamWindCoverageScale = 1.0f;
+	float cameraClipPad = 0.0f;
 	// 1 = 水面の日向率テクスチャ（RT 反射パスの 2 枚目の出力）をメインライトの項へ掛ける
 	int sunVisibilityEnabled = 0;
 	// ---- 泡（whitecap）。FFTOcean 専用（Gerstner はヤコビアンを持たないため無効）----
@@ -118,6 +113,7 @@ struct WaterFrameConstants {
 	// 同じ定数を参照するので、片側だけ直して割れることが構造上ない。
 	// 各パラメータの意味と較正根拠は WaterFoamDefaults.h を参照。
 	int foamEnabled = CoreEngine::WaterFoamDefaults::kEnabled ? 1 : 0;
+	// 砕けるしきい値と立ち上がりの傾き（WaterFoamSystem が白波の被覆率から較正した値）
 	float foamBias = CoreEngine::WaterFoamDefaults::kBias;
 	float foamGain = CoreEngine::WaterFoamDefaults::kGain;
 	float foamOpacity = CoreEngine::WaterFoamDefaults::kOpacity;
@@ -158,7 +154,7 @@ static constexpr Cb::Field kWaterFrameConstantsFields[] = {
     CB_FIELD(WaterFrameConstants, depthDebugViewMode), CB_FIELD(WaterFrameConstants, useFFTOceanNormalMap),
     CB_FIELD(WaterFrameConstants, aerialPerspectiveEnabled),
     CB_FIELD(WaterFrameConstants, skyEnvReflectionEnabled), CB_FIELD(WaterFrameConstants, cameraNearZ),
-    CB_FIELD(WaterFrameConstants, cameraFarZ), CB_FIELD(WaterFrameConstants, foamWindCoverageScale),
+    CB_FIELD(WaterFrameConstants, cameraFarZ), CB_FIELD(WaterFrameConstants, cameraClipPad),
     CB_FIELD(WaterFrameConstants, sunVisibilityEnabled), CB_FIELD(WaterFrameConstants, foamEnabled),
     CB_FIELD(WaterFrameConstants, foamBias), CB_FIELD(WaterFrameConstants, foamGain),
     CB_FIELD(WaterFrameConstants, foamOpacity), CB_FIELD(WaterFrameConstants, foamCascadeWeights),

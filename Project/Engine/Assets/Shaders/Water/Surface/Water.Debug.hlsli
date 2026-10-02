@@ -33,7 +33,7 @@ float3 VisualizeDepthValue(float value)
 
 /// @brief 合成ヤコビアン（全カスケード＋エンベロープ込みの detJ）の可視化
 /// @details R: detJ を 0.5 中心にマップ（0.5=無変形 / 白=圧縮 / 黒=引き伸ばし）
-///          G: 砕波候補 saturate(1 - detJ)（泡しきい値 foamBias の較正に使う）
+///          G: 砕波候補 saturate(1 - detJ)
 ///          B: 折り返し detJ < 0（波面が自己交差した砕波確定域）
 ///          泡と同じカスケード重み（gFoamCascadeWeights）で評価する。
 float3 VisualizeJacobian(float2 worldXZ)
@@ -285,7 +285,7 @@ float3 ResolveWaterDebugColor(WaterDebugContext ctx)
         return abs(ctx.reflectColor - ctx.transmissionColor) * 3.0f;
     }
 
-    // 23: FFT 泡マスク（グレースケール）。foamBias / foamGain / カスケード重みの較正用。
+    // 23: FFT 泡マスク（グレースケール）。
     //     本体の合成に使われる値そのもの（不透明度 gFoamOpacity は掛けない生マスク）。
     if (gDepthDebugViewMode == 23)
     {

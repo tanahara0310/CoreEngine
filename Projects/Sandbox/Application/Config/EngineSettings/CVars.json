@@ -20,13 +20,11 @@
         0.0
     ],
     "r.Water.FFT.WindSpeed": 2.0,
-    "r.Water.Foam.Bias": 0.86,
     "r.Water.Foam.CascadeWeights": [
         1.0,
         1.0,
         1.0
     ],
-    "r.Water.Foam.Gain": 3.52,
     "r.Water.ScatteringBase": [
         0.003,
         0.008,

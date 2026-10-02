@@ -52,16 +52,14 @@ cbuffer WaterFrameConstants : register(b5)
     // 既定 1000 と食い違うと水柱厚さが数十%狂う）。
     float gCameraNearZ;
     float gCameraFarZ;
-    // 白波被覆率の風速追従係数（Monahan W ∝ U^3.41 の基準風速比）。
-    // C++ 側 WaterFrameConstants::foamWindCoverageScale と一致必須。
-    float gFoamWindCoverageScale;
+    float gCameraClipPad;
     // 1 = 水面の日向率テクスチャ（gWaterSunVisibility）をメインライトの項へ掛ける
     int gSunVisibilityEnabled;
 
     // ---- 泡（whitecap）。FFTOcean 専用（Gerstner はヤコビアンを持たない）----
     int gFoamEnabled;      // 1 = 泡合成を行う
-    float gFoamBias;       // 発生しきい値（合成 detJ がこれ未満で泡）
-    float gFoamGain;       // しきい値からの立ち上がり勾配
+    float gFoamBias;       // 砕けるしきい値（合成 detJ がこれ未満で泡。WaterFoamSystem が較正する）
+    float gFoamGain;       // しきい値からの立ち上がり勾配（WaterFoamSystem が較正する）
     float gFoamOpacity;    // 泡レイヤの不透明度（1.0 の白ベタは禁止・水面下の情報を残す）
     float3 gFoamCascadeWeights; // カスケード別の勾配寄与（無重みは31mカスケードが支配して飽和する）
     // 泡の寿命 τ [s]。PS では未使用（FFTOceanFoamAccumulate.CS が使う）。

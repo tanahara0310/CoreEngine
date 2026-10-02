@@ -232,6 +232,11 @@ namespace CoreEngine
         }
     }
 
+    const WaterFoamSystem* WaterRenderFeature::GetWaterFoamSystem() const
+    {
+        return publishTarget_ ? publishTarget_->GetWaterFoamSystem() : nullptr;
+    }
+
     float WaterRenderFeature::GetWaterHeight() const
     {
         return waterPlane_ ? waterPlane_->GetTransform().translate.y : 0.0f;
@@ -454,28 +459,20 @@ namespace CoreEngine
         // 実効 σa/σs = ベース + 濁度ゲイン（合成は WaterCVars 側。永続化はベース値のみ）
         waterPlane_->SetWaterOpticalCoefficients(
             WaterCVars::EffectiveAbsorption(), WaterCVars::EffectiveScattering());
-        // 白波被覆率の風速追従係数。変化したときだけログして、
-        // 「風速を変えたのに泡が追従していない」を目視でなく数値で追えるようにする。
-        const float foamWindCoverageScale =
-            WaterSurfaceComponent::ComputeFoamWindCoverageScale(WaterCVars::FFTWindSpeed.Get());
-        if (std::abs(foamWindCoverageScale - lastFoamWindCoverageScale_) > 1.0e-4f) {
-            lastFoamWindCoverageScale_ = foamWindCoverageScale;
-            Logger::GetInstance().Infof(
-                LogCategory::Graphics, LogSubCategory::Pipeline,
-                "WaterRenderFeature: foam wind coverage scale = {:.5f} (windSpeed={:.2f}, Monahan U^3.41 / ref 18m/s)",
-                foamWindCoverageScale, WaterCVars::FFTWindSpeed.Get());
+        // 白波のしきい値は WaterFoamSystem が白波の被覆率から較正した値を使う
+        float foamBias = WaterFoamDefaults::kBias;
+        float foamGain = WaterFoamDefaults::kGain;
+        if (const WaterFoamSystem* foam = domain.GetWaterFoamSystem()) {
+            foamBias = foam->GetWhitecapBias();
+            foamGain = foam->GetWhitecapGain();
         }
-
         waterPlane_->SetFoamParameters(
             WaterCVars::FoamEnabled.Get(),
-            WaterCVars::FoamBias.Get(),
-            WaterCVars::FoamGain.Get(),
+            foamBias,
+            foamGain,
             WaterCVars::FoamOpacity.Get(),
             WaterCVars::FoamCascadeWeights.Get(),
-            WaterCVars::FoamDecaySeconds.Get(),
-            // 白波の量は風速へ自動追従させる（FoamBias は触らない）。
-            // これが無いと、ある風速で合わせた Bias が別の風速で必ず破綻する。
-            foamWindCoverageScale);
+            WaterCVars::FoamDecaySeconds.Get());
 
         // ---- FFT Ocean 経路の有効/無効（変化時のみ。PSO 再構築を伴う）----
         const bool fftEnabled = WaterCVars::FFTEnabled.Get();
@@ -561,6 +558,7 @@ namespace CoreEngine
     {
         // 泡パラメータの単一情報源は WaterFrameConstants（UI / 永続化と同経路）。
         // 泡の時間変化を進める WaterFoamSystem へ毎フレーム渡す。
+        // 白波の被覆率の目標を決める風速と倍率は CVar から渡す。
         auto* foam = domain.GetWaterFoamSystem();
         if (!foam || !waterPlane_) {
             return;
@@ -569,8 +567,8 @@ namespace CoreEngine
         const WaterFrameConstants& frameConstants = waterPlane_->GetFrameConstants();
         WaterFoamSystem::Settings foamSettings{};
         foamSettings.enabled = frameConstants.foamEnabled != 0 && waterPlane_->IsUsingFFTOcean();
-        foamSettings.bias = frameConstants.foamBias;
-        foamSettings.gain = frameConstants.foamGain;
+        foamSettings.windSpeed = WaterCVars::FFTWindSpeed.Get();
+        foamSettings.whitecapScale = WaterCVars::FoamWhitecapScale.Get();
         foamSettings.cascadeWeights[0] = frameConstants.foamCascadeWeights[0];
         foamSettings.cascadeWeights[1] = frameConstants.foamCascadeWeights[1];
         foamSettings.cascadeWeights[2] = frameConstants.foamCascadeWeights[2];

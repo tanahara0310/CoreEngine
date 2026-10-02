@@ -67,8 +67,9 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     // 波峰が参照格子上を位相速度で掃引しながら毎フレーム注入するので、線形のまま
     // 蓄積すると数周期で海面全体が泡の包絡に埋まり真っ白に飽和する（実測）。
     // 二乗にすると「強く砕けた峰」だけが持続泡として残り、弱い圧縮は跡を残さない。
+    // シミュレーション時間が止まっている間は注入しない（しきい値が動いても蓄積は止まったまま）
     const float breaking = ComputeWhitecapInstant(detJ, gFoamBias, gFoamGain);
-    const float injection = breaking * breaking * kAccumulationShare[slice];
+    const float injection = (gDeltaSeconds > 0.0f) ? breaking * breaking * kAccumulationShare[slice] : 0.0f;
 
     const float prev = (gResetFoam != 0)
         ? 0.0f

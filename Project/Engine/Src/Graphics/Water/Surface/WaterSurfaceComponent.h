@@ -136,19 +136,11 @@ namespace CoreEngine
         void SetWaterOpticalCoefficients(const Vector3& absorptionCoeff, const Vector3& scatteringCoeff);
 
         /// @brief 泡（whitecap）パラメータを設定する（FFTOcean 専用）
-        /// @param bias           発生しきい値（合成ヤコビアン detJ がこれを下回ると泡が立つ）
+        /// @param bias           砕けるしきい値（合成ヤコビアン detJ がこれを下回ると泡が立つ）
         /// @param cascadeWeights カスケード別の勾配寄与の重み（無重みだと最小カスケードが支配して飽和する）
-        /// @param windCoverageScale 白波被覆率の風速追従係数（Monahan 比。1.0 = 基準風速）
         void SetFoamParameters(
             bool enabled, float bias, float gain, float opacity,
-            const Vector3& cascadeWeights, float decaySeconds,
-            float windCoverageScale);
-
-        /// @brief 風速から白波被覆率の追従係数を求める（Monahan: W ∝ U^3.41）
-        /// @details 基準風速（FoamBias を較正した風速）での値を 1.0 とする比。
-        ///          基準より上では 1.0 で頭打ちにする — detJ 分布自体が風速とともに
-        ///          広がるので、そちら側の自然な増加に任せた方が破綻しない。
-        static float ComputeFoamWindCoverageScale(float windSpeed);
+            const Vector3& cascadeWeights, float decaySeconds);
 
         /// @brief FFT Ocean 描画経路を切り替える
         void SetUseFFTOcean(bool useFFTOcean);
