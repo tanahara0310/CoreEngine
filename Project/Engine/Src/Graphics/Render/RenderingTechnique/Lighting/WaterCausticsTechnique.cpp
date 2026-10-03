@@ -175,7 +175,7 @@ namespace CoreEngine
     {
         MainLightConstants constants{};
         if (lightManager) {
-            if (Light* light = lightManager->GetDirectionalLight(0); light && light->enabled) {
+            if (const Light* light = lightManager->GetDirectionalLight(0); light && light->enabled) {
                 // 大気透過率適用済みの実効色（DeferredLighting へ転送される色と同じ）。
                 // 太陽の見た目とコースティクスの色・明るさを日没時も一致させる
                 const Vector3 effectiveColor = lightManager->GetEffectiveLightColorRGB(*light);

@@ -9,6 +9,7 @@ namespace CoreEngine
 {
     class GameObject;
     class ICVar;
+    class LightComponent;
     class LightManager;
     class ToneMapping;
 
@@ -122,8 +123,8 @@ namespace CoreEngine
         static void ReleaseFloatCVar(BorrowedCVar& slot);
 
         /// @brief 月のオブジェクト（ライト付き）を今のシーンへ作る
-        /// @return 作った月の実体。シーンが無い・ディレクショナルライトが上限なら nullptr
-        Light* CreateMoonObject(SceneContext& ctx);
+        /// @return 作った月のライト。シーンが無い・ディレクショナルライトが上限なら nullptr
+        LightComponent* CreateMoonObject(SceneContext& ctx);
 
         static LightManager* GetLightManager(SceneContext& ctx);
         static ToneMapping* GetToneMapping(SceneContext& ctx);

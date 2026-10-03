@@ -1,11 +1,15 @@
 #pragma once
 
+#include "Graphics/Light/Light.h"
 #include "Math/MathCore.h"
 #include "Utility/Lifetime/ScopedRegistration.h"
+
+#include <optional>
 
 namespace CoreEngine {
     class EngineSystem;
     class AtmosphereManager;
+    class LightComponent;
     class LightManager;
     class ToneMapping;
 
@@ -26,6 +30,16 @@ namespace CoreEngine {
         float skyIntensity = 0.02f;      ///< 月光強度（大気散乱の輝度スケール）
         float surfaceIntensity = 114.0f; ///< 月光強度（サーフェス直接光の照度 [lx]）
         Vector3 color = { 0.55f, 0.65f, 0.85f }; ///< 月光色（知覚的な青白さの美術値）
+    };
+
+    /// @brief 大気の太陽と月のライトの値（Sky Atmosphere パネルの Undo の控え）
+    struct AtmosphereLightState {
+        LightComponent* sun = nullptr;  ///< 太陽のライト（無ければ nullptr）
+        LightComponent* moon = nullptr; ///< 月のライト（無ければ nullptr）
+        Light sunValues{};
+        Light moonValues{};
+        bool sunEnabled = false;
+        bool moonEnabled = false;
     };
 
     /// @brief 大気散乱（Sky Atmosphere）のエンジン常駐エディタ
@@ -80,9 +94,27 @@ namespace CoreEngine {
         ///          その操作を上書きしないよう復元をスキップする。
         void RestoreAutoExposureFromNightPreset();
 
+        /// @brief 今の太陽と月のライトの値を控える
+        AtmosphereLightState CaptureLightState() const;
+
+        /// @brief 直前の項目を掴んだら値を控え、離したら DrawContent の最後に履歴へ積む
+        void TrackLightEdit();
+
+        /// @brief ボタンのように 1 回で終わる操作の前に値を控え、DrawContent の最後に履歴へ積む
+        void BeginLightEdit();
+
+        /// @brief 控えた値から変わっていれば、1 件だけ履歴へ積む（DrawContent の最後に呼ぶ）
+        void CommitLightEdit();
+
         AtmosphereManager* GetAtmosphereManager() const;
         LightManager* GetLightManager() const;
         ToneMapping* GetToneMapping() const;
+
+        /// @brief 大気の太陽のライト（無ければ nullptr）
+        LightComponent* FindSunLight() const;
+
+        /// @brief 大気の月のライト（無ければ nullptr）
+        LightComponent* FindMoonLight() const;
 
         AtmosphereEditorSunSettings sunSettings_{};
         AtmosphereEditorMoonSettings moonSettings_{};
@@ -98,6 +130,9 @@ namespace CoreEngine {
         float timeSpeedHoursPerSec_ = 0.5f;  ///< 自動進行の速度 [h/s]
 
         int placementDrag_ = 0;              ///< スカイマップのドラッグ対象（0=なし 1=太陽 2=月）
+
+        std::optional<AtmosphereLightState> lightEditBefore_; ///< 操作を始める前の太陽と月の値
+        bool lightEditEnded_ = false;        ///< このフレームで操作を離した
 
         // 夜プリセットが自動露出を強制 ON にする前の値（昼系プリセットで復元するための退避）。
         // 復元は「夜 → 昼」の1往復ぶんだけ有効で、復元後は退避を破棄する

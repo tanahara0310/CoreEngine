@@ -63,18 +63,20 @@ namespace CoreEngine
         ///         （警告を出す）は false で、種類は変わらない
         bool ChangeType(LightHandle handle, LightType type);
 
-        /// @brief ハンドルからライトを取得する
-        /// @return ライトへのポインタ（破棄済み・無効ハンドルの場合は nullptr）。
-        ///         ポインタの保持は不可。ハンドルを保持し、フレームごとに引き直すこと。
-        Light* GetLight(LightHandle handle);
-        /// @brief ハンドルからライトを引く（世代が古ければ nullptr）
+        /// @brief ハンドルからライトを引く（破棄済み・無効ハンドル・世代が古ければ nullptr）
+        /// @note ポインタの保持は不可。ハンドルを保持し、フレームごとに引き直すこと。
+        ///       値を書くのは持ち主の `LightComponent` だけ（`UpdateLight` を通す）。
         const Light* GetLight(LightHandle handle) const;
+
+        /// @brief ライトの値を書く（種類と名前は残す。種類は ChangeType、名前は SetLightName で変える）
+        /// @return 無効ハンドルなら false
+        bool UpdateLight(LightHandle handle, Light values);
+
+        /// @brief ライトの表示名を変える
+        void SetLightName(LightHandle handle, std::string name);
 
         /// @brief 名前でライトを検索する（同名がある場合は最初の1つ）
         LightHandle FindLightByName(std::string_view name) const;
-
-        /// @brief 全ライトを列挙する（生成順）
-        void ForEachLight(const std::function<void(LightHandle, Light&)>& fn);
 
         /// @brief 指定種類のライト数を取得する
         uint32_t GetLightCount(LightType type) const;
@@ -86,17 +88,23 @@ namespace CoreEngine
 
         /// @brief ディレクショナルライトを正準順（GPU 転送順。0 = メイン/太陽）で取得
         /// @return ライトへのポインタ（範囲外の場合はnullptr）
-        Light* GetDirectionalLight(size_t index);
+        const Light* GetDirectionalLight(size_t index) const;
 
-        /// @brief 大気散乱の太陽として使用するディレクショナルライトを取得
+        /// @brief 大気散乱の太陽として使用するディレクショナルライトのハンドル
         /// @return isAtmosphereSun が立っている最初のライト。
-        ///         無ければ最初のディレクショナルライトへフォールバック、それも無ければ nullptr
-        Light* GetAtmosphereSunLight();
+        ///         無ければ最初のディレクショナルライトへフォールバック、それも無ければ無効ハンドル
+        LightHandle GetAtmosphereSunHandle() const;
 
-        /// @brief 大気散乱の月（第2大気ライト）として使用するディレクショナルライトを取得
+        /// @brief 大気散乱の月（第2大気ライト）として使用するディレクショナルライトのハンドル
         /// @return isAtmosphereMoon が立っている最初のライト。太陽と違いフォールバックは無い
-        ///         （月はオプトイン。無ければ nullptr = 月なし）
-        Light* GetAtmosphereMoonLight();
+        ///         （月はオプトイン。無ければ無効ハンドル = 月なし）
+        LightHandle GetAtmosphereMoonHandle() const;
+
+        /// @brief 大気散乱の太陽（無ければ nullptr）
+        const Light* GetAtmosphereSunLight() const { return GetLight(GetAtmosphereSunHandle()); }
+
+        /// @brief 大気散乱の月（無ければ nullptr）
+        const Light* GetAtmosphereMoonLight() const { return GetLight(GetAtmosphereMoonHandle()); }
 
         // ==================== 大気透過率（Transmittance on Light） ====================
 
@@ -173,11 +181,11 @@ namespace CoreEngine
         /// @brief 指定種類のライトをもう 1 灯置けるか
         bool HasRoomFor(LightType type) const;
 
-        /// @brief GetAtmosphereSunLight と同じ選択規則の const 版（透過率の適用先判定に共用）
-        const Light* FindAtmosphereSunLight() const;
+        /// @brief ハンドルが生きているスロットを指しているか
+        bool IsAlive(LightHandle handle) const;
 
-        /// @brief GetAtmosphereMoonLight と同じ選択規則の const 版
-        const Light* FindAtmosphereMoonLight() const;
+        /// @brief ハンドルのライト（書き換え用。無効なら nullptr）
+        Light* FindMutableLight(LightHandle handle);
 
         /// @brief ディレクショナルライトの正準順スロットインデックスを収集する
         /// @details 生成順を基本に、大気の太陽（無ければ先頭）を先頭へ移動した順。

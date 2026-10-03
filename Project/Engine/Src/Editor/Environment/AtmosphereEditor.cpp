@@ -17,6 +17,7 @@
 #include "Math/MathCore.h"
 
 #ifdef CORE_EDITOR
+#include "Editor/Command/EditorCommandStack.h"
 #include "Editor/ImGui/ImGuiAll.h"
 #include "Editor/ImGui/CVarPanel.h"
 #endif
@@ -35,9 +36,9 @@ namespace CoreEngine {
         /// @brief 大気パラメータの CVar 接頭辞（定義は AtmosphereManager.cpp）
         constexpr const char* kAtmosphereCVarPrefix = "r.Atmosphere";
 
-        /// @brief 今のシーンへ月のオブジェクトを作り、その実体を返す（作れなければ nullptr）
+        /// @brief 今のシーンへ月のオブジェクトを作り、そのライトを返す（作れなければ nullptr）
         /// @note ライトはオブジェクトが持つので、ここで作った月もシーンに保存される。
-        Light* CreateMoonLightObject(EngineSystem* engine)
+        LightComponent* CreateMoonLightObject(EngineSystem* engine)
         {
             SceneManager* const sceneManager = engine ? engine->GetSceneManager() : nullptr;
             GameObjectManager* const objects =
@@ -55,17 +56,69 @@ namespace CoreEngine {
                 return nullptr;
             }
 
-            Light& light = component->Get();
-            light.isAtmosphereMoon = true;
+            component->Get().isAtmosphereMoon = true;
             component->SyncWithManager();
 
-            Light* const live = component->GetLight();
-            if (!live) {
+            if (!component->GetLight()) {
                 // ディレクショナルライトが上限で実体を作れなかった
                 object->Destroy();
+                return nullptr;
             }
-            return live;
+            return component;
         }
+
+#ifdef CORE_EDITOR
+        /// @brief ライトへ値と有効を戻して、実体へ写す
+        void RestoreLight(LightComponent* light, const Light& values, bool enabled)
+        {
+            if (!light) {
+                return;
+            }
+            light->Get() = values;
+            light->SetEnabled(enabled);
+            light->SyncWithManager();
+        }
+
+        /// @brief 控えた状態へ戻す（月が無かった状態へ戻すときは、今ある月を消す）
+        void RestoreLightState(const AtmosphereLightState& target, const AtmosphereLightState& other)
+        {
+            RestoreLight(target.sun, target.sunValues, target.sunEnabled);
+            if (target.moon) {
+                RestoreLight(target.moon, target.moonValues, target.moonEnabled);
+            } else if (other.moon) {
+                RestoreLight(other.moon, other.moonValues, false);
+            }
+        }
+
+        /// @brief パネルで触る値が同じか
+        bool SameLightValues(const Light& a, const Light& b)
+        {
+            return a.direction == b.direction && a.color == b.color
+                && a.intensity == b.intensity && a.atmosphereIntensity == b.atmosphereIntensity;
+        }
+
+        /// @brief Sky Atmosphere パネルで変えた太陽と月の値を戻す操作
+        class LightEditCommand final : public Editor::IEditorCommand
+        {
+        public:
+            LightEditCommand(AtmosphereLightState before, AtmosphereLightState after)
+                : before_(std::move(before)), after_(std::move(after)) {}
+
+            void Undo() override { RestoreLightState(before_, after_); }
+            void Redo() override { RestoreLightState(after_, before_); }
+            std::string GetLabel() const override { return "太陽と月の変更"; }
+
+            bool References(const void* target) const override
+            {
+                return target != nullptr && (target == before_.sun || target == before_.moon
+                    || target == after_.sun || target == after_.moon);
+            }
+
+        private:
+            AtmosphereLightState before_;
+            AtmosphereLightState after_;
+        };
+#endif
     }
 
     void AtmosphereEditor::Initialize(EngineSystem& engine)
@@ -84,13 +137,13 @@ namespace CoreEngine {
     {
         sunSettings_ = settings;
 
-        if (auto* lightManager = GetLightManager()) {
-            if (Light* sun = lightManager->GetAtmosphereSunLight()) {
-                sun->direction = ComputeSunLightDirection(settings.elevationDeg, settings.azimuthDeg);
-                // UI の「強度」は空（大気散乱）の輝度スケール。サーフェスの直接光（sun->intensity）は
-                // 単位系が別なので触らない（同じ値を入れると明るいアルベドが ACES の飽和域に入る）。
-                sun->atmosphereIntensity = settings.intensity;
-            }
+        if (LightComponent* const sun = FindSunLight()) {
+            Light& values = sun->Get();
+            values.direction = ComputeSunLightDirection(settings.elevationDeg, settings.azimuthDeg);
+            // UI の「強度」は空（大気散乱）の輝度スケール。サーフェスの直接光（intensity）は
+            // 単位系が別なので触らない（同じ値を入れると明るいアルベドが ACES の飽和域に入る）。
+            values.atmosphereIntensity = settings.intensity;
+            sun->SyncWithManager();
         }
 
         // 太陽方向・強度の変化は AtmosphereManager::Update() が自動検知して
@@ -101,12 +154,7 @@ namespace CoreEngine {
     {
         moonSettings_ = settings;
 
-        auto* lightManager = GetLightManager();
-        if (!lightManager) {
-            return;
-        }
-
-        Light* moon = lightManager->GetAtmosphereMoonLight();
+        LightComponent* moon = FindMoonLight();
         if (!moon && settings.enabled) {
             // 月ライトはオプトイン。初回有効化時に第2ディレクショナルライトのオブジェクトを作る
             moon = CreateMoonLightObject(engine_);
@@ -115,12 +163,14 @@ namespace CoreEngine {
             return;
         }
 
-        moon->enabled = settings.enabled;
-        moon->direction = ComputeSunLightDirection(settings.elevationDeg, settings.azimuthDeg);
-        moon->color = settings.color;
+        Light& values = moon->Get();
+        values.direction = ComputeSunLightDirection(settings.elevationDeg, settings.azimuthDeg);
+        values.color = settings.color;
         // 太陽と同じく「空の輝度」と「サーフェス直接光（照度 [lx]）」は単位系が別（ACES 飽和域回避）
-        moon->intensity = settings.surfaceIntensity;
-        moon->atmosphereIntensity = settings.skyIntensity;
+        values.intensity = settings.surfaceIntensity;
+        values.atmosphereIntensity = settings.skyIntensity;
+        moon->SetEnabled(settings.enabled);
+        moon->SyncWithManager();
 
         // 月の変化も AtmosphereManager::Update() が自動検知して Sky-View LUT を再生成する
     }
@@ -167,13 +217,13 @@ namespace CoreEngine {
         // ===== 太陽・月の配置（UE 風の直接操作） =====
         if (ImGui::CollapsingHeader("太陽と月の配置", ImGuiTreeNodeFlags_DefaultOpen)) {
             // --- プリセット（1クリックで代表的な時間帯へ） ---
-            if (ImGui::Button("正午")) { ApplyDaytimePreset(12.0f); }
+            if (ImGui::Button("正午")) { BeginLightEdit(); ApplyDaytimePreset(12.0f); }
             ImGui::SameLine();
-            if (ImGui::Button("朝")) { ApplyDaytimePreset(6.7f); }
+            if (ImGui::Button("朝")) { BeginLightEdit(); ApplyDaytimePreset(6.7f); }
             ImGui::SameLine();
-            if (ImGui::Button("夕暮れ")) { ApplyDaytimePreset(17.6f); }
+            if (ImGui::Button("夕暮れ")) { BeginLightEdit(); ApplyDaytimePreset(17.6f); }
             ImGui::SameLine();
-            if (ImGui::Button("夜（満月）")) { ApplyNightPreset(); }
+            if (ImGui::Button("夜（満月）")) { BeginLightEdit(); ApplyNightPreset(); }
             ImGui::SameLine();
             ImGui::TextDisabled("(?)");
             if (ImGui::IsItemHovered()) {
@@ -189,7 +239,9 @@ namespace CoreEngine {
             ImGui::SeparatorText("時刻から配置");
             bool timeChanged = false;
             timeChanged |= ImGui::SliderFloat("時刻 [h]", &timeOfDay_, 0.0f, 24.0f, "%.2f");
+            TrackLightEdit();
             timeChanged |= ImGui::SliderFloat("緯度 [deg]", &latitudeDeg_, -89.0f, 89.0f, "%.0f");
+            TrackLightEdit();
             ImGui::Checkbox("時刻を自動で進める", &autoTimeCycle_);
             if (autoTimeCycle_) {
                 ImGui::SliderFloat("進行速度 [h/s]", &timeSpeedHoursPerSec_, 0.05f, 4.0f, "%.2f");
@@ -211,8 +263,11 @@ namespace CoreEngine {
             AtmosphereEditorSunSettings settings = sunSettings_;
             bool changed = false;
             changed |= ImGui::SliderFloat("高度角 [deg]", &settings.elevationDeg, -20.0f, 90.0f, "%.1f");
+            TrackLightEdit();
             changed |= ImGui::SliderFloat("方位角 [deg]", &settings.azimuthDeg, -180.0f, 180.0f, "%.1f");
+            TrackLightEdit();
             changed |= ImGui::SliderFloat("空の明るさ（散乱スケール）", &settings.intensity, 0.0f, 100.0f, "%.2f");
+            TrackLightEdit();
             if (changed) {
                 ApplySunSettings(settings);
             }
@@ -232,22 +287,28 @@ namespace CoreEngine {
             AtmosphereEditorMoonSettings settings = moonSettings_;
             bool changed = false;
             changed |= ImGui::Checkbox("月を有効にする", &settings.enabled);
+            TrackLightEdit();
             if (settings.enabled) {
                 changed |= ImGui::SliderFloat("高度角 [deg]##moon", &settings.elevationDeg, -20.0f, 90.0f, "%.1f");
+                TrackLightEdit();
                 changed |= ImGui::SliderFloat("方位角 [deg]##moon", &settings.azimuthDeg, -180.0f, 180.0f, "%.1f");
+                TrackLightEdit();
                 // 空の輝度スケール（太陽 20 に対し既定 0.02 = 1/1000 の美術値）。
                 // 微小値を扱うためログスケール
                 changed |= ImGui::SliderFloat("空の明るさ（散乱スケール）##moon", &settings.skyIntensity,
                     0.0f, 1.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
+                TrackLightEdit();
                 // サーフェス直接光の照度 [lx]（既定は太陽の空:直接光比に揃えた約 114 lx。
                 // 盛りすぎると自動露出下で「空だけ暗く床だけ明るい」不整合になる）
                 changed |= ImGui::SliderFloat("直接光の照度 [lx]##moon", &settings.surfaceIntensity,
                     0.0f, 2000.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
+                TrackLightEdit();
                 float moonColor[3] = { settings.color.x, settings.color.y, settings.color.z };
                 if (ImGui::ColorEdit3("月光色", moonColor)) {
                     settings.color = { moonColor[0], moonColor[1], moonColor[2] };
                     changed = true;
                 }
+                TrackLightEdit();
 
                 // 満ち欠け: 既定は常に満月（実位相は太陽の配置次第で意図せず新月になるためオプトイン）
                 // 実体は CVar が持つ（GetParametersMutable への直書きは次の同期で戻されるため使わない）
@@ -337,7 +398,83 @@ namespace CoreEngine {
                 ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "AtmosphereManager が見つかりません");
             }
         }
+
+        // 太陽と月を変えた操作を離したら、1 件だけ履歴へ積む
+        CommitLightEdit();
 #endif
+    }
+
+    AtmosphereLightState AtmosphereEditor::CaptureLightState() const
+    {
+        AtmosphereLightState state;
+        state.sun = FindSunLight();
+        state.moon = FindMoonLight();
+        if (state.sun) {
+            state.sunValues = state.sun->Get();
+            state.sunEnabled = state.sun->IsEnabled();
+        }
+        if (state.moon) {
+            state.moonValues = state.moon->Get();
+            state.moonEnabled = state.moon->IsEnabled();
+        }
+        return state;
+    }
+
+    void AtmosphereEditor::TrackLightEdit()
+    {
+#ifdef CORE_EDITOR
+        if (ImGui::IsItemActivated() && !lightEditBefore_) {
+            lightEditBefore_ = CaptureLightState();
+        }
+        if (ImGui::IsItemDeactivated()) {
+            lightEditEnded_ = true;
+        }
+#endif
+    }
+
+    void AtmosphereEditor::BeginLightEdit()
+    {
+        if (!lightEditBefore_) {
+            lightEditBefore_ = CaptureLightState();
+        }
+        lightEditEnded_ = true;
+    }
+
+    void AtmosphereEditor::CommitLightEdit()
+    {
+#ifdef CORE_EDITOR
+        if (!lightEditEnded_) {
+            return;
+        }
+        lightEditEnded_ = false;
+        if (!lightEditBefore_) {
+            return;
+        }
+        const AtmosphereLightState before = *lightEditBefore_;
+        lightEditBefore_.reset();
+
+        const AtmosphereLightState after = CaptureLightState();
+        const bool sunSame = before.sun == after.sun
+            && (!after.sun || (SameLightValues(before.sunValues, after.sunValues) && before.sunEnabled == after.sunEnabled));
+        const bool moonSame = before.moon == after.moon
+            && (!after.moon || (SameLightValues(before.moonValues, after.moonValues) && before.moonEnabled == after.moonEnabled));
+        if (sunSame && moonSame) {
+            return;
+        }
+        Editor::EditorCommandStack::Get().Push(std::make_unique<LightEditCommand>(before, after));
+#endif
+    }
+
+    LightComponent* AtmosphereEditor::FindSunLight() const
+    {
+        const LightManager* const lightManager = GetLightManager();
+        return lightManager ? LightComponent::Find(lightManager->GetAtmosphereSunHandle()) : nullptr;
+    }
+
+    LightComponent* AtmosphereEditor::FindMoonLight() const
+    {
+        const LightManager* const lightManager = GetLightManager();
+        return lightManager ? LightComponent::Find(lightManager->GetAtmosphereMoonHandle()) : nullptr;
     }
 
     void AtmosphereEditor::DrawSunMoonPlacementWidget()
@@ -350,6 +487,7 @@ namespace CoreEngine {
         ImDrawList* drawList = ImGui::GetWindowDrawList();
         const ImVec2 origin = ImGui::GetCursorScreenPos();
         ImGui::InvisibleButton("##skyPlacement", ImVec2(size, size));
+        TrackLightEdit();
         const bool active = ImGui::IsItemActive();
 
         const ImVec2 center(origin.x + size * 0.5f, origin.y + size * 0.5f);

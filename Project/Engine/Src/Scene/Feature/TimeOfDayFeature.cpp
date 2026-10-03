@@ -171,8 +171,9 @@ namespace CoreEngine
         }
 
         if (savedSunValid_) {
-            if (Light* sun = lightManager->GetAtmosphereSunLight()) {
-                sun->direction = savedSunDirection_;
+            if (LightComponent* const sun = LightComponent::Find(lightManager->GetAtmosphereSunHandle())) {
+                sun->Get().direction = savedSunDirection_;
+                sun->SyncWithManager();
             }
             savedSunValid_ = false;
         }
@@ -182,12 +183,14 @@ namespace CoreEngine
             createdMoonObject_->Destroy();
             createdMoonObject_ = nullptr;
         } else if (savedMoonValid_) {
-            if (Light* moon = lightManager->GetAtmosphereMoonLight()) {
-                moon->enabled = savedMoonEnabled_;
-                moon->direction = savedMoonDirection_;
-                moon->color = savedMoonColor_;
-                moon->intensity = savedMoonIntensity_;
-                moon->atmosphereIntensity = savedMoonSkyIntensity_;
+            if (LightComponent* const moon = LightComponent::Find(lightManager->GetAtmosphereMoonHandle())) {
+                Light& values = moon->Get();
+                values.direction = savedMoonDirection_;
+                values.color = savedMoonColor_;
+                values.intensity = savedMoonIntensity_;
+                values.atmosphereIntensity = savedMoonSkyIntensity_;
+                moon->SetEnabled(savedMoonEnabled_);
+                moon->SyncWithManager();
             }
             savedMoonValid_ = false;
         }
@@ -260,7 +263,7 @@ namespace CoreEngine
 
     // ==================== 反映 ====================
 
-    Light* TimeOfDayFeature::CreateMoonObject(SceneContext& ctx)
+    LightComponent* TimeOfDayFeature::CreateMoonObject(SceneContext& ctx)
     {
         if (!ctx.gameObjectManager) {
             return nullptr;
@@ -289,17 +292,15 @@ namespace CoreEngine
             return nullptr;
         }
 
-        Light& light = component->Get();
-        light.isAtmosphereMoon = true;
+        component->Get().isAtmosphereMoon = true;
         component->SyncWithManager();
 
-        Light* const live = component->GetLight();
-        if (!live) {
+        if (!component->GetLight()) {
             object->Destroy();
             return nullptr;
         }
         createdMoonObject_ = object;
-        return live;
+        return component;
     }
 
     void TimeOfDayFeature::ApplyToLights(SceneContext& ctx)
@@ -327,19 +328,21 @@ namespace CoreEngine
         //（atmosphereIntensity=0 のシーンは照度からの換算値が使われるため、
         // ここで 20 を仮定すると夜空だけ 20 倍明るくなる）。
         float sunSkyScale = 1.0f;
-        if (Light* sun = lightManager->GetAtmosphereSunLight()) {
+        if (LightComponent* const sun = LightComponent::Find(lightManager->GetAtmosphereSunHandle())) {
+            Light& values = sun->Get();
             if (!savedSunValid_) {
-                savedSunDirection_ = sun->direction;
+                savedSunDirection_ = values.direction;
                 savedSunValid_ = true;
             }
-            sun->direction = ComputeLightDirection(sunElevationDeg_, sunAzimuthDeg_);
-            sunSkyScale = (sun->atmosphereIntensity > 0.0f)
-                ? sun->atmosphereIntensity : LightUnits::LuxToShader(sun->intensity);
+            values.direction = ComputeLightDirection(sunElevationDeg_, sunAzimuthDeg_);
+            sun->SyncWithManager();
+            sunSkyScale = (values.atmosphereIntensity > 0.0f)
+                ? values.atmosphereIntensity : LightUnits::LuxToShader(values.intensity);
         }
 
         // ---- 月（太陽の 12 時間ずれ＝満月の軌道。太陽が沈んでいる間だけ昇っている）----
         const bool wantMoon = cvMoon.Get();
-        Light* moon = lightManager->GetAtmosphereMoonLight();
+        LightComponent* moon = LightComponent::Find(lightManager->GetAtmosphereMoonHandle());
         if (!moon) {
             if (!wantMoon) {
                 return;
@@ -352,13 +355,14 @@ namespace CoreEngine
             }
         }
 
+        Light& moonValues = moon->Get();
         if (!savedMoonValid_ && !createdMoonObject_) {
             // シーンが元から持っていた月は、借りている間の変更を Finalize で返す
-            savedMoonEnabled_ = moon->enabled;
-            savedMoonDirection_ = moon->direction;
-            savedMoonColor_ = moon->color;
-            savedMoonIntensity_ = moon->intensity;
-            savedMoonSkyIntensity_ = moon->atmosphereIntensity;
+            savedMoonEnabled_ = moon->IsEnabled();
+            savedMoonDirection_ = moonValues.direction;
+            savedMoonColor_ = moonValues.color;
+            savedMoonIntensity_ = moonValues.intensity;
+            savedMoonSkyIntensity_ = moonValues.atmosphereIntensity;
             savedMoonValid_ = true;
         }
 
@@ -367,14 +371,15 @@ namespace CoreEngine
         ComputeSunAngles(timeOfDay_ + 12.0f, latitudeDeg, moonElevationDeg, moonAzimuthDeg);
         moonAzimuthDeg += azimuthOffset;  // 月も同じだけ回して太陽の真反対を保つ
 
-        // 昼間に月を光らせない（地平線下でも大気の透過率でほぼ消えるが、明示的に落とす）
-        moon->enabled = wantMoon && moonElevationDeg > 0.0f;
-        moon->direction = ComputeLightDirection(moonElevationDeg, moonAzimuthDeg);
-        moon->color = cvMoonColor.Get();
-        moon->intensity = cvMoonSurfaceIntensity.Get();
+        moonValues.direction = ComputeLightDirection(moonElevationDeg, moonAzimuthDeg);
+        moonValues.color = cvMoonColor.Get();
+        moonValues.intensity = cvMoonSurfaceIntensity.Get();
         // 空は太陽スケールとの比で置く。地表の月光/日光比（114 lx / 57,143 lx ≒ 1/500）と
         // 桁を揃えないと、地面は暗いのに空だけ明るい夜になる
-        moon->atmosphereIntensity = sunSkyScale * cvMoonSkyRatio.Get();
+        moonValues.atmosphereIntensity = sunSkyScale * cvMoonSkyRatio.Get();
+        // 昼間に月を光らせない（地平線下でも大気の透過率でほぼ消えるが、明示的に落とす）
+        moon->SetEnabled(wantMoon && moonElevationDeg > 0.0f);
+        moon->SyncWithManager();
     }
 
     void TimeOfDayFeature::ApplyAutoExposure(SceneContext& ctx)

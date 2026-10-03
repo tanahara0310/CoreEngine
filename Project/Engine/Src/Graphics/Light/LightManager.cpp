@@ -132,8 +132,7 @@ namespace CoreEngine
 
     bool LightManager::DestroyLight(LightHandle handle)
     {
-        Light* light = GetLight(handle);
-        if (!light) {
+        if (!IsAlive(handle)) {
             return false;
         }
         Slot& slot = slots_[handle.index];
@@ -145,7 +144,7 @@ namespace CoreEngine
 
     bool LightManager::ChangeType(LightHandle handle, LightType type)
     {
-        Light* const light = GetLight(handle);
+        Light* const light = FindMutableLight(handle);
         if (!light) {
             return false;
         }
@@ -168,21 +167,42 @@ namespace CoreEngine
         return GetLightCount(type) < GetMaxLightCount(type);
     }
 
-    Light* LightManager::GetLight(LightHandle handle)
+    bool LightManager::IsAlive(LightHandle handle) const
     {
-        return const_cast<Light*>(static_cast<const LightManager*>(this)->GetLight(handle));
+        if (!handle.IsValid() || handle.index >= slots_.size()) {
+            return false;
+        }
+        const Slot& slot = slots_[handle.index];
+        return slot.alive && slot.generation == handle.generation;
     }
 
     const Light* LightManager::GetLight(LightHandle handle) const
     {
-        if (!handle.IsValid() || handle.index >= slots_.size()) {
-            return nullptr;
+        return IsAlive(handle) ? &slots_[handle.index].light : nullptr;
+    }
+
+    Light* LightManager::FindMutableLight(LightHandle handle)
+    {
+        return IsAlive(handle) ? &slots_[handle.index].light : nullptr;
+    }
+
+    bool LightManager::UpdateLight(LightHandle handle, Light values)
+    {
+        Light* const light = FindMutableLight(handle);
+        if (!light) {
+            return false;
         }
-        const Slot& slot = slots_[handle.index];
-        if (!slot.alive || slot.generation != handle.generation) {
-            return nullptr;
+        values.type = light->type;
+        values.name = std::move(light->name);
+        *light = std::move(values);
+        return true;
+    }
+
+    void LightManager::SetLightName(LightHandle handle, std::string name)
+    {
+        if (Light* const light = FindMutableLight(handle)) {
+            light->name = std::move(name);
         }
-        return &slot.light;
     }
 
     LightHandle LightManager::FindLightByName(std::string_view name) const
@@ -193,15 +213,6 @@ namespace CoreEngine
             }
         }
         return {};
-    }
-
-    void LightManager::ForEachLight(const std::function<void(LightHandle, Light&)>& fn)
-    {
-        for (size_t i = 0; i < slots_.size(); ++i) {
-            if (slots_[i].alive) {
-                fn({ static_cast<uint16_t>(i), slots_[i].generation }, slots_[i].light);
-            }
-        }
     }
 
     uint32_t LightManager::GetLightCount(LightType type) const
@@ -250,7 +261,7 @@ namespace CoreEngine
         return indices;
     }
 
-    Light* LightManager::GetDirectionalLight(size_t index)
+    const Light* LightManager::GetDirectionalLight(size_t index) const
     {
         const std::vector<uint16_t> indices = CollectDirectionalSlotsCanonical();
         if (index >= indices.size()) {
@@ -259,58 +270,51 @@ namespace CoreEngine
         return &slots_[indices[index]].light;
     }
 
-    const Light* LightManager::FindAtmosphereSunLight() const
+    LightHandle LightManager::GetAtmosphereSunHandle() const
     {
-        const Light* firstDirectional = nullptr;
-        for (const Slot& slot : slots_) {
+        LightHandle firstDirectional{};
+        for (size_t i = 0; i < slots_.size(); ++i) {
+            const Slot& slot = slots_[i];
             if (!slot.alive || slot.light.type != LightType::Directional) {
                 continue;
             }
+            const LightHandle handle{ static_cast<uint16_t>(i), slot.generation };
             if (slot.light.isAtmosphereSun) {
-                return &slot.light;
+                return handle;
             }
-            if (!firstDirectional) {
-                firstDirectional = &slot.light;
+            if (!firstDirectional.IsValid()) {
+                firstDirectional = handle;
             }
         }
         // フラグ付きライトが無い場合は最初のディレクショナルライトへフォールバック
         return firstDirectional;
     }
 
-    Light* LightManager::GetAtmosphereSunLight()
+    LightHandle LightManager::GetAtmosphereMoonHandle() const
     {
-        return const_cast<Light*>(FindAtmosphereSunLight());
-    }
-
-    const Light* LightManager::FindAtmosphereMoonLight() const
-    {
-        for (const Slot& slot : slots_) {
+        for (size_t i = 0; i < slots_.size(); ++i) {
+            const Slot& slot = slots_[i];
             if (!slot.alive || slot.light.type != LightType::Directional) {
                 continue;
             }
             // 同一ライトに両フラグが立っている場合は太陽として扱う（月はオプトイン・フォールバック無し）
             if (slot.light.isAtmosphereMoon && !slot.light.isAtmosphereSun) {
-                return &slot.light;
+                return { static_cast<uint16_t>(i), slot.generation };
             }
         }
-        return nullptr;
-    }
-
-    Light* LightManager::GetAtmosphereMoonLight()
-    {
-        return const_cast<Light*>(FindAtmosphereMoonLight());
+        return {};
     }
 
     Vector3 LightManager::GetEffectiveLightColorRGB(const Light& light) const
     {
         Vector3 color = light.color;
-        if (&light == FindAtmosphereSunLight())
+        if (&light == GetAtmosphereSunLight())
         {
             color.x *= atmosphereSunTransmittance_.x;
             color.y *= atmosphereSunTransmittance_.y;
             color.z *= atmosphereSunTransmittance_.z;
         }
-        else if (&light == FindAtmosphereMoonLight())
+        else if (&light == GetAtmosphereMoonLight())
         {
             color.x *= atmosphereMoonTransmittance_.x;
             color.y *= atmosphereMoonTransmittance_.y;

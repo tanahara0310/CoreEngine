@@ -419,7 +419,7 @@ namespace CoreEngine
     {
         const uint32_t maxLights = RayTracingShadowManager::kMaxDirectionalLights;
         for (uint32_t li = 0; li < LightManager::MAX_DIRECTIONAL_LIGHTS && li < maxLights; ++li) {
-            auto* dirLight = context.lightManager->GetDirectionalLight(li);
+            const Light* dirLight = context.lightManager->GetDirectionalLight(li);
             if (!dirLight || !dirLight->enabled) continue;
             body(li, *dirLight);
         }
@@ -668,7 +668,7 @@ namespace CoreEngine
         // 水面の影はメインライト（0 番）で調べる（Water.PS が掛けるのも 0 番の項だけ）
         WaterSunShadowInput sunShadow{};
         if (context.lightManager) {
-            if (Light* mainLight = context.lightManager->GetDirectionalLight(0);
+            if (const Light* mainLight = context.lightManager->GetDirectionalLight(0);
                 mainLight && mainLight->enabled) {
                 sunShadow.direction = CoreEngine::Normalize(mainLight->direction);
                 sunShadow.enabled = true;
@@ -776,7 +776,7 @@ namespace CoreEngine
         // ライトの色/強度を変えても常に一定の白い光量のままになる不具合の原因だった。
         WaterCausticsRayTracingManager::LightInput lightInput{};
         if (context.lightManager) {
-            if (Light* mainLight = context.lightManager->GetDirectionalLight(0);
+            if (const Light* mainLight = context.lightManager->GetDirectionalLight(0);
                 mainLight && mainLight->enabled) {
                 lightInput.direction = CoreEngine::Normalize(mainLight->direction);
                 // 大気透過率適用済みの実効色（DeferredLighting・SS版コースティクスと同一基準）。

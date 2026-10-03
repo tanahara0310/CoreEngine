@@ -80,19 +80,10 @@ namespace CoreEngine
             return;
         }
 
-        // 無効なコンポーネント・非アクティブなオブジェクトのライトも消灯させる必要があるので、
-        // ForEachComponent（有効なものだけを回す）ではなく自分で走査する
+        // 無効なライトは無効になったとき（OnDisable）に消えているので、有効なものだけ写す
         if (ctx.gameObjectManager) {
-            for (const auto& object : ctx.gameObjectManager->GetAllObjects()) {
-                if (!object || object->IsMarkedForDestroy()) {
-                    continue;
-                }
-                for (const auto& slot : object->GetAllComponents()) {
-                    if (auto* const light = dynamic_cast<LightComponent*>(slot.get())) {
-                        light->SyncWithManager();
-                    }
-                }
-            }
+            ctx.gameObjectManager->ForEachComponent<LightComponent>(
+                [](LightComponent& light) { light.SyncWithManager(); });
         }
 
         if (lightManager_) {
