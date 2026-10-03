@@ -11,7 +11,7 @@ namespace CoreEngine
     /// @details 演出の調整パラメータは CVar（"r.Fade.*"）が唯一の保持者。
     ///          fadeAlpha / fadeType / time は SceneTransition が制御する実行時状態のため
     ///          CVar 化していない（保存すると黒画面で起動する事故になる）。
-    ///          ImGui と保存は CVar 側で自動生成される（Docs/Engine/Editor/CVar_Design.md）
+    ///          ImGui と保存は CVar 側で自動生成される
     class FadeEffect : public PostEffectComputeBase {
     public:
         /// @brief フェードのタイプ

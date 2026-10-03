@@ -11,7 +11,7 @@ namespace CoreEngine
 /// @details 深度バッファのSobelフィルタによりエッジを検出し、アウトラインを描画する。
 ///          調整パラメータは CVar（"r.Outline.*"）が唯一の保持者。
 ///          near/far クリップ距離は毎フレームカメラから設定される実行時値なので CVar 化していない。
-///          ImGui と保存は CVar 側で自動生成される（Docs/Engine/Editor/CVar_Design.md）
+///          ImGui と保存は CVar 側で自動生成される
 class Outline : public PostEffectComputeBase {
 public:
 	/// @brief アウトラインパラメータ構造体（GPU 定数バッファのレイアウト）

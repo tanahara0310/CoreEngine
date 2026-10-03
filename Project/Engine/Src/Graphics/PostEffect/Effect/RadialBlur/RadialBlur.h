@@ -9,7 +9,7 @@ namespace CoreEngine
 {
 /// @brief ラジアルブラーエフェクト（CS方式）
 /// @details パラメータは CVar（"r.RadialBlur.*"）が唯一の保持者。
-///          ImGui と保存は CVar 側で自動生成される（Docs/Engine/Editor/CVar_Design.md）
+///          ImGui と保存は CVar 側で自動生成される
 class RadialBlur : public PostEffectComputeBase {
 public:
     /// @brief ラジアルブラーパラメータ構造体（GPU 定数バッファのレイアウト）
