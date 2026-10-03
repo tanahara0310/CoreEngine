@@ -1,4 +1,5 @@
 #pragma once
+#include <chrono>
 #include <functional>
 #include <memory>
 #include <string>
@@ -26,13 +27,14 @@ namespace CoreEngine
         /// @brief 未実行のステップが残っているか
         bool HasNext() const { return cursor_ < tasks_.size(); }
 
-        /// @brief 次のステップを 1 つだけ実行し、CPU 時間を記録してログへ出す
-        void Step();
+        /// @brief 次のステップを 1 回だけ呼び、CPU 時間を記録する（済んだらログへ出して次へ進む）
+        /// @return Pending ならステップは進んでいない（次の Step でもう一度呼ぶ）
+        StartupTaskResult Step();
 
         /// @brief 次に実行するステップの表示名（残っていなければ空文字）
         std::string GetNextLabel() const;
 
-        /// @brief 完了率 0.0〜1.0
+        /// @brief 完了率 0.0〜1.0（待っているステップの進み具合を含む）
         float GetProgress() const;
 
         size_t GetCompletedCount() const { return cursor_; }
@@ -52,8 +54,10 @@ namespace CoreEngine
         struct Entry {
             std::unique_ptr<IStartupTask> task;
             std::string executedLabel;   // 実行時点で確定した表示名（サマリ用）
-            double seconds = 0.0;      // 壁時計
+            double seconds = 0.0;      // 壁時計（待っていたあいだを含む）
             double cpuSeconds = 0.0;   // 実行スレッドが実際に CPU を使った時間
+            int calls = 0;             // Execute を呼んだ回数（待ちのステップは 2 回以上）
+            std::chrono::steady_clock::time_point firstCall{};
         };
 
         std::vector<Entry> tasks_;

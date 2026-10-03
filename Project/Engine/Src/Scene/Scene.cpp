@@ -39,8 +39,14 @@ namespace CoreEngine
         sequence.Add("カメラと Feature の登録", [this, engine] { SetupSceneCore(engine); });
         sequence.Add("Feature の初期化", [this] { InitializeFeatures(); });
         sequence.Add("シーンの設定", [this] { ApplyManifestSettings(); });
-        sequence.Add("モデルの先読み", [this] { BeginModelPreload(); });
-        sequence.Add("シーンデータの復元", [this] { BeginSceneDataRestore(); });
+        sequence.Add(std::make_unique<PollingStartupTask>("モデルの先読み",
+            [this] { return BeginModelPreload(); },
+            [this] { return IsModelPreloadDone(); },
+            [this] { return GetModelPreloadProgress(); }));
+        sequence.Add(std::make_unique<PollingStartupTask>("シーンデータの復元",
+            [this] { return BeginSceneDataRestore(); },
+            [this] { return sceneSaveSystem_->StepLoad(); },
+            [this] { return sceneSaveSystem_->GetLoadProgress(); }));
         sequence.Add("Feature の後処理", [this] { RunPostSceneInitialize(); });
     }
 
@@ -212,50 +218,52 @@ namespace CoreEngine
         }
     }
 
-    void Scene::BeginModelPreload()
+    bool Scene::BeginModelPreload()
     {
         auto* modelManager = engine_ ? engine_->GetService<ModelManager>() : nullptr;
-        if (!modelManager || !sceneSaveSystem_ || !sceneManager_) {
-            return;
+        if (!modelManager || !sceneSaveSystem_) {
+            return false;
         }
 
         const std::vector<std::string> modelPaths = restoreSnapshot_
             ? SceneSaveSystem::CollectModelPaths(*restoreSnapshot_)
             : SceneSaveSystem::CollectModelPaths(sceneSaveSystem_->GetSceneName());
         if (modelPaths.empty()) {
-            return;
+            return false;
         }
 
         // ワーカーへ投げて即座に戻る。読み終わるまでの各フレームで画面は回り続ける
         modelManager->BeginPreload(modelPaths);
-
-        sceneManager_->SetLoadStepContinuation(
-            [modelManager] {
-                const auto progress = modelManager->GetPreloadProgress();
-                return progress.first >= progress.second;
-            },
-            [modelManager] {
-                const auto progress = modelManager->GetPreloadProgress();
-                return (progress.second == 0)
-                    ? 1.0f
-                    : static_cast<float>(progress.first) / static_cast<float>(progress.second);
-            });
+        return true;
     }
 
-    void Scene::BeginSceneDataRestore()
+    bool Scene::IsModelPreloadDone()
     {
-        // 進捗を出す相手（SceneManager）が居ない経路は、その場で読み切る
-        if (!sceneManager_) {
-            sceneSaveSystem_->Load(&gameObjectManager_);
-            return;
+        auto* modelManager = engine_ ? engine_->GetService<ModelManager>() : nullptr;
+        if (!modelManager) {
+            return true;
         }
+        const auto progress = modelManager->GetPreloadProgress();
+        return progress.first >= progress.second;
+    }
 
-        sceneSaveSystem_->BeginLoad(&gameObjectManager_);
+    float Scene::GetModelPreloadProgress()
+    {
+        auto* modelManager = engine_ ? engine_->GetService<ModelManager>() : nullptr;
+        if (!modelManager) {
+            return 1.0f;
+        }
+        const auto progress = modelManager->GetPreloadProgress();
+        return (progress.second == 0)
+            ? 1.0f
+            : static_cast<float>(progress.first) / static_cast<float>(progress.second);
+    }
 
+    bool Scene::BeginSceneDataRestore()
+    {
         // 1 フレームに 1 体ずつ復元する
-        sceneManager_->SetLoadStepContinuation(
-            [this] { return sceneSaveSystem_->StepLoad(); },
-            [this] { return sceneSaveSystem_->GetLoadProgress(); });
+        sceneSaveSystem_->BeginLoad(&gameObjectManager_);
+        return true;
     }
 
     void Scene::Update(SceneUpdateMode mode)

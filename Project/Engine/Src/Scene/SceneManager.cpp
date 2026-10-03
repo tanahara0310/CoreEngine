@@ -138,8 +138,6 @@ namespace CoreEngine
         // （EditorSettingsSubsystem のセクション・Feature の解放処理など）が
         // 解除されないまま破棄され、終了処理でダングリングポインタになる
         // 読み込み途中のシーンも畳んでから本体を解放する
-        loadContinuation_ = nullptr;
-        loadStepProgress_ = nullptr;
         loadSequence_.reset();
         if (pendingScene_) {
             pendingScene_->Finalize();
@@ -206,12 +204,13 @@ namespace CoreEngine
             return false;
         }
 
-        // フレームを回さない経路なので、続きはその場で走り切らせる
-        loadRunsSynchronously_ = true;
+        // フレームを回さない経路なので、待つステップもその場で走り切らせる。
+        // 待っているあいだはワーカーの完了待ちで CPU を占有しないよう間隔を空ける
         while (IsSceneLoadInProgress()) {
-            StepSceneLoad();
+            if (StepSceneLoad() == StartupTaskResult::Pending) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
         }
-        loadRunsSynchronously_ = false;
         return true;
     }
 
@@ -228,8 +227,6 @@ namespace CoreEngine
             pendingScene_->SetRestoreSnapshot(std::move(snapshot));
         }
 
-        loadContinuation_ = nullptr;
-        loadStepProgress_ = nullptr;
         loadSequence_ = std::make_unique<StartupSequence>();
         loadSequence_->Add("旧シーンの解放", [this] { ReleaseCurrentScene(); });
         pendingScene_->BuildLoadTasks(*loadSequence_, engine_);
@@ -237,68 +234,20 @@ namespace CoreEngine
         return true;
     }
 
-    void SceneManager::StepSceneLoad() {
+    StartupTaskResult SceneManager::StepSceneLoad() {
         if (!loadSequence_) {
-            return;
+            return StartupTaskResult::Done;
         }
 
-        if (loadContinuation_) {
-            // 続きがあるステップ。完了を返すまで次へ進まない
-            ++loadContinuationFrames_;
-            if (!loadContinuation_()) {
-                return;
-            }
-
-            const double seconds = std::chrono::duration<double>(
-                std::chrono::steady_clock::now() - loadContinuationStart_).count();
-            Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
-                "[SceneLoad] {} : {:.3f}s / {} フレーム",
-                loadContinuationLabel_, seconds, loadContinuationFrames_);
-
-            loadContinuation_ = nullptr;
-            loadStepProgress_ = nullptr;
-        } else {
-            loadSequence_->Step();
-        }
-
-        if (!loadSequence_->HasNext() && !loadContinuation_) {
+        const StartupTaskResult result = loadSequence_->Step();
+        if (!loadSequence_->HasNext()) {
             loadSequence_.reset();
         }
-    }
-
-    void SceneManager::SetLoadStepContinuation(std::function<bool()> work,
-                                               std::function<float()> progress) {
-        if (loadRunsSynchronously_) {
-            // 完了までその場で回す。ワーカーの完了待ちで CPU を占有しないよう間隔を空ける
-            while (work && !work()) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            }
-            return;
-        }
-
-        loadContinuation_ = std::move(work);
-        loadStepProgress_ = std::move(progress);
-        loadContinuationLabel_ = loadSequence_ ? loadSequence_->GetNextLabel() : std::string();
-        loadContinuationStart_ = std::chrono::steady_clock::now();
-        loadContinuationFrames_ = 0;
+        return result;
     }
 
     float SceneManager::GetSceneLoadProgress() const {
-        if (!loadSequence_) {
-            return 1.0f;
-        }
-
-        const size_t total = loadSequence_->GetTotalCount();
-        if (total == 0) {
-            return 1.0f;
-        }
-
-        float completed = static_cast<float>(loadSequence_->GetCompletedCount());
-        if (loadContinuation_ && loadStepProgress_) {
-            // 続きの進捗は、それを積んだステップ 1 つ分の幅へ写す
-            completed += std::clamp(loadStepProgress_(), 0.0f, 1.0f) - 1.0f;
-        }
-        return std::clamp(completed / static_cast<float>(total), 0.0f, 1.0f);
+        return loadSequence_ ? loadSequence_->GetProgress() : 1.0f;
     }
 
     void SceneManager::ReleaseCurrentScene() {
