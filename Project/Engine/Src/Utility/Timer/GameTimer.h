@@ -50,16 +50,16 @@ public:
     /// @param loop ループするかどうか
     void Start(float duration, bool loop = false);
 
-    /// @brief タイマーを停止
+    /// @brief タイマーを止める（再開はできない。もう一度動かすときは Start）
     void Stop();
 
-    /// @brief タイマーをリセット（停止状態にして時間を0に戻す）
+    /// @brief タイマーをリセット（止めて時間を0に戻す）
     void Reset();
 
-    /// @brief タイマーを一時停止
+    /// @brief タイマーを一時停止（動いているときだけ）
     void Pause();
 
-    /// @brief タイマーを再開
+    /// @brief 一時停止したところから再開（一時停止中のときだけ）
     void Resume();
 
     /// @brief タイマーが動作中かどうか
@@ -205,11 +205,18 @@ public:
     void SetName(const char* name);
 
 private:
+    /// @brief タイマーの状態
+    enum class State {
+        Idle,     ///< 動いていない（Start で動き出す）
+        Running,  ///< 時間を進めている
+        Paused,   ///< 一時停止中（Resume で続きから進む）
+        Finished, ///< 継続時間に届いた（ループしないタイマーだけ）
+    };
+
     float currentTime_ = 0.0f;          ///< 現在の経過時間
     float duration_ = 0.0f;             ///< タイマーの継続時間
-    bool isActive_ = false;             ///< タイマーがアクティブかどうか
+    State state_ = State::Idle;         ///< タイマーの状態
     bool loop_ = false;                 ///< ループするかどうか
-    bool finished_ = false;             ///< タイマーが完了したかどうか
     bool loopedThisFrame_ = false;      ///< このフレームでループしたかどうか
 
     // タイムスケール機能
@@ -231,6 +238,12 @@ private:
 
     // 間隔チェック機能
     std::vector<IntervalChecker> intervalCheckers_;      ///< 間隔チェッカーリスト
+
+    /// @brief 経過時間を 0 に戻し、コールバックの発火を最初からにして動かし始める
+    void Restart();
+
+    /// @brief コールバックの発火と間隔チェッカーを最初の状態へ戻す
+    void ResetCallbackProgress();
 
     /// @brief コールバックをチェックして実行
     void CheckAndExecuteCallbacks();
