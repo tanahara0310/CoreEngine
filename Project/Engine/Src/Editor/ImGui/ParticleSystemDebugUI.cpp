@@ -3,11 +3,13 @@
 
 #ifdef CORE_EDITOR
 
+#include "Particle/Core/EmitterPlayback.h"
 #include "Particle/ParticleSystemComponent.h"
 #include "Particle/Gpu/GpuParticleSystemComponent.h"
 #include "Particle/ParticlePresetManager.h"
 #include "Editor/ImGui/ImGuiAll.h"
 
+#include <algorithm>
 #include <cstdio>
 
 namespace CoreEngine
@@ -115,10 +117,32 @@ void ParticleSystemDebugUI::ShowStatusHeader(IParticleSystem& system, bool isGpu
     UI::Tooltip(isGpu ? "ComputeShaderで更新されるGPUパーティクルです（大量粒子向け）"
                       : "CPUで更新されるパーティクルです（少数・細かい制御向け）");
     UI::SameLine();
-    if (system.IsPlaying()) {
+    const EmitterPlayback& playback = system.GetPlayback();
+    switch (playback.GetState()) {
+    case EmitterPlayback::State::Playing:
         ImGui::TextColored(ImVec4(0.3f, 0.9f, 0.4f, 1.0f), "再生中");
-    } else {
+        break;
+    case EmitterPlayback::State::Finished:
+        ImGui::TextDisabled("終了");
+        break;
+    case EmitterPlayback::State::Stopped:
         ImGui::TextDisabled("停止中");
+        break;
+    }
+    const auto& mainData = system.GetMainModule().GetMainData();
+    UI::SameLine();
+    ImGui::TextDisabled("経過 %.2f / %.1f 秒", playback.GetElapsedTime(), mainData.duration);
+
+    // 今の周期のバースト（継続時間より後の時刻は周期の終わりに出る）
+    const EmissionModule& emission = system.GetEmissionModule();
+    const auto& emissionData = emission.GetEmissionData();
+    if (playback.IsPlaying() && emission.IsEnabled() && emissionData.burstCount > 0) {
+        if (playback.IsBurstDone()) {
+            UI::Hint("この周期のバーストは済み");
+        } else {
+            const float burstTime = (std::min)(emissionData.burstTime, mainData.duration);
+            UI::HintF("バーストまであと %.2f 秒", (std::max)(burstTime - playback.GetElapsedTime(), 0.0f));
+        }
     }
 
     // 粒子数バー（使用率で色を変える）

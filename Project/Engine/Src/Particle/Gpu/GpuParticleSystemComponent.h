@@ -15,6 +15,7 @@
 #include "Graphics/Asset/AssetRef.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Math/MathCore.h"
+#include "Particle/Core/EmitterPlayback.h"
 #include "Particle/IParticleSystem.h"
 #include "Particle/Modules/ColorModule.h"
 #include "Particle/Modules/EmissionModule.h"
@@ -261,12 +262,13 @@ public:
     // ===== 再生 =====
 
     /// @brief 最初から再生する（経過時間とバーストを戻す）
-    void Play() override;
+    void Play() override { playback_.Play(); }
 
     /// @brief 放出だけを止める（生きている粒は寿命まで更新する）
-    void Stop() override { isPlaying_ = false; }
+    void Stop() override { playback_.Stop(); }
 
-    bool IsPlaying() const override { return isPlaying_; }
+    bool IsPlaying() const override { return playback_.IsPlaying(); }
+    const EmitterPlayback& GetPlayback() const override { return playback_; }
 
     // ===== プリセット =====
 
@@ -415,11 +417,8 @@ private:
     BillboardType billboardType_ = BillboardType::ViewFacing;
     BlendMode blendMode_ = BlendMode::kBlendModeAdd;
 
-    bool isPlaying_ = false;
+    EmitterPlayback playback_;
     bool resetPending_ = true;         // 初回フレームでバッファをGPU側初期化する
-    float elapsedTime_ = 0.0f;         // 再生経過時間（duration/looping 判定用）
-    bool burstDone_ = false;           // 今ループでバースト済みか
-    float emitAccumulator_ = 0.0f;     // 放出レートの端数積算
     uint32_t emitCountThisFrame_ = 0;
     uint32_t frameSeed_ = 0;
 };

@@ -144,32 +144,10 @@ namespace CoreEngine
 
         statistics_.systemRuntime += deltaTime;
 
-        mainModule_->UpdateTime(deltaTime);
-        const float elapsedTime = mainModule_->GetElapsedTime();
         const auto& mainData = mainModule_->GetMainData();
-
-        // バーストのための放出モジュールの時間
-        emissionModule_->UpdateTime(deltaTime);
-
-        // ループで経過時間が巻き戻ったら、放出もやり直す
-        if (mainModule_->IsPlaying() && mainData.looping && elapsedTime < lastElapsedTime_) {
-            emissionModule_->Play();
-        }
-        lastElapsedTime_ = elapsedTime;
-
-        bool shouldEmit = emissionModule_->IsPlaying() && emissionModule_->IsEnabled();
-        if (!mainData.looping && elapsedTime >= mainData.duration) {
-            // 長さの後に置いたバーストは、長さに達したときに出してから止める
-            const auto& emissionData = emissionModule_->GetEmissionData();
-            if (emissionData.burstCount > 0 && emissionData.burstTime >= mainData.duration) {
-                Emit(emissionModule_->CalculateEmissionCount(deltaTime));
-            }
-            shouldEmit = false;
-            emissionModule_->Stop();
-        }
-
-        if (shouldEmit) {
-            Emit(emissionModule_->CalculateEmissionCount(deltaTime));
+        const uint32_t emitCount = playback_.Advance(deltaTime, mainData, emissionModule_->GetEmissionData());
+        if (emissionModule_->IsEnabled()) {
+            Emit(emitCount);
         }
 
         const uint32_t destroyed = particleUpdater_->UpdateParticles(particles_, deltaTime, mainData.gravityModifier);
@@ -227,20 +205,17 @@ namespace CoreEngine
 
     void ParticleSystemComponent::Play()
     {
-        mainModule_->Restart();
-        emissionModule_->Play();
-        lastElapsedTime_ = 0.0f;
+        playback_.Play();
     }
 
     void ParticleSystemComponent::Stop()
     {
-        mainModule_->Stop();
-        emissionModule_->Stop();
+        playback_.Stop();
     }
 
     bool ParticleSystemComponent::IsPlaying() const
     {
-        return mainModule_->IsPlaying() && emissionModule_->IsPlaying();
+        return playback_.IsPlaying();
     }
 
     void ParticleSystemComponent::Clear()
@@ -251,7 +226,7 @@ namespace CoreEngine
 
     bool ParticleSystemComponent::IsFinished() const
     {
-        return !emissionModule_->IsPlaying() && particles_.empty();
+        return !playback_.IsPlaying() && particles_.empty();
     }
 
     bool ParticleSystemComponent::LoadPreset(const std::string& filePath)

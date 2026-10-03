@@ -907,6 +907,9 @@
     <ClCompile Include="Engine\Src\GameObject\Sprite\SpriteAnimator.cpp">
       <Filter>Engine\Src\GameObject\Sprite</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Particle\Core\EmitterPlayback.cpp">
+      <Filter>Engine\Src\Particle\Core</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Particle\Core\ParticleEmitter.cpp">
       <Filter>Engine\Src\Particle\Core</Filter>
     </ClCompile>
@@ -2915,6 +2918,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Particle\IParticleSystem.h">
       <Filter>Engine\Src\Particle</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Particle\Core\EmitterPlayback.h">
+      <Filter>Engine\Src\Particle\Core</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Particle\Core\ParticleEmitter.h">
       <Filter>Engine\Src\Particle\Core</Filter>

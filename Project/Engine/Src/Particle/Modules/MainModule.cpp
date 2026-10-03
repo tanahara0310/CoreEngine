@@ -39,48 +39,6 @@ MainModule::MainModule() {
     mainData_.gravityModifier = 0.0f;
 }
 
-void MainModule::Play() {
-    isPlaying_ = true;
-}
-
-void MainModule::Stop() {
-    isPlaying_ = false;
-}
-
-void MainModule::Restart() {
-    elapsedTime_ = 0.0f;
-    isPlaying_ = true;
-}
-
-// 経過時間を進める。ループ指定なら duration で巻き戻し、そうでなければ停止させる
-void MainModule::UpdateTime(float deltaTime) {
-    if (!enabled_) {
-        return;
-    }
-
-    // 再生中のみ時間更新
-    if (isPlaying_) {
-        elapsedTime_ += deltaTime;
-
-        // ループ処理
-        if (mainData_.looping && elapsedTime_ >= mainData_.duration) {
-            elapsedTime_ = 0.0f;  // 時間をリセット
-        }
-
-        // ループしない場合、持続時間を超えたら停止
-        if (!mainData_.looping && elapsedTime_ >= mainData_.duration) {
-            isPlaying_ = false;
-        }
-    }
-}
-
-bool MainModule::IsFinished() const {
-    if (mainData_.looping) {
-        return false;  // ループする場合は終了しない
-    }
-    return !isPlaying_ && elapsedTime_ >= mainData_.duration;
-}
-
 float MainModule::GenerateStartLifetime() const {
     return ApplyRandomness(mainData_.startLifetime, mainData_.startLifetimeRandomness);
 }
