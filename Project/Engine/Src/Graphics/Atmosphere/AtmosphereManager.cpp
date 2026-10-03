@@ -1088,7 +1088,7 @@ namespace CoreEngine
         // ===== 太陽情報の取得 =====
         hasSunLight_ = false;
         if (lightManager) {
-            if (Light* sun = lightManager->GetAtmosphereSunLight()) {
+            if (const Light* sun = lightManager->GetAtmosphereSunLight()) {
                 sunDirection_ = CoreEngine::Normalize(sun->direction);
                 sunColor_ = { sun->color.x, sun->color.y, sun->color.z, 1.0f };
                 // 空の輝度スケールは atmosphereIntensity（サーフェス直接光の照度 [lx] とは単位系が別）。
@@ -1103,7 +1103,7 @@ namespace CoreEngine
         // ===== 月情報の取得（第2大気ライト。オプトイン） =====
         hasMoonLight_ = false;
         if (lightManager) {
-            if (Light* moon = lightManager->GetAtmosphereMoonLight()) {
+            if (const Light* moon = lightManager->GetAtmosphereMoonLight()) {
                 moonDirection_ = CoreEngine::Normalize(moon->direction);
                 moonColor_ = { moon->color.x, moon->color.y, moon->color.z, 1.0f };
                 moonIntensity_ = (moon->atmosphereIntensity > 0.0f)

@@ -5,16 +5,17 @@
 #include "Reflection/Reflect.h"
 
 #include <string>
+#include <vector>
 
 namespace CoreEngine
 {
     class LightManager;
 
     /// @brief シーンのライト 1 灯を持つコンポーネント
-    /// @details 値はこのコンポーネントが持ち、`SyncWithManager()` で `LightManager` の実体へ写す。
-    ///          実体を直に書き換える経路（Sky Atmosphere エディタ・昼夜サイクル）の
-    ///          編集は次の同期で取り込むので、どちらから触っても保存データに残る。
-    /// @note 位置はオブジェクトの Transform が持つ（実体側で動かされたらオブジェクトを動かす）。
+    /// @details 値はこのコンポーネントだけが持ち、`SyncWithManager()` で `LightManager` の実体へ写す。
+    ///          太陽・月を動かす側（Sky Atmosphere エディタ・昼夜サイクル）も、`Find()` で
+    ///          このコンポーネントを引いて値を書く。
+    /// @note 位置はオブジェクトの Transform が持つ。
     ///       向きは今はこのコンポーネントの値で、オブジェクトの回転からは決めていない。
     class LightComponent : public IComponent
     {
@@ -57,9 +58,15 @@ namespace CoreEngine
         /// @brief ライトの実体を作る（値が流し込まれた後に呼ばれる）
         void Awake() override;
 
-        /// @brief 値を実体へ写し、外から変えられていた分を取り込む
-        /// @note `LightingFeature` が FrameStart に全灯ぶん呼ぶ（停止中も回るので、
-        ///       編集中でもインスペクタの変更がそのフレームの画に出る）。
+        /// @brief 実体を点ける
+        void OnEnable() override;
+
+        /// @brief 実体を消す
+        void OnDisable() override;
+
+        /// @brief 値を実体へ写す
+        /// @note `LightingFeature` が FrameStart に有効な全灯ぶん呼ぶ（停止中も回るので、
+        ///       編集中でもインスペクタの変更がそのフレームの画に出る）。値を書いた側がすぐ写すときも呼ぶ。
         void SyncWithManager();
 
         LightType GetLightType() const { return light_.type; }
@@ -77,8 +84,11 @@ namespace CoreEngine
         Light& Get() { return light_; }
         const Light& Get() const { return light_; }
 
-        /// @brief `LightManager` が持つ実体（作れていなければ nullptr）
-        Light* GetLight() const;
+        /// @brief `LightManager` が持つ実体（読むだけ。作れていなければ nullptr）
+        const Light* GetLight() const;
+
+        /// @brief 実体を持つコンポーネントをハンドルから引く（無ければ nullptr）
+        static LightComponent* Find(LightHandle handle);
 
         /// @brief このライトのギズモを、次の描画だけ詳細表示にする
         /// @note 選択中のライトを目立たせるためにインスペクタから毎フレーム呼ぶ。
@@ -88,24 +98,15 @@ namespace CoreEngine
         /// @brief エンジンから `LightManager` を引く（一度引いたら覚える）
         LightManager* ResolveManager() const;
 
-        /// @brief 実体を直に書き換えた分を、保存される側へ取り込む
-        void AdoptExternalEdits(const Light& live);
-
-        /// @brief 保存される側の値を実体へ書く
-        void ApplyToLight(Light& live);
-
-        /// @brief 実体側で動かされた位置を、オブジェクトの Transform へ戻す
-        void MoveOwnerTo(const Vector3& position);
-
         Light light_{};
-
-        /// 前回この コンポーネントが実体へ書いた内容（外からの編集を見分けるための控え）
-        Light lastWritten_{};
 
         /// オブジェクトの名前（変わったときだけ実体の名前へ写す）
         std::string ownerName_;
 
         LightHandle handle_{};
         mutable LightManager* lightManager_ = nullptr;
+
+        /// 実体を持っているコンポーネント（Find で引く）
+        static std::vector<LightComponent*> instances_;
     };
 }
