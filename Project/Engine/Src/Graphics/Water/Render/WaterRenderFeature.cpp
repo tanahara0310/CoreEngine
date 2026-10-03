@@ -154,12 +154,11 @@ namespace CoreEngine
                 break;
             }
 
-            // Gerstner 側の時間進行と表示用 UV アニメーションを同期させる
+            // Gerstner 側の時間を進め、使っている側の時間を水面へ渡す
             if (!waterPlane->IsUsingFFTOcean() && gerstnerSimulator_) {
                 gerstnerSimulator_->AdvanceSimulation(deltaTime);
             }
             if (auto* activeSimulator = GetActiveSimulator()) {
-                waterPlane->UpdateUVAnimation(deltaTime);
                 waterPlane->SetSimulationTime(activeSimulator->GetElapsedTime());
             }
             break;
@@ -282,7 +281,7 @@ namespace CoreEngine
             return;
         }
         WaterSurfaceComponent* const waterPlane = object->AddComponent<WaterSurfaceComponent>(
-            config_.size, config_.resolution, config_.useFFTOcean);
+            config_.size, config_.resolution);
         if (!waterPlane) {
             return;
         }
@@ -291,11 +290,6 @@ namespace CoreEngine
 
         waterPlane->GetTransform().translate = config_.translate;
         waterPlane->GetTransform().scale = config_.scale;
-        // 既定のスクロール/タイリングは Lake プリセットを単一情報源とする
-        // （以前はここと WaterSurfaceComponent コンストラクタに同値のハードコードが重複していた）
-        const WaterPresetData& defaultPreset = GetWaterPresetData(WaterPresetType::Lake);
-        waterPlane->SetScrollSpeed(defaultPreset.scrollSpeed);
-        waterPlane->SetUVTiling(defaultPreset.uvTiling);
         ConfigureDefaultMaterial();
     }
 
@@ -462,8 +456,6 @@ namespace CoreEngine
         waterPlane->SetRoughness(WaterCVars::Roughness.Get());
         waterPlane->SetMetallic(WaterCVars::Metallic.Get());
         waterPlane->SetFresnelParameters(WaterCVars::FresnelScale.Get(), WaterCVars::FresnelF0.Get());
-        waterPlane->SetScrollSpeed(WaterCVars::ScrollSpeed.Get());
-        waterPlane->SetUVTiling(WaterCVars::UVTiling.Get());
         waterPlane->SetDepthFade(WaterCVars::DepthFadeEnabled.Get());
         // 実効 σa/σs = ベース + 濁度ゲイン（合成は WaterCVars 側。永続化はベース値のみ）
         waterPlane->SetWaterOpticalCoefficients(

@@ -75,12 +75,6 @@ public:
     /// @brief 現在の FFT Ocean 設定を取得する
     WaterEditorFFTSettings GetFFTSettings() const;
 
-    /// @brief FFT Ocean 設定を適用する
-    void ApplyFFTSettings(const WaterEditorFFTSettings& settings);
-
-    /// @brief FFT Ocean 設定を既定値へ戻し、その結果を返す
-    WaterEditorFFTSettings ResetFFTSettings();
-
     /// @brief DXR 屈折設定を取得する
     WaterEditorRayTracingSettings GetRayTracingSettings() const;
 

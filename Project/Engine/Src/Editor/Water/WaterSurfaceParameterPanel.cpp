@@ -305,13 +305,6 @@ void WaterSurfaceParameterPanel::DrawCommonParameterSection(WaterRenderFeature& 
 		[](Vector3* v) { return ImGui::DragFloat3("散乱係数 σs (R, G, B) [1/m]", &v->x, 0.001f, 0.0f, 2.0f, "%.4f"); });
 	EditCVar(WaterCVars::Turbidity, [](float* v) { return ImGui::SliderFloat("濁度", v, 0.0f, 1.0f, "%.3f"); });
 	ImGui::TextDisabled("自然な水は 吸収: 赤 > 緑 > 青。濁度は青の吸収と粒子散乱を加算（緑濁り方向）");
-
-	ImGui::Spacing();
-	ImGui::SeparatorText("共通 UV アニメーション");
-	EditCVar(WaterCVars::ScrollSpeed,
-		[](Vector2* v) { return ImGui::DragFloat2("スクロール速度 (U, V)", &v->x, 0.001f, -1.0f, 1.0f, "%.4f"); });
-	EditCVar(WaterCVars::UVTiling,
-		[](Vector2* v) { return ImGui::DragFloat2("UVタイリング (U, V)", &v->x, 0.1f, 0.1f, 32.0f, "%.2f"); });
 }
 
 void WaterSurfaceParameterPanel::DrawCausticsSection(WaterEditorFacade& editorFacade) {
@@ -462,8 +455,6 @@ void WaterSurfaceParameterPanel::ApplyWaterPreset(WaterRenderFeature& runtimeCon
 	WaterCVars::AbsorptionBase.Set(presetData.absorptionCoeff);
 	WaterCVars::ScatteringBase.Set(presetData.scatteringCoeff);
 	WaterCVars::Turbidity.Set(0.0f);
-	WaterCVars::ScrollSpeed.Set(presetData.scrollSpeed);
-	WaterCVars::UVTiling.Set(presetData.uvTiling);
 
 	// 必要に応じて推奨波数へ戻し、プリセットに応じた波を再生成する
 	if (waveToolState_.lockRecommendedWaveCount || waveToolState_.autoRestoreRecommendedWaveCount) {

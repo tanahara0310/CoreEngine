@@ -30,13 +30,5 @@
         0.008,
         0.016
     ],
-    "r.Water.ScrollSpeed": [
-        -0.041,
-        0.01
-    ],
-    "r.Water.UVTiling": [
-        1.0,
-        4.0
-    ],
     "version": 1
 }

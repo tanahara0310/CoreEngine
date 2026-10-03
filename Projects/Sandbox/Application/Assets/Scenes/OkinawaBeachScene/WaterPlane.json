@@ -5,16 +5,7 @@
             "enabled": true,
             "parameters": {
                 "resolution": 256,
-                "scrollSpeed": [
-                    -0.041,
-                    0.01
-                ],
-                "size": 100.0,
-                "useFFTOcean": true,
-                "uvTiling": [
-                    1.0,
-                    4.0
-                ]
+                "size": 100.0
             },
             "type": "WaterSurface"
         },

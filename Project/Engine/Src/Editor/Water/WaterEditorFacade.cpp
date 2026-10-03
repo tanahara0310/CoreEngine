@@ -39,33 +39,6 @@ WaterEditorFFTSettings WaterEditorFacade::GetFFTSettings() const {
     return settings;
 }
 
-void WaterEditorFacade::ApplyFFTSettings(const WaterEditorFFTSettings& settings) {
-    if (runtimeController_ && runtimeController_->GetWaterPlane()) {
-        runtimeController_->GetWaterPlane()->SetUseFFTOcean(settings.enabled);
-    }
-
-    if (auto* fftOceanManager = GetFFTOceanManager()) {
-        FFTOceanManager::Settings managerSettings = fftOceanManager->GetSettings();
-        managerSettings.amplitudeScale = settings.amplitudeScale;
-        managerSettings.windDirection[0] = settings.windDirection[0];
-        managerSettings.windDirection[1] = settings.windDirection[1];
-        managerSettings.windSpeed = settings.windSpeed;
-        managerSettings.choppiness = settings.choppiness;
-        managerSettings.activeComponentCount = static_cast<uint32_t>(settings.activeComponentCount);
-        managerSettings.gravity = settings.gravity;
-        fftOceanManager->SetSettings(managerSettings);
-    }
-}
-
-WaterEditorFFTSettings WaterEditorFacade::ResetFFTSettings() {
-    if (auto* fftOceanManager = GetFFTOceanManager()) {
-        FFTOceanManager::Settings defaultSettings{};
-        fftOceanManager->SetSettings(defaultSettings);
-    }
-
-    return GetFFTSettings();
-}
-
 WaterEditorRayTracingSettings WaterEditorFacade::GetRayTracingSettings() const {
     WaterEditorRayTracingSettings settings{};
 

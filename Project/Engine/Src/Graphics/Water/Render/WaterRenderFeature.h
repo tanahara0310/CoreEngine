@@ -33,8 +33,6 @@ namespace CoreEngine
             ///          ローカル 100m × 分割 256 × スケール 40 = 一辺 4km / 頂点間隔 15.6m。
             ///          スケールを上げすぎると頂点間隔が波長を超え「平面全体が上下するだけ」に退化する。
             uint32_t resolution = 256;
-            /// @brief FFT Ocean 描画経路で開始するか
-            bool useFFTOcean = true;
             /// @brief ワールド位置（既定の無限遠タイル床 y=0 に合わせる）
             Vector3 translate{ 0.0f, 0.0f, 0.0f };
             /// @brief ワールドスケール

@@ -16,8 +16,6 @@ namespace CoreEngine
         extern CVar<float>   Metallic;
         extern CVar<float>   FresnelScale;
         extern CVar<float>   FresnelF0;
-        extern CVar<Vector2> ScrollSpeed;
-        extern CVar<Vector2> UVTiling;
         extern CVar<bool>    DepthFadeEnabled;
         extern CVar<bool>    WriteMotionVector;
 

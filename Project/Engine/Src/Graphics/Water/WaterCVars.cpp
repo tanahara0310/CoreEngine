@@ -22,12 +22,6 @@ namespace CoreEngine
             "フレネル反射スケール", CVarRange{ 0.0f, 2.0f } };
         CVar<float> FresnelF0{ "r.Water.FresnelF0", 0.02f,
             "正面入射時の反射率 F0（水 ≈ 0.02）", CVarRange{ 0.0f, 0.1f } };
-        CVar<Vector2> ScrollSpeed{ "r.Water.ScrollSpeed",
-            Vector2{ 0.03f, 0.01f },
-            "UV スクロール速度 (U, V)", CVarRange{ -1.0f, 1.0f } };
-        CVar<Vector2> UVTiling{ "r.Water.UVTiling",
-            Vector2{ 4.0f, 4.0f },
-            "UV タイリング (U, V)", CVarRange{ 0.1f, 32.0f } };
         CVar<bool> DepthFadeEnabled{ "r.Water.DepthFadeEnabled", true,
             "Depth Fade（水柱厚さによる Beer-Lambert 透過）を有効にする" };
         // ★PSO 構築時に一度だけ読まれる（起動時固定）★
