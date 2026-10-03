@@ -5,15 +5,6 @@
 #include "../PBR/PBR.hlsli"
 #include "Fog.hlsli"
 
-/// @brief シーン共通 IBL パラメータ（スカイボックス回転と連動）
-struct IBLSceneParams
-{
-    float3 environmentRotation; ///< XYZ 環境回転（ラジアン）
-    float environmentIntensity; ///< 環境輝度スケール（SkyBox intensity と連動）
-    int sceneIBLEnabled; ///< シーンに IBL マップ（Irradiance/Prefiltered/BRDF LUT）が揃っているか
-    float3 padding;
-};
-
 // ===== カメラ =====
 struct Camera
 {
@@ -24,7 +15,6 @@ struct Camera
 // gMaterial(b0) と マテリアルテクスチャ(t0, t7-t10) は ObjectMaterial.hlsli で定義
 ConstantBuffer<Camera> gCamera : register(b2);
 ConstantBuffer<LightCounts> gLightCounts : register(b1);
-ConstantBuffer<IBLSceneParams> gIBLParams : register(b3);
 // フォグ。全画面合成パス（HeightFog.CS）と同じ数式・同じ定数を使う。
 // 不透明フォワードには全画面パスが深度から掛けるので、C++ 側が「何もしない」
 // バリアントを差して二重適用を防ぐ（BaseModelRenderer::BindForwardSceneResources）。
@@ -44,11 +34,6 @@ StructuredBuffer<AreaLightData> gAreaLights : register(t4);
 // C++側は DeferredLightingPass::Setup が毎フレーム供給し、
 // マスク未提供フレームは white1x1（=影なし）がバインドされる。
 Texture2D<float> gRTShadowMask : register(t6);
-
-// ===== IBL Texture Maps =====
-TextureCube<float4> gIrradianceMap : register(t11); // Irradianceマップ（拡散IBL）
-TextureCube<float4> gPrefilteredMap : register(t12); // Prefilteredマップ（スペキュラIBL）
-Texture2D<float2> gBRDFLUT : register(t13); // BRDF LUT（スペキュラIBL統合用）
 
 // ===== ライティング計算ヘルパー =====
 
@@ -207,28 +192,6 @@ float3 CalculateAllLighting(
     return totalDiffuse + totalSpecular;
 }
 
-/// @brief IBL（Image-Based Lighting）を適用
-/// シーンに IBL マップが揃っており、かつマテリアルの iblIntensity > 0 の場合のみ寄与する
-float3 ApplyIBL(
-    VertexShaderOutput input,
-    float3 albedo,
-    float metallic,
-    float roughness,
-    float ao,
-    float3 toEye)
-{
-    if (gIBLParams.sceneIBLEnabled == 0 || gMaterial.iblIntensity <= 0.0f)
-        return float3(0.0f, 0.0f, 0.0f);
-
-    float3 iblColor = CalculateFullIBL(
-        normalize(input.normal), normalize(toEye),
-        albedo, metallic, roughness, ao,
-        gIrradianceMap, gPrefilteredMap, gBRDFLUT,
-        gSampler, gIBLParams.environmentRotation);
-
-    return iblColor * gMaterial.iblIntensity * gIBLParams.environmentIntensity;
-}
-
 // ===== ピクセルシェーダー出力 =====
 struct PixelShaderOutput
 {
@@ -274,9 +237,6 @@ PixelShaderOutput ForwardMain(VertexShaderOutput input)
     // PBR ライティング
     output.color.rgb = CalculateAllLighting(input, albedo, metallic, roughness, ao, toEye, textureColor);
     output.color.a   = finalAlpha;
-
-    // IBL
-    output.color.rgb += ApplyIBL(input, albedo, metallic, roughness, ao, toEye);
 
     // エミッシブ（自己発光: ライティングの影響を受けず加算）
     output.color.rgb += GetEmissive(uv);

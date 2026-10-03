@@ -15,12 +15,7 @@ namespace CoreEngine::ModelBind
         gPointLights,
         gSpotLights,
         gAreaLights,
-        gEnvironmentTexture,
         gRTShadowMask,
-        gIrradianceMap,
-        gPrefilteredMap,
-        gBRDFLUT,
-        gIBLParams,
         gFog,
         gTransformationMatrix,
         gInstanceData,
@@ -50,12 +45,7 @@ namespace CoreEngine::ModelBind
         { "gPointLights",          kSRV, kReq  },
         { "gSpotLights",           kSRV, kReq  },
         { "gAreaLights",           kSRV, kReq  },
-        { "gEnvironmentTexture",   kSRV, kOpt  },  // 実体なし（IBL 3 枚に置換済み）
         { "gRTShadowMask",         kSRV, kCond },  // レイトレ OFF のフレームは差さない
-        { "gIrradianceMap",        kSRV, kCond },
-        { "gPrefilteredMap",       kSRV, kCond },
-        { "gBRDFLUT",              kSRV, kCond },
-        { "gIBLParams",            kCBV, kCond },
         { "gFog",                  kCBV, kReq  },  // 用途別バリアントを毎ドロー差す
         { "gTransformationMatrix", kCBV, kOpt  },  // スキニング版のみ
         { "gInstanceData",         kSRV, kReq  },
@@ -64,7 +54,7 @@ namespace CoreEngine::ModelBind
         { "gNormalMap",            kSRV, kCond },  // マテリアルが持たなければ差さない
         { "gMetallicRoughnessMap", kSRV, kCond },
         { "gEmissiveMap",          kSRV, kCond },
-        { "gAOMap",                kSRV, kCond },
+        { "gAOMap",                kSRV, kOpt  },  // フォワードは環境光を持たないので AO を読まない
         { "gMatrixPalette",        kSRV, kOpt  },  // 実体なし（スキニングは CS 側）
         { "gVertexAnim",           kCBV, kOpt  },  // 頂点アニメーションの時間・風（ルート定数）
     };
@@ -78,12 +68,7 @@ namespace CoreEngine::ModelBind
         { "gPointLights",          kSRV, kOpt  },
         { "gSpotLights",           kSRV, kOpt  },
         { "gAreaLights",           kSRV, kOpt  },
-        { "gEnvironmentTexture",   kSRV, kOpt  },
         { "gRTShadowMask",         kSRV, kOpt  },
-        { "gIrradianceMap",        kSRV, kOpt  },
-        { "gPrefilteredMap",       kSRV, kOpt  },
-        { "gBRDFLUT",              kSRV, kOpt  },
-        { "gIBLParams",            kCBV, kOpt  },
         { "gFog",                  kCBV, kOpt  },  // G-Buffer には無い（全画面パスが掛ける）
         { "gTransformationMatrix", kCBV, kOpt  },
         { "gInstanceData",         kSRV, kReq  },
@@ -105,12 +90,7 @@ namespace CoreEngine::ModelBind
         { "gPointLights",          kSRV, kReq  },
         { "gSpotLights",           kSRV, kReq  },
         { "gAreaLights",           kSRV, kReq  },
-        { "gEnvironmentTexture",   kSRV, kOpt  },
         { "gRTShadowMask",         kSRV, kCond },
-        { "gIrradianceMap",        kSRV, kCond },
-        { "gPrefilteredMap",       kSRV, kCond },
-        { "gBRDFLUT",              kSRV, kCond },
-        { "gIBLParams",            kCBV, kCond },
         { "gFog",                  kCBV, kReq  },  // 用途別バリアントを毎ドロー差す
         { "gTransformationMatrix", kCBV, kReq  },
         { "gInstanceData",         kSRV, kOpt  },  // 通常モデル版のみ
@@ -119,7 +99,7 @@ namespace CoreEngine::ModelBind
         { "gNormalMap",            kSRV, kCond },
         { "gMetallicRoughnessMap", kSRV, kCond },
         { "gEmissiveMap",          kSRV, kCond },
-        { "gAOMap",                kSRV, kCond },
+        { "gAOMap",                kSRV, kOpt  },  // フォワードは環境光を持たないので AO を読まない
         { "gMatrixPalette",        kSRV, kOpt  },
         { "gVertexAnim",           kCBV, kOpt  },  // 頂点アニメーションの時間・風（ルート定数）
     };
@@ -132,12 +112,7 @@ namespace CoreEngine::ModelBind
         { "gPointLights",          kSRV, kOpt  },
         { "gSpotLights",           kSRV, kOpt  },
         { "gAreaLights",           kSRV, kOpt  },
-        { "gEnvironmentTexture",   kSRV, kOpt  },
         { "gRTShadowMask",         kSRV, kOpt  },
-        { "gIrradianceMap",        kSRV, kOpt  },
-        { "gPrefilteredMap",       kSRV, kOpt  },
-        { "gBRDFLUT",              kSRV, kOpt  },
-        { "gIBLParams",            kCBV, kOpt  },
         { "gFog",                  kCBV, kOpt  },  // G-Buffer には無い（全画面パスが掛ける）
         { "gTransformationMatrix", kCBV, kReq  },
         { "gInstanceData",         kSRV, kOpt  },
@@ -159,12 +134,7 @@ namespace CoreEngine::ModelBind
         { "gPointLights",          kSRV, kOpt },
         { "gSpotLights",           kSRV, kOpt },
         { "gAreaLights",           kSRV, kOpt },
-        { "gEnvironmentTexture",   kSRV, kOpt },
         { "gRTShadowMask",         kSRV, kOpt },
-        { "gIrradianceMap",        kSRV, kOpt },
-        { "gPrefilteredMap",       kSRV, kOpt },
-        { "gBRDFLUT",              kSRV, kOpt },
-        { "gIBLParams",            kCBV, kOpt },
         { "gFog",                  kCBV, kOpt },
         { "gTransformationMatrix", kCBV, kOpt },
         { "gInstanceData",         kSRV, kOpt },

@@ -14,50 +14,11 @@
 /// @brief Roughnessの最小値（0除算防止とシェーディング安定化）
 static const float MIN_ROUGHNESS = 0.01f;
 
-/// @brief Prefilteredマップの最大ミップレベル数
-static const uint MAX_PREFILTERED_MIP_LEVELS = 5;
-
-/// @brief ミップレベル計算用の係数（MAX_MIP_LEVELS - 1）
-static const float MIP_LEVEL_PER_ROUGHNESS = float(MAX_PREFILTERED_MIP_LEVELS - 1);
-
 /// @brief F0の非金属デフォルト値（一般的な誘電体の反射率）
 static const float DIELECTRIC_F0 = 0.04f;
 
 /// @brief 解析光源の視半径の sin（太陽・月の視半径 0.27° 相当）
 static const float LIGHT_SOURCE_SIN_ALPHA = 0.0047f;
-
-// ===================================================================
-// ユーティリティ関数: Y軸回転
-// ===================================================================
-/// @brief ベクトルをY軸周りに回転
-float3 RotateVectorY(float3 v, float angleY)
-{
-    float cosY = cos(angleY);
-    float sinY = sin(angleY);
-    return float3(
-        v.x * cosY - v.z * sinY,
-        v.y,
-        v.x * sinY + v.z * cosY
-    );
-}
-
-/// @brief ベクトルをXYZオイラー角で回転（X→Y→Z の順に適用）
-/// @param v 回転するベクトル
-/// @param euler XYZ 回転角度（ラジアン）
-/// @return 回転後のベクトル
-float3 RotateVector(float3 v, float3 euler)
-{
-    // X軸回転
-    float cx = cos(euler.x), sx = sin(euler.x);
-    v = float3(v.x, v.y * cx - v.z * sx, v.y * sx + v.z * cx);
-    // Y軸回転
-    float cy = cos(euler.y), sy = sin(euler.y);
-    v = float3(v.x * cy + v.z * sy, v.y, -v.x * sy + v.z * cy);
-    // Z軸回転
-    float cz = cos(euler.z), sz = sin(euler.z);
-    v = float3(v.x * cz - v.y * sz, v.x * sz + v.y * cz, v.z);
-    return v;
-}
 
 // ===================================================================
 // D項: GGX/Trowbridge-Reitz 法線分布関数 (Normal Distribution Function)
@@ -127,19 +88,6 @@ float3 FresnelSchlick(float cosTheta, float3 F0)
 	float f = saturate(1.0f - cosTheta);
 	float f2 = f * f;
 	return F0 + (1.0f - F0) * f2 * f2 * f;
-}
-
-/// @brief Fresnel反射（粗さ考慮版）- IBL用
-/// @param cosTheta 視線とハーフベクトルの内積
-/// @param F0 垂直入射時の反射率
-/// @param roughness 粗さ
-/// @return Fresnel反射率
-float3 FresnelSchlickRoughness(float cosTheta, float3 F0, float roughness)
-{
-	float f = saturate(1.0f - cosTheta);
-	float f2 = f * f;
-	return F0 + (max(float3(1.0f - roughness, 1.0f - roughness, 1.0f - roughness), F0) - F0)
-		* f2 * f2 * f;
 }
 
 // ===================================================================
@@ -249,7 +197,7 @@ float3 CalculatePBRLighting(
 	float NdotL = max(dot(N, L), 0.0f);
 
 	// 最終的な放射輝度
-	// AO（環境遮蔽）は間接光（IBL）にのみ適用すべきであり、直接光には乗算しない
+	// AO（環境遮蔽）は間接光（環境光）にのみ適用すべきであり、直接光には乗算しない
 	float3 radiance = lightColor * lightIntensity;
 	float3 Lo = (diffuse + specular) * radiance * NdotL;
 
@@ -462,149 +410,6 @@ LightingResult CalculateSpotLightPBR(
 }
 
 // ===================================================================
-// IBL（Image-Based Lighting）計算
-// ===================================================================
-
-/// @brief 拡散反射IBLを計算（Irradianceのみ）
-/// @param N 法線ベクトル（正規化済み）
-/// @param V 視線方向ベクトル（正規化済み）
-/// @param albedo アルベド（基本色）
-/// @param metallic 金属性 (0.0-1.0)
-/// @param roughness 粗さ (0.0-1.0)
-/// @param ao 環境遮蔽 (0.0-1.0)
-/// @param irradianceMap Irradianceキューブマップ
-/// @param samp サンプラー
-/// @param environmentRotation 環境マップXYZ回転（ラジアン）
-/// @return 拡散IBL色
-float3 CalculateIrradianceIBL(
-	float3 N,
-	float3 V,
-	float3 albedo,
-	float metallic,
-	float roughness,
-	float ao,
-	TextureCube irradianceMap,
-	SamplerState samp,
-	float3 environmentRotation)
-{
-	float3 normalizedN = normalize(N);
-	float3 rotatedN = RotateVector(normalizedN, environmentRotation);
-	
-	float3 irradiance = irradianceMap.SampleLevel(samp, rotatedN, 0.0f).rgb;
-    
-    // F0計算（垂直入射時の反射率）
-	float3 F0 = CalculateF0(albedo, metallic);
-
-    // Fresnel項（環境光用、実際のroughnessを使用）
-	float NdotV = max(dot(normalizedN, V), 0.0f);
-	float3 F = FresnelSchlickRoughness(NdotV, F0, roughness);
-    
-    // 拡散反射成分（金属は拡散しない）
-	float3 kD = (1.0f - F) * (1.0f - metallic);
-	float3 diffuseIBL = kD * albedo * irradiance;
-    
-    // AOを適用
-	return diffuseIBL * ao;
-}
-
-/// @brief スペキュラIBLを計算（Prefiltered Environment Map + BRDF LUT）
-/// @param N 法線ベクトル（正規化済み）
-/// @param V 視線方向ベクトル（正規化済み）
-/// @param albedo アルベド（基本色）
-/// @param metallic 金属性 (0.0-1.0)
-/// @param roughness 粗さ (0.0-1.0)
-/// @param ao 環境遮蔽 (0.0-1.0)
-/// @param prefilteredMap Prefiltered Environment Mapキューブマップ
-/// @param brdfLUT BRDF LUTテクスチャ（RG16形式）
-/// @param samp サンプラー
-/// @param environmentRotation 環境マップXYZ回転（ラジアン）
-/// @return スペキュラIBL色
-float3 CalculateSpecularIBL(
-    float3 N,
-    float3 V,
-    float3 albedo,
-    float metallic,
-    float roughness,
-    float ao,
-    TextureCube prefilteredMap,
-    Texture2D<float2> brdfLUT,
-    SamplerState samp,
-    float3 environmentRotation)
-{
-    float3 F0 = float3(DIELECTRIC_F0, DIELECTRIC_F0, DIELECTRIC_F0);
-    F0 = lerp(F0, albedo, metallic);
-    float3 R = reflect(-V, N);
-    float3 rotatedR = RotateVector(R, environmentRotation);
-    
-    // NdotV
-    float NdotV = max(dot(N, V), 0.0f);
-    
-    // Fresnel-Schlick（roughness考慮版）
-    float3 F = FresnelSchlickRoughness(NdotV, F0, roughness);
-    
-    // Prefiltered Mapからサンプリング（roughnessに応じたミップレベル）
-    // roughness 0.0 -> mip 0, roughness 1.0 -> mip (MAX_PREFILTERED_MIP_LEVELS - 1)
-    float mipLevel = roughness * MIP_LEVEL_PER_ROUGHNESS;
-    float3 prefilteredColor = prefilteredMap.SampleLevel(samp, rotatedR, mipLevel).rgb;
-    
-    // BRDF LUTからサンプリング（NdotV, roughness）
-    float2 envBRDF = brdfLUT.Sample(samp, float2(NdotV, roughness)).rg;
-    
-    // Split-Sum近似
-    // SpecularIBL = PrefilteredColor * (F * scale + bias)
-    float3 specularIBL = prefilteredColor * (F * envBRDF.x + envBRDF.y);
-    
-    // AOを適用
-    return specularIBL * ao;
-}
-
-/// @brief 完全なIBLを計算（Diffuse + Specular）
-/// @param N 法線ベクトル（正規化済み）
-/// @param V 視線方向ベクトル（正規化済み）
-/// @param albedo アルベド（基本色）
-/// @param metallic 金属性 (0.0-1.0)
-/// @param roughness 粗さ (0.0-1.0)
-/// @param ao 環境遮蔽 (0.0-1.0)
-/// @param irradianceMap Irradianceキューブマップ
-/// @param prefilteredMap Prefiltered Environment Mapキューブマップ
-/// @param brdfLUT BRDF LUTテクスチャ（RG16形式）
-/// @param samp サンプラー
-/// @param environmentRotation 環境マップXYZ回転（ラジアン）
-/// @return 完全なIBL色（Diffuse + Specular）
-float3 CalculateFullIBL(
-    float3 N,
-    float3 V,
-    float3 albedo,
-    float metallic,
-    float roughness,
-    float ao,
-    TextureCube irradianceMap,
-    TextureCube prefilteredMap,
-    Texture2D<float2> brdfLUT,
-    SamplerState samp,
-    float3 environmentRotation)
-{
-    float3 F0 = CalculateF0(albedo, metallic);
-    float NdotV = max(dot(N, V), 0.0f);
-    float3 F = FresnelSchlickRoughness(NdotV, F0, roughness);
-
-    float3 normalizedN = normalize(N);
-    float3 rotatedN = RotateVector(normalizedN, environmentRotation);
-    float3 irradiance = irradianceMap.SampleLevel(samp, rotatedN, 0.0f).rgb;
-    float3 kD = (1.0f - F) * (1.0f - metallic);
-    float3 diffuseIBL = kD * albedo * irradiance;
-
-    float3 R = normalize(reflect(-V, normalizedN));
-    float3 rotatedR = RotateVector(R, environmentRotation);
-    float mipLevel = roughness * MIP_LEVEL_PER_ROUGHNESS; // MAX_PREFILTERED_MIP_LEVELS 定数に統一
-    float3 prefilteredColor = prefilteredMap.SampleLevel(samp, rotatedR, mipLevel).rgb;
-    float2 envBRDF = brdfLUT.Sample(samp, float2(NdotV, roughness)).rg;
-    float3 specularIBL = prefilteredColor * (F * envBRDF.x + envBRDF.y);
-
-    return (diffuseIBL + specularIBL) * ao;
-}
-
-// ===================================================================
 // 空アンビエント（大気散乱の SH9）と解析的 EnvBRDF
 // ===================================================================
 /// @brief 解析的 EnvBRDF 近似（Karis "Physically Based Shading on Mobile"）
@@ -644,10 +449,10 @@ float3 EvaluateSkyIrradianceSH9(StructuredBuffer<float4> coefficients, float3 n)
 }
 
 // ===================================================================
-// ハーフランバートアンビエント計算（IBL非使用時のフォールバック）
+// ハーフランバートアンビエント計算（空アンビエントが無いときのフォールバック）
 // ===================================================================
 /// @brief ハーフランバートによるアンビエントライティングを計算
-/// @details IBL が使用できない環境で、ディレクショナルライトを利用した
+/// @details 大気の空アンビエントが無い環境で、ディレクショナルライトを利用した
 ///          ソフトな環境光を提供する。NdotL を [0,1] ではなく [0.5,1] に
 ///          マッピングすることで裏面にも最低限の明るさを与える。
 /// @param N 法線ベクトル（正規化済み）

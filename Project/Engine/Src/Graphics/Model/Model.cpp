@@ -43,11 +43,6 @@ namespace CoreEngine
         }
     }
 
-    bool Model::IsIBLAvailable() const {
-        // 自身の renderContext_ 経由でレンダラーの IBL テクスチャ状態を確認
-        return renderContext_.modelRenderer != nullptr && renderContext_.modelRenderer->HasIBLMaps();
-    }
-
     void Model::Initialize(ModelResource* resource, const ModelRenderContext& ctx) {
         assert(resource && resource->IsLoaded());
         assert(ctx.IsComplete() && "ModelRenderContext must be fully initialized (use ModelManager to create models)");

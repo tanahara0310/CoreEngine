@@ -45,9 +45,6 @@ namespace CoreEngine
         /// @brief WVP バッファとスキニングのバッファ・SRV / UAV を、描画中のフレームが終わってから返すよう預ける
         ~Model();
 
-        /// @brief IBLテクスチャ（Irradiance/Prefiltered/BRDF LUT）がレンダラーに全て設定済みか確認
-        bool IsIBLAvailable() const;
-
         /// @brief 指定マテリアルスロットに法線マップテクスチャがあるか確認
         bool HasNormalMap(size_t materialIndex = 0) const;
 
@@ -120,7 +117,7 @@ namespace CoreEngine
         /// @brief マテリアルスロット数を取得
         size_t GetMaterialCount() const { return materialInstances_.size(); }
 
-        /// @brief 全マテリアルスロットに対して処理を実行する（モデル全体のティントや IBL 設定用）
+        /// @brief 全マテリアルスロットに対して処理を実行する（モデル全体のティントなどの設定用）
         /// @note fn は書き込み前提のため、全スロットを GetMaterial() 経由で materialize してから渡す
         void ForEachMaterial(const std::function<void(MaterialInstance*)>& fn) {
             for (size_t i = 0; i < materialInstances_.size(); ++i) {

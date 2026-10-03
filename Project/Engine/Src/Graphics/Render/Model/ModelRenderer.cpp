@@ -4,10 +4,8 @@
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/Model/TransformationMatrix.h"
 #include "Graphics/Material/MaterialConstants.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include <cassert>
-#include <cstring>
 
 
 namespace CoreEngine
@@ -59,8 +57,7 @@ namespace CoreEngine
 
         // CBV サイズ検証: C++ 構造体と HLSL 構造体のレイアウトが一致しているか確認
         forwardReflectionData_->ValidateAllCBVSizes({
-            {"gMaterial", sizeof(MaterialConstants)},
-            {"gIBLParams", sizeof(IBLSceneParamsCPU)}
+            {"gMaterial", sizeof(MaterialConstants)}
             });
 
         gBufferReflectionData_->ValidateAllCBVSizes({
@@ -71,15 +68,6 @@ namespace CoreEngine
         // 手書きの 3 個だけでなく 21 個すべてが照合され、種別違いも検出される。
         ResolveBindings(ModelBind::kForward, ModelBind::kGBuffer,
             ModelBind::Slot::Count, "ModelRenderer");
-
-        // IBL 回転パラメータ用の定数バッファを確保し、デフォルト値（回転なし）で初期化
-        iblParamsBuffer_ = ResourceFactory::CreateBufferResource(device, sizeof(IBLSceneParamsCPU));
-        iblParamsCBVAddress_ = iblParamsBuffer_->GetGPUVirtualAddress();
-        IBLSceneParamsCPU defaults{ 0.0f, 0.0f, 0.0f, 0.0f };
-        void* mapped = nullptr;
-        iblParamsBuffer_->Map(0, nullptr, &mapped);
-        std::memcpy(mapped, &defaults, sizeof(defaults));
-        iblParamsBuffer_->Unmap(0, nullptr);
 
         // フォワードパス PSO: 全ブレンドモード分を事前生成
         bool result = forwardPsoMg_->CreateBuilder()

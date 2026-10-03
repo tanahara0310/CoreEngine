@@ -10,7 +10,6 @@
 // ===== マテリアル =====
 // glTF 準拠の「ファクター × テクスチャ」乗算方式。
 // テクスチャが無いマテリアルには白1x1がバインドされるため、ファクター値がそのまま最終値になる。
-// IBL の有効/無効はシーン側（IBLマップの有無）で決まり、iblIntensity=0 で個別オプトアウトする。
 struct Material
 {
     float4 color; // ベースカラーファクター
@@ -30,14 +29,11 @@ struct Material
     float ditheringScale;
     float alphaCutoff; // discard 判定に使用するアルファしきい値
 
-    // ===== IBL =====
-    float iblIntensity; // IBL強度（0=このマテリアルはIBL無効）
-
     // ===== 頂点アニメーション（VertexAnimation.hlsli） =====
     int vertexAnimation; // 0=なし, 1=植物（風）, 2=海草（水の寄せ返し）, 3=魚（泳ぎ）
     float vertexAnimStrength; // 振幅の倍率（1 = モデル作成時の想定）
     float vertexAnimSpeed; // 速さの倍率（1 = 既定の周期）
-    float vertexAnimPadding;
+    float2 vertexAnimPadding;
 };
 
 ConstantBuffer<Material> gMaterial : register(b0);

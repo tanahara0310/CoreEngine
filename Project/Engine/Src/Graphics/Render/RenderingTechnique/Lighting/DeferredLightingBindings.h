@@ -20,10 +20,6 @@ namespace CoreEngine::DeferredLightingBind
         gPointLights,
         gSpotLights,
         gAreaLights,
-        gIrradianceMap,
-        gPrefilteredMap,
-        gBRDFLUT,
-        gIBLParams,
         gRTShadowMask0,
         gRTShadowMask1,
         gRTShadowMask2,
@@ -56,12 +52,6 @@ namespace CoreEngine::DeferredLightingBind
         { "gPointLights",         ShaderBindingType::SRV, BindingUsage::Required    },
         { "gSpotLights",          ShaderBindingType::SRV, BindingUsage::Required    },
         { "gAreaLights",          ShaderBindingType::SRV, BindingUsage::Required    },
-
-        // IBL（RenderManager 側が未生成のフレームは差さない）
-        { "gIrradianceMap",       ShaderBindingType::SRV, BindingUsage::Conditional },
-        { "gPrefilteredMap",      ShaderBindingType::SRV, BindingUsage::Conditional },
-        { "gBRDFLUT",             ShaderBindingType::SRV, BindingUsage::Conditional },
-        { "gIBLParams",           ShaderBindingType::CBV, BindingUsage::Conditional },
 
         // RT シャドウマスク（レイトレ OFF・ライト数不足のフレームは差さない）
         { "gRTShadowMask0",       ShaderBindingType::SRV, BindingUsage::Conditional },

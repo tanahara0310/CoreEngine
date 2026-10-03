@@ -33,8 +33,6 @@ public:
         REFLECT_ACCESSOR("emissive", "エミッシブ", GetEmissive, SetEmissive,
             p.type = ::CoreEngine::Reflection::PropertyType::Color,
             p.flags = ::CoreEngine::Reflection::PropertyFlags::NoAlpha)
-        REFLECT_ACCESSOR("iblIntensity", "IBL 強度", GetIBLIntensity, SetIBLIntensity,
-            p.range = Range(0.0f, 2.0f))
         REFLECT_ACCESSOR("lighting", "ライティング", IsLightingEnabled, SetLightingEnabled)
         REFLECT_ACCESSOR("normalMap", "法線マップ", IsNormalMapEnabled, SetNormalMapEnabled)
         REFLECT_ACCESSOR("dithering", "ディザリング", IsDitheringEnabled, SetDitheringEnabled)
@@ -65,12 +63,6 @@ public:
 
     /// @brief 法線マップの有効/無効
     void SetNormalMapEnabled(bool enable);
-
-    /// @brief IBL 強度（0 でこのモデルの IBL を無効化）
-    void SetIBLIntensity(float intensity);
-
-    /// @brief IBL の有効/無効（強度 1/0 の設定に相当）
-    void SetIBLEnabled(bool enable) { SetIBLIntensity(enable ? 1.0f : 0.0f); }
 
     /// @brief ライティングの有効/無効
     void SetLightingEnabled(bool enable);
@@ -105,7 +97,6 @@ public:
     float GetMetallic() const;
     float GetRoughness() const;
     float GetOcclusionStrength() const;
-    float GetIBLIntensity() const;
     bool IsLightingEnabled() const;
     bool IsNormalMapEnabled() const;
     /// @brief エミッシブファクター（4 つ目は常に 1）
@@ -132,7 +123,6 @@ private:
     std::optional<PendingPBR> pendingPBR_;
     std::optional<Vector4> pendingColor_;
     std::optional<bool> pendingNormalMap_;
-    std::optional<float> pendingIBL_;
     std::optional<bool> pendingLighting_;
     std::optional<Vector3> pendingEmissive_;
     std::optional<bool> pendingDithering_;

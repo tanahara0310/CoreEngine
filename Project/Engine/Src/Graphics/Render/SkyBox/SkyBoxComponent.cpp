@@ -135,17 +135,6 @@ void SkyBoxComponent::CreateTransformBuffers(ID3D12Device* device)
     }
 }
 
-void SkyBoxComponent::Update()
-{
-    // 空の回転と強さを、IBL の回転と強さとしてシーン全体へ渡す
-    const GameObject* const owner = GetOwner();
-    EngineSystem* const engine = owner ? owner->GetEngineSystem() : nullptr;
-    if (RenderManager* const renderManager = engine ? engine->GetService<RenderManager>() : nullptr) {
-        renderManager->SetIBLRotation(rotation_);
-        renderManager->SetEnvironmentIntensity(environmentIntensity_);
-    }
-}
-
 void SkyBoxComponent::Render(const DrawViewInfo& view)
 {
     const GameObject* const owner = GetOwner();

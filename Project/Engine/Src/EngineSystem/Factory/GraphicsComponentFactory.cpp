@@ -34,9 +34,6 @@
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueManager.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Model/ModelRenderContext.h"
-#include "Graphics/IBL/IBLGenerator.h"
-#include "Graphics/IBL/IBLSystem.h"
-#include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderProgram.h"
 
 #include <memory>
@@ -50,8 +47,6 @@ namespace CoreEngine
         Render* render = nullptr;
         RenderManager* renderManager = nullptr;
         LineRendererPipeline* lineRenderer = nullptr;
-        IBLGenerator* iblGenerator = nullptr;
-        ShaderCompiler* shaderCompiler = nullptr;
         /// @brief シェーダーのコンパイルとリフレクションを一元化するキャッシュ
         ShaderProgramCache* shaderProgramCache = nullptr;
 
@@ -253,7 +248,7 @@ namespace CoreEngine
         });
 
         // ──────────────────────────────────────────────────────────
-        // ポストエフェクト・レンダリング技術・モデル・IBL
+        // ポストエフェクト・レンダリング技術・モデル
         // ──────────────────────────────────────────────────────────
         sequence.Add("ポストエフェクト", [enginePtr, state] {
             auto postEffectManager = std::make_unique<PostEffectManager>();
@@ -282,26 +277,6 @@ namespace CoreEngine
                 dynamic_cast<BaseModelRenderer*>(state->renderManager->GetRenderer(RenderPassType::SkinnedModel));
             modelCtx.hiZOcclusion = enginePtr->GetHiZOcclusionSystem();
             enginePtr->GetService<ModelManager>()->SetRenderContext(modelCtx);
-        });
-
-        sequence.Add("IBL（環境ライティング）", [enginePtr, state] {
-            auto iblGenerator = std::make_unique<IBLGenerator>();
-            state->iblGenerator = iblGenerator.get();
-
-            auto shaderCompiler = std::make_unique<ShaderCompiler>();
-            shaderCompiler->Initialize();
-            state->shaderCompiler = shaderCompiler.get();
-
-            iblGenerator->Initialize(state->dx, state->shaderCompiler);
-            enginePtr->RegisterComponent(EngineSystem::FactoryKey{}, std::move(iblGenerator));
-            enginePtr->RegisterComponent(EngineSystem::FactoryKey{}, std::move(shaderCompiler));
-
-            auto iblSystem = std::make_unique<IBLSystem>();
-            if (!iblSystem->Initialize(state->dx, state->iblGenerator, state->renderManager)) {
-                Logger::GetInstance().Logf(
-                    LogLevel::Error, LogCategory::Graphics, "{}", "Failed to initialize IBLSystem");
-            }
-            enginePtr->RegisterComponent(EngineSystem::FactoryKey{}, std::move(iblSystem));
         });
     }
 }

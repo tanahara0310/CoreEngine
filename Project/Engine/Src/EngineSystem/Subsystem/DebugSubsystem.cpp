@@ -32,7 +32,6 @@
 #include "Graphics/Render/Render.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Diagnostics/EngineStats.h"
-#include "Graphics/Material/MaterialConstants.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include "Input/InputManager.h"
 #include "Scene/SceneManager.h"
@@ -45,9 +44,6 @@
 #include <algorithm>
 #include <string>
 #include <vector>
-#include "GameObject/GameObjectManager.h"
-#include "GameObject/Component/Render/MeshRendererComponent.h"
-#include "GameObject/GameObjectManager.h"
 #include <imgui.h>
 
 namespace CoreEngine
@@ -357,68 +353,6 @@ namespace CoreEngine
             .draw = [this]() {
                 EditorSettingsPanel::Draw(
                     engine_ ? engine_->GetSubsystem<EditorSettingsSubsystem>() : nullptr);
-            },
-            });
-
-        // Shading パネル（IBL はシーン側で有効化され、マテリアルは強度のみ持つ）
-        AddPanel({
-            .id = "Shading",
-            .placement = Editor::PanelPlacement::SettingsSection,
-            .group = Editor::PanelGroup::Rendering,
-            .draw = [this]() {
-            auto* sceneManager = engine_->GetSceneManager();
-            auto* objManager = sceneManager ? sceneManager->GetCurrentGameObjectManager() : nullptr;
-
-            ImGui::SeparatorText("シーン全体に適用");
-
-            static float sceneWideIBLIntensity = 1.0f;
-            ImGui::SetNextItemWidth(220.0f);
-            ImGui::SliderFloat("IBL 強度##SceneWide", &sceneWideIBLIntensity, 0.0f, 2.0f);
-
-            ImGui::BeginDisabled(objManager == nullptr);
-            if (ImGui::Button("シーン全体に適用", ImVec2(-1.0f, 0.0f))) {
-                // メッシュを持つものだけを回る（具象クラスへのダウンキャストは不要）
-                objManager->ForEachComponent<MeshRendererComponent>(
-                    [](MeshRendererComponent& renderer) {
-                        auto* model = renderer.GetModel();
-                        if (!model) return;
-                        model->ForEachMaterial([](MaterialInstance* mat) {
-                            mat->SetIBLIntensity(sceneWideIBLIntensity);
-                        });
-                    });
-            }
-            ImGui::EndDisabled();
-            if (objManager == nullptr) {
-                ImGui::TextDisabled("(シーンが存在しません)");
-            }
-
-            ImGui::Spacing();
-            ImGui::SeparatorText("モデル別 IBL 強度");
-
-            if (objManager) {
-                int modelIndex = 0;
-                objManager->ForEachComponent<MeshRendererComponent>(
-                    [&modelIndex](MeshRendererComponent& renderer, GameObject& owner) {
-                        auto* model = renderer.GetModel();
-                        if (!model) return;
-                        auto* mat = model->GetMaterial();
-                        if (!mat) return;
-
-                        ImGui::PushID(modelIndex++);
-                        const char* name = owner.GetDisplayName();
-                        ImGui::SetNextItemWidth(170.0f);
-                        float intensity = mat->GetIBLIntensity();
-                        if (ImGui::SliderFloat(name, &intensity, 0.0f, 2.0f)) {
-                            // スロット0の値を代表値として全スロットへ反映する
-                            model->ForEachMaterial([intensity](MaterialInstance* m) {
-                                m->SetIBLIntensity(intensity);
-                            });
-                        }
-                        ImGui::PopID();
-                    });
-            } else {
-                ImGui::TextDisabled("(シーンが存在しません)");
-            }
             },
             });
 

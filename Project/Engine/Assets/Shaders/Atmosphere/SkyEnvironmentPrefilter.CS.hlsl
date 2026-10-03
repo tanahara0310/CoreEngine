@@ -1,7 +1,6 @@
 /// @file SkyEnvironmentPrefilter.CS.hlsl
 /// @brief 空キューブマップ（空＋雲）を GGX プリフィルタしてスペキュラIBLミップ群を生成する
-/// @details IBL/PrefilterEnvironment.CS.hlsl のランタイム軽量版。
-///          - 雲アニメーション中は毎フレーム走るため、サンプル数を 64 に抑える
+/// @details - 雲アニメーション中は毎フレーム走るため、サンプル数を 64 に抑える
 ///          - 各サンプルは、そのサンプルが受け持つ立体角を覆うミップから読む
 ///            （入力のミップは SkyEnvironmentDownsample.CS.hlsl が作る）
 ///          - α（雲透過率）も同じ重みでフィルタする。水面が「平面反射に雲を

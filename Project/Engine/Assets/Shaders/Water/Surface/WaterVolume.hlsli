@@ -6,9 +6,8 @@
 //
 // 【include 位置の契約】Water.PS.hlsl のリソース宣言・WaterFrameConstants(b5) の
 // 後で include すること。以下に暗黙依存する:
-//   資源    : gWaterSkyIrradianceSH / gIrradianceMap / gSampler / gSceneColor /
-//             gLinearClamp / gRTWaterRefractionColor / gLightCounts / gDirectionalLights /
-//             gIBLParams（Object3dForward.hlsli）
+//   資源    : gWaterSkyIrradianceSH / gSceneColor / gLinearClamp / gRTWaterRefractionColor /
+//             gLightCounts / gDirectionalLights
 //   cbuffer : gSkyAmbientEnabled / gSkyAmbientScale
 //   関数    : IsRTPathValid（Common/WaterRefractionEncoding.hlsli）
 // ============================================================
@@ -45,8 +44,8 @@ float3 EvaluateWaterSkyIrradiance(float3 n)
 /// @details 平行光源（太陽）の下向き放射照度と天空拡散光を合算する。
 ///          太陽ライトの GPU 転送色には LightManager が大気の Transmittance LUT による
 ///          減衰（日没の赤方偏移・減光）を乗算済みのため、ここで読むだけで大気に追従する。
-///          天空光は大気アクティブ時は Sky Irradiance SH（時刻・太陽高度に連動）、
-///          非アクティブ時は静的な拡散 IBL キューブマップへフォールバックする。
+///          天空光は大気アクティブ時の Sky Irradiance SH（時刻・太陽高度に連動）。
+///          非アクティブ時は天空光を足さない。
 /// @param mainLightVisibility メインライト（0 番）の日向率（0=影 / 1=日向）。
 ///        影になった水面の下の水柱には太陽の光が入らないので、太陽の分だけに掛ける
 float3 ComputeUnderwaterAmbientLight(float mainLightVisibility)
@@ -76,12 +75,6 @@ float3 ComputeUnderwaterAmbientLight(float mainLightVisibility)
         // 水面に映る空（空キューブマップ）と同じ輝度の単位のまま使い、
         // 地面の環境光に掛ける gSkyAmbientScale は掛けない
         skyAmbient = EvaluateWaterSkyIrradiance(float3(0.0f, 1.0f, 0.0f));
-    }
-    else if (gIBLParams.sceneIBLEnabled != 0)
-    {
-        // Irradiance マップは既に「albedo に掛けるだけ」の放射輝度相当なのでそのまま加算
-        skyAmbient = gIrradianceMap.SampleLevel(gSampler, float3(0.0f, 1.0f, 0.0f), 0.0f).rgb
-                 * gIBLParams.environmentIntensity;
     }
 
     // 天空光はブーストせずそのまま使う。

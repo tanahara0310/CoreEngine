@@ -307,12 +307,6 @@ namespace CoreEngine
         if (mat) { mat->SetMetallic(metallic); }
     }
 
-    void WaterSurfaceComponent::SetIBLEnabled(bool enable) {
-        // IBL の有効/無効はシーン側で決まるため、マテリアル側は強度によるオプトアウトで表現する
-        auto* mat = GetModel() ? GetModel()->GetMaterial() : nullptr;
-        if (mat) { mat->SetIBLIntensity(enable ? 1.0f : 0.0f); }
-    }
-
     void WaterSurfaceComponent::UpdateUVAnimation(float deltaTime) {
         // 経過時間を加算（波の位相計算に使用）
         // UV オフセットを速度 × 時間で加算

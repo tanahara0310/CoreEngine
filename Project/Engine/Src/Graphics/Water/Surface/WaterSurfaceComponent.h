@@ -166,9 +166,6 @@ namespace CoreEngine
         /// @brief 水面の Metallic を設定する
         void SetMetallic(float metallic);
 
-        /// @brief IBL を有効/無効にする
-        void SetIBLEnabled(bool enable);
-
         // ===== ゲッター =====
 
         /// @brief 波パラメータ配列への参照を返す（ImGui 直接編集用）

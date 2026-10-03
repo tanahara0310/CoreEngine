@@ -2,8 +2,6 @@
 #include "RenderManager.h"
 #include "IGBufferRenderer.h"
 #include "GameObject/GameObject.h"
-#include "Graphics/Render/Model/BaseModelRenderer.h"
-#include "Graphics/Render/Model/IBLParameters.h"
 #include "Camera/Camera.h"
 #include "Camera/View/ViewInfo.h"
 #include "Math/MathCore.h"
@@ -20,10 +18,6 @@ namespace CoreEngine
 
     void RenderManager::RegisterRenderer(RenderPassType type, std::unique_ptr<IRenderer> renderer) {
         renderers_[type] = std::move(renderer);
-
-        if (type == RenderPassType::Model || type == RenderPassType::SkinnedModel) {
-            ApplyEnvironmentLightingToRenderers();
-        }
     }
 
     IRenderer* RenderManager::GetRenderer(RenderPassType type) {
@@ -32,31 +26,6 @@ namespace CoreEngine
             return it->second.get();
         }
         return nullptr;
-    }
-
-    void RenderManager::SetIBLRotation(const Vector3& rotation) {
-        iblRotation_ = rotation;
-        ApplyEnvironmentLightingToRenderers();
-    }
-
-    void RenderManager::SetEnvironmentIntensity(float intensity) {
-        environmentIntensity_ = intensity;
-        ApplyEnvironmentLightingToRenderers();
-    }
-
-    void RenderManager::SetEnvironmentMap(D3D12_GPU_DESCRIPTOR_HANDLE environmentMapHandle) {
-        environmentMapHandle_ = environmentMapHandle;
-        ApplyEnvironmentLightingToRenderers();
-    }
-
-    void RenderManager::SetIBLMaps(
-        D3D12_GPU_DESCRIPTOR_HANDLE irradianceHandle,
-        D3D12_GPU_DESCRIPTOR_HANDLE prefilteredHandle,
-        D3D12_GPU_DESCRIPTOR_HANDLE brdfLUTHandle) {
-        irradianceMapHandle_ = irradianceHandle;
-        prefilteredMapHandle_ = prefilteredHandle;
-        brdfLUTHandle_ = brdfLUTHandle;
-        ApplyEnvironmentLightingToRenderers();
     }
 
     void RenderManager::AddRenderItem(RenderItem item) {
@@ -237,25 +206,6 @@ namespace CoreEngine
         EnsureQueueSorted();
         RenderNormalPassQueue(cmdList, overlayDrawQueue_, viewType);
     }
-
-    void RenderManager::ApplyEnvironmentLightingToRenderers() {
-        // IBL パラメータを構造体にまとめて一括適用
-        IBLParameters params;
-        params.environmentMap = environmentMapHandle_;
-        params.irradianceMap = irradianceMapHandle_;
-        params.prefilteredMap = prefilteredMapHandle_;
-        params.brdfLUT = brdfLUTHandle_;
-        params.rotation = iblRotation_;
-        params.intensity = environmentIntensity_;
-
-        // Model / SkinnedModel の両レンダラーに適用
-        for (auto passType : {RenderPassType::Model, RenderPassType::SkinnedModel}) {
-            if (auto* renderer = dynamic_cast<BaseModelRenderer*>(GetRenderer(passType))) {
-                renderer->SetIBLParameters(params);
-            }
-        }
-    }
-
 
     IRenderer* RenderManager::ResolveRendererForPass(RenderPassType passType) {
         if (IRenderer* renderer = GetRenderer(passType)) {

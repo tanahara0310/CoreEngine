@@ -9,7 +9,7 @@
 struct GBufferOutput
 {
     float4 albedoAO : SV_TARGET0; ///< rgb=アルベド, a=AO
-    float4 normalRoughness : SV_TARGET1; ///< rgb=ワールド法線(エンコード済み), a=ラフネス（符号=IBL有効/無効、0=アンリット）
+    float4 normalRoughness : SV_TARGET1; ///< rgb=ワールド法線(エンコード済み), a=ラフネス（0=アンリット）
     float4 emissiveMetallic : SV_TARGET2; ///< rgb=エミッシブ, a=メタリック
     float2 motionVector : SV_TARGET3; ///< モーションベクター（NDC空間の2Dオフセット）
 };
@@ -59,14 +59,8 @@ GBufferOutput main(VertexShaderOutput input)
     // エミッシブ（DeferredLighting が最終カラーに加算する）
     float3 emissive = GetEmissive(uv);
 
-    // WorldPosition ターゲット削除に伴い、IBL 有効/無効フラグを roughness の符号ビットへ
-    // 無劣化で埋め込む（roughness は上で 0.01 未満に丸め済みなので 0.0 との衝突は無い。
-    // 0.0 自体はアンリットセンチネルとして別途予約済み）。
-    // DeferredLighting.PS.hlsl はワールド座標を深度から復元し、背景判定は深度のクリア値で行う。
-    float encodedRoughness = (gMaterial.iblIntensity > 0.0f) ? roughness : -roughness;
-
     output.albedoAO = float4(albedo, ao);
-    output.normalRoughness = float4(encodedNormal, encodedRoughness);
+    output.normalRoughness = float4(encodedNormal, roughness);
     output.emissiveMetallic = float4(emissive, metallic);
 
     // ===== モーションベクター計算 =====

@@ -6,7 +6,6 @@
 #include "DrawViewInfo.h"
 #include "Graphics/Pipeline/PipelineStateManager.h"
 #include "Math/Matrix/Matrix4x4.h"
-#include "Math/Vector/Vector3.h"
 #include <d3d12.h>
 #include <unordered_map>
 #include <vector>
@@ -44,19 +43,6 @@ namespace CoreEngine
         ///          パスごとに違う行列を使う事故が起きない。
         /// @param frameViews フレーム内不変のビュー群（フレーム終了まで生存すること）
         void SetFrameViews(const CoreEngine::FrameViews* frameViews) { frameViews_ = frameViews; }
-
-        /// @brief 環境マップをPBR対象レンダラーへ設定
-        /// @param environmentMapHandle 環境マップSRV
-        void SetEnvironmentMap(D3D12_GPU_DESCRIPTOR_HANDLE environmentMapHandle);
-
-        /// @brief IBLテクスチャ群をPBR対象レンダラーへ設定
-        /// @param irradianceHandle Irradiance Map SRV
-        /// @param prefilteredHandle Prefiltered Map SRV
-        /// @param brdfLUTHandle BRDF LUT SRV
-        void SetIBLMaps(
-            D3D12_GPU_DESCRIPTOR_HANDLE irradianceHandle,
-            D3D12_GPU_DESCRIPTOR_HANDLE prefilteredHandle,
-            D3D12_GPU_DESCRIPTOR_HANDLE brdfLUTHandle);
 
         /// @brief 描画項目をキューに追加
         /// @param item 描画する RenderItem
@@ -116,27 +102,6 @@ namespace CoreEngine
         ///          （デバッグ用途）。
         void SetDeferredLightingActive(bool active) { deferredLightingActive_ = active; }
 
-        /// @brief Irradiance Map の GPU SRV ハンドルを取得（DeferredLightingPass の IBL 接続用）
-        D3D12_GPU_DESCRIPTOR_HANDLE GetIrradianceMapHandle() const { return irradianceMapHandle_; }
-
-        /// @brief Prefiltered Map の GPU SRV ハンドルを取得（DeferredLightingPass の IBL 接続用）
-        D3D12_GPU_DESCRIPTOR_HANDLE GetPrefilteredMapHandle() const { return prefilteredMapHandle_; }
-
-        /// @brief BRDF LUT の GPU SRV ハンドルを取得（DeferredLightingPass の IBL 接続用）
-        D3D12_GPU_DESCRIPTOR_HANDLE GetBRDFLUTHandle() const { return brdfLUTHandle_; }
-
-        /// @brief シーン共通 IBL 環境回転角度を設定（ラジアン）— SkyBox 回転と連動
-        void SetIBLRotation(const Vector3& rotation);
-
-        /// @brief シーン共通 IBL 環境回転角度を取得
-        const Vector3& GetIBLRotation() const { return iblRotation_; }
-
-        /// @brief 環境輝度スケールを設定（SkyBox intensity と連動）
-        void SetEnvironmentIntensity(float intensity);
-
-        /// @brief 環境輝度スケールを取得
-        float GetEnvironmentIntensity() const { return environmentIntensity_; }
-
     private:
         std::vector<RenderItem> drawQueue_;
         std::vector<RenderItem> opaqueDrawQueue_; ///< Deferred 経路（GBuffer）へ振り分けた不透明 Model/SkinnedModel
@@ -159,14 +124,6 @@ namespace CoreEngine
     // true: 不透明 Model/SkinnedModel は opaqueDrawQueue_（GBuffer 経路）で描画される
     // false: Forward フォールバック（DrawMainQueuePass が不透明キューも描画する）
         bool deferredLightingActive_ = true;
-
-    // IBL / Environment関連
-    D3D12_GPU_DESCRIPTOR_HANDLE environmentMapHandle_ = {};
-    D3D12_GPU_DESCRIPTOR_HANDLE irradianceMapHandle_ = {};
-    D3D12_GPU_DESCRIPTOR_HANDLE prefilteredMapHandle_ = {};
-    D3D12_GPU_DESCRIPTOR_HANDLE brdfLUTHandle_ = {};
-    Vector3 iblRotation_ = {}; ///< シーン共通IBL環境回転（ラジアン）
-    float environmentIntensity_ = 1.0f; ///< 環境輝度スケール（SkyBox intensity と連動）
 
         /// @brief 描画パスごとにソート
         void SortDrawQueue();
@@ -196,8 +153,5 @@ namespace CoreEngine
 
     /// @brief 指定パスに対応するレンダラーを解決する
     IRenderer* ResolveRendererForPass(RenderPassType passType);
-
-    /// @brief PBR対象レンダラーへ環境/IBLを適用
-    void ApplyEnvironmentLightingToRenderers();
 };
 }

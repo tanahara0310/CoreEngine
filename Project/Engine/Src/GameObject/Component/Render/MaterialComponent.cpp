@@ -25,7 +25,6 @@ namespace CoreEngine
         }
         if (pendingColor_) { SetColor(*pendingColor_); pendingColor_.reset(); }
         if (pendingNormalMap_) { SetNormalMapEnabled(*pendingNormalMap_); pendingNormalMap_.reset(); }
-        if (pendingIBL_) { SetIBLIntensity(*pendingIBL_); pendingIBL_.reset(); }
         if (pendingLighting_) { SetLightingEnabled(*pendingLighting_); pendingLighting_.reset(); }
         if (pendingEmissive_) {
             const Vector3 emissive = *pendingEmissive_;
@@ -112,13 +111,6 @@ namespace CoreEngine
     {
         if (!ForEachMaterial([enable](MaterialInstance* mat) { mat->SetNormalMapEnabled(enable); })) {
             pendingNormalMap_ = enable;
-        }
-    }
-
-    void MaterialComponent::SetIBLIntensity(float intensity)
-    {
-        if (!ForEachMaterial([intensity](MaterialInstance* mat) { mat->SetIBLIntensity(intensity); })) {
-            pendingIBL_ = intensity;
         }
     }
 
@@ -224,12 +216,6 @@ namespace CoreEngine
     {
         if (const MaterialInstance* mat = GetMaterial()) { return mat->GetOcclusionStrength(); }
         return pendingPBR_ ? pendingPBR_->occlusion : 1.0f;
-    }
-
-    float MaterialComponent::GetIBLIntensity() const
-    {
-        if (const MaterialInstance* mat = GetMaterial()) { return mat->GetIBLIntensity(); }
-        return pendingIBL_.value_or(1.0f);
     }
 
     bool MaterialComponent::IsLightingEnabled() const

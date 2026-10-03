@@ -41,7 +41,7 @@ namespace CoreEngine
         BufferEntry gbufEntries[4] = {};
         if (gbuf) {
             gbufEntries[0] = { "AlbedoAO",        "rgb=アルベド / a=AO",            gbuf->GetSRVHandle(GBufferManager::Target::AlbedoAO),        true };
-            gbufEntries[1] = { "NormalRoughness",  "rgb=ワールド法線(encode) / a=符号付きRoughness(符号=IBL有効/無効, 0=アンリット)", gbuf->GetSRVHandle(GBufferManager::Target::NormalRoughness), true };
+            gbufEntries[1] = { "NormalRoughness",  "rgb=ワールド法線(encode) / a=Roughness(0=アンリット)", gbuf->GetSRVHandle(GBufferManager::Target::NormalRoughness), true };
             gbufEntries[2] = { "EmissiveMetallic", "rgb=エミッシブ / a=メタリック", gbuf->GetSRVHandle(GBufferManager::Target::EmissiveMetallic), true };
             gbufEntries[3] = { "MotionVector",     "rg=NDCモーションベクター",       gbuf->GetSRVHandle(GBufferManager::Target::MotionVector),     true };
         }

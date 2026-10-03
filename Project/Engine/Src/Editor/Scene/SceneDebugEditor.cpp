@@ -73,7 +73,6 @@ namespace
             material->SetLightingEnabled(true);
             // PBR ファクター（metallic/roughness/color 等）は Model::Initialize() が
             // アセット側の値を適用済みのため、ここでは上書きしない。
-            // IBL はシーン側で有効化されるため個別設定は不要。
             material->SetNormalMapEnabled(false);
         });
     }

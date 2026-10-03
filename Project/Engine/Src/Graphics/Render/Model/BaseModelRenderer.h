@@ -1,8 +1,6 @@
 #pragma once
 #include "Graphics/Render/IRenderer.h"
 #include "Graphics/Render/IGBufferRenderer.h"
-#include "Graphics/Render/Model/IBLSceneParams.h"
-#include "Graphics/Render/Model/IBLParameters.h"
 #include "Graphics/Render/Model/ModelDrawPacket.h"
 #include "Graphics/Pipeline/PipelineStateManager.h"
 #include "Graphics/RootSignature/RootSignatureManager.h"
@@ -53,10 +51,6 @@ namespace CoreEngine
         /// @brief ライトマネージャーを設定
         void SetLightManager(LightManager* lightManager) { lightManager_ = lightManager; }
 
-        /// @brief IBL関連パラメータを一括設定
-        /// @param params IBLパラメータ構造体
-        void SetIBLParameters(const IBLParameters& params);
-
     protected:
         /// @brief 現在のブレンドモードに応じたフォグ定数を選ぶ
         D3D12_GPU_VIRTUAL_ADDRESS SelectFogConstants() const;
@@ -80,12 +74,6 @@ namespace CoreEngine
             fogDisabledCBV_ = disabled;
         }
 
-        /// @brief 環境マップテクスチャが設定済みか確認
-        bool HasEnvironmentMap() const { return iblParams_.HasEnvironmentMap(); }
-
-        /// @brief IBLに必要なテクスチャ（Irradiance / Prefiltered / BRDF LUT）が全て設定済みか確認
-        bool HasIBLMaps() const { return iblParams_.IsFullyConfigured(); }
-
         /// @brief フォワードパスのリソース名からルートパラメータインデックスを取得（-1: 未登録）
         int GetRootParamIndex(const std::string& resourceName) const;
         /// @brief GBuffer パスのリソース名からルートパラメータインデックスを取得（-1: 未登録）
@@ -104,7 +92,7 @@ namespace CoreEngine
 
         /// @brief カスタム RootSignature 切り替え後にシーンレベルのリソースを再バインドする
         /// D3D12 は SetGraphicsRootSignature を呼ぶと全バインドが無効になるため、
-        /// カスタム RS のインデックスでカメラ・ライト・IBL 等を再設定する。
+        /// カスタム RS のインデックスでカメラ・ライト等を再設定する。
         void BindSceneResourcesWithCustomPipeline(
             ID3D12GraphicsCommandList* cmdList,
             const CustomShaderPipeline* customPipeline);
@@ -133,19 +121,12 @@ namespace CoreEngine
 
         LightManager* lightManager_ = nullptr;
 
-        // IBL関連を構造体に集約
-        IBLParameters iblParams_;
-
         D3D12_GPU_DESCRIPTOR_HANDLE rtShadowMaskHandle_ = {};
 
         // 今フレームのフォグ定数（FogPass が供給。0 = 未供給で差さない）
         D3D12_GPU_VIRTUAL_ADDRESS fogFullCBV_ = 0;
         D3D12_GPU_VIRTUAL_ADDRESS fogAdditiveCBV_ = 0;
         D3D12_GPU_VIRTUAL_ADDRESS fogDisabledCBV_ = 0;
-
-        // IBL シーンパラメータ定数バッファ（environmentRotation）
-        Microsoft::WRL::ComPtr<ID3D12Resource> iblParamsBuffer_;
-        D3D12_GPU_VIRTUAL_ADDRESS iblParamsCBVAddress_ = 0;
 
         // 頂点アニメーションの時間・風（ルート定数 gVertexAnim。パスの開始時に作り直す）
         VertexAnimationParams vertexAnimParams_{};
@@ -176,7 +157,7 @@ namespace CoreEngine
             size_t count,
             const std::string& debugName);
 
-        /// @brief フォワードパスのシーンレベルリソース（カメラ・ライト・IBL・頂点アニメーション）を差す
+        /// @brief フォワードパスのシーンレベルリソース（カメラ・ライト・フォグ・頂点アニメーション）を差す
         /// @param table エンジン既定 RS の表、またはカスタムシェーダーの表
         /// @note 既定パスとカスタムパスで処理が同じなので 1 箇所に集約している
         void BindForwardSceneResources(ShaderBinder& binder, const BindingTable& table);
