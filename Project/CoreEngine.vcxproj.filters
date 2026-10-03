@@ -2058,6 +2058,9 @@
     <ClInclude Include="Engine\Src\EngineSystem\EngineConfig.h">
       <Filter>Engine\Src\EngineSystem</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\EngineSystem\EngineVersion.h">
+      <Filter>Engine\Src\EngineSystem</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\EngineSystem\Factory\CoreComponentFactory.h">
       <Filter>Engine\Src\EngineSystem\Factory</Filter>
     </ClInclude>

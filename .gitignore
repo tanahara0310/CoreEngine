@@ -96,6 +96,8 @@ Docs/
 /Docs/*
 # ゲーム制作の設計書だけは追跡する
 !/Docs/GameDevGuide/
+# エディタの Help から開くドキュメントは追跡する
+!/Project/Engine/Docs/
 
 # Chutzpah Test files
 _Chutzpah*
