@@ -127,9 +127,7 @@ namespace CoreEngine
                 gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness));
         }
 
-        // t1: SceneDepth（WorldPosition ターゲット廃止に伴い、深度から復元する）
-        // ビュー別（ゲーム/反射）に差し替わる FrameBlackboard 経由で取得する
-        // （dxCommon の深度は常にゲームビュー本解像度のため反射ビューでは不整合になる）。
+        // t1: SceneDepth（深度からワールド座標を復元する）。FrameBlackboard 経由で取得する
         const int depthIdx = GetRootParamIndex("gSceneDepth");
         if (depthIdx >= 0 && context.frameBlackboard) {
             D3D12_GPU_DESCRIPTOR_HANDLE depthHandle{};

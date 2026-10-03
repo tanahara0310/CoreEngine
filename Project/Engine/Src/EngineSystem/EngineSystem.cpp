@@ -52,8 +52,6 @@
 //（EngineSystem.h を include する全ファイルの再コンパイル対象になる）
 #include "Graphics/Render/Pass/RenderPipeline.h"
 #include "Graphics/Render/Pass/DefaultRenderPipelineBuilder.h"
-#include "Graphics/Render/RenderTarget/RenderTargetNames.h"
-#include "Scene/IScene.h"
 
 // Hi-Z オクルージョンカリング
 #include "Graphics/Render/Culling/HiZOcclusionSystem.h"
@@ -430,9 +428,7 @@ namespace CoreEngine
             renderManager->SetFrameViews(&frameViews);
         }
 
-        // ポストエフェクトへ今フレームの文脈を配る。
-        // ビュー確定後・View ループ前のここが唯一の呼び出し点（View ごとに呼ぶと
-        // 補助ビューの行列でエフェクトの状態が上書きされる）。
+        // ポストエフェクトへ今フレームの文脈を配る。ビュー確定後のここが唯一の呼び出し点
         if (context.postEffectManager) {
             PostEffectFrameContext postEffectContext;
             postEffectContext.view = &frameViews.GameView();
@@ -457,53 +453,13 @@ namespace CoreEngine
         }
 
         // Hi-Z オクルージョンカリング: 完了済みリングスロットの可視性 Readback を反映する。
-        // AABB 収集と遮蔽スキップの適用はメイン GameView の構築中のみ有効化する
-        // （補助ビュー・反射ビューはカメラが異なり、メインカメラ基準の判定は誤カリングになる）。
+        // AABB 収集と遮蔽スキップの適用は GameView の構築中だけ有効にする
         HiZOcclusionSystem* hiZOcclusion = hiZOcclusionSystem_.get();
         assert(hiZOcclusion && "HiZOcclusionSystem must be created by GraphicsComponentFactory");
         hiZOcclusion->BeginFrame(frame.frameIndex);
-        hiZOcclusion->SetCollectEnabled(false);
 
         // DXR BLAS / TLAS 構築は ASBuildPass（FrameSetup フェーズ）として
-        // 最初に実行される View の RenderGraph 内で行われる。
-
-        // 補助 RenderView は Scene からの要求リストとして受け取り、RenderGraph 単位で順に実行する。
-        if (sceneManager && render) {
-            std::vector<RenderViewRequest> renderViewRequests = sceneManager->BuildRenderViewRequests();
-            for (RenderViewRequest& renderViewRequest : renderViewRequests) {
-                if (!renderViewRequest.isEnabled) {
-                    continue;
-                }
-
-                RenderContext renderViewContext = context;
-                renderViewContext.viewSettings = renderViewRequest.viewSettings;
-                if (renderViewContext.viewSettings.sceneColorTargetName.empty()) {
-                    renderViewContext.viewSettings.sceneColorTargetName = RenderTargetNames::SceneColor;
-                }
-
-                // 補助 View のパスはメイン View と同名のため、計測スロット名を
-                // View 名で分離する（同名スロット共有だと後続 View がクエリを上書きし、
-                // 補助 View 分の GPU 時間が計測から消える）。
-                renderViewContext.viewSettings.viewName =
-                    !renderViewRequest.name.empty() ? renderViewRequest.name : "AuxView";
-
-                renderViewContext.currentRTShadowViewId =
-                    (renderViewContext.viewSettings.viewType == RenderViewType::ReflectionView)
-                    ? static_cast<uint32_t>(RayTracingShadowManager::ViewID::ReflectionView)
-                    : static_cast<uint32_t>(RayTracingShadowManager::ViewID::GameView);
-
-                const RenderViewResult renderViewResult = renderPipeline_->ExecuteRenderView(
-                    renderViewContext,
-                    renderViewRequest.beforeExecute,
-                    renderViewRequest.afterExecute);
-
-                if (renderViewResult.isValid && renderViewRequest.completionCallback) {
-                    renderViewRequest.completionCallback(renderViewResult);
-                }
-            }
-        }
-
-        context.currentRTShadowViewId = static_cast<uint32_t>(RayTracingShadowManager::ViewID::GameView);
+        // GameView の RenderGraph 内で行われる。
 
         // GameView の主要描画は ShadowMap を含む RenderGraph へ統一して実行する。
         // パス別のタイミングは RenderGraph::Execute が各パス名で自動計測する
@@ -512,7 +468,7 @@ namespace CoreEngine
         renderPipeline_->ExecuteView(context);
         hiZOcclusion->SetCollectEnabled(false);
 
-        // 全 View の描画（AerialPerspective 合成を含む）が完了したので、
+        // 描画（AerialPerspective 合成を含む）が完了したので、
         // ドメインマネージャのフレーム状態を後始末させる。
         // 個別機能（大気・雲）の都合はマネージャ側が持つ。ここへ機能名の分岐を書き戻さないこと
         if (renderDomainContext_) {

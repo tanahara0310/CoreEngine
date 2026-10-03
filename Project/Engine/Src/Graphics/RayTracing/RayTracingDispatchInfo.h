@@ -37,7 +37,7 @@ namespace CoreEngine
 
         const char* passName = "";                                  ///< 表示名（マネージャ名など）
         RayTracingDispatchStatus status = RayTracingDispatchStatus::None;
-        uint32_t viewIndex = 0;      ///< GameView / ReflectionView などのビュー添字
+        uint32_t viewIndex = 0;      ///< ビュー添字
         uint32_t slotIndex = 0;      ///< ビュー内の細分（影ならライト番号。水面は 0）
         UINT width = 0;              ///< ディスパッチ解像度
         UINT height = 0;

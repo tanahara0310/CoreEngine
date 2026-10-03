@@ -9,7 +9,7 @@ namespace CoreEngine
     ///          「シーン色 と フォグ色 を透過率で混ぜた結果」を in-place 合成する。
     ///          SkyBox / 雲 / ゴッドレイの後・半透明の前に実行される（背景ピクセルも
     ///          フォグの対象にするため、空が描かれた後である必要がある）。
-    ///          GameView のみで有効（ReflectionView は対象外）。
+    ///          GameView のみで有効。
     /// @note 半透明・水面は本パスの後に描かれるためここでは掛からない。
     ///       それらは各シェーダーで Fog.hlsli の ApplyFog を呼ぶこと（Phase 3）。
     class FogPass : public RenderPass {
@@ -22,8 +22,7 @@ namespace CoreEngine
 
         void DeclareResources(RenderGraphBuilder& builder, const RenderContext& context) override;
 
-        /// @note どの View でも登録する。SceneColor へ合成するのは GameView だけだが、
-        ///       前方描画が読むフォグ定数はどの View でも用意する必要がある
+        /// @note SceneColor へ合成しないときも、前方描画が読むフォグ定数は用意する
 
         /// @brief パスの実行
         /// @param context レンダリングコンテキスト

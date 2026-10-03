@@ -13,7 +13,7 @@ namespace CoreEngine
 {
     namespace {
         /// @brief 論理リソース名から書き込み先の実ターゲットを引く
-        /// @details SceneColor だけは View ごとに実体が変わるため別扱い。
+        /// @details SceneColor だけは RenderViewSettings::sceneColorTargetName の実体を引く。
         ///          それ以外（PostEffectFinal / PostEffectIntermediateN / PostEffectTransientN）は
         ///          論理名と登録名が一致しているのでそのまま引ける。
         RenderTarget* ResolvePostEffectOutputTarget(const RenderContext& context, const std::string& outputResourceName)

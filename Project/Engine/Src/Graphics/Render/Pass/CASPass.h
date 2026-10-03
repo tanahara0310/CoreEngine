@@ -15,7 +15,7 @@ namespace CoreEngine
         const char* GetName() const override { return "CASPass"; }
         void DeclareResources(RenderGraphBuilder& builder, const RenderContext& context) override;
 
-        /// @brief 補助ビューでは実行しない（シャープ化は最終表示画にのみ意味がある）
+        /// @brief GameView のみ実行する
         bool IsEnabledForView(const RenderViewSettings& view) const override {
             return view.viewType == RenderViewType::GameView;
         }

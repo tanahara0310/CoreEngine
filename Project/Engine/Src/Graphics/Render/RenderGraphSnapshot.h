@@ -6,7 +6,6 @@
 #include <vector>
 
 #include "RenderGraph.h"
-#include "RenderViewType.h"
 
 namespace CoreEngine
 {
@@ -29,29 +28,15 @@ namespace CoreEngine
         bool transient = false; ///< true なら renderPass は nullptr（有効/無効の切り替え不可）
     };
 
-    /// @brief 1 View 分の RenderGraph 構築・実行結果の複製
-    /// @details RenderGraph は毎フレーム Reset され、しかも 1 フレーム内で複数 View 分が
-    ///          順に構築・実行される。エディタが直接覗くと「最後に走った View」しか
-    ///          見えないため、View ごとに値としてコピーを取る。
+    /// @brief RenderGraph 構築・実行結果の複製
+    /// @details RenderGraph は毎フレーム Reset されるので、エディタが眺めるために値としてコピーを取る。
+    ///          GPU 計測スロットはパス名で引く（RenderGraph::Execute と同じ名前）。
     struct RenderGraphSnapshot {
-        RenderViewType viewType = RenderViewType::GameView;
-        std::string viewName;    ///< 空 = メイン GameView（RenderViewSettings::viewName と同じ）
-        std::string displayName; ///< UI 表示名（viewName が空なら "GameView"）
         uint64_t frameNumber = 0;
 
         std::vector<RenderGraphSnapshotPass> passes;
         std::vector<uint32_t> executionOrder;
         std::vector<RenderGraphSnapshotResource> resources;
-
-        /// @brief パス名から GPU 計測スロット名を作る
-        /// @details RenderGraph::Execute がスロットを引くときと同じ規則。ここがずれると
-        ///          エディタ上の時間表示だけ常に 0.000ms になる。
-        /// @param passName パス名
-        /// @return 計測スロット名
-        std::string MakeTimingLabel(const std::string& passName) const
-        {
-            return viewName.empty() ? passName : viewName + "/" + passName;
-        }
 
         /// @brief 論理リソース名からスナップショット内のエントリを引く
         /// @param resourceName 論理リソース名

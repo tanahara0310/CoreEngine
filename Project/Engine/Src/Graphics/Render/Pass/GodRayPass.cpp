@@ -24,7 +24,7 @@ namespace CoreEngine
 
     void GodRayPass::Execute(const RenderContext& context)
     {
-        // GameView のみで有効（水面反射などの補助 View には適用しない）
+        // GameView のみで有効
         if (context.viewSettings.viewType != RenderViewType::GameView) {
             return;
         }

@@ -86,8 +86,7 @@ namespace CoreEngine
         // 合成する View と宣言を揃えておく方が Graph の依存が読みやすい）
         builder.Read(FrameBlackboard::SceneDepth, D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-        // SceneColor へ書くのはメイン GameView だけ。補助 View では定数を配るだけなので、
-        // 書き込みを宣言すると不要な UAV 遷移が入る
+        // SceneColor へ書くのは GameView だけ
         if (context.viewSettings.viewType == RenderViewType::GameView) {
             builder.Write(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         }
@@ -109,11 +108,11 @@ namespace CoreEngine
         const FogSkyInfo sky = BuildSkyInfo(context.atmosphereManager);
 
         // 前方描画（半透明・水面）は全画面合成の有無に関わらず gFog を差すので、
-        // フォグが無効なフレーム・合成しない補助 View でも定数だけは必ず用意する
+        // フォグが無効なフレームでも定数だけは必ず用意する
         context.fogManager->PrepareConstants(view, sky, BuildWaterInfo(context.waterSurfaceState));
         PublishFogConstants(context);
 
-        // ここから先は SceneColor への合成。メイン GameView かつ有効なときだけ
+        // ここから先は SceneColor への合成。GameView かつ有効なときだけ
         if (context.viewSettings.viewType != RenderViewType::GameView) {
             return;
         }

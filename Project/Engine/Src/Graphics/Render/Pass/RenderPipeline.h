@@ -9,12 +9,9 @@
 #include <memory>
 #include <optional>
 #include <string>
-#include <functional>
 
 namespace CoreEngine
 {
-    struct RenderViewResult;
-
     /// @brief レンダリングパイプラインを管理するクラス
     class RenderPipeline {
     public:
@@ -71,24 +68,9 @@ namespace CoreEngine
         /// @param context レンダリングコンテキスト
         void ExecuteRenderGraph(const RenderContext& context);
 
-        /// @brief View 単位でフレーム準備から Graph 実行までを行う
+        /// @brief フレーム準備から Graph 実行までを行う
         /// @param context レンダリングコンテキスト
-        /// @param beforeExecute Graph 実行直前に呼ぶコールバック
-        /// @param afterExecute Graph 実行直後に呼ぶコールバック
-        void ExecuteView(
-            const RenderContext& context,
-            const std::function<void()>& beforeExecute = {},
-            const std::function<void()>& afterExecute = {});
-
-        /// @brief 補助 RenderView を実行し、呼び出し側へ共有結果を収集する
-        /// @param context 補助 View 用に構成済みのレンダリングコンテキスト
-        /// @param beforeExecute Graph 実行直前に呼ぶコールバック
-        /// @param afterExecute Graph 実行直後に呼ぶコールバック
-        /// @return View 出力 / SceneDepth / SceneColor をまとめた結果
-        RenderViewResult ExecuteRenderView(
-            const RenderContext& context,
-            const std::function<void()>& beforeExecute = {},
-            const std::function<void()>& afterExecute = {});
+        void ExecuteView(const RenderContext& context);
 
         /// @brief すべてのパスをクリア
         void Clear();
@@ -108,7 +90,7 @@ namespace CoreEngine
             graphCaptureEnabled_ = enabled;
             renderGraph_.SetInstrumentationEnabled(enabled);
             if (!enabled) {
-                graphSnapshots_.clear();
+                graphSnapshot_.reset();
             }
         }
 
@@ -122,24 +104,20 @@ namespace CoreEngine
         /// @brief スナップショット更新が停止中かを返す
         bool IsGraphCapturePaused() const { return graphCapturePaused_; }
 
-        /// @brief 直近フレームの View 別スナップショットを取得する
-        /// @return 実行順に並んだ View 別スナップショット（補助 View → GameView の順）
-        const std::vector<RenderGraphSnapshot>& GetGraphSnapshots() const { return graphSnapshots_; }
+        /// @brief 直近フレームのスナップショットを取得する
+        /// @return まだ取っていなければ nullptr
+        const RenderGraphSnapshot* GetGraphSnapshot() const { return graphSnapshot_ ? &*graphSnapshot_ : nullptr; }
 
     private:
-        /// @brief 現在の Graph 構築・実行結果を 1 View 分スナップショットへ複製する
-        /// @param context この View の実行に使ったレンダリングコンテキスト
+        /// @brief 現在の Graph 構築・実行結果をスナップショットへ複製する
+        /// @param context 実行に使ったレンダリングコンテキスト
         void CaptureGraphSnapshot(const RenderContext& context);
 
         /// @brief 保持中のスナップショットを破棄する
         /// @details パス実体が消える操作（RemovePass 等）の直後に必ず呼ぶこと。
         ///          スナップショットは RenderPass* を握っており、放置すると
         ///          ポーズ中の参照が解放済みメモリを指す。
-        void InvalidateGraphSnapshots()
-        {
-            graphSnapshots_.clear();
-            graphSnapshotFrameNumber_ = UINT64_MAX;
-        }
+        void InvalidateGraphSnapshot() { graphSnapshot_.reset(); }
 
         /// @brief RenderGraph 構築前に主要リソースを Blackboard へ登録する
         /// @param context レンダリングコンテキスト
@@ -156,11 +134,6 @@ namespace CoreEngine
         /// @brief Graph 実行後に最終表示テクスチャハンドルを同期する
         /// @param context レンダリングコンテキスト
         void SyncFinalDisplayHandle(const RenderContext& context);
-
-        /// @brief 補助 RenderView 実行後の共有結果を収集する
-        /// @param context 補助 View 実行に使用したレンダリングコンテキスト
-        /// @return 補助 View の共有結果
-        RenderViewResult BuildRenderViewResult(const RenderContext& context) const;
 
         /// @brief フェーズ順序管理付きのパス登録エントリ
         struct RenderPassEntry {
@@ -184,8 +157,7 @@ namespace CoreEngine
         uint64_t nextSequence_ = 0;
         RenderGraph renderGraph_{};
 
-        std::vector<RenderGraphSnapshot> graphSnapshots_;
-        uint64_t graphSnapshotFrameNumber_ = UINT64_MAX; ///< 今 graphSnapshots_ に溜めているフレーム
+        std::optional<RenderGraphSnapshot> graphSnapshot_;
         bool graphCaptureEnabled_ = false;
         bool graphCapturePaused_ = false;
     };

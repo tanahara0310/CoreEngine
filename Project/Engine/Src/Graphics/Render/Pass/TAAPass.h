@@ -15,9 +15,8 @@ namespace CoreEngine
         const char* GetName() const override { return "TAAPass"; }
         void DeclareResources(RenderGraphBuilder& builder, const RenderContext& context) override;
 
-        /// @brief 補助ビューでは実行しない
+        /// @brief GameView のみ実行する
         /// @details 履歴もモーションベクターも GameView 専用（Model の prevWVP が GameView 基準）。
-        ///          反射ビューで走らせると履歴が別カメラの画で汚染される。
         bool IsEnabledForView(const RenderViewSettings& view) const override {
             return view.viewType == RenderViewType::GameView;
         }

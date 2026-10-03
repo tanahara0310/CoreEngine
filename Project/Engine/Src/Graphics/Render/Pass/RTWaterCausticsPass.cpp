@@ -76,8 +76,7 @@ namespace CoreEngine
             return;
         }
 
-        // IsEnabledForView が GameView 限定のため、ここに来るのは常に GameView。
-        // 反射ビュー対応を追加する場合は IsEnabledForView 側と同時に見直すこと。
+        // IsEnabledForView が GameView 限定のため、ここに来るのは常に GameView
         const WaterCausticsRayTracingManager::ViewID viewId =
             WaterCausticsRayTracingManager::ViewID::GameView;
 

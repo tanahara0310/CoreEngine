@@ -12,7 +12,6 @@ namespace CoreEngine
     /// @brief View ごとの Graph 実行設定
     struct RenderViewSettings {
         RenderViewType viewType = RenderViewType::GameView;
-        std::string viewName; ///< 補助 View の表示名（空 = メイン GameView）。GPU 計測スロット名のプレフィックスに使う
         bool enableSSAO = true;
         bool enableRTShadow = true;
         bool enablePostEffect = true;
@@ -87,8 +86,7 @@ namespace CoreEngine
         const WaterSurfaceData* waterSurfaceState = nullptr; ///< 現在フレームの水面状態（水面不在なら nullptr）
         float fftOceanSimulationTime = 0.0f; ///< FFT Ocean のシミュレーション時刻（水面の表示状態と独立）
         RenderViewSettings viewSettings{}; ///< 現在の View 種別と有効化するパス群設定
-        uint32_t currentRTShadowViewId = static_cast<uint32_t>(RenderViewType::GameView); ///< 現在の RT シャドウビュー
-        uint64_t frameNumber = 0; ///< フレーム通し番号（View 間で共有。フレーム内 1 回実行パスのガードに使う）
+        uint64_t frameNumber = 0; ///< フレーム通し番号（フレーム内 1 回実行パスのガードに使う）
     };
 
     class RenderGraphBuilder;

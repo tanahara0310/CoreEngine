@@ -6,7 +6,7 @@ namespace CoreEngine
 {
     /// @brief DXR 加速構造（BLAS / TLAS）構築パス
     /// @details TLAS 構築と RT シャドウのフレーム状態リセットを含む。
-    /// @note Graph は View ごとに実行されるが、本パスは frameNumber ガードで最初の View のみ動く。
+    /// @note frameNumber ガードでフレーム内 1 回だけ動く。
     class ASBuildPass : public RenderPass {
     public:
         ASBuildPass() = default;

@@ -12,8 +12,7 @@ namespace CoreEngine
             return;
         }
 
-        // TLAS 構築と RT シャドウ状態リセットはフレーム内 1 回だけ行う。
-        // （補助 View → GameView の順で複数 Graph が実行されるため）
+        // TLAS 構築と RT シャドウ状態リセットはフレーム内 1 回だけ行う
         if (lastBuiltFrame_ == context.frameNumber) {
             return;
         }

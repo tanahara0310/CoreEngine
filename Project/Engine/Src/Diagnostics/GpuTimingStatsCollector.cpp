@@ -64,12 +64,6 @@ namespace CoreEngine
             return summary;
         }
 
-        /// @brief 補助 View のスロットか（RenderGraph が "View名/パス名" で登録する）
-        bool IsAuxViewSlot(const std::string& name)
-        {
-            return name.find('/') != std::string::npos;
-        }
-
     /// @brief CSV のファイル名に使う日時文字列を作る
         std::string MakeTimestampString()
         {
@@ -164,7 +158,6 @@ namespace CoreEngine
         frameGpu_ = {};
         frameCpu_ = {};
         fps_ = {};
-        auxView_ = {};
         waterSharePercent_ = {};
     }
 
@@ -255,7 +248,6 @@ namespace CoreEngine
         // 「各パスの中央値を足す」のは誤り（別々のフレームの値を足すことになる）。
         // フレームごとに合計してから統計を取る。
         std::vector<float> waterPerFrame(frameCount, 0.0f);
-        std::vector<float> auxPerFrame(frameCount, 0.0f);
 
         for (GpuTimingCategory category : GpuTimestampProfiler::kCategoryDisplayOrder) {
             std::vector<float> perFrameSum(frameCount, 0.0f);
@@ -283,19 +275,6 @@ namespace CoreEngine
             }
         }
 
-        // 補助 View（反射ビュー等）の合計。平面反射という設計判断の代償を
-        // 「シーンをもう一度描く分の ms」として単独で出せるようにする。
-        for (uint32_t i = 0; i < GpuTimestampProfiler::kSlotCount; ++i) {
-            const SlotSamples& slot = slots_[i];
-            if (!slot.everActive || !IsAuxViewSlot(slot.name)) {
-                continue;
-            }
-            const size_t count = (std::min)(frameCount, slot.gpuMs.size());
-            for (size_t f = 0; f < count; ++f) {
-                auxPerFrame[f] += slot.gpuMs[f];
-            }
-        }
-
         // 水面占有率はフレームごとに比率を出してから統計する
         std::vector<float> sharePerFrame;
         sharePerFrame.reserve(frameCount);
@@ -307,7 +286,6 @@ namespace CoreEngine
         frameGpu_ = MakeSummary("Frame Total (GPU)", GpuTimingCategory::Frame, frameGpuSamples_);
         frameCpu_ = MakeSummary("Frame (CPU)", GpuTimingCategory::Frame, frameCpuSamples_);
         fps_ = MakeSummary("FPS", GpuTimingCategory::Frame, fpsSamples_);
-        auxView_ = MakeSummary("Aux View 合計 (GPU)", GpuTimingCategory::Frame, auxPerFrame);
         waterSharePercent_ = MakeSummary("Water 占有率 (%)", GpuTimingCategory::Water, sharePerFrame);
 
         state_ = State::Finished;
@@ -372,7 +350,6 @@ namespace CoreEngine
             writeRow("frame", frameGpu_);
             writeRow("frame", frameCpu_);
             writeRow("frame", fps_);
-            writeRow("frame", auxView_);
             writeRow("frame", waterSharePercent_);
 
             for (const auto& s : categorySummaries_) {

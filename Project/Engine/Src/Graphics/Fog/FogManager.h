@@ -189,7 +189,7 @@ namespace CoreEngine
         D3D12_GPU_VIRTUAL_ADDRESS frameConstants_[static_cast<size_t>(FogVariant::Count)]{};
 
         /// @brief 常設の「何もしない」フォグ定数。PrepareConstants 未実行のビュー・フレームで差す
-        /// @details ここが無いと、補助ビューの前方描画が未バインドの CBV を読むことになる
+        /// @details PrepareConstants を通らなかったフレームの前方描画が、未バインドの CBV を読まないようにする
         Microsoft::WRL::ComPtr<ID3D12Resource> disabledConstantBuffer_;
         D3D12_GPU_VIRTUAL_ADDRESS disabledConstantsAddress_ = 0;
     };

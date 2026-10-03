@@ -18,11 +18,8 @@
 namespace CoreEngine
 {
     /// @brief DXR 水面パス共通のビュー識別子
-    /// @details 以前は 3 マネージャがそれぞれ同型の enum を持っていた（3重定義）。
-    ///          反射は GameView しか使わないが、識別子空間は共通でよい。
     enum class RTWaterViewID : uint32_t {
         GameView = 0,
-        ReflectionView = 1,
         Count
     };
 
