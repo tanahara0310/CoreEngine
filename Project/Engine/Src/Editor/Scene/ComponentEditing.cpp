@@ -30,11 +30,19 @@ namespace CoreEngine::ComponentEditing
     {
         constexpr const char* kAddButtonLabel = "＋ コンポーネント追加";
         constexpr const char* kAddPopupId = "##AddComponentPopup";
-        constexpr float kDisplayNameWidth = 160.0f;
         constexpr float kFilterWidth = 280.0f;
 
         /// @brief 足せる型の一覧を絞り込む文字列
         char sAddFilter[64] = "";
+
+        /// @brief 一覧で選んでいる分類の名前
+        std::string sAddCategory;
+
+        /// @brief 分類の欄の幅
+        constexpr float kCategoryWidth = 110.0f;
+
+        /// @brief 分類と型の欄の高さに使う行数の上限（超えたら欄の中で送る）
+        constexpr std::size_t kMaxVisibleRows = 12;
 
         /// @brief 付け外しするコンポーネント 1 つ分
         struct Slot
@@ -143,6 +151,116 @@ namespace CoreEngine::ComponentEditing
             };
             return std::search(text.begin(), text.end(), pattern.begin(), pattern.end(),
                 [&toLower](char a, char b) { return toLower(a) == toLower(b); }) != text.end();
+        }
+
+        /// @brief 追加の一覧の分類 1 つ
+        struct Category
+        {
+            const char* label;              ///< タブと見出しに出す名前
+            std::vector<std::string> types; ///< 並べる型名（この順に出す）
+        };
+
+        /// @brief エンジンのコンポーネントの分類（型名の並びがそのまま一覧の並び）
+        const std::vector<Category>& EngineCategories()
+        {
+            static const std::vector<Category> categories = {
+                { "基本", { "Transform", "EulerTransform", "Camera" } },
+                { "描画", { "MeshRenderer", "Material", "SpriteRenderer", "Text3DRenderer", "Animator", "SkeletonSocket" } },
+                { "環境", { "Light", "SkyBox", "VolumetricCloud", "HeightFog", "PostProcess", "WaterSurface" } },
+                { "エフェクト", { "ParticleSystem", "GpuParticleSystem" } },
+                { "物理", { "Collider", "Rigidbody", "CharacterController", "PhysicsMaterial" } },
+                { "UI", { "RectTransform", "UIImage", "UIText", "UIButton", "UISlider", "UIToggle" } },
+                { "音", { "AudioSource", "AudioListener" } },
+            };
+            return categories;
+        }
+
+        /// @brief 登録済みの型を分類に振り分ける
+        /// @details エンジンの分類に無いエンジンの型は「その他」、スクリプトのクラスは「スクリプト」へ入れる。
+        ///          型が 1 つも無い分類は含めない。
+        std::vector<Category> BuildAddCategories()
+        {
+            const ComponentFactory& factory = ComponentFactory::Get();
+            std::vector<Category> result;
+            std::vector<std::string> placed;
+            for (const Category& category : EngineCategories()) {
+                Category filled{ category.label, {} };
+                for (const std::string& type : category.types) {
+                    if (factory.IsRegistered(type) && !factory.IsRuntimeType(type)) {
+                        filled.types.push_back(type);
+                        placed.push_back(type);
+                    }
+                }
+                if (!filled.types.empty()) {
+                    result.push_back(std::move(filled));
+                }
+            }
+
+            Category others{ "その他", {} };
+            Category scripts{ "スクリプト", {} };
+            for (const std::string& type : factory.GetRegisteredTypeNames()) {
+                if (factory.IsRuntimeType(type)) {
+                    scripts.types.push_back(type);
+                } else if (std::find(placed.begin(), placed.end(), type) == placed.end()) {
+                    others.types.push_back(type);
+                }
+            }
+            for (Category* rest : { &others, &scripts }) {
+                if (!rest->types.empty()) {
+                    result.push_back(std::move(*rest));
+                }
+            }
+            return result;
+        }
+
+        /// @brief 一覧の列幅
+        struct AddColumns
+        {
+            float name = 0.0f; ///< 表示名の列（型名との間の余白を含む）
+            float type = 0.0f; ///< 型名の列
+        };
+
+        /// @brief 全分類の表示名と型名で最も長いものに合わせた列幅を求める
+        AddColumns MeasureAddColumns(const std::vector<Category>& categories)
+        {
+            AddColumns columns;
+            for (const Category& category : categories) {
+                for (const std::string& typeName : category.types) {
+                    const std::string displayName = Editor::ComponentInspectors::DisplayNameOf(typeName);
+                    columns.name = (std::max)(columns.name, ImGui::CalcTextSize(displayName.c_str()).x);
+                    columns.type = (std::max)(columns.type, ImGui::CalcTextSize(typeName.c_str()).x);
+                }
+            }
+            columns.name += ImGui::GetStyle().ItemSpacing.x * 2.0f;
+            return columns;
+        }
+
+        /// @brief 一覧の 1 行を描き、選ばれたら型名を chosen に入れる
+        void DrawAddItem(const GameObject& object, const std::string& typeName, float nameWidth, std::string& chosen)
+        {
+            const std::string displayName = Editor::ComponentInspectors::DisplayNameOf(typeName);
+            std::string reason;
+            const bool addable = CanAdd(object, typeName, &reason);
+            const std::string label = displayName + "##" + typeName;
+            {
+                UI::Scope::DisabledScope disabled(!addable);
+                if (ImGui::Selectable(label.c_str(), false, 0, ImVec2(nameWidth, 0.0f))) {
+                    chosen = typeName;
+                    ImGui::CloseCurrentPopup();
+                }
+            }
+            if (!addable && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                ImGui::SetTooltip("%s", reason.c_str());
+            }
+            UI::SameLine();
+            UI::Hint(typeName.c_str());
+        }
+
+        /// @brief 型の表示名か型名が検索の文字を含むか
+        bool MatchesFilter(const std::string& typeName)
+        {
+            return ContainsIgnoreCase(Editor::ComponentInspectors::DisplayNameOf(typeName), sAddFilter)
+                || ContainsIgnoreCase(typeName, sAddFilter);
         }
     }
 
@@ -313,32 +431,63 @@ namespace CoreEngine::ComponentEditing
             ImGui::InputTextWithHint("##filter", "型を検索", sAddFilter, sizeof(sAddFilter));
             UI::Separator();
 
-            int shown = 0;
-            for (const std::string& typeName : ComponentFactory::Get().GetRegisteredTypeNames()) {
-                const std::string displayName = Editor::ComponentInspectors::DisplayNameOf(typeName);
-                if (!ContainsIgnoreCase(displayName, sAddFilter) && !ContainsIgnoreCase(typeName, sAddFilter)) {
-                    continue;
-                }
-                ++shown;
+            const std::vector<Category> categories = BuildAddCategories();
+            const AddColumns columns = MeasureAddColumns(categories);
+            if (sAddFilter[0] == '\0') {
+                // 検索していないときは、左に分類を縦に並べ、選んだ分類の型を右に並べる
+                const auto selected = std::find_if(categories.begin(), categories.end(),
+                    [](const Category& category) { return sAddCategory == category.label; });
+                const Category* current = selected != categories.end() ? &*selected
+                    : (categories.empty() ? nullptr : &categories.front());
 
-                std::string reason;
-                const bool addable = CanAdd(object, typeName, &reason);
-                const std::string label = displayName + "##" + typeName;
-                {
-                    UI::Scope::DisabledScope disabled(!addable);
-                    if (ImGui::Selectable(label.c_str(), false, 0, ImVec2(kDisplayNameWidth, 0.0f))) {
-                        chosen = typeName;
-                        ImGui::CloseCurrentPopup();
+                std::size_t rows = categories.size();
+                for (const Category& category : categories) {
+                    rows = (std::max)(rows, category.types.size());
+                }
+                rows = (std::min)(rows, kMaxVisibleRows);
+                const float height = ImGui::GetTextLineHeightWithSpacing() * static_cast<float>(rows)
+                    + ImGui::GetStyle().WindowPadding.y * 2.0f;
+
+                if (ImGui::BeginChild("##AddCategories", ImVec2(kCategoryWidth, height), ImGuiChildFlags_Borders)) {
+                    for (const Category& category : categories) {
+                        if (ImGui::Selectable(category.label, current == &category)) {
+                            sAddCategory = category.label;
+                            current = &category;
+                        }
                     }
                 }
-                if (!addable && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-                    ImGui::SetTooltip("%s", reason.c_str());
-                }
+                ImGui::EndChild();
                 UI::SameLine();
-                UI::Hint(typeName.c_str());
-            }
-            if (shown == 0) {
-                UI::Hint("該当する型がありません");
+                const ImGuiStyle& style = ImGui::GetStyle();
+                const float typeListWidth = columns.name + columns.type + style.WindowPadding.x * 2.0f + style.ScrollbarSize;
+                if (ImGui::BeginChild("##AddTypes", ImVec2(typeListWidth, height), ImGuiChildFlags_Borders)) {
+                    if (current) {
+                        for (const std::string& typeName : current->types) {
+                            DrawAddItem(object, typeName, columns.name, chosen);
+                        }
+                    }
+                }
+                ImGui::EndChild();
+            } else {
+                // 検索しているときは、当てはまるものを分類の見出しつきで全部並べる
+                int shown = 0;
+                for (const Category& category : categories) {
+                    bool headed = false;
+                    for (const std::string& typeName : category.types) {
+                        if (!MatchesFilter(typeName)) {
+                            continue;
+                        }
+                        if (!headed) {
+                            ImGui::SeparatorText(category.label);
+                            headed = true;
+                        }
+                        DrawAddItem(object, typeName, columns.name, chosen);
+                        ++shown;
+                    }
+                }
+                if (shown == 0) {
+                    UI::Hint("該当する型がありません");
+                }
             }
         }
         return chosen;
