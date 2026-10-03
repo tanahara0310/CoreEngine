@@ -11,9 +11,7 @@
 #include "Graphics/Water/Surface/WaterShaderResourceBinder.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Math/MathCore.h"
 #include "Utility/Logger/Logger.h"
-#include <cmath>
 #include <filesystem>
 
 REFLECT_REGISTER(CoreEngine::WaterSurfaceComponent)
@@ -26,13 +24,10 @@ namespace CoreEngine
         return WaterCVars::WriteMotionVector.Get();
     }
 
-    WaterSurfaceComponent::WaterSurfaceComponent(float size, uint32_t resolution, bool useFFTOcean)
+    WaterSurfaceComponent::WaterSurfaceComponent(float size, uint32_t resolution)
         : size_(size)
         , resolution_(resolution)
-        , useFFTOcean_(useFFTOcean)
-        , scrollSpeed_({ 0.03f, 0.01f })
-        , uvTiling_({ 4.0f, 4.0f })
-        , uvOffset_({ 0.0f, 0.0f }) {
+        , useFFTOcean_(WaterCVars::FFTEnabled.Get()) {
         waterCB_.activeWaveCount = kMaxWaterWaveCount;
         frameCB_.useFFTOceanNormalMap = useFFTOcean_ ? 1 : 0;
 
@@ -207,14 +202,6 @@ namespace CoreEngine
             std::filesystem::path(GetPixelShaderPath()).string());
     }
 
-    void WaterSurfaceComponent::SetScrollSpeed(const Vector2& speed) {
-        scrollSpeed_ = speed;
-    }
-
-    void WaterSurfaceComponent::SetUVTiling(const Vector2& tiling) {
-        uvTiling_ = tiling;
-    }
-
     void WaterSurfaceComponent::SetWave(uint32_t index, const WaveParams& wave) {
         if (index < kMaxWaterWaveCount) {
             waterCB_.waves[index] = wave;
@@ -307,19 +294,6 @@ namespace CoreEngine
         if (mat) { mat->SetMetallic(metallic); }
     }
 
-    void WaterSurfaceComponent::UpdateUVAnimation(float deltaTime) {
-        // 経過時間を加算（波の位相計算に使用）
-        // UV オフセットを速度 × 時間で加算
-        uvOffset_.x += scrollSpeed_.x * deltaTime;
-        uvOffset_.y += scrollSpeed_.y * deltaTime;
-
-        // 0〜1 の範囲内に折り返す（精度劣化防止）
-        uvOffset_.x = std::fmod(uvOffset_.x, 1.0f);
-        uvOffset_.y = std::fmod(uvOffset_.y, 1.0f);
-
-        ApplyUVTransform();
-    }
-
     void WaterSurfaceComponent::SetSimulationTime(float timeSeconds) {
         // simulation 層が決定した時間を CPU / GPU の WaterConstants へ反映する
         elapsedTime_ = timeSeconds;
@@ -330,23 +304,5 @@ namespace CoreEngine
     std::unique_ptr<IPrimitiveMeshGenerator> WaterSurfaceComponent::CreateMeshGenerator() const {
         return std::make_unique<PlaneMeshGenerator>(
             size_, size_, resolution_, resolution_);
-    }
-
-    void WaterSurfaceComponent::ApplyUVTransform() {
-        auto* mat = GetModel() ? GetModel()->GetMaterial() : nullptr;
-        if (!mat) {
-            return;
-        }
-
-        // UV 変換行列: Scale（タイリング） × Translate（スクロールオフセット）
-        // HLSL 側は float4(uv, 0, 1) × uvTransform の行ベクトル乗算なので
-        // 行列の m[0][0], m[1][1] がスケール、m[3][0], m[3][1] がオフセット
-        Matrix4x4 uvMat = MathCore::Matrix::Identity();
-        uvMat.m[0][0] = uvTiling_.x;
-        uvMat.m[1][1] = uvTiling_.y;
-        uvMat.m[3][0] = uvOffset_.x;
-        uvMat.m[3][1] = uvOffset_.y;
-
-        mat->SetUVTransform(uvMat);
     }
 }

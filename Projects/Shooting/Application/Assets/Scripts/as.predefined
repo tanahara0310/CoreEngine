@@ -975,12 +975,6 @@ class WaterSurface {
 	void set_size(float) property;
 	int get_resolution() const property;
 	void set_resolution(int) property;
-	bool get_useFFTOcean() const property;
-	void set_useFFTOcean(bool) property;
-	Vector2 get_scrollSpeed() const property;
-	void set_scrollSpeed(const Vector2&in) property;
-	Vector2 get_uvTiling() const property;
-	void set_uvTiling(const Vector2&in) property;
 }
 uint scan(const string&in str, ?&out...);
 string format(const string&in fmt, const ?&in...);

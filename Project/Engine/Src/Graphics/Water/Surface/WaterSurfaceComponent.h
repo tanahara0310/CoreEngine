@@ -31,12 +31,12 @@ namespace CoreEngine
     public:
         /// @param size 水面の一辺のサイズ（XZ 方向共通）
         /// @param resolution XZ 方向の分割数
-        /// @param useFFTOcean true のとき FFT Ocean 描画経路を使用する
-        WaterSurfaceComponent(float size = 50.0f, uint32_t resolution = 64, bool useFFTOcean = false);
+        /// @note 描画経路（FFT か Gerstner か）は `r.Water.FFT.Enabled` から決める。
+        WaterSurfaceComponent(float size = 50.0f, uint32_t resolution = 64);
 
         const char* GetTypeName() const override { return "WaterSurface"; }
 
-        // 水の見た目そのもの（フレネル・光学係数・泡・波）は CVar と WaterRenderFeature が持つ。
+        // 水の見た目そのもの（FFT の切り替え・フレネル・光学係数・泡・波）は CVar と WaterRenderFeature が持つ。
         // ここに出すのは、その水面 1 枚ごとに決めるものだけ
         REFLECT_BEGIN(WaterSurfaceComponent, "水面")
             REFLECT_PARTIAL()
@@ -45,10 +45,6 @@ namespace CoreEngine
             REFLECT_ACCESSOR("resolution", "分割数", GetResolutionValue, SetResolutionValue,
                 p.range = Range(2.0f, 1024.0f, 1.0f),
                 p.tooltip = "XZ 方向の分割数。シーンを読み込むときに効く")
-            REFLECT_PROPERTY(useFFTOcean_, "FFT の海を使う",
-                p.tooltip = "外洋のうねり（FFT）で波を作る。切ると Gerstner 波になる")
-            REFLECT_PROPERTY(scrollSpeed_, "UV の流れる速さ", p.range = Speed(0.001f))
-            REFLECT_PROPERTY(uvTiling_, "UV の繰り返し", p.range = Speed(0.1f))
         REFLECT_END()
 
         /// @brief トランスフォームとメッシュ描画を確保し、平面メッシュ・シェーダー・定数バッファを用意する
@@ -92,21 +88,11 @@ namespace CoreEngine
 
         // ===== simulation 層からの入力 =====
 
-        /// @brief UV スクロールのみを更新する
-        /// @param deltaTime 前フレームからの経過時間（秒）
-        void UpdateUVAnimation(float deltaTime);
-
         /// @brief simulation 層で計算した時間を WaterConstants へ反映する
         /// @param timeSeconds 現在の simulation 時間
         void SetSimulationTime(float timeSeconds);
 
         // ===== 水そのもののパラメータ（UI が所有し、フレームをまたいで保持する）=====
-
-        /// @brief UV スクロール速度を設定する（単位: UV/秒）
-        void SetScrollSpeed(const Vector2& speed);
-
-        /// @brief UV タイリング（繰り返し回数）を設定する
-        void SetUVTiling(const Vector2& tiling);
 
         /// @brief 波パラメータを設定する
         /// @param index 波インデックス（0〜15）
@@ -152,7 +138,7 @@ namespace CoreEngine
         /// @param stretchAxis   模様を風の向きに伸ばす軸（WaterFoamSystem::ComputeFoamStretchAxis）
         void SetFoamMotion(const std::array<float, 2>& driftOffsetXZ, const std::array<float, 2>& stretchAxis);
 
-        /// @brief FFT Ocean 描画経路を切り替える
+        /// @brief FFT Ocean 描画経路を切り替える（WaterRenderFeature が `r.Water.FFT.Enabled` に合わせて呼ぶ）
         void SetUseFFTOcean(bool useFFTOcean);
 
         // ===== マテリアル操作 =====
@@ -187,12 +173,6 @@ namespace CoreEngine
         /// @brief DXR 屈折用に現在の WaterConstants を取得する
         const WaterConstants& GetWaterConstants() const { return waterCB_; }
 
-        /// @brief UV スクロール速度への参照を返す（ImGui 直接編集用）
-        Vector2& GetScrollSpeed() { return scrollSpeed_; }
-
-        /// @brief UV タイリングへの参照を返す（ImGui 直接編集用）
-        Vector2& GetUVTiling() { return uvTiling_; }
-
         /// @brief フレーム定数への参照を返す（ImGui から reflectionEnabled 等を参照する用）
         const WaterFrameConstants& GetFrameConstants() const { return frameCB_; }
 
@@ -214,9 +194,6 @@ namespace CoreEngine
         /// @brief 現在の useFFTOcean 状態に合わせてカスタム PSO を再構築する
         void RebuildWaterShaderPipeline();
 
-        /// @brief UV タイリングとオフセットをマテリアルの uvTransform 行列に反映する
-        void ApplyUVTransform();
-
         /// @brief フレーム定数バッファを GPU へ転送する
         void UploadFrameConstants();
 
@@ -227,9 +204,6 @@ namespace CoreEngine
         uint32_t resolution_;
         bool useFFTOcean_ = false;
 
-        Vector2 scrollSpeed_; ///< UV スクロール速度（U方向, V方向）
-        Vector2 uvTiling_;    ///< UV タイリング回数
-        Vector2 uvOffset_;    ///< 現在の UV オフセット（内部状態）
         WaterConstantBufferSet constantBuffers_; ///< Water 描画用 GPU 定数バッファ群
 
         /// @brief 水面固有リソースのバインダ（宣言表の解決結果をキャッシュする）
