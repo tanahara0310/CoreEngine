@@ -23,9 +23,12 @@ public:
 
     // ===== ITransformSource =====
 
-    Vector3& Translate() override { return transform_.translate; }
-    Vector3& Rotate()    override { return transform_.rotate; }
-    Vector3& Scale()     override { return transform_.scale; }
+    Vector3 GetTranslate() const override { return transform_.translate; }
+    void SetTranslate(const Vector3& translate) override { transform_.translate = translate; }
+    Vector3 GetRotate() const override { return transform_.rotate; }
+    void SetRotate(const Vector3& radians) override { transform_.rotate = radians; }
+    Vector3 GetScale() const override { return transform_.scale; }
+    void SetScale(const Vector3& scale) override { transform_.scale = scale; }
 
     // ===== アクセサ =====
 

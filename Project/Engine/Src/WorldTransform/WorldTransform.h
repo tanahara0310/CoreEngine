@@ -24,17 +24,27 @@ CB_VERIFY_LAYOUT(ConstantBufferDataWorldTransform, kWorldTransformFields);
 /// </summary>
 class WorldTransform {
 public:
-    // === 回転モード ===
-    enum class RotationMode {
-        Euler,      // オイラー角による回転
-        Quaternion  // クォータニオンによる回転
-    };
+    // ===== ローカルの位置・回転・スケール =====
 
-    // === トランスフォームパラメータ（直接アクセス可能） ===
-    Vector3 scale = { 1.0f, 1.0f, 1.0f };      // スケール
-    Vector3 rotate = { 0.0f, 0.0f, 0.0f };     // 回転角（ラジアン）- オイラー角モード用
-    Vector3 translate = { 0.0f, 0.0f, 0.0f };  // 位置
-    Quaternion quaternionRotate = { 0.0f, 0.0f, 0.0f, 1.0f }; // クォータニオン回転 - クォータニオンモード用
+    /// @brief 位置
+    const Vector3& GetTranslate() const { return translate_; }
+    void SetTranslate(const Vector3& translate) { translate_ = translate; }
+
+    /// @brief スケール
+    const Vector3& GetScale() const { return scale_; }
+    void SetScale(const Vector3& scale) { scale_ = scale; }
+
+    /// @brief 回転（ワールド行列はこれから作る）
+    const Quaternion& GetRotation() const { return rotation_; }
+
+    /// @brief 回転を設定し、オイラー角の写しも作り直す
+    void SetRotation(const Quaternion& rotation);
+
+    /// @brief 回転のオイラー角（ラジアン。X → Y → Z の順に回す。表示と保存のための写し）
+    const Vector3& GetRotationEuler() const { return rotationEuler_; }
+
+    /// @brief オイラー角（ラジアン）で回転を設定する（渡した角度をそのまま写しとして持つ）
+    void SetRotationEuler(const Vector3& radians);
 
     /// <summary>
     /// 初期化
@@ -47,13 +57,6 @@ public:
     /// 毎フレーム描画前に呼び出す
     /// </summary>
     void TransferMatrix();
-
-    /// <summary>
-    /// ImGuiでTransform情報を表示・編集（デバッグ用）
-    /// </summary>
-    /// <param name="label">ラベル名</param>
-    /// <returns>変更があった場合true</returns>
-    bool DrawImGui(const std::string& label);
 
     /// <summary>
     /// GPU仮想アドレスを取得
@@ -87,27 +90,6 @@ public:
     /// <param name="matrix">設定する行列</param>
     void SetWorldMatrix(const Matrix4x4& matrix);
 
-    /// <summary>
-    /// 回転モードを設定
-    /// </summary>
-    /// <param name="mode">回転モード（Euler or Quaternion）</param>
-    void SetRotationMode(RotationMode mode) { rotationMode_ = mode; }
-
-    /// <summary>
-    /// 回転モードを取得
-    /// </summary>
-    RotationMode GetRotationMode() const { return rotationMode_; }
-
-    /// <summary>
-    /// オイラー角からクォータニオンに変換して設定
-    /// </summary>
-    void EulerToQuaternion();
-
-    /// <summary>
-    /// クォータニオンからオイラー角に変換して設定
-    /// </summary>
-    void QuaternionToEuler();
-
 private:
     // 定数バッファリソース
     Microsoft::WRL::ComPtr<ID3D12Resource> constantBuffer_;
@@ -117,7 +99,10 @@ private:
     Matrix4x4 matWorld_;
     // 親トランスフォーム（階層構造用）
     const WorldTransform* parent_ = nullptr;
-    // 回転モード
-    RotationMode rotationMode_ = RotationMode::Euler;
+    // ローカルの位置・回転・スケール
+    Vector3 scale_ = { 1.0f, 1.0f, 1.0f };
+    Quaternion rotation_ = { 0.0f, 0.0f, 0.0f, 1.0f };
+    Vector3 rotationEuler_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 translate_ = { 0.0f, 0.0f, 0.0f };
 };
 }

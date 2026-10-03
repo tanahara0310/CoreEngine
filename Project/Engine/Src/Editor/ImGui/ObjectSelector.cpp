@@ -119,9 +119,9 @@ namespace CoreEngine
                 return;
             }
             if (!Gizmo::IsUsing()) {
-                beforeGizmoTranslate_ = source->Translate();
-                beforeGizmoRotate_ = source->Rotate();
-                beforeGizmoScale_ = source->Scale();
+                beforeGizmoTranslate_ = source->GetTranslate();
+                beforeGizmoRotate_ = source->GetRotate();
+                beforeGizmoScale_ = source->GetScale();
                 beforeGizmoActive_ = selected->IsActive();
             }
 
@@ -178,9 +178,9 @@ namespace CoreEngine
             // ギズモ非使用中は操作前スナップショットを連続更新する
             if (!Gizmo::IsUsing()) {
                 if (auto* source = selected->GetComponent<ITransformSource>()) {
-                    beforeGizmoTranslate_ = source->Translate();
-                    beforeGizmoRotate_ = source->Rotate();
-                    beforeGizmoScale_ = source->Scale();
+                    beforeGizmoTranslate_ = source->GetTranslate();
+                    beforeGizmoRotate_ = source->GetRotate();
+                    beforeGizmoScale_ = source->GetScale();
                 }
                 beforeGizmoActive_ = selected->IsActive();
             }
@@ -258,8 +258,8 @@ namespace CoreEngine
             }
 
             // スプライトの矩形との当たり判定
-            const Vector3& translate = source->Translate();
-            const Vector3& scale = source->Scale();
+            const Vector3 translate = source->GetTranslate();
+            const Vector3 scale = source->GetScale();
             Vector2 textureSize = sprite->GetTextureSize();
             Vector2 anchor = sprite->GetAnchor();
 
@@ -363,8 +363,8 @@ namespace CoreEngine
         // メッシュを持たない場合の代替半径（スケールの最大成分。最低 1.0）
         auto fallbackRadius = [](const TransformComponent* tc) {
             if (!tc) return 1.0f;
-            const WorldTransform& t = tc->Get();
-            return (std::max)({ t.scale.x, t.scale.y, t.scale.z, 1.0f });
+            const Vector3& scale = tc->Get().GetScale();
+            return (std::max)({ scale.x, scale.y, scale.z, 1.0f });
             };
 
         Model* model = renderer ? renderer->GetModel() : nullptr;

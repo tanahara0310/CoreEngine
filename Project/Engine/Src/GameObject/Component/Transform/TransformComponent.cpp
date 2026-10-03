@@ -42,11 +42,10 @@ namespace CoreEngine
             // （TransformNormal が w=0 として扱う）。
             const Matrix4x4 parentInverse =
                 MathCore::Matrix::Inverse(parent->GetWorldMatrix());
-            transform_.translate =
-                transform_.translate
-                + MathCore::CoordinateTransform::TransformNormal(delta, parentInverse);
+            transform_.SetTranslate(transform_.GetTranslate()
+                + MathCore::CoordinateTransform::TransformNormal(delta, parentInverse));
         } else {
-            transform_.translate = transform_.translate + delta;
+            transform_.SetTranslate(transform_.GetTranslate() + delta);
         }
 
         // 同一フレーム内の後続ペアが新しい位置で判定されるようワールド行列を更新する

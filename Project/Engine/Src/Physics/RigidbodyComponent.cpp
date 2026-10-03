@@ -22,12 +22,6 @@ namespace CoreEngine
     void RigidbodyComponent::Start()
     {
         transform_ = Sibling<TransformComponent>();
-
-        // 角速度をオイラー角へ積むと軸が寝た瞬間に破綻するので、向きはクォータニオンで持つ
-        if (transform_) {
-            transform_->Get().EulerToQuaternion();
-            transform_->Get().SetRotationMode(WorldTransform::RotationMode::Quaternion);
-        }
         RefreshInertia();
     }
 
@@ -138,17 +132,12 @@ namespace CoreEngine
             return;
         }
 
-        WorldTransform& world = transform->Get();
-
         // dq/dt = 0.5 * ω * q（ω は実部 0 のクォータニオン）
         const Quaternion spin{ angularVelocity_.x, angularVelocity_.y, angularVelocity_.z, 0.0f };
-        const Quaternion current = world.quaternionRotate;
+        const Quaternion current = transform->GetRotation();
         const Quaternion delta = (spin * current) * (0.5f * deltaTime);
 
-        world.quaternionRotate = MathCore::QuaternionMath::Normalize(current + delta);
-
-        // インスペクタ・ギズモ・保存はオイラー角を見るので、写しておく
-        world.QuaternionToEuler();
+        transform->SetRotation(MathCore::QuaternionMath::Normalize(current + delta));
     }
 
     void RigidbodyComponent::IntegratePosition(PhysicsKey key, float deltaTime)

@@ -28,9 +28,9 @@ namespace CoreEngine
                 return;
             }
             if (auto* src = object->GetComponent<ITransformSource>()) {
-                src->Translate() = translate;
-                src->Rotate() = rotate;
-                src->Scale() = scale;
+                src->SetTranslate(translate);
+                src->SetRotate(rotate);
+                src->SetScale(scale);
             }
             object->SetActive(active);
         }
@@ -81,9 +81,9 @@ namespace CoreEngine
                 });
             }
             if (auto* src = raw->GetComponent<ITransformSource>()) {
-                src->Translate() = record.translate;
-                src->Rotate()    = record.rotate;
-                src->Scale()     = record.scale;
+                src->SetTranslate(record.translate);
+                src->SetRotate(record.rotate);
+                src->SetScale(record.scale);
             }
             manager->InvalidateReferences();
             Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,

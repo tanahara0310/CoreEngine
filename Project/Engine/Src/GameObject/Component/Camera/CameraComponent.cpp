@@ -25,7 +25,7 @@ namespace CoreEngine
         if (const TransformComponent* const transform =
                 owner ? owner->GetComponent<TransformComponent>() : nullptr) {
             camera.SetTranslate(transform->GetWorldPosition());
-            camera.SetRotate(transform->Get().rotate);
+            camera.SetRotate(transform->GetRotate());
         }
         camera.SetParameters(parameters_);
     }

@@ -47,39 +47,39 @@ namespace CoreEngine::Script
     Vector3 ScriptTransform::GetPosition() const
     {
         const TransformComponent* const transform = ResolveOrWarn("位置の読み取り");
-        return transform ? transform->Get().translate : Vector3{};
+        return transform ? transform->GetTranslate() : Vector3{};
     }
 
     void ScriptTransform::SetPosition(const Vector3& position)
     {
         if (TransformComponent* const transform = ResolveOrWarn("位置の変更")) {
-            transform->Get().translate = position;
+            transform->SetTranslate(position);
         }
     }
 
     Vector3 ScriptTransform::GetRotation() const
     {
         const TransformComponent* const transform = ResolveOrWarn("回転の読み取り");
-        return transform ? transform->Get().rotate : Vector3{};
+        return transform ? transform->GetRotate() : Vector3{};
     }
 
     void ScriptTransform::SetRotation(const Vector3& rotation)
     {
         if (TransformComponent* const transform = ResolveOrWarn("回転の変更")) {
-            transform->Get().rotate = rotation;
+            transform->SetRotate(rotation);
         }
     }
 
     Vector3 ScriptTransform::GetScale() const
     {
         const TransformComponent* const transform = ResolveOrWarn("拡大の読み取り");
-        return transform ? transform->Get().scale : Vector3{ 1.0f, 1.0f, 1.0f };
+        return transform ? transform->GetScale() : Vector3{ 1.0f, 1.0f, 1.0f };
     }
 
     void ScriptTransform::SetScale(const Vector3& scale)
     {
         if (TransformComponent* const transform = ResolveOrWarn("拡大の変更")) {
-            transform->Get().scale = scale;
+            transform->SetScale(scale);
         }
     }
 

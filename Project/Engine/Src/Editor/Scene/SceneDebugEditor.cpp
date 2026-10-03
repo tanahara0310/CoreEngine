@@ -123,9 +123,9 @@ namespace CoreEngine
                 record.scaleBefore = sBefore;
                 record.activeBefore = aBefore;
                 if (auto* src = obj->GetComponent<ITransformSource>()) {
-                    record.translateAfter = src->Translate();
-                    record.rotateAfter = src->Rotate();
-                    record.scaleAfter = src->Scale();
+                    record.translateAfter = src->GetTranslate();
+                    record.rotateAfter = src->GetRotate();
+                    record.scaleAfter = src->GetScale();
                 }
                 record.activeAfter = obj->IsActive();
                 undoRedoHistory_.Push(record);
@@ -912,7 +912,7 @@ namespace CoreEngine
         }
 
         if (auto* src = raw->GetComponent<ITransformSource>()) {
-            src->Translate() = ComputeDropPosition(normalizedDropPos);
+            src->SetTranslate(ComputeDropPosition(normalizedDropPos));
         }
 
         // スポーンしたオブジェクトを選択状態にする
@@ -925,9 +925,9 @@ namespace CoreEngine
         spawnRecord.serializeKey = raw->GetSerializeKey();
         spawnRecord.modelPath  = modelFileName;
         if (auto* src = raw->GetComponent<ITransformSource>()) {
-            spawnRecord.translate = src->Translate();
-            spawnRecord.rotate    = src->Rotate();
-            spawnRecord.scale     = src->Scale();
+            spawnRecord.translate = src->GetTranslate();
+            spawnRecord.rotate    = src->GetRotate();
+            spawnRecord.scale     = src->GetScale();
         }
         undoRedoHistory_.Push(spawnRecord);
     }
@@ -951,7 +951,7 @@ namespace CoreEngine
         }
 
         if (auto* src = placed->GetComponent<ITransformSource>()) {
-            src->Translate() = ComputeDropPosition(normalizedDropPos);
+            src->SetTranslate(ComputeDropPosition(normalizedDropPos));
         }
         objectSelector_.SelectObject(placed);
 

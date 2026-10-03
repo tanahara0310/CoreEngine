@@ -20,17 +20,28 @@ public:
 
     // 回転はラジアンで持ち、インスペクタでは度で見せる
     REFLECT_BEGIN(TransformComponent, "トランスフォーム")
-        REFLECT_PROPERTY(transform_.translate, "位置",     p.range = Speed(0.05f))
-        REFLECT_PROPERTY(transform_.rotate,    "回転",     p.range = Speed(0.01f), p.displayScale = kDegreesPerRadian)
-        REFLECT_PROPERTY(transform_.scale,     "スケール", p.range = Speed(0.01f))
+        REFLECT_ACCESSOR("translate", "位置",     GetTranslate, SetTranslate, p.range = Speed(0.05f))
+        REFLECT_ACCESSOR("rotate",    "回転",     GetRotate,    SetRotate,    p.range = Speed(0.01f), p.displayScale = kDegreesPerRadian)
+        REFLECT_ACCESSOR("scale",     "スケール", GetScale,     SetScale,     p.range = Speed(0.01f))
         REFLECT_OBJECT_REF(parent_, "親")
     REFLECT_END()
 
     // ===== ITransformSource（ギズモ・インスペクタ・Undo/Redo からの共通入口） =====
 
-    Vector3& Translate() override { return transform_.translate; }
-    Vector3& Rotate()    override { return transform_.rotate; }
-    Vector3& Scale()     override { return transform_.scale; }
+    Vector3 GetTranslate() const override { return transform_.GetTranslate(); }
+    void SetTranslate(const Vector3& translate) override { transform_.SetTranslate(translate); }
+    Vector3 GetRotate() const override { return transform_.GetRotationEuler(); }
+    void SetRotate(const Vector3& radians) override { transform_.SetRotationEuler(radians); }
+    Vector3 GetScale() const override { return transform_.GetScale(); }
+    void SetScale(const Vector3& scale) override { transform_.SetScale(scale); }
+
+    // ===== 回転（クォータニオン） =====
+
+    /// @brief 回転（ワールド行列はこれから作る）
+    const Quaternion& GetRotation() const { return transform_.GetRotation(); }
+
+    /// @brief 回転を設定する（インスペクタと保存に出るオイラー角も作り直す）
+    void SetRotation(const Quaternion& rotation) { transform_.SetRotation(rotation); }
 
     /// @brief 書き換わった位置・回転・スケールをワールド行列へ反映する
     /// @note 更新が止まっているとき（再生停止中）でもインスペクタと Undo を効かせるために要る。
@@ -49,6 +60,9 @@ public:
 
     /// @brief 親を引き直してからワールド行列を計算し、GPU へ転送する
     void SyncWorldMatrix();
+
+    /// @brief 計算したワールド行列を上書きして GPU へ転送する（ソケット追従など。次の SyncWorldMatrix で作り直される）
+    void SetWorldMatrix(const Matrix4x4& matrix) { transform_.SetWorldMatrix(matrix); }
 
     // ===== 親子 =====
 
@@ -69,7 +83,6 @@ public:
 
     // ===== アクセサ =====
 
-    WorldTransform& Get() { return transform_; }
     const WorldTransform& Get() const { return transform_; }
 
     // ===== コライダー向けの問い合わせ =====
@@ -79,7 +92,7 @@ public:
 
     /// @brief ワールド空間のスケール（親の階層スケールを含む）
     /// @details 行ベクトル規約（p' = p * M）なので各行が基底ベクトル。その長さがスケール。
-    ///          `transform_.scale` を直接返すと親の階層スケールを取りこぼす。
+    ///          ローカルのスケール（GetScale）は親の階層スケールを含まない。
     Vector3 GetWorldScale() const;
 
     // ===== 衝突解決（押し出し） =====

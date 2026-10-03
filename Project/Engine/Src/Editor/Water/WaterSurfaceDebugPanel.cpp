@@ -67,7 +67,7 @@ void WaterSurfaceDebugPanel::DrawCommonDebugSection(WaterRenderFeature& runtimeC
 
 	ImGui::Text("現在の描画方式: %s", waterPlane->IsUsingFFTOcean() ? "FFTOcean" : "Gerstner Wave");
 	ImGui::Text("反射が有効: %s", frameConstants.reflectionEnabled != 0 ? "はい" : "いいえ");
-	ImGui::Text("水面高さ: %.3f", waterPlane->GetTransform().translate.y);
+	ImGui::Text("水面高さ: %.3f", waterPlane->GetTransform().GetTranslate().y);
 	ImGui::Text("波時間: %.3f", waterConstants.time);
 	ImGui::Text("有効波数: %u", waterConstants.activeWaveCount);
 

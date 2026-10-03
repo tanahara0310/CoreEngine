@@ -252,7 +252,7 @@ namespace CoreEngine::ObjectEditing
         {
             ComponentHost::DataAttachScope dataScope(*object);
             if (TransformComponent* const transform = object->AddComponent<TransformComponent>()) {
-                transform->Get().translate = position;
+                transform->SetTranslate(position);
             }
         }
         manager.InvalidateReferences();
@@ -281,7 +281,7 @@ namespace CoreEngine::ObjectEditing
         {
             ComponentHost::DataAttachScope dataScope(*object);
             if (TransformComponent* const transform = object->AddComponent<TransformComponent>()) {
-                transform->Get().translate = position;
+                transform->SetTranslate(position);
             }
             if (kind == ParticleKind::Gpu) {
                 object->AddComponent<GpuParticleSystemComponent>();
@@ -349,7 +349,9 @@ namespace CoreEngine::ObjectEditing
 
         // 元と重ならないよう少しずらす
         if (ITransformSource* const transform = copy->GetComponent<ITransformSource>()) {
-            transform->Translate().x += 1.0f;
+            Vector3 translate = transform->GetTranslate();
+            translate.x += 1.0f;
+            transform->SetTranslate(translate);
         } else if (RectTransformComponent* const rect = copy->GetComponent<RectTransformComponent>()) {
             const Vector2 position = rect->GetAnchoredPosition();
             rect->SetAnchoredPosition({ position.x + kUIDuplicateOffset, position.y + kUIDuplicateOffset });

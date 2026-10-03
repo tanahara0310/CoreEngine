@@ -247,7 +247,7 @@ namespace CoreEngine
     float WaterRenderFeature::GetWaterHeight() const
     {
         const WaterSurfaceComponent* const waterPlane = waterPlane_.Get();
-        return waterPlane ? waterPlane->GetTransform().translate.y : 0.0f;
+        return waterPlane ? waterPlane->GetTransform().GetTranslate().y : 0.0f;
     }
 
     WaterSurfaceSimulator* WaterRenderFeature::GetActiveSimulator() const
@@ -288,8 +288,10 @@ namespace CoreEngine
         waterPlane_.Set(waterPlane);
         ownsWaterPlane_ = true;
 
-        waterPlane->GetTransform().translate = config_.translate;
-        waterPlane->GetTransform().scale = config_.scale;
+        if (TransformComponent* const transform = object->GetComponent<TransformComponent>()) {
+            transform->SetTranslate(config_.translate);
+            transform->SetScale(config_.scale);
+        }
         ConfigureDefaultMaterial();
     }
 
@@ -631,7 +633,7 @@ namespace CoreEngine
         }
 
         WaterSurfaceSimulationInput simulationInput{};
-        simulationInput.waterHeight = waterPlane->GetTransform().translate.y;
+        simulationInput.waterHeight = waterPlane->GetTransform().GetTranslate().y;
         simulationInput.gerstnerConstants = &waterPlane->GetWaterConstants();
 
         auto* activeSimulator = GetActiveSimulator();
@@ -653,10 +655,10 @@ namespace CoreEngine
         const float localSize = waterPlane->GetSize();
         if (localSize > 1.0e-4f) {
             const auto& transform = waterPlane->GetTransform();
-            waterSurfaceState_.regionCenterXZ[0] = transform.translate.x;
-            waterSurfaceState_.regionCenterXZ[1] = transform.translate.z;
-            waterSurfaceState_.regionHalfExtentXZ[0] = 0.5f * localSize * transform.scale.x;
-            waterSurfaceState_.regionHalfExtentXZ[1] = 0.5f * localSize * transform.scale.z;
+            waterSurfaceState_.regionCenterXZ[0] = transform.GetTranslate().x;
+            waterSurfaceState_.regionCenterXZ[1] = transform.GetTranslate().z;
+            waterSurfaceState_.regionHalfExtentXZ[0] = 0.5f * localSize * transform.GetScale().x;
+            waterSurfaceState_.regionHalfExtentXZ[1] = 0.5f * localSize * transform.GetScale().z;
             waterSurfaceState_.regionValid = 1;
         }
         // coverage 判定のメッシュ同一基準化に使う実際の頂点グリッド分割数
