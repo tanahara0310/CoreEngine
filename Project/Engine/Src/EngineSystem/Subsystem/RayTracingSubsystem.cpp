@@ -28,7 +28,6 @@
 #include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
 #include "Graphics/Render/Pass/RenderPass.h"
 #include "Graphics/Water/FFTOceanManager.h"
-#include "GameObject/Component/Render/FishSchoolComponent.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/GameObjectManager.h"
 #include "Particle/ParticleSystemComponent.h"
@@ -366,26 +365,6 @@ namespace CoreEngine
                             *descriptors, hitInstances, hitSubMeshes);
                     }
                 }
-            });
-
-        // ===== 魚の群れも 1 匹ずつキャスターとして載せる =====
-        // BLAS は種類（モデル）ごとに共有する。体のくねりは 1 cm ほどなので静止形で足りる。
-        objMgr->ForEachComponent<FishSchoolComponent>(
-            [&](FishSchoolComponent& school) {
-                school.ForEachRayTracingInstance([&](const Model& fishModel, const Matrix4x4& world) {
-                    const ModelResource* resource = fishModel.GetModelResource();
-                    if (!resource || !resource->HasBLAS()) return;
-
-                    AccelerationStructureManager::InstanceDesc inst;
-                    inst.blasIndex = resource->GetBLASIndex();
-                    inst.SetTransform(world);
-                    inst.instanceMask = RayTracingInstanceMask::kCreature;
-                    tlasInstances.push_back(inst);
-                    if (descriptors) {
-                        AppendHitInstance(*asMgr, inst, *resource, &fishModel, D3D12_GPU_DESCRIPTOR_HANDLE{},
-                            *descriptors, hitInstances, hitSubMeshes);
-                    }
-                });
             });
 
         if (!tlasInstances.empty()) {

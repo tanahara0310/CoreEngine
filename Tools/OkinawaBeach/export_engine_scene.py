@@ -4,7 +4,7 @@
 
 出力: Projects/Sandbox/Application/Assets/Scenes/OkinawaBeachScene/
   - 置いた物 1 つにつき 1 つの JSON（Transform + MeshRenderer）。種類ごとのグループ（親）の下にまとめる
-  - 魚の群れは FishSchool（Models/Okinawa/FishSchools の配置 JSON を読む）、ウミガメは Animator（泳ぎ）
+  - ウミガメは Animator（泳ぎ）。魚の群れは確認用シーンとの照合にだけ使い、エンジンのシーンへは書かない
   - 太陽の向きとカメラの構図（全景 main）は確認用シーンと同じ。水面と見た目の設定は WaterTestScene の値を使う
 あわせて Models/Okinawa のアセットに .meta（GUID）が無ければ作る（シーンは GUID とパスでアセットを指す）。
 書き出し先に前からある JSON は、今回書かないものを消す（エディタで直した内容は上書きされる）。
@@ -33,7 +33,7 @@ from collections import defaultdict
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import bpy  # noqa: E402
-from mathutils import Matrix, Quaternion, Vector  # noqa: E402
+from mathutils import Matrix, Vector  # noqa: E402
 
 import assemble as A  # noqa: E402
 from okinawa import common as C  # noqa: E402
@@ -60,7 +60,7 @@ GROUPS = [
     ("Pier", ("Pier_",)),
     ("Reef", ("Coral_", "GiantClam", "SeaUrchin", "Anemone_Clownfish", "Seagrass_Patch_", "SeaCucumber",
               "BlueStarfish")),
-    ("SeaLife", ("SeaTurtle",)),  # 魚の群れもここへ入れる
+    ("SeaLife", ("SeaTurtle",)),
 ]
 ANIMATED = {"SeaTurtle": "Swim"}  # 骨のアニメーションで動かすモデル → 最初に流すクリップ
 CAMERA = "main"                   # エンジンの MainCamera にする確認用カメラ
@@ -344,13 +344,7 @@ def animator(model):
             "parameters": {"clips": [{"name": ANIMATED[model]}], "model": project_path(model_file(model))}}
 
 
-def fish_school(name):
-    return {"enabled": True, "type": "FishSchool",
-            "parameters": {"castShadow": True, "drift": 1.0, "school": asset_ref(school_file(name)),
-                           "swimSpeed": 1.0}}
-
-
-def build_objects(items, schools):
+def build_objects(items):
     """書き出すオブジェクト（ファイル名 → 中身）。名前が重なるものは「名前 (1)」「名前 (2)」…にする"""
     counts = defaultdict(int)
 
@@ -364,8 +358,6 @@ def build_objects(items, schools):
         name = unique(model)
         comp = animator(model) if model in ANIMATED else mesh_renderer(model)
         members[group_of(model)].append((name, M, comp))
-    for school, M, _ in schools:
-        members["SeaLife"].append((unique(school), M, fish_school(school)))
 
     objects = {}
     order = 0
@@ -414,7 +406,7 @@ def model_name(path):
     return os.path.splitext(os.path.basename(path))[0]
 
 
-def check_written(objects, items, schools):
+def check_written(objects, items):
     """書いた Transform から組んだ行列（親も掛ける）と、Blender の行列（エンジン座標へ移したもの）の最大の差"""
     by_id = {obj["id"]: name for name, obj in objects.items()}
 
@@ -425,7 +417,7 @@ def check_written(objects, items, schools):
             M = world(by_id[params["parent"]["ref"]]) @ M  # 行ベクトル規約の local * parent と同じ
         return M
 
-    placed, fish_placed = defaultdict(list), defaultdict(list)
+    placed = defaultdict(list)
     for name, obj in objects.items():
         renderer = component(obj, "MeshRenderer")
         if renderer and renderer["parameters"]["model"]:
@@ -433,29 +425,14 @@ def check_written(objects, items, schools):
         anim = component(obj, "Animator")
         if anim:
             placed[model_name(anim["parameters"]["model"])].append(world(name))
-        school = component(obj, "FishSchool")
-        if school:
-            # FishSchoolComponent と同じく、配置 JSON の 1 匹の行列（クォータニオン）に群れの行列を掛ける
-            with open(os.path.join(PROJECT_DIR, school["parameters"]["school"]["path"]), encoding="utf-8") as f:
-                data = json.load(f)
-            for it in data["instances"]:
-                qx, qy, qz, qw = it["rotation"]
-                local = Matrix.LocRotScale(Vector(it["position"]), Quaternion((qw, qx, qy, qz)),
-                                           Vector((it["scale"],) * 3))
-                fish_placed[it["model"]].append(world(name) @ local)
 
-    expected, fish_expected = defaultdict(list), defaultdict(list)
+    expected = defaultdict(list)
     for model, M in items:
         expected[model].append(to_engine_matrix(M))
-    for _, _, members in schools:
-        for model, M in members:
-            fish_expected[model].append(to_engine_matrix(M))
     worst, missing, extra = match(expected, placed)
-    fish_worst, fish_missing, fish_extra = match(fish_expected, fish_placed)
-    if missing or extra or fish_missing or fish_extra:
-        raise SystemExit(f"書いたシーンの数が合いません（足りない {missing + fish_missing}、"
-                         f"余り {extra + fish_extra}）")
-    return max(worst, fish_worst)
+    if missing or extra:
+        raise SystemExit(f"書いたシーンの数が合いません（足りない {missing}、余り {extra}）")
+    return worst
 
 
 def main():
@@ -479,7 +456,7 @@ def main():
         raise SystemExit(f"確認用シーンと食い違います（魚の足りない {fish_missing}、余り {fish_extra}）")
 
     made = ensure_all_meta()
-    objects = build_objects(items, schools)
+    objects = build_objects(items)
 
     os.makedirs(OUT_DIR, exist_ok=True)
     stale = [f for f in os.listdir(OUT_DIR)
@@ -491,7 +468,7 @@ def main():
     write_json(os.path.join(OUT_DIR, "_scene.json"), load_template("_scene.json"))
     write_json(os.path.join(OUT_DIR, "_environment.json"), load_template("_environment.json"))
 
-    diff = check_written(objects, items, schools)
+    diff = check_written(objects, items)
     print(f"書き出し: {OUT_DIR}（オブジェクト {len(objects)} 個、消した古いファイル {len(stale)} 個、"
           f"作った .meta {made} 個）")
     print(f"書いた値をエンジンの式で組み直した行列と、Blender の行列の最大の差: {diff:.2e}")

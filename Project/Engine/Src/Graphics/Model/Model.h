@@ -9,7 +9,6 @@
 #include <memory>
 #include <vector>
 #include <optional>
-#include <span>
 
 #include "Graphics/RHI/Command/FrameSync.h" // kMaxFramesInFlight
 #include "ModelResource.h"
@@ -72,20 +71,6 @@ namespace CoreEngine
         /// @param textureHandle テクスチャハンドル（省略時はモデル組み込みテクスチャを使用）
         void Draw(const WorldTransform& transform, const DrawViewInfo& view,
             D3D12_GPU_DESCRIPTOR_HANDLE textureHandle = {});
-
-        /// @brief 同じモデルを複数のワールド行列でまとめて描く（インスタンシング。魚の群れ・散布物用）
-        /// @param worlds   インスタンスごとのワールド行列
-        /// @param prevWVPs インスタンスごとの前フレーム WVP（モーションベクター用。worlds と同じ数）。
-        ///                 空なら「動いていない」（今フレームの WVP と同じ）として描く。
-        ///                 前フレームに描いていない・GameView 以外のビューでは空を渡すこと
-        /// @param view     ビュー/パス情報
-        /// @param textureHandle ベースカラーの上書き（省略時はモデル組み込み）
-        /// @details 行列をインスタンシングバッチへ積むだけなので、同じマテリアルの全インスタンスが
-        ///          サブメッシュ・LOD ごとに 1 回の DrawIndexedInstanced になる。LOD はインスタンスごとに選ぶ。
-        /// @note 視錐台カリングは呼び出し側で行う（ここでは全部積む）。Hi-Z の遮蔽判定と、
-        ///       Draw が持つモデル単位のモーションベクター履歴は使わない。スキニングモデルは描かない。
-        void DrawInstances(std::span<const Matrix4x4> worlds, std::span<const Matrix4x4> prevWVPs,
-            const DrawViewInfo& view, D3D12_GPU_DESCRIPTOR_HANDLE textureHandle = {});
 
         /// @brief 初期化されているか確認
         /// @return 初期化済みならtrue

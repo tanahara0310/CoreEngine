@@ -1,4 +1,4 @@
-"""エンジン（CoreEngine）の頂点アニメーションと魚の群れの配置が、Blender の確認用デモと同じ動き・配置になるかを調べる
+"""エンジン（CoreEngine）の頂点アニメーションが、Blender の確認用デモと同じ動きになるかを調べる
 
 使い方（Linux でも動く。エンジンのビルドは不要）:
     pip install slangpy numpy
@@ -10,9 +10,6 @@
    ApplyVertexAnimation を呼ぶ）を slang の CPU バックエンドで実行し、書き出した glTF の全頂点について
    okinawa/motion.py のジオメトリノードと同じ式（numpy 版、Blender 座標）の結果と比べる。
    出力は VertexData の並び（位置だけ差し替え）なので、位置以外がそのまま写っていることも確かめる。
-2. 群れの配置 JSON の位置・回転を、FishSchoolComponent と同じ MathCore::Matrix::MakeAffine
-   （DirectXMath の XMMatrixAffineTransformation = S R T、行ベクトル）で行列にし、
-   Blender の確認用シーン（assemble.place_school: T(p) R S、列ベクトル）の配置と一致するかを見る。
 
 座標: エンジン = glTF の (x, y, -z)（Assimp の ConvertToLeftHanded）、Blender = glTF の (x, -z, y)。
 つまりエンジン = Blender の (x, z, y)。
@@ -156,23 +153,6 @@ def object_phase(world):
     return float(np.dot(world[3, :3], [0.371, 0.137, 0.613])) % 1.0
 
 
-def xm_rotation_quaternion(q):
-    """DirectXMath の XMMatrixRotationQuaternion（行ベクトル規約）"""
-    x, y, z, w = q
-    return np.array([
-        [1 - 2 * y * y - 2 * z * z, 2 * x * y + 2 * z * w, 2 * x * z - 2 * y * w],
-        [2 * x * y - 2 * z * w, 1 - 2 * x * x - 2 * z * z, 2 * y * z + 2 * x * w],
-        [2 * x * z + 2 * y * w, 2 * y * z - 2 * x * w, 1 - 2 * x * x - 2 * y * y]])
-
-
-def blender_quaternion_matrix(w, x, y, z):
-    """mathutils.Quaternion.to_matrix（列ベクトル規約）"""
-    return np.array([
-        [1 - 2 * (y * y + z * z), 2 * (x * y - w * z), 2 * (x * z + w * y)],
-        [2 * (x * y + w * z), 1 - 2 * (x * x + z * z), 2 * (y * z - w * x)],
-        [2 * (x * z - w * y), 2 * (y * z + w * x), 1 - 2 * (x * x + y * y)]])
-
-
 # ---------------------------------------------------------------------------
 # 1. 頂点アニメーション
 # ---------------------------------------------------------------------------
@@ -295,41 +275,9 @@ def check_vertex_animation():
     return worst
 
 
-# ---------------------------------------------------------------------------
-# 2. 魚の群れの配置
-# ---------------------------------------------------------------------------
-def check_schools():
-    print("2. 魚の群れの配置（エンジンの MakeAffine vs Blender の確認用シーン）")
-    P = np.array([[1, 0, 0], [0, 0, 1], [0, 1, 0]], float)
-    rng = np.random.default_rng(1)
-    worst = 0.0
-    folder = os.path.join(MODELS, "FishSchools")
-    for file in sorted(os.listdir(folder)):
-        if not file.endswith(".json"):
-            continue
-        with open(os.path.join(folder, file), encoding="utf-8") as f:
-            data = json.load(f)
-        for it in data["instances"]:
-            qx, qy, qz, qw = it["rotation"]
-            s = it["scale"]
-            engine = np.eye(4)
-            engine[:3, :3] = s * xm_rotation_quaternion((qx, qy, qz, qw))
-            engine[3, :3] = it["position"]
-            blender = np.eye(4)   # fish.from_engine と同じ戻し方
-            blender[:3, :3] = s * blender_quaternion_matrix(qw, -qx, -qz, -qy)
-            blender[:3, 3] = swap_yz(it["position"])
-            for v in [np.array([0.03, 0.0, 0.0]), np.array([0.0, 0.0, 0.01]), rng.normal(size=3) * 0.02]:
-                wb = (blender @ np.append(v, 1.0))[:3]
-                we = (np.append(P @ v, 1.0) @ engine)[:3]
-                worst = max(worst, float(np.abs(we - P @ wb).max()))
-        print(f"  {file:<24} {len(data['instances']):3d} 匹")
-    print(f"  位置の差の最大 {worst:.2e} m")
-    return worst
-
-
 def main():
     bad = check_anim_values()
-    worst = max(check_vertex_animation(), check_schools())
+    worst = check_vertex_animation()
     ok = worst < TOLERANCE and bad == 0
     print("OK" if ok else "MISMATCH", f"（最大の差 {worst:.2e} m、許容 {TOLERANCE:g} m。値の範囲を外れたモデル {bad} 個）")
     return 0 if ok else 1
