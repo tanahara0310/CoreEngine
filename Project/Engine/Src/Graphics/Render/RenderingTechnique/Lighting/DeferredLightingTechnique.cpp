@@ -2,7 +2,6 @@
 #include "DeferredLightingTechnique.h"
 #include "DeferredLightingBindings.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/RenderManager.h"
@@ -16,7 +15,6 @@
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/RootSignature/ShaderBinder.h"
 #include "Utility/Logger/Logger.h"
-#include <cstring>
 #include <cassert>
 
 namespace CoreEngine
@@ -46,7 +44,13 @@ namespace CoreEngine
     {
         RenderingTechniqueBase::Initialize(dxCommon);
         ResolveBindings();
-        CreateConstantBuffers();
+
+        // 毎フレーム変わる定数は、使うフレームの UploadRing に置く
+        UploadRing& uploadRing = dxCommon->GetUploadRing();
+        fallbackCamera_.Initialize(uploadRing);
+        depthReconstruction_.Initialize(uploadRing);
+        depthReconstruction_.Set(MathCore::Matrix::Identity());
+        waterCausticsDebug_.Initialize(uploadRing);
     }
 
     void DeferredLightingTechnique::ResolveBindings()
@@ -57,107 +61,6 @@ namespace CoreEngine
         // 種別の食い違いはここで throw される（無言で描画が壊れるのを防ぐ）。
         bindings_ = BindingTable::Resolve(
             *reflectionData_, DeferredLightingBind::kDecls, GetTechniqueName());
-    }
-
-    // -------------------------------------------------------------------------
-    // 定数バッファの作成
-    // -------------------------------------------------------------------------
-    void DeferredLightingTechnique::CreateConstantBuffers()
-    {
-        assert(graphicsCore_);
-
-        // 単位行列（各定数バッファの初期値）
-        const float identity[16] = {
-            1, 0, 0, 0,
-            0, 1, 0, 0,
-            0, 0, 1, 0,
-            0, 0, 0, 1
-        };
-
-        // 深度復元用 View*Projection 逆行列専用の定数バッファをビュー種別ごとに作成（64 バイト = float4x4）
-        for (size_t vi = 0; vi < kViewTypeCount; ++vi) {
-            depthReconstructionBuffers_[vi] = ResourceFactory::CreateBufferResource(
-                graphicsCore_->GetDevice(), sizeof(float) * 16);
-            depthReconstructionCBVAddresses_[vi] = depthReconstructionBuffers_[vi]->GetGPUVirtualAddress();
-            float* drMapped = nullptr;
-            depthReconstructionBuffers_[vi]->Map(0, nullptr, reinterpret_cast<void**>(&drMapped));
-            std::memcpy(drMapped, identity, sizeof(identity));
-            depthReconstructionBuffers_[vi]->Unmap(0, nullptr);
-        }
-
-        waterCausticsDebugBuffer_ = ResourceFactory::CreateBufferResource(
-            graphicsCore_->GetDevice(), sizeof(WaterCausticsDebugSettings));
-        waterCausticsDebugCBVAddress_ = waterCausticsDebugBuffer_->GetGPUVirtualAddress();
-        UpdateWaterCausticsDebugBuffer();
-
-        // 空アンビエントパラメータ定数バッファ（既定は無効。Execute で毎フレーム更新）
-        skyAmbientBuffer_ = ResourceFactory::CreateBufferResource(
-            graphicsCore_->GetDevice(), sizeof(SkyAmbientParams));
-        skyAmbientCBVAddress_ = skyAmbientBuffer_->GetGPUVirtualAddress();
-        SkyAmbientParams skyDefaults{};
-        SkyAmbientParams* skyMapped = nullptr;
-        skyAmbientBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&skyMapped));
-        *skyMapped = skyDefaults;
-        skyAmbientBuffer_->Unmap(0, nullptr);
-
-        // カメラ不在フレーム用フォールバック（HLSL 側 Camera = float3 worldPosition + padding）。
-        // 既定は原点。有効なカメラがあるフレームに UpdateFallbackCameraPosition で追従させる。
-        fallbackCameraBuffer_ = ResourceFactory::CreateBufferResource(
-            graphicsCore_->GetDevice(), sizeof(float) * 4);
-        fallbackCameraCBVAddress_ = fallbackCameraBuffer_->GetGPUVirtualAddress();
-        const float fallbackCameraDefaults[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-        float* fallbackCameraMapped = nullptr;
-        fallbackCameraBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&fallbackCameraMapped));
-        std::memcpy(fallbackCameraMapped, fallbackCameraDefaults, sizeof(fallbackCameraDefaults));
-        fallbackCameraBuffer_->Unmap(0, nullptr);
-    }
-
-    // -------------------------------------------------------------------------
-    // 深度復元用 View*Projection 逆行列を GPU バッファに書き込む（ビューごとに呼び出し）
-    // -------------------------------------------------------------------------
-    void DeferredLightingTechnique::UpdateDepthReconstruction(RenderViewType viewType, const Matrix4x4& invViewProj)
-    {
-        const size_t vi = static_cast<size_t>(viewType);
-        if (vi >= kViewTypeCount || !depthReconstructionBuffers_[vi]) {
-            return;
-        }
-        float* mapped = nullptr;
-        depthReconstructionBuffers_[vi]->Map(0, nullptr, reinterpret_cast<void**>(&mapped));
-        std::memcpy(mapped, &invViewProj, sizeof(Matrix4x4));
-        depthReconstructionBuffers_[vi]->Unmap(0, nullptr);
-    }
-
-    // -------------------------------------------------------------------------
-    // フォールバック用カメラ位置を書き込む（有効なカメラがあるフレームのみ呼ばれる）
-    // -------------------------------------------------------------------------
-    void DeferredLightingTechnique::UpdateFallbackCameraPosition(const Vector3& worldPosition)
-    {
-        if (!fallbackCameraBuffer_) {
-            return;
-        }
-        const float values[4] = { worldPosition.x, worldPosition.y, worldPosition.z, 0.0f };
-        float* mapped = nullptr;
-        fallbackCameraBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mapped));
-        std::memcpy(mapped, values, sizeof(values));
-        fallbackCameraBuffer_->Unmap(0, nullptr);
-    }
-
-    void DeferredLightingTechnique::SetWaterCausticsDebugSettings(const WaterCausticsDebugSettings& settings)
-    {
-        waterCausticsDebugSettings_ = settings;
-        UpdateWaterCausticsDebugBuffer();
-    }
-
-    void DeferredLightingTechnique::UpdateWaterCausticsDebugBuffer()
-    {
-        if (!waterCausticsDebugBuffer_) {
-            return;
-        }
-
-        float* mapped = nullptr;
-        waterCausticsDebugBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mapped));
-        std::memcpy(mapped, &waterCausticsDebugSettings_, sizeof(WaterCausticsDebugSettings));
-        waterCausticsDebugBuffer_->Unmap(0, nullptr);
     }
 
     // -------------------------------------------------------------------------
@@ -224,18 +127,10 @@ namespace CoreEngine
         // アルファ 1.0 でクリアされるため、空のフレームでもアンリット判定の
         // 早期 return には入らず、全ピクセルが gCamera を読みに行く。
         binder.Set(bindings_[DeferredLightingBind::gCamera],
-            (cameraCBVAddress_ != 0) ? cameraCBVAddress_ : fallbackCameraCBVAddress_);
+            (cameraCBVAddress_ != 0) ? cameraCBVAddress_ : fallbackCamera_.Address());
 
-        // ===== 深度復元用 CBV（ビュー種別ごとに独立したバッファを参照） =====
-        {
-            // gCamera と同じ理由で、範囲外のビュー種別が来ても未バインドで描かない。
-            // その場合は GameView 用のバッファで代替する（絵は狂うが GPU は落ちない）。
-            const size_t requested = static_cast<size_t>(context.viewSettings.viewType);
-            const size_t vi = (requested < kViewTypeCount) ? requested : 0;
-            if (depthReconstructionCBVAddresses_[vi] != 0) {
-                binder.Set(bindings_[DeferredLightingBind::gDepthReconstruction], depthReconstructionCBVAddresses_[vi]);
-            }
-        }
+        // ===== 深度復元用 CBV（このビューを描く前に設定した行列） =====
+        binder.Set(bindings_[DeferredLightingBind::gDepthReconstruction], depthReconstruction_.Address());
 
         // ===== ライトバインド（LightManager 経由） =====
         // 未解決スロットは ShaderBinder 側で no-op になるので、ここでの IsValid 判定は不要
@@ -266,9 +161,7 @@ namespace CoreEngine
             binder.Set(bindings_[DeferredLightingBind::gWaterCaustics], waterCausticsHandle_);
         }
 
-        if (waterCausticsDebugCBVAddress_ != 0) {
-            binder.Set(bindings_[DeferredLightingBind::gWaterCausticsDebug], waterCausticsDebugCBVAddress_);
-        }
+        binder.Set(bindings_[DeferredLightingBind::gWaterCausticsDebug], waterCausticsDebug_.Address());
 
         // ===== 空アンビエント（大気散乱 SH。Sky Light 相当） =====
         {
@@ -285,21 +178,13 @@ namespace CoreEngine
                 && atmosphere->IsSkyEnvironmentReady()
                 && atmosphere->GetSkySpecularSRVHandle().ptr != 0;
 
-            // フラグ・スケールを毎フレーム CB へ反映する
-            if (skyAmbientBuffer_) {
-                SkyAmbientParams params{};
-                params.enabled = skyAmbientUsable ? 1u : 0u;
-                params.scale = atmosphere ? atmosphere->GetSkyAmbientScale() : 0.0f;
-                params.specularEnabled = skySpecularUsable ? 1u : 0u;
-                SkyAmbientParams* mapped = nullptr;
-                skyAmbientBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mapped));
-                *mapped = params;
-                skyAmbientBuffer_->Unmap(0, nullptr);
-            }
-
-            if (skyAmbientCBVAddress_ != 0) {
-                binder.Set(bindings_[DeferredLightingBind::gSkyAmbient], skyAmbientCBVAddress_);
-            }
+            // フラグ・スケールを毎フレーム UploadRing に置く
+            SkyAmbientParams params{};
+            params.enabled = skyAmbientUsable ? 1u : 0u;
+            params.scale = atmosphere ? atmosphere->GetSkyAmbientScale() : 0.0f;
+            params.specularEnabled = skySpecularUsable ? 1u : 0u;
+            binder.Set(bindings_[DeferredLightingBind::gSkyAmbient],
+                context.dxCommon->GetUploadRing().AllocateConstants(params));
             // SH バッファはバッファ自体が常に存在する（AtmosphereManager 初期化時に生成）。
             // enabled=0 のフレームではシェーダーが読まないため内容は問われない
             if (atmosphere && atmosphere->GetSkyIrradianceSHSRVHandle().ptr != 0) {

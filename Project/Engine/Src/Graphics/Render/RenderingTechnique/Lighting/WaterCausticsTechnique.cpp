@@ -9,12 +9,10 @@
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetDescriptor.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Camera/View/ViewInfo.h"
 #include "Math/MathCore.h"
 #include "Utility/Logger/Logger.h"
-#include <cassert>
 #include <cstring>
 
 #ifdef CORE_EDITOR
@@ -29,13 +27,6 @@ namespace CoreEngine
             "r.WaterCaustics.Enabled", true,
             "水面コースティクスの適用を有効にする",
             CVarRange{}, CVarFlags::NoUI };
-    }
-
-    // 定数バッファと PSO は基底が用意する。ここでは水面固有の初期値だけを入れる
-    void WaterCausticsTechnique::Initialize(GraphicsCore* dxCommon)
-    {
-        RenderingTechniqueBase::Initialize(dxCommon);
-        CreateConstantBuffers();
     }
 
     // 水面の法線から屈折方向を求め、集光の度合いをスクリーンスペースで求める。
@@ -68,9 +59,6 @@ namespace CoreEngine
             return;
         }
 
-        UpdateWaterSurfaceBuffer(context.waterSurfaceState);
-        UpdateMainLightBuffer(context.lightManager);
-
         // 深度復元用 View*Projection 逆行列（実行中のビューの ViewInfo から取る）
         if (context.frameViews) {
             const ViewInfo& view = context.frameViews->Get(context.viewSettings.viewType);
@@ -78,8 +66,15 @@ namespace CoreEngine
                 std::memcpy(params_.invViewProjMatrix, &view.invViewProjection, sizeof(float) * 16);
             }
         }
-        UpdateParamsBuffer();
         diagnostics_.normalHandle = gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness).ptr;
+
+        // 定数は毎フレーム UploadRing に置く
+        UploadRing& uploadRing = context.dxCommon->GetUploadRing();
+        const D3D12_GPU_VIRTUAL_ADDRESS mainLightAddress =
+            uploadRing.AllocateConstants(BuildMainLightConstants(context.lightManager));
+        const D3D12_GPU_VIRTUAL_ADDRESS waterSurfaceAddress =
+            uploadRing.AllocateConstants(BuildWaterSurfaceConstants(context.waterSurfaceState));
+        const D3D12_GPU_VIRTUAL_ADDRESS paramsAddress = uploadRing.AllocateConstants(params_);
 
         if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(target)) {
             offscreen->SetUseDepthBuffer(false);
@@ -106,21 +101,18 @@ namespace CoreEngine
         }
 
         const int mainLightIdx = GetRootParamIndex("gMainLight");
-        if (mainLightIdx >= 0 && mainLightBuffer_) {
-            cmdList->SetGraphicsRootConstantBufferView(mainLightIdx,
-                mainLightBuffer_->GetGPUVirtualAddress());
+        if (mainLightIdx >= 0) {
+            cmdList->SetGraphicsRootConstantBufferView(mainLightIdx, mainLightAddress);
         }
 
         const int waterSurfaceIdx = GetRootParamIndex("gWaterSurfaceData");
-        if (waterSurfaceIdx >= 0 && waterSurfaceBuffer_) {
-            cmdList->SetGraphicsRootConstantBufferView(waterSurfaceIdx,
-                waterSurfaceBuffer_->GetGPUVirtualAddress());
+        if (waterSurfaceIdx >= 0) {
+            cmdList->SetGraphicsRootConstantBufferView(waterSurfaceIdx, waterSurfaceAddress);
         }
 
         const int paramsIdx = GetRootParamIndex("WaterCausticsParams");
-        if (paramsIdx >= 0 && paramsBuffer_) {
-            cmdList->SetGraphicsRootConstantBufferView(paramsIdx,
-                paramsBuffer_->GetGPUVirtualAddress());
+        if (paramsIdx >= 0) {
+            cmdList->SetGraphicsRootConstantBufferView(paramsIdx, paramsAddress);
         }
 
         DrawFullscreenQuad(cmdList);
@@ -151,30 +143,24 @@ namespace CoreEngine
     void WaterCausticsTechnique::DrawImGui()
     {
 #ifdef CORE_EDITOR
-        bool changed = false;
         ImGui::PushID("WaterCausticsTechnique");
-        changed |= UI::SliderFloat("Intensity", params_.intensity, 0.0f, 8.0f);
-        changed |= UI::SliderFloat("Depth Attenuation", params_.depthAttenuation, 0.0f, 2.0f);
-        changed |= UI::SliderFloat("Curvature Scale", params_.curvatureScale, 0.0f, 30.0f);
-        changed |= UI::SliderFloat("Surface Sample Radius", params_.surfaceSampleRadius, 0.05f, 2.0f);
-        changed |= UI::SliderFloat("Refractive Index", params_.refractiveIndex, 1.0f, 1.6f);
-        changed |= UI::SliderFloat("Receiver Normal Strength", params_.receiverNormalStrength, 0.0f, 2.0f);
-        changed |= UI::SliderFloat("Alignment Power", params_.alignmentPower, 1.0f, 64.0f);
-        changed |= UI::SliderFloat("Debug Display Scale", params_.debugDisplayScale, 0.1f, 16.0f);
+        UI::SliderFloat("Intensity", params_.intensity, 0.0f, 8.0f);
+        UI::SliderFloat("Depth Attenuation", params_.depthAttenuation, 0.0f, 2.0f);
+        UI::SliderFloat("Curvature Scale", params_.curvatureScale, 0.0f, 30.0f);
+        UI::SliderFloat("Surface Sample Radius", params_.surfaceSampleRadius, 0.05f, 2.0f);
+        UI::SliderFloat("Refractive Index", params_.refractiveIndex, 1.0f, 1.6f);
+        UI::SliderFloat("Receiver Normal Strength", params_.receiverNormalStrength, 0.0f, 2.0f);
+        UI::SliderFloat("Alignment Power", params_.alignmentPower, 1.0f, 64.0f);
+        UI::SliderFloat("Debug Display Scale", params_.debugDisplayScale, 0.1f, 16.0f);
         int debugViewMode = static_cast<int>(params_.debugViewMode);
         if (ImGui::SliderInt("Debug View Mode", &debugViewMode, 0, 2)) {
             params_.debugViewMode = static_cast<uint32_t>(debugViewMode);
-            changed = true;
         }
         bool debugLogEnabled = (params_.debugLogEnabled != 0);
         if (ImGui::Checkbox("Debug Log Enabled", &debugLogEnabled)) {
             params_.debugLogEnabled = debugLogEnabled ? 1u : 0u;
-            changed = true;
         }
         ImGui::Text("Diag: waves=%u light=%u out=0x%llX", diagnostics_.activeWaveCount, diagnostics_.mainLightEnabled, diagnostics_.outputHandle);
-        if (changed) {
-            UpdateParamsBuffer();
-        }
         ImGui::PopID();
 #endif
     }
@@ -185,42 +171,8 @@ namespace CoreEngine
         return path;
     }
 
-    void WaterCausticsTechnique::SetParams(const Params& params)
+    WaterCausticsTechnique::MainLightConstants WaterCausticsTechnique::BuildMainLightConstants(LightManager* lightManager)
     {
-        params_ = params;
-        UpdateParamsBuffer();
-    }
-
-    void WaterCausticsTechnique::CreateConstantBuffers()
-    {
-        assert(graphicsCore_);
-
-        const UINT paramsBufferSize = (sizeof(Params) + 255u) & ~255u;
-        paramsBuffer_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), paramsBufferSize);
-        [[maybe_unused]] HRESULT hr = paramsBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mappedParams_));
-        assert(SUCCEEDED(hr));
-
-        const UINT mainLightBufferSize = (sizeof(MainLightConstants) + 255u) & ~255u;
-        mainLightBuffer_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), mainLightBufferSize);
-        hr = mainLightBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mappedMainLight_));
-        assert(SUCCEEDED(hr));
-
-        const UINT waterSurfaceBufferSize = (sizeof(WaterSurfaceConstants) + 255u) & ~255u;
-        waterSurfaceBuffer_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), waterSurfaceBufferSize);
-        hr = waterSurfaceBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mappedWaterSurface_));
-        assert(SUCCEEDED(hr));
-
-        UpdateParamsBuffer();
-        UpdateMainLightBuffer(nullptr);
-        UpdateWaterSurfaceBuffer(nullptr);
-    }
-
-    void WaterCausticsTechnique::UpdateMainLightBuffer(LightManager* lightManager)
-    {
-        if (!mappedMainLight_) {
-            return;
-        }
-
         MainLightConstants constants{};
         if (lightManager) {
             if (Light* light = lightManager->GetDirectionalLight(0); light && light->enabled) {
@@ -240,15 +192,12 @@ namespace CoreEngine
         }
 
         diagnostics_.mainLightEnabled = constants.enabled;
-        *mappedMainLight_ = constants;
+        return constants;
     }
 
-    void WaterCausticsTechnique::UpdateWaterSurfaceBuffer(const WaterSurfaceData* surfaceData)
+    WaterCausticsTechnique::WaterSurfaceConstants WaterCausticsTechnique::BuildWaterSurfaceConstants(
+        const WaterSurfaceData* surfaceData)
     {
-        if (!mappedWaterSurface_) {
-            return;
-        }
-
         WaterSurfaceConstants surfaceConstants{};
         if (surfaceData) {
             surfaceConstants.waterHeight = surfaceData->waterHeight;
@@ -265,14 +214,7 @@ namespace CoreEngine
         }
 
         diagnostics_.activeWaveCount = surfaceConstants.activeWaveCount;
-        *mappedWaterSurface_ = surfaceConstants;
-    }
-
-    void WaterCausticsTechnique::UpdateParamsBuffer()
-    {
-        if (mappedParams_) {
-            *mappedParams_ = params_;
-        }
+        return surfaceConstants;
     }
 
     CVar<bool>* WaterCausticsTechnique::GetEnabledCVar() const

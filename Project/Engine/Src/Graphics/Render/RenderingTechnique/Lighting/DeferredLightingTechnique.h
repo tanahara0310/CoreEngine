@@ -5,10 +5,10 @@
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Graphics/Shader/ShaderBindingContract.h"
 #include "Graphics/Render/Pass/RenderPass.h"
+#include "Graphics/RHI/Resource/PerFrameConstants.h"
+#include "Camera/CameraStructs.h"
 #include "Math/Matrix/Matrix4x4.h"
 #include "Math/Vector/Vector3.h"
-#include <array>
-#include <wrl.h>
 #include <d3d12.h>
 
 namespace CoreEngine
@@ -52,13 +52,13 @@ namespace CoreEngine
         /// @brief フォールバック用のカメラ位置を控える（有効なカメラがあるフレームだけ呼ぶ）
         /// @details カメラ不在フレーム（シーン構築中など）は cameraCBVAddress_ が 0 になる。
         ///          そのフレームでも gCamera へ必ず有効なアドレスを差せるよう、
-        ///          直近の位置をフォールバック CBV へ書いておく。
-        void UpdateFallbackCameraPosition(const Vector3& worldPosition);
+        ///          直近の位置を控え、そのフレームの UploadRing に置いて差す。
+        void UpdateFallbackCameraPosition(const Vector3& worldPosition) { fallbackCamera_.Set(CameraForGPU{ worldPosition }); }
 
-        /// @brief 深度復元用の View*Projection 逆行列を更新する（ビューごとに毎回呼び出し）
-        /// @details gCamera はフレーム更新時に 1 回しか書かれないので、こちらを専用 CBV として毎ビュー更新する。
-        /// @note ビュー種別ごとに別バッファを持つ。単一バッファだと後勝ちで両ビューが同じ行列を見てしまう。
-        void UpdateDepthReconstruction(RenderViewType viewType, const Matrix4x4& invViewProj);
+        /// @brief 深度復元用の View*Projection 逆行列を設定する（ビューを描く前に毎回呼ぶ）
+        /// @details GPU へは Execute でそのフレームの UploadRing に置く。設定し直すたびに置き直すので、
+        ///          1 フレームに複数のビューを描いても、それぞれのビューの行列を読む。
+        void SetDepthReconstruction(const Matrix4x4& invViewProj) { depthReconstruction_.Set(invViewProj); }
 
         // ===== SSAO セッター =====
 
@@ -69,10 +69,10 @@ namespace CoreEngine
         void SetWaterCausticsHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle) { waterCausticsHandle_ = handle; }
 
         /// @brief Water Caustics デバッグ表示設定を設定
-        void SetWaterCausticsDebugSettings(const WaterCausticsDebugSettings& settings);
+        void SetWaterCausticsDebugSettings(const WaterCausticsDebugSettings& settings) { waterCausticsDebug_.Set(settings); }
 
         /// @brief 水中ライティングの設定（このフレームで水中の点を照らすのに使った値）
-        const WaterCausticsDebugSettings& GetWaterCausticsDebugSettings() const { return waterCausticsDebugSettings_; }
+        const WaterCausticsDebugSettings& GetWaterCausticsDebugSettings() const { return waterCausticsDebug_.Get(); }
 
         /// @brief RT シャドウマスク SRV を設定（DXR レイトレーシングシャドウ結果）
         /// @param handle  SRV ハンドル（無効時は {} を渡す）
@@ -95,9 +95,6 @@ namespace CoreEngine
         bool IsAlwaysEnabled() const override { return true; }
 
     private:
-        void CreateConstantBuffers();
-        void UpdateWaterCausticsDebugBuffer();
-
         /// @brief 宣言表（DeferredLightingBind::kDecls）を初期化時に 1 回だけ解決する
         /// @note 契約違反（必須リソースの不在・種別違い）はここで throw される
         void ResolveBindings();
@@ -116,13 +113,10 @@ namespace CoreEngine
         // 読んだ時点でページフォルト（＝デバイスロスト）になり得る。踏むかどうかは
         // ドライバ任せなので、環境によって落ちたり落ちなかったりする。
         // 中身の正しさより「常に有効なアドレスが差さっていること」が目的。
-        Microsoft::WRL::ComPtr<ID3D12Resource> fallbackCameraBuffer_;
-        D3D12_GPU_VIRTUAL_ADDRESS fallbackCameraCBVAddress_ = 0;
+        PerFrameConstants<CameraForGPU> fallbackCamera_;
 
-        // 深度復元用 View*Projection 逆行列専用定数バッファ（RenderViewType ごとに個別バッファ）
-        static constexpr size_t kViewTypeCount = 1; // RenderViewType の要素数
-        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kViewTypeCount> depthReconstructionBuffers_;
-        std::array<D3D12_GPU_VIRTUAL_ADDRESS, kViewTypeCount> depthReconstructionCBVAddresses_{};
+        // 深度復元用 View*Projection 逆行列
+        PerFrameConstants<Matrix4x4> depthReconstruction_;
 
         // ===== RT Shadow =====
         D3D12_GPU_DESCRIPTOR_HANDLE rtShadowHandles_[kMaxRTShadowLights]{};
@@ -132,14 +126,10 @@ namespace CoreEngine
 
         // ===== Water Caustics =====
         D3D12_GPU_DESCRIPTOR_HANDLE waterCausticsHandle_{};
-        Microsoft::WRL::ComPtr<ID3D12Resource> waterCausticsDebugBuffer_;
-        D3D12_GPU_VIRTUAL_ADDRESS waterCausticsDebugCBVAddress_ = 0;
-        WaterCausticsDebugSettings waterCausticsDebugSettings_{};
+        PerFrameConstants<WaterCausticsDebugSettings> waterCausticsDebug_;
 
         // ===== 空アンビエント（大気散乱 SH。Sky Light 相当） =====
-        // 有効フラグ・スケールは AtmosphereManager が持ち、Execute で毎フレーム CB へ反映する
-        Microsoft::WRL::ComPtr<ID3D12Resource> skyAmbientBuffer_;
-        D3D12_GPU_VIRTUAL_ADDRESS skyAmbientCBVAddress_ = 0;
+        // 有効フラグ・スケールは AtmosphereManager が持ち、Execute で毎フレーム UploadRing に置く
         /// @brief 空アンビエント（Sky Irradiance SH / 空スペキュラ IBL）の有効状態と強度
         struct SkyAmbientParams {
             uint32_t enabled = 0;

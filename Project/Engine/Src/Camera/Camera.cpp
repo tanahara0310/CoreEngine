@@ -1,6 +1,5 @@
 #include "pch.h"
 #include "Camera.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Math/MathCore.h"
 #include <WinApp/WinApp.h>
 #include <cmath>
@@ -10,11 +9,10 @@ namespace CoreEngine
 
 using namespace CoreEngine::MathCore;
 
-void Camera::Initialize(ID3D12Device* device)
+void Camera::Initialize(UploadRing* uploadRing)
 {
-    if (device) {
-        cameraGPUResource_ = ResourceFactory::CreateBufferResource(device, sizeof(CameraForGPU));
-        cameraGPUResource_->Map(0, nullptr, reinterpret_cast<void**>(&cameraGPUData_));
+    if (uploadRing) {
+        gpuConstants_.Initialize(*uploadRing);
     }
 
     UpdateMatrix();
@@ -83,9 +81,7 @@ void Camera::RebuildMatrices()
 
 void Camera::TransferMatrix()
 {
-    if (cameraGPUData_) {
-        cameraGPUData_->worldPosition = GetPosition();
-    }
+    gpuConstants_.Set(CameraForGPU{ GetPosition() });
 }
 
 void Camera::SetProjectionJitter(float ndcX, float ndcY)

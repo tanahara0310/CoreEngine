@@ -80,14 +80,12 @@ namespace CoreEngine
             }
         }
 
-        // ===== 深度復元用 View*Projection 逆行列（ビューごとに毎回更新） =====
-        // 実行中のビューの ViewInfo から取る。gCamera（フレーム 1 回しか書かれない CBV）
-        // には頼らない。逆行列は ViewInfo 構築時に 1 回だけ計算済み。
+        // ===== 深度復元用 View*Projection 逆行列（ビューごとに毎回設定） =====
+        // 実行中のビューの ViewInfo から取る。逆行列は ViewInfo 構築時に 1 回だけ計算済み。
         if (context.frameViews) {
             const ViewInfo& view = context.frameViews->Get(context.viewSettings.viewType);
             if (view.isValid) {
-                deferredLighting->UpdateDepthReconstruction(
-                    context.viewSettings.viewType, view.invViewProjection);
+                deferredLighting->SetDepthReconstruction(view.invViewProjection);
             }
         }
 
