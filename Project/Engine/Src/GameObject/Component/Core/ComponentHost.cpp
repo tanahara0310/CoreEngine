@@ -59,7 +59,7 @@ namespace CoreEngine
         raw->attachedByCode_ = dataAttachDepth_ == 0;
         components_.push_back(std::move(component));
         if (invokeAwake) {
-            raw->Awake();
+            InvokeAwake(*raw);
         }
         return raw;
     }
@@ -75,7 +75,7 @@ namespace CoreEngine
     {
         if (!slot) { return; }
 
-        slot->OnDestroy();
+        DestroyComponent(*slot);
 
         // 実体は即 delete しない。呼び出し元やイテレーション中のループが
         // 生ポインタを保持している可能性があるため、フレーム末まで残す。
@@ -114,6 +114,10 @@ namespace CoreEngine
         for (auto& slot : components_) {
             if (!slot) { continue; }
             if (slot.get() == component) {
+                component->NotifyDisabled();
+                if (component->lifecycle_ == IComponent::Lifecycle::Awake) {
+                    component->lifecycle_ = IComponent::Lifecycle::Detached;
+                }
                 // スロットは nullptr にして残し、フレーム末に詰める
                 detached_.push_back(std::move(slot));
                 return position;
@@ -138,6 +142,10 @@ namespace CoreEngine
         std::unique_ptr<IComponent> owned = std::move(*detached);
         detached_.erase(detached);
         InsertAtPosition(std::move(owned), position);
+        if (component->lifecycle_ == IComponent::Lifecycle::Detached) {
+            component->lifecycle_ = IComponent::Lifecycle::Awake;
+            component->RefreshEnabledNotification();
+        }
         return true;
     }
 
@@ -175,7 +183,7 @@ namespace CoreEngine
 
         DataAttachScope dataScope(*this);
         LoadComponentEntry(*raw, entry);
-        raw->Awake();
+        InvokeAwake(*raw);
         return raw;
     }
 
@@ -225,6 +233,36 @@ namespace CoreEngine
         }
         retired_.clear();
         return released;
+    }
+
+    void ComponentHost::InvokeAwake(IComponent& component)
+    {
+        component.Awake();
+        if (component.lifecycle_ == IComponent::Lifecycle::Created) {
+            component.lifecycle_ = IComponent::Lifecycle::Awake;
+        }
+        component.RefreshEnabledNotification();
+    }
+
+    void ComponentHost::DestroyComponent(IComponent& component)
+    {
+        if (component.lifecycle_ == IComponent::Lifecycle::Destroyed) {
+            return;
+        }
+        component.NotifyDisabled();
+        component.lifecycle_ = IComponent::Lifecycle::Destroyed;
+        component.OnDestroy();
+    }
+
+    void ComponentHost::DispatchComponentActiveChanged()
+    {
+        // 通知の中で足したものは、足したときに OnEnable が決まっているので今の数だけ回す
+        const size_t count = components_.size();
+        for (size_t i = 0; i < count && i < components_.size(); ++i) {
+            if (IComponent* const component = components_[i].get()) {
+                component->RefreshEnabledNotification();
+            }
+        }
     }
 
     void ComponentHost::DispatchComponentStart()
@@ -288,12 +326,12 @@ namespace CoreEngine
 
         for (auto& component : components_) {
             if (component) {
-                component->OnDestroy();
+                DestroyComponent(*component);
             }
         }
         // 外して控えているものも、オブジェクトと一緒に後始末する
         for (auto& component : detached_) {
-            component->OnDestroy();
+            DestroyComponent(*component);
         }
     }
 
@@ -394,7 +432,7 @@ namespace CoreEngine
             LoadComponentEntry(*target, entry);
 
             if (created) {
-                target->Awake();
+                InvokeAwake(*target);
             }
         }
     }

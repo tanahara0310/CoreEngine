@@ -11,8 +11,8 @@ class ComponentHost;
 struct CollisionInfo;
 
 /// @brief GameObject にアタッチする機能単位の基底クラス。
-/// @details 呼び出し順は Awake（Add直後）→ Start（初回更新）→ Update →
-///          全オブジェクトの後に LateUpdate → 当たり判定の通知 → OnDestroy。
+/// @details 呼び出し順は Awake（Add直後）→ OnEnable（有効になったとき）→ Start（初回更新）→ Update →
+///          全オブジェクトの後に LateUpdate → 当たり判定の通知 → OnDisable（無効になったとき）→ OnDestroy。
 ///          他コンポーネントの参照は Start 以降に `Sibling<T>()` で行う。
 class IComponent {
 public:
@@ -27,6 +27,17 @@ public:
     /// @note この時点では**他のコンポーネントが揃っていない**（自分が最初の 1 個かもしれない）。
     ///       兄弟コンポーネントを参照する初期化は Start() で行うこと。
     virtual void Awake() {}
+
+    /// @brief 有効になったときに呼ばれる
+    /// @details Awake の直後・`SetEnabled(true)`・オブジェクトの `SetActive(true)`・
+    ///          外したコンポーネントの付け直しで、コンポーネントが有効かつオブジェクトがアクティブになったときに呼ばれる。
+    /// @note 停止中（エディタ）も呼ばれる。OnEnable と OnDisable は必ず交互に呼ばれる。
+    virtual void OnEnable() {}
+
+    /// @brief 無効になったときに呼ばれる
+    /// @details `SetEnabled(false)`・オブジェクトの `SetActive(false)`・取り外し・破棄（OnDestroy の前）で、
+    ///          OnEnable を呼んだものにだけ呼ばれる。
+    virtual void OnDisable() {}
 
     /// @brief 最初の更新フレームで 1 回だけ呼ばれる
     /// @note 兄弟コンポーネントは揃っている。`Sibling<T>()` で取得できる。
@@ -118,7 +129,13 @@ public:
 
     /// @brief 有効か（false なら Update / LateUpdate をスキップする）
     bool IsEnabled() const { return isEnabled_; }
-    void SetEnabled(bool enabled) { isEnabled_ = enabled; }
+
+    /// @brief 有効・無効を切り替える
+    /// @note Awake の後なら、オブジェクトがアクティブな間は OnEnable / OnDisable を呼ぶ。
+    void SetEnabled(bool enabled);
+
+    /// @brief 有効でオブジェクトもアクティブか（OnEnable を呼び、まだ OnDisable を呼んでいない間）
+    bool IsActiveAndEnabled() const { return enableNotified_; }
 
     /// @brief コードが付けたか
     /// @return シーン JSON・プレハブの復元とエディタの操作で付いたものは false
@@ -128,8 +145,27 @@ protected:
     IComponent() = default;
 
 private:
+    /// @brief 生き死にの段階（ComponentHost が進める）
+    enum class Lifecycle {
+        Created,   ///< 付けたが Awake() はまだ
+        Awake,     ///< Awake() を呼んで、付いている
+        Detached,  ///< 外して控えている（付け直せる）
+        Destroyed, ///< OnDestroy() を呼んだ
+    };
+
+    /// @brief 有効かつオブジェクトがアクティブになったら OnEnable、外れたら OnDisable を呼ぶ
+    void RefreshEnabledNotification();
+
+    /// @brief OnEnable を呼んだままなら OnDisable を呼ぶ（取り外し・破棄の前）
+    void NotifyDisabled();
+
     GameObject* owner_ = nullptr;
     bool        isEnabled_ = true;
+
+    Lifecycle lifecycle_ = Lifecycle::Created;
+
+    /// OnEnable を呼び、まだ OnDisable を呼んでいないか
+    bool enableNotified_ = false;
 
     /// コードが付けたか（ComponentHost が付けるときに決める）
     bool attachedByCode_ = true;

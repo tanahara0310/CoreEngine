@@ -469,6 +469,7 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Input\InputQuery.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Core\ComponentFactory.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Core\ComponentHost.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Component\Core\IComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Core\MissingComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Core\ObjectRef.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Render\MaterialComponent.cpp" />
@@ -1535,6 +1536,7 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\GameObject\Component\Core\ObjectRef.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Animation\AnimatorComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Camera\CameraComponent.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\Environment\CVarToggleComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Environment\HeightFogComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Environment\PostProcessComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Environment\VolumetricCloudComponent.h" />

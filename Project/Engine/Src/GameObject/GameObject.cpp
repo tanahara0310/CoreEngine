@@ -90,7 +90,15 @@ namespace CoreEngine
 
     // ===== アクティブ =====
 
-    void GameObject::SetActive(bool active) { isActive_ = active; }
+    void GameObject::SetActive(bool active)
+    {
+        if (isActive_ == active) {
+            return;
+        }
+        isActive_ = active;
+        DispatchComponentActiveChanged();
+    }
+
     bool GameObject::IsActive() const { return isActive_; }
 
     // ===== 破棄 =====

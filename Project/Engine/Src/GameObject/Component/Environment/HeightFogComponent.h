@@ -1,16 +1,15 @@
 #pragma once
 
-#include "GameObject/Component/Core/IComponent.h"
+#include "GameObject/Component/Environment/CVarToggleComponent.h"
 
 namespace CoreEngine
 {
 /// @brief 高さフォグをシーンに置くコンポーネント
-/// @details パラメータの実体は CVar（`r.Fog.*`）が持ち、保存はシーンの `_environment.json`。
-///          このコンポーネントは「シーンのどこに霧があるか」を表す置き場所で、
-///          有効・無効だけを `r.Fog.Enabled` と行き来させる。
-/// @note 行き来させるのは `EnvironmentFeature`（停止中も回る）。
-///       コンポーネントの `Update()` は再生中しか呼ばれないのでここには書けない。
-class HeightFogComponent final : public IComponent {
+/// @details パラメータと有効・無効の実体は CVar（`r.Fog.*`）が持ち、保存はシーンの `_environment.json`。
+///          このコンポーネントは「シーンのどこに霧があるか」を表す置き場所。
+///          チェックを切り替えると `r.Fog.Enabled` へ写り、CVar 側で切り替えると
+///          `EnvironmentFeature` がチェックへ写す。
+class HeightFogComponent final : public CVarToggleComponent {
 public:
     const char* GetTypeName() const override { return "HeightFog"; }
 };
