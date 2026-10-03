@@ -1,6 +1,7 @@
 #pragma once
 
 #include "EngineSystem/Subsystem/IEngineSubsystem.h"
+#include "Script/ScriptBuildState.h"
 
 #ifdef CORE_EDITOR
 #include "Script/ScriptFileWatcher.h"
@@ -9,6 +10,8 @@
 #include <cstddef>
 #include <filesystem>
 #include <memory>
+#include <string>
+#include <vector>
 
 namespace CoreEngine
 {
@@ -36,7 +39,8 @@ namespace CoreEngine
         /// @brief スクリプトの読み込み状態
         struct Status
         {
-            bool ok = false;            ///< 直前のコンパイルに成功したか
+            ScriptBuildState state = ScriptBuildState::NotBuilt; ///< 組み立ての状態
+            std::vector<std::string> staleFiles;  ///< 直す前の版で動いているファイル
             std::size_t typeCount = 0;  ///< 使えるコンポーネントの型の数
             std::size_t restored = 0;   ///< 直前の読み直しで値を戻せた数
             std::size_t orphaned = 0;   ///< 直前の読み直しでクラスが無くなった数

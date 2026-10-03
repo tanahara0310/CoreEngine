@@ -1222,6 +1222,7 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Script\ScriptFileWatcher.h" />
     <ClInclude Include="Engine\Src\Script\ScriptHost.h" />
     <ClInclude Include="Engine\Src\Script\ScriptPredefined.h" />
+    <ClInclude Include="Engine\Src\Script\ScriptBuildState.h" />
     <ClInclude Include="Engine\Src\Script\ScriptCallback.h" />
     <ClInclude Include="Engine\Src\Script\ScriptSubsystem.h" />
     <ClInclude Include="Engine\Src\Reflection\PropertyDescriptor.h" />

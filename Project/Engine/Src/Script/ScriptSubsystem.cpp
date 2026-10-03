@@ -127,8 +127,9 @@ namespace CoreEngine
         host_->WritePredefined(scriptRoot_ / kPredefinedFileName);
 #endif
 
-        status_.ok = host_->Build(scriptRoot_);
-        if (status_.ok) {
+        const bool built = host_->Build(scriptRoot_);
+        status_.state = built ? ScriptBuildState::Ok : ScriptBuildState::NotBuilt;
+        if (built) {
             RegisterComponentTypes();
         }
         status_.typeCount = host_->GetTypes().size();
@@ -206,7 +207,13 @@ namespace CoreEngine
         const ScriptHost::ReloadReport report = host_->Reload(scriptRoot_);
         RegisterComponentTypes();
 
-        status_.ok = report.compiled;
+        // 組めたら、エラーのあるファイルが残っているかで決める。組めなければ、前のモジュールがあればそのまま動く
+        if (report.compiled) {
+            status_.state = report.staleSections.empty() ? ScriptBuildState::Ok : ScriptBuildState::RunningStale;
+            status_.staleFiles = report.staleSections;
+        } else if (status_.state != ScriptBuildState::NotBuilt) {
+            status_.state = ScriptBuildState::KeptPrevious;
+        }
         status_.typeCount = host_->GetTypes().size();
         status_.restored = report.restored;
         status_.orphaned = report.orphaned;
