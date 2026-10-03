@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Graphics/RHI/Resource/GpuResource.h"
+#include "Graphics/RHI/Resource/PerFrameStructuredBuffer.h"
 #include <vector>
 #include "Graphics/RHI/Descriptor/UniqueDescriptor.h"
 #include <span>
@@ -52,9 +53,7 @@ struct SkinCluster {
     std::span<VertexInfluence> mappedInfluence;                // Influenceデータをマップしたもの
     UniqueDescriptor influenceSrvHandle; // InfluenceのSRV（CS読み取り用）
 
-    Microsoft::WRL::ComPtr<ID3D12Resource> paletteResource;    // Palette用リソース
-    std::span<WellForGPU> mappedPalette;                       // Paletteデータをマップしたもの
-    UniqueDescriptor paletteSrvHandle; // PaletteのSRV
+    PerFrameStructuredBuffer<WellForGPU> palette; // Palette（Joint数分。GPU へは SRV を引いたフレームの置き場へ写す）
 
     // ===== GPUスキニング（ComputeShader）関連 =====
 

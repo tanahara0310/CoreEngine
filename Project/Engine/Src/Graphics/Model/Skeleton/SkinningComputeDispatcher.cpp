@@ -73,7 +73,7 @@ namespace CoreEngine
             cmdList->SetComputeRootDescriptorTable(influencesIdx_, skinCluster.influenceSrvHandle.Gpu());
         }
         if (matrixPaletteIdx_ >= 0) {
-            cmdList->SetComputeRootDescriptorTable(matrixPaletteIdx_, skinCluster.paletteSrvHandle.Gpu());
+            cmdList->SetComputeRootDescriptorTable(matrixPaletteIdx_, skinCluster.palette.Srv());
         }
         if (outputVerticesIdx_ >= 0) {
             cmdList->SetComputeRootDescriptorTable(outputVerticesIdx_, skinCluster.outputUavHandle.Gpu());

@@ -1,35 +1,34 @@
 #pragma once
 
 #include <d3d12.h>
-#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
-#include <wrl.h>
 #include <vector>
 
 #include "LightData.h"
+#include "Graphics/RHI/Resource/PerFrameConstants.h"
+#include "Graphics/RHI/Resource/PerFrameStructuredBuffer.h"
 #include "Graphics/RootSignature/RootSlot.h"
 
 namespace CoreEngine
 {
     class ShaderBinder;
-
-    class DescriptorAllocator;
+    class GraphicsCore;
 
     /// @brief ライトバッファの管理クラス
-    /// GPU用のStructuredBufferの作成、更新、コマンドリストへの設定を担当
+    /// @details 種類ごとのライトの配列（StructuredBuffer）と個数（定数）を持ち、
+    ///          GPU へは差すときに、記録中のフレームの置き場へ写す
     class LightBufferManager
     {
     public:
         /// @brief 初期化（max* は種別ごとのライト最大数）
         void Initialize(
-            ID3D12Device* device,
-            DescriptorAllocator* descriptorAllocator,
+            GraphicsCore& graphics,
             uint32_t maxDirectionalLights,
             uint32_t maxPointLights,
             uint32_t maxSpotLights,
             uint32_t maxAreaLights
         );
 
-        /// @brief ライトバッファを更新
+        /// @brief ライトの値を差し替える（GPU へは次に差すときに写す）
         /// @note 種類ごとに、確保した数を超えた分は写さない（超えている間に 1 回だけ警告する）。
         void UpdateBuffers(
             const std::vector<DirectionalLightData>& directionalLights,
@@ -50,88 +49,44 @@ namespace CoreEngine
             RootSlot areaLights
         );
 
-        /// @brief コマンドリストにライトをセット（ルートパラメータ番号版）
-        /// @deprecated ShaderBinder 版へ移行すること。番号だけでは差し方を検証できない。
-        void SetToCommandList(
-            ID3D12GraphicsCommandList* commandList,
-            int lightCountsRootParameterIndex,
-            int directionalLightsRootParameterIndex,
-            int pointLightsRootParameterIndex,
-            int spotLightsRootParameterIndex,
-            int areaLightsRootParameterIndex
-        );
+        /// @brief ライトカウントのGPU仮想アドレスを取得（そのフレームの記録中だけ有効）
+        D3D12_GPU_VIRTUAL_ADDRESS GetLightCountsGPUAddress() const { return lightCounts_.Address(); }
 
-        /// @brief ライトカウントバッファのGPU仮想アドレスを取得
-        D3D12_GPU_VIRTUAL_ADDRESS GetLightCountsGPUAddress() const;
+        /// @brief ディレクショナルライトSRVのGPUハンドルを取得（そのフレームの記録中だけ今の値を保つ）
+        D3D12_GPU_DESCRIPTOR_HANDLE GetDirectionalLightsSRVHandle() const { return directionalLights_.Srv(); }
 
-        /// @brief ディレクショナルライトSRVのGPUハンドルを取得
-        D3D12_GPU_DESCRIPTOR_HANDLE GetDirectionalLightsSRVHandle() const { return directionalLightsSRVHandle_.gpuHandle; }
+        /// @brief ポイントライトSRVのGPUハンドルを取得（そのフレームの記録中だけ今の値を保つ）
+        D3D12_GPU_DESCRIPTOR_HANDLE GetPointLightsSRVHandle() const { return pointLights_.Srv(); }
 
-        /// @brief ポイントライトSRVのGPUハンドルを取得
-        D3D12_GPU_DESCRIPTOR_HANDLE GetPointLightsSRVHandle() const { return pointLightsSRVHandle_.gpuHandle; }
+        /// @brief スポットライトSRVのGPUハンドルを取得（そのフレームの記録中だけ今の値を保つ）
+        D3D12_GPU_DESCRIPTOR_HANDLE GetSpotLightsSRVHandle() const { return spotLights_.Srv(); }
 
-        /// @brief スポットライトSRVのGPUハンドルを取得
-        D3D12_GPU_DESCRIPTOR_HANDLE GetSpotLightsSRVHandle() const { return spotLightsSRVHandle_.gpuHandle; }
-
-        /// @brief エリアライトSRVのGPUハンドルを取得
-        D3D12_GPU_DESCRIPTOR_HANDLE GetAreaLightsSRVHandle() const { return areaLightsSRVHandle_.gpuHandle; }
+        /// @brief エリアライトSRVのGPUハンドルを取得（そのフレームの記録中だけ今の値を保つ）
+        D3D12_GPU_DESCRIPTOR_HANDLE GetAreaLightsSRVHandle() const { return areaLights_.Srv(); }
 
     private:
-        /// @brief 種類ごとのバッファに入るライトの数
-        struct Capacity {
-            uint32_t max = 0;             ///< 確保した数
-            bool overflowLogged = false;  ///< 超えている間に警告を出したか
-        };
-
         /// @brief ライトをバッファに入る数まで写す
+        /// @param overflowLogged 超えている間に警告を出したか
         /// @return 写した数
         template <typename T>
         static uint32_t CopyLights(
-            ID3D12Resource* buffer,
+            PerFrameStructuredBuffer<T>& buffer,
             const std::vector<T>& lights,
-            Capacity& capacity,
+            bool& overflowLogged,
             const char* typeName
         );
 
-        /// @brief StructuredBuffer用のリソースを作成
-        void CreateBufferResources(
-            ID3D12Device* device,
-            uint32_t maxDirectionalLights,
-            uint32_t maxPointLights,
-            uint32_t maxSpotLights,
-            uint32_t maxAreaLights
-        );
-
-        /// @brief StructuredBuffer用のSRVを作成
-        void CreateBufferSRVs(
-            DescriptorAllocator* descriptorAllocator,
-            uint32_t maxDirectionalLights,
-            uint32_t maxPointLights,
-            uint32_t maxSpotLights,
-            uint32_t maxAreaLights
-        );
-
     private:
-        // GPU側のStructuredBufferリソース
-        Microsoft::WRL::ComPtr<ID3D12Resource> directionalLightsBuffer_;
-        Microsoft::WRL::ComPtr<ID3D12Resource> pointLightsBuffer_;
-        Microsoft::WRL::ComPtr<ID3D12Resource> spotLightsBuffer_;
-        Microsoft::WRL::ComPtr<ID3D12Resource> areaLightsBuffer_;
-        Microsoft::WRL::ComPtr<ID3D12Resource> lightCountsBuffer_;
+        PerFrameStructuredBuffer<DirectionalLightData> directionalLights_;
+        PerFrameStructuredBuffer<PointLightData> pointLights_;
+        PerFrameStructuredBuffer<SpotLightData> spotLights_;
+        PerFrameStructuredBuffer<AreaLightData> areaLights_;
+        PerFrameConstants<LightCounts> lightCounts_;
 
-        // StructuredBufferのSRV用GPUハンドル
-        DescriptorHandle directionalLightsSRVHandle_{};
-        DescriptorHandle pointLightsSRVHandle_{};
-        DescriptorHandle spotLightsSRVHandle_{};
-        DescriptorHandle areaLightsSRVHandle_{};
-
-        // 種類ごとのバッファに入る数
-        Capacity directionalCapacity_{};
-        Capacity pointCapacity_{};
-        Capacity spotCapacity_{};
-        Capacity areaCapacity_{};
-
-        // マップされたライトカウントデータ
-        LightCounts* lightCountsData_ = nullptr;
+        // 種類ごとに、確保した数を超えている間に警告を出したか
+        bool directionalOverflowLogged_ = false;
+        bool pointOverflowLogged_ = false;
+        bool spotOverflowLogged_ = false;
+        bool areaOverflowLogged_ = false;
     };
 }
