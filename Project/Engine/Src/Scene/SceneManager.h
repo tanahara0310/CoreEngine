@@ -100,14 +100,6 @@ public:
     ///          遷移そのものの設定をゲーム側から行うための口
     SceneTransition* GetTransition() const { return sceneTransition_.get(); }
 
-    /// @brief 実行中の読み込みステップに「続き」を持たせる
-    /// @param work     毎フレーム 1 回呼ばれ、一部だけ進めて完了したら true を返す関数
-    /// @param progress そのステップ内の進捗（0.0〜1.0）を返す関数（省略可）
-    /// @details work が true を返すまで次のステップへ進まない。
-    ///          読み込みステップの中から呼ぶこと。
-    void SetLoadStepContinuation(std::function<bool()> work,
-                                 std::function<float()> progress = nullptr);
-
     /// @brief Gameビュー用3Dカメラを取得
     Camera* GetGameViewCamera3D() const;
 
@@ -151,8 +143,9 @@ private:
     /// @return true: 開始した, false: 未登録のシーン名
     bool BeginSceneLoad(const std::string& name, std::shared_ptr<const SceneSnapshot> snapshot = nullptr);
 
-    /// @brief 読み込みステップを 1 つ進める
-    void StepSceneLoad();
+    /// @brief 読み込みステップを 1 回進める
+    /// @return Pending なら、待っているステップがまだ済んでいない
+    StartupTaskResult StepSceneLoad();
 
     /// @brief 読み込み中か
     bool IsSceneLoadInProgress() const { return loadSequence_ != nullptr; }
@@ -170,16 +163,8 @@ private:
     std::unique_ptr<IScene> pendingScene_;
     std::string pendingSceneName_;
 
-    /// @brief 構築ステップ列（読み込み中のみ存在する）
+    /// @brief 構築ステップ列（読み込み中のみ存在する。待つステップは Pending を返して列を止める）
     std::unique_ptr<StartupSequence> loadSequence_;
-
-    /// @brief 実行中ステップの続き（設定されている間は次のステップへ進まない）
-    std::function<bool()> loadContinuation_;
-    std::function<float()> loadStepProgress_;
-    std::string loadContinuationLabel_;
-    bool loadRunsSynchronously_ = false;
-    std::chrono::steady_clock::time_point loadContinuationStart_;
-    int loadContinuationFrames_ = 0;
 
     // ──────────────────────────────────────────────────────────
     // トランジション管理

@@ -28,25 +28,36 @@ namespace CoreEngine
         tasks_.push_back(Entry{ std::move(task), {}, 0.0, 0.0 });
     }
 
-    void StartupSequence::Step()
+    StartupTaskResult StartupSequence::Step()
     {
         if (!HasNext()) {
-            return;
+            return StartupTaskResult::Done;
         }
 
         Entry& entry = tasks_[cursor_];
-        entry.executedLabel = entry.task->GetLabel();
+        if (entry.calls == 0) {
+            entry.executedLabel = entry.task->GetLabel();
+            entry.firstCall = std::chrono::steady_clock::now();
+        }
+        ++entry.calls;
 
         // 計測は CpuProfiler の一本だけ。自前のストップウォッチを持つと [Startup] 行と
         // [CpuProfile] レポートが別経路の数字になり、片方だけ直したときに食い違う。
         // 例外時に EndScope が漏れるが、起動タスクの例外＝起動失敗なので追わない。
         auto& profiler = CpuProfiler::GetInstance();
         profiler.BeginScope(entry.executedLabel.c_str());
-        entry.task->Execute();
+        const StartupTaskResult result = entry.task->Execute();
         const CpuProfiler::Sample measured = profiler.EndScope();
 
-        entry.seconds = measured.wallMs / 1000.0;
-        entry.cpuSeconds = measured.cpuMs / 1000.0;
+        entry.cpuSeconds += measured.cpuMs / 1000.0;
+        if (result == StartupTaskResult::Pending) {
+            return result;
+        }
+
+        // 待ったステップは、最初に呼んでから済むまでを壁時計にする
+        entry.seconds = (entry.calls == 1)
+            ? measured.wallMs / 1000.0
+            : std::chrono::duration<double>(std::chrono::steady_clock::now() - entry.firstCall).count();
         totalSeconds_ += entry.seconds;
         totalCpuSeconds_ += entry.cpuSeconds;
         ++cursor_;
@@ -55,9 +66,16 @@ namespace CoreEngine
         // 壁時計しか無かった頃、非同期プリロードのワーカーと競合して待っている区間を
         // 「そのステップが重い」と誤読し、無意味なリファクタリングに着手しかけた。
         // 最初のステップでログシステムを初期化するため、ログは Execute の後に出す
-        Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
-            "[Startup] {:2}/{:2}  {:6.3f}s wall  {:6.3f}s cpu  {}",
-            cursor_, tasks_.size(), entry.seconds, entry.cpuSeconds, entry.executedLabel);
+        if (entry.calls == 1) {
+            Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
+                "[Startup] {:2}/{:2}  {:6.3f}s wall  {:6.3f}s cpu  {}",
+                cursor_, tasks_.size(), entry.seconds, entry.cpuSeconds, entry.executedLabel);
+        } else {
+            Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
+                "[Startup] {:2}/{:2}  {:6.3f}s wall  {:6.3f}s cpu  {}（{} 回に分けて済んだ）",
+                cursor_, tasks_.size(), entry.seconds, entry.cpuSeconds, entry.executedLabel, entry.calls);
+        }
+        return result;
     }
 
     std::string StartupSequence::GetNextLabel() const
@@ -73,7 +91,9 @@ namespace CoreEngine
         if (tasks_.empty()) {
             return 1.0f;
         }
-        return static_cast<float>(cursor_) / static_cast<float>(tasks_.size());
+        // 待っているステップの進み具合は、そのステップ 1 つ分の幅へ写す
+        const float pending = HasNext() ? std::clamp(tasks_[cursor_].task->GetProgress(), 0.0f, 1.0f) : 0.0f;
+        return std::clamp((static_cast<float>(cursor_) + pending) / static_cast<float>(tasks_.size()), 0.0f, 1.0f);
     }
 
     void StartupSequence::LogSummary() const

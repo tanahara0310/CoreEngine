@@ -78,7 +78,14 @@ namespace CoreEngine
         void InitializeFeatures();
 
         /// @brief シーン JSON が参照するモデルの並列先読みを開始する
-        void BeginModelPreload();
+        /// @return 待つものがあれば true（済むまで IsModelPreloadDone で調べる）
+        bool BeginModelPreload();
+
+        /// @brief モデルの先読みが済んだか
+        bool IsModelPreloadDone();
+
+        /// @brief モデルの先読みの進み具合（0.0〜1.0）
+        float GetModelPreloadProgress();
 
         /// @brief 全 Feature の PostSceneInitialize（シーンのオブジェクトが出そろった後）
         void RunPostSceneInitialize();
@@ -93,7 +100,8 @@ namespace CoreEngine
         SceneSaveSystem::ManifestSettings CollectManifestSettings() const;
 
         /// @brief JSON からのシーン復元を開始する（1 体ずつフレームを跨いで進める）
-        void BeginSceneDataRestore();
+        /// @return 常に true（SceneSaveSystem::StepLoad が済むまで待つ）
+        bool BeginSceneDataRestore();
 
         /// @brief 既定 Feature を登録する（顔ぶれは CreateDefaultSceneFeatures() 側）
         void RegisterDefaultFeatures();
