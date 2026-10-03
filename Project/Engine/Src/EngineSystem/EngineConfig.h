@@ -3,6 +3,8 @@
 #include <string>
 #include <cstdint>
 
+#include "EngineSystem/EngineVersion.h"
+
 namespace CoreEngine
 {
 
@@ -12,7 +14,7 @@ namespace CoreEngine
         // ──────────────────────────────────────────────────────────
         // ウィンドウ設定
         // ──────────────────────────────────────────────────────────
-        std::string windowTitle = "CoreEngine_Ver2.0";
+        std::string windowTitle = std::string("CoreEngine v") + kEngineVersion;
         int32_t windowWidth = 1280;
         int32_t windowHeight = 720;
 
