@@ -15,118 +15,86 @@ GameTimer::GameTimer(float duration, bool loop)
 }
 
 void GameTimer::Update(float deltaTime) {
-    if (!isActive_) return;
-    
+    if (state_ != State::Running) return;
+
     // 前フレームのループフラグをリセット
     loopedThisFrame_ = false;
-    
+
     // タイムスケールを適用
     float scaledDeltaTime = deltaTime * timeScale_;
     currentTime_ += scaledDeltaTime;
-    
+
     // コールバックをチェック
     CheckAndExecuteCallbacks();
-    
+
     // 繰り返しコールバックをチェック
     CheckAndExecuteRepeatingCallbacks();
-    
-    if (currentTime_ >= duration_) {
-        finished_ = true;
-        
-        // 完了時コールバックを実行（ループしない場合のみ）
-        if (!loop_) {
-            ExecuteOnCompleteCallback();
-        }
-        
-        if (loop_) {
-            currentTime_ = 0.0f;
-            finished_ = false;  // ループ時は完了フラグをリセット
-            loopedThisFrame_ = true;  // ループ発生をマーク
-            
-            // ループ完了時コールバックを実行
-            ExecuteOnLoopCompleteCallback();
-            
-            // ループ時はコールバックの発火状態もリセット
-            for (auto& callback : callbacks_) {
-                callback.triggered = false;
-            }
-            
-            // 繰り返しコールバックの次回発火時間を調整
-            for (auto& rc : repeatingCallbacks_) {
-                rc.nextTriggerTime = rc.interval;
-            }
-        } else {
-            isActive_ = false;
-        }
+
+    // コールバックの中で止めた・一時停止した・始め直したときは、その状態に従う
+    if (state_ != State::Running || currentTime_ < duration_) {
+        return;
     }
+
+    if (loop_) {
+        currentTime_ = 0.0f;
+        loopedThisFrame_ = true;  // ループ発生をマーク
+
+        // ループ完了時コールバックを実行
+        ExecuteOnLoopCompleteCallback();
+
+        // ループ時はコールバックの発火状態もリセット
+        for (auto& callback : callbacks_) {
+            callback.triggered = false;
+        }
+
+        // 繰り返しコールバックの次回発火時間を調整
+        for (auto& rc : repeatingCallbacks_) {
+            rc.nextTriggerTime = rc.interval;
+        }
+        return;
+    }
+
+    // 完了にしてから知らせる。完了時コールバックの中で Start し直せば、そのまま動き続ける
+    state_ = State::Finished;
+    ExecuteOnCompleteCallback();
 }
 
 void GameTimer::Start(float duration, bool loop) {
     duration_ = duration;
     loop_ = loop;
-    currentTime_ = 0.0f;
-    isActive_ = true;
-    finished_ = false;
     useFrameMode_ = false;
-    loopedThisFrame_ = false;  // ループフラグもリセット
-    
-    // コールバックの発火状態をリセット
-    for (auto& callback : callbacks_) {
-        callback.triggered = false;
-    }
-    
-    // 繰り返しコールバックをリセット
-    for (auto& rc : repeatingCallbacks_) {
-        rc.nextTriggerTime = rc.interval;
-        rc.executionCount = 0;
-    }
-    
-    // 間隔チェッカーをリセット
-    ResetIntervalCheckers();
+    Restart();
 }
 
 void GameTimer::Stop() {
-    isActive_ = false;
+    state_ = State::Idle;
 }
 
 void GameTimer::Reset() {
     currentTime_ = 0.0f;
-    isActive_ = false;
-    finished_ = false;
-    loopedThisFrame_ = false;  // ループフラグもリセット
-    
-    // コールバックの発火状態をリセット
-    for (auto& callback : callbacks_) {
-        callback.triggered = false;
-    }
-    
-    // 繰り返しコールバックをリセット
-    for (auto& rc : repeatingCallbacks_) {
-        rc.nextTriggerTime = rc.interval;
-        rc.executionCount = 0;
-    }
-    
-    // 間隔チェッカーをリセット
-    ResetIntervalCheckers();
+    state_ = State::Idle;
+    loopedThisFrame_ = false;
+    ResetCallbackProgress();
 }
 
 void GameTimer::Pause() {
-    isActive_ = false;
+    if (state_ == State::Running) {
+        state_ = State::Paused;
+    }
 }
 
 void GameTimer::Resume() {
-    if (currentTime_ < duration_) {
-        isActive_ = true;
-        finished_ = false;
+    if (state_ == State::Paused) {
+        state_ = State::Running;
     }
 }
 
 bool GameTimer::IsActive() const {
-    return isActive_;
+    return state_ == State::Running;
 }
 
 bool GameTimer::IsFinished() const {
-    return finished_;
+    return state_ == State::Finished;
 }
 
 float GameTimer::GetProgress() const {
@@ -161,12 +129,9 @@ bool GameTimer::HasLooped() const {
 
 void GameTimer::SetDuration(float duration) {
     duration_ = duration;
-    // 現在時間が新しい継続時間を超えている場合の処理
-    if (currentTime_ >= duration_ && isActive_) {
-        finished_ = true;
-        if (!loop_) {
-            isActive_ = false;
-        }
+    // 動いている間に縮めて越えたら、ループしないタイマーはそこで完了にする（ループするものは次の更新で巻き戻る）
+    if (state_ == State::Running && !loop_ && currentTime_ >= duration_) {
+        state_ = State::Finished;
     }
 }
 
@@ -179,23 +144,29 @@ void GameTimer::StartFrames(int frameCount, bool loop, float targetFPS) {
     targetFPS_ = targetFPS;
     duration_ = FramesToSeconds(frameCount, targetFPS);
     loop_ = loop;
-    currentTime_ = 0.0f;
-    isActive_ = true;
-    finished_ = false;
     useFrameMode_ = true;
+    Restart();
+}
+
+void GameTimer::Restart() {
+    currentTime_ = 0.0f;
+    state_ = State::Running;
     loopedThisFrame_ = false;
-    
+    ResetCallbackProgress();
+}
+
+void GameTimer::ResetCallbackProgress() {
     // コールバックの発火状態をリセット
     for (auto& callback : callbacks_) {
         callback.triggered = false;
     }
-    
+
     // 繰り返しコールバックをリセット
     for (auto& rc : repeatingCallbacks_) {
         rc.nextTriggerTime = rc.interval;
         rc.executionCount = 0;
     }
-    
+
     // 間隔チェッカーをリセット
     ResetIntervalCheckers();
 }
@@ -261,7 +232,7 @@ void GameTimer::ClearRepeatingCallbacks() {
 }
 
 bool GameTimer::CheckInterval(float interval) {
-    if (!isActive_ || interval <= 0.0f) return false;
+    if (state_ != State::Running || interval <= 0.0f) return false;
     
     IntervalChecker* checker = FindOrCreateIntervalChecker(interval);
     
@@ -301,7 +272,8 @@ void GameTimer::DrawImGui(const char* label)
     
     if (ImGui::CollapsingHeader(label)) {
         ImGui::Text("Name: %s", name_.c_str());
-        ImGui::Text("Status: %s", isActive_ ? "ACTIVE" : (finished_ ? "FINISHED" : "STOPPED"));
+        constexpr const char* kStateNames[] = { "STOPPED", "ACTIVE", "PAUSED", "FINISHED" };
+        ImGui::Text("Status: %s", kStateNames[static_cast<int>(state_)]);
         
         // 基本情報
         UI::Separator();
@@ -334,9 +306,9 @@ void GameTimer::DrawImGui(const char* label)
         UI::SameLine();
         if (ImGui::Button("Reset")) { Reset(); }
         
-        if (isActive_) {
+        if (state_ == State::Running) {
             if (ImGui::Button("Pause")) { Pause(); }
-        } else if (currentTime_ < duration_) {
+        } else if (state_ == State::Paused) {
             if (ImGui::Button("Resume")) { Resume(); }
         }
         

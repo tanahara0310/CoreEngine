@@ -44,7 +44,7 @@ namespace CoreEngine
         PlaybackState GetState() const;
 
         /// @brief 再生モード（再生中か一時停止中）か
-        bool IsInPlayMode() const { return inPlayMode_; }
+        bool IsInPlayMode() const { return mode_ != Mode::Editing; }
 
         /// @brief 再生中で、一時停止していないか
         bool IsPlaying() const { return GetState() == PlaybackState::Playing; }
@@ -53,14 +53,14 @@ namespace CoreEngine
         bool IsPaused() const { return GetState() == PlaybackState::Paused; }
 
         /// @brief 編集中か
-        bool IsEditing() const { return !inPlayMode_; }
+        bool IsEditing() const { return mode_ == Mode::Editing; }
 
         /// @brief このフレームでゲームの更新を進めるか
         bool IsAdvancing() const { return IsPlaying(); }
 
         /// @brief 一時停止の切り替えが入っているか
         /// @note 編集中に入れておくと、再生を一時停止した状態で始める。
-        bool IsPauseToggled() const { return pauseToggled_; }
+        bool IsPauseToggled() const;
 
         /// @brief 再生を始める（編集中なら次のフレームの先頭で始める）
         void Play();
@@ -96,24 +96,23 @@ namespace CoreEngine
         PlaybackStateManager(const PlaybackStateManager&) = delete;
         PlaybackStateManager& operator=(const PlaybackStateManager&) = delete;
 
+        /// @brief 中の状態（外へは PlaybackState で見せる。コマ送りの 1 フレームは Playing）
+        enum class Mode { Editing, Playing, Paused, Stepping };
+
+        /// @brief 次のフレームの先頭で取り込む頼み（常に 1 つ。後から来た方が勝つ）
+        enum class Request { None, Play, Stop, Step };
+
+        /// @brief 状態を変え、ゲーム時間の停止を合わせる（状態を変えるのはここだけ）
+        void TransitionTo(Mode next);
+
         /// @brief ゲーム時間の停止を今の状態へ合わせる
         void SyncTime() const;
 
-        /// 再生モードか
-        bool inPlayMode_ = false;
+        Mode mode_ = Mode::Editing;
+        Request request_ = Request::None;
 
-        /// 一時停止の切り替え
-        bool pauseToggled_ = false;
-
-        /// 再生の開始・停止の頼み（次のフレームの先頭で取り込む）
-        bool playRequested_ = false;
-        bool stopRequested_ = false;
-
-        /// コマ送りの要求（次のフレームの先頭で取り込む）
-        bool stepRequested_ = false;
-
-        /// コマ送りの 1 フレームを進めている最中か
-        bool stepping_ = false;
+        /// 編集中に「一時停止で始める」を選んだか
+        bool startPaused_ = false;
 
         TransitionHooks hooks_;
     };

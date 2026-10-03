@@ -17,55 +17,89 @@ namespace CoreEngine
     {
 #ifndef CORE_EDITOR
         // エディタの無いビルドは最初から再生する
-        inPlayMode_ = true;
+        mode_ = Mode::Playing;
 #endif
         SyncTime();
     }
 
     PlaybackState PlaybackStateManager::GetState() const
     {
-        if (!inPlayMode_) {
+        switch (mode_) {
+        case Mode::Editing:
             return PlaybackState::Editing;
+        case Mode::Paused:
+            return PlaybackState::Paused;
+        case Mode::Playing:
+        case Mode::Stepping:
+        default:
+            return PlaybackState::Playing;
         }
-        return (pauseToggled_ && !stepping_) ? PlaybackState::Paused : PlaybackState::Playing;
+    }
+
+    bool PlaybackStateManager::IsPauseToggled() const
+    {
+        // 編集中は「一時停止で始める」の印、再生モードでは止まっているか（コマ送りの 1 フレームも含む）
+        return (mode_ == Mode::Editing) ? startPaused_ : (mode_ == Mode::Paused || mode_ == Mode::Stepping);
     }
 
     void PlaybackStateManager::Play()
     {
-        stopRequested_ = false;
-        if (!inPlayMode_) {
-            playRequested_ = true;
+        // 頼みは常に 1 つ。後から来た方が勝つ
+        if (request_ == Request::Stop) {
+            request_ = Request::None;
+        }
+        if (mode_ == Mode::Editing) {
+            request_ = Request::Play;
         }
     }
 
     void PlaybackStateManager::Stop()
     {
-        playRequested_ = false;
-        if (inPlayMode_) {
-            stopRequested_ = true;
+        if (request_ == Request::Play) {
+            request_ = Request::None;
+        }
+        if (mode_ != Mode::Editing) {
+            request_ = Request::Stop;
         }
     }
 
     void PlaybackStateManager::TogglePause()
     {
-        pauseToggled_ = !pauseToggled_;
-        SyncTime();
+        switch (mode_) {
+        case Mode::Editing:
+            startPaused_ = !startPaused_;
+            break;
+        case Mode::Playing:
+            TransitionTo(Mode::Paused);
+            break;
+        case Mode::Paused:
+        case Mode::Stepping:
+            TransitionTo(Mode::Playing);
+            break;
+        }
     }
 
     void PlaybackStateManager::Pause()
     {
-        pauseToggled_ = true;
-        SyncTime();
+        if (mode_ == Mode::Editing) {
+            startPaused_ = true;
+        } else if (mode_ == Mode::Playing) {
+            TransitionTo(Mode::Paused);
+        }
     }
 
     void PlaybackStateManager::RequestStep()
     {
-        if (!inPlayMode_) {
+        if (mode_ == Mode::Editing) {
             return;
         }
-        pauseToggled_ = true;
-        stepRequested_ = true;
-        SyncTime();
+        if (mode_ == Mode::Playing) {
+            TransitionTo(Mode::Paused);
+        }
+        // 停止の頼みが先にあれば、そちらを残す（止めればコマ送りは要らない）
+        if (request_ == Request::None) {
+            request_ = Request::Step;
+        }
     }
 
     void PlaybackStateManager::SetTransitionHooks(TransitionHooks hooks)
@@ -80,45 +114,52 @@ namespace CoreEngine
 
     void PlaybackStateManager::BeginFrame()
     {
-        if (stopRequested_) {
+        switch (request_) {
+        case Request::Stop: {
             // 編集中へ戻してから控えを戻す。戻せない場面は再生モードのまま次のフレームで試す
-            inPlayMode_ = false;
-            stepping_ = false;
-            stepRequested_ = false;
-            SyncTime();
+            const bool wasPaused = (mode_ == Mode::Paused || mode_ == Mode::Stepping);
+            TransitionTo(Mode::Editing);
             if (hooks_.afterStop && !hooks_.afterStop()) {
-                inPlayMode_ = true;
-                SyncTime();
+                TransitionTo(wasPaused ? Mode::Paused : Mode::Playing);
                 return;
             }
-            stopRequested_ = false;
+            // 一時停止したまま止めたら、次の再生も一時停止で始める
+            startPaused_ = wasPaused;
+            request_ = Request::None;
             return;
         }
 
-        if (playRequested_) {
+        case Request::Play:
             if (hooks_.beforePlay && !hooks_.beforePlay()) {
                 return;
             }
-            playRequested_ = false;
-            inPlayMode_ = true;
-            SyncTime();
-        }
+            request_ = Request::None;
+            TransitionTo(startPaused_ ? Mode::Paused : Mode::Playing);
+            return;
 
-        if (stepRequested_) {
-            stepRequested_ = false;
-            if (inPlayMode_ && pauseToggled_) {
-                stepping_ = true;
-                SyncTime();
+        case Request::Step:
+            request_ = Request::None;
+            if (mode_ == Mode::Paused) {
+                TransitionTo(Mode::Stepping);
             }
+            return;
+
+        case Request::None:
+        default:
+            return;
         }
     }
 
     void PlaybackStateManager::EndFrame()
     {
-        if (!stepping_) {
-            return;
+        if (mode_ == Mode::Stepping) {
+            TransitionTo(Mode::Paused);
         }
-        stepping_ = false;
+    }
+
+    void PlaybackStateManager::TransitionTo(Mode next)
+    {
+        mode_ = next;
         SyncTime();
     }
 
