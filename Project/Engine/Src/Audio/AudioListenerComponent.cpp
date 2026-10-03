@@ -10,23 +10,25 @@ COMPONENT_REGISTER(CoreEngine::AudioListenerComponent)
 
 namespace CoreEngine
 {
-    AudioListenerComponent* AudioListenerComponent::active_ = nullptr;
+    std::vector<AudioListenerComponent*> AudioListenerComponent::enabledListeners_;
 
-    void AudioListenerComponent::Awake()
+    void AudioListenerComponent::OnEnable()
     {
-        if (active_ && active_ != this) {
+        enabledListeners_.push_back(this);
+        if (enabledListeners_.size() > 1) {
             Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Audio,
-                "音の聞き手が 2 つ以上あります。先に置いた方を使います");
-            return;
+                "音の聞き手が 2 つ以上有効です。先に有効になった方を使います");
         }
-        active_ = this;
     }
 
-    void AudioListenerComponent::OnDestroy()
+    void AudioListenerComponent::OnDisable()
     {
-        if (active_ == this) {
-            active_ = nullptr;
-        }
+        std::erase(enabledListeners_, this);
+    }
+
+    AudioListenerComponent* AudioListenerComponent::GetActive()
+    {
+        return enabledListeners_.empty() ? nullptr : enabledListeners_.front();
     }
 
     Vector3 AudioListenerComponent::GetWorldPosition() const

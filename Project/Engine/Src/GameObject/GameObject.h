@@ -51,6 +51,7 @@ namespace CoreEngine
         // ===== アクティブ・破棄 =====
 
         /// @brief アクティブ状態を設定する（false で更新・描画ともにスキップ）
+        /// @note 変わったら、有効なコンポーネントへ OnEnable / OnDisable を配る。
         void SetActive(bool active);
 
         /// @brief アクティブ状態を取得する

@@ -42,8 +42,8 @@ namespace CoreEngine
     {
         switch (phase) {
         case SceneUpdatePhase::PostLogic:
-            // インスペクタのチェックと CVar をそろえてから描画側へ渡す
-            SyncComponentToggles();
+            // CVar 側で切り替えた雲・霧の有効をチェックへ写してから描画側へ渡す
+            FollowToggleCVars();
             // 大気散乱の更新（全ロジック更新後の最新の太陽・カメラ情報を反映する）
             UpdateAtmosphere(ctx);
             // フォグは空・大気の有無に依存しないので、大気更新の成否と無関係に呼ぶ
@@ -66,6 +66,14 @@ namespace CoreEngine
             SceneEnvironmentIO::Save(ctx.saveSystem->GetSceneName());
         }
 #endif
+
+        // 雲・霧の有効の CVar との結びを外す（この後のオブジェクトの破棄では CVar を書かない）
+        if (VolumetricCloudComponent* const cloud = cloud_.Get()) {
+            cloud->BindEnabledCVar(nullptr);
+        }
+        if (HeightFogComponent* const fog = fog_.Get()) {
+            fog->BindEnabledCVar(nullptr);
+        }
 
         // どれも GameObjectManager が所有しているため参照だけ外す
         skyBox_.Reset();
@@ -131,7 +139,7 @@ namespace CoreEngine
             postProcess_.Set(postProcess);
             Logger::GetInstance().Infof(LogCategory::System,
                 "EnvironmentFeature: シーンが置いた環境を採用");
-            SyncComponentToggles();
+            BindComponentToggles();
             return;
         }
 
@@ -156,34 +164,42 @@ namespace CoreEngine
         fog_.Set(fog);
         postProcess_.Set(postProcess);
 
-        // 実体の値（CVar）に合わせてチェックの初期状態を決める
-        if (cloud) { cloud->SetEnabled(CloudCVars::Enabled.Get()); }
-        if (fog) { fog->SetEnabled(FogCVars::Enabled.Get()); }
-        lastCloudEnabled_ = CloudCVars::Enabled.Get();
-        lastFogEnabled_ = FogCVars::Enabled.Get();
+        BindComponentToggles();
 
         Logger::GetInstance().Infof(LogCategory::System,
             "EnvironmentFeature: 既定の環境（空・雲・霧・ポストエフェクト）を {} に載せた",
             host->GetName());
     }
 
-    void EnvironmentFeature::SyncComponentToggles()
+    void EnvironmentFeature::BindComponentToggles()
     {
-        const auto sync = [](IComponent* component, CVar<bool>& cvar, bool& last) {
+        // チェックを CVar に合わせてから、チェックの切り替えが CVar へ写るよう結ぶ
+        const auto bind = [](CVarToggleComponent* component, CVar<bool>& cvar, uint32_t& revision) {
             if (!component) {
                 return;
             }
-            if (cvar.Get() != last) {
-                // CVar パネルやコンソールから変わった
-                component->SetEnabled(cvar.Get());
-            } else if (component->IsEnabled() != cvar.Get()) {
-                // インスペクタのチェックから変わった
-                cvar.Set(component->IsEnabled());
-            }
-            last = cvar.Get();
+            component->SetEnabled(cvar.Get());
+            component->BindEnabledCVar(&cvar);
+            revision = cvar.GetRevision();
             };
-        sync(cloud_.Get(), CloudCVars::Enabled, lastCloudEnabled_);
-        sync(fog_.Get(), FogCVars::Enabled, lastFogEnabled_);
+        bind(cloud_.Get(), CloudCVars::Enabled, cloudEnabledRevision_);
+        bind(fog_.Get(), FogCVars::Enabled, fogEnabledRevision_);
+    }
+
+    void EnvironmentFeature::FollowToggleCVars()
+    {
+        const auto follow = [](IComponent* component, const CVar<bool>& cvar, uint32_t& revision) {
+            if (!component || cvar.GetRevision() == revision) {
+                return;
+            }
+            revision = cvar.GetRevision();
+            // コンポーネントの OnEnable / OnDisable が書いた値（オブジェクトのアクティブの切り替えを含む）なら、チェックはそのまま
+            if (cvar.Get() != component->IsActiveAndEnabled()) {
+                component->SetEnabled(cvar.Get());
+            }
+            };
+        follow(cloud_.Get(), CloudCVars::Enabled, cloudEnabledRevision_);
+        follow(fog_.Get(), FogCVars::Enabled, fogEnabledRevision_);
     }
 
     void EnvironmentFeature::UpdateAtmosphere(SceneContext& ctx)

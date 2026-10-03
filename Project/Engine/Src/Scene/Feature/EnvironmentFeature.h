@@ -19,8 +19,8 @@ namespace CoreEngine
     ///          ポストエフェクトのコンポーネントを採用する
     ///          （足りなければ `Environment` オブジェクトを作って載せる）。
     ///          PostLogic で大気散乱 → 雲 → 霧の順に毎フレーム反映する。
-    /// @note パラメータの実体は CVar が持つ（保存はシーンの `_environment.json`）。
-    ///       コンポーネントが持つのは「シーンに置かれている」ことと有効・無効だけ。
+    /// @note パラメータと雲・霧の有効・無効の実体は CVar が持つ（保存はシーンの `_environment.json`）。
+    ///       コンポーネントは「シーンに置かれている」ことを表し、雲・霧のチェックは CVar と同じ値になる。
     /// @note 地平線より下の地面は大気散乱そのものが描く（Sky-View LUT の地表反射項）。
     class EnvironmentFeature : public ISceneFeature {
     public:
@@ -37,10 +37,12 @@ namespace CoreEngine
         /// @brief 環境のコンポーネントを採用する（足りなければ `Environment` を作って載せる）
         void SetupEnvironmentObject(SceneContext& ctx);
 
-        /// @brief コンポーネントの有効・無効と CVar を行き来させる
-        /// @details 片方だけが変わったらもう片方へ写す。CVar パネルとインスペクタの
-        ///          どちらから触っても同じ値になる（`LightComponent` と同じ流儀）。
-        void SyncComponentToggles();
+        /// @brief 雲・霧のチェックを CVar に合わせ、チェックの切り替えが CVar へ写るよう結ぶ
+        void BindComponentToggles();
+
+        /// @brief 雲・霧の有効の CVar がパネル・コンソール・スクリプトで変わったら、チェックへ写す
+        /// @note チェックの切り替えは、コンポーネントの OnEnable / OnDisable が CVar へ写す。
+        void FollowToggleCVars();
 
         /// @brief 大気散乱システム（と雲）の毎フレーム更新
         /// @details SkyBox が大気散乱モードの場合のみ AtmosphereManager へ太陽情報と
@@ -65,9 +67,9 @@ namespace CoreEngine
         ObjectRef<HeightFogComponent> fog_;
         ObjectRef<PostProcessComponent> postProcess_;
 
-        // 前回そろえた時点の有効・無効（どちら側が変わったかを見分けるための控え）
-        bool lastCloudEnabled_ = false;
-        bool lastFogEnabled_ = false;
+        // 雲・霧の有効の CVar を最後にチェックへ写したときの通番
+        uint32_t cloudEnabledRevision_ = 0;
+        uint32_t fogEnabledRevision_ = 0;
 
 #ifdef CORE_EDITOR
         // シーンが持つ値の変更を見張るための控え

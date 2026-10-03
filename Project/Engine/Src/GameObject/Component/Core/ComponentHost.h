@@ -31,7 +31,7 @@ public:
     // ===== 追加 =====
 
     /// @brief コンポーネントを生成してアタッチする（以後の追加でも戻り値は無効化されない）
-    /// @note `Awake()` はこの中で即座に呼ばれる。兄弟コンポーネントを見る初期化は `Start()` に書くこと。
+    /// @note `Awake()` と（有効なら）`OnEnable()` はこの中で即座に呼ばれる。兄弟コンポーネントを見る初期化は `Start()` に書くこと。
     ///       `DataAttachScope` の外で付けたものは、コードが付けたもの（`IComponent::IsAttachedByCode()`）になる。
     template <typename T, typename... Args>
     T* AddComponent(Args&&... args) {
@@ -43,13 +43,13 @@ public:
         raw->owner_ = ownerObject_;
         raw->attachedByCode_ = dataAttachDepth_ == 0;
         components_.push_back(std::move(owned));
-        raw->Awake();
+        InvokeAwake(*raw);
         return raw;
     }
 
     /// @brief 生成済みのコンポーネントをアタッチする
     /// @param component 所有権を渡すコンポーネント（nullptr なら何もしない）
-    /// @param invokeAwake ここで `Awake()` を呼ぶか
+    /// @param invokeAwake ここで `Awake()`（と有効なら `OnEnable()`）を呼ぶか
     /// @return アタッチされたコンポーネント。渡されたものが nullptr なら nullptr
     /// @note 型が実行時の文字列でしか分からない経路（シーン JSON からの復元）が使う。
     ///       `MeshRendererComponent` のようにモデルのロードを `Awake()` で行う型があるので、
@@ -157,13 +157,14 @@ public:
 
     /// @brief コンポーネントを外し、実体はオブジェクトが破棄されるまで控える
     /// @return 外す前の位置（取り外し済みを除いた並びでの添え字）。付いていなければ空
-    /// @note `OnDestroy()` は呼ばない。兄弟が控えたポインタは、破棄まで指したまま使える。
+    /// @note `OnDestroy()` は呼ばない（有効なら `OnDisable()` は呼ぶ）。兄弟が控えたポインタは、破棄まで指したまま使える。
     ///       控えたものは `ReattachComponent()` で付け直せる。更新ループの外から呼ぶこと。
     std::optional<std::size_t> DetachComponent(IComponent* component);
 
     /// @brief `DetachComponent()` で外したコンポーネントを付け直す
     /// @param position 取り外し済みを除いた並びでの添え字（付いている数以上なら末尾）
     /// @return 外したものの中に無ければ false
+    /// @note 有効でオブジェクトがアクティブなら `OnEnable()` を呼ぶ。
     bool ReattachComponent(IComponent* component, std::size_t position);
 
     /// @brief `DetachComponent()` で外して控えているコンポーネントを探す
@@ -174,7 +175,7 @@ public:
     /// @param entry `SerializeComponents` が書いた配列の 1 要素
     /// @param position 取り外し済みを除いた並びでの添え字（付いている数以上なら末尾）
     /// @return 付けたコンポーネント（保存形が壊れていれば nullptr）
-    /// @note コードが付けたものとして扱わない。値を流し終えてから `Awake()` を呼ぶ。
+    /// @note コードが付けたものとして扱わない。値を流し終えてから `Awake()`（と有効なら `OnEnable()`）を呼ぶ。
     IComponent* RestoreComponent(const json& entry, std::size_t position);
 
     /// @brief コンポーネントの位置（取り外し済みを除いた並びでの添え字）
@@ -196,7 +197,7 @@ public:
     /// @param trigger どちらかのコライダーがトリガーなら true（OnTrigger* を呼ぶ）。false なら OnCollision*
     void DispatchComponentContact(ContactPhase phase, bool trigger, const CollisionInfo& info);
 
-    /// @brief 全コンポーネントの OnDestroy() を呼ぶ（オブジェクト破棄時）
+    /// @brief 全コンポーネントの OnDestroy() を呼ぶ（オブジェクト破棄時。有効なものは先に OnDisable()）
     /// @note 実体はまだ解放しない。二重呼び出しはしない。
     void DispatchComponentDestroy();
 
@@ -226,7 +227,17 @@ protected:
     ///       `GameObject` の定義を知らないので自分でキャストはできない。
     void SetOwnerObject(GameObject* owner) { ownerObject_ = owner; }
 
+    /// @brief オブジェクトのアクティブが変わったので、Awake 済みのコンポーネントへ OnEnable / OnDisable を配る
+    /// @note `GameObject::SetActive` が値が変わったときに呼ぶ。
+    void DispatchComponentActiveChanged();
+
 private:
+    /// @brief Awake() を呼び、有効でオブジェクトがアクティブなら続けて OnEnable() を呼ぶ
+    void InvokeAwake(IComponent& component);
+
+    /// @brief 有効なら OnDisable()、続けて OnDestroy() を呼ぶ（呼ぶのは 1 回だけ）
+    static void DestroyComponent(IComponent& component);
+
     /// @brief スロットを retired_ へ移し、配列上は nullptr にする（インデックス不変）
     void RetireSlot(std::unique_ptr<IComponent>& slot);
 
