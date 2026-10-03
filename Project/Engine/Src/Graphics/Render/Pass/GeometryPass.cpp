@@ -66,9 +66,7 @@ namespace CoreEngine
         auto* cmdList = context.cmdList;
 
         // DeferredLightingPass が先に書き込んでいる場合はクリアしない
-        targetToUse->SetClearEnabled(ShouldClear());
-
-        targetToUse->Begin(cmdList);
+        targetToUse->Begin(cmdList, { .clear = ShouldClear() });
 
         if (context.renderManager) {
             // パス分離契約 2: 描画に必要な状態は先行パスに依存せず自分で設定する。

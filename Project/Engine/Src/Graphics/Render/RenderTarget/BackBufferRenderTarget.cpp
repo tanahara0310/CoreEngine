@@ -13,7 +13,7 @@ namespace CoreEngine
         dxCommon_ = dx;
     }
 
-    void BackBufferRenderTarget::Begin(ID3D12GraphicsCommandList* cmdList)
+    RenderTargetBinding BackBufferRenderTarget::Begin(ID3D12GraphicsCommandList* cmdList, const RenderTargetBeginDesc& desc)
     {
         assert(cmdList);
         assert(dxCommon_);
@@ -31,7 +31,9 @@ namespace CoreEngine
         cmdList->OMSetRenderTargets(1, &rtvHandle, false, nullptr);
 
         // バックバッファのみクリアする。
-        cmdList->ClearRenderTargetView(rtvHandle, clearColor_, 0, nullptr);
+        if (desc.clear) {
+            cmdList->ClearRenderTargetView(rtvHandle, desc.clearColor ? desc.clearColor : clearColor_, 0, nullptr);
+        }
 
         // ビューポート設定（キャッシュせず現在のクライアント領域サイズを都度取得する）
         const int32_t width = dxCommon_->GetClientWidth();
@@ -54,6 +56,7 @@ namespace CoreEngine
         cmdList->RSSetScissorRects(1, &scissor);
 
         // SRV ヒープはフレーム先頭で CommandContext が 1 回バインドする（個別バインドは不要）
+        return { rtvHandle, {} };
     }
 
     void BackBufferRenderTarget::End(ID3D12GraphicsCommandList* cmdList)

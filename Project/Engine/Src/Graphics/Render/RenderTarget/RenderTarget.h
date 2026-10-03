@@ -9,6 +9,25 @@ namespace CoreEngine
 {
     class GraphicsCore;
 
+    /// @brief Begin で深度を束ねるか
+    enum class DepthBinding {
+        FromDescriptor, ///< 作ったときの記述子に従う（深度ありで作ったものだけ束ねる）
+        None,           ///< 束ねない（共有のシーン深度に触れない）
+    };
+
+    /// @brief Begin の設定（呼ぶたびに値で渡す。ターゲットには残らない）
+    struct RenderTargetBeginDesc {
+        bool clear = true;                                 ///< RTV（と束ねた深度）をクリアするか
+        DepthBinding depth = DepthBinding::FromDescriptor; ///< 深度を束ねるか
+        const float* clearColor = nullptr;                 ///< クリア色（nullptr ならターゲットの既定色）
+    };
+
+    /// @brief Begin が実際に束ねたビュー
+    struct RenderTargetBinding {
+        D3D12_CPU_DESCRIPTOR_HANDLE rtv{};
+        D3D12_CPU_DESCRIPTOR_HANDLE dsv{}; ///< 深度を束ねていなければ ptr が 0
+    };
+
     /// @brief レンダーターゲットの抽象基底クラス
     /// オフスクリーン/バックバッファの共通インターフェースを提供
     class RenderTarget {
@@ -17,7 +36,9 @@ namespace CoreEngine
 
         /// @brief レンダリング開始（リソースバリア + RTV/DSV設定 + クリア）
         /// @param cmdList コマンドリスト
-        virtual void Begin(ID3D12GraphicsCommandList* cmdList) = 0;
+        /// @param desc 今回のクリア・深度・クリア色
+        /// @return 実際に束ねた RTV / DSV
+        virtual RenderTargetBinding Begin(ID3D12GraphicsCommandList* cmdList, const RenderTargetBeginDesc& desc = {}) = 0;
 
         /// @brief レンダリング終了（リソースバリアで読み込み可能状態に遷移）
         /// @param cmdList コマンドリスト
@@ -53,7 +74,7 @@ namespace CoreEngine
         /// @return 高さ
         virtual int32_t GetHeight() const = 0;
 
-        /// @brief クリアカラーを設定
+        /// @brief 既定のクリアカラーを設定（Begin の設定でクリア色を渡さなかったときに使う）
         /// @param color クリアカラー（RGBA）
         void SetClearColor(const float color[4]) {
             clearColor_[0] = color[0];
@@ -66,19 +87,8 @@ namespace CoreEngine
         /// @return クリアカラー配列
         const float* GetClearColor() const { return clearColor_; }
 
-        /// @brief Begin() 時にRTVクリアを行うか設定する
-        /// @param enabled true: クリアする（デフォルト） / false: クリアしない
-        /// @note DeferredLightingPass など前段パスの書き込みを保持したい場合に false を指定する
-        void SetClearEnabled(bool enabled) { clearEnabled_ = enabled; }
-
-        /// @brief Begin() 時のクリアが有効かどうか取得
-        bool IsClearEnabled() const { return clearEnabled_; }
-
     protected:
         /// @brief RTVのクリア色（RGBA）
         float clearColor_[4] = {0.1f, 0.25f, 0.5f, 1.0f};
-
-        /// @brief Begin() でRTVクリアを行うかどうか（true がデフォルト）
-        bool clearEnabled_ = true;
     };
 }

@@ -16,8 +16,8 @@ namespace CoreEngine
         /// @param dx GraphicsCore
         void Initialize(GraphicsCore* dx);
 
-        /// @brief レンダリング開始
-        void Begin(ID3D12GraphicsCommandList* cmdList) override;
+        /// @brief レンダリング開始（深度は束ねない）
+        RenderTargetBinding Begin(ID3D12GraphicsCommandList* cmdList, const RenderTargetBeginDesc& desc = {}) override;
 
         /// @brief レンダリング終了
         void End(ID3D12GraphicsCommandList* cmdList) override;

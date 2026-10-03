@@ -2,7 +2,6 @@
 #include "Render.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Render/RenderTarget/RenderTargetDescriptor.h"
-#include "Graphics/Render/RenderTarget/OffscreenRenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 
 using namespace Microsoft::WRL;
@@ -42,11 +41,7 @@ namespace CoreEngine
         sceneColorSnapshotDesc.clearColor[2] = kClearColor[2];
         sceneColorSnapshotDesc.clearColor[3] = kClearColor[3];
         sceneColorSnapshotDesc.needsDepthStencil = false;
-        if (auto* sceneColorSnapshot = renderTargetManager_->CreateRenderTarget(sceneColorSnapshotDesc)) {
-            if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(sceneColorSnapshot)) {
-                offscreen->SetUseDepthBuffer(false);
-            }
-        }
+        renderTargetManager_->CreateRenderTarget(sceneColorSnapshotDesc);
 
         renderTargetManager_->EnsurePostEffectFinalTarget();
 
@@ -60,11 +55,7 @@ namespace CoreEngine
         ssaoDesc.clearColor[2] = kSSAOClearColor[2];
         ssaoDesc.clearColor[3] = kSSAOClearColor[3];
         ssaoDesc.needsDepthStencil = false;
-        if (auto* ssaoTarget = renderTargetManager_->CreateRenderTarget(ssaoDesc)) {
-            if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(ssaoTarget)) {
-                offscreen->SetUseDepthBuffer(false);
-            }
-        }
+        renderTargetManager_->CreateRenderTarget(ssaoDesc);
 
         RenderTargetDescriptor ssaoBlurDesc(RenderTargetNames::SSAOBlurBuffer);
         ssaoBlurDesc.clearColor[0] = kSSAOClearColor[0];
@@ -72,11 +63,7 @@ namespace CoreEngine
         ssaoBlurDesc.clearColor[2] = kSSAOClearColor[2];
         ssaoBlurDesc.clearColor[3] = kSSAOClearColor[3];
         ssaoBlurDesc.needsDepthStencil = false;
-        if (auto* ssaoBlurTarget = renderTargetManager_->CreateRenderTarget(ssaoBlurDesc)) {
-            if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(ssaoBlurTarget)) {
-                offscreen->SetUseDepthBuffer(false);
-            }
-        }
+        renderTargetManager_->CreateRenderTarget(ssaoBlurDesc);
 
         // バックバッファターゲットを作成
         renderTargetManager_->CreateBackBufferTarget(RenderTargetNames::BackBuffer);

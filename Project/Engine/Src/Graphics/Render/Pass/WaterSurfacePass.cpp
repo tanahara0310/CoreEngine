@@ -65,11 +65,10 @@ namespace CoreEngine
         }
 
         auto* cmdList = context.cmdList;
-        targetToUse->SetClearEnabled(false);
-        targetToUse->Begin(cmdList);
+        const RenderTargetBinding binding = targetToUse->Begin(cmdList, { .clear = false });
 
         // ---- SceneColor に加えて MotionVector も束ねる（MRT 2 枚）----
-        // Begin() が済ませた遷移・ビューポート・DSV 選択はそのまま活かし、
+        // Begin() が済ませた遷移・ビューポート・束ねた DSV はそのまま活かし、
         // OMSetRenderTargets だけを 2 枚版へ張り替える。
         // ★水面 PSO（WaterSurfaceComponent::WritesMotionVector）と枚数が必ず一致すること★
         const bool writeMotionVector = WaterCVars::WriteMotionVector.Get();
@@ -91,8 +90,7 @@ namespace CoreEngine
                 offscreenTarget->GetRTVHandle(),
                 context.gBufferManager->GetRTVHandle(GBufferManager::Target::MotionVector),
             };
-            D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = offscreenTarget->GetBoundDSVHandle();
-            cmdList->OMSetRenderTargets(2, rtvHandles, FALSE, &dsvHandle);
+            cmdList->OMSetRenderTargets(2, rtvHandles, FALSE, binding.dsv.ptr != 0 ? &binding.dsv : nullptr);
         }
 
         if (context.renderManager) {
