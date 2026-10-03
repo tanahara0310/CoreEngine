@@ -603,6 +603,7 @@ namespace CoreEngine
             return report;
         }
         report.compiled = true;
+        report.staleSections = std::move(built.staleSections);
 
         // 値を控えてスクリプトのオブジェクトを手放させてから、前のモジュールを捨てる
         const std::vector<ScriptComponent*> alive(components_.begin(), components_.end());

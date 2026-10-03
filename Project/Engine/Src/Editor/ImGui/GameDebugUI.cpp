@@ -591,8 +591,10 @@ namespace CoreEngine
             status.sceneName = sceneManager_->GetCurrentSceneName();
         }
         if (auto* script = engine_ ? engine_->GetSubsystem<ScriptSubsystem>() : nullptr) {
-            status.scriptOk = script->GetStatus().ok;
-            status.scriptTypeCount = script->GetStatus().typeCount;
+            const ScriptSubsystem::Status& scriptStatus = script->GetStatus();
+            status.scriptState = scriptStatus.state;
+            status.scriptStaleFiles = scriptStatus.staleFiles;
+            status.scriptTypeCount = scriptStatus.typeCount;
             if (const ScriptHost* const host = script->GetHost()) {
                 status.scriptUpdateMs = host->GetFrameStats().updateMs;
                 status.scriptComponents = host->GetFrameStats().liveComponents;
@@ -608,12 +610,12 @@ namespace CoreEngine
             status.playTime = playModeController_->GetPlayTime();
         }
 
-        // スクリプトのコンパイルが失敗に変わったら、エラーの行が見えるよう Console を前に出す
-        if (lastScriptOk_ && !status.scriptOk) {
+        // スクリプトが「全部通った」から外れたら（失敗・前の版で動作）、エラーの行が見えるよう Console を前に出す
+        if (lastScriptState_ == ScriptBuildState::Ok && status.scriptState != ScriptBuildState::Ok) {
             showConsole_ = true;
             console_->RequestFocus();
         }
-        lastScriptOk_ = status.scriptOk;
+        lastScriptState_ = status.scriptState;
 
         dockingUI_->SetStatus(status);
     }

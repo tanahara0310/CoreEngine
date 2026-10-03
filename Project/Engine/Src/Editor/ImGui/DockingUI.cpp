@@ -40,6 +40,21 @@ namespace CoreEngine
             CVarConsole::SetFromString(*cvar, value ? "true" : "false", reason);
         }
 
+        /// @brief 直す前の版で動いているスクリプトを短く書く（最初のファイル名と、ほかの数）
+        std::string DescribeStaleScripts(const std::vector<std::string>& files)
+        {
+            if (files.empty()) {
+                return "?";
+            }
+            const std::string& first = files.front();
+            const size_t slash = first.find_last_of("/\\");
+            std::string text = (slash == std::string::npos) ? first : first.substr(slash + 1);
+            if (files.size() > 1) {
+                text += std::format(" ほか {} 件", files.size() - 1);
+            }
+            return text;
+        }
+
         /// @brief bool の CVar の現在値（無ければ false）
         bool GetBoolCVar(const char* name)
         {
@@ -403,9 +418,25 @@ namespace CoreEngine
     void DockingUI::DrawToolbarStatusChips()
     {
 #ifdef CORE_EDITOR
-        const std::string scriptText = status_.scriptOk
-            ? std::format("Script ✓ {} 型", status_.scriptTypeCount)
-            : std::string("Script ✕ コンパイル失敗");
+        std::string scriptText;
+        ImVec4 scriptColor = Theme::kError;
+        switch (status_.scriptState) {
+        case ScriptBuildState::Ok:
+            scriptText = std::format("Script ✓ {} 型", status_.scriptTypeCount);
+            scriptColor = Theme::kOk;
+            break;
+        case ScriptBuildState::RunningStale:
+            scriptText = "Script ⚠ 前の版で動作: " + DescribeStaleScripts(status_.scriptStaleFiles);
+            scriptColor = Theme::kWarn;
+            break;
+        case ScriptBuildState::KeptPrevious:
+            scriptText = "Script ✕ コンパイル失敗（前の版のまま動作）";
+            break;
+        case ScriptBuildState::NotBuilt:
+        default:
+            scriptText = "Script ✕ コンパイル失敗";
+            break;
+        }
         const char* const saveText = status_.sceneSaved ? "保存済み" : "未保存の変更";
         const bool inPlayMode = status_.playback != PlaybackState::Editing;
         constexpr const char* kApplyLabel = "◈ 変更をプレハブへ適用";
@@ -431,9 +462,7 @@ namespace CoreEngine
             ImGui::SameLine();
         }
 
-        UI::Bar::Chip(scriptText.c_str(),
-            status_.scriptOk ? Theme::kOk : Theme::kError,
-            Theme::WithAlpha(status_.scriptOk ? Theme::kOk : Theme::kError, 0.35f));
+        UI::Bar::Chip(scriptText.c_str(), scriptColor, Theme::WithAlpha(scriptColor, 0.35f));
 
         ImGui::SameLine();
         UI::Bar::Chip(saveText,
@@ -504,7 +533,10 @@ namespace CoreEngine
             item(Theme::kTextMute, std::format("GPU {:.1f}ms", total.gpuMs));
 
             // ── 右側：スクリプト・Undo・シーンの保存状態（再生中は再生前の控え） ──
-            const std::string scriptText = status_.scriptOk ? "Script OK" : "Script 失敗";
+            const char* const scriptText = (status_.scriptState == ScriptBuildState::Ok) ? "Script OK"
+                : (status_.scriptState == ScriptBuildState::RunningStale) ? "Script 前の版で動作" : "Script 失敗";
+            const ImVec4 scriptColor = (status_.scriptState == ScriptBuildState::Ok) ? Theme::kOk
+                : (status_.scriptState == ScriptBuildState::RunningStale) ? Theme::kWarn : Theme::kError;
             const std::string undoText = std::format("Undo {}", status_.undoCount);
             std::string sceneText;
             if (inPlayMode) {
@@ -517,12 +549,12 @@ namespace CoreEngine
             }
             const ImVec4 sceneColor = (inPlayMode || status_.sceneSaved) ? Theme::kTextMute : Theme::kWarm;
 
-            const float width = ImGui::CalcTextSize(scriptText.c_str()).x
+            const float width = ImGui::CalcTextSize(scriptText).x
                 + ImGui::CalcTextSize(undoText.c_str()).x
                 + ImGui::CalcTextSize(sceneText.c_str()).x + 28.0f;
             AlignRight(width);
 
-            item(status_.scriptOk ? Theme::kOk : Theme::kError, scriptText);
+            item(scriptColor, scriptText);
             ImGui::SameLine(0.0f, 14.0f);
             item(Theme::kTextMute, undoText);
             ImGui::SameLine(0.0f, 14.0f);

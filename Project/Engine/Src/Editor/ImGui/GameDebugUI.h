@@ -12,6 +12,7 @@
 #include "Editor/Scene/SceneResaveDialog.h"
 #endif
 #include "Editor/Panel/EditorPanelRegistry.h"
+#include "Script/ScriptBuildState.h"
 #include "Utility/Lifetime/ScopedRegistration.h"
 #include <filesystem>
 #include <functional>
@@ -134,7 +135,7 @@ namespace CoreEngine
         PendingSceneAction pendingSceneAction_ = PendingSceneAction::None;
         std::string pendingSceneName_;      ///< 開く／作るシーンの名前
         int pendingSceneTemplate_ = 1;      ///< 作るときのひな形
-        bool lastScriptOk_ = true;          ///< 前のフレームでスクリプトのコンパイルが通っていたか
+        ScriptBuildState lastScriptState_ = ScriptBuildState::Ok; ///< 前のフレームのスクリプトの組み立ての状態
 
 #ifdef CORE_EDITOR
         ScreenCapture screenCapture_;  ///< スクリーンキャプチャ機能

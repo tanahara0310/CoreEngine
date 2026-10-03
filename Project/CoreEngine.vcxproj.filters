@@ -1902,6 +1902,9 @@
     <ClInclude Include="Engine\Src\Script\ScriptPredefined.h">
       <Filter>Engine\Src\Script</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Script\ScriptBuildState.h">
+      <Filter>Engine\Src\Script</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Script\ScriptCallback.h">
       <Filter>Engine\Src\Script</Filter>
     </ClInclude>

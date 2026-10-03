@@ -4,6 +4,7 @@
 #include "Editor/Panel/EditorDockArea.h"
 #include "EngineSystem/PlaybackState.h"
 #include "Graphics/RHI/Debug/GpuTimestampProfiler.h"
+#include "Script/ScriptBuildState.h"
 #include "Utility/Lifetime/ScopedRegistration.h"
 #include <imgui_internal.h>
 #include <array>
@@ -27,7 +28,8 @@ namespace CoreEngine
         std::string sceneName;              ///< 開いているシーン名（空なら出さない）
         bool sceneSaved = true;             ///< 最後の保存から編集していないか
         std::size_t editsSinceSave = 0;     ///< 最後の保存からの編集回数
-        bool scriptOk = true;               ///< 直前のスクリプトの読み込みに成功したか
+        ScriptBuildState scriptState = ScriptBuildState::Ok; ///< スクリプトの組み立ての状態
+        std::vector<std::string> scriptStaleFiles;          ///< 直す前の版で動いているスクリプトのファイル
         std::size_t scriptTypeCount = 0;    ///< 読み込めているスクリプトの型数
         double scriptUpdateMs = 0.0;        ///< 直前のフレームでスクリプトの更新にかかった時間（ミリ秒）
         std::size_t scriptComponents = 0;   ///< 生きているスクリプトのコンポーネントの数

@@ -62,6 +62,8 @@ namespace CoreEngine
             std::size_t restored = 0; ///< 値を戻せたコンポーネントの数
             std::size_t orphaned = 0; ///< クラスが無くなり、値を持ったまま止めたコンポーネントの数
             double elapsedMs = 0.0;
+            /// 直す前の版のまま組んだファイル（エラーが残っているもの）
+            std::vector<std::string> staleSections;
         };
 
         /// @brief スクリプトをコンパイルし直し、生きているコンポーネントの値を持ち越して差し替える
