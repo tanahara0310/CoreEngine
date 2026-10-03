@@ -1,11 +1,11 @@
 #pragma once
 
 #include <d3d12.h>
-#include <wrl.h>
 
 #include "Math/MathCore.h"
 #include "Math/Frustum.h"
 #include "Camera/CameraStructs.h"
+#include "Graphics/RHI/Resource/PerFrameConstants.h"
 
 /// @file
 /// @brief カメラ（エンジン唯一の具象カメラ）
@@ -20,14 +20,14 @@ namespace CoreEngine {
         Camera() = default;
         explicit Camera(const CameraParameters& parameters) : parameters_(parameters) {}
 
-        /// @brief GPU リソースの初期化
-        /// @param device D3D12デバイス（nullptr なら GPU 定数バッファを持たない）
-        void Initialize(ID3D12Device* device);
+        /// @brief GPU へ渡す定数の置き場をつなぐ
+        /// @param uploadRing 記録中のフレームの UploadRing（nullptr なら GPU 定数を持たない）
+        void Initialize(UploadRing* uploadRing);
 
-        /// @brief 行列の更新 + GPU 転送（フレームごとに 1 回）
+        /// @brief 行列の更新 + GPU へ渡す定数の更新
         void Update();
 
-        /// @brief 行列の更新（GPU 転送を含む）
+        /// @brief 行列の更新（GPU へ渡す定数の更新を含む）
         void UpdateMatrix();
 
         // ====== 行列・視点 ======
@@ -56,15 +56,12 @@ namespace CoreEngine {
 
         // ====== GPU リソース ======
 
-        /// @brief カメラ用定数バッファ（CameraForGPU）の GPU 仮想アドレス
-        D3D12_GPU_VIRTUAL_ADDRESS GetGPUVirtualAddress() const {
-            return cameraGPUResource_ ? cameraGPUResource_->GetGPUVirtualAddress() : 0;
-        }
+        /// @brief カメラ用定数（CameraForGPU）を記録中のフレームの UploadRing に置き、その GPU 仮想アドレスを返す
+        /// @return GPU 定数を持たないカメラは 0
+        /// @note 返したアドレスはそのフレームの記録中だけ有効
+        D3D12_GPU_VIRTUAL_ADDRESS GetGPUVirtualAddress() const { return gpuConstants_.Address(); }
 
-        /// @brief 視点ワールド座標を GPU へ転送する
-        /// @details 定数バッファは単一のアップロードバッファ。フレーム内で複数回書き換えると
-        ///          実行中の前フレーム（インフライト）がどちらを読むかタイミング依存になり、
-        ///          カメラ位置依存のフレネル項がちらつく。書き込みはフレーム 1 回に限ること。
+        /// @brief 視点ワールド座標を GPU へ渡す定数に写す（GPU へは次の GetGPUVirtualAddress で置く）
         void TransferMatrix();
 
         // ====== パラメータ ======
@@ -154,8 +151,7 @@ namespace CoreEngine {
         float projectionJitterY_ = 0.0f;
         Matrix4x4 jitteredProjectionMatrix_{};
 
-        // GPU 用リソース（CameraForGPU = 視点ワールド座標）
-        Microsoft::WRL::ComPtr<ID3D12Resource> cameraGPUResource_;
-        CameraForGPU* cameraGPUData_ = nullptr;
+        // GPU へ渡す定数（CameraForGPU = 視点ワールド座標）
+        PerFrameConstants<CameraForGPU> gpuConstants_;
     };
 }

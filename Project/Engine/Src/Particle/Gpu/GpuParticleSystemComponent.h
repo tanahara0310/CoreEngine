@@ -314,8 +314,8 @@ public:
     /// @brief 初期化ディスパッチ完了をレンダラーが通知する
     void ClearResetPending() { resetPending_ = false; }
 
-    /// @brief 定数バッファのGPUアドレス
-    D3D12_GPU_VIRTUAL_ADDRESS GetParamsGPUAddress() const { return paramsResource_->GetGPUVirtualAddress(); }
+    /// @brief 今フレームの定数の GPU アドレス（Render が UploadRing に置く。そのフレームの記録中だけ有効）
+    D3D12_GPU_VIRTUAL_ADDRESS GetParamsGPUAddress() const { return paramsAddress_; }
 
     ID3D12Resource* GetParticleResource() const { return particleResource_.Get(); }
     ID3D12Resource* GetInstancingResource() const { return instancingResource_.Get(); }
@@ -377,9 +377,10 @@ private:
     GpuResource argsResource_;       // D3D12_DRAW_ARGUMENTS（ExecuteIndirect用）
     Microsoft::WRL::ComPtr<ID3D12Resource> uploadInitResource_; // 初期化データ（引数/カウンタ/フリーリスト）のコピー元
     Microsoft::WRL::ComPtr<ID3D12Resource> readbackResource_;   // カウンタのリードバック（統計用）
-    Microsoft::WRL::ComPtr<ID3D12Resource> paramsResource_;     // 定数バッファ（UPLOAD・永続Map）
-    GpuParticleParams* paramsData_ = nullptr;
     uint32_t* readbackData_ = nullptr;                          // readbackResource_ の永続Map
+
+    GpuParticleParams params_{};                  // 定数（Render で組み、UploadRing に置く）
+    D3D12_GPU_VIRTUAL_ADDRESS paramsAddress_ = 0; // 今フレームの params_ の置き場
 
     UniqueDescriptor particleUavGPU_;
     UniqueDescriptor counterUavGPU_;

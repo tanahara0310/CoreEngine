@@ -13,6 +13,7 @@
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/UploadRing.h"
 #include "Particle/Core/ParticleResourceManager.h" // ParticleForGPU（インスタンスデータレイアウト共有）
 #include "Particle/ParticlePresetManager.h"
 #include "Utility/FrameRate/Time.h"
@@ -92,9 +93,6 @@ namespace CoreEngine
 
     GpuParticleSystemComponent::~GpuParticleSystemComponent()
     {
-        if (paramsResource_ && paramsData_) {
-            paramsResource_->Unmap(0, nullptr);
-        }
         if (readbackResource_ && readbackData_) {
             readbackResource_->Unmap(0, nullptr);
         }
@@ -117,13 +115,12 @@ namespace CoreEngine
         graphics_->DeferRelease(argsResource_.Get());
         graphics_->DeferRelease(std::move(uploadInitResource_));
         graphics_->DeferRelease(std::move(readbackResource_));
-        graphics_->DeferRelease(std::move(paramsResource_));
         counterResource_.Release();
         freeListResource_.Release();
         instancingResource_.Release();
         argsResource_.Release();
-        paramsData_ = nullptr;
         readbackData_ = nullptr;
+        paramsAddress_ = 0;
         graphics_ = nullptr;
     }
 
@@ -248,11 +245,6 @@ namespace CoreEngine
             instancingSrvGPU_ = UniqueDescriptor(*descriptorAllocator,
                 descriptorAllocator->CreateSRV(instancingResource_.Get(), srvDesc, "GpuParticleInstancingSRV"));
         }
-
-        // 定数バッファ（UPLOAD・永続Map）
-        paramsResource_ = ResourceFactory::CreateBufferResource(device, sizeof(GpuParticleParams));
-        paramsResource_->Map(0, nullptr, reinterpret_cast<void**>(&paramsData_));
-        *paramsData_ = GpuParticleParams{};
         return true;
     }
 
@@ -401,7 +393,7 @@ namespace CoreEngine
     {
         const GameObject* const owner = GetOwner();
         const Camera* const camera = view.GetCamera();
-        if (!owner || !owner->IsActive() || !camera || !paramsData_) {
+        if (!owner || !owner->IsActive() || !camera || !awoken_) {
             return;
         }
 
@@ -417,7 +409,7 @@ namespace CoreEngine
         const auto& rotationData = rotationModule_->GetRotationData();
         const auto& noiseData = noiseModule_->GetNoiseData();
 
-        GpuParticleParams& p = *paramsData_;
+        GpuParticleParams& p = params_;
 
         p.billboardMatrix = MakeBillboardMatrix(viewMatrix);
         p.viewProjection = viewMatrix * projectionMatrix;
@@ -430,7 +422,6 @@ namespace CoreEngine
         p.effectiveCapacity = GetEffectiveCapacity();
         p.frameSeed = frameSeed_;
         // GPU の初期化はレンダラーのコピーで行うので、CS の reset は常に 0
-        // （CB1面の毎フレーム上書きと一度きりフラグはフレームパイプラインで競合する）
         p.reset = 0u;
         p.gravityModifier = mainData.gravityModifier;
 
@@ -512,7 +503,8 @@ namespace CoreEngine
         p.noiseScrollSpeed = noiseData.scrollSpeed;
         p.noiseDamping = noiseData.damping ? 1u : 0u;
 
-        // 放出・更新のディスパッチと描画はレンダラーが行う
+        // 放出・更新のディスパッチと描画はレンダラーが行う。定数はこのフレームの UploadRing に置く
+        paramsAddress_ = graphics_->GetUploadRing().AllocateConstants(params_);
         if (renderer_) {
             renderer_->DrawGpu(this);
         }

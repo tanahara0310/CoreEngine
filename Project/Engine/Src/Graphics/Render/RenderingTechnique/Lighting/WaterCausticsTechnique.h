@@ -5,7 +5,6 @@
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Graphics/Water/WaterSurfaceData.h"
-#include <wrl.h>
 #include <d3d12.h>
 
 namespace CoreEngine
@@ -62,14 +61,13 @@ namespace CoreEngine
 		WaterCausticsTechnique() = default;
 		~WaterCausticsTechnique() override = default;
 
-		void Initialize(GraphicsCore* dxCommon) override;
 		void Execute(const RenderContext& context, D3D12_GPU_DESCRIPTOR_HANDLE& outputSrvHandle) override;
 		void DrawImGui() override;
 
 		void SetRenderTargetName(const std::string& name) { targetName_ = name; }
 		const Params& GetParams() const { return params_; }
 		const Diagnostics& GetDiagnostics() const { return diagnostics_; }
-		void SetParams(const Params& params);
+		void SetParams(const Params& params) { params_ = params; }
 
 		Backend GetBackend() const { return backend_; }
 		void SetBackend(Backend backend) { backend_ = backend; }
@@ -120,20 +118,15 @@ namespace CoreEngine
 		CB_VERIFY_LAYOUT(WaterSurfaceConstants, kWaterSurfaceConstantsFields);
 		CB_BIND_HLSL(WaterSurfaceConstants, kWaterSurfaceConstantsFields, "gWaterSurfaceData");
 
-		void CreateConstantBuffers();
-		void UpdateMainLightBuffer(LightManager* lightManager);
-		void UpdateWaterSurfaceBuffer(const WaterSurfaceData* surfaceData);
-		void UpdateParamsBuffer();
+		/// @brief メインライト（ディレクショナルの 0 番）の定数を組む
+		MainLightConstants BuildMainLightConstants(LightManager* lightManager);
+
+		/// @brief 水面の波と範囲の定数を組む
+		WaterSurfaceConstants BuildWaterSurfaceConstants(const WaterSurfaceData* surfaceData);
 
 		std::string targetName_ = RenderTargetNames::WaterCausticsBuffer;
 		Backend backend_ = Backend::RayTracing;
 		Params params_{};
 		Diagnostics diagnostics_{};
-		Microsoft::WRL::ComPtr<ID3D12Resource> paramsBuffer_;
-		Microsoft::WRL::ComPtr<ID3D12Resource> mainLightBuffer_;
-		Microsoft::WRL::ComPtr<ID3D12Resource> waterSurfaceBuffer_;
-		Params* mappedParams_ = nullptr;
-		MainLightConstants* mappedMainLight_ = nullptr;
-		WaterSurfaceConstants* mappedWaterSurface_ = nullptr;
 	};
 }

@@ -129,7 +129,6 @@ namespace CoreEngine
         }
 
         // 初回のみGPUバッファをコピーで初期化する
-        // （CSのresetフラグ方式はCB1面の毎フレーム上書きと競合して実行されないことがあるため不使用）
         if (reset) {
             // 間接引数 {6, 0, 0, 0}
             cmdList_->CopyBufferRegion(system->GetArgsResource(), 0,

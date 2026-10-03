@@ -42,7 +42,7 @@ namespace CoreEngine
         // y は既定の無限遠タイル床（y=0）より上に置く。床の高さにカメラがあると
         // 足元の床がニアクリップで消え、地平線より下に大気の下向き（＝黒）が見えてしまう。
         auto gameCamera = std::make_unique<Camera>();
-        gameCamera->Initialize(dxCommon->GetDevice());
+        gameCamera->Initialize(&dxCommon->GetUploadRing());
         gameCamera->SetTranslate({ 0.0f, kDefaultCameraHeight, -30.0f });
         gameCamera->SetRotate({ 0.0f, 0.0f, 0.0f });
 
@@ -51,7 +51,7 @@ namespace CoreEngine
         // エディタ視点カメラ（カメラ自体は Game と同じ型。Blender 風の操作は
         // OrbitFlyController を取り付けることで与える）
         auto sceneCamera = std::make_unique<Camera>();
-        sceneCamera->Initialize(dxCommon->GetDevice());
+        sceneCamera->Initialize(&dxCommon->GetUploadRing());
         cameraManager_->RegisterCamera(CameraNames::Scene, std::move(sceneCamera));
 
         cameraManager_->SetEngineSystem(ctx.engine);
@@ -77,7 +77,7 @@ namespace CoreEngine
         auto camera2D = std::make_unique<Camera>(CameraParameters::Orthographic2D());
         camera2D->SetTranslate({ 0.0f, 0.0f, 0.0f });
         camera2D->SetZoom(1.0f);
-        camera2D->Initialize(nullptr); // 2D は GPU 定数バッファ不要
+        camera2D->Initialize(nullptr); // 2D は GPU 定数不要
 
         cameraManager_->RegisterCamera(CameraNames::Camera2D, std::move(camera2D));
         cameraManager_->SetActiveCamera(CameraNames::Camera2D, CameraType::Camera2D);
@@ -160,7 +160,7 @@ namespace CoreEngine
                     // 同じオブジェクトの 2 つ目以降のカメラには実体を作らない
                     if (!cameraManager_->GetCamera(key)) {
                         auto created = std::make_unique<Camera>();
-                        created->Initialize(dxCommon ? dxCommon->GetDevice() : nullptr);
+                        created->Initialize(dxCommon ? &dxCommon->GetUploadRing() : nullptr);
                         if (cameraManager_->RegisterCamera(key, std::move(created))) {
                             cameraManager_->SetObjectOwnedCamera(key, true);
                             component->SetRegisteredKey(key);
