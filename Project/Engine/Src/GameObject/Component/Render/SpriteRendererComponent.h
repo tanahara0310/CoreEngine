@@ -4,6 +4,7 @@
 #include "GameObject/Component/Render/IRenderableComponent.h"
 #include "GameObject/Sprite/SpriteAnimator.h"
 #include "Graphics/Material/SpriteMaterialInstance.h"
+#include "Graphics/Model/VertexData.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Math/EulerTransform.h"
 #include "Math/MathCore.h"
@@ -13,6 +14,7 @@
 #include "Reflection/Reflect.h"
 
 #include <d3d12.h>
+#include <array>
 #include <memory>
 #include <string>
 #include <wrl.h>
@@ -178,7 +180,7 @@ namespace CoreEngine
         /// @brief RenderManager から Sprite パスのレンダラーを取る
         void ResolveRenderer();
 
-        /// @brief 頂点・インデックスバッファとマテリアルを作る
+        /// @brief インデックスバッファとマテリアルを作る
         void CreateGpuResources();
 
         /// @brief テクスチャを読み込み、サイズを取る
@@ -223,8 +225,8 @@ namespace CoreEngine
         /// ソートレイヤーかレイヤー内の描画順を指定したか
         bool hasRenderOrder_ = false;
 
-        Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource_;
-        D3D12_VERTEX_BUFFER_VIEW vertexBufferView_{};
+        /// 4 頂点のクワッド（GPU へは描くたびに、そのフレームの UploadRing に置く）
+        std::array<VertexData, 4> vertices_{};
         Microsoft::WRL::ComPtr<ID3D12Resource> indexResource_;
         D3D12_INDEX_BUFFER_VIEW indexBufferView_{};
 

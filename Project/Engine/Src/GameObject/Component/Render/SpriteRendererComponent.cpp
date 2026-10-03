@@ -13,9 +13,11 @@
 #include "Graphics/Render/Sprite/SpriteRenderer.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/UploadRing.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/JsonManager/JsonManager.h"
 
+#include <cstring>
 #include <utility>
 
 #ifdef CORE_EDITOR
@@ -102,15 +104,6 @@ namespace CoreEngine
         GraphicsCore* dxCommon = spriteRenderer_->GetGraphicsCore();
         if (!dxCommon) { return; }
 
-        // 頂点バッファ（4 頂点のクワッド）
-        vertexResource_ = ResourceFactory::CreateBufferResource(
-            dxCommon->GetDevice(),
-            sizeof(VertexData) * 4);
-
-        vertexBufferView_.BufferLocation = vertexResource_->GetGPUVirtualAddress();
-        vertexBufferView_.SizeInBytes = sizeof(VertexData) * 4;
-        vertexBufferView_.StrideInBytes = sizeof(VertexData);
-
         // インデックスバッファ
         indexResource_ = ResourceFactory::CreateBufferResource(
             dxCommon->GetDevice(),
@@ -175,10 +168,7 @@ namespace CoreEngine
 
     void SpriteRendererComponent::UpdateVertexData()
     {
-        if (!vertexResource_) { return; }
-
-        VertexData* vertexData = nullptr;
-        vertexResource_->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
+        VertexData* const vertexData = vertices_.data();
 
         // アンカーポイントを考慮したローカル座標
         const float left = -anchorPoint_.x;
@@ -211,8 +201,6 @@ namespace CoreEngine
         vertexData[3].position = { right, top,    0.0f, 1.0f };
         vertexData[3].texcoord = { uMax, vMin };
         vertexData[3].normal = { 0.0f, 0.0f, -1.0f };
-
-        vertexResource_->Unmap(0, nullptr);
     }
 
     void SpriteRendererComponent::Update()
@@ -269,6 +257,17 @@ namespace CoreEngine
             vertexDataDirty_ = false;
         }
 
+        // 頂点は描くたびに、このフレームの UploadRing に置く
+        const UploadAllocation vertices = spriteRenderer_->GetGraphicsCore()->GetUploadRing().Allocate(
+            static_cast<uint32_t>(sizeof(vertices_)), 16);
+        if (!vertices.IsValid()) { return; }
+        std::memcpy(vertices.cpu, vertices_.data(), sizeof(vertices_));
+
+        D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
+        vertexBufferView.BufferLocation = vertices.gpuAddress;
+        vertexBufferView.SizeInBytes = static_cast<UINT>(sizeof(vertices_));
+        vertexBufferView.StrideInBytes = static_cast<UINT>(sizeof(VertexData));
+
         size_t bufferIndex = spriteRenderer_->GetAvailableConstantBuffer();
 
         const Vector3& translate = transform->Translate();
@@ -297,7 +296,7 @@ namespace CoreEngine
             spriteRenderer_->GetRootParamIndex("gTexture"),
             textureHandle_.gpuHandle);
 
-        commandList->IASetVertexBuffers(0, 1, &vertexBufferView_);
+        commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
         commandList->IASetIndexBuffer(&indexBufferView_);
 
         commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
