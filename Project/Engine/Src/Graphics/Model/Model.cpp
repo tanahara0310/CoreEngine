@@ -36,7 +36,6 @@ namespace CoreEngine
         if (skinCluster_) {
             SkinCluster& cluster = *skinCluster_;
             graphics->DeferRelease(std::move(cluster.influenceResource));
-            graphics->DeferRelease(std::move(cluster.paletteResource));
             graphics->DeferRelease(cluster.outputVertexResource.Get());
             cluster.outputVertexResource.Release();
             graphics->DeferRelease(std::move(cluster.skinningParamsCB));
@@ -80,10 +79,9 @@ namespace CoreEngine
             return false;
         }
         skinCluster_ = SkinClusterGenerator::CreateSkinCluster(
-            renderContext_.dxCommon->GetDevice(),
+            *renderContext_.dxCommon,
             *skeleton,
             modelData,
-            renderContext_.dxCommon->GetDescriptorAllocator(),
             resource_->GetVertexBuffer(),
             resource_->GetVertexCount()
         );

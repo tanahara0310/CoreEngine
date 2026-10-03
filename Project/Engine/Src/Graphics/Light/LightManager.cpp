@@ -32,11 +32,10 @@ namespace CoreEngine
         }
     }
 
-    void LightManager::Initialize(ID3D12Device* device, DescriptorAllocator* descriptorAllocator)
+    void LightManager::Initialize(GraphicsCore& graphics)
     {
         bufferManager_.Initialize(
-            device,
-            descriptorAllocator,
+            graphics,
             MAX_DIRECTIONAL_LIGHTS,
             MAX_POINT_LIGHTS,
             MAX_SPOT_LIGHTS,
@@ -439,25 +438,6 @@ namespace CoreEngine
     {
         bufferManager_.SetToCommandList(
             binder, lightCounts, directionalLights, pointLights, spotLights, areaLights);
-    }
-
-    void LightManager::SetLightsToCommandList(
-        ID3D12GraphicsCommandList* commandList,
-        int lightCountsRootParameterIndex,
-        int directionalLightsRootParameterIndex,
-        int pointLightsRootParameterIndex,
-        int spotLightsRootParameterIndex,
-        int areaLightsRootParameterIndex
-    )
-    {
-        bufferManager_.SetToCommandList(
-            commandList,
-            lightCountsRootParameterIndex,
-            directionalLightsRootParameterIndex,
-            pointLightsRootParameterIndex,
-            spotLightsRootParameterIndex,
-            areaLightsRootParameterIndex
-        );
     }
 
     D3D12_GPU_VIRTUAL_ADDRESS LightManager::GetLightCountsGPUAddress() const

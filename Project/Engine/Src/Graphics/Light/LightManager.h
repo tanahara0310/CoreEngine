@@ -13,7 +13,7 @@
 
 namespace CoreEngine
 {
-    class DescriptorAllocator;
+    class GraphicsCore;
 
     /// @brief ライトマネージャー（ライトの管理と制御を担当）
     /// @details オーサリングは統一 Light 構造体＋世代付き LightHandle で行い、
@@ -31,9 +31,8 @@ namespace CoreEngine
 
     public:
         /// @brief 初期化
-        /// @param device D3D12デバイス
-        /// @param descriptorAllocator ディスクリプタマネージャー
-        void Initialize(ID3D12Device* device, DescriptorAllocator* descriptorAllocator);
+        /// @param graphics GPU のバッファと SRV を作る先
+        void Initialize(GraphicsCore& graphics);
 
         /// @brief 全てのライトを更新（オーサリング表現 → GPU バッファへの変換・転送）
         void UpdateAll();
@@ -146,17 +145,6 @@ namespace CoreEngine
             RootSlot pointLights,
             RootSlot spotLights,
             RootSlot areaLights
-        );
-
-        /// @brief コマンドリストにライトをセット（ルートパラメータ番号版）
-        /// @deprecated ShaderBinder 版へ移行すること
-        void SetLightsToCommandList(
-            ID3D12GraphicsCommandList* commandList,
-            int lightCountsRootParameterIndex,
-            int directionalLightsRootParameterIndex,
-            int pointLightsRootParameterIndex,
-            int spotLightsRootParameterIndex,
-            int areaLightsRootParameterIndex
         );
 
         /// @brief ライトカウントバッファのGPU仮想アドレスを取得

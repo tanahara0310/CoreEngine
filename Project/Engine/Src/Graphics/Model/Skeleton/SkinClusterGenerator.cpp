@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "SkinClusterGenerator.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Math/MathCore.h"
@@ -22,32 +23,19 @@ namespace {
 }
 
 CoreEngine::SkinCluster SkinClusterGenerator::CreateSkinCluster(
-    const Microsoft::WRL::ComPtr<ID3D12Device>& device,
+    GraphicsCore& graphics,
     const Skeleton& skeleton,
     const ModelData& modelData,
-    DescriptorAllocator* descriptorAllocator,
     ID3D12Resource* sourceVertexBuffer,
     UINT vertexCount) {
 
+    const Microsoft::WRL::ComPtr<ID3D12Device> device = graphics.GetDevice();
+    DescriptorAllocator* const descriptorAllocator = graphics.GetDescriptorAllocator();
+
     SkinCluster skinCluster;
 
-    // palette用のResourceを確保
-    skinCluster.paletteResource = ResourceFactory::CreateBufferResource(device, sizeof(WellForGPU) * skeleton.joints.size());
-    WellForGPU* mappedPalette = nullptr;
-    skinCluster.paletteResource->Map(0, nullptr, reinterpret_cast<void**>(&mappedPalette));
-    skinCluster.mappedPalette = { mappedPalette, skeleton.joints.size() }; // spanを使ってアクセスするようにする
-
-    // palette用のsrvを作成。StructuredBufferでアクセスできるようにする。
-    D3D12_SHADER_RESOURCE_VIEW_DESC paletteSrvDesc{};
-    paletteSrvDesc.Format = DXGI_FORMAT_UNKNOWN;
-    paletteSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-    paletteSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-    paletteSrvDesc.Buffer.FirstElement = 0;
-    paletteSrvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
-    paletteSrvDesc.Buffer.NumElements = UINT(skeleton.joints.size());
-    paletteSrvDesc.Buffer.StructureByteStride = sizeof(WellForGPU);
-    skinCluster.paletteSrvHandle = UniqueDescriptor(*descriptorAllocator,
-        descriptorAllocator->CreateSRV(skinCluster.paletteResource.Get(), paletteSrvDesc, "SkinCluster Palette"));
+    // palette（StructuredBuffer）。姿勢は毎フレーム変わるので、フレームスロットごとに置き場を持つ
+    skinCluster.palette.Initialize(graphics, UINT(skeleton.joints.size()), "SkinCluster Palette");
 
     // influence用のResourceを確保。頂点ごとにinfluence情報を追加できるようにする
     skinCluster.influenceResource = ResourceFactory::CreateBufferResource(device, sizeof(VertexInfluence) * modelData.vertices.size());
@@ -180,13 +168,14 @@ CoreEngine::SkinCluster SkinClusterGenerator::CreateSkinCluster(
 
 void SkinClusterGenerator::Update(SkinCluster& skinCluster, const Skeleton& skeleton)
 {
-    for (size_t jointIndex = 0; jointIndex < skeleton.joints.size(); ++jointIndex) {
-        assert(jointIndex < skinCluster.mappedPalette.size());
+    const std::span<WellForGPU> palette = skinCluster.palette.Write(UINT(skeleton.joints.size()));
+    assert(palette.size() == skeleton.joints.size());
 
-        skinCluster.mappedPalette[jointIndex].skeletonSpaceMatrix =
+    for (size_t jointIndex = 0; jointIndex < palette.size(); ++jointIndex) {
+        palette[jointIndex].skeletonSpaceMatrix =
             skinCluster.inverseBindPoseMatrices[jointIndex] * skeleton.joints[jointIndex].skeletonSpaceMatrix;
-        skinCluster.mappedPalette[jointIndex].skeletonSpaceInverseTransposeMatrix =
-            CoreEngine::MathCore::Matrix::Transpose(CoreEngine::MathCore::Matrix::Inverse(skinCluster.mappedPalette[jointIndex].skeletonSpaceMatrix));
+        palette[jointIndex].skeletonSpaceInverseTransposeMatrix =
+            CoreEngine::MathCore::Matrix::Transpose(CoreEngine::MathCore::Matrix::Inverse(palette[jointIndex].skeletonSpaceMatrix));
     }
 
     // パレットが更新されたので、次回描画前にGPUスキニング(CS)の再実行が必要

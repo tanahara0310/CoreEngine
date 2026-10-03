@@ -204,6 +204,7 @@ namespace CoreEngine
             modelParticle ? ParticleRenderMode::Model : ParticleRenderMode::Billboard,
             resourceManager_->GetInstancingData(),
             kNumMaxInstance);
+        resourceManager_->SetInstanceCount(instanceCount_);
 
 #ifdef _DEBUG
         // 放出形状の線を足す

@@ -10,7 +10,6 @@
 // 前方宣言
 namespace CoreEngine {
     class GraphicsCore;
-    class DescriptorAllocator;
 }
 
 namespace CoreEngine
@@ -19,12 +18,12 @@ namespace CoreEngine
 class SkinClusterGenerator {
 public:
     /// @brief スキンクラスターを生成
+    /// @param graphics GPU のバッファと SRV を作る先
     /// @param sourceVertexBuffer GPU スキニング（CS）が読み取る元頂点バッファ
     static CoreEngine::SkinCluster CreateSkinCluster(
-        const Microsoft::WRL::ComPtr<ID3D12Device>& device,
+        GraphicsCore& graphics,
         const Skeleton& skeleton,
         const ModelData& modelData,
-        CoreEngine::DescriptorAllocator* descriptorAllocator,
         ID3D12Resource* sourceVertexBuffer,
         UINT vertexCount);
     

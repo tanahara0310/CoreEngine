@@ -1,55 +1,10 @@
 #include "pch.h"
 #include "ParticleResourceManager.h"
-#include "Graphics/RHI/GraphicsCore.h"
-#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
-
-#include <utility>
 
 
 namespace CoreEngine
 {
-ParticleResourceManager::~ParticleResourceManager() {
-    if (!dxCommon_) {
-        return;
-    }
-    dxCommon_->DeferRelease(std::move(instancingResource_));
-    instancingData_ = nullptr;
-}
-
 void ParticleResourceManager::Initialize(GraphicsCore* dxCommon, uint32_t maxInstances) {
-    dxCommon_ = dxCommon;
-
-    // リソースの作成
-    CreateInstancingResource(maxInstances);
-    CreateSRV(maxInstances);
-}
-
-void ParticleResourceManager::CreateInstancingResource(uint32_t maxInstances) {
-    // インスタンシング用のリソースを作成
-    instancingResource_ = ResourceFactory::CreateBufferResource(
-        dxCommon_->GetDevice(),
-        sizeof(ParticleForGPU) * maxInstances
-    );
-
-    // 永続マッピング（D3D12_HEAP_TYPE_UPLOADでは推奨される方法）
-    // パーティクルデータは毎フレーム更新されるため、マップしたままにする
-    instancingResource_->Map(0, nullptr, reinterpret_cast<void**>(&instancingData_));
-}
-
-void ParticleResourceManager::CreateSRV(uint32_t maxInstances) {
-    // インスタンシング用のSRVを設定
-    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-    srvDesc.Format = DXGI_FORMAT_UNKNOWN;
-    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-    srvDesc.Buffer.FirstElement = 0;
-    srvDesc.Buffer.NumElements = maxInstances;
-    srvDesc.Buffer.StructureByteStride = sizeof(ParticleForGPU);
-
-    // SRVの作成
-    DescriptorAllocator& descriptorAllocator = *dxCommon_->GetDescriptorAllocator();
-    srvHandleGPU_ = UniqueDescriptor(descriptorAllocator, descriptorAllocator.CreateSRV(
-        instancingResource_.Get(), srvDesc, "ParticleInstancingSRV"));
+    instancing_.Initialize(*dxCommon, maxInstances, "ParticleInstancingSRV");
 }
 }

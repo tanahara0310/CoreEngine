@@ -633,6 +633,7 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderPrewarm.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\Resource\ResourceFactory.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\Resource\UploadRing.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RHI\Resource\PerFrameStructuredBuffer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Render.cpp" />
     <ClCompile Include="Engine\Src\WorldTransform\WorldTransform.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneManager.cpp" />
@@ -1734,6 +1735,7 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Graphics\RHI\Resource\ResourceFactory.h" />
     <ClInclude Include="Engine\Src\Graphics\RHI\Resource\UploadRing.h" />
     <ClInclude Include="Engine\Src\Graphics\RHI\Resource\PerFrameConstants.h" />
+    <ClInclude Include="Engine\Src\Graphics\RHI\Resource\PerFrameStructuredBuffer.h" />
     <ClInclude Include="Engine\Src\WorldTransform\WorldTransform.h" />
     <ClInclude Include="Engine\Src\Scene\SceneManager.h" />
     <ClInclude Include="Engine\Src\Launch\MyGame.h" />

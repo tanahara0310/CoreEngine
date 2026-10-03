@@ -1,9 +1,8 @@
 #pragma once
 
 #include <d3d12.h>
-#include "Graphics/RHI/Descriptor/UniqueDescriptor.h"
-#include <wrl.h>
 #include <cstdint>
+#include "Graphics/RHI/Resource/PerFrameStructuredBuffer.h"
 #include "Math/MathCore.h"
 
 namespace CoreEngine
@@ -19,50 +18,28 @@ struct ParticleForGPU {
 };
 
 /// @brief パーティクルシステムのリソース管理クラス
-/// GPUリソース（インスタンシングバッファ、SRV）の生成と管理を担当
+/// @details 粒ごとの描画データ（インスタンシングの StructuredBuffer）を持ち、
+///          GPU へは SRV を引いたフレームの置き場へ写す
 class ParticleResourceManager {
 public:
-    ParticleResourceManager() = default;
-
-    /// @brief インスタンシングバッファと SRV を、描画中のフレームが終わってから返すよう預ける
-    ~ParticleResourceManager();
-
-    ParticleResourceManager(const ParticleResourceManager&) = delete;
-    ParticleResourceManager& operator=(const ParticleResourceManager&) = delete;
-
     /// @brief 初期化
     /// @param dxCommon GraphicsCore
     /// @param maxInstances 最大インスタンス数
     void Initialize(GraphicsCore* dxCommon, uint32_t maxInstances);
 
-    /// @brief インスタンシングデータへのポインタを取得
-    /// @return インスタンシングデータのポインタ
-    ParticleForGPU* GetInstancingData() { return instancingData_; }
+    /// @brief インスタンシングデータの書き込み先を取得（最大インスタンス数ぶん）
+    /// @note 書いた数は SetInstanceCount で決める。GPU へはその数だけ写す
+    ParticleForGPU* GetInstancingData() { return instancing_.Write(instancing_.Capacity()).data(); }
 
-    /// @brief SRVのGPUハンドルを取得
+    /// @brief 書き込んだインスタンスの数を決める
+    void SetInstanceCount(uint32_t count) { instancing_.SetCount(count); }
+
+    /// @brief SRVのGPUハンドルを取得（そのフレームの記録中だけ今の値を保つ）
     /// @return SRVのGPUディスクリプタハンドル
-    D3D12_GPU_DESCRIPTOR_HANDLE GetSrvHandleGPU() const { return srvHandleGPU_.Gpu(); }
-
-    /// @brief SRVのCPUハンドルを取得
-    /// @return SRVのCPUディスクリプタハンドル
-  D3D12_CPU_DESCRIPTOR_HANDLE GetSrvHandleCPU() const { return srvHandleGPU_.Cpu(); }
+    D3D12_GPU_DESCRIPTOR_HANDLE GetSrvHandleGPU() const { return instancing_.Srv(); }
 
 private:
-    /// @brief インスタンシングリソースを作成
-    /// @param maxInstances 最大インスタンス数
-    void CreateInstancingResource(uint32_t maxInstances);
-
-    /// @brief SRVを作成
-  /// @param maxInstances 最大インスタンス数
-    void CreateSRV(uint32_t maxInstances);
-
-    // DirectX関連
-    GraphicsCore* dxCommon_ = nullptr;
-
-    // GPUリソース
-  Microsoft::WRL::ComPtr<ID3D12Resource> instancingResource_;
-    UniqueDescriptor srvHandleGPU_;
-    ParticleForGPU* instancingData_ = nullptr;
+    PerFrameStructuredBuffer<ParticleForGPU> instancing_;
 };
 
 } // namespace CoreEngine

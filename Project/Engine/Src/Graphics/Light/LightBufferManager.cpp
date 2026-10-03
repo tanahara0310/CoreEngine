@@ -2,68 +2,49 @@
 #include "LightBufferManager.h"
 #include "Graphics/RootSignature/ShaderBinder.h"
 
-#include "Graphics/RHI/Resource/ResourceFactory.h"
-#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/Logger/Logger.h"
-#include <algorithm>
-#include <cstring>
+#include <span>
 
 namespace CoreEngine
 {
-    // バッファ確保と SRV 作成をまとめて行う。最大数は起動時に決め打ちで、以後変えない
+    // 種類ごとの配列と個数の置き場を作る。最大数は起動時に決め打ちで、以後変えない
     void LightBufferManager::Initialize(
-        ID3D12Device* device,
-        DescriptorAllocator* descriptorAllocator,
+        GraphicsCore& graphics,
         uint32_t maxDirectionalLights,
         uint32_t maxPointLights,
         uint32_t maxSpotLights,
         uint32_t maxAreaLights
     )
     {
-        directionalCapacity_.max = maxDirectionalLights;
-        pointCapacity_.max = maxPointLights;
-        spotCapacity_.max = maxSpotLights;
-        areaCapacity_.max = maxAreaLights;
-
-        CreateBufferResources(device, maxDirectionalLights, maxPointLights, maxSpotLights, maxAreaLights);
-
-        if (descriptorAllocator)
-        {
-            CreateBufferSRVs(descriptorAllocator, maxDirectionalLights, maxPointLights, maxSpotLights, maxAreaLights);
-        }
+        directionalLights_.Initialize(graphics, maxDirectionalLights, "DirectionalLights");
+        pointLights_.Initialize(graphics, maxPointLights, "PointLights");
+        spotLights_.Initialize(graphics, maxSpotLights, "SpotLights");
+        areaLights_.Initialize(graphics, maxAreaLights, "AreaLights");
+        lightCounts_.Initialize(graphics.GetUploadRing());
     }
 
     template <typename T>
     uint32_t LightBufferManager::CopyLights(
-        ID3D12Resource* buffer,
+        PerFrameStructuredBuffer<T>& buffer,
         const std::vector<T>& lights,
-        Capacity& capacity,
+        bool& overflowLogged,
         const char* typeName
     )
     {
         // 確保した数を超えた分は写さない。警告は超えている間に 1 回だけ出す
-        if (lights.size() > capacity.max) {
-            if (!capacity.overflowLogged) {
+        if (lights.size() > buffer.Capacity()) {
+            if (!overflowLogged) {
                 Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Graphics,
                     "{} のライトが {} 個あり、バッファに入る {} 個を超えた分は描かない",
-                    typeName, lights.size(), capacity.max);
-                capacity.overflowLogged = true;
+                    typeName, lights.size(), buffer.Capacity());
+                overflowLogged = true;
             }
         } else {
-            capacity.overflowLogged = false;
+            overflowLogged = false;
         }
 
-        const uint32_t count = static_cast<uint32_t>((std::min)(lights.size(), static_cast<size_t>(capacity.max)));
-
-        // 空の種別は Map ごと省く（0 バイトの memcpy を避け、未使用バッファを触らない）
-        if (count == 0) {
-            return 0;
-        }
-        T* mappedData = nullptr;
-        buffer->Map(0, nullptr, reinterpret_cast<void**>(&mappedData));
-        std::memcpy(mappedData, lights.data(), sizeof(T) * count);
-        buffer->Unmap(0, nullptr);
-        return count;
+        return buffer.Set(std::span<const T>(lights));
     }
 
     void LightBufferManager::UpdateBuffers(
@@ -74,19 +55,13 @@ namespace CoreEngine
     )
     {
         // 種別ごとに StructuredBuffer を持つ。シェーダーへ渡す数は写した数
-        const uint32_t directionalCount =
-            CopyLights(directionalLightsBuffer_.Get(), directionalLights, directionalCapacity_, "Directional");
-        const uint32_t pointCount = CopyLights(pointLightsBuffer_.Get(), pointLights, pointCapacity_, "Point");
-        const uint32_t spotCount = CopyLights(spotLightsBuffer_.Get(), spotLights, spotCapacity_, "Spot");
-        const uint32_t areaCount = CopyLights(areaLightsBuffer_.Get(), areaLights, areaCapacity_, "Area");
-
-        if (lightCountsData_)
-        {
-            lightCountsData_->directionalLightCount = directionalCount;
-            lightCountsData_->pointLightCount = pointCount;
-            lightCountsData_->spotLightCount = spotCount;
-            lightCountsData_->areaLightCount = areaCount;
-        }
+        LightCounts counts{};
+        counts.directionalLightCount =
+            CopyLights(directionalLights_, directionalLights, directionalOverflowLogged_, "Directional");
+        counts.pointLightCount = CopyLights(pointLights_, pointLights, pointOverflowLogged_, "Point");
+        counts.spotLightCount = CopyLights(spotLights_, spotLights, spotOverflowLogged_, "Spot");
+        counts.areaLightCount = CopyLights(areaLights_, areaLights, areaOverflowLogged_, "Area");
+        lightCounts_.Set(counts);
     }
 
     void LightBufferManager::SetToCommandList(
@@ -98,151 +73,21 @@ namespace CoreEngine
         RootSlot areaLights)
     {
         // 未解決スロット（そのシェーダーが参照しない種別）は ShaderBinder 側で no-op になる。
-        // ハンドルが 0 のときは差せないので、ここで弾く。
-        if (lightCountsBuffer_) {
-            binder.Set(lightCounts, lightCountsBuffer_->GetGPUVirtualAddress());
+        // アドレスやハンドルが 0 のとき（初期化前）は差せないので、ここで弾く。
+        if (const D3D12_GPU_VIRTUAL_ADDRESS address = lightCounts_.Address(); address != 0) {
+            binder.Set(lightCounts, address);
         }
-        if (directionalLightsSRVHandle_.gpuHandle.ptr != 0) {
-            binder.Set(directionalLights, directionalLightsSRVHandle_.gpuHandle);
+        if (const D3D12_GPU_DESCRIPTOR_HANDLE handle = directionalLights_.Srv(); handle.ptr != 0) {
+            binder.Set(directionalLights, handle);
         }
-        if (pointLightsSRVHandle_.gpuHandle.ptr != 0) {
-            binder.Set(pointLights, pointLightsSRVHandle_.gpuHandle);
+        if (const D3D12_GPU_DESCRIPTOR_HANDLE handle = pointLights_.Srv(); handle.ptr != 0) {
+            binder.Set(pointLights, handle);
         }
-        if (spotLightsSRVHandle_.gpuHandle.ptr != 0) {
-            binder.Set(spotLights, spotLightsSRVHandle_.gpuHandle);
+        if (const D3D12_GPU_DESCRIPTOR_HANDLE handle = spotLights_.Srv(); handle.ptr != 0) {
+            binder.Set(spotLights, handle);
         }
-        if (areaLightsSRVHandle_.gpuHandle.ptr != 0) {
-            binder.Set(areaLights, areaLightsSRVHandle_.gpuHandle);
+        if (const D3D12_GPU_DESCRIPTOR_HANDLE handle = areaLights_.Srv(); handle.ptr != 0) {
+            binder.Set(areaLights, handle);
         }
-    }
-
-    void LightBufferManager::SetToCommandList(
-        ID3D12GraphicsCommandList* commandList,
-        int lightCountsRootParameterIndex,
-        int directionalLightsRootParameterIndex,
-        int pointLightsRootParameterIndex,
-        int spotLightsRootParameterIndex,
-        int areaLightsRootParameterIndex
-    )
-    {
-        // ルートパラメータ番号が負なら「このシェーダーはその種別を参照しない」ので飛ばす
-        if (!commandList)
-        {
-            return;
-        }
-
-        if (lightCountsRootParameterIndex >= 0 && lightCountsBuffer_)
-        {
-            commandList->SetGraphicsRootConstantBufferView(
-                static_cast<UINT>(lightCountsRootParameterIndex),
-                lightCountsBuffer_->GetGPUVirtualAddress()
-            );
-        }
-
-        if (directionalLightsRootParameterIndex >= 0 && directionalLightsSRVHandle_.gpuHandle.ptr != 0)
-        {
-            commandList->SetGraphicsRootDescriptorTable(
-                static_cast<UINT>(directionalLightsRootParameterIndex),
-                directionalLightsSRVHandle_.gpuHandle
-            );
-        }
-
-        if (pointLightsRootParameterIndex >= 0 && pointLightsSRVHandle_.gpuHandle.ptr != 0)
-        {
-            commandList->SetGraphicsRootDescriptorTable(
-                static_cast<UINT>(pointLightsRootParameterIndex),
-                pointLightsSRVHandle_.gpuHandle
-            );
-        }
-
-        if (spotLightsRootParameterIndex >= 0 && spotLightsSRVHandle_.gpuHandle.ptr != 0)
-        {
-            commandList->SetGraphicsRootDescriptorTable(
-                static_cast<UINT>(spotLightsRootParameterIndex),
-                spotLightsSRVHandle_.gpuHandle
-            );
-        }
-
-        if (areaLightsRootParameterIndex >= 0 && areaLightsSRVHandle_.gpuHandle.ptr != 0)
-        {
-            commandList->SetGraphicsRootDescriptorTable(
-                static_cast<UINT>(areaLightsRootParameterIndex),
-                areaLightsSRVHandle_.gpuHandle
-            );
-        }
-    }
-
-    D3D12_GPU_VIRTUAL_ADDRESS LightBufferManager::GetLightCountsGPUAddress() const
-    {
-        return lightCountsBuffer_ ? lightCountsBuffer_->GetGPUVirtualAddress() : 0;
-    }
-
-    // 種別ごとの StructuredBuffer を最大数ぶん確保する（実際の使用数は毎フレーム変わる）
-    void LightBufferManager::CreateBufferResources(
-        ID3D12Device* device,
-        uint32_t maxDirectionalLights,
-        uint32_t maxPointLights,
-        uint32_t maxSpotLights,
-        uint32_t maxAreaLights
-    )
-    {
-        directionalLightsBuffer_ = ResourceFactory::CreateBufferResource(
-            device,
-            sizeof(DirectionalLightData) * maxDirectionalLights
-        );
-
-        pointLightsBuffer_ = ResourceFactory::CreateBufferResource(
-            device,
-            sizeof(PointLightData) * maxPointLights
-        );
-
-        spotLightsBuffer_ = ResourceFactory::CreateBufferResource(
-            device,
-            sizeof(SpotLightData) * maxSpotLights
-        );
-
-        areaLightsBuffer_ = ResourceFactory::CreateBufferResource(
-            device,
-            sizeof(AreaLightData) * maxAreaLights
-        );
-
-        lightCountsBuffer_ = ResourceFactory::CreateBufferResource(
-            device,
-            sizeof(LightCounts)
-        );
-
-        lightCountsBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&lightCountsData_));
-    }
-
-    void LightBufferManager::CreateBufferSRVs(
-        DescriptorAllocator* descriptorAllocator,
-        uint32_t maxDirectionalLights,
-        uint32_t maxPointLights,
-        uint32_t maxSpotLights,
-        uint32_t maxAreaLights
-    )
-    {
-        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-        srvDesc.Format = DXGI_FORMAT_UNKNOWN;
-        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        srvDesc.Buffer.FirstElement = 0;
-        srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
-
-        srvDesc.Buffer.NumElements = maxDirectionalLights;
-        srvDesc.Buffer.StructureByteStride = sizeof(DirectionalLightData);
-        directionalLightsSRVHandle_ = descriptorAllocator->CreateSRV(directionalLightsBuffer_.Get(), srvDesc, "DirectionalLights");
-
-        srvDesc.Buffer.NumElements = maxPointLights;
-        srvDesc.Buffer.StructureByteStride = sizeof(PointLightData);
-        pointLightsSRVHandle_ = descriptorAllocator->CreateSRV(pointLightsBuffer_.Get(), srvDesc, "PointLights");
-
-        srvDesc.Buffer.NumElements = maxSpotLights;
-        srvDesc.Buffer.StructureByteStride = sizeof(SpotLightData);
-        spotLightsSRVHandle_ = descriptorAllocator->CreateSRV(spotLightsBuffer_.Get(), srvDesc, "SpotLights");
-
-        srvDesc.Buffer.NumElements = maxAreaLights;
-        srvDesc.Buffer.StructureByteStride = sizeof(AreaLightData);
-        areaLightsSRVHandle_ = descriptorAllocator->CreateSRV(areaLightsBuffer_.Get(), srvDesc, "AreaLights");
     }
 }
