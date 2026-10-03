@@ -10,7 +10,7 @@ namespace CoreEngine
 /// @brief ディゾルブエフェクト（CS方式）
 /// @details ノイズテクスチャを使いピクセルを段階的に消滅させる。
 ///          パラメータは CVar（"r.Dissolve.*"）が唯一の保持者。
-///          ImGui と保存は CVar 側で自動生成される（Docs/Engine/Editor/CVar_Design.md）
+///          ImGui と保存は CVar 側で自動生成される
 class Dissolve : public PostEffectComputeBase {
 public:
     /// @brief ディゾルブパラメータ構造体

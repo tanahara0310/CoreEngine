@@ -14,7 +14,6 @@ namespace CoreEngine
     /// @details EditorSettingsSubsystem に登録すると、登録時に保存済み JSON から Deserialize され、
     ///          以降はポーリング差分検知により変更のたびに自動保存される。
     ///          シーン/GameObject の明示保存（SceneSaveSystem）とは独立した仕組み。
-    ///          設計書: Docs/Engine/Editor/EditorSettingsAutoSave_Design.md
     class IEditorSettingsSection
     {
     public:
@@ -35,7 +34,7 @@ namespace CoreEngine
         virtual void Deserialize(const nlohmann::json& in) = 0;
 
         // ──────────────────────────────────────────────────────────
-        // 保存先の区分（設計書: Docs/Engine/Editor/InstantSettingsSave_Design.md Phase 4）
+        // 保存先の区分
         // ──────────────────────────────────────────────────────────
 
         /// @brief 保存先の区分（UE の Config/ と Saved/Config/ の分離に相当）
@@ -53,7 +52,7 @@ namespace CoreEngine
         virtual StorageArea GetStorageArea() const { return StorageArea::UserSaved; }
 
         // ──────────────────────────────────────────────────────────
-        // 変更検知の方式（設計書: Docs/Engine/Editor/InstantSettingsSave_Design.md）
+        // 変更検知の方式
         // ──────────────────────────────────────────────────────────
 
         /// @brief 変更検知の方式

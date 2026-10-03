@@ -26,8 +26,7 @@ constexpr float kTwoPi = std::numbers::pi_v<float> * 2.0f;
 /// @brief CVar 編集の共通形: ローカルコピーをウィジェットへ渡し、編集されたら
 ///        Set（唯一の書き込み経路）で書き戻す
 /// @details ストレージの生ポインタを ImGui へ直接渡す旧方式は、通番が進まない
-///          「見えない変更」の温床のため廃止した（InstantSettingsSave_Design.md Phase 3。
-///          非 const の AsXxx() 自体が削除されている）。Set は等価判定つきなので
+///          「見えない変更」の温床のため廃止した（非 const の AsXxx() 自体が削除されている）。Set は等価判定つきなので
 ///          ドラッグ中に毎フレーム呼んでも通番は実変更時しか進まない
 /// @return ウィジェットが編集された場合 true
 template <class T, class WidgetFn>

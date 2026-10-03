@@ -10,7 +10,7 @@ namespace CoreEngine
     /// @brief ランダムノイズエフェクト（CS方式）
     /// @details 調整パラメータは CVar（"r.Random.*"）が唯一の保持者。
     ///          time だけは実行時に累積される値なので CVar 化していない。
-    ///          ImGui と保存は CVar 側で自動生成される（Docs/Engine/Editor/CVar_Design.md）
+    ///          ImGui と保存は CVar 側で自動生成される
     class Random : public PostEffectComputeBase {
     public:
         /// @brief ランダムノイズパラメータ構造体（GPU 定数バッファのレイアウト）

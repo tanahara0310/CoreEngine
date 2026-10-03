@@ -10,7 +10,7 @@ namespace CoreEngine
 /// @brief ショックウェーブエフェクト（CS方式）
 /// @details 調整パラメータは CVar（"r.Shockwave.*"）が唯一の保持者。
 ///          center / time は StartShockwave 以降の実行時状態なので CVar 化していない。
-///          ImGui と保存は CVar 側で自動生成される（Docs/Engine/Editor/CVar_Design.md）
+///          ImGui と保存は CVar 側で自動生成される
 class Shockwave : public PostEffectComputeBase {
 public:
     /// @brief ショックウェーブパラメータ構造体（GPU 定数バッファのレイアウト）

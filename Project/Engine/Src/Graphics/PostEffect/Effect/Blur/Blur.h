@@ -8,7 +8,7 @@ namespace CoreEngine
 {
     /// @brief ガウシアンブラー
     /// @details パラメータは CVar（"r.Blur.*"）が唯一の保持者。
-    ///          ImGui と保存は CVar 側で自動生成される（Docs/Engine/Editor/CVar_Design.md）
+    ///          ImGui と保存は CVar 側で自動生成される
     class Blur : public PostEffectComputeBase {
     public:
         /// @brief ブラーパラメータ構造体（GPU 定数バッファのレイアウト）
