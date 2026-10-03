@@ -853,9 +853,6 @@
     <ClCompile Include="Engine\Src\GameObject\Component\Render\MaterialComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\GameObject\Component\Render\FishSchoolComponent.cpp">
-      <Filter>Engine\Src\GameObject\Component\Render</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\Component\Animation\AnimatorComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Animation</Filter>
     </ClCompile>
@@ -2863,9 +2860,6 @@
       <Filter>Engine\Src\GameObject\Component\Core</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Render\MaterialComponent.h">
-      <Filter>Engine\Src\GameObject\Component\Render</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\GameObject\Component\Render\FishSchoolComponent.h">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Animation\SkeletonSocketComponent.h">

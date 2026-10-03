@@ -200,8 +200,9 @@ float3 WindDisplace(float3 posOS, float3 nrmOS, float2 uv1, float2 uv2, float3 w
 
 ### 魚（Fish_*）と群れの配置（FishSchools/*.json）
 
-1 匹ずつのまっすぐなモデル（頭 +X、背 +Z。エンジン座標では頭 +X・背 +Y・体の左 +Z）を、
-群れの配置 JSON どおりにインスタンス描画する（CoreEngine では「魚の群れ」コンポーネント）。
+1 匹ずつのまっすぐなモデル（頭 +X、背 +Z。エンジン座標では頭 +X・背 +Y・体の左 +Z）。
+Blender の確認用シーンでは群れの配置 JSON どおりに並べる。CoreEngine では 1 匹ずつ MeshRenderer で置くと、
+マテリアルの頂点アニメーション（魚）で泳ぐ。
 
 | glTF | 内容 |
 |---|---|
@@ -269,11 +270,12 @@ Sandbox のエディタで「シーンを開く」→ `OkinawaBeachScene` を選
 | `MainCamera` | ゲームの視点。確認用カメラ `main`（全景）と同じ位置・向き・縦の視野角 |
 | `WaterPlane` | FFT の海（WaterTestScene と同じ設定、4 km 四方）。平均水面の高さ 0 に置く |
 | `Terrain` / `Rocks` / `Vegetation` / `Village` / `BeachProps` / `Pier` / `Reef` | 種類ごとのグループ（空のオブジェクト）。下に 1 つずつのモデル（MeshRenderer） |
-| `SeaLife` | 魚の群れ 5 つ（魚の群れ コンポーネント）と、ウミガメ（Animator で `Swim` を流す） |
+| `SeaLife` | ウミガメ（Animator で `Swim` を流す） |
 
 見た目の設定（`_environment.json`）と `_scene.json` は WaterTestScene と同じ。
 作り直すときは `python3 Tools/OkinawaBeach/export_engine_scene.py` を実行する（`export_engine_scene.py` の説明を参照）。
-- 置く物は `.blend` のワールド行列をそのまま使い、`assemble.py` の配置表から求めた位置・大きさ、魚は行列まで突き合わせてから書く。
+- 置く物は `.blend` のワールド行列をそのまま使い、`assemble.py` の配置表から求めた位置・大きさと突き合わせてから書く。
+  魚の群れは配置 JSON と確認用シーンの行列を突き合わせるだけで、エンジンのシーンへは書かない。
   書いた値をエンジンと同じ式で組み直し、Blender の配置と一致することも確かめる。
 - シーンは GUID とパスでアセットを指すので、`Models/Okinawa` のアセットに `.meta` が無ければ作る
   （GUID はパスから決まるので、作り直しても同じ値）。
@@ -321,21 +323,6 @@ Sandbox のエディタで「シーンを開く」→ `OkinawaBeachScene` を選
 | `r.VertexAnim.WindScale` / `r.VertexAnim.WaterScale` | 1 | 植物 / 海草の揺れの倍率 |
 | `r.RT.DynamicGeometry` | on | 揺れる植物・海草とスキンモデルの今の形をレイトレーシングに反映する |
 
-### 魚の群れ（魚の群れ コンポーネント）
-
-空のオブジェクトに「魚の群れ」（`FishSchool`）を足し、**群れの配置** に `FishSchools/FishSchool_Blue.json` などを指す。
-オブジェクトの位置・向き・大きさが群れの中心になる（群れを移動させるのはゲーム側でオブジェクトを動かす）。
-
-| 項目 | 内容 |
-|---|---|
-| 群れの配置 | 配置 JSON。使うモデルは JSON のフォルダからの相対パスで読む |
-| 泳ぎの速さ | 体のくねり・胸びれの速さの倍率（種類ごとの既定の速さに掛ける） |
-| 漂い | 1 匹ずつ小さく上下・前後に漂い、首を振る大きさ（0 で配置どおりに止まる） |
-| 影を落とす | レイトレーシングの影（と水中のコースティクス）に 1 匹ずつ入れる |
-
-種類（モデル）ごとに `Model::DrawInstances` で全個体をまとめて積むので、34 匹の群れでもサブメッシュ 1 つにつき
-1 回のインスタンス描画になる。1 匹ずつ視錐台で棄却し、モーションベクター用の前フレームの行列も個体ごとに持つ。
-
 ### ウミガメ（スキンモデル）
 
 「アニメーション」（`Animator`）コンポーネントでスキンモデルとして読み、`Swim` を再生する。コードからは:
@@ -353,8 +340,7 @@ turtle->AddComponent<AnimatorComponent>("SeaTurtle.gltf", "Swim");
 - スキンモデル（ウミガメ）: GPU スキニングの出力をそのまま BLAS の頂点にして更新する（姿勢が変わったフレームだけ）
 - 水面の映り込みのヒットシェーディング（当たった三角形の頂点と材質を読んで照らす）も、揺れる植物・スキンモデルは
   BLAS と同じ変形後の頂点を読む（当たった点の位置・法線と、そこから撃つ影のレイが画面の形と一致する）
-- 魚: 体のくねりは 1 cm ほど（影のバイアス 5 cm より小さい）なので、種類ごとに共有する静止形の BLAS を個体の行列で置く。
-  映り込みのヒットシェーディングの表にも 1 匹ずつ載る
+- 魚（MeshRenderer で置いたもの）: 体のくねりは 1 cm ほど（影のバイアス 5 cm より小さい）なので、静止形の BLAS で置く
 - 120 回更新するごとに BLAS を作り直して木構造の質を保つ（個体ごとにずらす）
 
 ### 検証
@@ -366,8 +352,6 @@ turtle->AddComponent<AnimatorComponent>("SeaTurtle.gltf", "Swim");
   書き出した glTF（CoconutPalm_A, Adan_A, Hibiscus_A, Seagrass_Patch_A, Fish_SapphireDevil_F, Fish_ThreadfinButterfly）の全頂点で、
   Blender の確認用ジオメトリノード（`okinawa/motion.py`）と同じ式の結果と比べた。
   回転・移動した個体、風向き・強さ・速さの倍率を変えても差は最大 2.6 µm（float の丸め誤差）
-- 群れの配置 JSON の回転を `XMMatrixAffineTransformation`（`MathCore::Matrix::MakeAffine`）と同じ式で行列にし、
-  Blender の確認用シーンの配置と一致することを確かめた
 - C++ は clang（MinGW ターゲット）の構文チェックで、変更前と比べて新しいエラーが無いことを確かめた（MSVC でのビルドと実行は未確認）
 
 ## 他のモジュールで使い回せる補助

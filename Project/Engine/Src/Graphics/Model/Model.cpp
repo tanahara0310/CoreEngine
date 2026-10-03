@@ -298,64 +298,6 @@ namespace CoreEngine
         }
     }
 
-    void Model::DrawInstances(std::span<const Matrix4x4> worlds, std::span<const Matrix4x4> prevWVPs,
-        const DrawViewInfo& view, D3D12_GPU_DESCRIPTOR_HANDLE textureHandle)
-    {
-        assert(IsInitialized());
-        assert(view.view && view.view->isValid);
-        assert((prevWVPs.empty() || prevWVPs.size() == worlds.size()) && "prevWVPs must match worlds");
-
-        // スキニングモデルは変形後の頂点を 1 体ぶんしか持たないので、まとめて描けない
-        if (worlds.empty() || HasSkinCluster()) {
-            return;
-        }
-
-        InstanceBatchManager* batch = renderContext_.instanceBatchManager;
-        assert(batch);
-        const Camera* camera = view.GetCamera();
-        const auto& subMeshes = resource_->GetSubMeshes();
-        const bool isGBufferPass = view.isGBufferPass;
-        const bool hasPrev = prevWVPs.size() == worlds.size();
-
-        // バッチキーはサブメッシュと LOD で決まるので、(サブメッシュ, LOD) ごとに 1 回だけ組む
-        constexpr uint32_t kLods = SubMeshData::kMaxLodCount;
-        std::vector<std::optional<InstanceBatchKey>> keys(subMeshes.size() * kLods);
-        std::vector<D3D12_GPU_VIRTUAL_ADDRESS> materialCBVs(subMeshes.size());
-        for (uint32_t i = 0; i < subMeshes.size(); ++i) {
-            materialCBVs[i] = MaterialCBVForSlot(subMeshes[i].materialIndex);
-        }
-
-        for (size_t n = 0; n < worlds.size(); ++n) {
-            const Matrix4x4& worldMatrix = worlds[n];
-            const Matrix4x4 wvp = worldMatrix * view.view->viewProjection;
-
-            TransformationMatrix mtx{};
-            mtx.world = worldMatrix;
-            mtx.WVP = wvp;
-            mtx.prevWVP = hasPrev ? prevWVPs[n] : wvp;
-            mtx.worldInverseTranspose = MathCore::Matrix::Transpose(MathCore::Matrix::Inverse(worldMatrix));
-            // 従来型シャドウマップ廃止に伴い lightViewProjection はレイアウト維持のみ（単位行列）
-            mtx.lightViewProjection = MathCore::Matrix::Identity();
-
-            const uint32_t lodIndex = (std::min)(ModelVisibility::SelectLod(*resource_, worldMatrix, camera), kLods - 1);
-            for (uint32_t i = 0; i < subMeshes.size(); ++i) {
-                std::optional<InstanceBatchKey>& key = keys[i * kLods + lodIndex];
-                if (!key) {
-                    const auto& textures = resource_->GetMaterialTextures(subMeshes[i].materialIndex);
-                    const D3D12_GPU_DESCRIPTOR_HANDLE baseColorTex = (textureHandle.ptr != 0)
-                        ? textureHandle : textures.baseColor;
-                    key = InstanceBatchKey::Make(
-                        resource_, i, lodIndex,
-                        baseColorTex, textures.normal, textures.metallicRoughness,
-                        textures.occlusion, textures.emissive,
-                        materialCBVs[i], isGBufferPass,
-                        customForwardPSO_, customRootSignature_, customProvider_, customPipeline_);
-                }
-                batch->Submit(*key, mtx, materialCBVs[i]);
-            }
-        }
-    }
-
 void Model::UpdateAnimation(float deltaTime) {
     if (!animationPlayer_) return;
 
