@@ -5,7 +5,6 @@
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/Render/Pass/RenderPass.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
-#include "Graphics/Render/RenderTarget/OffscreenRenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetDescriptor.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
@@ -76,10 +75,6 @@ namespace CoreEngine
             uploadRing.AllocateConstants(BuildWaterSurfaceConstants(context.waterSurfaceState));
         const D3D12_GPU_VIRTUAL_ADDRESS paramsAddress = uploadRing.AllocateConstants(params_);
 
-        if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(target)) {
-            offscreen->SetUseDepthBuffer(false);
-        }
-        target->SetClearEnabled(true);
         target->Begin(cmdList);
 
         cmdList->SetGraphicsRootSignature(rootSignatureManager_->GetRootSignature());
@@ -118,10 +113,6 @@ namespace CoreEngine
         DrawFullscreenQuad(cmdList);
 
         target->End(cmdList);
-
-        if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(target)) {
-            offscreen->SetUseDepthBuffer(true);
-        }
 
         outputSrvHandle = target->GetSRVHandle();
         diagnostics_.outputHandle = outputSrvHandle.ptr;

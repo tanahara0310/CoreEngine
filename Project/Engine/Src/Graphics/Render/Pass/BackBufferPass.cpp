@@ -67,12 +67,11 @@ namespace CoreEngine
 
         auto* cmdList = context.cmdList;
 
-        // レターボックスの帯はクリア色がそのまま見えるので黒に固定する
+        // レターボックスの帯はクリア色がそのまま見えるので黒でクリアする
         constexpr float kLetterboxColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-        targetToUse->SetClearColor(kLetterboxColor);
 
-        // バックバッファへのレンダリング開始（自動でRTV/DSV/ビューポート/シザー設定）
-        targetToUse->Begin(cmdList);
+        // バックバッファへのレンダリング開始（自動でRTV/ビューポート/シザー設定）
+        targetToUse->Begin(cmdList, { .clearColor = kLetterboxColor });
 
         // カメラ・UI は基準解像度の縦横比で描かれている。クライアント領域の縦横比が
         // それと違う場合（フルスクリーン解除など）に全面へ引き伸ばすと絵が伸びるので、

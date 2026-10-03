@@ -24,7 +24,7 @@ namespace CoreEngine
         sharedDepth_ = sharedDepth;
         index_ = index;
         format_ = desc.format;
-        useDepthBuffer_ = desc.needsDepthStencil;
+        needsDepthStencil_ = desc.needsDepthStencil;
         autoResize_ = desc.autoResize;
         SetClearColor(desc.clearColor);
 
@@ -123,46 +123,38 @@ namespace CoreEngine
         uavDesc.Format = format_;
         uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
         device->CreateUnorderedAccessView(resource_.Get(), nullptr, &uavDesc, uavDescriptor_.Cpu());
-
-        dsvHandle_ = ResolveDsvHandle();
     }
 
     D3D12_CPU_DESCRIPTOR_HANDLE OffscreenRenderTarget::ResolveDsvHandle() const
     {
-        if (useCustomDsvHandle_) {
-            return customDsvHandle_;
-        }
         // 共有シーン深度の DSV スロットはリサイズしても変わらない（同じスロットへ書き直される）
         return sharedDepth_ ? sharedDepth_->GetDSVHandle() : D3D12_CPU_DESCRIPTOR_HANDLE{};
     }
 
-    void OffscreenRenderTarget::Begin(ID3D12GraphicsCommandList* cmdList)
+    RenderTargetBinding OffscreenRenderTarget::Begin(ID3D12GraphicsCommandList* cmdList, const RenderTargetBeginDesc& desc)
     {
         assert(cmdList);
         assert(resource_);
 
-        dsvHandle_ = ResolveDsvHandle();
-        assert((!useDepthBuffer_ || dsvHandle_.ptr != 0) && "OffscreenRenderTarget: 深度を使うのに DSV が無い");
+        // 深度は深度ありで作ったものだけ束ねる。束ねないとき（ポストプロセスなど）は共有のシーン深度に触れない
+        const bool bindDepth = needsDepthStencil_ && desc.depth == DepthBinding::FromDescriptor;
+        RenderTargetBinding binding;
+        binding.rtv = rtvDescriptor_.Cpu();
+        if (bindDepth) {
+            binding.dsv = ResolveDsvHandle();
+            assert(binding.dsv.ptr != 0 && "OffscreenRenderTarget: 深度を使うのに DSV が無い");
+        }
 
         // 実際のリソース状態から RENDER_TARGET へ遷移（状態不一致によるチラつきを防ぐ）
         Barrier::Transition(cmdList, resource_, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
-        // RTV & DSV設定
-        // useDepthBuffer_=false の場合（SSAOなどポストプロセス専用パス）は
-        // 共有DSVをバインドしない。これによりGBufferPassが書き込んだ深度値を保護する。
-        if (useDepthBuffer_) {
-            cmdList->OMSetRenderTargets(1, &rtvDescriptor_.Cpu(), false, &dsvHandle_);
-        } else {
-            cmdList->OMSetRenderTargets(1, &rtvDescriptor_.Cpu(), false, nullptr);
-        }
+        cmdList->OMSetRenderTargets(1, &binding.rtv, false, bindDepth ? &binding.dsv : nullptr);
 
-        // clearEnabled_=true のときのみRTVと深度をクリアする。
-        // clearEnabled_=false は DeferredLightingPass が書き込んだ結果を
-        // GeometryPass が上書きする際など、直前パスの内容を保持したい場合に使用する。
-        if (clearEnabled_) {
-            cmdList->ClearRenderTargetView(rtvDescriptor_.Cpu(), clearColor_, 0, nullptr);
-            if (useDepthBuffer_) {
-                cmdList->ClearDepthStencilView(dsvHandle_, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+        // クリアしないのは、直前のパスの内容を残したいとき（DeferredLighting の結果へ GeometryPass が重ねるなど）
+        if (desc.clear) {
+            cmdList->ClearRenderTargetView(binding.rtv, desc.clearColor ? desc.clearColor : clearColor_, 0, nullptr);
+            if (bindDepth) {
+                cmdList->ClearDepthStencilView(binding.dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
             }
         }
 
@@ -185,6 +177,7 @@ namespace CoreEngine
         cmdList->RSSetScissorRects(1, &scissor);
 
         // SRV ヒープはフレーム先頭で CommandContext が 1 回バインドする（個別バインドは不要）
+        return binding;
     }
 
     void OffscreenRenderTarget::End(ID3D12GraphicsCommandList* cmdList)
