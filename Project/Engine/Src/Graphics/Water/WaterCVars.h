@@ -14,7 +14,6 @@ namespace CoreEngine
         extern CVar<Vector4> BaseColor;
         extern CVar<float>   Roughness;
         extern CVar<float>   Metallic;
-        extern CVar<bool>    IBLEnabled;
         extern CVar<float>   FresnelScale;
         extern CVar<float>   FresnelF0;
         extern CVar<Vector2> ScrollSpeed;

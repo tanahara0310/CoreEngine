@@ -316,9 +316,6 @@ namespace CoreEngine
         material->SetMetallic(preset.metallic);
         material->SetRoughness(preset.roughness);
         material->SetLightingEnabled(true);
-        // 鏡面反射は RTWaterReflectionPass と空環境キューブマップで賄う。
-        // ここで静的環境マップの IBL を効かせると大気の空と映り込みが食い違う。
-        material->SetIBLIntensity(0.0f);
         material->SetNormalMapEnabled(false);
     }
 
@@ -464,7 +461,6 @@ namespace CoreEngine
         waterPlane->SetBaseColor(WaterCVars::BaseColor.Get());
         waterPlane->SetRoughness(WaterCVars::Roughness.Get());
         waterPlane->SetMetallic(WaterCVars::Metallic.Get());
-        waterPlane->SetIBLEnabled(WaterCVars::IBLEnabled.Get());
         waterPlane->SetFresnelParameters(WaterCVars::FresnelScale.Get(), WaterCVars::FresnelF0.Get());
         waterPlane->SetScrollSpeed(WaterCVars::ScrollSpeed.Get());
         waterPlane->SetUVTiling(WaterCVars::UVTiling.Get());

@@ -17,7 +17,7 @@ namespace CoreEngine
 
     /// @brief Deferred Lighting レンダリング技術
     /// @details GBufferからPBRディファードライティングを計算
-    ///          LightManager（4種ライト）/ Shadow (PCF) / IBL (Irradiance+Prefiltered+BRDF LUT) を統合
+    ///          LightManager（4種ライト）/ RT シャドウ / 空アンビエント（大気散乱）を統合
     class DeferredLightingTechnique : public RenderingTechniqueBase {
     public:
         static constexpr uint32_t kMaxRTShadowLights = 4;
@@ -59,17 +59,6 @@ namespace CoreEngine
         /// @details gCamera はフレーム更新時に 1 回しか書かれないので、こちらを専用 CBV として毎ビュー更新する。
         /// @note ビュー種別ごとに別バッファを持つ。単一バッファだと後勝ちで両ビューが同じ行列を見てしまう。
         void UpdateDepthReconstruction(RenderViewType viewType, const Matrix4x4& invViewProj);
-
-        // ===== IBL セッター =====
-
-        /// @brief 環境マップ XYZ 回転角度を設定（ラジアン）
-        void SetEnvironmentRotation(const Vector3& rotation) { environmentRotation_ = rotation; }
-
-        /// @brief IBL 強度を設定
-        void SetIBLIntensity(float intensity) { iblIntensity_ = intensity; }
-
-        /// @brief IBL パラメータを GPU バッファに書き込む（毎フレーム呼び出し）
-        void UpdateIBLParams();
 
         // ===== SSAO セッター =====
 
@@ -135,12 +124,6 @@ namespace CoreEngine
         static constexpr size_t kViewTypeCount = 3; // GameView / ReflectionView / CaptureView
         std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kViewTypeCount> depthReconstructionBuffers_;
         std::array<D3D12_GPU_VIRTUAL_ADDRESS, kViewTypeCount> depthReconstructionCBVAddresses_{};
-
-        // ===== IBL パラメータ =====
-        Microsoft::WRL::ComPtr<ID3D12Resource> iblParamsBuffer_;
-        D3D12_GPU_VIRTUAL_ADDRESS iblParamsCBVAddress_ = 0;
-        Vector3 environmentRotation_ = {};
-        float iblIntensity_ = 1.0f;
 
         // ===== RT Shadow =====
         D3D12_GPU_DESCRIPTOR_HANDLE rtShadowHandles_[kMaxRTShadowLights]{};

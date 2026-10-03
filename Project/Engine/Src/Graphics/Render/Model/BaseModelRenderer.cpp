@@ -8,14 +8,9 @@
 #include "Graphics/Render/Model/Instancing/InstanceBatchManager.h"
 #include "Diagnostics/EngineStats.h"
 #include "Utility/Logger/Logger.h"
-#include <cstring>
 
 namespace CoreEngine
 {
-    void BaseModelRenderer::SetIBLParameters(const IBLParameters& params) {
-        iblParams_ = params;
-    }
-
     int BaseModelRenderer::GetRootParamIndex(const std::string& resourceName) const {
         // リフレクションデータが未構築の場合は無効値を返す
         if (!forwardReflectionData_) {
@@ -127,18 +122,6 @@ namespace CoreEngine
         if (rtShadowMaskHandle_.ptr != 0) {
             binder.Set(table[ModelBind::gRTShadowMask], rtShadowMaskHandle_);
         }
-        if (iblParams_.irradianceMap.ptr != 0) {
-            binder.Set(table[ModelBind::gIrradianceMap], iblParams_.irradianceMap);
-        }
-        if (iblParams_.prefilteredMap.ptr != 0) {
-            binder.Set(table[ModelBind::gPrefilteredMap], iblParams_.prefilteredMap);
-        }
-        if (iblParams_.brdfLUT.ptr != 0) {
-            binder.Set(table[ModelBind::gBRDFLUT], iblParams_.brdfLUT);
-        }
-        if (iblParamsCBVAddress_ != 0) {
-            binder.Set(table[ModelBind::gIBLParams], iblParamsCBVAddress_);
-        }
         // フォグはブレンドモードで差すバリアントを選ぶ。
         // 不透明フォワードは全画面パス（FogPass）が深度から掛けるので、ここで掛けると二重になる。
         // 加算・スクリーンは内散乱を足すと、背後の不透明面に既に乗った分と二重に光る
@@ -193,24 +176,6 @@ namespace CoreEngine
 
         ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Graphics);
         BindForwardSceneResources(binder, forwardBindings_);
-
-        if (iblParams_.environmentMap.ptr != 0) {
-            binder.Set(forwardBindings_[ModelBind::gEnvironmentTexture], iblParams_.environmentMap);
-        }
-        if (iblParamsBuffer_) {
-            IBLSceneParamsCPU params{};
-            params.rotationX = iblParams_.rotation.x;
-            params.rotationY = iblParams_.rotation.y;
-            params.rotationZ = iblParams_.rotation.z;
-            params.environmentIntensity = iblParams_.intensity;
-            // IBL の有効/無効はシーン側（マップが揃っているか）で決まる
-            params.sceneIBLEnabled = HasIBLMaps() ? 1u : 0u;
-            void* mapped = nullptr;
-            iblParamsBuffer_->Map(0, nullptr, &mapped);
-            std::memcpy(mapped, &params, sizeof(params));
-            iblParamsBuffer_->Unmap(0, nullptr);
-            binder.Set(forwardBindings_[ModelBind::gIBLParams], iblParamsCBVAddress_);
-        }
     }
     void BaseModelRenderer::BeginGBufferPass(ID3D12GraphicsCommandList* cmdList) {
         currentCommandList_ = cmdList;

@@ -61,7 +61,7 @@ PixelShaderOutput main(PixelShaderInput input)
     float4 normalRoughness = gNormalRoughness.Load(loadCoord);
     float centerDepth = gSceneDepth.Load(loadCoord);
 
-    // normalRoughness.a: 0.0=アンリット(センチネル), 符号=IBL有効/無効, 絶対値=roughness
+    // normalRoughness.a: 0.0=アンリット(センチネル), それ以外=roughness
     if (IsBackgroundDepth(centerDepth) || normalRoughness.a == 0.0f)
     {
         output.color = float4(1.0f, 1.0f, 1.0f, 1.0f);

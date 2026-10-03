@@ -25,7 +25,7 @@ namespace CoreEngine
         static std::shared_ptr<GraphicsSetupState> BuildFoundationTasks(
             StartupSequence& sequence, EngineSystem& engine, const EngineConfig& config);
 
-        /// @brief レンダラー群・ポストエフェクト・レンダリング技術・IBL のステップを積む
+        /// @brief レンダラー群・ポストエフェクト・レンダリング技術・モデル描画のステップを積む
         /// @param state BuildFoundationTasks が返した共有状態
         /// @note ここが起動時間の大半（シェーダ 100 本超のコンパイル）を占めるので、
         ///       スプラッシュが固まらないよう細かく切ってある。

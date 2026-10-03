@@ -80,27 +80,16 @@ namespace CoreEngine
             }
         }
 
-        if (context.renderManager) {
-            // シーン共通 IBL 回転を転送（スカイボックス回転と連動）
-            deferredLighting->SetEnvironmentRotation(context.renderManager->GetIBLRotation());
-
-            // 環境輝度スケールを転送（SkyBox intensity と連動）
-            deferredLighting->SetIBLIntensity(context.renderManager->GetEnvironmentIntensity());
-
-            // ===== 深度復元用 View*Projection 逆行列（ビューごとに毎回更新） =====
-            // 実行中のビューの ViewInfo から取る。gCamera（フレーム 1 回しか書かれない CBV）
-            // には頼らない。逆行列は ViewInfo 構築時に 1 回だけ計算済み。
-            if (context.frameViews) {
-                const ViewInfo& view = context.frameViews->Get(context.viewSettings.viewType);
-                if (view.isValid) {
-                    deferredLighting->UpdateDepthReconstruction(
-                        context.viewSettings.viewType, view.invViewProjection);
-                }
+        // ===== 深度復元用 View*Projection 逆行列（ビューごとに毎回更新） =====
+        // 実行中のビューの ViewInfo から取る。gCamera（フレーム 1 回しか書かれない CBV）
+        // には頼らない。逆行列は ViewInfo 構築時に 1 回だけ計算済み。
+        if (context.frameViews) {
+            const ViewInfo& view = context.frameViews->Get(context.viewSettings.viewType);
+            if (view.isValid) {
+                deferredLighting->UpdateDepthReconstruction(
+                    context.viewSettings.viewType, view.invViewProjection);
             }
         }
-
-        // ===== IBL パラメータを GPU バッファに書き込む =====
-        deferredLighting->UpdateIBLParams();
 
         // ===== RT シャドウマスクの設定（ライトごとに独立） =====
         D3D12_GPU_DESCRIPTOR_HANDLE mainLightMask{}; // フォワード受影用（メインライトのマスク）

@@ -4,6 +4,7 @@
 #include "Math/Matrix/Matrix4x4.h"
 #include "Math/Vector/Vector4.h"
 #include "Math/Vector/Vector3.h"
+#include "Math/Vector/Vector2.h"
 #include <cstdint>
 
 
@@ -29,14 +30,13 @@ namespace CoreEngine
         int32_t enableDithering;    ///< ディザリング有効フラグ (透明・葉など)
         float ditheringScale;       ///< ディザリングスケール
         float alphaCutoff;          ///< discard 判定に使用するアルファしきい値（デフォルト: 0.5）
-        float iblIntensity;         ///< IBL強度（0=このマテリアルはIBL無効, デフォルト: 1.0）
 
         // ===== 頂点アニメーション（Shaders/Include/Object/VertexAnimation.hlsli） =====
         // 頂点ごとの値は VertexData::animData（glTF の TEXCOORD_1 / TEXCOORD_2）が持つ
         int32_t vertexAnimation;    ///< 種類（VertexAnimationType: 0=なし, 1=植物, 2=海草, 3=魚）
         float vertexAnimStrength;   ///< 振幅の倍率（1 = モデル作成時の想定。デフォルト: 1.0）
         float vertexAnimSpeed;      ///< 速さの倍率（1 = 既定の周期。デフォルト: 1.0）
-        float vertexAnimPadding;    ///< 16 バイト境界合わせ（未使用）
+        Vector2 vertexAnimPadding;  ///< 16 バイト境界合わせ（未使用）
     };
 
     static_assert(sizeof(MaterialConstants) % 16 == 0,
@@ -58,7 +58,7 @@ namespace CoreEngine
         CB_FIELD(MaterialConstants, occlusionStrength), CB_FIELD(MaterialConstants, useNormalMap),
         CB_FIELD(MaterialConstants, emissiveFactor), CB_FIELD(MaterialConstants, enableLighting),
         CB_FIELD(MaterialConstants, enableDithering), CB_FIELD(MaterialConstants, ditheringScale),
-        CB_FIELD(MaterialConstants, alphaCutoff), CB_FIELD(MaterialConstants, iblIntensity),
+        CB_FIELD(MaterialConstants, alphaCutoff),
         CB_FIELD(MaterialConstants, vertexAnimation), CB_FIELD(MaterialConstants, vertexAnimStrength),
         CB_FIELD(MaterialConstants, vertexAnimSpeed), CB_FIELD(MaterialConstants, vertexAnimPadding),
     };

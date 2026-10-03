@@ -10,7 +10,6 @@ namespace CoreEngine
     /// @brief 1つのマテリアルのGPU定数バッファを保持するクラス（PBR専用）
     /// @note glTF 準拠の「ファクター × テクスチャ」乗算方式。
     ///       Metallic / Roughness / EmissiveFactor はテクスチャと乗算されるファクター値。
-    /// @note IBL の有効/無効はシーン側で決まる。iblIntensity=0 で個別オプトアウト。
     class MaterialInstance : public MaterialBase<MaterialConstants> {
     public:
         /// @brief GPU 定数バッファを確保して常時 Map する
@@ -59,11 +58,6 @@ namespace CoreEngine
         void SetAlphaCutoff(float cutoff)     { materialData_->alphaCutoff = cutoff; }
         float GetAlphaCutoff() const          { return materialData_->alphaCutoff; }
 
-        // ===== IBL =====
-        /// @brief IBL強度を設定（0 でこのマテリアルの IBL を無効化。シーンに IBL マップが無い場合は常に無効）
-        void SetIBLIntensity(float intensity) { materialData_->iblIntensity = intensity; }
-        float GetIBLIntensity() const      { return materialData_->iblIntensity; }
-
         // ===== 頂点アニメーション（Shaders/Include/Object/VertexAnimation.hlsli） =====
         /// @brief 頂点アニメーションの種類（モデルが TEXCOORD_1 / TEXCOORD_2 の値を持つときだけ動く）
         void SetVertexAnimation(VertexAnimationType type) { materialData_->vertexAnimation = static_cast<int32_t>(type); }
@@ -80,7 +74,7 @@ namespace CoreEngine
         nlohmann::json ToJson() const;
 
         /// @brief JSON からマテリアルパラメータを復元する
-        /// @note 旧フォーマットのキー（"ao" / "ibl" 等）も読み替えて互換を維持する
+        /// @note 旧フォーマットのキー（"ao"）も読み替えて互換を維持する
         void FromJson(const nlohmann::json& j);
     };
 

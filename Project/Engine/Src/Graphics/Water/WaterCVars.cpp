@@ -18,8 +18,6 @@ namespace CoreEngine
             "水面マテリアルのラフネス", CVarRange{ 0.0f, 1.0f } };
         CVar<float> Metallic{ "r.Water.Metallic", 0.0f,
             "水面マテリアルのメタリック", CVarRange{ 0.0f, 1.0f } };
-        CVar<bool> IBLEnabled{ "r.Water.IBLEnabled", true,
-            "水面マテリアルの IBL を有効にする" };
         CVar<float> FresnelScale{ "r.Water.FresnelScale", 1.0f,
             "フレネル反射スケール", CVarRange{ 0.0f, 2.0f } };
         CVar<float> FresnelF0{ "r.Water.FresnelF0", 0.02f,

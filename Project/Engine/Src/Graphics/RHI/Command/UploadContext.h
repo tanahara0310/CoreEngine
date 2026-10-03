@@ -9,7 +9,7 @@
 namespace CoreEngine
 {
     /// @brief フレーム描画とは独立した GPU 作業用のコマンドコンテキスト
-    /// @details リソースのアップロードと IBL などのオフライン生成に使う。
+    /// @details リソースのアップロードと、結果をすぐ使う GPU の生成処理に使う。
     ///          専用のアロケータ・コマンドリスト・フェンスを持ち、フレームのコマンドリストを borrow しない。
     /// @note 記録できるのは BeginRecording() のスコープ内かつ 1 スレッドのみ（内部で直列化）。
     class UploadContext {
@@ -66,7 +66,7 @@ namespace CoreEngine
         void ReleaseCompletedResources();
 
         /// @brief このコンテキストが submit した全作業の GPU 完了を待つ
-        /// @details 生成結果をその場で使う処理（IBL 生成など）が使う。
+        /// @details 生成結果をその場で使う処理が使う。
         void WaitForIdle();
 
         /// @brief 初期化済みかを返す

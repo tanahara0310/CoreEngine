@@ -46,13 +46,6 @@ struct DepthReconstructionParams
 ConstantBuffer<DepthReconstructionParams> gDepthReconstruction : register(b7);
 
 // ============================================================
-// IBL テクスチャ
-// ============================================================
-TextureCube<float4> gIrradianceMap : register(t9);
-TextureCube<float4> gPrefilteredMap : register(t10);
-Texture2D<float2> gBRDFLUT : register(t11);
-
-// ============================================================
 // RT シャドウマスク（ライトごとに独立したテクスチャ）
 // ============================================================
 Texture2D<float> gRTShadowMask0 : register(t12);
@@ -87,16 +80,6 @@ struct WaterCausticsDebug
     float padding0;
 };
 ConstantBuffer<WaterCausticsDebug> gWaterCausticsDebug : register(b5);
-
-// ============================================================
-// IBL パラメータ（シーン共通）
-// ============================================================
-struct IBLParams
-{
-    float3 environmentRotation; // 環境マップ XYZ 回転（ラジアン）
-    float iblIntensity; // IBL 強度 (0.0-∞, デフォルト 1.0)
-};
-ConstantBuffer<IBLParams> gIBLParams : register(b4);
 
 // ============================================================
 // 空アンビエント（大気散乱 Sky-View LUT の SH9 射影。Sky Light 相当）
@@ -135,31 +118,6 @@ float3 EvaluateSkyIrradiance(float3 n)
 }
 
 SamplerState gSampler : register(s0);
-
-// ============================================================
-// IBL（PBR.hlsli CalculateFullIBL と同じロジック）
-// ============================================================
-float3 CalculateDeferredIBL(float3 N, float3 V, float3 albedo, float metallic, float roughness, float3 F0, float ao)
-{
-    float NdotV = max(dot(N, V), 0.0f);
-    float3 F = FresnelSchlickRoughness(NdotV, F0, roughness);
-
-    // === Diffuse IBL ===
-    float3 rotatedN = RotateVector(N, gIBLParams.environmentRotation);
-    float3 irradiance = gIrradianceMap.SampleLevel(gSampler, rotatedN, 0.0f).rgb;
-    float3 kD = (1.0f - F) * (1.0f - metallic);
-    float3 diffuseIBL = kD * albedo * irradiance;
-
-    // === Specular IBL ===
-    float3 R = normalize(reflect(-V, N));
-    float3 rotatedR = RotateVector(R, gIBLParams.environmentRotation);
-    float mipLevel = roughness * float(MAX_PREFILTERED_MIP_LEVELS - 1);
-    float3 prefilteredColor = gPrefilteredMap.SampleLevel(gSampler, rotatedR, mipLevel).rgb;
-    float2 envBRDF = gBRDFLUT.Sample(gSampler, float2(NdotV, roughness));
-    float3 specularIBL = prefilteredColor * (F * envBRDF.x + envBRDF.y);
-
-    return (diffuseIBL + specularIBL) * ao * gIBLParams.iblIntensity;
-}
 
 // ============================================================
 // 入出力
@@ -227,18 +185,13 @@ PixelShaderOutput main(PixelShaderInput input)
     }
 
     // ===== アンリットマテリアル検出 =====
-    // GBuffer.PS.hlsl は enableLighting==0 のとき normalRoughness.a=0.0 の厳密なセンチネル値を書き込み、
-    // emissiveMetallic.rgb にアンリットカラーを格納する。IBLオプトアウト（負値）と区別するため
-    // <= ではなく == で判定する（ライト時のroughnessは0.01未満に丸められないため0との衝突は無い）。
+    // GBuffer.PS.hlsl は enableLighting==0 のとき normalRoughness.a=0.0 のセンチネル値を書き込み、
+    // emissiveMetallic.rgb にアンリットカラーを格納する（ライト時の roughness は 0.01 以上に丸められる）。
     if (normalRoughness.a == 0.0f)
     {
         output.color = float4(emissiveMetallic.rgb, 1.0f);
         return output;
     }
-
-    // ===== IBLフラグのデコード =====
-    // GBuffer.PS.hlsl は IBL 有効時 roughness を正、オプトアウト時は負で書き込む（符号ビット埋め込み）。
-    const bool materialWantsIBL = normalRoughness.a > 0.0f;
 
     // 共通パラメータ展開
     float3 albedo = albedoAO.rgb;
@@ -277,12 +230,6 @@ PixelShaderOutput main(PixelShaderInput input)
     // ============================================================
     // PBR ライティングパス（常にここに到達）
     // ============================================================
-    // IBL はシーンに Irradiance マップがバインドされている場合のみ有効（幅1以下=未設定）
-    float iblW, iblH;
-    gIrradianceMap.GetDimensions(iblW, iblH);
-    const bool sceneHasIBL = (iblW > 1.0f);
-    const bool enableIBL = materialWantsIBL && sceneHasIBL;
-
     float ao = saturate(albedoAO.a);
 
     // SSAO テクスチャが有効な場合（幅 > 1）は AO 値に乗算する
@@ -296,7 +243,7 @@ PixelShaderOutput main(PixelShaderInput input)
         }
     }
 
-    float roughness = saturate(abs(normalRoughness.a));
+    float roughness = saturate(normalRoughness.a);
     float metallic = saturate(emissiveMetallic.a);
     float3 emissive = emissiveMetallic.rgb;
     float3 F0 = lerp(float3(DIELECTRIC_F0, DIELECTRIC_F0, DIELECTRIC_F0), albedo, metallic);
@@ -485,9 +432,8 @@ PixelShaderOutput main(PixelShaderInput input)
         Lo += CalculatePBRLighting(N, V, L, aL.color.rgb, aL.intensity * finalAttenuation, albedo, metallic, roughness, ao);
     }
 
-    // IBL アンビエント
-    // IBL 無効時（シーンにマップが無い / マテリアルがオプトアウト）は
-    // ハーフランバートアンビエントにフォールバック
+    // アンビエント
+    // 大気が有効なら空アンビエント、無効ならハーフランバートアンビエント
     float3 ambient = float3(0.0f, 0.0f, 0.0f);
     {
         // -------------------------------------------------------
@@ -495,26 +441,12 @@ PixelShaderOutput main(PixelShaderInput input)
         //   テンポラル蓄積済みのRTシャドウをそのまま使用する（既に十分滑らか）。
         //   RTシャドウ未使用時（未ディスパッチ・非DXR環境）は影なし。
         // -------------------------------------------------------
-        if (enableIBL)
-        {
-            // IBLアンビエントにもシャドウを適用する（近似）。
-            // 物理的には間接光に影は落ちないが、適用しないと直接光のシャドウが
-            // IBLアンビエントに打ち消されて影が見えなくなるため近似的に適用する。
-            float iblShadow = 1.0f;
-            if (gLightCounts.directionalLightCount > 0 && gDirectionalLights[0].enabled)
-            {
-                if (useRTShadow)
-                    iblShadow = gRTShadowMask0.Load(loadCoord).r;
-                iblShadow = lerp(0.3f, 1.0f, iblShadow);
-            }
-            ambient = CalculateDeferredIBL(N, V, albedo, metallic, roughness, F0, ao) * iblShadow;
-        }
-        else if (gSkyAmbient.enabled != 0)
+        if (gSkyAmbient.enabled != 0)
         {
             // ===== 空アンビエント（大気散乱由来。Sky Light 相当） =====
             // 大気の Sky-View LUT を SH9 射影した放射照度で照らす。
             // 昼は青みがかった環境光・夕方はオレンジ・夜はほぼゼロと時刻に追従する。
-            // 影は IBL 分岐と同様にメインライトのシャドウを弱く適用する
+            // 影はメインライトのシャドウを弱く適用する
             float skyShadow = 1.0f;
             if (gLightCounts.directionalLightCount > 0 && gDirectionalLights[0].enabled)
             {
@@ -567,7 +499,7 @@ PixelShaderOutput main(PixelShaderInput input)
             }
         }
 
-        // 水中では空・IBL アンビエントも水柱を通過して届くため Beer–Lambert で減衰させる
+        // 水中では空のアンビエントも水柱を通過して届くため Beer–Lambert で減衰させる
         // （下向き拡散光の平均光路 ≈ 鉛直水深の近似）。深いほど赤から失われ青緑へ転ぶ。
         ambient *= underwaterAmbientT;
     }

@@ -363,7 +363,6 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Diagnostics\GpuTimingStatsCollector.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\Barrier\BarrierBatch.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\Resource\GpuResource.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\IBL\IBLSystem.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\MaterialInstance.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\SpriteMaterialInstance.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\SkeletonAnimatorFactory.cpp" />
@@ -398,8 +397,6 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Graphics\RayTracing\ShaderTableBuilder.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\GBuffer\GBufferManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Line\GridRenderer.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\IBL\IBLGenerator.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\IBL\IBLManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Light\LightBufferManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Light\LightDebugVisualizer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Light\LightManager.cpp" />
@@ -1309,7 +1306,6 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Graphics\RHI\Barrier\BarrierBatch.h" />
     <ClInclude Include="Engine\Src\Graphics\RHI\Resource\GpuResource.h" />
     <ClInclude Include="Engine\Src\Diagnostics\EngineStats.h" />
-    <ClInclude Include="Engine\Src\Graphics\IBL\IBLSystem.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\MaterialBase.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\MaterialConstants.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\MaterialInstance.h" />
@@ -1372,8 +1368,6 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Graphics\Render\GBuffer\GBufferManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\IGBufferRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Line\GridRenderer.h" />
-    <ClInclude Include="Engine\Src\Graphics\IBL\IBLGenerator.h" />
-    <ClInclude Include="Engine\Src\Graphics\IBL\IBLManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Light\Light.h" />
     <ClInclude Include="Engine\Src\Graphics\Light\LightBufferManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Light\LightData.h" />
@@ -1398,8 +1392,6 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Graphics\Render\Line\LineRendererPipeline.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\BaseModelRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\VertexAnimation.h" />
-    <ClInclude Include="Engine\Src\Graphics\Render\Model\IBLParameters.h" />
-    <ClInclude Include="Engine\Src\Graphics\Render\Model\IBLSceneParams.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\Instancing\InstanceBatch.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\Instancing\InstanceBatchManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\ModelDrawPacket.h" />

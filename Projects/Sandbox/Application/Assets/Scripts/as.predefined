@@ -737,8 +737,6 @@ class Material {
 	void set_occlusionStrength(float) property;
 	Vector4 get_emissive() const property;
 	void set_emissive(const Vector4&in) property;
-	float get_iblIntensity() const property;
-	void set_iblIntensity(float) property;
 	bool get_lighting() const property;
 	void set_lighting(bool) property;
 	bool get_normalMap() const property;
@@ -868,8 +866,6 @@ class SkyBox {
 	GameObject@ get_gameObject() const property;
 	Vector3 get_rotation() const property;
 	void set_rotation(const Vector3&in) property;
-	float get_environmentIntensity() const property;
-	void set_environmentIntensity(float) property;
 }
 class SpriteRenderer {
 	bool get_exists() const property;

@@ -526,9 +526,6 @@
     <ClCompile Include="Engine\Src\Graphics\RHI\Resource\GpuResource.cpp">
       <Filter>Engine\Src\Graphics\RHI\Resource</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\IBL\IBLSystem.cpp">
-      <Filter>Engine\Src\Graphics\IBL</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Material\MaterialInstance.cpp">
       <Filter>Engine\Src\Graphics\Material</Filter>
     </ClCompile>
@@ -630,12 +627,6 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Line\GridRenderer.cpp">
       <Filter>Engine\Src\Graphics\Render\Line</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\IBL\IBLGenerator.cpp">
-      <Filter>Engine\Src\Graphics\IBL</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\IBL\IBLManager.cpp">
-      <Filter>Engine\Src\Graphics\IBL</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Light\LightBufferManager.cpp">
       <Filter>Engine\Src\Graphics\Light</Filter>
@@ -2163,9 +2154,6 @@
     <ClInclude Include="Engine\Src\Diagnostics\EngineStats.h">
       <Filter>Engine\Src\Diagnostics</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\IBL\IBLSystem.h">
-      <Filter>Engine\Src\Graphics\IBL</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Material\MaterialBase.h">
       <Filter>Engine\Src\Graphics\Material</Filter>
     </ClInclude>
@@ -2352,12 +2340,6 @@
     <ClInclude Include="Engine\Src\Graphics\Render\Line\GridRenderer.h">
       <Filter>Engine\Src\Graphics\Render\Line</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\IBL\IBLGenerator.h">
-      <Filter>Engine\Src\Graphics\IBL</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\IBL\IBLManager.h">
-      <Filter>Engine\Src\Graphics\IBL</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Light\Light.h">
       <Filter>Engine\Src\Graphics\Light</Filter>
     </ClInclude>
@@ -2428,12 +2410,6 @@
       <Filter>Engine\Src\Graphics\Render\Model</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Model\VertexAnimation.h">
-      <Filter>Engine\Src\Graphics\Render\Model</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Render\Model\IBLParameters.h">
-      <Filter>Engine\Src\Graphics\Render\Model</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Render\Model\IBLSceneParams.h">
       <Filter>Engine\Src\Graphics\Render\Model</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Model\Instancing\InstanceBatch.h">
@@ -4059,9 +4035,6 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\Fog\Shader">
       <UniqueIdentifier>{27455399-2A3B-46E9-8897-A971C729CB83}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Engine\Src\Graphics\IBL">
-      <UniqueIdentifier>{CB5C00A8-4E31-4B66-9096-A0DB805289CB}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Light">
       <UniqueIdentifier>{6E3F897F-23FE-4042-8FF1-02AA88D26941}</UniqueIdentifier>

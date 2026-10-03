@@ -85,18 +85,6 @@ namespace CoreEngine
             depthReconstructionBuffers_[vi]->Unmap(0, nullptr);
         }
 
-        // IBL パラメータ定数バッファを作成（float x 4 = 16 バイト）
-        iblParamsBuffer_ = ResourceFactory::CreateBufferResource(
-            graphicsCore_->GetDevice(), sizeof(float) * 4);
-        iblParamsCBVAddress_ = iblParamsBuffer_->GetGPUVirtualAddress();
-
-        // デフォルト値で初期化 (rotation=0, intensity=1)
-        float iblDefaults[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-        float* iblMapped = nullptr;
-        iblParamsBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&iblMapped));
-        std::memcpy(iblMapped, iblDefaults, sizeof(iblDefaults));
-        iblParamsBuffer_->Unmap(0, nullptr);
-
         waterCausticsDebugBuffer_ = ResourceFactory::CreateBufferResource(
             graphicsCore_->GetDevice(), sizeof(WaterCausticsDebugSettings));
         waterCausticsDebugCBVAddress_ = waterCausticsDebugBuffer_->GetGPUVirtualAddress();
@@ -152,26 +140,6 @@ namespace CoreEngine
         fallbackCameraBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mapped));
         std::memcpy(mapped, values, sizeof(values));
         fallbackCameraBuffer_->Unmap(0, nullptr);
-    }
-
-    // -------------------------------------------------------------------------
-    // IBL パラメータを GPU バッファに書き込む（毎フレーム呼び出し）
-    // -------------------------------------------------------------------------
-    void DeferredLightingTechnique::UpdateIBLParams()
-    {
-        if (!iblParamsBuffer_) {
-            return;
-        }
-        float params[4] = { 
-            environmentRotation_.x, 
-            environmentRotation_.y, 
-            environmentRotation_.z, 
-            iblIntensity_ 
-        };
-        float* mapped = nullptr;
-        iblParamsBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mapped));
-        std::memcpy(mapped, params, sizeof(params));
-        iblParamsBuffer_->Unmap(0, nullptr);
     }
 
     void DeferredLightingTechnique::SetWaterCausticsDebugSettings(const WaterCausticsDebugSettings& settings)
@@ -280,27 +248,6 @@ namespace CoreEngine
                 bindings_[DeferredLightingBind::gSpotLights],
                 bindings_[DeferredLightingBind::gAreaLights]
             );
-        }
-
-        // ===== IBL SRV =====
-        if (context.renderManager) {
-            // Irradiance Map（拡散 IBL）
-            if (auto handle = context.renderManager->GetIrradianceMapHandle(); handle.ptr != 0) {
-                binder.Set(bindings_[DeferredLightingBind::gIrradianceMap], handle);
-            }
-            // Prefiltered Map（スペキュラ IBL）
-            if (auto handle = context.renderManager->GetPrefilteredMapHandle(); handle.ptr != 0) {
-                binder.Set(bindings_[DeferredLightingBind::gPrefilteredMap], handle);
-            }
-            // BRDF LUT（スペキュラ IBL 積分）
-            if (auto handle = context.renderManager->GetBRDFLUTHandle(); handle.ptr != 0) {
-                binder.Set(bindings_[DeferredLightingBind::gBRDFLUT], handle);
-            }
-        }
-
-        // ===== IBL パラメータ CBV =====
-        if (iblParamsCBVAddress_ != 0) {
-            binder.Set(bindings_[DeferredLightingBind::gIBLParams], iblParamsCBVAddress_);
         }
 
         // ===== RT シャドウマスク SRV（ライトごとに個別バインド） =====

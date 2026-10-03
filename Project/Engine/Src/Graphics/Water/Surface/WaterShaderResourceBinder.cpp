@@ -21,7 +21,7 @@ void WaterShaderResourceBinder::EnsureResolved(const CustomShaderPipeline* pipel
         return;
     }
 
-    // 水面固有リソースだけの契約。カメラ・ライト・IBL はエンジン側（ModelBind::kCustom）が
+    // 水面固有リソースだけの契約。カメラ・ライト・フォグはエンジン側（ModelBind::kCustom）が
     // 持つので、宣言外のリソースがあっても警告しない。
     table_ = BindingTable::Resolve(
         *reflection, WaterBind::kDecls, "WaterSurface", /*warnUndeclared=*/false);

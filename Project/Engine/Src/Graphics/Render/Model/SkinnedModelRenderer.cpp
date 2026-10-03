@@ -4,10 +4,8 @@
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/Model/TransformationMatrix.h"
 #include "Graphics/Material/MaterialConstants.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include <cassert>
-#include <cstring>
 
 
 namespace CoreEngine
@@ -58,8 +56,7 @@ namespace CoreEngine
         // CBV サイズ検証: C++ 構造体と HLSL 構造体のレイアウトが一致しているか確認
         forwardReflectionData_->ValidateAllCBVSizes({
             {"gTransformationMatrix", sizeof(TransformationMatrix)},
-            {"gMaterial", sizeof(MaterialConstants)},
-            {"gIBLParams", sizeof(IBLSceneParamsCPU)}
+            {"gMaterial", sizeof(MaterialConstants)}
             });
 
         gBufferReflectionData_->ValidateAllCBVSizes({
@@ -93,15 +90,6 @@ namespace CoreEngine
         // 初期状態として BlendModeNone の PSO を保持
         forwardPipelineState_ = forwardPsoMg_->GetPipelineState(BlendMode::kBlendModeNone);
         gBufferPipelineState_ = gBufferPsoMg_->GetPipelineState(BlendMode::kBlendModeNone);
-
-        // IBL 回転パラメータ用の定数バッファを確保し、デフォルト値（回転なし）で初期化
-        iblParamsBuffer_ = ResourceFactory::CreateBufferResource(device, sizeof(IBLSceneParamsCPU));
-        iblParamsCBVAddress_ = iblParamsBuffer_->GetGPUVirtualAddress();
-        IBLSceneParamsCPU defaults{ 0.0f, 0.0f, 0.0f, 0.0f };
-        void* mapped = nullptr;
-        iblParamsBuffer_->Map(0, nullptr, &mapped);
-        std::memcpy(mapped, &defaults, sizeof(defaults));
-        iblParamsBuffer_->Unmap(0, nullptr);
 
         ResolveBindings(ModelBind::kSkinnedForward, ModelBind::kSkinnedGBuffer,
             ModelBind::Slot::Count, "SkinnedModelRenderer");

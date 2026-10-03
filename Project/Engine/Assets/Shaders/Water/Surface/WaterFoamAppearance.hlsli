@@ -8,8 +8,7 @@
 //
 // 【include 位置の契約】Water.PS.hlsl のリソース宣言・WaterFrameConstants(b5)・
 // WaterVolume.hlsli（EvaluateWaterSkyIrradiance）の後で include すること。以下に暗黙依存:
-//   資源    : gSampler / gIrradianceMap / gLightCounts / gDirectionalLights /
-//             gIBLParams（Object3dForward.hlsli）
+//   資源    : gLightCounts / gDirectionalLights
 //   cbuffer : gSkyAmbientEnabled / gSkyAmbientScale / gFoamDriftOffsetXZ / gFoamStretchAxis
 //   関数    : EvaluateWaterSkyIrradiance（WaterVolume.hlsli）
 // ============================================================
@@ -183,15 +182,10 @@ float3 ComputeFoamColor(float3 normal, float mainLightVisibility)
             * saturate(dot(normal, lightVec)) * visibility / PI;
     }
 
-    // 天空光（大気アクティブ時は Sky Irradiance SH、なければ静的 IBL へフォールバック）
+    // 天空光（大気アクティブ時の Sky Irradiance SH）
     if (gSkyAmbientEnabled != 0)
     {
         lighting += EvaluateWaterSkyIrradiance(normal) * gSkyAmbientScale;
-    }
-    else if (gIBLParams.sceneIBLEnabled != 0)
-    {
-        lighting += gIrradianceMap.SampleLevel(gSampler, normal, 0.0f).rgb
-            * gIBLParams.environmentIntensity;
     }
 
     return kFoamAlbedo * lighting;

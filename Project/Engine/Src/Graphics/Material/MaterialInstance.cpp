@@ -24,12 +24,11 @@ namespace CoreEngine
         materialData_->enableDithering = 1;
         materialData_->ditheringScale = 1.0f;
         materialData_->alphaCutoff = 0.5f;
-        materialData_->iblIntensity = 1.0f;
         // 頂点アニメーションは既定で動かさない（植物・魚のモデルでマテリアルから選ぶ）
         materialData_->vertexAnimation = static_cast<int32_t>(VertexAnimationType::None);
         materialData_->vertexAnimStrength = 1.0f;
         materialData_->vertexAnimSpeed = 1.0f;
-        materialData_->vertexAnimPadding = 0.0f;
+        materialData_->vertexAnimPadding = { 0.0f, 0.0f };
     }
 
     nlohmann::json MaterialInstance::ToJson() const
@@ -45,7 +44,6 @@ namespace CoreEngine
         m["dithering"] = IsDitheringEnabled();
         m["ditheringScale"] = GetDitheringScale();
         m["alphaCutoff"] = GetAlphaCutoff();
-        m["iblIntensity"] = GetIBLIntensity();
         m["vertexAnimation"] = static_cast<int>(GetVertexAnimation());
         m["vertexAnimStrength"] = GetVertexAnimStrength();
         m["vertexAnimSpeed"] = GetVertexAnimSpeed();
@@ -72,12 +70,6 @@ namespace CoreEngine
         SetDitheringEnabled(JsonManager::SafeGet<bool>(m, "dithering", IsDitheringEnabled()));
         SetDitheringScale(JsonManager::SafeGet<float>(m, "ditheringScale", GetDitheringScale()));
         SetAlphaCutoff(JsonManager::SafeGet<float>(m, "alphaCutoff", GetAlphaCutoff()));
-        SetIBLIntensity(JsonManager::SafeGet<float>(m, "iblIntensity", GetIBLIntensity()));
-
-        // 旧フォーマットの "ibl"（bool）: false の場合のみ intensity=0 として読み替える
-        if (m.contains("ibl") && !JsonManager::SafeGet<bool>(m, "ibl", true)) {
-            SetIBLIntensity(0.0f);
-        }
 
         // 頂点アニメーション（キーが無い旧データは「動かさない」のまま）
         const int animType = JsonManager::SafeGet<int>(m, "vertexAnimation", static_cast<int>(GetVertexAnimation()));

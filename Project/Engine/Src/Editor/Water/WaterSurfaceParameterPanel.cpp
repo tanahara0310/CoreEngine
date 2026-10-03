@@ -240,7 +240,6 @@ void WaterSurfaceParameterPanel::DrawCommonParameterSection(WaterRenderFeature& 
 	EditCVar(WaterCVars::BaseColor, [](Vector4* v) { return ImGui::ColorEdit3("ベースカラー", &v->x); });
 	EditCVar(WaterCVars::Roughness, [](float* v) { return ImGui::SliderFloat("ラフネス", v, 0.0f, 1.0f); });
 	EditCVar(WaterCVars::Metallic, [](float* v) { return ImGui::SliderFloat("メタリック", v, 0.0f, 1.0f); });
-	EditCVar(WaterCVars::IBLEnabled, [](bool* v) { return ImGui::Checkbox("IBLを有効にする", v); });
 
 	ImGui::Spacing();
 	ImGui::SeparatorText("反射 / 屈折");

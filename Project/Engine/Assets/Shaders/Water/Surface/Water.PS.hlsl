@@ -282,9 +282,6 @@ PixelShaderOutput WaterForwardMain(WaterPSInput input, float3 surfaceNormal)
     output.color.rgb = CalculateAllLighting(forwardInput, albedo, metallic, roughness, ao, toEye, float4(1.0f, 1.0f, 1.0f, 1.0f));
     output.color.a = 1.0f;
 
-    // IBL
-    output.color.rgb += ApplyIBL(forwardInput, albedo, metallic, roughness, ao, toEye);
-
     return output;
 }
 
@@ -347,8 +344,8 @@ WaterPixelOutput main(WaterPSInput input)
     // ---- 3. 水面専用 PBR フォワード出力をベースにする（discard なし）----
     // 反射有効かつ空環境マップ有効のフレームでは、下の合成で reflectColor が
     // 必ず「RT 反射色」か「空キューブマップ色」で置き換わるため、
-    // フォワード PBR の rgb は 1 度も読まれない（＝全ライトの Cook-Torrance と
-    // IBL サンプルが丸ごと無駄になる）。その場合だけ計算を省く。
+    // フォワード PBR の rgb は 1 度も読まれない（＝全ライトの Cook-Torrance が
+    // 丸ごと無駄になる）。その場合だけ計算を省く。
     // 空環境マップが無効なときは、RT がミスしたピクセルのフォールバックとして
     // PBR 出力が実際に使われるので省略できない。
     const bool forwardColorUnused = (gReflectionEnabled != 0) && (gSkyEnvReflectionEnabled != 0);

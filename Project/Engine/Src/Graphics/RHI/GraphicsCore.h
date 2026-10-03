@@ -89,7 +89,7 @@ namespace CoreEngine
         ID3D12GraphicsCommandList* GetCommandList() const;
 
         /// @brief フレーム描画とは独立したアップロード／オフライン生成用コンテキストを取得
-        /// @details テクスチャ・VB/IB のアップロードや IBL 生成は必ずこちらへ積むこと
+        /// @details テクスチャ・VB/IB のアップロードは必ずこちらへ積むこと
         ///          （描画用リストへ積むとワーカースレッドの記録がフレーム記録と競合する）
         UploadContext* GetUploadContext() const;
 

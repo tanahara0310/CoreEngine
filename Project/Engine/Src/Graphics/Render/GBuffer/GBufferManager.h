@@ -23,7 +23,7 @@ namespace CoreEngine
         ///       （MRT 5枚→4枚・36B/px→20B/px の帯域削減が目的）。
         enum class Target : uint32_t {
             AlbedoAO = 0,       ///< PBR: rgb=アルベド,a=AO
-            NormalRoughness,    ///< PBR: rgb=ワールド法線(encoded),a=符号付きラフネス（符号=IBL有効/無効, 0=アンリット）
+            NormalRoughness,    ///< PBR: rgb=ワールド法線(encoded),a=ラフネス（0=アンリット）
             EmissiveMetallic,   ///< PBR: rgb=エミッシブ,a=メタリック
             MotionVector,       ///< rg=NDC空間モーションベクター（現フレーム-前フレーム）
             Count
