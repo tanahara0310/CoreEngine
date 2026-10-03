@@ -71,7 +71,7 @@ namespace CoreEngine
             worldMatrix = transformComponent->Get().GetWorldMatrix();
         } else {
             worldMatrix = MathCore::Matrix::MakeAffine(
-                source->Scale(), source->Rotate(), source->Translate());
+                source->GetScale(), source->GetRotate(), source->GetTranslate());
         }
 
         // ImGuizmoで操作
@@ -98,16 +98,16 @@ namespace CoreEngine
             );
 
             // オブジェクトのトランスフォームを更新（実体の型を問わず ITransformSource 経由）
-            source->Translate() = translation;
+            source->SetTranslate(translation);
 
             // 回転は度数からラジアンに変換
-            source->Rotate() = Vector3(
+            source->SetRotate(Vector3(
                 rotationDegrees.x * kDegToRad,
                 rotationDegrees.y * kDegToRad,
                 rotationDegrees.z * kDegToRad
-            );
+            ));
 
-            source->Scale() = scale;
+            source->SetScale(scale);
         }
 
         return changed;
@@ -176,9 +176,9 @@ namespace CoreEngine
         Matrix4x4 projectionMatrix = camera->GetProjectionMatrix();
 
         // スプライトのトランスフォームを取得
-        Vector3& spriteTranslate = source->Translate();
-        Vector3& spriteRotate = source->Rotate();
-        Vector3& spriteScale = source->Scale();
+        const Vector3 spriteTranslate = source->GetTranslate();
+        const Vector3 spriteRotate = source->GetRotate();
+        const Vector3 spriteScale = source->GetScale();
 
         // 2D用ワールド行列を作成（Z座標は0で固定）
         Matrix4x4 worldMatrix = MathCore::Matrix::MakeAffine(
@@ -210,13 +210,13 @@ namespace CoreEngine
             );
 
             // スプライトのトランスフォームを更新（Z座標は0に固定）
-            spriteTranslate = Vector3(translation.x, translation.y, 0.0f);
+            source->SetTranslate(Vector3(translation.x, translation.y, 0.0f));
             
             // 回転は度数からラジアンに変換（Z軸回転のみ使用）
-            spriteRotate = Vector3(0.0f, 0.0f, rotationDegrees.z * kDegToRad);
+            source->SetRotate(Vector3(0.0f, 0.0f, rotationDegrees.z * kDegToRad));
             
             // スケール（Z軸は1.0固定）
-            spriteScale = Vector3(scale.x, scale.y, 1.0f);
+            source->SetScale(Vector3(scale.x, scale.y, 1.0f));
         }
 
         return changed;

@@ -238,12 +238,32 @@ namespace CoreEngine
                 return StoreQ(DirectX::XMQuaternionRotationAxis(LoadV3(axis), radian));
             }
 
+            Quaternion MakeRotateEuler(const Vector3& radians) {
+                // 行ベクトル規約の Rx * Ry * Rz と同じ向き（積は右の因子から効く）
+                return MakeRotateAxisAngle({ 0.0f, 0.0f, 1.0f }, radians.z)
+                    * MakeRotateAxisAngle({ 0.0f, 1.0f, 0.0f }, radians.y)
+                    * MakeRotateAxisAngle({ 1.0f, 0.0f, 0.0f }, radians.x);
+            }
+
             Vector3 RotateVector(const Vector3& vector, const Quaternion& quaternion) {
                 return StoreV3(DirectX::XMVector3Rotate(LoadV3(vector), LoadQ(quaternion)));
             }
 
             Matrix4x4 MakeRotateMatrix(const Quaternion& quaternion) {
                 return StoreM(DirectX::XMMatrixRotationQuaternion(LoadQ(quaternion)));
+            }
+
+            Vector3 ToEuler(const Quaternion& quaternion) {
+                // M = Rx * Ry * Rz の要素から取り出す。z は x で回し戻した要素から取るので、
+                // y が ±90 度の近くで x と z の分け方が定まらなくても向きは保たれる
+                const Matrix4x4 m = MakeRotateMatrix(quaternion);
+                Vector3 radians;
+                radians.x = std::atan2(m.m[1][2], m.m[2][2]);
+                radians.y = std::atan2(-m.m[0][2], std::sqrt(m.m[0][0] * m.m[0][0] + m.m[0][1] * m.m[0][1]));
+                const float s = std::sin(radians.x);
+                const float c = std::cos(radians.x);
+                radians.z = std::atan2(s * m.m[2][0] - c * m.m[1][0], c * m.m[1][1] - s * m.m[2][1]);
+                return radians;
             }
 
             Quaternion Slerp(const Quaternion& q0, const Quaternion& q1, float t) {

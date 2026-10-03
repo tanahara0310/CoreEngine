@@ -255,7 +255,7 @@ namespace CoreEngine
         currentHalfSize_ = ComputeHalfSize(ctx.gameViewCamera3D);
         const float fullSize = currentHalfSize_ * 2.0f;
         // Y スケールは 1 のまま（コライダーの厚みをワールド量で扱うための不変条件）
-        transform->Scale() = { fullSize, 1.0f, fullSize };
+        transform->SetScale({ fullSize, 1.0f, fullSize });
 
         Vector3 center{ 0.0f, ResolveGroundLevelY(ctx), 0.0f };
         if (cvFollowCamera.Get() && ctx.gameViewCamera3D) {
@@ -282,7 +282,7 @@ namespace CoreEngine
             center.x = groundCenterXZ_.x;
             center.z = groundCenterXZ_.y;
         }
-        transform->Translate() = center;
+        transform->SetTranslate(center);
 
         if (collider_) {
             const float thickness = (std::max)(cvThickness.Get(), 0.01f);

@@ -44,7 +44,7 @@ namespace CoreEngine
             return transform->GetWorldPosition();   // 親の階層を含むワールド位置
         }
         if (auto* source = GetComponent<ITransformSource>()) {
-            return const_cast<ITransformSource*>(source)->Translate();
+            return source->GetTranslate();
         }
         return {};
     }
@@ -54,7 +54,7 @@ namespace CoreEngine
             return transform->GetWorldScale();      // 親の階層スケールを含む
         }
         if (auto* source = GetComponent<ITransformSource>()) {
-            return const_cast<ITransformSource*>(source)->Scale();
+            return source->GetScale();
         }
         return { 1.0f, 1.0f, 1.0f };
     }

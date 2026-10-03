@@ -154,6 +154,10 @@ namespace MathCore
         // 回転関連
         Quaternion MakeRotateAxisAngle(const Vector3& axis, float radian);
         Vector3 RotateVector(const Vector3& vector, const Quaternion& quaternion);
+        /// @brief オイラー角（ラジアン）の回転を作る（X → Y → Z の順に回す。Matrix::MakeAffine のオイラー角版と同じ向き）
+        Quaternion MakeRotateEuler(const Vector3& radians);
+        /// @brief MakeRotateEuler の逆（Y が ±90 度の近くでも同じ向きに戻る角度を返す）
+        Vector3 ToEuler(const Quaternion& quaternion);
 
         // 補間
         Quaternion Slerp(const Quaternion& q0, const Quaternion& q1, float t);

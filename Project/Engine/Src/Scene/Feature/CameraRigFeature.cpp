@@ -42,7 +42,7 @@ namespace CoreEngine
             }
 
             if (auto* transform = object->GetComponent<TransformComponent>()) {
-                return transform->Rotate();
+                return transform->GetRotate();
             }
             return { 0.0f, 0.0f, 0.0f };
         }

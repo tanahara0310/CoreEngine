@@ -162,7 +162,7 @@ namespace CoreEngine
         if (!transform) {
             return textureSize_;
         }
-        const Vector3& scale = const_cast<ITransformSource*>(transform)->Scale();
+        const Vector3 scale = transform->GetScale();
         return { textureSize_.x * scale.x, textureSize_.y * scale.y };
     }
 
@@ -270,9 +270,9 @@ namespace CoreEngine
 
         size_t bufferIndex = spriteRenderer_->GetAvailableConstantBuffer();
 
-        const Vector3& translate = transform->Translate();
-        const Vector3& rotate = transform->Rotate();
-        const Vector3& scale = transform->Scale();
+        const Vector3 translate = transform->GetTranslate();
+        const Vector3 rotate = transform->GetRotate();
+        const Vector3 scale = transform->GetScale();
 
         // 実際の描画サイズ（テクスチャサイズ × スケール）
         const Vector3 actualScale = {

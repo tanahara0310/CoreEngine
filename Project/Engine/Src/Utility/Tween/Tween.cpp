@@ -454,36 +454,52 @@ namespace CoreEngine
         }
 
         /// @brief GameObject の TransformComponent を取り出す（無ければ nullptr）
-        static WorldTransform* GetWorldTransform(GameObject* object)
+        static TransformComponent* FindTransform(GameObject* object)
         {
-            if (object == nullptr) { return nullptr; }
+            return object ? object->GetComponent<TransformComponent>() : nullptr;
+        }
 
-            auto* transform = object->GetComponent<TransformComponent>();
-            return transform ? &transform->Get() : nullptr;
+        /// @brief 読む関数と書く関数で to まで補間する（動き始めたときの値から補間する）
+        static TweenHandle ToVector3(std::function<Vector3()> getter, std::function<void(const Vector3&)> setter,
+            const Vector3& to, float duration)
+        {
+            auto item = std::make_unique<TweenDetail::ValueTween<Vector3>>(
+                std::move(getter), std::move(setter), to, duration);
+            const auto id = TweenDetail::Register(std::move(item));
+            return TweenHandle(id.first, id.second);
         }
 
         TweenHandle MoveTo(GameObject* object, const Vector3& to, float duration)
         {
-            WorldTransform* transform = GetWorldTransform(object);
+            TransformComponent* const transform = FindTransform(object);
             if (transform == nullptr) { return TweenHandle(); }
 
-            return To<Vector3>(&transform->translate, to, duration).SetLink(object);
+            return ToVector3(
+                [transform] { return transform->GetTranslate(); },
+                [transform](const Vector3& value) { transform->SetTranslate(value); },
+                to, duration).SetLink(object);
         }
 
         TweenHandle ScaleTo(GameObject* object, const Vector3& to, float duration)
         {
-            WorldTransform* transform = GetWorldTransform(object);
+            TransformComponent* const transform = FindTransform(object);
             if (transform == nullptr) { return TweenHandle(); }
 
-            return To<Vector3>(&transform->scale, to, duration).SetLink(object);
+            return ToVector3(
+                [transform] { return transform->GetScale(); },
+                [transform](const Vector3& value) { transform->SetScale(value); },
+                to, duration).SetLink(object);
         }
 
         TweenHandle RotateTo(GameObject* object, const Vector3& to, float duration)
         {
-            WorldTransform* transform = GetWorldTransform(object);
+            TransformComponent* const transform = FindTransform(object);
             if (transform == nullptr) { return TweenHandle(); }
 
-            return To<Vector3>(&transform->rotate, to, duration).SetLink(object);
+            return ToVector3(
+                [transform] { return transform->GetRotate(); },
+                [transform](const Vector3& value) { transform->SetRotate(value); },
+                to, duration).SetLink(object);
         }
 
         int KillById(const std::string& id, bool complete)

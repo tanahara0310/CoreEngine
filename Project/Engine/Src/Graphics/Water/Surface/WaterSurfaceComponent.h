@@ -54,8 +54,6 @@ namespace CoreEngine
         bool RequiresComponent(const IComponent& other) const override;
 
         /// @brief トランスフォームを取得
-        WorldTransform& GetTransform() { return transformComponent_->Get(); }
-        /// @brief トランスフォームを取得（const版）
         const WorldTransform& GetTransform() const { return transformComponent_->Get(); }
 
         /// @brief 水面のメッシュのモデル（まだ作っていなければ nullptr）
