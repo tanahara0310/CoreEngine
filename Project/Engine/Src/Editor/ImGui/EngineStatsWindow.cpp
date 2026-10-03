@@ -606,7 +606,6 @@ namespace CoreEngine
             drawSummaryRow(timingCapture_.GetFrameCpuSummary(), true, "ms");
             drawSummaryRow(timingCapture_.GetFpsSummary(), true, "fps");
             drawSummaryRow(timingCapture_.GetWaterSharePercent(), true, "%");
-            drawSummaryRow(timingCapture_.GetAuxViewSummary(), true, "ms");
 
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);

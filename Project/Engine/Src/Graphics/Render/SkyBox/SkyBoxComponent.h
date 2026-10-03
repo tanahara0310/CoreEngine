@@ -69,7 +69,7 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> indexBuffer_;
     D3D12_INDEX_BUFFER_VIEW indexBufferView_{};
 
-    /// 同じフレームに複数のビューで描くので、ビューごとに別の定数バッファを巡回して使う
+    /// 描画のたびに別の定数バッファを巡回して使う
     std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kTransformBufferCount> transformBuffers_{};
     std::array<TransformationMatrix*, kTransformBufferCount> transformData_{};
     UINT transformBufferIndex_ = 0;

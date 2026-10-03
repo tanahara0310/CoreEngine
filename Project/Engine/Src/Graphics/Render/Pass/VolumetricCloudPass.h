@@ -8,7 +8,7 @@ namespace CoreEngine
     /// @details SceneDepth と大気 LUT を参照して雲を半解像度でレイマーチし、
     ///          SkyBox 描画後の SceneColor へ「雲色 + シーン色 × 透過率」で合成する。
     ///          Sky フェーズ（SkyBoxQueuePass の後・Transparent の前）に実行される。
-    ///          GameView のみで有効（ReflectionView は対象外）。
+    ///          GameView のみで有効。
     class VolumetricCloudPass : public RenderPass {
     public:
         VolumetricCloudPass() = default;

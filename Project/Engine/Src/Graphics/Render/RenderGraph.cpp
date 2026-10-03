@@ -19,10 +19,6 @@ namespace CoreEngine
             switch (viewType) {
             case RenderViewType::GameView:
                 return "GameView";
-            case RenderViewType::ReflectionView:
-                return "ReflectionView";
-            case RenderViewType::CaptureView:
-                return "CaptureView";
             default:
                 return "UnknownView";
             }
@@ -242,13 +238,7 @@ namespace CoreEngine
                 graphPass.executed = true;
             }
 
-            // 補助 View（平面反射など）はメイン View と同じパス名で実行されるため、
-            // View 名をプレフィックスして識別名を分離する。計測スロットを共有すると
-            // 同じクエリへ二重に EndQuery され、補助 View 分の時間が消えてしまう。
-            const std::string& viewName = context.renderContext->viewSettings.viewName;
-            const std::string passLabel = viewName.empty()
-                ? graphPass.name
-                : viewName + "/" + graphPass.name;
+            const std::string& passLabel = graphPass.name;
 
             ID3D12GraphicsCommandList* cmdList = context.renderContext->cmdList;
 

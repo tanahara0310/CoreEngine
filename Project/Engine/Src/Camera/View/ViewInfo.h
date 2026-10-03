@@ -45,11 +45,9 @@ namespace CoreEngine
     };
 
     /// @brief 1 フレーム分の全ビュー（ビュー種別で引く）
-    /// @details 反射ビュー等を増やす場合はここへ ViewInfo をもう 1 つ入れるだけでよい。
-    ///          カメラのビュー行列を一時的に差し替えるハックは不要になる。
     class FrameViews {
     public:
-        static constexpr size_t kViewCount = 3; ///< RenderViewType の要素数
+        static constexpr size_t kViewCount = 1; ///< RenderViewType の要素数
 
         /// @brief ビューを登録する
         void Set(RenderViewType type, const ViewInfo& view)

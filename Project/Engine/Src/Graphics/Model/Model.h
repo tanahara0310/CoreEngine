@@ -87,17 +87,6 @@ namespace CoreEngine
         void DrawInstances(std::span<const Matrix4x4> worlds, std::span<const Matrix4x4> prevWVPs,
             const DrawViewInfo& view, D3D12_GPU_DESCRIPTOR_HANDLE textureHandle = {});
 
-        /// @brief このモデルが「前フレームと連続しない位置」へ飛ばされたことを伝える
-        /// @details プールで別の場所へ使い回した・ワープさせたときに呼ぶ。フレーム間で
-        ///          持ち越している状態を 2 つとも捨てる。
-        ///          - モーションベクターの履歴（前フレーム WVP）。捨てないと GBuffer が
-        ///            「そこまで 1 フレームで移動した」という嘘のモーションベクターを出し、
-        ///            RT シャドウのテンポラル再投影が無関係な履歴を拾う。
-        ///          - Hi-Z 遮蔽判定の履歴。捨てないと前の場所での「遮蔽されている」という
-        ///            判定を最大 8 フレーム引き継ぎ、見えているはずのマスが GBuffer から
-        ///            抜ける。抜けても TLAS には残るので、地面だけ消えて影が残る。
-        void OnTeleported();
-
         /// @brief 初期化されているか確認
         /// @return 初期化済みならtrue
         bool IsInitialized() const;

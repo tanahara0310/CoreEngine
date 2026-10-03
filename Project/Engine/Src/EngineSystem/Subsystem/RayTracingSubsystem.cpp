@@ -411,15 +411,14 @@ namespace CoreEngine
         if (!context.gBufferManager || !context.lightManager || !context.sceneManager) return false;
         if (!dx || !cmdList) return false;
 
-        // 実行中のビューの ViewInfo を使う。ReflectionView を復活させる場合は
-        // FrameViews へそのビューを 1 つ足せば、ここは自動的に正しい行列を引く。
+        // 実行中のビューの ViewInfo を使う
         if (!context.frameViews) return false;
         const ViewInfo& view = context.frameViews->Get(context.viewSettings.viewType);
         if (!view.isValid) return false;
 
         outStageContext.rtShadow = rtShadow;
 
-        // WorldPosition ターゲット廃止に伴い、深度から復元する（ビュー別に差し替わる FrameBlackboard 経由）
+        // WorldPosition ターゲット廃止に伴い、深度から復元する（FrameBlackboard 経由）
         if (context.frameBlackboard) {
             context.frameBlackboard->TryGetSrvHandle(
                 FrameBlackboard::SceneDepth, outStageContext.sceneDepthSRV);
@@ -558,7 +557,7 @@ namespace CoreEngine
         const ViewInfo& view = context.frameViews->Get(context.viewSettings.viewType);
 
         // 深度は WorldPosition ターゲット廃止に伴いここから復元する
-        // （ビュー別に差し替わるので FrameBlackboard 経由で取る）
+        // （FrameBlackboard 経由で取る）
         if (context.frameBlackboard) {
             context.frameBlackboard->TryGetSrvHandle(
                 FrameBlackboard::SceneDepth, outDispatchContext.sceneDepthSRV);

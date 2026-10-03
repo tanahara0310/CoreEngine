@@ -712,7 +712,7 @@ namespace CoreEngine
         if (!pipelinesReady_ || !lutsGenerated_ || !skySpecularEnabled_ || !skyCubemap_) {
             return false;
         }
-        // 同一フレームの補助 View（反射など）での二重実行を防ぐ
+        // 同一フレームでの二重実行を防ぐ
         if (frameNumber == lastSkyEnvironmentFrame_) {
             return false;
         }

@@ -20,7 +20,7 @@ namespace CoreEngine
     struct RenderGraphSnapshot;
 
     /// @brief RenderGraph ノードエディタ（imnodes・"Tools > Render Graph"）
-    /// @details View ごとのスナップショットを、パス＝ノード / 論理リソース＝ピンとして描画する。
+    /// @details スナップショットを、パス＝ノード / 論理リソース＝ピンとして描画する。
     /// @note ノード座標は依存の最長経路から毎回自動算出するので、手で並べる必要はない。
     class RenderGraphEditorPanel
     {
@@ -125,7 +125,6 @@ namespace CoreEngine
         GpuTimestampProfiler* profiler_ = nullptr;
         ImNodesContext* nodesContext_ = nullptr;
 
-        int selectedViewIndex_ = 0;
         int selectedPassIndex_ = -1;      ///< 詳細パネルに出しているパス（-1 = 未選択）
         int contextMenuPassIndex_ = -1;   ///< 右クリックメニューの対象パス
         NodeColorMode colorMode_ = NodeColorMode::GpuTime;
@@ -140,7 +139,6 @@ namespace CoreEngine
         std::vector<ImVec2> nodePositions_;
         std::vector<int> nodeDepths_;
         size_t layoutTopologyHash_ = 0;
-        int layoutViewIndex_ = -1;
         bool layoutRequested_ = true;
         /// @brief 次の描画で自動配置座標をノードへ書き戻すか
         /// @details 毎フレーム書き戻すとドラッグで動かしたノードが即座に戻って掴めなくなるため、

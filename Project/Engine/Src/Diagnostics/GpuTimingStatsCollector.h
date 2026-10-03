@@ -83,8 +83,6 @@ namespace CoreEngine
         const GpuTimingSummary& GetFrameGpuSummary() const noexcept { return frameGpu_; }
         const GpuTimingSummary& GetFrameCpuSummary() const noexcept { return frameCpu_; }
         const GpuTimingSummary& GetFpsSummary() const noexcept { return fps_; }
-        /// @brief 補助 View（反射ビュー等。スロット名が "View名/パス名"）の合計
-        const GpuTimingSummary& GetAuxViewSummary() const noexcept { return auxView_; }
 
         /// @brief 水面カテゴリがフレーム GPU 時間に占める割合（%）の統計
         /// @details 毎フレームの比率を取ってから統計を出す。合計同士を割ると
@@ -132,7 +130,6 @@ namespace CoreEngine
         GpuTimingSummary frameGpu_;
         GpuTimingSummary frameCpu_;
         GpuTimingSummary fps_;
-        GpuTimingSummary auxView_;
         GpuTimingSummary waterSharePercent_;
     };
 }

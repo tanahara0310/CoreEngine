@@ -19,8 +19,7 @@ namespace CoreEngine
 
     bool HiZOcclusionPass::IsEnabledForView(const RenderViewSettings& view) const
     {
-        // メイン GameView のみ（viewName が空 = メイン。補助ビュー・反射・キャプチャは対象外）
-        return view.viewType == RenderViewType::GameView && view.viewName.empty();
+        return view.viewType == RenderViewType::GameView;
     }
 
     void HiZOcclusionPass::Execute(const RenderContext& context)

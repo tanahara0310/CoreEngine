@@ -20,7 +20,6 @@ namespace CoreEngine
 
     /// @brief DXR レイトレーシングシャドウを管理するクラス
     /// @details State Object / Shader Table / UAV テクスチャの作成と DispatchRays を担当
-    ///          GameView / ReflectionView など View ごとに独立した結果を保持できるようにする
     /// @brief DXRシャドウのパラメータ設定
     struct RayTracingShadowSettings {
         float shadowBias = 0.05f;          ///< セルフシャドウ防止バイアス
@@ -139,7 +138,6 @@ namespace CoreEngine
         /// @brief ビュー識別子
         enum class ViewID : uint32_t {
             GameView = 0,
-            ReflectionView = 1,
             Count
         };
 
@@ -315,10 +313,6 @@ namespace CoreEngine
             uint32_t historyParity = 0;    ///< 今フレームの書き込み先（0 = HistoryA / 1 = HistoryB）
 
             /// @brief この view × light のディスパッチ回数（2x2 サンプル位相・レイジッターの種）
-            /// @details 以前はマネージャ共有の frameIndex_ を使っていたが、1 フレームに
-            ///          複数回 Dispatch される構成（GameView + ReflectionView や複数ライト）では
-            ///          各ビューの位相が 2 や 4 ずつ進み、2x2 サンプル位置の一部しか
-            ///          巡回しなくなっていた。
             uint32_t frameCount = 0;
             RayTracingDispatchInfo dispatchInfo{}; ///< デバッグ表示用（Dispatch のたびに更新）
 

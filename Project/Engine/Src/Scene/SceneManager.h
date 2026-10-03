@@ -120,10 +120,6 @@ public:
     /// @brief 現在シーンのオブジェクトマネージャーを取得
     GameObjectManager* GetCurrentGameObjectManager() const;
 
-    /// @brief 現在シーンが要求する補助 RenderView 一覧を構築する
-    /// @return 実行要求一覧
-    std::vector<RenderViewRequest> BuildRenderViewRequests();
-
 private:
     /// @brief 開けるシーンの名前（中身はすべて保存データが決める）
     std::set<std::string> sceneNames_;

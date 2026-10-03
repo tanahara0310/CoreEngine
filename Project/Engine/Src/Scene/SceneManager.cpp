@@ -201,11 +201,6 @@ namespace CoreEngine
         return currentScene_ ? currentScene_->GetGameObjectManager() : nullptr;
     }
 
-    std::vector<RenderViewRequest> SceneManager::BuildRenderViewRequests()
-    {
-        return currentScene_ ? currentScene_->BuildRenderViewRequests() : std::vector<RenderViewRequest>{};
-    }
-
     bool SceneManager::DoChangeScene(const std::string& name, std::shared_ptr<const SceneSnapshot> snapshot) {
         if (!BeginSceneLoad(name, std::move(snapshot))) {
             return false;

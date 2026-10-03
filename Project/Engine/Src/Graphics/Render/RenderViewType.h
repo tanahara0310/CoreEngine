@@ -9,7 +9,5 @@ namespace CoreEngine
     ///          GameObject / Model）がパス基盤へ依存せずビュー種別を参照できるようにする。
     enum class RenderViewType : uint32_t {
         GameView = 0,
-        ReflectionView = 1,
-        CaptureView = 2,
     };
 }

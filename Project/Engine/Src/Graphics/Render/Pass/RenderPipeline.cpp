@@ -30,7 +30,6 @@
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Camera/Camera.h"
 #include "Camera/View/ViewBuilder.h"
-#include "Scene/IScene.h"
 #include "Scene/SceneManager.h"
 #include "Math/MathCore.h"
 #include <algorithm>
@@ -38,31 +37,6 @@
 namespace CoreEngine
 {
     namespace {
-    /// @brief 論理名から SceneColor 系ターゲットの SRV を解決する
-        D3D12_GPU_DESCRIPTOR_HANDLE ResolveSceneColorHandle(const RenderContext& context, const std::string& resourceName)
-        {
-            if (resourceName.empty()) {
-                return {};
-            }
-
-            if (const FrameBlackboardResource* resource = context.frameBlackboard
-                ? context.frameBlackboard->GetResource(resourceName)
-                : nullptr;
-                resource && resource->srvHandle.ptr != 0) {
-                return resource->srvHandle;
-            }
-
-            if (!context.renderTargetManager) {
-                return {};
-            }
-
-            if (RenderTarget* target = context.renderTargetManager->GetRenderTarget(resourceName)) {
-                return target->GetSRVHandle();
-            }
-
-            return {};
-        }
-
         // RenderPassPhase（パス挿入フェーズ）を GpuTimingCategory（タイミング表示カテゴリ）へ変換する。
         // フェーズは 1:1 対応のため、パス追加時に UI 側の分類テーブルを編集する必要がない。
         GpuTimingCategory ToGpuTimingCategory(RenderPassPhase phase)
@@ -300,7 +274,7 @@ namespace CoreEngine
                 [pass](const RenderPassEntry& entry) { return entry.pass.get() == pass; }),
             passes_.end());
 
-        InvalidateGraphSnapshots();
+        InvalidateGraphSnapshot();
     }
 
     RenderPass* RenderPipeline::GetPass(const std::string& name)
@@ -481,17 +455,12 @@ namespace CoreEngine
             }
         }
 
-        // RTShadowMask は View 依存の実体を持つため、現在の View に対応する
-        // リソースをここで登録する（旧 RenderGraph::ResolveResources の特例を移設）。
+        // RTShadowMask はメインライトのマスクをここで登録する
         if (context.rtShadowManager) {
-            const RayTracingShadowManager::ViewID rtShadowViewId =
-                (context.currentRTShadowViewId == static_cast<uint32_t>(RayTracingShadowManager::ViewID::ReflectionView))
-                ? RayTracingShadowManager::ViewID::ReflectionView
-                : RayTracingShadowManager::ViewID::GameView;
             context.frameBlackboard->SetResource(
                 FrameBlackboard::RTShadowMask,
-                context.rtShadowManager->GetShadowSRVHandle(rtShadowViewId, 0),
-                &context.rtShadowManager->GetShadowResource(rtShadowViewId, 0));
+                context.rtShadowManager->GetShadowSRVHandle(RayTracingShadowManager::ViewID::GameView, 0),
+                &context.rtShadowManager->GetShadowResource(RayTracingShadowManager::ViewID::GameView, 0));
         }
 
         if (context.gBufferManager) {
@@ -721,88 +690,26 @@ namespace CoreEngine
         SyncFinalDisplayHandle(context);
     }
 
-    void RenderPipeline::ExecuteView(
-        const RenderContext& context,
-        const std::function<void()>& beforeExecute,
-        const std::function<void()>& afterExecute)
+    void RenderPipeline::ExecuteView(const RenderContext& context)
     {
         PrepareFrame(context);
-
-        if (beforeExecute) {
-            beforeExecute();
-        }
-
         ExecuteRenderGraph(context);
 
         // 実行後に取る。実行フラグ・発行済みバリア・未解決リソースまで含めるため。
         if (graphCaptureEnabled_ && !graphCapturePaused_) {
             CaptureGraphSnapshot(context);
         }
-
-        if (afterExecute) {
-            afterExecute();
-        }
-    }
-
-    RenderViewResult RenderPipeline::ExecuteRenderView(
-        const RenderContext& context,
-        const std::function<void()>& beforeExecute,
-        const std::function<void()>& afterExecute)
-    {
-        ExecuteView(context, beforeExecute, afterExecute);
-        return BuildRenderViewResult(context);
-    }
-
-    RenderViewResult RenderPipeline::BuildRenderViewResult(const RenderContext& context) const
-    {
-        RenderViewResult result{};
-        result.name = RenderTargetNames::SceneColor;
-        result.outputTargetName = context.viewSettings.sceneColorTargetName;
-
-        if (!context.renderTargetManager) {
-            return result;
-        }
-
-        RenderTarget* viewTarget = context.renderTargetManager->GetRenderTarget(context.viewSettings.sceneColorTargetName);
-        if (!viewTarget) {
-            return result;
-        }
-
-        result.name = context.viewSettings.sceneColorTargetName;
-        result.viewSrv = viewTarget->GetSRVHandle();
-
-        if (context.sceneDepth) {
-            result.sceneDepthSrv = context.sceneDepth->GetDepthSRVHandle();
-        }
-
-        result.sceneColorSrv = ResolveSceneColorHandle(context, finalDisplayResourceName_);
-        if (result.sceneColorSrv.ptr == 0) {
-            result.sceneColorSrv = ResolveSceneColorHandle(context, context.viewSettings.sceneColorTargetName);
-        }
-
-        result.isValid = result.viewSrv.ptr != 0;
-        return result;
     }
 
     void RenderPipeline::Clear()
     {
         passes_.clear();
-        InvalidateGraphSnapshots();
+        InvalidateGraphSnapshot();
     }
 
     void RenderPipeline::CaptureGraphSnapshot(const RenderContext& context)
     {
-        // フレームが変わった最初の View で溜め直す。単純に毎回クリアすると
-        // 1 フレーム内で順に走る補助 View 分が消え、最後の View しか残らない。
-        if (graphSnapshotFrameNumber_ != context.frameNumber) {
-            graphSnapshots_.clear();
-            graphSnapshotFrameNumber_ = context.frameNumber;
-        }
-
         RenderGraphSnapshot snapshot;
-        snapshot.viewType = context.viewSettings.viewType;
-        snapshot.viewName = context.viewSettings.viewName;
-        snapshot.displayName = snapshot.viewName.empty() ? std::string("GameView") : snapshot.viewName;
         snapshot.frameNumber = context.frameNumber;
         snapshot.executionOrder = renderGraph_.GetExecutionOrder();
 
@@ -862,6 +769,6 @@ namespace CoreEngine
                 return lhs.name < rhs.name;
             });
 
-        graphSnapshots_.push_back(std::move(snapshot));
+        graphSnapshot_ = std::move(snapshot);
     }
 }

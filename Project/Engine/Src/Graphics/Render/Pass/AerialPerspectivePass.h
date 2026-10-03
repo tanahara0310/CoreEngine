@@ -8,7 +8,7 @@ namespace CoreEngine
     /// @details SceneDepth から求めた距離で Camera Volume LUT をサンプリングし、
     ///          SceneColor へ「シーン色 × 透過率 + inscattering」を合成する。
     ///          DeferredLightingPass の後・GeometryPass（SkyBox 描画）の前に実行される。
-    ///          GameView のみで有効（ReflectionView は対象外）。
+    ///          GameView のみで有効。
     class AerialPerspectivePass : public RenderPass {
     public:
         AerialPerspectivePass() = default;

@@ -15,8 +15,7 @@ namespace CoreEngine
             return;
         }
 
-        // 波面は時刻依存で View 非依存のため、フレーム内 1 回だけ計算する。
-        // （View ごとの Graph 実行で同一時刻の FFT を二重計算していた無駄を排除）
+        // 波面は時刻にだけ依存するので、フレーム内 1 回だけ計算する
         if (lastDispatchFrame_ == context.frameNumber) {
             return;
         }

@@ -144,16 +144,9 @@ namespace CoreEngine
         return skinCluster_->outputRawSrvHandle.Index();
     }
 
-    void Model::OnTeleported()
-    {
-        prevGameWVPFrame_ = kInvalidMotionFrame;
-        visibility_.ResetOcclusionHistory();
-    }
-
     bool Model::IsMotionHistoryUsable(bool isGameView, uint64_t frame) const
     {
-        // 補助ビューは履歴を持たない（GameView とカメラが違う）。
-        // GameView でも「ちょうど 1 フレーム前に描いた」ときだけ前フレーム WVP を信用する。
+        // GameView で「ちょうど 1 フレーム前に描いた」ときだけ前フレーム WVP を信用する。
         // 視錐台カリング・SetActive(false)・プールの使い回しで描画が飛んだ場合、
         // 保持している WVP は何フレームも前の位置なので、それを prevWVP にすると
         // 「1 フレームでそこまで動いた」という嘘のモーションベクターになる。
@@ -178,8 +171,7 @@ namespace CoreEngine
         // 維持のためフィールドだけ残し、単位行列を書き込む（シェーダ側に読者はいない）
         Matrix4x4 lightVP = MathCore::Matrix::Identity();
 
-        // モーションベクター履歴（prevWVP）は GameView 専用。補助ビュー（カメラが異なる）で
-        // 履歴を読む/更新すると GameView 側の MV が壊れるため、GameView 以外は MV=0 で描く
+        // モーションベクター履歴（prevWVP）は GameView 専用。GameView 以外は MV=0 で描く
         const bool isGameView = (view.viewType == RenderViewType::GameView);
         const uint64_t frame = Time::FrameCount();
         const bool hasMotionHistory = IsMotionHistoryUsable(isGameView, frame);

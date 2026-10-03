@@ -119,9 +119,8 @@ namespace CoreEngine
         Microsoft::WRL::ComPtr<ID3D12Resource> fallbackCameraBuffer_;
         D3D12_GPU_VIRTUAL_ADDRESS fallbackCameraCBVAddress_ = 0;
 
-        // 深度復元用 View*Projection 逆行列専用定数バッファ（RenderViewType ごとに個別バッファ。
-        // 同一フレーム内で GameView/ReflectionView 両方から書き込まれるため単一バッファ不可）
-        static constexpr size_t kViewTypeCount = 3; // GameView / ReflectionView / CaptureView
+        // 深度復元用 View*Projection 逆行列専用定数バッファ（RenderViewType ごとに個別バッファ）
+        static constexpr size_t kViewTypeCount = 1; // RenderViewType の要素数
         std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kViewTypeCount> depthReconstructionBuffers_;
         std::array<D3D12_GPU_VIRTUAL_ADDRESS, kViewTypeCount> depthReconstructionCBVAddresses_{};
 

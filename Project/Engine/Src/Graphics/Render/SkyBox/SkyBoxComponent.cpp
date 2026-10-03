@@ -126,9 +126,7 @@ void SkyBoxComponent::CreateBoxBuffers(ID3D12Device* device)
 
 void SkyBoxComponent::CreateTransformBuffers(ID3D12Device* device)
 {
-    // SceneView と GameView が同一フレーム内で空を描くので、
-    // 1本のCBVを上書きすると記録済みコマンドのWVPまで変わってしまう。
-    // 複数スロットを巡回して、各Drawが独立したCBVを参照するようにする。
+    // 描画のたびに別のスロットへ書き、記録済みのドローが参照する CBV を書き潰さない。
     for (UINT i = 0; i < kTransformBufferCount; ++i) {
         transformBuffers_[i] = ResourceFactory::CreateBufferResource(device, sizeof(TransformationMatrix));
         transformBuffers_[i]->Map(0, nullptr, reinterpret_cast<void**>(&transformData_[i]));

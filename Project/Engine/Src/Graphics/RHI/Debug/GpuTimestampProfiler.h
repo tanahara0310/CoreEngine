@@ -70,7 +70,7 @@ namespace CoreEngine
     {
     public:
         static constexpr uint32_t kFixedSlotCount = static_cast<uint32_t>(GpuTimestampSlot::Count);
-        static constexpr uint32_t kMaxDynamicSlots = 128; ///< RenderGraph パス + PostEffect + FFT 内訳の名前付きスロット上限（補助 View はビュー名プレフィックス付きで別スロットを消費する）
+        static constexpr uint32_t kMaxDynamicSlots = 128; ///< RenderGraph パス + PostEffect + FFT 内訳の名前付きスロット上限
         static constexpr uint32_t kSlotCount = kFixedSlotCount + kMaxDynamicSlots;
         /// @brief クエリのリング段数（FrameSync のスロット数上限に合わせる）
         /// @note 添字には GraphicsCore::Frame().FrameIndex() が渡される
@@ -243,7 +243,7 @@ namespace CoreEngine
     /// @brief 表示対象の行か（一度でも実測値が出たスロット）
     /// @details 「毎フレームの値」ではなく単調フラグで判定するため、行の集合が
     ///          フレームごとに変化しない。一度も動いていないスロット
-    ///          （補助 View で常に早期 return するパスなど）は最後まで出さない。
+    ///          （常に早期 return するパスなど）は最後まで出さない。
     inline bool IsVisibleTimingSlot(const GpuTimingResult& result) noexcept
     {
         return result.everActive;

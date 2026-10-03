@@ -12,8 +12,6 @@ namespace CoreEngine
 
 		/// @brief GameView のみ実行する
 		/// @details 屈折結果は WaterSurfacePass（GameView 限定）だけが消費する。
-		///          また入力の SceneColorSnapshot / G-Buffer WorldPosition は
-		///          反射ビュー（半解像度 G-Buffer）では整合しない。
 		bool IsEnabledForView(const RenderViewSettings& view) const override {
 			return view.viewType == RenderViewType::GameView;
 		}

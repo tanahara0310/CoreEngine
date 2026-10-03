@@ -536,7 +536,7 @@ namespace CoreEngine
         bool skyEnvironmentGenerated_ = false; ///< 一度でもスペキュラキューブマップが生成されたか
         bool skyEnvironmentDirty_ = true;      ///< Sky-View 再生成 → 空キューブマップ再生成が必要か
         bool skySpecularEnabled_ = true;       ///< 空スペキュラIBL（大気アクティブなシーンのみ効く）
-        uint64_t lastSkyEnvironmentFrame_ = UINT64_MAX; ///< View 間の二重実行ガード
+        uint64_t lastSkyEnvironmentFrame_ = UINT64_MAX; ///< 同一フレームの二重実行ガード
 
         // Aerial Perspective 合成用中間テクスチャ（SceneColor と同サイズ）
         GpuResource apResult_;

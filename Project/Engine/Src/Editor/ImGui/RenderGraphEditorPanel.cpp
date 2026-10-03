@@ -235,16 +235,14 @@ namespace CoreEngine
         }
         pipeline->SetGraphCapturePaused(paused_);
 
-        const std::vector<RenderGraphSnapshot>& snapshots = pipeline->GetGraphSnapshots();
-        if (snapshots.empty()) {
+        const RenderGraphSnapshot* const latestSnapshot = pipeline->GetGraphSnapshot();
+        if (!latestSnapshot) {
             DrawToolbar(nullptr);
             ImGui::Separator();
             ImGui::TextDisabled("スナップショットを取得中… (次のフレームで表示されます)");
             return;
         }
-
-        selectedViewIndex_ = std::clamp(selectedViewIndex_, 0, static_cast<int>(snapshots.size()) - 1);
-        const RenderGraphSnapshot& snapshot = snapshots[selectedViewIndex_];
+        const RenderGraphSnapshot& snapshot = *latestSnapshot;
 
         RefreshTimings(snapshot);
 
@@ -254,12 +252,9 @@ namespace CoreEngine
         // 構成が変わったフレームだけ再配置する。毎フレーム配置すると
         // ドラッグで動かしたノードが即座に戻ってしまい操作できない。
         const size_t topologyHash = ComputeTopologyHash(snapshot);
-        if (layoutRequested_
-            || topologyHash != layoutTopologyHash_
-            || selectedViewIndex_ != layoutViewIndex_) {
+        if (layoutRequested_ || topologyHash != layoutTopologyHash_) {
             ComputeLayout(snapshot);
             layoutTopologyHash_ = topologyHash;
-            layoutViewIndex_ = selectedViewIndex_;
             layoutRequested_ = false;
         }
 
@@ -287,31 +282,6 @@ namespace CoreEngine
     {
         RenderPipeline* pipeline = GetPipeline();
 
-        // View 選択（1 フレーム内で補助 View → GameView の順に走る）
-        if (pipeline) {
-            const std::vector<RenderGraphSnapshot>& snapshots = pipeline->GetGraphSnapshots();
-            std::string preview = snapshots.empty()
-                ? std::string("(none)")
-                : snapshots[std::clamp(selectedViewIndex_, 0, static_cast<int>(snapshots.size()) - 1)].displayName;
-
-            ImGui::SetNextItemWidth(160.0f);
-            if (ImGui::BeginCombo("View", preview.c_str())) {
-                for (int index = 0; index < static_cast<int>(snapshots.size()); ++index) {
-                    const bool isSelected = (index == selectedViewIndex_);
-                    if (ImGui::Selectable(snapshots[index].displayName.c_str(), isSelected)) {
-                        selectedViewIndex_ = index;
-                        selectedPassIndex_ = -1;
-                        highlightRootPass_ = -1;
-                    }
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip("パス数: %zu", snapshots[index].passes.size());
-                    }
-                }
-                ImGui::EndCombo();
-            }
-        }
-
-        ImGui::SameLine();
         if (ImGui::Checkbox("Pause", &paused_) && pipeline) {
             pipeline->SetGraphCapturePaused(paused_);
         }
@@ -1081,7 +1051,7 @@ namespace CoreEngine
         maxPassGpuMs_ = 0.5f;
 
         for (size_t passIndex = 0; passIndex < passCount; ++passIndex) {
-            LookupTiming(snapshot.MakeTimingLabel(snapshot.passes[passIndex].name),
+            LookupTiming(snapshot.passes[passIndex].name,
                 passGpuMs_[passIndex], passCpuMs_[passIndex]);
             totalPassGpuMs_ += passGpuMs_[passIndex];
             maxPassGpuMs_ = std::max(maxPassGpuMs_, passGpuMs_[passIndex]);
@@ -1111,8 +1081,8 @@ namespace CoreEngine
 
         // 保存後にシーンが破棄されているとポインタが死んでいる可能性がある。
         // 現在パイプラインに載っているパスとの照合を通してから書き戻す。
-        for (const RenderGraphSnapshot& snapshot : pipeline->GetGraphSnapshots()) {
-            for (const RenderGraphSnapshotPass& pass : snapshot.passes) {
+        if (const RenderGraphSnapshot* const snapshot = pipeline->GetGraphSnapshot()) {
+            for (const RenderGraphSnapshotPass& pass : snapshot->passes) {
                 if (!pass.renderPass || pass.transient) {
                     continue;
                 }

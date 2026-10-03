@@ -94,7 +94,7 @@ namespace CoreEngine
         // ===== RT シャドウマスクの設定（ライトごとに独立） =====
         D3D12_GPU_DESCRIPTOR_HANDLE mainLightMask{}; // フォワード受影用（メインライトのマスク）
         if (context.rtShadowManager && context.rtShadowManager->IsInitialized()) {
-            auto viewId = static_cast<RayTracingShadowManager::ViewID>(context.currentRTShadowViewId);
+            constexpr auto viewId = RayTracingShadowManager::ViewID::GameView;
             // 全ライト分のハンドルをリセットしてから有効なものをセット
             for (uint32_t li = 0; li < RayTracingShadowManager::kMaxDirectionalLights; ++li) {
                 deferredLighting->SetRTShadowHandle({}, li);

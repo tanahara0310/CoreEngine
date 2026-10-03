@@ -12,13 +12,7 @@
 namespace CoreEngine
 {
     namespace {
-        /// @brief 現在の描画対象ビューに対応する RT シャドウ ViewID を解決する
-        RayTracingShadowManager::ViewID ResolveRTShadowViewId(const RenderContext& context)
-        {
-            return (context.currentRTShadowViewId == static_cast<uint32_t>(RayTracingShadowManager::ViewID::ReflectionView))
-                ? RayTracingShadowManager::ViewID::ReflectionView
-                : RayTracingShadowManager::ViewID::GameView;
-        }
+        constexpr RayTracingShadowManager::ViewID kShadowView = RayTracingShadowManager::ViewID::GameView;
 
         /// @brief RT シャドウ各ステージ共通の実行前提を検証してコマンドリストを返す
         ID3D12GraphicsCommandList* ResolveRTShadowCommandList(const RenderContext& context)
@@ -33,14 +27,12 @@ namespace CoreEngine
         }
 
         /// @brief 水中の受光点を屈折した経路で調べるための水面を作る
-        /// @details RT コースティクスが水中の直接光を置き換える GameView のときだけ有効にする
+        /// @details RT コースティクスが水中の直接光を置き換えるときだけ有効にする
         ///          （コースティクスが水中の区間の遮蔽を、影が水より上の区間の遮蔽を受け持つ）
-        RayTracingShadowWaterSurface BuildShadowWaterSurface(
-            const RenderContext& context, RayTracingShadowManager::ViewID viewId)
+        RayTracingShadowWaterSurface BuildShadowWaterSurface(const RenderContext& context)
         {
             RayTracingShadowWaterSurface water{};
-            if (viewId != RayTracingShadowManager::ViewID::GameView
-                || !IsRayTracedWaterCausticsSelected(context)
+            if (!IsRayTracedWaterCausticsSelected(context)
                 || !context.rtWaterCausticsManager
                 || !context.rtWaterCausticsManager->IsInitialized()) {
                 return water;
@@ -74,9 +66,8 @@ namespace CoreEngine
             return;
         }
 
-        const RayTracingShadowManager::ViewID viewId = ResolveRTShadowViewId(context);
         context.rayTracingSubsystem->DispatchRTShadowTrace(
-            context, context.dxCommon, cmdList, viewId, BuildShadowWaterSurface(context, viewId));
+            context, context.dxCommon, cmdList, kShadowView, BuildShadowWaterSurface(context));
     }
 
     void RTShadowTemporalPass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
@@ -96,7 +87,7 @@ namespace CoreEngine
         }
 
         context.rayTracingSubsystem->DispatchRTShadowTemporal(
-            context, context.dxCommon, cmdList, ResolveRTShadowViewId(context));
+            context, context.dxCommon, cmdList, kShadowView);
     }
 
     void RTShadowDenoisePass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
@@ -115,9 +106,9 @@ namespace CoreEngine
         }
 
         context.rayTracingSubsystem->DispatchRTShadowDenoise(
-            context, context.dxCommon, cmdList, ResolveRTShadowViewId(context));
+            context, context.dxCommon, cmdList, kShadowView);
 
-        // RTShadowMask の Blackboard 登録は RegisterFrameResources（View 対応済み）が行うため、
+        // RTShadowMask の Blackboard 登録は RegisterFrameResources が行うため、
         // 実行中の再登録は不要（パス分離契約 3）。
     }
 }

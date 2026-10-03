@@ -7,8 +7,7 @@
 namespace CoreEngine
 {
     /// @brief 水面専用の forward 合成パス
-    /// @details GameView のみで有効。反射ビューで水面を描くと自己反射フィードバックになり、
-    ///          波形状の明暗の斑が反射像へ焼き付くため除外している。
+    /// @details GameView のみで有効。
     class WaterSurfacePass : public RenderPass {
     public:
         WaterSurfacePass() = default;
@@ -18,7 +17,7 @@ namespace CoreEngine
 
         void DeclareResources(RenderGraphBuilder& builder, const RenderContext& context) override;
 
-        /// @brief 水面は GameView でのみ描画する（反射ビューへの自己描き込みを防ぐ）
+        /// @brief 水面は GameView でのみ描画する
         bool IsEnabledForView(const RenderViewSettings& view) const override {
             return view.viewType == RenderViewType::GameView;
         }

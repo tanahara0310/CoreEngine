@@ -19,8 +19,7 @@ namespace CoreEngine
     class RayTracingOutputViewSet {
     public:
         /// @brief 管理可能なスロット数の上限
-        /// @details RT シャドウが view(2) × ライト(4) × 用途(6) = 48 スロットを使うため 64 を確保する
-        ///          （Stage 3 で履歴 ping-pong 用の 2 枚とハーフ解像度用の中間 2 枚が増えた）。
+        /// @details 最も多く使う RT シャドウは view(1) × ライト(4) × 用途(6) = 24 スロット。
         static constexpr uint32_t kMaxSlotCount = 64;
 
         /// @brief テクスチャ 1 枚の作成オプション
