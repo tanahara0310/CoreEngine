@@ -282,14 +282,6 @@ namespace CoreEngine
         }
     }
 
-    void GpuParticleSystemComponent::Play()
-    {
-        isPlaying_ = true;
-        elapsedTime_ = 0.0f;
-        burstDone_ = false;
-        emitAccumulator_ = 0.0f;
-    }
-
     uint32_t GpuParticleSystemComponent::GetEffectiveCapacity() const
     {
         return std::clamp(mainModule_->GetMainData().maxParticles, 1u, kMaxParticles);
@@ -302,40 +294,15 @@ namespace CoreEngine
         emitCountThisFrame_ = 0;
         ++frameSeed_;
 
-        if (!isPlaying_ || !mainModule_->IsEnabled()) {
+        if (!mainModule_->IsEnabled()) {
             return;
         }
 
-        const auto& mainData = mainModule_->GetMainData();
-        const auto& emissionData = emissionModule_->GetEmissionData();
-
-        elapsedTime_ += deltaTime;
-
-        // 長さとループの扱いは CPU 版と同じ
-        if (elapsedTime_ >= mainData.duration) {
-            if (mainData.looping) {
-                elapsedTime_ = std::fmod(elapsedTime_, mainData.duration);
-                burstDone_ = false; // ループごとにバーストを出し直す
-            } else {
-                // 一度きりなら放出だけ止め、生きている粒は GPU が更新し続ける
-                return;
-            }
-        }
-
+        const uint32_t emitCount = playback_.Advance(deltaTime, mainModule_->GetMainData(), emissionModule_->GetEmissionData());
         if (emissionModule_->IsEnabled()) {
-            emitAccumulator_ += static_cast<float>(emissionData.rateOverTime) * deltaTime;
-            emitCountThisFrame_ = static_cast<uint32_t>(emitAccumulator_);
-            emitAccumulator_ -= static_cast<float>(emitCountThisFrame_);
-
-            // バーストはループ内で 1 回、バーストの時刻を過ぎたときに出す
-            if (emissionData.burstCount > 0 && !burstDone_ && elapsedTime_ >= emissionData.burstTime) {
-                emitCountThisFrame_ += emissionData.burstCount;
-                burstDone_ = true;
-            }
+            // 容量を超えた分は放出の CS が捨てるので、1 フレームの放出数は容量までにする
+            emitCountThisFrame_ = (std::min)(emitCount, GetEffectiveCapacity());
         }
-
-        // 容量を超えた分は放出の CS が捨てるので、1 フレームの放出数は容量までにする
-        emitCountThisFrame_ = (std::min)(emitCountThisFrame_, GetEffectiveCapacity());
     }
 
     Matrix4x4 GpuParticleSystemComponent::MakeBillboardMatrix(const Matrix4x4& viewMatrix) const

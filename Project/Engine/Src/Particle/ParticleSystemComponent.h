@@ -5,6 +5,7 @@
 #include "Graphics/Asset/AssetRef.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Math/MathCore.h"
+#include "Particle/Core/EmitterPlayback.h"
 #include "Particle/Core/Particle.h"
 #include "Particle/IParticleSystem.h"
 #include "Particle/Modules/CollisionModule.h"
@@ -95,6 +96,7 @@ namespace CoreEngine
         void Play() override;
         void Stop() override;
         bool IsPlaying() const override;
+        const EmitterPlayback& GetPlayback() const override { return playback_; }
 
         /// @brief 生きている粒を全部消す
         void Clear();
@@ -224,7 +226,6 @@ namespace CoreEngine
         std::unique_ptr<Model> model_;
 
         Statistics statistics_;
-        /// ループで経過時間が巻き戻ったかを見るための、前の更新の経過時間
-        float lastElapsedTime_ = 0.0f;
+        EmitterPlayback playback_;
     };
 }

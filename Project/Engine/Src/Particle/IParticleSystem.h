@@ -18,6 +18,7 @@ class SizeModule;
 class RotationModule;
 class NoiseModule;
 class CollisionModule;
+class EmitterPlayback;
 
 /// @brief パーティクルシステムのバックエンド種別
 enum class ParticleBackend {
@@ -40,6 +41,8 @@ public:
     virtual void Stop() = 0;
     /// @brief 再生中か
     virtual bool IsPlaying() const = 0;
+    /// @brief 再生の時間軸（状態・周期の中の経過時間・バースト済みか）
+    virtual const EmitterPlayback& GetPlayback() const = 0;
 
     // ===== 見た目 =====
     /// @brief パーティクルに貼るテクスチャを設定

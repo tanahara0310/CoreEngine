@@ -6,7 +6,7 @@
 namespace CoreEngine
 {
 /// @brief パーティクル放出モジュール（Unity Emission Module相当）
-/// パーティクルの放出タイミングと数を制御します
+/// 放出レートとバーストの設定（時間を進めて出す数を決めるのは EmitterPlayback）
 class EmissionModule : public ParticleModule {
 public:
     /// @brief 放出データ
@@ -31,25 +31,6 @@ public:
     /// @return 放出データの参照
     EmissionData& GetEmissionData() { return emissionData_; }
 
-    /// @brief この時間で放出すべきパーティクル数を計算
-    /// @param deltaTime フレーム時間
-    /// @return 放出すべきパーティクル数
-    uint32_t CalculateEmissionCount(float deltaTime);
-
-    /// @brief モジュールの時間を更新
-      /// @param deltaTime フレーム時間
-    void UpdateTime(float deltaTime);
-
-    /// @brief 再生を開始
-    void Play();
-
-    /// @brief 停止
-    void Stop();
-
-    /// @brief 再生中かどうか
-    /// @return 再生中の場合true
-    bool IsPlaying() const { return isPlaying_; }
-
 #ifdef CORE_EDITOR
     /// @brief ImGuiデバッグ表示
     /// @return UIに変更があった場合true
@@ -58,13 +39,5 @@ public:
 
 private:
     EmissionData emissionData_;
-
-    // 再生状態
-    bool isPlaying_ = false;
-    float elapsedTime_ = 0.0f;
-    bool hasBurst_ = false;
-
-    // Rate over Time用の累積時間
-    float emissionAccumulator_ = 0.0f;
 };
 }

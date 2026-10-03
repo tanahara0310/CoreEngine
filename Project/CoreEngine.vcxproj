@@ -490,6 +490,7 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\GameObject\ObjectId.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Sprite\SpriteAnimationClip.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Sprite\SpriteAnimator.cpp" />
+    <ClCompile Include="Engine\Src\Particle\Core\EmitterPlayback.cpp" />
     <ClCompile Include="Engine\Src\Particle\Core\ParticleEmitter.cpp" />
     <ClCompile Include="Engine\Src\Particle\Core\ParticleRenderDataBuilder.cpp" />
     <ClCompile Include="Engine\Src\Particle\Core\ParticleResourceManager.cpp" />
@@ -1560,6 +1561,7 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\GameObject\Sprite\SpriteAnimationClip.h" />
     <ClInclude Include="Engine\Src\GameObject\Sprite\SpriteAnimator.h" />
     <ClInclude Include="Engine\Src\Particle\IParticleSystem.h" />
+    <ClInclude Include="Engine\Src\Particle\Core\EmitterPlayback.h" />
     <ClInclude Include="Engine\Src\Particle\Core\ParticleEmitter.h" />
     <ClInclude Include="Engine\Src\Particle\Core\ParticleRenderDataBuilder.h" />
     <ClInclude Include="Engine\Src\Particle\Core\ParticleResourceManager.h" />

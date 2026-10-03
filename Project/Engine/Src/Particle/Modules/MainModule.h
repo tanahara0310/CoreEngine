@@ -65,25 +65,6 @@ public:
     /// @return メインデータの参照
     MainData& GetMainData() { return mainData_; }
 
-    /// @brief システムの再生制御
-    void Play();
-    /// @brief 放出を止める
-    void Stop();
-    /// @brief 生存中のパーティクルを消して先頭から再生し直す
-    void Restart();
-
-    /// @brief 再生中かどうか
-    /// @return 再生中の場合true
-    bool IsPlaying() const { return isPlaying_; }
-
-    /// @brief システム時間を更新
-    /// @param deltaTime フレーム時間
-    void UpdateTime(float deltaTime);
-
-    /// @brief 現在の経過時間を取得
-    /// @return 経過時間（秒）
-    float GetElapsedTime() const { return elapsedTime_; }
-
     /// @brief 最大パーティクル数のハード上限（バッファ容量）を設定
     /// @note 所有するパーティクルシステムが初期化時に設定する。
     ///       ImGuiのスピン上限と実効値のクランプに使う（0 = 上限なし）。
@@ -91,10 +72,6 @@ public:
 
     /// @brief 最大パーティクル数のハード上限を取得
     uint32_t GetCapacityLimit() const { return capacityLimit_; }
-
-    /// @brief システムが終了したかどうか（ループなしの場合）
-    /// @return 終了している場合true
-    bool IsFinished() const;
 
     /// @brief パーティクルの初期寿命を生成（ランダム性を適用）
     /// @return 寿命（秒）
@@ -124,8 +101,6 @@ public:
 
 private:
     MainData mainData_;
-    float elapsedTime_ = 0.0f;  // 経過時間
-    bool isPlaying_ = false;
     uint32_t capacityLimit_ = 0;  // maxParticlesのハード上限（0 = 未設定）
 
     /// @brief ランダム値を生成（-range ～ +range）
