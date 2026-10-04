@@ -1,0 +1,56 @@
+{
+    "components": [
+        {
+            "type": "Transform",
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    0.7,
+                    0.02,
+                    0.7
+                ],
+                "translate": [
+                    0.0,
+                    0.01,
+                    0.0
+                ]
+            }
+        },
+        {
+            "type": "MeshRenderer",
+            "enabled": true,
+            "parameters": {
+                "model": {
+                    "guid": "e8a79191-50ea-0673-1816-c257f280ba64",
+                    "path": "Engine/Assets/Models/Primitives/Box/cube.obj"
+                }
+            }
+        },
+        {
+            "type": "Material",
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    0.95,
+                    0.75,
+                    0.15,
+                    1.0
+                ],
+                "emissive": [
+                    0.6,
+                    0.45,
+                    0.05,
+                    1.0
+                ],
+                "metallic": 0.0,
+                "roughness": 0.6
+            }
+        }
+    ]
+}

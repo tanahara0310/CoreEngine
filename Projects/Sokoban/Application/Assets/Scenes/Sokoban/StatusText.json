@@ -1,0 +1,53 @@
+{
+    "active": true,
+    "components": [
+        {
+            "type": "RectTransform",
+            "enabled": true,
+            "parameters": {
+                "anchor": 0,
+                "anchoredPosition": [
+                    40.0,
+                    24.0
+                ],
+                "pivot": [
+                    0.0,
+                    0.0
+                ],
+                "rotation": 0.0,
+                "sortOrder": 10
+            }
+        },
+        {
+            "type": "UIText",
+            "enabled": true,
+            "parameters": {
+                "alignH": 0,
+                "alignV": 1,
+                "color": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "fieldAutoFit": true,
+                "font": "Default",
+                "fontSize": 40.0,
+                "lineSpacing": 1.0,
+                "outlineColor": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "outlineWidth": 0.1,
+                "text": "STAGE 1",
+                "weight": 0.0,
+                "wrapWidth": 0.0
+            }
+        }
+    ],
+    "id": "55f104a83c4554b8",
+    "name": "StatusText",
+    "order": 3
+}

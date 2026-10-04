@@ -1,0 +1,53 @@
+{
+    "active": true,
+    "components": [
+        {
+            "type": "RectTransform",
+            "enabled": true,
+            "parameters": {
+                "anchor": 7,
+                "anchoredPosition": [
+                    0.0,
+                    -24.0
+                ],
+                "pivot": [
+                    0.5,
+                    1.0
+                ],
+                "rotation": 0.0,
+                "sortOrder": 10
+            }
+        },
+        {
+            "type": "UIText",
+            "enabled": true,
+            "parameters": {
+                "alignH": 1,
+                "alignV": 1,
+                "color": [
+                    0.85,
+                    0.88,
+                    0.95,
+                    0.9
+                ],
+                "fieldAutoFit": true,
+                "font": "Default",
+                "fontSize": 26.0,
+                "lineSpacing": 1.0,
+                "outlineColor": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "outlineWidth": 0.1,
+                "text": "移動：WASD・矢印キー　　やり直し：R　　次のステージ：Space",
+                "weight": 0.0,
+                "wrapWidth": 0.0
+            }
+        }
+    ],
+    "id": "96b5187e3f8c6dff",
+    "name": "HintText",
+    "order": 5
+}
