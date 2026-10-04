@@ -16,7 +16,7 @@
   </ItemGroup>
   <PropertyGroup>
     <!-- Release の出力フォルダへ写すプロジェクト（Projects の下のフォルダ名。-p:ReleaseProject=名前 で変えられる） -->
-    <ReleaseProject Condition="'$(ReleaseProject)' == ''">Shooting</ReleaseProject>
+    <ReleaseProject Condition="'$(ReleaseProject)' == ''">Sokoban</ReleaseProject>
   </PropertyGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

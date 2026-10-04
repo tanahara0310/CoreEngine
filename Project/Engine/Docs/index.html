@@ -2012,7 +2012,7 @@ kbd {
     <li><a href="#script-scenes">シーン遷移とデータの保存</a></li>
     <li><a href="#script-time-tween">時間と Tween</a></li>
     <li><a href="#script-ui">UI を作る</a></li>
-    <li><a href="#tutorial-shooting">見本のシューティングを読む</a></li>
+    <li><a href="#tutorial-sokoban">見本の倉庫番を読む</a></li>
     <li><a href="#editor-shortcuts">ショートカット一覧</a></li>
     <li><a href="#api-GameObject">GameObject</a></li>
     <li><a href="#api-Input">Input</a></li>
@@ -2065,7 +2065,6 @@ kbd {
     <thead><tr><th>プロジェクト</th><th>中身</th></tr></thead>
     <tbody>
       <tr><td><span class="path">Projects/Sokoban</span></td><td>倉庫番。スクリプト 1 本（<span class="path">SokobanBoard.as</span>）とプレハブ 5 つだけで、文字で書いた盤面からステージを組み立てる小さな見本。ステージはインスペクタの <code>stages</code> に 1 行足せば増やせます。</td></tr>
-      <tr><td><span class="path">Projects/Shooting</span></td><td>縦スクロールのシューティング。タイトル → ゲーム → リザルト、ハイスコアの保存まで入った完成したゲーム。<a href="#tutorial-shooting">解説</a></td></tr>
       <tr><td><span class="path">Projects/Sandbox</span></td><td>機能ごとの試験場（物理・キャラクターの歩行・UI・水面・カメラの揺れ・スクリプトのシューター）</td></tr>
     </tbody>
   </table>
@@ -2812,7 +2811,7 @@ kbd {
     <li><strong>保存する</strong>Hierarchy でそのオブジェクトの行を右クリックし、<span class="ui">プレハブとして保存</span> を選びます。</li>
     <li><strong>できたファイルを確かめる</strong><span class="path">Application/Assets/Prefabs/&lt;オブジェクト名&gt;.prefab</span> ができ、元のオブジェクトはそのプレハブに繋がります（Hierarchy に ◈ と <span class="ui">Prefab</span> が付きます）。</li>
   </ol>
-  <p>同じ名前があれば <code>_1</code>・<code>_2</code> … が付きます。作った後は Project で好きなフォルダへ移してかまいません（サンプルは <span class="path">Prefabs/Shooting/</span> にまとめています）。</p>
+  <p>同じ名前があれば <code>_1</code>・<code>_2</code> … が付きます。作った後は Project で好きなフォルダへ移してかまいません（見本の倉庫番は <span class="path">Prefabs/</span> の直下に置いています）。</p>
 
   <h2 id="prefab-place">プレハブを置く・出す</h2>
   <ul>
@@ -3072,7 +3071,7 @@ kbd {
 
   <h2 id="script-overview-files">スクリプトの置き場所</h2>
   <ul>
-    <li>スクリプトは <span class="path">Application/Assets/Scripts/</span> の下に置きます。フォルダを分けて整理してかまいません（例：<span class="path">Scripts/Shooting/ShootingPlayer.as</span>）。</li>
+    <li>スクリプトは <span class="path">Application/Assets/Scripts/</span> の下に置きます。フォルダを分けて整理してかまいません（例：<span class="path">Scripts/Enemy/EnemyMover.as</span>）。</li>
     <li>拡張子は <code>.as</code>、文字コードは UTF-8 です（日本語のコメントや文字列も使えます）。</li>
     <li><span class="path">Scripts/Editor/</span>（Scripts の直下の Editor フォルダ）は、エディタの無いビルド（Release・書き出したゲーム）では読み込まれません。エディタでだけ使う道具を置けます。</li>
   </ul>
@@ -3112,7 +3111,7 @@ kbd {
     </tbody>
   </table>
   </div>
-  <div class="callout tip"><p>クラス名は <code>PlayerMover</code>・<code>EnemySpawner</code> のように役割がわかる名前にし、エンジンの型と重ならないようにゲーム名などを頭に付けるのもおすすめです（サンプルの Shooting は <code>ShootingPlayer</code>・<code>ShootingEnemy</code> のように揃えています）。</p></div>
+  <div class="callout tip"><p>クラス名は <code>PlayerMover</code>・<code>EnemySpawner</code> のように役割がわかる名前にし、エンジンの型と重ならないようにゲーム名などを頭に付けるのもおすすめです（見本の倉庫番は <code>SokobanBoard</code> のように <code>Sokoban</code> を頭に付けています）。</p></div>
 
   <h2 id="script-overview-generated">エディタが書き出すファイル</h2>
   <p>エディタは起動のたびに、Scripts フォルダへ次の 2 つを書き出します。<strong>どちらも手で書き換えないでください</strong>（次の起動で元に戻ります）。git にはコミットしておきます。</p>
@@ -3169,7 +3168,7 @@ kbd {
   <p>これで、<code>owner.</code> と打つとメンバーの候補が出て、間違いには波線が付くようになります。</p>
 
   <h2 id="setup-workspace">ワークスペースの中身</h2>
-  <script type="text/x-code" data-lang="json" data-file="Shooting.code-workspace">
+  <script type="text/x-code" data-lang="json" data-file="Sokoban.code-workspace">
     {
         "folders": [
             { "name": "Scripts", "path": "Application/Assets/Scripts" }
@@ -3854,7 +3853,7 @@ kbd {
 
   <h3 id="input-context">UI を選んでいる間は、ゲームの操作が止まる</h3>
   <p>UI のボタンなどが選ばれている（フォーカスがある）間は、入力が<strong>UI の場面</strong>になり、<code>Game</code> のアクションはすべて「押されていない」になります。決定ボタンでメニューを選んだ瞬間に、キャラクターまで跳ばないようにするためです。</p>
-  <div class="callout warn"><p>メニューを閉じても操作が効かないときは、選択が残っています。ゲームに戻るときに <code>UI::ClearFocus()</code> を呼んでください（サンプルの Shooting も、ゲームのシーンの Start で呼んでいます）。</p></div>
+  <div class="callout warn"><p>メニューを閉じても操作が効かないときは、選択が残っています。ゲームに戻るときに <code>UI::ClearFocus()</code> を呼んでください。</p></div>
 
   <h2 id="input-keys">キーを直接読む</h2>
   <p>デバッグ用の操作など、決まったキーを見たいときは <code>IsKeyTriggered(Key::R)</code> のように読みます。使えるキーは英字・数字（<code>Num0</code>〜<code>Num9</code>）・<code>Space</code>・<code>Enter</code>・<code>Escape</code>・<code>Tab</code>・<code>Shift</code>・<code>Ctrl</code>・矢印です。</p>
@@ -4195,7 +4194,7 @@ kbd {
 
   <h2 id="best-structure">構成</h2>
   <ul>
-    <li><strong>1 つのクラスに 1 つの役割</strong>：自機・敵・弾・進行役・演出のように分け、進行役（Director）が全体の状態を持つ形にすると見通しがよくなります（サンプル Shooting の <code>ShootingGameDirector</code>）。</li>
+    <li><strong>1 つのクラスに 1 つの役割</strong>：自機・敵・弾・進行役・演出のように分け、進行役（Director）が全体の状態を持つ形にすると見通しがよくなります。</li>
     <li><strong>進行役は名前で見つけられるようにする</strong>：「GameDirector」のような名前のオブジェクトに置き、ほかのスクリプトは Start で <code>FindObject</code> と <code>GetComponent</code> で取り出して控えます。</li>
     <li><strong>シーンに置く相手は [ObjectRef]</strong>、プレハブは <strong>[Asset("Prefab")]</strong> で指定し、パスや名前をコードに直接書かないようにします。</li>
     <li><strong>状態は enum で</strong>：カウントダウン・プレイ中・終了のような状態は、スクリプトの <code>enum</code> と <code>if</code> ／ <code>switch</code> で分けます。</li>
@@ -4253,7 +4252,7 @@ kbd {
     </tbody>
   </table>
   </div>
-  <div class="callout tip"><p>迷ったら「位置を直接書く ＋ コライダー」から始めます。見本のシューティング（<span class="path">Projects/Shooting</span>）は、すべてこのやり方で作ってあります。</p></div>
+  <div class="callout tip"><p>迷ったら「位置を直接書く ＋ コライダー」から始めます。</p></div>
 
   <h2 id="physics-collider">当たり判定を付ける</h2>
   <p>当たり判定は、<strong>両方のオブジェクトにコライダーが付いていて</strong>、2 つの<strong>レイヤーの組み合わせが「当たる」</strong>になっているときに起きます。</p>
@@ -4326,8 +4325,8 @@ kbd {
     <li><strong>当たる組み合わせにチェックを入れる</strong><span class="ui">Scene Settings</span> の <span class="ui">当たり判定のレイヤー</span> の表でチェックを入れ、<kbd>Ctrl</kbd>+<kbd>S</kbd> でシーンを保存します。</li>
   </ol>
   <div class="callout warn" data-title="足したレイヤーは、チェックを入れるまでどれとも当たらない"><p>シーンに保存された組み合わせの表が、そのシーンの当たりのすべてを決めます。テンプレートのシーンに入っているのは <code>Default</code> × <code>Default</code> だけです。エンジンが置く床（DefaultGround）も <code>Default</code> なので、プレイヤーを <code>Player</code> レイヤーにしたら、<code>Player</code> × <code>Default</code> にもチェックを入れないと床をすり抜けます。</p></div>
-  <p>見本のシューティングのゲーム画面は、次の 3 つだけを当てています。弾どうし・敵どうしは判定しないので、スクリプトで相手を見分ける手間も減ります。</p>
-  <script type="text/x-code" data-lang="json" data-file="Scenes/ShootingGame/_scene.json（抜粋）">
+  <p>たとえばシューティングなら、次の 3 つだけを当てれば足ります。弾どうし・敵どうしは判定しないので、スクリプトで相手を見分ける手間も減ります。</p>
+  <script type="text/x-code" data-lang="json" data-file="_scene.json（シューティングの例）">
     "collision": {
         "pairs": [
             [ "Enemy", "Player" ],
@@ -5737,187 +5736,169 @@ kbd {
   </div>
 </article>
 
-<article class="page" id="tutorial-shooting" data-group="チュートリアル" data-title="見本のシューティングを読む" data-nav="シューティングを読む" data-keywords="サンプル 見本 シューティング shooting 解説 読む 構成 設計 進行 director 敵 弾 自機 リザルト ハイスコア 完成品">
-  <h1>見本のシューティングを読む</h1>
-  <p class="lead"><span class="path">Projects/Shooting</span> は、タイトル → ゲーム → リザルトまでそろった縦スクロールのシューティングです。1 本のゲームを、どんな部品に分けて、どうつないでいるかを読み解きます。</p>
+<article class="page" id="tutorial-sokoban" data-group="チュートリアル" data-title="見本の倉庫番を読む" data-nav="倉庫番を読む" data-keywords="サンプル 見本 倉庫番 sokoban 解説 読む 盤面 マス 文字 ステージ プレハブ イージング tween パーティクル 紙吹雪 読み直し hidden 完成品">
+  <h1>見本の倉庫番を読む</h1>
+  <p class="lead"><span class="path">Projects/Sokoban</span> は、スクリプト 1 本（<span class="path">SokobanBoard.as</span>）とプレハブ 5 つで作った倉庫番です。文字で書いた盤面からステージを組み立て、動けるかどうかをマスの表で決めています。</p>
 
-  <h2 id="shooting-open">開いて遊ぶ</h2>
+  <h2 id="sokoban-open">開いて遊ぶ</h2>
   <ol class="steps">
-    <li><strong>開く</strong>プロジェクトを選ぶ画面で <span class="ui">Shooting</span> を開きます。起動シーンは <code>ShootingTitle</code> です。</li>
-    <li><strong>遊ぶ</strong><kbd>Ctrl</kbd>+<kbd>P</kbd>。<kbd>Enter</kbd> でスタートし、WASD で移動、<kbd>Space</kbd>・<kbd>Z</kbd> で撃ちます。60 秒生き残るとクリアです。</li>
+    <li><strong>開く</strong>プロジェクトを選ぶ画面で <span class="ui">Sokoban</span> を開きます。起動シーンは <code>Sokoban</code> です。</li>
+    <li><strong>遊ぶ</strong><kbd>Ctrl</kbd>+<kbd>P</kbd>。WASD か矢印キーで動き、箱を押して全部のゴールに乗せるとクリアです。<kbd>R</kbd> でやり直し、クリアしたら <kbd>Space</kbd> で次のステージへ進みます。</li>
   </ol>
+  <p>盤面は再生してから組み立てるので、停止中のシーンには盤面がありません。</p>
 
-  <h2 id="shooting-scenes">3 つのシーン</h2>
-  <div class="flow" aria-label="シーンの流れ">
-    <div class="flow-node"><b>ShootingTitle</b><small>ハイスコアを読んで出す。スタートでゲームへ</small></div>
-    <span class="flow-arrow" aria-hidden="true">→</span>
-    <div class="flow-node accent"><b>ShootingGame</b><small>60 秒のステージ。結果を Session に入れる</small></div>
-    <span class="flow-arrow" aria-hidden="true">→</span>
-    <div class="flow-node"><b>ShootingResult</b><small>結果を出し、ハイスコアを SaveFile に書く</small></div>
-  </div>
-  <p>シーンをまたいで渡す値（スコア・撃破数・クリアしたか）は <a href="#api-Session">Session</a> に、次に起動しても残す値（ハイスコア）は <a href="#api-SaveFile">SaveFile</a> に入れています。</p>
-  <script type="text/x-code" data-lang="as" data-file="ShootingGameDirector.as（抜粋）">
-    // ゲームの終わり：結果を Session に入れてリザルトへ
-    Session::SetInt("Shooting.Score", score_);
-    Session::SetInt("Shooting.Kills", kills_);
-    Session::SetBool("Shooting.Cleared", cleared_);
-    Scene::ChangeScene(resultScene);
-  </script>
-  <script type="text/x-code" data-lang="as" data-file="ShootingResultMenu.as（抜粋）">
-    // リザルト：Session から読み、ハイスコアを超えていたら保存する
-    score_ = Session::GetInt("Shooting.Score", 0);
-
-    SaveFile@ record = SaveFile("Shooting/Record.json");   // Application/Saved/Shooting/Record.json
-    const int previousBest = record.GetInt("highScore", 0);
-    if (score_ > previousBest) {
-        record.SetInt("highScore", score_);
-        record.Save();
-    }
-  </script>
-
-  <h2 id="shooting-scripts">スクリプトの分け方</h2>
-  <p>役割ごとに 1 クラスずつ、<span class="path">Scripts/Shooting/</span> に置いてあります。クラス名はすべて <code>Shooting</code> で始め、ほかのプロジェクトやエンジンの名前とぶつからないようにしています。</p>
+  <h2 id="sokoban-scene">シーンとプレハブ</h2>
   <div class="table-wrap">
   <table>
-    <thead><tr><th>クラス</th><th>付いている所</th><th>役割</th></tr></thead>
+    <thead><tr><th>オブジェクト</th><th>中身</th></tr></thead>
     <tbody>
-      <tr><td><code>ShootingGameDirector</code></td><td>GameDirector（空のオブジェクト）</td><td>進行役。カウントダウン → プレイ → 終わり の切り替え、敵の出現、スコアと UI、リザルトへの移動</td></tr>
-      <tr><td><code>ShootingPlayer</code></td><td>Player</td><td>移動・射撃・被弾・残機</td></tr>
-      <tr><td><code>ShootingEnemy</code></td><td>敵のプレハブ 3 種</td><td>動き方（まっすぐ・揺れる・止まって撃つ）、被弾、爆発</td></tr>
-      <tr><td><code>ShootingBullet</code></td><td>弾のプレハブ 2 種</td><td>まっすぐ進み、当たるか範囲の外へ出たら消える</td></tr>
-      <tr><td><code>ShootingEffects</code></td><td>Effects</td><td>爆発と火花のパーティクル、カメラの揺れ</td></tr>
-      <tr><td><code>ShootingScorePopup</code></td><td>点数のプレハブ</td><td>倒した所に浮かぶ点数（3D テキスト）</td></tr>
-      <tr><td><code>ShootingTitleMenu</code> ／ <code>ShootingResultMenu</code></td><td>TitleMenu ／ ResultMenu</td><td>タイトルとリザルトの画面とボタン</td></tr>
-      <tr><td><code>ShootingSpinner</code></td><td>タイトルとリザルトの飾りの機体</td><td>回しながら上下に揺らす</td></tr>
+      <tr><td>Board</td><td><code>SokobanBoard</code>（倉庫番：盤面）。盤面・操作・クリア判定をすべて持つ</td></tr>
+      <tr><td>StatusText ／ MessageText ／ HintText</td><td>UI テキスト。ステージと手数、クリアの知らせ、操作の説明</td></tr>
+      <tr><td>GoalEffect ／ ClearEffect</td><td>パーティクル。箱がゴールに乗ったときの光の粒と、クリアの紙吹雪</td></tr>
+      <tr><td>MainCamera ／ Sun</td><td>カメラとライト</td></tr>
     </tbody>
   </table>
   </div>
+  <p>床・壁・ゴール・箱・プレイヤーはプレハブ（<span class="path">Prefabs/</span>）です。色・大きさ・高さはプレハブで決め、スクリプトは横の位置だけを決めます。</p>
 
-  <h2 id="shooting-director">進行役（Director）にまとめる</h2>
-  <p>ゲーム全体の状態（今どの段階か・スコア・残機）は、<code>ShootingGameDirector</code> の 1 か所だけが持っています。ほかのスクリプトは、Start で Director を探して控えておき、起きたことを知らせたり、してよいかを聞いたりします。</p>
-  <script type="text/x-code" data-lang="as" data-file="ShootingEnemy.as（抜粋）">
-    private ShootingGameDirector@ director_;
-
-    void Start()
-    {
-        GameObject@ director = owner.FindObject("GameDirector");
-        if (director !is null) {
-            director.GetComponent(@director_);   // 毎フレーム探さず、最初に 1 回だけ
-        }
-    }
-
-    void OnTriggerEnter(Collision@ other)
-    {
-        // …（弾が当たって体力が尽きたら）
-        if (director_ !is null) {
-            director_.AddKill(points, owner.transform.worldPosition);   // Director に点数を渡す
+  <h2 id="sokoban-stages">盤面は文字で書く</h2>
+  <p>ステージは <code>stages</code>（<code>array&lt;string&gt;</code>）に 1 ステージ 1 要素で入っていて、インスペクタで足したり並べ替えたりできます。行の区切りは <code>/</code> です。記号は倉庫番で広く使われている書き方に合わせています。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>記号</th><th>意味</th></tr></thead>
+    <tbody>
+      <tr><td><code>#</code></td><td>壁</td></tr>
+      <tr><td>（空白）</td><td>床</td></tr>
+      <tr><td><code>.</code></td><td>ゴール</td></tr>
+      <tr><td><code>$</code></td><td>箱</td></tr>
+      <tr><td><code>*</code></td><td>ゴールの上の箱</td></tr>
+      <tr><td><code>@</code></td><td>プレイヤー</td></tr>
+      <tr><td><code>+</code></td><td>ゴールの上のプレイヤー</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <script type="text/x-code" data-lang="as" data-file="SokobanBoard.as（抜粋）">
+    [Tooltip("ステージの盤面。行を / で区切る")]
+    array<string> stages = {
+        "########/#      #/# @ $ .#/#      #/########",
+        "#######/#. .  #/#  $  #/# $@  #/#     #/#######",
+        …
+    };
+  </script>
+  <p>読み込むときは、マスごとに「壁か」「ゴールか」「どの箱がいるか」の表（配列）を作り、マスの種類に合うプレハブを <code>InstantiatePrefab</code> で置きます。ステージを替えるときは、置いた物を全部 <code>Destroy</code> してから置き直します。</p>
+  <script type="text/x-code" data-lang="as" data-file="SokobanBoard.as（抜粋）">
+    for (int row = 0; row < height_; ++row) {
+        for (int col = 0; col < width_; ++col) {
+            const int cell = row * width_ + col;
+            const string mark = col < int(rows[row].length()) ? rows[row].substr(col, 1) : " ";
+            walls_[cell] = mark == "#";
+            goals_[cell] = mark == "." || mark == "*" || mark == "+";
+            @boxes_[cell] = null;
+            if (walls_[cell]) {
+                Spawn(wallPrefab, cell, "Wall");
+                continue;
+            }
+            Spawn(floorPrefab, cell, "Floor");
+            if (goals_[cell]) {
+                Spawn(goalPrefab, cell, "Goal");
+            }
+            if (mark == "$" || mark == "*") {
+                @boxes_[cell] = Spawn(boxPrefab, cell, "Box");
+            }
+            if (mark == "@" || mark == "+") {
+                playerCell = cell;
+            }
         }
     }
   </script>
-  <p>段階は <code>enum</code> で表し、Update の中で段階ごとに処理を分けています。</p>
-  <script type="text/x-code" data-lang="as" data-file="ShootingGameDirector.as（抜粋）">
-    enum ShootingPhase
-    {
-        Countdown,
-        Playing,
-        Finished
-    }
 
-    void Update()
-    {
-        const float dt = Time::DeltaTime();
-        if (phase_ == ShootingPhase::Countdown) {
-            UpdateCountdown(dt);
-        } else if (phase_ == ShootingPhase::Playing) {
-            UpdatePlaying(dt);
-        } else {
-            UpdateFinished();
+  <h2 id="sokoban-move">動けるかはマスの表で決める</h2>
+  <p>当たり判定（コライダー）は使っていません。進む先のマスが壁なら止まり、箱なら、その先が空いているときだけ箱ごと進みます。</p>
+  <script type="text/x-code" data-lang="as" data-file="SokobanBoard.as（抜粋）">
+    GameObject@ box = boxes_[next];
+    if (box !is null) {
+        const int beyond = Neighbor(next, dx, dy);
+        if (beyond < 0 || walls_[beyond] || boxes_[beyond] !is null) {
+            return;   // 箱の先が壁か箱なら押せない
         }
+        @boxes_[beyond] = box;
+        @boxes_[next] = null;
+        MoveTo(box, beyond, true);
     }
+    playerCell = next;
+    MoveTo(player_, next, true);
   </script>
+  <p>入力は <code>Input::IsActionTriggered</code> で押した瞬間だけを見るので、押し続けても 1 マスずつしか進みません。<code>Restart</code>（<kbd>R</kbd>）と <code>NextStage</code>（<kbd>Space</kbd>・<kbd>Enter</kbd>）は、このプロジェクトの <span class="path">InputActions.json</span> に足した入力アクションです。</p>
 
-  <h2 id="shooting-spawn">プレハブから出して、値を渡す</h2>
-  <p>敵と弾はプレハブにしてあり、インスペクタの <code>[Asset("Prefab")]</code> の欄で選べます。出した直後に位置を決め、スクリプトを取り出して速度などを入れます。</p>
-  <script type="text/x-code" data-lang="as" data-file="ShootingPlayer.as（抜粋）">
-    [Asset("Prefab")] [Tooltip("撃つ弾")]
-    string bulletPrefab = "Application/Assets/Prefabs/Shooting/PlayerBullet.prefab";
-
-    private void Fire(float offsetX)
+  <h2 id="sokoban-tween">動きはイージングで補間する</h2>
+  <p>マスの表はすぐ書き換え、見た目だけを <code>Tween::MoveTo</code> で <code>moveTime</code> 秒かけて追いかけさせています。前の動きが終わる前に次の手が来たら、<code>KillByLink(object, true)</code> で前の動きを終わりまで飛ばしてから動かします。</p>
+  <script type="text/x-code" data-lang="as" data-file="SokobanBoard.as（抜粋）">
+    private void MoveTo(GameObject@ object, int cell, bool animate = false)
     {
-        GameObject@ bullet = owner.InstantiatePrefab(bulletPrefab, "PlayerBullet");
-        if (bullet is null) {
+        Tween::KillByLink(object, true);
+        const Vector3 target = CellPosition(cell, object.transform.position.y);
+        if (!animate || moveTime <= 0.0f) {
+            object.transform.position = target;
             return;
         }
-        bullet.transform.position = owner.transform.worldPosition + Vector3(offsetX, 0.0f, 1.1f);
-
-        ShootingBullet@ shot;
-        if (bullet.GetComponent(@shot)) {
-            shot.velocity = Vector3(0.0f, 0.0f, bulletSpeed);   // 弾の速度は撃つ側が決める
-        }
+        Tween::MoveTo(object, target, moveTime).SetEase(EaseType::EaseOutQuad).SetLink(object);
     }
   </script>
-  <p>弾の <code>velocity</code> には <code>[Transient]</code> が付いています。インスペクタで見えますが、プレハブやシーンには保存されない、実行中だけの値です。</p>
 
-  <h2 id="shooting-layers">レイヤーで当たりを整理する</h2>
-  <p>レイヤーは <code>Player</code>・<code>Enemy</code>・<code>PlayerBullet</code>・<code>EnemyBullet</code> を使い、ゲームのシーンでは次の 3 つの組み合わせだけを当てています。</p>
-  <div class="table-wrap">
-  <table>
-    <thead><tr><th>組み合わせ</th><th>起きること</th></tr></thead>
-    <tbody>
-      <tr><td><code>Enemy</code> × <code>Player</code></td><td>体当たり。自機は被弾し、敵は爆発する</td></tr>
-      <tr><td><code>PlayerBullet</code> × <code>Enemy</code></td><td>敵に弾が当たる</td></tr>
-      <tr><td><code>EnemyBullet</code> × <code>Player</code></td><td>自機に敵の弾が当たる</td></tr>
-    </tbody>
-  </table>
-  </div>
-  <p>当たる相手が限られているので、弾のスクリプトは相手を見分けずに「何かに当たったら消える」だけで済んでいます。自機と敵は <code>other.layer</code> で相手の種類を見分けます。コライダーはすべてトリガーで、位置は直接書いて動かしています。</p>
-  <script type="text/x-code" data-lang="as" data-file="ShootingPlayer.as（抜粋）">
-    void OnTriggerEnter(Collision@ other)
+  <h2 id="sokoban-particles">パーティクルで知らせる</h2>
+  <p>パーティクルはシーンに 1 つずつ置いておき、出す場所へ動かして <code>Emit(数)</code> で粒を出します。粒の色・大きさ・速さはインスペクタで決め、スクリプトは出すきっかけと場所だけを持ちます。箱がゴールに乗るとそのマスで光の粒を、クリアすると盤面の上の 2 か所で紙吹雪を出します。</p>
+  <script type="text/x-code" data-lang="as" data-file="SokobanBoard.as（抜粋）">
+    private void Emit(GameObject@ emitter, const Vector3 &in position, int count)
     {
-        if (other.layer == CollisionLayer::Enemy || other.layer == CollisionLayer::EnemyBullet) {
-            TakeHit();
+        if (emitter is null) {
+            return;
+        }
+        emitter.transform.position = position;
+        emitter.transform.UpdateMatrix();      // 動かした位置をすぐ反映
+        ParticleSystem@ particles = emitter.particleSystem;
+        if (particles.exists) {
+            particles.Emit(count);
         }
     }
   </script>
+  <div class="callout tip"><p>粒の飛ぶ向きは「速度」モジュールで決まります。「形」が決めるのは粒の出る位置だけなので、速度モジュールを切ると、粒は初速 0 のまま重力で落ちるだけになります。紙吹雪は速度モジュールの「ランダムな向き」で四方へはじけさせ、「外力」の重力と抵抗でゆっくり降らせています。</p></div>
 
-  <h2 id="shooting-feel">手応えの演出</h2>
-  <div class="table-wrap">
-  <table>
-    <thead><tr><th>演出</th><th>やり方</th><th>場所</th></tr></thead>
-    <tbody>
-      <tr><td>爆発と火花</td><td>シーンに置いたパーティクルを出す位置へ動かし、<code>transform.UpdateMatrix()</code> の後に <code>Emit(数)</code></td><td><code>ShootingEffects</code></td></tr>
-      <tr><td>画面の揺れ</td><td><code>CameraShake::PlayPreset("Hit", 強さ)</code> などを被害の大きさで使い分ける</td><td><code>ShootingEffects</code></td></tr>
-      <tr><td>被弾したときの光</td><td>マテリアルの <code>emissive</code> を一瞬明るくして戻す</td><td><code>ShootingEnemy</code></td></tr>
-      <tr><td>やられたときのスロー</td><td><code>Time::SetTimeScale(0.3f)</code>。各シーンの Start で <code>1.0f</code> に戻している</td><td><code>ShootingGameDirector</code></td></tr>
-      <tr><td>文字が弾んで出る</td><td><code>Tween::To</code> で文字の大きさを 1.6 倍から 1 倍へ（<code>EaseOutBack</code>）。スロー中も動くように <code>TweenUpdate::Unscaled</code></td><td><code>ShootingGameDirector</code></td></tr>
-      <tr><td>スコアの数え上げ</td><td><code>Tween::To(0.0f, float(score_), …)</code> で表示の数字を増やす</td><td><code>ShootingResultMenu</code></td></tr>
-    </tbody>
-  </table>
-  </div>
+  <h2 id="sokoban-reload">読み直しても続きから遊べるようにする</h2>
+  <p>スクリプトを保存して読み直すと、保存されるメンバ変数は値を引き継ぎ、<code>private</code> のメンバ変数は初期値に戻ります（<a href="#inspector-reload">読み直しのときの値</a>）。盤面の表を <code>private</code> だけで持つと、読み直した後は動けなくなります。倉庫番は、続きから遊ぶのに要る値を <code>[Hidden]</code>（インスペクタには出さないが、保存はする）のメンバ変数に持ち、<code>OnScriptReloaded</code> で盤面を組み直しています。</p>
+  <script type="text/x-code" data-lang="as" data-file="SokobanBoard.as（抜粋）">
+    [Hidden]
+    int stage = 0;
 
-  <h2 id="shooting-menu">メニューの作り方</h2>
-  <p>タイトルとリザルトのボタンは、UI 画像に UI ボタンを付け、別の UI テキストを重ねたものです。キーとパッドだけでも選べるように、Start で最初のボタンに <code>Focus()</code> を呼び、選択が外れたら選び直しています。ゲームのシーンの Start では <code>UI::ClearFocus()</code> を呼んで、操作をゲームに戻します。</p>
-  <script type="text/x-code" data-lang="as" data-file="ShootingTitleMenu.as（抜粋）">
-    void Update()
+    [Hidden]
+    int playerCell = 0;
+
+    [Hidden]
+    array<int> boxCells;
+
+    [Hidden]
+    int moves = 0;
+
+    // 置いた物を名前で探して消し、ステージを組み直してから、プレイヤーと箱を読み直す前の位置へ戻す
+    void OnScriptReloaded()
     {
-        // 選択が外れていたら（マウスで余所を押したなど）、スタートのボタンを選び直す
-        if (!UI::HasFocus()) {
-            startButton.uiButton.Focus();
-        }
-        if (startButton.uiButton.wasClicked) {
-            Launch();
-        }
+        const int savedPlayer = playerCell;
+        const array<int> savedBoxes = boxCells;
+        const int savedMoves = moves;
+        …
+        LoadStage(stage);
+        RestoreState(savedPlayer, savedBoxes, savedMoves);
     }
   </script>
+  <p>置いた物の控え（<code>private</code> の配列）も読み直しで空になるので、<code>FindObject</code> で名前から探して消しています。<code>FindObject</code> は消す予定の物を返さないので、見つからなくなるまで繰り返せば全部消えます。</p>
 
-  <h2 id="shooting-lessons">自分のゲームに持ち帰ること</h2>
+  <h2 id="sokoban-lessons">自分のゲームに持ち帰ること</h2>
   <ul>
-    <li>状態は進行役の 1 か所に集め、ほかのスクリプトは知らせる・聞くだけにする</li>
-    <li>ほかのオブジェクトは Start で 1 回だけ探して控える（<code>[ObjectRef]</code> で繋げるものは繋ぐ）</li>
-    <li>何度も出すものはプレハブにし、出した直後にスクリプトへ値を入れる</li>
-    <li>当たる組み合わせをレイヤーで絞り、スクリプトの判定を単純にする</li>
-    <li>シーンをまたぐ値は Session、残す値は SaveFile</li>
-    <li>時間の速さ（<code>Time::SetTimeScale</code>）を変えたら、次のシーンの Start で戻す</li>
+    <li>マス目のゲームは、見た目とは別にマスの表（配列）を持ち、動けるかは表で決める</li>
+    <li>ステージはデータ（文字や配列）にして、増やすときにコードを触らない</li>
+    <li>見た目と大きさはプレハブに任せ、スクリプトは置く場所だけを決める</li>
+    <li>表はすぐ書き換え、見た目は Tween で後から追いかけさせる</li>
+    <li>パーティクルはシーンに置いて設定し、スクリプトからは出す場所と数だけを渡す</li>
+    <li>読み直しで続きを保ちたい値は、<code>[Hidden]</code> などの保存されるメンバ変数に持つ</li>
     <li>クラス名には機能の名前を頭に付けて、ぶつからないようにする</li>
   </ul>
 </article>
@@ -6218,7 +6199,7 @@ kbd {
     <tbody>
       <tr><td>メニューの後でキャラが動かない</td><td>UI が選ばれたままで、入力が UI の場面になっている。<code>UI::ClearFocus()</code></td></tr>
       <tr><td>ボタンをキー・パッドで選べない</td><td>選択はキー・パッドだけでは始まらない。メニューを開いたら <code>button.uiButton.Focus()</code></td></tr>
-      <tr><td><code>InputAction::Fire</code> がコンパイルエラーになる</td><td>そのアクションがプロジェクトの <span class="path">InputActions.json</span> に無い（Fire は見本のシューティングで足したもの）。足してエディタを起動し直す。<a href="#editor-settings-keyconfig">入力アクション</a></td></tr>
+      <tr><td><code>InputAction::Restart</code> がコンパイルエラーになる</td><td>そのアクションがプロジェクトの <span class="path">InputActions.json</span> に無い（Restart は見本の倉庫番で足したもの）。足してエディタを起動し直す。<a href="#editor-settings-keyconfig">入力アクション</a></td></tr>
       <tr><td>UI が表示されない</td><td>オブジェクトが無効・色の不透明度（w）が 0・位置が 1920×1080 の外・ほかの UI の後ろ（描画順）</td></tr>
       <tr><td>ボタンの文字が見えない</td><td>文字のオブジェクトの描画順が、ボタンの画像以下になっている。1 つ大きくする</td></tr>
       <tr><td>UI テキストと UI 画像を同じオブジェクトに付けられない</td><td>描くコンポーネントは 1 つのオブジェクトに 1 つまで。別のオブジェクトにして重ねる</td></tr>
@@ -6294,11 +6275,11 @@ kbd {
   <ul>
     <li><strong>オブジェクト</strong>：エディタで作ったオブジェクトのファイル名には、後ろにランダムな印が付きます（<span class="path">Coin_7f3a91c2.json</span>）。2 人が同じ名前のオブジェクトを作っても、ファイルは重なりません。</li>
     <li><strong>参照</strong>：インスペクタで繋いだ <code>[ObjectRef]</code> は、名前ではなくオブジェクトの ID で覚えています。ただし <code>owner.FindObject("名前")</code> で探すオブジェクトは、シーンに 1 つだけにします（同じ名前が 2 つあると、どちらが返るか分かりません）。</li>
-    <li><strong>スクリプトのクラス</strong>：クラス名はフォルダが違ってもプロジェクト全体で 1 つです。頭に機能の名前を付けます（見本は <code>ShootingPlayer</code>・<code>ShootingEnemy</code> のように全部に <code>Shooting</code>）。Project の <span class="ui">スクリプトを作成</span> は、同じ名前のスクリプトやコンポーネントがあると作らずに理由を出します。</li>
+    <li><strong>スクリプトのクラス</strong>：クラス名はフォルダが違ってもプロジェクト全体で 1 つです。頭に機能の名前を付けます（見本の倉庫番は <code>SokobanBoard</code>）。Project の <span class="ui">スクリプトを作成</span> は、同じ名前のスクリプトやコンポーネントがあると作らずに理由を出します。</li>
   </ul>
   <p>それでも 2 人が同じクラス名を作って pull で出会うと、コンパイルに失敗し、Console に両方の場所が出ます。</p>
   <script type="text/x-code" data-lang="text" data-file="Console">
-    クラス Enemy が 2 か所で宣言されています（Boss/Enemy.as 3 行目・Shooting/Enemy.as 3 行目）。クラス名はフォルダが違ってもスクリプト全体で 1 つにしてください
+    クラス Enemy が 2 か所で宣言されています（Boss/Enemy.as 3 行目・Field/Enemy.as 3 行目）。クラス名はフォルダが違ってもスクリプト全体で 1 つにしてください
   </script>
   <p>まだシーンで使っていない方の、ファイル名とクラス名を変えます。シーンの JSON はコンポーネントを型の名前（<code>"type": "Enemy"</code>）で覚えているので、使っている方を変えると、そのコンポーネントは「読み込めない型」になります（値は残るので、名前を戻せば元に戻ります）。</p>
 
@@ -6465,8 +6446,8 @@ kbd {
   <h2 id="format-config">プロジェクトの設定（Application/Config/EngineSettings）</h2>
   <script type="text/x-code" data-lang="json" data-file="Project.json">
     {
-        "initialScene": "ShootingTitle",
-        "name": "Shooting",
+        "initialScene": "Sokoban",
+        "name": "Sokoban",
         "version": "1.0"
     }
   </script>
@@ -6564,7 +6545,7 @@ kbd {
   <dl class="glossary">
     <dt>AngelScript</dt><dd>CoreEngine のスクリプト言語。C++ に似た文法で、保存するとその場で反映される。</dd>
     <dt>CVar</dt><dd>名前の付いたエンジンの設定値（<code>sys.Physics.Gravity</code> など）。Project Settings・Console・スクリプトから変えられる。</dd>
-    <dt>Director（進行役）</dt><dd>ゲーム全体の状態（段階・スコア・残機）を 1 か所で持つスクリプトの作り方。<a href="#shooting-director">見本のシューティング</a></dd>
+    <dt>Director（進行役）</dt><dd>ゲーム全体の状態（段階・スコア・残機）を 1 か所で持つスクリプトの作り方。</dd>
     <dt>GUID</dt><dd>アセットごとの ID。<span class="path">.meta</span> に書かれ、名前を変えても参照が切れない。</dd>
     <dt>HUD</dt><dd>スコアや体力など、ゲーム画面に重ねて出す情報。</dd>
     <dt>PBR</dt><dd>物理ベースの質感の表し方（ベースカラー・メタリック・ラフネス）。</dd>
@@ -7154,7 +7135,7 @@ void Update()
     id: "InputAction", kind: "enum", cat: "入力", brief: "操作の名前（プロジェクトごと）",
     keywords: "アクション キーコンフィグ 割り当て 入力 操作",
     summary: "「前進」「ジャンプ」のような操作の名前です。<strong>値の並びはプロジェクトごと</strong>で、<span class=\"path\">Application/Config/EngineSettings/InputActions.json</span>（エディタの <span class=\"ui\">Project Settings</span>）で決めます。アクションを足してもエンジンのビルドし直しは要りません。",
-    intro: "<p>下の表は、ファイルが無いときにエンジンが使う既定の並びです。サンプルの Shooting はこれに <code>Fire</code>（ショット）を足しています。値（数値）は並び順で変わるので、スクリプトでは必ず名前で書きます。</p>" +
+    intro: "<p>下の表は、ファイルが無いときにエンジンが使う既定の並びです。見本の倉庫番はこれに <code>Restart</code>（やり直し）と <code>NextStage</code>（次のステージ）を足しています。値（数値）は並び順で変わるので、スクリプトでは必ず名前で書きます。</p>" +
       "<p>エディタのあるビルドでは、末尾にエディタ用のアクション（<code>EditorFocusSelection</code>・<code>EditorGizmoTranslate</code>・<code>EditorGizmoRotate</code>・<code>EditorGizmoScale</code>）が足されます。ゲームでは使いません。</p>" +
       "<p>各アクションは<strong>場面</strong>（Game / UI）を持ちます。UI のボタンなどが選ばれている間は UI の場面になり、Game のアクションは押されていない扱いになります（決定ボタンでキャラが跳ばないようにするため）。</p>",
     values: [
@@ -7322,7 +7303,7 @@ void OnTriggerEnter(Collision@ other)
     id: "CollisionLayer", kind: "enum", cat: "物理・当たり判定", brief: "当たり判定のレイヤー（プロジェクトごと）",
     keywords: "レイヤー 当たり判定 グループ 衝突",
     summary: "当たり判定のグループです。<strong>名前の並びはプロジェクトごと</strong>で、<span class=\"path\">Application/Config/EngineSettings/Layers.json</span>（エディタの <span class=\"ui\">Project Settings</span>）で決めます。最大 32 個、先頭は必ず <code>Default</code> です。",
-    intro: "<p>下はサンプル（Shooting・Sandbox）の並びです。ファイルが無いプロジェクトでは <code>Default</code> だけになります。どのレイヤーとどのレイヤーが当たるかは、シーンごとの設定（<span class=\"path\">_scene.json</span> の <code>collision</code>）で決まります。</p>",
+    intro: "<p>下はサンプル（Sandbox）の並びです。ファイルが無いプロジェクトでは <code>Default</code> だけになります。どのレイヤーとどのレイヤーが当たるかは、シーンごとの設定（<span class=\"path\">_scene.json</span> の <code>collision</code>）で決まります。</p>",
     values: [
       ["Default", 0, "何も決めていないときのレイヤー（必ずある）"],
       ["Player", 1, "（サンプルの例）自機"],
@@ -7969,7 +7950,7 @@ CameraShake::Play(p);`
     id: "Session", kind: "namespace", cat: "データ・乱数・設定", brief: "シーンをまたぐ値",
     keywords: "セッション 受け渡し 共有 スコア シーン間 グローバル",
     summary: "シーンを切り替えても消えない値の置き場です。スコアを結果画面へ渡す、といった用途に使います。アプリを終了すると消え、ファイルには書きません（残したいときは <a href=\"#api-SaveFile\">SaveFile</a>）。",
-    intro: "<p>1 つの名前には 1 つの値だけを持ちます。別の種類の値を書くと置き換わります。名前は <code>\"Shooting.Score\"</code> のようにゲーム名などを頭に付けると、ぶつかりにくくなります。</p>",
+    intro: "<p>1 つの名前には 1 つの値だけを持ちます。別の種類の値を書くと置き換わります。名前は <code>\"MyGame.Score\"</code> のようにゲーム名などを頭に付けると、ぶつかりにくくなります。</p>",
     sections: [
       {
         title: "関数", members: [
@@ -7993,7 +7974,7 @@ CameraShake::Play(p);`
     id: "SaveFile", kind: "class", cat: "データ・乱数・設定", brief: "セーブデータ（JSON）",
     keywords: "セーブ 保存 ロード 読み込み ハイスコア 記録 ファイル JSON",
     summary: "<span class=\"path\">Application/Saved/</span> の下の JSON ファイル 1 つを読み書きします。ハイスコアや設定の保存に使います。",
-    intro: "<p><code>SaveFile(\"Shooting/Record.json\")</code> で作ると、そのファイルがあれば中身を読み込みます（無ければ空）。値を変えた後は <strong><code>Save()</code> を呼ぶまでファイルに書かれません</strong>。パスに絶対パスや <code>..</code> は使えません（例外になります）。</p>",
+    intro: "<p><code>SaveFile(\"MyGame/Record.json\")</code> で作ると、そのファイルがあれば中身を読み込みます（無ければ空）。値を変えた後は <strong><code>Save()</code> を呼ぶまでファイルに書かれません</strong>。パスに絶対パスや <code>..</code> は使えません（例外になります）。</p>",
     sections: [
       {
         title: "作る", members: [
@@ -8466,7 +8447,7 @@ void Update()
     notes: "<ul><li>ダメージ数値や名札は、ビルボードを「カメラに向く」、深度を「常に手前」にすると見やすくなります。</li><li>インスペクタの「描画順」は保存されません。</li></ul>",
     examples: [
       {
-        title: "例：浮かび上がって消える点数（サンプル Shooting より）",
+        title: "例：浮かび上がって消える点数",
         code: `
 private Vector4 color_;
 private float age_ = 0.0f;
@@ -8593,7 +8574,7 @@ void LateUpdate()   // 追いかける相手が動いた後に動かす
     accessor: "", title: "ボリュメトリック雲（VolumetricCloud）", brief: "立体的な雲",
     keywords: "雲 空 天候 天気",
     summary: "立体的な雲を描きます。インスペクタの「スタイル」「天候」で雰囲気を選び、「配置ペイント（ウェザーマップ）」で雲を置く場所を塗れます。",
-    intro: "<p>値は CVar <code>r.Cloud.*</code> としてシーンの <span class=\"path\">_environment.json</span> に、塗った配置は <span class=\"path\">_cloudPaint.bin</span> に保存されます。雲を消すには <code>r.Cloud.Enabled</code> をオフにします（サンプル Shooting のゲームのシーンは雲を切っています）。</p>",
+    intro: "<p>値は CVar <code>r.Cloud.*</code> としてシーンの <span class=\"path\">_environment.json</span> に、塗った配置は <span class=\"path\">_cloudPaint.bin</span> に保存されます。雲を消すには <code>r.Cloud.Enabled</code> をオフにします（見本の倉庫番のシーンも雲を切っています）。</p>",
     see: [["api-SkyBox", "空と大気散乱"]]
   },
 
@@ -8939,7 +8920,7 @@ void Update()
     notes: "<ul><li>既定では重力が掛かりません（「外力」モジュールで設定します）。</li><li>決まった場所で出すなら、パーティクルのオブジェクトを出す位置へ動かし、<code>transform.UpdateMatrix()</code> を呼んでから <code>Emit</code> します。</li></ul>",
     examples: [
       {
-        title: "例：その場で爆発を出す（サンプル Shooting より）",
+        title: "例：その場で爆発を出す",
         code: `
 [ObjectRef] [Tooltip("爆発のパーティクル")]
 GameObject@ explosion;
