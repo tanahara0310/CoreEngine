@@ -2821,14 +2821,25 @@ kbd {
   </ul>
 
   <h2 id="prefab-edit">プレハブを直す</h2>
-  <p>プレハブは、<strong>Project で選んで Inspector で直す</strong>か、<strong>置いたオブジェクトを直してからプレハブへ書き戻す</strong>かのどちらかで直します。</p>
+  <p>プレハブは、<strong>プレハブモードで開いて直す</strong>・<strong>Project で選んで Inspector で直す</strong>・<strong>置いたオブジェクトを直してからプレハブへ書き戻す</strong>のどれかで直します。</p>
+
+  <h3 id="prefab-mode">プレハブモードで開いて直す</h3>
+  <p>プレハブだけを表示して、部品の追加やコライダーの形も含めて直すモードです。</p>
+  <ul>
+    <li><strong>開く</strong>：Project でプレハブをダブルクリックするか、プレハブを選んで Inspector の <span class="ui">◈ プレハブモードで開く</span>。シーンに置いたものなら、Hierarchy の行を右クリック <span class="ui">プレハブを開く</span>。</li>
+    <li><strong>見分け方</strong>：Hierarchy の上に青い帯、Game ビューの外周に青い枠と <span class="ui">PREFAB</span> の札、上のバーに青い <span class="ui">◈ プレハブモード</span> が出ます。シーンのほかのオブジェクトは表示されず、選べません。</li>
+    <li><strong>保存</strong>：直した値は、ドラッグを離した・入力欄を離れたたびにプレハブへ保存し、シーンに置いた同じプレハブのオブジェクトにも反映します（自動保存）。</li>
+    <li><strong>戻る</strong>：Hierarchy の帯か上のバーの <span class="ui">◀ シーンへ戻る</span>。カメラも開く前の視点に戻ります。▶ で再生したときも、シーンへ戻ってから再生します。</li>
+    <li><strong>Undo</strong>：開いている間の <kbd>Ctrl</kbd>+<kbd>Z</kbd> は、プレハブモードの中の操作を戻します。戻った後は、開いてから戻るまでの変更が <span class="ui">○○.prefab を編集</span> の 1 件になります。</li>
+    <li>プレハブモードの間は、シーンにオブジェクトを足す・複製する・消す操作と、シーンの保存はできません。</li>
+  </ul>
 
   <h3 id="prefab-edit-asset">Project で選んで直す</h3>
   <p>Project でプレハブ（<span class="path">.prefab</span>）を選ぶと、Inspector の <span class="ui">プレハブの中身</span> にコンポーネントと値が出ます。値を変えると、ドラッグを離した・入力欄を離れたときにプレハブのファイルへ保存し、シーンでそのプレハブから置いたオブジェクトにもすぐ反映します（それぞれが上書きした値は保たれます）。</p>
   <ul>
     <li><kbd>Ctrl</kbd>+<kbd>Z</kbd> で、プレハブを編集する前の中身に戻せます。</li>
-    <li>コンポーネントの <span class="ui">⋮</span> から <span class="ui">既定値へ戻す</span>・<span class="ui">外す</span> が使えます。コンポーネントを足すのは、置いたオブジェクトで行って <span class="ui">プレハブへ適用</span> します。</li>
-    <li>コライダーの形のように専用の欄で直す部品は、ここでは直せません。置いたオブジェクトで直してください。</li>
+    <li>コンポーネントの <span class="ui">⋮</span> から <span class="ui">既定値へ戻す</span>・<span class="ui">外す</span> が使えます。</li>
+    <li>部品を足す・コライダーの形のように専用の欄で直す部品は、プレハブモードで直してください。</li>
     <li>シーンの別のオブジェクトを指す欄（<code>[ObjectRef]</code>）は、プレハブには保存されません。</li>
   </ul>
 

@@ -36,6 +36,7 @@ namespace CoreEngine
         std::size_t undoCount = 0;          ///< 取り消せる操作の数
 
         PlaybackState playback = PlaybackState::Editing; ///< 再生の状態
+        std::string prefabMode;             ///< プレハブモードで開いているプレハブのファイル名（開いていなければ空）
         std::size_t snapshotObjects = 0;    ///< 再生の前に控えたオブジェクトの数
         double snapshotSeconds = 0.0;       ///< 控えるのにかかった秒数
         float playTime = 0.0f;              ///< 再生を始めてから進んだゲームの時間（秒）

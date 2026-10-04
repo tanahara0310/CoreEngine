@@ -181,10 +181,18 @@ namespace CoreEngine
 
         // アクティブかつ表示状態で削除マークされていないオブジェクトのみ登録
         for (auto& obj : objects_) {
-            if (obj && obj->IsActive() && !obj->IsMarkedForDestroy()) {
-                renderManager->AddRenderItem(obj->BuildRenderItem());
+            if (!obj || !obj->IsActive() || obj->IsMarkedForDestroy()) {
+                continue;
             }
+            if (!IsShownInIsolation(*obj) && obj->GetRenderPassType() != RenderPassType::SkyBox) {
+                continue;
+            }
+            renderManager->AddRenderItem(obj->BuildRenderItem());
         }
+    }
+
+    bool GameObjectManager::IsShownInIsolation(const GameObject& object) const {
+        return !isolatedObject_.IsValid() || object.GetObjectId() == isolatedObject_;
     }
 
     void GameObjectManager::CleanupDestroyed() {

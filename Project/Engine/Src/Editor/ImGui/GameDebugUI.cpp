@@ -614,6 +614,7 @@ namespace CoreEngine
         if (sceneDebugEditor_) {
             status.sceneName = sceneDebugEditor_->GetSceneName();
             status.sceneSaved = !sceneDebugEditor_->IsSceneDirty();
+            status.prefabMode = sceneDebugEditor_->GetPrefabModeFileName();
         }
         if (sceneManager_ && status.sceneName.empty()) {
             status.sceneName = sceneManager_->GetCurrentSceneName();

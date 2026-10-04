@@ -92,6 +92,12 @@ namespace CoreEngine::Editor
             return false;
         }
 
+        // プレハブモードのまま再生しない（直した値は保存済みなので閉じるだけ）
+        if (SceneDebugEditor* const editor = gameDebugUI_ ? gameDebugUI_->GetSceneDebugEditor() : nullptr;
+            editor && editor->IsInPrefabMode()) {
+            editor->ClosePrefabMode();
+        }
+
         snapshot_.reset();
         captureSeconds_ = 0.0;
         timeScale_ = Time::TimeScale();
