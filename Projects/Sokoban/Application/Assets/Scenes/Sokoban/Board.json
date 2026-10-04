@@ -1,0 +1,48 @@
+{
+    "active": true,
+    "components": [
+        {
+            "type": "Transform",
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "type": "SokobanBoard",
+            "enabled": true,
+            "parameters": {
+                "statusText": {
+                    "ref": "55f104a83c4554b8"
+                },
+                "messageText": {
+                    "ref": "2aa5007afb551793"
+                },
+                "goalEffect": {
+                    "ref": "0356fd2d659a46cb"
+                },
+                "clearEffect": {
+                    "ref": "d28cfe88ceba436f"
+                }
+            }
+        }
+    ],
+    "id": "8fc1231952986aeb",
+    "name": "Board",
+    "order": 2
+}

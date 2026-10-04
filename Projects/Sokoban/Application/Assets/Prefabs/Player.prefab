@@ -1,0 +1,56 @@
+{
+    "components": [
+        {
+            "type": "Transform",
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    0.4,
+                    0.4,
+                    0.4
+                ],
+                "translate": [
+                    0.0,
+                    0.4,
+                    0.0
+                ]
+            }
+        },
+        {
+            "type": "MeshRenderer",
+            "enabled": true,
+            "parameters": {
+                "model": {
+                    "guid": "e16552a6-c74d-f458-71fe-2810a97c3777",
+                    "path": "Engine/Assets/Models/Primitives/Sphere/sphere.obj"
+                }
+            }
+        },
+        {
+            "type": "Material",
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    0.2,
+                    0.5,
+                    0.95,
+                    1.0
+                ],
+                "emissive": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "metallic": 0.0,
+                "roughness": 0.4
+            }
+        }
+    ]
+}
