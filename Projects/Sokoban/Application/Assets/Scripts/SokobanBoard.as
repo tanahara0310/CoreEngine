@@ -35,6 +35,15 @@ class SokobanBoard : ScriptComponent
     [Color] [Tooltip("ゴールに乗った箱の色")]
     Vector4 boxOnGoalColor = Vector4(0.3f, 0.8f, 0.35f, 1.0f);
 
+    [Range(0.0f, 0.5f)] [Tooltip("1 マス動くのにかける秒数（0 なら一瞬で動く）")]
+    float moveTime = 0.12f;
+
+    [ObjectRef] [Tooltip("箱がゴールに乗ったときに出すパーティクル")]
+    GameObject@ goalEffect;
+
+    [ObjectRef] [Tooltip("クリアしたときに出す紙吹雪のパーティクル")]
+    GameObject@ clearEffect;
+
     [Hidden]
     int stage = 0;
 
@@ -194,14 +203,20 @@ class SokobanBoard : ScriptComponent
             }
             @boxes_[beyond] = box;
             @boxes_[next] = null;
-            MoveTo(box, beyond);
+            MoveTo(box, beyond, true);
             PaintBox(beyond);
+            if (goals_[beyond]) {
+                Emit(goalEffect, CellPosition(beyond, 0.5f), 40);
+            }
         }
         playerCell = next;
-        MoveTo(player_, next);
+        MoveTo(player_, next, true);
         ++moves;
         SyncBoxCells();
         cleared_ = IsCleared();
+        if (cleared_) {
+            Celebrate();
+        }
         RefreshTexts();
     }
 
@@ -301,12 +316,46 @@ class SokobanBoard : ScriptComponent
         return object;
     }
 
-    private void MoveTo(GameObject@ object, int cell)
+    // マスの位置へ動かす。animate なら moveTime 秒かけて、動き出しを速く止まり際をゆっくりにする
+    private void MoveTo(GameObject@ object, int cell, bool animate = false)
     {
-        const Vector3 position = object.transform.position;
+        Tween::KillByLink(object, true);
+        const Vector3 target = CellPosition(cell, object.transform.position.y);
+        if (!animate || moveTime <= 0.0f) {
+            object.transform.position = target;
+            return;
+        }
+        Tween::MoveTo(object, target, moveTime).SetEase(EaseType::EaseOutQuad).SetLink(object);
+    }
+
+    // マスの中心の位置（高さは y）
+    private Vector3 CellPosition(int cell, float y)
+    {
         const float x = float(cell % width_) - float(width_ - 1) * 0.5f;
         const float z = float(height_ - 1) * 0.5f - float(cell / width_);
-        object.transform.position = Vector3(x, position.y, z);
+        return Vector3(x, y, z);
+    }
+
+    // 盤面の上の左右 2 か所で紙吹雪をはじけさせる
+    private void Celebrate()
+    {
+        const float x = float(width_) * 0.25f;
+        Emit(clearEffect, Vector3(-x, 3.0f, 0.0f), 160);
+        Emit(clearEffect, Vector3(x, 3.0f, 0.0f), 160);
+    }
+
+    // パーティクルを出す場所へ動かし、行列を送り直してから粒を出す
+    private void Emit(GameObject@ emitter, const Vector3 &in position, int count)
+    {
+        if (emitter is null) {
+            return;
+        }
+        emitter.transform.position = position;
+        emitter.transform.UpdateMatrix();
+        ParticleSystem@ particles = emitter.particleSystem;
+        if (particles.exists) {
+            particles.Emit(count);
+        }
     }
 
     // 隣のマス。盤面の外なら -1

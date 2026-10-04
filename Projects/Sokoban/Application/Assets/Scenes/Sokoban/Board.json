@@ -32,6 +32,12 @@
                 },
                 "messageText": {
                     "ref": "2aa5007afb551793"
+                },
+                "goalEffect": {
+                    "ref": "0356fd2d659a46cb"
+                },
+                "clearEffect": {
+                    "ref": "d28cfe88ceba436f"
                 }
             }
         }
