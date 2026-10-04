@@ -35,7 +35,18 @@ class SokobanBoard : ScriptComponent
     [Color] [Tooltip("ゴールに乗った箱の色")]
     Vector4 boxOnGoalColor = Vector4(0.3f, 0.8f, 0.35f, 1.0f);
 
-    private int stage_ = 0;
+    [Hidden]
+    int stage = 0;
+
+    [Hidden]
+    int playerCell = 0;
+
+    [Hidden]
+    array<int> boxCells;
+
+    [Hidden]
+    int moves = 0;
+
     private int width_ = 0;
     private int height_ = 0;
     private array<bool> walls_;
@@ -43,8 +54,6 @@ class SokobanBoard : ScriptComponent
     private array<GameObject@> boxes_;
     private array<GameObject@> spawned_;
     private GameObject@ player_;
-    private int playerCell_ = 0;
-    private int moves_ = 0;
     private bool cleared_ = false;
     private Vector4 boxColor_;
 
@@ -53,18 +62,38 @@ class SokobanBoard : ScriptComponent
         LoadStage(0);
     }
 
+    // 置いた物を名前で探して消し、ステージを組み直してから、プレイヤーと箱を読み直す前の位置へ戻す
+    void OnScriptReloaded()
+    {
+        const int savedPlayer = playerCell;
+        const array<int> savedBoxes = boxCells;
+        const int savedMoves = moves;
+
+        const array<string> names = { "Floor", "Wall", "Goal", "Box", "Player" };
+        for (uint i = 0; i < names.length(); ++i) {
+            GameObject@ object = owner.FindObject(names[i]);
+            while (object !is null) {
+                object.Destroy();
+                @object = owner.FindObject(names[i]);
+            }
+        }
+        spawned_.resize(0);
+        LoadStage(stage);
+        RestoreState(savedPlayer, savedBoxes, savedMoves);
+    }
+
     void Update()
     {
         if (width_ == 0) {
             return;
         }
         if (Input::IsActionTriggered(InputAction::Restart)) {
-            LoadStage(stage_);
+            LoadStage(stage);
             return;
         }
         if (cleared_) {
             if (Input::IsActionTriggered(InputAction::NextStage)) {
-                LoadStage((stage_ + 1) % int(stages.length()));
+                LoadStage((stage + 1) % int(stages.length()));
             }
             return;
         }
@@ -127,11 +156,11 @@ class SokobanBoard : ScriptComponent
                     @boxes_[cell] = Spawn(boxPrefab, cell, "Box");
                 }
                 if (mark == "@" || mark == "+") {
-                    playerCell_ = cell;
+                    playerCell = cell;
                 }
             }
         }
-        @player_ = Spawn(playerPrefab, playerCell_, "Player");
+        @player_ = Spawn(playerPrefab, playerCell, "Player");
 
         for (int cell = 0; cell < cells; ++cell) {
             if (boxes_[cell] !is null) {
@@ -143,8 +172,9 @@ class SokobanBoard : ScriptComponent
             PaintBox(cell);
         }
 
-        stage_ = index;
-        moves_ = 0;
+        stage = index;
+        moves = 0;
+        SyncBoxCells();
         cleared_ = false;
         RefreshTexts();
     }
@@ -152,7 +182,7 @@ class SokobanBoard : ScriptComponent
     // 1 マス進む。先が箱なら、その先が空いているときだけ押す
     private void TryMove(int dx, int dy)
     {
-        const int next = Neighbor(playerCell_, dx, dy);
+        const int next = Neighbor(playerCell, dx, dy);
         if (next < 0 || walls_[next]) {
             return;
         }
@@ -167,9 +197,58 @@ class SokobanBoard : ScriptComponent
             MoveTo(box, beyond);
             PaintBox(beyond);
         }
-        playerCell_ = next;
+        playerCell = next;
         MoveTo(player_, next);
-        ++moves_;
+        ++moves;
+        SyncBoxCells();
+        cleared_ = IsCleared();
+        RefreshTexts();
+    }
+
+    // 箱のあるマスを控える
+    private void SyncBoxCells()
+    {
+        boxCells.resize(0);
+        for (uint cell = 0; cell < boxes_.length(); ++cell) {
+            if (boxes_[cell] !is null) {
+                boxCells.insertLast(int(cell));
+            }
+        }
+    }
+
+    // 組み直したステージの箱とプレイヤーを、控えた位置へ置き直す。箱の数が合わなければステージの最初のまま
+    private void RestoreState(int player, const array<int> &in boxCellsToRestore, int moveCount)
+    {
+        array<GameObject@> boxes;
+        for (uint cell = 0; cell < boxes_.length(); ++cell) {
+            if (boxes_[cell] !is null) {
+                boxes.insertLast(boxes_[cell]);
+            }
+        }
+        if (boxes.length() != boxCellsToRestore.length() || player < 0 || player >= int(walls_.length()) || walls_[player]) {
+            return;
+        }
+        for (uint i = 0; i < boxCellsToRestore.length(); ++i) {
+            const int cell = boxCellsToRestore[i];
+            if (cell < 0 || cell >= int(walls_.length()) || walls_[cell]) {
+                return;
+            }
+        }
+        for (uint cell = 0; cell < boxes_.length(); ++cell) {
+            @boxes_[cell] = null;
+        }
+        for (uint i = 0; i < boxes.length(); ++i) {
+            const int cell = boxCellsToRestore[i];
+            @boxes_[cell] = boxes[i];
+            MoveTo(boxes[i], cell);
+        }
+        for (uint cell = 0; cell < boxes_.length(); ++cell) {
+            PaintBox(int(cell));
+        }
+        playerCell = player;
+        MoveTo(player_, playerCell);
+        moves = moveCount;
+        SyncBoxCells();
         cleared_ = IsCleared();
         RefreshTexts();
     }
@@ -188,12 +267,12 @@ class SokobanBoard : ScriptComponent
     private void RefreshTexts()
     {
         if (statusText !is null) {
-            statusText.uiText.text = "STAGE " + (stage_ + 1) + " / " + stages.length() + "    手数 " + moves_;
+            statusText.uiText.text = "STAGE " + (stage + 1) + " / " + stages.length() + "    手数 " + moves;
         }
         if (messageText !is null) {
             if (!cleared_) {
                 messageText.uiText.text = "";
-            } else if (stage_ + 1 < int(stages.length())) {
+            } else if (stage + 1 < int(stages.length())) {
                 messageText.uiText.text = "CLEAR!  Space で次のステージへ";
             } else {
                 messageText.uiText.text = "ALL CLEAR!  Space で最初から";
