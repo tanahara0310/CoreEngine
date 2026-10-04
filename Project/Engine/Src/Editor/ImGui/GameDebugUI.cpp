@@ -15,6 +15,7 @@
 #include "Editor/Scene/SceneDebugEditor.h"
 #include "EngineSystem/EngineSystem.h"
 #include "EngineSystem/EngineConfig.h"
+#include "EngineSystem/EngineVersion.h"
 #include "EngineSystem/PlaybackState.h"
 #include "EngineSystem/Relaunch.h"
 #include "EngineSystem/Settings/EditorSettingsSubsystem.h"
@@ -28,10 +29,12 @@
 #include "Utility/CommandLine/CommandLine.h"
 #include "Utility/FrameRate/FrameRateController.h"
 #include "Utility/FrameRate/Time.h"
+#include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
 #include "WinApp/WinApp.h"
 #include <imgui.h>
 #include <algorithm>
+#include <shellapi.h>
 
 
 namespace CoreEngine
@@ -48,6 +51,22 @@ namespace CoreEngine
 #else
             return "Editor · Development";
 #endif
+        }
+
+        /// @brief 同梱ドキュメントの index.html
+        std::filesystem::path DocumentationIndex()
+        {
+            return ProjectPaths::EngineRoot() / "Engine" / "Docs" / "index.html";
+        }
+
+        /// @brief 同梱ドキュメントを既定のブラウザで開く
+        void OpenDocumentation(const std::filesystem::path& index)
+        {
+            const HINSTANCE result = ::ShellExecuteW(nullptr, L"open", index.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+            if (reinterpret_cast<INT_PTR>(result) <= 32) {
+                Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System, "{}",
+                    "ドキュメントを開けませんでした: " + Logger::GetInstance().PathToUtf8(index));
+            }
         }
     }
 
@@ -378,6 +397,15 @@ namespace CoreEngine
             return;
         }
 
+        const std::filesystem::path documentation = DocumentationIndex();
+        std::error_code ec;
+        const bool hasDocumentation = std::filesystem::is_regular_file(documentation, ec);
+        if (ImGui::MenuItem("ドキュメントを開く", nullptr, false, hasDocumentation)) {
+            OpenDocumentation(documentation);
+        }
+        if (!hasDocumentation && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::SetTooltip("ドキュメントが見つかりません\n%s", Logger::GetInstance().PathToUtf8(documentation).c_str());
+        }
         if (Editor::EditorPanel* keyConfig = Editor::EditorPanelRegistry::Get().Find("Key Config")) {
             if (ImGui::MenuItem("キー操作を見る")) {
                 keyConfig->visible = true;
@@ -631,6 +659,7 @@ namespace CoreEngine
             ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize)) {
             ImGui::TextColored(Editor::Theme::kAccentHover, "CoreEngine");
             ImGui::Separator();
+            ImGui::Text("バージョン: v%s", kEngineVersion);
             ImGui::Text("ビルド構成: %s", BuildConfigName());
             ImGui::Text("Dear ImGui: %s", IMGUI_VERSION);
             if (auto* script = engine_ ? engine_->GetSubsystem<ScriptSubsystem>() : nullptr) {

@@ -1274,6 +1274,7 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Physics\Debug\PhysicsDebugRenderer.h" />
     <ClInclude Include="Engine\Src\EngineSystem\ServiceRegistry.h" />
     <ClInclude Include="Engine\Src\EngineSystem\EngineConfig.h" />
+    <ClInclude Include="Engine\Src\EngineSystem\EngineVersion.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Factory\CoreComponentFactory.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Factory\GraphicsComponentFactory.h" />
     <ClInclude Include="Engine\Src\EngineSystem\PlaybackState.h" />
