@@ -14,6 +14,7 @@
 #include "Editor/Panel/EditorPanelRegistry.h"
 #include "Script/ScriptBuildState.h"
 #include "Utility/Lifetime/ScopedRegistration.h"
+#include <cstdint>
 #include <filesystem>
 #include <functional>
 #include <memory>
@@ -117,6 +118,9 @@ namespace CoreEngine
 #endif
 
         SceneDebugEditor* sceneDebugEditor_ = nullptr;
+
+        /// インスペクタが最後に見た Project の選び直しの回数
+        std::uint64_t seenAssetClickCount_ = 0;
         Editor::PlayModeController* playModeController_ = nullptr;
 
 

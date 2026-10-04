@@ -13,6 +13,7 @@
 #include "Editor/ImGui/EditorTheme.h"
 #include "Editor/ImGui/ImGuiAll.h"
 #include "Editor/ImGui/Widgets/EditorBars.h"
+#include "Editor/Inspector/PrefabAssetInspector.h"
 #endif
 #include <algorithm>
 #include <array>
@@ -262,6 +263,7 @@ namespace CoreEngine
 
     void ProjectView::Finalize()
     {
+        Editor::PrefabAssetInspector::Release();
         pngPreviewCache_.clear();
         pngPreviewInfoCache_.clear();
     }
@@ -432,8 +434,12 @@ namespace CoreEngine
         ImGui::TextColored(Theme::kTextMute, "%s", style.label);
 
         if (isDirectory) {
+            Editor::PrefabAssetInspector::Release();
             return;
         }
+
+        // プレハブは中身を編集できるように出す
+        Editor::PrefabAssetInspector::Draw(selectedPath_);
 
         UI::Separator();
         UI::SectionHeader("アセット情報");
@@ -1017,6 +1023,7 @@ namespace CoreEngine
         // インスペクタに出すのは最後に触った 1 件。選択から外したときは残りの末尾を出す
         selectedPath_ = IsSelected(entry.path) ? entry.path
             : (selection_.empty() ? std::filesystem::path{} : selection_.back());
+        ++selectionClickCount_;
     }
 
     void ProjectView::OpenNewFolderDialog()

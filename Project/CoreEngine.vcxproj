@@ -198,6 +198,7 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Editor\Inspector\InspectorLayout.cpp" />
     <ClCompile Include="Engine\Src\Editor\Inspector\InspectorRenderer.cpp" />
     <ClCompile Include="Engine\Src\Editor\Inspector\ObjectInspector.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Inspector\PrefabAssetInspector.cpp" />
     <ClCompile Include="Engine\Src\Editor\Command\EditorCommandStack.cpp" />
     <ClCompile Include="Engine\Src\Editor\Panel\EditorPanelRegistry.cpp" />
     <ClCompile Include="Engine\Src\Utility\Path\ProjectPaths.cpp" />
@@ -1182,6 +1183,7 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Editor\Inspector\InspectorLayout.h" />
     <ClInclude Include="Engine\Src\Editor\Inspector\InspectorRenderer.h" />
     <ClInclude Include="Engine\Src\Editor\Inspector\ObjectInspector.h" />
+    <ClInclude Include="Engine\Src\Editor\Inspector\PrefabAssetInspector.h" />
     <ClInclude Include="Engine\Src\Editor\Command\EditorCommand.h" />
     <ClInclude Include="Engine\Src\Editor\Command\EditorCommandStack.h" />
     <ClInclude Include="Engine\Src\Editor\Panel\EditorPanelRegistry.h" />

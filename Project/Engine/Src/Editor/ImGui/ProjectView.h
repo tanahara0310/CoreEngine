@@ -37,6 +37,9 @@ namespace CoreEngine
         /// @brief 選択中のアセット（無ければ空）
         const std::filesystem::path& GetSelectedAsset() const { return selectedPath_; }
 
+        /// @brief 項目をクリックして選び直した回数（変わったら、選んだアセットをインスペクタに出す）
+        std::uint64_t GetSelectionClickCount() const { return selectionClickCount_; }
+
         /// @brief 開いているフォルダ（`Application/…` か `Engine/…` の綴り。仮想ルートなら空）
         std::filesystem::path GetCurrentFolder() const;
 
@@ -250,6 +253,7 @@ namespace CoreEngine
         // 選んでいるもの（selectedPath_ はそのうち最後に触ったもの＝インスペクタに出す 1 件）
         std::vector<std::filesystem::path> selection_;
         int selectionAnchor_ = -1;            ///< Shift での範囲選択の起点
+        std::uint64_t selectionClickCount_ = 0; ///< 項目をクリックして選び直した回数
         std::vector<Entry> shownEntries_;     ///< このフレームに並べたもの（範囲選択が使う）
 
         // 名前を変える窓

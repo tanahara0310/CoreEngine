@@ -1038,6 +1038,14 @@ namespace CoreEngine
                     Editor::EditorPanel* object = Editor::EditorPanelRegistry::Get()
                         .FindFirst(Editor::PanelPlacement::InspectorObject);
                     ProjectView* const projectView = FindProjectView();
+
+                    // Project でアセットを選び直したら、シーンの選択を外してアセットを出す
+                    if (projectView && projectView->GetSelectionClickCount() != seenAssetClickCount_) {
+                        seenAssetClickCount_ = projectView->GetSelectionClickCount();
+                        if (sceneDebugEditor_ && !projectView->GetSelectedAsset().empty()) {
+                            sceneDebugEditor_->ClearSelection();
+                        }
+                    }
                     const bool hasObject = sceneDebugEditor_ && sceneDebugEditor_->HasSelection();
 
                     if (!hasObject && projectView && !projectView->GetSelectedAsset().empty()) {

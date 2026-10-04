@@ -82,6 +82,12 @@ namespace CoreEngine::Editor
         /// @brief 一括操作の終了
         void EndBatch();
 
+        /// @brief 積まれた操作を捨てる区間の開始（EndDiscard まで）
+        void BeginDiscard() noexcept { ++discardDepth_; }
+
+        /// @brief 積まれた操作を捨てる区間の終了
+        void EndDiscard() noexcept { if (discardDepth_ > 0) { --discardDepth_; } }
+
         /// @brief Undo / Redo の適用中か
         /// @note 適用によって走る編集処理が、それ自体を履歴へ積み直さないようにするためのフラグ
         bool IsApplying() const noexcept { return applying_; }
@@ -110,6 +116,7 @@ namespace CoreEngine::Editor
 
         std::unique_ptr<CompositeCommand> batch_;
         int  batchDepth_ = 0;
+        int  discardDepth_ = 0;
         bool applying_ = false;
     };
 
@@ -125,5 +132,16 @@ namespace CoreEngine::Editor
 
         BatchScope(const BatchScope&) = delete;
         BatchScope& operator=(const BatchScope&) = delete;
+    };
+
+    /// @brief スコープを抜けるまでに積まれた操作を履歴へ入れずに捨てる
+    class DiscardScope
+    {
+    public:
+        DiscardScope() { EditorCommandStack::Get().BeginDiscard(); }
+        ~DiscardScope() { EditorCommandStack::Get().EndDiscard(); }
+
+        DiscardScope(const DiscardScope&) = delete;
+        DiscardScope& operator=(const DiscardScope&) = delete;
     };
 }
