@@ -212,6 +212,10 @@ public:
     /// @brief 1 つのコンポーネントを `SerializeComponents` の配列の 1 要素の形で書き出す
     static json SerializeComponent(const IComponent& component);
 
+    /// @brief 保存形の 1 要素の有効・版・値をコンポーネントへ流す
+    /// @note オブジェクトに付けていないコンポーネントにも使える（Awake / OnEnable は呼ばない）。
+    static void LoadComponentEntry(IComponent& target, const json& entry);
+
     /// @brief JSON 配列からコンポーネントの状態を復元する
     /// @param components `SerializeComponents` が書いた形
     /// @note 既にアタッチされているものへ型名で順に対応づけて値を流す。
@@ -243,9 +247,6 @@ private:
 
     /// @brief 取り外し済みを除いた並びで position 番目の手前へ入れる
     void InsertAtPosition(std::unique_ptr<IComponent> component, std::size_t position);
-
-    /// @brief 保存形の 1 要素の有効・版・値をコンポーネントへ流す
-    static void LoadComponentEntry(IComponent& target, const json& entry);
 
     GameObject* ownerObject_ = nullptr;
 

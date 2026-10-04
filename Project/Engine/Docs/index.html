@@ -2821,7 +2821,18 @@ kbd {
   </ul>
 
   <h2 id="prefab-edit">プレハブを直す</h2>
-  <p>プレハブを直接開いて編集するモードはありません。<strong>置いたオブジェクトを直してから、プレハブへ書き戻します。</strong></p>
+  <p>プレハブは、<strong>Project で選んで Inspector で直す</strong>か、<strong>置いたオブジェクトを直してからプレハブへ書き戻す</strong>かのどちらかで直します。</p>
+
+  <h3 id="prefab-edit-asset">Project で選んで直す</h3>
+  <p>Project でプレハブ（<span class="path">.prefab</span>）を選ぶと、Inspector の <span class="ui">プレハブの中身</span> にコンポーネントと値が出ます。値を変えると、ドラッグを離した・入力欄を離れたときにプレハブのファイルへ保存し、シーンでそのプレハブから置いたオブジェクトにもすぐ反映します（それぞれが上書きした値は保たれます）。</p>
+  <ul>
+    <li><kbd>Ctrl</kbd>+<kbd>Z</kbd> で、プレハブを編集する前の中身に戻せます。</li>
+    <li>コンポーネントの <span class="ui">⋮</span> から <span class="ui">既定値へ戻す</span>・<span class="ui">外す</span> が使えます。コンポーネントを足すのは、置いたオブジェクトで行って <span class="ui">プレハブへ適用</span> します。</li>
+    <li>コライダーの形のように専用の欄で直す部品は、ここでは直せません。置いたオブジェクトで直してください。</li>
+    <li>シーンの別のオブジェクトを指す欄（<code>[ObjectRef]</code>）は、プレハブには保存されません。</li>
+  </ul>
+
+  <h3 id="prefab-edit-instance">置いたオブジェクトから書き戻す</h3>
   <div class="table-wrap">
   <table>
     <thead><tr><th>したいこと</th><th>やり方</th></tr></thead>

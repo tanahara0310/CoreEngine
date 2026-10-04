@@ -40,6 +40,9 @@
     <ClCompile Include="Engine\Src\Editor\Inspector\ObjectInspector.cpp">
       <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Inspector\PrefabAssetInspector.cpp">
+      <Filter>Engine\Src\Editor\Inspector</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Command\EditorCommandStack.cpp">
       <Filter>Engine\Src\Editor\Command</Filter>
     </ClCompile>
@@ -1780,6 +1783,9 @@
       <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Inspector\ObjectInspector.h">
+      <Filter>Engine\Src\Editor\Inspector</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Inspector\PrefabAssetInspector.h">
       <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Command\EditorCommand.h">

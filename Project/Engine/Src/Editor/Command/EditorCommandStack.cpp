@@ -19,7 +19,7 @@ namespace CoreEngine::Editor
         }
 
         // Undo / Redo の適用が起こした変更を履歴へ積み直すと、同じ操作が無限に増える
-        if (applying_) {
+        if (applying_ || discardDepth_ > 0) {
             return;
         }
 
