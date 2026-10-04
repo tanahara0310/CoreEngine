@@ -10,7 +10,7 @@ namespace CoreEngine
 /// @brief ラスタースクロールエフェクト（CS方式）
 /// @details 調整パラメータは CVar（"r.RasterScroll.*"）が唯一の保持者。
 ///          time / lineOffset は Update が毎フレーム計算する実行時値なので CVar 化していない。
-///          ImGui と保存は CVar 側で自動生成される（Docs/Engine/Editor/CVar_Design.md）
+///          ImGui と保存は CVar 側で自動生成される
 class RasterScroll : public PostEffectComputeBase {
 public:
     /// @brief ラスタースクロールパラメータ構造体（GPU 定数バッファのレイアウト）

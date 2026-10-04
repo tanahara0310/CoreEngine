@@ -12,7 +12,6 @@
 //
 // 第 3 引数は HLSL 側の cbuffer 名（ConstantBuffer<T> 形式なら変数名 "gAtmosphere" など）。
 // 未登録の cbuffer は素通りするので段階的に増やしてよい。関数内で定義した構造体には書けない。
-// 詳細: Docs/Engine/Graphics/Shader/CBufferLayout_Verification.md
 //========================================================================================
 
 #include "Graphics/Shader/CBufferLayout.h"

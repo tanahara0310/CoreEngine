@@ -253,7 +253,7 @@ namespace CoreEngine
         /// @brief シャドウパラメータを設定する
         /// @brief 設定を一括で反映する
         /// @details 実体は CVar（"r.RTShadow.*"）が保持するため、ここへ書くと
-        ///          UI 表示・自動保存にも反映される。設計: Docs/Engine/Editor/CVar_Design.md
+        ///          UI 表示・自動保存にも反映される。
         void SetSettings(const RayTracingShadowSettings& settings);
 
         /// @brief 現在のシャドウパラメータを取得する

@@ -85,7 +85,6 @@ public:
     /// @return CVar（"r.<Technique>.Enabled"）。持たない技術は nullptr
     /// @details 派生が自分のファイルスコープ CVar を返すことで、有効状態が
     ///          自動的に CVars.json へ保存される。常時有効な技術は nullptr のままでよい。
-    ///          設計: Docs/Engine/Editor/CVar_Design.md
     virtual CVar<bool>* GetEnabledCVar() const { return nullptr; }
 
     /// @brief シェーダーリソース名からルートパラメータ（番号＋差し方）を取得

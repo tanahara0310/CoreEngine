@@ -62,7 +62,6 @@ namespace CoreEngine
         /// @details 確定＝ドラッグを離した・Enter を押した・チェックボックスをクリックした等。
         ///          ドラッグ中の毎フレーム変更（GetGlobalRevision が進む）と区別し、
         ///          自動保存が「確定した瞬間に書き込む」ために使う。
-        ///          設計書: Docs/Engine/Editor/InstantSettingsSave_Design.md
         uint64_t GetCommitRevision() const noexcept { return commitRevision_; }
 
         /// @brief 編集の確定を通知する（UI の確定イベントから呼ぶ）

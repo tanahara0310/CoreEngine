@@ -5,7 +5,6 @@
 //   ・出力を saturate しない（ハイライトのレンジを潰すとトーンカーブが仕事をしなくなる）
 //   ・0.5 を基準にした演算をしない。基準はリニア中間グレー kMiddleGrey
 //   ・輝度で帯を切るときは正規化してから（HDR 輝度は容易に 1 を超え、全画素がハイライト扱いになる）
-//  段の定義: Docs/Engine/Graphics/PostProcess/PostEffect_Refactoring_Plan.md
 
 #include "ColorSpace.hlsli" // LuminanceRec601
 

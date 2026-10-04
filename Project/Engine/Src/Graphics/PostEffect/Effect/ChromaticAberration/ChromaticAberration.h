@@ -9,7 +9,7 @@ namespace CoreEngine
 {
 /// @brief 色収差エフェクト（CS方式）
 /// @details パラメータは CVar（"r.ChromaticAberration.*"）が唯一の保持者。
-///          ImGui と保存は CVar 側で自動生成される（Docs/Engine/Editor/CVar_Design.md）
+///          ImGui と保存は CVar 側で自動生成される
 class ChromaticAberration : public PostEffectComputeBase {
 public:
     /// @brief 色収差パラメータ構造体（GPU 定数バッファのレイアウト）

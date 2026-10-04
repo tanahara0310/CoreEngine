@@ -13,7 +13,6 @@ namespace CoreEngine
     /// @details 自動保存（CVarSettingsSection）と名前付きプリセット
     ///          （PostEffectPresetManager）の両方から使う。キーは CVar の
     ///          フルネーム（"r.Bloom.Intensity"）をそのまま使うフラット形式。
-    ///          設計: Docs/Engine/Editor/CVar_Design.md
     namespace CVarSerialization
     {
         /// @brief CVar を JSON へ書き出す

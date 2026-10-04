@@ -45,7 +45,6 @@ namespace CoreEngine
 
     /// @brief 雲の見た目パラメータ（単位はメートル・秒・無次元）
     /// @details 値の実体は CloudCVars が持つ。既定値もそちらにあるため、ここでは初期化しない。
-    ///          チューニング指針は Docs/Engine/Graphics/Cloud/VolumetricCloud_Refactoring_Plan.md を見ること。
     struct VolumetricCloudParameters {
         // ===== 雲層ジオメトリ =====
         float layerBottomAltitudeM;     ///< 雲底高度 [m]
