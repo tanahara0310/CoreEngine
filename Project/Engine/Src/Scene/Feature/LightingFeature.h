@@ -27,7 +27,7 @@ namespace CoreEngine
         ///       PostSceneInitialize でこちらを引っ込める。
         void Initialize(SceneContext& ctx) override;
 
-        /// @brief シーンが自前の平行光源を持っていたら、既定の太陽を引っ込める
+        /// @brief シーンが自前の平行光源（月を除く）を持っていたら、既定の太陽を引っ込める
         void PostSceneInitialize(SceneContext& ctx) override;
 
         /// @brief 全ライトの値を実体へ写し、GPU へ転送する（FrameStart）

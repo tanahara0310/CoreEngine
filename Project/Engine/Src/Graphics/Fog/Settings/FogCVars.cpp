@@ -21,6 +21,11 @@ namespace CoreEngine::FogCVars
         "フォグ色の明るさ倍率。Color と掛けた値がリニア HDR のフォグ色になる。"
         "フォグが暗く見えるときはここを上げる",
         CVarRange{ 0.0f, 20.0f } };
+    CVar<bool> FollowIllumination{
+        "r.Fog.FollowIllumination", true,
+        "フォグ色を太陽・月の明るさに追従させる。大気のあるシーンで、基準輝度（r.AutoExposure.ReferenceLuminance）"
+        "より暗い時間帯ほどフォグ色を暗くする。OFF だと夜の露出でもフォグ色が昼のまま光る" };
+
     CVar<float> Density{
         "r.Fog.Density", 0.02f,
         "基準高度での消散係数 [1/m]。0.02 なら水平方向 50m で透過率 0.37",

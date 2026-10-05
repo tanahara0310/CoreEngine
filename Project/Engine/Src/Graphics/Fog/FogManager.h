@@ -111,7 +111,8 @@ namespace CoreEngine
         ///          Update() を呼ばないシーンではフォグ合成そのものが走らない。
         /// @param sunDirection 太陽光の進行方向（太陽→地表）。正規化されていなくてよい
         /// @param hasSun 太陽ライトが存在し有効か。false なら内散乱を切る
-        void Update(const Vector3& sunDirection, bool hasSun);
+        /// @param illuminationScale フォグ色（空色ブレンド前の固定色）へ掛ける明るさ倍率 [0,1]
+        void Update(const Vector3& sunDirection, bool hasSun, float illuminationScale = 1.0f);
 
         /// @brief フレーム終端の後始末（RenderDomainContext が全 View 描画後に呼ぶ）
         void EndFrame()
@@ -181,6 +182,9 @@ namespace CoreEngine
         /// @brief 今フレームの太陽（Update が毎フレーム外から受け取る値）
         Vector3 sunDirection_{ 0.0f, -1.0f, 0.0f };
         bool hasSun_ = false;
+
+        /// @brief 今フレームのフォグ色の明るさ倍率（Update が毎フレーム外から受け取る値）
+        float illuminationScale_ = 1.0f;
 
         /// @brief このフレームで Update() が呼ばれフォグが要求されたか
         bool fogActive_ = false;

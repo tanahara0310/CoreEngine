@@ -433,6 +433,7 @@ namespace CoreEngine
             PostEffectFrameContext postEffectContext;
             postEffectContext.view = &frameViews.GameView();
             postEffectContext.deltaTime = Time::DeltaTime();
+            postEffectContext.unscaledDeltaTime = Time::UnscaledDeltaTime();
             if (context.atmosphereManager) {
                 postEffectContext.sunDirection = context.atmosphereManager->GetSunDirection();
                 postEffectContext.sunDirectionValid = true;

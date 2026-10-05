@@ -99,8 +99,11 @@ namespace CoreEngine
         /// @brief 現在の順応輝度を基準輝度に設定する（「今の明るさを 0EV にする」操作）
         void CalibrateReferenceToCurrent();
 
-        /// @brief 時間順応に使うデルタタイムを取り込む
-        void PrepareFrame(const PostEffectFrameContext& ctx) override { deltaTime_ = ctx.deltaTime; }
+        /// @brief 自動EVが 0 になる基準輝度（r.AutoExposure.ReferenceLuminance）
+        float GetReferenceLuminance() const;
+
+        /// @brief 時間順応に使うデルタタイムを取り込む（停止中も順応が進むよう実経過時間を使う）
+        void PrepareFrame(const PostEffectFrameContext& ctx) override { deltaTime_ = ctx.unscaledDeltaTime; }
 
     protected:
         std::string  GetEffectName() const override { return "ToneMapping"; }

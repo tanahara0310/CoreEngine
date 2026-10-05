@@ -22,5 +22,8 @@ namespace CoreEngine {
 
         /// @brief 前フレームからの経過時間 [秒]
         float deltaTime = 0.0f;
+
+        /// @brief 前フレームからの実経過時間 [秒]（停止中・タイムスケール 0 でも進む）
+        float unscaledDeltaTime = 0.0f;
     };
 }
