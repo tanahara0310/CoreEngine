@@ -437,16 +437,31 @@ namespace CoreEngine
             scriptText = "Script ✕ コンパイル失敗";
             break;
         }
-        const char* const saveText = status_.sceneSaved ? "保存済み" : "未保存の変更";
+        const bool inPrefabMode = !status_.prefabMode.empty();
+        const std::string prefabText = "◈ プレハブモード  " + status_.prefabMode + "（自動保存）";
+        const char* const saveText = inPrefabMode ? prefabText.c_str()
+            : (status_.sceneSaved ? "保存済み" : "未保存の変更");
         const bool inPlayMode = status_.playback != PlaybackState::Editing;
         constexpr const char* kApplyLabel = "◈ 変更をプレハブへ適用";
+        constexpr const char* kBackLabel = "◀ シーンへ戻る";
         const float spacing = ImGui::GetStyle().ItemSpacing.x;
 
         float width = UI::Bar::ChipWidth(scriptText.c_str()) + spacing + UI::Bar::ChipWidth(saveText);
         if (inPlayMode) {
             width += UI::Bar::ButtonWidth(kApplyLabel) + spacing;
         }
+        if (inPrefabMode) {
+            width += UI::Bar::ButtonWidth(kBackLabel) + spacing;
+        }
         AlignRight(width);
+
+        // プレハブモードから戻る
+        if (inPrefabMode) {
+            if (UI::Bar::Button(kBackLabel, false, "直した値は保存済みです。シーンの表示に戻ります", sceneDebugEditor_ != nullptr)) {
+                sceneDebugEditor_->ClosePrefabMode();
+            }
+            ImGui::SameLine();
+        }
 
         // 再生中に詰めた値を、停止で消える前にプレハブへ持ち帰る
         if (inPlayMode) {
@@ -465,9 +480,13 @@ namespace CoreEngine
         UI::Bar::Chip(scriptText.c_str(), scriptColor, Theme::WithAlpha(scriptColor, 0.35f));
 
         ImGui::SameLine();
-        UI::Bar::Chip(saveText,
-            status_.sceneSaved ? Theme::kTextMute : Theme::kWarm,
-            status_.sceneSaved ? Theme::kOutline : Theme::WithAlpha(Theme::kWarm, 0.35f));
+        if (inPrefabMode) {
+            UI::Bar::Chip(saveText, Theme::kAccentHover, Theme::WithAlpha(Theme::kAccent, 0.45f));
+        } else {
+            UI::Bar::Chip(saveText,
+                status_.sceneSaved ? Theme::kTextMute : Theme::kWarm,
+                status_.sceneSaved ? Theme::kOutline : Theme::WithAlpha(Theme::kWarm, 0.35f));
+        }
 #endif
 }
 

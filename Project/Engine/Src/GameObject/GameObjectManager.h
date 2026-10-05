@@ -57,7 +57,17 @@ namespace CoreEngine
 
         /// @brief 全オブジェクトをRenderManagerに登録して描画
         /// @param renderManager レンダーマネージャー
+        /// @note 1 体だけを見せている間は、その 1 体と空（SkyBox）だけを登録する。
         void RegisterAllToRender(CoreEngine::RenderManager* renderManager);
+
+        /// @brief この 1 体だけを描き、エディタで選べるようにする（無効な ID を渡すと元に戻す）
+        void SetIsolatedObject(ObjectId id) noexcept { isolatedObject_ = id; }
+
+        /// @brief 1 体だけを見せているときのその ID（見せていなければ無効な ID）
+        ObjectId GetIsolatedObject() const noexcept { return isolatedObject_; }
+
+        /// @brief 1 体だけを見せている間も見せるオブジェクトか（見せていなければ全部 true）
+        bool IsShownInIsolation(const GameObject& object) const;
 
         /// @brief フレーム終了時に削除マークされたオブジェクトを破棄
         /// @note 削除キューを使用して安全に破棄（GPU処理完了を考慮）
@@ -175,6 +185,9 @@ namespace CoreEngine
 
         /// @brief `GetReferenceEpoch()` の実体
         std::uint64_t referenceEpoch_ = 1;
+
+        /// @brief 1 体だけを見せているときのその ID
+        ObjectId isolatedObject_{};
 
         /// @brief 保存キーが既出なら連番を足して重複を解く
         /// @note 同じ名前で作られたオブジェクト（`CreateObject("Sphere")` を 49 回など）は

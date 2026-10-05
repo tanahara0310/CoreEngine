@@ -33,12 +33,40 @@ namespace CoreEngine
             drawList->AddText(ImVec2(min.x + 6.0f, min.y + 2.0f), ImGui::GetColorU32(Editor::Theme::kText), text.c_str());
         }
 
+        /// @brief プレハブモードの間、映像の外周の青い枠と上辺の札を描く
+        void DrawPrefabModeOverlay(const ImVec2& min, const ImVec2& max, const EditorStatus& status)
+        {
+            if (status.prefabMode.empty()) {
+                return;
+            }
+
+            namespace Theme = Editor::Theme;
+            ImDrawList* const drawList = ImGui::GetWindowDrawList();
+            const ImU32 blue = ImGui::GetColorU32(Theme::kAccent);
+            drawList->AddRect(min, max, blue, 0.0f, 0, 3.0f);
+
+            // 上辺の中央の札
+            const std::string label = "PREFAB  " + status.prefabMode;
+            const ImVec2 labelSize = ImGui::CalcTextSize(label.c_str());
+            const float centerX = (min.x + max.x) * 0.5f;
+            const ImVec2 tabMin(centerX - labelSize.x * 0.5f - 12.0f, min.y);
+            const ImVec2 tabMax(centerX + labelSize.x * 0.5f + 12.0f, min.y + labelSize.y + 2.0f);
+            drawList->AddRectFilled(tabMin, tabMax, blue, 4.0f, ImDrawFlags_RoundCornersBottom);
+            drawList->AddText(ImVec2(tabMin.x + 12.0f, tabMin.y + 1.0f), ImGui::GetColorU32(Theme::kText), label.c_str());
+
+            // 左下：戻り方
+            const float badgeHeight = ImGui::GetTextLineHeight() + 4.0f;
+            DrawBadge(drawList, ImVec2(min.x + 8.0f, max.y - badgeHeight - 8.0f),
+                "このプレハブだけを表示中（Hierarchy の「◀ シーンへ戻る」で戻る）");
+        }
+
         /// @brief 再生モードの間、Game ビューの外周の橙枠と上辺の札・経過時間・スクリプトの実行時間を描く
         /// @param min 映像の左上
         /// @param max 映像の右下
         void DrawPlayModeOverlay(const ImVec2& min, const ImVec2& max, const EditorStatus& status)
         {
             if (status.playback == PlaybackState::Editing) {
+                DrawPrefabModeOverlay(min, max, status);
                 return;
             }
 

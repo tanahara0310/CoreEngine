@@ -26,6 +26,7 @@
 #include "Editor/Scene/LastOpenedScene.h"
 #include "Editor/Scene/PrefabEditing.h"
 #include "Editor/ImGui/ObjectSelector.h"
+#include "Graphics/Asset/AssetDatabase.h"
 #include "Graphics/Asset/AssetInfo.h"
 #include "Graphics/Asset/AssetRef.h"
 #include "Editor/ImGui/EditorTheme.h"
@@ -171,6 +172,11 @@ namespace CoreEngine
 
     void SceneDebugEditor::Update()
     {
+        // プレハブモード：編集が止まるたびに書き戻す。置いた 1 体が消えていたら閉じる
+        if (prefabMode_.IsOpen() && gameObjectManager_ && !prefabMode_.Update(*gameObjectManager_)) {
+            ClosePrefabMode();
+        }
+
         // デバッグ / リリースカメラの切り替え
         if (auto* inputManager = engine_->GetService<InputManager>()) {
             auto& input = inputManager->GetQuery();
@@ -203,7 +209,7 @@ namespace CoreEngine
             }
         }
 
-        // Ctrl+S でシーン全体保存
+        // Ctrl+S でシーン全体保存（プレハブモードの間は直すたびに保存しているので知らせるだけ）
         if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S, ImGuiInputFlags_RouteGlobal)) {
             SaveScene();
         }
@@ -232,7 +238,7 @@ namespace CoreEngine
         const std::string sceneName = GetSceneName();
         SceneManager* const sceneManager = engine_ ? engine_->GetSceneManager() : nullptr;
         if (sceneName.empty() || !sceneManager || !sceneManager->CanLoadSceneNow()
-            || !PlaybackStateManager::GetInstance().IsEditing()) {
+            || !PlaybackStateManager::GetInstance().IsEditing() || prefabMode_.IsOpen()) {
             return;
         }
 
@@ -411,6 +417,10 @@ namespace CoreEngine
         if (RefuseSaveWhilePlaying()) {
             return false;
         }
+        if (prefabMode_.IsOpen()) {
+            ShowStatus("プレハブモードでは、直すたびにプレハブへ保存しています", Editor::Theme::kOk);
+            return false;
+        }
 
         // 外で変わったファイルを消してしまうなら、書く前に止めて選ばせる
         std::vector<std::string> conflicts = saveSystem_->CheckSaveConflicts(*gameObjectManager_);
@@ -476,6 +486,84 @@ namespace CoreEngine
         return dirtyWithoutEdits_ || Editor::EditorCommandStack::Get().GetSceneRevision() != savedRevision_;
     }
 
+    bool SceneDebugEditor::RefuseInPrefabMode() const
+    {
+        if (!prefabMode_.IsOpen()) {
+            return false;
+        }
+        ShowStatus("プレハブモードではシーンのオブジェクトを足したり消したりできません。シーンへ戻ってから操作してください",
+            Editor::Theme::kWarn);
+        return true;
+    }
+
+    bool SceneDebugEditor::OpenPrefabMode(const AssetInfo& prefab)
+    {
+        if (!gameObjectManager_) {
+            return false;
+        }
+        if (!PlaybackStateManager::GetInstance().IsEditing()) {
+            ShowStatus("再生中はプレハブを開けません。停止してから開いてください", Editor::Theme::kWarn);
+            return false;
+        }
+        if (prefabMode_.IsOpen()) {
+            ClosePrefabMode();
+        }
+
+        const bool wasDirty = IsSceneDirty();
+        GameObject* const object = prefabMode_.Open(*gameObjectManager_, cameraManager_, prefab);
+        if (!object) {
+            ShowStatus("プレハブを開けませんでした", Editor::Theme::kWarn);
+            return false;
+        }
+        sceneDirtyBeforePrefabMode_ = wasDirty;
+        closePrefabModeRequested_ = false;
+        objectSelector_.SelectObject(object);
+        // 全体と周りが見えるよう、F で寄るときより離れて見る
+        FocusOnSelection(8.0f);
+        return true;
+    }
+
+    void SceneDebugEditor::ClosePrefabMode()
+    {
+        closePrefabModeRequested_ = false;
+        if (!prefabMode_.IsOpen() || !gameObjectManager_) {
+            return;
+        }
+        prefabMode_.Close(*gameObjectManager_, cameraManager_);
+
+        // プレハブを直しただけではシーンのファイルは変わらないので、開く前に保存済みなら保存済みに戻す
+        if (!sceneDirtyBeforePrefabMode_) {
+            savedRevision_ = Editor::EditorCommandStack::Get().GetSceneRevision();
+            dirtyWithoutEdits_ = false;
+        }
+    }
+
+    void SceneDebugEditor::DrawPrefabModeHeader()
+    {
+        namespace Theme = Editor::Theme;
+        const ImGuiStyle& style = ImGui::GetStyle();
+        const ImVec2 min = ImGui::GetCursorScreenPos();
+        const float height = ImGui::GetFrameHeight() + style.FramePadding.y * 2.0f;
+        const ImVec2 max(min.x + ImGui::GetContentRegionAvail().x, min.y + height);
+        ImGui::GetWindowDrawList()->AddRectFilled(min, max, ImGui::GetColorU32(Theme::kAccent), 3.0f);
+
+        ImGui::SetCursorScreenPos(ImVec2(min.x + style.FramePadding.y, min.y + style.FramePadding.y));
+        ImGui::PushStyleColor(ImGuiCol_Button, Theme::WithAlpha(Theme::kDeepest, 0.35f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Theme::WithAlpha(Theme::kDeepest, 0.55f));
+        if (ImGui::Button("◀ シーンへ戻る")) {
+            closePrefabModeRequested_ = true;
+        }
+        ImGui::PopStyleColor(2);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("直した値は保存済みです。シーンの表示に戻ります");
+        }
+        ImGui::SameLine();
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted(("◈ " + prefabMode_.GetFileName()).c_str());
+
+        ImGui::SetCursorScreenPos(ImVec2(min.x, max.y + style.ItemSpacing.y));
+    }
+
     bool SceneDebugEditor::RefuseSaveWhilePlaying() const
     {
         if (!PlaybackStateManager::GetInstance().IsInPlayMode()) {
@@ -509,6 +597,22 @@ namespace CoreEngine
             ? gameObjectManager_->FindObject(scrollTargetId_) : nullptr;
 
         BuildHierarchyLinks();
+
+        // プレハブモードの間は、青い帯とプレハブの 1 体だけを出す
+        if (prefabMode_.IsOpen()) {
+            DrawPrefabModeHeader();
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, Editor::Theme::WithAlpha(Editor::Theme::kAccent, 0.10f));
+            if (auto child = UI::Scope::ChildScope("##HierarchyObjectList")) {
+                for (GameObject* const root : hierarchyRoots_) {
+                    DrawHierarchyRow(*root);
+                }
+            }
+            ImGui::PopStyleColor();
+            if (closePrefabModeRequested_) {
+                ClosePrefabMode();
+            }
+            return;
+        }
 
         if (auto child = UI::Scope::ChildScope("##HierarchyObjectList")) {
             // シーンの名前の枝（保存していない変更があれば * を付ける）
@@ -547,7 +651,7 @@ namespace CoreEngine
         }
 
         for (const auto& object : gameObjectManager_->GetAllObjects()) {
-            if (!object) {
+            if (!object || !gameObjectManager_->IsShownInIsolation(*object)) {
                 continue;
             }
             const TransformComponent* const transform = object->GetComponent<TransformComponent>();
@@ -695,14 +799,16 @@ namespace CoreEngine
         }
 
         Editor::ObjectInspector::Callbacks callbacks;
-        callbacks.saveObject = [this](GameObject& object) {
-            if (!RefuseSaveWhilePlaying()) {
-                saveSystem_->SaveObject(&object);
-            }
-            };
+        if (!prefabMode_.IsOpen()) {
+            callbacks.saveObject = [this](GameObject& object) {
+                if (!RefuseSaveWhilePlaying()) {
+                    saveSystem_->SaveObject(&object);
+                }
+                };
+        }
         // 値を変えた操作が Undo を通っていなくても、編集中なら未保存として数える
         if (Editor::ObjectInspector::Draw(*selected, callbacks)
-            && !PlaybackStateManager::GetInstance().IsInPlayMode()) {
+            && !PlaybackStateManager::GetInstance().IsInPlayMode() && !prefabMode_.IsOpen()) {
             MarkSceneDirty();
         }
     }
@@ -772,6 +878,9 @@ namespace CoreEngine
 
     void SceneDebugEditor::CreateEmptyObject()
     {
+        if (RefuseInPrefabMode()) {
+            return;
+        }
         if (!gameObjectManager_) {
             return;
         }
@@ -782,6 +891,9 @@ namespace CoreEngine
 
     void SceneDebugEditor::CreateParticleObject(ObjectEditing::ParticleKind kind)
     {
+        if (RefuseInPrefabMode()) {
+            return;
+        }
         if (!gameObjectManager_) {
             return;
         }
@@ -793,6 +905,9 @@ namespace CoreEngine
 
     void SceneDebugEditor::CreateUIObject(ObjectEditing::UIElementKind kind)
     {
+        if (RefuseInPrefabMode()) {
+            return;
+        }
         if (!gameObjectManager_) {
             return;
         }
@@ -827,6 +942,9 @@ namespace CoreEngine
 
     bool SceneDebugEditor::DuplicateSelectedObject()
     {
+        if (RefuseInPrefabMode()) {
+            return false;
+        }
         const GameObject* const selected = objectSelector_.GetSelectedObject();
         if (!gameObjectManager_ || !selected) {
             return false;
@@ -841,6 +959,9 @@ namespace CoreEngine
 
     bool SceneDebugEditor::DeleteSelectedObject()
     {
+        if (RefuseInPrefabMode()) {
+            return false;
+        }
         GameObject* const selected = objectSelector_.GetSelectedObject();
         if (!gameObjectManager_ || !selected) {
             return false;
@@ -858,7 +979,7 @@ namespace CoreEngine
         }
     }
 
-    void SceneDebugEditor::FocusOnSelection()
+    void SceneDebugEditor::FocusOnSelection(float distanceScale)
     {
         GameObject* const selected = objectSelector_.GetSelectedObject();
         if (!selected || !cameraManager_) {
@@ -872,7 +993,6 @@ namespace CoreEngine
         // 大きさが分かるものはそれが収まる距離まで、分からないもの（空のオブジェクト・
         // ライト・カメラなど）は手頃な距離で寄せる
         constexpr float kDefaultRadius = 1.5f;
-        constexpr float kDistanceScale = 3.0f;
         constexpr float kMinDistance = 1.0f;
 
         const TransformComponent* const transform = selected->GetComponent<TransformComponent>();
@@ -889,11 +1009,14 @@ namespace CoreEngine
         }
 
         orbit->SetTarget(center);
-        orbit->SetDistance((std::max)(radius * kDistanceScale, kMinDistance));
+        orbit->SetDistance((std::max)(radius * distanceScale, kMinDistance));
     }
 
     void SceneDebugEditor::SpawnModelFromFile(const std::string& modelFileName, const Vector2* normalizedDropPos)
     {
+        if (RefuseInPrefabMode()) {
+            return;
+        }
         Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System, "モデルをスポーン: {}", modelFileName);
 
         // ファイル名から拡張子を除いたものを名前にする
@@ -934,6 +1057,9 @@ namespace CoreEngine
 
     void SceneDebugEditor::SpawnPrefabFromFile(const std::string& prefabFileName, const Vector2* normalizedDropPos)
     {
+        if (RefuseInPrefabMode()) {
+            return;
+        }
         const AssetInfo* info = FindAssetInfo(prefabFileName);
         if (!info || info->type != AssetType::Prefab) {
             Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
@@ -1035,9 +1161,21 @@ namespace CoreEngine
             return;
         }
 
+        if (prefabMode_.IsOpen()) {
+            if (ImGui::MenuItem("シーンへ戻る")) {
+                closePrefabModeRequested_ = true;
+            }
+            ImGui::EndPopup();
+            return;
+        }
+
         if (object.IsPrefabInstance()) {
             ImGui::TextDisabled("%s", object.GetPrefab().GetPath().c_str());
             ImGui::Separator();
+            const AssetInfo* const prefabInfo = AssetDatabase::GetInstance().FindAssetByGUID(object.GetPrefab().GetGuid());
+            if (ImGui::MenuItem("プレハブを開く", nullptr, false, prefabInfo != nullptr)) {
+                OpenPrefabMode(*prefabInfo);
+            }
             if (ImGui::MenuItem("プレハブへ適用")) {
                 ApplyToPrefab(object);
             }

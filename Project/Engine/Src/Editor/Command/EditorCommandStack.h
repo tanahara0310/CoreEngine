@@ -76,6 +76,9 @@ namespace CoreEngine::Editor
         /// @brief 取り出した履歴を戻す（その間に積まれた操作は後ろへ続ける）
         void RestoreHistory(History history);
 
+        /// @brief 今の履歴をそのまま取り出す（スタックは空になる）
+        History TakeHistory();
+
         /// @brief 一括操作の開始（EndBatch までに積んだ分が 1 回の Undo になる）
         void BeginBatch(std::string label);
 

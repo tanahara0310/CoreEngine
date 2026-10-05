@@ -14,6 +14,9 @@
 #include "Editor/ImGui/ImGuiAll.h"
 #include "Editor/ImGui/Widgets/EditorBars.h"
 #include "Editor/Inspector/PrefabAssetInspector.h"
+#include "Editor/Scene/EditorSceneAccess.h"
+#include "Editor/Scene/SceneDebugEditor.h"
+#include "Graphics/Asset/AssetInfo.h"
 #endif
 #include <algorithm>
 #include <array>
@@ -1464,6 +1467,17 @@ namespace CoreEngine
     void ProjectView::OpenFile(const std::filesystem::path& filePath)
     {
         if (!std::filesystem::exists(filePath)) {
+            return;
+        }
+
+        // プレハブはエディタのプレハブモードで開く
+        if (ClassifyKind(filePath, false) == Kind::Prefab) {
+            const std::string guid = AssetDatabase::GetInstance().GetGUID(filePath);
+            const AssetInfo* const info = guid.empty() ? nullptr : AssetDatabase::GetInstance().FindAssetByGUID(guid);
+            SceneDebugEditor* const editor = Editor::SceneAccess::SceneEditor();
+            if (info && editor) {
+                editor->OpenPrefabMode(*info);
+            }
             return;
         }
 

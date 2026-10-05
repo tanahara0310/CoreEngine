@@ -10,7 +10,9 @@
 #include "Editor/Inspector/ComponentInspectors.h"
 #include "Editor/Inspector/InspectorLayout.h"
 #include "Editor/Inspector/InspectorRenderer.h"
+#include "Editor/ImGui/Widgets/EditorBars.h"
 #include "Editor/Scene/EditorSceneAccess.h"
+#include "Editor/Scene/SceneDebugEditor.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
 #include "GameObject/Component/Core/ComponentHost.h"
 #include "GameObject/Component/Core/MissingComponent.h"
@@ -219,6 +221,12 @@ namespace CoreEngine::Editor::PrefabAssetInspector
         const std::string prefabName = info->name;
 
         UI::Separator();
+        SceneDebugEditor* const editor = SceneAccess::SceneEditor();
+        if (UI::Bar::Button("◈ プレハブモードで開く", false,
+                "このプレハブだけを表示して、部品の追加やコライダーの形も含めて直します（Project でダブルクリックでも開けます）",
+                editor != nullptr)) {
+            editor->OpenPrefabMode(*info);
+        }
         UI::SectionHeader("プレハブの中身");
         const json* const components = PrefabSystem::LoadComponents(prefab);
         if (!components) {

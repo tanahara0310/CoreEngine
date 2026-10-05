@@ -185,6 +185,18 @@ namespace CoreEngine::Editor
         return history;
     }
 
+    EditorCommandStack::History EditorCommandStack::TakeHistory()
+    {
+        batch_.reset();
+        batchDepth_ = 0;
+        History history;
+        history.undo = std::move(undo_);
+        history.redo = std::move(redo_);
+        undo_.clear();
+        redo_.clear();
+        return history;
+    }
+
     void EditorCommandStack::RestoreHistory(History history)
     {
         if (!undo_.empty()) {

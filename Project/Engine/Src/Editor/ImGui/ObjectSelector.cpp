@@ -242,7 +242,7 @@ namespace CoreEngine
 
         // スプライトオブジェクトのみをチェック
         for (const auto& obj : objects) {
-            if (!obj->IsActive()) {
+            if (!obj->IsActive() || !gameObjectManager->IsShownInIsolation(*obj)) {
                 continue;
             }
 
@@ -501,7 +501,7 @@ namespace CoreEngine
         ScreenToWorldRay(mousePos, camera, rayOrigin, rayDirection);
 
         for (const auto& obj : objects) {
-            if (!obj->IsActive()) {
+            if (!obj->IsActive() || !gameObjectManager->IsShownInIsolation(*obj)) {
                 continue;
             }
 

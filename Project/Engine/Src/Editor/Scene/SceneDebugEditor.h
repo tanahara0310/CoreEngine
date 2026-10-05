@@ -3,6 +3,7 @@
 #ifdef CORE_EDITOR
 
 #include "Editor/Scene/ObjectEditing.h"
+#include "Editor/Scene/PrefabMode.h"
 #include "Editor/Scene/UndoRedoHistory.h"
 #include "Editor/ImGui/Gizmo.h"
 #include "Editor/ImGui/ObjectSelector.h"
@@ -122,6 +123,19 @@ namespace CoreEngine
         /// @brief パーティクルのオブジェクトを Game ビューの中央の地面に作って選ぶ（Undo に積む）
         void CreateParticleObject(ObjectEditing::ParticleKind kind);
 
+        /// @brief プレハブだけを開いて直すモードに入る（再生中は入らない）
+        /// @return 開いたら true
+        bool OpenPrefabMode(const AssetInfo& prefab);
+
+        /// @brief プレハブモードを閉じてシーンへ戻る（直した値は直すたびに保存済み）
+        void ClosePrefabMode();
+
+        /// @brief プレハブモードの間か
+        bool IsInPrefabMode() const { return prefabMode_.IsOpen(); }
+
+        /// @brief 開いているプレハブのファイル名（プレハブモードでなければ空）
+        const std::string& GetPrefabModeFileName() const { return prefabMode_.GetFileName(); }
+
         /// @brief プレハブから作ったオブジェクトの今の構成と値を、プレハブへ書き戻す（Undo に積む）
         /// @return 書き戻したら true
         bool ApplyToPrefab(GameObject& object);
@@ -190,10 +204,18 @@ namespace CoreEngine
 
         /// @brief 選んでいるオブジェクトへエディタのカメラを寄せる
         /// @details 大きさが分かるものはそれが収まる距離まで、分からないものは既定の距離。
-        void FocusOnSelection();
+        /// @param distanceScale 大きさ（半径）の何倍まで離れるか
+        void FocusOnSelection(float distanceScale = 3.0f);
 
         /// @brief Hierarchy の行の右クリックメニュー（プレハブとして保存・プレハブへ適用・つながりを外す）
         void DrawObjectContextMenu(GameObject& object);
+
+        /// @brief プレハブモードの間なら、シーンを変える操作を断ってステータスバーに理由を出す
+        /// @return 断ったら true
+        bool RefuseInPrefabMode() const;
+
+        /// @brief Hierarchy の上に、プレハブモードの帯（ファイル名とシーンへ戻るボタン）を描く
+        void DrawPrefabModeHeader();
 
         /// @brief 再生中なら保存を断り、ステータスバーに理由を出す
         /// @return 再生中で断ったら true
@@ -238,6 +260,15 @@ namespace CoreEngine
 
         // 操作をしていなくても未保存として扱うか（保存すると外れる）
         bool dirtyWithoutEdits_ = false;
+
+        // プレハブだけを開いて直すモード
+        Editor::PrefabMode prefabMode_;
+
+        // プレハブモードを開く前に、シーンに保存していない変更があったか
+        bool sceneDirtyBeforePrefabMode_ = false;
+
+        // Hierarchy の「シーンへ戻る」が押された（一覧を描き終えてから閉じる）
+        bool closePrefabModeRequested_ = false;
 
         // 保存しようとして外の変更とぶつかったファイル名
         std::vector<std::string> saveConflicts_;
