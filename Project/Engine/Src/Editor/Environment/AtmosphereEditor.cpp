@@ -228,7 +228,7 @@ namespace CoreEngine {
             ImGui::TextDisabled("(?)");
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("「夜（満月）」は自動露出も有効化します\n"
-                    "（月光は物理準拠の暗さのため露出補正が必要）\n"
+                    "（月光は太陽の約 1/1000 に抑えた美術値のため、露出補正が必要）\n"
                     "昼系プリセット（正午・朝・夕暮れ）を押すと自動露出は元の設定へ戻ります");
             }
 
@@ -637,8 +637,7 @@ namespace CoreEngine {
         moon.azimuthDeg = 180.0f;
         ApplyMoonSettings(moon);
 
-        // 月光は物理準拠の暗さ（太陽の1/1000）のため、露出補正なしではほぼ黒になる。
-        // 自動露出（Krawczyk キー＝暗さの絶対感は保持）を有効化して「暗いが見える夜」にする
+        // 自動露出を有効化して「暗いが見える夜」にする
         if (ToneMapping* toneMapping = GetToneMapping()) {
             // 昼系プリセットで元へ戻せるよう、プリセットが触る前の値を退避する。
             // 夜プリセットを連打しても最初の退避（＝ユーザーの元設定）を保つ

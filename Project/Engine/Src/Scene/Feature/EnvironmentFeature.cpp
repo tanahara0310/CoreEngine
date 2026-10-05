@@ -25,6 +25,8 @@
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
 
+#include <algorithm>
+
 namespace CoreEngine
 {
     void EnvironmentFeature::PostSceneInitialize(SceneContext& ctx)
@@ -272,8 +274,23 @@ namespace CoreEngine
             }
         }
 
+        // 固定色のフォグは、基準輝度より暗いシーン照明の分だけ暗くする（大気のあるシーンのみ）
+        float illuminationScale = 1.0f;
+        if (FogCVars::FollowIllumination.Get() && skyBox_.Get()) {
+            auto* atmosphereManager = domainContext->GetAtmosphereManager();
+            auto* postEffect = ctx.engine->GetService<PostEffectManager>();
+            auto* toneMapping = postEffect
+                ? postEffect->GetEffect<ToneMapping>(PostEffectNames::ToneMapping) : nullptr;
+            if (atmosphereManager && toneMapping) {
+                illuminationScale = std::clamp(
+                    atmosphereManager->GetSceneIlluminationLuminance()
+                        / std::max(toneMapping->GetReferenceLuminance(), 1.0e-6f),
+                    0.0f, 1.0f);
+            }
+        }
+
         // このフレームはフォグを使うと宣言する（実際に合成するかは r.Fog.Enabled 次第）。
         // 深度復元用の行列とカメラ位置は FrameViews から FogPass が取るのでここでは渡さない。
-        fogManager->Update(sunDirection, hasSun);
+        fogManager->Update(sunDirection, hasSun, illuminationScale);
     }
 }

@@ -14,6 +14,7 @@ namespace CoreEngine
         extern CVar<bool>    Enabled;
         extern CVar<Vector4> Color;
         extern CVar<float>   ColorIntensity;
+        extern CVar<bool>    FollowIllumination;
         extern CVar<float>   Density;
         extern CVar<float>   HeightFalloff;
         extern CVar<float>   HeightRefM;

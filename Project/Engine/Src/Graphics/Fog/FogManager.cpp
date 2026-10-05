@@ -106,7 +106,7 @@ namespace CoreEngine
         return true;
     }
 
-    void FogManager::Update(const Vector3& sunDirection, bool hasSun)
+    void FogManager::Update(const Vector3& sunDirection, bool hasSun, float illuminationScale)
     {
         // Update() を呼ぶのはフォグを使うシーンのみ。このフレームは合成を有効にする
         fogActive_ = true;
@@ -122,6 +122,7 @@ namespace CoreEngine
             sunDirection_ = Normalize(sunDirection);
         }
         hasSun_ = hasSun && directionValid;
+        illuminationScale_ = illuminationScale;
     }
 
     FogManager::FogConstants FogManager::BuildConstants(
@@ -133,7 +134,7 @@ namespace CoreEngine
         // フォグが無効なフレームは密度 0 で恒等にする。全画面合成は走らないが、
         // 前方描画は毎フレーム同じ CBV を差すので、ここで無効化しておく必要がある
         constants.density = IsFogActive() ? settings_.density : 0.0f;
-        constants.fogColor = settings_.color * settings_.colorIntensity;
+        constants.fogColor = settings_.color * settings_.colorIntensity * illuminationScale_;
         constants.heightFalloff = settings_.heightFalloff;
         constants.heightRef = settings_.heightRefM;
         constants.startDistance = settings_.startDistanceM;

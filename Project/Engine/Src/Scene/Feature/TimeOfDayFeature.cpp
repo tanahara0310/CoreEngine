@@ -86,7 +86,7 @@ namespace
     CVar<float> cvNightMaxAutoEV{
         "r.TimeOfDay.NightMaxAutoEV", 7.5f,
         "サイクル中の自動露出の上限 EV（r.AutoExposure.MaxEV を借りて上書きする）。"
-        "夜はこの上限に張り付くので、下げた分だけ夜が暗くなる（昼は +2 EV 程度なので影響しない）",
+        "下げるとその分だけ夜の持ち上げが止まって暗くなる（昼は +2 EV 程度なので影響しない）",
         CVarRange{ 0.0f, 12.0f } };
 
     CVar<float> cvNightSkyAmbientMul{
@@ -443,8 +443,7 @@ namespace CoreEngine
 
     void TimeOfDayFeature::ApplyNightDarkness()
     {
-        // 夜の代表輝度は星明かりの下限でクランプされるため、自動 EV は上限に張り付く。
-        // つまりこの上限がそのまま「夜の明るさ」になる（昼は +2 EV 程度で上限に届かない）。
+        // 自動露出の上限を夜用の値で上書きする。
         BorrowFloatCVar(maxAutoEV_, "r.AutoExposure.MaxEV");
         WriteFloatCVar(maxAutoEV_, cvNightMaxAutoEV.Get());
 

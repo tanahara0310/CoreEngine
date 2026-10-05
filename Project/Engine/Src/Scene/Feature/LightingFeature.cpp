@@ -58,12 +58,15 @@ namespace CoreEngine
         }
 
         // シーンが自前の平行光源を置いていたら、既定の太陽は引っ込む
-        // （保存データが既定の太陽と同じ名前で復元された場合は同じオブジェクトなので残る）
+        // （保存データが既定の太陽と同じ名前で復元された場合は同じオブジェクトなので残る。
+        //   月だけの平行光源は自前の太陽として数えない）
         const LightComponent* const own = defaultSun_->GetComponent<LightComponent>();
         bool sceneHasDirectional = false;
         ctx.gameObjectManager->ForEachComponent<LightComponent>(
             [&](LightComponent& component) {
-                if (&component != own && component.GetLightType() == LightType::Directional) {
+                const Light& light = component.Get();
+                const bool moonOnly = light.isAtmosphereMoon && !light.isAtmosphereSun;
+                if (&component != own && component.GetLightType() == LightType::Directional && !moonOnly) {
                     sceneHasDirectional = true;
                 }
             });

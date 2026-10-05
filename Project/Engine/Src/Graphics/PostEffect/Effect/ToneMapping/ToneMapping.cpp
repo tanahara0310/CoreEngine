@@ -74,8 +74,19 @@ namespace CoreEngine
 
         CVar<float> cvMaxAutoEV{
             "r.AutoExposure.MaxEV", 8.0f,
-            "自動EVの上限。月夜には約 +5EV 必要で、下げると夜がクランプされて暗く沈む",
+            "自動EVの上限。暗い夜でもこれ以上は持ち上げない",
             CVarRange{ 0.0f, 12.0f } };
+
+        CVar<float> cvDarkKneeEV{
+            "r.AutoExposure.DarkKneeEV", 3.0f,
+            "夜の持ち上げを弱め始める自動EV。これを超えた分は DarkSlope 倍へ圧縮される",
+            CVarRange{ 0.0f, 12.0f } };
+
+        CVar<float> cvDarkSlope{
+            "r.AutoExposure.DarkSlope", 0.35f,
+            "DarkKneeEV を超えた持ち上げの残し方。1 で圧縮なし（暗い夜まで昼並みに明るくなる）、"
+            "小さいほど夜が暗いまま残る",
+            CVarRange{ 0.0f, 1.0f } };
 
         CVar<float> cvReferenceLuminance{
             "r.AutoExposure.ReferenceLuminance", 2.0f,
@@ -92,6 +103,20 @@ namespace CoreEngine
 
         constexpr const char* kCVarPrefix = "r.AutoExposure";
         constexpr const char* kToneMapCVarPrefix = "r.ToneMapping";
+
+        /// @brief kneeEV を超えた EV を slope 倍へ圧縮する（膝の付近は滑らかにつなぐ）
+        float CompressDarkEV(float ev, float kneeEV, float slope)
+        {
+            constexpr float kKneeWidth = 0.5f;
+            const float over = ev - kneeEV;
+            const float softOver = 0.5f * (over + std::sqrt(over * over + kKneeWidth * kKneeWidth));
+            return ev - (1.0f - slope) * softOver;
+        }
+    }
+
+    float ToneMapping::GetReferenceLuminance() const
+    {
+        return cvReferenceLuminance.Get();
     }
 
     void ToneMapping::SetAutoExposureEnabled(bool enabled)
@@ -247,7 +272,10 @@ namespace CoreEngine
         const float referenceEV = std::log2(
             KeyForLuminance(referenceLuminance) / std::max(referenceLuminance, 1e-6f));
 
-        autoEV_ = std::clamp(rawEV - referenceEV, cvMinAutoEV.Get(), cvMaxAutoEV.Get());
+        // 膝を超えた持ち上げを圧縮してから上下限でクランプする
+        const float compressedEV = CompressDarkEV(
+            rawEV - referenceEV, cvDarkKneeEV.Get(), cvDarkSlope.Get());
+        autoEV_ = std::clamp(compressedEV, cvMinAutoEV.Get(), cvMaxAutoEV.Get());
     }
 
     float ToneMapping::KeyForLuminance(float luminance) const
