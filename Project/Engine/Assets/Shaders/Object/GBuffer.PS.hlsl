@@ -11,7 +11,7 @@ struct GBufferOutput
     float4 albedoAO : SV_TARGET0; ///< rgb=アルベド, a=AO
     float4 normalRoughness : SV_TARGET1; ///< rgb=ワールド法線(エンコード済み), a=ラフネス（0=アンリット）
     float4 emissiveMetallic : SV_TARGET2; ///< rgb=エミッシブ, a=メタリック
-    float2 motionVector : SV_TARGET3; ///< モーションベクター（NDC空間の2Dオフセット）
+    float4 motionVector : SV_TARGET3; ///< rg=モーションベクター（NDC空間の2Dオフセット）, b=水面フラグ（0）
 };
 
 GBufferOutput main(VertexShaderOutput input)
@@ -31,6 +31,13 @@ GBufferOutput main(VertexShaderOutput input)
 
     float3 albedo = saturate((gMaterial.color * textureColor).rgb);
 
+    // ===== モーションベクター計算 =====
+    // NDC空間（-1〜1）での現フレームと前フレームの位置差分を格納する。
+    // TAA・SSAO テンポラル・RTShadow が前フレームの画素を逆算して再投影するために使う。
+    float2 ndcCurrent = input.clipPosCurrent.xy / input.clipPosCurrent.w;
+    float2 ndcPrev = input.clipPosPrev.xy / input.clipPosPrev.w;
+    output.motionVector = float4(ndcCurrent - ndcPrev, 0.0f, 0.0f);
+
     // ===== アンリットマテリアル処理 =====
     // enableLighting=0 の場合、DeferredLighting パスに roughness=0 のセンチネル値を書き込む。
     // emissiveMetallic.rgb にアンリットカラーを格納し、DeferredLighting 側で検出して PBR をスキップする。
@@ -39,7 +46,6 @@ GBufferOutput main(VertexShaderOutput input)
         output.albedoAO = float4(0.0f, 0.0f, 0.0f, 1.0f);
         output.normalRoughness = float4(0.5f, 0.5f, 1.0f, 0.0f); // roughness=0 = アンリットセンチネル
         output.emissiveMetallic = float4(albedo, 0.0f); // rgb にアンリットカラーを格納
-        output.motionVector = float2(0.0f, 0.0f);
         return output;
     }
 
@@ -62,13 +68,6 @@ GBufferOutput main(VertexShaderOutput input)
     output.albedoAO = float4(albedo, ao);
     output.normalRoughness = float4(encodedNormal, roughness);
     output.emissiveMetallic = float4(emissive, metallic);
-
-    // ===== モーションベクター計算 =====
-    // NDC空間（-1〜1）での現フレームと前フレームの位置差分を格納する。
-    // RTShadow.hlsl がこの値を使って前フレームのピクセル座標を逆算し正確にリプロジェクションする。
-    float2 ndcCurrent = input.clipPosCurrent.xy / input.clipPosCurrent.w;
-    float2 ndcPrev = input.clipPosPrev.xy / input.clipPosPrev.w;
-    output.motionVector = ndcCurrent - ndcPrev;
 
     return output;
 }

@@ -25,7 +25,7 @@ namespace CoreEngine
             AlbedoAO = 0,       ///< PBR: rgb=アルベド,a=AO
             NormalRoughness,    ///< PBR: rgb=ワールド法線(encoded),a=ラフネス（0=アンリット）
             EmissiveMetallic,   ///< PBR: rgb=エミッシブ,a=メタリック
-            MotionVector,       ///< rg=NDC空間モーションベクター（現フレーム-前フレーム）
+            MotionVector,       ///< rg=NDC空間モーションベクター（現フレーム-前フレーム）, b=水面フラグ
             Count
         };
 
@@ -38,7 +38,7 @@ namespace CoreEngine
                 DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,  // AlbedoAO
                 DXGI_FORMAT_R16G16B16A16_FLOAT,   // NormalRoughness
                 DXGI_FORMAT_R8G8B8A8_UNORM,       // EmissiveMetallic
-                DXGI_FORMAT_R16G16_FLOAT,          // MotionVector
+                DXGI_FORMAT_R16G16B16A16_FLOAT,   // MotionVector
             };
 
         /// @brief 初期化

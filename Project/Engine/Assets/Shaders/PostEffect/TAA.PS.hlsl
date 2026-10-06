@@ -6,31 +6,35 @@
 //
 // 出力先はそのまま次フレームの履歴になる（ping-pong）。
 //
-// ゴースト対策は「近傍 AABB クリップ」:
-//   現フレームの 3x3 近傍が作る色空間の箱に履歴を押し込むことで、
-//   再投影が外れた（＝ディスオクルージョンや MV が取れない）ピクセルの履歴を棄却する。
-//   RTShadowTemporal.CS.hlsl の Variance Clamping と同じ考え方だが、
-//   カラーは 3 チャンネルあるため YCoCg 空間の箱に対する「クリップ」を使う。
+// 履歴の棄却は「近傍 AABB クリップ」:
+//   現フレームの 3x3 近傍が作る YCoCg 空間の箱へ履歴を押し込み、
+//   再投影が外れたピクセルの履歴を削る。
+//
+// モーションベクター（G-Buffer MotionVector）:
+//   rg = NDC 差分（現フレーム - 前フレーム、ジッタ込み）
+//   b  = 水面フラグ（1 = 水面が書いた画素）
+//   深度が背景の画素は、深度 1 の点を前フレームの行列で投影して動きを求める。
 
 #include "FullScreen.hlsli"
+#include "../Include/Common/DepthReconstruction.hlsli"
 
 Texture2D<float4> gSceneColor   : register(t0); // 現フレーム（ジッタ付きで描画された HDR）
 Texture2D<float4> gHistoryColor : register(t1); // 前フレームの TAA 出力
-Texture2D<float2> gMotionVector : register(t2); // NDC 差分（GBuffer 産）
+Texture2D<float4> gMotionVector : register(t2); // rg=NDC 差分 / b=水面フラグ（GBuffer 産）
+Texture2D<float>  gSceneDepth   : register(t3); // 背景画素の判定と再投影に使う深度
 
 SamplerState gSampler : register(s0); // 履歴のバイリニア再投影用
 
 cbuffer TAAParams : register(b0)
 {
     float2 gScreenSize;
-    // 現フレームと前フレームのジッタ差分（NDC）。
-    // モーションベクターは「ジッタ込みのクリップ座標」から作られるため、
-    // ジッタ分を引かないと静止時でも毎フレーム再投影がぶれる。
-    float2 gJitterDelta;
+    float2 gJitterDelta;   // 現フレームと前フレームのジッタ差分（NDC）
     float gBlendAlpha;     // 現フレームの寄与率（0.1 = 履歴 90%）
     float gClampScale;     // 近傍 AABB の拡張率（大きいほどゴースト寄り・小さいほどちらつき寄り）
     float gDisableHistory; // 1.0 で履歴を完全無効化（初回フレーム・リサイズ直後）
-    float gBlendAlphaMax;  // 履歴が現フレームと食い違う画素で使う寄与率の上限
+    float gBlendAlphaMax;  // 水面の画素で履歴が食い違うときに使う寄与率の上限
+    float4x4 gInvViewProj;  // 今フレームの View*Projection の逆行列（ジッタ込み）
+    float4x4 gPrevViewProj; // 前フレームの View*Projection（ジッタ込み）
 };
 
 struct PixelShaderInput
@@ -43,6 +47,12 @@ struct PixelShaderOutput
 {
     float4 color : SV_Target;
 };
+
+/// @brief NaN / Inf / 負値を除き、FP16 で表せる範囲へ収める
+float3 SanitizeHdr(float3 c)
+{
+    return clamp(c, 0.0f, 60000.0f);
+}
 
 /// @brief RGB → YCoCg。輝度（Y）と色差を分離することで、
 ///        近傍 AABB が「明るさの箱」として素直に効くようになる
@@ -86,12 +96,34 @@ float TonemapWeight(float3 color)
     return 1.0f / (1.0f + max(color.r, max(color.g, color.b)));
 }
 
+/// @brief 範囲内へクランプしたうえで現フレームの 1 テクセルを読む
+float3 LoadCurrent(int2 coord, int2 screenMax)
+{
+    return SanitizeHdr(gSceneColor.Load(int3(clamp(coord, int2(0, 0), screenMax), 0)).rgb);
+}
+
+/// @brief 背景（深度が最遠）の画素の動きを、前フレームの行列でのカメラ由来の再投影から求める
+/// @details 深度 1 の点（遠方の空）を前フレームの View*Projection で投影し、
+///          現在の NDC との差を返す。ジッタ込みの行列同士なので G-Buffer の規約と一致する。
+float2 ComputeBackgroundMotion(float2 currentUV)
+{
+    const float2 ndc = ScreenUVToNDC(currentUV);
+    const float3 farWorld = ReconstructWorldPosition(ndc, 1.0f, gInvViewProj);
+    const float4 prevClip = mul(float4(farWorld, 1.0f), gPrevViewProj);
+    if (prevClip.w <= 1.0e-6f)
+    {
+        return float2(0.0f, 0.0f);
+    }
+    return ndc - prevClip.xy / prevClip.w;
+}
+
 PixelShaderOutput main(PixelShaderInput input)
 {
     PixelShaderOutput output;
 
     const int2 coord = int2(input.position.xy);
-    const float3 current = gSceneColor.Load(int3(coord, 0)).rgb;
+    const int2 screenMax = int2(gScreenSize) - int2(1, 1);
+    const float3 current = LoadCurrent(coord, screenMax);
 
     // 履歴無効時（初回フレーム等）は現フレームをそのまま出す
     if (gDisableHistory > 0.5f)
@@ -105,23 +137,19 @@ PixelShaderOutput main(PixelShaderInput input)
     float3 neighborMin = float3(1e20f, 1e20f, 1e20f);
     float3 neighborMax = float3(-1e20f, -1e20f, -1e20f);
 
-    const int2 screenMax = int2(gScreenSize) - int2(1, 1);
-
     [unroll]
     for (int dy = -1; dy <= 1; ++dy)
     {
         [unroll]
         for (int dx = -1; dx <= 1; ++dx)
         {
-            const int2 nc = clamp(coord + int2(dx, dy), int2(0, 0), screenMax);
-            const float3 n = RGBToYCoCg(gSceneColor.Load(int3(nc, 0)).rgb);
+            const float3 n = RGBToYCoCg(LoadCurrent(coord + int2(dx, dy), screenMax));
             neighborMin = min(neighborMin, n);
             neighborMax = max(neighborMax, n);
         }
     }
 
-    // 箱をわずかに広げると、収束が速くなる代わりにゴーストが出やすくなる。
-    // gClampScale はそのトレードオフを実行時に振るためのつまみ。
+    // gClampScale で箱の広さを実行時に振る
     {
         const float3 center = 0.5f * (neighborMax + neighborMin);
         const float3 extent = 0.5f * (neighborMax - neighborMin) * gClampScale;
@@ -130,11 +158,18 @@ PixelShaderOutput main(PixelShaderInput input)
     }
 
     // ===== モーションベクターで前フレームへ再投影 =====
-    // MV は NDC 差分。ジッタ分を除いた「本当の動き」だけを使う。
-    const float2 motion = gMotionVector.Load(int3(coord, 0)) - gJitterDelta;
-
-    // 現在の UV から NDC 差分を UV 差分へ変換して引く（NDC Y は画面 Y と逆向き）
     const float2 currentUV = (float2(coord) + 0.5f) / gScreenSize;
+    const float4 motionPacked = gMotionVector.Load(int3(coord, 0));
+    const bool isWater = motionPacked.z > 0.5f;
+
+    float2 motion = motionPacked.xy;
+    if (!isWater && IsBackgroundDepth(gSceneDepth.Load(int3(coord, 0))))
+    {
+        motion = ComputeBackgroundMotion(currentUV);
+    }
+
+    // ジッタ分を除いた動きだけを使う。NDC Y は画面 Y と逆向き
+    motion -= gJitterDelta;
     const float2 historyUV = currentUV - motion * float2(0.5f, -0.5f);
 
     // 再投影先が画面外なら履歴が存在しないので現フレームを採用する
@@ -144,36 +179,34 @@ PixelShaderOutput main(PixelShaderInput input)
         return output;
     }
 
-    const float3 historyRaw = gHistoryColor.SampleLevel(gSampler, historyUV, 0.0f).rgb;
+    const float3 historyRaw = SanitizeHdr(gHistoryColor.SampleLevel(gSampler, historyUV, 0.0f).rgb);
 
     // ===== 履歴のクリップ =====
     const float3 currentYCoCg = RGBToYCoCg(current);
     const float3 historyClippedYCoCg = ClipToAABB(neighborMin, neighborMax, RGBToYCoCg(historyRaw));
     const float3 historyClipped = YCoCgToRGB(historyClippedYCoCg);
 
-    // ===== 時間的な食い違いに応じて寄与率を上げる =====
-    // ★水面がぼける問題の対策★
-    // AABB クリップは「箱の外」の履歴しか弾けない。水面のように毎フレーム表面自体が
-    // 変わるサーフェスでは、履歴（前フレームの泡）が現在の近傍の箱（水〜泡のレンジ）に
-    // すっぽり収まってしまうため一切弾かれず、そのまま 90% の重みで混ざって高周波が
-    // 溶ける（実測: TAA 無効 16.3 に対し有効 8.3 まで低下。カメラ静止でも同じ）。
-    // ここでは「履歴と現フレームの輝度差」を近傍のコントラストで正規化し、
-    // 食い違うほど現フレーム寄りにする。静止した不透明面は差が出ないので
-    // 従来どおり gBlendAlpha のまま収束し、AA 品質は落ちない。
-    const float neighborLumaExtent = max(neighborMax.x - neighborMin.x, 1.0e-4f);
-    const float temporalDisagreement =
-        saturate(abs(currentYCoCg.x - historyClippedYCoCg.x) / neighborLumaExtent);
-    const float blendAlpha = lerp(gBlendAlpha, gBlendAlphaMax, temporalDisagreement);
+    // ===== 寄与率 =====
+    // 通常の画素は固定の gBlendAlpha。
+    // 水面の画素だけ、履歴と現フレームの輝度差を近傍のコントラストで正規化した値で
+    // gBlendAlpha 〜 gBlendAlphaMax を補間し、食い違うほど現フレーム寄りにする。
+    float blendAlpha = gBlendAlpha;
+    if (isWater)
+    {
+        const float neighborLumaExtent = max(neighborMax.x - neighborMin.x, 1.0e-4f);
+        const float temporalDisagreement =
+            saturate(abs(currentYCoCg.x - historyClippedYCoCg.x) / neighborLumaExtent);
+        blendAlpha = lerp(gBlendAlpha, gBlendAlphaMax, temporalDisagreement);
+    }
 
     // ===== 蓄積 =====
-    // 明るさで重み付けした加重平均にすることで、
-    // 1 フレームだけ現れた極端に明るい点が履歴に残り続けるのを防ぐ。
+    // 明るさで重み付けした加重平均で、極端に明るい点が履歴に残り続けるのを防ぐ。
     const float weightCurrent = blendAlpha * TonemapWeight(current);
     const float weightHistory = (1.0f - blendAlpha) * TonemapWeight(historyClipped);
     const float weightSum = max(weightCurrent + weightHistory, 1e-5f);
 
     const float3 resolved = (current * weightCurrent + historyClipped * weightHistory) / weightSum;
 
-    output.color = float4(resolved, 1.0f);
+    output.color = float4(SanitizeHdr(resolved), 1.0f);
     return output;
 }
