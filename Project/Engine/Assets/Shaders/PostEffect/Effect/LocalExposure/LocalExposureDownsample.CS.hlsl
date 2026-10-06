@@ -35,7 +35,7 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
         {
             const uint2 p = min(blockOrigin + uint2(x, y), sourceSize - 1);
             const float lum = Luminance(gTexture.Load(int3(p, 0)).rgb);
-            sum += log2(max(lum, 1e-6f));
+            sum += log2(clamp(lum, 1e-6f, 60000.0f));
         }
     }
 

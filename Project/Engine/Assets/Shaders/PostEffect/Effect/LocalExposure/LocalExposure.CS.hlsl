@@ -79,7 +79,7 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
     const float4 color = gTexture.Load(int3(coord, 0));
 
     const float lum = Luminance(color.rgb);
-    const float logLum = log2(max(lum, 1e-6f));
+    const float logLum = log2(clamp(lum, 1e-6f, 60000.0f));
 
     const float2 uv = (float2(coord) + 0.5f) / float2(screenSize);
     const float base = SampleBaseBilateral(uv, logLum);
@@ -94,5 +94,5 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
 
     // 色は保ったまま輝度だけを乗算で動かす
     const float multiplier = exp2(newLogLum - logLum);
-    gOutput[coord] = float4(color.rgb * multiplier, color.a);
+    gOutput[coord] = float4(clamp(color.rgb * multiplier, 0.0f, 60000.0f), color.a);
 }
