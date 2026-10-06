@@ -562,6 +562,10 @@ namespace CoreEngine
                 instance->SetRoughness(asset.roughnessFactor);
                 instance->SetEmissiveFactor(asset.emissiveFactor);
                 instance->SetAlphaCutoff(asset.alphaCutoff);
+                // アルファで抜く材質はディザではなくアルファカットオフで判定する
+                if (asset.alphaMask) {
+                    instance->SetDitheringEnabled(false);
+                }
                 // 頂点アニメーション（glTF の extras。植物・海草・魚のモデルは置くだけで動く）
                 instance->SetVertexAnimation(asset.vertexAnimation);
                 instance->SetVertexAnimStrength(asset.vertexAnimStrength);

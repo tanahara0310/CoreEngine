@@ -200,6 +200,11 @@ namespace CoreEngine
                 material.alphaCutoff = alphaCutoff;
             }
 
+            aiString alphaMode;
+            if (aiMat->Get(AI_MATKEY_GLTF_ALPHAMODE, alphaMode) == AI_SUCCESS) {
+                material.alphaMask = (std::string(alphaMode.C_Str()) == "MASK");
+            }
+
             Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}", std::format(
                 "    - Factors: baseColor=({:.2f},{:.2f},{:.2f},{:.2f}) metallic={:.2f} roughness={:.2f} emissive=({:.2f},{:.2f},{:.2f})",
                 material.baseColorFactor.x, material.baseColorFactor.y, material.baseColorFactor.z, material.baseColorFactor.w,
