@@ -44,7 +44,7 @@ PixelShaderOutput main(PixelShaderInput input)
         return output;
     }
 
-    float2 centerUV = (input.position.xy + 0.5f.xx) / gScreenSize;
+    float2 centerUV = input.position.xy / gScreenSize;
     float3 centerWP = ReconstructWorldPosition(ScreenUVToNDC(centerUV), centerDepth, gInvViewProj);
 
     float sum    = 0.0f;

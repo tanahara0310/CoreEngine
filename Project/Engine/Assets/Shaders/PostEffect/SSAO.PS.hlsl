@@ -68,7 +68,7 @@ PixelShaderOutput main(PixelShaderInput input)
         return output;
     }
 
-    float2 centerUV = (input.position.xy + 0.5f.xx) / gScreenSize;
+    float2 centerUV = input.position.xy / gScreenSize;
     float3 worldPos = ReconstructWorldPosition(ScreenUVToNDC(centerUV), centerDepth, gInvViewProj);
     float3 N        = normalize(normalRoughness.rgb * 2.0f - 1.0f);
 
@@ -106,11 +106,21 @@ PixelShaderOutput main(PixelShaderInput input)
         if (clip.w <= 0.0f) continue;
         float3 ndc = clip.xyz / clip.w;
         float2 uv = ndc.xy * float2(0.5f, -0.5f) + 0.5f;
-        if (any(uv < 0.0f) || any(uv > 1.0f)) continue;
 
-        int2 sampleCoord = int2(uv * gScreenSize);
+        // 画面外・背景（空）に落ちたサンプルは遮蔽なしとして数える
+        if (any(uv < 0.0f) || any(uv >= 1.0f))
+        {
+            weightSum += 1.0f;
+            continue;
+        }
+
+        int2 sampleCoord = min(int2(uv * gScreenSize), int2(gScreenSize) - 1);
         float sampleDepth = gSceneDepth.Load(int3(sampleCoord, 0));
-        if (IsBackgroundDepth(sampleDepth)) continue;
+        if (IsBackgroundDepth(sampleDepth))
+        {
+            weightSum += 1.0f;
+            continue;
+        }
         float3 sampleWorldPos = ReconstructWorldPosition(ndc.xy, sampleDepth, gInvViewProj);
 
         float sampleViewZ = sampleView.z;

@@ -157,7 +157,7 @@ PixelShaderOutput main(PixelShaderInput input)
     // ===== ワールド座標復元 =====
     float depthW, depthH;
     gSceneDepth.GetDimensions(depthW, depthH);
-    float2 screenUV = (input.position.xy + 0.5f.xx) / float2(depthW, depthH);
+    float2 screenUV = input.position.xy / float2(depthW, depthH);
     float3 worldPos = ReconstructWorldPosition(ScreenUVToNDC(screenUV), ndcDepth, gDepthReconstruction.invViewProj);
 
     // モード 1/2 は「コースティクス入力そのもの」の表示なのでここで即返す。

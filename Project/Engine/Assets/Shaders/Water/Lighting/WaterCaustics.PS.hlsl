@@ -154,7 +154,7 @@ PixelShaderOutput main(PixelShaderInput input)
 
     float depthW, depthH;
     gSceneDepth.GetDimensions(depthW, depthH);
-    float2 screenUV = (input.position.xy + 0.5f.xx) / float2(depthW, depthH);
+    float2 screenUV = input.position.xy / float2(depthW, depthH);
     float3 worldPos = ReconstructWorldPosition(ScreenUVToNDC(screenUV), ndcDepth, gInvViewProj);
 
     // 水面メッシュの XZ 範囲外（無限床など水域の外）にはコースティクスを落とさない。
