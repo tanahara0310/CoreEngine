@@ -4,6 +4,7 @@
 #include "Graphics/Shader/ICustomShaderProvider.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/Render/Model/ModelBindings.h"
+#include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Utility/Logger/Logger.h"
 
@@ -134,10 +135,9 @@ namespace CoreEngine
 
         if (writesMotionVector) {
             // SceneColor（オフスクリーン HDR）＋ GBuffer の MotionVector の 2 枚。
-            // フォーマットは GBufferManager::kRenderTargetFormats と一致させること。
             const DXGI_FORMAT formats[2] = {
                 DXGI_FORMAT_R16G16B16A16_FLOAT, // SceneColor
-                DXGI_FORMAT_R16G16_FLOAT,       // MotionVector
+                GBufferManager::kRenderTargetFormats[static_cast<size_t>(GBufferManager::Target::MotionVector)],
             };
             builder.SetRenderTargetFormats(formats, 2);
         }

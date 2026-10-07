@@ -36,6 +36,9 @@ struct PixelShaderOutput
     float4 color : SV_Target;
 };
 
+// シャープ化後の明るさが近傍の最大に対して許される倍率（HDR 値）
+static const float kPeakGain = 1.5f;
+
 /// @brief 可逆トーンマップ（Reinhard 系）。HDR を 0〜1 へ写す
 float3 TonemapForward(float3 c)
 {
@@ -49,11 +52,17 @@ float3 TonemapInverse(float3 c)
     return c / max(1.0f - m, 1e-5f);
 }
 
+/// @brief NaN / Inf / 負値を除き、FP16 で表せる範囲へ収める
+float3 SanitizeHdr(float3 c)
+{
+    return clamp(c, 0.0f, 60000.0f);
+}
+
 /// @brief 範囲内へクランプしたうえで 1 テクセル読む
 float3 LoadTonemapped(int2 coord, int2 screenMax)
 {
     const int2 c = clamp(coord, int2(0, 0), screenMax);
-    return TonemapForward(max(gSceneColor.Load(int3(c, 0)).rgb, 0.0f));
+    return TonemapForward(SanitizeHdr(gSceneColor.Load(int3(c, 0)).rgb));
 }
 
 PixelShaderOutput main(PixelShaderInput input)
@@ -94,6 +103,18 @@ PixelShaderOutput main(PixelShaderInput input)
     // 十字の重み付き平均。weight が負なので中心が持ち上がり、周囲が引かれる＝シャープ化
     const float3 sharpened = ((b + d + f + h) * weight + e) / (1.0f + 4.0f * weight);
 
-    output.color = float4(TonemapInverse(max(sharpened, 0.0f)), 1.0f);
+    // 結果の明るさを 3x3 近傍の最大の kPeakGain 倍（HDR 値）までに抑える。
+    // トーンマップ空間で 1 に近づくと逆変換が発散するため、HDR 側で上限を決めて写し直す
+    const float3 neighborMax = max(max(max(d, e), max(f, b)), max(h, max(max(a, c), max(g, i))));
+    const float neighborMaxScalar = max(neighborMax.r, max(neighborMax.g, neighborMax.b));
+    const float neighborMaxHdr = neighborMaxScalar / max(1.0f - neighborMaxScalar, 1e-5f);
+    const float capHdr = neighborMaxHdr * kPeakGain;
+    const float capMapped = capHdr / (1.0f + capHdr);
+
+    const float3 positive = max(sharpened, 0.0f);
+    const float positiveMax = max(positive.r, max(positive.g, positive.b));
+    const float3 limited = positive * min(1.0f, capMapped / max(positiveMax, 1e-5f));
+
+    output.color = float4(SanitizeHdr(TonemapInverse(limited)), 1.0f);
     return output;
 }

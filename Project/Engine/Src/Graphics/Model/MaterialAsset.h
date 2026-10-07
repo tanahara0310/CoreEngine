@@ -30,6 +30,7 @@ namespace CoreEngine
         float roughnessFactor = 0.5f;                         // 粗さファクター（非PBR形式向けに中間デフォルト）
         Vector3 emissiveFactor = { 0.0f, 0.0f, 0.0f };        // エミッシブファクター
         float alphaCutoff = 0.5f;                             // アルファカットオフしきい値
+        bool alphaMask = false;                               // true: アルファの値で抜く材質（glTF の alphaMode=MASK）
 
         // ===== 頂点アニメーション（glTF のマテリアルの extras。ModelLoader::ApplyGltfMaterialExtras） =====
         // モデル側で「置くだけで揺れる・泳ぐ」ようにするための既定値。MaterialComponent で個別に上書きできる。

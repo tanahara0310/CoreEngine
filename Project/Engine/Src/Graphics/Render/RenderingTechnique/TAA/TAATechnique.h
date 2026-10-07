@@ -22,19 +22,19 @@ namespace CoreEngine
             float blendAlpha = 0.1f;               ///< 現フレームの寄与率（小さいほど滑らかで残像寄り）
             float clampScale = 1.0f;               ///< 近傍 AABB の拡張率
             float disableHistory = 1.0f;           ///< 1.0 で履歴無効（初回フレーム・リサイズ直後）
-            /// @brief 履歴と現フレームが食い違う画素で使う寄与率の上限
-            /// @details 水面のように「カメラが止まっていても表面自体が毎フレーム変わる」
-            ///          サーフェスは、モーションベクターが完璧でも履歴が本質的に古い。
-            ///          固定の blendAlpha=0.1（履歴90%）だと泡のような高周波が
-            ///          時間平均されて溶ける。食い違いの大きさで blendAlpha 〜 これの間を
-            ///          補間し、静止した不透明面のAA品質は保ったまま動く面だけ現フレーム寄りにする。
+            /// @brief 水面の画素で履歴と現フレームが食い違うときに使う寄与率の上限
+            /// @details 食い違いの大きさで blendAlpha 〜 これの間を補間する。水面以外は blendAlpha 固定。
             float blendAlphaMax = 0.9f;
+            float invViewProj[16] = {};  ///< 今フレームの View*Projection の逆行列（背景の再投影用）
+            float prevViewProj[16] = {}; ///< 前フレームの View*Projection
         };
 
         static constexpr Cb::Field kTAAParamsFields[] = {
             CB_FIELD(TAAParams, screenSize), CB_FIELD(TAAParams, jitterDelta), CB_FIELD(TAAParams, blendAlpha),
             CB_FIELD(TAAParams, clampScale), CB_FIELD(TAAParams, disableHistory),
             CB_FIELD(TAAParams, blendAlphaMax),
+            CB_FIELD_AS(TAAParams, invViewProj, Cb::Float4x4),
+            CB_FIELD_AS(TAAParams, prevViewProj, Cb::Float4x4),
         };
         CB_VERIFY_LAYOUT(TAAParams, kTAAParamsFields);
         CB_BIND_HLSL(TAAParams, kTAAParamsFields, "TAAParams");
@@ -90,5 +90,8 @@ namespace CoreEngine
         uint64_t lastJitterFrame_ = 0;     ///< 直前にジッタを受け取ったフレーム番号
         float prevJitterX_ = 0.0f;         ///< 前フレームのジッタ（差分計算用）
         float prevJitterY_ = 0.0f;
+
+        float prevViewProj_[16] = {};      ///< 前フレームの View*Projection（背景の再投影用）
+        bool hasPrevViewProj_ = false;     ///< prevViewProj_ に有効な値が入っているか
     };
 }

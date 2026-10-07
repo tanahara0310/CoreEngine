@@ -8,7 +8,9 @@
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 #include "Graphics/Render/Pass/RenderPass.h"
+#include "Camera/View/ViewInfo.h"
 #include <cassert>
+#include <cstring>
 
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/ImguiManager.h"
@@ -30,8 +32,8 @@ namespace CoreEngine
 
         CVar<float> cvBlendAlphaMax{
             "r.TAA.BlendAlphaMax", 0.9f,
-            "履歴と現フレームが食い違う画素で使う寄与率の上限"
-            "（水面など毎フレーム表面が変わる面のぼけ対策。blendAlpha と同値にすると従来動作）",
+            "水面の画素で履歴と現フレームが食い違うときに使う寄与率の上限"
+            "（水面以外は BlendAlpha 固定。BlendAlpha と同値にすると水面も固定になる）",
             CVarRange{ 0.01f, 1.0f } };
 
         CVar<float> cvClampScale{
@@ -87,6 +89,19 @@ namespace CoreEngine
         params_.screenSize[0] = static_cast<float>(context.gBufferManager->GetWidth());
         params_.screenSize[1] = static_cast<float>(context.gBufferManager->GetHeight());
 
+        // 背景（空）の画素の動きを求めるための今フレームの逆行列と前フレームの行列
+        const ViewInfo* gameView = nullptr;
+        if (context.frameViews && context.frameViews->GameView().isValid) {
+            gameView = &context.frameViews->GameView();
+        }
+        if (gameView) {
+            std::memcpy(params_.invViewProj, &gameView->invViewProjection, sizeof(params_.invViewProj));
+            const void* prevSource = hasPrevViewProj_
+                ? static_cast<const void*>(prevViewProj_)
+                : static_cast<const void*>(&gameView->viewProjection);
+            std::memcpy(params_.prevViewProj, prevSource, sizeof(params_.prevViewProj));
+        }
+
         // 今フレームのスライスへ書き込む（フレームオーバーラップ対応）
         const D3D12_GPU_VIRTUAL_ADDRESS cbAddress =
             context.dxCommon->GetUploadRing().AllocateConstants(params_);
@@ -120,6 +135,15 @@ namespace CoreEngine
             }
         }
 
+        // t3: SceneDepth（背景画素の判定と再投影）
+        const int depthIdx = GetRootParamIndex("gSceneDepth");
+        if (depthIdx >= 0) {
+            D3D12_GPU_DESCRIPTOR_HANDLE depthHandle{};
+            if (context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneDepth, depthHandle)) {
+                cmdList->SetGraphicsRootDescriptorTable(depthIdx, depthHandle);
+            }
+        }
+
         const int paramsIdx = GetRootParamIndex("TAAParams");
         if (paramsIdx >= 0 && cbAddress != 0) {
             cmdList->SetGraphicsRootConstantBufferView(paramsIdx, cbAddress);
@@ -128,6 +152,11 @@ namespace CoreEngine
         DrawFullscreenQuad(cmdList);
 
         writeTarget->End(cmdList);
+
+        if (gameView) {
+            std::memcpy(prevViewProj_, &gameView->viewProjection, sizeof(prevViewProj_));
+            hasPrevViewProj_ = true;
+        }
 
         historyValid_ = true;
         lastExecutedFrame_ = context.frameNumber;

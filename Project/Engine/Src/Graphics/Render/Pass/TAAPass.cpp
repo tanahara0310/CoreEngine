@@ -11,9 +11,10 @@ namespace CoreEngine
 {
     void TAAPass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
     {
-        // 現フレームの画・モーションベクター・前フレームの履歴を読み、今フレームの履歴へ書く。
+        // 現フレームの画・モーションベクター・深度・前フレームの履歴を読み、今フレームの履歴へ書く。
         builder.Read(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         builder.Read(FrameBlackboard::GBufferMotionVector, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        builder.Read(FrameBlackboard::SceneDepth, D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         builder.Read(FrameBlackboard::TAAHistory, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         builder.Write(FrameBlackboard::TAAOutput, D3D12_RESOURCE_STATE_RENDER_TARGET);
     }

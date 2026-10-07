@@ -18,7 +18,7 @@ namespace
         DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,    // AlbedoAO
         DXGI_FORMAT_R16G16B16A16_FLOAT,      // NormalRoughness
         DXGI_FORMAT_R8G8B8A8_UNORM,          // EmissiveMetallic
-        DXGI_FORMAT_R16G16_FLOAT,            // MotionVector
+        DXGI_FORMAT_R16G16B16A16_FLOAT,      // MotionVector
     };
 
     constexpr std::array<std::array<float, 4>, GBufferManager::kTargetCount> kGBufferClearColors = {

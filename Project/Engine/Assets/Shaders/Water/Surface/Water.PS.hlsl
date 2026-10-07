@@ -291,16 +291,11 @@ PixelShaderOutput WaterForwardMain(WaterPSInput input, float3 surfaceNormal)
 #include "Water.Debug.hlsli"
 
 // ===== 水面の出力（SceneColor ＋ モーションベクター）=====
-// ★水面もモーションベクターを書かなければならない★
-// 水面は GBuffer より後のフォワードパスなので、書かないと TAA は水面ピクセルに対して
-// 「水の背後にある地形」のモーションベクターで履歴を再投影してしまう。水面（y≈5.8m）と
-// 海底（y=0）は視差が違うため、カメラが動いた瞬間だけ履歴が別の場所から引かれ、
-// 泡のような高周波の模様が溶けたようにぼける（2026-08-08 実測: カメラ静止時
-// meanLaplacian 14.4 に対し移動中 8.7 まで低下。TAA を切ると移動中でも 16.1）。
+// モーションベクターは GBuffer の MotionVector（rg=NDC 差分, b=水面フラグ）へ書く。
 struct WaterPixelOutput
 {
     float4 color : SV_TARGET0;
-    float2 motionVector : SV_TARGET1; ///< NDC 差分（GBuffer.PS と同一規約）
+    float4 motionVector : SV_TARGET1; ///< rg=NDC 差分（GBuffer.PS と同一規約）, b=1（水面フラグ）
 };
 
 /// @brief NDC 空間のモーションベクターを求める（GBuffer.PS.hlsl と同じ式）
@@ -316,7 +311,7 @@ float2 ComputeWaterMotionVector(WaterPSInput input)
 WaterPixelOutput main(WaterPSInput input)
 {
     WaterPixelOutput waterOutput;
-    waterOutput.motionVector = ComputeWaterMotionVector(input);
+    waterOutput.motionVector = float4(ComputeWaterMotionVector(input), 1.0f, 0.0f);
 
     // ---- 1. 水面法線を 1 度だけ解決する ----
     // FFT 経路では 3 カスケード分のテクスチャサンプルを伴うため、
