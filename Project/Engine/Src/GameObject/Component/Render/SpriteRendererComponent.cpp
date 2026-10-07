@@ -281,7 +281,7 @@ namespace CoreEngine
             scale.z
         };
 
-        auto& transformData = spriteRenderer_->GetTransformDataPool()[bufferIndex];
+        SpriteRenderer::TransformationMatrix* transformData = spriteRenderer_->GetTransformData(bufferIndex);
         transformData->WVP = spriteRenderer_->CalculateWVPMatrix(translate, actualScale, rotate, camera);
         transformData->world = Matrix::MakeAffine(actualScale, rotate, translate);
 
@@ -291,7 +291,7 @@ namespace CoreEngine
             material_->GetGPUVirtualAddress());
         commandList->SetGraphicsRootConstantBufferView(
             spriteRenderer_->GetRootParamIndex("TransformationMatrix"),
-            spriteRenderer_->GetTransformResource(bufferIndex)->GetGPUVirtualAddress());
+            spriteRenderer_->GetTransformGpuAddress(bufferIndex));
         commandList->SetGraphicsRootDescriptorTable(
             spriteRenderer_->GetRootParamIndex("gTexture"),
             textureHandle_.gpuHandle);

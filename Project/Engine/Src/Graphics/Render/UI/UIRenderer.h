@@ -1,6 +1,5 @@
 #pragma once
 #include "Graphics/Render/BaseRenderer.h"
-#include "Graphics/Render/UI/UIMaterial.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
@@ -25,6 +24,11 @@ namespace CoreEngine
 
         /// @brief 最大 UI 要素数
         static constexpr size_t kMaxUICount = 1024;
+
+        /// @brief 定数バッファ内での変換行列 1 個ぶんの間隔（CBV の配置に合わせて 256 バイト単位）
+        static constexpr size_t kTransformStride =
+            (sizeof(TransformationMatrix) + D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT - 1)
+            & ~static_cast<size_t>(D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT - 1);
 
         /// @brief per-frame リソースのリング段数
         /// @details FrameSync のスロット数上限に合わせる。添字は実行時の
@@ -69,17 +73,17 @@ namespace CoreEngine
         GraphicsCore* GetGraphicsCore() { return dxCommon_; }
 
 
-        /// @brief マテリアルデータプールを取得
-        std::vector<UIMaterial*>& GetMaterialDataPool() { return materialDataPool_[currentFrameIndex_]; }
+        /// @brief 今のフレームの index 番目の変換行列の書き込み先を取得
+        /// @param index GetAvailableConstantBuffer が返したインデックス
+        TransformationMatrix* GetTransformData(size_t index) {
+            return reinterpret_cast<TransformationMatrix*>(transformMapped_[currentFrameIndex_] + index * kTransformStride);
+        }
 
-        /// @brief トランスフォームデータプールを取得
-        std::vector<TransformationMatrix*>& GetTransformDataPool() { return transformDataPool_[currentFrameIndex_]; }
-
-        /// @brief マテリアルリソースを取得
-        Microsoft::WRL::ComPtr<ID3D12Resource>& GetMaterialResource(size_t index) { return materialResources_[currentFrameIndex_][index]; }
-
-        /// @brief トランスフォームリソースを取得
-        Microsoft::WRL::ComPtr<ID3D12Resource>& GetTransformResource(size_t index) { return transformResources_[currentFrameIndex_][index]; }
+        /// @brief 今のフレームの index 番目の変換行列の GPU アドレスを取得
+        /// @param index GetAvailableConstantBuffer が返したインデックス
+        D3D12_GPU_VIRTUAL_ADDRESS GetTransformGpuAddress(size_t index) const {
+            return transformBuffers_[currentFrameIndex_]->GetGPUVirtualAddress() + index * kTransformStride;
+        }
 
         /// @brief シェーダーリソース名からルートパラメータインデックスを取得
         int GetRootParamIndex(const std::string& resourceName) const;
@@ -117,11 +121,9 @@ namespace CoreEngine
 
         GraphicsCore* dxCommon_ = nullptr;
 
-        // 定数バッファプール（フレームごとに分離）
-        std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> materialResources_[kFrameCount];
-        std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> transformResources_[kFrameCount];
-        std::vector<UIMaterial*> materialDataPool_[kFrameCount];
-        std::vector<TransformationMatrix*> transformDataPool_[kFrameCount];
+        // 変換行列の定数バッファ（フレームごとに 1 本。プールの要素数ぶんを kTransformStride 間隔で並べる）
+        Microsoft::WRL::ComPtr<ID3D12Resource> transformBuffers_[kFrameCount];
+        uint8_t* transformMapped_[kFrameCount] = {};
 
         size_t currentBufferIndex_ = 0;
         UINT   currentFrameIndex_ = 0;

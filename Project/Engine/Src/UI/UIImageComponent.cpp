@@ -205,7 +205,7 @@ namespace CoreEngine
         const Vector3 rotation = { 0.0f, 0.0f, layout.rotation };
 
         const size_t bufferIndex = renderer_->GetAvailableConstantBuffer();
-        auto& transformData = renderer_->GetTransformDataPool()[bufferIndex];
+        UIRenderer::TransformationMatrix* transformData = renderer_->GetTransformData(bufferIndex);
         transformData->WVP = renderer_->CalculateWVPMatrix(position, scale, rotation);
         transformData->world = Matrix::MakeAffine(scale, rotation, position);
 
@@ -214,7 +214,7 @@ namespace CoreEngine
             material_->GetGPUVirtualAddress());
         commandList->SetGraphicsRootConstantBufferView(
             renderer_->GetRootParamIndex("TransformationMatrix"),
-            renderer_->GetTransformResource(bufferIndex)->GetGPUVirtualAddress());
+            renderer_->GetTransformGpuAddress(bufferIndex));
         commandList->SetGraphicsRootDescriptorTable(
             renderer_->GetRootParamIndex("gTexture"),
             textureHandle_.gpuHandle);
