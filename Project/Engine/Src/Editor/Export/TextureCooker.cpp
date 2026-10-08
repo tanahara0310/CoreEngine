@@ -12,12 +12,16 @@
 #include "Utility/Path/ProjectPaths.h"
 
 #include <cwctype>
+#include <format>
 #include <unordered_map>
 
 namespace CoreEngine::Editor
 {
     namespace
     {
+        /// @brief Windows で扱えるパスの長さの上限（終端の文字を除く）
+        constexpr size_t kMaxPathLength = 259;
+
         /// @brief 画像の使い道
         struct Usage
         {
@@ -114,6 +118,11 @@ namespace CoreEngine::Editor
 
             const std::filesystem::path cooked =
                 destination / CookedTexture::ToCookedPath(target.relative, colorSpace);
+            if (cooked.native().size() > kMaxPathLength) {
+                return std::format("{} は {} 文字あり、Windows のパスの上限（{} 文字）を超えるので書けません。"
+                    "プロジェクトをもっと短いパスの場所へ移してください",
+                    ToUtf8(cooked), cooked.native().size(), kMaxPathLength);
+            }
             std::error_code ec;
             std::filesystem::create_directories(cooked.parent_path(), ec);
             if (ec) {
