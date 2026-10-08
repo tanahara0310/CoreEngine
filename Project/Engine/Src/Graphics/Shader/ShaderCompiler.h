@@ -60,7 +60,23 @@ namespace CoreEngine
         ///          RecordingIncludeHandler もインスタンス状態を持つため .deps が混ざる。
         Microsoft::WRL::ComPtr<IDxcBlob> CompilePrepared(const PreparedShaderCompile& prepared);
 
+        /// @brief ゲームの書き出し用にコンパイルする（キャッシュを使わず、出力からデバッグ情報を外す）
+        /// @param filePath シェーダの綴りかパス
+        /// @param profile コンパイルプロファイル（例: L"ps_6_0"）
+        /// @param entryPoint エントリーポイント（空ならライブラリ）
+        /// @param errorMessage 失敗したときの訳
+        /// @return コンパイル済みバイナリ（失敗時 nullptr）
+        Microsoft::WRL::ComPtr<IDxcBlob> CompileForCooking(
+            const std::wstring& filePath,
+            const std::wstring& profile,
+            const std::wstring& entryPoint,
+            std::string& errorMessage);
+
     private:
+        /// @brief 書き出し時にコンパイルした DXIL（CookedShader）があれば読む
+        /// @return 無ければ nullptr
+        Microsoft::WRL::ComPtr<IDxcBlob> LoadCookedShader(const PreparedShaderCompile& prepared) const;
+
         /// @brief コンパイルの実体（通常シェーダとライブラリの共通経路）
         Microsoft::WRL::ComPtr<IDxcBlob> CompileInternal(
             const std::wstring& filePath,

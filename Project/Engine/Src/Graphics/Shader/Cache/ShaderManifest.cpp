@@ -4,16 +4,45 @@
 #include <fstream>
 #include <sstream>
 
+#include "Graphics/Asset/AssetDatabase.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/Path/ProjectPaths.h"
 
 namespace
 {
     constexpr char kHeaderLine1[] =
         "# CoreEngine shader manifest - 実行時に記録された「実際にコンパイルされるシェーダ」の一覧";
     constexpr char kHeaderLine2[] =
-        "# 形式: <profile>|<entryPoint>|<解決前のパス>   entryPoint が空ならライブラリ(-E なし)";
+        "# 形式: <profile>|<entryPoint>|<綴り>   entryPoint が空ならライブラリ(-E なし)";
     constexpr char kHeaderLine3[] =
-        "# 自動生成。手で編集しても次回起動で上書きされる";
+        "# 自動生成。起動と終了のたびに、使ったシェーダを足して書き直す（ファイルが無くなったものは落とす）";
+
+    /// @brief 解決済みの絶対パスを綴り（`Engine/Assets/…`）にする。根の外なら絶対パスのまま
+    std::wstring ToManifestPath(const std::filesystem::path& absolute)
+    {
+        const std::filesystem::path relative = CoreEngine::ProjectPaths::MakeRelative(absolute);
+        return (relative.empty() ? absolute : relative).generic_wstring();
+    }
+
+    /// @brief 一覧の 1 行のパスを綴りにそろえる。ファイルが見つからなければ空
+    /// @details 綴り・絶対パス・ファイル名だけ（以前の一覧）のどれでも受け付ける
+    std::wstring NormalizeManifestPath(const std::wstring& filePath)
+    {
+        CoreEngine::Logger& log = CoreEngine::Logger::GetInstance();
+        std::filesystem::path path(filePath);
+        if (path.is_relative()) {
+            path = CoreEngine::ProjectPaths::Resolve(log.PathToUtf8(path));
+        }
+        std::error_code errorCode;
+        if (!std::filesystem::is_regular_file(path, errorCode)) {
+            path = CoreEngine::AssetDatabase::GetInstance().FindAssetPath(
+                log.PathToUtf8(std::filesystem::path(filePath).filename()));
+            if (path.empty() || !std::filesystem::is_regular_file(path, errorCode)) {
+                return {};
+            }
+        }
+        return ToManifestPath(path);
+    }
 }
 
 namespace CoreEngine
@@ -38,16 +67,16 @@ namespace CoreEngine
     }
 
     // コンパイル要求を 1 件記録する（重複は set が吸収する）
-    void ShaderManifest::Record(const std::wstring& filePath,
+    void ShaderManifest::Record(const std::wstring& resolvedPath,
         const wchar_t* profile,
         const wchar_t* entryPoint)
     {
-        if (!enabled_) {
+        if (!enabled_ || resolvedPath.empty()) {
             return;
         }
 
         Entry entry;
-        entry.filePath = filePath;
+        entry.filePath = ToManifestPath(resolvedPath);
         entry.profile = profile ? profile : L"";
         entry.entryPoint = entryPoint ? entryPoint : L"";
 
@@ -90,7 +119,7 @@ namespace CoreEngine
             entry.profile = Logger::GetInstance().Utf8ToWide(line.substr(0, first));
             entry.entryPoint =
                 Logger::GetInstance().Utf8ToWide(line.substr(first + 1, second - first - 1));
-            entry.filePath = Logger::GetInstance().Utf8ToWide(line.substr(second + 1));
+            entry.filePath = NormalizeManifestPath(Logger::GetInstance().Utf8ToWide(line.substr(second + 1)));
 
             if (entry.profile.empty() || entry.filePath.empty()) {
                 continue;
@@ -98,23 +127,30 @@ namespace CoreEngine
             entries.push_back(std::move(entry));
         }
 
-        return entries;
+        // 綴りにそろえた結果、同じ行が重なることがある
+        std::set<Entry> unique(entries.begin(), entries.end());
+        return std::vector<Entry>(unique.begin(), unique.end());
     }
 
-    // 記録済みエントリを "profile|entryPoint|filePath" のテキストで書き出す。
-    // 起動のたびに全量を書き直すので、消えたシェーダは自然に一覧から落ちる
+    std::vector<ShaderManifest::Entry> ShaderManifest::Collect() const
+    {
+        const std::vector<Entry> saved = Load();
+        std::set<Entry> merged(saved.begin(), saved.end());
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            merged.insert(recorded_.begin(), recorded_.end());
+        }
+        return std::vector<Entry>(merged.begin(), merged.end());
+    }
+
+    // 一覧を "profile|entryPoint|綴り" のテキストで書き出す
     void ShaderManifest::Save()
     {
         if (!enabled_) {
             return;
         }
 
-        std::set<Entry> snapshot;
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
-            snapshot = recorded_;
-        }
-
+        const std::vector<Entry> snapshot = Collect();
         if (snapshot.empty()) {
             return;
         }

@@ -3,6 +3,7 @@
 
 #ifdef CORE_EDITOR
 
+#include "Editor/Export/ShaderCooker.h"
 #include "Editor/Export/TextureCooker.h"
 #include "Graphics/Texture/Cook/CookedTexture.h"
 #include "Utility/Path/ProjectPaths.h"
@@ -134,7 +135,8 @@ namespace CoreEngine::Editor
             }
         }
         const std::vector<CookTarget> targets = TextureCooker::PlanTargets(textures);
-        progress.cookTotal = static_cast<int>(targets.size());
+        const std::vector<ShaderManifest::Entry> shaders = ShaderCooker::PlanTargets();
+        progress.cookTotal = static_cast<int>(targets.size() + shaders.size());
         progress.total = static_cast<int>(items.size());
 
         // 丸ごと写すフォルダとクック済みの DDS のフォルダは、書き出す先の側を消しておく
@@ -163,6 +165,20 @@ namespace CoreEngine::Editor
                 return result;
             }
             ++result.cookedTextures;
+            ++progress.cooked;
+        }
+
+        // 一覧のシェーダをコンパイルして DXIL にする
+        for (const ShaderManifest::Entry& shader : shaders) {
+            const int filesBefore = result.fileCount;
+            const std::string error = ShaderCooker::Cook(shader, destination, result.fileCount, result.bytes);
+            if (!error.empty()) {
+                result.error = error;
+                return result;
+            }
+            if (result.fileCount > filesBefore) {
+                ++result.cookedShaders;
+            }
             ++progress.cooked;
         }
 

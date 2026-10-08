@@ -3,7 +3,10 @@
 
 #include <cassert>
 #include <filesystem>
+#include <fstream>
+#include <iterator>
 
+#include "Graphics/Shader/Cook/CookedShader.h"
 #include "Utility/Logger/Logger.h"
 #include "Graphics/Asset/AssetDatabase.h"
 #include "EngineSystem/Startup/StartupProgress.h"
@@ -191,17 +194,109 @@ namespace CoreEngine
         return CompileInternal(filePath, L"lib_6_6", nullptr);
     }
 
+    Microsoft::WRL::ComPtr<IDxcBlob> ShaderCompiler::LoadCookedShader(const PreparedShaderCompile& prepared) const
+    {
+        const std::filesystem::path cookedPath =
+            CookedShader::Find(prepared.resolvedPath, prepared.profile, prepared.entryPoint);
+        if (cookedPath.empty()) {
+            return nullptr;
+        }
+
+        std::ifstream file(cookedPath, std::ios::binary);
+        const std::vector<uint8_t> bytes((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+        Microsoft::WRL::ComPtr<IDxcBlob> blob = CreateBlobFromBytes(bytes);
+        if (!blob) {
+            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Shader,
+                "クック済みのシェーダを読めないので、コンパイルし直します: {}",
+                Logger::GetInstance().PathToUtf8(cookedPath));
+            return nullptr;
+        }
+
+        ShaderBlobCache::GetInstance().Store(
+            prepared.resolvedPath, prepared.profile, prepared.entryPoint, bytes.data(), bytes.size());
+        Logger::GetInstance().Log(
+            std::format(L"Compile Cooked, path:{}, profile:{}", prepared.resolvedPath, prepared.profile),
+            LogLevel::INFO,
+            LogCategory::Shader);
+        return blob;
+    }
+
+    Microsoft::WRL::ComPtr<IDxcBlob> ShaderCompiler::CompileForCooking(
+        const std::wstring& filePath,
+        const std::wstring& profile,
+        const std::wstring& entryPoint,
+        std::string& errorMessage)
+    {
+        Logger& log = Logger::GetInstance();
+        const PreparedShaderCompile prepared =
+            Prepare(filePath, profile.c_str(), entryPoint.empty() ? nullptr : entryPoint.c_str());
+        std::error_code errorCode;
+        if (!prepared.IsValid() || !std::filesystem::is_regular_file(prepared.resolvedPath, errorCode)) {
+            errorMessage = log.WideToUtf8(filePath) + " が見つかりません";
+            return nullptr;
+        }
+
+        Microsoft::WRL::ComPtr<IDxcBlobEncoding> shaderSource;
+        if (FAILED(dxcUtils->LoadFile(prepared.resolvedPath.c_str(), nullptr, &shaderSource)) || !shaderSource) {
+            errorMessage = log.WideToUtf8(prepared.resolvedPath) + " を読めませんでした";
+            return nullptr;
+        }
+        DxcBuffer sourceBuffer{};
+        sourceBuffer.Ptr = shaderSource->GetBufferPointer();
+        sourceBuffer.Size = shaderSource->GetBufferSize();
+        sourceBuffer.Encoding = DXC_CP_UTF8;
+
+        // 通常と同じ引数に、デバッグ情報を出力から外す指定を足す
+        std::vector<std::wstring> argumentStrings = prepared.argumentStrings;
+        argumentStrings.push_back(L"-Qstrip_debug");
+        std::vector<LPCWSTR> arguments;
+        arguments.reserve(argumentStrings.size());
+        for (const std::wstring& argument : argumentStrings) {
+            arguments.push_back(argument.c_str());
+        }
+
+        Microsoft::WRL::ComPtr<IDxcResult> result;
+        const HRESULT hr = dxcCompiler->Compile(&sourceBuffer, arguments.data(),
+            static_cast<UINT32>(arguments.size()), includeHandler.Get(), IID_PPV_ARGS(&result));
+        HRESULT status = E_FAIL;
+        if (SUCCEEDED(hr) && result) {
+            result->GetStatus(&status);
+        }
+        if (FAILED(status)) {
+            Microsoft::WRL::ComPtr<IDxcBlobUtf8> errors;
+            if (result) {
+                result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr);
+            }
+            errorMessage = log.WideToUtf8(prepared.resolvedPath) + " をコンパイルできませんでした";
+            if (errors && errors->GetStringLength() > 0) {
+                errorMessage += ": ";
+                errorMessage += errors->GetStringPointer();
+            }
+            return nullptr;
+        }
+
+        Microsoft::WRL::ComPtr<IDxcBlob> object;
+        result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&object), nullptr);
+        if (!object || object->GetBufferSize() == 0) {
+            errorMessage = log.WideToUtf8(prepared.resolvedPath) + " のコンパイル結果を取り出せませんでした";
+            return nullptr;
+        }
+        return object;
+    }
+
     Microsoft::WRL::ComPtr<IDxcBlob> ShaderCompiler::CompileInternal(
         const std::wstring& filePath,
         const wchar_t* profile,
         const wchar_t* entryPoint)
     {
+        PreparedShaderCompile prepared = Prepare(filePath, profile, entryPoint);
+
         // 次回のコールド起動で並列に事前コンパイルできるよう、要求を記録しておく。
         // 事前コンパイル側（ShaderPrewarm）は CompilePrepared を直接呼ぶので、
         // ここに記録が二重に入ることはない
-        ShaderManifest::GetInstance().Record(filePath, profile, entryPoint);
+        ShaderManifest::GetInstance().Record(prepared.resolvedPath, profile, entryPoint);
 
-        return CompilePrepared(Prepare(filePath, profile, entryPoint));
+        return CompilePrepared(prepared);
     }
 
     Microsoft::WRL::ComPtr<IDxcBlob> ShaderCompiler::CompilePrepared(const PreparedShaderCompile& prepared)
@@ -225,6 +320,11 @@ namespace CoreEngine
                     return blob;
                 }
             }
+        }
+
+        // 書き出したゲームでは、書き出し時にコンパイルした DXIL を使う
+        if (Microsoft::WRL::ComPtr<IDxcBlob> cookedBlob = LoadCookedShader(prepared)) {
+            return cookedBlob;
         }
 
         // これからシェーダーを用意する旨をログ出力
