@@ -60,7 +60,7 @@ namespace CoreEngine
         if (relative.empty()) {
             return {};
         }
-        const std::filesystem::path& top = *relative.begin();
+        const std::filesystem::path top = *relative.begin();
         if (IsNamed(top, L"Application")) {
             return ProjectPaths::ProjectRoot() / relative;
         }
