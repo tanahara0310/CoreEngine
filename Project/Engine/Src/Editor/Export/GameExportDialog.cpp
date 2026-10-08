@@ -115,7 +115,8 @@ namespace CoreEngine::Editor
                 ? ToUtf8(plan_.releaseExe) + "（ビルド " + plan_.releaseBuiltAt + "）"
                 : std::string("－"));
             Row("写すもの", "Release のフォルダの exe と DLL\nEngine\\Assets・Application\\Assets・Application\\Config");
-            Row("変換するもの", "画像のテクスチャ（PNG・JPG など）は写さず、DDS に変換して\nEngine\\Cooked・Application\\Cooked に書きます");
+            Row("変換するもの", "画像のテクスチャ（PNG・JPG など）は写さず、DDS に変換して\nEngine\\Cooked・Application\\Cooked に書きます\n"
+                "シェーダは、エディタやゲームで一度でもコンパイルしたものを DXIL にして同じ場所に書きます");
             ImGui::EndTable();
         }
         ImGui::Spacing();
@@ -167,7 +168,7 @@ namespace CoreEngine::Editor
         int done = 0;
         int count = 0;
         if (cooked < cookTotal) {
-            label = "テクスチャを DDS に変換しています…";
+            label = "テクスチャとシェーダを変換しています…";
             done = cooked;
             count = cookTotal;
         } else if (total > 0 && (cookTotal > 0 || copied > 0)) {
@@ -190,8 +191,14 @@ namespace CoreEngine::Editor
         } else {
             const double megabytes = static_cast<double>(result_.bytes) / (1024.0 * 1024.0);
             ImGui::TextColored(Theme::kOk, "%s",
-                std::format("書き出しました（ファイル {} 個・{:.1f} MB・DDS に変換したテクスチャ {} 枚）",
-                    result_.fileCount, megabytes, result_.cookedTextures).c_str());
+                std::format("書き出しました（ファイル {} 個・{:.1f} MB・DDS に変換したテクスチャ {} 枚・"
+                    "コンパイルしたシェーダ {} 本）",
+                    result_.fileCount, megabytes, result_.cookedTextures, result_.cookedShaders).c_str());
+            if (result_.cookedShaders == 0) {
+                ImGui::TextColored(Theme::kWarn, "%s",
+                    "シェーダの一覧が空なので、シェーダは遊ぶ人の PC でコンパイルされます。"
+                    "エディタでゲームを一度動かしてから書き出し直してください。");
+            }
             ImGui::TextColored(Theme::kTextMute, "%s", ToUtf8(plan_.destination).c_str());
         }
         ImGui::PopTextWrapPos();

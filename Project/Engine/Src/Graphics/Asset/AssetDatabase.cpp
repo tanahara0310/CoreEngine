@@ -3,6 +3,7 @@
 #include "Utility/Path/ProjectPaths.h"
 #include "AssetMetadata.h"
 #include "Graphics/Texture/Cook/CookedTexture.h"
+#include "Utility/Path/CookedPath.h"
 #include "Threading/ThreadPool.h"
 #include "Utility/Logger/Logger.h"
 #include <algorithm>
@@ -493,7 +494,7 @@ namespace CoreEngine
         Logger& log = Logger::GetInstance();
         size_t registered = 0;
 
-        for (const char* folder : CookedTexture::kCookedFolders) {
+        for (const char* folder : CookedPath::kFolders) {
             const std::filesystem::path cookedRoot = ProjectPaths::Resolve(folder);
             std::error_code ec;
             if (!std::filesystem::is_directory(cookedRoot, ec)) {

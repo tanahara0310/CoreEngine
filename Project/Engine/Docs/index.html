@@ -2954,7 +2954,7 @@ kbd {
   <p>Key Config では、割り当てのボタンを押してから新しいキーを押すと割り当てが変わります。<span class="ui">x</span> で削除、<span class="ui">追加</span> で足し、同じ場面のほかのアクションと重なると赤く表示されます。<span class="ui">初期値に戻す</span> で InputActions.json の既定に戻ります。</p>
 </article>
 
-<article class="page" id="editor-export" data-group="エディタ" data-title="ゲームを書き出す" data-nav="ゲームの書き出し" data-keywords="書き出し 書き出す export ビルド release 配布 exe 完成 build windows 全画面 フルスクリーン 終了 esc 起動シーン テクスチャ dds 変換 クック cooked">
+<article class="page" id="editor-export" data-group="エディタ" data-title="ゲームを書き出す" data-nav="ゲームの書き出し" data-keywords="書き出し 書き出す export ビルド release 配布 exe 完成 build windows 全画面 フルスクリーン 終了 esc 起動シーン テクスチャ dds 変換 クック cooked シェーダ dxil コンパイル">
   <h1>ゲームを書き出す</h1>
   <p class="lead">完成したゲームを、エディタの無い PC でも遊べるフォルダにまとめます。できたフォルダを丸ごと渡せば、そのまま遊べます。</p>
 
@@ -2973,7 +2973,7 @@ kbd {
     ├─ CoreEngine.exe と *.dll      Release のフォルダから
     ├─ Engine/
     │  ├─ Assets/                   エンジンの素材（シェーダ・既定のモデルなど。画像のテクスチャは除く）
-    │  └─ Cooked/                   エンジンの画像のテクスチャを変換した DDS
+    │  └─ Cooked/                   エンジンの画像のテクスチャを変換した DDS と、コンパイルしたシェーダの DXIL
     └─ Application/
        ├─ Assets/                   シーン・スクリプト・プレハブ・素材（画像のテクスチャは除く）
        ├─ Cooked/                   プロジェクトの画像のテクスチャを変換した DDS
@@ -2995,6 +2995,10 @@ kbd {
   </div>
   <p>モデルのマテリアルで法線・メタリック/ラフネス・遮蔽に使う画像はリニア、それ以外の画像は sRGB で変換します。エディタで開いたときに作った DDS（<span class="path">Intermediate/TextureCache</span>）が元の画像より新しければ、変換せずにそれを使います。初めて書き出すときや画像を描き直したあとは、変換のぶん時間がかかります。</p>
 
+  <h2 id="export-shaders">シェーダのコンパイル</h2>
+  <p>シェーダも書き出すときにコンパイルして、GPU に渡す形（DXIL）で <span class="path">Cooked/</span> に書きます。遊ぶ人の PC ではコンパイルしないので、初めての起動でもシェーダのコンパイルを待ちません。例えば <span class="path">Engine/Assets/Shaders/Water/Water.PS.hlsl</span> を <code>ps_6_0</code> でコンパイルしたものは <span class="path">Engine/Cooked/Shaders/Water/Water.PS.hlsl.ps_6_0.dxil</span> です。出力からデバッグ情報は外します（GPU が使う中身は開発中と同じです）。</p>
+  <p>コンパイルするのは、エディタやゲームで一度でもコンパイルしたシェーダです。エンジンは使ったシェーダを <span class="path">Intermediate/ShaderManifest.txt</span> に起動と終了のたびに書き足していきます。一度も動かしていない場面のシェーダは書き出しに入らず、そのシェーダだけ遊ぶ人の PC でコンパイルされます。書き出す前に、エディタで最初のシーンから最後まで通して遊んでおくと漏れません。元の <span class="path">.hlsl</span> も写すので、入っていないシェーダがあってもゲームは動きます。</p>
+
   <h2 id="export-runtime">書き出したゲームの動き</h2>
   <div class="table-wrap">
   <table>
@@ -3005,6 +3009,7 @@ kbd {
       <tr><td>エディタ</td><td>無し。起動するとすぐにゲームが始まる</td></tr>
       <tr><td>スクリプト</td><td>起動時にコンパイルする。<span class="path">Scripts/Editor/</span> の中は読まない。ホットリロードは無い</td></tr>
       <tr><td>テクスチャ</td><td><span class="path">Cooked/</span> の DDS を読む（<a href="#export-cooking">テクスチャの変換</a>）</td></tr>
+      <tr><td>シェーダ</td><td><span class="path">Cooked/</span> の DXIL を使う。入っていないものだけ起動時にコンパイルする（<a href="#export-shaders">シェーダのコンパイル</a>）</td></tr>
       <tr><td>全画面</td><td><kbd>Alt</kbd>+<kbd>Enter</kbd> で全画面と窓を切り替える</td></tr>
       <tr><td>終了</td><td>窓の × か <kbd>Alt</kbd>+<kbd>F4</kbd>。<kbd>Esc</kbd> で終わらせたいときは CVar <code>sys.Window.QuitOnEscape</code> をオンにする（既定はオフ。<kbd>Esc</kbd> をポーズに使うゲームではオンにしない）</td></tr>
       <tr><td>セーブデータ</td><td><span class="path">Application/Saved/</span> に書く（<a href="#api-SaveFile">SaveFile</a>・キーの割り当て）</td></tr>

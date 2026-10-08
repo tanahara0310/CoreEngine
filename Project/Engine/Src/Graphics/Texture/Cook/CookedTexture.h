@@ -6,15 +6,12 @@
 
 namespace CoreEngine
 {
-    /// @brief 書き出し時に画像から作る DDS（クック済みテクスチャ）の置き場と名前
+    /// @brief 書き出し時に画像から作る DDS（クック済みテクスチャ）の名前
     /// @details `Application/Assets/a/b.png` の DDS は `Application/Cooked/a/b.png.dds`、
-    ///          リニア版は `Application/Cooked/a/b.png.linear.dds` に置く。`Engine/Assets` も同じ。
+    ///          リニア版は `Application/Cooked/a/b.png.linear.dds` に置く（置き場は CookedPath）。
     ///          書き出したゲームは元の画像を持たず、この DDS を読む。
     namespace CookedTexture
     {
-        /// @brief クック済みの DDS を置くフォルダの綴り
-        inline constexpr const char* kCookedFolders[] = { "Application/Cooked", "Engine/Cooked" };
-
         /// @brief 書き出し時に DDS へ変換する画像か（拡張子で判定）
         bool IsCookable(const std::filesystem::path& path);
 

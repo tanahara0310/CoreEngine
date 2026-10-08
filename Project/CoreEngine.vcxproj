@@ -190,6 +190,7 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Editor\Export\GameExportDialog.cpp" />
     <ClCompile Include="Engine\Src\Editor\Export\GameExporter.cpp" />
     <ClCompile Include="Engine\Src\Editor\Export\TextureCooker.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Export\ShaderCooker.cpp" />
     <ClCompile Include="Engine\Src\Editor\Launcher\ProjectBrowser.cpp" />
     <ClCompile Include="Engine\Src\Editor\Launcher\ProjectCreator.cpp" />
     <ClCompile Include="Engine\Src\Editor\Launcher\ProjectLauncher.cpp" />
@@ -203,6 +204,7 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Editor\Command\EditorCommandStack.cpp" />
     <ClCompile Include="Engine\Src\Editor\Panel\EditorPanelRegistry.cpp" />
     <ClCompile Include="Engine\Src\Utility\Path\ProjectPaths.cpp" />
+    <ClCompile Include="Engine\Src\Utility\Path\CookedPath.cpp" />
     <ClCompile Include="Engine\Src\Utility\CommandLine\CommandLine.cpp" />
     <ClCompile Include="Engine\Src\Editor\Panel\EditorPanelStateSection.cpp" />
     <ClCompile Include="Engine\Src\Reflection\PropertyValue.cpp" />
@@ -634,6 +636,7 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Graphics\Shader\Cache\ShaderBlobCache.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Shader\Cache\ShaderManifest.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderCompiler.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Shader\Cook\CookedShader.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderBindingContract.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderProgram.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderPrewarm.cpp" />
@@ -1178,6 +1181,7 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Editor\Export\GameExportDialog.h" />
     <ClInclude Include="Engine\Src\Editor\Export\GameExporter.h" />
     <ClInclude Include="Engine\Src\Editor\Export\TextureCooker.h" />
+    <ClInclude Include="Engine\Src\Editor\Export\ShaderCooker.h" />
     <ClInclude Include="Engine\Src\Editor\Launcher\ProjectBrowser.h" />
     <ClInclude Include="Engine\Src\Editor\Launcher\ProjectCreator.h" />
     <ClInclude Include="Engine\Src\Editor\Launcher\ProjectLauncher.h" />
@@ -1199,6 +1203,7 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Editor\ImGui\ProjectSettingsWindow.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\PassTimingTable.h" />
     <ClInclude Include="Engine\Src\Utility\Path\ProjectPaths.h" />
+    <ClInclude Include="Engine\Src\Utility\Path\CookedPath.h" />
     <ClInclude Include="Engine\Src\Utility\CommandLine\CommandLine.h" />
     <ClInclude Include="Engine\Src\Editor\Panel\EditorPanelStateSection.h" />
     <ClInclude Include="Engine\Src\Reflection\PropertyValue.h" />
@@ -1739,6 +1744,7 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Graphics\Shader\Cache\ShaderBlobCache.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\Cache\ShaderManifest.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderCompiler.h" />
+    <ClInclude Include="Engine\Src\Graphics\Shader\Cook\CookedShader.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderBindingContract.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderProgram.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RTShadowBindings.h" />

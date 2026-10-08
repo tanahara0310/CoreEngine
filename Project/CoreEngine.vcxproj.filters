@@ -16,6 +16,9 @@
     <ClCompile Include="Engine\Src\Editor\Export\TextureCooker.cpp">
       <Filter>Engine\Src\Editor\Export</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Export\ShaderCooker.cpp">
+      <Filter>Engine\Src\Editor\Export</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Launcher\ProjectBrowser.cpp">
       <Filter>Engine\Src\Editor\Launcher</Filter>
     </ClCompile>
@@ -53,6 +56,9 @@
       <Filter>Engine\Src\Editor\Panel</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Path\ProjectPaths.cpp">
+      <Filter>Engine\Src\Utility\Path</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\Path\CookedPath.cpp">
       <Filter>Engine\Src\Utility\Path</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Utility\CommandLine\CommandLine.cpp">
@@ -1330,6 +1336,9 @@
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderCompiler.cpp">
       <Filter>Engine\Src\Graphics\Shader</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Shader\Cook\CookedShader.cpp">
+      <Filter>Engine\Src\Graphics\Shader\Cook</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderBindingContract.cpp">
       <Filter>Engine\Src\Graphics\Shader</Filter>
     </ClCompile>
@@ -1770,6 +1779,9 @@
     <ClInclude Include="Engine\Src\Editor\Export\TextureCooker.h">
       <Filter>Engine\Src\Editor\Export</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Export\ShaderCooker.h">
+      <Filter>Engine\Src\Editor\Export</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Launcher\ProjectBrowser.h">
       <Filter>Engine\Src\Editor\Launcher</Filter>
     </ClInclude>
@@ -1831,6 +1843,9 @@
       <Filter>Engine\Src\Editor\ImGui\Widgets</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Path\ProjectPaths.h">
+      <Filter>Engine\Src\Utility\Path</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Path\CookedPath.h">
       <Filter>Engine\Src\Utility\Path</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\CommandLine\CommandLine.h">
@@ -3453,6 +3468,9 @@
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderCompiler.h">
       <Filter>Engine\Src\Graphics\Shader</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Shader\Cook\CookedShader.h">
+      <Filter>Engine\Src\Graphics\Shader\Cook</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderBindingContract.h">
       <Filter>Engine\Src\Graphics\Shader</Filter>
     </ClInclude>
@@ -4272,6 +4290,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\Shader\Cache">
       <UniqueIdentifier>{7837FD8D-2387-4B4D-B348-1A785DF6CDAB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Shader\Cook">
+      <UniqueIdentifier>{49AAB37D-830B-40FD-AD05-230415F29B24}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Texture">
       <UniqueIdentifier>{95DC8CAB-0112-41D4-9C1B-1D5308D6FCE6}</UniqueIdentifier>
