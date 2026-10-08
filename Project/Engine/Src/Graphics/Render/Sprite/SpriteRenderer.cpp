@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "SpriteRenderer.h"
 #include "Camera/Camera.h"
-#include "SpriteMaterial.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "WinApp/WinApp.h"
@@ -67,31 +66,11 @@ namespace CoreEngine
         // パイプラインをデバイスで初期化
         InitializePipeline(dxCommon->GetDevice());
 
-        // フレームごとに定数バッファプールを作成（ダブルバッファリング対応）
+        // フレームごとに変換行列の定数バッファを 1 本作り、マップしたままにする
         for (UINT frameIndex = 0; frameIndex < kFrameCount; ++frameIndex) {
-            auto& matResources = materialResources_[frameIndex];
-            auto& tfResources = transformResources_[frameIndex];
-            auto& matData = materialDataPool_[frameIndex];
-            auto& tfData = transformDataPool_[frameIndex];
-
-            matResources.resize(kMaxSpriteCount);
-            tfResources.resize(kMaxSpriteCount);
-            matData.resize(kMaxSpriteCount);
-            tfData.resize(kMaxSpriteCount);
-
-            for (size_t i = 0; i < kMaxSpriteCount; ++i) {
-                // マテリアル用定数バッファを作成してマップ
-                matResources[i] = ResourceFactory::CreateBufferResource(dxCommon_->GetDevice(), sizeof(SpriteMaterial));
-                // 永続マッピング（D3D12_HEAP_TYPE_UPLOADでは推奨される方法）
-                // Microsoft公式: UPLOAD_BUFFERは永続的にマップしたままにするべき
-                // https://learn.microsoft.com/en-us/windows/win32/direct3d12/upload-and-readback-of-resources
-                matResources[i]->Map(0, nullptr, reinterpret_cast<void**>(&matData[i]));
-
-                // トランスフォーム用定数バッファを作成してマップ
-                tfResources[i] = ResourceFactory::CreateBufferResource(dxCommon_->GetDevice(), sizeof(TransformationMatrix));
-                // 永続マッピング（D3D12_HEAP_TYPE_UPLOADでは推奨される方法）
-                tfResources[i]->Map(0, nullptr, reinterpret_cast<void**>(&tfData[i]));
-            }
+            transformBuffers_[frameIndex] = ResourceFactory::CreateBufferResource(
+                dxCommon_->GetDevice(), kTransformStride * kMaxSpriteCount);
+            transformBuffers_[frameIndex]->Map(0, nullptr, reinterpret_cast<void**>(&transformMapped_[frameIndex]));
         }
     }
 

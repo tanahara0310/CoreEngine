@@ -62,28 +62,15 @@ namespace CoreEngine
 
         Initialize(dxCommon->GetDevice());
 
-        // フレームごとの定数バッファプール
+        // フレームごとに変換行列の定数バッファを 1 本作り、マップしたままにする
+        const size_t poolCount = GetConstantBufferPoolCount();
+        if (poolCount == 0) {
+            return;
+        }
         for (UINT frameIndex = 0; frameIndex < kFrameCount; ++frameIndex) {
-            auto& matResources = materialResources_[frameIndex];
-            auto& tfResources = transformResources_[frameIndex];
-            auto& matData = materialDataPool_[frameIndex];
-            auto& tfData = transformDataPool_[frameIndex];
-
-            const size_t poolCount = GetConstantBufferPoolCount();
-            matResources.resize(poolCount);
-            tfResources.resize(poolCount);
-            matData.resize(poolCount);
-            tfData.resize(poolCount);
-
-            for (size_t i = 0; i < poolCount; ++i) {
-                // マテリアル定数バッファ（永続マッピング）
-                matResources[i] = ResourceFactory::CreateBufferResource(dxCommon_->GetDevice(), sizeof(UIMaterial));
-                matResources[i]->Map(0, nullptr, reinterpret_cast<void**>(&matData[i]));
-
-                // トランスフォーム定数バッファ（永続マッピング）
-                tfResources[i] = ResourceFactory::CreateBufferResource(dxCommon_->GetDevice(), sizeof(TransformationMatrix));
-                tfResources[i]->Map(0, nullptr, reinterpret_cast<void**>(&tfData[i]));
-            }
+            transformBuffers_[frameIndex] = ResourceFactory::CreateBufferResource(
+                dxCommon_->GetDevice(), kTransformStride * poolCount);
+            transformBuffers_[frameIndex]->Map(0, nullptr, reinterpret_cast<void**>(&transformMapped_[frameIndex]));
         }
     }
 
