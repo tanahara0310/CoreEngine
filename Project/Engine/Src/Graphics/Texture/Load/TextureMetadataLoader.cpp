@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "TextureMetadataLoader.h"
+#include "Graphics/Texture/Cook/CookedTexture.h"
 #include "Graphics/Texture/Load/TextureImageProcessor.h"
 #include "Utility/Logger/Logger.h"
 
@@ -15,7 +16,16 @@ namespace CoreEngine
         // path のまま運んできたのでエンコーディングの取り違えは起こらない。
         DirectX::TexMetadata metadata{};
 
-        HRESULT hr = TextureImageProcessor::LoadMetadata(resolvedPath.wstring(), metadata);
+        // 書き出したゲームでは、元の画像の代わりにクック済みの DDS から読む
+        std::filesystem::path readPath = CookedTexture::Find(resolvedPath, TextureColorSpace::SRGB);
+        if (readPath.empty()) {
+            readPath = CookedTexture::Find(resolvedPath, TextureColorSpace::Linear);
+        }
+        if (readPath.empty()) {
+            readPath = resolvedPath;
+        }
+
+        HRESULT hr = TextureImageProcessor::LoadMetadata(readPath.wstring(), metadata);
         if (FAILED(hr)) {
             // 失敗時はログと例外で上位へ通知し、呼び出し元でフォールバックを判断する。
             std::string errorMsg = std::format(

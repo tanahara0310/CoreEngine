@@ -53,6 +53,19 @@ namespace CoreEngine
         return result;
     }
 
+    std::vector<MaterialAsset> ModelLoader::LoadMaterialsOnly(const std::string& directoryPath, const std::string& filename)
+    {
+        const std::string fullPath = directoryPath + "/" + filename;
+        Assimp::Importer importer;
+        const aiScene* scene = importer.ReadFile(fullPath.c_str(), 0);
+        if (!scene) {
+            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Resource, "{}",
+                std::format("マテリアルを読めませんでした: {}（{}）", fullPath, importer.GetErrorString()));
+            return {};
+        }
+        return LoadMaterials(scene, directoryPath);
+    }
+
     // ===== ファイル読み込み・検証 =====
 
     const aiScene* ModelLoader::LoadAssimpFile(Assimp::Importer& importer, const std::string& filepath)

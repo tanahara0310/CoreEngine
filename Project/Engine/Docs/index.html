@@ -2954,7 +2954,7 @@ kbd {
   <p>Key Config では、割り当てのボタンを押してから新しいキーを押すと割り当てが変わります。<span class="ui">x</span> で削除、<span class="ui">追加</span> で足し、同じ場面のほかのアクションと重なると赤く表示されます。<span class="ui">初期値に戻す</span> で InputActions.json の既定に戻ります。</p>
 </article>
 
-<article class="page" id="editor-export" data-group="エディタ" data-title="ゲームを書き出す" data-nav="ゲームの書き出し" data-keywords="書き出し 書き出す export ビルド release 配布 exe 完成 build windows 全画面 フルスクリーン 終了 esc 起動シーン">
+<article class="page" id="editor-export" data-group="エディタ" data-title="ゲームを書き出す" data-nav="ゲームの書き出し" data-keywords="書き出し 書き出す export ビルド release 配布 exe 完成 build windows 全画面 フルスクリーン 終了 esc 起動シーン テクスチャ dds 変換 クック cooked">
   <h1>ゲームを書き出す</h1>
   <p class="lead">完成したゲームを、エディタの無い PC でも遊べるフォルダにまとめます。できたフォルダを丸ごと渡せば、そのまま遊べます。</p>
 
@@ -2962,7 +2962,7 @@ kbd {
   <ol class="steps">
     <li><strong>シーンを保存する</strong>書き出すのはディスクにあるファイルです。保存していない変更は入りません（<kbd>Ctrl</kbd>+<kbd>S</kbd>）。</li>
     <li><strong>Release をビルドする</strong>Visual Studio で構成を <span class="ui">Release</span> にしてビルドします。エディタからはビルドしません。<span class="path">generated/CoreEngine/outputs/Release/CoreEngine.exe</span> ができていれば準備完了です。</li>
-    <li><strong>書き出す</strong>エディタで <span class="ui">File<span class="arrow">▸</span>ゲームを書き出す…</span> を開きます。書き出す先・使う Release の exe（ビルドした日時）・写すものを確かめて、<span class="ui">書き出す</span> を押します。</li>
+    <li><strong>書き出す</strong>エディタで <span class="ui">File<span class="arrow">▸</span>ゲームを書き出す…</span> を開きます。書き出す先・使う Release の exe（ビルドした日時）・写すものを確かめて、<span class="ui">書き出す</span> を押します。画像のテクスチャを DDS に変換してから写します（<a href="#export-cooking">テクスチャの変換</a>）。</li>
     <li><strong>遊んで確かめる</strong><span class="ui">エクスプローラーで開く</span> で書き出したフォルダを開き、<span class="path">CoreEngine.exe</span> を起動します。</li>
   </ol>
   <div class="callout note"><p>Release の exe が無いと、窓に「先に Release でビルドしてください」と出て書き出せません。書き出したゲームを動かしたままだとファイルを書き換えられないので、閉じてから書き出します。</p></div>
@@ -2971,13 +2971,29 @@ kbd {
   <script type="text/x-code" data-lang="text" data-file="Projects/MyGame/Build/Windows/">
     Windows/
     ├─ CoreEngine.exe と *.dll      Release のフォルダから
-    ├─ Engine/Assets/               エンジンの素材（シェーダ・既定のモデルなど）
+    ├─ Engine/
+    │  ├─ Assets/                   エンジンの素材（シェーダ・既定のモデルなど。画像のテクスチャは除く）
+    │  └─ Cooked/                   エンジンの画像のテクスチャを変換した DDS
     └─ Application/
-       ├─ Assets/                   シーン・スクリプト・プレハブ・素材
+       ├─ Assets/                   シーン・スクリプト・プレハブ・素材（画像のテクスチャは除く）
+       ├─ Cooked/                   プロジェクトの画像のテクスチャを変換した DDS
        ├─ Config/                   プロジェクトの設定（起動シーン・入力・レイヤー・CVar）
        └─ Saved/                    遊んだ人のセーブデータ（ゲームが作る）
   </script>
-  <p>書き出すたびに、<span class="path">Engine/Assets</span>・<span class="path">Application/Assets</span>・<span class="path">Application/Config</span> をいったん消してから写し直します。遊んだ人のデータが入る <span class="path">Application/Saved</span> は残します。<span class="path">Build/</span> は git の対象外です。</p>
+  <p>書き出すたびに、<span class="path">Engine/Assets</span>・<span class="path">Engine/Cooked</span>・<span class="path">Application/Assets</span>・<span class="path">Application/Cooked</span>・<span class="path">Application/Config</span> をいったん消してから書き直します。遊んだ人のデータが入る <span class="path">Application/Saved</span> は残します。<span class="path">Build/</span> は git の対象外です。</p>
+
+  <h2 id="export-cooking">テクスチャの変換</h2>
+  <p>画像のテクスチャ（PNG・JPG・JPEG・BMP・TGA）は写さずに、GPU がそのまま読める圧縮形式（BC3 の DDS）へ変換して <span class="path">Cooked/</span> に書きます。遊ぶ人の PC では変換しないので、初めての起動でもテクスチャの変換を待ちません。元の画像は入りませんが、隣の <span class="path">.meta</span> は入るので、スクリプトやシーンからは今までどおり <span class="path">.png</span> などの名前で使えます。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>元の画像</th><th>変換した DDS</th></tr></thead>
+    <tbody>
+      <tr><td><span class="path">Application/Assets/Models/Rock/Rock_Color.png</span></td><td><span class="path">Application/Cooked/Models/Rock/Rock_Color.png.dds</span>（sRGB）</td></tr>
+      <tr><td><span class="path">Application/Assets/Models/Rock/Rock_Normal.png</span></td><td><span class="path">Application/Cooked/Models/Rock/Rock_Normal.png.linear.dds</span>（リニア）</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>モデルのマテリアルで法線・メタリック/ラフネス・遮蔽に使う画像はリニア、それ以外の画像は sRGB で変換します。エディタで開いたときに作った DDS（<span class="path">Intermediate/TextureCache</span>）が元の画像より新しければ、変換せずにそれを使います。初めて書き出すときや画像を描き直したあとは、変換のぶん時間がかかります。</p>
 
   <h2 id="export-runtime">書き出したゲームの動き</h2>
   <div class="table-wrap">
@@ -2988,6 +3004,7 @@ kbd {
       <tr><td>窓のタイトル</td><td>プロジェクトの名前</td></tr>
       <tr><td>エディタ</td><td>無し。起動するとすぐにゲームが始まる</td></tr>
       <tr><td>スクリプト</td><td>起動時にコンパイルする。<span class="path">Scripts/Editor/</span> の中は読まない。ホットリロードは無い</td></tr>
+      <tr><td>テクスチャ</td><td><span class="path">Cooked/</span> の DDS を読む（<a href="#export-cooking">テクスチャの変換</a>）</td></tr>
       <tr><td>全画面</td><td><kbd>Alt</kbd>+<kbd>Enter</kbd> で全画面と窓を切り替える</td></tr>
       <tr><td>終了</td><td>窓の × か <kbd>Alt</kbd>+<kbd>F4</kbd>。<kbd>Esc</kbd> で終わらせたいときは CVar <code>sys.Window.QuitOnEscape</code> をオンにする（既定はオフ。<kbd>Esc</kbd> をポーズに使うゲームではオンにしない）</td></tr>
       <tr><td>セーブデータ</td><td><span class="path">Application/Saved/</span> に書く（<a href="#api-SaveFile">SaveFile</a>・キーの割り当て）</td></tr>

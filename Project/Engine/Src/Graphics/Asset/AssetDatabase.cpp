@@ -2,6 +2,7 @@
 #include "AssetDatabase.h"
 #include "Utility/Path/ProjectPaths.h"
 #include "AssetMetadata.h"
+#include "Graphics/Texture/Cook/CookedTexture.h"
 #include "Threading/ThreadPool.h"
 #include "Utility/Logger/Logger.h"
 #include <algorithm>
@@ -25,6 +26,16 @@ namespace CoreEngine
                 }
             }
             return key;
+        }
+
+        /// @brief 検索に使う名前（最初のドットより前。例: GrayScale.CS.hlsl → GrayScale）を UTF-8 で返す
+        std::string BaseName(const std::filesystem::path& path)
+        {
+            std::filesystem::path stem = path.stem();
+            while (stem.has_extension()) {
+                stem = stem.stem();
+            }
+            return Logger::GetInstance().PathToUtf8(stem);
         }
 
         /// @brief `Assets/Scenes/` の下のファイル（シーンの保存データ）か
@@ -167,12 +178,18 @@ namespace CoreEngine
         threadPool_->Shutdown();
         threadPool_.reset();
 
-        size_t totalAssets = 0;
         {
             std::unique_lock lock(mutex_);
             for (AssetInfo& info : built) {
                 MergeAssetInfo(std::move(info));
             }
+        }
+
+        RegisterCookedTextures();
+
+        size_t totalAssets = 0;
+        {
+            std::shared_lock lock(mutex_);
             totalAssets = assetsByGUID_.size();
         }
 
@@ -432,15 +449,8 @@ namespace CoreEngine
         // 呼び出し側の検索名も UTF-8 に統一してあり、path::string()（ANSI）で
         // 登録すると非 ASCII のファイル名で一致しなくなる。
         Logger& log = Logger::GetInstance();
-        // 複合拡張子（例: GrayScale.CS.hlsl）に対してもベース名（GrayScale）で検索できるよう
-        // stem を繰り返し適用して最初のドットより前の名前を取得する。
-        {
-            std::filesystem::path stem = assetPath.stem();
-            while (stem.has_extension()) {
-                stem = stem.stem();
-            }
-            info.name = log.PathToUtf8(stem);
-        }
+        // 複合拡張子（例: GrayScale.CS.hlsl）に対してもベース名（GrayScale）で検索できるようにする
+        info.name = BaseName(assetPath);
         info.fileName = log.PathToUtf8(assetPath.filename());
         info.fullPath = assetPath;
         info.relativePath = std::move(relativePath);
@@ -475,6 +485,64 @@ namespace CoreEngine
         while (stem.has_extension()) {
             assetsByName_[log.PathToUtf8(stem)].push_back(guid);
             stem = stem.stem();
+        }
+    }
+
+    void AssetDatabase::RegisterCookedTextures()
+    {
+        Logger& log = Logger::GetInstance();
+        size_t registered = 0;
+
+        for (const char* folder : CookedTexture::kCookedFolders) {
+            const std::filesystem::path cookedRoot = ProjectPaths::Resolve(folder);
+            std::error_code ec;
+            if (!std::filesystem::is_directory(cookedRoot, ec)) {
+                continue;
+            }
+            const std::string category = std::string_view(folder).starts_with("Engine") ? "Engine" : "Application";
+
+            for (auto it = std::filesystem::recursive_directory_iterator(cookedRoot, ec);
+                !ec && it != std::filesystem::recursive_directory_iterator(); it.increment(ec)) {
+                if (!it->is_regular_file(ec)) {
+                    continue;
+                }
+
+                // sRGB 版とリニア版は同じ元の画像に戻るので、2 つ目は登録済みとして飛ばす
+                const std::filesystem::path sourceRelative =
+                    CookedTexture::ToSourcePath(ProjectPaths::MakeRelative(it->path()));
+                if (sourceRelative.empty()) {
+                    continue;
+                }
+                const std::string sourceRelativeUtf8 = log.PathToUtf8(sourceRelative);
+
+                std::unique_lock lock(mutex_);
+                if (guidsByPath_.contains(MakePathKey(sourceRelativeUtf8))) {
+                    continue;
+                }
+
+                const std::filesystem::path sourcePath = ProjectPaths::Resolve(sourceRelativeUtf8);
+                const std::string guid = AssetMetadata::LoadGUID(AssetMetadata::GetMetaFilePath(sourcePath));
+                if (guid.empty()) {
+                    log.Logf(LogLevel::WARNING, LogCategory::System, "{}",
+                        "クック済みのテクスチャに対応する .meta が無いので登録しません: " + sourceRelativeUtf8);
+                    continue;
+                }
+
+                AssetInfo info;
+                info.guid = guid;
+                info.name = BaseName(sourcePath);
+                info.fileName = log.PathToUtf8(sourcePath.filename());
+                info.fullPath = sourcePath;
+                info.relativePath = sourceRelative;
+                info.type = AssetType::Texture;
+                info.category = category;
+                MergeAssetInfo(std::move(info));
+                ++registered;
+            }
+        }
+
+        if (registered > 0) {
+            log.Logf(LogLevel::INFO, LogCategory::System, "クック済みのテクスチャを {} 件登録しました", registered);
         }
     }
 

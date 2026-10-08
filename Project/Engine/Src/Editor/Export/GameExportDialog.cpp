@@ -115,14 +115,15 @@ namespace CoreEngine::Editor
                 ? ToUtf8(plan_.releaseExe) + "（ビルド " + plan_.releaseBuiltAt + "）"
                 : std::string("－"));
             Row("写すもの", "Release のフォルダの exe と DLL\nEngine\\Assets・Application\\Assets・Application\\Config");
+            Row("変換するもの", "画像のテクスチャ（PNG・JPG など）は写さず、DDS に変換して\nEngine\\Cooked・Application\\Cooked に書きます");
             ImGui::EndTable();
         }
         ImGui::Spacing();
 
         ImGui::PushTextWrapPos(0.0f);
         ImGui::TextColored(Theme::kTextMute, "%s",
-            "書き出す先の Engine\\Assets・Application\\Assets・Application\\Config は、消してから写し直します。"
-            "ゲームが書く Application\\Saved は残します。");
+            "書き出す先の Engine\\Assets・Application\\Assets・Application\\Config・Engine\\Cooked・Application\\Cooked は、"
+            "消してから書き直します。ゲームが書く Application\\Saved は残します。");
         if (sceneDirty_) {
             ImGui::TextColored(Theme::kWarn, "%s", "保存していない変更は書き出しに入りません。先にシーンを保存してください。");
         }
@@ -156,11 +157,27 @@ namespace CoreEngine::Editor
 
     void GameExportDialog::DrawExporting()
     {
+        const int cookTotal = progress_ ? progress_->cookTotal.load() : 0;
+        const int cooked = progress_ ? progress_->cooked.load() : 0;
         const int total = progress_ ? progress_->total.load() : 0;
         const int copied = progress_ ? progress_->copied.load() : 0;
-        ImGui::TextUnformatted("書き出しています…");
-        const std::string overlay = std::format("{} / {}", copied, total);
-        ImGui::ProgressBar(total > 0 ? static_cast<float>(copied) / static_cast<float>(total) : 0.0f,
+
+        // 準備（使い道を調べる）→ テクスチャの変換 → ファイルの写しの順に進む
+        const char* label = "書き出す準備をしています…";
+        int done = 0;
+        int count = 0;
+        if (cooked < cookTotal) {
+            label = "テクスチャを DDS に変換しています…";
+            done = cooked;
+            count = cookTotal;
+        } else if (total > 0 && (cookTotal > 0 || copied > 0)) {
+            label = "ファイルを写しています…";
+            done = copied;
+            count = total;
+        }
+        ImGui::TextUnformatted(label);
+        const std::string overlay = std::format("{} / {}", done, count);
+        ImGui::ProgressBar(count > 0 ? static_cast<float>(done) / static_cast<float>(count) : 0.0f,
             ImVec2(-FLT_MIN, 0.0f), overlay.c_str());
     }
 
@@ -173,7 +190,8 @@ namespace CoreEngine::Editor
         } else {
             const double megabytes = static_cast<double>(result_.bytes) / (1024.0 * 1024.0);
             ImGui::TextColored(Theme::kOk, "%s",
-                std::format("書き出しました（ファイル {} 個・{:.1f} MB）", result_.fileCount, megabytes).c_str());
+                std::format("書き出しました（ファイル {} 個・{:.1f} MB・DDS に変換したテクスチャ {} 枚）",
+                    result_.fileCount, megabytes, result_.cookedTextures).c_str());
             ImGui::TextColored(Theme::kTextMute, "%s", ToUtf8(plan_.destination).c_str());
         }
         ImGui::PopTextWrapPos();

@@ -189,6 +189,7 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Editor\Script\ScriptTemplate.cpp" />
     <ClCompile Include="Engine\Src\Editor\Export\GameExportDialog.cpp" />
     <ClCompile Include="Engine\Src\Editor\Export\GameExporter.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Export\TextureCooker.cpp" />
     <ClCompile Include="Engine\Src\Editor\Launcher\ProjectBrowser.cpp" />
     <ClCompile Include="Engine\Src\Editor\Launcher\ProjectCreator.cpp" />
     <ClCompile Include="Engine\Src\Editor\Launcher\ProjectLauncher.cpp" />
@@ -456,6 +457,7 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Graphics\Texture\Cache\TextureCacheStore.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Texture\Generate\TextureCubemapGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Texture\Generate\TextureDdsCacheGenerator.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Texture\Cook\CookedTexture.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Texture\Gpu\TextureGpuUploader.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Texture\Load\TextureImageProcessor.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Texture\Load\TextureLoadExecutor.cpp" />
@@ -1175,6 +1177,7 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Editor\Script\ScriptTemplate.h" />
     <ClInclude Include="Engine\Src\Editor\Export\GameExportDialog.h" />
     <ClInclude Include="Engine\Src\Editor\Export\GameExporter.h" />
+    <ClInclude Include="Engine\Src\Editor\Export\TextureCooker.h" />
     <ClInclude Include="Engine\Src\Editor\Launcher\ProjectBrowser.h" />
     <ClInclude Include="Engine\Src\Editor\Launcher\ProjectCreator.h" />
     <ClInclude Include="Engine\Src\Editor\Launcher\ProjectLauncher.h" />
@@ -1476,6 +1479,7 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Graphics\Texture\Cache\TextureCacheStore.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Generate\TextureCubemapGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Generate\TextureDdsCacheGenerator.h" />
+    <ClInclude Include="Engine\Src\Graphics\Texture\Cook\CookedTexture.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Gpu\TextureGpuUploader.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Load\TextureImageProcessor.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Load\TextureLoadExecutor.h" />
