@@ -24,6 +24,12 @@ namespace CoreEngine
         /// @return 読み込んだモデルデータ
         static ModelData LoadModelFile(const std::string& directoryPath, const std::string& filename);
 
+        /// @brief マテリアルだけを読む（メッシュの変換と後処理はしない）
+        /// @param directoryPath ディレクトリパス（UTF-8）
+        /// @param filename ファイル名（UTF-8）
+        /// @return 読めなければ空
+        static std::vector<MaterialAsset> LoadMaterialsOnly(const std::string& directoryPath, const std::string& filename);
+
     private:
         // ===== ファイル読み込み・検証 =====
         

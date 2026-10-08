@@ -90,6 +90,11 @@ namespace CoreEngine
         /// @note 呼ぶ側が排他ロックを持っていること
         void MergeAssetInfo(AssetInfo&& info);
 
+        /// @brief クック済みの DDS（`Application/Cooked`・`Engine/Cooked`）から、元の画像をテクスチャとして登録する
+        /// @details 書き出したゲームは元の画像を持たないので、元の画像の綴り・名前・GUID（残してある .meta）で
+        ///          引けるようにする。元の画像が登録済みならそちらを使う。
+        void RegisterCookedTextures();
+
         /// @brief GUID でアセット情報を引く（呼ぶ側がロックを持っていること）
         const AssetInfo* FindByGUIDUnlocked(const std::string& guid) const;
 

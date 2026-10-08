@@ -3,9 +3,12 @@
 
 #ifdef CORE_EDITOR
 
+#include "Editor/Export/TextureCooker.h"
+#include "Graphics/Texture/Cook/CookedTexture.h"
 #include "Utility/Path/ProjectPaths.h"
 
 #include <Windows.h>
+#include <objbase.h>
 
 #include <chrono>
 #include <format>
@@ -92,9 +95,15 @@ namespace CoreEngine::Editor
             { ProjectPaths::ProjectRoot() / "Application" / "Assets", destination / "Application" / "Assets" },
             { ProjectPaths::ProjectRoot() / "Application" / "Config", destination / "Application" / "Config" },
         };
+        const std::filesystem::path cookedFolders[] = {
+            destination / "Engine" / "Cooked",
+            destination / "Application" / "Cooked",
+        };
 
-        // 写すファイルを先に集める（Release のフォルダの exe と DLL、各フォルダの中身）
+        // 写すファイルを先に集める（Release のフォルダの exe と DLL、各フォルダの中身）。
+        // 画像のテクスチャは写さずに DDS へ変換する
         std::vector<CopyItem> items;
+        std::vector<std::filesystem::path> textures;
         std::error_code ec;
         const std::filesystem::path releaseDirectory = plan.releaseExe.parent_path();
         for (const auto& entry : std::filesystem::directory_iterator(releaseDirectory, ec)) {
@@ -110,7 +119,12 @@ namespace CoreEngine::Editor
         for (const FolderItem& folder : folders) {
             std::filesystem::recursive_directory_iterator it(folder.from, ec);
             for (; !ec && it != std::filesystem::recursive_directory_iterator(); it.increment(ec)) {
-                if (it->is_regular_file(ec)) {
+                if (!it->is_regular_file(ec)) {
+                    continue;
+                }
+                if (CookedTexture::IsCookable(it->path())) {
+                    textures.push_back(it->path());
+                } else {
                     items.push_back({ it->path(), folder.to / it->path().lexically_relative(folder.from) });
                 }
             }
@@ -119,15 +133,37 @@ namespace CoreEngine::Editor
                 return result;
             }
         }
+        const std::vector<CookTarget> targets = TextureCooker::PlanTargets(textures);
+        progress.cookTotal = static_cast<int>(targets.size());
         progress.total = static_cast<int>(items.size());
 
-        // 丸ごと写すフォルダは、書き出す先の側を消しておく
+        // 丸ごと写すフォルダとクック済みの DDS のフォルダは、書き出す先の側を消しておく
+        std::vector<std::filesystem::path> clearFolders(std::begin(cookedFolders), std::end(cookedFolders));
         for (const FolderItem& folder : folders) {
-            std::filesystem::remove_all(folder.to, ec);
+            clearFolders.push_back(folder.to);
+        }
+        for (const std::filesystem::path& folder : clearFolders) {
+            std::filesystem::remove_all(folder, ec);
             if (ec) {
-                result.error = ToUtf8(folder.to) + " を消せませんでした" + kLockedHint;
+                result.error = ToUtf8(folder) + " を消せませんでした" + kLockedHint;
                 return result;
             }
+        }
+
+        // 画像のテクスチャを DDS へ変換する。画像は WIC で読むので、このスレッドで COM を使えるようにする
+        struct ComScope
+        {
+            HRESULT hr;
+            ~ComScope() { if (SUCCEEDED(hr)) { ::CoUninitialize(); } }
+        } com{ ::CoInitializeEx(nullptr, COINIT_MULTITHREADED) };
+        for (const CookTarget& target : targets) {
+            const std::string error = TextureCooker::Cook(target, destination, result.fileCount, result.bytes);
+            if (!error.empty()) {
+                result.error = error;
+                return result;
+            }
+            ++result.cookedTextures;
+            ++progress.cooked;
         }
 
         for (const CopyItem& item : items) {

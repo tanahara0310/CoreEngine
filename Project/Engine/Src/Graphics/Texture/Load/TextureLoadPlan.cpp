@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "TextureLoadPlan.h"
 
+#include "Graphics/Texture/Cook/CookedTexture.h"
 #include "Graphics/Texture/Load/TextureImageProcessor.h"
 #include "Utility/Logger/Logger.h"
 
@@ -9,6 +10,28 @@
 
 namespace CoreEngine
 {
+    namespace
+    {
+        /// @brief クック済みの DDS を探す。頼まれた色空間の版が無ければ、もう一方の版で代用する
+        std::filesystem::path FindCookedTexture(const std::filesystem::path& sourcePath, TextureColorSpace colorSpace)
+        {
+            if (std::filesystem::path cooked = CookedTexture::Find(sourcePath, colorSpace); !cooked.empty()) {
+                return cooked;
+            }
+            const TextureColorSpace other = (colorSpace == TextureColorSpace::Linear)
+                ? TextureColorSpace::SRGB
+                : TextureColorSpace::Linear;
+            std::filesystem::path cooked = CookedTexture::Find(sourcePath, other);
+            if (!cooked.empty()) {
+                Logger& log = Logger::GetInstance();
+                log.Logf(LogLevel::WARNING, LogCategory::Graphics, "{}",
+                    std::format("頼まれた色空間の版が書き出されていないので、もう一方の版で代用します: {}",
+                        log.PathToUtf8(cooked)));
+            }
+            return cooked;
+        }
+    }
+
     TextureLoadPlan::PlanResult TextureLoadPlan::BuildPlan(
         const std::filesystem::path& resolvedPath,
         bool ddsGenerationEnabled,
@@ -21,6 +44,13 @@ namespace CoreEngine
         plan.resolvedPath = resolvedPath;
 
         Logger& log = Logger::GetInstance();
+
+        // 書き出したゲームでは、元の画像の代わりに書き出し時に作った DDS を読む
+        if (std::filesystem::path cooked = FindCookedTexture(resolvedPath, colorSpace); !cooked.empty()) {
+            plan.resolvedPath = std::move(cooked);
+            plan.isDDS = true;
+            return plan;
+        }
 
         auto fileType = TextureImageProcessor::DetectFileType(plan.resolvedPath.wstring());
         plan.isDDS = (fileType == TextureImageProcessor::FileType::DDS);

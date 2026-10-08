@@ -13,6 +13,9 @@
     <ClCompile Include="Engine\Src\Editor\Export\GameExporter.cpp">
       <Filter>Engine\Src\Editor\Export</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Export\TextureCooker.cpp">
+      <Filter>Engine\Src\Editor\Export</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Launcher\ProjectBrowser.cpp">
       <Filter>Engine\Src\Editor\Launcher</Filter>
     </ClCompile>
@@ -804,6 +807,9 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Texture\Generate\TextureDdsCacheGenerator.cpp">
       <Filter>Engine\Src\Graphics\Texture\Generate</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Texture\Cook\CookedTexture.cpp">
+      <Filter>Engine\Src\Graphics\Texture\Cook</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Texture\Gpu\TextureGpuUploader.cpp">
       <Filter>Engine\Src\Graphics\Texture\Gpu</Filter>
@@ -1761,6 +1767,9 @@
     <ClInclude Include="Engine\Src\Editor\Export\GameExporter.h">
       <Filter>Engine\Src\Editor\Export</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Export\TextureCooker.h">
+      <Filter>Engine\Src\Editor\Export</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Launcher\ProjectBrowser.h">
       <Filter>Engine\Src\Editor\Launcher</Filter>
     </ClInclude>
@@ -2663,6 +2672,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Texture\Generate\TextureDdsCacheGenerator.h">
       <Filter>Engine\Src\Graphics\Texture\Generate</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Texture\Cook\CookedTexture.h">
+      <Filter>Engine\Src\Graphics\Texture\Cook</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Texture\Gpu\TextureGpuUploader.h">
       <Filter>Engine\Src\Graphics\Texture\Gpu</Filter>
@@ -4266,6 +4278,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\Texture\Cache">
       <UniqueIdentifier>{266F4C5F-4FF0-4002-8031-FCD18E2041D6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Texture\Cook">
+      <UniqueIdentifier>{00ACE0A6-2E3D-4857-A7B4-93371C839806}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Texture\Generate">
       <UniqueIdentifier>{92DC9403-8308-4EC8-AFBA-B7DC40ABF0F9}</UniqueIdentifier>
