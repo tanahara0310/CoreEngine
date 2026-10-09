@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.1.0">
+<meta name="engine-version" content="0.2.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -6789,6 +6789,18 @@ kbd {
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-2-0">v0.2.0 <span class="dim">（2026-10-09）</span></h3>
+  <p>スクリプトでエディタの道具を作れるようにし、プレハブの編集と書き出したゲームの起動を良くした版です。</p>
+  <ul>
+    <li><strong>エディタを拡張できる</strong>：<span class="path">Scripts/Editor/</span> に <code>EditorWindow</code> を継いだクラスを書くと、<code>[MenuItem]</code> の場所から開けるウィンドウになります。部品は <code>EditorGUI::</code>、シーンの操作（作る・消す・選ぶ。<kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せる）は <code>Editor::</code> です。見本は Sandbox の「マップ生成」（<a href="#script-editor">エディタを拡張する</a>）。</li>
+    <li><strong>プレハブを直しやすく</strong>：Project で選んだプレハブの中身をインスペクタで直せるようになり、プレハブだけを開いて直すプレハブモードを足しました（<a href="#editor-prefab">プレハブ</a>）。</li>
+    <li><strong>見本を倉庫番に</strong>：スクリプトだけで作った倉庫番のサンプルプロジェクトを足し、シューティングのサンプルプロジェクトを消しました（<a href="#tutorial-sokoban">見本の倉庫番を読む</a>）。</li>
+    <li><strong>起動の画面</strong>：起動時のローディング画面を絵とロゴの画面にし、進み具合を前回の所要時間で数えるようにしました。書き出したゲームは、ゲームの題名の画面になります。</li>
+    <li><strong>書き出したゲームの初回起動を短く</strong>：書き出すときにテクスチャを DDS へ、シェーダを DXIL へ変換しておくようにしました（<a href="#editor-export">ゲームを書き出す</a>）。エディタの起動も約 2.5 秒短くなりました。</li>
+    <li><strong>描画の不具合を直した</strong>：夜が昼のように明るくなる・海が白く光る・月を保存すると太陽が消える、TAA・CAS・SSAO の式の誤り、遠くのヤシの葉のジャギジャギ。</li>
+  </ul>
+  <p>古いプロジェクトで気をつけること：<span class="path">Scripts/Editor/</span> は書き出しに入らなくなりました。エディタの機能（<code>EditorWindow</code>・<code>EditorGUI::</code>・<code>Editor::</code>）は、このフォルダの外で使うとエラーになります。</p>
 
   <h3 id="changelog-v0-1-0">v0.1.0 <span class="dim">（2026-10-04）</span></h3>
   <p>エディタとスクリプトでゲームを作る形になってから、最初に番号を付けた版です。</p>
