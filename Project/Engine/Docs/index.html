@@ -2216,7 +2216,7 @@ kbd {
   <table>
     <thead><tr><th>ファイル</th><th>中身</th><th>編集する場所</th></tr></thead>
     <tbody>
-      <tr><td><span class="path">Project.json</span></td><td>プロジェクト名・起動シーン（<code>initialScene</code>）・ローディング画面の画像（<code>splashImage</code>）。<strong>このファイルがあるフォルダがプロジェクト</strong></td><td>Project Settings ▸ Startup</td></tr>
+      <tr><td><span class="path">Project.json</span></td><td>プロジェクト名・起動シーン（<code>initialScene</code>）・ローディング画面（<code>splashImage</code> など）。<strong>このファイルがあるフォルダがプロジェクト</strong></td><td>Project Settings ▸ Startup</td></tr>
       <tr><td><span class="path">Layers.json</span></td><td>当たり判定のレイヤーの名前</td><td>Project Settings ▸ Collision Layers</td></tr>
       <tr><td><span class="path">InputActions.json</span></td><td>入力アクションと既定のキー</td><td>テキストエディタ</td></tr>
       <tr><td><span class="path">CVars.json</span></td><td>既定から変えたエンジンの設定（描画・物理など）</td><td>Project Settings（自動保存）</td></tr>
@@ -2900,7 +2900,7 @@ kbd {
     <tbody>
       <tr><td><span class="ui">プロジェクト設定</span></td><td>描画（<code>r.</code>）・システム（<code>sys.</code>）の CVar</td><td><span class="path">Config/EngineSettings/CVars.json</span>（チームで共有）</td></tr>
       <tr><td><span class="ui">個人の作業状態</span></td><td>エディタ（<code>d.</code>）の CVar</td><td><span class="path">Saved/EditorSettings/EditorState.json</span>（自分だけ）</td></tr>
-      <tr><td><span class="ui">Startup</span></td><td>ゲームの起動シーン・起動中のローディング画面の画像</td><td><span class="path">Project.json</span></td></tr>
+      <tr><td><span class="ui">Startup</span></td><td>ゲームの起動シーン・起動中のローディング画面（写真・題名・ヒント）</td><td><span class="path">Project.json</span></td></tr>
       <tr><td><span class="ui">Collision Layers</span></td><td>当たり判定のレイヤーの名前</td><td><span class="path">Layers.json</span></td></tr>
       <tr><td><span class="ui">Scene Settings</span></td><td>このシーンの機能・床・<strong>レイヤーの当たりの組み合わせ</strong></td><td><span class="path">_scene.json</span>（<kbd>Ctrl</kbd>+<kbd>S</kbd> で保存）</td></tr>
       <tr><td><span class="ui">Physics</span>・<span class="ui">Shading</span>・<span class="ui">Rendering Techniques</span> など</td><td>物理・描画の機能ごとの設定</td><td>CVar</td></tr>
@@ -2909,14 +2909,35 @@ kbd {
   </table>
   </div>
 
-  <h2 id="settings-splash">起動中のローディング画面の画像</h2>
-  <p>エディタや書き出したゲームの起動中は、絵の上にエンジンの名前・版・今の作業・進捗の線を重ねた画面が出ます。絵は <span class="ui">Startup</span> の <span class="ui">ローディング画面の画像</span> で選びます。</p>
+  <h2 id="settings-splash">起動中のローディング画面</h2>
+  <p>起動しているあいだは、写真を敷いたローディング画面が出ます。エディタと書き出したゲームで、出る画面が違います。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>どこで出るか</th><th>写真の見え方</th><th>重ねる文字</th></tr></thead>
+    <tbody>
+      <tr><td>エディタ</td><td>そのまま（下半分を文字のために暗くする）</td><td>CoreEngine のマークと版・プロジェクト名・今の作業と ％・細目（シェーダー名など）</td></tr>
+      <tr><td>書き出したゲーム</td><td>ぼかして暗く沈める</td><td>ゲームの題名・小見出し・ヒント・「読み込み中」。技術的な名前や ％ は出さない</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>どちらも <span class="ui">Startup</span> の欄で変えます。変えた内容は次の起動から使われ、書き出したゲームにも入ります。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>欄</th><th>中身</th><th>Project.json の項目</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">ローディング画面の画像</span></td><td>敷く写真。<span class="path">Application/Assets</span> の下の PNG・JPEG から選ぶ。<span class="ui">エンジンの既定（沖縄ビーチ）</span> で元に戻る</td><td><code>splashImage</code></td></tr>
+      <tr><td><span class="ui">題名</span></td><td>ゲームの画面に大きく出す文字。空ならプロジェクト名</td><td><code>splashTitle</code></td></tr>
+      <tr><td><span class="ui">小見出し</span></td><td>題名の下に小さく出す 1 行。空なら出さない</td><td><code>splashSubtitle</code></td></tr>
+      <tr><td><span class="ui">ヒント</span></td><td>1 行に 1 つ書く。起動のたびにどれか 1 つが左下に出る。空なら出さない</td><td><code>splashTips</code></td></tr>
+    </tbody>
+  </table>
+  </div>
   <ol class="steps">
-    <li><strong>画像を置く</strong>プロジェクトの <span class="path">Application/Assets</span> の下に PNG か JPEG を置きます。16:9（1920 × 1080 など）ならそのまま収まり、ほかの比率は中央を切り抜きます。下半分は文字が読めるように暗くなります。</li>
-    <li><strong>選ぶ</strong>一覧から画像を選ぶと <span class="path">Project.json</span> の <code>splashImage</code> に保存されます。<span class="ui">エンジンの既定（沖縄ビーチ）</span> を選ぶと元に戻ります。</li>
-    <li><strong>起動し直す</strong>次の起動から使われます。書き出したゲームにも元の画像のまま入ります。</li>
+    <li><strong>写真を置く</strong>プロジェクトの <span class="path">Application/Assets</span> の下に PNG か JPEG を置きます。16:9（1920 × 1080 など）ならそのまま収まり、ほかの比率は中央を切り抜きます。</li>
+    <li><strong>選ぶ・書く</strong><span class="ui">ローディング画面の画像</span> で写真を選び、ゲームの画面に出す題名・小見出し・ヒントを書きます。</li>
+    <li><strong>試す</strong><span class="ui">エディタの画面を試す</span>・<span class="ui">ゲームの画面を試す</span> を押すと、今の設定の画面が 3 秒ほど出ます（そのあいだエディタは止まります）。起動し直さずに見た目を確かめられます。</li>
   </ol>
-  <p>エンジンの既定の画像は <span class="path">Engine/Assets/Textures/Splash/DefaultSplash.jpg</span> です。このファイルを置き換えると、画像を選んでいないすべてのプロジェクトの絵が変わります。指定した画像が見つからないときも既定の画像を使います。</p>
+  <p>エンジンの既定の写真は <span class="path">Engine/Assets/Textures/Splash/DefaultSplash.jpg</span> です。このファイルを置き換えると、写真を選んでいないすべてのプロジェクトの写真が変わります。指定した写真が見つからないときも既定の写真を使います。</p>
   <p>進捗は、前回の起動で各ステップにかかった時間の割合で進みます（記録は <span class="path">Intermediate/StartupTimings.txt</span>）。記録の無い初めての起動と、ステップの数が変わったあとの 1 回は、済んだステップの数で割った進み方になります。</p>
 
   <h2 id="settings-layers">当たり判定のレイヤーを決める</h2>
@@ -2993,7 +3014,7 @@ kbd {
   <p>書き出すたびに、<span class="path">Engine/Assets</span>・<span class="path">Engine/Cooked</span>・<span class="path">Application/Assets</span>・<span class="path">Application/Cooked</span>・<span class="path">Application/Config</span> をいったん消してから書き直します。遊んだ人のデータが入る <span class="path">Application/Saved</span> は残します。<span class="path">Build/</span> は git の対象外です。</p>
 
   <h2 id="export-cooking">テクスチャの変換</h2>
-  <p>画像のテクスチャ（PNG・JPG・JPEG・BMP・TGA）は写さずに、GPU がそのまま読める圧縮形式（BC3 の DDS）へ変換して <span class="path">Cooked/</span> に書きます。遊ぶ人の PC では変換しないので、初めての起動でもテクスチャの変換を待ちません。元の画像は入りませんが、隣の <span class="path">.meta</span> は入るので、スクリプトやシーンからは今までどおり <span class="path">.png</span> などの名前で使えます。ただしローディング画面の画像（<a href="#settings-splash">起動中のローディング画面の画像</a>）だけは、DirectX 12 の準備より前に読むので、元の画像のまま写します。</p>
+  <p>画像のテクスチャ（PNG・JPG・JPEG・BMP・TGA）は写さずに、GPU がそのまま読める圧縮形式（BC3 の DDS）へ変換して <span class="path">Cooked/</span> に書きます。遊ぶ人の PC では変換しないので、初めての起動でもテクスチャの変換を待ちません。元の画像は入りませんが、隣の <span class="path">.meta</span> は入るので、スクリプトやシーンからは今までどおり <span class="path">.png</span> などの名前で使えます。ただしローディング画面の写真（<a href="#settings-splash">起動中のローディング画面</a>）だけは、DirectX 12 の準備より前に読むので、元の画像のまま写します。</p>
   <div class="table-wrap">
   <table>
     <thead><tr><th>元の画像</th><th>変換した DDS</th></tr></thead>
@@ -6503,6 +6524,9 @@ kbd {
         "initialScene": "Sokoban",
         "name": "Sokoban",
         "splashImage": "Application/Assets/Textures/Title.png",
+        "splashSubtitle": "A COREENGINE SAMPLE",
+        "splashTips": [ "Z キーで一手戻せます", "R キーでステージを最初からやり直せます" ],
+        "splashTitle": "SOKOBAN",
         "version": "1.0"
     }
   </script>
@@ -6516,7 +6540,7 @@ kbd {
   <table>
     <thead><tr><th>ファイル</th><th>中身</th></tr></thead>
     <tbody>
-      <tr><td><span class="path">Project.json</span></td><td>プロジェクト名（<code>name</code>）・起動シーン（<code>initialScene</code>）・ローディング画面の画像（<code>splashImage</code>。省くとエンジンの既定）</td></tr>
+      <tr><td><span class="path">Project.json</span></td><td>プロジェクト名（<code>name</code>）・起動シーン（<code>initialScene</code>）・ローディング画面の写真（<code>splashImage</code>。省くとエンジンの既定）・ゲームの画面の題名（<code>splashTitle</code>。省くとプロジェクト名）・小見出し（<code>splashSubtitle</code>）・ヒント（<code>splashTips</code>）。<a href="#settings-splash">起動中のローディング画面</a></td></tr>
       <tr><td><span class="path">Layers.json</span></td><td>レイヤーの名前の並び。先頭は必ず <code>Default</code>、最大 32 個。並びの番号がスクリプトの <code>CollisionLayer</code> の値になる</td></tr>
       <tr><td><span class="path">InputActions.json</span></td><td>入力アクション（<code>id</code>・<code>display</code>・<code>context</code>・<code>defaults</code>）。<a href="#editor-settings-keyconfig">書き方</a></td></tr>
       <tr><td><span class="path">CVars.json</span></td><td>既定から変えたプロジェクト全体の CVar（<code>"r.TAA.Enabled": false</code> のような名前と値）</td></tr>

@@ -11,6 +11,12 @@ namespace CoreEngine
     ///          背景にはプロジェクト設定の `splashImage` の画像を敷き、無ければエンジンの既定の画像を敷く。
     class SplashScreen {
     public:
+        /// @brief 画面の作り
+        enum class Style {
+            Editor, ///< 画像の上にエンジンの名前・版・今のステップ・割合を出す（エディタ用）
+            Game,   ///< 暗くした画像の上にゲームの題名・ヒント・読み込み中だけを出す（書き出したゲーム用）
+        };
+
         /// @brief エンジンの既定の画像
         static constexpr const char* kDefaultImage = "Engine/Assets/Textures/Splash/DefaultSplash.jpg";
 
@@ -25,9 +31,10 @@ namespace CoreEngine
         SplashScreen& operator=(const SplashScreen&) = delete;
 
         /// @brief スプラッシュを表示する
-        /// @param hInstance   インスタンスハンドル
-        /// @param projectName 右上に出すプロジェクト名（UTF-8）
-        void Show(HINSTANCE hInstance, const std::string& projectName);
+        /// @param hInstance インスタンスハンドル
+        /// @param style     画面の作り
+        /// @note プロジェクト名・題名・ヒントはプロジェクト設定から読む
+        void Show(HINSTANCE hInstance, Style style);
 
         /// @brief 進捗と現在のステップ名を設定する
         /// @param progress 0.0〜1.0（前の値より小さければ前の値のまま）
@@ -55,27 +62,41 @@ namespace CoreEngine
     private:
         static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
-        /// @brief 背景（画像・文字の下を暗くするグラデーション・マーク）を窓の大きさで 1 枚に組み立てる
+        /// @brief 背景（画像と、画面の作りに合わせた暗くする処理・マーク）を窓の大きさで 1 枚に組み立てる
         void BuildBackdrop();
 
         /// @brief メモリ DC に組み立ててから一度に転送する（ちらつき防止）
         void Render(HDC targetDC);
+
+        /// @brief エディタ用の文字（名前・版・プロジェクト名・ステップ・細目）を描く
+        void DrawEditorTexts(HDC dc) const;
+
+        /// @brief ゲーム用の文字（題名・小見出し・ヒント・読み込み中）を描く
+        void DrawGameTexts(HDC dc) const;
+
+        /// @brief 下端の進捗の線を描く
+        void DrawProgressBar(HDC dc) const;
+
         void Repaint();
         void DestroyResources();
 
         HWND hwnd_ = nullptr;
         HINSTANCE hInstance_ = nullptr;
+        Style style_ = Style::Editor;
 
         HBITMAP backdrop_ = nullptr;
 
-        HFONT nameFont_ = nullptr;
-        HFONT versionFont_ = nullptr;
-        HFONT projectFont_ = nullptr;
-        HFONT labelFont_ = nullptr;
+        HFONT headlineFont_ = nullptr;
+        HFONT smallFont_ = nullptr;
+        HFONT smallBoldFont_ = nullptr;
+        HFONT statusFont_ = nullptr;
         HFONT detailFont_ = nullptr;
 
         std::wstring projectName_;
         std::wstring versionText_;
+        std::wstring titleText_;
+        std::wstring subtitleText_;
+        std::wstring tipText_;
         std::wstring label_;
         std::wstring detail_;
         float progress_ = 0.0f;
