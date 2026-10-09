@@ -50,11 +50,17 @@ namespace CoreEngine
 #ifdef CORE_EDITOR
         constexpr const char* kPredefinedFileName = "as.predefined";
 
-        /// スクリプトの基底クラスの原本
-        constexpr const char* kBaseScriptSource = "Engine/Templates/Scripts/ScriptComponent.as";
+        /// @brief プロジェクトのスクリプトのフォルダへ写す基底クラス
+        struct BaseScript
+        {
+            const char* source;      ///< 原本（エンジンの根からの相対パス）
+            const char* destination; ///< 書き出す先（スクリプトのフォルダからの相対パス）
+        };
 
-        /// 基底クラスをプロジェクトのスクリプトのフォルダへ書き出すときの名前
-        constexpr const char* kBaseScriptFileName = "ScriptComponent.as";
+        constexpr BaseScript kBaseScripts[] = {
+            { "Engine/Templates/Scripts/ScriptComponent.as", "ScriptComponent.as" },
+            { "Engine/Templates/Scripts/Editor/EditorWindow.as", "Editor/EditorWindow.as" },
+        };
 
         /// 変更が落ち着いたと見なすまでの時間（エディタは 1 回の保存で何度も変更を出す）
         constexpr std::chrono::milliseconds kSettleTime{ 200 };
@@ -71,10 +77,10 @@ namespace CoreEngine
         }
 
         /// @brief 基底クラスの原本をプロジェクトのスクリプトのフォルダへ写す（中身が同じなら書かない）
-        void WriteBaseScript(const std::filesystem::path& scriptRoot)
+        void WriteBaseScript(const std::filesystem::path& scriptRoot, const BaseScript& base)
         {
             Logger& logger = Logger::GetInstance();
-            const std::filesystem::path source = ProjectPaths::Resolve(kBaseScriptSource);
+            const std::filesystem::path source = ProjectPaths::Resolve(base.source);
             std::string text;
             if (!ReadAll(source, text)) {
                 logger.Logf(LogLevel::Error, LogCategory::Script,
@@ -82,14 +88,14 @@ namespace CoreEngine
                 return;
             }
 
-            const std::filesystem::path destination = scriptRoot / kBaseScriptFileName;
+            const std::filesystem::path destination = scriptRoot / base.destination;
             std::string existing;
             if (ReadAll(destination, existing) && existing == text) {
                 return;
             }
 
             std::error_code ec;
-            std::filesystem::create_directories(scriptRoot, ec);
+            std::filesystem::create_directories(destination.parent_path(), ec);
             std::ofstream out(destination, std::ios::binary | std::ios::trunc);
             out.write(text.data(), static_cast<std::streamsize>(text.size()));
             out.close();
@@ -123,8 +129,21 @@ namespace CoreEngine
         scriptRoot_ = ProjectPaths::Resolve(kScriptRoot);
 
 #ifdef CORE_EDITOR
-        WriteBaseScript(scriptRoot_);
+        for (const BaseScript& base : kBaseScripts) {
+            WriteBaseScript(scriptRoot_, base);
+        }
         host_->WritePredefined(scriptRoot_ / kPredefinedFileName);
+
+        editorExtensions_ = std::make_unique<Editor::ScriptEditorExtensions>(*host_);
+        Editor::ScriptEditorExtensions* const extensions = editorExtensions_.get();
+        host_->SetModuleListener({
+            .compiled = [extensions](asIScriptModule& module, CScriptBuilder& builder,
+                                     const std::unordered_map<std::string, std::string>& sources) {
+                extensions->OnModuleCompiled(module, builder, sources);
+            },
+            .discarding = [extensions] { extensions->OnModuleDiscarding(); },
+            .swapped = [extensions] { extensions->OnModuleSwapped(); },
+            });
 #endif
 
         const bool built = host_->Build(scriptRoot_);
@@ -144,6 +163,13 @@ namespace CoreEngine
     {
 #ifdef CORE_EDITOR
         watcher_.Stop();
+        if (host_) {
+            host_->SetModuleListener({});
+        }
+        if (editorExtensions_) {
+            editorExtensions_->Shutdown();
+            editorExtensions_.reset();
+        }
 #endif
         ComponentFactory::Get().UnregisterRuntimeTypes();
         if (host_) {
@@ -174,6 +200,9 @@ namespace CoreEngine
         if (settled || reloadRequested_) {
             reloadRequested_ = false;
             ReloadScripts();
+        }
+        if (editorExtensions_) {
+            editorExtensions_->EndFrame();
         }
 #endif
 

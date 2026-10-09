@@ -22,8 +22,10 @@
 #include <cstdint>
 #include <format>
 #include <memory>
+#include <optional>
 #include <random>
 #include <utility>
+#include <vector>
 
 namespace CoreEngine::ObjectEditing
 {
@@ -178,15 +180,60 @@ namespace CoreEngine::ObjectEditing
         }
 
         /// @brief 作ったオブジェクトを、Undo で消し Redo で同じ ID のまま作り直すコマンドを積む
+        /// @details Undo で消す直前の状態を控え、Redo はその状態で作り直す。
         void PushCreateCommand(const GameObject& object, std::string label)
+        {
+            const ObjectId id = object.GetObjectId();
+            auto snapshot = std::make_shared<std::optional<Snapshot>>();
+            Editor::EditorCommandStack::Get().Push(std::make_unique<Editor::FunctionCommand>(
+                std::move(label),
+                [id, snapshot] {
+                    if (const GameObject* const target = Editor::SceneAccess::FindObject(id)) {
+                        *snapshot = Capture(*target);
+                    }
+                    DestroyInScene(id);
+                },
+                [snapshot] {
+                    if (snapshot->has_value()) {
+                        RecreateInScene(**snapshot);
+                    }
+                },
+                true, true));
+        }
+
+        /// @brief オブジェクトを消し、Undo で同じ ID・保存キー・値のまま作り直すコマンドを積む
+        void PushDeleteCommand(const Context& context, GameObject& object)
         {
             Snapshot snapshot = Capture(object);
             const ObjectId id = snapshot.id;
+            const std::string label = snapshot.name + " を削除";
+            DestroyObject(context, object);
+
             Editor::EditorCommandStack::Get().Push(std::make_unique<Editor::FunctionCommand>(
-                std::move(label),
-                [id] { DestroyInScene(id); },
+                label,
                 [snapshot = std::move(snapshot)] { RecreateInScene(snapshot); },
+                [id] { DestroyInScene(id); },
                 true, true));
+        }
+
+        /// @brief オブジェクトの子孫を、子から先の順に集める
+        void CollectDescendants(const GameObjectManager& manager, const GameObject& object,
+                                std::vector<GameObject*>& out)
+        {
+            const TransformComponent* const transform = object.GetComponent<TransformComponent>();
+            if (!transform) {
+                return;
+            }
+            for (const auto& candidate : manager.GetAllObjects()) {
+                if (!candidate || candidate->IsMarkedForDestroy()) {
+                    continue;
+                }
+                const TransformComponent* const child = candidate->GetComponent<TransformComponent>();
+                if (child && child->GetParent() == transform) {
+                    CollectDescendants(manager, *candidate, out);
+                    out.push_back(candidate.get());
+                }
+            }
         }
     }
 
@@ -260,6 +307,46 @@ namespace CoreEngine::ObjectEditing
         PushCreateCommand(*object, object->GetName() + " を作る");
         Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
             "ObjectEditing: 空のオブジェクト \"{}\" を作りました", object->GetName());
+        return object;
+    }
+
+    GameObject* CreateNamed(const Context& context, const std::string& name, const Vector3& position)
+    {
+        GameObjectManager& manager = *context.manager;
+        auto owned = std::make_unique<GameObject>();
+        owned->SetSerializeKey(MakeNewObjectKey(name));
+        owned->SetName(name);
+        GameObject* const object = manager.AddObject(std::move(owned));
+        if (!object) {
+            return nullptr;
+        }
+
+        // エディタが作るオブジェクトのコンポーネントとして付ける
+        {
+            ComponentHost::DataAttachScope dataScope(*object);
+            if (TransformComponent* const transform = object->AddComponent<TransformComponent>()) {
+                transform->SetTranslate(position);
+            }
+        }
+        manager.InvalidateReferences();
+
+        PushCreateCommand(*object, name + " を作る");
+        return object;
+    }
+
+    GameObject* InstantiatePrefab(const Context& context, const std::string& prefabPath, const std::string& name)
+    {
+        GameObjectManager& manager = *context.manager;
+        GameObject* const object = PrefabSystem::Instantiate(
+            manager, Reflection::AssetRefValue{ std::string(), prefabPath }, name, MakeNewObjectKey(name));
+        if (!object) {
+            Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
+                "ObjectEditing: プレハブ {} を読めないので、\"{}\" を作れませんでした", prefabPath, name);
+            return nullptr;
+        }
+        manager.InvalidateReferences();
+
+        PushCreateCommand(*object, name + " を作る");
         return object;
     }
 
@@ -372,19 +459,39 @@ namespace CoreEngine::ObjectEditing
             return false;
         }
 
-        Snapshot snapshot = Capture(object);
-        const ObjectId id = snapshot.id;
-        const std::string name = snapshot.name;
-        DestroyObject(context, object);
-
-        Editor::EditorCommandStack::Get().Push(std::make_unique<Editor::FunctionCommand>(
-            name + " を削除",
-            [snapshot = std::move(snapshot)] { RecreateInScene(snapshot); },
-            [id] { DestroyInScene(id); },
-            true, true));
+        const std::string name = object.GetName();
+        PushDeleteCommand(context, object);
 
         Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
             "ObjectEditing: \"{}\" を削除しました", name);
+        return true;
+    }
+
+    bool DeleteWithDescendants(const Context& context, GameObject& object)
+    {
+        std::vector<GameObject*> targets;
+        CollectDescendants(*context.manager, object, targets);
+        targets.push_back(&object);
+
+        for (const GameObject* const target : targets) {
+            std::string reason;
+            if (!CanDuplicateOrDelete(*target, &reason)) {
+                Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
+                    "ObjectEditing: \"{}\" を削除できません（\"{}\": {}）", object.GetName(), target->GetName(), reason);
+                return false;
+            }
+        }
+
+        const std::string name = object.GetName();
+        {
+            Editor::BatchScope batch(name + " を削除");
+            for (GameObject* const target : targets) {
+                PushDeleteCommand(context, *target);
+            }
+        }
+
+        Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
+            "ObjectEditing: \"{}\" を子孫 {} 個と一緒に削除しました", name, targets.size() - 1);
         return true;
     }
 

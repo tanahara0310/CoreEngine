@@ -187,6 +187,9 @@ exit /b 0</Command>
   <ItemGroup>
     <ClCompile Include="Engine\Src\Editor\Inspector\ComponentInspectors.cpp" />
     <ClCompile Include="Engine\Src\Editor\Script\ScriptTemplate.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Script\EditorGUIBinding.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Script\EditorSceneBinding.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Script\ScriptEditorExtensions.cpp" />
     <ClCompile Include="Engine\Src\Editor\Export\GameExportDialog.cpp" />
     <ClCompile Include="Engine\Src\Editor\Export\GameExporter.cpp" />
     <ClCompile Include="Engine\Src\Editor\Export\TextureCooker.cpp" />
@@ -203,6 +206,7 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Editor\Inspector\PrefabAssetInspector.cpp" />
     <ClCompile Include="Engine\Src\Editor\Command\EditorCommandStack.cpp" />
     <ClCompile Include="Engine\Src\Editor\Panel\EditorPanelRegistry.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Panel\EditorMenuRegistry.cpp" />
     <ClCompile Include="Engine\Src\Utility\Path\ProjectPaths.cpp" />
     <ClCompile Include="Engine\Src\Utility\Path\CookedPath.cpp" />
     <ClCompile Include="Engine\Src\Utility\CommandLine\CommandLine.cpp" />
@@ -1178,6 +1182,8 @@ exit /b 0</Command>
   <ItemGroup>
     <ClInclude Include="Engine\Src\Editor\Inspector\ComponentInspectors.h" />
     <ClInclude Include="Engine\Src\Editor\Script\ScriptTemplate.h" />
+    <ClInclude Include="Engine\Src\Editor\Script\EditorScriptBinding.h" />
+    <ClInclude Include="Engine\Src\Editor\Script\ScriptEditorExtensions.h" />
     <ClInclude Include="Engine\Src\Editor\Export\GameExportDialog.h" />
     <ClInclude Include="Engine\Src\Editor\Export\GameExporter.h" />
     <ClInclude Include="Engine\Src\Editor\Export\TextureCooker.h" />
@@ -1195,6 +1201,7 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Editor\Command\EditorCommand.h" />
     <ClInclude Include="Engine\Src\Editor\Command\EditorCommandStack.h" />
     <ClInclude Include="Engine\Src\Editor\Panel\EditorPanelRegistry.h" />
+    <ClInclude Include="Engine\Src\Editor\Panel\EditorMenuRegistry.h" />
     <ClInclude Include="Engine\Src\Editor\Panel\EditorDockArea.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\EditorTheme.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\EditorBars.h" />
