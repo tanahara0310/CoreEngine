@@ -33,8 +33,11 @@ class MapGenerator : EditorWindow
 
         EditorGUI::Header("生成");
         wallRate = EditorGUI::Slider("壁の割合", wallRate, 0.3f, 0.6f);
+        EditorGUI::Tooltip("外周の内側のマスを、最初に壁にする割合");
         smoothSteps = EditorGUI::IntSlider("ならす回数", smoothSteps, 0, 8);
+        EditorGUI::Tooltip("周りの 8 マスで壁か床かを決め直す回数（多いほど洞窟がなめらかになる）");
         seed = EditorGUI::IntField("シード", seed);
+        EditorGUI::Tooltip("同じシードなら毎回同じ地形になる");
         if (EditorGUI::Button("生成")) {
             Generate();
         }
@@ -62,9 +65,23 @@ class MapGenerator : EditorWindow
         GameObject@ placed = Editor::FindObject(rootName);
         EditorGUI::enabled = placed !is null;
         if (EditorGUI::Button("配置したものを消す", -1)) {
-            Editor::DestroyObject(placed);
+            EditorGUI::OpenPopup("消去の確認");
         }
         EditorGUI::enabled = true;
+        if (EditorGUI::BeginPopupModal("消去の確認")) {
+            EditorGUI::Label(rootName + " とその子をすべて消します。");
+            if (EditorGUI::Button("消す", 100)) {
+                if (placed !is null) {
+                    Editor::DestroyObject(placed);
+                }
+                EditorGUI::CloseCurrentPopup();
+            }
+            EditorGUI::SameLine();
+            if (EditorGUI::Button("やめる", 100)) {
+                EditorGUI::CloseCurrentPopup();
+            }
+        }
+        EditorGUI::EndPopup();
         EditorGUI::HelpBox("配置と消去は Ctrl+Z で戻せます。残すときはシーンを保存（Ctrl+S）してください。");
     }
 
@@ -81,9 +98,9 @@ class MapGenerator : EditorWindow
             hoverX = int(floor(mouse.x / cell));
             hoverRow = int(floor(mouse.y / cell));
             if (IsInside(hoverX, hoverRow)) {
-                if (EditorGUI::IsMouseDown(0)) {
+                if (EditorGUI::IsMouseDown(MouseButton::Left)) {
                     cells[hoverRow * width + hoverX] = 1;
-                } else if (EditorGUI::IsMouseDown(1)) {
+                } else if (EditorGUI::IsMouseDown(MouseButton::Right)) {
                     cells[hoverRow * width + hoverX] = 0;
                 }
             }

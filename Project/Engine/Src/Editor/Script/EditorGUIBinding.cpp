@@ -5,6 +5,7 @@
 
 #include "Editor/ImGui/EditorTheme.h"
 #include "Editor/Inspector/InspectorLayout.h"
+#include "Editor/Script/EditorGUIState.h"
 #include "Math/Vector/Vector2.h"
 #include "Math/Vector/Vector3.h"
 #include "Math/Vector/Vector4.h"
@@ -31,33 +32,46 @@ namespace CoreEngine::Editor::ScriptBinding
             Error,
         };
 
-        /// @brief OnGUI 1 回分の状態
-        struct GUIState
+        /// @brief スクリプトの Key（DirectInput のキーの番号）と ImGui のキー
+        struct KeyMapping
         {
-            bool active = false;
-            bool disabled = false;
-            int indentLevel = 0;
-            int pushedIds = 0;
-            int canvasCount = 0;
-            bool hasCanvas = false;
-            bool canvasHovered = false;
-            ImVec2 canvasMin{};
-            ImVec2 canvasMax{};
+            int dik;
+            ImGuiKey key;
         };
 
-        GUIState g_gui;
+        constexpr KeyMapping kKeyMappings[] = {
+            { DIK_0, ImGuiKey_0 }, { DIK_1, ImGuiKey_1 }, { DIK_2, ImGuiKey_2 }, { DIK_3, ImGuiKey_3 },
+            { DIK_4, ImGuiKey_4 }, { DIK_5, ImGuiKey_5 }, { DIK_6, ImGuiKey_6 }, { DIK_7, ImGuiKey_7 },
+            { DIK_8, ImGuiKey_8 }, { DIK_9, ImGuiKey_9 },
+            { DIK_A, ImGuiKey_A }, { DIK_B, ImGuiKey_B }, { DIK_C, ImGuiKey_C }, { DIK_D, ImGuiKey_D },
+            { DIK_E, ImGuiKey_E }, { DIK_F, ImGuiKey_F }, { DIK_G, ImGuiKey_G }, { DIK_H, ImGuiKey_H },
+            { DIK_I, ImGuiKey_I }, { DIK_J, ImGuiKey_J }, { DIK_K, ImGuiKey_K }, { DIK_L, ImGuiKey_L },
+            { DIK_M, ImGuiKey_M }, { DIK_N, ImGuiKey_N }, { DIK_O, ImGuiKey_O }, { DIK_P, ImGuiKey_P },
+            { DIK_Q, ImGuiKey_Q }, { DIK_R, ImGuiKey_R }, { DIK_S, ImGuiKey_S }, { DIK_T, ImGuiKey_T },
+            { DIK_U, ImGuiKey_U }, { DIK_V, ImGuiKey_V }, { DIK_W, ImGuiKey_W }, { DIK_X, ImGuiKey_X },
+            { DIK_Y, ImGuiKey_Y }, { DIK_Z, ImGuiKey_Z },
+            { DIK_SPACE, ImGuiKey_Space }, { DIK_RETURN, ImGuiKey_Enter }, { DIK_ESCAPE, ImGuiKey_Escape },
+            { DIK_TAB, ImGuiKey_Tab }, { DIK_LSHIFT, ImGuiMod_Shift }, { DIK_LCONTROL, ImGuiMod_Ctrl },
+            { DIK_LMENU, ImGuiMod_Alt },
+            { DIK_LEFT, ImGuiKey_LeftArrow }, { DIK_RIGHT, ImGuiKey_RightArrow },
+            { DIK_UP, ImGuiKey_UpArrow }, { DIK_DOWN, ImGuiKey_DownArrow },
+            { DIK_BACK, ImGuiKey_Backspace }, { DIK_DELETE, ImGuiKey_Delete }, { DIK_INSERT, ImGuiKey_Insert },
+            { DIK_HOME, ImGuiKey_Home }, { DIK_END, ImGuiKey_End },
+            { DIK_PRIOR, ImGuiKey_PageUp }, { DIK_NEXT, ImGuiKey_PageDown },
+            { DIK_F1, ImGuiKey_F1 }, { DIK_F2, ImGuiKey_F2 }, { DIK_F3, ImGuiKey_F3 }, { DIK_F4, ImGuiKey_F4 },
+            { DIK_F5, ImGuiKey_F5 }, { DIK_F6, ImGuiKey_F6 }, { DIK_F7, ImGuiKey_F7 }, { DIK_F8, ImGuiKey_F8 },
+            { DIK_F9, ImGuiKey_F9 }, { DIK_F10, ImGuiKey_F10 }, { DIK_F11, ImGuiKey_F11 }, { DIK_F12, ImGuiKey_F12 },
+        };
 
-        /// @brief OnGUI の中でなければスクリプトの例外にする
-        bool RequireGUI(const char* function)
+        /// @brief スクリプトの Key を ImGui のキーにする（無ければ ImGuiKey_None）
+        ImGuiKey ToImGuiKey(int key)
         {
-            if (g_gui.active) {
-                return true;
+            for (const KeyMapping& mapping : kKeyMappings) {
+                if (mapping.dik == key) {
+                    return mapping.key;
+                }
             }
-            if (asIScriptContext* const context = asGetActiveContext()) {
-                const std::string message = std::string("EditorGUI::") + function + " は EditorWindow の OnGUI の中でだけ使えます";
-                context->SetException(message.c_str());
-            }
-            return false;
+            return ImGuiKey_None;
         }
 
         /// @brief Canvas の後でなければスクリプトの例外にする
@@ -66,13 +80,10 @@ namespace CoreEngine::Editor::ScriptBinding
             if (!RequireGUI(function)) {
                 return false;
             }
-            if (g_gui.hasCanvas) {
+            if (FrameState().hasCanvas) {
                 return true;
             }
-            if (asIScriptContext* const context = asGetActiveContext()) {
-                const std::string message = std::string("EditorGUI::") + function + " は EditorGUI::Canvas の後で呼びます";
-                context->SetException(message.c_str());
-            }
+            ThrowScriptException(std::string("EditorGUI::") + function + " は EditorGUI::Canvas の後で呼びます");
             return false;
         }
 
@@ -88,10 +99,24 @@ namespace CoreEngine::Editor::ScriptBinding
             return "##" + label;
         }
 
-        /// @brief 左の列にラベルを描き、次の欄を右の列へ置く
+        /// @brief 左の列にラベルを描き、次の欄を右の列へ置く（表示する部分が空なら欄を幅いっぱいにする）
         void BeginRow(const std::string& label)
         {
-            InspectorLayout::BeginRow(DisplayPart(label).c_str(), Theme::kTextDim);
+            const std::string display = DisplayPart(label);
+            if (display.empty()) {
+                ImGui::SetNextItemWidth(-FLT_MIN);
+                return;
+            }
+            InspectorLayout::BeginRow(display.c_str(), Theme::kTextDim);
+        }
+
+        /// @brief 値が変わったことを控える
+        bool MarkChanged(bool changed)
+        {
+            if (changed) {
+                FrameState().changed = true;
+            }
+            return changed;
         }
 
         /// @brief sRGB の色を ImGui の描画先（リニア）の色にする
@@ -112,7 +137,20 @@ namespace CoreEngine::Editor::ScriptBinding
         /// @brief Canvas の左上を原点にした座標を画面の座標にする
         ImVec2 CanvasToScreen(const Vector2& position)
         {
-            return ImVec2(g_gui.canvasMin.x + position.x, g_gui.canvasMin.y + position.y);
+            const GUIFrameState& state = FrameState();
+            return ImVec2(state.canvasMin.x + position.x, state.canvasMin.y + position.y);
+        }
+
+        /// @brief マウスのボタンの番号が ImGui の範囲にあるか
+        bool IsValidMouseButton(int button)
+        {
+            return button >= 0 && button < ImGuiMouseButton_COUNT;
+        }
+
+        /// @brief キーを読んでよいか（このウィンドウが前面で、文字を打っていないとき）
+        bool CanReadKeys()
+        {
+            return ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && !ImGui::GetIO().WantTextInput;
         }
 
         /// @brief 文字列の入力欄の長さを std::string に合わせる
@@ -145,6 +183,37 @@ namespace CoreEngine::Editor::ScriptBinding
             }
             BeginRow(label);
             ImGui::TextUnformatted(value.c_str());
+        }
+
+        void TextColored(const std::string& text, const Vector4& color)
+        {
+            if (!RequireGUI("TextColored")) {
+                return;
+            }
+            ImGui::PushStyleColor(ImGuiCol_Text, ToLinear(color));
+            ImGui::PushTextWrapPos(0.0f);
+            ImGui::TextUnformatted(text.c_str());
+            ImGui::PopTextWrapPos();
+            ImGui::PopStyleColor();
+        }
+
+        void TextDisabled(const std::string& text)
+        {
+            if (!RequireGUI("TextDisabled")) {
+                return;
+            }
+            ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyle().Colors[ImGuiCol_TextDisabled]);
+            ImGui::PushTextWrapPos(0.0f);
+            ImGui::TextUnformatted(text.c_str());
+            ImGui::PopTextWrapPos();
+            ImGui::PopStyleColor();
+        }
+
+        void BulletText(const std::string& text)
+        {
+            if (RequireGUI("BulletText")) {
+                ImGui::BulletText("%s", text.c_str());
+            }
         }
 
         void Header(const std::string& text)
@@ -181,6 +250,13 @@ namespace CoreEngine::Editor::ScriptBinding
             ImGui::Dummy(ImVec2(width, max.y - min.y));
         }
 
+        void Tooltip(const std::string& text)
+        {
+            if (RequireGUI("Tooltip")) {
+                ImGui::SetItemTooltip("%s", text.c_str());
+            }
+        }
+
         void Separator()
         {
             if (RequireGUI("Separator")) {
@@ -207,11 +283,21 @@ namespace CoreEngine::Editor::ScriptBinding
             return RequireGUI("GetAvailableWidth") ? ImGui::GetContentRegionAvail().x : 0.0f;
         }
 
-        // ---------------------------------------------------------------- 入力の部品
+        void ProgressBar(float fraction, const std::string& overlay)
+        {
+            WidgetScope widget("ProgressBar");
+            if (widget) {
+                ImGui::ProgressBar(std::clamp(fraction, 0.0f, 1.0f), ImVec2(-FLT_MIN, 0.0f),
+                    overlay.empty() ? nullptr : overlay.c_str());
+            }
+        }
+
+        // ---------------------------------------------------------------- 押す・選ぶ
 
         bool Button(const std::string& label, float width)
         {
-            if (!RequireGUI("Button")) {
+            WidgetScope widget("Button");
+            if (!widget) {
                 return false;
             }
             return ImGui::Button(label.c_str(), ImVec2(width < 0.0f ? -FLT_MIN : width, 0.0f));
@@ -219,113 +305,70 @@ namespace CoreEngine::Editor::ScriptBinding
 
         bool Toggle(const std::string& label, bool value)
         {
-            if (!RequireGUI("Toggle")) {
+            WidgetScope widget("Toggle");
+            if (!widget) {
                 return value;
             }
             BeginRow(label);
-            ImGui::Checkbox(FieldId(label).c_str(), &value);
+            MarkChanged(ImGui::Checkbox(FieldId(label).c_str(), &value));
             return value;
         }
 
-        int IntField(const std::string& label, int value)
+        bool RadioButton(const std::string& label, bool active)
         {
-            if (!RequireGUI("IntField")) {
-                return value;
-            }
-            BeginRow(label);
-            ImGui::DragInt(FieldId(label).c_str(), &value, 0.1f);
-            return value;
+            WidgetScope widget("RadioButton");
+            return widget && MarkChanged(ImGui::RadioButton(label.c_str(), active));
         }
 
-        float FloatField(const std::string& label, float value)
+        int RadioButtonValue(const std::string& label, int selected, int value)
         {
-            if (!RequireGUI("FloatField")) {
+            WidgetScope widget("RadioButton");
+            if (widget && MarkChanged(ImGui::RadioButton(label.c_str(), selected == value))) {
                 return value;
             }
-            BeginRow(label);
-            ImGui::DragFloat(FieldId(label).c_str(), &value, 0.01f, 0.0f, 0.0f, "%.3f");
-            return value;
+            return selected;
         }
 
-        std::string TextField(const std::string& label, const std::string& value)
+        bool Selectable(const std::string& label, bool selected, bool spanAllColumns)
         {
-            if (!RequireGUI("TextField")) {
-                return value;
+            WidgetScope widget("Selectable");
+            if (!widget) {
+                return false;
             }
-            BeginRow(label);
-            std::string text = value;
-            ImGui::InputText(FieldId(label).c_str(), text.data(), text.capacity() + 1,
-                ImGuiInputTextFlags_CallbackResize, &ResizeStringCallback, &text);
-            return text;
+            const ImGuiSelectableFlags flags = spanAllColumns
+                ? (ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowOverlap)
+                : ImGuiSelectableFlags_None;
+            return MarkChanged(ImGui::Selectable(label.c_str(), selected, flags));
         }
 
-        int IntSlider(const std::string& label, int value, int min, int max)
+        int ListBox(const std::string& label, int selected, const CScriptArray& items, int visibleRows)
         {
-            if (!RequireGUI("IntSlider")) {
-                return value;
+            WidgetScope widget("ListBox");
+            if (!widget) {
+                return selected;
             }
             BeginRow(label);
-            ImGui::SliderInt(FieldId(label).c_str(), &value, min, max);
-            return value;
-        }
-
-        float Slider(const std::string& label, float value, float min, float max)
-        {
-            if (!RequireGUI("Slider")) {
-                return value;
+            const float height = static_cast<float>((std::max)(1, visibleRows)) * ImGui::GetTextLineHeightWithSpacing()
+                + ImGui::GetStyle().FramePadding.y * 2.0f;
+            if (ImGui::BeginListBox(FieldId(label).c_str(), ImVec2(-FLT_MIN, height))) {
+                for (asUINT i = 0; i < items.GetSize(); ++i) {
+                    const int index = static_cast<int>(i);
+                    ImGui::PushID(index);
+                    const auto* const item = static_cast<const std::string*>(items.At(i));
+                    if (MarkChanged(ImGui::Selectable(item->c_str(), index == selected))) {
+                        selected = index;
+                    }
+                    ImGui::PopID();
+                }
+                ImGui::EndListBox();
             }
-            BeginRow(label);
-            ImGui::SliderFloat(FieldId(label).c_str(), &value, min, max, "%.3f");
-            return value;
-        }
-
-        Vector2 Vector2Field(const std::string& label, const Vector2& value)
-        {
-            if (!RequireGUI("Vector2Field")) {
-                return value;
-            }
-            BeginRow(label);
-            float components[2] = { value.x, value.y };
-            ImGui::DragFloat2(FieldId(label).c_str(), components, 0.05f, 0.0f, 0.0f, "%.3f");
-            return Vector2{ components[0], components[1] };
-        }
-
-        Vector3 Vector3Field(const std::string& label, const Vector3& value)
-        {
-            if (!RequireGUI("Vector3Field")) {
-                return value;
-            }
-            BeginRow(label);
-            float components[3] = { value.x, value.y, value.z };
-            ImGui::DragFloat3(FieldId(label).c_str(), components, 0.05f, 0.0f, 0.0f, "%.3f");
-            return Vector3{ components[0], components[1], components[2] };
-        }
-
-        Vector4 ColorField(const std::string& label, const Vector4& value)
-        {
-            if (!RequireGUI("ColorField")) {
-                return value;
-            }
-            BeginRow(label);
-
-            constexpr const char* kPickerId = "##colorPicker";
-            float rgba[4] = { value.x, value.y, value.z, value.w };
-            const ImVec2 size((std::max)(1.0f, ImGui::CalcItemWidth()), ImGui::GetFrameHeight());
-            ImGui::PushID(FieldId(label).c_str());
-            if (ImGui::ColorButton("##swatch", ToLinear(value), ImGuiColorEditFlags_AlphaPreviewHalf, size)) {
-                ImGui::OpenPopup(kPickerId);
-            }
-            if (ImGui::BeginPopup(kPickerId)) {
-                ImGui::ColorPicker4("##picker", rgba, ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreviewHalf);
-                ImGui::EndPopup();
-            }
-            ImGui::PopID();
-            return Vector4{ rgba[0], rgba[1], rgba[2], rgba[3] };
+            return selected;
         }
 
         int Popup(const std::string& label, int selected, const CScriptArray& options)
         {
-            if (!RequireGUI("Popup")) {
+            WidgetScope widget("Popup");
+            if (!widget) {
                 return selected;
             }
             BeginRow(label);
@@ -337,7 +380,7 @@ namespace CoreEngine::Editor::ScriptBinding
             if (ImGui::BeginCombo(FieldId(label).c_str(), preview)) {
                 for (int i = 0; i < count; ++i) {
                     ImGui::PushID(i);
-                    if (ImGui::Selectable(optionAt(i), i == selected)) {
+                    if (MarkChanged(ImGui::Selectable(optionAt(i), i == selected))) {
                         selected = i;
                     }
                     ImGui::PopID();
@@ -355,43 +398,161 @@ namespace CoreEngine::Editor::ScriptBinding
             return ImGui::CollapsingHeader(label.c_str(), defaultOpen ? ImGuiTreeNodeFlags_DefaultOpen : 0);
         }
 
+        // ---------------------------------------------------------------- 値の入力
+
+        int IntField(const std::string& label, int value)
+        {
+            WidgetScope widget("IntField");
+            if (!widget) {
+                return value;
+            }
+            BeginRow(label);
+            MarkChanged(ImGui::DragInt(FieldId(label).c_str(), &value, 0.1f));
+            return value;
+        }
+
+        float FloatField(const std::string& label, float value)
+        {
+            WidgetScope widget("FloatField");
+            if (!widget) {
+                return value;
+            }
+            BeginRow(label);
+            MarkChanged(ImGui::DragFloat(FieldId(label).c_str(), &value, 0.01f, 0.0f, 0.0f, "%.3f"));
+            return value;
+        }
+
+        std::string TextField(const std::string& label, const std::string& value)
+        {
+            WidgetScope widget("TextField");
+            if (!widget) {
+                return value;
+            }
+            BeginRow(label);
+            std::string text = value;
+            MarkChanged(ImGui::InputText(FieldId(label).c_str(), text.data(), text.capacity() + 1,
+                ImGuiInputTextFlags_CallbackResize, &ResizeStringCallback, &text));
+            return text;
+        }
+
+        std::string TextArea(const std::string& label, const std::string& value, float height)
+        {
+            WidgetScope widget("TextArea");
+            if (!widget) {
+                return value;
+            }
+            BeginRow(label);
+            const float areaHeight = height > 0.0f ? height : ImGui::GetTextLineHeight() * 5.0f + ImGui::GetStyle().FramePadding.y * 2.0f;
+            std::string text = value;
+            MarkChanged(ImGui::InputTextMultiline(FieldId(label).c_str(), text.data(), text.capacity() + 1,
+                ImVec2(-FLT_MIN, areaHeight), ImGuiInputTextFlags_CallbackResize, &ResizeStringCallback, &text));
+            return text;
+        }
+
+        int IntSlider(const std::string& label, int value, int min, int max)
+        {
+            WidgetScope widget("IntSlider");
+            if (!widget) {
+                return value;
+            }
+            BeginRow(label);
+            MarkChanged(ImGui::SliderInt(FieldId(label).c_str(), &value, min, max));
+            return value;
+        }
+
+        float Slider(const std::string& label, float value, float min, float max)
+        {
+            WidgetScope widget("Slider");
+            if (!widget) {
+                return value;
+            }
+            BeginRow(label);
+            MarkChanged(ImGui::SliderFloat(FieldId(label).c_str(), &value, min, max, "%.3f"));
+            return value;
+        }
+
+        Vector2 Vector2Field(const std::string& label, const Vector2& value)
+        {
+            WidgetScope widget("Vector2Field");
+            if (!widget) {
+                return value;
+            }
+            BeginRow(label);
+            float components[2] = { value.x, value.y };
+            MarkChanged(ImGui::DragFloat2(FieldId(label).c_str(), components, 0.05f, 0.0f, 0.0f, "%.3f"));
+            return Vector2{ components[0], components[1] };
+        }
+
+        Vector3 Vector3Field(const std::string& label, const Vector3& value)
+        {
+            WidgetScope widget("Vector3Field");
+            if (!widget) {
+                return value;
+            }
+            BeginRow(label);
+            float components[3] = { value.x, value.y, value.z };
+            MarkChanged(ImGui::DragFloat3(FieldId(label).c_str(), components, 0.05f, 0.0f, 0.0f, "%.3f"));
+            return Vector3{ components[0], components[1], components[2] };
+        }
+
+        Vector4 ColorField(const std::string& label, const Vector4& value)
+        {
+            WidgetScope widget("ColorField");
+            if (!widget) {
+                return value;
+            }
+            BeginRow(label);
+
+            constexpr const char* kPickerId = "##colorPicker";
+            float rgba[4] = { value.x, value.y, value.z, value.w };
+            const ImVec2 size((std::max)(1.0f, ImGui::CalcItemWidth()), ImGui::GetFrameHeight());
+            ImGui::PushID(FieldId(label).c_str());
+            if (ImGui::ColorButton("##swatch", ToLinear(value), ImGuiColorEditFlags_AlphaPreviewHalf, size)) {
+                ImGui::OpenPopup(kPickerId);
+            }
+            if (ImGui::BeginPopup(kPickerId)) {
+                MarkChanged(ImGui::ColorPicker4("##picker", rgba, ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreviewHalf));
+                ImGui::EndPopup();
+            }
+            ImGui::PopID();
+            return Vector4{ rgba[0], rgba[1], rgba[2], rgba[3] };
+        }
+
         // ---------------------------------------------------------------- 状態
 
         bool GetEnabled()
         {
-            return !g_gui.disabled;
+            return FrameState().enabled;
         }
 
         void SetEnabled(bool enabled)
         {
-            if (!RequireGUI("enabled")) {
-                return;
+            if (RequireGUI("enabled")) {
+                FrameState().enabled = enabled;
             }
-            if (!enabled && !g_gui.disabled) {
-                ImGui::BeginDisabled(true);
-                g_gui.disabled = true;
-            } else if (enabled && g_gui.disabled) {
-                ImGui::EndDisabled();
-                g_gui.disabled = false;
+        }
+
+        bool GetChanged()
+        {
+            return FrameState().changed;
+        }
+
+        void SetChanged(bool changed)
+        {
+            if (RequireGUI("changed")) {
+                FrameState().changed = changed;
             }
         }
 
         int GetIndentLevel()
         {
-            return g_gui.indentLevel;
+            return FrameState().indentLevel;
         }
 
-        void SetIndentLevel(int level)
+        void SetIndent(int level)
         {
-            if (!RequireGUI("indentLevel")) {
-                return;
-            }
-            level = (std::max)(0, level);
-            for (; g_gui.indentLevel < level; ++g_gui.indentLevel) {
-                ImGui::Indent();
-            }
-            for (; g_gui.indentLevel > level; --g_gui.indentLevel) {
-                ImGui::Unindent();
+            if (RequireGUI("indentLevel")) {
+                SetIndentLevel(level);
             }
         }
 
@@ -399,7 +560,7 @@ namespace CoreEngine::Editor::ScriptBinding
         {
             if (RequireGUI("PushID")) {
                 ImGui::PushID(id);
-                ++g_gui.pushedIds;
+                PushGUIScope(GUIScopeKind::Id, true);
             }
         }
 
@@ -407,48 +568,160 @@ namespace CoreEngine::Editor::ScriptBinding
         {
             if (RequireGUI("PushID")) {
                 ImGui::PushID(id.c_str());
-                ++g_gui.pushedIds;
+                PushGUIScope(GUIScopeKind::Id, true);
             }
         }
 
         void PopId()
         {
-            if (!RequireGUI("PopID")) {
-                return;
+            PopGUIScope(GUIScopeKind::Id, "PopID");
+        }
+
+        // ---------------------------------------------------------------- 部品とウィンドウの状態
+
+        bool IsItemHovered()
+        {
+            return RequireGUI("IsItemHovered") && ImGui::IsItemHovered();
+        }
+
+        bool IsItemActive()
+        {
+            return RequireGUI("IsItemActive") && ImGui::IsItemActive();
+        }
+
+        bool IsItemClicked(int button)
+        {
+            return RequireGUI("IsItemClicked") && IsValidMouseButton(button) && ImGui::IsItemClicked(button);
+        }
+
+        bool IsItemEdited()
+        {
+            return RequireGUI("IsItemEdited") && ImGui::IsItemEdited();
+        }
+
+        bool IsItemDeactivatedAfterEdit()
+        {
+            return RequireGUI("IsItemDeactivatedAfterEdit") && ImGui::IsItemDeactivatedAfterEdit();
+        }
+
+        bool IsWindowHovered()
+        {
+            return RequireGUI("IsWindowHovered") && ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
+        }
+
+        bool IsWindowFocused()
+        {
+            return RequireGUI("IsWindowFocused") && ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+        }
+
+        // ---------------------------------------------------------------- マウスとキー
+
+        bool IsMouseDown(int button)
+        {
+            return RequireGUI("IsMouseDown") && IsValidMouseButton(button) && ImGui::IsMouseDown(button);
+        }
+
+        bool IsMouseClicked(int button)
+        {
+            return RequireGUI("IsMouseClicked") && IsValidMouseButton(button) && ImGui::IsMouseClicked(button);
+        }
+
+        bool IsMouseDoubleClicked(int button)
+        {
+            return RequireGUI("IsMouseDoubleClicked") && IsValidMouseButton(button) && ImGui::IsMouseDoubleClicked(button);
+        }
+
+        bool IsMouseReleased(int button)
+        {
+            return RequireGUI("IsMouseReleased") && IsValidMouseButton(button) && ImGui::IsMouseReleased(button);
+        }
+
+        bool IsMouseDragging(int button)
+        {
+            return RequireGUI("IsMouseDragging") && IsValidMouseButton(button) && ImGui::IsMouseDragging(button);
+        }
+
+        Vector2 GetMouseDragDelta(int button)
+        {
+            if (!RequireGUI("GetMouseDragDelta") || !IsValidMouseButton(button)) {
+                return Vector2{};
             }
-            if (g_gui.pushedIds <= 0) {
-                if (asIScriptContext* const context = asGetActiveContext()) {
-                    context->SetException("EditorGUI::PopID が PushID より多く呼ばれました");
-                }
-                return;
+            const ImVec2 delta = ImGui::GetMouseDragDelta(button);
+            return Vector2{ delta.x, delta.y };
+        }
+
+        float GetMouseWheel()
+        {
+            return RequireGUI("GetMouseWheel") ? ImGui::GetIO().MouseWheel : 0.0f;
+        }
+
+        bool IsKeyPressed(int key, bool repeat)
+        {
+            if (!RequireGUI("IsKeyPressed") || !CanReadKeys()) {
+                return false;
             }
-            ImGui::PopID();
-            --g_gui.pushedIds;
+            const ImGuiKey imguiKey = ToImGuiKey(key);
+            return imguiKey != ImGuiKey_None && ImGui::IsKeyPressed(imguiKey, repeat);
+        }
+
+        bool IsKeyDown(int key)
+        {
+            if (!RequireGUI("IsKeyDown") || !CanReadKeys()) {
+                return false;
+            }
+            const ImGuiKey imguiKey = ToImGuiKey(key);
+            return imguiKey != ImGuiKey_None && ImGui::IsKeyDown(imguiKey);
+        }
+
+        bool IsKeyReleased(int key)
+        {
+            if (!RequireGUI("IsKeyReleased") || !CanReadKeys()) {
+                return false;
+            }
+            const ImGuiKey imguiKey = ToImGuiKey(key);
+            return imguiKey != ImGuiKey_None && ImGui::IsKeyReleased(imguiKey);
+        }
+
+        bool GetCtrl()
+        {
+            return RequireGUI("ctrl") && ImGui::GetIO().KeyCtrl;
+        }
+
+        bool GetShift()
+        {
+            return RequireGUI("shift") && ImGui::GetIO().KeyShift;
+        }
+
+        bool GetAlt()
+        {
+            return RequireGUI("alt") && ImGui::GetIO().KeyAlt;
         }
 
         // ---------------------------------------------------------------- 絵を描く場所
 
         Vector2 Canvas(float width, float height)
         {
-            if (!RequireGUI("Canvas")) {
+            WidgetScope widget("Canvas");
+            if (!widget) {
                 return Vector2{};
             }
+            GUIFrameState& state = FrameState();
             const float w = (std::max)(1.0f, width > 0.0f ? width : ImGui::GetContentRegionAvail().x);
             const float h = (std::max)(1.0f, height > 0.0f ? height : w);
 
-            ImGui::PushID(g_gui.canvasCount++);
+            ImGui::PushID(state.canvasCount++);
             ImGui::InvisibleButton("##canvas", ImVec2(w, h),
                 ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight | ImGuiButtonFlags_MouseButtonMiddle);
             ImGui::PopID();
 
-            g_gui.hasCanvas = true;
-            g_gui.canvasMin = ImGui::GetItemRectMin();
-            g_gui.canvasMax = ImGui::GetItemRectMax();
-            g_gui.canvasHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
+            state.hasCanvas = true;
+            state.canvasMin = ImGui::GetItemRectMin();
+            state.canvasMax = ImGui::GetItemRectMax();
+            state.canvasHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
 
             ImDrawList* const drawList = ImGui::GetWindowDrawList();
-            drawList->AddRectFilled(g_gui.canvasMin, g_gui.canvasMax, ImGui::GetColorU32(Theme::kDeepest));
-            drawList->AddRect(g_gui.canvasMin, g_gui.canvasMax, ImGui::GetColorU32(Theme::kOutline));
+            drawList->AddRectFilled(state.canvasMin, state.canvasMax, ImGui::GetColorU32(Theme::kDeepest));
+            drawList->AddRect(state.canvasMin, state.canvasMax, ImGui::GetColorU32(Theme::kOutline));
             return Vector2{ w, h };
         }
 
@@ -457,8 +730,9 @@ namespace CoreEngine::Editor::ScriptBinding
             if (!RequireCanvas("DrawRect")) {
                 return;
             }
+            const GUIFrameState& state = FrameState();
             ImDrawList* const drawList = ImGui::GetWindowDrawList();
-            drawList->PushClipRect(g_gui.canvasMin, g_gui.canvasMax, true);
+            drawList->PushClipRect(state.canvasMin, state.canvasMax, true);
             drawList->AddRectFilled(CanvasToScreen(min), CanvasToScreen(max), ToColorU32(color));
             drawList->PopClipRect();
         }
@@ -468,8 +742,9 @@ namespace CoreEngine::Editor::ScriptBinding
             if (!RequireCanvas("DrawRectOutline")) {
                 return;
             }
+            const GUIFrameState& state = FrameState();
             ImDrawList* const drawList = ImGui::GetWindowDrawList();
-            drawList->PushClipRect(g_gui.canvasMin, g_gui.canvasMax, true);
+            drawList->PushClipRect(state.canvasMin, state.canvasMax, true);
             drawList->AddRect(CanvasToScreen(min), CanvasToScreen(max), ToColorU32(color), 0.0f, 0, thickness);
             drawList->PopClipRect();
         }
@@ -479,8 +754,9 @@ namespace CoreEngine::Editor::ScriptBinding
             if (!RequireCanvas("DrawLine")) {
                 return;
             }
+            const GUIFrameState& state = FrameState();
             ImDrawList* const drawList = ImGui::GetWindowDrawList();
-            drawList->PushClipRect(g_gui.canvasMin, g_gui.canvasMax, true);
+            drawList->PushClipRect(state.canvasMin, state.canvasMax, true);
             drawList->AddLine(CanvasToScreen(from), CanvasToScreen(to), ToColorU32(color), thickness);
             drawList->PopClipRect();
         }
@@ -490,15 +766,16 @@ namespace CoreEngine::Editor::ScriptBinding
             if (!RequireCanvas("DrawText")) {
                 return;
             }
+            const GUIFrameState& state = FrameState();
             ImDrawList* const drawList = ImGui::GetWindowDrawList();
-            drawList->PushClipRect(g_gui.canvasMin, g_gui.canvasMax, true);
+            drawList->PushClipRect(state.canvasMin, state.canvasMax, true);
             drawList->AddText(CanvasToScreen(position), ToColorU32(color), text.c_str());
             drawList->PopClipRect();
         }
 
         bool IsCanvasHovered()
         {
-            return RequireCanvas("IsCanvasHovered") && g_gui.canvasHovered;
+            return RequireCanvas("IsCanvasHovered") && FrameState().canvasHovered;
         }
 
         Vector2 GetCanvasMousePosition()
@@ -507,40 +784,9 @@ namespace CoreEngine::Editor::ScriptBinding
                 return Vector2{};
             }
             const ImVec2 mouse = ImGui::GetIO().MousePos;
-            return Vector2{ mouse.x - g_gui.canvasMin.x, mouse.y - g_gui.canvasMin.y };
+            const GUIFrameState& state = FrameState();
+            return Vector2{ mouse.x - state.canvasMin.x, mouse.y - state.canvasMin.y };
         }
-
-        bool IsMouseDown(int button)
-        {
-            return RequireGUI("IsMouseDown") && button >= 0 && button < ImGuiMouseButton_COUNT
-                && ImGui::IsMouseDown(button);
-        }
-
-        bool IsMouseClicked(int button)
-        {
-            return RequireGUI("IsMouseClicked") && button >= 0 && button < ImGuiMouseButton_COUNT
-                && ImGui::IsMouseClicked(button);
-        }
-    }
-
-    GUIScope::GUIScope()
-    {
-        g_gui = GUIState{};
-        g_gui.active = true;
-    }
-
-    GUIScope::~GUIScope()
-    {
-        if (g_gui.disabled) {
-            ImGui::EndDisabled();
-        }
-        for (; g_gui.indentLevel > 0; --g_gui.indentLevel) {
-            ImGui::Unindent();
-        }
-        for (; g_gui.pushedIds > 0; --g_gui.pushedIds) {
-            ImGui::PopID();
-        }
-        g_gui = GUIState{};
     }
 
     bool RegisterEditorGUI(asIScriptEngine* engine)
@@ -553,37 +799,81 @@ namespace CoreEngine::Editor::ScriptBinding
         r.EnumValue("MessageType", "Warning", static_cast<int>(MessageType::Warning));
         r.EnumValue("MessageType", "Error", static_cast<int>(MessageType::Error));
 
+        // 文字と区切り
         r.Function("void Label(const string &in text)", asFUNCTION(Label));
         r.Function("void Label(const string &in label, const string &in value)", asFUNCTION(LabelValue));
+        r.Function("void TextColored(const string &in text, const Vector4 &in color)", asFUNCTION(TextColored));
+        r.Function("void TextDisabled(const string &in text)", asFUNCTION(TextDisabled));
+        r.Function("void BulletText(const string &in text)", asFUNCTION(BulletText));
         r.Function("void Header(const string &in text)", asFUNCTION(Header));
         r.Function("void HelpBox(const string &in message, MessageType type = EditorGUI::MessageType::Info)",
             asFUNCTION(HelpBox));
+        r.Function("void Tooltip(const string &in text)", asFUNCTION(Tooltip));
         r.Function("void Separator()", asFUNCTION(Separator));
         r.Function("void Space(float height = 6)", asFUNCTION(Space));
         r.Function("void SameLine()", asFUNCTION(SameLine));
         r.Function("float GetAvailableWidth()", asFUNCTION(GetAvailableWidth));
+        r.Function("void ProgressBar(float fraction, const string &in overlay = \"\")", asFUNCTION(ProgressBar));
 
+        // 押す・選ぶ
         r.Function("bool Button(const string &in label, float width = 0)", asFUNCTION(Button));
         r.Function("bool Toggle(const string &in label, bool value)", asFUNCTION(Toggle));
+        r.Function("bool RadioButton(const string &in label, bool active)", asFUNCTION(RadioButton));
+        r.Function("int RadioButton(const string &in label, int selected, int value)", asFUNCTION(RadioButtonValue));
+        r.Function("bool Selectable(const string &in label, bool selected = false, bool spanAllColumns = false)",
+            asFUNCTION(Selectable));
+        r.Function("int ListBox(const string &in label, int selected, const array<string> &in items, int visibleRows = 6)",
+            asFUNCTION(ListBox));
+        r.Function("int Popup(const string &in label, int selected, const array<string> &in options)", asFUNCTION(Popup));
+        r.Function("bool Foldout(const string &in label, bool defaultOpen = true)", asFUNCTION(Foldout));
+
+        // 値の入力
         r.Function("int IntField(const string &in label, int value)", asFUNCTION(IntField));
         r.Function("float FloatField(const string &in label, float value)", asFUNCTION(FloatField));
         r.Function("string TextField(const string &in label, const string &in value)", asFUNCTION(TextField));
+        r.Function("string TextArea(const string &in label, const string &in value, float height = 0)", asFUNCTION(TextArea));
         r.Function("int IntSlider(const string &in label, int value, int min, int max)", asFUNCTION(IntSlider));
         r.Function("float Slider(const string &in label, float value, float min, float max)", asFUNCTION(Slider));
         r.Function("Vector2 Vector2Field(const string &in label, const Vector2 &in value)", asFUNCTION(Vector2Field));
         r.Function("Vector3 Vector3Field(const string &in label, const Vector3 &in value)", asFUNCTION(Vector3Field));
         r.Function("Vector4 ColorField(const string &in label, const Vector4 &in value)", asFUNCTION(ColorField));
-        r.Function("int Popup(const string &in label, int selected, const array<string> &in options)", asFUNCTION(Popup));
-        r.Function("bool Foldout(const string &in label, bool defaultOpen = true)", asFUNCTION(Foldout));
 
+        // 状態
         r.Function("bool get_enabled() property", asFUNCTION(GetEnabled));
         r.Function("void set_enabled(bool enabled) property", asFUNCTION(SetEnabled));
+        r.Function("bool get_changed() property", asFUNCTION(GetChanged));
+        r.Function("void set_changed(bool changed) property", asFUNCTION(SetChanged));
         r.Function("int get_indentLevel() property", asFUNCTION(GetIndentLevel));
-        r.Function("void set_indentLevel(int level) property", asFUNCTION(SetIndentLevel));
+        r.Function("void set_indentLevel(int level) property", asFUNCTION(SetIndent));
         r.Function("void PushID(int id)", asFUNCTION(PushIdInt));
         r.Function("void PushID(const string &in id)", asFUNCTION(PushIdString));
         r.Function("void PopID()", asFUNCTION(PopId));
 
+        // 部品とウィンドウの状態
+        r.Function("bool IsItemHovered()", asFUNCTION(IsItemHovered));
+        r.Function("bool IsItemActive()", asFUNCTION(IsItemActive));
+        r.Function("bool IsItemClicked(MouseButton button = MouseButton::Left)", asFUNCTION(IsItemClicked));
+        r.Function("bool IsItemEdited()", asFUNCTION(IsItemEdited));
+        r.Function("bool IsItemDeactivatedAfterEdit()", asFUNCTION(IsItemDeactivatedAfterEdit));
+        r.Function("bool IsWindowHovered()", asFUNCTION(IsWindowHovered));
+        r.Function("bool IsWindowFocused()", asFUNCTION(IsWindowFocused));
+
+        // マウスとキー
+        r.Function("bool IsMouseDown(MouseButton button = MouseButton::Left)", asFUNCTION(IsMouseDown));
+        r.Function("bool IsMouseClicked(MouseButton button = MouseButton::Left)", asFUNCTION(IsMouseClicked));
+        r.Function("bool IsMouseDoubleClicked(MouseButton button = MouseButton::Left)", asFUNCTION(IsMouseDoubleClicked));
+        r.Function("bool IsMouseReleased(MouseButton button = MouseButton::Left)", asFUNCTION(IsMouseReleased));
+        r.Function("bool IsMouseDragging(MouseButton button = MouseButton::Left)", asFUNCTION(IsMouseDragging));
+        r.Function("Vector2 GetMouseDragDelta(MouseButton button = MouseButton::Left)", asFUNCTION(GetMouseDragDelta));
+        r.Function("float GetMouseWheel()", asFUNCTION(GetMouseWheel));
+        r.Function("bool IsKeyPressed(Key key, bool repeat = true)", asFUNCTION(IsKeyPressed));
+        r.Function("bool IsKeyDown(Key key)", asFUNCTION(IsKeyDown));
+        r.Function("bool IsKeyReleased(Key key)", asFUNCTION(IsKeyReleased));
+        r.Function("bool get_ctrl() property", asFUNCTION(GetCtrl));
+        r.Function("bool get_shift() property", asFUNCTION(GetShift));
+        r.Function("bool get_alt() property", asFUNCTION(GetAlt));
+
+        // 絵を描く場所
         r.Function("Vector2 Canvas(float width, float height = 0)", asFUNCTION(Canvas));
         r.Function("void DrawRect(const Vector2 &in min, const Vector2 &in max, const Vector4 &in color)", asFUNCTION(DrawRect));
         r.Function("void DrawRectOutline(const Vector2 &in min, const Vector2 &in max, const Vector4 &in color, float thickness = 1)",
@@ -594,8 +884,9 @@ namespace CoreEngine::Editor::ScriptBinding
             asFUNCTION(DrawCanvasText));
         r.Function("bool IsCanvasHovered()", asFUNCTION(IsCanvasHovered));
         r.Function("Vector2 GetCanvasMousePosition()", asFUNCTION(GetCanvasMousePosition));
-        r.Function("bool IsMouseDown(int button = 0)", asFUNCTION(IsMouseDown));
-        r.Function("bool IsMouseClicked(int button = 0)", asFUNCTION(IsMouseClicked));
+
+        // Begin〜 と End〜 で組にする部品
+        RegisterEditorGUIContainers(r);
 
         r.Namespace("");
         return r.Succeeded();

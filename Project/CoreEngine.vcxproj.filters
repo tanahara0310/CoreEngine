@@ -10,6 +10,12 @@
     <ClCompile Include="Engine\Src\Editor\Script\EditorGUIBinding.cpp">
       <Filter>Engine\Src\Editor\Script</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Script\EditorGUIContainerBinding.cpp">
+      <Filter>Engine\Src\Editor\Script</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Script\EditorGUIState.cpp">
+      <Filter>Engine\Src\Editor\Script</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Script\EditorSceneBinding.cpp">
       <Filter>Engine\Src\Editor\Script</Filter>
     </ClCompile>
@@ -1783,6 +1789,9 @@
       <Filter>Engine\Src\Editor\Script</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Script\EditorScriptBinding.h">
+      <Filter>Engine\Src\Editor\Script</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Script\EditorGUIState.h">
       <Filter>Engine\Src\Editor\Script</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Script\ScriptEditorExtensions.h">

@@ -100,7 +100,27 @@ enum Key {
 	Left = 203,
 	Right = 205,
 	Up = 200,
-	Down = 208
+	Down = 208,
+	Alt = 56,
+	Backspace = 14,
+	Delete = 211,
+	Insert = 210,
+	Home = 199,
+	End = 207,
+	PageUp = 201,
+	PageDown = 209,
+	F1 = 59,
+	F2 = 60,
+	F3 = 61,
+	F4 = 62,
+	F5 = 63,
+	F6 = 64,
+	F7 = 65,
+	F8 = 66,
+	F9 = 67,
+	F10 = 68,
+	F11 = 87,
+	F12 = 88
 }
 enum MouseButton {
 	Left = 0,
@@ -162,6 +182,15 @@ enum MessageType {
 	Info = 0,
 	Warning = 1,
 	Error = 2
+}
+enum TableFlags {
+	None = 0,
+	Borders = 1,
+	RowBackground = 2,
+	Resizable = 4,
+	Sortable = 8,
+	ScrollY = 16,
+	Default = 7
 }
 }
 funcdef void TweenCallback();
@@ -1183,31 +1212,63 @@ bool SetColor(const string&in name, const Vector4&in value);
 namespace EditorGUI {
 void Label(const string&in text);
 void Label(const string&in label, const string&in value);
+void TextColored(const string&in text, const Vector4&in color);
+void TextDisabled(const string&in text);
+void BulletText(const string&in text);
 void Header(const string&in text);
 void HelpBox(const string&in message, MessageType type = EditorGUI::MessageType::Info);
+void Tooltip(const string&in text);
 void Separator();
 void Space(float height = 6);
 void SameLine();
 float GetAvailableWidth();
+void ProgressBar(float fraction, const string&in overlay = "");
 bool Button(const string&in label, float width = 0);
 bool Toggle(const string&in label, bool value);
+bool RadioButton(const string&in label, bool active);
+int RadioButton(const string&in label, int selected, int value);
+bool Selectable(const string&in label, bool selected = false, bool spanAllColumns = false);
+int ListBox(const string&in label, int selected, const string[]&in items, int visibleRows = 6);
+int Popup(const string&in label, int selected, const string[]&in options);
+bool Foldout(const string&in label, bool defaultOpen = true);
 int IntField(const string&in label, int value);
 float FloatField(const string&in label, float value);
 string TextField(const string&in label, const string&in value);
+string TextArea(const string&in label, const string&in value, float height = 0);
 int IntSlider(const string&in label, int value, int min, int max);
 float Slider(const string&in label, float value, float min, float max);
 Vector2 Vector2Field(const string&in label, const Vector2&in value);
 Vector3 Vector3Field(const string&in label, const Vector3&in value);
 Vector4 ColorField(const string&in label, const Vector4&in value);
-int Popup(const string&in label, int selected, const string[]&in options);
-bool Foldout(const string&in label, bool defaultOpen = true);
 bool get_enabled() property;
 void set_enabled(bool enabled) property;
+bool get_changed() property;
+void set_changed(bool changed) property;
 int get_indentLevel() property;
 void set_indentLevel(int level) property;
 void PushID(int id);
 void PushID(const string&in id);
 void PopID();
+bool IsItemHovered();
+bool IsItemActive();
+bool IsItemClicked(MouseButton button = MouseButton::Left);
+bool IsItemEdited();
+bool IsItemDeactivatedAfterEdit();
+bool IsWindowHovered();
+bool IsWindowFocused();
+bool IsMouseDown(MouseButton button = MouseButton::Left);
+bool IsMouseClicked(MouseButton button = MouseButton::Left);
+bool IsMouseDoubleClicked(MouseButton button = MouseButton::Left);
+bool IsMouseReleased(MouseButton button = MouseButton::Left);
+bool IsMouseDragging(MouseButton button = MouseButton::Left);
+Vector2 GetMouseDragDelta(MouseButton button = MouseButton::Left);
+float GetMouseWheel();
+bool IsKeyPressed(Key key, bool repeat = true);
+bool IsKeyDown(Key key);
+bool IsKeyReleased(Key key);
+bool get_ctrl() property;
+bool get_shift() property;
+bool get_alt() property;
 Vector2 Canvas(float width, float height = 0);
 void DrawRect(const Vector2&in min, const Vector2&in max, const Vector4&in color);
 void DrawRectOutline(const Vector2&in min, const Vector2&in max, const Vector4&in color, float thickness = 1);
@@ -1215,8 +1276,39 @@ void DrawLine(const Vector2&in from, const Vector2&in to, const Vector4&in color
 void DrawText(const Vector2&in position, const string&in text, const Vector4&in color);
 bool IsCanvasHovered();
 Vector2 GetCanvasMousePosition();
-bool IsMouseDown(int button = 0);
-bool IsMouseClicked(int button = 0);
+void BeginGroup();
+void EndGroup();
+bool BeginChild(const string&in id, float width = 0, float height = 0, bool border = true);
+void EndChild();
+bool BeginTreeNode(const string&in label, bool defaultOpen = false, bool selected = false, bool leaf = false);
+void EndTreeNode();
+bool BeginTabBar(const string&in id);
+void EndTabBar();
+bool BeginTabItem(const string&in label);
+void EndTabItem();
+bool BeginTable(const string&in id, int columns, int flags = EditorGUI::TableFlags::Default, float height = 0);
+void EndTable();
+void TableSetupColumn(const string&in label, float width = 0);
+void TableSetupScrollFreeze(int columns, int rows);
+void TableHeadersRow();
+void TableNextRow();
+bool TableNextColumn();
+bool TableSetColumnIndex(int column);
+bool IsTableSortChanged();
+int GetTableSortColumn();
+bool IsTableSortAscending();
+bool BeginListBox(const string&in label, float height = 0);
+void EndListBox();
+void OpenPopup(const string&in id);
+bool BeginPopup(const string&in id);
+bool BeginPopupModal(const string&in title);
+bool BeginPopupContextItem(const string&in id = "");
+bool BeginPopupContextWindow(const string&in id = "");
+void EndPopup();
+void CloseCurrentPopup();
+bool BeginMenu(const string&in label, bool enabled = true);
+void EndMenu();
+bool MenuItem(const string&in label, const string&in shortcut = "", bool checked = false, bool enabled = true);
 }
 namespace Editor {
 GameObject@ CreateObject(const string&in name);
