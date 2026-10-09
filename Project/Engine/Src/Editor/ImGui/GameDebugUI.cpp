@@ -9,6 +9,7 @@
 #include "Editor/ImGui/ProjectView.h"
 #include "Editor/ImGui/Widgets/EditorBars.h"
 #include "Editor/Inspector/ComponentInspectors.h"
+#include "Editor/Panel/EditorMenuRegistry.h"
 #include "Editor/Panel/EditorPanelRegistry.h"
 #include "Editor/Scene/ComponentEditing.h"
 #include "Editor/Scene/PlayModeController.h"
@@ -34,6 +35,7 @@
 #include "WinApp/WinApp.h"
 #include <imgui.h>
 #include <algorithm>
+#include <string_view>
 #include <shellapi.h>
 
 
@@ -41,6 +43,11 @@ namespace CoreEngine
 {
     namespace
     {
+        /// エンジンが描く一番上のメニュー
+        constexpr std::string_view kBuiltInMenus[] = {
+            "File", "Edit", "GameObject", "Component", "Assets", "Window", "Help",
+        };
+
         /// @brief 実行中のビルド構成の名前
         constexpr const char* BuildConfigName()
         {
@@ -147,6 +154,7 @@ namespace CoreEngine
         DrawGameObjectMenu();
         DrawComponentMenu();
         DrawAssetsMenu();
+        Editor::EditorMenuRegistry::Get().DrawExtraMenus(kBuiltInMenus);
         DrawWindowMenu();
         DrawHelpMenu();
         DrawMenuBarChips();
@@ -259,6 +267,8 @@ namespace CoreEngine
             }
         }
 
+        Editor::EditorMenuRegistry::Get().DrawItems("File");
+
         ImGui::Separator();
 
         if (ImGui::MenuItem("終了", "Alt+F4")) {
@@ -292,6 +302,8 @@ namespace CoreEngine
         ImGui::Separator();
 
         ImGui::MenuItem("Project Settings…", nullptr, &showProjectSettings_);
+
+        Editor::EditorMenuRegistry::Get().DrawItems("Edit");
 
         ImGui::EndMenu();
     }
@@ -343,6 +355,8 @@ namespace CoreEngine
         }
         showReason();
 
+        Editor::EditorMenuRegistry::Get().DrawItems("GameObject");
+
         ImGui::EndMenu();
     }
 
@@ -357,6 +371,8 @@ namespace CoreEngine
             script->RequestReload();
         }
 
+        Editor::EditorMenuRegistry::Get().DrawItems("Assets");
+
         ImGui::EndMenu();
     }
 
@@ -369,6 +385,7 @@ namespace CoreEngine
         GameObject* const selected = sceneDebugEditor_ ? sceneDebugEditor_->GetSelectedObject() : nullptr;
         if (!selected) {
             ImGui::TextDisabled("オブジェクトを選ぶと足せます");
+            Editor::EditorMenuRegistry::Get().DrawItems("Component");
             ImGui::EndMenu();
             return;
         }
@@ -387,6 +404,8 @@ namespace CoreEngine
                 ImGui::SetTooltip("%s", reason.c_str());
             }
         }
+
+        Editor::EditorMenuRegistry::Get().DrawItems("Component");
 
         ImGui::EndMenu();
     }
@@ -414,6 +433,8 @@ namespace CoreEngine
         if (ImGui::MenuItem("バージョン情報")) {
             showAboutWindow_ = true;
         }
+
+        Editor::EditorMenuRegistry::Get().DrawItems("Help");
 
         ImGui::EndMenu();
     }
@@ -516,6 +537,8 @@ namespace CoreEngine
 
                 // ── アプリ固有のエディタ ──
                 tabMenu(Editor::PanelGroup::Application, "Application");
+
+                Editor::EditorMenuRegistry::Get().DrawItems("Window");
 
                 ImGui::Separator();
 

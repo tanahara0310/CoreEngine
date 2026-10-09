@@ -23,6 +23,10 @@
 #include "Script/ScriptPredefined.h"
 #include "Utility/Logger/Logger.h"
 
+#ifdef CORE_EDITOR
+#include "Editor/Script/EditorScriptBinding.h"
+#endif
+
 #include <angelscript.h>
 #include <scriptarray/scriptarray.h>
 #include <scriptbuilder/scriptbuilder.h>
@@ -51,9 +55,6 @@ namespace CoreEngine
         constexpr const char* kModuleName = "Game";
         constexpr const char* kComponentBaseName = "ScriptComponent";
 
-        /// 1 回の呼び出しで実行してよい行数
-        constexpr uint32_t kLineBudget = 200000;
-
         /// エンジンのユーザーデータに実行環境を置くときの種類
         constexpr asPWORD kHostUserDataType = 0x436F7245;
 
@@ -61,12 +62,13 @@ namespace CoreEngine
         struct LineBudget
         {
             uint32_t lines = 0;
+            uint32_t limit = 0;
         };
 
         void CountLine(asIScriptContext* context, void* userData)
         {
             auto* const budget = static_cast<LineBudget*>(userData);
-            if (++budget->lines > kLineBudget) {
+            if (++budget->lines > budget->limit) {
                 context->Abort();
             }
         }
@@ -338,6 +340,10 @@ namespace CoreEngine
         configured = Script::RegisterSessionBinding(engine_) && configured;
         configured = Script::RegisterRandomBinding(engine_) && configured;
         configured = Script::RegisterCVarBinding(engine_) && configured;
+#ifdef CORE_EDITOR
+        configured = Editor::ScriptBinding::RegisterEditorGUI(engine_) && configured;
+        configured = Editor::ScriptBinding::RegisterEditorScene(engine_) && configured;
+#endif
         // 手で書いた型（Transform・UIText・UIImage・Collider）を登録し終えてから、残りの型を記述子から作る
         configured = Script::RegisterComponentBinding(engine_) && configured;
 
@@ -561,6 +567,11 @@ namespace CoreEngine
         logger.Logf(LogLevel::Info, LogCategory::Script,
             "スクリプト {} ファイルをコンパイルしました（コンポーネントの型 {} 個・{:.1f}ms）",
             files.size(), out.types.size(), elapsedMs);
+#ifdef CORE_EDITOR
+        if (moduleListener_.compiled) {
+            moduleListener_.compiled(*module, builder, outSources);
+        }
+#endif
         return true;
     }
 
@@ -580,10 +591,20 @@ namespace CoreEngine
         if (!CompileModule(root, built)) {
             return false;
         }
+#ifdef CORE_EDITOR
+        if (moduleListener_.discarding) {
+            moduleListener_.discarding();
+        }
+#endif
         DiscardModule();
         module_ = built.module;
         types_ = std::move(built.types);
         ++moduleGeneration_;
+#ifdef CORE_EDITOR
+        if (moduleListener_.swapped) {
+            moduleListener_.swapped();
+        }
+#endif
         return true;
     }
 
@@ -610,6 +631,11 @@ namespace CoreEngine
         for (ScriptComponent* const component : alive) {
             component->PrepareForReload();
         }
+#ifdef CORE_EDITOR
+        if (moduleListener_.discarding) {
+            moduleListener_.discarding();
+        }
+#endif
         DiscardModule();
         for (asIScriptContext* const context : contextPool_) {
             context->Release();
@@ -640,6 +666,11 @@ namespace CoreEngine
         for (ScriptComponent* const component : alive) {
             component->NotifyScriptReloaded();
         }
+#ifdef CORE_EDITOR
+        if (moduleListener_.swapped) {
+            moduleListener_.swapped();
+        }
+#endif
 
         report.elapsedMs =
             std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count();
@@ -722,7 +753,7 @@ namespace CoreEngine
     }
 
     bool ScriptHost::CallMethod(asIScriptFunction* function, asIScriptObject* object,
-                                const std::function<std::string()>& describeCaller)
+                                const std::function<std::string()>& describeCaller, std::uint32_t lineBudget)
     {
         if (!engine_ || !function || !object) {
             return false;
@@ -736,12 +767,12 @@ namespace CoreEngine
         if (result >= 0) {
             result = context->SetObject(object);
         }
-        return RunPrepared(context, result, describeCaller);
+        return RunPrepared(context, result, describeCaller, lineBudget);
     }
 
     bool ScriptHost::CallMethod(asIScriptFunction* function, asIScriptObject* object,
                                 const std::function<int(asIScriptContext*)>& setArguments,
-                                const std::function<std::string()>& describeCaller)
+                                const std::function<std::string()>& describeCaller, std::uint32_t lineBudget)
     {
         if (!engine_ || !function || !object) {
             return false;
@@ -758,11 +789,11 @@ namespace CoreEngine
         if (result >= 0 && setArguments) {
             result = setArguments(context);
         }
-        return RunPrepared(context, result, describeCaller);
+        return RunPrepared(context, result, describeCaller, lineBudget);
     }
 
     bool ScriptHost::CallFunction(asIScriptFunction* function, const std::function<int(asIScriptContext*)>& setArguments,
-                                  const std::function<std::string()>& describeCaller)
+                                  const std::function<std::string()>& describeCaller, std::uint32_t lineBudget)
     {
         if (!engine_ || !function) {
             return false;
@@ -776,7 +807,7 @@ namespace CoreEngine
         if (result >= 0 && setArguments) {
             result = setArguments(context);
         }
-        return RunPrepared(context, result, describeCaller);
+        return RunPrepared(context, result, describeCaller, lineBudget);
     }
 
     ScriptHost* ScriptHost::FromEngine(asIScriptEngine* engine)
@@ -784,10 +815,12 @@ namespace CoreEngine
         return engine ? static_cast<ScriptHost*>(engine->GetUserData(kHostUserDataType)) : nullptr;
     }
 
-    bool ScriptHost::RunPrepared(asIScriptContext* context, int result, const std::function<std::string()>& describeCaller)
+    bool ScriptHost::RunPrepared(asIScriptContext* context, int result,
+                                 const std::function<std::string()>& describeCaller, std::uint32_t lineBudget)
     {
 #ifdef CORE_EDITOR
         LineBudget budget;
+        budget.limit = lineBudget;
         if (result >= 0) {
             result = context->SetLineCallback(asFUNCTION(CountLine), &budget, asCALL_CDECL);
         }
@@ -803,7 +836,7 @@ namespace CoreEngine
                 Script::LogFailedExecution(context, caller + " で例外が起きました");
             } else if (result == asEXECUTION_ABORTED) {
                 Script::LogFailedExecution(context,
-                    caller + " が 1 回の呼び出しで " + std::to_string(kLineBudget) + " 行を超えたので中断しました");
+                    caller + " が 1 回の呼び出しで " + std::to_string(lineBudget) + " 行を超えたので中断しました");
             } else {
                 Script::LogFailedExecution(context,
                     caller + " を実行できませんでした（" + std::to_string(result) + "）");

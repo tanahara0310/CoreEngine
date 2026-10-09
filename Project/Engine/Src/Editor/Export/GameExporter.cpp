@@ -118,9 +118,15 @@ namespace CoreEngine::Editor
             result.error = ToUtf8(releaseDirectory) + " を読めませんでした";
             return result;
         }
+        // エディタだけで読むスクリプトのフォルダ
+        const std::filesystem::path editorScripts = ProjectPaths::ProjectRoot() / "Application" / "Assets" / "Scripts" / "Editor";
         for (const FolderItem& folder : folders) {
             std::filesystem::recursive_directory_iterator it(folder.from, ec);
             for (; !ec && it != std::filesystem::recursive_directory_iterator(); it.increment(ec)) {
+                if (it->is_directory(ec) && it->path() == editorScripts) {
+                    it.disable_recursion_pending();
+                    continue;
+                }
                 if (!it->is_regular_file(ec)) {
                     continue;
                 }

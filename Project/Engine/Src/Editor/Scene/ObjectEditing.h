@@ -54,6 +54,15 @@ namespace CoreEngine
         /// @return 作ったオブジェクト（作れなければ nullptr）
         GameObject* CreateEmpty(const Context& context, const Vector3& position);
 
+        /// @brief Transform だけを持つ、名前のとおりのオブジェクトを作る（同じ名前があっても番号を足さない）
+        /// @return 作ったオブジェクト（作れなければ nullptr）
+        GameObject* CreateNamed(const Context& context, const std::string& name, const Vector3& position);
+
+        /// @brief プレハブからオブジェクトを作る
+        /// @param prefabPath プロジェクトの根からの相対パス
+        /// @return 作ったオブジェクト（プレハブを読めなければ nullptr）
+        GameObject* InstantiatePrefab(const Context& context, const std::string& prefabPath, const std::string& name);
+
         /// @brief Transform とパーティクルを持つオブジェクトを作る
         /// @return 作ったオブジェクト（作れなければ nullptr）
         GameObject* CreateParticle(const Context& context, ParticleKind kind, const Vector3& position);
@@ -71,6 +80,10 @@ namespace CoreEngine
         /// @return 消したら true
         /// @note Undo で、同じ ID・保存キー・値のオブジェクトを作り直す。
         bool Delete(const Context& context, GameObject& object);
+
+        /// @brief オブジェクトを、Transform の子孫ごと消す（1 回の Undo で戻る）
+        /// @return 消したら true（消せないものが 1 つでもあれば何も消さない）
+        bool DeleteWithDescendants(const Context& context, GameObject& object);
 
         /// @brief 名前を after にし、before からの変更として Undo に積む
         /// @param before 変える前の名前（入力欄で打っている間に書き換えた分を 1 回の操作にまとめるときは、打ち始める前の名前）

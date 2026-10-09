@@ -7,6 +7,7 @@
 #include <set>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -15,6 +16,7 @@ class asIScriptEngine;
 class asIScriptFunction;
 class asIScriptModule;
 class asIScriptObject;
+class CScriptBuilder;
 
 namespace CoreEngine
 {
@@ -115,27 +117,39 @@ namespace CoreEngine
         /// @return 参照を 1 つ持ったオブジェクト。作れなければ nullptr
         asIScriptObject* CreateObject(const ScriptComponentType& type);
 
+        /// 1 回の呼び出しで実行してよい行数（エディタのあるビルドだけ数える）
+        static constexpr std::uint32_t kLineBudget = 200000;
+
+        /// エディタの拡張（ウィンドウとメニューの関数）の 1 回の呼び出しで実行してよい行数
+        static constexpr std::uint32_t kEditorLineBudget = 20000000;
+
         /// @brief オブジェクトのメソッドを呼ぶ
         /// @param describeCaller 止まったときのログに出す呼び出し元の名前を作る（止まったときだけ呼ぶ）
+        /// @param lineBudget 1 回の呼び出しで実行してよい行数（超えたら中断する）
         /// @return 最後まで実行できたら true。例外・中断のときは場所と呼び出し履歴をログへ出して false
-        /// @note エディタのあるビルドは 1 回の呼び出しで実行できる行数に上限を持ち、超えたら中断する。
+        /// @note 行数を数えるのはエディタのあるビルドだけ。
         bool CallMethod(asIScriptFunction* function, asIScriptObject* object,
-                        const std::function<std::string()>& describeCaller);
+                        const std::function<std::string()>& describeCaller,
+                        std::uint32_t lineBudget = kLineBudget);
 
         /// @brief オブジェクトのメソッドを引数付きで呼ぶ
         /// @param setArguments コンテキストへ引数を積む（負の値を返したら実行しない）
         /// @param describeCaller 止まったときのログに出す呼び出し元の名前を作る（止まったときだけ呼ぶ）
+        /// @param lineBudget 1 回の呼び出しで実行してよい行数（超えたら中断する）
         /// @return 最後まで実行できたら true。例外・中断のときは場所と呼び出し履歴をログへ出して false
         bool CallMethod(asIScriptFunction* function, asIScriptObject* object,
                         const std::function<int(asIScriptContext*)>& setArguments,
-                        const std::function<std::string()>& describeCaller);
+                        const std::function<std::string()>& describeCaller,
+                        std::uint32_t lineBudget = kLineBudget);
 
         /// @brief スクリプトの関数を呼ぶ（デリゲートでもよい）
         /// @param setArguments コンテキストへ引数を積む（負の値を返したら実行しない。nullptr なら引数なし）
         /// @param describeCaller 止まったときのログに出す呼び出し元の名前を作る（止まったときだけ呼ぶ）
+        /// @param lineBudget 1 回の呼び出しで実行してよい行数（超えたら中断する）
         /// @return 最後まで実行できたら true。例外・中断のときは場所と呼び出し履歴をログへ出して false
         bool CallFunction(asIScriptFunction* function, const std::function<int(asIScriptContext*)>& setArguments,
-                          const std::function<std::string()>& describeCaller);
+                          const std::function<std::string()>& describeCaller,
+                          std::uint32_t lineBudget = kLineBudget);
 
         /// @brief エンジンを作った実行環境（無ければ nullptr）
         static ScriptHost* FromEngine(asIScriptEngine* engine);
@@ -167,12 +181,32 @@ namespace CoreEngine
         /// @brief 生きているスクリプトのコンポーネントの控えから外す
         void UnregisterComponent(ScriptComponent* component);
 
+#ifdef CORE_EDITOR
+        /// @brief モジュールの差し替えに合わせて呼ぶ関数
+        struct ModuleListener
+        {
+            /// 組み上がったモジュールの属性とファイルごとの中身を読む（差し替える前）
+            std::function<void(asIScriptModule&, CScriptBuilder&,
+                               const std::unordered_map<std::string, std::string>&)> compiled;
+
+            /// 今のモジュールを捨てる直前
+            std::function<void()> discarding;
+
+            /// 新しいモジュールへ差し替えた後
+            std::function<void()> swapped;
+        };
+
+        /// @brief モジュールの差し替えに合わせて呼ぶ関数を設定する（空を渡すと外す）
+        void SetModuleListener(ModuleListener listener) { moduleListener_ = std::move(listener); }
+#endif
+
     private:
         static asIScriptContext* RequestContext(asIScriptEngine* engine, void* userData);
         static void ReturnContext(asIScriptEngine* engine, asIScriptContext* context, void* userData);
 
         /// @brief 用意したコンテキストを実行し、止まったらログへ出して、コンテキストを返す
-        bool RunPrepared(asIScriptContext* context, int result, const std::function<std::string()>& describeCaller);
+        bool RunPrepared(asIScriptContext* context, int result, const std::function<std::string()>& describeCaller,
+                         std::uint32_t lineBudget);
 
         /// @brief 型を捨ててからモジュールを捨てる
         void DiscardModule();
@@ -231,5 +265,9 @@ namespace CoreEngine
 
         /// 直前のフレームの実行の集計
         FrameStats frameStats_;
+
+#ifdef CORE_EDITOR
+        ModuleListener moduleListener_;
+#endif
     };
 }

@@ -168,6 +168,13 @@ enum ShakeTimeMode {
 	Scaled = 0,
 	Unscaled = 1
 }
+namespace EditorGUI {
+enum MessageType {
+	Info = 0,
+	Warning = 1,
+	Error = 2
+}
+}
 funcdef void TweenCallback();
 funcdef void TweenProgressCallback(float progress);
 funcdef void TweenFloatSetter(float value);
@@ -1183,4 +1190,55 @@ bool SetFloat(const string&in name, float value);
 bool SetVector2(const string&in name, const Vector2&in value);
 bool SetVector3(const string&in name, const Vector3&in value);
 bool SetColor(const string&in name, const Vector4&in value);
+}
+namespace EditorGUI {
+void Label(const string&in text);
+void Label(const string&in label, const string&in value);
+void Header(const string&in text);
+void HelpBox(const string&in message, MessageType type = EditorGUI::MessageType::Info);
+void Separator();
+void Space(float height = 6);
+void SameLine();
+float GetAvailableWidth();
+bool Button(const string&in label, float width = 0);
+bool Toggle(const string&in label, bool value);
+int IntField(const string&in label, int value);
+float FloatField(const string&in label, float value);
+string TextField(const string&in label, const string&in value);
+int IntSlider(const string&in label, int value, int min, int max);
+float Slider(const string&in label, float value, float min, float max);
+Vector2 Vector2Field(const string&in label, const Vector2&in value);
+Vector3 Vector3Field(const string&in label, const Vector3&in value);
+Vector4 ColorField(const string&in label, const Vector4&in value);
+int Popup(const string&in label, int selected, const string[]&in options);
+bool Foldout(const string&in label, bool defaultOpen = true);
+bool get_enabled() property;
+void set_enabled(bool enabled) property;
+int get_indentLevel() property;
+void set_indentLevel(int level) property;
+void PushID(int id);
+void PushID(const string&in id);
+void PopID();
+Vector2 Canvas(float width, float height = 0);
+void DrawRect(const Vector2&in min, const Vector2&in max, const Vector4&in color);
+void DrawRectOutline(const Vector2&in min, const Vector2&in max, const Vector4&in color, float thickness = 1);
+void DrawLine(const Vector2&in from, const Vector2&in to, const Vector4&in color, float thickness = 1);
+void DrawText(const Vector2&in position, const string&in text, const Vector4&in color);
+bool IsCanvasHovered();
+Vector2 GetCanvasMousePosition();
+bool IsMouseDown(int button = 0);
+bool IsMouseClicked(int button = 0);
+}
+namespace Editor {
+GameObject@ CreateObject(const string&in name);
+GameObject@ CreateObject(const string&in name, const Vector3&in position);
+GameObject@ InstantiatePrefab(const string&in prefabPath, const string&in name);
+bool DestroyObject(GameObject@ object);
+GameObject@ FindObject(const string&in name);
+GameObject@[]@ GetObjects();
+GameObject@ GetSelection();
+void Select(GameObject@ object);
+void BeginUndoGroup(const string&in name);
+void EndUndoGroup();
+bool get_isPlaying() property;
 }

@@ -4,6 +4,7 @@
 #include "Script/ScriptBuildState.h"
 
 #ifdef CORE_EDITOR
+#include "Editor/Script/ScriptEditorExtensions.h"
 #include "Script/ScriptFileWatcher.h"
 #endif
 
@@ -20,7 +21,8 @@ namespace CoreEngine
     /// @brief スクリプトの実行環境を起動時に作り、コンポーネントの型をファクトリへ登録する
     /// @details `Application/Assets/Scripts` の `.as` をコンパイルし、ScriptComponent を継いだクラスを
     ///          クラス名でコンポーネントとして作れるようにする。フレーム末に GC を 1 段進める。
-    ///          エディタのあるビルドは、`.as` の変更を見張ってフレーム末に読み直す。
+    ///          エディタのあるビルドは、`.as` の変更を見張ってフレーム末に読み直し、
+    ///          EditorWindow を継いだクラスと [MenuItem] の関数をエディタへ出す。
     class ScriptSubsystem final : public IEngineSubsystem
     {
     public:
@@ -73,6 +75,7 @@ namespace CoreEngine
 #ifdef CORE_EDITOR
         bool reloadRequested_ = false;
         ScriptFileWatcher watcher_;
+        std::unique_ptr<Editor::ScriptEditorExtensions> editorExtensions_;
 #endif
     };
 }
