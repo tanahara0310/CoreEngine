@@ -1,5 +1,7 @@
 // 洞窟のような地形をセル・オートマトンで作り、壁のブロックとしてシーンへ並べるエディタのウィンドウ。
 // Tools > マップ生成 で開く。プレビューは左ドラッグで壁、右ドラッグで床に塗れる。
+// 地形はデータファイル（Application/Assets の JSON）へ保存でき、ゲームのスクリプトから DataFile で読める。
+// 公開メンバ変数の値は、エディタを閉じても次の起動で戻る。
 [MenuItem("Tools/マップ生成")]
 class MapGenerator : EditorWindow
 {
@@ -12,11 +14,14 @@ class MapGenerator : EditorWindow
     float wallHeight = 1.5f;
     string wallPrefab = "Application/Assets/Prefabs/MapGenerator/MapWall.prefab";
     string rootName = "GeneratedMap";
+    string dataPath = "Data/Maps/Cave.json";
 
     // マスごとの壁（1）と床（0）。上の行が奥
     array<int> cells;
     int cellsWidth = 0;
     int cellsDepth = 0;
+
+    private string fileMessage_ = "";
 
     void OnEnable()
     {
@@ -57,7 +62,7 @@ class MapGenerator : EditorWindow
         EditorGUI::Header("シーンへ配置");
         cellSize = EditorGUI::FloatField("1 マスの大きさ", cellSize);
         wallHeight = EditorGUI::FloatField("壁の高さ", wallHeight);
-        wallPrefab = EditorGUI::TextField("壁のプレハブ", wallPrefab);
+        wallPrefab = EditorGUI::AssetField("壁のプレハブ", wallPrefab, "Prefab");
         rootName = EditorGUI::TextField("まとめるオブジェクト", rootName);
         if (EditorGUI::Button("シーンに配置", -1)) {
             PlaceInScene();
@@ -83,6 +88,55 @@ class MapGenerator : EditorWindow
         }
         EditorGUI::EndPopup();
         EditorGUI::HelpBox("配置と消去は Ctrl+Z で戻せます。残すときはシーンを保存（Ctrl+S）してください。");
+
+        EditorGUI::Header("データファイル");
+        dataPath = EditorGUI::TextField("保存先", dataPath);
+        EditorGUI::Tooltip("Application/Assets からの相対パス（.json）");
+        if (EditorGUI::Button("ファイルに保存")) {
+            SaveMap();
+        }
+        EditorGUI::SameLine();
+        if (EditorGUI::Button("ファイルから読み込む")) {
+            LoadMap();
+        }
+        if (fileMessage_ != "") {
+            EditorGUI::TextDisabled(fileMessage_);
+        }
+    }
+
+    // 大きさ・シード・マスをデータファイルへ書く
+    private void SaveMap()
+    {
+        DataFile@ file = DataFile(dataPath);
+        file.SetInt("width", width);
+        file.SetInt("depth", depth);
+        file.SetInt("seed", seed);
+        file.SetIntArray("cells", cells);
+        fileMessage_ = file.Save() ? "保存しました: " + dataPath : "保存できませんでした: " + dataPath;
+    }
+
+    // データファイルから大きさとマスを読む
+    private void LoadMap()
+    {
+        DataFile@ file = DataFile(dataPath);
+        if (!file.exists) {
+            fileMessage_ = "ファイルがありません: " + dataPath;
+            return;
+        }
+        array<int>@ loaded = file.GetIntArray("cells");
+        int loadedWidth = file.GetInt("width", width);
+        int loadedDepth = file.GetInt("depth", depth);
+        if (loaded.length() != uint(loadedWidth * loadedDepth)) {
+            fileMessage_ = "マスの数が大きさと合いません: " + dataPath;
+            return;
+        }
+        width = loadedWidth;
+        depth = loadedDepth;
+        seed = file.GetInt("seed", seed);
+        cells = loaded;
+        cellsWidth = width;
+        cellsDepth = depth;
+        fileMessage_ = "読み込みました: " + dataPath;
     }
 
     // マスを色で並べ、カーソルの下のマスを塗る

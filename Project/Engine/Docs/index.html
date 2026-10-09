@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.3.0">
+<meta name="engine-version" content="0.4.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -5062,7 +5062,8 @@ kbd {
       <tr><td>ポップアップ</td><td><code>OpenPopup</code>・<code>BeginPopup</code>・<code>BeginPopupModal</code>（確認ダイアログ）・<code>BeginPopupContextItem</code>（右クリックメニュー）・<code>BeginPopupContextWindow</code>・<code>BeginMenu</code>・<code>MenuItem</code>・<code>CloseCurrentPopup</code></td></tr>
       <tr><td>状態</td><td><code>changed</code>（値が変わったか）・<code>IsItemHovered</code>・<code>IsItemClicked</code>・<code>IsItemActive</code>・<code>IsItemEdited</code>・<code>IsItemDeactivatedAfterEdit</code>（編集を終えた瞬間）・<code>IsWindowHovered</code>・<code>IsWindowFocused</code></td></tr>
       <tr><td>マウスとキー</td><td><code>IsMouseDown</code>・<code>IsMouseClicked</code>・<code>IsMouseDoubleClicked</code>・<code>IsMouseReleased</code>・<code>IsMouseDragging</code>・<code>GetMouseDragDelta</code>・<code>GetMouseWheel</code>・<code>IsKeyPressed</code>・<code>IsKeyDown</code>・<code>IsKeyReleased</code>・<code>ctrl</code>・<code>shift</code>・<code>alt</code></td></tr>
-      <tr><td>描く</td><td><code>Canvas</code>・<code>DrawRect</code>・<code>DrawRectOutline</code>・<code>DrawLine</code>・<code>DrawText</code>・<code>IsCanvasHovered</code>・<code>GetCanvasMousePosition</code></td></tr>
+      <tr><td>参照と画像</td><td><code>ObjectField</code>（オブジェクトを選ぶ）・<code>AssetField</code>（アセットを選ぶ）・<code>Image</code>・<code>GetImageSize</code></td></tr>
+      <tr><td>描く</td><td><code>Canvas</code>・<code>DrawRect</code>・<code>DrawRectOutline</code>・<code>DrawLine</code>・<code>DrawText</code>・<code>DrawImage</code>・<code>IsCanvasHovered</code>・<code>GetCanvasMousePosition</code></td></tr>
     </tbody>
   </table>
   </div>
@@ -5172,15 +5173,82 @@ kbd {
       <tr><td><code>FindObject(name)</code>・<code>GetObjects()</code></td><td>名前で探す・全部を配列で受け取る</td></tr>
       <tr><td><code>GetSelection()</code>・<code>Select(obj)</code></td><td>選んでいるオブジェクトを読む・選ぶ</td></tr>
       <tr><td><code>BeginUndoGroup(name)</code>・<code>EndUndoGroup()</code></td><td>間に行った操作を、<kbd>Ctrl</kbd>+<kbd>Z</kbd> 1 回で戻るまとまりにする</td></tr>
+      <tr><td><code>RecordObject(obj)</code></td><td>これから変えるオブジェクトを控え、変えた値を <kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せるようにする</td></tr>
+      <tr><td><code>FindAssets(type, folder)</code></td><td>アセットのパスの一覧（種類とフォルダで絞る）</td></tr>
     </tbody>
   </table>
   </div>
   <ul>
     <li>作る・消すは Undo に積まれます。<code>EndUndoGroup</code> を閉じ忘れても、ウィンドウやメニューの関数を抜けるときに閉じます。</li>
-    <li>作った直後に変えた位置や親も、作ったことと一緒に戻ります。<strong>前からあるオブジェクトの値をスクリプトで変えたものは、Undo に積まれません。</strong></li>
+    <li>作った直後に変えた位置や親も、作ったことと一緒に戻ります。前からあるオブジェクトの値を変えるときは、先に <code>Editor::RecordObject(obj)</code> で控えます（下の「値の変更を取り消せるようにする」）。</li>
     <li>シーンのファイルへはすぐには書かれないので、残すときはシーンを保存します（<kbd>Ctrl</kbd>+<kbd>S</kbd>）。</li>
     <li>プレハブを編集している間と、シーンが開いていない間は、作る・消すがスクリプトの例外になります。</li>
   </ul>
+
+  <h3 id="script-editor-record">値の変更を取り消せるようにする</h3>
+  <script type="text/x-code" data-lang="as" data-file="Editor/SceneTools.as">
+    [MenuItem("Tools/選んだオブジェクトを地面に下ろす")]
+    void DropSelectionToGround()
+    {
+        GameObject@ selected = Editor::GetSelection();
+        if (selected is null) {
+            return;
+        }
+        Editor::RecordObject(selected, selected.name + " を地面に下ろす");   // 変える前に控える
+        Vector3 position = selected.transform.position;
+        position.y = 0.0f;
+        selected.transform.position = position;
+    }
+  </script>
+  <p>控えたオブジェクトは、関数を抜けるときに変える前と見比べ、変わっていれば Undo に積みます（位置・回転・コンポーネントの値・名前・有効）。ウィンドウのスライダーで続けて動かしている間は、1 つの操作にまとめます。<code>AddComponent</code>・<code>RemoveComponent</code> は、エディタの道具から呼ぶと自分で Undo に積みます。</p>
+
+  <h2 id="script-editor-data">データを保存して、ゲームで読む</h2>
+  <p><a href="#api-DataFile"><code>DataFile</code></a> は <span class="path">Application/Assets</span> の下の JSON ファイルです。エディタの道具で作ったマップやステージを保存し、ゲームのスクリプトから同じ <code>DataFile</code> で読みます（書き出したゲームでは読むだけ）。保存するとアセットとして登録されるので、<code>[Asset("Json")]</code> の欄で選べます。</p>
+  <script type="text/x-code" data-lang="as" data-file="Editor/MapGenerator.as（保存）">
+    DataFile@ file = DataFile("Data/Maps/Cave.json");
+    file.SetInt("width", width);
+    file.SetInt("depth", depth);
+    file.SetIntArray("cells", cells);
+    file.Save();
+  </script>
+  <script type="text/x-code" data-lang="as" data-file="MapLoader.as（ゲームで読む）">
+    [Asset("Json")]
+    string mapFile = "Application/Assets/Data/Maps/Cave.json";
+
+    void Start()
+    {
+        DataFile@ file = DataFile(mapFile);
+        if (!file.exists) {
+            return;
+        }
+        const int width = file.GetInt("width");
+        array<int>@ cells = file.GetIntArray("cells");
+        // cells を見て壁を並べる
+    }
+  </script>
+
+  <h2 id="script-editor-fields">オブジェクト・アセットを選ぶ欄と画像</h2>
+  <script type="text/x-code" data-lang="as">
+    GameObject@ target;
+    string wallPrefab = "";
+    string tileTexture = "";
+
+    void OnGUI()
+    {
+        @target = EditorGUI::ObjectField("対象", target);                  // Hierarchy からドラッグもできる
+        wallPrefab = EditorGUI::AssetField("壁", wallPrefab, "Prefab");     // Project からドラッグもできる
+        tileTexture = EditorGUI::AssetField("タイル", tileTexture, "Texture");
+        EditorGUI::Image(tileTexture, 64, 64);
+    }
+  </script>
+  <ul>
+    <li><code>ObjectField</code> はハンドルを返すので、<code>@target = ...</code> と <code>@</code> を付けて受け取ります。</li>
+    <li><code>AssetField</code> はパス（<code>Application/Assets/...</code>）を返します。そのまま <code>Editor::InstantiatePrefab</code> や <code>DataFile</code> に渡せます。</li>
+    <li>Canvas の中には <code>EditorGUI::DrawImage(path, min, max)</code> で画像を描けます。</li>
+  </ul>
+
+  <h2 id="script-editor-components">コンポーネントと親子</h2>
+  <p><code>GameObject</code> の <code>AddComponent("Rigidbody")</code>・<code>RemoveComponent</code>・<code>HasComponent</code> で、型名のコンポーネントを足し外しできます（スクリプトのクラス名も使えます）。<code>transform.parent</code> で親、<code>GetChildren()</code> で子の一覧を取れます。どれもゲームのスクリプトでも使えます。</p>
 
   <h2 id="script-editor-menu">メニューから関数を呼ぶ</h2>
   <script type="text/x-code" data-lang="as" data-file="Editor/SceneTools.as">
@@ -5199,6 +5267,7 @@ kbd {
     <li>.as を保存すると、ウィンドウを開いたまま読み直します。メンバ変数の値（数値・<code>bool</code>・<code>string</code>・<code>Vector2</code>〜<code>Vector4</code>・列挙と、それらの <code>array</code>）は、名前と型が同じなら <code>private</code> でも持ち越します。ハンドルとクラスのメンバ変数は初期値に戻ります。</li>
     <li>ウィンドウの関数で例外が起きると、そのウィンドウは止まり、案内と <span class="ui">もう一度動かす</span> ボタンを出します。Console のエラーを直して保存すると、読み直して動き始めます。</li>
     <li>エディタの道具は重い処理をすることがあるので、1 回の呼び出しで実行できる行数の上限を 20,000,000 行にしています（ゲームのスクリプトは 200,000 行）。</li>
+    <li>公開メンバ変数（<code>private</code>・<code>protected</code> でないもの）の値は、エディタを閉じるときに <span class="path">Application/Saved/EditorSettings/ScriptWindows.json</span> へ保存し、次の起動で戻します（Unity のウィンドウと同じ）。残したくない値は <code>private</code> にします。</li>
   </ul>
 
   <h2 id="script-editor-sample">見本：マップ生成</h2>
@@ -5207,8 +5276,9 @@ kbd {
     <li><strong>地形を作る</strong>幅・奥行き・壁の割合・ならす回数・シードを決めて <span class="ui">生成</span> を押します。同じシードなら毎回同じ地形になります（<a href="#api-RandomStream"><code>RandomStream</code></a>）。</li>
     <li><strong>プレビューを塗って直す</strong>左ドラッグで壁、右ドラッグで床に塗れます。</li>
     <li><strong>シーンに配置する</strong><span class="ui">シーンに配置</span> で、壁のプレハブ（<span class="path">Prefabs/MapGenerator/MapWall.prefab</span>）を「GeneratedMap」の子として並べます。もう一度押すと置き直し、<span class="ui">配置したものを消す</span> で消えます。どちらも <kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せます。</li>
+    <li><strong>データファイルに保存する</strong><span class="ui">ファイルに保存</span> で、大きさとマスを <span class="path">Application/Assets/Data/Maps/Cave.json</span> へ書きます。ゲームのスクリプトからは <code>DataFile</code> で読めます。</li>
   </ol>
-  <p>同じフォルダの <span class="path">EditorGUIGallery.as</span> は部品をひととおり並べたウィンドウ（<span class="ui">Tools<span class="arrow">▸</span>部品の見本</span>）、<span class="path">SceneTools.as</span> はメニューから関数を呼ぶ見本（<span class="ui">Tools<span class="arrow">▸</span>シーンのオブジェクトを数える</span>）です。</p>
+  <p>同じフォルダの <span class="path">EditorGUIGallery.as</span> は部品をひととおり並べたウィンドウ（<span class="ui">Tools<span class="arrow">▸</span>部品の見本</span>）、<span class="path">SceneTools.as</span> はメニューから関数を呼ぶ見本（オブジェクトを数える・選んだオブジェクトを地面に下ろす・剛体を付け外し）です。</p>
 </article>
 
 <!-- ================================================================== AngelScript の文法 -->
@@ -6864,6 +6934,17 @@ kbd {
 
   <h2 id="changelog-history">更新履歴</h2>
 
+  <h3 id="changelog-v0-4-0">v0.4.0 <span class="dim">（2026-10-10）</span></h3>
+  <p>エディタの道具で作ったデータを保存し、ゲームで読めるようにした版です（<a href="#script-editor">エディタを拡張する</a>）。</p>
+  <ul>
+    <li><strong>データファイル</strong>：<a href="#api-DataFile"><code>DataFile</code></a> で <span class="path">Application/Assets</span> の JSON を読み書きできます。エディタで保存するとアセットとして登録され、ゲームのスクリプトからも読めます（書き出したゲームでは読むだけ）。</li>
+    <li><code>SaveFile</code> と <code>DataFile</code> に、整数・小数・文字列の配列と、キーの一覧・ファイルがあったか（<code>exists</code>）を足しました。</li>
+    <li><strong>参照と画像の欄</strong>：<code>EditorGUI::ObjectField</code>・<code>AssetField</code>（一覧と Hierarchy・Project からのドラッグ）・<code>Image</code>・<code>DrawImage</code>。</li>
+    <li><strong>値の変更の取り消し</strong>：<code>Editor::RecordObject</code> で控えたオブジェクトの変更を <kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せます。<code>Editor::FindAssets</code> でアセットの一覧を取れます。</li>
+    <li><strong>コンポーネントと親子</strong>：<code>GameObject</code> に <code>AddComponent</code>・<code>RemoveComponent</code>・<code>HasComponent</code>・<code>GetChildren</code>、<code>Transform</code> に <code>parent</code> を足しました（ゲームでも使えます）。</li>
+    <li><strong>ウィンドウの値を残す</strong>：EditorWindow の公開メンバ変数は、エディタを閉じても次の起動で戻ります。</li>
+  </ul>
+
   <h3 id="changelog-v0-3-0">v0.3.0 <span class="dim">（2026-10-09）</span></h3>
   <p>エディタのウィンドウで使える部品を増やした版です（<a href="#script-editor">エディタを拡張する</a>）。</p>
   <ul>
@@ -7075,6 +7156,10 @@ class Rotator : ScriptComponent
           { n: "FindObject", s: "GameObject@ FindObject(const string&in name) const", t: "m", d: "同じシーンから名前でオブジェクトを探します（破棄を予約したものは除く）。見つからなければ <code>null</code>。同じ名前が複数あるときは最初に見つかったもの。毎フレーム呼ぶより、Start で探して控えるほうが軽くなります。" },
           { n: "GetComponent", s: "bool GetComponent(?&out component) const", t: "m", d: "付いているコンポーネントを型で探します。受け取る変数を <code>@</code> を付けて渡します（例：<code>owner.GetComponent(@player)</code>）。スクリプトのクラスでも、エンジンのコンポーネント型（<code>Rigidbody</code> など）でも使えます。見つかれば <code>true</code>。スクリプトのクラスは継いだクラスも一致します。" },
           { n: "InstantiatePrefab", s: "GameObject@ InstantiatePrefab(const string&in prefabPath, const string&in name) const", t: "m", d: "プレハブから 1 体作り、同じシーンに置きます。パスはプロジェクトの根からの相対（例：<code>\"Application/Assets/Prefabs/Rock.prefab\"</code>）。読めなければ <code>null</code>。作ったオブジェクトの Start は次のフレームの更新で呼ばれます。" },
+          { n: "AddComponent", s: "bool AddComponent(const string&in typeName)", t: "m", d: "型名（<code>\"Rigidbody\"</code> やスクリプトのクラス名）のコンポーネントを足します。足せたら <code>true</code>。同じ型が付いていれば <code>false</code>、知らない型名は例外。エディタの道具（EditorWindow とメニューの関数）から呼ぶと <kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せます。" },
+          { n: "RemoveComponent", s: "bool RemoveComponent(const string&in typeName)", t: "m", d: "型名のコンポーネントを外します。付いていない・ほかのコンポーネントが使っている（メッシュ描画が使う Transform など）なら <code>false</code>。" },
+          { n: "HasComponent", s: "bool HasComponent(const string&in typeName) const", t: "m", d: "型名のコンポーネントが付いているか。" },
+          { n: "GetChildren", s: "GameObject@[]@ GetChildren() const", t: "m", d: "Transform の子のオブジェクト（孫は含まない）。シーンのオブジェクトを順に調べるので、毎フレームより必要なときに呼びます。" },
           { n: "SpawnUIText", s: "UIText@ SpawnUIText(const string&in fontName, const string&in text, const string&in name) const", t: "m", d: "同じシーンに UI の文字を作ります。<strong>シーンには保存されません</strong>。基準点（pivot）は左上 <code>(0, 0)</code> になります。" },
           { n: "SpawnUIImage", s: "UIImage@ SpawnUIImage(const string&in texturePath, const string&in name) const", t: "m", d: "同じシーンに UI の画像を作ります。大きさはテクスチャの大きさに合わせます。<strong>シーンには保存されません</strong>。" },
           { n: "opEquals", s: "bool opEquals(const GameObject&in) const", t: "op", d: "<code>a == b</code> で同じ実体を指しているかを比べます（どちらかに実体が無ければ <code>false</code>）。ハンドルそのものが同じかは <code>a is b</code> で比べます。" }
@@ -8319,12 +8404,15 @@ CameraShake::Play(p);`
       {
         title: "作る", members: [
           { n: "SaveFile", s: "SaveFile(const string&in relativePath)", t: "ctor", d: "<span class=\"path\">Application/Saved</span> からの相対パスで開きます。" },
-          { n: "path", s: "const string& path", t: "ro", d: "開いた相対パス。" }
+          { n: "path", s: "const string& path", t: "ro", d: "開いた相対パス。" },
+          { n: "exists", s: "bool exists", t: "ro", d: "開いたときにファイルがあったか。" }
         ]
       },
       {
         title: "読む", members: [
           { n: "Has", s: "bool Has(const string&in key) const", t: "m", d: "値があるか。" },
+          { n: "GetKeys", s: "string[]@ GetKeys() const", t: "m", d: "入っているキーの一覧。" },
+          { n: "GetIntArray", s: "int[]@ GetIntArray(const string&in key) const", t: "m", d: "整数の配列（無ければ空の配列）。小数・文字列は <code>GetFloatArray</code>・<code>GetStringArray</code>。" },
           { n: "GetInt", s: "int GetInt(const string&in key, int fallback = 0) const", t: "m", d: "整数を読みます。" },
           { n: "GetFloat", s: "float GetFloat(const string&in key, float fallback = 0.0f) const", t: "m", d: "小数を読みます。" },
           { n: "GetBool", s: "bool GetBool(const string&in key, bool fallback = false) const", t: "m", d: "真偽値を読みます。" },
@@ -8337,6 +8425,7 @@ CameraShake::Play(p);`
           { n: "SetFloat", s: "void SetFloat(const string&in key, float value)", t: "m", d: "小数を入れます。" },
           { n: "SetBool", s: "void SetBool(const string&in key, bool value)", t: "m", d: "真偽値を入れます。" },
           { n: "SetString", s: "void SetString(const string&in key, const string&in value)", t: "m", d: "文字列を入れます。" },
+          { n: "SetIntArray", s: "void SetIntArray(const string&in key, const int[]&in values)", t: "m", d: "整数の配列を入れます。小数・文字列は <code>SetFloatArray</code>・<code>SetStringArray</code>。" },
           { n: "Remove", s: "void Remove(const string&in key)", t: "m", d: "値を消します。" },
           { n: "Save", s: "bool Save() const", t: "m", d: "ファイルへ書き出します（フォルダが無ければ作る）。書けたら true。" }
         ]
@@ -8359,6 +8448,56 @@ void RecordScore(int score)
       }
     ],
     see: [["script-scenes", "シーン遷移とデータの保存"], ["api-Session", "Session"]]
+  },
+
+  {
+    id: "DataFile", kind: "class", cat: "データ・乱数・設定", brief: "ゲームのデータ（JSON）",
+    keywords: "データ ファイル JSON 読み込み 保存 マップ ステージ レベル エディタ アセット 配列",
+    summary: "<span class=\"path\">Application/Assets/</span> の下の JSON ファイル 1 つを読み書きします。エディタの道具で作ったマップやステージのデータを保存し、ゲームから読むのに使います。",
+    intro: "<p>使い方は <a href=\"#api-SaveFile\">SaveFile</a> と同じです（同じメソッドを持ちます）。パスは <span class=\"path\">Application/Assets</span> からの相対パスか、<code>[Asset(\"Json\")]</code> の値（<code>Application/Assets/</code> から始まる）で、拡張子は <code>.json</code> です。<strong>保存できるのはエディタだけ</strong>で、書き出したゲームで <code>Save()</code> を呼ぶと例外になります（遊んだ記録は SaveFile へ）。エディタで保存すると、そのファイルをアセットとして登録します（<span class=\"path\">.meta</span> を作る）。<span class=\"path\">Scenes</span> フォルダのファイルは扱えません。</p>",
+    sections: [
+      {
+        title: "作る", members: [
+          { n: "DataFile", s: "DataFile(const string&in path)", t: "ctor", d: "ファイルを開きます。あれば中身を読み、無ければ空から始めます。" },
+          { n: "exists", s: "bool exists", t: "ro", d: "開いたときにファイルがあったか。" }
+        ]
+      },
+      {
+        title: "読み書き", members: [
+          { n: "GetInt", s: "int GetInt(const string&in key, int fallback = 0) const", t: "m", d: "ほかに <code>GetFloat</code>・<code>GetBool</code>・<code>GetString</code>・<code>GetIntArray</code>・<code>GetFloatArray</code>・<code>GetStringArray</code>・<code>GetKeys</code>・<code>Has</code>。" },
+          { n: "SetInt", s: "void SetInt(const string&in key, int value)", t: "m", d: "ほかに <code>SetFloat</code>・<code>SetBool</code>・<code>SetString</code>・<code>SetIntArray</code>・<code>SetFloatArray</code>・<code>SetStringArray</code>・<code>Remove</code>。" },
+          { n: "Save", s: "bool Save() const", t: "m", d: "ファイルへ書き出してアセットに登録します（エディタだけ）。書けたら true。" }
+        ]
+      }
+    ],
+    examples: [
+      {
+        title: "例：エディタで保存したマップをゲームで読む",
+        code: `
+class MapLoader : ScriptComponent
+{
+    [Asset("Json")]
+    string mapFile = "Application/Assets/Data/Maps/Cave.json";
+
+    [Asset("Prefab")]
+    string wallPrefab = "Application/Assets/Prefabs/MapGenerator/MapWall.prefab";
+
+    void Start()
+    {
+        DataFile@ file = DataFile(mapFile);
+        const int width = file.GetInt("width");
+        array<int>@ cells = file.GetIntArray("cells");
+        for (uint i = 0; i < cells.length(); ++i) {
+            if (cells[i] == 1) {
+                GameObject@ wall = owner.InstantiatePrefab(wallPrefab, "Wall");
+                wall.transform.position = Vector3(float(int(i) % width), 0.5f, float(int(i) / width));
+            }
+        }
+    }
+}`
+      }
+    ],
+    see: [["script-editor", "エディタを拡張する"], ["api-SaveFile", "SaveFile"]]
   },
 
   {
@@ -8625,12 +8764,21 @@ class HelloWindow : EditorWindow
         ]
       },
       {
+        title: "オブジェクト・アセット・画像", members: [
+          { n: "ObjectField", s: "GameObject@ ObjectField(const string&in label, GameObject@ value)", t: "f", d: "シーンのオブジェクトを選ぶ欄（絞り込みの一覧と、Hierarchy からのドラッグ）。<code>@target = EditorGUI::ObjectField(\"対象\", target);</code> のようにハンドルで受け取る。" },
+          { n: "AssetField", s: "string AssetField(const string&in label, const string&in path, const string&in type = \"\")", t: "f", d: "アセットを選ぶ欄。パス（プロジェクトの根からの相対）を返す。type で種類を絞る（<code>\"Prefab\"</code>・<code>\"Texture\"</code> など）。テクスチャ・モデル・音・プレハブは Project からドラッグもできる。" },
+          { n: "Image", s: "void Image(const string&in path, float width = 0, float height = 0)", t: "f", d: "画像を出す。width・height の片方を 0 にすると縦横の比を保つ（両方 0 なら元の大きさ）。" },
+          { n: "GetImageSize", s: "Vector2 GetImageSize(const string&in path)", t: "f", d: "画像の元の大きさ（読めなければ 0）。" }
+        ]
+      },
+      {
         title: "絵を描く", members: [
           { n: "Canvas", s: "Vector2 Canvas(float width, float height = 0)", t: "f", d: "描く場所を取り、その大きさを返す。width が 0 以下なら幅いっぱい、height が 0 以下なら width と同じ。" },
           { n: "DrawRect", s: "void DrawRect(const Vector2&in min, const Vector2&in max, const Vector4&in color)", t: "f", d: "塗った四角。座標は Canvas の左上からのピクセル。" },
           { n: "DrawRectOutline", s: "void DrawRectOutline(const Vector2&in min, const Vector2&in max, const Vector4&in color, float thickness = 1)", t: "f", d: "枠だけの四角。" },
           { n: "DrawLine", s: "void DrawLine(const Vector2&in from, const Vector2&in to, const Vector4&in color, float thickness = 1)", t: "f", d: "線。" },
           { n: "DrawText", s: "void DrawText(const Vector2&in position, const string&in text, const Vector4&in color)", t: "f", d: "文字。" },
+          { n: "DrawImage", s: "void DrawImage(const string&in path, const Vector2&in min, const Vector2&in max)", t: "f", d: "画像を四角に合わせて描く（タイルのパレットやマップの見た目に）。" },
           { n: "IsCanvasHovered", s: "bool IsCanvasHovered()", t: "f", d: "最後の Canvas の上にマウスがあるか。" },
           { n: "GetCanvasMousePosition", s: "Vector2 GetCanvasMousePosition()", t: "f", d: "最後の Canvas の左上からのマウスの位置。" }
         ]
@@ -8679,7 +8827,8 @@ void OnGUI()
           { n: "InstantiatePrefab", s: "GameObject@ InstantiatePrefab(const string&in prefabPath, const string&in name)", t: "f", d: "プレハブから作る。読めなければ null。" },
           { n: "DestroyObject", s: "bool DestroyObject(GameObject@ object)", t: "f", d: "Transform の子孫ごと消す。消せないもの（コードが作ったオブジェクトなど）が混ざっていれば何も消さずに false。" },
           { n: "FindObject", s: "GameObject@ FindObject(const string&in name)", t: "f", d: "名前で探す（無ければ null）。" },
-          { n: "GetObjects", s: "GameObject@[]@ GetObjects()", t: "f", d: "シーンのオブジェクトを全部。" }
+          { n: "GetObjects", s: "GameObject@[]@ GetObjects()", t: "f", d: "シーンのオブジェクトを全部。" },
+          { n: "FindAssets", s: "string[]@ FindAssets(const string&in type = \"\", const string&in folder = \"\")", t: "f", d: "アセットのパスの一覧（プロジェクトの根からの相対・名前順）。type は <code>\"Prefab\"</code>・<code>\"Texture\"</code>・<code>\"Model\"</code>・<code>\"Audio\"</code>・<code>\"Json\"</code> など（空ならすべて）、folder はパスの頭（例：<code>\"Application/Assets/Prefabs\"</code>）。" }
         ]
       },
       {
@@ -8688,6 +8837,7 @@ void OnGUI()
           { n: "Select", s: "void Select(GameObject@ object)", t: "f", d: "選ぶ（null で選択を外す）。" },
           { n: "BeginUndoGroup", s: "void BeginUndoGroup(const string&in name)", t: "f", d: "EndUndoGroup までの操作を 1 回の Undo にまとめる。name は Edit メニューに出る名前。" },
           { n: "EndUndoGroup", s: "void EndUndoGroup()", t: "f", d: "まとめを閉じる。閉じ忘れは、ウィンドウやメニューの関数を抜けるときに閉じる。" },
+          { n: "RecordObject", s: "void RecordObject(GameObject@ object, const string&in label = \"\")", t: "f", d: "これから変えるオブジェクトを控える。ウィンドウやメニューの関数を抜けるとき、変わっていれば Undo に積む（位置・回転・コンポーネントの値・名前・有効）。ドラッグで続けて変えている間は 1 つにまとめる。label は Edit メニューに出る名前（空なら「名前 を変更」）。" },
           { n: "isPlaying", s: "bool isPlaying", t: "ro", d: "再生中か。" }
         ]
       }
@@ -8862,6 +9012,7 @@ window.CE_API = (window.CE_API || []).concat([
           { n: "scale", s: "Vector3 scale", t: "rw", d: "拡大率。" },
           { n: "worldPosition", s: "Vector3 worldPosition", t: "ro", d: "ワールドでの位置。行列から読むので、同じフレームで <code>position</code> を書き換えた直後は前の値です。すぐに要るときは先に <code>UpdateMatrix()</code> を呼びます。" },
           { n: "SetParent", s: "void SetParent(Transform@ parent)", t: "m", d: "親を決めます（<code>null</code> で親なし）。自分自身や自分の子孫は親にできません。" },
+          { n: "parent", s: "Transform@ parent", t: "ro", d: "親の Transform（親が無ければ <code>null</code>）。" },
           { n: "UpdateMatrix", s: "void UpdateMatrix()", t: "m", d: "位置・回転・拡大と親から、行列をすぐに作り直します。" },
           { n: "exists", s: "bool exists", t: "ro", d: "Transform が付いているか。" },
           { n: "gameObject", s: "GameObject@ gameObject", t: "ro", d: "持ち主の GameObject。" }

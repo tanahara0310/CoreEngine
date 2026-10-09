@@ -3,8 +3,6 @@
 
 #ifdef CORE_EDITOR
 
-#include "Editor/Inspector/InspectorLayout.h"
-#include "Editor/ImGui/EditorTheme.h"
 #include "Script/Binding/BindingRegistrar.h"
 
 #include <angelscript.h>
@@ -260,13 +258,8 @@ namespace CoreEngine::Editor::ScriptBinding
             if (!RequireGUI("BeginListBox")) {
                 return false;
             }
-            const std::string display = label.substr(0, label.find("##"));
-            if (display.empty()) {
-                ImGui::SetNextItemWidth(-FLT_MIN);
-            } else {
-                InspectorLayout::BeginRow(display.c_str(), Theme::kTextDim);
-            }
-            const bool open = ImGui::BeginListBox(("##" + label).c_str(), ImVec2(-FLT_MIN, (std::max)(0.0f, height)));
+            BeginLabeledRow(label);
+            const bool open = ImGui::BeginListBox(LabelFieldId(label).c_str(), ImVec2(-FLT_MIN, (std::max)(0.0f, height)));
             PushGUIScope(GUIScopeKind::ListBox, open);
             return open;
         }

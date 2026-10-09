@@ -9,10 +9,12 @@
 #include "Editor/Script/EditorScriptBinding.h"
 #include "Script/Metadata/MetadataParser.h"
 #include "Script/ScriptHost.h"
+#include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
 
 #include <angelscript.h>
 #include <imgui.h>
+#include <scriptarray/scriptarray.h>
 #include <scriptbuilder/scriptbuilder.h>
 
 #include <algorithm>
@@ -41,6 +43,151 @@ namespace CoreEngine::Editor
         /// ウィンドウの初回の大きさ
         constexpr float kDefaultWindowWidth = 440.0f;
         constexpr float kDefaultWindowHeight = 720.0f;
+
+        /// ウィンドウの値を残すファイル（プロジェクトの根からの相対）
+        constexpr const char* kPersistedFile = "Application/Saved/EditorSettings/ScriptWindows.json";
+
+        /// @brief Vector2〜Vector4 の成分の数（Vector でなければ 0）
+        int VectorComponents(const ScriptHost& host, int typeId)
+        {
+            if (typeId == host.GetVector2TypeId()) {
+                return 2;
+            }
+            if (typeId == host.GetVector3TypeId()) {
+                return 3;
+            }
+            if (typeId == host.GetVector4TypeId()) {
+                return 4;
+            }
+            return 0;
+        }
+
+        /// @brief メンバ変数の値を JSON にする（数・bool・string・Vector・列挙と、それらの array）
+        /// @return 扱えない型なら false
+        bool ValueToJson(const ScriptHost& host, const asIScriptEngine& engine, int typeId, const void* address, json& out)
+        {
+            switch (typeId) {
+            case asTYPEID_BOOL: out = *static_cast<const bool*>(address); return true;
+            case asTYPEID_INT8: out = *static_cast<const std::int8_t*>(address); return true;
+            case asTYPEID_INT16: out = *static_cast<const std::int16_t*>(address); return true;
+            case asTYPEID_INT32: out = *static_cast<const std::int32_t*>(address); return true;
+            case asTYPEID_INT64: out = *static_cast<const std::int64_t*>(address); return true;
+            case asTYPEID_UINT8: out = *static_cast<const std::uint8_t*>(address); return true;
+            case asTYPEID_UINT16: out = *static_cast<const std::uint16_t*>(address); return true;
+            case asTYPEID_UINT32: out = *static_cast<const std::uint32_t*>(address); return true;
+            case asTYPEID_UINT64: out = *static_cast<const std::uint64_t*>(address); return true;
+            case asTYPEID_FLOAT: out = *static_cast<const float*>(address); return true;
+            case asTYPEID_DOUBLE: out = *static_cast<const double*>(address); return true;
+            default: break;
+            }
+            if ((typeId & asTYPEID_OBJHANDLE) != 0) {
+                return false;
+            }
+            if (typeId == host.GetStringTypeId()) {
+                out = *static_cast<const std::string*>(address);
+                return true;
+            }
+            if (const int components = VectorComponents(host, typeId); components > 0) {
+                const auto* const values = static_cast<const float*>(address);
+                out = json::array();
+                for (int i = 0; i < components; ++i) {
+                    out.push_back(values[i]);
+                }
+                return true;
+            }
+            const asITypeInfo* const type = engine.GetTypeInfoById(typeId);
+            if (type && (type->GetFlags() & asOBJ_ENUM) != 0 && type->GetSize() == sizeof(std::int32_t)) {
+                out = *static_cast<const std::int32_t*>(address);
+                return true;
+            }
+            if (host.GetArrayElementTypeId(typeId) >= 0) {
+                const auto* const array = static_cast<const CScriptArray*>(address);
+                json elements = json::array();
+                for (asUINT i = 0; i < array->GetSize(); ++i) {
+                    json element;
+                    if (!ValueToJson(host, engine, array->GetElementTypeId(), array->At(i), element)) {
+                        return false;
+                    }
+                    elements.push_back(std::move(element));
+                }
+                out = std::move(elements);
+                return true;
+            }
+            return false;
+        }
+
+        /// @brief JSON の値をメンバ変数へ書く（ValueToJson と同じ型を扱う）
+        /// @return 型が合わなければ何もせずに false
+        bool JsonToValue(const ScriptHost& host, const asIScriptEngine& engine, int typeId, void* address, const json& in)
+        {
+            const auto assign = [&in, address]<class T>(T*) {
+                if (!in.is_number()) {
+                    return false;
+                }
+                *static_cast<T*>(address) = in.get<T>();
+                return true;
+                };
+            switch (typeId) {
+            case asTYPEID_BOOL:
+                if (!in.is_boolean()) {
+                    return false;
+                }
+                *static_cast<bool*>(address) = in.get<bool>();
+                return true;
+            case asTYPEID_INT8: return assign(static_cast<std::int8_t*>(nullptr));
+            case asTYPEID_INT16: return assign(static_cast<std::int16_t*>(nullptr));
+            case asTYPEID_INT32: return assign(static_cast<std::int32_t*>(nullptr));
+            case asTYPEID_INT64: return assign(static_cast<std::int64_t*>(nullptr));
+            case asTYPEID_UINT8: return assign(static_cast<std::uint8_t*>(nullptr));
+            case asTYPEID_UINT16: return assign(static_cast<std::uint16_t*>(nullptr));
+            case asTYPEID_UINT32: return assign(static_cast<std::uint32_t*>(nullptr));
+            case asTYPEID_UINT64: return assign(static_cast<std::uint64_t*>(nullptr));
+            case asTYPEID_FLOAT: return assign(static_cast<float*>(nullptr));
+            case asTYPEID_DOUBLE: return assign(static_cast<double*>(nullptr));
+            default: break;
+            }
+            if ((typeId & asTYPEID_OBJHANDLE) != 0) {
+                return false;
+            }
+            if (typeId == host.GetStringTypeId()) {
+                if (!in.is_string()) {
+                    return false;
+                }
+                *static_cast<std::string*>(address) = in.get<std::string>();
+                return true;
+            }
+            if (const int components = VectorComponents(host, typeId); components > 0) {
+                if (!in.is_array() || in.size() != static_cast<std::size_t>(components)
+                    || !std::all_of(in.begin(), in.end(), [](const json& value) { return value.is_number(); })) {
+                    return false;
+                }
+                auto* const values = static_cast<float*>(address);
+                for (int i = 0; i < components; ++i) {
+                    values[i] = in[static_cast<std::size_t>(i)].get<float>();
+                }
+                return true;
+            }
+            const asITypeInfo* const type = engine.GetTypeInfoById(typeId);
+            if (type && (type->GetFlags() & asOBJ_ENUM) != 0 && type->GetSize() == sizeof(std::int32_t)) {
+                if (!in.is_number_integer()) {
+                    return false;
+                }
+                *static_cast<std::int32_t*>(address) = in.get<std::int32_t>();
+                return true;
+            }
+            if (host.GetArrayElementTypeId(typeId) >= 0) {
+                if (!in.is_array()) {
+                    return false;
+                }
+                auto* const array = static_cast<CScriptArray*>(address);
+                array->Resize(static_cast<asUINT>(in.size()));
+                for (asUINT i = 0; i < array->GetSize(); ++i) {
+                    JsonToValue(host, engine, array->GetElementTypeId(), array->At(i), in[i]);
+                }
+                return true;
+            }
+            return false;
+        }
 
         void LogScript(LogLevel level, const std::string& message)
         {
@@ -149,6 +296,11 @@ namespace CoreEngine::Editor
                 objectType->Release();
             }
         }
+    };
+
+    struct ScriptEditorExtensions::Persisted
+    {
+        json values = json::object();
     };
 
     struct ScriptEditorExtensions::Window
@@ -321,7 +473,8 @@ namespace CoreEngine::Editor
             auto found = std::find_if(windows_.begin(), windows_.end(), [&windowClass](const std::unique_ptr<Window>& window) {
                 return window->windowClass.className == windowClass.className;
                 });
-            if (found == windows_.end()) {
+            const bool created = found == windows_.end();
+            if (created) {
                 windows_.push_back(std::make_unique<Window>());
                 found = std::prev(windows_.end());
             }
@@ -355,6 +508,9 @@ namespace CoreEngine::Editor
             window.onEnable = type->GetMethodByDecl("void OnEnable()");
             window.onGUI = type->GetMethodByDecl("void OnGUI()");
             window.onDisable = type->GetMethodByDecl("void OnDisable()");
+            if (created) {
+                ApplyPersisted(window);
+            }
 
             // 控えた値を、名前と型が同じメンバ変数へ戻す
             const auto saved = savedProperties_.find(className);
@@ -436,6 +592,8 @@ namespace CoreEngine::Editor
 
     void ScriptEditorExtensions::Shutdown()
     {
+        SavePersisted();
+        ScriptBinding::ReleaseEditorGUITextures();
         menuRegistrations_.clear();
         for (const std::unique_ptr<Window>& window : windows_) {
             if (window->enabled && window->object && !window->stopped) {
@@ -447,6 +605,79 @@ namespace CoreEngine::Editor
         savedProperties_.clear();
         pendingWindows_.clear();
         pendingMenus_.clear();
+    }
+
+    void ScriptEditorExtensions::ApplyPersisted(Window& window)
+    {
+        if (!persisted_) {
+            persisted_ = std::make_unique<Persisted>();
+            JsonManager& jsonManager = JsonManager::GetInstance();
+            if (jsonManager.FileExists(kPersistedFile)) {
+                persisted_->values = jsonManager.LoadJson(kPersistedFile);
+            }
+            if (!persisted_->values.is_object()) {
+                persisted_->values = json::object();
+            }
+        }
+        const auto entry = persisted_->values.find(window.windowClass.className);
+        if (entry == persisted_->values.end() || !entry->is_object() || !window.object) {
+            return;
+        }
+
+        const asITypeInfo* const type = window.object->GetObjectType();
+        const asIScriptEngine& engine = *type->GetEngine();
+        for (asUINT i = 0; i < type->GetPropertyCount(); ++i) {
+            const char* name = nullptr;
+            int typeId = 0;
+            bool isPrivate = false;
+            bool isProtected = false;
+            if (type->GetProperty(i, &name, &typeId, &isPrivate, &isProtected) < 0 || !name || isPrivate || isProtected) {
+                continue;
+            }
+            const auto value = entry->find(name);
+            void* const address = window.object->GetAddressOfProperty(i);
+            if (value != entry->end() && address) {
+                JsonToValue(host_, engine, typeId, address, *value);
+            }
+        }
+    }
+
+    void ScriptEditorExtensions::SavePersisted()
+    {
+        if (windows_.empty()) {
+            return;
+        }
+        if (!persisted_) {
+            persisted_ = std::make_unique<Persisted>();
+        }
+        bool any = false;
+        for (const std::unique_ptr<Window>& window : windows_) {
+            if (!window->object) {
+                continue;
+            }
+            const asITypeInfo* const type = window->object->GetObjectType();
+            const asIScriptEngine& engine = *type->GetEngine();
+            json values = json::object();
+            for (asUINT i = 0; i < type->GetPropertyCount(); ++i) {
+                const char* name = nullptr;
+                int typeId = 0;
+                bool isPrivate = false;
+                bool isProtected = false;
+                if (type->GetProperty(i, &name, &typeId, &isPrivate, &isProtected) < 0 || !name || isPrivate || isProtected) {
+                    continue;
+                }
+                const void* const address = window->object->GetAddressOfProperty(i);
+                json value;
+                if (address && ValueToJson(host_, engine, typeId, address, value)) {
+                    values[name] = std::move(value);
+                }
+            }
+            persisted_->values[window->windowClass.className] = std::move(values);
+            any = true;
+        }
+        if (any && !JsonManager::GetInstance().SaveJson(kPersistedFile, persisted_->values)) {
+            LogScript(LogLevel::Warn, std::string("エディタのウィンドウの値を保存できませんでした: ") + kPersistedFile);
+        }
     }
 
     void ScriptEditorExtensions::DrawWindow(const std::string& className)

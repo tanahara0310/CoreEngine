@@ -23,6 +23,10 @@ class EditorGUIGallery : EditorWindow
     string lastAction = "（まだ何もしていません）";
     string lastKey = "（まだ押していません）";
 
+    GameObject@ target;
+    string prefab = "";
+    string texture = "";
+
     void OnGUI()
     {
         if (EditorGUI::BeginTabBar("tabs")) {
@@ -48,6 +52,10 @@ class EditorGUIGallery : EditorWindow
             EditorGUI::EndTabItem();
             if (EditorGUI::BeginTabItem("マウスとキー")) {
                 DrawDeviceTab();
+            }
+            EditorGUI::EndTabItem();
+            if (EditorGUI::BeginTabItem("参照と画像")) {
+                DrawReferenceTab();
             }
             EditorGUI::EndTabItem();
         }
@@ -246,6 +254,32 @@ class EditorGUIGallery : EditorWindow
             if (EditorGUI::IsMouseDoubleClicked()) {
                 lastAction = "描く場所をダブルクリック";
             }
+        }
+    }
+
+    private void DrawReferenceTab()
+    {
+        EditorGUI::TextDisabled("欄へ Hierarchy・Project からドラッグしても選べます");
+        @target = EditorGUI::ObjectField("オブジェクト", target);
+        prefab = EditorGUI::AssetField("プレハブ", prefab, "Prefab");
+        texture = EditorGUI::AssetField("画像", texture, "Texture");
+        if (texture != "") {
+            EditorGUI::Image(texture, 0, 96);
+        }
+
+        if (target !is null) {
+            EditorGUI::Header("選んだオブジェクト");
+            Transform@ parent = target.transform.parent;
+            EditorGUI::Label("親", parent is null ? "（なし）" : parent.gameObject.name);
+            EditorGUI::Label("子の数", "" + target.GetChildren().length());
+            EditorGUI::Label("剛体", target.HasComponent("Rigidbody") ? "あり" : "なし");
+        }
+
+        EditorGUI::Header("アセットの一覧");
+        array<string>@ prefabs = Editor::FindAssets("Prefab");
+        EditorGUI::Label("プレハブの数", "" + prefabs.length());
+        for (uint i = 0; i < prefabs.length() && i < 5; ++i) {
+            EditorGUI::BulletText(prefabs[i]);
         }
     }
 

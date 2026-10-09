@@ -8,11 +8,50 @@
 #include "Scene/PrefabSystem.h"
 #include "Script/Binding/BindingRegistrar.h"
 #include "Script/Binding/ComponentBinding.h"
+#include "GameObject/Component/Core/ComponentFactory.h"
 #include "Script/ScriptComponent.h"
 #include "Utility/Logger/Logger.h"
 
+#ifdef CORE_EDITOR
+#include "Editor/Scene/ComponentEditing.h"
+#include "Editor/Script/EditorScriptBinding.h"
+#endif
+
+#include <angelscript.h>
+#include <scriptarray/scriptarray.h>
+
 namespace CoreEngine::Script
 {
+    namespace
+    {
+        void ThrowScriptException(const std::string& message)
+        {
+            if (asIScriptContext* const context = asGetActiveContext()) {
+                context->SetException(message.c_str());
+            }
+        }
+
+        /// @brief 要素の型を指定した空の配列を作る（スクリプトの中から呼ばれたときだけ作れる）
+        CScriptArray* CreateArray(const char* declaration)
+        {
+            asIScriptContext* const context = asGetActiveContext();
+            asIScriptEngine* const engine = context ? context->GetEngine() : nullptr;
+            asITypeInfo* const type = engine ? engine->GetTypeInfoByDecl(declaration) : nullptr;
+            return type ? CScriptArray::Create(type) : nullptr;
+        }
+
+        /// @brief 型名が同じ、最初のコンポーネント（無ければ nullptr）
+        IComponent* FindComponentByName(const GameObject& object, const std::string& typeName)
+        {
+            for (const auto& component : object.GetAllComponents()) {
+                if (component && component->GetTypeName() == typeName) {
+                    return component.get();
+                }
+            }
+            return nullptr;
+        }
+    }
+
     // ---------------------------------------------------------------- ScriptTransform
 
     void ScriptTransform::AddRef() const
@@ -111,6 +150,19 @@ namespace CoreEngine::Script
         if (TransformComponent* const transform = ResolveOrWarn("行列の作り直し")) {
             transform->SyncWorldMatrix();
         }
+    }
+
+    ScriptTransform* ScriptTransform::GetParent() const
+    {
+        const TransformComponent* const transform = ResolveOrWarn("親の読み取り");
+        const TransformComponent* const parent = transform ? transform->GetParent() : nullptr;
+        ScriptGameObject* const handle = ScriptGameObject::CreateForObject(parent ? parent->GetOwner() : nullptr);
+        if (!handle) {
+            return nullptr;
+        }
+        ScriptTransform* const result = handle->GetTransform();
+        handle->Release();
+        return result;
     }
 
     ScriptGameObject* ScriptTransform::GetGameObject() const
@@ -255,6 +307,77 @@ namespace CoreEngine::Script
         return CreateForObject(object);
     }
 
+    bool ScriptGameObject::AddComponentByName(const std::string& typeName)
+    {
+        GameObject* const object = ResolveOrWarn("コンポーネントの追加");
+        if (!object) {
+            return false;
+        }
+        if (!ComponentFactory::Get().IsRegistered(typeName)) {
+            ThrowScriptException("コンポーネントの型 " + typeName + " はありません");
+            return false;
+        }
+        if (FindComponentByName(*object, typeName)) {
+            return false;
+        }
+#ifdef CORE_EDITOR
+        if (Editor::ScriptBinding::IsInEditorCall()) {
+            return ComponentEditing::Add(*object, typeName) != nullptr;
+        }
+#endif
+        return object->AttachComponent(ComponentFactory::Get().Create(typeName)) != nullptr;
+    }
+
+    bool ScriptGameObject::RemoveComponentByName(const std::string& typeName)
+    {
+        GameObject* const object = ResolveOrWarn("コンポーネントを外す操作");
+        IComponent* const component = object ? FindComponentByName(*object, typeName) : nullptr;
+        if (!component) {
+            return false;
+        }
+#ifdef CORE_EDITOR
+        if (Editor::ScriptBinding::IsInEditorCall()) {
+            return ComponentEditing::CanRemove(*object, *component) && ComponentEditing::Remove(*object, *component);
+        }
+#endif
+        for (const auto& other : object->GetAllComponents()) {
+            if (other && other.get() != component && other->RequiresComponent(*component)) {
+                return false;
+            }
+        }
+        return object->RemoveComponent(component);
+    }
+
+    bool ScriptGameObject::HasComponentByName(const std::string& typeName) const
+    {
+        const GameObject* const object = Resolve();
+        return object && FindComponentByName(*object, typeName) != nullptr;
+    }
+
+    CScriptArray* ScriptGameObject::GetChildren() const
+    {
+        CScriptArray* const result = CreateArray("array<GameObject@>");
+        const GameObject* const self = ResolveOrWarn("子の検索");
+        const TransformComponent* const transform = self ? self->GetComponent<TransformComponent>() : nullptr;
+        const GameObjectManager* const manager = self ? self->GetObjectManager() : nullptr;
+        if (!result || !transform || !manager) {
+            return result;
+        }
+        for (const auto& candidate : manager->GetAllObjects()) {
+            if (!candidate || candidate->IsMarkedForDestroy()) {
+                continue;
+            }
+            const TransformComponent* const child = candidate->GetComponent<TransformComponent>();
+            if (!child || child->GetParent() != transform) {
+                continue;
+            }
+            ScriptGameObject* handle = CreateForObject(candidate.get());
+            result->InsertLast(&handle);
+            handle->Release();
+        }
+        return result;
+    }
+
     bool ScriptGameObject::GetComponent(void* reference, int typeId) const
     {
         asIScriptContext* const context = asGetActiveContext();
@@ -318,6 +441,10 @@ namespace CoreEngine::Script
         r.Method("GameObject", "Transform@ get_transform() property", asMETHOD(ScriptGameObject, GetTransform), asCALL_THISCALL);
         r.Method("GameObject", "GameObject@ FindObject(const string &in name) const", asMETHOD(ScriptGameObject, FindObject), asCALL_THISCALL);
         r.Method("GameObject", "bool GetComponent(?&out component) const", asMETHOD(ScriptGameObject, GetComponent), asCALL_THISCALL);
+        r.Method("GameObject", "bool AddComponent(const string &in typeName)", asMETHOD(ScriptGameObject, AddComponentByName), asCALL_THISCALL);
+        r.Method("GameObject", "bool RemoveComponent(const string &in typeName)", asMETHOD(ScriptGameObject, RemoveComponentByName), asCALL_THISCALL);
+        r.Method("GameObject", "bool HasComponent(const string &in typeName) const", asMETHOD(ScriptGameObject, HasComponentByName), asCALL_THISCALL);
+        r.Method("GameObject", "array<GameObject@>@ GetChildren() const", asMETHOD(ScriptGameObject, GetChildren), asCALL_THISCALL);
         r.Method("GameObject", "GameObject@ InstantiatePrefab(const string &in prefabPath, const string &in name) const",
             asMETHOD(ScriptGameObject, InstantiatePrefab), asCALL_THISCALL);
 
@@ -332,6 +459,7 @@ namespace CoreEngine::Script
         r.Method("Transform", "void set_scale(const Vector3 &in) property", asMETHOD(ScriptTransform, SetScale), asCALL_THISCALL);
         r.Method("Transform", "Vector3 get_worldPosition() const property", asMETHOD(ScriptTransform, GetWorldPosition), asCALL_THISCALL);
         r.Method("Transform", "void SetParent(Transform@+ parent)", asMETHOD(ScriptTransform, SetParent), asCALL_THISCALL);
+        r.Method("Transform", "Transform@ get_parent() const property", asMETHOD(ScriptTransform, GetParent), asCALL_THISCALL);
         r.Method("Transform", "void UpdateMatrix()", asMETHOD(ScriptTransform, UpdateMatrix), asCALL_THISCALL);
         r.Method("Transform", "GameObject@ get_gameObject() const property", asMETHOD(ScriptTransform, GetGameObject), asCALL_THISCALL);
         return r.Succeeded();

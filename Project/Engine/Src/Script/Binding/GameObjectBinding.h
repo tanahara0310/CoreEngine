@@ -7,6 +7,7 @@
 #include <string>
 
 class asIScriptEngine;
+class CScriptArray;
 
 namespace CoreEngine
 {
@@ -52,6 +53,9 @@ namespace CoreEngine::Script
 
         /// @brief 親を設定する（nullptr で親なし。自分自身は親にしない）
         void SetParent(ScriptTransform* parent);
+
+        /// @brief 親の Transform（参照を 1 つ足して返す。親が無ければ nullptr）
+        ScriptTransform* GetParent() const;
 
         /// @brief 位置・回転・拡大と親から行列を作り直す（その後で描くときに今の値が出る）
         void UpdateMatrix();
@@ -121,6 +125,22 @@ namespace CoreEngine::Script
         /// @param name 作るオブジェクトの名前
         /// @return 参照を 1 つ持ったハンドル。プレハブを読めなければ nullptr
         ScriptGameObject* InstantiatePrefab(const std::string& prefabPath, const std::string& name) const;
+
+        /// @brief 型名のコンポーネントを足す
+        /// @return 足したら true（同じ型が付いている・知らない型名なら false）
+        /// @note エディタの道具（EditorWindow とメニューの関数）から呼んだときは Undo に積む。
+        bool AddComponentByName(const std::string& typeName);
+
+        /// @brief 型名のコンポーネントを外す
+        /// @return 外したら true（付いていない・ほかのコンポーネントが使っているなら false）
+        /// @note エディタの道具から呼んだときは Undo に積む。
+        bool RemoveComponentByName(const std::string& typeName);
+
+        /// @brief 型名のコンポーネントが付いているか
+        bool HasComponentByName(const std::string& typeName) const;
+
+        /// @brief Transform の子のオブジェクト（同じ管理者の中を、並んでいる順に探す）
+        CScriptArray* GetChildren() const;
 
         /// @brief 付いているスクリプトのコンポーネントを型で探す（`?&out` の受け口）
         /// @param reference スクリプトのクラスのハンドルの置き場
