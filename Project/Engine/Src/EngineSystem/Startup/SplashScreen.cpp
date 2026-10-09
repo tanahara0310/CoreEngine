@@ -279,7 +279,7 @@ namespace CoreEngine
 
         hInstance_ = hInstance;
         projectName_ = Utf8ToWide(projectName);
-        versionText_ = L"VERSION " + Utf8ToWide(kEngineVersion);
+        versionText_ = L"Version " + Utf8ToWide(kEngineVersion);
 #ifdef CORE_EDITOR
         versionText_ += L" ・ EDITOR";
 #endif
