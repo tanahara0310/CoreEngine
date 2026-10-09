@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 namespace CoreEngine
 {
@@ -32,6 +33,24 @@ namespace CoreEngine
         /// @return 保存できたら true
         bool SetSplashImage(std::string path);
 
+        /// @brief ゲーム用のローディング画面に大きく出す題名（空ならプロジェクト名を出す）
+        const std::string& GetSplashTitle() const { return splashTitle_; }
+
+        /// @brief ゲーム用のローディング画面の題名を決めて保存する
+        bool SetSplashTitle(std::string title);
+
+        /// @brief ゲーム用のローディング画面で題名の下に小さく出す 1 行（空なら出さない）
+        const std::string& GetSplashSubtitle() const { return splashSubtitle_; }
+
+        /// @brief ゲーム用のローディング画面の小見出しを決めて保存する
+        bool SetSplashSubtitle(std::string subtitle);
+
+        /// @brief ゲーム用のローディング画面に出すヒント（起動のたびに 1 つ選ぶ。空なら出さない）
+        const std::vector<std::string>& GetSplashTips() const { return splashTips_; }
+
+        /// @brief ゲーム用のローディング画面のヒントを決めて保存する
+        bool SetSplashTips(std::vector<std::string> tips);
+
         /// @brief ファイルへ書き出す（ファイルにある他の項目は残す）
         bool Save() const;
 
@@ -47,5 +66,8 @@ namespace CoreEngine
         std::string name_;
         std::string initialSceneName_;
         std::string splashImage_;
+        std::string splashTitle_;
+        std::string splashSubtitle_;
+        std::vector<std::string> splashTips_;
     };
 }

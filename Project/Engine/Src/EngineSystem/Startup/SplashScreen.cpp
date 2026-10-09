@@ -35,7 +35,7 @@ namespace CoreEngine
         // 毎回描くと GDI の分だけ起動が伸びる
         constexpr ULONGLONG kRepaintIntervalMs = 33;
 
-        // 配置（96 DPI 基準）
+        // ── エディタ用の配置と色（96 DPI 基準） ──
         constexpr int32_t kMarginLeft = 28;
         constexpr int32_t kMarginRight = 26;
         constexpr int32_t kMarkSize = 40;
@@ -56,6 +56,33 @@ namespace CoreEngine
 
         // 画像の下側（文字の帯）と上端を暗くする色
         constexpr COLORREF kShadeColor = RGB(5, 10, 16);
+
+        // ── ゲーム用の配置と色（96 DPI 基準） ──
+        constexpr int32_t kGameLeft = 44;
+        constexpr int32_t kGameRight = 36;
+        constexpr int32_t kGameTitleTop = 116;
+        constexpr int32_t kGameTitleBottom = 176;
+        constexpr int32_t kGameSubtitleTop = 180;
+        constexpr int32_t kGameSubtitleBottom = 198;
+        constexpr int32_t kGameFooterTop = 316;
+        constexpr int32_t kGameFooterBottom = 334;
+        constexpr int32_t kGameTipRight = 220;
+        constexpr int32_t kGameBarHeight = 2;
+        constexpr int32_t kGameDotSize = 4;
+        constexpr ULONGLONG kGameDotStepMs = 300;
+
+        constexpr COLORREF kGameTitleColor = RGB(243, 241, 234);
+        constexpr COLORREF kGameSubtitleColor = RGB(150, 149, 145);
+        constexpr COLORREF kGameAccentColor = RGB(240, 198, 110);
+        constexpr COLORREF kGameTipColor = RGB(178, 176, 170);
+        constexpr COLORREF kGameLoadingColor = RGB(200, 198, 192);
+        constexpr COLORREF kGameDotColor = RGB(84, 82, 78);
+        constexpr COLORREF kGameBarTrackColor = RGB(24, 24, 24);
+
+        // 画像を暗くする割合・色を抜く割合・周辺を落とす強さ
+        constexpr float kGameBrightness = 0.38f;
+        constexpr float kGameDesaturate = 0.2f;
+        constexpr float kGameVignette = 0.85f;
 
         // 画像が無いときの背景（上から下への縦のグラデーション）
         constexpr COLORREF kFallbackTopColor = RGB(27, 39, 56);
@@ -116,6 +143,14 @@ namespace CoreEngine
             return vertex;
         }
 
+        /// @brief 単色で矩形を塗る
+        void FillColor(HDC dc, const RECT& rect, COLORREF color)
+        {
+            HBRUSH brush = CreateSolidBrush(color);
+            FillRect(dc, &rect, brush);
+            DeleteObject(brush);
+        }
+
         /// @brief BGRX の 1 画素に色を重ねる
         uint32_t BlendPixel(uint32_t pixel, COLORREF color, float alpha)
         {
@@ -142,6 +177,66 @@ namespace CoreEngine
                 return 0.55f * (t - 0.38f) / 0.30f;
             }
             return 0.55f + 0.37f * (t - 0.68f) / 0.32f;
+        }
+
+        /// @brief BGRX の画像を半径 radius の箱で横・縦に 1 回ずつぼかす
+        void BoxBlur(std::vector<uint32_t>& pixels, int32_t width, int32_t height, int32_t radius)
+        {
+            if (radius <= 0 || width <= 0 || height <= 0) {
+                return;
+            }
+            std::vector<uint32_t> temp(pixels.size());
+            const auto blurLine = [radius](const uint32_t* source, uint32_t* destination, int32_t count, size_t stride) {
+                const auto at = [&](int32_t i) { return source[static_cast<size_t>(std::clamp(i, 0, count - 1)) * stride]; };
+                const uint32_t window = static_cast<uint32_t>(radius * 2 + 1);
+                uint32_t sum[3] = {};
+                const auto add = [&sum](uint32_t pixel, bool remove) {
+                    for (int c = 0; c < 3; ++c) {
+                        const uint32_t value = (pixel >> (c * 8)) & 0xFFu;
+                        sum[c] = remove ? sum[c] - value : sum[c] + value;
+                    }
+                };
+                for (int32_t i = -radius; i <= radius; ++i) {
+                    add(at(i), false);
+                }
+                for (int32_t i = 0; i < count; ++i) {
+                    destination[static_cast<size_t>(i) * stride] =
+                        (sum[0] / window) | ((sum[1] / window) << 8) | ((sum[2] / window) << 16);
+                    add(at(i - radius), true);
+                    add(at(i + radius + 1), false);
+                }
+            };
+            for (int32_t y = 0; y < height; ++y) {
+                const size_t row = static_cast<size_t>(y) * width;
+                blurLine(pixels.data() + row, temp.data() + row, width, 1);
+            }
+            for (int32_t x = 0; x < width; ++x) {
+                blurLine(temp.data() + x, pixels.data() + x, height, static_cast<size_t>(width));
+            }
+        }
+
+        /// @brief ゲーム用に画像を落ち着かせる（色を少し抜き、暗くし、周辺ほど黒へ寄せる）
+        /// @details 周辺減光は中心を左寄りの (0.40, 0.45) に置いた楕円で、題名の側を明るく残す
+        void DarkenForGame(std::vector<uint32_t>& pixels, int32_t width, int32_t height)
+        {
+            for (int32_t y = 0; y < height; ++y) {
+                const float v = (static_cast<float>(y) / height - 0.45f) / 0.80f;
+                for (int32_t x = 0; x < width; ++x) {
+                    const float u = (static_cast<float>(x) / width - 0.40f) / 0.90f;
+                    const float vignette = kGameVignette * (std::min)(1.0f, std::sqrt(u * u + v * v));
+                    const float scale = kGameBrightness * (1.0f - vignette);
+
+                    uint32_t& pixel = pixels[static_cast<size_t>(y) * width + x];
+                    const float b = static_cast<float>(pixel & 0xFFu);
+                    const float g = static_cast<float>((pixel >> 8) & 0xFFu);
+                    const float r = static_cast<float>((pixel >> 16) & 0xFFu);
+                    const float luma = 0.2126f * r + 0.7152f * g + 0.0722f * b;
+                    const auto channel = [&](float c) {
+                        return static_cast<uint32_t>(std::clamp(std::lround((c + (luma - c) * kGameDesaturate) * scale), 0L, 255L));
+                    };
+                    pixel = channel(b) | (channel(g) << 8) | (channel(r) << 16);
+                }
+            }
         }
 
         /// @brief 画像を読み、縦横比を保ったまま width × height を覆うように中央で切り抜いて縮める（BGRX 32bit）
@@ -250,6 +345,14 @@ namespace CoreEngine
             SetTextColor(dc, color);
             DrawTextW(dc, text.c_str(), -1, &rect, format);
         }
+
+        /// @brief 1 行の文字の幅（今選んでいるフォントと字間で）
+        int32_t MeasureText(HDC dc, const std::wstring& text)
+        {
+            RECT measured{ 0, 0, 0, 0 };
+            DrawTextW(dc, text.c_str(), -1, &measured, DT_CALCRECT | DT_SINGLELINE | DT_NOPREFIX);
+            return measured.right - measured.left;
+        }
     }
 
     std::filesystem::path SplashScreen::ResolveImagePath()
@@ -271,18 +374,23 @@ namespace CoreEngine
         Close();
     }
 
-    void SplashScreen::Show(HINSTANCE hInstance, const std::string& projectName)
+    void SplashScreen::Show(HINSTANCE hInstance, Style style)
     {
         if (hwnd_) {
             return;
         }
 
         hInstance_ = hInstance;
-        projectName_ = Utf8ToWide(projectName);
-        versionText_ = L"Version " + Utf8ToWide(kEngineVersion);
-#ifdef CORE_EDITOR
-        versionText_ += L" ・ Editor";
-#endif
+        style_ = style;
+
+        const ProjectSettings& settings = ProjectSettings::Get();
+        projectName_ = Utf8ToWide(settings.GetProjectName());
+        versionText_ = L"Version " + Utf8ToWide(kEngineVersion) + L" ・ Editor";
+        titleText_ = settings.GetSplashTitle().empty() ? projectName_ : Utf8ToWide(settings.GetSplashTitle());
+        subtitleText_ = Utf8ToWide(settings.GetSplashSubtitle());
+        // ヒントは起動のたびに 1 つ選ぶ
+        const auto& tips = settings.GetSplashTips();
+        tipText_ = tips.empty() ? std::wstring{} : Utf8ToWide(tips[static_cast<size_t>(GetTickCount64() % tips.size())]);
 
         static bool isClassRegistered = false;
         if (!isClassRegistered) {
@@ -338,10 +446,11 @@ namespace CoreEngine
                 width_, height_, SWP_NOACTIVATE);
         }
 
-        nameFont_ = CreateUiFont(26, FW_SEMIBOLD, dpi_);
-        versionFont_ = CreateUiFont(12, FW_NORMAL, dpi_);
-        projectFont_ = CreateUiFont(12, FW_SEMIBOLD, dpi_);
-        labelFont_ = CreateUiFont(13, FW_NORMAL, dpi_);
+        const bool game = (style_ == Style::Game);
+        headlineFont_ = game ? CreateUiFont(46, FW_BOLD, dpi_) : CreateUiFont(26, FW_SEMIBOLD, dpi_);
+        smallFont_ = CreateUiFont(12, FW_NORMAL, dpi_);
+        smallBoldFont_ = CreateUiFont(12, FW_SEMIBOLD, dpi_);
+        statusFont_ = CreateUiFont(13, FW_NORMAL, dpi_);
         detailFont_ = CreateUiFont(11, FW_NORMAL, dpi_);
 
         BuildBackdrop();
@@ -367,18 +476,25 @@ namespace CoreEngine
             }
         }
 
-        for (uint32_t y = 0; y < height; ++y) {
-            const float shade = ShadeAt(static_cast<float>(y) / (std::max)(1u, height - 1));
-            if (shade <= 0.0f) {
-                continue;
+        if (style_ == Style::Game) {
+            // 題名と文字が主役になるよう、画像はぼかして暗く沈める
+            const int32_t radius = (std::max)(1, Scale(2, dpi_));
+            BoxBlur(pixels, width_, height_, radius);
+            BoxBlur(pixels, width_, height_, radius);
+            DarkenForGame(pixels, width_, height_);
+        } else {
+            for (uint32_t y = 0; y < height; ++y) {
+                const float shade = ShadeAt(static_cast<float>(y) / (std::max)(1u, height - 1));
+                if (shade <= 0.0f) {
+                    continue;
+                }
+                uint32_t* row = pixels.data() + static_cast<size_t>(y) * width;
+                for (uint32_t x = 0; x < width; ++x) {
+                    row[x] = BlendPixel(row[x], kShadeColor, shade);
+                }
             }
-            uint32_t* row = pixels.data() + static_cast<size_t>(y) * width;
-            for (uint32_t x = 0; x < width; ++x) {
-                row[x] = BlendPixel(row[x], kShadeColor, shade);
-            }
+            DrawMark(pixels, width_, height_, Scale(kMarginLeft, dpi_), Scale(kMarkTop, dpi_), Scale(kMarkSize, dpi_));
         }
-
-        DrawMark(pixels, width_, height_, Scale(kMarginLeft, dpi_), Scale(kMarkTop, dpi_), Scale(kMarkSize, dpi_));
 
         BITMAPINFO info{};
         info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
@@ -442,7 +558,7 @@ namespace CoreEngine
 
     void SplashScreen::DestroyResources()
     {
-        for (HFONT* font : { &nameFont_, &versionFont_, &projectFont_, &labelFont_, &detailFont_ }) {
+        for (HFONT* font : { &headlineFont_, &smallFont_, &smallBoldFont_, &statusFont_, &detailFont_ }) {
             if (*font) {
                 DeleteObject(*font);
                 *font = nullptr;
@@ -469,8 +585,6 @@ namespace CoreEngine
 
     void SplashScreen::Render(HDC targetDC)
     {
-        const RECT full{ 0, 0, width_, height_ };
-
         // メモリ DC に一枚組み立ててから転送する（直接描くとちらつく）
         HDC memDC = CreateCompatibleDC(targetDC);
         if (!memDC) {
@@ -494,59 +608,147 @@ namespace CoreEngine
             }
         }
 
-        HBRUSH edgeBrush = CreateSolidBrush(kEdgeColor);
-        FrameRect(memDC, &full, edgeBrush);
-        DeleteObject(edgeBrush);
-
         SetBkMode(memDC, TRANSPARENT);
+        HGDIOBJ oldFont = SelectObject(memDC, smallFont_);
+        if (style_ == Style::Game) {
+            DrawGameTexts(memDC);
+        } else {
+            const RECT full{ 0, 0, width_, height_ };
+            HBRUSH edgeBrush = CreateSolidBrush(kEdgeColor);
+            FrameRect(memDC, &full, edgeBrush);
+            DeleteObject(edgeBrush);
+            DrawEditorTexts(memDC);
+        }
+        SelectObject(memDC, oldFont);
 
+        DrawProgressBar(memDC);
+
+        BitBlt(targetDC, 0, 0, width_, height_, memDC, 0, 0, SRCCOPY);
+
+        SelectObject(memDC, oldBitmap);
+        DeleteObject(bitmap);
+        DeleteDC(memDC);
+    }
+
+    void SplashScreen::DrawEditorTexts(HDC dc) const
+    {
         const int32_t left = Scale(kMarginLeft, dpi_);
         const int32_t right = width_ - Scale(kMarginRight, dpi_);
         const int32_t shadowOffset = (std::max)(1, Scale(1, dpi_));
         constexpr UINT kLine = DT_SINGLELINE | DT_NOPREFIX;
 
         // 右上: プロジェクト名
-        HGDIOBJ oldFont = SelectObject(memDC, projectFont_);
-        DrawShadowedText(memDC, projectName_, RECT{ left, Scale(18, dpi_), right, Scale(38, dpi_) },
+        SelectObject(dc, smallBoldFont_);
+        DrawShadowedText(dc, projectName_, RECT{ left, Scale(18, dpi_), right, Scale(38, dpi_) },
             DT_RIGHT | kLine | DT_END_ELLIPSIS, kProjectColor, shadowOffset);
 
         // 左下: マークの右にエンジンの名前と版
         const int32_t nameLeft = Scale(kMarginLeft + kMarkSize + kNameGap, dpi_);
-        SelectObject(memDC, versionFont_);
-        SetTextCharacterExtra(memDC, Scale(1, dpi_));
-        SetTextColor(memDC, kVersionColor);
+        SelectObject(dc, smallFont_);
+        SetTextCharacterExtra(dc, Scale(1, dpi_));
+        SetTextColor(dc, kVersionColor);
         RECT versionRect{ nameLeft, Scale(279, dpi_), right, Scale(297, dpi_) };
-        DrawTextW(memDC, versionText_.c_str(), -1, &versionRect, DT_LEFT | kLine | DT_END_ELLIPSIS);
-        SetTextCharacterExtra(memDC, 0);
+        DrawTextW(dc, versionText_.c_str(), -1, &versionRect, DT_LEFT | kLine | DT_END_ELLIPSIS);
+        SetTextCharacterExtra(dc, 0);
 
-        SelectObject(memDC, nameFont_);
-        DrawShadowedText(memDC, kEngineName, RECT{ nameLeft, Scale(244, dpi_), right, Scale(280, dpi_) },
+        SelectObject(dc, headlineFont_);
+        DrawShadowedText(dc, kEngineName, RECT{ nameLeft, Scale(244, dpi_), right, Scale(280, dpi_) },
             DT_LEFT | kLine | DT_END_ELLIPSIS, kNameColor, shadowOffset);
 
         // 今のステップ名（左）とパーセント（右）
-        SelectObject(memDC, labelFont_);
+        SelectObject(dc, statusFont_);
         const std::wstring percent = std::to_wstring(static_cast<int32_t>(progress_ * 100.0f + 0.5f)) + L"%";
         RECT percentRect{ left, Scale(312, dpi_), right, Scale(331, dpi_) };
-        SetTextColor(memDC, kPercentColor);
-        DrawTextW(memDC, percent.c_str(), -1, &percentRect, DT_RIGHT | kLine);
+        SetTextColor(dc, kPercentColor);
+        DrawTextW(dc, percent.c_str(), -1, &percentRect, DT_RIGHT | kLine);
 
-        RECT measured{ 0, 0, 0, 0 };
-        DrawTextW(memDC, percent.c_str(), -1, &measured, DT_CALCRECT | kLine);
         const std::wstring label = (progress_ < 1.0f && !label_.empty()) ? label_ + L" …" : label_;
-        RECT labelRect{ left, percentRect.top, right - (measured.right - measured.left) - Scale(12, dpi_), percentRect.bottom };
-        SetTextColor(memDC, kLabelColor);
-        DrawTextW(memDC, label.c_str(), -1, &labelRect, DT_LEFT | kLine | DT_END_ELLIPSIS);
+        RECT labelRect{ left, percentRect.top, right - MeasureText(dc, percent) - Scale(12, dpi_), percentRect.bottom };
+        SetTextColor(dc, kLabelColor);
+        DrawTextW(dc, label.c_str(), -1, &labelRect, DT_LEFT | kLine | DT_END_ELLIPSIS);
 
         // 細目（シェーダ名・テクスチャ名など）
-        SelectObject(memDC, detailFont_);
-        SetTextColor(memDC, kDetailColor);
+        SelectObject(dc, detailFont_);
+        SetTextColor(dc, kDetailColor);
         RECT detailRect{ left, Scale(333, dpi_), right, Scale(350, dpi_) };
-        DrawTextW(memDC, detail_.c_str(), -1, &detailRect, DT_LEFT | kLine | DT_PATH_ELLIPSIS);
+        DrawTextW(dc, detail_.c_str(), -1, &detailRect, DT_LEFT | kLine | DT_PATH_ELLIPSIS);
+    }
 
-        SelectObject(memDC, oldFont);
+    void SplashScreen::DrawGameTexts(HDC dc) const
+    {
+        const int32_t left = Scale(kGameLeft, dpi_);
+        const int32_t right = width_ - Scale(kGameRight, dpi_);
+        constexpr UINT kLine = DT_SINGLELINE | DT_NOPREFIX;
 
-        // 下端の進捗の線（左の色から、進んだ割合に応じて右の色へ寄せる）
+        // 題名と小見出し（字間を広げる）
+        SelectObject(dc, headlineFont_);
+        SetTextCharacterExtra(dc, Scale(8, dpi_));
+        SetTextColor(dc, kGameTitleColor);
+        RECT titleRect{ left, Scale(kGameTitleTop, dpi_), right, Scale(kGameTitleBottom, dpi_) };
+        DrawTextW(dc, titleText_.c_str(), -1, &titleRect, DT_LEFT | DT_BOTTOM | kLine | DT_END_ELLIPSIS);
+
+        if (!subtitleText_.empty()) {
+            SelectObject(dc, smallFont_);
+            SetTextCharacterExtra(dc, Scale(4, dpi_));
+            SetTextColor(dc, kGameSubtitleColor);
+            RECT subtitleRect{ left + Scale(3, dpi_), Scale(kGameSubtitleTop, dpi_), right, Scale(kGameSubtitleBottom, dpi_) };
+            DrawTextW(dc, subtitleText_.c_str(), -1, &subtitleRect, DT_LEFT | kLine | DT_END_ELLIPSIS);
+        }
+
+        const int32_t footerTop = Scale(kGameFooterTop, dpi_);
+        const int32_t footerBottom = Scale(kGameFooterBottom, dpi_);
+
+        // 右下: 読み込み中の文字と、順に光る 3 つの点
+        SelectObject(dc, detailFont_);
+        SetTextCharacterExtra(dc, Scale(3, dpi_));
+        const std::wstring loading = L"読み込み中";
+        const int32_t loadingLeft = right - MeasureText(dc, loading);
+        SetTextColor(dc, kGameLoadingColor);
+        RECT loadingRect{ loadingLeft, footerTop, width_, footerBottom };
+        DrawTextW(dc, loading.c_str(), -1, &loadingRect, DT_LEFT | DT_VCENTER | kLine);
+        SetTextCharacterExtra(dc, 0);
+
+        const int32_t dot = (std::max)(2, Scale(kGameDotSize, dpi_));
+        const int32_t dotGap = dot;
+        const int32_t dotsRight = loadingLeft - Scale(10, dpi_);
+        const int32_t dotTop = (footerTop + footerBottom - dot) / 2;
+        const auto active = static_cast<int32_t>((GetTickCount64() / kGameDotStepMs) % 3);
+        for (int32_t i = 0; i < 3; ++i) {
+            const int32_t dotLeft = dotsRight - (3 - i) * dot - (2 - i) * dotGap;
+            FillColor(dc, RECT{ dotLeft, dotTop, dotLeft + dot, dotTop + dot }, i == active ? kGameAccentColor : kGameDotColor);
+        }
+
+        // 左下: ヒント
+        if (!tipText_.empty()) {
+            const std::wstring tipLabel = L"ヒント";
+            SelectObject(dc, smallBoldFont_);
+            SetTextColor(dc, kGameAccentColor);
+            RECT labelRect{ left, footerTop, width_, footerBottom };
+            DrawTextW(dc, tipLabel.c_str(), -1, &labelRect, DT_LEFT | DT_VCENTER | kLine);
+            const int32_t tipLeft = left + MeasureText(dc, tipLabel) + Scale(10, dpi_);
+
+            SelectObject(dc, smallFont_);
+            SetTextColor(dc, kGameTipColor);
+            RECT tipRect{ tipLeft, footerTop, width_ - Scale(kGameTipRight, dpi_), footerBottom };
+            DrawTextW(dc, tipText_.c_str(), -1, &tipRect, DT_LEFT | DT_VCENTER | kLine | DT_END_ELLIPSIS);
+        }
+    }
+
+    void SplashScreen::DrawProgressBar(HDC dc) const
+    {
         const int32_t fillWidth = static_cast<int32_t>(std::lround(width_ * progress_));
+
+        if (style_ == Style::Game) {
+            // 細い金色の線（下地の溝を全幅に敷く）
+            const int32_t top = height_ - (std::max)(1, Scale(kGameBarHeight, dpi_));
+            FillColor(dc, RECT{ 0, top, width_, height_ }, kGameBarTrackColor);
+            if (fillWidth > 0) {
+                FillColor(dc, RECT{ 0, top, fillWidth, height_ }, kGameAccentColor);
+            }
+            return;
+        }
+
+        // 左の色から、進んだ割合に応じて右の色へ寄せる
         if (fillWidth > 0) {
             const COLORREF endColor = LerpColor(kBarStartColor, kBarEndColor, progress_);
             TRIVERTEX vertices[2]{
@@ -554,14 +756,8 @@ namespace CoreEngine
                 MakeVertex(fillWidth, height_, endColor),
             };
             GRADIENT_RECT gradient{ 0, 1 };
-            GradientFill(memDC, vertices, 2, &gradient, 1, GRADIENT_FILL_RECT_H);
+            GradientFill(dc, vertices, 2, &gradient, 1, GRADIENT_FILL_RECT_H);
         }
-
-        BitBlt(targetDC, 0, 0, width_, height_, memDC, 0, 0, SRCCOPY);
-
-        SelectObject(memDC, oldBitmap);
-        DeleteObject(bitmap);
-        DeleteDC(memDC);
     }
 
     LRESULT CALLBACK SplashScreen::WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)

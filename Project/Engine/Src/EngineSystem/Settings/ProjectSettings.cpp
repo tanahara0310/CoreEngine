@@ -15,6 +15,26 @@ namespace CoreEngine
         constexpr const char* kNameKey = "name";
         constexpr const char* kInitialSceneKey = "initialScene";
         constexpr const char* kSplashImageKey = "splashImage";
+        constexpr const char* kSplashTitleKey = "splashTitle";
+        constexpr const char* kSplashSubtitleKey = "splashSubtitle";
+        constexpr const char* kSplashTipsKey = "splashTips";
+
+        /// @brief 文字列の項目を読む（無い・文字列でないときは空）
+        std::string ReadString(const nlohmann::json& root, const char* key)
+        {
+            const auto found = root.find(key);
+            return (found != root.end() && found->is_string()) ? found->get<std::string>() : std::string{};
+        }
+
+        /// @brief 文字列の項目を書く（空なら項目ごと消す）
+        void WriteString(nlohmann::json& root, const char* key, const std::string& value)
+        {
+            if (value.empty()) {
+                root.erase(key);
+            } else {
+                root[key] = value;
+            }
+        }
         constexpr const char* kVersionKey = "version";
         constexpr const char* kVersion = "1.0";
     }
@@ -39,6 +59,9 @@ namespace CoreEngine
         name_.clear();
         initialSceneName_.clear();
         splashImage_.clear();
+        splashTitle_.clear();
+        splashSubtitle_.clear();
+        splashTips_.clear();
 
         const std::filesystem::path path = ProjectPaths::Resolve(kSettingsPath);
         std::ifstream in(path, std::ios::binary);
@@ -59,9 +82,16 @@ namespace CoreEngine
             found != root.end() && found->is_string()) {
             initialSceneName_ = found->get<std::string>();
         }
-        if (const auto found = root.find(kSplashImageKey);
-            found != root.end() && found->is_string()) {
-            splashImage_ = found->get<std::string>();
+        splashImage_ = ReadString(root, kSplashImageKey);
+        splashTitle_ = ReadString(root, kSplashTitleKey);
+        splashSubtitle_ = ReadString(root, kSplashSubtitleKey);
+        if (const auto found = root.find(kSplashTipsKey);
+            found != root.end() && found->is_array()) {
+            for (const nlohmann::json& tip : *found) {
+                if (tip.is_string() && !tip.get_ref<const std::string&>().empty()) {
+                    splashTips_.push_back(tip.get<std::string>());
+                }
+            }
         }
     }
 
@@ -80,6 +110,33 @@ namespace CoreEngine
             return true;
         }
         splashImage_ = std::move(path);
+        return Save();
+    }
+
+    bool ProjectSettings::SetSplashTitle(std::string title)
+    {
+        if (splashTitle_ == title) {
+            return true;
+        }
+        splashTitle_ = std::move(title);
+        return Save();
+    }
+
+    bool ProjectSettings::SetSplashSubtitle(std::string subtitle)
+    {
+        if (splashSubtitle_ == subtitle) {
+            return true;
+        }
+        splashSubtitle_ = std::move(subtitle);
+        return Save();
+    }
+
+    bool ProjectSettings::SetSplashTips(std::vector<std::string> tips)
+    {
+        if (splashTips_ == tips) {
+            return true;
+        }
+        splashTips_ = std::move(tips);
         return Save();
     }
 
@@ -103,10 +160,13 @@ namespace CoreEngine
         }
         root[kVersionKey] = kVersion;
         root[kInitialSceneKey] = initialSceneName_;
-        if (splashImage_.empty()) {
-            root.erase(kSplashImageKey);
+        WriteString(root, kSplashImageKey, splashImage_);
+        WriteString(root, kSplashTitleKey, splashTitle_);
+        WriteString(root, kSplashSubtitleKey, splashSubtitle_);
+        if (splashTips_.empty()) {
+            root.erase(kSplashTipsKey);
         } else {
-            root[kSplashImageKey] = splashImage_;
+            root[kSplashTipsKey] = splashTips_;
         }
 
         std::ofstream out(path, std::ios::binary);

@@ -31,8 +31,14 @@ namespace CoreEngine
     void Framework::RunStartupSequence(StartupSequence& sequence)
     {
         // メインウィンドウはまだ非表示。この小さなウィンドウだけがメッセージを処理する
+        // エディタはエンジンの画面、書き出したゲームはゲームの題名の画面を出す
+#ifdef CORE_EDITOR
+        constexpr SplashScreen::Style kSplashStyle = SplashScreen::Style::Editor;
+#else
+        constexpr SplashScreen::Style kSplashStyle = SplashScreen::Style::Game;
+#endif
         SplashScreen splash;
-        splash.Show(winApp_->GetInstance(), ProjectSettings::Get().GetProjectName());
+        splash.Show(winApp_->GetInstance(), kSplashStyle);
 
         // 前回の各ステップの時間で進捗を数える（記録が無ければステップの数で割る）
         const std::filesystem::path timingsPath = ProjectPaths::Intermediate("StartupTimings.txt");

@@ -40,8 +40,11 @@
 #include "EngineSystem/Settings/ProjectSettings.h"
 #include "Editor/ImGui/EditorTheme.h"
 #include "Editor/Launcher/ProjectThumbnails.h"
+#include "Editor/ImGui/Wrappers/ImGuiInput.h"
+#include "EngineSystem/Startup/SplashScreen.h"
 #include "Utility/Path/ProjectPaths.h"
 #include <algorithm>
+#include <chrono>
 #include <cwctype>
 #include <filesystem>
 #include <string>
@@ -196,6 +199,94 @@ namespace CoreEngine
             return images;
         }
 
+        /// @brief 設定の文字列を編集する欄の状態（編集中は入力中の文字を保つ）
+        struct SettingTextField
+        {
+            std::string buffer;
+            bool editing = false;
+        };
+
+        /// @brief 設定の文字列を編集する欄を出す
+        /// @return 入力を終えて中身が変わったら true（呼び出し側が buffer を保存する）
+        bool DrawSettingText(const char* label, const char* hint, const std::string& current,
+            SettingTextField& field, bool multiline)
+        {
+            if (!field.editing) {
+                field.buffer = current;
+            }
+            if (multiline) {
+                UI::InputStringMultiline(label, field.buffer, ImVec2(0.0f, ImGui::GetTextLineHeightWithSpacing() * 4.5f));
+            } else {
+                UI::InputStringWithHint(label, hint, field.buffer);
+            }
+            field.editing = ImGui::IsItemActive();
+            return ImGui::IsItemDeactivatedAfterEdit();
+        }
+
+        /// @brief 書き出したゲームのローディング画面に出す文字（題名・小見出し・ヒント）の欄
+        /// @details ヒントは 1 行に 1 つ書き、起動のたびにその中から 1 つ出る
+        void DrawGameSplashSettings()
+        {
+            static SettingTextField title;
+            static SettingTextField subtitle;
+            static SettingTextField tips;
+
+            ProjectSettings& settings = ProjectSettings::Get();
+            ImGui::SeparatorText("書き出したゲームの画面");
+
+            const std::string projectName = settings.GetProjectName();
+            if (DrawSettingText("題名", projectName.c_str(), settings.GetSplashTitle(), title, false)) {
+                settings.SetSplashTitle(title.buffer);
+            }
+            if (DrawSettingText("小見出し", "（出さない）", settings.GetSplashSubtitle(), subtitle, false)) {
+                settings.SetSplashSubtitle(subtitle.buffer);
+            }
+
+            std::string joined;
+            for (const std::string& tip : settings.GetSplashTips()) {
+                joined += joined.empty() ? tip : "\n" + tip;
+            }
+            if (DrawSettingText("ヒント", "", joined, tips, true)) {
+                std::vector<std::string> lines;
+                size_t begin = 0;
+                while (begin <= tips.buffer.size()) {
+                    const size_t end = (std::min)(tips.buffer.find('\n', begin), tips.buffer.size());
+                    std::string line = tips.buffer.substr(begin, end - begin);
+                    if (!line.empty() && line.back() == '\r') {
+                        line.pop_back();
+                    }
+                    if (!line.empty()) {
+                        lines.push_back(std::move(line));
+                    }
+                    begin = end + 1;
+                }
+                settings.SetSplashTips(std::move(lines));
+            }
+            UI::Hint("題名を空にするとプロジェクト名を出します。ヒントは 1 行に 1 つ書くと、起動のたびにどれか 1 つが出ます。");
+        }
+
+        /// @brief ローディング画面を今の設定で数秒だけ出す（そのあいだエディタは止まる）
+        void PreviewSplash(SplashScreen::Style style)
+        {
+            constexpr double kFillSeconds = 2.6;
+            constexpr double kHoldSeconds = 0.6;
+
+            SplashScreen splash;
+            splash.Show(::GetModuleHandleW(nullptr), style);
+            splash.SetStatus(0.0f, "ローディング画面のプレビュー");
+            const auto start = std::chrono::steady_clock::now();
+            for (;;) {
+                const double elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
+                splash.SetProgress(static_cast<float>((std::min)(1.0, elapsed / kFillSeconds)));
+                splash.Pump();
+                if (elapsed >= kFillSeconds + kHoldSeconds) {
+                    break;
+                }
+                ::Sleep(16);
+            }
+            splash.Close();
+        }
+
         /// @brief 起動時のローディング画面に敷く画像を選ぶ欄
         /// @details 実体は `Application/Config/EngineSettings/Project.json` の `splashImage`。
         ///          候補の一覧は選択肢を開いたときに集め直す。
@@ -234,6 +325,18 @@ namespace CoreEngine
             if (!current.empty() && !std::filesystem::is_regular_file(ProjectPaths::Resolve(current), ec)) {
                 ImGui::TextColored(Editor::Theme::kError, "この画像が見つかりません。エンジンの既定の画像を使います");
             }
+
+            DrawGameSplashSettings();
+
+            ImGui::Spacing();
+            if (ImGui::Button("エディタの画面を試す")) {
+                PreviewSplash(SplashScreen::Style::Editor);
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("ゲームの画面を試す")) {
+                PreviewSplash(SplashScreen::Style::Game);
+            }
+            UI::Hint("押すと今の設定のローディング画面を 3 秒ほど出します（そのあいだエディタは止まります）。");
         }
     }
 
