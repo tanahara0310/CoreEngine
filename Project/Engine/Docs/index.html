@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.2.0">
+<meta name="engine-version" content="0.3.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3932,7 +3932,7 @@ kbd {
   <div class="callout warn"><p>メニューを閉じても操作が効かないときは、選択が残っています。ゲームに戻るときに <code>UI::ClearFocus()</code> を呼んでください。</p></div>
 
   <h2 id="input-keys">キーを直接読む</h2>
-  <p>デバッグ用の操作など、決まったキーを見たいときは <code>IsKeyTriggered(Key::R)</code> のように読みます。使えるキーは英字・数字（<code>Num0</code>〜<code>Num9</code>）・<code>Space</code>・<code>Enter</code>・<code>Escape</code>・<code>Tab</code>・<code>Shift</code>・<code>Ctrl</code>・矢印です。</p>
+  <p>デバッグ用の操作など、決まったキーを見たいときは <code>IsKeyTriggered(Key::R)</code> のように読みます。使えるキーは英字・数字（<code>Num0</code>〜<code>Num9</code>）・<code>Space</code>・<code>Enter</code>・<code>Escape</code>・<code>Tab</code>・<code>Shift</code>・<code>Ctrl</code>・<code>Alt</code>・矢印・<code>Backspace</code>・<code>Delete</code>・<code>Insert</code>・<code>Home</code>・<code>End</code>・<code>PageUp</code>・<code>PageDown</code>・<code>F1</code>〜<code>F12</code> です。</p>
   <script type="text/x-code" data-lang="as">
     if (Input::IsKeyTriggered(Key::R)) {
         Scene::ChangeScene(Scene::GetCurrentName());   // シーンをやり直す
@@ -5049,20 +5049,94 @@ kbd {
   </div>
 
   <h2 id="script-editor-gui">EditorGUI の部品</h2>
-  <p>値を入れる部品は、インスペクタと同じく左にラベル、右に欄を並べます。全部の関数は <a href="#api-EditorGUI">EditorGUI</a> にあります。</p>
+  <p>値を入れる部品は、インスペクタと同じく左にラベル、右に欄を並べます（ラベルを <code>"##名前"</code> のように <code>##</code> で始めると、ラベルを出さずに欄を幅いっぱいにします。表の中で便利です）。全部の関数は <a href="#api-EditorGUI">EditorGUI</a> にあり、Sandbox の <span class="ui">Tools<span class="arrow">▸</span>部品の見本</span> で実際の見た目を確かめられます。</p>
   <div class="table-wrap">
   <table>
     <thead><tr><th>種類</th><th>関数</th></tr></thead>
     <tbody>
-      <tr><td>文字</td><td><code>Label</code>・<code>Header</code>（区切りの見出し）・<code>HelpBox</code>（囲んだ説明）</td></tr>
-      <tr><td>押す・選ぶ</td><td><code>Button</code>・<code>Toggle</code>・<code>Popup</code>（文字列の配列から選ぶ）・<code>Foldout</code>（開閉する見出し）</td></tr>
-      <tr><td>値を入れる</td><td><code>IntField</code>・<code>FloatField</code>・<code>TextField</code>・<code>IntSlider</code>・<code>Slider</code>・<code>Vector2Field</code>・<code>Vector3Field</code>・<code>ColorField</code></td></tr>
-      <tr><td>並べ方</td><td><code>SameLine</code>（次の部品を横に並べる）・<code>Separator</code>・<code>Space</code>・<code>indentLevel</code>（字下げ）・<code>enabled</code>（<code>false</code> の間の部品を押せなくする）</td></tr>
-      <tr><td>描く</td><td><code>Canvas</code>・<code>DrawRect</code>・<code>DrawRectOutline</code>・<code>DrawLine</code>・<code>DrawText</code>・<code>IsCanvasHovered</code>・<code>GetCanvasMousePosition</code>・<code>IsMouseDown</code></td></tr>
+      <tr><td>文字</td><td><code>Label</code>・<code>TextColored</code>・<code>TextDisabled</code>（薄い文字）・<code>BulletText</code>（箇条書き）・<code>Header</code>（区切りの見出し）・<code>HelpBox</code>（囲んだ説明）・<code>Tooltip</code>（直前の部品の説明）・<code>ProgressBar</code></td></tr>
+      <tr><td>押す・選ぶ</td><td><code>Button</code>・<code>Toggle</code>・<code>RadioButton</code>・<code>Selectable</code>（選べる行）・<code>ListBox</code>（枠付きの一覧）・<code>Popup</code>（文字列の配列から選ぶ）・<code>Foldout</code>（開閉する見出し）</td></tr>
+      <tr><td>値を入れる</td><td><code>IntField</code>・<code>FloatField</code>・<code>TextField</code>・<code>TextArea</code>（複数行）・<code>IntSlider</code>・<code>Slider</code>・<code>Vector2Field</code>・<code>Vector3Field</code>・<code>ColorField</code></td></tr>
+      <tr><td>並べ方</td><td><code>SameLine</code>・<code>Separator</code>・<code>Space</code>・<code>indentLevel</code>（字下げ）・<code>enabled</code>（<code>false</code> の間の部品を押せなくする）・<code>BeginGroup</code>・<code>BeginChild</code>（スクロールする枠）</td></tr>
+      <tr><td>木・タブ・表</td><td><code>BeginTreeNode</code>・<code>BeginTabBar</code>／<code>BeginTabItem</code>・<code>BeginTable</code> と <code>TableSetupColumn</code>・<code>TableHeadersRow</code>・<code>TableNextRow</code>・<code>TableNextColumn</code>・並べ替え</td></tr>
+      <tr><td>ポップアップ</td><td><code>OpenPopup</code>・<code>BeginPopup</code>・<code>BeginPopupModal</code>（確認ダイアログ）・<code>BeginPopupContextItem</code>（右クリックメニュー）・<code>BeginPopupContextWindow</code>・<code>BeginMenu</code>・<code>MenuItem</code>・<code>CloseCurrentPopup</code></td></tr>
+      <tr><td>状態</td><td><code>changed</code>（値が変わったか）・<code>IsItemHovered</code>・<code>IsItemClicked</code>・<code>IsItemActive</code>・<code>IsItemEdited</code>・<code>IsItemDeactivatedAfterEdit</code>（編集を終えた瞬間）・<code>IsWindowHovered</code>・<code>IsWindowFocused</code></td></tr>
+      <tr><td>マウスとキー</td><td><code>IsMouseDown</code>・<code>IsMouseClicked</code>・<code>IsMouseDoubleClicked</code>・<code>IsMouseReleased</code>・<code>IsMouseDragging</code>・<code>GetMouseDragDelta</code>・<code>GetMouseWheel</code>・<code>IsKeyPressed</code>・<code>IsKeyDown</code>・<code>IsKeyReleased</code>・<code>ctrl</code>・<code>shift</code>・<code>alt</code></td></tr>
+      <tr><td>描く</td><td><code>Canvas</code>・<code>DrawRect</code>・<code>DrawRectOutline</code>・<code>DrawLine</code>・<code>DrawText</code>・<code>IsCanvasHovered</code>・<code>GetCanvasMousePosition</code></td></tr>
     </tbody>
   </table>
   </div>
   <div class="callout tip"><p>同じラベルの部品を 1 つのウィンドウに 2 つ置くと、片方しか反応しません。<code>"削除##1"</code> のように <code>##</code> の後ろで区別するか（<code>##</code> から後ろは表示されません）、繰り返しの中なら <code>EditorGUI::PushID(i)</code> と <code>EditorGUI::PopID()</code> で囲みます。</p></div>
+
+  <h3 id="script-editor-begin-end">Begin〜 と End〜 の組</h3>
+  <p>木・タブ・表・スクロールする枠・ポップアップ・メニューは、<code>Begin〜</code> と <code>End〜</code> で囲みます。<strong><code>Begin〜</code> を呼んだら、戻り値に関係なく必ず <code>End〜</code> を呼びます。</strong>中身は <code>Begin〜</code> が <code>true</code> を返したとき（開いているとき）だけ描きます。</p>
+  <script type="text/x-code" data-lang="as">
+    if (EditorGUI::BeginTabBar("tabs")) {
+        if (EditorGUI::BeginTabItem("生成")) {
+            DrawGenerateTab();
+        }
+        EditorGUI::EndTabItem();      // 開いていなくても呼ぶ
+        if (EditorGUI::BeginTabItem("配置")) {
+            DrawPlaceTab();
+        }
+        EditorGUI::EndTabItem();
+    }
+    EditorGUI::EndTabBar();
+  </script>
+  <ul>
+    <li>組の順番が違うと（中の <code>Begin〜</code> を閉じる前に外の <code>End〜</code> を呼ぶと）、「○○ を閉じてください」とスクリプトの例外になります。</li>
+    <li>閉じ忘れた組と、範囲の中で <code>PushID</code> したままのものは、<code>OnGUI</code> を抜けるとき（例外で止まったときも）にエンジンが閉じます。</li>
+  </ul>
+
+  <h3 id="script-editor-table">表</h3>
+  <script type="text/x-code" data-lang="as">
+    if (EditorGUI::BeginTable("enemies", 2, EditorGUI::TableFlags::Default | EditorGUI::TableFlags::Sortable)) {
+        EditorGUI::TableSetupColumn("名前");
+        EditorGUI::TableSetupColumn("HP", 90);          // 幅を決めた列（0 なら残りを分け合う）
+        EditorGUI::TableHeadersRow();
+        if (EditorGUI::IsTableSortChanged()) {          // 見出しが押されたら並べ替える
+            SortEnemies(EditorGUI::GetTableSortColumn(), EditorGUI::IsTableSortAscending());
+        }
+        for (uint i = 0; i < names.length(); ++i) {
+            EditorGUI::PushID(int(i));
+            EditorGUI::TableNextRow();
+            EditorGUI::TableNextColumn();
+            if (EditorGUI::Selectable(names[i], selected == int(i), true)) {   // 行全体で選ぶ
+                selected = int(i);
+            }
+            EditorGUI::TableNextColumn();
+            hp[i] = EditorGUI::IntField("##hp", hp[i]);
+            EditorGUI::PopID();
+        }
+    }
+    EditorGUI::EndTable();
+  </script>
+
+  <h3 id="script-editor-popup">右クリックメニューと確認ダイアログ</h3>
+  <script type="text/x-code" data-lang="as">
+    EditorGUI::Button("敵");
+    if (EditorGUI::BeginPopupContextItem()) {        // 直前の部品を右クリックで開く
+        if (EditorGUI::MenuItem("複製")) { Duplicate(); }
+        if (EditorGUI::MenuItem("削除")) { EditorGUI::OpenPopup("削除の確認"); }
+    }
+    EditorGUI::EndPopup();
+
+    if (EditorGUI::BeginPopupModal("削除の確認")) {  // 画面の中央に出て、ほかを触れなくする
+        EditorGUI::Label("本当に消しますか？");
+        if (EditorGUI::Button("消す", 90)) { Delete(); EditorGUI::CloseCurrentPopup(); }
+        EditorGUI::SameLine();
+        if (EditorGUI::Button("やめる", 90)) { EditorGUI::CloseCurrentPopup(); }
+    }
+    EditorGUI::EndPopup();
+  </script>
+  <p><code>OpenPopup</code> と <code>BeginPopup〜</code> は同じ名前で、同じ <code>PushID</code> の中で呼びます。</p>
+
+  <h3 id="script-editor-state">値が変わったとき・部品の状態・キー</h3>
+  <ul>
+    <li><code>EditorGUI::changed</code> は、値を入れる部品が操作されると <code>true</code> になります（<code>OnGUI</code> の初めは <code>false</code>）。区間の前で <code>false</code> にしておき、後で見ると「どれかが変わったら作り直す」が書けます。</li>
+    <li><code>IsItemHovered</code>・<code>IsItemClicked</code> などは、直前に描いた部品の状態を返します。ドラッグで値を変える欄は、毎フレーム変わる代わりに、<code>IsItemDeactivatedAfterEdit()</code> で「手を離した瞬間」を拾えます。</li>
+    <li>キーは、このウィンドウ（とその中の枠）が選ばれていて、文字を打っていない間だけ読めます。キーの名前はゲームと同じ <a href="#api-Key"><code>Key</code></a>、マウスのボタンは <code>MouseButton</code> です。</li>
+  </ul>
 
   <h2 id="script-editor-canvas">絵を描く（Canvas）</h2>
   <p><code>EditorGUI::Canvas(幅, 高さ)</code> で描く場所を取り、その後の <code>DrawRect</code> などで中に描きます。座標は描く場所の左上を (0, 0) としたピクセルです。色は <code>Vector4</code>（0〜1 の RGBA）で、色見本と同じ見え方になります。</p>
@@ -5074,7 +5148,7 @@ kbd {
     {
         const float cell = 24.0f;
         EditorGUI::Canvas(cell * 8, cell * 8);
-        if (EditorGUI::IsCanvasHovered() && EditorGUI::IsMouseDown(0)) {
+        if (EditorGUI::IsCanvasHovered() && EditorGUI::IsMouseDown(MouseButton::Left)) {
             Vector2 mouse = EditorGUI::GetCanvasMousePosition();
             painted[int(mouse.y / cell) * 8 + int(mouse.x / cell)] = true;
         }
@@ -5134,7 +5208,7 @@ kbd {
     <li><strong>プレビューを塗って直す</strong>左ドラッグで壁、右ドラッグで床に塗れます。</li>
     <li><strong>シーンに配置する</strong><span class="ui">シーンに配置</span> で、壁のプレハブ（<span class="path">Prefabs/MapGenerator/MapWall.prefab</span>）を「GeneratedMap」の子として並べます。もう一度押すと置き直し、<span class="ui">配置したものを消す</span> で消えます。どちらも <kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せます。</li>
   </ol>
-  <p>同じフォルダの <span class="path">SceneTools.as</span> は、メニューから関数を呼ぶ見本（<span class="ui">Tools<span class="arrow">▸</span>シーンのオブジェクトを数える</span>）です。</p>
+  <p>同じフォルダの <span class="path">EditorGUIGallery.as</span> は部品をひととおり並べたウィンドウ（<span class="ui">Tools<span class="arrow">▸</span>部品の見本</span>）、<span class="path">SceneTools.as</span> はメニューから関数を呼ぶ見本（<span class="ui">Tools<span class="arrow">▸</span>シーンのオブジェクトを数える</span>）です。</p>
 </article>
 
 <!-- ================================================================== AngelScript の文法 -->
@@ -6790,6 +6864,18 @@ kbd {
 
   <h2 id="changelog-history">更新履歴</h2>
 
+  <h3 id="changelog-v0-3-0">v0.3.0 <span class="dim">（2026-10-09）</span></h3>
+  <p>エディタのウィンドウで使える部品を増やした版です（<a href="#script-editor">エディタを拡張する</a>）。</p>
+  <ul>
+    <li><strong>部品を増やした</strong>：色付きの文字・薄い文字・箇条書き・ツールチップ・進み具合のバー・ラジオボタン・選べる行と一覧・複数行の文字の欄。</li>
+    <li><strong>木・タブ・表・スクロールする枠</strong>：<code>BeginTreeNode</code>・<code>BeginTabBar</code>・<code>BeginTable</code>（列の幅の変更・見出しでの並べ替え）・<code>BeginChild</code> で、ウィンドウの中を組み立てられます。</li>
+    <li><strong>ポップアップ</strong>：メニュー・右クリックメニュー・確認ダイアログを出せます。</li>
+    <li><strong>状態とキー</strong>：値が変わったか（<code>EditorGUI::changed</code>）、直前の部品の状態、マウスのダブルクリック・ドラッグ・ホイール、キーと Ctrl・Shift・Alt を読めます。</li>
+    <li>ゲーム用の <code>Key</code> に Alt・Backspace・Delete・Insert・Home・End・PageUp・PageDown・F1〜F12 を足しました。</li>
+    <li>Sandbox に、部品をひととおり並べた <span class="ui">Tools<span class="arrow">▸</span>部品の見本</span> を足しました。</li>
+  </ul>
+  <p>古いスクリプトで気をつけること：<code>EditorGUI</code> のマウスの関数は、ボタンを数値ではなく <code>MouseButton</code> で受け取ります（<code>IsMouseDown(0)</code> → <code>IsMouseDown(MouseButton::Left)</code>）。</p>
+
   <h3 id="changelog-v0-2-0">v0.2.0 <span class="dim">（2026-10-09）</span></h3>
   <p>スクリプトでエディタの道具を作れるようにし、プレハブの編集と書き出したゲームの起動を良くした版です。</p>
   <ul>
@@ -7419,9 +7505,18 @@ void Update()
       ["Left", 203, "←"],
       ["Right", 205, "→"],
       ["Up", 200, "↑"],
-      ["Down", 208, "↓"]
+      ["Down", 208, "↓"],
+      ["Alt", 56, "左 Alt"],
+      ["Backspace", 14, "BackSpace"],
+      ["Delete", 211, "Delete"],
+      ["Insert", 210, "Insert"],
+      ["Home", 199, "Home"],
+      ["End", 207, "End"],
+      ["PageUp", 201, "PageUp"],
+      ["PageDown", 209, "PageDown"],
+      ["F1", 59, "ファンクションキー（F1〜F12 がすべてある）"]
     ],
-    intro: "<p>使えるキーは <code>Num0</code>〜<code>Num9</code>、<code>A</code>〜<code>Z</code>、<code>Space</code>・<code>Enter</code>・<code>Escape</code>・<code>Tab</code>・<code>Shift</code>・<code>Ctrl</code>・矢印の <code>Left</code>・<code>Right</code>・<code>Up</code>・<code>Down</code> です。<code>Key::Left</code> と <code>MouseButton::Left</code> のように同じ名前があるので、いつも型名を付けて書きます。</p>",
+    intro: "<p>使えるキーは <code>Num0</code>〜<code>Num9</code>、<code>A</code>〜<code>Z</code>、<code>Space</code>・<code>Enter</code>・<code>Escape</code>・<code>Tab</code>・<code>Shift</code>・<code>Ctrl</code>・矢印の <code>Left</code>・<code>Right</code>・<code>Up</code>・<code>Down</code>、<code>Alt</code>・<code>Backspace</code>・<code>Delete</code>・<code>Insert</code>・<code>Home</code>・<code>End</code>・<code>PageUp</code>・<code>PageDown</code>・<code>F1</code>〜<code>F12</code> です。エディタのウィンドウでは <code>EditorGUI::IsKeyPressed</code> にも同じキーを渡します。<code>Key::Left</code> と <code>MouseButton::Left</code> のように同じ名前があるので、いつも型名を付けて書きます。</p>",
     see: [["api-Input", "Input"]]
   },
 
@@ -8403,16 +8498,21 @@ class HelloWindow : EditorWindow
 
   {
     id: "EditorGUI", kind: "namespace", cat: "エディタの拡張", brief: "ウィンドウの部品",
-    keywords: "エディタ拡張 ボタン スライダー 入力欄 ラベル 描く canvas マウス ongui",
+    keywords: "エディタ拡張 ボタン スライダー 入力欄 ラベル ツールチップ ラジオ 一覧 リスト 表 テーブル タブ 木 ツリー ポップアップ 右クリック メニュー ダイアログ 確認 進み具合 キー マウス 描く canvas ongui",
     summary: "<code>EditorWindow</code> の <code>OnGUI</code> の中で、ウィンドウの中身を描きます。<code>OnGUI</code> の外で呼ぶとスクリプトの例外になります。",
-    intro: "<p>値を入れる部品は、今の値を受け取って操作された後の値を返します（<code>width = EditorGUI::IntSlider(\"幅\", width, 8, 64);</code>）。ラベルは部品の ID も兼ねるので、同じラベルを 2 つ置くときは <code>\"削除##1\"</code> のように <code>##</code> の後ろで区別します。色は 0〜1 の RGBA で、色見本と同じ見え方です。</p>",
+    intro: "<p>値を入れる部品は、今の値を受け取って操作された後の値を返します（<code>width = EditorGUI::IntSlider(\"幅\", width, 8, 64);</code>）。ラベルは部品の ID も兼ねるので、同じラベルを 2 つ置くときは <code>\"削除##1\"</code> のように <code>##</code> の後ろで区別します。ラベルを <code>##</code> で始めると、ラベルを出さずに欄を幅いっぱいにします。<code>Begin〜</code> は戻り値に関係なく必ず <code>End〜</code> と組にし、中身は <code>true</code> のときだけ描きます。色は 0〜1 の RGBA で、色見本と同じ見え方です。</p>",
     sections: [
       {
         title: "文字と区切り", members: [
           { n: "Label", s: "void Label(const string&in text)", t: "f", d: "文字（幅で折り返す）。" },
           { n: "Label", s: "void Label(const string&in label, const string&in value)", t: "f", d: "左にラベル、右に値の文字。" },
+          { n: "TextColored", s: "void TextColored(const string&in text, const Vector4&in color)", t: "f", d: "色付きの文字。" },
+          { n: "TextDisabled", s: "void TextDisabled(const string&in text)", t: "f", d: "薄い文字（補足）。" },
+          { n: "BulletText", s: "void BulletText(const string&in text)", t: "f", d: "箇条書きの 1 行。" },
           { n: "Header", s: "void Header(const string&in text)", t: "f", d: "見出しの付いた区切り線。" },
           { n: "HelpBox", s: "void HelpBox(const string&in message, MessageType type = EditorGUI::MessageType::Info)", t: "f", d: "囲んだ説明。type は <code>EditorGUI::MessageType::Info</code>・<code>Warning</code>・<code>Error</code>（左の線の色が変わる）。" },
+          { n: "Tooltip", s: "void Tooltip(const string&in text)", t: "f", d: "直前の部品にカーソルを乗せたときの説明。" },
+          { n: "ProgressBar", s: "void ProgressBar(float fraction, const string&in overlay = \"\")", t: "f", d: "進み具合のバー（0〜1）。overlay はバーの上の文字。" },
           { n: "Separator", s: "void Separator()", t: "f", d: "区切り線。" },
           { n: "Space", s: "void Space(float height = 6)", t: "f", d: "縦の空き。" },
           { n: "SameLine", s: "void SameLine()", t: "f", d: "次の部品を同じ行の右に並べる。" },
@@ -8420,27 +8520,108 @@ class HelloWindow : EditorWindow
         ]
       },
       {
-        title: "入力の部品", members: [
+        title: "押す・選ぶ", members: [
           { n: "Button", s: "bool Button(const string&in label, float width = 0)", t: "f", d: "押したフレームだけ true。width は 0 で文字に合わせる、負の値で幅いっぱい。" },
           { n: "Toggle", s: "bool Toggle(const string&in label, bool value)", t: "f", d: "チェックボックス。" },
+          { n: "RadioButton", s: "int RadioButton(const string&in label, int selected, int value)", t: "f", d: "押されたら value を、そうでなければ selected を返す（<code>mode = RadioButton(\"走る\", mode, 1);</code> と並べる）。" },
+          { n: "RadioButton", s: "bool RadioButton(const string&in label, bool active)", t: "f", d: "押したフレームだけ true。active で印を付ける。" },
+          { n: "Selectable", s: "bool Selectable(const string&in label, bool selected = false, bool spanAllColumns = false)", t: "f", d: "選べる行。押したフレームだけ true。spanAllColumns を true にすると表の行全体で選べる（同じ行の欄も触れる）。" },
+          { n: "ListBox", s: "int ListBox(const string&in label, int selected, const string[]&in items, int visibleRows = 6)", t: "f", d: "枠付きの一覧から選んだ番号。" },
+          { n: "Popup", s: "int Popup(const string&in label, int selected, const string[]&in options)", t: "f", d: "プルダウンで選んだ番号。" },
+          { n: "Foldout", s: "bool Foldout(const string&in label, bool defaultOpen = true)", t: "f", d: "開閉する見出し。開いていれば true（中身は if の中に書く。End は要らない）。" }
+        ]
+      },
+      {
+        title: "値の入力", members: [
           { n: "IntField", s: "int IntField(const string&in label, int value)", t: "f", d: "整数（左右のドラッグか、ダブルクリックで打ち込み）。" },
           { n: "FloatField", s: "float FloatField(const string&in label, float value)", t: "f", d: "小数。" },
-          { n: "TextField", s: "string TextField(const string&in label, const string&in value)", t: "f", d: "文字列。" },
+          { n: "TextField", s: "string TextField(const string&in label, const string&in value)", t: "f", d: "文字列 1 行。" },
+          { n: "TextArea", s: "string TextArea(const string&in label, const string&in value, float height = 0)", t: "f", d: "複数行の文字列。height が 0 なら 5 行分。" },
           { n: "IntSlider", s: "int IntSlider(const string&in label, int value, int min, int max)", t: "f", d: "範囲のある整数。" },
           { n: "Slider", s: "float Slider(const string&in label, float value, float min, float max)", t: "f", d: "範囲のある小数。" },
           { n: "Vector2Field", s: "Vector2 Vector2Field(const string&in label, const Vector2&in value)", t: "f", d: "" },
           { n: "Vector3Field", s: "Vector3 Vector3Field(const string&in label, const Vector3&in value)", t: "f", d: "" },
-          { n: "ColorField", s: "Vector4 ColorField(const string&in label, const Vector4&in value)", t: "f", d: "色見本。押すと色を選ぶ窓が開く。" },
-          { n: "Popup", s: "int Popup(const string&in label, int selected, const string[]&in options)", t: "f", d: "options から選んだ番号。" },
-          { n: "Foldout", s: "bool Foldout(const string&in label, bool defaultOpen = true)", t: "f", d: "開閉する見出し。開いていれば true（中身は if の中に書く）。" }
+          { n: "ColorField", s: "Vector4 ColorField(const string&in label, const Vector4&in value)", t: "f", d: "色見本。押すと色を選ぶ窓が開く。" }
         ]
       },
       {
-        title: "並べ方", members: [
-          { n: "enabled", s: "bool enabled", t: "rw", d: "false にすると、true に戻すまでの部品を押せなくする。OnGUI を抜けると true に戻る。" },
-          { n: "indentLevel", s: "int indentLevel", t: "rw", d: "字下げの段。OnGUI を抜けると 0 に戻る。" },
+        title: "並べ方と状態", members: [
+          { n: "enabled", s: "bool enabled", t: "rw", d: "false にすると、true に戻すまでの部品を押せなくする。OnGUI の初めは true。" },
+          { n: "changed", s: "bool changed", t: "rw", d: "値を入れる部品・Selectable・RadioButton が操作されると true。OnGUI の初めは false。区間の前で false にしておき、後で見る。" },
+          { n: "indentLevel", s: "int indentLevel", t: "rw", d: "字下げの段。枠・表・ポップアップの中では 0 から数え、閉じると戻る。" },
           { n: "PushID", s: "void PushID(int id)", t: "f", d: "PopID までの部品の ID に id を混ぜる（繰り返しの中で同じラベルを使うとき）。文字列を渡す形もある。" },
-          { n: "PopID", s: "void PopID()", t: "f", d: "PushID を戻す。戻し忘れは OnGUI を抜けるときに戻る。" }
+          { n: "PopID", s: "void PopID()", t: "f", d: "PushID を戻す。範囲の中で戻し忘れたものは、範囲を閉じるときに戻る。" },
+          { n: "BeginGroup", s: "void BeginGroup()", t: "f", d: "EndGroup までを 1 つの部品として扱う（まとめて SameLine や Tooltip を付ける）。" },
+          { n: "EndGroup", s: "void EndGroup()", t: "f", d: "" },
+          { n: "BeginChild", s: "bool BeginChild(const string&in id, float width = 0, float height = 0, bool border = true)", t: "f", d: "スクロールする枠。width・height は 0 で残りいっぱい、負の値で右下から数えた余白。見えていれば true。" },
+          { n: "EndChild", s: "void EndChild()", t: "f", d: "" }
+        ]
+      },
+      {
+        title: "木とタブ", members: [
+          { n: "BeginTreeNode", s: "bool BeginTreeNode(const string&in label, bool defaultOpen = false, bool selected = false, bool leaf = false)", t: "f", d: "木の 1 段。矢印かダブルクリックで開閉し、開いていれば true。selected で選択の色、leaf で矢印の無い末端。選ぶのは直後の <code>IsItemClicked()</code> で拾う。" },
+          { n: "EndTreeNode", s: "void EndTreeNode()", t: "f", d: "" },
+          { n: "BeginTabBar", s: "bool BeginTabBar(const string&in id)", t: "f", d: "タブの並び。" },
+          { n: "EndTabBar", s: "void EndTabBar()", t: "f", d: "" },
+          { n: "BeginTabItem", s: "bool BeginTabItem(const string&in label)", t: "f", d: "タブ 1 つ。選ばれていれば true。" },
+          { n: "EndTabItem", s: "void EndTabItem()", t: "f", d: "" }
+        ]
+      },
+      {
+        title: "表", members: [
+          { n: "BeginTable", s: "bool BeginTable(const string&in id, int columns, int flags = EditorGUI::TableFlags::Default, float height = 0)", t: "f", d: "表。flags は <code>EditorGUI::TableFlags::</code> の <code>Borders</code>（線）・<code>RowBackground</code>（行の色を交互に）・<code>Resizable</code>（列の幅を変えられる）・<code>Sortable</code>（見出しで並べ替え）・<code>ScrollY</code>（height の高さでスクロール）を | でつなぐ。<code>Default</code> は線・行の色・幅の変更。" },
+          { n: "EndTable", s: "void EndTable()", t: "f", d: "" },
+          { n: "TableSetupColumn", s: "void TableSetupColumn(const string&in label, float width = 0)", t: "f", d: "列の見出し。width を渡すとその幅で固定、0 なら残りを分け合う。" },
+          { n: "TableSetupScrollFreeze", s: "void TableSetupScrollFreeze(int columns, int rows)", t: "f", d: "スクロールしても動かさない左の列と上の行の数（見出しの固定は 0, 1）。" },
+          { n: "TableHeadersRow", s: "void TableHeadersRow()", t: "f", d: "見出しの行を描く。" },
+          { n: "TableNextRow", s: "void TableNextRow()", t: "f", d: "次の行へ。" },
+          { n: "TableNextColumn", s: "bool TableNextColumn()", t: "f", d: "次の列へ（見えていれば true）。" },
+          { n: "TableSetColumnIndex", s: "bool TableSetColumnIndex(int column)", t: "f", d: "列の番号へ移る。" },
+          { n: "IsTableSortChanged", s: "bool IsTableSortChanged()", t: "f", d: "見出しが押されて並べ替えが変わったか（一度 true を返すと false に戻る）。" },
+          { n: "GetTableSortColumn", s: "int GetTableSortColumn()", t: "f", d: "並べ替える列の番号（無ければ -1）。" },
+          { n: "IsTableSortAscending", s: "bool IsTableSortAscending()", t: "f", d: "小さい順か。" }
+        ]
+      },
+      {
+        title: "一覧とポップアップ", members: [
+          { n: "BeginListBox", s: "bool BeginListBox(const string&in label, float height = 0)", t: "f", d: "枠付きの一覧。中に Selectable などを並べる。" },
+          { n: "EndListBox", s: "void EndListBox()", t: "f", d: "" },
+          { n: "OpenPopup", s: "void OpenPopup(const string&in id)", t: "f", d: "id のポップアップを開く（ボタンを押したときなどに呼ぶ）。" },
+          { n: "BeginPopup", s: "bool BeginPopup(const string&in id)", t: "f", d: "開いていれば true。外を押すと閉じる。" },
+          { n: "BeginPopupModal", s: "bool BeginPopupModal(const string&in title)", t: "f", d: "確認ダイアログ。画面の中央に出て、閉じるまでほかを触れなくする。" },
+          { n: "BeginPopupContextItem", s: "bool BeginPopupContextItem(const string&in id = \"\")", t: "f", d: "直前の部品を右クリックで開くメニュー。直前の部品が文字だけ（ID が無い）なら id を渡す。" },
+          { n: "BeginPopupContextWindow", s: "bool BeginPopupContextWindow(const string&in id = \"\")", t: "f", d: "ウィンドウの何も無い所を右クリックで開くメニュー。" },
+          { n: "EndPopup", s: "void EndPopup()", t: "f", d: "BeginPopup〜 のどれとも組にする。" },
+          { n: "CloseCurrentPopup", s: "void CloseCurrentPopup()", t: "f", d: "今のポップアップを閉じる（中で呼ぶ）。" },
+          { n: "BeginMenu", s: "bool BeginMenu(const string&in label, bool enabled = true)", t: "f", d: "ポップアップの中のサブメニュー。" },
+          { n: "EndMenu", s: "void EndMenu()", t: "f", d: "" },
+          { n: "MenuItem", s: "bool MenuItem(const string&in label, const string&in shortcut = \"\", bool checked = false, bool enabled = true)", t: "f", d: "メニューの項目。選んだフレームだけ true。shortcut は右に出す文字（キーは割り当てない）。" }
+        ]
+      },
+      {
+        title: "部品・ウィンドウの状態", members: [
+          { n: "IsItemHovered", s: "bool IsItemHovered()", t: "f", d: "直前の部品にカーソルが乗っているか。" },
+          { n: "IsItemClicked", s: "bool IsItemClicked(MouseButton button = MouseButton::Left)", t: "f", d: "直前の部品が押されたか（木の段など、ボタン以外にも使える）。" },
+          { n: "IsItemActive", s: "bool IsItemActive()", t: "f", d: "直前の部品を操作中か（ドラッグ中・押している間）。" },
+          { n: "IsItemEdited", s: "bool IsItemEdited()", t: "f", d: "直前の部品の値がこのフレームで変わったか。" },
+          { n: "IsItemDeactivatedAfterEdit", s: "bool IsItemDeactivatedAfterEdit()", t: "f", d: "直前の部品の編集を終えた瞬間か（ドラッグを離した・Enter を押した）。" },
+          { n: "IsWindowHovered", s: "bool IsWindowHovered()", t: "f", d: "このウィンドウ（中の枠も含む）にカーソルが乗っているか。" },
+          { n: "IsWindowFocused", s: "bool IsWindowFocused()", t: "f", d: "このウィンドウが選ばれているか。" }
+        ]
+      },
+      {
+        title: "マウスとキー", members: [
+          { n: "IsMouseDown", s: "bool IsMouseDown(MouseButton button = MouseButton::Left)", t: "f", d: "ボタンを押しているか。" },
+          { n: "IsMouseClicked", s: "bool IsMouseClicked(MouseButton button = MouseButton::Left)", t: "f", d: "このフレームで押したか。" },
+          { n: "IsMouseDoubleClicked", s: "bool IsMouseDoubleClicked(MouseButton button = MouseButton::Left)", t: "f", d: "ダブルクリックしたか。" },
+          { n: "IsMouseReleased", s: "bool IsMouseReleased(MouseButton button = MouseButton::Left)", t: "f", d: "このフレームで離したか。" },
+          { n: "IsMouseDragging", s: "bool IsMouseDragging(MouseButton button = MouseButton::Left)", t: "f", d: "押したまま少し動かしたか。" },
+          { n: "GetMouseDragDelta", s: "Vector2 GetMouseDragDelta(MouseButton button = MouseButton::Left)", t: "f", d: "押した位置からの移動量（ピクセル）。" },
+          { n: "GetMouseWheel", s: "float GetMouseWheel()", t: "f", d: "このフレームのホイールの量（奥へ回すと正）。" },
+          { n: "IsKeyPressed", s: "bool IsKeyPressed(Key key, bool repeat = true)", t: "f", d: "キーを押したか（repeat が true なら押し続けると繰り返す）。このウィンドウが選ばれていて、文字を打っていない間だけ読める。" },
+          { n: "IsKeyDown", s: "bool IsKeyDown(Key key)", t: "f", d: "キーを押しているか。" },
+          { n: "IsKeyReleased", s: "bool IsKeyReleased(Key key)", t: "f", d: "キーを離したか。" },
+          { n: "ctrl", s: "bool ctrl", t: "ro", d: "Ctrl を押しているか（Shift は <code>shift</code>、Alt は <code>alt</code>）。" }
         ]
       },
       {
@@ -8451,9 +8632,7 @@ class HelloWindow : EditorWindow
           { n: "DrawLine", s: "void DrawLine(const Vector2&in from, const Vector2&in to, const Vector4&in color, float thickness = 1)", t: "f", d: "線。" },
           { n: "DrawText", s: "void DrawText(const Vector2&in position, const string&in text, const Vector4&in color)", t: "f", d: "文字。" },
           { n: "IsCanvasHovered", s: "bool IsCanvasHovered()", t: "f", d: "最後の Canvas の上にマウスがあるか。" },
-          { n: "GetCanvasMousePosition", s: "Vector2 GetCanvasMousePosition()", t: "f", d: "最後の Canvas の左上からのマウスの位置。" },
-          { n: "IsMouseDown", s: "bool IsMouseDown(int button = 0)", t: "f", d: "マウスのボタンを押しているか（0 左・1 右・2 中）。" },
-          { n: "IsMouseClicked", s: "bool IsMouseClicked(int button = 0)", t: "f", d: "このフレームでボタンを押したか。" }
+          { n: "GetCanvasMousePosition", s: "Vector2 GetCanvasMousePosition()", t: "f", d: "最後の Canvas の左上からのマウスの位置。" }
         ]
       }
     ],
@@ -8463,12 +8642,17 @@ class HelloWindow : EditorWindow
         code: `
 int width = 16;
 bool showGrid = true;
+int mode = 0;
 
 void OnGUI()
 {
     EditorGUI::Header("大きさ");
     width = EditorGUI::IntSlider("幅", width, 8, 64);
+    EditorGUI::Tooltip("横に並べるマスの数");
     showGrid = EditorGUI::Toggle("マス目を出す", showGrid);
+    mode = EditorGUI::RadioButton("迷路", mode, 0);
+    EditorGUI::SameLine();
+    mode = EditorGUI::RadioButton("洞窟", mode, 1);
 
     EditorGUI::enabled = showGrid;
     if (EditorGUI::Button("作る", -1)) {

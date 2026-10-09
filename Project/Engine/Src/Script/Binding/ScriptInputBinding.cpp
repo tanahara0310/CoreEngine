@@ -193,6 +193,11 @@ namespace CoreEngine::Script
             { "Space", DIK_SPACE }, { "Enter", DIK_RETURN }, { "Escape", DIK_ESCAPE },
             { "Tab", DIK_TAB }, { "Shift", DIK_LSHIFT }, { "Ctrl", DIK_LCONTROL },
             { "Left", DIK_LEFT }, { "Right", DIK_RIGHT }, { "Up", DIK_UP }, { "Down", DIK_DOWN },
+            { "Alt", DIK_LMENU }, { "Backspace", DIK_BACK }, { "Delete", DIK_DELETE }, { "Insert", DIK_INSERT },
+            { "Home", DIK_HOME }, { "End", DIK_END }, { "PageUp", DIK_PRIOR }, { "PageDown", DIK_NEXT },
+            { "F1", DIK_F1 }, { "F2", DIK_F2 }, { "F3", DIK_F3 }, { "F4", DIK_F4 }, { "F5", DIK_F5 },
+            { "F6", DIK_F6 }, { "F7", DIK_F7 }, { "F8", DIK_F8 }, { "F9", DIK_F9 }, { "F10", DIK_F10 },
+            { "F11", DIK_F11 }, { "F12", DIK_F12 },
         };
 
         /// @brief キーの番号を確かめてから問い合わせ先を返す

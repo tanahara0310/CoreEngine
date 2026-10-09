@@ -188,6 +188,8 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Editor\Inspector\ComponentInspectors.cpp" />
     <ClCompile Include="Engine\Src\Editor\Script\ScriptTemplate.cpp" />
     <ClCompile Include="Engine\Src\Editor\Script\EditorGUIBinding.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Script\EditorGUIContainerBinding.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Script\EditorGUIState.cpp" />
     <ClCompile Include="Engine\Src\Editor\Script\EditorSceneBinding.cpp" />
     <ClCompile Include="Engine\Src\Editor\Script\ScriptEditorExtensions.cpp" />
     <ClCompile Include="Engine\Src\Editor\Export\GameExportDialog.cpp" />
@@ -1183,6 +1185,7 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Editor\Inspector\ComponentInspectors.h" />
     <ClInclude Include="Engine\Src\Editor\Script\ScriptTemplate.h" />
     <ClInclude Include="Engine\Src\Editor\Script\EditorScriptBinding.h" />
+    <ClInclude Include="Engine\Src\Editor\Script\EditorGUIState.h" />
     <ClInclude Include="Engine\Src\Editor\Script\ScriptEditorExtensions.h" />
     <ClInclude Include="Engine\Src\Editor\Export\GameExportDialog.h" />
     <ClInclude Include="Engine\Src\Editor\Export\GameExporter.h" />

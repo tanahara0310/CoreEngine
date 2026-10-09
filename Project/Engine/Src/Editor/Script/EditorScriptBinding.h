@@ -16,7 +16,7 @@ namespace CoreEngine::Editor::ScriptBinding
     bool RegisterEditorScene(asIScriptEngine* engine);
 
     /// @brief スクリプトの OnGUI を呼ぶ間、EditorGUI を使えるようにする
-    /// @details 抜けるときに、スクリプトが戻し忘れた enabled・indentLevel・PushID を戻す。
+    /// @details 抜けるときに、スクリプトが閉じ忘れた Begin〜 の範囲・PushID・字下げを戻す。
     class GUIScope
     {
     public:
