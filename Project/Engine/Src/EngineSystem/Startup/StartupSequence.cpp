@@ -5,6 +5,10 @@
 #include "Utility/Profiler/CpuProfiler.h"
 
 #include <algorithm>
+#include <charconv>
+#include <format>
+#include <fstream>
+#include <map>
 
 namespace CoreEngine
 {
@@ -88,12 +92,127 @@ namespace CoreEngine
 
     float StartupSequence::GetProgress() const
     {
-        if (tasks_.empty()) {
+        if (tasks_.empty() || !HasNext()) {
             return 1.0f;
         }
-        // 待っているステップの進み具合は、そのステップ 1 つ分の幅へ写す
-        const float pending = HasNext() ? std::clamp(tasks_[cursor_].task->GetProgress(), 0.0f, 1.0f) : 0.0f;
-        return std::clamp((static_cast<float>(cursor_) + pending) / static_cast<float>(tasks_.size()), 0.0f, 1.0f);
+        const float pending = std::clamp(tasks_[cursor_].task->GetProgress(), 0.0f, 1.0f);
+
+        if (estimates_.size() != tasks_.size()) {
+            // 待っているステップの進み具合は、そのステップ 1 つ分の幅へ写す
+            return std::clamp((static_cast<float>(cursor_) + pending) / static_cast<float>(tasks_.size()), 0.0f, 1.0f);
+        }
+
+        // 済んだステップは前回の時間ぶん進める
+        double done = 0.0;
+        for (size_t i = 0; i < cursor_; ++i) {
+            done += estimates_[i];
+        }
+
+        // 今のステップは、報告された進み具合と経過時間の大きい方で進める。
+        // 経過時間で進めるのは前回の時間の 9 割までにして、次のステップの幅へはみ出さない
+        constexpr double kElapsedCap = 0.9;
+        const Entry& entry = tasks_[cursor_];
+        const double estimate = estimates_[cursor_];
+        double inStep = pending * estimate;
+        if (entry.calls > 0) {
+            const double elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - entry.firstCall).count();
+            inStep = (std::max)(inStep, (std::min)(elapsed, estimate * kElapsedCap));
+        }
+        return std::clamp(static_cast<float>((done + inStep) / estimateTotal_), 0.0f, 1.0f);
+    }
+
+    namespace
+    {
+        // 時間の記録は「[ステップ数]」の行のあとに「秒<TAB>表示名」を 1 行ずつ並べる。
+        // ビルド構成でステップの数が変わるので、数ごとに分けて持つ
+        using TimingBlocks = std::map<size_t, std::vector<std::string>>;
+
+        TimingBlocks ReadTimingBlocks(const std::filesystem::path& path)
+        {
+            TimingBlocks blocks;
+            std::ifstream in(path, std::ios::binary);
+            if (!in) {
+                return blocks;
+            }
+            std::vector<std::string>* current = nullptr;
+            std::string line;
+            while (std::getline(in, line)) {
+                if (!line.empty() && line.back() == '\r') {
+                    line.pop_back();
+                }
+                if (line.size() >= 3 && line.front() == '[' && line.back() == ']') {
+                    size_t count = 0;
+                    const char* begin = line.data() + 1;
+                    const char* end = line.data() + line.size() - 1;
+                    const auto [ptr, ec] = std::from_chars(begin, end, count);
+                    current = (ec == std::errc{} && ptr == end) ? &blocks[count] : nullptr;
+                    if (current) {
+                        current->clear();
+                    }
+                    continue;
+                }
+                if (current && !line.empty()) {
+                    current->push_back(line);
+                }
+            }
+            return blocks;
+        }
+    }
+
+    void StartupSequence::LoadTimings(const std::filesystem::path& path)
+    {
+        estimates_.clear();
+        estimateTotal_ = 0.0;
+
+        const TimingBlocks blocks = ReadTimingBlocks(path);
+        const auto found = blocks.find(tasks_.size());
+        if (found == blocks.end() || found->second.size() != tasks_.size()) {
+            return;
+        }
+
+        // 0 秒のステップがあっても割合が崩れないよう、1 ステップの下限を置く
+        constexpr double kMinSeconds = 0.005;
+        std::vector<double> estimates;
+        estimates.reserve(tasks_.size());
+        for (const std::string& line : found->second) {
+            double seconds = 0.0;
+            const size_t tab = line.find('\t');
+            const char* end = line.data() + (tab == std::string::npos ? line.size() : tab);
+            const auto [ptr, ec] = std::from_chars(line.data(), end, seconds);
+            if (ec != std::errc{} || !(seconds >= 0.0)) {
+                return;
+            }
+            estimates.push_back((std::max)(seconds, kMinSeconds));
+            estimateTotal_ += estimates.back();
+        }
+        estimates_ = std::move(estimates);
+    }
+
+    void StartupSequence::SaveTimings(const std::filesystem::path& path) const
+    {
+        if (HasNext()) {
+            return;
+        }
+
+        TimingBlocks blocks = ReadTimingBlocks(path);
+        std::vector<std::string>& lines = blocks[tasks_.size()];
+        lines.clear();
+        for (const Entry& entry : tasks_) {
+            lines.push_back(std::format("{:.4f}\t{}", entry.seconds, entry.executedLabel));
+        }
+
+        std::error_code ec;
+        std::filesystem::create_directories(path.parent_path(), ec);
+        std::ofstream out(path, std::ios::binary | std::ios::trunc);
+        if (!out) {
+            return;
+        }
+        for (const auto& [count, block] : blocks) {
+            out << '[' << count << "]\n";
+            for (const std::string& line : block) {
+                out << line << '\n';
+            }
+        }
     }
 
     void StartupSequence::LogSummary() const

@@ -68,8 +68,7 @@ protected:
 private:
     /// @brief ローディング画面を出しながら起動シーケンスを最後まで進める
     /// @param sequence 実行する起動シーケンス
-    /// @param config   エンジン設定（ローディング画面の見出しに使う）
-    void RunStartupSequence(StartupSequence& sequence, const EngineConfig& config);
+    void RunStartupSequence(StartupSequence& sequence);
 
     // ──────────────────────────────────────────────────────────
     // エンジン層の汎用データ（どのゲームでも使う）

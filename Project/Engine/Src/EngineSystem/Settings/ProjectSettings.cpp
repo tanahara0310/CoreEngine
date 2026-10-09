@@ -14,6 +14,7 @@ namespace CoreEngine
         constexpr const char* kSettingsPath = "Application/Config/EngineSettings/Project.json";
         constexpr const char* kNameKey = "name";
         constexpr const char* kInitialSceneKey = "initialScene";
+        constexpr const char* kSplashImageKey = "splashImage";
         constexpr const char* kVersionKey = "version";
         constexpr const char* kVersion = "1.0";
     }
@@ -37,6 +38,7 @@ namespace CoreEngine
     {
         name_.clear();
         initialSceneName_.clear();
+        splashImage_.clear();
 
         const std::filesystem::path path = ProjectPaths::Resolve(kSettingsPath);
         std::ifstream in(path, std::ios::binary);
@@ -57,6 +59,10 @@ namespace CoreEngine
             found != root.end() && found->is_string()) {
             initialSceneName_ = found->get<std::string>();
         }
+        if (const auto found = root.find(kSplashImageKey);
+            found != root.end() && found->is_string()) {
+            splashImage_ = found->get<std::string>();
+        }
     }
 
     bool ProjectSettings::SetInitialSceneName(std::string sceneName)
@@ -65,6 +71,15 @@ namespace CoreEngine
             return true;
         }
         initialSceneName_ = std::move(sceneName);
+        return Save();
+    }
+
+    bool ProjectSettings::SetSplashImage(std::string path)
+    {
+        if (splashImage_ == path) {
+            return true;
+        }
+        splashImage_ = std::move(path);
         return Save();
     }
 
@@ -88,6 +103,11 @@ namespace CoreEngine
         }
         root[kVersionKey] = kVersion;
         root[kInitialSceneKey] = initialSceneName_;
+        if (splashImage_.empty()) {
+            root.erase(kSplashImageKey);
+        } else {
+            root[kSplashImageKey] = splashImage_;
+        }
 
         std::ofstream out(path, std::ios::binary);
         if (!out) {

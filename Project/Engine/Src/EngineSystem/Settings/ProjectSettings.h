@@ -25,6 +25,13 @@ namespace CoreEngine
         /// @return 保存できたら true
         bool SetInitialSceneName(std::string sceneName);
 
+        /// @brief 起動時のローディング画面に敷く画像（`Application/…` か `Engine/…` の綴り。空ならエンジンの既定）
+        const std::string& GetSplashImage() const { return splashImage_; }
+
+        /// @brief ローディング画面の画像を決めて保存する（空でエンジンの既定へ戻す）
+        /// @return 保存できたら true
+        bool SetSplashImage(std::string path);
+
         /// @brief ファイルへ書き出す（ファイルにある他の項目は残す）
         bool Save() const;
 
@@ -39,5 +46,6 @@ namespace CoreEngine
 
         std::string name_;
         std::string initialSceneName_;
+        std::string splashImage_;
     };
 }

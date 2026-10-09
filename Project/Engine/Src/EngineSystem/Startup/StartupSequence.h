@@ -1,5 +1,6 @@
 #pragma once
 #include <chrono>
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <string>
@@ -35,7 +36,16 @@ namespace CoreEngine
         std::string GetNextLabel() const;
 
         /// @brief 完了率 0.0〜1.0（待っているステップの進み具合を含む）
+        /// @details 前回の時間を読めていれば、各ステップを前回かかった時間の割合で数える。
+        ///          読めていなければステップの数で割る。
         float GetProgress() const;
+
+        /// @brief 前回の起動で記録した各ステップの時間を読む（進捗の重みに使う）
+        /// @note ステップの数が同じ記録だけを使う。ログの初期化より前に呼ぶので、読めなくても何も出さない
+        void LoadTimings(const std::filesystem::path& path);
+
+        /// @brief 今回の各ステップの時間を書く（ステップの数が違う記録はそのまま残す）
+        void SaveTimings(const std::filesystem::path& path) const;
 
         size_t GetCompletedCount() const { return cursor_; }
         size_t GetTotalCount() const { return tasks_.size(); }
@@ -61,6 +71,8 @@ namespace CoreEngine
         };
 
         std::vector<Entry> tasks_;
+        std::vector<double> estimates_;   // 前回の各ステップの時間（秒）。空なら重みを使わない
+        double estimateTotal_ = 0.0;
         size_t cursor_ = 0;
         double totalSeconds_ = 0.0;
         double totalCpuSeconds_ = 0.0;
