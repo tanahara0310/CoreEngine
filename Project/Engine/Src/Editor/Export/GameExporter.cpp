@@ -5,6 +5,7 @@
 
 #include "Editor/Export/ShaderCooker.h"
 #include "Editor/Export/TextureCooker.h"
+#include "EngineSystem/Startup/SplashScreen.h"
 #include "Graphics/Texture/Cook/CookedTexture.h"
 #include "Utility/Path/ProjectPaths.h"
 
@@ -132,6 +133,12 @@ namespace CoreEngine::Editor
             if (ec) {
                 result.error = ToUtf8(folder.from) + " を読めませんでした";
                 return result;
+            }
+        }
+        // ローディング画面の画像は D3D12 より前に WIC で読むので、DDS にした物とは別に元のまま写す
+        if (const std::filesystem::path splashImage = SplashScreen::ResolveImagePath(); !splashImage.empty()) {
+            if (const std::filesystem::path relative = ProjectPaths::MakeRelative(splashImage); !relative.empty()) {
+                items.push_back({ splashImage, destination / relative });
             }
         }
         const std::vector<CookTarget> targets = TextureCooker::PlanTargets(textures);

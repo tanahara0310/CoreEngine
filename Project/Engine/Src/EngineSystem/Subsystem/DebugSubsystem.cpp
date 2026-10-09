@@ -42,6 +42,8 @@
 #include "Editor/Launcher/ProjectThumbnails.h"
 #include "Utility/Path/ProjectPaths.h"
 #include <algorithm>
+#include <cwctype>
+#include <filesystem>
 #include <string>
 #include <vector>
 #include <imgui.h>
@@ -165,6 +167,72 @@ namespace CoreEngine
             } else if (missing) {
                 ImGui::TextColored(Editor::Theme::kError,
                     "このシーンが見つかりません。先頭のシーンを開きます");
+            }
+        }
+
+        /// @brief ローディング画面に敷ける画像（プロジェクトの `Application/Assets` の下）を綴りで集める
+        std::vector<std::string> ListSplashImages()
+        {
+            std::vector<std::string> images;
+            std::error_code ec;
+            const std::filesystem::path root = ProjectPaths::Resolve("Application/Assets");
+            std::filesystem::recursive_directory_iterator it(root, ec);
+            for (; !ec && it != std::filesystem::recursive_directory_iterator(); it.increment(ec)) {
+                if (!it->is_regular_file(ec)) {
+                    continue;
+                }
+                std::wstring extension = it->path().extension().wstring();
+                std::transform(extension.begin(), extension.end(), extension.begin(),
+                    [](wchar_t c) { return static_cast<wchar_t>(std::towlower(c)); });
+                if (extension != L".png" && extension != L".jpg" && extension != L".jpeg" && extension != L".bmp") {
+                    continue;
+                }
+                const std::u8string relative = ProjectPaths::MakeRelative(it->path()).generic_u8string();
+                if (!relative.empty()) {
+                    images.emplace_back(relative.begin(), relative.end());
+                }
+            }
+            std::sort(images.begin(), images.end());
+            return images;
+        }
+
+        /// @brief 起動時のローディング画面に敷く画像を選ぶ欄
+        /// @details 実体は `Application/Config/EngineSettings/Project.json` の `splashImage`。
+        ///          候補の一覧は選択肢を開いたときに集め直す。
+        void DrawSplashSettings()
+        {
+            constexpr const char* kDefaultLabel = "エンジンの既定（沖縄ビーチ）";
+            static std::vector<std::string> candidates;
+            static bool listed = false;
+
+            ProjectSettings& settings = ProjectSettings::Get();
+            const std::string current = settings.GetSplashImage();
+
+            ImGui::Spacing();
+            if (ImGui::BeginCombo("ローディング画面の画像", current.empty() ? kDefaultLabel : current.c_str())) {
+                if (!listed) {
+                    candidates = ListSplashImages();
+                    listed = true;
+                }
+                if (ImGui::Selectable(kDefaultLabel, current.empty())) {
+                    settings.SetSplashImage({});
+                }
+                for (const std::string& image : candidates) {
+                    if (ImGui::Selectable(image.c_str(), image == current)) {
+                        settings.SetSplashImage(image);
+                    }
+                }
+                ImGui::EndCombo();
+            } else {
+                listed = false;
+            }
+
+            UI::Hint("起動中に出す画面の背景です。次の起動から使われ、書き出したゲームにも入ります。"
+                     "16:9 の画像（1920 × 1080 など）がちょうど収まり、ほかの比率は中央を切り抜きます。");
+
+            std::error_code ec;
+            if (!current.empty() && !std::filesystem::is_regular_file(ProjectPaths::Resolve(current), ec)) {
+                ImGui::TextColored(Editor::Theme::kError, "この画像が見つかりません。エンジンの既定の画像を使います");
             }
         }
     }
@@ -361,7 +429,10 @@ namespace CoreEngine
             .id = "Startup",
             .placement = Editor::PanelPlacement::SettingsSection,
             .group = Editor::PanelGroup::General,
-            .draw = [] { DrawStartupSettings(); },
+            .draw = [] {
+                DrawStartupSettings();
+                DrawSplashSettings();
+            },
             });
 
         // 当たり判定のレイヤーの名前（CVar で表せないのでプロジェクト設定が持つ）

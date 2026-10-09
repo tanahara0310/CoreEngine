@@ -28,11 +28,15 @@ namespace CoreEngine
         sequence.Add("ゲーム初期化", [this] { Initialize(); });
     }
 
-    void Framework::RunStartupSequence(StartupSequence& sequence, const EngineConfig& config)
+    void Framework::RunStartupSequence(StartupSequence& sequence)
     {
         // メインウィンドウはまだ非表示。この小さなウィンドウだけがメッセージを処理する
         SplashScreen splash;
-        splash.Show(winApp_->GetInstance(), config.GetWindowTitleWide());
+        splash.Show(winApp_->GetInstance(), ProjectSettings::Get().GetProjectName());
+
+        // 前回の各ステップの時間で進捗を数える（記録が無ければステップの数で割る）
+        const std::filesystem::path timingsPath = ProjectPaths::Intermediate("StartupTimings.txt");
+        sequence.LoadTimings(timingsPath);
 
         // 1 ステップが長い処理（シェーダのコンパイルなど）の内側からも再描画とメッセージ処理を走らせる。
         // 無いとステップ 1 つで 5 秒を超えた時点でローディング画面まで「応答なし」になる。
@@ -41,8 +45,9 @@ namespace CoreEngine
             ~SinkGuard() { StartupProgress::ClearSink(); }
         } sinkGuard;
 
-        StartupProgress::SetSink([&splash](const char* detail) {
+        StartupProgress::SetSink([&splash, &sequence](const char* detail) {
             splash.SetDetail(detail ? detail : "");
+            splash.SetProgress(sequence.GetProgress());
             splash.Pump();
             });
 
@@ -81,6 +86,7 @@ namespace CoreEngine
 
         // 各ステップの CPU 時間を残す。起動時間の回帰はこのログの差分で追う
         sequence.LogSummary();
+        sequence.SaveTimings(timingsPath);
 
         // シェーダキャッシュのヒット率。期待どおり無効化されたかはここで見る
         ShaderCacheStore::GetInstance().LogSummary();
@@ -163,7 +169,7 @@ namespace CoreEngine
             [this](StartupSequence& s) { BuildPreloadTasks(s); });
         BuildStartupTasks(sequence);   // ゲーム固有の初期化（派生クラスで実装）
 
-        RunStartupSequence(sequence, config);
+        RunStartupSequence(sequence);
 
         // 窓のタイトルを、開いているプロジェクトの名前にする（エディタでは頭にエンジンの名前を付ける）
         const std::wstring projectName = Logger::GetInstance().Utf8ToWide(ProjectSettings::Get().GetProjectName());
