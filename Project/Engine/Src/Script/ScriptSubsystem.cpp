@@ -60,6 +60,7 @@ namespace CoreEngine
         constexpr BaseScript kBaseScripts[] = {
             { "Engine/Templates/Scripts/ScriptComponent.as", "ScriptComponent.as" },
             { "Engine/Templates/Scripts/Editor/EditorWindow.as", "Editor/EditorWindow.as" },
+            { "Engine/Templates/Scripts/Editor/ComponentEditor.as", "Editor/ComponentEditor.as" },
         };
 
         /// 変更が落ち着いたと見なすまでの時間（エディタは 1 回の保存で何度も変更を出す）

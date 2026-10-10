@@ -22,6 +22,9 @@
     <ClCompile Include="Engine\Src\Editor\Script\EditorSceneViewBinding.cpp">
       <Filter>Engine\Src\Editor\Script</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Script\EditorGUIToolsBinding.cpp">
+      <Filter>Engine\Src\Editor\Script</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Script\EditorGUIState.cpp">
       <Filter>Engine\Src\Editor\Script</Filter>
     </ClCompile>
@@ -1323,6 +1326,9 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Math\Easing\EasingUtil.cpp">
       <Filter>Engine\Src\Math\Easing</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Math\Curve\KeyCurve.cpp">
+      <Filter>Engine\Src\Math\Curve</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Timer\GameTimer.cpp">
       <Filter>Engine\Src\Utility\Timer</Filter>
@@ -4392,6 +4398,9 @@
     </Filter>
     <Filter Include="Engine\Src\Math">
       <UniqueIdentifier>{10281AD7-3C0B-4D9F-9151-EAF58987FA64}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Math\Curve">
+      <UniqueIdentifier>{AADCEB4D-2B34-4155-99FB-D42CD359236B}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Math\Easing">
       <UniqueIdentifier>{A2BDB9FB-5057-4612-9EB0-B98B55503128}</UniqueIdentifier>

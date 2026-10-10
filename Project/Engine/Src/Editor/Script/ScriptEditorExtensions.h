@@ -4,6 +4,7 @@
 
 #include "Utility/Lifetime/ScopedRegistration.h"
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -17,6 +18,8 @@ class CScriptBuilder;
 
 namespace CoreEngine
 {
+    class GameObject;
+    class IComponent;
     class ScriptHost;
 }
 
@@ -63,6 +66,16 @@ namespace CoreEngine::Editor
             std::string section;
         };
 
+        /// @brief ComponentEditor を継いで [CustomEditor] を付けたクラス 1 つ
+        struct EditorClass
+        {
+            asITypeInfo* type = nullptr;
+            std::string className;
+
+            /// インスペクタを描くコンポーネントの型名
+            std::string componentType;
+        };
+
         /// @brief [MenuItem] を付けた関数 1 つ
         struct MenuFunction
         {
@@ -77,6 +90,9 @@ namespace CoreEngine::Editor
         /// @brief 開いているウィンドウ 1 つ
         struct Window;
 
+        /// @brief インスペクタを描くクラスのオブジェクト 1 つ（同じ型のコンポーネントすべてで使い回す）
+        struct ScriptComponentEditor;
+
         /// @brief エディタを閉じても残すウィンドウの値（ファイルの中身）
         struct Persisted;
 
@@ -88,6 +104,15 @@ namespace CoreEngine::Editor
 
         /// @brief シーンビューへ、スクリプトのコンポーネントのギズモと、開いているウィンドウの OnSceneGUI を描く
         void DrawSceneView(const SceneViewContext& context);
+
+        /// @brief コンポーネントのインスペクタの中身を、スクリプトの OnInspectorGUI で描く
+        /// @return 値を変えたら true
+        bool DrawInspector(ScriptComponentEditor& editor, GameObject& object, IComponent& component,
+                           const std::function<bool()>& drawDefault);
+
+        /// @brief インスペクタを描くクラスのメソッドを、target と component を入れて呼ぶ（止まったら false）
+        bool CallEditorMethod(ScriptComponentEditor& editor, asIScriptFunction* method, const char* methodName,
+                              GameObject& object, IComponent& component);
 
         /// @brief メソッドを呼ぶ（止まったら false）
         bool CallWindowMethod(Window& window, asIScriptFunction* method, const char* methodName);
@@ -107,8 +132,10 @@ namespace CoreEngine::Editor
         /// 組み上がったばかりのモジュールから集めたもの（差し替えた後に使う）
         std::vector<WindowClass> pendingWindows_;
         std::vector<MenuFunction> pendingMenus_;
+        std::vector<EditorClass> pendingEditors_;
 
         std::vector<std::unique_ptr<Window>> windows_;
+        std::vector<std::unique_ptr<ScriptComponentEditor>> editors_;
         std::vector<ScopedRegistration> menuRegistrations_;
         ScopedRegistration sceneView_;
 

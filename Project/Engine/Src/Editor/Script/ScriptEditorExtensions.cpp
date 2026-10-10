@@ -5,9 +5,12 @@
 
 #include "Editor/ImGui/EditorTheme.h"
 #include "Editor/Panel/EditorMenuRegistry.h"
+#include "Editor/Inspector/ComponentInspectors.h"
 #include "Editor/Panel/EditorPanelRegistry.h"
 #include "Editor/Scene/SceneViewTools.h"
+#include "Editor/Script/EditorGUIState.h"
 #include "Editor/Script/EditorScriptBinding.h"
+#include "Script/Binding/GameObjectBinding.h"
 #include "Script/Metadata/MetadataParser.h"
 #include "Script/ScriptComponent.h"
 #include "Script/ScriptHost.h"
@@ -34,6 +37,9 @@ namespace CoreEngine::Editor
     {
         /// ウィンドウの基底クラスの名前
         constexpr const char* kWindowBaseName = "EditorWindow";
+
+        /// インスペクタを描くクラスの基底クラスの名前
+        constexpr const char* kComponentEditorBaseName = "ComponentEditor";
 
         /// エディタだけで読むスクリプトのフォルダ（スクリプトのフォルダからの相対）
         constexpr std::string_view kEditorFolder = "Editor/";
@@ -390,12 +396,56 @@ namespace CoreEngine::Editor
             return {};
         }
 
-        /// @brief ウィンドウのクラスが EditorWindow の関数を書き換えていれば、その関数（書き換えていなければ nullptr）
-        asIScriptFunction* FindOverride(const asITypeInfo& type, const char* declaration)
+        /// @brief 属性の並びから [CustomEditor("型名")] の型名を読む
+        /// @param owner ログに出すクラス名
+        /// @return 付いていなければ空
+        std::string ReadCustomEditor(const std::vector<std::string>& blocks, const std::string& owner)
+        {
+            std::vector<Script::MetadataAttribute> attributes;
+            std::string error;
+            for (const std::string& block : blocks) {
+                attributes.clear();
+                if (!Script::ParseMetadata(block, attributes, error)) {
+                    continue;
+                }
+                for (const Script::MetadataAttribute& attribute : attributes) {
+                    if (attribute.name != "CustomEditor") {
+                        continue;
+                    }
+                    if (attribute.arguments.size() != 1 || attribute.arguments.front().empty()) {
+                        LogScript(LogLevel::Warn, owner + ": [CustomEditor] の引数は、インスペクタを描くコンポーネントの型名 1 つです");
+                        return {};
+                    }
+                    return attribute.arguments.front();
+                }
+            }
+            return {};
+        }
+
+        /// @brief スクリプトのオブジェクトのハンドルのメンバ変数を差し替える（handle の参照を 1 つ引き取る）
+        void StoreHandleProperty(asIScriptObject& object, std::string_view name, void* handle)
+        {
+            asIScriptEngine* const engine = object.GetEngine();
+            for (asUINT i = 0; i < object.GetPropertyCount(); ++i) {
+                if (name != object.GetPropertyName(i)) {
+                    continue;
+                }
+                auto** const slot = static_cast<void**>(object.GetAddressOfProperty(i));
+                asITypeInfo* const handleType = engine->GetTypeInfoById(object.GetPropertyTypeId(i));
+                if (*slot && handleType) {
+                    engine->ReleaseScriptObject(*slot, handleType);
+                }
+                *slot = handle;
+                return;
+            }
+        }
+
+        /// @brief クラスが基底クラス（EditorWindow・ComponentEditor）の関数を書き換えていれば、その関数（書き換えていなければ nullptr）
+        asIScriptFunction* FindOverride(const asITypeInfo& type, const char* declaration, std::string_view baseName = kWindowBaseName)
         {
             asIScriptFunction* const own = type.GetMethodByDecl(declaration, false);
             for (const asITypeInfo* base = type.GetBaseType(); base; base = base->GetBaseType()) {
-                if (std::string_view(base->GetName()) == kWindowBaseName) {
+                if (std::string_view(base->GetName()) == baseName) {
                     return base->GetMethodByDecl(declaration, false) == own ? nullptr : own;
                 }
             }
@@ -483,6 +533,27 @@ namespace CoreEngine::Editor
         json values = json::object();
     };
 
+    struct ScriptEditorExtensions::ScriptComponentEditor
+    {
+        EditorClass editorClass;
+        asIScriptObject* object = nullptr;
+        asIScriptFunction* onInspectorGUI = nullptr;
+        asIScriptFunction* onSceneGUI = nullptr;
+
+        /// 例外などで止まったか（止まったら既定の欄を出す）
+        bool stopped = false;
+
+        ScopedRegistration inspector;
+
+        ~ScriptComponentEditor()
+        {
+            inspector.Reset();
+            if (object) {
+                object->Release();
+            }
+        }
+    };
+
     struct ScriptEditorExtensions::SavedObjects
     {
         /// クラス名ごとの、メンバ変数の名前と値
@@ -550,6 +621,30 @@ namespace CoreEngine::Editor
     {
         pendingWindows_.clear();
         pendingMenus_.clear();
+        pendingEditors_.clear();
+
+        // インスペクタを描くクラス（ComponentEditor を継いで [CustomEditor] を付けたもの）
+        asITypeInfo* const editorBase = module.GetTypeInfoByName(kComponentEditorBaseName);
+        for (asUINT i = 0; i < module.GetObjectTypeCount(); ++i) {
+            asITypeInfo* const type = module.GetObjectTypeByIndex(i);
+            if (!type || type == editorBase) {
+                continue;
+            }
+            const std::string className = type->GetName();
+            const std::string componentType = ReadCustomEditor(builder.GetMetadataForType(type->GetTypeId()), className);
+            const bool isEditor = editorBase && type->DerivesFrom(editorBase) && (type->GetFlags() & asOBJ_ABSTRACT) == 0;
+            if (!isEditor) {
+                if (!componentType.empty()) {
+                    LogScript(LogLevel::Warn, className + ": [CustomEditor] は ComponentEditor を継いだクラスに付けます");
+                }
+                continue;
+            }
+            if (componentType.empty()) {
+                LogScript(LogLevel::Warn, className + ": ComponentEditor を継いだクラスには [CustomEditor(\"型名\")] を付けます");
+                continue;
+            }
+            pendingEditors_.push_back(EditorClass{ type, className, componentType });
+        }
 
         asITypeInfo* const base = module.GetTypeInfoByName(kWindowBaseName);
         for (asUINT i = 0; i < module.GetObjectTypeCount(); ++i) {
@@ -596,6 +691,7 @@ namespace CoreEngine::Editor
     void ScriptEditorExtensions::OnModuleDiscarding()
     {
         menuRegistrations_.clear();
+        editors_.clear();
 
         for (const std::unique_ptr<Window>& window : windows_) {
             if (!window->object) {
@@ -778,6 +874,27 @@ namespace CoreEngine::Editor
         savedObjects_.reset();
         pendingWindows_.clear();
 
+        // インスペクタを描くクラスのオブジェクトを作り、型名に登録する
+        editors_.clear();
+        for (const EditorClass& editorClass : pendingEditors_) {
+            auto editor = std::make_unique<ScriptComponentEditor>();
+            editor->editorClass = editorClass;
+            editor->object = static_cast<asIScriptObject*>(editorClass.type->GetEngine()->CreateScriptObject(editorClass.type));
+            if (!editor->object) {
+                LogScript(LogLevel::Error, "インスペクタのクラス " + editorClass.className + " を作れませんでした");
+                continue;
+            }
+            editor->onInspectorGUI = editorClass.type->GetMethodByDecl("void OnInspectorGUI()");
+            editor->onSceneGUI = FindOverride(*editorClass.type, "void OnSceneGUI()", kComponentEditorBaseName);
+            ScriptComponentEditor* const raw = editor.get();
+            editor->inspector = ComponentInspectors::RegisterCustomDraw(editorClass.componentType,
+                [this, raw](GameObject& object, IComponent& component, const std::function<bool()>& drawDefault) {
+                    return DrawInspector(*raw, object, component, drawDefault);
+                });
+            editors_.push_back(std::move(editor));
+        }
+        pendingEditors_.clear();
+
         // メニューを登録し直す（ウィンドウは開閉、関数は呼び出し）
         for (const std::unique_ptr<Window>& window : windows_) {
             const std::string panelId = window->panelId;
@@ -835,10 +952,12 @@ namespace CoreEngine::Editor
             window->enabled = false;
         }
         windows_.clear();
+        editors_.clear();
         savedProperties_.clear();
         savedObjects_.reset();
         pendingWindows_.clear();
         pendingMenus_.clear();
+        pendingEditors_.clear();
     }
 
     void ScriptEditorExtensions::ApplyPersisted(Window& window)
@@ -972,6 +1091,23 @@ namespace CoreEngine::Editor
             }
         }
 
+        // 選んでいるオブジェクトのコンポーネントの、インスペクタを描くクラスの OnSceneGUI
+        if (context.selected) {
+            std::vector<std::pair<ScriptComponentEditor*, IComponent*>> calls;
+            for (const auto& component : context.selected->GetAllComponents()) {
+                for (const std::unique_ptr<ScriptComponentEditor>& editor : editors_) {
+                    if (component && editor->onSceneGUI && !editor->stopped
+                        && editor->editorClass.componentType == component->GetTypeName()) {
+                        calls.emplace_back(editor.get(), component.get());
+                    }
+                }
+            }
+            for (const auto& [editor, component] : calls) {
+                ScriptBinding::SceneGUIScope scope;
+                CallEditorMethod(*editor, editor->onSceneGUI, "OnSceneGUI", *context.selected, *component);
+            }
+        }
+
         // 開いているウィンドウの OnSceneGUI
         for (const std::unique_ptr<Window>& window : windows_) {
             if (!window->object || !window->onSceneGUI || !window->enabled || window->stopped || !window->IsVisible()) {
@@ -982,6 +1118,65 @@ namespace CoreEngine::Editor
                 window->stopped = true;
             }
         }
+    }
+
+    bool ScriptEditorExtensions::DrawInspector(ScriptComponentEditor& editor, GameObject& object, IComponent& component,
+                                               const std::function<bool()>& drawDefault)
+    {
+        if (editor.stopped || !editor.object || !editor.onInspectorGUI) {
+            const bool changed = drawDefault();
+            ImGui::PushTextWrapPos(0.0f);
+            ImGui::TextColored(Theme::kError, "%s",
+                "インスペクタのスクリプトが止まったので、既定の欄を出しています。Console のエラーを直して保存すると、読み直して動き始めます。");
+            ImGui::PopTextWrapPos();
+            if (ImGui::Button("もう一度動かす")) {
+                editor.stopped = false;
+            }
+            return changed;
+        }
+
+        bool defaultChanged = false;
+        const std::function<bool()> drawDefaultOnce = [&drawDefault, &defaultChanged] {
+            const bool changed = drawDefault();
+            defaultChanged = defaultChanged || changed;
+            return changed;
+            };
+
+        ScriptBinding::GUIScope gui("Inspector." + editor.editorClass.className);
+        ScriptBinding::FrameState().drawDefaultInspector = &drawDefaultOnce;
+        CallEditorMethod(editor, editor.onInspectorGUI, "OnInspectorGUI", object, component);
+        const bool widgetsChanged = ScriptBinding::FrameState().changed;
+        ScriptBinding::FrameState().drawDefaultInspector = nullptr;
+        return defaultChanged || widgetsChanged;
+    }
+
+    bool ScriptEditorExtensions::CallEditorMethod(ScriptComponentEditor& editor, asIScriptFunction* method, const char* methodName,
+                                                  GameObject& object, IComponent& component)
+    {
+        if (!method || !editor.object) {
+            return true;
+        }
+        StoreHandleProperty(*editor.object, "target_", Script::ScriptGameObject::CreateForObject(&object));
+        void* scriptHandle = nullptr;
+        if (const auto* const script = dynamic_cast<const ScriptComponent*>(&component); script && script->GetScriptObject()) {
+            script->GetScriptObject()->AddRef();
+            scriptHandle = script->GetScriptObject();
+        }
+        StoreHandleProperty(*editor.object, "component_", scriptHandle);
+
+        bool finished = true;
+        {
+            ScriptBinding::CallScope scope;
+            finished = host_.CallMethod(method, editor.object, [&editor, methodName] {
+                return editor.editorClass.className + "." + methodName;
+                }, ScriptHost::kEditorLineBudget);
+        }
+        StoreHandleProperty(*editor.object, "target_", nullptr);
+        StoreHandleProperty(*editor.object, "component_", nullptr);
+        if (!finished) {
+            editor.stopped = true;
+        }
+        return finished;
     }
 
     bool ScriptEditorExtensions::CallWindowMethod(Window& window, asIScriptFunction* method, const char* methodName)
@@ -1020,7 +1215,8 @@ namespace CoreEngine::Editor
 
                 std::string_view used;
                 if (kind == asTC_IDENTIFIER
-                    && (token == "EditorWindow" || token == "EditorGUI" || token == "SceneView" || token == "Handles")) {
+                    && (token == "EditorWindow" || token == "EditorGUI" || token == "SceneView" || token == "Handles"
+                        || token == "ComponentEditor")) {
                     used = token;
                 } else if (kind == asTC_KEYWORD && token == "::" && previous == "Editor") {
                     used = "Editor";
