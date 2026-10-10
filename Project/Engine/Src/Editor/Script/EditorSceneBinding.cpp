@@ -21,6 +21,7 @@
 
 #include <angelscript.h>
 #include <imgui.h>
+#include <ImGuizmo.h>
 #include <scriptarray/scriptarray.h>
 
 #include <algorithm>
@@ -115,7 +116,9 @@ namespace CoreEngine::Editor::ScriptBinding
             }
 
             EditorCommandStack& stack = EditorCommandStack::Get();
-            if (changes.size() == 1 && g_lastRecord.states && ImGui::IsAnyItemActive()
+            // 部品かシーンビューのハンドルをドラッグしている間は、直前の操作の「変えた後」を新しくして 1 つにまとめる
+            const bool dragging = ImGui::IsAnyItemActive() || ImGuizmo::IsUsingAny();
+            if (changes.size() == 1 && g_lastRecord.states && dragging
                 && g_lastRecord.id == changes.front().record.id && g_lastRecord.label == changes.front().record.label
                 && g_lastRecord.undoCount == stack.GetUndoCount() && stack.PeekUndoLabel() == g_lastRecord.label) {
                 g_lastRecord.states->after = std::move(changes.front().after);

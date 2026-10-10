@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.5.0">
+<meta name="engine-version" content="0.6.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3389,7 +3389,7 @@ kbd {
   </ul>
 </article>
 
-<article class="page" id="script-lifecycle" data-group="スクリプト" data-title="イベント関数とライフサイクル" data-nav="イベント関数とライフサイクル" data-keywords="awake start update fixedupdate lateupdate ondestroy onscriptreloaded 呼ばれる順番 順序 フレーム 実行順 ライフサイクル イベント">
+<article class="page" id="script-lifecycle" data-group="スクリプト" data-title="イベント関数とライフサイクル" data-nav="イベント関数とライフサイクル" data-keywords="awake start update fixedupdate lateupdate ondestroy onscriptreloaded ondrawgizmos ギズモ 呼ばれる順番 順序 フレーム 実行順 ライフサイクル イベント">
   <h1>イベント関数とライフサイクル</h1>
   <p class="lead">スクリプトのクラスに決まった名前の関数を書くと、エンジンが決まったタイミングで呼びます。どの関数がいつ呼ばれるかを知っておくと、処理をどこに書けばよいかが決まります。</p>
 
@@ -3406,6 +3406,8 @@ kbd {
       <tr><td><code>void OnTriggerEnter(Collision@ other)</code> など</td><td>当たり判定の結果が出たとき（LateUpdate の後）。<a href="#script-physics">詳しく</a></td><td>いいえ</td></tr>
       <tr><td><code>void OnDestroy()</code></td><td>オブジェクトを破棄するとき・コンポーネントを外すときに 1 回</td><td>—</td></tr>
       <tr><td><code>void OnScriptReloaded()</code></td><td>エディタでスクリプトを読み直した後に 1 回</td><td>呼ばれる</td></tr>
+      <tr><td><code>void OnDrawGizmos()</code></td><td>エディタのシーンビューを描くフレームごと。<code>Gizmos::</code> で目印を描く（<a href="#script-editor-gizmos">詳しく</a>）</td><td><strong>呼ばれる</strong>（書き出したゲームでは呼ばれない）</td></tr>
+      <tr><td><code>void OnDrawGizmosSelected()</code></td><td>持ち主のオブジェクトを選んでいる間だけ、OnDrawGizmos の後</td><td><strong>呼ばれる</strong>（書き出したゲームでは呼ばれない）</td></tr>
     </tbody>
   </table>
   </div>
@@ -4984,7 +4986,7 @@ kbd {
   <p><code>Scene::ChangeScene</code> 自体にも、短い読み込みの暗転が入ります（<a href="#script-scenes">シーンの切り替え</a>）。</p>
 </article>
 
-<article class="page" id="script-editor" data-group="スクリプト" data-title="エディタを拡張する" data-nav="エディタを拡張する" data-keywords="エディタ拡張 エディタの拡張 editorwindow editorgui editor menuitem ツール 道具 マップ生成 ステージ 配置 自作 ウィンドウ メニュー undo 取り消し canvas 描く unity ノード ノードエディタ グラフ ピン つながり リンク 会話 ダイアログ">
+<article class="page" id="script-editor" data-group="スクリプト" data-title="エディタを拡張する" data-nav="エディタを拡張する" data-keywords="エディタ拡張 エディタの拡張 editorwindow editorgui editor menuitem ツール 道具 マップ生成 ステージ 配置 自作 ウィンドウ メニュー undo 取り消し canvas 描く unity ノード ノードエディタ グラフ ピン つながり リンク 会話 ダイアログ シーンビュー ハンドル ギズモ gizmos handles onscenegui クリック 配置 レイ">
   <h1>エディタを拡張する</h1>
   <p class="lead">マップの自動生成やステージの配置のような、ゲームごとの道具をスクリプトで作り、エディタのメニューから開けます。書き方は Unity の <code>EditorWindow</code> と <code>[MenuItem]</code> に近づけています。</p>
 
@@ -4997,6 +4999,8 @@ kbd {
       <tr><td>メニューから 1 回だけ呼ぶ処理</td><td>クラスの外の関数に <code>[MenuItem("Tools/名前")]</code></td></tr>
       <tr><td>ボタン・スライダー・入力欄</td><td><a href="#api-EditorGUI"><code>EditorGUI::</code></a> の関数</td></tr>
       <tr><td>マス目や図を描いて、マウスで塗る</td><td><code>EditorGUI::Canvas</code> と <code>EditorGUI::DrawRect</code> など</td></tr>
+      <tr><td>シーンビューに線・枠・文字を重ね、クリックした所へ物を置く</td><td><a href="#script-editor-sceneview"><code>OnSceneGUI</code></a> の中で <code>Handles::</code> と <code>SceneView::</code></td></tr>
+      <tr><td>コンポーネントがシーンビューに道筋や範囲を描く</td><td><a href="#script-editor-gizmos"><code>OnDrawGizmos</code></a> の中で <code>Gizmos::</code></td></tr>
       <tr><td>ノードをつないで流れを組み立てる（会話・処理の手順・状態の移り変わりなど）</td><td><a href="#script-editor-nodes"><code>EditorGUI::BeginNodeEditor</code></a> と <code>BeginNode</code>・<code>InputPin</code>・<code>OutputPin</code>・<code>Link</code></td></tr>
       <tr><td>シーンにオブジェクトを作る・消す・選ぶ（<kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せる）</td><td><a href="#api-Editor"><code>Editor::</code></a> の関数</td></tr>
     </tbody>
@@ -5006,7 +5010,7 @@ kbd {
   <h2 id="script-editor-folder">Scripts/Editor フォルダに置く</h2>
   <ul>
     <li>エディタの道具は <span class="path">Application/Assets/Scripts/Editor/</span> に置きます。このフォルダはエディタでだけ読み込まれ、Release のビルドと書き出したゲームには入りません。</li>
-    <li><code>EditorWindow</code>・<code>EditorGUI::</code>・<code>Editor::</code> は、このフォルダの中でだけ使えます。外のファイルで使うと、Console に「○○.as(行) で EditorGUI を使っています」とエラーが出ます。エディタでは動きますが、書き出したゲームではそのファイルがコンパイルできず、スクリプトが動きません。</li>
+    <li><code>EditorWindow</code>・<code>EditorGUI::</code>・<code>Editor::</code>・<code>SceneView::</code>・<code>Handles::</code> は、このフォルダの中でだけ使えます。外のファイルで使うと、Console に「○○.as(行) で EditorGUI を使っています」とエラーが出ます。エディタでは動きますが、書き出したゲームではそのファイルがコンパイルできず、スクリプトが動きません。</li>
     <li>基底クラスの <span class="path">Editor/EditorWindow.as</span> は、<span class="path">ScriptComponent.as</span> と同じく、エディタが起動のたびに書き出します。</li>
   </ul>
 
@@ -5045,6 +5049,7 @@ kbd {
       <tr><td><code>void OnEnable()</code></td><td>開いたとき。スクリプトを読み直した後に開いていたときも呼ばれます</td></tr>
       <tr><td><code>void OnGUI()</code></td><td>開いている間、毎フレーム。ここで <code>EditorGUI::</code> を呼んで中身を描きます</td></tr>
       <tr><td><code>void OnDisable()</code></td><td>閉じたとき。スクリプトを読み直す前に開いていたときも呼ばれます</td></tr>
+      <tr><td><code>void OnSceneGUI()</code></td><td>開いている間、シーンビューを描くフレームごと。ここで <code>Handles::</code> で描き、<code>SceneView::</code> でクリックを受け取ります（<a href="#script-editor-sceneview">詳しく</a>）</td></tr>
     </tbody>
   </table>
   </div>
@@ -5264,6 +5269,91 @@ kbd {
   </script>
   <p>ノードのデータは、<code>DialogueNode</code> のようなクラスの配列（<code>array&lt;DialogueNode@&gt;</code>）で持てます。公開メンバ変数にしておくと、スクリプトを読み直しても、エディタを閉じても残ります（<a href="#script-editor-reload">読み直し</a>）。消したノードを <kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻す仕組みはまだ無いので、大事なグラフは <code>DataFile</code> へ保存しておきます。</p>
 
+  <h2 id="script-editor-sceneview">シーンビューに描く・クリックを受け取る（OnSceneGUI）</h2>
+  <p>ウィンドウに <code>void OnSceneGUI()</code> を書くと、ウィンドウを開いている間、エディタの Game ウィンドウにシーンを描くフレームごとに呼ばれます（この文書ではシーンビューと呼びます。エディタのカメラで見ているときも、ゲームのカメラで見ているときも同じです）。中で <a href="#api-Handles"><code>Handles::</code></a> を使ってシーンの上に線・枠・文字を重ね、<a href="#api-SceneView"><code>SceneView::</code></a> でマウスの位置・クリック・カメラを読みます。</p>
+  <script type="text/x-code" data-lang="as" data-file="Editor/MarkerTool.as">
+    [MenuItem("Tools/目印を置く")]
+    class MarkerTool : EditorWindow
+    {
+        bool active = false;
+
+        void OnGUI()
+        {
+            active = EditorGUI::Toggle("クリックで置く", active);
+        }
+
+        void OnSceneGUI()
+        {
+            if (!active) {
+                return;
+            }
+            SceneView::UseMouse();                              // 置いている間は、クリックでオブジェクトを選ばない
+
+            Vector3 point;
+            Vector3 normal;
+            if (!SceneView::RaycastMouse(point, normal)) {      // カーソルの下の物の表面
+                return;
+            }
+            Handles::DrawWireDisc(point, normal, 0.5f, Vector4(0.4f, 0.9f, 1.0f, 1.0f));
+            Handles::Label(point, "ここに置く");
+            if (SceneView::IsMouseClicked(MouseButton::Left)) {
+                GameObject@ marker = Editor::CreateObject("Marker", point);   // Ctrl+Z で戻せる
+            }
+        }
+    }
+  </script>
+  <ul>
+    <li><strong>描く</strong>：<code>Handles::</code> の線・枠・円・点・文字は、シーンの物より手前に重ねて描きます（奥の物に隠れません）。色は 0〜1 の RGBA で、色見本と同じ見え方です。描いたものはそのフレームだけ出るので、毎フレーム描きます。</li>
+    <li><strong>カーソルの下</strong>：<code>SceneView::RaycastMouse(point, normal)</code> はカーソルの下のメッシュの表面の点と向きを、<code>SceneView::MouseToPlane(高さ, point)</code> は決めた高さの水平な床との交点を、<code>SceneView::GetObjectUnderMouse()</code> はクリックしたら選ばれるオブジェクトを返します。</li>
+    <li><strong>クリック</strong>：<code>SceneView::IsMouseClicked</code>・<code>IsMouseDown</code> は、カーソルがシーンビューの上にあって、ギズモやハンドルの上でないときだけ true です。Shift などは <code>SceneView::shift</code>・<code>ctrl</code>・<code>alt</code>、キーは <code>SceneView::IsKeyPressed</code> で読みます。</li>
+    <li><strong>選ばせない</strong>：シーンビューの左クリックでオブジェクトを選ばせたくない間は、<strong>毎フレーム</strong> <code>SceneView::UseMouse()</code> を呼びます（呼んだ次のフレームのクリックから効きます）。</li>
+    <li>シーンを変える操作は <code>Editor::</code> の関数と <code>Editor::RecordObject</code> で行うと、<kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せます。</li>
+  </ul>
+
+  <h3 id="script-editor-handles">ハンドルで点を動かす</h3>
+  <script type="text/x-code" data-lang="as" data-file="Editor/PatrolRouteEditor.as（一部）">
+    void OnSceneGUI()
+    {
+        GameObject@ selected = Editor::GetSelection();
+        PatrolRoute@ route;
+        if (selected is null || !selected.GetComponent(@route)) {
+            return;
+        }
+        Vector3 base = route.BasePosition();
+        for (uint i = 0; i < route.points.length(); ++i) {
+            Vector3 current = base + route.points[i];
+            Vector3 moved = Handles::PositionHandle(int(i), current);   // 番号はハンドルごとに変える
+            if (!(moved == current)) {
+                Editor::RecordObject(selected, "道筋の点を動かす");     // 変える前に控える
+                route.points[i] = moved - base;
+            }
+        }
+    }
+  </script>
+  <p><code>Handles::PositionHandle(番号, 位置)</code> は、選んだ物と同じ移動の矢印を出し、ドラッグされた後の位置を返します（動かされなければ渡した位置のまま）。ハンドルごとに違う番号を渡します。変える前に <code>Editor::RecordObject</code> で控えておくと、ドラッグしている間の変更が <kbd>Ctrl</kbd>+<kbd>Z</kbd> 1 回分にまとまります。</p>
+
+  <h3 id="script-editor-gizmos">コンポーネントのギズモ（OnDrawGizmos）</h3>
+  <p>コンポーネント（ScriptComponent を継いだクラス）に <code>void OnDrawGizmos()</code> を書くと、エディタのシーンビューを描くフレームごとに呼ばれ、<a href="#api-Gizmos"><code>Gizmos::</code></a> で道筋・範囲・向きなどの目印を描けます。<code>void OnDrawGizmosSelected()</code> は、持ち主を選んでいる間だけ呼ばれます。どちらも編集中にも呼ばれ、書き出したゲームでは呼ばれません。<code>Gizmos::</code> は Scripts/Editor の外でも書けて、書き出したゲームでは何もしません。</p>
+  <script type="text/x-code" data-lang="as" data-file="PatrolRoute.as（一部）">
+    void OnDrawGizmos()
+    {
+        Vector3 base = BasePosition();
+        Gizmos::color = Vector4(0.3f, 0.8f, 1.0f, 1.0f);       // 呼ばれるたびに白から始まる
+        for (uint i = 0; i + 1 < points.length(); ++i) {
+            Gizmos::DrawLine(base + points[i], base + points[i + 1]);
+        }
+    }
+
+    void OnDrawGizmosSelected()
+    {
+        Gizmos::color = Vector4(1.0f, 0.75f, 0.2f, 1.0f);
+        for (uint i = 0; i < points.length(); ++i) {
+            Gizmos::DrawWireSphere(BasePosition() + points[i], 0.35f);
+        }
+    }
+  </script>
+  <p>ギズモの関数で例外が起きると、そのコンポーネントのギズモだけ、直して保存するまで描かなくなります（コンポーネントは止まりません）。</p>
+
   <h2 id="script-editor-scene">シーンを操作する（Editor::）</h2>
   <div class="table-wrap">
   <table>
@@ -5425,6 +5515,13 @@ kbd {
     }
   </script>
   <p><span class="ui">部品の見本</span> の <span class="ui">ノード</span> のタブは、2 つの数のノードを足し算のノードへつなぐ小さな見本です。</p>
+
+  <h2 id="script-editor-sample-scene">見本：配置ツールと巡回の道筋</h2>
+  <ul>
+    <li><span class="path">Scripts/Editor/PlacementTool.as</span>（<span class="ui">Tools<span class="arrow">▸</span>配置ツール</span>）：「クリックで置く」をオンにすると、カーソルの下（物の表面か床の高さ）に置く場所の格子と枠を描き、左クリックでプレハブを置きます。格子に合わせることもでき、Shift+クリックで置いた物を消します。どちらも <kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せます。</li>
+    <li><span class="path">Scripts/PatrolRoute.as</span>（コンポーネント「巡回の道筋」）：決めた点を順に回って持ち主を動かします。シーンビューに道筋を描き、選んでいる間は点の周りに輪を描きます。</li>
+    <li><span class="path">Scripts/Editor/PatrolRouteEditor.as</span>（<span class="ui">Tools<span class="arrow">▸</span>巡回の道筋</span>）：選んだオブジェクトの道筋の点を、シーンビューのハンドルとウィンドウの欄で動かします。道筋を持つオブジェクトを作るボタンもあります。</li>
+  </ul>
 </article>
 
 <!-- ================================================================== AngelScript の文法 -->
@@ -7080,6 +7177,16 @@ kbd {
 
   <h2 id="changelog-history">更新履歴</h2>
 
+  <h3 id="changelog-v0-6-0">v0.6.0 <span class="dim">（2026-10-11）</span></h3>
+  <p>エディタの道具からシーンビューに描き、クリックを受け取れるようにした版です（<a href="#script-editor-sceneview">シーンビューに描く・クリックを受け取る</a>）。</p>
+  <ul>
+    <li><strong>OnSceneGUI</strong>：EditorWindow に <code>OnSceneGUI</code> を書くと、開いている間シーンビューを描くフレームごとに呼ばれます。<code>Handles::</code> で線・枠・円・点・文字を重ね、<code>SceneView::</code> でカーソルの下の物の表面（<code>RaycastMouse</code>）・床との交点（<code>MouseToPlane</code>）・カーソルの下のオブジェクト・クリック・キー・カメラを読めます。<code>SceneView::UseMouse</code> を呼んでいる間は、クリックでオブジェクトを選びません。</li>
+    <li><strong>ハンドル</strong>：<code>Handles::PositionHandle</code> で、シーンの中の点を移動の矢印で動かせます。<code>Editor::RecordObject</code> と組むと、ドラッグの間の変更が <kbd>Ctrl</kbd>+<kbd>Z</kbd> 1 回分にまとまります。</li>
+    <li><strong>ギズモ</strong>：コンポーネントに <code>OnDrawGizmos</code>・<code>OnDrawGizmosSelected</code> を書くと、エディタのシーンビューに <code>Gizmos::</code> で目印を描けます（書き出したゲームでは描きません）。</li>
+    <li>ゲームのカメラで見ているときに、クリックがいつも MainCamera のオブジェクトに当たって選ばれていたのを直しました。</li>
+    <li>Sandbox に <span class="ui">Tools<span class="arrow">▸</span>配置ツール</span>、コンポーネント「巡回の道筋」と <span class="ui">Tools<span class="arrow">▸</span>巡回の道筋</span> を足しました。</li>
+  </ul>
+
   <h3 id="changelog-v0-5-0">v0.5.0 <span class="dim">（2026-10-10）</span></h3>
   <p>エディタの道具でノードエディタを作れるようにした版です（<a href="#script-editor-nodes">ノードエディタ</a>）。</p>
   <ul>
@@ -7260,7 +7367,9 @@ window.CE_API = [
           { n: "OnCollisionExit", s: "void OnCollisionExit(Collision@ collision)", t: "m", d: "押し出すコライダー同士が離れたとき。" },
           { n: "OnTriggerEnter", s: "void OnTriggerEnter(Collision@ other)", t: "m", d: "どちらかがトリガーのコライダーと重なり始めたとき。コライダーの既定はトリガーなので、多くの場面ではこれを書きます。" },
           { n: "OnTriggerStay", s: "void OnTriggerStay(Collision@ other)", t: "m", d: "トリガーと重なっている間、毎フレーム。" },
-          { n: "OnTriggerExit", s: "void OnTriggerExit(Collision@ other)", t: "m", d: "トリガーから離れたとき。" }
+          { n: "OnTriggerExit", s: "void OnTriggerExit(Collision@ other)", t: "m", d: "トリガーから離れたとき。" },
+          { n: "OnDrawGizmos", s: "void OnDrawGizmos()", t: "m", d: "エディタのシーンビューを描くフレームごと（編集中も呼ばれ、書き出したゲームでは呼ばれない）。<code>Gizmos::</code> で道筋や範囲などの目印を描きます。" },
+          { n: "OnDrawGizmosSelected", s: "void OnDrawGizmosSelected()", t: "m", d: "持ち主のオブジェクトを選んでいる間だけ、OnDrawGizmos の後に呼ばれます。" }
         ]
       }
     ],
@@ -9001,6 +9110,140 @@ void OnGUI()
       }
     ],
     see: [["script-editor", "エディタを拡張する"], ["api-EditorWindow", "EditorWindow"], ["api-Editor", "Editor"]]
+  },
+
+  {
+    id: "SceneView", kind: "namespace", cat: "エディタの拡張", brief: "シーンビューのマウスとカメラ",
+    keywords: "シーンビュー マウス クリック レイ raycast 床 表面 カーソルの下 選択 カメラ 画面の位置 onscenegui",
+    summary: "EditorWindow の <code>OnSceneGUI</code> の中で、シーンビュー（エディタの Game ウィンドウに映したシーン）のマウス・キー・カメラを読みます。<span class=\"path\">Scripts/Editor/</span> の中でだけ使え、<code>OnSceneGUI</code> の外で呼ぶとスクリプトの例外になります。",
+    intro: "<p>位置（<code>mousePosition</code>・<code>WorldToScreen</code>）は、シーンビューの画像の左上を (0, 0) としたピクセルです。<code>IsMouseClicked</code>・<code>IsMouseDown</code>・<code>IsMouseDragging</code> は、カーソルがシーンビューの上にあって、ギズモやハンドルの上でないときだけ true を返します。</p>",
+    sections: [
+      {
+        title: "カーソルの下", members: [
+          { n: "isHovered", s: "bool isHovered", t: "ro", d: "カーソルがシーンビューの上にあるか（ほかのウィンドウに隠れていない）。" },
+          { n: "mousePosition", s: "Vector2 mousePosition", t: "ro", d: "シーンビューの左上からのカーソルの位置（ピクセル）。" },
+          { n: "size", s: "Vector2 size", t: "ro", d: "シーンビューの画像の大きさ（ピクセル）。" },
+          { n: "RaycastMouse", s: "bool RaycastMouse(Vector3&out point, Vector3&out normal)", t: "f", d: "カーソルの下のメッシュの表面の点と、こちらを向いた面の向き。メッシュの無いオブジェクトには当たらない。" },
+          { n: "MouseToPlane", s: "bool MouseToPlane(float height, Vector3&out point)", t: "f", d: "カーソルから伸ばした線と、高さ height の水平な床との交点（床がカメラの後ろなら false）。" },
+          { n: "GetObjectUnderMouse", s: "GameObject@ GetObjectUnderMouse()", t: "f", d: "クリックしたら選ばれるオブジェクト（無ければ null）。" },
+          { n: "GetMouseRay", s: "bool GetMouseRay(Vector3&out origin, Vector3&out direction)", t: "f", d: "カメラからカーソルの向きへ伸ばした線（direction は長さ 1）。返り値はカーソルがシーンビューの上にあるか。" },
+          { n: "WorldToScreen", s: "bool WorldToScreen(const Vector3&in world, Vector2&out screen)", t: "f", d: "ワールドの点のシーンビュー上の位置（カメラの後ろなら false）。" }
+        ]
+      },
+      {
+        title: "マウスとキー", members: [
+          { n: "IsMouseClicked", s: "bool IsMouseClicked(MouseButton button = MouseButton::Left)", t: "f", d: "このフレームで押したか。" },
+          { n: "IsMouseDown", s: "bool IsMouseDown(MouseButton button = MouseButton::Left)", t: "f", d: "押しているか（ドラッグで塗る道具に）。" },
+          { n: "IsMouseReleased", s: "bool IsMouseReleased(MouseButton button = MouseButton::Left)", t: "f", d: "このフレームで離したか（カーソルがシーンビューの外でも true）。" },
+          { n: "IsMouseDragging", s: "bool IsMouseDragging(MouseButton button = MouseButton::Left)", t: "f", d: "押したまま少し動かしたか。" },
+          { n: "IsKeyPressed", s: "bool IsKeyPressed(Key key, bool repeat = true)", t: "f", d: "キーを押したか（Game ウィンドウが選ばれていて、文字を打っていないときだけ）。" },
+          { n: "shift", s: "bool shift", t: "ro", d: "Shift を押しているか（Ctrl は <code>ctrl</code>、Alt は <code>alt</code>）。" },
+          { n: "UseMouse", s: "void UseMouse()", t: "f", d: "シーンビューの左クリックでオブジェクトを選ばない。選ばせたくない間は毎フレーム呼ぶ（次のフレームのクリックから効く）。" }
+        ]
+      },
+      {
+        title: "カメラ", members: [
+          { n: "cameraPosition", s: "Vector3 cameraPosition", t: "ro", d: "シーンビューを映しているカメラの位置。" },
+          { n: "cameraForward", s: "Vector3 cameraForward", t: "ro", d: "カメラの前の向き。" }
+        ]
+      }
+    ],
+    examples: [
+      {
+        title: "クリックした床に目印を置く",
+        code: `
+void OnSceneGUI()
+{
+    SceneView::UseMouse();
+    Vector3 point;
+    if (SceneView::MouseToPlane(0.0f, point)) {
+        Handles::DrawWireDisc(point, Vector3(0.0f, 1.0f, 0.0f), 0.5f);
+        if (SceneView::IsMouseClicked()) {
+            Editor::CreateObject("Marker", point);
+        }
+    }
+}`
+      }
+    ],
+    see: [["script-editor-sceneview", "シーンビューに描く・クリックを受け取る"], ["api-Handles", "Handles"], ["api-Editor", "Editor"]]
+  },
+
+  {
+    id: "Handles", kind: "namespace", cat: "エディタの拡張", brief: "シーンビューへ重ねて描く",
+    keywords: "シーンビュー 線 枠 円 球 点 文字 ラベル ハンドル 矢印 動かす positionhandle onscenegui",
+    summary: "EditorWindow の <code>OnSceneGUI</code> の中で、シーンビューに線・枠・文字を重ね、点を動かすハンドルを出します。<span class=\"path\">Scripts/Editor/</span> の中でだけ使え、<code>OnSceneGUI</code> の外で呼ぶとスクリプトの例外になります。",
+    intro: "<p>描いたものはシーンの物より手前に重なり（奥の物に隠れません）、そのフレームだけ出ます。色は 0〜1 の RGBA で、色見本と同じ見え方です。thickness は線の太さ（ピクセル）です。</p>",
+    sections: [
+      {
+        title: "描く", members: [
+          { n: "DrawLine", s: "void DrawLine(const Vector3&in from, const Vector3&in to, const Vector4&in color = Vector4(1.0f, 1.0f, 1.0f, 1.0f), float thickness = 2)", t: "f", d: "線。" },
+          { n: "DrawPolyline", s: "void DrawPolyline(const Vector3[]&in points, const Vector4&in color = Vector4(1.0f, 1.0f, 1.0f, 1.0f), float thickness = 2, bool closed = false)", t: "f", d: "点を順につないだ線。closed なら最後の点から最初の点へもつなぐ。" },
+          { n: "DrawWireCube", s: "void DrawWireCube(const Vector3&in center, const Vector3&in size, const Vector4&in color = Vector4(1.0f, 1.0f, 1.0f, 1.0f), float thickness = 2)", t: "f", d: "軸に沿った箱の辺。" },
+          { n: "DrawWireDisc", s: "void DrawWireDisc(const Vector3&in center, const Vector3&in normal, float radius, const Vector4&in color = Vector4(1.0f, 1.0f, 1.0f, 1.0f), float thickness = 2)", t: "f", d: "normal に垂直な円。" },
+          { n: "DrawWireSphere", s: "void DrawWireSphere(const Vector3&in center, float radius, const Vector4&in color = Vector4(1.0f, 1.0f, 1.0f, 1.0f), float thickness = 2)", t: "f", d: "球（軸ごとの円と、カメラから見た輪郭）。" },
+          { n: "DrawSolidDisc", s: "void DrawSolidDisc(const Vector3&in center, const Vector3&in normal, float radius, const Vector4&in color)", t: "f", d: "塗った円（半透明の色で範囲を示すときに）。" },
+          { n: "DrawSolidQuad", s: "void DrawSolidQuad(const Vector3&in a, const Vector3&in b, const Vector3&in c, const Vector3&in d, const Vector4&in color)", t: "f", d: "塗った四角形（4 点は周りの順。マスの塗り分けに）。" },
+          { n: "DrawDot", s: "void DrawDot(const Vector3&in position, float size, const Vector4&in color = Vector4(1.0f, 1.0f, 1.0f, 1.0f))", t: "f", d: "画面の上で size ピクセルの点（遠くても同じ大きさ）。" },
+          { n: "Label", s: "void Label(const Vector3&in position, const string&in text, const Vector4&in color = Vector4(1.0f, 1.0f, 1.0f, 1.0f))", t: "f", d: "点の右下に文字。" }
+        ]
+      },
+      {
+        title: "ハンドル", members: [
+          { n: "PositionHandle", s: "Vector3 PositionHandle(int id, const Vector3&in position)", t: "f", d: "移動の矢印を出し、ドラッグされた後の位置を返す（動かされなければ position のまま）。id はハンドルごとに変える。カーソルを乗せている間とドラッグの間は、シーンビューのクリックでオブジェクトを選ばない。" }
+        ]
+      }
+    ],
+    examples: [
+      {
+        title: "点を動かす",
+        code: `
+Vector3 target = Vector3(0.0f, 1.0f, 0.0f);
+
+void OnSceneGUI()
+{
+    Handles::Label(target, "目標");
+    target = Handles::PositionHandle(1, target);
+    Handles::DrawLine(Vector3(0.0f, 0.0f, 0.0f), target, Vector4(1.0f, 0.8f, 0.2f, 1.0f));
+}`
+      }
+    ],
+    see: [["script-editor-handles", "ハンドルで点を動かす"], ["api-SceneView", "SceneView"], ["api-Gizmos", "Gizmos"]]
+  },
+
+  {
+    id: "Gizmos", kind: "namespace", cat: "描画", brief: "コンポーネントの目印を描く",
+    keywords: "ギズモ gizmos 目印 道筋 範囲 線 箱 球 ondrawgizmos ondrawgizmosselected シーンビュー",
+    summary: "コンポーネントの <code>OnDrawGizmos</code>・<code>OnDrawGizmosSelected</code> の中で、エディタのシーンビューに目印を描きます。ゲームのスクリプトにも書けて、書き出したゲームでは何もしません。",
+    intro: "<p>描いたものはシーンの物より手前に重なります。<code>color</code> は関数が呼ばれるたびに白から始まります。ギズモの関数の外で呼んでも何も描きません。</p>",
+    sections: [
+      {
+        title: "描く", members: [
+          { n: "color", s: "Vector4 color", t: "rw", d: "次に描く線の色（0〜1 の RGBA）。" },
+          { n: "DrawLine", s: "void DrawLine(const Vector3&in from, const Vector3&in to)", t: "f", d: "線。" },
+          { n: "DrawRay", s: "void DrawRay(const Vector3&in from, const Vector3&in direction)", t: "f", d: "from から direction だけ伸ばした線（向きと長さを示す）。" },
+          { n: "DrawWireCube", s: "void DrawWireCube(const Vector3&in center, const Vector3&in size)", t: "f", d: "軸に沿った箱の辺。" },
+          { n: "DrawWireSphere", s: "void DrawWireSphere(const Vector3&in center, float radius)", t: "f", d: "球の線。" },
+          { n: "DrawSphere", s: "void DrawSphere(const Vector3&in center, float radius)", t: "f", d: "塗った球（画面の上の円）。" }
+        ]
+      }
+    ],
+    examples: [
+      {
+        title: "見つける範囲を描く", file: "EnemySensor.as",
+        code: `
+class EnemySensor : ScriptComponent
+{
+    float range = 5.0f;
+
+    void OnDrawGizmosSelected()
+    {
+        Gizmos::color = Vector4(1.0f, 0.3f, 0.3f, 1.0f);
+        Gizmos::DrawWireSphere(owner.transform.position, range);
+    }
+}`
+      }
+    ],
+    see: [["script-editor-gizmos", "コンポーネントのギズモ"], ["api-ScriptComponent", "ScriptComponent"], ["api-Handles", "Handles"]]
   },
 
   {

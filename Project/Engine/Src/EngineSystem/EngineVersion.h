@@ -4,6 +4,6 @@ namespace CoreEngine
 {
 
     /// @brief エンジンのバージョン（主.副.修正）
-    inline constexpr const char* kEngineVersion = "0.5.0";
+    inline constexpr const char* kEngineVersion = "0.6.0";
 
 }

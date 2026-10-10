@@ -99,6 +99,9 @@ namespace CoreEngine::Editor::ScriptBinding
     /// @brief sRGB の色を ImGui の描画先（リニア）の色にする
     ImVec4 SrgbToLinear(float r, float g, float b, float a);
 
+    /// @brief スクリプトの Key（DirectInput のキーの番号）を ImGui のキーにする（無ければ ImGuiKey_None）
+    ImGuiKey ToImGuiKey(int key);
+
     /// @brief 範囲を開いたことを控える
     /// @param open ImGui の Begin が true を返したか（Child と Group は常に true を渡す）
     void PushGUIScope(GUIScopeKind kind, bool open);

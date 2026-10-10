@@ -14,8 +14,9 @@
 //
 // 画面の部品は EditorGUI::、編集中のシーンの操作は Editor:: にある。
 // Editor:: で作ったオブジェクトと消したオブジェクトは、Ctrl+Z で戻せる。
+// シーンビューへ重ねて描くのは Handles::、シーンビューのマウスとカメラは SceneView::（どちらも OnSceneGUI の中で使う）。
 //
-// .as を保存すると、開いたまま読み直す。メンバ変数の値（数値・bool・string・Vector・それらの array）は持ち越す。
+// .as を保存すると、開いたまま読み直す。メンバ変数の値（数値・bool・string・Vector・列挙・スクリプトのクラス・それらの array）は持ち越す。
 abstract class EditorWindow
 {
     // 開いたとき（読み直した後に開いていたときも）
@@ -26,4 +27,8 @@ abstract class EditorWindow
 
     // 閉じたとき（読み直す前に開いていたときも）
     void OnDisable() {}
+
+    // 開いている間、シーンビュー（エディタの Game ウィンドウに映したシーン）を描くフレームごと。
+    // ここで Handles:: で描き、SceneView:: でクリックを受け取る
+    void OnSceneGUI() {}
 }
