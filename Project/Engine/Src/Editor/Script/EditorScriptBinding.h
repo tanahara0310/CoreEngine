@@ -27,17 +27,24 @@ namespace CoreEngine::Editor::ScriptBinding
         GUIScope& operator=(const GUIScope&) = delete;
     };
 
-    /// @brief エディタのスクリプトを 1 回呼ぶ間の後始末
-    /// @details 抜けるときに、スクリプトが閉じ忘れた Undo のまとまりを閉じる。
+    /// @brief エディタのスクリプト（EditorWindow とメニューの関数）を 1 回呼ぶ間の後始末
+    /// @details 抜けるときに、RecordObject で控えたオブジェクトの変更を Undo に積み、
+    ///          スクリプトが閉じ忘れた Undo のまとまりを閉じる。
     class CallScope
     {
     public:
-        CallScope() = default;
+        CallScope();
         ~CallScope();
 
         CallScope(const CallScope&) = delete;
         CallScope& operator=(const CallScope&) = delete;
     };
+
+    /// @brief エディタのスクリプトを呼んでいる最中か（CallScope の中か）
+    bool IsInEditorCall();
+
+    /// @brief EditorGUI::Image などで読み込んだテクスチャを手放す
+    void ReleaseEditorGUITextures();
 }
 
 #endif // CORE_EDITOR

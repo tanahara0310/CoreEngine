@@ -87,27 +87,19 @@ namespace CoreEngine::Editor::ScriptBinding
             return false;
         }
 
-        /// @brief 表示する部分（`##` より前）
         std::string DisplayPart(const std::string& label)
         {
-            return label.substr(0, label.find("##"));
+            return LabelDisplayPart(label);
         }
 
-        /// @brief 欄の ID（ラベルは左の列に描くので、欄そのものには表示しない）
         std::string FieldId(const std::string& label)
         {
-            return "##" + label;
+            return LabelFieldId(label);
         }
 
-        /// @brief 左の列にラベルを描き、次の欄を右の列へ置く（表示する部分が空なら欄を幅いっぱいにする）
         void BeginRow(const std::string& label)
         {
-            const std::string display = DisplayPart(label);
-            if (display.empty()) {
-                ImGui::SetNextItemWidth(-FLT_MIN);
-                return;
-            }
-            InspectorLayout::BeginRow(display.c_str(), Theme::kTextDim);
+            BeginLabeledRow(label);
         }
 
         /// @brief 値が変わったことを控える
@@ -122,11 +114,7 @@ namespace CoreEngine::Editor::ScriptBinding
         /// @brief sRGB の色を ImGui の描画先（リニア）の色にする
         ImVec4 ToLinear(const Vector4& color)
         {
-            const auto channel = [](float value) {
-                const float c = std::clamp(value, 0.0f, 1.0f);
-                return (c <= 0.04045f) ? c / 12.92f : std::pow((c + 0.055f) / 1.055f, 2.4f);
-                };
-            return ImVec4(channel(color.x), channel(color.y), channel(color.z), std::clamp(color.w, 0.0f, 1.0f));
+            return SrgbToLinear(color.x, color.y, color.z, color.w);
         }
 
         ImU32 ToColorU32(const Vector4& color)
@@ -887,6 +875,9 @@ namespace CoreEngine::Editor::ScriptBinding
 
         // Begin〜 と End〜 で組にする部品
         RegisterEditorGUIContainers(r);
+
+        // オブジェクトとアセットを選ぶ欄・画像
+        RegisterEditorGUIAssets(r);
 
         r.Namespace("");
         return r.Succeeded();

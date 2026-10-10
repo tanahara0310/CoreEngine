@@ -3,11 +3,15 @@
 
 #ifdef CORE_EDITOR
 
+#include "Editor/ImGui/EditorTheme.h"
+#include "Editor/Inspector/InspectorLayout.h"
 #include "Editor/Script/EditorScriptBinding.h"
 
 #include <angelscript.h>
 
 #include <algorithm>
+#include <cfloat>
+#include <cmath>
 #include <vector>
 
 namespace CoreEngine::Editor::ScriptBinding
@@ -125,6 +129,35 @@ namespace CoreEngine::Editor::ScriptBinding
         for (; g_state.indentLevel > level; --g_state.indentLevel) {
             ImGui::Unindent();
         }
+    }
+
+    std::string LabelDisplayPart(const std::string& label)
+    {
+        return label.substr(0, label.find("##"));
+    }
+
+    std::string LabelFieldId(const std::string& label)
+    {
+        return "##" + label;
+    }
+
+    void BeginLabeledRow(const std::string& label)
+    {
+        const std::string display = LabelDisplayPart(label);
+        if (display.empty()) {
+            ImGui::SetNextItemWidth(-FLT_MIN);
+            return;
+        }
+        InspectorLayout::BeginRow(display.c_str(), Theme::kTextDim);
+    }
+
+    ImVec4 SrgbToLinear(float r, float g, float b, float a)
+    {
+        const auto channel = [](float value) {
+            const float c = std::clamp(value, 0.0f, 1.0f);
+            return (c <= 0.04045f) ? c / 12.92f : std::pow((c + 0.055f) / 1.055f, 2.4f);
+            };
+        return ImVec4(channel(r), channel(g), channel(b), std::clamp(a, 0.0f, 1.0f));
     }
 
     void PushGUIScope(GUIScopeKind kind, bool open)

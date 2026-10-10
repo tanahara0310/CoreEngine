@@ -354,6 +354,10 @@ class GameObject {
 	Transform@ get_transform() property;
 	GameObject@ FindObject(const string&in name) const;
 	bool GetComponent(?&out component) const;
+	bool AddComponent(const string&in typeName);
+	bool RemoveComponent(const string&in typeName);
+	bool HasComponent(const string&in typeName) const;
+	GameObject@[]@ GetChildren() const;
 	GameObject@ InstantiatePrefab(const string&in prefabPath, const string&in name) const;
 	Collider@ get_collider() property;
 	UIText@ get_uiText() property;
@@ -393,6 +397,7 @@ class Transform {
 	void set_scale(const Vector3&in) property;
 	Vector3 get_worldPosition() const property;
 	void SetParent(Transform@ parent);
+	Transform@ get_parent() const property;
 	void UpdateMatrix();
 	GameObject@ get_gameObject() const property;
 }
@@ -579,15 +584,46 @@ class GameCamera {
 class SaveFile {
 	SaveFile(const string&in relativePath);
 	const string& get_path() const property;
+	bool get_exists() const property;
 	bool Has(const string&in key) const;
 	int GetInt(const string&in key, int fallback = 0) const;
 	float GetFloat(const string&in key, float fallback = 0.0f) const;
 	bool GetBool(const string&in key, bool fallback = false) const;
 	string GetString(const string&in key, const string&in fallback = "") const;
+	int[]@ GetIntArray(const string&in key) const;
+	float[]@ GetFloatArray(const string&in key) const;
+	string[]@ GetStringArray(const string&in key) const;
+	string[]@ GetKeys() const;
 	void SetInt(const string&in key, int value);
 	void SetFloat(const string&in key, float value);
 	void SetBool(const string&in key, bool value);
 	void SetString(const string&in key, const string&in value);
+	void SetIntArray(const string&in key, const int[]&in values);
+	void SetFloatArray(const string&in key, const float[]&in values);
+	void SetStringArray(const string&in key, const string[]&in values);
+	void Remove(const string&in key);
+	bool Save() const;
+}
+class DataFile {
+	DataFile(const string&in path);
+	const string& get_path() const property;
+	bool get_exists() const property;
+	bool Has(const string&in key) const;
+	int GetInt(const string&in key, int fallback = 0) const;
+	float GetFloat(const string&in key, float fallback = 0.0f) const;
+	bool GetBool(const string&in key, bool fallback = false) const;
+	string GetString(const string&in key, const string&in fallback = "") const;
+	int[]@ GetIntArray(const string&in key) const;
+	float[]@ GetFloatArray(const string&in key) const;
+	string[]@ GetStringArray(const string&in key) const;
+	string[]@ GetKeys() const;
+	void SetInt(const string&in key, int value);
+	void SetFloat(const string&in key, float value);
+	void SetBool(const string&in key, bool value);
+	void SetString(const string&in key, const string&in value);
+	void SetIntArray(const string&in key, const int[]&in values);
+	void SetFloatArray(const string&in key, const float[]&in values);
+	void SetStringArray(const string&in key, const string[]&in values);
 	void Remove(const string&in key);
 	bool Save() const;
 }
@@ -1320,6 +1356,11 @@ void CloseCurrentPopup();
 bool BeginMenu(const string&in label, bool enabled = true);
 void EndMenu();
 bool MenuItem(const string&in label, const string&in shortcut = "", bool checked = false, bool enabled = true);
+GameObject@ ObjectField(const string&in label, GameObject@ value);
+string AssetField(const string&in label, const string&in path, const string&in type = "");
+void Image(const string&in path, float width = 0, float height = 0);
+Vector2 GetImageSize(const string&in path);
+void DrawImage(const string&in path, const Vector2&in min, const Vector2&in max);
 }
 namespace Editor {
 GameObject@ CreateObject(const string&in name);
@@ -1333,4 +1374,6 @@ void Select(GameObject@ object);
 void BeginUndoGroup(const string&in name);
 void EndUndoGroup();
 bool get_isPlaying() property;
+void RecordObject(GameObject@ object, const string&in label = "");
+string[]@ FindAssets(const string&in type = "", const string&in folder = "");
 }

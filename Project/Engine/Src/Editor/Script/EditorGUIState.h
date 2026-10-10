@@ -73,6 +73,18 @@ namespace CoreEngine::Editor::ScriptBinding
     /// @brief 字下げを level 段にする（今のウィンドウの中で）
     void SetIndentLevel(int level);
 
+    /// @brief ラベルのうち表示する部分（`##` より前）
+    std::string LabelDisplayPart(const std::string& label);
+
+    /// @brief 欄の ID（ラベルは左の列に描くので、欄そのものには表示しない）
+    std::string LabelFieldId(const std::string& label);
+
+    /// @brief 左の列にラベルを描き、次の欄を右の列へ置く（表示する部分が空なら欄を幅いっぱいにする）
+    void BeginLabeledRow(const std::string& label);
+
+    /// @brief sRGB の色を ImGui の描画先（リニア）の色にする
+    ImVec4 SrgbToLinear(float r, float g, float b, float a);
+
     /// @brief 範囲を開いたことを控える
     /// @param open ImGui の Begin が true を返したか（Child と Group は常に true を渡す）
     void PushGUIScope(GUIScopeKind kind, bool open);
@@ -104,6 +116,10 @@ namespace CoreEngine::Editor::ScriptBinding
     /// @brief Begin〜 と End〜 で組にする部品（子の枠・木・タブ・表・一覧・ポップアップ・メニュー）を登録する
     /// @note EditorGUI 名前空間を開いた BindingRegistrar を渡す。
     void RegisterEditorGUIContainers(Script::BindingRegistrar& r);
+
+    /// @brief オブジェクトとアセットを選ぶ欄・画像の部品を登録する
+    /// @note EditorGUI 名前空間を開いた BindingRegistrar を渡す。
+    void RegisterEditorGUIAssets(Script::BindingRegistrar& r);
 }
 
 #endif // CORE_EDITOR

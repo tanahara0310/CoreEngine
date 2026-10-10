@@ -24,6 +24,7 @@ namespace CoreEngine::Editor
 {
     /// @brief スクリプトで書いたエディタの拡張（EditorWindow を継いだクラスと [MenuItem] の関数）をエディタへ出す
     /// @details ウィンドウはメニューから開閉するパネルにし、スクリプトを読み直しても値と開閉を持ち越す。
+    ///          公開メンバ変数の値は、エディタを閉じるときに保存して次の起動で戻す。
     class ScriptEditorExtensions
     {
     public:
@@ -74,11 +75,20 @@ namespace CoreEngine::Editor
         /// @brief 開いているウィンドウ 1 つ
         struct Window;
 
+        /// @brief エディタを閉じても残すウィンドウの値（ファイルの中身）
+        struct Persisted;
+
         /// @brief パネルの中身を描く
         void DrawWindow(const std::string& className);
 
         /// @brief メソッドを呼ぶ（止まったら false）
         bool CallWindowMethod(Window& window, asIScriptFunction* method, const char* methodName);
+
+        /// @brief 前の起動で保存した公開メンバ変数の値を、作ったばかりのウィンドウへ戻す
+        void ApplyPersisted(Window& window);
+
+        /// @brief ウィンドウの公開メンバ変数の値をファイルへ保存する
+        void SavePersisted();
 
         /// @brief Editor フォルダの外でエディタの機能を使っているファイルをエラーとしてログへ出す
         void ReportEditorApiOutsideEditorFolder(const asIScriptModule& module,
@@ -95,6 +105,8 @@ namespace CoreEngine::Editor
 
         /// 読み直しをまたいで持ち越す値（クラス名ごと）
         std::unordered_map<std::string, std::vector<SavedProperty>> savedProperties_;
+
+        std::unique_ptr<Persisted> persisted_;
     };
 }
 
