@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Script/Binding/MathBinding.h"
 
+#include "Math/Curve/KeyCurve.h"
 #include "Math/Easing/EasingUtil.h"
 #include "Math/MathCore.h"
 #include "Math/Vector/Vector2.h"
@@ -8,10 +9,13 @@
 #include "Math/Vector/Vector4.h"
 #include "Script/Binding/BindingRegistrar.h"
 
+#include <scriptarray/scriptarray.h>
+
 #include <algorithm>
 #include <cmath>
 #include <new>
 #include <type_traits>
+#include <vector>
 
 namespace CoreEngine::Script
 {
@@ -272,6 +276,27 @@ namespace CoreEngine::Script
         }
     }
 
+    namespace
+    {
+        float EvaluateCurve(const CScriptArray& keys, float x)
+        {
+            std::vector<Vector2> points;
+            points.reserve(keys.GetSize());
+            for (asUINT i = 0; i < keys.GetSize(); ++i) {
+                points.push_back(*static_cast<const Vector2*>(keys.At(i)));
+            }
+            return KeyCurve::Evaluate(points.data(), points.size(), x);
+        }
+
+        /// @brief 点を通るなめらかな曲線（`Curve` 名前空間）
+        void RegisterCurve(BindingRegistrar& r)
+        {
+            r.Namespace("Curve");
+            r.Function("float Evaluate(const array<Vector2> &in keys, float x)", asFUNCTION(EvaluateCurve));
+            r.Namespace("");
+        }
+    }
+
     bool RegisterMathBinding(asIScriptEngine* engine)
     {
         if (!engine) {
@@ -283,6 +308,7 @@ namespace CoreEngine::Script
         RegisterVector4(registrar);
         RegisterScalars(registrar);
         RegisterEaseType(registrar);
+        RegisterCurve(registrar);
         return registrar.Succeeded();
     }
 }

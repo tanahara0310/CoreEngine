@@ -35,6 +35,16 @@ class EditorGUIGallery : EditorWindow
     Vector2 positionSum = Vector2(260.0f, 80.0f);
     array<int> sumInputs = { 1, 2 };
 
+    // グラフ・カーブ・時間軸のタブ
+    array<Vector2> galleryCurve = { Vector2(0.0f, 0.0f), Vector2(0.3f, 0.8f), Vector2(1.0f, 1.0f) };
+    float curveProbe = 0.5f;
+    float timelineTime = 0.0f;
+    bool timelinePlaying = false;
+    array<float> cameraKeys = { 0.5f, 2.0f, 3.5f };
+    array<float> soundKeys = { 1.0f, 3.0f };
+    array<Vector2> lightRanges = { Vector2(0.5f, 1.5f), Vector2(2.5f, 3.8f) };
+    private float wavePhase_ = 0.0f;
+
     void OnGUI()
     {
         if (EditorGUI::BeginTabBar("tabs")) {
@@ -68,6 +78,14 @@ class EditorGUIGallery : EditorWindow
             EditorGUI::EndTabItem();
             if (EditorGUI::BeginTabItem("ノード")) {
                 DrawNodeTab();
+            }
+            EditorGUI::EndTabItem();
+            if (EditorGUI::BeginTabItem("グラフとカーブ")) {
+                DrawGraphTab();
+            }
+            EditorGUI::EndTabItem();
+            if (EditorGUI::BeginTabItem("時間軸")) {
+                DrawTimelineTab();
             }
             EditorGUI::EndTabItem();
         }
@@ -384,5 +402,56 @@ class EditorGUIGallery : EditorWindow
             }
         }
         return sum;
+    }
+
+    private void DrawGraphTab()
+    {
+        EditorGUI::Header("グラフ");
+        wavePhase_ += EditorGUI::GetDeltaTime() * 2.0f;
+        array<float> wave;
+        for (int i = 0; i < 64; ++i) {
+            wave.insertLast(sin(i * 0.2f + wavePhase_));
+        }
+        EditorGUI::PlotLines("波", wave, -1.0f, 1.0f, 60);
+        array<float> counts = { 3.0f, 7.0f, 2.0f, 9.0f, 5.0f, 4.0f, 8.0f };
+        EditorGUI::PlotHistogram("回数", counts, 0.0f, 10.0f, 60);
+
+        EditorGUI::Header("カーブ");
+        EditorGUI::CurveField("カーブ", galleryCurve);
+        EditorGUI::TextDisabled("点をドラッグで動かし、ダブルクリックで足し、右クリックで消します");
+        curveProbe = EditorGUI::Slider("x", curveProbe, 0.0f, 1.0f);
+        EditorGUI::Label("Curve::Evaluate", "" + Curve::Evaluate(galleryCurve, curveProbe));
+    }
+
+    private void DrawTimelineTab()
+    {
+        if (EditorGUI::Button(timelinePlaying ? "止める" : "再生")) {
+            timelinePlaying = !timelinePlaying;
+        }
+        EditorGUI::SameLine();
+        if (EditorGUI::Button("最初へ")) {
+            timelineTime = 0.0f;
+        }
+        if (timelinePlaying) {
+            timelineTime += EditorGUI::GetDeltaTime();
+            if (timelineTime > 4.0f) {
+                timelineTime = 0.0f;
+            }
+        }
+
+        timelineTime = EditorGUI::BeginTimeline("sequence", 4.0f, timelineTime, 0.1f);
+        EditorGUI::TimelineKeys("カメラ", cameraKeys);
+        EditorGUI::TimelineKeys("音", soundKeys);
+        EditorGUI::TimelineRanges("ライト", lightRanges);
+        EditorGUI::EndTimeline();
+        EditorGUI::TextDisabled("目盛りをドラッグで再生位置、ダブルクリックで足す、右クリックで消す（0.1 秒ごとにそろう）");
+
+        bool lit = false;
+        for (uint i = 0; i < lightRanges.length(); ++i) {
+            if (timelineTime >= lightRanges[i].x && timelineTime <= lightRanges[i].y) {
+                lit = true;
+            }
+        }
+        EditorGUI::Label("ライト", lit ? "点いている" : "消えている");
     }
 }

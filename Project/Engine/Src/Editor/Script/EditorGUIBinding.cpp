@@ -837,6 +837,7 @@ namespace CoreEngine::Editor::ScriptBinding
         // オブジェクトとアセットを選ぶ欄・画像
         RegisterEditorGUIAssets(r);
         RegisterEditorGUINodes(r);
+        RegisterEditorGUITools(r);
 
         r.Namespace("");
         return r.Succeeded();

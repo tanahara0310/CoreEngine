@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.6.0">
+<meta name="engine-version" content="0.7.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4986,7 +4986,7 @@ kbd {
   <p><code>Scene::ChangeScene</code> 自体にも、短い読み込みの暗転が入ります（<a href="#script-scenes">シーンの切り替え</a>）。</p>
 </article>
 
-<article class="page" id="script-editor" data-group="スクリプト" data-title="エディタを拡張する" data-nav="エディタを拡張する" data-keywords="エディタ拡張 エディタの拡張 editorwindow editorgui editor menuitem ツール 道具 マップ生成 ステージ 配置 自作 ウィンドウ メニュー undo 取り消し canvas 描く unity ノード ノードエディタ グラフ ピン つながり リンク 会話 ダイアログ シーンビュー ハンドル ギズモ gizmos handles onscenegui クリック 配置 レイ">
+<article class="page" id="script-editor" data-group="スクリプト" data-title="エディタを拡張する" data-nav="エディタを拡張する" data-keywords="エディタ拡張 エディタの拡張 editorwindow editorgui editor menuitem ツール 道具 マップ生成 ステージ 配置 自作 ウィンドウ メニュー undo 取り消し canvas 描く unity ノード ノードエディタ グラフ ピン つながり リンク 会話 ダイアログ シーンビュー ハンドル ギズモ gizmos handles onscenegui クリック 配置 レイ インスペクタ customeditor componenteditor グラフ カーブ 曲線 時間軸 タイムライン">
   <h1>エディタを拡張する</h1>
   <p class="lead">マップの自動生成やステージの配置のような、ゲームごとの道具をスクリプトで作り、エディタのメニューから開けます。書き方は Unity の <code>EditorWindow</code> と <code>[MenuItem]</code> に近づけています。</p>
 
@@ -4999,6 +4999,8 @@ kbd {
       <tr><td>メニューから 1 回だけ呼ぶ処理</td><td>クラスの外の関数に <code>[MenuItem("Tools/名前")]</code></td></tr>
       <tr><td>ボタン・スライダー・入力欄</td><td><a href="#api-EditorGUI"><code>EditorGUI::</code></a> の関数</td></tr>
       <tr><td>マス目や図を描いて、マウスで塗る</td><td><code>EditorGUI::Canvas</code> と <code>EditorGUI::DrawRect</code> など</td></tr>
+      <tr><td>コンポーネントのインスペクタを自分で描く</td><td><a href="#script-editor-inspector"><code>ComponentEditor</code></a> を継いだクラスに <code>[CustomEditor("型名")]</code></td></tr>
+      <tr><td>グラフ・カーブ・時間軸を出す</td><td><a href="#script-editor-tools"><code>EditorGUI::PlotLines</code>・<code>CurveField</code>・<code>BeginTimeline</code></a></td></tr>
       <tr><td>シーンビューに線・枠・文字を重ね、クリックした所へ物を置く</td><td><a href="#script-editor-sceneview"><code>OnSceneGUI</code></a> の中で <code>Handles::</code> と <code>SceneView::</code></td></tr>
       <tr><td>コンポーネントがシーンビューに道筋や範囲を描く</td><td><a href="#script-editor-gizmos"><code>OnDrawGizmos</code></a> の中で <code>Gizmos::</code></td></tr>
       <tr><td>ノードをつないで流れを組み立てる（会話・処理の手順・状態の移り変わりなど）</td><td><a href="#script-editor-nodes"><code>EditorGUI::BeginNodeEditor</code></a> と <code>BeginNode</code>・<code>InputPin</code>・<code>OutputPin</code>・<code>Link</code></td></tr>
@@ -5010,7 +5012,7 @@ kbd {
   <h2 id="script-editor-folder">Scripts/Editor フォルダに置く</h2>
   <ul>
     <li>エディタの道具は <span class="path">Application/Assets/Scripts/Editor/</span> に置きます。このフォルダはエディタでだけ読み込まれ、Release のビルドと書き出したゲームには入りません。</li>
-    <li><code>EditorWindow</code>・<code>EditorGUI::</code>・<code>Editor::</code>・<code>SceneView::</code>・<code>Handles::</code> は、このフォルダの中でだけ使えます。外のファイルで使うと、Console に「○○.as(行) で EditorGUI を使っています」とエラーが出ます。エディタでは動きますが、書き出したゲームではそのファイルがコンパイルできず、スクリプトが動きません。</li>
+    <li><code>EditorWindow</code>・<code>ComponentEditor</code>・<code>EditorGUI::</code>・<code>Editor::</code>・<code>SceneView::</code>・<code>Handles::</code> は、このフォルダの中でだけ使えます。外のファイルで使うと、Console に「○○.as(行) で EditorGUI を使っています」とエラーが出ます。エディタでは動きますが、書き出したゲームではそのファイルがコンパイルできず、スクリプトが動きません。</li>
     <li>基底クラスの <span class="path">Editor/EditorWindow.as</span> は、<span class="path">ScriptComponent.as</span> と同じく、エディタが起動のたびに書き出します。</li>
   </ul>
 
@@ -5070,6 +5072,7 @@ kbd {
       <tr><td>マウスとキー</td><td><code>IsMouseDown</code>・<code>IsMouseClicked</code>・<code>IsMouseDoubleClicked</code>・<code>IsMouseReleased</code>・<code>IsMouseDragging</code>・<code>GetMouseDragDelta</code>・<code>GetMouseWheel</code>・<code>IsKeyPressed</code>・<code>IsKeyDown</code>・<code>IsKeyReleased</code>・<code>ctrl</code>・<code>shift</code>・<code>alt</code></td></tr>
       <tr><td>参照と画像</td><td><code>ObjectField</code>（オブジェクトを選ぶ）・<code>AssetField</code>（アセットを選ぶ）・<code>Image</code>・<code>GetImageSize</code></td></tr>
       <tr><td>描く</td><td><code>Canvas</code>・<code>DrawRect</code>・<code>DrawRectOutline</code>・<code>DrawLine</code>・<code>DrawText</code>・<code>DrawImage</code>・<code>IsCanvasHovered</code>・<code>GetCanvasMousePosition</code></td></tr>
+      <tr><td>グラフ・カーブ・時間軸</td><td><code>PlotLines</code>・<code>PlotHistogram</code>・<code>CurveField</code>（点をドラッグで直す曲線）・<code>BeginTimeline</code> と <code>TimelineKeys</code>・<code>TimelineRanges</code>・<code>GetDeltaTime</code>（<a href="#script-editor-tools">グラフ・カーブ・時間軸</a>）</td></tr>
       <tr><td>ノード</td><td><code>BeginNodeEditor</code>・<code>BeginNode</code>・<code>NodeTitle</code>・<code>InputPin</code>・<code>OutputPin</code>・<code>Link</code>・<code>IsLinkCreated</code>・<code>IsLinkDestroyed</code>・<code>GetSelectedNodes</code> など（<a href="#script-editor-nodes">ノードエディタ</a>）</td></tr>
     </tbody>
   </table>
@@ -5077,7 +5080,7 @@ kbd {
   <div class="callout tip"><p>同じラベルの部品を 1 つのウィンドウに 2 つ置くと、片方しか反応しません。<code>"削除##1"</code> のように <code>##</code> の後ろで区別するか（<code>##</code> から後ろは表示されません）、繰り返しの中なら <code>EditorGUI::PushID(i)</code> と <code>EditorGUI::PopID()</code> で囲みます。</p></div>
 
   <h3 id="script-editor-begin-end">Begin〜 と End〜 の組</h3>
-  <p>木・タブ・表・スクロールする枠・ポップアップ・メニュー・ノードエディタ（ノード・ピン）は、<code>Begin〜</code> と <code>End〜</code> で囲みます。<strong><code>Begin〜</code> を呼んだら、戻り値に関係なく必ず <code>End〜</code> を呼びます。</strong>中身は <code>Begin〜</code> が <code>true</code> を返したとき（開いているとき）だけ描きます。</p>
+  <p>木・タブ・表・スクロールする枠・ポップアップ・メニュー・ノードエディタ（ノード・ピン）・時間軸は、<code>Begin〜</code> と <code>End〜</code> で囲みます。<strong><code>Begin〜</code> を呼んだら、戻り値に関係なく必ず <code>End〜</code> を呼びます。</strong>中身は <code>Begin〜</code> が <code>true</code> を返したとき（開いているとき）だけ描きます。</p>
   <script type="text/x-code" data-lang="as">
     if (EditorGUI::BeginTabBar("tabs")) {
         if (EditorGUI::BeginTabItem("生成")) {
@@ -5311,12 +5314,11 @@ kbd {
   </ul>
 
   <h3 id="script-editor-handles">ハンドルで点を動かす</h3>
-  <script type="text/x-code" data-lang="as" data-file="Editor/PatrolRouteEditor.as（一部）">
+  <script type="text/x-code" data-lang="as" data-file="Editor/PatrolRouteInspector.as（一部）">
     void OnSceneGUI()
     {
-        GameObject@ selected = Editor::GetSelection();
-        PatrolRoute@ route;
-        if (selected is null || !selected.GetComponent(@route)) {
+        PatrolRoute@ route = cast<PatrolRoute>(component);    // 選んでいる道筋（下の「インスペクタを自分で描く」）
+        if (route is null) {
             return;
         }
         Vector3 base = route.BasePosition();
@@ -5324,7 +5326,7 @@ kbd {
             Vector3 current = base + route.points[i];
             Vector3 moved = Handles::PositionHandle(int(i), current);   // 番号はハンドルごとに変える
             if (!(moved == current)) {
-                Editor::RecordObject(selected, "道筋の点を動かす");     // 変える前に控える
+                Editor::RecordObject(target, "道筋の点を動かす");       // 変える前に控える
                 route.points[i] = moved - base;
             }
         }
@@ -5353,6 +5355,66 @@ kbd {
     }
   </script>
   <p>ギズモの関数で例外が起きると、そのコンポーネントのギズモだけ、直して保存するまで描かなくなります（コンポーネントは止まりません）。</p>
+
+  <h2 id="script-editor-inspector">インスペクタを自分で描く（CustomEditor）</h2>
+  <p><code>ComponentEditor</code> を継いだクラスに <code>[CustomEditor("型名")]</code> を付けると、その型のコンポーネントのインスペクタの中身を <code>OnInspectorGUI</code> が描きます（Unity の CustomEditor に当たります）。型名はスクリプトのクラス名か、エンジンのコンポーネントの型名（<code>Rigidbody</code> など）です。</p>
+  <script type="text/x-code" data-lang="as" data-file="Editor/CurveMoverInspector.as">
+    [CustomEditor("CurveMover")]
+    class CurveMoverInspector : ComponentEditor
+    {
+        void OnInspectorGUI()
+        {
+            CurveMover@ mover = cast<CurveMover>(component);   // スクリプトのコンポーネントは cast で中身に触れる
+            Editor::RecordObject(target, "カーブで上下の変更");     // 変える前に控える（変わらなければ何も積まない）
+            mover.height = EditorGUI::Slider("高さ", mover.height, 0.0f, 10.0f);
+            mover.period = EditorGUI::Slider("周期（秒）", mover.period, 0.1f, 20.0f);
+            EditorGUI::CurveField("動き", mover.curve);
+        }
+    }
+  </script>
+  <ul>
+    <li><code>target</code> はインスペクタに出しているコンポーネントの持ち主の GameObject、<code>component</code> はそのコンポーネントです（スクリプトのコンポーネントのとき。<code>cast&lt;型名&gt;(component)</code> で中身に触れます。エンジンのコンポーネントなら null なので、<code>target.GetComponent(@rigidbody)</code> で取ります）。</li>
+    <li>既定の欄（インスペクタがいつも出す欄）は <code>EditorGUI::DrawDefaultInspector()</code> で描けます。<code>OnInspectorGUI</code> を書かなければ既定の欄だけが出ます。</li>
+    <li>値を変える前に <code>Editor::RecordObject(target, "名前")</code> で控えると、<kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せます。毎フレーム呼んでも、変わらなければ何も積まず、スライダーやカーブをドラッグしている間は 1 回分にまとまります。</li>
+    <li><code>void OnSceneGUI()</code> を書くと、そのコンポーネントを持つオブジェクトを選んでいる間、シーンビューを描くフレームごとに呼ばれます（<code>Handles::</code>・<code>SceneView::</code> が使えます）。</li>
+    <li>1 つのクラスのオブジェクトを、同じ型のコンポーネントすべてで使い回します。メンバ変数はコンポーネントごとに分かれません。</li>
+    <li><code>OnInspectorGUI</code> で例外が起きると、そのクラスは止まり、既定の欄と <span class="ui">もう一度動かす</span> ボタンを出します。プレハブのアセットのインスペクタ（Project で選んだプレハブ）は、いつも既定の欄です。</li>
+  </ul>
+
+  <h2 id="script-editor-tools">グラフ・カーブ・時間軸</h2>
+  <h3 id="script-editor-plot">グラフ</h3>
+  <script type="text/x-code" data-lang="as">
+    EditorGUI::PlotLines("波", samples, -1.0f, 1.0f, 60);       // 折れ線（最小・最大を省くと値から決める）
+    EditorGUI::PlotHistogram("回数", counts, 0.0f, 10.0f, 60);  // 棒
+  </script>
+  <h3 id="script-editor-curve">カーブ</h3>
+  <p><code>EditorGUI::CurveField(ラベル, 点の配列)</code> は、<code>array&lt;Vector2&gt;</code> の点（横 x・縦 y）を通る曲線を描き、点をドラッグで動かせる欄です。何も無いところのダブルクリックで点を足し、点の右クリックで消します。配列はその場で書き換わり、変えたフレームに true を返します。範囲は既定で横・縦とも 0〜1 で、<code>rangeMin</code>・<code>rangeMax</code> で変えられます。</p>
+  <p>ゲームのスクリプトでは <a href="#api-Curve"><code>Curve::Evaluate(点の配列, x)</code></a> で、同じ曲線の x での値を読めます（書き出したゲームでも使えます）。隣り合う点の間は、点の値を行き過ぎないなめらかな線でつなぎ、範囲の外は端の点の値です。<code>array&lt;Vector2&gt;</code> のメンバ変数はシーンに保存されるので、インスペクタの拡張で <code>CurveField</code> を出せば、カーブを持つコンポーネントが作れます。</p>
+  <script type="text/x-code" data-lang="as" data-file="CurveMover.as（一部）">
+    array<Vector2> curve = { Vector2(0.0f, 0.0f), Vector2(0.5f, 1.0f), Vector2(1.0f, 0.0f) };
+
+    void Update()
+    {
+        time_ += Time::DeltaTime();
+        float phase = time_ / period - floor(time_ / period);              // 0〜1 をくり返す
+        owner.transform.position = origin_ + Vector3(0.0f, Curve::Evaluate(curve, phase) * height, 0.0f);
+    }
+  </script>
+  <h3 id="script-editor-timeline">時間軸</h3>
+  <script type="text/x-code" data-lang="as">
+    if (playing) {
+        time += EditorGUI::GetDeltaTime();                  // エディタの 1 フレームの秒数
+    }
+    time = EditorGUI::BeginTimeline("seq", 4.0f, time, 0.1f);  // 長さ 4 秒・0.1 秒ごとにそろえる
+    EditorGUI::TimelineKeys("カメラ", cameraKeys);          // array<float>：キーの時刻
+    EditorGUI::TimelineRanges("ライト", lightRanges);      // array<Vector2>：x が始まり、y が終わり
+    EditorGUI::EndTimeline();
+  </script>
+  <ul>
+    <li><code>BeginTimeline(ID, 長さ, 再生位置, そろえる間隔)</code> は目盛りの行を描き、目盛りを押すかドラッグすると動いた再生位置を返します。<code>EndTimeline</code> と組にし、間に並べたトラックの上に再生位置の線を引きます。</li>
+    <li><code>TimelineKeys</code> はキーの時刻の配列、<code>TimelineRanges</code> は区間の配列を、その場で書き換えます。ドラッグで動かし（区間は中を掴むと動き、端を掴むと伸び縮みします）、何も無いところのダブルクリックで足し、右クリックで消します。変えたフレームに true を返します。</li>
+    <li>再生はスクリプトが <code>GetDeltaTime()</code> で時刻を進めて行います（エディタは再生していなくても毎フレーム進みます）。</li>
+  </ul>
 
   <h2 id="script-editor-scene">シーンを操作する（Editor::）</h2>
   <div class="table-wrap">
@@ -5520,7 +5582,13 @@ kbd {
   <ul>
     <li><span class="path">Scripts/Editor/PlacementTool.as</span>（<span class="ui">Tools<span class="arrow">▸</span>配置ツール</span>）：「クリックで置く」をオンにすると、カーソルの下（物の表面か床の高さ）に置く場所の格子と枠を描き、左クリックでプレハブを置きます。格子に合わせることもでき、Shift+クリックで置いた物を消します。どちらも <kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せます。</li>
     <li><span class="path">Scripts/PatrolRoute.as</span>（コンポーネント「巡回の道筋」）：決めた点を順に回って持ち主を動かします。シーンビューに道筋を描き、選んでいる間は点の周りに輪を描きます。</li>
-    <li><span class="path">Scripts/Editor/PatrolRouteEditor.as</span>（<span class="ui">Tools<span class="arrow">▸</span>巡回の道筋</span>）：選んだオブジェクトの道筋の点を、シーンビューのハンドルとウィンドウの欄で動かします。道筋を持つオブジェクトを作るボタンもあります。</li>
+    <li><span class="path">Scripts/Editor/PatrolRouteInspector.as</span>（巡回の道筋のインスペクタ）：既定の欄の下に点の数と「点を足す」「最後の点を消す」「逆回りにする」を足し、選んでいる間はシーンビューに点を動かすハンドルを出します。道筋は <span class="ui">Tools<span class="arrow">▸</span>巡回の道筋を作る</span> で作れます。</li>
+  </ul>
+
+  <h2 id="script-editor-sample-curve">見本：カーブで上下する箱と、部品の見本</h2>
+  <ul>
+    <li><span class="path">Scripts/CurveMover.as</span>（コンポーネント「カーブで上下」）と <span class="path">Scripts/Editor/CurveMoverInspector.as</span>：カーブに沿って持ち主を上下に動かします。インスペクタでは、カーブを点のドラッグで直せます。<span class="ui">Tools<span class="arrow">▸</span>カーブで上下する箱を作る</span> で、壁のプレハブに付けて作れます。</li>
+    <li><span class="ui">Tools<span class="arrow">▸</span>部品の見本</span> の <span class="ui">グラフとカーブ</span> と <span class="ui">時間軸</span> のタブ：グラフ・カーブ・<code>Curve::Evaluate</code> の値、再生と止める・キーと区間のトラックの見本です。</li>
   </ul>
 </article>
 
@@ -7177,6 +7245,15 @@ kbd {
 
   <h2 id="changelog-history">更新履歴</h2>
 
+  <h3 id="changelog-v0-7-0">v0.7.0 <span class="dim">（2026-10-11）</span></h3>
+  <p>エディタの道具でインスペクタを自分で描き、グラフ・カーブ・時間軸を出せるようにした版です（<a href="#script-editor-inspector">インスペクタを自分で描く</a>・<a href="#script-editor-tools">グラフ・カーブ・時間軸</a>）。</p>
+  <ul>
+    <li><strong>インスペクタの拡張</strong>：<code>ComponentEditor</code> を継いだクラスに <code>[CustomEditor("型名")]</code> を付けると、そのコンポーネントのインスペクタの中身を <code>OnInspectorGUI</code> で描けます。既定の欄は <code>EditorGUI::DrawDefaultInspector()</code>、選んでいる間のシーンビューは <code>OnSceneGUI</code> です。</li>
+    <li><strong>グラフ・カーブ</strong>：<code>EditorGUI::PlotLines</code>・<code>PlotHistogram</code>、点をドラッグで直す <code>CurveField</code> と、ゲームで同じ曲線の値を読む <code>Curve::Evaluate</code> を足しました。</li>
+    <li><strong>時間軸</strong>：<code>EditorGUI::BeginTimeline</code>・<code>TimelineKeys</code>・<code>TimelineRanges</code>・<code>EndTimeline</code> で、再生位置とキー・区間をドラッグで動かす時間軸を作れます。時刻を進める <code>GetDeltaTime</code> も足しました。</li>
+    <li>Sandbox の巡回の道筋の編集を、ウィンドウからインスペクタの拡張（<span class="path">PatrolRouteInspector.as</span>）に替え、「カーブで上下」のコンポーネントとインスペクタ、部品の見本のグラフとカーブ・時間軸のタブを足しました。</li>
+  </ul>
+
   <h3 id="changelog-v0-6-0">v0.6.0 <span class="dim">（2026-10-11）</span></h3>
   <p>エディタの道具からシーンビューに描き、クリックを受け取れるようにした版です（<a href="#script-editor-sceneview">シーンビューに描く・クリックを受け取る</a>）。</p>
   <ul>
@@ -7720,6 +7797,33 @@ current = Lerp(current, target, follow);`
       }
     ],
     see: [["api-Vector3", "Vector3"], ["api-EaseType", "EaseType"]]
+  },
+
+  {
+    id: "Curve", kind: "namespace", cat: "数学", brief: "点を通るなめらかな曲線",
+    keywords: "カーブ 曲線 補間 animationcurve evaluate キー 点",
+    summary: "<code>array&lt;Vector2&gt;</code> の点（横 x・縦 y）を通るなめらかな曲線の値を読みます。エディタの <code>EditorGUI::CurveField</code> で直した点をそのまま渡せます。",
+    intro: "<p>点は x の小さい順に並べ直して使います。隣り合う点の間は、点の値を行き過ぎない 3 次の曲線でつなぎ、最初の点より前と最後の点より後は端の点の値です。点が無ければ 0 を返します。</p>",
+    sections: [
+      {
+        title: "関数", members: [
+          { n: "Evaluate", s: "float Evaluate(const Vector2[]&in keys, float x)", t: "f", d: "x での曲線の値。" }
+        ]
+      }
+    ],
+    examples: [
+      {
+        title: "カーブで動かす",
+        code: `
+array<Vector2> curve = { Vector2(0.0f, 0.0f), Vector2(0.5f, 1.0f), Vector2(1.0f, 0.0f) };
+
+void Update()
+{
+    float y = Curve::Evaluate(curve, 0.25f);
+}`
+      }
+    ],
+    see: [["script-editor-curve", "カーブ"], ["api-EditorGUI", "EditorGUI"]]
   },
 
   {
@@ -9035,6 +9139,19 @@ class HelloWindow : EditorWindow
         ]
       },
       {
+        title: "グラフ・カーブ・時間軸", members: [
+          { n: "PlotLines", s: "void PlotLines(const string&in label, const float[]&in values, float height = 60)", t: "f", d: "折れ線のグラフ（縦の範囲は値から決める）。最小と最大を渡す形もある。" },
+          { n: "PlotHistogram", s: "void PlotHistogram(const string&in label, const float[]&in values, float height = 60)", t: "f", d: "棒のグラフ。最小と最大を渡す形もある。" },
+          { n: "CurveField", s: "bool CurveField(const string&in label, Vector2[]&inout keys, const Vector2&in rangeMin = Vector2(0.0f, 0.0f), const Vector2&in rangeMax = Vector2(1.0f, 1.0f), float height = 110)", t: "f", d: "点を通る曲線の欄。点をドラッグで動かし、何も無いところのダブルクリックで足し、右クリックで消す。配列はその場で書き換わり、変えたフレームに true。値は <code>Curve::Evaluate</code> で読む。" },
+          { n: "BeginTimeline", s: "float BeginTimeline(const string&in id, float length, float time, float snap = 0)", t: "f", d: "時間軸の目盛りの行を描き、目盛りの操作で動いた再生位置を返す。snap はキーと再生位置をそろえる間隔（0 ならそろえない）。EndTimeline と組。" },
+          { n: "TimelineKeys", s: "bool TimelineKeys(const string&in label, float[]&inout keys)", t: "f", d: "キーの時刻のトラック。ドラッグで動かし、ダブルクリックで足し、右クリックで消す。変えたフレームに true。" },
+          { n: "TimelineRanges", s: "bool TimelineRanges(const string&in label, Vector2[]&inout ranges)", t: "f", d: "区間のトラック（x が始まり、y が終わり）。中を掴むと動き、端を掴むと伸び縮みする。" },
+          { n: "EndTimeline", s: "void EndTimeline()", t: "f", d: "再生位置の線を引いて閉じる。" },
+          { n: "GetDeltaTime", s: "float GetDeltaTime()", t: "f", d: "エディタの 1 フレームの秒数（再生していなくても進む。時間軸の再生やアニメーションの見本に）。" },
+          { n: "DrawDefaultInspector", s: "bool DrawDefaultInspector()", t: "f", d: "ComponentEditor の OnInspectorGUI の中で、既定の欄を描く。値を変えたら true。" }
+        ]
+      },
+      {
         title: "ノードエディタ", members: [
           { n: "BeginNodeEditor", s: "void BeginNodeEditor(const string&in id, int flags = EditorGUI::NodeEditorFlags::None, float height = 0)", t: "f", d: "ノードを並べる場所。height が 0 なら残りいっぱい。flags は <code>EditorGUI::NodeEditorFlags::</code> の <code>MiniMap</code>（右下の全体図）・<code>SnapToGrid</code>（格子に合わせて動かす）を | でつなぐ。表示の位置と選択は、ウィンドウと id ごとに覚える。" },
           { n: "EndNodeEditor", s: "void EndNodeEditor()", t: "f", d: "つながりを描いて閉じる。ユーザーの操作は、この後で調べる。" },
@@ -9110,6 +9227,48 @@ void OnGUI()
       }
     ],
     see: [["script-editor", "エディタを拡張する"], ["api-EditorWindow", "EditorWindow"], ["api-Editor", "Editor"]]
+  },
+
+  {
+    id: "ComponentEditor", kind: "class", cat: "エディタの拡張", brief: "インスペクタを自分で描くクラスの基底",
+    keywords: "インスペクタ customeditor 拡張 oninspectorgui drawdefaultinspector 自分で描く target component",
+    summary: "継いだクラスに <code>[CustomEditor(\"型名\")]</code> を付けると、その型のコンポーネントのインスペクタの中身を描きます。<span class=\"path\">Scripts/Editor/</span> の中でだけ使えます。",
+    decl: "abstract class ComponentEditor",
+    intro: "<p>基底クラスの原本は <span class=\"path\">Project/Engine/Templates/Scripts/Editor/ComponentEditor.as</span> にあり、エディタは起動するたびにプロジェクトの <span class=\"path\">Scripts/Editor/ComponentEditor.as</span> へ書き写します。1 つのクラスのオブジェクトを、同じ型のコンポーネントすべてで使い回します。</p>",
+    sections: [
+      {
+        title: "プロパティ", members: [
+          { n: "target", s: "GameObject@ target", t: "ro", d: "インスペクタに出しているコンポーネントの持ち主。" },
+          { n: "component", s: "ScriptComponent@ component", t: "ro", d: "インスペクタに出しているコンポーネント（スクリプトのコンポーネントのとき）。<code>cast&lt;型名&gt;(component)</code> で中身に触れる。エンジンのコンポーネントなら null。" }
+        ]
+      },
+      {
+        title: "イベント関数", members: [
+          { n: "OnInspectorGUI", s: "void OnInspectorGUI()", t: "m", d: "インスペクタの中身を描く。<code>EditorGUI::</code> の部品が使える。書かなければ既定の欄だけ出る。" },
+          { n: "OnSceneGUI", s: "void OnSceneGUI()", t: "m", d: "このコンポーネントを持つオブジェクトを選んでいる間、シーンビューを描くフレームごと。<code>Handles::</code>・<code>SceneView::</code> が使える。" }
+        ]
+      }
+    ],
+    examples: [
+      {
+        title: "既定の欄にボタンを足す", file: "Editor/PatrolRouteInspector.as",
+        code: `
+[CustomEditor("PatrolRoute")]
+class PatrolRouteInspector : ComponentEditor
+{
+    void OnInspectorGUI()
+    {
+        EditorGUI::DrawDefaultInspector();
+        PatrolRoute@ route = cast<PatrolRoute>(component);
+        if (EditorGUI::Button("逆回りにする")) {
+            Editor::RecordObject(target, "道筋を逆回りにする");
+            route.points.reverse();
+        }
+    }
+}`
+      }
+    ],
+    see: [["script-editor-inspector", "インスペクタを自分で描く"], ["api-EditorGUI", "EditorGUI"], ["api-Handles", "Handles"]]
   },
 
   {
