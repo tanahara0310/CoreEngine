@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.4.0">
+<meta name="engine-version" content="0.5.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4984,7 +4984,7 @@ kbd {
   <p><code>Scene::ChangeScene</code> 自体にも、短い読み込みの暗転が入ります（<a href="#script-scenes">シーンの切り替え</a>）。</p>
 </article>
 
-<article class="page" id="script-editor" data-group="スクリプト" data-title="エディタを拡張する" data-nav="エディタを拡張する" data-keywords="エディタ拡張 エディタの拡張 editorwindow editorgui editor menuitem ツール 道具 マップ生成 ステージ 配置 自作 ウィンドウ メニュー undo 取り消し canvas 描く unity">
+<article class="page" id="script-editor" data-group="スクリプト" data-title="エディタを拡張する" data-nav="エディタを拡張する" data-keywords="エディタ拡張 エディタの拡張 editorwindow editorgui editor menuitem ツール 道具 マップ生成 ステージ 配置 自作 ウィンドウ メニュー undo 取り消し canvas 描く unity ノード ノードエディタ グラフ ピン つながり リンク 会話 ダイアログ">
   <h1>エディタを拡張する</h1>
   <p class="lead">マップの自動生成やステージの配置のような、ゲームごとの道具をスクリプトで作り、エディタのメニューから開けます。書き方は Unity の <code>EditorWindow</code> と <code>[MenuItem]</code> に近づけています。</p>
 
@@ -4997,6 +4997,7 @@ kbd {
       <tr><td>メニューから 1 回だけ呼ぶ処理</td><td>クラスの外の関数に <code>[MenuItem("Tools/名前")]</code></td></tr>
       <tr><td>ボタン・スライダー・入力欄</td><td><a href="#api-EditorGUI"><code>EditorGUI::</code></a> の関数</td></tr>
       <tr><td>マス目や図を描いて、マウスで塗る</td><td><code>EditorGUI::Canvas</code> と <code>EditorGUI::DrawRect</code> など</td></tr>
+      <tr><td>ノードをつないで流れを組み立てる（会話・処理の手順・状態の移り変わりなど）</td><td><a href="#script-editor-nodes"><code>EditorGUI::BeginNodeEditor</code></a> と <code>BeginNode</code>・<code>InputPin</code>・<code>OutputPin</code>・<code>Link</code></td></tr>
       <tr><td>シーンにオブジェクトを作る・消す・選ぶ（<kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せる）</td><td><a href="#api-Editor"><code>Editor::</code></a> の関数</td></tr>
     </tbody>
   </table>
@@ -5064,13 +5065,14 @@ kbd {
       <tr><td>マウスとキー</td><td><code>IsMouseDown</code>・<code>IsMouseClicked</code>・<code>IsMouseDoubleClicked</code>・<code>IsMouseReleased</code>・<code>IsMouseDragging</code>・<code>GetMouseDragDelta</code>・<code>GetMouseWheel</code>・<code>IsKeyPressed</code>・<code>IsKeyDown</code>・<code>IsKeyReleased</code>・<code>ctrl</code>・<code>shift</code>・<code>alt</code></td></tr>
       <tr><td>参照と画像</td><td><code>ObjectField</code>（オブジェクトを選ぶ）・<code>AssetField</code>（アセットを選ぶ）・<code>Image</code>・<code>GetImageSize</code></td></tr>
       <tr><td>描く</td><td><code>Canvas</code>・<code>DrawRect</code>・<code>DrawRectOutline</code>・<code>DrawLine</code>・<code>DrawText</code>・<code>DrawImage</code>・<code>IsCanvasHovered</code>・<code>GetCanvasMousePosition</code></td></tr>
+      <tr><td>ノード</td><td><code>BeginNodeEditor</code>・<code>BeginNode</code>・<code>NodeTitle</code>・<code>InputPin</code>・<code>OutputPin</code>・<code>Link</code>・<code>IsLinkCreated</code>・<code>IsLinkDestroyed</code>・<code>GetSelectedNodes</code> など（<a href="#script-editor-nodes">ノードエディタ</a>）</td></tr>
     </tbody>
   </table>
   </div>
   <div class="callout tip"><p>同じラベルの部品を 1 つのウィンドウに 2 つ置くと、片方しか反応しません。<code>"削除##1"</code> のように <code>##</code> の後ろで区別するか（<code>##</code> から後ろは表示されません）、繰り返しの中なら <code>EditorGUI::PushID(i)</code> と <code>EditorGUI::PopID()</code> で囲みます。</p></div>
 
   <h3 id="script-editor-begin-end">Begin〜 と End〜 の組</h3>
-  <p>木・タブ・表・スクロールする枠・ポップアップ・メニューは、<code>Begin〜</code> と <code>End〜</code> で囲みます。<strong><code>Begin〜</code> を呼んだら、戻り値に関係なく必ず <code>End〜</code> を呼びます。</strong>中身は <code>Begin〜</code> が <code>true</code> を返したとき（開いているとき）だけ描きます。</p>
+  <p>木・タブ・表・スクロールする枠・ポップアップ・メニュー・ノードエディタ（ノード・ピン）は、<code>Begin〜</code> と <code>End〜</code> で囲みます。<strong><code>Begin〜</code> を呼んだら、戻り値に関係なく必ず <code>End〜</code> を呼びます。</strong>中身は <code>Begin〜</code> が <code>true</code> を返したとき（開いているとき）だけ描きます。</p>
   <script type="text/x-code" data-lang="as">
     if (EditorGUI::BeginTabBar("tabs")) {
         if (EditorGUI::BeginTabItem("生成")) {
@@ -5161,6 +5163,106 @@ kbd {
         }
     }
   </script>
+
+  <h2 id="script-editor-nodes">ノードエディタ</h2>
+  <p>ノード（箱）のピン（端の丸）どうしを線（つながり）で結んで組み立てる画面を作れます。会話の流れ・処理の手順・状態の移り変わりのように、順番や分かれ道のあるデータを作るのに向いています。<strong>ノードとつながりのデータはスクリプトが持ちます。</strong>ノードエディタは毎フレームそれを描き、ユーザーが何をしたか（つないだ・外した・動かした）を知らせるだけで、知らせを受けてデータを直すのはスクリプトです。</p>
+  <script type="text/x-code" data-lang="as" data-file="Editor/DoubleGraph.as">
+    [MenuItem("Tools/2 倍のノード")]
+    class DoubleGraph : EditorWindow
+    {
+        float value = 2.0f;
+        Vector2 positionValue = Vector2(20.0f, 20.0f);
+        Vector2 positionDouble = Vector2(240.0f, 20.0f);
+        bool linked = false;
+
+        void OnGUI()
+        {
+            EditorGUI::BeginNodeEditor("graph");
+
+            EditorGUI::BeginNode(1, positionValue);            // 番号と位置
+            EditorGUI::NodeTitle("数");
+            EditorGUI::BeginOutputPin(11);                     // 出口（右のピン）。中に部品を置ける
+            value = EditorGUI::FloatField("##value", value);
+            EditorGUI::EndOutputPin();
+            EditorGUI::EndNode();
+            positionValue = EditorGUI::GetNodePosition(1);     // ドラッグで動いた位置を受け取る
+
+            EditorGUI::BeginNode(2, positionDouble);
+            EditorGUI::NodeTitle("2 倍");
+            EditorGUI::InputPin(21, "入力");                   // 入口（左のピン）
+            EditorGUI::OutputPin(22, "= " + (linked ? value * 2.0f : 0.0f));
+            EditorGUI::EndNode();
+            positionDouble = EditorGUI::GetNodePosition(2);
+
+            if (linked) {
+                EditorGUI::Link(100, 11, 21);                  // つながり（番号・出口・入口）
+            }
+            EditorGUI::EndNodeEditor();
+
+            // ユーザーの操作は EndNodeEditor の後で調べ、データを直す
+            int outputPin = 0;
+            int inputPin = 0;
+            if (EditorGUI::IsLinkCreated(outputPin, inputPin) && outputPin == 11 && inputPin == 21) {
+                linked = true;
+            }
+            int link = 0;
+            if (EditorGUI::IsLinkDestroyed(link) && link == 100) {
+                linked = false;
+            }
+        }
+    }
+  </script>
+  <ul>
+    <li><strong>番号</strong>：ノード・ピン・つながりには <code>int</code> の番号を付けます。同じノードエディタの中で、ノードどうし・ピンどうし・つながりどうしが重ならないようにします。ピンはノードをまたいでも重ならないようにするので、<code>ノードの番号 * 16 + 何番目</code> のように作ると楽です。同じ番号を 2 回使うとスクリプトの例外になります。</li>
+    <li><strong>位置</strong>：<code>BeginNode</code> に渡した位置は、ノードが初めて出たときと、スクリプトが値を変えたときに使います。ユーザーがドラッグして動かした位置は、<code>EndNode</code> の後の <code>GetNodePosition</code> で受け取ってデータへ書き戻します。座標は、表示を動かしても変わらないノードエディタの中の位置です。</li>
+    <li><strong>つながり</strong>：出口（<code>OutputPin</code>）から入口（<code>InputPin</code>）へドラッグするとつながります。<code>IsLinkCreated</code> は、どちらからドラッグしても出口・入口の順に返します。入口のピンからドラッグすると外れます（<code>IsLinkDestroyed</code>）。<code>Link</code> はノードの外（<code>EndNode</code> の後）で呼び、両端のピンがそのフレームに無いつながりは描かずに、Console へ一度だけ警告を出します。</li>
+    <li><strong>操作</strong>：中ボタンか <kbd>Alt</kbd>+左ドラッグで表示を動かす・ノードをドラッグで動かす・<kbd>Ctrl</kbd>+クリックで選び足す・何も無いところをドラッグして囲んで選ぶ、ができます。</li>
+    <li><strong>ノードの中</strong>：部品は <code>BeginNode</code> の幅（既定 160）いっぱいに並びます。題名（<code>NodeTitle</code>）はピンより先に 1 回だけ描きます。<code>BeginChild</code>・<code>BeginTable</code>・<code>BeginListBox</code>・<code>ListBox</code> は、ノードエディタの中に置けません。</li>
+    <li><strong>見た目</strong>：<code>SetNextNodeColor</code> で次のノードの題名の色、<code>SetNextPinColor</code> で次のピンの色、<code>Link</code> の 4 つ目の引数でつながりの色を変えられます。ピンの形は <code>EditorGUI::PinShape::</code> の <code>Circle</code>・<code>CircleFilled</code>・<code>Triangle</code>・<code>TriangleFilled</code>・<code>Quad</code>・<code>QuadFilled</code> です。<code>BeginNodeEditor</code> の flags には、<code>EditorGUI::NodeEditorFlags::MiniMap</code>（右下の全体図）と <code>SnapToGrid</code>（格子に合わせて動かす）を <code>|</code> でつないで渡せます。</li>
+  </ul>
+
+  <h3 id="script-editor-nodes-events">EndNodeEditor の後で調べること</h3>
+  <p>次の関数は、<code>EndNodeEditor</code> の後で呼び、閉じたばかりのノードエディタについて答えます（ノードエディタの中で呼ぶと前のフレームの状態を答えます。<code>IsLink〜</code> は後でだけ答えます）。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>関数</th><th>内容</th></tr></thead>
+    <tbody>
+      <tr><td><code>IsLinkCreated(out 出口, out 入口)</code></td><td>ユーザーがピンをつないだ</td></tr>
+      <tr><td><code>IsLinkDestroyed(out 番号)</code></td><td>ユーザーがつながりを外した</td></tr>
+      <tr><td><code>IsLinkDropped(out ピン)</code></td><td>ピンから伸ばした線を、何も無いところで離した（そこへノードを足すのに使う）</td></tr>
+      <tr><td><code>GetSelectedNodes()</code>・<code>GetSelectedLinks()</code></td><td>選んでいるノード・つながりの番号の配列</td></tr>
+      <tr><td><code>SelectNode(番号)</code>・<code>ClearNodeSelection()</code></td><td>選ぶ・選択を外す（まだ描いていないノードは、次に描いたときに選ぶ）</td></tr>
+      <tr><td><code>IsNodeHovered(out 番号)</code>・<code>IsLinkHovered</code>・<code>IsPinHovered</code></td><td>カーソルの下にあるもの</td></tr>
+      <tr><td><code>IsNodeEditorHovered()</code>・<code>GetNodeEditorMousePosition()</code></td><td>カーソルがノードエディタの上にあるか・カーソルの位置（<code>BeginNode</code> に渡す座標）</td></tr>
+      <tr><td><code>FocusNode(番号)</code></td><td>そのノードが真ん中に来るように表示を動かす</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3 id="script-editor-nodes-edit">右クリックで足す・Delete で消す</h3>
+  <script type="text/x-code" data-lang="as">
+    EditorGUI::EndNodeEditor();
+
+    if (EditorGUI::IsNodeEditorHovered() && EditorGUI::IsMouseClicked(MouseButton::Right)) {
+        addPosition = EditorGUI::GetNodeEditorMousePosition();    // 押した場所を覚えておく
+        EditorGUI::OpenPopup("ノードを追加");
+    }
+    if (EditorGUI::BeginPopup("ノードを追加")) {
+        if (EditorGUI::MenuItem("セリフ")) {
+            AddNode(addPosition);
+        }
+    }
+    EditorGUI::EndPopup();
+
+    if (EditorGUI::IsKeyPressed(Key::Delete, false)) {
+        array<int>@ selected = EditorGUI::GetSelectedNodes();
+        for (uint i = 0; i < selected.length(); ++i) {
+            DeleteNode(selected[i]);          // データから消せば、次のフレームから描かれない
+        }
+        EditorGUI::ClearNodeSelection();
+    }
+  </script>
+  <p>ノードのデータは、<code>DialogueNode</code> のようなクラスの配列（<code>array&lt;DialogueNode@&gt;</code>）で持てます。公開メンバ変数にしておくと、スクリプトを読み直しても、エディタを閉じても残ります（<a href="#script-editor-reload">読み直し</a>）。消したノードを <kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻す仕組みはまだ無いので、大事なグラフは <code>DataFile</code> へ保存しておきます。</p>
 
   <h2 id="script-editor-scene">シーンを操作する（Editor::）</h2>
   <div class="table-wrap">
@@ -5264,10 +5366,10 @@ kbd {
 
   <h2 id="script-editor-reload">読み直しと、止まったとき</h2>
   <ul>
-    <li>.as を保存すると、ウィンドウを開いたまま読み直します。メンバ変数の値（数値・<code>bool</code>・<code>string</code>・<code>Vector2</code>〜<code>Vector4</code>・列挙と、それらの <code>array</code>）は、名前と型が同じなら <code>private</code> でも持ち越します。ハンドルとクラスのメンバ変数は初期値に戻ります。</li>
+    <li>.as を保存すると、ウィンドウを開いたまま読み直します。メンバ変数の値（数値・<code>bool</code>・<code>string</code>・<code>Vector2</code>〜<code>Vector4</code>・列挙・スクリプトのクラスと、それらの <code>array</code>）は、名前と型が同じなら <code>private</code> でも持ち越します。クラスのオブジェクトは同じ名前のクラスで作り直して中身を戻し、同じオブジェクトを 2 か所から指していれば、読み直した後も同じものを指します。<code>GameObject@</code> などエンジンのオブジェクトのハンドルは初期値に戻ります。</li>
     <li>ウィンドウの関数で例外が起きると、そのウィンドウは止まり、案内と <span class="ui">もう一度動かす</span> ボタンを出します。Console のエラーを直して保存すると、読み直して動き始めます。</li>
     <li>エディタの道具は重い処理をすることがあるので、1 回の呼び出しで実行できる行数の上限を 20,000,000 行にしています（ゲームのスクリプトは 200,000 行）。</li>
-    <li>公開メンバ変数（<code>private</code>・<code>protected</code> でないもの）の値は、エディタを閉じるときに <span class="path">Application/Saved/EditorSettings/ScriptWindows.json</span> へ保存し、次の起動で戻します（Unity のウィンドウと同じ）。残したくない値は <code>private</code> にします。</li>
+    <li>公開メンバ変数（<code>private</code>・<code>protected</code> でないもの）の値は、エディタを閉じるときに <span class="path">Application/Saved/EditorSettings/ScriptWindows.json</span> へ保存し、次の起動で戻します（Unity のウィンドウと同じ）。残せる型は読み直しと同じです。残したくない値は <code>private</code> にします。</li>
   </ul>
 
   <h2 id="script-editor-sample">見本：マップ生成</h2>
@@ -5279,6 +5381,50 @@ kbd {
     <li><strong>データファイルに保存する</strong><span class="ui">ファイルに保存</span> で、大きさとマスを <span class="path">Application/Assets/Data/Maps/Cave.json</span> へ書きます。ゲームのスクリプトからは <code>DataFile</code> で読めます。</li>
   </ol>
   <p>同じフォルダの <span class="path">EditorGUIGallery.as</span> は部品をひととおり並べたウィンドウ（<span class="ui">Tools<span class="arrow">▸</span>部品の見本</span>）、<span class="path">SceneTools.as</span> はメニューから関数を呼ぶ見本（オブジェクトを数える・選んだオブジェクトを地面に下ろす・剛体を付け外し）です。</p>
+
+  <h2 id="script-editor-sample-dialogue">見本：会話エディタ</h2>
+  <p>Sandbox プロジェクトの <span class="path">Scripts/Editor/DialogueEditor.as</span> は、会話の流れをノードでつなぐウィンドウです。<span class="ui">Tools<span class="arrow">▸</span>会話エディタ</span> で開きます。</p>
+  <ol class="steps">
+    <li><strong>ノードを足す</strong>何も無いところを右クリックし、<span class="ui">セリフ</span>・<span class="ui">選択肢</span>・<span class="ui">終わり</span> から選びます。ピンから伸ばした線を何も無いところで離しても、足したノードへそのままつながります。</li>
+    <li><strong>つなぐ・外す</strong>右のピン（出口）から左のピン（入口）へドラッグしてつなぎます。1 つの出口から出るつながりは 1 本で、つなぎ直すと前のつながりは外れます。入口のピンからドラッグすると外れます。</li>
+    <li><strong>書く</strong>セリフのノードに話す人とセリフを、選択肢のノードに問いと選択肢を書きます。選択肢ごとの右の三角のピンが行き先です。</li>
+    <li><strong>消す</strong>ノードかつながりを選んで <kbd>Delete</kbd> を押すか、ノードを右クリックして <span class="ui">消す</span> を選びます。開始のノードは消せません。</li>
+    <li><strong>保存する</strong><span class="ui">保存</span> で <span class="path">Application/Assets/Data/Dialogue/Sample.json</span> へ書きます。ノードは並べた順の配列（<code>nodeIds</code>・<code>nodeKinds</code>（0 開始・1 セリフ・2 選択肢・3 終わり）・<code>speakers</code>・<code>texts</code>）、つながりは <code>linkFrom</code>・<code>linkSlot</code>（何番目の出口か）・<code>linkTo</code> の配列です。</li>
+  </ol>
+  <script type="text/x-code" data-lang="as" data-file="DialoguePlayer.as（ゲームで読む）">
+    // 開始のノードから、1 番目の出口をたどってセリフを Console へ出す
+    void Start()
+    {
+        DataFile@ file = DataFile("Application/Assets/Data/Dialogue/Sample.json");
+        if (!file.exists) {
+            return;
+        }
+        array<int>@ ids = file.GetIntArray("nodeIds");
+        array<int>@ kinds = file.GetIntArray("nodeKinds");
+        array<string>@ speakers = file.GetStringArray("speakers");
+        array<string>@ texts = file.GetStringArray("texts");
+        array<int>@ linkFrom = file.GetIntArray("linkFrom");
+        array<int>@ linkSlot = file.GetIntArray("linkSlot");
+        array<int>@ linkTo = file.GetIntArray("linkTo");
+
+        int start = kinds.find(0);
+        int node = start >= 0 ? ids[start] : -1;
+        for (int step = 0; step < 100 && node >= 0; ++step) {
+            int index = ids.find(node);
+            if (kinds[index] == 1) {
+                Log(speakers[index] + "「" + texts[index] + "」");
+            }
+            int next = -1;
+            for (uint i = 0; i < linkFrom.length(); ++i) {
+                if (linkFrom[i] == node && linkSlot[i] == 0) {
+                    next = linkTo[i];
+                }
+            }
+            node = next;
+        }
+    }
+  </script>
+  <p><span class="ui">部品の見本</span> の <span class="ui">ノード</span> のタブは、2 つの数のノードを足し算のノードへつなぐ小さな見本です。</p>
 </article>
 
 <!-- ================================================================== AngelScript の文法 -->
@@ -6933,6 +7079,14 @@ kbd {
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-5-0">v0.5.0 <span class="dim">（2026-10-10）</span></h3>
+  <p>エディタの道具でノードエディタを作れるようにした版です（<a href="#script-editor-nodes">ノードエディタ</a>）。</p>
+  <ul>
+    <li><strong>ノードエディタ</strong>：<code>EditorGUI::BeginNodeEditor</code>・<code>BeginNode</code>・<code>InputPin</code>・<code>OutputPin</code>・<code>Link</code> で、ノードのピンどうしを線でつなぐ画面を作れます。つないだ・外した・何も無いところで離したは <code>IsLinkCreated</code>・<code>IsLinkDestroyed</code>・<code>IsLinkDropped</code>、選択は <code>GetSelectedNodes</code> で受け取ります。全体図・格子に合わせる・題名とピンとつながりの色・ピンの形も選べます。</li>
+    <li><strong>クラスの値も残る</strong>：EditorWindow のメンバ変数に入れたスクリプトのクラス（<code>array&lt;DialogueNode@&gt;</code> など）も、スクリプトを読み直したときに持ち越します。公開メンバ変数なら、エディタを閉じても次の起動で戻ります。</li>
+    <li>Sandbox に <span class="ui">Tools<span class="arrow">▸</span>会話エディタ</span>（会話の流れをノードでつなぎ、データファイルへ保存する見本）を足し、<span class="ui">部品の見本</span> に <span class="ui">ノード</span> のタブを足しました。</li>
+  </ul>
 
   <h3 id="changelog-v0-4-0">v0.4.0 <span class="dim">（2026-10-10）</span></h3>
   <p>エディタの道具で作ったデータを保存し、ゲームで読めるようにした版です（<a href="#script-editor">エディタを拡張する</a>）。</p>
@@ -8637,7 +8791,7 @@ class HelloWindow : EditorWindow
 
   {
     id: "EditorGUI", kind: "namespace", cat: "エディタの拡張", brief: "ウィンドウの部品",
-    keywords: "エディタ拡張 ボタン スライダー 入力欄 ラベル ツールチップ ラジオ 一覧 リスト 表 テーブル タブ 木 ツリー ポップアップ 右クリック メニュー ダイアログ 確認 進み具合 キー マウス 描く canvas ongui",
+    keywords: "エディタ拡張 ボタン スライダー 入力欄 ラベル ツールチップ ラジオ 一覧 リスト 表 テーブル タブ 木 ツリー ポップアップ 右クリック メニュー ダイアログ 確認 進み具合 キー マウス 描く canvas ongui ノード ノードエディタ ピン つながり リンク グラフ",
     summary: "<code>EditorWindow</code> の <code>OnGUI</code> の中で、ウィンドウの中身を描きます。<code>OnGUI</code> の外で呼ぶとスクリプトの例外になります。",
     intro: "<p>値を入れる部品は、今の値を受け取って操作された後の値を返します（<code>width = EditorGUI::IntSlider(\"幅\", width, 8, 64);</code>）。ラベルは部品の ID も兼ねるので、同じラベルを 2 つ置くときは <code>\"削除##1\"</code> のように <code>##</code> の後ろで区別します。ラベルを <code>##</code> で始めると、ラベルを出さずに欄を幅いっぱいにします。<code>Begin〜</code> は戻り値に関係なく必ず <code>End〜</code> と組にし、中身は <code>true</code> のときだけ描きます。色は 0〜1 の RGBA で、色見本と同じ見え方です。</p>",
     sections: [
@@ -8769,6 +8923,41 @@ class HelloWindow : EditorWindow
           { n: "AssetField", s: "string AssetField(const string&in label, const string&in path, const string&in type = \"\")", t: "f", d: "アセットを選ぶ欄。パス（プロジェクトの根からの相対）を返す。type で種類を絞る（<code>\"Prefab\"</code>・<code>\"Texture\"</code> など）。テクスチャ・モデル・音・プレハブは Project からドラッグもできる。" },
           { n: "Image", s: "void Image(const string&in path, float width = 0, float height = 0)", t: "f", d: "画像を出す。width・height の片方を 0 にすると縦横の比を保つ（両方 0 なら元の大きさ）。" },
           { n: "GetImageSize", s: "Vector2 GetImageSize(const string&in path)", t: "f", d: "画像の元の大きさ（読めなければ 0）。" }
+        ]
+      },
+      {
+        title: "ノードエディタ", members: [
+          { n: "BeginNodeEditor", s: "void BeginNodeEditor(const string&in id, int flags = EditorGUI::NodeEditorFlags::None, float height = 0)", t: "f", d: "ノードを並べる場所。height が 0 なら残りいっぱい。flags は <code>EditorGUI::NodeEditorFlags::</code> の <code>MiniMap</code>（右下の全体図）・<code>SnapToGrid</code>（格子に合わせて動かす）を | でつなぐ。表示の位置と選択は、ウィンドウと id ごとに覚える。" },
+          { n: "EndNodeEditor", s: "void EndNodeEditor()", t: "f", d: "つながりを描いて閉じる。ユーザーの操作は、この後で調べる。" },
+          { n: "BeginNode", s: "void BeginNode(int id, const Vector2&in position, float width = 160)", t: "f", d: "ノード 1 つ。position は初めて出たときと、スクリプトが値を変えたときに使う（ドラッグした位置は GetNodePosition で受け取る）。部品は width の幅に並ぶ。" },
+          { n: "EndNode", s: "void EndNode()", t: "f", d: "" },
+          { n: "NodeTitle", s: "void NodeTitle(const string&in title)", t: "f", d: "ノードの題名。ピンより先に 1 回だけ描く。" },
+          { n: "BeginNodeTitle", s: "void BeginNodeTitle()", t: "f", d: "題名の帯に部品を置くとき（EndNodeTitle と組）。" },
+          { n: "EndNodeTitle", s: "void EndNodeTitle()", t: "f", d: "" },
+          { n: "SetNextNodeColor", s: "void SetNextNodeColor(const Vector4&in color)", t: "f", d: "次の BeginNode のノードの題名の色。" },
+          { n: "InputPin", s: "void InputPin(int id, const string&in label, PinShape shape = EditorGUI::PinShape::CircleFilled)", t: "f", d: "入口（左のピン）と名前。shape は <code>EditorGUI::PinShape::</code> の <code>Circle</code>・<code>CircleFilled</code>・<code>Triangle</code>・<code>TriangleFilled</code>・<code>Quad</code>・<code>QuadFilled</code>。" },
+          { n: "OutputPin", s: "void OutputPin(int id, const string&in label, PinShape shape = EditorGUI::PinShape::CircleFilled)", t: "f", d: "出口（右のピン）と、右に寄せた名前。" },
+          { n: "BeginInputPin", s: "void BeginInputPin(int id, PinShape shape = EditorGUI::PinShape::CircleFilled)", t: "f", d: "入口のピンの横に部品を置くとき（EndInputPin と組）。" },
+          { n: "EndInputPin", s: "void EndInputPin()", t: "f", d: "" },
+          { n: "BeginOutputPin", s: "void BeginOutputPin(int id, PinShape shape = EditorGUI::PinShape::CircleFilled)", t: "f", d: "出口のピンの横に部品を置くとき（EndOutputPin と組）。" },
+          { n: "EndOutputPin", s: "void EndOutputPin()", t: "f", d: "" },
+          { n: "SetNextPinColor", s: "void SetNextPinColor(const Vector4&in color)", t: "f", d: "次のピンの色（データの種類ごとに色を分けるときに）。" },
+          { n: "Link", s: "void Link(int id, int outputPin, int inputPin)", t: "f", d: "つながり。ノードの外（EndNode の後）で呼ぶ。両端のピンがそのフレームに無ければ描かない。" },
+          { n: "Link", s: "void Link(int id, int outputPin, int inputPin, const Vector4&in color)", t: "f", d: "色を付けたつながり。" },
+          { n: "GetNodePosition", s: "Vector2 GetNodePosition(int id)", t: "f", d: "ノードの今の位置（ドラッグで動いた位置）。EndNode の後で受け取ってデータへ書き戻す。" },
+          { n: "IsLinkCreated", s: "bool IsLinkCreated(int&out outputPin, int&out inputPin)", t: "f", d: "ユーザーがピンをつないだか（EndNodeEditor の後で調べる）。どちらからドラッグしても出口・入口の順に返す。" },
+          { n: "IsLinkDestroyed", s: "bool IsLinkDestroyed(int&out id)", t: "f", d: "ユーザーがつながりを外したか。" },
+          { n: "IsLinkDropped", s: "bool IsLinkDropped(int&out pin)", t: "f", d: "ピンから伸ばした線を、何も無いところで離したか（そこへノードを足すときに）。" },
+          { n: "GetSelectedNodes", s: "int[]@ GetSelectedNodes()", t: "f", d: "選んでいるノードの番号。" },
+          { n: "GetSelectedLinks", s: "int[]@ GetSelectedLinks()", t: "f", d: "選んでいるつながりの番号。" },
+          { n: "SelectNode", s: "void SelectNode(int id)", t: "f", d: "ノードを選ぶ。まだ描いていないノードは、次に描いたときに選ぶ。" },
+          { n: "ClearNodeSelection", s: "void ClearNodeSelection()", t: "f", d: "ノードとつながりの選択を外す。" },
+          { n: "FocusNode", s: "void FocusNode(int id)", t: "f", d: "そのノードが真ん中に来るように表示を動かす。" },
+          { n: "IsNodeHovered", s: "bool IsNodeHovered(int&out id)", t: "f", d: "カーソルの下のノード。" },
+          { n: "IsLinkHovered", s: "bool IsLinkHovered(int&out id)", t: "f", d: "カーソルの下のつながり。" },
+          { n: "IsPinHovered", s: "bool IsPinHovered(int&out id)", t: "f", d: "カーソルの下のピン。" },
+          { n: "IsNodeEditorHovered", s: "bool IsNodeEditorHovered()", t: "f", d: "カーソルがノードエディタの上にあるか（右クリックのメニューを開くときに）。" },
+          { n: "GetNodeEditorMousePosition", s: "Vector2 GetNodeEditorMousePosition()", t: "f", d: "カーソルの位置（BeginNode に渡す座標）。右クリックした場所にノードを足すときに。" }
         ]
       },
       {

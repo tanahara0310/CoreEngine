@@ -30,6 +30,8 @@ namespace CoreEngine::Editor::ScriptBinding
             case GUIScopeKind::ListBox:
             case GUIScopeKind::Popup:
             case GUIScopeKind::Menu:
+            case GUIScopeKind::NodeEditor:
+            case GUIScopeKind::Node:
                 return true;
             default:
                 return false;
@@ -50,6 +52,11 @@ namespace CoreEngine::Editor::ScriptBinding
             case GUIScopeKind::ListBox: return "BeginListBox";
             case GUIScopeKind::Popup: return "BeginPopup〜";
             case GUIScopeKind::Menu: return "BeginMenu";
+            case GUIScopeKind::NodeEditor: return "BeginNodeEditor";
+            case GUIScopeKind::Node: return "BeginNode";
+            case GUIScopeKind::NodeTitle: return "BeginNodeTitle";
+            case GUIScopeKind::InputPin: return "BeginInputPin";
+            case GUIScopeKind::OutputPin: return "BeginOutputPin";
             }
             return "Begin〜";
         }
@@ -75,6 +82,13 @@ namespace CoreEngine::Editor::ScriptBinding
             case GUIScopeKind::ListBox: if (scope.open) { ImGui::EndListBox(); } break;
             case GUIScopeKind::Popup: if (scope.open) { ImGui::EndPopup(); } break;
             case GUIScopeKind::Menu: if (scope.open) { ImGui::EndMenu(); } break;
+            case GUIScopeKind::NodeEditor:
+            case GUIScopeKind::Node:
+            case GUIScopeKind::NodeTitle:
+            case GUIScopeKind::InputPin:
+            case GUIScopeKind::OutputPin:
+                CloseNodeScope(scope.kind);
+                break;
             default: break;
             }
 
@@ -219,6 +233,26 @@ namespace CoreEngine::Editor::ScriptBinding
         return nullptr;
     }
 
+    const GUIScopeEntry* InnermostScope()
+    {
+        for (auto it = g_scopes.rbegin(); it != g_scopes.rend(); ++it) {
+            if (it->kind != GUIScopeKind::Id) {
+                return &*it;
+            }
+        }
+        return nullptr;
+    }
+
+    bool RejectInsideNodeEditor(const char* function)
+    {
+        const GUIScopeEntry* const scope = InnermostWindowOrTable();
+        if (scope && (scope->kind == GUIScopeKind::NodeEditor || scope->kind == GUIScopeKind::Node)) {
+            ThrowScriptException(std::string("EditorGUI::") + function + " はノードエディタとノードの中には置けません");
+            return false;
+        }
+        return true;
+    }
+
     void UnwindGUIScopes()
     {
         while (!g_scopes.empty()) {
@@ -229,11 +263,12 @@ namespace CoreEngine::Editor::ScriptBinding
         SetIndentLevel(0);
     }
 
-    GUIScope::GUIScope()
+    GUIScope::GUIScope(const std::string& windowKey)
     {
         g_scopes.clear();
         g_state = GUIFrameState{};
         g_state.active = true;
+        g_state.windowKey = windowKey;
     }
 
     GUIScope::~GUIScope()

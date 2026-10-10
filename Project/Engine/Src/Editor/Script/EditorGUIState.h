@@ -26,7 +26,14 @@ namespace CoreEngine::Editor::ScriptBinding
         ListBox,
         Popup,
         Menu,
+        NodeEditor,
+        Node,
+        NodeTitle,
+        InputPin,
+        OutputPin,
     };
+
+    struct NodeEditorState;
 
     /// @brief OnGUI 1 回分の状態
     struct GUIFrameState
@@ -40,6 +47,13 @@ namespace CoreEngine::Editor::ScriptBinding
         bool canvasHovered = false;
         ImVec2 canvasMin{};
         ImVec2 canvasMax{};
+
+        /// 描いているウィンドウ（ノードエディタの状態をウィンドウごとに分ける）
+        std::string windowKey;
+
+        /// 開いているノードエディタと、この OnGUI で最後に閉じたノードエディタ
+        NodeEditorState* openNodeEditor = nullptr;
+        NodeEditorState* lastNodeEditor = nullptr;
     };
 
     /// @brief 今の OnGUI の状態
@@ -106,9 +120,20 @@ namespace CoreEngine::Editor::ScriptBinding
         int savedIndent = 0;
     };
 
-    /// @brief 一番内側の、ウィンドウを開く範囲（子の枠・一覧・ポップアップ・メニュー）か表
+    /// @brief 一番内側の、ウィンドウを開く範囲（子の枠・一覧・ポップアップ・メニュー・ノードエディタ・ノード）か表
     /// @return 無ければ nullptr
     const GUIScopeEntry* InnermostWindowOrTable();
+
+    /// @brief 一番内側の範囲（PushID は除く）
+    /// @return 無ければ nullptr
+    const GUIScopeEntry* InnermostScope();
+
+    /// @brief ノードエディタかノードの中なら、置けない部品としてスクリプトの例外にする
+    /// @return 置いてよければ true
+    bool RejectInsideNodeEditor(const char* function);
+
+    /// @brief ノードエディタの範囲を閉じる（EditorGUINodeBinding が実装する）
+    void CloseNodeScope(GUIScopeKind kind);
 
     /// @brief 範囲と字下げをすべて戻す（OnGUI を抜けるときに呼ぶ）
     void UnwindGUIScopes();
@@ -120,6 +145,10 @@ namespace CoreEngine::Editor::ScriptBinding
     /// @brief オブジェクトとアセットを選ぶ欄・画像の部品を登録する
     /// @note EditorGUI 名前空間を開いた BindingRegistrar を渡す。
     void RegisterEditorGUIAssets(Script::BindingRegistrar& r);
+
+    /// @brief ノードエディタの部品（ノード・ピン・つながり）を登録する
+    /// @note EditorGUI 名前空間を開いた BindingRegistrar を渡す。
+    void RegisterEditorGUINodes(Script::BindingRegistrar& r);
 }
 
 #endif // CORE_EDITOR

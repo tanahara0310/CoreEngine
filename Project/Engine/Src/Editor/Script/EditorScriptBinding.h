@@ -2,6 +2,8 @@
 
 #ifdef CORE_EDITOR
 
+#include <string>
+
 class asIScriptEngine;
 
 namespace CoreEngine::Editor::ScriptBinding
@@ -20,7 +22,8 @@ namespace CoreEngine::Editor::ScriptBinding
     class GUIScope
     {
     public:
-        GUIScope();
+        /// @param windowKey 描くウィンドウの名前（ノードエディタの表示の位置などをウィンドウごとに持つ）
+        explicit GUIScope(const std::string& windowKey);
         ~GUIScope();
 
         GUIScope(const GUIScope&) = delete;
@@ -45,6 +48,9 @@ namespace CoreEngine::Editor::ScriptBinding
 
     /// @brief EditorGUI::Image などで読み込んだテクスチャを手放す
     void ReleaseEditorGUITextures();
+
+    /// @brief EditorGUI::BeginNodeEditor で作ったノードエディタの状態を手放す
+    void ReleaseEditorGUINodeEditors();
 }
 
 #endif // CORE_EDITOR
