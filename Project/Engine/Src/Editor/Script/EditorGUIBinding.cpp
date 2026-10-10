@@ -332,7 +332,7 @@ namespace CoreEngine::Editor::ScriptBinding
         int ListBox(const std::string& label, int selected, const CScriptArray& items, int visibleRows)
         {
             WidgetScope widget("ListBox");
-            if (!widget) {
+            if (!widget || !RejectInsideNodeEditor("ListBox")) {
                 return selected;
             }
             BeginRow(label);
@@ -878,6 +878,7 @@ namespace CoreEngine::Editor::ScriptBinding
 
         // オブジェクトとアセットを選ぶ欄・画像
         RegisterEditorGUIAssets(r);
+        RegisterEditorGUINodes(r);
 
         r.Namespace("");
         return r.Succeeded();

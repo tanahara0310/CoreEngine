@@ -78,6 +78,9 @@ namespace CoreEngine::Editor
         /// @brief エディタを閉じても残すウィンドウの値（ファイルの中身）
         struct Persisted;
 
+        /// @brief 読み直しの間、JSON にして控えておくメンバ変数の値（スクリプトのクラスを含むもの）
+        struct SavedObjects;
+
         /// @brief パネルの中身を描く
         void DrawWindow(const std::string& className);
 
@@ -105,6 +108,7 @@ namespace CoreEngine::Editor
 
         /// 読み直しをまたいで持ち越す値（クラス名ごと）
         std::unordered_map<std::string, std::vector<SavedProperty>> savedProperties_;
+        std::unique_ptr<SavedObjects> savedObjects_;
 
         std::unique_ptr<Persisted> persisted_;
     };

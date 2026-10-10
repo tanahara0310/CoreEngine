@@ -27,6 +27,14 @@ class EditorGUIGallery : EditorWindow
     string prefab = "";
     string texture = "";
 
+    // ノードのタブ：数のノード 2 つ（1・2）と足し算のノード（3）
+    float numberA = 2.0f;
+    float numberB = 3.0f;
+    Vector2 positionA = Vector2(20.0f, 20.0f);
+    Vector2 positionB = Vector2(20.0f, 150.0f);
+    Vector2 positionSum = Vector2(260.0f, 80.0f);
+    array<int> sumInputs = { 1, 2 };
+
     void OnGUI()
     {
         if (EditorGUI::BeginTabBar("tabs")) {
@@ -56,6 +64,10 @@ class EditorGUIGallery : EditorWindow
             EditorGUI::EndTabItem();
             if (EditorGUI::BeginTabItem("参照と画像")) {
                 DrawReferenceTab();
+            }
+            EditorGUI::EndTabItem();
+            if (EditorGUI::BeginTabItem("ノード")) {
+                DrawNodeTab();
             }
             EditorGUI::EndTabItem();
         }
@@ -310,5 +322,67 @@ class EditorGUIGallery : EditorWindow
             return 0;
         }
         return enemyNames[a] < enemyNames[b] ? -1 : 1;
+    }
+
+    // 数のノードの出口（右）から足し算の入口（左）へつなぐと、結果が変わる。ピンの番号は ノードの番号 * 10 + 何番目
+    private void DrawNodeTab()
+    {
+        EditorGUI::Label("出口（右のピン）から入口（左のピン）へドラッグしてつなぎます。入口からドラッグすると外れます。");
+        EditorGUI::BeginNodeEditor("calc", EditorGUI::NodeEditorFlags::SnapToGrid);
+
+        EditorGUI::BeginNode(1, positionA, 120.0f);
+        EditorGUI::NodeTitle("数 A");
+        EditorGUI::BeginOutputPin(11);
+        numberA = EditorGUI::FloatField("##a", numberA);
+        EditorGUI::EndOutputPin();
+        EditorGUI::EndNode();
+        positionA = EditorGUI::GetNodePosition(1);
+
+        EditorGUI::BeginNode(2, positionB, 120.0f);
+        EditorGUI::NodeTitle("数 B");
+        EditorGUI::BeginOutputPin(21);
+        numberB = EditorGUI::FloatField("##b", numberB);
+        EditorGUI::EndOutputPin();
+        EditorGUI::EndNode();
+        positionB = EditorGUI::GetNodePosition(2);
+
+        EditorGUI::SetNextNodeColor(Vector4(0.72f, 0.45f, 0.16f, 1.0f));
+        EditorGUI::BeginNode(3, positionSum, 120.0f);
+        EditorGUI::NodeTitle("足す");
+        EditorGUI::InputPin(31, "1 つ目");
+        EditorGUI::InputPin(32, "2 つ目");
+        EditorGUI::OutputPin(33, "= " + SumOfInputs());
+        EditorGUI::EndNode();
+        positionSum = EditorGUI::GetNodePosition(3);
+
+        for (uint i = 0; i < sumInputs.length(); ++i) {
+            if (sumInputs[i] != 0) {
+                EditorGUI::Link(100 + int(i), sumInputs[i] * 10 + 1, 31 + int(i));
+            }
+        }
+        EditorGUI::EndNodeEditor();
+
+        int outputPin = 0;
+        int inputPin = 0;
+        if (EditorGUI::IsLinkCreated(outputPin, inputPin) && (inputPin == 31 || inputPin == 32)) {
+            sumInputs[inputPin - 31] = outputPin / 10;
+        }
+        int link = 0;
+        if (EditorGUI::IsLinkDestroyed(link)) {
+            sumInputs[link - 100] = 0;
+        }
+    }
+
+    private float SumOfInputs()
+    {
+        float sum = 0.0f;
+        for (uint i = 0; i < sumInputs.length(); ++i) {
+            if (sumInputs[i] == 1) {
+                sum += numberA;
+            } else if (sumInputs[i] == 2) {
+                sum += numberB;
+            }
+        }
+        return sum;
     }
 }

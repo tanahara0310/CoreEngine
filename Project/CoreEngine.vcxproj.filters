@@ -16,6 +16,9 @@
     <ClCompile Include="Engine\Src\Editor\Script\EditorGUIAssetBinding.cpp">
       <Filter>Engine\Src\Editor\Script</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Script\EditorGUINodeBinding.cpp">
+      <Filter>Engine\Src\Editor\Script</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Script\EditorGUIState.cpp">
       <Filter>Engine\Src\Editor\Script</Filter>
     </ClCompile>

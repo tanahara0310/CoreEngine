@@ -203,6 +203,19 @@ enum TableFlags {
 	ScrollY = 16,
 	Default = 7
 }
+enum NodeEditorFlags {
+	None = 0,
+	MiniMap = 1,
+	SnapToGrid = 2
+}
+enum PinShape {
+	Circle = 0,
+	CircleFilled = 1,
+	Triangle = 2,
+	TriangleFilled = 3,
+	Quad = 4,
+	QuadFilled = 5
+}
 }
 funcdef void TweenCallback();
 funcdef void TweenProgressCallback(float progress);
@@ -1361,6 +1374,37 @@ string AssetField(const string&in label, const string&in path, const string&in t
 void Image(const string&in path, float width = 0, float height = 0);
 Vector2 GetImageSize(const string&in path);
 void DrawImage(const string&in path, const Vector2&in min, const Vector2&in max);
+void BeginNodeEditor(const string&in id, int flags = EditorGUI::NodeEditorFlags::None, float height = 0);
+void EndNodeEditor();
+void BeginNode(int id, const Vector2&in position, float width = 160);
+void EndNode();
+void SetNextNodeColor(const Vector4&in color);
+void NodeTitle(const string&in title);
+void BeginNodeTitle();
+void EndNodeTitle();
+void InputPin(int id, const string&in label, PinShape shape = EditorGUI::PinShape::CircleFilled);
+void OutputPin(int id, const string&in label, PinShape shape = EditorGUI::PinShape::CircleFilled);
+void BeginInputPin(int id, PinShape shape = EditorGUI::PinShape::CircleFilled);
+void EndInputPin();
+void BeginOutputPin(int id, PinShape shape = EditorGUI::PinShape::CircleFilled);
+void EndOutputPin();
+void SetNextPinColor(const Vector4&in color);
+void Link(int id, int outputPin, int inputPin);
+void Link(int id, int outputPin, int inputPin, const Vector4&in color);
+Vector2 GetNodePosition(int id);
+int[]@ GetSelectedNodes();
+int[]@ GetSelectedLinks();
+void SelectNode(int id);
+void ClearNodeSelection();
+void FocusNode(int id);
+bool IsNodeHovered(int&out id);
+bool IsLinkHovered(int&out id);
+bool IsPinHovered(int&out id);
+bool IsNodeEditorHovered();
+Vector2 GetNodeEditorMousePosition();
+bool IsLinkCreated(int&out outputPin, int&out inputPin);
+bool IsLinkDestroyed(int&out id);
+bool IsLinkDropped(int&out pin);
 }
 namespace Editor {
 GameObject@ CreateObject(const string&in name);

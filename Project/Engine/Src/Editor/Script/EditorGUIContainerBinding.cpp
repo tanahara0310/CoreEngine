@@ -62,7 +62,7 @@ namespace CoreEngine::Editor::ScriptBinding
 
         bool BeginChild(const std::string& id, float width, float height, bool border)
         {
-            if (!RequireGUI("BeginChild")) {
+            if (!RequireGUI("BeginChild") || !RejectInsideNodeEditor("BeginChild")) {
                 return false;
             }
             const bool visible = ImGui::BeginChild(id.c_str(), ImVec2(width, height),
@@ -140,7 +140,7 @@ namespace CoreEngine::Editor::ScriptBinding
 
         bool BeginTable(const std::string& id, int columns, int flags, float height)
         {
-            if (!RequireGUI("BeginTable")) {
+            if (!RequireGUI("BeginTable") || !RejectInsideNodeEditor("BeginTable")) {
                 return false;
             }
             if (columns < 1 || columns > kMaxTableColumns) {
@@ -255,7 +255,7 @@ namespace CoreEngine::Editor::ScriptBinding
 
         bool BeginListBox(const std::string& label, float height)
         {
-            if (!RequireGUI("BeginListBox")) {
+            if (!RequireGUI("BeginListBox") || !RejectInsideNodeEditor("BeginListBox")) {
                 return false;
             }
             BeginLabeledRow(label);
