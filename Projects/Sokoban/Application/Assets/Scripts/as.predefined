@@ -1258,6 +1258,15 @@ bool SetVector2(const string&in name, const Vector2&in value);
 bool SetVector3(const string&in name, const Vector3&in value);
 bool SetColor(const string&in name, const Vector4&in value);
 }
+namespace Gizmos {
+Vector4 get_color() property;
+void set_color(const Vector4&in) property;
+void DrawLine(const Vector3&in from, const Vector3&in to);
+void DrawRay(const Vector3&in from, const Vector3&in direction);
+void DrawWireCube(const Vector3&in center, const Vector3&in size);
+void DrawWireSphere(const Vector3&in center, float radius);
+void DrawSphere(const Vector3&in center, float radius);
+}
 namespace EditorGUI {
 void Label(const string&in text);
 void Label(const string&in label, const string&in value);
@@ -1409,4 +1418,37 @@ void EndUndoGroup();
 bool get_isPlaying() property;
 void RecordObject(GameObject@ object, const string&in label = "");
 string[]@ FindAssets(const string&in type = "", const string&in folder = "");
+}
+namespace SceneView {
+bool get_isHovered() property;
+Vector2 get_mousePosition() property;
+Vector2 get_size() property;
+Vector3 get_cameraPosition() property;
+Vector3 get_cameraForward() property;
+bool GetMouseRay(Vector3&out origin, Vector3&out direction);
+bool RaycastMouse(Vector3&out point, Vector3&out normal);
+GameObject@ GetObjectUnderMouse();
+bool MouseToPlane(float height, Vector3&out point);
+bool WorldToScreen(const Vector3&in world, Vector2&out screen);
+bool IsMouseClicked(MouseButton button = MouseButton::Left);
+bool IsMouseDown(MouseButton button = MouseButton::Left);
+bool IsMouseReleased(MouseButton button = MouseButton::Left);
+bool IsMouseDragging(MouseButton button = MouseButton::Left);
+bool IsKeyPressed(Key key, bool repeat = true);
+bool get_ctrl() property;
+bool get_shift() property;
+bool get_alt() property;
+void UseMouse();
+}
+namespace Handles {
+void DrawLine(const Vector3&in from, const Vector3&in to, const Vector4&in color = Vector4(1.0f, 1.0f, 1.0f, 1.0f), float thickness = 2);
+void DrawPolyline(const Vector3[]&in points, const Vector4&in color = Vector4(1.0f, 1.0f, 1.0f, 1.0f), float thickness = 2, bool closed = false);
+void DrawWireCube(const Vector3&in center, const Vector3&in size, const Vector4&in color = Vector4(1.0f, 1.0f, 1.0f, 1.0f), float thickness = 2);
+void DrawWireDisc(const Vector3&in center, const Vector3&in normal, float radius, const Vector4&in color = Vector4(1.0f, 1.0f, 1.0f, 1.0f), float thickness = 2);
+void DrawWireSphere(const Vector3&in center, float radius, const Vector4&in color = Vector4(1.0f, 1.0f, 1.0f, 1.0f), float thickness = 2);
+void DrawSolidDisc(const Vector3&in center, const Vector3&in normal, float radius, const Vector4&in color);
+void DrawSolidQuad(const Vector3&in a, const Vector3&in b, const Vector3&in c, const Vector3&in d, const Vector4&in color);
+void DrawDot(const Vector3&in position, float size, const Vector4&in color = Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+void Label(const Vector3&in position, const string&in text, const Vector4&in color = Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+Vector3 PositionHandle(int id, const Vector3&in position);
 }

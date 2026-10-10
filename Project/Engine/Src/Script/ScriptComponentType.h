@@ -42,6 +42,8 @@ namespace CoreEngine
             OnTriggerEnter,
             OnTriggerStay,
             OnTriggerExit,
+            OnDrawGizmos,
+            OnDrawGizmosSelected,
             Count,
         };
 

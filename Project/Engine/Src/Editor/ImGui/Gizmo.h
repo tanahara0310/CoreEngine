@@ -68,11 +68,18 @@ namespace CoreEngine
         static bool IsUsing();
 
         /// @brief ギズモがホバー中かどうか
+        /// @details このクラスの Manipulate〜 で描いたギズモについて、直前の Manipulate〜 の時点の状態を返す
+        ///          （スクリプトのハンドルなど、後から別の ID で描いたものには左右されない）。
         /// @return ホバー中ならtrue
         static bool IsOver();
 
     private:
+        /// @brief 今描いたギズモのホバーを覚える
+        static void RememberOver();
+
         static ImVec2 viewportPos_;
         static ImVec2 viewportSize_;
+        static bool over_;
+        static int overFrame_;
     };
 }

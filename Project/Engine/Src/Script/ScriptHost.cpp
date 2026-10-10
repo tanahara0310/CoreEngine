@@ -9,6 +9,7 @@
 #include "Script/Binding/MathBinding.h"
 #include "Script/Binding/PhysicsBinding.h"
 #include "Script/Binding/CVarBinding.h"
+#include "Script/Binding/GizmosBinding.h"
 #include "Script/Binding/RandomBinding.h"
 #include "Script/Binding/RenderingBinding.h"
 #include "Script/Binding/SceneBinding.h"
@@ -340,9 +341,11 @@ namespace CoreEngine
         configured = Script::RegisterSessionBinding(engine_) && configured;
         configured = Script::RegisterRandomBinding(engine_) && configured;
         configured = Script::RegisterCVarBinding(engine_) && configured;
+        configured = Script::RegisterGizmosBinding(engine_) && configured;
 #ifdef CORE_EDITOR
         configured = Editor::ScriptBinding::RegisterEditorGUI(engine_) && configured;
         configured = Editor::ScriptBinding::RegisterEditorScene(engine_) && configured;
+        configured = Editor::ScriptBinding::RegisterEditorSceneView(engine_) && configured;
 #endif
         // 手で書いた型（Transform・UIText・UIImage・Collider）を登録し終えてから、残りの型を記述子から作る
         configured = Script::RegisterComponentBinding(engine_) && configured;

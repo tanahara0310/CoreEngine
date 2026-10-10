@@ -19,6 +19,9 @@
     <ClCompile Include="Engine\Src\Editor\Script\EditorGUINodeBinding.cpp">
       <Filter>Engine\Src\Editor\Script</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Script\EditorSceneViewBinding.cpp">
+      <Filter>Engine\Src\Editor\Script</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Script\EditorGUIState.cpp">
       <Filter>Engine\Src\Editor\Script</Filter>
     </ClCompile>
@@ -146,6 +149,9 @@
       <Filter>Engine\Src\Script\Binding</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Script\Binding\CVarBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\GizmosBinding.cpp">
       <Filter>Engine\Src\Script\Binding</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Script\Binding\RenderingBinding.cpp">
@@ -1022,6 +1028,12 @@
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Scene\ObjectEditing.cpp">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Scene\ScenePicking.cpp">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Scene\SceneViewTools.cpp">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Scene\PlayModeController.cpp">

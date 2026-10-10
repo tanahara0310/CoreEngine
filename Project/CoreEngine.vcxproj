@@ -191,6 +191,7 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Editor\Script\EditorGUIContainerBinding.cpp" />
     <ClCompile Include="Engine\Src\Editor\Script\EditorGUIAssetBinding.cpp" />
     <ClCompile Include="Engine\Src\Editor\Script\EditorGUINodeBinding.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Script\EditorSceneViewBinding.cpp" />
     <ClCompile Include="Engine\Src\Editor\Script\EditorGUIState.cpp" />
     <ClCompile Include="Engine\Src\Editor\Script\EditorSceneBinding.cpp" />
     <ClCompile Include="Engine\Src\Editor\Script\ScriptEditorExtensions.cpp" />
@@ -234,6 +235,7 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Script\Binding\SessionBinding.cpp" />
     <ClCompile Include="Engine\Src\Script\Binding\RandomBinding.cpp" />
     <ClCompile Include="Engine\Src\Script\Binding\CVarBinding.cpp" />
+    <ClCompile Include="Engine\Src\Script\Binding\GizmosBinding.cpp" />
     <ClCompile Include="Engine\Src\Script\Binding\RenderingBinding.cpp" />
     <ClCompile Include="Engine\Src\Script\Metadata\MetadataParser.cpp" />
     <ClCompile Include="Engine\Src\Script\ScriptComponent.cpp" />
@@ -529,6 +531,8 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Editor\Scene\EditorSceneAccess.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\LastOpenedScene.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\ObjectEditing.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Scene\ScenePicking.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Scene\SceneViewTools.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\PlayModeController.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\PrefabEditing.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\PrefabMode.cpp" />

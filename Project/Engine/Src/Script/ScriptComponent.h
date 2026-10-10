@@ -82,6 +82,12 @@ namespace CoreEngine
         /// @brief ライフサイクルの関数の呼び出しを表す名前（`オブジェクト名 の 型名::関数名`）
         std::string DescribeMethod(ScriptComponentType::Method method) const;
 
+#ifdef CORE_EDITOR
+        /// @brief シーンビューにギズモを描く関数（OnDrawGizmos と、選ばれていれば OnDrawGizmosSelected）を呼ぶ
+        /// @details 止まったら、読み直すまでこのコンポーネントのギズモだけ描かない（コンポーネントは無効にしない）。
+        void DrawGizmos(bool selected);
+#endif
+
     private:
         /// @brief ライフサイクルの関数を呼ぶ（止まったらこのコンポーネントを無効にする）
         void Invoke(ScriptComponentType::Method method);
@@ -119,6 +125,9 @@ namespace CoreEngine
 
         /// 読み直しの間だけ持つ、繋ぎ直す前の値（クラスが見つからなければ持ち続ける）
         json savedParameters_;
+
+        /// ギズモを描く関数が止まったか（読み直すと戻る）
+        bool gizmosStopped_ = false;
 
         /// 持ち主のハンドル（参照を 1 つ持つ）
         Script::ScriptGameObject* ownerHandle_ = nullptr;

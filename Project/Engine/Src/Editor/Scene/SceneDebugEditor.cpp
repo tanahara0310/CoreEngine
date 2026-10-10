@@ -3,6 +3,7 @@
 #ifdef CORE_EDITOR
 
 #include "SceneDebugEditor.h"
+#include "Editor/Scene/SceneViewTools.h"
 #include "EngineSystem/EngineSystem.h"
 #include "EngineSystem/PlaybackState.h"
 #include "Input/InputManager.h"
@@ -339,7 +340,19 @@ namespace CoreEngine
         }
 
         if (camera3D) {
-            objectSelector_.Update(gameObjectManager_, camera3D, normalizedMousePos, isViewportHovered);
+            // スクリプトの道具がマウスを使っている間は、左クリックでオブジェクトを選ばない
+            Editor::SceneViewTools& tools = Editor::SceneViewTools::Get();
+            objectSelector_.Update(gameObjectManager_, camera3D, normalizedMousePos, isViewportHovered && !tools.WantsMouse());
+
+            // スクリプトの道具（ウィンドウの OnSceneGUI・コンポーネントのギズモ）は、選んだ物のギズモより下に描く
+            Editor::SceneViewContext context;
+            context.position = viewportPos;
+            context.size = viewportSize;
+            context.hovered = isViewportHovered;
+            context.camera = camera3D;
+            context.objects = gameObjectManager_;
+            context.selected = objectSelector_.GetSelectedObject();
+            tools.Draw(context);
             objectSelector_.DrawGizmo(camera3D);
 
             // カメラ編集の重ね描き（キーのアイコン・ギズモ）はオブジェクト選択の後。

@@ -12,6 +12,7 @@
 #include "Reflection/PropertySerializer.h"
 #include "Reflection/PropertyValue.h"
 #include "Script/Binding/GameObjectBinding.h"
+#include "Script/Binding/GizmosBinding.h"
 #include "Script/Binding/PhysicsBinding.h"
 #include "Script/ScriptHost.h"
 #include "Utility/Logger/Logger.h"
@@ -391,6 +392,7 @@ namespace CoreEngine
         }
         typeName_ = type.GetName();
         type_ = &type;
+        gizmosStopped_ = false;
         object_ = host_->CreateObject(type);
         if (!object_) {
             type_ = nullptr;
@@ -450,6 +452,37 @@ namespace CoreEngine
                 "{} が止まったので、このコンポーネントを無効にしました", DescribeMethod(method));
         }
     }
+
+#ifdef CORE_EDITOR
+    void ScriptComponent::DrawGizmos(bool selected)
+    {
+        if (gizmosStopped_ || !type_ || !host_ || !object_) {
+            return;
+        }
+        asIScriptFunction* const always = type_->GetMethod(ScriptComponentType::Method::OnDrawGizmos);
+        asIScriptFunction* const onSelected = selected ? type_->GetMethod(ScriptComponentType::Method::OnDrawGizmosSelected) : nullptr;
+        if (!always && !onSelected) {
+            return;
+        }
+        if (!objectRefs_.empty()) {
+            ApplyObjectRefs();
+        }
+
+        const auto call = [this](asIScriptFunction* function, ScriptComponentType::Method method) {
+            if (!function) {
+                return true;
+            }
+            Script::GizmoDrawScope gizmos;
+            return host_->CallMethod(function, object_, [this, method]() { return DescribeMethod(method); });
+            };
+        if (!call(always, ScriptComponentType::Method::OnDrawGizmos)
+            || !call(onSelected, ScriptComponentType::Method::OnDrawGizmosSelected)) {
+            gizmosStopped_ = true;
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Script,
+                "{} のギズモが止まったので、直して保存するまで描きません", typeName_);
+        }
+    }
+#endif
 
     void ScriptComponent::InvokeContact(ScriptComponentType::Method method, const CollisionInfo& info, bool trigger)
     {

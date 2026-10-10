@@ -30,7 +30,7 @@ namespace CoreEngine
         bool IsCameraControlAllowed()
         {
             // ギズモ操作中はカメラを動かさない
-            if (ImGuizmo::IsOver() || ImGuizmo::IsUsing()) {
+            if (ImGuizmo::IsOver() || ImGuizmo::IsUsingAny()) {
                 return false;
             }
 

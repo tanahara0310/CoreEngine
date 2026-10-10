@@ -38,6 +38,8 @@ namespace CoreEngine
             "void OnTriggerEnter(Collision@)",
             "void OnTriggerStay(Collision@)",
             "void OnTriggerExit(Collision@)",
+            "void OnDrawGizmos()",
+            "void OnDrawGizmosSelected()",
         };
 
         /// ライフサイクルの関数の名前（`ScriptComponentType::Method` の並び）
@@ -55,6 +57,8 @@ namespace CoreEngine
             "OnTriggerEnter",
             "OnTriggerStay",
             "OnTriggerExit",
+            "OnDrawGizmos",
+            "OnDrawGizmosSelected",
         };
 
         static_assert(std::size(kMethodDeclarations) == static_cast<std::size_t>(ScriptComponentType::Method::Count));

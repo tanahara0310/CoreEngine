@@ -6,9 +6,13 @@
 #include "Editor/ImGui/EditorTheme.h"
 #include "Editor/Panel/EditorMenuRegistry.h"
 #include "Editor/Panel/EditorPanelRegistry.h"
+#include "Editor/Scene/SceneViewTools.h"
 #include "Editor/Script/EditorScriptBinding.h"
 #include "Script/Metadata/MetadataParser.h"
+#include "Script/ScriptComponent.h"
 #include "Script/ScriptHost.h"
+#include "GameObject/GameObject.h"
+#include "GameObject/GameObjectManager.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
 
@@ -386,6 +390,18 @@ namespace CoreEngine::Editor
             return {};
         }
 
+        /// @brief ウィンドウのクラスが EditorWindow の関数を書き換えていれば、その関数（書き換えていなければ nullptr）
+        asIScriptFunction* FindOverride(const asITypeInfo& type, const char* declaration)
+        {
+            asIScriptFunction* const own = type.GetMethodByDecl(declaration, false);
+            for (const asITypeInfo* base = type.GetBaseType(); base; base = base->GetBaseType()) {
+                if (std::string_view(base->GetName()) == kWindowBaseName) {
+                    return base->GetMethodByDecl(declaration, false) == own ? nullptr : own;
+                }
+            }
+            return own;
+        }
+
         /// @brief 場所の最後の区切り（ウィンドウの題名）
         std::string LastSegment(const std::string& path)
         {
@@ -482,6 +498,9 @@ namespace CoreEngine::Editor
         asIScriptFunction* onGUI = nullptr;
         asIScriptFunction* onDisable = nullptr;
 
+        /// クラスが書き換えた OnSceneGUI（書いていなければ nullptr）
+        asIScriptFunction* onSceneGUI = nullptr;
+
         /// OnEnable を呼んでから OnDisable を呼ぶまでの間か
         bool enabled = false;
 
@@ -505,6 +524,7 @@ namespace CoreEngine::Editor
             onEnable = nullptr;
             onGUI = nullptr;
             onDisable = nullptr;
+            onSceneGUI = nullptr;
         }
 
         bool IsVisible() const
@@ -517,6 +537,7 @@ namespace CoreEngine::Editor
     ScriptEditorExtensions::ScriptEditorExtensions(ScriptHost& host)
         : host_(host)
     {
+        sceneView_ = SceneViewTools::Get().Register([this](const SceneViewContext& context) { DrawSceneView(context); });
     }
 
     ScriptEditorExtensions::~ScriptEditorExtensions()
@@ -697,6 +718,7 @@ namespace CoreEngine::Editor
             window.onEnable = type->GetMethodByDecl("void OnEnable()");
             window.onGUI = type->GetMethodByDecl("void OnGUI()");
             window.onDisable = type->GetMethodByDecl("void OnDisable()");
+            window.onSceneGUI = FindOverride(*type, "void OnSceneGUI()");
             if (created) {
                 ApplyPersisted(window);
             }
@@ -801,6 +823,7 @@ namespace CoreEngine::Editor
 
     void ScriptEditorExtensions::Shutdown()
     {
+        sceneView_.Reset();
         SavePersisted();
         ScriptBinding::ReleaseEditorGUITextures();
         ScriptBinding::ReleaseEditorGUINodeEditors();
@@ -927,6 +950,40 @@ namespace CoreEngine::Editor
         }
     }
 
+    void ScriptEditorExtensions::DrawSceneView(const SceneViewContext& context)
+    {
+        // スクリプトのコンポーネントのギズモ（呼んでいる間にオブジェクトが増えても回り切れるよう、先に集める）
+        if (context.objects) {
+            std::vector<std::pair<ScriptComponent*, bool>> gizmos;
+            for (const auto& object : context.objects->GetAllObjects()) {
+                if (!object || !object->IsActive() || !context.objects->IsShownInIsolation(*object)) {
+                    continue;
+                }
+                const bool selected = object.get() == context.selected;
+                for (const auto& component : object->GetAllComponents()) {
+                    auto* const script = dynamic_cast<ScriptComponent*>(component.get());
+                    if (script && script->IsEnabled()) {
+                        gizmos.emplace_back(script, selected);
+                    }
+                }
+            }
+            for (const auto& [script, selected] : gizmos) {
+                script->DrawGizmos(selected);
+            }
+        }
+
+        // 開いているウィンドウの OnSceneGUI
+        for (const std::unique_ptr<Window>& window : windows_) {
+            if (!window->object || !window->onSceneGUI || !window->enabled || window->stopped || !window->IsVisible()) {
+                continue;
+            }
+            ScriptBinding::SceneGUIScope scope;
+            if (!CallWindowMethod(*window, window->onSceneGUI, "OnSceneGUI")) {
+                window->stopped = true;
+            }
+        }
+    }
+
     bool ScriptEditorExtensions::CallWindowMethod(Window& window, asIScriptFunction* method, const char* methodName)
     {
         if (!method || !window.object) {
@@ -962,7 +1019,8 @@ namespace CoreEngine::Editor
                 }
 
                 std::string_view used;
-                if (kind == asTC_IDENTIFIER && (token == "EditorWindow" || token == "EditorGUI")) {
+                if (kind == asTC_IDENTIFIER
+                    && (token == "EditorWindow" || token == "EditorGUI" || token == "SceneView" || token == "Handles")) {
                     used = token;
                 } else if (kind == asTC_KEYWORD && token == "::" && previous == "Editor") {
                     used = "Editor";

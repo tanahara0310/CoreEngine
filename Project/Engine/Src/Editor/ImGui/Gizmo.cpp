@@ -14,6 +14,8 @@ namespace CoreEngine
 {
     ImVec2 Gizmo::viewportPos_ = ImVec2(0, 0);
     ImVec2 Gizmo::viewportSize_ = ImVec2(0, 0);
+    bool Gizmo::over_ = false;
+    int Gizmo::overFrame_ = -2;
 
     // 度数からラジアンへの変換
     constexpr float kDegToRad = static_cast<float>(std::numbers::pi) / 180.0f;
@@ -84,6 +86,7 @@ namespace CoreEngine
             ImGuizmo::LOCAL,
             &worldMatrix.m[0][0]
         );
+        RememberOver();
 
         // トランスフォームが変更された場合、オブジェクトに反映
         if (changed) {
@@ -136,6 +139,7 @@ namespace CoreEngine
             ImGuizmo::TRANSLATE,
             ImGuizmo::WORLD,
             &worldMatrix.m[0][0]);
+        RememberOver();
 
         if (changed) {
             Vector3 translation, rotationDegrees, scale;
@@ -197,6 +201,7 @@ namespace CoreEngine
             ImGuizmo::LOCAL,
             &worldMatrix.m[0][0]
         );
+        RememberOver();
 
         // トランスフォームが変更された場合、スプライトに反映
         if (changed) {
@@ -269,6 +274,7 @@ namespace CoreEngine
             operation,
             ImGuizmo::LOCAL,
             &worldMatrix.m[0][0]);
+        RememberOver();
 
         if (!changed) { return false; }
 
@@ -302,6 +308,13 @@ namespace CoreEngine
 
     bool Gizmo::IsOver()
     {
-        return ImGuizmo::IsOver();
+        // 前のフレームより古い状態は使わない（ギズモを描かなくなったら外れる）
+        return over_ && overFrame_ >= ImGui::GetFrameCount() - 1;
+    }
+
+    void Gizmo::RememberOver()
+    {
+        over_ = ImGuizmo::IsOver();
+        overFrame_ = ImGui::GetFrameCount();
     }
 }

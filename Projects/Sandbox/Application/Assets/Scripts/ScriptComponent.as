@@ -82,4 +82,11 @@ abstract class ScriptComponent
 
     // トリガーのコライダーから離れたとき
     void OnTriggerExit(Collision@ other) {}
+
+    // エディタのシーンビューを描くフレームごと（編集中も呼ばれる。書き出したゲームでは呼ばれない）。
+    // Gizmos:: で道筋や範囲などの目印を描く
+    void OnDrawGizmos() {}
+
+    // 持ち主のオブジェクトを選んでいる間だけ、OnDrawGizmos の後に
+    void OnDrawGizmosSelected() {}
 }
