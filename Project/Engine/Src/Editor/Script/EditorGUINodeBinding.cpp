@@ -558,6 +558,10 @@ namespace CoreEngine::Editor::ScriptBinding
                 window->WorkRect.Max.x = g_openNode->savedWorkMaxX;
                 window->ContentRegionRect.Max.x = g_openNode->savedContentMaxX;
             }
+            // 題名だけのノードは、imnodes が中身の位置へ動かしたカーソルのまま閉じることになるので、大きさ 0 の部品を置いてから閉じる
+            if (ImGui::GetCurrentWindow()->DC.IsSetPos) {
+                ImGui::Dummy(ImVec2(0.0f, 0.0f));
+            }
             ImNodes::EndNode();
             g_openNode.reset();
         }

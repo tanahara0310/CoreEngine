@@ -4986,7 +4986,7 @@ kbd {
   <p><code>Scene::ChangeScene</code> 自体にも、短い読み込みの暗転が入ります（<a href="#script-scenes">シーンの切り替え</a>）。</p>
 </article>
 
-<article class="page" id="script-editor" data-group="スクリプト" data-title="エディタを拡張する" data-nav="エディタを拡張する" data-keywords="エディタ拡張 エディタの拡張 editorwindow editorgui editor menuitem ツール 道具 マップ生成 ステージ 配置 自作 ウィンドウ メニュー undo 取り消し canvas 描く unity ノード ノードエディタ グラフ ピン つながり リンク 会話 ダイアログ シーンビュー ハンドル ギズモ gizmos handles onscenegui クリック 配置 レイ インスペクタ customeditor componenteditor グラフ カーブ 曲線 時間軸 タイムライン">
+<article class="page" id="script-editor" data-group="スクリプト" data-title="エディタを拡張する" data-nav="エディタを拡張する" data-keywords="エディタ拡張 エディタの拡張 editorwindow editorgui editor menuitem ツール 道具 マップ生成 ステージ 配置 自作 ウィンドウ メニュー undo 取り消し canvas 描く unity ノード ノードエディタ グラフ ピン つながり リンク 会話 ダイアログ シーンビュー ハンドル ギズモ gizmos handles onscenegui クリック 配置 レイ インスペクタ customeditor componenteditor グラフ カーブ 曲線 時間軸 タイムライン テスト 試す 確かめる チェック 見本">
   <h1>エディタを拡張する</h1>
   <p class="lead">マップの自動生成やステージの配置のような、ゲームごとの道具をスクリプトで作り、エディタのメニューから開けます。書き方は Unity の <code>EditorWindow</code> と <code>[MenuItem]</code> に近づけています。</p>
 
@@ -5057,7 +5057,7 @@ kbd {
   </div>
 
   <h2 id="script-editor-gui">EditorGUI の部品</h2>
-  <p>値を入れる部品は、インスペクタと同じく左にラベル、右に欄を並べます（ラベルを <code>"##名前"</code> のように <code>##</code> で始めると、ラベルを出さずに欄を幅いっぱいにします。表の中で便利です）。全部の関数は <a href="#api-EditorGUI">EditorGUI</a> にあり、Sandbox の <span class="ui">Tools<span class="arrow">▸</span>部品の見本</span> で実際の見た目を確かめられます。</p>
+  <p>値を入れる部品は、インスペクタと同じく左にラベル、右に欄を並べます（ラベルを <code>"##名前"</code> のように <code>##</code> で始めると、ラベルを出さずに欄を幅いっぱいにします。表の中で便利です）。全部の関数は <a href="#api-EditorGUI">EditorGUI</a> にあり、Sandbox の <span class="ui">Tools<span class="arrow">▸</span>テスト<span class="arrow">▸</span>エディタ拡張のテスト</span>（<a href="#script-editor-feature-test">エディタ拡張のテスト</a>）で実際の見た目と動きを確かめられます。</p>
   <div class="table-wrap">
   <table>
     <thead><tr><th>種類</th><th>関数</th></tr></thead>
@@ -5532,7 +5532,7 @@ kbd {
     <li><strong>シーンに配置する</strong><span class="ui">シーンに配置</span> で、壁のプレハブ（<span class="path">Prefabs/MapGenerator/MapWall.prefab</span>）を「GeneratedMap」の子として並べます。もう一度押すと置き直し、<span class="ui">配置したものを消す</span> で消えます。どちらも <kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せます。</li>
     <li><strong>データファイルに保存する</strong><span class="ui">ファイルに保存</span> で、大きさとマスを <span class="path">Application/Assets/Data/Maps/Cave.json</span> へ書きます。ゲームのスクリプトからは <code>DataFile</code> で読めます。</li>
   </ol>
-  <p>同じフォルダの <span class="path">EditorGUIGallery.as</span> は部品をひととおり並べたウィンドウ（<span class="ui">Tools<span class="arrow">▸</span>部品の見本</span>）、<span class="path">SceneTools.as</span> はメニューから関数を呼ぶ見本（オブジェクトを数える・選んだオブジェクトを地面に下ろす・剛体を付け外し）です。</p>
+  <p>同じフォルダの <span class="path">SceneTools.as</span> は、メニューから関数を呼ぶ見本（オブジェクトを数える・選んだオブジェクトを地面に下ろす・剛体を付け外し）です。</p>
 
   <h2 id="script-editor-sample-dialogue">見本：会話エディタ</h2>
   <p>Sandbox プロジェクトの <span class="path">Scripts/Editor/DialogueEditor.as</span> は、会話の流れをノードでつなぐウィンドウです。<span class="ui">Tools<span class="arrow">▸</span>会話エディタ</span> で開きます。</p>
@@ -5576,7 +5576,7 @@ kbd {
         }
     }
   </script>
-  <p><span class="ui">部品の見本</span> の <span class="ui">ノード</span> のタブは、2 つの数のノードを足し算のノードへつなぐ小さな見本です。</p>
+  <p><span class="ui">Tools<span class="arrow">▸</span>テスト<span class="arrow">▸</span>エディタ拡張のテスト</span> の <span class="ui">大きな部品<span class="arrow">▸</span>ノード</span> のタブは、数のノードを足し算のノードへつなぎ、表示のノードで結果を見る小さな見本です。ノードエディタの関数をひととおり使っています。</p>
 
   <h2 id="script-editor-sample-scene">見本：配置ツールと巡回の道筋</h2>
   <ul>
@@ -5585,10 +5585,39 @@ kbd {
     <li><span class="path">Scripts/Editor/PatrolRouteInspector.as</span>（巡回の道筋のインスペクタ）：既定の欄の下に点の数と「点を足す」「最後の点を消す」「逆回りにする」を足し、選んでいる間はシーンビューに点を動かすハンドルを出します。道筋は <span class="ui">Tools<span class="arrow">▸</span>巡回の道筋を作る</span> で作れます。</li>
   </ul>
 
-  <h2 id="script-editor-sample-curve">見本：カーブで上下する箱と、部品の見本</h2>
+  <h2 id="script-editor-sample-curve">見本：カーブで上下する箱</h2>
+  <p><span class="path">Scripts/CurveMover.as</span>（コンポーネント「カーブで上下」）と <span class="path">Scripts/Editor/CurveMoverInspector.as</span>：カーブに沿って持ち主を上下に動かします。インスペクタでは、カーブを点のドラッグで直せます。<span class="ui">Tools<span class="arrow">▸</span>カーブで上下する箱を作る</span> で、壁のプレハブに付けて作れます。</p>
+
+  <h2 id="script-editor-feature-test">エディタ拡張のテスト</h2>
+  <p>Sandbox の <span class="ui">Tools<span class="arrow">▸</span>テスト<span class="arrow">▸</span>エディタ拡張のテスト</span> は、このページの機能をひととおり試せるウィンドウです。上の段のタブで分野を、下の段のタブで機能を選びます。各タブの上の <span class="ui">確かめること</span> にチェックを入れていくと、ウィンドウの上に確かめた数の合計が出ます（チェックはウィンドウの値として保存され、次の起動でも残ります。<span class="ui">チェックを全部外す</span> で外せます）。</p>
+  <p>使い方は、各タブのスクリプト（<span class="path">Scripts/Editor/FeatureTest</span>）の先頭に、関数の一覧と一緒に書いてあります。エディタの拡張を書くときの見本としても読めます。</p>
+  <table>
+    <thead><tr><th>分野</th><th>タブ</th><th>試すこと</th><th>スクリプト</th></tr></thead>
+    <tbody>
+      <tr><td rowspan="7">画面の部品</td><td>文字</td><td>文字・色付きと薄い文字・箇条書き・見出し・説明の囲み・ツールチップ・区切りと余白・進み具合</td><td><span class="path">FeatureTestTextTab.as</span></td></tr>
+      <tr><td>入力</td><td>ボタン・値の欄・スライダー・色・ラジオボタン・<code>changed</code>・打っている間と確定したとき</td><td><span class="path">FeatureTestInputTab.as</span></td></tr>
+      <tr><td>並べ方</td><td><code>SameLine</code>・使える幅・グループ・枠・字下げ・押せなくする・<code>PushID</code>・折りたたみ</td><td><span class="path">FeatureTestLayoutTab.as</span></td></tr>
+      <tr><td>一覧</td><td>一覧（1 つ選ぶ・複数選ぶ）・選択肢・並べ替えとスクロールのある表・木</td><td><span class="path">FeatureTestListTab.as</span></td></tr>
+      <tr><td>メニュー</td><td>ポップアップのメニュー（チェック・押せない項目・入れ子）・右クリックのメニュー・確認ダイアログ</td><td><span class="path">FeatureTestPopupTab.as</span></td></tr>
+      <tr><td>マウス</td><td>部品とウィンドウの状態・マウスのボタンとドラッグ・キー（繰り返す／繰り返さない・組み合わせ）・描く場所</td><td><span class="path">FeatureTestDeviceTab.as</span></td></tr>
+      <tr><td>参照</td><td>オブジェクトとアセットの欄・画像・<code>Editor::FindAssets</code></td><td><span class="path">FeatureTestReferenceTab.as</span></td></tr>
+      <tr><td rowspan="3">大きな部品</td><td>ノード</td><td>ノードエディタ（つなぐ・外す・何も無いところで放してノードを足す・右クリックで足す・Delete で消す・選ぶ・寄る・全体図）</td><td><span class="path">FeatureTestNodeTab.as</span></td></tr>
+      <tr><td>グラフとカーブ</td><td>折れ線と棒のグラフ・カーブの欄・<code>Curve::Evaluate</code>・範囲を変えたカーブ</td><td><span class="path">FeatureTestGraphTab.as</span></td></tr>
+      <tr><td>時間軸</td><td>再生位置・キーと区間のトラック・刻み・キーを通ったとき</td><td><span class="path">FeatureTestTimelineTab.as</span></td></tr>
+      <tr><td rowspan="4">シーン</td><td>オブジェクト</td><td>作る・プレハブから作る・まとめて作る・変える・消す・探す・選ぶと、それぞれの <kbd>Ctrl</kbd>+<kbd>Z</kbd></td><td><span class="path">FeatureTestSceneTab.as</span></td></tr>
+      <tr><td>シーンビュー</td><td><code>Handles::</code> の図形と位置のハンドル・<code>SceneView::</code> のマウスとカメラ・クリックで印を置く</td><td><span class="path">FeatureTestSceneViewTab.as</span></td></tr>
+      <tr><td>インスペクタ</td><td>スクリプトのコンポーネントとエンジンのコンポーネント（剛体）のインスペクタの拡張・ギズモ</td><td><span class="path">FeatureTestInspectorTab.as</span> ほか</td></tr>
+      <tr><td>データ</td><td><code>DataFile</code> の書き込み・読み直し・キーの一覧と削除</td><td><span class="path">FeatureTestDataTab.as</span></td></tr>
+      <tr><td rowspan="3">仕組み</td><td>ウィンドウ</td><td><code>[MenuItem]</code> の関数・<code>OnEnable</code>／<code>OnGUI</code>／<code>OnDisable</code> の回数・Console へ出す</td><td><span class="path">FeatureTestWindowTab.as</span></td></tr>
+      <tr><td>読み直し</td><td>.as を保存して読み直したときと、エディタを開き直したときに、どの値が残るか</td><td><span class="path">FeatureTestReloadTab.as</span></td></tr>
+      <tr><td>誤った使い方</td><td>わざと間違えた呼び方をして、エディタが落ちずに例外になり、<span class="ui">もう一度動かす</span> で戻るか</td><td><span class="path">FeatureTestMisuseTab.as</span></td></tr>
+    </tbody>
+  </table>
   <ul>
-    <li><span class="path">Scripts/CurveMover.as</span>（コンポーネント「カーブで上下」）と <span class="path">Scripts/Editor/CurveMoverInspector.as</span>：カーブに沿って持ち主を上下に動かします。インスペクタでは、カーブを点のドラッグで直せます。<span class="ui">Tools<span class="arrow">▸</span>カーブで上下する箱を作る</span> で、壁のプレハブに付けて作れます。</li>
-    <li><span class="ui">Tools<span class="arrow">▸</span>部品の見本</span> の <span class="ui">グラフとカーブ</span> と <span class="ui">時間軸</span> のタブ：グラフ・カーブ・<code>Curve::Evaluate</code> の値、再生と止める・キーと区間のトラックの見本です。</li>
+    <li>インスペクタのタブで使うコンポーネント「テストの的」は <span class="path">Scripts/FeatureTest/FeatureTestTarget.as</span>、そのインスペクタは <span class="path">FeatureTestTargetInspector.as</span>、剛体のインスペクタに欄を足すのは <span class="path">FeatureTestRigidbodyInspector.as</span> です。剛体の欄は、名前が「FeatureTest」で始まるオブジェクトのときだけ足します。</li>
+    <li>シーンに作るオブジェクトは、名前が「FeatureTest」で始まります。<span class="ui">オブジェクト</span> のタブの <span class="ui">FeatureTest のオブジェクトを全部消す</span> でまとめて消せます。データのタブで保存すると <span class="path">Application/Assets/Data/FeatureTest/Sample.json</span> ができます。</li>
+    <li>メニューの関数は <span class="ui">Tools<span class="arrow">▸</span>テスト</span> にあります（<span class="ui">メニューから関数を呼ぶ</span>・<span class="ui">選んだオブジェクトの名前を出す</span>）。</li>
+    <li>誤った使い方のタブのボタンは、押すとこのウィンドウを止めます。<span class="ui">もう一度動かす</span> で戻してください。</li>
   </ul>
 </article>
 
@@ -7251,7 +7280,9 @@ kbd {
     <li><strong>インスペクタの拡張</strong>：<code>ComponentEditor</code> を継いだクラスに <code>[CustomEditor("型名")]</code> を付けると、そのコンポーネントのインスペクタの中身を <code>OnInspectorGUI</code> で描けます。既定の欄は <code>EditorGUI::DrawDefaultInspector()</code>、選んでいる間のシーンビューは <code>OnSceneGUI</code> です。</li>
     <li><strong>グラフ・カーブ</strong>：<code>EditorGUI::PlotLines</code>・<code>PlotHistogram</code>、点をドラッグで直す <code>CurveField</code> と、ゲームで同じ曲線の値を読む <code>Curve::Evaluate</code> を足しました。</li>
     <li><strong>時間軸</strong>：<code>EditorGUI::BeginTimeline</code>・<code>TimelineKeys</code>・<code>TimelineRanges</code>・<code>EndTimeline</code> で、再生位置とキー・区間をドラッグで動かす時間軸を作れます。時刻を進める <code>GetDeltaTime</code> も足しました。</li>
-    <li>Sandbox の巡回の道筋の編集を、ウィンドウからインスペクタの拡張（<span class="path">PatrolRouteInspector.as</span>）に替え、「カーブで上下」のコンポーネントとインスペクタ、部品の見本のグラフとカーブ・時間軸のタブを足しました。</li>
+    <li>Sandbox の巡回の道筋の編集を、ウィンドウからインスペクタの拡張（<span class="path">PatrolRouteInspector.as</span>）に替え、「カーブで上下」のコンポーネントとインスペクタを足しました。</li>
+    <li>Sandbox の部品の見本を、エディタの拡張の機能をひととおり試す <span class="ui">Tools<span class="arrow">▸</span>テスト<span class="arrow">▸</span>エディタ拡張のテスト</span> に置き換えました。17 のタブに、使い方を書いたスクリプトと「確かめること」のチェック欄があります（<a href="#script-editor-feature-test">エディタ拡張のテスト</a>）。</li>
+    <li>ノードエディタで、題名だけで中身の無いノードを描くと、アサートでエディタが止まる不具合を直しました。</li>
   </ul>
 
   <h3 id="changelog-v0-6-0">v0.6.0 <span class="dim">（2026-10-11）</span></h3>
