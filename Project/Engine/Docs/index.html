@@ -1490,6 +1490,62 @@ kbd {
   white-space: pre;
 }
 
+/* 関数ごとの使い方（API の表の下） */
+.member-uses {
+  margin: 0 0 2rem;
+}
+
+.member-use {
+  margin: 0;
+  padding: 1rem 0 0.5rem;
+  border-top: 1px solid var(--line);
+}
+
+.member-use:target,
+.member-use.flash {
+  background: var(--accent-soft);
+}
+
+.member-use h4 {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--accent);
+}
+
+.member-use .api-decl {
+  margin-bottom: 0.75rem;
+  white-space: pre-wrap;
+}
+
+.member-params {
+  margin: 0.5rem 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 1rem;
+  font-size: var(--fs-sm);
+}
+
+.member-params dt {
+  font-weight: 700;
+  color: var(--fg-mute);
+}
+
+.member-params dd {
+  margin: 0;
+}
+
+.member-params ul {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.use-link {
+  display: inline-block;
+  margin-top: 0.2rem;
+  font-size: var(--fs-xs);
+}
+
 /* コンポーネントの概要（エディタでの名前・型名・スクリプトから・必要なもの） */
 .comp-meta {
   display: flex;
@@ -3148,7 +3204,7 @@ kbd {
   <ul>
     <li>スクリプトは <span class="path">Application/Assets/Scripts/</span> の下に置きます。フォルダを分けて整理してかまいません（例：<span class="path">Scripts/Enemy/EnemyMover.as</span>）。</li>
     <li>拡張子は <code>.as</code>、文字コードは UTF-8 です（日本語のコメントや文字列も使えます）。</li>
-    <li><span class="path">Scripts/Editor/</span>（Scripts の直下の Editor フォルダ）は、エディタの無いビルド（Release・書き出したゲーム）では読み込まれず、書き出しにも入りません。エディタでだけ使う道具（<a href="#script-editor">エディタを拡張する</a>）を置きます。</li>
+    <li><span class="path">Scripts/Editor/</span>（Scripts の直下の Editor フォルダ）は、エディタの無いビルド（Release・書き出したゲーム）では読み込まれず、書き出しにも入りません。エディタでだけ使う道具（<a href="#script-editor">エディタの拡張</a>）を置きます。</li>
   </ul>
 
   <h2 id="script-overview-module">すべてのファイルが 1 つにまとまる</h2>
@@ -3195,7 +3251,7 @@ kbd {
     <thead><tr><th>ファイル</th><th>中身</th></tr></thead>
     <tbody>
       <tr><td><span class="path">ScriptComponent.as</span></td><td>基底クラス <code>ScriptComponent</code> の定義。書き出したゲームにも必要なので、一度エディタで開いたプロジェクトから書き出します。</td></tr>
-      <tr><td><span class="path">Editor/EditorWindow.as</span></td><td>エディタのウィンドウの基底クラス <code>EditorWindow</code> の定義（<a href="#script-editor">エディタを拡張する</a>）。</td></tr>
+      <tr><td><span class="path">Editor/EditorWindow.as</span></td><td>エディタのウィンドウの基底クラス <code>EditorWindow</code> の定義（<a href="#script-editor">エディタの拡張</a>）。</td></tr>
       <tr><td><span class="path">as.predefined</span></td><td>エンジンの型と関数の宣言の一覧。VS Code の補完が読みます。この一覧は API リファレンスの元にもなっています。</td></tr>
     </tbody>
   </table>
@@ -4218,7 +4274,7 @@ kbd {
   <p>多くは null の確かめ忘れです。ハンドルを使う前に <code>if (x is null) return;</code> を入れます。起きうる失敗を自分で扱うときは <code>try</code> ／ <code>catch</code> も使えます。</p>
 
   <h2 id="debug-infinite">無限ループ</h2>
-  <p>エディタのあるビルドでは、1 回の呼び出し（1 回の Update など）で 200,000 行を超えて実行すると中断し、そのコンポーネントを無効にします（エディタが固まらないように）。<code>while</code> の終わる条件を見直してください。エディタの道具（<a href="#script-editor">エディタを拡張する</a>）の上限は 20,000,000 行です。</p>
+  <p>エディタのあるビルドでは、1 回の呼び出し（1 回の Update など）で 200,000 行を超えて実行すると中断し、そのコンポーネントを無効にします（エディタが固まらないように）。<code>while</code> の終わる条件を見直してください。エディタの道具（<a href="#script-editor">エディタの拡張</a>）の上限は 20,000,000 行です。</p>
 
   <h2 id="debug-reload">ホットリロードの決まり</h2>
   <div class="table-wrap">
@@ -4986,9 +5042,9 @@ kbd {
   <p><code>Scene::ChangeScene</code> 自体にも、短い読み込みの暗転が入ります（<a href="#script-scenes">シーンの切り替え</a>）。</p>
 </article>
 
-<article class="page" id="script-editor" data-group="スクリプト" data-title="エディタを拡張する" data-nav="エディタを拡張する" data-keywords="エディタ拡張 エディタの拡張 editorwindow editorgui editor menuitem ツール 道具 マップ生成 ステージ 配置 自作 ウィンドウ メニュー undo 取り消し canvas 描く unity ノード ノードエディタ グラフ ピン つながり リンク 会話 ダイアログ シーンビュー ハンドル ギズモ gizmos handles onscenegui クリック 配置 レイ インスペクタ customeditor componenteditor グラフ カーブ 曲線 時間軸 タイムライン テスト 試す 確かめる チェック 見本">
-  <h1>エディタを拡張する</h1>
-  <p class="lead">マップの自動生成やステージの配置のような、ゲームごとの道具をスクリプトで作り、エディタのメニューから開けます。書き方は Unity の <code>EditorWindow</code> と <code>[MenuItem]</code> に近づけています。</p>
+<article class="page" id="script-editor" data-group="エディタの拡張" data-title="エディタの拡張の概要" data-nav="概要" data-keywords="エディタ拡張 エディタの拡張 editorwindow editorgui editor menuitem ツール 道具 マップ生成 ステージ 配置 自作 ウィンドウ メニュー undo 取り消し canvas 描く unity ノード ノードエディタ グラフ ピン つながり リンク 会話 ダイアログ シーンビュー ハンドル ギズモ gizmos handles onscenegui クリック 配置 レイ インスペクタ customeditor componenteditor グラフ カーブ 曲線 時間軸 タイムライン テスト 試す 確かめる チェック 見本 概要 自作エディタ 自作 道具">
+  <h1>エディタの拡張の概要</h1>
+  <p class="lead">マップの自動生成やステージの配置のような、ゲームごとの道具（自作のエディタ）を AngelScript で作り、エディタのメニューから開けます。ウィンドウ・メニュー・インスペクタ・シーンビューの道具・ギズモを、Unity の <code>EditorWindow</code>・<code>[MenuItem]</code>・<code>CustomEditor</code> に近い書き方で作れます。</p>
 
   <h2 id="script-editor-what">できること</h2>
   <div class="table-wrap">
@@ -5009,12 +5065,387 @@ kbd {
   </table>
   </div>
 
+  <h2 id="editor-ext-kinds">作れるものと、呼ばれるとき</h2>
+  <table>
+    <thead><tr><th>作るもの</th><th>書くもの</th><th>エンジンが呼ぶとき</th><th>詳しく</th></tr></thead>
+    <tbody>
+      <tr><td>ウィンドウ</td><td><code>EditorWindow</code> を継いだクラスに <code>[MenuItem("Tools/名前")]</code></td><td>開いている間、毎フレーム <code>OnGUI</code>。開いたとき <code>OnEnable</code>、閉じたとき <code>OnDisable</code></td><td><a href="#editor-ext-window">ウィンドウとメニュー</a></td></tr>
+      <tr><td>メニューの関数</td><td>クラスの外の <code>void 名前()</code> に <code>[MenuItem("Tools/名前")]</code></td><td>メニューで選んだとき 1 回</td><td><a href="#script-editor-menu">メニューから関数を呼ぶ</a></td></tr>
+      <tr><td>インスペクタの拡張</td><td><code>ComponentEditor</code> を継いだクラスに <code>[CustomEditor("型名")]</code></td><td>その型のコンポーネントをインスペクタに出している間、毎フレーム <code>OnInspectorGUI</code></td><td><a href="#editor-ext-inspector">インスペクタを自分で描く</a></td></tr>
+      <tr><td>シーンビューの道具</td><td>ウィンドウかインスペクタの拡張に <code>OnSceneGUI</code></td><td>シーンビューを描くフレームごと（ウィンドウは開いている間、インスペクタの拡張は持ち主を選んでいる間）</td><td><a href="#editor-ext-sceneview">シーンビューの道具とギズモ</a></td></tr>
+      <tr><td>ギズモ</td><td>コンポーネントに <code>OnDrawGizmos</code>・<code>OnDrawGizmosSelected</code></td><td>編集中のシーンビューを描くフレームごと</td><td><a href="#script-editor-gizmos">コンポーネントのギズモ</a></td></tr>
+    </tbody>
+  </table>
+
   <h2 id="script-editor-folder">Scripts/Editor フォルダに置く</h2>
   <ul>
     <li>エディタの道具は <span class="path">Application/Assets/Scripts/Editor/</span> に置きます。このフォルダはエディタでだけ読み込まれ、Release のビルドと書き出したゲームには入りません。</li>
     <li><code>EditorWindow</code>・<code>ComponentEditor</code>・<code>EditorGUI::</code>・<code>Editor::</code>・<code>SceneView::</code>・<code>Handles::</code> は、このフォルダの中でだけ使えます。外のファイルで使うと、Console に「○○.as(行) で EditorGUI を使っています」とエラーが出ます。エディタでは動きますが、書き出したゲームではそのファイルがコンパイルできず、スクリプトが動きません。</li>
     <li>基底クラスの <span class="path">Editor/EditorWindow.as</span> は、<span class="path">ScriptComponent.as</span> と同じく、エディタが起動のたびに書き出します。</li>
   </ul>
+
+  <h2 id="editor-ext-names">使うクラスと名前空間</h2>
+  <table>
+    <thead><tr><th>名前</th><th>役目</th><th>使える場所</th></tr></thead>
+    <tbody>
+      <tr><td><a href="#api-EditorWindow"><code>EditorWindow</code></a></td><td>ウィンドウの基底クラス</td><td>Scripts/Editor</td></tr>
+      <tr><td><a href="#api-ComponentEditor"><code>ComponentEditor</code></a></td><td>インスペクタの拡張の基底クラス</td><td>Scripts/Editor</td></tr>
+      <tr><td><a href="#api-EditorGUI"><code>EditorGUI::</code></a></td><td>ボタン・欄・表・ポップアップ・ノード・グラフなどの部品</td><td><code>OnGUI</code>・<code>OnInspectorGUI</code> の中</td></tr>
+      <tr><td><a href="#api-Editor"><code>Editor::</code></a></td><td>編集中のシーンのオブジェクトを作る・消す・選ぶ・Undo</td><td>Scripts/Editor</td></tr>
+      <tr><td><a href="#api-SceneView"><code>SceneView::</code></a></td><td>シーンビューのマウス・キー・カメラ</td><td><code>OnSceneGUI</code> の中</td></tr>
+      <tr><td><a href="#api-Handles"><code>Handles::</code></a></td><td>シーンビューへ重ねて描く・点を動かすハンドル</td><td><code>OnSceneGUI</code> の中</td></tr>
+      <tr><td><a href="#api-Gizmos"><code>Gizmos::</code></a></td><td>コンポーネントの目印を描く</td><td><code>OnDrawGizmos</code>・<code>OnDrawGizmosSelected</code> の中（ゲームのスクリプトに書ける）</td></tr>
+      <tr><td><a href="#api-DataFile"><code>DataFile</code></a></td><td>道具で作ったデータを JSON に保存し、ゲームで読む</td><td>どこでも（保存はエディタだけ）</td></tr>
+      <tr><td><a href="#api-Curve"><code>Curve::</code></a></td><td>カーブの欄で作った曲線の値を読む</td><td>どこでも</td></tr>
+    </tbody>
+  </table>
+  <p>関数ごとの引数・戻り値・使い方の例は、<a href="#editor-ext-reference">関数の一覧</a> からたどれます。</p>
+
+  <h2 id="editor-ext-pages">読む順番</h2>
+  <ol>
+    <li><a href="#editor-ext-tutorial">作り方：柱を並べる道具を作る</a>：手順を追って 1 つ作ります。初めてならここから。</li>
+    <li><a href="#editor-ext-usage">使い方：開く・読み直す・止まったとき</a>：作った道具の開き方、保存したときに値がどうなるか、エラーの直し方。</li>
+    <li>作りたいものに合わせて：<a href="#editor-ext-window">ウィンドウとメニュー</a>・<a href="#editor-ext-gui">画面の部品</a>・<a href="#editor-ext-scene">シーンとデータを扱う</a>・<a href="#editor-ext-sceneview">シーンビューの道具とギズモ</a>・<a href="#editor-ext-inspector">インスペクタを自分で描く</a>・<a href="#editor-ext-nodes">ノードエディタ</a>・<a href="#editor-ext-tools">グラフ・カーブ・時間軸</a>。</li>
+    <li><a href="#editor-ext-samples">見本とテスト</a>：Sandbox に入っている見本と、機能をひととおり試すウィンドウ。</li>
+    <li><a href="#editor-ext-reference">関数の一覧</a>：すべての関数の使い方。</li>
+  </ol>
+</article>
+
+<article class="page" id="editor-ext-tutorial" data-group="エディタの拡張" data-title="作り方：柱を並べる道具を作る" data-nav="作り方（チュートリアル）" data-keywords="作り方 チュートリアル 手順 はじめて 最初 自作エディタ ウィンドウ 雛形 テンプレート 並べる 柱 editorwindow menuitem">
+  <h1>作り方：柱を並べる道具を作る</h1>
+  <p class="lead">プレハブを決めた数だけ等間隔に並べる道具を、手順を追って作ります。ウィンドウ・値の欄・ボタン・シーンの操作・<kbd>Ctrl</kbd>+<kbd>Z</kbd>・シーンビューのハンドルを順に使います。完成したコードは最後にあります。</p>
+
+  <h2 id="editor-ext-tutorial-file">1. ファイルを作る</h2>
+  <p>エディタの道具は、プロジェクトの <span class="path">Application/Assets/Scripts/Editor/</span> の中に置きます。次のどちらかで <span class="path">PillarTool.as</span> を作ります。</p>
+  <ul>
+    <li><strong>VS Code で作る</strong>：<span class="path">Scripts/Editor</span> フォルダに新しいファイル <span class="path">PillarTool.as</span> を作ります（<a href="#script-setup">VS Code の準備</a> をしておくと、<code>EditorGUI::</code> などの補完が出ます）。</li>
+    <li><strong>Project ビューで作る</strong>：Project ビューで <span class="path">Scripts/Editor</span> を開き、<span class="ui">＋ 作成</span> を押します。置き先がそのフォルダになっているのを確かめ、クラス名に <code>PillarTool</code> を入れて作ります。雛形はコンポーネントの形なので、中身を次の手順のコードに全部置き換えます（エディタのウィンドウの雛形を用意する方法は <a href="#editor-ext-tutorial-template">最後</a> にあります）。</li>
+  </ul>
+  <div class="callout warn"><p><span class="path">Scripts/Editor</span> の外に置くと、Console に「○○.as(行) で EditorGUI を使っています」とエラーが出ます。エディタでは動きますが、書き出したゲームではそのファイルがコンパイルできません。</p></div>
+
+  <h2 id="editor-ext-tutorial-window">2. ウィンドウを出す</h2>
+  <p>まず、文字を 1 行出すだけのウィンドウを作ります。</p>
+  <script type="text/x-code" data-lang="as" data-file="Editor/PillarTool.as">
+    [MenuItem("Tools/柱を並べる")]
+    class PillarTool : EditorWindow
+    {
+        void OnGUI()
+        {
+            EditorGUI::Label("ここに道具を作ります");
+        }
+    }
+  </script>
+  <p>保存すると、エディタが自動で読み直し、メニューバーに <span class="ui">Tools</span> が出ます。<span class="ui">Tools<span class="arrow">▸</span>柱を並べる</span> でウィンドウが開きます。</p>
+  <ul>
+    <li><code>EditorWindow</code> を継いだクラスが 1 つのウィンドウです。<code>[MenuItem]</code> の最後の区切り（ここでは「柱を並べる」）がウィンドウの題名になります。</li>
+    <li><code>OnGUI</code> は開いている間、毎フレーム呼ばれます。中で <code>EditorGUI::</code> の部品を上から順に呼ぶと、その順にウィンドウへ並びます。</li>
+    <li>メニューに出ないときは、Console にコンパイルのエラーが出ていないかを見ます（<a href="#editor-ext-errors">よくあるエラー</a>）。</li>
+  </ul>
+
+  <h2 id="editor-ext-tutorial-fields">3. 値の欄を置く</h2>
+  <p>並べるプレハブ・数・間隔を、ウィンドウで決められるようにします。値はクラスのメンバ変数に持ちます。</p>
+  <script type="text/x-code" data-lang="as" data-file="Editor/PillarTool.as（一部）">
+    string prefab = "Application/Assets/Prefabs/MapGenerator/MapWall.prefab";
+    int count = 5;
+    float spacing = 2.0f;
+    Vector3 start = Vector3(0.0f, 0.5f, 0.0f);
+
+    void OnGUI()
+    {
+        EditorGUI::Header("置くもの");
+        prefab = EditorGUI::AssetField("プレハブ", prefab, "Prefab");
+
+        EditorGUI::Header("並べ方");
+        count = EditorGUI::IntSlider("数", count, 1, 50);
+        spacing = Max(0.1f, EditorGUI::FloatField("間隔", spacing));
+        start = EditorGUI::Vector3Field("置き始め", start);
+    }
+  </script>
+  <ul>
+    <li><strong>部品は今の値を受け取り、操作された後の値を返します。</strong>返った値をメンバ変数へ代入し直すのが基本の形です（<code>count = EditorGUI::IntSlider("数", count, 1, 50);</code>）。代入し忘れると、操作しても値が戻ります。</li>
+    <li><code>AssetField</code> の 3 つ目の引数で、選べるアセットの種類を絞ります。Project ビューからプレハブをドラッグしても入ります。</li>
+    <li>範囲のある値は <code>IntSlider</code>・<code>Slider</code>、範囲の無い値は <code>IntField</code>・<code>FloatField</code> です。<code>FloatField</code> に範囲を付けたいときは、受け取った後で <code>Max</code> や <code>Clamp</code> をかけます。</li>
+  </ul>
+
+  <h2 id="editor-ext-tutorial-button">4. ボタンで並べる</h2>
+  <p>ボタンを押したら、プレハブを並べます。シーンを変えるときは <code>Editor::</code> の関数を使うと、<kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せます。</p>
+  <script type="text/x-code" data-lang="as" data-file="Editor/PillarTool.as（一部）">
+    string rootName = "Pillars";
+
+    void OnGUI()
+    {
+        // …… 3 の欄の続き
+        if (EditorGUI::Button("並べる", -1)) {    // -1 で幅いっぱい
+            Place();
+        }
+    }
+
+    private Vector3 PositionOf(int index)
+    {
+        return start + Vector3(spacing * index, 0.0f, 0.0f);
+    }
+
+    private void Place()
+    {
+        Editor::BeginUndoGroup("柱を並べる");           // ここから EndUndoGroup までを Ctrl+Z 1 回に
+        GameObject@ root = Editor::CreateObject(rootName);
+        for (int i = 0; i < count; ++i) {
+            GameObject@ pillar = Editor::InstantiatePrefab(prefab, "Pillar");
+            if (pillar is null) {
+                Error("プレハブを読めません: " + prefab);
+                break;
+            }
+            pillar.transform.position = PositionOf(i);
+            pillar.transform.SetParent(root.transform);  // まとめる親の子にする
+            pillar.transform.UpdateMatrix();
+        }
+        Editor::EndUndoGroup();
+        Editor::Select(root);                           // 作った物を選ぶ
+    }
+  </script>
+  <ul>
+    <li><code>Button</code> は押したフレームだけ <code>true</code> を返すので、押したときの処理を <code>if</code> の中に書きます。</li>
+    <li><code>Editor::CreateObject</code>・<code>InstantiatePrefab</code> で作ったものは Undo に積まれます。<code>BeginUndoGroup</code>〜<code>EndUndoGroup</code> で囲むと、まとめて 1 回の <kbd>Ctrl</kbd>+<kbd>Z</kbd> で消えます。作った直後に変えた位置や親も一緒に戻ります。</li>
+    <li>シーンのファイルへはすぐには書かれません。残すときはシーンを保存します（<kbd>Ctrl</kbd>+<kbd>S</kbd>）。</li>
+  </ul>
+
+  <h2 id="editor-ext-tutorial-clear">5. 消すボタンと、押せない状態</h2>
+  <p>並べた物を消すボタンを足し、プレハブを選んでいない間は「並べる」を押せないようにします。</p>
+  <script type="text/x-code" data-lang="as" data-file="Editor/PillarTool.as（一部）">
+    EditorGUI::Separator();
+    EditorGUI::enabled = prefab != "";            // false の間の部品は薄くなり、押せない
+    if (EditorGUI::Button("並べる", -1)) {
+        Place();
+    }
+    EditorGUI::enabled = true;                    // 戻す
+    if (EditorGUI::Button("並べた物を消す", -1)) {
+        Clear();
+    }
+    if (prefab == "") {
+        EditorGUI::HelpBox("置くプレハブを選んでください", EditorGUI::MessageType::Warning);
+    }
+  </script>
+  <script type="text/x-code" data-lang="as" data-file="Editor/PillarTool.as（一部）">
+    private void Clear()
+    {
+        GameObject@ old = Editor::FindObject(rootName);
+        if (old !is null) {
+            Editor::DestroyObject(old);               // 子も一緒に消える。Ctrl+Z で戻る
+        }
+    }
+  </script>
+  <p><code>Place</code> の初めでも <code>Clear()</code> を呼ぶと、押し直したときに前の柱を消してから並べ直します（同じ Undo のまとまりに入ります）。</p>
+
+  <h2 id="editor-ext-tutorial-scene">6. シーンビューに置く場所を描く</h2>
+  <p>ウィンドウに <code>OnSceneGUI</code> を書くと、ウィンドウを開いている間、シーンビュー（エディタの Game ウィンドウ）に描けます。並べる場所に枠を描き、置き始めの点を矢印で動かせるようにします。</p>
+  <script type="text/x-code" data-lang="as" data-file="Editor/PillarTool.as（一部）">
+    void OnSceneGUI()
+    {
+        for (int i = 0; i < count; ++i) {
+            Handles::DrawWireCube(PositionOf(i), Vector3(1.0f, 1.0f, 1.0f), Vector4(0.4f, 0.9f, 1.0f, 1.0f));
+        }
+        Handles::Label(start, "置き始め");
+        start = Handles::PositionHandle(1, start);    // ドラッグされた後の位置が返る
+    }
+  </script>
+  <ul>
+    <li><code>Handles::</code> で描いたものは、そのフレームだけ出ます。毎フレーム描きます。</li>
+    <li><code>Handles::PositionHandle</code> は、選んだ物と同じ移動の矢印を出します。ドラッグするとウィンドウの「置き始め」の欄も一緒に変わります。</li>
+  </ul>
+
+  <h2 id="editor-ext-tutorial-check">7. 確かめる</h2>
+  <ol class="steps">
+    <li><strong>並べる</strong>プレハブを選んで <span class="ui">並べる</span> を押すと、Hierarchy に「Pillars」と子の柱ができ、シーンビューの枠の位置に並びます。</li>
+    <li><strong>戻す</strong><kbd>Ctrl</kbd>+<kbd>Z</kbd> 1 回で、柱がまとめて消えます。<kbd>Ctrl</kbd>+<kbd>Y</kbd> で戻ります。</li>
+    <li><strong>読み直す</strong>コードを直して保存すると、ウィンドウを開いたまま読み直します。数や間隔の値はそのまま残ります。</li>
+    <li><strong>開き直す</strong>エディタを閉じて開き直しても、ウィンドウは開いたまま、値も残ります（公開メンバ変数は保存されます。<a href="#editor-ext-keep">残る値と残らない値</a>）。</li>
+  </ol>
+
+  <h2 id="editor-ext-tutorial-code">完成したコード</h2>
+  <script type="text/x-code" data-lang="as" data-file="Editor/PillarTool.as">
+    // プレハブを等間隔に並べる道具。Tools > 柱を並べる で開く
+    [MenuItem("Tools/柱を並べる")]
+    class PillarTool : EditorWindow
+    {
+        string prefab = "Application/Assets/Prefabs/MapGenerator/MapWall.prefab";
+        int count = 5;
+        float spacing = 2.0f;
+        Vector3 start = Vector3(0.0f, 0.5f, 0.0f);
+        string rootName = "Pillars";
+
+        void OnGUI()
+        {
+            EditorGUI::Header("置くもの");
+            prefab = EditorGUI::AssetField("プレハブ", prefab, "Prefab");
+
+            EditorGUI::Header("並べ方");
+            count = EditorGUI::IntSlider("数", count, 1, 50);
+            spacing = Max(0.1f, EditorGUI::FloatField("間隔", spacing));
+            start = EditorGUI::Vector3Field("置き始め", start);
+            rootName = EditorGUI::TextField("まとめる名前", rootName);
+
+            EditorGUI::Separator();
+            EditorGUI::enabled = prefab != "";
+            if (EditorGUI::Button("並べる", -1)) {
+                Place();
+            }
+            EditorGUI::enabled = true;
+            if (EditorGUI::Button("並べた物を消す", -1)) {
+                Clear();
+            }
+            if (prefab == "") {
+                EditorGUI::HelpBox("置くプレハブを選んでください", EditorGUI::MessageType::Warning);
+            }
+        }
+
+        void OnSceneGUI()
+        {
+            for (int i = 0; i < count; ++i) {
+                Handles::DrawWireCube(PositionOf(i), Vector3(1.0f, 1.0f, 1.0f), Vector4(0.4f, 0.9f, 1.0f, 1.0f));
+            }
+            Handles::Label(start, "置き始め");
+            start = Handles::PositionHandle(1, start);
+        }
+
+        private Vector3 PositionOf(int index)
+        {
+            return start + Vector3(spacing * index, 0.0f, 0.0f);
+        }
+
+        private void Place()
+        {
+            Editor::BeginUndoGroup("柱を並べる");
+            Clear();
+            GameObject@ root = Editor::CreateObject(rootName);
+            for (int i = 0; i < count; ++i) {
+                GameObject@ pillar = Editor::InstantiatePrefab(prefab, "Pillar");
+                if (pillar is null) {
+                    Error("プレハブを読めません: " + prefab);
+                    break;
+                }
+                pillar.transform.position = PositionOf(i);
+                pillar.transform.SetParent(root.transform);
+                pillar.transform.UpdateMatrix();
+            }
+            Editor::EndUndoGroup();
+            Editor::Select(root);
+        }
+
+        private void Clear()
+        {
+            GameObject@ old = Editor::FindObject(rootName);
+            if (old !is null) {
+                Editor::DestroyObject(old);
+            }
+        }
+    }
+  </script>
+
+  <h2 id="editor-ext-tutorial-template">ウィンドウの雛形を用意する</h2>
+  <p>プロジェクトの <span class="path">Application/Config/ScriptTemplates/</span> に <span class="path">名前.as.txt</span> を置くと、Project ビューの <span class="ui">＋ 作成</span> の雛形に「名前」が並びます。中の <code>{CLASS}</code> は、作るときに入れたクラス名に置き換わります。</p>
+  <script type="text/x-code" data-lang="as" data-file="Application/Config/ScriptTemplates/EditorWindow.as.txt">
+    [MenuItem("Tools/{CLASS}")]
+    class {CLASS} : EditorWindow
+    {
+        void OnGUI()
+        {
+        }
+    }
+  </script>
+  <script type="text/x-code" data-lang="as" data-file="Application/Config/ScriptTemplates/ComponentEditor.as.txt">
+    [CustomEditor("型名")]
+    class {CLASS} : ComponentEditor
+    {
+        void OnInspectorGUI()
+        {
+            EditorGUI::DrawDefaultInspector();
+        }
+    }
+  </script>
+</article>
+
+<article class="page" id="editor-ext-usage" data-group="エディタの拡張" data-title="使い方：開く・読み直す・止まったとき" data-nav="使い方" data-keywords="使い方 開く 閉じる ドッキング 読み直し ホットリロード 保存 残る 止まった 例外 エラー 直し方 もう一度動かす scriptwindows">
+  <h1>使い方：開く・読み直す・止まったとき</h1>
+  <p class="lead">作った道具の開き方と並べ方、.as を保存したときとエディタを開き直したときに値がどうなるか、止まったときとエラーが出たときの直し方です。</p>
+
+  <h2 id="editor-ext-open">開く・閉じる・並べる</h2>
+  <ul>
+    <li><code>[MenuItem]</code> で決めた場所（<span class="ui">Tools<span class="arrow">▸</span>名前</span> など）を選ぶと開きます。開いている間はメニューの項目に印が付き、もう一度選ぶと閉じます。ウィンドウの右上の × でも閉じます。</li>
+    <li>ウィンドウの題名の帯をドラッグすると、ほかのパネルと同じように、エディタの端やほかのウィンドウのタブに重ねて並べられます。</li>
+    <li>開いていたウィンドウは、エディタを起動し直しても開きます。</li>
+    <li>ほかのウィンドウのタブの後ろに隠れている間は、<code>OnGUI</code> も <code>OnSceneGUI</code> も呼ばれません。</li>
+    <li>インスペクタの拡張は開く操作が要りません。その型のコンポーネントが付いたオブジェクトを選ぶと、インスペクタに出ます。</li>
+  </ul>
+
+  <h2 id="script-editor-reload">保存すると読み直す</h2>
+  <ul>
+    <li>.as を保存すると、ウィンドウを開いたまま読み直します。メンバ変数の値（数値・<code>bool</code>・<code>string</code>・<code>Vector2</code>〜<code>Vector4</code>・列挙・スクリプトのクラスと、それらの <code>array</code>）は、名前と型が同じなら <code>private</code> でも持ち越します。クラスのオブジェクトは同じ名前のクラスで作り直して中身を戻し、同じオブジェクトを 2 か所から指していれば、読み直した後も同じものを指します。<code>GameObject@</code> などエンジンのオブジェクトのハンドルは初期値に戻ります。</li>
+    <li>ウィンドウの関数で例外が起きると、そのウィンドウは止まり、案内と <span class="ui">もう一度動かす</span> ボタンを出します。Console のエラーを直して保存すると、読み直して動き始めます。</li>
+    <li>エディタの道具は重い処理をすることがあるので、1 回の呼び出しで実行できる行数の上限を 20,000,000 行にしています（ゲームのスクリプトは 200,000 行）。</li>
+    <li>公開メンバ変数（<code>private</code>・<code>protected</code> でないもの）の値は、エディタを閉じるときに <span class="path">Application/Saved/EditorSettings/ScriptWindows.json</span> へ保存し、次の起動で戻します（Unity のウィンドウと同じ）。残せる型は読み直しと同じです。残したくない値は <code>private</code> にします。</li>
+  </ul>
+
+  <h2 id="editor-ext-keep">残る値と残らない値</h2>
+  <table>
+    <thead><tr><th>値</th><th>.as を保存して読み直したとき</th><th>エディタを閉じて開き直したとき</th></tr></thead>
+    <tbody>
+      <tr><td>ウィンドウの公開メンバ変数</td><td>残る</td><td>残る（<span class="path">Application/Saved/EditorSettings/ScriptWindows.json</span>）</td></tr>
+      <tr><td>ウィンドウの <code>private</code>・<code>protected</code> のメンバ変数</td><td>残る</td><td>初期値に戻る</td></tr>
+      <tr><td>公開メンバ変数の中のクラスのオブジェクト（中の <code>private</code> も）</td><td>残る（派生クラスのまま、共有していたら共有したまま）</td><td>残る</td></tr>
+      <tr><td><code>GameObject@</code> などエンジンのオブジェクトのハンドル</td><td>null に戻る</td><td>null に戻る</td></tr>
+      <tr><td>インスペクタの拡張（<code>ComponentEditor</code>）のメンバ変数</td><td>初期値に戻る</td><td>初期値に戻る</td></tr>
+      <tr><td>クラスの外の変数（スクリプト全体の変数）</td><td>初期値に戻る</td><td>初期値に戻る</td></tr>
+      <tr><td>コンポーネントの公開メンバ変数（インスペクタに出る値）</td><td colspan="2">シーンに保存される値なので、シーンを保存すれば残る（<a href="#script-inspector">インスペクタに値を出す</a>）</td></tr>
+    </tbody>
+  </table>
+  <p>残せる型は、数・<code>bool</code>・<code>string</code>・<code>Vector2</code>〜<code>Vector4</code>・列挙・スクリプトのクラスと、それらの <code>array</code> です。選んだオブジェクトを読み直しの後も覚えておきたいときは、名前を <code>string</code> で持ち、<code>Editor::FindObject</code> で探し直します。</p>
+
+  <h2 id="editor-ext-stopped">止まったとき</h2>
+  <table>
+    <thead><tr><th>例外が起きた場所</th><th>どうなるか</th><th>戻し方</th></tr></thead>
+    <tbody>
+      <tr><td>ウィンドウの <code>OnGUI</code>・<code>OnEnable</code>・<code>OnSceneGUI</code> など</td><td>そのウィンドウだけ止まり、案内と <span class="ui">もう一度動かす</span> を出す</td><td>Console のエラーを直して保存する（読み直して動く）か、<span class="ui">もう一度動かす</span> を押す</td></tr>
+      <tr><td>インスペクタの拡張の <code>OnInspectorGUI</code>・<code>OnSceneGUI</code></td><td>そのクラスだけ止まり、いつもの欄と <span class="ui">もう一度動かす</span> を出す</td><td>同じ</td></tr>
+      <tr><td>コンポーネントの <code>OnDrawGizmos</code>・<code>OnDrawGizmosSelected</code></td><td>そのコンポーネントのギズモだけ描かなくなる（コンポーネントは動く）</td><td>直して保存する</td></tr>
+      <tr><td>メニューの関数</td><td>Console にエラーが出る。ほかは止まらない</td><td>直して保存し、もう一度選ぶ</td></tr>
+    </tbody>
+  </table>
+  <p>Console のエラーには、例外の中身と、どのファイルの何行目かが出ます（<code>@ Editor/PillarTool.as(42, 13)</code> は 42 行目の 13 文字目）。その下の行は、どの関数から呼ばれたかの順番です。</p>
+
+  <h2 id="editor-ext-errors">よくあるエラーと直し方</h2>
+  <table>
+    <thead><tr><th>出たこと</th><th>わけ</th><th>直し方</th></tr></thead>
+    <tbody>
+      <tr><td>メニューにウィンドウが出ない</td><td>コンパイルのエラーがある・<span class="path">Scripts/Editor</span> の外に置いた・<code>EditorWindow</code> を継いでいない</td><td>Console のエラーを直す。ファイルの場所とクラスの書き方を見る</td></tr>
+      <tr><td>「○○.as(行) で EditorGUI を使っています」</td><td><span class="path">Scripts/Editor</span> の外のファイルで、エディタだけの機能を使った</td><td>そのファイルを <span class="path">Scripts/Editor</span> へ移す。ゲームでも使う部分は外に残して分ける</td></tr>
+      <tr><td>「EditorGUI::○○ は EditorWindow の OnGUI の中でだけ使えます」</td><td>部品を <code>OnGUI</code>・<code>OnInspectorGUI</code> の外（メニューの関数・<code>OnSceneGUI</code> など）で呼んだ</td><td>部品は <code>OnGUI</code> の中で呼ぶ。メニューの関数では <code>Log</code> で知らせる</td></tr>
+      <tr><td>「Handles::○○ は EditorWindow の OnSceneGUI の中でだけ使えます」（<code>SceneView::</code> も同じ）</td><td><code>OnGUI</code> の中などで呼んだ</td><td><code>OnSceneGUI</code> に移す。<code>OnGUI</code> で使いたい値は、<code>OnSceneGUI</code> でメンバ変数に入れておく</td></tr>
+      <tr><td>「EditorGUI::EndTabItem の前に、BeginGroup を閉じてください」</td><td><code>Begin〜</code> と <code>End〜</code> の順番が違う（内側を閉じる前に外側を閉じた）</td><td>内側の <code>End〜</code> を先に呼ぶ。<code>Begin〜</code> が false を返したときも <code>End〜</code> を呼ぶ（<a href="#script-editor-begin-end">Begin〜 と End〜 の組</a>）</td></tr>
+      <tr><td>「EditorGUI::TimelineKeys は BeginTimeline と EndTimeline の間で呼びます」</td><td>時間軸の外でトラックを描いた</td><td><code>BeginTimeline</code>〜<code>EndTimeline</code> の間に置く</td></tr>
+      <tr><td>「EditorGUI::IsNodeEditorHovered は BeginNodeEditor の後で呼びます」</td><td>ノードエディタを描く前に問い合わせた</td><td><code>EndNodeEditor</code> の後で呼ぶ</td></tr>
+      <tr><td>「ノードの番号 1 を、同じノードエディタの中で 2 回使っています」</td><td>同じ番号のノードを 2 つ描いた</td><td>ノードの番号を重ならないように振る（足すたびに増える番号を持つ）</td></tr>
+      <tr><td>「EditorGUI::DrawDefaultInspector は ComponentEditor の OnInspectorGUI の中でだけ使えます」</td><td>インスペクタの拡張の外で呼んだ</td><td><code>OnInspectorGUI</code> の中で呼ぶ</td></tr>
+      <tr><td>「DataFile には Application/Assets からの相対パスで .json のファイルを渡します」</td><td>パスが空・絶対パス・<code>..</code> を含む・<code>.json</code> で終わらない</td><td><code>"Data/Maps/Cave.json"</code> の形にする</td></tr>
+      <tr><td>「Null pointer access」</td><td>null のハンドルを使った（何も選んでいない <code>GetSelection()</code>・見つからなかった <code>FindObject</code>・読めなかった <code>InstantiatePrefab</code> など）</td><td>使う前に <code>if (obj is null)</code> で調べる</td></tr>
+      <tr><td>同じラベルのボタンの片方しか反応しない</td><td>部品の ID が重なっている</td><td><code>"消す##1"</code> のように <code>##</code> の後ろで区別するか、<code>PushID</code>・<code>PopID</code> で囲む</td></tr>
+      <tr><td>値を変えても戻ってしまう</td><td>部品が返した値を代入していない</td><td><code>value = EditorGUI::Slider("値", value, 0, 1);</code> と代入し直す</td></tr>
+      <tr><td>シーンビューのクリックでオブジェクトが選ばれてしまう</td><td><code>SceneView::UseMouse()</code> を呼んでいない</td><td>クリックを受け取る間、毎フレーム呼ぶ</td></tr>
+      <tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd> で値が戻らない</td><td>前からあるオブジェクトの値を、控えずに変えた</td><td>変える前に <code>Editor::RecordObject(obj, "名前")</code> を呼ぶ</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="editor-ext-build">書き出したゲームとの関係</h2>
+  <ul>
+    <li><span class="path">Scripts/Editor</span> のファイルは、書き出したゲームと Release のビルドには入りません。ゲームのスクリプトから、<span class="path">Scripts/Editor</span> のクラスを使わないようにします。</li>
+    <li><code>OnDrawGizmos</code> と <code>Gizmos::</code> はゲームのスクリプトに書けます。書き出したゲームでは呼ばれず、何も描きません。</li>
+    <li><code>DataFile</code> は、書き出したゲームでは読むだけです（<code>Save</code> は例外）。道具で保存したデータを、ゲームは同じパスで読みます。</li>
+    <li><code>Curve::Evaluate</code> は、書き出したゲームでも使えます。</li>
+  </ul>
+</article>
+
+<article class="page" id="editor-ext-window" data-group="エディタの拡張" data-title="ウィンドウとメニュー" data-nav="ウィンドウとメニュー" data-keywords="ウィンドウ editorwindow menuitem メニュー ongui onenable ondisable 関数 tools">
+  <h1>ウィンドウとメニュー</h1>
+  <p class="lead">エディタの道具の入れ物になるウィンドウ（<code>EditorWindow</code>）と、メニューから 1 回だけ呼ぶ関数の作り方です。</p>
 
   <h2 id="script-editor-window">ウィンドウを作る</h2>
   <script type="text/x-code" data-lang="as" data-file="Editor/HelloWindow.as">
@@ -5055,6 +5486,40 @@ kbd {
     </tbody>
   </table>
   </div>
+
+
+  <h2 id="script-editor-menu">メニューから関数を呼ぶ</h2>
+  <script type="text/x-code" data-lang="as" data-file="Editor/SceneTools.as">
+    // 開いているシーンのオブジェクトを数えて Console へ出す
+    [MenuItem("Tools/シーンのオブジェクトを数える")]
+    void CountSceneObjects()
+    {
+        array<GameObject@>@ objects = Editor::GetObjects();
+        Log("シーンのオブジェクト: " + objects.length() + " 個");
+    }
+  </script>
+  <p>クラスの外の、引数も戻り値も無い関数（<code>void 名前()</code>）に付けます。選ぶたびに 1 回呼ばれます。</p>
+
+  <h2 id="editor-ext-window-values">ウィンドウの値</h2>
+  <ul>
+    <li>ウィンドウの状態（入れた値・選んでいるタブの中身など）は、クラスのメンバ変数に持ちます。<code>OnGUI</code> の中の変数は毎フレーム作り直されます。</li>
+    <li>公開メンバ変数は、.as を保存して読み直しても、エディタを開き直しても残ります。開き直したときに残したくない値は <code>private</code> にします（<a href="#editor-ext-keep">残る値と残らない値</a>）。</li>
+    <li>1 つのクラスのウィンドウは 1 つだけ開きます。別の道具は別のクラスにします。全部のスクリプトは 1 つのまとまりとして読まれるので、クラス名はプロジェクトの中で重ならないようにします。</li>
+  </ul>
+</article>
+
+<article class="page" id="editor-ext-gui" data-group="エディタの拡張" data-title="画面の部品（EditorGUI）" data-nav="画面の部品" data-keywords="editorgui 部品 ボタン スライダー 欄 文字 表 テーブル タブ 木 ツリー ポップアップ メニュー 右クリック ダイアログ canvas 描く 並べ方 id">
+  <h1>画面の部品（EditorGUI）</h1>
+  <p class="lead">ウィンドウやインスペクタの中に並べる部品（文字・ボタン・欄・一覧・表・ポップアップ・絵）の使い方です。関数ごとの引数と例は <a href="#api-EditorGUI">EditorGUI</a> にあります。</p>
+
+  <h2 id="editor-ext-gui-basics">部品の基本</h2>
+  <ul>
+    <li><strong>上から順に並ぶ</strong>：<code>OnGUI</code> の中で呼んだ順に、上から並びます。横に並べるときは、次の部品の前に <code>SameLine()</code> を呼びます。</li>
+    <li><strong>値を返す</strong>：値を入れる部品は、今の値を受け取り、操作された後の値を返します（<code>width = EditorGUI::IntSlider("幅", width, 8, 64);</code>）。ボタンやメニューの項目は、押したフレームだけ <code>true</code> を返します。</li>
+    <li><strong>ラベルが ID</strong>：ラベルは部品の見分けにも使います。<code>##</code> から後ろは表示されないので、<code>"消す##1"</code> と <code>"消す##2"</code> で区別できます。ラベルを <code>"##名前"</code> のように <code>##</code> で始めると、ラベルを出さずに欄を幅いっぱいにします。<code>###</code> の後ろを ID にすると、表示の文字が変わっても同じ部品として扱います（<code>"確かめること（3 / 8）###checks"</code>）。</li>
+    <li><strong>色</strong>：色は <code>Vector4</code>（0〜1 の RGBA）で、色見本と同じ見え方になります。</li>
+    <li><strong>呼べる場所</strong>：<code>EditorGUI::</code> は <code>OnGUI</code> と <code>OnInspectorGUI</code> の中でだけ使えます。外で呼ぶとスクリプトの例外になります。</li>
+  </ul>
 
   <h2 id="script-editor-gui">EditorGUI の部品</h2>
   <p>値を入れる部品は、インスペクタと同じく左にラベル、右に欄を並べます（ラベルを <code>"##名前"</code> のように <code>##</code> で始めると、ラベルを出さずに欄を幅いっぱいにします。表の中で便利です）。全部の関数は <a href="#api-EditorGUI">EditorGUI</a> にあり、Sandbox の <span class="ui">Tools<span class="arrow">▸</span>テスト<span class="arrow">▸</span>エディタ拡張のテスト</span>（<a href="#script-editor-feature-test">エディタ拡張のテスト</a>）で実際の見た目と動きを確かめられます。</p>
@@ -5149,6 +5614,43 @@ kbd {
     <li>キーは、このウィンドウ（とその中の枠）が選ばれていて、文字を打っていない間だけ読めます。キーの名前はゲームと同じ <a href="#api-Key"><code>Key</code></a>、マウスのボタンは <code>MouseButton</code> です。</li>
   </ul>
 
+  <h2 id="editor-ext-gui-layout">並べ方</h2>
+  <script type="text/x-code" data-lang="as">
+    // 横に並べる
+    if (EditorGUI::Button("保存")) { Save(); }
+    EditorGUI::SameLine();
+    if (EditorGUI::Button("読み込み")) { Load(); }
+
+    // 幅を分け合う
+    float half = (EditorGUI::GetAvailableWidth() - 8.0f) * 0.5f;
+    EditorGUI::Button("左", half);
+    EditorGUI::SameLine();
+    EditorGUI::Button("右", half);
+
+    // 塊にして、右に別の列を並べる
+    EditorGUI::BeginGroup();
+    EditorGUI::Label("幅 " + width);
+    EditorGUI::Label("奥行き " + depth);
+    EditorGUI::EndGroup();
+    EditorGUI::SameLine();
+    EditorGUI::Button("作り直す");
+
+    // 中だけスクロールする枠
+    if (EditorGUI::BeginChild("log", 0, 120)) {
+        for (uint i = 0; i < lines.length(); ++i) {
+            EditorGUI::Label(lines[i]);
+        }
+    }
+    EditorGUI::EndChild();
+
+    // 字下げと、押せなくする
+    EditorGUI::indentLevel = 1;
+    EditorGUI::enabled = canPlace;
+    EditorGUI::Button("置く");
+    EditorGUI::enabled = true;
+    EditorGUI::indentLevel = 0;
+  </script>
+
   <h2 id="script-editor-canvas">絵を描く（Canvas）</h2>
   <p><code>EditorGUI::Canvas(幅, 高さ)</code> で描く場所を取り、その後の <code>DrawRect</code> などで中に描きます。座標は描く場所の左上を (0, 0) としたピクセルです。色は <code>Vector4</code>（0〜1 の RGBA）で、色見本と同じ見え方になります。</p>
   <script type="text/x-code" data-lang="as">
@@ -5171,6 +5673,276 @@ kbd {
         }
     }
   </script>
+
+
+  <h2 id="script-editor-fields">オブジェクト・アセットを選ぶ欄と画像</h2>
+  <script type="text/x-code" data-lang="as">
+    GameObject@ target;
+    string wallPrefab = "";
+    string tileTexture = "";
+
+    void OnGUI()
+    {
+        @target = EditorGUI::ObjectField("対象", target);                  // Hierarchy からドラッグもできる
+        wallPrefab = EditorGUI::AssetField("壁", wallPrefab, "Prefab");     // Project からドラッグもできる
+        tileTexture = EditorGUI::AssetField("タイル", tileTexture, "Texture");
+        EditorGUI::Image(tileTexture, 64, 64);
+    }
+  </script>
+  <ul>
+    <li><code>ObjectField</code> はハンドルを返すので、<code>@target = ...</code> と <code>@</code> を付けて受け取ります。</li>
+    <li><code>AssetField</code> はパス（<code>Application/Assets/...</code>）を返します。そのまま <code>Editor::InstantiatePrefab</code> や <code>DataFile</code> に渡せます。</li>
+    <li>Canvas の中には <code>EditorGUI::DrawImage(path, min, max)</code> で画像を描けます。</li>
+  </ul>
+</article>
+
+<article class="page" id="editor-ext-scene" data-group="エディタの拡張" data-title="シーンとデータを扱う" data-nav="シーンとデータ" data-keywords="editor 作る 消す 選ぶ undo 取り消し recordobject プレハブ datafile データ 保存 json コンポーネント 親子">
+  <h1>シーンとデータを扱う</h1>
+  <p class="lead">道具から編集中のシーンのオブジェクトを作る・消す・選ぶ・変える方法と、<kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せるようにする方法、道具で作ったデータを保存してゲームで読む方法です。</p>
+
+  <h2 id="script-editor-scene">シーンを操作する（Editor::）</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>関数</th><th>内容</th></tr></thead>
+    <tbody>
+      <tr><td><code>CreateObject(name)</code></td><td>Transform だけのオブジェクトを作る（同じ名前があっても番号は付けない）</td></tr>
+      <tr><td><code>InstantiatePrefab(path, name)</code></td><td>プレハブから作る</td></tr>
+      <tr><td><code>DestroyObject(obj)</code></td><td>消す（Transform の子孫も一緒に消す）</td></tr>
+      <tr><td><code>FindObject(name)</code>・<code>GetObjects()</code></td><td>名前で探す・全部を配列で受け取る</td></tr>
+      <tr><td><code>GetSelection()</code>・<code>Select(obj)</code></td><td>選んでいるオブジェクトを読む・選ぶ</td></tr>
+      <tr><td><code>BeginUndoGroup(name)</code>・<code>EndUndoGroup()</code></td><td>間に行った操作を、<kbd>Ctrl</kbd>+<kbd>Z</kbd> 1 回で戻るまとまりにする</td></tr>
+      <tr><td><code>RecordObject(obj)</code></td><td>これから変えるオブジェクトを控え、変えた値を <kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せるようにする</td></tr>
+      <tr><td><code>FindAssets(type, folder)</code></td><td>アセットのパスの一覧（種類とフォルダで絞る）</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li>作る・消すは Undo に積まれます。<code>EndUndoGroup</code> を閉じ忘れても、ウィンドウやメニューの関数を抜けるときに閉じます。</li>
+    <li>作った直後に変えた位置や親も、作ったことと一緒に戻ります。前からあるオブジェクトの値を変えるときは、先に <code>Editor::RecordObject(obj)</code> で控えます（下の「値の変更を取り消せるようにする」）。</li>
+    <li>シーンのファイルへはすぐには書かれないので、残すときはシーンを保存します（<kbd>Ctrl</kbd>+<kbd>S</kbd>）。</li>
+    <li>プレハブを編集している間と、シーンが開いていない間は、作る・消すがスクリプトの例外になります。</li>
+  </ul>
+
+  <h3 id="script-editor-record">値の変更を取り消せるようにする</h3>
+  <script type="text/x-code" data-lang="as" data-file="Editor/SceneTools.as">
+    [MenuItem("Tools/選んだオブジェクトを地面に下ろす")]
+    void DropSelectionToGround()
+    {
+        GameObject@ selected = Editor::GetSelection();
+        if (selected is null) {
+            return;
+        }
+        Editor::RecordObject(selected, selected.name + " を地面に下ろす");   // 変える前に控える
+        Vector3 position = selected.transform.position;
+        position.y = 0.0f;
+        selected.transform.position = position;
+    }
+  </script>
+  <p>控えたオブジェクトは、関数を抜けるときに変える前と見比べ、変わっていれば Undo に積みます（位置・回転・コンポーネントの値・名前・有効）。ウィンドウのスライダーで続けて動かしている間は、1 つの操作にまとめます。<code>AddComponent</code>・<code>RemoveComponent</code> は、エディタの道具から呼ぶと自分で Undo に積みます。</p>
+
+
+  <h2 id="script-editor-components">コンポーネントと親子</h2>
+  <p><code>GameObject</code> の <code>AddComponent("Rigidbody")</code>・<code>RemoveComponent</code>・<code>HasComponent</code> で、型名のコンポーネントを足し外しできます（スクリプトのクラス名も使えます）。<code>transform.parent</code> で親、<code>GetChildren()</code> で子の一覧を取れます。どれもゲームのスクリプトでも使えます。</p>
+
+
+  <h2 id="script-editor-data">データを保存して、ゲームで読む</h2>
+  <p><a href="#api-DataFile"><code>DataFile</code></a> は <span class="path">Application/Assets</span> の下の JSON ファイルです。エディタの道具で作ったマップやステージを保存し、ゲームのスクリプトから同じ <code>DataFile</code> で読みます（書き出したゲームでは読むだけ）。保存するとアセットとして登録されるので、<code>[Asset("Json")]</code> の欄で選べます。</p>
+  <script type="text/x-code" data-lang="as" data-file="Editor/MapGenerator.as（保存）">
+    DataFile@ file = DataFile("Data/Maps/Cave.json");
+    file.SetInt("width", width);
+    file.SetInt("depth", depth);
+    file.SetIntArray("cells", cells);
+    file.Save();
+  </script>
+  <script type="text/x-code" data-lang="as" data-file="MapLoader.as（ゲームで読む）">
+    [Asset("Json")]
+    string mapFile = "Application/Assets/Data/Maps/Cave.json";
+
+    void Start()
+    {
+        DataFile@ file = DataFile(mapFile);
+        if (!file.exists) {
+            return;
+        }
+        const int width = file.GetInt("width");
+        array<int>@ cells = file.GetIntArray("cells");
+        // cells を見て壁を並べる
+    }
+  </script>
+</article>
+
+<article class="page" id="editor-ext-sceneview" data-group="エディタの拡張" data-title="シーンビューの道具とギズモ" data-nav="シーンビューとギズモ" data-keywords="シーンビュー onscenegui handles sceneview クリック 置く ハンドル positionhandle ギズモ gizmos ondrawgizmos">
+  <h1>シーンビューの道具とギズモ</h1>
+  <p class="lead">シーンビューに線・枠・文字を重ねて描き、クリックした場所へ物を置く・点を矢印で動かす道具と、コンポーネントが道筋や範囲を描くギズモの作り方です。</p>
+
+  <h2 id="script-editor-sceneview">シーンビューに描く・クリックを受け取る（OnSceneGUI）</h2>
+  <p>ウィンドウに <code>void OnSceneGUI()</code> を書くと、ウィンドウを開いている間、エディタの Game ウィンドウにシーンを描くフレームごとに呼ばれます（この文書ではシーンビューと呼びます。エディタのカメラで見ているときも、ゲームのカメラで見ているときも同じです）。中で <a href="#api-Handles"><code>Handles::</code></a> を使ってシーンの上に線・枠・文字を重ね、<a href="#api-SceneView"><code>SceneView::</code></a> でマウスの位置・クリック・カメラを読みます。</p>
+  <script type="text/x-code" data-lang="as" data-file="Editor/MarkerTool.as">
+    [MenuItem("Tools/目印を置く")]
+    class MarkerTool : EditorWindow
+    {
+        bool active = false;
+
+        void OnGUI()
+        {
+            active = EditorGUI::Toggle("クリックで置く", active);
+        }
+
+        void OnSceneGUI()
+        {
+            if (!active) {
+                return;
+            }
+            SceneView::UseMouse();                              // 置いている間は、クリックでオブジェクトを選ばない
+
+            Vector3 point;
+            Vector3 normal;
+            if (!SceneView::RaycastMouse(point, normal)) {      // カーソルの下の物の表面
+                return;
+            }
+            Handles::DrawWireDisc(point, normal, 0.5f, Vector4(0.4f, 0.9f, 1.0f, 1.0f));
+            Handles::Label(point, "ここに置く");
+            if (SceneView::IsMouseClicked(MouseButton::Left)) {
+                GameObject@ marker = Editor::CreateObject("Marker", point);   // Ctrl+Z で戻せる
+            }
+        }
+    }
+  </script>
+  <ul>
+    <li><strong>描く</strong>：<code>Handles::</code> の線・枠・円・点・文字は、シーンの物より手前に重ねて描きます（奥の物に隠れません）。色は 0〜1 の RGBA で、色見本と同じ見え方です。描いたものはそのフレームだけ出るので、毎フレーム描きます。</li>
+    <li><strong>カーソルの下</strong>：<code>SceneView::RaycastMouse(point, normal)</code> はカーソルの下のメッシュの表面の点と向きを、<code>SceneView::MouseToPlane(高さ, point)</code> は決めた高さの水平な床との交点を、<code>SceneView::GetObjectUnderMouse()</code> はクリックしたら選ばれるオブジェクトを返します。</li>
+    <li><strong>クリック</strong>：<code>SceneView::IsMouseClicked</code>・<code>IsMouseDown</code> は、カーソルがシーンビューの上にあって、ギズモやハンドルの上でないときだけ true です。Shift などは <code>SceneView::shift</code>・<code>ctrl</code>・<code>alt</code>、キーは <code>SceneView::IsKeyPressed</code> で読みます。</li>
+    <li><strong>選ばせない</strong>：シーンビューの左クリックでオブジェクトを選ばせたくない間は、<strong>毎フレーム</strong> <code>SceneView::UseMouse()</code> を呼びます（呼んだ次のフレームのクリックから効きます）。</li>
+    <li>シーンを変える操作は <code>Editor::</code> の関数と <code>Editor::RecordObject</code> で行うと、<kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せます。</li>
+  </ul>
+
+  <h3 id="script-editor-handles">ハンドルで点を動かす</h3>
+  <script type="text/x-code" data-lang="as" data-file="Editor/PatrolRouteInspector.as（一部）">
+    void OnSceneGUI()
+    {
+        PatrolRoute@ route = cast<PatrolRoute>(component);    // 選んでいる道筋（下の「インスペクタを自分で描く」）
+        if (route is null) {
+            return;
+        }
+        Vector3 base = route.BasePosition();
+        for (uint i = 0; i < route.points.length(); ++i) {
+            Vector3 current = base + route.points[i];
+            Vector3 moved = Handles::PositionHandle(int(i), current);   // 番号はハンドルごとに変える
+            if (!(moved == current)) {
+                Editor::RecordObject(target, "道筋の点を動かす");       // 変える前に控える
+                route.points[i] = moved - base;
+            }
+        }
+    }
+  </script>
+  <p><code>Handles::PositionHandle(番号, 位置)</code> は、選んだ物と同じ移動の矢印を出し、ドラッグされた後の位置を返します（動かされなければ渡した位置のまま）。ハンドルごとに違う番号を渡します。変える前に <code>Editor::RecordObject</code> で控えておくと、ドラッグしている間の変更が <kbd>Ctrl</kbd>+<kbd>Z</kbd> 1 回分にまとまります。</p>
+
+  <h3 id="script-editor-gizmos">コンポーネントのギズモ（OnDrawGizmos）</h3>
+  <p>コンポーネント（ScriptComponent を継いだクラス）に <code>void OnDrawGizmos()</code> を書くと、エディタのシーンビューを描くフレームごとに呼ばれ、<a href="#api-Gizmos"><code>Gizmos::</code></a> で道筋・範囲・向きなどの目印を描けます。<code>void OnDrawGizmosSelected()</code> は、持ち主を選んでいる間だけ呼ばれます。どちらも編集中にも呼ばれ、書き出したゲームでは呼ばれません。<code>Gizmos::</code> は Scripts/Editor の外でも書けて、書き出したゲームでは何もしません。</p>
+  <script type="text/x-code" data-lang="as" data-file="PatrolRoute.as（一部）">
+    void OnDrawGizmos()
+    {
+        Vector3 base = BasePosition();
+        Gizmos::color = Vector4(0.3f, 0.8f, 1.0f, 1.0f);       // 呼ばれるたびに白から始まる
+        for (uint i = 0; i + 1 < points.length(); ++i) {
+            Gizmos::DrawLine(base + points[i], base + points[i + 1]);
+        }
+    }
+
+    void OnDrawGizmosSelected()
+    {
+        Gizmos::color = Vector4(1.0f, 0.75f, 0.2f, 1.0f);
+        for (uint i = 0; i < points.length(); ++i) {
+            Gizmos::DrawWireSphere(BasePosition() + points[i], 0.35f);
+        }
+    }
+  </script>
+  <p>ギズモの関数で例外が起きると、そのコンポーネントのギズモだけ、直して保存するまで描かなくなります（コンポーネントは止まりません）。</p>
+</article>
+
+<article class="page" id="editor-ext-inspector" data-group="エディタの拡張" data-title="インスペクタを自分で描く" data-nav="インスペクタの拡張" data-keywords="インスペクタ customeditor componenteditor oninspectorgui drawdefaultinspector target component rigidbody">
+  <h1>インスペクタを自分で描く</h1>
+  <p class="lead">コンポーネントのインスペクタの中身を、スクリプトで描く方法です（Unity の CustomEditor に当たります）。いつもの欄の下にボタンを足す・カーブの欄を出す・選んでいる間シーンビューにハンドルを出す、といったことができます。</p>
+
+  <h2 id="editor-ext-inspector-steps">作る手順</h2>
+  <ol class="steps">
+    <li><strong>ファイルを作る</strong><span class="path">Scripts/Editor/</span> に、コンポーネントの名前に <code>Inspector</code> を付けたファイル（<span class="path">CurveMoverInspector.as</span> など）を作ります。</li>
+    <li><strong>クラスを書く</strong><code>ComponentEditor</code> を継いだクラスに <code>[CustomEditor("型名")]</code> を付けます。型名はスクリプトのクラス名（<code>CurveMover</code>）か、エンジンのコンポーネントの型名（<code>Rigidbody</code>）です。</li>
+    <li><strong>中身を描く</strong><code>OnInspectorGUI</code> に <code>EditorGUI::</code> の部品を並べます。いつもの欄は <code>EditorGUI::DrawDefaultInspector()</code> で描けます。</li>
+    <li><strong>保存して選ぶ</strong>保存すると読み直し、そのコンポーネントが付いたオブジェクトを選ぶと、インスペクタに自分で描いた中身が出ます。</li>
+  </ol>
+
+  <h2 id="script-editor-inspector">インスペクタを自分で描く（CustomEditor）</h2>
+  <p><code>ComponentEditor</code> を継いだクラスに <code>[CustomEditor("型名")]</code> を付けると、その型のコンポーネントのインスペクタの中身を <code>OnInspectorGUI</code> が描きます（Unity の CustomEditor に当たります）。型名はスクリプトのクラス名か、エンジンのコンポーネントの型名（<code>Rigidbody</code> など）です。</p>
+  <script type="text/x-code" data-lang="as" data-file="Editor/CurveMoverInspector.as">
+    [CustomEditor("CurveMover")]
+    class CurveMoverInspector : ComponentEditor
+    {
+        void OnInspectorGUI()
+        {
+            CurveMover@ mover = cast<CurveMover>(component);   // スクリプトのコンポーネントは cast で中身に触れる
+            Editor::RecordObject(target, "カーブで上下の変更");     // 変える前に控える（変わらなければ何も積まない）
+            mover.height = EditorGUI::Slider("高さ", mover.height, 0.0f, 10.0f);
+            mover.period = EditorGUI::Slider("周期（秒）", mover.period, 0.1f, 20.0f);
+            EditorGUI::CurveField("動き", mover.curve);
+        }
+    }
+  </script>
+  <ul>
+    <li><code>target</code> はインスペクタに出しているコンポーネントの持ち主の GameObject、<code>component</code> はそのコンポーネントです（スクリプトのコンポーネントのとき。<code>cast&lt;型名&gt;(component)</code> で中身に触れます。エンジンのコンポーネントなら null なので、<code>target.GetComponent(@rigidbody)</code> で取ります）。</li>
+    <li>既定の欄（インスペクタがいつも出す欄）は <code>EditorGUI::DrawDefaultInspector()</code> で描けます。<code>OnInspectorGUI</code> を書かなければ既定の欄だけが出ます。</li>
+    <li>値を変える前に <code>Editor::RecordObject(target, "名前")</code> で控えると、<kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せます。毎フレーム呼んでも、変わらなければ何も積まず、スライダーやカーブをドラッグしている間は 1 回分にまとまります。</li>
+    <li><code>void OnSceneGUI()</code> を書くと、そのコンポーネントを持つオブジェクトを選んでいる間、シーンビューを描くフレームごとに呼ばれます（<code>Handles::</code>・<code>SceneView::</code> が使えます）。</li>
+    <li>1 つのクラスのオブジェクトを、同じ型のコンポーネントすべてで使い回します。メンバ変数はコンポーネントごとに分かれません。</li>
+    <li><code>OnInspectorGUI</code> で例外が起きると、そのクラスは止まり、既定の欄と <span class="ui">もう一度動かす</span> ボタンを出します。プレハブのアセットのインスペクタ（Project で選んだプレハブ）は、いつも既定の欄です。</li>
+  </ul>
+
+  <h2 id="editor-ext-inspector-forms">よく使う形</h2>
+  <h3 id="editor-ext-inspector-append">いつもの欄の下にボタンを足す</h3>
+  <script type="text/x-code" data-lang="as" data-file="Editor/PatrolRouteInspector.as（一部）">
+    void OnInspectorGUI()
+    {
+        EditorGUI::DrawDefaultInspector();
+        PatrolRoute@ route = cast<PatrolRoute>(component);
+        if (route is null) {
+            return;
+        }
+        EditorGUI::Label("点の数", "" + route.points.length());
+        if (EditorGUI::Button("逆回りにする")) {
+            Editor::RecordObject(target, "道筋を逆回りにする");
+            route.points.reverse();
+        }
+    }
+  </script>
+  <h3 id="editor-ext-inspector-own">自分の欄だけにする</h3>
+  <p><code>DrawDefaultInspector</code> を呼ばなければ、いつもの欄は出ません。値ごとにスライダーやカーブの欄を選べます（<span class="path">CurveMoverInspector.as</span> がこの形です）。いつもの欄の一部だけを隠すことはできないので、一部だけ変えたいときは全部を自分で描きます。</p>
+  <h3 id="editor-ext-inspector-engine">エンジンのコンポーネントに欄を足す</h3>
+  <script type="text/x-code" data-lang="as" data-file="Editor/RigidbodyInspector.as">
+    [CustomEditor("Rigidbody")]
+    class RigidbodyInspector : ComponentEditor
+    {
+        void OnInspectorGUI()
+        {
+            EditorGUI::DrawDefaultInspector();
+            Rigidbody@ body = target.rigidbody;        // エンジンのコンポーネントは target から取る
+            if (body is null || !body.exists) {
+                return;
+            }
+            if (EditorGUI::Button("重さを 2 倍にする")) {
+                Editor::RecordObject(target, "重さを 2 倍にする");
+                body.mass = body.mass * 2.0f;
+            }
+        }
+    }
+  </script>
+  <p>エンジンのコンポーネントに付けると、プロジェクトの中のその型すべてのインスペクタが変わります。一部のオブジェクトだけに足したいときは、<code>target.name</code> などで分けます（Sandbox の <span class="path">FeatureTestRigidbodyInspector.as</span> は、名前が「FeatureTest」で始まる物だけに足しています）。</p>
+  <h3 id="editor-ext-inspector-scene">選んでいる間、シーンビューにハンドルを出す</h3>
+  <p><code>OnSceneGUI</code> を書くと、持ち主を選んでいる間、シーンビューに描けます。点の配列を持つコンポーネントなら、点ごとに <code>Handles::PositionHandle</code> を出して動かせます（<a href="#script-editor-handles">ハンドルで点を動かす</a>）。</p>
+</article>
+
+<article class="page" id="editor-ext-nodes" data-group="エディタの拡張" data-title="ノードエディタ" data-nav="ノードエディタ" data-keywords="ノード ノードエディタ ピン つながり リンク グラフ 会話 imnodes">
+  <h1>ノードエディタ</h1>
+  <p class="lead">ノード（箱）のピンどうしを線でつないで組み立てる画面の作り方です。会話の流れ・処理の手順・状態の移り変わりのような、順番や分かれ道のあるデータを作るのに向いています。関数ごとの例は <a href="#api-EditorGUI">EditorGUI</a> の「ノードエディタ」にあります。</p>
 
   <h2 id="script-editor-nodes">ノードエディタ</h2>
   <p>ノード（箱）のピン（端の丸）どうしを線（つながり）で結んで組み立てる画面を作れます。会話の流れ・処理の手順・状態の移り変わりのように、順番や分かれ道のあるデータを作るのに向いています。<strong>ノードとつながりのデータはスクリプトが持ちます。</strong>ノードエディタは毎フレームそれを描き、ユーザーが何をしたか（つないだ・外した・動かした）を知らせるだけで、知らせを受けてデータを直すのはスクリプトです。</p>
@@ -5271,115 +6043,11 @@ kbd {
     }
   </script>
   <p>ノードのデータは、<code>DialogueNode</code> のようなクラスの配列（<code>array&lt;DialogueNode@&gt;</code>）で持てます。公開メンバ変数にしておくと、スクリプトを読み直しても、エディタを閉じても残ります（<a href="#script-editor-reload">読み直し</a>）。消したノードを <kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻す仕組みはまだ無いので、大事なグラフは <code>DataFile</code> へ保存しておきます。</p>
+</article>
 
-  <h2 id="script-editor-sceneview">シーンビューに描く・クリックを受け取る（OnSceneGUI）</h2>
-  <p>ウィンドウに <code>void OnSceneGUI()</code> を書くと、ウィンドウを開いている間、エディタの Game ウィンドウにシーンを描くフレームごとに呼ばれます（この文書ではシーンビューと呼びます。エディタのカメラで見ているときも、ゲームのカメラで見ているときも同じです）。中で <a href="#api-Handles"><code>Handles::</code></a> を使ってシーンの上に線・枠・文字を重ね、<a href="#api-SceneView"><code>SceneView::</code></a> でマウスの位置・クリック・カメラを読みます。</p>
-  <script type="text/x-code" data-lang="as" data-file="Editor/MarkerTool.as">
-    [MenuItem("Tools/目印を置く")]
-    class MarkerTool : EditorWindow
-    {
-        bool active = false;
-
-        void OnGUI()
-        {
-            active = EditorGUI::Toggle("クリックで置く", active);
-        }
-
-        void OnSceneGUI()
-        {
-            if (!active) {
-                return;
-            }
-            SceneView::UseMouse();                              // 置いている間は、クリックでオブジェクトを選ばない
-
-            Vector3 point;
-            Vector3 normal;
-            if (!SceneView::RaycastMouse(point, normal)) {      // カーソルの下の物の表面
-                return;
-            }
-            Handles::DrawWireDisc(point, normal, 0.5f, Vector4(0.4f, 0.9f, 1.0f, 1.0f));
-            Handles::Label(point, "ここに置く");
-            if (SceneView::IsMouseClicked(MouseButton::Left)) {
-                GameObject@ marker = Editor::CreateObject("Marker", point);   // Ctrl+Z で戻せる
-            }
-        }
-    }
-  </script>
-  <ul>
-    <li><strong>描く</strong>：<code>Handles::</code> の線・枠・円・点・文字は、シーンの物より手前に重ねて描きます（奥の物に隠れません）。色は 0〜1 の RGBA で、色見本と同じ見え方です。描いたものはそのフレームだけ出るので、毎フレーム描きます。</li>
-    <li><strong>カーソルの下</strong>：<code>SceneView::RaycastMouse(point, normal)</code> はカーソルの下のメッシュの表面の点と向きを、<code>SceneView::MouseToPlane(高さ, point)</code> は決めた高さの水平な床との交点を、<code>SceneView::GetObjectUnderMouse()</code> はクリックしたら選ばれるオブジェクトを返します。</li>
-    <li><strong>クリック</strong>：<code>SceneView::IsMouseClicked</code>・<code>IsMouseDown</code> は、カーソルがシーンビューの上にあって、ギズモやハンドルの上でないときだけ true です。Shift などは <code>SceneView::shift</code>・<code>ctrl</code>・<code>alt</code>、キーは <code>SceneView::IsKeyPressed</code> で読みます。</li>
-    <li><strong>選ばせない</strong>：シーンビューの左クリックでオブジェクトを選ばせたくない間は、<strong>毎フレーム</strong> <code>SceneView::UseMouse()</code> を呼びます（呼んだ次のフレームのクリックから効きます）。</li>
-    <li>シーンを変える操作は <code>Editor::</code> の関数と <code>Editor::RecordObject</code> で行うと、<kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せます。</li>
-  </ul>
-
-  <h3 id="script-editor-handles">ハンドルで点を動かす</h3>
-  <script type="text/x-code" data-lang="as" data-file="Editor/PatrolRouteInspector.as（一部）">
-    void OnSceneGUI()
-    {
-        PatrolRoute@ route = cast<PatrolRoute>(component);    // 選んでいる道筋（下の「インスペクタを自分で描く」）
-        if (route is null) {
-            return;
-        }
-        Vector3 base = route.BasePosition();
-        for (uint i = 0; i < route.points.length(); ++i) {
-            Vector3 current = base + route.points[i];
-            Vector3 moved = Handles::PositionHandle(int(i), current);   // 番号はハンドルごとに変える
-            if (!(moved == current)) {
-                Editor::RecordObject(target, "道筋の点を動かす");       // 変える前に控える
-                route.points[i] = moved - base;
-            }
-        }
-    }
-  </script>
-  <p><code>Handles::PositionHandle(番号, 位置)</code> は、選んだ物と同じ移動の矢印を出し、ドラッグされた後の位置を返します（動かされなければ渡した位置のまま）。ハンドルごとに違う番号を渡します。変える前に <code>Editor::RecordObject</code> で控えておくと、ドラッグしている間の変更が <kbd>Ctrl</kbd>+<kbd>Z</kbd> 1 回分にまとまります。</p>
-
-  <h3 id="script-editor-gizmos">コンポーネントのギズモ（OnDrawGizmos）</h3>
-  <p>コンポーネント（ScriptComponent を継いだクラス）に <code>void OnDrawGizmos()</code> を書くと、エディタのシーンビューを描くフレームごとに呼ばれ、<a href="#api-Gizmos"><code>Gizmos::</code></a> で道筋・範囲・向きなどの目印を描けます。<code>void OnDrawGizmosSelected()</code> は、持ち主を選んでいる間だけ呼ばれます。どちらも編集中にも呼ばれ、書き出したゲームでは呼ばれません。<code>Gizmos::</code> は Scripts/Editor の外でも書けて、書き出したゲームでは何もしません。</p>
-  <script type="text/x-code" data-lang="as" data-file="PatrolRoute.as（一部）">
-    void OnDrawGizmos()
-    {
-        Vector3 base = BasePosition();
-        Gizmos::color = Vector4(0.3f, 0.8f, 1.0f, 1.0f);       // 呼ばれるたびに白から始まる
-        for (uint i = 0; i + 1 < points.length(); ++i) {
-            Gizmos::DrawLine(base + points[i], base + points[i + 1]);
-        }
-    }
-
-    void OnDrawGizmosSelected()
-    {
-        Gizmos::color = Vector4(1.0f, 0.75f, 0.2f, 1.0f);
-        for (uint i = 0; i < points.length(); ++i) {
-            Gizmos::DrawWireSphere(BasePosition() + points[i], 0.35f);
-        }
-    }
-  </script>
-  <p>ギズモの関数で例外が起きると、そのコンポーネントのギズモだけ、直して保存するまで描かなくなります（コンポーネントは止まりません）。</p>
-
-  <h2 id="script-editor-inspector">インスペクタを自分で描く（CustomEditor）</h2>
-  <p><code>ComponentEditor</code> を継いだクラスに <code>[CustomEditor("型名")]</code> を付けると、その型のコンポーネントのインスペクタの中身を <code>OnInspectorGUI</code> が描きます（Unity の CustomEditor に当たります）。型名はスクリプトのクラス名か、エンジンのコンポーネントの型名（<code>Rigidbody</code> など）です。</p>
-  <script type="text/x-code" data-lang="as" data-file="Editor/CurveMoverInspector.as">
-    [CustomEditor("CurveMover")]
-    class CurveMoverInspector : ComponentEditor
-    {
-        void OnInspectorGUI()
-        {
-            CurveMover@ mover = cast<CurveMover>(component);   // スクリプトのコンポーネントは cast で中身に触れる
-            Editor::RecordObject(target, "カーブで上下の変更");     // 変える前に控える（変わらなければ何も積まない）
-            mover.height = EditorGUI::Slider("高さ", mover.height, 0.0f, 10.0f);
-            mover.period = EditorGUI::Slider("周期（秒）", mover.period, 0.1f, 20.0f);
-            EditorGUI::CurveField("動き", mover.curve);
-        }
-    }
-  </script>
-  <ul>
-    <li><code>target</code> はインスペクタに出しているコンポーネントの持ち主の GameObject、<code>component</code> はそのコンポーネントです（スクリプトのコンポーネントのとき。<code>cast&lt;型名&gt;(component)</code> で中身に触れます。エンジンのコンポーネントなら null なので、<code>target.GetComponent(@rigidbody)</code> で取ります）。</li>
-    <li>既定の欄（インスペクタがいつも出す欄）は <code>EditorGUI::DrawDefaultInspector()</code> で描けます。<code>OnInspectorGUI</code> を書かなければ既定の欄だけが出ます。</li>
-    <li>値を変える前に <code>Editor::RecordObject(target, "名前")</code> で控えると、<kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せます。毎フレーム呼んでも、変わらなければ何も積まず、スライダーやカーブをドラッグしている間は 1 回分にまとまります。</li>
-    <li><code>void OnSceneGUI()</code> を書くと、そのコンポーネントを持つオブジェクトを選んでいる間、シーンビューを描くフレームごとに呼ばれます（<code>Handles::</code>・<code>SceneView::</code> が使えます）。</li>
-    <li>1 つのクラスのオブジェクトを、同じ型のコンポーネントすべてで使い回します。メンバ変数はコンポーネントごとに分かれません。</li>
-    <li><code>OnInspectorGUI</code> で例外が起きると、そのクラスは止まり、既定の欄と <span class="ui">もう一度動かす</span> ボタンを出します。プレハブのアセットのインスペクタ（Project で選んだプレハブ）は、いつも既定の欄です。</li>
-  </ul>
+<article class="page" id="editor-ext-tools" data-group="エディタの拡張" data-title="グラフ・カーブ・時間軸" data-nav="グラフ・カーブ・時間軸" data-keywords="グラフ plotlines plothistogram カーブ curvefield 曲線 時間軸 タイムライン timeline キー 区間">
+  <h1>グラフ・カーブ・時間軸</h1>
+  <p class="lead">数の並びのグラフ、点をドラッグして作るカーブ、キーと区間を並べる時間軸の使い方です。</p>
 
   <h2 id="script-editor-tools">グラフ・カーブ・時間軸</h2>
   <h3 id="script-editor-plot">グラフ</h3>
@@ -5415,114 +6083,11 @@ kbd {
     <li><code>TimelineKeys</code> はキーの時刻の配列、<code>TimelineRanges</code> は区間の配列を、その場で書き換えます。ドラッグで動かし（区間は中を掴むと動き、端を掴むと伸び縮みします）、何も無いところのダブルクリックで足し、右クリックで消します。変えたフレームに true を返します。</li>
     <li>再生はスクリプトが <code>GetDeltaTime()</code> で時刻を進めて行います（エディタは再生していなくても毎フレーム進みます）。</li>
   </ul>
+</article>
 
-  <h2 id="script-editor-scene">シーンを操作する（Editor::）</h2>
-  <div class="table-wrap">
-  <table>
-    <thead><tr><th>関数</th><th>内容</th></tr></thead>
-    <tbody>
-      <tr><td><code>CreateObject(name)</code></td><td>Transform だけのオブジェクトを作る（同じ名前があっても番号は付けない）</td></tr>
-      <tr><td><code>InstantiatePrefab(path, name)</code></td><td>プレハブから作る</td></tr>
-      <tr><td><code>DestroyObject(obj)</code></td><td>消す（Transform の子孫も一緒に消す）</td></tr>
-      <tr><td><code>FindObject(name)</code>・<code>GetObjects()</code></td><td>名前で探す・全部を配列で受け取る</td></tr>
-      <tr><td><code>GetSelection()</code>・<code>Select(obj)</code></td><td>選んでいるオブジェクトを読む・選ぶ</td></tr>
-      <tr><td><code>BeginUndoGroup(name)</code>・<code>EndUndoGroup()</code></td><td>間に行った操作を、<kbd>Ctrl</kbd>+<kbd>Z</kbd> 1 回で戻るまとまりにする</td></tr>
-      <tr><td><code>RecordObject(obj)</code></td><td>これから変えるオブジェクトを控え、変えた値を <kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せるようにする</td></tr>
-      <tr><td><code>FindAssets(type, folder)</code></td><td>アセットのパスの一覧（種類とフォルダで絞る）</td></tr>
-    </tbody>
-  </table>
-  </div>
-  <ul>
-    <li>作る・消すは Undo に積まれます。<code>EndUndoGroup</code> を閉じ忘れても、ウィンドウやメニューの関数を抜けるときに閉じます。</li>
-    <li>作った直後に変えた位置や親も、作ったことと一緒に戻ります。前からあるオブジェクトの値を変えるときは、先に <code>Editor::RecordObject(obj)</code> で控えます（下の「値の変更を取り消せるようにする」）。</li>
-    <li>シーンのファイルへはすぐには書かれないので、残すときはシーンを保存します（<kbd>Ctrl</kbd>+<kbd>S</kbd>）。</li>
-    <li>プレハブを編集している間と、シーンが開いていない間は、作る・消すがスクリプトの例外になります。</li>
-  </ul>
-
-  <h3 id="script-editor-record">値の変更を取り消せるようにする</h3>
-  <script type="text/x-code" data-lang="as" data-file="Editor/SceneTools.as">
-    [MenuItem("Tools/選んだオブジェクトを地面に下ろす")]
-    void DropSelectionToGround()
-    {
-        GameObject@ selected = Editor::GetSelection();
-        if (selected is null) {
-            return;
-        }
-        Editor::RecordObject(selected, selected.name + " を地面に下ろす");   // 変える前に控える
-        Vector3 position = selected.transform.position;
-        position.y = 0.0f;
-        selected.transform.position = position;
-    }
-  </script>
-  <p>控えたオブジェクトは、関数を抜けるときに変える前と見比べ、変わっていれば Undo に積みます（位置・回転・コンポーネントの値・名前・有効）。ウィンドウのスライダーで続けて動かしている間は、1 つの操作にまとめます。<code>AddComponent</code>・<code>RemoveComponent</code> は、エディタの道具から呼ぶと自分で Undo に積みます。</p>
-
-  <h2 id="script-editor-data">データを保存して、ゲームで読む</h2>
-  <p><a href="#api-DataFile"><code>DataFile</code></a> は <span class="path">Application/Assets</span> の下の JSON ファイルです。エディタの道具で作ったマップやステージを保存し、ゲームのスクリプトから同じ <code>DataFile</code> で読みます（書き出したゲームでは読むだけ）。保存するとアセットとして登録されるので、<code>[Asset("Json")]</code> の欄で選べます。</p>
-  <script type="text/x-code" data-lang="as" data-file="Editor/MapGenerator.as（保存）">
-    DataFile@ file = DataFile("Data/Maps/Cave.json");
-    file.SetInt("width", width);
-    file.SetInt("depth", depth);
-    file.SetIntArray("cells", cells);
-    file.Save();
-  </script>
-  <script type="text/x-code" data-lang="as" data-file="MapLoader.as（ゲームで読む）">
-    [Asset("Json")]
-    string mapFile = "Application/Assets/Data/Maps/Cave.json";
-
-    void Start()
-    {
-        DataFile@ file = DataFile(mapFile);
-        if (!file.exists) {
-            return;
-        }
-        const int width = file.GetInt("width");
-        array<int>@ cells = file.GetIntArray("cells");
-        // cells を見て壁を並べる
-    }
-  </script>
-
-  <h2 id="script-editor-fields">オブジェクト・アセットを選ぶ欄と画像</h2>
-  <script type="text/x-code" data-lang="as">
-    GameObject@ target;
-    string wallPrefab = "";
-    string tileTexture = "";
-
-    void OnGUI()
-    {
-        @target = EditorGUI::ObjectField("対象", target);                  // Hierarchy からドラッグもできる
-        wallPrefab = EditorGUI::AssetField("壁", wallPrefab, "Prefab");     // Project からドラッグもできる
-        tileTexture = EditorGUI::AssetField("タイル", tileTexture, "Texture");
-        EditorGUI::Image(tileTexture, 64, 64);
-    }
-  </script>
-  <ul>
-    <li><code>ObjectField</code> はハンドルを返すので、<code>@target = ...</code> と <code>@</code> を付けて受け取ります。</li>
-    <li><code>AssetField</code> はパス（<code>Application/Assets/...</code>）を返します。そのまま <code>Editor::InstantiatePrefab</code> や <code>DataFile</code> に渡せます。</li>
-    <li>Canvas の中には <code>EditorGUI::DrawImage(path, min, max)</code> で画像を描けます。</li>
-  </ul>
-
-  <h2 id="script-editor-components">コンポーネントと親子</h2>
-  <p><code>GameObject</code> の <code>AddComponent("Rigidbody")</code>・<code>RemoveComponent</code>・<code>HasComponent</code> で、型名のコンポーネントを足し外しできます（スクリプトのクラス名も使えます）。<code>transform.parent</code> で親、<code>GetChildren()</code> で子の一覧を取れます。どれもゲームのスクリプトでも使えます。</p>
-
-  <h2 id="script-editor-menu">メニューから関数を呼ぶ</h2>
-  <script type="text/x-code" data-lang="as" data-file="Editor/SceneTools.as">
-    // 開いているシーンのオブジェクトを数えて Console へ出す
-    [MenuItem("Tools/シーンのオブジェクトを数える")]
-    void CountSceneObjects()
-    {
-        array<GameObject@>@ objects = Editor::GetObjects();
-        Log("シーンのオブジェクト: " + objects.length() + " 個");
-    }
-  </script>
-  <p>クラスの外の、引数も戻り値も無い関数（<code>void 名前()</code>）に付けます。選ぶたびに 1 回呼ばれます。</p>
-
-  <h2 id="script-editor-reload">読み直しと、止まったとき</h2>
-  <ul>
-    <li>.as を保存すると、ウィンドウを開いたまま読み直します。メンバ変数の値（数値・<code>bool</code>・<code>string</code>・<code>Vector2</code>〜<code>Vector4</code>・列挙・スクリプトのクラスと、それらの <code>array</code>）は、名前と型が同じなら <code>private</code> でも持ち越します。クラスのオブジェクトは同じ名前のクラスで作り直して中身を戻し、同じオブジェクトを 2 か所から指していれば、読み直した後も同じものを指します。<code>GameObject@</code> などエンジンのオブジェクトのハンドルは初期値に戻ります。</li>
-    <li>ウィンドウの関数で例外が起きると、そのウィンドウは止まり、案内と <span class="ui">もう一度動かす</span> ボタンを出します。Console のエラーを直して保存すると、読み直して動き始めます。</li>
-    <li>エディタの道具は重い処理をすることがあるので、1 回の呼び出しで実行できる行数の上限を 20,000,000 行にしています（ゲームのスクリプトは 200,000 行）。</li>
-    <li>公開メンバ変数（<code>private</code>・<code>protected</code> でないもの）の値は、エディタを閉じるときに <span class="path">Application/Saved/EditorSettings/ScriptWindows.json</span> へ保存し、次の起動で戻します（Unity のウィンドウと同じ）。残せる型は読み直しと同じです。残したくない値は <code>private</code> にします。</li>
-  </ul>
+<article class="page" id="editor-ext-samples" data-group="エディタの拡張" data-title="見本とテスト" data-nav="見本とテスト" data-keywords="見本 サンプル テスト マップ生成 会話エディタ 配置ツール 巡回 カーブ エディタ拡張のテスト">
+  <h1>見本とテスト</h1>
+  <p class="lead">Sandbox プロジェクトに入っている、エディタの拡張の見本です。どれもそのまま開いて動かせ、コードはコメント付きで読めます。</p>
 
   <h2 id="script-editor-sample">見本：マップ生成</h2>
   <p>Sandbox プロジェクトの <span class="path">Scripts/Editor/MapGenerator.as</span> は、洞窟のような地形を作り、壁のブロックとしてシーンへ並べるウィンドウです。地形は、周りの 8 マスの壁の数で壁か床かを決め直すのを繰り返して作ります（セル・オートマトン）。<span class="ui">Tools<span class="arrow">▸</span>マップ生成</span> で開きます。</p>
@@ -5533,6 +6098,7 @@ kbd {
     <li><strong>データファイルに保存する</strong><span class="ui">ファイルに保存</span> で、大きさとマスを <span class="path">Application/Assets/Data/Maps/Cave.json</span> へ書きます。ゲームのスクリプトからは <code>DataFile</code> で読めます。</li>
   </ol>
   <p>同じフォルダの <span class="path">SceneTools.as</span> は、メニューから関数を呼ぶ見本（オブジェクトを数える・選んだオブジェクトを地面に下ろす・剛体を付け外し）です。</p>
+
 
   <h2 id="script-editor-sample-dialogue">見本：会話エディタ</h2>
   <p>Sandbox プロジェクトの <span class="path">Scripts/Editor/DialogueEditor.as</span> は、会話の流れをノードでつなぐウィンドウです。<span class="ui">Tools<span class="arrow">▸</span>会話エディタ</span> で開きます。</p>
@@ -5578,6 +6144,7 @@ kbd {
   </script>
   <p><span class="ui">Tools<span class="arrow">▸</span>テスト<span class="arrow">▸</span>エディタ拡張のテスト</span> の <span class="ui">大きな部品<span class="arrow">▸</span>ノード</span> のタブは、数のノードを足し算のノードへつなぎ、表示のノードで結果を見る小さな見本です。ノードエディタの関数をひととおり使っています。</p>
 
+
   <h2 id="script-editor-sample-scene">見本：配置ツールと巡回の道筋</h2>
   <ul>
     <li><span class="path">Scripts/Editor/PlacementTool.as</span>（<span class="ui">Tools<span class="arrow">▸</span>配置ツール</span>）：「クリックで置く」をオンにすると、カーソルの下（物の表面か床の高さ）に置く場所の格子と枠を描き、左クリックでプレハブを置きます。格子に合わせることもでき、Shift+クリックで置いた物を消します。どちらも <kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せます。</li>
@@ -5585,8 +6152,10 @@ kbd {
     <li><span class="path">Scripts/Editor/PatrolRouteInspector.as</span>（巡回の道筋のインスペクタ）：既定の欄の下に点の数と「点を足す」「最後の点を消す」「逆回りにする」を足し、選んでいる間はシーンビューに点を動かすハンドルを出します。道筋は <span class="ui">Tools<span class="arrow">▸</span>巡回の道筋を作る</span> で作れます。</li>
   </ul>
 
+
   <h2 id="script-editor-sample-curve">見本：カーブで上下する箱</h2>
   <p><span class="path">Scripts/CurveMover.as</span>（コンポーネント「カーブで上下」）と <span class="path">Scripts/Editor/CurveMoverInspector.as</span>：カーブに沿って持ち主を上下に動かします。インスペクタでは、カーブを点のドラッグで直せます。<span class="ui">Tools<span class="arrow">▸</span>カーブで上下する箱を作る</span> で、壁のプレハブに付けて作れます。</p>
+
 
   <h2 id="script-editor-feature-test">エディタ拡張のテスト</h2>
   <p>Sandbox の <span class="ui">Tools<span class="arrow">▸</span>テスト<span class="arrow">▸</span>エディタ拡張のテスト</span> は、このページの機能をひととおり試せるウィンドウです。上の段のタブで分野を、下の段のタブで機能を選びます。各タブの上の <span class="ui">確かめること</span> にチェックを入れていくと、ウィンドウの上に確かめた数の合計が出ます（チェックはウィンドウの値として保存され、次の起動でも残ります。<span class="ui">チェックを全部外す</span> で外せます）。</p>
@@ -5620,6 +6189,13 @@ kbd {
     <li>誤った使い方のタブのボタンは、押すとこのウィンドウを止めます。<span class="ui">もう一度動かす</span> で戻してください。</li>
   </ul>
 </article>
+
+<article class="page" id="editor-ext-reference" data-group="エディタの拡張" data-title="関数の一覧" data-nav="関数の一覧" data-keywords="関数 一覧 リファレンス 引数 戻り値 使い方 例 editorgui editor sceneview handles gizmos datafile curve">
+  <h1>関数の一覧</h1>
+  <p class="lead">エディタの拡張で使う関数とプロパティを、すべて並べています。名前を押すと、引数・戻り値・使い方の例へ移ります。</p>
+  <div id="editor-ext-function-list"></div>
+</article>
+
 
 <!-- ================================================================== AngelScript の文法 -->
 
@@ -7304,7 +7880,7 @@ kbd {
   </ul>
 
   <h3 id="changelog-v0-4-0">v0.4.0 <span class="dim">（2026-10-10）</span></h3>
-  <p>エディタの道具で作ったデータを保存し、ゲームで読めるようにした版です（<a href="#script-editor">エディタを拡張する</a>）。</p>
+  <p>エディタの道具で作ったデータを保存し、ゲームで読めるようにした版です（<a href="#script-editor">エディタの拡張</a>）。</p>
   <ul>
     <li><strong>データファイル</strong>：<a href="#api-DataFile"><code>DataFile</code></a> で <span class="path">Application/Assets</span> の JSON を読み書きできます。エディタで保存するとアセットとして登録され、ゲームのスクリプトからも読めます（書き出したゲームでは読むだけ）。</li>
     <li><code>SaveFile</code> と <code>DataFile</code> に、整数・小数・文字列の配列と、キーの一覧・ファイルがあったか（<code>exists</code>）を足しました。</li>
@@ -7315,7 +7891,7 @@ kbd {
   </ul>
 
   <h3 id="changelog-v0-3-0">v0.3.0 <span class="dim">（2026-10-09）</span></h3>
-  <p>エディタのウィンドウで使える部品を増やした版です（<a href="#script-editor">エディタを拡張する</a>）。</p>
+  <p>エディタのウィンドウで使える部品を増やした版です（<a href="#script-editor">エディタの拡張</a>）。</p>
   <ul>
     <li><strong>部品を増やした</strong>：色付きの文字・薄い文字・箇条書き・ツールチップ・進み具合のバー・ラジオボタン・選べる行と一覧・複数行の文字の欄。</li>
     <li><strong>木・タブ・表・スクロールする枠</strong>：<code>BeginTreeNode</code>・<code>BeginTabBar</code>・<code>BeginTable</code>（列の幅の変更・見出しでの並べ替え）・<code>BeginChild</code> で、ウィンドウの中を組み立てられます。</li>
@@ -7329,7 +7905,7 @@ kbd {
   <h3 id="changelog-v0-2-0">v0.2.0 <span class="dim">（2026-10-09）</span></h3>
   <p>スクリプトでエディタの道具を作れるようにし、プレハブの編集と書き出したゲームの起動を良くした版です。</p>
   <ul>
-    <li><strong>エディタを拡張できる</strong>：<span class="path">Scripts/Editor/</span> に <code>EditorWindow</code> を継いだクラスを書くと、<code>[MenuItem]</code> の場所から開けるウィンドウになります。部品は <code>EditorGUI::</code>、シーンの操作（作る・消す・選ぶ。<kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せる）は <code>Editor::</code> です。見本は Sandbox の「マップ生成」（<a href="#script-editor">エディタを拡張する</a>）。</li>
+    <li><strong>エディタを拡張できる</strong>：<span class="path">Scripts/Editor/</span> に <code>EditorWindow</code> を継いだクラスを書くと、<code>[MenuItem]</code> の場所から開けるウィンドウになります。部品は <code>EditorGUI::</code>、シーンの操作（作る・消す・選ぶ。<kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せる）は <code>Editor::</code> です。見本は Sandbox の「マップ生成」（<a href="#script-editor">エディタの拡張</a>）。</li>
     <li><strong>プレハブを直しやすく</strong>：Project で選んだプレハブの中身をインスペクタで直せるようになり、プレハブだけを開いて直すプレハブモードを足しました（<a href="#editor-prefab">プレハブ</a>）。</li>
     <li><strong>見本を倉庫番に</strong>：スクリプトだけで作った倉庫番のサンプルプロジェクトを足し、シューティングのサンプルプロジェクトを消しました（<a href="#tutorial-sokoban">見本の倉庫番を読む</a>）。</li>
     <li><strong>起動の画面</strong>：起動時のローディング画面を絵とロゴの画面にし、進み具合を前回の所要時間で数えるようにしました。書き出したゲームは、ゲームの題名の画面になります。</li>
@@ -8857,13 +9433,33 @@ void RecordScore(int score)
       {
         title: "作る", members: [
           { n: "DataFile", s: "DataFile(const string&in path)", t: "ctor", d: "ファイルを開きます。あれば中身を読み、無ければ空から始めます。" },
+          { n: "path", s: "string path", t: "ro", d: "開いたファイルのパス（<span class=\"path\">Application/Assets</span> からの相対）。" },
           { n: "exists", s: "bool exists", t: "ro", d: "開いたときにファイルがあったか。" }
         ]
       },
       {
-        title: "読み書き", members: [
-          { n: "GetInt", s: "int GetInt(const string&in key, int fallback = 0) const", t: "m", d: "ほかに <code>GetFloat</code>・<code>GetBool</code>・<code>GetString</code>・<code>GetIntArray</code>・<code>GetFloatArray</code>・<code>GetStringArray</code>・<code>GetKeys</code>・<code>Has</code>。" },
-          { n: "SetInt", s: "void SetInt(const string&in key, int value)", t: "m", d: "ほかに <code>SetFloat</code>・<code>SetBool</code>・<code>SetString</code>・<code>SetIntArray</code>・<code>SetFloatArray</code>・<code>SetStringArray</code>・<code>Remove</code>。" },
+        title: "読む", members: [
+          { n: "Has", s: "bool Has(const string&in key) const", t: "m", d: "キーがあるか。" },
+          { n: "GetKeys", s: "string[]@ GetKeys() const", t: "m", d: "キーの一覧。" },
+          { n: "GetInt", s: "int GetInt(const string&in key, int fallback = 0) const", t: "m", d: "整数（無いか型が違えば fallback）。" },
+          { n: "GetFloat", s: "float GetFloat(const string&in key, float fallback = 0.0f) const", t: "m", d: "小数。" },
+          { n: "GetBool", s: "bool GetBool(const string&in key, bool fallback = false) const", t: "m", d: "真偽。" },
+          { n: "GetString", s: "string GetString(const string&in key, const string&in fallback = \"\") const", t: "m", d: "文字列。" },
+          { n: "GetIntArray", s: "int[]@ GetIntArray(const string&in key) const", t: "m", d: "整数の配列（無ければ空）。" },
+          { n: "GetFloatArray", s: "float[]@ GetFloatArray(const string&in key) const", t: "m", d: "小数の配列。" },
+          { n: "GetStringArray", s: "string[]@ GetStringArray(const string&in key) const", t: "m", d: "文字列の配列。" }
+        ]
+      },
+      {
+        title: "書く", members: [
+          { n: "SetInt", s: "void SetInt(const string&in key, int value)", t: "m", d: "整数を書く（Save するまでファイルは変わらない）。" },
+          { n: "SetFloat", s: "void SetFloat(const string&in key, float value)", t: "m", d: "小数を書く。" },
+          { n: "SetBool", s: "void SetBool(const string&in key, bool value)", t: "m", d: "真偽を書く。" },
+          { n: "SetString", s: "void SetString(const string&in key, const string&in value)", t: "m", d: "文字列を書く。" },
+          { n: "SetIntArray", s: "void SetIntArray(const string&in key, const int[]&in values)", t: "m", d: "整数の配列を書く。" },
+          { n: "SetFloatArray", s: "void SetFloatArray(const string&in key, const float[]&in values)", t: "m", d: "小数の配列を書く。" },
+          { n: "SetStringArray", s: "void SetStringArray(const string&in key, const string[]&in values)", t: "m", d: "文字列の配列を書く。" },
+          { n: "Remove", s: "void Remove(const string&in key)", t: "m", d: "キーを消す。" },
           { n: "Save", s: "bool Save() const", t: "m", d: "ファイルへ書き出してアセットに登録します（エディタだけ）。書けたら true。" }
         ]
       }
@@ -8895,7 +9491,7 @@ class MapLoader : ScriptComponent
 }`
       }
     ],
-    see: [["script-editor", "エディタを拡張する"], ["api-SaveFile", "SaveFile"]]
+    see: [["script-editor", "エディタの拡張の概要"], ["api-SaveFile", "SaveFile"]]
   },
 
   {
@@ -9030,7 +9626,7 @@ class HelloWindow : EditorWindow
 }`
       }
     ],
-    see: [["script-editor", "エディタを拡張する"], ["api-EditorGUI", "EditorGUI"], ["api-Editor", "Editor"]]
+    see: [["script-editor", "エディタの拡張の概要"], ["api-EditorGUI", "EditorGUI"], ["api-Editor", "Editor"]]
   },
 
   {
@@ -9086,7 +9682,8 @@ class HelloWindow : EditorWindow
           { n: "enabled", s: "bool enabled", t: "rw", d: "false にすると、true に戻すまでの部品を押せなくする。OnGUI の初めは true。" },
           { n: "changed", s: "bool changed", t: "rw", d: "値を入れる部品・Selectable・RadioButton が操作されると true。OnGUI の初めは false。区間の前で false にしておき、後で見る。" },
           { n: "indentLevel", s: "int indentLevel", t: "rw", d: "字下げの段。枠・表・ポップアップの中では 0 から数え、閉じると戻る。" },
-          { n: "PushID", s: "void PushID(int id)", t: "f", d: "PopID までの部品の ID に id を混ぜる（繰り返しの中で同じラベルを使うとき）。文字列を渡す形もある。" },
+          { n: "PushID", s: "void PushID(int id)", t: "f", d: "PopID までの部品の ID に id を混ぜる（繰り返しの中で同じラベルを使うとき）。" },
+          { n: "PushID", s: "void PushID(const string&in id)", t: "f", d: "文字列を混ぜる形（名前で区別するとき）。" },
           { n: "PopID", s: "void PopID()", t: "f", d: "PushID を戻す。範囲の中で戻し忘れたものは、範囲を閉じるときに戻る。" },
           { n: "BeginGroup", s: "void BeginGroup()", t: "f", d: "EndGroup までを 1 つの部品として扱う（まとめて SameLine や Tooltip を付ける）。" },
           { n: "EndGroup", s: "void EndGroup()", t: "f", d: "" },
@@ -9158,7 +9755,9 @@ class HelloWindow : EditorWindow
           { n: "IsKeyPressed", s: "bool IsKeyPressed(Key key, bool repeat = true)", t: "f", d: "キーを押したか（repeat が true なら押し続けると繰り返す）。このウィンドウが選ばれていて、文字を打っていない間だけ読める。" },
           { n: "IsKeyDown", s: "bool IsKeyDown(Key key)", t: "f", d: "キーを押しているか。" },
           { n: "IsKeyReleased", s: "bool IsKeyReleased(Key key)", t: "f", d: "キーを離したか。" },
-          { n: "ctrl", s: "bool ctrl", t: "ro", d: "Ctrl を押しているか（Shift は <code>shift</code>、Alt は <code>alt</code>）。" }
+          { n: "ctrl", s: "bool ctrl", t: "ro", d: "Ctrl を押しているか。" },
+          { n: "shift", s: "bool shift", t: "ro", d: "Shift を押しているか。" },
+          { n: "alt", s: "bool alt", t: "ro", d: "Alt を押しているか。" }
         ]
       },
       {
@@ -9171,8 +9770,10 @@ class HelloWindow : EditorWindow
       },
       {
         title: "グラフ・カーブ・時間軸", members: [
-          { n: "PlotLines", s: "void PlotLines(const string&in label, const float[]&in values, float height = 60)", t: "f", d: "折れ線のグラフ（縦の範囲は値から決める）。最小と最大を渡す形もある。" },
-          { n: "PlotHistogram", s: "void PlotHistogram(const string&in label, const float[]&in values, float height = 60)", t: "f", d: "棒のグラフ。最小と最大を渡す形もある。" },
+          { n: "PlotLines", s: "void PlotLines(const string&in label, const float[]&in values, float height = 60)", t: "f", d: "折れ線のグラフ（縦の範囲は値から決める）。" },
+          { n: "PlotLines", s: "void PlotLines(const string&in label, const float[]&in values, float min, float max, float height = 60)", t: "f", d: "縦の範囲を決めた折れ線のグラフ。" },
+          { n: "PlotHistogram", s: "void PlotHistogram(const string&in label, const float[]&in values, float height = 60)", t: "f", d: "棒のグラフ（縦の範囲は値から決める）。" },
+          { n: "PlotHistogram", s: "void PlotHistogram(const string&in label, const float[]&in values, float min, float max, float height = 60)", t: "f", d: "縦の範囲を決めた棒のグラフ。" },
           { n: "CurveField", s: "bool CurveField(const string&in label, Vector2[]&inout keys, const Vector2&in rangeMin = Vector2(0.0f, 0.0f), const Vector2&in rangeMax = Vector2(1.0f, 1.0f), float height = 110)", t: "f", d: "点を通る曲線の欄。点をドラッグで動かし、何も無いところのダブルクリックで足し、右クリックで消す。配列はその場で書き換わり、変えたフレームに true。値は <code>Curve::Evaluate</code> で読む。" },
           { n: "BeginTimeline", s: "float BeginTimeline(const string&in id, float length, float time, float snap = 0)", t: "f", d: "時間軸の目盛りの行を描き、目盛りの操作で動いた再生位置を返す。snap はキーと再生位置をそろえる間隔（0 ならそろえない）。EndTimeline と組。" },
           { n: "TimelineKeys", s: "bool TimelineKeys(const string&in label, float[]&inout keys)", t: "f", d: "キーの時刻のトラック。ドラッグで動かし、ダブルクリックで足し、右クリックで消す。変えたフレームに true。" },
@@ -9257,7 +9858,7 @@ void OnGUI()
 }`
       }
     ],
-    see: [["script-editor", "エディタを拡張する"], ["api-EditorWindow", "EditorWindow"], ["api-Editor", "Editor"]]
+    see: [["editor-ext-gui", "画面の部品（EditorGUI）"], ["script-editor", "エディタの拡張の概要"], ["api-EditorWindow", "EditorWindow"], ["api-Editor", "Editor"]]
   },
 
   {
@@ -9327,7 +9928,9 @@ class PatrolRouteInspector : ComponentEditor
           { n: "IsMouseReleased", s: "bool IsMouseReleased(MouseButton button = MouseButton::Left)", t: "f", d: "このフレームで離したか（カーソルがシーンビューの外でも true）。" },
           { n: "IsMouseDragging", s: "bool IsMouseDragging(MouseButton button = MouseButton::Left)", t: "f", d: "押したまま少し動かしたか。" },
           { n: "IsKeyPressed", s: "bool IsKeyPressed(Key key, bool repeat = true)", t: "f", d: "キーを押したか（Game ウィンドウが選ばれていて、文字を打っていないときだけ）。" },
-          { n: "shift", s: "bool shift", t: "ro", d: "Shift を押しているか（Ctrl は <code>ctrl</code>、Alt は <code>alt</code>）。" },
+          { n: "ctrl", s: "bool ctrl", t: "ro", d: "Ctrl を押しているか。" },
+          { n: "shift", s: "bool shift", t: "ro", d: "Shift を押しているか。" },
+          { n: "alt", s: "bool alt", t: "ro", d: "Alt を押しているか。" },
           { n: "UseMouse", s: "void UseMouse()", t: "f", d: "シーンビューの左クリックでオブジェクトを選ばない。選ばせたくない間は毎フレーム呼ぶ（次のフレームのクリックから効く）。" }
         ]
       },
@@ -9401,42 +10004,6 @@ void OnSceneGUI()
   },
 
   {
-    id: "Gizmos", kind: "namespace", cat: "描画", brief: "コンポーネントの目印を描く",
-    keywords: "ギズモ gizmos 目印 道筋 範囲 線 箱 球 ondrawgizmos ondrawgizmosselected シーンビュー",
-    summary: "コンポーネントの <code>OnDrawGizmos</code>・<code>OnDrawGizmosSelected</code> の中で、エディタのシーンビューに目印を描きます。ゲームのスクリプトにも書けて、書き出したゲームでは何もしません。",
-    intro: "<p>描いたものはシーンの物より手前に重なります。<code>color</code> は関数が呼ばれるたびに白から始まります。ギズモの関数の外で呼んでも何も描きません。</p>",
-    sections: [
-      {
-        title: "描く", members: [
-          { n: "color", s: "Vector4 color", t: "rw", d: "次に描く線の色（0〜1 の RGBA）。" },
-          { n: "DrawLine", s: "void DrawLine(const Vector3&in from, const Vector3&in to)", t: "f", d: "線。" },
-          { n: "DrawRay", s: "void DrawRay(const Vector3&in from, const Vector3&in direction)", t: "f", d: "from から direction だけ伸ばした線（向きと長さを示す）。" },
-          { n: "DrawWireCube", s: "void DrawWireCube(const Vector3&in center, const Vector3&in size)", t: "f", d: "軸に沿った箱の辺。" },
-          { n: "DrawWireSphere", s: "void DrawWireSphere(const Vector3&in center, float radius)", t: "f", d: "球の線。" },
-          { n: "DrawSphere", s: "void DrawSphere(const Vector3&in center, float radius)", t: "f", d: "塗った球（画面の上の円）。" }
-        ]
-      }
-    ],
-    examples: [
-      {
-        title: "見つける範囲を描く", file: "EnemySensor.as",
-        code: `
-class EnemySensor : ScriptComponent
-{
-    float range = 5.0f;
-
-    void OnDrawGizmosSelected()
-    {
-        Gizmos::color = Vector4(1.0f, 0.3f, 0.3f, 1.0f);
-        Gizmos::DrawWireSphere(owner.transform.position, range);
-    }
-}`
-      }
-    ],
-    see: [["script-editor-gizmos", "コンポーネントのギズモ"], ["api-ScriptComponent", "ScriptComponent"], ["api-Handles", "Handles"]]
-  },
-
-  {
     id: "Editor", kind: "namespace", cat: "エディタの拡張", brief: "編集中のシーンの操作",
     keywords: "エディタ拡張 作る 消す 選ぶ 選択 undo 取り消し まとめる プレハブ シーン",
     summary: "エディタで開いているシーンのオブジェクトを作る・消す・探す・選びます。<span class=\"path\">Scripts/Editor/</span> の中でだけ使えます。",
@@ -9479,7 +10046,43 @@ Editor::EndUndoGroup();
 Editor::Select(root);`
       }
     ],
-    see: [["script-editor", "エディタを拡張する"], ["api-EditorWindow", "EditorWindow"], ["api-GameObject", "GameObject"]]
+    see: [["script-editor", "エディタの拡張の概要"], ["api-EditorWindow", "EditorWindow"], ["api-GameObject", "GameObject"]]
+  },
+
+  {
+    id: "Gizmos", kind: "namespace", cat: "描画", brief: "コンポーネントの目印を描く",
+    keywords: "ギズモ gizmos 目印 道筋 範囲 線 箱 球 ondrawgizmos ondrawgizmosselected シーンビュー",
+    summary: "コンポーネントの <code>OnDrawGizmos</code>・<code>OnDrawGizmosSelected</code> の中で、エディタのシーンビューに目印を描きます。ゲームのスクリプトにも書けて、書き出したゲームでは何もしません。",
+    intro: "<p>描いたものはシーンの物より手前に重なります。<code>color</code> は関数が呼ばれるたびに白から始まります。ギズモの関数の外で呼んでも何も描きません。</p>",
+    sections: [
+      {
+        title: "描く", members: [
+          { n: "color", s: "Vector4 color", t: "rw", d: "次に描く線の色（0〜1 の RGBA）。" },
+          { n: "DrawLine", s: "void DrawLine(const Vector3&in from, const Vector3&in to)", t: "f", d: "線。" },
+          { n: "DrawRay", s: "void DrawRay(const Vector3&in from, const Vector3&in direction)", t: "f", d: "from から direction だけ伸ばした線（向きと長さを示す）。" },
+          { n: "DrawWireCube", s: "void DrawWireCube(const Vector3&in center, const Vector3&in size)", t: "f", d: "軸に沿った箱の辺。" },
+          { n: "DrawWireSphere", s: "void DrawWireSphere(const Vector3&in center, float radius)", t: "f", d: "球の線。" },
+          { n: "DrawSphere", s: "void DrawSphere(const Vector3&in center, float radius)", t: "f", d: "塗った球（画面の上の円）。" }
+        ]
+      }
+    ],
+    examples: [
+      {
+        title: "見つける範囲を描く", file: "EnemySensor.as",
+        code: `
+class EnemySensor : ScriptComponent
+{
+    float range = 5.0f;
+
+    void OnDrawGizmosSelected()
+    {
+        Gizmos::color = Vector4(1.0f, 0.3f, 0.3f, 1.0f);
+        Gizmos::DrawWireSphere(owner.transform.position, range);
+    }
+}`
+      }
+    ],
+    see: [["script-editor-gizmos", "コンポーネントのギズモ"], ["api-ScriptComponent", "ScriptComponent"], ["api-Handles", "Handles"]]
   },
 
   // =================================================================== 言語の標準
@@ -9603,6 +10206,1943 @@ for (uint i = enemies.length(); i-- > 0;) {    // 後ろから消すと添字が
     see: [["lang-strings-arrays", "文字列と配列"]]
   }
 ];
+
+// 関数ごとの使い方（API の表の下に出す。キーは宣言の文字列）
+window.CE_API_USAGE = window.CE_API_USAGE || {};
+
+window.CE_API_USAGE.EditorWindow = {
+  'void OnEnable()': {
+    d: "ウィンドウを開いたときに 1 回呼ばれます。.as を保存して読み直したとき、開いていたウィンドウでも呼ばれます。重い下ごしらえ（アセットの一覧を集める・データファイルを読む）をここに書くと、毎フレームの <code>OnGUI</code> が軽くなります。",
+    x: "<p>エディタを起動したとき、前に開いていたウィンドウは開いた状態で作られ、最初に描くときに呼ばれます。</p>",
+    ex: `
+array<string> prefabs;
+
+void OnEnable()
+{
+    prefabs = Editor::FindAssets("Prefab");   // 開いたときに 1 回だけ集める
+}`
+  },
+  'void OnGUI()': {
+    d: "開いている間、毎フレーム呼ばれます。ここで <code>EditorGUI::</code> の部品を上から順に呼んで、ウィンドウの中身を描きます。部品は「今の値を受け取り、操作された後の値を返す」ので、メンバ変数へ代入し直します。",
+    x: "<p>ほかのウィンドウのタブの後ろに隠れている間は呼ばれません。例外が起きると、そのウィンドウは止まり、<span class=\"ui\">もう一度動かす</span> を出します。</p>",
+    ex: `
+int count = 3;
+
+void OnGUI()
+{
+    count = EditorGUI::IntSlider("数", count, 1, 10);   // 受け取った値を代入し直す
+    if (EditorGUI::Button("並べる")) {
+        Log(count + " 個並べます");
+    }
+}`
+  },
+  'void OnDisable()': {
+    d: "ウィンドウを閉じたときに 1 回呼ばれます。.as を保存して読み直す前、開いていたウィンドウでも呼ばれます。開いている間だけ使うものの後片付け（シーンビューに出していた目印の後始末・覚えておく値の書き出し）を書きます。",
+    ex: `
+void OnDisable()
+{
+    Log("ウィンドウを閉じました");
+}`
+  }
+};
+
+window.CE_API_USAGE.ComponentEditor = {
+  'GameObject@ target': {
+    d: "インスペクタに出しているコンポーネントの持ち主です。<code>OnInspectorGUI</code> と <code>OnSceneGUI</code> を呼ぶ間だけ入っています（呼んでいないときは null）。値を変える前に <code>Editor::RecordObject(target, \"名前\")</code> で控えると、<kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せます。",
+    ex: `
+void OnInspectorGUI()
+{
+    EditorGUI::DrawDefaultInspector();
+    EditorGUI::Label("持ち主", target.name);
+    if (EditorGUI::Button("原点へ")) {
+        Editor::RecordObject(target, "原点へ動かす");
+        target.transform.position = Vector3(0.0f, 0.0f, 0.0f);
+    }
+}`
+  },
+  'ScriptComponent@ component': {
+    d: "インスペクタに出しているコンポーネントです。スクリプトのコンポーネントなら <code>cast&lt;型名&gt;(component)</code> で中身のメンバ変数に触れます。エンジンのコンポーネント（<code>Rigidbody</code> など）のときは null なので、<code>target.rigidbody</code> などで取ります。",
+    ex: `
+[CustomEditor("CurveMover")]
+class CurveMoverInspector : ComponentEditor
+{
+    void OnInspectorGUI()
+    {
+        CurveMover@ mover = cast<CurveMover>(component);
+        if (mover is null) {
+            EditorGUI::DrawDefaultInspector();
+            return;
+        }
+        mover.height = EditorGUI::Slider("高さ", mover.height, 0.0f, 10.0f);
+    }
+}`
+  },
+  'void OnInspectorGUI()': {
+    d: "インスペクタの、そのコンポーネントの欄の中身を描きます。<code>EditorGUI::</code> の部品と <code>EditorGUI::DrawDefaultInspector()</code>（いつもの欄）が使えます。書かなければ、いつもの欄だけが出ます。",
+    x: "<p>同じ型のコンポーネントが付いたオブジェクトを選ぶたびに、同じクラスのオブジェクトで呼ばれます（メンバ変数はコンポーネントごとに分かれません）。例外が起きるとこのクラスは止まり、いつもの欄と <span class=\"ui\">もう一度動かす</span> を出します。</p>",
+    ex: `
+void OnInspectorGUI()
+{
+    EditorGUI::DrawDefaultInspector();             // いつもの欄
+    EditorGUI::HelpBox("この下は自分で描いた欄です");
+    PatrolRoute@ route = cast<PatrolRoute>(component);
+    EditorGUI::Label("点の数", "" + route.points.length());
+}`
+  },
+  'void OnSceneGUI()': {
+    d: "このコンポーネントを持つオブジェクトを選んでいる間、シーンビューを描くフレームごとに呼ばれます。<code>Handles::</code> で点や範囲を描き、<code>Handles::PositionHandle</code> で点を動かせるようにするのに使います。",
+    ex: `
+void OnSceneGUI()
+{
+    PatrolRoute@ route = cast<PatrolRoute>(component);
+    for (uint i = 0; i < route.points.length(); ++i) {
+        Vector3 moved = Handles::PositionHandle(int(i), route.points[i]);
+        if (!(moved == route.points[i])) {
+            Editor::RecordObject(target, "点を動かす");
+            route.points[i] = moved;
+        }
+    }
+}`
+  }
+};
+
+window.CE_API_USAGE.EditorGUI = {
+  // ---------------------------------------------------------------- 文字と区切り
+  'void Label(const string&in text)': {
+    d: "文字を 1 段出します。ウィンドウの幅に合わせて折り返します。",
+    p: [["text", "出す文字"]],
+    ex: `
+EditorGUI::Label("左クリックで壁、右クリックで床を塗ります。");`
+  },
+  'void Label(const string&in label, const string&in value)': {
+    d: "左にラベル、右に値を並べて出します。インスペクタの欄と同じ並びなので、読むだけの値を出すのに向いています。数値は <code>\"\" + 数</code> で文字にして渡します。",
+    p: [["label", "左に出す名前"], ["value", "右に出す値"]],
+    ex: `
+EditorGUI::Label("壁の数", "" + wallCount);
+EditorGUI::Label("選んでいる物", selected is null ? "（なし）" : selected.name);`
+  },
+  'void TextColored(const string&in text, const Vector4&in color)': {
+    d: "色を付けた文字を出します。",
+    p: [["text", "出す文字"], ["color", "色（0〜1 の RGBA。色見本と同じ見え方）"]],
+    ex: `
+EditorGUI::TextColored("保存していない変更があります", Vector4(1.0f, 0.6f, 0.2f, 1.0f));`
+  },
+  'void TextDisabled(const string&in text)': {
+    d: "薄い色の文字を出します。操作の説明や補足に使います。",
+    p: [["text", "出す文字"]],
+    ex: `
+EditorGUI::TextDisabled("ダブルクリックで点を足します");`
+  },
+  'void BulletText(const string&in text)': {
+    d: "先頭に点の付いた箇条書きの 1 行を出します。",
+    p: [["text", "出す文字"]],
+    ex: `
+for (uint i = 0; i < errors.length(); ++i) {
+    EditorGUI::BulletText(errors[i]);
+}`
+  },
+  'void Header(const string&in text)': {
+    d: "文字の付いた区切り線を出します。ウィンドウの中を「大きさ」「生成」「保存」のような段に分けるのに使います。",
+    p: [["text", "見出しの文字（<code>##</code> から後ろは出さない）"]],
+    ex: `
+EditorGUI::Header("大きさ");
+width = EditorGUI::IntSlider("幅", width, 8, 64);
+EditorGUI::Header("保存");`
+  },
+  'void HelpBox(const string&in message, MessageType type = EditorGUI::MessageType::Info)': {
+    d: "枠で囲んだ説明を出します。種類で左の線と背景の色が変わります。",
+    p: [["message", "説明の文（幅で折り返す）"], ["type", "<code>EditorGUI::MessageType::Info</code>（説明）・<code>Warning</code>（警告）・<code>Error</code>（エラー）"]],
+    ex: `
+if (prefab == "") {
+    EditorGUI::HelpBox("置くプレハブを選んでください", EditorGUI::MessageType::Warning);
+}`
+  },
+  'void Tooltip(const string&in text)': {
+    d: "直前に描いた部品にカーソルを乗せたとき、説明を浮かべて出します。部品の後に呼びます。",
+    p: [["text", "出す説明"]],
+    ex: `
+seed = EditorGUI::IntField("シード", seed);
+EditorGUI::Tooltip("同じシードなら毎回同じ地形になります");`
+  },
+  'void ProgressBar(float fraction, const string&in overlay = "")': {
+    d: "進み具合のバーを、ウィンドウの幅いっぱいに出します。",
+    p: [["fraction", "進み具合（0〜1。外れた値は 0 か 1 にそろえる）"], ["overlay", "バーの上に出す文字（空ならパーセント）"]],
+    ex: `
+EditorGUI::ProgressBar(float(done) / float(total), done + " / " + total);`
+  },
+  'void Separator()': {
+    d: "横の区切り線を出します。",
+    ex: `
+EditorGUI::Label("上の段");
+EditorGUI::Separator();
+EditorGUI::Label("下の段");`
+  },
+  'void Space(float height = 6)': {
+    d: "縦に空きを入れます。",
+    p: [["height", "空ける高さ（ピクセル）"]],
+    ex: `
+EditorGUI::Space(12);`
+  },
+  'void SameLine()': {
+    d: "次に描く部品を、改行せずに同じ行の右へ並べます。",
+    ex: `
+if (EditorGUI::Button("保存")) { Save(); }
+EditorGUI::SameLine();
+if (EditorGUI::Button("読み込み")) { Load(); }`
+  },
+  'float GetAvailableWidth()': {
+    d: "今の行で、部品を置ける残りの幅を返します。ボタンを横に等分するときなどに使います。",
+    r: "残りの幅（ピクセル）",
+    ex: `
+float half = (EditorGUI::GetAvailableWidth() - 8.0f) * 0.5f;   // 8 は部品の間の空き
+EditorGUI::Button("左", half);
+EditorGUI::SameLine();
+EditorGUI::Button("右", half);`
+  },
+
+  // ---------------------------------------------------------------- 押す・選ぶ
+  'bool Button(const string&in label, float width = 0)': {
+    d: "ボタンを出します。押したフレームだけ true を返すので、<code>if</code> の中に押したときの処理を書きます。",
+    p: [["label", "ボタンの文字。ID も兼ねる（同じ文字のボタンを並べるときは <code>\"消す##1\"</code> のように <code>##</code> の後ろで区別する）"], ["width", "幅（0 で文字に合わせる、-1 などの負の値で行の幅いっぱい）"]],
+    r: "押したフレームだけ true",
+    ex: `
+if (EditorGUI::Button("生成", -1)) {
+    Generate();
+}`
+  },
+  'bool Toggle(const string&in label, bool value)': {
+    d: "チェックボックスを出します。押されると反転した値を返すので、同じ変数へ代入し直します。",
+    p: [["label", "左に出す名前"], ["value", "今の値"]],
+    r: "押された後の値",
+    ex: `
+snapToGrid = EditorGUI::Toggle("格子に合わせる", snapToGrid);`
+  },
+  'int RadioButton(const string&in label, int selected, int value)': {
+    d: "いくつかの中から 1 つを選ぶ丸いボタンです。同じ変数で並べると、押された 1 つの値が入ります。",
+    p: [["label", "ボタンの右に出す名前"], ["selected", "今選んでいる値"], ["value", "このボタンの値"]],
+    r: "押されたら value、そうでなければ selected",
+    ex: `
+mode = EditorGUI::RadioButton("迷路", mode, 0);
+EditorGUI::SameLine();
+mode = EditorGUI::RadioButton("洞窟", mode, 1);`
+  },
+  'bool RadioButton(const string&in label, bool active)': {
+    d: "丸いボタンを 1 つ出します。印を付けるかを自分で渡し、押されたかを受け取る形です（2 択の bool などに）。",
+    p: [["label", "ボタンの右に出す名前"], ["active", "印を付けるか"]],
+    r: "押したフレームだけ true",
+    ex: `
+if (EditorGUI::RadioButton("止める", !running)) { running = false; }
+EditorGUI::SameLine();
+if (EditorGUI::RadioButton("動かす", running)) { running = true; }`
+  },
+  'bool Selectable(const string&in label, bool selected = false, bool spanAllColumns = false)': {
+    d: "押すと選べる 1 行を出します。一覧の行・表の行・リストの項目に使います。選んでいる状態の色は selected で自分で渡します。",
+    p: [["label", "行の文字（ID も兼ねる）"], ["selected", "選んでいる色にするか"], ["spanAllColumns", "表の中で行全体を押せるようにするか（同じ行のほかの欄もそのまま触れる）"]],
+    r: "押したフレームだけ true",
+    ex: `
+for (uint i = 0; i < names.length(); ++i) {
+    if (EditorGUI::Selectable(names[i], selected == int(i))) {
+        selected = int(i);
+    }
+}`
+  },
+  'int ListBox(const string&in label, int selected, const string[]&in items, int visibleRows = 6)': {
+    d: "枠の付いた一覧を出し、文字の配列から 1 つ選ばせます。",
+    p: [["label", "左に出す名前"], ["selected", "今選んでいる番号（-1 で何も選ばない）"], ["items", "一覧に出す文字の配列"], ["visibleRows", "枠の高さ（行の数）"]],
+    r: "選んだ番号",
+    ex: `
+array<string> stages = { "草原", "洞窟", "城" };
+stage = EditorGUI::ListBox("ステージ", stage, stages, 4);`
+  },
+  'int Popup(const string&in label, int selected, const string[]&in options)': {
+    d: "押すと開く選択肢（プルダウン）を出します。場所を取らずに選ばせたいときに使います。",
+    p: [["label", "左に出す名前"], ["selected", "今選んでいる番号"], ["options", "選択肢の文字の配列"]],
+    r: "選んだ番号",
+    ex: `
+array<string> sizes = { "小", "中", "大" };
+size = EditorGUI::Popup("大きさ", size, sizes);`
+  },
+  'bool Foldout(const string&in label, bool defaultOpen = true)': {
+    d: "押すと開閉する見出しを出します。開いていれば true を返すので、中身を <code>if</code> の中に書きます。<code>End〜</code> は要りません。",
+    p: [["label", "見出しの文字（<code>###</code> の後ろを ID にすると、文字が変わっても開閉が保たれる）"], ["defaultOpen", "初めて出たときに開いておくか"]],
+    r: "開いていれば true",
+    ex: `
+if (EditorGUI::Foldout("詳しい設定", false)) {
+    smooth = EditorGUI::IntSlider("ならす回数", smooth, 0, 8);
+}`
+  },
+
+  // ---------------------------------------------------------------- 値の入力
+  'int IntField(const string&in label, int value)': {
+    d: "整数の欄です。左右にドラッグすると値が増減し、ダブルクリックか <kbd>Ctrl</kbd>+クリックで打ち込めます。",
+    p: [["label", "左に出す名前（<code>##</code> で始めると名前を出さずに幅いっぱい）"], ["value", "今の値"]],
+    r: "操作された後の値",
+    ex: `
+seed = EditorGUI::IntField("シード", seed);`
+  },
+  'float FloatField(const string&in label, float value)': {
+    d: "小数の欄です。ドラッグで少しずつ変わり、ダブルクリックか <kbd>Ctrl</kbd>+クリックで打ち込めます。範囲を決めたいときは、受け取った後で <code>Max</code>・<code>Clamp</code> をかけるか <code>Slider</code> を使います。",
+    p: [["label", "左に出す名前"], ["value", "今の値"]],
+    r: "操作された後の値",
+    ex: `
+spacing = Max(0.1f, EditorGUI::FloatField("間隔", spacing));`
+  },
+  'string TextField(const string&in label, const string&in value)': {
+    d: "1 行の文字の欄です。打っている間も、文字が変わったフレームごとに新しい文字を返します。",
+    p: [["label", "左に出す名前"], ["value", "今の文字"]],
+    r: "打った後の文字",
+    x: "<p>打ち終えたとき（Enter・ほかを押した）だけ処理したいときは、直後に <code>IsItemDeactivatedAfterEdit()</code> を見ます。</p>",
+    ex: `
+rootName = EditorGUI::TextField("まとめる名前", rootName);
+if (EditorGUI::IsItemDeactivatedAfterEdit()) {
+    Log("名前を " + rootName + " にしました");
+}`
+  },
+  'string TextArea(const string&in label, const string&in value, float height = 0)': {
+    d: "複数行の文字の欄です。Enter で改行します。",
+    p: [["label", "左に出す名前"], ["value", "今の文字（改行は <code>\\n</code>）"], ["height", "欄の高さ（ピクセル。0 なら 5 行分）"]],
+    r: "打った後の文字",
+    ex: `
+note = EditorGUI::TextArea("メモ", note, 80);`
+  },
+  'int IntSlider(const string&in label, int value, int min, int max)': {
+    d: "範囲のある整数のスライダーです。<kbd>Ctrl</kbd>+クリックで打ち込めます。",
+    p: [["label", "左に出す名前"], ["value", "今の値"], ["min", "いちばん小さい値"], ["max", "いちばん大きい値"]],
+    r: "操作された後の値",
+    ex: `
+width = EditorGUI::IntSlider("幅", width, 8, 64);`
+  },
+  'float Slider(const string&in label, float value, float min, float max)': {
+    d: "範囲のある小数のスライダーです。<kbd>Ctrl</kbd>+クリックで打ち込めます。",
+    p: [["label", "左に出す名前"], ["value", "今の値"], ["min", "いちばん小さい値"], ["max", "いちばん大きい値"]],
+    r: "操作された後の値",
+    ex: `
+wallRatio = EditorGUI::Slider("壁の割合", wallRatio, 0.0f, 1.0f);`
+  },
+  'Vector2 Vector2Field(const string&in label, const Vector2&in value)': {
+    d: "x・y の 2 つの欄を並べて出します。それぞれドラッグか打ち込みで変えます。",
+    p: [["label", "左に出す名前"], ["value", "今の値"]],
+    r: "操作された後の値",
+    ex: `
+mapSize = EditorGUI::Vector2Field("大きさ", mapSize);`
+  },
+  'Vector3 Vector3Field(const string&in label, const Vector3&in value)': {
+    d: "x・y・z の 3 つの欄を並べて出します。位置・向き・大きさを入れるのに使います。",
+    p: [["label", "左に出す名前"], ["value", "今の値"]],
+    r: "操作された後の値",
+    ex: `
+origin = EditorGUI::Vector3Field("置き始め", origin);`
+  },
+  'Vector4 ColorField(const string&in label, const Vector4&in value)': {
+    d: "色見本を出します。押すと色を選ぶ窓が開きます。",
+    p: [["label", "左に出す名前"], ["value", "今の色（0〜1 の RGBA）"]],
+    r: "選んだ後の色",
+    ex: `
+wallColor = EditorGUI::ColorField("壁の色", wallColor);`
+  },
+
+  // ---------------------------------------------------------------- 並べ方と状態
+  'bool enabled': {
+    d: "false にすると、true に戻すまでに描いた部品が薄くなり、押せなくなります。条件がそろうまでボタンを押させたくないときに使います。<code>OnGUI</code> の初めは true です。",
+    x: "<p>描き終えたら true に戻します（戻し忘れても、次のフレームの初めには true です）。</p>",
+    ex: `
+EditorGUI::enabled = prefab != "";
+if (EditorGUI::Button("置く")) {
+    Place();
+}
+EditorGUI::enabled = true;`
+  },
+  'bool changed': {
+    d: "値を入れる部品・<code>Selectable</code>・<code>RadioButton</code> などが操作されると true になります。区間の前で false にしておき、後で見ると「どれかの値が変わったら作り直す」が書けます。<code>OnGUI</code> の初めは false です。",
+    ex: `
+EditorGUI::changed = false;
+width = EditorGUI::IntSlider("幅", width, 8, 64);
+depth = EditorGUI::IntSlider("奥行き", depth, 8, 64);
+if (EditorGUI::changed) {
+    RebuildPreview();          // どちらかが変わったときだけ
+}`
+  },
+  'int indentLevel': {
+    d: "字下げの段です。1 段ごとに右へずらして描きます。枠（<code>BeginChild</code>）・表・ポップアップの中では 0 から数え直し、閉じると元に戻ります。",
+    ex: `
+EditorGUI::Label("ステージ 1");
+EditorGUI::indentLevel = 1;
+EditorGUI::Label("敵の配置");
+EditorGUI::indentLevel = 0;`
+  },
+  'void PushID(int id)': {
+    d: "<code>PopID</code> までに描く部品の ID に番号を混ぜます。繰り返しの中で同じラベルの部品（「消す」ボタンなど）を並べるとき、どれが押されたかを区別するのに使います。",
+    p: [["id", "混ぜる番号（配列の添字など）"]],
+    x: "<p>同じラベルの部品が 2 つあると、片方しか反応しません。<code>Begin〜</code> の範囲の中で戻し忘れた分は、範囲を閉じるときに戻ります。</p>",
+    ex: `
+for (uint i = 0; i < points.length(); ++i) {
+    EditorGUI::PushID(int(i));
+    points[i] = EditorGUI::Vector3Field("点", points[i]);
+    EditorGUI::SameLine();
+    if (EditorGUI::Button("消す")) { removeIndex = int(i); }
+    EditorGUI::PopID();
+}`
+  },
+  'void PushID(const string&in id)': {
+    d: "文字を混ぜる形です。名前で区別できるもの（オブジェクトの名前・キー）を並べるときに使います。",
+    p: [["id", "混ぜる文字"]],
+    ex: `
+EditorGUI::PushID(enemy.name);
+if (EditorGUI::Button("選ぶ")) { Editor::Select(enemy); }
+EditorGUI::PopID();`
+  },
+  'void PopID()': {
+    d: "<code>PushID</code> で混ぜたものを 1 つ戻します。<code>PushID</code> と同じ数だけ呼びます。",
+    ex: `
+EditorGUI::PushID(3);
+EditorGUI::Button("押す");
+EditorGUI::PopID();`
+  },
+  'void BeginGroup()': {
+    d: "<code>EndGroup</code> までに描いた部品を、1 つの塊として扱います。塊の後に <code>SameLine</code> で別の列を並べたり、<code>Tooltip</code>・<code>IsItemHovered</code> で塊全体の説明や状態を見たりできます。",
+    ex: `
+EditorGUI::BeginGroup();
+EditorGUI::Label("幅 " + width);
+EditorGUI::Label("奥行き " + depth);
+EditorGUI::EndGroup();
+EditorGUI::Tooltip("マップの大きさ");    // 塊全体の説明
+EditorGUI::SameLine();
+EditorGUI::Button("作り直す");`
+  },
+  'void EndGroup()': {
+    d: "<code>BeginGroup</code> を閉じます。",
+    ex: `
+EditorGUI::BeginGroup();
+EditorGUI::Label("1 行目");
+EditorGUI::EndGroup();`
+  },
+  'bool BeginChild(const string&in id, float width = 0, float height = 0, bool border = true)': {
+    d: "中だけがスクロールする枠を作ります。長い一覧を決めた高さに収めるのに使います。戻り値に関係なく <code>EndChild</code> と組にします。",
+    p: [["id", "枠の名前（ウィンドウの中で重ならないようにする）"], ["width", "幅（0 で残りいっぱい、負の値で右から数えた余白）"], ["height", "高さ（0 で残りいっぱい、負の値で下から数えた余白）"], ["border", "枠線を描くか"]],
+    r: "中が見えていれば true（false のときは中身を描かなくてよい）",
+    ex: `
+if (EditorGUI::BeginChild("objects", 0, 140)) {
+    for (uint i = 0; i < objects.length(); ++i) {
+        EditorGUI::Label(objects[i].name);
+    }
+}
+EditorGUI::EndChild();`
+  },
+  'void EndChild()': {
+    d: "<code>BeginChild</code> を閉じます。<code>BeginChild</code> が false を返したときも呼びます。",
+    ex: `
+EditorGUI::BeginChild("log", 0, 100);
+EditorGUI::EndChild();`
+  },
+
+  // ---------------------------------------------------------------- 木とタブ
+  'bool BeginTreeNode(const string&in label, bool defaultOpen = false, bool selected = false, bool leaf = false)': {
+    d: "木（ツリー）の 1 段を出します。矢印かダブルクリックで開閉し、開いていれば true を返すので、子の段を <code>if</code> の中に書きます。戻り値に関係なく <code>EndTreeNode</code> と組にします。",
+    p: [["label", "段の文字（ID も兼ねる）"], ["defaultOpen", "初めて出たときに開いておくか"], ["selected", "選んでいる色にするか"], ["leaf", "矢印の無い末端の段にするか"]],
+    r: "開いていれば true",
+    x: "<p>段を押して選ぶのは、直後の <code>IsItemClicked()</code> で拾います（矢印で開閉したときも true になります）。</p>",
+    ex: `
+bool open = EditorGUI::BeginTreeNode("ステージ 1", true, selected == 0);
+if (EditorGUI::IsItemClicked()) { selected = 0; }
+if (open) {
+    EditorGUI::BeginTreeNode("敵の配置", false, selected == 1, true);
+    if (EditorGUI::IsItemClicked()) { selected = 1; }
+    EditorGUI::EndTreeNode();
+}
+EditorGUI::EndTreeNode();`
+  },
+  'void EndTreeNode()': {
+    d: "<code>BeginTreeNode</code> を閉じます。閉じている段（false が返った段）でも呼びます。",
+    ex: `
+EditorGUI::BeginTreeNode("葉", false, false, true);
+EditorGUI::EndTreeNode();`
+  },
+  'bool BeginTabBar(const string&in id)': {
+    d: "タブの並びを始めます。中で <code>BeginTabItem</code> を並べます。戻り値に関係なく <code>EndTabBar</code> と組にします。",
+    p: [["id", "タブの並びの名前（どのタブを選んでいるかを覚えるのに使う）"]],
+    r: "描くときは true",
+    x: "<p>タブがウィンドウの幅に入りきらないと、タブの名前が縮んで「…」になります。名前を短くするか、タブの並びを 2 段に分けます。</p>",
+    ex: `
+if (EditorGUI::BeginTabBar("tabs")) {
+    if (EditorGUI::BeginTabItem("生成")) { DrawGenerate(); }
+    EditorGUI::EndTabItem();
+    if (EditorGUI::BeginTabItem("保存")) { DrawSave(); }
+    EditorGUI::EndTabItem();
+}
+EditorGUI::EndTabBar();`
+  },
+  'void EndTabBar()': {
+    d: "<code>BeginTabBar</code> を閉じます。",
+    ex: `
+EditorGUI::BeginTabBar("tabs");
+EditorGUI::EndTabBar();`
+  },
+  'bool BeginTabItem(const string&in label)': {
+    d: "タブを 1 つ出します。選ばれているタブだけ true を返すので、そのタブの中身を <code>if</code> の中に書きます。戻り値に関係なく <code>EndTabItem</code> と組にします。",
+    p: [["label", "タブの名前"]],
+    r: "選ばれていれば true",
+    ex: `
+if (EditorGUI::BeginTabItem("配置")) {
+    DrawPlaceTab();
+}
+EditorGUI::EndTabItem();`
+  },
+  'void EndTabItem()': {
+    d: "<code>BeginTabItem</code> を閉じます。選ばれていないタブでも呼びます。",
+    ex: `
+EditorGUI::BeginTabItem("設定");
+EditorGUI::EndTabItem();`
+  },
+
+  // ---------------------------------------------------------------- 表
+  'bool BeginTable(const string&in id, int columns, int flags = EditorGUI::TableFlags::Default, float height = 0)': {
+    d: "表を始めます。列を <code>TableSetupColumn</code> で決め、<code>TableNextRow</code>・<code>TableNextColumn</code> で 1 マスずつ進みながら部品を置きます。戻り値に関係なく <code>EndTable</code> と組にします。",
+    p: [["id", "表の名前"], ["columns", "列の数"], ["flags", "<code>EditorGUI::TableFlags::</code> の <code>Borders</code>（線）・<code>RowBackground</code>（行の色を交互に）・<code>Resizable</code>（列の幅を変えられる）・<code>Sortable</code>（見出しで並べ替え）・<code>ScrollY</code>（height の高さでスクロール）を <code>|</code> でつなぐ。<code>Default</code> は線・行の色・幅の変更"], ["height", "ScrollY のときの高さ（ピクセル）"]],
+    r: "描くときは true",
+    ex: `
+if (EditorGUI::BeginTable("enemies", 2)) {
+    EditorGUI::TableSetupColumn("名前");
+    EditorGUI::TableSetupColumn("HP", 80);
+    EditorGUI::TableHeadersRow();
+    for (uint i = 0; i < names.length(); ++i) {
+        EditorGUI::TableNextRow();
+        EditorGUI::TableNextColumn();
+        EditorGUI::Label(names[i]);
+        EditorGUI::TableNextColumn();
+        EditorGUI::Label("" + hp[i]);
+    }
+}
+EditorGUI::EndTable();`
+  },
+  'void EndTable()': {
+    d: "<code>BeginTable</code> を閉じます。",
+    ex: `
+EditorGUI::BeginTable("t", 2);
+EditorGUI::EndTable();`
+  },
+  'void TableSetupColumn(const string&in label, float width = 0)': {
+    d: "列を 1 つ決めます。<code>BeginTable</code> の直後に、列の数だけ呼びます。",
+    p: [["label", "見出しの文字"], ["width", "列の幅（ピクセル。0 なら残りを分け合う）"]],
+    ex: `
+EditorGUI::TableSetupColumn("名前");
+EditorGUI::TableSetupColumn("HP", 90);`
+  },
+  'void TableSetupScrollFreeze(int columns, int rows)': {
+    d: "スクロールしても動かさない、左の列と上の行の数を決めます（<code>ScrollY</code> の表で見出しを残すときなど）。<code>TableHeadersRow</code> の前に呼びます。",
+    p: [["columns", "左から固定する列の数"], ["rows", "上から固定する行の数（見出しの行は 1）"]],
+    ex: `
+EditorGUI::TableSetupScrollFreeze(1, 1);   // 名前の列と見出しの行を残す
+EditorGUI::TableHeadersRow();`
+  },
+  'void TableHeadersRow()': {
+    d: "<code>TableSetupColumn</code> で決めた見出しの行を描きます。<code>Sortable</code> の表では、見出しを押すと並べ替えの向きが変わります。",
+    ex: `
+EditorGUI::TableSetupColumn("名前");
+EditorGUI::TableHeadersRow();`
+  },
+  'void TableNextRow()': {
+    d: "次の行へ進みます。行ごとの初めに呼びます。",
+    ex: `
+EditorGUI::TableNextRow();
+EditorGUI::TableNextColumn();
+EditorGUI::Label("スライム");`
+  },
+  'bool TableNextColumn()': {
+    d: "次の列のマスへ進みます。その後に描いた部品がマスに入ります。",
+    r: "マスが見えていれば true",
+    ex: `
+EditorGUI::TableNextColumn();
+hp[i] = EditorGUI::IntField("##hp", hp[i]);   // ## で名前を出さずにマスいっぱい`
+  },
+  'bool TableSetColumnIndex(int column)': {
+    d: "番号の列のマスへ移ります（列を飛ばして書くときに）。",
+    p: [["column", "列の番号（0 から）"]],
+    r: "マスが見えていれば true",
+    ex: `
+EditorGUI::TableNextRow();
+EditorGUI::TableSetColumnIndex(2);
+EditorGUI::Label("3 列目だけに書く");`
+  },
+  'bool IsTableSortChanged()': {
+    d: "<code>Sortable</code> の表で、見出しが押されて並べ替えの指定が変わったかを返します。true のときに、自分のデータを並べ替えます（表は並べ替えをしません）。初めて描いたときも 1 回 true になります。",
+    r: "変わったフレームだけ true",
+    ex: `
+EditorGUI::TableHeadersRow();
+if (EditorGUI::IsTableSortChanged()) {
+    SortEnemies(EditorGUI::GetTableSortColumn(), EditorGUI::IsTableSortAscending());
+}`
+  },
+  'int GetTableSortColumn()': {
+    d: "並べ替えに使う列の番号を返します。",
+    r: "列の番号（並べ替えが無ければ -1）",
+    ex: `
+int column = EditorGUI::GetTableSortColumn();`
+  },
+  'bool IsTableSortAscending()': {
+    d: "並べ替えの向きが小さい順かを返します。",
+    r: "小さい順なら true、大きい順なら false",
+    ex: `
+bool ascending = EditorGUI::IsTableSortAscending();`
+  },
+
+  // ---------------------------------------------------------------- 一覧とポップアップ
+  'bool BeginListBox(const string&in label, float height = 0)': {
+    d: "枠の付いた一覧を始めます。中に <code>Selectable</code> などを自由に並べられるので、複数選べる一覧や、行ごとに色を変えた一覧が作れます。戻り値に関係なく <code>EndListBox</code> と組にします。",
+    p: [["label", "左に出す名前"], ["height", "枠の高さ（ピクセル。0 なら 7 行分ほど）"]],
+    r: "中を描くときは true",
+    ex: `
+if (EditorGUI::BeginListBox("持ち物", 110)) {
+    for (uint i = 0; i < items.length(); ++i) {
+        if (EditorGUI::Selectable(items[i], picked[i])) {
+            picked[i] = !picked[i];          // 押すたびに選ぶ・外す
+        }
+    }
+}
+EditorGUI::EndListBox();`
+  },
+  'void EndListBox()': {
+    d: "<code>BeginListBox</code> を閉じます。",
+    ex: `
+EditorGUI::BeginListBox("一覧");
+EditorGUI::EndListBox();`
+  },
+  'void OpenPopup(const string&in id)': {
+    d: "名前のポップアップを開きます。ボタンを押したときなどに 1 回呼び、同じ名前の <code>BeginPopup</code> か <code>BeginPopupModal</code> で中身を描きます。",
+    p: [["id", "ポップアップの名前（<code>BeginPopup〜</code> と同じにし、同じ <code>PushID</code> の中で呼ぶ）"]],
+    ex: `
+if (EditorGUI::Button("メニュー")) {
+    EditorGUI::OpenPopup("menu");
+}`
+  },
+  'bool BeginPopup(const string&in id)': {
+    d: "<code>OpenPopup</code> で開いたポップアップの中身を描きます。開いていれば true を返します。外を押すか <code>CloseCurrentPopup</code> で閉じます。戻り値に関係なく <code>EndPopup</code> と組にします。",
+    p: [["id", "ポップアップの名前"]],
+    r: "開いていれば true",
+    x: "<p>ポップアップはマウスの位置に開きます。</p>",
+    ex: `
+if (EditorGUI::BeginPopup("menu")) {
+    if (EditorGUI::MenuItem("複製")) { Duplicate(); }
+    if (EditorGUI::MenuItem("削除")) { Delete(); }
+}
+EditorGUI::EndPopup();`
+  },
+  'bool BeginPopupModal(const string&in title)': {
+    d: "確認ダイアログを描きます。画面の中央に出て、閉じるまでほかを触れなくします。<code>OpenPopup(title)</code> で開き、中のボタンで <code>CloseCurrentPopup</code> を呼んで閉じます。",
+    p: [["title", "ダイアログの題名（<code>OpenPopup</code> に渡す名前と同じ）"]],
+    r: "開いていれば true",
+    ex: `
+if (EditorGUI::Button("全部消す")) { EditorGUI::OpenPopup("確認"); }
+if (EditorGUI::BeginPopupModal("確認")) {
+    EditorGUI::Label("本当に消しますか？");
+    if (EditorGUI::Button("消す", 90)) { ClearAll(); EditorGUI::CloseCurrentPopup(); }
+    EditorGUI::SameLine();
+    if (EditorGUI::Button("やめる", 90)) { EditorGUI::CloseCurrentPopup(); }
+}
+EditorGUI::EndPopup();`
+  },
+  'bool BeginPopupContextItem(const string&in id = "")': {
+    d: "直前に描いた部品を右クリックすると開くメニューです。部品の直後に書きます。",
+    p: [["id", "メニューの名前（直前の部品がボタンなどなら空でよい。文字だけの部品の後なら名前を渡す）"]],
+    r: "開いていれば true",
+    ex: `
+EditorGUI::Button(enemy.name);
+if (EditorGUI::BeginPopupContextItem()) {
+    if (EditorGUI::MenuItem("複製")) { Duplicate(enemy); }
+}
+EditorGUI::EndPopup();`
+  },
+  'bool BeginPopupContextWindow(const string&in id = "")': {
+    d: "今の枠（ウィンドウか <code>BeginChild</code> の枠）の空いたところを右クリックすると開くメニューです。枠の中身を描いた後に書きます。",
+    p: [["id", "メニューの名前"]],
+    r: "開いていれば true",
+    ex: `
+if (EditorGUI::BeginChild("area", 0, 120)) {
+    DrawList();
+    if (EditorGUI::BeginPopupContextWindow("area-menu")) {
+        if (EditorGUI::MenuItem("足す")) { AddItem(); }
+    }
+    EditorGUI::EndPopup();
+}
+EditorGUI::EndChild();`
+  },
+  'void EndPopup()': {
+    d: "<code>BeginPopup</code>・<code>BeginPopupModal</code>・<code>BeginPopupContextItem</code>・<code>BeginPopupContextWindow</code> のどれとも組にして閉じます。開いていない（false が返った）ときも呼びます。",
+    ex: `
+EditorGUI::BeginPopup("menu");
+EditorGUI::EndPopup();`
+  },
+  'void CloseCurrentPopup()': {
+    d: "今描いているポップアップを閉じます。ポップアップの中で呼びます（確認ダイアログの「はい」「いいえ」など）。",
+    ex: `
+if (EditorGUI::Button("閉じる")) {
+    EditorGUI::CloseCurrentPopup();
+}`
+  },
+  'bool BeginMenu(const string&in label, bool enabled = true)': {
+    d: "ポップアップの中に、入れ子のメニューを作ります。カーソルを乗せると開きます。戻り値に関係なく <code>EndMenu</code> と組にします。",
+    p: [["label", "メニューの名前"], ["enabled", "false にすると薄くなり開かない"]],
+    r: "開いていれば true",
+    ex: `
+if (EditorGUI::BeginMenu("並べ替え")) {
+    if (EditorGUI::MenuItem("名前の順")) { SortByName(); }
+    if (EditorGUI::MenuItem("HP の順")) { SortByHp(); }
+}
+EditorGUI::EndMenu();`
+  },
+  'void EndMenu()': {
+    d: "<code>BeginMenu</code> を閉じます。",
+    ex: `
+EditorGUI::BeginMenu("その他");
+EditorGUI::EndMenu();`
+  },
+  'bool MenuItem(const string&in label, const string&in shortcut = "", bool checked = false, bool enabled = true)': {
+    d: "メニューの項目を出します。選んだフレームだけ true を返します。",
+    p: [["label", "項目の名前"], ["shortcut", "右に出す文字（表示だけ。キーで呼ぶなら <code>IsKeyPressed</code> を別に書く）"], ["checked", "左に印を付けるか（オン・オフの項目に）"], ["enabled", "false にすると薄くなり選べない"]],
+    r: "選んだフレームだけ true",
+    ex: `
+if (EditorGUI::MenuItem("格子を出す", "", showGrid)) {
+    showGrid = !showGrid;
+}
+EditorGUI::MenuItem("元に戻す", "Ctrl+Z", false, canUndo);`
+  },
+
+  // ---------------------------------------------------------------- 部品・ウィンドウの状態
+  'bool IsItemHovered()': {
+    d: "直前に描いた部品の上にカーソルがあるかを返します。",
+    r: "乗っていれば true",
+    ex: `
+EditorGUI::Button("消す");
+if (EditorGUI::IsItemHovered()) {
+    EditorGUI::TextDisabled("押すと選んだ物を消します");
+}`
+  },
+  'bool IsItemClicked(MouseButton button = MouseButton::Left)': {
+    d: "直前に描いた部品が、このフレームで押されたかを返します。木の段や文字など、押したかを返さない部品で使います。",
+    p: [["button", "<code>MouseButton::Left</code>・<code>Right</code>・<code>Middle</code>"]],
+    r: "押されたフレームだけ true",
+    ex: `
+EditorGUI::Label(enemy.name);
+if (EditorGUI::IsItemClicked(MouseButton::Right)) {
+    Log("右クリックしました");
+}`
+  },
+  'bool IsItemActive()': {
+    d: "直前に描いた部品を操作している間（押している・ドラッグしている・文字を打っている）、true を返します。",
+    r: "操作中なら true",
+    ex: `
+height = EditorGUI::Slider("高さ", height, 0.0f, 10.0f);
+dragging = EditorGUI::IsItemActive();      // ドラッグ中だけプレビューを出す`
+  },
+  'bool IsItemEdited()': {
+    d: "直前に描いた部品の値が、このフレームで変わったかを返します。",
+    r: "変わったフレームだけ true",
+    ex: `
+name = EditorGUI::TextField("名前", name);
+if (EditorGUI::IsItemEdited()) {
+    ++editCount;
+}`
+  },
+  'bool IsItemDeactivatedAfterEdit()': {
+    d: "直前に描いた部品で、値を変えて操作を終えた瞬間（ドラッグを離した・Enter を押した・ほかを押した）に true を返します。重い作り直しを、手を離したときだけ行うのに使います。",
+    r: "操作を終えたフレームだけ true",
+    ex: `
+size = EditorGUI::IntSlider("大きさ", size, 8, 128);
+if (EditorGUI::IsItemDeactivatedAfterEdit()) {
+    Rebuild();          // ドラッグの間は作り直さない
+}`
+  },
+  'bool IsWindowHovered()': {
+    d: "このウィンドウ（中の枠も含む）の上にカーソルがあるかを返します。",
+    r: "乗っていれば true",
+    ex: `
+if (EditorGUI::IsWindowHovered()) {
+    zoom = Clamp(zoom + EditorGUI::GetMouseWheel() * 0.1f, 0.5f, 4.0f);
+}`
+  },
+  'bool IsWindowFocused()': {
+    d: "このウィンドウが選ばれている（最後に押した）かを返します。キーで操作するのは、選ばれている間だけにします。",
+    r: "選ばれていれば true",
+    ex: `
+if (EditorGUI::IsWindowFocused() && EditorGUI::IsKeyPressed(Key::Delete, false)) {
+    DeleteSelection();
+}`
+  },
+
+  // ---------------------------------------------------------------- マウスとキー
+  'bool IsMouseDown(MouseButton button = MouseButton::Left)': {
+    d: "マウスのボタンを押している間 true を返します（ドラッグで塗る道具に）。カーソルがどこにあっても答えるので、<code>IsCanvasHovered</code> などと組み合わせます。",
+    p: [["button", "<code>MouseButton::Left</code>・<code>Right</code>・<code>Middle</code>"]],
+    r: "押している間 true",
+    ex: `
+if (EditorGUI::IsCanvasHovered() && EditorGUI::IsMouseDown(MouseButton::Left)) {
+    Paint(EditorGUI::GetCanvasMousePosition());
+}`
+  },
+  'bool IsMouseClicked(MouseButton button = MouseButton::Left)': {
+    d: "このフレームでマウスのボタンを押したかを返します。",
+    p: [["button", "マウスのボタン"]],
+    r: "押したフレームだけ true",
+    ex: `
+if (EditorGUI::IsCanvasHovered() && EditorGUI::IsMouseClicked(MouseButton::Right)) {
+    ClearCanvas();
+}`
+  },
+  'bool IsMouseDoubleClicked(MouseButton button = MouseButton::Left)': {
+    d: "ダブルクリックしたかを返します。",
+    p: [["button", "マウスのボタン"]],
+    r: "ダブルクリックしたフレームだけ true",
+    ex: `
+if (EditorGUI::IsCanvasHovered() && EditorGUI::IsMouseDoubleClicked()) {
+    AddMark(EditorGUI::GetCanvasMousePosition());
+}`
+  },
+  'bool IsMouseReleased(MouseButton button = MouseButton::Left)': {
+    d: "このフレームでマウスのボタンを離したかを返します（ドラッグの終わりに）。",
+    p: [["button", "マウスのボタン"]],
+    r: "離したフレームだけ true",
+    ex: `
+if (dragging && EditorGUI::IsMouseReleased()) {
+    dragging = false;
+    Commit();
+}`
+  },
+  'bool IsMouseDragging(MouseButton button = MouseButton::Left)': {
+    d: "ボタンを押したまま、少し（数ピクセル）動かしたかを返します。クリックとドラッグを分けるのに使います。",
+    p: [["button", "マウスのボタン"]],
+    r: "ドラッグ中なら true",
+    ex: `
+if (EditorGUI::IsMouseDragging()) {
+    Vector2 delta = EditorGUI::GetMouseDragDelta();
+    EditorGUI::DrawLine(start, start + delta, Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+}`
+  },
+  'Vector2 GetMouseDragDelta(MouseButton button = MouseButton::Left)': {
+    d: "ボタンを押した位置から、今の位置までのずれを返します。",
+    p: [["button", "マウスのボタン"]],
+    r: "押した位置からのずれ（ピクセル。押していなければ 0, 0）",
+    ex: `
+Vector2 delta = EditorGUI::GetMouseDragDelta();
+offset = dragStartOffset + delta;`
+  },
+  'float GetMouseWheel()': {
+    d: "このフレームのマウスホイールの量を返します。奥へ回すと正、手前へ回すと負です。",
+    r: "ホイールの量（1 目盛りで 1 ぐらい）",
+    ex: `
+if (EditorGUI::IsCanvasHovered()) {
+    brush = Clamp(brush + EditorGUI::GetMouseWheel(), 1.0f, 10.0f);
+}`
+  },
+  'bool IsKeyPressed(Key key, bool repeat = true)': {
+    d: "キーを押したかを返します。このウィンドウが選ばれていて、文字の欄に打っていない間だけ答えます（ほかの間は false）。",
+    p: [["key", "キー（<a href=\"#api-Key\"><code>Key</code></a>。<code>Key::Delete</code>・<code>Key::F2</code> など）"], ["repeat", "true なら押し続けると繰り返し true になる"]],
+    r: "押したフレームだけ true",
+    ex: `
+if (EditorGUI::IsKeyPressed(Key::Delete, false)) {
+    DeleteSelection();
+}
+if (EditorGUI::ctrl && EditorGUI::IsKeyPressed(Key::D, false)) {
+    Duplicate();
+}`
+  },
+  'bool IsKeyDown(Key key)': {
+    d: "キーを押している間 true を返します（ウィンドウが選ばれているときだけ）。",
+    p: [["key", "キー"]],
+    r: "押している間 true",
+    ex: `
+float speed = EditorGUI::IsKeyDown(Key::Shift) ? 5.0f : 1.0f;`
+  },
+  'bool IsKeyReleased(Key key)': {
+    d: "このフレームでキーを離したかを返します（ウィンドウが選ばれているときだけ）。",
+    p: [["key", "キー"]],
+    r: "離したフレームだけ true",
+    ex: `
+if (EditorGUI::IsKeyReleased(Key::Space)) {
+    playing = !playing;
+}`
+  },
+  'bool ctrl': {
+    d: "Ctrl を押しているかです。クリックやキーと組み合わせて使います。",
+    ex: `
+if (EditorGUI::Selectable(names[i], picked[i])) {
+    if (!EditorGUI::ctrl) { ClearPicked(); }     // Ctrl を押していなければ 1 つだけ選ぶ
+    picked[i] = !picked[i];
+}`
+  },
+  'bool shift': {
+    d: "Shift を押しているかです。",
+    ex: `
+float step = EditorGUI::shift ? 10.0f : 1.0f;`
+  },
+  'bool alt': {
+    d: "Alt を押しているかです。",
+    ex: `
+if (EditorGUI::alt && EditorGUI::IsMouseClicked()) {
+    PickColor();
+}`
+  },
+
+  // ---------------------------------------------------------------- オブジェクト・アセット・画像
+  'GameObject@ ObjectField(const string&in label, GameObject@ value)': {
+    d: "シーンのオブジェクトを選ぶ欄です。右の印を押すと絞り込みの一覧が開き、Hierarchy からドラッグしても入ります。ハンドルを返すので <code>@</code> を付けて受け取ります。",
+    p: [["label", "左に出す名前"], ["value", "今入れているオブジェクト（null なら空）"]],
+    r: "選んだオブジェクト（空にしたら null）",
+    x: "<p>入れたオブジェクトが消えると、ハンドルの <code>isAlive</code> が false になります。.as を読み直すと、このハンドルは null に戻ります。</p>",
+    ex: `
+GameObject@ target;
+
+void OnGUI()
+{
+    @target = EditorGUI::ObjectField("対象", target);
+    if (target !is null && target.isAlive) {
+        EditorGUI::Label("位置の y", "" + target.transform.position.y);
+    }
+}`
+  },
+  'string AssetField(const string&in label, const string&in path, const string&in type = "")': {
+    d: "アセットを選ぶ欄です。右の印を押すと種類で絞った一覧が開きます。テクスチャ・モデル・音・プレハブは Project からドラッグしても入ります。",
+    p: [["label", "左に出す名前"], ["path", "今入れているアセットのパス（空なら空）"], ["type", "種類で絞る（<code>\"Prefab\"</code>・<code>\"Texture\"</code>・<code>\"Model\"</code>・<code>\"Audio\"</code>・<code>\"Scene\"</code>・<code>\"Material\"</code>・<code>\"Json\"</code>・<code>\"Csv\"</code> など。空ならすべて）"]],
+    r: "選んだアセットのパス（<span class=\"path\">Application/Assets/...</span>。そのまま <code>Editor::InstantiatePrefab</code> や <code>DataFile</code> に渡せる）",
+    ex: `
+wallPrefab = EditorGUI::AssetField("壁", wallPrefab, "Prefab");
+mapFile = EditorGUI::AssetField("マップ", mapFile, "Json");`
+  },
+  'void Image(const string&in path, float width = 0, float height = 0)': {
+    d: "画像を出します。",
+    p: [["path", "画像のパス"], ["width", "幅（ピクセル）"], ["height", "高さ（ピクセル）。width と height の片方を 0 にすると縦横の比を保ち、両方 0 なら元の大きさ"]],
+    ex: `
+if (texture != "") {
+    EditorGUI::Image(texture, 0, 96);       // 高さ 96 で、幅は比を保つ
+}`
+  },
+  'Vector2 GetImageSize(const string&in path)': {
+    d: "画像の元の大きさを返します。",
+    p: [["path", "画像のパス"]],
+    r: "幅と高さ（ピクセル。読めなければ 0, 0）",
+    ex: `
+Vector2 size = EditorGUI::GetImageSize(texture);
+EditorGUI::Label("大きさ", size.x + " x " + size.y);`
+  },
+
+  // ---------------------------------------------------------------- グラフ・カーブ・時間軸
+  'void PlotLines(const string&in label, const float[]&in values, float height = 60)': {
+    d: "数の並びを折れ線のグラフで出します。縦の範囲は値のいちばん小さい・大きいに合わせます。",
+    p: [["label", "左に出す名前"], ["values", "並べる値"], ["height", "グラフの高さ（ピクセル）"]],
+    ex: `
+array<float> history;      // 毎フレーム足していく
+history.insertLast(EditorGUI::GetDeltaTime() * 1000.0f);
+EditorGUI::PlotLines("フレームの ms", history);`
+  },
+  'void PlotLines(const string&in label, const float[]&in values, float min, float max, float height = 60)': {
+    d: "縦の範囲を決めて折れ線のグラフを出します。値が変わってもグラフの目盛りが動かないので、比べやすくなります。",
+    p: [["label", "左に出す名前"], ["values", "並べる値"], ["min", "下の端の値"], ["max", "上の端の値"], ["height", "グラフの高さ（ピクセル）"]],
+    ex: `
+EditorGUI::PlotLines("波", samples, -1.0f, 1.0f, 60);`
+  },
+  'void PlotHistogram(const string&in label, const float[]&in values, float height = 60)': {
+    d: "数の並びを棒のグラフで出します。縦の範囲は値に合わせます。",
+    p: [["label", "左に出す名前"], ["values", "並べる値"], ["height", "グラフの高さ（ピクセル）"]],
+    ex: `
+EditorGUI::PlotHistogram("敵の数（ステージごと）", counts);`
+  },
+  'void PlotHistogram(const string&in label, const float[]&in values, float min, float max, float height = 60)': {
+    d: "縦の範囲を決めて棒のグラフを出します。",
+    p: [["label", "左に出す名前"], ["values", "並べる値"], ["min", "下の端の値"], ["max", "上の端の値"], ["height", "グラフの高さ（ピクセル）"]],
+    ex: `
+EditorGUI::PlotHistogram("回数", counts, 0.0f, 10.0f, 60);`
+  },
+  'bool CurveField(const string&in label, Vector2[]&inout keys, const Vector2&in rangeMin = Vector2(0.0f, 0.0f), const Vector2&in rangeMax = Vector2(1.0f, 1.0f), float height = 110)': {
+    d: "点（Vector2）を通るなめらかな曲線を描き、点をドラッグで動かせる欄です。何も無いところのダブルクリックで点を足し、点の右クリックで消します。配列はその場で書き換わります。",
+    p: [["label", "左に出す名前"], ["keys", "点の配列（横 x・縦 y）。書き換わる"], ["rangeMin", "欄の左下の値"], ["rangeMax", "欄の右上の値"], ["height", "欄の高さ（ピクセル）"]],
+    r: "点を変えたフレームだけ true",
+    x: "<p>曲線の x での値は、ゲームでもエディタでも <a href=\"#api-Curve\"><code>Curve::Evaluate(keys, x)</code></a> で読めます。<code>array&lt;Vector2&gt;</code> のメンバ変数はシーンに保存されるので、インスペクタの拡張に置けば、カーブを持つコンポーネントが作れます。インスペクタで使うときは、前に <code>Editor::RecordObject</code> を呼ぶと Undo で戻せます。</p>",
+    ex: `
+array<Vector2> curve = { Vector2(0.0f, 0.0f), Vector2(0.5f, 1.0f), Vector2(1.0f, 0.0f) };
+
+void OnGUI()
+{
+    EditorGUI::CurveField("動き", curve);
+    EditorGUI::CurveField("音量（0〜10 秒）", volume, Vector2(0.0f, 0.0f), Vector2(10.0f, 1.0f), 140);
+}`
+  },
+  'float BeginTimeline(const string&in id, float length, float time, float snap = 0)': {
+    d: "時間軸を始め、目盛りの行を描きます。目盛りを押すかドラッグすると再生位置が動くので、返った値を代入し直します。間に <code>TimelineKeys</code>・<code>TimelineRanges</code> のトラックを並べ、<code>EndTimeline</code> で閉じます。",
+    p: [["id", "時間軸の名前"], ["length", "長さ（秒）"], ["time", "今の再生位置（秒）"], ["snap", "キーと再生位置をそろえる間隔（秒。0 ならそろえない）"]],
+    r: "操作された後の再生位置",
+    x: "<p>再生はスクリプトが行います。<code>GetDeltaTime()</code> を足して時刻を進めます（エディタは再生していなくても毎フレーム進みます）。</p>",
+    ex: `
+if (playing) {
+    time += EditorGUI::GetDeltaTime();
+    if (time > 4.0f) { time = 0.0f; }
+}
+time = EditorGUI::BeginTimeline("seq", 4.0f, time, 0.1f);
+EditorGUI::TimelineKeys("カメラ", cameraKeys);
+EditorGUI::TimelineRanges("ライト", lightRanges);
+EditorGUI::EndTimeline();`
+  },
+  'bool TimelineKeys(const string&in label, float[]&inout keys)': {
+    d: "キー（時刻）を並べたトラックを 1 本描きます。キーをドラッグで動かし、空いたところのダブルクリックで足し、キーの右クリックで消します。配列はその場で書き換わります。<code>BeginTimeline</code> と <code>EndTimeline</code> の間で呼びます。",
+    p: [["label", "トラックの名前（左に出す）"], ["keys", "キーの時刻（秒）の配列。書き換わる"]],
+    r: "キーを変えたフレームだけ true",
+    ex: `
+array<float> cameraKeys = { 0.5f, 2.0f, 3.5f };
+
+if (EditorGUI::TimelineKeys("カメラ", cameraKeys)) {
+    Log("カメラのキー: " + cameraKeys.length() + " 個");
+}`
+  },
+  'bool TimelineRanges(const string&in label, Vector2[]&inout ranges)': {
+    d: "区間を並べたトラックを 1 本描きます。区間の中を掴むと全体が動き、端を掴むと伸び縮みします。空いたところのダブルクリックで足し、右クリックで消します。",
+    p: [["label", "トラックの名前"], ["ranges", "区間の配列（x が始まり、y が終わりの秒）。書き換わる"]],
+    r: "区間を変えたフレームだけ true",
+    ex: `
+array<Vector2> lightRanges = { Vector2(0.5f, 1.5f), Vector2(2.5f, 3.8f) };
+
+EditorGUI::TimelineRanges("ライト", lightRanges);
+bool lit = false;
+for (uint i = 0; i < lightRanges.length(); ++i) {
+    lit = lit || (time >= lightRanges[i].x && time <= lightRanges[i].y);
+}`
+  },
+  'void EndTimeline()': {
+    d: "並べたトラックの上に再生位置の線を引いて、時間軸を閉じます。",
+    ex: `
+time = EditorGUI::BeginTimeline("seq", 4.0f, time);
+EditorGUI::TimelineKeys("音", soundKeys);
+EditorGUI::EndTimeline();`
+  },
+  'float GetDeltaTime()': {
+    d: "エディタの 1 フレームの秒数を返します。再生していなくても進むので、時間軸の再生や、ウィンドウの中のアニメーションに使います。",
+    r: "前のフレームからの秒数",
+    ex: `
+phase += EditorGUI::GetDeltaTime() * 2.0f;
+EditorGUI::ProgressBar(fraction(phase));`
+  },
+  'bool DrawDefaultInspector()': {
+    d: "<code>ComponentEditor</code> の <code>OnInspectorGUI</code> の中で、そのコンポーネントのいつもの欄を描きます。いつもの欄の前後に自分の欄を足すときに使います。",
+    r: "いつもの欄で値を変えたフレームだけ true",
+    x: "<p><code>OnInspectorGUI</code> の外で呼ぶとスクリプトの例外になります。1 回の <code>OnInspectorGUI</code> で 1 回だけ呼びます。</p>",
+    ex: `
+void OnInspectorGUI()
+{
+    if (EditorGUI::DrawDefaultInspector()) {
+        Log("いつもの欄で値が変わりました");
+    }
+    if (EditorGUI::Button("点を足す")) { AddPoint(); }
+}`
+  },
+
+  // ---------------------------------------------------------------- ノードエディタ
+  'void BeginNodeEditor(const string&in id, int flags = EditorGUI::NodeEditorFlags::None, float height = 0)': {
+    d: "ノードを並べる場所を始めます。中で <code>BeginNode</code>・<code>Link</code> を描き、<code>EndNodeEditor</code> で閉じます。表示の位置と選択は、ウィンドウと id ごとに覚えます。",
+    p: [["id", "ノードエディタの名前"], ["flags", "<code>EditorGUI::NodeEditorFlags::MiniMap</code>（右下の全体図）・<code>SnapToGrid</code>（格子に合わせて動かす）を <code>|</code> でつなぐ（<code>None</code> で何も付けない）"], ["height", "高さ（ピクセル。0 なら残りいっぱい）"]],
+    x: "<p>中ボタンか <kbd>Alt</kbd>+左ドラッグで表示を動かせます。ノード・ピン・つながりの番号は、それぞれの中で重ならないようにします。</p>",
+    ex: `
+EditorGUI::BeginNodeEditor("graph", EditorGUI::NodeEditorFlags::MiniMap, 320);
+DrawNodes();
+DrawLinks();
+EditorGUI::EndNodeEditor();
+HandleEvents();          // IsLinkCreated などはここで調べる`
+  },
+  'void EndNodeEditor()': {
+    d: "つながりを描いてノードエディタを閉じます。ユーザーの操作（つないだ・外した・選んだ）は、この後で調べます。",
+    ex: `
+EditorGUI::EndNodeEditor();
+int from = 0;
+int to = 0;
+if (EditorGUI::IsLinkCreated(from, to)) { AddLink(from, to); }`
+  },
+  'void BeginNode(int id, const Vector2&in position, float width = 160)': {
+    d: "ノードを 1 つ始めます。中で題名・ピン・部品を描き、<code>EndNode</code> で閉じます。",
+    p: [["id", "ノードの番号（ノードどうしで重ならないように。重なるとスクリプトの例外）"], ["position", "置く位置。初めて出たときと、スクリプトが値を変えたときに使い、後はユーザーがドラッグした位置のまま"], ["width", "ノードの幅（ピクセル。中の部品はこの幅に並ぶ）"]],
+    x: "<p>ドラッグで動いた位置は、<code>EndNode</code> の後の <code>GetNodePosition</code> で受け取ってデータへ書き戻します。<code>BeginChild</code>・<code>BeginTable</code>・<code>BeginListBox</code>・<code>ListBox</code> はノードの中に置けません。</p>",
+    ex: `
+EditorGUI::BeginNode(node.id, node.position, 140);
+EditorGUI::NodeTitle("セリフ");
+EditorGUI::InputPin(node.id * 16 + 0, "前");
+node.text = EditorGUI::TextField("##text", node.text);
+EditorGUI::OutputPin(node.id * 16 + 1, "次");
+EditorGUI::EndNode();
+node.position = EditorGUI::GetNodePosition(node.id);`
+  },
+  'void EndNode()': {
+    d: "<code>BeginNode</code> を閉じます。",
+    ex: `
+EditorGUI::BeginNode(1, Vector2(20.0f, 20.0f));
+EditorGUI::NodeTitle("始まり");
+EditorGUI::EndNode();`
+  },
+  'void NodeTitle(const string&in title)': {
+    d: "ノードの題名の帯を描きます。ピンより先に、1 つのノードで 1 回だけ描きます。",
+    p: [["title", "題名"]],
+    ex: `
+EditorGUI::BeginNode(2, position);
+EditorGUI::NodeTitle("足す");
+EditorGUI::InputPin(21, "A");
+EditorGUI::EndNode();`
+  },
+  'void BeginNodeTitle()': {
+    d: "題名の帯に、文字の代わりに好きな部品（色付きの文字・ボタンなど）を置くときに使います。<code>EndNodeTitle</code> と組にします。",
+    ex: `
+EditorGUI::BeginNodeTitle();
+EditorGUI::TextColored("終わり", Vector4(1.0f, 0.5f, 0.4f, 1.0f));
+EditorGUI::EndNodeTitle();`
+  },
+  'void EndNodeTitle()': {
+    d: "<code>BeginNodeTitle</code> を閉じます。",
+    ex: `
+EditorGUI::BeginNodeTitle();
+EditorGUI::Label("題名");
+EditorGUI::EndNodeTitle();`
+  },
+  'void SetNextNodeColor(const Vector4&in color)': {
+    d: "次の <code>BeginNode</code> で始めるノードの、題名の帯の色を決めます（ノードの種類ごとに色を分けるときに）。",
+    p: [["color", "色（0〜1 の RGBA）"]],
+    ex: `
+EditorGUI::SetNextNodeColor(Vector4(0.7f, 0.45f, 0.15f, 1.0f));
+EditorGUI::BeginNode(3, position);
+EditorGUI::NodeTitle("分かれ道");
+EditorGUI::EndNode();`
+  },
+  'void InputPin(int id, const string&in label, PinShape shape = EditorGUI::PinShape::CircleFilled)': {
+    d: "ノードの左に入口のピンと名前を出します。",
+    p: [["id", "ピンの番号（ノードをまたいでも重ならないように。<code>ノードの番号 * 16 + 何番目</code> のように作ると楽）"], ["label", "ピンの横に出す名前"], ["shape", "ピンの形（<code>EditorGUI::PinShape::</code> の <code>Circle</code>・<code>CircleFilled</code>・<code>Triangle</code>・<code>TriangleFilled</code>・<code>Quad</code>・<code>QuadFilled</code>）"]],
+    ex: `
+EditorGUI::InputPin(node.id * 16 + 0, "入力", EditorGUI::PinShape::Triangle);`
+  },
+  'void OutputPin(int id, const string&in label, PinShape shape = EditorGUI::PinShape::CircleFilled)': {
+    d: "ノードの右に出口のピンと、右に寄せた名前を出します。",
+    p: [["id", "ピンの番号"], ["label", "ピンの横に出す名前"], ["shape", "ピンの形"]],
+    ex: `
+EditorGUI::OutputPin(node.id * 16 + 1, "= " + result);`
+  },
+  'void BeginInputPin(int id, PinShape shape = EditorGUI::PinShape::CircleFilled)': {
+    d: "入口のピンの横に、名前の代わりに好きな部品を置くときに使います。<code>EndInputPin</code> と組にします。",
+    p: [["id", "ピンの番号"], ["shape", "ピンの形"]],
+    ex: `
+EditorGUI::BeginInputPin(node.id * 16 + 2);
+node.weight = EditorGUI::FloatField("##weight", node.weight);
+EditorGUI::EndInputPin();`
+  },
+  'void EndInputPin()': {
+    d: "<code>BeginInputPin</code> を閉じます。",
+    ex: `
+EditorGUI::BeginInputPin(31);
+EditorGUI::Label("値");
+EditorGUI::EndInputPin();`
+  },
+  'void BeginOutputPin(int id, PinShape shape = EditorGUI::PinShape::CircleFilled)': {
+    d: "出口のピンの横に、好きな部品を置くときに使います。<code>EndOutputPin</code> と組にします。",
+    p: [["id", "ピンの番号"], ["shape", "ピンの形"]],
+    ex: `
+EditorGUI::BeginOutputPin(11);
+value = EditorGUI::FloatField("##value", value);
+EditorGUI::EndOutputPin();`
+  },
+  'void EndOutputPin()': {
+    d: "<code>BeginOutputPin</code> を閉じます。",
+    ex: `
+EditorGUI::BeginOutputPin(12);
+EditorGUI::Label("出力");
+EditorGUI::EndOutputPin();`
+  },
+  'void SetNextPinColor(const Vector4&in color)': {
+    d: "次に描くピンの色を決めます（データの種類ごとに色を分けるときに）。",
+    p: [["color", "色（0〜1 の RGBA）"]],
+    ex: `
+EditorGUI::SetNextPinColor(Vector4(0.95f, 0.6f, 0.2f, 1.0f));
+EditorGUI::InputPin(41, "数");`
+  },
+  'void Link(int id, int outputPin, int inputPin)': {
+    d: "出口のピンと入口のピンを結ぶつながりを描きます。ノードの外（<code>EndNode</code> の後、<code>EndNodeEditor</code> の前）で、毎フレーム描きます。",
+    p: [["id", "つながりの番号（つながりどうしで重ならないように）"], ["outputPin", "出口のピンの番号"], ["inputPin", "入口のピンの番号"]],
+    x: "<p>両端のピンがそのフレームに描かれていないつながりは描かず、Console へ一度だけ警告を出します。つながりのデータはスクリプトが持ち、<code>IsLinkCreated</code>・<code>IsLinkDestroyed</code> を見て足し外しします。</p>",
+    ex: `
+for (uint i = 0; i < links.length(); ++i) {
+    EditorGUI::Link(links[i].id, links[i].from, links[i].to);
+}`
+  },
+  'void Link(int id, int outputPin, int inputPin, const Vector4&in color)': {
+    d: "色を付けたつながりを描きます。",
+    p: [["id", "つながりの番号"], ["outputPin", "出口のピンの番号"], ["inputPin", "入口のピンの番号"], ["color", "線の色（0〜1 の RGBA）"]],
+    ex: `
+Vector4 color = value < 0.0f ? Vector4(0.9f, 0.3f, 0.3f, 1.0f) : Vector4(0.4f, 0.75f, 1.0f, 1.0f);
+EditorGUI::Link(100, 11, 21, color);`
+  },
+  'Vector2 GetNodePosition(int id)': {
+    d: "ノードの今の位置を返します。ユーザーがドラッグで動かした位置を受け取るので、<code>EndNode</code> の後に呼んでデータへ書き戻します（書き戻すと、次の起動でも同じ位置に出せます）。",
+    p: [["id", "ノードの番号"]],
+    r: "ノードの位置（ノードエディタの中の座標）",
+    ex: `
+EditorGUI::EndNode();
+node.position = EditorGUI::GetNodePosition(node.id);`
+  },
+  'bool IsLinkCreated(int&out outputPin, int&out inputPin)': {
+    d: "ユーザーがピンからピンへドラッグして放したかを返します。つながりを足すのはスクリプトの仕事なので、true なら自分のデータに足します。<code>EndNodeEditor</code> の後で調べます。",
+    p: [["outputPin", "つないだ出口のピンの番号が入る（入口からドラッグしても出口が入る）"], ["inputPin", "つないだ入口のピンの番号が入る"]],
+    r: "つないだフレームだけ true",
+    ex: `
+int from = 0;
+int to = 0;
+if (EditorGUI::IsLinkCreated(from, to)) {
+    RemoveLinksTo(to);           // 入口には 1 本だけ
+    AddLink(from, to);
+}`
+  },
+  'bool IsLinkDestroyed(int&out id)': {
+    d: "ユーザーが入口のピンからつながりを引きはがしたかを返します。true ならデータから消します。",
+    p: [["id", "外したつながりの番号が入る"]],
+    r: "外したフレームだけ true",
+    ex: `
+int link = 0;
+if (EditorGUI::IsLinkDestroyed(link)) {
+    RemoveLink(link);
+}`
+  },
+  'bool IsLinkDropped(int&out pin)': {
+    d: "ピンから伸ばした線を、何も無いところで放したかを返します。そこへノードを足して、そのピンにつなぐのに使います。",
+    p: [["pin", "線を伸ばし始めたピンの番号が入る"]],
+    r: "放したフレームだけ true",
+    ex: `
+int pin = 0;
+if (EditorGUI::IsLinkDropped(pin)) {
+    droppedPin = pin;
+    addPosition = EditorGUI::GetNodeEditorMousePosition();
+    EditorGUI::OpenPopup("ノードを足す");
+}`
+  },
+  'int[]@ GetSelectedNodes()': {
+    d: "選んでいるノードの番号を返します。",
+    r: "番号の配列（選んでいなければ空）",
+    ex: `
+if (EditorGUI::IsKeyPressed(Key::Delete, false)) {
+    array<int>@ selected = EditorGUI::GetSelectedNodes();
+    for (uint i = 0; i < selected.length(); ++i) {
+        DeleteNode(selected[i]);
+    }
+    EditorGUI::ClearNodeSelection();
+}`
+  },
+  'int[]@ GetSelectedLinks()': {
+    d: "選んでいるつながりの番号を返します。",
+    r: "番号の配列",
+    ex: `
+array<int>@ links = EditorGUI::GetSelectedLinks();
+EditorGUI::Label("選んでいるつながり", "" + links.length() + " 本");`
+  },
+  'void SelectNode(int id)': {
+    d: "ノードを選びます（ほかの選択は外しません）。まだ描いていないノード（足したばかりのノード）は、次に描いたときに選びます。",
+    p: [["id", "ノードの番号"]],
+    ex: `
+EditorGUI::EndNodeEditor();
+if (selectAllPressed) {
+    for (uint i = 0; i < nodes.length(); ++i) {
+        EditorGUI::SelectNode(nodes[i].id);
+    }
+}`
+  },
+  'void ClearNodeSelection()': {
+    d: "ノードとつながりの選択を外します。",
+    ex: `
+EditorGUI::ClearNodeSelection();`
+  },
+  'void FocusNode(int id)': {
+    d: "そのノードが真ん中に来るように表示を動かします（遠くのノードへ飛ぶときに）。",
+    p: [["id", "ノードの番号"]],
+    ex: `
+if (EditorGUI::Button("始まりへ")) {
+    EditorGUI::FocusNode(startNodeId);
+}`
+  },
+  'bool IsNodeHovered(int&out id)': {
+    d: "カーソルの下にあるノードを返します。",
+    p: [["id", "ノードの番号が入る"]],
+    r: "ノードの上なら true",
+    ex: `
+int node = 0;
+if (EditorGUI::IsNodeHovered(node)) {
+    hoverText = "ノード " + node;
+}`
+  },
+  'bool IsLinkHovered(int&out id)': {
+    d: "カーソルの下にあるつながりを返します。",
+    p: [["id", "つながりの番号が入る"]],
+    r: "つながりの上なら true",
+    ex: `
+int link = 0;
+if (EditorGUI::IsLinkHovered(link)) {
+    hoverText = "つながり " + link;
+}`
+  },
+  'bool IsPinHovered(int&out id)': {
+    d: "カーソルの下にあるピンを返します。",
+    p: [["id", "ピンの番号が入る"]],
+    r: "ピンの上なら true",
+    ex: `
+int pin = 0;
+if (EditorGUI::IsPinHovered(pin)) {
+    hoverText = "ピン " + pin;
+}`
+  },
+  'bool IsNodeEditorHovered()': {
+    d: "カーソルがノードエディタの上にあるかを返します（ノード・ピン・つながりの上も含む）。何も無いところの右クリックでメニューを開くときに、<code>IsNodeHovered</code> などと組み合わせて使います。",
+    r: "ノードエディタの上なら true",
+    ex: `
+int node = 0;
+if (EditorGUI::IsNodeEditorHovered() && !EditorGUI::IsNodeHovered(node) && EditorGUI::IsMouseClicked(MouseButton::Right)) {
+    addPosition = EditorGUI::GetNodeEditorMousePosition();
+    EditorGUI::OpenPopup("ノードを足す");
+}`
+  },
+  'Vector2 GetNodeEditorMousePosition()': {
+    d: "カーソルの位置を、ノードの位置と同じ座標（<code>BeginNode</code> に渡す座標）で返します。押した場所にノードを足すときに使います。",
+    r: "カーソルの位置",
+    ex: `
+Vector2 where = EditorGUI::GetNodeEditorMousePosition();
+AddNode(where);`
+  },
+
+  // ---------------------------------------------------------------- 絵を描く
+  'Vector2 Canvas(float width, float height = 0)': {
+    d: "自由に描く場所を取り、その大きさを返します。続けて呼ぶ <code>DrawRect</code>・<code>DrawLine</code>・<code>DrawText</code>・<code>DrawImage</code> は、この場所の左上を (0, 0) としたピクセルで描きます。マップのプレビューやマス目の塗り分けに使います。",
+    p: [["width", "幅（0 以下なら幅いっぱい）"], ["height", "高さ（0 以下なら width と同じ）"]],
+    r: "取った場所の大きさ（ピクセル）",
+    ex: `
+Vector2 size = EditorGUI::Canvas(0, 160);
+EditorGUI::DrawRect(Vector2(0.0f, 0.0f), size, Vector4(0.15f, 0.15f, 0.2f, 1.0f));
+EditorGUI::DrawText(Vector2(8.0f, 8.0f), "プレビュー", Vector4(1.0f, 1.0f, 1.0f, 1.0f));`
+  },
+  'void DrawRect(const Vector2&in min, const Vector2&in max, const Vector4&in color)': {
+    d: "塗った四角を描きます。",
+    p: [["min", "左上（Canvas の左上からのピクセル）"], ["max", "右下"], ["color", "色（0〜1 の RGBA）"]],
+    ex: `
+EditorGUI::DrawRect(Vector2(x * cell, y * cell), Vector2((x + 1) * cell - 1, (y + 1) * cell - 1), color);`
+  },
+  'void DrawRectOutline(const Vector2&in min, const Vector2&in max, const Vector4&in color, float thickness = 1)': {
+    d: "枠だけの四角を描きます（選んでいるマスの印に）。",
+    p: [["min", "左上"], ["max", "右下"], ["color", "色"], ["thickness", "線の太さ（ピクセル）"]],
+    ex: `
+EditorGUI::DrawRectOutline(Vector2(0.0f, 0.0f), size, Vector4(1.0f, 1.0f, 1.0f, 0.3f));`
+  },
+  'void DrawLine(const Vector2&in from, const Vector2&in to, const Vector4&in color, float thickness = 1)': {
+    d: "線を描きます。",
+    p: [["from", "始まり"], ["to", "終わり"], ["color", "色"], ["thickness", "線の太さ（ピクセル）"]],
+    ex: `
+for (float x = 0.0f; x < size.x; x += 20.0f) {
+    EditorGUI::DrawLine(Vector2(x, 0.0f), Vector2(x, size.y), Vector4(1.0f, 1.0f, 1.0f, 0.1f));
+}`
+  },
+  'void DrawText(const Vector2&in position, const string&in text, const Vector4&in color)': {
+    d: "文字を描きます。",
+    p: [["position", "文字の左上"], ["text", "文字"], ["color", "色"]],
+    ex: `
+EditorGUI::DrawText(Vector2(4.0f, 4.0f), "S", Vector4(1.0f, 0.9f, 0.3f, 1.0f));`
+  },
+  'void DrawImage(const string&in path, const Vector2&in min, const Vector2&in max)': {
+    d: "画像を四角に合わせて描きます（引き伸ばして収める）。タイルのパレットやマップの見た目に使います。",
+    p: [["path", "画像のパス"], ["min", "左上"], ["max", "右下"]],
+    ex: `
+EditorGUI::DrawImage("Application/Assets/Textures/circle.png", Vector2(8.0f, 8.0f), Vector2(72.0f, 72.0f));`
+  },
+  'bool IsCanvasHovered()': {
+    d: "最後に取った Canvas の上にカーソルがあるかを返します。",
+    r: "乗っていれば true",
+    ex: `
+EditorGUI::Canvas(200, 200);
+if (EditorGUI::IsCanvasHovered() && EditorGUI::IsMouseDown()) {
+    Paint(EditorGUI::GetCanvasMousePosition());
+}`
+  },
+  'Vector2 GetCanvasMousePosition()': {
+    d: "最後に取った Canvas の左上からの、カーソルの位置を返します。マスの番号に直すときは、マスの大きさで割ります。",
+    r: "カーソルの位置（ピクセル）",
+    ex: `
+Vector2 mouse = EditorGUI::GetCanvasMousePosition();
+int cellX = int(mouse.x / cell);
+int cellY = int(mouse.y / cell);`
+  }
+};
+
+window.CE_API_USAGE.Editor = {
+  'GameObject@ CreateObject(const string&in name)': {
+    d: "Transform だけの空のオブジェクトを原点に作ります。作ったことは Undo に積まれ、<kbd>Ctrl</kbd>+<kbd>Z</kbd> で消えます。作った直後に変えた位置・親・付けたコンポーネントも、作ったことと一緒に戻ります。",
+    p: [["name", "オブジェクトの名前（同じ名前があっても番号は付けない）"]],
+    r: "作ったオブジェクト",
+    x: "<p>プレハブを編集している間と、シーンが開いていない間はスクリプトの例外になります。シーンのファイルへはすぐには書かれないので、残すときはシーンを保存します。</p>",
+    ex: `
+GameObject@ root = Editor::CreateObject("GeneratedMap");
+root.transform.position = Vector3(0.0f, 0.0f, 10.0f);
+Editor::Select(root);`
+  },
+  'GameObject@ CreateObject(const string&in name, const Vector3&in position)': {
+    d: "位置を決めて空のオブジェクトを作ります。",
+    p: [["name", "オブジェクトの名前"], ["position", "置く位置"]],
+    r: "作ったオブジェクト",
+    ex: `
+Vector3 point;
+if (SceneView::MouseToPlane(0.0f, point) && SceneView::IsMouseClicked()) {
+    Editor::CreateObject("Marker", point);
+}`
+  },
+  'GameObject@ InstantiatePrefab(const string&in prefabPath, const string&in name)': {
+    d: "プレハブからオブジェクトを作ります。Undo に積まれます。",
+    p: [["prefabPath", "プレハブのパス（<code>AssetField(..., \"Prefab\")</code> が返すパス）"], ["name", "作るオブジェクトの名前"]],
+    r: "作ったオブジェクト（プレハブが読めなければ null）",
+    ex: `
+GameObject@ wall = Editor::InstantiatePrefab(wallPrefab, "Wall");
+if (wall is null) {
+    Error("プレハブを読めません: " + wallPrefab);
+    return;
+}
+wall.transform.position = Vector3(x, 0.5f, z);`
+  },
+  'bool DestroyObject(GameObject@ object)': {
+    d: "オブジェクトを、Transform の子孫ごと消します。Undo に積まれ、<kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せます。",
+    p: [["object", "消すオブジェクト"]],
+    r: "消せたら true。消せないもの（コードが作ったオブジェクトなど）が混ざっていれば、何も消さずに false",
+    ex: `
+GameObject@ old = Editor::FindObject("GeneratedMap");
+if (old !is null) {
+    Editor::DestroyObject(old);
+}`
+  },
+  'GameObject@ FindObject(const string&in name)': {
+    d: "名前でオブジェクトを探します。同じ名前が複数あれば、最初に見つかったものを返します。",
+    p: [["name", "探す名前"]],
+    r: "見つかったオブジェクト（無ければ null）",
+    ex: `
+GameObject@ root = Editor::FindObject("PlacedObjects");
+if (root is null) {
+    @root = Editor::CreateObject("PlacedObjects");
+}`
+  },
+  'GameObject@[]@ GetObjects()': {
+    d: "開いているシーンのオブジェクトを全部返します（子も含む）。",
+    r: "オブジェクトの配列",
+    ex: `
+array<GameObject@>@ objects = Editor::GetObjects();
+int lights = 0;
+for (uint i = 0; i < objects.length(); ++i) {
+    if (objects[i].HasComponent("Light")) { ++lights; }
+}
+Log("ライト " + lights + " 個");`
+  },
+  'string[]@ FindAssets(const string&in type = "", const string&in folder = "")': {
+    d: "プロジェクトのアセットのパスを、名前の順に返します。",
+    p: [["type", "種類（<code>\"Prefab\"</code>・<code>\"Texture\"</code>・<code>\"Model\"</code>・<code>\"Audio\"</code>・<code>\"Scene\"</code>・<code>\"Material\"</code>・<code>\"Json\"</code>・<code>\"Csv\"</code> など。空ならすべて。無い種類を渡すとスクリプトの例外）"], ["folder", "パスの頭で絞る（例：<code>\"Application/Assets/Prefabs/Enemies\"</code>。空ならすべて）"]],
+    r: "パスの配列（プロジェクトの根からの相対）",
+    ex: `
+array<string>@ enemies = Editor::FindAssets("Prefab", "Application/Assets/Prefabs/Enemies");
+for (uint i = 0; i < enemies.length(); ++i) {
+    EditorGUI::BulletText(enemies[i]);
+}`
+  },
+  'GameObject@ GetSelection()': {
+    d: "Hierarchy やシーンビューで選んでいるオブジェクトを返します。",
+    r: "選んでいるオブジェクト（無ければ null）",
+    ex: `
+GameObject@ selected = Editor::GetSelection();
+if (selected is null) {
+    Warn("オブジェクトを選んでから実行してください");
+    return;
+}`
+  },
+  'void Select(GameObject@ object)': {
+    d: "オブジェクトを選びます。インスペクタにそのオブジェクトが出ます。",
+    p: [["object", "選ぶオブジェクト（null で選択を外す）"]],
+    ex: `
+GameObject@ created = Editor::CreateObject("Spawner");
+Editor::Select(created);`
+  },
+  'void BeginUndoGroup(const string&in name)': {
+    d: "<code>EndUndoGroup</code> までの操作（作る・消す・RecordObject・コンポーネントの付け外し）を、<kbd>Ctrl</kbd>+<kbd>Z</kbd> 1 回で戻るまとまりにします。",
+    p: [["name", "Edit メニューと Undo の一覧に出る名前"]],
+    ex: `
+Editor::BeginUndoGroup("柱を並べる");
+for (int i = 0; i < 10; ++i) {
+    Editor::InstantiatePrefab(pillarPrefab, "Pillar").transform.position = Vector3(i * 2.0f, 0.0f, 0.0f);
+}
+Editor::EndUndoGroup();`
+  },
+  'void EndUndoGroup()': {
+    d: "まとまりを閉じます。閉じ忘れても、ウィンドウやメニューの関数を抜けるときに閉じます。",
+    ex: `
+Editor::BeginUndoGroup("まとめて消す");
+// 消す処理
+Editor::EndUndoGroup();`
+  },
+  'void RecordObject(GameObject@ object, const string&in label = "")': {
+    d: "これから値を変えるオブジェクトを控えます。ウィンドウやメニューの関数（インスペクタの拡張なら OnInspectorGUI）を抜けるとき、控えたときと見比べて変わっていれば Undo に積みます（位置・回転・拡大・コンポーネントの値・名前・有効）。",
+    p: [["object", "控えるオブジェクト"], ["label", "Undo の名前（空なら「名前 を変更」）"]],
+    x: "<p>毎フレーム呼んでも、変わっていなければ何も積みません。スライダーやハンドルをドラッグしている間の変更は 1 つにまとまります。値を変える<strong>前</strong>に呼びます。</p>",
+    ex: `
+GameObject@ selected = Editor::GetSelection();
+Editor::RecordObject(selected, selected.name + " を地面に下ろす");
+Vector3 position = selected.transform.position;
+position.y = 0.0f;
+selected.transform.position = position;`
+  },
+  'bool isPlaying': {
+    d: "再生中かを返します。再生中に作ったものや変えたものは、停止すると元に戻ります。",
+    ex: `
+if (Editor::isPlaying) {
+    EditorGUI::HelpBox("再生中に置いた物は、停止すると消えます", EditorGUI::MessageType::Warning);
+}`
+  }
+};
+
+window.CE_API_USAGE.SceneView = {
+  'bool isHovered': {
+    d: "カーソルがシーンビューの上にあるかです（ほかのウィンドウに隠れていない）。",
+    ex: `
+if (!SceneView::isHovered) {
+    return;
+}`
+  },
+  'Vector2 mousePosition': {
+    d: "シーンビューの左上からの、カーソルの位置（ピクセル）です。",
+    ex: `
+Vector2 mouse = SceneView::mousePosition;`
+  },
+  'Vector2 size': {
+    d: "シーンビューの画像の大きさ（ピクセル）です。",
+    ex: `
+Vector2 center = SceneView::size * 0.5f;`
+  },
+  'bool RaycastMouse(Vector3&out point, Vector3&out normal)': {
+    d: "カーソルの下にあるメッシュの表面の点と、その面の向きを返します。物の上に物を置く道具に使います。",
+    p: [["point", "当たった点が入る"], ["normal", "当たった面の、こちらを向いた向き（長さ 1）が入る"]],
+    r: "メッシュに当たれば true（メッシュの無いオブジェクトには当たらない）",
+    ex: `
+Vector3 point;
+Vector3 normal;
+if (SceneView::RaycastMouse(point, normal)) {
+    Handles::DrawWireDisc(point, normal, 0.5f);
+    Handles::DrawLine(point, point + normal);
+}`
+  },
+  'bool MouseToPlane(float height, Vector3&out point)': {
+    d: "カーソルから伸ばした線と、決めた高さの水平な床との交点を返します。物が無いところにも置ける道具に使います。",
+    p: [["height", "床の高さ（y）"], ["point", "交点が入る"]],
+    r: "交われば true（床がカメラの後ろなら false）",
+    ex: `
+Vector3 point;
+if (SceneView::MouseToPlane(0.0f, point)) {
+    point.x = floor(point.x + 0.5f);        // 1 マスの格子に合わせる
+    point.z = floor(point.z + 0.5f);
+    Handles::DrawWireCube(point, Vector3(1.0f, 1.0f, 1.0f));
+}`
+  },
+  'GameObject@ GetObjectUnderMouse()': {
+    d: "カーソルの下にあり、クリックしたら選ばれるオブジェクトを返します。",
+    r: "オブジェクト（無ければ null）",
+    ex: `
+GameObject@ hovered = SceneView::GetObjectUnderMouse();
+if (hovered !is null && SceneView::shift && SceneView::IsMouseClicked()) {
+    Editor::DestroyObject(hovered);       // Shift+クリックで消す
+}`
+  },
+  'bool GetMouseRay(Vector3&out origin, Vector3&out direction)': {
+    d: "カメラからカーソルの向きへ伸ばした線を返します。自分で当たりを計算するときに使います。",
+    p: [["origin", "線の始まり（カメラの位置）が入る"], ["direction", "線の向き（長さ 1）が入る"]],
+    r: "カーソルがシーンビューの上にあれば true",
+    ex: `
+Vector3 origin;
+Vector3 direction;
+if (SceneView::GetMouseRay(origin, direction)) {
+    Vector3 far = origin + direction * 20.0f;
+}`
+  },
+  'bool WorldToScreen(const Vector3&in world, Vector2&out screen)': {
+    d: "シーンの点が、シーンビューのどこに映るかを返します。",
+    p: [["world", "シーンの点"], ["screen", "シーンビューの左上からの位置（ピクセル）が入る"]],
+    r: "映る位置があれば true（カメラの後ろなら false）",
+    ex: `
+Vector2 screen;
+if (SceneView::WorldToScreen(target.transform.worldPosition, screen)) {
+    float distance = Length(screen - SceneView::mousePosition);
+}`
+  },
+  'bool IsMouseClicked(MouseButton button = MouseButton::Left)': {
+    d: "このフレームでマウスのボタンを押したかを返します。カーソルがシーンビューの上にあって、ギズモやハンドルの上でないときだけ true です。",
+    p: [["button", "マウスのボタン"]],
+    r: "押したフレームだけ true",
+    x: "<p>左クリックでオブジェクトが選ばれてしまうときは、毎フレーム <code>SceneView::UseMouse()</code> を呼びます。</p>",
+    ex: `
+SceneView::UseMouse();
+if (SceneView::IsMouseClicked(MouseButton::Left)) {
+    Place();
+}`
+  },
+  'bool IsMouseDown(MouseButton button = MouseButton::Left)': {
+    d: "マウスのボタンを押している間 true を返します（ドラッグで塗る・並べる道具に）。",
+    p: [["button", "マウスのボタン"]],
+    r: "押している間 true",
+    ex: `
+SceneView::UseMouse();
+Vector3 point;
+if (SceneView::IsMouseDown() && SceneView::MouseToPlane(0.0f, point)) {
+    PaintAt(point);
+}`
+  },
+  'bool IsMouseReleased(MouseButton button = MouseButton::Left)': {
+    d: "このフレームでマウスのボタンを離したかを返します（カーソルがシーンビューの外でも true）。",
+    p: [["button", "マウスのボタン"]],
+    r: "離したフレームだけ true",
+    ex: `
+if (painting && SceneView::IsMouseReleased()) {
+    painting = false;
+}`
+  },
+  'bool IsMouseDragging(MouseButton button = MouseButton::Left)': {
+    d: "ボタンを押したまま少し動かしたかを返します。",
+    p: [["button", "マウスのボタン"]],
+    r: "ドラッグ中なら true",
+    ex: `
+if (SceneView::IsMouseDragging()) {
+    Handles::DrawLine(dragStart, current, Vector4(1.0f, 0.8f, 0.2f, 1.0f));
+}`
+  },
+  'bool IsKeyPressed(Key key, bool repeat = true)': {
+    d: "キーを押したかを返します。Game ウィンドウ（シーンビュー）が選ばれていて、文字を打っていないときだけ答えます。",
+    p: [["key", "キー"], ["repeat", "true なら押し続けると繰り返す"]],
+    r: "押したフレームだけ true",
+    ex: `
+if (SceneView::IsKeyPressed(Key::R, false)) {
+    rotation += 90.0f;          // R で置く向きを回す
+}`
+  },
+  'bool ctrl': {
+    d: "Ctrl を押しているかです。",
+    ex: `
+float step = SceneView::ctrl ? 0.25f : 1.0f;`
+  },
+  'bool shift': {
+    d: "Shift を押しているかです。",
+    ex: `
+if (SceneView::shift) {
+    DrawEraseCursor();
+}`
+  },
+  'bool alt': {
+    d: "Alt を押しているかです。",
+    ex: `
+if (SceneView::alt && SceneView::IsMouseClicked()) {
+    PickHeight();
+}`
+  },
+  'void UseMouse()': {
+    d: "このフレームの、シーンビューの左クリックでオブジェクトを選ばないようにします。クリックで置く・塗る道具では、置いている間<strong>毎フレーム</strong>呼びます。",
+    x: "<p>選ぶ処理はスクリプトより先に走るので、呼んだ次のフレームのクリックから効きます。ハンドルのドラッグは止めません。</p>",
+    ex: `
+void OnSceneGUI()
+{
+    if (!placing) {
+        return;
+    }
+    SceneView::UseMouse();
+    // ここでクリックを受け取る
+}`
+  },
+  'Vector3 cameraPosition': {
+    d: "シーンビューを映しているカメラの位置です。",
+    ex: `
+float distance = Distance(SceneView::cameraPosition, point);
+float handleSize = distance * 0.05f;      // 遠くても同じ大きさに見せる`
+  },
+  'Vector3 cameraForward': {
+    d: "シーンビューを映しているカメラの前の向き（長さ 1）です。",
+    ex: `
+Vector3 inFront = SceneView::cameraPosition + SceneView::cameraForward * 5.0f;
+Handles::DrawDot(inFront, 6.0f);`
+  }
+};
+
+window.CE_API_USAGE.Handles = {
+  'void DrawLine(const Vector3&in from, const Vector3&in to, const Vector4&in color = Vector4(1.0f, 1.0f, 1.0f, 1.0f), float thickness = 2)': {
+    d: "シーンビューに線を重ねて描きます。",
+    p: [["from", "始まり"], ["to", "終わり"], ["color", "色（0〜1 の RGBA）"], ["thickness", "線の太さ（ピクセル）"]],
+    ex: `
+Handles::DrawLine(start, end, Vector4(1.0f, 0.8f, 0.2f, 1.0f), 3.0f);`
+  },
+  'void DrawPolyline(const Vector3[]&in points, const Vector4&in color = Vector4(1.0f, 1.0f, 1.0f, 1.0f), float thickness = 2, bool closed = false)': {
+    d: "点を順につないだ線を描きます（道筋・範囲の輪郭に）。",
+    p: [["points", "点の配列"], ["color", "色"], ["thickness", "線の太さ"], ["closed", "最後の点から最初の点へもつなぐか"]],
+    ex: `
+Handles::DrawPolyline(route.points, Vector4(0.3f, 0.8f, 1.0f, 1.0f), 2.0f, route.loop);`
+  },
+  'void DrawWireCube(const Vector3&in center, const Vector3&in size, const Vector4&in color = Vector4(1.0f, 1.0f, 1.0f, 1.0f), float thickness = 2)': {
+    d: "軸に沿った箱の辺を描きます（置く場所の枠に）。",
+    p: [["center", "中心"], ["size", "大きさ"], ["color", "色"], ["thickness", "線の太さ"]],
+    ex: `
+Handles::DrawWireCube(center, Vector3(1.0f, 1.0f, 1.0f), Vector4(0.4f, 0.9f, 1.0f, 1.0f));`
+  },
+  'void DrawWireDisc(const Vector3&in center, const Vector3&in normal, float radius, const Vector4&in color = Vector4(1.0f, 1.0f, 1.0f, 1.0f), float thickness = 2)': {
+    d: "向きに垂直な円を描きます（床の上の範囲・面の上の目印に）。",
+    p: [["center", "中心"], ["normal", "円の面の向き（床なら <code>Vector3(0, 1, 0)</code>）"], ["radius", "半径"], ["color", "色"], ["thickness", "線の太さ"]],
+    ex: `
+Handles::DrawWireDisc(point, Vector3(0.0f, 1.0f, 0.0f), brushRadius);`
+  },
+  'void DrawWireSphere(const Vector3&in center, float radius, const Vector4&in color = Vector4(1.0f, 1.0f, 1.0f, 1.0f), float thickness = 2)': {
+    d: "球を、軸ごとの円とカメラから見た輪郭で描きます。",
+    p: [["center", "中心"], ["radius", "半径"], ["color", "色"], ["thickness", "線の太さ"]],
+    ex: `
+Handles::DrawWireSphere(enemy.transform.worldPosition, 3.0f, Vector4(1.0f, 0.3f, 0.3f, 1.0f));`
+  },
+  'void DrawSolidDisc(const Vector3&in center, const Vector3&in normal, float radius, const Vector4&in color)': {
+    d: "塗った円を描きます。半透明の色にすると、範囲を示せます。",
+    p: [["center", "中心"], ["normal", "円の面の向き"], ["radius", "半径"], ["color", "色（a を小さくすると透ける）"]],
+    ex: `
+Handles::DrawSolidDisc(point, Vector3(0.0f, 1.0f, 0.0f), 2.0f, Vector4(0.4f, 0.9f, 1.0f, 0.3f));`
+  },
+  'void DrawSolidQuad(const Vector3&in a, const Vector3&in b, const Vector3&in c, const Vector3&in d, const Vector4&in color)': {
+    d: "4 点を角とする塗った四角形を描きます（マスの塗り分けに）。",
+    p: [["a", "1 つ目の角"], ["b", "2 つ目の角"], ["c", "3 つ目の角"], ["d", "4 つ目の角（a〜d は周りの順に並べる）"], ["color", "色"]],
+    ex: `
+Vector3 o = Vector3(x, 0.01f, z);
+Handles::DrawSolidQuad(o, o + Vector3(1.0f, 0.0f, 0.0f), o + Vector3(1.0f, 0.0f, 1.0f), o + Vector3(0.0f, 0.0f, 1.0f),
+    Vector4(1.0f, 0.6f, 0.2f, 0.4f));`
+  },
+  'void DrawDot(const Vector3&in position, float size, const Vector4&in color = Vector4(1.0f, 1.0f, 1.0f, 1.0f))': {
+    d: "点を描きます。大きさは画面の上のピクセルなので、遠くても同じ大きさです。",
+    p: [["position", "位置"], ["size", "点の大きさ（ピクセル）"], ["color", "色"]],
+    ex: `
+for (uint i = 0; i < points.length(); ++i) {
+    Handles::DrawDot(points[i], 8.0f, Vector4(1.0f, 0.4f, 0.3f, 1.0f));
+}`
+  },
+  'void Label(const Vector3&in position, const string&in text, const Vector4&in color = Vector4(1.0f, 1.0f, 1.0f, 1.0f))': {
+    d: "シーンの点の右下に文字を描きます。",
+    p: [["position", "位置"], ["text", "文字"], ["color", "色"]],
+    ex: `
+Handles::Label(point, "(" + point.x + ", " + point.z + ")");`
+  },
+  'Vector3 PositionHandle(int id, const Vector3&in position)': {
+    d: "選んだ物と同じ移動の矢印を出し、ドラッグされた後の位置を返します。動かされなければ渡した位置のままです。",
+    p: [["id", "ハンドルの番号（同じフレームに出すハンドルごとに変える）"], ["position", "今の位置"]],
+    r: "ドラッグされた後の位置",
+    x: "<p>カーソルを乗せている間とドラッグの間は、シーンビューのクリックでオブジェクトを選びません。変える前に <code>Editor::RecordObject</code> で控えると、ドラッグの間の変更が <kbd>Ctrl</kbd>+<kbd>Z</kbd> 1 回分にまとまります。</p>",
+    ex: `
+Vector3 moved = Handles::PositionHandle(1, spawnPoint);
+if (!(moved == spawnPoint)) {
+    Editor::RecordObject(target, "出る場所を動かす");
+    spawnPoint = moved;
+}`
+  }
+};
+
+window.CE_API_USAGE.Gizmos = {
+  'Vector4 color': {
+    d: "次に描く線の色です（0〜1 の RGBA）。ギズモの関数が呼ばれるたびに白から始まります。",
+    ex: `
+Gizmos::color = Vector4(1.0f, 0.3f, 0.3f, 1.0f);
+Gizmos::DrawWireSphere(owner.transform.position, range);`
+  },
+  'void DrawLine(const Vector3&in from, const Vector3&in to)': {
+    d: "線を描きます。",
+    p: [["from", "始まり"], ["to", "終わり"]],
+    ex: `
+void OnDrawGizmos()
+{
+    for (uint i = 0; i + 1 < points.length(); ++i) {
+        Gizmos::DrawLine(points[i], points[i + 1]);
+    }
+}`
+  },
+  'void DrawRay(const Vector3&in from, const Vector3&in direction)': {
+    d: "from から direction の分だけ伸ばした線を描きます（向きと長さを示すのに）。",
+    p: [["from", "始まり"], ["direction", "向きと長さ"]],
+    ex: `
+Gizmos::DrawRay(owner.transform.position, Vector3(0.0f, 0.0f, 2.0f));`
+  },
+  'void DrawWireCube(const Vector3&in center, const Vector3&in size)': {
+    d: "軸に沿った箱の辺を描きます（範囲・出る場所に）。",
+    p: [["center", "中心"], ["size", "大きさ"]],
+    ex: `
+Gizmos::DrawWireCube(owner.transform.position, Vector3(4.0f, 2.0f, 4.0f));`
+  },
+  'void DrawWireSphere(const Vector3&in center, float radius)': {
+    d: "球の線を描きます（見つける範囲・届く範囲に）。",
+    p: [["center", "中心"], ["radius", "半径"]],
+    ex: `
+void OnDrawGizmosSelected()
+{
+    Gizmos::DrawWireSphere(owner.transform.position, attackRange);
+}`
+  },
+  'void DrawSphere(const Vector3&in center, float radius)': {
+    d: "塗った球（画面の上の円）を描きます（点の目印に）。",
+    p: [["center", "中心"], ["radius", "半径"]],
+    ex: `
+Gizmos::DrawSphere(owner.transform.position + target, 0.15f);`
+  }
+};
+
+window.CE_API_USAGE.DataFile = {
+  'DataFile(const string&in path)': {
+    d: "<span class=\"path\">Application/Assets</span> の下の JSON ファイルを開きます。ファイルがあれば中身を読み、無ければ空から始めます（<code>Save</code> するとできます）。",
+    p: [["path", "<span class=\"path\">Application/Assets</span> からの相対パスか、<code>[Asset(\"Json\")]</code> の値（<code>Application/Assets/</code> から始まる）。<code>.json</code> で終わること。空・絶対パス・<code>..</code>・<span class=\"path\">Scenes</span> フォルダはスクリプトの例外"]],
+    ex: `
+DataFile@ file = DataFile("Data/Maps/Cave.json");`
+  },
+  'string path': {
+    d: "開いたファイルのパスです。",
+    ex: `
+Log("保存先: " + file.path);`
+  },
+  'bool exists': {
+    d: "開いたときにファイルがあったかです。",
+    ex: `
+DataFile@ file = DataFile(mapFile);
+if (!file.exists) {
+    Warn("マップがまだ保存されていません");
+    return;
+}`
+  },
+  'bool Has(const string&in key) const': {
+    d: "キーがあるかを返します。",
+    p: [["key", "キー"]],
+    r: "あれば true",
+    ex: `
+if (file.Has("cells")) {
+    cells = file.GetIntArray("cells");
+}`
+  },
+  'string[]@ GetKeys() const': {
+    d: "ファイルにあるキーの一覧を返します。",
+    r: "キーの配列",
+    ex: `
+array<string>@ keys = file.GetKeys();
+for (uint i = 0; i < keys.length(); ++i) {
+    EditorGUI::BulletText(keys[i]);
+}`
+  },
+  'int GetInt(const string&in key, int fallback = 0) const': {
+    d: "整数を読みます。",
+    p: [["key", "キー"], ["fallback", "キーが無いか、整数でないときに返す値"]],
+    r: "読んだ値",
+    ex: `
+int width = file.GetInt("width", 16);`
+  },
+  'float GetFloat(const string&in key, float fallback = 0.0f) const': {
+    d: "小数を読みます。",
+    p: [["key", "キー"], ["fallback", "無いときの値"]],
+    r: "読んだ値",
+    ex: `
+float speed = file.GetFloat("speed", 1.0f);`
+  },
+  'bool GetBool(const string&in key, bool fallback = false) const': {
+    d: "真偽を読みます。",
+    p: [["key", "キー"], ["fallback", "無いときの値"]],
+    r: "読んだ値",
+    ex: `
+bool hard = file.GetBool("hard");`
+  },
+  'string GetString(const string&in key, const string&in fallback = "") const': {
+    d: "文字列を読みます。",
+    p: [["key", "キー"], ["fallback", "無いときの値"]],
+    r: "読んだ値",
+    ex: `
+string title = file.GetString("title", "名前の無いステージ");`
+  },
+  'int[]@ GetIntArray(const string&in key) const': {
+    d: "整数の配列を読みます。",
+    p: [["key", "キー"]],
+    r: "読んだ配列（無ければ空）",
+    ex: `
+array<int>@ cells = file.GetIntArray("cells");`
+  },
+  'float[]@ GetFloatArray(const string&in key) const': {
+    d: "小数の配列を読みます。",
+    p: [["key", "キー"]],
+    r: "読んだ配列（無ければ空）",
+    ex: `
+array<float>@ times = file.GetFloatArray("cameraKeys");`
+  },
+  'string[]@ GetStringArray(const string&in key) const': {
+    d: "文字列の配列を読みます。",
+    p: [["key", "キー"]],
+    r: "読んだ配列（無ければ空）",
+    ex: `
+array<string>@ lines = file.GetStringArray("lines");`
+  },
+  'void SetInt(const string&in key, int value)': {
+    d: "整数を書きます。<code>Save</code> するまでファイルは変わりません。",
+    p: [["key", "キー"], ["value", "書く値"]],
+    ex: `
+file.SetInt("width", width);`
+  },
+  'void SetFloat(const string&in key, float value)': {
+    d: "小数を書きます。",
+    p: [["key", "キー"], ["value", "書く値"]],
+    ex: `
+file.SetFloat("speed", speed);`
+  },
+  'void SetBool(const string&in key, bool value)': {
+    d: "真偽を書きます。",
+    p: [["key", "キー"], ["value", "書く値"]],
+    ex: `
+file.SetBool("hard", hard);`
+  },
+  'void SetString(const string&in key, const string&in value)': {
+    d: "文字列を書きます。",
+    p: [["key", "キー"], ["value", "書く値"]],
+    ex: `
+file.SetString("title", title);`
+  },
+  'void SetIntArray(const string&in key, const int[]&in values)': {
+    d: "整数の配列を書きます。",
+    p: [["key", "キー"], ["values", "書く配列"]],
+    ex: `
+file.SetIntArray("cells", cells);`
+  },
+  'void SetFloatArray(const string&in key, const float[]&in values)': {
+    d: "小数の配列を書きます。",
+    p: [["key", "キー"], ["values", "書く配列"]],
+    ex: `
+file.SetFloatArray("cameraKeys", cameraKeys);`
+  },
+  'void SetStringArray(const string&in key, const string[]&in values)': {
+    d: "文字列の配列を書きます。",
+    p: [["key", "キー"], ["values", "書く配列"]],
+    ex: `
+file.SetStringArray("lines", lines);`
+  },
+  'void Remove(const string&in key)': {
+    d: "キーを消します。<code>Save</code> するとファイルからも消えます。",
+    p: [["key", "キー"]],
+    ex: `
+file.Remove("debugNote");
+file.Save();`
+  },
+  'bool Save() const': {
+    d: "ファイルへ書き出し、アセットとして登録します（<span class=\"path\">.meta</span> を作る）。保存できるのはエディタだけで、書き出したゲームで呼ぶとスクリプトの例外になります。フォルダが無ければ作ります。",
+    r: "書けたら true",
+    ex: `
+DataFile@ file = DataFile("Data/Maps/Cave.json");
+file.SetInt("width", width);
+file.SetIntArray("cells", cells);
+if (!file.Save()) {
+    Error("保存できませんでした");
+}`
+  }
+};
+
+window.CE_API_USAGE.Curve = {
+  'float Evaluate(const Vector2[]&in keys, float x)': {
+    d: "点（Vector2）をなめらかにつないだ曲線の、x での値を返します。<code>EditorGUI::CurveField</code> で作ったカーブを、ゲームのスクリプトで読むのに使います（書き出したゲームでも使えます）。",
+    p: [["keys", "点の配列（横 x・縦 y。並び順は問わない）"], ["x", "読む位置"]],
+    r: "x での値。点の間は値を行き過ぎない 3 次の曲線でつなぎ、範囲の外は端の点の値。点が 1 つならその値、空なら 0",
+    ex: `
+array<Vector2> curve = { Vector2(0.0f, 0.0f), Vector2(0.5f, 1.0f), Vector2(1.0f, 0.0f) };
+
+void Update()
+{
+    time_ += Time::DeltaTime();
+    float phase = fraction(time_ / period);
+    owner.transform.position = origin_ + Vector3(0.0f, Curve::Evaluate(curve, phase) * height, 0.0f);
+}`
+  }
+};
 
 </script>
 
@@ -11030,22 +13570,32 @@ class TitleMenu : ScriptComponent
       html += "</tbody></table>";
     }
 
+    const usages = (window.CE_API_USAGE || {})[entry.id] || {};
     (entry.sections || []).forEach(function (section, sectionIndex) {
       html += '<h2 id="api-' + entry.id + "-sec" + sectionIndex + '">' + escapeHtml(section.title) + "</h2>";
       if (section.text) {
         html += section.text;
       }
       html += '<table class="member-table"><thead><tr><th>宣言</th><th>説明</th></tr></thead><tbody>';
+      let details = "";
       section.members.forEach(function (member) {
         const anchor = uniqueAnchor("api-" + entry.id + "--" + member.n);
         const badge = MEMBER_BADGES[member.t] || ["", ""];
         const qualified = (entry.kind === "namespace" ? entry.id + "::" : entry.kind === "global" ? "" : entry.id + ".") + member.n;
+        const usage = usages[member.s];
         html += '<tr id="' + escapeHtml(anchor) + '" data-member="' + escapeHtml(qualified) + '">' +
           '<td><div class="sig">' + signatureHtml(member.s, member.n) + "</div>" +
           (badge[0] ? '<span class="badge ' + badge[1] + '">' + badge[0] + "</span>" : "") +
+          (usage ? '<a class="use-link" href="#' + escapeHtml(anchor) + '-use">使い方</a>' : "") +
           "</td><td>" + (member.d || "") + "</td></tr>";
+        if (usage) {
+          details += memberUsageHtml(anchor + "-use", qualified, member, usage);
+        }
       });
       html += "</tbody></table>";
+      if (details) {
+        html += '<div class="member-uses">' + details + "</div>";
+      }
     });
 
     if (entry.notes) {
@@ -11071,6 +13621,68 @@ class TitleMenu : ScriptComponent
 
     article.innerHTML = html;
     return article;
+  }
+
+  // 関数 1 つの使い方（宣言・説明・引数・戻り値・補足・例）
+  function memberUsageHtml(id, qualified, member, usage) {
+    let html = '<div class="member-use" id="' + escapeHtml(id) + '">' +
+      "<h4>" + escapeHtml(qualified) + "</h4>" +
+      '<div class="api-decl">' + escapeHtml(member.s) + "</div>";
+    if (usage.d || member.d) {
+      html += "<p>" + (usage.d || member.d) + "</p>";
+    }
+    if ((usage.p && usage.p.length) || usage.r) {
+      html += '<dl class="member-params">';
+      if (usage.p && usage.p.length) {
+        html += "<dt>引数</dt><dd><ul>";
+        usage.p.forEach(function (param) {
+          html += "<li><code>" + escapeHtml(param[0]) + "</code>：" + param[1] + "</li>";
+        });
+        html += "</ul></dd>";
+      }
+      if (usage.r) {
+        html += "<dt>戻り値</dt><dd>" + usage.r + "</dd>";
+      }
+      html += "</dl>";
+    }
+    if (usage.x) {
+      html += usage.x;
+    }
+    if (usage.ex) {
+      html += '<script type="text/x-code" data-lang="as">' + usage.ex.replace(/<\/script/gi, "<\\/script") + "<\/script>";
+    }
+    return html + "</div>";
+  }
+
+  // 「関数の一覧」のページ（エディタの拡張）に、関数ごとの使い方へのリンクを並べる
+  function renderEditorFunctionList() {
+    const root = document.getElementById("editor-ext-function-list");
+    if (!root) {
+      return;
+    }
+    const ids = ["EditorWindow", "ComponentEditor", "EditorGUI", "Editor", "SceneView", "Handles", "Gizmos", "DataFile", "Curve"];
+    let html = "";
+    ids.forEach(function (id) {
+      const page = document.getElementById("api-" + id);
+      const entry = (window.CE_API || []).find(function (item) { return item.id === id; });
+      if (!page || !entry) {
+        return;
+      }
+      html += '<h2 id="editor-ext-reference-' + id + '"><a href="#api-' + id + '">' + escapeHtml(entry.title || id) + "</a></h2>";
+      if (entry.brief) {
+        html += "<p>" + escapeHtml(entry.brief) + "</p>";
+      }
+      html += '<table class="member-table"><thead><tr><th>宣言</th><th>説明</th></tr></thead><tbody>';
+      page.querySelectorAll(".member-use").forEach(function (use) {
+        const row = document.getElementById(use.id.replace(/-use$/, ""));
+        const cell = row ? row.querySelector("td:last-child") : null;
+        const decl = use.querySelector(".api-decl");
+        html += '<tr><td><a href="#' + escapeHtml(use.id) + '"><code>' + escapeHtml(decl ? decl.textContent : use.id) + "</code></a></td>" +
+          "<td>" + (cell ? cell.innerHTML : "") + "</td></tr>";
+      });
+      html += "</tbody></table>";
+    });
+    root.innerHTML = html;
   }
 
   function renderApiPages() {
@@ -11746,6 +14358,7 @@ class TitleMenu : ScriptComponent
   // ------------------------------------------------------------------ 起動
 
   renderApiPages();
+  renderEditorFunctionList();
   collectPages();
   pages.forEach(function (page) {
     page.hidden = true;
