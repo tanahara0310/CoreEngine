@@ -4,6 +4,7 @@
 
 #include <imgui.h>
 
+#include <functional>
 #include <string>
 
 namespace CoreEngine::Script
@@ -31,6 +32,7 @@ namespace CoreEngine::Editor::ScriptBinding
         NodeTitle,
         InputPin,
         OutputPin,
+        Timeline,
     };
 
     struct NodeEditorState;
@@ -54,6 +56,9 @@ namespace CoreEngine::Editor::ScriptBinding
         /// 開いているノードエディタと、この OnGUI で最後に閉じたノードエディタ
         NodeEditorState* openNodeEditor = nullptr;
         NodeEditorState* lastNodeEditor = nullptr;
+
+        /// インスペクタの既定の欄を描く関数（OnInspectorGUI の間だけ）
+        const std::function<bool()>* drawDefaultInspector = nullptr;
     };
 
     /// @brief 今の OnGUI の状態
@@ -138,6 +143,9 @@ namespace CoreEngine::Editor::ScriptBinding
     /// @brief ノードエディタの範囲を閉じる（EditorGUINodeBinding が実装する）
     void CloseNodeScope(GUIScopeKind kind);
 
+    /// @brief 時間軸の範囲を閉じる（EditorGUIToolsBinding が実装する）
+    void CloseTimelineScope();
+
     /// @brief 範囲と字下げをすべて戻す（OnGUI を抜けるときに呼ぶ）
     void UnwindGUIScopes();
 
@@ -152,6 +160,10 @@ namespace CoreEngine::Editor::ScriptBinding
     /// @brief ノードエディタの部品（ノード・ピン・つながり）を登録する
     /// @note EditorGUI 名前空間を開いた BindingRegistrar を渡す。
     void RegisterEditorGUINodes(Script::BindingRegistrar& r);
+
+    /// @brief グラフ・カーブ・時間軸の部品と、インスペクタの既定の欄を描く関数を登録する
+    /// @note EditorGUI 名前空間を開いた BindingRegistrar を渡す。
+    void RegisterEditorGUITools(Script::BindingRegistrar& r);
 }
 
 #endif // CORE_EDITOR

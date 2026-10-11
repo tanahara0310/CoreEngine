@@ -44,3 +44,31 @@ void CountSceneObjects()
     }
     Log("シーンのオブジェクト: " + objects.length() + " 個（有効 " + active + " 個）");
 }
+
+// 「巡回の道筋」を付けたオブジェクトを作って選ぶ（インスペクタとシーンビューのハンドルで点を直せる）
+[MenuItem("Tools/巡回の道筋を作る")]
+void CreatePatrolRoute()
+{
+    Editor::BeginUndoGroup("巡回の道筋を作る");
+    GameObject@ route = Editor::CreateObject("PatrolRoute");
+    route.AddComponent("PatrolRoute");
+    Editor::EndUndoGroup();
+    Editor::Select(route);
+}
+
+// 壁のプレハブに「カーブで上下」を付けて作り、選ぶ（インスペクタでカーブを直せる）
+[MenuItem("Tools/カーブで上下する箱を作る")]
+void CreateCurveMover()
+{
+    Editor::BeginUndoGroup("カーブで上下する箱を作る");
+    GameObject@ box = Editor::InstantiatePrefab("Application/Assets/Prefabs/MapGenerator/MapWall.prefab", "CurveMover");
+    if (box is null) {
+        Editor::EndUndoGroup();
+        Error("壁のプレハブを読めません");
+        return;
+    }
+    box.transform.position = Vector3(0.0f, 0.5f, 0.0f);
+    box.AddComponent("CurveMover");
+    Editor::EndUndoGroup();
+    Editor::Select(box);
+}

@@ -1119,6 +1119,9 @@ float fmod(float, float);
 float exp(float);
 float exp2(float);
 float Ease(EaseType type, float t);
+namespace Curve {
+float Evaluate(const Vector2[]&in keys, float x);
+}
 namespace Time {
 float DeltaTime();
 float UnscaledDeltaTime();
@@ -1403,6 +1406,17 @@ Vector2 GetNodeEditorMousePosition();
 bool IsLinkCreated(int&out outputPin, int&out inputPin);
 bool IsLinkDestroyed(int&out id);
 bool IsLinkDropped(int&out pin);
+bool DrawDefaultInspector();
+float GetDeltaTime();
+void PlotLines(const string&in label, const float[]&in values, float height = 60);
+void PlotLines(const string&in label, const float[]&in values, float min, float max, float height = 60);
+void PlotHistogram(const string&in label, const float[]&in values, float height = 60);
+void PlotHistogram(const string&in label, const float[]&in values, float min, float max, float height = 60);
+bool CurveField(const string&in label, Vector2[]&inout keys, const Vector2&in rangeMin = Vector2(0.0f, 0.0f), const Vector2&in rangeMax = Vector2(1.0f, 1.0f), float height = 110);
+float BeginTimeline(const string&in id, float length, float time, float snap = 0);
+bool TimelineKeys(const string&in label, float[]&inout keys);
+bool TimelineRanges(const string&in label, Vector2[]&inout ranges);
+void EndTimeline();
 }
 namespace Editor {
 GameObject@ CreateObject(const string&in name);

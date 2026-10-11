@@ -88,6 +88,7 @@ namespace CoreEngine::Editor::ScriptBinding
             case GUIScopeKind::NodeTitle: return "BeginNodeTitle";
             case GUIScopeKind::InputPin: return "BeginInputPin";
             case GUIScopeKind::OutputPin: return "BeginOutputPin";
+            case GUIScopeKind::Timeline: return "BeginTimeline";
             }
             return "Begin〜";
         }
@@ -120,6 +121,7 @@ namespace CoreEngine::Editor::ScriptBinding
             case GUIScopeKind::OutputPin:
                 CloseNodeScope(scope.kind);
                 break;
+            case GUIScopeKind::Timeline: CloseTimelineScope(); break;
             default: break;
             }
 

@@ -244,12 +244,22 @@ namespace CoreEngine::Editor::ObjectInspector
                 // 中身の有無は、値が変わったかではなくカーソルが進んだかで見る
                 const float cursorBefore = ImGui::GetCursorPosY();
 
-                if (descriptor) {
-                    changed |= InspectorRenderer::Draw(*descriptor, component.GetReflectionInstance(), context);
-                }
-                // 記述子で描けない欄（記述子を持たない型は全部、一部だけを載せた型は残り）
-                if (inspector && inspector->drawBody && (!descriptor || descriptor->partial)) {
-                    changed |= inspector->drawBody(component);
+                const auto drawDefault = [&]() {
+                    bool defaultChanged = false;
+                    if (descriptor) {
+                        defaultChanged |= InspectorRenderer::Draw(*descriptor, component.GetReflectionInstance(), context);
+                    }
+                    // 記述子で描けない欄（記述子を持たない型は全部、一部だけを載せた型は残り）
+                    if (inspector && inspector->drawBody && (!descriptor || descriptor->partial)) {
+                        defaultChanged |= inspector->drawBody(component);
+                    }
+                    return defaultChanged;
+                    };
+                // スクリプトで中身を描く型（CustomEditor）は、既定の欄を描くかもスクリプトが決める
+                if (const ComponentInspectors::CustomDraw* const custom = ComponentInspectors::FindCustomDraw(component)) {
+                    changed |= (*custom)(object, component, drawDefault);
+                } else {
+                    changed |= drawDefault();
                 }
                 if (inspector && inspector->drawExtra) {
                     inspector->drawExtra(component);

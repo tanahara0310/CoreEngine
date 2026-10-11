@@ -9,6 +9,7 @@
 
 namespace CoreEngine
 {
+    class GameObject;
     class IComponent;
 }
 
@@ -46,6 +47,17 @@ namespace CoreEngine::Editor::ComponentInspectors
 
     /// @brief ほかのコンポーネントより先に並べるか
     bool IsShownFirst(const IComponent& component);
+
+    /// @brief インスペクタの中身を、既定の欄の代わりに描く関数（スクリプトの CustomEditor）
+    /// @param drawDefault 既定の欄を描く（値を変えたら true）
+    /// @return 値を変えたら true
+    using CustomDraw = std::function<bool(GameObject& object, IComponent& component, const std::function<bool()>& drawDefault)>;
+
+    /// @brief 型名に、インスペクタの中身を描く関数を登録する（同じ型名は上書きする）
+    ScopedRegistration RegisterCustomDraw(const std::string& typeName, CustomDraw draw);
+
+    /// @brief インスペクタの中身を描く関数（登録が無ければ nullptr）
+    const CustomDraw* FindCustomDraw(const IComponent& component);
 }
 
 #endif // CORE_EDITOR

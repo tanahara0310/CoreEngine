@@ -1,7 +1,7 @@
 // 決めた点を順に回って、持ち主のオブジェクトを動かすコンポーネント（親の無いオブジェクトに付ける）。
 // 点は、再生を始めたときの持ち主の位置からのずれで持つ。
 // エディタでは、シーンビューに道筋を描き（OnDrawGizmos）、選んでいる間は点の周りに輪を描く（OnDrawGizmosSelected）。
-// 点は Tools > 巡回の道筋 のハンドルでも動かせる。
+// 点は、インスペクタの拡張（Editor/PatrolRouteInspector.as）がシーンビューに出すハンドルでも動かせる。
 [DisplayName("巡回の道筋")]
 class PatrolRoute : ScriptComponent
 {

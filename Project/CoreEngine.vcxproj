@@ -192,6 +192,7 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Editor\Script\EditorGUIAssetBinding.cpp" />
     <ClCompile Include="Engine\Src\Editor\Script\EditorGUINodeBinding.cpp" />
     <ClCompile Include="Engine\Src\Editor\Script\EditorSceneViewBinding.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Script\EditorGUIToolsBinding.cpp" />
     <ClCompile Include="Engine\Src\Editor\Script\EditorGUIState.cpp" />
     <ClCompile Include="Engine\Src\Editor\Script\EditorSceneBinding.cpp" />
     <ClCompile Include="Engine\Src\Editor\Script\ScriptEditorExtensions.cpp" />
@@ -629,6 +630,7 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Utility\JsonManager\JsonManager.cpp" />
     <ClCompile Include="Engine\Src\Utility\Logger\Logger.cpp" />
     <ClCompile Include="Engine\Src\Math\Easing\EasingUtil.cpp" />
+    <ClCompile Include="Engine\Src\Math\Curve\KeyCurve.cpp" />
     <ClCompile Include="Engine\Src\Utility\Timer\GameTimer.cpp" />
     <ClCompile Include="Engine\Src\Input\InputManager.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\ImGuiManager.cpp" />

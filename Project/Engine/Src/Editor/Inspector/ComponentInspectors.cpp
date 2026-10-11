@@ -52,6 +52,20 @@ namespace CoreEngine::Editor::ComponentInspectors
             return last;
         }
 
+        /// @brief 登録した中身を描く関数と、その登録の番号
+        struct CustomSlot
+        {
+            CustomDraw draw;
+            uint64_t registration = 0;
+        };
+
+        /// @brief 型名 → 中身を描く関数
+        std::unordered_map<std::string, CustomSlot>& CustomDraws()
+        {
+            static std::unordered_map<std::string, CustomSlot> draws;
+            return draws;
+        }
+
         /// @brief 型の出し方を外さない登録にする（エンジンの型用）
         void AddPermanent(const std::string& typeName, Entry entry)
         {
@@ -252,6 +266,29 @@ namespace CoreEngine::Editor::ComponentInspectors
     {
         const Entry* const entry = Find(component);
         return entry && entry->shownFirst;
+    }
+
+    ScopedRegistration RegisterCustomDraw(const std::string& typeName, CustomDraw draw)
+    {
+        const uint64_t registration = ++LastRegistration();
+        CustomDraws()[typeName] = CustomSlot{ std::move(draw), registration };
+
+        return ScopedRegistration([typeName, registration] {
+            auto& draws = CustomDraws();
+            const auto found = draws.find(typeName);
+            if (found != draws.end() && found->second.registration == registration) {
+                draws.erase(found);
+            }
+            });
+    }
+
+    const CustomDraw* FindCustomDraw(const IComponent& component)
+    {
+        if (dynamic_cast<const MissingComponent*>(&component)) {
+            return nullptr;
+        }
+        const auto found = CustomDraws().find(component.GetTypeName());
+        return found != CustomDraws().end() && found->second.draw ? &found->second.draw : nullptr;
     }
 }
 
