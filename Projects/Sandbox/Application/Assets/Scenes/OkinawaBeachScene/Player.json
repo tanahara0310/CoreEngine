@@ -64,6 +64,8 @@
                 "cameraObject": {
                     "ref": "5134b2c6ef0d2a47"
                 },
+                "cameraPitchSpeed": 1.5,
+                "cameraTurnSpeed": 2.5,
                 "footOffset": 0.9,
                 "groundData": {
                     "guid": "fe068e44-4c97-5742-8bc8-fe052cec3fa4",

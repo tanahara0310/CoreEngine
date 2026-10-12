@@ -6622,9 +6622,10 @@ kbd {
   <h2 id="beach-player-play">動かす</h2>
   <ol class="steps">
     <li><strong>開く</strong>Sandbox を開き、Project の <span class="path">Scenes</span> から <code>OkinawaBeachScene</code> を開きます。</li>
-    <li><strong>遊ぶ</strong><kbd>Ctrl</kbd>+<kbd>P</kbd>。カメラの向きを前として WASD（左スティック）で歩き、<kbd>Shift</kbd>（左スティックの押し込み）を押している間は走ります。カメラは右ドラッグ・右スティック・<kbd>Q</kbd>／<kbd>E</kbd> で回り、ホイールで寄ります。</li>
+    <li><strong>遊ぶ</strong><kbd>Ctrl</kbd>+<kbd>P</kbd>。カメラの向きを前として WASD（左スティック）で歩き、<kbd>Shift</kbd>（左スティックの押し込み）を押している間は走ります。カメラは矢印キー（右スティック）か右ドラッグで回り、ホイールで寄ります。歩いている間も回せます。</li>
   </ol>
   <p>停止中はスキンモデルの姿勢が計算されないので、人型は再生するまで見えません。</p>
+  <p>カメラを回す操作は、Sandbox の <span class="path">InputActions.json</span> に足した入力アクション <code>LookUp</code>・<code>LookDown</code>・<code>LookLeft</code>・<code>LookRight</code>（矢印キー・右スティック）です。移動と同時に入れられるよう、Sandbox では矢印キーを移動（<code>MoveForward</code> など）から外しています。</p>
 
   <h2 id="beach-player-scene">シーンのオブジェクト</h2>
   <div class="table-wrap">
@@ -7348,6 +7349,7 @@ python Tools/OkinawaBeach/bake_player_walk.py
   <ul>
     <li><strong>人型のモデル</strong>：Mixamo の X Bot（FBX）を glTF にし、Blender で待機・歩き・走りのアニメーションを付けて 1 つのファイルに入れました（<span class="path">Models/XBot/XBot.gltf</span>）。作り直すスクリプトと Blender のファイルは <span class="path">Tools/XBot/</span> にあります。</li>
     <li><strong>操作</strong>：<code>OkinawaBeachScene</code> に Player を置き、スクリプト <code>BeachPlayer</code> で歩く・走る・カメラが後ろから追うようにしました。アニメーションは進んだ速さで切り替わります。</li>
+    <li><strong>視点の操作</strong>：Sandbox の入力アクションに <code>LookUp</code>・<code>LookDown</code>・<code>LookLeft</code>・<code>LookRight</code>（矢印キー・右スティック）を足し、歩きながらカメラを回せるようにしました。Sandbox では矢印キーを移動から外しています（物理テストの歩行も、矢印キーでカメラが回ります）。</li>
     <li><strong>足元と当たり</strong>：砂浜と桟橋の高さの表（<span class="path">Data/OkinawaBeach/BeachGround.json</span>）と、ヤシ・椅子・舟などにぶつかる箱のコライダー（PlayerColliders）を、シーンの配置から作るツール <span class="path">Tools/OkinawaBeach/bake_player_walk.py</span> を足しました。<span class="path">export_engine_scene.py</span> でシーンを書き出し直しても、Player・PlayerModel・PlayerColliders は消えません。</li>
   </ul>
 

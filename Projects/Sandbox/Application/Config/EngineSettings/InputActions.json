@@ -7,7 +7,6 @@
             "context": "Game",
             "defaults": [
                 "Key:W",
-                "Key:Up",
                 "Axis:LeftStickY+",
                 "Gamepad:DPadUp"
             ]
@@ -18,7 +17,6 @@
             "context": "Game",
             "defaults": [
                 "Key:S",
-                "Key:Down",
                 "Axis:LeftStickY-",
                 "Gamepad:DPadDown"
             ]
@@ -29,7 +27,6 @@
             "context": "Game",
             "defaults": [
                 "Key:A",
-                "Key:Left",
                 "Axis:LeftStickX-",
                 "Gamepad:DPadLeft"
             ]
@@ -40,7 +37,6 @@
             "context": "Game",
             "defaults": [
                 "Key:D",
-                "Key:Right",
                 "Axis:LeftStickX+",
                 "Gamepad:DPadRight"
             ]
@@ -79,6 +75,42 @@
             "defaults": [
                 "Key:E",
                 "Gamepad:B"
+            ]
+        },
+        {
+            "id": "LookUp",
+            "display": "視点を上へ",
+            "context": "Game",
+            "defaults": [
+                "Key:Up",
+                "Axis:RightStickY+"
+            ]
+        },
+        {
+            "id": "LookDown",
+            "display": "視点を下へ",
+            "context": "Game",
+            "defaults": [
+                "Key:Down",
+                "Axis:RightStickY-"
+            ]
+        },
+        {
+            "id": "LookLeft",
+            "display": "視点を左へ",
+            "context": "Game",
+            "defaults": [
+                "Key:Left",
+                "Axis:RightStickX-"
+            ]
+        },
+        {
+            "id": "LookRight",
+            "display": "視点を右へ",
+            "context": "Game",
+            "defaults": [
+                "Key:Right",
+                "Axis:RightStickX+"
             ]
         },
         {

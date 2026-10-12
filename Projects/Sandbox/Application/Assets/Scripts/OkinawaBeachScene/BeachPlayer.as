@@ -42,6 +42,12 @@ class BeachPlayer : ScriptComponent
     [Range(0.0f, 2.0f)] [Tooltip("カメラが見る高さ（カプセルの中心から）m")]
     float lookHeight = 0.65f;
 
+    [Range(0.5f, 6.0f)] [Tooltip("矢印キー・右スティックでカメラを左右に回す速さ rad/s")]
+    float cameraTurnSpeed = 2.5f;
+
+    [Range(0.2f, 4.0f)] [Tooltip("矢印キー・右スティックでカメラを上下に回す速さ rad/s")]
+    float cameraPitchSpeed = 1.5f;
+
     [Range(0.0005f, 0.02f)] [Tooltip("右ドラッグでカメラを回す速さ rad/px")]
     float mouseSensitivity = 0.005f;
 
@@ -290,9 +296,15 @@ class BeachPlayer : ScriptComponent
 
     // ===== カメラ =====
 
-    // 右ドラッグ・右スティック・Q/E で回し、ホイールで寄る
+    // 視点の操作（矢印キー・右スティック）と右ドラッグで回し、ホイールで寄る
     private void TurnCamera(float dt)
     {
+        const Vector2 look = Input::GetAxis2D(
+            InputAction::LookLeft, InputAction::LookRight,
+            InputAction::LookDown, InputAction::LookUp);
+        cameraYaw_ += look.x * cameraTurnSpeed * dt;
+        cameraPitch_ -= look.y * cameraPitchSpeed * dt;
+
         if (Input::IsPointerOverGame()) {
             if (Input::IsMouseButtonPressed(MouseButton::Right)) {
                 const Vector2 delta = Input::GetMouseDelta();
@@ -301,11 +313,6 @@ class BeachPlayer : ScriptComponent
             }
             cameraDistance = Clamp(cameraDistance - Input::GetWheelDelta() * 0.5f, 1.5f, 15.0f);
         }
-        const Vector2 stick = Input::GetRightStick();
-        cameraYaw_ += stick.x * 2.5f * dt;
-        cameraPitch_ -= stick.y * 1.5f * dt;
-        if (Input::IsKeyPressed(Key::Q)) { cameraYaw_ -= 2.0f * dt; }
-        if (Input::IsKeyPressed(Key::E)) { cameraYaw_ += 2.0f * dt; }
         cameraPitch_ = Clamp(cameraPitch_, -0.15f, 1.2f);
     }
 
