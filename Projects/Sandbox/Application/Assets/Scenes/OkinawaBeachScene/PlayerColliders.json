@@ -1,0 +1,1109 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "shapes": [
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            18.876,
+                            -0.55,
+                            -6.11712
+                        ],
+                        "size": [
+                            0.2,
+                            4.9,
+                            14.75
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            21.124,
+                            -0.55,
+                            -6.11712
+                        ],
+                        "size": [
+                            0.2,
+                            4.9,
+                            14.75
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            20.0,
+                            -0.55,
+                            -13.59212
+                        ],
+                        "size": [
+                            2.448,
+                            4.9,
+                            0.2
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            -17.608461,
+                            1.9627155,
+                            9.489236
+                        ],
+                        "size": [
+                            0.2,
+                            2.589745,
+                            0.2
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            -18.32075,
+                            1.9723777,
+                            9.697959
+                        ],
+                        "size": [
+                            0.2,
+                            2.5729642,
+                            0.2
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            -17.412613,
+                            1.9159139,
+                            8.889639
+                        ],
+                        "size": [
+                            0.2,
+                            2.5905294,
+                            0.2
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            -19.273232,
+                            1.9551247,
+                            7.6448092
+                        ],
+                        "size": [
+                            3.473962,
+                            2.7206368,
+                            3.4828782
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            -17.493942,
+                            1.9334791,
+                            7.1475377
+                        ],
+                        "size": [
+                            0.2,
+                            2.570225,
+                            0.2
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            -18.199041,
+                            1.9737605,
+                            6.45677
+                        ],
+                        "size": [
+                            0.2,
+                            2.573532,
+                            0.2
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            -28.23105,
+                            2.0232785,
+                            9.626769
+                        ],
+                        "size": [
+                            0.2,
+                            2.5779543,
+                            0.2
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            -30.182915,
+                            1.988274,
+                            8.829193
+                        ],
+                        "size": [
+                            3.252555,
+                            2.7766454,
+                            3.4323192
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            -28.385355,
+                            1.9859515,
+                            8.536121
+                        ],
+                        "size": [
+                            0.2,
+                            2.570812,
+                            0.2
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            -22.904251,
+                            1.9621556,
+                            6.8417463
+                        ],
+                        "size": [
+                            2.717393,
+                            2.7604542,
+                            2.9442885
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            4.095748,
+                            1.9748448,
+                            14.341746
+                        ],
+                        "size": [
+                            2.717393,
+                            2.784186,
+                            2.9442885
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            11.75,
+                            1.6141942,
+                            17.75
+                        ],
+                        "size": [
+                            0.2833333,
+                            2.556292,
+                            0.2833333
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            11.5135,
+                            2.0249753,
+                            13.530962
+                        ],
+                        "size": [
+                            0.2,
+                            2.599303,
+                            0.2
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            11.92,
+                            2.0243812,
+                            13.531
+                        ],
+                        "size": [
+                            0.2,
+                            2.5981143,
+                            0.2
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            7.545658,
+                            1.9812818,
+                            13.497329
+                        ],
+                        "size": [
+                            0.2,
+                            2.599883,
+                            0.2
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            12.431651,
+                            2.0630417,
+                            13.579254
+                        ],
+                        "size": [
+                            0.2,
+                            2.6491652,
+                            0.21401712
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            12.451892,
+                            1.9892329,
+                            18.505993
+                        ],
+                        "size": [
+                            0.2,
+                            2.599457,
+                            0.2
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            8.25,
+                            1.850345,
+                            14.25
+                        ],
+                        "size": [
+                            0.2,
+                            2.5793726,
+                            0.2
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            8.25,
+                            1.6538911,
+                            17.75
+                        ],
+                        "size": [
+                            0.2,
+                            2.5759747,
+                            0.2
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            11.75,
+                            1.8530018,
+                            14.25
+                        ],
+                        "size": [
+                            0.2,
+                            2.5740592,
+                            0.2
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            10.510496,
+                            1.0634155,
+                            16.30814
+                        ],
+                        "size": [
+                            2.9573555,
+                            1.8755554,
+                            2.376281
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            -2.0,
+                            1.9762042,
+                            6.4995
+                        ],
+                        "size": [
+                            0.2,
+                            2.681812,
+                            0.2
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            8.507504,
+                            1.9247706,
+                            7.501743
+                        ],
+                        "size": [
+                            0.2,
+                            2.5724647,
+                            0.2
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            -3.9733157,
+                            -0.25742787,
+                            -1.8641326
+                        ],
+                        "size": [
+                            2.9423058,
+                            1.7318687,
+                            1.7701945
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            22.508057,
+                            2.2128568,
+                            19.545727
+                        ],
+                        "size": [
+                            2.3915439,
+                            2.8212485,
+                            1.9085293
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            -7.922348,
+                            1.9993832,
+                            8.015062
+                        ],
+                        "size": [
+                            0.5909532,
+                            2.6633084,
+                            0.485276
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            15.09027,
+                            2.1167922,
+                            12.006409
+                        ],
+                        "size": [
+                            0.5312406,
+                            2.6131425,
+                            0.4307247
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            -3.5125864,
+                            2.0715365,
+                            10.992911
+                        ],
+                        "size": [
+                            0.45758614,
+                            2.6807175,
+                            0.44517666
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            26.984716,
+                            1.9570228,
+                            8.995032
+                        ],
+                        "size": [
+                            0.47633058,
+                            2.648989,
+                            0.47238618
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            -9.185231,
+                            2.0103874,
+                            15.7300625
+                        ],
+                        "size": [
+                            0.6583984,
+                            2.6890671,
+                            0.535114
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            -13.054337,
+                            2.0666547,
+                            11.070275
+                        ],
+                        "size": [
+                            1.0646386,
+                            2.627476,
+                            0.95204055
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            -7.898781,
+                            2.3440795,
+                            11.75611
+                        ],
+                        "size": [
+                            1.4195869,
+                            2.724786,
+                            1.1490219
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            -10.976768,
+                            2.1847396,
+                            12.504654
+                        ],
+                        "size": [
+                            0.44540995,
+                            2.6381633,
+                            0.40071854
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            27.745808,
+                            2.1296568,
+                            12.37113
+                        ],
+                        "size": [
+                            1.1822569,
+                            2.6627326,
+                            0.9348983
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            33.438942,
+                            2.408077,
+                            13.120045
+                        ],
+                        "size": [
+                            1.5063426,
+                            2.6298895,
+                            1.1405709
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            30.016277,
+                            2.1727183,
+                            14.005118
+                        ],
+                        "size": [
+                            0.4878815,
+                            2.682248,
+                            0.44079039
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            -3.2,
+                            1.610615,
+                            5.6
+                        ],
+                        "size": [
+                            1.9,
+                            1.8721644,
+                            0.75600004
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            -1.0,
+                            1.6303662,
+                            5.3980002
+                        ],
+                        "size": [
+                            1.9,
+                            1.8844349,
+                            0.77199996
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            8.0,
+                            1.5327373,
+                            6.202
+                        ],
+                        "size": [
+                            1.9,
+                            1.8678247,
+                            0.77199996
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            11.966077,
+                            1.435431,
+                            4.2360992
+                        ],
+                        "size": [
+                            1.7230575,
+                            1.4848266,
+                            0.8200313
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            1.0575632,
+                            1.864257,
+                            16.972416
+                        ],
+                        "size": [
+                            1.8913069,
+                            2.6812027,
+                            1.824961
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            19.551807,
+                            2.2626185,
+                            18.975174
+                        ],
+                        "size": [
+                            1.7021762,
+                            2.469595,
+                            1.6424649
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            3.1709826,
+                            1.603032,
+                            17.982542
+                        ],
+                        "size": [
+                            1.404949,
+                            2.0900571,
+                            1.1988873
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            -25.184444,
+                            0.21891883,
+                            -3.7344508
+                        ],
+                        "size": [
+                            5.1683445,
+                            3.9025478,
+                            5.155077
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            -16.054823,
+                            -0.18367176,
+                            -5.9586654
+                        ],
+                        "size": [
+                            4.8865747,
+                            3.5363257,
+                            3.5445466
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            -33.052166,
+                            -0.55804825,
+                            -7.98543
+                        ],
+                        "size": [
+                            4.030943,
+                            3.5749934,
+                            3.7181892
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            20.08,
+                            0.9347783,
+                            -9.485
+                        ],
+                        "size": [
+                            0.2,
+                            1.8695565,
+                            0.40799916
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            20.52,
+                            0.9347783,
+                            -9.485
+                        ],
+                        "size": [
+                            0.2,
+                            1.8695565,
+                            0.40799916
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            -20.878136,
+                            -0.5485165,
+                            -3.708339
+                        ],
+                        "size": [
+                            3.7480452,
+                            1.8400308,
+                            2.4166183
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            -35.841576,
+                            -0.55971473,
+                            -5.253959
+                        ],
+                        "size": [
+                            4.8724585,
+                            2.1423142,
+                            3.1753666
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            -14.073842,
+                            -0.91770446,
+                            -6.050057
+                        ],
+                        "size": [
+                            2.4393258,
+                            1.8266453,
+                            1.5655264
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            -29.096825,
+                            0.25730202,
+                            -2.5552118
+                        ],
+                        "size": [
+                            2.9436188,
+                            1.8864892,
+                            1.888345
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            -21.966679,
+                            -0.15225159,
+                            -1.0217054
+                        ],
+                        "size": [
+                            1.2838849,
+                            1.4672095,
+                            0.9652655
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            4.219399,
+                            0.87270117,
+                            1.2
+                        ],
+                        "size": [
+                            7.2062206,
+                            2.0564551,
+                            0.9319866
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            7.719399,
+                            1.2635163,
+                            2.4
+                        ],
+                        "size": [
+                            7.2062206,
+                            2.1605363,
+                            0.9319866
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            7.6239414,
+                            1.4560974,
+                            20.154083
+                        ],
+                        "size": [
+                            0.55059534,
+                            2.0607104,
+                            0.69174194
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            12.380209,
+                            1.8397816,
+                            20.162165
+                        ],
+                        "size": [
+                            0.5365042,
+                            2.0271673,
+                            0.6755765
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            38.14861,
+                            0.033468977,
+                            -4.546855
+                        ],
+                        "size": [
+                            1.9338539,
+                            2.6978364,
+                            1.8049417
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            41.527687,
+                            -0.13235712,
+                            -5.3012075
+                        ],
+                        "size": [
+                            1.8513707,
+                            2.5760553,
+                            1.6962357
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    },
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            35.768906,
+                            -0.7602502,
+                            -6.317474
+                        ],
+                        "size": [
+                            1.631577,
+                            2.7185395,
+                            1.6534774
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    }
+                ]
+            },
+            "type": "Collider"
+        }
+    ],
+    "id": "55e8895de3c75b25",
+    "name": "PlayerColliders",
+    "order": 153
+}

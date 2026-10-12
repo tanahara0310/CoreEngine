@@ -7,7 +7,7 @@
   - ウミガメは Animator（泳ぎ）。魚の群れは確認用シーンとの照合にだけ使い、エンジンのシーンへは書かない
   - 太陽の向きとカメラの構図（全景 main）は確認用シーンと同じ。水面と見た目の設定は WaterTestScene の値を使う
 あわせて Models/Okinawa のアセットに .meta（GUID）が無ければ作る（シーンは GUID とパスでアセットを指す）。
-書き出し先に前からある JSON は、今回書かないものを消す（エディタで直した内容は上書きされる）。
+書き出し先に前からある JSON は、今回書かないものを消す（エディタで直した内容は上書きされる）。KEEP_OBJECTS の物は残す。
 
 置く物は保存済みの Blend/OkinawaBeachScene.blend のワールド行列をそのまま使う。assemble.py の LAYOUT / SCHOOLS から
 組み立てと同じ方法（地形・桟橋・海底だけに真上からレイを当てた高さ）で求めた位置・大きさと 1 つずつ突き合わせ、
@@ -67,6 +67,8 @@ CAMERA = "main"                   # エンジンの MainCamera にする確認�
 SENSOR_WIDTH = 36.0               # add_camera のカメラのセンサー幅 [mm]（Blender の既定）
 ASPECT = 16.0 / 9.0               # 確認用のレンダーの縦横比（エンジンの fov は縦の視野角）
 
+# 書き出し先に残す、このツールが書かないオブジェクト（プレイヤーと、bake_player_walk.py が書く当たり）
+KEEP_OBJECTS = {"Player", "PlayerModel", "PlayerColliders"}
 # .meta を作るアセットの種類（AssetDatabase::GetAssetType と同じ。.bin はアセットとして登録されない）
 META_TYPES = {".gltf": "Model", ".glb": "Model", ".png": "Texture", ".jpg": "Texture", ".json": "Json"}
 # GUID はプロジェクトからのパスで決める（.meta を消して作り直しても同じ値になる）
@@ -460,7 +462,7 @@ def main():
 
     os.makedirs(OUT_DIR, exist_ok=True)
     stale = [f for f in os.listdir(OUT_DIR)
-             if f.endswith(".json") and not f.startswith("_") and f[:-5] not in objects]
+             if f.endswith(".json") and not f.startswith("_") and f[:-5] not in objects and f[:-5] not in KEEP_OBJECTS]
     for f in stale:
         os.remove(os.path.join(OUT_DIR, f))
     for name, obj in objects.items():
