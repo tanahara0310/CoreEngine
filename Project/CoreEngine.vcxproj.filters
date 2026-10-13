@@ -385,6 +385,9 @@
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterSurfaceComponent.cpp">
       <Filter>Engine\Src\Graphics\Water\Surface</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterSurfaceMeshGenerator.cpp">
+      <Filter>Engine\Src\Graphics\Water\Surface</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Camera\CameraManager.cpp">
       <Filter>Engine\Src\Camera</Filter>
     </ClCompile>
@@ -2029,6 +2032,9 @@
       <Filter>Engine\Src\Graphics\Water\Surface</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterSurfaceComponent.h">
+      <Filter>Engine\Src\Graphics\Water\Surface</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterSurfaceMeshGenerator.h">
       <Filter>Engine\Src\Graphics\Water\Surface</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterRenderResources.h">

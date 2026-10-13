@@ -155,9 +155,16 @@ namespace CoreEngine
             float regionHalfExtentXZ[2] = { 0.0f, 0.0f }; ///< 水面メッシュのワールド XZ 範囲の半分の大きさ
             float waveGroupPhase[3] = { 0.0f, 0.0f, 0.0f };   ///< 波群エンベロープの位相のずれ [rad]
             float pad2 = 0.0f;
+            // ---- 岸の細かい格子（WaterSurfaceData の同名の値）----
+            uint32_t shoreMeshEnabled = 0;
+            float shoreMeshSize = 0.0f;
+            float shoreMeshOriginXZ[2] = { 0.0f, 0.0f };
+            float shoreMeshCellSize = 0.0f;
+            float shoreMeshBlendWidth = 0.0f;
+            float pad3[2] = { 0.0f, 0.0f };
         };
 
-        static_assert(sizeof(WaterSurfaceConstants) == 16 + 32 * kMaxWaterSurfaceWaveCount + 64,
+        static_assert(sizeof(WaterSurfaceConstants) == 16 + 32 * kMaxWaterSurfaceWaveCount + 96,
             "WaterSurfaceConstants layout mismatch with RTWaterSurfaceCommon.hlsli cbuffer");
 
         static constexpr Cb::Field kWaterSurfaceConstantsFields[] = {
@@ -168,7 +175,10 @@ namespace CoreEngine
             CB_FIELD(WaterSurfaceConstants, regionValid), CB_FIELD(WaterSurfaceConstants, cascadeMeanSquareSlope),
             CB_FIELD(WaterSurfaceConstants, pad1), CB_FIELD(WaterSurfaceConstants, regionCenterXZ),
             CB_FIELD(WaterSurfaceConstants, regionHalfExtentXZ), CB_FIELD(WaterSurfaceConstants, waveGroupPhase),
-            CB_FIELD(WaterSurfaceConstants, pad2),
+            CB_FIELD(WaterSurfaceConstants, pad2), CB_FIELD(WaterSurfaceConstants, shoreMeshEnabled),
+            CB_FIELD(WaterSurfaceConstants, shoreMeshSize), CB_FIELD(WaterSurfaceConstants, shoreMeshOriginXZ),
+            CB_FIELD(WaterSurfaceConstants, shoreMeshCellSize), CB_FIELD(WaterSurfaceConstants, shoreMeshBlendWidth),
+            CB_FIELD(WaterSurfaceConstants, pad3),
         };
         CB_VERIFY_LAYOUT(WaterSurfaceConstants, kWaterSurfaceConstantsFields);
         CB_BIND_HLSL(WaterSurfaceConstants, kWaterSurfaceConstantsFields, "WaterSurfaceData");

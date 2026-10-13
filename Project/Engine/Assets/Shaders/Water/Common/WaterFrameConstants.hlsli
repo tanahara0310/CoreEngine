@@ -85,6 +85,15 @@ cbuffer WaterFrameConstants : register(b5)
     float2 gFoamDriftOffsetXZ;
     // 白波の泡の模様を風の向きに伸ばす軸（風下 × √(1 − 1/伸び率)。WaterFoamSystem::ComputeFoamStretchAxis）
     float2 gFoamStretchAxis;
+
+    // ---- 水面メッシュの粗い格子（岸の細かい格子の端を粗い格子の形へ寄せるのに使う）----
+    float2 gMeshGridOriginXZ; // 粗い格子の XZ の最小の角 [m]
+    float2 gMeshCellSizeXZ;   // 粗い格子の 1 マスの幅 [m]
+
+    // ---- 岸の細かい格子（範囲は海底の高さと同じ。WaterShoreMesh.hlsli）----
+    int gShoreMeshEnabled;        // 1 = 範囲の中を岸の細かい格子で描き、粗い格子は範囲の中を描かない
+    float gShoreMeshBlendWidth;   // 範囲の端から内側へ、粗い格子の形から岸の格子の形へ移す幅 [m]
+    float2 gShoreMeshPad;
 };
 
 #endif // WATER_FRAME_CONSTANTS_INCLUDED

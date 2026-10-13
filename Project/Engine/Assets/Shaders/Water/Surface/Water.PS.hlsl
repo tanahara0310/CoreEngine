@@ -91,10 +91,13 @@ struct WaterPSInput
     float3 bitangent : BINORMAL0;
     float4 clipPosCurrent : POSITION2;
     float4 clipPosPrev : POSITION3;
+    // 1 = 岸の細かい格子の画素（WaterShoreMesh.hlsli）
+    nointerpolation float shoreMeshVertex : TEXCOORD3;
 };
 
 // ===== フレーム定数バッファ（VS と共有・b5 の唯一の宣言）=====
 #include "../Common/WaterFrameConstants.hlsli"
+#include "../Common/WaterShoreMesh.hlsli"
 
 // ===== 責務別の分割 hlsli =====
 // 水柱厚さ（「線を出さない」中核）・体積色・泡（被覆率と見た目）・法線は専用ファイルへ分離している。
@@ -310,6 +313,13 @@ float2 ComputeWaterMotionVector(WaterPSInput input)
 
 WaterPixelOutput main(WaterPSInput input)
 {
+    // 岸の細かい格子の範囲の中は岸の格子が描くので、粗い格子の画素は描かない
+    if (gShoreMeshEnabled != 0 && input.shoreMeshVertex < 0.5f
+        && IsInsideShoreMesh(input.baseWorldXZ, gSeabedOriginXZ, 1.0f / gSeabedInvSize))
+    {
+        discard;
+    }
+
     WaterPixelOutput waterOutput;
     waterOutput.motionVector = float4(ComputeWaterMotionVector(input), 1.0f, 0.0f);
 

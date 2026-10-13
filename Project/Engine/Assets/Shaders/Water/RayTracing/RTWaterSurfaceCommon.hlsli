@@ -12,6 +12,7 @@
 
 #include "../Common/GerstnerWave.hlsli"
 #include "../Common/FFTOceanCascade.hlsli"
+#include "../Common/WaterShoreMesh.hlsli"
 // ピクセルフットプリントの算出（ScreenUVToNDC / ReconstructWorldPosition）
 #include "../../Include/Common/DepthReconstruction.hlsli"
 
@@ -37,6 +38,13 @@ cbuffer WaterSurfaceData : register(b1)
     float2 gSurfaceRegionHalfExtentXZ;
     float3 gSurfaceWaveGroupPhase;         // 波群エンベロープの位相のずれ [rad]
     float gSurfacePad2;
+    // 岸の細かい格子（WaterShoreMesh.hlsli。範囲は海底の高さと同じ）
+    uint gSurfaceShoreMeshEnabled;         // 1 = 範囲の中は岸の格子の三角形で水面を描く
+    float gSurfaceShoreMeshSize;           // 範囲の一辺の長さ [m]
+    float2 gSurfaceShoreMeshOriginXZ;      // 範囲の XZ の最小の角 [m]
+    float gSurfaceShoreMeshCellSize;       // 岸の格子の 1 マスの幅 [m]
+    float gSurfaceShoreMeshBlendWidth;     // 範囲の端から内側へ、粗い格子の形から移す幅 [m]
+    float2 gSurfacePad3;
 };
 
 static const uint kWaterSurfaceModelTypeGerstner = 0;
@@ -247,9 +255,37 @@ float3 SampleMeshVertexDisplacement(Texture2DArray<float4> displacementTex, floa
     return disp * ComputeFFTWaveGroupEnvelope(baseXZ, gSurfaceWaveGroupPhase);
 }
 
+/// @brief 粗い格子（水面メッシュの PlaneMeshGenerator の部分）の XZ の最小の角と 1 マスの幅
+void GetCoarseMeshGrid(out float2 gridOrigin, out float2 cellSize)
+{
+    gridOrigin = gSurfaceRegionCenterXZ - gSurfaceRegionHalfExtentXZ;
+    cellSize = max((2.0f * gSurfaceRegionHalfExtentXZ) / max(gSurfaceMeshSubdivisions, 1.0f), 1.0e-4f.xx);
+}
+
+/// @brief 岸の格子の頂点 1 点の変位（FFTWater.VS の SampleShoreMeshVertexDisplacement と同じ式）
+/// @details 範囲の端ほど、粗い格子の三角形で補間した変位へ寄せる
+float3 SampleShoreMeshVertexDisplacement(Texture2DArray<float4> displacementTex, float2 baseXZ)
+{
+    const float3 fine = SampleMeshVertexDisplacement(displacementTex, baseXZ);
+    const float blend = ComputeShoreMeshBlend(
+        baseXZ, gSurfaceShoreMeshOriginXZ, gSurfaceShoreMeshSize, gSurfaceShoreMeshBlendWidth);
+    if (blend >= 1.0f || gSurfaceRegionValid == 0)
+    {
+        return fine;
+    }
+    float2 gridOrigin;
+    float2 cellSize;
+    GetCoarseMeshGrid(gridOrigin, cellSize);
+    const WaterGridTriangle tri = FindWaterGridTriangle(baseXZ, gridOrigin, cellSize);
+    const float3 coarse = SampleMeshVertexDisplacement(displacementTex, tri.corner0) * tri.weights.x
+        + SampleMeshVertexDisplacement(displacementTex, tri.corner1) * tri.weights.y
+        + SampleMeshVertexDisplacement(displacementTex, tri.corner2) * tri.weights.z;
+    return lerp(coarse, fine, blend);
+}
+
 /// @brief ラスタライザが実際に描く水面の高さ（基準面からのオフセット）を返す
-/// @details 水面メッシュの頂点（PlaneMeshGenerator の格子）でだけ変位を評価し、
-///          ラスタライザと同じ三角形（対角は (0,1)-(1,0)）で補間する
+/// @details 水面メッシュの頂点（WaterSurfaceMeshGenerator の格子）でだけ変位を評価し、
+///          ラスタライザと同じ三角形で補間する。岸の格子の範囲の中は岸の格子、外は粗い格子の三角形
 float EvaluateDrawnSurfaceHeight(Texture2DArray<float4> displacementTex, float2 worldXZ)
 {
     if (!UseFFTOceanSurface())
@@ -265,23 +301,23 @@ float EvaluateDrawnSurfaceHeight(Texture2DArray<float4> displacementTex, float2 
     // 水平変位を 1 回だけ逆にたどって、変位前の格子上の位置を求める
     const float2 baseXZ = worldXZ - SampleMeshVertexDisplacement(displacementTex, worldXZ).xz;
 
-    const float2 gridOrigin = gSurfaceRegionCenterXZ - gSurfaceRegionHalfExtentXZ;
-    const float2 cellSize = max((2.0f * gSurfaceRegionHalfExtentXZ) / max(gSurfaceMeshSubdivisions, 1.0f), 1.0e-4f.xx);
-    const float2 gridCoord = (baseXZ - gridOrigin) / cellSize;
-    const float2 cellIndex = floor(gridCoord);
-    const float2 cellFrac = gridCoord - cellIndex;
-    const float2 cellCorner = gridOrigin + cellIndex * cellSize;
-
-    // 対角上の 2 頂点は両方の三角形で共通なので、評価するのは 3 頂点
-    const float h10 = SampleMeshVertexDisplacement(displacementTex, cellCorner + float2(cellSize.x, 0.0f)).y;
-    const float h01 = SampleMeshVertexDisplacement(displacementTex, cellCorner + float2(0.0f, cellSize.y)).y;
-    if (cellFrac.x + cellFrac.y <= 1.0f)
+    if (gSurfaceShoreMeshEnabled != 0
+        && IsInsideShoreMesh(baseXZ, gSurfaceShoreMeshOriginXZ, gSurfaceShoreMeshSize))
     {
-        const float h00 = SampleMeshVertexDisplacement(displacementTex, cellCorner).y;
-        return h00 + cellFrac.x * (h10 - h00) + cellFrac.y * (h01 - h00);
+        const WaterGridTriangle tri = FindWaterGridTriangle(
+            baseXZ, gSurfaceShoreMeshOriginXZ, gSurfaceShoreMeshCellSize.xx);
+        return SampleShoreMeshVertexDisplacement(displacementTex, tri.corner0).y * tri.weights.x
+            + SampleShoreMeshVertexDisplacement(displacementTex, tri.corner1).y * tri.weights.y
+            + SampleShoreMeshVertexDisplacement(displacementTex, tri.corner2).y * tri.weights.z;
     }
-    const float h11 = SampleMeshVertexDisplacement(displacementTex, cellCorner + cellSize).y;
-    return h11 + (1.0f - cellFrac.x) * (h01 - h11) + (1.0f - cellFrac.y) * (h10 - h11);
+
+    float2 gridOrigin;
+    float2 cellSize;
+    GetCoarseMeshGrid(gridOrigin, cellSize);
+    const WaterGridTriangle tri = FindWaterGridTriangle(baseXZ, gridOrigin, cellSize);
+    return SampleMeshVertexDisplacement(displacementTex, tri.corner0).y * tri.weights.x
+        + SampleMeshVertexDisplacement(displacementTex, tri.corner1).y * tri.weights.y
+        + SampleMeshVertexDisplacement(displacementTex, tri.corner2).y * tri.weights.z;
 }
 
 /// @brief 波面のワールド法線を評価する
