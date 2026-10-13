@@ -31,8 +31,8 @@
         0.016
     ],
     "r.Water.Swell.Direction": [
-        -0.342,
-        0.94
+        0.0,
+        1.0
     ],
     "r.Water.Swell.RelativeWidth": 0.15,
     "version": 1
