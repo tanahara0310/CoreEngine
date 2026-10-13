@@ -309,7 +309,12 @@ namespace CoreEngine
         for (int c = 0; c < 2; ++c) {
             surfaceConstants.regionCenterXZ[c] = surfaceData.regionCenterXZ[c];
             surfaceConstants.regionHalfExtentXZ[c] = surfaceData.regionHalfExtentXZ[c];
+            surfaceConstants.shoreMeshOriginXZ[c] = surfaceData.shoreMeshOriginXZ[c];
         }
+        surfaceConstants.shoreMeshEnabled = surfaceData.shoreMeshEnabled;
+        surfaceConstants.shoreMeshSize = surfaceData.shoreMeshSize;
+        surfaceConstants.shoreMeshCellSize = surfaceData.shoreMeshCellSize;
+        surfaceConstants.shoreMeshBlendWidth = surfaceData.shoreMeshBlendWidth;
         return surfaceConstants;
     }
 

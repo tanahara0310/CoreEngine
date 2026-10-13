@@ -141,14 +141,21 @@ struct WaterFrameConstants {
 	float foamDriftOffsetXZ[2] = { 0.0f, 0.0f };
 	// 白波の泡の模様を風の向きに伸ばす軸（WaterFoamSystem::ComputeFoamStretchAxis）
 	float foamStretchAxis[2] = { 0.0f, 0.0f };
+	// ---- 水面メッシュの粗い格子（岸の細かい格子の端を粗い格子の形へ寄せるのに使う）----
+	float meshGridOriginXZ[2] = { 0.0f, 0.0f }; // 粗い格子の XZ の最小の角 [m]
+	float meshCellSizeXZ[2] = { 1.0f, 1.0f };   // 粗い格子の 1 マスの幅 [m]
+	// ---- 岸の細かい格子（範囲は海底の高さと同じ）----
+	int shoreMeshEnabled = 0;            // 1 = 範囲の中を岸の細かい格子で描き、粗い格子は範囲の中を描かない
+	float shoreMeshBlendWidth = 1.0f;    // 範囲の端から内側へ、粗い格子の形から岸の格子の形へ移す幅 [m]
+	float shoreMeshPad[2] = { 0.0f, 0.0f };
 };
 
-// 全 35 フィールドのオフセットを HLSL packing 規則から機械的に導出して検証する。
+// 全 40 フィールドのオフセットを HLSL packing 規則から機械的に導出して検証する。
 // ずれると水柱厚さ・光学係数が別のフィールドを読み、波打ち際の段差として現れる
 // （RTシャドウの cbuffer 配列ずれ事故と同型）。
 // 以前はここに「absorptionCoeff は 16B 境界」「cameraNearZ は 80」といった個別 assert を
 // 人手で並べていたが、下の表が全フィールドを検査するので不要になった。
-static_assert(sizeof(WaterFrameConstants) == 192, "WaterFrameConstants size mismatch with HLSL cbuffer");
+static_assert(sizeof(WaterFrameConstants) == 224, "WaterFrameConstants size mismatch with HLSL cbuffer");
 static constexpr Cb::Field kWaterFrameConstantsFields[] = {
     CB_FIELD(WaterFrameConstants, reflectionEnabled), CB_FIELD(WaterFrameConstants, fresnelReflectanceScale),
     CB_FIELD(WaterFrameConstants, fresnelBaseReflectance), CB_FIELD(WaterFrameConstants, depthFadeEnabled),
@@ -170,6 +177,9 @@ static constexpr Cb::Field kWaterFrameConstantsFields[] = {
     CB_FIELD(WaterFrameConstants, seabedEnabled),
     CB_FIELD(WaterFrameConstants, shoreFoamEnabled), CB_FIELD(WaterFrameConstants, waveGroupPhase),
     CB_FIELD(WaterFrameConstants, foamDriftOffsetXZ), CB_FIELD(WaterFrameConstants, foamStretchAxis),
+    CB_FIELD(WaterFrameConstants, meshGridOriginXZ), CB_FIELD(WaterFrameConstants, meshCellSizeXZ),
+    CB_FIELD(WaterFrameConstants, shoreMeshEnabled), CB_FIELD(WaterFrameConstants, shoreMeshBlendWidth),
+    CB_FIELD(WaterFrameConstants, shoreMeshPad),
 };
 CB_VERIFY_LAYOUT(WaterFrameConstants, kWaterFrameConstantsFields);
 CB_BIND_HLSL(WaterFrameConstants, kWaterFrameConstantsFields, "WaterFrameConstants");

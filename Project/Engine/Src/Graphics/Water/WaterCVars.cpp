@@ -107,6 +107,10 @@ namespace CoreEngine
         CVar<float> SwellSpread{ "r.Water.Swell.Spread", 24.0f,
             "うねりの指向の鋭さ s（大きいほど一方向に揃う）", CVarRange{ 1.0f, 60.0f } };
 
+        // ---- 岸 ----
+        CVar<bool> ShoreFineMesh{ "r.Water.Shore.FineMesh", true,
+            "カメラの周りの範囲（海底の高さを測る範囲）を細かい格子で描く（FFTOcean 専用）" };
+
         // ---- コースティクス ----
         CVar<int> CausticsBackend{ "r.Water.Caustics.Backend", 0,
             "生成方式（0: レイトレーシング / 1: スクリーンスペース。SS は Gerstner 専用）",

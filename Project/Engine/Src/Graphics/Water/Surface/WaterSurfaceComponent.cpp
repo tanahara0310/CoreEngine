@@ -4,11 +4,11 @@
 
 #include "GameObject/GameObject.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
-#include "Graphics/Primitive/PlaneMeshGenerator.h"
 #include "Graphics/Material/MaterialInstance.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
 #include "Graphics/Water/Surface/WaterShaderResourceBinder.h"
+#include "Graphics/Water/Surface/WaterSurfaceMeshGenerator.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/Logger/Logger.h"
@@ -163,6 +163,19 @@ namespace CoreEngine
         frameCB_.seabedOriginXZ[1] = binding.seabedOriginXZ[1];
         frameCB_.seabedInvSize = (binding.seabedSize > 0.0f) ? 1.0f / binding.seabedSize : 0.0f;
         frameCB_.shoreFoamEnabled = (frameCB_.seabedEnabled != 0 && renderResources_.HasShoreFoam()) ? 1 : 0;
+
+        // 粗い格子のワールドの範囲（回転は扱わない）と、岸の細かい格子
+        const WorldTransform& transform = GetTransform();
+        const Vector3 translate = transform.GetTranslate();
+        const Vector3 scale = transform.GetScale();
+        const float cells = static_cast<float>((std::max)(resolution_, 1u));
+        frameCB_.meshCellSizeXZ[0] = size_ * scale.x / cells;
+        frameCB_.meshCellSizeXZ[1] = size_ * scale.z / cells;
+        frameCB_.meshGridOriginXZ[0] = translate.x - 0.5f * size_ * scale.x;
+        frameCB_.meshGridOriginXZ[1] = translate.z - 0.5f * size_ * scale.z;
+        frameCB_.shoreMeshEnabled = (binding.shoreMeshEnabled && frameCB_.seabedEnabled != 0) ? 1 : 0;
+        frameCB_.shoreMeshBlendWidth = (std::max)(frameCB_.meshCellSizeXZ[0], frameCB_.meshCellSizeXZ[1]);
+
         frameCB_.skyAmbientScale = binding.skyAmbientScale;
         for (int c = 0; c < 3; ++c) {
             frameCB_.fftCascadeMeanSquareSlope[c] = binding.fftCascadeMeanSquareSlope[c];
@@ -302,7 +315,6 @@ namespace CoreEngine
     }
 
     std::unique_ptr<IPrimitiveMeshGenerator> WaterSurfaceComponent::CreateMeshGenerator() const {
-        return std::make_unique<PlaneMeshGenerator>(
-            size_, size_, resolution_, resolution_);
+        return std::make_unique<WaterSurfaceMeshGenerator>(size_, resolution_);
     }
 }

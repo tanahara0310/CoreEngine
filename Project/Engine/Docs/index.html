@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.8.0">
+<meta name="engine-version" content="0.9.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -7344,6 +7344,14 @@ python Tools/OkinawaBeach/bake_player_walk.py
 
   <h2 id="changelog-history">更新履歴</h2>
 
+  <h3 id="changelog-v0-9-0">v0.9.0 <span class="dim">（2026-10-13）</span></h3>
+  <p>岸辺の波打ちを作る準備として、カメラの周りの水面を細かい格子で描くようにした版です（<a href="#api-WaterSurface">水面</a>）。見た目はほぼ変わりません。</p>
+  <ul>
+    <li><strong>岸の細かい格子</strong>：FFT の海のとき、カメラの周り 256m 四方（海底の高さを測る範囲と同じ）を 0.5m 間隔の格子で描きます。遠くは今までどおり、水面の「分割数」の粗い格子で描きます。範囲の端では細かい格子の形を粗い格子の形へ寄せるので、境目に段差は出ません。</li>
+    <li><strong>レイトレーシングも同じ格子で</strong>：映り込み・屈折・コースティクス・海底の高さを測るレイが使う水面の形も、範囲の中は細かい格子の三角形で求めます。</li>
+    <li>CVar <code>r.Water.Shore.FineMesh</code>（既定オン）で切ると、水面全体を粗い格子だけで描きます。</li>
+  </ul>
+
   <h3 id="changelog-v0-8-0">v0.8.0 <span class="dim">（2026-10-13）</span></h3>
   <p>Sandbox の沖縄の海辺のシーンに、操作できる人型を足した版です（<a href="#tutorial-beach-player">沖縄の海辺をプレイヤーで歩く</a>）。</p>
   <ul>
@@ -10046,12 +10054,12 @@ void LateUpdate()   // 追いかける相手が動いた後に動かす
     requires: "トランスフォーム・メッシュ描画（自動で足します）、シーンの機能 <code>WaterRender</code>",
     props: [
       ["一辺の長さ", "size", "float", "50", "水面の大きさ（m）。シーンを読み込むときに効きます。"],
-      ["分割数", "resolution", "int", "64", "細かさ。シーンを読み込むときに効きます。"],
+      ["分割数", "resolution", "int", "64", "水面全体を覆う格子の細かさ。シーンを読み込むときに効きます。カメラの周りは別の細かい格子で描きます（下の注意）。"],
       ["FFT の海を使う", "useFFTOcean", "bool", "オフ", "外洋のうねりで波を作る。"],
       ["UV の流れる速さ", "scrollSpeed", "Vector2", "(0.03, 0.01)", ""],
       ["UV の繰り返し", "uvTiling", "Vector2", "(4, 4)", ""]
     ],
-    notes: "<ul><li>水面を使うシーンは、<span class=\"path\">_scene.json</span> に <code>\"features\": [\"WaterRender\"]</code> を書き足す必要があります（エディタに追加の画面はありません。サンプル Sandbox の WaterTestScene を参照）。</li><li>この機能が動いている間、「FFT の海を使う」「UV の流れる速さ」「UV の繰り返し」は CVar（<code>r.Water.*</code>）の値で毎フレーム上書きされます。</li></ul>",
+    notes: "<ul><li>水面を使うシーンは、<span class=\"path\">_scene.json</span> に <code>\"features\": [\"WaterRender\"]</code> を書き足す必要があります（エディタに追加の画面はありません。サンプル Sandbox の WaterTestScene を参照）。</li><li>この機能が動いている間、「FFT の海を使う」「UV の流れる速さ」「UV の繰り返し」は CVar（<code>r.Water.*</code>）の値で毎フレーム上書きされます。</li><li>FFT の海でレイトレーシングが使えるときは、ゲームのカメラの周り 256m 四方（海底の高さを測る範囲）を 0.5m 間隔の細かい格子で描き、その外を「分割数」の格子で描きます。範囲はカメラと一緒に 0.5m 単位で動きます。CVar <code>r.Water.Shore.FineMesh</code> で切れます。</li></ul>",
     see: [["file-formats", "_scene.json の書き方"]]
   },
 

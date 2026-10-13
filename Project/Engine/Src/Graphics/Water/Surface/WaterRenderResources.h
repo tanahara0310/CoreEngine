@@ -111,5 +111,8 @@ namespace CoreEngine
 
         /// @brief 海底の高さを測った範囲の一辺の長さ [m]（0 なら範囲なし）
         float seabedSize = 0.0f;
+
+        /// @brief 海底の高さの範囲を岸の細かい格子で描くか
+        bool shoreMeshEnabled = false;
     };
 }

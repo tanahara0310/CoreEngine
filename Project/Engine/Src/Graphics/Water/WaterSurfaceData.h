@@ -34,6 +34,14 @@ namespace CoreEngine
         // （波打ち際バグ⑨）、その格子の再現に使う。以前はシェーダー側に 256 が
         // ハードコードされ、シーン側のメッシュ変更で静かに壊れる構造だった。
         float meshSubdivisions = 256.0f;
+
+        // 岸の細かい格子（WaterSurfaceMeshGenerator）。範囲は海底の高さと同じで、
+        // 範囲の中はこの格子の三角形で、範囲の外は粗い格子の三角形で水面を描く
+        uint32_t shoreMeshEnabled = 0;
+        float shoreMeshOriginXZ[2] = { 0.0f, 0.0f }; ///< 範囲の XZ の最小の角 [m]
+        float shoreMeshSize = 0.0f;                  ///< 範囲の一辺の長さ [m]
+        float shoreMeshCellSize = 0.0f;              ///< 1 マスの幅 [m]
+        float shoreMeshBlendWidth = 0.0f;            ///< 範囲の端から内側へ、粗い格子の形から移す幅 [m]
     };
 
     /// @brief 水の光学特性（屈折率・吸収・散乱）

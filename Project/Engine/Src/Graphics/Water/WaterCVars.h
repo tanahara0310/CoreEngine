@@ -50,6 +50,9 @@ namespace CoreEngine
         extern CVar<float>   SwellRelativeWidth;
         extern CVar<float>   SwellSpread;
 
+        // ---- 岸 ----
+        extern CVar<bool>    ShoreFineMesh;
+
         // ---- コースティクス（RT / SS 共通の見た目パラメータ）----
         extern CVar<int>     CausticsBackend; // 0=RT / 1=ScreenSpace（コンボは水面パネル。NoUI）
         extern CVar<float>   CausticsIntensity;

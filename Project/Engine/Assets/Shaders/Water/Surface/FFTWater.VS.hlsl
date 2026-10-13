@@ -12,6 +12,7 @@ SamplerState gSampler : register(s0);
 
 // 波群エンベロープの位相（gWaveGroupPhase）を読む。レイアウトは Water.PS.hlsl と同じ。
 #include "../Common/WaterFrameConstants.hlsli"
+#include "../Common/WaterShoreMesh.hlsli"
 
 struct FFTWaterVSOutput
 {
@@ -33,27 +34,22 @@ struct FFTWaterVSOutput
     float3 bitangent : BINORMAL0;
     float4 clipPosCurrent : POSITION2;
     float4 clipPosPrev : POSITION3;
+    // 1 = 岸の細かい格子の頂点（Water.PS は粗い格子の範囲の中の画素を描かない）
+    nointerpolation float shoreMeshVertex : TEXCOORD3;
 };
 
-FFTWaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
+/// @brief 頂点の変位（ジオメトリ用のカスケード＋波群エンベロープ）
+/// @details 各カスケードを「ワールドXZ / パッチ長」でサンプルして合算する。
+///          FFTOceanFinalize.CS はワールド軸（+X=texU, +Z=texV, Y=up）でエンコードするため、
+///          ワールドXZをそのまま UV にすれば法線マップとも軸・スケールが一致する。
+float3 SampleVertexDisplacement(float2 baseXZ)
 {
-    TransformationMatrix mtx = gInstanceData[instanceID];
-
-    float4 worldPos4 = mul(input.position, mtx.World);
-    float3 baseWorldPos = worldPos4.xyz;
-
-    // 各カスケードを「ワールドXZ / パッチ長」でサンプルして合算する。
-    // メッシュのスケール・UVタイリングには一切依存しない（旧 frac(uvLocal*scaleUV) の
-    // 単一タイル反復＝格子状の繰り返しを廃止）。WRAP サンプラで各カスケードのワールド
-    // タイルを繰り返すが、パッチ長が非整数比なので合算結果は視界内で反復しない。
-    // FFTOceanFinalize.CS はワールド軸（+X=texU, +Z=texV, Y=up）でエンコードするため、
-    // ワールドXZをそのまま UV にすれば法線マップとも軸・スケールが一致する。
     float3 displacement = float3(0.0f, 0.0f, 0.0f);
     [unroll]
     for (int ci = 0; ci < kFFTGeometryCascadeCount; ++ci)
     {
         // ワールドXZ を回転格子系へ（uv = R(θ)·p / patch）
-        float2 cuv = ComputeFFTCascadeUV(baseWorldPos.xz, ci);
+        float2 cuv = ComputeFFTCascadeUV(baseXZ, ci);
         float3 d = gFFTOceanDisplacement.SampleLevel(gSampler, float3(cuv, (float)ci), 0.0f).xyz;
         // テクスチャ格子系の水平変位 (d.x, d.z) をワールドへ逆回転（高さ d.y はそのまま）
         float2 horizontal = RotateFromFFTCascadeGrid(float2(d.x, d.z), ci);
@@ -61,7 +57,56 @@ FFTWaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     }
 
     // 波群エンベロープでタイル周期を崩す（PS の法線・RT の波面評価と同一の変調）
-    displacement *= ComputeFFTWaveGroupEnvelope(baseWorldPos.xz, gWaveGroupPhase);
+    return displacement * ComputeFFTWaveGroupEnvelope(baseXZ, gWaveGroupPhase);
+}
+
+/// @brief 岸の格子の頂点の変位（範囲の端ほど、粗い格子の三角形で補間した変位へ寄せる）
+/// @details RTWaterSurfaceCommon.hlsli の SampleShoreMeshVertexDisplacement と同じ式
+float3 SampleShoreMeshVertexDisplacement(float2 baseXZ)
+{
+    const float3 fine = SampleVertexDisplacement(baseXZ);
+    const float blend = ComputeShoreMeshBlend(baseXZ, gSeabedOriginXZ, 1.0f / gSeabedInvSize, gShoreMeshBlendWidth);
+    if (blend >= 1.0f)
+    {
+        return fine;
+    }
+    const WaterGridTriangle tri = FindWaterGridTriangle(baseXZ, gMeshGridOriginXZ, gMeshCellSizeXZ);
+    const float3 coarse = SampleVertexDisplacement(tri.corner0) * tri.weights.x
+        + SampleVertexDisplacement(tri.corner1) * tri.weights.y
+        + SampleVertexDisplacement(tri.corner2) * tri.weights.z;
+    return lerp(coarse, fine, blend);
+}
+
+FFTWaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
+{
+    TransformationMatrix mtx = gInstanceData[instanceID];
+    float3x3 invWorld3 = transpose((float3x3)mtx.WorldInversTranspose);
+
+    // 岸の格子の頂点は、範囲の中の位置を静止水面の高さへ置く（範囲が無いときは描かない）
+    const bool shoreMeshVertex = IsShoreMeshVertex(input.animData);
+    float4 localPosition = input.position;
+    float3 baseWorldPos;
+    if (shoreMeshVertex)
+    {
+        if (gShoreMeshEnabled == 0)
+        {
+            FFTWaterVSOutput culled = (FFTWaterVSOutput)0;
+            culled.position = float4(0.0f, 0.0f, -1.0f, 1.0f);
+            return culled;
+        }
+        const float3 meshOrigin = mul(float4(0.0f, 0.0f, 0.0f, 1.0f), mtx.World).xyz;
+        const float2 baseXZ = gSeabedOriginXZ + input.animData.xy / gSeabedInvSize;
+        baseWorldPos = float3(baseXZ.x, meshOrigin.y, baseXZ.y);
+        localPosition = float4(mul(baseWorldPos - meshOrigin, invWorld3), 1.0f);
+    }
+    else
+    {
+        baseWorldPos = mul(input.position, mtx.World).xyz;
+    }
+
+    float3 displacement = shoreMeshVertex
+        ? SampleShoreMeshVertexDisplacement(baseWorldPos.xz)
+        : SampleVertexDisplacement(baseWorldPos.xz);
 
     float3 worldPos = baseWorldPos + displacement;
 
@@ -82,8 +127,7 @@ FFTWaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     // 波群エンベロープ適用後の鉛直変位＝静止水面からの高さ
     output.waveHeight = displacement.y;
 
-    float4 baseClip = mul(input.position, mtx.WVP);
-    float3x3 invWorld3 = transpose((float3x3)mtx.WorldInversTranspose);
+    float4 baseClip = mul(localPosition, mtx.WVP);
     float3 offsetLS = mul(displacement, invWorld3);
     float4 offsetClip = mul(float4(offsetLS, 0.0f), mtx.WVP);
     output.position = baseClip + offsetClip;
@@ -100,8 +144,9 @@ FFTWaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     // ここでは現フレームの変位を流用している（前フレームの変位テクスチャは保持していない）。
     // カメラ運動は厳密に正しくなり、残るのは波自身の 1 フレーム分の動き（軌道速度 ~1m/s ＝
     // 16ms で 0.02m）だけで、これはサブピクセルなので無視できる。
-    float4 basePrevClip = mul(input.position, mtx.PrevWVP);
+    float4 basePrevClip = mul(localPosition, mtx.PrevWVP);
     float4 offsetPrevClip = mul(float4(offsetLS, 0.0f), mtx.PrevWVP);
     output.clipPosPrev = basePrevClip + offsetPrevClip;
+    output.shoreMeshVertex = shoreMeshVertex ? 1.0f : 0.0f;
     return output;
 }

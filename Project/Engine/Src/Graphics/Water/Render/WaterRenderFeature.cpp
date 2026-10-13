@@ -29,6 +29,7 @@
 #include "Graphics/Water/Simulation/FFTOceanSurfaceSimulator.h"
 #include "Graphics/Water/Simulation/GerstnerWaterSimulator.h"
 #include "Graphics/Water/Surface/WaterSurfaceComponent.h"
+#include "Graphics/Water/Surface/WaterSurfaceMeshGenerator.h"
 #include "Scene/Feature/SceneFeatureRegistry.h"
 #ifdef CORE_EDITOR
 #include "Editor/Water/WaterEditorPanel.h"
@@ -45,6 +46,10 @@ namespace CoreEngine
 
         /// @brief 診断ログの出力間隔（フレーム）
         constexpr uint32_t kDiagnosticsLogInterval = 120u;
+
+        static_assert(WaterSeabedRayTracingManager::kResolution * WaterSeabedRayTracingManager::kTexelSize
+                == WaterSurfaceMeshGenerator::kShoreSubdivisions * WaterSeabedRayTracingManager::kWindowSnapMeters,
+            "岸の細かい格子の 1 マスは、海底の範囲の角を揃える格子の幅と同じ");
     }
 
     WaterRenderFeature::WaterRenderFeature(const Config& config)
@@ -197,6 +202,16 @@ namespace CoreEngine
 
             const WaterFrameBinding binding = BuildFrameBinding(ctx, *domain);
             waterPlane->ApplyFrameBinding(binding);
+
+            // レイトレの水面も、ラスタと同じ岸の細かい格子で描く
+            const WaterFrameConstants& frameConstants = waterPlane->GetFrameConstants();
+            waterSurfaceState_.shoreMeshEnabled = frameConstants.shoreMeshEnabled != 0 ? 1u : 0u;
+            waterSurfaceState_.shoreMeshOriginXZ[0] = frameConstants.seabedOriginXZ[0];
+            waterSurfaceState_.shoreMeshOriginXZ[1] = frameConstants.seabedOriginXZ[1];
+            waterSurfaceState_.shoreMeshSize = binding.seabedSize;
+            waterSurfaceState_.shoreMeshCellSize =
+                binding.seabedSize / static_cast<float>(WaterSurfaceMeshGenerator::kShoreSubdivisions);
+            waterSurfaceState_.shoreMeshBlendWidth = frameConstants.shoreMeshBlendWidth;
             LogFrameDiagnostics(binding);
             break;
         }
@@ -393,6 +408,12 @@ namespace CoreEngine
                 binding.seabedOriginXZ[0] = window.originX;
                 binding.seabedOriginXZ[1] = window.originZ;
                 binding.seabedSize = window.size;
+
+                // 同じ範囲を岸の細かい格子で描く
+                const WaterSurfaceComponent* const waterPlane = waterPlane_.Get();
+                binding.shoreMeshEnabled = binding.resources.seabedHeightSRV.ptr != 0
+                    && waterPlane && waterPlane->IsUsingFFTOcean()
+                    && WaterCVars::ShoreFineMesh.Get();
 
                 // 岸の泡。同じフレームの WaterShoreFoamPass が同じ範囲で書く側
                 if (const WaterFoamSystem* foam = domain.GetWaterFoamSystem(); foam && foam->IsShoreActive()) {

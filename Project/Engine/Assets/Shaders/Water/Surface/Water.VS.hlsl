@@ -17,6 +17,7 @@ cbuffer WaterConstants : register(b4)
 // ===== フレーム定数バッファ =====
 // VS では実際には使用しないが、PS（Water.PS.hlsl）と同一レイアウトを保つために宣言する。
 #include "../Common/WaterFrameConstants.hlsli"
+#include "../Common/WaterShoreMesh.hlsli"
 
 // ===== 水面専用出力構造体 =====
 struct WaterVSOutput
@@ -35,11 +36,21 @@ struct WaterVSOutput
     float3 bitangent        : BINORMAL0;
     float4 clipPosCurrent   : POSITION2;
     float4 clipPosPrev      : POSITION3;
+    // PS の入力レイアウトを FFTWater.VS と揃える（Gerstner 経路は粗い格子だけを描くので常に 0）
+    nointerpolation float shoreMeshVertex : TEXCOORD3;
 };
 
 WaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
 {
     TransformationMatrix mtx = gInstanceData[instanceID];
+
+    // 岸の細かい格子は FFT 経路だけが描く
+    if (IsShoreMeshVertex(input.animData))
+    {
+        WaterVSOutput culled = (WaterVSOutput)0;
+        culled.position = float4(0.0f, 0.0f, -1.0f, 1.0f);
+        return culled;
+    }
 
     // ---- 1. ワールド変換 ----
     float4 worldPos4 = mul(input.position, mtx.World);
@@ -99,6 +110,7 @@ WaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     float4 basePrevClip = mul(input.position, mtx.PrevWVP);
     float4 offsetPrevClip = mul(float4(offsetLS, 0.0f), mtx.PrevWVP);
     output.clipPosPrev = basePrevClip + offsetPrevClip;
+    output.shoreMeshVertex = 0.0f;
 
     return output;
 }
