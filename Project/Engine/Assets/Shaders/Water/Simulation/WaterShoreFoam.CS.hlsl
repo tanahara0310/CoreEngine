@@ -3,11 +3,13 @@
 // ============================================================
 
 #include "../Common/FFTOceanCascade.hlsli"
+#include "../Common/WaterShoreWave.hlsli"
 
 Texture2D<float> gSeabedHeight : register(t0);
 Texture2DArray<float4> gFFTOceanDisplacement : register(t1);
 Texture2D<float4> gShoreFoamPrev : register(t2);
 Texture2D<float2> gSwashDisplacement : register(t3);
+Texture2D<float4> gShoreWaveField : register(t4);
 RWTexture2D<float4> gShoreFoamOutput : register(u0);
 SamplerState gLinearClamp : register(s0);
 SamplerState gLinearWrap : register(s1);
@@ -26,6 +28,14 @@ cbuffer WaterShoreFoamConstants : register(b0)
     float gShoreFoamPad;
     float3 gWaveGroupPhase;     // 波群エンベロープの位相のずれ [rad]
     float gShoreFoamPad2;
+    uint gShoreWaveEnabled;             // 1 = 岸の波の砕けを泡にする（gShoreWaveField を読む）
+    float gShoreWaveAngularFrequency;   // 岸の波の ω [rad/s]
+    float gShoreWavePhaseTime;          // 岸の波の時刻 [s]
+    float gShoreWaveHeight;             // 沖での岸の波の波高 [m]
+    float gShoreWaveStartDepth;         // 岸の波が来始める水深 [m]
+    float gShoreWaveHeightVariation;    // 岸の波の 1 本ごとの波高のばらつき
+    float gShoreWaveEdgeMargin;         // 範囲の端から内側へ、岸の波を 0 から満量へ移す幅 [m]
+    float gShoreFoamPad3;
 };
 
 /// @brief 波が砕ける波高と静水深の比（H / h）
@@ -38,6 +48,12 @@ static const float kSwashStillDepth = 0.05f;
 static const float kWetDepth = 0.01f;
 /// @brief 砕けた所の泡の被覆率
 static const float kShoreFoamStrength = 0.9f;
+/// @brief 岸の波が砕けている峰の前の面で泡を足す幅（1 周期に対する割合）
+static const float kShoreWaveFaceBand = 0.12f;
+/// @brief 岸の波が砕けている峰の後ろで泡を足す幅（1 周期に対する割合）
+static const float kShoreWaveCrestBand = 0.18f;
+/// @brief 岸の波の砕けで足す泡の被覆率の上限
+static const float kShoreWaveFoamStrength = 1.0f;
 
 /// @brief 水面の上下（静水面からの高さ）[m]。水面メッシュの頂点と同じ式
 float SampleWaveElevation(float2 worldXZ)
@@ -64,12 +80,28 @@ float2 SampleSwashDisplacement(float2 restXZ)
     return gSwashDisplacement.SampleLevel(gLinearClamp, (restXZ - gWindowOriginXZ) / gWindowSize, 0.0f);
 }
 
-/// @brief 今の位置で波が砕けている度合い [0,1]
+/// @brief b0 の岸の波の設定（場の範囲は泡の格子と同じ）
+ShoreWaveParams GetFoamShoreWaveParams()
+{
+    ShoreWaveParams p;
+    p.enabled = gShoreWaveEnabled != 0;
+    p.originXZ = gWindowOriginXZ;
+    p.size = gWindowSize;
+    p.edgeMargin = gShoreWaveEdgeMargin;
+    p.angularFrequency = gShoreWaveAngularFrequency;
+    p.height = gShoreWaveHeight;
+    p.startDepth = gShoreWaveStartDepth;
+    p.heightVariation = gShoreWaveHeightVariation;
+    return p;
+}
+
+/// @brief 今の位置で FFT の波が砕けている度合い [0,1]
 /// @details 波高（水面の上がりの 2 倍）が静水深の kBreakingIndex 倍を超えると砕ける。
 ///          静水深がごく浅い所と静水面より上は、水が来ていれば遡上の泡にする
-float ComputeBreaking(float2 worldXZ)
+/// @param fftScale 浅い所で FFT の波を弱める倍率（岸の波が受け持つ分）
+float ComputeBreaking(float2 worldXZ, float fftScale)
 {
-    const float elevation = SampleWaveElevation(worldXZ);
+    const float elevation = SampleWaveElevation(worldXZ) * fftScale;
     const float stillDepth = gWaterRestHeight - SampleSeabedHeight(worldXZ);
     if (stillDepth + elevation <= kWetDepth)
     {
@@ -80,6 +112,19 @@ float ComputeBreaking(float2 worldXZ)
         return 1.0f;
     }
     return saturate((2.0f * elevation / stillDepth - kBreakingIndex) / kBreakingRamp);
+}
+
+/// @brief 岸の波が砕けている峰の上と前の面に足す泡の被覆率 [0,1]
+/// @details 峰の前の面（位相が 1 の手前）と峰の後ろ（位相が 0 の直後）で、砕けている度合いに応じて足す
+float ComputeShoreWaveFoam(ShoreWaveResult shore)
+{
+    if (shore.breaking <= 0.0f)
+    {
+        return 0.0f;
+    }
+    const float face = 1.0f - saturate((1.0f - shore.phase) / kShoreWaveFaceBand);
+    const float crest = 1.0f - saturate(shore.phase / kShoreWaveCrestBand);
+    return kShoreWaveFoamStrength * shore.breaking * max(face, crest * crest);
 }
 
 /// @brief 水の粒の静止位置（寄せ・引きでずれる前の位置）ごとに泡を 1 フレーム進める
@@ -95,7 +140,18 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 
     const float2 restXZ = gWindowOriginXZ + (float2(dispatchThreadId.xy) + 0.5f) * gTexelSize;
     const float2 swash = SampleSwashDisplacement(restXZ);
-    const float breaking = ComputeBreaking(restXZ + swash);
+
+    // 岸の波（砕けている峰で泡を足し、浅い所では FFT の波を弱める）
+    float shoreWaveFoam = 0.0f;
+    float fftScale = 1.0f;
+    if (gShoreWaveEnabled != 0)
+    {
+        const ShoreWaveResult shore =
+            EvaluateShoreWave(gShoreWaveField, GetFoamShoreWaveParams(), restXZ, gShoreWavePhaseTime);
+        shoreWaveFoam = ComputeShoreWaveFoam(shore);
+        fftScale = shore.fftScale;
+    }
+    const float breaking = ComputeBreaking(restXZ + swash, fftScale);
 
     // 同じ静止位置の前のフレームの泡（範囲の角はテクセルの格子に揃っている）
     float previous = 0.0f;
@@ -109,6 +165,6 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     }
 
     const float decay = exp(-gDeltaSeconds / max(gDecaySeconds, 1.0e-3f));
-    const float foam = max(previous * decay, breaking * kShoreFoamStrength);
+    const float foam = max(previous * decay, max(breaking * kShoreFoamStrength, shoreWaveFoam));
     gShoreFoamOutput[dispatchThreadId.xy] = float4(foam, swash, 0.0f);
 }

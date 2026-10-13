@@ -45,7 +45,9 @@ static const uint kSprayMaxClustersPerCell = 2u;
 /// @brief 1 マスから 1 フレームに出す霧の数の上限
 static const uint kSprayMaxMistPerCell = 2u;
 /// @brief 砕けた波高に対する、しぶきが上がる高さの割合
-static const float kSprayLiftScale = 1.2f;
+static const float kSprayLiftScale = 1.0f;
+/// @brief しぶきを出し始める、砕けている度合い
+static const float kSprayBreakingStart = 0.5f;
 /// @brief 塊の中の粒の速さのばらつき（塊の速さに対する割合）
 static const float kSprayClusterVelocitySpread = 0.12f;
 static const float kSprayGravity = 9.81f;
@@ -87,8 +89,9 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         ? exp(-signedPhase / kSprayCrestBand)
         : exp(signedPhase / kSprayFaceBand);
 
-    // 出す数は砕けている度合い・波高・峰からの近さに比例する
-    const float strength = shore.breaking * shore.height * band;
+    // 出す数は砕けている度合い（kSprayBreakingStart から上）・波高・峰からの近さに比例する
+    const float strength = saturate((shore.breaking - kSprayBreakingStart) / (1.0f - kSprayBreakingStart))
+        * shore.height * band;
     const float scale = gSprayAmount * strength * gEmitCellSize * gEmitCellSize * gEmitDeltaTime;
     const uint clusterCount = min((uint)floor(scale * kSprayClusterRate + SprayRandom(rng)), kSprayMaxClustersPerCell);
     const uint mistCount = min((uint)floor(scale * kSprayMistRate + SprayRandom(rng)), kSprayMaxMistPerCell);

@@ -5,6 +5,7 @@
 #include "Graphics/Water/FFTOceanManager.h"
 #include "Graphics/Water/Foam/WaterFoamSystem.h"
 #include "Graphics/Water/RayTracing/WaterSeabedRayTracingManager.h"
+#include "Graphics/Water/Shore/WaterShoreWaveSystem.h"
 #include "Graphics/Water/WaterSurfaceData.h"
 
 namespace CoreEngine
@@ -12,12 +13,16 @@ namespace CoreEngine
     static_assert(WaterFoamSystem::kShoreResolution * WaterFoamSystem::kShoreTexelSize
             == WaterSeabedRayTracingManager::kResolution * WaterSeabedRayTracingManager::kTexelSize,
         "岸の泡の格子は海底の高さと同じ範囲を覆う");
-    static_assert(WaterSeabedRayTracingManager::kWindowSnapMeters == WaterFoamSystem::kShoreTexelSize,
+    static_assert(WaterSeabedRayTracingManager::kWindowSnapMeters
+            == WaterFoamSystem::kShoreTexelSize
+                * static_cast<int>(WaterSeabedRayTracingManager::kWindowSnapMeters / WaterFoamSystem::kShoreTexelSize),
         "範囲の角は岸の泡の格子に揃う");
 
     void WaterShoreFoamPass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
     {
         builder.Read(FrameBlackboard::RTWaterSeabedHeight, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        builder.Read(FrameBlackboard::WaterShoreWave,
+            D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         builder.Write(FrameBlackboard::WaterShoreFoam, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     }
 
@@ -55,6 +60,18 @@ namespace CoreEngine
         const std::array<float, 3> waveGroupPhase = fftOcean->ComputeWaveGroupPhase(context.fftOceanSimulationTime);
         for (size_t i = 0; i < waveGroupPhase.size(); ++i) {
             input.waveGroupPhase[i] = waveGroupPhase[i];
+        }
+        // 岸の波が砕けている所を泡にする（場は同じフレームの WaterShoreWavePass が作る）
+        const WaterSurfaceData& surface = *context.waterSurfaceState;
+        const WaterShoreWaveSystem* shoreWave = context.waterShoreWaveSystem;
+        if (surface.shoreWaveEnabled != 0 && shoreWave && shoreWave->IsActive() && shoreWave->HasField()) {
+            input.shoreWaveFieldSRV = shoreWave->GetFieldSRVHandle();
+            input.shoreWaveAngularFrequency = surface.shoreWaveAngularFrequency;
+            input.shoreWavePhaseTime = surface.shoreWavePhaseTime;
+            input.shoreWaveHeight = surface.shoreWaveHeight;
+            input.shoreWaveStartDepth = surface.shoreWaveStartDepth;
+            input.shoreWaveHeightVariation = surface.shoreWaveHeightVariation;
+            input.shoreWaveEdgeMargin = surface.shoreWaveEdgeMargin;
         }
         foam->DispatchShore(context.cmdList, input);
 

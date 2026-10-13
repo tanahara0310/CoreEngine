@@ -43,6 +43,14 @@ namespace CoreEngine
             uint32_t spectrumRevision = 0;                 ///< FFT のスペクトルの版。変わったフレームは泡を捨てる
             uint64_t frameNumber = 0;                      ///< 同じフレームで 2 回進めないための番号
             float waveGroupPhase[3] = { 0.0f, 0.0f, 0.0f }; ///< 波群エンベロープの位相のずれ [rad]
+            /// @brief 岸の波の場（WaterShoreWaveSystem。無ければ ptr = 0 で、岸の波の砕けは泡にしない）
+            D3D12_GPU_DESCRIPTOR_HANDLE shoreWaveFieldSRV{};
+            float shoreWaveAngularFrequency = 1.0f;        ///< 岸の波の ω [rad/s]
+            float shoreWavePhaseTime = 0.0f;               ///< 岸の波の時刻 [s]
+            float shoreWaveHeight = 0.0f;                  ///< 沖での岸の波の波高 [m]
+            float shoreWaveStartDepth = 1.0f;              ///< 岸の波が来始める水深 [m]
+            float shoreWaveHeightVariation = 0.0f;         ///< 岸の波の 1 本ごとの波高のばらつき
+            float shoreWaveEdgeMargin = 1.0f;              ///< 範囲の端から内側へ、岸の波を 0 から満量へ移す幅 [m]
         };
 
         /// @brief 泡の設定（WaterRenderFeature が毎フレーム渡す）
@@ -189,6 +197,14 @@ namespace CoreEngine
             float padding = 0.0f;
             float waveGroupPhase[3] = { 0.0f, 0.0f, 0.0f };
             float padding2 = 0.0f;
+            uint32_t shoreWaveEnabled = 0;
+            float shoreWaveAngularFrequency = 1.0f;
+            float shoreWavePhaseTime = 0.0f;
+            float shoreWaveHeight = 0.0f;
+            float shoreWaveStartDepth = 1.0f;
+            float shoreWaveHeightVariation = 0.0f;
+            float shoreWaveEdgeMargin = 1.0f;
+            float padding3 = 0.0f;
         };
 
         static constexpr Cb::Field kShoreConstantsFields[] = {
@@ -198,6 +214,10 @@ namespace CoreEngine
             CB_FIELD(ShoreConstants, deltaSeconds), CB_FIELD(ShoreConstants, decaySeconds),
             CB_FIELD(ShoreConstants, resetFoam), CB_FIELD(ShoreConstants, padding),
             CB_FIELD(ShoreConstants, waveGroupPhase), CB_FIELD(ShoreConstants, padding2),
+            CB_FIELD(ShoreConstants, shoreWaveEnabled), CB_FIELD(ShoreConstants, shoreWaveAngularFrequency),
+            CB_FIELD(ShoreConstants, shoreWavePhaseTime), CB_FIELD(ShoreConstants, shoreWaveHeight),
+            CB_FIELD(ShoreConstants, shoreWaveStartDepth), CB_FIELD(ShoreConstants, shoreWaveHeightVariation),
+            CB_FIELD(ShoreConstants, shoreWaveEdgeMargin), CB_FIELD(ShoreConstants, padding3),
         };
         CB_VERIFY_LAYOUT(ShoreConstants, kShoreConstantsFields);
         CB_BIND_HLSL(ShoreConstants, kShoreConstantsFields, "WaterShoreFoamConstants");

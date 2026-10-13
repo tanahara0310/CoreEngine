@@ -38,7 +38,7 @@ namespace CoreEngine
             bool enabled = true;
             float amount = 1.0f;          ///< 出す量の倍率
             bool fluidRendering = true;   ///< しぶきを流体描画で描く
-            float dropletRadius = 0.08f;  ///< しぶきの粒の半径 [m]
+            float dropletRadius = 0.05f;  ///< しぶきの粒の半径 [m]
             float mistRadius = 0.25f;     ///< 霧の粒の半径 [m]
         };
 
@@ -128,7 +128,7 @@ namespace CoreEngine
             float amount = 1.0f;
             uint32_t frameIndex = 0;
             uint32_t capacity = kCapacity;
-            float dropletRadius = 0.08f;
+            float dropletRadius = 0.05f;
             float mistRadius = 0.25f;
             float pad[2] = { 0.0f, 0.0f };
         };

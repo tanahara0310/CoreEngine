@@ -77,12 +77,7 @@ namespace CoreEngine
 
     float WaterShoreWaveSystem::ComputePhaseTime(double timeSeconds) const
     {
-        // 時刻をゆっくり揺らして、波が届く間隔を不規則にする（揺らしても時刻は戻らない）
-        const double period = settings_.period;
-        const double warped = timeSeconds
-            + 0.12 * period * std::sin(kTwoPi * timeSeconds / (5.3 * period))
-            + 0.08 * period * std::sin(kTwoPi * timeSeconds / (9.1 * period) + 1.3);
-        return static_cast<float>(std::fmod(warped, kPhaseWrapPeriods * period));
+        return static_cast<float>(std::fmod(timeSeconds, kPhaseWrapPeriods * settings_.period));
     }
 
     bool WaterShoreWaveSystem::CreatePipelines()

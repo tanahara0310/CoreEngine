@@ -49,9 +49,12 @@ namespace CoreEngine
         /// @brief 診断ログの出力間隔（フレーム）
         constexpr uint32_t kDiagnosticsLogInterval = 120u;
 
-        static_assert(WaterSeabedRayTracingManager::kResolution * WaterSeabedRayTracingManager::kTexelSize
-                == WaterSurfaceMeshGenerator::kShoreSubdivisions * WaterSeabedRayTracingManager::kWindowSnapMeters,
-            "岸の細かい格子の 1 マスは、海底の範囲の角を揃える格子の幅と同じ");
+        /// @brief 岸の細かい格子の 1 マスの幅 [m]
+        constexpr float kShoreMeshCellMeters = WaterSeabedRayTracingManager::kResolution
+            * WaterSeabedRayTracingManager::kTexelSize / WaterSurfaceMeshGenerator::kShoreSubdivisions;
+        static_assert(WaterSeabedRayTracingManager::kWindowSnapMeters
+                == kShoreMeshCellMeters * static_cast<int>(WaterSeabedRayTracingManager::kWindowSnapMeters / kShoreMeshCellMeters),
+            "海底の範囲の角を揃える格子の幅は、岸の細かい格子の 1 マスの整数倍");
     }
 
     WaterRenderFeature::WaterRenderFeature(const Config& config)

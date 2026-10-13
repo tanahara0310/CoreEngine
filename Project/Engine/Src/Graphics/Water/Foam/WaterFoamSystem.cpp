@@ -636,6 +636,13 @@ namespace CoreEngine
         for (int i = 0; i < 3; ++i) {
             constants.waveGroupPhase[i] = input.waveGroupPhase[i];
         }
+        constants.shoreWaveEnabled = input.shoreWaveFieldSRV.ptr != 0 ? 1u : 0u;
+        constants.shoreWaveAngularFrequency = input.shoreWaveAngularFrequency;
+        constants.shoreWavePhaseTime = input.shoreWavePhaseTime;
+        constants.shoreWaveHeight = input.shoreWaveHeight;
+        constants.shoreWaveStartDepth = input.shoreWaveStartDepth;
+        constants.shoreWaveHeightVariation = input.shoreWaveHeightVariation;
+        constants.shoreWaveEdgeMargin = input.shoreWaveEdgeMargin;
         shorePrevWindowOriginXZ_[0] = input.windowOriginXZ[0];
         shorePrevWindowOriginXZ_[1] = input.windowOriginXZ[1];
 
@@ -718,6 +725,10 @@ namespace CoreEngine
         }
         if (const int slot = shorePipeline_.GetComputeRootParamIndex("gSwashDisplacement"); slot >= 0) {
             cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), swash_.srv.gpuHandle);
+        }
+        if (const int slot = shorePipeline_.GetComputeRootParamIndex("gShoreWaveField");
+            slot >= 0 && input.shoreWaveFieldSRV.ptr != 0) {
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), input.shoreWaveFieldSRV);
         }
         if (const int slot = shorePipeline_.GetComputeRootParamIndex("gShoreFoamOutput"); slot >= 0) {
             cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), shore_[writeIndex].uav.gpuHandle);

@@ -21,11 +21,11 @@ struct WaterSprayCompositeOutput
 /// @brief 厚みが全部を覆うようになる厚み [m]
 static const float kSprayEdgeThickness = 0.04f;
 /// @brief 厚み 1m あたりの白さの増え方 [1/m]
-static const float kSprayAeration = 5.0f;
+static const float kSprayAeration = 12.0f;
 /// @brief 屈折で後ろの景色をずらす長さ（厚みに対する割合）
-static const float kSprayRefraction = 0.5f;
+static const float kSprayRefraction = 0.25f;
 /// @brief 水の面の粗さ
-static const float kSprayRoughness = 0.2f;
+static const float kSprayRoughness = 0.35f;
 /// @brief 水の垂直入射の反射率
 static const float kSprayF0 = 0.02f;
 

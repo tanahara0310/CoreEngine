@@ -30,7 +30,7 @@ namespace CoreEngine
         constexpr DXGI_FORMAT kSplatDepthBufferFormat = DXGI_FORMAT_D32_FLOAT;
         constexpr DXGI_FORMAT kThicknessFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
         /// @brief しぶきの深度をならす幅 [m]
-        constexpr float kSmoothWorldRadius = 0.25f;
+        constexpr float kSmoothWorldRadius = 0.35f;
         /// @brief しぶきの深度をならすときに混ぜる深さの差の目安 [m]
         constexpr float kSmoothDepthFalloff = 0.2f;
 

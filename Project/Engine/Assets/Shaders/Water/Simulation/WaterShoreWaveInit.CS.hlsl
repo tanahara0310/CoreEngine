@@ -64,7 +64,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     }
     else if (depth > 0.0f && gResetArrival == 0)
     {
-        const int2 previousCoord = (int2)floor((centerXZ - gPrevWindowOriginXZ) / texelSize);
+        const int2 previousCoord = (int2)round((centerXZ - gPrevWindowOriginXZ) / texelSize - 0.5f);
         if (all(previousCoord >= 0) && all(previousCoord < (int)gResolution))
         {
             arrival = gPrevArrival.Load(int3(previousCoord, 0));

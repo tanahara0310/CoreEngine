@@ -8,6 +8,10 @@
 
 namespace CoreEngine
 {
+    static_assert(WaterSeabedRayTracingManager::kResolution * WaterSeabedRayTracingManager::kTexelSize
+            == WaterShoreWaveSystem::kResolution * WaterSeabedRayTracingManager::kWindowSnapMeters,
+        "範囲の角は岸の波の場の格子に揃う（場の 1 テクセル = 範囲のスナップ幅）");
+
     namespace
     {
         /// @brief 場はレイトレの水面（次のフレームのコースティクスを含む）とピクセルシェーダーの両方が読む

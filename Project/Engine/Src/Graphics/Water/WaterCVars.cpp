@@ -131,7 +131,7 @@ namespace CoreEngine
             "しぶきを出す量の倍率", CVarRange{ 0.0f, 4.0f } };
         CVar<bool> SprayFluidRendering{ "r.Water.Spray.FluidRendering", true,
             "しぶきの粒を一つながりの水の面として描く（画面空間の流体描画）" };
-        CVar<float> SprayDropletSize{ "r.Water.Spray.DropletSize", 0.08f,
+        CVar<float> SprayDropletSize{ "r.Water.Spray.DropletSize", 0.05f,
             "しぶきの粒の半径 [m]", CVarRange{ 0.03f, 0.5f } };
         CVar<float> SprayMistSize{ "r.Water.Spray.MistSize", 0.25f,
             "霧の粒の半径 [m]（寿命につれて広がる）", CVarRange{ 0.05f, 1.5f } };
