@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.10.0">
+<meta name="engine-version" content="0.11.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -7344,6 +7344,16 @@ python Tools/OkinawaBeach/bake_player_walk.py
 
   <h2 id="changelog-history">更新履歴</h2>
 
+  <h3 id="changelog-v0-11-0">v0.11.0 <span class="dim">（2026-10-13）</span></h3>
+  <p>岸の波が砕ける所からしぶきが飛ぶようにした版です（<a href="#api-WaterSurface">水面</a>）。流体シミュレーションは使わず、粒（GPU パーティクル）と、粒を一つながりの水として描く画面空間の流体描画で作っています。</p>
+  <ul>
+    <li><strong>しぶきの粒</strong>：岸の波が砕けている峰（峰の上と前の面）から、砕けている度合いと波高に応じて粒を出します。しぶきは近い位置・近い速さの粒の塊で出し、塊ごとに波の速さで前へ、波高に応じた高さまで上へ飛ばします。粒は重力と空気の抵抗で進み、描かれた水面か砂浜・岩より下に落ちると消えます。細かい霧も一緒に出し、ぼかした板で描きます。粒は GPU だけで出して動かします（置き場所は 65536 個）。</li>
+    <li><strong>画面空間の流体描画</strong>：しぶきの粒を球として深度と厚みに描き、深度をならして一つながりの面にしてから、法線・後ろの景色の屈折・水の吸収・空気を含んだ白さ・空の映り込み・太陽のハイライトを付けて合成します。合成した画素には粒の動きをモーションベクターとして書きます。</li>
+    <li><strong>光</strong>：水面と同じ太陽・月の光、空の放射照度、空のキューブマップで照らします。</li>
+    <li><strong>重さ</strong>：生きている粒だけを GPU で一覧にして描き、しぶきが 1 粒も無いフレームは流体描画を GPU が飛ばします。1920×1080 で、しぶきが無いときは約 0.03ms、出ているときは 0.4〜1.2ms です（流体描画を切ると 0.1〜0.3ms）。</li>
+    <li><strong>設定</strong>：<code>r.Water.Spray.Enabled</code>（入切）・<code>Amount</code>（出す量の倍率）・<code>FluidRendering</code>（流体描画の入切）・<code>DropletSize</code>（しぶきの粒の半径）・<code>MistSize</code>（霧の粒の半径）。岸の波（<code>r.Water.Shore.Waves</code>）が出ているときだけ出ます。</li>
+  </ul>
+
   <h3 id="changelog-v0-10-0">v0.10.0 <span class="dim">（2026-10-13）</span></h3>
   <p>岸へ寄せて砕ける波（岸の波）を足した版です（<a href="#api-WaterSurface">水面</a>）。</p>
   <ul>
@@ -10070,7 +10080,7 @@ void LateUpdate()   // 追いかける相手が動いた後に動かす
       ["UV の流れる速さ", "scrollSpeed", "Vector2", "(0.03, 0.01)", ""],
       ["UV の繰り返し", "uvTiling", "Vector2", "(4, 4)", ""]
     ],
-    notes: "<ul><li>水面を使うシーンは、<span class=\"path\">_scene.json</span> に <code>\"features\": [\"WaterRender\"]</code> を書き足す必要があります（エディタに追加の画面はありません。サンプル Sandbox の WaterTestScene を参照）。</li><li>この機能が動いている間、「FFT の海を使う」「UV の流れる速さ」「UV の繰り返し」は CVar（<code>r.Water.*</code>）の値で毎フレーム上書きされます。</li><li>FFT の海でレイトレーシングが使えるときは、ゲームのカメラの周り 256m 四方（海底の高さを測る範囲）を 0.5m 間隔の細かい格子で描き、その外を「分割数」の格子で描きます。範囲はカメラと一緒に 0.5m 単位で動きます。CVar <code>r.Water.Shore.FineMesh</code> で切れます。</li><li>細かい格子の範囲の中には、岸へ寄せて砕ける波（岸の波）が出ます。沖からうねりの向きに寄せ、水深 <code>r.Water.Shore.StartDepth</code> より浅くなるほど高く・前のめりになります。高さ・周期などは CVar <code>r.Water.Shore.*</code> で変えられます。</li></ul>",
+    notes: "<ul><li>水面を使うシーンは、<span class=\"path\">_scene.json</span> に <code>\"features\": [\"WaterRender\"]</code> を書き足す必要があります（エディタに追加の画面はありません。サンプル Sandbox の WaterTestScene を参照）。</li><li>この機能が動いている間、「FFT の海を使う」「UV の流れる速さ」「UV の繰り返し」は CVar（<code>r.Water.*</code>）の値で毎フレーム上書きされます。</li><li>FFT の海でレイトレーシングが使えるときは、ゲームのカメラの周り 256m 四方（海底の高さを測る範囲）を 0.5m 間隔の細かい格子で描き、その外を「分割数」の格子で描きます。範囲はカメラと一緒に 0.5m 単位で動きます。CVar <code>r.Water.Shore.FineMesh</code> で切れます。</li><li>細かい格子の範囲の中には、岸へ寄せて砕ける波（岸の波）が出ます。沖からうねりの向きに寄せ、水深 <code>r.Water.Shore.StartDepth</code> より浅くなるほど高く・前のめりになります。高さ・周期などは CVar <code>r.Water.Shore.*</code> で変えられます。</li><li>岸の波が砕ける所からはしぶきが飛びます。しぶきの粒は一つながりの水として描き（画面空間の流体描画）、細かい霧はぼかした板で描きます。量・粒の大きさ・流体描画の入切は CVar <code>r.Water.Spray.*</code> で変えられます。</li></ul>",
     see: [["file-formats", "_scene.json の書き方"]]
   },
 
