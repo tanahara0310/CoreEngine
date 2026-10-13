@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.9.0">
+<meta name="engine-version" content="0.10.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -7344,6 +7344,17 @@ python Tools/OkinawaBeach/bake_player_walk.py
 
   <h2 id="changelog-history">更新履歴</h2>
 
+  <h3 id="changelog-v0-10-0">v0.10.0 <span class="dim">（2026-10-13）</span></h3>
+  <p>岸へ寄せて砕ける波（岸の波）を足した版です（<a href="#api-WaterSurface">水面</a>）。</p>
+  <ul>
+    <li><strong>岸の波</strong>：沖からうねりの向き（<code>r.Water.Swell.Direction</code>）に寄せる波を、水深 <code>r.Water.Shore.StartDepth</code>（既定 4m）より浅い所に出します。浅くなるほど遅く・波長が短く・高くなり、峰が岸と平行へ曲がります。波高が水深の 0.78 倍に近づくと頭打ちになり、前の面が切り立った段差の形（砕けた波）へ移ります。1 本ごとに高さが違い、来る間隔も少し揺らぎます。</li>
+    <li><strong>場と式</strong>：海底の高さを測る範囲に「波が届くまでの時刻」の地図を毎フレーム作り（<code>WaterShoreWavePass</code>）、波の形は時刻からシェーダーが式で求めます。到着時刻は、深い所と範囲の上流側の辺から平面波として出し、浅い所へ解き進めます（陸は通しません）。水面の頂点・法線・モーションベクター、レイトレの映り込み・屈折・コースティクスが同じ式を使います。</li>
+    <li><strong>FFT の波を浅い所で弱める</strong>：岸の波が受け持つ浅い所では、FFT の波を水深に応じて弱めます。</li>
+    <li><strong>設定</strong>：<code>r.Water.Shore.Waves</code>（入切）・<code>WaveHeight</code>（沖での波高）・<code>WavePeriod</code>（周期）・<code>StartDepth</code>（来始める水深）・<code>HeightVariation</code>（1 本ごとのばらつき）。</li>
+    <li><strong>デバッグ表示</strong>：水面の可視化モードに「岸の波：峰と水深」「岸の波：波高」「岸の波：砕ける度合い」を足しました。</li>
+    <li>まだ砂浜を上ってはこず、泡も今までの計算のままです（次の版で直します）。</li>
+  </ul>
+
   <h3 id="changelog-v0-9-0">v0.9.0 <span class="dim">（2026-10-13）</span></h3>
   <p>岸辺の波打ちを作る準備として、カメラの周りの水面を細かい格子で描くようにした版です（<a href="#api-WaterSurface">水面</a>）。見た目はほぼ変わりません。</p>
   <ul>
@@ -10059,7 +10070,7 @@ void LateUpdate()   // 追いかける相手が動いた後に動かす
       ["UV の流れる速さ", "scrollSpeed", "Vector2", "(0.03, 0.01)", ""],
       ["UV の繰り返し", "uvTiling", "Vector2", "(4, 4)", ""]
     ],
-    notes: "<ul><li>水面を使うシーンは、<span class=\"path\">_scene.json</span> に <code>\"features\": [\"WaterRender\"]</code> を書き足す必要があります（エディタに追加の画面はありません。サンプル Sandbox の WaterTestScene を参照）。</li><li>この機能が動いている間、「FFT の海を使う」「UV の流れる速さ」「UV の繰り返し」は CVar（<code>r.Water.*</code>）の値で毎フレーム上書きされます。</li><li>FFT の海でレイトレーシングが使えるときは、ゲームのカメラの周り 256m 四方（海底の高さを測る範囲）を 0.5m 間隔の細かい格子で描き、その外を「分割数」の格子で描きます。範囲はカメラと一緒に 0.5m 単位で動きます。CVar <code>r.Water.Shore.FineMesh</code> で切れます。</li></ul>",
+    notes: "<ul><li>水面を使うシーンは、<span class=\"path\">_scene.json</span> に <code>\"features\": [\"WaterRender\"]</code> を書き足す必要があります（エディタに追加の画面はありません。サンプル Sandbox の WaterTestScene を参照）。</li><li>この機能が動いている間、「FFT の海を使う」「UV の流れる速さ」「UV の繰り返し」は CVar（<code>r.Water.*</code>）の値で毎フレーム上書きされます。</li><li>FFT の海でレイトレーシングが使えるときは、ゲームのカメラの周り 256m 四方（海底の高さを測る範囲）を 0.5m 間隔の細かい格子で描き、その外を「分割数」の格子で描きます。範囲はカメラと一緒に 0.5m 単位で動きます。CVar <code>r.Water.Shore.FineMesh</code> で切れます。</li><li>細かい格子の範囲の中には、岸へ寄せて砕ける波（岸の波）が出ます。沖からうねりの向きに寄せ、水深 <code>r.Water.Shore.StartDepth</code> より浅くなるほど高く・前のめりになります。高さ・周期などは CVar <code>r.Water.Shore.*</code> で変えられます。</li></ul>",
     see: [["file-formats", "_scene.json の書き方"]]
   },
 
