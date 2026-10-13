@@ -107,6 +107,9 @@ namespace CoreEngine
         /// @brief 岸の波の設定（WaterCVars）を WaterShoreWaveSystem へ渡し、今と前のフレームの波の時刻を求める
         void SyncShoreWaveSettings(RenderDomainContext& domain);
 
+        /// @brief しぶきの設定（WaterCVars）と、水面と同じ空の光・水の吸収を WaterSpraySystem へ渡す
+        void SyncSpraySettings(RenderDomainContext& domain, const WaterFrameBinding& binding) const;
+
         /// @brief 結線結果の診断ログ（デバッグ表示中のみ・低頻度）
         /// @details 以前は WaterSurfaceComponent の setter 6 個と BindCustomResources に
         ///          散っていたログをここへ集約した。

@@ -17,6 +17,9 @@
 
 namespace CoreEngine
 {
+    class FFTOceanManager;
+    class WaterShoreWaveSystem;
+
     /// @brief DXR 水面パス共通のビュー識別子
     enum class RTWaterViewID : uint32_t {
         GameView = 0,
@@ -135,6 +138,8 @@ namespace CoreEngine
             const RTWaterSecondaryOutput& secondaryOutput = {},
             D3D12_GPU_VIRTUAL_ADDRESS extraConstantBuffer = 0);
 
+    public:
+        /// @brief 描かれる水面の定数（RTWaterSurfaceCommon.hlsli の cbuffer WaterSurfaceData）
         struct alignas(16) WaterSurfaceConstants {
             float waterHeight = 0.0f;
             uint32_t activeWaveCount = 0;
@@ -198,6 +203,20 @@ namespace CoreEngine
         CB_VERIFY_LAYOUT(WaterSurfaceConstants, kWaterSurfaceConstantsFields);
         CB_BIND_HLSL(WaterSurfaceConstants, kWaterSurfaceConstantsFields, "WaterSurfaceData");
 
+        /// @brief 水面の状態と FFT の入力を、描かれる水面の定数の並びへ詰める
+        static WaterSurfaceConstants BuildSurfaceConstants(
+            const WaterSurfaceData& surfaceData,
+            const FFTOceanInput& fftOceanInput);
+
+        /// @brief FFT の波と岸の波の場から、描かれる水面を求めるための入力を組み立てる
+        /// @details FFT の水面でなければ enabled = 0 のまま返す
+        static FFTOceanInput BuildFFTOceanInput(
+            const FFTOceanManager* fftOceanManager,
+            const WaterShoreWaveSystem* shoreWaveSystem,
+            const WaterSurfaceData& surfaceData,
+            float fftOceanSimulationTime);
+
+    protected:
         /// @brief ディスパッチ前の共通処理（RayTracingPassBase::BeginDispatchBase の水面版）
         bool BeginDispatch(
             ID3D12GraphicsCommandList* cmdList,
@@ -239,10 +258,6 @@ namespace CoreEngine
         std::weak_ptr<const IWaterSurfaceModelProvider> surfaceModelProvider_;
 
     private:
-        WaterSurfaceConstants BuildSurfaceConstants(
-            const WaterSurfaceData& surfaceData,
-            const FFTOceanInput& fftOceanInput) const;
-
         // InitializeFromDesc で受けた構成のうち、ディスパッチ時にも要るもの
         const char* outputUavName_ = nullptr;
         const char* constantsName_ = nullptr;

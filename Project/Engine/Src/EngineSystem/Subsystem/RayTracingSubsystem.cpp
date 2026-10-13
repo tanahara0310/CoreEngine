@@ -27,8 +27,6 @@
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
 #include "Graphics/Render/Pass/RenderPass.h"
-#include "Graphics/Water/FFTOceanManager.h"
-#include "Graphics/Water/Shore/WaterShoreWaveSystem.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/GameObjectManager.h"
 #include "Particle/ParticleSystemComponent.h"
@@ -567,29 +565,8 @@ namespace CoreEngine
 
         // FFT Ocean 経路のときだけ波面テクスチャを接続する。
         // Gerstner 経路では enabled=0 のままにして、シェーダー側を解析評価へ倒す。
-        if (context.fftOceanManager
-            && context.fftOceanManager->IsInitialized()
-            && surfaceData.simulationType == kWaterSurfaceModelTypeFFTOcean) {
-            const FFTOceanManager::Settings& fftSettings = context.fftOceanManager->GetSettings();
-            outDispatchContext.fftOceanInput.displacementSRV = context.fftOceanManager->GetDisplacementSRVHandle();
-            outDispatchContext.fftOceanInput.normalSRV = context.fftOceanManager->GetNormalSRVHandle();
-            outDispatchContext.fftOceanInput.resolution = fftSettings.resolution;
-            outDispatchContext.fftOceanInput.enabled = 1;
-            static_assert(FFTOceanManager::kCascadeCount == 3, "cascadeMeanSquareSlope のカスケード数と一致させる");
-            for (uint32_t c = 0; c < FFTOceanManager::kCascadeCount; ++c) {
-                outDispatchContext.fftOceanInput.cascadeMeanSquareSlope[c] =
-                    context.fftOceanManager->GetCascadeMeanSquareSlope(c);
-            }
-            const std::array<float, 3> waveGroupPhase =
-                context.fftOceanManager->ComputeWaveGroupPhase(context.fftOceanSimulationTime);
-            for (size_t i = 0; i < waveGroupPhase.size(); ++i) {
-                outDispatchContext.fftOceanInput.waveGroupPhase[i] = waveGroupPhase[i];
-            }
-            if (context.waterShoreWaveSystem && context.waterShoreWaveSystem->IsActive()
-                && context.waterShoreWaveSystem->HasField()) {
-                outDispatchContext.fftOceanInput.shoreWaveFieldSRV = context.waterShoreWaveSystem->GetFieldSRVHandle();
-            }
-        }
+        outDispatchContext.fftOceanInput = WaterRayTracingPassBase::BuildFFTOceanInput(
+            context.fftOceanManager, context.waterShoreWaveSystem, surfaceData, context.fftOceanSimulationTime);
 
         return true;
     }

@@ -123,6 +123,19 @@ namespace CoreEngine
         CVar<float> ShoreWaveHeightVariation{ "r.Water.Shore.HeightVariation", 0.35f,
             "岸の波の 1 本ごとの波高のばらつき（0 = 全部同じ）", CVarRange{ 0.0f, 0.9f } };
 
+        // ---- 岸の波のしぶき ----
+        // しぶきは岸の波が砕けている峰から出る（岸の波が出ているときだけ）
+        CVar<bool> SprayEnabled{ "r.Water.Spray.Enabled", true,
+            "岸の波が砕ける所からしぶきを出す" };
+        CVar<float> SprayAmount{ "r.Water.Spray.Amount", 1.0f,
+            "しぶきを出す量の倍率", CVarRange{ 0.0f, 4.0f } };
+        CVar<bool> SprayFluidRendering{ "r.Water.Spray.FluidRendering", true,
+            "しぶきの粒を一つながりの水の面として描く（画面空間の流体描画）" };
+        CVar<float> SprayDropletSize{ "r.Water.Spray.DropletSize", 0.08f,
+            "しぶきの粒の半径 [m]", CVarRange{ 0.03f, 0.5f } };
+        CVar<float> SprayMistSize{ "r.Water.Spray.MistSize", 0.25f,
+            "霧の粒の半径 [m]（寿命につれて広がる）", CVarRange{ 0.05f, 1.5f } };
+
         // ---- コースティクス ----
         CVar<int> CausticsBackend{ "r.Water.Caustics.Backend", 0,
             "生成方式（0: レイトレーシング / 1: スクリーンスペース。SS は Gerstner 専用）",

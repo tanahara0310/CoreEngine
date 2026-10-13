@@ -17,6 +17,8 @@
 #include "Graphics/Render/Pass/RTWaterSeabedPass.h"
 #include "Graphics/Render/Pass/WaterShoreFoamPass.h"
 #include "Graphics/Render/Pass/WaterShoreWavePass.h"
+#include "Graphics/Render/Pass/WaterSpraySimulatePass.h"
+#include "Graphics/Render/Pass/WaterSprayRenderPass.h"
 #include "Graphics/Render/Pass/RTWaterRefractionPass.h"
 #include "Graphics/Render/Pass/RTWaterReflectionPass.h"
 #include "Graphics/Render/Pass/FFTOceanPass.h"
@@ -108,14 +110,18 @@ namespace CoreEngine
 
         pipeline.AddPass(std::make_unique<TransparentQueuePass>(), RenderPassPhase::Transparent, 0);
 
-        // 水面: 背景 SceneColor の複製 → 海底の高さ → 岸の泡 → RT 屈折 → RT 反射 → 水面合成（データフロー順）
+        // 水面: 背景 SceneColor の複製 → 海底の高さ → 岸の波 → 岸の泡 → しぶきを動かす → RT 屈折 → RT 反射
+        //       → 水面合成 → しぶきを描く（データフロー順）
         pipeline.AddPass(std::make_unique<SceneColorCopyPass>(), RenderPassPhase::Water, 0);
         pipeline.AddPass(std::make_unique<RTWaterSeabedPass>(), RenderPassPhase::Water, 5);
         pipeline.AddPass(std::make_unique<WaterShoreWavePass>(), RenderPassPhase::Water, 6);
         pipeline.AddPass(std::make_unique<WaterShoreFoamPass>(), RenderPassPhase::Water, 7);
+        pipeline.AddPass(std::make_unique<WaterSpraySimulatePass>(), RenderPassPhase::Water, 8);
         pipeline.AddPass(std::make_unique<RTWaterRefractionPass>(), RenderPassPhase::Water, 10);
         pipeline.AddPass(std::make_unique<RTWaterReflectionPass>(), RenderPassPhase::Water, 15);
         pipeline.AddPass(std::make_unique<WaterSurfacePass>(), RenderPassPhase::Water, 20);
+        // 岸の波のしぶき: 水面の上へ重ねる（流体描画のしぶきはモーションベクターも書く）
+        pipeline.AddPass(std::make_unique<WaterSprayRenderPass>(), RenderPassPhase::Water, 25);
         // 水面が SceneColor へ合成された後でラインを重ねる。通常の Geometry で描くと
         // 水面に上書きされ、水面の上のラインだけ消えてしまう。
         pipeline.AddPass(std::make_unique<LineQueuePass>(), RenderPassPhase::Water, 30);

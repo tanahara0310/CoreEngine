@@ -13,6 +13,7 @@
 #include "Graphics/Water/FFTOceanManager.h"
 #include "Graphics/Water/Foam/WaterFoamSystem.h"
 #include "Graphics/Water/Shore/WaterShoreWaveSystem.h"
+#include "Graphics/Water/Spray/WaterSpraySystem.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Cloud/VolumetricCloudManager.h"
 #include "Graphics/Fog/FogManager.h"
@@ -129,6 +130,12 @@ namespace CoreEngine
                 "RenderDomainContext: WaterShoreWaveSystem 初期化完了\n");
         }
 
+        waterSpraySystem_ = std::make_unique<WaterSpraySystem>();
+        if (waterSpraySystem_->Initialize(dxCommon, descriptorAllocator)) {
+            Logger::GetInstance().Infof(LogCategory::Graphics,
+                "RenderDomainContext: WaterSpraySystem 初期化完了\n");
+        }
+
         atmosphereManager_ = std::make_unique<AtmosphereManager>();
         atmosphereManager_->Initialize(device, descriptorAllocator, dxCommon->GetUploadRing());
         Logger::GetInstance().Infof(LogCategory::Graphics,
@@ -171,6 +178,7 @@ namespace CoreEngine
         rtWaterReflectionManager_.reset();
         rtWaterRefractionManager_.reset();
         rtShadowManager_.reset();
+        waterSpraySystem_.reset();
         waterShoreWaveSystem_.reset();
         waterFoamSystem_.reset();
         fftOceanManager_.reset();
@@ -216,6 +224,7 @@ namespace CoreEngine
         context.fftOceanManager = fftOceanManager_.get();
         context.waterFoamSystem = waterFoamSystem_.get();
         context.waterShoreWaveSystem = waterShoreWaveSystem_.get();
+        context.waterSpraySystem = waterSpraySystem_.get();
         context.atmosphereManager = atmosphereManager_.get();
         context.volumetricCloudManager = volumetricCloudManager_.get();
         context.fogManager = fogManager_.get();

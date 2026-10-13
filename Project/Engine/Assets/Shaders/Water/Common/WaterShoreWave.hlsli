@@ -96,6 +96,9 @@ struct ShoreWaveResult
     float fftScale;        ///< FFT の波に掛ける倍率（浅い所ほど小さい）
     float depth;           ///< ならした静水深 [m]
     float crest;           ///< 峰に近いほど 1（デバッグ表示）
+    float phase;           ///< 峰からの位相 [0,1)（0 が峰。1 に近いほど峰の前の面）
+    float2 direction;      ///< 波の進む向き（XZ・正規化済み。波が届かない所は 0）
+    float speed;           ///< 波の速さ（位相速度）[m/s]
 };
 
 /// @brief 場を双線形で読む（テクスチャのサンプラを使わない）
@@ -161,6 +164,9 @@ ShoreWaveResult EvaluateShoreWave(Texture2D<float4> field, ShoreWaveParams p, fl
     result.fftScale = 1.0f;
     result.depth = p.startDepth;
     result.crest = 0.0f;
+    result.phase = 0.0f;
+    result.direction = float2(0.0f, 0.0f);
+    result.speed = 0.0f;
     if (!p.enabled || !IsInsideShoreMesh(baseXZ, p.originXZ, p.size))
     {
         return result;
@@ -221,6 +227,9 @@ ShoreWaveResult EvaluateShoreWave(Texture2D<float4> field, ShoreWaveParams p, fl
     const float sharpness = min(
         1.0f / tanh(max(waveNumber * depth, 1.0e-3f)),
         0.8f / max(waveNumber * amplitude * (1.0f + skew), 1.0e-4f));
+    result.phase = within;
+    result.direction = direction;
+    result.speed = omega / waveNumber;
 
     // 高さの形は、砕けるほど段差（前の面が切り立ち、後ろがまっすぐ下がる形）へ移す。
     // 前後の動きは段差では弱める

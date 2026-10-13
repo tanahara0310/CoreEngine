@@ -292,6 +292,9 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\WaterShoreFoamPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\WaterShoreWavePass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Shore\WaterShoreWaveSystem.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\WaterSpraySimulatePass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\WaterSprayRenderPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\Spray\WaterSpraySystem.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterReflectionPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\SceneColorCopyPass.cpp" />
@@ -1457,6 +1460,9 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\WaterShoreFoamPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\WaterShoreWavePass.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Shore\WaterShoreWaveSystem.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\WaterSpraySimulatePass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\WaterSprayRenderPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\Spray\WaterSpraySystem.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterReflectionPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\SceneColorCopyPass.h" />

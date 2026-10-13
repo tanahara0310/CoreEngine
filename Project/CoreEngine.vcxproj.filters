@@ -322,6 +322,15 @@
     <ClCompile Include="Engine\Src\Graphics\Water\Shore\WaterShoreWaveSystem.cpp">
       <Filter>Engine\Src\Graphics\Water\Shore</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\WaterSpraySimulatePass.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\WaterSprayRenderPass.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\Spray\WaterSpraySystem.cpp">
+      <Filter>Engine\Src\Graphics\Water\Spray</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
@@ -2607,6 +2616,15 @@
     <ClInclude Include="Engine\Src\Graphics\Water\Shore\WaterShoreWaveSystem.h">
       <Filter>Engine\Src\Graphics\Water\Shore</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\WaterSpraySimulatePass.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\WaterSprayRenderPass.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\Spray\WaterSpraySystem.h">
+      <Filter>Engine\Src\Graphics\Water\Spray</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
@@ -4407,6 +4425,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\Water\Simulation">
       <UniqueIdentifier>{885AB6EC-E224-419F-8C36-DD519D941E3B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Water\Spray">
+      <UniqueIdentifier>{D03B1789-FA2E-47AC-8431-4512EB11B90A}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Water\Surface">
       <UniqueIdentifier>{DC70B5CC-F394-41D8-AE69-0F79ED80E885}</UniqueIdentifier>

@@ -26,6 +26,7 @@
 #include "Graphics/Water/RayTracing/WaterSeabedRayTracingManager.h"
 #include "Graphics/Water/Foam/WaterFoamSystem.h"
 #include "Graphics/Water/Shore/WaterShoreWaveSystem.h"
+#include "Graphics/Water/Spray/WaterSpraySystem.h"
 #include "Graphics/Water/WaterCVars.h"
 #include "Graphics/Water/Simulation/FFTOceanSurfaceSimulator.h"
 #include "Graphics/Water/Simulation/GerstnerWaterSimulator.h"
@@ -204,6 +205,7 @@ namespace CoreEngine
 
             const WaterFrameBinding binding = BuildFrameBinding(ctx, *domain);
             waterPlane->ApplyFrameBinding(binding);
+            SyncSpraySettings(*domain, binding);
 
             // レイトレの水面も、ラスタと同じ岸の細かい格子で描く
             const WaterFrameConstants& frameConstants = waterPlane->GetFrameConstants();
@@ -664,6 +666,36 @@ namespace CoreEngine
         shoreWavePrevPhaseTime_ = shoreWavePhaseValid_ ? shoreWavePhaseTime_ : phaseTime;
         shoreWavePhaseTime_ = phaseTime;
         shoreWavePhaseValid_ = true;
+    }
+
+    void WaterRenderFeature::SyncSpraySettings(RenderDomainContext& domain, const WaterFrameBinding& binding) const
+    {
+        WaterSpraySystem* spray = domain.GetWaterSpraySystem();
+        WaterSurfaceComponent* const waterPlane = waterPlane_.Get();
+        if (!spray || !spray->IsInitialized() || !waterPlane) {
+            return;
+        }
+
+        // しぶきは岸の波が出ているときだけ出す
+        WaterSpraySystem::Settings settings{};
+        settings.enabled = WaterCVars::SprayEnabled.Get() && binding.shoreWaveEnabled;
+        settings.amount = WaterCVars::SprayAmount.Get();
+        settings.fluidRendering = WaterCVars::SprayFluidRendering.Get();
+        settings.dropletRadius = WaterCVars::SprayDropletSize.Get();
+        settings.mistRadius = WaterCVars::SprayMistSize.Get();
+        spray->SetSettings(settings);
+
+        WaterSpraySystem::Lighting lighting{};
+        lighting.skyIrradianceSRV = binding.resources.skyIrradianceSRV;
+        lighting.skyAmbientScale = binding.skyAmbientScale;
+        lighting.skyAmbientEnabled = binding.skyAmbientEnabled;
+        lighting.skyEnvironmentSRV = binding.resources.skyEnvironmentSRV;
+        lighting.skyEnvironmentEnabled = binding.skyEnvReflectionEnabled;
+        const WaterFrameConstants& frameConstants = waterPlane->GetFrameConstants();
+        lighting.waterAbsorption[0] = frameConstants.absorptionCoeff[0];
+        lighting.waterAbsorption[1] = frameConstants.absorptionCoeff[1];
+        lighting.waterAbsorption[2] = frameConstants.absorptionCoeff[2];
+        spray->SetLighting(lighting);
     }
 
     void WaterRenderFeature::SyncCausticsAbsorption(RenderDomainContext& domain) const

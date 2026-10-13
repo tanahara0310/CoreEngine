@@ -22,6 +22,7 @@ namespace CoreEngine
     const char* const FrameBlackboard::RTWaterSeabedHeight = "RTWaterSeabedHeight";
     const char* const FrameBlackboard::WaterShoreFoam = "WaterShoreFoam";
     const char* const FrameBlackboard::WaterShoreWave = "WaterShoreWave";
+    const char* const FrameBlackboard::WaterSprayParticles = "WaterSprayParticles";
     const char* const FrameBlackboard::BackBuffer = "BackBuffer";
     const char* const FrameBlackboard::PostEffectFinal = "PostEffectFinal";
     const char* const FrameBlackboard::GBufferAlbedoAO = "GBufferAlbedoAO";

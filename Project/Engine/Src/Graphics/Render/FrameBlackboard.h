@@ -44,6 +44,7 @@ namespace CoreEngine
         static const char* const RTWaterSeabedHeight;
         static const char* const WaterShoreFoam;
         static const char* const WaterShoreWave; ///< 岸の波の場（到着時刻・その傾き・静水深）
+        static const char* const WaterSprayParticles; ///< 岸の波のしぶきの粒
         static const char* const BackBuffer;
         static const char* const PostEffectFinal;
         static const char* const GBufferAlbedoAO;
