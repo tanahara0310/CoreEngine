@@ -1,0 +1,91 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    3.1415927,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    3.0,
+                    2.49,
+                    7.5
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "shapes": [
+                    {
+                        "enabled": true,
+                        "height": 1.8,
+                        "layer": "Player",
+                        "offset": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "radius": 0.35,
+                        "static": false,
+                        "trigger": false,
+                        "type": "Capsule"
+                    }
+                ]
+            },
+            "type": "Collider"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "skinWidth": 0.02,
+                "slopeLimit": 45.0,
+                "stepOffset": 0.3,
+                "useGravity": false
+            },
+            "type": "CharacterController"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "acceleration": 14.0,
+                "blendTime": 0.2,
+                "cameraDistance": 5.0,
+                "cameraObject": {
+                    "ref": "5134b2c6ef0d2a47"
+                },
+                "cameraPitchSpeed": 1.5,
+                "cameraTurnSpeed": 2.5,
+                "footOffset": 0.9,
+                "groundData": {
+                    "guid": "fe068e44-4c97-5742-8bc8-fe052cec3fa4",
+                    "path": "Application/Assets/Data/OkinawaBeach/BeachGround.json"
+                },
+                "lookHeight": 0.65,
+                "maxClimb": 0.8,
+                "maxWaterDepth": 0.45,
+                "model": {
+                    "ref": "d115933c78f8950d"
+                },
+                "mouseSensitivity": 0.005,
+                "runSpeed": 3.5,
+                "turnSpeed": 12.0,
+                "walkSpeed": 1.4
+            },
+            "type": "BeachPlayer"
+        }
+    ],
+    "id": "333dc56ddffd8ea0",
+    "name": "Player",
+    "order": 151
+}

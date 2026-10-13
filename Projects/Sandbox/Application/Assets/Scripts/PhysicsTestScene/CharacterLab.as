@@ -158,7 +158,8 @@ class CharacterLab : ScriptComponent
             return;
         }
 
-        // カメラの向きを回す
+        // カメラの向きを回す（視点の操作は矢印キー・右スティック）
+        cameraYaw_ += Input::GetAxis(InputAction::LookLeft, InputAction::LookRight) * 2.0f * Time::DeltaTime();
         if (Input::IsKeyPressed(Key::Q)) { cameraYaw_ -= 2.0f * Time::DeltaTime(); }
         if (Input::IsKeyPressed(Key::E)) { cameraYaw_ += 2.0f * Time::DeltaTime(); }
 
@@ -257,7 +258,7 @@ class CharacterLab : ScriptComponent
 
         statusText_.text =
             "WASD:歩く  Shift:走る  Space:跳ぶ\n"
-            + "Q/E:カメラ  F:戻す  V:物理デモへ\n"
+            + "矢印・Q/E:カメラ  F:戻す  V:物理デモへ\n"
             + grounded + "   高さ " + height;
     }
 }

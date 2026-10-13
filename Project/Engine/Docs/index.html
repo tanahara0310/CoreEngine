@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.7.0">
+<meta name="engine-version" content="0.8.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2065,7 +2065,7 @@ kbd {
     <thead><tr><th>プロジェクト</th><th>中身</th></tr></thead>
     <tbody>
       <tr><td><span class="path">Projects/Sokoban</span></td><td>倉庫番。スクリプト 1 本（<span class="path">SokobanBoard.as</span>）とプレハブ 5 つだけで、文字で書いた盤面からステージを組み立てる小さな見本。ステージはインスペクタの <code>stages</code> に 1 行足せば増やせます。</td></tr>
-      <tr><td><span class="path">Projects/Sandbox</span></td><td>機能ごとの試験場（物理・キャラクターの歩行・UI・水面・カメラの揺れ・スクリプトのシューター）</td></tr>
+      <tr><td><span class="path">Projects/Sandbox</span></td><td>機能ごとの試験場（物理・キャラクターの歩行・UI・水面・カメラの揺れ・スクリプトのシューター）。沖縄の海辺のシーンでは、待機・歩き・走りのアニメーションが付いた人型を操作できます（<a href="#tutorial-beach-player">沖縄の海辺をプレイヤーで歩く</a>）。</td></tr>
     </tbody>
   </table>
   </div>
@@ -6615,6 +6615,76 @@ kbd {
     <li>クラス名には機能の名前を頭に付けて、ぶつからないようにする</li>
   </ul>
 </article>
+<article class="page" id="tutorial-beach-player" data-group="チュートリアル" data-title="沖縄の海辺をプレイヤーで歩く" data-nav="海辺を歩く" data-keywords="サンプル 見本 プレイヤー キャラクター 人型 操作 歩く 走る 待機 アニメーション アニメーター クリップ mixamo x bot blender fbx gltf 骨 スキン 高さ 地面 足元 コライダー 桟橋 カメラ 追う 沖縄 OkinawaBeachScene BeachPlayer">
+  <h1>沖縄の海辺をプレイヤーで歩く</h1>
+  <p class="lead">Sandbox の <code>OkinawaBeachScene</code> には、操作できる人型（Mixamo の X Bot）がいます。待機・歩き・走りのアニメーションを 1 つの glTF に入れ、スクリプト <span class="path">BeachPlayer.as</span> が進んだ速さに合わせて切り替えます。</p>
+
+  <h2 id="beach-player-play">動かす</h2>
+  <ol class="steps">
+    <li><strong>開く</strong>Sandbox を開き、Project の <span class="path">Scenes</span> から <code>OkinawaBeachScene</code> を開きます。</li>
+    <li><strong>遊ぶ</strong><kbd>Ctrl</kbd>+<kbd>P</kbd>。カメラの向きを前として WASD（左スティック）で歩き、<kbd>Shift</kbd>（左スティックの押し込み）を押している間は走ります。カメラは矢印キー（右スティック）か右ドラッグで回り、ホイールで寄ります。歩いている間も回せます。</li>
+  </ol>
+  <p>停止中はスキンモデルの姿勢が計算されないので、人型は再生するまで見えません。</p>
+  <p>カメラを回す操作は、Sandbox の <span class="path">InputActions.json</span> に足した入力アクション <code>LookUp</code>・<code>LookDown</code>・<code>LookLeft</code>・<code>LookRight</code>（矢印キー・右スティック）です。移動と同時に入れられるよう、Sandbox では矢印キーを移動（<code>MoveForward</code> など）から外しています。</p>
+
+  <h2 id="beach-player-scene">シーンのオブジェクト</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>オブジェクト</th><th>中身</th></tr></thead>
+    <tbody>
+      <tr><td>Player</td><td>カプセルのコライダー（レイヤー Player・高さ 1.8m）、キャラクタコントローラ、<code>BeachPlayer</code>（沖縄の砂浜：プレイヤー）。置いた位置と向きから始まる</td></tr>
+      <tr><td>PlayerModel</td><td>Player の子。アニメーターがモデル <span class="path">Models/XBot/XBot.gltf</span> とクリップ <code>Idle</code>・<code>Walk</code>・<code>Run</code> を持つ（先頭の Idle から再生）。足元をカプセルの下端に合わせて y を -0.9 にし、glTF の正面（+Z）をエンジンの正面へ向けるため Y に 180 度回してある</td></tr>
+      <tr><td>PlayerColliders</td><td>静的な箱のコライダーを並べたもの。ヤシの幹・椅子・パラソルの柱・舟・岩と、桟橋の両脇・先端の見えない壁</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2 id="beach-player-ground">足元と当たり</h2>
+  <p>コライダーの形は球・箱・カプセルだけなので、砂浜の起伏どおりには当たれません。足元の高さは表で決め、物にぶつかるところだけをコライダーで解いています。</p>
+  <ul>
+    <li><strong>高さの表</strong>：<span class="path">Data/OkinawaBeach/BeachGround.json</span>。0.5m 格子で、砂浜の地形と桟橋の床の高い方を cm で持ちます。<code>DataFile</code> で読み、4 つの格子点から双一次で引きます。</li>
+    <li><strong>動かし方</strong>：キャラクタコントローラは重力を切り（<code>useGravity</code> を false）、水平の <code>Move</code> だけを任せます。動いた後で y を「表の高さ ＋ 0.9」にします。</li>
+    <li><strong>進めない所</strong>：表の外、水深 0.45m より深い所、1m 進むあいだに 0.8m より高く上る所。斜めに当たったときは、進める向きの成分だけ進みます。</li>
+  </ul>
+  <script type="text/x-code" data-lang="as" data-file="BeachPlayer.as（抜粋）">
+        const Vector3 step = Restrict(before, moveDirection_ * (speed_ * dt), here);
+        if (controller_ !is null && controller_.exists) {
+            controller_.Move(step);
+        } else {
+            owner.transform.position = before + step;
+        }
+
+        Vector3 after = owner.transform.position;
+        const float moved = Length(Vector3(after.x - before.x, 0.0f, after.z - before.z));
+        float ground;
+        if (!CanStand(after.x, after.z, here, moved, ground)) {
+            after = before;
+            ground = here;
+        }
+        owner.transform.position = Vector3(after.x, ground + footOffset, after.z);
+  </script>
+
+  <h2 id="beach-player-clips">アニメーションの切り替え</h2>
+  <p>実際に進んだ速さで <code>Idle</code>・<code>Walk</code>・<code>Run</code> を選び、変わったときだけ <code>SwitchWithBlend</code> を呼びます（同じ名前を渡し続けると毎回頭から再生し直します）。境目で行き来しないよう、上げるときと下げるときで境の速さを変えています。</p>
+  <p>歩きは 1.4m/s、走りは 3.5m/s で進んだときに足が滑らない歩幅で作ってあります。<code>walkSpeed</code>・<code>runSpeed</code> を変えるときは、クリップも同じ速さで作り直します。</p>
+
+  <h2 id="beach-player-rebuild">作り直す</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>変えたいもの</th><th>やること</th></tr></thead>
+    <tbody>
+      <tr><td>アニメーション</td><td><span class="path">Tools/XBot/build_xbot.py</span> の <code>WALK</code>・<code>RUN</code>（歩幅・腰の上下・腕の振りなど）と <code>idle_clip</code> を直し、Blender で流します。glTF と <span class="path">Tools/XBot/XBot.blend</span>（書き出す前の Blender のシーン）が作り直されます。動きは <span class="path">render_sheet.py</span> で横と正面から並べた画像にして確かめられます</td></tr>
+      <tr><td>シーンの配置</td><td><span class="path">Tools/OkinawaBeach/bake_player_walk.py</span> を流し直すと、高さの表と PlayerColliders が配置に合わせて作り直されます</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <script type="text/x-code" data-lang="text" data-file="コマンド（リポジトリの根で）">
+blender -b --factory-startup --python Tools/XBot/build_xbot.py -- "X Bot.fbx"
+blender -b Tools/XBot/XBot.blend --python Tools/XBot/render_sheet.py -- 出力フォルダ
+python Tools/OkinawaBeach/bake_player_walk.py
+  </script>
+  <p>X Bot は元から Mixamo の骨（<code>mixamorig:</code> で始まる 65 本）と皮膚の重みを持っているので、骨はそのまま使っています。別の Mixamo のキャラクターでも、骨の名前が同じなら同じスクリプトでアニメーションを付けられます。</p>
+</article>
 <article class="page" id="recipes" data-group="困ったとき・資料" data-title="レシピ集（よくある処理の書き方）" data-nav="レシピ集" data-keywords="レシピ サンプル コード 書き方 したい タイマー 一定間隔 遅らせる 向く 追いかける 点滅 無敵 ポーズ 一時停止 ハイスコア 保存 ランダム 乱数 ゼロ埋め 振動 マウス 視点 ゆっくり 近づける 画面外 消す">
   <h1>レシピ集</h1>
   <p class="lead">「〇〇したい」から、そのまま使えるコードを探せます。どれも <code>class … : ScriptComponent</code> の中に書く前提です。</p>
@@ -7273,6 +7343,15 @@ kbd {
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-8-0">v0.8.0 <span class="dim">（2026-10-13）</span></h3>
+  <p>Sandbox の沖縄の海辺のシーンに、操作できる人型を足した版です（<a href="#tutorial-beach-player">沖縄の海辺をプレイヤーで歩く</a>）。</p>
+  <ul>
+    <li><strong>人型のモデル</strong>：Mixamo の X Bot（FBX）を glTF にし、Blender で待機・歩き・走りのアニメーションを付けて 1 つのファイルに入れました（<span class="path">Models/XBot/XBot.gltf</span>）。作り直すスクリプトと Blender のファイルは <span class="path">Tools/XBot/</span> にあります。</li>
+    <li><strong>操作</strong>：<code>OkinawaBeachScene</code> に Player を置き、スクリプト <code>BeachPlayer</code> で歩く・走る・カメラが後ろから追うようにしました。アニメーションは進んだ速さで切り替わります。</li>
+    <li><strong>視点の操作</strong>：Sandbox の入力アクションに <code>LookUp</code>・<code>LookDown</code>・<code>LookLeft</code>・<code>LookRight</code>（矢印キー・右スティック）を足し、歩きながらカメラを回せるようにしました。Sandbox では矢印キーを移動から外しています（物理テストの歩行も、矢印キーでカメラが回ります）。</li>
+    <li><strong>足元と当たり</strong>：砂浜と桟橋の高さの表（<span class="path">Data/OkinawaBeach/BeachGround.json</span>）と、ヤシ・椅子・舟などにぶつかる箱のコライダー（PlayerColliders）を、シーンの配置から作るツール <span class="path">Tools/OkinawaBeach/bake_player_walk.py</span> を足しました。<span class="path">export_engine_scene.py</span> でシーンを書き出し直しても、Player・PlayerModel・PlayerColliders は消えません。</li>
+  </ul>
 
   <h3 id="changelog-v0-7-0">v0.7.0 <span class="dim">（2026-10-11）</span></h3>
   <p>エディタの道具でインスペクタを自分で描き、グラフ・カーブ・時間軸を出せるようにした版です（<a href="#script-editor-inspector">インスペクタを自分で描く</a>・<a href="#script-editor-tools">グラフ・カーブ・時間軸</a>）。</p>
