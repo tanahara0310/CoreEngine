@@ -29,6 +29,9 @@ enum class WaterDebugViewMode : uint32_t {
     CompositeReflectionOnly = 21,   // reflectanceWeight=1 の最終合成（反射のみ）
     ReflectionMinusTransmission = 22, // |反射 - 透過| ×3（斑を生む輝度差の分布）
     FFTOceanFoam = 23, // 泡マスク（グレースケール）
+    ShoreWaveCrest = 24,    // 岸の波の峰と静水深
+    ShoreWaveHeight = 25,   // 岸の波の波高
+    ShoreWaveBreaking = 26, // 岸の波の砕けている度合い
 
     Count, // 末尾に追加すること（名前テーブルの static_assert が個数一致を検証する）
 };
@@ -63,6 +66,9 @@ inline const char* const kWaterDebugViewModeNames[] = {
     "合成:反射のみ(Fresnel=1)",
     "反射-透過の差分",
     "FFT 泡マスク",
+    "岸の波：峰と水深",
+    "岸の波：波高",
+    "岸の波：砕ける度合い",
 };
 
 static_assert(

@@ -56,12 +56,12 @@ struct WaterCausticsResult
 /// @details 集光率（ヤコビアン）の差分に使う。入射点探索と同じ波面評価・屈折計算をする
 /// @return 屈折が有効（全反射・上向きでない）なら true
 bool ProjectRefractedToFloor(
-    Texture2DArray<float4> displacementTex, Texture2DArray<float4> normalTex,
+    Texture2DArray<float4> displacementTex, Texture2DArray<float4> normalTex, Texture2D<float4> shoreField,
     float2 surfaceXZ, float floorY, float3 lightDir, float eta, float footprintMeters,
     out float2 landingXZ)
 {
-    const float surfaceY = gSurfaceWaterHeight + EvaluateWaterOffset(displacementTex, surfaceXZ).y;
-    const float3 surfaceNormal = EvaluateWaterNormal(normalTex, surfaceXZ, footprintMeters);
+    const float surfaceY = gSurfaceWaterHeight + EvaluateWaterOffsetWithShore(displacementTex, shoreField, surfaceXZ).y;
+    const float3 surfaceNormal = EvaluateWaterNormalWithShoreAtBase(normalTex, shoreField, surfaceXZ, footprintMeters);
     float3 refracted = refract(lightDir, surfaceNormal, eta);
     if (dot(refracted, refracted) <= 1.0e-6f || refracted.y >= -1.0e-4f)
     {
@@ -84,7 +84,8 @@ WaterCausticsPath BeginWaterCaustics(
     float3 receiverNormal,
     float receiverFootprintMeters,
     Texture2DArray<float4> displacementTex,
-    Texture2DArray<float4> normalTex)
+    Texture2DArray<float4> normalTex,
+    Texture2D<float4> shoreField)
 {
     WaterCausticsPath path;
     path.coverage = 0.0f;
@@ -118,7 +119,7 @@ WaterCausticsPath BeginWaterCaustics(
 
     // 描かれる水面からの深さ。水面より上なら水に覆われていない（直接光は通常のまま）
     const float surfaceYAboveReceiver =
-        gSurfaceWaterHeight + EvaluateDrawnSurfaceHeight(displacementTex, receiverWorldPos.xz);
+        gSurfaceWaterHeight + EvaluateDrawnSurfaceHeightWithShore(displacementTex, shoreField, receiverWorldPos.xz);
     float submergedDepth = surfaceYAboveReceiver - receiverWorldPos.y;
     if (submergedDepth <= 0.0f)
     {
@@ -171,7 +172,7 @@ WaterCausticsPath BeginWaterCaustics(
     [unroll]
     for (int iteration = 0; iteration < 3; ++iteration)
     {
-        const float3 iterNormal = EvaluateWaterNormal(normalTex, waterPos.xz, receiverFootprintMeters);
+        const float3 iterNormal = EvaluateWaterNormalWithShoreAtBase(normalTex, shoreField, waterPos.xz, receiverFootprintMeters);
         float3 iterRefracted = refract(lightDir, iterNormal, eta);
         if (dot(iterRefracted, iterRefracted) <= 1.0e-6f || iterRefracted.y >= -1.0e-4f)
         {
@@ -182,11 +183,11 @@ WaterCausticsPath BeginWaterCaustics(
 
         const float travel = (waterPos.y - receiverWorldPos.y) / max(-iterRefracted.y, 1.0e-4f);
         waterPos.xz = receiverWorldPos.xz - iterRefracted.xz * travel;
-        waterPos.y = gSurfaceWaterHeight + EvaluateWaterOffset(displacementTex, waterPos.xz).y;
+        waterPos.y = gSurfaceWaterHeight + EvaluateWaterOffsetWithShore(displacementTex, shoreField, waterPos.xz).y;
     }
 
     // 入射点での法線・屈折した向き。求まらなければ平らな水面の透過光を使う
-    float3 waterNormal = EvaluateWaterNormal(normalTex, waterPos.xz, receiverFootprintMeters);
+    float3 waterNormal = EvaluateWaterNormalWithShoreAtBase(normalTex, shoreField, waterPos.xz, receiverFootprintMeters);
     float3 refractedDir = refract(lightDir, waterNormal, eta);
     if (dot(refractedDir, refractedDir) <= 1.0e-6f || refractedDir.y >= -1.0e-4f)
     {
@@ -243,7 +244,8 @@ WaterCausticsResult FinishWaterCaustics(
     bool hit,
     float hitT,
     Texture2DArray<float4> displacementTex,
-    Texture2DArray<float4> normalTex)
+    Texture2DArray<float4> normalTex,
+    Texture2D<float4> shoreField)
 {
     WaterCausticsResult result;
     result.radiance = path.baselineRadiance;
@@ -295,11 +297,11 @@ WaterCausticsResult FinishWaterCaustics(
         float2 landingX;
         float2 landingZ;
         const bool validX = ProjectRefractedToFloor(
-            displacementTex, normalTex,
+            displacementTex, normalTex, shoreField,
             waterPos.xz + float2(jacobianEps, 0.0f), floorY, lightDir, eta,
             receiverFootprintMeters, landingX);
         const bool validZ = ProjectRefractedToFloor(
-            displacementTex, normalTex,
+            displacementTex, normalTex, shoreField,
             waterPos.xz + float2(0.0f, jacobianEps), floorY, lightDir, eta,
             receiverFootprintMeters, landingZ);
         if (validX && validZ)

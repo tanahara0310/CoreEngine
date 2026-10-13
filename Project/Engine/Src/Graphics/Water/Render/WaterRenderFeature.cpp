@@ -25,6 +25,7 @@
 #include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterSeabedRayTracingManager.h"
 #include "Graphics/Water/Foam/WaterFoamSystem.h"
+#include "Graphics/Water/Shore/WaterShoreWaveSystem.h"
 #include "Graphics/Water/WaterCVars.h"
 #include "Graphics/Water/Simulation/FFTOceanSurfaceSimulator.h"
 #include "Graphics/Water/Simulation/GerstnerWaterSimulator.h"
@@ -199,6 +200,7 @@ namespace CoreEngine
 
             SyncCausticsAbsorption(*domain);
             SyncFoamSettings(*domain);
+            SyncShoreWaveSettings(*domain);
 
             const WaterFrameBinding binding = BuildFrameBinding(ctx, *domain);
             waterPlane->ApplyFrameBinding(binding);
@@ -212,6 +214,13 @@ namespace CoreEngine
             waterSurfaceState_.shoreMeshCellSize =
                 binding.seabedSize / static_cast<float>(WaterSurfaceMeshGenerator::kShoreSubdivisions);
             waterSurfaceState_.shoreMeshBlendWidth = frameConstants.shoreMeshBlendWidth;
+            waterSurfaceState_.shoreWaveEnabled = frameConstants.shoreWaveEnabled != 0 ? 1u : 0u;
+            waterSurfaceState_.shoreWaveAngularFrequency = frameConstants.shoreWaveAngularFrequency;
+            waterSurfaceState_.shoreWavePhaseTime = frameConstants.shoreWavePhaseTime;
+            waterSurfaceState_.shoreWaveHeight = frameConstants.shoreWaveHeight;
+            waterSurfaceState_.shoreWaveStartDepth = frameConstants.shoreWaveStartDepth;
+            waterSurfaceState_.shoreWaveHeightVariation = frameConstants.shoreWaveHeightVariation;
+            waterSurfaceState_.shoreWaveEdgeMargin = frameConstants.shoreWaveEdgeMargin;
             LogFrameDiagnostics(binding);
             break;
         }
@@ -419,6 +428,21 @@ namespace CoreEngine
                 if (const WaterFoamSystem* foam = domain.GetWaterFoamSystem(); foam && foam->IsShoreActive()) {
                     binding.resources.shoreFoamSRV = foam->GetShoreSRVHandle();
                 }
+
+                // 岸の波の場。同じフレームの WaterShoreWavePass が同じ範囲で書く側
+                const WaterShoreWaveSystem* shoreWave = domain.GetWaterShoreWaveSystem();
+                if (shoreWave && shoreWave->IsActive() && shoreWave->HasField()
+                    && binding.shoreMeshEnabled && shoreWavePhaseValid_) {
+                    const WaterShoreWaveSystem::Settings& shoreSettings = shoreWave->GetSettings();
+                    binding.resources.shoreWaveFieldSRV = shoreWave->GetFieldSRVHandle();
+                    binding.shoreWaveEnabled = true;
+                    binding.shoreWaveAngularFrequency = shoreWave->GetAngularFrequency();
+                    binding.shoreWavePhaseTime = shoreWavePhaseTime_;
+                    binding.shoreWavePrevPhaseTime = shoreWavePrevPhaseTime_;
+                    binding.shoreWaveHeight = shoreSettings.height;
+                    binding.shoreWaveStartDepth = shoreSettings.startDepth;
+                    binding.shoreWaveHeightVariation = shoreSettings.heightVariation;
+                }
             }
         }
 
@@ -613,6 +637,33 @@ namespace CoreEngine
         // 模様を風の向きに伸ばす軸
         const float fftTimeSeconds = fftOceanSimulator_ ? fftOceanSimulator_->GetElapsedTime() : 0.0f;
         waterPlane->SetFoamMotion(foam->ComputeFoamDriftOffset(fftTimeSeconds), foam->ComputeFoamStretchAxis());
+    }
+
+    void WaterRenderFeature::SyncShoreWaveSettings(RenderDomainContext& domain)
+    {
+        WaterShoreWaveSystem* shoreWave = domain.GetWaterShoreWaveSystem();
+        if (!shoreWave || !shoreWave->IsInitialized()) {
+            return;
+        }
+
+        WaterShoreWaveSystem::Settings settings{};
+        settings.enabled = WaterCVars::ShoreWaveEnabled.Get();
+        settings.height = WaterCVars::ShoreWaveHeight.Get();
+        settings.period = WaterCVars::ShoreWavePeriod.Get();
+        settings.startDepth = WaterCVars::ShoreWaveStartDepth.Get();
+        settings.heightVariation = WaterCVars::ShoreWaveHeightVariation.Get();
+        // 沖から来る岸の波はうねりの向きに進む
+        const Vector2 swellDirection = WaterCVars::SwellDirection.Get();
+        settings.direction[0] = swellDirection.x;
+        settings.direction[1] = swellDirection.y;
+        shoreWave->SetSettings(settings);
+
+        // 波の時刻は FFT と同じ時計で進める
+        const float timeSeconds = fftOceanSimulator_ ? fftOceanSimulator_->GetElapsedTime() : 0.0f;
+        const float phaseTime = shoreWave->ComputePhaseTime(static_cast<double>(timeSeconds));
+        shoreWavePrevPhaseTime_ = shoreWavePhaseValid_ ? shoreWavePhaseTime_ : phaseTime;
+        shoreWavePhaseTime_ = phaseTime;
+        shoreWavePhaseValid_ = true;
     }
 
     void WaterRenderFeature::SyncCausticsAbsorption(RenderDomainContext& domain) const

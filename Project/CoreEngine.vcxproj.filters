@@ -316,6 +316,12 @@
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\WaterShoreFoamPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\WaterShoreWavePass.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\Shore\WaterShoreWaveSystem.cpp">
+      <Filter>Engine\Src\Graphics\Water\Shore</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
@@ -2595,6 +2601,12 @@
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\WaterShoreFoamPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\WaterShoreWavePass.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\Shore\WaterShoreWaveSystem.h">
+      <Filter>Engine\Src\Graphics\Water\Shore</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
@@ -4389,6 +4401,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\Water\Render">
       <UniqueIdentifier>{4B12F921-6D73-4BD6-B4F9-23B4F214771D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Water\Shore">
+      <UniqueIdentifier>{A7DD4DF8-2696-44B6-964F-79B2BD1FA6C7}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Water\Simulation">
       <UniqueIdentifier>{885AB6EC-E224-419F-8C36-DD519D941E3B}</UniqueIdentifier>

@@ -13,6 +13,7 @@
 #include "../Common/GerstnerWave.hlsli"
 #include "../Common/FFTOceanCascade.hlsli"
 #include "../Common/WaterShoreMesh.hlsli"
+#include "../Common/WaterShoreWave.hlsli"
 // ピクセルフットプリントの算出（ScreenUVToNDC / ReconstructWorldPosition）
 #include "../../Include/Common/DepthReconstruction.hlsli"
 
@@ -45,6 +46,15 @@ cbuffer WaterSurfaceData : register(b1)
     float gSurfaceShoreMeshCellSize;       // 岸の格子の 1 マスの幅 [m]
     float gSurfaceShoreMeshBlendWidth;     // 範囲の端から内側へ、粗い格子の形から移す幅 [m]
     float2 gSurfacePad3;
+    // 岸の波（WaterShoreWave.hlsli。場 gShoreWaveField の範囲は岸の細かい格子と同じ）
+    uint gSurfaceShoreWaveEnabled;
+    float gSurfaceShoreWaveAngularFrequency;
+    float gSurfaceShoreWavePhaseTime;
+    float gSurfaceShoreWaveHeight;
+    float gSurfaceShoreWaveStartDepth;
+    float gSurfaceShoreWaveHeightVariation;
+    float gSurfaceShoreWaveEdgeMargin;
+    float gSurfacePad4;
 };
 
 static const uint kWaterSurfaceModelTypeGerstner = 0;
@@ -353,6 +363,122 @@ float EvaluateExcludedMeanSquareSlope(float2 worldXZ, float footprintMeters)
 }
 
 // ============================================================
+// 岸の波を含む水面（屈折・反射・コースティクスが使う。海底の高さを測るレイは含めない）
+// 岸の波の場は引数で受ける（このヘッダーにリソース宣言を置かない）。
+// ============================================================
+
+/// @brief b1 の岸の波の設定
+ShoreWaveParams GetSurfaceShoreWaveParams()
+{
+    ShoreWaveParams p;
+    p.enabled = gSurfaceShoreWaveEnabled != 0 && gSurfaceShoreMeshEnabled != 0 && UseFFTOceanSurface();
+    p.originXZ = gSurfaceShoreMeshOriginXZ;
+    p.size = gSurfaceShoreMeshSize;
+    p.edgeMargin = gSurfaceShoreWaveEdgeMargin;
+    p.angularFrequency = gSurfaceShoreWaveAngularFrequency;
+    p.height = gSurfaceShoreWaveHeight;
+    p.startDepth = gSurfaceShoreWaveStartDepth;
+    p.heightVariation = gSurfaceShoreWaveHeightVariation;
+    return p;
+}
+
+/// @brief 岸の波を求める必要がある点か（範囲の少し外まで。水平のずれで範囲の中から出てくる点を含める）
+bool IsNearShoreWaves(float2 worldXZ)
+{
+    const float margin = 4.0f;
+    return GetSurfaceShoreWaveParams().enabled
+        && IsInsideShoreMesh(worldXZ, gSurfaceShoreMeshOriginXZ - margin, gSurfaceShoreMeshSize + 2.0f * margin);
+}
+
+/// @brief 岸の格子の頂点 1 点の変位（岸の波を含む。FFTWater.VS と同じ式）
+float3 SampleShoreMeshVertexDisplacementWithShore(
+    Texture2DArray<float4> displacementTex, Texture2D<float4> shoreField, float2 baseXZ)
+{
+    const float3 fft = SampleShoreMeshVertexDisplacement(displacementTex, baseXZ);
+    const ShoreWaveResult shore =
+        EvaluateShoreWave(shoreField, GetSurfaceShoreWaveParams(), baseXZ, gSurfaceShoreWavePhaseTime);
+    return fft * shore.fftScale + shore.displacement;
+}
+
+/// @brief 描かれた水面の点 worldXZ の、変位前の位置（水平のずれを 3 回逆にたどる）
+float2 FindShoreMeshBaseXZ(Texture2DArray<float4> displacementTex, Texture2D<float4> shoreField, float2 worldXZ)
+{
+    float2 baseXZ = worldXZ;
+    [unroll]
+    for (int i = 0; i < 3; ++i)
+    {
+        baseXZ = worldXZ - SampleShoreMeshVertexDisplacementWithShore(displacementTex, shoreField, baseXZ).xz;
+    }
+    return baseXZ;
+}
+
+/// @brief EvaluateDrawnSurfaceHeight に岸の波を含めたもの
+float EvaluateDrawnSurfaceHeightWithShore(
+    Texture2DArray<float4> displacementTex, Texture2D<float4> shoreField, float2 worldXZ)
+{
+    if (!IsNearShoreWaves(worldXZ) || gSurfaceRegionValid == 0)
+    {
+        return EvaluateDrawnSurfaceHeight(displacementTex, worldXZ);
+    }
+    const float2 baseXZ = FindShoreMeshBaseXZ(displacementTex, shoreField, worldXZ);
+    if (!IsInsideShoreMesh(baseXZ, gSurfaceShoreMeshOriginXZ, gSurfaceShoreMeshSize))
+    {
+        return EvaluateDrawnSurfaceHeight(displacementTex, worldXZ);
+    }
+    const WaterGridTriangle tri = FindWaterGridTriangle(
+        baseXZ, gSurfaceShoreMeshOriginXZ, gSurfaceShoreMeshCellSize.xx);
+    return SampleShoreMeshVertexDisplacementWithShore(displacementTex, shoreField, tri.corner0).y * tri.weights.x
+        + SampleShoreMeshVertexDisplacementWithShore(displacementTex, shoreField, tri.corner1).y * tri.weights.y
+        + SampleShoreMeshVertexDisplacementWithShore(displacementTex, shoreField, tri.corner2).y * tri.weights.z;
+}
+
+/// @brief EvaluateWaterNormal に岸の波を含めたもの（FFT の傾きを浅い所で弱め、岸の波の傾きを足す）
+float3 EvaluateWaterNormalWithShore(
+    Texture2DArray<float4> normalTex, Texture2DArray<float4> displacementTex, Texture2D<float4> shoreField,
+    float2 worldXZ, float footprintMeters)
+{
+    const float3 fftNormal = EvaluateWaterNormal(normalTex, worldXZ, footprintMeters);
+    if (!IsNearShoreWaves(worldXZ))
+    {
+        return fftNormal;
+    }
+    const float2 baseXZ = FindShoreMeshBaseXZ(displacementTex, shoreField, worldXZ);
+    const ShoreWaveResult shore =
+        EvaluateShoreWave(shoreField, GetSurfaceShoreWaveParams(), baseXZ, gSurfaceShoreWavePhaseTime);
+    const float2 slope = fftNormal.xz / max(fftNormal.y, 1.0e-3f) * shore.fftScale + shore.normalSlope;
+    return normalize(float3(slope.x, 1.0f, slope.y));
+}
+
+/// @brief EvaluateWaterNormal に岸の波を含めたもの（点 xz をそのまま変位前の位置とみなす）
+float3 EvaluateWaterNormalWithShoreAtBase(
+    Texture2DArray<float4> normalTex, Texture2D<float4> shoreField, float2 xz, float footprintMeters)
+{
+    const float3 fftNormal = EvaluateWaterNormal(normalTex, xz, footprintMeters);
+    if (!IsNearShoreWaves(xz))
+    {
+        return fftNormal;
+    }
+    const ShoreWaveResult shore =
+        EvaluateShoreWave(shoreField, GetSurfaceShoreWaveParams(), xz, gSurfaceShoreWavePhaseTime);
+    const float2 slope = fftNormal.xz / max(fftNormal.y, 1.0e-3f) * shore.fftScale + shore.normalSlope;
+    return normalize(float3(slope.x, 1.0f, slope.y));
+}
+
+/// @brief EvaluateWaterOffset に岸の波を含めたもの（点 xz をそのまま変位前の位置とみなす）
+float3 EvaluateWaterOffsetWithShore(
+    Texture2DArray<float4> displacementTex, Texture2D<float4> shoreField, float2 xz)
+{
+    const float3 fft = EvaluateWaterOffset(displacementTex, xz);
+    if (!IsNearShoreWaves(xz))
+    {
+        return fft;
+    }
+    const ShoreWaveResult shore =
+        EvaluateShoreWave(shoreField, GetSurfaceShoreWaveParams(), xz, gSurfaceShoreWavePhaseTime);
+    return fft * shore.fftScale + shore.displacement;
+}
+
+// ============================================================
 // レイペイロードと失敗理由コード（3 シェーダー共通）
 // ============================================================
 
@@ -399,6 +525,7 @@ float3 VisualizeRTScalar(float value, float displayScale)
 /// @return シードが有限値なら true。waterPos に精密化後の交点が入る
 bool RefineWaterSurfaceIntersection(
     Texture2DArray<float4> displacementTex,
+    Texture2D<float4> shoreField,
     float3 cameraPosition,
     float3 primaryDir,
     float sceneDistance,
@@ -429,7 +556,8 @@ bool RefineWaterSurfaceIntersection(
     [unroll]
     for (int iteration = 0; iteration < 3; ++iteration)
     {
-        const float surfaceY = gSurfaceWaterHeight + EvaluateDrawnSurfaceHeight(displacementTex, waterPos.xz);
+        const float surfaceY =
+            gSurfaceWaterHeight + EvaluateDrawnSurfaceHeightWithShore(displacementTex, shoreField, waterPos.xz);
         const float deltaY = waterPos.y - surfaceY;
         waterPos -= primaryDir * (deltaY / safeDenom);
     }

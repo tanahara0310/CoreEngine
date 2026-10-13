@@ -58,6 +58,8 @@ namespace CoreEngine
             float cascadeMeanSquareSlope[3] = { 0.0f, 0.0f, 0.0f };
             /// @brief 波群エンベロープの位相のずれ [rad]（FFTOceanManager::ComputeWaveGroupPhase）
             float waveGroupPhase[3] = { 0.0f, 0.0f, 0.0f };
+            /// @brief 岸の波の場（WaterShoreWaveSystem。まだ作っていなければ ptr = 0）
+            D3D12_GPU_DESCRIPTOR_HANDLE shoreWaveFieldSRV{};
         };
 
         /// @brief RT 側が参照する水面モデルの供給元を差し替える
@@ -162,9 +164,18 @@ namespace CoreEngine
             float shoreMeshCellSize = 0.0f;
             float shoreMeshBlendWidth = 0.0f;
             float pad3[2] = { 0.0f, 0.0f };
+            // ---- 岸の波（WaterSurfaceData の同名の値）----
+            uint32_t shoreWaveEnabled = 0;
+            float shoreWaveAngularFrequency = 1.0f;
+            float shoreWavePhaseTime = 0.0f;
+            float shoreWaveHeight = 0.0f;
+            float shoreWaveStartDepth = 1.0f;
+            float shoreWaveHeightVariation = 0.0f;
+            float shoreWaveEdgeMargin = 1.0f;
+            float pad4 = 0.0f;
         };
 
-        static_assert(sizeof(WaterSurfaceConstants) == 16 + 32 * kMaxWaterSurfaceWaveCount + 96,
+        static_assert(sizeof(WaterSurfaceConstants) == 16 + 32 * kMaxWaterSurfaceWaveCount + 128,
             "WaterSurfaceConstants layout mismatch with RTWaterSurfaceCommon.hlsli cbuffer");
 
         static constexpr Cb::Field kWaterSurfaceConstantsFields[] = {
@@ -178,7 +189,11 @@ namespace CoreEngine
             CB_FIELD(WaterSurfaceConstants, pad2), CB_FIELD(WaterSurfaceConstants, shoreMeshEnabled),
             CB_FIELD(WaterSurfaceConstants, shoreMeshSize), CB_FIELD(WaterSurfaceConstants, shoreMeshOriginXZ),
             CB_FIELD(WaterSurfaceConstants, shoreMeshCellSize), CB_FIELD(WaterSurfaceConstants, shoreMeshBlendWidth),
-            CB_FIELD(WaterSurfaceConstants, pad3),
+            CB_FIELD(WaterSurfaceConstants, pad3), CB_FIELD(WaterSurfaceConstants, shoreWaveEnabled),
+            CB_FIELD(WaterSurfaceConstants, shoreWaveAngularFrequency), CB_FIELD(WaterSurfaceConstants, shoreWavePhaseTime),
+            CB_FIELD(WaterSurfaceConstants, shoreWaveHeight), CB_FIELD(WaterSurfaceConstants, shoreWaveStartDepth),
+            CB_FIELD(WaterSurfaceConstants, shoreWaveHeightVariation), CB_FIELD(WaterSurfaceConstants, shoreWaveEdgeMargin),
+            CB_FIELD(WaterSurfaceConstants, pad4),
         };
         CB_VERIFY_LAYOUT(WaterSurfaceConstants, kWaterSurfaceConstantsFields);
         CB_BIND_HLSL(WaterSurfaceConstants, kWaterSurfaceConstantsFields, "WaterSurfaceData");

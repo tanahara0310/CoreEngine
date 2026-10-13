@@ -52,6 +52,11 @@ namespace CoreEngine
 
         // ---- 岸 ----
         extern CVar<bool>    ShoreFineMesh;
+        extern CVar<bool>    ShoreWaveEnabled;
+        extern CVar<float>   ShoreWaveHeight;
+        extern CVar<float>   ShoreWavePeriod;
+        extern CVar<float>   ShoreWaveStartDepth;
+        extern CVar<float>   ShoreWaveHeightVariation;
 
         // ---- コースティクス（RT / SS 共通の見た目パラメータ）----
         extern CVar<int>     CausticsBackend; // 0=RT / 1=ScreenSpace（コンボは水面パネル。NoUI）

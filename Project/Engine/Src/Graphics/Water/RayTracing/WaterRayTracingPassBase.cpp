@@ -315,6 +315,13 @@ namespace CoreEngine
         surfaceConstants.shoreMeshSize = surfaceData.shoreMeshSize;
         surfaceConstants.shoreMeshCellSize = surfaceData.shoreMeshCellSize;
         surfaceConstants.shoreMeshBlendWidth = surfaceData.shoreMeshBlendWidth;
+        surfaceConstants.shoreWaveEnabled = (surfaceData.shoreWaveEnabled != 0 && fftOceanInput.shoreWaveFieldSRV.ptr != 0) ? 1u : 0u;
+        surfaceConstants.shoreWaveAngularFrequency = surfaceData.shoreWaveAngularFrequency;
+        surfaceConstants.shoreWavePhaseTime = surfaceData.shoreWavePhaseTime;
+        surfaceConstants.shoreWaveHeight = surfaceData.shoreWaveHeight;
+        surfaceConstants.shoreWaveStartDepth = surfaceData.shoreWaveStartDepth;
+        surfaceConstants.shoreWaveHeightVariation = surfaceData.shoreWaveHeightVariation;
+        surfaceConstants.shoreWaveEdgeMargin = surfaceData.shoreWaveEdgeMargin;
         return surfaceConstants;
     }
 

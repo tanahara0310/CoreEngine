@@ -28,6 +28,7 @@
 #include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
 #include "Graphics/Render/Pass/RenderPass.h"
 #include "Graphics/Water/FFTOceanManager.h"
+#include "Graphics/Water/Shore/WaterShoreWaveSystem.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/GameObjectManager.h"
 #include "Particle/ParticleSystemComponent.h"
@@ -583,6 +584,10 @@ namespace CoreEngine
                 context.fftOceanManager->ComputeWaveGroupPhase(context.fftOceanSimulationTime);
             for (size_t i = 0; i < waveGroupPhase.size(); ++i) {
                 outDispatchContext.fftOceanInput.waveGroupPhase[i] = waveGroupPhase[i];
+            }
+            if (context.waterShoreWaveSystem && context.waterShoreWaveSystem->IsActive()
+                && context.waterShoreWaveSystem->HasField()) {
+                outDispatchContext.fftOceanInput.shoreWaveFieldSRV = context.waterShoreWaveSystem->GetFieldSRVHandle();
             }
         }
 

@@ -292,6 +292,30 @@ float3 ResolveWaterDebugColor(WaterDebugContext ctx)
         return VisualizeDepthValue(ctx.foamMask);
     }
 
+    // 24: 岸の波の峰（白）と、ならした静水深（水色 = 浅い → 紺 = 波が来始める水深・茶 = 陸）
+    if (gDepthDebugViewMode == 24)
+    {
+        const ShoreWaveResult shore = EvaluateFrameShoreWave(ctx.worldXZ);
+        const float3 depthColor = shore.depth <= 0.0f
+            ? float3(0.45f, 0.3f, 0.15f)
+            : lerp(float3(0.6f, 0.9f, 1.0f), float3(0.0f, 0.1f, 0.5f),
+                saturate(shore.depth / max(gShoreWaveStartDepth, 0.1f)));
+        return lerp(depthColor, float3(1.0f, 1.0f, 1.0f), pow(shore.crest, 6.0f));
+    }
+
+    // 25: 岸の波の波高（白 = 2m）
+    if (gDepthDebugViewMode == 25)
+    {
+        return VisualizeDepthValue(saturate(EvaluateFrameShoreWave(ctx.worldXZ).height / 2.0f));
+    }
+
+    // 26: 岸の波の砕けている度合い（赤）。波のある所は緑を少し足す
+    if (gDepthDebugViewMode == 26)
+    {
+        const ShoreWaveResult shore = EvaluateFrameShoreWave(ctx.worldXZ);
+        return float3(shore.breaking, shore.height > 0.0f ? 0.15f : 0.0f, 0.0f);
+    }
+
     // 未知のモード（黄色）
     return float3(1.0f, 1.0f, 0.0f);
 }

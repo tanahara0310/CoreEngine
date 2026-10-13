@@ -120,7 +120,7 @@ namespace CoreEngine
         // （Water.PS 側で平面法線の空と混ぜると二重像になるため）。
         static constexpr const char* kSrvTableNames[] = {
             "gSceneDepth", "gSceneColor", "gFFTOceanDisplacement", "gFFTOceanNormal", "gSkyEnvironmentMap",
-            "gSceneColorPyramid", "gSkyCoveragePyramid" };
+            "gSceneColorPyramid", "gSkyCoveragePyramid", "gShoreWaveField" };
         desc.srvTableNames = kSrvTableNames;
         desc.constantsName = "WaterReflectionConstants";
         desc.constantsBytes = sizeof(WaterReflectionConstants);
@@ -466,6 +466,8 @@ namespace CoreEngine
                 { "gSkyEnvironmentMap", skyEnvSRV },
                 { "gSceneColorPyramid", colorPyramidSRV },
                 { "gSkyCoveragePyramid", skyCoveragePyramidSRV },
+                { "gShoreWaveField",
+                    fftOceanInput.shoreWaveFieldSRV.ptr != 0 ? fftOceanInput.shoreWaveFieldSRV : sceneColorSRV },
             },
             &constants,
             width,

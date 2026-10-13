@@ -42,6 +42,15 @@ namespace CoreEngine
         float shoreMeshSize = 0.0f;                  ///< 範囲の一辺の長さ [m]
         float shoreMeshCellSize = 0.0f;              ///< 1 マスの幅 [m]
         float shoreMeshBlendWidth = 0.0f;            ///< 範囲の端から内側へ、粗い格子の形から移す幅 [m]
+
+        // 岸の波（WaterShoreWave.hlsli。WaterFrameConstants の同名の値と同じ）
+        uint32_t shoreWaveEnabled = 0;
+        float shoreWaveAngularFrequency = 1.0f;
+        float shoreWavePhaseTime = 0.0f;
+        float shoreWaveHeight = 0.0f;
+        float shoreWaveStartDepth = 1.0f;
+        float shoreWaveHeightVariation = 0.0f;
+        float shoreWaveEdgeMargin = 1.0f;
     };
 
     /// @brief 水の光学特性（屈折率・吸収・散乱）

@@ -111,5 +111,11 @@ void WaterShaderResourceBinder::Bind(
     if (renderResources.HasShoreFoam()) {
         binder.Set(table_[WaterBind::gWaterShoreFoam], renderResources.shoreFoamSRV);
     }
+
+    // 岸の波の場
+    // （未接続のフレームはシェーダー側フラグ gShoreWaveEnabled=0 で参照されない）
+    if (renderResources.HasShoreWaveField()) {
+        binder.Set(table_[WaterBind::gShoreWaveField], renderResources.shoreWaveFieldSRV);
+    }
 }
 }

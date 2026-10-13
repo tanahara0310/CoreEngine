@@ -74,7 +74,7 @@ namespace CoreEngine
         desc.closestHitName = L"RTWaterRefractionClosestHit";
         desc.outputUavName = "gRefractionOutput";
         static constexpr const char* kSrvTableNames[] = {
-            "gSceneDepth", "gSceneColor", "gFFTOceanDisplacement", "gFFTOceanNormal" };
+            "gSceneDepth", "gSceneColor", "gFFTOceanDisplacement", "gFFTOceanNormal", "gShoreWaveField" };
         desc.srvTableNames = kSrvTableNames;
         desc.constantsName = "WaterRefractionConstants";
         desc.constantsBytes = sizeof(WaterRefractionConstants);
@@ -198,6 +198,8 @@ namespace CoreEngine
                 { "gSceneColor", sceneColorSRV },
                 { "gFFTOceanDisplacement", fftDisplacementSRV },
                 { "gFFTOceanNormal", fftNormalSRV },
+                { "gShoreWaveField",
+                    fftOceanInput.shoreWaveFieldSRV.ptr != 0 ? fftOceanInput.shoreWaveFieldSRV : sceneColorSRV },
             },
             &constants,
             width,

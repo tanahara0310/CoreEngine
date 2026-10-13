@@ -15,6 +15,7 @@ Texture2D<float> gSceneDepth : register(t1); // WorldPosition ターゲット廃
 Texture2D<float4> gNormalRoughness : register(t2);
 Texture2DArray<float4> gFFTOceanDisplacement : register(t3);
 Texture2DArray<float4> gFFTOceanNormal : register(t4);
+Texture2D<float4> gShoreWaveField : register(t8); // 岸の波の場（WaterShoreWave.hlsli）
 
 cbuffer WaterCausticsConstants : register(b0)
 {
@@ -193,7 +194,7 @@ void RTWaterCausticsRayGen()
     const WaterCausticsParams params = MakeCausticsParams();
     const WaterCausticsPath path = BeginWaterCaustics(
         params, receiverWorldPos, receiverNormal, receiverFootprintMeters,
-        gFFTOceanDisplacement, gFFTOceanNormal);
+        gFFTOceanDisplacement, gFFTOceanNormal, gShoreWaveField);
     if (!path.traceRequired)
     {
         gCausticsOutput[launchIndex] = float4(path.baselineRadiance, path.coverage);
@@ -217,7 +218,7 @@ void RTWaterCausticsRayGen()
     const WaterCausticsResult result = FinishWaterCaustics(
         path, params, receiverWorldPos, receiverNormal, receiverFootprintMeters,
         payload.hitFlag >= 0.5f, payload.hitT,
-        gFFTOceanDisplacement, gFFTOceanNormal);
+        gFFTOceanDisplacement, gFFTOceanNormal, gShoreWaveField);
 
     if (gDebugViewMode != kRTCausticsDebugNone && result.patternEvaluated)
     {

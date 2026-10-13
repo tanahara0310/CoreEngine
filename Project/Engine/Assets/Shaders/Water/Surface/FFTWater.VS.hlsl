@@ -13,6 +13,7 @@ SamplerState gSampler : register(s0);
 // 波群エンベロープの位相（gWaveGroupPhase）を読む。レイアウトは Water.PS.hlsl と同じ。
 #include "../Common/WaterFrameConstants.hlsli"
 #include "../Common/WaterShoreMesh.hlsli"
+#include "../Common/WaterShoreWaveFrame.hlsli"
 
 struct FFTWaterVSOutput
 {
@@ -104,9 +105,25 @@ FFTWaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
         baseWorldPos = mul(input.position, mtx.World).xyz;
     }
 
-    float3 displacement = shoreMeshVertex
-        ? SampleShoreMeshVertexDisplacement(baseWorldPos.xz)
-        : SampleVertexDisplacement(baseWorldPos.xz);
+    // 岸の格子の頂点は、浅い所ほど FFT の波を弱めて岸の波を足す（前のフレームの位置も岸の波は前の時刻で求める）
+    float3 displacement;
+    float3 prevDisplacement;
+    if (shoreMeshVertex)
+    {
+        const float3 fftDisplacement = SampleShoreMeshVertexDisplacement(baseWorldPos.xz);
+        const ShoreWaveParams shoreParams = GetFrameShoreWaveParams();
+        const ShoreWaveResult shore =
+            EvaluateShoreWave(gShoreWaveField, shoreParams, baseWorldPos.xz, gShoreWavePhaseTime);
+        const ShoreWaveResult prevShore =
+            EvaluateShoreWave(gShoreWaveField, shoreParams, baseWorldPos.xz, gShoreWavePrevPhaseTime);
+        displacement = fftDisplacement * shore.fftScale + shore.displacement;
+        prevDisplacement = fftDisplacement * prevShore.fftScale + prevShore.displacement;
+    }
+    else
+    {
+        displacement = SampleVertexDisplacement(baseWorldPos.xz);
+        prevDisplacement = displacement;
+    }
 
     float3 worldPos = baseWorldPos + displacement;
 
@@ -145,7 +162,7 @@ FFTWaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     // カメラ運動は厳密に正しくなり、残るのは波自身の 1 フレーム分の動き（軌道速度 ~1m/s ＝
     // 16ms で 0.02m）だけで、これはサブピクセルなので無視できる。
     float4 basePrevClip = mul(localPosition, mtx.PrevWVP);
-    float4 offsetPrevClip = mul(float4(offsetLS, 0.0f), mtx.PrevWVP);
+    float4 offsetPrevClip = mul(float4(mul(prevDisplacement, invWorld3), 0.0f), mtx.PrevWVP);
     output.clipPosPrev = basePrevClip + offsetPrevClip;
     output.shoreMeshVertex = shoreMeshVertex ? 1.0f : 0.0f;
     return output;

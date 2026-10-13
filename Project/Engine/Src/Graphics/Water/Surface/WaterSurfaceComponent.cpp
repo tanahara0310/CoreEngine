@@ -176,6 +176,17 @@ namespace CoreEngine
         frameCB_.shoreMeshEnabled = (binding.shoreMeshEnabled && frameCB_.seabedEnabled != 0) ? 1 : 0;
         frameCB_.shoreMeshBlendWidth = (std::max)(frameCB_.meshCellSizeXZ[0], frameCB_.meshCellSizeXZ[1]);
 
+        // 岸の波（岸の格子の範囲の中だけ。範囲の端は粗い格子へ寄せる幅の 2 倍で消す）
+        frameCB_.shoreWaveEnabled =
+            (binding.shoreWaveEnabled && frameCB_.shoreMeshEnabled != 0 && renderResources_.HasShoreWaveField()) ? 1 : 0;
+        frameCB_.shoreWaveAngularFrequency = binding.shoreWaveAngularFrequency;
+        frameCB_.shoreWavePhaseTime = binding.shoreWavePhaseTime;
+        frameCB_.shoreWavePrevPhaseTime = binding.shoreWavePrevPhaseTime;
+        frameCB_.shoreWaveHeight = binding.shoreWaveHeight;
+        frameCB_.shoreWaveStartDepth = binding.shoreWaveStartDepth;
+        frameCB_.shoreWaveHeightVariation = binding.shoreWaveHeightVariation;
+        frameCB_.shoreWaveEdgeMargin = 2.0f * frameCB_.shoreMeshBlendWidth;
+
         frameCB_.skyAmbientScale = binding.skyAmbientScale;
         for (int c = 0; c < 3; ++c) {
             frameCB_.fftCascadeMeanSquareSlope[c] = binding.fftCascadeMeanSquareSlope[c];

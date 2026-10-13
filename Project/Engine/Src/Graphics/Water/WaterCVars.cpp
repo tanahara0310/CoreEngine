@@ -110,6 +110,18 @@ namespace CoreEngine
         // ---- 岸 ----
         CVar<bool> ShoreFineMesh{ "r.Water.Shore.FineMesh", true,
             "カメラの周りの範囲（海底の高さを測る範囲）を細かい格子で描く（FFTOcean 専用）" };
+        // 岸の波は、沖からうねりの向き（Swell.Direction）に寄せ、水深 StartDepth より浅くなるほど高く・前のめりになって砕ける。
+        // 細かい格子の範囲の中だけに出る
+        CVar<bool> ShoreWaveEnabled{ "r.Water.Shore.Waves", true,
+            "岸へ寄せて砕ける波を出す（細かい格子の範囲の中だけ）" };
+        CVar<float> ShoreWaveHeight{ "r.Water.Shore.WaveHeight", 0.8f,
+            "沖（水深 StartDepth）での岸の波の波高 [m]", CVarRange{ 0.0f, 4.0f } };
+        CVar<float> ShoreWavePeriod{ "r.Water.Shore.WavePeriod", 8.0f,
+            "岸の波の周期 [s]", CVarRange{ 2.0f, 20.0f } };
+        CVar<float> ShoreWaveStartDepth{ "r.Water.Shore.StartDepth", 4.0f,
+            "岸の波が来始める水深 [m]（これより浅い所に岸の波を出す）", CVarRange{ 0.5f, 20.0f } };
+        CVar<float> ShoreWaveHeightVariation{ "r.Water.Shore.HeightVariation", 0.35f,
+            "岸の波の 1 本ごとの波高のばらつき（0 = 全部同じ）", CVarRange{ 0.0f, 0.9f } };
 
         // ---- コースティクス ----
         CVar<int> CausticsBackend{ "r.Water.Caustics.Backend", 0,

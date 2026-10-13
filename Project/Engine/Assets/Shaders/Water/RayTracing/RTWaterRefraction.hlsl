@@ -19,6 +19,7 @@ Texture2D<float> gSceneDepth : register(t1); // WorldPosition ターゲット廃
 Texture2D<float4> gSceneColor : register(t2);
 Texture2DArray<float4> gFFTOceanDisplacement : register(t3);
 Texture2DArray<float4> gFFTOceanNormal : register(t4);
+Texture2D<float4> gShoreWaveField : register(t8); // 岸の波の場（WaterShoreWave.hlsli）
 
 cbuffer WaterRefractionConstants : register(b0)
 {
@@ -195,7 +196,7 @@ RTHitUnderwaterLighting BuildRefractionHitLighting(
     {
         const WaterCausticsParams params = MakeRefractionCausticsParams(mainLight);
         const WaterCausticsPath path = BeginWaterCaustics(
-            params, surface.position, surface.normal, footprintMeters, gFFTOceanDisplacement, gFFTOceanNormal);
+            params, surface.position, surface.normal, footprintMeters, gFFTOceanDisplacement, gFFTOceanNormal, gShoreWaveField);
         lighting.factor = saturate(path.coverage);
         if (lighting.factor > 0.0f)
         {
@@ -213,7 +214,7 @@ RTHitUnderwaterLighting BuildRefractionHitLighting(
                 lighting.transmittedMainLight = FinishWaterCaustics(
                     path, params, surface.position, surface.normal, footprintMeters,
                     payload.hitFlag >= 0.5f, payload.hitT,
-                    gFFTOceanDisplacement, gFFTOceanNormal).radiance;
+                    gFFTOceanDisplacement, gFFTOceanNormal, gShoreWaveField).radiance;
             }
         }
     }
@@ -346,7 +347,7 @@ void RTWaterRefractionRayGen()
     // （「カメラを近づけるとカメラ下側の屈折が消える」既知バグの恒久対策）。
     float3 waterPos;
     if (!RefineWaterSurfaceIntersection(
-            gFFTOceanDisplacement, gCameraPosition, primaryDir, sceneDistance, waterPos))
+            gFFTOceanDisplacement, gShoreWaveField, gCameraPosition, primaryDir, sceneDistance, waterPos))
     {
         gRefractionOutput[launchIndex] = MakeFallbackOutput(fallbackSample.rgb, kRTReasonInvalidPlaneIntersection);
         return;
@@ -387,7 +388,8 @@ void RTWaterRefractionRayGen()
     const float kRefractionDirectionMinFootprint = 0.5f;
     const float directionFootprint = max(surfaceFootprintMeters, kRefractionDirectionMinFootprint);
 
-    float3 waterNormal = EvaluateWaterNormal(gFFTOceanNormal, waterPos.xz, directionFootprint);
+    float3 waterNormal = EvaluateWaterNormalWithShore(
+        gFFTOceanNormal, gFFTOceanDisplacement, gShoreWaveField, waterPos.xz, directionFootprint);
     float3 refractedDir = refract(primaryDir, waterNormal, gRefractionEta);
     if (dot(refractedDir, refractedDir) <= 1.0e-6f)
     {
@@ -496,7 +498,7 @@ void RTWaterRefractionRayGen()
     //   - 再投影先が画面の外
     //   - 再投影先に当たった点とは別の面が写っている: 物の水中の部分などの陰（深度の信頼度）
     const float sampledSurfaceY =
-        gSurfaceWaterHeight + EvaluateDrawnSurfaceHeight(gFFTOceanDisplacement, sampledWorldPos.xz);
+        gSurfaceWaterHeight + EvaluateDrawnSurfaceHeightWithShore(gFFTOceanDisplacement, gShoreWaveField, sampledWorldPos.xz);
     const float aboveWater = IsBackgroundDepth(sampledDepth)
         ? 0.0f
         : smoothstep(kUnderwaterMarginMeters, 0.10f, sampledWorldPos.y - sampledSurfaceY);

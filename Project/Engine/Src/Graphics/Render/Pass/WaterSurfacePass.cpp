@@ -24,6 +24,9 @@ namespace CoreEngine
         builder.Read(FrameBlackboard::RTWaterSunVisibility, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         builder.Read(FrameBlackboard::RTWaterSeabedHeight, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         builder.Read(FrameBlackboard::WaterShoreFoam, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        // 岸の波の場は、レイトレとピクセルシェーダーの両方から読める状態で読む
+        builder.Read(FrameBlackboard::WaterShoreWave,
+            D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         builder.Write(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_RENDER_TARGET);
         // 水面も自分のモーションベクターを書く（TAA の再投影用）。
         // GBuffer が書いた値は「水の背後の地形」の動きなので、上書きしないと

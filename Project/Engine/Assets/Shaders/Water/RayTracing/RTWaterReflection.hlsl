@@ -21,6 +21,7 @@ TextureCube<float4> gSkyEnvironmentMap : register(t5);
 Texture2D<float4> gSceneColorPyramid : register(t6);
 // 同じ縮小段の空の画素の割合。段を作れなかったフレームは読まない
 Texture2D<float> gSkyCoveragePyramid : register(t7);
+Texture2D<float4> gShoreWaveField : register(t8); // 岸の波の場（WaterShoreWave.hlsli）
 
 // DXR グローバルルートシグネチャの静的サンプラ（GlobalRootSignatureManager）。
 // 空キューブと、再投影先のシーン色の双線形取得に使う。
@@ -318,7 +319,7 @@ void RTWaterReflectionRayGen()
     // RefineWaterSurfaceIntersection。詳細コメントは RTWaterSurfaceCommon.hlsli）。
     float3 waterPos;
     if (!RefineWaterSurfaceIntersection(
-            gFFTOceanDisplacement, gCameraPosition, primaryDir, sceneDistance, waterPos))
+            gFFTOceanDisplacement, gShoreWaveField, gCameraPosition, primaryDir, sceneDistance, waterPos))
     {
         gReflectionOutput[launchIndex] = MakeFallbackOutput(kRTReasonInvalidPlaneIntersection);
         return;
@@ -354,7 +355,8 @@ void RTWaterReflectionRayGen()
     const float kReflectionDirectionMinFootprint = 1.0f;
     const float directionFootprint = max(surfaceFootprintMeters, kReflectionDirectionMinFootprint);
 
-    float3 waterNormal = EvaluateWaterNormal(gFFTOceanNormal, waterPos.xz, directionFootprint);
+    float3 waterNormal = EvaluateWaterNormalWithShore(
+        gFFTOceanNormal, gFFTOceanDisplacement, gShoreWaveField, waterPos.xz, directionFootprint);
 
     // 1 ピクセルより細かくて見えない波の傾きを、反射のぼけとして戻す（画素より大きい波はぼかさない）。
     // 空はそのラフネスに合ったミップで、物は反射の向きのばらつき（1σ・rad）の幅でぼかして引く。

@@ -94,6 +94,16 @@ cbuffer WaterFrameConstants : register(b5)
     int gShoreMeshEnabled;        // 1 = 範囲の中を岸の細かい格子で描き、粗い格子は範囲の中を描かない
     float gShoreMeshBlendWidth;   // 範囲の端から内側へ、粗い格子の形から岸の格子の形へ移す幅 [m]
     float2 gShoreMeshPad;
+
+    // ---- 岸の波（WaterShoreWave.hlsli。場 gShoreWaveField の範囲は海底の高さと同じ）----
+    int gShoreWaveEnabled;               // 1 = 岸の格子の範囲の中に岸の波を出す
+    float gShoreWaveAngularFrequency;    // ω [rad/s]
+    float gShoreWavePhaseTime;           // 波の時刻 [s]
+    float gShoreWavePrevPhaseTime;       // 前のフレームの波の時刻 [s]（モーションベクター）
+    float gShoreWaveHeight;              // 沖（水深 gShoreWaveStartDepth）での波高 [m]
+    float gShoreWaveStartDepth;          // 波が来始める水深 [m]
+    float gShoreWaveHeightVariation;     // 1 本ごとの波高のばらつき
+    float gShoreWaveEdgeMargin;          // 範囲の端から内側へ、波を 0 から満量へ移す幅 [m]
 };
 
 #endif // WATER_FRAME_CONSTANTS_INCLUDED

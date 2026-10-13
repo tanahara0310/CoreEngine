@@ -104,6 +104,9 @@ namespace CoreEngine
         /// @brief 泡パラメータ（WaterFrameConstants が単一情報源）を WaterFoamSystem へ同期する
         void SyncFoamSettings(RenderDomainContext& domain) const;
 
+        /// @brief 岸の波の設定（WaterCVars）を WaterShoreWaveSystem へ渡し、今と前のフレームの波の時刻を求める
+        void SyncShoreWaveSettings(RenderDomainContext& domain);
+
         /// @brief 結線結果の診断ログ（デバッグ表示中のみ・低頻度）
         /// @details 以前は WaterSurfaceComponent の setter 6 個と BindCustomResources に
         ///          散っていたログをここへ集約した。
@@ -122,6 +125,13 @@ namespace CoreEngine
 
         /// @brief 現在フレームの水面状態（RenderDomainContext へ publish する実体）
         WaterSurfaceData waterSurfaceState_{};
+
+        /// @brief 岸の波の時刻 [s]（WaterShoreWaveSystem::ComputePhaseTime）
+        float shoreWavePhaseTime_ = 0.0f;
+        /// @brief 前のフレームの岸の波の時刻 [s]
+        float shoreWavePrevPhaseTime_ = 0.0f;
+        /// @brief 岸の波の時刻を一度でも求めたか
+        bool shoreWavePhaseValid_ = false;
 
         /// @brief RT 水面パスへ渡す surface model provider（寿命管理付き）
         std::shared_ptr<StaticWaterSurfaceModelProvider> surfaceModelProvider_{};

@@ -9,7 +9,8 @@
 //   cbuffer : gUseFFTOceanNormalMap
 //   型      : WaterPSInput
 //   関数    : ComputeFFTCascadeUV / RotateFromFFTCascadeGrid /
-//             ComputeFFTWaveGroupEnvelope（Common/FFTOceanCascade.hlsli）
+//             ComputeFFTWaveGroupEnvelope（Common/FFTOceanCascade.hlsli）/
+//             EvaluateFrameShoreWave（Common/WaterShoreWaveFrame.hlsli）
 // ============================================================
 #ifndef WATER_NORMALS_INCLUDED
 #define WATER_NORMALS_INCLUDED
@@ -87,6 +88,11 @@ float3 ResolveSurfaceNormal(WaterPSInput input, out float unresolvedMeanSquareSl
     const float waveGroupEnvelope = ComputeFFTWaveGroupEnvelope(input.baseWorldXZ, gWaveGroupPhase);
     slope *= waveGroupEnvelope;
     unresolvedMeanSquareSlope *= waveGroupEnvelope * waveGroupEnvelope;
+
+    // 岸の波：浅い所ほど FFT の傾きを弱め、岸の波の傾きを足す（FFTWater.VS の変位と同じ）
+    const ShoreWaveResult shore = EvaluateFrameShoreWave(input.baseWorldXZ);
+    slope = slope * shore.fftScale + shore.normalSlope;
+    unresolvedMeanSquareSlope *= shore.fftScale * shore.fftScale;
 
     float3 combinedLocal = normalize(float3(slope.x, 1.0f, slope.y));
     return normalize(combinedLocal.x * tangent + combinedLocal.y * vertexNormal + combinedLocal.z * bitangent);

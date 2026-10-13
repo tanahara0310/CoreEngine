@@ -98,6 +98,7 @@ struct WaterPSInput
 // ===== フレーム定数バッファ（VS と共有・b5 の唯一の宣言）=====
 #include "../Common/WaterFrameConstants.hlsli"
 #include "../Common/WaterShoreMesh.hlsli"
+#include "../Common/WaterShoreWaveFrame.hlsli"
 
 // ===== 責務別の分割 hlsli =====
 // 水柱厚さ（「線を出さない」中核）・体積色・泡（被覆率と見た目）・法線は専用ファイルへ分離している。

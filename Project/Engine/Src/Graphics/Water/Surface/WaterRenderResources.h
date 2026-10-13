@@ -40,6 +40,9 @@ namespace CoreEngine
         // ---- 岸の泡（海底の高さと同じ範囲。(被覆率, 寄せ・引きのずれ x, z, 0)）----
         D3D12_GPU_DESCRIPTOR_HANDLE shoreFoamSRV = { 0 };
 
+        // ---- 岸の波の場（海底の高さと同じ範囲。(到着時刻, ∂T/∂x, ∂T/∂z, 静水深)）----
+        D3D12_GPU_DESCRIPTOR_HANDLE shoreWaveFieldSRV = { 0 };
+
         /// @brief 反射テクスチャが接続済みか返す
         bool HasReflectionTexture() const;
 
@@ -51,6 +54,9 @@ namespace CoreEngine
 
         /// @brief 岸の泡テクスチャが接続済みか返す
         bool HasShoreFoam() const;
+
+        /// @brief 岸の波の場が接続済みか返す
+        bool HasShoreWaveField() const;
 
         /// @brief シーン深度テクスチャが接続済みか返す
         bool HasSceneDepth() const;
@@ -114,5 +120,14 @@ namespace CoreEngine
 
         /// @brief 海底の高さの範囲を岸の細かい格子で描くか
         bool shoreMeshEnabled = false;
+
+        /// @brief 岸の波（WaterShoreWave.hlsli。場の範囲は海底の高さと同じ）
+        bool shoreWaveEnabled = false;
+        float shoreWaveAngularFrequency = 1.0f;  ///< ω [rad/s]
+        float shoreWavePhaseTime = 0.0f;         ///< 波の時刻 [s]（WaterShoreWaveSystem::ComputePhaseTime）
+        float shoreWavePrevPhaseTime = 0.0f;     ///< 前のフレームの波の時刻 [s]
+        float shoreWaveHeight = 0.0f;            ///< 沖での波高 [m]
+        float shoreWaveStartDepth = 1.0f;        ///< 波が来始める水深 [m]
+        float shoreWaveHeightVariation = 0.0f;   ///< 1 本ごとの波高のばらつき
     };
 }

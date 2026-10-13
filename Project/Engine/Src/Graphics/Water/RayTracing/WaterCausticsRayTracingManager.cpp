@@ -85,7 +85,7 @@ namespace CoreEngine
         desc.closestHitName = L"RTWaterCausticsClosestHit";
         desc.outputUavName = "gCausticsOutput";
         static constexpr const char* kSrvTableNames[] = {
-            "gSceneDepth", "gNormalRoughness", "gFFTOceanDisplacement", "gFFTOceanNormal" };
+            "gSceneDepth", "gNormalRoughness", "gFFTOceanDisplacement", "gFFTOceanNormal", "gShoreWaveField" };
         desc.srvTableNames = kSrvTableNames;
         desc.constantsName = "WaterCausticsConstants";
         desc.constantsBytes = sizeof(WaterCausticsConstants);
@@ -171,6 +171,8 @@ namespace CoreEngine
                 { "gNormalRoughness", normalRoughnessSRV },
                 { "gFFTOceanDisplacement", fftDisplacementSRV },
                 { "gFFTOceanNormal", fftNormalSRV },
+                { "gShoreWaveField",
+                    fftOceanInput.shoreWaveFieldSRV.ptr != 0 ? fftOceanInput.shoreWaveFieldSRV : normalRoughnessSRV },
             },
             &constants,
             width,
