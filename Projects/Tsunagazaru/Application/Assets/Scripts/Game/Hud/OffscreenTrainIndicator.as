@@ -13,8 +13,8 @@ class OffscreenTrainIndicator : ScriptComponent
     [DisplayName("画面の端から留める幅（px・左右, 上下）")]
     Vector2 edgeMargin = Vector2(132.0f, 96.0f);
 
-    [DisplayName("アイコンの明るさ"), Range(0.02, 1.5)]
-    float iconBrightness = 1.0f;
+    [DisplayName("アイコンの明るさ（元の値）"), Range(0.02, 1.5)]
+    float iconBrightness = 0.18f;
 
     [DisplayName("トロッコの半径（m）"), Range(0, 5)]
     float trolleyRadius = 1.0f;
@@ -222,7 +222,8 @@ class OffscreenTrainIndicator : ScriptComponent
 
         icon_.anchoredPosition = iconCenter;
         icon_.size = Vector2(iconW, iconH);
-        icon_.color = Vector4(iconBrightness, iconBrightness, iconBrightness, alpha);
+        const float iconGain = kOriginalHudExposure * iconBrightness;
+        icon_.color = OriginalTextureTint(kTexMeanCart, Vector4(iconGain, iconGain, iconGain, alpha));
 
         // 矢印はアイコンの外側
         arrow_.anchoredPosition = Vector2(iconCenter.x + (iconW * 0.5f + 16.0f * scale) * outward_.x,
@@ -238,10 +239,11 @@ class OffscreenTrainIndicator : ScriptComponent
         // 板はアイコンの真下
         const float boardLeft = iconCenter.x - panelWidth * 0.5f;
         const float boardTop = iconCenter.y + iconH * 0.5f + 8.0f * scale;
-        const Vector4 boardColor = Vector4(kOffscreenBoardTint.x, kOffscreenBoardTint.y, kOffscreenBoardTint.z, alpha);
+        const Vector4 boardGain = Vector4(kOffscreenBoardColor.x, kOffscreenBoardColor.y, kOffscreenBoardColor.z, 0.0f) * kOriginalHudExposure;
+        const Vector4 boardColor = OriginalTextureTint(kTexMeanBoardCap, Vector4(boardGain.x, boardGain.y, boardGain.z, alpha));
         board_.anchoredPosition = Vector2(boardLeft + capW, boardTop);
         board_.size = Vector2(panelWidth - capW * 2.0f, panelH);
-        board_.color = boardColor;
+        board_.color = OriginalTextureTint(kTexMeanBoard, Vector4(boardGain.x, boardGain.y, boardGain.z, alpha));
         capLeft_.anchoredPosition = Vector2(boardLeft, boardTop);
         capLeft_.size = Vector2(capW, panelH);
         capLeft_.color = boardColor;
@@ -285,5 +287,4 @@ const Vector4 kOffscreenPrefixColor = Vector4(0.84f, 0.80f, 0.70f, 1.0f);
 const Vector4 kOffscreenNearColor = Vector4(0.980f, 0.839f, 0.200f, 1.0f);
 const Vector4 kOffscreenFarColor = Vector4(0.980f, 0.400f, 0.220f, 1.0f);
 const Vector4 kOffscreenOutlineColor = Vector4(0.031f, 0.020f, 0.012f, 1.0f);
-// 板の色。速度計の板（元の明るさ 0.68 を 1 に置き直した色）と同じ比で割り戻す
-const Vector4 kOffscreenBoardTint = Vector4(0.42f / 0.68f, 0.50f / 0.68f, 0.30f / 0.68f, 1.0f);
+const Vector4 kOffscreenBoardColor = Vector4(0.42f, 0.50f, 0.30f, 1.0f);

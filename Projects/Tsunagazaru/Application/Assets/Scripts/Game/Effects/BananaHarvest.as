@@ -438,7 +438,8 @@ class BananaHarvest : ScriptComponent
         const float arrive = Normalize01(progress - 0.75f, 0.25f);
         const float brightness = hudBrightness * (1.0f + arrive * arrive * hudArriveFlash);
         image.anchoredPosition = position;
-        image.color = Vector4(OriginalHudChannel(brightness), OriginalHudChannel(brightness), OriginalHudChannel(brightness * 0.95f), 1.0f);
+        const float gain = kOriginalHudExposure * brightness;
+        image.color = OriginalTextureTint(kTexMeanPip, Vector4(gain, gain, gain * 0.95f, 1.0f));
         if (!image.gameObject.active) {
             image.gameObject.active = true;
         }

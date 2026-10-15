@@ -438,15 +438,13 @@ class PauseMenu : ScriptComponent
         const float width = Max(200.0f, hudText_.measuredSize.x + 56.0f * 2.0f);
         const float centerX = 960.0f - width * 0.5f - 48.0f;
         const float x = centerX + (1.0f - introReveal_) * (960.0f - centerX + width * 0.5f + 48.0f);
-        const float plain = ToneMappedChannel(1.0f);
-        const Vector4 plainColor = Vector4(plain, plain, plain, 1.0f);
-        PlacePlank(hudPlank_, Vector2(x, 40.0f + 48.0f), width, 1.0f, 1.0f, sway, plainColor);
+        PlacePlank(hudPlank_, Vector2(x, 40.0f + 48.0f), width, 1.0f, 1.0f, sway, WoodColor(1.0f, 1.0f));
         hudText_.anchoredPosition = Vector2(x, 40.0f + 48.0f);
         hudText_.rotation = sway;
         hudText_.color = ToneMappedColor(kPauseItemColor);
         hudLeaf_.anchoredPosition = Vector2(x - width * 0.5f + 6.0f, 40.0f + 4.0f);
         hudLeaf_.rotation = sway - 0.5f;
-        hudLeaf_.color = plainColor;
+        hudLeaf_.color = PlantColor(1.0f);
     }
 
     private float DropProgress(float delaySeconds) const
@@ -498,8 +496,8 @@ class PauseMenu : ScriptComponent
 
     private void ApplyLayout(float deltaTime)
     {
-        const float plainValue = ToneMappedChannel(1.0f);
-        const Vector4 plain = Vector4(plainValue, plainValue, plainValue, 1.0f);
+        const Vector4 wood = WoodColor(1.0f, 1.0f);
+        const Vector4 plant = PlantColor(1.0f);
 
         // 暗幕
         float dimT = 1.0f;
@@ -515,8 +513,8 @@ class PauseMenu : ScriptComponent
         // 看板（板 2 枚）
         const float boardTop = 176.0f - (1.0f - DropProgress(0.0f)) * 1300.0f;
         const float boardBottom = boardTop + 96.0f * 2.0f;
-        PlacePlank(board_, Vector2(0.0f, boardTop + 48.0f), 900.0f, 1.0f, 1.0f, 0.0f, plain);
-        PlacePlank(boardLower_, Vector2(0.0f, boardTop + 144.0f), 900.0f, 1.0f, 1.0f, 0.0f, plain);
+        PlacePlank(board_, Vector2(0.0f, boardTop + 48.0f), 900.0f, 1.0f, 1.0f, 0.0f, wood);
+        PlacePlank(boardLower_, Vector2(0.0f, boardTop + 144.0f), 900.0f, 1.0f, 1.0f, 0.0f, wood);
         title_.anchoredPosition = Vector2(0.0f, boardTop + 96.0f);
         title_.color = ToneMappedColor(kPauseTitleColor);
 
@@ -530,7 +528,7 @@ class PauseMenu : ScriptComponent
                 image.anchoredPosition = Vector2(vineX[v] + amount * 40.0f, boardTop - 64.0f * (float(s) + 0.5f));
                 image.rotation = amount;
                 image.size = Vector2(32.0f, 64.0f);
-                image.color = plain;
+                image.color = plant;
             }
         }
 
@@ -541,7 +539,7 @@ class PauseMenu : ScriptComponent
             const bool lowerRow = i >= perRow;
             creepers_[i].anchoredPosition = Vector2(creeperLeft + 128.0f * float(i % perRow), lowerRow ? boardBottom + 2.0f : boardTop - 6.0f);
             creepers_[i].rotation = lowerRow ? kPi : 0.0f;
-            creepers_[i].color = plain;
+            creepers_[i].color = plant;
         }
 
         // 茂み。看板の四隅は看板と一緒に落ち、画面の四隅は暗幕と一緒に現れる
@@ -554,7 +552,7 @@ class PauseMenu : ScriptComponent
             foliage_[i].anchoredPosition = Vector2(boardX[i], boardY[i]);
             foliage_[i].rotation = boardRotation[i] + sway;
             foliage_[i].size = Vector2(208.0f, 128.0f);
-            foliage_[i].color = plain;
+            foliage_[i].color = plant;
         }
         const array<float> cornerX = { -960.0f + 70.0f, 960.0f - 70.0f, -960.0f + 70.0f, 960.0f - 70.0f };
         const array<float> cornerY = { 70.0f, 70.0f, 1010.0f, 1010.0f };
@@ -565,7 +563,7 @@ class PauseMenu : ScriptComponent
             image.anchoredPosition = Vector2(cornerX[i], cornerY[i]);
             image.rotation = cornerRotation[i] + sway;
             image.size = Vector2(208.0f * dimT, 128.0f * dimT);
-            image.color = plain;
+            image.color = plant;
         }
 
         // 木札。決定した瞬間だけ縦に潰して跳ね返す
@@ -587,13 +585,12 @@ class PauseMenu : ScriptComponent
             const bool isSelected = int(i) == selection_;
             const float scale = 1.0f + 0.05f * item.select;
             const float angle = -0.030f * item.select;
-            const float lit = ToneMappedChannel(1.0f + 0.20f * item.select);
             PlacePlank(item.plank, Vector2(0.0f, centerY), 660.0f * (isSelected ? confirmScaleX : 1.0f), scale,
-                isSelected ? confirmScaleY : 1.0f, angle, Vector4(lit, lit, lit, 1.0f));
+                isSelected ? confirmScaleY : 1.0f, angle, WoodColor(1.0f + 0.20f * item.select, 1.0f));
 
             // 蔦は 1 つ上の板の下端と、この札の上端を繋ぐ
-            PlaceRope(item.ropeLeft, -200.0f, previousBottom, top - previousBottom, plain);
-            PlaceRope(item.ropeRight, 200.0f, previousBottom, top - previousBottom, plain);
+            PlaceRope(item.ropeLeft, -200.0f, previousBottom, top - previousBottom, plant);
+            PlaceRope(item.ropeRight, 200.0f, previousBottom, top - previousBottom, plant);
             previousBottom = top + 96.0f;
 
             // 札の上を這う蔦。文字に被らないよう左右へ寄せる
@@ -602,7 +599,7 @@ class PauseMenu : ScriptComponent
                 const Vector2 offset = RotateOffset(Vector2(side * (660.0f * 0.5f - 64.0f) * scale, -48.0f * scale), angle);
                 item.creepers[k].anchoredPosition = Vector2(offset.x, centerY + offset.y);
                 item.creepers[k].rotation = angle;
-                item.creepers[k].color = plain;
+                item.creepers[k].color = plant;
             }
 
             item.text.anchoredPosition = Vector2(0.0f, centerY);
@@ -620,7 +617,7 @@ class PauseMenu : ScriptComponent
         cursor_.anchoredPosition = Vector2(kPauseCursorOffsetX, cursorY_);
         cursor_.rotation = sin(swayTimer_ * 3.0f) * 0.08f;
         cursor_.size = Vector2(128.0f, 64.0f);
-        cursor_.color = plain;
+        cursor_.color = OriginalTextureTint(kTexMeanCursor, Vector4(1.0f, 1.0f, 1.0f, 1.0f));
     }
 
     // ---------------------------------------------------------------- 舞う葉
@@ -650,7 +647,7 @@ class PauseMenu : ScriptComponent
 
     private void UpdateLeaves(float deltaTime)
     {
-        const float plain = ToneMappedChannel(1.0f);
+        const Vector4 plant = PlantColor(1.0f);
         for (uint i = 0; i < leaves_.length(); ++i) {
             PauseLeaf@ leaf = leaves_[i];
             if (leaf.life <= 0.0f) {
@@ -670,8 +667,19 @@ class PauseMenu : ScriptComponent
             leaf.image.anchoredPosition = leaf.position;
             leaf.image.rotation = leaf.rotation;
             leaf.image.size = Vector2(48.0f * leaf.size, 28.0f * leaf.size);
-            leaf.image.color = Vector4(plain, plain, plain, Clamp(leaf.life / 0.35f, 0.0f, 1.0f));
+            leaf.image.color = Vector4(plant.x, plant.y, plant.z, Clamp(leaf.life / 0.35f, 0.0f, 1.0f));
         }
+    }
+
+    // 板と蔦の色（元は露出を打ち消して描いた明るさ）
+    private Vector4 WoodColor(float brightness, float alpha) const
+    {
+        return OriginalTextureTint(kTexMeanPlank, Vector4(brightness, brightness, brightness, alpha));
+    }
+
+    private Vector4 PlantColor(float brightness) const
+    {
+        return OriginalTextureTint(kTexMeanPlant, Vector4(brightness, brightness, brightness, 1.0f));
     }
 
     // ---------------------------------------------------------------- 表示の切り替え

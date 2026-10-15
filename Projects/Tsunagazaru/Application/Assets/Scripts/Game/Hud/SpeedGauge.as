@@ -20,8 +20,14 @@ class SpeedGauge : ScriptComponent
     [DisplayName("表示の倍率"), Range(0.25, 2.5)]
     float scale = 1.3f;
 
+    [DisplayName("板の濃さ（元の値）"), Range(0.05, 2)]
+    float boardBrightness = 0.68f;
+
     [DisplayName("板を緑へ寄せる強さ"), Range(0, 1)]
     float boardGreenTint = 0.22f;
+
+    [DisplayName("蔦の明るさ（元の値）"), Range(0.05, 2)]
+    float foliageBrightness = 0.62f;
 
     [DisplayName("1 マスの長さ（m）"), Range(0.1, 20)]
     float metersPerCell = 2.0f;
@@ -260,10 +266,11 @@ class SpeedGauge : ScriptComponent
         // 板は湿ったジャングルの木らしく緑へ寄せる。減速中は赤へ寄せる
         const Vector4 baseBoard(1.0f - boardGreenTint * 0.55f, 1.0f + boardGreenTint * 0.45f, 1.0f - boardGreenTint * 0.95f, 1.0f);
         const Vector4 slowBoard(1.0f, 0.08f, 0.05f, 1.0f);
-        const Vector4 boardColor = Lerp(baseBoard, slowBoard, red * Clamp(slowdownBoardTint, 0.0f, 1.0f));
+        const Vector4 boardGain = Lerp(baseBoard * boardBrightness, slowBoard, red * Clamp(slowdownBoardTint, 0.0f, 1.0f)) * kOriginalHudExposure;
+        const Vector4 boardColor = OriginalTextureTint(kTexMeanBoardCap, Vector4(boardGain.x, boardGain.y, boardGain.z, 1.0f));
         board_.anchoredPosition = Vector2(origin.x + capW, origin.y);
         board_.size = Vector2(panelWidth - capW * 2.0f, panelH);
-        board_.color = boardColor;
+        board_.color = OriginalTextureTint(kTexMeanBoard, Vector4(boardGain.x, boardGain.y, boardGain.z, 1.0f));
         capLeft_.anchoredPosition = Vector2(origin.x, origin.y);
         capLeft_.size = Vector2(capW, panelH);
         capLeft_.color = boardColor;
@@ -275,6 +282,8 @@ class SpeedGauge : ScriptComponent
         const float vineH = 38.0f * s;
         const float overhang = 12.0f * s;
         const float inner = panelWidth - capW * 2.0f;
+        const float vineGain = kOriginalHudExposure * foliageBrightness;
+        const Vector4 vineColor = OriginalTextureTint(kTexMeanPlant, Vector4(vineGain, vineGain, vineGain, 1.0f));
         for (uint i = 0; i < vines_.length(); ++i) {
             const float t = (float(i) + 0.5f) / float(vines_.length());
             const bool onTop = (i % 2) == 0;
@@ -282,6 +291,7 @@ class SpeedGauge : ScriptComponent
             vines_[i].size = Vector2(vineW, vineH);
             vines_[i].anchoredPosition = Vector2(origin.x + capW + inner * t, centerY);
             vines_[i].rotation = (onTop ? 0.0f : kPi) + sin(time * swaySpeed * 0.45f + float(i) * 1.1f) * 0.05f;
+            vines_[i].color = vineColor;
         }
 
         // 数字・小数点・単位を左から置く

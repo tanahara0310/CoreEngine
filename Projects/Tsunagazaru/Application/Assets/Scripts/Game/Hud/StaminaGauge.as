@@ -45,11 +45,11 @@ class StaminaGauge : ScriptComponent
     [DisplayName("上下の揺れ（px）"), Range(0, 8)]
     float swayBob = 2.4f;
 
-    [DisplayName("粒の明るさ"), Range(0.05, 2)]
-    float pipBrightness = 1.0f;
+    [DisplayName("粒の明るさ（元の値）"), Range(0.05, 2)]
+    float pipBrightness = 0.45f;
 
-    [DisplayName("蔦と葉の明るさ"), Range(0.05, 2)]
-    float foliageBrightness = 1.0f;
+    [DisplayName("蔦と葉の明るさ（元の値）"), Range(0.05, 2)]
+    float foliageBrightness = 0.5f;
 
     [DisplayName("高いマスを点滅で予告する")]
     bool previewEnabled = true;
@@ -250,13 +250,13 @@ class StaminaGauge : ScriptComponent
             pip.flash = Max(0.0f, pip.flash - deltaTime * 5.0f);
 
             // 増えた粒は緑、食べられた粒は赤へ一瞬振る。予告は色でなく明滅で示す
-            const float glow = pipBrightness * (1.0f + pip.flash * flashStrength);
+            const float glow = kOriginalHudExposure * pipBrightness * (1.0f + pip.flash * flashStrength);
             const float tintR = pip.flashGain ? (1.0f - pip.flash * 0.45f) : 1.0f;
             const float tintG = pip.flashGain ? 1.0f : (1.0f - pip.flash * 0.55f);
             const float tintB = 1.0f - pip.flash * (pip.flashGain ? 0.55f : 0.65f);
             const float alpha = pip.preview ? 0.35f + 0.65f * (0.5f + 0.5f * sin(previewPhase)) : 1.0f;
-            pip.image.color = Vector4(glow * tintR, glow * tintG * (1.0f - lowPulse_ * 0.35f),
-                glow * tintB * (1.0f - lowPulse_ * 0.45f), alpha);
+            pip.image.color = OriginalTextureTint(pip.showsFruit ? kTexMeanPip : kTexMeanPipEmpty,
+                Vector4(glow * tintR, glow * tintG * (1.0f - lowPulse_ * 0.35f), glow * tintB * (1.0f - lowPulse_ * 0.45f), alpha));
         }
     }
 
@@ -302,8 +302,9 @@ class StaminaGauge : ScriptComponent
         board_.anchoredPosition = Vector2(origin.x + capW, origin.y);
         board_.size = Vector2(panelWidth - capW * 2.0f, panelH);
         const float warn = lowPulse_ * (0.5f + 0.5f * sin(time * 9.0f));
-        const Vector4 boardColor(1.0f + warn * 0.25f, 1.0f - warn * 0.35f, 1.0f - warn * 0.40f, 1.0f);
-        board_.color = boardColor;
+        const Vector4 boardGain = Vector4(1.0f + warn * 0.25f, 1.0f - warn * 0.35f, 1.0f - warn * 0.40f, 1.0f) * kOriginalHudExposure;
+        const Vector4 boardColor = OriginalTextureTint(kTexMeanBoardCap, Vector4(boardGain.x, boardGain.y, boardGain.z, 1.0f));
+        board_.color = OriginalTextureTint(kTexMeanBoard, Vector4(boardGain.x, boardGain.y, boardGain.z, 1.0f));
         capLeft_.anchoredPosition = Vector2(origin.x, origin.y);
         capLeft_.size = Vector2(capW, panelH);
         capLeft_.color = boardColor;
@@ -311,7 +312,8 @@ class StaminaGauge : ScriptComponent
         capRight_.size = Vector2(capW, panelH);
         capRight_.color = boardColor;
 
-        const Vector4 foliageColor(foliageBrightness, foliageBrightness, foliageBrightness, 1.0f);
+        const float foliageGain = kOriginalHudExposure * foliageBrightness;
+        const Vector4 foliageColor = OriginalTextureTint(kTexMeanPlant, Vector4(foliageGain, foliageGain, foliageGain, 1.0f));
         const float pipLeft = origin.x + capW + padding;
         const float pipTop = origin.y + 22.0f * s;
         float x = 0.0f;

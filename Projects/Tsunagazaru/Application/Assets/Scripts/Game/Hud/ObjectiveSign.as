@@ -24,8 +24,8 @@ class ObjectiveSign
     float dropSeconds = 0.50f;
     float holdSeconds = 1.15f;
     float riseSeconds = 0.30f;
-    // 板と蔦の色（元の明るさ 1.0 が画面に出ていた色）
-    float plankBrightness = 231.0f / 255.0f;
+    // 板と蔦の明るさ（元の値。露出は打ち消して描く）
+    float brightness = 1.0f;
     Vector4 labelColor = Vector4(222.0f / 255.0f, 210.0f / 255.0f, 176.0f / 255.0f, 1.0f);
     Vector4 numberColor = Vector4(230.0f / 255.0f, 196.0f / 255.0f, 62.0f / 255.0f, 1.0f);
     Vector4 callColor = Vector4(232.0f / 255.0f, 210.0f / 255.0f, 90.0f / 255.0f, 1.0f);
@@ -191,7 +191,8 @@ class ObjectiveSign
 
     private void ApplySignLayout()
     {
-        const Vector4 plain = Vector4(plankBrightness, plankBrightness, plankBrightness, 1.0f);
+        const Vector4 wood = OriginalTextureTint(kTexMeanPlank, Vector4(brightness, brightness, brightness, 1.0f));
+        const Vector4 plant = OriginalTextureTint(kTexMeanPlant, Vector4(brightness, brightness, brightness, 1.0f));
         const float width = Max(80.0f, boardWidth);
         const float top = boardTop - (1.0f - DropProgress()) * 900.0f;
         const float angle = SwayAngle();
@@ -204,13 +205,13 @@ class ObjectiveSign
             ropes_[i].size = Vector2(32.0f, ropeLength);
             ropes_[i].anchoredPosition = Vector2(x, ropeLength * 0.5f);
             ropes_[i].rotation = 0.0f;
-            ropes_[i].color = plain;
+            ropes_[i].color = plant;
         }
 
         const Vector2 upperOffset = RotateOffset(Vector2(0.0f, 48.0f), angle);
         const Vector2 lowerOffset = RotateOffset(Vector2(0.0f, 144.0f), angle);
-        PlacePlank(upper_, Vector2(hinge.x + upperOffset.x, hinge.y + upperOffset.y), width, angle, plain);
-        PlacePlank(lower_, Vector2(hinge.x + lowerOffset.x, hinge.y + lowerOffset.y), width, angle, plain);
+        PlacePlank(upper_, Vector2(hinge.x + upperOffset.x, hinge.y + upperOffset.y), width, angle, wood);
+        PlacePlank(lower_, Vector2(hinge.x + lowerOffset.x, hinge.y + lowerOffset.y), width, angle, wood);
 
         // 板の上を這う蔦
         const float pitch = width / float(creepers_.length());
@@ -219,7 +220,7 @@ class ObjectiveSign
             const Vector2 offset = RotateOffset(Vector2(x, 0.0f), angle);
             creepers_[i].anchoredPosition = Vector2(hinge.x + offset.x, hinge.y + offset.y);
             creepers_[i].rotation = angle;
-            creepers_[i].color = plain;
+            creepers_[i].color = plant;
         }
 
         // 肩の茂み
@@ -228,7 +229,7 @@ class ObjectiveSign
             const Vector2 offset = RotateOffset(Vector2(side * (width * 0.5f - 24.0f), 6.0f), angle);
             foliage_[i].anchoredPosition = Vector2(hinge.x + offset.x, hinge.y + offset.y);
             foliage_[i].rotation = angle + side * 0.12f;
-            foliage_[i].color = plain;
+            foliage_[i].color = plant;
         }
 
         const Vector2 labelOffset = RotateOffset(Vector2(0.0f, 48.0f), angle);
