@@ -14,7 +14,18 @@ namespace CoreEngine
     {
         auto& assetDB = AssetDatabase::GetInstance();
 
-        // まずフルパス文字列でそのまま検索する
+        // 綴り（Application/… か Engine/…）か絶対パスなら、その場所のアセットを引く。
+        // 名前で引くと、別のフォルダにある同じ名前の画像を拾うことがある
+        if (const AssetInfo* info = assetDB.FindAssetByPath(filePath);
+            info && info->type == AssetType::Texture) {
+            if (writeLog) {
+                Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}",
+                    std::format("  Resolved by path: '{}' -> '{}'", filePath, Logger::GetInstance().PathToUtf8(info->fullPath)));
+            }
+            return info->fullPath;
+        }
+
+        // 名前で検索する
         std::filesystem::path assetPath = assetDB.FindAssetPath(filePath, AssetType::Texture);
         if (!assetPath.empty()) {
             if (writeLog) {
