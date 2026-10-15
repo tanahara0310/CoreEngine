@@ -10,18 +10,6 @@ class GameDirector : ScriptComponent
     [DisplayName("BGM の音量"), Range(0, 1)]
     float bgmVolume = 1.0f / 3.0f;
 
-    [DisplayName("開幕の真上のカメラリグ")]
-    string entranceRig = "Entrance_Sky";
-
-    [DisplayName("ゲームのカメラリグ")]
-    string gameplayRig = "GamePlay";
-
-    [DisplayName("ゲームの構図へ移り始めるまで（秒）"), Range(0, 5)]
-    float gameplayRigDelay = 0.15f;
-
-    [DisplayName("ゲームの構図へ繋ぐ時間（秒）"), Range(0, 5)]
-    float gameplayRigBlend = 1.5f;
-
     private MapGenerator@ map_;
     private MapView@ mapView_;
     private RailPath@ path_;
@@ -33,9 +21,10 @@ class GameDirector : ScriptComponent
     private Hunger@ hunger_;
     private StaminaGauge@ stamina_;
     private SpeedGauge@ speedGauge_;
+    private GameEntrance@ entrance_;
+    private PauseMenu@ pauseMenu_;
+    private BananaHarvest@ harvest_;
     private Sound@ bgm_;
-    private float elapsed_ = 0.0f;
-    private bool gameplayRigActivated_ = false;
     private bool ready_ = false;
 
     void Start() override
@@ -53,6 +42,9 @@ class GameDirector : ScriptComponent
         @rockThrow_ = FindRockThrow("RockProjectile");
         @stamina_ = FindStaminaGauge("StaminaGauge");
         @speedGauge_ = FindSpeedGauge("SpeedGauge");
+        @entrance_ = FindGameEntrance("GameManager");
+        @pauseMenu_ = FindPauseMenu("GameManager");
+        @harvest_ = FindBananaHarvest("GameManager");
         if (gameManager_ is null || hunger_ is null || map_ is null || mapView_ is null || path_ is null
             || railView_ is null || builder_ is null || train_ is null || rockThrow_ is null) {
             Error("GameDirector: GameScene の部品がそろっていないので動かしません");
@@ -83,21 +75,27 @@ class GameDirector : ScriptComponent
         params.volume = bgmVolume;
         @bgm_ = Audio::PlayScoped(bgmPath, params);
 
-        // 開幕は真上から見下ろし、少し待ってからゲームの構図へ降りる
-        CameraRig::Activate(entranceRig);
+        if (pauseMenu_ !is null) {
+            pauseMenu_.Setup(gameManager_);
+        }
+        if (harvest_ !is null) {
+            harvest_.Setup(hunger_, train_, mapView_, stamina_);
+        }
+        if (entrance_ !is null) {
+            entrance_.Setup(builder_, train_, mapView_, stamina_, speedGauge_, pauseMenu_);
+        }
         ready_ = true;
     }
 
+    // ポーズ中は部品を進めない（元のゲームの停止と同じく、ゲームの物は全部止まる）
     void Update() override
     {
-        if (!ready_) {
+        if (!ready_ || GamePause::paused) {
             return;
         }
         const float deltaTime = Time::DeltaTime();
-        elapsed_ += deltaTime;
-        if (!gameplayRigActivated_ && elapsed_ >= gameplayRigDelay) {
-            gameplayRigActivated_ = true;
-            CameraRig::Activate(gameplayRig, gameplayRigBlend);
+        if (entrance_ !is null) {
+            entrance_.Tick(deltaTime);
         }
 
         railView_.Tick(deltaTime);
@@ -105,11 +103,18 @@ class GameDirector : ScriptComponent
         train_.Tick(deltaTime);
         rockThrow_.Tick();
         mapView_.Tick(deltaTime);
+        if (harvest_ !is null) {
+            harvest_.Tick(deltaTime);
+        }
+
+        if (entrance_ !is null) {
+            entrance_.TickLate(deltaTime);
+        }
     }
 
     void LateUpdate() override
     {
-        if (!ready_) {
+        if (!ready_ || GamePause::paused) {
             return;
         }
         gameManager_.TickLate();
@@ -279,6 +284,36 @@ class GameDirector : ScriptComponent
         GameObject@ object = owner.FindObject(name);
         if (object is null || !object.GetComponent(@found)) {
             Warn("GameDirector: " + name + " に SpeedGauge がありません");
+        }
+        return found;
+    }
+
+    private GameEntrance@ FindGameEntrance(const string &in name)
+    {
+        GameEntrance@ found;
+        GameObject@ object = owner.FindObject(name);
+        if (object is null || !object.GetComponent(@found)) {
+            Warn("GameDirector: " + name + " に GameEntrance がありません");
+        }
+        return found;
+    }
+
+    private PauseMenu@ FindPauseMenu(const string &in name)
+    {
+        PauseMenu@ found;
+        GameObject@ object = owner.FindObject(name);
+        if (object is null || !object.GetComponent(@found)) {
+            Warn("GameDirector: " + name + " に PauseMenu がありません");
+        }
+        return found;
+    }
+
+    private BananaHarvest@ FindBananaHarvest(const string &in name)
+    {
+        BananaHarvest@ found;
+        GameObject@ object = owner.FindObject(name);
+        if (object is null || !object.GetComponent(@found)) {
+            Warn("GameDirector: " + name + " に BananaHarvest がありません");
         }
         return found;
     }

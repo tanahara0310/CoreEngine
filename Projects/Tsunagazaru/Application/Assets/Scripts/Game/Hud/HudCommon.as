@@ -33,6 +33,22 @@ Vector4 OriginalHudColor(const Vector4 &in linear)
     return Vector4(OriginalHudChannel(linear.x), OriginalHudChannel(linear.y), OriginalHudChannel(linear.z), linear.w);
 }
 
+// 元のゲームで露出を打ち消して描いていた UI の値を、トーンマップ（ACES）と sRGB を通した画面の色へ写す
+float ToneMappedChannel(float linear)
+{
+    const float x = Max(0.0f, linear);
+    const float mapped = Clamp((x * (2.51f * x + 0.03f)) / (x * (2.43f * x + 0.59f) + 0.14f), 0.0f, 1.0f);
+    if (mapped <= 0.0031308f) {
+        return mapped * 12.92f;
+    }
+    return 1.055f * pow(mapped, 1.0f / 2.4f) - 0.055f;
+}
+
+Vector4 ToneMappedColor(const Vector4 &in linear)
+{
+    return Vector4(ToneMappedChannel(linear.x), ToneMappedChannel(linear.y), ToneMappedChannel(linear.z), linear.w);
+}
+
 // シーンに保存しない UI 画像を作り、左上を基準に置く
 UIImage@ SpawnHudImage(GameObject@ owner, const string &in texture, const string &in name, int sortOrder,
     const Vector2 &in pivot, const Vector2 &in size)

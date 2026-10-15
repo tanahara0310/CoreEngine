@@ -31,6 +31,18 @@
                     "path": "Application/Assets/Models/banana/banana.obj"
                 }
             }
+        },
+        {
+            "type": "Material",
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    1,
+                    1,
+                    1,
+                    1
+                ]
+            }
         }
     ]
 }

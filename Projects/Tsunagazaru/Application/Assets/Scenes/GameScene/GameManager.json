@@ -36,10 +36,25 @@
         {
             "enabled": true,
             "parameters": {},
+            "type": "GameEntrance"
+        },
+        {
+            "enabled": true,
+            "parameters": {},
+            "type": "PauseMenu"
+        },
+        {
+            "enabled": true,
+            "parameters": {},
+            "type": "BananaHarvest"
+        },
+        {
+            "enabled": true,
+            "parameters": {},
             "type": "GameDirector"
         }
     ],
-    "id": "acd06fe3c7aadbe9",
+    "id": "6b54721b10ee49e9",
     "name": "GameManager",
     "order": 2
 }

@@ -682,16 +682,17 @@ class MapView : ScriptComponent
         }
     }
 
-    // 距離目盛りを探す（目標の目盛りの色を変える演出が使う）
-    Text3DRenderer@ FindDistanceMarker(int meters)
+    // 距離目盛りの色を塗り分ける（指定した距離の目盛りだけ別の色・ほかは plainColor）
+    void PaintDistanceMarkers(int highlightMeters, const Vector4 &in highlightColor, const Vector4 &in plainColor)
     {
-        const string label = "|\n" + meters + "m";
+        const string highlight = "|\n" + highlightMeters + "m";
         for (uint i = 0; i < markers_.length(); ++i) {
-            if (markers_[i].object.active && markers_[i].object.text3DRenderer.text == label) {
-                return markers_[i].object.text3DRenderer;
+            if (!markers_[i].object.active) {
+                continue;
             }
+            Text3DRenderer@ text = markers_[i].object.text3DRenderer;
+            text.color = text.text == highlight ? highlightColor : plainColor;
         }
-        return null;
     }
 
     // ---------------------------------------------------------------- 補助
