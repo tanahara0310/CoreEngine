@@ -6,7 +6,7 @@
             "parameters": {
                 "parent": {
                     "comp": "Transform",
-                    "ref": "4eb485d18f095346"
+                    "ref": "2f350ad885ddfb06"
                 },
                 "rotate": [
                     0,
@@ -37,7 +37,7 @@
             "type": "MeshRenderer"
         }
     ],
-    "id": "f3ed364f6528c814",
+    "id": "e69085e4dbb9e12e",
     "name": "Monkey",
     "order": 7
 }

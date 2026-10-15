@@ -31,6 +31,8 @@ class GameDirector : ScriptComponent
     private RockThrow@ rockThrow_;
     private GameManager@ gameManager_;
     private Hunger@ hunger_;
+    private StaminaGauge@ stamina_;
+    private SpeedGauge@ speedGauge_;
     private Sound@ bgm_;
     private float elapsed_ = 0.0f;
     private bool gameplayRigActivated_ = false;
@@ -49,6 +51,8 @@ class GameDirector : ScriptComponent
         @builder_ = FindRailBuilder("RailBuilder");
         @train_ = FindTrainMovement("Train");
         @rockThrow_ = FindRockThrow("RockProjectile");
+        @stamina_ = FindStaminaGauge("StaminaGauge");
+        @speedGauge_ = FindSpeedGauge("SpeedGauge");
         if (gameManager_ is null || hunger_ is null || map_ is null || mapView_ is null || path_ is null
             || railView_ is null || builder_ is null || train_ is null || rockThrow_ is null) {
             Error("GameDirector: GameScene の部品がそろっていないので動かしません");
@@ -61,9 +65,16 @@ class GameDirector : ScriptComponent
         railView_.Setup(path_, map_);
         train_.Setup(path_, gameManager_, hunger_);
         builder_.Setup(path_, map_, train_, hunger_, rockThrow_, debris);
+        if (stamina_ !is null) {
+            stamina_.Setup(hunger_, builder_);
+        }
+        if (speedGauge_ !is null) {
+            speedGauge_.Setup(train_);
+        }
 
         hunger_.SetMonkeyAddedCallback(MonkeyAddedCallback(this.OnMonkeyAdded));
         hunger_.SetStationPopCallback(StationCallback(this.OnStationPop));
+        hunger_.SetStationEnteredCallback(StationCallback(this.OnStationEntered));
         gameManager_.SetOnEnding(GameEndingCallback(this.OnEnding));
 
         PlayParams params;
@@ -122,6 +133,40 @@ class GameDirector : ScriptComponent
     private void OnStationPop(int stationX, int stationZ)
     {
         mapView_.PlayStationPop(stationX, stationZ);
+    }
+
+    // 駅に入って速さが落ちる瞬間に、駅・カメラ・速度計・音を同時に鳴らして理由を見せる。
+    // 強さは落ちた速さに比例させ、小さすぎる落差では出さない
+    private void OnStationEntered(int stationX, int stationZ)
+    {
+        const float dropped = train_.GetMoveSpeed() - train_.GetMinMoveSpeed();
+        if (dropped <= 0.08f) {
+            return;
+        }
+        const float strength = Max(Clamp(dropped / 3.0f, 0.0f, 1.0f), 0.35f);
+        mapView_.PlayStationPop(stationX, stationZ);
+
+        CameraShakeParams lurch;
+        lurch.positionAmplitude = Vector3(0.12f * strength, 0.03f * strength, 0.0f);
+        lurch.rotationAmplitude = Vector3(0.8f * strength, 0.5f * strength, 1.6f * strength);
+        lurch.frequency = 5.0f;
+        lurch.duration = 0.3f;
+        lurch.decayEase = EaseType::EaseOutCubic;
+        // カメラの右＝トロッコの進む向きへつんのめる
+        lurch.direction = Vector3(1.0f, 0.0f, 0.0f);
+        lurch.directionality = 0.85f;
+        lurch.waveform = ShakeWaveform::Kick;
+        lurch.space = ShakeSpace::CameraLocal;
+        CameraShake::Play(lurch);
+
+        if (speedGauge_ !is null) {
+            speedGauge_.PlaySlowdownFlash(dropped);
+        }
+        PlayParams sound;
+        sound.bus = AudioBus::SE;
+        sound.volume = 0.7f * (0.6f + 0.4f * strength);
+        sound.pitch = 0.55f;
+        Audio::PlayOneShot("Application/Assets/Sounds/SE/build.mp3", sound);
     }
 
     // 終わりが決まった瞬間に結果を確定し、トロッコとカーソルを止める
@@ -214,6 +259,26 @@ class GameDirector : ScriptComponent
         GameObject@ object = owner.FindObject(name);
         if (object is null || !object.GetComponent(@found)) {
             Warn("GameDirector: " + name + " に TrainMovement がありません");
+        }
+        return found;
+    }
+
+    private StaminaGauge@ FindStaminaGauge(const string &in name)
+    {
+        StaminaGauge@ found;
+        GameObject@ object = owner.FindObject(name);
+        if (object is null || !object.GetComponent(@found)) {
+            Warn("GameDirector: " + name + " に StaminaGauge がありません");
+        }
+        return found;
+    }
+
+    private SpeedGauge@ FindSpeedGauge(const string &in name)
+    {
+        SpeedGauge@ found;
+        GameObject@ object = owner.FindObject(name);
+        if (object is null || !object.GetComponent(@found)) {
+            Warn("GameDirector: " + name + " に SpeedGauge がありません");
         }
         return found;
     }
