@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0,
+                    -0.539,
+                    0.168
+                ],
+                "scale": [
+                    1,
+                    1,
+                    1
+                ],
+                "translate": [
+                    -2.815,
+                    3.22,
+                    -3.486
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "model": {
+                    "guid": "",
+                    "path": "Application/Assets/Models/Title/title.obj"
+                }
+            },
+            "type": "MeshRenderer"
+        },
+        {
+            "enabled": true,
+            "parameters": {},
+            "type": "TitleLogo"
+        }
+    ],
+    "id": "98a6aae256d09f04",
+    "name": "title",
+    "order": 2
+}

@@ -1,0 +1,66 @@
+{
+  "version": "1.0",
+  "name": "Entrance_Sky",
+  "aim": {
+    "mode": 2,
+    "roll": 0.0,
+    "screenX": 0.5,
+    "screenY": 0.5,
+    "target": {
+      "objectName": "",
+      "offset": [0.0, 0.0, 0.0],
+      "weight": 1.0
+    },
+    "targets": [
+      { "objectName": "Train", "offset": [2.0, 0.0, 0.0], "weight": 1.0 },
+      { "objectName": "RailBuilder", "offset": [2.0, 0.0, 0.0], "weight": 1.0 }
+    ]
+  },
+  "body": {
+    "mode": 3,
+    "frameBias": [0.5, 0.5, 0.5],
+    "framePullBackPerMeter": 0.0,
+    "framePullBackMax": 0.0,
+    "offset": [0.0, 44.0, -24.0],
+    "offsetSpace": 0,
+    "orbitDistance": 8.0,
+    "orbitPitch": 0.2,
+    "orbitYaw": 0.0,
+    "position": [0.0, 44.0, -24.0],
+    "railFollowTarget": true,
+    "railLoop": false,
+    "railOffset": [0.0, 0.0, 0.0],
+    "railPoints": [],
+    "railPosition": 0.0,
+    "rotation": [0.0, 0.0, 0.0],
+    "target": {
+      "objectName": "Monkey",
+      "offset": [0.0, 0.0, 0.0],
+      "weight": 1.0
+    },
+    "targets": [
+      { "objectName": "Train", "offset": [2.0, 0.0, 0.0], "weight": 1.0 },
+      { "objectName": "RailBuilder", "offset": [2.0, 0.0, 0.0], "weight": 1.0 }
+    ]
+  },
+  "damping": {
+    "position": 3.5,
+    "aim": 4.0,
+    "rotation": 0.0,
+    "fov": 3.0,
+    "mode": 1
+  },
+  "follow": {
+    "weight": [1.0, 0.0, 0.0],
+    "anchor": [0.0, 0.8, 5.1]
+  },
+  "lens": {
+    "mode": 2,
+    "distanceSource": 0,
+    "fovDegrees": 46.0,
+    "inputMin": 0.5,
+    "inputMax": 6.0,
+    "fovMinDegrees": 46.0,
+    "fovMaxDegrees": 46.0
+  }
+}
