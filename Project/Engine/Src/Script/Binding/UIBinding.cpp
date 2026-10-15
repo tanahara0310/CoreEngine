@@ -285,6 +285,19 @@ namespace CoreEngine::Script
                 return element ? element->GetTextureSize() : Vector2{};
             }
 
+            std::string GetTexture() const
+            {
+                const Element* const element = FindOrWarn("テクスチャの読み取り");
+                return element ? element->GetTexturePath() : std::string();
+            }
+
+            void SetTexture(const std::string& value)
+            {
+                if (Element* const element = FindOrWarn("テクスチャの変更")) {
+                    element->SetTexture(value);
+                }
+            }
+
         private:
             ~ScriptUIElement() { owner_.Release(); }
 
@@ -628,6 +641,8 @@ namespace CoreEngine::Script
             r.Method("UIImage", "Vector2 get_size() const property", asMETHOD(Handle, GetSize), asCALL_THISCALL);
             r.Method("UIImage", "void set_size(const Vector2 &in) property", asMETHOD(Handle, SetSize), asCALL_THISCALL);
             r.Method("UIImage", "Vector2 get_textureSize() const property", asMETHOD(Handle, GetTextureSize), asCALL_THISCALL);
+            r.Method("UIImage", "string get_texture() const property", asMETHOD(Handle, GetTexture), asCALL_THISCALL);
+            r.Method("UIImage", "void set_texture(const string &in) property", asMETHOD(Handle, SetTexture), asCALL_THISCALL);
             r.Method("GameObject", "UIImage@ get_uiImage() property", asFUNCTION(GetElement<UIImageComponent>), asCALL_CDECL_OBJLAST);
             r.Method("GameObject", "UIImage@ SpawnUIImage(const string &in texturePath, const string &in name) const",
                 asFUNCTION(SpawnUIImage), asCALL_CDECL_OBJLAST);

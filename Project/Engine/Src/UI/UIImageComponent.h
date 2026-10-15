@@ -58,6 +58,9 @@ namespace CoreEngine
         /// @brief テクスチャをパスかファイル名で指す（空なら白い矩形に戻す）
         void SetTexture(const std::string& texturePath);
 
+        /// @brief 指しているテクスチャのパス（指していなければ空）
+        std::string GetTexturePath() const;
+
         /// @brief 指しているテクスチャ（型記述子とやり取りする値）
         Reflection::AssetRefValue GetTextureAsset() const { return textureAsset_.GetValue(); }
 

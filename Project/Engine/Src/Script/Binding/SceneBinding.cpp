@@ -3,11 +3,14 @@
 
 #include "Camera/Camera.h"
 #include "EngineSystem/EngineSystem.h"
+#include "Math/MathCore.h"
 #include "Math/Vector/Vector3.h"
 #include "Scene/SceneManager.h"
 #include "Script/Binding/BindingRegistrar.h"
 #include "Utility/Logger/Logger.h"
+#include "WinApp/WinApp.h"
 
+#include <cmath>
 #include <string>
 
 namespace CoreEngine::Script
@@ -108,6 +111,52 @@ namespace CoreEngine::Script
                 }
             }
 
+            /// @brief 前の向き（正規化済み）
+            Vector3 GetForward() const
+            {
+                const Camera* const camera = FindOrWarn("前の向きの読み取り");
+                return camera ? camera->GetForward() : Vector3{ 0.0f, 0.0f, 1.0f };
+            }
+
+            /// @brief 右の向き（正規化済み）
+            Vector3 GetRight() const
+            {
+                const Camera* const camera = FindOrWarn("右の向きの読み取り");
+                return camera ? camera->GetRight() : Vector3{ 1.0f, 0.0f, 0.0f };
+            }
+
+            /// @brief 上の向き（正規化済み）
+            Vector3 GetUp() const
+            {
+                const Camera* const camera = FindOrWarn("上の向きの読み取り");
+                return camera ? camera->GetUp() : Vector3{ 0.0f, 1.0f, 0.0f };
+            }
+
+            /// @brief ワールド座標を、UI と同じ画面座標へ写す
+            /// @return x・y は左上を原点とした基準解像度（WinApp::kReferenceWidth × kReferenceHeight）のピクセル、
+            ///         z はカメラの前方への距離。z が 0 以下（カメラの後ろ）のときの x・y は使えない
+            /// @note 最後に行列を作ったときのカメラで写す。TAA のジッタは含めない
+            Vector3 WorldToScreenPoint(const Vector3& world) const
+            {
+                const Camera* const camera = FindOrWarn("画面座標への変換");
+                if (!camera) {
+                    return Vector3{};
+                }
+                namespace Coord = MathCore::CoordinateTransform;
+                const Vector3 view = Coord::TransformCoord(world, camera->GetViewMatrix());
+                const Vector4 clip = Coord::TransformCoord(
+                    Vector4{ view.x, view.y, view.z, 1.0f }, camera->GetUnjitteredProjectionMatrix());
+
+                constexpr float kMinW = 1.0e-6f;
+                const float w = (std::abs(clip.w) < kMinW) ? std::copysign(kMinW, clip.w) : clip.w;
+                const float ndcX = clip.x / w;
+                const float ndcY = clip.y / w;
+                return Vector3{
+                    (ndcX * 0.5f + 0.5f) * static_cast<float>(WinApp::kReferenceWidth),
+                    (0.5f - ndcY * 0.5f) * static_cast<float>(WinApp::kReferenceHeight),
+                    view.z };
+            }
+
         private:
             ~ScriptGameCamera() = default;
 
@@ -169,6 +218,11 @@ namespace CoreEngine::Script
         r.Method("GameCamera", "void set_rotation(const Vector3 &in) property", asMETHOD(ScriptGameCamera, SetRotation), asCALL_THISCALL);
         r.Method("GameCamera", "void LookAt(const Vector3 &in target)", asMETHOD(ScriptGameCamera, LookAt), asCALL_THISCALL);
         r.Method("GameCamera", "void UpdateMatrix()", asMETHOD(ScriptGameCamera, UpdateMatrix), asCALL_THISCALL);
+        r.Method("GameCamera", "Vector3 get_forward() const property", asMETHOD(ScriptGameCamera, GetForward), asCALL_THISCALL);
+        r.Method("GameCamera", "Vector3 get_right() const property", asMETHOD(ScriptGameCamera, GetRight), asCALL_THISCALL);
+        r.Method("GameCamera", "Vector3 get_up() const property", asMETHOD(ScriptGameCamera, GetUp), asCALL_THISCALL);
+        r.Method("GameCamera", "Vector3 WorldToScreenPoint(const Vector3 &in world) const",
+            asMETHOD(ScriptGameCamera, WorldToScreenPoint), asCALL_THISCALL);
 
         r.Namespace("Scene");
         r.Function("void ChangeScene(const string &in name)", asFUNCTION(ChangeScene));

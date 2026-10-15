@@ -154,6 +154,9 @@ namespace CoreEngine
             return;
         }
 
+        // 書けたときだけ、下で書いたカメラの名前を入れ直す
+        CameraRig::SetDrivenCameraName({});
+
         const float deltaTime = Time::DeltaTime();
         runtime_.Update(deltaTime, Time::UnscaledDeltaTime());
 
@@ -212,10 +215,14 @@ namespace CoreEngine
         // CameraManager の通常更新（FrameStart）より後に姿勢を変えるため、
         // 描画前にここで行列と GPU 定数バッファを作り直す。
         camera->UpdateMatrix();
+
+        // 次のフレームの FrameStart で、このカメラへオブジェクトの姿勢を写させない
+        CameraRig::SetDrivenCameraName(ctx.cameraManager->GetGameCameraName());
     }
 
     void CameraRigFeature::PostSceneFinalize(SceneContext&)
     {
+        CameraRig::SetDrivenCameraName({});
         runtime_.Deactivate();
         hasBlendFrom_ = false;
         observedActivationId_ = 0;

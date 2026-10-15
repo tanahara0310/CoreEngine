@@ -97,12 +97,18 @@ namespace CoreEngine
 
     void UIImageComponent::SetTexture(const std::string& texturePath)
     {
+        const Reflection::AssetRefValue previous = textureAsset_.GetValue();
         textureAsset_.SetPath(texturePath);
 
-        // Awake より前は指す先だけを控え、Awake で読み込む
-        if (awoken_) {
+        // Awake より前は指す先だけを控え、Awake で読み込む。指す先が変わらなければ読み直さない
+        if (awoken_ && !(textureAsset_.GetValue() == previous)) {
             LoadTexture();
         }
+    }
+
+    std::string UIImageComponent::GetTexturePath() const
+    {
+        return textureAsset_.IsSet() ? textureAsset_.GetPath() : std::string();
     }
 
     void UIImageComponent::SetTextureAsset(const Reflection::AssetRefValue& value)

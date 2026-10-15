@@ -533,6 +533,8 @@ class UIImage {
 	Vector2 get_size() const property;
 	void set_size(const Vector2&in) property;
 	Vector2 get_textureSize() const property;
+	string get_texture() const property;
+	void set_texture(const string&in) property;
 }
 class UIButton {
 	bool get_exists() const property;
@@ -597,6 +599,10 @@ class GameCamera {
 	void set_rotation(const Vector3&in) property;
 	void LookAt(const Vector3&in target);
 	void UpdateMatrix();
+	Vector3 get_forward() const property;
+	Vector3 get_right() const property;
+	Vector3 get_up() const property;
+	Vector3 WorldToScreenPoint(const Vector3&in world) const;
 }
 class SaveFile {
 	SaveFile(const string&in relativePath);
@@ -1232,6 +1238,12 @@ CameraShakeParams Recoil();
 CameraShakeParams Earthquake();
 CameraShakeParams Handheld();
 CameraShakeParams Rumble();
+}
+namespace CameraRig {
+bool Activate(const string&in name, float blendSeconds = 0.0f, bool unscaledTime = false);
+void Deactivate();
+bool IsActive();
+string GetActiveName();
 }
 namespace Scene {
 void ChangeScene(const string&in name);

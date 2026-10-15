@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.9.0">
+<meta name="engine-version" content="0.10.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4869,7 +4869,7 @@ kbd {
   </div>
 </article>
 
-<article class="page" id="script-camera" data-group="スクリプト" data-title="カメラと画面の演出" data-nav="カメラと演出" data-keywords="カメラ camera 視点 追いかける 追従 follow 向ける lookat 画角 fov ズーム 揺らす シェイク camerashake 振動 フェード 暗転 setfadealpha 演出 maincamera">
+<article class="page" id="script-camera" data-group="スクリプト" data-title="カメラと画面の演出" data-nav="カメラと演出" data-keywords="カメラ camera 視点 追いかける 追従 follow 向ける lookat 画角 fov ズーム 揺らす シェイク camerashake 振動 フェード 暗転 setfadealpha 演出 maincamera リグ rig camerarig 構図 切り替え 画面座標 スクリーン座標 worldtoscreenpoint 画面外 アイコン">
   <h1>カメラと画面の演出</h1>
   <p class="lead">ゲームの視点を動かしてプレイヤーを追いかけ、揺れや暗転で手応えを出します。</p>
 
@@ -4937,6 +4937,52 @@ kbd {
         owner.camera.fov = value;
     }
   </script>
+
+  <h2 id="camera-rig">カメラリグで構図を切り替える</h2>
+  <p>追う相手・距離・角度・視野角・滑らかさをまとめた構図を、エディタで「リグ」として作っておき、スクリプトから名前で切り替えられます。追いかけるスクリプトを自分で書かずに済み、構図の調整はエディタだけで終わります。</p>
+  <ol>
+    <li><span class="ui">Window<span class="arrow">▸</span>Editor<span class="arrow">▸</span>Camera Editor</span> の <span class="ui">リグ</span> タブで名前を付けて作り、<span class="ui">保存</span> します（<span class="path">Application/Assets/Presets/CameraRigs/名前.json</span>）。追う相手はオブジェクトの名前で指します。</li>
+    <li>スクリプトから <code>CameraRig::Activate("名前", 繋ぐ秒数)</code> で切り替えます。今の構図から、指定した秒数でなめらかに繋がります。</li>
+  </ol>
+  <script type="text/x-code" data-lang="as">
+    // ボス戦に入ったら、引きの構図へ 0.8 秒で繋ぐ
+    void OnBossAppeared()
+    {
+        CameraRig::Activate("Boss_Wide", 0.8f);
+    }
+
+    // 倒したら、いつもの構図へ戻す
+    void OnBossDefeated()
+    {
+        CameraRig::Activate("GamePlay", 1.0f);
+    }
+  </script>
+  <ul>
+    <li>リグが動いている間は、カメラのオブジェクトの <code>transform</code> を書き換えても画面は動きません。<code>CameraRig::Deactivate()</code> で止めると、カメラのオブジェクトの位置へ戻ります。</li>
+    <li>揺れ（<code>CameraShake</code>）はリグの構図の上に重なります。</li>
+  </ul>
+
+  <h2 id="camera-world-to-screen">ワールドの位置を画面の位置にする</h2>
+  <p>敵の頭の上に名前を出す、画面の外にいる仲間の方向に矢印を出す、といったときは <code>Scene::GetGameCamera().WorldToScreenPoint(位置)</code> で画面の位置を求めます。</p>
+  <ul>
+    <li>x・y は UI と同じ座標です（左上が原点・右が +x・下が +y・1920×1080 基準）。UI の <code>anchor</code> を <code>UIAnchor::TopLeft</code> にして、<code>anchoredPosition</code> にそのまま入れられます。</li>
+    <li>z はカメラの前方への距離（m）です。<strong>z が 0 以下ならカメラの後ろ</strong>で、そのときの x・y は使えません。</li>
+    <li>画面の中にあるかは「z が正で、x が 0〜1920、y が 0〜1080 に入っているか」で分かります。</li>
+  </ul>
+  <script type="text/x-code" data-lang="as">
+    // target が画面の端からはみ出していたら、端に矢印を出す
+    void LateUpdate()
+    {
+        const Vector3 p = Scene::GetGameCamera().WorldToScreenPoint(target.transform.position);
+        const bool inside = p.z > 0.0f && p.x >= 0.0f && p.x <= 1920.0f && p.y >= 0.0f && p.y <= 1080.0f;
+        arrow.gameObject.active = !inside;
+        if (!inside && p.z > 0.0f) {
+            arrow.anchor = UIAnchor::TopLeft;
+            arrow.anchoredPosition = Vector2(Clamp(p.x, 64.0f, 1856.0f), Clamp(p.y, 64.0f, 1016.0f));
+        }
+    }
+  </script>
+  <div class="callout note"><p><code>Update</code> から呼ぶと、前のフレームに映したカメラで写します。リグや揺れで動いた後の構図です。</p></div>
 
   <h2 id="camera-shake">画面を揺らす</h2>
   <p>名前の付いたプリセットを鳴らすのがいちばん手軽です。第 2 引数で強さを倍にできます。</p>
@@ -7344,6 +7390,15 @@ python Tools/OkinawaBeach/bake_player_walk.py
 
   <h2 id="changelog-history">更新履歴</h2>
 
+  <h3 id="changelog-v0-10-0">v0.10.0 <span class="dim">（2026-10-15）</span></h3>
+  <p>スクリプトから、ワールドの位置を画面の位置へ写す・カメラリグを切り替える・UI 画像の絵を差し替えることができるようにした版です（<a href="#camera-world-to-screen">ワールドの位置を画面の位置にする</a>・<a href="#camera-rig">カメラリグで構図を切り替える</a>）。</p>
+  <ul>
+    <li><strong>画面の位置</strong>：<a href="#api-GameCamera"><code>GameCamera</code></a> に <code>WorldToScreenPoint</code> を足しました。UI と同じ座標（左上が原点・1920×1080 基準）で返すので、そのまま UI の位置に使えます。z にはカメラの前方への距離が入ります（0 以下ならカメラの後ろ）。カメラの向き <code>forward</code>・<code>right</code>・<code>up</code> も読めます。</li>
+    <li><strong>カメラリグ</strong>：名前空間 <a href="#api-CameraRig"><code>CameraRig</code></a> を足しました。<code>Activate</code> で、エディタで作ったリグに今の構図から指定の秒数で繋いで切り替えます。<code>Deactivate</code>・<code>IsActive</code>・<code>GetActiveName</code> もあります。</li>
+    <li><strong>UI 画像の絵</strong>：<a href="#api-UIImage"><code>UIImage</code></a> の <code>texture</code> を読み書きできるようにしました。</li>
+    <li>リグがゲームのカメラを動かしている間は、フレームの初めにカメラのオブジェクトの位置でカメラを上書きしないようにしました。スクリプトの <code>Update</code> から読むカメラの位置と行列が、前のフレームに映した構図と一致します。リグからリグへ繋ぐときも、前のリグの構図から繋がります（今まではカメラのオブジェクトの位置から繋いでいました）。</li>
+  </ul>
+
   <h3 id="changelog-v0-9-0">v0.9.0 <span class="dim">（2026-10-13）</span></h3>
   <p>岸辺の波打ちを作る準備として、カメラの周りの水面を細かい格子で描くようにした版です（<a href="#api-WaterSurface">水面</a>）。見た目はほぼ変わりません。</p>
   <ul>
@@ -8668,19 +8723,40 @@ void OnStageClear()
     id: "GameCamera", kind: "class", cat: "シーン・カメラ", brief: "ゲーム用カメラ",
     keywords: "カメラ 視点 注視",
     summary: "<code>Scene::GetGameCamera()</code> で取る、今のシーンのゲーム用カメラです。",
-    intro: "<div class=\"callout warn\"><p>カメラの位置と向きは、カメラのオブジェクトの Transform が毎フレーム上書きします。<strong>カメラを動かすときは、カメラのオブジェクト（例：MainCamera）の <code>transform</code> を書き換えます</strong>。GameCamera へ書いた値は次のフレームで戻ります。</p></div>",
+    intro: "<div class=\"callout warn\"><p>カメラの位置と向きは、カメラのオブジェクトの Transform が毎フレーム上書きします。<strong>カメラを動かすときは、カメラのオブジェクト（例：MainCamera）の <code>transform</code> を書き換えます</strong>。GameCamera へ書いた値は次のフレームで戻ります。<a href=\"#api-CameraRig\">カメラリグ</a>が動かしている間は、リグの構図が使われます。</p></div>",
     sections: [
       {
         title: "メンバー", members: [
           { n: "exists", s: "bool exists", t: "ro", d: "今のシーンにゲーム用カメラがあるか。" },
           { n: "position", s: "Vector3 position", t: "rw", d: "位置。" },
           { n: "rotation", s: "Vector3 rotation", t: "rw", d: "回転（オイラー角・ラジアン）。" },
+          { n: "forward", s: "Vector3 forward", t: "ro", d: "前の向き（長さ 1）。" },
+          { n: "right", s: "Vector3 right", t: "ro", d: "右の向き（長さ 1）。" },
+          { n: "up", s: "Vector3 up", t: "ro", d: "上の向き（長さ 1）。" },
+          { n: "WorldToScreenPoint", s: "Vector3 WorldToScreenPoint(const Vector3&in world) const", t: "m", d: "ワールドの位置を、UI と同じ画面の位置へ写します。x・y は左上を原点とした 1920×1080 基準のピクセルで、UI の <code>anchor</code> を <code>TopLeft</code> にした <code>anchoredPosition</code> にそのまま使えます。z はカメラの前方への距離（m）で、0 以下ならカメラの後ろです（そのときの x・y は使えません）。画面の中なら x が 0〜1920、y が 0〜1080 に入ります。<code>Update</code> で呼ぶと、前のフレームに映したカメラで写します（TAA の細かいずれは含めません）。" },
           { n: "LookAt", s: "void LookAt(const Vector3&in target)", t: "m", d: "target の方を向きます。" },
           { n: "UpdateMatrix", s: "void UpdateMatrix()", t: "m", d: "位置と回転から行列を作り直します。" }
         ]
       }
     ],
-    see: [["script-camera", "カメラを動かす"], ["api-Camera", "Camera"]]
+    examples: [
+      {
+        title: "例：敵の頭の上にアイコンを出し、画面の外なら隠す",
+        code: `
+void LateUpdate()
+{
+    GameCamera@ camera = Scene::GetGameCamera();
+    const Vector3 p = camera.WorldToScreenPoint(enemy.transform.position + Vector3(0.0f, 2.0f, 0.0f));
+    const bool visible = p.z > 0.0f && p.x >= 0.0f && p.x <= 1920.0f && p.y >= 0.0f && p.y <= 1080.0f;
+    icon.gameObject.active = visible;
+    if (visible) {
+        icon.anchor = UIAnchor::TopLeft;
+        icon.anchoredPosition = Vector2(p.x, p.y);
+    }
+}`
+      }
+    ],
+    see: [["script-camera", "カメラを動かす"], ["camera-world-to-screen", "ワールドの位置を画面の位置にする"], ["api-Camera", "Camera"], ["api-CameraRig", "CameraRig"]]
   },
 
   {
@@ -8758,6 +8834,40 @@ CameraShake::Stop(quake, 1.0f);              // 1 秒かけて収める`
       }
     ],
     see: [["api-CameraShakeParams", "CameraShakeParams"], ["api-CameraShakePresets", "CameraShakePresets"]]
+  },
+
+  {
+    id: "CameraRig", kind: "namespace", cat: "シーン・カメラ", brief: "カメラリグの切り替え",
+    keywords: "カメラ リグ 構図 追従 切り替え ブレンド 繋ぐ 視野角 rig",
+    summary: "エディタで作ったカメラリグ（追う相手・距離・角度・視野角・滑らかさをまとめた構図）を、名前で切り替えます。",
+    intro: "<p>リグは <span class=\"ui\">Window<span class=\"arrow\">▸</span>Editor<span class=\"arrow\">▸</span>Camera Editor</span> の <span class=\"ui\">リグ</span> タブで作り、<span class=\"path\">Application/Assets/Presets/CameraRigs/名前.json</span> に保存します。リグが動いている間は、ゲームのカメラの位置・向き・視野角をリグが決めます（カメラのオブジェクトの <code>transform</code> は使いません）。シーンの開始時から動かすリグは、シーンの設定に保存できます。</p>",
+    sections: [
+      {
+        title: "関数", members: [
+          { n: "Activate", s: "bool Activate(const string&in name, float blendSeconds = 0.0f, bool unscaledTime = false)", t: "f", d: "名前（拡張子なし）のリグを動かし始めます。今の構図から <code>blendSeconds</code> 秒かけて繋ぎます（0 ならすぐ切り替え）。<code>unscaledTime</code> を true にすると、時間を止めている間も繋ぎが進みます。リグのファイルが無ければ false を返します。" },
+          { n: "Deactivate", s: "void Deactivate()", t: "f", d: "リグを止め、カメラをカメラのオブジェクトの <code>transform</code> に戻します。" },
+          { n: "IsActive", s: "bool IsActive()", t: "f", d: "リグが動いているか。" },
+          { n: "GetActiveName", s: "string GetActiveName()", t: "f", d: "動いているリグの名前（止まっていれば空）。" }
+        ]
+      }
+    ],
+    examples: [
+      {
+        title: "例：上空の構図から、1.5 秒かけてゲームの構図へ降りる",
+        code: `
+void Start()
+{
+    CameraRig::Activate("Entrance_Sky");
+    Tween::Delay(0.15f, TweenCallback(this.Descend)).SetLink(owner);
+}
+
+void Descend()
+{
+    CameraRig::Activate("GamePlay", 1.5f);
+}`
+      }
+    ],
+    see: [["camera-rig", "カメラリグで構図を切り替える"], ["api-GameCamera", "GameCamera"]]
   },
 
   {
@@ -10517,6 +10627,7 @@ void AddScore(int points)
       {
         title: "スクリプトから使えるメンバー", members: [
           { n: "size", s: "Vector2 size", t: "rw", d: "表示の大きさ（px）。" },
+          { n: "texture", s: "string texture", t: "rw", d: "テクスチャのパス（<span class=\"path\">Application/Assets/Textures/UI/pip.png</span> など）。書くと絵が差し替わります。空なら白い四角。表示の大きさは変わりません。" },
           { n: "textureSize", s: "Vector2 textureSize", t: "ro", d: "テクスチャ本来の大きさ（px）。" },
           { n: "color", s: "Vector4 color", t: "rw", d: "色。" },
           { n: "anchoredPosition", s: "Vector2 anchoredPosition", t: "rw", d: "アンカーからの位置（px）。" },

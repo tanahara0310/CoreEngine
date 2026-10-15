@@ -2,6 +2,7 @@
 #include "Script/ScriptHost.h"
 
 #include "Script/Binding/AudioBinding.h"
+#include "Script/Binding/CameraRigBinding.h"
 #include "Script/Binding/CameraShakeBinding.h"
 #include "Script/Binding/ComponentBinding.h"
 #include "Script/Binding/GameObjectBinding.h"
@@ -333,6 +334,7 @@ namespace CoreEngine
             logger.Logf(LogLevel::Warn, LogCategory::Script, "音が見つからないので、スクリプトの Audio は何も鳴らしません");
         }
         configured = Script::RegisterCameraShakeBinding(engine_) && configured;
+        configured = Script::RegisterCameraRigBinding(engine_) && configured;
         configured = Script::RegisterSceneBinding(engine_, services.engine) && configured;
         configured = Script::RegisterRenderingBinding(engine_, services.engine) && configured;
         if (!services.engine) {
