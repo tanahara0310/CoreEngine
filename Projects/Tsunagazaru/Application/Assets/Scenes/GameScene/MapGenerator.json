@@ -1,0 +1,40 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0,
+                    0,
+                    0
+                ],
+                "scale": [
+                    1,
+                    1,
+                    1
+                ],
+                "translate": [
+                    0,
+                    0,
+                    0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {},
+            "type": "MapGenerator"
+        },
+        {
+            "enabled": true,
+            "parameters": {},
+            "type": "MapView"
+        }
+    ],
+    "id": "3d4f573aef7c7cbd",
+    "name": "MapGenerator",
+    "order": 3
+}

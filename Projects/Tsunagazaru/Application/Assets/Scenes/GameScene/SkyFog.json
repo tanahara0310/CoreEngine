@@ -1,0 +1,35 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0,
+                    0,
+                    0
+                ],
+                "scale": [
+                    1,
+                    1,
+                    1
+                ],
+                "translate": [
+                    0,
+                    0,
+                    0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {},
+            "type": "SkyFog"
+        }
+    ],
+    "id": "902d4e6d219ee48d",
+    "name": "SkyFog",
+    "order": 9
+}

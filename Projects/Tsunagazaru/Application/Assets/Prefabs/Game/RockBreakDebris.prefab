@@ -1,0 +1,228 @@
+{
+    "components": [
+        {
+            "type": "Transform",
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0,
+                    0,
+                    0
+                ],
+                "scale": [
+                    1,
+                    1,
+                    1
+                ],
+                "translate": [
+                    0,
+                    0,
+                    0
+                ]
+            }
+        },
+        {
+            "type": "ParticleSystem",
+            "enabled": true,
+            "parameters": {
+                "billboard": 0,
+                "blendMode": 1,
+                "collision": {
+                    "enabled": true,
+                    "planeHeight": 0.5,
+                    "contactOffset": 0.12,
+                    "bounce": 0.35,
+                    "friction": 3.5,
+                    "restSpeed": 0.8,
+                    "roll": true,
+                    "rollRadius": 0.2,
+                    "useParticleScale": true
+                },
+                "color": {
+                    "enabled": true,
+                    "endColor": [
+                        0.1309,
+                        0.0736,
+                        0.0284,
+                        0
+                    ],
+                    "useGradient": true,
+                    "startRatio": 0.7
+                },
+                "emission": {
+                    "enabled": true,
+                    "rateOverTime": 0,
+                    "burstCount": 8,
+                    "burstTime": 0
+                },
+                "force": {
+                    "enabled": true,
+                    "gravity": [
+                        0,
+                        -9,
+                        0
+                    ],
+                    "wind": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "drag": 1,
+                    "acceleration": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "areaMin": [
+                        -1,
+                        -1,
+                        -1
+                    ],
+                    "areaMax": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "useAccelerationField": false
+                },
+                "main": {
+                    "enabled": true,
+                    "duration": 0,
+                    "looping": false,
+                    "playOnAwake": false,
+                    "maxParticles": 32,
+                    "simulationSpace": 1,
+                    "startLifetime": 1.5,
+                    "startLifetimeRandomness": 0.35,
+                    "startSpeed": 2.8,
+                    "startSpeedRandomness": 0.5,
+                    "startSize": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "startSizeRandomness": 0,
+                    "startRotation": [
+                        180,
+                        180,
+                        180
+                    ],
+                    "startRotationRandomness": 1,
+                    "startColor": [
+                        0.1309,
+                        0.0736,
+                        0.0284,
+                        1
+                    ],
+                    "startColorRandomness": 0,
+                    "gravityModifier": 1
+                },
+                "model": {
+                    "guid": "",
+                    "path": "Application/Assets/Models/particle/particle.obj"
+                },
+                "noise": {
+                    "enabled": false,
+                    "strength": 1,
+                    "frequency": 1,
+                    "scrollSpeed": 0,
+                    "damping": true,
+                    "positionAmount": [
+                        1,
+                        1,
+                        1
+                    ]
+                },
+                "rotation": {
+                    "enabled": true,
+                    "rotationSpeed": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotationSpeedRandomness": [
+                        8,
+                        8,
+                        8
+                    ],
+                    "use2DRotation": false,
+                    "rotation2DSpeed": 0,
+                    "rotation2DSpeedRandomness": 0,
+                    "rotationDirection": 2,
+                    "rotationOverLifetime": false,
+                    "startRotationSpeedMultiplier": 1,
+                    "endRotationSpeedMultiplier": 1,
+                    "limitRotationRange": false,
+                    "minRotation": [
+                        -180,
+                        -180,
+                        -180
+                    ],
+                    "maxRotation": [
+                        180,
+                        180,
+                        180
+                    ],
+                    "alignToVelocity": false,
+                    "velocityAlignmentStrength": 1
+                },
+                "shape": {
+                    "enabled": true,
+                    "shapeType": 1,
+                    "scale": [
+                        0.28,
+                        0.3,
+                        0.28
+                    ],
+                    "radius": 1,
+                    "innerRadius": 0.5,
+                    "height": 2,
+                    "angle": 25,
+                    "randomPositionRange": 0,
+                    "emitFromSurface": false,
+                    "emissionDirection": [
+                        0,
+                        1,
+                        0
+                    ],
+                    "circlePlane": 0
+                },
+                "size": {
+                    "enabled": true,
+                    "endSize": 0,
+                    "sizeOverLifetime": false,
+                    "endSize3D": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "use3DSize": false,
+                    "sizeCurve": 0,
+                    "minSize": 0.01,
+                    "maxSize": 10,
+                    "uniformScaling": true
+                },
+                "texture": {
+                    "guid": "",
+                    "path": "Application/Assets/Models/particle/particle.png"
+                },
+                "velocity": {
+                    "enabled": true,
+                    "startSpeed": [
+                        0,
+                        1,
+                        0
+                    ],
+                    "randomSpeedRange": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "useRandomDirection": true
+                },
+                "version": "2.2"
+            }
+        }
+    ]
+}

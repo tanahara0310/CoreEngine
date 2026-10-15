@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0,
+                    0,
+                    0
+                ],
+                "scale": [
+                    1,
+                    1,
+                    1
+                ],
+                "translate": [
+                    0,
+                    0,
+                    0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {},
+            "type": "GameManager"
+        },
+        {
+            "enabled": true,
+            "parameters": {},
+            "type": "Hunger"
+        },
+        {
+            "enabled": true,
+            "parameters": {},
+            "type": "GameDirector"
+        }
+    ],
+    "id": "3365231cab561e82",
+    "name": "GameManager",
+    "order": 2
+}

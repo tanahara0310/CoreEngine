@@ -1,0 +1,230 @@
+// GameScene の司令塔。部品どうしをつなぎ、毎フレームの更新を決まった順に呼ぶ（部品は自分では更新しない）。
+// 順番は元のゲームのオブジェクトの生成順と同じ：レールの表示 → カーソル → トロッコ → 投石 → マップの表示、
+// LateUpdate で 進行 → カーソルの高さ
+[DisplayName("GameScene の司令塔")]
+class GameDirector : ScriptComponent
+{
+    [DisplayName("BGM")]
+    string bgmPath = "Application/Assets/Sounds/BGM/Game_bgm.mp3";
+
+    [DisplayName("BGM の音量"), Range(0, 1)]
+    float bgmVolume = 1.0f / 3.0f;
+
+    [DisplayName("開幕の真上のカメラリグ")]
+    string entranceRig = "Entrance_Sky";
+
+    [DisplayName("ゲームのカメラリグ")]
+    string gameplayRig = "GamePlay";
+
+    [DisplayName("ゲームの構図へ移り始めるまで（秒）"), Range(0, 5)]
+    float gameplayRigDelay = 0.15f;
+
+    [DisplayName("ゲームの構図へ繋ぐ時間（秒）"), Range(0, 5)]
+    float gameplayRigBlend = 1.5f;
+
+    private MapGenerator@ map_;
+    private MapView@ mapView_;
+    private RailPath@ path_;
+    private RailView@ railView_;
+    private RailBuilder@ builder_;
+    private TrainMovement@ train_;
+    private RockThrow@ rockThrow_;
+    private GameManager@ gameManager_;
+    private Hunger@ hunger_;
+    private Sound@ bgm_;
+    private float elapsed_ = 0.0f;
+    private bool gameplayRigActivated_ = false;
+    private bool ready_ = false;
+
+    void Start() override
+    {
+        GameResult::Reset();
+
+        @gameManager_ = FindGameManager("GameManager");
+        @hunger_ = FindHunger("GameManager");
+        @map_ = FindMapGenerator("MapGenerator");
+        @mapView_ = FindMapView("MapGenerator");
+        @path_ = FindRailPath("RailPath");
+        @railView_ = FindRailView("RailPath");
+        @builder_ = FindRailBuilder("RailBuilder");
+        @train_ = FindTrainMovement("Train");
+        @rockThrow_ = FindRockThrow("RockProjectile");
+        if (gameManager_ is null || hunger_ is null || map_ is null || mapView_ is null || path_ is null
+            || railView_ is null || builder_ is null || train_ is null || rockThrow_ is null) {
+            Error("GameDirector: GameScene の部品がそろっていないので動かしません");
+            return;
+        }
+
+        GameObject@ debris = owner.InstantiatePrefab("Application/Assets/Prefabs/Game/RockBreakDebris.prefab", "RockBreakDebris");
+        hunger_.Setup(map_, gameManager_);
+        mapView_.Setup(map_);
+        railView_.Setup(path_, map_);
+        train_.Setup(path_, gameManager_, hunger_);
+        builder_.Setup(path_, map_, train_, hunger_, rockThrow_, debris);
+
+        hunger_.SetMonkeyAddedCallback(MonkeyAddedCallback(this.OnMonkeyAdded));
+        hunger_.SetStationPopCallback(StationCallback(this.OnStationPop));
+        gameManager_.SetOnEnding(GameEndingCallback(this.OnEnding));
+
+        PlayParams params;
+        params.bus = AudioBus::BGM;
+        params.loop = true;
+        params.volume = bgmVolume;
+        @bgm_ = Audio::PlayScoped(bgmPath, params);
+
+        // 開幕は真上から見下ろし、少し待ってからゲームの構図へ降りる
+        CameraRig::Activate(entranceRig);
+        ready_ = true;
+    }
+
+    void Update() override
+    {
+        if (!ready_) {
+            return;
+        }
+        const float deltaTime = Time::DeltaTime();
+        elapsed_ += deltaTime;
+        if (!gameplayRigActivated_ && elapsed_ >= gameplayRigDelay) {
+            gameplayRigActivated_ = true;
+            CameraRig::Activate(gameplayRig, gameplayRigBlend);
+        }
+
+        railView_.Tick(deltaTime);
+        builder_.Tick(deltaTime);
+        train_.Tick(deltaTime);
+        rockThrow_.Tick();
+        mapView_.Tick(deltaTime);
+    }
+
+    void LateUpdate() override
+    {
+        if (!ready_) {
+            return;
+        }
+        gameManager_.TickLate();
+        builder_.TickLate();
+    }
+
+    void OnDestroy() override
+    {
+        @bgm_ = null;
+    }
+
+    // ---------------------------------------------------------------- 部品からの知らせ
+
+    // 駅から連結したら、車両とサルを足す
+    private void OnMonkeyAdded(int monkeyCount)
+    {
+        train_.SpawnCarriage(monkeyCount);
+    }
+
+    // サルが増えた駅を弾ませる
+    private void OnStationPop(int stationX, int stationZ)
+    {
+        mapView_.PlayStationPop(stationX, stationZ);
+    }
+
+    // 終わりが決まった瞬間に結果を確定し、トロッコとカーソルを止める
+    private void OnEnding(bool isClear)
+    {
+        GameResult::SetHorizontalProgressBlocks(train_.GetHorizontalProgressBlocks());
+        GameResult::SetMonkeyCount(hunger_.GetMonkeyCount());
+        if (!isClear) {
+            train_.PlayGameOverLaunch();
+        }
+        train_.Stop();
+        builder_.Stop();
+    }
+
+    // ---------------------------------------------------------------- 探す
+
+    private GameManager@ FindGameManager(const string &in name)
+    {
+        GameManager@ found;
+        GameObject@ object = owner.FindObject(name);
+        if (object is null || !object.GetComponent(@found)) {
+            Warn("GameDirector: " + name + " に GameManager がありません");
+        }
+        return found;
+    }
+
+    private Hunger@ FindHunger(const string &in name)
+    {
+        Hunger@ found;
+        GameObject@ object = owner.FindObject(name);
+        if (object is null || !object.GetComponent(@found)) {
+            Warn("GameDirector: " + name + " に Hunger がありません");
+        }
+        return found;
+    }
+
+    private MapGenerator@ FindMapGenerator(const string &in name)
+    {
+        MapGenerator@ found;
+        GameObject@ object = owner.FindObject(name);
+        if (object is null || !object.GetComponent(@found)) {
+            Warn("GameDirector: " + name + " に MapGenerator がありません");
+        }
+        return found;
+    }
+
+    private MapView@ FindMapView(const string &in name)
+    {
+        MapView@ found;
+        GameObject@ object = owner.FindObject(name);
+        if (object is null || !object.GetComponent(@found)) {
+            Warn("GameDirector: " + name + " に MapView がありません");
+        }
+        return found;
+    }
+
+    private RailPath@ FindRailPath(const string &in name)
+    {
+        RailPath@ found;
+        GameObject@ object = owner.FindObject(name);
+        if (object is null || !object.GetComponent(@found)) {
+            Warn("GameDirector: " + name + " に RailPath がありません");
+        }
+        return found;
+    }
+
+    private RailView@ FindRailView(const string &in name)
+    {
+        RailView@ found;
+        GameObject@ object = owner.FindObject(name);
+        if (object is null || !object.GetComponent(@found)) {
+            Warn("GameDirector: " + name + " に RailView がありません");
+        }
+        return found;
+    }
+
+    private RailBuilder@ FindRailBuilder(const string &in name)
+    {
+        RailBuilder@ found;
+        GameObject@ object = owner.FindObject(name);
+        if (object is null || !object.GetComponent(@found)) {
+            Warn("GameDirector: " + name + " に RailBuilder がありません");
+        }
+        return found;
+    }
+
+    private TrainMovement@ FindTrainMovement(const string &in name)
+    {
+        TrainMovement@ found;
+        GameObject@ object = owner.FindObject(name);
+        if (object is null || !object.GetComponent(@found)) {
+            Warn("GameDirector: " + name + " に TrainMovement がありません");
+        }
+        return found;
+    }
+
+    private RockThrow@ FindRockThrow(const string &in name)
+    {
+        RockThrow@ found;
+        GameObject@ object = owner.FindObject(name);
+        if (object is null || !object.GetComponent(@found)) {
+            Warn("GameDirector: " + name + " に RockThrow がありません");
+        }
+        return found;
+    }
+}

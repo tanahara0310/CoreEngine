@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0,
+                    -1.5707963705062866,
+                    0
+                ],
+                "scale": [
+                    0.625,
+                    0.625,
+                    0.625
+                ],
+                "translate": [
+                    1,
+                    0.625,
+                    4
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "model": {
+                    "guid": "",
+                    "path": "Application/Assets/Models/Trolley/trolley.obj"
+                }
+            },
+            "type": "MeshRenderer"
+        },
+        {
+            "enabled": true,
+            "parameters": {},
+            "type": "TrainMovement"
+        }
+    ],
+    "id": "4eb485d18f095346",
+    "name": "Train",
+    "order": 6
+}

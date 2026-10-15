@@ -1,4 +1,5 @@
 {
+    "cameraRig": "GamePlay",
     "collision": {
         "pairs": [
             [
@@ -7,5 +8,8 @@
             ]
         ]
     },
-    "defaultGround": false
+    "defaultGround": false,
+    "features": [
+        "TimeOfDay"
+    ]
 }

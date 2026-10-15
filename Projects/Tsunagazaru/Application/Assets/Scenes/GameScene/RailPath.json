@@ -1,0 +1,40 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0,
+                    0,
+                    0
+                ],
+                "scale": [
+                    1,
+                    1,
+                    1
+                ],
+                "translate": [
+                    0,
+                    0,
+                    0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {},
+            "type": "RailPath"
+        },
+        {
+            "enabled": true,
+            "parameters": {},
+            "type": "RailView"
+        }
+    ],
+    "id": "619d0ae802c44217",
+    "name": "RailPath",
+    "order": 4
+}
