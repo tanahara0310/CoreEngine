@@ -51,6 +51,16 @@
         {
             "enabled": true,
             "parameters": {},
+            "type": "RailDirectionGuide"
+        },
+        {
+            "enabled": true,
+            "parameters": {},
+            "type": "BananaTreeAura"
+        },
+        {
+            "enabled": true,
+            "parameters": {},
             "type": "GameDirector"
         }
     ],

@@ -132,6 +132,14 @@ class RailBuilder : ScriptComponent
         @onStaminaInsufficient_ = callback;
     }
 
+    bool IsStopped() const { return stopped_; }
+
+    // そのマスへ敷くのに要るスタミナ（実際に払う額と同じ式）
+    float GetPlacementCost(int x, int z) const
+    {
+        return hunger_.CalculateActionCost(GetBaseCost(x, z));
+    }
+
     // 優先する向きの 1 マス先へ敷く費用（ゲージの予告に使う）
     float GetNextPlacementCost() const
     {

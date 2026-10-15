@@ -24,6 +24,9 @@ class GameDirector : ScriptComponent
     private GameEntrance@ entrance_;
     private PauseMenu@ pauseMenu_;
     private BananaHarvest@ harvest_;
+    private RailDirectionGuide@ guide_;
+    private BananaTreeAura@ aura_;
+    private OffscreenTrainIndicator@ offscreen_;
     private Sound@ bgm_;
     private bool ready_ = false;
 
@@ -45,6 +48,9 @@ class GameDirector : ScriptComponent
         @entrance_ = FindGameEntrance("GameManager");
         @pauseMenu_ = FindPauseMenu("GameManager");
         @harvest_ = FindBananaHarvest("GameManager");
+        @guide_ = FindRailDirectionGuide("GameManager");
+        @aura_ = FindBananaTreeAura("GameManager");
+        @offscreen_ = FindOffscreenTrainIndicator("TrainOffscreen");
         if (gameManager_ is null || hunger_ is null || map_ is null || mapView_ is null || path_ is null
             || railView_ is null || builder_ is null || train_ is null || rockThrow_ is null) {
             Error("GameDirector: GameScene の部品がそろっていないので動かしません");
@@ -81,8 +87,17 @@ class GameDirector : ScriptComponent
         if (harvest_ !is null) {
             harvest_.Setup(hunger_, train_, mapView_, stamina_);
         }
+        if (guide_ !is null) {
+            guide_.Setup(path_, map_, hunger_, builder_, pauseMenu_);
+        }
+        if (aura_ !is null) {
+            aura_.Setup(map_, path_, builder_.gridSize);
+        }
+        if (offscreen_ !is null) {
+            offscreen_.Setup(train_, gameManager_);
+        }
         if (entrance_ !is null) {
-            entrance_.Setup(builder_, train_, mapView_, stamina_, speedGauge_, pauseMenu_);
+            entrance_.Setup(builder_, train_, mapView_, stamina_, speedGauge_, pauseMenu_, guide_);
         }
         ready_ = true;
     }
@@ -90,7 +105,17 @@ class GameDirector : ScriptComponent
     // ポーズ中は部品を進めない（元のゲームの停止と同じく、ゲームの物は全部止まる）
     void Update() override
     {
-        if (!ready_ || GamePause::paused) {
+        if (!ready_) {
+            return;
+        }
+        if (GamePause::paused) {
+            // 床の矢印と木の波は深度で隠れないので、ポーズの看板の手前に出ないよう引っ込める
+            if (guide_ !is null) {
+                guide_.HideAll();
+            }
+            if (aura_ !is null) {
+                aura_.HideAll();
+            }
             return;
         }
         const float deltaTime = Time::DeltaTime();
@@ -105,6 +130,12 @@ class GameDirector : ScriptComponent
         mapView_.Tick(deltaTime);
         if (harvest_ !is null) {
             harvest_.Tick(deltaTime);
+        }
+        if (guide_ !is null) {
+            guide_.Tick(deltaTime);
+        }
+        if (aura_ !is null) {
+            aura_.Tick(deltaTime);
         }
 
         if (entrance_ !is null) {
@@ -314,6 +345,36 @@ class GameDirector : ScriptComponent
         GameObject@ object = owner.FindObject(name);
         if (object is null || !object.GetComponent(@found)) {
             Warn("GameDirector: " + name + " に BananaHarvest がありません");
+        }
+        return found;
+    }
+
+    private RailDirectionGuide@ FindRailDirectionGuide(const string &in name)
+    {
+        RailDirectionGuide@ found;
+        GameObject@ object = owner.FindObject(name);
+        if (object is null || !object.GetComponent(@found)) {
+            Warn("GameDirector: " + name + " に RailDirectionGuide がありません");
+        }
+        return found;
+    }
+
+    private BananaTreeAura@ FindBananaTreeAura(const string &in name)
+    {
+        BananaTreeAura@ found;
+        GameObject@ object = owner.FindObject(name);
+        if (object is null || !object.GetComponent(@found)) {
+            Warn("GameDirector: " + name + " に BananaTreeAura がありません");
+        }
+        return found;
+    }
+
+    private OffscreenTrainIndicator@ FindOffscreenTrainIndicator(const string &in name)
+    {
+        OffscreenTrainIndicator@ found;
+        GameObject@ object = owner.FindObject(name);
+        if (object is null || !object.GetComponent(@found)) {
+            Warn("GameDirector: " + name + " に OffscreenTrainIndicator がありません");
         }
         return found;
     }

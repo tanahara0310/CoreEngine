@@ -59,6 +59,7 @@ class GameEntrance : ScriptComponent
     private StaminaGauge@ stamina_;
     private SpeedGauge@ speedGauge_;
     private PauseMenu@ pauseMenu_;
+    private RailDirectionGuide@ guide_;
     private ObjectiveSign sign_;
     private UIImage@ whiteout_;
 
@@ -76,7 +77,7 @@ class GameEntrance : ScriptComponent
     private bool goalReached_ = false;
 
     void Setup(RailBuilder@ builder, TrainMovement@ train, MapView@ mapView, StaminaGauge@ stamina, SpeedGauge@ speedGauge,
-        PauseMenu@ pauseMenu)
+        PauseMenu@ pauseMenu, RailDirectionGuide@ guide)
     {
         @builder_ = builder;
         @train_ = train;
@@ -84,6 +85,7 @@ class GameEntrance : ScriptComponent
         @stamina_ = stamina;
         @speedGauge_ = speedGauge;
         @pauseMenu_ = pauseMenu;
+        @guide_ = guide;
 
         sign_.Build(owner);
 
@@ -208,6 +210,10 @@ class GameEntrance : ScriptComponent
         }
         const float start = CallTime() + hudRevealOffset;
         const float span = Max(0.05f, hudRevealSeconds);
+        // 床の矢印はワールド側なので、HUD の 1 枚目と同時でも読み分けられる
+        if (guide_ !is null) {
+            guide_.SetIntroReveal(RevealAt(start, span, 0.0f));
+        }
         if (stamina_ !is null) {
             stamina_.SetIntroReveal(RevealAt(start, span, 0.0f));
         }

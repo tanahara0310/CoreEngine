@@ -1,0 +1,57 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0,
+                    0,
+                    0
+                ],
+                "scale": [
+                    1,
+                    1,
+                    1
+                ],
+                "translate": [
+                    0,
+                    1.6,
+                    0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": false,
+            "parameters": {
+                "areaHeight": 2,
+                "areaWidth": 2,
+                "atmosphereIntensity": 0,
+                "color": [
+                    1,
+                    0.95,
+                    0.85,
+                    1
+                ],
+                "direction": [
+                    0,
+                    -1,
+                    0
+                ],
+                "innerConeAngleDeg": 30,
+                "intensity": 0,
+                "isAtmosphereMoon": false,
+                "isAtmosphereSun": false,
+                "outerConeAngleDeg": 45,
+                "range": 3.5,
+                "type": 1
+            },
+            "type": "Light"
+        }
+    ],
+    "id": "e8d2a543f205be8b",
+    "name": "TrainLight",
+    "order": 15
+}
