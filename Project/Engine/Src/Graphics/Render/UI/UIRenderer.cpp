@@ -3,6 +3,7 @@
 #include "Camera/Camera.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Utility/Logger/Logger.h"
 #include "WinApp/WinApp.h"
 #include <cassert>
 
@@ -106,9 +107,12 @@ namespace CoreEngine
 
     size_t UIRenderer::GetAvailableConstantBuffer() {
         if (currentBufferIndex_ >= kMaxUICount) {
-#ifdef _DEBUG
-            OutputDebugStringA("ERROR: UI count exceeded maximum! Increase kMaxUICount or reduce UI count.\n");
-#endif
+            // 上限を超えた要素は最後の枠を共有するので、位置と大きさが崩れる
+            if (!overflowWarned_) {
+                overflowWarned_ = true;
+                Logger::GetInstance().Warnf(LogCategory::Graphics,
+                    "UI 要素が 1 フレームの上限 {} 個を超えました。超えた分は正しい位置に描かれません", kMaxUICount);
+            }
             return kMaxUICount - 1;
         }
         size_t bufferIndex = currentBufferIndex_;
