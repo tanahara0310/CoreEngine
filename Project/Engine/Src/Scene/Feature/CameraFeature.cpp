@@ -10,6 +10,8 @@
 #include "Camera/CameraManager.h"
 #include "Camera/Control/CameraInputState.h"
 #include "Camera/Debug/DebugCameraState.h"
+#include "Camera/Rig/CameraRig.h"
+#include "EngineSystem/PlaybackState.h"
 #ifdef CORE_EDITOR
 #include "Editor/Camera/EditorCameraInput.h"
 #endif
@@ -178,8 +180,15 @@ namespace CoreEngine
                     continue;
                 }
                 cameraManager_->SetDisplayName(key, object->GetName());
-                component->ApplyTo(*camera);
-                camera->UpdateMatrix();
+
+                // リグが握っているカメラには写さない。前のフレームに映した構図を、
+                // スクリプトの更新の間もリグの切り替えの繋ぎ元としても保つ
+                const bool drivenByRig = PlaybackStateManager::GetInstance().IsInPlayMode()
+                    && key == CameraRig::GetDrivenCameraName();
+                if (!drivenByRig) {
+                    component->ApplyTo(*camera);
+                    camera->UpdateMatrix();
+                }
                 alive.push_back(key);
 
                 if (mainCameraKey_.empty() && component->IsMainCamera()

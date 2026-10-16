@@ -40,6 +40,9 @@ namespace CoreEngine {
             return projectionJitterActive_ ? jitteredProjectionMatrix_ : projectionMatrix_;
         }
 
+        /// @brief 射影行列を取得（TAA ジッタを含まない）
+        const Matrix4x4& GetUnjitteredProjectionMatrix() const { return projectionMatrix_; }
+
         /// @brief カメラのワールド座標を取得
         Vector3 GetPosition() const { return translate_; }
 

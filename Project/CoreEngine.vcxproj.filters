@@ -139,6 +139,9 @@
     <ClCompile Include="Engine\Src\Script\Binding\AudioBinding.cpp">
       <Filter>Engine\Src\Script\Binding</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\CameraRigBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Script\Binding\CameraShakeBinding.cpp">
       <Filter>Engine\Src\Script\Binding</Filter>
     </ClCompile>
@@ -1957,6 +1960,9 @@
       <Filter>Engine\Src\Script\Binding</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Script\Binding\AudioBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\CameraRigBinding.h">
       <Filter>Engine\Src\Script\Binding</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Script\Binding\CameraShakeBinding.h">

@@ -22,8 +22,8 @@ namespace CoreEngine
             Matrix4x4 world;
         };
 
-        /// @brief 最大 UI 要素数
-        static constexpr size_t kMaxUICount = 1024;
+        /// @brief 1 フレームに描ける UI 要素の数（すべてのビューの合計）
+        static constexpr size_t kMaxUICount = 4096;
 
         /// @brief 定数バッファ内での変換行列 1 個ぶんの間隔（CBV の配置に合わせて 256 バイト単位）
         static constexpr size_t kTransformStride =
@@ -127,6 +127,7 @@ namespace CoreEngine
 
         size_t currentBufferIndex_ = 0;
         UINT   currentFrameIndex_ = 0;
+        bool   overflowWarned_ = false;
 
         // 基準解像度（0 以下の場合はエンジン既定の基準解像度）
         float referenceWidth_ = 0.0f;

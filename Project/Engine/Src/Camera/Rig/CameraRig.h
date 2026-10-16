@@ -68,9 +68,21 @@ namespace CoreEngine
         /// @note CameraRigFeature が呼ぶ。利用側は呼ばないこと。
         static void SetActiveRuntime(CameraRigRuntime* runtime) { activeRuntime_ = runtime; }
 
+        /// @brief 前のフレームにリグが姿勢を書いたカメラの名前（書いていなければ空）
+        /// @details CameraFeature はこのカメラへシーンのカメラのオブジェクトの姿勢を写さない。
+        ///          次にリグが書くまで、前のフレームに映した構図をそのまま保つ。
+        static const std::string& GetDrivenCameraName() { return drivenCameraName_; }
+
+        /// @brief リグが姿勢を書いたカメラを控える（書かなかったフレームは空にする）
+        /// @note CameraRigFeature が呼ぶ。利用側は呼ばないこと。
+        static void SetDrivenCameraName(const std::string& name) { drivenCameraName_ = name; }
+
     private:
         /// @brief 委譲先（非所有。所有は CameraRigFeature）
         static inline CameraRigRuntime* activeRuntime_ = nullptr;
+
+        /// @brief 前のフレームにリグが姿勢を書いたカメラの名前
+        static inline std::string drivenCameraName_{};
 
         /// @brief 読み込みキャッシュ。ランタイムはシーンごとに作り直されるので、こちらが正本
         static inline CameraRigLibrary library_{};
