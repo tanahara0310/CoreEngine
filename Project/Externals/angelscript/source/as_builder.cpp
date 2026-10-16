@@ -909,24 +909,59 @@ void asCBuilder::RegisterNamespaceVisibility(asCScriptNode* node, asCScriptCode*
 }
 #endif
 
-void asCBuilder::AddVisibleNamespaces(asSNameSpace *ns, const asCArray<asSNameSpace*>& visited, asCArray<asSNameSpace*>& pending)
+void asCBuilder::AddVisibleNamespaces(asSNameSpace *ns, int sectionIdx, const asCArray<asSNameSpace*>& visited, asCArray<asSNameSpace*>& pending)
 {
-	asSMapNode<asSNameSpace*, asCArray<asSNameSpace*>>* cursor = 0;
-
-	if (namespaceVisibility.MoveTo(&cursor, ns))
+	// Only the 'using namespace' written in the same script section is visible
+	for (asUINT i = 0; i < usingNamespaces.GetLength(); ++i)
 	{
-		asCArray<asSNameSpace*>& visibilityBuffer = namespaceVisibility.GetValue(cursor);
-		asUINT count = visibilityBuffer.GetLength();
+		const sUsingNamespace &entry = usingNamespaces[i];
+		if (entry.ns != ns || entry.sectionIdx != sectionIdx)
+			continue;
 
-		for (asUINT i = 0; i < count; ++i)
+		asSNameSpace* visibleNameSpace = entry.visible;
+		if (!visited.Exists(visibleNameSpace) && !pending.Exists(visibleNameSpace))
 		{
-			asSNameSpace* visibleNameSpace = visibilityBuffer[i];
-			if (!visited.Exists(visibleNameSpace) && !pending.Exists(visibleNameSpace))
-			{
-				pending.PushLast(visibleNameSpace);
-			}
+			pending.PushLast(visibleNameSpace);
 		}
 	}
+}
+
+bool asCBuilder::IsNamespaceOrParent(asSNameSpace *ns, asSNameSpace *startNs) const
+{
+	// A symbol found in the start namespace or its parents takes precedence over the 'using namespace'
+	for (asSNameSpace *n = startNs; n; n = engine->GetParentNameSpace(n))
+	{
+		if (n == ns)
+			return true;
+	}
+	return false;
+}
+
+asUINT asCBuilder::ShareUsingNamespaces(int fromSectionIdx, int toSectionIdx)
+{
+	// Make the 'using namespace' of one section visible from another section until removed
+	asUINT added = 0;
+	if (fromSectionIdx < 0 || fromSectionIdx == toSectionIdx)
+		return added;
+
+	const asUINT count = usingNamespaces.GetLength();
+	for (asUINT i = 0; i < count; ++i)
+	{
+		if (usingNamespaces[i].sectionIdx != fromSectionIdx)
+			continue;
+
+		sUsingNamespace entry = usingNamespaces[i];
+		entry.sectionIdx = toSectionIdx;
+		usingNamespaces.PushLast(entry);
+		++added;
+	}
+	return added;
+}
+
+void asCBuilder::RemoveLastUsingNamespaces(asUINT count)
+{
+	asASSERT(count <= usingNamespaces.GetLength());
+	usingNamespaces.SetLength(usingNamespaces.GetLength() - count);
 }
 
 asSNameSpace *asCBuilder::FindNextVisibleNamespace(const asCArray<asSNameSpace*>& visited, asCArray<asSNameSpace*>& pending, asSNameSpace *parentNs, bool* checkAmbiguous)
@@ -2267,19 +2302,24 @@ int asCBuilder::RegisterUsingNamespace(asCScriptNode *node, asCScriptCode *file,
 	}
 
 	asSNameSpace* visibleNamespace = engine->AddNameSpace(name.AddressOf());
-	asSMapNode<asSNameSpace*, asCArray<asSNameSpace*>>* cursor = 0;
 
-	if (namespaceVisibility.MoveTo(&cursor, ns))
+	bool exists = false;
+	for (asUINT i = 0; i < usingNamespaces.GetLength(); ++i)
 	{
-		asCArray<asSNameSpace*>& visibleNamespaces = namespaceVisibility.GetValue(cursor);
-		if (!visibleNamespaces.Exists(visibleNamespace))
-			namespaceVisibility.GetValue(cursor).PushLast(visibleNamespace);
+		const sUsingNamespace &entry = usingNamespaces[i];
+		if (entry.sectionIdx == file->idx && entry.ns == ns && entry.visible == visibleNamespace)
+		{
+			exists = true;
+			break;
+		}
 	}
-	else
+	if (!exists)
 	{
-		asCArray<asSNameSpace*> tmp;
-		tmp.PushLast(visibleNamespace);
-		namespaceVisibility.Insert(ns, tmp);
+		sUsingNamespace entry;
+		entry.sectionIdx = file->idx;
+		entry.ns = ns;
+		entry.visible = visibleNamespace;
+		usingNamespaces.PushLast(entry);
 	}
 
 	node->Destroy(engine);
@@ -6120,7 +6160,7 @@ bool asCBuilder::FindObjectTypeOrMixinInNsHierarchy(const asCString& name, asSNa
 		{
 			visitedNamespaces.PushLast(ns);
 
-			if (!checkAmbiguousSymbols)
+			if (!checkAmbiguousSymbols || IsNamespaceOrParent(ns, startNs))
 			{
 				objType = GetObjectType(name.AddressOf(), ns);
 #ifndef AS_NO_COMPILER
@@ -6155,7 +6195,7 @@ bool asCBuilder::FindObjectTypeOrMixinInNsHierarchy(const asCString& name, asSNa
 			}
 		}
 
-		AddVisibleNamespaces(ns, visitedNamespaces, pendingNamespaces);
+		AddVisibleNamespaces(ns, script ? script->idx : -1, visitedNamespaces, pendingNamespaces);
 		ns = FindNextVisibleNamespace(visitedNamespaces, pendingNamespaces, parentNs, &checkAmbiguousSymbols);
 		if (ns == parentNs)
 		{
@@ -6376,6 +6416,11 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 		asSNameSpace* parentNs = engine->GetParentNameSpace(ns);
 		while( (ns || parentType) && (!found || checkAmbiguousSymbols))
 		{
+			// A type found in the start namespace or its parents is not ambiguous with the 'using namespace'
+			const bool checkAmbiguousOutside = checkAmbiguousSymbols;
+			if (IsNamespaceOrParent(ns, origNs))
+				checkAmbiguousSymbols = false;
+
 			if (!visitedNamespaces.Exists(ns) || parentType)
 			{
 				visitedNamespaces.PushLast(ns);
@@ -6522,10 +6567,13 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 				}
 			}
 
+			if (!found)
+				checkAmbiguousSymbols = checkAmbiguousOutside;
+
 			if( !found || checkAmbiguousSymbols )
 			{
-				AddVisibleNamespaces(ns, visitedNamespaces, pendingNamespaces);
-				
+				AddVisibleNamespaces(ns, file ? file->idx : -1, visitedNamespaces, pendingNamespaces);
+
 				// Try to find it in the parent namespace
 				ns = FindNextVisibleNamespace(visitedNamespaces, pendingNamespaces, parentNs, &checkAmbiguousSymbols);
 				if (parentNs == ns)

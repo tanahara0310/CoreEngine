@@ -2643,6 +2643,14 @@ int asCCompiler::CompileDefaultAndNamedArgs(asCScriptNode *node, asCArray<asCExp
 		asCScriptCode *origScript = script;
 		script = code;
 
+		// The default arg sees the 'using namespace' of the script section that declared the called function
+		asCScriptFunction *declaredFunc = func;
+		if( declaredFunc->funcType == asFUNC_VIRTUAL && declaredFunc->objectType &&
+			declaredFunc->vfTableIdx >= 0 && asUINT(declaredFunc->vfTableIdx) < declaredFunc->objectType->virtualFunctionTable.GetLength() )
+			declaredFunc = declaredFunc->objectType->virtualFunctionTable[declaredFunc->vfTableIdx];
+		const int declaredSectionIdx = (declaredFunc && declaredFunc->scriptData) ? declaredFunc->scriptData->scriptSectionIdx : -1;
+		const asUINT sharedUsings = builder->ShareUsingNamespaces(declaredSectionIdx >= 0 ? declaredSectionIdx : (origScript ? origScript->idx : -1), code->idx);
+
 		// Don't allow the expression to access local variables
 		isCompilingDefaultArg = true;
 
@@ -2680,6 +2688,7 @@ int asCCompiler::CompileDefaultAndNamedArgs(asCScriptNode *node, asCArray<asCExp
 
 		isCompilingDefaultArg = false;
 
+		builder->RemoveLastUsingNamespaces(sharedUsings);
 		script = origScript;
 
 		if( r < 0 )
@@ -10701,15 +10710,21 @@ asCCompiler::SYMBOLTYPE asCCompiler::SymbolLookup(const asCString &name, const a
 	asCArray<asSNameSpace*> pendingNamespaces = m_namespaceVisibility;
 	asCArray<asSNameSpace*> visitedNamespaces;
 	asSNameSpace *currNamespace = DetermineNameSpace("");
+	asSNameSpace *startNamespace = currNamespace;
 	SYMBOLTYPE resultSymbolType = SL_NOMATCH;
-	
+
 	bool checkAmbiguousSymbols = currNamespace == engine->nameSpaces[0];
 
 	// Keep track of the parent namespace
 	asSNameSpace* parentNamespace = engine->GetParentNameSpace(currNamespace);
-	
+
 	while( !objType && currNamespace )
 	{
+		// A symbol found in the start namespace or its parents is not ambiguous with the 'using namespace'
+		const bool checkAmbiguousOutside = checkAmbiguousSymbols;
+		if( builder->IsNamespaceOrParent(currNamespace, startNamespace) )
+			checkAmbiguousSymbols = false;
+
 		if( !visitedNamespaces.Exists(currNamespace) )
 		{
 			visitedNamespaces.PushLast(currNamespace);
@@ -10975,11 +10990,14 @@ asCCompiler::SYMBOLTYPE asCCompiler::SymbolLookup(const asCString &name, const a
 			}
 		}
 
+		if( resultSymbolType == SL_NOMATCH )
+			checkAmbiguousSymbols = checkAmbiguousOutside;
+
 		// If the given scope starts with '::' then the search starts from global scope
 		if (scope.GetLength() >= 2 && scope[0] == ':')
 			break;
 
-		builder->AddVisibleNamespaces(currNamespace, visitedNamespaces, pendingNamespaces);
+		builder->AddVisibleNamespaces(currNamespace, script ? script->idx : -1, visitedNamespaces, pendingNamespaces);
 
 		// Always search namespaces included with 'using namespace' first
 		// Only move up to parent namespace if no symbol has been found
