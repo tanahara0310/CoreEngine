@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.11.0">
+<meta name="engine-version" content="0.12.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2066,6 +2066,7 @@ kbd {
     <tbody>
       <tr><td><span class="path">Projects/Sokoban</span></td><td>倉庫番。スクリプト 1 本（<span class="path">SokobanBoard.as</span>）とプレハブ 5 つだけで、文字で書いた盤面からステージを組み立てる小さな見本。ステージはインスペクタの <code>stages</code> に 1 行足せば増やせます。</td></tr>
       <tr><td><span class="path">Projects/Sandbox</span></td><td>機能ごとの試験場（物理・キャラクターの歩行・UI・水面・カメラの揺れ・スクリプトのシューター）。沖縄の海辺のシーンでは、待機・歩き・走りのアニメーションが付いた人型を操作できます（<a href="#tutorial-beach-player">沖縄の海辺をプレイヤーで歩く</a>）。</td></tr>
+      <tr><td><span class="path">Projects/Tsunagazaru</span></td><td>つながザルをえない。走り続けるトロッコの前にレールを敷いていくゲームで、C++ で作ったゲームをスクリプトだけで作り直した大きめの見本（タイトル・ゲーム・リザルトの 3 シーン）。シーンを切り替えるときのロード画面も、プロジェクトのシェーダで描いています（<a href="#settings-loading-screen">シーンを切り替えるときのロード画面</a>）。</td></tr>
     </tbody>
   </table>
   </div>
@@ -7441,6 +7442,13 @@ python Tools/OkinawaBeach/bake_player_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-12-0">v0.12.0 <span class="dim">（2026-10-16）</span></h3>
+  <p>付属のサンプルに、C++ で作ったゲーム「つながザルをえない」をスクリプトだけで作り直したプロジェクトを足した版です（<a href="#intro-samples">付属のサンプル</a>）。エンジンは変わっていません。</p>
+  <ul>
+    <li><strong>Projects/Tsunagazaru</strong>：タイトル・ゲーム・リザルトの 3 シーン。レールを敷く・トロッコの進行・HUD・ポーズ・収穫の演出・リザルトの記録と称号まで、元のゲームと同じ動きをスクリプトで書いています。</li>
+    <li>シーンを切り替えるときのロード画面は、元のゲームのトロッコの画面をプロジェクトのシェーダ（<span class="path">Shaders/Loading/TrolleyLoading.CS.hlsl</span>）へ移しました。</li>
+  </ul>
 
   <h3 id="changelog-v0-11-0">v0.11.0 <span class="dim">（2026-10-16）</span></h3>
   <p>シーンを切り替えるときのロード画面を、プロジェクトのシェーダで描けるようにした版です（<a href="#settings-loading-screen">シーンを切り替えるときのロード画面</a>）。</p>
