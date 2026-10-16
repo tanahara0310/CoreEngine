@@ -6,13 +6,16 @@
 
 namespace CoreEngine::Script
 {
+    /// スクリプトから見たエンジンの名前空間（`using namespace CoreEngine;` で頭を省ける）
+    inline constexpr const char* kEngineNamespace = "CoreEngine";
+
     /// @brief スクリプトへの型と関数の登録をまとめて行い、失敗した宣言をログへ出す
     class BindingRegistrar
     {
     public:
         explicit BindingRegistrar(asIScriptEngine* engine) : engine_(engine) {}
 
-        /// @brief 以降の登録先の名前空間を切り替える（空文字で名前空間の外）
+        /// @brief 以降の登録先の名前空間を CoreEngine の下で切り替える（空文字で CoreEngine そのもの）
         void Namespace(const char* name);
 
         void ValueType(const char* name, int byteSize, asQWORD flags);

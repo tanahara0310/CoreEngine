@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // マスの種類（ステージのデータの数字と同じ並び）
 enum MapChip
 {

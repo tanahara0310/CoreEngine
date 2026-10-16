@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // 敵：砲台へ向かって進む。弾に当たると光り、決めた回数当たるとパーティクルを出して消える
 [DisplayName("シューター：敵")]
 class ShooterEnemy : ScriptComponent

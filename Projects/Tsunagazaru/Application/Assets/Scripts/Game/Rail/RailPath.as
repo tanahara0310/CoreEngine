@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // マスを 1 つの整数で表す（Z は 1024 未満）
 int CellKey(int x, int z)
 {

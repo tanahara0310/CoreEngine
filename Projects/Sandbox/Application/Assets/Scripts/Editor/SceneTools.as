@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // メニューから 1 回呼ぶエディタの道具。クラスの外の関数に [MenuItem] を付ける
 
 // 選んでいるオブジェクトを地面（高さ 0）まで下ろす（RecordObject で控えたので Ctrl+Z で戻せる）

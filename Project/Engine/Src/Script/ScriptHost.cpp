@@ -2,6 +2,7 @@
 #include "Script/ScriptHost.h"
 
 #include "Script/Binding/AudioBinding.h"
+#include "Script/Binding/BindingRegistrar.h"
 #include "Script/Binding/CameraRigBinding.h"
 #include "Script/Binding/CameraShakeBinding.h"
 #include "Script/Binding/ComponentBinding.h"
@@ -55,7 +56,7 @@ namespace CoreEngine
     namespace
     {
         constexpr const char* kModuleName = "Game";
-        constexpr const char* kComponentBaseName = "ScriptComponent";
+        constexpr const char* kComponentBaseName = "CoreEngine::ScriptComponent";
 
         /// エンジンのユーザーデータに実行環境を置くときの種類
         constexpr asPWORD kHostUserDataType = 0x436F7245;
@@ -212,17 +213,17 @@ namespace CoreEngine
             std::string Place() const { return section + " " + std::to_string(row) + " 行目"; }
         };
 
-        /// @brief ソースの字句を順に読み、クラスの宣言を集める（コメントと文字列の中は見ない）
-        void CollectClassDeclarations(const asIScriptEngine& engine, const std::string& section,
-                                      const std::string& text, std::vector<ClassDeclaration>& out)
+        /// @brief ソースの字句 1 つ
+        struct Token
         {
-            struct Token
-            {
-                std::string_view text;
-                asETokenClass kind = asTC_UNKNOWN;
-                int row = 0;
-            };
+            std::string_view text;
+            asETokenClass kind = asTC_UNKNOWN;
+            int row = 0; ///< 行（1 から）
+        };
 
+        /// @brief ソースを字句に分ける（空白とコメントは除く）
+        std::vector<Token> Tokenize(const asIScriptEngine& engine, const std::string& text)
+        {
             std::vector<Token> tokens;
             int row = 1;
             for (std::size_t at = 0; at < text.size();) {
@@ -236,6 +237,54 @@ namespace CoreEngine
                 row += static_cast<int>(std::count(piece.begin(), piece.end(), '\n'));
                 at += step;
             }
+            return tokens;
+        }
+
+        /// @brief エンジンの名前空間の直下の名前（型・列挙・funcdef・関数と、Time などの下の名前空間）を集める
+        std::unordered_set<std::string> CollectEngineNames(const asIScriptEngine& engine)
+        {
+            std::unordered_set<std::string> names;
+            const std::string root = Script::kEngineNamespace;
+            const std::string prefix = root + "::";
+            const auto add = [&](const char* nameSpace, const char* name) {
+                const std::string_view space = nameSpace ? nameSpace : "";
+                if (space == root) {
+                    if (name) {
+                        names.insert(name);
+                    }
+                } else if (space.starts_with(prefix)) {
+                    const std::string_view rest = space.substr(prefix.size());
+                    names.insert(std::string(rest.substr(0, rest.find("::"))));
+                }
+                };
+            for (asUINT i = 0; i < engine.GetObjectTypeCount(); ++i) {
+                if (const asITypeInfo* const type = engine.GetObjectTypeByIndex(i)) {
+                    add(type->GetNamespace(), type->GetName());
+                }
+            }
+            for (asUINT i = 0; i < engine.GetEnumCount(); ++i) {
+                if (const asITypeInfo* const type = engine.GetEnumByIndex(i)) {
+                    add(type->GetNamespace(), type->GetName());
+                }
+            }
+            for (asUINT i = 0; i < engine.GetFuncdefCount(); ++i) {
+                if (const asITypeInfo* const type = engine.GetFuncdefByIndex(i)) {
+                    add(type->GetNamespace(), type->GetName());
+                }
+            }
+            for (asUINT i = 0; i < engine.GetGlobalFunctionCount(); ++i) {
+                if (const asIScriptFunction* const function = engine.GetGlobalFunctionByIndex(i)) {
+                    add(function->GetNamespace(), function->GetName());
+                }
+            }
+            return names;
+        }
+
+        /// @brief ソースの字句を順に読み、クラスの宣言を集める（コメントと文字列の中は見ない）
+        void CollectClassDeclarations(const asIScriptEngine& engine, const std::string& section,
+                                      const std::string& text, std::vector<ClassDeclaration>& out)
+        {
+            const std::vector<Token> tokens = Tokenize(engine, text);
 
             // 開いている波かっこごとに、名前空間ならその名前、それ以外なら空を積む
             std::vector<std::optional<std::string>> scopes;
@@ -318,6 +367,10 @@ namespace CoreEngine
         RegisterStdString(engine_);
         RegisterScriptMath(engine_);
         RegisterExceptionRoutines(engine_);
+
+        // ここから先のエンジンの型と関数は CoreEngine の下へ登録する。
+        // 既定の名前空間は登録の後も CoreEngine のままで、C++ から型を名前（Vector3 など）で引くときはここから探す
+        configured = engine_->SetDefaultNamespace(Script::kEngineNamespace) >= 0 && configured;
         configured = Script::RegisterLogBinding(engine_) && configured;
         configured = Script::RegisterMathBinding(engine_) && configured;
         configured = Script::RegisterTimeBinding(engine_) && configured;
@@ -383,6 +436,7 @@ namespace CoreEngine
             return true;
         }
         ReportNameConflicts(sources);
+        ReportMissingEngineUsing(broken, sources);
 
         // 2 回目は、壊れたファイルだけ最後に通った版へ戻して組み直す。
         // 書きかけの 1 つで、他のスクリプトまで前の状態へ戻るのを避けるため
@@ -461,6 +515,58 @@ namespace CoreEngine
         }
     }
 
+    void ScriptHost::ReportMissingEngineUsing(const std::set<std::string>& brokenSections,
+                                              const std::unordered_map<std::string, std::string>& sources) const
+    {
+        std::unordered_set<std::string> engineNames = CollectEngineNames(*engine_);
+
+        // 基底クラス（CoreEngine の中に書いたクラス）はエンジンの名前に入れる。
+        // ほかのクラスは、エンジンと同じ名前でもエンジンのものとして数えない
+        std::unordered_set<std::string> scriptClasses;
+        for (const auto& [section, text] : sources) {
+            std::vector<ClassDeclaration> declarations;
+            CollectClassDeclarations(*engine_, section, text, declarations);
+            for (const ClassDeclaration& declaration : declarations) {
+                if (declaration.nameSpace == Script::kEngineNamespace) {
+                    engineNames.insert(declaration.name);
+                } else {
+                    scriptClasses.insert(declaration.name);
+                }
+            }
+        }
+
+        Logger& logger = Logger::GetInstance();
+        for (const std::string& section : brokenSections) {
+            const auto found = sources.find(section);
+            if (found == sources.end()) {
+                continue;
+            }
+
+            const std::vector<Token> tokens = Tokenize(*engine_, found->second);
+            bool hasUsing = false;
+            const Token* firstUse = nullptr;
+            for (std::size_t i = 0; i < tokens.size(); ++i) {
+                const Token& token = tokens[i];
+                if (token.kind == asTC_KEYWORD && token.text == "using" && i + 2 < tokens.size()
+                    && tokens[i + 1].text == "namespace" && tokens[i + 2].text == Script::kEngineNamespace) {
+                    hasUsing = true;
+                    break;
+                }
+                const bool qualified = i > 0 && (tokens[i - 1].text == "::" || tokens[i - 1].text == ".");
+                if (!firstUse && token.kind == asTC_IDENTIFIER && !qualified
+                    && engineNames.contains(std::string(token.text)) && !scriptClasses.contains(std::string(token.text))) {
+                    firstUse = &token;
+                }
+            }
+            if (hasUsing || !firstUse) {
+                continue;
+            }
+            logger.Logf(LogLevel::Error, LogCategory::Script,
+                "{} の {} 行目の {} はエンジンの機能です。ファイルの先頭に using namespace {}; を書くか、{}::{} と書いてください",
+                section, firstUse->row, firstUse->text, Script::kEngineNamespace, Script::kEngineNamespace, firstUse->text);
+        }
+    }
+
     bool ScriptHost::TryBuild(const std::filesystem::path& root, CompiledModule& out,
                               const std::set<std::string>& fallbackSections,
                               std::unordered_map<std::string, std::string>& outSources)
@@ -513,7 +619,7 @@ namespace CoreEngine
         asITypeInfo* const base = module->GetTypeInfoByName(kComponentBaseName);
         if (!base) {
             logger.Logf(LogLevel::Error, LogCategory::Script,
-                "クラス {} がありません（Shared/ScriptComponent.as）", kComponentBaseName);
+                "クラス {} がありません（ScriptComponent.as）", kComponentBaseName);
             module->Discard();
             return false;
         }

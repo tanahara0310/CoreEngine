@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // トロッコの子に置いたサルを沈めておき、トロッコが着いた後にトロッコの中から飛び出させる
 [DisplayName("サルの演出")]
 class TitleMonkey : TitleIntro

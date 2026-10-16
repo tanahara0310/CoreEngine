@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // 「ノード」のタブ。ノードエディタの使い方（数のノードを足し算のノードへつなぎ、表示のノードで結果を見る小さな計算）
 //
 //   EditorGUI::BeginNodeEditor(ID, NodeEditorFlags, 高さ) 〜 EndNodeEditor()   フラグは MiniMap（全体図）・SnapToGrid（格子に合わせる）

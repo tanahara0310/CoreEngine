@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // 「データ」のタブ。ゲームのデータ（Application/Assets の下の JSON）を、エディタの道具で書いてゲームで読む使い方
 //
 //   DataFile@ file = DataFile("Data/名前.json");   Application/Assets からの相対パス（.json）。無ければ空の中身で開く

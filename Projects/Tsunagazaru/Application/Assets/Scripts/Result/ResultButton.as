@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // 選択中の文字の色（元の値。露出を打ち消さずに描いていたので、今の露出を掛けて画面の色にする）
 const Vector4 kResultSelectedColor = Vector4(0.30f, 0.72f, 1.0f, 1.0f);
 

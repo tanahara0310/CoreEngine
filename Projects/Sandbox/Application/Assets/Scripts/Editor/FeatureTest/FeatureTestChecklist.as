@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // テストの「確かめること」の一覧。各タブが 1 つずつ持ち、チェックを覚える。
 // ウィンドウの公開メンバ変数の中にあるので、.as を保存して読み直しても、エディタを閉じて開き直しても残る。
 class FeatureTestChecklist

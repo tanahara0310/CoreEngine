@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // エディタ拡張のテスト（Tools > テスト > エディタ拡張のテスト の「シーン」の「インスペクタ」）で使うコンポーネント。
 // ギズモの使い方の見本。インスペクタの中身は Editor/FeatureTest/FeatureTestTargetInspector.as が描く。
 //

@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // 「マウス」のタブ。部品とウィンドウの状態・マウス・キー・自由に描く場所の使い方
 //
 //   EditorGUI::IsItemHovered()・IsItemActive()・IsItemClicked(ボタン)   直前の部品の状態

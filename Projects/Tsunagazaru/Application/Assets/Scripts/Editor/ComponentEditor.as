@@ -7,6 +7,9 @@
 // 既定の欄は EditorGUI::DrawDefaultInspector() で描ける。
 // 値を変えるときは、変える前に Editor::RecordObject(target, "名前") で控えると Ctrl+Z で戻せる。
 // 1 つのクラスのオブジェクトを、同じ型のコンポーネントすべてで使い回す（メンバ変数はコンポーネントごとに分かれない）。
+// ComponentEditor も名前空間 CoreEngine の中にある（ファイルの先頭に using namespace CoreEngine; を書く）。
+namespace CoreEngine
+{
 abstract class ComponentEditor
 {
     // エンジンが呼ぶ前に入れる
@@ -25,4 +28,5 @@ abstract class ComponentEditor
 
     // このコンポーネントを持つオブジェクトを選んでいる間、シーンビューを描くフレームごと（Handles:: と SceneView:: が使える）
     void OnSceneGUI() {}
+}
 }

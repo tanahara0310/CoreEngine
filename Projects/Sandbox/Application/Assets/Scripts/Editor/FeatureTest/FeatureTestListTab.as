@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // 「一覧」のタブ。選ぶ部品・表・木の使い方
 //
 //   EditorGUI::Selectable(文, 選んでいるか, 行全体)  押したフレームだけ true（表の中で行全体を押せるようにするなら 3 つ目を true）

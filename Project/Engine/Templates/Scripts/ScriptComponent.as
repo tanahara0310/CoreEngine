@@ -4,6 +4,11 @@
 // コンポーネントの基底クラス。これを継いだクラスが、クラス名を型名とするコンポーネントになる。
 // コンポーネントのクラスは 1 ファイルに 1 つ書き、ファイル名をクラス名と同じにする（外れていると、コンパイルのときに警告を出す）。
 //
+// エンジンの型と関数（この ScriptComponent・GameObject・Vector3・Time:: など）は名前空間 CoreEngine の中にある。
+// 使うファイルの先頭に using namespace CoreEngine; を書くと、頭の CoreEngine:: を省いて書ける（書いたファイルにだけ効く）。
+// 書かないファイルでは CoreEngine::GameObject のように頭から書く。
+// エンジンと同じ名前のクラスを作ってもよい。using を書いたファイルでも自分のクラスが優先され、エンジンの方は CoreEngine:: を付けて使う。
+//
 // 公開メンバ変数のうち bool / int / float / string / Vector2 / Vector3 / Vector4 と、それを要素にした array<T> がインスペクタに出て、シーンの JSON に保存される。
 // private / protected のメンバ変数は出さず、保存もしない。
 //
@@ -27,6 +32,8 @@
 // エディタのあるビルドは、.as を保存すると動かしたまま読み直す（コンパイルに失敗したときは、直すまで前のスクリプトで動き続ける）。
 // 読み直すと、インスペクタに出るメンバ変数の値は持ち越すが、それ以外のメンバ変数は書いた初期値に戻る。
 // Tween などエンジンへ渡した関数は呼ばれなくなるので、渡し直しは OnScriptReloaded に書く。
+namespace CoreEngine
+{
 abstract class ScriptComponent
 {
     // 持ち主の GameObject（エンジンが入れる）
@@ -89,4 +96,5 @@ abstract class ScriptComponent
 
     // 持ち主のオブジェクトを選んでいる間だけ、OnDrawGizmos の後に
     void OnDrawGizmosSelected() {}
+}
 }

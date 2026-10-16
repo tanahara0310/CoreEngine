@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // 飛んでいる（あるいは掲げられている）バナナ 1 本
 class HarvestBanana
 {

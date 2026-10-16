@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // ResultScene の進行役。背景と UI を組み、左右で「もういちど／タイトルへ」を選んで決定、戻る（ESC）でタイトルへ。
 // カメラは背景の中心を見ながらゆっくり回る（サルが多いほど引く）。Tips は入るたびに次の 1 つを出す
 [DisplayName("ResultScene の進行役")]

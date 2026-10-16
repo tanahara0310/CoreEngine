@@ -40,7 +40,9 @@ namespace CoreEngine::Editor::ScriptTemplate
         /// @brief 雛形が無いときに使う中身
         std::string FallbackText()
         {
-            return "[DisplayName(\"{CLASS}\")]\r\n"
+            return "using namespace CoreEngine;\r\n"
+                   "\r\n"
+                   "[DisplayName(\"{CLASS}\")]\r\n"
                    "class {CLASS} : ScriptComponent\r\n"
                    "{\r\n"
                    "}\r\n";

@@ -36,10 +36,10 @@ namespace CoreEngine::Editor
     namespace
     {
         /// ウィンドウの基底クラスの名前
-        constexpr const char* kWindowBaseName = "EditorWindow";
+        constexpr const char* kWindowBaseName = "CoreEngine::EditorWindow";
 
         /// インスペクタを描くクラスの基底クラスの名前
-        constexpr const char* kComponentEditorBaseName = "ComponentEditor";
+        constexpr const char* kComponentEditorBaseName = "CoreEngine::ComponentEditor";
 
         /// エディタだけで読むスクリプトのフォルダ（スクリプトのフォルダからの相対）
         constexpr std::string_view kEditorFolder = "Editor/";
@@ -443,9 +443,14 @@ namespace CoreEngine::Editor
         /// @brief クラスが基底クラス（EditorWindow・ComponentEditor）の関数を書き換えていれば、その関数（書き換えていなければ nullptr）
         asIScriptFunction* FindOverride(const asITypeInfo& type, const char* declaration, std::string_view baseName = kWindowBaseName)
         {
+            const auto qualifiedName = [](const asITypeInfo& info) {
+                const char* const nameSpace = info.GetNamespace();
+                return (nameSpace && nameSpace[0] != '\0')
+                    ? std::string(nameSpace) + "::" + info.GetName() : std::string(info.GetName());
+                };
             asIScriptFunction* const own = type.GetMethodByDecl(declaration, false);
             for (const asITypeInfo* base = type.GetBaseType(); base; base = base->GetBaseType()) {
-                if (std::string_view(base->GetName()) == baseName) {
+                if (qualifiedName(*base) == baseName) {
                     return base->GetMethodByDecl(declaration, false) == own ? nullptr : own;
                 }
             }

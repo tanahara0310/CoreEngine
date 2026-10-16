@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // ボタンが押されたかと、いまキー・パッドで選んでいるものを毎フレーム見て文字へ出す
 [DisplayName("UI：ボタンの試験")]
 class UIButtonTester : ScriptComponent

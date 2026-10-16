@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // 「文字」のタブ。文字を出す部品と、区切り・余白・進み具合の棒の使い方
 //
 //   EditorGUI::Label(文)                 ふつうの文字（ウィンドウの幅で折り返す）

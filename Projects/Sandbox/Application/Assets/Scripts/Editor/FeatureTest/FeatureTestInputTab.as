@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // 「入力」のタブ。ボタンと値の欄、値が変わったかの調べ方
 //
 //   EditorGUI::Button(文, 幅)            押したフレームだけ true（幅 0 は文に合わせ、-1 は幅いっぱい）

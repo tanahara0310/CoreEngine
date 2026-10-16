@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // 遊んだ記録（前回の距離と自己最高）。Application/Saved/result_record.json に残す
 class ResultRecordEntry
 {

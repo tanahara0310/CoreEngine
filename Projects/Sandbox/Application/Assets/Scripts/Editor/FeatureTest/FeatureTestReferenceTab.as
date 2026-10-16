@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // 「参照」のタブ。シーンのオブジェクトとアセットを選ぶ欄、画像の出し方、アセットの探し方
 //
 //   EditorGUI::ObjectField(ラベル, オブジェクト)    シーンのオブジェクトを選ぶ欄（Hierarchy からドラッグしても入る）。選んだものを返す

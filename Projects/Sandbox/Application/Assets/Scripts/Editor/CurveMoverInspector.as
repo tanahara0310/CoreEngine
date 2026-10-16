@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // 「カーブで上下」（CurveMover）のインスペクタを描くクラス。高さと周期はスライダー、カーブはカーブの欄で描く。
 // 毎フレーム、変える前に Editor::RecordObject で控える（変わらなければ何も積まない。ドラッグの間は 1 回にまとまる）。
 [CustomEditor("CurveMover")]
