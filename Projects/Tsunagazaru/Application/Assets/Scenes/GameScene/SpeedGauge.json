@@ -1,0 +1,50 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchor": 0,
+                "anchoredPosition": [
+                    0,
+                    0
+                ],
+                "pivot": [
+                    0,
+                    0
+                ],
+                "rotation": 0,
+                "size": [
+                    16,
+                    76
+                ],
+                "sortOrder": 880
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    1,
+                    1,
+                    1,
+                    1
+                ],
+                "texture": {
+                    "guid": "",
+                    "path": "Application/Assets/Textures/UI/Board/board_mid.png"
+                }
+            },
+            "type": "UIImage"
+        },
+        {
+            "enabled": true,
+            "parameters": {},
+            "type": "SpeedGauge"
+        }
+    ],
+    "id": "0b2682191ff55ea5",
+    "name": "SpeedGauge",
+    "order": 11
+}

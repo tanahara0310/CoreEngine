@@ -1,0 +1,41 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    -0.24434607,
+                    0.08726646,
+                    0
+                ],
+                "scale": [
+                    1,
+                    1,
+                    1
+                ],
+                "translate": [
+                    -2.8,
+                    -0.3,
+                    -15.3
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "farClip": 1000,
+                "fov": 25.783100780887047,
+                "isMainCamera": true,
+                "nearClip": 0.1,
+                "projection": 0
+            },
+            "type": "Camera"
+        }
+    ],
+    "id": "45c57eca1a11ad9a",
+    "name": "MainCamera",
+    "order": 1
+}

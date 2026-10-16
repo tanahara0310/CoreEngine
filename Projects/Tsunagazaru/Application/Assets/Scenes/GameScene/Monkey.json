@@ -1,0 +1,43 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "b8fff923f20571c4"
+                },
+                "rotate": [
+                    0,
+                    0,
+                    0
+                ],
+                "scale": [
+                    1,
+                    1,
+                    1
+                ],
+                "translate": [
+                    0,
+                    0,
+                    0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "model": {
+                    "guid": "",
+                    "path": "Application/Assets/Models/Monkey/monkey.obj"
+                }
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "3463ee59e3c3417c",
+    "name": "Monkey",
+    "order": 7
+}

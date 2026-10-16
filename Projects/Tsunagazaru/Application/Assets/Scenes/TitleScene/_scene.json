@@ -1,0 +1,11 @@
+{
+    "collision": {
+        "pairs": [
+            [
+                "Default",
+                "Default"
+            ]
+        ]
+    },
+    "defaultGround": true
+}

@@ -1,0 +1,70 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0,
+                    0,
+                    0
+                ],
+                "scale": [
+                    1,
+                    1,
+                    1
+                ],
+                "translate": [
+                    0,
+                    0,
+                    0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {},
+            "type": "GameManager"
+        },
+        {
+            "enabled": true,
+            "parameters": {},
+            "type": "Hunger"
+        },
+        {
+            "enabled": true,
+            "parameters": {},
+            "type": "GameEntrance"
+        },
+        {
+            "enabled": true,
+            "parameters": {},
+            "type": "PauseMenu"
+        },
+        {
+            "enabled": true,
+            "parameters": {},
+            "type": "BananaHarvest"
+        },
+        {
+            "enabled": true,
+            "parameters": {},
+            "type": "RailDirectionGuide"
+        },
+        {
+            "enabled": true,
+            "parameters": {},
+            "type": "BananaTreeAura"
+        },
+        {
+            "enabled": true,
+            "parameters": {},
+            "type": "GameDirector"
+        }
+    ],
+    "id": "6b54721b10ee49e9",
+    "name": "GameManager",
+    "order": 2
+}

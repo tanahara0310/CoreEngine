@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    -0.168,
+                    0.293,
+                    0
+                ],
+                "scale": [
+                    1,
+                    1,
+                    1
+                ],
+                "translate": [
+                    1.493,
+                    0.933,
+                    -3.441
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "model": {
+                    "guid": "",
+                    "path": "Application/Assets/Models/Trolley/trolley.obj"
+                }
+            },
+            "type": "MeshRenderer"
+        },
+        {
+            "enabled": true,
+            "parameters": {},
+            "type": "TitleTrolley"
+        }
+    ],
+    "id": "01c33c230eb15a19",
+    "name": "trolley",
+    "order": 3
+}

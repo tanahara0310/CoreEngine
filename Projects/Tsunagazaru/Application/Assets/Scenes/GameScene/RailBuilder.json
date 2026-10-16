@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0,
+                    0,
+                    0
+                ],
+                "scale": [
+                    0.625,
+                    0.5,
+                    0.625
+                ],
+                "translate": [
+                    1,
+                    1,
+                    4
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "model": {
+                    "guid": "",
+                    "path": "Application/Assets/Models/Arrow/arrow.obj"
+                }
+            },
+            "type": "MeshRenderer"
+        },
+        {
+            "enabled": true,
+            "parameters": {},
+            "type": "RailBuilder"
+        }
+    ],
+    "id": "b910fbb8eecbd23a",
+    "name": "RailBuilder",
+    "order": 5
+}

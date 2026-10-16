@@ -1,0 +1,21 @@
+{
+    "r.AtmosphereLights.MoonAtmosphereIntensity": 0.0013000000035390258,
+    "r.AtmosphereLights.MoonDirection": [
+        -0.5735764503479004,
+        0.8191520571708679,
+        2.5071823728239906e-8
+    ],
+    "r.AtmosphereLights.MoonSurfaceIntensity": 80,
+    "r.AtmosphereLights.SunDirection": [
+        -0.45073172450065613,
+        -0.650119423866272,
+        0.6117072105407715
+    ],
+    "r.CAS.Enabled": false,
+    "r.RTShadow.DenoisePhiDepth": 1.034000039100647,
+    "r.RTShadow.MaxRayDistance": 2682.326904296875,
+    "r.RTShadow.ShadowBias": 0.15800000727176666,
+    "r.SSAO.Enabled": false,
+    "r.SSAOBlur.Enabled": false,
+    "r.TAA.Enabled": false
+}

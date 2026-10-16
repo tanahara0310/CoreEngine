@@ -1,0 +1,57 @@
+{
+    "components": [
+        {
+            "type": "Transform",
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0,
+                    0,
+                    0
+                ],
+                "scale": [
+                    1,
+                    1,
+                    1
+                ],
+                "translate": [
+                    0,
+                    0,
+                    0
+                ]
+            }
+        },
+        {
+            "type": "Text3DRenderer",
+            "enabled": true,
+            "parameters": {
+                "font": "x8y12pxDenkiChip.ttf",
+                "text": "→",
+                "fontSize": 0.6,
+                "lineSpacing": 1,
+                "alignH": 1,
+                "alignV": 1,
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "color": [
+                    1,
+                    0.97,
+                    0.72,
+                    1
+                ],
+                "outlineColor": [
+                    0,
+                    0,
+                    0,
+                    1
+                ],
+                "outlineWidth": 0.085,
+                "billboard": 0,
+                "depthMode": 1
+            }
+        }
+    ]
+}
