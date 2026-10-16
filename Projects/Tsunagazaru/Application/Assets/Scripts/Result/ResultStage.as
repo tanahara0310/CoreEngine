@@ -9,6 +9,8 @@ namespace ResultLayout
     const float kDecorationMinCenterDistance = 2.1f;
     const float kDecorationLayoutMargin = 3.0f;
     const int kRandomPlacementAttempts = 512;
+    const float kGridCellSize = 2.1f;          // 重なりの判定の格子（最も大きい間隔以上）
+    const int kChecksPerCall = 2500;           // 1 回の呼び出しで試す候補の上限（残りは次のフレームへ）
 }
 
 // 揺れの 1 軸ぶんの状態
@@ -47,6 +49,22 @@ class ResultStage
     private array<Vector3> occupied_;
     private array<ResultMonkeyShake@> monkeys_;
 
+    // 置き済みの位置を引く格子（マスごとに occupied_ の番号を持つ）
+    private array<array<int>@> grid_;
+    private int gridCells_ = 1;
+    private float gridHalf_ = 1.0f;
+
+    // 並べる途中の状態。段 0 = サル ／ 1 = 岩 ／ 2 = バナナの木 ／ 3 = 済み
+    private RandomStream@ placement_;
+    private int stage_ = 0;
+    private int itemIndex_ = 0;
+    private int rockCount_ = 0;
+    private int treeCount_ = 0;
+    private int searchPhase_ = 0;   // 0 = 探し始め ／ 1 = 乱数で探す ／ 2 = 黄金角の渦で探す
+    private int attempt_ = 0;
+    private float randomPhase_ = 0.0f;
+    private int budget_ = 0;
+
     void Build(GameObject@ owner, int monkeyCount, int brokenRockCount, int bananaHarvestCount, int progressBlocks)
     {
         @owner_ = owner;
@@ -74,26 +92,23 @@ class ResultStage
             }
         }
 
-        RandomStream placement(seed);
+        @placement_ = RandomStream(seed);
+        rockCount_ = rockCount;
+        treeCount_ = treeCount;
+        InitGrid();
         // 中央のサルも重なりの判定に入れる（XZ の距離だけを見る）
-        occupied_.insertLast(Vector3(0.0f, 0.0f, 0.0f));
-        SpawnMonkey("Result_monkey", Vector3(0.0f, ResultLayout::kMonkeyY, 0.0f), 0, placement.Uniform(0.0f, kTau));
+        AddOccupied(Vector3(0.0f, 0.0f, 0.0f));
+        SpawnMonkey("Result_monkey", Vector3(0.0f, ResultLayout::kMonkeyY, 0.0f), 0, placement_.Uniform(0.0f, kTau));
+        stage_ = 0;
+        itemIndex_ = 1;
+        searchPhase_ = 0;
+        Advance(ResultLayout::kChecksPerCall);
+    }
 
-        if (monkeyCount_ > 1) {
-            const float placementRadius = Max(0.0f, MonkeyLayoutRadius() - ResultLayout::kMonkeyLayoutEdgePadding);
-            for (int index = 1; index < monkeyCount_; ++index) {
-                Vector3 position;
-                if (!FindPosition(placement, placementRadius, ResultLayout::kMonkeyMinCenterDistance, monkeyCount_, position)) {
-                    break;
-                }
-                occupied_.insertLast(position);
-                SpawnMonkey("Result_monkey_" + (index + 1), Vector3(position.x, ResultLayout::kMonkeyY, position.z), index,
-                    placement.Uniform(0.0f, kTau));
-            }
-        }
-
-        PlaceDecorations(placement, "Application/Assets/Prefabs/Game/Rock.prefab", "Result_rock_", rockCount);
-        PlaceDecorations(placement, "Application/Assets/Prefabs/Game/BananaTree.prefab", "Result_banana_tree_", treeCount);
+    // まだ並べ終わっていないか（終わるまで毎フレーム Tick で続きを並べる）
+    bool IsBuilding() const
+    {
+        return stage_ < 3;
     }
 
     // サルの数が多いほど広げる配置の半径
@@ -111,6 +126,9 @@ class ResultStage
 
     void Tick(float deltaTime)
     {
+        if (IsBuilding()) {
+            Advance(ResultLayout::kChecksPerCall);
+        }
         const float step = Max(0.0f, deltaTime);
         for (uint i = 0; i < monkeys_.length(); ++i) {
             ResultMonkeyShake@ monkey = monkeys_[i];
@@ -141,70 +159,152 @@ class ResultStage
         monkeys_.insertLast(shake);
     }
 
-    private void PlaceDecorations(RandomStream@ placement, const string &in prefab, const string &in namePrefix, int count)
+    // 決められた数だけ候補を試して並べ進める。サル → 岩 → バナナの木 の順で、置けなかったらその種類は打ち切る
+    private void Advance(int checks)
     {
-        if (count <= 0) {
-            return;
-        }
-        const float placementRadius = Max(0.0f, SceneRadius() - ResultLayout::kMonkeyLayoutEdgePadding);
-        for (int index = 0; index < count; ++index) {
-            Vector3 position;
-            if (!FindPosition(placement, placementRadius, ResultLayout::kDecorationMinCenterDistance, count, position)) {
-                break;
-            }
-            occupied_.insertLast(position);
-            GameObject@ decoration = owner_.InstantiatePrefab(prefab, namePrefix + (index + 1));
-            const float yRotation = placement.Uniform(0.0f, kTau);
-            if (decoration is null) {
+        budget_ = checks;
+        while (IsBuilding() && budget_ > 0) {
+            if (itemIndex_ >= StageCount()) {
+                NextStage();
                 continue;
             }
-            decoration.transform.position = Vector3(position.x, ResultLayout::kMonkeyY, position.z);
-            decoration.transform.rotation = Vector3(0.0f, yRotation, 0.0f);
+            Vector3 position;
+            const int result = Search(position);
+            if (result == 0) {
+                return;
+            }
+            if (result == 2) {
+                NextStage();
+                continue;
+            }
+            AddOccupied(position);
+            if (stage_ == 0) {
+                SpawnMonkey("Result_monkey_" + (itemIndex_ + 1), Vector3(position.x, ResultLayout::kMonkeyY, position.z), itemIndex_,
+                    placement_.Uniform(0.0f, kTau));
+            } else {
+                const string prefab = stage_ == 1 ? "Application/Assets/Prefabs/Game/Rock.prefab" : "Application/Assets/Prefabs/Game/BananaTree.prefab";
+                const string namePrefix = stage_ == 1 ? "Result_rock_" : "Result_banana_tree_";
+                GameObject@ decoration = owner_.InstantiatePrefab(prefab, namePrefix + (itemIndex_ + 1));
+                const float yRotation = placement_.Uniform(0.0f, kTau);
+                if (decoration !is null) {
+                    decoration.transform.position = Vector3(position.x, ResultLayout::kMonkeyY, position.z);
+                    decoration.transform.rotation = Vector3(0.0f, yRotation, 0.0f);
+                }
+            }
+            ++itemIndex_;
+            searchPhase_ = 0;
         }
     }
 
-    // 円の中へ乱数で候補を出し、どれとも近すぎない所を探す。詰まったら黄金角の渦で探す
-    private bool FindPosition(RandomStream@ placement, float placementRadius, float minCenterDistance, int fallbackScale, Vector3 &out found)
+    private int StageCount() const
     {
+        if (stage_ == 0) {
+            return monkeyCount_;
+        }
+        return stage_ == 1 ? rockCount_ : treeCount_;
+    }
+
+    private void NextStage()
+    {
+        ++stage_;
+        itemIndex_ = 0;
+        searchPhase_ = 0;
+    }
+
+    // 円の中へ乱数で候補を出し、どれとも近すぎない所を探す。詰まったら黄金角の渦で探す。
+    // 0 = 試す数を使い切った（次の呼び出しで続ける）／ 1 = 見つけた ／ 2 = 置ける所が無い
+    private int Search(Vector3 &out found)
+    {
+        found = Vector3(0.0f, 0.0f, 0.0f);
+        const float edge = stage_ == 0 ? MonkeyLayoutRadius() : SceneRadius();
+        const float placementRadius = Max(0.0f, edge - ResultLayout::kMonkeyLayoutEdgePadding);
+        const float minCenterDistance = stage_ == 0 ? ResultLayout::kMonkeyMinCenterDistance : ResultLayout::kDecorationMinCenterDistance;
         const float radiusSquared = placementRadius * placementRadius;
         const float minDistanceSquared = minCenterDistance * minCenterDistance;
-        for (int attempt = 0; attempt < ResultLayout::kRandomPlacementAttempts; ++attempt) {
-            const float x = placement.Uniform(-placementRadius, placementRadius);
-            const float z = placement.Uniform(-placementRadius, placementRadius);
-            if (IsAvailable(x, z, minDistanceSquared, radiusSquared)) {
-                found = Vector3(x, 0.0f, z);
-                return true;
+        if (searchPhase_ == 0) {
+            searchPhase_ = 1;
+            attempt_ = 0;
+        }
+        if (searchPhase_ == 1) {
+            while (attempt_ < ResultLayout::kRandomPlacementAttempts) {
+                if (budget_ <= 0) {
+                    return 0;
+                }
+                --budget_;
+                ++attempt_;
+                const float x = placement_.Uniform(-placementRadius, placementRadius);
+                const float z = placement_.Uniform(-placementRadius, placementRadius);
+                if (IsAvailable(x, z, minDistanceSquared, radiusSquared)) {
+                    found = Vector3(x, 0.0f, z);
+                    return 1;
+                }
             }
+            searchPhase_ = 2;
+            attempt_ = 0;
+            randomPhase_ = placement_.Uniform(0.0f, kTau);
         }
         const float goldenAngle = kPi * (3.0f - sqrt(5.0f));
-        const int fallbackAttempts = Max(512, fallbackScale * 256);
+        const int fallbackAttempts = Max(512, StageCount() * 256);
         const float radiusSpan = Max(0.0f, placementRadius - minCenterDistance);
-        const float randomPhase = placement.Uniform(0.0f, kTau);
-        for (int attempt = 0; attempt < fallbackAttempts; ++attempt) {
-            const float normalized = float(attempt + 1) / float(fallbackAttempts);
+        while (attempt_ < fallbackAttempts) {
+            if (budget_ <= 0) {
+                return 0;
+            }
+            --budget_;
+            const float normalized = float(attempt_ + 1) / float(fallbackAttempts);
             const float radius = minCenterDistance + radiusSpan * sqrt(normalized);
-            const float angle = randomPhase + float(attempt) * goldenAngle;
+            const float angle = randomPhase_ + float(attempt_) * goldenAngle;
+            ++attempt_;
             const float x = cos(angle) * radius;
             const float z = sin(angle) * radius;
             if (IsAvailable(x, z, minDistanceSquared, radiusSquared)) {
                 found = Vector3(x, 0.0f, z);
-                return true;
+                return 1;
             }
         }
-        found = Vector3(0.0f, 0.0f, 0.0f);
-        return false;
+        return 2;
     }
 
+    private void InitGrid()
+    {
+        gridHalf_ = SceneRadius() + ResultLayout::kGridCellSize;
+        gridCells_ = int(ceil(gridHalf_ * 2.0f / ResultLayout::kGridCellSize)) + 1;
+        grid_.resize(0);
+        for (int i = 0; i < gridCells_ * gridCells_; ++i) {
+            grid_.insertLast(array<int>());
+        }
+    }
+
+    private int GridCoord(float value) const
+    {
+        return Clamp(int(floor((value + gridHalf_) / ResultLayout::kGridCellSize)), 0, gridCells_ - 1);
+    }
+
+    private void AddOccupied(const Vector3 &in position)
+    {
+        occupied_.insertLast(position);
+        grid_[GridCoord(position.z) * gridCells_ + GridCoord(position.x)].insertLast(int(occupied_.length()) - 1);
+    }
+
+    // 近すぎる置き済みは隣り合う 3x3 マスの中にしか無い（マスの幅が間隔以上なので）
     private bool IsAvailable(float x, float z, float minDistanceSquared, float radiusSquared) const
     {
         if (x * x + z * z > radiusSquared) {
             return false;
         }
-        for (uint i = 0; i < occupied_.length(); ++i) {
-            const float dx = x - occupied_[i].x;
-            const float dz = z - occupied_[i].z;
-            if (dx * dx + dz * dz < minDistanceSquared) {
-                return false;
+        const int cellX = GridCoord(x);
+        const int cellZ = GridCoord(z);
+        for (int gz = Max(0, cellZ - 1); gz <= Min(gridCells_ - 1, cellZ + 1); ++gz) {
+            for (int gx = Max(0, cellX - 1); gx <= Min(gridCells_ - 1, cellX + 1); ++gx) {
+                const array<int>@ cell = grid_[gz * gridCells_ + gx];
+                for (uint i = 0; i < cell.length(); ++i) {
+                    const Vector3 placed = occupied_[cell[i]];
+                    const float dx = x - placed.x;
+                    const float dz = z - placed.z;
+                    if (dx * dx + dz * dz < minDistanceSquared) {
+                        return false;
+                    }
+                }
             }
         }
         return true;
