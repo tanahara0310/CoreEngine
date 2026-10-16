@@ -1,5 +1,13 @@
 {
     "initialScene": "TitleScene",
+    "loadingScreenImages": [
+        "Application/Assets/Textures/Loading/monkey.png",
+        "Application/Assets/Textures/Loading/rail.png",
+        "Application/Assets/Textures/Loading/station.png",
+        "Application/Assets/Textures/Loading/tree.png",
+        "Application/Assets/Textures/Loading/text.png"
+    ],
+    "loadingScreenShader": "Application/Assets/Shaders/Loading/TrolleyLoading.CS.hlsl",
     "name": "Tsunagazaru",
     "version": "1.0"
 }
