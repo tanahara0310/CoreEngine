@@ -34,6 +34,12 @@ class BananaTreeAura : ScriptComponent
     [DisplayName("描画順"), Range(0, 5000)]
     int sortOrder = 10;
 
+    [DisplayName("木を探す列（カメラの左右・マス）"), Range(4, 64)]
+    int searchColumns = 24;
+
+    [DisplayName("画面の外へはみ出しても描く幅（px）"), Range(0, 400)]
+    float screenMargin = 80.0f;
+
     private MapGenerator@ map_;
     private RailPath@ path_;
     private array<UIImage@> lines_;
@@ -69,13 +75,19 @@ class BananaTreeAura : ScriptComponent
 
     private void DrawAura(GameCamera@ camera)
     {
-        // 木が隣り合っていても同じマスへ二重に描かない
+        const float height = BlockLayout::GetSurfaceHeight(gridSize_) + Max(0.0f, heightOffset) * gridSize_;
+
+        // 木が隣り合っていても同じマスへ二重に描かない。探すのはカメラの周りの列だけで、
+        // 画面に映らないマスには描かない（UI の枠を使い切らないように）
         array<int> cells;
         const int sizeX = map_.GetSizeX();
         const int sizeZ = path_.mapSizeZ;
+        const int cameraX = int(floor(camera.position.x / gridSize_));
+        const int firstX = Max(0, cameraX - searchColumns);
+        const int lastX = Min(sizeX - 1, cameraX + searchColumns);
         const array<int> dx = { 1, -1, 0, 0 };
         const array<int> dz = { 0, 0, 1, -1 };
-        for (int x = 0; x < sizeX; ++x) {
+        for (int x = firstX; x <= lastX; ++x) {
             for (int z = 0; z < sizeZ; ++z) {
                 if (map_.GetChip(x, z) != MapChip::BananaTree) {
                     continue;
@@ -93,6 +105,9 @@ class BananaTreeAura : ScriptComponent
                     if (map_.IsStationRailCell(auraX, auraZ) || path_.HasRail(auraX, auraZ)) {
                         continue;
                     }
+                    if (!IsOnScreen(camera, Vector3(float(auraX) * gridSize_, height, float(auraZ) * gridSize_))) {
+                        continue;
+                    }
                     const int key = CellKey(auraX, auraZ);
                     if (cells.find(key) < 0) {
                         cells.insertLast(key);
@@ -101,7 +116,6 @@ class BananaTreeAura : ScriptComponent
             }
         }
 
-        const float height = BlockLayout::GetSurfaceHeight(gridSize_) + Max(0.0f, heightOffset) * gridSize_;
         const float minSide = Max(0.01f, minSize) * gridSize_;
         const float maxSide = Max(minSide, maxSize * gridSize_);
         const int waves = Clamp(waveCount, 1, 8);
@@ -128,6 +142,14 @@ class BananaTreeAura : ScriptComponent
                 DrawScreenLine(d, a, lineColor);
             }
         }
+    }
+
+    // マスの中心が画面（余白を含む）に映るか
+    private bool IsOnScreen(GameCamera@ camera, const Vector3 &in world) const
+    {
+        const Vector3 screen = camera.WorldToScreenPoint(world);
+        return screen.z > 1.0e-5f && screen.x >= -screenMargin && screen.x <= 1920.0f + screenMargin
+            && screen.y >= -screenMargin && screen.y <= 1080.0f + screenMargin;
     }
 
     // 画面上の 2 点を結ぶ細い帯を 1 枚置く（カメラの後ろの点は描かない）
