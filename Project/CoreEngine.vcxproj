@@ -392,6 +392,7 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Dissolve\Dissolve.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\FadeEffect\FadeEffect.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\LoadingScreen\LoadingScreenEffect.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ProjectLoadingScreen\ProjectLoadingScreen.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\GrayScale\GrayScale.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Invert\Invert.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectComputeBase.cpp" />
@@ -1367,6 +1368,7 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Dissolve\Dissolve.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\FadeEffect\FadeEffect.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\LoadingScreen\LoadingScreenEffect.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ProjectLoadingScreen\ProjectLoadingScreen.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\GrayScale\GrayScale.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Invert\Invert.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Outline\Outline.h" />

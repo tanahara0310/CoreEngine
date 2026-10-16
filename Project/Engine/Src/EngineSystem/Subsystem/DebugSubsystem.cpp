@@ -287,6 +287,8 @@ namespace CoreEngine
             splash.Close();
         }
 
+        void DrawLoadingScreenSettings();
+
         /// @brief 起動時のローディング画面に敷く画像を選ぶ欄
         /// @details 実体は `Application/Config/EngineSettings/Project.json` の `splashImage`。
         ///          候補の一覧は選択肢を開いたときに集め直す。
@@ -337,6 +339,53 @@ namespace CoreEngine
                 PreviewSplash(SplashScreen::Style::Game);
             }
             UI::Hint("押すと今の設定のローディング画面を 3 秒ほど出します（そのあいだエディタは止まります）。");
+
+            DrawLoadingScreenSettings();
+        }
+
+        /// @brief シーンを切り替えるときのロード画面を、プロジェクトのシェーダで描く設定の欄
+        /// @details 画像は 1 行に 1 つ書き、並び順にシェーダの gImage0〜gImage7 へ入る
+        void DrawLoadingScreenSettings()
+        {
+            static SettingTextField shader;
+            static SettingTextField images;
+
+            ProjectSettings& settings = ProjectSettings::Get();
+            ImGui::SeparatorText("シーンを切り替えるときのロード画面");
+
+            if (DrawSettingText("シェーダ", "（エンジンの既定のロード画面）", settings.GetLoadingScreenShader(), shader, false)) {
+                settings.SetLoadingScreenShader(shader.buffer);
+            }
+
+            std::string joined;
+            for (const std::string& image : settings.GetLoadingScreenImages()) {
+                joined += joined.empty() ? image : "\n" + image;
+            }
+            if (DrawSettingText("画像", "", joined, images, true)) {
+                std::vector<std::string> lines;
+                size_t begin = 0;
+                while (begin <= images.buffer.size()) {
+                    const size_t end = (std::min)(images.buffer.find('\n', begin), images.buffer.size());
+                    std::string line = images.buffer.substr(begin, end - begin);
+                    if (!line.empty() && line.back() == '\r') {
+                        line.pop_back();
+                    }
+                    if (!line.empty()) {
+                        lines.push_back(std::move(line));
+                    }
+                    begin = end + 1;
+                }
+                settings.SetLoadingScreenImages(std::move(lines));
+            }
+            UI::Hint("コンピュートシェーダ（Application/Assets/… の .hlsl）でロード画面を描きます。"
+                     "画像は 1 行に 1 つ書くと、並び順にシェーダの gImage0〜gImage7 へ入ります。"
+                     "次の起動から使われます。シェーダを作れないときはエンジンの既定のロード画面になります。");
+
+            std::error_code ec;
+            const std::string& path = settings.GetLoadingScreenShader();
+            if (!path.empty() && !std::filesystem::is_regular_file(ProjectPaths::Resolve(path), ec)) {
+                ImGui::TextColored(Editor::Theme::kError, "このシェーダが見つかりません。エンジンの既定のロード画面を使います");
+            }
         }
     }
 

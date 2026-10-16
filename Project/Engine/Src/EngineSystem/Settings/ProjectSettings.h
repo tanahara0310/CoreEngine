@@ -51,6 +51,15 @@ namespace CoreEngine
         /// @brief ゲーム用のローディング画面のヒントを決めて保存する
         bool SetSplashTips(std::vector<std::string> tips);
 
+        /// @brief シーンを切り替えるときのロード画面を描くコンピュートシェーダ（`Application/…` の綴り。空ならエンジンの既定）
+        const std::string& GetLoadingScreenShader() const { return loadingScreenShader_; }
+        /// @brief ロード画面のシェーダを決めて保存する（空でエンジンの既定へ戻す）
+        bool SetLoadingScreenShader(std::string path);
+        /// @brief ロード画面のシェーダへ渡す画像（並び順に gImage0〜gImage7 へ入る）
+        const std::vector<std::string>& GetLoadingScreenImages() const { return loadingScreenImages_; }
+        /// @brief ロード画面の画像を決めて保存する
+        bool SetLoadingScreenImages(std::vector<std::string> images);
+
         /// @brief ファイルへ書き出す（ファイルにある他の項目は残す）
         bool Save() const;
 
@@ -69,5 +78,7 @@ namespace CoreEngine
         std::string splashTitle_;
         std::string splashSubtitle_;
         std::vector<std::string> splashTips_;
+        std::string loadingScreenShader_;
+        std::vector<std::string> loadingScreenImages_;
     };
 }
