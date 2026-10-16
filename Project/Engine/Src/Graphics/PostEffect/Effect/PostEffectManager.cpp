@@ -20,6 +20,7 @@
 #include "RasterScroll/RasterScroll.h"
 #include "FadeEffect/FadeEffect.h"
 #include "LoadingScreen/LoadingScreenEffect.h"
+#include "ProjectLoadingScreen/ProjectLoadingScreen.h"
 #include "Bloom/Bloom.h"
 #include "LensFlare/LensFlare.h"
 #include "Dissolve/Dissolve.h"
@@ -135,6 +136,18 @@ void PostEffectManager::RegisterAllEffects()
         PostEffectNames::FadeEffect,
         PostEffectNames::LoadingScreen,
     };
+
+    // プロジェクトがロード画面のシェーダを決めていれば、それで描くエフェクトを足す。
+    // シェーダを作れなければエンジン既定のロード画面のままにする
+    if (ProjectLoadingScreen::IsConfigured()) {
+        try {
+            RegisterEffect<ProjectLoadingScreen>(PostEffectNames::ProjectLoadingScreen);
+            effectChain_.push_back(PostEffectNames::ProjectLoadingScreen);
+        } catch (const std::exception& e) {
+            Logger::GetInstance().Errorf(LogCategory::Graphics,
+                "[PostEffect] プロジェクトのロード画面を作れなかったので、エンジン既定のロード画面を使います: {}", e.what());
+        }
+    }
 
     ValidateChain();
     RebuildEffectPtrCache();

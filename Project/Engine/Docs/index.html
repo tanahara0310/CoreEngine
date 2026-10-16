@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.10.0">
+<meta name="engine-version" content="0.11.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2216,7 +2216,7 @@ kbd {
   <table>
     <thead><tr><th>ファイル</th><th>中身</th><th>編集する場所</th></tr></thead>
     <tbody>
-      <tr><td><span class="path">Project.json</span></td><td>プロジェクト名・起動シーン（<code>initialScene</code>）・ローディング画面（<code>splashImage</code> など）。<strong>このファイルがあるフォルダがプロジェクト</strong></td><td>Project Settings ▸ Startup</td></tr>
+      <tr><td><span class="path">Project.json</span></td><td>プロジェクト名・起動シーン（<code>initialScene</code>）・ローディング画面（<code>splashImage</code> など）・シーンを切り替えるときのロード画面（<code>loadingScreenShader</code> など）。<strong>このファイルがあるフォルダがプロジェクト</strong></td><td>Project Settings ▸ Startup</td></tr>
       <tr><td><span class="path">Layers.json</span></td><td>当たり判定のレイヤーの名前</td><td>Project Settings ▸ Collision Layers</td></tr>
       <tr><td><span class="path">InputActions.json</span></td><td>入力アクションと既定のキー</td><td>テキストエディタ</td></tr>
       <tr><td><span class="path">CVars.json</span></td><td>既定から変えたエンジンの設定（描画・物理など）</td><td>Project Settings（自動保存）</td></tr>
@@ -2888,7 +2888,7 @@ kbd {
   <p><kbd>Ctrl</kbd>+<kbd>Z</kbd> ／ <kbd>Ctrl</kbd>+<kbd>Y</kbd> で、エディタの操作を最大 128 回まで戻せます。戻せる主な操作：ギズモでの移動、オブジェクトの作成・複製・削除、コンポーネントの追加・削除、インスペクタの値の変更、プレハブの操作、CVar の変更。シーンを切り替えると履歴は消えます。</p>
 </article>
 
-<article class="page" id="editor-settings" data-group="エディタ" data-title="プロジェクト設定" data-keywords="project settings 設定 cvar レイヤー 当たり判定 衝突 組み合わせ 入力 アクション キーコンフィグ 起動シーン 物理 重力 ローディング スプラッシュ 起動画面 画像">
+<article class="page" id="editor-settings" data-group="エディタ" data-title="プロジェクト設定" data-keywords="project settings 設定 cvar レイヤー 当たり判定 衝突 組み合わせ 入力 アクション キーコンフィグ 起動シーン 物理 重力 ローディング スプラッシュ 起動画面 画像 ロード画面 シーン切り替え シェーダ">
   <h1>プロジェクト設定</h1>
   <p class="lead"><span class="ui">Edit<span class="arrow">▸</span>Project Settings…</span> で開くウィンドウで、プロジェクト全体とシーンの設定を変えます。入力アクションの割り当ては <span class="ui">Key Config</span> で扱います。</p>
 
@@ -2900,7 +2900,7 @@ kbd {
     <tbody>
       <tr><td><span class="ui">プロジェクト設定</span></td><td>描画（<code>r.</code>）・システム（<code>sys.</code>）の CVar</td><td><span class="path">Config/EngineSettings/CVars.json</span>（チームで共有）</td></tr>
       <tr><td><span class="ui">個人の作業状態</span></td><td>エディタ（<code>d.</code>）の CVar</td><td><span class="path">Saved/EditorSettings/EditorState.json</span>（自分だけ）</td></tr>
-      <tr><td><span class="ui">Startup</span></td><td>ゲームの起動シーン・起動中のローディング画面（写真・題名・ヒント）</td><td><span class="path">Project.json</span></td></tr>
+      <tr><td><span class="ui">Startup</span></td><td>ゲームの起動シーン・起動中のローディング画面（写真・題名・ヒント）・シーンを切り替えるときのロード画面（シェーダ・画像）</td><td><span class="path">Project.json</span></td></tr>
       <tr><td><span class="ui">Collision Layers</span></td><td>当たり判定のレイヤーの名前</td><td><span class="path">Layers.json</span></td></tr>
       <tr><td><span class="ui">Scene Settings</span></td><td>このシーンの機能・床・<strong>レイヤーの当たりの組み合わせ</strong></td><td><span class="path">_scene.json</span>（<kbd>Ctrl</kbd>+<kbd>S</kbd> で保存）</td></tr>
       <tr><td><span class="ui">Physics</span>・<span class="ui">Shading</span>・<span class="ui">Rendering Techniques</span> など</td><td>物理・描画の機能ごとの設定</td><td>CVar</td></tr>
@@ -2939,6 +2939,58 @@ kbd {
   </ol>
   <p>エンジンの既定の写真は <span class="path">Engine/Assets/Textures/Splash/DefaultSplash.jpg</span> です。このファイルを置き換えると、写真を選んでいないすべてのプロジェクトの写真が変わります。指定した写真が見つからないときも既定の写真を使います。</p>
   <p>進捗は、前回の起動で各ステップにかかった時間の割合で進みます（記録は <span class="path">Intermediate/StartupTimings.txt</span>）。記録の無い初めての起動と、ステップの数が変わったあとの 1 回は、済んだステップの数で割った進み方になります。</p>
+
+  <h2 id="settings-loading-screen">シーンを切り替えるときのロード画面</h2>
+  <p><code>Scene::ChangeScene</code> でシーンを移るあいだは、ロード画面が出ます（<a href="#script-scenes">シーン遷移とデータの保存</a>）。何も決めなければエンジンの既定の画面です。プロジェクトのコンピュートシェーダを 1 本決めると、そのシェーダが画面全体を描きます。</p>
+  <p><span class="ui">Startup</span> の <span class="ui">シーンを切り替えるときのロード画面</span> の欄で決めます。変えた内容は<strong>次の起動から</strong>使われます。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>欄</th><th>中身</th><th>Project.json の項目</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">シェーダ</span></td><td><span class="path">Application/Assets</span> の下の <span class="path">.hlsl</span> のパス。空ならエンジンの既定の画面</td><td><code>loadingScreenShader</code></td></tr>
+      <tr><td><span class="ui">画像</span></td><td>1 行に 1 つ書く。並び順にシェーダの <code>gImage0</code>〜<code>gImage7</code> へ入る（8 枚まで）。書いていない枠と、読めなかった画像の枠には白い 1×1 が入る</td><td><code>loadingScreenImages</code></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <script type="text/x-code" data-lang="json" data-file="Application/Config/EngineSettings/Project.json（抜粋）">
+    "loadingScreenShader": "Application/Assets/Shaders/Loading/MyLoading.CS.hlsl",
+    "loadingScreenImages": [
+        "Application/Assets/Textures/Loading/cart.png",
+        "Application/Assets/Textures/Loading/rail.png"
+    ]
+  </script>
+  <p>シェーダは入口が <code>main</code> のコンピュートシェーダ（<code>cs_6_0</code>）で、8×8 のスレッドグループで画面全体へ 1 回呼ばれます。トーンマップの後の画面を受け取り、ロード画面を重ねた色を書き出します。名前で結び付けるので、次の名前と型で宣言します。使わないものは宣言しなくてかまいません。</p>
+  <script type="text/x-code" data-lang="text" data-file="ロード画面のシェーダが受け取るもの">
+    Texture2D<float4>   gTexture : register(t0);  // ロード画面を重ねる前の画面
+    RWTexture2D<float4> gOutput  : register(u0);  // 書き出し先
+    Texture2D<float4>   gImage0  : register(t1);  // 画像の 1 行目（gImage7 : register(t8) まで同じ形）
+
+    cbuffer ProjectLoadingParams : register(b0)
+    {
+        float screenAlpha; // 表示の強さ。0 = 出さない（gTexture をそのまま書く）／ 1 = 出し切る
+        float time;        // 出し始めからの時間（1 フレームで 0.1 秒までしか進まない）
+        float realTime;    // 出し始めからの実時間（時間の速さの影響を受けない）
+        float progress;    // 読み込みの進み具合 0〜1（なめらかに追う）
+        float gaugeAlpha;  // 進み具合を出す強さ。読み込みが長いときだけ 1 へ上がる
+        float pad0;
+        float pad1;
+        float pad2;
+    };
+
+    cbuffer ScreenParams : register(b1)
+    {
+        uint screenWidth;
+        uint screenHeight;
+        float2 pad;
+    };
+  </script>
+  <ul>
+    <li>ロード画面を出しているあいだだけ呼ばれます。出し始めと消し終わりは <code>screenAlpha</code> が 0 と 1 のあいだを動くので、<code>gTexture</code> の色と混ぜて書きます。</li>
+    <li><code>time</code>・<code>realTime</code>・<code>progress</code> は、ロード画面を出し始めるたびに 0 から数え直します。</li>
+    <li>書き出す色はリニアです。画像を <code>Load</code> で読むと、sRGB のチャンクを持つ PNG はリニアに直った値、持たない PNG は sRGB のままの値が返ります。</li>
+    <li>シェーダの隣のフォルダの <span class="path">.hlsli</span> と、エンジンの <span class="path">ShaderMath.hlsli</span> などを <code>#include</code> できます。</li>
+    <li>シェーダが見つからない・コンパイルできないときは、Console にエラーを出してエンジンの既定のロード画面を使います。</li>
+  </ul>
 
   <h2 id="settings-layers">当たり判定のレイヤーを決める</h2>
   <ol class="steps">
@@ -7294,7 +7346,7 @@ python Tools/OkinawaBeach/bake_player_walk.py
   <table>
     <thead><tr><th>ファイル</th><th>中身</th></tr></thead>
     <tbody>
-      <tr><td><span class="path">Project.json</span></td><td>プロジェクト名（<code>name</code>）・起動シーン（<code>initialScene</code>）・ローディング画面の写真（<code>splashImage</code>。省くとエンジンの既定）・ゲームの画面の題名（<code>splashTitle</code>。省くとプロジェクト名）・小見出し（<code>splashSubtitle</code>）・ヒント（<code>splashTips</code>）。<a href="#settings-splash">起動中のローディング画面</a></td></tr>
+      <tr><td><span class="path">Project.json</span></td><td>プロジェクト名（<code>name</code>）・起動シーン（<code>initialScene</code>）・ローディング画面の写真（<code>splashImage</code>。省くとエンジンの既定）・ゲームの画面の題名（<code>splashTitle</code>。省くとプロジェクト名）・小見出し（<code>splashSubtitle</code>）・ヒント（<code>splashTips</code>）。<a href="#settings-splash">起動中のローディング画面</a>。シーンを切り替えるときのロード画面のシェーダ（<code>loadingScreenShader</code>。省くとエンジンの既定）と画像（<code>loadingScreenImages</code>）。<a href="#settings-loading-screen">シーンを切り替えるときのロード画面</a></td></tr>
       <tr><td><span class="path">Layers.json</span></td><td>レイヤーの名前の並び。先頭は必ず <code>Default</code>、最大 32 個。並びの番号がスクリプトの <code>CollisionLayer</code> の値になる</td></tr>
       <tr><td><span class="path">InputActions.json</span></td><td>入力アクション（<code>id</code>・<code>display</code>・<code>context</code>・<code>defaults</code>）。<a href="#editor-settings-keyconfig">書き方</a></td></tr>
       <tr><td><span class="path">CVars.json</span></td><td>既定から変えたプロジェクト全体の CVar（<code>"r.TAA.Enabled": false</code> のような名前と値）</td></tr>
@@ -7389,6 +7441,14 @@ python Tools/OkinawaBeach/bake_player_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-11-0">v0.11.0 <span class="dim">（2026-10-16）</span></h3>
+  <p>シーンを切り替えるときのロード画面を、プロジェクトのシェーダで描けるようにした版です（<a href="#settings-loading-screen">シーンを切り替えるときのロード画面</a>）。</p>
+  <ul>
+    <li><strong>プロジェクトのロード画面</strong>：Project.json の <code>loadingScreenShader</code> にコンピュートシェーダ（<span class="path">Application/Assets</span> の下の <span class="path">.hlsl</span>）を書くと、<code>Scene::ChangeScene</code> のあいだのロード画面をそのシェーダが描きます。表示の強さ・時間・進み具合を定数バッファで受け取ります。</li>
+    <li><strong>画像</strong>：<code>loadingScreenImages</code> に並べた画像（8 枚まで）が、シェーダの <code>gImage0</code>〜<code>gImage7</code> に入ります。</li>
+    <li>Project Settings の <span class="ui">Startup</span> に、シェーダと画像を書く欄を足しました。シェーダが見つからない・コンパイルできないときは、エンジンの既定のロード画面を使います。</li>
+  </ul>
 
   <h3 id="changelog-v0-10-0">v0.10.0 <span class="dim">（2026-10-15）</span></h3>
   <p>スクリプトから、ワールドの位置を画面の位置へ写す・カメラリグを切り替える・UI 画像の絵を差し替えることができるようにした版です（<a href="#camera-world-to-screen">ワールドの位置を画面の位置にする</a>・<a href="#camera-rig">カメラリグで構図を切り替える</a>）。</p>

@@ -268,8 +268,11 @@ void SceneTransition::Initialize(EngineSystem* engine) {
     // FadeEffectを取得
     fadeEffect_ = postEffectManager_->GetEffect<FadeEffect>(PostEffectNames::FadeEffect);
 
-    // ローディング画面エフェクトを取得（既定はエンジン汎用のもの。SetLoadingScreen で差し替えられる）
-    loadingScreenEffect_ = postEffectManager_->GetEffect<ILoadingScreenEffect>(PostEffectNames::LoadingScreen);
+    // ローディング画面エフェクトを取得（プロジェクトのものがあればそれ、無ければエンジン汎用のもの。SetLoadingScreen で差し替えられる）
+    loadingScreenEffect_ = postEffectManager_->GetEffect<ILoadingScreenEffect>(PostEffectNames::ProjectLoadingScreen);
+    if (!loadingScreenEffect_) {
+        loadingScreenEffect_ = postEffectManager_->GetEffect<ILoadingScreenEffect>(PostEffectNames::LoadingScreen);
+    }
 
     // トーンマッピングを取得（暗転中に自動露出の順応を止めるため）
     toneMapping_ = postEffectManager_->GetEffect<ToneMapping>(PostEffectNames::ToneMapping);

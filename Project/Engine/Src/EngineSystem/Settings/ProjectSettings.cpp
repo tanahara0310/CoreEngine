@@ -18,6 +18,34 @@ namespace CoreEngine
         constexpr const char* kSplashTitleKey = "splashTitle";
         constexpr const char* kSplashSubtitleKey = "splashSubtitle";
         constexpr const char* kSplashTipsKey = "splashTips";
+        constexpr const char* kLoadingScreenShaderKey = "loadingScreenShader";
+        constexpr const char* kLoadingScreenImagesKey = "loadingScreenImages";
+
+        /// @brief 文字列の配列の項目を読む（空の文字列は飛ばす）
+        std::vector<std::string> ReadStringArray(const nlohmann::json& root, const char* key)
+        {
+            std::vector<std::string> values;
+            const auto found = root.find(key);
+            if (found == root.end() || !found->is_array()) {
+                return values;
+            }
+            for (const nlohmann::json& value : *found) {
+                if (value.is_string() && !value.get_ref<const std::string&>().empty()) {
+                    values.push_back(value.get<std::string>());
+                }
+            }
+            return values;
+        }
+
+        /// @brief 文字列の配列の項目を書く（空なら項目ごと消す）
+        void WriteStringArray(nlohmann::json& root, const char* key, const std::vector<std::string>& values)
+        {
+            if (values.empty()) {
+                root.erase(key);
+            } else {
+                root[key] = values;
+            }
+        }
 
         /// @brief 文字列の項目を読む（無い・文字列でないときは空）
         std::string ReadString(const nlohmann::json& root, const char* key)
@@ -62,6 +90,8 @@ namespace CoreEngine
         splashTitle_.clear();
         splashSubtitle_.clear();
         splashTips_.clear();
+        loadingScreenShader_.clear();
+        loadingScreenImages_.clear();
 
         const std::filesystem::path path = ProjectPaths::Resolve(kSettingsPath);
         std::ifstream in(path, std::ios::binary);
@@ -85,14 +115,9 @@ namespace CoreEngine
         splashImage_ = ReadString(root, kSplashImageKey);
         splashTitle_ = ReadString(root, kSplashTitleKey);
         splashSubtitle_ = ReadString(root, kSplashSubtitleKey);
-        if (const auto found = root.find(kSplashTipsKey);
-            found != root.end() && found->is_array()) {
-            for (const nlohmann::json& tip : *found) {
-                if (tip.is_string() && !tip.get_ref<const std::string&>().empty()) {
-                    splashTips_.push_back(tip.get<std::string>());
-                }
-            }
-        }
+        splashTips_ = ReadStringArray(root, kSplashTipsKey);
+        loadingScreenShader_ = ReadString(root, kLoadingScreenShaderKey);
+        loadingScreenImages_ = ReadStringArray(root, kLoadingScreenImagesKey);
     }
 
     bool ProjectSettings::SetInitialSceneName(std::string sceneName)
@@ -140,6 +165,24 @@ namespace CoreEngine
         return Save();
     }
 
+    bool ProjectSettings::SetLoadingScreenShader(std::string path)
+    {
+        if (loadingScreenShader_ == path) {
+            return true;
+        }
+        loadingScreenShader_ = std::move(path);
+        return Save();
+    }
+
+    bool ProjectSettings::SetLoadingScreenImages(std::vector<std::string> images)
+    {
+        if (loadingScreenImages_ == images) {
+            return true;
+        }
+        loadingScreenImages_ = std::move(images);
+        return Save();
+    }
+
     bool ProjectSettings::Save() const
     {
         const std::filesystem::path path = ProjectPaths::Resolve(kSettingsPath);
@@ -163,11 +206,9 @@ namespace CoreEngine
         WriteString(root, kSplashImageKey, splashImage_);
         WriteString(root, kSplashTitleKey, splashTitle_);
         WriteString(root, kSplashSubtitleKey, splashSubtitle_);
-        if (splashTips_.empty()) {
-            root.erase(kSplashTipsKey);
-        } else {
-            root[kSplashTipsKey] = splashTips_;
-        }
+        WriteStringArray(root, kSplashTipsKey, splashTips_);
+        WriteString(root, kLoadingScreenShaderKey, loadingScreenShader_);
+        WriteStringArray(root, kLoadingScreenImagesKey, loadingScreenImages_);
 
         std::ofstream out(path, std::ios::binary);
         if (!out) {
