@@ -57,6 +57,27 @@ namespace CoreEngine
             }
             return snapshot;
         }
+
+        json View2DToJson(const OrbitFlyController::View2DState& view2D)
+        {
+            json data;
+            data["enabled"] = view2D.enabled;
+            data["center"] = json::array({ view2D.center.x, view2D.center.y });
+            data["orthographicSize"] = view2D.orthographicSize;
+            return data;
+        }
+
+        OrbitFlyController::View2DState JsonToView2D(const json& data)
+        {
+            OrbitFlyController::View2DState view2D{};
+            view2D.enabled = JsonManager::SafeGet(data, "enabled", view2D.enabled);
+            if (data.contains("center") && data["center"].is_array() && data["center"].size() == 2
+                && data["center"][0].is_number() && data["center"][1].is_number()) {
+                view2D.center = { data["center"][0].get<float>(), data["center"][1].get<float>() };
+            }
+            view2D.orthographicSize = JsonManager::SafeGet(data, "orthographicSize", view2D.orthographicSize);
+            return view2D;
+        }
     }
 
     std::string CameraSceneStateIO::GetFilePath(const std::string& sceneName)
@@ -89,6 +110,7 @@ namespace CoreEngine
             if (auto* orbit = cameraManager.GetControllerAs<OrbitFlyController>(name)) {
                 entry.hasOrbitState = true;
                 entry.orbitState = orbit->GetState();
+                entry.view2D = orbit->GetView2DState();
             }
 
             state.cameras.push_back(std::move(entry));
@@ -120,6 +142,7 @@ namespace CoreEngine
             if (entry.hasOrbitState) {
                 if (auto* orbit = cameraManager.GetControllerAs<OrbitFlyController>(entry.name)) {
                     orbit->SetState(entry.orbitState);
+                    orbit->SetView2DState(entry.view2D);
                     orbit->ApplyTo(*camera);
                 }
             }
@@ -153,6 +176,7 @@ namespace CoreEngine
                 orbitJson["distance"] = entry.orbitState.distance;
                 orbitJson["pitch"] = entry.orbitState.pitch;
                 orbitJson["yaw"] = entry.orbitState.yaw;
+                orbitJson["view2D"] = View2DToJson(entry.view2D);
                 cameraJson["orbit"] = orbitJson;
             }
 
@@ -204,6 +228,9 @@ namespace CoreEngine
                 entry.orbitState.distance = JsonManager::SafeGet(orbitJson, "distance", entry.orbitState.distance);
                 entry.orbitState.pitch = JsonManager::SafeGet(orbitJson, "pitch", entry.orbitState.pitch);
                 entry.orbitState.yaw = JsonManager::SafeGet(orbitJson, "yaw", entry.orbitState.yaw);
+                if (orbitJson.contains("view2D")) {
+                    entry.view2D = JsonToView2D(orbitJson["view2D"]);
+                }
             }
 
             state.cameras.push_back(std::move(entry));

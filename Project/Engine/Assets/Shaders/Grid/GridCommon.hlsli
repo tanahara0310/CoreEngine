@@ -14,7 +14,7 @@ cbuffer GridParams : register(b0)
     matrix viewProjection;      // カメラ相対ワールド → クリップ
     matrix invViewProjection;   // クリップ → カメラ相対ワールド
 
-    float3 cameraPosition; float planeY;          // カメラのワールド位置 / 床平面の高さ [m]
+    float3 cameraPosition; float planeY;          // カメラのワールド位置 / 面の法線方向の位置 [m]
     float3 gridColor;      float baseSpacing;     // 格子の色 / 最細の格子間隔 [m]
     float3 xAxisColor;     float brightness;      // X 軸の色 / 全体の濃さ
     float3 zAxisColor;     float minPixelsPerCell; // Z 軸の色 / 1 マスの最小ピクセル数
@@ -23,7 +23,17 @@ cbuffer GridParams : register(b0)
     float lineWidthPixels; // 線の太さ [px]
     float axisAlpha;       // 軸ラインの不透明度
     float depthBias;       // 床メッシュとの Z ファイティング回避用の NDC 深度バイアス
+
+    float planeXY;         // 1 なら XY 面（2D 表示）、0 なら XZ 面（床）
+    float3 padding;
 };
+
+/// @brief ワールド座標を「格子の面の法線が y」の座標へ入れ替える（XY 面なら y と z を入れ替える）
+/// @note 入れ替えは 2 回で元に戻るので、格子の座標からワールドへ戻すときも同じ関数を使う
+float3 ToGridSpace(float3 p)
+{
+    return planeXY > 0.5f ? p.xzy : p;
+}
 
 struct GridVSOutput
 {

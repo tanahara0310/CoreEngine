@@ -5,6 +5,7 @@
 #include "Math/Vector/Vector3.h"
 
 #include <functional>
+#include <optional>
 #include <string>
 
 namespace CoreEngine
@@ -66,6 +67,14 @@ namespace CoreEngine
         /// @brief Transform とパーティクルを持つオブジェクトを作る
         /// @return 作ったオブジェクト（作れなければ nullptr）
         GameObject* CreateParticle(const Context& context, ParticleKind kind, const Vector3& position);
+
+        /// @brief Transform とスプライト描画を持つオブジェクトを作る
+        /// @param baseName 名前（同じ名前があれば番号を足す）
+        /// @param texturePath 貼るテクスチャのアセットのパス
+        /// @param pixelsPerUnit テクスチャの何ピクセルを 1 単位にするか（無ければスプライト描画の既定）
+        /// @return 作ったオブジェクト（作れなければ nullptr）
+        GameObject* CreateSprite(const Context& context, const std::string& baseName, const std::string& texturePath,
+                                 std::optional<float> pixelsPerUnit, const Vector3& position);
 
         /// @brief UI トランスフォームと、UI テキストか UI 画像を持つオブジェクトを画面の中央に作る
         /// @return 作ったオブジェクト（作れなければ nullptr）

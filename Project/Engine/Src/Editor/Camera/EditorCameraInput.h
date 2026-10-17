@@ -22,7 +22,14 @@ namespace CoreEngine
         /// @return 正規化済み入力
         static CameraInputState Collect(EngineSystem* engine);
 
+        /// @brief Game 窓の中で映像を表示している範囲を教える（ImGui の座標）
+        static void SetViewportRect(const Vector2& origin, const Vector2& size);
+
     private:
+        // 映像を表示している範囲（前のフレームに描いた位置）
+        static inline Vector2 viewportOrigin_{ 0.0f, 0.0f };
+        static inline Vector2 viewportSize_{ 0.0f, 0.0f };
+
         // 前フレームのカーソル位置（フレーム間の移動量を出すため）
         static inline float lastCursorX_ = 0.0f;
         static inline float lastCursorY_ = 0.0f;

@@ -3,6 +3,8 @@
 #ifdef CORE_EDITOR
 
 #include "GridFeature.h"
+#include "Camera/CameraManager.h"
+#include "Camera/Control/OrbitFlyController.h"
 #include "EngineSystem/EngineSystem.h"
 #include "EngineSystem/Subsystem/DebugSubsystem.h"
 #include "Editor/ImGui/DockingUI.h"
@@ -75,6 +77,11 @@ namespace CoreEngine
                     gridRenderer_->SetVisible(dockingUI->IsGridVisible());
                 }
             }
+
+            // エディタ視点が 2D 表示なら XY 面、ほかは床（XZ 面）へ広げる
+            const auto* const orbit = ctx.cameraManager
+                ? ctx.cameraManager->GetControllerAs<OrbitFlyController>(CameraNames::Scene) : nullptr;
+            gridRenderer_->SetPlane((orbit && orbit->IsView2D()) ? GridRenderer::GridPlane::XY : GridRenderer::GridPlane::XZ);
         }
     }
 

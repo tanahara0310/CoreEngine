@@ -317,6 +317,12 @@ namespace CoreEngine
         if (ImGui::MenuItem("空のオブジェクトを作成", nullptr, false, sceneDebugEditor_ != nullptr)) {
             sceneDebugEditor_->CreateEmptyObject();
         }
+        if (ImGui::BeginMenu("2D", sceneDebugEditor_ != nullptr)) {
+            if (ImGui::MenuItem("スプライト")) {
+                sceneDebugEditor_->CreateSpriteObject();
+            }
+            ImGui::EndMenu();
+        }
         if (ImGui::BeginMenu("エフェクト", sceneDebugEditor_ != nullptr)) {
             if (ImGui::MenuItem("パーティクル")) {
                 sceneDebugEditor_->CreateParticleObject(ObjectEditing::ParticleKind::Cpu);

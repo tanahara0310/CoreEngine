@@ -11,7 +11,7 @@ namespace CoreEngine
 {
 class GraphicsCore;
 
-/// @brief XZ 平面へ広がるエディタ用グリッド（Blender / 商用エンジンと同じ解析グリッド）
+/// @brief XZ 平面（2D 表示では XY 平面）へ広がるエディタ用グリッド（Blender / 商用エンジンと同じ解析グリッド）
 /// @details 線を 1 本ずつ引くのではなく、画面全体を覆う三角形 1 枚をピクセルシェーダーで
 ///          評価する。ピクセルごとにカメラレイと床平面の交点を求め、そこで格子模様を
 ///          解析的に出す。ラインプリミティブをやめたことで次の 3 つが同時に解決する。
@@ -40,6 +40,14 @@ public:
         float lineWidthPixels;
         float axisAlpha;
         float depthBias;
+        float planeXY;                 // 1 なら XY 面、0 なら XZ 面
+        float padding[3];
+    };
+
+    /// @brief 格子を広げる面
+    enum class GridPlane {
+        XZ, ///< 床（3D）
+        XY  ///< 正面から見る面（2D）
     };
 
     // ===== IRenderer =====
@@ -66,6 +74,11 @@ public:
     /// @brief 表示中かどうか
     bool IsVisible() const { return visible_; }
 
+    /// @brief 格子を広げる面を設定する（既定は XZ）
+    /// @note XY 面のときは縦の線を Y 軸の色で描き、面に垂直な軸の線は出さない
+    void SetPlane(GridPlane plane) { plane_ = plane; }
+    GridPlane GetPlane() const { return plane_; }
+
     /// @brief 最も細かい格子の間隔 [m]（これより細かい段は出さない）
     void SetBaseSpacing(float spacing);
 
@@ -91,6 +104,7 @@ private:
     ID3D12GraphicsCommandList* currentCmdList_ = nullptr;
 
     bool visible_ = false;              // 表示フラグ（GridFeature が立てる）
+    GridPlane plane_ = GridPlane::XZ;           // 格子を広げる面（GridFeature が決める）
     float baseSpacing_ = 1.0f;          // 最細の格子間隔 [m]
     float minPixelsPerCell_ = 20.0f;    // 1 マスの最小ピクセル数（段の選択基準）
     float lineWidthPixels_ = 1.0f;      // 線の太さ [px]

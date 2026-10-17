@@ -401,6 +401,17 @@ namespace CoreEngine
     void DockingUI::DrawViewToggles()
     {
 #ifdef CORE_EDITOR
+        const bool view2D = sceneDebugEditor_ && sceneDebugEditor_->IsView2D();
+        if (UI::Bar::Button("2D", view2D,
+            view2D
+                ? "3D 表示に戻す"
+                : "2D 表示にする\nエディタ視点で XY 面を正面から平行投影で映します。\n"
+                  "中ドラッグ = 移動  ホイール = 拡大・縮小",
+            sceneDebugEditor_ != nullptr)) {
+            sceneDebugEditor_->SetView2D(!view2D);
+        }
+
+        ImGui::SameLine();
         if (UI::Bar::Button("▦ Grid", isGridVisible_,
             isGridVisible_ ? "グリッドを隠す" : "グリッドを出す")) {
             isGridVisible_ = !isGridVisible_;
