@@ -114,6 +114,7 @@ namespace CoreEngine
         // コントローラの反映より後に写して、この 1 フレームの姿勢を確定させる
         SyncSceneCameras(ctx);
         ApplyMainCamera();
+        ApplyEditorViewBackground();
 
         // 更新後の設定・姿勢を控える（カメラ UI・マウス操作のどちらの変更も拾う）
         CaptureEditorCamera();
@@ -214,6 +215,26 @@ namespace CoreEngine
         if (!cameraManager_->GetGameCamera()) {
             cameraManager_->SetGameCameraName(CameraNames::Game);
         }
+    }
+
+    void CameraFeature::ApplyEditorViewBackground()
+    {
+        if (!sceneCamera_ || !orbitController_) {
+            return;
+        }
+
+        // 2D 表示は空を描かず、ゲームの視点のカメラが単色ならその色、そうでなければ灰色で塗る
+        constexpr float kView2DGray = 0.2f;
+        CameraBackground background{};
+        if (orbitController_->IsView2D()) {
+            background.type = CameraBackgroundType::SolidColor;
+            background.color = { kView2DGray, kView2DGray, kView2DGray, 1.0f };
+            const Camera* const gameCamera = cameraManager_->GetGameCamera();
+            if (gameCamera && gameCamera->GetBackground().type == CameraBackgroundType::SolidColor) {
+                background.color = gameCamera->GetBackground().color;
+            }
+        }
+        sceneCamera_->SetBackground(background);
     }
 
     void CameraFeature::StartEditorViewFromMainCamera()
