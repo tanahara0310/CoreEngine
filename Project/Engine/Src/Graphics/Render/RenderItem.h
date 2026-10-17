@@ -22,7 +22,10 @@ namespace CoreEngine
         RenderItemKind kind = RenderItemKind::Default;
         RenderPassType passType = RenderPassType::Invalid;
         BlendMode blendMode = BlendMode::kBlendModeNone;
+        int sortingLayer = 0;
+        int orderInLayer = 0;
         int sortKey = 0;
+        float viewDepth = 0.0f;  ///< 半透明キューの並べ替えに使う、カメラの前方への距離
         std::optional<int> renderOrderOverride;
         size_t registrationOrder = 0;
     };

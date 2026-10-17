@@ -26,6 +26,12 @@ public:
     /// @brief 描画キューの振り分け種別（既定はパス種別から自動判定させる）
     virtual RenderItemKind GetRenderItemKind() const { return RenderItemKind::Default; }
 
+    /// @brief ソートレイヤー（大きいほど後に描く）
+    virtual int GetSortingLayer() const { return 0; }
+
+    /// @brief レイヤー内の描画順（大きいほど後に描く）
+    virtual int GetOrderInLayer() const { return 0; }
+
     /// @brief 実際の描画（カリング込み）
     virtual void Render(const DrawViewInfo& view) = 0;
 };

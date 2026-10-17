@@ -132,7 +132,7 @@ namespace CoreEngine
         void EnsureQueueSorted();
 
     /// @brief 描画パスタイプ・ビュー種別に対応する ViewInfo を取得
-    /// @param passType 描画パスタイプ（Sprite は 2D ビュー、UI はビュー非依存）
+    /// @param passType 描画パスタイプ（UI はビュー非依存）
     /// @param viewType 実行中のビュー種別
     /// @return ビュー情報（該当なしなら nullptr）
     const CoreEngine::ViewInfo* GetViewForPass(RenderPassType passType, RenderViewType viewType) const;
@@ -145,8 +145,12 @@ namespace CoreEngine
         const std::vector<RenderItem>& queue,
         RenderViewType viewType);
 
-    /// @brief 指定キューを sortKey 順にソートする
+    /// @brief 指定キューを描画順にソートする
+    /// @details ソートレイヤー → レイヤー内の順 → sortKey → 奥行き（奥から）の順で比べる。
     void SortRenderQueue(std::vector<RenderItem>& queue);
+
+    /// @brief 半透明キューの各アイテムへ、ゲームビューのカメラの前方への距離を書く
+    void AssignViewDepth(std::vector<RenderItem>& queue) const;
 
     /// @brief RenderItem の実効描画順を解決する
     int ResolveRenderOrder(const RenderItem& item) const;

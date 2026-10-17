@@ -32,6 +32,9 @@ namespace CoreEngine::Editor::ScenePicking
         /// レイの来た側を向いた面の向き（球で判定したときは球の外向き）
         Vector3 normal{ 0.0f, 1.0f, 0.0f };
         float distance = 0.0f;
+
+        /// メッシュを持たないので代わりの球で当てたか
+        bool approximate = false;
     };
 
     /// @brief メッシュを持たないオブジェクトの扱い
@@ -47,12 +50,13 @@ namespace CoreEngine::Editor::ScenePicking
     /// @brief ビューの中の位置（左上 0・右下 1）からワールドのレイを作る
     Ray ScreenToRay(const Vector2& normalizedPosition, const Camera& camera);
 
-    /// @brief オブジェクト 1 つとレイの交差（メッシュの三角形）
+    /// @brief オブジェクト 1 つとレイの交差（メッシュの三角形・スプライトの板）
     /// @return 当たれば true
     bool RaycastObject(const Ray& ray, GameObject& object, Fallback fallback, Hit& hit);
 
     /// @brief シーンの有効なオブジェクトのうち、レイが最初に当たるもの
     /// @details 3D の位置を持たないもの（UI など）と、分離表示で隠れているものは除く。
+    ///          代わりの球は中心までの距離で比べ、同じ距離ならスプライトの描画順が手前のものを選ぶ。
     std::optional<Hit> Raycast(const GameObjectManager& objects, const Ray& ray, Fallback fallback);
 }
 

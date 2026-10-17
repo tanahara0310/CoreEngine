@@ -41,10 +41,9 @@ namespace CoreEngine
         /// @brief 履歴をすべてクリア（シーン切り替え時）
         void ClearHistory();
 
-        /// @brief シーンオブジェクト（3D/スプライト）が選択中かどうか
+        /// @brief シーンオブジェクトが選択中かどうか
         bool HasSelection() const {
-            return objectSelector_.GetSelectedObject() != nullptr
-                || objectSelector_.GetSelectedSprite() != nullptr;
+            return objectSelector_.GetSelectedObject() != nullptr;
         }
 
         /// @brief シーンオブジェクトの選択を解除する

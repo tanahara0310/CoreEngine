@@ -9,6 +9,7 @@
 #include "Camera/CameraStructs.h"
 #include "Math/Matrix/Matrix4x4.h"
 #include "Math/Vector/Vector3.h"
+#include "Math/Vector/Vector4.h"
 #include <d3d12.h>
 
 namespace CoreEngine
@@ -55,10 +56,15 @@ namespace CoreEngine
         ///          直近の位置を控え、そのフレームの UploadRing に置いて差す。
         void UpdateFallbackCameraPosition(const Vector3& worldPosition) { fallbackCamera_.Set(CameraForGPU{ worldPosition }); }
 
-        /// @brief 深度復元用の View*Projection 逆行列を設定する（ビューを描く前に毎回呼ぶ）
+        /// @brief ビューごとの定数を設定する（ビューを描く前に毎回呼ぶ）
+        /// @param invViewProj 深度からワールド座標を戻す View*Projection の逆行列
+        /// @param backgroundColor 物が映っていない画素に書く色（リニア）
         /// @details GPU へは Execute でそのフレームの UploadRing に置く。設定し直すたびに置き直すので、
-        ///          1 フレームに複数のビューを描いても、それぞれのビューの行列を読む。
-        void SetDepthReconstruction(const Matrix4x4& invViewProj) { depthReconstruction_.Set(invViewProj); }
+        ///          1 フレームに複数のビューを描いても、それぞれのビューの値を読む。
+        void SetViewParams(const Matrix4x4& invViewProj, const Vector4& backgroundColor)
+        {
+            deferredView_.Set(DeferredViewParams{ invViewProj, backgroundColor });
+        }
 
         // ===== SSAO セッター =====
 
@@ -115,8 +121,19 @@ namespace CoreEngine
         // 中身の正しさより「常に有効なアドレスが差さっていること」が目的。
         PerFrameConstants<CameraForGPU> fallbackCamera_;
 
-        // 深度復元用 View*Projection 逆行列
-        PerFrameConstants<Matrix4x4> depthReconstruction_;
+        /// @brief ビューごとの定数（HLSL 側 DeferredViewParams と一致させること）
+        struct DeferredViewParams {
+            Matrix4x4 invViewProj;    ///< 深度からワールド座標を戻す行列
+            Vector4 backgroundColor;  ///< 物が映っていない画素の色（リニア）
+        };
+
+        static constexpr Cb::Field kDeferredViewParamsFields[] = {
+            CB_FIELD(DeferredViewParams, invViewProj), CB_FIELD(DeferredViewParams, backgroundColor),
+        };
+        CB_VERIFY_LAYOUT(DeferredViewParams, kDeferredViewParamsFields);
+        CB_BIND_HLSL(DeferredViewParams, kDeferredViewParamsFields, "gDeferredView");
+
+        PerFrameConstants<DeferredViewParams> deferredView_;
 
         // ===== RT Shadow =====
         D3D12_GPU_DESCRIPTOR_HANDLE rtShadowHandles_[kMaxRTShadowLights]{};

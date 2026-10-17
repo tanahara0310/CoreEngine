@@ -23,26 +23,29 @@ namespace CoreEngine
             return;
         }
 
-        // まず3Dカメラを編集対象にし、将来必要であれば2D側にも拡張する。
-        Camera* active3D = context.cameraManager->GetActiveCamera(CameraType::Camera3D);
+        Camera* active3D = context.cameraManager->GetViewCamera();
         if (!active3D) {
-            UI::Hint("アクティブな3Dカメラがありません。");
+            UI::Hint("覗いているカメラがありません。");
             return;
         }
 
         const std::string activeName = context.cameraManager->GetDisplayName(
-            context.cameraManager->GetActiveCameraName(CameraType::Camera3D));
-        ImGui::Text("アクティブ3D: %s", activeName.c_str());
+            context.cameraManager->GetViewCameraName());
+        ImGui::Text("描画中: %s", activeName.c_str());
         UI::Separator();
 
         CameraParameters params = active3D->GetParameters();
         bool changed = false;
 
-        // 視野角は度数法で編集し、内部はラジアンへ戻す。
-        float fovDeg = params.GetFovDegrees();
-        if (UI::SliderFloat("視野角 (度)", fovDeg, 30.0f, 120.0f, "%.1f")) {
-            params.SetFovDegrees(fovDeg);
-            changed = true;
+        // 視野角は度数法で編集し、内部はラジアンへ戻す。平行投影は見える高さの半分を編集する
+        if (params.IsOrthographic()) {
+            changed |= UI::DragFloat("大きさ", params.orthographicSize, 0.01f, 0.01f, 10000.0f, "%.2f");
+        } else {
+            float fovDeg = params.GetFovDegrees();
+            if (UI::SliderFloat("視野角 (度)", fovDeg, 30.0f, 120.0f, "%.1f")) {
+                params.SetFovDegrees(fovDeg);
+                changed = true;
+            }
         }
 
         // クリップ距離は一般的な実用範囲を初期値として提供する。

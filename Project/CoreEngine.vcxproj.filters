@@ -946,9 +946,6 @@
     <ClCompile Include="Engine\Src\GameObject\Component\Transform\TransformComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Transform</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\GameObject\Component\Transform\EulerTransformComponent.cpp">
-      <Filter>Engine\Src\GameObject\Component\Transform</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\GameObject.cpp">
       <Filter>Engine\Src\GameObject</Filter>
     </ClCompile>
@@ -2709,9 +2706,6 @@
     <ClInclude Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxRenderer.h">
       <Filter>Engine\Src\Graphics\Render\SkyBox</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Render\Sprite\SpriteMaterial.h">
-      <Filter>Engine\Src\Graphics\Render\Sprite</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Sprite\SpriteRenderer.h">
       <Filter>Engine\Src\Graphics\Render\Sprite</Filter>
     </ClInclude>
@@ -2975,9 +2969,6 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Light\LightComponent.h">
       <Filter>Engine\Src\GameObject\Component\Light</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\GameObject\Component\Transform\EulerTransformComponent.h">
-      <Filter>Engine\Src\GameObject\Component\Transform</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Core\IComponent.h">
       <Filter>Engine\Src\GameObject\Component\Core</Filter>
@@ -4234,9 +4225,6 @@
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\LoadingScreen">
       <UniqueIdentifier>{F950BA10-90C3-493E-9215-681967104428}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\ProjectLoadingScreen">
-      <UniqueIdentifier>{DDD0FBFC-8A3A-420D-B1C4-2B937D0DC6EB}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\LocalExposure">
       <UniqueIdentifier>{C50EA85E-4E02-42E4-886D-F92DE8DDDAB0}</UniqueIdentifier>
     </Filter>
@@ -4245,6 +4233,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\Outline">
       <UniqueIdentifier>{368C55FA-8D75-45DF-AF6B-A64755A00EAC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\ProjectLoadingScreen">
+      <UniqueIdentifier>{DDD0FBFC-8A3A-420D-B1C4-2B937D0DC6EB}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\RadialBlur">
       <UniqueIdentifier>{0B3B563C-9E34-40DA-82A3-967C07498B70}</UniqueIdentifier>

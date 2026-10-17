@@ -13,7 +13,7 @@
 namespace CoreEngine {
 
     /// @brief カメラ（継承階層を持たない「データ + 行列導出」だけのクラス）
-    /// @details 投影方式は CameraParameters::projectionType で表す（2D は正射影）。
+    /// @details 投影方式は CameraParameters::projectionType で表す。
     ///          操作方法はコントローラ（OrbitFlyController 等）が持ち、結果を Transform へ書き込む。
     class Camera final {
     public:
@@ -73,8 +73,12 @@ namespace CoreEngine {
         void SetParameters(const CameraParameters& params) { parameters_ = params; }
         void ResetParameters() { parameters_.Reset(); }
 
-        /// @brief カメラタイプ（投影方式から決まる）
-        CameraType GetCameraType() const { return parameters_.GetCameraType(); }
+        /// @brief 平行投影か
+        bool IsOrthographic() const { return parameters_.IsOrthographic(); }
+
+        /// @brief 物が映っていない画素の塗り方
+        const CameraBackground& GetBackground() const { return background_; }
+        void SetBackground(const CameraBackground& background) { background_ = background; }
 
         /// @brief 有効/無効状態
         void SetActive(bool isActive) { isActive_ = isActive; }
@@ -89,12 +93,6 @@ namespace CoreEngine {
         Vector3 GetScale() const { return scale_; }
         Vector3 GetRotate() const { return rotate_; }
         Vector3 GetTranslate() const { return translate_; }
-
-        /// @brief 2D カメラのズーム倍率を設定（正射影時のみ意味を持つ）
-        void SetZoom(float zoom) { scale_ = { zoom, zoom, 1.0f }; }
-
-        /// @brief 2D カメラのズーム倍率を取得
-        float GetZoom() const { return scale_.x; }
 
         /// @brief 指定した位置を注視するようにカメラを回転
         /// @param target 注視点
@@ -136,7 +134,6 @@ namespace CoreEngine {
         /// @brief パラメータからアスペクト比を解決する（0 指定ならウィンドウから自動）
         float ResolveAspectRatio() const;
 
-        // Transform（正射影時は translate=中心座標 / rotate.z=回転 / scale.x=ズーム）
         Vector3 scale_ = { 1.0f, 1.0f, 1.0f };
         Vector3 rotate_ = { 0.0f, 0.0f, 0.0f };
         Vector3 translate_ = { 0.0f, 0.0f, -10.0f };
@@ -146,6 +143,7 @@ namespace CoreEngine {
         Matrix4x4 cameraMatrix_{};
 
         CameraParameters parameters_{};
+        CameraBackground background_{};
         bool isActive_ = true;
 
         // TAA ジッタ

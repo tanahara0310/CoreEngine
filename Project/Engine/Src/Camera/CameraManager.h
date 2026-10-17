@@ -134,19 +134,6 @@ namespace CoreEngine
         /// @brief 現在覗いている 3D カメラの名前
         const std::string& GetViewCameraName() const;
 
-        /// @brief アクティブカメラを設定（2D 専用）
-        /// @param name カメラの名前
-        /// @param type カメラタイプ（Camera2D のみ有効）
-        /// @return 設定に成功した場合true
-        bool SetActiveCamera(const std::string& name, CameraType type);
-
-        /// @brief アクティブカメラを取得（カメラタイプ別）
-        /// @details Camera3D は GetViewCamera() と同じものを返す。
-        ///          「編集対象のカメラ」と「描画に使うカメラ」を一致させるための入口。
-        /// @param type カメラタイプ（3D or 2D）
-        /// @return アクティブカメラのポインタ（存在しない場合nullptr）
-        Camera* GetActiveCamera(CameraType type) const;
-
         /// @brief 名前でカメラを取得
         /// @param name カメラの名前
         /// @return カメラのポインタ（存在しない場合nullptr）
@@ -159,9 +146,6 @@ namespace CoreEngine
 
         /// @brief 登録されているカメラの数を取得
         size_t GetCameraCount() const { return cameras_.size(); }
-
-        /// @brief アクティブカメラの名前を取得（タイプ別）
-        const std::string& GetActiveCameraName(CameraType type) const;
 
         /// @brief 全カメラのコンテナを取得（デバッグUI用）
         const std::unordered_map<std::string, std::unique_ptr<Camera>>& GetAllCameras() const { return cameras_; }
@@ -208,10 +192,6 @@ namespace CoreEngine
 
         /// @brief エディタ視点で覗いているか（false = ゲーム視点）
         bool useSceneCamera_ = false;
-
-        /// @brief アクティブな 2D カメラ
-        std::string activeCamera2DName_;
-        Camera* activeCamera2D_ = nullptr;
 
         /// @brief 入力・デルタタイム参照用（非所有）
         EngineSystem* engineSystem_ = nullptr;

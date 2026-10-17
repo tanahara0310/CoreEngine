@@ -14,7 +14,7 @@ namespace CoreEngine::DeferredLightingBind
         gEmissiveMetallic,
         gSceneDepth,
         gCamera,
-        gDepthReconstruction,
+        gDeferredView,
         gLightCounts,
         gDirectionalLights,
         gPointLights,
@@ -42,9 +42,9 @@ namespace CoreEngine::DeferredLightingBind
         { "gEmissiveMetallic",    ShaderBindingType::SRV, BindingUsage::Required    },
         { "gSceneDepth",          ShaderBindingType::SRV, BindingUsage::Required    },
 
-        // カメラと深度復元行列
+        // カメラとビューごとの定数（深度復元行列・背景色）
         { "gCamera",              ShaderBindingType::CBV, BindingUsage::Required    },
-        { "gDepthReconstruction", ShaderBindingType::CBV, BindingUsage::Required    },
+        { "gDeferredView",        ShaderBindingType::CBV, BindingUsage::Required    },
 
         // ライト（LightManager が差す。ビュー種別に関わらず毎フレーム）
         { "gLightCounts",         ShaderBindingType::CBV, BindingUsage::Required    },

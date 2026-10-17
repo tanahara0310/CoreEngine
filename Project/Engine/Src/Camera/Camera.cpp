@@ -2,6 +2,7 @@
 #include "Camera.h"
 #include "Math/MathCore.h"
 #include <WinApp/WinApp.h>
+#include <algorithm>
 #include <cmath>
 
 namespace CoreEngine
@@ -42,35 +43,18 @@ float Camera::ResolveAspectRatio() const
 
 void Camera::RebuildMatrices()
 {
-    if (parameters_.projectionType == CameraProjectionType::Orthographic) {
-        // ===== 2D（正射影）=====
-        // ビュー行列: ズーム → Z 回転 → カメラ位置の逆平行移動
-        const Matrix4x4 scaleMatrix = Matrix::Scale({ scale_.x, scale_.y, 1.0f });
-        const Matrix4x4 rotationMatrix = Matrix::RotationZ(rotate_.z);
-        const Matrix4x4 translationMatrix = Matrix::Translation({ -translate_.x, -translate_.y, 0.0f });
-
-        viewMatrix_ = translationMatrix * rotationMatrix * scaleMatrix;
-
-        // カメラ行列は 3D 用の派生（GetForward 等）のためだけに保持する
-        cameraMatrix_ = Matrix::Inverse(viewMatrix_);
-
-        // 画面中央を原点、Y軸は上が正（top/bottom を入れ替えて実現）。
-        // 座標系はウィンドウサイズではなく基準解像度に固定する（UI / スプライトと同じ空間）
-        const float screenWidth = static_cast<float>(WinApp::kReferenceWidth);
-        const float screenHeight = static_cast<float>(WinApp::kReferenceHeight);
-        projectionMatrix_ = Rendering::Orthographic(
-            -screenWidth * 0.5f,
-            screenHeight * 0.5f,
-            screenWidth * 0.5f,
-            -screenHeight * 0.5f,
-            parameters_.nearClip,
-            parameters_.farClip);
-        return;
-    }
-
-    // ===== 3D（透視投影）=====
     cameraMatrix_ = Matrix::MakeAffine(scale_, rotate_, translate_);
     viewMatrix_ = Matrix::Inverse(cameraMatrix_);
+
+    if (parameters_.IsOrthographic()) {
+        // 見える高さは orthographicSize の 2 倍、幅は縦横比から決める
+        const float halfHeight = (std::max)(parameters_.orthographicSize, 1.0e-4f);
+        const float halfWidth = halfHeight * ResolveAspectRatio();
+        projectionMatrix_ = Rendering::Orthographic(
+            -halfWidth, halfHeight, halfWidth, -halfHeight,
+            parameters_.nearClip, parameters_.farClip);
+        return;
+    }
 
     projectionMatrix_ = Rendering::PerspectiveFov(
         parameters_.fov,
@@ -96,10 +80,11 @@ void Camera::SetProjectionJitter(float ndcX, float ndcY)
 
     // 行ベクトル規約（clip = v * P）。透視射影では clip.w にビュー空間 z が入るため、
     // m[2][0] / m[2][1] への加算は「clip.xy += ndc * clip.w」と等価になり、
-    // 深度に関わらず一定のサブピクセルずれになる。
+    // 深度に関わらず一定のサブピクセルずれになる。平行投影では clip.w が 1 なので平行移動の行へ足す
+    const int row = parameters_.IsOrthographic() ? 3 : 2;
     jitteredProjectionMatrix_ = projectionMatrix_;
-    jitteredProjectionMatrix_.m[2][0] += ndcX;
-    jitteredProjectionMatrix_.m[2][1] += ndcY;
+    jitteredProjectionMatrix_.m[row][0] += ndcX;
+    jitteredProjectionMatrix_.m[row][1] += ndcY;
 }
 
 void Camera::LookAt(const Vector3& target)

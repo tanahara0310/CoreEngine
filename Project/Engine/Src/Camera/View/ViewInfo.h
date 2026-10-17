@@ -72,18 +72,11 @@ namespace CoreEngine
         /// @brief GameView のビュー（描画の主経路）
         const ViewInfo& GameView() const { return Get(RenderViewType::GameView); }
 
-        /// @brief 2D（正射影）ビュー。Sprite / UI 用で 3D とは独立に持つ
-        const ViewInfo& View2D() const { return view2D_; }
-
-        /// @brief 2D ビューを登録する
-        void Set2D(const ViewInfo& view) { view2D_ = view; }
-
     private:
         static size_t ToIndex(RenderViewType type) { return static_cast<size_t>(type); }
 
         static inline const ViewInfo kInvalidView{};
 
         ViewInfo views_[kViewCount]{};
-        ViewInfo view2D_{};
     };
 }

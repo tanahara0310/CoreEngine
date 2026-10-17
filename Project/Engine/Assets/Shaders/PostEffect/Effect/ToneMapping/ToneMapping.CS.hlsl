@@ -18,7 +18,7 @@ cbuffer ScreenParams : register(b0)
     uint screenWidth;
     uint screenHeight;
     float exposureEV; // 露出補正 [EV]。トーンカーブ適用前に exp2(EV) を乗算（0 = 従来動作）
-    uint toneMapOperator; // 0=ACES / 1=GT / 2=AgX（CVar r.ToneMapping.Operator）
+    uint toneMapOperator; // 0=ACES / 1=GT / 2=AgX / 3=なし（CVar r.ToneMapping.Operator）
 };
 
 static const uint kGroupSize = 8;
@@ -45,6 +45,10 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
     else if (toneMapOperator == 2)
     {
         color.rgb = AgXTonemap(color.rgb);
+    }
+    else if (toneMapOperator == 3)
+    {
+        color.rgb = saturate(color.rgb);
     }
     else
     {

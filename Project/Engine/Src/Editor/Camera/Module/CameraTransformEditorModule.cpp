@@ -30,14 +30,14 @@ namespace CoreEngine
         }
 
         // 新API前提: 3Dアクティブカメラを明示取得して編集する。
-        Camera* active3D = context.cameraManager->GetActiveCamera(CameraType::Camera3D);
+        Camera* active3D = context.cameraManager->GetViewCamera();
         if (!active3D) {
             UI::Hint("アクティブな3Dカメラがありません。");
             return;
         }
 
         const std::string activeName = context.cameraManager->GetDisplayName(
-            context.cameraManager->GetActiveCameraName(CameraType::Camera3D));
+            context.cameraManager->GetViewCameraName());
         ImGui::Text("アクティブ3D: %s", activeName.c_str());
         UI::Separator();
 

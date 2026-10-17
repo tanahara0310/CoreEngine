@@ -28,5 +28,6 @@ namespace CoreEngine
             camera.SetRotate(transform->GetRotate());
         }
         camera.SetParameters(parameters_);
+        camera.SetBackground(background_);
     }
 }

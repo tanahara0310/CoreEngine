@@ -34,16 +34,16 @@ struct Camera
 ConstantBuffer<Camera> gCamera : register(b2);
 
 // ============================================================
-// 深度復元用（WorldPosition ターゲット廃止に伴う追加）
+// ビューごとの定数（深度復元行列・背景色）
 // ============================================================
-// gCamera（b2）は BaseModelRenderer の WVP 用 CBV を共有しており、フリッカー防止のため
-// フレーム更新時に 1 回しか書かれない（Camera::TransferMatrix 参照）。
-// そのため invViewProj は毎ビュー確実に更新される専用 CBV として別に持つ。
-struct DepthReconstructionParams
+// gCamera（b2）は BaseModelRenderer の WVP 用 CBV を共有しており、フレーム更新時に 1 回しか書かれない。
+// ビューごとに変わる値は、毎ビュー更新される専用 CBV として別に持つ。
+struct DeferredViewParams
 {
     float4x4 invViewProj;
+    float4 backgroundColor; // 物が映っていない画素の色（リニア）
 };
-ConstantBuffer<DepthReconstructionParams> gDepthReconstruction : register(b7);
+ConstantBuffer<DeferredViewParams> gDeferredView : register(b7);
 
 // ============================================================
 // RT シャドウマスク（ライトごとに独立したテクスチャ）
@@ -147,10 +147,10 @@ PixelShaderOutput main(PixelShaderInput input)
     float ndcDepth = gSceneDepth.Load(loadCoord);
 
     // ===== 背景ピクセル検出 =====
-    // 深度クリア値（1.0）のピクセルは未描画の背景。
+    // 深度クリア値（1.0）のピクセルは未描画の背景。カメラの背景色で塗る
     if (IsBackgroundDepth(ndcDepth))
     {
-        output.color = float4(0.1f, 0.25f, 0.5f, 1.0f);
+        output.color = float4(gDeferredView.backgroundColor.rgb, 1.0f);
         return output;
     }
 
@@ -158,7 +158,7 @@ PixelShaderOutput main(PixelShaderInput input)
     float depthW, depthH;
     gSceneDepth.GetDimensions(depthW, depthH);
     float2 screenUV = input.position.xy / float2(depthW, depthH);
-    float3 worldPos = ReconstructWorldPosition(ScreenUVToNDC(screenUV), ndcDepth, gDepthReconstruction.invViewProj);
+    float3 worldPos = ReconstructWorldPosition(ScreenUVToNDC(screenUV), ndcDepth, gDeferredView.invViewProj);
 
     // モード 1/2 は「コースティクス入力そのもの」の表示なのでここで即返す。
     // 3 以降は水中ライティング置換が絡むため、GBuffer 展開後（関数末尾）で処理する。

@@ -47,8 +47,8 @@ namespace CoreEngine
         // 毎フレーム変わる定数は、使うフレームの UploadRing に置く
         UploadRing& uploadRing = dxCommon->GetUploadRing();
         fallbackCamera_.Initialize(uploadRing);
-        depthReconstruction_.Initialize(uploadRing);
-        depthReconstruction_.Set(MathCore::Matrix::Identity());
+        deferredView_.Initialize(uploadRing);
+        deferredView_.Set(DeferredViewParams{ MathCore::Matrix::Identity(), { 0.0f, 0.0f, 0.0f, 1.0f } });
         waterCausticsDebug_.Initialize(uploadRing);
     }
 
@@ -121,7 +121,7 @@ namespace CoreEngine
             (cameraCBVAddress_ != 0) ? cameraCBVAddress_ : fallbackCamera_.Address());
 
         // ===== 深度復元用 CBV（このビューを描く前に設定した行列） =====
-        binder.Set(bindings_[DeferredLightingBind::gDepthReconstruction], depthReconstruction_.Address());
+        binder.Set(bindings_[DeferredLightingBind::gDeferredView], deferredView_.Address());
 
         // ===== ライトバインド（LightManager 経由） =====
         // 未解決スロットは ShaderBinder 側で no-op になるので、ここでの IsValid 判定は不要

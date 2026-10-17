@@ -50,7 +50,6 @@ public:
     virtual Camera* GetGameViewCamera3D() const { return nullptr; }
     /// @brief ゲーム視点の 3D カメラ（エディタ視点で覗いていても変わらない）
     virtual Camera* GetGameCamera3D() const { return nullptr; }
-    virtual Camera* GetGameViewCamera2D() const { return nullptr; }
     virtual GameObjectManager* GetGameObjectManager() { return nullptr; }
 
     /// @brief SceneManager への参照を設定（自動呼び出し）

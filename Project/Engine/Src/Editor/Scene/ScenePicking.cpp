@@ -5,6 +5,7 @@
 
 #include "Camera/Camera.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
+#include "GameObject/Component/Render/SpriteRendererComponent.h"
 #include "GameObject/Component/Transform/ITransformSource.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "GameObject/GameObject.h"
@@ -19,8 +20,10 @@
 #include "WorldTransform/WorldTransform.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <limits>
+#include <utility>
 
 namespace CoreEngine::Editor::ScenePicking
 {
@@ -81,40 +84,92 @@ namespace CoreEngine::Editor::ScenePicking
             hit.point = sphereHit.point;
             hit.normal = sphereHit.normal;
             hit.distance = sphereHit.distance;
+            hit.approximate = true;
             return true;
         }
     }
 
     Ray ScreenToRay(const Vector2& normalizedPosition, const Camera& camera)
     {
-        Ray ray;
-        ray.origin = camera.GetPosition();
-
         const float ndcX = normalizedPosition.x * 2.0f - 1.0f;
         const float ndcY = 1.0f - normalizedPosition.y * 2.0f;
 
-        // 射影行列から画角と縦横比を読み、ビュー空間の向きを作る
-        const Matrix4x4 projection = camera.GetProjectionMatrix();
-        const Matrix4x4 view = camera.GetViewMatrix();
-        const float tanHalfFovY = 1.0f / projection.m[1][1];
-        const float aspectRatio = projection.m[1][1] / projection.m[0][0];
-        const float viewX = ndcX * tanHalfFovY * aspectRatio;
-        const float viewY = ndcY * tanHalfFovY;
-        const float viewZ = 1.0f;
+        // 画面の 1 点を手前の面と奥の面へ戻し、その 2 点を結ぶ
+        const Matrix4x4 inverseViewProjection = MathCore::Matrix::Inverse(
+            camera.GetViewMatrix() * camera.GetUnjitteredProjectionMatrix());
+        const Vector3 nearPoint = TransformPoint(Vector3(ndcX, ndcY, 0.0f), inverseViewProjection);
+        const Vector3 farPoint = TransformPoint(Vector3(ndcX, ndcY, 1.0f), inverseViewProjection);
 
-        // ビュー行列の回転部分の転置でワールドへ戻す
-        const float worldX = viewX * view.m[0][0] + viewY * view.m[0][1] + viewZ * view.m[0][2];
-        const float worldY = viewX * view.m[1][0] + viewY * view.m[1][1] + viewZ * view.m[1][2];
-        const float worldZ = viewX * view.m[2][0] + viewY * view.m[2][1] + viewZ * view.m[2][2];
-        const float length = std::sqrt(worldX * worldX + worldY * worldY + worldZ * worldZ);
+        // 透視投影はカメラの位置から、平行投影は手前の面の点から飛ばす
+        Ray ray;
+        ray.origin = camera.IsOrthographic() ? nearPoint : camera.GetPosition();
+        const Vector3 toFar = farPoint - ray.origin;
+        const float length = std::sqrt(toFar.x * toFar.x + toFar.y * toFar.y + toFar.z * toFar.z);
         if (length > 0.0f) {
-            ray.direction = Vector3(worldX / length, worldY / length, worldZ / length);
+            ray.direction = Vector3(toFar.x / length, toFar.y / length, toFar.z / length);
         }
         return ray;
     }
 
+    namespace
+    {
+        /// @brief スプライトの板（2 枚の三角形）とレイの当たり
+        bool RaycastSprite(const Ray& ray, GameObject& object, const SpriteRendererComponent& sprite, Hit& hit)
+        {
+            const std::array<Vector3, 4> corners = sprite.GetWorldCorners();
+            const Geometry::Ray worldRay{ ray.origin, ray.direction };
+            Geometry::RayHit triangleHit{};
+            const bool found =
+                Geometry::RaycastTriangle(worldRay, corners[0], corners[1], corners[2], &triangleHit)
+                || Geometry::RaycastTriangle(worldRay, corners[1], corners[3], corners[2], &triangleHit);
+            if (!found) {
+                return false;
+            }
+            hit.object = &object;
+            hit.point = triangleHit.point;
+            hit.normal = triangleHit.normal;
+            hit.distance = triangleHit.distance;
+            return true;
+        }
+
+        /// @brief スプライトの描画順（手前に描くものほど大きい。スプライトでなければ最小）
+        std::pair<int, int> SpriteOrder(const GameObject& object)
+        {
+            if (const auto* sprite = object.GetComponent<SpriteRendererComponent>()) {
+                return { sprite->GetSortingLayer(), sprite->GetOrderInLayer() };
+            }
+            return { (std::numeric_limits<int>::min)(), (std::numeric_limits<int>::min)() };
+        }
+
+        /// @brief 比べるときの距離（代わりの球は表面でなく中心までの距離で比べる）
+        float SortDistance(const Ray& ray, const Hit& hit)
+        {
+            if (!hit.approximate) {
+                return hit.distance;
+            }
+            const Vector3 toCenter = hit.object->GetWorldPosition() - ray.origin;
+            return toCenter.x * ray.direction.x + toCenter.y * ray.direction.y + toCenter.z * ray.direction.z;
+        }
+
+        /// @brief 前の候補より手前か（同じ距離なら、後に描くスプライトを手前とみなす）
+        bool IsInFront(const Ray& ray, const Hit& candidate, const Hit& current)
+        {
+            constexpr float kSameDistance = 1.0e-4f;
+            const float candidateDistance = SortDistance(ray, candidate);
+            const float currentDistance = SortDistance(ray, current);
+            if (std::abs(candidateDistance - currentDistance) > kSameDistance) {
+                return candidateDistance < currentDistance;
+            }
+            return SpriteOrder(*candidate.object) >= SpriteOrder(*current.object);
+        }
+    }
+
     bool RaycastObject(const Ray& ray, GameObject& object, Fallback fallback, Hit& hit)
     {
+        if (const auto* const sprite = object.GetComponent<SpriteRendererComponent>()) {
+            return RaycastSprite(ray, object, *sprite, hit);
+        }
+
         auto* const renderer = object.GetComponent<MeshRendererComponent>();
         auto* const transformComponent = object.GetComponent<TransformComponent>();
         const auto useFallback = [&] {
@@ -203,7 +258,7 @@ namespace CoreEngine::Editor::ScenePicking
             }
 
             Hit hit;
-            if (RaycastObject(ray, *object, fallback, hit) && (!closest || hit.distance < closest->distance)) {
+            if (RaycastObject(ray, *object, fallback, hit) && (!closest || IsInFront(ray, hit, *closest))) {
                 closest = hit;
             }
         }

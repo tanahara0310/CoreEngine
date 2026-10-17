@@ -141,9 +141,11 @@ namespace CoreEngine
         item.blendMode = GetBlendMode();
         item.renderOrderOverride = GetRenderOrder();
 
-        // 描画コンポーネントが種別を明示していればそれを尊重する
+        // 描画コンポーネントが種別と描画順を明示していればそれを尊重する
         if (auto* renderable = GetComponent<IRenderableComponent>()) {
             item.kind = renderable->GetRenderItemKind();
+            item.sortingLayer = renderable->GetSortingLayer();
+            item.orderInLayer = renderable->GetOrderInLayer();
         }
 
         if (item.kind == RenderItemKind::Default) {

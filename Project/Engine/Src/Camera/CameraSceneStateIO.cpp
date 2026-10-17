@@ -23,6 +23,7 @@ namespace CoreEngine
             data["fov"] = snapshot.parameters.fov;
             data["nearClip"] = snapshot.parameters.nearClip;
             data["farClip"] = snapshot.parameters.farClip;
+            data["orthographicSize"] = snapshot.parameters.orthographicSize;
             data["aspectRatio"] = snapshot.parameters.aspectRatio;
             data["projectionType"] = static_cast<int>(snapshot.parameters.projectionType);
             return data;
@@ -37,6 +38,8 @@ namespace CoreEngine
             snapshot.parameters.fov = JsonManager::SafeGet(data, "fov", snapshot.parameters.fov);
             snapshot.parameters.nearClip = JsonManager::SafeGet(data, "nearClip", snapshot.parameters.nearClip);
             snapshot.parameters.farClip = JsonManager::SafeGet(data, "farClip", snapshot.parameters.farClip);
+            snapshot.parameters.orthographicSize =
+                JsonManager::SafeGet(data, "orthographicSize", snapshot.parameters.orthographicSize);
             snapshot.parameters.aspectRatio = JsonManager::SafeGet(data, "aspectRatio", snapshot.parameters.aspectRatio);
 
             const int projection = JsonManager::SafeGet(data, "projectionType",

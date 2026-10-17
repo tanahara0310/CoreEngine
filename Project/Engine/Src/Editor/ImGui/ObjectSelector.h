@@ -48,40 +48,20 @@ namespace CoreEngine
         void Update(GameObjectManager* gameObjectManager, const Camera* camera,
             const Vector2& mousePos, bool isViewportHovered);
 
-        /// @brief 2Dオブジェクト用の更新処理（スプライト選択）
-        /// @param gameObjectManager ゲームオブジェクトマネージャー
-        /// @param camera 2Dカメラ
-        /// @param mousePos マウス座標（ビューポート座標系）
-        /// @param isViewportHovered ビューポートがホバー状態か
-        void Update2D(GameObjectManager* gameObjectManager, const Camera* camera,
-            const Vector2& mousePos, bool isViewportHovered);
-
         /// @brief 選択されたオブジェクトにギズモを描画
         /// @param camera カメラ
         void DrawGizmo(const Camera* camera);
-
-        /// @brief 選択されたスプライトにギズモを描画（2D用）
-        /// @param camera 2Dカメラ
-        void DrawGizmo2D(const Camera* camera);
 
         /// @brief 選択中のオブジェクトを取得
         /// @return 選択中のオブジェクト（未選択か、選んだオブジェクトが消えていれば nullptr）
         GameObject* GetSelectedObject() const;
 
-        /// @brief 選択中のスプライトを取得
-        /// @return 選択中のスプライト（未選択か、選んだスプライトが消えていれば nullptr）
-        GameObject* GetSelectedSprite() const;
-
         /// @brief オブジェクトを選択
         /// @param object 選択するオブジェクト（nullptr なら選択を解除）
         void SelectObject(GameObject* object);
 
-        /// @brief スプライトを選択
-        /// @param sprite 選択するスプライト（nullptr なら選択を解除）
-        void SelectSprite(GameObject* sprite);
-
         /// @brief 選択を解除
-        void ClearSelection() { selectedObjectId_ = {}; selectedSpriteId_ = {}; }
+        void ClearSelection() { selectedObjectId_ = {}; }
 
         /// @brief ギズモモードを設定
         /// @param mode ギズモモード
@@ -119,26 +99,11 @@ namespace CoreEngine
         GameObject* RaycastObject(GameObjectManager* gameObjectManager,
             const Camera* camera, const Vector2& mousePos);
 
-        /// @brief マウス位置からスプライトを検出（2D用）
-        /// @param gameObjectManager ゲームオブジェクトマネージャー
-        /// @param camera 2Dカメラ
-        /// @param mousePos マウス座標（ビューポート座標系）
-        /// @return 検出されたスプライト（nullptrの場合は検出失敗）
-        GameObject* RaycastSprite(GameObjectManager* gameObjectManager,
-            const Camera* camera, const Vector2& mousePos);
-
-        /// @brief スクリーン座標をワールド座標に変換（2D用）
-        /// @param mousePos マウス座標（0.0〜1.0の正規化座標）
-        /// @param camera 2Dカメラ
-        /// @return ワールド座標
-        Vector2 ScreenToWorld2D(const Vector2& mousePos, const Camera* camera);
-
     private:
         const InputQuery* input_ = nullptr;            // ギズモの切り替えを引く先
         const GameObjectManager* objects_ = nullptr;   // 選択を引き直すマネージャー
         bool viewportSelection_ = false;               // ビューポートのクリックで選び直した
-        ObjectId selectedObjectId_{};                  // 選択中の3Dオブジェクト
-        ObjectId selectedSpriteId_{};                  // 選択中のスプライト
+        ObjectId selectedObjectId_{};                  // 選択中のオブジェクト
         Gizmo::Mode gizmoMode_ = Gizmo::Mode::Translate;  // ギズモモード
 
         /// @brief ギズモ操作完了時に呼び出すコールバック（isDirty_用）
