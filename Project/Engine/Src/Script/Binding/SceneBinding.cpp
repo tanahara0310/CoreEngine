@@ -157,8 +157,64 @@ namespace CoreEngine::Script
                     view.z };
             }
 
+            /// @brief 平行投影か
+            bool IsOrthographic() const
+            {
+                const Camera* const camera = FindOrWarn("投影の読み取り");
+                return camera ? camera->IsOrthographic() : false;
+            }
+
+            /// @brief 平行投影で映る高さの半分（ワールドの長さ）
+            float GetOrthographicSize() const
+            {
+                const Camera* const camera = FindOrWarn("大きさの読み取り");
+                return camera ? camera->GetParameters().orthographicSize : 0.0f;
+            }
+
+            /// @brief UI と同じ画面座標の点を、ワールド座標へ写す（WorldToScreenPoint の逆）
+            /// @param screen x・y は左上を原点とした基準解像度のピクセル、z はカメラの前方への距離
+            /// @note 最後に行列を作ったときのカメラで写す。TAA のジッタは含めない
+            Vector3 ScreenToWorldPoint(const Vector3& screen) const
+            {
+                const Camera* const camera = FindOrWarn("ワールド座標への変換");
+                return camera ? ScreenToWorld(*camera, screen) : Vector3{};
+            }
+
+            /// @brief 画面座標の点を通るレイ（透視投影はカメラの位置から、平行投影は手前の限界の面から）
+            /// @param screen 左上を原点とした基準解像度のピクセル
+            void ScreenPointToRay(const Vector2& screen, Vector3& origin, Vector3& direction) const
+            {
+                const Camera* const camera = FindOrWarn("レイの計算");
+                if (!camera) {
+                    origin = Vector3{};
+                    direction = Vector3{ 0.0f, 0.0f, 1.0f };
+                    return;
+                }
+                const CameraParameters parameters = camera->GetParameters();
+                const Vector3 nearPoint = ScreenToWorld(*camera, Vector3{ screen.x, screen.y, parameters.nearClip });
+                const Vector3 farPoint = ScreenToWorld(*camera, Vector3{ screen.x, screen.y, parameters.farClip });
+                origin = camera->IsOrthographic() ? nearPoint : camera->GetTranslate();
+                direction = Normalize(farPoint - origin);
+            }
+
         private:
             ~ScriptGameCamera() = default;
+
+            /// @brief 画面座標（x・y はピクセル、z はカメラの前方への距離）をワールド座標へ写す
+            static Vector3 ScreenToWorld(const Camera& camera, const Vector3& screen)
+            {
+                const Matrix4x4& projection = camera.GetUnjitteredProjectionMatrix();
+                const float ndcX = screen.x / static_cast<float>(WinApp::kReferenceWidth) * 2.0f - 1.0f;
+                const float ndcY = 1.0f - screen.y / static_cast<float>(WinApp::kReferenceHeight) * 2.0f;
+
+                // clip = view * projection（行ベクトル）を、ビュー空間の z を決めて x・y について解く
+                const float viewZ = screen.z;
+                const float w = viewZ * projection.m[2][3] + projection.m[3][3];
+                const float viewX = (ndcX * w - viewZ * projection.m[2][0] - projection.m[3][0]) / projection.m[0][0];
+                const float viewY = (ndcY * w - viewZ * projection.m[2][1] - projection.m[3][1]) / projection.m[1][1];
+                return MathCore::CoordinateTransform::TransformCoord(
+                    Vector3{ viewX, viewY, viewZ }, camera.GetCameraMatrix());
+            }
 
             static Camera* Find()
             {
@@ -223,6 +279,14 @@ namespace CoreEngine::Script
         r.Method("GameCamera", "Vector3 get_up() const property", asMETHOD(ScriptGameCamera, GetUp), asCALL_THISCALL);
         r.Method("GameCamera", "Vector3 WorldToScreenPoint(const Vector3 &in world) const",
             asMETHOD(ScriptGameCamera, WorldToScreenPoint), asCALL_THISCALL);
+        r.Method("GameCamera", "Vector3 ScreenToWorldPoint(const Vector3 &in screen) const",
+            asMETHOD(ScriptGameCamera, ScreenToWorldPoint), asCALL_THISCALL);
+        r.Method("GameCamera", "void ScreenPointToRay(const Vector2 &in screen, Vector3 &out origin, Vector3 &out direction) const",
+            asMETHOD(ScriptGameCamera, ScreenPointToRay), asCALL_THISCALL);
+        r.Method("GameCamera", "bool get_orthographic() const property",
+            asMETHOD(ScriptGameCamera, IsOrthographic), asCALL_THISCALL);
+        r.Method("GameCamera", "float get_orthographicSize() const property",
+            asMETHOD(ScriptGameCamera, GetOrthographicSize), asCALL_THISCALL);
 
         r.Namespace("Scene");
         r.Function("void ChangeScene(const string &in name)", asFUNCTION(ChangeScene));

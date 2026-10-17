@@ -253,7 +253,14 @@ namespace CoreEngine
     float ContactSolver::EffectiveInverseMass(const ContactConstraint& constraint,
                                               const Vector3& axis)
     {
-        float result = constraint.inverseMassSum;
+        // 並進は、止めた向きを除いた分だけ効く
+        float result = 0.0f;
+        if (constraint.bodyA) {
+            result += constraint.bodyA->GetInverseMassAlong(axis);
+        }
+        if (constraint.bodyB) {
+            result += constraint.bodyB->GetInverseMassAlong(axis);
+        }
 
         // てこの先を軸方向へ動かすときの回りにくさを足す
         if (constraint.bodyA) {

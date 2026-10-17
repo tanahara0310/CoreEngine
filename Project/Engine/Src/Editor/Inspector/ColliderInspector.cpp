@@ -4,6 +4,7 @@
 #ifdef CORE_EDITOR
 
 #include "Collision/ColliderComponent.h"
+#include "GameObject/Component/Render/SpriteRendererComponent.h"
 #include "GameObject/GameObject.h"
 #include "Editor/ImGui/ImGuiAll.h"
 
@@ -18,8 +19,24 @@ namespace ColliderInspector
         const std::vector<std::string>& LayerNames() { return CollisionLayers::Names(); }
         const auto& kShapeNames = kColliderShapeTypeNames;
 
+        /// @brief スプライトの板に重なる箱の大きさと中心（どちらもスケールを掛ける前のローカル）
+        /// @param depth 箱の奥行き
+        /// @return スプライトが無ければ false
+        bool FitBoxToSprite(const GameObject& object, float depth, Vector3& outSize, Vector3& outOffset)
+        {
+            const auto* const sprite = object.GetComponent<SpriteRendererComponent>();
+            if (!sprite) {
+                return false;
+            }
+            const Vector2 size = sprite->GetSize();
+            const Vector2 anchor = sprite->GetAnchor();
+            outSize = { size.x, size.y, depth };
+            outOffset = { (0.5f - anchor.x) * size.x, (anchor.y - 0.5f) * size.y, 0.0f };
+            return true;
+        }
+
         /// @brief 1 本ぶんの編集 UI
-        bool DrawOne(Collider& collider, int index)
+        bool DrawOne(GameObject& object, Collider& collider, int index)
         {
             bool changed = false;
             ImGui::PushID(index);
@@ -64,6 +81,14 @@ namespace ColliderInspector
                     Vector3 size = shape.size;
                     if (ImGui::DragFloat3("サイズ", &size.x, 0.01f, 0.0f, 1000.0f)) {
                         collider.SetSize(size);
+                        changed = true;
+                    }
+                    Vector3 fittedSize{};
+                    Vector3 fittedOffset{};
+                    if (FitBoxToSprite(object, shape.size.z, fittedSize, fittedOffset)
+                        && ImGui::Button("画像に合わせる")) {
+                        collider.SetSize(fittedSize);
+                        collider.SetOffset(fittedOffset);
                         changed = true;
                     }
                 }
@@ -141,7 +166,7 @@ namespace ColliderInspector
         } else {
             for (size_t i = 0; i < colliders->Count(); ++i) {
                 if (Collider* collider = colliders->Get(i)) {
-                    changed |= DrawOne(*collider, static_cast<int>(i));
+                    changed |= DrawOne(object, *collider, static_cast<int>(i));
                 }
             }
         }
@@ -155,7 +180,11 @@ namespace ColliderInspector
         }
         ImGui::SameLine();
         if (ImGui::Button("箱を追加")) {
-            object.GetOrAddComponent<ColliderComponent>()->AddBox({ 1.0f, 1.0f, 1.0f });
+            // スプライトがあれば、その板に重なる大きさで足す
+            Vector3 size{ 1.0f, 1.0f, 1.0f };
+            Vector3 offset{};
+            FitBoxToSprite(object, 1.0f, size, offset);
+            object.GetOrAddComponent<ColliderComponent>()->AddBox(size, CollisionLayer::Default, offset);
             changed = true;
         }
         ImGui::SameLine();

@@ -33,7 +33,7 @@ namespace CoreEngine
 
     void RigidbodyComponent::AddImpulse(const Vector3& impulse)
     {
-        velocity_ += impulse * GetInverseMass();
+        velocity_ += LockLinear(impulse * GetInverseMass());
         WakeUp();
     }
 
@@ -45,9 +45,9 @@ namespace CoreEngine
 
     void RigidbodyComponent::AddImpulseAtPoint(const Vector3& impulse, const Vector3& worldPoint)
     {
-        velocity_ += impulse * GetInverseMass();
+        velocity_ += LockLinear(impulse * GetInverseMass());
 
-        if (!freezeRotation_ && GetOwner() != nullptr) {
+        if (!IsRotationFrozen() && GetOwner() != nullptr) {
             const Vector3 lever = worldPoint - GetOwner()->GetWorldPosition();
             angularVelocity_ += ApplyInverseInertia(Cross(lever, impulse));
         }
@@ -82,6 +82,55 @@ namespace CoreEngine
         return IsDynamic() ? (1.0f / mass_) : 0.0f;
     }
 
+    void RigidbodyComponent::SetRotationFrozen(bool frozen)
+    {
+        freezeRotationX_ = frozen;
+        freezeRotationY_ = frozen;
+        freezeRotationZ_ = frozen;
+    }
+
+    Vector3 RigidbodyComponent::LockLinear(const Vector3& worldVector) const
+    {
+        return {
+            freezePositionX_ ? 0.0f : worldVector.x,
+            freezePositionY_ ? 0.0f : worldVector.y,
+            freezePositionZ_ ? 0.0f : worldVector.z
+        };
+    }
+
+    Vector3 RigidbodyComponent::LockAngular(const Vector3& worldVector) const
+    {
+        return {
+            freezeRotationX_ ? 0.0f : worldVector.x,
+            freezeRotationY_ ? 0.0f : worldVector.y,
+            freezeRotationZ_ ? 0.0f : worldVector.z
+        };
+    }
+
+    float RigidbodyComponent::GetInverseMassAlong(const Vector3& axis) const
+    {
+        // 止めていない向きの成分の長さの 2 乗だけ効く
+        const Vector3 free = LockLinear(axis);
+        return GetInverseMass() * Dot(free, free);
+    }
+
+    void RigidbodyComponent::UpgradeSavedParameters(uint32_t fromVersion, uint32_t toVersion, json& parameters)
+    {
+        (void)fromVersion;
+        if (toVersion != 2) {
+            return;
+        }
+        const auto it = parameters.find("freezeRotation");
+        if (it == parameters.end()) {
+            return;
+        }
+        const bool frozen = it->is_boolean() && it->get<bool>();
+        parameters.erase(it);
+        parameters["freezeRotationX"] = frozen;
+        parameters["freezeRotationY"] = frozen;
+        parameters["freezeRotationZ"] = frozen;
+    }
+
     void RigidbodyComponent::IntegrateVelocity(PhysicsKey, const Vector3& gravity, float deltaTime)
     {
         if (!IsDynamic()) {
@@ -99,13 +148,14 @@ namespace CoreEngine
         if (linearDamping_ > 0.0f) {
             velocity_ *= 1.0f / (1.0f + linearDamping_ * deltaTime);
         }
+        velocity_ = LockLinear(velocity_);
     }
 
     void RigidbodyComponent::IntegrateAngularVelocity(PhysicsKey, float deltaTime)
     {
-        if (!IsDynamic() || freezeRotation_) {
+        if (!IsDynamic() || IsRotationFrozen()) {
             accumulatedTorque_ = {};
-            angularVelocity_ = freezeRotation_ ? Vector3{} : angularVelocity_;
+            angularVelocity_ = IsRotationFrozen() ? Vector3{} : angularVelocity_;
             return;
         }
 
@@ -116,11 +166,12 @@ namespace CoreEngine
         if (angularDamping_ > 0.0f) {
             angularVelocity_ *= 1.0f / (1.0f + angularDamping_ * deltaTime);
         }
+        angularVelocity_ = LockAngular(angularVelocity_);
     }
 
     void RigidbodyComponent::IntegrateRotation(PhysicsKey, float deltaTime)
     {
-        if (bodyType_ == BodyType::Static || freezeRotation_) {
+        if (bodyType_ == BodyType::Static || IsRotationFrozen()) {
             return;
         }
         if (LengthSquared(angularVelocity_) <= 0.0f) {
@@ -151,7 +202,7 @@ namespace CoreEngine
     void RigidbodyComponent::ApplyPositionDelta(PhysicsKey, const Vector3& delta)
     {
         if (TransformComponent* const transform = FindTransform()) {
-            transform->ApplyWorldDelta(delta);
+            transform->ApplyWorldDelta(LockLinear(delta));
         }
     }
 
@@ -211,11 +262,11 @@ namespace CoreEngine
 
     Vector3 RigidbodyComponent::ApplyInverseInertia(const Vector3& worldVector) const
     {
-        if (freezeRotation_ || GetOwner() == nullptr) {
+        if (IsRotationFrozen() || GetOwner() == nullptr) {
             return {};
         }
 
-        // ワールド → ローカル軸 → 逆慣性を掛ける → ワールドへ戻す
+        // 止めた軸を外す → ローカル軸 → 逆慣性を掛ける → ワールドへ戻す → 止めた軸を外す
         Vector3 axes[3];
         GetOwner()->GetWorldAxes(axes[0], axes[1], axes[2]);
 
@@ -223,11 +274,12 @@ namespace CoreEngine
             localInverseInertia_.x, localInverseInertia_.y, localInverseInertia_.z
         };
 
+        const Vector3 free = LockAngular(worldVector);
         Vector3 result{};
         for (int axis = 0; axis < 3; ++axis) {
-            result += axes[axis] * (Dot(worldVector, axes[axis]) * inverse[axis]);
+            result += axes[axis] * (Dot(free, axes[axis]) * inverse[axis]);
         }
-        return result;
+        return LockAngular(result);
     }
 
     float RigidbodyComponent::GetMinimumExtent() const

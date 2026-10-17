@@ -6,6 +6,7 @@
 #include "Input/InputQuery.h"
 #include "Script/Binding/BindingRegistrar.h"
 #include "UI/UIPointer.h"
+#include "WinApp/WinApp.h"
 
 #include <string>
 
@@ -110,6 +111,14 @@ namespace CoreEngine::Script
             const InputQuery& query = sInput->GetQuery();
             return Vector2{ static_cast<float>(query.GetMouseDragX()),
                             static_cast<float>(query.GetMouseDragY()) };
+        }
+
+        /// @brief ゲーム画面の上のマウスの位置（UI と同じ座標。左上が原点の基準解像度のピクセル）
+        /// @details ゲーム画面の外にあるときも、その外側の値を返す。ゲーム画面が無いときは (0, 0)。
+        Vector2 GetMousePosition()
+        {
+            return UIPointer::Get().ToCanvas(Vector2{
+                static_cast<float>(WinApp::kReferenceWidth), static_cast<float>(WinApp::kReferenceHeight) });
         }
 
         /// @brief ホイールの回転（1 ノッチ = 1.0）
@@ -275,6 +284,7 @@ namespace CoreEngine::Script
         r.Function("bool IsMouseButtonTriggered(MouseButton)", asFUNCTION(IsMouseButtonTriggered));
         r.Function("bool IsMouseButtonReleased(MouseButton)", asFUNCTION(IsMouseButtonReleased));
         r.Function("Vector2 GetMouseDelta()", asFUNCTION(GetMouseDelta));
+        r.Function("Vector2 GetMousePosition()", asFUNCTION(GetMousePosition));
         r.Function("float GetWheelDelta()", asFUNCTION(GetWheelDelta));
         r.Function("bool IsPointerOverGame()", asFUNCTION(IsPointerOverGame));
         r.Function("bool IsKeyPressed(Key)", asFUNCTION(IsKeyPressed));

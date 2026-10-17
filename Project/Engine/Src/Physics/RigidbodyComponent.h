@@ -5,6 +5,8 @@
 #include "Physics/PhysicsKey.h"
 #include "Reflection/Reflect.h"
 
+#include <cstdint>
+
 namespace CoreEngine
 {
 class Collider;
@@ -31,6 +33,8 @@ public:
     const char* GetTypeName() const override { return "Rigidbody"; }
 
     REFLECT_BEGIN(RigidbodyComponent, "剛体")
+        REFLECT_VERSION(2)
+        REFLECT_UPGRADE(UpgradeSavedParameters)
         REFLECT_ENUM_ACCESSOR("bodyType", "種別", GetBodyType, SetBodyType, kBodyTypeNames,
             p.tooltip = "動的 = 重力と力で動く / キネマティック = 速度を指定して動かす / 静的 = 動かない")
         REFLECT_PROPERTY(mass_, "質量", p.range = Range(kMinimumMass, 10000.0f, 0.1f),
@@ -40,8 +44,16 @@ public:
             p.tooltip = "大きいほど速度が早く落ちる（0 で減らさない）")
         REFLECT_PROPERTY(angularDamping_, "回転の抗力", p.range = Range(0.0f, 10.0f, 0.01f),
             p.tooltip = "大きいほど回転が早く止まる（転がり続けるのを防ぐ）")
-        REFLECT_PROPERTY(freezeRotation_, "回転を止める",
-            p.tooltip = "接触で回らなくなる（向きは自分で指定する）")
+        REFLECT_PROPERTY(freezePositionX_, "X へ動かさない", p.tooltip = "ワールドの X の向きへ動かない")
+        REFLECT_PROPERTY(freezePositionY_, "Y へ動かさない", p.tooltip = "ワールドの Y の向きへ動かない")
+        REFLECT_PROPERTY(freezePositionZ_, "Z へ動かさない",
+            p.tooltip = "ワールドの Z の向きへ動かない（2D のゲームはここを入れる）")
+        REFLECT_PROPERTY(freezeRotationX_, "X 軸で回さない", p.tooltip = "ワールドの X 軸の周りに回らない")
+        REFLECT_PROPERTY(freezeRotationY_, "Y 軸で回さない", p.tooltip = "ワールドの Y 軸の周りに回らない")
+        REFLECT_PROPERTY(freezeRotationZ_, "Z 軸で回さない", p.tooltip = "ワールドの Z 軸の周りに回らない")
+        REFLECT_ACCESSOR("freezeRotation", "回転を止める", IsRotationFrozen, SetRotationFrozen,
+            p.flags = ::CoreEngine::Reflection::PropertyFlags::Hidden | ::CoreEngine::Reflection::PropertyFlags::NoSave,
+            p.tooltip = "3 つの軸の回転をまとめて止める（スクリプト用）")
         REFLECT_ACCESSOR("velocity", "速度", GetVelocity, SetVelocity,
             p.range = Speed(0.1f),
             p.flags = ::CoreEngine::Reflection::PropertyFlags::NoSave,
@@ -92,9 +104,24 @@ public:
     /// @brief 角速度を設定する（眠っていれば起こす）
     void SetAngularVelocity(const Vector3& angularVelocity);
 
-    /// @brief 回転を止めているか
-    bool IsRotationFrozen() const { return freezeRotation_; }
-    void SetRotationFrozen(bool frozen) { freezeRotation_ = frozen; }
+    /// @brief 3 つの軸の回転をすべて止めているか
+    bool IsRotationFrozen() const { return freezeRotationX_ && freezeRotationY_ && freezeRotationZ_; }
+
+    /// @brief 3 つの軸の回転をまとめて止める・戻す
+    void SetRotationFrozen(bool frozen);
+
+    /// @brief 止めた向きの成分を 0 にした速度（ワールドの軸）
+    Vector3 LockLinear(const Vector3& worldVector) const;
+
+    /// @brief 止めた軸の成分を 0 にした角速度（ワールドの軸）
+    Vector3 LockAngular(const Vector3& worldVector) const;
+
+    /// @brief ワールドの向き axis（単位ベクトル）へ押したときの質量の逆数
+    /// @note 止めた向きの分は動かないので数えない。
+    float GetInverseMassAlong(const Vector3& axis) const;
+
+    /// @brief 保存形の版を上げる（版 1 の freezeRotation を 3 つの軸へ分ける）
+    static void UpgradeSavedParameters(uint32_t fromVersion, uint32_t toVersion, json& parameters);
 
     BodyType GetBodyType() const { return bodyType_; }
 
@@ -180,7 +207,12 @@ private:
     float    linearDamping_ = 0.0f;
     float    angularDamping_ = 0.05f;
 
-    bool freezeRotation_ = false;
+    bool freezePositionX_ = false;
+    bool freezePositionY_ = false;
+    bool freezePositionZ_ = false;
+    bool freezeRotationX_ = false;
+    bool freezeRotationY_ = false;
+    bool freezeRotationZ_ = false;
 
     bool  sleeping_ = false;
     float stillTime_ = 0.0f;
