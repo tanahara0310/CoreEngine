@@ -715,7 +715,7 @@ namespace CoreEngine
         UI::SameLine();
         ImGui::RadioButton("2D", &newSceneTemplate_, 2);
         if (newSceneTemplate_ == 2) {
-            UI::Hint("平行投影のカメラを正面に置き、背景を単色・トーンマップをなしにします（床と雲もなし）。");
+            UI::Hint("平行投影のカメラを正面に置き、背景を単色にし、指定した色がそのまま出る見た目にします（床と雲もなし）。");
         }
 
         if (!newSceneError_.empty()) {

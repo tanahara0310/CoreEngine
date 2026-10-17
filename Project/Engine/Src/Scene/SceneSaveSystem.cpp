@@ -928,9 +928,11 @@ namespace CoreEngine
                 return false;
             }
 
-            // 指定した色がそのまま出るようにし、空の上に出る雲を止める
+            // 指定した色がそのまま出るよう、トーンカーブ・ローカル露出・レンズフレアを止め、空の上に出る雲も止める
             const json environment = {
                 { "r.Cloud.Enabled", false },
+                { "r.LensFlare.Enabled", false },
+                { "r.LocalExposure.Enabled", false },
                 { "r.ToneMapping.Operator", 3 },
             };
             if (!jm.SaveJson(MakeSceneDir(sceneName) + "/" + kEnvironmentFileName, environment)) {
