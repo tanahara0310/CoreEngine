@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.14.0">
+<meta name="engine-version" content="0.15.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2306,7 +2306,7 @@ kbd {
     <div class="scroll-x">
       <div class="editor-map" role="img" aria-label="エディタの標準の配置の模式図">
         <div class="em-menu"><span class="num-badge">1</span>メニューバー　File・Edit・GameObject・Component・Assets・Window・Help</div>
-        <div class="em-toolbar"><span class="num-badge">2</span>ツールバー　▶ 再生 ／ ⏸ 一時停止 ／ コマ送り　·　移動・回転・拡縮　·　Grid・Collider</div>
+        <div class="em-toolbar"><span class="num-badge">2</span>ツールバー　▶ 再生 ／ ⏸ 一時停止 ／ コマ送り　·　移動・回転・拡縮　·　2D・Grid・Collider</div>
         <div><span class="num-badge">3</span><b>Hierarchy</b>シーンのオブジェクトの一覧</div>
         <div class="em-view"><span class="num-badge">4</span><b>Game ／ Canvas</b>シーンの映像。クリックで選択、ギズモで移動。キー 1 ／ 2 で視点を切り替え</div>
         <div class="em-inspector"><span class="num-badge">6</span><b>Inspector</b>選んだオブジェクトのコンポーネントと値</div>
@@ -2322,7 +2322,7 @@ kbd {
     <thead><tr><th>番号</th><th>パネル</th><th>役割</th><th>詳しく</th></tr></thead>
     <tbody>
       <tr><td class="num">1</td><td>メニューバー</td><td>ファイル操作、オブジェクトやコンポーネントの作成など。右端にプロジェクト名・シーン名・ビルド構成（例：<span class="ui">Editor · Debug</span>）が出ます。</td><td><a href="#editor-menus">メニュー</a></td></tr>
-      <tr><td class="num">2</td><td>ツールバー</td><td>再生・一時停止・コマ送り、ギズモの種類、グリッドと当たり判定の表示。右端にスクリプトのコンパイル状態と保存状態。</td><td><a href="#editor-playmode">再生モード</a></td></tr>
+      <tr><td class="num">2</td><td>ツールバー</td><td>再生・一時停止・コマ送り、ギズモの種類、2D 表示の切り替え、グリッドと当たり判定の表示。右端にスクリプトのコンパイル状態と保存状態。</td><td><a href="#editor-playmode">再生モード</a></td></tr>
       <tr><td class="num">3</td><td>Hierarchy</td><td>シーンにあるオブジェクトのツリー。</td><td><a href="#editor-hierarchy">Hierarchy</a></td></tr>
       <tr><td class="num">4</td><td>Game ／ Canvas</td><td>シーンを見て編集する場所。<strong>「Scene」ビューはなく、Game ビューがシーンビューを兼ねます</strong>。Canvas タブでは UI の配置を編集します。</td><td><a href="#editor-viewport">Game ビュー</a></td></tr>
       <tr><td class="num">5</td><td>Project</td><td>プロジェクトのファイル（モデル・テクスチャ・スクリプト・プレハブなど）。</td><td><a href="#editor-project">Project</a></td></tr>
@@ -2419,6 +2419,7 @@ kbd {
     <thead><tr><th>項目</th><th class="nowrap">キー</th><th>作られるもの</th></tr></thead>
     <tbody>
       <tr><td><span class="ui">空のオブジェクトを作成</span></td><td></td><td>「GameObject」（Transform だけ）</td></tr>
+      <tr><td><span class="ui">2D<span class="arrow">▸</span>スプライト</span></td><td></td><td>「Sprite」（Transform + SpriteRenderer）。1 単位の白い四角です</td></tr>
       <tr><td><span class="ui">エフェクト<span class="arrow">▸</span>パーティクル</span></td><td></td><td>「Particle System」（Transform + ParticleSystem）</td></tr>
       <tr><td><span class="ui">エフェクト<span class="arrow">▸</span>GPU パーティクル</span></td><td></td><td>「GPU Particle System」（Transform + GpuParticleSystem）</td></tr>
       <tr><td><span class="ui">UI<span class="arrow">▸</span>テキスト</span></td><td></td><td>「Text」（RectTransform + UIText）</td></tr>
@@ -2428,7 +2429,7 @@ kbd {
     </tbody>
   </table>
   </div>
-  <p>3D のオブジェクトは、Game ビューの中央の視線が地面（y = 0）と交わる点に作られます。立方体や球などの形は、<span class="path">Engine/Assets/Models/Primitives</span> の Box・Sphere・Plane のモデルを Project から Game ビューへドラッグして置きます。</p>
+  <p>3D のオブジェクトは、Game ビューの中央の視線が地面（y = 0）と交わる点に作られます。スプライトは、中央の視線が z = 0 の面と交わる点に作られます（2D 表示なら画面の真ん中）。立方体や球などの形は、<span class="path">Engine/Assets/Models/Primitives</span> の Box・Sphere・Plane のモデルを Project から Game ビューへドラッグして置きます。</p>
 
   <h2 id="menu-component">Component</h2>
   <p>選んでいるオブジェクトに付けられるコンポーネントが、表示名で並びます。スクリプトで作ったコンポーネントもコンパイルが通ると自動でここに出ます。付けられないものは押せず、理由がツールチップに出ます。インスペクタの <span class="ui">＋ コンポーネント追加</span> と同じ一覧です。</p>
@@ -2465,7 +2466,7 @@ kbd {
   </ul>
 </article>
 
-<article class="page" id="editor-viewport" data-group="エディタ" data-title="Game ビューとカメラ操作" data-nav="Game ビューとカメラ" data-keywords="シーンビュー ビューポート カメラ 視点 操作 移動 回転 ズーム ギズモ 選択 クリック フォーカス wasd 中ボタン">
+<article class="page" id="editor-viewport" data-group="エディタ" data-title="Game ビューとカメラ操作" data-nav="Game ビューとカメラ" data-keywords="シーンビュー ビューポート カメラ 視点 操作 移動 回転 ズーム ギズモ 選択 クリック フォーカス wasd 中ボタン 2d 平行投影 正面 スプライト">
   <h1>Game ビューとカメラ操作</h1>
   <p class="lead">中央の <span class="ui">Game</span> ビューで、シーンを見て、オブジェクトを選び、ギズモで動かします。エディタ用の視点とゲームのカメラの視点を、キー 1 つで切り替えられます。</p>
 
@@ -2500,6 +2501,25 @@ kbd {
   </div>
   <div class="callout tip"><p>感度・速さ・Y 軸の反転などは <span class="ui">Window<span class="arrow">▸</span>Editor<span class="arrow">▸</span>Camera Editor</span> の <span class="ui">カメラ操作</span> タブで変えられます。移動のキーが効かないときは、いったん Game ビューをクリックしてから試してください。</p></div>
 
+  <h2 id="viewport-2d">2D 表示</h2>
+  <p>ツールバーの <span class="ui">2D</span> を押すと、エディタ視点が XY 面を正面（-Z の側から +Z の向き）から映す平行投影になります。2D のゲームのスプライトを並べるときに使います。押したときにゲーム視点だったら、エディタ視点へ切り替わります。もう一度押すと 3D の視点へ戻ります。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>操作</th><th>動き（2D 表示のとき）</th></tr></thead>
+    <tbody>
+      <tr><td>中ボタンでドラッグ（<kbd>Shift</kbd> の有無は問わない）</td><td>つかんだ所がカーソルに付いてくるように移動。回転はしません</td></tr>
+      <tr><td>ホイール</td><td>拡大・縮小（1 ノッチで 1.15 倍）。カーソルの下に映っている所は動きません</td></tr>
+      <tr><td><kbd>F</kbd></td><td>選んでいるオブジェクトを画面の真ん中に映す</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li>背景は空を描かず、ゲーム視点のカメラが単色ならその色、空なら灰色で塗ります。</li>
+    <li>グリッドは XY 面（z = 0）に出ます。横の線（y = 0）が <span class="axis-x">X 軸</span>、縦の線（x = 0）が <span class="axis-y">Y 軸</span> です。グリッドはスプライトより奥に描かれます。</li>
+    <li>2D 表示かどうかと、そのときの位置・大きさは、3D の視点と一緒にシーンごとに保存されます（シーンを保存したとき）。3D へ戻すと、2D で見ていた所の XY へ注視点が移ります。</li>
+    <li>エディタ視点を保存していないシーンを開いたとき、MainCamera が平行投影なら、そのカメラと同じ所・同じ大きさの 2D 表示で始まります（2D の雛形で作ったシーンはこの形です）。</li>
+  </ul>
+
   <h2 id="viewport-select">オブジェクトを選ぶ</h2>
   <ul>
     <li>Game ビューを左クリックすると、いちばん手前のオブジェクトが選ばれます。何も無い所をクリックすると選択が外れます。</li>
@@ -2528,6 +2548,7 @@ kbd {
 
   <h2 id="viewport-drop">アセットを置く</h2>
   <p>Project からモデル（.gltf .glb .obj .fbx）やプレハブ（.prefab）を Game ビューへドラッグすると、落とした位置の地面にオブジェクトが作られます。</p>
+  <p>テクスチャ（.png など）をドラッグすると、落とした位置の視線が z = 0 の面と交わる点に、その画像を貼ったスプライト（Transform + SpriteRenderer）が作られます。名前は画像のファイル名（拡張子なし）で、1 単位のピクセル数は既定の 100 です。視線が z = 0 の面と交わらないときは、モデルと同じく地面に置きます。どれも Undo で取り消せます。</p>
 
   <h2 id="viewport-canvas">Canvas タブ（UI の編集）</h2>
   <p>Game の隣の <span class="ui">Canvas</span> タブでは、UI（文字・画像・ボタン）の配置を編集します。</p>
@@ -2654,7 +2675,7 @@ kbd {
     <thead><tr><th>種類</th><th>拡張子</th><th>ドラッグで使える先</th></tr></thead>
     <tbody>
       <tr><td>モデル</td><td><code>.gltf</code> <code>.glb</code> <code>.obj</code> <code>.fbx</code></td><td>Game ビュー（オブジェクトを作る）・モデルの欄</td></tr>
-      <tr><td>テクスチャ</td><td><code>.png</code> <code>.jpg</code> <code>.jpeg</code> <code>.bmp</code> <code>.tga</code> <code>.dds</code> <code>.hdr</code></td><td>テクスチャの欄・SpriteRenderer</td></tr>
+      <tr><td>テクスチャ</td><td><code>.png</code> <code>.jpg</code> <code>.jpeg</code> <code>.bmp</code> <code>.tga</code> <code>.dds</code> <code>.hdr</code></td><td>テクスチャの欄・SpriteRenderer・Game ビュー（スプライトを作る）</td></tr>
       <tr><td>音</td><td><code>.wav</code> <code>.mp3</code></td><td>音の欄（AudioSource など）</td></tr>
       <tr><td>プレハブ</td><td><code>.prefab</code></td><td>Game ビュー（置く）・プレハブの欄</td></tr>
       <tr><td>スクリプト</td><td><code>.as</code></td><td>（ドラッグでは使わない）</td></tr>
@@ -2872,7 +2893,7 @@ kbd {
     <li><strong>メニューを開く</strong><span class="ui">File<span class="arrow">▸</span>新しいシーン…</span> を選びます。</li>
     <li><strong>名前と中身を決める</strong>名前を入れ、<span class="ui">空</span>・<span class="ui">基本（太陽と床）</span>（既定）・<span class="ui">2D</span> のどれかを選んで <span class="ui">作成</span>。基本を選ぶと、Sun（ライト）・MainCamera・床が入ります。</li>
   </ol>
-  <p><span class="ui">2D</span> を選ぶと、2D のゲーム向けの MainCamera が入ります。カメラは (0, 0, -10) から正面（+Z）を向く平行投影で、<span class="ui">大きさ</span> 5.4・背景は単色です。1 単位 100 ピクセルの画像が、1920×1080 の画面に等倍で映ります。見た目は指定した色がそのまま出るよう、トーンカーブを「なし」にし、ローカル露出・レンズフレア・雲・床を止めます。スプライトは z = 0 の面に並べます。</p>
+  <p><span class="ui">2D</span> を選ぶと、2D のゲーム向けの MainCamera が入ります。カメラは (0, 0, -10) から正面（+Z）を向く平行投影で、<span class="ui">大きさ</span> 5.4・背景は単色です。1 単位 100 ピクセルの画像が、1920×1080 の画面に等倍で映ります。見た目は指定した色がそのまま出るよう、トーンカーブを「なし」にし、ローカル露出・レンズフレア・雲・床を止めます。スプライトは z = 0 の面に並べます。開くとエディタ視点は <a href="#viewport-2d">2D 表示</a> で始まります。</p>
   <p>名前に <code>\ / : * ? " &lt; &gt; |</code> と、先頭の <code>_</code> は使えません。シーンの名前は <code>Scene::ChangeScene("名前")</code> でそのまま使うので、英数字にしておくと扱いやすくなります。</p>
 
   <h2 id="scenes-save">保存する</h2>
@@ -3164,6 +3185,8 @@ kbd {
       <tr><td class="nowrap"><kbd>Shift</kbd>+中ボタンドラッグ</td><td>パン</td></tr>
       <tr><td class="nowrap">ホイール</td><td>前後</td></tr>
       <tr><td class="nowrap"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> ・ <kbd>Q</kbd><kbd>E</kbd></td><td>移動 ・ 下／上（<kbd>Shift</kbd> で 4 倍速）</td></tr>
+      <tr><td class="nowrap">中ボタンドラッグ（2D 表示）</td><td>移動（<a href="#viewport-2d">2D 表示</a>）</td></tr>
+      <tr><td class="nowrap">ホイール（2D 表示）</td><td>カーソルの位置を中心に拡大・縮小</td></tr>
     </tbody>
   </table>
   </div>
@@ -7548,6 +7571,17 @@ python Tools/OkinawaBeach/bake_player_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-15-0">v0.15.0 <span class="dim">（2026-10-18）</span></h3>
+  <p>エディタで 2D の空間を見回し、スプライトを置けるようにした版です（<a href="#viewport-2d">2D 表示</a>）。</p>
+  <ul>
+    <li><strong>2D 表示</strong>：ツールバーの <span class="ui">2D</span> で、エディタ視点を XY 面の正面からの平行投影にします。中ボタンのドラッグで移動、ホイールでカーソルの位置を中心に拡大・縮小し、回転はしません。背景はゲーム視点のカメラの単色（空のカメラなら灰色）で塗ります。2D 表示かどうかと位置・大きさは、エディタ視点と一緒にシーンごとに保存されます。</li>
+    <li><strong>XY 面のグリッド</strong>：2D 表示のときは、グリッドを XY 面（z = 0）に出します。縦の線は Y 軸の色です。</li>
+    <li><strong>スプライトを作る</strong>：<span class="ui">GameObject<span class="arrow">▸</span>2D<span class="arrow">▸</span>スプライト</span> で、1 単位の白い四角のスプライトを作ります。Project のテクスチャを Game ビューへドラッグすると、その画像のスプライトが落とした位置（z = 0 の面）にできます。</li>
+    <li>エディタ視点を保存していないシーンは、MainCamera が平行投影なら 2D 表示で始まります。</li>
+    <li>2D 表示で <kbd>F</kbd> を押すと、選んだオブジェクトを画面の真ん中に映します。スプライトは板の大きさに合わせて寄ります（3D でも同じ）。</li>
+    <li>平行投影で覗いているとき、モデルやプレハブがドロップした位置ではなく画面の真ん中に置かれていたのを直しました。</li>
+  </ul>
 
   <h3 id="changelog-v0-14-0">v0.14.0 <span class="dim">（2026-10-18）</span></h3>
   <p>スプライトを 3D と同じワールドに置く板にし、2D のゲームを平行投影のカメラで作れるようにした版です（<a href="#api-SpriteRenderer">スプライト描画</a>・<a href="#api-Camera">カメラ</a>）。スプライト専用の 2D カメラは無くなり、スプライトもほかの物と同じカメラで映ります。</p>
