@@ -7,6 +7,7 @@
 #include "Graphics/RHI/SwapChain/SwapChain.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/Render/Render.h"
+#include "Editor/Camera/EditorCameraInput.h"
 #include "Editor/Scene/SceneDebugEditor.h"
 #include "Editor/ImGui/GameDebugUI.h"
 #include "WinApp/WinApp.h"
@@ -338,9 +339,10 @@ namespace CoreEngine
             const ImVec2 imageSize(imageMax.x - imageMin.x, imageMax.y - imageMin.y);
             sceneDebugEditor->AcceptGameViewportModelDrop(imageMin, imageSize);
             const bool isImageHovered = ImGui::IsItemHovered();
-            // UI の当たり判定へ、ゲーム画像が画面上のどこにあるかを教える
+            // UI の当たり判定とカメラ操作へ、ゲーム画像が画面上のどこにあるかを教える
             UIPointer::Get().SetViewRect({ imageMin.x, imageMin.y },
                                          { imageSize.x, imageSize.y }, isImageHovered);
+            EditorCameraInput::SetViewportRect({ imageMin.x, imageMin.y }, { imageSize.x, imageSize.y });
             sceneDebugEditor->UpdateGameViewportInteraction(
                 imageMin,
                 imageSize,

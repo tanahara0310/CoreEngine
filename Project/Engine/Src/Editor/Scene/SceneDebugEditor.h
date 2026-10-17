@@ -122,6 +122,20 @@ namespace CoreEngine
         /// @brief パーティクルのオブジェクトを Game ビューの中央の地面に作って選ぶ（Undo に積む）
         void CreateParticleObject(ObjectEditing::ParticleKind kind);
 
+        /// @brief 白い四角のスプライトを Game ビューの中央の z = 0 に作って選ぶ（Undo に積む）
+        void CreateSpriteObject();
+
+        /// @brief テクスチャを貼ったスプライトを作って選ぶ（Undo に積む）
+        /// @param textureFileName テクスチャのファイル名かアセットのパス（例: "player.png"）
+        /// @param normalizedDropPos Gameビュー内の位置（0〜1）。nullptr なら中央
+        void SpawnSpriteFromTexture(const std::string& textureFileName, const Vector2* normalizedDropPos = nullptr);
+
+        /// @brief エディタ視点が 2D 表示か
+        bool IsView2D() const;
+
+        /// @brief エディタ視点の 2D 表示を切り替える（入るときはエディタ視点で覗く）
+        void SetView2D(bool enabled);
+
         /// @brief プレハブだけを開いて直すモードに入る（再生中は入らない）
         /// @return 開いたら true
         bool OpenPrefabMode(const AssetInfo& prefab);
@@ -172,7 +186,7 @@ namespace CoreEngine
             const ImVec2& viewportSize,
             bool isViewportHovered);
 
-        /// @brief Gameビューへのモデル・プレハブのドロップを処理する
+        /// @brief Gameビューへのモデル・プレハブ・テクスチャのドロップを処理する
         /// @return ドロップを受理した場合 true
         bool AcceptGameViewportModelDrop(const ImVec2& viewportPos, const ImVec2& viewportSize);
 
@@ -186,6 +200,11 @@ namespace CoreEngine
         /// @brief Gameビュー上のドロップ位置から、置く場所（y = 0 の地面との交点）を求める
         /// @param normalizedDropPos Gameビュー内の位置（0〜1）。nullptr なら中央
         Vector3 ComputeDropPosition(const Vector2* normalizedDropPos) const;
+
+        /// @brief Gameビュー上の位置から、スプライトを置く場所（z = 0 の面との交点）を求める
+        /// @details 面と交わらない向きのときは ComputeDropPosition と同じ場所にする。
+        /// @param normalizedDropPos Gameビュー内の位置（0〜1）。nullptr なら中央
+        Vector3 ComputeSpriteDropPosition(const Vector2* normalizedDropPos) const;
 
         /// @brief オブジェクトの作成・複製・削除に渡す文脈（削除の前に選択を外す）
         ObjectEditing::Context MakeObjectEditingContext();

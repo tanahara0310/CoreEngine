@@ -17,6 +17,12 @@ namespace CoreEngine
         constexpr int kWheelThreshold = 120;   // DirectInput のホイール1クリック分
         constexpr int kMaxAccumulated = 1200;  // 10ノッチ分
         constexpr int kMaxStepsPerFrame = 3;
+
+        // ===== 2D 表示 =====
+        constexpr float kView2DDistance = 100.0f;        // XY 面からカメラまでの距離（-Z 側）
+        constexpr float kView2DZoomStep = 1.15f;         // ホイール 1 ノッチで変わる大きさの倍率
+        constexpr float kMinOrthographicSize = 0.01f;
+        constexpr float kMaxOrthographicSize = 100000.0f;
     }
 
     Vector3 OrbitFlyController::ComputeEyePosition() const
@@ -31,6 +37,19 @@ namespace CoreEngine
 
     void OrbitFlyController::ApplyTo(Camera& camera) const
     {
+        if (view2D_.enabled) {
+            // XY 面の手前（-Z）から +Z を向き、平行投影で映す
+            camera.SetTranslate({ view2D_.center.x, view2D_.center.y, -kView2DDistance });
+            camera.SetScale({ 1.0f, 1.0f, 1.0f });
+            camera.SetRotate({ 0.0f, 0.0f, 0.0f });
+
+            CameraParameters params = camera.GetParameters();
+            params.projectionType = CameraProjectionType::Orthographic;
+            params.orthographicSize = view2D_.orthographicSize;
+            camera.SetParameters(params);
+            return;
+        }
+
         const OrbitState& s = settings_.smoothMovement ? smooth_ : state_;
 
         camera.SetTranslate(ComputeEyePosition());
@@ -52,6 +71,8 @@ namespace CoreEngine
             panning_ = false;
             accumulatedWheelDelta_ = 0;
             prevOrbitButton_ = input.orbitButton;
+        } else if (view2D_.enabled) {
+            HandleView2D(input, deltaTime);
         } else {
             HandleOrbitAndPan(input);
             HandleZoom(input);
@@ -111,21 +132,32 @@ namespace CoreEngine
         }
     }
 
-    void OrbitFlyController::HandleZoom(const CameraInputState& input)
+    int OrbitFlyController::TakeWheelSteps(const CameraInputState& input)
     {
         if (input.wheelDelta == 0) {
-            return;
+            return 0;
         }
 
         accumulatedWheelDelta_ = std::clamp(
             accumulatedWheelDelta_ + input.wheelDelta, -kMaxAccumulated, kMaxAccumulated);
 
         if (std::abs(accumulatedWheelDelta_) < kWheelThreshold) {
-            return;
+            return 0;
         }
 
-        int wheelSteps = accumulatedWheelDelta_ / kWheelThreshold;
-        wheelSteps = std::clamp(wheelSteps, -kMaxStepsPerFrame, kMaxStepsPerFrame);
+        const int wheelSteps = std::clamp(accumulatedWheelDelta_ / kWheelThreshold, -kMaxStepsPerFrame, kMaxStepsPerFrame);
+
+        // 持ち越しで連続ジャンプしないよう取り出したらリセット
+        accumulatedWheelDelta_ = 0;
+        return wheelSteps;
+    }
+
+    void OrbitFlyController::HandleZoom(const CameraInputState& input)
+    {
+        const int wheelSteps = TakeWheelSteps(input);
+        if (wheelSteps == 0) {
+            return;
+        }
 
         // distance を変えず target ごと前後させる。distance 比例のステップだと
         // 寄ると minDistance で頭打ち、遠ざかるとステップが際限なく大きくなる。
@@ -137,9 +169,61 @@ namespace CoreEngine
         };
         state_.target += forward * dolly;
         ClampTargetToWorldBounds();
+    }
 
-        // 持ち越しで連続ジャンプしないよう処理後はリセット
-        accumulatedWheelDelta_ = 0;
+    void OrbitFlyController::HandleView2D(const CameraInputState& input, float deltaTime)
+    {
+        // 中ドラッグは Shift の有無にかかわらず移動にする（回転はしない）
+        const bool dragEdge = input.orbitButton && !prevOrbitButton_;
+        prevOrbitButton_ = input.orbitButton;
+        if (dragEdge) {
+            panning_ = true;
+            orbiting_ = false;
+        }
+        if (!input.orbitButton) {
+            panning_ = false;
+        }
+
+        const bool hasViewport = input.viewportSize.x > 0.0f && input.viewportSize.y > 0.0f;
+
+        // 1 ピクセルが映すワールドの長さ。表示の大きさが分からないときは 3D のパン感度を使う
+        const float unitsPerPixel = hasViewport
+            ? view2D_.orthographicSize * 2.0f / input.viewportSize.y
+            : settings_.panSensitivity;
+
+        if (panning_) {
+            // つかんだ点がカーソルに付いてくるよう、カーソルと逆へ動かす
+            view2D_.center.x -= input.mouseDelta.x * unitsPerPixel;
+            view2D_.center.y += input.mouseDelta.y * unitsPerPixel;
+        }
+
+        // ホイールは大きさを変える。カーソルの下に映っている点は動かさない
+        if (const int wheelSteps = TakeWheelSteps(input); wheelSteps != 0) {
+            const float oldSize = view2D_.orthographicSize;
+            const float newSize = std::clamp(oldSize / std::powf(kView2DZoomStep, static_cast<float>(wheelSteps)),
+                kMinOrthographicSize, kMaxOrthographicSize);
+            if (hasViewport) {
+                const float aspect = input.viewportSize.x / input.viewportSize.y;
+                view2D_.center.x += input.cursorNdc.x * (oldSize - newSize) * aspect;
+                view2D_.center.y += input.cursorNdc.y * (oldSize - newSize);
+            }
+            view2D_.orthographicSize = newSize;
+        }
+
+        // 移動キーは XY 面の上下左右
+        Vector2 move = { 0.0f, 0.0f };
+        if (input.forward || input.up)  move.y += 1.0f;
+        if (input.back || input.down)   move.y -= 1.0f;
+        if (input.right)                move.x += 1.0f;
+        if (input.left)                 move.x -= 1.0f;
+        if (move.x != 0.0f || move.y != 0.0f) {
+            const float length = std::sqrt(move.x * move.x + move.y * move.y);
+            const float speed = settings_.flySpeed * (input.boost ? settings_.flySpeedBoost : 1.0f) * deltaTime;
+            view2D_.center.x += move.x / length * speed;
+            view2D_.center.y += move.y / length * speed;
+        }
+
+        ClampView2D();
     }
 
     void OrbitFlyController::HandleFlyMove(const CameraInputState& input, float deltaTime)
@@ -194,9 +278,56 @@ namespace CoreEngine
     {
         state_ = OrbitState{};
         SyncSmoothToState();
+
+        // 2D 表示かどうかは保ったまま、中心と大きさを戻す
+        const bool enabled2D = view2D_.enabled;
+        view2D_ = View2DState{};
+        view2D_.enabled = enabled2D;
+
         orbiting_ = false;
         panning_ = false;
         accumulatedWheelDelta_ = 0;
+    }
+
+    void OrbitFlyController::SetView2DEnabled(bool enabled, Camera& camera)
+    {
+        if (enabled == view2D_.enabled) {
+            return;
+        }
+
+        if (enabled) {
+            view2D_.center = { state_.target.x, state_.target.y };
+        } else {
+            state_.target.x = view2D_.center.x;
+            state_.target.y = view2D_.center.y;
+            ClampTargetToWorldBounds();
+            SyncSmoothToState();
+
+            CameraParameters params = camera.GetParameters();
+            params.projectionType = CameraProjectionType::Perspective;
+            camera.SetParameters(params);
+        }
+
+        view2D_.enabled = enabled;
+        ClampView2D();
+        orbiting_ = false;
+        panning_ = false;
+        accumulatedWheelDelta_ = 0;
+        ApplyTo(camera);
+    }
+
+    void OrbitFlyController::SetView2DState(const View2DState& state)
+    {
+        view2D_ = state;
+        ClampView2D();
+    }
+
+    void OrbitFlyController::ClampView2D()
+    {
+        const float h = settings_.maxHorizontalExtent;
+        view2D_.center.x = std::clamp(view2D_.center.x, -h, h);
+        view2D_.center.y = std::clamp(view2D_.center.y, -h, h);
+        view2D_.orthographicSize = std::clamp(view2D_.orthographicSize, kMinOrthographicSize, kMaxOrthographicSize);
     }
 
     void OrbitFlyController::SetState(const OrbitState& state)

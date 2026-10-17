@@ -14,6 +14,7 @@ namespace CoreEngine
     /// @brief 軌道 + 自由飛行のカメラコントローラ
     /// @details 注視点(target)・距離・ピッチ・ヨーはカメラの状態ではなくこのコントローラの
     ///          内部状態で、毎フレーム Camera の Transform（位置・回転）へ書き出す。
+    ///          2D 表示の間は平行投影の大きさも書き出す。
     ///          入力は CameraInputState 経由でのみ受け取り、ImGui / InputManager には依存しない。
     class OrbitFlyController final : public ICameraController {
     public:
@@ -54,6 +55,16 @@ namespace CoreEngine
             float yaw = std::numbers::pi_v<float>;
 
             bool operator==(const OrbitState&) const = default;
+        };
+
+        /// @brief 2D 表示の状態（保存・復元の対象）
+        /// @details 有効な間は XY 面を手前（-Z）から平行投影で映す。3D の軌道状態とは別に持つ。
+        struct View2DState {
+            bool enabled = false;
+            Vector2 center = { 0.0f, 0.0f };   ///< 画面の中心に映す XY
+            float orthographicSize = 5.0f;     ///< 画面の高さの半分（ワールドの長さ）
+
+            bool operator==(const View2DState&) const = default;
         };
 
         /// @brief 視点プリセット
@@ -98,6 +109,20 @@ namespace CoreEngine
         /// @brief 操作中かどうか
         bool IsControlling() const { return orbiting_ || panning_; }
 
+        // ===== 2D 表示 =====
+        /// @brief 2D 表示を切り替える
+        /// @details 入るときは注視点の XY を中心にする。出るときは 2D で見ていた XY へ注視点を移し、
+        ///          カメラを透視投影へ戻す。
+        void SetView2DEnabled(bool enabled, Camera& camera);
+
+        /// @brief 2D 表示か
+        bool IsView2D() const { return view2D_.enabled; }
+
+        const View2DState& GetView2DState() const { return view2D_; }
+
+        /// @brief 2D 表示の状態をまとめて設定する（カメラの投影は次の ApplyTo で変わる）
+        void SetView2DState(const View2DState& state);
+
     private:
         /// @brief 軌道状態から視点ワールド座標を求める
         Vector3 ComputeEyePosition() const;
@@ -108,14 +133,22 @@ namespace CoreEngine
         /// @brief スムーズ移動用の値を実値へ同期する
         void SyncSmoothToState();
 
+        /// @brief 貯めたホイール量からこのフレームのノッチ数を取り出す（足りなければ 0）
+        int TakeWheelSteps(const CameraInputState& input);
+
         void HandleOrbitAndPan(const CameraInputState& input);
         void HandleZoom(const CameraInputState& input);
         void HandleFlyMove(const CameraInputState& input, float deltaTime);
+        void HandleView2D(const CameraInputState& input, float deltaTime);
         void UpdateSmoothMovement();
+
+        /// @brief 2D 表示の中心と大きさを範囲へクランプする
+        void ClampView2D();
 
     private:
         Settings settings_{};
         OrbitState state_{};
+        View2DState view2D_{};
 
         // スムーズ移動用（表示に使う実効値）
         OrbitState smooth_{};

@@ -9,6 +9,7 @@
 #include "Input/InputQuery.h"
 #include "Input/MouseInput.h"
 
+#include <algorithm>
 #include <dinput.h>
 
 namespace CoreEngine
@@ -91,6 +92,16 @@ namespace CoreEngine
 
         state.wheelDelta = input.GetWheelDelta();
 
+        // 映像の大きさと、その中のカーソル位置（中央 0・右上 (1, 1)）
+        if (viewportSize_.x > 0.0f && viewportSize_.y > 0.0f) {
+            const ImVec2 mouse = ImGui::GetIO().MousePos;
+            state.viewportSize = viewportSize_;
+            state.cursorNdc = {
+                std::clamp((mouse.x - viewportOrigin_.x) / viewportSize_.x * 2.0f - 1.0f, -1.0f, 1.0f),
+                std::clamp(1.0f - (mouse.y - viewportOrigin_.y) / viewportSize_.y * 2.0f, -1.0f, 1.0f)
+            };
+        }
+
         // ===== キーボード =====
         // テキスト入力中は ImGui へ譲る（マウス操作は従来どおり奪わない）
         if (!ImGui::GetIO().WantCaptureKeyboard) {
@@ -104,6 +115,12 @@ namespace CoreEngine
         }
 
         return state;
+    }
+
+    void EditorCameraInput::SetViewportRect(const Vector2& origin, const Vector2& size)
+    {
+        viewportOrigin_ = origin;
+        viewportSize_ = size;
     }
 }
 

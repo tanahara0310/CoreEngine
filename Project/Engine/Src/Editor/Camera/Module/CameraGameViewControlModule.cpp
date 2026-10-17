@@ -105,8 +105,10 @@ namespace CoreEngine
                 orbit->SetSettings(settings);
             }
 
-            UI::Hint("中ドラッグ = 回転  Shift+中ドラッグ = パン  ホイール = ズーム\n"
-                     "W/A/S/D = 移動  Q/E = 下上  Shift = 加速");
+            UI::Hint(orbit->IsView2D()
+                ? "2D 表示：中ドラッグ = 移動  ホイール = 拡大・縮小（カーソルの位置を中心に）"
+                : "中ドラッグ = 回転  Shift+中ドラッグ = パン  ホイール = ズーム\n"
+                  "W/A/S/D = 移動  Q/E = 下上  Shift = 加速");
         }
 
         // ===== 現在のカメラ状態 =====

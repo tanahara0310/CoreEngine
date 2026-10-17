@@ -133,18 +133,21 @@ void GridRenderer::DrawGrid()
     constants.viewProjection = MathCore::Matrix::Translation(cameraPosition) * viewProjection;
     constants.invViewProjection =
         MathCore::Matrix::Inverse(viewProjection) * MathCore::Matrix::Translation(-cameraPosition);
+    // XY 面のときは面を奥（+Z）へわずかにずらし、縦の線を Y 軸の色にする
+    const bool planeXY = plane_ == GridPlane::XY;
     constants.cameraPosition = cameraPosition;
     constants.planeY = kGridPlaneYOffset;
     constants.gridColor = normalColor_;
     constants.baseSpacing = baseSpacing_;
     constants.xAxisColor = xAxisColor_;
     constants.brightness = brightness_;
-    constants.zAxisColor = zAxisColor_;
+    constants.zAxisColor = planeXY ? yAxisColor_ : zAxisColor_;
     constants.minPixelsPerCell = minPixelsPerCell_;
     constants.maxLevel = kMaxLevel;
     constants.lineWidthPixels = lineWidthPixels_;
     constants.axisAlpha = kAxisAlpha;
     constants.depthBias = kDepthBias;
+    constants.planeXY = planeXY ? 1.0f : 0.0f;
 
     // Line パスと同様、この実行専用の領域を取る（1 本を使い回すとビューごとに上書きされる）
     const D3D12_GPU_VIRTUAL_ADDRESS address = dxCommon_->GetUploadRing().AllocateConstants(constants);
@@ -159,7 +162,8 @@ void GridRenderer::DrawGrid()
 
 void GridRenderer::SubmitLines(LineRendererPipeline& pipeline, const Camera* camera)
 {
-    if (!visible_ || !camera) {
+    // XY 面に垂直な Z 軸は正面から見ると点になるので出さない
+    if (!visible_ || !camera || plane_ == GridPlane::XY) {
         return;
     }
 

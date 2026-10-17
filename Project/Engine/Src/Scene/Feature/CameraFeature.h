@@ -69,6 +69,9 @@ namespace CoreEngine
         /// @details シーンに候補が無いときは、エンジン既定のカメラへ戻す。
         void ApplyMainCamera();
 
+        /// @brief メインのカメラが平行投影なら、エディタ視点をその構図の 2D 表示にする
+        void StartEditorViewFromMainCamera();
+
         std::unique_ptr<CameraManager> cameraManager_;
 
         // 設定・姿勢を毎フレーム控えるエディタ視点カメラ（所有は cameraManager_）

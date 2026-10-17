@@ -84,8 +84,10 @@ namespace CoreEngine
         SyncSceneCameras(ctx);
 
 #ifdef CORE_EDITOR
-        // 自分のエディタの視点を戻す。控えが無ければ何もしない
-        CameraSceneStateIO::Load(ctx.saveSystem->GetSceneName(), *cameraManager_);
+        // 自分のエディタの視点を戻す。控えが無ければメインのカメラに合わせる
+        if (!CameraSceneStateIO::Load(ctx.saveSystem->GetSceneName(), *cameraManager_)) {
+            StartEditorViewFromMainCamera();
+        }
 #endif
 
         // シーンに置かれたカメラが勝つ（保存ファイルの指定より後に当てる）
@@ -212,6 +214,23 @@ namespace CoreEngine
         if (!cameraManager_->GetGameCamera()) {
             cameraManager_->SetGameCameraName(CameraNames::Game);
         }
+    }
+
+    void CameraFeature::StartEditorViewFromMainCamera()
+    {
+        const Camera* const mainCamera = mainCameraKey_.empty() ? nullptr : cameraManager_->GetCamera(mainCameraKey_);
+        if (!mainCamera || !mainCamera->IsOrthographic() || !sceneCamera_ || !orbitController_) {
+            return;
+        }
+
+        const Vector3 position = mainCamera->GetPosition();
+        OrbitFlyController::View2DState view2D{};
+        view2D.enabled = true;
+        view2D.center = { position.x, position.y };
+        view2D.orthographicSize = mainCamera->GetParameters().orthographicSize;
+        orbitController_->SetView2DState(view2D);
+        orbitController_->ApplyTo(*sceneCamera_);
+        sceneCamera_->UpdateMatrix();
     }
 
     void CameraFeature::Finalize(SceneContext&)

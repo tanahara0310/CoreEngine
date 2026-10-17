@@ -6,6 +6,7 @@
 #include "Editor/Command/EditorCommand.h"
 #include "Editor/Command/EditorCommandStack.h"
 #include "Editor/Scene/EditorSceneAccess.h"
+#include "GameObject/Component/Render/SpriteRendererComponent.h"
 #include "GameObject/Component/Transform/ITransformSource.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "GameObject/GameObject.h"
@@ -381,6 +382,40 @@ namespace CoreEngine::ObjectEditing
         PushCreateCommand(*object, object->GetName() + " を作る");
         Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
             "ObjectEditing: パーティクルのオブジェクト \"{}\" を作りました", object->GetName());
+        return object;
+    }
+
+    GameObject* CreateSprite(const Context& context, const std::string& baseName, const std::string& texturePath,
+                             std::optional<float> pixelsPerUnit, const Vector3& position)
+    {
+        GameObjectManager& manager = *context.manager;
+        const std::string name = HasObjectNamed(manager, baseName) ? MakeCopyName(manager, baseName) : baseName;
+        auto owned = std::make_unique<GameObject>();
+        owned->SetSerializeKey(MakeNewObjectKey(name));
+        owned->SetName(name);
+        GameObject* const object = manager.AddObject(std::move(owned));
+        if (!object) {
+            return nullptr;
+        }
+
+        // エディタが作るオブジェクトのコンポーネントとして、トランスフォームを先頭に付ける
+        {
+            ComponentHost::DataAttachScope dataScope(*object);
+            if (TransformComponent* const transform = object->AddComponent<TransformComponent>()) {
+                transform->SetTranslate(position);
+            }
+            if (SpriteRendererComponent* const sprite = object->AddComponent<SpriteRendererComponent>()) {
+                if (pixelsPerUnit) {
+                    sprite->SetPixelsPerUnit(*pixelsPerUnit);
+                }
+                sprite->SetTexture(texturePath);
+            }
+        }
+        manager.InvalidateReferences();
+
+        PushCreateCommand(*object, object->GetName() + " を作る");
+        Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
+            "ObjectEditing: スプライトのオブジェクト \"{}\" を作りました（{}）", object->GetName(), texturePath);
         return object;
     }
 

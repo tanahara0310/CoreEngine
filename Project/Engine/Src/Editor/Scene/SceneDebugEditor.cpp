@@ -3,6 +3,7 @@
 #ifdef CORE_EDITOR
 
 #include "SceneDebugEditor.h"
+#include "Editor/Scene/ScenePicking.h"
 #include "Editor/Scene/SceneViewTools.h"
 #include "EngineSystem/EngineSystem.h"
 #include "EngineSystem/PlaybackState.h"
@@ -16,6 +17,7 @@
 #include "GameObject/GameObjectManager.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
+#include "GameObject/Component/Render/SpriteRendererComponent.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "GameObject/Component/Transform/ITransformSource.h"
 #include "Scene/Scene.h"
@@ -44,6 +46,10 @@ namespace
     /// @brief 選んだ行へ送るのを続けるフレーム数
     /// @details 一覧の高さが確定するまで待つ。1 フレームだと上限で丸められて届かない。
     constexpr int kScrollFrames = 3;
+
+    /// @brief GameObject メニューから作るスプライトの名前と、貼る白い 1 ピクセルの画像（1 単位の四角になる）
+    constexpr const char* kSpriteObjectName = "Sprite";
+    constexpr const char* kSquareSpriteTexture = "Engine/Assets/Textures/Debug/white1x1.png";
 
     /// @brief トランスフォームとモデルファイルのメッシュ描画を持つ素のオブジェクトを作ってシーンへ登録する
     /// @return 登録できなければ nullptr
@@ -398,6 +404,13 @@ namespace CoreEngine
             const char* droppedFilename = static_cast<const char*>(payload->Data);
             if (droppedFilename && droppedFilename[0] != '\0') {
                 SpawnPrefabFromFile(droppedFilename, &normalizedDropPos);
+                accepted = true;
+            }
+        }
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("TEXTURE_FILE")) {
+            const char* droppedFilename = static_cast<const char*>(payload->Data);
+            if (droppedFilename && droppedFilename[0] != '\0') {
+                SpawnSpriteFromTexture(droppedFilename, &normalizedDropPos);
                 accepted = true;
             }
         }
@@ -909,6 +922,67 @@ namespace CoreEngine
         }
     }
 
+    void SceneDebugEditor::CreateSpriteObject()
+    {
+        if (RefuseInPrefabMode()) {
+            return;
+        }
+        if (!gameObjectManager_) {
+            return;
+        }
+        if (GameObject* const created = ObjectEditing::CreateSprite(MakeObjectEditingContext(),
+                kSpriteObjectName, kSquareSpriteTexture, 1.0f, ComputeSpriteDropPosition(nullptr))) {
+            objectSelector_.SelectObject(created);
+        }
+    }
+
+    void SceneDebugEditor::SpawnSpriteFromTexture(const std::string& textureFileName, const Vector2* normalizedDropPos)
+    {
+        if (RefuseInPrefabMode()) {
+            return;
+        }
+        if (!gameObjectManager_) {
+            return;
+        }
+        const AssetInfo* const info = FindAssetInfo(textureFileName, AssetType::Texture);
+        if (!info) {
+            Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
+                "テクスチャが見つかりません: {}", textureFileName);
+            return;
+        }
+
+        // 名前は画像のファイル名（拡張子なし）。1 単位のピクセル数はスプライト描画の既定のまま
+        const std::string name = Logger::GetInstance().PathToUtf8(info->relativePath.stem());
+        if (GameObject* const created = ObjectEditing::CreateSprite(MakeObjectEditingContext(),
+                name, ToAssetPath(*info), std::nullopt, ComputeSpriteDropPosition(normalizedDropPos))) {
+            objectSelector_.SelectObject(created);
+        }
+    }
+
+    bool SceneDebugEditor::IsView2D() const
+    {
+        const auto* const orbit = cameraManager_
+            ? cameraManager_->GetControllerAs<OrbitFlyController>(CameraNames::Scene) : nullptr;
+        return orbit && orbit->IsView2D();
+    }
+
+    void SceneDebugEditor::SetView2D(bool enabled)
+    {
+        if (!cameraManager_) {
+            return;
+        }
+        auto* const orbit = cameraManager_->GetControllerAs<OrbitFlyController>(CameraNames::Scene);
+        Camera* const sceneCamera = cameraManager_->GetCamera(CameraNames::Scene);
+        if (!orbit || !sceneCamera) {
+            return;
+        }
+        orbit->SetView2DEnabled(enabled, *sceneCamera);
+        sceneCamera->UpdateMatrix();
+        if (enabled) {
+            cameraManager_->SetUseSceneCamera(true);
+        }
+    }
+
     void SceneDebugEditor::CreateUIObject(ObjectEditing::UIElementKind kind)
     {
         if (RefuseInPrefabMode()) {
@@ -1012,6 +1086,24 @@ namespace CoreEngine
                 const Vector3 size = box.GetSize();
                 radius = (std::max)({ size.x, size.y, size.z }) * 0.5f;
             }
+        } else if (const auto* const sprite = selected->GetComponent<SpriteRendererComponent>()) {
+            Vector3 minCorner = sprite->GetWorldCorners()[0];
+            Vector3 maxCorner = minCorner;
+            for (const Vector3& corner : sprite->GetWorldCorners()) {
+                minCorner = { (std::min)(minCorner.x, corner.x), (std::min)(minCorner.y, corner.y), (std::min)(minCorner.z, corner.z) };
+                maxCorner = { (std::max)(maxCorner.x, corner.x), (std::max)(maxCorner.y, corner.y), (std::max)(maxCorner.z, corner.z) };
+            }
+            center = (minCorner + maxCorner) * 0.5f;
+            radius = (std::max)({ maxCorner.x - minCorner.x, maxCorner.y - minCorner.y, maxCorner.z - minCorner.z }) * 0.5f;
+        }
+
+        // 2D 表示は中心を合わせ、画面の高さに大きさの数倍が収まるようにする
+        if (orbit->IsView2D()) {
+            OrbitFlyController::View2DState view2D = orbit->GetView2DState();
+            view2D.center = { center.x, center.y };
+            view2D.orthographicSize = (std::max)(radius * distanceScale, kMinDistance);
+            orbit->SetView2DState(view2D);
+            return;
         }
 
         orbit->SetTarget(center);
@@ -1127,38 +1219,39 @@ namespace CoreEngine
         }
 
         const Vector2 dropPos = normalizedDropPos ? *normalizedDropPos : Vector2{ 0.5f, 0.5f };
-        const Vector2 ndcPos(
-            dropPos.x * 2.0f - 1.0f,
-            1.0f - dropPos.y * 2.0f);
+        const Editor::ScenePicking::Ray pickRay = Editor::ScenePicking::ScreenToRay(dropPos, *camera3D);
+        const Vector3 forward = pickRay.direction;
 
-        const Vector3 nearPoint = MathCore::Coordinate::NormalizedScreenToWorld(
-            ndcPos,
-            0.0f,
-            camera3D->GetViewMatrix(),
-            camera3D->GetProjectionMatrix(),
-            1.0f,
-            1.0f);
-        const Vector3 farPoint = MathCore::Coordinate::NormalizedScreenToWorld(
-            ndcPos,
-            1.0f,
-            camera3D->GetViewMatrix(),
-            camera3D->GetProjectionMatrix(),
-            1.0f,
-            1.0f);
-        const Vector3 forward = CoreEngine::Normalize(farPoint - nearPoint);
-
-        const Geometry::Ray ray{ camera3D->GetPosition(), forward };
+        const Geometry::Ray ray{ pickRay.origin, forward };
         const Geometry::Plane groundPlane{ { 0.0f, 1.0f, 0.0f }, 0.0f };   // y = 0
         Geometry::RayHit hit{};
         if (Geometry::Raycast(ray, groundPlane, &hit)) {
             spawnPosition = hit.point;
         } else {
-            spawnPosition = camera3D->GetPosition() + forward * 5.0f;
+            spawnPosition = pickRay.origin + forward * 5.0f;
             if (spawnPosition.y < 0.5f) {
                 spawnPosition.y = 0.5f;
             }
         }
         return spawnPosition;
+    }
+
+    Vector3 SceneDebugEditor::ComputeSpriteDropPosition(const Vector2* normalizedDropPos) const
+    {
+        const Camera* const camera3D = cameraManager_ ? cameraManager_->GetViewCamera() : nullptr;
+        if (!camera3D) {
+            return { 0.0f, 0.0f, 0.0f };
+        }
+
+        const Vector2 dropPos = normalizedDropPos ? *normalizedDropPos : Vector2{ 0.5f, 0.5f };
+        const Editor::ScenePicking::Ray pickRay = Editor::ScenePicking::ScreenToRay(dropPos, *camera3D);
+        const Geometry::Ray ray{ pickRay.origin, pickRay.direction };
+        const Geometry::Plane spritePlane{ { 0.0f, 0.0f, 1.0f }, 0.0f };   // z = 0
+        Geometry::RayHit hit{};
+        if (Geometry::Raycast(ray, spritePlane, &hit, 0.0f, camera3D->GetParameters().farClip)) {
+            return { hit.point.x, hit.point.y, 0.0f };
+        }
+        return ComputeDropPosition(normalizedDropPos);
     }
 
     void SceneDebugEditor::DrawObjectContextMenu(GameObject& object)

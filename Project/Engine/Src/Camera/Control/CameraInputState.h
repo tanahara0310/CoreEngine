@@ -17,6 +17,12 @@ namespace CoreEngine
         /// @brief ホイールの生の移動量（DirectInput 単位。1ノッチ = 120）
         int wheelDelta = 0;
 
+        /// @brief 映像を表示している範囲の大きさ [ピクセル]（分からなければ 0）
+        Vector2 viewportSize{ 0.0f, 0.0f };
+
+        /// @brief 映像の中のカーソル位置（中央が 0・右上が (1, 1)）
+        Vector2 cursorNdc{ 0.0f, 0.0f };
+
         // ===== ボタン（押下中かどうか） =====
         bool orbitButton = false;  ///< 中ドラッグ（軌道回転）
         bool panButton = false;    ///< Shift + 中ドラッグ（パン）

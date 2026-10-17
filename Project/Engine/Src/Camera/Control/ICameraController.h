@@ -10,7 +10,7 @@ namespace CoreEngine
     class Camera;
 
     /// @brief 「カメラをどう動かすか」だけを担当するコントローラのインターフェース
-    /// @details Update() が触ってよいのは対象カメラの Transform のみ。投影や GPU リソースには触れない。
+    /// @details Update() が触ってよいのは対象カメラの Transform と投影パラメータのみ。GPU リソースには触れない。
     ///          入力は正規化済みの CameraInputState だけを見る。
     /// @note 1 つのカメラに付くコントローラは 1 つ（CameraManager が保証する）。
     class ICameraController {

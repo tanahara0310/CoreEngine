@@ -23,6 +23,9 @@ namespace CoreEngine
         ///          姿勢だけ戻しても次のフレームで消える。軌道状態のほうが正本。
         bool hasOrbitState = false;
         OrbitFlyController::OrbitState orbitState{};
+
+        /// @brief 軌道コントローラの 2D 表示（hasOrbitState のときだけ意味を持つ）
+        OrbitFlyController::View2DState view2D{};
     };
 
     /// @brief シーン 1 つ分のカメラ状態

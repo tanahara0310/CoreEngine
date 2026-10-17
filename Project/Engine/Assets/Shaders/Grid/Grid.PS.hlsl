@@ -1,7 +1,8 @@
 // 無限グリッド（床）のピクセルシェーダー。
 //
 // 商用エンジン / Blender のグリッドと同じ作りで、線をラインプリミティブでは引かない。
-//   1. カメラレイと y = planeY の交点をピクセルごとに求める（カメラ相対座標で解く）
+//   1. カメラレイと格子の面の交点をピクセルごとに求める（カメラ相対座標で解く）。
+//      XY 面のときは y と z を入れ替えた座標で解くので、以降の式は床と同じになる
 //   2. 「線までの距離 ÷ 1 ピクセルの足跡」でカバレッジを出す。線幅が常に約 1px へ
 //      正規化されるので、勝手にアンチエイリアスが掛かる（MSDF テキストと同じ考え方）
 //   3. 段（10 倍ごとの粗さ）はカメラからの距離ではなく足跡の大きさで選ぶ。ミップマップと
@@ -59,10 +60,11 @@ float AxisCoverage(float distanceWorld, float deriv, float widthPixels)
 
 PSOutput main(GridVSOutput input)
 {
-    // ===== カメラレイと床平面の交点（すべてカメラ相対で解く）=====
-    const float3 rayStart = input.nearPoint;
-    const float3 rayEnd = input.farPoint;
-    const float planeYRelative = planeY - cameraPosition.y;
+    // ===== カメラレイと格子の面の交点（すべてカメラ相対・格子の座標で解く）=====
+    const float3 rayStart = ToGridSpace(input.nearPoint);
+    const float3 rayEnd = ToGridSpace(input.farPoint);
+    const float3 cameraGrid = ToGridSpace(cameraPosition);
+    const float planeYRelative = planeY - cameraGrid.y;
     const float slope = rayEnd.y - rayStart.y;
     const float t = (planeYRelative - rayStart.y) / (abs(slope) < 1e-12f ? 1e-12f : slope);
     const float3 hit = lerp(rayStart, rayEnd, t);
@@ -82,7 +84,7 @@ PSOutput main(GridVSOutput input)
     }
 
     // ===== 深度 =====
-    const float4 clipPosition = mul(float4(hit, 1.0f), viewProjection);
+    const float4 clipPosition = mul(float4(ToGridSpace(hit), 1.0f), viewProjection);
     if (clipPosition.w <= 0.0f) {
         discard;
     }
@@ -111,9 +113,9 @@ PSOutput main(GridVSOutput input)
     const float2 derivFine = deriv / spacingFine;
 
     const float coverageFine = GridCoverage(
-        GridCellUV(hit.xz, cameraPosition.xz, spacingFine), derivFine, lineWidthPixels);
+        GridCellUV(hit.xz, cameraGrid.xz, spacingFine), derivFine, lineWidthPixels);
     const float coverageCoarse = GridCoverage(
-        GridCellUV(hit.xz, cameraPosition.xz, spacingFine * 10.0f), derivFine * 0.1f, lineWidthPixels);
+        GridCellUV(hit.xz, cameraGrid.xz, spacingFine * 10.0f), derivFine * 0.1f, lineWidthPixels);
 
     // 細かい段は次の段へ繰り上がるにつれて消し、粗い段は出したままにする。
     // 粗い段の線は細かい段の 10 本ごとに重なるが、max なので二重に濃くはならない
@@ -124,7 +126,7 @@ PSOutput main(GridVSOutput input)
     float alpha = gridCoverage;
 
     // 軸はワールド原点を通るので、カメラ相対の交点にカメラ位置を戻して距離を測る
-    const float2 axisDistance = abs(hit.xz + cameraPosition.xz);
+    const float2 axisDistance = abs(hit.xz + cameraGrid.xz);
 
     const float xAxisCoverage = AxisCoverage(axisDistance.y, deriv.y, lineWidthPixels); // z = 0 を走る線
     color = lerp(color, xAxisColor, xAxisCoverage);
