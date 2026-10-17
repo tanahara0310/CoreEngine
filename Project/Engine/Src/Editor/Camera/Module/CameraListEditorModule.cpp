@@ -41,13 +41,10 @@ namespace CoreEngine
         UI::Spacing();
 
         // ===== 役割の割り当て =====
-        ImGui::TextColored(ImVec4(0.2f, 0.8f, 1.0f, 1.0f), "3Dカメラの役割");
+        ImGui::TextColored(ImVec4(0.2f, 0.8f, 1.0f, 1.0f), "カメラの役割");
         UI::Separator();
-        for (const auto& [name, camera] : allCameras) {
-            if (camera->GetCameraType() != CameraType::Camera3D) {
-                continue;
-            }
-
+        for (const auto& entry : allCameras) {
+            const std::string& name = entry.first;
             ImGui::PushID(name.c_str());
             ImGui::Text("%s", cameraManager->GetDisplayName(name).c_str());
             UI::SameLine();
@@ -57,22 +54,6 @@ namespace CoreEngine
             UI::SameLine();
             if (ImGui::SmallButton("ゲーム視点にする")) {
                 cameraManager->SetGameCameraName(name);
-            }
-            ImGui::PopID();
-        }
-
-        UI::Spacing();
-        ImGui::TextColored(ImVec4(0.2f, 0.8f, 1.0f, 1.0f), "2Dカメラ");
-        UI::Separator();
-        for (const auto& [name, camera] : allCameras) {
-            if (camera->GetCameraType() != CameraType::Camera2D) {
-                continue;
-            }
-
-            bool isActive = (context.cameraManager->GetActiveCameraName(CameraType::Camera2D) == name);
-            ImGui::PushID(name.c_str());
-            if (ImGui::RadioButton(cameraManager->GetDisplayName(name).c_str(), isActive)) {
-                context.cameraManager->SetActiveCamera(name, CameraType::Camera2D);
             }
             ImGui::PopID();
         }

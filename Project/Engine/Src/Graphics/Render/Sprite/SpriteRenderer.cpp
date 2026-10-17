@@ -3,7 +3,6 @@
 #include "Camera/Camera.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
-#include "WinApp/WinApp.h"
 #include <cassert>
 
 
@@ -21,12 +20,11 @@ namespace CoreEngine
         reflectionBuilder_->Initialize(shaderCompiler_->GetDxcUtils());
         reflectionData_ = reflectionBuilder_->BuildFromShaders(vertexShaderBlob.Get(), pixelShaderBlob.Get(), "SpriteRenderer");
         
-        // シンプルな設定を使用
+        // 線形補間とドット絵向けの 2 つを持ち、どちらで読むかはマテリアルが決める
         RootSignatureConfig config;
-        
-        // スプライト用サンプラー設定（ポイントフィルタリング＋クランプ）
         config.ConfigureSampler("gSampler", SamplerConfig::Linear());
-        
+        config.ConfigureSampler("gPointSampler", SamplerConfig::Point());
+
         // RootSignatureを構築
         auto buildResult = rootSignatureMg_->Build(device, *reflectionData_, config);
         
@@ -38,7 +36,7 @@ namespace CoreEngine
             .SetDebugName("Sprite")
             .SetInputLayoutFromReflection(*reflectionData_)
             .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
-            .SetDepthStencil(false, false)
+            .SetDepthStencil(true, false)
             .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
             .BuildAllBlendModes(device, vertexShaderBlob.Get(), pixelShaderBlob.Get(), rootSignatureMg_->GetRootSignature());
 
@@ -47,6 +45,7 @@ namespace CoreEngine
         }
 
         pipelineState_ = psoMg_->GetPipelineState(BlendMode::kBlendModeNormal);
+        currentBlendMode_ = BlendMode::kBlendModeNormal;
     }
 
     void SpriteRenderer::Initialize(ID3D12Device* /*device*/) {
@@ -65,26 +64,9 @@ namespace CoreEngine
 
         // パイプラインをデバイスで初期化
         InitializePipeline(dxCommon->GetDevice());
-
-        // フレームごとに変換行列の定数バッファを 1 本作り、マップしたままにする
-        for (UINT frameIndex = 0; frameIndex < kFrameCount; ++frameIndex) {
-            transformBuffers_[frameIndex] = ResourceFactory::CreateBufferResource(
-                dxCommon_->GetDevice(), kTransformStride * kMaxSpriteCount);
-            transformBuffers_[frameIndex]->Map(0, nullptr, reinterpret_cast<void**>(&transformMapped_[frameIndex]));
-        }
     }
 
     void SpriteRenderer::BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMode blendMode) {
-        // per-frame リソースの添字は FrameSync のスロット番号を使う
-        // （スワップチェーンのインデックスは ResizeBuffers で 0 に戻るため使わない）
-        UINT frameIndex = dxCommon_->Frame().FrameIndex();
-
-        // フレームが切り替わったときのみバッファインデックスをリセット
-        if (frameIndex != currentFrameIndex_) {
-            currentFrameIndex_ = frameIndex;
-            currentBufferIndex_ = 0;
-        }
-
         if (blendMode != currentBlendMode_) {
             currentBlendMode_ = blendMode;
             pipelineState_ = psoMg_->GetPipelineState(blendMode);
@@ -100,62 +82,7 @@ namespace CoreEngine
     }
 
     void SpriteRenderer::SetCamera(const Camera* camera) {
-        // スプライトはカメラ不要（2D描画）
+        // 行列は描くたびにビューから取る
         (void)camera;
-    }
-
-    size_t SpriteRenderer::GetAvailableConstantBuffer() {
-        // スプライト数の上限チェック
-        if (currentBufferIndex_ >= kMaxSpriteCount) {
-#ifdef _DEBUG
-            OutputDebugStringA("ERROR: Sprite count exceeded maximum! Increase kMaxSpriteCount or reduce sprite count.\n");
-#endif
-            // 上限に達した場合は最後のバッファを再利用（クラッシュ防止）
-            return kMaxSpriteCount - 1;
-        }
-
-        size_t bufferIndex = currentBufferIndex_;
-        currentBufferIndex_++;
-        return bufferIndex;
-    }
-
-    Matrix4x4 SpriteRenderer::CalculateWVPMatrix(const Vector3& position, const Vector3& scale, const Vector3& rotation) const {
-        // ワールド変換
-        Matrix4x4 worldMatrix = MathCore::Matrix::MakeAffine(scale, rotation, position);
-
-        // ビュー変換（2Dなので単位行列）
-        Matrix4x4 viewMatrix = MathCore::Matrix::Identity();
-
-        // 射影変換（正射影）- スプライト用座標系
-        // 左上原点(0,0)から右下(width,height)の座標系。
-        // ウィンドウサイズではなく基準解像度に固定する（リサイズで比率が崩れないように）
-        Matrix4x4 projectionMatrix = MathCore::Rendering::Orthographic(
-            0.0f, 0.0f,
-            static_cast<float>(WinApp::kReferenceWidth),
-            static_cast<float>(WinApp::kReferenceHeight),
-            0.0f, 100.0f);
-
-        return worldMatrix * viewMatrix * projectionMatrix;
-    }
-
-    Matrix4x4 SpriteRenderer::CalculateWVPMatrix(const Vector3& position, const Vector3& scale, const Vector3& rotation, const Camera* camera) const {
-        // ワールド変換
-        Matrix4x4 worldMatrix = MathCore::Matrix::MakeAffine(scale, rotation, position);
-
-        if (camera) {
-            // カメラのビュー・プロジェクション行列を使用
-            Matrix4x4 viewMatrix = camera->GetViewMatrix();
-            Matrix4x4 projectionMatrix = camera->GetProjectionMatrix();
-            return worldMatrix * viewMatrix * projectionMatrix;
-        } else {
-            // カメラがない場合は従来の方式（スクリーン座標固定・基準解像度）
-            Matrix4x4 viewMatrix = MathCore::Matrix::Identity();
-            Matrix4x4 projectionMatrix = MathCore::Rendering::Orthographic(
-                0.0f, 0.0f,
-                static_cast<float>(WinApp::kReferenceWidth),
-                static_cast<float>(WinApp::kReferenceHeight),
-                0.0f, 100.0f);
-            return worldMatrix * viewMatrix * projectionMatrix;
-        }
     }
 }

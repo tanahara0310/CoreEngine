@@ -225,7 +225,7 @@ namespace CoreEngine
             // 位置関係で確かめられるようにするため。
             Vector3 origin{ 0.0f, 0.0f, 0.0f };
             if (context.cameraManager) {
-                if (Camera* camera = context.cameraManager->GetActiveCamera(CameraType::Camera3D)) {
+                if (Camera* camera = context.cameraManager->GetViewCamera()) {
                     origin = camera->GetTranslate() + camera->GetForward() * 10.0f;
                 }
             }

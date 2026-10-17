@@ -18,10 +18,35 @@
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Utility/Logger/Logger.h"
 #include "Graphics/Render/RenderGraph.h"
+#include "Camera/Camera.h"
 #include "Math/MathCore.h"
+
+#include <cmath>
 
 namespace CoreEngine
 {
+    namespace
+    {
+        /// @brief 空を描くときに背景の画素へ先に書いておく色（空がその上を塗る）
+        constexpr Vector4 kSkyUnderlayColor = { 0.1f, 0.25f, 0.5f, 1.0f };
+
+        /// @brief sRGB の 1 成分をリニアへ直す
+        float SrgbChannelToLinear(float value)
+        {
+            return (value <= 0.04045f) ? value / 12.92f : std::pow((value + 0.055f) / 1.055f, 2.4f);
+        }
+
+        /// @brief ビューのカメラから、背景の画素に書く色（リニア）を決める
+        Vector4 ResolveBackgroundColor(const Camera* camera)
+        {
+            if (!camera || camera->GetBackground().type != CameraBackgroundType::SolidColor) {
+                return kSkyUnderlayColor;
+            }
+            const Vector4& color = camera->GetBackground().color;
+            return { SrgbChannelToLinear(color.x), SrgbChannelToLinear(color.y), SrgbChannelToLinear(color.z), 1.0f };
+        }
+    }
+
     void DeferredLightingPass::DeclareResources(RenderGraphBuilder& builder, const RenderContext& context)
     {
         // GBuffer / SSAO / RTShadow / SceneDepth を読み、SceneColor を生成する。
@@ -80,12 +105,12 @@ namespace CoreEngine
             }
         }
 
-        // ===== 深度復元用 View*Projection 逆行列（ビューごとに毎回設定） =====
+        // ===== ビューごとの定数（深度復元の逆行列・背景色）を毎回設定 =====
         // 実行中のビューの ViewInfo から取る。逆行列は ViewInfo 構築時に 1 回だけ計算済み。
         if (context.frameViews) {
             const ViewInfo& view = context.frameViews->Get(context.viewSettings.viewType);
             if (view.isValid) {
-                deferredLighting->SetDepthReconstruction(view.invViewProjection);
+                deferredLighting->SetViewParams(view.invViewProjection, ResolveBackgroundColor(view.camera));
             }
         }
 

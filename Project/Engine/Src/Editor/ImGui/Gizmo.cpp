@@ -57,9 +57,7 @@ namespace CoreEngine
             break;
         }
 
-        // 具象クラスではなく `ITransformSource` で引く。実体が WorldTransform でも
-        // EulerTransform でも同じ経路で通るので、スプライト等でもギズモが効く。
-        // トランスフォームを持たないオブジェクト（デバッグ線など）は対象外。
+        // トランスフォームを持たないオブジェクト（デバッグ線など）は対象外
         auto* source = object->GetComponent<ITransformSource>();
         if (!source) return false;
 
@@ -67,7 +65,7 @@ namespace CoreEngine
         Matrix4x4 projectionMatrix = camera->GetProjectionMatrix();
 
         // ワールド行列は、階層（親）を持ちうる TransformComponent があればそれを使う。
-        // 無い場合（EulerTransformComponent）は SRT から組み立てる。
+        // 無い場合は SRT から組み立てる。
         Matrix4x4 worldMatrix;
         if (auto* transformComponent = object->GetComponent<TransformComponent>()) {
             worldMatrix = transformComponent->Get().GetWorldMatrix();
@@ -77,8 +75,8 @@ namespace CoreEngine
         }
 
         // ImGuizmoで操作
-        ImGuizmo::SetOrthographic(false);
-        
+        ImGuizmo::SetOrthographic(camera->IsOrthographic());
+
         bool changed = ImGuizmo::Manipulate(
             &viewMatrix.m[0][0],
             &projectionMatrix.m[0][0],
@@ -131,7 +129,7 @@ namespace CoreEngine
         Matrix4x4 worldMatrix = MathCore::Matrix::MakeAffine(
             Vector3{ 1.0f, 1.0f, 1.0f }, noRotation, position);
 
-        ImGuizmo::SetOrthographic(false);
+        ImGuizmo::SetOrthographic(camera->IsOrthographic());
 
         const bool changed = ImGuizmo::Manipulate(
             &viewMatrix.m[0][0],
@@ -146,82 +144,6 @@ namespace CoreEngine
             ImGuizmo::DecomposeMatrixToComponents(
                 &worldMatrix.m[0][0], &translation.x, &rotationDegrees.x, &scale.x);
             position = translation;
-        }
-
-        return changed;
-    }
-
-    bool Gizmo::Manipulate2D(GameObject* object, const Camera* camera, Mode mode)
-    {
-        ITransformSource* source = object ? object->GetComponent<ITransformSource>() : nullptr;
-        if (!source || !camera) {
-            return false;
-        }
-
-        // ギズモの操作タイプを設定（2Dなので回転はZ軸のみ）
-        ImGuizmo::OPERATION operation;
-        switch (mode) {
-        case Mode::Translate:
-            operation = ImGuizmo::TRANSLATE_X | ImGuizmo::TRANSLATE_Y;  // X,Y軸のみ
-            break;
-        case Mode::Rotate:
-            operation = ImGuizmo::ROTATE_Z;  // Z軸回転のみ
-            break;
-        case Mode::Scale:
-            operation = ImGuizmo::SCALE_X | ImGuizmo::SCALE_Y;  // X,Yスケールのみ
-            break;
-        default:
-            operation = ImGuizmo::TRANSLATE_X | ImGuizmo::TRANSLATE_Y;
-            break;
-        }
-
-        // カメラのビュー行列とプロジェクション行列を取得
-        Matrix4x4 viewMatrix = camera->GetViewMatrix();
-        Matrix4x4 projectionMatrix = camera->GetProjectionMatrix();
-
-        // スプライトのトランスフォームを取得
-        const Vector3 spriteTranslate = source->GetTranslate();
-        const Vector3 spriteRotate = source->GetRotate();
-        const Vector3 spriteScale = source->GetScale();
-
-        // 2D用ワールド行列を作成（Z座標は0で固定）
-        Matrix4x4 worldMatrix = MathCore::Matrix::MakeAffine(
-            spriteScale,
-            spriteRotate,
-            spriteTranslate
-        );
-
-        // ImGuizmoで操作（Orthographicモード）
-        ImGuizmo::SetOrthographic(true);
-        
-        bool changed = ImGuizmo::Manipulate(
-            &viewMatrix.m[0][0],
-            &projectionMatrix.m[0][0],
-            operation,
-            ImGuizmo::LOCAL,
-            &worldMatrix.m[0][0]
-        );
-        RememberOver();
-
-        // トランスフォームが変更された場合、スプライトに反映
-        if (changed) {
-            // ワールド行列から位置、回転、スケールを抽出
-            Vector3 translation, rotationDegrees, scale;
-            ImGuizmo::DecomposeMatrixToComponents(
-                &worldMatrix.m[0][0],
-                &translation.x,
-                &rotationDegrees.x,
-                &scale.x
-            );
-
-            // スプライトのトランスフォームを更新（Z座標は0に固定）
-            source->SetTranslate(Vector3(translation.x, translation.y, 0.0f));
-            
-            // 回転は度数からラジアンに変換（Z軸回転のみ使用）
-            source->SetRotate(Vector3(0.0f, 0.0f, rotationDegrees.z * kDegToRad));
-            
-            // スケール（Z軸は1.0固定）
-            source->SetScale(Vector3(scale.x, scale.y, 1.0f));
         }
 
         return changed;

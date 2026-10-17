@@ -90,7 +90,7 @@ namespace CoreEngine
             followSmoothing_ = 0.01f;
         }
 
-        if (!context.cameraManager->GetActiveCamera(CameraType::Camera3D)) {
+        if (!context.cameraManager->GetViewCamera()) {
             UI::Hint("アクティブな3Dカメラがありません。");
         } else if (context.cameraManager->GetActiveOrbitController()) {
             UI::Hint("現在の3Dカメラ: 軌道操作つき (注視点追従)");
@@ -125,7 +125,7 @@ namespace CoreEngine
 
     void CameraFollowEditorModule::ApplyToFreeCamera(const CameraEditorContext& context, const Vector3& targetPosition) const
     {
-        Camera* camera = context.cameraManager->GetActiveCamera(CameraType::Camera3D);
+        Camera* camera = context.cameraManager->GetViewCamera();
         if (!camera) {
             return;
         }

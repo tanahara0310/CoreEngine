@@ -325,8 +325,7 @@ namespace CoreEngine
             (mousePos.x - viewportPos.x) / viewportSize.x,
             (mousePos.y - viewportPos.y) / viewportSize.y);
 
-        const Camera* camera3D = cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera3D) : nullptr;
-        const Camera* camera2D = cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera2D) : nullptr;
+        const Camera* camera3D = cameraManager_ ? cameraManager_->GetViewCamera() : nullptr;
 
         // 画面の中を指しているときだけ受ける（他の窓の操作でカメラが飛ばないように）
         if (isViewportHovered) {
@@ -365,11 +364,6 @@ namespace CoreEngine
                 cameraViewport.height = viewportSize.y;
                 cameraManager_->DrawDebugViewportOverlay(*camera3D, cameraViewport);
             }
-        }
-
-        if (camera2D) {
-            objectSelector_.Update2D(gameObjectManager_, camera2D, normalizedMousePos, isViewportHovered);
-            objectSelector_.DrawGizmo2D(camera2D);
         }
     }
 
@@ -804,8 +798,7 @@ namespace CoreEngine
 
     void SceneDebugEditor::DrawInspectorContent()
     {
-        GameObject* const selectedSprite = objectSelector_.GetSelectedSprite();
-        GameObject* const selected = selectedSprite ? selectedSprite : objectSelector_.GetSelectedObject();
+        GameObject* const selected = objectSelector_.GetSelectedObject();
         if (!selected) {
             UI::Hint("オブジェクトを選択してください");
             return;
@@ -876,7 +869,7 @@ namespace CoreEngine
 
     void SceneDebugEditor::Deselect(const GameObject& object)
     {
-        if (objectSelector_.GetSelectedObject() == &object || objectSelector_.GetSelectedSprite() == &object) {
+        if (objectSelector_.GetSelectedObject() == &object) {
             objectSelector_.ClearSelection();
         }
     }
@@ -1128,7 +1121,7 @@ namespace CoreEngine
     {
         Vector3 spawnPosition = { 0.0f, 1.0f, 0.0f };
 
-        const Camera* camera3D = cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera3D) : nullptr;
+        const Camera* camera3D = cameraManager_ ? cameraManager_->GetViewCamera() : nullptr;
         if (!camera3D) {
             return spawnPosition;
         }

@@ -97,9 +97,10 @@ namespace CoreEngine
         CVar<int> cvToneMapOperator{
             "r.ToneMapping.Operator", 0,
             "トーンカーブ。0=ACES（コントラスト強め・従来） 1=GT（中間調が素直・グランツーリスモ方式） "
-            "2=AgX（高彩度の光源が色相を回さず白へ抜ける・Blender 4.x 既定）。"
+            "2=AgX（高彩度の光源が色相を回さず白へ抜ける・Blender 4.x 既定） "
+            "3=なし（色をそのまま出す。2D のゲーム向け）。"
             "切り替えたら r.AutoExposure.ReferenceLuminance の再較正を推奨",
-            CVarRange{ 0.0f, 2.0f } };
+            CVarRange{ 0.0f, 3.0f } };
 
         constexpr const char* kCVarPrefix = "r.AutoExposure";
         constexpr const char* kToneMapCVarPrefix = "r.ToneMapping";
@@ -338,7 +339,7 @@ namespace CoreEngine
         // 自動露出有効時: 自動EV + 手動EV（補正オフセット）。無効時: 手動EVのみ
         const bool useAuto = cvAutoExposureEnabled.Get() && autoExposureReady_;
         params.exposureEV = cvExposureEV.Get() + (useAuto ? autoEV_ : 0.0f);
-        params.toneMapOperator = static_cast<uint32_t>(std::clamp(cvToneMapOperator.Get(), 0, 2));
+        params.toneMapOperator = static_cast<uint32_t>(std::clamp(cvToneMapOperator.Get(), 0, 3));
         return params;
     }
 
@@ -393,8 +394,8 @@ namespace CoreEngine
 #ifdef CORE_EDITOR
         ImGui::PushID("ToneMapping");
         ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
-        static const char* kOperatorNames[] = { "ACES", "GT", "AgX" };
-        const int op = std::clamp(cvToneMapOperator.Get(), 0, 2);
+        static const char* kOperatorNames[] = { "ACES", "GT", "AgX", "なし" };
+        const int op = std::clamp(cvToneMapOperator.Get(), 0, 3);
         ImGui::Text("%s トーンマッピング（HDR→LDR変換）", kOperatorNames[op]);
         ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "このエフェクトは常に有効です。");
 

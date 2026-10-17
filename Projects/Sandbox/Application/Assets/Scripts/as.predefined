@@ -392,7 +392,6 @@ class GameObject {
 	CoreEngine::AudioSource@ get_audioSource() property;
 	CoreEngine::Camera@ get_camera() property;
 	CoreEngine::CharacterController@ get_characterController() property;
-	CoreEngine::EulerTransform@ get_eulerTransform() property;
 	CoreEngine::GpuParticleSystem@ get_gpuParticleSystem() property;
 	CoreEngine::Light@ get_light() property;
 	CoreEngine::Material@ get_material() property;
@@ -724,10 +723,16 @@ class Camera {
 	void set_projection(int) property;
 	float get_fov() const property;
 	void set_fov(float) property;
+	float get_orthographicSize() const property;
+	void set_orthographicSize(float) property;
 	float get_nearClip() const property;
 	void set_nearClip(float) property;
 	float get_farClip() const property;
 	void set_farClip(float) property;
+	int get_background() const property;
+	void set_background(int) property;
+	CoreEngine::Vector4 get_backgroundColor() const property;
+	void set_backgroundColor(const CoreEngine::Vector4&in) property;
 }
 class CharacterController {
 	bool get_exists() const property;
@@ -748,18 +753,6 @@ class CharacterController {
 	void Move(const CoreEngine::Vector3&in);
 	void SimpleMove(const CoreEngine::Vector3&in);
 	void Jump(float);
-}
-class EulerTransform {
-	bool get_exists() const property;
-	bool get_enabled() const property;
-	void set_enabled(bool) property;
-	CoreEngine::GameObject@ get_gameObject() const property;
-	CoreEngine::Vector3 get_translate() const property;
-	void set_translate(const CoreEngine::Vector3&in) property;
-	CoreEngine::Vector3 get_rotate() const property;
-	void set_rotate(const CoreEngine::Vector3&in) property;
-	CoreEngine::Vector3 get_scale() const property;
-	void set_scale(const CoreEngine::Vector3&in) property;
 }
 class GpuParticleSystem {
 	bool get_exists() const property;
@@ -960,6 +953,10 @@ class SpriteRenderer {
 	void set_texture(const string&in) property;
 	CoreEngine::Vector4 get_color() const property;
 	void set_color(const CoreEngine::Vector4&in) property;
+	float get_pixelsPerUnit() const property;
+	void set_pixelsPerUnit(float) property;
+	int get_filter() const property;
+	void set_filter(int) property;
 	CoreEngine::Vector2 get_anchor() const property;
 	void set_anchor(const CoreEngine::Vector2&in) property;
 	CoreEngine::Vector2 get_uvMin() const property;
@@ -978,6 +975,12 @@ class SpriteRenderer {
 	void set_flipY(bool) property;
 	int get_blendMode() const property;
 	void set_blendMode(int) property;
+	int get_sortingLayer() const property;
+	void set_sortingLayer(int) property;
+	int get_orderInLayer() const property;
+	void set_orderInLayer(int) property;
+	CoreEngine::Vector2 get_textureSize() const property;
+	CoreEngine::Vector2 get_size() const property;
 }
 class Text3DRenderer {
 	bool get_exists() const property;

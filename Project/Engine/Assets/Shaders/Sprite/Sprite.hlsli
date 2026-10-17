@@ -14,4 +14,6 @@ struct Material
 {
     float4 color;
     float4x4 uvTransform;
+    uint filterMode; // 0 = 線形 / 1 = ポイント
+    float3 padding;
 };

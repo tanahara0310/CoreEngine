@@ -304,7 +304,7 @@ namespace CoreEngine
         // ここでも null を許容すること（描画キューを積まずに抜ける）。
         auto renderManager = engine_->GetService<RenderManager>();
         Camera* activeCamera3D = cameraManager_
-            ? cameraManager_->GetActiveCamera(CameraType::Camera3D)
+            ? cameraManager_->GetViewCamera()
             : nullptr;
 
         if (!renderManager || !activeCamera3D) {
@@ -325,11 +325,6 @@ namespace CoreEngine
     Camera* Scene::GetGameCamera3D() const
     {
         return cameraManager_ ? cameraManager_->GetGameCamera() : nullptr;
-    }
-
-    Camera* Scene::GetGameViewCamera2D() const
-    {
-        return cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera2D) : nullptr;
     }
 
     void Scene::Finalize()

@@ -142,6 +142,11 @@ void SkyBoxComponent::Render(const DrawViewInfo& view)
         return;
     }
 
+    // 背景を単色で塗るカメラには空を描かない
+    if (camera->GetBackground().type == CameraBackgroundType::SolidColor) {
+        return;
+    }
+
     // RootSignature / PSO は BeginPass が設定済みなので、ここでは定数バッファと LUT を差すだけ
     if (!renderer_->IsPipelineReady()) {
         return;

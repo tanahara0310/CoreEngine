@@ -23,14 +23,14 @@ namespace CoreEngine
     {
         if (!context.cameraManager) { return; }
 
-        Camera* activeCamera = context.cameraManager->GetActiveCamera(CameraType::Camera3D);
+        Camera* activeCamera = context.cameraManager->GetViewCamera();
         if (!activeCamera) {
             UI::Hint("アクティブな3Dカメラがありません。");
             return;
         }
 
         const std::string activeName = context.cameraManager->GetDisplayName(
-            context.cameraManager->GetActiveCameraName(CameraType::Camera3D));
+            context.cameraManager->GetViewCameraName());
         ImGui::Text("対象カメラ: %s", activeName.c_str());
 
         ICameraController* controller = context.cameraManager->GetActiveController();

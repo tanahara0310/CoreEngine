@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.13.0">
+<meta name="engine-version" content="0.14.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2287,6 +2287,7 @@ kbd {
       <tr><td>色</td><td><code>Vector4</code> の x・y・z・w が R・G・B・不透明度（0〜1）</td></tr>
       <tr><td>時間</td><td>秒</td></tr>
       <tr><td>UI</td><td>ピクセル。アンカーからの位置で置く</td></tr>
+      <tr><td>スプライト</td><td>ほかの物と同じメートル。画像の何ピクセルを 1 m にするかは <span class="ui">1 単位のピクセル数</span>（既定 100）</td></tr>
     </tbody>
   </table>
   </div>
@@ -2869,8 +2870,9 @@ kbd {
   <h2 id="scenes-new">新しいシーンを作る</h2>
   <ol class="steps">
     <li><strong>メニューを開く</strong><span class="ui">File<span class="arrow">▸</span>新しいシーン…</span> を選びます。</li>
-    <li><strong>名前と中身を決める</strong>名前を入れ、<span class="ui">空</span> か <span class="ui">基本（太陽と床）</span>（既定）を選んで <span class="ui">作成</span>。基本を選ぶと、Sun（ライト）・MainCamera・床が入ります。</li>
+    <li><strong>名前と中身を決める</strong>名前を入れ、<span class="ui">空</span>・<span class="ui">基本（太陽と床）</span>（既定）・<span class="ui">2D</span> のどれかを選んで <span class="ui">作成</span>。基本を選ぶと、Sun（ライト）・MainCamera・床が入ります。</li>
   </ol>
+  <p><span class="ui">2D</span> を選ぶと、2D のゲーム向けの MainCamera が入ります。カメラは (0, 0, -10) から正面（+Z）を向く平行投影で、<span class="ui">大きさ</span> 5.4・背景は単色です。1 単位 100 ピクセルの画像が、1920×1080 の画面に等倍で映ります。見た目は指定した色がそのまま出るよう、トーンカーブを「なし」にし、ローカル露出・レンズフレア・雲・床を止めます。スプライトは z = 0 の面に並べます。</p>
   <p>名前に <code>\ / : * ? " &lt; &gt; |</code> と、先頭の <code>_</code> は使えません。シーンの名前は <code>Scene::ChangeScene("名前")</code> でそのまま使うので、英数字にしておくと扱いやすくなります。</p>
 
   <h2 id="scenes-save">保存する</h2>
@@ -7547,6 +7549,22 @@ python Tools/OkinawaBeach/bake_player_walk.py
 
   <h2 id="changelog-history">更新履歴</h2>
 
+  <h3 id="changelog-v0-14-0">v0.14.0 <span class="dim">（2026-10-18）</span></h3>
+  <p>スプライトを 3D と同じワールドに置く板にし、2D のゲームを平行投影のカメラで作れるようにした版です（<a href="#api-SpriteRenderer">スプライト描画</a>・<a href="#api-Camera">カメラ</a>）。スプライト専用の 2D カメラは無くなり、スプライトもほかの物と同じカメラで映ります。</p>
+  <ul>
+    <li><strong>スプライトはワールドの板</strong>：位置・回転・拡大はトランスフォームから取り、親子関係も効きます。大きさは「描く範囲のピクセル数 ÷ 1 単位のピクセル数（既定 100）× スケール」です。カメラの揺れ・カメラリグ・<code>WorldToScreenPoint</code>・パーティクル・当たり判定の線が、スプライトと同じ座標で使えます。</li>
+    <li><strong>描く順番</strong>：ソートレイヤー → レイヤー内の順 → カメラからの奥行き（奥から）の順に描きます。何も指定していないスプライトは 0 ／ 0 として並びます。ソートレイヤーとレイヤー内の順はスクリプトからも読み書きできます。</li>
+    <li><strong>フィルタ</strong>：<span class="ui">ポイント</span> にすると拡大してもにじみません（ドット絵向け）。</li>
+    <li><strong>色</strong>：スプライトの <span class="ui">カラー</span> は UI と同じく sRGB で指定します。スプライトの枚数の上限（1 フレーム 1,024 枚）は無くなりました。</li>
+    <li><strong>インスペクタ</strong>：スプライト描画の欄を、ほかのコンポーネントと同じ形にしました。Undo が効きます。</li>
+    <li><strong>カメラ</strong>：平行投影のカメラは、見える高さを <span class="ui">大きさ</span>（画面の高さの半分）で決めるようにしました。<span class="ui">背景</span> を <span class="ui">単色</span> にすると空を描かず <span class="ui">背景色</span> で塗ります。</li>
+    <li><strong>トーンカーブ「なし」</strong>：<code>r.ToneMapping.Operator</code> を 3 にすると、色をそのまま出します。</li>
+    <li><strong>2D のシーンの雛形</strong>：<span class="ui">File<span class="arrow">▸</span>新しいシーン…</span> に <span class="ui">2D</span> を足しました（<a href="#scenes-new">新しいシーンを作る</a>）。</li>
+    <li>エディタで、平行投影のカメラから覗いてもクリックでオブジェクトを選べるようにし、スプライトは板の形でクリックを受けるようにしました。</li>
+    <li>軽量トランスフォーム（EulerTransform）を無くしました。スプライトはふつうのトランスフォームを使います。</li>
+  </ul>
+  <div class="callout warn" data-title="前の版でスプライトを使っていたら"><p>スプライトの座標は、画面のピクセルではなくワールドの長さになりました。前の版の値のままだと大きく外れた所に出るので、位置を 100 で割るか、2D の雛形のカメラ（平行投影・大きさ 5.4）で置き直してください。<code>owner.eulerTransform</code> は <code>owner.transform</code> に書き換えます。</p></div>
+
   <h3 id="changelog-v0-13-0">v0.13.0 <span class="dim">（2026-10-17）</span></h3>
   <p>スクリプトから見たエンジンの型と関数を、名前空間 <code>CoreEngine</code> へまとめた版です（<a href="#script-overview-namespace">エンジンの機能は CoreEngine の中にある</a>）。Unity の <code>using UnityEngine;</code> のように、使うファイルの先頭に <code>using namespace CoreEngine;</code> を書きます。</p>
   <ul>
@@ -7886,7 +7904,6 @@ class Rotator : ScriptComponent
           { n: "particleSystem", s: "ParticleSystem@ particleSystem", t: "ro", d: "<a href=\"#api-ParticleSystem\">ParticleSystem</a>" },
           { n: "gpuParticleSystem", s: "GpuParticleSystem@ gpuParticleSystem", t: "ro", d: "<a href=\"#api-GpuParticleSystem\">GpuParticleSystem</a>" },
           { n: "waterSurface", s: "WaterSurface@ waterSurface", t: "ro", d: "<a href=\"#api-WaterSurface\">WaterSurface</a>（水面）" },
-          { n: "eulerTransform", s: "EulerTransform@ eulerTransform", t: "ro", d: "<a href=\"#api-EulerTransform\">EulerTransform</a>" },
           { n: "rectTransform", s: "RectTransform@ rectTransform", t: "ro", d: "<a href=\"#api-RectTransform\">RectTransform</a>（UI の配置）" },
           { n: "uiText", s: "UIText@ uiText", t: "ro", d: "<a href=\"#api-UIText\">UIText</a>（UI の文字）" },
           { n: "uiImage", s: "UIImage@ uiImage", t: "ro", d: "<a href=\"#api-UIImage\">UIImage</a>（UI の画像）" },
@@ -10059,20 +10076,6 @@ void Update()
     see: [["script-objects", "オブジェクトとコンポーネントを扱う"], ["concepts-coords", "座標と単位"], ["api-Vector3", "Vector3"]]
   },
 
-  {
-    id: "EulerTransform", kind: "component", cat: "基本", display: "トランスフォーム", type: "EulerTransform",
-    accessor: "owner.eulerTransform", title: "トランスフォーム・軽量（EulerTransform）", nav: "トランスフォーム・軽量（EulerTransform）", brief: "親を持たない軽い Transform",
-    keywords: "スプライト 2D 軽量",
-    summary: "親子関係を持たない、軽い位置・回転・拡大です。主にスプライト描画（2D）が使います。エディタでは Transform と同じ「トランスフォーム」の名前で並ぶので、追加一覧では型名で見分けます。",
-    props: [
-      ["位置", "translate", "Vector3", "(0, 0, 0)", "位置"],
-      ["回転", "rotate", "Vector3", "(0, 0, 0)", "回転（インスペクタは度、スクリプトはラジアン）"],
-      ["スケール", "scale", "Vector3", "(1, 1, 1)", "拡大率"]
-    ],
-    notes: "<ul><li>3D のオブジェクトにはふつうの <a href=\"#api-Transform\">Transform</a> を使います。</li><li>スプライト描画は、トランスフォームが無いオブジェクトに付けるとこれを自動で足します。</li><li>このオブジェクトに付けた箱のコライダーは回転しません。</li></ul>",
-    see: [["api-Transform", "Transform"], ["api-SpriteRenderer", "スプライト描画"]]
-  },
-
   // =================================================================== 描画
   {
     id: "MeshRenderer", kind: "component", cat: "描画", display: "メッシュ描画", type: "MeshRenderer",
@@ -10165,23 +10168,52 @@ void Update()
   {
     id: "SpriteRenderer", kind: "component", cat: "描画", display: "スプライト描画", type: "SpriteRenderer",
     accessor: "owner.spriteRenderer", title: "スプライト描画（SpriteRenderer）", brief: "2D の画像を描く",
-    keywords: "スプライト 2D 画像 板 テクスチャ uv 反転 ブレンド",
-    summary: "画面に 2D の画像（スプライト）を描きます。座標は<strong>画面の中心が原点で、上が +Y</strong> のピクセル単位です（UI とは向きが違います）。",
-    requires: "トランスフォーム（無ければ軽量トランスフォームを自動で足します）",
+    keywords: "スプライト 2D 画像 板 テクスチャ uv 反転 ブレンド ドット絵 ピクセル 描画順 ソート ppu",
+    summary: "画像（スプライト）を貼った板を、ワールドに置いて描きます。3D の物と同じカメラで映り、親子関係も効きます。2D のゲームは、正面を向く平行投影のカメラで z = 0 の面に並べます（<a href=\"#scenes-new\">2D のシーンの雛形</a>）。",
+    requires: "トランスフォーム（無ければ自動で足します）",
     props: [
-      ["テクスチャ", "texture", "string（テクスチャ）", "なし", "描く画像。<span class=\"ui\">テクスチャをドロップ</span> に Project からドラッグできます。無いと何も描きません。"],
-      ["カラー", "color", "Vector4（色）", "(1, 1, 1, 1)", "掛け合わせる色。"],
-      ["アンカーポイント", "anchor", "Vector2", "(0.5, 0.5)", "画像のどこを位置に合わせるか（(0, 0) が左上）。"],
-      ["UV 左上 ／ UV 右下", "uvMin ／ uvMax", "Vector2", "(0, 0) ／ (1, 1)", "画像のどの範囲を使うか（コマ割りの画像の 1 コマを出すなど）。"],
-      ["オフセット（UV 変換）", "uvOffset", "Vector2", "(0, 0)", "UV をずらす（スクロール）。"],
-      ["スケール（UV 変換）", "uvScale", "Vector2", "(1, 1)", "UV の倍率（繰り返し）。"],
-      ["回転（UV 変換）", "uvRotation", "float", "0", "UV の回転（ラジアン）。"],
-      ["Flip X ／ Flip Y", "flipX ／ flipY", "bool", "オフ", "左右 ／ 上下を反転。"],
-      ["ブレンドモード", "blendMode", "int", "1", "0 = なし、1 = 通常（アルファ）、2 = 加算、3 = 減算、4 = 乗算、5 = スクリーン"],
-      ["Sorting Layer ／ Order In Layer", "", "int", "0 ／ 0", "描く順番（大きいほど手前）。"]
+      ["テクスチャ", "texture", "string（テクスチャ）", "なし", "描く画像。Project からドラッグできます。無いと何も描きません。"],
+      ["カラー", "color", "Vector4（色）", "(1, 1, 1, 1)", "掛け合わせる色（sRGB）。"],
+      ["1 単位のピクセル数", "pixelsPerUnit", "float", "100", "画像の何ピクセルを 1 単位（1 m）にするか。大きいほど小さく描きます。"],
+      ["フィルタ", "filter", "int", "0", "0 = 線形、1 = ポイント（拡大してもにじまない。ドット絵向け）"],
+      ["アンカー", "anchor", "Vector2", "(0.5, 0.5)", "画像のどこを位置に合わせるか（(0, 0) が左上、(1, 1) が右下）。"],
+      ["UV 左上 ／ UV 右下", "uvMin ／ uvMax", "Vector2", "(0, 0) ／ (1, 1)", "画像のどの範囲を描くか。板の大きさもこの範囲のピクセル数で決まります（コマ割りの画像の 1 コマを出すなど）。"],
+      ["UV の移動", "uvOffset", "Vector2", "(0, 0)", "UV をずらす（スクロール）。"],
+      ["UV の倍率", "uvScale", "Vector2", "(1, 1)", "UV の倍率（繰り返し）。"],
+      ["UV の回転", "uvRotation", "float", "0", "UV の回転（インスペクタは度、スクリプトはラジアン）。"],
+      ["左右反転 ／ 上下反転", "flipX ／ flipY", "bool", "オフ", "左右 ／ 上下を反転。"],
+      ["ブレンド", "blendMode", "int", "1", "0 = なし、1 = アルファ、2 = 加算、3 = 減算、4 = 乗算、5 = スクリーン"],
+      ["ソートレイヤー", "sortingLayer", "int", "0", "大きいほど手前に描く。"],
+      ["レイヤー内の順", "orderInLayer", "int", "0", "同じソートレイヤーの中で、大きいほど手前に描く。"],
+      ["（テクスチャの大きさ）", "textureSize", "Vector2", "", "読み取り専用。画像のピクセル数。"],
+      ["（板の大きさ）", "size", "Vector2", "", "読み取り専用。スケールを掛ける前の板の大きさ（m）。"]
     ],
-    notes: "<ul><li>描く大きさは、テクスチャのピクセル数 × トランスフォームのスケールです。</li><li>親子関係は効きません。</li><li>画面に重ねるボタンや文字は、スプライトではなく <a href=\"#api-UIImage\">UI 画像</a>・<a href=\"#api-UIText\">UI テキスト</a> を使うのが基本です。</li></ul>",
-    see: [["api-UIImage", "UI 画像"]]
+    notes: "<ul>" +
+      "<li>板の大きさは「描く範囲のピクセル数 ÷ 1 単位のピクセル数 × トランスフォームのスケール」です。100×100 ピクセルの画像は、既定で 1 m × 1 m になります。</li>" +
+      "<li>描く順番は、ソートレイヤー → レイヤー内の順 → カメラからの奥行き（奥から）の順です。どれも同じなら後から置いたものが手前になります。</li>" +
+      "<li>深度は書かないので、スプライトどうしの前後は描く順番で決まります。3D の不透明な物の後ろにあるスプライトは隠れます。</li>" +
+      "<li>画面に重ねるボタンや文字は、スプライトではなく <a href=\"#api-UIImage\">UI 画像</a>・<a href=\"#api-UIText\">UI テキスト</a> を使うのが基本です。</li>" +
+      "<li>sRGB の印（sRGB チャンク）が無い PNG は、色が明るく出ます。画像を書き出すツールで sRGB を付けてください。</li>" +
+      "</ul>",
+    examples: [
+      {
+        title: "例：左右に歩くキャラクターの向きを変え、手前に出す",
+        code: `
+[Range(0, 20)] float speed = 3.0f;
+
+void Update()
+{
+    const float move = Input::GetAxis(InputAction::MoveLeft, InputAction::MoveRight);
+    owner.transform.position = owner.transform.position + Vector3(move * speed * Time::DeltaTime(), 0.0f, 0.0f);
+
+    if (move != 0.0f) {
+        owner.spriteRenderer.flipX = move < 0.0f;   // 左へ歩くときは左右を反転
+    }
+    owner.spriteRenderer.orderInLayer = 10;          // ほかのスプライトより手前に描く
+}`
+      }
+    ],
+    see: [["api-Camera", "カメラ"], ["api-UIImage", "UI 画像"], ["scenes-new", "新しいシーンを作る"]]
   },
 
   {
@@ -10241,21 +10273,26 @@ void Update()
   {
     id: "Camera", kind: "component", cat: "カメラとライト", display: "カメラ", type: "Camera",
     accessor: "owner.camera", title: "カメラ（Camera）", brief: "ゲームの視点",
-    keywords: "カメラ 視点 画角 fov 投影 平行投影 透視 メインカメラ",
-    summary: "カメラのレンズ（投影・画角・描く範囲）を決めます。カメラの位置と向きは、同じオブジェクトのトランスフォームが決めます。",
+    keywords: "カメラ 視点 画角 fov 投影 平行投影 透視 メインカメラ 2D 大きさ 背景 背景色 単色",
+    summary: "カメラのレンズ（投影・画角・描く範囲）と背景を決めます。カメラの位置と向きは、同じオブジェクトのトランスフォームが決めます。",
     requires: "トランスフォーム（無ければ自動で足します）",
     props: [
       ["ゲームの視点", "isMainCamera", "bool", "オン", "入れるとこのカメラがゲームの画面に映ります。"],
-      ["投影", "projection", "int", "0", "0 = 透視投影、1 = 平行投影（2D 向け。1920×1080 の範囲を映す）"],
+      ["投影", "projection", "int", "0", "0 = 透視投影、1 = 平行投影（遠くの物も同じ大きさに映る。2D 向け）"],
       ["視野角", "fov", "float", "", "1〜170 度。透視投影のときの縦の画角。"],
+      ["大きさ", "orthographicSize", "float", "5", "平行投影のときに映る高さの半分（m）。横は画面の縦横比で決まります。"],
       ["手前の限界", "nearClip", "float", "0.1", "これより近い物は描かない（m）。"],
-      ["奥の限界", "farClip", "float", "1000", "これより遠い物は描かない（m）。"]
+      ["奥の限界", "farClip", "float", "1000", "これより遠い物は描かない（m）。"],
+      ["背景", "background", "int", "0", "物が映っていない所の塗り方。0 = 空、1 = 単色（空を描かない）"],
+      ["背景色", "backgroundColor", "Vector4（色）", "(0.19, 0.30, 0.47, 1)", "背景が単色のときの色（sRGB）。"]
     ],
     notes: "<ul>" +
       "<li><strong>カメラを動かすときは、このオブジェクトの <code>transform</code> を書き換えます。</strong><code>Scene::GetGameCamera()</code> へ書いた位置は、毎フレームこのトランスフォームで上書きされます。</li>" +
       "<li>「ゲームの視点」が入っていて有効なカメラが複数あると、最初のものが使われます。1 つも無いとエンジンの既定のカメラ（位置 (0, 3, -30)）になります。</li>" +
       "<li>カメラは自分のワールドの位置と、<strong>自分の回転</strong>を使います（親の回転は効きません）。</li>" +
       "<li>エディタではキー <kbd>2</kbd> でこのカメラの視点になります。</li>" +
+      "<li>2D のゲームは、平行投影のカメラを (0, 0, -10) に置いて正面（+Z）を向けます。<span class=\"ui\">大きさ</span> 5.4 なら、1 単位 100 ピクセルの画像が 1920×1080 の画面に等倍で映ります。カメラを横に動かせばスクロール、<span class=\"ui\">大きさ</span> を変えればズームです。</li>" +
+      "<li>平行投影では、空・霧・雲が透視投影のときと同じには映りません。2D のゲームでは <span class=\"ui\">背景</span> を単色にし、雲と霧を止めて使います。</li>" +
       "</ul>",
     examples: [
       {
@@ -10348,7 +10385,7 @@ void LateUpdate()   // 追いかける相手が動いた後に動かす
     intro: "<p>値は CVar としてシーンの <span class=\"path\">_environment.json</span> に保存されます（再生中の変更は保存されません）。プリセットは <span class=\"path\">Application/Assets/Presets/PostEffect/</span> に保存できます。</p>" +
       "<div class=\"table-wrap\"><table><thead><tr><th>段階</th><th>効果（既定）</th></tr></thead><tbody>" +
       "<tr><td>明るさを決める前</td><td>MotionBlur・DoF（被写界深度）・Bloom・ChromaticAberration・Vignette・ColorGrading（既定はオフ）／ LensFlare・LocalExposure（既定でオン）</td></tr>" +
-      "<tr><td>トーンマップ</td><td>ToneMapping（常にオン。ACES ／ GT ／ AgX）</td></tr>" +
+      "<tr><td>トーンマップ</td><td>ToneMapping（常にオン。ACES ／ GT ／ AgX ／ なし）</td></tr>" +
       "<tr><td>その後</td><td>ColorLUT・Shockwave・Blur・Random・RadialBlur・RasterScroll・Sepia・Invert・GrayScale・FilmGrain・Outline・Dissolve（既定はオフ）</td></tr>" +
       "</tbody></table></div>" +
       "<p>スクリプトからは CVar で切り替えます（例：<code>CVar::SetBool(\"r.Bloom.Enabled\", true)</code>）。画面の暗転は <a href=\"#api-Rendering\">Rendering::SetFadeAlpha</a> を使います。</p>",
@@ -11076,7 +11113,7 @@ class TitleMenu : ScriptComponent
     "string array dictionary Vector2 Vector3 Vector4 GameObject Transform Collider Collision RaycastHit " +
     "ScriptComponent TweenHandle TweenSequence UIText UIImage UIButton PlayParams Sound CameraShakeParams " +
     "GameCamera SaveFile RandomStream Animator AudioListener AudioSource Camera CharacterController " +
-    "EulerTransform GpuParticleSystem Light Material MeshRenderer ParticleSystem PhysicsMaterial RectTransform " +
+    "GpuParticleSystem Light Material MeshRenderer ParticleSystem PhysicsMaterial RectTransform " +
     "Rigidbody SkyBox SpriteRenderer Text3DRenderer UISlider UIToggle WaterSurface EaseType CollisionLayer " +
     "InputAction Key MouseButton TweenLoop TweenUpdate UIAnchor TextAlignH TextAlignV AudioBus ShakeWaveform " +
     "ShakeSpace ShakeTimeMode TweenCallback TweenProgressCallback TweenFloatSetter TweenVector2Setter " +

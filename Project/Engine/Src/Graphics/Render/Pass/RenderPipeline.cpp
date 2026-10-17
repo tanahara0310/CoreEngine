@@ -302,11 +302,6 @@ namespace CoreEngine
         UpdateCameraJitter(context, camera);
 
         outViews.Set(RenderViewType::GameView, ViewBuilder::Build(camera, RenderViewType::GameView));
-
-        Camera* camera2D = context.sceneManager
-            ? context.sceneManager->GetGameViewCamera2D()
-            : nullptr;
-        outViews.Set2D(ViewBuilder::Build(camera2D, RenderViewType::GameView));
     }
 
     void RenderPipeline::PrepareFrame(const RenderContext& context)

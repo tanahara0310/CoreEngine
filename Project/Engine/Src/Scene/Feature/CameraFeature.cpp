@@ -72,17 +72,6 @@ namespace CoreEngine
         if (sceneCamera_ && orbitController_) {
             DebugCameraState::RestoreTo(*sceneCamera_, *orbitController_);
         }
-
-        // ===== 2Dカメラの設定 =====
-
-        // 2Dカメラ = 正射影パラメータを持つ同じ Camera（画面中央が原点）
-        auto camera2D = std::make_unique<Camera>(CameraParameters::Orthographic2D());
-        camera2D->SetTranslate({ 0.0f, 0.0f, 0.0f });
-        camera2D->SetZoom(1.0f);
-        camera2D->Initialize(nullptr); // 2D は GPU 定数不要
-
-        cameraManager_->RegisterCamera(CameraNames::Camera2D, std::move(camera2D));
-        cameraManager_->SetActiveCamera(CameraNames::Camera2D, CameraType::Camera2D);
     }
 
     void CameraFeature::PostSceneInitialize(SceneContext& ctx)

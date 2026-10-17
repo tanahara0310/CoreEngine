@@ -10,6 +10,7 @@
 #include "Math/MathCore.h"
 #include "Math/Matrix/Matrix4x4.h"
 #include "Math/Vector/Vector2.h"
+#include "Math/Vector/Vector3.h"
 #include "Math/Vector/Vector4.h"
 #include "Reflection/Reflect.h"
 
@@ -21,14 +22,18 @@
 
 namespace CoreEngine
 {
-    class Camera;
-    class ITransformSource;
     class SpriteRenderer;
+    class TransformComponent;
 
-    /// @brief テクスチャを貼った矩形を Sprite パス（2D）で描くコンポーネント
-    /// @details 位置・回転・スケールは兄弟の `ITransformSource` から取る（無ければ Awake で
-    ///          `EulerTransformComponent` を足す）。スケールはテクスチャのピクセルサイズに掛ける倍率で、
-    ///          座標は 2D カメラの空間（画面中央が原点・Y 上正）。
+    /// @brief テクスチャのサンプリングのしかた
+    enum class SpriteFilter {
+        Linear, ///< 線形補間（拡大するとなめらかにぼける）
+        Point   ///< 最も近い画素（ドット絵向け）
+    };
+
+    /// @brief テクスチャを貼った板をワールドに置いて描くコンポーネント
+    /// @details 位置・回転・スケールは兄弟の `TransformComponent` から取り、親子関係も効く。
+    ///          板の大きさは「描く範囲のピクセル数 ÷ 1 単位のピクセル数 × スケール」。
     class SpriteRendererComponent : public IComponent, public IRenderableComponent
     {
     public:
@@ -43,18 +48,12 @@ namespace CoreEngine
 
         REFLECT_DECLARE(SpriteRendererComponent)
 
-        /// @brief トランスフォーム（ITransformSource）を使う
+        /// @brief トランスフォーム（TransformComponent）を使う
         bool RequiresComponent(const IComponent& other) const override;
-
-#ifdef CORE_EDITOR
-        /// @brief テクスチャ・色・UV・ブレンド・描画順・フリップ・アンカーの編集 UI
-        /// @return 値が変更されたら true
-        bool DrawEditorUI();
-#endif
 
         // ===== ライフサイクル =====
 
-        /// @brief トランスフォームを確保し、レンダラー・頂点バッファ・マテリアル・テクスチャを用意する
+        /// @brief トランスフォームを確保し、レンダラー・インデックスバッファ・マテリアル・テクスチャを用意する
         void Awake() override;
 
         /// @brief アニメーターを進める
@@ -63,10 +62,13 @@ namespace CoreEngine
         // ===== IRenderableComponent =====
 
         RenderPassType GetRenderPassType() const override { return RenderPassType::Sprite; }
+        RenderItemKind GetRenderItemKind() const override { return RenderItemKind::Transparent; }
         BlendMode GetBlendMode() const override { return blendMode_; }
         void SetBlendMode(BlendMode blendMode) override { blendMode_ = blendMode; }
+        int GetSortingLayer() const override { return sortingLayer_; }
+        int GetOrderInLayer() const override { return orderInLayer_; }
 
-        /// @brief ビューのカメラで矩形を描く（頂点の変更があれば描く前に書き直す）
+        /// @brief ビューのカメラで板を描く（頂点の変更があれば描く前に書き直す）
         void Render(const DrawViewInfo& view) override;
 
         // ===== テクスチャ =====
@@ -78,8 +80,16 @@ namespace CoreEngine
         /// @brief テクスチャの実際のサイズ（ピクセル）
         Vector2 GetTextureSize() const { return textureSize_; }
 
-        /// @brief 描画サイズ（テクスチャサイズ × スケール）
-        Vector2 GetActualSize() const;
+        /// @brief テクスチャの何ピクセルを 1 単位にするか
+        float GetPixelsPerUnit() const { return pixelsPerUnit_; }
+        void SetPixelsPerUnit(float pixelsPerUnit);
+
+        /// @brief 板の大きさ（スケールを掛ける前・ワールドの長さ）
+        Vector2 GetSize() const;
+
+        /// @brief テクスチャのサンプリングのしかた
+        SpriteFilter GetFilter() const { return filter_; }
+        void SetFilter(SpriteFilter filter);
 
         // ===== 色・UV =====
 
@@ -90,10 +100,10 @@ namespace CoreEngine
         void SetUVTransform(const Matrix4x4& uvTransform);
         Matrix4x4 GetUVTransform() const { return uvMatrix_; }
 
-        /// @brief テクスチャのピクセル範囲で UV の範囲を設定する
+        /// @brief テクスチャのピクセル範囲で描く範囲を設定する
         void SetTextureRect(float texLeft, float texTop, float texWidth, float texHeight, const std::string& texturePath);
 
-        /// @brief 正規化された UV の範囲を直接設定する
+        /// @brief 正規化された UV で描く範囲を設定する
         void SetUVRect(float uvLeft, float uvTop, float uvRight, float uvBottom);
 
         /// @brief UV 座標をオフセット（移動）する
@@ -123,15 +133,16 @@ namespace CoreEngine
         void SetFlipY(bool flip);
         bool GetFlipY() const { return flipY_; }
 
+        /// @brief 板の 4 隅のワールド座標（左下・左上・右下・右上）
+        std::array<Vector3, 4> GetWorldCorners() const;
+
         // ===== 描画順 =====
 
-        /// @brief ソートレイヤーを設定する（大きいほど前面。オーナーの描画順を layer * 1000 + order にする）
-        void SetSortingLayer(int layer);
-        int GetSortingLayer() const { return sortingLayer_; }
+        /// @brief ソートレイヤーを設定する（大きいほど手前）
+        void SetSortingLayer(int layer) { sortingLayer_ = layer; }
 
-        /// @brief レイヤー内の描画順を設定する（大きいほど前面）
-        void SetOrderInLayer(int order);
-        int GetOrderInLayer() const { return orderInLayer_; }
+        /// @brief レイヤー内の描画順を設定する（大きいほど手前）
+        void SetOrderInLayer(int order) { orderInLayer_ = order; }
 
         /// @brief 色・UV・アンカー・フリップを既定へ戻す
         void Reset();
@@ -144,17 +155,13 @@ namespace CoreEngine
         /// @brief アニメーターがあるか
         bool HasAnimator() const { return animator_ != nullptr; }
 
-        /// @brief 兄弟のトランスフォーム（位置・回転・スケールの出どころ）
-        ITransformSource* GetTransformSource() const;
+        // ===== 型記述子とやり取りする値 =====
 
-        // ===== シリアライズ =====
-        // テクスチャ・色・アンカー・UV・フリップ・ブレンドは型記述子が保存する
-
-        /// @brief 指しているテクスチャ（型記述子とやり取りする値）
+        /// @brief 指しているテクスチャ
         Reflection::AssetRefValue GetTextureAsset() const;
         void SetTextureAsset(const Reflection::AssetRefValue& value);
 
-        /// @brief UV の範囲（左上・右下）
+        /// @brief 描く範囲（左上・右下の UV）
         Vector2 GetUVMin() const { return uvMin_; }
         void SetUVMin(const Vector2& value) { SetUVRect(value.x, value.y, uvMax_.x, uvMax_.y); }
         Vector2 GetUVMax() const { return uvMax_; }
@@ -170,11 +177,6 @@ namespace CoreEngine
 
         /// @brief UV の回転 [rad]
         float GetUVRotation() const { return uvTransform_.rotate.z; }
-
-        /// @brief 描画順を指定しているときだけ書き出す
-        /// @note 指定していないスプライトへ 0 を入れると、描画の並べ替えの鍵が変わってしまう。
-        void SaveRenderOrderToJson(json& parameters) const;
-        void LoadRenderOrderFromJson(const json& parameters);
 
     private:
         /// @brief RenderManager から Sprite パスのレンダラーを取る
@@ -192,19 +194,21 @@ namespace CoreEngine
         /// @brief UV 変換のパラメータから行列を作ってマテリアルへ渡す
         void UpdateUVTransformMatrix();
 
-        /// @brief 描画順を指定済みなら、オーナーの描画順へ反映する
-        void ApplyRenderOrder();
+        /// @brief 頂点（アンカー基準の 1×1 の板）を、大きさとトランスフォームでワールドへ移す行列
+        Matrix4x4 GetQuadWorldMatrix() const;
 
-        /// @brief カメラの行列で矩形を描く
-        void Draw2D(const Camera* camera, ID3D12GraphicsCommandList* commandList);
+        /// @brief 兄弟のトランスフォーム
+        TransformComponent* GetTransform() const;
 
         SpriteRenderer* spriteRenderer_ = nullptr;
-        mutable ITransformSource* transform_ = nullptr;
+        mutable TransformComponent* transform_ = nullptr;
         bool awoken_ = false;
 
         std::string texturePath_;
         TextureManager::LoadedTexture textureHandle_{};
         Vector2 textureSize_ = { 1.0f, 1.0f };
+        float pixelsPerUnit_ = 100.0f;
+        SpriteFilter filter_ = SpriteFilter::Linear;
 
         std::unique_ptr<SpriteMaterialInstance> material_;
         Vector4 color_ = { 1.0f, 1.0f, 1.0f, 1.0f };
@@ -222,10 +226,8 @@ namespace CoreEngine
         BlendMode blendMode_ = BlendMode::kBlendModeNormal;
         int sortingLayer_ = 0;
         int orderInLayer_ = 0;
-        /// ソートレイヤーかレイヤー内の描画順を指定したか
-        bool hasRenderOrder_ = false;
 
-        /// 4 頂点のクワッド（GPU へは描くたびに、そのフレームの UploadRing に置く）
+        /// 4 頂点の板（GPU へは描くたびに、そのフレームの UploadRing に置く）
         std::array<VertexData, 4> vertices_{};
         Microsoft::WRL::ComPtr<ID3D12Resource> indexResource_;
         D3D12_INDEX_BUFFER_VIEW indexBufferView_{};

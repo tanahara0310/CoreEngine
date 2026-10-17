@@ -4,25 +4,22 @@
 #include "Camera/View/ViewInfo.h"
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
-#include "GameObject/Component/Transform/EulerTransformComponent.h"
-#include "GameObject/Component/Transform/ITransformSource.h"
+#include "GameObject/Component/Transform/TransformComponent.h"
 #include "GameObject/GameObject.h"
 #include "Graphics/Asset/AssetRef.h"
 #include "Graphics/Model/VertexData.h"
+#include "Graphics/Render/DrawViewInfo.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/Sprite/SpriteRenderer.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
 #include "Utility/FrameRate/Time.h"
-#include "Utility/JsonManager/JsonManager.h"
 
+#include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <utility>
-
-#ifdef CORE_EDITOR
-#include "Editor/ImGui/ImGuiAll.h"
-#endif
 
 namespace
 {
@@ -30,26 +27,42 @@ namespace
     constexpr const char* kBlendModeNames[] = { "なし", "アルファ", "加算", "減算", "乗算", "スクリーン" };
     static_assert(std::size(kBlendModeNames) == CoreEngine::kBlendModeCount);
 
-    /// @brief 編集はすべて手書きの UI が受け持つので、自動生成の欄には出さない
-    constexpr auto kHidden = ::CoreEngine::Reflection::PropertyFlags::Hidden;
+    /// @brief フィルタの名前（`SpriteFilter` の並び）
+    constexpr const char* kFilterNames[] = { "線形", "ポイント" };
+
+    /// @brief 1 単位のピクセル数の下限（0 で割らないため）
+    constexpr float kMinPixelsPerUnit = 0.01f;
 }
 
 REFLECT_DEFINE_BEGIN(CoreEngine::SpriteRendererComponent, "スプライト描画")
-    REFLECT_PARTIAL()
-    REFLECT_JSON(SaveRenderOrderToJson, LoadRenderOrderFromJson)
     REFLECT_ACCESSOR("texture", "テクスチャ", GetTextureAsset, SetTextureAsset,
-        p.assetType = ::CoreEngine::AssetType::Texture, p.flags = kHidden)
-    REFLECT_ACCESSOR("color", "カラー", GetColor, SetColor, p.flags = kHidden)
-    REFLECT_ACCESSOR("anchor", "アンカー", GetAnchor, SetAnchor, p.flags = kHidden)
-    REFLECT_ACCESSOR("uvMin", "UV 左上", GetUVMin, SetUVMin, p.flags = kHidden)
-    REFLECT_ACCESSOR("uvMax", "UV 右下", GetUVMax, SetUVMax, p.flags = kHidden)
-    REFLECT_ACCESSOR("uvOffset", "UV の移動", GetUVOffset, SetUVOffset, p.flags = kHidden)
-    REFLECT_ACCESSOR("uvScale", "UV の倍率", GetUVScale, SetUVScale, p.flags = kHidden)
-    REFLECT_ACCESSOR("uvRotation", "UV の回転", GetUVRotation, SetUVRotation, p.flags = kHidden)
-    REFLECT_ACCESSOR("flipX", "左右反転", GetFlipX, SetFlipX, p.flags = kHidden)
-    REFLECT_ACCESSOR("flipY", "上下反転", GetFlipY, SetFlipY, p.flags = kHidden)
-    REFLECT_ENUM_ACCESSOR("blendMode", "ブレンド", GetBlendMode, SetBlendMode, kBlendModeNames,
-        p.flags = kHidden)
+        p.assetType = ::CoreEngine::AssetType::Texture)
+    REFLECT_ACCESSOR("color", "カラー", GetColor, SetColor,
+        p.type = ::CoreEngine::Reflection::PropertyType::Color)
+    REFLECT_ACCESSOR("pixelsPerUnit", "1 単位のピクセル数", GetPixelsPerUnit, SetPixelsPerUnit,
+        p.range = Range(kMinPixelsPerUnit, 100000.0f, 1.0f),
+        p.tooltip = "テクスチャの何ピクセルを 1 単位（1m）にするか。大きいほど小さく描く")
+    REFLECT_ENUM_ACCESSOR("filter", "フィルタ", GetFilter, SetFilter, kFilterNames,
+        p.tooltip = "ポイントは拡大してもにじまない（ドット絵向け）")
+    REFLECT_ACCESSOR("anchor", "アンカー", GetAnchor, SetAnchor,
+        p.range = Range(0.0f, 1.0f, 0.01f), p.tooltip = "位置に合わせる点。(0, 0) が左上、(1, 1) が右下")
+    REFLECT_ACCESSOR("uvMin", "UV 左上", GetUVMin, SetUVMin,
+        p.range = Range(0.0f, 1.0f, 0.001f), p.tooltip = "描く範囲。板の大きさもこの範囲のピクセル数で決まる")
+    REFLECT_ACCESSOR("uvMax", "UV 右下", GetUVMax, SetUVMax,
+        p.range = Range(0.0f, 1.0f, 0.001f))
+    REFLECT_ACCESSOR("uvOffset", "UV の移動", GetUVOffset, SetUVOffset, p.range = Speed(0.01f))
+    REFLECT_ACCESSOR("uvScale", "UV の倍率", GetUVScale, SetUVScale, p.range = Speed(0.01f))
+    REFLECT_ACCESSOR("uvRotation", "UV の回転", GetUVRotation, SetUVRotation,
+        p.range = Speed(0.01f), p.displayScale = kDegreesPerRadian)
+    REFLECT_ACCESSOR("flipX", "左右反転", GetFlipX, SetFlipX)
+    REFLECT_ACCESSOR("flipY", "上下反転", GetFlipY, SetFlipY)
+    REFLECT_ENUM_ACCESSOR("blendMode", "ブレンド", GetBlendMode, SetBlendMode, kBlendModeNames)
+    REFLECT_ACCESSOR("sortingLayer", "ソートレイヤー", GetSortingLayer, SetSortingLayer,
+        p.range = Range(-100.0f, 100.0f, 0.1f), p.tooltip = "大きいほど手前に描く")
+    REFLECT_ACCESSOR("orderInLayer", "レイヤー内の順", GetOrderInLayer, SetOrderInLayer,
+        p.range = Range(-9999.0f, 9999.0f, 0.1f), p.tooltip = "同じレイヤーの中で、大きいほど手前に描く")
+    REFLECT_READONLY_ACCESSOR("textureSize", "テクスチャの大きさ", GetTextureSize)
+    REFLECT_READONLY_ACCESSOR("size", "板の大きさ", GetSize)
 REFLECT_DEFINE_END()
 REFLECT_REGISTER(CoreEngine::SpriteRendererComponent)
 COMPONENT_REGISTER(CoreEngine::SpriteRendererComponent)
@@ -69,12 +82,8 @@ namespace CoreEngine
     {
         awoken_ = true;
 
-        // 位置・回転・スケールは兄弟のトランスフォームから取る。無ければ 2D 用の軽量なものを足す
         if (GameObject* owner = GetOwner()) {
-            transform_ = owner->GetComponent<ITransformSource>();
-            if (!transform_) {
-                transform_ = owner->AddComponent<EulerTransformComponent>();
-            }
+            transform_ = owner->GetOrAddComponent<TransformComponent>();
         }
 
         ResolveRenderer();
@@ -83,8 +92,6 @@ namespace CoreEngine
         if (!texturePath_.empty()) {
             LoadTexture(texturePath_);
         }
-
-        ApplyRenderOrder();
     }
 
     void SpriteRendererComponent::ResolveRenderer()
@@ -121,11 +128,12 @@ namespace CoreEngine
         indexBufferView_.SizeInBytes = sizeof(uint32_t) * 6;
         indexBufferView_.Format = DXGI_FORMAT_R32_UINT;
 
-        // マテリアル（色と UV 変換の定数バッファ）
+        // マテリアル（色・UV 変換・フィルタの定数バッファ）
         material_ = std::make_unique<SpriteMaterialInstance>();
         material_->Initialize(dxCommon->GetDevice());
         material_->SetColor(color_);
         material_->SetUVTransform(uvMatrix_);
+        material_->SetFilterMode(static_cast<uint32_t>(filter_));
 
         UpdateVertexData();
         vertexDataDirty_ = false;
@@ -156,14 +164,25 @@ namespace CoreEngine
         }
     }
 
-    Vector2 SpriteRendererComponent::GetActualSize() const
+    void SpriteRendererComponent::SetPixelsPerUnit(float pixelsPerUnit)
     {
-        const ITransformSource* transform = GetTransformSource();
-        if (!transform) {
-            return textureSize_;
+        pixelsPerUnit_ = (std::max)(pixelsPerUnit, kMinPixelsPerUnit);
+    }
+
+    Vector2 SpriteRendererComponent::GetSize() const
+    {
+        return {
+            std::abs(uvMax_.x - uvMin_.x) * textureSize_.x / pixelsPerUnit_,
+            std::abs(uvMax_.y - uvMin_.y) * textureSize_.y / pixelsPerUnit_
+        };
+    }
+
+    void SpriteRendererComponent::SetFilter(SpriteFilter filter)
+    {
+        filter_ = filter;
+        if (material_) {
+            material_->SetFilterMode(static_cast<uint32_t>(filter_));
         }
-        const Vector3 scale = transform->GetScale();
-        return { textureSize_.x * scale.x, textureSize_.y * scale.y };
     }
 
     void SpriteRendererComponent::UpdateVertexData()
@@ -223,43 +242,61 @@ namespace CoreEngine
 
     bool SpriteRendererComponent::RequiresComponent(const IComponent& other) const
     {
-        return dynamic_cast<const ITransformSource*>(&other) != nullptr;
+        return dynamic_cast<const TransformComponent*>(&other) != nullptr;
     }
 
-    ITransformSource* SpriteRendererComponent::GetTransformSource() const
+    TransformComponent* SpriteRendererComponent::GetTransform() const
     {
         if (!transform_) {
-            transform_ = Sibling<ITransformSource>();
+            transform_ = Sibling<TransformComponent>();
         }
         return transform_;
+    }
+
+    Matrix4x4 SpriteRendererComponent::GetQuadWorldMatrix() const
+    {
+        const Vector2 size = GetSize();
+        const Matrix4x4 sizeMatrix = Matrix::Scale({ size.x, size.y, 1.0f });
+        const TransformComponent* transform = GetTransform();
+        return transform ? sizeMatrix * transform->Get().GetWorldMatrix() : sizeMatrix;
+    }
+
+    std::array<Vector3, 4> SpriteRendererComponent::GetWorldCorners() const
+    {
+        // 頂点を書き直す前でも同じ形になるよう、アンカーから角を作る
+        const float left = -anchorPoint_.x;
+        const float right = 1.0f - anchorPoint_.x;
+        const float top = anchorPoint_.y;
+        const float bottom = anchorPoint_.y - 1.0f;
+
+        const Matrix4x4 world = GetQuadWorldMatrix();
+        return {
+            CoordinateTransform::TransformCoord(Vector3{ left, bottom, 0.0f }, world),
+            CoordinateTransform::TransformCoord(Vector3{ left, top, 0.0f }, world),
+            CoordinateTransform::TransformCoord(Vector3{ right, bottom, 0.0f }, world),
+            CoordinateTransform::TransformCoord(Vector3{ right, top, 0.0f }, world),
+        };
     }
 
     void SpriteRendererComponent::Render(const DrawViewInfo& view)
     {
         const GameObject* owner = GetOwner();
-        if (!owner || !owner->IsActive()) { return; }
+        if (!owner || !owner->IsActive() || !view.view || !view.cmdList) { return; }
 
-        Draw2D(view.GetCamera(), view.cmdList);
-    }
-
-    void SpriteRendererComponent::Draw2D(const Camera* camera, ID3D12GraphicsCommandList* commandList)
-    {
         // テクスチャが無いまま SRV を差すとデバッグレイヤーが止めるので描かない
-        if (!spriteRenderer_ || !commandList || !material_ || textureHandle_.gpuHandle.ptr == 0) {
+        if (!spriteRenderer_ || !material_ || textureHandle_.gpuHandle.ptr == 0) {
             return;
         }
-
-        ITransformSource* transform = GetTransformSource();
-        if (!transform) { return; }
 
         if (vertexDataDirty_) {
             UpdateVertexData();
             vertexDataDirty_ = false;
         }
 
+        UploadRing& uploadRing = spriteRenderer_->GetGraphicsCore()->GetUploadRing();
+
         // 頂点は描くたびに、このフレームの UploadRing に置く
-        const UploadAllocation vertices = spriteRenderer_->GetGraphicsCore()->GetUploadRing().Allocate(
-            static_cast<uint32_t>(sizeof(vertices_)), 16);
+        const UploadAllocation vertices = uploadRing.Allocate(static_cast<uint32_t>(sizeof(vertices_)), 16);
         if (!vertices.IsValid()) { return; }
         std::memcpy(vertices.cpu, vertices_.data(), sizeof(vertices_));
 
@@ -268,30 +305,19 @@ namespace CoreEngine
         vertexBufferView.SizeInBytes = static_cast<UINT>(sizeof(vertices_));
         vertexBufferView.StrideInBytes = static_cast<UINT>(sizeof(VertexData));
 
-        size_t bufferIndex = spriteRenderer_->GetAvailableConstantBuffer();
+        SpriteRenderer::TransformationMatrix transformation{};
+        transformation.world = GetQuadWorldMatrix();
+        transformation.WVP = transformation.world * view.view->viewProjection;
+        const D3D12_GPU_VIRTUAL_ADDRESS transformAddress = uploadRing.AllocateConstants(transformation);
+        if (transformAddress == 0) { return; }
 
-        const Vector3 translate = transform->GetTranslate();
-        const Vector3 rotate = transform->GetRotate();
-        const Vector3 scale = transform->GetScale();
-
-        // 実際の描画サイズ（テクスチャサイズ × スケール）
-        const Vector3 actualScale = {
-            textureSize_.x * scale.x,
-            textureSize_.y * scale.y,
-            scale.z
-        };
-
-        SpriteRenderer::TransformationMatrix* transformData = spriteRenderer_->GetTransformData(bufferIndex);
-        transformData->WVP = spriteRenderer_->CalculateWVPMatrix(translate, actualScale, rotate, camera);
-        transformData->world = Matrix::MakeAffine(actualScale, rotate, translate);
-
-        // 定数バッファ（シェーダーリフレクションから取得したインデックスを使う）
+        ID3D12GraphicsCommandList* const commandList = view.cmdList;
         commandList->SetGraphicsRootConstantBufferView(
             spriteRenderer_->GetRootParamIndex("gMaterial"),
             material_->GetGPUVirtualAddress());
         commandList->SetGraphicsRootConstantBufferView(
             spriteRenderer_->GetRootParamIndex("TransformationMatrix"),
-            spriteRenderer_->GetTransformGpuAddress(bufferIndex));
+            transformAddress);
         commandList->SetGraphicsRootDescriptorTable(
             spriteRenderer_->GetRootParamIndex("gTexture"),
             textureHandle_.gpuHandle);
@@ -400,28 +426,6 @@ namespace CoreEngine
         }
     }
 
-    void SpriteRendererComponent::SetSortingLayer(int layer)
-    {
-        sortingLayer_ = layer;
-        hasRenderOrder_ = true;
-        ApplyRenderOrder();
-    }
-
-    void SpriteRendererComponent::SetOrderInLayer(int order)
-    {
-        orderInLayer_ = order;
-        hasRenderOrder_ = true;
-        ApplyRenderOrder();
-    }
-
-    void SpriteRendererComponent::ApplyRenderOrder()
-    {
-        if (!hasRenderOrder_) { return; }
-        if (GameObject* owner = GetOwner()) {
-            owner->SetRenderOrder(sortingLayer_ * 1000 + orderInLayer_);
-        }
-    }
-
     void SpriteRendererComponent::Reset()
     {
         SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
@@ -447,126 +451,4 @@ namespace CoreEngine
         }
         SetTexture(value.path);
     }
-
-    void SpriteRendererComponent::SaveRenderOrderToJson(json& parameters) const
-    {
-        if (!hasRenderOrder_) {
-            return;
-        }
-        parameters["sortingLayer"] = sortingLayer_;
-        parameters["orderInLayer"] = orderInLayer_;
-    }
-
-    void SpriteRendererComponent::LoadRenderOrderFromJson(const json& parameters)
-    {
-        if (!parameters.is_object()) {
-            return;
-        }
-        if (!parameters.contains("sortingLayer") && !parameters.contains("orderInLayer")) {
-            return;
-        }
-        sortingLayer_ = JsonManager::SafeGet<int>(parameters, "sortingLayer", sortingLayer_);
-        orderInLayer_ = JsonManager::SafeGet<int>(parameters, "orderInLayer", orderInLayer_);
-        hasRenderOrder_ = true;
-        ApplyRenderOrder();
-    }
-
-#ifdef CORE_EDITOR
-    bool SpriteRendererComponent::DrawEditorUI()
-    {
-        bool changed = false;
-
-        // ── テクスチャ（ProjectView からのドロップで差し替える） ──
-        UI::SectionHeader("テクスチャ");
-        ImGui::Button(texturePath_.empty() ? "テクスチャをドロップ" : texturePath_.c_str(),
-            ImVec2(ImGui::GetContentRegionAvail().x, 0.0f));
-        if (ImGui::BeginDragDropTarget()) {
-            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("TEXTURE_FILE")) {
-                SetTexture(static_cast<const char*>(payload->Data));
-                changed = true;
-            }
-            ImGui::EndDragDropTarget();
-        }
-        ImGui::Text("テクスチャ: %.0f x %.0f px", textureSize_.x, textureSize_.y);
-        const Vector2 actualSize = GetActualSize();
-        ImGui::Text("描画サイズ: %.0f x %.0f px", actualSize.x, actualSize.y);
-
-        // ── 色と UV ──────────────────────────────────────
-        UI::SectionHeader("基本設定");
-        Vector4 color = color_;
-        if (UI::ColorEdit("カラー", color)) {
-            SetColor(color);
-            changed = true;
-        }
-
-        UI::SectionHeader("UV 変換");
-        bool uvChanged = false;
-        uvChanged |= ImGui::DragFloat2("オフセット##UV", &uvTransform_.translate.x, 0.01f);
-        uvChanged |= ImGui::DragFloat2("スケール##UV", &uvTransform_.scale.x, 0.01f, 0.01f, 10.0f);
-        uvChanged |= UI::SliderFloat("回転##UV", uvTransform_.rotate.z, -MathCore::Constants::kPi, MathCore::Constants::kPi);
-        if (uvChanged) {
-            UpdateUVTransformMatrix();
-            changed = true;
-        }
-        if (ImGui::Button("UV リセット")) {
-            ResetUVTransform();
-            changed = true;
-        }
-
-        // ── ブレンド・描画順・フリップ・アンカー ────────────────
-        UI::SectionHeader("ブレンドモード");
-        {
-            const char* blendModes[] = { "なし", "通常", "加算", "減算", "乗算", "スクリーン" };
-            int blendModeInt = static_cast<int>(blendMode_);
-            if (ImGui::Combo("##blendMode", &blendModeInt, blendModes, 6)) {
-                blendMode_ = static_cast<BlendMode>(blendModeInt);
-                changed = true;
-            }
-        }
-
-        UI::SectionHeader("描画順序");
-        {
-            int layerTemp = sortingLayer_;
-            if (ImGui::DragInt("Sorting Layer##sort", &layerTemp, 1.0f, -100, 100)) {
-                SetSortingLayer(layerTemp);
-                changed = true;
-            }
-            int orderTemp = orderInLayer_;
-            if (ImGui::DragInt("Order In Layer##sort", &orderTemp, 1.0f, -9999, 9999)) {
-                SetOrderInLayer(orderTemp);
-                changed = true;
-            }
-        }
-
-        UI::SectionHeader("フリップ");
-        {
-            bool fx = flipX_;
-            bool fy = flipY_;
-            if (ImGui::Checkbox("Flip X##flip", &fx)) { SetFlipX(fx); changed = true; }
-            ImGui::SameLine();
-            if (ImGui::Checkbox("Flip Y##flip", &fy)) { SetFlipY(fy); changed = true; }
-        }
-
-        UI::SectionHeader("アンカーポイント");
-        Vector2 anchorTemp = anchorPoint_;
-        if (UI::DragVec2("##anchor", anchorTemp, 0.01f, 0.0f, 1.0f)) {
-            SetAnchor(anchorTemp);
-            changed = true;
-        }
-        if (ImGui::Button("TL##anchor")) { SetAnchor({ 0.0f, 0.0f }); changed = true; } UI::SameLine();
-        if (ImGui::Button("TC##anchor")) { SetAnchor({ 0.5f, 0.0f }); changed = true; } UI::SameLine();
-        if (ImGui::Button("TR##anchor")) { SetAnchor({ 1.0f, 0.0f }); changed = true; } UI::SameLine();
-        if (ImGui::Button("C##anchor")) { SetAnchor({ 0.5f, 0.5f }); changed = true; } UI::SameLine();
-        if (ImGui::Button("BL##anchor")) { SetAnchor({ 0.0f, 1.0f }); changed = true; } UI::SameLine();
-        if (ImGui::Button("BR##anchor")) { SetAnchor({ 1.0f, 1.0f }); changed = true; }
-
-        UI::Spacing();
-        if (ImGui::Button("リセット##sprite")) {
-            Reset();
-            changed = true;
-        }
-
-        return changed;
-    }
-#endif // CORE_EDITOR
 }

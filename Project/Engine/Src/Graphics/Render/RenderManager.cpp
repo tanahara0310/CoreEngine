@@ -71,9 +71,7 @@ namespace CoreEngine
             return nullptr;
         }
 
-        const ViewInfo& view = (passType == RenderPassType::Sprite)
-            ? frameViews_->View2D()
-            : frameViews_->Get(viewType);
+        const ViewInfo& view = frameViews_->Get(viewType);
 
         return view.isValid ? &view : nullptr;
     }
@@ -361,6 +359,7 @@ namespace CoreEngine
     }
 
     void RenderManager::SortDrawQueue() {
+        AssignViewDepth(transparentDrawQueue_);
         SortRenderQueue(drawQueue_);
         SortRenderQueue(opaqueDrawQueue_);
         SortRenderQueue(skyDrawQueue_);
@@ -370,13 +369,36 @@ namespace CoreEngine
         SortRenderQueue(overlayDrawQueue_);
     }
 
+    void RenderManager::AssignViewDepth(std::vector<RenderItem>& queue) const {
+        const ViewInfo* const view = frameViews_ ? &frameViews_->GameView() : nullptr;
+        if (!view || !view->isValid) {
+            return;
+        }
+        for (RenderItem& item : queue) {
+            if (item.object) {
+                item.viewDepth = MathCore::CoordinateTransform::TransformCoord(
+                    item.object->GetWorldPosition(), view->viewMatrix).z;
+            }
+        }
+    }
+
     void RenderManager::SortRenderQueue(std::vector<RenderItem>& queue) {
-        // ソート優先順位: ①sortKey（小さいほど先） ②passType（レンダラー切り替えの最小化）
-        //                 ③blendMode（ブレンドステート切り替えの最小化） ④登録順
+        // ソート優先順位: ①ソートレイヤー ②レイヤー内の順 ③sortKey（小さいほど先）
+        //                 ④奥行き（奥から） ⑤passType（レンダラー切り替えの最小化）
+        //                 ⑥blendMode（ブレンドステート切り替えの最小化） ⑦登録順
         std::stable_sort(queue.begin(), queue.end(),
             [](const RenderItem& a, const RenderItem& b) {
+                if (a.sortingLayer != b.sortingLayer) {
+                    return a.sortingLayer < b.sortingLayer;
+                }
+                if (a.orderInLayer != b.orderInLayer) {
+                    return a.orderInLayer < b.orderInLayer;
+                }
                 if (a.sortKey != b.sortKey) {
                     return a.sortKey < b.sortKey;
+                }
+                if (a.viewDepth != b.viewDepth) {
+                    return a.viewDepth > b.viewDepth;
                 }
                 if (a.passType != b.passType) {
                     return static_cast<int>(a.passType) < static_cast<int>(b.passType);

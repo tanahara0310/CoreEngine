@@ -164,7 +164,7 @@ namespace CoreEngine::ComponentEditing
         const std::vector<Category>& EngineCategories()
         {
             static const std::vector<Category> categories = {
-                { "基本", { "Transform", "EulerTransform", "Camera" } },
+                { "基本", { "Transform", "Camera" } },
                 { "描画", { "MeshRenderer", "Material", "SpriteRenderer", "Text3DRenderer", "Animator", "SkeletonSocket" } },
                 { "環境", { "Light", "SkyBox", "VolumetricCloud", "HeightFog", "PostProcess", "WaterSurface" } },
                 { "エフェクト", { "ParticleSystem", "GpuParticleSystem" } },

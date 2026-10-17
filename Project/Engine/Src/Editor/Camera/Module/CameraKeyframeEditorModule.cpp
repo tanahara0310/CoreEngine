@@ -833,7 +833,7 @@ namespace CoreEngine
 
     bool CameraKeyframeEditorModule::CaptureFromActiveCamera(const CameraEditorContext& context, CameraSnapshot& outSnapshot) const
     {
-        Camera* active3D = context.cameraManager->GetActiveCamera(CameraType::Camera3D);
+        Camera* active3D = context.cameraManager->GetViewCamera();
         if (!active3D) {
             return false;
         }
@@ -844,7 +844,7 @@ namespace CoreEngine
 
     bool CameraKeyframeEditorModule::ApplyToActiveCamera(const CameraEditorContext& context, const CameraSnapshot& snapshot)
     {
-        Camera* active3D = context.cameraManager->GetActiveCamera(CameraType::Camera3D);
+        Camera* active3D = context.cameraManager->GetViewCamera();
         if (!active3D) {
             return false;
         }

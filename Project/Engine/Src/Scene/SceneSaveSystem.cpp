@@ -889,6 +889,62 @@ namespace CoreEngine
             manifest["defaultGround"] = true;
         }
 
+        if (templateKind == SceneTemplate::Game2D) {
+            // 正面（+Z）を向く平行投影のカメラ。大きさ 5.4 で、1 単位 100 ピクセルの画像が 1080 の高さに等倍で映る
+            const json camera = {
+                { "active", true },
+                { "name", "MainCamera" },
+                { kOrderKey, 0 },
+                { "components", json::array({
+                    json{
+                        { "type", "Transform" },
+                        { "enabled", true },
+                        { "parameters", json{
+                            { "translate", json::array({ 0.0f, 0.0f, -10.0f }) },
+                            { "rotate", json::array({ 0.0f, 0.0f, 0.0f }) },
+                            { "scale", json::array({ 1.0f, 1.0f, 1.0f }) },
+                        } },
+                    },
+                    json{
+                        { "type", "Camera" },
+                        { "enabled", true },
+                        { "parameters", json{
+                            { "isMainCamera", true },
+                            { "projection", 1 },
+                            { "fov", 45.0f },
+                            { "orthographicSize", 5.4f },
+                            { "nearClip", 0.3f },
+                            { "farClip", 1000.0f },
+                            { "background", 1 },
+                            { "backgroundColor", json::array({ 0.19f, 0.30f, 0.47f, 1.0f }) },
+                        } },
+                    },
+                }) },
+            };
+            if (!jm.SaveJson(MakeObjectPath(sceneName, "MainCamera"), camera)) {
+                if (error) {
+                    *error = "カメラのファイルを書けませんでした";
+                }
+                return false;
+            }
+
+            // 指定した色がそのまま出るよう、トーンカーブ・ローカル露出・レンズフレアを止め、空の上に出る雲も止める
+            const json environment = {
+                { "r.Cloud.Enabled", false },
+                { "r.LensFlare.Enabled", false },
+                { "r.LocalExposure.Enabled", false },
+                { "r.ToneMapping.Operator", 3 },
+            };
+            if (!jm.SaveJson(MakeSceneDir(sceneName) + "/" + kEnvironmentFileName, environment)) {
+                if (error) {
+                    *error = "見た目のファイルを書けませんでした";
+                }
+                return false;
+            }
+
+            manifest["defaultGround"] = false;
+        }
+
         if (!jm.SaveJson(MakeManifestPath(sceneName), manifest)) {
             if (error) {
                 *error = "マニフェストを書けませんでした";

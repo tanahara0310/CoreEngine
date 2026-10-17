@@ -13,7 +13,6 @@
 #include "GameObject/Component/Core/MissingComponent.h"
 #include "GameObject/Component/Light/LightComponent.h"
 #include "GameObject/Component/Render/MaterialComponent.h"
-#include "GameObject/Component/Render/SpriteRendererComponent.h"
 #include "GameObject/Component/Render/Text3DRendererComponent.h"
 #include "GameObject/GameObject.h"
 #include "Editor/ImGui/ParticleSystemDebugUI.h"
@@ -149,7 +148,6 @@ namespace CoreEngine::Editor::ComponentInspectors
     void RegisterEngineTypes()
     {
         AddPermanent("Transform", { .shownFirst = true });
-        AddPermanent("EulerTransform", { .shownFirst = true });
         AddPermanent("RectTransform", { .shownFirst = true });
         AddPermanent("Animator", { .displayName = "アニメーション" });
         AddPermanent("SkeletonSocket", { .displayName = "ソケット追従" });
@@ -171,13 +169,6 @@ namespace CoreEngine::Editor::ComponentInspectors
                         GameObject* const owner = colliders.GetOwner();
                         return owner ? ColliderInspector::Draw(*owner) : false;
                     });
-            },
-            });
-
-        AddPermanent("SpriteRenderer", {
-            .displayName = "スプライト描画",
-            .drawBody = [](IComponent& component) {
-                return static_cast<SpriteRendererComponent&>(component).DrawEditorUI();
             },
             });
 

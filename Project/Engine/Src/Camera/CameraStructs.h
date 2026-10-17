@@ -10,12 +10,6 @@
 namespace CoreEngine
 {
 
-/// @brief カメラのタイプ（アクティブカメラを 3D / 2D で別々に持つための区分）
-enum class CameraType {
-    Camera3D,  // 3D用カメラ（透視投影）
-    Camera2D   // 2D用カメラ（正射影）
-};
-
 /// @brief エンジンが既定で用意するカメラの名前
 /// @details 役割は API 名（SceneCamera / GameCamera）で表す。ここは登録キーの文字列で、
 ///          コード各所へマジックストリングが散らばるのを防ぐためだけに置いている。
@@ -24,8 +18,6 @@ namespace CameraNames {
     inline constexpr const char* Scene = "Debug";
     /// @brief ゲーム視点カメラ（シーンが構図を決める）
     inline constexpr const char* Game = "Release";
-    /// @brief 2D（正射影）カメラ
-    inline constexpr const char* Camera2D = "Camera2D";
 }
 
 /// @brief カメラのGPU用構造体
@@ -44,8 +36,20 @@ CB_BIND_HLSL(CameraForGPU, kCameraForGPUFields, "gCamera");
 
 /// @brief 投影方式
 enum class CameraProjectionType {
-    Perspective,   ///< 透視投影（3D）
-    Orthographic   ///< 正射影（2D。画面中央が原点、Y軸上が正）
+    Perspective,   ///< 透視投影
+    Orthographic   ///< 平行投影（見える高さを orthographicSize で決める）
+};
+
+/// @brief 背景の塗り方
+enum class CameraBackgroundType {
+    Sky,        ///< 空（大気）を描く
+    SolidColor  ///< 背景色で塗る
+};
+
+/// @brief 物が映っていない画素の塗り方
+struct CameraBackground {
+    CameraBackgroundType type = CameraBackgroundType::Sky;
+    Vector4 color = { 0.19f, 0.30f, 0.47f, 1.0f }; ///< 単色のときの色（sRGB）
 };
 
 /// @brief カメラパラメータ構造体
@@ -59,21 +63,15 @@ struct CameraParameters {
     float nearClip = 0.1f;              // ニアクリップ
     float farClip = 1000.0f;            // ファークリップ
 
+    // 平行投影パラメータ
+    float orthographicSize = 5.0f;      // 画面の高さの半分（ワールドの長さ）
+
     // アスペクト比（通常は自動計算されるが、カスタム設定も可能）
     float aspectRatio = 0.0f;           // 0.0f = 自動計算
 
     /// @brief デフォルトパラメータを取得
     static CameraParameters Default() {
         return CameraParameters{};
-    }
-
-    /// @brief 2D（正射影）用の既定パラメータを取得
-    static CameraParameters Orthographic2D() {
-        CameraParameters params;
-        params.projectionType = CameraProjectionType::Orthographic;
-        params.nearClip = 0.0f;
-        params.farClip = 100.0f;
-        return params;
     }
 
     /// @brief パラメータをデフォルトにリセット
@@ -95,11 +93,9 @@ struct CameraParameters {
         fov = degrees * MathCore::Constants::kDegToRad;
     }
 
-    /// @brief このパラメータが表すカメラタイプ
-    CameraType GetCameraType() const {
-        return (projectionType == CameraProjectionType::Orthographic)
-            ? CameraType::Camera2D
-            : CameraType::Camera3D;
+    /// @brief 平行投影か
+    bool IsOrthographic() const {
+        return projectionType == CameraProjectionType::Orthographic;
     }
 };
 

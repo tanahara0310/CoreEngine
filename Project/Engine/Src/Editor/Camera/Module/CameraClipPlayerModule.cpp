@@ -78,7 +78,7 @@ namespace CoreEngine
         }
 
         ImGui::Text("アクティブ3D: %s", context.cameraManager->GetDisplayName(
-            context.cameraManager->GetActiveCameraName(CameraType::Camera3D)).c_str());
+            context.cameraManager->GetViewCameraName()).c_str());
         ImGui::Text("読み込み中シーケンス: %s", loadedClipName_.empty() ? "なし" : loadedClipName_.c_str());
         UI::Hint("ここで読み込んだシーケンスがゲームカメラ再生データです。");
         UI::Separator();
@@ -183,7 +183,7 @@ namespace CoreEngine
 
     bool CameraClipPlayerModule::ApplyToActiveCamera(const CameraEditorContext& context, const CameraSnapshot& snapshot) const
     {
-        Camera* active3D = context.cameraManager->GetActiveCamera(CameraType::Camera3D);
+        Camera* active3D = context.cameraManager->GetViewCamera();
         if (!active3D) {
             return false;
         }

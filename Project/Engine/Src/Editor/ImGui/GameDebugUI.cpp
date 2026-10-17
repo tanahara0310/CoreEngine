@@ -712,6 +712,11 @@ namespace CoreEngine
         ImGui::RadioButton("空", &newSceneTemplate_, 0);
         UI::SameLine();
         ImGui::RadioButton("基本（太陽と床）", &newSceneTemplate_, 1);
+        UI::SameLine();
+        ImGui::RadioButton("2D", &newSceneTemplate_, 2);
+        if (newSceneTemplate_ == 2) {
+            UI::Hint("平行投影のカメラを正面に置き、背景を単色にし、指定した色がそのまま出る見た目にします（床と雲もなし）。");
+        }
 
         if (!newSceneError_.empty()) {
             ImGui::TextColored(Editor::Theme::kError, "%s", newSceneError_.c_str());
@@ -839,9 +844,12 @@ namespace CoreEngine
             return false;
         }
 
-        const auto kind = (templateIndex == 0)
-            ? SceneSaveSystem::SceneTemplate::Empty
-            : SceneSaveSystem::SceneTemplate::Basic;
+        SceneSaveSystem::SceneTemplate kind = SceneSaveSystem::SceneTemplate::Basic;
+        if (templateIndex == 0) {
+            kind = SceneSaveSystem::SceneTemplate::Empty;
+        } else if (templateIndex == 2) {
+            kind = SceneSaveSystem::SceneTemplate::Game2D;
+        }
 
         std::string error;
         if (!SceneSaveSystem::CreateScene(name, kind, &error)) {

@@ -52,9 +52,6 @@ namespace CoreEngine
         /// @brief ゲーム視点の3Dカメラを取得（エディタ視点で覗いていても変わらない）
         Camera* GetGameCamera3D() const override;
 
-        /// @brief Gameビュー用2Dカメラを取得
-        Camera* GetGameViewCamera2D() const override;
-
         /// @brief 現在のゲームオブジェクトマネージャーを取得
         GameObjectManager* GetGameObjectManager() override { return &gameObjectManager_; }
 

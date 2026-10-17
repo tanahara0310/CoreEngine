@@ -57,8 +57,7 @@ namespace CoreEngine
         // Collider は owner の GetWorldPosition()/GetWorldScale() を位置ソースにする。
         // 位置ソースが無いまま付けると全員が原点で重なる無音のバグになるので、ここで弾く。
         assert(GetOwner() && GetOwner()->GetComponent<ITransformSource>() &&
-            "コライダーを付けるオブジェクトはトランスフォームコンポーネントを持つこと"
-            "（TransformComponent / EulerTransformComponent のいずれか）");
+            "コライダーを付けるオブジェクトはトランスフォームコンポーネントを持つこと");
 
         colliders_.push_back(std::make_unique<Collider>(GetOwner(), shape, layer));
         return *colliders_.back();
