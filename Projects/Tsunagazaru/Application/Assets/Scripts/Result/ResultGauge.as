@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // リザルトの文字の色（元の値。露出を打ち消して描いていたので ToneMappedColor で画面の色にする）
 const Vector4 kResultNumberColor = Vector4(0.944f, 0.413f, 0.053f, 1.0f);
 const Vector4 kResultLabelColor = Vector4(0.735f, 0.546f, 0.296f, 1.0f);

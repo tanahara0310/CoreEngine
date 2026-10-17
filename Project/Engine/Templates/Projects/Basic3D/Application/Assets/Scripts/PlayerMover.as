@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // 移動の操作（WASD・矢印キー・左スティック）で、持ち主を地面に沿って動かす
 [DisplayName("プレイヤーの移動")]
 class PlayerMover : ScriptComponent

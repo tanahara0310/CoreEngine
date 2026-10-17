@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // プールから貸し出す 1 つのモデル。最後に書いた値を覚えていて、変わったときだけエンジンへ書く
 class PooledModel
 {

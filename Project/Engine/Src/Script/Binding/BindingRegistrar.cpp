@@ -7,7 +7,12 @@ namespace CoreEngine::Script
 {
     void BindingRegistrar::Namespace(const char* name)
     {
-        Check(engine_->SetDefaultNamespace(name ? name : ""), "名前空間", name ? name : "");
+        std::string full = kEngineNamespace;
+        if (name && name[0] != '\0') {
+            full += "::";
+            full += name;
+        }
+        Check(engine_->SetDefaultNamespace(full.c_str()), "名前空間", full);
     }
 
     void BindingRegistrar::ValueType(const char* name, int byteSize, asQWORD flags)

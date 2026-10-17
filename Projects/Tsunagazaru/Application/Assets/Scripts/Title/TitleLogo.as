@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // ロゴが着地する進捗（EaseOutBounce の区切り）と、そのときの揺れと音の強さ
 const array<float> kTitleLogoBounceProgress = { 1.0f / 2.75f, 2.0f / 2.75f, 2.5f / 2.75f, 1.0f };
 const array<float> kTitleLogoBounceIntensity = { 1.0f, 0.55f, 0.3f, 0.18f };

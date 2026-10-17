@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // トロッコを画面の下から出し、着いた後は上下に浮かせる。出始めるのはロゴの着地の時間と待ちの後
 [DisplayName("トロッコの演出")]
 class TitleTrolley : TitleIntro

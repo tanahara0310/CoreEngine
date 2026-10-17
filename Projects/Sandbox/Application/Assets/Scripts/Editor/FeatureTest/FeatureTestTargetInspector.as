@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // 「テストの的」（FeatureTestTarget）のインスペクタを描くクラス。インスペクタの拡張の使い方の見本
 //
 //   [CustomEditor("型名")]               その型のコンポーネントのインスペクタの中身を、このクラスの OnInspectorGUI が描く

@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 const float kPi = 3.14159265f;
 const float kTau = 6.28318531f;
 

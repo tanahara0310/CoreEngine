@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // リザルトの背景の配置
 namespace ResultLayout
 {

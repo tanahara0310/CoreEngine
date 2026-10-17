@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // 砲台：いちばん近い敵を探し、壁に遮られていなければ弾を撃つ
 [DisplayName("シューター：砲台")]
 class ShooterTurret : ScriptComponent

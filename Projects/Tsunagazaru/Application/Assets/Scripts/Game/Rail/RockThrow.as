@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // 石が着いたときに呼ぶ関数
 funcdef void RockImpactCallback();
 

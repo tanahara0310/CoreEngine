@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // 速度計の 1 桁（今の数字と、送り出している前の数字）
 class SpeedDigit
 {

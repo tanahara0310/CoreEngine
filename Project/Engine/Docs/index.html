@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.12.0">
+<meta name="engine-version" content="0.13.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2156,6 +2156,8 @@ kbd {
   </ol>
   <p>箱を動かしているのは、<span class="path">Application/Assets/Scripts/PlayerMover.as</span> のこのスクリプトです。</p>
   <script type="text/x-code" data-lang="as" data-file="PlayerMover.as">
+    using namespace CoreEngine;
+
     // 移動の操作（WASD・矢印キー・左スティック）で、持ち主を地面に沿って動かす
     [DisplayName("プレイヤーの移動")]
     class PlayerMover : ScriptComponent
@@ -3204,9 +3206,37 @@ kbd {
     <li><span class="path">Scripts/Editor/</span>（Scripts の直下の Editor フォルダ）は、エディタの無いビルド（Release・書き出したゲーム）では読み込まれず、書き出しにも入りません。エディタでだけ使う道具（<a href="#script-editor">エディタを拡張する</a>）を置きます。</li>
   </ul>
 
+  <h2 id="script-overview-namespace">エンジンの機能は CoreEngine の中にある</h2>
+  <p>エンジンの型と関数（<code>ScriptComponent</code>・<code>GameObject</code>・<code>Vector3</code>・<code>Log</code>・<code>Time::</code>・<code>Input::</code> など）は、すべて名前空間 <code>CoreEngine</code> の中にあります。使うファイルの先頭に <code>using namespace CoreEngine;</code> を書くと、頭の <code>CoreEngine::</code> を省いて書けます。Unity の <code>using UnityEngine;</code> と同じ役目です。</p>
+  <script type="text/x-code" data-lang="as" data-file="Spinner.as">
+    using namespace CoreEngine;
+
+    class Spinner : ScriptComponent
+    {
+        void Update()
+        {
+            owner.transform.rotation = owner.transform.rotation + Vector3(0.0f, Time::DeltaTime(), 0.0f);
+        }
+    }
+  </script>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>こう書くと</th><th>どうなるか</th></tr></thead>
+    <tbody>
+      <tr><td>ファイルの先頭に <code>using namespace CoreEngine;</code></td><td>そのファイルの中では <code>GameObject</code>・<code>Time::DeltaTime()</code> のように頭を省いて書ける。<strong>書いたファイルにだけ効きます</strong>（ほかのファイルの using は効きません）</td></tr>
+      <tr><td>using を書かない</td><td><code>CoreEngine::GameObject</code>・<code>CoreEngine::Time::DeltaTime()</code> のように頭から書く。頭を省くとコンパイルエラーになり、Console に「○○.as の N 行目の GameObject はエンジンの機能です。ファイルの先頭に using namespace CoreEngine; を書くか…」と出ます</td></tr>
+      <tr><td>エンジンと同じ名前のクラスを作る（<code>class Camera</code> など）</td><td>作れます。using を書いたファイルでも<strong>自分のクラスが優先</strong>され、エンジンの方は <code>CoreEngine::Camera</code> と書いて使います。ただし <a href="#script-overview-rules">コンポーネントのクラス</a> はエンジンのコンポーネントと同じ名前にできません</td></tr>
+      <tr><td>エンジンと同じ名前・同じ引数の関数を作る</td><td>using を書いたファイルで呼ぶと、どちらを呼ぶか決められずにコンパイルエラーになります（引数の形が違えば、両方呼べます）</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p><code>string</code>・<code>array</code>、<code>sin</code>・<code>sqrt</code> などの数学関数、<code>format</code>・<code>parseInt</code> などの文字列の関数は言語の部品なので、using が無くても使えます。</p>
+
   <h2 id="script-overview-module">すべてのファイルが 1 つにまとまる</h2>
-  <p>Scripts の下の <code>.as</code> は<strong>すべてまとめて 1 つにコンパイル</strong>されます。ほかのファイルのクラス・関数・グローバル変数・enum を、<code>#include</code> なしでそのまま使えます（<code>#include</code> を書いても無視されます）。</p>
+  <p>Scripts の下の <code>.as</code> は<strong>すべてまとめて 1 つにコンパイル</strong>されます。ほかのファイルのクラス・関数・グローバル変数・enum を、<code>#include</code> なしでそのまま使えます（<code>#include</code> を書いても無視されます）。自分で書いたスクリプト同士は、using も要りません（Unity でも同じアセンブリのスクリプト同士は using なしで使えます）。</p>
   <script type="text/x-code" data-lang="as" data-file="GameConstants.as">
+    using namespace CoreEngine;
+
     // どのスクリプトからでも使える定数と関数
     const float PI = 3.1415927f;
 
@@ -3216,6 +3246,8 @@ kbd {
     }
   </script>
   <script type="text/x-code" data-lang="as" data-file="Turret.as">
+    using namespace CoreEngine;
+
     class Turret : ScriptComponent
     {
         void Start()
@@ -3234,21 +3266,22 @@ kbd {
       <tr><td><code>ScriptComponent</code> を継ぐ（<code>class Foo : ScriptComponent</code>）</td><td>ふつうのクラスとして扱われ、コンポーネントにはなりません（データの入れ物などには自由に使えます）</td></tr>
       <tr><td>1 つのファイルに 1 つのクラス、<strong>ファイル名 = クラス名</strong>（<code>Foo.as</code> に <code>class Foo</code>）</td><td>動きますが、Console に警告が出ます</td></tr>
       <tr><td>クラス名はスクリプト全体で 1 つだけ（フォルダや名前空間が違っても）</td><td>コンパイルエラー、またはそのクラスが使えなくなります</td></tr>
-      <tr><td>エンジンの型と同じ名前にしない（<code>Camera</code>・<code>Light</code>・<code>Rigidbody</code>・<code>Transform</code>・<code>GameObject</code> など）</td><td>「エンジンの型と同じ名前なので使えません」というエラー</td></tr>
+      <tr><td>エンジンのコンポーネントと同じ名前にしない（<code>Camera</code>・<code>Light</code>・<code>Rigidbody</code>・<code>Transform</code> など）</td><td>「エンジンのコンポーネントと同じ名前なので使えません」というエラー（コンポーネントでないクラスなら同じ名前にできます。<a href="#script-overview-namespace">エンジンの機能は CoreEngine の中にある</a>）</td></tr>
       <tr><td><code>abstract</code> を付けたクラスはコンポーネントにならない</td><td>—（共通の処理をまとめた基底クラスに使えます）</td></tr>
     </tbody>
   </table>
   </div>
-  <div class="callout tip"><p>クラス名は <code>PlayerMover</code>・<code>EnemySpawner</code> のように役割がわかる名前にし、エンジンの型と重ならないようにゲーム名などを頭に付けるのもおすすめです（見本の倉庫番は <code>SokobanBoard</code> のように <code>Sokoban</code> を頭に付けています）。</p></div>
+  <div class="callout tip"><p>クラス名は <code>PlayerMover</code>・<code>EnemySpawner</code> のように役割がわかる名前にし、ほかのクラスやエンジンのコンポーネントと重ならないようにゲーム名などを頭に付けるのもおすすめです（見本の倉庫番は <code>SokobanBoard</code> のように <code>Sokoban</code> を頭に付けています）。</p></div>
 
   <h2 id="script-overview-generated">エディタが書き出すファイル</h2>
-  <p>エディタは起動のたびに、Scripts フォルダへ次の 3 つを書き出します。<strong>どちらも手で書き換えないでください</strong>（次の起動で元に戻ります）。git にはコミットしておきます。</p>
+  <p>エディタは起動のたびに、Scripts フォルダへ次の 4 つを書き出します。<strong>どれも手で書き換えないでください</strong>（次の起動で元に戻ります）。git にはコミットしておきます。3 つの基底クラスは名前空間 <code>CoreEngine</code> の中に書かれています。</p>
   <div class="table-wrap">
   <table>
     <thead><tr><th>ファイル</th><th>中身</th></tr></thead>
     <tbody>
       <tr><td><span class="path">ScriptComponent.as</span></td><td>基底クラス <code>ScriptComponent</code> の定義。書き出したゲームにも必要なので、一度エディタで開いたプロジェクトから書き出します。</td></tr>
       <tr><td><span class="path">Editor/EditorWindow.as</span></td><td>エディタのウィンドウの基底クラス <code>EditorWindow</code> の定義（<a href="#script-editor">エディタを拡張する</a>）。</td></tr>
+      <tr><td><span class="path">Editor/ComponentEditor.as</span></td><td>インスペクタを自分で描くクラスの基底クラス <code>ComponentEditor</code> の定義。</td></tr>
       <tr><td><span class="path">as.predefined</span></td><td>エンジンの型と関数の宣言の一覧。VS Code の補完が読みます。この一覧は API リファレンスの元にもなっています。</td></tr>
     </tbody>
   </table>
@@ -3295,6 +3328,7 @@ kbd {
     <li><strong>拡張機能を入れる</strong>右下に出るおすすめの通知から <strong>AngelScript Language Server</strong>（<code>sashi0034.angel-lsp</code>）を入れます。通知が出なければ、拡張機能の検索で <code>angel-lsp</code> を探します。</li>
   </ol>
   <p>これで、<code>owner.</code> と打つとメンバーの候補が出て、間違いには波線が付くようになります。</p>
+  <div class="callout note"><p>VS Code は、ファイルの先頭の <code>using namespace CoreEngine;</code> を書き忘れても波線を付けないことがあります。書き忘れはエディタのコンパイルで分かります（Console にファイルと行が出ます）。</p></div>
 
   <h2 id="setup-workspace">ワークスペースの中身</h2>
   <script type="text/x-code" data-lang="json" data-file="Sokoban.code-workspace">
@@ -3336,6 +3370,8 @@ kbd {
   </ol>
   <p>雛形から作られた中身はこうなっています。<code>{CLASS}</code> の所がクラス名に置き換わっています。</p>
   <script type="text/x-code" data-lang="as" data-file="Spinner.as（作った直後）">
+    using namespace CoreEngine;
+
     // Spinner
     [DisplayName("Spinner")]
     class Spinner : ScriptComponent
@@ -3366,6 +3402,8 @@ kbd {
   <h2 id="first-code">2. コードを書く</h2>
   <p>中身を次のように書き換えて保存します。</p>
   <script type="text/x-code" data-lang="as" data-file="Spinner.as">
+    using namespace CoreEngine;
+
     // 持ち主をくるくる回し、上下にふわふわ揺らす
     [DisplayName("回転と揺れ")]
     class Spinner : ScriptComponent
@@ -3506,6 +3544,8 @@ kbd {
 
   <h2 id="lifecycle-template">よく使う形</h2>
   <script type="text/x-code" data-lang="as" data-file="Enemy.as">
+    using namespace CoreEngine;
+
     class Enemy : ScriptComponent
     {
         [Tooltip("追いかける速さ（m/s）")]
@@ -3599,6 +3639,8 @@ kbd {
 
   <h2 id="inspector-example">まとめた例</h2>
   <script type="text/x-code" data-lang="as" data-file="EnemySpawner.as">
+    using namespace CoreEngine;
+
     [DisplayName("敵の出現")]
     class EnemySpawner : ScriptComponent
     {
@@ -3721,6 +3763,8 @@ kbd {
   <h2 id="objects-getcomponent">スクリプトを取り出して呼ぶ</h2>
   <p>見つけたオブジェクトに付いているスクリプトは <code>GetComponent</code> で取り出します。受け取る変数を <code>@</code> を付けて渡すのがポイントです。取り出したら、そのクラスの公開メソッドや公開メンバ変数を直接使えます。</p>
   <script type="text/x-code" data-lang="as" data-file="Coin.as">
+    using namespace CoreEngine;
+
     class Coin : ScriptComponent
     {
         [Tooltip("拾ったときの点数")]
@@ -3738,6 +3782,8 @@ kbd {
     }
   </script>
   <script type="text/x-code" data-lang="as" data-file="ScoreBoard.as">
+    using namespace CoreEngine;
+
     class ScoreBoard : ScriptComponent
     {
         private int score_ = 0;
@@ -3821,6 +3867,8 @@ kbd {
     <li><strong>生成する</strong><code>owner.InstantiatePrefab(bulletPrefab, "Bullet")</code> で作り、返ってきたオブジェクトの位置を決めます。</li>
   </ol>
   <script type="text/x-code" data-lang="as" data-file="Gun.as">
+    using namespace CoreEngine;
+
     class Gun : ScriptComponent
     {
         [Asset("Prefab")] [Tooltip("撃つ弾")]
@@ -3854,6 +3902,8 @@ kbd {
     }
   </script>
   <script type="text/x-code" data-lang="as" data-file="Bullet.as">
+    using namespace CoreEngine;
+
     class Bullet : ScriptComponent
     {
         [Transient] [Tooltip("速度（撃つ側が入れる）")]
@@ -3930,6 +3980,8 @@ kbd {
   <h2 id="input-actions">アクションで読む（おすすめ）</h2>
   <p>アクションは「前進」「ジャンプ」のような操作の名前で、どのキーやボタンに割り当てるかはプロジェクトの設定が持ちます。スクリプトは <code>InputAction::Jump</code> のように名前で書くだけです。</p>
   <script type="text/x-code" data-lang="as" data-file="PlayerController.as">
+    using namespace CoreEngine;
+
     class PlayerController : ScriptComponent
     {
         [Range(0, 20)] float moveSpeed = 6.0f;
@@ -4094,6 +4146,8 @@ kbd {
   <h2 id="tween-to">好きな値を動かす（Tween::To）</h2>
   <p>色や UI の位置など、MoveTo などで動かせない値は <code>Tween::To</code> で動かします。毎フレーム呼ばれる関数を渡し、その中で値を当てはめます。</p>
   <script type="text/x-code" data-lang="as" data-file="FadeText.as">
+    using namespace CoreEngine;
+
     class FadeText : ScriptComponent
     {
         void Start()
@@ -4203,6 +4257,8 @@ kbd {
 
   <h2 id="scenes-fade">暗転してから移る</h2>
   <script type="text/x-code" data-lang="as" data-file="SceneFader.as">
+    using namespace CoreEngine;
+
     class SceneFader : ScriptComponent
     {
         private string next_;
@@ -4259,6 +4315,7 @@ kbd {
     <li>成功から失敗に変わると Console が自動で前に出て、ツールバーは <span class="ui">Script ✕ コンパイル失敗</span> になります。</li>
     <li><strong>失敗している間も、ゲームは前のスクリプトのまま動き続けます。</strong>壊れたファイルだけが直す前の版に戻り、ほかのファイルの変更は反映されます（Console に「○○.as は直す前の版のまま動いています」と出ます）。</li>
     <li>警告もエラーになります。よくあるものは <a href="#script-overview-warnings">警告もエラーになる</a> を見てください。</li>
+    <li><code>Identifier 'GameObject' is not a data type</code>・<code>No matching symbol 'Log'</code> のように、エンジンの名前が見つからないと出たら、そのファイルの先頭に <code>using namespace CoreEngine;</code> があるか確かめてください（<a href="#script-overview-namespace">エンジンの機能は CoreEngine の中にある</a>）。</li>
   </ul>
 
   <h2 id="debug-exception">実行中のエラー（例外）</h2>
@@ -4420,6 +4477,8 @@ kbd {
   <h3 id="physics-other">相手を見分ける</h3>
   <p>引数の <a href="#api-Collision">Collision</a> から、相手のオブジェクト（<code>gameObject</code>）とレイヤー（<code>layer</code>）が分かります。相手が持っているスクリプトを <code>GetComponent</code> で取り出せたら、それが目当ての相手です。</p>
   <script type="text/x-code" data-lang="as" data-file="Spike.as">
+    using namespace CoreEngine;
+
     // 触れたプレイヤーにダメージを与えるトゲ
     class Spike : ScriptComponent
     {
@@ -4481,6 +4540,8 @@ kbd {
     <li><strong>跳ね返りと摩擦を決める</strong>必要なら <span class="ui">物理マテリアル</span> を足して、<span class="ui">反発係数</span> と <span class="ui">摩擦係数</span> を変えます。</li>
   </ol>
   <script type="text/x-code" data-lang="as" data-file="Ball.as">
+    using namespace CoreEngine;
+
     // 操作で転がし、ジャンプで跳ねる玉
     class Ball : ScriptComponent
     {
@@ -4537,6 +4598,8 @@ kbd {
     <li><strong>スクリプトから毎フレーム動かす</strong>コントローラは自分では動きません。<code>SimpleMove</code> を毎フレーム呼ばないと、重力も効きません。</li>
   </ol>
   <script type="text/x-code" data-lang="as" data-file="PlayerWalker.as">
+    using namespace CoreEngine;
+
     // WASD・スティックで歩き、ジャンプで跳ぶ
     class PlayerWalker : ScriptComponent
     {
@@ -4668,6 +4731,8 @@ kbd {
   <h2 id="ui-text">文字を書き換える（HUD）</h2>
   <p>スクリプトに <code>[ObjectRef]</code> の欄を作り、インスペクタで文字のオブジェクトを繋ぎます。<code>uiText.text</code> に入れた文字列がそのまま表示されます。</p>
   <script type="text/x-code" data-lang="as" data-file="ScoreHud.as">
+    using namespace CoreEngine;
+
     class ScoreHud : ScriptComponent
     {
         [ObjectRef] [Tooltip("スコアを出す UI テキスト")]
@@ -4714,6 +4779,8 @@ kbd {
     <li><strong>スクリプトで押されたかを見る</strong><code>uiButton.wasClicked</code> を Update で毎フレーム確かめます。</li>
   </ol>
   <script type="text/x-code" data-lang="as" data-file="TitleMenu.as">
+    using namespace CoreEngine;
+
     class TitleMenu : ScriptComponent
     {
         [ObjectRef] GameObject@ startButton;
@@ -4761,6 +4828,8 @@ kbd {
   </table>
   </div>
   <script type="text/x-code" data-lang="as" data-file="OptionsMenu.as">
+    using namespace CoreEngine;
+
     class OptionsMenu : ScriptComponent
     {
         [ObjectRef] [Tooltip("BGM の音量のスライダー（0〜1）")]
@@ -4848,6 +4917,8 @@ kbd {
   <h2 id="audio-bgm">BGM を鳴らす</h2>
   <p>BGM は <code>PlayScoped</code> で鳴らし、返ってきた <code>Sound@</code> を<strong>メンバ変数に持っておきます</strong>。持っている人がいなくなると音は止まります。受け取らずに捨てると、すぐに止まります。</p>
   <script type="text/x-code" data-lang="as" data-file="StageBgm.as">
+    using namespace CoreEngine;
+
     class StageBgm : ScriptComponent
     {
         [Asset("Audio")] [Tooltip("流す曲")]
@@ -4937,6 +5008,8 @@ kbd {
   <h2 id="camera-follow">プレイヤーを追いかける</h2>
   <p>追いかけるカメラは、プレイヤーが動いた後に動かしたいので <strong>LateUpdate</strong> に書きます。目標の位置へ少しずつ近づけると、なめらかに付いてきます。</p>
   <script type="text/x-code" data-lang="as" data-file="FollowCamera.as">
+    using namespace CoreEngine;
+
     // カメラのオブジェクトに付けて、target を後ろ上から追いかける
     class FollowCamera : ScriptComponent
     {
@@ -5113,10 +5186,13 @@ kbd {
     <li>エディタの道具は <span class="path">Application/Assets/Scripts/Editor/</span> に置きます。このフォルダはエディタでだけ読み込まれ、Release のビルドと書き出したゲームには入りません。</li>
     <li><code>EditorWindow</code>・<code>ComponentEditor</code>・<code>EditorGUI::</code>・<code>Editor::</code>・<code>SceneView::</code>・<code>Handles::</code> は、このフォルダの中でだけ使えます。外のファイルで使うと、Console に「○○.as(行) で EditorGUI を使っています」とエラーが出ます。エディタでは動きますが、書き出したゲームではそのファイルがコンパイルできず、スクリプトが動きません。</li>
     <li>基底クラスの <span class="path">Editor/EditorWindow.as</span> は、<span class="path">ScriptComponent.as</span> と同じく、エディタが起動のたびに書き出します。</li>
+    <li>エディタの機能も名前空間 <code>CoreEngine</code> の中にあるので、Editor フォルダのファイルにも先頭に <code>using namespace CoreEngine;</code> を書きます。</li>
   </ul>
 
   <h2 id="script-editor-window">ウィンドウを作る</h2>
   <script type="text/x-code" data-lang="as" data-file="Editor/HelloWindow.as">
+    using namespace CoreEngine;
+
     [MenuItem("Tools/あいさつ")]
     class HelloWindow : EditorWindow
     {
@@ -5274,6 +5350,8 @@ kbd {
   <h2 id="script-editor-nodes">ノードエディタ</h2>
   <p>ノード（箱）のピン（端の丸）どうしを線（つながり）で結んで組み立てる画面を作れます。会話の流れ・処理の手順・状態の移り変わりのように、順番や分かれ道のあるデータを作るのに向いています。<strong>ノードとつながりのデータはスクリプトが持ちます。</strong>ノードエディタは毎フレームそれを描き、ユーザーが何をしたか（つないだ・外した・動かした）を知らせるだけで、知らせを受けてデータを直すのはスクリプトです。</p>
   <script type="text/x-code" data-lang="as" data-file="Editor/DoubleGraph.as">
+    using namespace CoreEngine;
+
     [MenuItem("Tools/2 倍のノード")]
     class DoubleGraph : EditorWindow
     {
@@ -5374,6 +5452,8 @@ kbd {
   <h2 id="script-editor-sceneview">シーンビューに描く・クリックを受け取る（OnSceneGUI）</h2>
   <p>ウィンドウに <code>void OnSceneGUI()</code> を書くと、ウィンドウを開いている間、エディタの Game ウィンドウにシーンを描くフレームごとに呼ばれます（この文書ではシーンビューと呼びます。エディタのカメラで見ているときも、ゲームのカメラで見ているときも同じです）。中で <a href="#api-Handles"><code>Handles::</code></a> を使ってシーンの上に線・枠・文字を重ね、<a href="#api-SceneView"><code>SceneView::</code></a> でマウスの位置・クリック・カメラを読みます。</p>
   <script type="text/x-code" data-lang="as" data-file="Editor/MarkerTool.as">
+    using namespace CoreEngine;
+
     [MenuItem("Tools/目印を置く")]
     class MarkerTool : EditorWindow
     {
@@ -5458,6 +5538,8 @@ kbd {
   <h2 id="script-editor-inspector">インスペクタを自分で描く（CustomEditor）</h2>
   <p><code>ComponentEditor</code> を継いだクラスに <code>[CustomEditor("型名")]</code> を付けると、その型のコンポーネントのインスペクタの中身を <code>OnInspectorGUI</code> が描きます（Unity の CustomEditor に当たります）。型名はスクリプトのクラス名か、エンジンのコンポーネントの型名（<code>Rigidbody</code> など）です。</p>
   <script type="text/x-code" data-lang="as" data-file="Editor/CurveMoverInspector.as">
+    using namespace CoreEngine;
+
     [CustomEditor("CurveMover")]
     class CurveMoverInspector : ComponentEditor
     {
@@ -5540,6 +5622,8 @@ kbd {
 
   <h3 id="script-editor-record">値の変更を取り消せるようにする</h3>
   <script type="text/x-code" data-lang="as" data-file="Editor/SceneTools.as">
+    using namespace CoreEngine;
+
     [MenuItem("Tools/選んだオブジェクトを地面に下ろす")]
     void DropSelectionToGround()
     {
@@ -5605,6 +5689,8 @@ kbd {
 
   <h2 id="script-editor-menu">メニューから関数を呼ぶ</h2>
   <script type="text/x-code" data-lang="as" data-file="Editor/SceneTools.as">
+    using namespace CoreEngine;
+
     // 開いているシーンのオブジェクトを数えて Console へ出す
     [MenuItem("Tools/シーンのオブジェクトを数える")]
     void CountSceneObjects()
@@ -6123,7 +6209,18 @@ kbd {
 
     int exp = MyGame::NextLevelExp(5);
   </script>
-  <p>エンジンの関数も名前空間にまとまっています（<code>Time::</code>・<code>Input::</code>・<code>Physics::</code> など）。コンポーネントのクラス名は名前空間が違っても重ねられないので注意してください。</p>
+  <p>エンジンの型と関数はすべて名前空間 <code>CoreEngine</code> の中にあり、その中でさらに <code>Time::</code>・<code>Input::</code>・<code>Physics::</code> などに分かれています。コンポーネントのクラス名は名前空間が違っても重ねられないので注意してください。</p>
+
+  <h2 id="classes-using">using namespace</h2>
+  <p><code>using namespace 名前;</code> を書くと、その名前空間の中の名前を頭を省いて書けます。CoreEngine では<strong>書いたファイルにだけ</strong>効きます（ファイルの先頭に書いたとき）。関数の中に書くと、その <code>{ }</code> の中だけで効きます。</p>
+  <script type="text/x-code" data-lang="as">
+    using namespace CoreEngine;   // このファイルでは CoreEngine:: を省ける
+    using namespace MyGame;       // 自分の名前空間にも使える
+
+    int exp = NextLevelExp(5);    // MyGame::NextLevelExp
+    float dt = Time::DeltaTime(); // CoreEngine::Time::DeltaTime
+  </script>
+  <p>同じ名前の型（クラス・enum）や変数が、自分のいる名前空間（ファイルの外側ならグローバル）と using した名前空間の両方にあるときは、自分のいる側が使われます。関数は両方が候補になり、引数の形が同じだとどちらを呼ぶか決められずにコンパイルエラーになります。using した 2 つの名前空間の両方に同じ名前の型があるときもエラーになるので、頭から書き分けます。</p>
 
   <h2 id="classes-globals">グローバル変数</h2>
   <p>クラスの外に書いた変数は、すべてのスクリプトから使えます。</p>
@@ -6320,6 +6417,7 @@ kbd {
   <ul>
     <li>ポインタや <code>delete</code> はありません。参照の型は <code>@</code>（ハンドル）で持ち、使われなくなると自動で片付きます。</li>
     <li>ヘッダファイルも <code>#include</code> も要りません。すべての .as は 1 つにまとめてコンパイルされます。</li>
+    <li>エンジンの機能は名前空間 <code>CoreEngine</code> の中にあり、ファイルの先頭に <code>using namespace CoreEngine;</code> を書いて使います。C++ と違い、ほかのファイルの using はそのファイルへ持ち込まれません。</li>
     <li>引数の参照は <code>&amp;in</code>（読むだけ）・<code>&amp;out</code>（書いて返す）・<code>&amp;inout</code> のように向きを書きます。</li>
     <li>メンバへのアクセスは、ハンドルでも <code>.</code> です（<code>-&gt;</code> はありません）。</li>
     <li>警告もコンパイルエラーになります（<a href="#script-overview-warnings">一覧</a>）。</li>
@@ -6363,6 +6461,8 @@ kbd {
   <h3 id="coin-3-script">コインのスクリプトを書く</h3>
   <p>Project で <span class="path">Application/Assets/Scripts</span> を開き、<span class="ui">＋ 作成</span> でスクリプトを作ります。クラス名は <code>Coin</code>、雛形は <span class="ui">当たり判定つき</span> にします。中身を次のように書き換えて保存します。</p>
   <script type="text/x-code" data-lang="as" data-file="Scripts/Coin.as">
+    using namespace CoreEngine;
+
     // 回りながら浮かび、プレイヤーが触れたら点数係に知らせて消えるコイン
     [DisplayName("コイン")]
     class Coin : ScriptComponent
@@ -6438,6 +6538,8 @@ kbd {
   <h3 id="coin-4-script">点数係のスクリプトを書く</h3>
   <p>クラス名 <code>CoinCounter</code>、雛形 <span class="ui">基本（Start と Update）</span> でスクリプトを作り、次のように書きます。</p>
   <script type="text/x-code" data-lang="as" data-file="Scripts/CoinCounter.as">
+    using namespace CoreEngine;
+
     // 集めた枚数と時間を数えて画面に出し、全部集めたらクリアにする
     [DisplayName("コインの数え係")]
     class CoinCounter : ScriptComponent
@@ -6888,6 +6990,8 @@ python Tools/OkinawaBeach/bake_player_walk.py
   <h2 id="recipe-pause">ポーズ</h2>
   <p>時間の速さを 0 にすると、<code>Time::DeltaTime()</code> が 0 になり、ゲームが止まります。Update 自体は呼ばれ続けるので、メニューの操作はできます。<code>Pause</code> アクション（既定は <kbd>Esc</kbd> と Start ボタン）はゲームとメニューのどちらの場面でも読めます。</p>
   <script type="text/x-code" data-lang="as" data-file="PauseMenu.as">
+    using namespace CoreEngine;
+
     class PauseMenu : ScriptComponent
     {
         [ObjectRef] [Tooltip("ポーズ中に出す背景の UI 画像")]
@@ -7443,6 +7547,17 @@ python Tools/OkinawaBeach/bake_player_walk.py
 
   <h2 id="changelog-history">更新履歴</h2>
 
+  <h3 id="changelog-v0-13-0">v0.13.0 <span class="dim">（2026-10-17）</span></h3>
+  <p>スクリプトから見たエンジンの型と関数を、名前空間 <code>CoreEngine</code> へまとめた版です（<a href="#script-overview-namespace">エンジンの機能は CoreEngine の中にある</a>）。Unity の <code>using UnityEngine;</code> のように、使うファイルの先頭に <code>using namespace CoreEngine;</code> を書きます。</p>
+  <ul>
+    <li><strong>CoreEngine 名前空間</strong>：<code>GameObject</code>・<code>Vector3</code>・<code>Log</code> などの型と関数、<code>Time::</code>・<code>Input::</code>・<code>EditorGUI::</code> などの名前空間、基底クラスの <code>ScriptComponent</code>・<code>EditorWindow</code>・<code>ComponentEditor</code> が <code>CoreEngine</code> の中に入りました。<code>string</code>・<code>array</code>・<code>sin</code> などの言語の部品は今までどおり名前空間の外です。</li>
+    <li><strong>using はファイルごと</strong>：<code>using namespace</code> は書いたファイルにだけ効きます。using を書かないファイルでは、<code>CoreEngine::GameObject</code> のように頭から書きます。エンジンの名前を using なしで使ってコンパイルに失敗したときは、Console にファイルと行と直し方を出します。</li>
+    <li><strong>エンジンと同じ名前のクラス</strong>：コンポーネントでないクラスなら、<code>Camera</code> などエンジンと同じ名前にできるようになりました。using を書いたファイルでも自分のクラスが優先され、エンジンの方は <code>CoreEngine::Camera</code> で使います。</li>
+    <li>スクリプトの雛形と、付属のサンプル（Sandbox・Sokoban・Tsunagazaru）・新しいプロジェクトの雛形のスクリプトに <code>using namespace CoreEngine;</code> を足しました。</li>
+    <li>スクリプトのコンパイラ（AngelScript 2.38.0）に手を入れ、<code>using namespace</code> をファイルごとに効かせ、自分のいる名前空間の型と変数を using した名前空間より先に使うようにしました。</li>
+  </ul>
+  <div class="callout warn" data-title="古いスクリプトを動かすには"><p>この版から、using も <code>CoreEngine::</code> も無いスクリプトはコンパイルできません。自分のプロジェクトの .as の先頭に <code>using namespace CoreEngine;</code> を 1 行足してください。基底クラスの 3 つのファイルは、エディタで 1 回開くと新しい中身に書き直されます。</p></div>
+
   <h3 id="changelog-v0-12-0">v0.12.0 <span class="dim">（2026-10-16）</span></h3>
   <p>付属のサンプルに、C++ で作ったゲーム「つながザルをえない」をスクリプトだけで作り直したプロジェクトを足した版です（<a href="#intro-samples">付属のサンプル</a>）。エンジンは変わっていません。</p>
   <ul>
@@ -7611,6 +7726,7 @@ python Tools/OkinawaBeach/bake_player_walk.py
 <article class="page" id="api-index" data-group="API リファレンス" data-title="スクリプト API 一覧" data-nav="一覧" data-keywords="api リファレンス 一覧 クラス 名前空間 関数 列挙 型 スクリプト">
   <h1>スクリプト API</h1>
   <p class="lead">スクリプトから使える型・名前空間・列挙の一覧です。エンジンのコンポーネントの型（<code>Rigidbody</code> など）は <a href="#components-index">コンポーネント一覧</a> にあります。</p>
+  <p>エンジンの型と関数はすべて名前空間 <code>CoreEngine</code> の中にあり、この一覧では頭の <code>CoreEngine::</code> を省いて書いています。ファイルの先頭に <code>using namespace CoreEngine;</code> を書けば、そのまま使えます（<a href="#script-overview-namespace">エンジンの機能は CoreEngine の中にある</a>）。「言語の標準」の文字列の関数と、数学関数のうち三角関数などは、名前空間の外にあります。</p>
   <div class="table-wrap">
   <table>
     <thead><tr><th>目次の印</th><th>種類</th><th>使い方</th></tr></thead>
@@ -7697,6 +7813,8 @@ window.CE_API = [
       {
         title: "使用例", file: "Rotator.as",
         code: `
+using namespace CoreEngine;
+
 // 持ち主を Y 軸まわりに回し続ける
 [DisplayName("回転")]
 class Rotator : ScriptComponent
@@ -7782,6 +7900,8 @@ class Rotator : ScriptComponent
       {
         title: "例：ほかのオブジェクトとスクリプトを探す", file: "EnemyAI.as",
         code: `
+using namespace CoreEngine;
+
 class EnemyAI : ScriptComponent
 {
     private GameObject@ player_;
@@ -8001,7 +8121,7 @@ owner.material.color = color;`
   {
     id: "Math", kind: "global", cat: "数学", title: "数学関数", brief: "三角関数・補間・丸め",
     keywords: "数学 sin cos 平方根 補間 lerp clamp 絶対値 最小 最大 イージング",
-    summary: "グローバルに使える数学の関数です。名前空間は付きません。円周率の定数は無いので、必要なら <code>const float PI = 3.1415927f;</code> を自分で書きます。",
+    summary: "数学の関数です。補間と範囲の関数（<code>Lerp</code>・<code>Clamp</code>・<code>Saturate</code>・<code>Min</code>・<code>Max</code>・<code>Ease</code>）は <code>CoreEngine</code> の中にあり、三角関数・指数などは言語の部品として名前空間の外にあります。円周率の定数は無いので、必要なら <code>const float PI = 3.1415927f;</code> を自分で書きます。",
     sections: [
       {
         title: "補間と範囲", members: [
@@ -8140,6 +8260,8 @@ void Update()
       {
         title: "例：移動とジャンプ", file: "PlayerInput.as",
         code: `
+using namespace CoreEngine;
+
 void Update()
 {
     // WASD・矢印キー・左スティックのどれでも動く
@@ -8424,6 +8546,8 @@ void ResumeTime()
       {
         title: "例：ボタンをぽんと出す", file: "PopIn.as",
         code: `
+using namespace CoreEngine;
+
 void Start()
 {
     owner.transform.scale = Vector3(0.0f, 0.0f, 0.0f);
@@ -8672,6 +8796,8 @@ void Awake()
       {
         title: "例：BGM と効果音", file: "StageSound.as",
         code: `
+using namespace CoreEngine;
+
 class StageSound : ScriptComponent
 {
     private Sound@ bgm_;   // 持っている間だけ鳴り続ける
@@ -9551,6 +9677,8 @@ void OnGUI()
       {
         title: "既定の欄にボタンを足す", file: "Editor/PatrolRouteInspector.as",
         code: `
+using namespace CoreEngine;
+
 [CustomEditor("PatrolRoute")]
 class PatrolRouteInspector : ComponentEditor
 {
@@ -9688,6 +9816,8 @@ void OnSceneGUI()
       {
         title: "見つける範囲を描く", file: "EnemySensor.as",
         code: `
+using namespace CoreEngine;
+
 class EnemySensor : ScriptComponent
 {
     float range = 5.0f;
@@ -10378,6 +10508,8 @@ void FixedUpdate()
       {
         title: "例：歩いて跳ぶキャラクター", file: "PlayerWalker.as",
         code: `
+using namespace CoreEngine;
+
 class PlayerWalker : ScriptComponent
 {
     [Range(1, 12)] float walkSpeed = 4.0f;
@@ -10765,6 +10897,8 @@ void SetHp(float ratio)   // 0〜1
       {
         title: "例：タイトル画面のボタン", file: "TitleMenu.as",
         code: `
+using namespace CoreEngine;
+
 class TitleMenu : ScriptComponent
 {
     [ObjectRef] GameObject@ startButton;
@@ -10935,7 +11069,7 @@ class TitleMenu : ScriptComponent
     "and abstract auto bool break case cast catch class const continue default do double else enum explicit " +
     "external false final float for from funcdef function get if import in inout int int8 int16 int32 int64 " +
     "interface is mixin namespace not null or out override private property protected return set shared " +
-    "super switch this true try typedef uint uint8 uint16 uint32 uint64 void while xor"
+    "super switch this true try typedef uint uint8 uint16 uint32 uint64 using void while xor"
   ).split(" "));
 
   const AS_TYPES = new Set((

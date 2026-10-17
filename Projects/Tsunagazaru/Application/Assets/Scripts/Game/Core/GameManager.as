@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // ゲームの進み具合
 enum GamePhase
 {

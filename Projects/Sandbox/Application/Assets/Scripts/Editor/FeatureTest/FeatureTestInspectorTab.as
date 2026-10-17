@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // 「インスペクタ」のタブ。インスペクタの拡張（ComponentEditor）とギズモを試すオブジェクトを作る
 //
 // 使っているファイル

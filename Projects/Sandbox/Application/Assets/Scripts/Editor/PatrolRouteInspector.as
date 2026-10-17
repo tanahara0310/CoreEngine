@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // 「巡回の道筋」（PatrolRoute）のインスペクタを描くクラス。
 // 道筋のオブジェクトを選ぶと、インスペクタに点の数とボタンを足し、シーンビューに点を動かすハンドルを出す。
 // 点を変える前に Editor::RecordObject で控えるので、Ctrl+Z で戻せる。

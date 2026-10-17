@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // ポーズメニューのテクスチャ
 const string kPauseCursor = "Application/Assets/Textures/UI/cursor.png";
 const string kPauseLeafM = "Application/Assets/Textures/UI/Plant/leaf_m.png";

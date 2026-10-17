@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // 「時間軸」のタブ。キーと区間を並べる時間軸の使い方
 //
 //   EditorGUI::BeginTimeline(ID, 長さ, 再生位置, 刻み) 〜 EndTimeline()

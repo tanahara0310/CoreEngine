@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // 連結した車両 1 両
 class TrainCarriage
 {

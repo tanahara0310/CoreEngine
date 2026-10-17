@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // 当たったときの火花：最初の更新でパーティクルを出し、しばらくしたら消える
 [DisplayName("シューター：火花")]
 class ShooterHitEffect : ScriptComponent

@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // 1 回のプレイの結果。GameScene が書き、ResultScene が読む（シーンをまたぐので Session に置く）
 namespace GameResult
 {

@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // ゲージのテクスチャ（2 倍で描いてある。寸法はテクスチャの実サイズと揃える）
 const string kStaminaPip = "Application/Assets/Textures/UI/Gauge/pip.png";
 const string kStaminaPipEmpty = "Application/Assets/Textures/UI/Gauge/pip_empty.png";

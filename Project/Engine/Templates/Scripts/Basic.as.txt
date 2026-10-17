@@ -1,4 +1,6 @@
 // {CLASS}
+using namespace CoreEngine;
+
 [DisplayName("{CLASS}")]
 class {CLASS} : ScriptComponent
 {

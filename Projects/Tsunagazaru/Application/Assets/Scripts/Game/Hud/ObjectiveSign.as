@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // 目標看板のテクスチャ（ポーズメニューと同じ版下）
 const string kSignPlankMid = "Application/Assets/Textures/UI/Board/plank_mid.png";
 const string kSignPlankCapL = "Application/Assets/Textures/UI/Board/plank_cap_l.png";

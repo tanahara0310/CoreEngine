@@ -194,7 +194,10 @@ protected:
 	asCDataType        ModifyDataTypeFromNode(const asCDataType &type, asCScriptNode *node, asCScriptCode *file, asETypeModifiers *inOutFlag, bool *autoHandle);
 
 	bool               FindObjectTypeOrMixinInNsHierarchy(const asCString& name, asSNameSpace* startNs, bool isExplicitNs, asCScriptNode* errNode, asCScriptCode* script, asCObjectType** outObjType, sMixinClass** outMixin);
-	void               AddVisibleNamespaces(asSNameSpace* ns, const asCArray<asSNameSpace*>& visited, asCArray<asSNameSpace*>& pending);
+	void               AddVisibleNamespaces(asSNameSpace* ns, int sectionIdx, const asCArray<asSNameSpace*>& visited, asCArray<asSNameSpace*>& pending);
+	bool               IsNamespaceOrParent(asSNameSpace* ns, asSNameSpace* startNs) const;
+	asUINT             ShareUsingNamespaces(int fromSectionIdx, int toSectionIdx);
+	void               RemoveLastUsingNamespaces(asUINT count);
 	asSNameSpace      *FindNextVisibleNamespace(const asCArray<asSNameSpace*>& visited, asCArray<asSNameSpace*>& pending, asSNameSpace* parentNs, bool* checkAmbiguous = 0);
 
 	int numErrors;
@@ -203,7 +206,14 @@ protected:
 
 	asCScriptEngine *engine;
 	asCModule       *module;
-	asCMap<asSNameSpace*, asCArray<asSNameSpace*>>    namespaceVisibility;
+	// 'using namespace' at namespace scope, recorded per script section
+	struct sUsingNamespace
+	{
+		int           sectionIdx;
+		asSNameSpace *ns;
+		asSNameSpace *visible;
+	};
+	asCArray<sUsingNamespace> usingNamespaces;
 
 #ifndef AS_NO_COMPILER
 protected:

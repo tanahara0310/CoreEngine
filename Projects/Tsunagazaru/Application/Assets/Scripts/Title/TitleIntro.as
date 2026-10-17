@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // タイトルの登場の演出が終わったときに呼ぶ関数
 funcdef void TitleIntroCallback();
 

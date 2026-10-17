@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // ポーズメニューを開いている間は true。HUD と演出はこの間止まる（元のゲームは停止ボタンと同じ止め方だった）
 namespace GamePause
 {

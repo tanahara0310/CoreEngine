@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // レールの形
 enum RailKind
 {

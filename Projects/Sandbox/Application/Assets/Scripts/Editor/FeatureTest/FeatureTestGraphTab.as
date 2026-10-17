@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // 「グラフとカーブ」のタブ。数の並びのグラフと、点をドラッグして作るカーブの使い方
 //
 //   EditorGUI::PlotLines(ラベル, 値の配列, 高さ)               折れ線（縦の範囲は値に合わせる）

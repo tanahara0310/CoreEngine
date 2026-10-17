@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // 1 マスに置いている物
 class MapCellView
 {

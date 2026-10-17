@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // 「オブジェクト」のタブ。編集中のシーンのオブジェクトを作る・消す・探す・選ぶ・変える使い方
 //
 //   Editor::CreateObject(名前)・CreateObject(名前, 位置)   空のオブジェクトを作る

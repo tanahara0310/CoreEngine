@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // バナナを 1 本取った瞬間の情報（演出だけに使う）
 class BananaHarvestEvent
 {

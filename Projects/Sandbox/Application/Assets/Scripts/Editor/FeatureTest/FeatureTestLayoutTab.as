@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // 「並べ方」のタブ。部品の並べ方・まとめ方・押せなくする方法
 //
 //   EditorGUI::SameLine()                次の部品を同じ行の右に置く

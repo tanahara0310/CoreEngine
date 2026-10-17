@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // 弾：まっすぐ進み、敵に当たるか時間が来たら消える
 [DisplayName("シューター：弾")]
 class ShooterBullet : ScriptComponent

@@ -231,6 +231,13 @@ namespace CoreEngine
         /// @note コンパイルに失敗したときに呼ぶ。同じ名前の宣言は、すべての場所を 1 行にまとめて出す。
         void ReportNameConflicts(const std::unordered_map<std::string, std::string>& sources) const;
 
+        /// @brief エンジンの名前を使っているのに `using namespace CoreEngine;` が無いファイルをログへ出す
+        /// @param brokenSections エラーの出たファイル
+        /// @param sources ファイルごとの中身
+        /// @note コンパイルに失敗したときに呼ぶ。1 ファイルにつき、最初に使った場所を 1 行出す。
+        void ReportMissingEngineUsing(const std::set<std::string>& brokenSections,
+                                      const std::unordered_map<std::string, std::string>& sources) const;
+
         /// @brief 1 回分のコンパイル
         /// @param fallbackSections この中のファイルは、今の中身ではなく最後に通った版で組む
         /// @param outSources 組むのに使った中身（成功したときに控えるため）

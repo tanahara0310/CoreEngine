@@ -1,3 +1,5 @@
+using namespace CoreEngine;
+
 // 「メニュー」のタブ。メニュー・右クリックのメニュー・確認ダイアログの使い方
 //
 //   EditorGUI::OpenPopup(ID)                       次から BeginPopup(ID) が開く（ボタンを押したときなどに呼ぶ）
