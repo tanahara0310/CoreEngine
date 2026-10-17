@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.15.0">
+<meta name="engine-version" content="0.16.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4608,7 +4608,8 @@ kbd {
       <tr><td>一瞬で弾く（ジャンプ・爆風）</td><td><code>body.AddImpulse(撃力)</code></td></tr>
       <tr><td>速さを直接決める</td><td><code>body.velocity = Vector3(…)</code></td></tr>
       <tr><td>回す</td><td><code>body.AddTorque(…)</code> か <code>body.angularVelocity</code></td></tr>
-      <tr><td>転ばないようにする</td><td><span class="ui">回転を止める</span>（<code>freezeRotation</code>）をオン</td></tr>
+      <tr><td>転ばないようにする</td><td>3 つの軸の「回さない」をオン（スクリプトなら <code>body.freezeRotation = true</code>）</td></tr>
+      <tr><td>2D で奥へ動かさない</td><td>「Z へ動かさない」「X 軸で回さない」「Y 軸で回さない」をオン</td></tr>
     </tbody>
   </table>
   </div>
@@ -7572,6 +7573,16 @@ python Tools/OkinawaBeach/bake_player_walk.py
 
   <h2 id="changelog-history">更新履歴</h2>
 
+  <h3 id="changelog-v0-16-0">v0.16.0 <span class="dim">（2026-10-18）</span></h3>
+  <p>2D のゲームをスクリプトで組むための入力・カメラ・物理を足した版です。</p>
+  <ul>
+    <li><strong>マウスの位置</strong>：<code>Input::GetMousePosition()</code> で、ゲーム画面の上のマウスの位置を UI と同じ座標（左上が原点・1920×1080 基準）で取れます。</li>
+    <li><strong>画面とワールドの変換</strong>：<a href="#api-GameCamera"><code>GameCamera</code></a> に <code>ScreenToWorldPoint</code>（<code>WorldToScreenPoint</code> の逆）と <code>ScreenPointToRay</code>（画面の点を通るレイ）を足しました。<code>Physics::Raycast</code> と組み合わせると、クリックした物を調べられます。平行投影か（<code>orthographic</code>）と見える高さの半分（<code>orthographicSize</code>）も読めます。</li>
+    <li><strong>剛体の軸ごとの固定</strong>：<a href="#api-Rigidbody">剛体</a> の位置（X・Y・Z へ動かさない）と回転（X・Y・Z 軸で回さない）を、ワールドの軸ごとに止められるようにしました。2D のゲームは「Z へ動かさない」と「X 軸・Y 軸で回さない」を入れます。スクリプトの <code>freezeRotation</code> は 3 つの軸をまとめて扱います。</li>
+    <li><strong>箱を画像に合わせる</strong>：スプライトのあるオブジェクトでは、<a href="#api-Collider">コライダー</a> の <span class="ui">箱を追加</span> が板に重なる大きさで箱を足し、箱ごとに <span class="ui">画像に合わせる</span> ボタンが出ます。</li>
+  </ul>
+  <div class="callout note" data-title="前の版の剛体"><p>前の版で保存した剛体の <span class="ui">回転を止める</span> は、開いたときに 3 つの軸の「回さない」へ移ります。</p></div>
+
   <h3 id="changelog-v0-15-0">v0.15.0 <span class="dim">（2026-10-18）</span></h3>
   <p>エディタで 2D の空間を見回し、スプライトを置けるようにした版です（<a href="#viewport-2d">2D 表示</a>）。</p>
   <ul>
@@ -8291,6 +8302,7 @@ void Update()
           { n: "IsMouseButtonTriggered", s: "bool IsMouseButtonTriggered(MouseButton)", t: "f", d: "押した瞬間だけ <code>true</code>。" },
           { n: "IsMouseButtonReleased", s: "bool IsMouseButtonReleased(MouseButton)", t: "f", d: "離した瞬間だけ <code>true</code>。" },
           { n: "GetMouseDelta", s: "Vector2 GetMouseDelta()", t: "f", d: "前のフレームからのマウスの移動量（ピクセル）。" },
+          { n: "GetMousePosition", s: "Vector2 GetMousePosition()", t: "f", d: "ゲーム画面の上のマウスの位置。UI と同じ座標（左上が原点・1920×1080 基準のピクセル）です。画面の外にあるときは外側の値を返します（<code>IsPointerOverGame()</code> で確かめる）。ワールドの位置にするには <a href=\"#api-GameCamera\"><code>GameCamera.ScreenToWorldPoint</code></a> を使います。" },
           { n: "GetWheelDelta", s: "float GetWheelDelta()", t: "f", d: "ホイールの回転量（1 ノッチ = 1.0）。" },
           { n: "IsPointerOverGame", s: "bool IsPointerOverGame()", t: "f", d: "マウスがゲーム画面の上にあるか。エディタでは Game ビューの外でマウスを動かしたときに視点を回さないよう、これで確かめます。" }
         ]
@@ -8981,6 +8993,10 @@ void OnStageClear()
           { n: "right", s: "Vector3 right", t: "ro", d: "右の向き（長さ 1）。" },
           { n: "up", s: "Vector3 up", t: "ro", d: "上の向き（長さ 1）。" },
           { n: "WorldToScreenPoint", s: "Vector3 WorldToScreenPoint(const Vector3&in world) const", t: "m", d: "ワールドの位置を、UI と同じ画面の位置へ写します。x・y は左上を原点とした 1920×1080 基準のピクセルで、UI の <code>anchor</code> を <code>TopLeft</code> にした <code>anchoredPosition</code> にそのまま使えます。z はカメラの前方への距離（m）で、0 以下ならカメラの後ろです（そのときの x・y は使えません）。画面の中なら x が 0〜1920、y が 0〜1080 に入ります。<code>Update</code> で呼ぶと、前のフレームに映したカメラで写します（TAA の細かいずれは含めません）。" },
+          { n: "ScreenToWorldPoint", s: "Vector3 ScreenToWorldPoint(const Vector3&in screen) const", t: "m", d: "UI と同じ画面の位置を、ワールドの位置へ写します（<code>WorldToScreenPoint</code> の逆）。x・y は左上を原点とした 1920×1080 基準のピクセル、z はカメラの前方への距離（m）です。2D の雛形のカメラ（z = -10）なら、z に 10 を入れると z = 0 の面の位置になります。" },
+          { n: "ScreenPointToRay", s: "void ScreenPointToRay(const Vector2&in screen, Vector3&out origin, Vector3&out direction) const", t: "m", d: "画面の点を通るレイの始点と向き（長さ 1）を返します。透視投影はカメラの位置から、平行投影は手前の限界の面から飛びます。<code>Physics::Raycast</code> に渡すと、その点に映っているコライダーが分かります。" },
+          { n: "orthographic", s: "bool orthographic", t: "ro", d: "平行投影か。" },
+          { n: "orthographicSize", s: "float orthographicSize", t: "ro", d: "平行投影で映る高さの半分（m）。変えるときはカメラのオブジェクトの <code>camera.orthographicSize</code> を書き換えます。" },
           { n: "LookAt", s: "void LookAt(const Vector3&in target)", t: "m", d: "target の方を向きます。" },
           { n: "UpdateMatrix", s: "void UpdateMatrix()", t: "m", d: "位置と回転から行列を作り直します。" }
         ]
@@ -9000,6 +9016,30 @@ void LateUpdate()
         icon.anchor = UIAnchor::TopLeft;
         icon.anchoredPosition = Vector2(p.x, p.y);
     }
+}`
+      },
+      {
+        title: "例：クリックした所にある物を調べ、何も無ければそこへ移動する（2D）",
+        code: `
+void Update()
+{
+    if (!Input::IsMouseButtonTriggered(MouseButton::Left) || !Input::IsPointerOverGame()) {
+        return;
+    }
+    GameCamera@ camera = Scene::GetGameCamera();
+    const Vector2 mouse = Input::GetMousePosition();
+
+    Vector3 origin;
+    Vector3 direction;
+    camera.ScreenPointToRay(mouse, origin, direction);
+    RaycastHit@ hit = Physics::Raycast(origin, direction, 100.0f);
+    if (hit !is null) {
+        Log("クリックした物: " + hit.gameObject.name);   // コライダーが付いている物だけ当たる
+        return;
+    }
+
+    // カメラから 10 m 先（2D の雛形なら z = 0 の面）の位置へ動かす
+    owner.transform.position = camera.ScreenToWorldPoint(Vector3(mouse.x, mouse.y, 10.0f));
 }`
       }
     ],
@@ -10486,6 +10526,7 @@ void LateUpdate()   // 追いかける相手が動いた後に動かす
       "<li><strong>既定はトリガー</strong>です。剛体やキャラクタコントローラで床に立たせる・ぶつけるときは、トリガーを外します。</li>" +
       "<li>どのレイヤー同士が当たるかは、シーンの「当たり判定のレイヤー」で決まります。当たらないときはまずここを確かめます。</li>" +
       "<li>形はツールバーの <span class=\"ui\">◍ Collider</span> で線で表示できます。</li>" +
+      "<li>スプライトのあるオブジェクトでは、<span class=\"ui\">箱を追加</span> がスプライトの板に重なる大きさ（奥行き 1）で箱を足します。箱ごとの <span class=\"ui\">画像に合わせる</span> で、あとから大きさとオフセットを合わせ直せます。</li>" +
       "</ul>",
     see: [["script-physics", "物理と当たり判定"], ["api-Collision", "Collision"], ["api-Physics", "Physics"]]
   },
@@ -10502,7 +10543,9 @@ void LateUpdate()   // 追いかける相手が動いた後に動かす
       ["重力を受ける", "useGravity", "bool", "オン", ""],
       ["抗力", "linearDamping", "float", "0", "0〜10。大きいほど速度が早く落ちる。"],
       ["回転の抗力", "angularDamping", "float", "0.05", "0〜10。大きいほど回転が早く止まる。"],
-      ["回転を止める", "freezeRotation", "bool", "オフ", "ぶつかっても回らない。"],
+      ["X へ動かさない ／ Y へ動かさない ／ Z へ動かさない", "freezePositionX ／ freezePositionY ／ freezePositionZ", "bool", "オフ", "ワールドのその向きへ動かない。2D のゲームは Z を入れる。"],
+      ["X 軸で回さない ／ Y 軸で回さない ／ Z 軸で回さない", "freezeRotationX ／ freezeRotationY ／ freezeRotationZ", "bool", "オフ", "ワールドのその軸の周りに回らない。2D のゲームは X と Y を入れる（Z だけで回る）。"],
+      ["（回転を止める）", "freezeRotation", "bool", "オフ", "スクリプト用。3 つの軸の回転をまとめて止める・戻す。読むと 3 つとも止めているかを返す。"],
       ["速度", "velocity", "Vector3", "(0, 0, 0)", "m/s。実行中の値（保存しない）。"],
       ["角速度", "angularVelocity", "Vector3", "(0, 0, 0)", "rad/s。実行中の値（保存しない）。"],
       ["眠っている", "sleeping", "bool", "", "止まっている間は計算から外れる。触ると起きる（保存しない）。"]
@@ -10521,6 +10564,7 @@ void LateUpdate()   // 追いかける相手が動いた後に動かす
       "<li>コライダーがトリガーのままだと、床を突き抜けて落ち続けます。<strong>トリガーを外してください。</strong></li>" +
       "<li>再生を始めると向きを物理が持つ形に切り替えるため、<code>transform.rotation</code> を書き換えても向きは変わりません。</li>" +
       "<li>跳ね返りや摩擦は <a href=\"#api-PhysicsMaterial\">物理マテリアル</a> で決めます。</li>" +
+      "<li>2D のゲームでは「Z へ動かさない」「X 軸で回さない」「Y 軸で回さない」を入れます。スプライトの 1 単位は 1 m なので、重力（9.81 m/s²）はそのままで合います。</li>" +
       "<li>重力・固定ステップなどは CVar（<code>sys.Physics.*</code>）と Project Settings の Physics で変えられます。</li>" +
       "</ul>",
     examples: [

@@ -607,6 +607,10 @@ class GameCamera {
 	CoreEngine::Vector3 get_right() const property;
 	CoreEngine::Vector3 get_up() const property;
 	CoreEngine::Vector3 WorldToScreenPoint(const CoreEngine::Vector3&in world) const;
+	CoreEngine::Vector3 ScreenToWorldPoint(const CoreEngine::Vector3&in screen) const;
+	void ScreenPointToRay(const CoreEngine::Vector2&in screen, CoreEngine::Vector3&out origin, CoreEngine::Vector3&out direction) const;
+	bool get_orthographic() const property;
+	float get_orthographicSize() const property;
 }
 class SaveFile {
 	SaveFile(const string&in relativePath);
@@ -909,6 +913,18 @@ class Rigidbody {
 	void set_linearDamping(float) property;
 	float get_angularDamping() const property;
 	void set_angularDamping(float) property;
+	bool get_freezePositionX() const property;
+	void set_freezePositionX(bool) property;
+	bool get_freezePositionY() const property;
+	void set_freezePositionY(bool) property;
+	bool get_freezePositionZ() const property;
+	void set_freezePositionZ(bool) property;
+	bool get_freezeRotationX() const property;
+	void set_freezeRotationX(bool) property;
+	bool get_freezeRotationY() const property;
+	void set_freezeRotationY(bool) property;
+	bool get_freezeRotationZ() const property;
+	void set_freezeRotationZ(bool) property;
 	bool get_freezeRotation() const property;
 	void set_freezeRotation(bool) property;
 	CoreEngine::Vector3 get_velocity() const property;
@@ -1197,6 +1213,7 @@ bool IsMouseButtonPressed(CoreEngine::MouseButton);
 bool IsMouseButtonTriggered(CoreEngine::MouseButton);
 bool IsMouseButtonReleased(CoreEngine::MouseButton);
 CoreEngine::Vector2 GetMouseDelta();
+CoreEngine::Vector2 GetMousePosition();
 float GetWheelDelta();
 bool IsPointerOverGame();
 bool IsKeyPressed(CoreEngine::Key);
