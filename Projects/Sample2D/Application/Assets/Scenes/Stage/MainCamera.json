@@ -1,0 +1,58 @@
+{
+    "active": true,
+    "components": [
+        {
+            "type": "Transform",
+            "enabled": true,
+            "parameters": {
+                "translate": [
+                    -1.0,
+                    0.0,
+                    -10.0
+                ],
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "parent": null
+            }
+        },
+        {
+            "type": "Camera",
+            "enabled": true,
+            "parameters": {
+                "isMainCamera": true,
+                "projection": 1,
+                "fov": 45.0,
+                "orthographicSize": 5.4,
+                "nearClip": 0.3,
+                "farClip": 1000.0,
+                "background": 1,
+                "backgroundColor": [
+                    0.53,
+                    0.79,
+                    0.96,
+                    1.0
+                ]
+            }
+        },
+        {
+            "type": "CameraFollow2D",
+            "enabled": true,
+            "parameters": {
+                "target": {
+                    "ref": "5a2d000000000002"
+                }
+            }
+        }
+    ],
+    "id": "5a2d000000000003",
+    "name": "MainCamera",
+    "order": 0
+}

@@ -1,0 +1,55 @@
+{
+    "active": true,
+    "components": [
+        {
+            "type": "Transform",
+            "enabled": true,
+            "parameters": {
+                "translate": [
+                    14.0,
+                    -2.0,
+                    0.0
+                ],
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    4.0,
+                    1.0,
+                    1.0
+                ],
+                "parent": null
+            }
+        },
+        {
+            "type": "SpriteRenderer",
+            "enabled": true,
+            "parameters": {
+                "texture": {
+                    "path": "Application/Assets/Textures/hills.png"
+                },
+                "pixelsPerUnit": 16.0,
+                "filter": 1,
+                "uvScale": [
+                    4.0,
+                    1.0
+                ],
+                "sortingLayer": -10
+            }
+        },
+        {
+            "type": "Parallax",
+            "enabled": true,
+            "parameters": {
+                "cameraObject": {
+                    "ref": "5a2d000000000003"
+                }
+            }
+        }
+    ],
+    "id": "5a2d000000000004",
+    "name": "Hills",
+    "order": 1
+}

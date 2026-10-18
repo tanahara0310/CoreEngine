@@ -1,0 +1,90 @@
+{
+    "active": true,
+    "components": [
+        {
+            "type": "Transform",
+            "enabled": true,
+            "parameters": {
+                "translate": [
+                    19.0,
+                    1.8,
+                    0.0
+                ],
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "parent": null
+            }
+        },
+        {
+            "type": "SpriteRenderer",
+            "enabled": true,
+            "parameters": {
+                "texture": {
+                    "path": "Application/Assets/Textures/coin.png"
+                },
+                "pixelsPerUnit": 16.0,
+                "filter": 1,
+                "columns": 4,
+                "rows": 1
+            }
+        },
+        {
+            "type": "SpriteAnimator",
+            "enabled": true,
+            "parameters": {
+                "defaultClip": "Spin",
+                "speed": 1.0,
+                "clips": [
+                    {
+                        "name": "Spin",
+                        "firstFrame": 0,
+                        "lastFrame": 3,
+                        "fps": 8.0,
+                        "loop": true
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Collider",
+            "enabled": true,
+            "parameters": {
+                "shapes": [
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "radius": 0.35,
+                        "static": false,
+                        "trigger": true,
+                        "type": "Sphere"
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Coin",
+            "enabled": true,
+            "parameters": {
+                "director": {
+                    "ref": "5a2d000000000001"
+                }
+            }
+        }
+    ],
+    "id": "5a2d000000000012",
+    "name": "Coin3",
+    "order": 15
+}

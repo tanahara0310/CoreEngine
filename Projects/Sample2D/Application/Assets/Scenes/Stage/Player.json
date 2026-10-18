@@ -1,0 +1,131 @@
+{
+    "active": true,
+    "components": [
+        {
+            "type": "Transform",
+            "enabled": true,
+            "parameters": {
+                "translate": [
+                    -7.0,
+                    -2.0,
+                    0.0
+                ],
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "parent": null
+            }
+        },
+        {
+            "type": "SpriteRenderer",
+            "enabled": true,
+            "parameters": {
+                "texture": {
+                    "path": "Application/Assets/Textures/player.png"
+                },
+                "pixelsPerUnit": 16.0,
+                "filter": 1,
+                "columns": 4,
+                "rows": 3,
+                "orderInLayer": 10
+            }
+        },
+        {
+            "type": "SpriteAnimator",
+            "enabled": true,
+            "parameters": {
+                "defaultClip": "Idle",
+                "speed": 1.0,
+                "clips": [
+                    {
+                        "name": "Idle",
+                        "firstFrame": 0,
+                        "lastFrame": 1,
+                        "fps": 3.0,
+                        "loop": true
+                    },
+                    {
+                        "name": "Run",
+                        "firstFrame": 4,
+                        "lastFrame": 7,
+                        "fps": 10.0,
+                        "loop": true
+                    },
+                    {
+                        "name": "Jump",
+                        "firstFrame": 8,
+                        "lastFrame": 9,
+                        "fps": 6.0,
+                        "loop": false
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Collider",
+            "enabled": true,
+            "parameters": {
+                "shapes": [
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "size": [
+                            0.6,
+                            0.94,
+                            1.0
+                        ],
+                        "static": false,
+                        "trigger": false,
+                        "type": "Box"
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Rigidbody",
+            "enabled": true,
+            "version": 2,
+            "parameters": {
+                "bodyType": 0,
+                "mass": 1.0,
+                "useGravity": true,
+                "linearDamping": 0.0,
+                "angularDamping": 0.05,
+                "freezePositionZ": true,
+                "freezeRotationX": true,
+                "freezeRotationY": true,
+                "freezeRotationZ": true
+            }
+        },
+        {
+            "type": "PhysicsMaterial",
+            "enabled": true,
+            "parameters": {
+                "friction": 0.0,
+                "frictionCombine": 1,
+                "restitution": 0.0,
+                "restitutionCombine": 1
+            }
+        },
+        {
+            "type": "PlayerController",
+            "enabled": true,
+            "parameters": {}
+        }
+    ],
+    "id": "5a2d000000000002",
+    "name": "Player",
+    "order": 18
+}

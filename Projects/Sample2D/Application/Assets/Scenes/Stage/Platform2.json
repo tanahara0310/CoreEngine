@@ -1,0 +1,70 @@
+{
+    "active": true,
+    "components": [
+        {
+            "type": "Transform",
+            "enabled": true,
+            "parameters": {
+                "translate": [
+                    19.0,
+                    0.5,
+                    0.0
+                ],
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    2.0,
+                    1.0,
+                    1.0
+                ],
+                "parent": null
+            }
+        },
+        {
+            "type": "SpriteRenderer",
+            "enabled": true,
+            "parameters": {
+                "texture": {
+                    "path": "Application/Assets/Textures/grass.png"
+                },
+                "pixelsPerUnit": 16.0,
+                "filter": 1,
+                "uvScale": [
+                    2.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "type": "Collider",
+            "enabled": true,
+            "parameters": {
+                "shapes": [
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "size": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    }
+                ]
+            }
+        }
+    ],
+    "id": "5a2d00000000000d",
+    "name": "Platform2",
+    "order": 10
+}

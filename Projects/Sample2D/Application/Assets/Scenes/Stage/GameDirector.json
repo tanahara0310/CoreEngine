@@ -1,0 +1,42 @@
+{
+    "active": true,
+    "components": [
+        {
+            "type": "Transform",
+            "enabled": true,
+            "parameters": {
+                "translate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "parent": null
+            }
+        },
+        {
+            "type": "GameDirector",
+            "enabled": true,
+            "parameters": {
+                "coinText": {
+                    "ref": "5a2d000000000015"
+                },
+                "messageText": {
+                    "ref": "5a2d000000000016"
+                }
+            }
+        }
+    ],
+    "id": "5a2d000000000001",
+    "name": "GameDirector",
+    "order": 22
+}
