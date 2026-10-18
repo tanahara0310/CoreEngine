@@ -387,6 +387,7 @@ class GameObject {
 	CoreEngine::Rigidbody@ get_rigidbody() property;
 	CoreEngine::SkeletonSocket@ get_skeletonSocket() property;
 	CoreEngine::SkyBox@ get_skyBox() property;
+	CoreEngine::SpriteAnimator@ get_spriteAnimator() property;
 	CoreEngine::SpriteRenderer@ get_spriteRenderer() property;
 	CoreEngine::Text3DRenderer@ get_text3DRenderer() property;
 	CoreEngine::UISlider@ get_uiSlider() property;
@@ -945,6 +946,20 @@ class SkyBox {
 	CoreEngine::Vector3 get_rotation() const property;
 	void set_rotation(const CoreEngine::Vector3&in) property;
 }
+class SpriteAnimator {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	CoreEngine::GameObject@ get_gameObject() const property;
+	string get_defaultClip() const property;
+	void set_defaultClip(const string&in) property;
+	float get_speed() const property;
+	void set_speed(float) property;
+	string get_clip() const property;
+	bool get_isPlaying() const property;
+	void Play(const string&in);
+	void Stop();
+}
 class SpriteRenderer {
 	bool get_exists() const property;
 	bool get_enabled() const property;
@@ -964,6 +979,12 @@ class SpriteRenderer {
 	void set_uvMin(const CoreEngine::Vector2&in) property;
 	CoreEngine::Vector2 get_uvMax() const property;
 	void set_uvMax(const CoreEngine::Vector2&in) property;
+	int get_columns() const property;
+	void set_columns(int) property;
+	int get_rows() const property;
+	void set_rows(int) property;
+	int get_frame() const property;
+	void set_frame(int) property;
 	CoreEngine::Vector2 get_uvOffset() const property;
 	void set_uvOffset(const CoreEngine::Vector2&in) property;
 	CoreEngine::Vector2 get_uvScale() const property;

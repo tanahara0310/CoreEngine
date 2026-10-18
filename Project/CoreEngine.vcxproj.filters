@@ -439,6 +439,9 @@
     <ClCompile Include="Engine\Src\Editor\Inspector\ColliderInspector.cpp">
       <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Inspector\SpriteAnimatorInspector.cpp">
+      <Filter>Engine\Src\Editor\Inspector</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\ImGui\SceneSettingsPanel.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
@@ -922,6 +925,9 @@
     <ClCompile Include="Engine\Src\GameObject\Component\Render\SpriteRendererComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\Render\SpriteAnimatorComponent.cpp">
+      <Filter>Engine\Src\GameObject\Component\Render</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\Component\Render\Text3DRendererComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClCompile>
@@ -954,12 +960,6 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\ObjectId.cpp">
       <Filter>Engine\Src\GameObject</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\GameObject\Sprite\SpriteAnimationClip.cpp">
-      <Filter>Engine\Src\GameObject\Sprite</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\GameObject\Sprite\SpriteAnimator.cpp">
-      <Filter>Engine\Src\GameObject\Sprite</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Particle\Core\EmitterPlayback.cpp">
       <Filter>Engine\Src\Particle\Core</Filter>
@@ -2115,6 +2115,9 @@
     <ClInclude Include="Engine\Src\Editor\Inspector\ColliderInspector.h">
       <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Inspector\SpriteAnimatorInspector.h">
+      <Filter>Engine\Src\Editor\Inspector</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\SceneSettingsPanel.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
@@ -2994,6 +2997,9 @@
     <ClInclude Include="Engine\Src\GameObject\Component\Render\SpriteRendererComponent.h">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\Render\SpriteAnimatorComponent.h">
+      <Filter>Engine\Src\GameObject\Component\Render</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Render\Text3DRendererComponent.h">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClInclude>
@@ -3011,12 +3017,6 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\ObjectId.h">
       <Filter>Engine\Src\GameObject</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\GameObject\Sprite\SpriteAnimationClip.h">
-      <Filter>Engine\Src\GameObject\Sprite</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\GameObject\Sprite\SpriteAnimator.h">
-      <Filter>Engine\Src\GameObject\Sprite</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Particle\IParticleSystem.h">
       <Filter>Engine\Src\Particle</Filter>
@@ -4122,9 +4122,6 @@
     </Filter>
     <Filter Include="Engine\Src\GameObject\Component\Transform">
       <UniqueIdentifier>{D038A3B9-7746-4B74-9597-0D06389C3908}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Engine\Src\GameObject\Sprite">
-      <UniqueIdentifier>{70079A16-C468-498A-BF3A-C14C52126902}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics">
       <UniqueIdentifier>{C8B50C5F-F075-4840-B95F-62CA73D35902}</UniqueIdentifier>

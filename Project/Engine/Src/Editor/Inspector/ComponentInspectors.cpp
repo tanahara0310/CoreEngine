@@ -5,6 +5,7 @@
 
 #include "Collision/ColliderComponent.h"
 #include "Editor/Inspector/ColliderInspector.h"
+#include "Editor/Inspector/SpriteAnimatorInspector.h"
 #include "Editor/Command/EditorCommandStack.h"
 #include "Editor/ImGui/ImGuiAll.h"
 #include "Editor/Scene/EditorSceneAccess.h"
@@ -13,6 +14,7 @@
 #include "GameObject/Component/Core/MissingComponent.h"
 #include "GameObject/Component/Light/LightComponent.h"
 #include "GameObject/Component/Render/MaterialComponent.h"
+#include "GameObject/Component/Render/SpriteAnimatorComponent.h"
 #include "GameObject/Component/Render/Text3DRendererComponent.h"
 #include "GameObject/GameObject.h"
 #include "Editor/ImGui/ParticleSystemDebugUI.h"
@@ -169,6 +171,16 @@ namespace CoreEngine::Editor::ComponentInspectors
                         GameObject* const owner = colliders.GetOwner();
                         return owner ? ColliderInspector::Draw(*owner) : false;
                     });
+            },
+            });
+
+        AddPermanent("SpriteAnimator", {
+            .displayName = "スプライトアニメ",
+            .drawBody = [](IComponent& component) {
+                return DrawWithJsonUndo<SpriteAnimatorComponent>(component,
+                    [](const SpriteAnimatorComponent& animator, json& state) { animator.SaveClipsToJson(state); },
+                    [](SpriteAnimatorComponent& animator, const json& state) { animator.LoadClipsFromJson(state); },
+                    [](SpriteAnimatorComponent& animator) { return SpriteAnimatorInspector::Draw(animator); });
             },
             });
 

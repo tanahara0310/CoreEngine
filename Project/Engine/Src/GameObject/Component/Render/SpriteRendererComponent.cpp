@@ -14,7 +14,6 @@
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
-#include "Utility/FrameRate/Time.h"
 
 #include <algorithm>
 #include <cmath>
@@ -50,6 +49,12 @@ REFLECT_DEFINE_BEGIN(CoreEngine::SpriteRendererComponent, "スプライト描画
         p.range = Range(0.0f, 1.0f, 0.001f), p.tooltip = "描く範囲。板の大きさもこの範囲のピクセル数で決まる")
     REFLECT_ACCESSOR("uvMax", "UV 右下", GetUVMax, SetUVMax,
         p.range = Range(0.0f, 1.0f, 0.001f))
+    REFLECT_ACCESSOR("columns", "横のコマ数", GetColumns, SetColumns,
+        p.range = Range(1.0f, 256.0f, 0.05f), p.tooltip = "描く範囲を横に何コマへ分けるか（スプライトシート用）")
+    REFLECT_ACCESSOR("rows", "縦のコマ数", GetRows, SetRows,
+        p.range = Range(1.0f, 256.0f, 0.05f), p.tooltip = "描く範囲を縦に何コマへ分けるか")
+    REFLECT_ACCESSOR("frame", "コマ", GetFrame, SetFrame,
+        p.range = Range(0.0f, 65535.0f, 0.05f), p.tooltip = "描くコマ。左上から右へ、行の終わりで次の行へ数えて 0 から")
     REFLECT_ACCESSOR("uvOffset", "UV の移動", GetUVOffset, SetUVOffset, p.range = Speed(0.01f))
     REFLECT_ACCESSOR("uvScale", "UV の倍率", GetUVScale, SetUVScale, p.range = Speed(0.01f))
     REFLECT_ACCESSOR("uvRotation", "UV の回転", GetUVRotation, SetUVRotation,
@@ -172,9 +177,41 @@ namespace CoreEngine
     Vector2 SpriteRendererComponent::GetSize() const
     {
         return {
-            std::abs(uvMax_.x - uvMin_.x) * textureSize_.x / pixelsPerUnit_,
-            std::abs(uvMax_.y - uvMin_.y) * textureSize_.y / pixelsPerUnit_
+            std::abs(uvMax_.x - uvMin_.x) / static_cast<float>(columns_) * textureSize_.x / pixelsPerUnit_,
+            std::abs(uvMax_.y - uvMin_.y) / static_cast<float>(rows_) * textureSize_.y / pixelsPerUnit_
         };
+    }
+
+    void SpriteRendererComponent::SetColumns(int columns)
+    {
+        columns_ = (std::max)(columns, 1);
+        vertexDataDirty_ = true;
+    }
+
+    void SpriteRendererComponent::SetRows(int rows)
+    {
+        rows_ = (std::max)(rows, 1);
+        vertexDataDirty_ = true;
+    }
+
+    void SpriteRendererComponent::SetFrame(int frame)
+    {
+        if (frame_ != frame) {
+            frame_ = frame;
+            vertexDataDirty_ = true;
+        }
+    }
+
+    void SpriteRendererComponent::GetFrameUVRect(Vector2& outMin, Vector2& outMax) const
+    {
+        // 範囲外のコマは端へ丸める
+        const int frame = std::clamp(frame_, 0, GetFrameCount() - 1);
+        const int column = frame % columns_;
+        const int row = frame / columns_;
+        const float cellWidth = (uvMax_.x - uvMin_.x) / static_cast<float>(columns_);
+        const float cellHeight = (uvMax_.y - uvMin_.y) / static_cast<float>(rows_);
+        outMin = { uvMin_.x + cellWidth * static_cast<float>(column), uvMin_.y + cellHeight * static_cast<float>(row) };
+        outMax = { outMin.x + cellWidth, outMin.y + cellHeight };
     }
 
     void SpriteRendererComponent::SetFilter(SpriteFilter filter)
@@ -195,11 +232,14 @@ namespace CoreEngine
         const float top = anchorPoint_.y;
         const float bottom = anchorPoint_.y - 1.0f;
 
-        // フリップを考慮した UV 範囲
-        const float uMin = flipX_ ? uvMax_.x : uvMin_.x;
-        const float uMax = flipX_ ? uvMin_.x : uvMax_.x;
-        const float vMin = flipY_ ? uvMax_.y : uvMin_.y;
-        const float vMax = flipY_ ? uvMin_.y : uvMax_.y;
+        // 今のコマの UV 範囲（フリップを考慮）
+        Vector2 cellMin{};
+        Vector2 cellMax{};
+        GetFrameUVRect(cellMin, cellMax);
+        const float uMin = flipX_ ? cellMax.x : cellMin.x;
+        const float uMax = flipX_ ? cellMin.x : cellMax.x;
+        const float vMin = flipY_ ? cellMax.y : cellMin.y;
+        const float vMax = flipY_ ? cellMin.y : cellMax.y;
 
         // 左下
         vertexData[0].position = { left,  bottom, 0.0f, 1.0f };
@@ -220,24 +260,6 @@ namespace CoreEngine
         vertexData[3].position = { right, top,    0.0f, 1.0f };
         vertexData[3].texcoord = { uMax, vMin };
         vertexData[3].normal = { 0.0f, 0.0f, -1.0f };
-    }
-
-    void SpriteRendererComponent::Update()
-    {
-        const GameObject* owner = GetOwner();
-        if (!owner || !owner->IsActive()) { return; }
-
-        if (animator_ && animator_->IsPlaying()) {
-            animator_->Update(Time::DeltaTime(), this);
-        }
-    }
-
-    SpriteAnimator& SpriteRendererComponent::GetAnimator()
-    {
-        if (!animator_) {
-            animator_ = std::make_unique<SpriteAnimator>();
-        }
-        return *animator_;
     }
 
     bool SpriteRendererComponent::RequiresComponent(const IComponent& other) const
@@ -435,6 +457,9 @@ namespace CoreEngine
         uvMax_ = { 1.0f, 1.0f };
         flipX_ = false;
         flipY_ = false;
+        columns_ = 1;
+        rows_ = 1;
+        frame_ = 0;
 
         vertexDataDirty_ = true;
     }
