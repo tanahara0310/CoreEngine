@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.16.0">
+<meta name="engine-version" content="0.17.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -7573,6 +7573,14 @@ python Tools/OkinawaBeach/bake_player_walk.py
 
   <h2 id="changelog-history">更新履歴</h2>
 
+  <h3 id="changelog-v0-17-0">v0.17.0 <span class="dim">（2026-10-18）</span></h3>
+  <p>スプライトシート（コマを格子に並べた 1 枚の画像）からコマを選び、パラパラ漫画のように動かせるようにした版です（<a href="#api-SpriteRenderer">スプライト描画</a>・<a href="#api-SpriteAnimator">スプライトアニメ</a>）。</p>
+  <ul>
+    <li><strong>コマ割り</strong>：スプライト描画に <span class="ui">横のコマ数</span>・<span class="ui">縦のコマ数</span>・<span class="ui">コマ</span> を足しました。描く範囲を格子に分け、そのうち 1 コマを描きます。板の大きさは 1 コマのピクセル数で決まります。</li>
+    <li><strong>スプライトアニメ</strong>：新しいコンポーネントです。クリップ（名前・最初と最後のコマ・fps・ループ）を並べておき、<code>owner.spriteAnimator.Play("Run")</code> で流します。<span class="ui">最初のクリップ</span> は再生を始めたときに流れます。</li>
+    <li>使われていなかった C++ だけのスプライトのアニメの仕組みを消しました。</li>
+  </ul>
+
   <h3 id="changelog-v0-16-0">v0.16.0 <span class="dim">（2026-10-18）</span></h3>
   <p>2D のゲームをスクリプトで組むための入力・カメラ・物理を足した版です。</p>
   <ul>
@@ -7936,6 +7944,7 @@ class Rotator : ScriptComponent
           { n: "meshRenderer", s: "MeshRenderer@ meshRenderer", t: "ro", d: "<a href=\"#api-MeshRenderer\">MeshRenderer</a>（3D モデルの描画）" },
           { n: "material", s: "Material@ material", t: "ro", d: "<a href=\"#api-Material\">Material</a>（色・質感）" },
           { n: "spriteRenderer", s: "SpriteRenderer@ spriteRenderer", t: "ro", d: "<a href=\"#api-SpriteRenderer\">SpriteRenderer</a>（板ポリゴンの画像）" },
+          { n: "spriteAnimator", s: "SpriteAnimator@ spriteAnimator", t: "ro", d: "<a href=\"#api-SpriteAnimator\">SpriteAnimator</a>（スプライトのコマを進める）" },
           { n: "text3DRenderer", s: "Text3DRenderer@ text3DRenderer", t: "ro", d: "<a href=\"#api-Text3DRenderer\">Text3DRenderer</a>（空間に置く文字）" },
           { n: "camera", s: "Camera@ camera", t: "ro", d: "<a href=\"#api-Camera\">Camera</a>" },
           { n: "light", s: "Light@ light", t: "ro", d: "<a href=\"#api-Light\">Light</a>" },
@@ -10251,7 +10260,9 @@ void Update()
       ["1 単位のピクセル数", "pixelsPerUnit", "float", "100", "画像の何ピクセルを 1 単位（1 m）にするか。大きいほど小さく描きます。"],
       ["フィルタ", "filter", "int", "0", "0 = 線形、1 = ポイント（拡大してもにじまない。ドット絵向け）"],
       ["アンカー", "anchor", "Vector2", "(0.5, 0.5)", "画像のどこを位置に合わせるか（(0, 0) が左上、(1, 1) が右下）。"],
-      ["UV 左上 ／ UV 右下", "uvMin ／ uvMax", "Vector2", "(0, 0) ／ (1, 1)", "画像のどの範囲を描くか。板の大きさもこの範囲のピクセル数で決まります（コマ割りの画像の 1 コマを出すなど）。"],
+      ["UV 左上 ／ UV 右下", "uvMin ／ uvMax", "Vector2", "(0, 0) ／ (1, 1)", "画像のどの範囲を描くか（画像の一部だけを使うとき）。"],
+      ["横のコマ数 ／ 縦のコマ数", "columns ／ rows", "int", "1 ／ 1", "描く範囲を横と縦に何コマへ分けるか（スプライトシート用）。"],
+      ["コマ", "frame", "int", "0", "描くコマ。左上を 0 として右へ数え、行の終わりで次の行へ進む。範囲外は端のコマに丸める。"],
       ["UV の移動", "uvOffset", "Vector2", "(0, 0)", "UV をずらす（スクロール）。"],
       ["UV の倍率", "uvScale", "Vector2", "(1, 1)", "UV の倍率（繰り返し）。"],
       ["UV の回転", "uvRotation", "float", "0", "UV の回転（インスペクタは度、スクリプトはラジアン）。"],
@@ -10260,10 +10271,11 @@ void Update()
       ["ソートレイヤー", "sortingLayer", "int", "0", "大きいほど手前に描く。"],
       ["レイヤー内の順", "orderInLayer", "int", "0", "同じソートレイヤーの中で、大きいほど手前に描く。"],
       ["（テクスチャの大きさ）", "textureSize", "Vector2", "", "読み取り専用。画像のピクセル数。"],
-      ["（板の大きさ）", "size", "Vector2", "", "読み取り専用。スケールを掛ける前の板の大きさ（m）。"]
+      ["（板の大きさ）", "size", "Vector2", "", "読み取り専用。スケールを掛ける前の 1 コマぶんの板の大きさ（m）。"]
     ],
     notes: "<ul>" +
-      "<li>板の大きさは「描く範囲のピクセル数 ÷ 1 単位のピクセル数 × トランスフォームのスケール」です。100×100 ピクセルの画像は、既定で 1 m × 1 m になります。</li>" +
+      "<li>板の大きさは「1 コマのピクセル数 ÷ 1 単位のピクセル数 × トランスフォームのスケール」です。100×100 ピクセルの画像は、既定で 1 m × 1 m になります。</li>" +
+      "<li>コマを時間で進めるには <a href=\"#api-SpriteAnimator\">スプライトアニメ</a> を付けます。</li>" +
       "<li>描く順番は、ソートレイヤー → レイヤー内の順 → カメラからの奥行き（奥から）の順です。どれも同じなら後から置いたものが手前になります。</li>" +
       "<li>深度は書かないので、スプライトどうしの前後は描く順番で決まります。3D の不透明な物の後ろにあるスプライトは隠れます。</li>" +
       "<li>画面に重ねるボタンや文字は、スプライトではなく <a href=\"#api-UIImage\">UI 画像</a>・<a href=\"#api-UIText\">UI テキスト</a> を使うのが基本です。</li>" +
@@ -10287,7 +10299,62 @@ void Update()
 }`
       }
     ],
-    see: [["api-Camera", "カメラ"], ["api-UIImage", "UI 画像"], ["scenes-new", "新しいシーンを作る"]]
+    see: [["api-SpriteAnimator", "スプライトアニメ"], ["api-Camera", "カメラ"], ["api-UIImage", "UI 画像"], ["scenes-new", "新しいシーンを作る"]]
+  },
+
+  {
+    id: "SpriteAnimator", kind: "component", cat: "描画", display: "スプライトアニメ", type: "SpriteAnimator",
+    accessor: "owner.spriteAnimator", title: "スプライトアニメ（SpriteAnimator）", brief: "スプライトのコマを時間で進める",
+    keywords: "アニメ アニメーション スプライトシート コマ パラパラ クリップ 歩く 走る 2D fps ループ",
+    summary: "同じオブジェクトの <a href=\"#api-SpriteRenderer\">スプライト描画</a> のコマを、クリップに沿って時間で進めます。クリップは「最初のコマから最後のコマまでを、1 秒に fps コマの速さで流す」という決まりの集まりです。",
+    requires: "スプライト描画（コマ割りの横と縦のコマ数を決めておく）",
+    props: [
+      ["最初のクリップ", "defaultClip", "string", "", "再生を始めたときに流すクリップの名前。空なら流さない。"],
+      ["速さ", "speed", "float", "1", "倍率。1 で各クリップの fps どおり、0 で止まる。"],
+      ["（流しているクリップ）", "clip", "string", "", "読み取り専用。止めていても最後に流したクリップの名前。"],
+      ["（流している）", "isPlaying", "bool", "", "読み取り専用。ループしないクリップが終わると false。"]
+    ],
+    propsText: "<p>クリップはインスペクタの <span class=\"ui\">クリップを追加</span> で足し、1 本ずつ次の項目を決めます。コマの番号はスプライト描画のコマ割りで数えます（欄の上に使える範囲が出ます）。</p>" +
+      "<div class=\"table-wrap\"><table><thead><tr><th>項目</th><th>説明</th></tr></thead><tbody>" +
+      "<tr><td>名前</td><td><code>Play</code> で指す名前。</td></tr>" +
+      "<tr><td>最初のコマ ／ 最後のコマ</td><td>流すコマの範囲。最後のコマを最初より小さくすると逆に進む。</td></tr>" +
+      "<tr><td>fps</td><td>1 秒に進むコマの数。</td></tr>" +
+      "<tr><td>ループ</td><td>オン：最後のコマの後で最初へ戻る。オフ：最後のコマで止まり、<code>isPlaying</code> が false になる。</td></tr>" +
+      "</tbody></table></div>",
+    sections: [
+      {
+        title: "操作（スクリプト）", members: [
+          { n: "Play", s: "void Play(const string&in clipName)", t: "m", d: "クリップを流します。同じクリップを流している最中なら、そのまま続けます（毎フレーム呼んでも最初に戻らない）。名前が見つからなければ何もしません。" },
+          { n: "Stop", s: "void Stop()", t: "m", d: "止めます。コマはそのまま残ります。" }
+        ]
+      }
+    ],
+    notes: "<ul>" +
+      "<li>コマが進むのは再生中だけです。編集中は、スプライト描画の <span class=\"ui\">コマ</span> に入れたコマが見えます。</li>" +
+      "<li>時間は <code>Time::DeltaTime()</code> で進むので、<code>Time::SetTimeScale</code> の遅送り・一時停止に合わせて動きます。</li>" +
+      "<li>1 コマずつ別々の画像になっているアニメは、1 枚のスプライトシートにまとめて使います。</li>" +
+      "</ul>",
+    examples: [
+      {
+        title: "例：歩いている間は Walk、止まったら Idle を流す",
+        code: `
+[Range(0, 20)] float speed = 3.0f;
+
+void Update()
+{
+    const float move = Input::GetAxis(InputAction::MoveLeft, InputAction::MoveRight);
+    owner.transform.position = owner.transform.position + Vector3(move * speed * Time::DeltaTime(), 0.0f, 0.0f);
+
+    if (move != 0.0f) {
+        owner.spriteRenderer.flipX = move < 0.0f;
+        owner.spriteAnimator.Play("Walk");   // 流している最中なら続く
+    } else {
+        owner.spriteAnimator.Play("Idle");
+    }
+}`
+      }
+    ],
+    see: [["api-SpriteRenderer", "スプライト描画"]]
   },
 
   {
@@ -11192,7 +11259,7 @@ class TitleMenu : ScriptComponent
     "ScriptComponent TweenHandle TweenSequence UIText UIImage UIButton PlayParams Sound CameraShakeParams " +
     "GameCamera SaveFile RandomStream Animator AudioListener AudioSource Camera CharacterController " +
     "GpuParticleSystem Light Material MeshRenderer ParticleSystem PhysicsMaterial RectTransform " +
-    "Rigidbody SkyBox SpriteRenderer Text3DRenderer UISlider UIToggle WaterSurface EaseType CollisionLayer " +
+    "Rigidbody SkyBox SpriteRenderer SpriteAnimator Text3DRenderer UISlider UIToggle WaterSurface EaseType CollisionLayer " +
     "InputAction Key MouseButton TweenLoop TweenUpdate UIAnchor TextAlignH TextAlignV AudioBus ShakeWaveform " +
     "ShakeSpace ShakeTimeMode TweenCallback TweenProgressCallback TweenFloatSetter TweenVector2Setter " +
     "TweenVector3Setter TweenVector4Setter"
