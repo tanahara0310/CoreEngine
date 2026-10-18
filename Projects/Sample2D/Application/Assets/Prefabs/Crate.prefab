@@ -1,0 +1,78 @@
+{
+    "components": [
+        {
+            "type": "Transform",
+            "enabled": true,
+            "parameters": {
+                "translate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "parent": null
+            }
+        },
+        {
+            "type": "SpriteRenderer",
+            "enabled": true,
+            "parameters": {
+                "texture": {
+                    "path": "Application/Assets/Textures/crate.png"
+                },
+                "pixelsPerUnit": 16.0,
+                "filter": 1,
+                "orderInLayer": 5
+            }
+        },
+        {
+            "type": "Collider",
+            "enabled": true,
+            "parameters": {
+                "shapes": [
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "size": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "static": false,
+                        "trigger": false,
+                        "type": "Box"
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Rigidbody",
+            "enabled": true,
+            "version": 2,
+            "parameters": {
+                "bodyType": 0,
+                "mass": 1.0,
+                "useGravity": true,
+                "linearDamping": 0.0,
+                "angularDamping": 0.05,
+                "freezePositionZ": true,
+                "freezeRotationX": true,
+                "freezeRotationY": true
+            }
+        }
+    ]
+}

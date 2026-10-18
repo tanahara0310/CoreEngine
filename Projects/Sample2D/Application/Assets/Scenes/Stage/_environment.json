@@ -1,0 +1,6 @@
+{
+    "r.Cloud.Enabled": false,
+    "r.LensFlare.Enabled": false,
+    "r.LocalExposure.Enabled": false,
+    "r.ToneMapping.Operator": 3
+}

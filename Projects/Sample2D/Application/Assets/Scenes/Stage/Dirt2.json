@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "type": "Transform",
+            "enabled": true,
+            "parameters": {
+                "translate": [
+                    32.0,
+                    -6.0,
+                    0.0
+                ],
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    14.0,
+                    3.0,
+                    1.0
+                ],
+                "parent": null
+            }
+        },
+        {
+            "type": "SpriteRenderer",
+            "enabled": true,
+            "parameters": {
+                "texture": {
+                    "path": "Application/Assets/Textures/dirt.png"
+                },
+                "pixelsPerUnit": 16.0,
+                "filter": 1,
+                "uvScale": [
+                    14.0,
+                    3.0
+                ]
+            }
+        }
+    ],
+    "id": "5a2d00000000000a",
+    "name": "Dirt2",
+    "order": 7
+}

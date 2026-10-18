@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.17.0">
+<meta name="engine-version" content="0.18.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2066,6 +2066,7 @@ kbd {
     <tbody>
       <tr><td><span class="path">Projects/Sokoban</span></td><td>倉庫番。スクリプト 1 本（<span class="path">SokobanBoard.as</span>）とプレハブ 5 つだけで、文字で書いた盤面からステージを組み立てる小さな見本。ステージはインスペクタの <code>stages</code> に 1 行足せば増やせます。</td></tr>
       <tr><td><span class="path">Projects/Sandbox</span></td><td>機能ごとの試験場（物理・キャラクターの歩行・UI・水面・カメラの揺れ・スクリプトのシューター）。沖縄の海辺のシーンでは、待機・歩き・走りのアニメーションが付いた人型を操作できます（<a href="#tutorial-beach-player">沖縄の海辺をプレイヤーで歩く</a>）。</td></tr>
+      <tr><td><span class="path">Projects/Sample2D</span></td><td>2D の横スクロールの見本。走る・跳ぶ・コインを集める・ゴールに着く、の 1 ステージに、クリックした所へ箱を落とす遊びを足したもの。スプライトのアニメ・平行投影のカメラの追従・遠景・剛体の軸の固定・トリガーを、スクリプト 6 本（プレイヤー・進行・コイン・ゴール・カメラの追従・遠景）で使っています。</td></tr>
       <tr><td><span class="path">Projects/Tsunagazaru</span></td><td>つながザルをえない。走り続けるトロッコの前にレールを敷いていくゲームで、C++ で作ったゲームをスクリプトだけで作り直した大きめの見本（タイトル・ゲーム・リザルトの 3 シーン）。シーンを切り替えるときのロード画面も、プロジェクトのシェーダで描いています（<a href="#settings-loading-screen">シーンを切り替えるときのロード画面</a>）。</td></tr>
     </tbody>
   </table>
@@ -7572,6 +7573,14 @@ python Tools/OkinawaBeach/bake_player_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-18-0">v0.18.0 <span class="dim">（2026-10-18）</span></h3>
+  <p>付属のサンプルに、2D の横スクロールの見本 <span class="path">Projects/Sample2D</span> を足した版です（<a href="#intro-samples">付属のサンプル</a>）。</p>
+  <ul>
+    <li><strong>Projects/Sample2D</strong>：走る・跳ぶ・コインを集める・ゴールに着く・クリックした所へ箱を落とす、の 1 ステージ。スプライトのコマ割りとスプライトアニメ・平行投影のカメラの追従・遠景・剛体の軸の固定・箱を画像に合わせたコライダー・トリガー・画面の位置からワールドの位置への変換を使っています。絵は 16 ピクセルのドット絵です。</li>
+    <li>2D 向けのプロジェクトの設定の例として、TAA・CAS・SSAO を切り、重力を強めています（<span class="path">Application/Config/EngineSettings/CVars.json</span>）。</li>
+    <li><strong>直したこと</strong>：v0.13.0 から、スクリプトの <code>OnCollisionEnter</code> などの当たりの関数（6 つ）が呼ばれなくなっていたのを直しました。</li>
+  </ul>
 
   <h3 id="changelog-v0-17-0">v0.17.0 <span class="dim">（2026-10-18）</span></h3>
   <p>スプライトシート（コマを格子に並べた 1 枚の画像）からコマを選び、パラパラ漫画のように動かせるようにした版です（<a href="#api-SpriteRenderer">スプライト描画</a>・<a href="#api-SpriteAnimator">スプライトアニメ</a>）。</p>

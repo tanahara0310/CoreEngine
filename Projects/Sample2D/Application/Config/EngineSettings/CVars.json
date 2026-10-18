@@ -1,0 +1,11 @@
+{
+    "r.CAS.Enabled": false,
+    "r.SSAO.Enabled": false,
+    "r.SSAOBlur.Enabled": false,
+    "r.TAA.Enabled": false,
+    "sys.Physics.Gravity": [
+        0.0,
+        -25.0,
+        0.0
+    ]
+}

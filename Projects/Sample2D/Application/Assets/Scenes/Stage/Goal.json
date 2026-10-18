@@ -1,0 +1,75 @@
+{
+    "active": true,
+    "components": [
+        {
+            "type": "Transform",
+            "enabled": true,
+            "parameters": {
+                "translate": [
+                    36.0,
+                    -2.5,
+                    0.0
+                ],
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "parent": null
+            }
+        },
+        {
+            "type": "SpriteRenderer",
+            "enabled": true,
+            "parameters": {
+                "texture": {
+                    "path": "Application/Assets/Textures/flag.png"
+                },
+                "pixelsPerUnit": 16.0,
+                "filter": 1
+            }
+        },
+        {
+            "type": "Collider",
+            "enabled": true,
+            "parameters": {
+                "shapes": [
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "size": [
+                            0.6,
+                            2.0,
+                            1.0
+                        ],
+                        "static": false,
+                        "trigger": true,
+                        "type": "Box"
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Goal",
+            "enabled": true,
+            "parameters": {
+                "director": {
+                    "ref": "5a2d000000000001"
+                }
+            }
+        }
+    ],
+    "id": "5a2d000000000014",
+    "name": "Goal",
+    "order": 17
+}
