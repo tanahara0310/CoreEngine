@@ -2,7 +2,6 @@
 
 #include "GameObject/Component/Core/IComponent.h"
 #include "GameObject/Component/Render/IRenderableComponent.h"
-#include "GameObject/Sprite/SpriteAnimator.h"
 #include "Graphics/Material/SpriteMaterialInstance.h"
 #include "Graphics/Model/VertexData.h"
 #include "Graphics/Texture/TextureManager.h"
@@ -33,7 +32,8 @@ namespace CoreEngine
 
     /// @brief テクスチャを貼った板をワールドに置いて描くコンポーネント
     /// @details 位置・回転・スケールは兄弟の `TransformComponent` から取り、親子関係も効く。
-    ///          板の大きさは「描く範囲のピクセル数 ÷ 1 単位のピクセル数 × スケール」。
+    ///          描く範囲（UV）を横と縦のコマ数で格子に分け、そのうち 1 コマを描く。
+    ///          板の大きさは「1 コマのピクセル数 ÷ 1 単位のピクセル数 × スケール」。
     class SpriteRendererComponent : public IComponent, public IRenderableComponent
     {
     public:
@@ -55,9 +55,6 @@ namespace CoreEngine
 
         /// @brief トランスフォームを確保し、レンダラー・インデックスバッファ・マテリアル・テクスチャを用意する
         void Awake() override;
-
-        /// @brief アニメーターを進める
-        void Update() override;
 
         // ===== IRenderableComponent =====
 
@@ -84,8 +81,25 @@ namespace CoreEngine
         float GetPixelsPerUnit() const { return pixelsPerUnit_; }
         void SetPixelsPerUnit(float pixelsPerUnit);
 
-        /// @brief 板の大きさ（スケールを掛ける前・ワールドの長さ）
+        /// @brief 板の大きさ（1 コマぶん・スケールを掛ける前・ワールドの長さ）
         Vector2 GetSize() const;
+
+        // ===== コマ割り =====
+
+        /// @brief 描く範囲を横に何コマへ分けるか（1 以上）
+        int GetColumns() const { return columns_; }
+        void SetColumns(int columns);
+
+        /// @brief 描く範囲を縦に何コマへ分けるか（1 以上）
+        int GetRows() const { return rows_; }
+        void SetRows(int rows);
+
+        /// @brief 描くコマ（左上から右へ、行の終わりで次の行へ数えて 0 から。範囲外は丸める）
+        int GetFrame() const { return frame_; }
+        void SetFrame(int frame);
+
+        /// @brief コマの数（横のコマ数 × 縦のコマ数）
+        int GetFrameCount() const { return columns_ * rows_; }
 
         /// @brief テクスチャのサンプリングのしかた
         SpriteFilter GetFilter() const { return filter_; }
@@ -144,16 +158,8 @@ namespace CoreEngine
         /// @brief レイヤー内の描画順を設定する（大きいほど手前）
         void SetOrderInLayer(int order) { orderInLayer_ = order; }
 
-        /// @brief 色・UV・アンカー・フリップを既定へ戻す
+        /// @brief 色・UV・アンカー・フリップ・コマ割りを既定へ戻す
         void Reset();
-
-        // ===== アニメーション =====
-
-        /// @brief アニメーターを取得する（無ければ作る）
-        SpriteAnimator& GetAnimator();
-
-        /// @brief アニメーターがあるか
-        bool HasAnimator() const { return animator_ != nullptr; }
 
         // ===== 型記述子とやり取りする値 =====
 
@@ -188,7 +194,10 @@ namespace CoreEngine
         /// @brief テクスチャを読み込み、サイズを取る
         void LoadTexture(const std::string& texturePath);
 
-        /// @brief アンカー・UV の範囲・フリップから頂点を書き直す
+        /// @brief 今のコマの UV の範囲（左上・右下）
+        void GetFrameUVRect(Vector2& outMin, Vector2& outMax) const;
+
+        /// @brief アンカー・今のコマの UV の範囲・フリップから頂点を書き直す
         void UpdateVertexData();
 
         /// @brief UV 変換のパラメータから行列を作ってマテリアルへ渡す
@@ -221,6 +230,9 @@ namespace CoreEngine
         Vector2 uvMax_ = { 1.0f, 1.0f };
         bool flipX_ = false;
         bool flipY_ = false;
+        int columns_ = 1;
+        int rows_ = 1;
+        int frame_ = 0;
         bool vertexDataDirty_ = true;
 
         BlendMode blendMode_ = BlendMode::kBlendModeNormal;
@@ -231,7 +243,5 @@ namespace CoreEngine
         std::array<VertexData, 4> vertices_{};
         Microsoft::WRL::ComPtr<ID3D12Resource> indexResource_;
         D3D12_INDEX_BUFFER_VIEW indexBufferView_{};
-
-        std::unique_ptr<SpriteAnimator> animator_;
     };
 }
