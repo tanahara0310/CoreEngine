@@ -824,6 +824,13 @@ exit /b 0</Command>
       <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <ClCompile Include="Externals\angelscript\add_on\scriptdictionary\scriptdictionary.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
     <ClCompile Include="Externals\angelscript\add_on\scripthelper\scripthelper.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
@@ -1795,6 +1802,7 @@ exit /b 0</Command>
     <ClInclude Include="Externals\angelscript\add_on\autowrapper\aswrappedcall.h" />
     <ClInclude Include="Externals\angelscript\add_on\scriptarray\scriptarray.h" />
     <ClInclude Include="Externals\angelscript\add_on\scriptbuilder\scriptbuilder.h" />
+    <ClInclude Include="Externals\angelscript\add_on\scriptdictionary\scriptdictionary.h" />
     <ClInclude Include="Externals\angelscript\add_on\scripthelper\scripthelper.h" />
     <ClInclude Include="Externals\angelscript\add_on\scriptmath\scriptmath.h" />
     <ClInclude Include="Externals\angelscript\add_on\scriptstdstring\scriptstdstring.h" />

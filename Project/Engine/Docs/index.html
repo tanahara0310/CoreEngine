@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.18.0">
+<meta name="engine-version" content="0.19.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3314,7 +3314,7 @@ kbd {
     </tbody>
   </table>
   </div>
-  <p><code>string</code>・<code>array</code>、<code>sin</code>・<code>sqrt</code> などの数学関数、<code>format</code>・<code>parseInt</code> などの文字列の関数は言語の部品なので、using が無くても使えます。</p>
+  <p><code>string</code>・<code>array</code>・<code>dictionary</code>、<code>sin</code>・<code>sqrt</code> などの数学関数、<code>format</code>・<code>parseInt</code> などの文字列の関数は言語の部品なので、using が無くても使えます。</p>
 
   <h2 id="script-overview-module">すべてのファイルが 1 つにまとまる</h2>
   <p>Scripts の下の <code>.as</code> は<strong>すべてまとめて 1 つにコンパイル</strong>されます。ほかのファイルのクラス・関数・グローバル変数・enum を、<code>#include</code> なしでそのまま使えます（<code>#include</code> を書いても無視されます）。自分で書いたスクリプト同士は、using も要りません（Unity でも同じアセンブリのスクリプト同士は using なしで使えます）。</p>
@@ -6841,9 +6841,9 @@ kbd {
   <div class="callout warn"><p>グローバル変数は、シーンを切り替えても<strong>エディタで再生を止めても元に戻りません</strong>（スクリプトを読み直したときにだけ初期値に戻ります）。前回の再生の値が残って混乱しやすいので、変わる値はグローバル変数ではなく、進行役のコンポーネントのメンバか <a href="#api-Session">Session</a> に持たせてください。定数（<code>const</code>）には問題なく使えます。</p></div>
 </article>
 
-<article class="page" id="lang-strings-arrays" data-group="AngelScript の文法" data-title="文字列と配列" data-keywords="文字列 string 連結 フォーマット 桁 ゼロ埋め 部分 検索 配列 array リスト 要素 追加 削除 並べ替え foreach 初期化">
-  <h1>文字列と配列</h1>
-  <p class="lead">よく使う文字列と配列の操作です。詳しいメンバーは <a href="#api-string">string</a> と <a href="#api-array">array&lt;T&gt;</a> を見てください。</p>
+<article class="page" id="lang-strings-arrays" data-group="AngelScript の文法" data-title="文字列・配列・辞書" data-keywords="文字列 string 連結 フォーマット 桁 ゼロ埋め 部分 検索 配列 array リスト 要素 追加 削除 並べ替え foreach 初期化 辞書 dictionary マップ map 連想配列 キー 値 vector">
+  <h1>文字列・配列・辞書</h1>
+  <p class="lead">よく使う文字列・配列・辞書の操作です。C++ の <code>std::vector</code> にあたるのが <code>array</code>、<code>std::map</code> にあたるのが <code>dictionary</code> です。詳しいメンバーは <a href="#api-string">string</a>・<a href="#api-array">array&lt;T&gt;</a>・<a href="#api-dictionary">dictionary</a> を見てください。</p>
 
   <h2 id="strings-basic">文字列</h2>
   <script type="text/x-code" data-lang="as">
@@ -6909,6 +6909,62 @@ kbd {
     array<GameObject@>@ hits = Physics::OverlapSphere(center, 5.0f);
     Log("近くに " + hits.length() + " 個");
   </script>
+
+  <h2 id="dictionary-basic">辞書（dictionary）</h2>
+  <p>文字列のキーで値を引く入れ物です。キーは <code>string</code> だけで、値は数・<code>bool</code>・<code>string</code>・<code>Vector3</code>・ハンドルなど何でも入り、1 つの辞書に違う型を混ぜられます。読むときは <code>int(d["キー"])</code> のように、入れたときの型で取り出します。</p>
+  <script type="text/x-code" data-lang="as">
+    dictionary prices = { {"apple", 120}, {"melon", 800} };   // 初期値つき
+    dictionary stats;                                          // 空の辞書
+
+    prices["banana"] = 90;                     // 足す（同じキーなら上書き）
+    int apple = int(prices["apple"]);          // 入れた型で読む
+    bool has = prices.exists("melon");         // キーがあるか
+    prices.delete("melon");                    // 消す
+    uint count = prices.getSize();             // 数（uint）
+
+    stats["speed"] = 3.5f;
+    stats["name"] = "Slime";
+    stats["home"] = Vector3(0.0f, 1.0f, 0.0f);
+    float speed = float(stats["speed"]);
+    string name = string(stats["name"]);
+    Vector3 home = Vector3(stats["home"]);
+  </script>
+
+  <h3 id="dictionary-missing">無いキーを読むとき</h3>
+  <p><code>d["キー"]</code> で無いキーを読むと、そのキーが空の値で足され、数なら 0 が返ります。キーが無いかもしれないときは <code>exists</code> で確かめるか、<code>get</code> で読みます。<code>get</code> は読めたかを <code>bool</code> で返します。</p>
+  <script type="text/x-code" data-lang="as">
+    int score = 0;
+    if (prices.get("cherry", score)) {
+        Log("cherry は " + score);
+    } else {
+        Log("cherry はありません");
+    }
+  </script>
+  <div class="callout warn"><p>数と文字列は互いに変わりません。<code>int</code> で入れた値を <code>string(d["キー"])</code> で読むと空の文字列になります。</p></div>
+
+  <h3 id="dictionary-loop">辞書を回す</h3>
+  <p><code>getKeys()</code> でキーの配列を取って回します。並び順は決まっていないので、順番が要るときはキーを並べ替えます。</p>
+  <script type="text/x-code" data-lang="as">
+    array<string>@ keys = prices.getKeys();
+    keys.sortAsc();
+    for (uint i = 0; i < keys.length(); ++i) {
+        Log(keys[i] + ": " + int(prices[keys[i]]));
+    }
+
+    foreach (auto value, auto key : prices) {   // foreach でも回せる（値・キーの順）
+        Log(key + ": " + int(value));
+    }
+  </script>
+  <div class="callout note"><p>VS Code の拡張機能は <code>foreach</code> の構文を知らないので、その行に警告を出します。エンジンではコンパイルできます。</p></div>
+
+  <h3 id="dictionary-handles">ハンドルを入れる</h3>
+  <p>オブジェクトは <code>@</code> を付けて入れ、<code>cast&lt;型&gt;</code> で取り出します。</p>
+  <script type="text/x-code" data-lang="as">
+    dictionary spawned;
+    spawned["boss"] = @boss;                                  // GameObject@ を入れる
+    GameObject@ found = cast<GameObject>(spawned["boss"]);    // 取り出す（違う型なら null）
+  </script>
+  <div class="callout note"><p>コンポーネントのメンバ変数にした <code>dictionary</code> は、インスペクタに出ず、シーンにも保存されません（コンパイルのときに警告が出ます）。保存したい値は <code>int</code>・<code>string</code>・<code>array</code> などのメンバ変数に持ちます。</p></div>
 </article>
 
 <article class="page" id="lang-funcdef" data-group="AngelScript の文法" data-title="関数ハンドルとデリゲート" data-keywords="funcdef デリゲート コールバック 関数ハンドル 無名関数 ラムダ function 渡す tween oncomplete">
@@ -9216,6 +9272,13 @@ python Tools/OkinawaBeach/bake_player_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-19-0">v0.19.0 <span class="dim">（2026-10-19）</span></h3>
+  <p>スクリプトで辞書（C++ の <code>std::map</code> にあたる入れ物）を使えるようにした版です（<a href="#lang-strings-arrays">文字列・配列・辞書</a>・<a href="#api-dictionary">dictionary</a>）。</p>
+  <ul>
+    <li><strong>dictionary</strong>：AngelScript 公式のアドオン（2.38.0）を登録しました。文字列のキーで、数・<code>bool</code>・<code>string</code>・<code>Vector3</code>・ハンドルなどの値を引けます。<code>d["キー"]</code> で読み書きし、<code>exists</code>・<code>get</code>・<code>delete</code>・<code>getKeys</code> と <code>foreach</code> が使えます。</li>
+    <li>付属のサンプルの <span class="path">as.predefined</span> に <code>dictionary</code> の宣言を足したので、VS Code で補完に出ます。</li>
+  </ul>
 
   <h3 id="changelog-v0-18-0">v0.18.0 <span class="dim">（2026-10-18）</span></h3>
   <p>付属のサンプルに、2D の横スクロールの見本 <span class="path">Projects/Sample2D</span> を足した版です（<a href="#intro-samples">付属のサンプル</a>）。</p>
@@ -11693,7 +11756,7 @@ class EnemySensor : ScriptComponent
         ]
       }
     ],
-    see: [["api-StringFunctions", "文字列の関数（formatInt など）"], ["lang-strings-arrays", "文字列と配列"]]
+    see: [["api-StringFunctions", "文字列の関数（formatInt など）"], ["lang-strings-arrays", "文字列・配列・辞書"]]
   },
 
   {
@@ -11780,7 +11843,52 @@ for (uint i = enemies.length(); i-- > 0;) {    // 後ろから消すと添字が
 }`
       }
     ],
-    see: [["lang-strings-arrays", "文字列と配列"]]
+    see: [["lang-strings-arrays", "文字列・配列・辞書"]]
+  },
+
+  {
+    id: "dictionary", kind: "class", cat: "言語の標準", title: "dictionary", brief: "辞書（文字列のキーで引く）",
+    keywords: "辞書 マップ map 連想配列 キー 値 dictionary",
+    summary: "文字列のキーで値を引く入れ物です。値は数・<code>bool</code>・<code>string</code>・<code>Vector3</code>・ハンドルなど何でも入り、1 つの辞書に違う型を混ぜられます。",
+    decl: "class dictionary",
+    intro: "<p>読むときは入れたときの型で取り出します（<code>int(d[\"hp\"])</code>・<code>string(d[\"name\"])</code>・<code>cast&lt;GameObject&gt;(d[\"boss\"])</code>）。<code>d[\"キー\"]</code> で無いキーを読むと、そのキーが空の値で足されます。キーが無いかもしれないときは <code>exists</code> か <code>get</code> を使います。数と文字列は互いに変わりません。</p>",
+    sections: [
+      {
+        title: "メソッド", members: [
+          { n: "set", s: "void set(const string&in key, const ?&in value)", t: "m", d: "値を入れます（同じキーなら上書き）。<code>d[key] = value</code> と同じです。" },
+          { n: "get", s: "bool get(const string&in key, ?&out value) const", t: "m", d: "値を読みます。キーが無いか型が合わなければ <code>false</code>。" },
+          { n: "exists", s: "bool exists(const string&in key) const", t: "m", d: "キーがあるか。" },
+          { n: "delete", s: "bool delete(const string&in key)", t: "m", d: "キーを消します。消したら <code>true</code>。" },
+          { n: "deleteAll", s: "void deleteAll()", t: "m", d: "全部消します。" },
+          { n: "getSize", s: "uint getSize() const", t: "m", d: "キーの数。" },
+          { n: "isEmpty", s: "bool isEmpty() const", t: "m", d: "空か。" },
+          { n: "getKeys", s: "array<string>@ getKeys() const", t: "m", d: "キーの配列。並び順は決まっていません。" },
+          { n: "opIndex", s: "dictionaryValue& opIndex(const string&in key)", t: "op", d: "<code>d[key]</code>。読み書きできます。無いキーは足されます。" }
+        ]
+      }
+    ],
+    examples: [
+      {
+        title: "使用例",
+        code: `
+dictionary prices = { {"apple", 120}, {"melon", 800} };
+prices["banana"] = 90;
+
+int apple = int(prices["apple"]);
+
+int cherry = 0;
+if (!prices.get("cherry", cherry)) {
+    Log("cherry はありません");
+}
+
+array<string>@ keys = prices.getKeys();
+keys.sortAsc();
+for (uint i = 0; i < keys.length(); ++i) {
+    Log(keys[i] + ": " + int(prices[keys[i]]));
+}`
+      }
+    ],
+    see: [["lang-strings-arrays", "文字列・配列・辞書"]]
   }
 ];
 
