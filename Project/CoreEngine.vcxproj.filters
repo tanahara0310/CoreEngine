@@ -1510,6 +1510,9 @@
     <ClCompile Include="Externals\angelscript\add_on\scriptbuilder\scriptbuilder.cpp">
       <Filter>Externals\angelscript\add_on\scriptbuilder</Filter>
     </ClCompile>
+    <ClCompile Include="Externals\angelscript\add_on\scriptdictionary\scriptdictionary.cpp">
+      <Filter>Externals\angelscript\add_on\scriptdictionary</Filter>
+    </ClCompile>
     <ClCompile Include="Externals\angelscript\add_on\scripthelper\scripthelper.cpp">
       <Filter>Externals\angelscript\add_on\scripthelper</Filter>
     </ClCompile>
@@ -3621,6 +3624,9 @@
     <ClInclude Include="Externals\angelscript\add_on\scriptbuilder\scriptbuilder.h">
       <Filter>Externals\angelscript\add_on\scriptbuilder</Filter>
     </ClInclude>
+    <ClInclude Include="Externals\angelscript\add_on\scriptdictionary\scriptdictionary.h">
+      <Filter>Externals\angelscript\add_on\scriptdictionary</Filter>
+    </ClInclude>
     <ClInclude Include="Externals\angelscript\add_on\scripthelper\scripthelper.h">
       <Filter>Externals\angelscript\add_on\scripthelper</Filter>
     </ClInclude>
@@ -4551,6 +4557,9 @@
     </Filter>
     <Filter Include="Externals\angelscript\add_on\scriptbuilder">
       <UniqueIdentifier>{44AD3161-55E4-4AAD-A6BD-29853104379C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\angelscript\add_on\scriptdictionary">
+      <UniqueIdentifier>{2541173D-E3F6-46C7-AABF-CD5D248CCE10}</UniqueIdentifier>
     </Filter>
     <Filter Include="Externals\angelscript\add_on\scripthelper">
       <UniqueIdentifier>{B961F070-8632-4E5E-8D60-50E2C0EDC75C}</UniqueIdentifier>

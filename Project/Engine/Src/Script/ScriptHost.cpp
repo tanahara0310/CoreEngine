@@ -33,6 +33,7 @@
 #include <angelscript.h>
 #include <scriptarray/scriptarray.h>
 #include <scriptbuilder/scriptbuilder.h>
+#include <scriptdictionary/scriptdictionary.h>
 #include <scripthelper/scripthelper.h>
 #include <scriptmath/scriptmath.h>
 #include <scriptstdstring/scriptstdstring.h>
@@ -365,6 +366,7 @@ namespace CoreEngine
 
         RegisterScriptArray(engine_, true);
         RegisterStdString(engine_);
+        RegisterScriptDictionary(engine_);
         RegisterScriptMath(engine_);
         RegisterExceptionRoutines(engine_);
 
