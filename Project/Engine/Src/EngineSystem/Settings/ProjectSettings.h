@@ -5,6 +5,15 @@
 
 namespace CoreEngine
 {
+    /// @brief プロジェクトのポストエフェクト 1 つ（`postEffects` の 1 要素）
+    struct ProjectPostEffectSettings
+    {
+        std::string name;     ///< 名前（スクリプトの PostEffect:: で指す）
+        std::string material; ///< コンピュートシェーダと値を持つマテリアル（.mat）
+        std::string stage;    ///< 差し込む段（"SceneHDR" ／ "PostTonemap" ／ "Overlay"）
+        bool enabled = true;  ///< シーンを開いたときに有効にするか
+    };
+
     /// @brief CVar で表せないプロジェクト設定
     /// @details 置き場は `Application/Config/EngineSettings/Project.json`。
     ///          CVar は bool / 数値 / ベクトルしか持てないので、シーン名のような
@@ -60,6 +69,9 @@ namespace CoreEngine
         /// @brief ロード画面の画像を決めて保存する
         bool SetLoadingScreenImages(std::vector<std::string> images);
 
+        /// @brief プロジェクトのポストエフェクトの並び（掛ける順）
+        const std::vector<ProjectPostEffectSettings>& GetPostEffects() const { return postEffects_; }
+
         /// @brief ファイルへ書き出す（ファイルにある他の項目は残す）
         bool Save() const;
 
@@ -80,5 +92,6 @@ namespace CoreEngine
         std::vector<std::string> splashTips_;
         std::string loadingScreenShader_;
         std::vector<std::string> loadingScreenImages_;
+        std::vector<ProjectPostEffectSettings> postEffects_;
     };
 }

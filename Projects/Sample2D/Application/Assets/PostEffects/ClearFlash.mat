@@ -1,0 +1,16 @@
+{
+    "shader": {
+        "path": "Application/Assets/PostEffects/ClearFlash.CS.hlsl"
+    },
+    "textures": {},
+    "values": {
+        "flashColor": [
+            1.0,
+            0.95,
+            0.75,
+            0.85
+        ],
+        "progress": 0.0,
+        "width": 0.08
+    }
+}

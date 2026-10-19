@@ -8,6 +8,7 @@
 namespace CoreEngine
 {
     class ShaderMaterial;
+    struct MaterialParamLayout;
 }
 
 /// @brief マテリアル（.mat）の中身のインスペクタ
@@ -17,8 +18,9 @@ namespace CoreEngine
 namespace CoreEngine::Editor::ShaderMaterialInspector
 {
     /// @brief マテリアルの中身を描く
+    /// @param layout 値の並び（nullptr ならプロジェクトのポストエフェクトか、スプライトのシェーダとして組んで引く）
     /// @return 値を変えたら true
-    bool Draw(ShaderMaterial& material);
+    bool Draw(ShaderMaterial& material, const MaterialParamLayout* layout = nullptr);
 
     /// @brief Project で選んだ .mat を描く
     /// @return マテリアルとして描いたら true（.mat でなければ何も描かずに false）

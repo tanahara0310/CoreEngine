@@ -3,6 +3,7 @@
 
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/Cloud/VolumetricCloudManager.h"
+#include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/CVar/CVarRegistry.h"
@@ -61,6 +62,11 @@ namespace CoreEngine
         //（前のシーンのファイルには触らない）
         if (auto* cloudManager = FindCloudManager(engine)) {
             cloudManager->SetWeatherPaintPath({});
+        }
+
+        // プロジェクトのポストエフェクトの有効と値も、前のシーンのものを残さない
+        if (auto* postEffects = engine ? engine->GetService<PostEffectManager>() : nullptr) {
+            postEffects->RequestProjectEffectsReset();
         }
     }
 

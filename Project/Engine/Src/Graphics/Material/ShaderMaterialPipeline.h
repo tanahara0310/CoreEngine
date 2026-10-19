@@ -4,11 +4,14 @@
 #include "Graphics/RootSignature/RootSignatureManager.h"
 #include "Graphics/RootSignature/RootSlot.h"
 #include "Graphics/Shader/CBufferLayout.h"
+#include "Graphics/Material/ShaderMaterial.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Math/MathCore.h"
 
 #include <d3d12.h>
+#include <dxcapi.h>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -17,7 +20,6 @@
 namespace CoreEngine
 {
     class ShaderCompiler;
-    class ShaderMaterial;
     class ShaderReflectionBuilder;
 
     /// @brief .mat で頂点シェーダを指定しないときに使う頂点シェーダ
@@ -69,6 +71,16 @@ namespace CoreEngine
         /// @brief 名前で項目を引く（無ければ nullptr）
         const MaterialParamField* Find(std::string_view name) const;
     };
+
+    /// @brief 名前で値を引く関数（無ければ nullptr を返す）
+    using MaterialValueLookup = std::function<const MaterialNumbers*(std::string_view)>;
+
+    /// @brief シェーダから値の並び（b0 の定数バッファ）と、`gTexture` 以外のテクスチャの名前を読む
+    /// @details すでに並びがあれば足りないテクスチャだけを足す（頂点シェーダとピクセルシェーダを続けて読む）。
+    void ReadMaterialParamLayout(IDxcUtils* utils, IDxcBlob* blob, MaterialParamLayout& layout, const std::string& shaderName);
+
+    /// @brief 値を定数バッファの並びに詰める（引けない項目は 0）
+    void PackMaterialParams(const MaterialParamLayout& layout, const MaterialValueLookup& find, std::vector<uint8_t>& out);
 
     /// @brief マテリアルのシェーダで組んだパイプライン（ブレンドごとの PSO とルートシグネチャ）
     class ShaderMaterialPipeline

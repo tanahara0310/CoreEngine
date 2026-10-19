@@ -5,6 +5,7 @@
 #include "Graphics/PostEffect/Effect/FadeEffect/FadeEffect.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/PostEffect/Effect/PostEffectNames.h"
+#include "Graphics/PostEffect/Effect/ProjectPostEffect/ProjectPostEffect.h"
 #include "Graphics/PostEffect/Effect/ToneMapping/ToneMapping.h"
 #include "Graphics/Material/ShaderMaterial.h"
 #include "Graphics/Material/ShaderMaterialLibrary.h"
@@ -16,6 +17,7 @@
 #include <memory>
 #include <span>
 #include <string>
+#include <unordered_set>
 
 namespace CoreEngine::Script
 {
@@ -162,6 +164,39 @@ namespace CoreEngine::Script
             return new ScriptShaderMaterial(std::move(material));
         }
 
+        /// @brief プロジェクトのポストエフェクトを名前で引く（無ければ名前ごとに 1 回だけ警告する）
+        ProjectPostEffect* FindProjectEffectOrWarn(const std::string& name)
+        {
+            PostEffectManager* const postEffects =
+                sEngineSystem ? sEngineSystem->GetService<PostEffectManager>() : nullptr;
+            ProjectPostEffect* const effect = postEffects ? postEffects->FindProjectEffect(name) : nullptr;
+            static std::unordered_set<std::string> warned;
+            if (!effect && warned.insert(name).second) {
+                Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Script,
+                    "ポストエフェクト {} は Project.json の postEffects にありません（作れなかったときはエラーのログを見てください）", name);
+            }
+            return effect;
+        }
+
+        void PostEffectSetEnabled(const std::string& name, bool enabled)
+        {
+            if (FindProjectEffectOrWarn(name)) {
+                sEngineSystem->GetService<PostEffectManager>()->SetEffectEnabled(name, enabled);
+            }
+        }
+
+        bool PostEffectIsEnabled(const std::string& name)
+        {
+            const ProjectPostEffect* const effect = FindProjectEffectOrWarn(name);
+            return effect && effect->IsEnabled();
+        }
+
+        ScriptShaderMaterial* PostEffectGetMaterial(const std::string& name)
+        {
+            const ProjectPostEffect* const effect = FindProjectEffectOrWarn(name);
+            return new ScriptShaderMaterial(effect ? effect->GetMaterial() : nullptr);
+        }
+
         void RegisterShaderMaterial(BindingRegistrar& r)
         {
             using Handle = ScriptShaderMaterial;
@@ -198,6 +233,11 @@ namespace CoreEngine::Script
         r.Function("void SetFadeAlpha(float alpha)", asFUNCTION(SetFadeAlpha));
         r.Namespace("");
         RegisterShaderMaterial(r);
+        r.Namespace("PostEffect");
+        r.Function("void SetEnabled(const string &in name, bool enabled)", asFUNCTION(PostEffectSetEnabled));
+        r.Function("bool IsEnabled(const string &in name)", asFUNCTION(PostEffectIsEnabled));
+        r.Function("ShaderMaterial@ GetMaterial(const string &in name)", asFUNCTION(PostEffectGetMaterial));
+        r.Namespace("");
         return r.Succeeded();
     }
 }

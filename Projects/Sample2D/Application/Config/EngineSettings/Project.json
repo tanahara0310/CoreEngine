@@ -1,5 +1,13 @@
 {
     "initialScene": "Stage",
     "name": "Sample2D",
+    "postEffects": [
+        {
+            "enabled": false,
+            "material": "Application/Assets/PostEffects/ClearFlash.mat",
+            "name": "ClearFlash",
+            "stage": "PostTonemap"
+        }
+    ],
     "version": "1.0"
 }

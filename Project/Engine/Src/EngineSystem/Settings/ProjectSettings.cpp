@@ -20,6 +20,31 @@ namespace CoreEngine
         constexpr const char* kSplashTipsKey = "splashTips";
         constexpr const char* kLoadingScreenShaderKey = "loadingScreenShader";
         constexpr const char* kLoadingScreenImagesKey = "loadingScreenImages";
+        constexpr const char* kPostEffectsKey = "postEffects";
+
+        /// @brief ポストエフェクトの並びを読む（名前かマテリアルの無い要素は飛ばす）
+        std::vector<ProjectPostEffectSettings> ReadPostEffects(const nlohmann::json& root)
+        {
+            std::vector<ProjectPostEffectSettings> effects;
+            const auto found = root.find(kPostEffectsKey);
+            if (found == root.end() || !found->is_array()) {
+                return effects;
+            }
+            for (const nlohmann::json& entry : *found) {
+                if (!entry.is_object()) {
+                    continue;
+                }
+                ProjectPostEffectSettings effect;
+                effect.name = entry.value("name", std::string());
+                effect.material = entry.value("material", std::string());
+                effect.stage = entry.value("stage", std::string("PostTonemap"));
+                effect.enabled = entry.value("enabled", true);
+                if (!effect.name.empty() && !effect.material.empty()) {
+                    effects.push_back(std::move(effect));
+                }
+            }
+            return effects;
+        }
 
         /// @brief 文字列の配列の項目を読む（空の文字列は飛ばす）
         std::vector<std::string> ReadStringArray(const nlohmann::json& root, const char* key)
@@ -92,6 +117,7 @@ namespace CoreEngine
         splashTips_.clear();
         loadingScreenShader_.clear();
         loadingScreenImages_.clear();
+        postEffects_.clear();
 
         const std::filesystem::path path = ProjectPaths::Resolve(kSettingsPath);
         std::ifstream in(path, std::ios::binary);
@@ -118,6 +144,7 @@ namespace CoreEngine
         splashTips_ = ReadStringArray(root, kSplashTipsKey);
         loadingScreenShader_ = ReadString(root, kLoadingScreenShaderKey);
         loadingScreenImages_ = ReadStringArray(root, kLoadingScreenImagesKey);
+        postEffects_ = ReadPostEffects(root);
     }
 
     bool ProjectSettings::SetInitialSceneName(std::string sceneName)

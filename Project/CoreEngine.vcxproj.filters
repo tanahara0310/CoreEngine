@@ -634,6 +634,9 @@
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ProjectLoadingScreen\ProjectLoadingScreen.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\ProjectLoadingScreen</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ProjectPostEffect\ProjectPostEffect.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\ProjectPostEffect</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\GrayScale\GrayScale.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\GrayScale</Filter>
     </ClCompile>
@@ -2375,6 +2378,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ProjectLoadingScreen\ProjectLoadingScreen.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\ProjectLoadingScreen</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ProjectPostEffect\ProjectPostEffect.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\ProjectPostEffect</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\GrayScale\GrayScale.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\GrayScale</Filter>
@@ -4269,6 +4275,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\ProjectLoadingScreen">
       <UniqueIdentifier>{DDD0FBFC-8A3A-420D-B1C4-2B937D0DC6EB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\ProjectPostEffect">
+      <UniqueIdentifier>{7742AEE3-5029-44B3-B1DD-4E3682773485}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\RadialBlur">
       <UniqueIdentifier>{0B3B563C-9E34-40DA-82A3-967C07498B70}</UniqueIdentifier>
