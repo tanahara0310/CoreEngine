@@ -49,6 +49,8 @@ class GameDirector : ScriptComponent
     void Clear()
     {
         cleared_ = true;
+        // 同じマテリアルのコインと旗を、まとめて速く光らせる（再生を止めると元に戻る）
+        ShaderMaterial("Materials/Shine.mat").SetFloat("speed", 8.0f);
     }
 
     // 画面の点の、z = 0 の面の位置へ箱を落とす

@@ -75,6 +75,28 @@ namespace CoreEngine
         cmdList->SetGraphicsRootSignature(rootSignatureMg_->GetRootSignature());
         cmdList->SetPipelineState(pipelineState_);
         cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        boundPipeline_ = nullptr;
+    }
+
+    const ShaderMaterialPipeline* SpriteRenderer::GetMaterialPipeline(const ShaderMaterial& material) {
+        if (!dxCommon_) {
+            return nullptr;
+        }
+        return materialPipelines_.Get(dxCommon_->GetDevice(), *shaderCompiler_, *reflectionBuilder_, material);
+    }
+
+    void SpriteRenderer::BindPipeline(ID3D12GraphicsCommandList* cmdList, const ShaderMaterialPipeline* pipeline) {
+        if (pipeline == boundPipeline_) {
+            return;
+        }
+        if (pipeline) {
+            cmdList->SetGraphicsRootSignature(pipeline->GetRootSignature());
+            cmdList->SetPipelineState(pipeline->GetPipelineState(currentBlendMode_));
+        } else {
+            cmdList->SetGraphicsRootSignature(rootSignatureMg_->GetRootSignature());
+            cmdList->SetPipelineState(pipelineState_);
+        }
+        boundPipeline_ = pipeline;
     }
 
     void SpriteRenderer::EndPass() {

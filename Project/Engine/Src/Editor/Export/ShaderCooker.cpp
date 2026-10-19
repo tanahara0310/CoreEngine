@@ -3,6 +3,9 @@
 
 #ifdef CORE_EDITOR
 
+#include "Graphics/Asset/AssetDatabase.h"
+#include "Graphics/Material/ShaderMaterial.h"
+#include "Graphics/Material/ShaderMaterialPipeline.h"
 #include "Graphics/Shader/Cook/CookedShader.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Utility/Logger/Logger.h"
@@ -10,6 +13,7 @@
 #include <format>
 #include <fstream>
 #include <memory>
+#include <set>
 
 namespace CoreEngine::Editor
 {
@@ -21,7 +25,25 @@ namespace CoreEngine::Editor
 
     std::vector<ShaderManifest::Entry> ShaderCooker::PlanTargets()
     {
-        return ShaderManifest::GetInstance().Collect();
+        // 一度も描いていないマテリアルのシェーダも入れる（.mat が指すピクセルシェーダと頂点シェーダ）
+        const std::vector<ShaderManifest::Entry> recorded = ShaderManifest::GetInstance().Collect();
+        std::set<ShaderManifest::Entry> targets(recorded.begin(), recorded.end());
+        Logger& log = Logger::GetInstance();
+        for (const AssetInfo* info : AssetDatabase::GetInstance().GetAssetsOfType(AssetType::Material)) {
+            std::string shaderPath;
+            std::string vertexShaderPath;
+            if (info->fullPath.extension() != ".mat"
+                || !ShaderMaterial::ReadShaderPaths(info->fullPath, shaderPath, vertexShaderPath)
+                || shaderPath.empty()) {
+                continue;
+            }
+            if (vertexShaderPath.empty()) {
+                vertexShaderPath = kStandardMaterialVertexShader;
+            }
+            targets.insert({ log.Utf8ToPath(shaderPath).generic_wstring(), L"ps_6_0", L"main" });
+            targets.insert({ log.Utf8ToPath(vertexShaderPath).generic_wstring(), L"vs_6_0", L"main" });
+        }
+        return std::vector<ShaderManifest::Entry>(targets.begin(), targets.end());
     }
 
     std::string ShaderCooker::Cook(const ShaderManifest::Entry& target, const std::filesystem::path& destination,

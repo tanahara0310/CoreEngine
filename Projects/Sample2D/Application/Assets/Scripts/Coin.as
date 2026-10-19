@@ -12,6 +12,8 @@ class Coin : ScriptComponent
         if (director !is null) {
             director.RegisterCoin();
         }
+        // 光るタイミングをコインごとにずらす（このコインだけマテリアルの値を上書き）
+        owner.spriteRenderer.SetMaterialFloat("phase", owner.transform.position.x * 0.7f);
     }
 
     void OnTriggerEnter(Collision@ other)

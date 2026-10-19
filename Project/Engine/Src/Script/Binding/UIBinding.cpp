@@ -18,6 +18,7 @@
 #include <scriptarray/scriptarray.h>
 
 #include <memory>
+#include <span>
 #include <string>
 
 namespace CoreEngine::Script
@@ -298,7 +299,129 @@ namespace CoreEngine::Script
                 }
             }
 
+            void SetNativeSize()
+            {
+                if (Element* const element = FindOrWarn("大きさを 1 コマに合わせること")) {
+                    element->SetNativeSize();
+                }
+            }
+
+            int GetColumns() const
+            {
+                const Element* const element = FindOrWarn("横のコマ数の読み取り");
+                return element ? element->GetColumns() : 1;
+            }
+
+            void SetColumns(int value)
+            {
+                if (Element* const element = FindOrWarn("横のコマ数の変更")) {
+                    element->SetColumns(value);
+                }
+            }
+
+            int GetRows() const
+            {
+                const Element* const element = FindOrWarn("縦のコマ数の読み取り");
+                return element ? element->GetRows() : 1;
+            }
+
+            void SetRows(int value)
+            {
+                if (Element* const element = FindOrWarn("縦のコマ数の変更")) {
+                    element->SetRows(value);
+                }
+            }
+
+            int GetFrame() const
+            {
+                const Element* const element = FindOrWarn("コマの読み取り");
+                return element ? element->GetFrame() : 0;
+            }
+
+            void SetFrame(int value)
+            {
+                if (Element* const element = FindOrWarn("コマの変更")) {
+                    element->SetFrame(value);
+                }
+            }
+
+            std::string GetMaterial() const
+            {
+                const Element* const element = FindOrWarn("マテリアルの読み取り");
+                return element ? element->GetMaterialPath() : std::string();
+            }
+
+            void SetMaterial(const std::string& value)
+            {
+                if (Element* const element = FindOrWarn("マテリアルの変更")) {
+                    element->SetMaterial(value);
+                }
+            }
+
+            void SetMaterialFloat(const std::string& name, float value)
+            {
+                const float numbers[] = { value };
+                SetMaterialNumbers(name, numbers);
+            }
+
+            void SetMaterialInt(const std::string& name, int value)
+            {
+                const float numbers[] = { static_cast<float>(value) };
+                SetMaterialNumbers(name, numbers);
+            }
+
+            void SetMaterialVector(const std::string& name, const Vector4& value)
+            {
+                const float numbers[] = { value.x, value.y, value.z, value.w };
+                SetMaterialNumbers(name, numbers);
+            }
+
+            void SetMaterialTexture(const std::string& name, const std::string& texturePath)
+            {
+                if (Element* const element = FindOrWarn("マテリアルのテクスチャの上書き")) {
+                    element->GetMaterialSlot().SetTexture(name, texturePath);
+                }
+            }
+
+            void ClearMaterialOverrides()
+            {
+                if (Element* const element = FindOrWarn("マテリアルの上書きの取り消し")) {
+                    element->GetMaterialSlot().ClearOverrides();
+                }
+            }
+
+            float GetMaterialFloat(const std::string& name) const
+            {
+                const MaterialNumbers* const numbers = FindMaterialNumbers(name, "マテリアルの値の読み取り");
+                return (numbers && !numbers->empty()) ? numbers->front() : 0.0f;
+            }
+
+            Vector4 GetMaterialVector(const std::string& name) const
+            {
+                Vector4 value = { 0.0f, 0.0f, 0.0f, 0.0f };
+                if (const MaterialNumbers* const numbers = FindMaterialNumbers(name, "マテリアルの値の読み取り")) {
+                    float* const components[] = { &value.x, &value.y, &value.z, &value.w };
+                    for (size_t index = 0; index < numbers->size() && index < 4; ++index) {
+                        *components[index] = (*numbers)[index];
+                    }
+                }
+                return value;
+            }
+
         private:
+            void SetMaterialNumbers(const std::string& name, std::span<const float> numbers)
+            {
+                if (Element* const element = FindOrWarn("マテリアルの値の上書き")) {
+                    element->GetMaterialSlot().SetNumbers(name, numbers);
+                }
+            }
+
+            const MaterialNumbers* FindMaterialNumbers(const std::string& name, const char* action) const
+            {
+                Element* const element = FindOrWarn(action);
+                return element ? element->GetMaterialSlot().FindNumbers(name) : nullptr;
+            }
+
             ~ScriptUIElement() { owner_.Release(); }
 
             Element* Find() const
@@ -643,6 +766,28 @@ namespace CoreEngine::Script
             r.Method("UIImage", "Vector2 get_textureSize() const property", asMETHOD(Handle, GetTextureSize), asCALL_THISCALL);
             r.Method("UIImage", "string get_texture() const property", asMETHOD(Handle, GetTexture), asCALL_THISCALL);
             r.Method("UIImage", "void set_texture(const string &in) property", asMETHOD(Handle, SetTexture), asCALL_THISCALL);
+            r.Method("UIImage", "void SetNativeSize()", asMETHOD(Handle, SetNativeSize), asCALL_THISCALL);
+            r.Method("UIImage", "int get_columns() const property", asMETHOD(Handle, GetColumns), asCALL_THISCALL);
+            r.Method("UIImage", "void set_columns(int) property", asMETHOD(Handle, SetColumns), asCALL_THISCALL);
+            r.Method("UIImage", "int get_rows() const property", asMETHOD(Handle, GetRows), asCALL_THISCALL);
+            r.Method("UIImage", "void set_rows(int) property", asMETHOD(Handle, SetRows), asCALL_THISCALL);
+            r.Method("UIImage", "int get_frame() const property", asMETHOD(Handle, GetFrame), asCALL_THISCALL);
+            r.Method("UIImage", "void set_frame(int) property", asMETHOD(Handle, SetFrame), asCALL_THISCALL);
+            r.Method("UIImage", "string get_material() const property", asMETHOD(Handle, GetMaterial), asCALL_THISCALL);
+            r.Method("UIImage", "void set_material(const string &in) property", asMETHOD(Handle, SetMaterial), asCALL_THISCALL);
+            r.Method("UIImage", "void SetMaterialFloat(const string &in name, float value)",
+                asMETHOD(Handle, SetMaterialFloat), asCALL_THISCALL);
+            r.Method("UIImage", "void SetMaterialInt(const string &in name, int value)",
+                asMETHOD(Handle, SetMaterialInt), asCALL_THISCALL);
+            r.Method("UIImage", "void SetMaterialVector(const string &in name, const Vector4 &in value)",
+                asMETHOD(Handle, SetMaterialVector), asCALL_THISCALL);
+            r.Method("UIImage", "void SetMaterialTexture(const string &in name, const string &in texturePath)",
+                asMETHOD(Handle, SetMaterialTexture), asCALL_THISCALL);
+            r.Method("UIImage", "void ClearMaterialOverrides()", asMETHOD(Handle, ClearMaterialOverrides), asCALL_THISCALL);
+            r.Method("UIImage", "float GetMaterialFloat(const string &in name) const",
+                asMETHOD(Handle, GetMaterialFloat), asCALL_THISCALL);
+            r.Method("UIImage", "Vector4 GetMaterialVector(const string &in name) const",
+                asMETHOD(Handle, GetMaterialVector), asCALL_THISCALL);
             r.Method("GameObject", "UIImage@ get_uiImage() property", asFUNCTION(GetElement<UIImageComponent>), asCALL_CDECL_OBJLAST);
             r.Method("GameObject", "UIImage@ SpawnUIImage(const string &in texturePath, const string &in name) const",
                 asFUNCTION(SpawnUIImage), asCALL_CDECL_OBJLAST);

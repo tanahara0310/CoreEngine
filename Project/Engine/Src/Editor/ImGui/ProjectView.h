@@ -157,6 +157,12 @@ namespace CoreEngine
         /// @brief 新しいスクリプトを作る窓を開く（置き先を今のフォルダで埋める）
         void OpenNewScriptDialog();
 
+        /// @brief 新しいマテリアル（.mat）を今のフォルダへ作る窓
+        void DrawNewMaterialDialog();
+
+        /// @brief 新しいマテリアルを作る窓を開く
+        void OpenNewMaterialDialog();
+
         /// @brief 項目 1 件の右クリックメニュー（コピー・切り取り・名前の変更・削除）
         void DrawEntryContextMenu(const Entry& entry);
 
@@ -279,6 +285,12 @@ namespace CoreEngine
         std::string newScriptTemplate_;      ///< 選んでいる雛形の id
         std::string newScriptError_;         ///< 作れなかったときの訳
         bool openNewScriptAfterCreate_ = true; ///< 作ったら VS Code で開く
+
+        // 新しいマテリアルを作る窓
+        bool showNewMaterialDialog_ = false;
+        char newMaterialName_[128] = {};
+        bool newMaterialWithShader_ = true;  ///< ピクセルシェーダの雛形も作る
+        std::string newMaterialError_;
 
         // フォルダツリーキャッシュ（毎フレームのファイルシステムスキャンを抑止）
         std::unordered_map<std::string, bool> hasSubdirCache_;

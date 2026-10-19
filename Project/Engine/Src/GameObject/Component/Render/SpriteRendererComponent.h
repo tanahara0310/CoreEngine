@@ -2,6 +2,7 @@
 
 #include "GameObject/Component/Core/IComponent.h"
 #include "GameObject/Component/Render/IRenderableComponent.h"
+#include "Graphics/Material/ShaderMaterialSlot.h"
 #include "Graphics/Material/SpriteMaterialInstance.h"
 #include "Graphics/Model/VertexData.h"
 #include "Graphics/Texture/TextureManager.h"
@@ -23,6 +24,7 @@ namespace CoreEngine
 {
     class SpriteRenderer;
     class TransformComponent;
+    class UploadRing;
 
     /// @brief テクスチャのサンプリングのしかた
     enum class SpriteFilter {
@@ -161,11 +163,41 @@ namespace CoreEngine
         /// @brief 色・UV・アンカー・フリップ・コマ割りを既定へ戻す
         void Reset();
 
+        // ===== マテリアル =====
+
+        /// @brief マテリアル（.mat）をパスかファイル名で指す（空なら標準の描き方に戻す）
+        void SetMaterial(const std::string& materialPath);
+
+        /// @brief 指しているマテリアルのパス（指していなければ空）
+        std::string GetMaterialPath() const { return materialSlot_.GetPath(); }
+
+        /// @brief マテリアルの欄（共有のマテリアルとこの部品だけの上書き）
+        ShaderMaterialSlot& GetMaterialSlot() { return materialSlot_; }
+
+        /// @brief この部品だけマテリアルの値を上書きする
+        void SetMaterialFloat(const std::string& name, float value);
+        void SetMaterialInt(const std::string& name, int value);
+        void SetMaterialVector(const std::string& name, const Vector4& value);
+
+        /// @brief この部品だけマテリアルのテクスチャを上書きする（空のパスなら上書きをやめる）
+        void SetMaterialTexture(const std::string& name, const std::string& texturePath);
+
+        /// @brief この部品だけの上書きを全部やめる
+        void ClearMaterialOverrides();
+
+        /// @brief マテリアルの値を読む（上書き → マテリアルの順。無ければ 0）
+        float GetMaterialFloat(const std::string& name) const;
+        Vector4 GetMaterialVector(const std::string& name) const;
+
         // ===== 型記述子とやり取りする値 =====
 
         /// @brief 指しているテクスチャ
         Reflection::AssetRefValue GetTextureAsset() const;
         void SetTextureAsset(const Reflection::AssetRefValue& value);
+
+        /// @brief 指しているマテリアル
+        Reflection::AssetRefValue GetMaterialAsset() const { return materialSlot_.GetAsset(); }
+        void SetMaterialAsset(const Reflection::AssetRefValue& value);
 
         /// @brief 描く範囲（左上・右下の UV）
         Vector2 GetUVMin() const { return uvMin_; }
@@ -209,6 +241,11 @@ namespace CoreEngine
         /// @brief 兄弟のトランスフォーム
         TransformComponent* GetTransform() const;
 
+        /// @brief マテリアルのシェーダで描く
+        /// @return 描けなければ false（標準の描き方で描き直す）
+        bool RenderWithMaterial(ID3D12GraphicsCommandList* commandList, UploadRing& uploadRing,
+            D3D12_GPU_VIRTUAL_ADDRESS transformAddress);
+
         SpriteRenderer* spriteRenderer_ = nullptr;
         mutable TransformComponent* transform_ = nullptr;
         bool awoken_ = false;
@@ -220,6 +257,7 @@ namespace CoreEngine
         SpriteFilter filter_ = SpriteFilter::Linear;
 
         std::unique_ptr<SpriteMaterialInstance> material_;
+        ShaderMaterialSlot materialSlot_;
         Vector4 color_ = { 1.0f, 1.0f, 1.0f, 1.0f };
         Matrix4x4 uvMatrix_ = MathCore::Matrix::Identity();
         /// UV 変換のパラメータ（インスペクタと保存に使う）

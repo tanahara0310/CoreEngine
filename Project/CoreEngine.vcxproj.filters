@@ -442,6 +442,9 @@
     <ClCompile Include="Engine\Src\Editor\Inspector\SpriteAnimatorInspector.cpp">
       <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Inspector\ShaderMaterialInspector.cpp">
+      <Filter>Engine\Src\Editor\Inspector</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\ImGui\SceneSettingsPanel.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
@@ -584,6 +587,18 @@
       <Filter>Engine\Src\Graphics\Material</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Material\SpriteMaterialInstance.cpp">
+      <Filter>Engine\Src\Graphics\Material</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Material\ShaderMaterial.cpp">
+      <Filter>Engine\Src\Graphics\Material</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Material\ShaderMaterialLibrary.cpp">
+      <Filter>Engine\Src\Graphics\Material</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Material\ShaderMaterialPipeline.cpp">
+      <Filter>Engine\Src\Graphics\Material</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Material\ShaderMaterialSlot.cpp">
       <Filter>Engine\Src\Graphics\Material</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\SkeletonAnimatorFactory.cpp">
@@ -2121,6 +2136,9 @@
     <ClInclude Include="Engine\Src\Editor\Inspector\SpriteAnimatorInspector.h">
       <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Inspector\ShaderMaterialInspector.h">
+      <Filter>Engine\Src\Editor\Inspector</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\SceneSettingsPanel.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
@@ -2281,6 +2299,18 @@
       <Filter>Engine\Src\Graphics\Material</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Material\SpriteMaterialInstance.h">
+      <Filter>Engine\Src\Graphics\Material</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Material\ShaderMaterial.h">
+      <Filter>Engine\Src\Graphics\Material</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Material\ShaderMaterialLibrary.h">
+      <Filter>Engine\Src\Graphics\Material</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Material\ShaderMaterialPipeline.h">
+      <Filter>Engine\Src\Graphics\Material</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Material\ShaderMaterialSlot.h">
       <Filter>Engine\Src\Graphics\Material</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Material\UIMaterialInstance.h">

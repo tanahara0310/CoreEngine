@@ -30,6 +30,9 @@
                 "texture": {
                     "path": "Application/Assets/Textures/coin.png"
                 },
+                "material": {
+                    "path": "Application/Assets/Materials/Shine.mat"
+                },
                 "pixelsPerUnit": 16.0,
                 "filter": 1,
                 "columns": 4,

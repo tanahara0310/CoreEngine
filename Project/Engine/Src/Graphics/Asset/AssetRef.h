@@ -31,6 +31,8 @@ namespace CoreEngine
 
     /// @brief 物理の材質（.physmat）を指す参照の種類
     struct PhysicsMaterialAsset { static constexpr AssetType kType = AssetType::PhysicsMaterial; };
+    /// @brief スプライトと UI 画像のマテリアル（.mat）を指す参照の種類
+    struct ShaderMaterialAsset { static constexpr AssetType kType = AssetType::Material; };
 
     /// @brief アセットの、プロジェクトの根からの相対パス（区切りは `/`）
     std::string ToAssetPath(const AssetInfo& info);

@@ -14,6 +14,7 @@
 #include "Editor/ImGui/ImGuiAll.h"
 #include "Editor/ImGui/Widgets/EditorBars.h"
 #include "Editor/Inspector/PrefabAssetInspector.h"
+#include "Editor/Inspector/ShaderMaterialInspector.h"
 #include "Editor/Scene/EditorSceneAccess.h"
 #include "Editor/Scene/SceneDebugEditor.h"
 #include "Graphics/Asset/AssetInfo.h"
@@ -195,6 +196,7 @@ namespace CoreEngine
         ImGui::End();
 
         DrawNewScriptDialog();
+        DrawNewMaterialDialog();
         DrawRenameDialog();
         DrawDeleteDialog();
         DrawNewFolderDialog();
@@ -441,8 +443,9 @@ namespace CoreEngine
             return;
         }
 
-        // プレハブは中身を編集できるように出す
+        // プレハブとマテリアルは中身を編集できるように出す
         Editor::PrefabAssetInspector::Draw(selectedPath_);
+        Editor::ShaderMaterialInspector::DrawFile(selectedPath_);
 
         UI::Separator();
         UI::SectionHeader("アセット情報");
@@ -648,6 +651,7 @@ namespace CoreEngine
         case Kind::Model:   payloadType = "MODEL_FILE";   payloadLabel = "モデル";     break;
         case Kind::Audio:   payloadType = "AUDIO_FILE";   payloadLabel = "音";         break;
         case Kind::Prefab:  payloadType = "PREFAB_FILE";  payloadLabel = "プレハブ";   break;
+        case Kind::Material: payloadType = "MATERIAL_FILE"; payloadLabel = "マテリアル"; break;
         default: break;
         }
         if (!payloadType) {
@@ -1139,7 +1143,8 @@ namespace CoreEngine
         if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)) {
             return;
         }
-        if (showRenameDialog_ || showDeleteDialog_ || showNewScriptDialog_ || showNewFolderDialog_) {
+        if (showRenameDialog_ || showDeleteDialog_ || showNewScriptDialog_ || showNewFolderDialog_
+            || showNewMaterialDialog_) {
             return;
         }
 
@@ -1366,6 +1371,9 @@ namespace CoreEngine
         if (ImGui::MenuItem("スクリプトを作成...")) {
             OpenNewScriptDialog();
         }
+        if (ImGui::MenuItem("マテリアルを作成...")) {
+            OpenNewMaterialDialog();
+        }
         ImGui::Separator();
         if (ImGui::MenuItem("貼り付け", "Ctrl+V", false, !clipboardPaths_.empty())) {
             PasteIntoCurrentFolder();
@@ -1458,6 +1466,61 @@ namespace CoreEngine
         if (ImGui::Button("やめる")) {
             showNewScriptDialog_ = false;
             newScriptError_.clear();
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+
+    void ProjectView::OpenNewMaterialDialog()
+    {
+        showNewMaterialDialog_ = true;
+        newMaterialError_.clear();
+        newMaterialName_[0] = '\0';
+    }
+
+    void ProjectView::DrawNewMaterialDialog()
+    {
+        constexpr const char* kTitle = "新しいマテリアル";
+        if (showNewMaterialDialog_ && !ImGui::IsPopupOpen(kTitle)) {
+            ImGui::OpenPopup(kTitle);
+        }
+
+        ImGui::SetNextWindowSize(ImVec2(460.0f, 0.0f), ImGuiCond_FirstUseEver);
+        if (!ImGui::BeginPopupModal(kTitle, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            return;
+        }
+
+        UI::Hint("今開いているフォルダへ、スプライトと UI 画像に付けるマテリアル（.mat）を作ります。");
+        UI::Separator();
+
+        if (ImGui::IsWindowAppearing()) {
+            ImGui::SetKeyboardFocusHere();
+        }
+        const bool enterPressed = UI::InputText("名前", newMaterialName_, sizeof(newMaterialName_),
+            ImGuiInputTextFlags_EnterReturnsTrue);
+        ImGui::Checkbox("ピクセルシェーダの雛形も作る（名前.PS.hlsl）", &newMaterialWithShader_);
+
+        if (!newMaterialError_.empty()) {
+            ImGui::TextColored(Theme::kError, "%s", newMaterialError_.c_str());
+        }
+
+        UI::Separator();
+        if (ImGui::Button("作成") || enterPressed) {
+            std::filesystem::path created;
+            if (Editor::ShaderMaterialInspector::Create(GetCurrentFolder(), newMaterialName_,
+                    newMaterialWithShader_, &created, &newMaterialError_)) {
+                showNewMaterialDialog_ = false;
+                ImGui::CloseCurrentPopup();
+                NavigateToDirectory(created.parent_path());
+                selection_.assign(1, created);
+                selectedPath_ = created;
+            }
+        }
+        UI::SameLine();
+        if (ImGui::Button("やめる")) {
+            showNewMaterialDialog_ = false;
+            newMaterialError_.clear();
             ImGui::CloseCurrentPopup();
         }
 

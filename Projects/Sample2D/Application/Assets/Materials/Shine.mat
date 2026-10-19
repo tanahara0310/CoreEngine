@@ -1,0 +1,17 @@
+{
+    "shader": {
+        "path": "Application/Assets/Materials/Shine.PS.hlsl"
+    },
+    "textures": {},
+    "values": {
+        "phase": 0.0,
+        "sharpness": 12.0,
+        "shineColor": [
+            0.9,
+            0.8,
+            0.5,
+            1.0
+        ],
+        "speed": 2.5
+    }
+}

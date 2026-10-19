@@ -659,6 +659,7 @@ namespace CoreEngine
             case AssetType::Model:   return "MODEL_FILE";
             case AssetType::Audio:   return "AUDIO_FILE";
             case AssetType::Prefab:  return "PREFAB_FILE";
+            case AssetType::Material: return "MATERIAL_FILE";
             default:                 return nullptr;
             }
         }
