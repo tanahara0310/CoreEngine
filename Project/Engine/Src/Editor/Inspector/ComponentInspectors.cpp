@@ -165,7 +165,9 @@ namespace CoreEngine::Editor::ComponentInspectors
             }
             if (ImGui::TreeNodeEx("##shaderMaterial", ImGuiTreeNodeFlags_DefaultOpen, "マテリアルの中身（%s）",
                     material->GetAssetPath().c_str())) {
+                ImGui::PushTextWrapPos(0.0f);
                 UI::Hint("ここで変えた値はマテリアルのファイルへ保存し、同じマテリアルを指す全員に効きます。");
+                ImGui::PopTextWrapPos();
                 ShaderMaterialInspector::Draw(*material);
                 ImGui::TreePop();
             }
