@@ -2013,7 +2013,8 @@ kbd {
     <li><a href="#script-time-tween">時間と Tween</a></li>
     <li><a href="#script-ui">UI を作る</a></li>
     <li><a href="#tutorial-sokoban">見本の倉庫番を読む</a></li>
-    <li><a href="#tutorial-2d">2D の横スクロールを作る</a></li>
+    <li><a href="#guide-2d">2D ゲームの作り方</a></li>
+    <li><a href="#guide-3d">3D ゲームの作り方</a></li>
     <li><a href="#editor-shortcuts">ショートカット一覧</a></li>
     <li><a href="#api-GameObject">GameObject</a></li>
     <li><a href="#api-Input">Input</a></li>
@@ -2067,7 +2068,7 @@ kbd {
     <tbody>
       <tr><td><span class="path">Projects/Sokoban</span></td><td>倉庫番。スクリプト 1 本（<span class="path">SokobanBoard.as</span>）とプレハブ 5 つだけで、文字で書いた盤面からステージを組み立てる小さな見本。ステージはインスペクタの <code>stages</code> に 1 行足せば増やせます。</td></tr>
       <tr><td><span class="path">Projects/Sandbox</span></td><td>機能ごとの試験場（物理・キャラクターの歩行・UI・水面・カメラの揺れ・スクリプトのシューター）。沖縄の海辺のシーンでは、待機・歩き・走りのアニメーションが付いた人型を操作できます（<a href="#tutorial-beach-player">沖縄の海辺をプレイヤーで歩く</a>）。</td></tr>
-      <tr><td><span class="path">Projects/Sample2D</span></td><td>2D の横スクロールの見本。走る・跳ぶ・コインを集める・ゴールに着く、の 1 ステージに、クリックした所へ箱を落とす遊びを足したもの。スプライトのアニメ・平行投影のカメラの追従・遠景・剛体の軸の固定・トリガーを、スクリプト 6 本（プレイヤー・進行・コイン・ゴール・カメラの追従・遠景）で使っています。同じものを空のプロジェクトから作る手順は <a href="#tutorial-2d">2D の横スクロールを作る</a> にあります。</td></tr>
+      <tr><td><span class="path">Projects/Sample2D</span></td><td>2D の横スクロールの見本。走る・跳ぶ・コインを集める・ゴールに着く、の 1 ステージに、クリックした所へ箱を落とす遊びを足したもの。スプライトのアニメ・平行投影のカメラの追従・遠景・剛体の軸の固定・トリガーを、スクリプト 6 本（プレイヤー・進行・コイン・ゴール・カメラの追従・遠景）で使っています。使っている機能は <a href="#guide-2d">2D ゲームの作り方</a> で説明しています。</td></tr>
       <tr><td><span class="path">Projects/Tsunagazaru</span></td><td>つながザルをえない。走り続けるトロッコの前にレールを敷いていくゲームで、C++ で作ったゲームをスクリプトだけで作り直した大きめの見本（タイトル・ゲーム・リザルトの 3 シーン）。シーンを切り替えるときのロード画面も、プロジェクトのシェーダで描いています（<a href="#settings-loading-screen">シーンを切り替えるときのロード画面</a>）。</td></tr>
     </tbody>
   </table>
@@ -6451,6 +6452,1062 @@ kbd {
     <li>警告もコンパイルエラーになります（<a href="#script-overview-warnings">一覧</a>）。</li>
   </ul>
 </article>
+<article class="page" id="guide-2d" data-group="ゲームの作り方" data-title="2D ゲームの作り方" data-nav="2D ゲーム" data-keywords="2D 作り方 横スクロール 見下ろし トップダウン シューティング アクション パズル スプライト ドット絵 コマ アニメ スプライトシート 平行投影 カメラ スクロール ズーム 描画順 重なり 当たり判定 剛体 トリガー マウス クリック 弾 プレハブ サンプルコード">
+  <h1>2D ゲームの作り方</h1>
+  <p class="lead">2D のゲームは、平行投影のカメラで正面から映した 3D のシーンとして作ります。絵はスプライト（画像を貼った板）にして z = 0 の面に並べ、動き・当たり判定・UI・音には 3D と同じ部品を使います。このページでは、2D のゲームで使うものを機能ごとに、サンプルコードで説明します。</p>
+
+  <h2 id="g2d-overview">使うもの</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>やりたいこと</th><th>使うもの</th><th>説明</th></tr></thead>
+    <tbody>
+      <tr><td>2D の画面を作る</td><td>新しいシーンの <span class="ui">2D</span>、カメラ（平行投影）</td><td><a href="#g2d-scene">シーンとカメラ</a></td></tr>
+      <tr><td>絵を出す</td><td><a href="#api-SpriteRenderer">スプライト描画</a></td><td><a href="#g2d-sprite">絵を出す</a></td></tr>
+      <tr><td>重なりの順番を決める</td><td>ソートレイヤー・レイヤー内の順</td><td><a href="#g2d-order">重なりの順番</a></td></tr>
+      <tr><td>パラパラアニメ</td><td>コマ割り・<a href="#api-SpriteAnimator">スプライトアニメ</a></td><td><a href="#g2d-anim">アニメ</a></td></tr>
+      <tr><td>操作を読む</td><td><a href="#api-Input">Input</a>（アクション・マウス）</td><td><a href="#g2d-input">操作</a></td></tr>
+      <tr><td>動かす</td><td>トランスフォーム、または <a href="#api-Rigidbody">剛体</a></td><td><a href="#g2d-move">動かす</a></td></tr>
+      <tr><td>当たり判定</td><td><a href="#api-Collider">コライダー</a>・トリガー・<a href="#api-Physics">Physics</a></td><td><a href="#g2d-collision">当たり判定</a></td></tr>
+      <tr><td>弾や敵を出す・消す</td><td>プレハブ・<code>InstantiatePrefab</code>・<code>Destroy</code></td><td><a href="#g2d-spawn">出す・消す</a></td></tr>
+      <tr><td>スクロール・ズーム</td><td>カメラのトランスフォームと <span class="ui">大きさ</span></td><td><a href="#g2d-camera">スクロールとズーム</a></td></tr>
+      <tr><td>文字・音・演出</td><td>UI・<a href="#api-Audio">Audio</a>・<a href="#api-Tween">Tween</a>・<a href="#api-CameraShake">CameraShake</a></td><td><a href="#g2d-extra">文字・音・演出</a></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>全部を使った見本が <span class="path">Projects/Sample2D</span>（横スクロールの 1 ステージ）です。</p>
+
+  <h2 id="g2d-scene">シーンとカメラ</h2>
+  <p><span class="ui">File<span class="arrow">▸</span>新しいシーン…</span> で <span class="ui">2D</span> を選ぶと、2D 向けのカメラと見た目の設定が入ったシーンができます（<a href="#scenes-new">新しいシーンを作る</a>）。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>決まり</th><th>中身</th></tr></thead>
+    <tbody>
+      <tr><td>向き</td><td>x が右、y が上、z が奥。スプライトは z = 0 の面に並べます。</td></tr>
+      <tr><td>単位</td><td>1 単位 = 1 m。画像の何ピクセルを 1 単位にするかは、スプライトごとの <span class="ui">1 単位のピクセル数</span> で決めます。</td></tr>
+      <tr><td>カメラ</td><td>(0, 0, -10) から正面（+Z）を向く平行投影。<span class="ui">大きさ</span> は映す高さの半分（m）で、雛形の 5.4 なら縦 10.8 m・横 19.2 m（16:9）が映ります。</td></tr>
+      <tr><td>背景</td><td>カメラの <span class="ui">背景</span> が <span class="ui">単色</span> で、<span class="ui">背景色</span> の色で塗ります。</td></tr>
+      <tr><td>色</td><td>トーンカーブが「なし」なので、画像とスプライトの <span class="ui">カラー</span> がそのままの色で出ます。</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>UI（文字やボタン）はカメラに映らず、画面に重ねて描きます。座標も別で、左上が原点・下が +Y・1920×1080 基準のピクセルです（<a href="#ui-canvas">UI の画面の決まり</a>）。</p>
+  <div class="callout tip" data-title="ドット絵のゲームでは"><p><span class="ui">Project Settings</span> で <code>r.TAA.Enabled</code>・<code>r.CAS.Enabled</code>・<code>r.SSAO.Enabled</code> をオフにします。TAA は画面を少しずつずらして重ねるので、ドット絵の輪郭がにじみます。どれもプロジェクト全体の設定です。</p></div>
+
+  <h2 id="g2d-sprite">絵を出す（スプライト描画）</h2>
+  <p>Project の画像を Game ビューへドラッグすると、落とした所（z = 0 の面）にスプライトができます。<span class="ui">GameObject<span class="arrow">▸</span>2D<span class="arrow">▸</span>スプライト</span> で白い四角から作ることもできます。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>設定</th><th>使い方</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">1 単位のピクセル数</span></td><td>板の大きさ ＝ 1 コマのピクセル数 ÷ この値 × スケール。16×16 のドット絵なら 16 にすると 1 m × 1 m になります。</td></tr>
+      <tr><td><span class="ui">フィルタ</span></td><td>ドット絵は <span class="ui">ポイント</span>（拡大してもにじまない）。写真や手描きの絵は <span class="ui">線形</span>。</td></tr>
+      <tr><td><span class="ui">カラー</span></td><td>画像に掛ける色（sRGB）。w が不透明度。</td></tr>
+      <tr><td><span class="ui">左右反転</span>・<span class="ui">上下反転</span></td><td>左を向くときに <span class="ui">左右反転</span>。</td></tr>
+      <tr><td><span class="ui">アンカー</span></td><td>画像のどこを位置に合わせるか。足もとを位置にするなら (0.5, 1)。</td></tr>
+      <tr><td><span class="ui">UV の倍率</span></td><td>絵を繰り返す回数。スケールと同じ値にすると、横長の地面でも絵が伸びずに並びます。</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>スクリプトからは <code>owner.spriteRenderer</code> で読み書きします。次は、ダメージを受けたら赤く光り、少しずつ元の色へ戻すスクリプトです。</p>
+  <script type="text/x-code" data-lang="as" data-file="SpriteHitFlash.as">
+    using namespace CoreEngine;
+
+    // Flash() を呼ぶと赤く光り、duration 秒で元の色へ戻る
+    class SpriteHitFlash : ScriptComponent
+    {
+        [Range(0.05f, 1.0f)] [Tooltip("元の色へ戻るまでの秒数")]
+        float duration = 0.2f;
+
+        private Vector4 baseColor_;
+        private float timer_ = 0.0f;
+
+        void Start()
+        {
+            baseColor_ = owner.spriteRenderer.color;
+        }
+
+        void Update()
+        {
+            if (timer_ <= 0.0f) {
+                return;
+            }
+            timer_ -= Time::DeltaTime();
+            const float t = Saturate(timer_ / duration);
+            owner.spriteRenderer.color = Lerp(baseColor_, Vector4(1.0f, 0.2f, 0.2f, 1.0f), t);
+        }
+
+        void Flash()
+        {
+            timer_ = duration;
+        }
+    }
+  </script>
+  <p>画像そのものを差し替えるときは、プロジェクトの根からのパスを入れます。</p>
+  <script type="text/x-code" data-lang="as">
+    owner.spriteRenderer.texture = "Application/Assets/Textures/door_open.png";
+  </script>
+  <div class="callout warn"><p>PNG は sRGB の印（sRGB チャンク）を付けて書き出してください。印が無いと色が明るく出ます。</p></div>
+
+  <h2 id="g2d-order">重なりの順番</h2>
+  <p>スプライトは深度を書かないので、前後は描く順番で決まります。順番は <span class="ui">ソートレイヤー</span> → <span class="ui">レイヤー内の順</span> → カメラからの奥行きの順に比べ、大きいほど手前です。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>置く物</th><th>ソートレイヤーの例</th></tr></thead>
+    <tbody>
+      <tr><td>空・遠くの山（遠景）</td><td>-10</td></tr>
+      <tr><td>地面・足場・キャラクター・アイテム</td><td>0（同じ中での前後は <span class="ui">レイヤー内の順</span> で）</td></tr>
+      <tr><td>手前の草・霧などの飾り</td><td>10</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>見下ろし型のゲームでは、画面の下（手前）にいるキャラクターほど前に描きます。毎フレーム y から順番を決めます。</p>
+  <script type="text/x-code" data-lang="as" data-file="YSortOrder.as">
+    using namespace CoreEngine;
+
+    // 画面の下にいるほど手前に描く（見下ろし型）
+    class YSortOrder : ScriptComponent
+    {
+        [Tooltip("1 m あたりの順番の刻み")]
+        float precision = 100.0f;
+
+        void LateUpdate()
+        {
+            owner.spriteRenderer.orderInLayer = int(-owner.transform.position.y * precision);
+        }
+    }
+  </script>
+  <p>足もとの高さで比べたいので、キャラクターの <span class="ui">アンカー</span> は (0.5, 1) にしておきます。</p>
+
+  <h2 id="g2d-anim">アニメ（コマ割りとスプライトアニメ）</h2>
+  <p>アニメのコマは、同じ大きさのコマを格子に並べた 1 枚の画像（スプライトシート）にします。</p>
+  <ol class="steps">
+    <li><strong>コマに分ける</strong>スプライト描画の <span class="ui">横のコマ数</span>・<span class="ui">縦のコマ数</span> を画像に合わせます。板が 1 コマぶんの大きさになります。コマは左上を 0 として右へ数え、行の終わりで次の行へ進みます（横 4 コマなら 2 行目の左端が 4）。</li>
+    <li><strong>クリップを作る</strong><span class="ui">＋ コンポーネント追加</span> ▸ <span class="ui">スプライトアニメ</span> を足し、<span class="ui">クリップを追加</span> で「名前・最初のコマ・最後のコマ・fps・ループ」を決めます。</li>
+    <li><strong>流す</strong><span class="ui">最初のクリップ</span> は再生を始めたときに流れます。ほかはスクリプトの <code>Play("名前")</code> で切り替えます。</li>
+  </ol>
+  <p><code>Play</code> は、同じクリップを流している最中ならそのまま続けるので、毎フレーム呼んでかまいません。ループしないクリップは最後のコマで止まり、<code>isPlaying</code> が false になります。次は、攻撃のクリップが終わるまで待ってから、走る・待機へ戻すスクリプトです。</p>
+  <script type="text/x-code" data-lang="as" data-file="AttackAnimation2D.as">
+    using namespace CoreEngine;
+
+    // 攻撃（ループなし）を流し終えたら、動きに合わせて Run と Idle を流す
+    class AttackAnimation2D : ScriptComponent
+    {
+        private bool attacking_ = false;
+
+        void Update()
+        {
+            SpriteAnimator@ anim = owner.spriteAnimator;
+            const float move = Input::GetAxis(InputAction::MoveLeft, InputAction::MoveRight);
+            if (move != 0.0f) {
+                owner.spriteRenderer.flipX = move < 0.0f;
+            }
+
+            if (!attacking_ && Input::IsActionTriggered(InputAction::Attack)) {
+                attacking_ = true;
+                anim.Play("Attack");
+            }
+            if (attacking_ && !anim.isPlaying) {
+                attacking_ = false;
+            }
+            if (!attacking_) {
+                anim.Play(abs(move) > 0.01f ? "Run" : "Idle");
+            }
+        }
+    }
+  </script>
+  <p>アニメにせず、コマを直接選ぶこともできます（残りの体力で顔の絵を変えるなど）。</p>
+  <script type="text/x-code" data-lang="as">
+    owner.spriteRenderer.frame = Clamp(3 - hp, 0, 3);
+  </script>
+
+  <h2 id="g2d-input">操作を読む</h2>
+  <p>キーやボタンは「アクション」の名前で読みます。何も設定しなければ、<code>MoveLeft</code>・<code>MoveRight</code>（A・D・←・→・左スティック）、<code>MoveForward</code>・<code>MoveBack</code>（W・S・↑・↓）、<code>Jump</code>（Space）、<code>Attack</code>（マウス左）などが使えます（<a href="#input-default-actions">使えるアクション</a>）。2D では <code>MoveForward</code> を上、<code>MoveBack</code> を下として使います。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>読みたいもの</th><th>書き方</th></tr></thead>
+    <tbody>
+      <tr><td>左右（-1〜1）</td><td><code>Input::GetAxis(InputAction::MoveLeft, InputAction::MoveRight)</code></td></tr>
+      <tr><td>上下左右（長さ 1 まで）</td><td><code>Input::GetAxis2D(InputAction::MoveLeft, InputAction::MoveRight, InputAction::MoveBack, InputAction::MoveForward)</code></td></tr>
+      <tr><td>押した瞬間</td><td><code>Input::IsActionTriggered(InputAction::Jump)</code></td></tr>
+      <tr><td>押している間</td><td><code>Input::IsActionPressed(InputAction::Attack)</code></td></tr>
+      <tr><td>クリックした瞬間</td><td><code>Input::IsMouseButtonTriggered(MouseButton::Left)</code></td></tr>
+      <tr><td>マウスの位置（UI と同じ座標）</td><td><code>Input::GetMousePosition()</code></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>マウスの位置をワールドの位置にするには、カメラの <code>ScreenToWorldPoint</code> を使います。z にカメラからの距離を入れると、その距離の面の点が返ります。2D のカメラは z = -10 にあるので、10 を入れると z = 0 の面（スプライトを並べた面）の点になります。</p>
+  <script type="text/x-code" data-lang="as" data-file="MouseFollower2D.as">
+    using namespace CoreEngine;
+
+    // マウスの所へ近づき、マウスのある側を向く
+    class MouseFollower2D : ScriptComponent
+    {
+        [Range(0.0f, 20.0f)] [Tooltip("近づく速さ（m/s）")]
+        float speed = 4.0f;
+
+        void Update()
+        {
+            if (!Input::IsPointerOverGame()) {
+                return;
+            }
+            const Vector3 target = MouseWorldPosition();
+            const Vector3 position = owner.transform.position;
+            const Vector3 toTarget = target - position;
+            const float step = speed * Time::DeltaTime();
+            if (Length(toTarget) > step) {
+                owner.transform.position = position + Normalize(toTarget) * step;
+            }
+            owner.spriteRenderer.flipX = target.x < position.x;
+        }
+
+        // マウスの位置を z = 0 の面の点にする
+        private Vector3 MouseWorldPosition()
+        {
+            GameCamera@ camera = Scene::GetGameCamera();
+            const Vector2 screen = Input::GetMousePosition();
+            Vector3 point = camera.ScreenToWorldPoint(Vector3(screen.x, screen.y, -camera.position.z));
+            point.z = 0.0f;
+            return point;
+        }
+    }
+  </script>
+  <p><code>IsPointerOverGame()</code> は、マウスがゲームの画面の上にあるかを返します。エディタでパネルを触っているときに反応しないよう、マウスを使う処理の前で確かめます。</p>
+
+  <h2 id="g2d-move">動かす</h2>
+  <p>動かし方は 2 通りあります。ゲームに合わせて選びます。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>動かし方</th><th>向いているゲーム</th><th>付けるもの</th></tr></thead>
+    <tbody>
+      <tr><td>トランスフォームを書き換える</td><td>見下ろし型・シューティング・パズル（重力も押し出しも要らない）</td><td>スクリプトだけ。当たりを知るならコライダー（トリガー）</td></tr>
+      <tr><td>剛体の速度を書き換える</td><td>横スクロールのアクション（重力で落ち、地面に立ち、壁で止まる）</td><td>コライダー（トリガーを外す）・剛体・スクリプト</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3 id="g2d-move-transform">トランスフォームで動かす</h3>
+  <script type="text/x-code" data-lang="as" data-file="TopDownMover.as">
+    using namespace CoreEngine;
+
+    // 見下ろし型：上下左右と斜めに歩く（斜めでも速さは同じ）
+    class TopDownMover : ScriptComponent
+    {
+        [Range(0.0f, 20.0f)] [Tooltip("歩く速さ（m/s）")]
+        float speed = 5.0f;
+
+        void Update()
+        {
+            const Vector2 input = Input::GetAxis2D(InputAction::MoveLeft, InputAction::MoveRight,
+                                                   InputAction::MoveBack, InputAction::MoveForward);
+            owner.transform.position = owner.transform.position
+                + Vector3(input.x, input.y, 0.0f) * (speed * Time::DeltaTime());
+        }
+    }
+  </script>
+  <p>速さに <code>Time::DeltaTime()</code>（前のフレームからの秒数）を掛けると、フレームレートに関係なく同じ速さで動きます。この動かし方では物にめり込むので、壁で止めたいときは剛体を使います。</p>
+
+  <h3 id="g2d-move-rigidbody">剛体で動かす（横スクロール）</h3>
+  <ol class="steps">
+    <li><strong>地面</strong>コライダーに <span class="ui">箱を追加</span> し、<span class="ui">トリガー</span> を外して <span class="ui">静止</span> を入れます。</li>
+    <li><strong>キャラクターの形</strong>コライダーに <span class="ui">箱を追加</span> し、<span class="ui">トリガー</span> を外します。スプライトのあるオブジェクトでは、箱が板に重なる大きさで足されます。</li>
+    <li><strong>剛体</strong><span class="ui">剛体</span> を足し、<span class="ui">Z へ動かさない</span> と、<span class="ui">X 軸で回さない</span>・<span class="ui">Y 軸で回さない</span>・<span class="ui">Z 軸で回さない</span> を入れます（奥へずれず、倒れない）。</li>
+    <li><strong>壁に張り付かないように</strong><span class="ui">物理マテリアル</span> を足し、<span class="ui">摩擦係数</span> を 0 にします。</li>
+  </ol>
+  <script type="text/x-code" data-lang="as" data-file="PlatformerMover.as">
+    using namespace CoreEngine;
+
+    // 横スクロール：横の速さは入力で決め、縦は重力に任せる。地面の上でだけ跳べる
+    class PlatformerMover : ScriptComponent
+    {
+        [Range(0.0f, 20.0f)] [Tooltip("走る速さ（m/s）")]
+        float runSpeed = 6.0f;
+
+        [Range(0.0f, 30.0f)] [Tooltip("跳んだ瞬間の上向きの速さ（m/s）")]
+        float jumpSpeed = 12.0f;
+
+        [Tooltip("中心から下へ地面を調べる長さ（m）。体の高さの半分より少し長く")]
+        float groundCheck = 0.6f;
+
+        void Update()
+        {
+            Rigidbody@ body = owner.rigidbody;
+            Vector3 velocity = body.velocity;
+            velocity.x = Input::GetAxis(InputAction::MoveLeft, InputAction::MoveRight) * runSpeed;
+            if (IsGrounded() && Input::IsActionTriggered(InputAction::Jump)) {
+                velocity.y = jumpSpeed;
+            }
+            body.velocity = velocity;
+        }
+
+        // 中心から真下へ光線を飛ばし、自分以外に当たれば地面の上
+        private bool IsGrounded()
+        {
+            array<RaycastHit@>@ hits = Physics::RaycastAll(owner.transform.position, Vector3(0.0f, -1.0f, 0.0f), groundCheck);
+            for (uint i = 0; i < hits.length(); ++i) {
+                if (hits[i].gameObject.name != owner.name) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+  </script>
+  <ul>
+    <li>トランスフォームの位置を直接書き換えると壁にめり込むので、剛体の <code>velocity</code>（速度）を書き換え、押し出しは物理に任せます。</li>
+    <li>光線の出だしは自分の箱の中なので、自分にも当たります。<code>Raycast</code>（最初の 1 つ）ではなく <code>RaycastAll</code> で集めて、自分を外します。</li>
+    <li>ジャンプを軽快にしたいときは、プロジェクトの設定の重力 <code>sys.Physics.Gravity</code> を (0, -25, 0) くらいに強めます。見下ろし型で剛体を使うときは、剛体の <span class="ui">重力を受ける</span> を外します。</li>
+  </ul>
+
+  <h2 id="g2d-collision">当たり判定</h2>
+  <p>当たり判定の形はコライダーに足します。2D では箱か球を使い、奥行きは気にしなくてかまいません（どの物も z = 0 の面にあるため）。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>コライダーの設定</th><th>動き</th><th>呼ばれる関数</th><th>使い道</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">トリガー</span> オン（既定）</td><td>重なりを知らせるだけで押し返さない</td><td><code>OnTriggerEnter</code>・<code>OnTriggerExit</code></td><td>アイテム・ゴール・とげ・弾</td></tr>
+      <tr><td><span class="ui">トリガー</span> オフ</td><td>押し出す（剛体が要る）</td><td><code>OnCollisionEnter</code>・<code>OnCollisionExit</code></td><td>地面・壁・キャラクター・箱</td></tr>
+      <tr><td><span class="ui">静止</span> オン</td><td>押されても動かない。静止どうしは判定しない</td><td></td><td>地面・壁</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>次は、触れた相手の体力を減らすスクリプトと、体力のスクリプトです。相手が <code>Health2D</code> を持っているかで見分けるので、プレイヤーにも敵にもそのまま使えます。</p>
+  <script type="text/x-code" data-lang="as" data-file="DamageOnTouch.as">
+    using namespace CoreEngine;
+
+    // トリガーに入った相手の体力を減らす（とげ・敵の弾など）
+    class DamageOnTouch : ScriptComponent
+    {
+        [Tooltip("与えるダメージ")]
+        int damage = 1;
+
+        void OnTriggerEnter(Collision@ other)
+        {
+            Health2D@ health;
+            if (other.gameObject !is null && other.gameObject.GetComponent(@health)) {
+                health.TakeDamage(damage);
+            }
+        }
+    }
+  </script>
+  <script type="text/x-code" data-lang="as" data-file="Health2D.as">
+    using namespace CoreEngine;
+
+    // 体力。0 になったら消える
+    class Health2D : ScriptComponent
+    {
+        [Range(1, 99)] [Tooltip("最初の体力")]
+        int maxHp = 3;
+
+        private int hp_ = 0;
+
+        void Start()
+        {
+            hp_ = maxHp;
+        }
+
+        void TakeDamage(int amount)
+        {
+            hp_ -= amount;
+            if (hp_ <= 0) {
+                owner.Destroy();
+            }
+        }
+    }
+  </script>
+  <p>攻撃の範囲のように「今この場所に誰がいるか」を調べるときは、コライダーを置かずに <code>Physics::OverlapBox</code>（箱の中心と大きさ）を使います。</p>
+  <script type="text/x-code" data-lang="as">
+    // 右前 1 m × 1 m の範囲にいる相手を集める
+    const Vector3 center = owner.transform.position + Vector3(0.8f, 0.0f, 0.0f);
+    array<GameObject@>@ targets = Physics::OverlapBox(center, Vector3(1.0f, 1.0f, 1.0f));
+    for (uint i = 0; i < targets.length(); ++i) {
+        Log("攻撃が当たった: " + targets[i].name);
+    }
+  </script>
+  <p>当たる組み合わせはレイヤーで絞れます（<a href="#physics-layers">レイヤーで当たる相手を絞る</a>）。当たらないときの調べ方は <a href="#physics-debug">当たらないときの調べ方</a> にあります。</p>
+
+  <h2 id="g2d-spawn">弾や敵を出す・消す</h2>
+  <p>何度も出す物はプレハブにしておき、<code>InstantiatePrefab</code> で作ります。プレハブは、組んだオブジェクトを Hierarchy の右クリック <span class="ui">プレハブとして保存</span> で作ります（<a href="#editor-prefab">プレハブ</a>）。</p>
+  <script type="text/x-code" data-lang="as" data-file="Shooter2D.as">
+    using namespace CoreEngine;
+
+    // クリックした方へ弾を撃つ
+    class Shooter2D : ScriptComponent
+    {
+        [Asset("Prefab")] [Tooltip("撃つ弾（Bullet2D を付けたプレハブ）")]
+        string bulletPrefab = "Application/Assets/Prefabs/Bullet2D.prefab";
+
+        [Tooltip("弾の速さ（m/s）")]
+        float bulletSpeed = 12.0f;
+
+        void Update()
+        {
+            if (!Input::IsMouseButtonTriggered(MouseButton::Left) || !Input::IsPointerOverGame()) {
+                return;
+            }
+            GameCamera@ camera = Scene::GetGameCamera();
+            const Vector2 screen = Input::GetMousePosition();
+            Vector3 target = camera.ScreenToWorldPoint(Vector3(screen.x, screen.y, -camera.position.z));
+            target.z = 0.0f;
+
+            GameObject@ bullet = owner.InstantiatePrefab(bulletPrefab, "Bullet");
+            if (bullet is null) {
+                return;
+            }
+            bullet.transform.position = owner.transform.position;
+
+            Bullet2D@ shot;
+            if (bullet.GetComponent(@shot)) {
+                shot.velocity = Normalize(target - owner.transform.position) * bulletSpeed;
+            }
+        }
+    }
+  </script>
+  <script type="text/x-code" data-lang="as" data-file="Bullet2D.as">
+    using namespace CoreEngine;
+
+    // まっすぐ飛び、lifetime 秒たったら消える
+    class Bullet2D : ScriptComponent
+    {
+        [Transient] [Tooltip("速度（撃つ側が入れる）")]
+        Vector3 velocity;
+
+        [Tooltip("消えるまでの秒数")]
+        float lifetime = 2.0f;
+
+        private float age_ = 0.0f;
+
+        void Update()
+        {
+            const float dt = Time::DeltaTime();
+            owner.transform.position = owner.transform.position + velocity * dt;
+            age_ += dt;
+            if (age_ >= lifetime) {
+                owner.Destroy();
+            }
+        }
+    }
+  </script>
+  <ul>
+    <li><code>[Asset("Prefab")]</code> を付けた文字列は、インスペクタでプレハブを選ぶ欄になります。</li>
+    <li><code>[Transient]</code> を付けた変数は、ほかのスクリプトから書けますが保存されません。撃つ側が入れる速度のような、実行中だけの値に使います。</li>
+    <li>作った物を消すのは <code>owner.Destroy()</code> です。画面の外へ出た弾は、時間か距離で消しておきます。</li>
+  </ul>
+
+  <h2 id="g2d-camera">スクロールとズーム</h2>
+  <p>カメラを動かすときは、カメラのオブジェクト（MainCamera）のトランスフォームを書き換えます。横に動かせばスクロール、カメラの <span class="ui">大きさ</span>（<code>orthographicSize</code>）を変えればズームです。</p>
+  <script type="text/x-code" data-lang="as" data-file="FollowZoomCamera2D.as">
+    using namespace CoreEngine;
+
+    // MainCamera に付ける。target を追いかけ、ホイールで拡大・縮小する
+    class FollowZoomCamera2D : ScriptComponent
+    {
+        [ObjectRef] [Tooltip("追いかける相手")]
+        GameObject@ target;
+
+        [Range(0.0f, 30.0f)] [Tooltip("大きいほど早く追いつく")]
+        float smoothing = 6.0f;
+
+        [Tooltip("ステージの左端と右端に合わせるカメラの x の範囲")]
+        float minX = -100.0f;
+        float maxX = 100.0f;
+
+        [Tooltip("大きさ（映す高さの半分）の範囲（m）")]
+        float minSize = 3.0f;
+        float maxSize = 10.0f;
+
+        void LateUpdate()
+        {
+            if (target !is null) {
+                Vector3 position = owner.transform.position;
+                const float t = Saturate(smoothing * Time::DeltaTime());
+                position.x = Lerp(position.x, Clamp(target.transform.position.x, minX, maxX), t);
+                position.y = Lerp(position.y, target.transform.position.y, t);
+                owner.transform.position = position;
+            }
+
+            const float wheel = Input::GetWheelDelta();
+            if (wheel != 0.0f && Input::IsPointerOverGame()) {
+                Camera@ camera = owner.camera;
+                camera.orthographicSize = Clamp(camera.orthographicSize - wheel * 0.5f, minSize, maxSize);
+            }
+        }
+    }
+  </script>
+  <ul>
+    <li><code>LateUpdate</code> はすべての <code>Update</code> の後に呼ばれます。相手が動いた後の位置を追うので、カメラの処理はここに書きます。</li>
+    <li>z（-10）は書き換えないので、カメラとスプライトの距離は変わりません。</li>
+    <li>遠景をカメラより遅く動かすと、奥行きがあるように見えます。遠景の x を「最初の x ＋ カメラの x × 0.5」にします（見本の <span class="path">Parallax.as</span>）。</li>
+    <li>画面の揺れは <code>CameraShake::PlayPreset("Hit")</code> で付けられます（<a href="#camera-shake">画面を揺らす</a>）。</li>
+  </ul>
+
+  <h2 id="g2d-extra">文字・音・演出</h2>
+  <p>点数などの文字は <span class="ui">GameObject<span class="arrow">▸</span>UI<span class="arrow">▸</span>テキスト</span> で作り、スクリプトから <code>uiText.text</code> を書き換えます。効果音は <code>Audio::PlayOneShot</code>、ぽよんと膨らむような動きは <code>Tween</code> で付けます。</p>
+  <script type="text/x-code" data-lang="as" data-file="CoinCollector2D.as">
+    using namespace CoreEngine;
+
+    // プレイヤーに付ける。Coin という名前の物に触れたら拾って数え、音と動きを付ける
+    class CoinCollector2D : ScriptComponent
+    {
+        [ObjectRef] [Tooltip("枚数を出す UI テキスト")]
+        GameObject@ label;
+
+        [Asset("Audio")] [Tooltip("拾ったときの音")]
+        string pickupSound = "Application/Assets/Sounds/coin.wav";
+
+        private int coins_ = 0;
+
+        void OnTriggerEnter(Collision@ other)
+        {
+            if (other.gameObject is null || other.gameObject.name != "Coin") {
+                return;
+            }
+            other.gameObject.Destroy();
+            ++coins_;
+
+            if (label !is null) {
+                label.uiText.text = "コイン " + coins_;
+            }
+            Audio::PlayOneShot(pickupSound);
+
+            owner.transform.scale = Vector3(1.3f, 1.3f, 1.0f);
+            Tween::ScaleTo(owner, Vector3(1.0f, 1.0f, 1.0f), 0.2f).SetEase(EaseType::EaseOutBack).SetLink(owner);
+        }
+    }
+  </script>
+  <ul>
+    <li>音のファイル（.wav・.mp3）は <span class="path">Application/Assets/</span> の下に置きます（<a href="#script-audio">音を鳴らす</a>）。</li>
+    <li><code>SetLink(owner)</code> を付けると、持ち主が消えたときに Tween も止まります（<a href="#script-time-tween">時間と Tween</a>）。</li>
+    <li>UI の置き方とボタンは <a href="#script-ui">UI を作る</a>、シーンの切り替え（タイトル → ステージ → 結果）は <a href="#script-scenes">シーン遷移とデータの保存</a> を見てください。</li>
+  </ul>
+
+  <h2 id="g2d-trouble">うまくいかないとき</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>症状</th><th>確かめること</th></tr></thead>
+    <tbody>
+      <tr><td>ドット絵がにじむ</td><td>スプライトの <span class="ui">フィルタ</span> が <span class="ui">ポイント</span> か。<code>r.TAA.Enabled</code> を切ったか</td></tr>
+      <tr><td>色が明るい・薄い</td><td>PNG に sRGB の印があるか。シーンを 2D の雛形で作ったか（トーンカーブが「なし」か）</td></tr>
+      <tr><td>絵が大きすぎる・小さすぎる</td><td><span class="ui">1 単位のピクセル数</span> と、カメラの <span class="ui">大きさ</span></td></tr>
+      <tr><td>後ろにあるはずの物が手前に出る</td><td><span class="ui">ソートレイヤー</span> と <span class="ui">レイヤー内の順</span></td></tr>
+      <tr><td>キャラクターが地面を突き抜ける</td><td>地面とキャラクターのコライダーの <span class="ui">トリガー</span> を外したか</td></tr>
+      <tr><td>キャラクターが倒れる・奥へずれる</td><td>剛体の <span class="ui">Z へ動かさない</span> と、3 つの <span class="ui">〜軸で回さない</span></td></tr>
+      <tr><td><code>OnTriggerEnter</code> が呼ばれない</td><td>どちらかのコライダーが <span class="ui">トリガー</span> か。両方とも <span class="ui">静止</span> になっていないか。レイヤーの組み合わせ</td></tr>
+      <tr><td>クリックした所とずれる</td><td><code>ScreenToWorldPoint</code> の z に、カメラから z = 0 の面までの距離（-カメラの z）を入れているか</td></tr>
+    </tbody>
+  </table>
+  </div>
+</article>
+
+<article class="page" id="guide-3d" data-group="ゲームの作り方" data-title="3D ゲームの作り方" data-nav="3D ゲーム" data-keywords="3D 作り方 アクション 三人称 TPS FPS モデル gltf obj fbx マテリアル ライト 太陽 昼 夜 カメラ 追従 回転 キャラクタコントローラ 歩く 剛体 投げる 当たり判定 クリック 光線 レイキャスト アニメーション 爆発 パーティクル サンプルコード">
+  <h1>3D ゲームの作り方</h1>
+  <p class="lead">3D のゲームは、モデルを置き、ライトで照らし、透視投影のカメラで映して、スクリプトで動かします。このページでは、3D のゲームで使うものを機能ごとに、サンプルコードで説明します。当たり判定・プレハブ・UI・音は 2D と同じ部品です。</p>
+
+  <h2 id="g3d-overview">使うもの</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>やりたいこと</th><th>使うもの</th><th>説明</th></tr></thead>
+    <tbody>
+      <tr><td>3D の画面を作る</td><td>新しいシーンの <span class="ui">基本（太陽と床）</span>、カメラ（透視投影）</td><td><a href="#g3d-scene">シーンと座標</a></td></tr>
+      <tr><td>物を置く・色を変える</td><td><a href="#api-MeshRenderer">メッシュ描画</a>・<a href="#api-Material">マテリアル</a></td><td><a href="#g3d-model">モデルとマテリアル</a></td></tr>
+      <tr><td>照らす・空</td><td><a href="#api-Light">ライト</a>・<a href="#api-SkyBox">空と大気散乱</a></td><td><a href="#g3d-light">光と空</a></td></tr>
+      <tr><td>キャラクターを歩かせる</td><td><a href="#api-CharacterController">キャラクタコントローラ</a></td><td><a href="#g3d-move">動かす</a></td></tr>
+      <tr><td>転がる・飛ぶ物</td><td><a href="#api-Rigidbody">剛体</a></td><td><a href="#g3d-move-rigidbody">剛体で動かす</a></td></tr>
+      <tr><td>カメラで追いかける</td><td>カメラのトランスフォーム</td><td><a href="#g3d-camera">カメラ</a></td></tr>
+      <tr><td>当たり判定・クリックした物</td><td><a href="#api-Collider">コライダー</a>・<a href="#api-Physics">Physics</a>・<code>ScreenPointToRay</code></td><td><a href="#g3d-collision">当たり判定</a></td></tr>
+      <tr><td>人の動き（歩く・走る）</td><td><a href="#api-Animator">アニメーション</a></td><td><a href="#g3d-anim">アニメーション</a></td></tr>
+      <tr><td>敵を出す・消す</td><td>プレハブ・<code>InstantiatePrefab</code>・<a href="#api-Random">Random</a></td><td><a href="#g3d-spawn">出す・消す</a></td></tr>
+      <tr><td>爆発などの演出</td><td><a href="#api-ParticleSystem">パーティクル</a>・<a href="#api-Audio">Audio</a>・<a href="#api-CameraShake">CameraShake</a></td><td><a href="#g3d-extra">演出</a></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>操作の読み方（アクション・マウス）、UI、プレハブの作り方は 2D と同じです（<a href="#g2d-input">操作を読む</a>・<a href="#g2d-spawn">弾や敵を出す・消す</a>・<a href="#g2d-extra">文字・音・演出</a>）。</p>
+
+  <h2 id="g3d-scene">シーンと座標</h2>
+  <p><span class="ui">File<span class="arrow">▸</span>新しいシーン…</span> で <span class="ui">基本（太陽と床）</span> を選ぶと、太陽（Sun）・MainCamera・床の入ったシーンができます（<a href="#scenes-new">新しいシーンを作る</a>）。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>決まり</th><th>中身</th></tr></thead>
+    <tbody>
+      <tr><td>向き</td><td>x が右、y が上、z が前（奥）。</td></tr>
+      <tr><td>単位</td><td>1 単位 = 1 m。重力は既定で (0, -9.81, 0) m/s²。</td></tr>
+      <tr><td>回転</td><td>x がピッチ（正で下を向く）、y がヨー（0 で +Z を向く）、z がロール。インスペクタは度、スクリプトはラジアンです。</td></tr>
+      <tr><td>カメラ</td><td>透視投影。<span class="ui">視野角</span> は縦の画角（度）。カメラの位置と向きは、カメラのオブジェクトのトランスフォームで決まります。</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>向きのベクトルとヨー（y の回転）は次のように行き来できます。どちらもよく使います。</p>
+  <script type="text/x-code" data-lang="as">
+    // ヨーから前の向き（水平）
+    const float yaw = owner.transform.rotation.y;
+    const Vector3 forward = Vector3(sin(yaw), 0.0f, cos(yaw));
+
+    // 点 point の方を向く回転にする
+    const Vector3 d = Normalize(point - owner.transform.position);
+    owner.transform.rotation = Vector3(-asin(d.y), atan2(d.x, d.z), 0.0f);
+  </script>
+
+  <h2 id="g3d-model">モデルとマテリアル</h2>
+  <p>Project のモデル（.gltf .glb .obj .fbx）を Game ビューへドラッグすると、落とした所の地面にオブジェクトができます。立方体・球・板は <span class="path">Engine/Assets/Models/Primitives</span> にあります。形は <a href="#api-MeshRenderer">メッシュ描画</a>、色と質感は <a href="#api-Material">マテリアル</a> が持ちます。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>マテリアルの設定</th><th>使い方</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">ベースカラー</span>（<code>color</code>）</td><td>基本の色。w が不透明度。</td></tr>
+      <tr><td><span class="ui">メタリック</span>・<span class="ui">ラフネス</span></td><td>金属らしさ（0〜1）と表面の粗さ（0 でつるつる）。</td></tr>
+      <tr><td><span class="ui">エミッシブ</span>（<code>emissive</code>）</td><td>自分で光る色。1 を超える値で強く光ります。</td></tr>
+      <tr><td><span class="ui">ライティング</span></td><td>オフにするとライトを受けず、色がそのまま出ます。</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>次は、拾えるアイテムをゆっくり光らせ、近づくと強く光らせるスクリプトです。</p>
+  <script type="text/x-code" data-lang="as" data-file="GlowingItem3D.as">
+    using namespace CoreEngine;
+
+    // 光を脈打たせ、target が近いほど強く光らせる
+    class GlowingItem3D : ScriptComponent
+    {
+        [ObjectRef] [Tooltip("近づくと強く光る相手（プレイヤー）")]
+        GameObject@ target;
+
+        [Color] [Tooltip("光の色")]
+        Vector4 glowColor = Vector4(1.0f, 0.8f, 0.2f, 1.0f);
+
+        [Tooltip("この距離より近いと強く光る（m）")]
+        float nearDistance = 3.0f;
+
+        private float time_ = 0.0f;
+
+        void Update()
+        {
+            time_ += Time::DeltaTime();
+            float strength = 0.5f + 0.5f * sin(time_ * 3.0f);
+            if (target !is null && Distance(target.transform.position, owner.transform.position) < nearDistance) {
+                strength *= 4.0f;
+            }
+            owner.material.emissive = glowColor * strength;
+        }
+    }
+  </script>
+  <p>モデルそのものを差し替えるときは、プロジェクトの根からのパスを入れます。</p>
+  <script type="text/x-code" data-lang="as">
+    owner.meshRenderer.model = "Application/Assets/Models/Door/door_open.gltf";
+  </script>
+
+  <h2 id="g3d-light">光と空</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>ライトの種類</th><th>使い道</th><th>強さの単位</th></tr></thead>
+    <tbody>
+      <tr><td>平行光源</td><td>太陽・月。どこでも同じ向きから照らす</td><td>照度 lx（快晴の太陽 ≒ 100000）</td></tr>
+      <tr><td>点光源</td><td>電球・たいまつ</td><td>光度 cd</td></tr>
+      <tr><td>スポットライト</td><td>懐中電灯・舞台の照明</td><td>光度 cd</td></tr>
+      <tr><td>エリアライト</td><td>窓・看板の面の光</td><td>輝度 nit</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>平行光源の <span class="ui">大気の太陽</span> を入れると、空の色と太陽の位置がそのライトの向きに合わせて変わります。次は、太陽を回して昼と夜を進めるスクリプトです。平行光源の向きはオブジェクトの回転ではなく、ライトの <code>direction</code>（光の進む向き）で決まります。</p>
+  <script type="text/x-code" data-lang="as" data-file="DayNightCycle.as">
+    using namespace CoreEngine;
+
+    // 太陽（平行光源で「大気の太陽」を入れたライト）に付け、dayLength 秒で 1 日を回す
+    class DayNightCycle : ScriptComponent
+    {
+        [Range(10.0f, 600.0f)] [Tooltip("1 日の長さ（秒）")]
+        float dayLength = 120.0f;
+
+        [Range(0.0f, 1.0f)] [Tooltip("始まりの時刻（0 で日の出、0.25 で正午）")]
+        float startTime = 0.1f;
+
+        private float time_ = 0.0f;
+
+        void Start()
+        {
+            time_ = startTime * dayLength;
+        }
+
+        void Update()
+        {
+            time_ += Time::DeltaTime();
+            const float angle = time_ / dayLength * 6.2831853f;
+            // angle が 0 で地平線、π/2 で真上、π を過ぎると地平線の下（夜）
+            owner.light.direction = Normalize(Vector3(0.3f, -sin(angle), cos(angle)));
+        }
+    }
+  </script>
+  <p>置けるライトの数には上限があります（平行光源 4・点光源 16・スポット 16・エリア 8）。空・雲・霧の設定は <a href="#api-SkyBox">空と大気散乱</a> にあります。</p>
+
+  <h2 id="g3d-move">動かす</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>動かし方</th><th>向いている物</th><th>付けるもの</th></tr></thead>
+    <tbody>
+      <tr><td>トランスフォームを書き換える</td><td>回るアイテム・決まった道を動く床・演出</td><td>スクリプトだけ</td></tr>
+      <tr><td>キャラクタコントローラ</td><td>プレイヤーや敵（歩く・坂を上る・段差を越える・跳ぶ。押されて倒れない）</td><td>コライダー（カプセル・トリガーを外す）・キャラクタコントローラ・スクリプト</td></tr>
+      <tr><td>剛体</td><td>投げた物・転がる球・積んだ箱（重力と力で動き、ぶつかって跳ねる）</td><td>コライダー（トリガーを外す）・剛体</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3 id="g3d-move-character">キャラクターを歩かせる</h3>
+  <ol class="steps">
+    <li><strong>形を付ける</strong>コライダーに形を足して <span class="ui">形状</span> を <span class="ui">Capsule</span> にし、<span class="ui">トリガー</span> を外します。</li>
+    <li><strong>コントローラを付ける</strong><span class="ui">キャラクタコントローラ</span> を足し、<span class="ui">登れる坂</span>（度）と <span class="ui">越えられる段差</span>（m）を決めます。</li>
+    <li><strong>スクリプトで毎フレーム動かす</strong>コントローラは自分では動きません。<code>SimpleMove</code> を毎フレーム呼ぶと、重力と落下も中で足されます。</li>
+  </ol>
+  <p>三人称のゲームでは、スティックの「前」をカメラの向いている方にします。カメラの前の向きから上下の成分を除いて、歩く向きを作ります。</p>
+  <script type="text/x-code" data-lang="as" data-file="ThirdPersonWalker.as">
+    using namespace CoreEngine;
+
+    // カメラから見た前後左右へ歩き、進む向きへ体を回す。ジャンプで跳ぶ
+    class ThirdPersonWalker : ScriptComponent
+    {
+        [Range(0.0f, 15.0f)] [Tooltip("歩く速さ（m/s）")]
+        float walkSpeed = 4.0f;
+
+        [Range(0.0f, 15.0f)] [Tooltip("Sprint を押している間の速さ（m/s）")]
+        float runSpeed = 7.0f;
+
+        [Range(0.0f, 15.0f)] [Tooltip("跳び上がる速さ（m/s）")]
+        float jumpSpeed = 5.5f;
+
+        [Range(1.0f, 30.0f)] [Tooltip("体の向きが追いつく速さ")]
+        float turnSharpness = 12.0f;
+
+        void Update()
+        {
+            const Vector2 input = Input::GetAxis2D(InputAction::MoveLeft, InputAction::MoveRight,
+                                                   InputAction::MoveBack, InputAction::MoveForward);
+
+            // カメラの前と右を水平にする
+            GameCamera@ camera = Scene::GetGameCamera();
+            Vector3 forward = camera.forward;
+            forward.y = 0.0f;
+            forward = Normalize(forward);
+            const Vector3 right = Vector3(forward.z, 0.0f, -forward.x);
+
+            Vector3 move = forward * input.y + right * input.x;
+            const float speed = Input::IsActionPressed(InputAction::Sprint) ? runSpeed : walkSpeed;
+
+            if (Length(move) > 0.01f) {
+                TurnTowards(move);
+            }
+            owner.characterController.SimpleMove(move * speed);
+
+            if (Input::IsActionTriggered(InputAction::Jump)) {
+                owner.characterController.Jump(jumpSpeed);   // 接地していないときは何もしない
+            }
+        }
+
+        // 体のヨーを、向き direction へ少しずつ回す
+        private void TurnTowards(const Vector3 &in direction)
+        {
+            Vector3 rotation = owner.transform.rotation;
+            const float goal = atan2(direction.x, direction.z);
+            float diff = goal - rotation.y;
+            // -π〜π に収めて、近い方へ回る
+            while (diff > 3.1415927f) { diff -= 6.2831853f; }
+            while (diff < -3.1415927f) { diff += 6.2831853f; }
+            rotation.y += diff * Saturate(turnSharpness * Time::DeltaTime());
+            owner.transform.rotation = rotation;
+        }
+    }
+  </script>
+  <ul>
+    <li><code>GetAxis2D</code> は斜めでも長さが 1 を超えないので、斜めに速くなりません。</li>
+    <li>地面に立っているかは <code>owner.characterController.grounded</code> で分かります。穴に落ちたときに最初の位置へ戻すなら、位置を入れた後に <code>owner.characterController.velocity = Vector3();</code> で落下の速さを消します。</li>
+    <li>カメラを回さないゲーム（見下ろしなど）では、カメラの向きの代わりに <code>Vector3(input.x, 0.0f, input.y)</code> をそのまま使います。</li>
+  </ul>
+
+  <h3 id="g3d-move-rigidbody">剛体で動かす（投げる・転がす）</h3>
+  <p>剛体は、速度を入れるか力を加えると、あとは重力とぶつかり合いで動きます。<code>AddImpulse</code>（撃力）は、すぐに速度が「撃力 ÷ 質量」だけ変わるので、投げる・吹き飛ばすのに向いています。</p>
+  <script type="text/x-code" data-lang="as" data-file="BallThrower3D.as">
+    using namespace CoreEngine;
+
+    // クリックすると、カメラの向いている方へ球を投げる
+    class BallThrower3D : ScriptComponent
+    {
+        [Asset("Prefab")] [Tooltip("投げる球（コライダーと剛体を付けたプレハブ）")]
+        string ballPrefab = "Application/Assets/Prefabs/Ball.prefab";
+
+        [Range(0.0f, 50.0f)] [Tooltip("投げる強さ（撃力）")]
+        float power = 8.0f;
+
+        void Update()
+        {
+            if (!Input::IsActionTriggered(InputAction::Attack) || !Input::IsPointerOverGame()) {
+                return;
+            }
+            GameCamera@ camera = Scene::GetGameCamera();
+            GameObject@ ball = owner.InstantiatePrefab(ballPrefab, "Ball");
+            if (ball is null) {
+                return;
+            }
+            // カメラの少し前から、やや上向きに投げる
+            ball.transform.position = camera.position + camera.forward * 1.5f;
+            ball.rigidbody.AddImpulse(Normalize(camera.forward + Vector3(0.0f, 0.2f, 0.0f)) * power);
+        }
+    }
+  </script>
+  <p>跳ね方と滑り方は <a href="#api-PhysicsMaterial">物理マテリアル</a>（反発係数・摩擦係数）で決めます。押し続ける力（<code>AddForce</code>）は <code>FixedUpdate</code> で加えます（<a href="#physics-rigidbody">剛体で動かす</a>）。</p>
+
+  <h2 id="g3d-camera">カメラ</h2>
+  <p>カメラを動かすときは、カメラのオブジェクト（MainCamera）のトランスフォームを書き換えます。<code>Scene::GetGameCamera()</code> へ書いた位置は、毎フレームこのトランスフォームで上書きされます。次は、右ドラッグで相手の周りを回り、ホイールで近づく三人称のカメラです。</p>
+  <script type="text/x-code" data-lang="as" data-file="OrbitCamera3D.as">
+    using namespace CoreEngine;
+
+    // MainCamera に付ける。target の周りを右ドラッグで回り、ホイールで距離を変える
+    class OrbitCamera3D : ScriptComponent
+    {
+        [ObjectRef] [Tooltip("追いかける相手")]
+        GameObject@ target;
+
+        [Tooltip("相手の足もとから見る所までの高さ（m）")]
+        float lookHeight = 1.5f;
+
+        [Range(1.0f, 30.0f)] [Tooltip("相手からの距離（m）")]
+        float distance = 6.0f;
+
+        [Tooltip("マウス 1 ピクセルあたりの回転（ラジアン）")]
+        float sensitivity = 0.005f;
+
+        private float yaw_ = 0.0f;
+        private float pitch_ = 0.35f;
+
+        void LateUpdate()
+        {
+            if (target is null || !target.isAlive) {
+                return;
+            }
+            if (Input::IsPointerOverGame()) {
+                if (Input::IsMouseButtonPressed(MouseButton::Right)) {
+                    const Vector2 delta = Input::GetMouseDelta();
+                    yaw_ += delta.x * sensitivity;
+                    pitch_ = Clamp(pitch_ + delta.y * sensitivity, -0.3f, 1.3f);
+                }
+                distance = Clamp(distance - Input::GetWheelDelta() * 0.5f, 2.0f, 20.0f);
+            }
+
+            // 見る向き（pitch が正で見下ろす）。カメラは見る所から逆向きに distance 下がった所
+            const Vector3 look = Vector3(sin(yaw_) * cos(pitch_), -sin(pitch_), cos(yaw_) * cos(pitch_));
+            const Vector3 focus = target.transform.position + Vector3(0.0f, lookHeight, 0.0f);
+            owner.transform.position = focus - look * distance;
+            owner.transform.rotation = Vector3(pitch_, yaw_, 0.0f);
+        }
+    }
+  </script>
+  <ul>
+    <li>相手が <code>Update</code> で動いた後に追うので、カメラの処理は <code>LateUpdate</code> に書きます。</li>
+    <li>回転 (pitch, yaw, 0) のカメラは、向き <code>(sin(yaw)·cos(pitch), -sin(pitch), cos(yaw)·cos(pitch))</code> を見ます。上の <code>ThirdPersonWalker</code> と組み合わせると、カメラの向きに歩けます。</li>
+    <li>後ろ上からなめらかに付いてくるカメラは <a href="#camera-follow">プレイヤーを追いかける</a>、場面ごとに構図を切り替えるにはカメラリグ（<a href="#camera-rig">カメラリグで構図を切り替える</a>）を使います。</li>
+  </ul>
+
+  <h2 id="g3d-collision">当たり判定</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>形</th><th>向いている物</th></tr></thead>
+    <tbody>
+      <tr><td>球</td><td>弾・アイテム・転がる球</td></tr>
+      <tr><td>箱</td><td>壁・床・箱・建物</td></tr>
+      <tr><td>カプセル</td><td>人・キャラクター（角が引っかからない）</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>トリガー（重なりを知らせるだけ）と押し出しの違い、<code>OnTriggerEnter</code>・<code>OnCollisionEnter</code> の使い方は 2D と同じです（<a href="#g2d-collision">2D の当たり判定</a>・<a href="#script-physics">当たり判定と物理</a>）。</p>
+  <p>画面のクリックした所に何があるかは、<code>ScreenPointToRay</code> で画面の点を通る光線を作り、<code>Physics::Raycast</code> で調べます。</p>
+  <script type="text/x-code" data-lang="as" data-file="ClickPicker3D.as">
+    using namespace CoreEngine;
+
+    // クリックした物の名前と、当たった位置を出す
+    class ClickPicker3D : ScriptComponent
+    {
+        [Tooltip("光線の長さ（m）")]
+        float maxDistance = 200.0f;
+
+        void Update()
+        {
+            if (!Input::IsMouseButtonTriggered(MouseButton::Left) || !Input::IsPointerOverGame()) {
+                return;
+            }
+            Vector3 origin;
+            Vector3 direction;
+            Scene::GetGameCamera().ScreenPointToRay(Input::GetMousePosition(), origin, direction);
+
+            RaycastHit@ hit = Physics::Raycast(origin, direction, maxDistance);
+            if (hit is null) {
+                return;
+            }
+            Log(hit.gameObject.name + " をクリックしました（" + formatFloat(hit.distance, "", 0, 1) + " m 先）");
+        }
+    }
+  </script>
+  <p>光線で当たるのはコライダーを持つ物だけです。クリックで選びたい物には、トリガーのコライダーを付けておきます。範囲の中にいる物をまとめて集めるときは <code>Physics::OverlapSphere</code>（<a href="#g3d-extra">演出</a> の爆発の例）を使います。</p>
+
+  <h2 id="g3d-anim">アニメーション</h2>
+  <p>骨の入った glTF モデルのアニメーションは、<a href="#api-Animator">アニメーション</a> コンポーネントが再生します。クリップの一覧（名前とモデルの中のアニメーション名の対応）は、シーンやプレハブの JSON の <code>clips</code> に書きます（サンプル Sandbox の <span class="path">Prefabs/Physics/HumanModel.prefab</span> が見本）。スクリプトからは名前で切り替えます。</p>
+  <script type="text/x-code" data-lang="as" data-file="LocomotionAnimation3D.as">
+    using namespace CoreEngine;
+
+    // 1 秒あたりの移動量から idle・walk・run を選び、混ぜながら切り替える
+    class LocomotionAnimation3D : ScriptComponent
+    {
+        [Tooltip("これより速いと walk（m/s）")]
+        float walkThreshold = 0.2f;
+
+        [Tooltip("これより速いと run（m/s）")]
+        float runThreshold = 4.5f;
+
+        private Vector3 lastPosition_;
+        private string current_ = "";
+
+        void Start()
+        {
+            lastPosition_ = owner.transform.position;
+        }
+
+        void Update()
+        {
+            const float dt = Time::DeltaTime();
+            if (dt <= 0.0f) {
+                return;
+            }
+            Vector3 moved = owner.transform.position - lastPosition_;
+            lastPosition_ = owner.transform.position;
+            moved.y = 0.0f;
+            const float speed = Length(moved) / dt;
+
+            string clip = "idle";
+            if (speed > runThreshold) {
+                clip = "run";
+            } else if (speed > walkThreshold) {
+                clip = "walk";
+            }
+            if (clip != current_) {
+                current_ = clip;
+                owner.animator.SwitchWithBlend(clip, 0.25f, true);
+            }
+        }
+    }
+  </script>
+  <p>切り替えは、変わったときだけ呼びます。<code>SwitchWithBlend</code> は呼ぶたびに混ぜ始めるので、毎フレーム呼ぶと切り替わりません。</p>
+
+  <h2 id="g3d-spawn">敵を出す・消す</h2>
+  <p>プレハブから作る手順は 2D と同じです（<a href="#g2d-spawn">弾や敵を出す・消す</a>）。次は、決まった間隔で、まわりのランダムな位置に敵を出すスクリプトです。</p>
+  <script type="text/x-code" data-lang="as" data-file="EnemySpawner3D.as">
+    using namespace CoreEngine;
+
+    // interval 秒ごとに、自分のまわり radius m 以内のどこかへ敵を出す（同時に maxCount まで）
+    class EnemySpawner3D : ScriptComponent
+    {
+        [Asset("Prefab")] [Tooltip("出す敵")]
+        string enemyPrefab = "Application/Assets/Prefabs/Enemy.prefab";
+
+        [Range(0.1f, 30.0f)] [Tooltip("出す間隔（秒）")]
+        float interval = 3.0f;
+
+        [Range(0.0f, 50.0f)] [Tooltip("出す範囲の半径（m）")]
+        float radius = 10.0f;
+
+        [Range(1, 100)] [Tooltip("同時にいられる数")]
+        int maxCount = 8;
+
+        private float timer_ = 0.0f;
+        private array<GameObject@> enemies_;
+
+        void Update()
+        {
+            // 倒されて消えた敵を一覧から外す
+            for (int i = int(enemies_.length()) - 1; i >= 0; --i) {
+                if (!enemies_[i].isAlive) {
+                    enemies_.removeAt(i);
+                }
+            }
+
+            timer_ += Time::DeltaTime();
+            if (timer_ < interval || int(enemies_.length()) >= maxCount) {
+                return;
+            }
+            timer_ = 0.0f;
+
+            const float angle = Random::Range(0.0f, 6.2831853f);
+            const float r = Random::Range(0.0f, radius);
+            GameObject@ enemy = owner.InstantiatePrefab(enemyPrefab, "Enemy");
+            if (enemy is null) {
+                return;
+            }
+            enemy.transform.position = owner.transform.position + Vector3(cos(angle) * r, 0.0f, sin(angle) * r);
+            enemies_.insertLast(enemy);
+        }
+    }
+  </script>
+  <p>消えたオブジェクトを指すハンドルは残るので、使う前に <code>isAlive</code> で確かめます。</p>
+
+  <h2 id="g3d-extra">演出（爆発）</h2>
+  <p>パーティクル・音・画面の揺れ・まわりの物を吹き飛ばす処理を組み合わせると、爆発になります。パーティクルは、炎や火花を作ったオブジェクトに <a href="#api-ParticleSystem">パーティクル</a> を付けて調整しておきます。</p>
+  <script type="text/x-code" data-lang="as" data-file="Explosion3D.as">
+    using namespace CoreEngine;
+
+    // Explode() で、粒を出し、音を鳴らし、画面を揺らし、まわりの剛体を吹き飛ばす
+    class Explosion3D : ScriptComponent
+    {
+        [Range(0.5f, 20.0f)] [Tooltip("届く半径（m）")]
+        float radius = 4.0f;
+
+        [Range(0.0f, 50.0f)] [Tooltip("吹き飛ばす強さ（撃力）")]
+        float power = 12.0f;
+
+        [Asset("Audio")] [Tooltip("爆発の音")]
+        string sound = "Application/Assets/Sounds/explosion.wav";
+
+        void Update()
+        {
+            if (Input::IsActionTriggered(InputAction::Interact)) {
+                Explode();
+            }
+        }
+
+        void Explode()
+        {
+            const Vector3 center = owner.transform.position;
+            array<GameObject@>@ around = Physics::OverlapSphere(center, radius);
+            for (uint i = 0; i < around.length(); ++i) {
+                Rigidbody@ body = around[i].rigidbody;
+                if (body.exists) {
+                    const Vector3 away = around[i].transform.position - center + Vector3(0.0f, 1.0f, 0.0f);
+                    body.AddImpulse(Normalize(away) * power);
+                }
+            }
+
+            if (owner.particleSystem.exists) {
+                owner.particleSystem.Emit(80);
+            }
+            Audio::PlayOneShot(sound);
+            CameraShake::PlayPreset("Explosion");
+        }
+    }
+  </script>
+  <ul>
+    <li>コンポーネントが付いていないときは、<code>owner.particleSystem</code> などの <code>exists</code> が false になります。付いているかで処理を分けるときに使います。</li>
+    <li>ダメージの数字を敵の上に出すときは <a href="#api-Text3DRenderer">3D テキスト</a>（空間に置く文字）を使います。画面に重ねる点数や体力は UI です（<a href="#script-ui">UI を作る</a>）。</li>
+    <li>物から聞こえる音（近いほど大きい）は、<a href="#api-AudioSource">音の再生</a> コンポーネントで鳴らします（<a href="#audio-source">物から音を出す</a>）。</li>
+  </ul>
+
+  <h2 id="g3d-trouble">うまくいかないとき</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>症状</th><th>確かめること</th></tr></thead>
+    <tbody>
+      <tr><td>カメラを動かしても元に戻る</td><td><code>Scene::GetGameCamera()</code> ではなく、カメラのオブジェクトの <code>transform</code> を書き換えているか</td></tr>
+      <tr><td>モデルが裏返って見える・穴があく</td><td>モデルの面の向き（書き出すときの設定）。.obj は面の巻き順が逆のことがあります</td></tr>
+      <tr><td>暗い・明るすぎる</td><td>ライトの <span class="ui">強さ</span> の単位（平行光源は lx、点光源は cd）。種類を変えると強さは前の値のまま</td></tr>
+      <tr><td>キャラクターが落ちない・動かない</td><td>スクリプトから毎フレーム <code>SimpleMove</code> を呼んでいるか</td></tr>
+      <tr><td>キャラクターや物が床を突き抜ける</td><td>コライダーの <span class="ui">トリガー</span> を外したか</td></tr>
+      <tr><td>アニメーションが切り替わらない</td><td>クリップの名前が JSON の <code>clips</code> と同じか。<code>SwitchWithBlend</code> を毎フレーム呼んでいないか</td></tr>
+      <tr><td>クリックしても何も当たらない</td><td>対象にコライダーがあるか。光線の長さ（<code>maxDistance</code>）</td></tr>
+    </tbody>
+  </table>
+  </div>
+</article>
+
 <article class="page" id="tutorial-coin" data-group="チュートリアル" data-title="コインを集めるゲームを作る" data-nav="コイン集めを作る" data-keywords="チュートリアル はじめて 作り方 ゲームを作る コイン 集める 当たり判定 スコア 表示 クリア プレハブ 手順">
   <h1>コインを集めるゲームを作る</h1>
   <p class="lead">箱を動かして、置いてあるコインを全部拾うとクリアになる小さなゲームを、最初から最後まで作ります。エディタでの配置、スクリプト、当たり判定、UI、プレハブ、シーンの読み直しまで、ゲーム作りの基本がひと通り入っています。</p>
@@ -6673,565 +7730,6 @@ kbd {
       <tr><td>跳べるプレイヤーと足場</td><td>キャラクタコントローラ（<a href="#physics-character">当たり判定と物理</a>）</td></tr>
       <tr><td>カメラが追いかける</td><td>MainCamera に追いかけるスクリプト（<a href="#camera-follow">カメラと画面の演出</a>）</td></tr>
       <tr><td>タイトル画面とベストタイムの保存</td><td>新しいシーン・<code>SaveFile</code>（<a href="#script-scenes">シーンとデータ</a>）</td></tr>
-    </tbody>
-  </table>
-  </div>
-</article>
-
-<article class="page" id="tutorial-2d" data-group="チュートリアル" data-title="2D の横スクロールを作る" data-nav="2D の横スクロールを作る" data-keywords="チュートリアル 2D 横スクロール アクション ジャンプ スプライト ドット絵 コマ アニメ スプライトシート 地面 足場 繰り返し カメラ 追従 遠景 パララックス コイン ゴール トリガー 剛体 平行投影 マウス クリック sample2d 見本 手順 作り方">
-  <h1>2D の横スクロールを作る</h1>
-  <p class="lead">見本 <span class="path">Projects/Sample2D</span> と同じ横スクロールの 1 ステージを、空のプロジェクトから作ります。スプライトを並べた地面、コマ割りのアニメで走って跳ぶプレイヤー、追いかけるカメラと遠景、トリガーのコインとゴール、クリックした所に落ちる箱まで、2D のゲームでよく使う形がひと通り入っています。</p>
-
-  <div class="flow" aria-label="作る順番">
-    <a class="flow-node" href="#t2d-1"><b>1. 用意</b><small>画像と 2D のシーン</small></a>
-    <span class="flow-arrow" aria-hidden="true">→</span>
-    <a class="flow-node" href="#t2d-2"><b>2. 地面</b><small>スプライトと当たり</small></a>
-    <span class="flow-arrow" aria-hidden="true">→</span>
-    <a class="flow-node script" href="#t2d-3"><b>3. プレイヤー</b><small>アニメ・剛体・操作</small></a>
-    <span class="flow-arrow" aria-hidden="true">→</span>
-    <a class="flow-node script" href="#t2d-4"><b>4. カメラ</b><small>追従と遠景</small></a>
-    <span class="flow-arrow" aria-hidden="true">→</span>
-    <a class="flow-node script" href="#t2d-5"><b>5. コインとゴール</b><small>トリガーと文字</small></a>
-    <span class="flow-arrow" aria-hidden="true">→</span>
-    <a class="flow-node accent" href="#t2d-6"><b>6. 箱を落とす</b><small>マウスとプレハブ</small></a>
-  </div>
-
-  <div class="callout note" data-title="このチュートリアルで作るもの"><p><kbd>←</kbd> <kbd>→</kbd>（<kbd>A</kbd> <kbd>D</kbd>・左スティック）で走り、<kbd>Space</kbd>（<kbd>W</kbd> <kbd>↑</kbd>）で跳びます。穴を跳び越えながら 5 枚のコインを拾い、右端の旗に着くと「CLEAR!」が出ます。クリックした所には箱が落ち、足場にもできます。<kbd>R</kbd> で最初からやり直します。できあがりが <span class="path">Projects/Sample2D</span> なので、迷ったら開いて見比べてください。所要時間は 1 時間ほどです。</p></div>
-
-  <h2 id="t2d-1">1. プロジェクトと 2D のシーンを用意する</h2>
-  <ol class="steps">
-    <li><strong>プロジェクトを作る</strong>プロジェクトを選ぶ画面で新しいプロジェクトを作ります。テンプレートは <span class="ui">空のプロジェクト</span>、名前は <code>My2D</code> にします（<a href="#first-project">最初のプロジェクトを作る</a>）。</li>
-    <li><strong>画像を入れる</strong>エクスプローラで <span class="path">Projects/Sample2D/Application/Assets/Textures</span> を開き、PNG の 7 枚を自分のプロジェクトの <span class="path">Application/Assets/Textures</span> へコピーします（フォルダが無ければ作ります）。<span class="path">.meta</span> は、Project に現れたときに作られます。</li>
-    <li><strong>2D のシーンを作る</strong><span class="ui">File<span class="arrow">▸</span>新しいシーン…</span> で、名前を <code>Stage</code>、中身を <span class="ui">2D</span> にして <span class="ui">作成</span>。平行投影の MainCamera だけが入ったシーンが開き、エディタ視点は <a href="#viewport-2d">2D 表示</a> になります。</li>
-    <li><strong>起動するシーンにする</strong><span class="ui">Edit<span class="arrow">▸</span>Project Settings…</span> の <span class="ui">Startup</span> で、<span class="ui">起動シーン</span> を <code>Stage</code> にします。</li>
-  </ol>
-  <div class="table-wrap">
-  <table>
-    <thead><tr><th>画像</th><th>大きさ（ピクセル）</th><th>使う所</th></tr></thead>
-    <tbody>
-      <tr><td><span class="path">player.png</span></td><td>64×48（16×16 のコマが横 4 × 縦 3）</td><td>プレイヤー。コマ 0〜1 が待機、4〜7 が走る、8〜9 がジャンプ</td></tr>
-      <tr><td><span class="path">coin.png</span></td><td>64×16（横 4 コマ）</td><td>回るコイン</td></tr>
-      <tr><td><span class="path">grass.png</span>・<span class="path">dirt.png</span></td><td>16×16</td><td>地面の表面と中身。並べて繰り返す</td></tr>
-      <tr><td><span class="path">flag.png</span></td><td>16×32</td><td>ゴールの旗</td></tr>
-      <tr><td><span class="path">crate.png</span></td><td>16×16</td><td>クリックで落とす箱</td></tr>
-      <tr><td><span class="path">hills.png</span></td><td>256×64</td><td>遠くの山（遠景）</td></tr>
-    </tbody>
-  </table>
-  </div>
-  <div class="callout tip" data-title="自分の絵を使うとき"><p>アニメのコマは同じ大きさにそろえ、左上から右へ、行の終わりで次の行へ並べた 1 枚の画像（スプライトシート）にします。PNG は sRGB の印（sRGB チャンク）を付けて書き出してください。印が無いと色が明るく出ます。</p></div>
-
-  <h3 id="t2d-1-settings">2D 向けの設定にする</h3>
-  <p>見本と同じにしておくと、この後の数値がそのまま使えます。<span class="ui">Project Settings</span> の左上の <span class="ui">名前で検索…</span> に名前を入れると、その設定が出ます。</p>
-  <ol class="steps">
-    <li><strong>ドット絵をくっきり出す</strong><code>r.TAA.Enabled</code>・<code>r.CAS.Enabled</code>・<code>r.SSAO.Enabled</code>・<code>r.SSAOBlur.Enabled</code> をオフにします。TAA は画面を少しずつずらして重ねるので、ドット絵の輪郭がにじみます。CAS（輪郭を立てる）と SSAO（物の隙間を暗くする）も、2D では要りません。</li>
-    <li><strong>重力を強める</strong><code>sys.Physics.Gravity</code> を <code>(0, -25, 0)</code> にします。地球の重力（-9.81）のままだと、ジャンプがふわっとして遅く感じます。</li>
-  </ol>
-  <p>変えた値はその場で <span class="path">Application/Config/EngineSettings/CVars.json</span> に保存されます。どれもプロジェクト全体の設定で、シーンごとには変わりません。</p>
-
-  <h3 id="t2d-1-input">やり直しのキーを足す</h3>
-  <p>走る（<code>MoveLeft</code>・<code>MoveRight</code>）と跳ぶ（<code>Jump</code>）は、最初から使えるアクションです。見本はこれに、<kbd>W</kbd>・<kbd>↑</kbd> でも跳べる割り当てと、やり直しの <code>Restart</code>（<kbd>R</kbd>）を足しています。</p>
-  <ol class="steps">
-    <li><strong>設定ファイルを写す</strong><span class="path">Projects/Sample2D/Application/Config/EngineSettings/InputActions.json</span> を、自分のプロジェクトの同じ場所へコピーします。</li>
-    <li><strong>エディタを起動し直す</strong>スクリプトから <code>InputAction::Restart</code> が使えるようになります。</li>
-  </ol>
-  <div class="callout warn"><p>InputActions.json があると、そこに書いたアクションだけになります。自分で書くときは、<code>MoveLeft</code> など使うアクションを全部書いてください（<a href="#editor-settings-keyconfig">入力アクションとキーコンフィグ</a>）。</p></div>
-
-  <h2 id="t2d-2">2. 地面と足場を並べる</h2>
-  <h3 id="t2d-2-ground">1 枚目の地面を置く</h3>
-  <ol class="steps">
-    <li><strong>画像を置く</strong>Project の <span class="path">Textures/grass.png</span> を Game ビューへドラッグします。落とした所（z = 0 の面）に、画像を貼ったスプライト「grass」ができます。</li>
-    <li><strong>名前と位置を決める</strong>名前を <code>Ground0</code> にし、トランスフォームの <span class="ui">位置</span> を <code>(-1, -4, 0)</code>、<span class="ui">スケール</span> を <code>(18, 1, 1)</code> にします。</li>
-    <li><strong>ドット絵の設定にする</strong>スプライト描画の <span class="ui">1 単位のピクセル数</span> を <code>16</code>、<span class="ui">フィルタ</span> を <span class="ui">ポイント</span> にします。</li>
-    <li><strong>絵を繰り返す</strong><span class="ui">UV の倍率</span> を <code>(18, 1)</code> にします。</li>
-    <li><strong>当たり判定を付ける</strong><span class="ui">＋ コンポーネント追加</span> ▸ <span class="ui">コライダー</span> を足して <span class="ui">箱を追加</span> を押します。<span class="ui">トリガー</span> を外し、<span class="ui">静止</span> を入れます。</li>
-  </ol>
-  <p>スプライトの板の大きさは「1 コマのピクセル数 ÷ 1 単位のピクセル数 × スケール」です。16 ピクセルの画像を 1 単位 16 ピクセルにすると 1 m × 1 m の板になり、スケール (18, 1, 1) で横 18 m の地面になります。そのままでは 1 枚の絵が横に伸びるので、<span class="ui">UV の倍率</span> をスケールと同じ 18 にして、1 m ごとに絵を繰り返します。</p>
-  <p>スプライトのあるオブジェクトでは、<span class="ui">箱を追加</span> が板にぴったり重なる箱を作ります。コライダーは<strong>既定がトリガー</strong>（重なりを知らせるだけで押し出さない）なので、上に立てる地面にするにはトリガーを外します。<span class="ui">静止</span> を入れると、押されても動かない物になります。</p>
-
-  <h3 id="t2d-2-dirt">地面の中身を置く</h3>
-  <p><span class="path">dirt.png</span> も同じようにドラッグし、名前 <code>Dirt0</code>・位置 <code>(-1, -6, 0)</code>・スケール <code>(18, 3, 1)</code>・1 単位のピクセル数 <code>16</code>・フィルタ <span class="ui">ポイント</span>・UV の倍率 <code>(18, 3)</code> にします。見た目だけなので、コライダーは付けません。</p>
-
-  <h3 id="t2d-2-more">残りの地面と足場を並べる</h3>
-  <p>Ground0 か Dirt0 を選んで <kbd>Ctrl</kbd>+<kbd>D</kbd> で複製し、名前・位置・スケール・UV の倍率を次の表のとおりに変えます。UV の倍率は、いつもスケールの X・Y と同じにします。地面と地面の間の 2 か所の隙間が、跳び越える穴です。</p>
-  <div class="table-wrap">
-  <table>
-    <thead><tr><th>名前</th><th>複製する元</th><th>位置</th><th>スケール</th><th>UV の倍率</th></tr></thead>
-    <tbody>
-      <tr><td><code>Ground1</code></td><td>Ground0</td><td>(16, -4, 0)</td><td>(12, 1, 1)</td><td>(12, 1)</td></tr>
-      <tr><td><code>Dirt1</code></td><td>Dirt0</td><td>(16, -6, 0)</td><td>(12, 3, 1)</td><td>(12, 3)</td></tr>
-      <tr><td><code>Ground2</code></td><td>Ground0</td><td>(32, -4, 0)</td><td>(14, 1, 1)</td><td>(14, 1)</td></tr>
-      <tr><td><code>Dirt2</code></td><td>Dirt0</td><td>(32, -6, 0)</td><td>(14, 3, 1)</td><td>(14, 3)</td></tr>
-      <tr><td><code>Platform0</code></td><td>Ground0</td><td>(3.5, -1, 0)</td><td>(3, 1, 1)</td><td>(3, 1)</td></tr>
-      <tr><td><code>Platform1</code></td><td>Ground0</td><td>(14.5, -1, 0)</td><td>(3, 1, 1)</td><td>(3, 1)</td></tr>
-      <tr><td><code>Platform2</code></td><td>Ground0</td><td>(19, 0.5, 0)</td><td>(2, 1, 1)</td><td>(2, 1)</td></tr>
-      <tr><td><code>Platform3</code></td><td>Ground0</td><td>(29.5, -1, 0)</td><td>(3, 1, 1)</td><td>(3, 1)</td></tr>
-    </tbody>
-  </table>
-  </div>
-  <p>並べ終えたら <kbd>Ctrl</kbd>+<kbd>S</kbd> で保存します。</p>
-  <div class="callout tip"><p>2D 表示では、中ボタンのドラッグで動かし、ホイールで拡大・縮小します。<kbd>F</kbd> で選んでいるオブジェクトが真ん中に来ます。ツールバーの <span class="ui">◍ Collider</span> を押すと、当たり判定の形が線で見えます。</p></div>
-
-  <h2 id="t2d-3">3. プレイヤーを作る</h2>
-  <h3 id="t2d-3-sprite">コマに分けてアニメを付ける</h3>
-  <ol class="steps">
-    <li><strong>画像を置く</strong><span class="path">player.png</span> をドラッグし、名前を <code>Player</code>、位置を <code>(-7, -2, 0)</code> にします。コインとゴールのスクリプトはこの名前で相手を見分けるので、一字一句同じにします。</li>
-    <li><strong>コマに分ける</strong>スプライト描画の <span class="ui">1 単位のピクセル数</span> を <code>16</code>、<span class="ui">フィルタ</span> を <span class="ui">ポイント</span>、<span class="ui">横のコマ数</span> を <code>4</code>、<span class="ui">縦のコマ数</span> を <code>3</code> にします。板が 1 コマぶん（1 m × 1 m）になり、左上のコマが映ります。</li>
-    <li><strong>手前に出す</strong><span class="ui">レイヤー内の順</span> を <code>10</code> にします。後で置くコインや箱より手前に描かれます。</li>
-    <li><strong>アニメを付ける</strong><span class="ui">＋ コンポーネント追加</span> ▸ <span class="ui">スプライトアニメ</span> を足し、<span class="ui">クリップを追加</span> で次の 3 本を作ります。<span class="ui">最初のクリップ</span> は <code>Idle</code> にします。</li>
-  </ol>
-  <div class="table-wrap">
-  <table>
-    <thead><tr><th>名前</th><th>最初のコマ</th><th>最後のコマ</th><th>fps</th><th>ループ</th></tr></thead>
-    <tbody>
-      <tr><td><code>Idle</code></td><td>0</td><td>1</td><td>3</td><td>オン</td></tr>
-      <tr><td><code>Run</code></td><td>4</td><td>7</td><td>10</td><td>オン</td></tr>
-      <tr><td><code>Jump</code></td><td>8</td><td>9</td><td>6</td><td>オフ</td></tr>
-    </tbody>
-  </table>
-  </div>
-  <p>コマは左上を 0 として右へ数え、行の終わりで次の行へ進みます。横 4 コマなので、2 行目の左端が 4、3 行目の左端が 8 です。<code>Jump</code> はループしないので、跳んでいる間は最後のコマ（9）で止まります。コマが進むのは再生中だけです。</p>
-
-  <h3 id="t2d-3-physics">当たり判定と剛体を付ける</h3>
-  <ol class="steps">
-    <li><strong>形を付ける</strong><span class="ui">コライダー</span> を足して <span class="ui">箱を追加</span>。<span class="ui">サイズ</span> を <code>(0.6, 0.94, 1)</code> にし、<span class="ui">トリガー</span> を外します。</li>
-    <li><strong>重力で動くようにする</strong><span class="ui">剛体</span> を足し、<span class="ui">Z へ動かさない</span> と、<span class="ui">X 軸で回さない</span>・<span class="ui">Y 軸で回さない</span>・<span class="ui">Z 軸で回さない</span> を入れます。</li>
-    <li><strong>壁に張り付かないようにする</strong><span class="ui">物理マテリアル</span> を足し、<span class="ui">摩擦係数</span> を <code>0</code>、<span class="ui">摩擦の合成</span> を <span class="ui">小さい方</span> にします。</li>
-    <li><strong>落ちて立つか確かめる</strong><kbd>Ctrl</kbd>+<kbd>P</kbd> で再生します。プレイヤーが落ちて地面に立ち、待機のアニメが動けば OK です。もう一度 <kbd>Ctrl</kbd>+<kbd>P</kbd> で止めます。</li>
-  </ol>
-  <p>当たりの箱を絵より細くしているのは、人の絵が 16 ピクセルの幅いっぱいには描かれていないからです。2D のゲームでは物を奥（Z）へ動かさず、X 軸と Y 軸の周りでは回しません。プレイヤーは転ばないように、Z 軸の周りでも回しません。</p>
-  <p>横の速さはスクリプトが毎フレーム決めるので、摩擦は要りません。摩擦があると、足場の横に押し付けたときに張り付いて落ちなくなります。</p>
-
-  <h3 id="t2d-3-script">走って跳ぶスクリプトを書く</h3>
-  <p><span class="path">Application/Assets/Scripts</span> で <span class="ui">＋ 作成</span> を押し、クラス名 <code>PlayerController</code>・雛形 <span class="ui">基本（Start と Update）</span> でスクリプトを作って、次のように書きます。</p>
-  <script type="text/x-code" data-lang="as" data-file="Scripts/PlayerController.as">
-    using namespace CoreEngine;
-
-    // 左右に走り、地面の上でだけ跳ぶ。向きとアニメは動きから決める。穴に落ちたら最初の位置へ戻る
-    [DisplayName("2D：プレイヤー")]
-    class PlayerController : ScriptComponent
-    {
-        [Range(0.0f, 20.0f)] [Tooltip("走る速さ（m/s）")]
-        float runSpeed = 6.0f;
-
-        [Range(0.0f, 30.0f)] [Tooltip("跳んだ瞬間の上向きの速さ（m/s）")]
-        float jumpSpeed = 13.0f;
-
-        [Range(-50.0f, 0.0f)] [Tooltip("これより下へ落ちたら最初の位置へ戻す")]
-        float fallLimit = -12.0f;
-
-        private Vector3 start_;
-
-        void Start()
-        {
-            start_ = owner.transform.position;
-        }
-
-        void Update()
-        {
-            const float move = Input::GetAxis(InputAction::MoveLeft, InputAction::MoveRight);
-            const bool grounded = IsGrounded();
-
-            // 横の速さは入力で決め、縦は物理（重力）に任せる
-            Rigidbody@ body = owner.rigidbody;
-            Vector3 velocity = body.velocity;
-            velocity.x = move * runSpeed;
-            if (grounded && Input::IsActionTriggered(InputAction::Jump)) {
-                velocity.y = jumpSpeed;
-            }
-            body.velocity = velocity;
-
-            if (move != 0.0f) {
-                owner.spriteRenderer.flipX = move < 0.0f;
-            }
-            if (!grounded) {
-                owner.spriteAnimator.Play("Jump");
-            } else if (abs(move) > 0.01f) {
-                owner.spriteAnimator.Play("Run");
-            } else {
-                owner.spriteAnimator.Play("Idle");
-            }
-
-            if (owner.transform.position.y < fallLimit) {
-                owner.transform.position = start_;
-                body.velocity = Vector3(0.0f, 0.0f, 0.0f);
-            }
-        }
-
-        // 足もとへ 3 本のレイを飛ばし、自分以外に当たれば地面の上
-        private bool IsGrounded()
-        {
-            const Vector3 center = owner.transform.position + Vector3(0.0f, -0.4f, 0.0f);
-            for (int i = -1; i <= 1; ++i) {
-                array<RaycastHit@>@ hits = Physics::RaycastAll(center + Vector3(0.25f * i, 0.0f, 0.0f),
-                    Vector3(0.0f, -1.0f, 0.0f), 0.15f);
-                for (uint k = 0; k < hits.length(); ++k) {
-                    if (hits[k].gameObject.name != owner.name) {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-    }
-  </script>
-  <div class="table-wrap">
-  <table>
-    <thead><tr><th>書いたこと</th><th>意味</th></tr></thead>
-    <tbody>
-      <tr><td><code>Input::GetAxis(InputAction::MoveLeft, InputAction::MoveRight)</code></td><td>左が押されていれば -1、右なら 1、どちらも無ければ 0。スティックでは途中の値になります。</td></tr>
-      <tr><td><code>body.velocity</code></td><td>剛体の速度。横だけ入力で決め、縦は重力に任せます。トランスフォームの位置を直接動かすと壁にめり込むので、速度を書き換えて物理に押し出してもらいます。</td></tr>
-      <tr><td><code>Input::IsActionTriggered(InputAction::Jump)</code></td><td>押した瞬間の 1 フレームだけ true。地面の上のときだけ、上向きの速さを入れます。</td></tr>
-      <tr><td><code>owner.spriteRenderer.flipX</code></td><td>左へ走るときは絵を左右反転します。</td></tr>
-      <tr><td><code>owner.spriteAnimator.Play("Run")</code></td><td>クリップを流します。同じクリップを流している最中なら続けるので、毎フレーム呼んでかまいません。</td></tr>
-      <tr><td><code>Physics::RaycastAll</code></td><td>足もとから下へ 0.15 m の光線を、左・真ん中・右の 3 本飛ばします。光線の出だしは自分の箱の中なので、自分以外に当たったら地面の上です。</td></tr>
-      <tr><td><code>fallLimit</code></td><td>穴に落ちて y がこれより下になったら、最初の位置へ戻します。</td></tr>
-    </tbody>
-  </table>
-  </div>
-  <ol class="steps">
-    <li><strong>付ける</strong>Player を選び、<span class="ui">＋ コンポーネント追加</span> ▸ <span class="ui">2D：プレイヤー</span> を足します。</li>
-    <li><strong>動かしてみる</strong><kbd>Ctrl</kbd>+<kbd>P</kbd> で再生し、Game ビューをクリックしてから <kbd>←</kbd> <kbd>→</kbd> と <kbd>Space</kbd> を押します。走ると走るアニメ、跳ぶとジャンプのアニメになり、左へ走ると絵が反転します。カメラはまだ動かないので、右へ走り続けると画面の外へ出ます。</li>
-    <li><strong>保存する</strong>止めてから <kbd>Ctrl</kbd>+<kbd>S</kbd>。</li>
-  </ol>
-  <div class="callout tip"><p>再生したままインスペクタで <span class="ui">runSpeed</span> と <span class="ui">jumpSpeed</span> を変えると、すぐに手触りが変わります。気に入った値は止めてから入れ直します。</p></div>
-
-  <h2 id="t2d-4">4. カメラで追いかけ、遠景を動かす</h2>
-  <h3 id="t2d-4-follow">横だけ追いかける</h3>
-  <p>クラス名 <code>CameraFollow2D</code> でスクリプトを作り、次のように書きます。</p>
-  <script type="text/x-code" data-lang="as" data-file="Scripts/CameraFollow2D.as">
-    using namespace CoreEngine;
-
-    // 横だけ相手を追いかける（ステージの端より外は映さない）
-    [DisplayName("2D：カメラの追従")]
-    class CameraFollow2D : ScriptComponent
-    {
-        [ObjectRef] [Tooltip("追いかける相手")]
-        GameObject@ target;
-
-        [Range(0.0f, 30.0f)] [Tooltip("大きいほど早く追いつく")]
-        float smoothing = 6.0f;
-
-        [Tooltip("カメラの x の下限")]
-        float minX = -1.0f;
-
-        [Tooltip("カメラの x の上限")]
-        float maxX = 29.5f;
-
-        void LateUpdate()
-        {
-            if (target is null) {
-                return;
-            }
-            Vector3 position = owner.transform.position;
-            const float goal = Clamp(target.transform.position.x, minX, maxX);
-            position.x = Lerp(position.x, goal, Saturate(smoothing * Time::DeltaTime()));
-            owner.transform.position = position;
-        }
-    }
-  </script>
-  <ol class="steps">
-    <li><strong>カメラを整える</strong>MainCamera を選び、位置を <code>(-1, 0, -10)</code> にします。カメラの <span class="ui">背景色</span> を空色 <code>(0.53, 0.79, 0.96)</code> にします。</li>
-    <li><strong>スクリプトを付ける</strong><span class="ui">2D：カメラの追従</span> を足し、<span class="ui">target</span> の欄に Hierarchy の Player をドラッグします。</li>
-    <li><strong>確かめる</strong>再生して右へ走ると、画面が付いてきます。ステージの左端と右端では、カメラが止まります。</li>
-  </ol>
-  <ul>
-    <li>カメラを動かすときは、カメラのオブジェクトのトランスフォームを書き換えます（<a href="#camera-follow">プレイヤーを追いかける</a>）。</li>
-    <li><code>LateUpdate</code> はすべての <code>Update</code> の後に呼ばれます。プレイヤーが動いた後の位置を追います。</li>
-    <li><code>Lerp(今, 行き先, Saturate(smoothing * 経過秒))</code> で、毎フレーム残りの距離の一部だけ寄せます。すぐ追いつかず、少し遅れて付いてくる動きになります。</li>
-    <li><code>minX</code>・<code>maxX</code> は、ステージの外（地面の無い所）が映らない位置にしてあります。平行投影の <span class="ui">大きさ</span> 5.4 では、画面の縦が 10.8 m、横が 19.2 m です。</li>
-  </ul>
-
-  <h3 id="t2d-4-parallax">遠くの山を遅く動かす</h3>
-  <p>クラス名 <code>Parallax</code> でスクリプトを作り、次のように書きます。</p>
-  <script type="text/x-code" data-lang="as" data-file="Scripts/Parallax.as">
-    using namespace CoreEngine;
-
-    // カメラより遅く動き、遠くにあるように見せる
-    [DisplayName("2D：遠景")]
-    class Parallax : ScriptComponent
-    {
-        [ObjectRef] [Tooltip("基準にするカメラのオブジェクト")]
-        GameObject@ cameraObject;
-
-        [Range(0.0f, 1.0f)] [Tooltip("1 でカメラと一緒に動く（無限に遠い）、0 で動かない")]
-        float follow = 0.5f;
-
-        private float baseX_ = 0.0f;
-
-        void Start()
-        {
-            baseX_ = owner.transform.position.x;
-        }
-
-        void LateUpdate()
-        {
-            if (cameraObject is null) {
-                return;
-            }
-            Vector3 position = owner.transform.position;
-            position.x = baseX_ + cameraObject.transform.position.x * follow;
-            owner.transform.position = position;
-        }
-    }
-  </script>
-  <ol class="steps">
-    <li><strong>山を置く</strong><span class="path">hills.png</span> をドラッグし、名前 <code>Hills</code>・位置 <code>(14, -2, 0)</code>・スケール <code>(4, 1, 1)</code>・1 単位のピクセル数 <code>16</code>・フィルタ <span class="ui">ポイント</span>・UV の倍率 <code>(4, 1)</code> にします。</li>
-    <li><strong>いちばん奥に描く</strong><span class="ui">ソートレイヤー</span> を <code>-10</code> にします。</li>
-    <li><strong>スクリプトを付ける</strong><span class="ui">2D：遠景</span> を足し、<span class="ui">cameraObject</span> に MainCamera をドラッグします。</li>
-    <li><strong>確かめて保存する</strong>再生して走ると、山が地面より遅く流れます。止めて <kbd>Ctrl</kbd>+<kbd>S</kbd>。</li>
-  </ol>
-  <p>スプライトは深度を書かないので、前後は描く順番で決まります。順番は <span class="ui">ソートレイヤー</span> → <span class="ui">レイヤー内の順</span> → カメラからの奥行きの順に比べ、大きいほど手前です。山だけ <code>-10</code> にすると、ほかのどのスプライトよりも奥になります。<code>follow</code> が 0.5 なら、カメラが 2 m 動くと山は同じ向きに 1 m 動くので、画面の中では地面の半分の速さで流れます。</p>
-
-  <h2 id="t2d-5">5. コインとゴールを置く</h2>
-  <h3 id="t2d-5-ui">文字を置く</h3>
-  <p><span class="ui">GameObject<span class="arrow">▸</span>UI<span class="arrow">▸</span>テキスト</span> で文字を 3 つ作り、次のようにします。3 つとも <span class="ui">縁取りの色</span> を紺 <code>(0.1, 0.12, 0.2)</code>、<span class="ui">縁取りの太さ</span> を <code>0.12</code> にすると、空の上でも読めます。</p>
-  <div class="table-wrap">
-  <table>
-    <thead><tr><th>名前</th><th>アンカー</th><th>基準点</th><th>位置</th><th>フォントサイズ</th><th>横揃え</th><th>テキスト</th></tr></thead>
-    <tbody>
-      <tr><td><code>CoinText</code></td><td>左上</td><td>(0, 0)</td><td>(40, 28)</td><td>44</td><td>左</td><td>コイン 0 / 5</td></tr>
-      <tr><td><code>MessageText</code></td><td>中央</td><td>(0.5, 0.5)</td><td>(0, -80)</td><td>72</td><td>中央</td><td>（空）</td></tr>
-      <tr><td><code>HintText</code></td><td>左下</td><td>(0, 1)</td><td>(40, -28)</td><td>32</td><td>左</td><td>← → で走る　Space で跳ぶ　クリックで箱を落とす　R でやり直す</td></tr>
-    </tbody>
-  </table>
-  </div>
-  <p>UI はスプライトと違ってカメラに映らず、1920×1080 の画面に重ねて描かれます（<a href="#script-ui">UI を作る</a>）。</p>
-
-  <h3 id="t2d-5-director">進行役のスクリプトを書く</h3>
-  <p>クラス名 <code>GameDirector</code> でスクリプトを作り、次のように書きます。コインの数・ゴール・やり直しを受け持ちます。後半の箱を落とす処理は <a href="#t2d-6">6</a> で使います。</p>
-  <script type="text/x-code" data-lang="as" data-file="Scripts/GameDirector.as">
-    using namespace CoreEngine;
-
-    // 見本の進行：集めたコインの数を出し、ゴールで終わり、R でやり直す。クリックした所に箱を落とす
-    [DisplayName("2D：進行")]
-    class GameDirector : ScriptComponent
-    {
-        [ObjectRef] [Tooltip("集めたコインの数を出す文字")]
-        GameObject@ coinText;
-
-        [ObjectRef] [Tooltip("クリアを知らせる文字")]
-        GameObject@ messageText;
-
-        [Asset("Prefab")] [Tooltip("クリックで落とす箱")]
-        string cratePrefab = "Application/Assets/Prefabs/Crate.prefab";
-
-        [Range(1, 50)] [Tooltip("同時に置ける箱の数（超えたら古いものから消す）")]
-        int maxCrates = 12;
-
-        private int coins_ = 0;
-        private int totalCoins_ = 0;
-        private bool cleared_ = false;
-        private array<GameObject@> crates_;
-
-        void Update()
-        {
-            if (Input::IsActionTriggered(InputAction::Restart)) {
-                Scene::ChangeScene(Scene::GetCurrentName());
-                return;
-            }
-            if (Input::IsMouseButtonTriggered(MouseButton::Left) && Input::IsPointerOverGame()) {
-                DropCrate(Input::GetMousePosition());
-            }
-            RefreshText();
-        }
-
-        // コインが置かれたときに数える
-        void RegisterCoin()
-        {
-            ++totalCoins_;
-        }
-
-        // コインを拾ったときに数える
-        void CollectCoin()
-        {
-            ++coins_;
-        }
-
-        // ゴールに着いた
-        void Clear()
-        {
-            cleared_ = true;
-        }
-
-        // 画面の点の、z = 0 の面の位置へ箱を落とす
-        private void DropCrate(const Vector2 &in screen)
-        {
-            GameCamera@ camera = Scene::GetGameCamera();
-            const float distance = -camera.position.z;
-            Vector3 position = camera.ScreenToWorldPoint(Vector3(screen.x, screen.y, distance));
-            position.z = 0.0f;
-
-            GameObject@ crate = owner.InstantiatePrefab(cratePrefab, "Crate");
-            if (crate is null) {
-                return;
-            }
-            crate.transform.position = position;
-            crates_.insertLast(crate);
-            while (int(crates_.length()) > maxCrates) {
-                crates_[0].Destroy();
-                crates_.removeAt(0);
-            }
-        }
-
-        private void RefreshText()
-        {
-            if (coinText !is null) {
-                coinText.uiText.text = "コイン " + coins_ + " / " + totalCoins_;
-            }
-            if (messageText !is null) {
-                if (!cleared_) {
-                    messageText.uiText.text = "";
-                } else if (coins_ == totalCoins_) {
-                    messageText.uiText.text = "ALL CLEAR!  R でもう一度";
-                } else {
-                    messageText.uiText.text = "CLEAR!  R でもう一度";
-                }
-            }
-        }
-    }
-  </script>
-  <ol class="steps">
-    <li><strong>空のオブジェクトを作る</strong><span class="ui">GameObject<span class="arrow">▸</span>空のオブジェクトを作成</span>。名前を <code>GameDirector</code> にします。</li>
-    <li><strong>スクリプトを付ける</strong><span class="ui">2D：進行</span> を足し、<span class="ui">coinText</span> に CoinText、<span class="ui">messageText</span> に MessageText をドラッグします。</li>
-  </ol>
-  <div class="table-wrap">
-  <table>
-    <thead><tr><th>書いたこと</th><th>意味</th></tr></thead>
-    <tbody>
-      <tr><td><code>[ObjectRef] GameObject@ coinText;</code></td><td>インスペクタでシーンのオブジェクトを繋ぐ欄になります。</td></tr>
-      <tr><td><code>RegisterCoin</code>・<code>CollectCoin</code>・<code>Clear</code></td><td>コインとゴールのスクリプトから呼ばれます。コインが自分で数を知らせるので、コインを増やしても数え直しは要りません。</td></tr>
-      <tr><td><code>Scene::ChangeScene(Scene::GetCurrentName())</code></td><td>今のシーンを、保存した内容から読み直します（やり直し）。</td></tr>
-    </tbody>
-  </table>
-  </div>
-
-  <h3 id="t2d-5-coin">コインを置く</h3>
-  <p>クラス名 <code>Coin</code>・雛形 <span class="ui">当たり判定つき</span> でスクリプトを作り、次のように書きます。</p>
-  <script type="text/x-code" data-lang="as" data-file="Scripts/Coin.as">
-    using namespace CoreEngine;
-
-    // プレイヤーが触れたら数えて消える
-    [DisplayName("2D：コイン")]
-    class Coin : ScriptComponent
-    {
-        [ObjectRef] [Tooltip("数を知らせる先")]
-        GameDirector@ director;
-
-        void Start()
-        {
-            if (director !is null) {
-                director.RegisterCoin();
-            }
-        }
-
-        void OnTriggerEnter(Collision@ other)
-        {
-            if (other.gameObject.name != "Player") {
-                return;
-            }
-            if (director !is null) {
-                director.CollectCoin();
-            }
-            owner.Destroy();
-        }
-    }
-  </script>
-  <ol class="steps">
-    <li><strong>画像を置く</strong><span class="path">coin.png</span> をドラッグし、名前 <code>Coin0</code>・位置 <code>(3.5, 0.3, 0)</code>・1 単位のピクセル数 <code>16</code>・フィルタ <span class="ui">ポイント</span>・<span class="ui">横のコマ数</span> <code>4</code> にします。</li>
-    <li><strong>回す</strong><span class="ui">スプライトアニメ</span> を足し、クリップ <code>Spin</code>（最初のコマ 0・最後のコマ 3・fps 8・ループ オン）を作って、<span class="ui">最初のクリップ</span> を <code>Spin</code> にします。</li>
-    <li><strong>触れたことが分かるようにする</strong><span class="ui">コライダー</span> を足して <span class="ui">球を追加</span>、<span class="ui">半径</span> を <code>0.35</code> にします。<span class="ui">トリガー</span> は入れたままです。</li>
-    <li><strong>スクリプトを付ける</strong><span class="ui">2D：コイン</span> を足し、<span class="ui">director</span> に GameDirector をドラッグします。</li>
-    <li><strong>増やす</strong><kbd>Ctrl</kbd>+<kbd>D</kbd> で 4 つ複製し、位置を <code>(9, -1.5, 0)</code>・<code>(14.5, 0.3, 0)</code>・<code>(19, 1.8, 0)</code>・<code>(29.5, 0.3, 0)</code> にします。名前は変えなくてもかまいません。<span class="ui">director</span> が GameDirector のままになっているかも見ておきます。</li>
-  </ol>
-  <ul>
-    <li><code>GameDirector@ director</code> のようにスクリプトの型で欄を作ると、そのスクリプトを持つオブジェクトだけを繋げます。呼ぶときに <code>GetComponent</code> が要りません。</li>
-    <li>コインはトリガーなので、プレイヤーを押し返さずに重なりだけを知らせます。重なった瞬間に <code>OnTriggerEnter</code> が呼ばれます（<a href="#physics-trigger">トリガーと押し出し</a>）。</li>
-    <li>相手は名前で見分けています。プレイヤーの名前を <code>Player</code> 以外にしたときは、ここも合わせます。</li>
-  </ul>
-
-  <h3 id="t2d-5-goal">ゴールを置く</h3>
-  <p>クラス名 <code>Goal</code>・雛形 <span class="ui">当たり判定つき</span> でスクリプトを作り、次のように書きます。</p>
-  <script type="text/x-code" data-lang="as" data-file="Scripts/Goal.as">
-    using namespace CoreEngine;
-
-    // プレイヤーが触れたらクリア
-    [DisplayName("2D：ゴール")]
-    class Goal : ScriptComponent
-    {
-        [ObjectRef] [Tooltip("クリアを知らせる先")]
-        GameDirector@ director;
-
-        void OnTriggerEnter(Collision@ other)
-        {
-            if (other.gameObject.name == "Player" && director !is null) {
-                director.Clear();
-            }
-        }
-    }
-  </script>
-  <ol class="steps">
-    <li><strong>旗を置く</strong><span class="path">flag.png</span> をドラッグし、名前 <code>Goal</code>・位置 <code>(36, -2.5, 0)</code>・1 単位のピクセル数 <code>16</code>・フィルタ <span class="ui">ポイント</span> にします。板は 1 m × 2 m で、下の端が地面の上にそろいます。</li>
-    <li><strong>形を付ける</strong><span class="ui">コライダー</span> を足して <span class="ui">箱を追加</span> し、<span class="ui">サイズ</span> の X を <code>0.6</code> にします（Y の 2 はそのまま）。<span class="ui">トリガー</span> は入れたままです。</li>
-    <li><strong>スクリプトを付ける</strong><span class="ui">2D：ゴール</span> を足し、<span class="ui">director</span> に GameDirector をドラッグします。</li>
-    <li><strong>遊ぶ</strong><kbd>Ctrl</kbd>+<kbd>S</kbd> で保存してから再生します。コインを拾うと左上の数が増え、旗に着くと「CLEAR!」（全部拾っていれば「ALL CLEAR!」）が出ます。<kbd>R</kbd> で最初からやり直せます。</li>
-  </ol>
-  <div class="callout warn" data-title="やり直すと、保存した内容から始まる"><p><code>Scene::ChangeScene</code> はシーンをファイルから読み直します。保存していない変更は入らないので、再生の前に <kbd>Ctrl</kbd>+<kbd>S</kbd> で保存しておきます。</p></div>
-
-  <h2 id="t2d-6">6. クリックした所に箱を落とす</h2>
-  <h3 id="t2d-6-prefab">箱のプレハブを作る</h3>
-  <ol class="steps">
-    <li><strong>画像を置く</strong><span class="path">crate.png</span> をドラッグし、名前 <code>Crate</code>・1 単位のピクセル数 <code>16</code>・フィルタ <span class="ui">ポイント</span>・<span class="ui">レイヤー内の順</span> <code>5</code> にします。</li>
-    <li><strong>形と剛体を付ける</strong><span class="ui">コライダー</span> を足して <span class="ui">箱を追加</span> し、<span class="ui">トリガー</span> を外します。<span class="ui">剛体</span> を足し、<span class="ui">Z へ動かさない</span>・<span class="ui">X 軸で回さない</span>・<span class="ui">Y 軸で回さない</span> を入れます。Z 軸の周りは回せるままにしておくと、角に落ちた箱が転がります。</li>
-    <li><strong>プレハブにする</strong>Hierarchy で Crate を右クリックし、<span class="ui">プレハブとして保存</span>。<span class="path">Application/Assets/Prefabs/Crate.prefab</span> ができます。</li>
-    <li><strong>シーンからは消す</strong>シーンの Crate を選んで <kbd>Delete</kbd>。箱は再生中にスクリプトが作ります。</li>
-  </ol>
-
-  <h3 id="t2d-6-code">画面の点をワールドの点にする</h3>
-  <p>箱を落とす処理は、5 で書いた GameDirector の <code>Update</code> と <code>DropCrate</code> に入っています。</p>
-  <div class="table-wrap">
-  <table>
-    <thead><tr><th>書いたこと</th><th>意味</th></tr></thead>
-    <tbody>
-      <tr><td><code>Input::IsMouseButtonTriggered(MouseButton::Left)</code></td><td>左ボタンを押した瞬間だけ true。</td></tr>
-      <tr><td><code>Input::IsPointerOverGame()</code></td><td>マウスがゲームの画面の上にあるか。エディタでパネルをクリックしたときに箱を落とさないようにします。</td></tr>
-      <tr><td><code>Input::GetMousePosition()</code></td><td>マウスの位置。UI と同じ座標（左上が原点・1920×1080 基準）です。</td></tr>
-      <tr><td><code>camera.ScreenToWorldPoint(Vector3(x, y, 距離))</code></td><td>画面の点を、カメラから「距離」だけ前のワールドの点にします。カメラは z = -10 にあるので、10 を渡すと z = 0 の面の点になります。</td></tr>
-      <tr><td><code>owner.InstantiatePrefab(cratePrefab, "Crate")</code></td><td>プレハブからオブジェクトを作ります（<a href="#spawn-basic">プレハブから生成する</a>）。</td></tr>
-      <tr><td><code>maxCrates</code></td><td>箱が増えすぎないよう、超えたら古い箱から消します。</td></tr>
-    </tbody>
-  </table>
-  </div>
-  <p>再生して空をクリックすると、その所に箱が出て落ち、地面や足場に積もります。箱に乗って高い所のコインを取ることもできます。プレハブを別の場所に保存したときは、GameDirector の <span class="ui">cratePrefab</span> の欄へ Project のプレハブをドラッグします。</p>
-
-  <h2 id="t2d-trouble">うまくいかないとき</h2>
-  <div class="table-wrap">
-  <table>
-    <thead><tr><th>症状</th><th>確かめること</th></tr></thead>
-    <tbody>
-      <tr><td>プレイヤーが地面を突き抜けて落ちる</td><td>地面とプレイヤーの両方のコライダーで <span class="ui">トリガー</span> を外したか。地面に <span class="ui">箱を追加</span> で形を足したか（<span class="ui">◍ Collider</span> で線が見えるか）</td></tr>
-      <tr><td>跳べない</td><td>Game ビューをクリックしてからキーを押したか。InputActions.json を写した後に、エディタを起動し直したか</td></tr>
-      <tr><td>足場の横に張り付く</td><td>プレイヤーの物理マテリアルが摩擦 0・合成 <span class="ui">小さい方</span> か</td></tr>
-      <tr><td>プレイヤーが倒れる・奥へずれる</td><td>剛体の <span class="ui">Z へ動かさない</span> と、3 つの <span class="ui">〜軸で回さない</span> を入れたか</td></tr>
-      <tr><td>アニメが動かない・違うコマが出る</td><td><span class="ui">横のコマ数</span>・<span class="ui">縦のコマ数</span> が画像と合っているか。クリップの名前がスクリプトの <code>Play("Run")</code> と一字一句同じか</td></tr>
-      <tr><td>コインに触れても消えない</td><td>プレイヤーの名前が <code>Player</code> か。コインのコライダーに球を足したか。<span class="ui">director</span> が繋がっているか</td></tr>
-      <tr><td>ドット絵がにじむ</td><td>スプライト描画の <span class="ui">フィルタ</span> が <span class="ui">ポイント</span> か。<code>r.TAA.Enabled</code> を切ったか</td></tr>
-      <tr><td>山が手前に出る</td><td>Hills の <span class="ui">ソートレイヤー</span> が <code>-10</code> か</td></tr>
-      <tr><td><code>InputAction::Restart</code> でコンパイルエラーになる</td><td>InputActions.json に <code>Restart</code> があり、エディタを起動し直したか</td></tr>
-      <tr><td>クリックしても箱が出ない</td><td>GameDirector の <span class="ui">cratePrefab</span> が Crate.prefab を指しているか。Game ビューの上でクリックしたか</td></tr>
-    </tbody>
-  </table>
-  </div>
-
-  <h2 id="t2d-next">次に足してみること</h2>
-  <div class="table-wrap">
-  <table>
-    <thead><tr><th>足すもの</th><th>使う機能</th></tr></thead>
-    <tbody>
-      <tr><td>左右に歩く敵</td><td>剛体の速度の向きを、壁に当たったら反転する。プレイヤーに触れたら <code>OnCollisionEnter</code> でやり直し（<a href="#script-physics">当たり判定と物理</a>）</td></tr>
-      <tr><td>拾ったときの音</td><td><code>Audio::PlayOneShot</code>（<a href="#script-audio">音を鳴らす</a>）</td></tr>
-      <tr><td>着地したときに画面を揺らす</td><td>カメラの揺れ（<a href="#camera-shake">画面を揺らす</a>）</td></tr>
-      <tr><td>2 つ目のステージ</td><td>シーンを作って足場を並べ直し、ゴールで <code>Scene::ChangeScene("Stage2")</code>（<a href="#script-scenes">シーン遷移とデータの保存</a>）</td></tr>
-      <tr><td>タイトル画面</td><td>UI のボタンと、起動シーンの切り替え（<a href="#ui-button">ボタンを押せるようにする</a>）</td></tr>
     </tbody>
   </table>
   </div>
@@ -10868,7 +11366,7 @@ void Update()
 }`
       }
     ],
-    see: [["api-SpriteAnimator", "スプライトアニメ"], ["api-Camera", "カメラ"], ["api-UIImage", "UI 画像"], ["scenes-new", "新しいシーンを作る"], ["tutorial-2d", "2D の横スクロールを作る"]]
+    see: [["api-SpriteAnimator", "スプライトアニメ"], ["api-Camera", "カメラ"], ["api-UIImage", "UI 画像"], ["scenes-new", "新しいシーンを作る"], ["guide-2d", "2D ゲームの作り方"]]
   },
 
   {
@@ -10923,7 +11421,7 @@ void Update()
 }`
       }
     ],
-    see: [["api-SpriteRenderer", "スプライト描画"], ["tutorial-2d", "2D の横スクロールを作る"]]
+    see: [["api-SpriteRenderer", "スプライト描画"], ["guide-2d", "2D ゲームの作り方"]]
   },
 
   {
