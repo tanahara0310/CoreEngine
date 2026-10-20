@@ -41,6 +41,15 @@ void FrameRateController::BeginFrame()
         return;
     }
 
+    // 重かったフレームの時間は数えず、1 フレーム分として進める
+    if (discardNextFrameTime_) {
+        discardNextFrameTime_ = false;
+        deltaTime_ = kFixedDeltaTime;
+        lastFrameTime_ = currentTime;
+        Time::Advance(Time::DriverKey{}, deltaTime_);
+        return;
+    }
+
     // 前フレームからの実測経過時間を計算（VSync待機時間を含む）
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(
         currentTime - lastFrameTime_

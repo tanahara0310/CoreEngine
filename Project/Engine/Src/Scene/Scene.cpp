@@ -20,6 +20,7 @@
 #include "Scene/Feature/CollisionFeature.h"
 #include "Scene/Feature/SceneFeatureRegistry.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/FrameRate/FrameRateController.h"
 #include <algorithm>
 #include <utility>
 
@@ -285,11 +286,20 @@ namespace CoreEngine
         if (advance) {
             // ゲームオブジェクトの更新（Update の後・LateUpdate の前に BetweenObjectUpdates の Feature を回す）
             gameObjectManager_.UpdateAll([this] { DispatchUpdate(SceneUpdatePhase::BetweenObjectUpdates, false); });
+
+            // 止まっていた状態から進み始めたフレーム（シーンの最初・再生の開始・遷移の明け）は
+            // Start がまとめて走って重くなるので、その時間を次のフレームの経過時間に数えない
+            if (!wasAdvancing_) {
+                if (auto* frameRate = engine_ ? engine_->GetService<FrameRateController>() : nullptr) {
+                    frameRate->DiscardNextFrameTime();
+                }
+            }
         } else {
             // 停止中はワールド行列の転送だけを残す。
             // インスペクタやギズモで動かした結果を画面へ出すために要る
             gameObjectManager_.SyncTransforms();
         }
+        wasAdvancing_ = advance;
 
         // GameObject 更新後の Feature 更新（コリジョン収集 → 判定、最後にイベントの一括配信）
         DispatchUpdate(SceneUpdatePhase::PostObjectUpdate, stopped);
