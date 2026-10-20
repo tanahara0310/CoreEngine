@@ -11,6 +11,8 @@
 #include "Graphics/Material/ShaderMaterial.h"
 #include "Graphics/Material/ShaderMaterialLibrary.h"
 #include "Graphics/Material/ShaderMaterialPipeline.h"
+#include "Graphics/PostEffect/Effect/PostEffectManager.h"
+#include "Graphics/PostEffect/Effect/ProjectPostEffect/ProjectPostEffect.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/Sprite/SpriteRenderer.h"
 #include "Utility/Logger/Logger.h"
@@ -37,9 +39,15 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
         constexpr const char* kTemplateValues = R"({ "tint": [1.0, 1.0, 1.0, 1.0], "speed": 2.0 })";
 
         /// @brief マテリアルのシェーダから値の並びを引く（組めなければ nullptr）
+        /// @details プロジェクトのポストエフェクトのマテリアルなら、そのコンピュートシェーダの並びを使う
         const MaterialParamLayout* FindLayout(const ShaderMaterial& material)
         {
             EngineSystem* const engine = SceneAccess::Engine();
+            if (PostEffectManager* const postEffects = engine ? engine->GetService<PostEffectManager>() : nullptr) {
+                if (const ProjectPostEffect* const effect = postEffects->FindProjectEffectByMaterial(material.GetAssetPath())) {
+                    return &effect->GetLayout();
+                }
+            }
             RenderManager* const renderManager = engine ? engine->GetService<RenderManager>() : nullptr;
             auto* const sprites = renderManager
                 ? dynamic_cast<SpriteRenderer*>(renderManager->GetRenderer(RenderPassType::Sprite)) : nullptr;
@@ -229,7 +237,7 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
         }
     }
 
-    bool Draw(ShaderMaterial& material)
+    bool Draw(ShaderMaterial& material, const MaterialParamLayout* givenLayout)
     {
         bool changed = false;
         bool commit = false;
@@ -256,7 +264,7 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
 
         if (material.GetShaderPath().empty()) {
             WrappedHint("シェーダを選ぶと、シェーダの値（register(b0) の定数バッファ）の欄が出ます。");
-        } else if (const MaterialParamLayout* const layout = FindLayout(material)) {
+        } else if (const MaterialParamLayout* const layout = givenLayout ? givenLayout : FindLayout(material)) {
             if (!layout->fields.empty() || !layout->textures.empty()) {
                 UI::SectionHeader("値");
             }

@@ -48,9 +48,28 @@ class GameDirector : ScriptComponent
     // ゴールに着いた
     void Clear()
     {
+        if (cleared_) {
+            return;
+        }
         cleared_ = true;
         // 同じマテリアルのコインと旗を、まとめて速く光らせる（再生を止めると元に戻る）
         ShaderMaterial("Materials/Shine.mat").SetFloat("speed", 8.0f);
+
+        // 画面の真ん中から光の輪を広げる（Project.json のポストエフェクト ClearFlash）
+        PostEffect::SetEnabled("ClearFlash", true);
+        Tween::To(0.0f, 1.0f, 0.8f, TweenFloatSetter(this.SetFlash))
+            .OnComplete(TweenCallback(this.EndFlash))
+            .SetLink(owner);
+    }
+
+    private void SetFlash(float progress)
+    {
+        PostEffect::GetMaterial("ClearFlash").SetFloat("progress", progress);
+    }
+
+    private void EndFlash()
+    {
+        PostEffect::SetEnabled("ClearFlash", false);
     }
 
     // 画面の点の、z = 0 の面の位置へ箱を落とす

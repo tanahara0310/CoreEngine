@@ -13,6 +13,8 @@
 #include <dxcapi.h>
 #include <wrl.h>
 #include <algorithm>
+#include <cmath>
+#include <cstring>
 
 namespace CoreEngine
 {
@@ -94,35 +96,90 @@ namespace CoreEngine
             }
         }
 
-        /// @brief シェーダから値の並びと、足りないテクスチャの名前を読む
-        void ReadLayout(IDxcUtils* utils, IDxcBlob* blob, MaterialParamLayout& layout, const std::string& shaderName)
+        /// @brief 定数バッファの配列の要素の間隔（要素ごとに 16 バイトの区切りから始まる）
+        constexpr uint32_t kArrayElementStride = 16;
+
+        /// @brief 1 要素ぶんの数を、項目の種類に合わせて書く
+        void WriteElement(std::vector<uint8_t>& out, const MaterialParamField& field, uint32_t offset,
+            const MaterialNumbers& numbers)
         {
-            if (!utils || !blob) {
-                return;
-            }
-            DxcBuffer buffer{};
-            buffer.Ptr = blob->GetBufferPointer();
-            buffer.Size = blob->GetBufferSize();
-            buffer.Encoding = 0;
-
-            Microsoft::WRL::ComPtr<ID3D12ShaderReflection> reflection;
-            if (FAILED(utils->CreateReflection(&buffer, IID_PPV_ARGS(reflection.GetAddressOf())))) {
-                return;
-            }
-            D3D12_SHADER_DESC shaderDesc{};
-            reflection->GetDesc(&shaderDesc);
-
-            for (UINT index = 0; index < shaderDesc.BoundResources; ++index) {
-                D3D12_SHADER_INPUT_BIND_DESC bind{};
-                if (FAILED(reflection->GetResourceBindingDesc(index, &bind)) || !bind.Name) {
-                    continue;
+            const size_t count = (std::min)(static_cast<size_t>(field.components), numbers.size());
+            for (size_t component = 0; component < count; ++component) {
+                const size_t at = offset + component * sizeof(float);
+                if (at + sizeof(float) > out.size()) {
+                    return;
                 }
-                if (bind.Type == D3D_SIT_CBUFFER && bind.BindPoint == 0 && bind.Space == 0 && layout.size == 0) {
-                    ReadConstantBuffer(reflection.Get(), bind.Name, layout, shaderName);
-                } else if (bind.Type == D3D_SIT_TEXTURE && std::string_view(bind.Name) != kMainTextureName) {
-                    if (std::find(layout.textures.begin(), layout.textures.end(), bind.Name) == layout.textures.end()) {
-                        layout.textures.emplace_back(bind.Name);
-                    }
+                const float number = numbers[component];
+                switch (field.kind) {
+                case MaterialParamField::Kind::Float:
+                    std::memcpy(out.data() + at, &number, sizeof(float));
+                    break;
+                case MaterialParamField::Kind::Int: {
+                    const int32_t value = static_cast<int32_t>(std::lround(number));
+                    std::memcpy(out.data() + at, &value, sizeof(value));
+                    break;
+                }
+                case MaterialParamField::Kind::Uint: {
+                    const uint32_t value = number <= 0.0f ? 0u : static_cast<uint32_t>(std::lround(number));
+                    std::memcpy(out.data() + at, &value, sizeof(value));
+                    break;
+                }
+                case MaterialParamField::Kind::Bool: {
+                    const uint32_t value = number != 0.0f ? 1u : 0u;
+                    std::memcpy(out.data() + at, &value, sizeof(value));
+                    break;
+                }
+                }
+            }
+        }
+    }
+
+    void ReadMaterialParamLayout(IDxcUtils* utils, IDxcBlob* blob, MaterialParamLayout& layout, const std::string& shaderName)
+    {
+        if (!utils || !blob) {
+            return;
+        }
+        DxcBuffer buffer{};
+        buffer.Ptr = blob->GetBufferPointer();
+        buffer.Size = blob->GetBufferSize();
+        buffer.Encoding = 0;
+
+        Microsoft::WRL::ComPtr<ID3D12ShaderReflection> reflection;
+        if (FAILED(utils->CreateReflection(&buffer, IID_PPV_ARGS(reflection.GetAddressOf())))) {
+            return;
+        }
+        D3D12_SHADER_DESC shaderDesc{};
+        reflection->GetDesc(&shaderDesc);
+
+        for (UINT index = 0; index < shaderDesc.BoundResources; ++index) {
+            D3D12_SHADER_INPUT_BIND_DESC bind{};
+            if (FAILED(reflection->GetResourceBindingDesc(index, &bind)) || !bind.Name) {
+                continue;
+            }
+            if (bind.Type == D3D_SIT_CBUFFER && bind.BindPoint == 0 && bind.Space == 0 && layout.size == 0) {
+                ReadConstantBuffer(reflection.Get(), bind.Name, layout, shaderName);
+            } else if (bind.Type == D3D_SIT_TEXTURE && std::string_view(bind.Name) != kMainTextureName) {
+                if (std::find(layout.textures.begin(), layout.textures.end(), bind.Name) == layout.textures.end()) {
+                    layout.textures.emplace_back(bind.Name);
+                }
+            }
+        }
+    }
+
+    void PackMaterialParams(const MaterialParamLayout& layout, const MaterialValueLookup& find, std::vector<uint8_t>& out)
+    {
+        out.assign(layout.size, 0);
+        for (const MaterialParamField& field : layout.fields) {
+            if (field.elements == 0) {
+                if (const MaterialNumbers* numbers = find(field.name)) {
+                    WriteElement(out, field, field.offset, *numbers);
+                }
+                continue;
+            }
+            for (uint32_t index = 0; index < field.elements; ++index) {
+                const std::string key = field.name + "[" + std::to_string(index) + "]";
+                if (const MaterialNumbers* numbers = find(key)) {
+                    WriteElement(out, field, field.offset + index * kArrayElementStride, *numbers);
                 }
             }
         }
@@ -194,8 +251,8 @@ namespace CoreEngine
 
         // 値の並びはピクセルシェーダを先に見る（頂点シェーダだけが使う値もある）
         MaterialParamLayout layout;
-        ReadLayout(compiler.GetDxcUtils(), pixelBlob.Get(), layout, shaderName);
-        ReadLayout(compiler.GetDxcUtils(), vertexBlob.Get(), layout, shaderName);
+        ReadMaterialParamLayout(compiler.GetDxcUtils(), pixelBlob.Get(), layout, shaderName);
+        ReadMaterialParamLayout(compiler.GetDxcUtils(), vertexBlob.Get(), layout, shaderName);
 
         rootSignature_ = std::move(rootSignature);
         pipelineStates_ = std::move(pipelineStates);

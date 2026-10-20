@@ -1,4 +1,5 @@
 #pragma once
+#include <atomic>
 #include <memory>
 #include <unordered_map>
 #include <string>
@@ -14,6 +15,7 @@ namespace CoreEngine
 {
 // 前方宣言
 class GraphicsCore;
+class ProjectPostEffect;
 class Render;
 class RenderTarget;
 
@@ -93,9 +95,22 @@ public:
     /// @return 有効エフェクトの登録名リスト
     const std::vector<std::string>& GetEnabledEffectNames() const { return effectNameCache_; }
 
+    /// @brief プロジェクトのポストエフェクトを名前で引く（無ければ nullptr）
+    ProjectPostEffect* FindProjectEffect(const std::string& name) const;
+
+    /// @brief マテリアルのパスでプロジェクトのポストエフェクトを引く（無ければ nullptr）
+    const ProjectPostEffect* FindProjectEffectByMaterial(const std::string& materialPath) const;
+
+    /// @brief プロジェクトのポストエフェクトを、次のフレームの初めに既定へ戻す（どのスレッドからでも呼べる）
+    /// @note シーンを開くたびに呼ばれる
+    void RequestProjectEffectsReset() { projectEffectsResetRequested_ = true; }
+
     private:
     /// @brief 全エフェクトを登録
     void RegisterAllEffects();
+
+    /// @brief Project.json の postEffects を作り、段に合わせてチェーンへ差し込む
+    void RegisterProjectEffects();
 
     /// @brief ポストエフェクトを登録（内部用）
     /// @param name エフェクト名
@@ -147,6 +162,10 @@ public:
     std::vector<PostEffectBase*> prepareCache_;
 
     std::unique_ptr<PostEffectPresetManager> presetManager_;
+
+    /// @brief プロジェクトのポストエフェクト（所有は effects_。Project.json の順）
+    std::vector<ProjectPostEffect*> projectEffects_;
+    std::atomic<bool> projectEffectsResetRequested_ = false;
 
     D3D12_GPU_DESCRIPTOR_HANDLE finalDisplayHandle_ = {};
 };

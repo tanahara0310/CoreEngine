@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.20.0">
+<meta name="engine-version" content="0.21.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -5387,6 +5387,134 @@ kbd {
   </ul>
 </article>
 
+<article class="page" id="script-posteffect" data-group="スクリプト" data-title="プロジェクトのポストエフェクト" data-nav="自分のポストエフェクト" data-keywords="ポストエフェクト posteffect 画面全体 フルスクリーン 自作 独自 コンピュートシェーダ compute cs hlsl project.json posteffects 段 stage scenehdr posttonemap overlay 走査線 ネオン グロー フラッシュ 遷移 setenabled getmaterial postEffectmaterial.hlsli">
+  <h1>プロジェクトのポストエフェクト</h1>
+  <p class="lead">画面全体にかける効果を、自分で書いたコンピュートシェーダで足します。シェーダと値は <a href="#script-material">マテリアル（.mat）</a> に持たせ、<span class="path">Project.json</span> の <code>postEffects</code> に掛ける順に並べます。</p>
+
+  <h2 id="pe-overview">仕組み</h2>
+  <ul>
+    <li>1 つのポストエフェクトは「名前・マテリアル・差し込む段・最初に有効か」です。マテリアルの <code>shader</code> にはコンピュートシェーダを指します。</li>
+    <li>値はシェーダの <code>register(b0)</code> の定数バッファの項目で、スプライトのマテリアルと同じく .mat の <code>values</code> とインスペクタの欄になります。</li>
+    <li>スクリプトからは <a href="#api-PostEffect">PostEffect</a> で有効を切り替え、<code>PostEffect::GetMaterial</code> で値を変えます。</li>
+    <li><strong>シーンを開くたびに</strong>、有効かどうかは Project.json の値へ、マテリアルの値は .mat の中身へ戻ります。演出の消し忘れが次のシーンへ持ち越されません。</li>
+  </ul>
+
+  <h2 id="pe-project">Project.json に並べる</h2>
+  <script type="text/x-code" data-lang="json" data-file="Application/Config/EngineSettings/Project.json">
+    {
+        "initialScene": "Stage",
+        "postEffects": [
+            { "name": "Neon",      "material": "Application/Assets/PostEffects/Neon.mat",      "stage": "SceneHDR",    "enabled": true },
+            { "name": "Scanline",  "material": "Application/Assets/PostEffects/Scanline.mat",  "stage": "PostTonemap", "enabled": true },
+            { "name": "ClearFlash","material": "Application/Assets/PostEffects/ClearFlash.mat","stage": "PostTonemap", "enabled": false }
+        ]
+    }
+  </script>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>キー</th><th>意味</th></tr></thead>
+    <tbody>
+      <tr><td><code>name</code></td><td>スクリプトで指す名前。エンジンのエフェクトの名前（<code>Bloom</code> など）とは重ねられません</td></tr>
+      <tr><td><code>material</code></td><td>コンピュートシェーダと値を持つ .mat</td></tr>
+      <tr><td><code>stage</code></td><td>差し込む段（下の表）。省くと <code>PostTonemap</code></td></tr>
+      <tr><td><code>enabled</code></td><td>シーンを開いたときに有効にするか。省くと true</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>stage</th><th>差し込む位置</th><th>向いているもの</th></tr></thead>
+    <tbody>
+      <tr><td><code>SceneHDR</code></td><td>トーンマップの直前（明るさが 1 を超える値のまま）</td><td>グロー・光のにじみ・色の強調</td></tr>
+      <tr><td><code>PostTonemap</code></td><td>トーンマップの後、UI の前</td><td>走査線・画面の縁の演出・フラッシュ・ディゾルブ</td></tr>
+      <tr><td><code>Overlay</code></td><td>UI の後（UI も含めて覆う）、エンジンのフェードの前</td><td>画面全体を覆う演出</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>同じ段の中は、<code>postEffects</code> に書いた順に掛かります。並びは起動したときに組むので、Project.json を変えたらエンジンを起動し直してください（シェーダと .mat の中身は起動したまま書き換えられます）。</p>
+
+  <h2 id="pe-shader">シェーダを書く</h2>
+  <p>入口は <code>main</code>、スレッドグループは 8×8（<code>POST_EFFECT_THREADS</code>）です。先頭で <span class="path">PostEffectMaterial.hlsli</span> を読み込み、<strong>全部の画素</strong>に <code>gOutput</code> を書きます。</p>
+  <script type="text/x-code" data-lang="text" data-file="Application/Assets/PostEffects/Scanline.CS.hlsl">
+    #include "PostEffectMaterial.hlsli"
+
+    struct Params
+    {
+        float interval; // 線の間隔（px）
+        float strength; // 暗くする強さ
+        float speed;    // 線が流れる速さ（px/秒）
+    };
+    ConstantBuffer<Params> gMaterial : register(b0);
+
+    POST_EFFECT_THREADS
+    void main(uint3 id : SV_DispatchThreadID)
+    {
+        if (IsOutsideScreen(id.xy)) {
+            return;
+        }
+        float4 color = LoadScreen(id.xy);
+        float y = float(id.y) + gPostEffect.time * gMaterial.speed;
+        float stripe = 0.5f + 0.5f * cos(y / max(gMaterial.interval, 1.0f) * 6.2831853f);
+        color.rgb *= 1.0f - gMaterial.strength * stripe;
+        gOutput[id.xy] = color;
+    }
+  </script>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>名前</th><th>中身</th></tr></thead>
+    <tbody>
+      <tr><td><code>gTexture</code></td><td>前の段までの画面（読むだけ）</td></tr>
+      <tr><td><code>gOutput</code></td><td>書き出し先</td></tr>
+      <tr><td><code>gPostEffect.screenSize</code> ／ <code>invScreenSize</code></td><td>画面の大きさ（px）／ その逆数</td></tr>
+      <tr><td><code>gPostEffect.time</code> ／ <code>unscaledTime</code> ／ <code>deltaTime</code></td><td>起動からの時間（スプライトのマテリアルと同じ時計）／ 実時間 ／ 前のフレームからの時間</td></tr>
+      <tr><td><code>gSampler</code> ／ <code>gPointSampler</code> ／ <code>gWrapSampler</code></td><td>線形・端で止める ／ 最も近い画素・端で止める ／ 線形・繰り返し</td></tr>
+      <tr><td><code>IsOutsideScreen(id.xy)</code></td><td>画面の外のスレッドか</td></tr>
+      <tr><td><code>LoadScreen(pixel)</code> ／ <code>SampleScreen(uv)</code></td><td>画素で読む（端で止める）／ UV で読む</td></tr>
+      <tr><td><code>PostEffectUV(id.xy)</code></td><td>画素の中心の UV（左上が (0, 0)）</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li><code>gTexture</code> のほかに <code>Texture2D</code> を書くと、.mat の <code>textures</code> で決める欄になります（指さなければ白）。</li>
+    <li>1 回のディスパッチで描く効果です。縮小した画面を何段も重ねるような効果は、1 つのシェーダの中で近くの画素を読んで作ります。</li>
+    <li>シェーダを保存すると作り直します。作り直せないときは前のシェーダのまま描き、コンソールにエラーを出します。起動したときに作れなかったエフェクトは登録しません（エラーのログを見てください）。</li>
+  </ul>
+
+  <h2 id="pe-script">スクリプトから使う</h2>
+  <script type="text/x-code" data-lang="as" data-file="Application/Assets/Scripts/GameDirector.as">
+    // ゴールしたら画面の真ん中から光の輪を広げる（Sample2D の見本）
+    void Clear()
+    {
+        PostEffect::SetEnabled("ClearFlash", true);
+        Tween::To(0.0f, 1.0f, 0.8f, TweenFloatSetter(this.SetFlash))
+            .OnComplete(TweenCallback(this.EndFlash))
+            .SetLink(owner);
+    }
+
+    private void SetFlash(float progress)
+    {
+        PostEffect::GetMaterial("ClearFlash").SetFloat("progress", progress);
+    }
+
+    private void EndFlash()
+    {
+        PostEffect::SetEnabled("ClearFlash", false);
+    }
+  </script>
+  <ul>
+    <li><code>PostEffect::GetMaterial</code> は <a href="#api-ShaderMaterial">ShaderMaterial</a> を返します。値の決め方はスプライトのマテリアルと同じです。</li>
+    <li>名前が Project.json に無いと、名前ごとに 1 回だけ警告を出して何もしません。</li>
+    <li>エンジンのエフェクト（Bloom など）は今までどおり CVar で切り替えます（<a href="#api-PostProcess">ポストエフェクト</a>）。</li>
+  </ul>
+
+  <h2 id="pe-editor">エディタ</h2>
+  <ul>
+    <li>シーンの <span class="ui">ポストエフェクト</span>（PostProcess）のインスペクタの一覧に、エンジンのエフェクトと並んで出ます。<span class="ui">有効</span> は試すための切り替えで、保存しません。</li>
+    <li>値の欄はマテリアルのインスペクタと同じで、変えると .mat に保存します。Project で .mat を選んでも同じ欄が出ます。</li>
+    <li>ゲームを書き出すと、Project.json が指すマテリアルのシェーダを DXIL にして入れます。</li>
+  </ul>
+</article>
+
 <article class="page" id="script-editor" data-group="エディタの拡張" data-title="エディタの拡張の概要" data-nav="概要" data-keywords="エディタ拡張 エディタの拡張 editorwindow editorgui editor menuitem ツール 道具 マップ生成 ステージ 配置 自作 ウィンドウ メニュー undo 取り消し canvas 描く unity ノード ノードエディタ グラフ ピン つながり リンク 会話 ダイアログ シーンビュー ハンドル ギズモ gizmos handles onscenegui クリック 配置 レイ インスペクタ customeditor componenteditor グラフ カーブ 曲線 時間軸 タイムライン テスト 試す 確かめる チェック 見本 概要 自作エディタ 自作 道具">
   <h1>エディタの拡張の概要</h1>
   <p class="lead">マップの自動生成やステージの配置のような、ゲームごとの道具（自作のエディタ）を AngelScript で作り、エディタのメニューから開けます。ウィンドウ・メニュー・インスペクタ・シーンビューの道具・ギズモを、Unity の <code>EditorWindow</code>・<code>[MenuItem]</code>・<code>CustomEditor</code> に近い書き方で作れます。</p>
@@ -7250,6 +7378,7 @@ kbd {
       <tr><td>絵を出す</td><td><a href="#api-SpriteRenderer">スプライト描画</a></td><td><a href="#g2d-sprite">絵を出す</a></td></tr>
       <tr><td>重なりの順番を決める</td><td>ソートレイヤー・レイヤー内の順</td><td><a href="#g2d-order">重なりの順番</a></td></tr>
       <tr><td>パラパラアニメ</td><td>コマ割り・<a href="#api-SpriteAnimator">スプライトアニメ</a></td><td><a href="#g2d-anim">アニメ</a></td></tr>
+      <tr><td>画面全体の演出（走査線・フラッシュなど）</td><td>Project.json の <code>postEffects</code>・<a href="#api-PostEffect">PostEffect</a></td><td><a href="#script-posteffect">プロジェクトのポストエフェクト</a></td></tr>
       <tr><td>光る・点滅など描き方を変える</td><td>マテリアル（.mat）と自分のシェーダ・<a href="#api-ShaderMaterial">ShaderMaterial</a></td><td><a href="#script-material">マテリアルとシェーダ</a></td></tr>
       <tr><td>操作を読む</td><td><a href="#api-Input">Input</a>（アクション・マウス）</td><td><a href="#g2d-input">操作</a></td></tr>
       <tr><td>動かす</td><td>トランスフォーム、または <a href="#api-Rigidbody">剛体</a></td><td><a href="#g2d-move">動かす</a></td></tr>
@@ -9322,7 +9451,7 @@ python Tools/OkinawaBeach/bake_player_walk.py
   <table>
     <thead><tr><th>ファイル</th><th>中身</th></tr></thead>
     <tbody>
-      <tr><td><span class="path">Project.json</span></td><td>プロジェクト名（<code>name</code>）・起動シーン（<code>initialScene</code>）・ローディング画面の写真（<code>splashImage</code>。省くとエンジンの既定）・ゲームの画面の題名（<code>splashTitle</code>。省くとプロジェクト名）・小見出し（<code>splashSubtitle</code>）・ヒント（<code>splashTips</code>）。<a href="#settings-splash">起動中のローディング画面</a>。シーンを切り替えるときのロード画面のシェーダ（<code>loadingScreenShader</code>。省くとエンジンの既定）と画像（<code>loadingScreenImages</code>）。<a href="#settings-loading-screen">シーンを切り替えるときのロード画面</a></td></tr>
+      <tr><td><span class="path">Project.json</span></td><td>プロジェクト名（<code>name</code>）・起動シーン（<code>initialScene</code>）・ローディング画面の写真（<code>splashImage</code>。省くとエンジンの既定）・ゲームの画面の題名（<code>splashTitle</code>。省くとプロジェクト名）・小見出し（<code>splashSubtitle</code>）・ヒント（<code>splashTips</code>）。<a href="#settings-splash">起動中のローディング画面</a>。シーンを切り替えるときのロード画面のシェーダ（<code>loadingScreenShader</code>。省くとエンジンの既定）と画像（<code>loadingScreenImages</code>）。<a href="#settings-loading-screen">シーンを切り替えるときのロード画面</a>。自分のポストエフェクトの並び（<code>postEffects</code>）。<a href="#pe-project">プロジェクトのポストエフェクト</a></td></tr>
       <tr><td><span class="path">Layers.json</span></td><td>レイヤーの名前の並び。先頭は必ず <code>Default</code>、最大 32 個。並びの番号がスクリプトの <code>CollisionLayer</code> の値になる</td></tr>
       <tr><td><span class="path">InputActions.json</span></td><td>入力アクション（<code>id</code>・<code>display</code>・<code>context</code>・<code>defaults</code>）。<a href="#editor-settings-keyconfig">書き方</a></td></tr>
       <tr><td><span class="path">CVars.json</span></td><td>既定から変えたプロジェクト全体の CVar（<code>"r.TAA.Enabled": false</code> のような名前と値）</td></tr>
@@ -9445,6 +9574,18 @@ python Tools/OkinawaBeach/bake_player_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-21-0">v0.21.0 <span class="dim">（2026-10-20）</span></h3>
+  <p>画面全体にかける効果を、自分で書いたコンピュートシェーダで足せるようにした版です（<a href="#script-posteffect">プロジェクトのポストエフェクト</a>）。</p>
+  <ul>
+    <li><strong>Project.json の postEffects</strong>：名前・マテリアル（.mat）・差し込む段（<code>SceneHDR</code> ＝ トーンマップの前 ／ <code>PostTonemap</code> ＝ UI の前 ／ <code>Overlay</code> ＝ UI の後）・最初に有効か、を掛ける順に並べます。値はスプライトのマテリアルと同じく、シェーダの <code>register(b0)</code> の定数バッファから読みます。</li>
+    <li><strong>シェーダの書き方</strong>：<span class="path">PostEffectMaterial.hlsli</span> を読み込み、8×8 のコンピュートシェーダの <code>main</code> を書きます。画面の大きさと時間はエンジンが渡します。</li>
+    <li><strong>スクリプト</strong>：新しい名前空間 <a href="#api-PostEffect">PostEffect</a>（<code>SetEnabled</code>・<code>IsEnabled</code>・<code>GetMaterial</code>）を足しました。</li>
+    <li>シーンを開くたびに、有効かどうかと値を Project.json と .mat の中身へ戻します。</li>
+    <li>シーンのポストエフェクトの一覧にエンジンの効果と並んで出て、値を変えると .mat に保存します。シェーダを保存すると作り直します。</li>
+    <li>ゲームの書き出しで、ポストエフェクトのマテリアルのシェーダをコンピュートシェーダとしてクックします。</li>
+    <li>Sample2D：ゴールすると画面の真ん中から光の輪が広がるようにしました（<code>ClearFlash</code>）。</li>
+  </ul>
 
   <h3 id="changelog-v0-20-0">v0.20.0 <span class="dim">（2026-10-20）</span></h3>
   <p>スプライト描画と UI 画像の描き方を、自分で書いたシェーダで決められるようにした版です（<a href="#script-material">マテリアルとシェーダ</a>）。</p>
@@ -11043,6 +11184,46 @@ void Update()
       }
     ],
     see: [["script-material", "マテリアルとシェーダ"], ["api-SpriteRenderer", "スプライト描画"], ["api-UIImage", "UI 画像"]]
+  },
+
+  {
+    id: "PostEffect", kind: "namespace", cat: "描画", brief: "プロジェクトのポストエフェクト",
+    keywords: "ポストエフェクト posteffect 画面全体 有効 無効 切り替え 値 マテリアル project.json",
+    summary: "Project.json の <code>postEffects</code> に並べた、自分のポストエフェクトを扱います（<a href=\"#script-posteffect\">プロジェクトのポストエフェクト</a>）。シーンを開くたびに、有効かどうかは Project.json の値へ、値は .mat の中身へ戻ります。",
+    sections: [
+      {
+        title: "関数", members: [
+          { n: "SetEnabled", s: "void SetEnabled(const string&in name, bool enabled)", t: "f", d: "有効・無効を切り替えます。名前が無ければ警告を出して何もしません。" },
+          { n: "IsEnabled", s: "bool IsEnabled(const string&in name)", t: "f", d: "有効か（名前が無ければ false）。" },
+          { n: "GetMaterial", s: "ShaderMaterial@ GetMaterial(const string&in name)", t: "f", d: "値を持つマテリアル。<code>SetFloat</code> などで値を変えます。名前が無ければ <code>isValid</code> が false のものを返します。" }
+        ]
+      }
+    ],
+    examples: [
+      {
+        title: "例：攻撃を受けたら 0.3 秒だけ画面を赤くする",
+        code: `
+void OnDamaged()
+{
+    PostEffect::SetEnabled("DamageFlash", true);
+    PostEffect::GetMaterial("DamageFlash").SetFloat("amount", 1.0f);
+    Tween::To(1.0f, 0.0f, 0.3f, TweenFloatSetter(this.SetAmount))
+        .OnComplete(TweenCallback(this.EndFlash))
+        .SetLink(owner);
+}
+
+private void SetAmount(float amount)
+{
+    PostEffect::GetMaterial("DamageFlash").SetFloat("amount", amount);
+}
+
+private void EndFlash()
+{
+    PostEffect::SetEnabled("DamageFlash", false);
+}`
+      }
+    ],
+    see: [["script-posteffect", "プロジェクトのポストエフェクト"], ["api-ShaderMaterial", "ShaderMaterial"], ["api-PostProcess", "ポストエフェクト（エンジンの効果）"]]
   },
 
   {
@@ -14505,9 +14686,10 @@ void LateUpdate()   // 追いかける相手が動いた後に動かす
       "<tr><td>トーンマップ</td><td>ToneMapping（常にオン。ACES ／ GT ／ AgX ／ なし）</td></tr>" +
       "<tr><td>その後</td><td>ColorLUT・Shockwave・Blur・Random・RadialBlur・RasterScroll・Sepia・Invert・GrayScale・FilmGrain・Outline・Dissolve（既定はオフ）</td></tr>" +
       "</tbody></table></div>" +
-      "<p>スクリプトからは CVar で切り替えます（例：<code>CVar::SetBool(\"r.Bloom.Enabled\", true)</code>）。画面の暗転は <a href=\"#api-Rendering\">Rendering::SetFadeAlpha</a> を使います。</p>",
+      "<p>スクリプトからは CVar で切り替えます（例：<code>CVar::SetBool(\"r.Bloom.Enabled\", true)</code>）。画面の暗転は <a href=\"#api-Rendering\">Rendering::SetFadeAlpha</a> を使います。</p>" +
+      "<p>自分で書いた効果は Project.json の <code>postEffects</code> に並べると、この一覧に一緒に出ます（<a href=\"#script-posteffect\">プロジェクトのポストエフェクト</a>）。</p>",
     notes: "<p>このコンポーネント自体の有効のチェックは、効果のオン・オフには関係しません。</p>",
-    see: [["api-CVar", "CVar"], ["api-Rendering", "Rendering"]]
+    see: [["api-CVar", "CVar"], ["api-Rendering", "Rendering"], ["api-PostEffect", "PostEffect"]]
   },
 
   {

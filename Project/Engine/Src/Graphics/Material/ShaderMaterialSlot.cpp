@@ -6,8 +6,6 @@
 #include "Graphics/RHI/Resource/UploadRing.h"
 
 #include <algorithm>
-#include <cmath>
-#include <cstring>
 
 namespace CoreEngine
 {
@@ -15,43 +13,6 @@ namespace CoreEngine
     {
         /// @brief テクスチャを指していないときに差す白
         constexpr const char* kWhiteTexture = "white1x1.png";
-
-        /// @brief 定数バッファの配列の要素の間隔（要素ごとに 16 バイトの区切りから始まる）
-        constexpr uint32_t kArrayElementStride = 16;
-
-        /// @brief 1 要素ぶんの数を、項目の種類に合わせて書く
-        void WriteElement(std::vector<uint8_t>& out, const MaterialParamField& field, uint32_t offset,
-            const MaterialNumbers& numbers)
-        {
-            const size_t count = (std::min)(static_cast<size_t>(field.components), numbers.size());
-            for (size_t component = 0; component < count; ++component) {
-                const size_t at = offset + component * sizeof(float);
-                if (at + sizeof(float) > out.size()) {
-                    return;
-                }
-                const float number = numbers[component];
-                switch (field.kind) {
-                case MaterialParamField::Kind::Float:
-                    std::memcpy(out.data() + at, &number, sizeof(float));
-                    break;
-                case MaterialParamField::Kind::Int: {
-                    const int32_t value = static_cast<int32_t>(std::lround(number));
-                    std::memcpy(out.data() + at, &value, sizeof(value));
-                    break;
-                }
-                case MaterialParamField::Kind::Uint: {
-                    const uint32_t value = number <= 0.0f ? 0u : static_cast<uint32_t>(std::lround(number));
-                    std::memcpy(out.data() + at, &value, sizeof(value));
-                    break;
-                }
-                case MaterialParamField::Kind::Bool: {
-                    const uint32_t value = number != 0.0f ? 1u : 0u;
-                    std::memcpy(out.data() + at, &value, sizeof(value));
-                    break;
-                }
-                }
-            }
-        }
     }
 
     bool ShaderMaterialSlot::SetAsset(const Reflection::AssetRefValue& value)
@@ -140,21 +101,7 @@ namespace CoreEngine
         packedMaterialRevision_ = materialRevision;
         packedOverridesRevision_ = overridesRevision_;
 
-        packed_.assign(layout.size, 0);
-        for (const MaterialParamField& field : layout.fields) {
-            if (field.elements == 0) {
-                if (const MaterialNumbers* numbers = FindNumbers(field.name)) {
-                    WriteElement(packed_, field, field.offset, *numbers);
-                }
-                continue;
-            }
-            for (uint32_t index = 0; index < field.elements; ++index) {
-                const std::string key = field.name + "[" + std::to_string(index) + "]";
-                if (const MaterialNumbers* numbers = FindNumbers(key)) {
-                    WriteElement(packed_, field, field.offset + index * kArrayElementStride, *numbers);
-                }
-            }
-        }
+        PackMaterialParams(layout, [this](std::string_view name) { return FindNumbers(name); }, packed_);
     }
 
     D3D12_GPU_DESCRIPTOR_HANDLE ShaderMaterialSlot::GetWhiteTexture()

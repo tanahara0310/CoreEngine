@@ -3,7 +3,9 @@
 
 #ifdef CORE_EDITOR
 
+#include "EngineSystem/Settings/ProjectSettings.h"
 #include "Graphics/Asset/AssetDatabase.h"
+#include "Graphics/Asset/AssetRef.h"
 #include "Graphics/Material/ShaderMaterial.h"
 #include "Graphics/Material/ShaderMaterialPipeline.h"
 #include "Graphics/Shader/Cook/CookedShader.h"
@@ -25,16 +27,26 @@ namespace CoreEngine::Editor
 
     std::vector<ShaderManifest::Entry> ShaderCooker::PlanTargets()
     {
-        // 一度も描いていないマテリアルのシェーダも入れる（.mat が指すピクセルシェーダと頂点シェーダ）
+        // 一度も描いていないマテリアルのシェーダも入れる（.mat が指すピクセルシェーダと頂点シェーダ。
+        // プロジェクトのポストエフェクトのマテリアルはコンピュートシェーダ）
         const std::vector<ShaderManifest::Entry> recorded = ShaderManifest::GetInstance().Collect();
         std::set<ShaderManifest::Entry> targets(recorded.begin(), recorded.end());
         Logger& log = Logger::GetInstance();
+        std::set<std::string> postEffectMaterials;
+        for (const ProjectPostEffectSettings& effect : ProjectSettings::Get().GetPostEffects()) {
+            const AssetInfo* const info = FindAssetInfo(effect.material, AssetType::Material);
+            postEffectMaterials.insert(info ? ToAssetPath(*info) : effect.material);
+        }
         for (const AssetInfo* info : AssetDatabase::GetInstance().GetAssetsOfType(AssetType::Material)) {
             std::string shaderPath;
             std::string vertexShaderPath;
             if (info->fullPath.extension() != ".mat"
                 || !ShaderMaterial::ReadShaderPaths(info->fullPath, shaderPath, vertexShaderPath)
                 || shaderPath.empty()) {
+                continue;
+            }
+            if (postEffectMaterials.contains(ToAssetPath(*info))) {
+                targets.insert({ log.Utf8ToPath(shaderPath).generic_wstring(), L"cs_6_0", L"main" });
                 continue;
             }
             if (vertexShaderPath.empty()) {

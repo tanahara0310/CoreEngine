@@ -21,6 +21,9 @@
 #include "FadeEffect/FadeEffect.h"
 #include "LoadingScreen/LoadingScreenEffect.h"
 #include "ProjectLoadingScreen/ProjectLoadingScreen.h"
+#include "ProjectPostEffect/ProjectPostEffect.h"
+#include "EngineSystem/Settings/ProjectSettings.h"
+#include "Graphics/Material/ShaderMaterial.h"
 #include "Bloom/Bloom.h"
 #include "LensFlare/LensFlare.h"
 #include "Dissolve/Dissolve.h"
@@ -149,8 +152,71 @@ void PostEffectManager::RegisterAllEffects()
         }
     }
 
+    RegisterProjectEffects();
+
     ValidateChain();
     RebuildEffectPtrCache();
+}
+
+void PostEffectManager::RegisterProjectEffects()
+{
+    Logger& log = Logger::GetInstance();
+    for (const ProjectPostEffectSettings& settings : ProjectSettings::Get().GetPostEffects()) {
+        if (effects_.contains(settings.name)) {
+            log.Errorf(LogCategory::Graphics,
+                "[PostEffect] Project.json のポストエフェクト {} は、エンジンか前の項目と名前が重なるので作りません", settings.name);
+            continue;
+        }
+        if (!ProjectPostEffect::IsValidStage(settings.stage)) {
+            log.Errorf(LogCategory::Graphics,
+                "[PostEffect] Project.json のポストエフェクト {} の stage \"{}\" は SceneHDR ／ PostTonemap ／ Overlay のどれかで書きます",
+                settings.name, settings.stage);
+            continue;
+        }
+
+        auto effect = std::make_unique<ProjectPostEffect>(settings);
+        effect->SetShaderProgramCache(shaderProgramCache_);
+        try {
+            effect->Initialize(graphicsCore_);
+        } catch (const std::exception& e) {
+            log.Errorf(LogCategory::Graphics,
+                "[PostEffect] Project.json のポストエフェクト {} を作れませんでした: {}", settings.name, e.what());
+            continue;
+        }
+
+        // 段ごとの差し込み先：SceneHDR はトーンマップの前、PostTonemap は UI の前、Overlay は UI の後
+        const char* anchor = PostEffectNames::UIOverlay;
+        if (settings.stage == ProjectPostEffect::kStageSceneHDR) {
+            anchor = PostEffectNames::ToneMapping;
+        } else if (effect->IsOverlay()) {
+            anchor = PostEffectNames::FadeEffect;
+        }
+        auto position = std::find(effectChain_.begin(), effectChain_.end(), anchor);
+        effectChain_.insert(position, settings.name);
+
+        projectEffects_.push_back(effect.get());
+        RegisterEffectInternal(settings.name, std::move(effect));
+    }
+}
+
+ProjectPostEffect* PostEffectManager::FindProjectEffect(const std::string& name) const
+{
+    for (ProjectPostEffect* effect : projectEffects_) {
+        if (effect->GetSettings().name == name) {
+            return effect;
+        }
+    }
+    return nullptr;
+}
+
+const ProjectPostEffect* PostEffectManager::FindProjectEffectByMaterial(const std::string& materialPath) const
+{
+    for (const ProjectPostEffect* effect : projectEffects_) {
+        if (effect->GetMaterial() && effect->GetMaterial()->GetAssetPath() == materialPath) {
+            return effect;
+        }
+    }
+    return nullptr;
 }
 
 void PostEffectManager::RebuildEffectPtrCache()
@@ -288,6 +354,14 @@ bool PostEffectManager::ValidateChain() const
 
 void PostEffectManager::PrepareFrame(const PostEffectFrameContext& ctx)
 {
+    // シーンを開いたら、プロジェクトのポストエフェクトを Project.json と .mat の中身へ戻す
+    if (projectEffectsResetRequested_.exchange(false)) {
+        for (ProjectPostEffect* effect : projectEffects_) {
+            effect->ResetToDefault();
+        }
+        RebuildEffectPtrCache();
+    }
+
     // 有効/無効は CVar（"r.<Effect>.Enabled"）が持つため、SetEffectEnabled を通らない経路でも
     // 変化しうる（CVars.json からの復元、コンソール入力、プリセット適用など）。
     // その場合キャッシュが古いままだと「タブ上は有効なのに画面に反映されない」状態になるので、
