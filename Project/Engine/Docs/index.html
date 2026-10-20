@@ -9885,9 +9885,9 @@ python Tools/OkinawaBeach/bake_player_walk.py
     <li><strong>番号を決める</strong>上の表に従って決めます。</li>
     <li><strong>3 か所を同じ番号にする</strong><span class="path">Project/Engine/Src/EngineSystem/EngineVersion.h</span> の <code>kEngineVersion</code>、このドキュメント（<span class="path">Project/Engine/Docs/index.html</span>）の先頭近くにある <code>engine-version</code> の値、そしてこのページの新しい項目です。</li>
     <li><strong>PR をマージする</strong>ドキュメントはエンジンと同じリポジトリに入っているので、同じ PR で一緒に直します。</li>
-    <li><strong>タグを打つ</strong>マージしたあとの master に、<code>git tag -a v0.2.0 -m "v0.2.0"</code> を付けて、<code>git push origin v0.2.0</code> で送ります。</li>
+    <li><strong>主の数字を上げたときだけタグを打つ</strong>主の数字が上がる版（<code>v1.0.0</code> など）では、マージしたあとの master に <code>git tag -a v1.0.0 -m "v1.0.0"</code> を付けて、<code>git push origin v1.0.0</code> で送ります。副と修正の数字だけを上げた版には、タグを打ちません。</li>
   </ol>
-  <div class="callout note" data-title="古い版のドキュメント"><p>ドキュメントはエンジンと同じタグで固定されるので、別の番号は付けません。古い版のドキュメントは、その版のタグを取り出す（<code>git checkout v0.1.0</code>）と読めます。</p></div>
+  <div class="callout note" data-title="古い版のドキュメント"><p>ドキュメントはエンジンと同じリポジトリに入っているので、別の番号は付けません。古い版のドキュメントは、その版を入れたコミットを取り出すと読めます。主の版はタグで（<code>git checkout v1.0.0</code>）、副と修正の版は版の番号でコミットを探して（<code>git log --oneline --grep "0.23.0"</code>）取り出します。</p></div>
 </article>
 
 <article class="page" id="components-index" data-group="コンポーネント" data-title="コンポーネント一覧" data-nav="一覧" data-keywords="コンポーネント 一覧 リファレンス 部品 インスペクタ 項目 エンジン 付けられるもの">
