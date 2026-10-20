@@ -168,6 +168,9 @@ namespace CoreEngine
 
     void ProjectPostEffect::ResetToDefault()
     {
+        if (drivenByTransition_) {
+            return;
+        }
         SetEnabled(settings_.enabled);
         if (material_) {
             material_->Revert();

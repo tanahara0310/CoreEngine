@@ -14,6 +14,18 @@ namespace CoreEngine
         bool enabled = true;  ///< シーンを開いたときに有効にするか
     };
 
+    /// @brief 引数なしの Scene::ChangeScene が使う遷移（`defaultTransition`）
+    struct ProjectTransitionSettings
+    {
+        bool specified = false;        ///< Project.json に書いてあるか（無ければエンジンの既定）
+        std::string type = "Loading";  ///< "None" ／ "Fade" ／ "Loading" ／ "Effect"
+        std::string effect;            ///< Effect のときのプロジェクトのポストエフェクトの名前
+        float outSeconds = 0.4f;
+        float inSeconds = 0.4f;
+        bool hideUI = false;
+        bool duckBgm = true;
+    };
+
     /// @brief CVar で表せないプロジェクト設定
     /// @details 置き場は `Application/Config/EngineSettings/Project.json`。
     ///          CVar は bool / 数値 / ベクトルしか持てないので、シーン名のような
@@ -72,6 +84,9 @@ namespace CoreEngine
         /// @brief プロジェクトのポストエフェクトの並び（掛ける順）
         const std::vector<ProjectPostEffectSettings>& GetPostEffects() const { return postEffects_; }
 
+        /// @brief 引数なしの Scene::ChangeScene が使う遷移
+        const ProjectTransitionSettings& GetDefaultTransition() const { return defaultTransition_; }
+
         /// @brief ファイルへ書き出す（ファイルにある他の項目は残す）
         bool Save() const;
 
@@ -93,5 +108,6 @@ namespace CoreEngine
         std::string loadingScreenShader_;
         std::vector<std::string> loadingScreenImages_;
         std::vector<ProjectPostEffectSettings> postEffects_;
+        ProjectTransitionSettings defaultTransition_;
     };
 }

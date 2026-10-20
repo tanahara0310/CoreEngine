@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <span>
+#include <string>
 
 // 前方宣言
 namespace CoreEngine {
@@ -11,6 +12,8 @@ namespace CoreEngine {
     class ILoadingScreenEffect;
     class ToneMapping;
     class AudioSystem;
+    class ProjectPostEffect;
+    class UIOverlay;
 }
 
 namespace CoreEngine
@@ -25,7 +28,19 @@ public:
     enum class TransitionType {
         None,       // トランジションなし（即座に切り替え）
         Fade,       // フェード
-        Loading     // ローディング画面（デフォルト）
+        Loading,    // ローディング画面（デフォルト）
+        Effect      // プロジェクトのポストエフェクト（Project.json の postEffects）で覆う
+    };
+
+    /// @brief 遷移の指定
+    struct Settings {
+        TransitionType type = TransitionType::Loading;
+        std::string effect;       ///< Effect のときに使うプロジェクトのポストエフェクトの名前
+        float outSeconds = 0.4f;  ///< 覆うまでの秒数
+        float inSeconds = 0.4f;   ///< 明けるまでの秒数
+        bool skipOut = false;     ///< 覆う段を飛ばし、覆われた状態から明ける
+        bool hideUI = false;      ///< 遷移の間は UI を描かない
+        bool duckBgm = true;      ///< 覆うのに合わせて BGM を絞る
     };
 
     /// @brief トランジションフェーズ
@@ -46,6 +61,7 @@ public:
         std::span<const TransitionPhase> phases;
         bool usesFade = false;           ///< フェードのエフェクトを使うか
         bool showsLoadingScreen = false; ///< ローディング画面を出すか
+        bool usesEffect = false;         ///< プロジェクトのポストエフェクトで覆うか
     };
 
     /// @brief フェーズの間で受け渡す値（各フェーズはこれを読み書きする）
@@ -87,6 +103,10 @@ public:
     /// @param duration トランジションの持続時間（秒）
     void StartTransition(TransitionType type, float duration);
 
+    /// @brief 指定どおりにトランジションを始める（SceneManagerから呼ばれる）
+    /// @note Effect でエフェクトが見つからなければ、警告を出してフェードで代わりにする
+    void StartTransition(const Settings& settings);
+
     /// @brief シーン切り替え準備が完了したか確認
     /// @return true: シーン切り替え可能, false: まだフェードアウト中
     bool IsReadyToChangeScene() const;
@@ -124,6 +144,10 @@ private:
     /// @brief フェーズを切り替え、入口の処理と外への反映を行う（遷移はここだけ）
     void ChangePhase(TransitionPhase next);
 
+    /// @brief 遷移に使うポストエフェクトへ、有効かどうかと進み具合を渡す
+    /// @param coverage 覆っている度合い（0.0 = 素通し, 1.0 = 覆いきり）
+    void ApplyEffect(float coverage);
+
     /// @brief 経路の次のフェーズへ進む（最後まで進んだら Idle）
     void AdvanceRoute();
 
@@ -141,6 +165,14 @@ private:
     ILoadingScreenEffect* loadingScreenEffect_ = nullptr;
     ToneMapping* toneMapping_ = nullptr;
     AudioSystem* audioSystem_ = nullptr;
+    UIOverlay* uiOverlay_ = nullptr;
+
+    /// 今の遷移の指定
+    Settings settings_{};
+    /// 今の遷移に使っているポストエフェクト（Effect のときだけ）
+    ProjectPostEffect* transitionEffect_ = nullptr;
+    /// 遷移に使っているポストエフェクトを有効にしたか
+    bool transitionEffectEnabled_ = false;
 
     TransitionPhase phase_ = TransitionPhase::Idle;
     const Phase* current_ = nullptr;

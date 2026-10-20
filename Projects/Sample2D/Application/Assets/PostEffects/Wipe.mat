@@ -1,0 +1,17 @@
+{
+    "shader": {
+        "path": "Application/Assets/PostEffects/Wipe.CS.hlsl"
+    },
+    "textures": {},
+    "values": {
+        "color": [
+            0.08,
+            0.1,
+            0.18,
+            1.0
+        ],
+        "progress": 0.0,
+        "softness": 0.08,
+        "transitionIn": 0.0
+    }
+}

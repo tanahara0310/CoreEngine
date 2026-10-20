@@ -3,6 +3,7 @@
 #include "Scene/Scene.h"
 #include "Scene/SceneSaveSystem.h"
 #include "EngineSystem/EngineSystem.h"
+#include "EngineSystem/Settings/ProjectSettings.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/Render/RenderManager.h"
@@ -41,16 +42,43 @@ namespace CoreEngine
         sceneNames_.insert(name);
     }
 
+    SceneTransition::Settings SceneManager::GetDefaultTransition() {
+        SceneTransition::Settings settings;
+        const ProjectTransitionSettings& project = ProjectSettings::Get().GetDefaultTransition();
+        if (!project.specified) {
+            return settings;
+        }
+        if (project.type == "None") {
+            settings.type = SceneTransition::TransitionType::None;
+        } else if (project.type == "Fade") {
+            settings.type = SceneTransition::TransitionType::Fade;
+        } else if (project.type == "Effect") {
+            settings.type = SceneTransition::TransitionType::Effect;
+        }
+        settings.effect = project.effect;
+        settings.outSeconds = project.outSeconds;
+        settings.inSeconds = project.inSeconds;
+        settings.hideUI = project.hideUI;
+        settings.duckBgm = project.duckBgm;
+        return settings;
+    }
+
     void SceneManager::ChangeScene(std::string name) {
-        // デフォルトトランジション（ローディング画面）
-        ChangeScene(std::move(name), SceneTransition::TransitionType::Loading, 0.4f);
+        ChangeScene(std::move(name), GetDefaultTransition());
     }
 
     void SceneManager::ChangeScene(std::string name, SceneTransition::TransitionType transitionType, float duration) {
+        SceneTransition::Settings settings;
+        settings.type = transitionType;
+        settings.outSeconds = duration;
+        settings.inSeconds = duration;
+        ChangeScene(std::move(name), settings);
+    }
+
+    void SceneManager::ChangeScene(std::string name, const SceneTransition::Settings& settings) {
         // Update/Draw実行中のクラッシュを防ぐため次フレームで切り替え
         nextSceneName_ = std::move(name);
-        nextTransitionType_ = transitionType;
-        nextTransitionDuration_ = duration;
+        nextTransition_ = settings;
         isSceneChangeRequested_ = true;
     }
 
@@ -75,7 +103,7 @@ namespace CoreEngine
         // 遅延シーン切り替えのリクエスト処理
         if (isSceneChangeRequested_ && !sceneTransition_->IsTransitioning()) {
             // トランジション開始
-            sceneTransition_->StartTransition(nextTransitionType_, nextTransitionDuration_);
+            sceneTransition_->StartTransition(nextTransition_);
             isSceneChangeRequested_ = false;
         }
 

@@ -7,6 +7,12 @@
             "material": "Application/Assets/PostEffects/ClearFlash.mat",
             "name": "ClearFlash",
             "stage": "PostTonemap"
+        },
+        {
+            "enabled": false,
+            "material": "Application/Assets/PostEffects/Wipe.mat",
+            "name": "Wipe",
+            "stage": "Overlay"
         }
     ],
     "version": "1.0"

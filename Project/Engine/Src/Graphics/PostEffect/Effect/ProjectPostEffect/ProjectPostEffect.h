@@ -71,7 +71,11 @@ namespace CoreEngine
         void DrawImGui() override;
 
         /// @brief 有効かどうかを Project.json の値へ、マテリアルを .mat の中身へ戻す
+        /// @note シーンの遷移が使っている間は戻さない（覆っている絵が消えるため）
         void ResetToDefault();
+
+        /// @brief シーンの遷移が使っているかを決める（SceneTransition が呼ぶ）
+        void SetDrivenByTransition(bool driven) { drivenByTransition_ = driven; }
 
         /// @brief Project.json に書いた設定
         const ProjectPostEffectSettings& GetSettings() const { return settings_; }
@@ -118,5 +122,6 @@ namespace CoreEngine
 
         std::vector<uint8_t> packed_;
         TextureManager::LoadedTexture white_{};
+        bool drivenByTransition_ = false;
     };
 }

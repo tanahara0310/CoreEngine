@@ -21,6 +21,25 @@ namespace CoreEngine
         constexpr const char* kLoadingScreenShaderKey = "loadingScreenShader";
         constexpr const char* kLoadingScreenImagesKey = "loadingScreenImages";
         constexpr const char* kPostEffectsKey = "postEffects";
+        constexpr const char* kDefaultTransitionKey = "defaultTransition";
+
+        /// @brief 既定の遷移を読む（無ければ specified が false のまま）
+        ProjectTransitionSettings ReadDefaultTransition(const nlohmann::json& root)
+        {
+            ProjectTransitionSettings transition;
+            const auto found = root.find(kDefaultTransitionKey);
+            if (found == root.end() || !found->is_object()) {
+                return transition;
+            }
+            transition.specified = true;
+            transition.type = found->value("type", transition.type);
+            transition.effect = found->value("effect", transition.effect);
+            transition.outSeconds = found->value("outSeconds", transition.outSeconds);
+            transition.inSeconds = found->value("inSeconds", transition.inSeconds);
+            transition.hideUI = found->value("hideUI", transition.hideUI);
+            transition.duckBgm = found->value("duckBgm", transition.duckBgm);
+            return transition;
+        }
 
         /// @brief ポストエフェクトの並びを読む（名前かマテリアルの無い要素は飛ばす）
         std::vector<ProjectPostEffectSettings> ReadPostEffects(const nlohmann::json& root)
@@ -118,6 +137,7 @@ namespace CoreEngine
         loadingScreenShader_.clear();
         loadingScreenImages_.clear();
         postEffects_.clear();
+        defaultTransition_ = ProjectTransitionSettings{};
 
         const std::filesystem::path path = ProjectPaths::Resolve(kSettingsPath);
         std::ifstream in(path, std::ios::binary);
@@ -145,6 +165,7 @@ namespace CoreEngine
         loadingScreenShader_ = ReadString(root, kLoadingScreenShaderKey);
         loadingScreenImages_ = ReadStringArray(root, kLoadingScreenImagesKey);
         postEffects_ = ReadPostEffects(root);
+        defaultTransition_ = ReadDefaultTransition(root);
     }
 
     bool ProjectSettings::SetInitialSceneName(std::string sceneName)

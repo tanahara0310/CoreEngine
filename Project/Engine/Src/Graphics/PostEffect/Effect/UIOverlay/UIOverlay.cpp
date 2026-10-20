@@ -29,7 +29,7 @@ namespace CoreEngine
 
                 // 入力を写してから、その上へ UI を描く
                 Draw(passContext.reads[0]);
-                if (renderManager) {
+                if (renderManager && !uiHidden_) {
                     renderManager->DrawOverlayQueuePass(passContext.cmdList, viewType);
                 }
             });
