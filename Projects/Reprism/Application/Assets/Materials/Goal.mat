@@ -1,0 +1,46 @@
+{
+    "shader": {
+        "path": "Application/Assets/Materials/GoalWarp.PS.hlsl"
+    },
+    "textures": {},
+    "values": {
+        "coreColor": [
+            0.004999999888241291,
+            0.0,
+            0.017999999225139618,
+            1.0
+        ],
+        "effectParam0": [
+            3.5,
+            0.8999999761581421,
+            1.399999976158142,
+            5.0
+        ],
+        "effectParam1": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ],
+        "glowIntensity": 1.7999999523162842,
+        "innerColor": [
+            0.23000000417232513,
+            0.05000000074505806,
+            0.800000011920929,
+            1.0
+        ],
+        "noiseStrength": 0.09000000357627869,
+        "outerColor": [
+            0.0,
+            0.949999988079071,
+            1.0,
+            1.0
+        ],
+        "patternMode": 8.0,
+        "pulseStrength": 0.18000000715255737,
+        "ringWidth": 0.054999999701976776,
+        "suction": 0.75,
+        "swirlStrength": 6.0,
+        "time": 0.0
+    }
+}

@@ -1,0 +1,19 @@
+{
+    "shader": {
+        "path": "Application/Assets/Materials/TitleLogo.PS.hlsl"
+    },
+    "textures": {},
+    "values": {
+        "color": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ],
+        "glitchIntensity": 0.0,
+        "pulseIntensity": 0.0,
+        "scanProgress": 0.0,
+        "scanlineSpeed": 0.18000000715255737,
+        "time": 0.0
+    }
+}

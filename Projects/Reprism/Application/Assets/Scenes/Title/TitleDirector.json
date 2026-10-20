@@ -1,0 +1,35 @@
+{
+    "active": true,
+    "components": [
+        {
+            "type": "Transform",
+            "enabled": true,
+            "parameters": {
+                "translate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "parent": null
+            }
+        },
+        {
+            "type": "TitleDirector",
+            "enabled": true,
+            "parameters": {}
+        }
+    ],
+    "id": "7e9a100000000002",
+    "name": "TitleDirector",
+    "order": 1
+}

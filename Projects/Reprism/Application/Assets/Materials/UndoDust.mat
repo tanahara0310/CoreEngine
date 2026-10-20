@@ -1,0 +1,16 @@
+{
+    "shader": {
+        "path": "Application/Assets/Materials/UndoDust.PS.hlsl"
+    },
+    "textures": {},
+    "values": {
+        "color": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+        ],
+        "dissolve": 0.0,
+        "time": 0.0
+    }
+}

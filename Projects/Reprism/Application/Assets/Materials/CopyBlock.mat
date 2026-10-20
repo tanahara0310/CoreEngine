@@ -1,0 +1,47 @@
+{
+    "shader": {
+        "path": "Application/Assets/Materials/NormalBlock.PS.hlsl"
+    },
+    "textures": {},
+    "values": {
+        "accentColor": [
+            1.0,
+            0.4780000007152557,
+            0.0
+        ],
+        "color": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+        ],
+        "cornerGlowPower": 9.350000381469727,
+        "cornerGlowRadius": 0.375,
+        "ghostMode": 1.0,
+        "hatRect": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        "hatTintColor": [
+            0.0820000022649765,
+            0.722000002861023,
+            0.0
+        ],
+        "playerRect": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        "rippleSpeed": 1.0,
+        "rippleTime": -1.0,
+        "rippleWidth": 0.1120000034570694,
+        "scanBrightness": 0.0,
+        "scanSpeed": 1.2200000286102295,
+        "scanWidth": 0.04600000008940697,
+        "time": 0.0,
+        "treadBlend": 0.0
+    }
+}

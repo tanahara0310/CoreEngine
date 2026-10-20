@@ -1,0 +1,25 @@
+{
+    "shader": {
+        "path": "Application/Assets/Materials/StageNumber.PS.hlsl"
+    },
+    "textures": {},
+    "values": {
+        "appearProgress": 0.0,
+        "color": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ],
+        "puchunProgress": 0.0,
+        "time": 0.0,
+        "uvOffset": [
+            0.0,
+            0.0
+        ],
+        "uvScale": [
+            1.0,
+            1.0
+        ]
+    }
+}

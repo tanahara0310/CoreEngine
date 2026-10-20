@@ -1,0 +1,15 @@
+{
+    "shader": {
+        "path": "Application/Assets/PostEffects/Fade.CS.hlsl"
+    },
+    "textures": {},
+    "values": {
+        "completeFactor": 1.399999976158142,
+        "fadeType": 9.0,
+        "fallSpeed": 3.0,
+        "pixelBlockSize": 0.03999999910593033,
+        "progress": 0.0,
+        "timeOrigin": 0.0,
+        "transitionIn": 0.0
+    }
+}
