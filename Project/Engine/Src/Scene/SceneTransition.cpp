@@ -6,8 +6,12 @@
 #include "Graphics/PostEffect/Effect/ILoadingScreenEffect.h"
 #include "Graphics/PostEffect/Effect/PostEffectNames.h"
 #include "Graphics/PostEffect/Effect/ToneMapping/ToneMapping.h"
+#include "Graphics/PostEffect/Effect/ProjectPostEffect/ProjectPostEffect.h"
+#include "Graphics/PostEffect/Effect/UIOverlay/UIOverlay.h"
+#include "Graphics/Material/ShaderMaterial.h"
 #include "Audio/AudioSystem.h"
 #include "Utility/CVar/CVar.h"
+#include "Utility/Logger/Logger.h"
 
 #include <algorithm>
 #include <cassert>
@@ -51,6 +55,9 @@ namespace
     /// @brief フェードの進み（0.0〜1.0）
     float FadeProgress(const Context& context)
     {
+        if (context.duration <= 0.0f) {
+            return 1.0f;
+        }
         return std::clamp(context.timer / context.duration, 0.0f, 1.0f);
     }
 
@@ -60,17 +67,23 @@ namespace
         TransitionPhase::FadeOut, TransitionPhase::Changing, TransitionPhase::FadeIn };
     constexpr TransitionPhase kLoadingRoute[] = {
         TransitionPhase::FadeOut, TransitionPhase::Loading, TransitionPhase::Hold, TransitionPhase::FadeIn };
+    // 覆う段を飛ばす経路（覆われた状態から始める）
+    constexpr TransitionPhase kFadeInOnlyRoute[] = { TransitionPhase::Changing, TransitionPhase::FadeIn };
+    constexpr TransitionPhase kLoadingInOnlyRoute[] = {
+        TransitionPhase::Loading, TransitionPhase::Hold, TransitionPhase::FadeIn };
 
-    SceneTransition::Route RouteOf(SceneTransition::TransitionType type)
+    SceneTransition::Route RouteOf(SceneTransition::TransitionType type, bool skipOut)
     {
         switch (type) {
         case SceneTransition::TransitionType::Fade:
-            return { kFadeRoute, true, false };
+            return { skipOut ? std::span<const TransitionPhase>(kFadeInOnlyRoute) : std::span<const TransitionPhase>(kFadeRoute), true, false, false };
+        case SceneTransition::TransitionType::Effect:
+            return { skipOut ? std::span<const TransitionPhase>(kFadeInOnlyRoute) : std::span<const TransitionPhase>(kFadeRoute), false, false, true };
         case SceneTransition::TransitionType::Loading:
-            return { kLoadingRoute, true, true };
+            return { skipOut ? std::span<const TransitionPhase>(kLoadingInOnlyRoute) : std::span<const TransitionPhase>(kLoadingRoute), true, true, false };
         case SceneTransition::TransitionType::None:
         default:
-            return { kNoneRoute, false, false };
+            return { kNoneRoute, false, false, false };
         }
     }
 }
@@ -280,6 +293,9 @@ void SceneTransition::Initialize(EngineSystem* engine) {
     // AudioSystem を取得（BGM バスのダッキングに使う）
     audioSystem_ = engine_->GetService<AudioSystem>();
 
+    // UI の重ね（遷移の間に UI を隠すのに使う）
+    uiOverlay_ = postEffectManager_->GetEffect<UIOverlay>(PostEffectNames::UIOverlay);
+
     // 初期状態：完全に透明（フェードなし）
     fadeEffect_->SetFadeAlpha(0.0f);
     fadeEffect_->SetFadeType(FadeEffect::FadeType::BlackFade);
@@ -293,7 +309,7 @@ void SceneTransition::Initialize(EngineSystem* engine) {
     // 初期状態
     phase_ = TransitionPhase::Idle;
     current_ = &PhaseOf(phase_);
-    route_ = RouteOf(TransitionType::None);
+    route_ = RouteOf(TransitionType::None, false);
     routeIndex_ = 0;
     context_ = Context{};
 }
@@ -317,15 +333,40 @@ void SceneTransition::Update(float deltaTime) {
 }
 
 void SceneTransition::StartTransition(TransitionType type, float duration) {
+    Settings settings;
+    settings.type = type;
+    settings.outSeconds = duration;
+    settings.inSeconds = duration;
+    StartTransition(settings);
+}
+
+void SceneTransition::StartTransition(const Settings& settings) {
     if (!fadeEffect_) {
         return;
     }
 
-    route_ = RouteOf(type);
+    // 前の遷移が使っていたエフェクトを外してから始める
+    ApplyEffect(0.0f);
+    if (transitionEffect_) {
+        transitionEffect_->SetDrivenByTransition(false);
+    }
+    transitionEffect_ = nullptr;
+
+    settings_ = settings;
+    if (settings_.type == TransitionType::Effect) {
+        transitionEffect_ = postEffectManager_->FindProjectEffect(settings_.effect);
+        if (!transitionEffect_) {
+            Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Graphics,
+                "遷移のポストエフェクト {} が Project.json の postEffects にないので、フェードで切り替えます", settings_.effect);
+            settings_.type = TransitionType::Fade;
+        }
+    }
+
+    route_ = RouteOf(settings_.type, settings_.skipOut);
     assert(!route_.phases.empty());
 
     context_ = Context{};
-    context_.duration = duration;
+    context_.duration = settings_.outSeconds;
     context_.showsLoadingScreen = route_.showsLoadingScreen;
 
     fadeEffect_->SetFadeType(FadeEffect::FadeType::BlackFade);
@@ -370,6 +411,13 @@ void SceneTransition::ChangePhase(TransitionPhase next) {
     current_ = &PhaseOf(next);
     current_->OnEnter(context_);
 
+    // 覆う段と明ける段で長さを分ける
+    if (next == TransitionPhase::FadeOut) {
+        context_.duration = settings_.outSeconds;
+    } else if (next == TransitionPhase::FadeIn) {
+        context_.duration = settings_.inSeconds;
+    }
+
     // フェーズが変わった直後に反映する。ここで解除しないと、次の Update まで
     // BGM が頭で止まったままフェードインが進んでしまう
     Apply();
@@ -402,15 +450,43 @@ void SceneTransition::Apply() {
         toneMapping_->SetAdaptationPaused(fadeAlpha >= kExposureHoldAlpha);
     }
 
+    // 遷移の間は UI を描かない（指定したときだけ）
+    if (uiOverlay_) {
+        uiOverlay_->SetUIHidden(phase_ != TransitionPhase::Idle && settings_.hideUI);
+    }
+
+    ApplyEffect(route_.usesEffect && phase_ != TransitionPhase::Idle ? fadeAlpha : 0.0f);
+
     if (audioSystem_) {
         // BGM バスを丸ごと絞る。ダッキングはユーザー設定（SetBusVolume）とは
         // 別枠の倍率なので、オプション画面の設定値を壊さずに演出だけ掛かる
-        audioSystem_->SetBusDuck(AudioBus::BGM, current_->BgmDuck(context_));
+        audioSystem_->SetBusDuck(AudioBus::BGM, settings_.duckBgm ? current_->BgmDuck(context_) : 1.0f);
 
         // シーンを止めている間に始まった BGM は頭で止めておく。ダッキングは音量を 0 にするだけで
         // 曲は進むので、画面が明けた時に頭が聞こえない。保留は再生位置ごと止めるので、
         // フェードインの開始と同時に必ず曲の頭から鳴り出す
         audioSystem_->SetBusStartHold(AudioBus::BGM, current_->BlocksScene());
+    }
+}
+
+void SceneTransition::ApplyEffect(float coverage) {
+    if (!transitionEffect_) {
+        return;
+    }
+
+    const bool active = route_.usesEffect && phase_ != TransitionPhase::Idle;
+    transitionEffect_->SetDrivenByTransition(active);
+    if (active != transitionEffectEnabled_) {
+        transitionEffectEnabled_ = active;
+        postEffectManager_->SetEffectEnabled(transitionEffect_->GetSettings().name, active);
+    }
+
+    // シェーダは progress（覆っている度合い）と transitionIn（明ける段なら 1）で描く
+    if (ShaderMaterial* const material = transitionEffect_->GetMaterial().get()) {
+        const float progress[] = { coverage };
+        const float fadingIn[] = { phase_ == TransitionPhase::FadeIn ? 1.0f : 0.0f };
+        material->SetNumbers("progress", progress);
+        material->SetNumbers("transitionIn", fadingIn);
     }
 }
 

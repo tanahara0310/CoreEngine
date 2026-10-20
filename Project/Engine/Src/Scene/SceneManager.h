@@ -39,7 +39,16 @@ public:
 
     /// @brief シーンを変える関数（デフォルトトランジション）
     /// @param name 変更先のシーン名
+    /// @note 遷移は Project.json の defaultTransition（無ければローディング画面 0.4 秒）
     void ChangeScene(std::string name);
+
+    /// @brief シーンを変える関数（遷移の指定つき）
+    /// @param name 変更先のシーン名
+    /// @param settings 遷移の種類・秒数・UI と BGM の扱い
+    void ChangeScene(std::string name, const SceneTransition::Settings& settings);
+
+    /// @brief 引数なしの ChangeScene が使う遷移（Project.json の defaultTransition）
+    static SceneTransition::Settings GetDefaultTransition();
 
     /// @brief シーンを変える関数（トランジション指定版）
     /// @param name 変更先のシーン名
@@ -169,10 +178,7 @@ private:
     /// @brief シーントランジション管理
     std::unique_ptr<SceneTransition> sceneTransition_;
 
-    /// @brief 次のトランジションタイプ
-    SceneTransition::TransitionType nextTransitionType_ = SceneTransition::TransitionType::Fade;
-
-    /// @brief 次のトランジション時間
-    float nextTransitionDuration_ = 1.0f;
+    /// @brief 次のトランジションの指定
+    SceneTransition::Settings nextTransition_{};
 };
 }

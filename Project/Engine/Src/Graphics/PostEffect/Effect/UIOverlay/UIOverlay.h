@@ -16,9 +16,15 @@ namespace CoreEngine
         /// @brief 常時有効なエフェクト
         bool IsAlwaysEnabled() const override { return true; }
 
+        /// @brief UI を描かずに入力を写すだけにするか（シーンの遷移が呼ぶ）
+        void SetUIHidden(bool hidden) { uiHidden_ = hidden; }
+
     protected:
         std::string GetEffectName() const override { return "UIOverlay"; }
 
         const std::wstring& GetPixelShaderPath() const override;
+
+    private:
+        bool uiHidden_ = false;
     };
 }

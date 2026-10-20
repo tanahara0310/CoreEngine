@@ -10,7 +10,10 @@
 #include "Utility/Logger/Logger.h"
 #include "WinApp/WinApp.h"
 
+#include <angelscript.h>
+#include <algorithm>
 #include <cmath>
+#include <new>
 #include <string>
 
 namespace CoreEngine::Script
@@ -39,6 +42,97 @@ namespace CoreEngine::Script
                 return;
             }
             manager->ChangeScene(name);
+        }
+
+        /// @brief スクリプトの遷移の指定（`SceneTransition`）
+        struct ScriptSceneTransition
+        {
+            int type = static_cast<int>(SceneTransition::TransitionType::Loading);
+            std::string effect;
+            float outSeconds = 0.4f;
+            float inSeconds = 0.4f;
+            bool skipOut = false;
+            bool hideUI = false;
+            bool duckBgm = true;
+        };
+
+        void ConstructTransition(ScriptSceneTransition* self)
+        {
+            new (self) ScriptSceneTransition();
+        }
+
+        void CopyConstructTransition(const ScriptSceneTransition& other, ScriptSceneTransition* self)
+        {
+            new (self) ScriptSceneTransition(other);
+        }
+
+        void DestructTransition(ScriptSceneTransition* self)
+        {
+            self->~ScriptSceneTransition();
+        }
+
+        /// @brief 引数なしの ChangeScene が使う遷移（Project.json の defaultTransition）
+        ScriptSceneTransition GetDefaultTransition()
+        {
+            const SceneTransition::Settings settings = SceneManager::GetDefaultTransition();
+            ScriptSceneTransition transition;
+            transition.type = static_cast<int>(settings.type);
+            transition.effect = settings.effect;
+            transition.outSeconds = settings.outSeconds;
+            transition.inSeconds = settings.inSeconds;
+            transition.skipOut = settings.skipOut;
+            transition.hideUI = settings.hideUI;
+            transition.duckBgm = settings.duckBgm;
+            return transition;
+        }
+
+        void ChangeSceneWith(const std::string& name, const ScriptSceneTransition& transition)
+        {
+            SceneManager* const manager = CurrentSceneManager();
+            if (!manager) {
+                Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Script,
+                    "シーンマネージャが無いので、シーン {} へ切り替えられません", name);
+                return;
+            }
+            if (!manager->HasScene(name)) {
+                Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Script,
+                    "シーン {} は登録されていないので、切り替えられません", name);
+                return;
+            }
+            SceneTransition::Settings settings;
+            settings.type = static_cast<SceneTransition::TransitionType>(transition.type);
+            settings.effect = transition.effect;
+            settings.outSeconds = (std::max)(transition.outSeconds, 0.0f);
+            settings.inSeconds = (std::max)(transition.inSeconds, 0.0f);
+            settings.skipOut = transition.skipOut;
+            settings.hideUI = transition.hideUI;
+            settings.duckBgm = transition.duckBgm;
+            manager->ChangeScene(name, settings);
+        }
+
+        void RegisterSceneTransition(BindingRegistrar& r)
+        {
+            using Transition = ScriptSceneTransition;
+            r.Enum("TransitionType");
+            r.EnumValue("TransitionType", "None", static_cast<int>(SceneTransition::TransitionType::None));
+            r.EnumValue("TransitionType", "Fade", static_cast<int>(SceneTransition::TransitionType::Fade));
+            r.EnumValue("TransitionType", "Loading", static_cast<int>(SceneTransition::TransitionType::Loading));
+            r.EnumValue("TransitionType", "Effect", static_cast<int>(SceneTransition::TransitionType::Effect));
+
+            r.ValueType("SceneTransition", sizeof(Transition), asOBJ_VALUE | asGetTypeTraits<Transition>());
+            r.Behaviour("SceneTransition", asBEHAVE_CONSTRUCT, "void f()", asFUNCTION(ConstructTransition), asCALL_CDECL_OBJLAST);
+            r.Behaviour("SceneTransition", asBEHAVE_CONSTRUCT, "void f(const SceneTransition &in)",
+                asFUNCTION(CopyConstructTransition), asCALL_CDECL_OBJLAST);
+            r.Behaviour("SceneTransition", asBEHAVE_DESTRUCT, "void f()", asFUNCTION(DestructTransition), asCALL_CDECL_OBJLAST);
+            r.Method("SceneTransition", "SceneTransition &opAssign(const SceneTransition &in)",
+                asMETHODPR(Transition, operator=, (const Transition&), Transition&), asCALL_THISCALL);
+            r.Property("SceneTransition", "TransitionType type", asOFFSET(Transition, type));
+            r.Property("SceneTransition", "string effect", asOFFSET(Transition, effect));
+            r.Property("SceneTransition", "float outSeconds", asOFFSET(Transition, outSeconds));
+            r.Property("SceneTransition", "float inSeconds", asOFFSET(Transition, inSeconds));
+            r.Property("SceneTransition", "bool skipOut", asOFFSET(Transition, skipOut));
+            r.Property("SceneTransition", "bool hideUI", asOFFSET(Transition, hideUI));
+            r.Property("SceneTransition", "bool duckBgm", asOFFSET(Transition, duckBgm));
         }
 
         std::string GetCurrentName()
@@ -288,8 +382,12 @@ namespace CoreEngine::Script
         r.Method("GameCamera", "float get_orthographicSize() const property",
             asMETHOD(ScriptGameCamera, GetOrthographicSize), asCALL_THISCALL);
 
+        RegisterSceneTransition(r);
+
         r.Namespace("Scene");
         r.Function("void ChangeScene(const string &in name)", asFUNCTION(ChangeScene));
+        r.Function("void ChangeScene(const string &in name, const SceneTransition &in transition)", asFUNCTION(ChangeSceneWith));
+        r.Function("SceneTransition GetDefaultTransition()", asFUNCTION(GetDefaultTransition));
         r.Function("string GetCurrentName()", asFUNCTION(GetCurrentName));
         r.Function("GameCamera@ GetGameCamera()", asFUNCTION(GetGameCamera));
         r.Function("bool IsUsingEditorCamera()", asFUNCTION(IsUsingEditorCamera));

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.21.0">
+<meta name="engine-version" content="0.22.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4293,10 +4293,70 @@ kbd {
   </script>
   <ul>
     <li>名前は <span class="path">Application/Assets/Scenes</span> の下のフォルダ名です。</li>
-    <li>切り替えは次のフレームに行われ、短い読み込みの演出が入ります。</li>
+    <li>切り替えは次のフレームに行われ、短い読み込みの演出（ローディング画面 0.4 秒）が入ります。Project.json の <code>defaultTransition</code> で変えられます（下の <a href="#scenes-transition">遷移を指定する</a>）。</li>
     <li>今のシーンのオブジェクトはすべて破棄されます（OnDestroy が呼ばれます）。</li>
     <li>時間の速さ（<code>Time::SetTimeScale</code>）はシーンを移っても残ります。</li>
   </ul>
+
+  <h2 id="scenes-transition">遷移を指定する</h2>
+  <p><a href="#api-SceneTransition">SceneTransition</a> に種類と秒数を入れて <code>Scene::ChangeScene</code> へ渡すと、その切り替えだけ遷移を変えられます。</p>
+  <script type="text/x-code" data-lang="as">
+    SceneTransition t;
+    t.type = TransitionType::Fade;   // 黒で覆う
+    t.outSeconds = 0.6f;             // 覆うまで
+    t.inSeconds = 0.3f;              // 明けるまで
+    Scene::ChangeScene("Result", t);
+  </script>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>type</th><th>見え方</th></tr></thead>
+    <tbody>
+      <tr><td><code>TransitionType::None</code></td><td>演出なしで切り替える</td></tr>
+      <tr><td><code>TransitionType::Fade</code></td><td>黒で覆ってから明ける</td></tr>
+      <tr><td><code>TransitionType::Loading</code></td><td>黒で覆い、読み込みの間はローディング画面を出す（既定）</td></tr>
+      <tr><td><code>TransitionType::Effect</code></td><td>Project.json の <a href="#script-posteffect">プロジェクトのポストエフェクト</a>（<code>effect</code> の名前）で覆う</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>項目</th><th>既定</th><th>意味</th></tr></thead>
+    <tbody>
+      <tr><td><code>effect</code></td><td>""</td><td><code>Effect</code> のときのポストエフェクトの名前。見つからなければ警告を出してフェードにする</td></tr>
+      <tr><td><code>outSeconds</code> ／ <code>inSeconds</code></td><td>0.4 ／ 0.4</td><td>覆うまでの秒数 ／ 明けるまでの秒数</td></tr>
+      <tr><td><code>skipOut</code></td><td>false</td><td>覆う段を飛ばし、覆われた状態から明ける（演出で覆いきってから切り替えるとき）</td></tr>
+      <tr><td><code>hideUI</code></td><td>false</td><td>遷移の間は UI（UI 画像・UI テキスト）を描かない</td></tr>
+      <tr><td><code>duckBgm</code></td><td>true</td><td>覆うのに合わせて BGM を絞り、明けるのに合わせて戻す</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li>覆っている間は、前のシーンの進行（Update）が止まります。明ける段では、新しいシーンが動き始めています。</li>
+    <li>時間は時間の倍率に関係なく、実時間で進みます。</li>
+    <li><code>Scene::GetDefaultTransition()</code> は、引数なしの <code>Scene::ChangeScene</code> が使う遷移です。これを書き換えて渡すこともできます。</li>
+  </ul>
+
+  <h3 id="scenes-transition-effect">自分のシェーダで覆う</h3>
+  <p><code>Effect</code> では、遷移の間だけそのポストエフェクトを有効にし、マテリアルの値 <code>progress</code>（覆っている度合い。覆う段で 0 → 1、明ける段で 1 → 0）と <code>transitionIn</code>（明ける段なら 1、それ以外は 0）を毎フレーム入れます。シェーダは <code>progress</code> が 1 のときに画面を覆いきるように書きます。ポストエフェクトの最初の有効は <code>false</code> にしておきます。</p>
+  <script type="text/x-code" data-lang="json" data-file="Application/Config/EngineSettings/Project.json">
+    {
+        "postEffects": [
+            { "name": "Wipe", "material": "Application/Assets/PostEffects/Wipe.mat", "stage": "Overlay", "enabled": false }
+        ],
+        "defaultTransition": { "type": "Effect", "effect": "Wipe", "outSeconds": 0.35, "inSeconds": 0.35, "hideUI": true, "duckBgm": false }
+    }
+  </script>
+  <p>Sample2D は、<kbd>R</kbd> でやり直すときにこの Wipe を使っています（斜めの境目で左から覆い、同じ向きに明ける。シェーダは <span class="path">Application/Assets/PostEffects/Wipe.CS.hlsl</span>）。</p>
+  <script type="text/x-code" data-lang="as">
+    SceneTransition wipe;
+    wipe.type = TransitionType::Effect;
+    wipe.effect = "Wipe";
+    wipe.outSeconds = 0.35f;
+    wipe.inSeconds = 0.35f;
+    wipe.hideUI = true;
+    Scene::ChangeScene(Scene::GetCurrentName(), wipe);
+  </script>
+  <p>ゲームの中の演出で覆いきってから（例えばゴールの演出で <code>progress</code> を 1 まで進めてから）切り替えるときは、<code>skipOut = true</code> にすると覆われた状態から明けます。</p>
 
   <h2 id="scenes-session">次のシーンへ値を渡す（Session）</h2>
   <p><a href="#api-Session">Session</a> はシーンを切り替えても消えない値の置き場です。アプリを閉じると消えます。</p>
@@ -5505,6 +5565,7 @@ kbd {
     <li><code>PostEffect::GetMaterial</code> は <a href="#api-ShaderMaterial">ShaderMaterial</a> を返します。値の決め方はスプライトのマテリアルと同じです。</li>
     <li>名前が Project.json に無いと、名前ごとに 1 回だけ警告を出して何もしません。</li>
     <li>エンジンのエフェクト（Bloom など）は今までどおり CVar で切り替えます（<a href="#api-PostProcess">ポストエフェクト</a>）。</li>
+    <li>シーンの遷移に使うこともできます（<a href="#scenes-transition-effect">自分のシェーダで覆う</a>）。遷移が使っている間は、シーンを開いたときの既定への戻しをしません。</li>
   </ul>
 
   <h2 id="pe-editor">エディタ</h2>
@@ -9451,7 +9512,7 @@ python Tools/OkinawaBeach/bake_player_walk.py
   <table>
     <thead><tr><th>ファイル</th><th>中身</th></tr></thead>
     <tbody>
-      <tr><td><span class="path">Project.json</span></td><td>プロジェクト名（<code>name</code>）・起動シーン（<code>initialScene</code>）・ローディング画面の写真（<code>splashImage</code>。省くとエンジンの既定）・ゲームの画面の題名（<code>splashTitle</code>。省くとプロジェクト名）・小見出し（<code>splashSubtitle</code>）・ヒント（<code>splashTips</code>）。<a href="#settings-splash">起動中のローディング画面</a>。シーンを切り替えるときのロード画面のシェーダ（<code>loadingScreenShader</code>。省くとエンジンの既定）と画像（<code>loadingScreenImages</code>）。<a href="#settings-loading-screen">シーンを切り替えるときのロード画面</a>。自分のポストエフェクトの並び（<code>postEffects</code>）。<a href="#pe-project">プロジェクトのポストエフェクト</a></td></tr>
+      <tr><td><span class="path">Project.json</span></td><td>プロジェクト名（<code>name</code>）・起動シーン（<code>initialScene</code>）・ローディング画面の写真（<code>splashImage</code>。省くとエンジンの既定）・ゲームの画面の題名（<code>splashTitle</code>。省くとプロジェクト名）・小見出し（<code>splashSubtitle</code>）・ヒント（<code>splashTips</code>）。<a href="#settings-splash">起動中のローディング画面</a>。シーンを切り替えるときのロード画面のシェーダ（<code>loadingScreenShader</code>。省くとエンジンの既定）と画像（<code>loadingScreenImages</code>）。<a href="#settings-loading-screen">シーンを切り替えるときのロード画面</a>。自分のポストエフェクトの並び（<code>postEffects</code>）。<a href="#pe-project">プロジェクトのポストエフェクト</a>。引数なしの <code>Scene::ChangeScene</code> の遷移（<code>defaultTransition</code>）。<a href="#scenes-transition">遷移を指定する</a></td></tr>
       <tr><td><span class="path">Layers.json</span></td><td>レイヤーの名前の並び。先頭は必ず <code>Default</code>、最大 32 個。並びの番号がスクリプトの <code>CollisionLayer</code> の値になる</td></tr>
       <tr><td><span class="path">InputActions.json</span></td><td>入力アクション（<code>id</code>・<code>display</code>・<code>context</code>・<code>defaults</code>）。<a href="#editor-settings-keyconfig">書き方</a></td></tr>
       <tr><td><span class="path">CVars.json</span></td><td>既定から変えたプロジェクト全体の CVar（<code>"r.TAA.Enabled": false</code> のような名前と値）</td></tr>
@@ -9574,6 +9635,15 @@ python Tools/OkinawaBeach/bake_player_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-22-0">v0.22.0 <span class="dim">（2026-10-20）</span></h3>
+  <p>シーンの遷移を、切り替えごとに種類と秒数で指定できるようにした版です（<a href="#scenes-transition">遷移を指定する</a>）。</p>
+  <ul>
+    <li><strong>SceneTransition</strong>：<code>Scene::ChangeScene(name, transition)</code> に渡す値の型です。種類（<code>TransitionType</code>：None ／ Fade ／ Loading ／ Effect）・覆うまでと明けるまでの秒数・覆う段を飛ばす（<code>skipOut</code>）・遷移の間は UI を描かない（<code>hideUI</code>）・BGM を絞るか（<code>duckBgm</code>）を決めます。</li>
+    <li><strong>Effect</strong>：Project.json のプロジェクトのポストエフェクトで覆います。遷移の間だけ有効にし、マテリアルの値 <code>progress</code> と <code>transitionIn</code> を毎フレーム入れます。</li>
+    <li><strong>既定の遷移</strong>：Project.json の <code>defaultTransition</code> で、引数なしの <code>Scene::ChangeScene</code> の遷移を変えられます。<code>Scene::GetDefaultTransition()</code> で読めます。</li>
+    <li>Sample2D：<kbd>R</kbd> でやり直すとき、斜めの境目で覆って明ける Wipe を使うようにしました。</li>
+  </ul>
 
   <h3 id="changelog-v0-21-0">v0.21.0 <span class="dim">（2026-10-20）</span></h3>
   <p>画面全体にかける効果を、自分で書いたコンピュートシェーダで足せるようにした版です（<a href="#script-posteffect">プロジェクトのポストエフェクト</a>）。</p>
@@ -11007,6 +11077,8 @@ class StageSound : ScriptComponent
       {
         title: "関数", members: [
           { n: "ChangeScene", s: "void ChangeScene(const string&in name)", t: "f", d: "シーンを切り替えます。名前は <span class=\"path\">Application/Assets/Scenes</span> の下のフォルダ名です。無い名前を渡すとエラーをログに出して何もしません。今のシーンのオブジェクトはすべて破棄されるので、次のシーンへ渡す値は <a href=\"#api-Session\">Session</a> に入れます。" },
+          { n: "ChangeScene", s: "void ChangeScene(const string&in name, const SceneTransition&in transition)", t: "f", d: "遷移を指定してシーンを切り替えます（<a href=\"#api-SceneTransition\">SceneTransition</a>）。引数なしの形は Project.json の <code>defaultTransition</code>（無ければローディング画面 0.4 秒）を使います。" },
+          { n: "GetDefaultTransition", s: "SceneTransition GetDefaultTransition()", t: "f", d: "引数なしの <code>ChangeScene</code> が使う遷移。" },
           { n: "GetCurrentName", s: "string GetCurrentName()", t: "f", d: "今のシーンの名前。" },
           { n: "GetGameCamera", s: "GameCamera@ GetGameCamera()", t: "f", d: "今のシーンのゲーム用カメラ。" },
           { n: "IsUsingEditorCamera", s: "bool IsUsingEditorCamera()", t: "f", d: "エディタの視点で覗いているか（エディタの無いビルドでは常に false）。" }
@@ -11024,7 +11096,55 @@ void OnStageClear()
 }`
       }
     ],
-    see: [["script-scenes", "シーン遷移とデータの保存"], ["api-Session", "Session"]]
+    see: [["script-scenes", "シーン遷移とデータの保存"], ["api-SceneTransition", "SceneTransition"], ["api-Session", "Session"]]
+  },
+
+  {
+    id: "SceneTransition", kind: "class", cat: "シーン・カメラ", brief: "シーンの遷移の指定",
+    keywords: "遷移 切り替え フェード ワイプ 暗転 ローディング 演出 秒数 bgm ui transition",
+    summary: "<code>Scene::ChangeScene</code> に渡す遷移の指定です。値の型なので、作って項目を書き換えて渡します（<a href=\"#scenes-transition\">遷移を指定する</a>）。",
+    sections: [
+      {
+        title: "項目", members: [
+          { n: "type", s: "TransitionType type", t: "rw", d: "種類（<a href=\"#api-TransitionType\">TransitionType</a>）。既定は Loading。" },
+          { n: "effect", s: "string effect", t: "rw", d: "Effect のときに使う、Project.json の postEffects の名前。" },
+          { n: "outSeconds", s: "float outSeconds", t: "rw", d: "覆うまでの秒数（既定 0.4）。" },
+          { n: "inSeconds", s: "float inSeconds", t: "rw", d: "明けるまでの秒数（既定 0.4）。" },
+          { n: "skipOut", s: "bool skipOut", t: "rw", d: "覆う段を飛ばし、覆われた状態から明ける（既定 false）。" },
+          { n: "hideUI", s: "bool hideUI", t: "rw", d: "遷移の間は UI を描かない（既定 false）。" },
+          { n: "duckBgm", s: "bool duckBgm", t: "rw", d: "覆うのに合わせて BGM を絞る（既定 true）。" }
+        ]
+      }
+    ],
+    examples: [
+      {
+        title: "例：ゲームオーバーはゆっくり黒く、BGM を残したまま",
+        code: `
+void OnGameOver()
+{
+    SceneTransition t;
+    t.type = TransitionType::Fade;
+    t.outSeconds = 1.5f;
+    t.inSeconds = 0.5f;
+    t.duckBgm = false;
+    t.hideUI = true;
+    Scene::ChangeScene("GameOver", t);
+}`
+      }
+    ],
+    see: [["api-Scene", "Scene"], ["api-TransitionType", "TransitionType"], ["script-posteffect", "プロジェクトのポストエフェクト"]]
+  },
+
+  {
+    id: "TransitionType", kind: "enum", cat: "シーン・カメラ", brief: "シーンの遷移の種類",
+    keywords: "遷移 フェード ローディング エフェクト",
+    summary: "<a href=\"#api-SceneTransition\">SceneTransition</a> の種類です。",
+    values: [
+      ["None", 0, "演出なしで切り替える"], ["Fade", 1, "黒で覆ってから明ける"],
+      ["Loading", 2, "黒で覆い、読み込みの間はローディング画面を出す"],
+      ["Effect", 3, "Project.json のプロジェクトのポストエフェクトで覆う"]
+    ],
+    see: [["api-SceneTransition", "SceneTransition"]]
   },
 
   {

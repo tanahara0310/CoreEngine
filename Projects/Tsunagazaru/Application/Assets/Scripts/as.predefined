@@ -178,6 +178,12 @@ enum ShakeTimeMode {
 	Scaled = 0,
 	Unscaled = 1
 }
+enum TransitionType {
+	None = 0,
+	Fade = 1,
+	Loading = 2,
+	Effect = 3
+}
 }
 namespace CoreEngine::EditorGUI {
 enum MessageType {
@@ -651,6 +657,18 @@ class GameCamera {
 	void ScreenPointToRay(const CoreEngine::Vector2&in screen, CoreEngine::Vector3&out origin, CoreEngine::Vector3&out direction) const;
 	bool get_orthographic() const property;
 	float get_orthographicSize() const property;
+}
+class SceneTransition {
+	SceneTransition();
+	SceneTransition(const CoreEngine::SceneTransition&in);
+	CoreEngine::SceneTransition& opAssign(const CoreEngine::SceneTransition&in);
+	TransitionType type;
+	string effect;
+	float outSeconds;
+	float inSeconds;
+	bool skipOut;
+	bool hideUI;
+	bool duckBgm;
 }
 class ShaderMaterial {
 	ShaderMaterial(const string&in path);
@@ -1357,6 +1375,8 @@ string GetActiveName();
 }
 namespace CoreEngine::Scene {
 void ChangeScene(const string&in name);
+void ChangeScene(const string&in name, const CoreEngine::SceneTransition&in transition);
+CoreEngine::SceneTransition GetDefaultTransition();
 string GetCurrentName();
 CoreEngine::GameCamera@ GetGameCamera();
 bool IsUsingEditorCamera();

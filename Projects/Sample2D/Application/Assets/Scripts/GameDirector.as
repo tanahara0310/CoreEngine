@@ -24,7 +24,14 @@ class GameDirector : ScriptComponent
     void Update()
     {
         if (Input::IsActionTriggered(InputAction::Restart)) {
-            Scene::ChangeScene(Scene::GetCurrentName());
+            // 斜めの境目で画面を覆ってから、同じシーンを開き直す（Project.json のポストエフェクト Wipe）
+            SceneTransition wipe;
+            wipe.type = TransitionType::Effect;
+            wipe.effect = "Wipe";
+            wipe.outSeconds = 0.35f;
+            wipe.inSeconds = 0.35f;
+            wipe.hideUI = true;
+            Scene::ChangeScene(Scene::GetCurrentName(), wipe);
             return;
         }
         if (Input::IsMouseButtonTriggered(MouseButton::Left) && Input::IsPointerOverGame()) {
