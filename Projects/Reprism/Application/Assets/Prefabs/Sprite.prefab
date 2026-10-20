@@ -1,0 +1,37 @@
+{
+    "components": [
+        {
+            "type": "Transform",
+            "enabled": true,
+            "parameters": {
+                "translate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "parent": null
+            }
+        },
+        {
+            "type": "SpriteRenderer",
+            "enabled": true,
+            "parameters": {
+                "texture": {
+                    "path": "Application/Assets/Textures/white1x1.png"
+                },
+                "pixelsPerUnit": 1.0,
+                "filter": 0
+            }
+        }
+    ]
+}

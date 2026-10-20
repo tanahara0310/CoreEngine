@@ -1,0 +1,20 @@
+{
+    "shader": {
+        "path": "Application/Assets/Materials/StageBorder.PS.hlsl"
+    },
+    "textures": {},
+    "values": {
+        "alpha": 1.0,
+        "aspectRatio": 1.0,
+        "borderWidth": 0.014999999664723873,
+        "color": [
+            0.0,
+            1.0,
+            1.0,
+            1.0
+        ],
+        "cornerRadius": 0.05000000074505806,
+        "expandT": 0.0,
+        "innerMargin": 0.0
+    }
+}

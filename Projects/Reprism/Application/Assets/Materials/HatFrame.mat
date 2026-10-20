@@ -1,0 +1,34 @@
+{
+    "shader": {
+        "path": "Application/Assets/Materials/RunningLight.PS.hlsl"
+    },
+    "textures": {},
+    "values": {
+        "baseColor": [
+            0.30000001192092896,
+            0.10000000149011612,
+            0.0,
+            0.5
+        ],
+        "cornerRadius": 24.0,
+        "drawHalfSpan": 160.0,
+        "edgeStart": 0.0,
+        "glowColor": [
+            1.0,
+            0.4780000007152557,
+            0.0,
+            1.0
+        ],
+        "glowCount": 2.0,
+        "glowLagOffset": [
+            0.0,
+            0.0
+        ],
+        "glowSharpness": 200.0,
+        "halfSpan": 160.0,
+        "halfSpanY": 0.0,
+        "speed": 0.3,
+        "thickness": 6.0,
+        "time": 0.0
+    }
+}

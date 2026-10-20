@@ -1,0 +1,189 @@
+{
+    "version": "1.0",
+    "actions": [
+        {
+            "id": "MoveLeft",
+            "display": "左へ",
+            "context": "Game",
+            "defaults": [
+                "Key:A",
+                "Key:Left",
+                "Axis:LeftStickX-",
+                "Gamepad:DPadLeft"
+            ]
+        },
+        {
+            "id": "MoveRight",
+            "display": "右へ",
+            "context": "Game",
+            "defaults": [
+                "Key:D",
+                "Key:Right",
+                "Axis:LeftStickX+",
+                "Gamepad:DPadRight"
+            ]
+        },
+        {
+            "id": "MoveUp",
+            "display": "上へ（ハット）",
+            "context": "Game",
+            "defaults": [
+                "Key:W",
+                "Key:Up",
+                "Axis:LeftStickY+",
+                "Gamepad:DPadUp"
+            ]
+        },
+        {
+            "id": "MoveDown",
+            "display": "下へ（ハット）",
+            "context": "Game",
+            "defaults": [
+                "Key:S",
+                "Key:Down",
+                "Axis:LeftStickY-",
+                "Gamepad:DPadDown"
+            ]
+        },
+        {
+            "id": "Jump",
+            "display": "跳ぶ",
+            "context": "Game",
+            "defaults": [
+                "Key:Space",
+                "Gamepad:A"
+            ]
+        },
+        {
+            "id": "SwitchMode",
+            "display": "自機とハットを切り替える",
+            "context": "Game",
+            "defaults": [
+                "Key:K",
+                "Gamepad:X"
+            ]
+        },
+        {
+            "id": "Undo",
+            "display": "一手戻す",
+            "context": "Game",
+            "defaults": [
+                "Key:Z",
+                "Gamepad:RightShoulder"
+            ]
+        },
+        {
+            "id": "Restart",
+            "display": "やり直す",
+            "context": "Game",
+            "defaults": [
+                "Key:R",
+                "Gamepad:Y"
+            ]
+        },
+        {
+            "id": "Back",
+            "display": "戻る",
+            "context": "Game",
+            "defaults": [
+                "Key:Escape",
+                "Gamepad:Start"
+            ]
+        },
+        {
+            "id": "Decide",
+            "display": "決定",
+            "context": "Game",
+            "defaults": [
+                "Key:Space",
+                "Gamepad:A"
+            ]
+        },
+        {
+            "id": "SelectLeft",
+            "display": "前のステージ",
+            "context": "Game",
+            "defaults": [
+                "Key:A",
+                "Key:Left",
+                "Gamepad:DPadLeft"
+            ]
+        },
+        {
+            "id": "SelectRight",
+            "display": "次のステージ",
+            "context": "Game",
+            "defaults": [
+                "Key:D",
+                "Key:Right",
+                "Gamepad:DPadRight"
+            ]
+        },
+        {
+            "id": "OpenEditor",
+            "display": "ステージエディタ（タイトル）",
+            "context": "Game",
+            "defaults": [
+                "Key:E"
+            ]
+        },
+        {
+            "id": "UINavigateUp",
+            "display": "上へ（UI）",
+            "context": "UI",
+            "defaults": [
+                "Key:Up",
+                "Axis:LeftStickY+",
+                "Gamepad:DPadUp"
+            ]
+        },
+        {
+            "id": "UINavigateDown",
+            "display": "下へ（UI）",
+            "context": "UI",
+            "defaults": [
+                "Key:Down",
+                "Axis:LeftStickY-",
+                "Gamepad:DPadDown"
+            ]
+        },
+        {
+            "id": "UINavigateLeft",
+            "display": "左へ（UI）",
+            "context": "UI",
+            "defaults": [
+                "Key:Left",
+                "Axis:LeftStickX-",
+                "Gamepad:DPadLeft"
+            ]
+        },
+        {
+            "id": "UINavigateRight",
+            "display": "右へ（UI）",
+            "context": "UI",
+            "defaults": [
+                "Key:Right",
+                "Axis:LeftStickX+",
+                "Gamepad:DPadRight"
+            ]
+        },
+        {
+            "id": "UIConfirm",
+            "display": "決定（UI）",
+            "context": "UI",
+            "defaults": [
+                "Key:Enter",
+                "Gamepad:A"
+            ]
+        },
+        {
+            "id": "UICancel",
+            "display": "戻る（UI）",
+            "context": "UI",
+            "defaults": [
+                "Key:Escape",
+                "Gamepad:B"
+            ]
+        }
+    ]
+}

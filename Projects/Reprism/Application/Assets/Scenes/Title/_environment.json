@@ -1,0 +1,8 @@
+{
+    "r.AutoExposure.Enabled": false,
+    "r.AutoExposure.ExposureEV": 0.0,
+    "r.Cloud.Enabled": false,
+    "r.LensFlare.Enabled": false,
+    "r.LocalExposure.Enabled": false,
+    "r.ToneMapping.Operator": 0
+}

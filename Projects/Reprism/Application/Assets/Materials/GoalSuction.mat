@@ -1,0 +1,19 @@
+{
+    "shader": {
+        "path": "Application/Assets/Materials/GoalSuction.PS.hlsl"
+    },
+    "textures": {},
+    "values": {
+        "alpha": 1.0,
+        "color": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ],
+        "progress": 0.0,
+        "stretch": 0.0,
+        "swirl": 0.0,
+        "time": 0.0
+    }
+}

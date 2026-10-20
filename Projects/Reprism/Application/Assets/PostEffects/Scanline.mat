@@ -1,0 +1,15 @@
+{
+    "shader": {
+        "path": "Application/Assets/PostEffects/Scanline.CS.hlsl"
+    },
+    "textures": {},
+    "values": {
+        "flickerSpeed": 8.0,
+        "flickerStrength": 0.03999999910593033,
+        "lineInterval": 3.0,
+        "lineStrength": 0.3499999940395355,
+        "lineWidth": 0.5,
+        "scrollSpeed": 0.20000000298023224,
+        "vignetteStrength": 0.4000000059604645
+    }
+}

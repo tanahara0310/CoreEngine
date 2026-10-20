@@ -19,6 +19,11 @@ public:
     /// @details 移動平均をクリアして安定した計測を再開する
     void ResetFPSMeasurement();
 
+    /// @brief 次のフレームの経過時間を、実測でなく 1 フレーム分（1/60 秒）にする
+    /// @details 1 回だけ重かったフレーム（シーンの Start がまとめて走るフレームなど）の時間を
+    ///          ゲームの進行に数えないために使う
+    void DiscardNextFrameTime() { discardNextFrameTime_ = true; }
+
     /// @brief 現在のFPSを取得
     /// @return 実測FPS値（60サンプルの移動平均）
     /// @note デルタタイムは `Time::DeltaTime()` / `Time::UnscaledDeltaTime()` から取る。
@@ -42,6 +47,7 @@ private:
     // 時間管理
     std::chrono::high_resolution_clock::time_point lastFrameTime_;  // 前フレームの開始時刻
     float deltaTime_ = kFixedDeltaTime;                            // フレーム間経過時間（秒）
+    bool discardNextFrameTime_ = false;                            // 次のフレームの実測を使わない
 
     // FPS計測
     float fpsSamples_[kFPSSampleCount] = {};    // FPS計測用サンプル配列

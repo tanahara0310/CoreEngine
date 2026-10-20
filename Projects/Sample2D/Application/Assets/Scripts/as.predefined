@@ -1376,6 +1376,7 @@ void ChangeScene(const string&in name);
 void ChangeScene(const string&in name, const CoreEngine::SceneTransition&in transition);
 CoreEngine::SceneTransition GetDefaultTransition();
 string GetCurrentName();
+bool IsTransitioning();
 CoreEngine::GameCamera@ GetGameCamera();
 bool IsUsingEditorCamera();
 }

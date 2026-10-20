@@ -1,0 +1,16 @@
+{
+    "shader": {
+        "path": "Application/Assets/PostEffects/EdgeInvasion.CS.hlsl"
+    },
+    "textures": {},
+    "values": {
+        "invasionColor": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ],
+        "lineThickness": 0.012000000104308128,
+        "progress": 0.0
+    }
+}

@@ -1,0 +1,19 @@
+{
+    "shader": {
+        "path": "Application/Assets/Materials/BgGrid.PS.hlsl"
+    },
+    "textures": {},
+    "values": {
+        "alpha": 0.054999999701976776,
+        "color": [
+            1.0,
+            0.0,
+            1.0,
+            1.0
+        ],
+        "gridScale": 11.991999626159668,
+        "lineWidth": 0.04500000178813934,
+        "scrollSpeed": 0.2029999941587448,
+        "time": 0.0
+    }
+}

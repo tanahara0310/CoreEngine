@@ -1,0 +1,39 @@
+{
+    "defaultTransition": {
+        "duckBgm": false,
+        "effect": "Fade",
+        "hideUI": true,
+        "inSeconds": 1.0,
+        "outSeconds": 1.4,
+        "type": "Effect"
+    },
+    "initialScene": "Title",
+    "name": "Reprism",
+    "postEffects": [
+        {
+            "enabled": true,
+            "material": "Application/Assets/PostEffects/Neon.mat",
+            "name": "Neon",
+            "stage": "SceneHDR"
+        },
+        {
+            "enabled": false,
+            "material": "Application/Assets/PostEffects/Fade.mat",
+            "name": "Fade",
+            "stage": "PostTonemap"
+        },
+        {
+            "enabled": true,
+            "material": "Application/Assets/PostEffects/Scanline.mat",
+            "name": "Scanline",
+            "stage": "PostTonemap"
+        },
+        {
+            "enabled": false,
+            "material": "Application/Assets/PostEffects/EdgeInvasion.mat",
+            "name": "EdgeInvasion",
+            "stage": "PostTonemap"
+        }
+    ],
+    "version": "1.0"
+}

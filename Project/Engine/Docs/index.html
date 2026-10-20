@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.22.0">
+<meta name="engine-version" content="0.23.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2126,6 +2126,7 @@ kbd {
       <tr><td><span class="path">Projects/Sandbox</span></td><td>機能ごとの試験場（物理・キャラクターの歩行・UI・水面・カメラの揺れ・スクリプトのシューター）。沖縄の海辺のシーンでは、待機・歩き・走りのアニメーションが付いた人型を操作できます（<a href="#tutorial-beach-player">沖縄の海辺をプレイヤーで歩く</a>）。</td></tr>
       <tr><td><span class="path">Projects/Sample2D</span></td><td>2D の横スクロールの見本。走る・跳ぶ・コインを集める・ゴールに着く、の 1 ステージに、クリックした所へ箱を落とす遊びを足したもの。スプライトのアニメ・平行投影のカメラの追従・遠景・剛体の軸の固定・トリガーを、スクリプト 6 本（プレイヤー・進行・コイン・ゴール・カメラの追従・遠景）で使っています。使っている機能は <a href="#guide-2d">2D ゲームの作り方</a> で説明しています。</td></tr>
       <tr><td><span class="path">Projects/Tsunagazaru</span></td><td>つながザルをえない。走り続けるトロッコの前にレールを敷いていくゲームで、C++ で作ったゲームをスクリプトだけで作り直した大きめの見本（タイトル・ゲーム・リザルトの 3 シーン）。シーンを切り替えるときのロード画面も、プロジェクトのシェーダで描いています（<a href="#settings-loading-screen">シーンを切り替えるときのロード画面</a>）。</td></tr>
+      <tr><td><span class="path">Projects/Reprism</span></td><td>レプリズム。自機のまわりのブロックをハットに写し取って運び、置いた足場でゴールを目指すパズルアクションで、C++ で作ったゲームをスクリプトだけで作り直した見本（タイトル・ステージ選択・ゲームの 3 シーンと 13 ステージ）。ブロックやゴールの光り方はスプライトのマテリアル（<a href="#script-material">マテリアルとシェーダ</a>）、ネオン・走査線・画面の縁の光は<a href="#script-posteffect">プロジェクトのポストエフェクト</a>、ステージの切り替えはブロックに割れて落ちる遷移（<a href="#scenes-transition-effect">自分のシェーダで覆う</a>）で描いています。</td></tr>
     </tbody>
   </table>
   </div>
@@ -4334,6 +4335,7 @@ kbd {
     <li>覆っている間は、前のシーンの進行（Update）が止まります。明ける段では、新しいシーンが動き始めています。</li>
     <li>時間は時間の倍率に関係なく、実時間で進みます。</li>
     <li><code>Scene::GetDefaultTransition()</code> は、引数なしの <code>Scene::ChangeScene</code> が使う遷移です。これを書き換えて渡すこともできます。</li>
+    <li><code>Scene::IsTransitioning()</code> は、遷移の途中（覆う段・明ける段）なら true です。明けきってから出す演出（ステージ名の表示など）は、これが false になるまで待ちます。</li>
   </ul>
 
   <h3 id="scenes-transition-effect">自分のシェーダで覆う</h3>
@@ -9636,6 +9638,15 @@ python Tools/OkinawaBeach/bake_player_walk.py
 
   <h2 id="changelog-history">更新履歴</h2>
 
+  <h3 id="changelog-v0-23-0">v0.23.0 <span class="dim">（2026-10-20）</span></h3>
+  <p>付属のサンプルに、C++ で作ったパズルアクション「レプリズム」をスクリプトだけで作り直したプロジェクトを足した版です（<a href="#intro-samples">付属のサンプル</a>）。</p>
+  <ul>
+    <li><strong>Projects/Reprism</strong>：タイトル・ステージ選択・ゲームの 3 シーンと 13 ステージ。自機とハットの操作の切り替え・ブロックの写し取りと置き方・Undo・ゴールの吸い込みとクリアの演出まで、元のゲームと同じ動きをスクリプトで書いています。</li>
+    <li>見た目は、ブロック・ゴール・範囲の枠などがスプライトのマテリアル、ネオン・走査線・画面の縁の光・ブロックに割れて落ちる遷移がプロジェクトのポストエフェクトです。</li>
+    <li><strong>Scene::IsTransitioning()</strong>：シーンの遷移の途中かを返す関数を足しました（<a href="#scenes-transition">遷移を指定する</a>）。</li>
+    <li>シーンの最初のフレーム（各コンポーネントの Start）が重くても、その時間を次のフレームの経過時間に数えないようにしました。これまでは、遷移の明ける段がその 1 フレームで終わってしまったり、物理や移動が一気に進んで床を抜けたりしていました。</li>
+  </ul>
+
   <h3 id="changelog-v0-22-0">v0.22.0 <span class="dim">（2026-10-20）</span></h3>
   <p>シーンの遷移を、切り替えごとに種類と秒数で指定できるようにした版です（<a href="#scenes-transition">遷移を指定する</a>）。</p>
   <ul>
@@ -10666,7 +10677,7 @@ void OnTriggerEnter(Collision@ other)
     sections: [
       {
         title: "関数", members: [
-          { n: "DeltaTime", s: "float DeltaTime()", t: "f", d: "前のフレームからの経過秒数（時間の速さを掛けた値）。一時停止中や <code>SetTimeScale(0)</code> では 0。" },
+          { n: "DeltaTime", s: "float DeltaTime()", t: "f", d: "前のフレームからの経過秒数（時間の速さを掛けた値）。一時停止中や <code>SetTimeScale(0)</code> では 0。シーンの最初のフレーム・再生を始めたフレーム・遷移が明けたフレームは Start がまとめて走って重くなるので、その次のフレームは実測でなく 1/60 秒になります。" },
           { n: "UnscaledDeltaTime", s: "float UnscaledDeltaTime()", t: "f", d: "時間の速さを掛けない経過秒数。スロー中も普通に動かしたいメニューなどに。" },
           { n: "TimeSinceStartup", s: "float TimeSinceStartup()", t: "f", d: "起動してからの秒数（時間の速さを掛けた値）。" },
           { n: "UnscaledTimeSinceStartup", s: "float UnscaledTimeSinceStartup()", t: "f", d: "起動してからの実際の秒数。" },
@@ -11080,6 +11091,7 @@ class StageSound : ScriptComponent
           { n: "ChangeScene", s: "void ChangeScene(const string&in name, const SceneTransition&in transition)", t: "f", d: "遷移を指定してシーンを切り替えます（<a href=\"#api-SceneTransition\">SceneTransition</a>）。引数なしの形は Project.json の <code>defaultTransition</code>（無ければローディング画面 0.4 秒）を使います。" },
           { n: "GetDefaultTransition", s: "SceneTransition GetDefaultTransition()", t: "f", d: "引数なしの <code>ChangeScene</code> が使う遷移。" },
           { n: "GetCurrentName", s: "string GetCurrentName()", t: "f", d: "今のシーンの名前。" },
+          { n: "IsTransitioning", s: "bool IsTransitioning()", t: "f", d: "シーンの遷移の途中（覆う段・明ける段）か。遷移が明けきってから始める演出の待ち合わせに使います。" },
           { n: "GetGameCamera", s: "GameCamera@ GetGameCamera()", t: "f", d: "今のシーンのゲーム用カメラ。" },
           { n: "IsUsingEditorCamera", s: "bool IsUsingEditorCamera()", t: "f", d: "エディタの視点で覗いているか（エディタの無いビルドでは常に false）。" }
         ]

@@ -177,6 +177,7 @@ namespace CoreEngine
         std::vector<FeatureEntry> features_;
         uint64_t featureSequence_ = 0;
         bool featuresInitialized_ = false;
+        bool wasAdvancing_ = false; ///< 前のフレームでゲームの進行を回したか
         SceneContext featureContext_{};
 
         // シーンの名前（保存データのフォルダ名）

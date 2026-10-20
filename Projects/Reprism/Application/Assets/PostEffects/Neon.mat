@@ -1,0 +1,15 @@
+{
+    "shader": {
+        "path": "Application/Assets/PostEffects/Neon.CS.hlsl"
+    },
+    "textures": {},
+    "values": {
+        "bloomIntensity": 2.200000047683716,
+        "bloomRadius": 3.0,
+        "bloomThreshold": 0.3499999940395355,
+        "colorShift": 0.0,
+        "darknessCrush": 0.6000000238418579,
+        "edgeIntensity": 1.2000000476837158,
+        "saturation": 2.5
+    }
+}
