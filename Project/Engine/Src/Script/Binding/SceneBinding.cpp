@@ -141,6 +141,13 @@ namespace CoreEngine::Script
             return manager ? manager->GetCurrentSceneName() : std::string();
         }
 
+        /// @brief シーンの遷移（閉じる段・開く段）の途中か
+        bool IsTransitioning()
+        {
+            const SceneManager* const manager = CurrentSceneManager();
+            return manager ? manager->IsTransitioning() : false;
+        }
+
         /// @brief ゲーム視点のカメラの口（使うたびに今のシーンのゲーム視点のカメラを引き直す）
         class ScriptGameCamera
         {
@@ -389,6 +396,7 @@ namespace CoreEngine::Script
         r.Function("void ChangeScene(const string &in name, const SceneTransition &in transition)", asFUNCTION(ChangeSceneWith));
         r.Function("SceneTransition GetDefaultTransition()", asFUNCTION(GetDefaultTransition));
         r.Function("string GetCurrentName()", asFUNCTION(GetCurrentName));
+        r.Function("bool IsTransitioning()", asFUNCTION(IsTransitioning));
         r.Function("GameCamera@ GetGameCamera()", asFUNCTION(GetGameCamera));
         r.Function("bool IsUsingEditorCamera()", asFUNCTION(IsUsingEditorCamera));
         r.Namespace("");
