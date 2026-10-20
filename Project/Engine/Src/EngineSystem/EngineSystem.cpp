@@ -31,6 +31,7 @@
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/Texture/TextureManager.h"
+#include "Graphics/Material/ShaderMaterialLibrary.h"
 #include "Graphics/RHI/Command/UploadContext.h"
 #include "Graphics/Render/RenderTarget/SceneDepth.h"
 #include "Graphics/Render/Render.h"
@@ -311,6 +312,9 @@ namespace CoreEngine
     {
         // 再生の開始・停止とコマ送りの要求を取り込む（停止ではシーンを再生前の状態へ読み直す）
         PlaybackStateManager::GetInstance().BeginFrame();
+
+        // 再生を止めたらマテリアルの値をファイルの中身へ戻す（エディタでは .mat とシェーダの更新も見る）
+        ShaderMaterialLibrary::GetInstance().BeginFrame();
 
         // フレームレート制御の開始
         if (auto* frameRate = GetService<FrameRateController>()) {

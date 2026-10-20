@@ -1,4 +1,5 @@
 #pragma once
+#include "Graphics/Material/ShaderMaterialPipeline.h"
 #include "Graphics/Render/BaseRenderer.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/RHI/GraphicsCore.h"
@@ -47,10 +48,21 @@ namespace CoreEngine
         /// @brief シェーダーリソース名からルートパラメータインデックスを取得
         int GetRootParamIndex(const std::string& resourceName) const;
 
+        /// @brief マテリアルのシェーダのパイプラインを引く（無ければ組む）
+        /// @return 組めなければ nullptr
+        const ShaderMaterialPipeline* GetMaterialPipeline(const ShaderMaterial& material);
+
+        /// @brief 次の 1 枚を描くパイプラインを差す（nullptr なら標準。差してあるものと同じなら何もしない）
+        void BindPipeline(ID3D12GraphicsCommandList* cmdList, const ShaderMaterialPipeline* pipeline);
+
     private:
         // BaseRenderer から継承したサブシステムを使用（rootSignatureMg_, psoMg_, shaderCompiler_, reflectionBuilder_ は削除）
 
         GraphicsCore* dxCommon_ = nullptr;
+
+        ShaderMaterialPipelineCache materialPipelines_{ ShaderMaterialPipeline::Target{ "SpriteMaterial", true } };
+        /// 差してあるマテリアルのパイプライン（標準なら nullptr）
+        const ShaderMaterialPipeline* boundPipeline_ = nullptr;
 
         // シェーダーリフレクションデータ
         std::unique_ptr<ShaderReflectionData> reflectionData_;

@@ -14,6 +14,7 @@
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
+#include "Utility/FrameRate/Time.h"
 
 #include <algorithm>
 #include <cmath>
@@ -38,6 +39,9 @@ REFLECT_DEFINE_BEGIN(CoreEngine::SpriteRendererComponent, "スプライト描画
         p.assetType = ::CoreEngine::AssetType::Texture)
     REFLECT_ACCESSOR("color", "カラー", GetColor, SetColor,
         p.type = ::CoreEngine::Reflection::PropertyType::Color)
+    REFLECT_ACCESSOR("material", "マテリアル", GetMaterialAsset, SetMaterialAsset,
+        p.assetType = ::CoreEngine::AssetType::Material,
+        p.tooltip = "描き方を決めるシェーダと値（.mat）。指さなければテクスチャ × カラーで描く")
     REFLECT_ACCESSOR("pixelsPerUnit", "1 単位のピクセル数", GetPixelsPerUnit, SetPixelsPerUnit,
         p.range = Range(kMinPixelsPerUnit, 100000.0f, 1.0f),
         p.tooltip = "テクスチャの何ピクセルを 1 単位（1m）にするか。大きいほど小さく描く")
@@ -68,6 +72,13 @@ REFLECT_DEFINE_BEGIN(CoreEngine::SpriteRendererComponent, "スプライト描画
         p.range = Range(-9999.0f, 9999.0f, 0.1f), p.tooltip = "同じレイヤーの中で、大きいほど手前に描く")
     REFLECT_READONLY_ACCESSOR("textureSize", "テクスチャの大きさ", GetTextureSize)
     REFLECT_READONLY_ACCESSOR("size", "板の大きさ", GetSize)
+    REFLECT_METHOD("SetMaterialFloat", "マテリアルの値を上書き（数）", SetMaterialFloat)
+    REFLECT_METHOD("SetMaterialInt", "マテリアルの値を上書き（整数）", SetMaterialInt)
+    REFLECT_METHOD("SetMaterialVector", "マテリアルの値を上書き（ベクトル）", SetMaterialVector)
+    REFLECT_METHOD("SetMaterialTexture", "マテリアルのテクスチャを上書き", SetMaterialTexture)
+    REFLECT_METHOD("ClearMaterialOverrides", "マテリアルの上書きをやめる", ClearMaterialOverrides)
+    REFLECT_METHOD("GetMaterialFloat", "マテリアルの値（数）", GetMaterialFloat)
+    REFLECT_METHOD("GetMaterialVector", "マテリアルの値（ベクトル）", GetMaterialVector)
 REFLECT_DEFINE_END()
 REFLECT_REGISTER(CoreEngine::SpriteRendererComponent)
 COMPONENT_REGISTER(CoreEngine::SpriteRendererComponent)
@@ -97,6 +108,7 @@ namespace CoreEngine
         if (!texturePath_.empty()) {
             LoadTexture(texturePath_);
         }
+        materialSlot_.Resolve();
     }
 
     void SpriteRendererComponent::ResolveRenderer()
@@ -334,9 +346,30 @@ namespace CoreEngine
         if (transformAddress == 0) { return; }
 
         ID3D12GraphicsCommandList* const commandList = view.cmdList;
+        commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
+        commandList->IASetIndexBuffer(&indexBufferView_);
+
+        if (materialSlot_.IsSet() && RenderWithMaterial(commandList, uploadRing, transformAddress)) {
+            commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
+            return;
+        }
+
+        spriteRenderer_->BindPipeline(commandList, nullptr);
+
+        // マテリアルを指しているのに描けないときは、気づけるようマゼンタで描く
+        D3D12_GPU_VIRTUAL_ADDRESS materialAddress = material_->GetGPUVirtualAddress();
+        if (materialSlot_.IsSet()) {
+            SpriteMaterialData fallback{};
+            fallback.color = { 1.0f, 0.0f, 1.0f, 1.0f };
+            fallback.uvTransform = uvMatrix_;
+            fallback.filterMode = static_cast<uint32_t>(filter_);
+            materialAddress = uploadRing.AllocateConstants(fallback);
+            if (materialAddress == 0) { return; }
+        }
+
         commandList->SetGraphicsRootConstantBufferView(
             spriteRenderer_->GetRootParamIndex("gMaterial"),
-            material_->GetGPUVirtualAddress());
+            materialAddress);
         commandList->SetGraphicsRootConstantBufferView(
             spriteRenderer_->GetRootParamIndex("TransformationMatrix"),
             transformAddress);
@@ -344,10 +377,100 @@ namespace CoreEngine
             spriteRenderer_->GetRootParamIndex("gTexture"),
             textureHandle_.gpuHandle);
 
-        commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
-        commandList->IASetIndexBuffer(&indexBufferView_);
-
         commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
+    }
+
+    bool SpriteRendererComponent::RenderWithMaterial(ID3D12GraphicsCommandList* commandList, UploadRing& uploadRing,
+        D3D12_GPU_VIRTUAL_ADDRESS transformAddress)
+    {
+        const ShaderMaterial* const material = materialSlot_.GetMaterial();
+        const ShaderMaterialPipeline* const pipeline = material ? spriteRenderer_->GetMaterialPipeline(*material) : nullptr;
+        if (!pipeline) {
+            return false;
+        }
+
+        SpriteDrawData draw{};
+        draw.color = color_;
+        draw.uvTransform = uvMatrix_;
+        draw.textureSize = textureSize_;
+        draw.time = Time::TimeSinceStartup();
+        draw.unscaledTime = Time::UnscaledTimeSinceStartup();
+        draw.deltaTime = Time::DeltaTime();
+        draw.filterMode = static_cast<uint32_t>(filter_);
+        const D3D12_GPU_VIRTUAL_ADDRESS drawAddress = uploadRing.AllocateConstants(draw);
+        if (drawAddress == 0) {
+            return false;
+        }
+
+        spriteRenderer_->BindPipeline(commandList, pipeline);
+        if (!materialSlot_.Bind(commandList, *pipeline, uploadRing, transformAddress, drawAddress, textureHandle_.gpuHandle)) {
+            spriteRenderer_->BindPipeline(commandList, nullptr);
+            return false;
+        }
+        return true;
+    }
+
+    void SpriteRendererComponent::SetMaterial(const std::string& materialPath)
+    {
+        Reflection::AssetRefValue value;
+        if (!materialPath.empty()) {
+            AssetRef<ShaderMaterialAsset> reference(materialPath);
+            value = reference.GetValue();
+        }
+        SetMaterialAsset(value);
+    }
+
+    void SpriteRendererComponent::SetMaterialAsset(const Reflection::AssetRefValue& value)
+    {
+        if (materialSlot_.SetAsset(value) && awoken_) {
+            materialSlot_.Resolve();
+        }
+    }
+
+    void SpriteRendererComponent::SetMaterialFloat(const std::string& name, float value)
+    {
+        const float numbers[] = { value };
+        materialSlot_.SetNumbers(name, numbers);
+    }
+
+    void SpriteRendererComponent::SetMaterialInt(const std::string& name, int value)
+    {
+        const float numbers[] = { static_cast<float>(value) };
+        materialSlot_.SetNumbers(name, numbers);
+    }
+
+    void SpriteRendererComponent::SetMaterialVector(const std::string& name, const Vector4& value)
+    {
+        const float numbers[] = { value.x, value.y, value.z, value.w };
+        materialSlot_.SetNumbers(name, numbers);
+    }
+
+    void SpriteRendererComponent::SetMaterialTexture(const std::string& name, const std::string& texturePath)
+    {
+        materialSlot_.SetTexture(name, texturePath);
+    }
+
+    void SpriteRendererComponent::ClearMaterialOverrides()
+    {
+        materialSlot_.ClearOverrides();
+    }
+
+    float SpriteRendererComponent::GetMaterialFloat(const std::string& name) const
+    {
+        const MaterialNumbers* const numbers = materialSlot_.FindNumbers(name);
+        return (numbers && !numbers->empty()) ? numbers->front() : 0.0f;
+    }
+
+    Vector4 SpriteRendererComponent::GetMaterialVector(const std::string& name) const
+    {
+        Vector4 value = { 0.0f, 0.0f, 0.0f, 0.0f };
+        if (const MaterialNumbers* const numbers = materialSlot_.FindNumbers(name)) {
+            float* const components[] = { &value.x, &value.y, &value.z, &value.w };
+            for (size_t index = 0; index < numbers->size() && index < 4; ++index) {
+                *components[index] = (*numbers)[index];
+            }
+        }
+        return value;
     }
 
     void SpriteRendererComponent::SetColor(const Vector4& color)

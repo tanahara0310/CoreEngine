@@ -5,6 +5,7 @@
 
 #include "Collision/ColliderComponent.h"
 #include "Editor/Inspector/ColliderInspector.h"
+#include "Editor/Inspector/ShaderMaterialInspector.h"
 #include "Editor/Inspector/SpriteAnimatorInspector.h"
 #include "Editor/Command/EditorCommandStack.h"
 #include "Editor/ImGui/ImGuiAll.h"
@@ -15,6 +16,7 @@
 #include "GameObject/Component/Light/LightComponent.h"
 #include "GameObject/Component/Render/MaterialComponent.h"
 #include "GameObject/Component/Render/SpriteAnimatorComponent.h"
+#include "GameObject/Component/Render/SpriteRendererComponent.h"
 #include "GameObject/Component/Render/Text3DRendererComponent.h"
 #include "GameObject/GameObject.h"
 #include "Editor/ImGui/ParticleSystemDebugUI.h"
@@ -22,6 +24,7 @@
 #include "Particle/ParticleSystemComponent.h"
 #include "Graphics/Light/LightManager.h"
 #include "Reflection/TypeDescriptor.h"
+#include "UI/UIImageComponent.h"
 
 #include <cstdint>
 #include <memory>
@@ -147,6 +150,30 @@ namespace CoreEngine::Editor::ComponentInspectors
         }
     }
 
+    namespace
+    {
+        /// @brief 部品が指すマテリアルの中身を、部品の欄の後に出す
+        void DrawShaderMaterialSection(ShaderMaterialSlot& slot)
+        {
+            if (!slot.IsSet()) {
+                return;
+            }
+            ShaderMaterial* const material = slot.GetMaterial();
+            if (!material) {
+                UI::Hint("マテリアルを読めません（パスと JSON を確かめてください）。");
+                return;
+            }
+            if (ImGui::TreeNodeEx("##shaderMaterial", ImGuiTreeNodeFlags_DefaultOpen, "マテリアルの中身（%s）",
+                    material->GetAssetPath().c_str())) {
+                ImGui::PushTextWrapPos(0.0f);
+                UI::Hint("ここで変えた値はマテリアルのファイルへ保存し、同じマテリアルを指す全員に効きます。");
+                ImGui::PopTextWrapPos();
+                ShaderMaterialInspector::Draw(*material);
+                ImGui::TreePop();
+            }
+        }
+    }
+
     void RegisterEngineTypes()
     {
         AddPermanent("Transform", { .shownFirst = true });
@@ -181,6 +208,17 @@ namespace CoreEngine::Editor::ComponentInspectors
                     [](const SpriteAnimatorComponent& animator, json& state) { animator.SaveClipsToJson(state); },
                     [](SpriteAnimatorComponent& animator, const json& state) { animator.LoadClipsFromJson(state); },
                     [](SpriteAnimatorComponent& animator) { return SpriteAnimatorInspector::Draw(animator); });
+            },
+            });
+
+        AddPermanent("SpriteRenderer", {
+            .drawExtra = [](IComponent& component) {
+                DrawShaderMaterialSection(static_cast<SpriteRendererComponent&>(component).GetMaterialSlot());
+            },
+            });
+        AddPermanent("UIImage", {
+            .drawExtra = [](IComponent& component) {
+                DrawShaderMaterialSection(static_cast<UIImageComponent&>(component).GetMaterialSlot());
             },
             });
 

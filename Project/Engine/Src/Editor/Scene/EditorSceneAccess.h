@@ -27,6 +27,9 @@ namespace CoreEngine::Editor
         /// @brief 引く先のエンジンを設定する（nullptr で外す）
         void Bind(EngineSystem* engine);
 
+        /// @brief 引く先のエンジン（設定していなければ nullptr）
+        EngineSystem* Engine();
+
         /// @brief 今のシーンのオブジェクト（シーンが無ければ nullptr）
         GameObjectManager* Objects();
 

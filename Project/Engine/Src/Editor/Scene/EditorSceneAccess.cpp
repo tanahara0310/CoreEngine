@@ -23,6 +23,11 @@ namespace CoreEngine::Editor
         sEngine = engine;
     }
 
+    EngineSystem* SceneAccess::Engine()
+    {
+        return sEngine;
+    }
+
     GameObjectManager* SceneAccess::Objects()
     {
         SceneManager* const scenes = sEngine ? sEngine->GetSceneManager() : nullptr;

@@ -1,0 +1,16 @@
+#include "SpriteMaterial.hlsli"
+
+// マテリアルの値（.mat の values で決める。スクリプトの SetMaterialFloat などでも変えられる）
+struct Params
+{
+    float4 tint;  // テクスチャ × 部品の色に掛ける色
+    float  speed; // 明るさが揺れる速さ
+};
+ConstantBuffer<Params> gMaterial : register(b0);
+
+float4 main(SpriteVertexOutput input) : SV_TARGET0
+{
+    float4 color = SpriteDefaultColor(input) * gMaterial.tint;
+    color.rgb *= 0.75f + 0.25f * sin(gSpriteDraw.time * gMaterial.speed);
+    return color;
+}

@@ -335,6 +335,7 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Collision\Debug\ColliderDebugRenderer.cpp" />
     <ClCompile Include="Engine\Src\Editor\Inspector\ColliderInspector.cpp" />
     <ClCompile Include="Engine\Src\Editor\Inspector\SpriteAnimatorInspector.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Inspector\ShaderMaterialInspector.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\SceneSettingsPanel.cpp" />
     <ClCompile Include="Engine\Src\Collision\CollisionConfig.cpp" />
     <ClCompile Include="Engine\Src\Collision\CollisionLayer.cpp" />
@@ -383,6 +384,10 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Graphics\RHI\Resource\GpuResource.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\MaterialInstance.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\SpriteMaterialInstance.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Material\ShaderMaterial.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Material\ShaderMaterialLibrary.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Material\ShaderMaterialPipeline.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Material\ShaderMaterialSlot.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\SkeletonAnimatorFactory.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Pipeline\CustomShaderPipeline.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Bloom\Bloom.cpp" />
@@ -1301,6 +1306,7 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Collision\Debug\ColliderDebugRenderer.h" />
     <ClInclude Include="Engine\Src\Editor\Inspector\ColliderInspector.h" />
     <ClInclude Include="Engine\Src\Editor\Inspector\SpriteAnimatorInspector.h" />
+    <ClInclude Include="Engine\Src\Editor\Inspector\ShaderMaterialInspector.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\SceneSettingsPanel.h" />
     <ClInclude Include="Engine\Src\Collision\CollisionConfig.h" />
     <ClInclude Include="Engine\Src\Collision\CollisionLayer.h" />
@@ -1355,6 +1361,10 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Graphics\Material\MaterialConstants.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\MaterialInstance.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\SpriteMaterialInstance.h" />
+    <ClInclude Include="Engine\Src\Graphics\Material\ShaderMaterial.h" />
+    <ClInclude Include="Engine\Src\Graphics\Material\ShaderMaterialLibrary.h" />
+    <ClInclude Include="Engine\Src\Graphics\Material\ShaderMaterialPipeline.h" />
+    <ClInclude Include="Engine\Src\Graphics\Material\ShaderMaterialSlot.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\UIMaterialInstance.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Animation\IAnimationControllerFactory.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Animation\SkeletonAnimatorFactory.h" />

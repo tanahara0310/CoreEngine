@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.19.0">
+<meta name="engine-version" content="0.20.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2737,6 +2737,7 @@ kbd {
       <tr><td>テクスチャ</td><td><code>.png</code> <code>.jpg</code> <code>.jpeg</code> <code>.bmp</code> <code>.tga</code> <code>.dds</code> <code>.hdr</code></td><td>テクスチャの欄・SpriteRenderer・Game ビュー（スプライトを作る）</td></tr>
       <tr><td>音</td><td><code>.wav</code> <code>.mp3</code></td><td>音の欄（AudioSource など）</td></tr>
       <tr><td>プレハブ</td><td><code>.prefab</code></td><td>Game ビュー（置く）・プレハブの欄</td></tr>
+      <tr><td>マテリアル</td><td><code>.mat</code></td><td>スプライト描画と UI 画像の <span class="ui">マテリアル</span> の欄</td></tr>
       <tr><td>スクリプト</td><td><code>.as</code></td><td>（ドラッグでは使わない）</td></tr>
       <tr><td>データ</td><td><code>.json</code> <code>.csv</code></td><td>—</td></tr>
     </tbody>
@@ -2751,6 +2752,7 @@ kbd {
     <tbody>
       <tr><td>フォルダを作る</td><td>空いている所を右クリック <span class="ui">フォルダを作成...</span></td></tr>
       <tr><td>スクリプトを作る</td><td><span class="ui">＋ 作成</span>、または右クリック <span class="ui">スクリプトを作成...</span>。<a href="#script-first">詳しく</a></td></tr>
+      <tr><td>マテリアルを作る</td><td>右クリック <span class="ui">マテリアルを作成...</span>（シェーダの雛形も作れます）。選ぶとインスペクタで値を変えられます。<a href="#script-material">詳しく</a></td></tr>
       <tr><td>名前を変える</td><td><kbd>F2</kbd>、または右クリック <span class="ui">名前を変更</span>（.meta も一緒に変わり、GUID は保たれます）</td></tr>
       <tr><td>コピー・切り取り・貼り付け</td><td><kbd>Ctrl</kbd>+<kbd>C</kbd> ／ <kbd>X</kbd> ／ <kbd>V</kbd>（コピーには新しい GUID が付きます）</td></tr>
       <tr><td>削除</td><td><kbd>Delete</kbd>（ごみ箱へ送るので、エクスプローラのごみ箱から戻せます）</td></tr>
@@ -5243,6 +5245,148 @@ kbd {
   <p><code>Scene::ChangeScene</code> 自体にも、短い読み込みの暗転が入ります（<a href="#script-scenes">シーンの切り替え</a>）。</p>
 </article>
 
+<article class="page" id="script-material" data-group="スクリプト" data-title="マテリアルとシェーダ（スプライト・UI 画像）" data-nav="マテリアルとシェーダ" data-keywords="マテリアル material mat シェーダ shader hlsl ピクセルシェーダ 独自 自作 光る 点滅 グロー ディゾルブ 効果 shadermaterial setmaterialfloat setmaterialvector 上書き 共有 スプライト ui 画像 定数バッファ cbuffer constantbuffer spritematerial.hlsli コマ割り">
+  <h1>マテリアルとシェーダ（スプライト・UI 画像）</h1>
+  <p class="lead"><a href="#api-SpriteRenderer">スプライト描画</a> と <a href="#api-UIImage">UI 画像</a> の描き方を、自分で書いたピクセルシェーダで決めます。シェーダと、シェーダへ渡す値をまとめたファイルが<strong>マテリアル（.mat）</strong>です。</p>
+
+  <h2 id="material-overview">仕組み</h2>
+  <ul>
+    <li>マテリアルは、<strong>ピクセルシェーダ（.hlsl）</strong>・<strong>値</strong>・<strong>テクスチャ</strong>を持つファイルです。スプライト描画と UI 画像の <span class="ui">マテリアル</span> 欄で指します。指さなければ、これまでどおり「テクスチャ × 色」で描きます。</li>
+    <li>同じ .mat を指す部品は、中身を<strong>共有</strong>します。値を変えると全員の見た目が変わります。</li>
+    <li>1 枚だけ違う値にしたいときは、部品ごとの<strong>上書き</strong>を使います（Unity の MaterialPropertyBlock にあたります）。上書きはスクリプトから決めるもので、保存しません。</li>
+    <li>値は「上書き → マテリアル → 0」の順に引きます。</li>
+    <li>ブレンド・描画順（ソートレイヤー・レイヤー内の順）・コマ割り・反転は、マテリアルを付けても部品の設定がそのまま効きます。</li>
+  </ul>
+
+  <h2 id="material-create">マテリアルを作る</h2>
+  <ol class="steps">
+    <li>Project の一覧の空いている所を右クリックし、<span class="ui">マテリアルを作成...</span> を選びます。</li>
+    <li>名前を入れて <span class="ui">作成</span> を押すと、今のフォルダに <span class="path">名前.mat</span> と、シェーダの雛形 <span class="path">名前.PS.hlsl</span> ができます（雛形が要らなければチェックを外す）。</li>
+    <li>できた .mat を、スプライト描画（か UI 画像）の <span class="ui">マテリアル</span> 欄へドラッグします。</li>
+    <li>.mat を選ぶと、インスペクタにシェーダと値の欄が出ます。部品の欄の下の <span class="ui">マテリアルの中身</span> からも同じ欄を開けます。</li>
+  </ol>
+  <p>雛形のシェーダは、テクスチャ × 部品の色に <code>tint</code> を掛け、明るさを <code>speed</code> の速さで揺らします。</p>
+
+  <h2 id="material-shader">シェーダを書く</h2>
+  <p>ピクセルシェーダの入口は <code>main</code> です。先頭で <span class="path">SpriteMaterial.hlsli</span> を読み込みます。値は <code>register(b0)</code> の定数バッファに書きます。</p>
+  <script type="text/x-code" data-lang="text" data-file="Application/Assets/Materials/Glow.PS.hlsl">
+    #include "SpriteMaterial.hlsli"
+
+    struct Params
+    {
+        float4 glowColor; // 縁に足す色（1 より大きくすると光って見える）
+        float  width;     // 縁の太さ（UV）
+        float  speed;     // 明滅の速さ
+    };
+    ConstantBuffer<Params> gMaterial : register(b0);
+
+    float4 main(SpriteVertexOutput input) : SV_TARGET0
+    {
+        float4 color = SpriteDefaultColor(input);
+
+        // 絵の外側に近いほど縁の色を足す
+        float2 uv = SpriteUV(input.texcoord);
+        float edge = 1.0f - smoothstep(0.0f, gMaterial.width, min(min(uv.x, 1.0f - uv.x), min(uv.y, 1.0f - uv.y)));
+        float pulse = 0.5f + 0.5f * sin(gSpriteDraw.time * gMaterial.speed);
+        color.rgb += gMaterial.glowColor.rgb * edge * pulse * color.a;
+        return color;
+    }
+  </script>
+
+  <h3 id="material-shader-inputs">エンジンが渡すもの</h3>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>名前</th><th>中身</th></tr></thead>
+    <tbody>
+      <tr><td><code>input.texcoord</code></td><td>UV。コマ割り・反転・<span class="ui">UV 左上 ／ UV 右下</span> を済ませた値。</td></tr>
+      <tr><td><code>input.worldPos</code></td><td>スプライトはワールド座標、UI 画像は画面の px（左上が原点・Y は下向き）。</td></tr>
+      <tr><td><code>gTexture</code></td><td>部品のテクスチャ（UI 画像でテクスチャを指していなければ白）。</td></tr>
+      <tr><td><code>gSpriteDraw.color</code></td><td>部品の色（sRGB のまま）。リニアにした値は <code>SpriteColor()</code>。</td></tr>
+      <tr><td><code>gSpriteDraw.uvTransform</code></td><td>部品の <span class="ui">UV の移動・倍率・回転</span>。掛けた UV は <code>SpriteUV(input.texcoord)</code>。</td></tr>
+      <tr><td><code>gSpriteDraw.textureSize</code></td><td>テクスチャの大きさ（px）。</td></tr>
+      <tr><td><code>gSpriteDraw.time</code> ／ <code>unscaledTime</code> ／ <code>deltaTime</code></td><td>起動からの時間（時間の倍率が掛かる）／ 実時間 ／ 前のフレームからの時間。</td></tr>
+      <tr><td><code>gSpriteDraw.filterMode</code></td><td>部品のフィルタ（0 = 線形、1 = ポイント）。</td></tr>
+      <tr><td><code>gSampler</code> ／ <code>gPointSampler</code> ／ <code>gClampSampler</code></td><td>線形・繰り返し ／ 最も近い画素・繰り返し ／ 線形・端で止める。</td></tr>
+      <tr><td><code>SampleSprite(uv)</code></td><td>部品のフィルタの設定で <code>gTexture</code> を読む。</td></tr>
+      <tr><td><code>SpriteDefaultColor(input)</code></td><td>マテリアルを付けていないときと同じ色（テクスチャ × 部品の色）。</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3 id="material-shader-values">値とテクスチャ</h3>
+  <ul>
+    <li><code>register(b0)</code> の定数バッファの項目が、そのままマテリアルの値になります。<code>cbuffer 名前 { … }</code> と <code>ConstantBuffer&lt;構造体&gt;</code> のどちらでも書けます。</li>
+    <li>使える型は <code>float</code>・<code>int</code>・<code>uint</code>・<code>bool</code> と、その 2〜4 成分（<code>float4</code> など）、それらの配列です。行列と、構造体の入れ子は使えません。</li>
+    <li>名前に <code>color</code> を含む 3〜4 成分の <code>float</code> は、インスペクタで色の欄になります（1 より大きい値も入れられます）。</li>
+    <li><code>gTexture</code> のほかに <code>Texture2D</code> を書くと、マテリアルのテクスチャの欄になります（指さなければ白）。</li>
+    <li>シェーダを保存すると、エディタが作り直します。読み込んでいる <span class="path">.hlsli</span> だけを変えたときは、<span class="path">.hlsl</span> も保存し直してください。</li>
+    <li>コンパイルできないときは、その部品をマゼンタで描き、コンソールにエラーを出します。</li>
+  </ul>
+
+  <h3 id="material-vertex">頂点シェーダ</h3>
+  <p>ふつうは書かなくて構いません。標準の頂点シェーダが位置・UV・<code>worldPos</code> を渡します。頂点を動かしたいときだけ、入口が <code>main</code> の頂点シェーダを書いて .mat の <span class="ui">頂点シェーダ</span> で指します。</p>
+  <script type="text/x-code" data-lang="text" data-file="Application/Assets/Materials/Wave.VS.hlsl">
+    #include "SpriteMaterial.hlsli"
+
+    SpriteVertexOutput main(SpriteVertexInput input)
+    {
+        SpriteVertexOutput output;
+        float4 position = input.position;
+        position.x += sin(gSpriteDraw.time * 3.0f + position.y * 4.0f) * 0.05f; // 横に揺らす
+        output.position = mul(position, gSpriteTransform.WVP);
+        output.texcoord = input.texcoord;
+        output.worldPos = mul(position, gSpriteTransform.World).xyz;
+        return output;
+    }
+  </script>
+
+  <h2 id="material-script">スクリプトから値を変える</h2>
+  <p>共有の値（同じマテリアルの全員に効く）は <a href="#api-ShaderMaterial">ShaderMaterial</a> で変えます。1 枚だけの値は、部品の <code>SetMaterialFloat</code> などで上書きします。</p>
+  <script type="text/x-code" data-lang="as" data-file="Application/Assets/Scripts/GlowControl.as">
+    using namespace CoreEngine;
+
+    class GlowControl : ScriptComponent
+    {
+        private ShaderMaterial@ glow_;
+
+        void Start()
+        {
+            // 同じマテリアルを指す全員で共有している中身を引く
+            @glow_ = ShaderMaterial("Materials/Glow.mat");
+        }
+
+        void Update()
+        {
+            // 全員の縁の色を変える
+            glow_.SetVector("glowColor", Vector4(2.0f, 1.2f, 0.4f, 1.0f));
+
+            // このスプライトだけ速く点滅させる
+            owner.spriteRenderer.SetMaterialFloat("speed", 12.0f);
+        }
+    }
+  </script>
+  <ul>
+    <li>マテリアルの差し替えは <code>owner.spriteRenderer.material = "Application/Assets/Materials/Glow.mat";</code>（空にすると標準の描き方へ戻る）。UI 画像は <code>owner.uiImage.material</code> です。</li>
+    <li>配列の要素は <code>"名前[番号]"</code> で指します（例：<code>SetMaterialVector("points[2]", v)</code>）。</li>
+    <li>再生中にスクリプトが変えた共有の値は、再生を止めるとファイルの中身へ戻ります。インスペクタで変えた値は .mat に保存します。</li>
+    <li>上書きをやめるのは <code>ClearMaterialOverrides()</code> です。</li>
+  </ul>
+
+  <h2 id="material-ui">UI 画像で使う</h2>
+  <ul>
+    <li>UI 画像にも同じマテリアルを付けられます。<code>input.worldPos</code> は画面の px です。</li>
+    <li>UI 画像はトーンマップの後に重ねるので、出した色がほぼそのまま画面の色になります。スプライトはトーンマップとポストエフェクトの前に描くので、1 より大きい色もブルームなどの効果を受けます。</li>
+    <li>UI 画像にもコマ割り（<span class="ui">横のコマ数</span>・<span class="ui">縦のコマ数</span>・<span class="ui">コマ</span>）があります。ボタンや数字を 1 枚のシートにまとめた画像から 1 コマを出せます。<code>SetNativeSize()</code> は大きさを 1 コマの画素数にします。</li>
+  </ul>
+
+  <h2 id="material-notes">書き出しと注意</h2>
+  <ul>
+    <li>ゲームを書き出すと、.mat が指すシェーダを DXIL（コンパイル済みのシェーダ）にして入れます（<a href="#editor-export">ゲームを書き出す</a>）。</li>
+    <li>マテリアルを付けたスプライトも、深度は書きません。前後は描く順番で決まります。</li>
+    <li>.mat の中身の書き方は <a href="#format-material">ファイルの形式</a> にあります。</li>
+  </ul>
+</article>
+
 <article class="page" id="script-editor" data-group="エディタの拡張" data-title="エディタの拡張の概要" data-nav="概要" data-keywords="エディタ拡張 エディタの拡張 editorwindow editorgui editor menuitem ツール 道具 マップ生成 ステージ 配置 自作 ウィンドウ メニュー undo 取り消し canvas 描く unity ノード ノードエディタ グラフ ピン つながり リンク 会話 ダイアログ シーンビュー ハンドル ギズモ gizmos handles onscenegui クリック 配置 レイ インスペクタ customeditor componenteditor グラフ カーブ 曲線 時間軸 タイムライン テスト 試す 確かめる チェック 見本 概要 自作エディタ 自作 道具">
   <h1>エディタの拡張の概要</h1>
   <p class="lead">マップの自動生成やステージの配置のような、ゲームごとの道具（自作のエディタ）を AngelScript で作り、エディタのメニューから開けます。ウィンドウ・メニュー・インスペクタ・シーンビューの道具・ギズモを、Unity の <code>EditorWindow</code>・<code>[MenuItem]</code>・<code>CustomEditor</code> に近い書き方で作れます。</p>
@@ -7106,6 +7250,7 @@ kbd {
       <tr><td>絵を出す</td><td><a href="#api-SpriteRenderer">スプライト描画</a></td><td><a href="#g2d-sprite">絵を出す</a></td></tr>
       <tr><td>重なりの順番を決める</td><td>ソートレイヤー・レイヤー内の順</td><td><a href="#g2d-order">重なりの順番</a></td></tr>
       <tr><td>パラパラアニメ</td><td>コマ割り・<a href="#api-SpriteAnimator">スプライトアニメ</a></td><td><a href="#g2d-anim">アニメ</a></td></tr>
+      <tr><td>光る・点滅など描き方を変える</td><td>マテリアル（.mat）と自分のシェーダ・<a href="#api-ShaderMaterial">ShaderMaterial</a></td><td><a href="#script-material">マテリアルとシェーダ</a></td></tr>
       <tr><td>操作を読む</td><td><a href="#api-Input">Input</a>（アクション・マウス）</td><td><a href="#g2d-input">操作</a></td></tr>
       <tr><td>動かす</td><td>トランスフォーム、または <a href="#api-Rigidbody">剛体</a></td><td><a href="#g2d-move">動かす</a></td></tr>
       <tr><td>当たり判定</td><td><a href="#api-Collider">コライダー</a>・トリガー・<a href="#api-Physics">Physics</a></td><td><a href="#g2d-collision">当たり判定</a></td></tr>
@@ -9067,7 +9212,7 @@ python Tools/OkinawaBeach/bake_player_walk.py
   </ul>
 </article>
 
-<article class="page" id="file-formats" data-group="困ったとき・資料" data-title="ファイルの形式" data-keywords="ファイル 形式 フォーマット json scene _scene.json _environment.json プレハブ prefab meta guid project.json layers.json inputactions.json cvars.json savefile physmat 対応形式 拡張子">
+<article class="page" id="file-formats" data-group="困ったとき・資料" data-title="ファイルの形式" data-keywords="ファイル 形式 フォーマット json scene _scene.json _environment.json プレハブ prefab meta guid project.json layers.json inputactions.json cvars.json savefile physmat mat マテリアル 対応形式 拡張子">
   <h1>ファイルの形式</h1>
   <p class="lead">エディタが書くファイルの中身です。ふだんはエディタから編集しますが、git の差分を読むときや、手で直すときの参考にしてください。</p>
 
@@ -9185,6 +9330,33 @@ python Tools/OkinawaBeach/bake_player_walk.py
   </table>
   </div>
 
+  <h2 id="format-material">マテリアル（.mat）</h2>
+  <p>スプライト描画と UI 画像に付けるマテリアルです（<a href="#script-material">マテリアルとシェーダ</a>）。インスペクタで編集すると書き直されます。</p>
+  <script type="text/x-code" data-lang="json" data-file="Application/Assets/Materials/Glow.mat">
+    {
+        "shader": { "guid": "…", "path": "Application/Assets/Materials/Glow.PS.hlsl" },
+        "values": {
+            "glowColor": [2.0, 1.2, 0.4, 1.0],
+            "speed": 4.0,
+            "points": [[0.0, 0.0], [1.0, 0.5]]
+        },
+        "textures": {
+            "gNoise": { "guid": "…", "path": "Application/Assets/Textures/noise.png", "linear": true }
+        }
+    }
+  </script>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>キー</th><th>意味</th></tr></thead>
+    <tbody>
+      <tr><td><code>shader</code></td><td>ピクセルシェーダ（入口は <code>main</code>）。パスの文字列でも書けます</td></tr>
+      <tr><td><code>vertexShader</code></td><td>頂点シェーダ（書かなければ標準）</td></tr>
+      <tr><td><code>values</code></td><td>シェーダの <code>register(b0)</code> の項目の値。数か、4 個までの数の配列。配列の項目は要素ごとの配列を並べる。書いていない項目は 0</td></tr>
+      <tr><td><code>textures</code></td><td><code>gTexture</code> のほかのテクスチャ。<code>linear</code> を true にすると色でなくデータとして読む（sRGB からリニアへ直さない）</td></tr>
+    </tbody>
+  </table>
+  </div>
+
   <h2 id="format-saved">セーブデータ（SaveFile）</h2>
   <p><code>SaveFile("MyGame/Record.json")</code> は <span class="path">Application/Saved/MyGame/Record.json</span> を読み書きします。中身は、<code>Set…</code> で入れた名前と値の JSON です。</p>
   <script type="text/x-code" data-lang="json" data-file="Application/Saved/MyGame/Record.json">
@@ -9202,6 +9374,7 @@ python Tools/OkinawaBeach/bake_player_walk.py
       <tr><td>音</td><td><span class="path">.wav</span>・<span class="path">.mp3</span></td></tr>
       <tr><td>フォント</td><td><span class="path">.ttf</span>・<span class="path">.otf</span></td></tr>
       <tr><td>物理マテリアル</td><td><span class="path">.physmat</span>（<a href="#api-PhysicsMaterial">書き方</a>）</td></tr>
+      <tr><td>マテリアル（スプライト・UI 画像）</td><td><span class="path">.mat</span>（<a href="#format-material">書き方</a>）・シェーダは <span class="path">.hlsl</span></td></tr>
     </tbody>
   </table>
   </div>
@@ -9272,6 +9445,17 @@ python Tools/OkinawaBeach/bake_player_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-20-0">v0.20.0 <span class="dim">（2026-10-20）</span></h3>
+  <p>スプライト描画と UI 画像の描き方を、自分で書いたシェーダで決められるようにした版です（<a href="#script-material">マテリアルとシェーダ</a>）。</p>
+  <ul>
+    <li><strong>マテリアル（.mat）</strong>：ピクセルシェーダ・値・テクスチャをまとめたファイルです。スプライト描画と UI 画像に <span class="ui">マテリアル</span> の欄を足しました。値はシェーダの <code>register(b0)</code> の定数バッファから読み取り、インスペクタの欄になります。同じ .mat を指す部品は中身を共有します。</li>
+    <li><strong>シェーダの書き方</strong>：<span class="path">SpriteMaterial.hlsli</span> を読み込み、ピクセルシェーダの <code>main</code> だけを書きます。標準の頂点シェーダがワールド座標も渡します。時間・部品の色・UV の変換などはエンジンが渡します。</li>
+    <li><strong>スクリプト</strong>：共有の値は新しい型 <a href="#api-ShaderMaterial">ShaderMaterial</a> で、1 枚だけの値は部品の <code>SetMaterialFloat</code>・<code>SetMaterialVector</code> などで変えます。再生を止めると共有の値はファイルの中身へ戻ります。</li>
+    <li><strong>エディタ</strong>：Project の右クリックに <span class="ui">マテリアルを作成...</span>（シェーダの雛形つき）を足しました。.mat を選ぶか、部品の下の <span class="ui">マテリアルの中身</span> で値を変えられます。シェーダを保存すると作り直します。</li>
+    <li><strong>UI 画像のコマ割り</strong>：UI 画像に <span class="ui">横のコマ数</span>・<span class="ui">縦のコマ数</span>・<span class="ui">コマ</span> を足しました。<code>SetNativeSize()</code> は 1 コマの大きさにします。</li>
+    <li>ゲームの書き出しで、.mat が指すシェーダもコンパイル済みのシェーダにして入れます。</li>
+  </ul>
 
   <h3 id="changelog-v0-19-0">v0.19.0 <span class="dim">（2026-10-19）</span></h3>
   <p>スクリプトで辞書（C++ の <code>std::map</code> にあたる入れ物）を使えるようにした版です（<a href="#lang-strings-arrays">文字列・配列・辞書</a>・<a href="#api-dictionary">dictionary</a>）。</p>
@@ -10811,6 +10995,54 @@ void Change()
       }
     ],
     see: [["script-scenes", "シーン遷移"]]
+  },
+
+  {
+    id: "ShaderMaterial", kind: "class", cat: "描画", brief: "スプライトと UI 画像のマテリアル（共有の値）",
+    keywords: "マテリアル material mat シェーダ shader 値 共有 光る 点滅 setfloat setvector",
+    summary: "マテリアル（.mat）を引いて、共有の値を読み書きします。値を変えると、同じマテリアルを指すスプライト描画と UI 画像の全部に効きます。1 枚だけ変えるときは部品の <code>SetMaterialFloat</code> などを使います（<a href=\"#script-material\">マテリアルとシェーダ</a>）。",
+    intro: "<p>パスは <span class=\"path\">Application/Assets</span> からの相対パス、<code>Application/Assets/</code> から始まるパス、ファイル名のどれでも引けます。同じマテリアルは何度引いても同じ中身です。再生中に変えた値は、再生を止めるとファイルの中身へ戻ります（ファイルは書き換えません）。</p>",
+    sections: [
+      {
+        title: "作る", members: [
+          { n: "ShaderMaterial", s: "ShaderMaterial(const string&in path)", t: "ctor", d: "マテリアルを引きます（初めてなら読み込む）。見つからなければ <code>isValid</code> が false になり、警告を出します。" },
+          { n: "isValid", s: "bool isValid", t: "ro", d: "マテリアルを読めたか。" },
+          { n: "path", s: "string path", t: "ro", d: "マテリアルのパス（<span class=\"path\">Application/Assets/…</span>）。" },
+          { n: "shader", s: "string shader", t: "ro", d: "ピクセルシェーダのパス。" }
+        ]
+      },
+      {
+        title: "値", members: [
+          { n: "SetFloat", s: "void SetFloat(const string&in name, float value)", t: "m", d: "数の値を決めます。配列の要素は <code>\"名前[番号]\"</code>。" },
+          { n: "SetInt", s: "void SetInt(const string&in name, int value)", t: "m", d: "整数の値を決めます。" },
+          { n: "SetVector", s: "void SetVector(const string&in name, const Vector4&in value)", t: "m", d: "ベクトル・色の値を決めます（float2・float3 の項目は先頭から使う）。" },
+          { n: "SetTexture", s: "void SetTexture(const string&in name, const string&in texturePath)", t: "m", d: "テクスチャを決めます。空のパスで外します（白になる）。" },
+          { n: "GetFloat", s: "float GetFloat(const string&in name) const", t: "m", d: "数の値（無ければ 0）。" },
+          { n: "GetVector", s: "Vector4 GetVector(const string&in name) const", t: "m", d: "ベクトルの値（足りない成分は 0）。" },
+          { n: "Revert", s: "void Revert()", t: "m", d: "ファイルの中身へ戻します。" }
+        ]
+      }
+    ],
+    examples: [
+      {
+        title: "例：自機の位置を、ブロック全部のシェーダへ渡す",
+        code: `
+[ObjectRef] GameObject@ player;
+private ShaderMaterial@ blocks_;
+
+void Start()
+{
+    @blocks_ = ShaderMaterial("Materials/Block.mat");
+}
+
+void Update()
+{
+    const Vector3 p = player.transform.position;
+    blocks_.SetVector("playerPos", Vector4(p.x, p.y, 0.0f, 0.0f));   // 同じマテリアルのブロック全部に効く
+}`
+      }
+    ],
+    see: [["script-material", "マテリアルとシェーダ"], ["api-SpriteRenderer", "スプライト描画"], ["api-UIImage", "UI 画像"]]
   },
 
   {
@@ -13987,6 +14219,7 @@ void Update()
     props: [
       ["テクスチャ", "texture", "string（テクスチャ）", "なし", "描く画像。Project からドラッグできます。無いと何も描きません。"],
       ["カラー", "color", "Vector4（色）", "(1, 1, 1, 1)", "掛け合わせる色（sRGB）。"],
+      ["マテリアル", "material", "string（マテリアル）", "なし", "描き方を決めるシェーダと値（.mat）。指さなければテクスチャ × カラーで描く（<a href=\"#script-material\">マテリアルとシェーダ</a>）。"],
       ["1 単位のピクセル数", "pixelsPerUnit", "float", "100", "画像の何ピクセルを 1 単位（1 m）にするか。大きいほど小さく描きます。"],
       ["フィルタ", "filter", "int", "0", "0 = 線形、1 = ポイント（拡大してもにじまない。ドット絵向け）"],
       ["アンカー", "anchor", "Vector2", "(0.5, 0.5)", "画像のどこを位置に合わせるか（(0, 0) が左上、(1, 1) が右下）。"],
@@ -14002,6 +14235,19 @@ void Update()
       ["レイヤー内の順", "orderInLayer", "int", "0", "同じソートレイヤーの中で、大きいほど手前に描く。"],
       ["（テクスチャの大きさ）", "textureSize", "Vector2", "", "読み取り専用。画像のピクセル数。"],
       ["（板の大きさ）", "size", "Vector2", "", "読み取り専用。スケールを掛ける前の 1 コマぶんの板の大きさ（m）。"]
+    ],
+    sections: [
+      {
+        title: "マテリアルの値の上書き（このスプライトだけ）", members: [
+          { n: "SetMaterialFloat", s: "void SetMaterialFloat(const string&in name, float value)", t: "m", d: "マテリアルの値（数）を、このスプライトだけ上書きします。配列の要素は <code>\"名前[番号]\"</code>。" },
+          { n: "SetMaterialInt", s: "void SetMaterialInt(const string&in name, int value)", t: "m", d: "整数の値を上書きします。" },
+          { n: "SetMaterialVector", s: "void SetMaterialVector(const string&in name, const Vector4&in value)", t: "m", d: "ベクトル・色の値を上書きします（float2・float3 の項目は先頭から使う）。" },
+          { n: "SetMaterialTexture", s: "void SetMaterialTexture(const string&in name, const string&in texturePath)", t: "m", d: "テクスチャを上書きします。空のパスで上書きをやめます。" },
+          { n: "ClearMaterialOverrides", s: "void ClearMaterialOverrides()", t: "m", d: "このスプライトの上書きを全部やめ、マテリアルの値に戻します。" },
+          { n: "GetMaterialFloat", s: "float GetMaterialFloat(const string&in name)", t: "m", d: "値（上書き → マテリアルの順。無ければ 0）。" },
+          { n: "GetMaterialVector", s: "Vector4 GetMaterialVector(const string&in name)", t: "m", d: "ベクトルの値（足りない成分は 0）。" }
+        ]
+      }
     ],
     notes: "<ul>" +
       "<li>板の大きさは「1 コマのピクセル数 ÷ 1 単位のピクセル数 × トランスフォームのスケール」です。100×100 ピクセルの画像は、既定で 1 m × 1 m になります。</li>" +
@@ -14029,7 +14275,7 @@ void Update()
 }`
       }
     ],
-    see: [["api-SpriteAnimator", "スプライトアニメ"], ["api-Camera", "カメラ"], ["api-UIImage", "UI 画像"], ["scenes-new", "新しいシーンを作る"], ["guide-2d", "2D ゲームの作り方"]]
+    see: [["api-SpriteAnimator", "スプライトアニメ"], ["api-Camera", "カメラ"], ["api-UIImage", "UI 画像"], ["api-ShaderMaterial", "ShaderMaterial"], ["script-material", "マテリアルとシェーダ"], ["scenes-new", "新しいシーンを作る"], ["guide-2d", "2D ゲームの作り方"]]
   },
 
   {
@@ -14735,7 +14981,10 @@ void AddScore(int points)
     requires: "UI トランスフォーム（自動で足します）",
     props: [
       ["テクスチャ", "", "テクスチャ", "白 1×1", "空なら白い四角（色を付けてパネルやゲージにできる）。"],
-      ["色", "color", "Vector4（色）", "白", "掛け合わせる色。"]
+      ["色", "color", "Vector4（色）", "白", "掛け合わせる色。"],
+      ["マテリアル", "material", "string（マテリアル）", "なし", "描き方を決めるシェーダと値（.mat）。指さなければテクスチャ × 色で描く（<a href=\"#script-material\">マテリアルとシェーダ</a>）。"],
+      ["横のコマ数 ／ 縦のコマ数", "columns ／ rows", "int", "1 ／ 1", "テクスチャを横と縦に何コマへ分けるか（ボタンや数字を並べたシート用）。"],
+      ["コマ", "frame", "int", "0", "描くコマ。左上を 0 として右へ数え、行の終わりで次の行へ進む。範囲外は端のコマに丸める。"]
     ],
     sections: [
       {
@@ -14743,6 +14992,18 @@ void AddScore(int points)
           { n: "size", s: "Vector2 size", t: "rw", d: "表示の大きさ（px）。" },
           { n: "texture", s: "string texture", t: "rw", d: "テクスチャのパス（<span class=\"path\">Application/Assets/Textures/UI/pip.png</span> など）。書くと絵が差し替わります。空なら白い四角。表示の大きさは変わりません。" },
           { n: "textureSize", s: "Vector2 textureSize", t: "ro", d: "テクスチャ本来の大きさ（px）。" },
+          { n: "columns", s: "int columns", t: "rw", d: "横のコマ数。" },
+          { n: "rows", s: "int rows", t: "rw", d: "縦のコマ数。" },
+          { n: "frame", s: "int frame", t: "rw", d: "描くコマ。" },
+          { n: "SetNativeSize", s: "void SetNativeSize()", t: "m", d: "表示の大きさを 1 コマの画素数にします。" },
+          { n: "material", s: "string material", t: "rw", d: "マテリアル（.mat）のパス。空なら標準の描き方。" },
+          { n: "SetMaterialFloat", s: "void SetMaterialFloat(const string&in name, float value)", t: "m", d: "マテリアルの値（数）を、この UI 画像だけ上書きします。" },
+          { n: "SetMaterialInt", s: "void SetMaterialInt(const string&in name, int value)", t: "m", d: "整数の値を上書きします。" },
+          { n: "SetMaterialVector", s: "void SetMaterialVector(const string&in name, const Vector4&in value)", t: "m", d: "ベクトル・色の値を上書きします。" },
+          { n: "SetMaterialTexture", s: "void SetMaterialTexture(const string&in name, const string&in texturePath)", t: "m", d: "テクスチャを上書きします。空のパスで上書きをやめます。" },
+          { n: "ClearMaterialOverrides", s: "void ClearMaterialOverrides()", t: "m", d: "上書きを全部やめます。" },
+          { n: "GetMaterialFloat", s: "float GetMaterialFloat(const string&in name) const", t: "m", d: "値（上書き → マテリアルの順。無ければ 0）。" },
+          { n: "GetMaterialVector", s: "Vector4 GetMaterialVector(const string&in name) const", t: "m", d: "ベクトルの値。" },
           { n: "color", s: "Vector4 color", t: "rw", d: "色。" },
           { n: "anchoredPosition", s: "Vector2 anchoredPosition", t: "rw", d: "アンカーからの位置（px）。" },
           { n: "anchor", s: "UIAnchor anchor", t: "rw", d: "アンカー。" },
@@ -14774,7 +15035,7 @@ void SetHp(float ratio)   // 0〜1
 }`
       }
     ],
-    see: [["script-ui", "UI を作る"], ["api-UIButton", "UI ボタン"]]
+    see: [["script-ui", "UI を作る"], ["api-UIButton", "UI ボタン"], ["script-material", "マテリアルとシェーダ"]]
   },
 
   {

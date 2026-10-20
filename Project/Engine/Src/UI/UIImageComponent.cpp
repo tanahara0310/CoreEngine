@@ -10,7 +10,12 @@
 #include "Graphics/Render/UI/UIRenderer.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/UploadRing.h"
 #include "UI/RectTransformComponent.h"
+#include "Utility/FrameRate/Time.h"
+
+#include <algorithm>
+#include <cstring>
 
 REFLECT_REGISTER(CoreEngine::UIImageComponent)
 COMPONENT_REGISTER(CoreEngine::UIImageComponent)
@@ -39,6 +44,7 @@ namespace CoreEngine
         ResolveRenderer();
         CreateGpuResources();
         LoadTexture();
+        materialSlot_.Resolve();
     }
 
     void UIImageComponent::ResolveRenderer()
@@ -57,12 +63,6 @@ namespace CoreEngine
 
         GraphicsCore* const graphics = renderer_->GetGraphicsCore();
         if (!graphics) { return; }
-
-        // 頂点バッファ（4 頂点の矩形）
-        vertexResource_ = ResourceFactory::CreateBufferResource(graphics->GetDevice(), sizeof(VertexData) * 4);
-        vertexBufferView_.BufferLocation = vertexResource_->GetGPUVirtualAddress();
-        vertexBufferView_.SizeInBytes = sizeof(VertexData) * 4;
-        vertexBufferView_.StrideInBytes = sizeof(VertexData);
 
         // インデックスバッファ
         indexResource_ = ResourceFactory::CreateBufferResource(graphics->GetDevice(), sizeof(uint32_t) * 6);
@@ -126,7 +126,44 @@ namespace CoreEngine
     {
         RectTransformComponent* const rect = GetRectTransform();
         if (rect && textureSize_.x > 0.0f && textureSize_.y > 0.0f) {
-            rect->SetSize(textureSize_);
+            rect->SetSize({ textureSize_.x / static_cast<float>(columns_), textureSize_.y / static_cast<float>(rows_) });
+        }
+    }
+
+    void UIImageComponent::SetColumns(int columns)
+    {
+        columns_ = (std::max)(columns, 1);
+        verticesDirty_ = true;
+    }
+
+    void UIImageComponent::SetRows(int rows)
+    {
+        rows_ = (std::max)(rows, 1);
+        verticesDirty_ = true;
+    }
+
+    void UIImageComponent::SetFrame(int frame)
+    {
+        if (frame_ != frame) {
+            frame_ = frame;
+            verticesDirty_ = true;
+        }
+    }
+
+    void UIImageComponent::SetMaterial(const std::string& materialPath)
+    {
+        Reflection::AssetRefValue value;
+        if (!materialPath.empty()) {
+            AssetRef<ShaderMaterialAsset> reference(materialPath);
+            value = reference.GetValue();
+        }
+        SetMaterialAsset(value);
+    }
+
+    void UIImageComponent::SetMaterialAsset(const Reflection::AssetRefValue& value)
+    {
+        if (materialSlot_.SetAsset(value) && awoken_) {
+            materialSlot_.Resolve();
         }
     }
 
@@ -153,10 +190,7 @@ namespace CoreEngine
 
     void UIImageComponent::UpdateVertexData(const Vector2& pivot)
     {
-        if (!vertexResource_) { return; }
-
-        VertexData* vertexData = nullptr;
-        vertexResource_->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
+        VertexData* const vertexData = vertices_.data();
 
         // 大きさ 1 の矩形を、基準点が原点に来るようにずらす（Y 下正）
         const float left = -pivot.x;
@@ -164,28 +198,37 @@ namespace CoreEngine
         const float top = -pivot.y;
         const float bottom = 1.0f - pivot.y;
 
+        // 今のコマの UV の範囲（範囲外のコマは端へ丸める）
+        const int frame = std::clamp(frame_, 0, columns_ * rows_ - 1);
+        const float cellWidth = 1.0f / static_cast<float>(columns_);
+        const float cellHeight = 1.0f / static_cast<float>(rows_);
+        const float uMin = cellWidth * static_cast<float>(frame % columns_);
+        const float vMin = cellHeight * static_cast<float>(frame / columns_);
+        const float uMax = uMin + cellWidth;
+        const float vMax = vMin + cellHeight;
+
         // 左下
         vertexData[0].position = { left,  bottom, 0.0f, 1.0f };
-        vertexData[0].texcoord = { 0.0f, 1.0f };
+        vertexData[0].texcoord = { uMin, vMax };
         vertexData[0].normal = { 0.0f, 0.0f, -1.0f };
 
         // 左上
         vertexData[1].position = { left,  top,    0.0f, 1.0f };
-        vertexData[1].texcoord = { 0.0f, 0.0f };
+        vertexData[1].texcoord = { uMin, vMin };
         vertexData[1].normal = { 0.0f, 0.0f, -1.0f };
 
         // 右下
         vertexData[2].position = { right, bottom, 0.0f, 1.0f };
-        vertexData[2].texcoord = { 1.0f, 1.0f };
+        vertexData[2].texcoord = { uMax, vMax };
         vertexData[2].normal = { 0.0f, 0.0f, -1.0f };
 
         // 右上
         vertexData[3].position = { right, top,    0.0f, 1.0f };
-        vertexData[3].texcoord = { 1.0f, 0.0f };
+        vertexData[3].texcoord = { uMax, vMin };
         vertexData[3].normal = { 0.0f, 0.0f, -1.0f };
 
-        vertexResource_->Unmap(0, nullptr);
         builtPivot_ = pivot;
+        verticesDirty_ = false;
     }
 
     void UIImageComponent::Render(const DrawViewInfo& view)
@@ -201,9 +244,21 @@ namespace CoreEngine
         }
 
         const UILayout& layout = rect->GetLayout();
-        if (layout.pivot.x != builtPivot_.x || layout.pivot.y != builtPivot_.y) {
+        if (verticesDirty_ || layout.pivot.x != builtPivot_.x || layout.pivot.y != builtPivot_.y) {
             UpdateVertexData(layout.pivot);
         }
+
+        UploadRing& uploadRing = renderer_->GetGraphicsCore()->GetUploadRing();
+
+        // 頂点は描くたびに、このフレームの UploadRing に置く
+        const UploadAllocation vertices = uploadRing.Allocate(static_cast<uint32_t>(sizeof(vertices_)), 16);
+        if (!vertices.IsValid()) { return; }
+        std::memcpy(vertices.cpu, vertices_.data(), sizeof(vertices_));
+
+        D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
+        vertexBufferView.BufferLocation = vertices.gpuAddress;
+        vertexBufferView.SizeInBytes = static_cast<UINT>(sizeof(vertices_));
+        vertexBufferView.StrideInBytes = static_cast<UINT>(sizeof(VertexData));
 
         const Vector2 screenPosition = layout.CalculateScreenPosition(renderer_->GetScreenSize());
         const Vector3 position = { screenPosition.x, screenPosition.y, 0.0f };
@@ -214,19 +269,66 @@ namespace CoreEngine
         UIRenderer::TransformationMatrix* transformData = renderer_->GetTransformData(bufferIndex);
         transformData->WVP = renderer_->CalculateWVPMatrix(position, scale, rotation);
         transformData->world = Matrix::MakeAffine(scale, rotation, position);
+        const D3D12_GPU_VIRTUAL_ADDRESS transformAddress = renderer_->GetTransformGpuAddress(bufferIndex);
+
+        commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
+        commandList->IASetIndexBuffer(&indexBufferView_);
+
+        if (materialSlot_.IsSet() && RenderWithMaterial(commandList, uploadRing, transformAddress)) {
+            commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
+            return;
+        }
+
+        renderer_->BindPipeline(commandList, nullptr);
+
+        // マテリアルを指しているのに描けないときは、気づけるようマゼンタで描く
+        D3D12_GPU_VIRTUAL_ADDRESS materialAddress = material_->GetGPUVirtualAddress();
+        if (materialSlot_.IsSet()) {
+            SpriteMaterialData fallback{};
+            fallback.color = { 1.0f, 0.0f, 1.0f, 1.0f };
+            fallback.uvTransform = Matrix::Identity();
+            materialAddress = uploadRing.AllocateConstants(fallback);
+            if (materialAddress == 0) { return; }
+        }
 
         commandList->SetGraphicsRootConstantBufferView(
             renderer_->GetRootParamIndex("gMaterial"),
-            material_->GetGPUVirtualAddress());
+            materialAddress);
         commandList->SetGraphicsRootConstantBufferView(
             renderer_->GetRootParamIndex("TransformationMatrix"),
-            renderer_->GetTransformGpuAddress(bufferIndex));
+            transformAddress);
         commandList->SetGraphicsRootDescriptorTable(
             renderer_->GetRootParamIndex("gTexture"),
             textureHandle_.gpuHandle);
 
-        commandList->IASetVertexBuffers(0, 1, &vertexBufferView_);
-        commandList->IASetIndexBuffer(&indexBufferView_);
         commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
+    }
+
+    bool UIImageComponent::RenderWithMaterial(ID3D12GraphicsCommandList* commandList, UploadRing& uploadRing,
+        D3D12_GPU_VIRTUAL_ADDRESS transformAddress)
+    {
+        const ShaderMaterial* const material = materialSlot_.GetMaterial();
+        const ShaderMaterialPipeline* const pipeline = material ? renderer_->GetMaterialPipeline(*material) : nullptr;
+        if (!pipeline) {
+            return false;
+        }
+
+        SpriteDrawData draw{};
+        draw.color = color_;
+        draw.textureSize = textureSize_;
+        draw.time = Time::TimeSinceStartup();
+        draw.unscaledTime = Time::UnscaledTimeSinceStartup();
+        draw.deltaTime = Time::DeltaTime();
+        const D3D12_GPU_VIRTUAL_ADDRESS drawAddress = uploadRing.AllocateConstants(draw);
+        if (drawAddress == 0) {
+            return false;
+        }
+
+        renderer_->BindPipeline(commandList, pipeline);
+        if (!materialSlot_.Bind(commandList, *pipeline, uploadRing, transformAddress, drawAddress, textureHandle_.gpuHandle)) {
+            renderer_->BindPipeline(commandList, nullptr);
+            return false;
+        }
+        return true;
     }
 }

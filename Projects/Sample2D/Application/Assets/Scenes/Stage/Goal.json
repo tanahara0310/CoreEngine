@@ -30,6 +30,9 @@
                 "texture": {
                     "path": "Application/Assets/Textures/flag.png"
                 },
+                "material": {
+                    "path": "Application/Assets/Materials/Shine.mat"
+                },
                 "pixelsPerUnit": 16.0,
                 "filter": 1
             }
