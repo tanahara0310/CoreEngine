@@ -5,8 +5,12 @@
 
 #include "Editor/Export/ShaderCooker.h"
 #include "Editor/Export/TextureCooker.h"
+#include "EngineSystem/EngineVersion.h"
 #include "EngineSystem/Startup/SplashScreen.h"
 #include "Graphics/Texture/Cook/CookedTexture.h"
+#include "Graphics/Texture/Import/TextureImporter.h"
+#include "Utility/JsonManager/JsonManager.h"
+#include "Utility/Path/CookedPath.h"
 #include "Utility/Path/ProjectPaths.h"
 
 #include <Windows.h>
@@ -64,6 +68,31 @@ namespace CoreEngine::Editor
 
         /// 消せない・書けないときに添える一言
         constexpr const char* kLockedHint = "（書き出したゲームが動いていないか確かめてください）";
+
+        /// @brief クックの一覧（書き出したゲームの根の CookManifest.json）を書く
+        bool WriteCookManifest(const std::filesystem::path& destination, const std::vector<CookRecord>& textures, int shaderCount)
+        {
+            json entries = json::array();
+            for (const CookRecord& record : textures) {
+                entries.push_back({
+                    { "source", record.source },
+                    { "guid", record.guid },
+                    { "derived", record.derived },
+                    { "settings", record.settings },
+                    { "key", record.key },
+                });
+            }
+            using namespace std::chrono;
+            const zoned_time now{ current_zone(), floor<seconds>(system_clock::now()) };
+            const json manifest = {
+                { "engineVersion", kEngineVersion },
+                { "cookedAt", std::format("{:%Y-%m-%d %H:%M:%S}", now) },
+                { "importers", { { "Texture", TextureImporter::kVersion } } },
+                { "textures", entries },
+                { "shaders", shaderCount },
+            };
+            return JsonManager::GetInstance().SaveJson(ToUtf8(destination / CookedPath::kManifestFileName), manifest);
+        }
     }
 
     ExportPlan GameExporter::Plan()
@@ -164,6 +193,12 @@ namespace CoreEngine::Editor
                 return result;
             }
         }
+        const std::filesystem::path manifestPath = destination / CookedPath::kManifestFileName;
+        std::filesystem::remove(manifestPath, ec);
+        if (ec) {
+            result.error = ToUtf8(manifestPath) + " を消せませんでした" + kLockedHint;
+            return result;
+        }
 
         // 画像のテクスチャを DDS へ変換する。画像は WIC で読むので、このスレッドで COM を使えるようにする
         struct ComScope
@@ -171,8 +206,9 @@ namespace CoreEngine::Editor
             HRESULT hr;
             ~ComScope() { if (SUCCEEDED(hr)) { ::CoUninitialize(); } }
         } com{ ::CoInitializeEx(nullptr, COINIT_MULTITHREADED) };
+        std::vector<CookRecord> cookRecords;
         for (const CookTarget& target : targets) {
-            const std::string error = TextureCooker::Cook(target, destination, result.fileCount, result.bytes);
+            const std::string error = TextureCooker::Cook(target, destination, result.fileCount, result.bytes, cookRecords);
             if (!error.empty()) {
                 result.error = error;
                 return result;
@@ -209,6 +245,13 @@ namespace CoreEngine::Editor
             ++result.fileCount;
             ++progress.copied;
         }
+
+        // 一覧があると、書き出したゲームは元のファイルから派生データを作らない
+        if (!WriteCookManifest(destination, cookRecords, result.cookedShaders)) {
+            result.error = ToUtf8(manifestPath) + " を書けませんでした" + kLockedHint;
+            return result;
+        }
+        ++result.fileCount;
         return result;
     }
 }

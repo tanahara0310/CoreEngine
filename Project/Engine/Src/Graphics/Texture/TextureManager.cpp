@@ -182,17 +182,11 @@ namespace CoreEngine
             );
 
             resolvedPath = loadPlan.resolvedPath;
-            const std::filesystem::path& ddsPath = loadPlan.ddsPathToGenerate;
 
             // ロード実行の本体処理は専用クラスに委譲し、Managerはオーケストレーションに集中する。
             TextureLoadExecutor::ExecutionResult executionResult = TextureLoadExecutor::Execute(
                 dxCommon,
                 resolvedPath,
-                ddsGenerationEnabled,
-                ddsPath,
-                [this, colorSpace](const std::filesystem::path& sourcePath, const std::filesystem::path& outputDdsPath) {
-                    return ddsCacheGenerator_.GenerateCache(sourcePath, outputDdsPath, colorSpace);
-                },
                 colorSpace
             );
 

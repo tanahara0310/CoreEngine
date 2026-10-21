@@ -6,7 +6,8 @@
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Graphics/Model/ModelLoader.h"
 #include "Graphics/Texture/Cook/CookedTexture.h"
-#include "Graphics/Texture/Generate/TextureDdsCacheGenerator.h"
+#include "Graphics/Texture/Derived/TextureDerivedData.h"
+#include "Graphics/Texture/Import/TextureImporter.h"
 #include "Graphics/Texture/Path/TexturePathResolver.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
@@ -43,21 +44,6 @@ namespace CoreEngine::Editor
         std::string ToUtf8(const std::filesystem::path& path)
         {
             return Logger::GetInstance().PathToUtf8(path);
-        }
-
-        /// @brief DDS が元の画像より新しいか
-        bool IsUpToDate(const std::filesystem::path& dds, const std::filesystem::path& source)
-        {
-            std::error_code ec;
-            if (!std::filesystem::is_regular_file(dds, ec)) {
-                return false;
-            }
-            const auto ddsTime = std::filesystem::last_write_time(dds, ec);
-            if (ec) {
-                return false;
-            }
-            const auto sourceTime = std::filesystem::last_write_time(source, ec);
-            return !ec && sourceTime <= ddsTime;
         }
     }
 
@@ -112,11 +98,9 @@ namespace CoreEngine::Editor
     }
 
     std::string TextureCooker::Cook(const CookTarget& target, const std::filesystem::path& destination,
-        int& writtenFiles, std::uintmax_t& writtenBytes)
+        int& writtenFiles, std::uintmax_t& writtenBytes, std::vector<CookRecord>& records)
     {
-        const TexturePathResolver resolver;
-        const TextureDdsCacheGenerator generator;
-        const bool hasGuid = !AssetDatabase::GetInstance().GetGUID(target.source).empty();
+        const std::string guid = AssetDatabase::GetInstance().GetGUID(target.source);
 
         for (const TextureColorSpace colorSpace : { TextureColorSpace::SRGB, TextureColorSpace::Linear }) {
             if ((colorSpace == TextureColorSpace::SRGB && !target.srgb) ||
@@ -124,8 +108,8 @@ namespace CoreEngine::Editor
                 continue;
             }
 
-            const std::filesystem::path cooked =
-                destination / CookedTexture::ToCookedPath(target.relative, colorSpace);
+            const std::filesystem::path cookedRelative = CookedTexture::ToCookedPath(target.relative, colorSpace);
+            const std::filesystem::path cooked = destination / cookedRelative;
             if (cooked.native().size() > kMaxPathLength) {
                 return std::format("{} は {} 文字あり、Windows のパスの上限（{} 文字）を超えるので書けません。"
                     "プロジェクトをもっと短いパスの場所へ移してください",
@@ -137,23 +121,21 @@ namespace CoreEngine::Editor
                 return ToUtf8(cooked.parent_path()) + " を作れませんでした";
             }
 
-            if (hasGuid) {
-                // 開発中の DDS キャッシュを作り直してから写す
-                const std::filesystem::path cache = resolver.GetDDSCachePath(target.source, colorSpace);
-                if (!IsUpToDate(cache, target.source) && !generator.GenerateCache(target.source, cache, colorSpace)) {
-                    return ToUtf8(target.relative) + " を DDS に変換できませんでした";
-                }
-                std::filesystem::copy_file(cache, cooked, std::filesystem::copy_options::overwrite_existing, ec);
-                if (ec) {
-                    return ToUtf8(cooked) + " を書けませんでした";
-                }
-            } else if (!generator.GenerateCache(target.source, cooked, colorSpace)) {
+            // 開発中の派生データを新しくしてから写す
+            const DerivedData::Result derived = TextureDerivedData::EnsureIntermediate(target.source, colorSpace);
+            if (derived.path.empty()) {
                 return ToUtf8(target.relative) + " を DDS に変換できませんでした";
+            }
+            std::filesystem::copy_file(derived.path, cooked, std::filesystem::copy_options::overwrite_existing, ec);
+            if (ec) {
+                return ToUtf8(cooked) + " を書けませんでした";
             }
 
             const std::uintmax_t size = std::filesystem::file_size(cooked, ec);
             writtenBytes += ec ? 0 : size;
             ++writtenFiles;
+            records.push_back({ ToUtf8(target.relative), guid, ToUtf8(cookedRelative),
+                TextureImporter::Settings(colorSpace), derived.key });
         }
         return {};
     }

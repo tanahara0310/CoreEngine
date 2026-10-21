@@ -479,7 +479,9 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderReflectionData.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Texture\Cache\TextureCacheStore.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Texture\Generate\TextureCubemapGenerator.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Texture\Generate\TextureDdsCacheGenerator.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Texture\Import\TextureImporter.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Texture\Derived\TextureDerivedData.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Asset\Derived\DerivedData.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Texture\Cook\CookedTexture.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Texture\Gpu\TextureGpuUploader.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Texture\Load\TextureImageProcessor.cpp" />
@@ -1525,7 +1527,9 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Graphics\Texture\Runtime\TextureLoadedResource.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Cache\TextureCacheStore.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Generate\TextureCubemapGenerator.h" />
-    <ClInclude Include="Engine\Src\Graphics\Texture\Generate\TextureDdsCacheGenerator.h" />
+    <ClInclude Include="Engine\Src\Graphics\Texture\Import\TextureImporter.h" />
+    <ClInclude Include="Engine\Src\Graphics\Texture\Derived\TextureDerivedData.h" />
+    <ClInclude Include="Engine\Src\Graphics\Asset\Derived\DerivedData.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Cook\CookedTexture.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Gpu\TextureGpuUploader.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Load\TextureImageProcessor.h" />

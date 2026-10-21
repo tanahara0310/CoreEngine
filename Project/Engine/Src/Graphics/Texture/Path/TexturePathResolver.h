@@ -21,13 +21,6 @@ namespace CoreEngine
         /// @return 解決されたファイルパス。Assetsフォルダを省略した場合は自動的に追加される。
         std::filesystem::path ResolveAssetPath(const std::string& filePath, bool writeLog = false) const;
 
-        /// @brief DDSキャッシュのパスを取得する。元のファイルパスから対応するDDSファイルのパスを生成する。
-        /// @param originalPath 元のファイルパス（Assetsフォルダを省略可能）
-        /// @param colorSpace 色空間。sRGB は "_srgb.dds"、Linear は "_linear.dds" を付けて分ける
-        /// @return DDSファイルのパス。Assetsフォルダを省略した場合は自動的に追加される。
-        std::filesystem::path GetDDSCachePath(const std::filesystem::path& originalPath,
-            TextureColorSpace colorSpace = TextureColorSpace::SRGB) const;
-
         /// @brief HDRファイルから生成されるキューブマップDDSのパスを取得する。元のファイルパスから対応するキューブマップDDSファイルのパスを生成する。
         /// @param originalPath 元のファイルパス（Assetsフォルダを省略可能）
         /// @return キューブマップDDSファイルのパス。Assetsフォルダを省略した場合は自動的に追加される。

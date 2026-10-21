@@ -57,29 +57,6 @@ namespace CoreEngine
         return ResolveFilePath(filePath);
     }
 
-    std::filesystem::path TexturePathResolver::GetDDSCachePath(const std::filesystem::path& originalPath,
-        TextureColorSpace colorSpace) const
-    {
-        // 色空間ごとにキャッシュを分離する（同一ソースでも sRGB / Linear で内容が異なるため）
-        const std::string suffix = (colorSpace == TextureColorSpace::Linear)
-            ? "_linear.dds"
-            : "_srgb.dds";
-
-        auto& assetDB = AssetDatabase::GetInstance();
-        std::filesystem::path absPath = std::filesystem::absolute(originalPath);
-        std::string guid = assetDB.GetGUID(absPath);
-
-        if (!guid.empty()) {
-            return assetDB.GetCachedTexturePath(guid, suffix);
-        }
-
-        // GUID が無い場合は元ファイルの隣に置く。stem はパスの一部なので
-        // narrow 文字列に落とさず path の連結で組み立てる。
-        std::filesystem::path fileName = originalPath.stem();
-        fileName += suffix;
-        return originalPath.parent_path() / fileName;
-    }
-
     std::string TexturePathResolver::GetCubemapSuffix() const
     {
         return (cubemapFaceSize_ > 0)

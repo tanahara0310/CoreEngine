@@ -18,11 +18,11 @@ namespace CoreEngine
         {
             std::filesystem::path resolvedPath;      // 実際に読み込む最終パス
             bool isDDS = false;                      // DDSとして読み込むか
-            std::filesystem::path ddsPathToGenerate; // WIC読み込み後に生成するDDSパス（WIC以外は空）
         };
 
         /// @brief ファイル形式とキャッシュ状態から読み込み計画を構築する
-        /// @param colorSpace 色空間（DDS キャッシュパスの分離に使う）
+        /// @param colorSpace 色空間（派生データの版を選ぶのに使う）
+        /// @throw std::runtime_error 変換する画像の DDS を用意できなかったとき
         PlanResult BuildPlan(
             const std::filesystem::path& resolvedPath,
             bool ddsGenerationEnabled,
