@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.23.0">
+<meta name="engine-version" content="0.23.1">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2746,6 +2746,31 @@ kbd {
   </div>
   <div class="callout note"><p><code>.ogg</code> も「音」として一覧に出ますが、再生できるのは <code>.wav</code> と <code>.mp3</code> だけです。</p></div>
 
+  <h2 id="project-texture-color">画像の色の扱い</h2>
+  <p>画像は、使い道に合わせて色（sRGB）かデータ（リニア）として読みます。スプライト・UI 画像・モデルのベースカラーと発光は色、モデルの法線・メタリック/ラフネス・遮蔽と、マテリアルで <code>linear</code> にしたテクスチャはデータです。色として読む画像は、PNG の sRGB の印（sRGB チャンク）が無くても sRGB として扱います。</p>
+  <p>画像ごとに決めたいときは、画像の <span class="path">.meta</span> に取り込み設定を書きます。書いた設定は、使い道より優先されます。</p>
+  <script type="text/x-code" data-lang="json" data-file="noise.png.meta">
+{
+    "guid": "0f3a51c2-7b44-4e19-9d0a-6c2e8f1b7a35",
+    "type": "Texture",
+    "import": {
+        "colorSpace": "linear"
+    }
+}
+  </script>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th><code>colorSpace</code></th><th>読み方</th></tr></thead>
+    <tbody>
+      <tr><td>書かない</td><td>使い道に合わせる（上のとおり）</td></tr>
+      <tr><td><code>"srgb"</code></td><td>いつも色として読む</td></tr>
+      <tr><td><code>"linear"</code></td><td>いつもデータとして読む。画像の値をそのままリニアの値として使うので、色の画像は明るく出る</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>ノイズやマスクなど、色でない値を描いた画像をスプライトや UI で使うときは <code>"linear"</code> にします。設定を変えたら、エディタを開き直すと読み直します。</p>
+  <div class="callout note"><p>Project でコピーした画像の <span class="path">.meta</span> は新しく作られるので、取り込み設定は付いてきません。コピーした後に書き直してください。</p></div>
+
   <h2 id="project-ops">ファイルの操作</h2>
   <div class="table-wrap">
   <table>
@@ -3075,7 +3100,7 @@ kbd {
   <ul>
     <li>ロード画面を出しているあいだだけ呼ばれます。出し始めと消し終わりは <code>screenAlpha</code> が 0 と 1 のあいだを動くので、<code>gTexture</code> の色と混ぜて書きます。</li>
     <li><code>time</code>・<code>realTime</code>・<code>progress</code> は、ロード画面を出し始めるたびに 0 から数え直します。</li>
-    <li>書き出す色はリニアです。画像を <code>Load</code> で読むと、sRGB のチャンクを持つ PNG はリニアに直った値、持たない PNG は sRGB のままの値が返ります。</li>
+    <li>書き出す色はリニアです。画像を <code>Load</code> で読むと、リニアに直った値が返ります。<span class="path">.meta</span> の取り込み設定を <code>"linear"</code> にした画像は、画像の値がそのまま返ります（<a href="#project-texture-color">画像の色の扱い</a>）。</li>
     <li>シェーダの隣のフォルダの <span class="path">.hlsli</span> と、エンジンの <span class="path">ShaderMath.hlsli</span> などを <code>#include</code> できます。</li>
     <li>シェーダが見つからない・コンパイルできないときは、Console にエラーを出してエンジンの既定のロード画面を使います。</li>
   </ul>
@@ -3164,7 +3189,7 @@ kbd {
     </tbody>
   </table>
   </div>
-  <p>モデルのマテリアルで法線・メタリック/ラフネス・遮蔽に使う画像はリニア、それ以外の画像は sRGB で変換します。エディタで開いたときに作った DDS（<span class="path">Intermediate/TextureCache</span>）が元の画像より新しければ、変換せずにそれを使います。初めて書き出すときや画像を描き直したあとは、変換のぶん時間がかかります。</p>
+  <p>モデルのマテリアルで法線・メタリック/ラフネス・遮蔽に使う画像はリニア、それ以外の画像は sRGB で変換します。<span class="path">.meta</span> の取り込み設定で色空間を決めた画像は、その版だけを作ります（<a href="#project-texture-color">画像の色の扱い</a>）。エディタで開いたときに作った DDS（<span class="path">Intermediate/TextureCache</span>）が元の画像より新しければ、変換せずにそれを使います。初めて書き出すときや画像を描き直したあとは、変換のぶん時間がかかります。</p>
 
   <h2 id="export-shaders">シェーダのコンパイル</h2>
   <p>シェーダも書き出すときにコンパイルして、GPU に渡す形（DXIL）で <span class="path">Cooked/</span> に書きます。遊ぶ人の PC ではコンパイルしないので、初めての起動でもシェーダのコンパイルを待ちません。例えば <span class="path">Engine/Assets/Shaders/Water/Water.PS.hlsl</span> を <code>ps_6_0</code> でコンパイルしたものは <span class="path">Engine/Cooked/Shaders/Water/Water.PS.hlsl.ps_6_0.dxil</span> です。出力からデバッグ情報は外します（GPU が使う中身は開発中と同じです）。</p>
@@ -7524,7 +7549,7 @@ kbd {
   <script type="text/x-code" data-lang="as">
     owner.spriteRenderer.texture = "Application/Assets/Textures/door_open.png";
   </script>
-  <div class="callout warn"><p>PNG は sRGB の印（sRGB チャンク）を付けて書き出してください。印が無いと色が明るく出ます。</p></div>
+  <div class="callout note"><p>スプライトの画像は色（sRGB）として読みます。ノイズやマスクなど色でない値を描いた画像は、<span class="path">.meta</span> の取り込み設定を <code>"linear"</code> にします（<a href="#project-texture-color">画像の色の扱い</a>）。</p></div>
 
   <h2 id="g2d-order">重なりの順番</h2>
   <p>スプライトは深度を書かないので、前後は描く順番で決まります。順番は <span class="ui">ソートレイヤー</span> → <span class="ui">レイヤー内の順</span> → カメラからの奥行きの順に比べ、大きいほど手前です。</p>
@@ -7964,7 +7989,7 @@ kbd {
     <thead><tr><th>症状</th><th>確かめること</th></tr></thead>
     <tbody>
       <tr><td>ドット絵がにじむ</td><td>スプライトの <span class="ui">フィルタ</span> が <span class="ui">ポイント</span> か。<code>r.TAA.Enabled</code> を切ったか</td></tr>
-      <tr><td>色が明るい・薄い</td><td>PNG に sRGB の印があるか。シーンを 2D の雛形で作ったか（トーンカーブが「なし」か）</td></tr>
+      <tr><td>色が明るい・薄い</td><td>シーンを 2D の雛形で作ったか（トーンカーブが「なし」か）。画像の <span class="path">.meta</span> の取り込み設定が <code>"linear"</code> になっていないか</td></tr>
       <tr><td>絵が大きすぎる・小さすぎる</td><td><span class="ui">1 単位のピクセル数</span> と、カメラの <span class="ui">大きさ</span></td></tr>
       <tr><td>後ろにあるはずの物が手前に出る</td><td><span class="ui">ソートレイヤー</span> と <span class="ui">レイヤー内の順</span></td></tr>
       <tr><td>キャラクターが地面を突き抜ける</td><td>地面とキャラクターのコライダーの <span class="ui">トリガー</span> を外したか</td></tr>
@@ -9637,6 +9662,16 @@ python Tools/OkinawaBeach/bake_player_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-23-1">v0.23.1 <span class="dim">（2026-10-22）</span></h3>
+  <p>sRGB の印（sRGB チャンク）が無い PNG が明るく出ていたのを直した版です（<a href="#project-texture-color">画像の色の扱い</a>）。</p>
+  <ul>
+    <li><strong>直したこと</strong>：色として読む画像（スプライト・UI 画像・モデルのベースカラーと発光など）は、印が無い PNG・JPG・BMP・TGA も sRGB として読みます。これまでは画像の値をそのままリニアの値として使っていたので、印の無い画像だけ明るく白っぽく出ていました。</li>
+    <li><strong>画像の取り込み設定</strong>：画像の <span class="path">.meta</span> に <code>"import": { "colorSpace": "linear" }</code> と書くと、その画像は画像の値をそのままリニアの値として読みます（これまでの見え方）。<code>"srgb"</code> と書くと、法線などのデータとして頼まれても sRGB として読みます。ゲームの書き出しも、この設定の版だけを作ります。</li>
+    <li>付属の Tsunagazaru と Reprism は、元のゲームと同じ見え方を保つため、印の無い PNG の <span class="path">.meta</span> を <code>"linear"</code> にしました。</li>
+    <li>ディゾルブのノイズの画像を、データとしてリニアで読むようにしました（溶ける順番は変わりません）。</li>
+    <li>開発中のテクスチャのキャッシュの sRGB 版を <span class="path">&lt;GUID&gt;_srgb.dds</span> に改名し、次に開いたときに作り直します。前の <span class="path">&lt;GUID&gt;.dds</span> は使わなくなるので、<span class="path">Intermediate/TextureCache</span> から消してかまいません。</li>
+  </ul>
 
   <h3 id="changelog-v0-23-0">v0.23.0 <span class="dim">（2026-10-20）</span></h3>
   <p>付属のサンプルに、C++ で作ったパズルアクション「レプリズム」をスクリプトだけで作り直したプロジェクトを足した版です（<a href="#intro-samples">付属のサンプル</a>）。</p>
@@ -14568,7 +14603,7 @@ void Update()
       "<li>描く順番は、ソートレイヤー → レイヤー内の順 → カメラからの奥行き（奥から）の順です。どれも同じなら後から置いたものが手前になります。</li>" +
       "<li>深度は書かないので、スプライトどうしの前後は描く順番で決まります。3D の不透明な物の後ろにあるスプライトは隠れます。</li>" +
       "<li>画面に重ねるボタンや文字は、スプライトではなく <a href=\"#api-UIImage\">UI 画像</a>・<a href=\"#api-UIText\">UI テキスト</a> を使うのが基本です。</li>" +
-      "<li>sRGB の印（sRGB チャンク）が無い PNG は、色が明るく出ます。画像を書き出すツールで sRGB を付けてください。</li>" +
+      "<li>画像は色（sRGB）として読みます。色でない値を描いた画像は、<span class=\"path\">.meta</span> の取り込み設定を <code>\"linear\"</code> にします（<a href=\"#project-texture-color\">画像の色の扱い</a>）。</li>" +
       "</ul>",
     examples: [
       {

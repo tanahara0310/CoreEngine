@@ -23,7 +23,7 @@ namespace CoreEngine
 
         /// @brief DDSキャッシュのパスを取得する。元のファイルパスから対応するDDSファイルのパスを生成する。
         /// @param originalPath 元のファイルパス（Assetsフォルダを省略可能）
-        /// @param colorSpace 色空間。Linear は "_linear.dds" サフィックスで sRGB キャッシュと分離する
+        /// @param colorSpace 色空間。sRGB は "_srgb.dds"、Linear は "_linear.dds" を付けて分ける
         /// @return DDSファイルのパス。Assetsフォルダを省略した場合は自動的に追加される。
         std::filesystem::path GetDDSCachePath(const std::filesystem::path& originalPath,
             TextureColorSpace colorSpace = TextureColorSpace::SRGB) const;

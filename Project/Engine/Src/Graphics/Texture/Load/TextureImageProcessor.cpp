@@ -34,14 +34,18 @@ namespace CoreEngine
             return DirectX::LoadFromHDRFile(filePath.c_str(), nullptr, image);
         }
 
-        // 色空間指定に応じて WIC フラグを切り替える。
-        // 法線・MetallicRoughness・AO などのデータテクスチャを sRGB として読み込むと
-        // サンプリング時にガンマデコードが掛かり値が歪むため、Linear では
-        // 埋め込みプロファイルを無視して UNORM（非sRGB）フォーマットで読み込む。
-        const DirectX::WIC_FLAGS wicFlags = (colorSpace == TextureColorSpace::Linear)
-            ? DirectX::WIC_FLAGS_IGNORE_SRGB
-            : DirectX::WIC_FLAGS_FORCE_SRGB;
-        return DirectX::LoadFromWICFile(filePath.c_str(), wicFlags, nullptr, image);
+        // Linear は埋め込みの色情報を無視して UNORM（非 sRGB）の形式で読む。
+        if (colorSpace == TextureColorSpace::Linear) {
+            return DirectX::LoadFromWICFile(filePath.c_str(), DirectX::WIC_FLAGS_IGNORE_SRGB, nullptr, image);
+        }
+
+        // SRGB は色情報の無い画像も sRGB として読み、色情報を持てない形式（BMP・TGA など）は
+        // 読んだ後に sRGB の形式へ付け替える。
+        const HRESULT hr = DirectX::LoadFromWICFile(filePath.c_str(), DirectX::WIC_FLAGS_DEFAULT_SRGB, nullptr, image);
+        if (SUCCEEDED(hr)) {
+            image.OverrideFormat(DirectX::MakeSRGB(image.GetMetadata().format));
+        }
+        return hr;
     }
 
     HRESULT TextureImageProcessor::LoadMetadata(const std::wstring& filePath, DirectX::TexMetadata& metadata)
@@ -54,7 +58,11 @@ namespace CoreEngine
             return DirectX::GetMetadataFromHDRFile(filePath.c_str(), metadata);
         }
 
-        return DirectX::GetMetadataFromWICFile(filePath.c_str(), DirectX::WIC_FLAGS_FORCE_SRGB, metadata);
+        const HRESULT hr = DirectX::GetMetadataFromWICFile(filePath.c_str(), DirectX::WIC_FLAGS_DEFAULT_SRGB, metadata);
+        if (SUCCEEDED(hr)) {
+            metadata.format = DirectX::MakeSRGB(metadata.format);
+        }
+        return hr;
     }
 
     HRESULT TextureImageProcessor::BuildMipChain(DirectX::ScratchImage& image, DirectX::ScratchImage& mipImages)

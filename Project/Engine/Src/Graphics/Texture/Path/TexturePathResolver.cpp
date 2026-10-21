@@ -63,7 +63,7 @@ namespace CoreEngine
         // 色空間ごとにキャッシュを分離する（同一ソースでも sRGB / Linear で内容が異なるため）
         const std::string suffix = (colorSpace == TextureColorSpace::Linear)
             ? "_linear.dds"
-            : ".dds";
+            : "_srgb.dds";
 
         auto& assetDB = AssetDatabase::GetInstance();
         std::filesystem::path absPath = std::filesystem::absolute(originalPath);
