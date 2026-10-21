@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.23.1">
+<meta name="engine-version" content="0.24.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2298,7 +2298,7 @@ kbd {
       <tr><td><span class="path">Saved/&lt;SaveFile のパス&gt;</span></td><td>スクリプトの <code>SaveFile</code> が書くセーブデータ</td></tr>
       <tr><td><span class="path">Saved/Thumbnail.png</span></td><td>プロジェクト一覧の縮小画像（エディタを閉じるときに撮る）</td></tr>
       <tr><td><span class="path">Intermediate/Logs/</span></td><td>ログのファイル（種類ごと。スクリプトのログは <span class="path">Script/</span>）</td></tr>
-      <tr><td><span class="path">Intermediate/TextureCache/</span></td><td>テクスチャを変換したキャッシュ（消しても作り直される）</td></tr>
+      <tr><td><span class="path">Intermediate/DerivedData/</span></td><td>画像などから作ったデータ（テクスチャの DDS など）。消しても次に使うときに作り直される（<a href="#export-cooking">テクスチャの変換</a>）</td></tr>
     </tbody>
   </table>
   </div>
@@ -3167,6 +3167,7 @@ kbd {
   <script type="text/x-code" data-lang="text" data-file="Projects/MyGame/Build/Windows/">
     Windows/
     ├─ CoreEngine.exe と *.dll      Release のフォルダから
+    ├─ CookManifest.json            変換したデータの一覧（これがあると、書き出したゲームとして動く）
     ├─ Engine/
     │  ├─ Assets/                   エンジンの素材（シェーダ・既定のモデルなど。画像のテクスチャは除く）
     │  └─ Cooked/                   エンジンの画像のテクスチャを変換した DDS と、コンパイルしたシェーダの DXIL
@@ -3189,7 +3190,9 @@ kbd {
     </tbody>
   </table>
   </div>
-  <p>モデルのマテリアルで法線・メタリック/ラフネス・遮蔽に使う画像はリニア、それ以外の画像は sRGB で変換します。<span class="path">.meta</span> の取り込み設定で色空間を決めた画像は、その版だけを作ります（<a href="#project-texture-color">画像の色の扱い</a>）。エディタで開いたときに作った DDS（<span class="path">Intermediate/TextureCache</span>）が元の画像より新しければ、変換せずにそれを使います。初めて書き出すときや画像を描き直したあとは、変換のぶん時間がかかります。</p>
+  <p>モデルのマテリアルで法線・メタリック/ラフネス・遮蔽に使う画像はリニア、それ以外の画像は sRGB で変換します。<span class="path">.meta</span> の取り込み設定で色空間を決めた画像は、その版だけを作ります（<a href="#project-texture-color">画像の色の扱い</a>）。</p>
+  <p>エディタでも、画像は元のファイルを直接は読まず、同じ変換で作った DDS を読みます。作った DDS は <span class="path">Intermediate/DerivedData/Texture/</span> に置き（名前は画像の GUID と <code>.srgb.dds</code> か <code>.linear.dds</code>）、書き出しはそれを写します。隣の <span class="path">.ddinfo</span> に元の画像の大きさ・日時と、中身から計算した印を控えておき、元の画像の中身か変換の設定が変わったときだけ作り直します（日時だけを古いまま差し替えても作り直します）。初めて開くときや画像を描き直したあとは、変換のぶん時間がかかります。</p>
+  <p>書き出しの最後に、変換したものの一覧 <span class="path">CookManifest.json</span> を書き出し先の根に置きます。一覧のある書き出したゲームは元の画像から DDS を作りません。DDS が無い画像は Console にエラーを出して代わりの画像（<span class="path">error.png</span>）を使うので、書き出し直してください。起動のログの <code>[DerivedData] Texture: クック済み … / 中間 … / 取り込み … / 無し …</code> の行で、どこから読んだかを数えられます（書き出したゲームでは「クック済み」だけになります）。</p>
 
   <h2 id="export-shaders">シェーダのコンパイル</h2>
   <p>シェーダも書き出すときにコンパイルして、GPU に渡す形（DXIL）で <span class="path">Cooked/</span> に書きます。遊ぶ人の PC ではコンパイルしないので、初めての起動でもシェーダのコンパイルを待ちません。例えば <span class="path">Engine/Assets/Shaders/Water/Water.PS.hlsl</span> を <code>ps_6_0</code> でコンパイルしたものは <span class="path">Engine/Cooked/Shaders/Water/Water.PS.hlsl.ps_6_0.dxil</span> です。出力からデバッグ情報は外します（GPU が使う中身は開発中と同じです）。</p>
@@ -3204,7 +3207,7 @@ kbd {
       <tr><td>窓のタイトル</td><td>プロジェクトの名前</td></tr>
       <tr><td>エディタ</td><td>無し。起動するとすぐにゲームが始まる</td></tr>
       <tr><td>スクリプト</td><td>起動時にコンパイルする。<span class="path">Scripts/Editor/</span> の中は読まない。ホットリロードは無い</td></tr>
-      <tr><td>テクスチャ</td><td><span class="path">Cooked/</span> の DDS を読む（<a href="#export-cooking">テクスチャの変換</a>）</td></tr>
+      <tr><td>テクスチャ</td><td><span class="path">Cooked/</span> の DDS を読む。元の画像からは作らない（<a href="#export-cooking">テクスチャの変換</a>）</td></tr>
       <tr><td>シェーダ</td><td><span class="path">Cooked/</span> の DXIL を使う。入っていないものだけ起動時にコンパイルする（<a href="#export-shaders">シェーダのコンパイル</a>）</td></tr>
       <tr><td>全画面</td><td><kbd>Alt</kbd>+<kbd>Enter</kbd> で全画面と窓を切り替える</td></tr>
       <tr><td>終了</td><td>窓の × か <kbd>Alt</kbd>+<kbd>F4</kbd>。<kbd>Esc</kbd> で終わらせたいときは CVar <code>sys.Window.QuitOnEscape</code> をオンにする（既定はオフ。<kbd>Esc</kbd> をポーズに使うゲームではオンにしない）</td></tr>
@@ -9662,6 +9665,16 @@ python Tools/OkinawaBeach/bake_player_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-24-0">v0.24.0 <span class="dim">（2026-10-22）</span></h3>
+  <p>画像から作るデータ（派生データ）の置き場と作り直しの判定を 1 か所にまとめた版です（<a href="#export-cooking">テクスチャの変換</a>）。</p>
+  <ul>
+    <li><strong>派生データの置き場</strong>：エディタで作るテクスチャの DDS を <span class="path">Intermediate/DerivedData/Texture/</span> に置くようにしました。<span class="path">Intermediate/TextureCache/</span> の DDS は使わなくなったので消してかまいません（HDR のキューブマップ <span class="path">*_cubemap_*.dds</span> だけは今も使います）。</li>
+    <li><strong>作り直しの判定</strong>：元の画像の日時だけでなく、中身・変換の設定・変換の版で判定します。日時を古いまま画像を差し替えたときや、変換のやり方を変えたときも作り直します。</li>
+    <li><strong>初めて開いたときの見た目</strong>：これまでは DDS を作った最初の 1 回だけ圧縮していない画像を表示していました。最初から作った DDS を表示します。</li>
+    <li><strong>DDS を作る速さ</strong>：1 枚の圧縮を 1 スレッドで行い、画像どうしを並べて変換するようにしました。沖縄のシーン（画像 305 枚）を DDS が無い状態で開くのが 34〜43 秒から 25〜30 秒になりました。作られる DDS の中身は前と同じです。</li>
+    <li><strong>書き出し</strong>：書き出し先の根に <span class="path">CookManifest.json</span>（変換したものの一覧）を置きます。一覧のある書き出したゲームは元の画像から DDS を作らず、無い画像はエラーを出して代わりの画像を使います。起動のログに、DDS をどこから読んだかの件数を出します。</li>
+  </ul>
 
   <h3 id="changelog-v0-23-1">v0.23.1 <span class="dim">（2026-10-22）</span></h3>
   <p>sRGB の印（sRGB チャンク）が無い PNG が明るく出ていたのを直した版です（<a href="#project-texture-color">画像の色の扱い</a>）。</p>
