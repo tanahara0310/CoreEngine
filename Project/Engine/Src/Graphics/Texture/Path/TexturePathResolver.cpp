@@ -7,9 +7,31 @@
 #include <format>
 #include <filesystem>
 #include <algorithm>
+#include <mutex>
+#include <string>
+#include <unordered_set>
 
 namespace CoreEngine
 {
+    namespace
+    {
+        /// @brief 頼まれたパスに画像が無く、同じ名前の別の画像を使うことを、パスごとに 1 回だけ警告する
+        void WarnFilenameFallback(const std::string& requested, const std::filesystem::path& used)
+        {
+            static std::mutex mutex;
+            static std::unordered_set<std::string> warned;
+            {
+                std::lock_guard lock(mutex);
+                if (!warned.insert(requested).second) {
+                    return;
+                }
+            }
+            Logger& log = Logger::GetInstance();
+            log.Logf(LogLevel::WARNING, LogCategory::Resource, "画像 {} が見つからないので、同じ名前の {} を使います",
+                requested, log.PathToUtf8(used));
+        }
+    }
+
     std::filesystem::path TexturePathResolver::ResolveAssetPath(const std::string& filePath, bool writeLog) const
     {
         auto& assetDB = AssetDatabase::GetInstance();
@@ -43,10 +65,7 @@ namespace CoreEngine
         if (!fileName.empty() && fileName != filePath) {
             assetPath = assetDB.FindAssetPath(fileName, AssetType::Texture);
             if (!assetPath.empty()) {
-                if (writeLog) {
-                    Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}",
-                        std::format("  Resolved by filename fallback: '{}' -> '{}'", filePath, Logger::GetInstance().PathToUtf8(assetPath)));
-                }
+                WarnFilenameFallback(filePath, assetPath);
                 return assetPath;
             }
         }

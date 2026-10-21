@@ -43,6 +43,7 @@ namespace CoreEngine
             j["descriptors"]["maxRTVDescriptors"] = config.maxRTVDescriptors;
             j["descriptors"]["maxDSVDescriptors"] = config.maxDSVDescriptors;
             j["command"]["frameCount"] = config.frameCount;
+            j["threads"]["workerLimit"] = config.threadWorkerLimit;
 
             jsonManager.SaveJson(kEngineConfigPath, j);
             return config;
@@ -85,6 +86,12 @@ namespace CoreEngine
         if (j.contains("shader")) {
             auto& s = j["shader"];
             if (s.contains("enableCache")) config.enableShaderCache = s["enableCache"].get<bool>();
+        }
+
+        // スレッド設定
+        if (j.contains("threads")) {
+            auto& th = j["threads"];
+            if (th.contains("workerLimit")) config.threadWorkerLimit = th["workerLimit"].get<uint32_t>();
         }
 
         return config;

@@ -12,6 +12,7 @@
 #include "Animation/AnimationLoader.h"
 #include "Animation/AnimationPlayer.h"
 #include "Animation/SkeletonAnimatorFactory.h"
+#include "Threading/ThreadBudget.h"
 #include "Threading/ThreadPool.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
@@ -352,9 +353,9 @@ namespace CoreEngine
     void ModelManager::EnsureThreadPool()
     {
         if (!threadPool_) {
-            // ワーカー数は ThreadBudget が決める（プール乱立の抑制）
             ThreadPoolDesc poolDesc;
             poolDesc.name = "ModelLoad";
+            poolDesc.threadCount = ThreadBudget::Share(ThreadBudget::kModelLoadShare);
             poolDesc.priority = WorkerPriority::Normal;
             threadPool_ = std::make_unique<ThreadPool>(poolDesc);
         }
@@ -409,22 +410,32 @@ namespace CoreEngine
         std::string normalized = filePath;
         std::replace(normalized.begin(), normalized.end(), '\\', '/');
 
-        // まずAssetDatabaseで名前解決（移動・リネーム耐性）
         // この関数が扱う std::string は一貫して UTF-8。path との往復は Logger の
         // Utf8ToPath / PathToUtf8 を通し、ANSI コードページを混入させない。
         Logger& log = Logger::GetInstance();
+        auto& assetDB = AssetDatabase::GetInstance();
+
+        // 綴り（Application/… か Engine/…）か絶対パスで引けたら、その場所のモデルを使う
+        if (const AssetInfo* info = assetDB.FindAssetByPath(normalized); info && info->type == AssetType::Model) {
+            return log.PathToUtf8(info->fullPath);
+        }
+
+        // 引けなければ名前で引く（移動・リネーム耐性）。フォルダ付きで頼まれていたら警告する
         std::filesystem::path inputPath = log.Utf8ToPath(normalized);
         std::string searchName = log.PathToUtf8(inputPath.filename());
         if (searchName.empty()) {
             searchName = normalized;
         }
 
-        auto& assetDB = AssetDatabase::GetInstance();
         std::filesystem::path assetPath = assetDB.FindAssetPath(searchName, AssetType::Model);
         if (assetPath.empty() && inputPath.has_stem()) {
             assetPath = assetDB.FindAssetPath(log.PathToUtf8(inputPath.stem()), AssetType::Model);
         }
         if (!assetPath.empty()) {
+            if (inputPath.has_parent_path()) {
+                log.Logf(LogLevel::WARNING, LogCategory::Resource, "モデル {} が見つからないので、同じ名前の {} を使います",
+                    normalized, log.PathToUtf8(assetPath));
+            }
             return log.PathToUtf8(assetPath);
         }
 

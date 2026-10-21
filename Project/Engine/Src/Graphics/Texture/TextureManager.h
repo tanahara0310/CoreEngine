@@ -91,7 +91,7 @@ namespace CoreEngine {
         ThreadPool* GetThreadPool() const { return threadPool_.get(); }
 
         /// @brief 非同期ロード用スレッドプールのスレッド数を設定する（Initialize 前に呼ぶ）
-        /// @param threadCount スレッド数（0 でハードウェア並列数を自動設定）
+        /// @param threadCount スレッド数（0 なら枠の比率 ThreadBudget::kTextureLoadShare で決める）
         void SetWorkerThreadCount(uint32_t threadCount) { workerThreadCount_ = threadCount; }
 
         /// @brief HDR→キューブマップDDS変換時のフェイスサイズを設定する（Initialize 前に呼ぶ）
@@ -127,11 +127,8 @@ namespace CoreEngine {
 
         // 非同期ロード用スレッドプール
         std::unique_ptr<ThreadPool> threadPool_;
+        std::mutex threadPoolMutex_;
         uint32_t workerThreadCount_ = 0;
-
-        // 未完了の非同期ロード追跡用
-        std::vector<std::shared_future<LoadedTexture>> pendingFutures_;
-        std::mutex pendingMutex_;
 
         /// @brief スレッドプールの遅延初期化
         void EnsureThreadPool();
@@ -145,7 +142,7 @@ namespace CoreEngine {
         ///          同じファイルが別キーになり、キャッシュが二重に載る。
         static std::string MakeCacheKey(const std::filesystem::path& resolvedPath, TextureColorSpace colorSpace);
 
-        /// @brief 未完了の非同期ロードを全て待機する内部ヘルパー
-        void WaitForAllPendingLoads();
+        /// @brief 投げたロードの完了を待つ（待つ間はキューのタスクを引き受ける）
+        void WaitFor(std::vector<std::shared_future<LoadedTexture>>& futures);
     };
 }

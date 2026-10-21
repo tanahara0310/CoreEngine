@@ -7,6 +7,7 @@
 #include "Load/TextureMetadataLoader.h"
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Utility/Logger/Logger.h"
+#include "Threading/ThreadBudget.h"
 #include "Threading/ThreadPool.h"
 #include "EngineSystem/Startup/StartupProgress.h"
 
@@ -316,12 +317,14 @@ namespace CoreEngine
 
     void TextureManager::Clear()
     {
-        // 未完了の非同期ロードを待ってからキャッシュを破棄する。
-        WaitForAllPendingLoads();
-
-        if (threadPool_) {
-            threadPool_->Shutdown();
-            threadPool_.reset();
+        // プールを取り出してから止める（キューに残っているロードは実行してから止まる）。
+        std::unique_ptr<ThreadPool> pool;
+        {
+            std::lock_guard<std::mutex> poolLock(threadPoolMutex_);
+            pool = std::move(threadPool_);
+        }
+        if (pool) {
+            pool->Shutdown();
         }
 
         cacheStore_->Clear();
@@ -335,13 +338,14 @@ namespace CoreEngine
 
     void TextureManager::EnsureThreadPool()
     {
-        // 初回の非同期リクエスト時にスレッドプールを生成する。
+        // 初回の非同期リクエスト時にスレッドプールを生成する（複数のワーカーから同時に来うる）。
+        std::lock_guard<std::mutex> lock(threadPoolMutex_);
         if (!threadPool_) {
-            // 希望数 0 は ThreadBudget に決めさせる意味。プールが 3 つ独立に
-            // hardware_concurrency/2 を取ってコア数を超えるのを防ぐ
             ThreadPoolDesc poolDesc;
             poolDesc.name = "TextureLoad";
-            poolDesc.threadCount = workerThreadCount_;
+            poolDesc.threadCount = (workerThreadCount_ > 0)
+                ? workerThreadCount_
+                : ThreadBudget::Share(ThreadBudget::kTextureLoadShare);
             poolDesc.priority = WorkerPriority::Normal;
             threadPool_ = std::make_unique<ThreadPool>(poolDesc);
             Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}",
@@ -377,61 +381,41 @@ namespace CoreEngine
                 return Load(pathCopy, colorSpace);
             });
 
-        auto sharedFuture = future.share();
-
-        {
-            std::lock_guard<std::mutex> lock(pendingMutex_);
-            pendingFutures_.push_back(sharedFuture);
-        }
-
-        return sharedFuture;
+        return future.share();
     }
 
     void TextureManager::Load(const std::vector<std::string>& filePaths)
     {
-        if (filePaths.empty()) return;
-
+        std::vector<std::shared_future<LoadedTexture>> futures;
+        futures.reserve(filePaths.size());
         for (const auto& path : filePaths) {
-            SubmitAsync(path);
+            futures.push_back(SubmitAsync(path));
         }
-        WaitForAllPendingLoads();
+        WaitFor(futures);
     }
 
     void TextureManager::Load(const std::vector<LoadRequest>& requests)
     {
-        if (requests.empty()) return;
-
+        std::vector<std::shared_future<LoadedTexture>> futures;
+        futures.reserve(requests.size());
         for (const auto& request : requests) {
-            SubmitAsync(request.path, request.colorSpace);
+            futures.push_back(SubmitAsync(request.path, request.colorSpace));
         }
-        WaitForAllPendingLoads();
+        WaitFor(futures);
     }
 
-    void TextureManager::WaitForAllPendingLoads()
+    void TextureManager::WaitFor(std::vector<std::shared_future<LoadedTexture>>& futures)
     {
-        std::vector<std::shared_future<LoadedTexture>> futures;
-
-        {
-            std::lock_guard<std::mutex> lock(pendingMutex_);
-            futures = std::move(pendingFutures_);
-            pendingFutures_.clear();
-        }
-
+        // 自分が投げた分だけを待つ。待っている間はキューのタスクを引き受けるので、
+        // ワーカーの中（モデルの読み込み）から呼んでも詰まらない
         for (auto& f : futures) {
-            if (f.valid()) {
-                // 素の wait ではなく Wait を使う。待っている間キューのタスクを
-                // 引き受けるので、ワーカーの中から呼ばれてもデッドロックしない
-                //（モデルロードがテクスチャロードを待つ形が同一プールに乗ると詰む）。
-                // メインスレッドから呼んだ場合も手伝うぶんだけ速くなる。
-                if (threadPool_) {
-                    threadPool_->Wait(f);
-                } else {
-                    f.wait();
-                }
+            if (threadPool_) {
+                threadPool_->Wait(f);
+            } else {
+                f.wait();
             }
         }
     }
-
 }
 
 
