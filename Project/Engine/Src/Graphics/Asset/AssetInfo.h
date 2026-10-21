@@ -17,6 +17,7 @@ namespace CoreEngine
         AssetType type;                      // アセットの種類
         std::string category;                // カテゴリ（Engine/Application など）
         uint64_t lastModified;               // 最終更新時刻（Unix time）
+        std::string colorSpace;              // 画像の取り込み設定（.meta の import.colorSpace。"srgb" / "linear"、書いていなければ空）
 
         AssetInfo()
             : type(AssetType::Unknown)

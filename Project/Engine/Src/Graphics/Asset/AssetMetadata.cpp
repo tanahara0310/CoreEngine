@@ -51,6 +51,28 @@ namespace CoreEngine
         return "";
     }
 
+    std::string AssetMetadata::LoadImportColorSpace(const std::filesystem::path& metaFilePath)
+    {
+        Logger& log = Logger::GetInstance();
+        const json data = JsonManager::GetInstance().LoadJson(log.PathToUtf8(metaFilePath));
+        if (!data.is_object()) {
+            return "";
+        }
+        const auto import = data.find("import");
+        if (import == data.end() || !import->is_object()) {
+            return "";
+        }
+        const std::string colorSpace = JsonManager::SafeGet<std::string>(*import, "colorSpace", "");
+        if (colorSpace == "srgb" || colorSpace == "linear") {
+            return colorSpace;
+        }
+        if (!colorSpace.empty()) {
+            log.Logf(LogLevel::Warn, LogCategory::System, "{} の import.colorSpace \"{}\" は \"srgb\" か \"linear\" で書きます（読み飛ばしました）",
+                log.PathToUtf8(metaFilePath), colorSpace);
+        }
+        return "";
+    }
+
     // アセット本体の隣に .meta を書く（Unity と同じ流儀）。GUID は 1 度作ったら変えない
     void AssetMetadata::SaveMetaFile(const std::filesystem::path& assetPath, const std::string& guid, AssetType type)
     {

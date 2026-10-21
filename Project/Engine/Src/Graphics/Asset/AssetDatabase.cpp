@@ -311,6 +311,13 @@ namespace CoreEngine
         return FindByPathUnlocked(path);
     }
 
+    std::string AssetDatabase::GetImportColorSpace(std::string_view path) const
+    {
+        std::shared_lock lock(mutex_);
+        const AssetInfo* info = FindByPathUnlocked(path);
+        return info ? info->colorSpace : std::string();
+    }
+
     const AssetInfo* AssetDatabase::FindByGUIDUnlocked(const std::string& guid) const
     {
         const auto it = assetsByGUID_.find(guid);
@@ -458,6 +465,10 @@ namespace CoreEngine
         info.type = type;
         info.category = category;
         info.lastModified = GetFileLastModified(assetPath);
+        if (type == AssetType::Texture)
+        {
+            info.colorSpace = AssetMetadata::LoadImportColorSpace(AssetMetadata::GetMetaFilePath(assetPath));
+        }
 
         return info;
     }
@@ -522,7 +533,8 @@ namespace CoreEngine
                 }
 
                 const std::filesystem::path sourcePath = ProjectPaths::Resolve(sourceRelativeUtf8);
-                const std::string guid = AssetMetadata::LoadGUID(AssetMetadata::GetMetaFilePath(sourcePath));
+                const std::filesystem::path metaPath = AssetMetadata::GetMetaFilePath(sourcePath);
+                const std::string guid = AssetMetadata::LoadGUID(metaPath);
                 if (guid.empty()) {
                     log.Logf(LogLevel::WARNING, LogCategory::System, "{}",
                         "クック済みのテクスチャに対応する .meta が無いので登録しません: " + sourceRelativeUtf8);
@@ -537,6 +549,7 @@ namespace CoreEngine
                 info.relativePath = sourceRelative;
                 info.type = AssetType::Texture;
                 info.category = category;
+                info.colorSpace = AssetMetadata::LoadImportColorSpace(metaPath);
                 MergeAssetInfo(std::move(info));
                 ++registered;
             }

@@ -20,6 +20,10 @@ namespace CoreEngine
         // メタファイルからGUIDを読み取る
         static std::string LoadGUID(const std::filesystem::path& metaFilePath);
 
+        // メタファイルから画像の取り込み設定（import.colorSpace）を読み取る
+        // "srgb" / "linear" のどちらか。書いていない・読めない・ほかの値なら空
+        static std::string LoadImportColorSpace(const std::filesystem::path& metaFilePath);
+
         // メタファイルを保存
         static void SaveMetaFile(const std::filesystem::path& assetPath, const std::string& guid, AssetType type);
 

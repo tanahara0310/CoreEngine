@@ -1,4 +1,7 @@
 {
     "guid": "7d8b95aa-c1aa-dd5c-df1a-f2c7abd985d4",
-    "type": "Texture"
+    "type": "Texture",
+    "import": {
+        "colorSpace": "linear"
+    }
 }
