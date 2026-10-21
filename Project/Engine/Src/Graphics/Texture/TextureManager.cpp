@@ -44,6 +44,15 @@ namespace
         return ExtractFileName(requestPath) == kFallbackTexturePath ||
             resolvedPath.filename() == kFallbackTexturePath;
     }
+
+    /// @brief 画像の取り込み設定を、頼まれた色空間より優先する
+    CoreEngine::TextureColorSpace ResolveColorSpace(const std::filesystem::path& resolvedPath,
+        CoreEngine::TextureColorSpace requested)
+    {
+        const std::string setting = CoreEngine::AssetDatabase::GetInstance().GetImportColorSpace(
+            CoreEngine::Logger::GetInstance().PathToUtf8(resolvedPath));
+        return CoreEngine::ApplyImportColorSpace(setting, requested);
+    }
 }
 
 
@@ -110,6 +119,7 @@ namespace CoreEngine
     {
         // 入力パスを実体パスに解決し、色空間を加えたキーでキャッシュ検索する。
         std::filesystem::path resolvedPath = texturePathResolver_.ResolveAssetPath(filePath, false);
+        colorSpace = ResolveColorSpace(resolvedPath, colorSpace);
         std::string cacheKey = MakeCacheKey(resolvedPath, colorSpace);
 
         // キャッシュヒット時は即時返却し、重い処理を回避する。
@@ -352,7 +362,7 @@ namespace CoreEngine
         // キャッシュヒット時は即座に完了済み future を返す。
         std::filesystem::path resolvedPath = texturePathResolver_.ResolveAssetPath(filePath, false);
         LoadedTexture cachedTexture{};
-        if (cacheStore_->TryGetTexture(MakeCacheKey(resolvedPath, colorSpace), cachedTexture)) {
+        if (cacheStore_->TryGetTexture(MakeCacheKey(resolvedPath, ResolveColorSpace(resolvedPath, colorSpace)), cachedTexture)) {
             std::promise<LoadedTexture> p;
             p.set_value(cachedTexture);
             return p.get_future().share();

@@ -52,6 +52,12 @@ namespace CoreEngine
         /// @return 見つからなければ nullptr
         const AssetInfo* FindAssetByPath(std::string_view path) const;
 
+        /// @brief 画像の取り込み設定（.meta の import.colorSpace）を返す
+        /// @param path FindAssetByPath と同じ書き方のパス（UTF-8）
+        /// @return "srgb" / "linear"。登録されていない・書いていなければ空
+        /// @note ロードのワーカーから呼んでよい（ロックの中で写しを作って返す）
+        std::string GetImportColorSpace(std::string_view path) const;
+
         /// @brief 指定した種類のアセット情報を相対パス順に返す
         std::vector<const AssetInfo*> GetAssetsOfType(AssetType type) const;
 

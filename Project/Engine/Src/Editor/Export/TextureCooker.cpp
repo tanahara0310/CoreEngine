@@ -98,6 +98,14 @@ namespace CoreEngine::Editor
             const Usage usage = (found != usages.end()) ? found->second : Usage{};
             target.linear = usage.linear;
             target.srgb = usage.srgb || !usage.linear;
+
+            // 取り込み設定で色空間を決めた画像は、その版だけを作る
+            const std::string setting = AssetDatabase::GetInstance().GetImportColorSpace(ToUtf8(source));
+            if (!setting.empty()) {
+                const bool linear = ApplyImportColorSpace(setting, TextureColorSpace::SRGB) == TextureColorSpace::Linear;
+                target.linear = linear;
+                target.srgb = !linear;
+            }
             targets.push_back(std::move(target));
         }
         return targets;
