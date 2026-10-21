@@ -5,6 +5,7 @@
 #include "Startup/StartupSequence.h"
 #include "Startup/StartupProgress.h"
 #include "Startup/SplashScreen.h"
+#include "Graphics/Asset/Derived/DerivedData.h"
 #include "Graphics/Shader/Cache/ShaderCacheStore.h"
 #include "Graphics/Shader/Cache/ShaderBlobCache.h"
 #include "Graphics/Shader/Cache/ShaderManifest.h"
@@ -96,6 +97,9 @@ namespace CoreEngine
 
         // シェーダキャッシュのヒット率。期待どおり無効化されたかはここで見る
         ShaderCacheStore::GetInstance().LogSummary();
+
+        // 派生データ（テクスチャの DDS など）をどこから得たか
+        DerivedData::LogSummary();
 
         // この起動で実際に要求されたシェーダの一覧を残す。
         // 次回のコールド起動はこれを使って並列に事前コンパイルできる

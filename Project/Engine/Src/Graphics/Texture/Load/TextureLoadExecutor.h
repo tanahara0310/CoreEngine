@@ -27,9 +27,6 @@ namespace CoreEngine
         static ExecutionResult Execute(
             CoreEngine::GraphicsCore* dxCommon,
             const std::filesystem::path& resolvedPath,
-            bool ddsGenerationEnabled,
-            const std::filesystem::path& ddsPath,
-            const std::function<bool(const std::filesystem::path&, const std::filesystem::path&)>& ddsCacheGenerator,
             TextureColorSpace colorSpace = TextureColorSpace::SRGB);
     };
 }

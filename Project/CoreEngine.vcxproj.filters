@@ -874,8 +874,14 @@
     <ClCompile Include="Engine\Src\Graphics\Texture\Generate\TextureCubemapGenerator.cpp">
       <Filter>Engine\Src\Graphics\Texture\Generate</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Texture\Generate\TextureDdsCacheGenerator.cpp">
-      <Filter>Engine\Src\Graphics\Texture\Generate</Filter>
+    <ClCompile Include="Engine\Src\Graphics\Texture\Import\TextureImporter.cpp">
+      <Filter>Engine\Src\Graphics\Texture\Import</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Texture\Derived\TextureDerivedData.cpp">
+      <Filter>Engine\Src\Graphics\Texture\Derived</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Asset\Derived\DerivedData.cpp">
+      <Filter>Engine\Src\Graphics\Asset\Derived</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Texture\Cook\CookedTexture.cpp">
       <Filter>Engine\Src\Graphics\Texture\Cook</Filter>
@@ -2793,8 +2799,14 @@
     <ClInclude Include="Engine\Src\Graphics\Texture\Generate\TextureCubemapGenerator.h">
       <Filter>Engine\Src\Graphics\Texture\Generate</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Texture\Generate\TextureDdsCacheGenerator.h">
-      <Filter>Engine\Src\Graphics\Texture\Generate</Filter>
+    <ClInclude Include="Engine\Src\Graphics\Texture\Import\TextureImporter.h">
+      <Filter>Engine\Src\Graphics\Texture\Import</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Texture\Derived\TextureDerivedData.h">
+      <Filter>Engine\Src\Graphics\Texture\Derived</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Asset\Derived\DerivedData.h">
+      <Filter>Engine\Src\Graphics\Asset\Derived</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Texture\Cook\CookedTexture.h">
       <Filter>Engine\Src\Graphics\Texture\Cook</Filter>
@@ -4171,6 +4183,9 @@
     <Filter Include="Engine\Src\Graphics\Asset">
       <UniqueIdentifier>{79ECF4E4-C7DC-4F22-A25A-D2E02D05D867}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Src\Graphics\Asset\Derived">
+      <UniqueIdentifier>{D2D4D167-4EA8-4B10-8C22-189925BE1216}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Engine\Src\Graphics\Atmosphere">
       <UniqueIdentifier>{9D2C5E7F-3A4B-4C8D-B6E1-F0A9D8C7B654}</UniqueIdentifier>
     </Filter>
@@ -4411,11 +4426,17 @@
     <Filter Include="Engine\Src\Graphics\Texture\Cook">
       <UniqueIdentifier>{00ACE0A6-2E3D-4857-A7B4-93371C839806}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Src\Graphics\Texture\Derived">
+      <UniqueIdentifier>{2EF75274-AD60-4B9F-BECD-4AD619274E6E}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Engine\Src\Graphics\Texture\Generate">
       <UniqueIdentifier>{92DC9403-8308-4EC8-AFBA-B7DC40ABF0F9}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Texture\Gpu">
       <UniqueIdentifier>{5696ADE6-842D-43EA-9815-346FC97D32F5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Texture\Import">
+      <UniqueIdentifier>{F5C83AA7-DD72-40ED-B728-83AF7A04F8F4}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Texture\Load">
       <UniqueIdentifier>{96C85384-2E11-4480-889E-BC8E12DC4AF7}</UniqueIdentifier>

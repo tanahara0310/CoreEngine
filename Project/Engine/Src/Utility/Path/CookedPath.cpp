@@ -55,6 +55,19 @@ namespace CoreEngine
         return ReplaceSecondPart(cookedRelative, L"Cooked", L"Assets");
     }
 
+    bool CookedPath::IsCookedBuild()
+    {
+#ifdef CORE_EDITOR
+        return false;
+#else
+        static const bool cooked = [] {
+            std::error_code ec;
+            return std::filesystem::is_regular_file(ProjectPaths::EngineRoot() / kManifestFileName, ec);
+        }();
+        return cooked;
+#endif
+    }
+
     std::filesystem::path CookedPath::Resolve(const std::filesystem::path& relative)
     {
         if (relative.empty()) {

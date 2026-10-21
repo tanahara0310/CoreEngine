@@ -15,9 +15,6 @@ namespace CoreEngine
     TextureLoadExecutor::ExecutionResult TextureLoadExecutor::Execute(
         CoreEngine::GraphicsCore* dxCommon,
         const std::filesystem::path& resolvedPath,
-        bool ddsGenerationEnabled,
-        const std::filesystem::path& ddsPath,
-        const std::function<bool(const std::filesystem::path&, const std::filesystem::path&)>& ddsCacheGenerator,
         TextureColorSpace colorSpace)
     {
         Logger& log = Logger::GetInstance();
@@ -26,17 +23,8 @@ namespace CoreEngine
         // ログ・SRV 名として使う表示用文字列は UTF-8 に変換した別物として扱う。
         const std::string pathForDisplay = log.PathToUtf8(resolvedPath);
 
-        // 画像データを読み込み、必要であれば後続でDDS生成も実行する。
         DirectX::ScratchImage image;
         HRESULT hr = TextureImageProcessor::LoadTextureImage(resolvedPath.wstring(), image, colorSpace);
-
-        // ddsPathToGenerate が非空 ＝「まだキャッシュが無い WIC ファイル」だけ。
-        // DDS/HDR 入力と、キャッシュヒットした場合は BuildPlan 側で空にしてあるので、
-        // ここで isDDS/isHDR やヒット有無を再判定する必要はない。
-        if (ddsGenerationEnabled && !ddsPath.empty() && SUCCEEDED(hr)) {
-            ddsCacheGenerator(resolvedPath, ddsPath);
-        }
-
         if (FAILED(hr)) {
             std::string errorMsg = std::format(
                 "Failed to load texture file: {}\nHRESULT: 0x{:08X}\nPlease check if the file exists and the path is correct.",

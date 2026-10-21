@@ -2,36 +2,17 @@
 #include "TextureLoadPlan.h"
 
 #include "Graphics/Texture/Cook/CookedTexture.h"
+#include "Graphics/Texture/Derived/TextureDerivedData.h"
 #include "Graphics/Texture/Load/TextureImageProcessor.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/Path/CookedPath.h"
 
 #include <filesystem>
 #include <format>
+#include <stdexcept>
 
 namespace CoreEngine
 {
-    namespace
-    {
-        /// @brief クック済みの DDS を探す。頼まれた色空間の版が無ければ、もう一方の版で代用する
-        std::filesystem::path FindCookedTexture(const std::filesystem::path& sourcePath, TextureColorSpace colorSpace)
-        {
-            if (std::filesystem::path cooked = CookedTexture::Find(sourcePath, colorSpace); !cooked.empty()) {
-                return cooked;
-            }
-            const TextureColorSpace other = (colorSpace == TextureColorSpace::Linear)
-                ? TextureColorSpace::SRGB
-                : TextureColorSpace::Linear;
-            std::filesystem::path cooked = CookedTexture::Find(sourcePath, other);
-            if (!cooked.empty()) {
-                Logger& log = Logger::GetInstance();
-                log.Logf(LogLevel::WARNING, LogCategory::Graphics, "{}",
-                    std::format("頼まれた色空間の版が書き出されていないので、もう一方の版で代用します: {}",
-                        log.PathToUtf8(cooked)));
-            }
-            return cooked;
-        }
-    }
-
     TextureLoadPlan::PlanResult TextureLoadPlan::BuildPlan(
         const std::filesystem::path& resolvedPath,
         bool ddsGenerationEnabled,
@@ -45,9 +26,13 @@ namespace CoreEngine
 
         Logger& log = Logger::GetInstance();
 
-        // 書き出したゲームでは、元の画像の代わりに書き出し時に作った DDS を読む
-        if (std::filesystem::path cooked = FindCookedTexture(resolvedPath, colorSpace); !cooked.empty()) {
-            plan.resolvedPath = std::move(cooked);
+        // 変換する画像（PNG・JPG など）は、元の画像の代わりに派生データの DDS（クック済みか開発中に作った物）を読む
+        if (CookedTexture::IsCookable(resolvedPath) && (ddsGenerationEnabled || CookedPath::IsCookedBuild())) {
+            const DerivedData::Result derived = TextureDerivedData::Find(resolvedPath, colorSpace);
+            if (derived.path.empty()) {
+                throw std::runtime_error(std::format("DDS を用意できません: {}", log.PathToUtf8(resolvedPath)));
+            }
+            plan.resolvedPath = derived.path;
             plan.isDDS = true;
             return plan;
         }
@@ -112,36 +97,6 @@ namespace CoreEngine
 
                 plan.resolvedPath = cubemapDDSPath;
                 plan.isDDS = true;
-            }
-
-            return plan;
-        }
-
-        // 非DDS/非HDR入力の場合は通常DDSキャッシュを確認する。
-        if (!plan.isDDS && !isHDR) {
-            plan.ddsPathToGenerate = pathResolver.GetDDSCachePath(plan.resolvedPath, colorSpace);
-
-            if (std::filesystem::exists(plan.ddsPathToGenerate)) {
-                const auto sourceTime = std::filesystem::last_write_time(resolvedPath);
-                const auto ddsTime = std::filesystem::last_write_time(plan.ddsPathToGenerate);
-
-                if (sourceTime > ddsTime) {
-                    log.Logf(LogLevel::INFO, LogCategory::Graphics, "{}",
-                        std::format("Source file is newer than DDS cache, regenerating: {}", log.PathToUtf8(plan.resolvedPath)));
-                    std::filesystem::remove(plan.ddsPathToGenerate);
-                } else {
-                    log.Logf(LogLevel::INFO, LogCategory::Graphics, "{}",
-                        std::format("Loading from DDS cache: {}", log.PathToUtf8(plan.ddsPathToGenerate)));
-
-                    plan.resolvedPath = plan.ddsPathToGenerate;
-                    plan.isDDS = true;
-
-                    // キャッシュを採用したので生成要求は取り下げる。
-                    // ここを残すと TextureLoadExecutor が「非空なら生成する」の判定で
-                    // 毎起動 DDS を読み直して再圧縮し、同じ内容を書き戻してしまう
-                    // （ヒットしているのに生成コストを払い続ける状態になる）。
-                    plan.ddsPathToGenerate.clear();
-                }
             }
         }
 

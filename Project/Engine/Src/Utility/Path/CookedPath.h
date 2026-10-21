@@ -12,6 +12,13 @@ namespace CoreEngine
         /// @brief クック済みのデータを置くフォルダの綴り
         inline constexpr const char* kFolders[] = { "Application/Cooked", "Engine/Cooked" };
 
+        /// @brief 書き出したゲームの根に置く、クックの一覧のファイル名
+        inline constexpr const char* kManifestFileName = "CookManifest.json";
+
+        /// @brief 書き出したゲームとして動いているか（エディタの無いビルドで、エンジンの根にクックの一覧がある）
+        /// @note 書き出したゲームは元のファイルから派生データを作らない（無ければ代わりの物を使う）
+        bool IsCookedBuild();
+
         /// @brief 元のファイルの綴り（`<根>/Assets/…`）を、クック済みの置き場の綴り（`<根>/Cooked/…`）にする
         /// @param sourceRelative `Application/Assets/…` か `Engine/Assets/…` の綴り
         /// @return どちらの下でもなければ空

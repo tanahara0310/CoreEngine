@@ -6,7 +6,6 @@
 #include "Graphics/Texture/Path/TexturePathResolver.h"
 #include "Graphics/Texture/Load/TextureLoadPlan.h"
 #include "Graphics/Texture/Generate/TextureCubemapGenerator.h"
-#include "Graphics/Texture/Generate/TextureDdsCacheGenerator.h"
 #include <string>
 #include <unordered_map>
 #include <mutex>
@@ -118,7 +117,6 @@ namespace CoreEngine {
         TexturePathResolver texturePathResolver_;
         TextureLoadPlan textureLoadPlan_;
         TextureCubemapGenerator cubemapGenerator_;
-        TextureDdsCacheGenerator ddsCacheGenerator_;
         std::unique_ptr<TextureCacheStore> cacheStore_;
         bool isInitialized_ = false;
         bool ddsGenerationEnabled_ = true; // DDS自動生成を有効化（デフォルト有効）
