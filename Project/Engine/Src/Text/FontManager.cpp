@@ -3,6 +3,7 @@
 
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Text/DirectWriteFontFace.h"
+#include "Threading/ThreadBudget.h"
 #include "Threading/ThreadPool.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
@@ -58,7 +59,10 @@ namespace CoreEngine
         graphicsCore_ = graphicsCore;
 
         // 実行時グリフのベイク用。バッチ内のグリフを並列に焼く
-        bakeThreadPool_ = std::make_unique<ThreadPool>(kBakeThreadCount);
+        ThreadPoolDesc poolDesc;
+        poolDesc.name = "FontBake";
+        poolDesc.threadCount = ThreadBudget::Share(ThreadBudget::kFontBakeShare);
+        bakeThreadPool_ = std::make_unique<ThreadPool>(poolDesc);
     }
 
     void FontManager::RegisterNamedFont(const std::string& name, const MsdfFontDesc& desc)

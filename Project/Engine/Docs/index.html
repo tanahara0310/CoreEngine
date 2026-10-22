@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.24.0">
+<meta name="engine-version" content="0.25.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2182,9 +2182,11 @@ kbd {
       <tr><td><code>--project &lt;フォルダ&gt;</code></td><td>そのプロジェクトを開きます（選ぶ画面を出さない）</td></tr>
       <tr><td><code>--launcher</code></td><td>「前回のプロジェクトを自動で開く」にしていても、選ぶ画面を出します</td></tr>
       <tr><td><code>--resave-scenes</code></td><td>すべてのシーンと設定を今の形式で保存し直して終了します</td></tr>
+      <tr><td><code>--workers &lt;数&gt;</code></td><td>読み込みなどに使うスレッドを、1 つの仕事あたりこの本数までにします。<code>1</code> にすると全部 1 本で動くので、順番に頼る不具合かどうかを切り分けられます</td></tr>
     </tbody>
   </table>
   </div>
+  <p>読み込みのスレッドは、起動時に CPU のスレッド数から決めます（モデル 4 割・テクスチャ 4 割・文字 2 割）。本数は起動のログの <code>[Threads]</code> の行に出ます。<code>--workers</code> を毎回付ける代わりに、<span class="path">Engine/Config/config_*.json</span> の <code>"threads": { "workerLimit": 1 }</code> でも決められます（起動の引数が優先）。</p>
 </article>
 
 <article class="page" id="first-project" data-group="はじめに" data-title="最初のプロジェクトを作る" data-nav="最初のプロジェクト" data-keywords="新規 プロジェクト 作成 作る 開く ランチャー テンプレート 3d の基本 空のプロジェクト">
@@ -9665,6 +9667,17 @@ python Tools/OkinawaBeach/bake_player_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-25-0">v0.25.0 <span class="dim">（2026-10-22）</span></h3>
+  <p>モデルと画像を読むスレッドの配り方と待ち方を見直した版です（<a href="#setup-cmdline">コマンドラインのオプション</a>）。</p>
+  <ul>
+    <li><strong>スレッドの本数</strong>：モデル・テクスチャ・文字を読むスレッドの本数を、起動時に CPU のスレッド数からの比率で決めるようにしました。これまでは作られた順番で本数が変わっていました。起動のログの <code>[Threads]</code> の行に出ます。</li>
+    <li><strong><code>--workers &lt;数&gt;</code></strong>：1 つの仕事あたりのスレッドの上限を決める起動の引数を足しました（設定ファイルの <code>threads.workerLimit</code> でも可）。<code>1</code> にすると全部 1 本で動きます。</li>
+    <li><strong>待ち方</strong>：モデルが画像をまとめて読むとき、自分が頼んだ画像だけを待つようにしました。これまではほかのモデルの画像の完了まで待っていました。同じ画像を読み込み中のほかのスレッドを 5 秒で打ち切って読み直していたのもやめました。</li>
+    <li><strong>先読み</strong>：シーンを開く前の先読みに、アニメーション（Animator）のモデルなど、パスの文字列で指したモデルも入れました。アニメーションするキャラクターのモデルを、ゲームを動かすスレッドで読まなくなりました。</li>
+    <li><strong>同じ名前のファイル</strong>：モデルはパスで指せたら、名前で探し直さないようにしました（別のフォルダの同じ名前のモデルを取り違えない）。指したパスに無くて同じ名前の別のファイルを使うときは、モデルも画像も警告を出します。</li>
+    <li>沖縄のシーンの起動が 5.8 秒から 5.5 秒（モデルを待つ時間が 1.6 秒から 1.45 秒）になりました。</li>
+  </ul>
 
   <h3 id="changelog-v0-24-0">v0.24.0 <span class="dim">（2026-10-22）</span></h3>
   <p>画像から作るデータ（派生データ）の置き場と作り直しの判定を 1 か所にまとめた版です（<a href="#export-cooking">テクスチャの変換</a>）。</p>

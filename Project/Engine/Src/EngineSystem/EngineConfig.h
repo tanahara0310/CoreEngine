@@ -48,6 +48,12 @@ namespace CoreEngine
         // （CVar の復元は起動時のシェーダコンパイルより後なので CVar にはできない）
         bool enableShaderCache = true;
 
+        // ──────────────────────────────────────────────────────────
+        // スレッド設定
+        // ──────────────────────────────────────────────────────────
+        // 1 つのスレッドプールのワーカー数の上限（0 = 上限なし。起動の引数 --workers が優先）
+        uint32_t threadWorkerLimit = 0;
+
         /// @brief ビルド構成に応じたコンフィグファイルを読み込み
         /// @return 読み込んだEngineConfig
         static EngineConfig Load();

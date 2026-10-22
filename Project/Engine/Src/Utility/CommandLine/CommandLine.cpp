@@ -25,4 +25,22 @@ namespace CoreEngine::CommandLine
         ::LocalFree(args);
         return found;
     }
+
+    std::wstring GetValue(std::wstring_view option)
+    {
+        int count = 0;
+        LPWSTR* const args = ::CommandLineToArgvW(::GetCommandLineW(), &count);
+        if (!args) {
+            return {};
+        }
+        std::wstring value;
+        for (int i = 1; i + 1 < count; ++i) {
+            if (std::wstring_view(args[i]) == option) {
+                value = args[i + 1];
+                break;
+            }
+        }
+        ::LocalFree(args);
+        return value;
+    }
 }

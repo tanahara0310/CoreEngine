@@ -10,8 +10,23 @@ namespace CoreEngine
     /// @note 上限はコア数 - 1。メインスレッド（メッセージと描画）のぶんを必ず 1 本残す。
     namespace ThreadBudget
     {
+        /// @brief ずっと残るプールの取り分（枠に対する比率）
+        inline constexpr float kModelLoadShare = 0.4f;
+        inline constexpr float kTextureLoadShare = 0.4f;
+        inline constexpr float kFontBakeShare = 0.2f;
+
         /// @brief 割り当て可能なワーカー総数（コア数 - 1、最低 1）
         uint32_t GetCapacity();
+
+        /// @brief 枠に比率を掛けたワーカー数（最低 1。上限があればそこまで）
+        uint32_t Share(float ratio);
+
+        /// @brief 1 つのプールのワーカー数の上限を決める（0 = 上限なし）
+        /// @note どのプールも作る前に 1 回だけ呼ぶ。1 にすると全プールが 1 本になる（順番に頼る不具合を探すのに使う）
+        void SetWorkerLimit(uint32_t limit);
+
+        /// @brief 1 つのプールのワーカー数の上限（0 = 上限なし）
+        uint32_t GetWorkerLimit();
 
         /// @brief 現在予約されている総ワーカー数
         uint32_t GetReserved();

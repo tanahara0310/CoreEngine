@@ -2,6 +2,7 @@
 #include "ThreadPool.h"
 
 #include "ThreadBudget.h"
+#include "Utility/Logger/Logger.h"
 
 #include <algorithm>
 
@@ -70,6 +71,10 @@ namespace CoreEngine
         uint32_t granted = ThreadBudget::Reserve(desc.threadCount);
         granted = (std::min)(granted, kMaxWorkers);
         reservedThreads_ = granted;
+
+        const uint32_t limit = ThreadBudget::GetWorkerLimit();
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "[Threads] {}: ワーカー {} 本（枠 {}・上限 {}）",
+            name_, granted, ThreadBudget::GetCapacity(), limit > 0 ? std::to_string(limit) : std::string("なし"));
 
         epoch_ = std::chrono::steady_clock::now();
         recentTasks_.reserve(kRecentTaskCapacity);

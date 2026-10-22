@@ -6,6 +6,8 @@
 #include "Startup/StartupProgress.h"
 #include "Startup/SplashScreen.h"
 #include "Graphics/Asset/Derived/DerivedData.h"
+#include "Threading/ThreadBudget.h"
+#include "Utility/CommandLine/CommandLine.h"
 #include "Graphics/Shader/Cache/ShaderCacheStore.h"
 #include "Graphics/Shader/Cache/ShaderBlobCache.h"
 #include "Graphics/Shader/Cache/ShaderManifest.h"
@@ -18,6 +20,7 @@
 #include "Editor/Launcher/ProjectList.h"
 #endif
 #include <chrono>
+#include <cwchar>
 
 
 namespace CoreEngine
@@ -140,6 +143,13 @@ namespace CoreEngine
         // エンジンコンフィグの読み込み
         // ──────────────────────────────────────────────────────────
         EngineConfig config = EngineConfig::Load();
+
+        // スレッドプールのワーカー数の上限（どのプールより先に決める）
+        uint32_t workerLimit = config.threadWorkerLimit;
+        if (const std::wstring workers = CommandLine::GetValue(L"--workers"); !workers.empty()) {
+            workerLimit = static_cast<uint32_t>(std::wcstoul(workers.c_str(), nullptr, 10));
+        }
+        ThreadBudget::SetWorkerLimit(workerLimit);
 
         // ──────────────────────────────────────────────────────────
         // 初期化フェーズ

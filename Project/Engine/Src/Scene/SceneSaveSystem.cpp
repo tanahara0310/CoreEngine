@@ -439,12 +439,23 @@ namespace CoreEngine
             }
         }
 
-        /// @brief components 配列からモデルを指す AssetRef を探し、そのパスを重ならないように足す
+        /// @brief components 配列からモデルを指す参照を探し、そのパスを重ならないように足す
+        /// @details 参照は AssetRef と、モデルの綴りの文字列（Animator の model など）の 2 通り
         void CollectModelRefs(const json& components, std::vector<std::string>& modelPaths)
         {
             if (!components.is_array()) {
                 return;
             }
+
+            const auto add = [&modelPaths](const AssetInfo* info) {
+                if (!info || info->type != AssetType::Model) {
+                    return;
+                }
+                std::string path = ToAssetPath(*info);
+                if (std::find(modelPaths.begin(), modelPaths.end(), path) == modelPaths.end()) {
+                    modelPaths.push_back(std::move(path));
+                }
+            };
 
             for (const auto& entry : components) {
                 if (!entry.is_object() || !entry.contains("parameters") ||
@@ -452,17 +463,13 @@ namespace CoreEngine
                     continue;
                 }
                 for (const auto& node : entry.at("parameters")) {
+                    if (node.is_string()) {
+                        add(AssetDatabase::GetInstance().FindAssetByPath(node.get_ref<const std::string&>()));
+                        continue;
+                    }
                     Reflection::AssetRefValue ref;
-                    if (!node.is_object() || !Reflection::PropertySerializer::JsonToAssetRef(node, ref)) {
-                        continue;
-                    }
-                    const AssetInfo* info = ResolveAssetRef(ref);
-                    if (!info || info->type != AssetType::Model) {
-                        continue;
-                    }
-                    std::string path = ToAssetPath(*info);
-                    if (std::find(modelPaths.begin(), modelPaths.end(), path) == modelPaths.end()) {
-                        modelPaths.push_back(std::move(path));
+                    if (node.is_object() && Reflection::PropertySerializer::JsonToAssetRef(node, ref)) {
+                        add(ResolveAssetRef(ref));
                     }
                 }
             }

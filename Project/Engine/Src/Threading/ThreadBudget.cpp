@@ -2,6 +2,7 @@
 #include "ThreadBudget.h"
 
 #include <algorithm>
+#include <cmath>
 #include <atomic>
 #include <mutex>
 #include <thread>
@@ -10,6 +11,7 @@ namespace
 {
     std::mutex g_mutex;
     uint32_t   g_reserved = 0;
+    std::atomic<uint32_t> g_workerLimit{ 0 };
 }
 
 namespace CoreEngine::ThreadBudget
@@ -22,6 +24,24 @@ namespace CoreEngine::ThreadBudget
         }
         // メインスレッドのぶんを 1 本残す
         return hardware - 1;
+    }
+
+    uint32_t Share(float ratio)
+    {
+        const uint32_t share = static_cast<uint32_t>(std::lround(static_cast<double>(GetCapacity()) * ratio));
+        const uint32_t limit = g_workerLimit.load();
+        const uint32_t count = (std::max)(1u, share);
+        return (limit > 0) ? (std::min)(count, limit) : count;
+    }
+
+    void SetWorkerLimit(uint32_t limit)
+    {
+        g_workerLimit.store(limit);
+    }
+
+    uint32_t GetWorkerLimit()
+    {
+        return g_workerLimit.load();
     }
 
     uint32_t GetReserved()
@@ -43,7 +63,10 @@ namespace CoreEngine::ThreadBudget
             requested = (std::max)(1u, remaining / 2u);
         }
 
-        const uint32_t granted = (std::max)(1u, (std::min)(requested, remaining));
+        uint32_t granted = (std::max)(1u, (std::min)(requested, remaining));
+        if (const uint32_t limit = g_workerLimit.load(); limit > 0) {
+            granted = (std::min)(granted, limit);
+        }
         g_reserved += granted;
         return granted;
     }

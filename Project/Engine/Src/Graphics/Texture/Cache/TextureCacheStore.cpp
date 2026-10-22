@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "TextureCacheStore.h"
 
-#include <chrono>
 
 namespace CoreEngine
 {
@@ -66,27 +65,11 @@ namespace CoreEngine
     void TextureCacheStore::WaitForLoad(const std::string& cacheKey)
     {
         // ロード中キーが解放されるまで待機し、完了後に再度キャッシュ確認できるようにする。
-        // 例外終了等でEndLoadが呼ばれないケースに備え、無限待機を避ける。
+        // ロードしているスレッドは例外で抜けても EndLoad を呼ぶ（TextureManager::Load の ScopedLoadNotify）。
         std::unique_lock<std::mutex> lock(cacheMutex_);
-
-        constexpr auto kWaitSlice = std::chrono::milliseconds(100);
-        constexpr auto kMaxWait = std::chrono::seconds(5);
-        auto waited = std::chrono::milliseconds::zero();
-
-        while (loadingKeys_.contains(cacheKey)) {
-            if (loadCondition_.wait_for(lock, kWaitSlice, [this, &cacheKey]() {
-                return !loadingKeys_.contains(cacheKey);
-            })) {
-                break;
-            }
-
-            waited += std::chrono::duration_cast<std::chrono::milliseconds>(kWaitSlice);
-            if (waited >= kMaxWait) {
-                loadingKeys_.erase(cacheKey);
-                loadCondition_.notify_all();
-                break;
-            }
-        }
+        loadCondition_.wait(lock, [this, &cacheKey]() {
+            return !loadingKeys_.contains(cacheKey);
+        });
     }
 
     void TextureCacheStore::EndLoad(const std::string& cacheKey)
