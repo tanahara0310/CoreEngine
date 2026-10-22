@@ -5,6 +5,7 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <system_error>
 
 
@@ -51,21 +52,54 @@ namespace CoreEngine
     // 読み込み失敗（ファイル無し・パースエラー）は空の json を返す。
     // 呼び出し側は empty() で判定し、既定値へフォールバックする契約
     json JsonManager::LoadJson(const std::string& filePath) {
-        try {
-            std::ifstream file(ProjectPaths::Resolve(filePath));
-            if (!file.is_open()) {
-                std::cerr << "Failed to open file: " << filePath << std::endl;
-                return json{};
-            }
-
-            json j;
-            file >> j;
-            return j;
-        }
-        catch (const std::exception& e) {
-            std::cerr << "Error loading JSON from " << filePath << ": " << e.what() << std::endl;
+        std::string bytes;
+        if (!ReadBytes(ProjectPaths::Resolve(filePath), bytes)) {
+            std::cerr << "Failed to open file: " << filePath << std::endl;
             return json{};
         }
+        json j = Parse(bytes);
+        if (j.is_discarded()) {
+            std::cerr << "Error loading JSON from " << filePath << std::endl;
+            return json{};
+        }
+        return j;
+    }
+
+    bool JsonManager::ReadBytes(const std::filesystem::path& path, std::string& out) {
+        std::ifstream file(path, std::ios::binary);
+        if (!file) {
+            return false;
+        }
+        out.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
+        return !file.bad();
+    }
+
+    bool JsonManager::IsBinary(std::string_view bytes) {
+        if (bytes.empty()) {
+            return false;
+        }
+        const auto byteAt = [&bytes](size_t i) { return static_cast<unsigned char>(bytes[i]); };
+        const bool bom = bytes.size() >= 3 && byteAt(0) == 0xEF && byteAt(1) == 0xBB && byteAt(2) == 0xBF;
+        return byteAt(0) >= 0x80 && !bom;
+    }
+
+    json JsonManager::Parse(std::string_view bytes) {
+        if (IsBinary(bytes)) {
+            return json::from_msgpack(bytes.begin(), bytes.end(), /*strict=*/true, /*allow_exceptions=*/false);
+        }
+        return json::parse(bytes.begin(), bytes.end(), nullptr, /*allow_exceptions=*/false);
+    }
+
+    json JsonManager::ParseFile(const std::filesystem::path& path) {
+        std::string bytes;
+        if (!ReadBytes(path, bytes)) {
+            return json(json::value_t::discarded);
+        }
+        return Parse(bytes);
+    }
+
+    std::vector<std::uint8_t> JsonManager::ToBinary(const json& jsonData) {
+        return json::to_msgpack(jsonData);
     }
 
     // 保存先の親ディレクトリが無ければ作ってから書く

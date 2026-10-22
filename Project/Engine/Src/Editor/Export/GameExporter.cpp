@@ -21,12 +21,14 @@
 #include <Windows.h>
 #include <objbase.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cwctype>
 #include <format>
 #include <fstream>
 #include <functional>
 #include <future>
+#include <iterator>
 #include <set>
 #include <vector>
 
@@ -175,6 +177,14 @@ namespace CoreEngine::Editor
             return extension == L".gltf" || extension == L".glb" || extension == L".obj" || extension == L".fbx";
         }
 
+        /// @brief 中身が JSON のファイルか（書き出しで MessagePack にする拡張子か）
+        bool IsJsonData(const std::filesystem::path& path)
+        {
+            const std::wstring extension = MakeFileKey(path.extension());
+            return extension == L".json" || extension == L".prefab" || extension == L".mat" ||
+                extension == L".meta" || extension == L".physmat";
+        }
+
         /// @brief 書き出した物を確かめる（変換した物が全部あるか、写さないはずの元のファイルが残っていないか）
         /// @param keptImage 元のまま写す画像（ローディング画面の画像。無ければ空）
         /// @return 見つかったこと（無ければ空）
@@ -190,7 +200,8 @@ namespace CoreEngine::Editor
                 }
             }
             const std::wstring keptKey = keptImage.empty() ? std::wstring() : MakeFileKey(keptImage);
-            for (const char* folder : { "Engine/Assets", "Application/Assets" }) {
+            std::string bytes;
+            for (const char* folder : { "Engine/Assets", "Application/Assets", "Application/Config" }) {
                 std::filesystem::recursive_directory_iterator it(destination / folder, ec);
                 for (; !ec && it != std::filesystem::recursive_directory_iterator(); it.increment(ec)) {
                     const std::filesystem::path& file = it->path();
@@ -199,6 +210,8 @@ namespace CoreEngine::Editor
                     }
                     if ((CookedTexture::IsCookable(file) && MakeFileKey(file) != keptKey) || IsModelFile(file)) {
                         warnings.push_back("元のファイルが残っています: " + ToUtf8(file.lexically_relative(destination)));
+                    } else if (IsJsonData(file) && (!JsonManager::ReadBytes(file, bytes) || !JsonManager::IsBinary(bytes))) {
+                        warnings.push_back("テキストの JSON が残っています: " + ToUtf8(file.lexically_relative(destination)));
                     }
                 }
             }
@@ -207,6 +220,33 @@ namespace CoreEngine::Editor
 
         /// 消せない・書けないときに添える一言
         constexpr const char* kLockedHint = "（書き出したゲームが動いていないか確かめてください）";
+
+        /// @brief JSON のファイルを MessagePack に変換して、同じ名前で書く
+        /// @return 書けなかった訳（書けたら空）
+        std::string ConvertJson(const CopyItem& item, std::uintmax_t& writtenBytes)
+        {
+            const std::filesystem::path relative = ProjectPaths::MakeRelative(item.from).generic_wstring();
+            const std::string name = ToUtf8(relative.empty() ? item.from : relative);
+            std::string text;
+            if (!JsonManager::ReadBytes(item.from, text)) {
+                return name + " を読めませんでした";
+            }
+            const json data = JsonManager::Parse(text);
+            if (data.is_discarded()) {
+                return name + " を JSON として読めません";
+            }
+
+            std::error_code ec;
+            std::filesystem::create_directories(item.to.parent_path(), ec);
+            const std::vector<std::uint8_t> binary = JsonManager::ToBinary(data);
+            std::ofstream file(item.to, std::ios::binary | std::ios::trunc);
+            file.write(reinterpret_cast<const char*>(binary.data()), static_cast<std::streamsize>(binary.size()));
+            if (!file) {
+                return ToUtf8(item.to) + " を書けませんでした" + kLockedHint;
+            }
+            writtenBytes = binary.size();
+            return {};
+        }
 
         /// @brief クックの一覧（書き出したゲームの根の CookManifest.json）を書く
         json ToJson(const std::vector<CookRecord>& records)
@@ -225,7 +265,7 @@ namespace CoreEngine::Editor
         }
 
         bool WriteCookManifest(const std::filesystem::path& destination, const std::vector<CookRecord>& textures,
-            const std::vector<CookRecord>& meshes, int shaderCount)
+            const std::vector<CookRecord>& meshes, int shaderCount, int jsonCount)
         {
             using namespace std::chrono;
             const zoned_time now{ current_zone(), floor<seconds>(system_clock::now()) };
@@ -236,6 +276,7 @@ namespace CoreEngine::Editor
                 { "textures", ToJson(textures) },
                 { "meshes", ToJson(meshes) },
                 { "shaders", shaderCount },
+                { "json", jsonCount },
             };
             return JsonManager::GetInstance().SaveJson(ToUtf8(destination / CookedPath::kManifestFileName), manifest);
         }
@@ -335,7 +376,13 @@ namespace CoreEngine::Editor
             return modelFiles.contains(MakeFileKey(item.from)) || !destinations.insert(MakeFileKey(item.to)).second;
         });
 
-        progress.cookTotal = static_cast<int>(meshes.size() + textures.size() + shaders.size());
+        // 中身が JSON のファイル（シーン・プレハブ・マテリアル・.meta・設定など）は、写さずに MessagePack へ変換する
+        const auto jsonBegin = std::stable_partition(items.begin(), items.end(),
+            [](const CopyItem& item) { return !IsJsonData(item.from); });
+        const std::vector<CopyItem> jsonItems(std::make_move_iterator(jsonBegin), std::make_move_iterator(items.end()));
+        items.erase(jsonBegin, items.end());
+
+        progress.cookTotal = static_cast<int>(meshes.size() + textures.size() + shaders.size() + jsonItems.size());
         progress.total = static_cast<int>(items.size());
 
         // 丸ごと写すフォルダとクック済みのデータのフォルダは、書き出す先の側を消しておく
@@ -382,18 +429,32 @@ namespace CoreEngine::Editor
         std::vector<JobOutcome> meshOutcomes = RunJobs(pool, meshJobs, progress.cooked);
 
         const std::vector<CookTarget> targets = TextureCooker::PlanTargets(textures);
-        progress.cookTotal = static_cast<int>(meshes.size() + targets.size() + shaders.size());
+        progress.cookTotal = static_cast<int>(meshes.size() + targets.size() + shaders.size() + jsonItems.size());
+
+        // テクスチャ・シェーダ・JSON の変換をまとめて並べる（結果を数えるために仕事の種類を控える）
+        enum class CookKind { Texture, Shader, Json };
         std::vector<ExportJob> otherJobs;
-        otherJobs.reserve(targets.size() + shaders.size());
+        std::vector<CookKind> otherKinds;
+        otherJobs.reserve(targets.size() + shaders.size() + jsonItems.size());
+        otherKinds.reserve(otherJobs.capacity());
         for (const CookTarget& target : targets) {
             otherJobs.push_back([&target, &destination](JobOutcome& outcome) {
                 outcome.error = TextureCooker::Cook(target, destination, outcome.files, outcome.bytes, outcome.records);
             });
+            otherKinds.push_back(CookKind::Texture);
         }
         for (const ShaderManifest::Entry& shader : shaders) {
             otherJobs.push_back([&shader, &destination](JobOutcome& outcome) {
                 outcome.error = ShaderCooker::Cook(shader, destination, outcome.files, outcome.bytes);
             });
+            otherKinds.push_back(CookKind::Shader);
+        }
+        for (const CopyItem& item : jsonItems) {
+            otherJobs.push_back([&item](JobOutcome& outcome) {
+                outcome.error = ConvertJson(item, outcome.bytes);
+                outcome.files = outcome.error.empty() ? 1 : 0;
+            });
+            otherKinds.push_back(CookKind::Json);
         }
         std::vector<JobOutcome> otherOutcomes = RunJobs(pool, otherJobs, progress.cooked);
 
@@ -421,11 +482,17 @@ namespace CoreEngine::Editor
             if (!accept(outcome)) {
                 continue;
             }
-            if (i < targets.size()) {
+            switch (otherKinds[i]) {
+            case CookKind::Texture:
                 ++result.cookedTextures;
                 cookRecords.insert(cookRecords.end(), outcome.records.begin(), outcome.records.end());
-            } else if (files > 0) {
-                ++result.cookedShaders;
+                break;
+            case CookKind::Shader:
+                result.cookedShaders += (files > 0) ? 1 : 0;
+                break;
+            case CookKind::Json:
+                ++result.convertedJson;
+                break;
             }
         }
         if (!result.failures.empty()) {
@@ -472,7 +539,7 @@ namespace CoreEngine::Editor
         pool.Shutdown();
 
         // 一覧があると、書き出したゲームは元のファイルから派生データを作らない
-        if (!WriteCookManifest(destination, cookRecords, meshRecords, result.cookedShaders)) {
+        if (!WriteCookManifest(destination, cookRecords, meshRecords, result.cookedShaders, result.convertedJson)) {
             result.error = ToUtf8(manifestPath) + " を書けませんでした" + kLockedHint;
             return result;
         }

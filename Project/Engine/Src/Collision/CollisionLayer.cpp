@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Collision/CollisionLayer.h"
 
+#include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
 #include "externals/nlohmann/single_include/nlohmann/json.hpp"
@@ -55,29 +56,28 @@ namespace CoreEngine
             return true;
         }
 
-        std::vector<std::string>& Table()
+        /// @brief ファイルのレイヤー名を読む（無い・壊れていれば既定の名前）
+        /// @note ログの初期化より前に走りうるので、ログは出さない
+        std::vector<std::string> ReadNames()
         {
-            static std::vector<std::string> names = [] {
-                std::vector<std::string> loaded;
-                const std::filesystem::path path = ProjectPaths::Resolve(kSettingsPath);
-                std::ifstream in(path, std::ios::binary);
-                if (in) {
-                    const nlohmann::json root =
-                        nlohmann::json::parse(in, nullptr, /*allow_exceptions=*/false);
-                    if (!root.is_discarded() && root.is_object()) {
-                        if (const auto found = root.find(kLayersKey);
-                            found != root.end() && found->is_array()) {
-                            for (const auto& entry : *found) {
-                                if (entry.is_string()) {
-                                    loaded.push_back(entry.get<std::string>());
-                                }
-                            }
+            std::vector<std::string> loaded;
+            const nlohmann::json root = JsonManager::ParseFile(ProjectPaths::Resolve(kSettingsPath));
+            if (!root.is_discarded() && root.is_object()) {
+                if (const auto found = root.find(kLayersKey);
+                    found != root.end() && found->is_array()) {
+                    for (const auto& entry : *found) {
+                        if (entry.is_string()) {
+                            loaded.push_back(entry.get<std::string>());
                         }
                     }
                 }
-                // 壊れていたら既定へ倒す（ここはログの初期化より前に走りうる）
-                return Validate(loaded, nullptr) ? loaded : DefaultNames();
-            }();
+            }
+            return Validate(loaded, nullptr) ? loaded : DefaultNames();
+        }
+
+        std::vector<std::string>& Table()
+        {
+            static std::vector<std::string> names = ReadNames();
             return names;
         }
 
@@ -130,23 +130,7 @@ namespace CoreEngine
 
     void CollisionLayers::Reload()
     {
-        std::vector<std::string> loaded;
-        const std::filesystem::path path = ProjectPaths::Resolve(kSettingsPath);
-        std::ifstream in(path, std::ios::binary);
-        if (in) {
-            const nlohmann::json root = nlohmann::json::parse(in, nullptr, false);
-            if (!root.is_discarded() && root.is_object()) {
-                if (const auto found = root.find(kLayersKey);
-                    found != root.end() && found->is_array()) {
-                    for (const auto& entry : *found) {
-                        if (entry.is_string()) {
-                            loaded.push_back(entry.get<std::string>());
-                        }
-                    }
-                }
-            }
-        }
-        Table() = Validate(loaded, nullptr) ? std::move(loaded) : DefaultNames();
+        Table() = ReadNames();
     }
 
     const std::string& ToString(CollisionLayer layer)

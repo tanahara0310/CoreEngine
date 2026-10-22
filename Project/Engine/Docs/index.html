@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.28.1">
+<meta name="engine-version" content="0.29.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3167,7 +3167,7 @@ kbd {
   <p>Key Config では、割り当てのボタンを押してから新しいキーを押すと割り当てが変わります。<span class="ui">x</span> で削除、<span class="ui">追加</span> で足し、同じ場面のほかのアクションと重なると赤く表示されます。<span class="ui">初期値に戻す</span> で InputActions.json の既定に戻ります。</p>
 </article>
 
-<article class="page" id="editor-export" data-group="エディタ" data-title="ゲームを書き出す" data-nav="ゲームの書き出し" data-keywords="書き出し 書き出す export ビルド release 配布 exe 完成 build windows 全画面 フルスクリーン 終了 esc 起動シーン テクスチャ dds 変換 クック cooked シェーダ dxil コンパイル モデル cmesh 並列 スレッド 失敗">
+<article class="page" id="editor-export" data-group="エディタ" data-title="ゲームを書き出す" data-nav="ゲームの書き出し" data-keywords="書き出し 書き出す export ビルド release 配布 exe 完成 build windows 全画面 フルスクリーン 終了 esc 起動シーン テクスチャ dds 変換 クック cooked シェーダ dxil コンパイル モデル cmesh 並列 スレッド 失敗 json messagepack バイナリ">
   <h1>ゲームを書き出す</h1>
   <p class="lead">完成したゲームを、エディタの無い PC でも遊べるフォルダにまとめます。できたフォルダを丸ごと渡せば、そのまま遊べます。</p>
 
@@ -3175,7 +3175,7 @@ kbd {
   <ol class="steps">
     <li><strong>シーンを保存する</strong>書き出すのはディスクにあるファイルです。保存していない変更は入りません（<kbd>Ctrl</kbd>+<kbd>S</kbd>）。</li>
     <li><strong>Release をビルドする</strong>Visual Studio で構成を <span class="ui">Release</span> にしてビルドします。エディタからはビルドしません。<span class="path">generated/CoreEngine/outputs/Release/CoreEngine.exe</span> ができていれば準備完了です。</li>
-    <li><strong>書き出す</strong>エディタで <span class="ui">File<span class="arrow">▸</span>ゲームを書き出す…</span> を開きます。書き出す先・使う Release の exe（ビルドした日時）・写すものを確かめて、<span class="ui">書き出す</span> を押します。画像のテクスチャを DDS に、モデルを .cmesh に変換してから写します（<a href="#export-cooking">テクスチャの変換</a>・<a href="#export-models">モデルの変換</a>）。</li>
+    <li><strong>書き出す</strong>エディタで <span class="ui">File<span class="arrow">▸</span>ゲームを書き出す…</span> を開きます。書き出す先・使う Release の exe（ビルドした日時）・写すものを確かめて、<span class="ui">書き出す</span> を押します。画像のテクスチャを DDS に、モデルを .cmesh に、JSON を MessagePack に変換してから写します（<a href="#export-cooking">テクスチャの変換</a>・<a href="#export-models">モデルの変換</a>・<a href="#export-json">JSON のバイナリ化</a>）。</li>
     <li><strong>遊んで確かめる</strong><span class="ui">エクスプローラーで開く</span> で書き出したフォルダを開き、<span class="path">CoreEngine.exe</span> を起動します。</li>
   </ol>
   <div class="callout note"><p>Release の exe が無いと、窓に「先に Release でビルドしてください」と出て書き出せません。書き出したゲームを動かしたままだとファイルを書き換えられないので、閉じてから書き出します。</p></div>
@@ -3186,12 +3186,12 @@ kbd {
     ├─ CoreEngine.exe と *.dll      Release のフォルダから
     ├─ CookManifest.json            変換したデータの一覧（これがあると、書き出したゲームとして動く）
     ├─ Engine/
-    │  ├─ Assets/                   エンジンの素材（シェーダなど。画像のテクスチャとモデルのファイルは除く）
+    │  ├─ Assets/                   エンジンの素材（シェーダなど。画像のテクスチャとモデルのファイルは除く。JSON は MessagePack）
     │  └─ Cooked/                   エンジンの画像のテクスチャを変換した DDS・モデルの .cmesh・コンパイルしたシェーダの DXIL
     └─ Application/
-       ├─ Assets/                   シーン・スクリプト・プレハブ・素材（画像のテクスチャとモデルのファイルは除く）
+       ├─ Assets/                   シーン・スクリプト・プレハブ・素材（画像のテクスチャとモデルのファイルは除く。JSON は MessagePack）
        ├─ Cooked/                   プロジェクトの画像のテクスチャを変換した DDS とモデルの .cmesh
-       ├─ Config/                   プロジェクトの設定（起動シーン・入力・レイヤー・CVar）
+       ├─ Config/                   プロジェクトの設定（起動シーン・入力・レイヤー・CVar。MessagePack）
        └─ Saved/                    遊んだ人のセーブデータ（ゲームが作る）
   </script>
   <p>書き出すたびに、<span class="path">Engine/Assets</span>・<span class="path">Engine/Cooked</span>・<span class="path">Application/Assets</span>・<span class="path">Application/Cooked</span>・<span class="path">Application/Config</span> をいったん消してから書き直します。遊んだ人のデータが入る <span class="path">Application/Saved</span> は残します。<span class="path">Build/</span> は git の対象外です。</p>
@@ -3215,6 +3215,20 @@ kbd {
   <p>モデル（glTF・GLB・OBJ・FBX）は、エンジンがそのまま読める形 <span class="path">.cmesh</span> に変換して使います。<span class="path">.cmesh</span> には、頂点とインデックス・遠くで使う簡略化した形（LOD）・マテリアル・ボーン・ファイルに入っているアニメーションをまとめて入れ、GPU が速く描ける順に並べ替えてあります。ゲームの起動やシーンの切り替えでは、モデルのファイルを解析せずにこれを読むだけです。</p>
   <p>エディタでは、モデルを初めて読むときに変換して <span class="path">Intermediate/DerivedData/Mesh/</span> に置きます（名前はモデルの GUID と <code>.cmesh</code>）。テクスチャと同じく、元のファイルの中身か変換の設定が変わったときだけ作り直します。書き出すときはそれを <span class="path">Cooked/</span> に写します（例：<span class="path">Application/Assets/Models/Rock/rock.gltf</span> は <span class="path">Application/Cooked/Models/Rock/rock.gltf.cmesh</span>）。書き出したゲームは元のモデルのファイルを読まないので、書き出しには入れません。OBJ が使う <span class="path">.mtl</span> と、glTF が外に持つバッファ（<span class="path">.bin</span> など）も入れません。隣の <span class="path">.meta</span> は入るので、スクリプトやシーンからは今までどおり <span class="path">.gltf</span> などの名前で使えます。</p>
 
+  <h2 id="export-json">JSON のバイナリ化</h2>
+  <p>シーン・プレハブ・マテリアル（<span class="path">.mat</span>）・物理の材質（<span class="path">.physmat</span>）・<span class="path">.meta</span>・データ（<a href="#api-DataFile"><code>DataFile</code></a> の JSON）・プロジェクトの設定など、中身が JSON のファイルは、書き出すときに <strong>MessagePack</strong>（JSON と同じ中身をバイナリにした形）へ変換して、同じ名前で書きます。書き出したゲームはこれを読みます。遊ぶ人がメモ帳で開いても中身は読めず、ファイルも小さくなります。暗号ではないので、書き換えを完全に防ぐものではありません。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>ファイル</th><th>書き出したゲーム</th></tr></thead>
+    <tbody>
+      <tr><td><span class="path">.json</span>・<span class="path">.prefab</span>・<span class="path">.mat</span>・<span class="path">.physmat</span>・<span class="path">.meta</span></td><td>MessagePack に変換して書く（名前は変えない）</td></tr>
+      <tr><td><span class="path">CookManifest.json</span></td><td>テキストの JSON のまま（変換したものの一覧）</td></tr>
+      <tr><td>スクリプトの <a href="#api-SaveFile"><code>SaveFile</code></a> が書くセーブデータ</td><td>遊ぶ人の PC でテキストの JSON のまま書く</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>エディタでは今までどおりテキストの JSON を読み書きします。エンジンはファイルの先頭のバイトでテキストか MessagePack かを見分けて読むので、スクリプトの <code>DataFile</code> や <code>SaveFile</code> はどちらでも同じように使えます。JSON として読めないファイルがあると、変換できなかったものとして一覧に出し、書き出しを止めます（<a href="#export-parallel">変換の進め方</a>）。</p>
+
   <h2 id="export-shaders">シェーダのコンパイル</h2>
   <p>シェーダも書き出すときにコンパイルして、GPU に渡す形（DXIL）で <span class="path">Cooked/</span> に書きます。遊ぶ人の PC ではコンパイルしないので、初めての起動でもシェーダのコンパイルを待ちません。例えば <span class="path">Engine/Assets/Shaders/Water/Water.PS.hlsl</span> を <code>ps_6_0</code> でコンパイルしたものは <span class="path">Engine/Cooked/Shaders/Water/Water.PS.hlsl.ps_6_0.dxil</span> です。出力からデバッグ情報は外します（GPU が使う中身は開発中と同じです）。</p>
   <p>コンパイルするのは、エディタやゲームで一度でもコンパイルしたシェーダです。エンジンは使ったシェーダを <span class="path">Intermediate/ShaderManifest.txt</span> に起動と終了のたびに書き足していきます。一度も動かしていない場面のシェーダは書き出しに入らず、そのシェーダだけ遊ぶ人の PC でコンパイルされます。書き出す前に、エディタで最初のシーンから最後まで通して遊んでおくと漏れません。元の <span class="path">.hlsl</span> も写すので、入っていないシェーダがあってもゲームは動きます。</p>
@@ -3235,6 +3249,7 @@ kbd {
       <tr><td>スクリプト</td><td>起動時にコンパイルする。<span class="path">Scripts/Editor/</span> の中は読まない。ホットリロードは無い</td></tr>
       <tr><td>テクスチャ</td><td><span class="path">Cooked/</span> の DDS を読む。元の画像からは作らない（<a href="#export-cooking">テクスチャの変換</a>）</td></tr>
       <tr><td>モデル</td><td><span class="path">Cooked/</span> の .cmesh を読む。元のモデルのファイルからは作らない（<a href="#export-models">モデルの変換</a>）</td></tr>
+      <tr><td>JSON</td><td>MessagePack にした物を読む（<a href="#export-json">JSON のバイナリ化</a>）</td></tr>
       <tr><td>シェーダ</td><td><span class="path">Cooked/</span> の DXIL を使う。入っていないものだけ起動時にコンパイルする（<a href="#export-shaders">シェーダのコンパイル</a>）</td></tr>
       <tr><td>全画面</td><td><kbd>Alt</kbd>+<kbd>Enter</kbd> で全画面と窓を切り替える</td></tr>
       <tr><td>終了</td><td>窓の × か <kbd>Alt</kbd>+<kbd>F4</kbd>。<kbd>Esc</kbd> で終わらせたいときは CVar <code>sys.Window.QuitOnEscape</code> をオンにする（既定はオフ。<kbd>Esc</kbd> をポーズに使うゲームではオンにしない）</td></tr>
@@ -6038,7 +6053,7 @@ kbd {
   <ul>
     <li><span class="path">Scripts/Editor</span> のファイルは、書き出したゲームと Release のビルドには入りません。ゲームのスクリプトから、<span class="path">Scripts/Editor</span> のクラスを使わないようにします。</li>
     <li><code>OnDrawGizmos</code> と <code>Gizmos::</code> はゲームのスクリプトに書けます。書き出したゲームでは呼ばれず、何も描きません。</li>
-    <li><code>DataFile</code> は、書き出したゲームでは読むだけです（<code>Save</code> は例外）。道具で保存したデータを、ゲームは同じパスで読みます。</li>
+    <li><code>DataFile</code> は、書き出したゲームでは読むだけです（<code>Save</code> は例外）。道具で保存したデータを、ゲームは同じパスで読みます。書き出したゲームでは MessagePack に変換した物を読みます（<a href="#export-json">JSON のバイナリ化</a>）。</li>
     <li><code>Curve::Evaluate</code> は、書き出したゲームでも使えます。</li>
   </ul>
 </article>
@@ -9692,6 +9707,14 @@ python Tools/OkinawaBeach/bake_player_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-29-0">v0.29.0 <span class="dim">（2026-10-22）</span></h3>
+  <p>書き出したゲームの JSON を MessagePack（バイナリ）にした版です（<a href="#export-json">JSON のバイナリ化</a>）。</p>
+  <ul>
+    <li><strong>書き出し</strong>：シーン・プレハブ・マテリアル・<span class="path">.meta</span>・データ・プロジェクトの設定など、中身が JSON のファイルを、MessagePack に変換して同じ名前で書くようにしました。テクスチャやシェーダと並べて変換し、JSON として読めないファイルは変換できなかったものの一覧に出して止めます。</li>
+    <li><strong>読み込み</strong>：エンジンが JSON を読むときに、ファイルの先頭のバイトでテキストか MessagePack かを見分けるようにしました。エディタは今までどおりテキストの JSON を読み書きします。</li>
+    <li><strong>書き出しの確認</strong>：書き出しの最後の確認で、テキストのまま残った JSON も探すようにしました。</li>
+  </ul>
 
   <h3 id="changelog-v0-28-1">v0.28.1 <span class="dim">（2026-10-22）</span></h3>
   <p>使わなくなった古いテクスチャのキャッシュを、起動のときに消すようにした版です。</p>

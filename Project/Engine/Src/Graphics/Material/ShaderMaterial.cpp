@@ -9,7 +9,6 @@
 #include <algorithm>
 #include <charconv>
 #include <fstream>
-#include <sstream>
 #include <system_error>
 
 namespace CoreEngine
@@ -118,16 +117,14 @@ namespace CoreEngine
         const std::filesystem::path fullPath = GetFullPath();
         loadedWriteTime_ = WriteTimeOf(fullPath);
 
-        std::ifstream in(fullPath, std::ios::binary);
-        if (!in) {
+        std::string bytes;
+        if (!JsonManager::ReadBytes(fullPath, bytes)) {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Resource,
                 "マテリアル {} を開けません", assetPath_);
             return false;
         }
-        std::stringstream text;
-        text << in.rdbuf();
 
-        const json root = json::parse(text.str(), nullptr, false);
+        const json root = JsonManager::Parse(bytes);
         if (root.is_discarded() || !root.is_object()) {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Resource,
                 "マテリアル {} は JSON として読めません", assetPath_);
@@ -255,13 +252,7 @@ namespace CoreEngine
     {
         shaderPath.clear();
         vertexShaderPath.clear();
-        std::ifstream in(fullPath, std::ios::binary);
-        if (!in) {
-            return false;
-        }
-        std::stringstream text;
-        text << in.rdbuf();
-        const json root = json::parse(text.str(), nullptr, false);
+        const json root = JsonManager::ParseFile(fullPath);
         if (root.is_discarded() || !root.is_object()) {
             return false;
         }
@@ -278,13 +269,7 @@ namespace CoreEngine
     bool ShaderMaterial::ReadTextures(const std::filesystem::path& fullPath, std::vector<MaterialTexture>& textures)
     {
         textures.clear();
-        std::ifstream in(fullPath, std::ios::binary);
-        if (!in) {
-            return false;
-        }
-        std::stringstream text;
-        text << in.rdbuf();
-        const json root = json::parse(text.str(), nullptr, false);
+        const json root = JsonManager::ParseFile(fullPath);
         if (root.is_discarded() || !root.is_object()) {
             return false;
         }

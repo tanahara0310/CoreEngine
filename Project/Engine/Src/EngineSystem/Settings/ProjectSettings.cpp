@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "EngineSystem/Settings/ProjectSettings.h"
 
+#include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Path/ProjectPaths.h"
 #include "externals/nlohmann/single_include/nlohmann/json.hpp"
 
@@ -139,14 +140,8 @@ namespace CoreEngine
         postEffects_.clear();
         defaultTransition_ = ProjectTransitionSettings{};
 
-        const std::filesystem::path path = ProjectPaths::Resolve(kSettingsPath);
-        std::ifstream in(path, std::ios::binary);
-        if (!in) {
-            return;
-        }
-
-        // ここはログの初期化より前に走りうるので、壊れていても黙って既定へ倒す
-        nlohmann::json root = nlohmann::json::parse(in, nullptr, /*allow_exceptions=*/false);
+        // ここはログの初期化より前に走りうるので、無くても壊れていても黙って既定へ倒す
+        const nlohmann::json root = JsonManager::ParseFile(ProjectPaths::Resolve(kSettingsPath));
         if (root.is_discarded() || !root.is_object()) {
             return;
         }

@@ -22,8 +22,8 @@ namespace CoreEngine::Editor
     /// @brief 書き出しの進み具合（書き出すスレッドが書き、描くスレッドが読む）
     struct ExportProgress
     {
-        std::atomic<int> cooked{ 0 };    ///< 変換し終えた画像・モデル・シェーダの数（失敗した物も数える）
-        std::atomic<int> cookTotal{ 0 }; ///< 変換する画像・モデル・シェーダの数
+        std::atomic<int> cooked{ 0 };    ///< 変換し終えた画像・モデル・シェーダ・JSON の数（失敗した物も数える）
+        std::atomic<int> cookTotal{ 0 }; ///< 変換する画像・モデル・シェーダ・JSON の数
         std::atomic<int> copied{ 0 };    ///< 写し終えたファイルの数
         std::atomic<int> total{ 0 };     ///< 写すファイルの数
     };
@@ -38,6 +38,7 @@ namespace CoreEngine::Editor
         int cookedTextures = 0;   ///< DDS へ変換した画像の数
         int cookedShaders = 0;    ///< DXIL へコンパイルしたシェーダの数
         int cookedModels = 0;     ///< .cmesh へ変換したモデルの数
+        int convertedJson = 0;    ///< MessagePack へ変換した JSON のファイルの数
         std::uintmax_t bytes = 0; ///< 書いた大きさ（バイト）
     };
 
@@ -47,6 +48,7 @@ namespace CoreEngine::Editor
     ///          画像のテクスチャ（PNG・JPG など）は写さず、DDS へ変換して Engine/Cooked・Application/Cooked に書く。
     ///          モデルのファイル（と OBJ の .mtl・glTF の外部バッファ）も写さず、.cmesh へ変換して同じ場所に書く。
     ///          シェーダは一覧（ShaderManifest）のものを DXIL へコンパイルして同じ場所に書く（元の .hlsl も写す）。
+    ///          中身が JSON のファイル（.json・.prefab・.mat・.meta・.physmat）は MessagePack へ変換して同じ名前で書く。
     ///          変換と写しはスレッドプールで並べて行う。変換できない物があれば全部集めてから、ファイルを写さずに止める。
     namespace GameExporter
     {
