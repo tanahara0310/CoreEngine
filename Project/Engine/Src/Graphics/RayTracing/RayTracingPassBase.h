@@ -3,6 +3,7 @@
 #include <d3d12.h>
 #include <wrl.h>
 #include <cstdint>
+#include <future>
 #include <string>
 
 #include "Graphics/RootSignature/RootSignatureManager.h"
@@ -10,6 +11,7 @@
 #include "Graphics/Shader/ShaderProgram.h"
 #include "Graphics/RayTracing/RayTracingDispatchInfo.h"
 #include "Graphics/RayTracing/RayTracingOutputViewSet.h"
+#include "Graphics/RayTracing/RayTracingPipelineBuilder.h"
 #include "Graphics/RayTracing/ShaderTableBuilder.h"
 
 namespace CoreEngine
@@ -24,6 +26,12 @@ namespace CoreEngine
     class RayTracingPassBase {
     public:
         bool IsInitialized() const { return isInitialized_; }
+
+        /// @brief 別スレッドで作っている State Object とシェーダーテーブルの完成を待つ
+        /// @details 作っていなければ何もしない。作れなかったときは IsInitialized も false にする。
+        ///          ディスパッチの前には BeginDispatchBase が呼ぶ。
+        /// @return 使える状態なら true
+        bool WaitForPipeline();
 
         /// @brief 直近のディスパッチ診断情報（全 RT パス共通の型）
         const RayTracingDispatchInfo& GetDispatchInfo() const { return lastDispatchInfo_; }
@@ -71,6 +79,11 @@ namespace CoreEngine
             const ShaderBindingDecl* decls,
             size_t declCount,
             const RootSignatureConfig& config);
+
+        /// @brief State Object とシェーダーテーブルを別スレッドで作り始める
+        /// @details shaderTableBuilder_ のシェーダー名は呼ぶ前に設定しておく。
+        ///          WaitForPipeline で待つまで stateObject_・stateObjectProperties_・shaderTableBuilder_ に触れない。
+        void BuildPipelineAsync(RayTracingPipelineBuilder pipelineBuilder);
 
         /// @brief ディスパッチ前の共通処理（ガード判定 → 出力の確保 → CommandList4 取得）
         /// @note 失敗時は lastDispatchInfo_ と警告ログまで済ませるので、false なら即 return してよい
@@ -129,5 +142,9 @@ namespace CoreEngine
 
         const char* ownerName_ = "RayTracingPassBase";
         const char* outputDebugName_ = "RTOutput";
+
+        /// @brief State Object とシェーダーテーブルを作る別スレッドの仕事（作れたら true）
+        /// @note 書き込む先のメンバより後に宣言し、先に破棄されて完成を待つ
+        std::future<bool> pipelineTask_;
     };
 }

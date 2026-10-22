@@ -199,6 +199,34 @@ namespace CoreEngine
         lastDispatchInfo_.blasCount = asMgr_ ? asMgr_->GetBLASCount() : 0;
     }
 
+    void RayTracingPassBase::BuildPipelineAsync(RayTracingPipelineBuilder pipelineBuilder)
+    {
+        ID3D12Device* device = dxCommon_->GetDevice();
+        pipelineTask_ = std::async(std::launch::async,
+            [this, device, builder = std::move(pipelineBuilder)]() mutable {
+                Logger& log = Logger::GetInstance();
+                if (!builder.Build(device, stateObject_, stateObjectProperties_)) {
+                    log.Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
+                        "{}: state object build failed.", ownerName_);
+                    return false;
+                }
+                if (!shaderTableBuilder_.Build(device, stateObjectProperties_.Get())) {
+                    log.Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
+                        "{}: shader table build failed.", ownerName_);
+                    return false;
+                }
+                return true;
+            });
+    }
+
+    bool RayTracingPassBase::WaitForPipeline()
+    {
+        if (pipelineTask_.valid() && !pipelineTask_.get()) {
+            isInitialized_ = false;
+        }
+        return isInitialized_;
+    }
+
     // ディスパッチ前の共通処理をまとめて行う入口。
     // ここが false を返したら、派生側は何もせず即 return してよい（ログは出し済み）
     bool RayTracingPassBase::BeginDispatchBase(
@@ -209,6 +237,7 @@ namespace CoreEngine
         DispatchResources& outResources,
         DXGI_FORMAT format)
     {
+        WaitForPipeline();
         DispatchGuardStatus guardStatus = ValidateDispatchPreconditions(cmdList);
         if (guardStatus == DispatchGuardStatus::Ok) {
             if (!EnsureOutputTextureBase(width, height, viewIndex, format)) {

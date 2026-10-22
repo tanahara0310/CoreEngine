@@ -157,6 +157,22 @@ namespace CoreEngine
         }
     }
 
+    void RenderDomainContext::WaitForRayTracingPipelines()
+    {
+        RayTracingPassBase* const passes[] = {
+            rtShadowManager_.get(),
+            rtWaterRefractionManager_.get(),
+            rtWaterReflectionManager_.get(),
+            rtWaterCausticsManager_.get(),
+            rtWaterSeabedManager_.get(),
+        };
+        for (RayTracingPassBase* pass : passes) {
+            if (pass) {
+                pass->WaitForPipeline();
+            }
+        }
+    }
+
     void RenderDomainContext::Shutdown()
     {
         Logger::GetInstance().Infof(LogCategory::Graphics,

@@ -447,7 +447,7 @@ namespace CoreEngine
         log.Log("RayTracingShadowManager: Global root signature created",
             LogLevel::Info, LogCategory::Graphics);
 
-        // State Objectを構築
+        // State Object とシェーダーテーブルは別スレッドで作り、最初のディスパッチの前に待つ
         RayTracingPipelineBuilder pipelineBuilder;
         pipelineBuilder
             .SetDXILLibrary(shaderBlob_)
@@ -455,26 +455,11 @@ namespace CoreEngine
             .SetShaderConfig(sizeof(float))  // ShadowPayload = float 1個
             .SetGlobalRootSignature(globalRootSigMgr_.GetRootSignature())
             .SetMaxRecursionDepth(1);
-        if (!pipelineBuilder.Build(dxCommon_->GetDevice(), stateObject_, stateObjectProperties_)) {
-            log.Log("RayTracingShadowManager: State object build failed",
-                LogLevel::Error, LogCategory::Graphics);
-            return false;
-        }
-        log.Log("RayTracingShadowManager: State object created",
-            LogLevel::Info, LogCategory::Graphics);
-
-        // Shader Tableを構築
         shaderTableBuilder_
             .SetRayGenShader(L"RTShadowRayGen")
             .AddMissShader(L"RTShadowMiss")
             .AddHitGroup(L"RTShadowHitGroup");
-        if (!shaderTableBuilder_.Build(dxCommon_->GetDevice(), stateObjectProperties_.Get())) {
-            log.Log("RayTracingShadowManager: Shader table build failed",
-                LogLevel::Error, LogCategory::Graphics);
-            return false;
-        }
-        log.Log("RayTracingShadowManager: Shader table created",
-            LogLevel::Info, LogCategory::Graphics);
+        BuildPipelineAsync(std::move(pipelineBuilder));
 
         isInitialized_ = true;
         shaderBlob_ = nullptr;  // State Object構築後は不要（実体はキャッシュが保持）
@@ -760,7 +745,7 @@ namespace CoreEngine
         view.dispatchInfo.AddExtra("lightRadius", settings_.lightRadius);
         view.dispatchInfo.AddExtra("rayDist(実効)", effectiveRayDistance);
 
-        if (!isInitialized_) {
+        if (!WaitForPipeline()) {
             view.dispatchInfo.status = RayTracingDispatchStatus::NotInitialized;
             return;
         }
