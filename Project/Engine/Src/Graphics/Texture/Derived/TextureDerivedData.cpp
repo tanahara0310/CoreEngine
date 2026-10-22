@@ -1,23 +1,15 @@
 #include "pch.h"
 #include "TextureDerivedData.h"
-#include "Graphics/Asset/AssetDatabase.h"
-#include "Graphics/Shader/Cache/ShaderCacheKey.h"
 #include "Graphics/Texture/Cook/CookedTexture.h"
 #include "Graphics/Texture/Import/TextureImporter.h"
-#include "Utility/Logger/Logger.h"
 #include "Utility/Path/CookedPath.h"
 #include "Utility/Path/ProjectPaths.h"
-
-#include <algorithm>
-#include <cctype>
-#include <string>
 
 namespace CoreEngine
 {
     namespace
     {
         constexpr const char* kKind = "Texture";
-        constexpr size_t kPathHashLength = 16;
 
         TextureColorSpace Other(TextureColorSpace colorSpace)
         {
@@ -45,19 +37,8 @@ namespace CoreEngine
 
     std::filesystem::path TextureDerivedData::IntermediatePath(const std::filesystem::path& source, TextureColorSpace colorSpace)
     {
-        std::string name = AssetDatabase::GetInstance().GetGUID(source);
-        if (name.empty()) {
-            const std::filesystem::path relative = ProjectPaths::MakeRelative(source);
-            std::string spelled = Logger::GetInstance().PathToUtf8(relative.empty() ? source.lexically_normal() : relative);
-            std::replace(spelled.begin(), spelled.end(), '\\', '/');
-            std::transform(spelled.begin(), spelled.end(), spelled.begin(),
-                [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-            Sha256Hasher hasher;
-            hasher.Update(spelled);
-            name = "path-" + hasher.Finish().substr(0, kPathHashLength);
-        }
-        name += (colorSpace == TextureColorSpace::Linear) ? ".linear.dds" : ".srgb.dds";
-        return DerivedData::IntermediateDirectory(kKind) / name;
+        return DerivedData::IntermediatePath(kKind, source,
+            (colorSpace == TextureColorSpace::Linear) ? ".linear.dds" : ".srgb.dds");
     }
 
     DerivedData::Result TextureDerivedData::Find(const std::filesystem::path& source, TextureColorSpace colorSpace)

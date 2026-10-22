@@ -87,6 +87,9 @@ namespace CoreEngine
         /// @return アニメーションマップ
         const std::map<std::string, Animation>& GetAnimations() const { return animations_; }
 
+        /// @brief モデルのファイルに入っていたアニメーション（ファイル内の名前と順）
+        const std::vector<std::pair<std::string, Animation>>& GetFileAnimations() const { return fileAnimations_; }
+
         /// @brief アニメーションを追加
         /// @param name アニメーション名
         /// @param animation アニメーションデータ
@@ -172,18 +175,9 @@ namespace CoreEngine
 
     private:
         /// @brief modelData_.vertices/indices からVB/IB・バッファビュー・ローカルAABBを構築する
-        /// LoadFromFile/LoadFromModelDataの共通処理（呼び出し前にmodelData_が設定済みであること）
-        void CreateGeometryBuffers();
-
-        /// @brief サブメッシュごとに簡略化インデックス（LOD1/LOD2）を生成し indices 末尾へ追記する
-        /// 頂点バッファは共有のため追加しない。ハイポリモデルのみ対象（小物はスキップ）。
-        void GenerateSubMeshLods();
-
-        /// @brief meshoptimizer で GPU 向けにジオメトリを再配置する（GB/IB アップロード前に呼ぶ）。
-        /// 頂点キャッシュ最適化＋オーバードロー最適化を全 LOD 範囲へ適用（VB 不変で安全）。
-        /// 静的モデル（skinClusterData 空）のみ VertexFetch 最適化で VB を並べ替える
-        /// （スキンモデルは influence バッファが頂点インデックス参照のため VB 並べ替え不可）。
-        void OptimizeGeometryForGpu();
+        /// LoadFromFile/LoadFromModelDataの共通処理（呼び出し前に modelData_ が設定済みで、LOD の生成と並べ替えが済んでいること）
+        /// @param lod0IndexCount 原型（LOD0）のインデックス数
+        void CreateGeometryBuffers(size_t lod0IndexCount);
 
         /// @brief マテリアルスロット数分の共有デフォルト MaterialInstance を作成する
         /// LoadFromFile/LoadFromModelData の末尾（テクスチャハンドル確定後）で呼ぶ。
@@ -230,6 +224,9 @@ namespace CoreEngine
         mutable bool subMeshBoundsRangeWarned_ = false;
 
         std::map<std::string, Animation> animations_;
+
+        // モデルのファイルに入っていたアニメーション（LoadAnimation が名前で選んで animations_ へ登録する）
+        std::vector<std::pair<std::string, Animation>> fileAnimations_;
 
         // マテリアルごとのPBRテクスチャハンドル
         std::vector<PBRTextureHandles> materialTextureHandles_;

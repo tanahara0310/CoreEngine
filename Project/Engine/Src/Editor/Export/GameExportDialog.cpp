@@ -192,8 +192,9 @@ namespace CoreEngine::Editor
             const double megabytes = static_cast<double>(result_.bytes) / (1024.0 * 1024.0);
             ImGui::TextColored(Theme::kOk, "%s",
                 std::format("書き出しました（ファイル {} 個・{:.1f} MB・DDS に変換したテクスチャ {} 枚・"
-                    "コンパイルしたシェーダ {} 本）",
-                    result_.fileCount, megabytes, result_.cookedTextures, result_.cookedShaders).c_str());
+                    ".cmesh に変換したモデル {} 個・コンパイルしたシェーダ {} 本）",
+                    result_.fileCount, megabytes, result_.cookedTextures, result_.cookedModels,
+                    result_.cookedShaders).c_str());
             if (result_.cookedShaders == 0) {
                 ImGui::TextColored(Theme::kWarn, "%s",
                     "シェーダの一覧が空なので、シェーダは遊ぶ人の PC でコンパイルされます。"

@@ -877,6 +877,18 @@
     <ClCompile Include="Engine\Src\Graphics\Texture\Import\TextureImporter.cpp">
       <Filter>Engine\Src\Graphics\Texture\Import</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Model\Import\CmeshFile.cpp">
+      <Filter>Engine\Src\Graphics\Model\Import</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Model\Import\MeshImporter.cpp">
+      <Filter>Engine\Src\Graphics\Model\Import</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Model\Derived\ModelDerivedData.cpp">
+      <Filter>Engine\Src\Graphics\Model\Derived</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Export\MeshCooker.cpp">
+      <Filter>Engine\Src\Editor\Export</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Texture\Derived\TextureDerivedData.cpp">
       <Filter>Engine\Src\Graphics\Texture\Derived</Filter>
     </ClCompile>
@@ -2802,6 +2814,24 @@
     <ClInclude Include="Engine\Src\Graphics\Texture\Import\TextureImporter.h">
       <Filter>Engine\Src\Graphics\Texture\Import</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Model\Import\MeshAsset.h">
+      <Filter>Engine\Src\Graphics\Model\Import</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Model\Import\CmeshFile.h">
+      <Filter>Engine\Src\Graphics\Model\Import</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Model\Import\MeshImporter.h">
+      <Filter>Engine\Src\Graphics\Model\Import</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Model\Derived\ModelDerivedData.h">
+      <Filter>Engine\Src\Graphics\Model\Derived</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Export\CookRecord.h">
+      <Filter>Engine\Src\Editor\Export</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Export\MeshCooker.h">
+      <Filter>Engine\Src\Editor\Export</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Texture\Derived\TextureDerivedData.h">
       <Filter>Engine\Src\Graphics\Texture\Derived</Filter>
     </ClInclude>
@@ -4227,6 +4257,12 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\Model\Animation">
       <UniqueIdentifier>{A39AF01B-7539-4519-B402-B6043E2FAD32}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Model\Derived">
+      <UniqueIdentifier>{51EBE2B9-8AD0-470F-B198-77B2E095117A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Model\Import">
+      <UniqueIdentifier>{62F0C984-E68B-4160-A047-9A47EF95D21E}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Model\Skeleton">
       <UniqueIdentifier>{952AE05D-1B97-499E-BF89-3C3056915DBB}</UniqueIdentifier>

@@ -3,11 +3,13 @@
 
 #ifdef CORE_EDITOR
 
+#include "Editor/Export/MeshCooker.h"
 #include "Editor/Export/ShaderCooker.h"
 #include "Editor/Export/TextureCooker.h"
 #include "EngineSystem/EngineVersion.h"
 #include "EngineSystem/Startup/SplashScreen.h"
 #include "Graphics/Texture/Cook/CookedTexture.h"
+#include "Graphics/Model/Import/MeshImporter.h"
 #include "Graphics/Texture/Import/TextureImporter.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Path/CookedPath.h"
@@ -70,10 +72,10 @@ namespace CoreEngine::Editor
         constexpr const char* kLockedHint = "（書き出したゲームが動いていないか確かめてください）";
 
         /// @brief クックの一覧（書き出したゲームの根の CookManifest.json）を書く
-        bool WriteCookManifest(const std::filesystem::path& destination, const std::vector<CookRecord>& textures, int shaderCount)
+        json ToJson(const std::vector<CookRecord>& records)
         {
             json entries = json::array();
-            for (const CookRecord& record : textures) {
+            for (const CookRecord& record : records) {
                 entries.push_back({
                     { "source", record.source },
                     { "guid", record.guid },
@@ -82,13 +84,20 @@ namespace CoreEngine::Editor
                     { "key", record.key },
                 });
             }
+            return entries;
+        }
+
+        bool WriteCookManifest(const std::filesystem::path& destination, const std::vector<CookRecord>& textures,
+            const std::vector<CookRecord>& meshes, int shaderCount)
+        {
             using namespace std::chrono;
             const zoned_time now{ current_zone(), floor<seconds>(system_clock::now()) };
             const json manifest = {
                 { "engineVersion", kEngineVersion },
                 { "cookedAt", std::format("{:%Y-%m-%d %H:%M:%S}", now) },
-                { "importers", { { "Texture", TextureImporter::kVersion } } },
-                { "textures", entries },
+                { "importers", { { "Texture", TextureImporter::kVersion }, { "Mesh", MeshImporter::kVersion } } },
+                { "textures", ToJson(textures) },
+                { "meshes", ToJson(meshes) },
                 { "shaders", shaderCount },
             };
             return JsonManager::GetInstance().SaveJson(ToUtf8(destination / CookedPath::kManifestFileName), manifest);
@@ -178,7 +187,8 @@ namespace CoreEngine::Editor
         }
         const std::vector<CookTarget> targets = TextureCooker::PlanTargets(textures);
         const std::vector<ShaderManifest::Entry> shaders = ShaderCooker::PlanTargets();
-        progress.cookTotal = static_cast<int>(targets.size() + shaders.size());
+        const std::vector<std::filesystem::path> meshes = MeshCooker::PlanTargets();
+        progress.cookTotal = static_cast<int>(targets.size() + shaders.size() + meshes.size());
         progress.total = static_cast<int>(items.size());
 
         // 丸ごと写すフォルダとクック済みの DDS のフォルダは、書き出す先の側を消しておく
@@ -217,6 +227,18 @@ namespace CoreEngine::Editor
             ++progress.cooked;
         }
 
+        // モデルのファイルを .cmesh にする
+        std::vector<CookRecord> meshRecords;
+        for (const std::filesystem::path& mesh : meshes) {
+            const std::string error = MeshCooker::Cook(mesh, destination, result.fileCount, result.bytes, meshRecords);
+            if (!error.empty()) {
+                result.error = error;
+                return result;
+            }
+            ++result.cookedModels;
+            ++progress.cooked;
+        }
+
         // 一覧のシェーダをコンパイルして DXIL にする
         for (const ShaderManifest::Entry& shader : shaders) {
             const int filesBefore = result.fileCount;
@@ -247,7 +269,7 @@ namespace CoreEngine::Editor
         }
 
         // 一覧があると、書き出したゲームは元のファイルから派生データを作らない
-        if (!WriteCookManifest(destination, cookRecords, result.cookedShaders)) {
+        if (!WriteCookManifest(destination, cookRecords, meshRecords, result.cookedShaders)) {
             result.error = ToUtf8(manifestPath) + " を書けませんでした" + kLockedHint;
             return result;
         }

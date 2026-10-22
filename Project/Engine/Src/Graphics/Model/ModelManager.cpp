@@ -3,6 +3,7 @@
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Asset/AssetDatabase.h"
+#include "Graphics/Model/Derived/ModelDerivedData.h"
 #include "Graphics/Primitive/IPrimitiveMeshGenerator.h"
 #include "Graphics/Render/Model/Instancing/InstanceBatchManager.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
@@ -148,19 +149,23 @@ namespace CoreEngine
         }
 
         // アニメーションの置き場は、モデルと同じファイルのことも別ファイルのこともある。
-        // どちらもパスを解決してから分けないと、ディレクトリと二重に繋がって開けなくなる。
-        std::string animDirectory = resolvedDirectory;
-        std::string animFilename = resolvedFilename;
-        if (!loadInfo.animationFile.empty()) {
-            SplitPath(ResolveFilePath(loadInfo.animationFile), animDirectory, animFilename);
+        // 同じファイルならモデルと一緒に読んだ物から、別ファイルならそのファイルの .cmesh から名前で選ぶ
+        const Animation* animation = nullptr;
+        MeshAsset animationAsset;
+        if (loadInfo.animationFile.empty()) {
+            animation = AnimationLoader::Select(resource->GetFileAnimations(), loadInfo.sourceAnimationName, resolvedModelPath);
+        } else {
+            const std::string animationPath = ResolveFilePath(loadInfo.animationFile);
+            if (!ModelDerivedData::Load(Logger::GetInstance().Utf8ToPath(animationPath), animationAsset)) {
+                Logger::GetInstance().Warnf(LogCategory::Resource, "アニメーションのファイルを読めません: {}", animationPath);
+                return false;
+            }
+            animation = AnimationLoader::Select(animationAsset.animations, loadInfo.sourceAnimationName, animationPath);
         }
-
-        Animation animation;
-        if (!AnimationLoader::LoadAnimationFile(
-                animDirectory, animFilename, loadInfo.sourceAnimationName, animation)) {
+        if (!animation) {
             return false;
         }
-        resource->AddAnimation(loadInfo.animationName, animation);
+        resource->AddAnimation(loadInfo.animationName, *animation);
         return true;
     }
 
