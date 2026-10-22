@@ -3,7 +3,7 @@
 #include "ModelRenderContext.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/UploadRing.h"
 #include "Camera/Camera.h"
 #include "Camera/View/ViewInfo.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
@@ -29,10 +29,6 @@ namespace CoreEngine
             return;
         }
 
-        for (auto& buffer : gameTransformBuffers_) {
-            graphics->DeferRelease(std::move(buffer));
-        }
-
         if (skinCluster_) {
             SkinCluster& cluster = *skinCluster_;
             graphics->DeferRelease(std::move(cluster.influenceResource));
@@ -55,15 +51,6 @@ namespace CoreEngine
         const size_t materialCount = (std::max<size_t>)(materials.size(), 1);
         materialInstances_.clear();
         materialInstances_.resize(materialCount);
-
-        // WVP バッファをフレーム数分確保する（CPU が複数フレーム先行して書き込んでも
-        // GPU がまだ参照中のデータを上書きしないよう、役割ごとにリングバッファ化する）。
-        for (auto& buffer : gameTransformBuffers_) {
-            buffer = ResourceFactory::CreateBufferResource(
-                renderContext_.dxCommon->GetDevice(),
-                sizeof(TransformationMatrix)
-            );
-        }
     }
 
     bool Model::EnableSkinning() {
@@ -158,9 +145,6 @@ namespace CoreEngine
 
     void Model::UpdateTransformationMatrix(const WorldTransform& transform, const DrawViewInfo& view)
     {
-        ID3D12Resource* transformBuffer = GetGameTransformBuffer();
-        assert(transformBuffer);
-
         // 行列計算。VP は ViewInfo で確定済みなので毎モデルで掛け直さない。
         Matrix4x4 worldMatrix = transform.GetWorldMatrix();
         Matrix4x4 worldViewProjectionMatrix = worldMatrix * view.view->viewProjection;
@@ -174,9 +158,11 @@ namespace CoreEngine
         const uint64_t frame = Time::FrameCount();
         const bool hasMotionHistory = IsMotionHistoryUsable(isGameView, frame);
 
-        // GPUメモリに書き込み
-        TransformationMatrix* mappedData = nullptr;
-        transformBuffer->Map(0, nullptr, reinterpret_cast<void**>(&mappedData));
+        // このフレームの UploadRing に書き込む（描くたびに別の場所を取る）
+        const UploadAllocation allocation = renderContext_.dxCommon->GetUploadRing().Allocate(
+            static_cast<uint32_t>(sizeof(TransformationMatrix)));
+        assert(allocation.IsValid());
+        TransformationMatrix* mappedData = static_cast<TransformationMatrix*>(allocation.cpu);
         mappedData->world = worldMatrix;
         // 履歴が無い（初回・カリング明け・プールの使い回し）ときは
         // prevWVP = currentWVP にしてモーションベクター=0を保証する
@@ -184,7 +170,7 @@ namespace CoreEngine
         mappedData->WVP = worldViewProjectionMatrix;
         mappedData->worldInverseTranspose = MathCore::Matrix::Transpose(MathCore::Matrix::Inverse(worldMatrix));
         mappedData->lightViewProjection = lightVP;
-        transformBuffer->Unmap(0, nullptr);
+        skinnedTransformAddress_ = allocation.gpuAddress;
 
         // 今フレームのWVPを次フレームの prevWVP として保存
         if (isGameView) {
@@ -318,8 +304,7 @@ ModelDrawPacket Model::BuildSkinningDrawPacket(
     D3D12_GPU_DESCRIPTOR_HANDLE occlusionTexture,
     D3D12_GPU_DESCRIPTOR_HANDLE emissiveTexture) const
 {
-    ID3D12Resource* transformBuffer = GetGameTransformBuffer();
-    assert(transformBuffer);
+    assert(skinnedTransformAddress_ != 0 && "UpdateTransformationMatrix must run before building the packet");
     assert(skinCluster_.has_value());
     assert(renderContext_.skinnedRenderer);
 
@@ -330,7 +315,7 @@ ModelDrawPacket Model::BuildSkinningDrawPacket(
     packet.indexBufferView = resource_->GetIndexBufferView();
     packet.indexCount = subMesh.indexCount;
     packet.startIndex = subMesh.startIndex;
-    packet.instanceDataSRV = transformBuffer->GetGPUVirtualAddress();
+    packet.instanceDataSRV = skinnedTransformAddress_;
     packet.instanceCount = 1;
     packet.materialCBV = MaterialCBVForSlot(subMesh.materialIndex);
     packet.baseColorSRV = baseColorTexture;
@@ -340,16 +325,6 @@ ModelDrawPacket Model::BuildSkinningDrawPacket(
     packet.emissiveSRV = emissiveTexture;
     packet.isSkinned = true;
     return packet;
-}
-
-ID3D12Resource* Model::GetGameTransformBuffer() const
-{
-    // per-frame バッファの添字は FrameSync のスロット番号を使う。
-    // スワップチェーンの GetCurrentBackBufferIndex() は ResizeBuffers で 0 に戻るため、
-    // それを使うと GPU が読んでいる最中のバッファを CPU が上書きしうる。
-    const UINT frameIndex = renderContext_.dxCommon->Frame().FrameIndex();
-    assert(frameIndex < gameTransformBuffers_.size());
-    return gameTransformBuffers_[frameIndex].Get();
 }
 
 // ===== クエリ =====
@@ -372,7 +347,7 @@ MaterialInstance* Model::GetMaterial(size_t materialIndex) {
     if (!materialInstances_[materialIndex]) {
         // Copy-on-Write: 初回の書き込みアクセス時にのみ ModelResource の共有デフォルト値を複製する
         auto instance = std::make_unique<MaterialInstance>();
-        instance->Initialize(renderContext_.dxCommon->GetDevice());
+        instance->Initialize(*renderContext_.dxCommon);
         if (const MaterialInstance* def = resource_->GetDefaultMaterial(static_cast<uint32_t>(materialIndex))) {
             instance->FromJson(def->ToJson());
         }

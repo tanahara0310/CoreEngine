@@ -184,8 +184,6 @@ namespace CoreEngine
 
         /// 4 頂点の矩形（GPU へは描くたびに、そのフレームの UploadRing に置く）
         std::array<VertexData, 4> vertices_{};
-        Microsoft::WRL::ComPtr<ID3D12Resource> indexResource_;
-        D3D12_INDEX_BUFFER_VIEW indexBufferView_{};
 
         /// 頂点を組んだときの基準点
         Vector2 builtPivot_ = { -1.0f, -1.0f };

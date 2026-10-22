@@ -8,12 +8,13 @@
 #include <vector>
 
 #include "Graphics/RHI/Descriptor/DescriptorHandle.h"
+#include "Graphics/RHI/Resource/ConstantBufferPool.h"
 
 namespace CoreEngine
 {
     class DescriptorAllocator;
 
-    /// @brief GPU がまだ参照しているリソースとディスクリプタのスロットを、フェンス通過後に解放するキュー
+    /// @brief GPU がまだ参照しているリソース・ディスクリプタのスロット・定数バッファの領域を、フェンス通過後に解放するキュー
     /// @note Push は呼び出し側が渡したフェンス値で寿命を判定する。
     ///       PushForCurrentFrame は記録中のフレームに預け、そのフレームの投入時に SealFrame が付けるフェンス値で判定する
     class DeferredReleaseQueue
@@ -32,6 +33,11 @@ namespace CoreEngine
         /// @param allocator スロットを返す先
         /// @param handle 返すスロット（無効なら何もしない。預けた後は無効になる）
         void PushForCurrentFrame(DescriptorAllocator& allocator, DescriptorHandle& handle);
+
+        /// @brief 記録中のフレームの GPU 作業が終わってから定数バッファの領域をプールへ返す予約をする
+        /// @param pool 領域を返す先
+        /// @param block 返す領域（無効なら何もしない。預けた後は無効になる）
+        void PushForCurrentFrame(ConstantBufferPool& pool, ConstantBufferBlock& block);
 
         /// @brief 記録中のフレームへ預けた予約に、そのフレームのフェンス値を付ける
         /// @param fenceValue 投入したフレームに発行したフェンス値（フレームを投入した直後に呼ぶ）
@@ -53,12 +59,14 @@ namespace CoreEngine
         /// @brief まだフェンス値が付いていない予約の印
         static constexpr std::uint64_t kUnsealed = (std::numeric_limits<std::uint64_t>::max)();
 
-        /// @brief 予約 1 件（リソースかディスクリプタのスロットのどちらか）
+        /// @brief 予約 1 件（リソース・ディスクリプタのスロット・定数バッファの領域のどれか）
         struct Entry
         {
             Microsoft::WRL::ComPtr<ID3D12Resource> resource;
             DescriptorAllocator* allocator = nullptr;
             DescriptorHandle descriptor{};
+            ConstantBufferPool* pool = nullptr;
+            ConstantBufferBlock block{};
             std::uint64_t fenceValue = kUnsealed;
         };
 

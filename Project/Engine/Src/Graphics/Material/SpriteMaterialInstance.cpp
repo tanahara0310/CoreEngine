@@ -1,11 +1,12 @@
 #include "pch.h"
 #include "SpriteMaterialInstance.h"
+#include "Graphics/RHI/GraphicsCore.h"
 
 namespace CoreEngine
 {
-    void SpriteMaterialInstance::Initialize(ID3D12Device* device)
+    void SpriteMaterialInstance::Initialize(GraphicsCore& graphics)
     {
-        InitializeBuffer(device);
+        InitializeBuffer(graphics.GetConstantBufferPool());
         materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
         materialData_->uvTransform = MathCore::Matrix::Identity();
         materialData_->filterMode = 0;

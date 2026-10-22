@@ -8,6 +8,8 @@
 #include "Graphics/RHI/Command/DeferredReleaseQueue.h"
 #include "Graphics/RHI/Command/UploadContext.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
+#include "Graphics/RHI/Resource/ConstantBufferPool.h"
+#include "Graphics/Pipeline/PipelineCache.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/Device/DeviceRemovedHandler.h"
 #include "Graphics/RHI/SwapChain/SwapChain.h"
@@ -38,6 +40,7 @@ namespace CoreEngine
         , swapChain_(std::make_unique<SwapChain>())
         , uploadContext_(std::make_unique<UploadContext>())
         , uploadRing_(std::make_unique<UploadRing>())
+        , constantBufferPool_(std::make_unique<ConstantBufferPool>())
     {
     }
 
@@ -55,6 +58,12 @@ namespace CoreEngine
         deviceManager_->Initialize(desc.enableDebugLayer, desc.enableGPUBasedValidation, desc.enableDRED);
 
         ID3D12Device* device = deviceManager_->GetDevice();
+
+        // 前回までに作った PSO を読む（以後の PSO の作成はまずここを引く）
+        if (!desc.pipelineCacheFile.empty()) {
+            PipelineCache::Get().Initialize(device, desc.pipelineCacheFile);
+        }
+
         commandQueue_->Initialize(device);
         frameSync_->Initialize(device, commandQueue_->Get(), desc.framesInFlight);
         commandContext_->Initialize(device, frameSync_->FramesInFlight());
@@ -73,6 +82,10 @@ namespace CoreEngine
         // 巻き戻しはコマンドアロケータの Reset と同じ場所で行う（EndFrame 末尾）。
         uploadRing_->Initialize(device, frameSync_->FramesInFlight());
         uploadRing_->Reset(frameSync_->FrameIndex());
+
+        // 長く使う小さな定数バッファの置き場。返した領域は遅延解放キュー経由で GPU 完了後に使い回す
+        constantBufferPool_->Initialize(device);
+        constantBufferPool_->SetDeferredReleaseQueue(deferredRelease_.get());
 
         // メインウィンドウのスワップチェーン（バックバッファ取得と RTV 作成まで含む）
         SwapChainDesc swapChainDesc{};
@@ -104,6 +117,9 @@ namespace CoreEngine
         Logger::GetInstance().Infof(LogCategory::Graphics,
             "GraphicsCore::Shutdown: GPU同期完了。全マネージャーを解放します\n");
 
+        // この起動で足した PSO を保存し、ライブラリを手放す
+        PipelineCache::Get().Shutdown();
+
         // 破棄順序を明示する。UploadContext / DeferredReleaseQueue はキューに紐づくので先に落とす
         if (uploadContext_) {
             uploadContext_->Shutdown();
@@ -112,6 +128,10 @@ namespace CoreEngine
         uploadRing_.reset();
         if (deferredRelease_) {
             deferredRelease_->ReleaseAll(); // GPU 待ち済みなのでここで捨ててよい
+        }
+        // プールの本体は残し、以後に返される領域は何もせずに捨てる
+        if (constantBufferPool_) {
+            constantBufferPool_->Shutdown();
         }
         if (descriptorAllocator_) {
             descriptorAllocator_->SetDeferredReleaseQueue(nullptr);
@@ -287,6 +307,7 @@ namespace CoreEngine
     ID3D12GraphicsCommandList* GraphicsCore::GetCommandList() const { return commandContext_->List(); }
     UploadContext* GraphicsCore::GetUploadContext() const { return uploadContext_.get(); }
     UploadRing& GraphicsCore::GetUploadRing() const { return *uploadRing_; }
+    ConstantBufferPool& GraphicsCore::GetConstantBufferPool() const { return *constantBufferPool_; }
     void GraphicsCore::WaitForGpuIdle() { frameSync_->WaitForGpuIdle(); }
 
     SwapChain& GraphicsCore::GetSwapChain() const { return *swapChain_; }

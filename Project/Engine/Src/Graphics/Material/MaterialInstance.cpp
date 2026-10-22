@@ -1,14 +1,15 @@
 #include "pch.h"
 #include "MaterialInstance.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/JsonManager/JsonManager.h"
 
 namespace CoreEngine
 {
     using namespace CoreEngine::MathCore;
 
-    void MaterialInstance::Initialize(ID3D12Device* device)
+    void MaterialInstance::Initialize(GraphicsCore& graphics)
     {
-        InitializeBuffer(device);
+        InitializeBuffer(graphics.GetConstantBufferPool());
 
         // PBR デフォルト値: 白・ライティング有効・非金属・中程度の粗さ
         // ファクターはテクスチャと乗算されるため、テクスチャ有りマテリアルでは

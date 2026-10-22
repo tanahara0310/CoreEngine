@@ -63,6 +63,8 @@ namespace CoreEngine
 
         Initialize(dxCommon->GetDevice());
 
+        quadIndexResource_ = ResourceFactory::CreateQuadIndexBuffer(dxCommon->GetDevice(), quadIndexBufferView_);
+
         // フレームごとに変換行列の定数バッファを 1 本作り、マップしたままにする
         const size_t poolCount = GetConstantBufferPoolCount();
         if (poolCount == 0) {

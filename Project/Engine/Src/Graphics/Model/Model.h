@@ -167,14 +167,8 @@ namespace CoreEngine
         // インスタンス固有のマテリアル（マテリアルスロット数分。サブメッシュの materialIndex で参照）
         std::vector<std::unique_ptr<MaterialInstance>> materialInstances_;
 
-        // WVP バッファのリングサイズ。FrameSync のスロット数上限に合わせる
-        // （添字は実行時の GraphicsCore::Frame().FrameIndex()）
-        static constexpr size_t kFrameBufferCount = kMaxFramesInFlight;
-
-        // スキニングモデルの即時描画（Draw）用 WVP バッファ。
-        // フレームインデックスでリングバッファ化し、CPU が複数フレーム先行して
-        // 書き込んでも GPU がまだ参照中の前フレームのデータを上書きしないようにする。
-        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kFrameBufferCount> gameTransformBuffers_;
+        // スキニングモデルの即時描画（Draw）で直前に書いた WVP の場所（このフレームの UploadRing の中）
+        D3D12_GPU_VIRTUAL_ADDRESS skinnedTransformAddress_ = 0;
         // モーションベクター用の前フレーム WVP と、それを書いたフレーム番号。
         // 「1 フレーム前に描いた」ときだけ有効。カリング・非アクティブ・プールの
         // 使い回しで描画が飛ぶと、保持している WVP は何フレームも前の（しばしば
@@ -212,7 +206,7 @@ namespace CoreEngine
         /// @return ちょうど 1 フレーム前に GameView で描いていれば true
         bool IsMotionHistoryUsable(bool isGameView, uint64_t frame) const;
 
-        /// @brief 即時描画（スキニングモデル）用の WVP 行列データを更新する
+        /// @brief 即時描画（スキニングモデル）用の WVP 行列データを、このフレームの UploadRing に書く
         void UpdateTransformationMatrix(const WorldTransform& transform, const DrawViewInfo& view);
 
         /// @brief SkinCluster のマトリックスパレットを指定スケルトンの姿勢で更新する
@@ -224,9 +218,6 @@ namespace CoreEngine
         /// @param cmdList コマンドリスト
         /// @param restorePSO Dispatch後に復元するグラフィックスPSO（CSのDispatchでPSOスロットが上書きされるため）
         void EnsureGPUSkinning(ID3D12GraphicsCommandList* cmdList, ID3D12PipelineState* restorePSO);
-
-        /// @brief 現在フレームに対応する Game 用 WVP バッファを取得（リングバッファから解決）
-        ID3D12Resource* GetGameTransformBuffer() const;
 
         /// @brief サブメッシュのマテリアルスロットに対応するマテリアル定数バッファのGPUアドレスを取得（範囲外はスロット0）
         /// @details オーバーライド未発生のスロットは ModelResource 共有のデフォルトマテリアルのアドレスを返す。

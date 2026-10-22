@@ -2,6 +2,7 @@
 #include "Framework.h"
 #include "Utility/Path/ProjectPaths.h"
 #include "Graphics/Render/Pass/RenderPipeline.h"
+#include "Graphics/Pipeline/PipelineCache.h"
 #include "Startup/StartupSequence.h"
 #include "Startup/StartupProgress.h"
 #include "Startup/SplashScreen.h"
@@ -190,6 +191,10 @@ namespace CoreEngine
         BuildStartupTasks(sequence);   // ゲーム固有の初期化（派生クラスで実装）
 
         RunStartupSequence(sequence);
+
+        // 起動で作った PSO を保存する（次の起動から使い回す）
+        PipelineCache::Get().Save();
+        PipelineCache::Get().LogStats();
 
         // 窓のタイトルを、開いているプロジェクトの名前にする（エディタでは頭にエンジンの名前を付ける）
         const std::wstring projectName = Logger::GetInstance().Utf8ToWide(ProjectSettings::Get().GetProjectName());

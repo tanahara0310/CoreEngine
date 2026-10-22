@@ -6,6 +6,7 @@
 #include "Threading/ThreadPool.h"
 
 #include "Utility/Logger/Logger.h"
+#include "Utility/Path/ProjectPaths.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/GraphicsCoreDesc.h"
 #include "Graphics/Render/RenderDomainContext.h"
@@ -80,6 +81,14 @@ namespace CoreEngine
             desc.maxSRVDescriptors = config.maxSRVDescriptors;
             desc.maxRTVDescriptors = config.maxRTVDescriptors;
             desc.maxDSVDescriptors = config.maxDSVDescriptors;
+            // PSO のキャッシュのファイル（ビルドの種類ごとに別）
+#if defined(_DEBUG)
+            desc.pipelineCacheFile = ProjectPaths::Intermediate("PipelineCache/Debug.bin");
+#elif defined(CORE_EDITOR)
+            desc.pipelineCacheFile = ProjectPaths::Intermediate("PipelineCache/Editor.bin");
+#else
+            desc.pipelineCacheFile = ProjectPaths::Intermediate("PipelineCache/Game.bin");
+#endif
 
             auto graphicsCore = std::make_unique<GraphicsCore>();
             graphicsCore->Initialize(desc);

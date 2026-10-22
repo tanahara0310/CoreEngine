@@ -45,6 +45,9 @@ namespace CoreEngine
         /// @brief GraphicsCoreを取得
         GraphicsCore* GetGraphicsCore() { return dxCommon_; }
 
+        /// @brief スプライト 1 枚（四角形）のインデックスバッファ（全スプライトで共有する）
+        const D3D12_INDEX_BUFFER_VIEW& GetQuadIndexBufferView() const { return quadIndexBufferView_; }
+
         /// @brief シェーダーリソース名からルートパラメータインデックスを取得
         int GetRootParamIndex(const std::string& resourceName) const;
 
@@ -59,6 +62,10 @@ namespace CoreEngine
         // BaseRenderer から継承したサブシステムを使用（rootSignatureMg_, psoMg_, shaderCompiler_, reflectionBuilder_ は削除）
 
         GraphicsCore* dxCommon_ = nullptr;
+
+        // 四角形 1 枚のインデックスバッファ（全スプライトで共有）
+        Microsoft::WRL::ComPtr<ID3D12Resource> quadIndexResource_;
+        D3D12_INDEX_BUFFER_VIEW quadIndexBufferView_{};
 
         ShaderMaterialPipelineCache materialPipelines_{ ShaderMaterialPipeline::Target{ "SpriteMaterial", true } };
         /// 差してあるマテリアルのパイプライン（標準なら nullptr）

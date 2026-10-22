@@ -3,6 +3,8 @@
 #include "Camera/Camera.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include <cassert>
 
 
@@ -64,6 +66,8 @@ namespace CoreEngine
 
         // パイプラインをデバイスで初期化
         InitializePipeline(dxCommon->GetDevice());
+
+        quadIndexResource_ = ResourceFactory::CreateQuadIndexBuffer(dxCommon->GetDevice(), quadIndexBufferView_);
     }
 
     void SpriteRenderer::BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMode blendMode) {

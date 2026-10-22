@@ -4,7 +4,6 @@
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
 #include "GameObject/GameObject.h"
-#include "Graphics/RHI/GraphicsCore.h"
 #include "Math/MathCore.h"
 #include "Utility/Logger/Logger.h"
 
@@ -17,11 +16,7 @@ namespace CoreEngine
 {
     void TransformComponent::Awake()
     {
-        GameObject* owner = GetOwner();
-        EngineSystem* engine = owner ? owner->GetEngineSystem() : nullptr;
-        if (auto* dxCommon = engine ? engine->GetService<GraphicsCore>() : nullptr) {
-            transform_.Initialize(dxCommon->GetDevice());
-        }
+        transform_.Initialize();
     }
 
     Vector3 TransformComponent::GetWorldScale() const
@@ -63,7 +58,7 @@ namespace CoreEngine
     void TransformComponent::SyncWorldMatrix()
     {
         ApplyParent();
-        transform_.TransferMatrix();
+        transform_.UpdateWorldMatrix();
     }
 
     bool TransformComponent::SetParent(TransformComponent* parent)

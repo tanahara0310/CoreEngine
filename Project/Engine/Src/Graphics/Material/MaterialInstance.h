@@ -7,13 +7,15 @@
 
 namespace CoreEngine
 {
+    class GraphicsCore;
+
     /// @brief 1つのマテリアルのGPU定数バッファを保持するクラス（PBR専用）
     /// @note glTF 準拠の「ファクター × テクスチャ」乗算方式。
     ///       Metallic / Roughness / EmissiveFactor はテクスチャと乗算されるファクター値。
     class MaterialInstance : public MaterialBase<MaterialConstants> {
     public:
-        /// @brief GPU 定数バッファを確保して常時 Map する
-        void Initialize(ID3D12Device* device);
+        /// @brief GPU 定数バッファの領域をプールから借りて既定値を書く
+        void Initialize(GraphicsCore& graphics);
 
         // ===== Base Color =====
         /// @brief ベースカラーファクターを設定（ベースカラーテクスチャと乗算される）

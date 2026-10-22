@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "ComputePipelineUtil.h"
+#include "Graphics/Pipeline/PipelineCache.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine::ComputePipelineUtil
@@ -24,9 +25,9 @@ namespace CoreEngine::ComputePipelineUtil
         desc.pRootSignature = rootSignature;
         desc.CS = { cs->GetBufferPointer(), cs->GetBufferSize() };
 
-        Microsoft::WRL::ComPtr<ID3D12PipelineState> pso;
-        const HRESULT hr = device->CreateComputePipelineState(&desc, IID_PPV_ARGS(&pso));
-        if (FAILED(hr)) {
+        HRESULT hr = S_OK;
+        Microsoft::WRL::ComPtr<ID3D12PipelineState> pso = PipelineCache::Get().CreateCompute(device, desc, &hr);
+        if (FAILED(hr) || !pso) {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics,
                 "Compute PSO生成失敗: name={} HRESULT={:#010x} DeviceRemovedReason={:#010x}",
                 debugName,
