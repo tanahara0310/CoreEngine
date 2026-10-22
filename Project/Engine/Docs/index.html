@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.25.0">
+<meta name="engine-version" content="0.26.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2300,7 +2300,7 @@ kbd {
       <tr><td><span class="path">Saved/&lt;SaveFile のパス&gt;</span></td><td>スクリプトの <code>SaveFile</code> が書くセーブデータ</td></tr>
       <tr><td><span class="path">Saved/Thumbnail.png</span></td><td>プロジェクト一覧の縮小画像（エディタを閉じるときに撮る）</td></tr>
       <tr><td><span class="path">Intermediate/Logs/</span></td><td>ログのファイル（種類ごと。スクリプトのログは <span class="path">Script/</span>）</td></tr>
-      <tr><td><span class="path">Intermediate/DerivedData/</span></td><td>画像などから作ったデータ（テクスチャの DDS など）。消しても次に使うときに作り直される（<a href="#export-cooking">テクスチャの変換</a>）</td></tr>
+      <tr><td><span class="path">Intermediate/DerivedData/</span></td><td>画像やモデルから作ったデータ（テクスチャの DDS・モデルの .cmesh）。消しても次に使うときに作り直される（<a href="#export-cooking">テクスチャの変換</a>・<a href="#export-models">モデルの変換</a>）</td></tr>
     </tbody>
   </table>
   </div>
@@ -3152,7 +3152,7 @@ kbd {
   <p>Key Config では、割り当てのボタンを押してから新しいキーを押すと割り当てが変わります。<span class="ui">x</span> で削除、<span class="ui">追加</span> で足し、同じ場面のほかのアクションと重なると赤く表示されます。<span class="ui">初期値に戻す</span> で InputActions.json の既定に戻ります。</p>
 </article>
 
-<article class="page" id="editor-export" data-group="エディタ" data-title="ゲームを書き出す" data-nav="ゲームの書き出し" data-keywords="書き出し 書き出す export ビルド release 配布 exe 完成 build windows 全画面 フルスクリーン 終了 esc 起動シーン テクスチャ dds 変換 クック cooked シェーダ dxil コンパイル">
+<article class="page" id="editor-export" data-group="エディタ" data-title="ゲームを書き出す" data-nav="ゲームの書き出し" data-keywords="書き出し 書き出す export ビルド release 配布 exe 完成 build windows 全画面 フルスクリーン 終了 esc 起動シーン テクスチャ dds 変換 クック cooked シェーダ dxil コンパイル モデル cmesh">
   <h1>ゲームを書き出す</h1>
   <p class="lead">完成したゲームを、エディタの無い PC でも遊べるフォルダにまとめます。できたフォルダを丸ごと渡せば、そのまま遊べます。</p>
 
@@ -3160,7 +3160,7 @@ kbd {
   <ol class="steps">
     <li><strong>シーンを保存する</strong>書き出すのはディスクにあるファイルです。保存していない変更は入りません（<kbd>Ctrl</kbd>+<kbd>S</kbd>）。</li>
     <li><strong>Release をビルドする</strong>Visual Studio で構成を <span class="ui">Release</span> にしてビルドします。エディタからはビルドしません。<span class="path">generated/CoreEngine/outputs/Release/CoreEngine.exe</span> ができていれば準備完了です。</li>
-    <li><strong>書き出す</strong>エディタで <span class="ui">File<span class="arrow">▸</span>ゲームを書き出す…</span> を開きます。書き出す先・使う Release の exe（ビルドした日時）・写すものを確かめて、<span class="ui">書き出す</span> を押します。画像のテクスチャを DDS に変換してから写します（<a href="#export-cooking">テクスチャの変換</a>）。</li>
+    <li><strong>書き出す</strong>エディタで <span class="ui">File<span class="arrow">▸</span>ゲームを書き出す…</span> を開きます。書き出す先・使う Release の exe（ビルドした日時）・写すものを確かめて、<span class="ui">書き出す</span> を押します。画像のテクスチャを DDS に、モデルを .cmesh に変換してから写します（<a href="#export-cooking">テクスチャの変換</a>・<a href="#export-models">モデルの変換</a>）。</li>
     <li><strong>遊んで確かめる</strong><span class="ui">エクスプローラーで開く</span> で書き出したフォルダを開き、<span class="path">CoreEngine.exe</span> を起動します。</li>
   </ol>
   <div class="callout note"><p>Release の exe が無いと、窓に「先に Release でビルドしてください」と出て書き出せません。書き出したゲームを動かしたままだとファイルを書き換えられないので、閉じてから書き出します。</p></div>
@@ -3172,10 +3172,10 @@ kbd {
     ├─ CookManifest.json            変換したデータの一覧（これがあると、書き出したゲームとして動く）
     ├─ Engine/
     │  ├─ Assets/                   エンジンの素材（シェーダ・既定のモデルなど。画像のテクスチャは除く）
-    │  └─ Cooked/                   エンジンの画像のテクスチャを変換した DDS と、コンパイルしたシェーダの DXIL
+    │  └─ Cooked/                   エンジンの画像のテクスチャを変換した DDS・モデルの .cmesh・コンパイルしたシェーダの DXIL
     └─ Application/
        ├─ Assets/                   シーン・スクリプト・プレハブ・素材（画像のテクスチャは除く）
-       ├─ Cooked/                   プロジェクトの画像のテクスチャを変換した DDS
+       ├─ Cooked/                   プロジェクトの画像のテクスチャを変換した DDS とモデルの .cmesh
        ├─ Config/                   プロジェクトの設定（起動シーン・入力・レイヤー・CVar）
        └─ Saved/                    遊んだ人のセーブデータ（ゲームが作る）
   </script>
@@ -3196,6 +3196,10 @@ kbd {
   <p>エディタでも、画像は元のファイルを直接は読まず、同じ変換で作った DDS を読みます。作った DDS は <span class="path">Intermediate/DerivedData/Texture/</span> に置き（名前は画像の GUID と <code>.srgb.dds</code> か <code>.linear.dds</code>）、書き出しはそれを写します。隣の <span class="path">.ddinfo</span> に元の画像の大きさ・日時と、中身から計算した印を控えておき、元の画像の中身か変換の設定が変わったときだけ作り直します（日時だけを古いまま差し替えても作り直します）。初めて開くときや画像を描き直したあとは、変換のぶん時間がかかります。</p>
   <p>書き出しの最後に、変換したものの一覧 <span class="path">CookManifest.json</span> を書き出し先の根に置きます。一覧のある書き出したゲームは元の画像から DDS を作りません。DDS が無い画像は Console にエラーを出して代わりの画像（<span class="path">error.png</span>）を使うので、書き出し直してください。起動のログの <code>[DerivedData] Texture: クック済み … / 中間 … / 取り込み … / 無し …</code> の行で、どこから読んだかを数えられます（書き出したゲームでは「クック済み」だけになります）。</p>
 
+  <h2 id="export-models">モデルの変換</h2>
+  <p>モデル（glTF・GLB・OBJ・FBX）は、エンジンがそのまま読める形 <span class="path">.cmesh</span> に変換して使います。<span class="path">.cmesh</span> には、頂点とインデックス・遠くで使う簡略化した形（LOD）・マテリアル・ボーン・ファイルに入っているアニメーションをまとめて入れ、GPU が速く描ける順に並べ替えてあります。ゲームの起動やシーンの切り替えでは、モデルのファイルを解析せずにこれを読むだけです。</p>
+  <p>エディタでは、モデルを初めて読むときに変換して <span class="path">Intermediate/DerivedData/Mesh/</span> に置きます（名前はモデルの GUID と <code>.cmesh</code>）。テクスチャと同じく、元のファイルの中身か変換の設定が変わったときだけ作り直します。書き出すときはそれを <span class="path">Cooked/</span> に写します（例：<span class="path">Application/Assets/Models/Rock/rock.gltf</span> は <span class="path">Application/Cooked/Models/Rock/rock.gltf.cmesh</span>）。書き出したゲームは元のモデルのファイルを読みません（今は元のファイルも写します）。</p>
+
   <h2 id="export-shaders">シェーダのコンパイル</h2>
   <p>シェーダも書き出すときにコンパイルして、GPU に渡す形（DXIL）で <span class="path">Cooked/</span> に書きます。遊ぶ人の PC ではコンパイルしないので、初めての起動でもシェーダのコンパイルを待ちません。例えば <span class="path">Engine/Assets/Shaders/Water/Water.PS.hlsl</span> を <code>ps_6_0</code> でコンパイルしたものは <span class="path">Engine/Cooked/Shaders/Water/Water.PS.hlsl.ps_6_0.dxil</span> です。出力からデバッグ情報は外します（GPU が使う中身は開発中と同じです）。</p>
   <p>コンパイルするのは、エディタやゲームで一度でもコンパイルしたシェーダです。エンジンは使ったシェーダを <span class="path">Intermediate/ShaderManifest.txt</span> に起動と終了のたびに書き足していきます。一度も動かしていない場面のシェーダは書き出しに入らず、そのシェーダだけ遊ぶ人の PC でコンパイルされます。書き出す前に、エディタで最初のシーンから最後まで通して遊んでおくと漏れません。元の <span class="path">.hlsl</span> も写すので、入っていないシェーダがあってもゲームは動きます。</p>
@@ -3210,6 +3214,7 @@ kbd {
       <tr><td>エディタ</td><td>無し。起動するとすぐにゲームが始まる</td></tr>
       <tr><td>スクリプト</td><td>起動時にコンパイルする。<span class="path">Scripts/Editor/</span> の中は読まない。ホットリロードは無い</td></tr>
       <tr><td>テクスチャ</td><td><span class="path">Cooked/</span> の DDS を読む。元の画像からは作らない（<a href="#export-cooking">テクスチャの変換</a>）</td></tr>
+      <tr><td>モデル</td><td><span class="path">Cooked/</span> の .cmesh を読む。元のモデルのファイルからは作らない（<a href="#export-models">モデルの変換</a>）</td></tr>
       <tr><td>シェーダ</td><td><span class="path">Cooked/</span> の DXIL を使う。入っていないものだけ起動時にコンパイルする（<a href="#export-shaders">シェーダのコンパイル</a>）</td></tr>
       <tr><td>全画面</td><td><kbd>Alt</kbd>+<kbd>Enter</kbd> で全画面と窓を切り替える</td></tr>
       <tr><td>終了</td><td>窓の × か <kbd>Alt</kbd>+<kbd>F4</kbd>。<kbd>Esc</kbd> で終わらせたいときは CVar <code>sys.Window.QuitOnEscape</code> をオンにする（既定はオフ。<kbd>Esc</kbd> をポーズに使うゲームではオンにしない）</td></tr>
@@ -9667,6 +9672,15 @@ python Tools/OkinawaBeach/bake_player_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-26-0">v0.26.0 <span class="dim">（2026-10-22）</span></h3>
+  <p>モデルをエンジン用の形 .cmesh に変換して読むようにした版です（<a href="#export-models">モデルの変換</a>）。</p>
+  <ul>
+    <li><strong>.cmesh</strong>：モデルのファイルを、頂点・インデックス・LOD・マテリアル・ボーン・アニメーションをまとめた形に変換します。エディタは初めて読むときに変換して <span class="path">Intermediate/DerivedData/Mesh/</span> に置き、次からはそれを読みます。元のファイルの中身か変換の設定が変わったときだけ作り直します。</li>
+    <li><strong>読み込み</strong>：起動やシーンの切り替えで、モデルのファイルを解析しなくなりました。遠くで使う簡略化した形（LOD）の生成と、GPU 向けの並べ替えも、変換のときに 1 回だけ行います。</li>
+    <li><strong>アニメーション</strong>：アニメーションも .cmesh に入れ、クリップごとにモデルのファイルを読み直さなくなりました。</li>
+    <li><strong>書き出し</strong>：モデルも .cmesh に変換して <span class="path">Cooked/</span> に書きます。書き出したゲームは .cmesh を読み、元のモデルのファイルからは作りません（元のファイルは、今はまだ写します）。書き出しの結果の表示と <span class="path">CookManifest.json</span> にモデルの数を足しました。</li>
+  </ul>
 
   <h3 id="changelog-v0-25-0">v0.25.0 <span class="dim">（2026-10-22）</span></h3>
   <p>モデルと画像を読むスレッドの配り方と待ち方を見直した版です（<a href="#setup-cmdline">コマンドラインのオプション</a>）。</p>

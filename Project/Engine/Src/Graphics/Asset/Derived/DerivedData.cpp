@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "DerivedData.h"
+#include "Graphics/Asset/AssetDatabase.h"
 #include "Graphics/Shader/Cache/ShaderCacheKey.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
@@ -8,6 +9,8 @@
 
 #include <Windows.h>
 
+#include <algorithm>
+#include <cctype>
 #include <condition_variable>
 #include <format>
 #include <fstream>
@@ -22,6 +25,7 @@ namespace CoreEngine
     {
         constexpr const char* kInfoExtension = ".ddinfo";
         constexpr size_t kHashChunkSize = 1 << 20;
+        constexpr size_t kPathHashLength = 16;
 
         /// @brief Origin ごとの件数
         struct Counts
@@ -253,6 +257,24 @@ namespace CoreEngine
     std::filesystem::path DerivedData::IntermediateDirectory(std::string_view kind)
     {
         return ProjectPaths::Intermediate(std::string("DerivedData/") + std::string(kind));
+    }
+
+    std::filesystem::path DerivedData::IntermediatePath(std::string_view kind, const std::filesystem::path& source,
+        std::string_view extension)
+    {
+        std::string name = AssetDatabase::GetInstance().GetGUID(source);
+        if (name.empty()) {
+            const std::filesystem::path relative = ProjectPaths::MakeRelative(source);
+            std::string spelled = ToUtf8(relative.empty() ? source.lexically_normal() : relative);
+            std::replace(spelled.begin(), spelled.end(), '\\', '/');
+            std::transform(spelled.begin(), spelled.end(), spelled.begin(),
+                [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            Sha256Hasher hasher;
+            hasher.Update(spelled);
+            name = "path-" + hasher.Finish().substr(0, kPathHashLength);
+        }
+        name += extension;
+        return IntermediateDirectory(kind) / name;
     }
 
     void DerivedData::LogSummary()

@@ -5,19 +5,19 @@
 #include "Graphics/RHI/Command/UploadContext.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
-#include "Graphics/Model/ModelLoader.h"
+#include "Graphics/Model/Derived/ModelDerivedData.h"
+#include "Graphics/Model/Import/MeshImporter.h"
 #include "Graphics/Model/Skeleton/SkeletonLoader.h"
 #include "Graphics/Model/VertexData.h"
 #include "Utility/Logger/Logger.h"
 #include "EngineSystem/Startup/StartupProgress.h"
-
-#include "externals/meshoptimizer/src/meshoptimizer.h"
 
 #include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <format>
 #include <limits>
+#include <stdexcept>
 
 
 namespace CoreEngine
@@ -26,181 +26,6 @@ namespace CoreEngine
     {
         dxCommon_ = dxCommon;
         textureManager_ = textureMg;
-    }
-
-    void ModelResource::GenerateSubMeshLods()
-    {
-        // LOD 生成の対象はハイポリの静的モデルのみ。
-        // 小さいモデルは簡略化の効果が無く、生成コストとバッファ増加だけが残る。
-        constexpr size_t kMinTriangleCountForLod = 10000;      // モデル全体でこれ未満なら LOD を作らない
-        constexpr size_t kMinSubMeshIndexCount = 3 * 256;      // サブメッシュ単位の下限（小物は原型のまま）
-        constexpr float kLodRatios[] = { 0.25f, 0.06f };       // LOD1 / LOD2 の目標三角形比率
-        constexpr float kLodTargetError = 0.05f;               // 許容誤差（AABB対角に対する相対値）
-        // Sloppy フォールバックは「目標三角形数への到達」を最優先するため誤差上限を実質無効化する。
-        // （0.5 程度だと誤差上限が先に効いて 40k tris 級の葉サブメッシュが削減されず残る）
-        constexpr float kLodSloppyTargetError = std::numeric_limits<float>::max();
-
-        // lods[0] は常に原型の範囲を指すよう先に埋めておく
-        for (auto& subMesh : modelData_.subMeshes) {
-            subMesh.lods[0] = { subMesh.startIndex, subMesh.indexCount };
-            subMesh.lodCount = 1;
-        }
-
-        const size_t totalTriangles = modelData_.indices.size() / 3;
-        if (totalTriangles < kMinTriangleCountForLod) {
-            return;
-        }
-
-        const size_t vertexCount = modelData_.vertices.size();
-        const float* vertexPositions = &modelData_.vertices[0].position.x;
-
-        // 簡略化結果は既存インデックス列の末尾へ追記する（頂点バッファは共有）
-        std::vector<int32_t>& indices = modelData_.indices;
-
-        for (auto& subMesh : modelData_.subMeshes) {
-            if (subMesh.indexCount < kMinSubMeshIndexCount) {
-                continue;
-            }
-
-            uint32_t previousCount = subMesh.indexCount;
-            for (float ratio : kLodRatios) {
-                const size_t targetIndexCount = static_cast<size_t>(subMesh.indexCount * ratio) / 3 * 3;
-                if (targetIndexCount < 3) {
-                    break;
-                }
-
-                std::vector<unsigned int> simplified(subMesh.indexCount);
-                float resultError = 0.0f;
-                // Prune オプションで小さな孤立部品（葉・小石など）の除去を許可する
-                size_t simplifiedCount = meshopt_simplify(
-                    simplified.data(),
-                    reinterpret_cast<const unsigned int*>(indices.data()) + subMesh.startIndex,
-                    subMesh.indexCount,
-                    vertexPositions,
-                    vertexCount,
-                    sizeof(VertexData),
-                    targetIndexCount,
-                    kLodTargetError,
-                    meshopt_SimplifyPrune,
-                    &resultError);
-
-                Logger::GetInstance().Logf(LogLevel::Trace, LogCategory::Resource, "{}",
-                    std::format("LODデバッグ: SubMesh \"{}\" simplify結果 count={} target={} error={:.4f}",
-                        subMesh.name, simplifiedCount, targetIndexCount, resultError));
-
-                // トポロジー保存型で目標に届かない場合（非連結な三角形スープはエッジコラプスできない）は
-                // クラスタリング型の Sloppy 版へフォールバックする。遠景 LOD 用途なら劣化は判別できない。
-                // count==0 は Prune が孤立部品を丸ごと消した過剰崩壊なので、これも失敗扱いにする。
-                if (simplifiedCount == 0 || simplifiedCount > targetIndexCount * 3 / 2) {
-                    simplifiedCount = meshopt_simplifySloppy(
-                        simplified.data(),
-                        reinterpret_cast<const unsigned int*>(indices.data()) + subMesh.startIndex,
-                        subMesh.indexCount,
-                        vertexPositions,
-                        vertexCount,
-                        sizeof(VertexData),
-                        targetIndexCount,
-                        kLodSloppyTargetError,
-                        &resultError);
-
-                    Logger::GetInstance().Logf(LogLevel::Trace, LogCategory::Resource, "{}",
-                        std::format("LODデバッグ: SubMesh \"{}\" sloppyフォールバック count={} target={} error={:.4f}",
-                            subMesh.name, simplifiedCount, targetIndexCount, resultError));
-                }
-
-                // 削減が 1 割未満なら段を追加する価値なし
-                if (simplifiedCount == 0 || simplifiedCount >= static_cast<size_t>(previousCount) * 9 / 10) {
-                    Logger::GetInstance().Logf(LogLevel::Trace, LogCategory::Resource, "{}",
-                        std::format("LODデバッグ: SubMesh \"{}\" LOD段追加を棄却 count={} previousCount={} (閾値90%={})",
-                            subMesh.name, simplifiedCount, previousCount, static_cast<size_t>(previousCount) * 9 / 10));
-                    break;
-                }
-
-                SubMeshLodRange lodRange;
-                lodRange.startIndex = static_cast<uint32_t>(indices.size());
-                lodRange.indexCount = static_cast<uint32_t>(simplifiedCount);
-                indices.insert(indices.end(),
-                    reinterpret_cast<const int32_t*>(simplified.data()),
-                    reinterpret_cast<const int32_t*>(simplified.data()) + simplifiedCount);
-
-                subMesh.lods[subMesh.lodCount] = lodRange;
-                ++subMesh.lodCount;
-                previousCount = lodRange.indexCount;
-
-                if (subMesh.lodCount >= SubMeshData::kMaxLodCount) {
-                    break;
-                }
-            }
-
-            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}",
-                std::format("ModelResource: SubMesh \"{}\" LOD生成 LOD0={} tris, LOD段数={}{}{}",
-                    subMesh.name,
-                    subMesh.indexCount / 3,
-                    subMesh.lodCount,
-                    subMesh.lodCount > 1 ? std::format(", LOD1={} tris", subMesh.lods[1].indexCount / 3) : "",
-                    subMesh.lodCount > 2 ? std::format(", LOD2={} tris", subMesh.lods[2].indexCount / 3) : ""));
-        }
-    }
-
-    void ModelResource::OptimizeGeometryForGpu()
-    {
-        const size_t vertexCount = modelData_.vertices.size();
-        if (vertexCount == 0 || modelData_.indices.empty()) {
-            return;
-        }
-
-        // indices は int32_t、meshopt は unsigned int を取る。頂点インデックスは非負なので
-        // 同幅の reinterpret_cast で問題ない（既存の LOD 生成コードと同じ規約）。
-        unsigned int* indexData = reinterpret_cast<unsigned int*>(modelData_.indices.data());
-        const float* vertexPositions = &modelData_.vertices[0].position.x;
-        const size_t stride = sizeof(VertexData);
-        constexpr float kOverdrawThreshold = 1.05f; // ACMR を最大 5% 悪化させてよい範囲でオーバードローを削減
-
-        // (1)(2) 各 LOD 範囲へ 頂点キャッシュ最適化 → オーバードロー最適化（どちらも VB 不変）。
-        // 範囲の startIndex/indexCount は変わらないため、後段のドロー範囲指定はそのまま有効。
-        std::vector<unsigned int> scratch;
-        for (const auto& subMesh : modelData_.subMeshes) {
-            for (uint32_t lod = 0; lod < subMesh.lodCount; ++lod) {
-                const SubMeshLodRange& range = subMesh.lods[lod];
-                if (range.indexCount < 3) {
-                    continue;
-                }
-                unsigned int* rangeIndices = indexData + range.startIndex;
-                scratch.assign(rangeIndices, rangeIndices + range.indexCount);
-
-                // 頂点キャッシュ最適化: post-transform キャッシュのヒット率を上げ VS 呼び出しを減らす
-                meshopt_optimizeVertexCache(
-                    rangeIndices, scratch.data(), range.indexCount, vertexCount);
-
-                // オーバードロー最適化: カメラ非依存で前後関係の良い三角形順へ並べ替え
-                scratch.assign(rangeIndices, rangeIndices + range.indexCount);
-                meshopt_optimizeOverdraw(
-                    rangeIndices, scratch.data(), range.indexCount,
-                    vertexPositions, vertexCount, stride, kOverdrawThreshold);
-            }
-        }
-
-        // (3) VertexFetch 最適化は VB を並べ替える。スキンモデルは influence バッファが
-        // 頂点インデックス参照（SkinClusterGenerator）のため VB を動かせない。静的モデルのみ適用する。
-        if (modelData_.skinClusterData.empty()) {
-            // 全インデックス（全 LOD・全サブメッシュ）を対象に remap を作る。
-            // これで LOD ごとの範囲を跨いで一貫した VB 並べ替えとインデックス再マップになる。
-            std::vector<unsigned int> remap(vertexCount);
-            const size_t uniqueVertices = meshopt_optimizeVertexFetchRemap(
-                remap.data(), indexData, modelData_.indices.size(), vertexCount);
-            (void)uniqueVertices;
-
-            // remapVertexBuffer は scatter（vertices[i] → dst[remap[i]]）のため in-place 不可。
-            // 別バッファへ書き出してから差し替える。remapIndexBuffer は要素毎の gather で in-place 可。
-            std::vector<VertexData> remappedVertices(vertexCount);
-            meshopt_remapVertexBuffer(
-                remappedVertices.data(), modelData_.vertices.data(),
-                vertexCount, stride, remap.data());
-            modelData_.vertices = std::move(remappedVertices);
-
-            meshopt_remapIndexBuffer(
-                indexData, indexData, modelData_.indices.size(), remap.data());
-        }
     }
 
     namespace
@@ -237,18 +62,9 @@ namespace CoreEngine
         }
     }
 
-    void ModelResource::CreateGeometryBuffers()
+    void ModelResource::CreateGeometryBuffers(size_t lod0IndexCount)
     {
-        // LOD0（原型）のインデックス数を先に確定してから簡略化インデックスを末尾へ追記する。
-        // indexCount_ は「原型のインデックス数」を維持する（BLAS 構築が
-        // モデル全体 = LOD0 を描く前提のため。LOD 描画はサブメッシュの範囲指定で行う）。
-        const size_t lod0IndexCount = modelData_.indices.size();
-        GenerateSubMeshLods();
-
-        // GPU 向けジオメトリ再配置（VB/IB アップロード前・LOD 生成後）。
-        // 頂点キャッシュ効率を上げ、頂点シェーダ呼び出し（GBuffer ラスタの頂点バウンド要因）を削減する。
-        OptimizeGeometryForGpu();
-
+        // indexCount_ は原型（LOD0）のインデックス数（BLAS の構築はモデル全体 = LOD0 を描く。LOD はサブメッシュの範囲で描く）
         // 頂点数・インデックス数を設定
         vertexCount_ = static_cast<UINT>(modelData_.vertices.size());
         indexCount_ = static_cast<UINT>(lod0IndexCount);
@@ -411,17 +227,20 @@ namespace CoreEngine
     {
         assert(dxCommon_ && textureManager_);
 
-        // Assimp のパースは重いモデルで数百 ms かかる。起動中はローディング画面を刻む
+        // モデルの読み込み（初回は変換も）は重いモデルで数百 ms かかる。起動中はローディング画面を刻む
         if (StartupProgress::IsActive()) {
             StartupProgress::Tick(filename.c_str());
         }
 
-        // ModelLoaderを使用してモデルデータを読み込む
-        ModelData modelData = ModelLoader::LoadModelFile(directoryPath, filename);
-
-        // ModelDataを保存（スキンクラスター生成に必要）
-        // moveセマンティクスを使って大きなデータを効率的に移動
-        modelData_ = std::move(modelData);
+        // 派生データの .cmesh（LOD の生成と GPU 向けの並べ替えを済ませた物）を読む
+        const std::filesystem::path sourcePath = Logger::GetInstance().Utf8ToPath(directoryPath + "/" + filename);
+        MeshAsset asset;
+        if (!ModelDerivedData::Load(sourcePath, asset) || !asset.hasMesh) {
+            throw std::runtime_error(std::format("モデルを読めません: {}/{}", directoryPath, filename));
+        }
+        const size_t lod0IndexCount = asset.lod0IndexCount;
+        modelData_ = std::move(asset.model);
+        fileAnimations_ = std::move(asset.animations);
 
         // RootNodeを保存
         rootNode_ = modelData_.rootNode;
@@ -429,7 +248,7 @@ namespace CoreEngine
         // Skeletonを作成
         skeleton_ = SkeletonLoader::CreateSkeleton(modelData_.rootNode);
 
-        CreateGeometryBuffers();
+        CreateGeometryBuffers(lod0IndexCount);
 
         // ===== マテリアルのPBRテクスチャを並列読み込み =====
         // 色空間: ベースカラー/エミッシブは sRGB、法線/MR/AO はデータテクスチャなので Linear。
@@ -524,7 +343,11 @@ namespace CoreEngine
         // RootNodeを保存
         rootNode_ = modelData_.rootNode;
 
-        CreateGeometryBuffers();
+        // 原型のインデックス数を控えてから LOD を足し、GPU 向けに並べ替える
+        const size_t lod0IndexCount = modelData_.indices.size();
+        MeshImporter::GenerateLods(modelData_);
+        MeshImporter::OptimizeForGpu(modelData_);
+        CreateGeometryBuffers(lod0IndexCount);
 
         // マテリアルテクスチャハンドルの設定（デフォルト白テクスチャ）
         D3D12_GPU_DESCRIPTOR_HANDLE defaultWhiteTexture = textureManager_->Load("white1x1.png").gpuHandle;

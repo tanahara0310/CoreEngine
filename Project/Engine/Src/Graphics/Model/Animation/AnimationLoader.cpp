@@ -8,57 +8,48 @@
 
 namespace CoreEngine
 {
-bool AnimationLoader::LoadAnimationFile(const std::string& directoryPath, const std::string& filename,
-    const std::string& sourceAnimationName, Animation& outAnimation) {
-    // ファイルパスを構築
-    std::string filePath = directoryPath + "/" + filename;
-
-    // Assimp はパスを UTF-8 とみなす。ModelManager::ResolveFilePath から
-    // 渡ってくる文字列は UTF-8 で統一してあるのでそのまま渡す。
+bool AnimationLoader::LoadAllAnimations(const std::filesystem::path& filePath,
+    std::vector<std::pair<std::string, Animation>>& outAnimations, uint32_t& outMeshCount) {
+    // Assimp はパスを UTF-8 とみなす
+    const std::string path = Logger::GetInstance().PathToUtf8(filePath);
     Assimp::Importer importer;
-    const aiScene* scene = importer.ReadFile(
-        filePath.c_str(),
-        aiProcess_ConvertToLeftHanded
-    );
-
-    // 開けなかったファイルをそのまま辿ると落ちるので、ここで止めて知らせる
-    if (scene == nullptr || scene->mNumAnimations == 0) {
+    const aiScene* scene = importer.ReadFile(path.c_str(), aiProcess_ConvertToLeftHanded);
+    if (scene == nullptr) {
         Logger::GetInstance().Warnf(LogCategory::Resource,
-            "AnimationLoader: {} を読めませんでした（{}）",
-            filePath, (scene == nullptr) ? "ファイルが開けない" : "アニメーションが入っていない");
+            "AnimationLoader: {} を読めませんでした（{}）", path, importer.GetErrorString());
         return false;
     }
 
-    // 1 つのファイルに複数のアニメーションが入っていることがある
-    // （例: Fox.gltf は Survey / Walk / Run の 3 本）。
-    // 名前が指定されていればそれを探し、無指定なら先頭の 1 本を使う。
-    const unsigned int animationIndex = FindAnimationIndex(scene, sourceAnimationName);
-
-    Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource,
-        "AnimationLoader: {} からアニメーション[{}] '{}' を読み込み（ファイル内 {} 本）",
-        filename, animationIndex,
-        scene->mAnimations[animationIndex]->mName.C_Str(), scene->mNumAnimations);
-
-    outAnimation = ParseAnimation(scene, animationIndex);
+    outMeshCount = scene->mNumMeshes;
+    outAnimations.clear();
+    outAnimations.reserve(scene->mNumAnimations);
+    for (unsigned int i = 0; i < scene->mNumAnimations; ++i) {
+        outAnimations.emplace_back(scene->mAnimations[i]->mName.C_Str(), ParseAnimation(scene, i));
+    }
     return true;
 }
 
-unsigned int AnimationLoader::FindAnimationIndex(const aiScene* scene, const std::string& sourceAnimationName) {
-    if (sourceAnimationName.empty()) {
-        return 0;
+const Animation* AnimationLoader::Select(const std::vector<std::pair<std::string, Animation>>& animations,
+    const std::string& sourceAnimationName, const std::string& fileForLog) {
+    if (animations.empty()) {
+        Logger::GetInstance().Warnf(LogCategory::Resource,
+            "AnimationLoader: {} にアニメーションが入っていません", fileForLog);
+        return nullptr;
     }
-
-    for (unsigned int i = 0; i < scene->mNumAnimations; ++i) {
-        if (sourceAnimationName == scene->mAnimations[i]->mName.C_Str()) {
-            return i;
+    if (sourceAnimationName.empty()) {
+        return &animations.front().second;
+    }
+    for (const auto& [name, animation] : animations) {
+        if (name == sourceAnimationName) {
+            return &animation;
         }
     }
 
-    // 見つからないまま先頭を返すと「別のアニメーションが静かに再生される」ことになるので警告する
+    // 見つからないまま先頭を使うと別のアニメーションが黙って再生されるので警告する
     Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Resource,
-        "AnimationLoader: アニメーション '{}' が見つかりません。先頭の 1 本を使用します",
-        sourceAnimationName);
-    return 0;
+        "AnimationLoader: {} にアニメーション '{}' が見つかりません。先頭の 1 本を使用します",
+        fileForLog, sourceAnimationName);
+    return &animations.front().second;
 }
 
 Animation AnimationLoader::ParseAnimation(const aiScene* scene, unsigned int animationIndex) {

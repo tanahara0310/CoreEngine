@@ -1,7 +1,11 @@
 ﻿#pragma once
 
 #include "Animation.h"
+#include <cstdint>
+#include <filesystem>
 #include <string>
+#include <utility>
+#include <vector>
 
 // 前方宣言（assimp）
 struct aiScene;
@@ -13,19 +17,20 @@ namespace CoreEngine
 /// Assimpを使用してglTFなどからアニメーションデータを解析
 class AnimationLoader {
 public:
-    /// @brief アニメーションファイルを読み込む
-    /// @param sourceAnimationName ファイル内のアニメーション名（空 = 先頭の 1 本）
-    /// @param outAnimation 読めたときだけ書き込む
-    /// @return 読めたか（ファイルが無い・アニメーションが入っていないときは false）
-    /// @note 1 ファイルに複数のアニメーションが入るため名前で選べるようにしてある
-    static bool LoadAnimationFile(const std::string& directoryPath, const std::string& filename,
-        const std::string& sourceAnimationName, Animation& outAnimation);
+    /// @brief ファイルの全アニメーションを読む（座標系は左手系に直す）
+    /// @param outAnimations ファイル内の名前とアニメーション（ファイル内の順）
+    /// @param outMeshCount ファイル内のメッシュの数
+    /// @return ファイルを読めたか（アニメーションが無くても読めれば true）
+    static bool LoadAllAnimations(const std::filesystem::path& filePath,
+        std::vector<std::pair<std::string, Animation>>& outAnimations, uint32_t& outMeshCount);
+
+    /// @brief ファイル内の名前でアニメーションを選ぶ（空なら先頭。見つからなければ先頭を返して警告する）
+    /// @param fileForLog 警告に出すファイルの名前
+    /// @return 選んだアニメーション（1 本も無ければ nullptr）
+    static const Animation* Select(const std::vector<std::pair<std::string, Animation>>& animations,
+        const std::string& sourceAnimationName, const std::string& fileForLog);
 
 private:
-    /// @brief 名前からアニメーションのインデックスを引く（見つからなければ 0 を返して警告）
-    /// @param scene Assimpシーン
-    /// @param sourceAnimationName 探すアニメーション名（空 = 先頭）
-    static unsigned int FindAnimationIndex(const ::aiScene* scene, const std::string& sourceAnimationName);
 
     /// @brief Assimpシーンからアニメーションを解析
     /// @param scene Assimpシーン

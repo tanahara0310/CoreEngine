@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+#include "Editor/Export/CookRecord.h"
+
 namespace CoreEngine::Editor
 {
     /// @brief 書き出しで DDS へ変換する画像 1 枚
@@ -16,16 +18,6 @@ namespace CoreEngine::Editor
         std::filesystem::path relative; ///< 元の画像の綴り（`Application/Assets/…` か `Engine/Assets/…`）
         bool srgb = false;              ///< sRGB 版を作るか
         bool linear = false;            ///< リニア版を作るか
-    };
-
-    /// @brief クックした派生データ 1 つの記録（クックの一覧に書く）
-    struct CookRecord
-    {
-        std::string source;   ///< 元のファイルの綴り
-        std::string guid;     ///< 元のファイルの GUID（無ければ空）
-        std::string derived;  ///< 書いた派生データの綴り
-        std::string settings; ///< 変換の設定
-        std::string key;      ///< 派生キー
     };
 
     /// @brief 書き出しで、画像のテクスチャを DDS（クック済みテクスチャ）へ変換する

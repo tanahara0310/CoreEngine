@@ -34,6 +34,7 @@ namespace CoreEngine::Editor
         int fileCount = 0;        ///< 書いたファイルの数
         int cookedTextures = 0;   ///< DDS へ変換した画像の数
         int cookedShaders = 0;    ///< DXIL へコンパイルしたシェーダの数
+        int cookedModels = 0;     ///< .cmesh へ変換したモデルの数
         std::uintmax_t bytes = 0; ///< 書いた大きさ（バイト）
     };
 

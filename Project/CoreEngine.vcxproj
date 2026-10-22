@@ -480,6 +480,10 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Graphics\Texture\Cache\TextureCacheStore.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Texture\Generate\TextureCubemapGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Texture\Import\TextureImporter.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Model\Import\CmeshFile.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Model\Import\MeshImporter.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Model\Derived\ModelDerivedData.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Export\MeshCooker.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Texture\Derived\TextureDerivedData.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Asset\Derived\DerivedData.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Texture\Cook\CookedTexture.cpp" />
@@ -1528,6 +1532,12 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Graphics\Texture\Cache\TextureCacheStore.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Generate\TextureCubemapGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Import\TextureImporter.h" />
+    <ClInclude Include="Engine\Src\Graphics\Model\Import\MeshAsset.h" />
+    <ClInclude Include="Engine\Src\Graphics\Model\Import\CmeshFile.h" />
+    <ClInclude Include="Engine\Src\Graphics\Model\Import\MeshImporter.h" />
+    <ClInclude Include="Engine\Src\Graphics\Model\Derived\ModelDerivedData.h" />
+    <ClInclude Include="Engine\Src\Editor\Export\CookRecord.h" />
+    <ClInclude Include="Engine\Src\Editor\Export\MeshCooker.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Derived\TextureDerivedData.h" />
     <ClInclude Include="Engine\Src\Graphics\Asset\Derived\DerivedData.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Cook\CookedTexture.h" />

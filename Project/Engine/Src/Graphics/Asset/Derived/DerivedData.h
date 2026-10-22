@@ -57,6 +57,10 @@ namespace CoreEngine
         /// @brief 開発中の置き場のフォルダ（<プロジェクト>/Intermediate/DerivedData/<kind>）
         std::filesystem::path IntermediateDirectory(std::string_view kind);
 
+        /// @brief 開発中の置き場（IntermediateDirectory(kind)/<GUID><extension>。GUID が無ければ綴りのハッシュを名前にする）
+        std::filesystem::path IntermediatePath(std::string_view kind, const std::filesystem::path& source,
+            std::string_view extension);
+
         /// @brief Find が返した件数を、種類ごとに Origin 別で 1 行ずつ出す
         void LogSummary();
     }
