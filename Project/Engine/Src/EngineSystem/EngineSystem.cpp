@@ -24,6 +24,7 @@
 #include "Utility/Random/RandomGenerator.h"
 #include "Utility/Logger/Logger.h"
 #include "Graphics/Asset/AssetDatabase.h"
+#include "Graphics/Texture/Derived/TextureDerivedData.h"
 
 // EngineSystem が直接使う型
 // （EngineSystem.h はサービス型ヘッダを配らないので、使う型は自分で include する）
@@ -121,6 +122,9 @@ namespace CoreEngine
 
             // アセットデータベースの初期化（テクスチャ読み込みより先に必要）
             AssetDatabase::GetInstance().Initialize();
+
+            // 古い置き場に残った画像のキャッシュを消す（テクスチャを読み込む前）
+            TextureDerivedData::RemoveLegacyCache();
 
             // コンパイル済み DXIL のディスクキャッシュ。
             // 最初のシェーダコンパイル（レンダードメインのステップ）より前に

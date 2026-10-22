@@ -26,5 +26,9 @@ namespace CoreEngine
 
         /// @brief 変換の設定の文字列（色空間と、取り込み設定か既定の圧縮の形式）
         std::string Settings(const std::filesystem::path& source, TextureColorSpace colorSpace);
+
+        /// @brief 古い置き場（`<プロジェクト>/Intermediate/TextureCache`）に残った画像の DDS を消す
+        /// @details HDR のキューブマップ（名前に `_cubemap` を含む）は今もそこに置くので残す。テクスチャを読み込む前に呼ぶ。
+        void RemoveLegacyCache();
     }
 }

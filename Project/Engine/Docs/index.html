@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.28.0">
+<meta name="engine-version" content="0.28.1">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2300,6 +2300,7 @@ kbd {
       <tr><td><span class="path">Saved/&lt;SaveFile のパス&gt;</span></td><td>スクリプトの <code>SaveFile</code> が書くセーブデータ</td></tr>
       <tr><td><span class="path">Saved/Thumbnail.png</span></td><td>プロジェクト一覧の縮小画像（エディタを閉じるときに撮る）</td></tr>
       <tr><td><span class="path">Intermediate/Logs/</span></td><td>ログのファイル（種類ごと。スクリプトのログは <span class="path">Script/</span>）</td></tr>
+      <tr><td><span class="path">Intermediate/TextureCache/</span></td><td>HDR の空の画像から作ったキューブマップ。ほかの画像の古い DDS が残っていれば、起動のときにエンジンが消す</td></tr>
       <tr><td><span class="path">Intermediate/DerivedData/</span></td><td>画像やモデルから作ったデータ（テクスチャの DDS・モデルの .cmesh）。消しても次に使うときに作り直される（<a href="#export-cooking">テクスチャの変換</a>・<a href="#export-models">モデルの変換</a>）</td></tr>
     </tbody>
   </table>
@@ -9691,6 +9692,12 @@ python Tools/OkinawaBeach/bake_player_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-28-1">v0.28.1 <span class="dim">（2026-10-22）</span></h3>
+  <p>使わなくなった古いテクスチャのキャッシュを、起動のときに消すようにした版です。</p>
+  <ul>
+    <li><strong>古いキャッシュ</strong>：<span class="path">Intermediate/TextureCache/</span> に残っていた画像の DDS（v0.24.0 より前の置き場）を、起動のときに消します。HDR の空の画像のキューブマップは今もそこを使うので残します。消した数と大きさは起動のログに出ます。</li>
+  </ul>
 
   <h3 id="changelog-v0-28-0">v0.28.0 <span class="dim">（2026-10-22）</span></h3>
   <p>画像の圧縮の形式と色空間を、エディタで画像ごとに選べるようにした版です（<a href="#project-texture-color">画像の取り込み設定</a>）。</p>

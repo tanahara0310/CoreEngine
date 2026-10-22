@@ -7,6 +7,8 @@
 #include "Utility/Path/CookedPath.h"
 #include "Utility/Path/ProjectPaths.h"
 
+#include <vector>
+
 namespace CoreEngine
 {
     namespace
@@ -72,5 +74,40 @@ namespace CoreEngine
     std::string TextureDerivedData::Settings(const std::filesystem::path& source, TextureColorSpace colorSpace)
     {
         return TextureImporter::Settings(colorSpace, CompressionOf(source));
+    }
+
+    void TextureDerivedData::RemoveLegacyCache()
+    {
+        const std::filesystem::path folder = ProjectPaths::Intermediate("TextureCache");
+        std::error_code ec;
+        if (!std::filesystem::is_directory(folder, ec)) {
+            return;
+        }
+
+        // 先に消す物を集めてから消す（キューブマップは残す）
+        std::vector<std::filesystem::path> targets;
+        for (const auto& entry : std::filesystem::directory_iterator(folder, ec)) {
+            const std::filesystem::path& file = entry.path();
+            if (entry.is_regular_file(ec) && file.extension() == ".dds"
+                && file.filename().wstring().find(L"_cubemap") == std::wstring::npos) {
+                targets.push_back(file);
+            }
+        }
+
+        size_t removed = 0;
+        std::uintmax_t bytes = 0;
+        for (const std::filesystem::path& file : targets) {
+            std::error_code sizeError;
+            const std::uintmax_t size = std::filesystem::file_size(file, sizeError);
+            if (std::filesystem::remove(file, ec)) {
+                ++removed;
+                bytes += sizeError ? 0 : size;
+            }
+        }
+        if (removed > 0) {
+            Logger& log = Logger::GetInstance();
+            log.Logf(LogLevel::INFO, LogCategory::Resource, "古いテクスチャのキャッシュを {} 個（{:.1f} MB）消しました: {}",
+                removed, static_cast<double>(bytes) / (1024.0 * 1024.0), log.PathToUtf8(folder));
+        }
     }
 }
