@@ -9,7 +9,6 @@
 #include "Graphics/RHI/Command/UploadContext.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
 #include "Graphics/RHI/Resource/ConstantBufferPool.h"
-#include "Graphics/Pipeline/PipelineCache.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/Device/DeviceRemovedHandler.h"
 #include "Graphics/RHI/SwapChain/SwapChain.h"
@@ -58,12 +57,6 @@ namespace CoreEngine
         deviceManager_->Initialize(desc.enableDebugLayer, desc.enableGPUBasedValidation, desc.enableDRED);
 
         ID3D12Device* device = deviceManager_->GetDevice();
-
-        // 前回までに作った PSO を読む（以後の PSO の作成はまずここを引く）
-        if (!desc.pipelineCacheFile.empty()) {
-            PipelineCache::Get().Initialize(device, desc.pipelineCacheFile);
-        }
-
         commandQueue_->Initialize(device);
         frameSync_->Initialize(device, commandQueue_->Get(), desc.framesInFlight);
         commandContext_->Initialize(device, frameSync_->FramesInFlight());
@@ -116,9 +109,6 @@ namespace CoreEngine
         }
         Logger::GetInstance().Infof(LogCategory::Graphics,
             "GraphicsCore::Shutdown: GPU同期完了。全マネージャーを解放します\n");
-
-        // この起動で足した PSO を保存し、ライブラリを手放す
-        PipelineCache::Get().Shutdown();
 
         // 破棄順序を明示する。UploadContext / DeferredReleaseQueue はキューに紐づくので先に落とす
         if (uploadContext_) {

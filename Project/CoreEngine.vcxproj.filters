@@ -1444,9 +1444,6 @@
     <ClCompile Include="Engine\Src\Graphics\RHI\Resource\ConstantBufferPool.cpp">
       <Filter>Engine\Src\Graphics\RHI\Resource</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Pipeline\PipelineCache.cpp">
-      <Filter>Engine\Src\Graphics\Pipeline</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RHI\Resource\PerFrameStructuredBuffer.cpp">
       <Filter>Engine\Src\Graphics\RHI\Resource</Filter>
     </ClCompile>
@@ -3656,9 +3653,6 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RHI\Resource\ConstantBufferPool.h">
       <Filter>Engine\Src\Graphics\RHI\Resource</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Pipeline\PipelineCache.h">
-      <Filter>Engine\Src\Graphics\Pipeline</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RHI\Resource\PerFrameConstants.h">
       <Filter>Engine\Src\Graphics\RHI\Resource</Filter>

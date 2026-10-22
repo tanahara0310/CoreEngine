@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "PipelineStateManager.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
-#include "Graphics/Pipeline/PipelineCache.h"
 #include "Utility/Logger/Logger.h"
 
 #include <cassert>
@@ -291,10 +290,10 @@ bool PipelineStateBuilder::Build(
             desc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
         }
 
-        HRESULT result = S_OK;
-        ComPtr<ID3D12PipelineState> pipelineState = PipelineCache::Get().CreateGraphics(device, desc, &result);
+        ComPtr<ID3D12PipelineState> pipelineState;
+        HRESULT result = device->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&pipelineState));
 
-        if (FAILED(result) || !pipelineState) {
+        if (FAILED(result)) {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics,
                 "PSO生成失敗: name={} blendMode={} HRESULT={:#010x} DeviceRemovedReason={:#010x}",
                 debugName_.empty() ? "(unnamed)" : debugName_,

@@ -1,6 +1,5 @@
 #include "pch.h"
 #include "RootSignatureBuilder.h"
-#include "Graphics/Pipeline/PipelineCache.h"
 #include "Utility/Logger/Logger.h"
 #include <cassert>
 #include <algorithm>
@@ -68,9 +67,6 @@ namespace CoreEngine
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Shader, "{}", result.errorMessage);
             return result;
         }
-        // PSO のキャッシュが名前を決めるときに読む中身のハッシュを付ける
-        PipelineCache::TagRootSignature(result.rootSignature.Get(),
-            signatureBlob->GetBufferPointer(), signatureBlob->GetBufferSize());
 
         result.resourceToRootSlot = std::move(mapping);
         result.tableGroupResources = std::move(tableGroups);

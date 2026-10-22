@@ -2302,7 +2302,6 @@ kbd {
       <tr><td><span class="path">Intermediate/Logs/</span></td><td>ログのファイル（種類ごと。スクリプトのログは <span class="path">Script/</span>）</td></tr>
       <tr><td><span class="path">Intermediate/TextureCache/</span></td><td>HDR の空の画像から作ったキューブマップ。ほかの画像の古い DDS が残っていれば、起動のときにエンジンが消す</td></tr>
       <tr><td><span class="path">Intermediate/DerivedData/</span></td><td>画像やモデルから作ったデータ（テクスチャの DDS・モデルの .cmesh）。消しても次に使うときに作り直される（<a href="#export-cooking">テクスチャの変換</a>・<a href="#export-models">モデルの変換</a>）</td></tr>
-      <tr><td><span class="path">Intermediate/PipelineCache/</span></td><td>前回までに作ったパイプライン（PSO）。次の起動からはここから読み、作り直さない。ビルドの種類ごとに <span class="path">Debug.bin</span>・<span class="path">Editor.bin</span>・<span class="path">Game.bin</span>。GPU やドライバが変わると作り直す。消しても次の起動で作り直される</td></tr>
     </tbody>
   </table>
   </div>
@@ -9710,12 +9709,11 @@ python Tools/OkinawaBeach/bake_player_walk.py
   <h2 id="changelog-history">更新履歴</h2>
 
   <h3 id="changelog-v0-33-0">v0.33.0 <span class="dim">（2026-10-23）</span></h3>
-  <p>オブジェクトごとに作っていた小さな GPU リソースをやめ、作ったパイプライン（PSO）を次の起動から使い回すようにして、起動とシーンの読み込みを速くした版です。</p>
+  <p>オブジェクトごとに作っていた小さな GPU リソースをやめて、起動とシーンの読み込みを速くした版です。</p>
   <ul>
     <li><strong>定数バッファのプール</strong>：マテリアル（モデル・スプライト・UI 画像）の定数バッファを、1 つずつ GPU リソースとして作らず、64KB のページから切り出すようにしました。返した領域は GPU が使い終わってから使い回します。</li>
     <li><strong>使っていなかったバッファ</strong>：Transform ごとに作っていた定数バッファ（どこからも読まれていなかった）と、静的なモデルの変換行列のバッファ（インスタンシングで描くので使われていなかった）を作らないようにしました。スキニングのあるモデルの変換行列は、描くたびにフレームごとの置き場（UploadRing）から取ります。エディタで 2 つのビューから描いても、ビューごとの行列が混ざりません。</li>
     <li><strong>四角形のインデックス</strong>：スプライトと UI 画像のインデックスバッファを 1 枚ごとに作らず、レンダラーが持つ 1 本を共有するようにしました。</li>
-    <li><strong>PSO のキャッシュ</strong>：作った PSO を <span class="path">Intermediate/PipelineCache/</span> に保存し、次の起動からはそこから読むようにしました（<a href="#structure-saved">Saved と Intermediate</a>）。GPU やドライバが変わると作り直します。</li>
   </ul>
 
   <h3 id="changelog-v0-32-0">v0.32.0 <span class="dim">（2026-10-23）</span></h3>

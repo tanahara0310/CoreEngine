@@ -3,7 +3,6 @@
 #include "Utility/Path/ProjectPaths.h"
 #include "Graphics/Render/Pass/RenderPipeline.h"
 #include "Graphics/Render/RenderDomainContext.h"
-#include "Graphics/Pipeline/PipelineCache.h"
 #include "Startup/StartupSequence.h"
 #include "Startup/StartupProgress.h"
 #include "Startup/SplashScreen.h"
@@ -199,10 +198,6 @@ namespace CoreEngine
         });
 
         RunStartupSequence(sequence);
-
-        // 起動で作った PSO を保存する（次の起動から使い回す）
-        PipelineCache::Get().Save();
-        PipelineCache::Get().LogStats();
 
         // 窓のタイトルを、開いているプロジェクトの名前にする（エディタでは頭にエンジンの名前を付ける）
         const std::wstring projectName = Logger::GetInstance().Utf8ToWide(ProjectSettings::Get().GetProjectName());

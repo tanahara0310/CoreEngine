@@ -2,7 +2,6 @@
 
 #include <Windows.h>
 #include <cstdint>
-#include <filesystem>
 
 namespace CoreEngine
 {
@@ -34,9 +33,5 @@ namespace CoreEngine
         uint32_t maxSRVDescriptors = 65536;
         uint32_t maxRTVDescriptors = 256;
         uint32_t maxDSVDescriptors = 10;
-
-        // ── PSO のキャッシュ ──────────────────────────────────
-        /// PSO を保存して次の起動から使い回すファイル（空ならキャッシュしない）
-        std::filesystem::path pipelineCacheFile;
     };
 }
