@@ -50,6 +50,10 @@ namespace CoreEngine
         ///          一度作ったら Shutdown まで持つ。
         void EnsureWaterInitialized();
 
+        /// @brief レイトレの State Object（影と水面）を別スレッドで作っていれば、全部の完成を待つ
+        /// @details 起動の最後（窓を出す前）に呼ぶ。呼ばなくても最初のディスパッチの前に待つ。
+        void WaitForRayTracingPipelines();
+
         /// @brief シャットダウン（GPU完了後に呼ぶこと）
         void Shutdown();
 
