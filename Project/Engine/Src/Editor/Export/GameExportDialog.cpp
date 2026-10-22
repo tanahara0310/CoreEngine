@@ -116,6 +116,7 @@ namespace CoreEngine::Editor
                 : std::string("－"));
             Row("写すもの", "Release のフォルダの exe と DLL\nEngine\\Assets・Application\\Assets・Application\\Config");
             Row("変換するもの", "画像のテクスチャ（PNG・JPG など）は写さず、DDS に変換して\nEngine\\Cooked・Application\\Cooked に書きます\n"
+                "モデル（glTF・OBJ など）も写さず、.cmesh に変換して同じ場所に書きます\n"
                 "シェーダは、エディタやゲームで一度でもコンパイルしたものを DXIL にして同じ場所に書きます");
             ImGui::EndTable();
         }
@@ -163,12 +164,12 @@ namespace CoreEngine::Editor
         const int total = progress_ ? progress_->total.load() : 0;
         const int copied = progress_ ? progress_->copied.load() : 0;
 
-        // 準備（使い道を調べる）→ テクスチャの変換 → ファイルの写しの順に進む
+        // 準備 → モデル・テクスチャ・シェーダの変換 → ファイルの写しの順に進む
         const char* label = "書き出す準備をしています…";
         int done = 0;
         int count = 0;
         if (cooked < cookTotal) {
-            label = "テクスチャとシェーダを変換しています…";
+            label = "モデル・テクスチャ・シェーダを変換しています…";
             done = cooked;
             count = cookTotal;
         } else if (total > 0 && (cookTotal > 0 || copied > 0)) {
@@ -188,6 +189,9 @@ namespace CoreEngine::Editor
         if (!result_.error.empty()) {
             ImGui::TextColored(Theme::kError, "%s", "書き出せませんでした");
             ImGui::TextUnformatted(result_.error.c_str());
+            for (const std::string& failure : result_.failures) {
+                ImGui::BulletText("%s", failure.c_str());
+            }
         } else {
             const double megabytes = static_cast<double>(result_.bytes) / (1024.0 * 1024.0);
             ImGui::TextColored(Theme::kOk, "%s",

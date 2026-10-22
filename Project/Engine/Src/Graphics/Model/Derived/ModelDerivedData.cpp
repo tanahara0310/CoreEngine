@@ -39,6 +39,18 @@ namespace CoreEngine
         return cooked;
     }
 
+    std::filesystem::path ModelDerivedData::ToSourcePath(const std::filesystem::path& cookedRelative)
+    {
+        std::filesystem::path source = CookedPath::ToSource(cookedRelative);
+        const std::wstring name = source.filename().wstring();
+        const std::wstring extension = std::filesystem::path(kExtension).wstring();
+        if (source.empty() || name.size() <= extension.size() || !name.ends_with(extension)) {
+            return {};
+        }
+        source.replace_filename(name.substr(0, name.size() - extension.size()));
+        return source;
+    }
+
     DerivedData::Result ModelDerivedData::Find(const std::filesystem::path& source)
     {
         DerivedData::Request request = MakeRequest(source);

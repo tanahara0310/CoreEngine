@@ -15,6 +15,9 @@ namespace CoreEngine
         /// @brief 元のファイルの綴りから、クック済みの .cmesh の綴りを作る（Assets の下でなければ空）
         std::filesystem::path ToCookedPath(const std::filesystem::path& sourceRelative);
 
+        /// @brief クック済みの .cmesh の綴りから、元のファイルの綴りを作る（ToCookedPath の逆。.cmesh でなければ空）
+        std::filesystem::path ToSourcePath(const std::filesystem::path& cookedRelative);
+
         /// @brief 元のファイルに対応する .cmesh を探す（クック済み → 開発中の置き場 → いま変換）
         DerivedData::Result Find(const std::filesystem::path& source);
 

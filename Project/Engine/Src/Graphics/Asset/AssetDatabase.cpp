@@ -2,6 +2,7 @@
 #include "AssetDatabase.h"
 #include "Utility/Path/ProjectPaths.h"
 #include "AssetMetadata.h"
+#include "Graphics/Model/Derived/ModelDerivedData.h"
 #include "Graphics/Texture/Cook/CookedTexture.h"
 #include "Utility/Path/CookedPath.h"
 #include "Threading/ThreadPool.h"
@@ -186,7 +187,7 @@ namespace CoreEngine
             }
         }
 
-        RegisterCookedTextures();
+        RegisterCookedAssets();
 
         size_t totalAssets = 0;
         {
@@ -500,10 +501,11 @@ namespace CoreEngine
         }
     }
 
-    void AssetDatabase::RegisterCookedTextures()
+    void AssetDatabase::RegisterCookedAssets()
     {
         Logger& log = Logger::GetInstance();
-        size_t registered = 0;
+        size_t registeredTextures = 0;
+        size_t registeredModels = 0;
 
         for (const char* folder : CookedPath::kFolders) {
             const std::filesystem::path cookedRoot = ProjectPaths::Resolve(folder);
@@ -519,9 +521,14 @@ namespace CoreEngine
                     continue;
                 }
 
-                // sRGB 版とリニア版は同じ元の画像に戻るので、2 つ目は登録済みとして飛ばす
-                const std::filesystem::path sourceRelative =
-                    CookedTexture::ToSourcePath(ProjectPaths::MakeRelative(it->path()));
+                // 画像の DDS（sRGB 版とリニア版は同じ元の画像に戻るので、2 つ目は登録済みとして飛ばす）とモデルの .cmesh
+                const std::filesystem::path cookedRelative = ProjectPaths::MakeRelative(it->path());
+                AssetType type = AssetType::Texture;
+                std::filesystem::path sourceRelative = CookedTexture::ToSourcePath(cookedRelative);
+                if (sourceRelative.empty()) {
+                    type = AssetType::Model;
+                    sourceRelative = ModelDerivedData::ToSourcePath(cookedRelative);
+                }
                 if (sourceRelative.empty()) {
                     continue;
                 }
@@ -537,7 +544,7 @@ namespace CoreEngine
                 const std::string guid = AssetMetadata::LoadGUID(metaPath);
                 if (guid.empty()) {
                     log.Logf(LogLevel::WARNING, LogCategory::System, "{}",
-                        "クック済みのテクスチャに対応する .meta が無いので登録しません: " + sourceRelativeUtf8);
+                        "クック済みのデータに対応する .meta が無いので登録しません: " + sourceRelativeUtf8);
                     continue;
                 }
 
@@ -547,16 +554,21 @@ namespace CoreEngine
                 info.fileName = log.PathToUtf8(sourcePath.filename());
                 info.fullPath = sourcePath;
                 info.relativePath = sourceRelative;
-                info.type = AssetType::Texture;
+                info.type = type;
                 info.category = category;
-                info.colorSpace = AssetMetadata::LoadImportColorSpace(metaPath);
+                if (type == AssetType::Texture) {
+                    info.colorSpace = AssetMetadata::LoadImportColorSpace(metaPath);
+                    ++registeredTextures;
+                } else {
+                    ++registeredModels;
+                }
                 MergeAssetInfo(std::move(info));
-                ++registered;
             }
         }
 
-        if (registered > 0) {
-            log.Logf(LogLevel::INFO, LogCategory::System, "クック済みのテクスチャを {} 件登録しました", registered);
+        if (registeredTextures > 0 || registeredModels > 0) {
+            log.Logf(LogLevel::INFO, LogCategory::System, "クック済みのテクスチャを {} 件・モデルを {} 件登録しました",
+                registeredTextures, registeredModels);
         }
     }
 
