@@ -60,6 +60,13 @@ namespace CoreEngine
 
     void WaterRenderFeature::Initialize(SceneContext& ctx)
     {
+        // 水面の描画に使うマネージャ（水面のレイトレ・FFT の海・泡）は、水面のあるシーンで初めて作る
+        if (ctx.engine) {
+            if (RenderDomainContext* domain = ctx.engine->GetRenderDomainContext()) {
+                domain->EnsureWaterInitialized();
+            }
+        }
+
         // 描画経路切り替えに備えて、Gerstner / FFT の両 simulator を用意する
         if (!gerstnerSimulator_) {
             gerstnerSimulator_ = std::make_unique<GerstnerWaterSimulator>();

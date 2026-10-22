@@ -36,6 +36,7 @@ namespace CoreEngine
         ShaderProgramCache* shaderProgramCache)
     {
         dxCommon_ = dxCommon;
+        shaderProgramCache_ = shaderProgramCache;
         auto* device = dxCommon->GetDevice();
         auto* descriptorAllocator = dxCommon->GetDescriptorAllocator();
 
@@ -76,6 +77,39 @@ namespace CoreEngine
             Logger::GetInstance().Infof(LogCategory::Graphics,
                 "RenderDomainContext: RayTracingShadowManager 初期化完了\n");
         }
+
+        atmosphereManager_ = std::make_unique<AtmosphereManager>();
+        atmosphereManager_->Initialize(device, descriptorAllocator, dxCommon->GetUploadRing());
+        Logger::GetInstance().Infof(LogCategory::Graphics,
+            "RenderDomainContext: AtmosphereManager 初期化完了\n");
+
+        volumetricCloudManager_ = std::make_unique<VolumetricCloudManager>();
+        volumetricCloudManager_->Initialize(dxCommon, descriptorAllocator);
+        Logger::GetInstance().Infof(LogCategory::Graphics,
+            "RenderDomainContext: VolumetricCloudManager 初期化完了\n");
+
+        fogManager_ = std::make_unique<FogManager>();
+        if (fogManager_->Initialize(dxCommon)) {
+            Logger::GetInstance().Infof(LogCategory::Graphics,
+                "RenderDomainContext: FogManager 初期化完了\n");
+        }
+
+        // ウィンドウリサイズ通知を受ける（シーン深度 / GBuffer / RT シャドウの作り直し）
+        dxCommon->RegisterResizable(this);
+
+        Logger::GetInstance().Infof(LogCategory::Graphics,
+            "RenderDomainContext::Initialize: 全ドメインマネージャーの初期化完了\n");
+    }
+
+    void RenderDomainContext::EnsureWaterInitialized()
+    {
+        if (waterInitialized_ || !dxCommon_) {
+            return;
+        }
+        waterInitialized_ = true;
+        GraphicsCore* dxCommon = dxCommon_;
+        ShaderProgramCache* shaderProgramCache = shaderProgramCache_;
+        auto* descriptorAllocator = dxCommon->GetDescriptorAllocator();
 
         rtWaterRefractionManager_ = std::make_unique<WaterRefractionRayTracingManager>();
         if (accelerationStructureManager_->IsSupported()) {
@@ -121,28 +155,6 @@ namespace CoreEngine
             Logger::GetInstance().Infof(LogCategory::Graphics,
                 "RenderDomainContext: WaterFoamSystem 初期化完了\n");
         }
-
-        atmosphereManager_ = std::make_unique<AtmosphereManager>();
-        atmosphereManager_->Initialize(device, descriptorAllocator, dxCommon->GetUploadRing());
-        Logger::GetInstance().Infof(LogCategory::Graphics,
-            "RenderDomainContext: AtmosphereManager 初期化完了\n");
-
-        volumetricCloudManager_ = std::make_unique<VolumetricCloudManager>();
-        volumetricCloudManager_->Initialize(dxCommon, descriptorAllocator);
-        Logger::GetInstance().Infof(LogCategory::Graphics,
-            "RenderDomainContext: VolumetricCloudManager 初期化完了\n");
-
-        fogManager_ = std::make_unique<FogManager>();
-        if (fogManager_->Initialize(dxCommon)) {
-            Logger::GetInstance().Infof(LogCategory::Graphics,
-                "RenderDomainContext: FogManager 初期化完了\n");
-        }
-
-        // ウィンドウリサイズ通知を受ける（シーン深度 / GBuffer / RT シャドウの作り直し）
-        dxCommon->RegisterResizable(this);
-
-        Logger::GetInstance().Infof(LogCategory::Graphics,
-            "RenderDomainContext::Initialize: 全ドメインマネージャーの初期化完了\n");
     }
 
     void RenderDomainContext::Shutdown()

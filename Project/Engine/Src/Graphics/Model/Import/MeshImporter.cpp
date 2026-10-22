@@ -83,13 +83,18 @@ namespace CoreEngine
         return CmeshFile::Write(cmeshPath, asset);
     }
 
-    void MeshImporter::GenerateLods(ModelData& data)
+    void MeshImporter::InitLod0(ModelData& data)
     {
-        // lods[0] は常に原型の範囲を指すよう先に埋めておく
         for (auto& subMesh : data.subMeshes) {
             subMesh.lods[0] = { subMesh.startIndex, subMesh.indexCount };
             subMesh.lodCount = 1;
         }
+    }
+
+    void MeshImporter::GenerateLods(ModelData& data)
+    {
+        // lods[0] は常に原型の範囲を指すよう先に埋めておく
+        InitLod0(data);
 
         const size_t totalTriangles = data.indices.size() / 3;
         if (totalTriangles < kMinTriangleCountForLod) {
