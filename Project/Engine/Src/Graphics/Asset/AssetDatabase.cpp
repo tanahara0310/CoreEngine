@@ -319,6 +319,33 @@ namespace CoreEngine
         return info ? info->colorSpace : std::string();
     }
 
+    std::string AssetDatabase::GetImportFormat(std::string_view path) const
+    {
+        std::shared_lock lock(mutex_);
+        const AssetInfo* info = FindByPathUnlocked(path);
+        return info ? info->format : std::string();
+    }
+
+    bool AssetDatabase::SetImportSettings(const std::filesystem::path& assetPath, const std::string& colorSpace,
+        const std::string& format)
+    {
+        AssetMetadata::ImportSettings settings;
+        settings.colorSpace = colorSpace;
+        settings.format = format;
+        if (!AssetMetadata::SaveImportSettings(AssetMetadata::GetMetaFilePath(assetPath), settings)) {
+            return false;
+        }
+
+        std::unique_lock lock(mutex_);
+        const AssetInfo* found = FindByPathUnlocked(Logger::GetInstance().PathToUtf8(assetPath));
+        if (found) {
+            AssetInfo& info = assetsByGUID_.at(found->guid);
+            info.colorSpace = colorSpace;
+            info.format = format;
+        }
+        return true;
+    }
+
     const AssetInfo* AssetDatabase::FindByGUIDUnlocked(const std::string& guid) const
     {
         const auto it = assetsByGUID_.find(guid);
@@ -468,7 +495,9 @@ namespace CoreEngine
         info.lastModified = GetFileLastModified(assetPath);
         if (type == AssetType::Texture)
         {
-            info.colorSpace = AssetMetadata::LoadImportColorSpace(AssetMetadata::GetMetaFilePath(assetPath));
+            const AssetMetadata::ImportSettings import = AssetMetadata::LoadImportSettings(AssetMetadata::GetMetaFilePath(assetPath));
+            info.colorSpace = import.colorSpace;
+            info.format = import.format;
         }
 
         return info;
@@ -557,7 +586,9 @@ namespace CoreEngine
                 info.type = type;
                 info.category = category;
                 if (type == AssetType::Texture) {
-                    info.colorSpace = AssetMetadata::LoadImportColorSpace(metaPath);
+                    const AssetMetadata::ImportSettings import = AssetMetadata::LoadImportSettings(metaPath);
+                    info.colorSpace = import.colorSpace;
+                    info.format = import.format;
                     ++registeredTextures;
                 } else {
                     ++registeredModels;

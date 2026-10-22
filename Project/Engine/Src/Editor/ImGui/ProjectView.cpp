@@ -14,6 +14,7 @@
 #include "Editor/ImGui/ImGuiAll.h"
 #include "Editor/ImGui/Widgets/EditorBars.h"
 #include "Editor/Inspector/PrefabAssetInspector.h"
+#include "Editor/Inspector/TextureImportInspector.h"
 #include "Editor/Inspector/ShaderMaterialInspector.h"
 #include "Editor/Scene/EditorSceneAccess.h"
 #include "Editor/Scene/SceneDebugEditor.h"
@@ -443,9 +444,10 @@ namespace CoreEngine
             return;
         }
 
-        // プレハブとマテリアルは中身を編集できるように出す
+        // プレハブとマテリアルは中身を、画像は取り込み設定を編集できるように出す
         Editor::PrefabAssetInspector::Draw(selectedPath_);
         Editor::ShaderMaterialInspector::DrawFile(selectedPath_);
+        Editor::TextureImportInspector::DrawFile(selectedPath_);
 
         UI::Separator();
         UI::SectionHeader("アセット情報");

@@ -204,6 +204,12 @@ namespace CoreEngine::Editor
                     "シェーダの一覧が空なので、シェーダは遊ぶ人の PC でコンパイルされます。"
                     "エディタでゲームを一度動かしてから書き出し直してください。");
             }
+            if (!result_.warnings.empty()) {
+                ImGui::TextColored(Theme::kWarn, "%s", "書き出したものを確かめて、次のことが見つかりました:");
+                for (const std::string& warning : result_.warnings) {
+                    ImGui::BulletText("%s", warning.c_str());
+                }
+            }
             ImGui::TextColored(Theme::kTextMute, "%s", ToUtf8(plan_.destination).c_str());
         }
         ImGui::PopTextWrapPos();

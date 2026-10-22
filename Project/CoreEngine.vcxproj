@@ -336,6 +336,7 @@ exit /b 0</Command>
     <ClCompile Include="Engine\Src\Editor\Inspector\ColliderInspector.cpp" />
     <ClCompile Include="Engine\Src\Editor\Inspector\SpriteAnimatorInspector.cpp" />
     <ClCompile Include="Engine\Src\Editor\Inspector\ShaderMaterialInspector.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Inspector\TextureImportInspector.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\SceneSettingsPanel.cpp" />
     <ClCompile Include="Engine\Src\Collision\CollisionConfig.cpp" />
     <ClCompile Include="Engine\Src\Collision\CollisionLayer.cpp" />
@@ -1314,6 +1315,7 @@ exit /b 0</Command>
     <ClInclude Include="Engine\Src\Editor\Inspector\ColliderInspector.h" />
     <ClInclude Include="Engine\Src\Editor\Inspector\SpriteAnimatorInspector.h" />
     <ClInclude Include="Engine\Src\Editor\Inspector\ShaderMaterialInspector.h" />
+    <ClInclude Include="Engine\Src\Editor\Inspector\TextureImportInspector.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\SceneSettingsPanel.h" />
     <ClInclude Include="Engine\Src\Collision\CollisionConfig.h" />
     <ClInclude Include="Engine\Src\Collision\CollisionLayer.h" />

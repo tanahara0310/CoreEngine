@@ -9,13 +9,36 @@
 
 namespace CoreEngine
 {
-    std::string TextureImporter::Settings(TextureColorSpace colorSpace)
+    TextureCompression TextureImporter::ParseCompression(std::string_view setting)
     {
-        return (colorSpace == TextureColorSpace::Linear) ? "linear;bc3" : "srgb;bc3";
+        if (setting == "bc7") {
+            return TextureCompression::BC7;
+        }
+        if (setting == "bc3") {
+            return TextureCompression::BC3;
+        }
+        if (setting == "none") {
+            return TextureCompression::None;
+        }
+        return kDefaultCompression;
+    }
+
+    const char* TextureImporter::CompressionName(TextureCompression compression)
+    {
+        switch (compression) {
+        case TextureCompression::BC3: return "bc3";
+        case TextureCompression::None: return "none";
+        default: return "bc7";
+        }
+    }
+
+    std::string TextureImporter::Settings(TextureColorSpace colorSpace, TextureCompression compression)
+    {
+        return std::string((colorSpace == TextureColorSpace::Linear) ? "linear;" : "srgb;") + CompressionName(compression);
     }
 
     bool TextureImporter::Import(const std::filesystem::path& sourcePath, const std::filesystem::path& ddsPath,
-        TextureColorSpace colorSpace)
+        TextureColorSpace colorSpace, TextureCompression compression)
     {
         Logger& log = Logger::GetInstance();
         const std::string sourceForDisplay = log.PathToUtf8(sourcePath);
@@ -36,25 +59,31 @@ namespace CoreEngine
                 mipChain = std::move(sourceImage);
             }
 
-            // 色空間に合わせて BC3 の形式を選ぶ。1 枚の圧縮は 1 スレッドで行い、画像ごとの並列は読み込みのスレッドプールに任せる。
+            // 形式と色空間に合わせて圧縮する。1 枚の圧縮は 1 スレッドで行い、画像ごとの並列は呼ぶ側のスレッドプールに任せる。
             // 圧縮できない大きさ（4x4 未満など）は非圧縮のまま書く
-            const DXGI_FORMAT compressFormat = (colorSpace == TextureColorSpace::Linear)
-                ? DXGI_FORMAT_BC3_UNORM
-                : DXGI_FORMAT_BC3_UNORM_SRGB;
             DirectX::ScratchImage compressedImage;
-            hr = DirectX::Compress(
-                mipChain.GetImages(),
-                mipChain.GetImageCount(),
-                mipChain.GetMetadata(),
-                compressFormat,
-                DirectX::TEX_COMPRESS_DEFAULT,
-                DirectX::TEX_THRESHOLD_DEFAULT,
-                compressedImage);
-
-            const DirectX::ScratchImage& imageToSave = SUCCEEDED(hr) ? compressedImage : mipChain;
-            if (FAILED(hr)) {
-                log.Logf(LogLevel::WARNING, LogCategory::Resource, "圧縮できないので非圧縮の DDS にします: {}", sourceForDisplay);
+            hr = E_FAIL;
+            if (compression != TextureCompression::None) {
+                const bool linear = (colorSpace == TextureColorSpace::Linear);
+                DXGI_FORMAT compressFormat = linear ? DXGI_FORMAT_BC7_UNORM : DXGI_FORMAT_BC7_UNORM_SRGB;
+                DirectX::TEX_COMPRESS_FLAGS flags = DirectX::TEX_COMPRESS_BC7_QUICK;
+                if (compression == TextureCompression::BC3) {
+                    compressFormat = linear ? DXGI_FORMAT_BC3_UNORM : DXGI_FORMAT_BC3_UNORM_SRGB;
+                    flags = DirectX::TEX_COMPRESS_DEFAULT;
+                }
+                hr = DirectX::Compress(
+                    mipChain.GetImages(),
+                    mipChain.GetImageCount(),
+                    mipChain.GetMetadata(),
+                    compressFormat,
+                    flags,
+                    DirectX::TEX_THRESHOLD_DEFAULT,
+                    compressedImage);
+                if (FAILED(hr)) {
+                    log.Logf(LogLevel::WARNING, LogCategory::Resource, "圧縮できないので非圧縮の DDS にします: {}", sourceForDisplay);
+                }
             }
+            const DirectX::ScratchImage& imageToSave = SUCCEEDED(hr) ? compressedImage : mipChain;
 
             hr = DirectX::SaveToDDSFile(
                 imageToSave.GetImages(),

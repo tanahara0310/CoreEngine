@@ -275,6 +275,35 @@ namespace CoreEngine
         return true;
     }
 
+    bool ShaderMaterial::ReadTextures(const std::filesystem::path& fullPath, std::vector<MaterialTexture>& textures)
+    {
+        textures.clear();
+        std::ifstream in(fullPath, std::ios::binary);
+        if (!in) {
+            return false;
+        }
+        std::stringstream text;
+        text << in.rdbuf();
+        const json root = json::parse(text.str(), nullptr, false);
+        if (root.is_discarded() || !root.is_object()) {
+            return false;
+        }
+        const std::string context = "マテリアル " + Logger::GetInstance().PathToUtf8(fullPath);
+        if (const auto nodes = root.find(kTexturesKey); nodes != root.end() && nodes->is_object()) {
+            for (const auto& [name, node] : nodes->items()) {
+                MaterialTexture texture;
+                texture.path = JsonToAssetPath(node, context);
+                if (node.is_object()) {
+                    texture.linear = node.value(kLinearKey, false);
+                }
+                if (!texture.path.empty()) {
+                    textures.push_back(std::move(texture));
+                }
+            }
+        }
+        return true;
+    }
+
     bool ShaderMaterial::Revert()
     {
         const std::string assetPath = assetPath_;

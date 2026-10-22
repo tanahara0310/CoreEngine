@@ -44,6 +44,10 @@ namespace CoreEngine
         static bool ReadShaderPaths(const std::filesystem::path& fullPath, std::string& shaderPath,
             std::string& vertexShaderPath);
 
+        /// @brief .mat からテクスチャのパスと読み方だけを読む（テクスチャは読み込まない）
+        /// @return 読めなければ false
+        static bool ReadTextures(const std::filesystem::path& fullPath, std::vector<MaterialTexture>& textures);
+
         /// @brief ファイルの中身へ戻す（再生中に変えた値を捨てる）
         bool Revert();
 

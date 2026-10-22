@@ -58,6 +58,20 @@ namespace CoreEngine
         /// @note ロードのワーカーから呼んでよい（ロックの中で写しを作って返す）
         std::string GetImportColorSpace(std::string_view path) const;
 
+        /// @brief 画像の取り込み設定（.meta の import.format）を返す
+        /// @param path FindAssetByPath と同じ書き方のパス（UTF-8）
+        /// @return "bc7" / "bc3" / "none"。登録されていない・書いていなければ空
+        /// @note ロードのワーカーから呼んでよい（ロックの中で写しを作って返す）
+        std::string GetImportFormat(std::string_view path) const;
+
+        /// @brief 画像の取り込み設定を .meta に書き、登録している情報も書き換える
+        /// @param assetPath 画像の絶対パス
+        /// @param colorSpace "srgb" / "linear" / 空（頼まれた色空間で読む）
+        /// @param format "bc7" / "bc3" / "none" / 空（既定の形式）
+        /// @return 書けたら true
+        /// @note 読み込み済みのテクスチャは作り直さない（次に読み込むときに新しい設定で変換する）
+        bool SetImportSettings(const std::filesystem::path& assetPath, const std::string& colorSpace, const std::string& format);
+
         /// @brief 指定した種類のアセット情報を相対パス順に返す
         std::vector<const AssetInfo*> GetAssetsOfType(AssetType type) const;
 
