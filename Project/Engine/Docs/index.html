@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.26.0">
+<meta name="engine-version" content="0.27.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2182,7 +2182,7 @@ kbd {
       <tr><td><code>--project &lt;フォルダ&gt;</code></td><td>そのプロジェクトを開きます（選ぶ画面を出さない）</td></tr>
       <tr><td><code>--launcher</code></td><td>「前回のプロジェクトを自動で開く」にしていても、選ぶ画面を出します</td></tr>
       <tr><td><code>--resave-scenes</code></td><td>すべてのシーンと設定を今の形式で保存し直して終了します</td></tr>
-      <tr><td><code>--workers &lt;数&gt;</code></td><td>読み込みなどに使うスレッドを、1 つの仕事あたりこの本数までにします。<code>1</code> にすると全部 1 本で動くので、順番に頼る不具合かどうかを切り分けられます</td></tr>
+      <tr><td><code>--workers &lt;数&gt;</code></td><td>読み込みなどに使うスレッドを、1 つの仕事あたりこの本数までにします。<code>1</code> にすると全部 1 本で動くので、順番に頼る不具合かどうかを切り分けられます。ゲームの書き出しの変換にも効きます</td></tr>
     </tbody>
   </table>
   </div>
@@ -3152,7 +3152,7 @@ kbd {
   <p>Key Config では、割り当てのボタンを押してから新しいキーを押すと割り当てが変わります。<span class="ui">x</span> で削除、<span class="ui">追加</span> で足し、同じ場面のほかのアクションと重なると赤く表示されます。<span class="ui">初期値に戻す</span> で InputActions.json の既定に戻ります。</p>
 </article>
 
-<article class="page" id="editor-export" data-group="エディタ" data-title="ゲームを書き出す" data-nav="ゲームの書き出し" data-keywords="書き出し 書き出す export ビルド release 配布 exe 完成 build windows 全画面 フルスクリーン 終了 esc 起動シーン テクスチャ dds 変換 クック cooked シェーダ dxil コンパイル モデル cmesh">
+<article class="page" id="editor-export" data-group="エディタ" data-title="ゲームを書き出す" data-nav="ゲームの書き出し" data-keywords="書き出し 書き出す export ビルド release 配布 exe 完成 build windows 全画面 フルスクリーン 終了 esc 起動シーン テクスチャ dds 変換 クック cooked シェーダ dxil コンパイル モデル cmesh 並列 スレッド 失敗">
   <h1>ゲームを書き出す</h1>
   <p class="lead">完成したゲームを、エディタの無い PC でも遊べるフォルダにまとめます。できたフォルダを丸ごと渡せば、そのまま遊べます。</p>
 
@@ -3171,10 +3171,10 @@ kbd {
     ├─ CoreEngine.exe と *.dll      Release のフォルダから
     ├─ CookManifest.json            変換したデータの一覧（これがあると、書き出したゲームとして動く）
     ├─ Engine/
-    │  ├─ Assets/                   エンジンの素材（シェーダ・既定のモデルなど。画像のテクスチャは除く）
+    │  ├─ Assets/                   エンジンの素材（シェーダなど。画像のテクスチャとモデルのファイルは除く）
     │  └─ Cooked/                   エンジンの画像のテクスチャを変換した DDS・モデルの .cmesh・コンパイルしたシェーダの DXIL
     └─ Application/
-       ├─ Assets/                   シーン・スクリプト・プレハブ・素材（画像のテクスチャは除く）
+       ├─ Assets/                   シーン・スクリプト・プレハブ・素材（画像のテクスチャとモデルのファイルは除く）
        ├─ Cooked/                   プロジェクトの画像のテクスチャを変換した DDS とモデルの .cmesh
        ├─ Config/                   プロジェクトの設定（起動シーン・入力・レイヤー・CVar）
        └─ Saved/                    遊んだ人のセーブデータ（ゲームが作る）
@@ -3198,11 +3198,15 @@ kbd {
 
   <h2 id="export-models">モデルの変換</h2>
   <p>モデル（glTF・GLB・OBJ・FBX）は、エンジンがそのまま読める形 <span class="path">.cmesh</span> に変換して使います。<span class="path">.cmesh</span> には、頂点とインデックス・遠くで使う簡略化した形（LOD）・マテリアル・ボーン・ファイルに入っているアニメーションをまとめて入れ、GPU が速く描ける順に並べ替えてあります。ゲームの起動やシーンの切り替えでは、モデルのファイルを解析せずにこれを読むだけです。</p>
-  <p>エディタでは、モデルを初めて読むときに変換して <span class="path">Intermediate/DerivedData/Mesh/</span> に置きます（名前はモデルの GUID と <code>.cmesh</code>）。テクスチャと同じく、元のファイルの中身か変換の設定が変わったときだけ作り直します。書き出すときはそれを <span class="path">Cooked/</span> に写します（例：<span class="path">Application/Assets/Models/Rock/rock.gltf</span> は <span class="path">Application/Cooked/Models/Rock/rock.gltf.cmesh</span>）。書き出したゲームは元のモデルのファイルを読みません（今は元のファイルも写します）。</p>
+  <p>エディタでは、モデルを初めて読むときに変換して <span class="path">Intermediate/DerivedData/Mesh/</span> に置きます（名前はモデルの GUID と <code>.cmesh</code>）。テクスチャと同じく、元のファイルの中身か変換の設定が変わったときだけ作り直します。書き出すときはそれを <span class="path">Cooked/</span> に写します（例：<span class="path">Application/Assets/Models/Rock/rock.gltf</span> は <span class="path">Application/Cooked/Models/Rock/rock.gltf.cmesh</span>）。書き出したゲームは元のモデルのファイルを読まないので、書き出しには入れません。OBJ が使う <span class="path">.mtl</span> と、glTF が外に持つバッファ（<span class="path">.bin</span> など）も入れません。隣の <span class="path">.meta</span> は入るので、スクリプトやシーンからは今までどおり <span class="path">.gltf</span> などの名前で使えます。</p>
 
   <h2 id="export-shaders">シェーダのコンパイル</h2>
   <p>シェーダも書き出すときにコンパイルして、GPU に渡す形（DXIL）で <span class="path">Cooked/</span> に書きます。遊ぶ人の PC ではコンパイルしないので、初めての起動でもシェーダのコンパイルを待ちません。例えば <span class="path">Engine/Assets/Shaders/Water/Water.PS.hlsl</span> を <code>ps_6_0</code> でコンパイルしたものは <span class="path">Engine/Cooked/Shaders/Water/Water.PS.hlsl.ps_6_0.dxil</span> です。出力からデバッグ情報は外します（GPU が使う中身は開発中と同じです）。</p>
   <p>コンパイルするのは、エディタやゲームで一度でもコンパイルしたシェーダです。エンジンは使ったシェーダを <span class="path">Intermediate/ShaderManifest.txt</span> に起動と終了のたびに書き足していきます。一度も動かしていない場面のシェーダは書き出しに入らず、そのシェーダだけ遊ぶ人の PC でコンパイルされます。書き出す前に、エディタで最初のシーンから最後まで通して遊んでおくと漏れません。元の <span class="path">.hlsl</span> も写すので、入っていないシェーダがあってもゲームは動きます。</p>
+
+  <h2 id="export-parallel">変換の進め方と、変換できなかったとき</h2>
+  <p>モデル・テクスチャ・シェーダの変換と、ファイルの写しは、PC の CPU のスレッド数と同じ本数のスレッドで並べて行います（起動の引数 <code>--workers</code> を付けたときはその本数まで。<a href="#setup-cmdline">コマンドラインのオプション</a>）。先にモデルを変換し、そのマテリアルから画像の使い道（sRGB かリニアか）を決めてから、画像とシェーダを変換し、最後に残りのファイルを写します。</p>
+  <p>変換できないもの（壊れたモデルや画像、コンパイルできないシェーダ）があっても、途中で止めずに全部を試します。1 つでもあれば、ファイルを写す前に書き出しを止め、できなかったものを書き出しの窓に一覧で出します。書き出す先は途中までの状態になっているので、一覧のファイルを直すか消してから、書き出し直してください。</p>
 
   <h2 id="export-runtime">書き出したゲームの動き</h2>
   <div class="table-wrap">
@@ -9672,6 +9676,16 @@ python Tools/OkinawaBeach/bake_player_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-27-0">v0.27.0 <span class="dim">（2026-10-22）</span></h3>
+  <p>書き出しから元のモデルのファイルを外し、変換と写しを並べて行うようにした版です（<a href="#export-models">モデルの変換</a>・<a href="#export-parallel">変換の進め方</a>）。</p>
+  <ul>
+    <li><strong>元のモデルを入れない</strong>：書き出しに、モデルのファイル（glTF・GLB・OBJ・FBX）と、OBJ の <span class="path">.mtl</span>・glTF の外部バッファを入れなくなりました。書き出したゲームは <span class="path">Cooked/</span> の .cmesh だけを読みます。</li>
+    <li><strong>書き出したゲームの索引</strong>：書き出したゲームは、.cmesh から元のモデルの名前と GUID を引けるように登録します。スクリプトやシーンからは今までどおりモデルのファイル名で使えます。</li>
+    <li><strong>並べて行う</strong>：モデル・テクスチャ・シェーダの変換とファイルの写しを、CPU のスレッド数の本数で並べて行うようにしました。これまでは 1 つずつ順番でした。</li>
+    <li><strong>変換できなかったもの</strong>：変換できないものがあっても全部を試し、書き出しの窓に一覧で出してから止めるようにしました。これまでは最初の 1 件で止めていました。</li>
+    <li><strong>画像の使い道</strong>：書き出しで画像を sRGB とリニアのどちらで変換するかを、モデルのファイルでなく .cmesh のマテリアルから決めるようにしました。</li>
+  </ul>
 
   <h3 id="changelog-v0-26-0">v0.26.0 <span class="dim">（2026-10-22）</span></h3>
   <p>モデルをエンジン用の形 .cmesh に変換して読むようにした版です（<a href="#export-models">モデルの変換</a>）。</p>
