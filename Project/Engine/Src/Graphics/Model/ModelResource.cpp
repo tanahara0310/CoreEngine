@@ -334,7 +334,7 @@ namespace CoreEngine
         isLoaded_ = true;
     }
 
-    void ModelResource::LoadFromModelData(ModelData&& data, const std::string& name)
+    void ModelResource::LoadFromModelData(ModelData&& data, const std::string& name, bool generateLods)
     {
         assert(dxCommon_ && textureManager_);
 
@@ -343,9 +343,13 @@ namespace CoreEngine
         // RootNodeを保存
         rootNode_ = modelData_.rootNode;
 
-        // 原型のインデックス数を控えてから LOD を足し、GPU 向けに並べ替える
+        // 原型のインデックス数を控えてから LOD を足し（作らない形は除く）、GPU 向けに並べ替える
         const size_t lod0IndexCount = modelData_.indices.size();
-        MeshImporter::GenerateLods(modelData_);
+        if (generateLods) {
+            MeshImporter::GenerateLods(modelData_);
+        } else {
+            MeshImporter::InitLod0(modelData_);
+        }
         MeshImporter::OptimizeForGpu(modelData_);
         CreateGeometryBuffers(lod0IndexCount);
 

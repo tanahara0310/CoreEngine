@@ -25,6 +25,9 @@ namespace CoreEngine
         std::string GetCacheKey() const override;
         const char* GetDisplayName() const override { return "水面"; }
 
+        /// @brief 岸の格子は頂点を原点に置いて頂点シェーダで動かすので、LOD は作らない
+        bool UseLod() const override { return false; }
+
     private:
         float size_ = 1.0f;
         uint32_t subdivisions_ = 1;

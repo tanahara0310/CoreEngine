@@ -20,14 +20,17 @@ namespace CoreEngine
 
     void RTWaterRefractionPass::Execute(const RenderContext& context)
     {
-        if (!context.rayTracingSubsystem || !context.dxCommon || !context.rtWaterRefractionManager) {
+        // マネージャは水面のあるシーンで作られる（水面の無いシーンでは何もしない）
+        if (!context.rtWaterRefractionManager) {
+            return;
+        }
+        if (!context.rayTracingSubsystem || !context.dxCommon) {
             Logger::GetInstance().Warnf(
                 LogCategory::Graphics,
                 LogSubCategory::Pipeline,
-                "RTWaterRefractionPass: skipped. rayTracingSubsystem={} dxCommon={} manager={}",
+                "RTWaterRefractionPass: skipped. rayTracingSubsystem={} dxCommon={}",
                 context.rayTracingSubsystem != nullptr,
-                context.dxCommon != nullptr,
-                context.rtWaterRefractionManager != nullptr);
+                context.dxCommon != nullptr);
             return;
         }
 

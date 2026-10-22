@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.29.0">
+<meta name="engine-version" content="0.30.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -9707,6 +9707,13 @@ python Tools/OkinawaBeach/bake_player_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-30-0">v0.30.0 <span class="dim">（2026-10-23）</span></h3>
+  <p>水面の無いシーンの起動を速くした版です。</p>
+  <ul>
+    <li><strong>水面の準備</strong>：水面の描画に使うもの（水面のレイトレ 4 つ・FFT の海・泡）を、起動のときでなく、水面のあるシーンを初めて開いたときに作るようにしました。水面の無いシーンでは作りません。水面のレイトレのパイプラインの作成は 1 つ 0.3〜0.8 秒かかっていました。</li>
+    <li><strong>水面の格子</strong>：水面の格子には、遠くで使う簡略化した形（LOD）を作らないようにしました。頂点を頂点シェーダで動かす格子なので使われていませんでした。</li>
+  </ul>
 
   <h3 id="changelog-v0-29-0">v0.29.0 <span class="dim">（2026-10-22）</span></h3>
   <p>書き出したゲームの JSON を MessagePack（バイナリ）にした版です（<a href="#export-json">JSON のバイナリ化</a>）。</p>

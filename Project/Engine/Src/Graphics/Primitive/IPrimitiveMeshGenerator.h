@@ -20,5 +20,9 @@ namespace CoreEngine
 
         /// @brief 形の名前（エディタに出す）
         virtual const char* GetDisplayName() const = 0;
+
+        /// @brief 読み込むときに LOD（遠くで使う簡略化した形）を作るか
+        /// @note 頂点の位置を頂点シェーダで決める形など、簡略化すると形が崩れるものは false を返す
+        virtual bool UseLod() const { return true; }
     };
 }

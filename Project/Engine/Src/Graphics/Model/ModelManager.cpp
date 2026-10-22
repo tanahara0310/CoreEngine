@@ -200,7 +200,7 @@ namespace CoreEngine
         auto resource = std::make_unique<ModelResource>();
         auto& textureManager = TextureManager::GetInstance();
         resource->Initialize(dxCommon_, &textureManager);
-        resource->LoadFromModelData(std::move(modelData), key);
+        resource->LoadFromModelData(std::move(modelData), key, generator.UseLod());
 
         ModelResource* resourcePtr = nullptr;
         {
