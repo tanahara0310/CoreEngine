@@ -33,6 +33,7 @@ namespace CoreEngine::Editor
     {
         std::string error;        ///< 失敗した訳（成功なら空）
         std::vector<std::string> failures; ///< 変換できなかったものの訳（全部集めてから止める）
+        std::vector<std::string> warnings; ///< 書き出した後に確かめて見つかったこと（書き出しは済んでいる）
         int fileCount = 0;        ///< 書いたファイルの数
         int cookedTextures = 0;   ///< DDS へ変換した画像の数
         int cookedShaders = 0;    ///< DXIL へコンパイルしたシェーダの数

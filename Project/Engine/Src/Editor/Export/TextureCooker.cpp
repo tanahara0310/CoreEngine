@@ -4,10 +4,10 @@
 #ifdef CORE_EDITOR
 
 #include "Graphics/Asset/AssetDatabase.h"
+#include "Graphics/Material/ShaderMaterial.h"
 #include "Graphics/Model/Derived/ModelDerivedData.h"
 #include "Graphics/Texture/Cook/CookedTexture.h"
 #include "Graphics/Texture/Derived/TextureDerivedData.h"
-#include "Graphics/Texture/Import/TextureImporter.h"
 #include "Graphics/Texture/Path/TexturePathResolver.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
@@ -49,7 +49,7 @@ namespace CoreEngine::Editor
 
     std::vector<CookTarget> TextureCooker::PlanTargets(const std::vector<std::filesystem::path>& sources)
     {
-        // モデルの .cmesh のマテリアルから、画像ごとの使い道を集める（テクスチャのパスの解き方は実行時と同じ）
+        // モデルの .cmesh のマテリアルと .mat から、画像ごとの使い道を集める（テクスチャのパスの解き方は実行時と同じ）
         std::unordered_map<std::wstring, Usage> usages;
         const TexturePathResolver resolver;
         const auto mark = [&](const std::string& texture, bool linear) {
@@ -70,6 +70,15 @@ namespace CoreEngine::Editor
                 mark(material.metallicRoughnessTexture, true);
                 mark(material.normalTexture, true);
                 mark(material.occlusionTexture, true);
+            }
+        }
+        std::vector<MaterialTexture> materialTextures;
+        for (const AssetInfo* material : AssetDatabase::GetInstance().GetAssetsOfType(AssetType::Material)) {
+            if (material->fullPath.extension() != ".mat" || !ShaderMaterial::ReadTextures(material->fullPath, materialTextures)) {
+                continue;
+            }
+            for (const MaterialTexture& texture : materialTextures) {
+                mark(texture.path, texture.linear);
             }
         }
 
@@ -137,7 +146,7 @@ namespace CoreEngine::Editor
             writtenBytes += ec ? 0 : size;
             ++writtenFiles;
             records.push_back({ ToUtf8(target.relative), guid, ToUtf8(cookedRelative),
-                TextureImporter::Settings(colorSpace), derived.key });
+                TextureDerivedData::Settings(target.source, colorSpace), derived.key });
         }
         return {};
     }

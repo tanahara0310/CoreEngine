@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <string>
 
 #include "Graphics/Asset/Derived/DerivedData.h"
 #include "Graphics/Texture/TextureColorSpace.h"
@@ -22,5 +23,8 @@ namespace CoreEngine
 
         /// @brief 開発中の置き場の DDS を新しくして返す（書き出しのクックが使う）
         DerivedData::Result EnsureIntermediate(const std::filesystem::path& source, TextureColorSpace colorSpace);
+
+        /// @brief 変換の設定の文字列（色空間と、取り込み設定か既定の圧縮の形式）
+        std::string Settings(const std::filesystem::path& source, TextureColorSpace colorSpace);
     }
 }

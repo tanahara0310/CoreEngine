@@ -168,6 +168,43 @@ namespace CoreEngine::Editor
             return files;
         }
 
+        /// @brief モデルのファイルか（.cmesh にして写さない拡張子か）
+        bool IsModelFile(const std::filesystem::path& path)
+        {
+            const std::wstring extension = MakeFileKey(path.extension());
+            return extension == L".gltf" || extension == L".glb" || extension == L".obj" || extension == L".fbx";
+        }
+
+        /// @brief 書き出した物を確かめる（変換した物が全部あるか、写さないはずの元のファイルが残っていないか）
+        /// @param keptImage 元のまま写す画像（ローディング画面の画像。無ければ空）
+        /// @return 見つかったこと（無ければ空）
+        std::vector<std::string> VerifyExport(const std::filesystem::path& destination,
+            const std::vector<CookRecord>& records, const std::filesystem::path& keptImage)
+        {
+            Logger& log = Logger::GetInstance();
+            std::vector<std::string> warnings;
+            std::error_code ec;
+            for (const CookRecord& record : records) {
+                if (!std::filesystem::is_regular_file(destination / log.Utf8ToPath(record.derived), ec)) {
+                    warnings.push_back(record.derived + " がありません");
+                }
+            }
+            const std::wstring keptKey = keptImage.empty() ? std::wstring() : MakeFileKey(keptImage);
+            for (const char* folder : { "Engine/Assets", "Application/Assets" }) {
+                std::filesystem::recursive_directory_iterator it(destination / folder, ec);
+                for (; !ec && it != std::filesystem::recursive_directory_iterator(); it.increment(ec)) {
+                    const std::filesystem::path& file = it->path();
+                    if (!it->is_regular_file(ec)) {
+                        continue;
+                    }
+                    if ((CookedTexture::IsCookable(file) && MakeFileKey(file) != keptKey) || IsModelFile(file)) {
+                        warnings.push_back("元のファイルが残っています: " + ToUtf8(file.lexically_relative(destination)));
+                    }
+                }
+            }
+            return warnings;
+        }
+
         /// 消せない・書けないときに添える一言
         constexpr const char* kLockedHint = "（書き出したゲームが動いていないか確かめてください）";
 
@@ -280,9 +317,11 @@ namespace CoreEngine::Editor
             }
         }
         // ローディング画面の画像は D3D12 より前に WIC で読むので、DDS にした物とは別に元のまま写す
+        std::filesystem::path splashCopy;
         if (const std::filesystem::path splashImage = SplashScreen::ResolveImagePath(); !splashImage.empty()) {
             if (const std::filesystem::path relative = ProjectPaths::MakeRelative(splashImage); !relative.empty()) {
-                items.push_back({ splashImage, destination / relative });
+                splashCopy = destination / relative;
+                items.push_back({ splashImage, splashCopy });
             }
         }
         const std::vector<std::filesystem::path> meshes = MeshCooker::PlanTargets();
@@ -438,6 +477,13 @@ namespace CoreEngine::Editor
             return result;
         }
         ++result.fileCount;
+
+        std::vector<CookRecord> records = std::move(cookRecords);
+        records.insert(records.end(), meshRecords.begin(), meshRecords.end());
+        result.warnings = VerifyExport(destination, records, splashCopy);
+        for (const std::string& warning : result.warnings) {
+            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::System, "書き出しの確認: {}", warning);
+        }
         return result;
     }
 }

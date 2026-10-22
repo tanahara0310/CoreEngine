@@ -51,26 +51,72 @@ namespace CoreEngine
         return "";
     }
 
-    std::string AssetMetadata::LoadImportColorSpace(const std::filesystem::path& metaFilePath)
+    AssetMetadata::ImportSettings AssetMetadata::LoadImportSettings(const std::filesystem::path& metaFilePath)
     {
+        ImportSettings settings;
         Logger& log = Logger::GetInstance();
         const json data = JsonManager::GetInstance().LoadJson(log.PathToUtf8(metaFilePath));
         if (!data.is_object()) {
-            return "";
+            return settings;
         }
         const auto import = data.find("import");
         if (import == data.end() || !import->is_object()) {
-            return "";
+            return settings;
         }
-        const std::string colorSpace = JsonManager::SafeGet<std::string>(*import, "colorSpace", "");
-        if (colorSpace == "srgb" || colorSpace == "linear") {
-            return colorSpace;
+
+        // 決まった値だけを受け取り、ほかの値は警告して読み飛ばす
+        const auto read = [&](const char* key, std::initializer_list<const char*> allowed, const char* hint) {
+            const std::string value = JsonManager::SafeGet<std::string>(*import, key, "");
+            for (const char* candidate : allowed) {
+                if (value == candidate) {
+                    return value;
+                }
+            }
+            if (!value.empty()) {
+                log.Logf(LogLevel::Warn, LogCategory::System, "{} の import.{} \"{}\" は {} で書きます（読み飛ばしました）",
+                    log.PathToUtf8(metaFilePath), key, value, hint);
+            }
+            return std::string();
+        };
+        settings.colorSpace = read("colorSpace", { "srgb", "linear" }, "\"srgb\" か \"linear\"");
+        settings.format = read("format", { "bc7", "bc3", "none" }, "\"bc7\"・\"bc3\"・\"none\" のどれか");
+        return settings;
+    }
+
+    bool AssetMetadata::SaveImportSettings(const std::filesystem::path& metaFilePath, const ImportSettings& settings)
+    {
+        Logger& log = Logger::GetInstance();
+        const std::string metaUtf8 = log.PathToUtf8(metaFilePath);
+        json data = JsonManager::GetInstance().LoadJson(metaUtf8);
+        if (!data.is_object() || JsonManager::SafeGet<std::string>(data, "guid", "").empty()) {
+            log.Logf(LogLevel::Error, LogCategory::System, "取り込み設定を書く .meta が読めません: {}", metaUtf8);
+            return false;
         }
-        if (!colorSpace.empty()) {
-            log.Logf(LogLevel::Warn, LogCategory::System, "{} の import.colorSpace \"{}\" は \"srgb\" か \"linear\" で書きます（読み飛ばしました）",
-                log.PathToUtf8(metaFilePath), colorSpace);
+
+        // ほかの項目は残し、色空間と形式だけを書き換える（空なら消す）
+        json import = data.value("import", json::object());
+        if (!import.is_object()) {
+            import = json::object();
         }
-        return "";
+        const auto assign = [&import](const char* key, const std::string& value) {
+            if (value.empty()) {
+                import.erase(key);
+            } else {
+                import[key] = value;
+            }
+        };
+        assign("colorSpace", settings.colorSpace);
+        assign("format", settings.format);
+        if (import.empty()) {
+            data.erase("import");
+        } else {
+            data["import"] = std::move(import);
+        }
+        if (!JsonManager::GetInstance().SaveJson(metaUtf8, data)) {
+            log.Logf(LogLevel::Error, LogCategory::System, "取り込み設定を .meta に書けません: {}", metaUtf8);
+            return false;
+        }
+        return true;
     }
 
     // アセット本体の隣に .meta を書く（Unity と同じ流儀）。GUID は 1 度作ったら変えない

@@ -445,6 +445,9 @@
     <ClCompile Include="Engine\Src\Editor\Inspector\ShaderMaterialInspector.cpp">
       <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Inspector\TextureImportInspector.cpp">
+      <Filter>Engine\Src\Editor\Inspector</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\ImGui\SceneSettingsPanel.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
@@ -2158,6 +2161,9 @@
       <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Inspector\ShaderMaterialInspector.h">
+      <Filter>Engine\Src\Editor\Inspector</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Inspector\TextureImportInspector.h">
       <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\SceneSettingsPanel.h">
