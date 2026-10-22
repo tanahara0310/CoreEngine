@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.27.0">
+<meta name="engine-version" content="0.28.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2718,7 +2718,7 @@ kbd {
   <p>シーンのオブジェクトを選ばずに Project でファイルを選ぶと、Inspector にアセットの情報（GUID・パス・サイズ）と、<strong>そのアセットを参照している場所</strong>の一覧が出ます。消してよいかを確かめるのに使えます。</p>
 </article>
 
-<article class="page" id="editor-project" data-group="エディタ" data-title="Project（アセット）" data-nav="Project（アセット）" data-keywords="プロジェクトビュー アセット ファイル フォルダ インポート 取り込み ドラッグ テクスチャ モデル 音 対応形式 拡張子 GUID meta">
+<article class="page" id="editor-project" data-group="エディタ" data-title="Project（アセット）" data-nav="Project（アセット）" data-keywords="プロジェクトビュー アセット ファイル フォルダ インポート 取り込み ドラッグ テクスチャ モデル 音 対応形式 拡張子 GUID meta 取り込み設定 色空間 srgb linear 圧縮 bc3 bc7 dds">
   <h1>Project（アセット）</h1>
   <p class="lead">プロジェクトのファイル（アセット）を扱うパネルです。モデルやテクスチャを取り込み、スクリプトを作り、シーンやインスペクタへドラッグして使います。</p>
 
@@ -2748,16 +2748,17 @@ kbd {
   </div>
   <div class="callout note"><p><code>.ogg</code> も「音」として一覧に出ますが、再生できるのは <code>.wav</code> と <code>.mp3</code> だけです。</p></div>
 
-  <h2 id="project-texture-color">画像の色の扱い</h2>
+  <h2 id="project-texture-color">画像の取り込み設定（色と圧縮）</h2>
   <p>画像は、使い道に合わせて色（sRGB）かデータ（リニア）として読みます。スプライト・UI 画像・モデルのベースカラーと発光は色、モデルの法線・メタリック/ラフネス・遮蔽と、マテリアルで <code>linear</code> にしたテクスチャはデータです。色として読む画像は、PNG の sRGB の印（sRGB チャンク）が無くても sRGB として扱います。</p>
-  <p>画像ごとに決めたいときは、画像の <span class="path">.meta</span> に取り込み設定を書きます。書いた設定は、使い道より優先されます。</p>
+  <p>画像ごとに決めたいときは、Project で画像を選び、Inspector の <span class="ui">取り込み設定</span> で <span class="ui">色空間</span> と <span class="ui">圧縮</span> を選びます。選んだ設定は画像の <span class="path">.meta</span> の <code>import</code> に書かれ、使い道より優先されます。<span class="path">.meta</span> を直接書いても同じです。</p>
   <script type="text/x-code" data-lang="json" data-file="noise.png.meta">
 {
     "guid": "0f3a51c2-7b44-4e19-9d0a-6c2e8f1b7a35",
-    "type": "Texture",
     "import": {
-        "colorSpace": "linear"
-    }
+        "colorSpace": "linear",
+        "format": "bc3"
+    },
+    "type": "Texture"
 }
   </script>
   <div class="table-wrap">
@@ -2770,7 +2771,20 @@ kbd {
     </tbody>
   </table>
   </div>
-  <p>ノイズやマスクなど、色でない値を描いた画像をスプライトや UI で使うときは <code>"linear"</code> にします。設定を変えたら、エディタを開き直すと読み直します。</p>
+  <p>ノイズやマスクなど、色でない値を描いた画像をスプライトや UI で使うときは <code>"linear"</code> にします。</p>
+  <p>画像は、GPU がそのまま読める圧縮した形（DDS）に変換して使います。圧縮の形式は <code>format</code> で選べます。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th><code>format</code></th><th>形式</th></tr></thead>
+    <tbody>
+      <tr><td>書かない</td><td>BC3（既定）</td></tr>
+      <tr><td><code>"bc3"</code></td><td>BC3</td></tr>
+      <tr><td><code>"bc7"</code></td><td>BC7。BC3 より色の段差やにじみが少なく、大きさは同じ。ただし変換が BC3 の 100 倍以上かかる（2048 四方で 1 枚 45 秒ほど）ので、UI やロゴなど、圧縮の汚れが目立つ画像に絞って使う</td></tr>
+      <tr><td><code>"none"</code></td><td>圧縮しない（1 画素 4 バイト）。ドット絵など、圧縮でにじませたくない画像に使う。大きさは BC3 の 4 倍</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>設定を変えると、次にその画像を読み込むときに変換し直します。開いているシーンの画像は、エディタを開き直すと変わります。</p>
   <div class="callout note"><p>Project でコピーした画像の <span class="path">.meta</span> は新しく作られるので、取り込み設定は付いてきません。コピーした後に書き直してください。</p></div>
 
   <h2 id="project-ops">ファイルの操作</h2>
@@ -3102,7 +3116,7 @@ kbd {
   <ul>
     <li>ロード画面を出しているあいだだけ呼ばれます。出し始めと消し終わりは <code>screenAlpha</code> が 0 と 1 のあいだを動くので、<code>gTexture</code> の色と混ぜて書きます。</li>
     <li><code>time</code>・<code>realTime</code>・<code>progress</code> は、ロード画面を出し始めるたびに 0 から数え直します。</li>
-    <li>書き出す色はリニアです。画像を <code>Load</code> で読むと、リニアに直った値が返ります。<span class="path">.meta</span> の取り込み設定を <code>"linear"</code> にした画像は、画像の値がそのまま返ります（<a href="#project-texture-color">画像の色の扱い</a>）。</li>
+    <li>書き出す色はリニアです。画像を <code>Load</code> で読むと、リニアに直った値が返ります。<span class="path">.meta</span> の取り込み設定を <code>"linear"</code> にした画像は、画像の値がそのまま返ります（<a href="#project-texture-color">画像の取り込み設定</a>）。</li>
     <li>シェーダの隣のフォルダの <span class="path">.hlsli</span> と、エンジンの <span class="path">ShaderMath.hlsli</span> などを <code>#include</code> できます。</li>
     <li>シェーダが見つからない・コンパイルできないときは、Console にエラーを出してエンジンの既定のロード画面を使います。</li>
   </ul>
@@ -3182,7 +3196,7 @@ kbd {
   <p>書き出すたびに、<span class="path">Engine/Assets</span>・<span class="path">Engine/Cooked</span>・<span class="path">Application/Assets</span>・<span class="path">Application/Cooked</span>・<span class="path">Application/Config</span> をいったん消してから書き直します。遊んだ人のデータが入る <span class="path">Application/Saved</span> は残します。<span class="path">Build/</span> は git の対象外です。</p>
 
   <h2 id="export-cooking">テクスチャの変換</h2>
-  <p>画像のテクスチャ（PNG・JPG・JPEG・BMP・TGA）は写さずに、GPU がそのまま読める圧縮形式（BC3 の DDS）へ変換して <span class="path">Cooked/</span> に書きます。遊ぶ人の PC では変換しないので、初めての起動でもテクスチャの変換を待ちません。元の画像は入りませんが、隣の <span class="path">.meta</span> は入るので、スクリプトやシーンからは今までどおり <span class="path">.png</span> などの名前で使えます。ただしローディング画面の写真（<a href="#settings-splash">起動中のローディング画面</a>）だけは、DirectX 12 の準備より前に読むので、元の画像のまま写します。</p>
+  <p>画像のテクスチャ（PNG・JPG・JPEG・BMP・TGA）は写さずに、GPU がそのまま読める圧縮形式の DDS（既定は BC3。<a href="#project-texture-color">画像の取り込み設定</a>で BC7・非圧縮も選べます）へ変換して <span class="path">Cooked/</span> に書きます。遊ぶ人の PC では変換しないので、初めての起動でもテクスチャの変換を待ちません。元の画像は入りませんが、隣の <span class="path">.meta</span> は入るので、スクリプトやシーンからは今までどおり <span class="path">.png</span> などの名前で使えます。ただしローディング画面の写真（<a href="#settings-splash">起動中のローディング画面</a>）だけは、DirectX 12 の準備より前に読むので、元の画像のまま写します。</p>
   <div class="table-wrap">
   <table>
     <thead><tr><th>元の画像</th><th>変換した DDS</th></tr></thead>
@@ -3192,7 +3206,7 @@ kbd {
     </tbody>
   </table>
   </div>
-  <p>モデルのマテリアルで法線・メタリック/ラフネス・遮蔽に使う画像はリニア、それ以外の画像は sRGB で変換します。<span class="path">.meta</span> の取り込み設定で色空間を決めた画像は、その版だけを作ります（<a href="#project-texture-color">画像の色の扱い</a>）。</p>
+  <p>モデルのマテリアルで法線・メタリック/ラフネス・遮蔽に使う画像と、マテリアル（<span class="path">.mat</span>）で <code>linear</code> にしたテクスチャはリニア、それ以外の画像は sRGB で変換します。<span class="path">.meta</span> の取り込み設定で色空間を決めた画像は、その版だけを作ります（<a href="#project-texture-color">画像の取り込み設定</a>）。</p>
   <p>エディタでも、画像は元のファイルを直接は読まず、同じ変換で作った DDS を読みます。作った DDS は <span class="path">Intermediate/DerivedData/Texture/</span> に置き（名前は画像の GUID と <code>.srgb.dds</code> か <code>.linear.dds</code>）、書き出しはそれを写します。隣の <span class="path">.ddinfo</span> に元の画像の大きさ・日時と、中身から計算した印を控えておき、元の画像の中身か変換の設定が変わったときだけ作り直します（日時だけを古いまま差し替えても作り直します）。初めて開くときや画像を描き直したあとは、変換のぶん時間がかかります。</p>
   <p>書き出しの最後に、変換したものの一覧 <span class="path">CookManifest.json</span> を書き出し先の根に置きます。一覧のある書き出したゲームは元の画像から DDS を作りません。DDS が無い画像は Console にエラーを出して代わりの画像（<span class="path">error.png</span>）を使うので、書き出し直してください。起動のログの <code>[DerivedData] Texture: クック済み … / 中間 … / 取り込み … / 無し …</code> の行で、どこから読んだかを数えられます（書き出したゲームでは「クック済み」だけになります）。</p>
 
@@ -3207,6 +3221,7 @@ kbd {
   <h2 id="export-parallel">変換の進め方と、変換できなかったとき</h2>
   <p>モデル・テクスチャ・シェーダの変換と、ファイルの写しは、PC の CPU のスレッド数と同じ本数のスレッドで並べて行います（起動の引数 <code>--workers</code> を付けたときはその本数まで。<a href="#setup-cmdline">コマンドラインのオプション</a>）。先にモデルを変換し、そのマテリアルから画像の使い道（sRGB かリニアか）を決めてから、画像とシェーダを変換し、最後に残りのファイルを写します。</p>
   <p>変換できないもの（壊れたモデルや画像、コンパイルできないシェーダ）があっても、途中で止めずに全部を試します。1 つでもあれば、ファイルを写す前に書き出しを止め、できなかったものを書き出しの窓に一覧で出します。書き出す先は途中までの状態になっているので、一覧のファイルを直すか消してから、書き出し直してください。</p>
+  <p>書き出しの最後に、変換したものが全部そろっているかと、写さないはずの元の画像やモデルのファイルが残っていないかを確かめます。見つかったことは書き出しの窓と Console に並べます（書き出しそのものは済んでいます）。</p>
 
   <h2 id="export-runtime">書き出したゲームの動き</h2>
   <div class="table-wrap">
@@ -7563,7 +7578,7 @@ kbd {
   <script type="text/x-code" data-lang="as">
     owner.spriteRenderer.texture = "Application/Assets/Textures/door_open.png";
   </script>
-  <div class="callout note"><p>スプライトの画像は色（sRGB）として読みます。ノイズやマスクなど色でない値を描いた画像は、<span class="path">.meta</span> の取り込み設定を <code>"linear"</code> にします（<a href="#project-texture-color">画像の色の扱い</a>）。</p></div>
+  <div class="callout note"><p>スプライトの画像は色（sRGB）として読みます。ノイズやマスクなど色でない値を描いた画像は、<span class="path">.meta</span> の取り込み設定を <code>"linear"</code> にします（<a href="#project-texture-color">画像の取り込み設定</a>）。</p></div>
 
   <h2 id="g2d-order">重なりの順番</h2>
   <p>スプライトは深度を書かないので、前後は描く順番で決まります。順番は <span class="ui">ソートレイヤー</span> → <span class="ui">レイヤー内の順</span> → カメラからの奥行きの順に比べ、大きいほど手前です。</p>
@@ -9677,6 +9692,15 @@ python Tools/OkinawaBeach/bake_player_walk.py
 
   <h2 id="changelog-history">更新履歴</h2>
 
+  <h3 id="changelog-v0-28-0">v0.28.0 <span class="dim">（2026-10-22）</span></h3>
+  <p>画像の圧縮の形式と色空間を、エディタで画像ごとに選べるようにした版です（<a href="#project-texture-color">画像の取り込み設定</a>）。</p>
+  <ul>
+    <li><strong>圧縮の形式</strong>：<span class="path">.meta</span> の <code>import.format</code> で、画像ごとに BC3・BC7・圧縮しないを選べるようにしました。既定は今までどおり BC3 です（BC7 は変換が BC3 の 100 倍以上かかるため）。</li>
+    <li><strong>取り込み設定の欄</strong>：Project で画像を選ぶと、Inspector に色空間と圧縮を選ぶ欄が出ます。選ぶと <span class="path">.meta</span> に書きます。</li>
+    <li><strong>マテリアルのリニアの画像</strong>：書き出しで、マテリアル（<span class="path">.mat</span>）で <code>linear</code> にしたテクスチャのリニア版を作るようにしました。これまでは sRGB 版しか作らず、書き出したゲームで代用の警告が出ていました。</li>
+    <li><strong>書き出しの確認</strong>：書き出しの最後に、変換したものがそろっているかと、元の画像やモデルが残っていないかを確かめて、見つかったことを並べるようにしました。</li>
+  </ul>
+
   <h3 id="changelog-v0-27-0">v0.27.0 <span class="dim">（2026-10-22）</span></h3>
   <p>書き出しから元のモデルのファイルを外し、変換と写しを並べて行うようにした版です（<a href="#export-models">モデルの変換</a>・<a href="#export-parallel">変換の進め方</a>）。</p>
   <ul>
@@ -9718,7 +9742,7 @@ python Tools/OkinawaBeach/bake_player_walk.py
   </ul>
 
   <h3 id="changelog-v0-23-1">v0.23.1 <span class="dim">（2026-10-22）</span></h3>
-  <p>sRGB の印（sRGB チャンク）が無い PNG が明るく出ていたのを直した版です（<a href="#project-texture-color">画像の色の扱い</a>）。</p>
+  <p>sRGB の印（sRGB チャンク）が無い PNG が明るく出ていたのを直した版です（<a href="#project-texture-color">画像の取り込み設定</a>）。</p>
   <ul>
     <li><strong>直したこと</strong>：色として読む画像（スプライト・UI 画像・モデルのベースカラーと発光など）は、印が無い PNG・JPG・BMP・TGA も sRGB として読みます。これまでは画像の値をそのままリニアの値として使っていたので、印の無い画像だけ明るく白っぽく出ていました。</li>
     <li><strong>画像の取り込み設定</strong>：画像の <span class="path">.meta</span> に <code>"import": { "colorSpace": "linear" }</code> と書くと、その画像は画像の値をそのままリニアの値として読みます（これまでの見え方）。<code>"srgb"</code> と書くと、法線などのデータとして頼まれても sRGB として読みます。ゲームの書き出しも、この設定の版だけを作ります。</li>
@@ -14657,7 +14681,7 @@ void Update()
       "<li>描く順番は、ソートレイヤー → レイヤー内の順 → カメラからの奥行き（奥から）の順です。どれも同じなら後から置いたものが手前になります。</li>" +
       "<li>深度は書かないので、スプライトどうしの前後は描く順番で決まります。3D の不透明な物の後ろにあるスプライトは隠れます。</li>" +
       "<li>画面に重ねるボタンや文字は、スプライトではなく <a href=\"#api-UIImage\">UI 画像</a>・<a href=\"#api-UIText\">UI テキスト</a> を使うのが基本です。</li>" +
-      "<li>画像は色（sRGB）として読みます。色でない値を描いた画像は、<span class=\"path\">.meta</span> の取り込み設定を <code>\"linear\"</code> にします（<a href=\"#project-texture-color\">画像の色の扱い</a>）。</li>" +
+      "<li>画像は色（sRGB）として読みます。色でない値を描いた画像は、<span class=\"path\">.meta</span> の取り込み設定を <code>\"linear\"</code> にします（<a href=\"#project-texture-color\">画像の取り込み設定</a>）。</li>" +
       "</ul>",
     examples: [
       {
