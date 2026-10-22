@@ -11,7 +11,10 @@
 #include "Graphics/Texture/Cook/CookedTexture.h"
 #include "Graphics/Model/Import/MeshImporter.h"
 #include "Graphics/Texture/Import/TextureImporter.h"
+#include "Threading/ThreadBudget.h"
+#include "Threading/ThreadPool.h"
 #include "Utility/JsonManager/JsonManager.h"
+#include "Utility/Logger/Logger.h"
 #include "Utility/Path/CookedPath.h"
 #include "Utility/Path/ProjectPaths.h"
 
@@ -19,7 +22,12 @@
 #include <objbase.h>
 
 #include <chrono>
+#include <cwctype>
 #include <format>
+#include <fstream>
+#include <functional>
+#include <future>
+#include <set>
 #include <vector>
 
 namespace CoreEngine::Editor
@@ -66,6 +74,98 @@ namespace CoreEngine::Editor
             using namespace std::chrono;
             const zoned_time local{ current_zone(), floor<minutes>(clock_cast<system_clock>(written)) };
             return std::format("{:%Y-%m-%d %H:%M}", local);
+        }
+
+        /// @brief 書き出しの仕事（変換か写し）1 つの結果
+        struct JobOutcome
+        {
+            std::string error;
+            int files = 0;
+            std::uintmax_t bytes = 0;
+            std::vector<CookRecord> records;
+        };
+
+        using ExportJob = std::function<void(JobOutcome&)>;
+
+        /// @brief 仕事をスレッドプールで並べて行い、結果を仕事の順に返す（1 つ終わるたびに done を進める）
+        std::vector<JobOutcome> RunJobs(ThreadPool& pool, const std::vector<ExportJob>& jobs, std::atomic<int>& done)
+        {
+            std::vector<JobOutcome> outcomes(jobs.size());
+            std::vector<std::future<void>> futures;
+            futures.reserve(jobs.size());
+            for (size_t i = 0; i < jobs.size(); ++i) {
+                futures.push_back(pool.Submit("Export", [&jobs, &outcomes, &done, i] {
+                    try {
+                        jobs[i](outcomes[i]);
+                    }
+                    catch (const std::exception& e) {
+                        outcomes[i].error = e.what();
+                    }
+                    ++done;
+                }));
+            }
+            for (std::future<void>& future : futures) {
+                pool.Wait(future);
+            }
+            return outcomes;
+        }
+
+        /// @brief パスを照合用のキーにする（正規化して小文字）
+        std::wstring MakeFileKey(const std::filesystem::path& path)
+        {
+            std::wstring key = path.lexically_normal().generic_wstring();
+            for (wchar_t& c : key) {
+                c = static_cast<wchar_t>(std::towlower(c));
+            }
+            return key;
+        }
+
+        /// @brief .cmesh にするので写さないファイル（モデルのファイルと、OBJ の mtllib・glTF の外部バッファ）のキー
+        std::set<std::wstring> CollectModelFiles(const std::vector<std::filesystem::path>& meshes)
+        {
+            Logger& log = Logger::GetInstance();
+            std::set<std::wstring> files;
+            for (const std::filesystem::path& mesh : meshes) {
+                files.insert(MakeFileKey(mesh));
+                const std::filesystem::path folder = mesh.parent_path();
+                const std::wstring extension = MakeFileKey(mesh.extension());
+                if (extension == L".obj") {
+                    std::ifstream obj(mesh);
+                    std::string line;
+                    while (std::getline(obj, line)) {
+                        if (line.rfind("mtllib ", 0) != 0) {
+                            continue;
+                        }
+                        std::string name = line.substr(7);
+                        while (!name.empty() && (name.back() == '\r' || name.back() == ' ')) {
+                            name.pop_back();
+                        }
+                        if (name.empty()) {
+                            continue;
+                        }
+                        // 指定の .mtl が無ければ、Assimp と同じく OBJ と同じ名前の .mtl を読んだものとする
+                        std::filesystem::path material = folder / log.Utf8ToPath(name);
+                        std::error_code ec;
+                        if (!std::filesystem::is_regular_file(material, ec)) {
+                            material = std::filesystem::path(mesh).replace_extension(".mtl");
+                        }
+                        files.insert(MakeFileKey(material));
+                    }
+                } else if (extension == L".gltf") {
+                    const json gltf = JsonManager::GetInstance().LoadJson(ToUtf8(mesh));
+                    if (gltf.is_object() && gltf.contains("buffers") && gltf["buffers"].is_array()) {
+                        for (const json& buffer : gltf["buffers"]) {
+                            if (buffer.is_object() && buffer.contains("uri") && buffer["uri"].is_string()) {
+                                const std::string& uri = buffer["uri"].get_ref<const std::string&>();
+                                if (!uri.starts_with("data:")) {
+                                    files.insert(MakeFileKey(folder / log.Utf8ToPath(uri)));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return files;
         }
 
         /// 消せない・書けないときに添える一言
@@ -185,13 +285,21 @@ namespace CoreEngine::Editor
                 items.push_back({ splashImage, destination / relative });
             }
         }
-        const std::vector<CookTarget> targets = TextureCooker::PlanTargets(textures);
-        const std::vector<ShaderManifest::Entry> shaders = ShaderCooker::PlanTargets();
         const std::vector<std::filesystem::path> meshes = MeshCooker::PlanTargets();
-        progress.cookTotal = static_cast<int>(targets.size() + shaders.size() + meshes.size());
+        const std::vector<ShaderManifest::Entry> shaders = ShaderCooker::PlanTargets();
+
+        // .cmesh にするモデルのファイル（と、それが使う .mtl・外部バッファ）は写さない。
+        // 写しは並べて行うので、同じ先へ写すものは 1 つにする
+        const std::set<std::wstring> modelFiles = CollectModelFiles(meshes);
+        std::set<std::wstring> destinations;
+        std::erase_if(items, [&modelFiles, &destinations](const CopyItem& item) {
+            return modelFiles.contains(MakeFileKey(item.from)) || !destinations.insert(MakeFileKey(item.to)).second;
+        });
+
+        progress.cookTotal = static_cast<int>(meshes.size() + textures.size() + shaders.size());
         progress.total = static_cast<int>(items.size());
 
-        // 丸ごと写すフォルダとクック済みの DDS のフォルダは、書き出す先の側を消しておく
+        // 丸ごと写すフォルダとクック済みのデータのフォルダは、書き出す先の側を消しておく
         std::vector<std::filesystem::path> clearFolders(std::begin(cookedFolders), std::end(cookedFolders));
         for (const FolderItem& folder : folders) {
             clearFolders.push_back(folder.to);
@@ -210,63 +318,119 @@ namespace CoreEngine::Editor
             return result;
         }
 
-        // 画像のテクスチャを DDS へ変換する。画像は WIC で読むので、このスレッドで COM を使えるようにする
+        // 画像は WIC で読むので、書き出しの間は COM のマルチスレッドの区画を保つ（プールのワーカーもこの区画で COM を使う）
         struct ComScope
         {
             HRESULT hr;
             ~ComScope() { if (SUCCEEDED(hr)) { ::CoUninitialize(); } }
         } com{ ::CoInitializeEx(nullptr, COINIT_MULTITHREADED) };
-        std::vector<CookRecord> cookRecords;
-        for (const CookTarget& target : targets) {
-            const std::string error = TextureCooker::Cook(target, destination, result.fileCount, result.bytes, cookRecords);
-            if (!error.empty()) {
-                result.error = error;
-                return result;
-            }
-            ++result.cookedTextures;
-            ++progress.cooked;
-        }
 
-        // モデルのファイルを .cmesh にする
-        std::vector<CookRecord> meshRecords;
+        // 変換と写しは一時的なスレッドプールで並べて行う（ほかのプールの枠を借りる）
+        ThreadPoolDesc poolDesc;
+        poolDesc.name = "Export";
+        poolDesc.threadCount = ThreadBudget::GetCapacity();
+        poolDesc.borrowBudget = true;
+        ThreadPool pool(poolDesc);
+
+        // モデルを先に .cmesh にし、テクスチャの使い道はその .cmesh のマテリアルから決める
+        std::vector<ExportJob> meshJobs;
+        meshJobs.reserve(meshes.size());
         for (const std::filesystem::path& mesh : meshes) {
-            const std::string error = MeshCooker::Cook(mesh, destination, result.fileCount, result.bytes, meshRecords);
-            if (!error.empty()) {
-                result.error = error;
-                return result;
-            }
-            ++result.cookedModels;
-            ++progress.cooked;
+            meshJobs.push_back([&mesh, &destination](JobOutcome& outcome) {
+                outcome.error = MeshCooker::Cook(mesh, destination, outcome.files, outcome.bytes, outcome.records);
+            });
         }
+        std::vector<JobOutcome> meshOutcomes = RunJobs(pool, meshJobs, progress.cooked);
 
-        // 一覧のシェーダをコンパイルして DXIL にする
+        const std::vector<CookTarget> targets = TextureCooker::PlanTargets(textures);
+        progress.cookTotal = static_cast<int>(meshes.size() + targets.size() + shaders.size());
+        std::vector<ExportJob> otherJobs;
+        otherJobs.reserve(targets.size() + shaders.size());
+        for (const CookTarget& target : targets) {
+            otherJobs.push_back([&target, &destination](JobOutcome& outcome) {
+                outcome.error = TextureCooker::Cook(target, destination, outcome.files, outcome.bytes, outcome.records);
+            });
+        }
         for (const ShaderManifest::Entry& shader : shaders) {
-            const int filesBefore = result.fileCount;
-            const std::string error = ShaderCooker::Cook(shader, destination, result.fileCount, result.bytes);
-            if (!error.empty()) {
-                result.error = error;
-                return result;
+            otherJobs.push_back([&shader, &destination](JobOutcome& outcome) {
+                outcome.error = ShaderCooker::Cook(shader, destination, outcome.files, outcome.bytes);
+            });
+        }
+        std::vector<JobOutcome> otherOutcomes = RunJobs(pool, otherJobs, progress.cooked);
+
+        // 結果を仕事の順にまとめる。失敗は止めずに全部集める
+        const auto accept = [&result](JobOutcome& outcome) {
+            if (!outcome.error.empty()) {
+                result.failures.push_back(std::move(outcome.error));
+                return false;
             }
-            if (result.fileCount > filesBefore) {
+            result.fileCount += outcome.files;
+            result.bytes += outcome.bytes;
+            return true;
+        };
+        std::vector<CookRecord> meshRecords;
+        for (JobOutcome& outcome : meshOutcomes) {
+            if (accept(outcome)) {
+                ++result.cookedModels;
+                meshRecords.insert(meshRecords.end(), outcome.records.begin(), outcome.records.end());
+            }
+        }
+        std::vector<CookRecord> cookRecords;
+        for (size_t i = 0; i < otherOutcomes.size(); ++i) {
+            JobOutcome& outcome = otherOutcomes[i];
+            const int files = outcome.files;
+            if (!accept(outcome)) {
+                continue;
+            }
+            if (i < targets.size()) {
+                ++result.cookedTextures;
+                cookRecords.insert(cookRecords.end(), outcome.records.begin(), outcome.records.end());
+            } else if (files > 0) {
                 ++result.cookedShaders;
             }
-            ++progress.cooked;
+        }
+        if (!result.failures.empty()) {
+            result.error = std::format("{} 件を変換できなかったので、ファイルを写す前に書き出しを止めました。"
+                "直してから書き出し直してください", result.failures.size());
+            return result;
         }
 
+        // 写す先のフォルダを先に作ってから、ファイルを並べて写す
+        std::set<std::filesystem::path> directories;
         for (const CopyItem& item : items) {
-            std::filesystem::create_directories(item.to.parent_path(), ec);
-            if (!ec) {
-                std::filesystem::copy_file(item.from, item.to, std::filesystem::copy_options::overwrite_existing, ec);
-            }
+            directories.insert(item.to.parent_path());
+        }
+        for (const std::filesystem::path& directory : directories) {
+            std::filesystem::create_directories(directory, ec);
             if (ec) {
-                result.error = ToUtf8(item.to) + " を書けませんでした" + kLockedHint;
+                result.error = ToUtf8(directory) + " を作れませんでした" + kLockedHint;
                 return result;
             }
-            const std::uintmax_t size = std::filesystem::file_size(item.to, ec);
-            result.bytes += ec ? 0 : size;
-            ++result.fileCount;
-            ++progress.copied;
         }
+        std::vector<ExportJob> copyJobs;
+        copyJobs.reserve(items.size());
+        for (const CopyItem& item : items) {
+            copyJobs.push_back([&item](JobOutcome& outcome) {
+                std::error_code copyError;
+                std::filesystem::copy_file(item.from, item.to, std::filesystem::copy_options::overwrite_existing, copyError);
+                if (copyError) {
+                    outcome.error = ToUtf8(item.to) + " を書けませんでした" + kLockedHint;
+                    return;
+                }
+                const std::uintmax_t size = std::filesystem::file_size(item.to, copyError);
+                outcome.bytes = copyError ? 0 : size;
+                outcome.files = 1;
+            });
+        }
+        for (JobOutcome& outcome : RunJobs(pool, copyJobs, progress.copied)) {
+            if (!outcome.error.empty()) {
+                result.error = std::move(outcome.error);
+                return result;
+            }
+            result.fileCount += outcome.files;
+            result.bytes += outcome.bytes;
+        }
+        pool.Shutdown();
 
         // 一覧があると、書き出したゲームは元のファイルから派生データを作らない
         if (!WriteCookManifest(destination, cookRecords, meshRecords, result.cookedShaders)) {

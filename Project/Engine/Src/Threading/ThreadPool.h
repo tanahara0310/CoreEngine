@@ -36,6 +36,10 @@ namespace CoreEngine
         uint32_t threadCount = 0;
 
         WorkerPriority priority = WorkerPriority::Normal;
+
+        /// @brief ThreadBudget の枠から取らずに threadCount 本を作る（上限 --workers は守る）
+        /// @note ほかのプールに仕事がほとんど無い間だけ動く一時的なプール（ゲームの書き出しなど）に使う
+        bool borrowBudget = false;
     };
 
     /// @brief 汎用スレッドプール — Submit で任意のタスクをワーカーへ投入し、future で結果を受け取る

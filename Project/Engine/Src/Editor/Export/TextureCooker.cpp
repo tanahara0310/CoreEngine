@@ -4,7 +4,7 @@
 #ifdef CORE_EDITOR
 
 #include "Graphics/Asset/AssetDatabase.h"
-#include "Graphics/Model/ModelLoader.h"
+#include "Graphics/Model/Derived/ModelDerivedData.h"
 #include "Graphics/Texture/Cook/CookedTexture.h"
 #include "Graphics/Texture/Derived/TextureDerivedData.h"
 #include "Graphics/Texture/Import/TextureImporter.h"
@@ -49,7 +49,7 @@ namespace CoreEngine::Editor
 
     std::vector<CookTarget> TextureCooker::PlanTargets(const std::vector<std::filesystem::path>& sources)
     {
-        // モデルのマテリアルから、画像ごとの使い道を集める（テクスチャのパスの解き方は実行時と同じ）
+        // モデルの .cmesh のマテリアルから、画像ごとの使い道を集める（テクスチャのパスの解き方は実行時と同じ）
         std::unordered_map<std::wstring, Usage> usages;
         const TexturePathResolver resolver;
         const auto mark = [&](const std::string& texture, bool linear) {
@@ -60,9 +60,11 @@ namespace CoreEngine::Editor
             (linear ? usage.linear : usage.srgb) = true;
         };
         for (const AssetInfo* model : AssetDatabase::GetInstance().GetAssetsOfType(AssetType::Model)) {
-            const std::vector<MaterialAsset> materials = ModelLoader::LoadMaterialsOnly(
-                ToUtf8(model->fullPath.parent_path()), ToUtf8(model->fullPath.filename()));
-            for (const MaterialAsset& material : materials) {
+            MeshAsset asset;
+            if (!ModelDerivedData::Load(model->fullPath, asset)) {
+                continue;
+            }
+            for (const MaterialAsset& material : asset.model.materials) {
                 mark(material.baseColorTexture, false);
                 mark(material.emissiveTexture, false);
                 mark(material.metallicRoughnessTexture, true);

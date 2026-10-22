@@ -68,13 +68,22 @@ namespace CoreEngine
 
         // 希望数をそのまま使わず、プロセス全体の枠から割り当ててもらう。
         // プールが 3 つ独立に hardware_concurrency/2 を取るとコア数を超える。
-        uint32_t granted = ThreadBudget::Reserve(desc.threadCount);
-        granted = (std::min)(granted, kMaxWorkers);
-        reservedThreads_ = granted;
-
+        // 枠を借りるプールは枠から取らず、上限だけを守る。
         const uint32_t limit = ThreadBudget::GetWorkerLimit();
-        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "[Threads] {}: ワーカー {} 本（枠 {}・上限 {}）",
-            name_, granted, ThreadBudget::GetCapacity(), limit > 0 ? std::to_string(limit) : std::string("なし"));
+        uint32_t granted = 0;
+        if (desc.borrowBudget) {
+            granted = (std::max)(1u, desc.threadCount);
+            granted = (limit > 0) ? (std::min)(granted, limit) : granted;
+            reservedThreads_ = 0;
+        } else {
+            granted = ThreadBudget::Reserve(desc.threadCount);
+            reservedThreads_ = granted;
+        }
+        granted = (std::min)(granted, kMaxWorkers);
+
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "[Threads] {}: ワーカー {} 本（枠 {}・上限 {}{}）",
+            name_, granted, ThreadBudget::GetCapacity(), limit > 0 ? std::to_string(limit) : std::string("なし"),
+            desc.borrowBudget ? "・枠を借りる" : "");
 
         epoch_ = std::chrono::steady_clock::now();
         recentTasks_.reserve(kRecentTaskCapacity);
