@@ -58,6 +58,7 @@ namespace CoreEngine
         };
 
         /// @brief 必要なGPUリソースとComputeパイプラインを初期化する
+        /// @details スペクトルはまだ作らない。最初の SetSettings か Dispatch で作る。
         bool Initialize(GraphicsCore* dxCommon, DescriptorAllocator* descriptorAllocator);
 
         /// @brief 1 フレーム分の海面シミュレーションを Dispatch し、出力テクスチャを更新する
@@ -69,6 +70,7 @@ namespace CoreEngine
             GpuTimestampProfiler* profiler = nullptr);
 
         /// @brief シミュレーション設定を更新し、必要に応じてスペクトルを再構築する
+        /// @details スペクトルをまだ作っていなければ、設定が同じでも作る。
         void SetSettings(const Settings& settings);
 
         /// @brief 初期化済みかどうかを返す
@@ -262,6 +264,8 @@ namespace CoreEngine
         /// @brief スペクトルの版（SetSettings で波面を作り直すたびに増やす）
         uint32_t spectrumRevision_ = 0;
         bool isInitialized_ = false;
+        /// @brief スペクトルを作ったか（作るまでは GPU がスペクトルのバッファを読まない）
+        bool spectrumBuilt_ = false;
         // 最後に Dispatch へ渡されたシミュレーション時刻。SetSettings がスペクトル
         // 再構築時に時刻を引き継ぐために使う（マップ済み UPLOAD からの読み戻し禁止）。
         float currentSimulationTime_ = 0.0f;

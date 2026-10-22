@@ -96,6 +96,9 @@ namespace CoreEngine
         ///          UI（CVarツリー / 水面パネル）はストレージを書くだけで、適用は必ずここを通る。
         void ApplySettingsFromCVars(SceneContext& ctx, RenderDomainContext& domain);
 
+        /// @brief WaterCVars の FFT の設定を FFTOceanManager へ反映する（revision 変化時のみ）
+        void SyncFFTSettingsFromCVars(RenderDomainContext& domain);
+
         WaterFrameBinding BuildFrameBinding(SceneContext& ctx, RenderDomainContext& domain) const;
 
         /// @brief 水面描画と同じ σa を RT コースティクスへ同期する

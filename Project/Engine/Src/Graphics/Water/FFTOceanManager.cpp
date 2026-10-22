@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <future>
 
 #include <string>
 
@@ -120,8 +121,7 @@ namespace CoreEngine
             return false;
         }
 
-        // 初期スペクトルと定数を作成して、初回Dispatch可能な状態へ揃える。
-        BuildSpectrum();
+        // 定数を作成する。スペクトルは最初の SetSettings（水面の設定の反映）か Dispatch で作る
         for (uint32_t c = 0; c < kCascadeCount; ++c) {
             simulationConstants_[c].Initialize(dxCommon_->GetUploadRing());
             UpdateSimulationConstants(c, 0.0f);
@@ -160,17 +160,17 @@ namespace CoreEngine
             sanitized.swellRelativeWidth != settings_.swellRelativeWidth ||
             sanitized.swellSpreadExponent != settings_.swellSpreadExponent;
 
-        if (!settingsChanged) {
+        if (!settingsChanged && spectrumBuilt_) {
             return;
         }
 
-        // GPU参照中のリソース更新を避けるため、フレーム完了を待機する。
-        if (dxCommon_) {
+        // GPU参照中のリソース更新を避けるため、フレーム完了を待機する（作る前は GPU が読んでいない）。
+        if (dxCommon_ && spectrumBuilt_) {
             dxCommon_->WaitForGpuIdle();
+            ++spectrumRevision_;
         }
 
         settings_ = sanitized;
-        ++spectrumRevision_;
 
         // 現在時刻を保ったままスペクトルと全カスケードの定数を作り直す。
         // （以前はマップ済み UPLOAD バッファ（write-combined）から読み戻していた。
@@ -202,6 +202,11 @@ namespace CoreEngine
 
         if (!evolutionPipeline_.HasComputePSO() || !ifftPipeline_.HasComputePSO() || !finalizePipeline_.HasComputePSO()) {
             return;
+        }
+
+        // スペクトルをまだ作っていなければ、今の設定で作る
+        if (!spectrumBuilt_) {
+            BuildSpectrum();
         }
 
         // フレーム時刻・パッチ長を全カスケードの定数へ反映する。
@@ -556,18 +561,28 @@ namespace CoreEngine
         const auto buildAndMeasure =
             [&](float windWeight, float swellWeight, float* outPerCascadeRms, float* outPerCascadeMss,
                 float* outGroupVelocity) {
-                double sumOfSquares = 0.0;
-                double energySum = 0.0;
-                double groupVelocitySum[2] = { 0.0, 0.0 };
+                // カスケードは書き込み先が別なので、別のスレッドで並べて作る
+                std::array<std::future<FFTOceanSpectrumBuilder::BuildStats>, kCascadeCount> builds;
                 for (uint32_t c = 0; c < kCascadeCount; ++c) {
                     if (!MappedSpectrumSamples(c)) {
                         continue;
                     }
-                    const FFTOceanSpectrumBuilder::Settings s =
-                        makeBuilderSettings(c, windWeight, swellWeight);
-                    const FFTOceanSpectrumBuilder::BuildStats stats =
-                        FFTOceanSpectrumBuilder::BuildSpectrum(
-                            s, MappedSpectrumSamples(c), static_cast<size_t>(sampleCount));
+                    builds[c] = std::async(std::launch::async,
+                        [s = makeBuilderSettings(c, windWeight, swellWeight),
+                         samples = MappedSpectrumSamples(c), sampleCount]() {
+                            return FFTOceanSpectrumBuilder::BuildSpectrum(
+                                s, samples, static_cast<size_t>(sampleCount));
+                        });
+                }
+
+                double sumOfSquares = 0.0;
+                double energySum = 0.0;
+                double groupVelocitySum[2] = { 0.0, 0.0 };
+                for (uint32_t c = 0; c < kCascadeCount; ++c) {
+                    if (!builds[c].valid()) {
+                        continue;
+                    }
+                    const FFTOceanSpectrumBuilder::BuildStats stats = builds[c].get();
                     if (outPerCascadeRms) {
                         outPerCascadeRms[c] = stats.measuredRmsHeight;
                     }
@@ -647,6 +662,7 @@ namespace CoreEngine
             waveGroupVelocity_[1]);
 
         spectrumBufferDirty_ = true;
+        spectrumBuilt_ = isInitialized_;
     }
 
     std::array<float, 3> FFTOceanManager::ComputeWaveGroupPhase(float timeSeconds) const
