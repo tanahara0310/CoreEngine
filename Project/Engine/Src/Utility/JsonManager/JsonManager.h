@@ -3,8 +3,11 @@
 #include "externals/nlohmann/single_include/nlohmann/json.hpp"
 #include "Math/MathCore.h"
 #include "Math/QuaternionTransform.h"
+#include <cstdint>
 #include <string>
+#include <string_view>
 #include <filesystem>
+#include <vector>
 
 using json = nlohmann::json;
 
@@ -18,10 +21,30 @@ namespace CoreEngine
         /// @return JsonManagerのインスタンス
         static JsonManager& GetInstance();
 
-        /// @brief JSONファイルを読み込み
+        /// @brief JSONファイルを読み込み（テキストの JSON と MessagePack のどちらでも読む）
         /// @param filePath ファイルパス
         /// @return 読み込んだJSONオブジェクト
         json LoadJson(const std::string& filePath);
+
+        /// @brief ファイルの中身をバイト列のまま読む
+        /// @return 開けなければ false
+        static bool ReadBytes(const std::filesystem::path& path, std::string& out);
+
+        /// @brief MessagePack のバイト列か（先頭のバイトが 0x80 以上で、UTF-8 の BOM でない）
+        static bool IsBinary(std::string_view bytes);
+
+        /// @brief バイト列を JSON にする（先頭のバイトでテキストの JSON か MessagePack かを見分ける）
+        /// @return 解析できなければ discarded の値（is_discarded() が true）
+        static json Parse(std::string_view bytes);
+
+        /// @brief ファイルを読んで JSON にする（Parse と同じく、どちらの形でも読む）
+        /// @param path 読むファイル（ProjectPaths では解かない）
+        /// @return 開けない・解析できなければ discarded の値
+        /// @note ログは出さない（ログの初期化より前に呼ぶ所がある）
+        static json ParseFile(const std::filesystem::path& path);
+
+        /// @brief MessagePack のバイト列にする（書き出したゲームが読む形）
+        static std::vector<std::uint8_t> ToBinary(const json& jsonData);
 
         /// @brief JSONファイルに保存
         /// @param filePath ファイルパス

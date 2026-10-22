@@ -69,14 +69,17 @@ namespace CoreEngine
             return hash;
         }
 
-        /// @brief ファイルを文字列で読む（改行の CR は除く）
+        /// @brief ファイルを文字列で読む（テキストの JSON なら改行の CR は除く。MessagePack はそのまま）
         bool ReadText(const std::filesystem::path& path, std::string& out)
         {
-            std::ifstream file(path, std::ios::binary);
-            if (!file) {
+            std::string raw;
+            if (!JsonManager::ReadBytes(path, raw)) {
                 return false;
             }
-            const std::string raw{ std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>() };
+            if (JsonManager::IsBinary(raw)) {
+                out = std::move(raw);
+                return true;
+            }
             out.clear();
             out.reserve(raw.size());
             for (const char c : raw) {
@@ -209,7 +212,7 @@ namespace CoreEngine
                 ObjectFile file;
                 file.key = key;
                 if (ReadText(entry.path(), text)) {
-                    file.data = json::parse(text, nullptr, false);
+                    file.data = JsonManager::Parse(text);
                 }
                 file.hash = HashText(text);
                 if (file.data.is_discarded() || !file.data.is_object()) {

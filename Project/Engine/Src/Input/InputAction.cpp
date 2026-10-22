@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Input/InputAction.h"
 
+#include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
 #include "externals/nlohmann/single_include/nlohmann/json.hpp"
@@ -122,13 +123,7 @@ namespace CoreEngine
         std::vector<InputActionDef> ReadFile()
         {
             std::vector<InputActionDef> loaded;
-            const std::filesystem::path path = ProjectPaths::Resolve(kSettingsPath);
-            std::ifstream in(path, std::ios::binary);
-            if (!in) {
-                return loaded;
-            }
-
-            const nlohmann::json root = nlohmann::json::parse(in, nullptr, /*allow_exceptions=*/false);
+            const nlohmann::json root = JsonManager::ParseFile(ProjectPaths::Resolve(kSettingsPath));
             if (root.is_discarded() || !root.is_object()) {
                 return loaded;
             }
