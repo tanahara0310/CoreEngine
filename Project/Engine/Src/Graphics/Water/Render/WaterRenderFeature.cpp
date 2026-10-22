@@ -60,6 +60,15 @@ namespace CoreEngine
 
     void WaterRenderFeature::Initialize(SceneContext& ctx)
     {
+        // 水面の描画に使うマネージャ（水面のレイトレ・FFT の海・泡）は、水面のあるシーンで初めて作る
+        if (ctx.engine) {
+            if (RenderDomainContext* domain = ctx.engine->GetRenderDomainContext()) {
+                domain->EnsureWaterInitialized();
+                // FFT の海のスペクトルは、このシーンの設定で 1 回だけ作る
+                SyncFFTSettingsFromCVars(*domain);
+            }
+        }
+
         // 描画経路切り替えに備えて、Gerstner / FFT の両 simulator を用意する
         if (!gerstnerSimulator_) {
             gerstnerSimulator_ = std::make_unique<GerstnerWaterSimulator>();
@@ -510,6 +519,44 @@ namespace CoreEngine
         }
 
         // ---- FFT シミュレーション設定（revision 変化時のみ）----
+        SyncFFTSettingsFromCVars(domain);
+
+        // ---- コースティクス（見た目パラメータ。debug 系フィールドは UI 側の担当を維持）----
+        if (auto* techniqueManager = ctx.engine ? ctx.engine->GetService<RenderingTechniqueManager>() : nullptr) {
+            if (auto* caustics = techniqueManager->GetTechnique<WaterCausticsTechnique>(
+                    RenderingTechniqueNames::WaterCaustics)) {
+                WaterCausticsTechnique::Params params = caustics->GetParams();
+                params.intensity = WaterCVars::CausticsIntensity.Get();
+                params.depthAttenuation = WaterCVars::CausticsDepthAttenuation.Get();
+                params.curvatureScale = WaterCVars::CausticsCurvatureScale.Get();
+                params.surfaceSampleRadius = WaterCVars::CausticsSurfaceSampleRadius.Get();
+                params.refractiveIndex = WaterCVars::CausticsRefractiveIndex.Get();
+                params.receiverNormalStrength = WaterCVars::CausticsReceiverNormalStrength.Get();
+                params.alignmentPower = WaterCVars::CausticsAlignmentPower.Get();
+                caustics->SetParams(params);
+                caustics->SetBackend(WaterCVars::CausticsBackend.Get() == 1
+                    ? WaterCausticsTechnique::Backend::ScreenSpace
+                    : WaterCausticsTechnique::Backend::RayTracing);
+            }
+        }
+        if (auto* rtCaustics = domain.GetWaterCausticsRayTracingManager()) {
+            // 屈折率の真実の源は CVar（以前は technique と RT の 2 箇所が食い違い得た）。
+            // absorptionCoeff は SyncCausticsAbsorption が WaterFrameConstants から同期する
+            WaterCausticsRayTracingSettings settings = rtCaustics->GetSettings();
+            settings.refractiveIndex = WaterCVars::CausticsRefractiveIndex.Get();
+            rtCaustics->SetSettings(settings);
+        }
+
+        // ---- DXR 屈折 ----
+        if (auto* rtRefraction = domain.GetWaterRefractionRayTracingManager()) {
+            WaterRefractionRayTracingSettings settings = rtRefraction->GetSettings();
+            settings.maxRefractionOffsetPixels = WaterCVars::RefractionMaxOffsetPixels.Get();
+            rtRefraction->SetSettings(settings);
+        }
+    }
+
+    void WaterRenderFeature::SyncFFTSettingsFromCVars(RenderDomainContext& domain)
+    {
         if (auto* fftOcean = domain.GetFFTOceanManager()) {
             const uint32_t fftRevision =
                 WaterCVars::FFTAmplitudeScale.GetRevision()
@@ -547,39 +594,6 @@ namespace CoreEngine
                 // 変更検知・サニタイズ・WaitForGpuIdle・スペクトル再構築は SetSettings が担う
                 fftOcean->SetSettings(settings);
             }
-        }
-
-        // ---- コースティクス（見た目パラメータ。debug 系フィールドは UI 側の担当を維持）----
-        if (auto* techniqueManager = ctx.engine ? ctx.engine->GetService<RenderingTechniqueManager>() : nullptr) {
-            if (auto* caustics = techniqueManager->GetTechnique<WaterCausticsTechnique>(
-                    RenderingTechniqueNames::WaterCaustics)) {
-                WaterCausticsTechnique::Params params = caustics->GetParams();
-                params.intensity = WaterCVars::CausticsIntensity.Get();
-                params.depthAttenuation = WaterCVars::CausticsDepthAttenuation.Get();
-                params.curvatureScale = WaterCVars::CausticsCurvatureScale.Get();
-                params.surfaceSampleRadius = WaterCVars::CausticsSurfaceSampleRadius.Get();
-                params.refractiveIndex = WaterCVars::CausticsRefractiveIndex.Get();
-                params.receiverNormalStrength = WaterCVars::CausticsReceiverNormalStrength.Get();
-                params.alignmentPower = WaterCVars::CausticsAlignmentPower.Get();
-                caustics->SetParams(params);
-                caustics->SetBackend(WaterCVars::CausticsBackend.Get() == 1
-                    ? WaterCausticsTechnique::Backend::ScreenSpace
-                    : WaterCausticsTechnique::Backend::RayTracing);
-            }
-        }
-        if (auto* rtCaustics = domain.GetWaterCausticsRayTracingManager()) {
-            // 屈折率の真実の源は CVar（以前は technique と RT の 2 箇所が食い違い得た）。
-            // absorptionCoeff は SyncCausticsAbsorption が WaterFrameConstants から同期する
-            WaterCausticsRayTracingSettings settings = rtCaustics->GetSettings();
-            settings.refractiveIndex = WaterCVars::CausticsRefractiveIndex.Get();
-            rtCaustics->SetSettings(settings);
-        }
-
-        // ---- DXR 屈折 ----
-        if (auto* rtRefraction = domain.GetWaterRefractionRayTracingManager()) {
-            WaterRefractionRayTracingSettings settings = rtRefraction->GetSettings();
-            settings.maxRefractionOffsetPixels = WaterCVars::RefractionMaxOffsetPixels.Get();
-            rtRefraction->SetSettings(settings);
         }
     }
 

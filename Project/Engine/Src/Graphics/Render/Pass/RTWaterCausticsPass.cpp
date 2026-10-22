@@ -41,14 +41,17 @@ namespace CoreEngine
 
     void RTWaterCausticsPass::Execute(const RenderContext& context)
     {
-        if (!context.rayTracingSubsystem || !context.dxCommon || !context.rtWaterCausticsManager) {
+        // マネージャは水面のあるシーンで作られる（水面の無いシーンでは何もしない）
+        if (!context.rtWaterCausticsManager) {
+            return;
+        }
+        if (!context.rayTracingSubsystem || !context.dxCommon) {
             Logger::GetInstance().Warnf(
                 LogCategory::Graphics,
                 LogSubCategory::Pipeline,
-                "RTWaterCausticsPass: skipped. rayTracingSubsystem={} dxCommon={} manager={}",
+                "RTWaterCausticsPass: skipped. rayTracingSubsystem={} dxCommon={}",
                 context.rayTracingSubsystem != nullptr,
-                context.dxCommon != nullptr,
-                context.rtWaterCausticsManager != nullptr);
+                context.dxCommon != nullptr);
             return;
         }
 

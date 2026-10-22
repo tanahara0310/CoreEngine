@@ -45,6 +45,15 @@ namespace CoreEngine
         void Initialize(GraphicsCore* dxCommon, int32_t width, int32_t height,
             ShaderProgramCache* shaderProgramCache);
 
+        /// @brief 水面の描画に使うマネージャ（水面のレイトレ 4 つ・FFT の海・泡）を、まだなら作る
+        /// @details 水面のあるシーン（WaterRenderFeature の初期化）が呼ぶ。作るまでは各 Get が nullptr を返す。
+        ///          一度作ったら Shutdown まで持つ。
+        void EnsureWaterInitialized();
+
+        /// @brief レイトレの State Object（影と水面）を別スレッドで作っていれば、全部の完成を待つ
+        /// @details 起動の最後（窓を出す前）に呼ぶ。呼ばなくても最初のディスパッチの前に待つ。
+        void WaitForRayTracingPipelines();
+
         /// @brief シャットダウン（GPU完了後に呼ぶこと）
         void Shutdown();
 
@@ -108,6 +117,8 @@ namespace CoreEngine
 
     private:
         GraphicsCore* dxCommon_ = nullptr; ///< リサイズ通知の登録解除に使う（非所有）
+        ShaderProgramCache* shaderProgramCache_ = nullptr; ///< 水面のマネージャを後から作るときに使う（非所有）
+        bool waterInitialized_ = false;    ///< 水面のマネージャを作ったか
 
         std::unique_ptr<SceneDepth>                   sceneDepth_;
         std::unique_ptr<GBufferManager>               gBufferManager_;

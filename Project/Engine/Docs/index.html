@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.30.0">
+<meta name="engine-version" content="0.33.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -9709,13 +9709,34 @@ python Tools/OkinawaBeach/bake_player_walk.py
 
   <h2 id="changelog-history">更新履歴</h2>
 
-  <h3 id="changelog-v0-30-0">v0.30.0 <span class="dim">（2026-10-23）</span></h3>
+  <h3 id="changelog-v0-33-0">v0.33.0 <span class="dim">（2026-10-23）</span></h3>
   <p>オブジェクトごとに作っていた小さな GPU リソースをやめ、作ったパイプライン（PSO）を次の起動から使い回すようにして、起動とシーンの読み込みを速くした版です。</p>
   <ul>
     <li><strong>定数バッファのプール</strong>：マテリアル（モデル・スプライト・UI 画像）の定数バッファを、1 つずつ GPU リソースとして作らず、64KB のページから切り出すようにしました。返した領域は GPU が使い終わってから使い回します。</li>
     <li><strong>使っていなかったバッファ</strong>：Transform ごとに作っていた定数バッファ（どこからも読まれていなかった）と、静的なモデルの変換行列のバッファ（インスタンシングで描くので使われていなかった）を作らないようにしました。スキニングのあるモデルの変換行列は、描くたびにフレームごとの置き場（UploadRing）から取ります。エディタで 2 つのビューから描いても、ビューごとの行列が混ざりません。</li>
     <li><strong>四角形のインデックス</strong>：スプライトと UI 画像のインデックスバッファを 1 枚ごとに作らず、レンダラーが持つ 1 本を共有するようにしました。</li>
     <li><strong>PSO のキャッシュ</strong>：作った PSO を <span class="path">Intermediate/PipelineCache/</span> に保存し、次の起動からはそこから読むようにしました（<a href="#structure-saved">Saved と Intermediate</a>）。GPU やドライバが変わると作り直します。</li>
+  </ul>
+
+  <h3 id="changelog-v0-32-0">v0.32.0 <span class="dim">（2026-10-23）</span></h3>
+  <p>FFT の海の波のもと（スペクトル）を、水面のあるシーンを開いたときに 1 回だけ作るようにした版です。</p>
+  <ul>
+    <li><strong>作るのは 1 回</strong>：これまでは、既定の設定でスペクトルを作ったあと、最初のフレームでシーンの設定（風速など）を当てるときにもう一度作り直していました。水面の準備のときにシーンの設定を当て、そのとき 1 回だけ作るようにしました。沖縄ビーチのシーンでは、窓が出たあとの最初のフレームが 0.4 秒ほど短くなります。</li>
+    <li><strong>並べて作る</strong>：スペクトルの 3 つのカスケードを、別のスレッドで並べて作るようにしました。設定を変えて作り直すときも速くなります。</li>
+  </ul>
+
+  <h3 id="changelog-v0-31-0">v0.31.0 <span class="dim">（2026-10-23）</span></h3>
+  <p>レイトレのパイプラインを別のスレッドで作るようにして、起動を速くした版です。</p>
+  <ul>
+    <li><strong>別のスレッドで作る</strong>：影と水面のレイトレのパイプライン（State Object）とシェーダーテーブルを、別のスレッドで並べて作るようにしました。これまではメインスレッドで 1 つずつ作っていました。作っている間も、起動のほかの処理とシーンの読み込みが進みます。</li>
+    <li><strong>待つところ</strong>：起動では、窓を出す前の最後の段「レイトレのパイプラインの完成待ち」で全部の完成を待ちます。シーンを切り替えて水面のあるシーンを初めて開いたときは、最初に水面を描くフレームで待ちます。</li>
+  </ul>
+
+  <h3 id="changelog-v0-30-0">v0.30.0 <span class="dim">（2026-10-23）</span></h3>
+  <p>水面の無いシーンの起動を速くした版です。</p>
+  <ul>
+    <li><strong>水面の準備</strong>：水面の描画に使うもの（水面のレイトレ 4 つ・FFT の海・泡）を、起動のときでなく、水面のあるシーンを初めて開いたときに作るようにしました。水面の無いシーンでは作りません。水面のレイトレのパイプラインの作成は 1 つ 0.3〜0.8 秒かかっていました。</li>
+    <li><strong>水面の格子</strong>：水面の格子には、遠くで使う簡略化した形（LOD）を作らないようにしました。頂点を頂点シェーダで動かす格子なので使われていませんでした。</li>
   </ul>
 
   <h3 id="changelog-v0-29-0">v0.29.0 <span class="dim">（2026-10-22）</span></h3>

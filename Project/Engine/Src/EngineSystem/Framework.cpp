@@ -2,6 +2,7 @@
 #include "Framework.h"
 #include "Utility/Path/ProjectPaths.h"
 #include "Graphics/Render/Pass/RenderPipeline.h"
+#include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Pipeline/PipelineCache.h"
 #include "Startup/StartupSequence.h"
 #include "Startup/StartupProgress.h"
@@ -189,6 +190,13 @@ namespace CoreEngine
             //（ModelManager 生成直後・シェーダコンパイル前）へ差し込まれる
             [this](StartupSequence& s) { BuildPreloadTasks(s); });
         BuildStartupTasks(sequence);   // ゲーム固有の初期化（派生クラスで実装）
+
+        // 別スレッドで作っているレイトレの State Object（影と水面）を、窓を出す前に待つ
+        sequence.Add("レイトレのパイプラインの完成待ち", [this] {
+            if (RenderDomainContext* domain = engineSystem_->GetRenderDomainContext()) {
+                domain->WaitForRayTracingPipelines();
+            }
+        });
 
         RunStartupSequence(sequence);
 

@@ -48,7 +48,8 @@ namespace CoreEngine
         /// @brief プログラム生成されたモデルデータからGPUリソースを作成する
         /// @param data 頂点・インデックス・サブメッシュを含むモデルデータ
         /// @param name デバッグ用の識別名
-        void LoadFromModelData(ModelData&& data, const std::string& name = "");
+        /// @param generateLods LOD（遠くで使う簡略化した形）を作るか
+        void LoadFromModelData(ModelData&& data, const std::string& name = "", bool generateLods = true);
 
         /// @brief GPUリソースが作成されているか確認
         /// @return リソースが有効ならtrue

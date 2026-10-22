@@ -23,8 +23,12 @@ namespace CoreEngine
         /// @return 書けたら true（メッシュもアニメーションも無いファイルは false）
         bool Import(const std::filesystem::path& sourcePath, const std::filesystem::path& cmeshPath);
 
+        /// @brief サブメッシュごとに lods[0] を原型の範囲で埋め、LOD は 1 段だけにする
+        void InitLod0(ModelData& data);
+
         /// @brief サブメッシュごとに簡略化インデックス（LOD1・LOD2）を作り、indices の末尾へ足す
         /// @details 頂点バッファは共有する。ハイポリのモデルだけが対象（小物は原型のまま）。
+        ///          lods[0] は InitLod0 と同じく原型の範囲で埋める。
         void GenerateLods(ModelData& data);
 
         /// @brief meshoptimizer で GPU 向けにジオメトリを並べ替える

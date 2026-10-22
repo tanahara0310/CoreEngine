@@ -146,6 +146,7 @@ namespace CoreEngine
             return false;
         }
 
+        // State Object とシェーダーテーブルは別スレッドで作り、最初のディスパッチの前に待つ
         RayTracingPipelineBuilder pipelineBuilder;
         pipelineBuilder
             .SetDXILLibrary(shaderBlob)
@@ -153,27 +154,11 @@ namespace CoreEngine
             .SetShaderConfig(desc.payloadBytes)
             .SetGlobalRootSignature(globalRootSigMgr_.GetRootSignature())
             .SetMaxRecursionDepth(1);
-        if (!pipelineBuilder.Build(dxCommon_->GetDevice(), stateObject_, stateObjectProperties_)) {
-            log.Errorf(
-                LogCategory::Graphics,
-                LogSubCategory::Pipeline,
-                "{}: state object build failed.",
-                desc.ownerName);
-            return false;
-        }
-
         shaderTableBuilder_
             .SetRayGenShader(desc.rayGenName)
             .AddMissShader(desc.missName)
             .AddHitGroup(desc.hitGroupName);
-        if (!shaderTableBuilder_.Build(dxCommon_->GetDevice(), stateObjectProperties_.Get())) {
-            log.Errorf(
-                LogCategory::Graphics,
-                LogSubCategory::Pipeline,
-                "{}: shader table build failed.",
-                desc.ownerName);
-            return false;
-        }
+        BuildPipelineAsync(std::move(pipelineBuilder));
 
         outputUavName_ = desc.outputUavName;
         constantsName_ = desc.constantsName;
