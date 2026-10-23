@@ -9,7 +9,6 @@
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/UI/UIRenderer.h"
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
 #include "UI/RectTransformComponent.h"
 #include "Utility/FrameRate/Time.h"
@@ -64,21 +63,9 @@ namespace CoreEngine
         GraphicsCore* const graphics = renderer_->GetGraphicsCore();
         if (!graphics) { return; }
 
-        // インデックスバッファ
-        indexResource_ = ResourceFactory::CreateBufferResource(graphics->GetDevice(), sizeof(uint32_t) * 6);
-        uint32_t* indexData = nullptr;
-        indexResource_->Map(0, nullptr, reinterpret_cast<void**>(&indexData));
-        indexData[0] = 0; indexData[1] = 1; indexData[2] = 2;
-        indexData[3] = 1; indexData[4] = 3; indexData[5] = 2;
-        indexResource_->Unmap(0, nullptr);
-
-        indexBufferView_.BufferLocation = indexResource_->GetGPUVirtualAddress();
-        indexBufferView_.SizeInBytes = sizeof(uint32_t) * 6;
-        indexBufferView_.Format = DXGI_FORMAT_R32_UINT;
-
         // マテリアル（色の定数バッファ）
         material_ = std::make_unique<UIMaterialInstance>();
-        material_->Initialize(graphics->GetDevice());
+        material_->Initialize(*graphics);
         material_->SetColor(color_);
     }
 
@@ -272,7 +259,7 @@ namespace CoreEngine
         const D3D12_GPU_VIRTUAL_ADDRESS transformAddress = renderer_->GetTransformGpuAddress(bufferIndex);
 
         commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
-        commandList->IASetIndexBuffer(&indexBufferView_);
+        commandList->IASetIndexBuffer(&renderer_->GetQuadIndexBufferView());
 
         if (materialSlot_.IsSet() && RenderWithMaterial(commandList, uploadRing, transformAddress)) {
             commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);

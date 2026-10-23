@@ -6,6 +6,8 @@
 
 namespace CoreEngine
 {
+    class GraphicsCore;
+
     /// @brief Sprite専用マテリアルのGPUデータ（シェーダーの cbuffer gMaterial とレイアウトを一致させること）
     struct SpriteMaterialData {
         Vector4 color;
@@ -24,8 +26,8 @@ namespace CoreEngine
     /// @details スプライト描画に必要なGPU定数バッファ（color + uvTransform + filterMode）を管理します。
     class SpriteMaterialInstance : public MaterialBase<SpriteMaterialData> {
     public:
-        /// @brief GPU 定数バッファを確保して常時 Map する
-        void Initialize(ID3D12Device* device);
+        /// @brief GPU 定数バッファの領域をプールから借りて既定値を書く
+        void Initialize(GraphicsCore& graphics);
 
         // ===== Color =====
         void SetColor(const Vector4& color);

@@ -279,7 +279,5 @@ namespace CoreEngine
 
         /// 4 頂点の板（GPU へは描くたびに、そのフレームの UploadRing に置く）
         std::array<VertexData, 4> vertices_{};
-        Microsoft::WRL::ComPtr<ID3D12Resource> indexResource_;
-        D3D12_INDEX_BUFFER_VIEW indexBufferView_{};
     };
 }

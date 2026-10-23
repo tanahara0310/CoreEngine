@@ -73,6 +73,9 @@ namespace CoreEngine
         /// @brief GraphicsCore を取得
         GraphicsCore* GetGraphicsCore() { return dxCommon_; }
 
+        /// @brief UI 画像 1 枚（四角形）のインデックスバッファ（全 UI 画像で共有する）
+        const D3D12_INDEX_BUFFER_VIEW& GetQuadIndexBufferView() const { return quadIndexBufferView_; }
+
 
         /// @brief 今のフレームの index 番目の変換行列の書き込み先を取得
         /// @param index GetAvailableConstantBuffer が返したインデックス
@@ -132,6 +135,10 @@ namespace CoreEngine
         ShaderMaterialPipelineCache materialPipelines_{ ShaderMaterialPipeline::Target{ "UIMaterial", false } };
         /// 差してあるマテリアルのパイプライン（標準なら nullptr）
         const ShaderMaterialPipeline* boundPipeline_ = nullptr;
+
+        // 四角形 1 枚のインデックスバッファ（全 UI 画像で共有）
+        Microsoft::WRL::ComPtr<ID3D12Resource> quadIndexResource_;
+        D3D12_INDEX_BUFFER_VIEW quadIndexBufferView_{};
 
         // 変換行列の定数バッファ（フレームごとに 1 本。プールの要素数ぶんを kTransformStride 間隔で並べる）
         Microsoft::WRL::ComPtr<ID3D12Resource> transformBuffers_[kFrameCount];

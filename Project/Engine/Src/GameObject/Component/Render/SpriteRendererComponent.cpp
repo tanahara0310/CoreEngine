@@ -12,7 +12,6 @@
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/Sprite/SpriteRenderer.h"
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
 #include "Utility/FrameRate/Time.h"
 
@@ -128,26 +127,9 @@ namespace CoreEngine
         GraphicsCore* dxCommon = spriteRenderer_->GetGraphicsCore();
         if (!dxCommon) { return; }
 
-        // インデックスバッファ
-        indexResource_ = ResourceFactory::CreateBufferResource(
-            dxCommon->GetDevice(),
-            sizeof(uint32_t) * 6);
-
-        uint32_t* indexData = nullptr;
-        indexResource_->Map(0, nullptr, reinterpret_cast<void**>(&indexData));
-
-        indexData[0] = 0; indexData[1] = 1; indexData[2] = 2;
-        indexData[3] = 1; indexData[4] = 3; indexData[5] = 2;
-
-        indexResource_->Unmap(0, nullptr);
-
-        indexBufferView_.BufferLocation = indexResource_->GetGPUVirtualAddress();
-        indexBufferView_.SizeInBytes = sizeof(uint32_t) * 6;
-        indexBufferView_.Format = DXGI_FORMAT_R32_UINT;
-
         // マテリアル（色・UV 変換・フィルタの定数バッファ）
         material_ = std::make_unique<SpriteMaterialInstance>();
-        material_->Initialize(dxCommon->GetDevice());
+        material_->Initialize(*dxCommon);
         material_->SetColor(color_);
         material_->SetUVTransform(uvMatrix_);
         material_->SetFilterMode(static_cast<uint32_t>(filter_));
@@ -347,7 +329,7 @@ namespace CoreEngine
 
         ID3D12GraphicsCommandList* const commandList = view.cmdList;
         commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
-        commandList->IASetIndexBuffer(&indexBufferView_);
+        commandList->IASetIndexBuffer(&spriteRenderer_->GetQuadIndexBufferView());
 
         if (materialSlot_.IsSet() && RenderWithMaterial(commandList, uploadRing, transformAddress)) {
             commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);

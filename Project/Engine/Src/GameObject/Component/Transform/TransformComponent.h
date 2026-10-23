@@ -74,13 +74,6 @@ public:
     /// @brief 親の Transform（無い・見つからないなら nullptr）
     TransformComponent* GetParent() const { return parent_.Get(); }
 
-    // ===== GPU リソース =====
-
-    /// @brief 定数バッファを確保する
-    /// @note デバイスが要るので `Awake()` では行わない。オーナーの `Initialize()`
-    ///       から明示的に呼ぶ（従来 `transform_.Initialize(device)` を書いていた場所）。
-    void InitializeGpuResources(ID3D12Device* device) { transform_.Initialize(device); }
-
     // ===== アクセサ =====
 
     const WorldTransform& Get() const { return transform_; }

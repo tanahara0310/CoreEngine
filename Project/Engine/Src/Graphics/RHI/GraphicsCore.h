@@ -25,6 +25,7 @@ namespace CoreEngine
     class SwapChain;
     class UploadContext;
     class UploadRing;
+    class ConstantBufferPool;
 
     /// @brief DirectX12 の基盤（デバイス・コマンド・ディスクリプタ・メインスワップチェーン）を束ねるファサード
     /// @note マネージャのヘッダを include しないこと（前方宣言のみ。アクセッサの実装は .cpp）
@@ -98,6 +99,11 @@ namespace CoreEngine
         ///          （フレーム数ぶんのスロットを持ち、GPU 完了済みのものだけを使い回す）
         UploadRing& GetUploadRing() const;
 
+        /// @brief 長く使う小さな定数バッファの置き場
+        /// @details オブジェクトごとに持ち、ときどき書き換える定数（マテリアルなど）はここから借りること
+        ///          （1 つずつ GPU リソースを作らない。返した領域は GPU 完了後に使い回す）
+        ConstantBufferPool& GetConstantBufferPool() const;
+
         /// @brief 投入済みの全 GPU 作業の完了を待つ（完全同期）
         /// @details リソースの作り直し・破棄の直前にだけ使うこと。
         void WaitForGpuIdle();
@@ -128,6 +134,7 @@ namespace CoreEngine
         std::unique_ptr<SwapChain> swapChain_;
         std::unique_ptr<UploadContext> uploadContext_;
         std::unique_ptr<UploadRing> uploadRing_;
+        std::unique_ptr<ConstantBufferPool> constantBufferPool_;
 
         std::vector<IResizable*> resizables_;
 

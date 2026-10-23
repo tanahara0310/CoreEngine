@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include <cassert>
+#include <cstring>
 #include <format>
 #include <stdexcept>
 #include <dxgi.h>
@@ -102,5 +103,23 @@ Microsoft::WRL::ComPtr<ID3D12Resource> ResourceFactory::CreateTextureResource(
     }
 
     return textureResource;
+}
+
+Microsoft::WRL::ComPtr<ID3D12Resource> ResourceFactory::CreateQuadIndexBuffer(
+    const Microsoft::WRL::ComPtr<ID3D12Device>& device,
+    D3D12_INDEX_BUFFER_VIEW& outView)
+{
+    constexpr uint32_t kIndices[6] = { 0, 1, 2, 1, 3, 2 };
+    Microsoft::WRL::ComPtr<ID3D12Resource> indexResource = CreateBufferResource(device, sizeof(kIndices));
+
+    uint32_t* indexData = nullptr;
+    indexResource->Map(0, nullptr, reinterpret_cast<void**>(&indexData));
+    std::memcpy(indexData, kIndices, sizeof(kIndices));
+    indexResource->Unmap(0, nullptr);
+
+    outView.BufferLocation = indexResource->GetGPUVirtualAddress();
+    outView.SizeInBytes = sizeof(kIndices);
+    outView.Format = DXGI_FORMAT_R32_UINT;
+    return indexResource;
 }
 }

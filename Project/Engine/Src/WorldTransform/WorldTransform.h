@@ -1,26 +1,13 @@
 #pragma once
 
-#include "Graphics/Shader/CBufferLayout.h"
 #include "Math/MathCore.h"
-#include <d3d12.h>
-#include <wrl.h>
 #include <string>
 
 namespace CoreEngine
 {
-// 定数バッファ用データ
-struct ConstantBufferDataWorldTransform {
-    Matrix4x4 matWorld; // ワールド変換行列
-};
-
-static constexpr Cb::Field kWorldTransformFields[] = {
-    CB_FIELD(ConstantBufferDataWorldTransform, matWorld),
-};
-CB_VERIFY_LAYOUT(ConstantBufferDataWorldTransform, kWorldTransformFields);
-
 /// <summary>
 /// ワールドトランスフォームクラス
-/// 3Dオブジェクトの位置・回転・スケールを管理し、GPU用の行列を生成する
+/// 3Dオブジェクトの位置・回転・スケールを管理し、ワールド行列を作る
 /// </summary>
 class WorldTransform {
 public:
@@ -47,21 +34,15 @@ public:
     void SetRotationEuler(const Vector3& radians);
 
     /// <summary>
-    /// 初期化
+    /// 初期化（今の位置・回転・スケールからワールド行列を作る）
     /// </summary>
-    /// <param name="device">D3D12デバイス</param>
-    void Initialize(ID3D12Device* device);
+    void Initialize();
 
     /// <summary>
-    /// ワールド行列を計算してGPUに転送
+    /// ワールド行列を計算し直す
     /// 毎フレーム描画前に呼び出す
     /// </summary>
-    void TransferMatrix();
-
-    /// <summary>
-    /// GPU仮想アドレスを取得
-    /// </summary>
-    D3D12_GPU_VIRTUAL_ADDRESS GetGPUVirtualAddress() const;
+    void UpdateWorldMatrix();
 
     /// <summary>
     /// 計算済みワールド行列を取得
@@ -91,10 +72,6 @@ public:
     void SetWorldMatrix(const Matrix4x4& matrix);
 
 private:
-    // 定数バッファリソース
-    Microsoft::WRL::ComPtr<ID3D12Resource> constantBuffer_;
-    // マッピング済みポインタ
-    ConstantBufferDataWorldTransform* mapped_ = nullptr;
     // 計算済みワールド行列
     Matrix4x4 matWorld_;
     // 親トランスフォーム（階層構造用）

@@ -20,5 +20,10 @@ namespace ResourceFactory {
         const D3D12_RESOURCE_DESC& desc,
         D3D12_RESOURCE_STATES initialState,
         const D3D12_CLEAR_VALUE* clearValue = nullptr);
+
+    // 四角形 1 枚（0,1,2 / 1,3,2）のインデックスバッファを生成する（同じ四角形を描くものはこれを共有する）
+    Microsoft::WRL::ComPtr<ID3D12Resource> CreateQuadIndexBuffer(
+        const Microsoft::WRL::ComPtr<ID3D12Device>& device,
+        D3D12_INDEX_BUFFER_VIEW& outView);
 }
 }

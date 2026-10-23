@@ -43,6 +43,19 @@ namespace CoreEngine
         handle.Invalidate();
     }
 
+    void DeferredReleaseQueue::PushForCurrentFrame(ConstantBufferPool& pool, ConstantBufferBlock& block)
+    {
+        if (!block.IsValid()) {
+            return;
+        }
+        std::lock_guard<std::mutex> lock(mutex_);
+        Entry entry;
+        entry.pool = &pool;
+        entry.block = block;
+        entries_.push_back(std::move(entry));
+        block.Invalidate();
+    }
+
     void DeferredReleaseQueue::SealFrame(std::uint64_t fenceValue)
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -99,6 +112,11 @@ namespace CoreEngine
             entry.allocator->Free(entry.descriptor);
         }
         entry.allocator = nullptr;
+        if (entry.pool && entry.block.IsValid()) {
+            entry.pool->Reclaim(entry.block);
+        }
+        entry.pool = nullptr;
+        entry.block.Invalidate();
         entry.resource.Reset();
     }
 }

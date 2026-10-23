@@ -380,7 +380,7 @@ namespace CoreEngine
         defaultMaterials_.reserve(materialCount);
         for (size_t i = 0; i < materialCount; ++i) {
             auto instance = std::make_unique<MaterialInstance>();
-            instance->Initialize(dxCommon_->GetDevice());
+            instance->Initialize(*dxCommon_);
 
             if (i < modelData_.materials.size()) {
                 const MaterialAsset& asset = modelData_.materials[i];
