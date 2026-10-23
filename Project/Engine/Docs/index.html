@@ -2159,6 +2159,24 @@ kbd {
   </ol>
   <p>実行ファイルは <span class="path">generated/CoreEngine/outputs/&lt;構成&gt;/CoreEngine.exe</span> にできます。初めての起動ではシェーダのコンパイルに時間がかかります（2 回目からはキャッシュを使います）。</p>
 
+  <h2 id="setup-clean">不要なファイルを消す</h2>
+  <p>リポジトリ直下の <span class="path">Clean.bat</span> をダブルクリックすると、ビルドの中間ファイル・キャッシュ・ログなど作り直せる物を消せます。段を選び、消す物と大きさの一覧を見てから <kbd>Y</kbd> で消します。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>段</th><th>消す物</th><th>消した後</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Debug 構成の中間ファイル・ログ・起動時間の記録・古い設定</td><td>困ることはない</td></tr>
+      <tr><td>2</td><td>1 に加えて、Development・Release の中間ファイル・<span class="path">Project/.vs</span>・シェーダとフォントのキャッシュ・<span class="path">Intermediate/DerivedData/</span>・<span class="path">Intermediate/TextureCache/</span></td><td>次のビルドが全部やり直しになり、次の起動も遅くなる</td></tr>
+      <tr><td>3</td><td>2 に加えて、<span class="path">generated/*/outputs/</span>（エンジンの exe）・各プロジェクトの <span class="path">Build/</span>（書き出したゲーム）</td><td>ビルドと書き出しがやり直しになる</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li>Visual Studio か、リポジトリの中の exe（エディタや書き出したゲーム）が動いている間は何も消さずに終わります。</li>
+    <li>設計書（<span class="path">Project/Docs/</span>）・<span class="path">Saved/</span>・NuGet のパッケージ・<span class="path">Project/Externals/</span>・<span class="path">Intermediate/ShaderManifest.txt</span>（書き出すシェーダの一覧）には触れません。git が管理しているファイルやリンクを含むフォルダも飛ばします。</li>
+    <li><code>Clean.bat 2</code> のように段を渡すとメニューを出さずに始めます。<code>Clean.bat 3 -DryRun</code> は一覧を出すだけで消しません。</li>
+  </ul>
+
   <h2 id="setup-configs">ビルド構成の違い</h2>
   <div class="table-wrap">
   <table>
