@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.33.0">
+<meta name="engine-version" content="0.34.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -9726,6 +9726,14 @@ python Tools/OkinawaBeach/bake_player_walk.py
 
   <h2 id="changelog-history">更新履歴</h2>
 
+  <h3 id="changelog-v0-34-0">v0.34.0 <span class="dim">（2026-10-24）</span></h3>
+  <p>FFT の海で、カメラの近くの水面の形に 60m より短い波も入れた版です（<a href="#api-WaterSurface">水面</a>）。</p>
+  <ul>
+    <li><strong>短い波も形に</strong>：カメラの周り 256m 四方の細かい格子（0.5m 間隔）では、3 つのカスケードの波を全部、頂点の高さと横のずれに入れます。これまで形に入っていたのは 60m より長い波だけで、短い波は陰影（法線）だけでした。波打ち際の線や映り込みが、波の形に合わせて揺れます。遠くの粗い格子は今までどおり 60m より長い波だけです。</li>
+    <li><strong>格子の間隔で決める</strong>：どのカスケードを形に入れるかは、その格子の頂点の間隔で、カスケードのいちばん長い波を 1 波長あたり何頂点で表せるかで決めます（4 頂点で入れ始め、8 頂点で全部入れる）。細かい格子の端では、今までどおり粗い格子の形へなめらかに寄せます。</li>
+    <li><strong>同じ形を使う所</strong>：レイトレーシング（映り込み・屈折・コースティクス・海底の高さを測るレイ）と岸の泡も、同じ決め方で水面の形を求めます。岸の泡を寄せ・引きで動かす量は 4m 間隔の格子で求めるので、12m より長い波までです。</li>
+  </ul>
+
   <h3 id="changelog-v0-33-0">v0.33.0 <span class="dim">（2026-10-23）</span></h3>
   <p>オブジェクトごとに作っていた小さな GPU リソースをやめて、起動とシーンの読み込みを速くした版です。</p>
   <ul>
@@ -15027,7 +15035,7 @@ void LateUpdate()   // 追いかける相手が動いた後に動かす
       ["UV の流れる速さ", "scrollSpeed", "Vector2", "(0.03, 0.01)", ""],
       ["UV の繰り返し", "uvTiling", "Vector2", "(4, 4)", ""]
     ],
-    notes: "<ul><li>水面を使うシーンは、<span class=\"path\">_scene.json</span> に <code>\"features\": [\"WaterRender\"]</code> を書き足す必要があります（エディタに追加の画面はありません。サンプル Sandbox の WaterTestScene を参照）。</li><li>この機能が動いている間、「FFT の海を使う」「UV の流れる速さ」「UV の繰り返し」は CVar（<code>r.Water.*</code>）の値で毎フレーム上書きされます。</li><li>FFT の海でレイトレーシングが使えるときは、ゲームのカメラの周り 256m 四方（海底の高さを測る範囲）を 0.5m 間隔の細かい格子で描き、その外を「分割数」の格子で描きます。範囲はカメラと一緒に 0.5m 単位で動きます。CVar <code>r.Water.Shore.FineMesh</code> で切れます。</li></ul>",
+    notes: "<ul><li>水面を使うシーンは、<span class=\"path\">_scene.json</span> に <code>\"features\": [\"WaterRender\"]</code> を書き足す必要があります（エディタに追加の画面はありません。サンプル Sandbox の WaterTestScene を参照）。</li><li>この機能が動いている間、「FFT の海を使う」「UV の流れる速さ」「UV の繰り返し」は CVar（<code>r.Water.*</code>）の値で毎フレーム上書きされます。</li><li>FFT の海でレイトレーシングが使えるときは、ゲームのカメラの周り 256m 四方（海底の高さを測る範囲）を 0.5m 間隔の細かい格子で描き、その外を「分割数」の格子で描きます。範囲はカメラと一緒に 0.5m 単位で動きます。CVar <code>r.Water.Shore.FineMesh</code> で切れます。</li><li>FFT の海の波の形（頂点の高さと横のずれ）には、その格子の間隔で表せる波だけを入れます。細かい格子は 3 つのカスケードの波を全部（短い波まで）、粗い格子は 60m より長い波だけです。形に入らない短い波は、陰影（法線）で描きます。細かい格子を使わないとき（レイトレーシングが無い・<code>r.Water.Shore.FineMesh</code> を切った）は、カメラの近くも 60m より長い波だけの形になります。</li></ul>",
     see: [["file-formats", "_scene.json の書き方"]]
   },
 
