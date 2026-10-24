@@ -38,42 +38,55 @@ struct FFTWaterVSOutput
     nointerpolation float shoreMeshVertex : TEXCOORD3;
 };
 
-/// @brief 頂点の変位（ジオメトリ用のカスケード＋波群エンベロープ）
-/// @details 各カスケードを「ワールドXZ / パッチ長」でサンプルして合算する。
+/// @brief 頂点の変位（格子の間隔で解像できるカスケード＋波群エンベロープ）
+/// @param vertexSpacing 頂点の格子の間隔 [m]（ComputeFFTGeometryCascadeWeight）
+/// @details 各カスケードを「ワールドXZ / パッチ長」でサンプルし、格子の間隔で決まる重みを掛けて合算する。
 ///          FFTOceanFinalize.CS はワールド軸（+X=texU, +Z=texV, Y=up）でエンコードするため、
 ///          ワールドXZをそのまま UV にすれば法線マップとも軸・スケールが一致する。
-float3 SampleVertexDisplacement(float2 baseXZ)
+float3 SampleVertexDisplacement(float2 baseXZ, float vertexSpacing)
 {
     float3 displacement = float3(0.0f, 0.0f, 0.0f);
     [unroll]
-    for (int ci = 0; ci < kFFTGeometryCascadeCount; ++ci)
+    for (int ci = 0; ci < kFFTCascadeCount; ++ci)
     {
+        const float weight = ComputeFFTGeometryCascadeWeight(ci, vertexSpacing);
+        if (weight <= 0.0f)
+        {
+            continue;
+        }
         // ワールドXZ を回転格子系へ（uv = R(θ)·p / patch）
         float2 cuv = ComputeFFTCascadeUV(baseXZ, ci);
         float3 d = gFFTOceanDisplacement.SampleLevel(gSampler, float3(cuv, (float)ci), 0.0f).xyz;
         // テクスチャ格子系の水平変位 (d.x, d.z) をワールドへ逆回転（高さ d.y はそのまま）
         float2 horizontal = RotateFromFFTCascadeGrid(float2(d.x, d.z), ci);
-        displacement += float3(horizontal.x, d.y, horizontal.y);
+        displacement += float3(horizontal.x, d.y, horizontal.y) * weight;
     }
 
     // 波群エンベロープでタイル周期を崩す（PS の法線・RT の波面評価と同一の変調）
     return displacement * ComputeFFTWaveGroupEnvelope(baseXZ, gWaveGroupPhase);
 }
 
+/// @brief 粗い格子の頂点の間隔 [m]
+float GetCoarseMeshVertexSpacing()
+{
+    return max(gMeshCellSizeXZ.x, gMeshCellSizeXZ.y);
+}
+
 /// @brief 岸の格子の頂点の変位（範囲の端ほど、粗い格子の三角形で補間した変位へ寄せる）
 /// @details RTWaterSurfaceCommon.hlsli の SampleShoreMeshVertexDisplacement と同じ式
 float3 SampleShoreMeshVertexDisplacement(float2 baseXZ)
 {
-    const float3 fine = SampleVertexDisplacement(baseXZ);
+    const float3 fine = SampleVertexDisplacement(baseXZ, gShoreMeshCellSize);
     const float blend = ComputeShoreMeshBlend(baseXZ, gSeabedOriginXZ, 1.0f / gSeabedInvSize, gShoreMeshBlendWidth);
     if (blend >= 1.0f)
     {
         return fine;
     }
+    const float coarseSpacing = GetCoarseMeshVertexSpacing();
     const WaterGridTriangle tri = FindWaterGridTriangle(baseXZ, gMeshGridOriginXZ, gMeshCellSizeXZ);
-    const float3 coarse = SampleVertexDisplacement(tri.corner0) * tri.weights.x
-        + SampleVertexDisplacement(tri.corner1) * tri.weights.y
-        + SampleVertexDisplacement(tri.corner2) * tri.weights.z;
+    const float3 coarse = SampleVertexDisplacement(tri.corner0, coarseSpacing) * tri.weights.x
+        + SampleVertexDisplacement(tri.corner1, coarseSpacing) * tri.weights.y
+        + SampleVertexDisplacement(tri.corner2, coarseSpacing) * tri.weights.z;
     return lerp(coarse, fine, blend);
 }
 
@@ -106,7 +119,7 @@ FFTWaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
 
     float3 displacement = shoreMeshVertex
         ? SampleShoreMeshVertexDisplacement(baseWorldPos.xz)
-        : SampleVertexDisplacement(baseWorldPos.xz);
+        : SampleVertexDisplacement(baseWorldPos.xz, GetCoarseMeshVertexSpacing());
 
     float3 worldPos = baseWorldPos + displacement;
 

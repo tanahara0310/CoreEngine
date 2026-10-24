@@ -109,7 +109,7 @@ namespace CoreEngine
 
         // ---- 岸 ----
         CVar<bool> ShoreFineMesh{ "r.Water.Shore.FineMesh", true,
-            "カメラの周りの範囲（海底の高さを測る範囲）を細かい格子で描く（FFTOcean 専用）" };
+            "カメラの周りの範囲（海底の高さを測る範囲）を細かい格子で描き、短い波まで形に入れる（FFTOcean 専用）" };
 
         // ---- コースティクス ----
         CVar<int> CausticsBackend{ "r.Water.Caustics.Backend", 0,
