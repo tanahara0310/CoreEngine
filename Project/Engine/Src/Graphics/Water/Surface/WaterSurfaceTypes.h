@@ -147,10 +147,11 @@ struct WaterFrameConstants {
 	// ---- 岸の細かい格子（範囲は海底の高さと同じ）----
 	int shoreMeshEnabled = 0;            // 1 = 範囲の中を岸の細かい格子で描き、粗い格子は範囲の中を描かない
 	float shoreMeshBlendWidth = 1.0f;    // 範囲の端から内側へ、粗い格子の形から岸の格子の形へ移す幅 [m]
-	float shoreMeshPad[2] = { 0.0f, 0.0f };
+	float shoreMeshCellSize = 1.0f;      // 岸の格子の 1 マスの幅 [m]
+	float shoreMeshPad = 0.0f;
 };
 
-// 全 40 フィールドのオフセットを HLSL packing 規則から機械的に導出して検証する。
+// 全 41 フィールドのオフセットを HLSL packing 規則から機械的に導出して検証する。
 // ずれると水柱厚さ・光学係数が別のフィールドを読み、波打ち際の段差として現れる
 // （RTシャドウの cbuffer 配列ずれ事故と同型）。
 // 以前はここに「absorptionCoeff は 16B 境界」「cameraNearZ は 80」といった個別 assert を
@@ -179,7 +180,7 @@ static constexpr Cb::Field kWaterFrameConstantsFields[] = {
     CB_FIELD(WaterFrameConstants, foamDriftOffsetXZ), CB_FIELD(WaterFrameConstants, foamStretchAxis),
     CB_FIELD(WaterFrameConstants, meshGridOriginXZ), CB_FIELD(WaterFrameConstants, meshCellSizeXZ),
     CB_FIELD(WaterFrameConstants, shoreMeshEnabled), CB_FIELD(WaterFrameConstants, shoreMeshBlendWidth),
-    CB_FIELD(WaterFrameConstants, shoreMeshPad),
+    CB_FIELD(WaterFrameConstants, shoreMeshCellSize), CB_FIELD(WaterFrameConstants, shoreMeshPad),
 };
 CB_VERIFY_LAYOUT(WaterFrameConstants, kWaterFrameConstantsFields);
 CB_BIND_HLSL(WaterFrameConstants, kWaterFrameConstantsFields, "WaterFrameConstants");

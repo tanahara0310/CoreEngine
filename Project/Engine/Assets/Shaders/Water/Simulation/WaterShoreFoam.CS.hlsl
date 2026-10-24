@@ -39,15 +39,20 @@ static const float kWetDepth = 0.01f;
 /// @brief 砕けた所の泡の被覆率
 static const float kShoreFoamStrength = 0.9f;
 
-/// @brief 水面の上下（静水面からの高さ）[m]。水面メッシュの頂点と同じ式
+/// @brief 水面の上下（静水面からの高さ）[m]。水面メッシュの頂点と同じ式で、泡の格子の間隔で解像できるカスケードを足す
 float SampleWaveElevation(float2 worldXZ)
 {
     float height = 0.0f;
     [unroll]
-    for (int c = 0; c < kFFTGeometryCascadeCount; ++c)
+    for (int c = 0; c < kFFTCascadeCount; ++c)
     {
+        const float weight = ComputeFFTGeometryCascadeWeight(c, gTexelSize);
+        if (weight <= 0.0f)
+        {
+            continue;
+        }
         const float2 cuv = ComputeFFTCascadeUV(worldXZ, c);
-        height += gFFTOceanDisplacement.SampleLevel(gLinearWrap, float3(cuv, (float)c), 0.0f).y;
+        height += gFFTOceanDisplacement.SampleLevel(gLinearWrap, float3(cuv, (float)c), 0.0f).y * weight;
     }
     return height * ComputeFFTWaveGroupEnvelope(worldXZ, gWaveGroupPhase);
 }

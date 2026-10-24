@@ -29,20 +29,25 @@ static const float kMaxSwashMeters = 3.0f;
 static const int kBlurRadius = 2;
 static const float kBlurSigma = 1.2f;
 
-/// @brief 水面の上下（静水面からの高さ）[m]。水面メッシュの頂点と同じ式
-float SampleWaveElevation(float2 worldXZ)
+/// @brief 水面の上下（静水面からの高さ）[m]。水面メッシュの頂点と同じ式で、vertexSpacing の格子で解像できるカスケードを足す
+float SampleWaveElevation(float2 worldXZ, float vertexSpacing)
 {
     float height = 0.0f;
     [unroll]
-    for (int c = 0; c < kFFTGeometryCascadeCount; ++c)
+    for (int c = 0; c < kFFTCascadeCount; ++c)
     {
+        const float weight = ComputeFFTGeometryCascadeWeight(c, vertexSpacing);
+        if (weight <= 0.0f)
+        {
+            continue;
+        }
         const float2 cuv = ComputeFFTCascadeUV(worldXZ, c);
-        height += gFFTOceanDisplacement.SampleLevel(gLinearWrap, float3(cuv, (float)c), 0.0f).y;
+        height += gFFTOceanDisplacement.SampleLevel(gLinearWrap, float3(cuv, (float)c), 0.0f).y * weight;
     }
     return height * ComputeFFTWaveGroupEnvelope(worldXZ, gWaveGroupPhase);
 }
 
-/// @brief 1 テクセルの中の水面の上下の平均 [m]（3×3 点。うねりのような長い波だけを残す）
+/// @brief 1 テクセルの中の水面の上下の平均 [m]（3×3 点。テクセルの幅で解像できる長い波だけを残す）
 float SampleTexelElevation(float2 centerXZ, float texelSize)
 {
     float sum = 0.0f;
@@ -52,7 +57,7 @@ float SampleTexelElevation(float2 centerXZ, float texelSize)
         [unroll]
         for (int i = -1; i <= 1; ++i)
         {
-            sum += SampleWaveElevation(centerXZ + float2(i, j) * (texelSize / 3.0f));
+            sum += SampleWaveElevation(centerXZ + float2(i, j) * (texelSize / 3.0f), texelSize);
         }
     }
     return sum / 9.0f;

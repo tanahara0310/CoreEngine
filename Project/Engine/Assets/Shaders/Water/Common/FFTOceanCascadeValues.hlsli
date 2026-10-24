@@ -21,7 +21,8 @@
 
 // 各カスケードのワールドパッチ長（m）。すべて素数にして互いに素とし、
 // 合成波形の繰り返し周期を LCM = 521×127×31 ≈ 205万m まで引き延ばす。
-#define FFT_OCEAN_CASCADE_PATCH_LENGTHS { 521.0f, 127.0f, 31.0f }
+#define FFT_OCEAN_CASCADE0_PATCH_LENGTH 521.0f
+#define FFT_OCEAN_CASCADE_PATCH_LENGTHS { FFT_OCEAN_CASCADE0_PATCH_LENGTH, 127.0f, 31.0f }
 
 // カスケードごとのサンプリング格子回転（cos/sin）。0° / +26° / -49°。
 // 全カスケードの格子軸が揃っていると、各カスケード固有のタイル周期が同じ向き・
@@ -51,15 +52,15 @@
 // （ln(60/12)=1.61）より小さいこと＝遷移が重ならないこと。
 #define FFT_OCEAN_BAND_LOG_HALFWIDTH 0.35f
 
-// 頂点変位（ジオメトリ）に使うカスケード数。
-// 帯域制限の導入により「メッシュが解像できる帯 = カスケード0 の帯」で一致させた★
-// FFT_OCEAN_BAND_LAMBDA_01 = 60m は、水面メッシュの頂点間隔（100m × scale40 / 256
-// = 15.6m）で 1 波長あたり約 3.8 頂点であり、ジオメトリで表現できる下限に対応する。
-// カスケード1 以降は 60m より短い波しか持たないため頂点では解像できず、
-// 含めると頂点ごとに位相が飛んだエイリアシングノイズ（頂点のちらつき）になる。
-// 短波は PS の法線ディテール（全カスケード合算）だけで表現する。
-// ※メッシュを細かくして境界波長を下げるなら、この 2 つは必ず一緒に動かすこと。
-#define FFT_OCEAN_GEOMETRY_CASCADE_COUNT 1
+// 各カスケードの帯でいちばん長い波長 [m]。カスケード0 はパッチ長、ほかは 1 つ長い側の帯の境界。
+#define FFT_OCEAN_CASCADE_LONGEST_WAVELENGTHS { FFT_OCEAN_CASCADE0_PATCH_LENGTH, FFT_OCEAN_BAND_LAMBDA_01, FFT_OCEAN_BAND_LAMBDA_12 }
+
+// 頂点変位（ジオメトリ）にカスケードを入れる重み。
+// 格子の頂点の間隔で、カスケードの帯でいちばん長い波長を 1 波長あたり何頂点で表せるかで決め、
+// MIN 頂点で 0、FULL 頂点で 1 へなめらかに上げる（ComputeFFTGeometryCascadeWeight）。
+// 粗い格子（15.6m 間隔）はカスケード0 だけ、岸の細かい格子（0.5m 間隔）は全カスケードになる。
+#define FFT_OCEAN_GEOMETRY_MIN_VERTICES_PER_WAVE 4.0f
+#define FFT_OCEAN_GEOMETRY_FULL_VERTICES_PER_WAVE 8.0f
 
 // 波群エンベロープ（タイル周期破壊の空間振幅変調）の強さ。
 // カスケード0（波高を支配する最大パッチ）は自分自身のタイルが 521m 周期で正確に
