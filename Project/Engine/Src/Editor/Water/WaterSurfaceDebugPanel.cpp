@@ -156,7 +156,7 @@ void WaterSurfaceDebugPanel::Initialize(WaterRenderFeature& runtimeController) {
 }
 
 void WaterSurfaceDebugPanel::Draw(WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade) {
-	if (!runtimeController.GetWaterPlane() || !ImGui::CollapsingHeader("デバッグ")) {
+	if (!runtimeController.GetWaterPlane() || !InspectorLayout::Foldout("デバッグ", false)) {
 		return;
 	}
 	InspectorLayout::Hint("ここの値は保存しません。状態の確認と、描いた中身の可視化に使います。");

@@ -380,6 +380,15 @@ namespace CoreEngine::InspectorLayout
         ImGui::TextDisabled("%s", text);
         ImGui::PopTextWrapPos();
     }
+
+    bool Foldout(const char* label, bool defaultOpen)
+    {
+        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
+        if (defaultOpen) {
+            flags |= ImGuiTreeNodeFlags_DefaultOpen;
+        }
+        return ImGui::TreeNodeEx(label, flags);
+    }
 }
 
 #endif // CORE_EDITOR

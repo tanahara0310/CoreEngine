@@ -210,11 +210,6 @@ int ChoiceRow(const char* id, const char* label, int current, const char* const*
 	return chosen;
 }
 
-/// @brief セクションの見出し（押すと開閉する）
-bool SectionHeader(const char* label, bool defaultOpen) {
-	return ImGui::CollapsingHeader(label, defaultOpen ? ImGuiTreeNodeFlags_DefaultOpen : 0);
-}
-
 /// @brief XZ の向きを、主の向きから角度 radians だけ回して返す
 Vector2 RotateDirection(const Vector2& direction, float radians) {
 	const float c = std::cos(radians);
@@ -245,7 +240,7 @@ void WaterSurfaceParameterPanel::Draw(WaterRenderFeature& runtimeController, Wat
 }
 
 void WaterSurfaceParameterPanel::DrawWaveSection(WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade) {
-	if (!SectionHeader("波", true)) {
+	if (!InspectorLayout::Foldout("波", true)) {
 		return;
 	}
 
@@ -324,7 +319,13 @@ void WaterSurfaceParameterPanel::DrawGerstnerRows(WaterRenderFeature& runtimeCon
 	}
 
 	InspectorLayout::BeginRow("波の本数", Editor::Theme::kTextDim);
-	if (ImGui::SliderInt("##gerstnerWaveCount", &gerstnerWaveCount_, 1, static_cast<int>(kMaxWaterWaveCount))) {
+	const int maxWaveCount = static_cast<int>(kMaxWaterWaveCount);
+	const bool countChanged = InspectorLayout::FilledField(
+		static_cast<float>(gerstnerWaveCount_ - 1) / static_cast<float>((std::max)(maxWaveCount - 1, 1)), [&] {
+			return ImGui::DragInt("##gerstnerWaveCount", &gerstnerWaveCount_, 0.1f, 1, maxWaveCount, "%d",
+				ImGuiSliderFlags_AlwaysClamp);
+		});
+	if (countChanged) {
 		if (gerstnerPreset_ >= 0) {
 			RegenerateGerstnerWaves(runtimeController);
 		} else {
@@ -425,7 +426,7 @@ void WaterSurfaceParameterPanel::RegenerateGerstnerWaves(WaterRenderFeature& run
 }
 
 void WaterSurfaceParameterPanel::DrawWaterColorSection() {
-	if (!SectionHeader("水の色", true)) {
+	if (!InspectorLayout::Foldout("水の色", true)) {
 		return;
 	}
 
@@ -449,7 +450,7 @@ void WaterSurfaceParameterPanel::DrawWaterColorSection() {
 }
 
 void WaterSurfaceParameterPanel::DrawSurfaceSection() {
-	if (!SectionHeader("反射と屈折", false)) {
+	if (!InspectorLayout::Foldout("反射と屈折", false)) {
 		return;
 	}
 	CVarUI::DrawRow(&WaterCVars::FresnelScale, "反射の強さ", "%.2f");
@@ -460,7 +461,7 @@ void WaterSurfaceParameterPanel::DrawSurfaceSection() {
 }
 
 void WaterSurfaceParameterPanel::DrawFoamSection(WaterRenderFeature& runtimeController) {
-	if (!SectionHeader("泡", false)) {
+	if (!InspectorLayout::Foldout("泡", false)) {
 		return;
 	}
 	if (!WaterCVars::FFTEnabled.Get()) {
@@ -482,7 +483,7 @@ void WaterSurfaceParameterPanel::DrawFoamSection(WaterRenderFeature& runtimeCont
 }
 
 void WaterSurfaceParameterPanel::DrawCausticsSection() {
-	if (!SectionHeader("コースティクス", false)) {
+	if (!InspectorLayout::Foldout("コースティクス", false)) {
 		return;
 	}
 	CVarUI::DrawEnumRow(&WaterCVars::CausticsBackend, "作り方", kCausticsBackendNames,
