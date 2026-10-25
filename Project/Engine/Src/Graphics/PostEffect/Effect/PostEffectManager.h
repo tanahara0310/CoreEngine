@@ -1,5 +1,4 @@
 #pragma once
-#include <atomic>
 #include <memory>
 #include <unordered_map>
 #include <string>
@@ -101,9 +100,9 @@ public:
     /// @brief マテリアルのパスでプロジェクトのポストエフェクトを引く（無ければ nullptr）
     const ProjectPostEffect* FindProjectEffectByMaterial(const std::string& materialPath) const;
 
-    /// @brief プロジェクトのポストエフェクトを、次のフレームの初めに既定へ戻す（どのスレッドからでも呼べる）
-    /// @note シーンを開くたびに呼ばれる
-    void RequestProjectEffectsReset() { projectEffectsResetRequested_ = true; }
+    /// @brief プロジェクトのポストエフェクトの有効と値を、Project.json と .mat の中身へ戻す
+    /// @note シーンを開くたびに、そのシーンのスクリプトが動き出す前に呼ばれる
+    void ResetProjectEffects();
 
     private:
     /// @brief 全エフェクトを登録
@@ -165,7 +164,6 @@ public:
 
     /// @brief プロジェクトのポストエフェクト（所有は effects_。Project.json の順）
     std::vector<ProjectPostEffect*> projectEffects_;
-    std::atomic<bool> projectEffectsResetRequested_ = false;
 
     D3D12_GPU_DESCRIPTOR_HANDLE finalDisplayHandle_ = {};
 };
