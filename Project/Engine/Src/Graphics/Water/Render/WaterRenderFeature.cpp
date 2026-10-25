@@ -218,8 +218,7 @@ namespace CoreEngine
             waterSurfaceState_.shoreMeshOriginXZ[0] = frameConstants.seabedOriginXZ[0];
             waterSurfaceState_.shoreMeshOriginXZ[1] = frameConstants.seabedOriginXZ[1];
             waterSurfaceState_.shoreMeshSize = binding.seabedSize;
-            waterSurfaceState_.shoreMeshCellSize =
-                binding.seabedSize / static_cast<float>(WaterSurfaceMeshGenerator::kShoreSubdivisions);
+            waterSurfaceState_.shoreMeshCellSize = frameConstants.shoreMeshCellSize;
             waterSurfaceState_.shoreMeshBlendWidth = frameConstants.shoreMeshBlendWidth;
             LogFrameDiagnostics(binding);
             break;

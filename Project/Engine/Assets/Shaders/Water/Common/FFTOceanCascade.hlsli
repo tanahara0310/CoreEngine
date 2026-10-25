@@ -18,8 +18,10 @@ static const float kFFTCascadePatch[FFT_OCEAN_CASCADE_COUNT] = FFT_OCEAN_CASCADE
 static const float kFFTCascadeRotC[FFT_OCEAN_CASCADE_COUNT] = FFT_OCEAN_CASCADE_ROT_COS;
 static const float kFFTCascadeRotS[FFT_OCEAN_CASCADE_COUNT] = FFT_OCEAN_CASCADE_ROT_SIN;
 
-// 頂点変位に使うカスケード数（詳細は FFTOceanCascadeValues.hlsli）
-static const int kFFTGeometryCascadeCount = FFT_OCEAN_GEOMETRY_CASCADE_COUNT;
+// 頂点変位にカスケードを入れる重みの定数（詳細は FFTOceanCascadeValues.hlsli）
+static const float kFFTCascadeLongestWavelength[FFT_OCEAN_CASCADE_COUNT] = FFT_OCEAN_CASCADE_LONGEST_WAVELENGTHS;
+static const float kFFTGeometryMinVerticesPerWave = FFT_OCEAN_GEOMETRY_MIN_VERTICES_PER_WAVE;
+static const float kFFTGeometryFullVerticesPerWave = FFT_OCEAN_GEOMETRY_FULL_VERTICES_PER_WAVE;
 
 static const float kFFTWaveGroupStrength = FFT_OCEAN_WAVE_GROUP_STRENGTH;
 static const float kFFTWaveGroupWaveVectorX[3] = FFT_OCEAN_WAVE_GROUP_WAVE_VECTOR_X;
@@ -46,6 +48,15 @@ float2 RotateFromFFTCascadeGrid(float2 gridVector, int cascade)
 float2 ComputeFFTCascadeUV(float2 worldXZ, int cascade)
 {
     return RotateToFFTCascadeGrid(worldXZ, cascade) / kFFTCascadePatch[cascade];
+}
+
+/// @brief 頂点の間隔 vertexSpacing [m] の格子で、カスケードの変位を形（頂点の変位）に入れる重み [0,1]
+/// @details カスケードの帯でいちばん長い波長が 1 波長あたり何頂点で表せるかで決める。
+///          頂点の変位を求める所（FFTWater.VS・RT の波面・岸の泡）は、それぞれの格子の間隔でこの重みを使う
+float ComputeFFTGeometryCascadeWeight(int cascade, float vertexSpacing)
+{
+    const float verticesPerWave = kFFTCascadeLongestWavelength[cascade] / max(vertexSpacing, 1.0e-4f);
+    return smoothstep(kFFTGeometryMinVerticesPerWave, kFFTGeometryFullVerticesPerWave, verticesPerWave);
 }
 
 /// @brief 波群エンベロープ（タイル周期を崩す空間振幅変調。波のエネルギーと一緒に群速度で進む）

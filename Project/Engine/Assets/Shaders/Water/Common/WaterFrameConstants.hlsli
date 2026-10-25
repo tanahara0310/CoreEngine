@@ -93,7 +93,8 @@ cbuffer WaterFrameConstants : register(b5)
     // ---- 岸の細かい格子（範囲は海底の高さと同じ。WaterShoreMesh.hlsli）----
     int gShoreMeshEnabled;        // 1 = 範囲の中を岸の細かい格子で描き、粗い格子は範囲の中を描かない
     float gShoreMeshBlendWidth;   // 範囲の端から内側へ、粗い格子の形から岸の格子の形へ移す幅 [m]
-    float2 gShoreMeshPad;
+    float gShoreMeshCellSize;     // 岸の格子の 1 マスの幅 [m]
+    float gShoreMeshPad;
 };
 
 #endif // WATER_FRAME_CONSTANTS_INCLUDED
