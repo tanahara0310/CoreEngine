@@ -4,6 +4,7 @@
 #ifdef CORE_EDITOR
 
 #include "Editor/ImGui/ImGuiAll.h"
+#include "Editor/Inspector/InspectorLayout.h"
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Graphics/Texture/Cook/CookedTexture.h"
 #include "Graphics/Texture/Import/TextureImporter.h"
@@ -74,13 +75,6 @@ namespace CoreEngine::Editor::TextureImportInspector
             }
             return changed;
         }
-
-        void WrappedHint(const char* text)
-        {
-            ImGui::PushTextWrapPos(0.0f);
-            UI::Hint(text);
-            ImGui::PopTextWrapPos();
-        }
     }
 
     bool DrawFile(const std::filesystem::path& file)
@@ -93,7 +87,7 @@ namespace CoreEngine::Editor::TextureImportInspector
         UI::Separator();
         UI::SectionHeader("取り込み設定");
         if (!database.FindAssetByPath(path)) {
-            WrappedHint("登録されていない画像です（.meta がありません）。");
+            InspectorLayout::Hint("登録されていない画像です（.meta がありません）。");
             return true;
         }
 
@@ -112,7 +106,7 @@ namespace CoreEngine::Editor::TextureImportInspector
         if (changed) {
             database.SetImportSettings(file, colorSpace, format);
         }
-        WrappedHint("変えた設定は .meta に書き、次に読み込むときの変換に使います。"
+        InspectorLayout::Hint("変えた設定は .meta に書き、次に読み込むときの変換に使います。"
             "開いているシーンの画像は、エディタを開き直すと変わります。");
         return true;
     }

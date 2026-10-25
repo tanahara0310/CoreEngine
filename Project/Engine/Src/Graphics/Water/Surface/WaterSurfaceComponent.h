@@ -147,9 +147,6 @@ namespace CoreEngine
         /// @brief 水面の Roughness を設定する
         void SetRoughness(float roughness);
 
-        /// @brief 水面の Metallic を設定する
-        void SetMetallic(float metallic);
-
         // ===== ゲッター =====
 
         /// @brief 波パラメータ配列への参照を返す（ImGui 直接編集用）

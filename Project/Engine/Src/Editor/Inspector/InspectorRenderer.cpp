@@ -146,78 +146,6 @@ namespace CoreEngine
             return fallback;
         }
 
-        /// @brief 範囲の決まった数値の欄を、値の位置まで塗った下地の上に描く
-        /// @param fraction 範囲の中での値の位置（0〜1 の外は端に丸める）
-        /// @param drawField 欄を描いて、値が変わったら true を返す関数
-        template <class DrawField>
-        bool DrawWithFill(float fraction, DrawField&& drawField)
-        {
-            const ImVec2 min = ImGui::GetCursorScreenPos();
-            const ImVec2 max(min.x + ImGui::CalcItemWidth(), min.y + ImGui::GetFrameHeight());
-            const float rounding = ImGui::GetStyle().FrameRounding;
-            ImDrawList* const drawList = ImGui::GetWindowDrawList();
-            drawList->AddRectFilled(min, max, ImGui::GetColorU32(ImGuiCol_FrameBg), rounding);
-            const float filled = min.x + (max.x - min.x) * std::clamp(fraction, 0.0f, 1.0f);
-            if (filled > min.x) {
-                drawList->AddRectFilled(min, ImVec2(filled, max.y), ImGui::GetColorU32(Theme::kAccentMuted), rounding);
-            }
-
-            ImGui::PushStyleColor(ImGuiCol_FrameBg, Theme::kTransparent);
-            ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, Theme::WithAlpha(Theme::kHover, 0.35f));
-            ImGui::PushStyleColor(ImGuiCol_FrameBgActive, Theme::WithAlpha(Theme::kActive, 0.35f));
-            const bool changed = drawField();
-            ImGui::PopStyleColor(3);
-            return changed;
-        }
-
-        /// @brief 成分の印と文字の色（X 赤・Y 緑・Z 青。W は淡色）
-        const ImVec4& AxisColorOf(int axis)
-        {
-            switch (axis) {
-            case 0:  return Theme::kAxisX;
-            case 1:  return Theme::kAxisY;
-            case 2:  return Theme::kAxisZ;
-            default: return Theme::kTextMute;
-            }
-        }
-
-        /// @brief ベクトルの欄（成分ごとの欄の左端に、軸の色の印と文字を添えて並べる）
-        bool DragVector(const char* id, float* values, int count, float speed, float min, float max)
-        {
-            static constexpr const char* kAxes[] = { "X", "Y", "Z", "W" };
-            constexpr float kAxisMarkWidth = 3.0f;
-            const ImGuiStyle& style = ImGui::GetStyle();
-            const float spacing = style.ItemInnerSpacing.x;
-            const float fieldWidth = (std::max)(1.0f,
-                (ImGui::CalcItemWidth() - spacing * static_cast<float>(count - 1)) / static_cast<float>(count));
-
-            bool changed = false;
-            ImGui::PushID(id);
-            ImGui::BeginGroup();
-            ImDrawList* const drawList = ImGui::GetWindowDrawList();
-            for (int i = 0; i < count; ++i) {
-                ImGui::PushID(i);
-                if (i > 0) {
-                    ImGui::SameLine(0.0f, spacing);
-                }
-                ImGui::SetNextItemWidth(fieldWidth);
-                changed = ImGui::DragFloat("##axis", &values[i], speed, min, max, "%.3f") || changed;
-
-                const ImVec2 fieldMin = ImGui::GetItemRectMin();
-                const ImVec2 fieldMax = ImGui::GetItemRectMax();
-                const ImU32 axisColor = ImGui::GetColorU32(AxisColorOf(i));
-                drawList->AddRectFilled(fieldMin, ImVec2(fieldMin.x + kAxisMarkWidth, fieldMax.y), axisColor,
-                    style.FrameRounding, ImDrawFlags_RoundCornersLeft);
-                drawList->AddText(
-                    ImVec2(fieldMin.x + kAxisMarkWidth + style.FramePadding.x * 0.5f, fieldMin.y + style.FramePadding.y),
-                    axisColor, kAxes[i]);
-                ImGui::PopID();
-            }
-            ImGui::EndGroup();
-            ImGui::PopID();
-            return changed;
-        }
-
         /// @brief 表示用の倍率を掛けた値で欄を描き、動いた成分だけを書き戻す
         /// @param drawField 倍率を掛けた値の配列を受け取って欄を描き、動いたら true を返す関数
         template <class DrawField>
@@ -245,7 +173,7 @@ namespace CoreEngine
             const float min = r.valid ? r.min * scale : 0.0f;
             const float max = r.valid ? r.max * scale : 0.0f;
             return DrawScaled(values, count, scale, [&](float* shown) {
-                return DragVector(id, shown, count, ResolveSpeed(r, 0.01f) * scale, min, max);
+                return InspectorLayout::VectorField(id, shown, count, ResolveSpeed(r, 0.01f) * scale, min, max);
                 });
         }
 
@@ -285,58 +213,6 @@ namespace CoreEngine
                 }
             }
             ImGui::EndCombo();
-            return changed;
-        }
-
-        /// @brief 整数を名前の一覧から選ぶ欄
-        /// @return 別の値を選んだら true
-        bool DrawEnumCombo(const char* id, int* value, const char* const* names, int count)
-        {
-            const char* preview = (*value >= 0 && *value < count) ? names[*value] : "";
-            bool changed = false;
-            if (ImGui::BeginCombo(id, preview)) {
-                for (int i = 0; i < count; ++i) {
-                    const bool selected = i == *value;
-                    if (ImGui::Selectable(names[i], selected) && !selected) {
-                        *value = i;
-                        changed = true;
-                    }
-                    if (selected) {
-                        ImGui::SetItemDefaultFocus();
-                    }
-                }
-                ImGui::EndCombo();
-            }
-            return changed;
-        }
-
-        /// @brief 色の欄（幅いっぱいのスウォッチを押すとピッカーが開く）
-        /// @param hasAlpha false なら不透明度を出さない（`rgba` の 4 つ目は読み書きしない）
-        /// @note ピッカーを同じグループの中で描くので、ピッカーを掴んだ・離したが呼ぶ側の直前の項目として見える。
-        bool DrawColorSwatch(const char* id, float* rgba, bool hasAlpha)
-        {
-            constexpr const char* kPickerId = "##colorPicker";
-            const ImVec2 size((std::max)(1.0f, ImGui::CalcItemWidth()), ImGui::GetFrameHeight());
-            const ImGuiColorEditFlags swatchFlags = hasAlpha
-                ? ImGuiColorEditFlags_AlphaPreviewHalf
-                : ImGuiColorEditFlags_NoAlpha;
-            const ImGuiColorEditFlags pickerFlags = hasAlpha
-                ? (ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreviewHalf)
-                : ImGuiColorEditFlags_NoAlpha;
-
-            bool changed = false;
-            ImGui::PushID(id);
-            ImGui::BeginGroup();
-            const ImVec4 color(rgba[0], rgba[1], rgba[2], hasAlpha ? rgba[3] : 1.0f);
-            if (ImGui::ColorButton("##swatch", color, swatchFlags, size)) {
-                ImGui::OpenPopup(kPickerId);
-            }
-            if (ImGui::BeginPopup(kPickerId)) {
-                changed = ImGui::ColorPicker4("##picker", rgba, pickerFlags);
-                ImGui::EndPopup();
-            }
-            ImGui::EndGroup();
-            ImGui::PopID();
             return changed;
         }
 
@@ -427,7 +303,7 @@ namespace CoreEngine
             case PropertyType::Int: {
                 auto* const number = static_cast<int*>(value);
                 if (p.enumNames && p.enumCount > 0) {
-                    return DrawEnumCombo(label, number, p.enumNames, p.enumCount);
+                    return InspectorLayout::EnumCombo(label, number, p.enumNames, p.enumCount);
                 }
                 const int iMin = r.valid ? static_cast<int>(r.min) : 0;
                 const int iMax = r.valid ? static_cast<int>(r.max) : 0;
@@ -435,7 +311,7 @@ namespace CoreEngine
                     return ImGui::DragInt(label, number, ResolveSpeed(r, 1.0f), iMin, iMax);
                 };
                 return ranged
-                    ? DrawWithFill((static_cast<float>(*number) - r.min) / (r.max - r.min), drawField)
+                    ? InspectorLayout::FilledField((static_cast<float>(*number) - r.min) / (r.max - r.min), drawField)
                     : drawField();
             }
             case PropertyType::Float: {
@@ -447,7 +323,7 @@ namespace CoreEngine
                         return ImGui::DragFloat(label, shown, ResolveSpeed(r, 0.01f) * scale, min, max);
                         });
                 };
-                return ranged ? DrawWithFill((*number - r.min) / (r.max - r.min), drawField) : drawField();
+                return ranged ? InspectorLayout::FilledField((*number - r.min) / (r.max - r.min), drawField) : drawField();
             }
             case PropertyType::Vector2:
                 return DragScaledVector(label, &static_cast<Vector2*>(value)->x, 2, r, scale);
@@ -456,7 +332,7 @@ namespace CoreEngine
             case PropertyType::Vector4:
                 return DragScaledVector(label, &static_cast<Vector4*>(value)->x, 4, r, scale);
             case PropertyType::Color:
-                return DrawColorSwatch(label, &static_cast<Vector4*>(value)->x,
+                return InspectorLayout::ColorSwatch(label, &static_cast<Vector4*>(value)->x,
                     !Reflection::HasFlag(p.flags, Reflection::PropertyFlags::NoAlpha));
             case PropertyType::String: {
                 std::string& text = *static_cast<std::string*>(value);

@@ -13,13 +13,11 @@ namespace CoreEngine
         // ---- 見た目 ----
         CVar<Vector4> BaseColor{ "r.Water.BaseColor",
             Vector4{ 0.04f, 0.18f, 0.28f, 0.85f },
-            "水面のベースカラー（反射を切ったときの PBR の色。αは使わない）" };
+            "反射が無いときの水面の色（DXR の反射も空のキューブも無いときだけ使う。αは使わない）" };
         CVar<float> Roughness{ "r.Water.Roughness", 0.03f,
-            "水面マテリアルのラフネス", CVarRange{ 0.0f, 1.0f } };
-        CVar<float> Metallic{ "r.Water.Metallic", 0.0f,
-            "水面マテリアルのメタリック", CVarRange{ 0.0f, 1.0f } };
+            "水面の粗さ（ハイライトの広がり）", CVarRange{ 0.0f, 1.0f } };
         CVar<float> FresnelScale{ "r.Water.FresnelScale", 1.0f,
-            "フレネル反射スケール", CVarRange{ 0.0f, 2.0f } };
+            "反射の強さの倍率（1.0 = 物理値）", CVarRange{ 0.0f, 2.0f } };
         CVar<float> FresnelF0{ "r.Water.FresnelF0", 0.02f,
             "正面入射時の反射率 F0（水 ≈ 0.02）", CVarRange{ 0.0f, 0.1f } };
         CVar<bool> DepthFadeEnabled{ "r.Water.DepthFadeEnabled", true,
@@ -41,9 +39,6 @@ namespace CoreEngine
             CVarRange{ 0.0f, 2.0f } };
         CVar<float> Turbidity{ "r.Water.Turbidity", 0.0f,
             "濁度。青の吸収と粒子散乱を加算する（緑濁り方向）", CVarRange{ 0.0f, 1.0f } };
-        CVar<int> JerlovPreset{ "r.Water.JerlovPreset", 0,
-            "Jerlov 水型コンボの選択インデックス（実体は AbsorptionBase / ScatteringBase）",
-            CVarRange{}, CVarFlags::NoUI };
 
         // ---- 泡（whitecap）----
         // 既定値は WaterFoamDefaults を参照する（WaterFrameConstants /
@@ -83,8 +78,6 @@ namespace CoreEngine
             "水平変位の強さ（波頭の尖り）", CVarRange{ 0.0f, 4.0f } };
         CVar<int> FFTActiveComponentCount{ "r.Water.FFT.ActiveComponentCount", 48,
             "スペクトル成分数（帯域幅）", CVarRange{ 1.0f, 64.0f } };
-        CVar<float> FFTGravity{ "r.Water.FFT.Gravity", 9.81f,
-            "重力加速度 [m/s²]（分散関係 ω = √(gk) に効く）", CVarRange{ 0.1f, 20.0f } };
 
         // ---- うねり（swell）----
         // 遠方の低気圧で発生し分散しながら到達した長周期波。その場の風とは独立なので、
@@ -116,19 +109,19 @@ namespace CoreEngine
             "生成方式（0: レイトレーシング / 1: スクリーンスペース。SS は Gerstner 専用）",
             CVarRange{}, CVarFlags::NoUI };
         CVar<float> CausticsIntensity{ "r.Water.Caustics.Intensity", 0.35f,
-            "コースティクス強度（1.0 = 物理値）", CVarRange{ 0.0f, 4.0f } };
+            "コースティクスの強さ（スクリーンスペース方式だけ。1.0 = 物理値）", CVarRange{ 0.0f, 4.0f } };
         CVar<float> CausticsDepthAttenuation{ "r.Water.Caustics.DepthAttenuation", 1.5f,
-            "深度による減衰", CVarRange{ 0.0f, 8.0f } };
+            "深さによる減衰（スクリーンスペース方式だけ）", CVarRange{ 0.0f, 8.0f } };
         CVar<float> CausticsCurvatureScale{ "r.Water.Caustics.CurvatureScale", 1.5f,
-            "波面曲率による集光のスケール", CVarRange{ 0.0f, 8.0f } };
+            "波面の曲がりによる集光の倍率（スクリーンスペース方式だけ）", CVarRange{ 0.0f, 8.0f } };
         CVar<float> CausticsSurfaceSampleRadius{ "r.Water.Caustics.SurfaceSampleRadius", 0.35f,
-            "水面サンプル半径", CVarRange{ 0.01f, 4.0f } };
+            "水面を調べる半径 [m]（スクリーンスペース方式だけ）", CVarRange{ 0.01f, 4.0f } };
         CVar<float> CausticsRefractiveIndex{ "r.Water.Caustics.RefractiveIndex", 1.333f,
             "屈折率（RT / スクリーンスペース両方へ同値を反映）", CVarRange{ 1.0f, 2.0f } };
         CVar<float> CausticsReceiverNormalStrength{ "r.Water.Caustics.ReceiverNormalStrength", 1.0f,
-            "受光面法線の寄与", CVarRange{ 0.0f, 2.0f } };
+            "受ける面の向きの効き方（スクリーンスペース方式だけ）", CVarRange{ 0.0f, 2.0f } };
         CVar<float> CausticsAlignmentPower{ "r.Water.Caustics.AlignmentPower", 6.0f,
-            "集光の整列強調", CVarRange{ 0.1f, 16.0f } };
+            "集光の線の鋭さ（スクリーンスペース方式だけ）", CVarRange{ 0.1f, 16.0f } };
 
         // ---- DXR 屈折 ----
         CVar<float> RefractionMaxOffsetPixels{ "r.Water.Refraction.MaxOffsetPixels", 0.0f,

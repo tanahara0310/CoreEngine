@@ -30,19 +30,16 @@ public:
 
 private:
 #ifdef CORE_EDITOR
-	/// @brief 水面制御用 UI の内容を描画する（Inspector 内に埋め込み）
+	/// @brief 水面コンポーネントのインスペクタの、記述子で描けない欄を描く
 	void DrawImGuiContent();
-	/// @brief 水面の通常パラメータ編集パネル
+	/// @brief 保存する値（波・水の色・反射・泡・コースティクス）
 	WaterSurfaceParameterPanel parameterPanel_{};
-	/// @brief 水面のデバッグ表示・診断パネル
+	/// @brief デバッグ表示と診断（保存しない）
 	WaterSurfaceDebugPanel debugPanel_{};
-	/// @brief Water UI と Engine 内部設定の仲介 facade
+	/// @brief デバッグ表示と診断の仲介
 	WaterEditorFacade editorFacade_{};
 	/// @brief インスペクタの出し方の登録（破棄すると外れる）
 	ScopedRegistration inspector_;
-
-	// 旧 WaterSettingsSection（Water.json への専用シリアライズ）は Phase 5 で廃止。
-	// 全パラメータは WaterCVars として CVars.json（CVarSettingsSection）に保存される
 #endif
 
 	/// @brief UI の操作対象（所有権は Scene の Feature 一覧）

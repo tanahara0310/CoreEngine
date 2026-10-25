@@ -7,6 +7,7 @@
 #include <imgui.h>
 
 #include <cstddef>
+#include <functional>
 #include <string>
 
 /// @file
@@ -67,6 +68,44 @@ namespace CoreEngine::InspectorLayout
 
     /// @brief 幅 width の項目を、今の行の右端へ寄せる
     void AlignToRight(float width);
+
+    /// @brief 範囲の決まった数値の欄を、値の位置まで塗った下地の上に描く
+    /// @param fraction 範囲の中での値の位置（0〜1 の外は端に丸める）
+    /// @param drawField 欄を描いて、値が変わったら true を返す関数
+    bool FilledField(float fraction, const std::function<bool()>& drawField);
+
+    /// @brief ベクトルの欄（成分ごとの欄の左端に、軸の色の印と文字を添えて並べる）
+    /// @param min 下限（min >= max なら制限しない）
+    /// @param labels 成分の文字（nullptr なら X・Y・Z・W）
+    bool VectorField(const char* id, float* values, int count, float speed, float min, float max,
+        const char* const* labels = nullptr);
+
+    /// @brief 色の欄（幅いっぱいのスウォッチを押すとピッカーが開く）
+    /// @param hasAlpha false なら不透明度を出さない（`rgba` の 4 つ目は読み書きしない）
+    /// @note ピッカーを同じグループの中で描くので、ピッカーを掴んだ・離したが呼ぶ側の直前の項目として見える。
+    bool ColorSwatch(const char* id, float* rgba, bool hasAlpha);
+
+    /// @brief 整数を名前の一覧から選ぶ欄
+    /// @return 別の値を選んだら true
+    bool EnumCombo(const char* id, int* value, const char* const* names, int count);
+
+    /// @brief 注意書きの種類（左の帯と下地の色）
+    enum class Message
+    {
+        Info,
+        Warning,
+        Error,
+    };
+
+    /// @brief 左に色の帯を付けた注意書きを、幅いっぱいに折り返して描く
+    void HelpBox(const char* message, Message kind = Message::Info);
+
+    /// @brief 淡い補足の文を、欄の幅で折り返して描く
+    void Hint(const char* text);
+
+    /// @brief コンポーネントの中のグループを開閉する見出し（矢印と文字。下地は塗らない）
+    /// @return 開いていれば true（TreePop は要らない）
+    bool Foldout(const char* label, bool defaultOpen = true);
 }
 
 #endif // CORE_EDITOR

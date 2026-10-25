@@ -4,59 +4,53 @@
 #include "Editor/Water/WaterEditorFacade.h"
 
 namespace CoreEngine { class WaterRenderFeature; }
-namespace CoreEngine { class WaterSurfaceComponent; }
 
 #ifdef CORE_EDITOR
-/// @brief 水面パラメータ編集パネル
-/// @details Phase 5 で全パラメータを WaterCVars（単一情報源）へ移行した。
-///          このパネルは CVar のストレージを直接編集する薄い UI で、
-///          値の適用は WaterRenderFeature::ApplySettingsFromCVars（毎フレーム）が担い、
-///          永続化は CVars.json（CVarSettingsSection）に一本化されている。
-///          旧 Water.json / UI キャッシュ構造体 / 専用シリアライズは廃止済み。
-///          Gerstner の波生成ツール・個別波編集はワークフロー状態のため
-///          CVar 化せず、従来どおり WaterSurfaceComponent を直接操作する（非永続）。
+
+/// @brief 水面のインスペクタのうち、保存する値（波・水の色・反射・泡・コースティクス）を描く
+/// @details 値は CVar（r.Water.*）が持ち、行の右クリック・Undo・既定値の表示は CVarUI の行が受け持つ。
+///          Gerstner の波（FFT を使わないときの波）は保存しない作業用の状態で、水面コンポーネントを直接書き換える。
 class WaterSurfaceParameterPanel {
 public:
-	/// @brief パラメータパネルの初期状態を構築する
-	/// @details CVar は登録時（CVarSettingsSection）に復元済みのため値には触れない。
-	///          非永続の Gerstner 波だけをプリセットから生成する
+	/// @brief Gerstner の波をプリセットから作る（CVar には触れない）
 	void Initialize(CoreEngine::WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade);
 
-	/// @brief 水面パラメータ編集 UI を描画する
+	/// @brief 各セクションを描く
 	void Draw(CoreEngine::WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade);
 
 private:
-	/// @brief 指定プリセットの値を WaterCVars へ適用し、Gerstner 波を再生成する
-	void ApplyWaterPreset(CoreEngine::WaterRenderFeature& runtimeController, WaterPresetType preset);
-	/// @brief 指定プリセットの推奨波数を水面へ反映する
-	void RestoreRecommendedWaveCount(CoreEngine::WaterRenderFeature& runtimeController, WaterPresetType preset);
-	/// @brief プリセット設定に基づくレイヤー波を再生成する
-	void RegenerateLayeredWaves(CoreEngine::WaterRenderFeature& runtimeController, WaterPresetType preset, uint32_t activeWaveCount);
-	/// @brief 描画方式の切り替えと現在状態を表示する
-	void DrawWaterTypeSection(CoreEngine::WaterRenderFeature& runtimeController);
-	/// @brief 見た目・反射・透過・泡・UV に関する共通パラメータ UI を描画する
-	void DrawCommonParameterSection(CoreEngine::WaterRenderFeature& runtimeController);
-	/// @brief コースティクスの見た目パラメータ UI を描画する（デバッグ表示はデバッグパネル側）
-	void DrawCausticsSection(WaterEditorFacade& editorFacade);
-	/// @brief FFT Ocean に関する描画経路切替とパラメータ UI を描画する
-	void DrawFFTOceanSection(CoreEngine::WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade);
-	/// @brief FFT Ocean プリセットを WaterCVars へ適用する
-	void ApplyFFTOceanPreset(int presetIndex);
-	/// @brief Gerstner Wave のプリセット・波生成に関する UI を描画する
-	void DrawGerstnerWaveSection(CoreEngine::WaterRenderFeature& runtimeController);
-	/// @brief 個別波編集 UI を描画する
-	void DrawIndividualWaveEditor(CoreEngine::WaterRenderFeature& runtimeController);
+	/// @brief 波（FFT の海の海況とうねり、または Gerstner の波）
+	void DrawWaveSection(CoreEngine::WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade);
 
-	/// @brief 波生成補助機能の UI 状態（ワークフロー状態。非永続）
-	struct WaveToolState {
-		int preset = static_cast<int>(WaterPresetType::Lake);
-		int activeWaveCount = static_cast<int>(kMaxWaterWaveCount);
-		bool lockRecommendedWaveCount = false;
-		bool autoRestoreRecommendedWaveCount = true;
-		bool autoGenerateOnWaveCountIncrease = true;
-	} waveToolState_{};
+	/// @brief 海況のプリセットを選ぶ行
+	void DrawSeaStateRow();
 
-	/// @brief FFT 海況プリセットのコンボ表示インデックス（実体は WaterCVars。導出値のため非永続）
-	int fftPresetIndex_ = 0;
+	/// @brief 今の値で出来上がる風波とうねりの大きさの行
+	void DrawWaveSummaryRows(WaterEditorFacade& editorFacade);
+
+	/// @brief Gerstner の波のプリセット・本数・個別の波
+	void DrawGerstnerRows(CoreEngine::WaterRenderFeature& runtimeController);
+
+	/// @brief 水の色（水質・吸収・散乱・濁り）
+	void DrawWaterColorSection();
+
+	/// @brief 反射と屈折
+	void DrawSurfaceSection();
+
+	/// @brief 泡
+	void DrawFoamSection(CoreEngine::WaterRenderFeature& runtimeController);
+
+	/// @brief コースティクス
+	void DrawCausticsSection();
+
+	/// @brief Gerstner の波をプリセットから作り直す
+	void RegenerateGerstnerWaves(CoreEngine::WaterRenderFeature& runtimeController);
+
+	/// @brief Gerstner の波のプリセット（WaterPresetType。-1 は水面の既定の波）
+	int gerstnerPreset_ = -1;
+
+	/// @brief Gerstner の波の本数
+	int gerstnerWaveCount_ = static_cast<int>(kMaxWaterWaveCount);
 };
+
 #endif

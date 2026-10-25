@@ -303,11 +303,6 @@ namespace CoreEngine
         if (mat) { mat->SetRoughness(roughness); }
     }
 
-    void WaterSurfaceComponent::SetMetallic(float metallic) {
-        auto* mat = GetModel() ? GetModel()->GetMaterial() : nullptr;
-        if (mat) { mat->SetMetallic(metallic); }
-    }
-
     void WaterSurfaceComponent::SetSimulationTime(float timeSeconds) {
         // simulation 層が決定した時間を CPU / GPU の WaterConstants へ反映する
         elapsedTime_ = timeSeconds;

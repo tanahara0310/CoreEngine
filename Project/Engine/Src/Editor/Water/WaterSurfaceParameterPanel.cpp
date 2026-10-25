@@ -8,286 +8,197 @@
 #include "Graphics/Water/Surface/WaterSurfaceComponent.h"
 #include "Graphics/Water/WaterCVars.h"
 
-#include "Math/MathCore.h"
+#include "Editor/ImGui/CVarPanel.h"
+#include "Editor/ImGui/EditorTheme.h"
 #include "Editor/ImGui/ImGuiAll.h"
+#include "Editor/ImGui/Widgets/EditorBars.h"
+#include "Editor/Inspector/InspectorLayout.h"
+#include "Math/MathCore.h"
+#include "Utility/CVar/CVarRegistry.h"
+#include "Utility/CVar/CVarUndoStack.h"
 #include "Utility/Random/RandomGenerator.h"
 
 #include <algorithm>
 #include <cmath>
-#include <cstdio>
+#include <format>
 #include <iterator>
 #include <numbers>
+#include <string>
 
 using namespace CoreEngine;
 
 namespace {
 constexpr float kTwoPi = std::numbers::pi_v<float> * 2.0f;
 
-/// @brief CVar 編集の共通形: ローカルコピーをウィジェットへ渡し、編集されたら
-///        Set（唯一の書き込み経路）で書き戻す
-/// @details ストレージの生ポインタを ImGui へ直接渡す旧方式は、通番が進まない
-///          「見えない変更」の温床のため廃止した（非 const の AsXxx() 自体が削除されている）。Set は等価判定つきなので
-///          ドラッグ中に毎フレーム呼んでも通番は実変更時しか進まない
-/// @return ウィジェットが編集された場合 true
-template <class T, class WidgetFn>
-bool EditCVar(CVar<T>& cvar, WidgetFn&& widget) {
-	T value = cvar.Get();
-	if (widget(&value)) {
-		cvar.Set(value);
-		return true;
-	}
-	return false;
-}
+/// ベクトルの成分の名前
+constexpr const char* kRgbLabels[] = { "R", "G", "B" };
+constexpr const char* kCascadeLabels[] = { "大", "中", "小" };
 
-/// @brief Jerlov 水型に基づく水質プリセット（σa/σs はアート調整済みの近似値 [1/m]）
-/// @details Jerlov 分類は外洋 I〜III、沿岸 1C〜9C の順に濁っていく。
-///          濁るほど CDOM（溶存有機物）が短波長（青）を強く吸収するため、
-///          澄んだ水の「青」から沿岸の「緑」へ色相が移る。
-struct JerlovWaterType {
+/// @brief 海況のプリセット（風波は風速と吹送距離から、うねりは高さと周期から決まる）
+struct SeaStatePreset {
 	const char* name;
-	float absorptionCoeff[3];
-	float scatteringCoeff[3];
+	const char* description;
+	float windSpeed;      ///< [m/s]
+	float fetchKm;        ///< [km]
+	float amplitudeScale;
+	float choppiness;
+	int componentCount;
+	bool swellEnabled;
+	float swellHeight;    ///< [m]
+	float swellPeriod;    ///< [s]
 };
 
-constexpr JerlovWaterType kJerlovWaterTypes[] = {
-	{ "I（熱帯外洋・沖縄）",   { 0.35f, 0.07f, 0.02f }, { 0.003f, 0.008f, 0.016f } },
+constexpr SeaStatePreset kSeaStatePresets[] = {
+	{ "鏡のような凪", "風がほとんど無く、遠くから届く小さなうねりだけが残る海。",
+	  1.5f, 5.0f, 1.0f, 1.2f, 48, true, 0.3f, 10.0f },
+	{ "穏やかな入り江", "弱い風が短い距離を吹く程度。さざ波と小さなうねり。",
+	  5.0f, 5.0f, 1.0f, 1.4f, 48, true, 0.4f, 10.0f },
+	{ "晴れた日の外洋", "並の風が長い距離を吹いて育った、長くなだらかな波。",
+	  8.0f, 100.0f, 1.0f, 1.6f, 48, true, 1.0f, 12.0f },
+	{ "風の強い日", "強い風が短い距離だけ吹いた、短く尖った波。白波が出始める。",
+	  13.0f, 20.0f, 1.15f, 1.8f, 64, true, 0.95f, 12.0f },
+	{ "荒れた海", "強い風が長く吹いた高い波と大きなうねり。白波が多い。",
+	  18.0f, 200.0f, 1.0f, 1.8f, 64, true, 2.0f, 14.0f },
+	{ "嵐", "暴風で育ちきった大波。水面の多くが泡で白くなる。",
+	  26.0f, 500.0f, 1.0f, 2.0f, 64, true, 3.5f, 16.0f },
+};
+constexpr int kSeaStatePresetCount = static_cast<int>(std::size(kSeaStatePresets));
+
+/// @brief Jerlov の水型（吸収・散乱係数 [1/m]。外洋 I〜III、沿岸 1C〜9C の順に濁る）
+struct JerlovWaterType {
+	const char* name;
+	Vector3 absorption;
+	Vector3 scattering;
+};
+
+const JerlovWaterType kJerlovWaterTypes[] = {
+	{ "I（熱帯の外洋・沖縄）", { 0.35f, 0.07f, 0.02f }, { 0.003f, 0.008f, 0.016f } },
 	{ "IB（澄んだ外洋）",      { 0.38f, 0.09f, 0.04f }, { 0.006f, 0.012f, 0.020f } },
 	{ "II（外洋）",            { 0.45f, 0.13f, 0.09f }, { 0.010f, 0.018f, 0.026f } },
-	{ "III（沿岸寄り外洋）",   { 0.52f, 0.18f, 0.15f }, { 0.018f, 0.028f, 0.035f } },
+	{ "III（沿岸寄りの外洋）", { 0.52f, 0.18f, 0.15f }, { 0.018f, 0.028f, 0.035f } },
 	{ "1C（澄んだ沿岸）",      { 0.55f, 0.17f, 0.20f }, { 0.030f, 0.045f, 0.045f } },
 	{ "5C（沿岸）",            { 0.65f, 0.30f, 0.45f }, { 0.080f, 0.100f, 0.085f } },
 	{ "9C（濁った沿岸）",      { 0.85f, 0.50f, 0.90f }, { 0.180f, 0.200f, 0.150f } },
 };
 constexpr int kJerlovWaterTypeCount = static_cast<int>(std::size(kJerlovWaterTypes));
 
-enum FFTOceanPresetIndex : int {
-	kFFTOceanPresetCustom = 0,
-	kFFTOceanPresetMirrorLike = 1,
-	kFFTOceanPresetCalm = 2,
-	kFFTOceanPresetOpenSea = 3,
-	kFFTOceanPresetRough = 4,
-	kFFTOceanPresetStorm = 5,
-};
-
-struct FFTOceanPresetData {
-	const char* name;
-	float amplitudeScale;
-	float windDirection[2];
-	float windSpeed;
-	float choppiness;
-	int activeComponentCount;
-	float gravity;
-};
-
-Vector2 NormalizeDirection(const Vector2& direction);
-
-// 波方向のゼロ長入力を吸収しつつ正規化する。
-Vector2 NormalizeDirection(const Vector2& direction) {
-	const Vector3 direction3 = { direction.x, direction.y, 0.0f };
-	if (CoreEngine::Length(direction3) <= 1.0e-5f) {
-		return { 1.0f, 0.0f };
-	}
-
-	const Vector3 normalizedDirection = CoreEngine::Normalize(direction3);
-	return { normalizedDirection.x, normalizedDirection.y };
-}
-
-// 主波向から指定角度だけ回転した正規化方向を返す。
-Vector2 RotateDirection(const Vector2& direction, float radians) {
-	const Matrix4x4 rotationMatrix = MathCore::Matrix::RotationZ(radians);
-	const Vector3 rotatedDirection = MathCore::CoordinateTransform::TransformNormal(
-		{ direction.x, direction.y, 0.0f },
-		rotationMatrix);
-	return NormalizeDirection({ rotatedDirection.x, rotatedDirection.y });
-}
-
-// UI 上の波数を WaterSurfaceComponent の有効範囲に丸める。
-uint32_t ClampWaveCountToRange(int count) {
-	return static_cast<uint32_t>(std::clamp(count, 1, static_cast<int>(kMaxWaterWaveCount)));
-}
-
-const char* const kPresetNames[] = {
+/// Gerstner の波のプリセットの名前（WaterPresetType の順）
+constexpr const char* kGerstnerPresetNames[] = {
 	"湖（静かな水）",
 	"海（波が立つ水）",
 	"池・プール",
 	"雨水・水たまり",
 };
+constexpr int kGerstnerPresetCount = static_cast<int>(std::size(kGerstnerPresetNames));
 
-const char* const kFFTOceanPresetNames[] = {
-	"カスタム",
-	"鏡面に近い海",
-	"静かな海",
-	"うねりのある外洋",
-	"荒れた海",
-	"嵐の海",
+/// コースティクスの作り方の名前（r.Water.Caustics.Backend の値の順）
+constexpr const char* kCausticsBackendNames[] = {
+	"レイトレーシング",
+	"スクリーンスペース（Gerstner 用）",
 };
 
-// 波高は Pierson-Moskowitz 較正（Hs ≈ 0.21 v²/g）で風速から決まるため、
-// amplitudeScale は「較正済み波高に対する相対倍率」（基本 1.0 前後）とする。
-// パッチ長はカスケード定数（FFTOceanCascadeValues.hlsli）で固定のためプリセットから撤去済み。
-const FFTOceanPresetData kFFTOceanPresets[] = {
-	{ "カスタム", 1.0f, { 0.92f, 0.38f }, 12.0f, 1.35f, 32, 9.81f },
-	{ "鏡面に近い海", 1.0f, { 1.0f, 0.0f }, 2.0f, 0.10f, 8, 9.81f },
-	{ "静かな海", 0.5f, { 0.98f, 0.18f }, 7.5f, 0.35f, 16, 9.81f },
-	{ "うねりのある外洋", 1.0f, { 0.92f, 0.38f }, 12.0f, 1.35f, 32, 9.81f },
-	{ "荒れた海", 1.0f, { 0.84f, 0.54f }, 18.0f, 1.80f, 48, 9.81f },
-	{ "嵐の海", 0.9f, { 0.72f, 0.69f }, 26.0f, 2.40f, 64, 9.81f },
-};
-
-bool NearlyEqual(float lhs, float rhs, float epsilon = 1.0e-3f) {
-	return std::fabs(lhs - rhs) <= epsilon;
+/// @brief 値がほぼ同じか（差が大きい方の値の 1% 以内）
+bool NearlyEqual(float lhs, float rhs) {
+	return std::fabs(lhs - rhs) <= 0.01f * (std::max)({ 1.0f, std::fabs(lhs), std::fabs(rhs) });
 }
 
-/// @brief 現在の WaterCVars（FFT 群）に一致する海況プリセットを探す
-/// @details 風向は正規化して比較する（CVar には UI 入力の未正規化値が入りうるため）
-int FindMatchingFFTOceanPreset() {
-	const Vector2 currentDir = NormalizeDirection(WaterCVars::FFTWindDirection.Get());
-	for (int presetIndex = 1; presetIndex < static_cast<int>(IM_ARRAYSIZE(kFFTOceanPresets)); ++presetIndex) {
-		const FFTOceanPresetData& preset = kFFTOceanPresets[presetIndex];
-		const Vector2 presetDir = NormalizeDirection({ preset.windDirection[0], preset.windDirection[1] });
-		if (!NearlyEqual(WaterCVars::FFTAmplitudeScale.Get(), preset.amplitudeScale) ||
-			!NearlyEqual(currentDir.x, presetDir.x) ||
-			!NearlyEqual(currentDir.y, presetDir.y) ||
-			!NearlyEqual(WaterCVars::FFTWindSpeed.Get(), preset.windSpeed) ||
-			!NearlyEqual(WaterCVars::FFTChoppiness.Get(), preset.choppiness) ||
-			WaterCVars::FFTActiveComponentCount.Get() != preset.activeComponentCount ||
-			!NearlyEqual(WaterCVars::FFTGravity.Get(), preset.gravity)) {
-			continue;
-		}
-
-		return presetIndex;
-	}
-
-	return kFFTOceanPresetCustom;
-}
+bool NearlyEqual(const Vector3& lhs, const Vector3& rhs) {
+	return NearlyEqual(lhs.x, rhs.x) && NearlyEqual(lhs.y, rhs.y) && NearlyEqual(lhs.z, rhs.z);
 }
 
-void WaterSurfaceParameterPanel::Initialize(WaterRenderFeature& runtimeController, [[maybe_unused]] WaterEditorFacade& editorFacade) {
-	// パラメータ値には触れない: WaterCVars は CVarSettingsSection の登録時に
-	// CVars.json から復元済みで、それが唯一の情報源。ここでプリセットを適用すると
-	// 復元値を潰してしまう（旧実装の「既定プリセット→Deserialize 上書き」順序問題は
-	// CVar の静的寿命により解消された）。
-	fftPresetIndex_ = FindMatchingFFTOceanPreset();
-
-	// Gerstner 波（非永続のワークフロー状態）だけは生成が必要
-	const WaterPresetType initialPreset = static_cast<WaterPresetType>(waveToolState_.preset);
-	RestoreRecommendedWaveCount(runtimeController, initialPreset);
-	RegenerateLayeredWaves(runtimeController, initialPreset, ClampWaveCountToRange(waveToolState_.activeWaveCount));
-}
-
-void WaterSurfaceParameterPanel::Draw(WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade) {
-	// 共通設定と方式別設定をタブで分離して、開発用 UI の見通しを良くする
-	if (ImGui::CollapsingHeader("水面パラメータ", ImGuiTreeNodeFlags_DefaultOpen)) {
-		const WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
-		const bool usingFFTOcean = waterPlane && waterPlane->IsUsingFFTOcean();
-
-		ImGui::Text("現在の編集中モード: %s", usingFFTOcean ? "FFTOcean" : "Gerstner Wave");
-		ImGui::TextDisabled("全パラメータは CVar（r.Water.*）として保存されます。Engine Settings の CVar ツリーからも編集できます。");
-
-		if (ImGui::BeginTabBar("WaterParameterTabs")) {
-			if (ImGui::BeginTabItem("共通設定")) {
-				DrawWaterTypeSection(runtimeController);
-				DrawCommonParameterSection(runtimeController);
-				DrawCausticsSection(editorFacade);
-				ImGui::EndTabItem();
-			}
-
-			if (ImGui::BeginTabItem(usingFFTOcean ? "FFTOcean *" : "FFTOcean")) {
-				DrawFFTOceanSection(runtimeController, editorFacade);
-				ImGui::EndTabItem();
-			}
-
-			if (ImGui::BeginTabItem(usingFFTOcean ? "Gerstner Wave" : "Gerstner Wave *")) {
-				DrawGerstnerWaveSection(runtimeController);
-				ImGui::EndTabItem();
-			}
-
-			ImGui::EndTabBar();
+/// @brief 今の CVar に一致する海況のプリセット（無ければ -1）
+int FindSeaStatePreset() {
+	for (int i = 0; i < kSeaStatePresetCount; ++i) {
+		const SeaStatePreset& preset = kSeaStatePresets[i];
+		if (NearlyEqual(WaterCVars::FFTWindSpeed.Get(), preset.windSpeed)
+			&& NearlyEqual(WaterCVars::FFTFetchKilometers.Get(), preset.fetchKm)
+			&& NearlyEqual(WaterCVars::FFTAmplitudeScale.Get(), preset.amplitudeScale)
+			&& NearlyEqual(WaterCVars::FFTChoppiness.Get(), preset.choppiness)
+			&& WaterCVars::FFTActiveComponentCount.Get() == preset.componentCount
+			&& WaterCVars::SwellEnabled.Get() == preset.swellEnabled
+			&& NearlyEqual(WaterCVars::SwellHeight.Get(), preset.swellHeight)
+			&& NearlyEqual(WaterCVars::SwellPeriod.Get(), preset.swellPeriod)) {
+			return i;
 		}
 	}
+	return -1;
 }
 
-void WaterSurfaceParameterPanel::DrawWaterTypeSection(WaterRenderFeature& runtimeController) {
-	WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
-	if (!waterPlane) {
-		return;
+/// @brief 今の吸収・散乱係数に一致する水型（無ければ -1）
+int FindJerlovWaterType() {
+	for (int i = 0; i < kJerlovWaterTypeCount; ++i) {
+		if (NearlyEqual(WaterCVars::AbsorptionBase.Get(), kJerlovWaterTypes[i].absorption)
+			&& NearlyEqual(WaterCVars::ScatteringBase.Get(), kJerlovWaterTypes[i].scattering)
+			&& WaterCVars::Turbidity.Get() == 0.0f) {
+			return i;
+		}
 	}
-
-	ImGui::SeparatorText("描画方式");
-	ImGui::Text("現在の方式: %s", waterPlane->IsUsingFFTOcean() ? "FFTOcean" : "Gerstner Wave");
-	ImGui::TextDisabled("共通設定は下部、方式固有の調整は各専用セクションに分けています。");
-
-	const bool useFFTOcean = WaterCVars::FFTEnabled.Get();
-	if (ImGui::RadioButton("FFTOcean を使用", useFFTOcean)) {
-		WaterCVars::FFTEnabled.Set(true);
-	}
-	if (ImGui::RadioButton("Gerstner Wave を使用", !useFFTOcean)) {
-		WaterCVars::FFTEnabled.Set(false);
-	}
+	return -1;
 }
 
-void WaterSurfaceParameterPanel::DrawCommonParameterSection(WaterRenderFeature& runtimeController) {
-	WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
-	if (!waterPlane) {
-		return;
-	}
+/// @brief CVar へ値を入れ、Undo を 1 件積む（BeginBatch の中なら 1 回の Ctrl+Z にまとまる）
+template <class T>
+void AssignWithUndo(CVar<T>& cvar, const T& value) {
+	auto& undoStack = CVarUndoStack::Get();
+	undoStack.BeginEdit(&cvar);
+	cvar.Set(value);
+	undoStack.CommitEdit(&cvar);
+}
 
-	// 編集は EditCVar（ローカルコピー→Set）経由。
-	// 実際の水面への適用は WaterRenderFeature::ApplySettingsFromCVars（毎フレーム）が行う。
-	ImGui::Spacing();
-	ImGui::SeparatorText("共通の見た目");
-	EditCVar(WaterCVars::BaseColor, [](Vector4* v) { return ImGui::ColorEdit3("ベースカラー", &v->x); });
-	EditCVar(WaterCVars::Roughness, [](float* v) { return ImGui::SliderFloat("ラフネス", v, 0.0f, 1.0f); });
-	EditCVar(WaterCVars::Metallic, [](float* v) { return ImGui::SliderFloat("メタリック", v, 0.0f, 1.0f); });
+/// @brief 複数の CVar の書き換えを 1 回の Ctrl+Z で戻せるようにまとめ、すぐに保存する
+template <class Body>
+void AssignInBatch(Body&& body) {
+	auto& undoStack = CVarUndoStack::Get();
+	undoStack.BeginBatch();
+	body();
+	undoStack.EndBatch();
+	CVarRegistry::Get().NotifyCommit();
+}
 
-	ImGui::Spacing();
-	ImGui::SeparatorText("反射 / 屈折");
-	EditCVar(WaterCVars::FresnelScale, [](float* v) { return ImGui::SliderFloat("フレネル反射スケール", v, 0.0f, 2.0f, "%.3f"); });
-	EditCVar(WaterCVars::FresnelF0, [](float* v) { return ImGui::SliderFloat("正面反射率 F0", v, 0.0f, 0.10f, "%.4f"); });
-	EditCVar(WaterCVars::RefractionMaxOffsetPixels,
-		[](float* v) { return ImGui::SliderFloat("DXR屈折 最大ずれ量 (px, 0=無制限)", v, 0.0f, 64.0f, "%.2f"); });
+void ApplySeaStatePreset(const SeaStatePreset& preset) {
+	AssignInBatch([&] {
+		AssignWithUndo(WaterCVars::FFTWindSpeed, preset.windSpeed);
+		AssignWithUndo(WaterCVars::FFTFetchKilometers, preset.fetchKm);
+		AssignWithUndo(WaterCVars::FFTAmplitudeScale, preset.amplitudeScale);
+		AssignWithUndo(WaterCVars::FFTChoppiness, preset.choppiness);
+		AssignWithUndo(WaterCVars::FFTActiveComponentCount, preset.componentCount);
+		AssignWithUndo(WaterCVars::SwellEnabled, preset.swellEnabled);
+		AssignWithUndo(WaterCVars::SwellHeight, preset.swellHeight);
+		AssignWithUndo(WaterCVars::SwellPeriod, preset.swellPeriod);
+		});
+}
 
-	ImGui::Spacing();
-	ImGui::SeparatorText("泡 / Whitecap（FFTOcean 専用）");
-	EditCVar(WaterCVars::FoamEnabled, [](bool* v) { return ImGui::Checkbox("泡を有効にする", v); });
-	EditCVar(WaterCVars::FoamWhitecapScale,
-		[](float* v) { return ImGui::SliderFloat("白波の量（観測式の倍率）", v, 0.0f, 4.0f, "%.2f"); });
-	if (const WaterFoamSystem* foam = runtimeController.GetWaterFoamSystem()) {
-		ImGui::Text("白波の被覆率  目標 %.3f%%  /  実測 %.3f%%",
-			foam->GetTargetWhitecapCoverage() * 100.0f, foam->GetMeasuredWhitecapCoverage() * 100.0f);
-		ImGui::Text("砕けるしきい値 detJ %.3f  /  立ち上がり勾配 %.1f",
-			foam->GetWhitecapBias(), foam->GetWhitecapGain());
-	}
-	EditCVar(WaterCVars::FoamOpacity, [](float* v) { return ImGui::SliderFloat("泡の不透明度", v, 0.0f, 1.0f, "%.3f"); });
-	EditCVar(WaterCVars::FoamCascadeWeights,
-		[](Vector3* v) { return ImGui::SliderFloat3("カスケード重み (大/中/小)", &v->x, 0.0f, 1.0f, "%.3f"); });
-	EditCVar(WaterCVars::FoamDecaySeconds, [](float* v) { return ImGui::SliderFloat("泡の寿命 [秒]", v, 0.2f, 10.0f, "%.2f"); });
-	ImGui::TextDisabled(
-		"白波の被覆率は風速から Monahan の観測式（W = 3.84e-6·U^3.41）で決まり、\n"
-		"detJ（波頭の圧縮率）のしきい値はその被覆率になるよう自動で合わせます（風速 3m/s 未満は白波なし）。\n"
-		"可視化は水面デバッグの『FFT Jacobian』『FFT 泡マスク』を使用");
+void ApplyJerlovWaterType(const JerlovWaterType& type) {
+	AssignInBatch([&] {
+		AssignWithUndo(WaterCVars::AbsorptionBase, type.absorption);
+		AssignWithUndo(WaterCVars::ScatteringBase, type.scattering);
+		AssignWithUndo(WaterCVars::Turbidity, 0.0f);
+		});
+}
 
-	ImGui::Spacing();
-	ImGui::SeparatorText("透過 / 水質（光学特性）");
-	EditCVar(WaterCVars::DepthFadeEnabled, [](bool* v) { return ImGui::Checkbox("Depth Fade を有効にする", v); });
+/// @brief 編集できない値の行（左にラベル、右に淡い文字）
+void InfoRow(const char* label, const std::string& value) {
+	InspectorLayout::BeginRow(label, Editor::Theme::kTextDim);
+	ImGui::AlignTextToFramePadding();
+	ImGui::TextDisabled("%s", value.c_str());
+}
 
-	// Jerlov 水型プリセット: ベース係数を一括設定し、濁度をリセットする
-	// （復元値が範囲外でも安全に表示できるよう、使用直前にクランプする）
-	const int jerlovPreset = std::clamp(WaterCVars::JerlovPreset.Get(), 0, kJerlovWaterTypeCount - 1);
-	if (ImGui::BeginCombo("水質プリセット (Jerlov)", kJerlovWaterTypes[jerlovPreset].name)) {
-		for (int i = 0; i < kJerlovWaterTypeCount; ++i) {
-			const bool selected = (jerlovPreset == i);
-			if (ImGui::Selectable(kJerlovWaterTypes[i].name, selected)) {
-				WaterCVars::JerlovPreset.Set(i);
-				WaterCVars::AbsorptionBase.Set({
-					kJerlovWaterTypes[i].absorptionCoeff[0],
-					kJerlovWaterTypes[i].absorptionCoeff[1],
-					kJerlovWaterTypes[i].absorptionCoeff[2] });
-				WaterCVars::ScatteringBase.Set({
-					kJerlovWaterTypes[i].scatteringCoeff[0],
-					kJerlovWaterTypes[i].scatteringCoeff[1],
-					kJerlovWaterTypes[i].scatteringCoeff[2] });
-				WaterCVars::Turbidity.Set(0.0f);
+/// @brief 一覧から選ぶ行（CVar でない値。選んだ番号を返し、選ばなければ -1）
+/// @param current 今の番号（-1 なら unmatchedName を出す）
+/// @param descriptions 項目ごとの説明（nullptr なら出さない）
+int ChoiceRow(const char* id, const char* label, int current, const char* const* names,
+	const char* const* descriptions, int count, const char* unmatchedName = "カスタム") {
+	ImGui::PushID(id);
+	InspectorLayout::BeginRow(label, Editor::Theme::kTextDim);
+	int chosen = -1;
+	if (ImGui::BeginCombo("##choice", current >= 0 ? names[current] : unmatchedName)) {
+		for (int i = 0; i < count; ++i) {
+			const bool selected = i == current;
+			if (ImGui::Selectable(names[i], selected)) {
+				chosen = i;
+			}
+			if (descriptions && ImGui::IsItemHovered()) {
+				ImGui::SetTooltip("%s", descriptions[i]);
 			}
 			if (selected) {
 				ImGui::SetItemDefaultFocus();
@@ -295,221 +206,196 @@ void WaterSurfaceParameterPanel::DrawCommonParameterSection(WaterRenderFeature& 
 		}
 		ImGui::EndCombo();
 	}
-
-	// 水の色は直接指定せず、波長依存の吸収・散乱係数（＝水質）から光源と合わせて導出する。
-	// 永続化は必ずベース値（実効係数から逆算不能なため）。実効値の合成は WaterCVars 側。
-	EditCVar(WaterCVars::AbsorptionBase,
-		[](Vector3* v) { return ImGui::DragFloat3("吸収係数 σa (R, G, B) [1/m]", &v->x, 0.005f, 0.0f, 4.0f, "%.4f"); });
-	EditCVar(WaterCVars::ScatteringBase,
-		[](Vector3* v) { return ImGui::DragFloat3("散乱係数 σs (R, G, B) [1/m]", &v->x, 0.001f, 0.0f, 2.0f, "%.4f"); });
-	EditCVar(WaterCVars::Turbidity, [](float* v) { return ImGui::SliderFloat("濁度", v, 0.0f, 1.0f, "%.3f"); });
-	ImGui::TextDisabled("自然な水は 吸収: 赤 > 緑 > 青。濁度は青の吸収と粒子散乱を加算（緑濁り方向）");
+	ImGui::PopID();
+	return chosen;
 }
 
-void WaterSurfaceParameterPanel::DrawCausticsSection(WaterEditorFacade& editorFacade) {
-	ImGui::Spacing();
-	ImGui::SeparatorText("コースティクス");
+/// @brief XZ の向きを、主の向きから角度 radians だけ回して返す
+Vector2 RotateDirection(const Vector2& direction, float radians) {
+	const float c = std::cos(radians);
+	const float s = std::sin(radians);
+	return { direction.x * c - direction.y * s, direction.x * s + direction.y * c };
+}
 
-	const WaterEditorCausticsSettings status = editorFacade.GetCausticsSettings();
-	if (!status.techniqueAvailable) {
-		ImGui::TextDisabled("WaterCausticsTechnique が登録されていません。");
+/// @brief XZ の向きを長さ 1 にする（長さ 0 なら +X）
+Vector2 NormalizeDirection(const Vector2& direction) {
+	const float length = std::sqrt(direction.x * direction.x + direction.y * direction.y);
+	return length > 1.0e-5f ? Vector2{ direction.x / length, direction.y / length } : Vector2{ 1.0f, 0.0f };
+}
+}
+
+void WaterSurfaceParameterPanel::Initialize(WaterRenderFeature& runtimeController, [[maybe_unused]] WaterEditorFacade& editorFacade) {
+	gerstnerPreset_ = -1;
+	if (const WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane()) {
+		gerstnerWaveCount_ = static_cast<int>(waterPlane->GetActiveWaveCount());
+	}
+}
+
+void WaterSurfaceParameterPanel::Draw(WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade) {
+	DrawWaveSection(runtimeController, editorFacade);
+	DrawWaterColorSection();
+	DrawSurfaceSection();
+	DrawFoamSection(runtimeController);
+	DrawCausticsSection();
+}
+
+void WaterSurfaceParameterPanel::DrawWaveSection(WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade) {
+	if (!InspectorLayout::Foldout("波", true)) {
 		return;
 	}
 
-	// 生成方式（合成されるのは選んだ側だけ。もう一方のパスは実行自体をスキップする）。
-	// スクリーンスペース版は Gerstner 専用（FFT シーンでは何も出ない）
-	static const char* kCausticsBackends[] = {
-		"レイトレーシング (DXR)",
-		"スクリーンスペース (Gerstner 専用)",
-	};
-	int backend = std::clamp(WaterCVars::CausticsBackend.Get(), 0, 1);
-	if (ImGui::Combo("生成方式", &backend, kCausticsBackends, IM_ARRAYSIZE(kCausticsBackends))) {
-		WaterCVars::CausticsBackend.Set(backend);
+	CVarUI::DrawRow(&WaterCVars::FFTEnabled, "FFT の海で描く");
+	if (!WaterCVars::FFTEnabled.Get()) {
+		DrawGerstnerRows(runtimeController);
+		return;
 	}
 
-	EditCVar(WaterCVars::CausticsIntensity, [](float* v) { return ImGui::SliderFloat("強度", v, 0.0f, 8.0f, "%.3f"); });
-	EditCVar(WaterCVars::CausticsDepthAttenuation, [](float* v) { return ImGui::SliderFloat("深度減衰", v, 0.0f, 4.0f, "%.3f"); });
-	EditCVar(WaterCVars::CausticsCurvatureScale, [](float* v) { return ImGui::SliderFloat("曲率スケール", v, 0.0f, 30.0f, "%.3f"); });
-	EditCVar(WaterCVars::CausticsSurfaceSampleRadius, [](float* v) { return ImGui::SliderFloat("水面サンプル半径", v, 0.05f, 2.0f, "%.3f"); });
-	EditCVar(WaterCVars::CausticsRefractiveIndex, [](float* v) { return ImGui::SliderFloat("屈折率", v, 1.0f, 1.6f, "%.4f"); });
-	EditCVar(WaterCVars::CausticsReceiverNormalStrength, [](float* v) { return ImGui::SliderFloat("受光面法線強度", v, 0.0f, 2.0f, "%.3f"); });
-	EditCVar(WaterCVars::CausticsAlignmentPower, [](float* v) { return ImGui::SliderFloat("フォーカス強度", v, 1.0f, 64.0f, "%.3f"); });
-	ImGui::TextDisabled("デバッグ表示・可視化モードは下の『デバッグ / 診断』にあります。");
+	DrawSeaStateRow();
+	DrawWaveSummaryRows(editorFacade);
+
+	ImGui::SeparatorText("風波");
+	CVarUI::DrawRow(&WaterCVars::FFTWindSpeed, "風速", "%.1f m/s");
+	CVarUI::DrawDirectionRow(&WaterCVars::FFTWindDirection, "風が吹いていく向き");
+	CVarUI::DrawRow(&WaterCVars::FFTFetchKilometers, "吹送距離", "%.0f km");
+	CVarUI::DrawRow(&WaterCVars::FFTAmplitudeScale, "高さの倍率", "%.2f");
+	CVarUI::DrawRow(&WaterCVars::FFTChoppiness, "波頭の尖り", "%.2f");
+	CVarUI::DrawRow(&WaterCVars::FFTActiveComponentCount, "短い波の量");
+
+	ImGui::SeparatorText("うねり");
+	CVarUI::DrawRow(&WaterCVars::SwellEnabled, "うねりを重ねる");
+	ImGui::BeginDisabled(!WaterCVars::SwellEnabled.Get());
+	CVarUI::DrawRow(&WaterCVars::SwellHeight, "高さ", "%.2f m");
+	CVarUI::DrawRow(&WaterCVars::SwellPeriod, "周期", "%.1f s");
+	CVarUI::DrawDirectionRow(&WaterCVars::SwellDirection, "進む向き");
+	CVarUI::DrawRow(&WaterCVars::SwellRelativeWidth, "周期のばらつき", "%.2f");
+	CVarUI::DrawRow(&WaterCVars::SwellSpread, "向きのそろい方", "%.0f");
+	ImGui::EndDisabled();
+
+	ImGui::SeparatorText("形");
+	CVarUI::DrawRow(&WaterCVars::ShoreFineMesh, "カメラの近くを細かく描く");
 }
 
-void WaterSurfaceParameterPanel::DrawFFTOceanSection(
-	WaterRenderFeature& runtimeController,
-	WaterEditorFacade& editorFacade) {
+void WaterSurfaceParameterPanel::DrawSeaStateRow() {
+	static const char* names[kSeaStatePresetCount];
+	static const char* descriptions[kSeaStatePresetCount];
+	for (int i = 0; i < kSeaStatePresetCount; ++i) {
+		names[i] = kSeaStatePresets[i].name;
+		descriptions[i] = kSeaStatePresets[i].description;
+	}
+	const int chosen = ChoiceRow("seaState", "海況", FindSeaStatePreset(), names, descriptions, kSeaStatePresetCount);
+	if (ImGui::IsItemHovered()) {
+		ImGui::SetTooltip("風速・吹送距離・うねりなどをまとめて入れる（Ctrl+Z で戻せる）。\n風の向きとうねりの向きは変えない");
+	}
+	if (chosen >= 0) {
+		ApplySeaStatePreset(kSeaStatePresets[chosen]);
+	}
+}
+
+void WaterSurfaceParameterPanel::DrawWaveSummaryRows(WaterEditorFacade& editorFacade) {
+	const FFTOceanManager* manager = editorFacade.GetFFTOceanManager();
+	if (!manager || !manager->IsInitialized()) {
+		InfoRow("出来上がる波", "FFT の海を準備中");
+		return;
+	}
+	const FFTOceanManager::WaveSummary summary = manager->GetWaveSummary();
+	InfoRow("風波の大きさ", std::format("波長 {:.1f} m・高さ {:.2f} m", summary.windSeaWavelength, summary.windSeaHeight));
+	InfoRow("うねりの大きさ", summary.swellHeight > 0.0f
+		? std::format("波長 {:.0f} m・高さ {:.2f} m", summary.swellWavelength, summary.swellHeight)
+		: std::string("なし"));
+}
+
+void WaterSurfaceParameterPanel::DrawGerstnerRows(WaterRenderFeature& runtimeController) {
 	WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
 	if (!waterPlane) {
 		return;
 	}
 
-	ImGui::Text("状態: %s", waterPlane->IsUsingFFTOcean() ? "使用中" : "待機中");
-	ImGui::TextDisabled("広域の海面調整用です。現在使っていなくても事前に設定を整えておけます。");
-	if (!waterPlane->IsUsingFFTOcean() && ImGui::Button("この方式へ切り替える", ImVec2(-1.0f, 0.0f))) {
-		WaterCVars::FFTEnabled.Set(true);
+	const int chosen = ChoiceRow("gerstnerPreset", "波の種類", gerstnerPreset_, kGerstnerPresetNames, nullptr,
+		kGerstnerPresetCount, "既定の波");
+	if (chosen >= 0) {
+		gerstnerPreset_ = chosen;
+		gerstnerWaveCount_ = static_cast<int>(GetWaterPresetData(static_cast<WaterPresetType>(gerstnerPreset_)).recommendedWaveCount);
+		RegenerateGerstnerWaves(runtimeController);
 	}
 
-	const WaterEditorFFTSettings status = editorFacade.GetFFTSettings();
-	if (!status.managerAvailable) {
-		ImGui::TextDisabled("FFTOceanManager を取得できません。");
-		return;
-	}
-
-	// 外部（CVar ツリー等）からの変更でプリセット一致が変わりうるため毎フレーム再判定する。
-	// カスタム選択中はそのまま維持する（値が偶然一致した場合のみプリセット表示へ戻る）
-	fftPresetIndex_ = (fftPresetIndex_ == kFFTOceanPresetCustom)
-		? FindMatchingFFTOceanPreset()
-		: fftPresetIndex_;
-
-	ImGui::SeparatorText("海況プリセット");
-	const int previousPreset = fftPresetIndex_;
-	if (ImGui::Button("前のプリセット##fftPreset")) {
-		fftPresetIndex_ = (fftPresetIndex_ <= 1)
-			? static_cast<int>(IM_ARRAYSIZE(kFFTOceanPresetNames)) - 1
-			: (fftPresetIndex_ - 1);
-		ApplyFFTOceanPreset(fftPresetIndex_);
-	}
-	ImGui::SameLine();
-	if (ImGui::Button("次のプリセット##fftPreset")) {
-		fftPresetIndex_ = (fftPresetIndex_ >= static_cast<int>(IM_ARRAYSIZE(kFFTOceanPresetNames)) - 1)
-			? 1
-			: (fftPresetIndex_ + 1);
-		ApplyFFTOceanPreset(fftPresetIndex_);
-	}
-	ImGui::Combo("FFT Ocean プリセット", &fftPresetIndex_, kFFTOceanPresetNames, IM_ARRAYSIZE(kFFTOceanPresetNames));
-	if (fftPresetIndex_ != previousPreset && fftPresetIndex_ != kFFTOceanPresetCustom) {
-		ApplyFFTOceanPreset(fftPresetIndex_);
-	}
-	ImGui::Text("現在の海況: %s", kFFTOceanPresetNames[std::clamp(fftPresetIndex_, 0, static_cast<int>(IM_ARRAYSIZE(kFFTOceanPresetNames)) - 1)]);
-	ImGui::TextDisabled("静穏な海から荒天まで、海面の傾向をまとめて切り替えます。\n手動調整すると自動でカスタムへ戻ります。");
-
-	if (fftPresetIndex_ != kFFTOceanPresetCustom && ImGui::Button("現在のプリセットを再適用", ImVec2(-1.0f, 0.0f))) {
-		ApplyFFTOceanPreset(fftPresetIndex_);
-	}
-
-	ImGui::Spacing();
-	ImGui::SeparatorText("FFT Ocean 詳細");
-	ImGui::Text("解像度: %d (再生成が必要なため表示のみ)", status.resolution);
-
-	bool fftChanged = false;
-	fftChanged |= EditCVar(WaterCVars::FFTAmplitudeScale, [](float* v) { return ImGui::SliderFloat("振幅スケール", v, 0.0f, 4.0f, "%.3f"); });
-	fftChanged |= EditCVar(WaterCVars::FFTWindDirection, [](Vector2* v) { return ImGui::DragFloat2("風向", &v->x, 0.01f, -1.0f, 1.0f, "%.3f"); });
-	fftChanged |= EditCVar(WaterCVars::FFTWindSpeed, [](float* v) { return ImGui::SliderFloat("風速", v, 0.0f, 64.0f, "%.2f"); });
-	fftChanged |= EditCVar(WaterCVars::FFTChoppiness, [](float* v) { return ImGui::SliderFloat("Choppiness", v, 0.0f, 4.0f, "%.3f"); });
-	fftChanged |= EditCVar(WaterCVars::FFTActiveComponentCount, [](int* v) { return ImGui::SliderInt("スペクトル成分数", v, 1, 64); });
-	fftChanged |= EditCVar(WaterCVars::FFTGravity, [](float* v) { return ImGui::SliderFloat("重力", v, 0.1f, 20.0f, "%.3f"); });
-
-	if (fftChanged) {
-		// 手動調整はカスタム扱い（値がプリセットへ偶然一致すれば表示は自動で戻る）
-		fftPresetIndex_ = FindMatchingFFTOceanPreset();
-	}
-
-	if (ImGui::Button("FFT Ocean 設定を既定値へ戻す", ImVec2(-1.0f, 0.0f))) {
-		WaterCVars::FFTAmplitudeScale.ResetToDefault();
-		WaterCVars::FFTWindDirection.ResetToDefault();
-		WaterCVars::FFTWindSpeed.ResetToDefault();
-		WaterCVars::FFTChoppiness.ResetToDefault();
-		WaterCVars::FFTActiveComponentCount.ResetToDefault();
-		WaterCVars::FFTGravity.ResetToDefault();
-		fftPresetIndex_ = FindMatchingFFTOceanPreset();
-	}
-}
-
-void WaterSurfaceParameterPanel::ApplyFFTOceanPreset(int presetIndex) {
-	if (presetIndex <= kFFTOceanPresetCustom || presetIndex >= static_cast<int>(IM_ARRAYSIZE(kFFTOceanPresets))) {
-		return;
-	}
-
-	// プリセットは WaterCVars への一括 Set で表現する。
-	// 適用（FFTOceanManager::SetSettings＝スペクトル再構築）は
-	// WaterRenderFeature が revision 変化を検知して行う
-	const FFTOceanPresetData& preset = kFFTOceanPresets[presetIndex];
-	fftPresetIndex_ = presetIndex;
-	WaterCVars::FFTAmplitudeScale.Set((std::max)(preset.amplitudeScale, 0.0f));
-	WaterCVars::FFTWindDirection.Set(NormalizeDirection({ preset.windDirection[0], preset.windDirection[1] }));
-	WaterCVars::FFTWindSpeed.Set((std::max)(preset.windSpeed, 0.0f));
-	WaterCVars::FFTChoppiness.Set((std::max)(preset.choppiness, 0.0f));
-	WaterCVars::FFTActiveComponentCount.Set((std::clamp)(preset.activeComponentCount, 1, 64));
-	WaterCVars::FFTGravity.Set((std::max)(preset.gravity, 0.1f));
-}
-
-void WaterSurfaceParameterPanel::ApplyWaterPreset(WaterRenderFeature& runtimeController, WaterPresetType preset) {
-	WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
-	if (!waterPlane) {
-		return;
-	}
-
-	// プリセット値を WaterCVars（単一情報源）へ適用する。
-	// 水面への実反映は WaterRenderFeature::ApplySettingsFromCVars（毎フレーム）が行う
-	const WaterPresetData& presetData = GetWaterPresetData(preset);
-	waveToolState_.preset = static_cast<int>(preset);
-
-	WaterCVars::BaseColor.Set(presetData.baseColor);
-	WaterCVars::Roughness.Set(presetData.roughness);
-	WaterCVars::Metallic.Set(presetData.metallic);
-	WaterCVars::FresnelScale.Set(presetData.fresnelReflectanceScale);
-	WaterCVars::FresnelF0.Set(presetData.fresnelBaseReflectance);
-	WaterCVars::AbsorptionBase.Set(presetData.absorptionCoeff);
-	WaterCVars::ScatteringBase.Set(presetData.scatteringCoeff);
-	WaterCVars::Turbidity.Set(0.0f);
-
-	// 必要に応じて推奨波数へ戻し、プリセットに応じた波を再生成する
-	if (waveToolState_.lockRecommendedWaveCount || waveToolState_.autoRestoreRecommendedWaveCount) {
-		RestoreRecommendedWaveCount(runtimeController, preset);
-	}
-
-	RegenerateLayeredWaves(runtimeController, preset, ClampWaveCountToRange(waveToolState_.activeWaveCount));
-}
-
-void WaterSurfaceParameterPanel::RestoreRecommendedWaveCount(WaterRenderFeature& runtimeController, WaterPresetType preset) {
-	WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
-	if (!waterPlane) {
-		return;
-	}
-
-	const WaterPresetData& presetData = GetWaterPresetData(preset);
-	waveToolState_.activeWaveCount = static_cast<int>(presetData.recommendedWaveCount);
-	// UI と水面オブジェクトの有効波数を推奨値へ同期する
-	waterPlane->SetActiveWaveCount(presetData.recommendedWaveCount);
-}
-
-void WaterSurfaceParameterPanel::RegenerateLayeredWaves(
-	WaterRenderFeature& runtimeController,
-	WaterPresetType preset,
-	uint32_t activeWaveCount) {
-	WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
-	if (!waterPlane) {
-		return;
-	}
-
-	const WaterPresetData& presetData = GetWaterPresetData(preset);
-	auto& random = RandomGenerator::GetInstance();
-
-	// プリセット定義の各レイヤー本数を、現在の有効波数に収まるよう配分する
-	uint32_t layerCounts[kWaterWaveLayerCount] = {};
-	uint32_t assignedCount = 0;
-	for (uint32_t layerIndex = 0; layerIndex < kWaterWaveLayerCount; ++layerIndex) {
-		layerCounts[layerIndex] = std::min(presetData.layers[layerIndex].count, activeWaveCount - assignedCount);
-		assignedCount += layerCounts[layerIndex];
-		if (assignedCount >= activeWaveCount) {
-			break;
+	InspectorLayout::BeginRow("波の本数", Editor::Theme::kTextDim);
+	const int maxWaveCount = static_cast<int>(kMaxWaterWaveCount);
+	const bool countChanged = InspectorLayout::FilledField(
+		static_cast<float>(gerstnerWaveCount_ - 1) / static_cast<float>((std::max)(maxWaveCount - 1, 1)), [&] {
+			return ImGui::DragInt("##gerstnerWaveCount", &gerstnerWaveCount_, 0.1f, 1, maxWaveCount, "%d",
+				ImGuiSliderFlags_AlwaysClamp);
+		});
+	if (countChanged) {
+		if (gerstnerPreset_ >= 0) {
+			RegenerateGerstnerWaves(runtimeController);
+		} else {
+			waterPlane->SetActiveWaveCount(static_cast<uint32_t>(gerstnerWaveCount_));
 		}
 	}
 
-	// 指定波数に満たない分はレイヤーへ均等気味に追加する
-	uint32_t fillLayer = 0;
-	while (assignedCount < activeWaveCount) {
-		++layerCounts[fillLayer % kWaterWaveLayerCount];
-		++assignedCount;
-		++fillLayer;
+	if (gerstnerPreset_ >= 0) {
+		InspectorLayout::AlignToRight(UI::Bar::ButtonWidth("波を作り直す"));
+		if (UI::Bar::Button("波を作り直す", false, "同じ種類で、向きと位相を振り直す")) {
+			RegenerateGerstnerWaves(runtimeController);
+		}
+	}
+	InspectorLayout::Hint("Gerstner の波は保存しません。開き直すと既定の波に戻ります。");
+
+	if (!ImGui::TreeNode("個別の波")) {
+		return;
+	}
+	WaveParams* waves = waterPlane->GetWaves();
+	const uint32_t waveCount = (std::min)(waterPlane->GetActiveWaveCount(), kMaxWaterWaveCount);
+	for (uint32_t waveIndex = 0; waveIndex < waveCount; ++waveIndex) {
+		ImGui::PushID(static_cast<int>(waveIndex));
+		if (ImGui::TreeNode("##wave", "波 %u", waveIndex)) {
+			WaveParams& wave = waves[waveIndex];
+			InspectorLayout::BeginRow("進む向き", Editor::Theme::kTextDim);
+			if (InspectorLayout::VectorField("##direction", &wave.direction.x, 2, 0.01f, -1.0f, 1.0f)) {
+				wave.direction = NormalizeDirection(wave.direction);
+			}
+			InspectorLayout::BeginRow("振幅", Editor::Theme::kTextDim);
+			ImGui::DragFloat("##amplitude", &wave.amplitude, 0.01f, 0.0f, 5.0f, "%.2f m");
+			InspectorLayout::BeginRow("波長", Editor::Theme::kTextDim);
+			ImGui::DragFloat("##wavelength", &wave.wavelength, 0.1f, 0.1f, 50.0f, "%.1f m");
+			InspectorLayout::BeginRow("速さ", Editor::Theme::kTextDim);
+			ImGui::DragFloat("##speed", &wave.speed, 0.05f, 0.0f, 10.0f, "%.2f");
+			InspectorLayout::BeginRow("尖り", Editor::Theme::kTextDim);
+			ImGui::DragFloat("##steepness", &wave.steepness, 0.01f, 0.0f, 1.0f, "%.2f");
+			InspectorLayout::BeginRow("位相", Editor::Theme::kTextDim);
+			ImGui::DragFloat("##phase", &wave.phaseOffset, 0.05f, -kTwoPi * 2.0f, kTwoPi * 2.0f, "%.2f");
+			ImGui::TreePop();
+		}
+		ImGui::PopID();
+	}
+	ImGui::TreePop();
+}
+
+void WaterSurfaceParameterPanel::RegenerateGerstnerWaves(WaterRenderFeature& runtimeController) {
+	WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
+	if (!waterPlane) {
+		return;
 	}
 
-	// 主波向・角度ばらつき・各レイヤーの振幅範囲から Gerstner Wave を生成する
+	const WaterPresetData& presetData = GetWaterPresetData(static_cast<WaterPresetType>(gerstnerPreset_));
+	const uint32_t activeWaveCount = static_cast<uint32_t>(std::clamp(gerstnerWaveCount_, 1, static_cast<int>(kMaxWaterWaveCount)));
+	auto& random = RandomGenerator::GetInstance();
+
+	// プリセットのレイヤーごとの本数を、今の本数に収まるよう配る（足りない分は順に足す）
+	uint32_t layerCounts[kWaterWaveLayerCount] = {};
+	uint32_t assignedCount = 0;
+	for (uint32_t layerIndex = 0; layerIndex < kWaterWaveLayerCount && assignedCount < activeWaveCount; ++layerIndex) {
+		layerCounts[layerIndex] = (std::min)(presetData.layers[layerIndex].count, activeWaveCount - assignedCount);
+		assignedCount += layerCounts[layerIndex];
+	}
+	for (uint32_t fillLayer = 0; assignedCount < activeWaveCount; ++fillLayer, ++assignedCount) {
+		++layerCounts[fillLayer % kWaterWaveLayerCount];
+	}
+
+	// 主の向き・向きのばらつき・レイヤーごとの範囲から波を作る
 	const Vector2 dominantDirection = NormalizeDirection(presetData.dominantDirection);
 	uint32_t waveIndex = 0;
-	for (uint32_t layerIndex = 0; layerIndex < kWaterWaveLayerCount && waveIndex < activeWaveCount; ++layerIndex) {
+	for (uint32_t layerIndex = 0; layerIndex < kWaterWaveLayerCount; ++layerIndex) {
 		const WaterWaveLayerConfig& layer = presetData.layers[layerIndex];
 		const uint32_t countInLayer = layerCounts[layerIndex];
 		for (uint32_t layerWaveIndex = 0; layerWaveIndex < countInLayer && waveIndex < activeWaveCount; ++layerWaveIndex, ++waveIndex) {
@@ -517,10 +403,9 @@ void WaterSurfaceParameterPanel::RegenerateLayeredWaves(
 				? (-0.5f + static_cast<float>(layerWaveIndex) / static_cast<float>(countInLayer - 1)) * layer.directionSpreadRadians
 				: 0.0f;
 			const float jitter = random.GetFloat(-presetData.directionJitterRadians, presetData.directionJitterRadians);
-			const Vector2 direction = RotateDirection(dominantDirection, baseAngle + jitter);
 
 			WaveParams wave{};
-			wave.direction = direction;
+			wave.direction = NormalizeDirection(RotateDirection(dominantDirection, baseAngle + jitter));
 			wave.amplitude = random.GetFloat(layer.amplitudeMin, layer.amplitudeMax);
 			wave.wavelength = random.GetFloat(layer.wavelengthMin, layer.wavelengthMax);
 			wave.speed = random.GetFloat(layer.speedMin, layer.speedMax);
@@ -530,7 +415,7 @@ void WaterSurfaceParameterPanel::RegenerateLayeredWaves(
 		}
 	}
 
-	// 未使用スロットは主波向だけ残したゼロ初期値へ戻す
+	// 使わない枠は主の向きだけ残して 0 にする
 	for (; waveIndex < kMaxWaterWaveCount; ++waveIndex) {
 		WaveParams wave{};
 		wave.direction = dominantDirection;
@@ -540,124 +425,83 @@ void WaterSurfaceParameterPanel::RegenerateLayeredWaves(
 	waterPlane->SetActiveWaveCount(activeWaveCount);
 }
 
-void WaterSurfaceParameterPanel::DrawGerstnerWaveSection(WaterRenderFeature& runtimeController) {
-	WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
-	if (!waterPlane) {
+void WaterSurfaceParameterPanel::DrawWaterColorSection() {
+	if (!InspectorLayout::Foldout("水の色", true)) {
 		return;
 	}
 
-	ImGui::Text("状態: %s", waterPlane->IsUsingFFTOcean() ? "待機中" : "使用中");
-	ImGui::TextDisabled("局所的な波の作り込みや、個別波の直接編集はこちらで行います。");
-	if (waterPlane->IsUsingFFTOcean() && ImGui::Button("この方式へ切り替える", ImVec2(-1.0f, 0.0f))) {
-		WaterCVars::FFTEnabled.Set(false);
+	static const char* names[kJerlovWaterTypeCount];
+	for (int i = 0; i < kJerlovWaterTypeCount; ++i) {
+		names[i] = kJerlovWaterTypes[i].name;
+	}
+	const int chosen = ChoiceRow("waterType", "水質", FindJerlovWaterType(), names, nullptr, kJerlovWaterTypeCount);
+	if (ImGui::IsItemHovered()) {
+		ImGui::SetTooltip("Jerlov の水型。吸収と散乱をまとめて入れ、濁りを 0 に戻す（Ctrl+Z で戻せる）");
+	}
+	if (chosen >= 0) {
+		ApplyJerlovWaterType(kJerlovWaterTypes[chosen]);
 	}
 
-	ImGui::Spacing();
-	ImGui::SeparatorText("プリセット");
-	const int previousPreset = waveToolState_.preset;
-	if (ImGui::Button("前のプリセット##gerstnerPreset")) {
-		waveToolState_.preset = (waveToolState_.preset <= 0)
-			? (IM_ARRAYSIZE(kPresetNames) - 1)
-			: (waveToolState_.preset - 1);
-		ApplyWaterPreset(runtimeController, static_cast<WaterPresetType>(waveToolState_.preset));
-	}
-	ImGui::SameLine();
-	if (ImGui::Button("次のプリセット##gerstnerPreset")) {
-		waveToolState_.preset = (waveToolState_.preset >= IM_ARRAYSIZE(kPresetNames) - 1)
-			? 0
-			: (waveToolState_.preset + 1);
-		ApplyWaterPreset(runtimeController, static_cast<WaterPresetType>(waveToolState_.preset));
-	}
-	ImGui::Combo("水面プリセット", &waveToolState_.preset, kPresetNames, IM_ARRAYSIZE(kPresetNames));
-	if (waveToolState_.preset != previousPreset) {
-		ApplyWaterPreset(runtimeController, static_cast<WaterPresetType>(waveToolState_.preset));
-	}
-	ImGui::Text("現在のプリセット: %s", kPresetNames[waveToolState_.preset]);
-
-	const WaterPresetType currentPreset = static_cast<WaterPresetType>(waveToolState_.preset);
-	const WaterPresetData& presetData = GetWaterPresetData(currentPreset);
-
-	if (ImGui::Button("プリセットを再適用", ImVec2(-1.0f, 0.0f))) {
-		ApplyWaterPreset(runtimeController, currentPreset);
-	}
-
-	ImGui::Spacing();
-	ImGui::SeparatorText("波生成ツール");
-	if (ImGui::Checkbox("推奨波数に固定する", &waveToolState_.lockRecommendedWaveCount)) {
-		if (waveToolState_.lockRecommendedWaveCount) {
-			RestoreRecommendedWaveCount(runtimeController, currentPreset);
-			RegenerateLayeredWaves(runtimeController, currentPreset, ClampWaveCountToRange(waveToolState_.activeWaveCount));
-		}
-	}
-	ImGui::Checkbox("プリセット切り替え時に推奨波数へ戻す", &waveToolState_.autoRestoreRecommendedWaveCount);
-	ImGui::Checkbox("波数を増やしたときに自動再生成する", &waveToolState_.autoGenerateOnWaveCountIncrease);
-
-	const int previousActiveWaveCount = waveToolState_.activeWaveCount;
-	if (ImGui::SliderInt("有効な波数", &waveToolState_.activeWaveCount, 1, static_cast<int>(kMaxWaterWaveCount))) {
-		if (waveToolState_.lockRecommendedWaveCount) {
-			RestoreRecommendedWaveCount(runtimeController, currentPreset);
-		} else {
-			waterPlane->SetActiveWaveCount(static_cast<uint32_t>(waveToolState_.activeWaveCount));
-			if (waveToolState_.autoGenerateOnWaveCountIncrease && waveToolState_.activeWaveCount > previousActiveWaveCount) {
-				RegenerateLayeredWaves(runtimeController, currentPreset, ClampWaveCountToRange(waveToolState_.activeWaveCount));
-			}
-		}
-	}
-
-	if (ImGui::Button("レイヤー波を再生成", ImVec2(-1.0f, 0.0f))) {
-		RegenerateLayeredWaves(runtimeController, currentPreset, ClampWaveCountToRange(waveToolState_.activeWaveCount));
-	}
-
-	ImGui::Text("推奨波数: %u", presetData.recommendedWaveCount);
-	static const char* kLayerNames[kWaterWaveLayerCount] = { "大波", "中波", "小波" };
-	for (uint32_t layerIndex = 0; layerIndex < kWaterWaveLayerCount; ++layerIndex) {
-		const WaterWaveLayerConfig& layer = presetData.layers[layerIndex];
-		ImGui::BulletText(
-			"%s: 本数=%u 振幅=%.3f-%.3f 波長=%.1f-%.1f",
-			kLayerNames[layerIndex],
-			layer.count,
-			layer.amplitudeMin,
-			layer.amplitudeMax,
-			layer.wavelengthMin,
-			layer.wavelengthMax);
-	}
-
-	DrawIndividualWaveEditor(runtimeController);
+	CVarUI::DrawRow(&WaterCVars::AbsorptionBase, "吸収 [1/m]", "%.3f", kRgbLabels);
+	CVarUI::DrawRow(&WaterCVars::ScatteringBase, "散乱 [1/m]", "%.3f", kRgbLabels);
+	CVarUI::DrawRow(&WaterCVars::Turbidity, "濁り", "%.2f");
+	CVarUI::DrawRow(&WaterCVars::DepthFadeEnabled, "水深で透け方を変える");
+	InspectorLayout::Hint("水の色は吸収と散乱から光で決まる。澄んだ水は 吸収が 赤 > 緑 > 青。");
 }
 
-void WaterSurfaceParameterPanel::DrawIndividualWaveEditor(WaterRenderFeature& runtimeController) {
-	WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
-	if (!waterPlane || !ImGui::TreeNode("個別波編集")) {
+void WaterSurfaceParameterPanel::DrawSurfaceSection() {
+	if (!InspectorLayout::Foldout("反射と屈折", false)) {
 		return;
 	}
+	CVarUI::DrawRow(&WaterCVars::FresnelScale, "反射の強さ", "%.2f");
+	CVarUI::DrawRow(&WaterCVars::FresnelF0, "正面の反射率", "%.3f");
+	CVarUI::DrawRow(&WaterCVars::Roughness, "粗さ", "%.3f");
+	CVarUI::DrawRow(&WaterCVars::RefractionMaxOffsetPixels, "屈折のずれの上限", "%.0f px");
+	CVarUI::DrawRow(&WaterCVars::BaseColor, "反射が無いときの色");
+}
 
-	// 生成済みの各波を個別に微調整できるよう展開表示する
-	WaveParams* waves = waterPlane->GetWaves();
-	for (uint32_t waveIndex = 0; waveIndex < kMaxWaterWaveCount; ++waveIndex) {
-		ImGui::PushID(static_cast<int>(waveIndex));
-		char label[32];
-		std::snprintf(label, sizeof(label), "波 %u", waveIndex);
-		if (ImGui::TreeNode(label)) {
-			float direction[2] = { waves[waveIndex].direction.x, waves[waveIndex].direction.y };
-			if (ImGui::DragFloat2("進行方向", direction, 0.01f, -1.0f, 1.0f)) {
-				const float length = std::sqrtf(direction[0] * direction[0] + direction[1] * direction[1]);
-				if (length > 1.0e-4f) {
-					direction[0] /= length;
-					direction[1] /= length;
-				}
-				waves[waveIndex].direction = { direction[0], direction[1] };
-			}
-			ImGui::DragFloat("振幅", &waves[waveIndex].amplitude, 0.01f, 0.0f, 5.0f);
-			ImGui::DragFloat("波長", &waves[waveIndex].wavelength, 0.1f, 0.1f, 50.0f);
-			ImGui::DragFloat("速度", &waves[waveIndex].speed, 0.05f, 0.0f, 10.0f);
-			ImGui::DragFloat("急峻さ", &waves[waveIndex].steepness, 0.01f, 0.0f, 1.0f);
-			ImGui::DragFloat("位相オフセット", &waves[waveIndex].phaseOffset, 0.05f, -12.56f, 12.56f);
-			ImGui::TreePop();
-		}
-		ImGui::PopID();
+void WaterSurfaceParameterPanel::DrawFoamSection(WaterRenderFeature& runtimeController) {
+	if (!InspectorLayout::Foldout("泡", false)) {
+		return;
+	}
+	if (!WaterCVars::FFTEnabled.Get()) {
+		InspectorLayout::HelpBox("泡は FFT の海のときだけ出ます。");
 	}
 
-	ImGui::TreePop();
+	CVarUI::DrawRow(&WaterCVars::FoamEnabled, "泡を出す");
+	ImGui::BeginDisabled(!WaterCVars::FoamEnabled.Get());
+	CVarUI::DrawRow(&WaterCVars::FoamWhitecapScale, "白波の量", "%.2f");
+	if (const WaterFoamSystem* foam = runtimeController.GetWaterFoamSystem()) {
+		InfoRow("白波の割合", std::format("目標 {:.2f}% ／ 実測 {:.2f}%",
+			foam->GetTargetWhitecapCoverage() * 100.0f, foam->GetMeasuredWhitecapCoverage() * 100.0f));
+	}
+	CVarUI::DrawRow(&WaterCVars::FoamOpacity, "不透明度", "%.2f");
+	CVarUI::DrawRow(&WaterCVars::FoamDecaySeconds, "消えるまでの時間", "%.1f s");
+	CVarUI::DrawRow(&WaterCVars::FoamCascadeWeights, "波の大きさごとの重み", "%.2f", kCascadeLabels);
+	ImGui::EndDisabled();
+	InspectorLayout::Hint("白波の割合は風速から観測式で決まる。白波の量はその倍率。");
+}
+
+void WaterSurfaceParameterPanel::DrawCausticsSection() {
+	if (!InspectorLayout::Foldout("コースティクス", false)) {
+		return;
+	}
+	CVarUI::DrawEnumRow(&WaterCVars::CausticsBackend, "作り方", kCausticsBackendNames,
+		static_cast<int>(std::size(kCausticsBackendNames)));
+	CVarUI::DrawRow(&WaterCVars::CausticsRefractiveIndex, "屈折率", "%.3f");
+	if (WaterCVars::CausticsBackend.Get() != 1) {
+		InspectorLayout::Hint("レイトレーシングの明るさは、光と水の吸収から決まる。");
+		return;
+	}
+	if (WaterCVars::FFTEnabled.Get()) {
+		InspectorLayout::HelpBox("スクリーンスペース方式は Gerstner の波のときだけ出ます。", InspectorLayout::Message::Warning);
+	}
+	CVarUI::DrawRow(&WaterCVars::CausticsIntensity, "強さ", "%.2f");
+	CVarUI::DrawRow(&WaterCVars::CausticsDepthAttenuation, "深さによる弱まり", "%.2f");
+	CVarUI::DrawRow(&WaterCVars::CausticsCurvatureScale, "曲率の倍率", "%.2f");
+	CVarUI::DrawRow(&WaterCVars::CausticsSurfaceSampleRadius, "水面を調べる半径", "%.2f m");
+	CVarUI::DrawRow(&WaterCVars::CausticsReceiverNormalStrength, "受ける面の向きの効き", "%.2f");
+	CVarUI::DrawRow(&WaterCVars::CausticsAlignmentPower, "集まり方の鋭さ", "%.1f");
 }
 
 #endif

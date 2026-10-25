@@ -6,8 +6,10 @@
 #include "Graphics/Water/Render/WaterRenderFeature.h"
 
 #ifdef CORE_EDITOR
+#include "Editor/ImGui/CVarPanel.h"
 #include "Editor/ImGui/ImGuiAll.h"
-#include "EngineSystem/Subsystem/DebugSubsystem.h"
+#include "Editor/ImGui/Widgets/EditorBars.h"
+#include "Editor/Inspector/InspectorLayout.h"
 #endif
 
 using namespace CoreEngine;
@@ -16,6 +18,12 @@ using namespace CoreEngine;
 namespace {
 	/// @brief この設定を持つコンポーネントの型名
 	constexpr const char* kComponentTypeName = "WaterSurface";
+
+	/// @brief 水面の CVar の接頭辞
+	constexpr const char* kCVarPrefix = "r.Water.";
+
+	/// @brief すべて既定値へ戻すボタンの文字
+	constexpr const char* kResetLabel = "水面の設定をすべて既定値へ戻す";
 }
 #endif
 
@@ -48,25 +56,28 @@ void WaterEditorPanel::Initialize(
 		.displayName = "水面",
 		.drawBody = [this](IComponent&) { DrawImGuiContent(); return false; },
 		});
-
-	// パラメータの復元・保存は WaterCVars（CVars.json / CVarSettingsSection）が担う。
-	// 旧 WaterSettingsSection（Water.json）は Phase 5 で廃止した
 #endif
 }
 
 #ifdef CORE_EDITOR
 void WaterEditorPanel::DrawImGuiContent() {
 	if (!waterFeature_ || !waterFeature_->GetWaterPlane()) {
-		ImGui::TextDisabled("水面オブジェクトがありません");
+		UI::Hint("水面オブジェクトがありません");
 		return;
 	}
 
-	// 見た目調整とデバッグ機能を用途別に分けて表示する
-	ImGui::TextDisabled("見た目調整とデバッグ表示を分けて管理します。");
+	ImGui::Spacing();
+	InspectorLayout::HelpBox("ここから下の値はプロジェクト全体の設定（CVars.json）です。どのシーンの水面にも同じ値が効きます。");
 	ImGui::Spacing();
 
 	parameterPanel_.Draw(*waterFeature_, editorFacade_);
 	debugPanel_.Draw(*waterFeature_, editorFacade_);
+
+	ImGui::Spacing();
+	InspectorLayout::AlignToRight(UI::Bar::ButtonWidth(kResetLabel));
+	if (UI::Bar::Button(kResetLabel, false, "r.Water.* をすべて既定値へ戻す（Ctrl+Z で戻せる）")) {
+		CVarUI::ResetTree(kCVarPrefix);
+	}
 }
 #endif
 

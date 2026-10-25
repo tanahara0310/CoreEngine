@@ -11,87 +11,50 @@ namespace CoreEngine {
     class EngineSystem;
 }
 
-/// @brief Water UI から扱う FFT Ocean 状態の読み書きモデル
-struct WaterEditorFFTSettings {
-    bool enabled = true;
-    bool managerAvailable = false;
-    bool initialized = false;
-    int resolution = 256;
-    float amplitudeScale = 1.0f;
-    float windDirection[2] = { 0.92f, 0.38f };
-    float windSpeed = 24.0f;
-    float choppiness = 1.35f;
-    int activeComponentCount = 32;
-    float gravity = 9.81f;
+/// @brief DXR 屈折のデバッグ表示（保存しない）
+struct WaterEditorRefractionDebug {
+    bool available = false;
+    float displayScale = 1.0f;
+    int viewMode = 0;
+    bool logEnabled = false;
 };
 
-/// @brief Water UI から扱う DXR 屈折設定
-struct WaterEditorRayTracingSettings {
-    // 0 = 無制限（RT で求めた正確な屈折位置を使用。既定）。正の値で安全クランプ。
-    float maxRefractionOffsetPixels = 0.0f;
-    float debugDisplayScale = 1.0f;
-    int debugViewMode = 0;
-    bool debugLogEnabled = false;
-};
-
-/// @brief Water UI から扱うコースティクス設定
-struct WaterEditorCausticsSettings {
+/// @brief コースティクスのデバッグ表示と診断（保存しない）
+struct WaterEditorCausticsDebug {
     bool techniqueAvailable = false;
     bool rtManagerAvailable = false;
-    /// @brief 生成方式（0: レイトレーシング / 1: スクリーンスペース）
-    /// @details WaterCausticsTechnique::Backend と同じ値。合成されるのは選んだ側だけ。
-    int backend = 0;
-    float intensity = 0.35f;
-    float depthAttenuation = 1.5f;
-    float curvatureScale = 1.5f;
-    float surfaceSampleRadius = 0.35f;
-    float refractiveIndex = 1.333f;
-    float receiverNormalStrength = 1.0f;
-    float alignmentPower = 6.0f;
-    float debugDisplayScale = 1.0f;
-    int debugViewMode = 0;
-    bool debugLogEnabled = false;
-    float rtDebugDisplayScale = 1.0f;
-    int rtDebugViewMode = 0;
-    bool rtDebugLogEnabled = false;
+    float displayScale = 1.0f;
+    int viewMode = 0;
+    bool logEnabled = false;
+    float rtDisplayScale = 1.0f;
+    int rtViewMode = 0;
+    bool rtLogEnabled = false;
 };
 
-/// @brief Water UI から扱うコースティクス診断情報
-struct WaterEditorCausticsDiagnostics {
-    bool techniqueAvailable = false;
-    uint32_t activeWaveCount = 0;
-    bool mainLightEnabled = false;
-    uint64_t outputHandle = 0;
-    uint64_t normalHandle = 0;
-};
-
-/// @brief Water UI と Engine 内部 manager / technique の仲介を担当する facade
-/// @details UI はこの facade だけを通して Water 関連設定を取得・適用する。
+/// @brief 水面のインスペクタと、エンジン側の manager / technique の仲介
+/// @details 保存する値は CVar（r.Water.*）が持ち、インスペクタが直接読み書きする。
+///          ここで扱うのは、保存しないデバッグ表示と診断だけ。
 class WaterEditorFacade {
 public:
-    /// @brief facade の参照先を初期化する
+    /// @brief 参照先を初期化する
     void Initialize(CoreEngine::WaterRenderFeature& runtimeController, CoreEngine::EngineSystem& engine);
 
-    /// @brief 現在の FFT Ocean 設定を取得する
-    WaterEditorFFTSettings GetFFTSettings() const;
+    /// @brief FFT の海の manager（無ければ nullptr）
+    CoreEngine::FFTOceanManager* GetFFTOceanManager() const;
 
-    /// @brief DXR 屈折設定を取得する
-    WaterEditorRayTracingSettings GetRayTracingSettings() const;
+    /// @brief DXR 屈折のデバッグ表示を取得する
+    WaterEditorRefractionDebug GetRefractionDebug() const;
 
-    /// @brief DXR 屈折設定を適用する
-    void ApplyRayTracingSettings(const WaterEditorRayTracingSettings& settings);
+    /// @brief DXR 屈折のデバッグ表示を適用する
+    void ApplyRefractionDebug(const WaterEditorRefractionDebug& debug);
 
-    /// @brief コースティクス設定を取得する
-    WaterEditorCausticsSettings GetCausticsSettings() const;
+    /// @brief コースティクスのデバッグ表示と診断を取得する
+    WaterEditorCausticsDebug GetCausticsDebug() const;
 
-    /// @brief コースティクス設定を適用する
-    void ApplyCausticsSettings(const WaterEditorCausticsSettings& settings);
-
-    /// @brief コースティクス診断情報を取得する
-    WaterEditorCausticsDiagnostics GetCausticsDiagnostics() const;
+    /// @brief コースティクスのデバッグ表示を適用する
+    void ApplyCausticsDebug(const WaterEditorCausticsDebug& debug);
 
 private:
-    CoreEngine::FFTOceanManager* GetFFTOceanManager() const;
     CoreEngine::WaterRefractionRayTracingManager* GetWaterRefractionManager() const;
     CoreEngine::WaterCausticsRayTracingManager* GetWaterCausticsManager() const;
     CoreEngine::WaterCausticsTechnique* GetWaterCausticsTechnique() const;

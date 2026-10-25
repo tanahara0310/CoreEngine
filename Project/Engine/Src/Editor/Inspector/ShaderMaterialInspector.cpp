@@ -5,6 +5,7 @@
 
 #include "EngineSystem/EngineSystem.h"
 #include "Editor/ImGui/ImGuiAll.h"
+#include "Editor/Inspector/InspectorLayout.h"
 #include "Editor/Scene/EditorSceneAccess.h"
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Graphics/Asset/AssetRef.h"
@@ -208,14 +209,6 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
             return changed;
         }
 
-        /// @brief 欄の幅で折り返す補足の文
-        void WrappedHint(const char* text)
-        {
-            ImGui::PushTextWrapPos(0.0f);
-            UI::Hint(text);
-            ImGui::PopTextWrapPos();
-        }
-
         /// @brief ファイルの中身を全部読む（読めなければ空）
         std::string ReadText(const std::filesystem::path& path)
         {
@@ -263,7 +256,7 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
         }
 
         if (material.GetShaderPath().empty()) {
-            WrappedHint("シェーダを選ぶと、シェーダの値（register(b0) の定数バッファ）の欄が出ます。");
+            InspectorLayout::Hint("シェーダを選ぶと、シェーダの値（register(b0) の定数バッファ）の欄が出ます。");
         } else if (const MaterialParamLayout* const layout = givenLayout ? givenLayout : FindLayout(material)) {
             if (!layout->fields.empty() || !layout->textures.empty()) {
                 UI::SectionHeader("値");
@@ -292,7 +285,7 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
                 ImGui::EndTable();
             }
         } else {
-            WrappedHint("シェーダをコンパイルできません。コンソールのエラーを見てください。");
+            InspectorLayout::Hint("シェーダをコンパイルできません。コンソールのエラーを見てください。");
         }
 
         if (commit) {
@@ -311,7 +304,7 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
         UI::Separator();
         UI::SectionHeader("マテリアル");
         if (!material) {
-            WrappedHint("マテリアルとして読めません（JSON を確かめてください）。");
+            InspectorLayout::Hint("マテリアルとして読めません（JSON を確かめてください）。");
             return true;
         }
         Draw(*material);

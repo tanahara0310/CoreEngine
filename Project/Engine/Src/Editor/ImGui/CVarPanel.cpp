@@ -7,10 +7,14 @@
 #include "Utility/CVar/CVarRegistry.h"
 #include "Utility/CVar/CVarScope.h"
 #include "Utility/CVar/CVarUndoStack.h"
+#include "Editor/ImGui/EditorTheme.h"
 #include "Editor/ImGui/Wrappers/ImGuiInput.h"
 #include "Editor/ImGui/Wrappers/ImGuiLayout.h"
+#include "Editor/Inspector/InspectorLayout.h"
 #include <algorithm>
+#include <cmath>
 #include <imgui.h>
+#include <numbers>
 #include <string>
 #include <vector>
 
@@ -102,12 +106,9 @@ namespace CoreEngine
             }
         }
 
-        /// @brief 説明・フルネーム・既定値・操作方法のツールチップを直前の項目に付ける
-        void DrawTooltip(const ICVar* cvar)
+        /// @brief 説明・フルネーム・既定値・操作方法のツールチップを出す
+        void DrawTooltipBody(const ICVar* cvar)
         {
-            if (!ImGui::IsItemHovered()) {
-                return;
-            }
             ImGui::BeginTooltip();
             ImGui::TextUnformatted(cvar->GetName());
             if (cvar->GetDescription()[0] != '\0') {
@@ -127,6 +128,14 @@ namespace CoreEngine
                 ImGui::TextDisabled("%s", hint);
             }
             ImGui::EndTooltip();
+        }
+
+        /// @brief 直前の項目にカーソルが乗っていれば、ツールチップを出す
+        void DrawTooltip(const ICVar* cvar)
+        {
+            if (ImGui::IsItemHovered()) {
+                DrawTooltipBody(cvar);
+            }
         }
 
         /// @brief 右クリックメニュー（デフォルトへ戻す）
@@ -275,6 +284,209 @@ namespace CoreEngine
             CVarRegistry::Get().NotifyCommit();
         }
         return changed;
+    }
+
+    namespace
+    {
+        /// @brief 行のラベルと欄の右クリックで開くメニューの ID
+        constexpr const char* kRowMenuId = "##cvarRowMenu";
+
+        /// @brief 小数の欄の既定の書式
+        constexpr const char* kDefaultFloatFormat = "%.3f";
+
+        /// @brief 行のラベルの色（既定値から変えていれば橙）
+        const ImVec4& RowLabelColor(const ICVar* cvar)
+        {
+            return cvar->IsModified() ? Editor::Theme::kWarm : Editor::Theme::kTextDim;
+        }
+
+        /// @brief 行の右クリックのメニュー（既定値へ戻す）
+        /// @return 既定値へ戻したら true
+        bool DrawRowMenu(ICVar* cvar)
+        {
+            if (!ImGui::BeginPopup(kRowMenuId)) {
+                return false;
+            }
+            bool reset = false;
+            ImGui::TextDisabled("%s", cvar->GetName());
+            ImGui::Separator();
+            if (ImGui::MenuItem("既定値へ戻す", nullptr, false, cvar->IsModified())) {
+                auto& undoStack = CVarUndoStack::Get();
+                undoStack.BeginEdit(cvar);
+                cvar->ResetToDefault();
+                undoStack.CommitEdit(cvar);
+                reset = true;
+            }
+            ImGui::EndPopup();
+            return reset;
+        }
+
+        /// @brief 値を書き換える前に Undo の旧値を控えてから書き込む
+        template <class T>
+        void SetWithUndo(ICVar* cvar, const T& value)
+        {
+            CVarUndoStack::Get().BeginEdit(cvar);
+            cvar->SetFromPointer(&value);
+        }
+
+        /// @brief 行の枠（ラベル・ツールチップ・右クリック・Undo の確定）を描き、欄は drawField に描かせる
+        /// @param drawField 欄を描き、値を変えたら SetWithUndo で書き込んで true を返す関数
+        /// @param commitNow 値を変えたその場で Undo を確定するか（一覧から選ぶ欄）
+        template <class DrawField>
+        bool DrawRowWith(ICVar* cvar, const char* label, bool commitNow, DrawField&& drawField)
+        {
+            ImGui::PushID(cvar->GetName());
+            const bool labelHovered = InspectorLayout::BeginRow(label, RowLabelColor(cvar), kRowMenuId);
+            const bool changed = drawField();
+            const bool committed = commitNow ? changed : ImGui::IsItemDeactivatedAfterEdit();
+            const bool hovered = labelHovered || ImGui::IsItemHovered();
+            ImGui::OpenPopupOnItemClick(kRowMenuId, ImGuiPopupFlags_MouseButtonRight);
+            if (hovered) {
+                DrawTooltipBody(cvar);
+            }
+            const bool reset = DrawRowMenu(cvar);
+            if (committed) {
+                CVarUndoStack::Get().CommitEdit(cvar);
+            }
+            if (committed || reset) {
+                CVarRegistry::Get().NotifyCommit();
+            }
+            ImGui::PopID();
+            return changed || reset;
+        }
+
+        /// @brief 範囲の中での値の位置（0〜1）
+        float FractionOf(float value, const CVarRange& range)
+        {
+            return (value - range.min) / (range.max - range.min);
+        }
+
+        /// @brief CVar の名前の末尾（"r.Water.FFT.WindSpeed" なら "WindSpeed"）
+        std::string LeafOf(const ICVar* cvar)
+        {
+            const std::string_view name = cvar->GetName();
+            return std::string(SegmentAt(name, SegmentCount(name) - 1));
+        }
+    }
+
+    bool CVarUI::DrawRow(ICVar* cvar, const char* label, const char* format,
+        const char* const* componentLabels)
+    {
+        if (!cvar) {
+            return false;
+        }
+        const std::string leaf = label ? std::string() : LeafOf(cvar);
+        const char* const shownLabel = label ? label : leaf.c_str();
+        const char* const floatFormat = format ? format : kDefaultFloatFormat;
+        const CVarRange range = cvar->GetRange();
+        const bool ranged = range.valid && range.max > range.min;
+        const float speed = DragSpeed(range);
+        const ImGuiSliderFlags flags = range.valid ? kRangedDragFlags : ImGuiSliderFlags_None;
+
+        return DrawRowWith(cvar, shownLabel, false, [&] {
+            switch (cvar->GetType()) {
+            case CVarType::Bool: {
+                bool v = *cvar->AsBool();
+                if (ImGui::Checkbox("##value", &v)) {
+                    SetWithUndo(cvar, v);
+                    return true;
+                }
+                return false;
+            }
+            case CVarType::Int: {
+                int v = *cvar->AsInt();
+                const auto drawField = [&] {
+                    return ImGui::DragInt("##value", &v, IntDragSpeed(range),
+                        static_cast<int>(range.min), static_cast<int>(range.max), "%d", flags);
+                };
+                const bool edited = ranged
+                    ? InspectorLayout::FilledField(FractionOf(static_cast<float>(v), range), drawField)
+                    : drawField();
+                if (edited) {
+                    SetWithUndo(cvar, v);
+                }
+                return edited;
+            }
+            case CVarType::Float: {
+                float v = *cvar->AsFloat();
+                const auto drawField = [&] {
+                    return ImGui::DragFloat("##value", &v, speed, range.min, range.max, floatFormat, flags);
+                };
+                const bool edited = ranged
+                    ? InspectorLayout::FilledField(FractionOf(v, range), drawField)
+                    : drawField();
+                if (edited) {
+                    SetWithUndo(cvar, v);
+                }
+                return edited;
+            }
+            case CVarType::Vector2: {
+                Vector2 v = *cvar->AsVector2();
+                if (InspectorLayout::VectorField("##value", &v.x, 2, speed, range.min, range.max, componentLabels)) {
+                    SetWithUndo(cvar, v);
+                    return true;
+                }
+                return false;
+            }
+            case CVarType::Vector3: {
+                Vector3 v = *cvar->AsVector3();
+                if (InspectorLayout::VectorField("##value", &v.x, 3, speed, range.min, range.max, componentLabels)) {
+                    SetWithUndo(cvar, v);
+                    return true;
+                }
+                return false;
+            }
+            case CVarType::Color: {
+                Vector4 v = *cvar->AsColor();
+                if (InspectorLayout::ColorSwatch("##value", &v.x, false)) {
+                    SetWithUndo(cvar, v);
+                    return true;
+                }
+                return false;
+            }
+            }
+            return false;
+            });
+    }
+
+    bool CVarUI::DrawEnumRow(ICVar* cvar, const char* label, const char* const* names, int count)
+    {
+        if (!cvar || cvar->GetType() != CVarType::Int) {
+            return false;
+        }
+        return DrawRowWith(cvar, label, true, [&] {
+            int v = *cvar->AsInt();
+            if (InspectorLayout::EnumCombo("##value", &v, names, count)) {
+                SetWithUndo(cvar, v);
+                return true;
+            }
+            return false;
+            });
+    }
+
+    bool CVarUI::DrawDirectionRow(ICVar* cvar, const char* label)
+    {
+        if (!cvar || cvar->GetType() != CVarType::Vector2) {
+            return false;
+        }
+        constexpr float kRadToDeg = 180.0f / std::numbers::pi_v<float>;
+        return DrawRowWith(cvar, label, false, [&] {
+            const Vector2 direction = *cvar->AsVector2();
+            float degrees = std::atan2(direction.y, direction.x) * kRadToDeg;
+            if (degrees < 0.0f) {
+                degrees += 360.0f;
+            }
+            if (!ImGui::DragFloat("##value", &degrees, 0.5f, 0.0f, 0.0f, "%.0f°")) {
+                return false;
+            }
+            degrees = std::fmod(degrees, 360.0f);
+            if (degrees < 0.0f) {
+                degrees += 360.0f;
+            }
+            const float radians = degrees / kRadToDeg;
+            SetWithUndo(cvar, Vector2{ std::cos(radians), std::sin(radians) });
+            return true;
+            });
     }
 
     namespace

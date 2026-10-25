@@ -175,25 +175,10 @@ namespace CoreEngine::Editor::ScriptBinding
             if (!RequireGUI("HelpBox")) {
                 return;
             }
-            const ImVec4& accent = type == static_cast<int>(MessageType::Error) ? Theme::kError
-                : type == static_cast<int>(MessageType::Warning) ? Theme::kWarn
-                : Theme::kTextDim;
-
-            constexpr float kBarWidth = 3.0f;
-            const ImVec2 padding(8.0f, 6.0f);
-            const float width = (std::max)(1.0f, ImGui::GetContentRegionAvail().x);
-            const float wrapWidth = (std::max)(1.0f, width - kBarWidth - padding.x * 2.0f);
-            const ImVec2 textSize = ImGui::CalcTextSize(message.c_str(), nullptr, false, wrapWidth);
-            const ImVec2 min = ImGui::GetCursorScreenPos();
-            const ImVec2 max(min.x + width, min.y + textSize.y + padding.y * 2.0f);
-
-            ImDrawList* const drawList = ImGui::GetWindowDrawList();
-            drawList->AddRectFilled(min, max, ImGui::GetColorU32(Theme::WithAlpha(accent, 0.14f)), 3.0f);
-            drawList->AddRectFilled(min, ImVec2(min.x + kBarWidth, max.y), ImGui::GetColorU32(accent));
-            drawList->AddText(ImGui::GetFont(), ImGui::GetFontSize(),
-                ImVec2(min.x + kBarWidth + padding.x, min.y + padding.y),
-                ImGui::GetColorU32(Theme::kText), message.c_str(), nullptr, wrapWidth);
-            ImGui::Dummy(ImVec2(width, max.y - min.y));
+            const InspectorLayout::Message kind = type == static_cast<int>(MessageType::Error) ? InspectorLayout::Message::Error
+                : type == static_cast<int>(MessageType::Warning) ? InspectorLayout::Message::Warning
+                : InspectorLayout::Message::Info;
+            InspectorLayout::HelpBox(message.c_str(), kind);
         }
 
         void Tooltip(const std::string& text)
@@ -341,7 +326,7 @@ namespace CoreEngine::Editor::ScriptBinding
             if (!RequireGUI("Foldout")) {
                 return false;
             }
-            return ImGui::CollapsingHeader(label.c_str(), defaultOpen ? ImGuiTreeNodeFlags_DefaultOpen : 0);
+            return InspectorLayout::Foldout(label.c_str(), defaultOpen);
         }
 
         // ---------------------------------------------------------------- 値の入力

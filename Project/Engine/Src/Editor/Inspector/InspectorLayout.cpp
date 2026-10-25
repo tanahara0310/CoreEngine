@@ -244,6 +244,151 @@ namespace CoreEngine::InspectorLayout
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + available - width);
         }
     }
+
+    bool FilledField(float fraction, const std::function<bool()>& drawField)
+    {
+        const ImVec2 min = ImGui::GetCursorScreenPos();
+        const ImVec2 max(min.x + ImGui::CalcItemWidth(), min.y + ImGui::GetFrameHeight());
+        const float rounding = ImGui::GetStyle().FrameRounding;
+        ImDrawList* const drawList = ImGui::GetWindowDrawList();
+        drawList->AddRectFilled(min, max, ImGui::GetColorU32(ImGuiCol_FrameBg), rounding);
+        const float filled = min.x + (max.x - min.x) * std::clamp(fraction, 0.0f, 1.0f);
+        if (filled > min.x) {
+            drawList->AddRectFilled(min, ImVec2(filled, max.y), ImGui::GetColorU32(Theme::kAccentMuted), rounding);
+        }
+
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, Theme::kTransparent);
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, Theme::WithAlpha(Theme::kHover, 0.35f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBgActive, Theme::WithAlpha(Theme::kActive, 0.35f));
+        const bool changed = drawField();
+        ImGui::PopStyleColor(3);
+        return changed;
+    }
+
+    bool VectorField(const char* id, float* values, int count, float speed, float min, float max,
+        const char* const* labels)
+    {
+        static constexpr const char* kAxes[] = { "X", "Y", "Z", "W" };
+        const char* const* const axes = labels ? labels : kAxes;
+        constexpr float kAxisMarkWidth = 3.0f;
+        const ImGuiStyle& style = ImGui::GetStyle();
+        const float spacing = style.ItemInnerSpacing.x;
+        const float fieldWidth = (std::max)(1.0f,
+            (ImGui::CalcItemWidth() - spacing * static_cast<float>(count - 1)) / static_cast<float>(count));
+
+        bool changed = false;
+        ImGui::PushID(id);
+        ImGui::BeginGroup();
+        ImDrawList* const drawList = ImGui::GetWindowDrawList();
+        for (int i = 0; i < count; ++i) {
+            ImGui::PushID(i);
+            if (i > 0) {
+                ImGui::SameLine(0.0f, spacing);
+            }
+            ImGui::SetNextItemWidth(fieldWidth);
+            changed = ImGui::DragFloat("##axis", &values[i], speed, min, max, "%.3f") || changed;
+
+            const ImVec2 fieldMin = ImGui::GetItemRectMin();
+            const ImVec2 fieldMax = ImGui::GetItemRectMax();
+            const ImVec4& axis = i == 0 ? Theme::kAxisX : i == 1 ? Theme::kAxisY : i == 2 ? Theme::kAxisZ : Theme::kTextMute;
+            const ImU32 axisColor = ImGui::GetColorU32(axis);
+            drawList->AddRectFilled(fieldMin, ImVec2(fieldMin.x + kAxisMarkWidth, fieldMax.y), axisColor,
+                style.FrameRounding, ImDrawFlags_RoundCornersLeft);
+            drawList->AddText(
+                ImVec2(fieldMin.x + kAxisMarkWidth + style.FramePadding.x * 0.5f, fieldMin.y + style.FramePadding.y),
+                axisColor, axes[i]);
+            ImGui::PopID();
+        }
+        ImGui::EndGroup();
+        ImGui::PopID();
+        return changed;
+    }
+
+    bool ColorSwatch(const char* id, float* rgba, bool hasAlpha)
+    {
+        constexpr const char* kPickerId = "##colorPicker";
+        const ImVec2 size((std::max)(1.0f, ImGui::CalcItemWidth()), ImGui::GetFrameHeight());
+        const ImGuiColorEditFlags swatchFlags = hasAlpha
+            ? ImGuiColorEditFlags_AlphaPreviewHalf
+            : ImGuiColorEditFlags_NoAlpha;
+        const ImGuiColorEditFlags pickerFlags = hasAlpha
+            ? (ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreviewHalf)
+            : ImGuiColorEditFlags_NoAlpha;
+
+        bool changed = false;
+        ImGui::PushID(id);
+        ImGui::BeginGroup();
+        const ImVec4 color(rgba[0], rgba[1], rgba[2], hasAlpha ? rgba[3] : 1.0f);
+        if (ImGui::ColorButton("##swatch", color, swatchFlags, size)) {
+            ImGui::OpenPopup(kPickerId);
+        }
+        if (ImGui::BeginPopup(kPickerId)) {
+            changed = ImGui::ColorPicker4("##picker", rgba, pickerFlags);
+            ImGui::EndPopup();
+        }
+        ImGui::EndGroup();
+        ImGui::PopID();
+        return changed;
+    }
+
+    bool EnumCombo(const char* id, int* value, const char* const* names, int count)
+    {
+        const char* preview = (*value >= 0 && *value < count) ? names[*value] : "";
+        bool changed = false;
+        if (ImGui::BeginCombo(id, preview)) {
+            for (int i = 0; i < count; ++i) {
+                const bool selected = i == *value;
+                if (ImGui::Selectable(names[i], selected) && !selected) {
+                    *value = i;
+                    changed = true;
+                }
+                if (selected) {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+        }
+        return changed;
+    }
+
+    void HelpBox(const char* message, Message kind)
+    {
+        const ImVec4& accent = kind == Message::Error ? Theme::kError
+            : kind == Message::Warning ? Theme::kWarn
+            : Theme::kTextDim;
+
+        constexpr float kBarWidth = 3.0f;
+        const ImVec2 padding(8.0f, 6.0f);
+        const float width = (std::max)(1.0f, ImGui::GetContentRegionAvail().x);
+        const float wrapWidth = (std::max)(1.0f, width - kBarWidth - padding.x * 2.0f);
+        const ImVec2 textSize = ImGui::CalcTextSize(message, nullptr, false, wrapWidth);
+        const ImVec2 min = ImGui::GetCursorScreenPos();
+        const ImVec2 max(min.x + width, min.y + textSize.y + padding.y * 2.0f);
+
+        ImDrawList* const drawList = ImGui::GetWindowDrawList();
+        drawList->AddRectFilled(min, max, ImGui::GetColorU32(Theme::WithAlpha(accent, 0.14f)), 3.0f);
+        drawList->AddRectFilled(min, ImVec2(min.x + kBarWidth, max.y), ImGui::GetColorU32(accent));
+        drawList->AddText(ImGui::GetFont(), ImGui::GetFontSize(),
+            ImVec2(min.x + kBarWidth + padding.x, min.y + padding.y),
+            ImGui::GetColorU32(Theme::kText), message, nullptr, wrapWidth);
+        ImGui::Dummy(ImVec2(width, max.y - min.y));
+    }
+
+    void Hint(const char* text)
+    {
+        ImGui::PushTextWrapPos(0.0f);
+        ImGui::TextDisabled("%s", text);
+        ImGui::PopTextWrapPos();
+    }
+
+    bool Foldout(const char* label, bool defaultOpen)
+    {
+        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
+        if (defaultOpen) {
+            flags |= ImGuiTreeNodeFlags_DefaultOpen;
+        }
+        return ImGui::TreeNodeEx(label, flags);
+    }
 }
 
 #endif // CORE_EDITOR
