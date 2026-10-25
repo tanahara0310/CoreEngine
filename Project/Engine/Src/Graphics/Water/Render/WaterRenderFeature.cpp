@@ -332,7 +332,7 @@ namespace CoreEngine
         // 単一情報源（以前はここに複製があり roughness が 0.04 vs 0.03 で食い違っていた）
         const WaterPresetData& preset = GetWaterPresetData(WaterPresetType::Lake);
         material->SetColor(preset.baseColor);
-        material->SetMetallic(preset.metallic);
+        material->SetMetallic(0.0f);
         material->SetRoughness(preset.roughness);
         material->SetLightingEnabled(true);
         material->SetNormalMapEnabled(false);
@@ -485,7 +485,6 @@ namespace CoreEngine
         // （cbuffer 転送は描画時に一括で行われる）。
         waterPlane->SetBaseColor(WaterCVars::BaseColor.Get());
         waterPlane->SetRoughness(WaterCVars::Roughness.Get());
-        waterPlane->SetMetallic(WaterCVars::Metallic.Get());
         waterPlane->SetFresnelParameters(WaterCVars::FresnelScale.Get(), WaterCVars::FresnelF0.Get());
         waterPlane->SetDepthFade(WaterCVars::DepthFadeEnabled.Get());
         // 実効 σa/σs = ベース + 濁度ゲイン（合成は WaterCVars 側。永続化はベース値のみ）
@@ -564,7 +563,6 @@ namespace CoreEngine
                 + WaterCVars::FFTFetchKilometers.GetRevision()
                 + WaterCVars::FFTChoppiness.GetRevision()
                 + WaterCVars::FFTActiveComponentCount.GetRevision()
-                + WaterCVars::FFTGravity.GetRevision()
                 + WaterCVars::SwellEnabled.GetRevision()
                 + WaterCVars::SwellHeight.GetRevision()
                 + WaterCVars::SwellPeriod.GetRevision()
@@ -582,7 +580,6 @@ namespace CoreEngine
                 settings.choppiness = WaterCVars::FFTChoppiness.Get();
                 settings.activeComponentCount =
                     static_cast<uint32_t>((std::max)(WaterCVars::FFTActiveComponentCount.Get(), 1));
-                settings.gravity = WaterCVars::FFTGravity.Get();
                 settings.swellEnabled = WaterCVars::SwellEnabled.Get();
                 settings.swellHeightMeters = WaterCVars::SwellHeight.Get();
                 settings.swellPeriodSeconds = WaterCVars::SwellPeriod.Get();

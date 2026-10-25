@@ -13,7 +13,6 @@ namespace CoreEngine
         // ---- 見た目 ----
         extern CVar<Vector4> BaseColor;
         extern CVar<float>   Roughness;
-        extern CVar<float>   Metallic;
         extern CVar<float>   FresnelScale;
         extern CVar<float>   FresnelF0;
         extern CVar<bool>    DepthFadeEnabled;
@@ -23,7 +22,6 @@ namespace CoreEngine
         extern CVar<Vector3> AbsorptionBase;
         extern CVar<Vector3> ScatteringBase;
         extern CVar<float>   Turbidity;
-        extern CVar<int>     JerlovPreset; // コンボ表示の復元用（NoUI。実体は AbsorptionBase 等）
 
         // ---- 泡（whitecap）----
         extern CVar<bool>    FoamEnabled;
@@ -40,7 +38,6 @@ namespace CoreEngine
         extern CVar<float>   FFTFetchKilometers;
         extern CVar<float>   FFTChoppiness;
         extern CVar<int>     FFTActiveComponentCount;
-        extern CVar<float>   FFTGravity;
 
         // ---- うねり（swell）。風波とは独立な、遠方由来の長周期成分 ----
         extern CVar<bool>    SwellEnabled;
@@ -53,13 +50,13 @@ namespace CoreEngine
         // ---- 岸 ----
         extern CVar<bool>    ShoreFineMesh;
 
-        // ---- コースティクス（RT / SS 共通の見た目パラメータ）----
+        // ---- コースティクス ----
         extern CVar<int>     CausticsBackend; // 0=RT / 1=ScreenSpace（コンボは水面パネル。NoUI）
         extern CVar<float>   CausticsIntensity;
         extern CVar<float>   CausticsDepthAttenuation;
         extern CVar<float>   CausticsCurvatureScale;
         extern CVar<float>   CausticsSurfaceSampleRadius;
-        extern CVar<float>   CausticsRefractiveIndex; // RT / SS 両方へ同値を反映（真実の源はここ）
+        extern CVar<float>   CausticsRefractiveIndex; // RT / SS 両方へ同値を反映
         extern CVar<float>   CausticsReceiverNormalStrength;
         extern CVar<float>   CausticsAlignmentPower;
 

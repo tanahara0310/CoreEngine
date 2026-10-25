@@ -2,7 +2,6 @@
 #include "Editor/Water/WaterEditorFacade.h"
 
 #include "Graphics/Water/Render/WaterRenderFeature.h"
-#include "Graphics/Water/Surface/WaterSurfaceComponent.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueManager.h"
@@ -15,133 +14,68 @@ void WaterEditorFacade::Initialize(WaterRenderFeature& runtimeController, Engine
     engine_ = &engine;
 }
 
-WaterEditorFFTSettings WaterEditorFacade::GetFFTSettings() const {
-    WaterEditorFFTSettings settings{};
-
-    if (runtimeController_ && runtimeController_->GetWaterPlane()) {
-        settings.enabled = runtimeController_->GetWaterPlane()->IsUsingFFTOcean();
-    }
-
-    if (auto* fftOceanManager = GetFFTOceanManager()) {
-        const FFTOceanManager::Settings& managerSettings = fftOceanManager->GetSettings();
-        settings.managerAvailable = true;
-        settings.initialized = fftOceanManager->IsInitialized();
-        settings.resolution = static_cast<int>(managerSettings.resolution);
-        settings.amplitudeScale = managerSettings.amplitudeScale;
-        settings.windDirection[0] = managerSettings.windDirection[0];
-        settings.windDirection[1] = managerSettings.windDirection[1];
-        settings.windSpeed = managerSettings.windSpeed;
-        settings.choppiness = managerSettings.choppiness;
-        settings.activeComponentCount = static_cast<int>(managerSettings.activeComponentCount);
-        settings.gravity = managerSettings.gravity;
-    }
-
-    return settings;
-}
-
-WaterEditorRayTracingSettings WaterEditorFacade::GetRayTracingSettings() const {
-    WaterEditorRayTracingSettings settings{};
-
+WaterEditorRefractionDebug WaterEditorFacade::GetRefractionDebug() const {
+    WaterEditorRefractionDebug debug{};
     if (auto* waterRefractionManager = GetWaterRefractionManager()) {
-        settings.maxRefractionOffsetPixels = waterRefractionManager->GetSettings().maxRefractionOffsetPixels;
-        settings.debugDisplayScale = waterRefractionManager->GetSettings().debugDisplayScale;
-        settings.debugViewMode = static_cast<int>(waterRefractionManager->GetSettings().debugViewMode);
-        settings.debugLogEnabled = (waterRefractionManager->GetSettings().debugLogEnabled != 0);
+        const WaterRefractionRayTracingSettings& settings = waterRefractionManager->GetSettings();
+        debug.available = true;
+        debug.displayScale = settings.debugDisplayScale;
+        debug.viewMode = static_cast<int>(settings.debugViewMode);
+        debug.logEnabled = (settings.debugLogEnabled != 0);
     }
-
-    return settings;
+    return debug;
 }
 
-void WaterEditorFacade::ApplyRayTracingSettings(const WaterEditorRayTracingSettings& settings) {
+void WaterEditorFacade::ApplyRefractionDebug(const WaterEditorRefractionDebug& debug) {
     if (auto* waterRefractionManager = GetWaterRefractionManager()) {
-        WaterRefractionRayTracingSettings managerSettings = waterRefractionManager->GetSettings();
-        managerSettings.maxRefractionOffsetPixels = settings.maxRefractionOffsetPixels;
-        managerSettings.debugDisplayScale = settings.debugDisplayScale;
-        managerSettings.debugViewMode = static_cast<uint32_t>(settings.debugViewMode);
-        managerSettings.debugLogEnabled = settings.debugLogEnabled ? 1u : 0u;
-        waterRefractionManager->SetSettings(managerSettings);
+        WaterRefractionRayTracingSettings settings = waterRefractionManager->GetSettings();
+        settings.debugDisplayScale = debug.displayScale;
+        settings.debugViewMode = static_cast<uint32_t>(debug.viewMode);
+        settings.debugLogEnabled = debug.logEnabled ? 1u : 0u;
+        waterRefractionManager->SetSettings(settings);
     }
 }
 
-WaterEditorCausticsSettings WaterEditorFacade::GetCausticsSettings() const {
-    WaterEditorCausticsSettings settings{};
-
+WaterEditorCausticsDebug WaterEditorFacade::GetCausticsDebug() const {
+    WaterEditorCausticsDebug debug{};
     if (auto* waterCaustics = GetWaterCausticsTechnique()) {
         const WaterCausticsTechnique::Params& params = waterCaustics->GetParams();
-        settings.techniqueAvailable = true;
-        settings.intensity = params.intensity;
-        settings.depthAttenuation = params.depthAttenuation;
-        settings.curvatureScale = params.curvatureScale;
-        settings.surfaceSampleRadius = params.surfaceSampleRadius;
-        settings.refractiveIndex = params.refractiveIndex;
-        settings.receiverNormalStrength = params.receiverNormalStrength;
-        settings.alignmentPower = params.alignmentPower;
-        settings.debugDisplayScale = params.debugDisplayScale;
-        settings.debugViewMode = static_cast<int>(params.debugViewMode);
-        settings.debugLogEnabled = (params.debugLogEnabled != 0);
-        settings.backend = static_cast<int>(waterCaustics->GetBackend());
+        debug.techniqueAvailable = true;
+        debug.displayScale = params.debugDisplayScale;
+        debug.viewMode = static_cast<int>(params.debugViewMode);
+        debug.logEnabled = (params.debugLogEnabled != 0);
     }
-
     if (auto* rtWaterCausticsManager = GetWaterCausticsManager()) {
-        settings.rtManagerAvailable = true;
-        settings.refractiveIndex = rtWaterCausticsManager->GetSettings().refractiveIndex;
-        settings.rtDebugDisplayScale = rtWaterCausticsManager->GetSettings().debugDisplayScale;
-        settings.rtDebugViewMode = static_cast<int>(rtWaterCausticsManager->GetSettings().debugViewMode);
-        settings.rtDebugLogEnabled = (rtWaterCausticsManager->GetSettings().debugLogEnabled != 0);
+        const WaterCausticsRayTracingSettings& settings = rtWaterCausticsManager->GetSettings();
+        debug.rtManagerAvailable = true;
+        debug.rtDisplayScale = settings.debugDisplayScale;
+        debug.rtViewMode = static_cast<int>(settings.debugViewMode);
+        debug.rtLogEnabled = (settings.debugLogEnabled != 0);
     }
-
-    return settings;
+    return debug;
 }
 
-void WaterEditorFacade::ApplyCausticsSettings(const WaterEditorCausticsSettings& settings) {
+void WaterEditorFacade::ApplyCausticsDebug(const WaterEditorCausticsDebug& debug) {
     if (auto* waterCaustics = GetWaterCausticsTechnique()) {
         WaterCausticsTechnique::Params params = waterCaustics->GetParams();
-        params.intensity = settings.intensity;
-        params.depthAttenuation = settings.depthAttenuation;
-        params.curvatureScale = settings.curvatureScale;
-        params.surfaceSampleRadius = settings.surfaceSampleRadius;
-        params.refractiveIndex = settings.refractiveIndex;
-        params.receiverNormalStrength = settings.receiverNormalStrength;
-        params.alignmentPower = settings.alignmentPower;
-        params.debugDisplayScale = settings.debugDisplayScale;
-        params.debugViewMode = static_cast<uint32_t>(settings.debugViewMode);
-        params.debugLogEnabled = settings.debugLogEnabled ? 1 : 0;
+        params.debugDisplayScale = debug.displayScale;
+        params.debugViewMode = static_cast<uint32_t>(debug.viewMode);
+        params.debugLogEnabled = debug.logEnabled ? 1 : 0;
         waterCaustics->SetParams(params);
-        waterCaustics->SetBackend(settings.backend == 1
-            ? WaterCausticsTechnique::Backend::ScreenSpace
-            : WaterCausticsTechnique::Backend::RayTracing);
     }
-
     if (auto* rtWaterCausticsManager = GetWaterCausticsManager()) {
-        WaterCausticsRayTracingSettings rtSettings = rtWaterCausticsManager->GetSettings();
-        rtSettings.refractiveIndex = settings.refractiveIndex;
-        rtSettings.debugDisplayScale = settings.rtDebugDisplayScale;
-        rtSettings.debugViewMode = static_cast<uint32_t>(settings.rtDebugViewMode);
-        rtSettings.debugLogEnabled = settings.rtDebugLogEnabled ? 1u : 0u;
-        rtWaterCausticsManager->SetSettings(rtSettings);
+        WaterCausticsRayTracingSettings settings = rtWaterCausticsManager->GetSettings();
+        settings.debugDisplayScale = debug.rtDisplayScale;
+        settings.debugViewMode = static_cast<uint32_t>(debug.rtViewMode);
+        settings.debugLogEnabled = debug.rtLogEnabled ? 1u : 0u;
+        rtWaterCausticsManager->SetSettings(settings);
     }
-}
-
-WaterEditorCausticsDiagnostics WaterEditorFacade::GetCausticsDiagnostics() const {
-    WaterEditorCausticsDiagnostics diagnostics{};
-
-    if (auto* waterCaustics = GetWaterCausticsTechnique()) {
-        const WaterCausticsTechnique::Diagnostics& source = waterCaustics->GetDiagnostics();
-        diagnostics.techniqueAvailable = true;
-        diagnostics.activeWaveCount = source.activeWaveCount;
-        diagnostics.mainLightEnabled = source.mainLightEnabled != 0;
-        diagnostics.outputHandle = source.outputHandle;
-        diagnostics.normalHandle = source.normalHandle;
-    }
-
-    return diagnostics;
 }
 
 FFTOceanManager* WaterEditorFacade::GetFFTOceanManager() const {
     if (!engine_ || !engine_->GetRenderDomainContext()) {
         return nullptr;
     }
-
     return engine_->GetRenderDomainContext()->GetFFTOceanManager();
 }
 
@@ -149,7 +83,6 @@ WaterRefractionRayTracingManager* WaterEditorFacade::GetWaterRefractionManager()
     if (!engine_ || !engine_->GetRenderDomainContext()) {
         return nullptr;
     }
-
     return engine_->GetRenderDomainContext()->GetWaterRefractionRayTracingManager();
 }
 
@@ -157,7 +90,6 @@ WaterCausticsRayTracingManager* WaterEditorFacade::GetWaterCausticsManager() con
     if (!engine_ || !engine_->GetRenderDomainContext()) {
         return nullptr;
     }
-
     return engine_->GetRenderDomainContext()->GetWaterCausticsRayTracingManager();
 }
 
@@ -165,11 +97,9 @@ WaterCausticsTechnique* WaterEditorFacade::GetWaterCausticsTechnique() const {
     if (!engine_) {
         return nullptr;
     }
-
     auto* techniqueManager = engine_->GetService<RenderingTechniqueManager>();
     if (!techniqueManager) {
         return nullptr;
     }
-
     return techniqueManager->GetTechnique<WaterCausticsTechnique>(RenderingTechniqueNames::WaterCaustics);
 }

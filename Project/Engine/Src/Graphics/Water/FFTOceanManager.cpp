@@ -632,6 +632,11 @@ namespace CoreEngine
         const float peakWaveLength =
             kTwoPiValue * gravityValue / (peakAngularFrequency * peakAngularFrequency);
 
+        waveSummary_.windSeaWavelength = peakWaveLength;
+        waveSummary_.windSeaHeight = significantWaveHeight;
+        waveSummary_.swellWavelength = swellWaveLength;
+        waveSummary_.swellHeight = swellActive ? settings_.swellHeightMeters : 0.0f;
+
         Logger::GetInstance().Infof(
             LogCategory::Graphics,
             LogSubCategory::Pipeline,
@@ -663,6 +668,14 @@ namespace CoreEngine
 
         spectrumBufferDirty_ = true;
         spectrumBuilt_ = isInitialized_;
+    }
+
+    FFTOceanManager::WaveSummary FFTOceanManager::GetWaveSummary() const
+    {
+        WaveSummary summary = waveSummary_;
+        summary.windSeaHeight *= settings_.amplitudeScale;
+        summary.swellHeight *= settings_.amplitudeScale;
+        return summary;
     }
 
     std::array<float, 3> FFTOceanManager::ComputeWaveGroupPhase(float timeSeconds) const

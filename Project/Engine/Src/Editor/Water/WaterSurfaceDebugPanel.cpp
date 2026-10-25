@@ -6,245 +6,234 @@
 #include "Graphics/Water/Render/WaterRenderFeature.h"
 #include "Graphics/Water/Surface/WaterSurfaceComponent.h"
 
+#include "Editor/ImGui/EditorTheme.h"
 #include "Editor/ImGui/ImGuiAll.h"
+#include "Editor/Inspector/InspectorLayout.h"
 
-#include <algorithm>
+#include <format>
+#include <string>
 
 using namespace CoreEngine;
 
 namespace {
-// 水面デバッグ表示モード名は WaterDebugViewMode.h（Engine 側）の
-// kWaterDebugViewModeNames が単一情報源（enum との個数一致を static_assert 済み）。
-
-const char* const kRTRefractionDebugViewNames[] = {
-	"なし",
-	"UVオフセット量(px)",
-	"深度不一致量",
-	"水面法線",
-	"屈折方向",
+/// @brief 一覧に出す表示モード（モードの値と名前）
+struct ViewModeItem {
+	int mode;
+	const char* name;
 };
 
-const char* const kRTCausticsDebugViewNames[] = {
-	"なし",
-	"Shallow Fade",
-	"Match Factor",
-	"透過率 (Beer-Lambert)",
-	"受光面幾何項",
-	"最終Intensity",
-	"集光率 (Jacobian)",
+/// @brief 水面の可視化の項目（モード名は kWaterDebugViewModeNames を使う）
+ViewModeItem SurfaceView(WaterDebugViewMode mode) {
+	return { static_cast<int>(mode), kWaterDebugViewModeNames[static_cast<int>(mode)] };
+}
+
+/// 水面の可視化で選べるモード（「なし」は「可視化する」の入り切りで代え、何も映らないモードは出さない）
+const ViewModeItem kSurfaceViews[] = {
+	SurfaceView(WaterDebugViewMode::RawDepth),
+	SurfaceView(WaterDebugViewMode::LinearDepth),
+	SurfaceView(WaterDebugViewMode::DepthDelta),
+	SurfaceView(WaterDebugViewMode::ScreenUV),
+	SurfaceView(WaterDebugViewMode::SceneColor),
+	SurfaceView(WaterDebugViewMode::Reflection),
+	SurfaceView(WaterDebugViewMode::Fresnel),
+	SurfaceView(WaterDebugViewMode::Reflectance),
+	SurfaceView(WaterDebugViewMode::Transmission),
+	SurfaceView(WaterDebugViewMode::Transmittance),
+	SurfaceView(WaterDebugViewMode::WaterComposite),
+	SurfaceView(WaterDebugViewMode::CompositeTransmissionOnly),
+	SurfaceView(WaterDebugViewMode::CompositeReflectionOnly),
+	SurfaceView(WaterDebugViewMode::ReflectionMinusTransmission),
+	SurfaceView(WaterDebugViewMode::PlanarReflectionRaw),
+	SurfaceView(WaterDebugViewMode::SkyEnvCloudColor),
+	SurfaceView(WaterDebugViewMode::RTRefraction),
+	SurfaceView(WaterDebugViewMode::RTRefractionReason),
+	SurfaceView(WaterDebugViewMode::RTRefractionVsScene),
+	SurfaceView(WaterDebugViewMode::RTRefractionSuccessMask),
+	SurfaceView(WaterDebugViewMode::FFTOceanJacobian),
+	SurfaceView(WaterDebugViewMode::FFTOceanFoam),
 };
+
+constexpr ViewModeItem kRefractionViews[] = {
+	{ 0, "なし" },
+	{ 1, "UV のずれ (px)" },
+	{ 2, "深度の食い違い" },
+	{ 3, "水面の法線" },
+	{ 4, "屈折の向き" },
+};
+
+constexpr ViewModeItem kCausticsViews[] = {
+	{ 0, "合成結果" },
+	{ 1, "そのままの RGB" },
+	{ 2, "グレースケール" },
+	{ 3, "水中の判定 (R=置換率 / G=矩形 / B=水深)" },
+	{ 4, "水面の線のつながり (緑=つながる / 赤=明るすぎ)" },
+};
+
+/// レイトレのコースティクスの表示（1 の浅瀬のフェードは何も映らないので出さない）
+constexpr ViewModeItem kRTCausticsViews[] = {
+	{ 0, "なし" },
+	{ 2, "一致の度合い" },
+	{ 3, "透過率 (Beer-Lambert)" },
+	{ 4, "受ける面の幾何項" },
+	{ 5, "最終の強さ" },
+	{ 6, "集光率 (ヤコビアン)" },
+};
+
+/// @brief 倍率が効く水面の可視化か（生の深度・線形深度・深度差）
+bool SurfaceViewUsesScale(int mode) {
+	return mode == static_cast<int>(WaterDebugViewMode::RawDepth)
+		|| mode == static_cast<int>(WaterDebugViewMode::LinearDepth)
+		|| mode == static_cast<int>(WaterDebugViewMode::DepthDelta);
+}
+
+/// @brief 倍率が効くレイトレの屈折の表示か（UV のずれ・深度の食い違い）
+bool RefractionViewUsesScale(int mode) {
+	return mode == 1 || mode == 2;
+}
+
+/// @brief 編集できない値の行
+void InfoRow(const char* label, const std::string& value) {
+	InspectorLayout::BeginRow(label, Editor::Theme::kTextDim);
+	ImGui::AlignTextToFramePadding();
+	ImGui::TextDisabled("%s", value.c_str());
+}
+
+/// @brief 表示モードを一覧から選ぶ行（一覧に無い値なら先頭の名前を出す）
+template <size_t N>
+bool ViewModeRow(const char* id, const char* label, int& mode, const ViewModeItem (&items)[N]) {
+	ImGui::PushID(id);
+	InspectorLayout::BeginRow(label, Editor::Theme::kTextDim);
+	const char* preview = items[0].name;
+	for (const ViewModeItem& item : items) {
+		if (item.mode == mode) {
+			preview = item.name;
+		}
+	}
+	bool changed = false;
+	if (ImGui::BeginCombo("##value", preview)) {
+		for (const ViewModeItem& item : items) {
+			const bool selected = item.mode == mode;
+			if (ImGui::Selectable(item.name, selected) && !selected) {
+				mode = item.mode;
+				changed = true;
+			}
+			if (selected) {
+				ImGui::SetItemDefaultFocus();
+			}
+		}
+		ImGui::EndCombo();
+	}
+	ImGui::PopID();
+	return changed;
+}
+
+/// @brief 倍率の行
+bool ScaleRow(const char* id, const char* label, float& value) {
+	ImGui::PushID(id);
+	InspectorLayout::BeginRow(label, Editor::Theme::kTextDim);
+	const bool changed = ImGui::DragFloat("##value", &value, 0.02f, 0.1f, 16.0f, "×%.2f", ImGuiSliderFlags_AlwaysClamp);
+	ImGui::PopID();
+	return changed;
+}
+
+/// @brief 入り切りの行
+bool CheckRow(const char* id, const char* label, bool& value) {
+	ImGui::PushID(id);
+	InspectorLayout::BeginRow(label, Editor::Theme::kTextDim);
+	const bool changed = ImGui::Checkbox("##value", &value);
+	ImGui::PopID();
+	return changed;
+}
 }
 
 void WaterSurfaceDebugPanel::Initialize(WaterRenderFeature& runtimeController) {
 	if (WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane()) {
-		// デバッグパネルの既定状態を水面へ反映する
-		waterPlane->SetDepthFadeDebug(depthFadeDebugEnabled_, depthFadeDebugScale_);
-		waterPlane->SetDepthDebugViewMode(static_cast<WaterDebugViewMode>(depthDebugViewMode_));
+		waterPlane->SetDepthFadeDebug(surfaceViewEnabled_, surfaceViewScale_);
+		waterPlane->SetDepthDebugViewMode(static_cast<WaterDebugViewMode>(surfaceViewMode_));
 	}
 }
 
 void WaterSurfaceDebugPanel::Draw(WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade) {
-	WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
-	if (!waterPlane || !ImGui::CollapsingHeader("デバッグ / 診断", ImGuiTreeNodeFlags_DefaultOpen)) {
+	if (!runtimeController.GetWaterPlane() || !ImGui::CollapsingHeader("デバッグ")) {
 		return;
 	}
-
-	ImGui::TextDisabled("ここは見た目調整ではなく、状態確認と可視化のための項目です。");
-	DrawCommonDebugSection(runtimeController, editorFacade);
-	DrawFFTOceanDebugSection(runtimeController, editorFacade);
-	DrawGerstnerWaveDebugSection(runtimeController);
-	DrawCausticsDebugSection(editorFacade);
+	UI::Hint("ここの値は保存しません。状態の確認と、描いた中身の可視化に使います。");
+	DrawStatusRows(runtimeController, editorFacade);
+	DrawSurfaceView(runtimeController);
+	DrawRefractionDebug(editorFacade);
+	DrawCausticsDebug(editorFacade);
 }
 
-void WaterSurfaceDebugPanel::DrawCommonDebugSection(WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade) {
-	WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
-	if (!waterPlane || !ImGui::TreeNodeEx("共通デバッグ", ImGuiTreeNodeFlags_DefaultOpen)) {
-		return;
+void WaterSurfaceDebugPanel::DrawStatusRows(WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade) {
+	const WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
+	ImGui::SeparatorText("状態");
+	InfoRow("描き方", waterPlane->IsUsingFFTOcean() ? "FFT の海" : "Gerstner の波");
+	if (waterPlane->IsUsingFFTOcean()) {
+		const FFTOceanManager* manager = editorFacade.GetFFTOceanManager();
+		const bool ready = manager && manager->IsInitialized() && waterPlane->HasFFTOceanTextureSRVs();
+		InfoRow("FFT の海", ready
+			? std::format("準備できた（{0}×{0}・パッチ 521 / 127 / 31 m）", manager->GetSettings().resolution)
+			: std::string("準備中"));
 	}
-
-	const WaterConstants& waterConstants = waterPlane->GetWaterConstants();
-	const WaterFrameConstants& frameConstants = waterPlane->GetFrameConstants();
-
-	ImGui::Text("現在の描画方式: %s", waterPlane->IsUsingFFTOcean() ? "FFTOcean" : "Gerstner Wave");
-	ImGui::Text("反射が有効: %s", frameConstants.reflectionEnabled != 0 ? "はい" : "いいえ");
-	ImGui::Text("水面高さ: %.3f", waterPlane->GetTransform().GetTranslate().y);
-	ImGui::Text("波時間: %.3f", waterConstants.time);
-	ImGui::Text("有効波数: %u", waterConstants.activeWaveCount);
-
-	ImGui::SeparatorText("Depth Fade デバッグ");
-	bool debugChanged = false;
-	debugChanged |= ImGui::Checkbox("Depth Fade デバッグを有効にする", &depthFadeDebugEnabled_);
-	debugChanged |= ImGui::SliderFloat("デバッグ表示倍率", &depthFadeDebugScale_, 0.1f, 8.0f, "%.2f");
-	debugChanged |= ImGui::Combo("可視化モード", &depthDebugViewMode_, kWaterDebugViewModeNames, IM_ARRAYSIZE(kWaterDebugViewModeNames));
-	if (debugChanged) {
-		waterPlane->SetDepthFadeDebug(depthFadeDebugEnabled_, depthFadeDebugScale_);
-		waterPlane->SetDepthDebugViewMode(static_cast<WaterDebugViewMode>(depthDebugViewMode_));
-	}
-
-	ImGui::SeparatorText("RT屈折デバッグ");
-	WaterEditorRayTracingSettings rtSettings = editorFacade.GetRayTracingSettings();
-	bool rtChanged = false;
-	rtChanged |= ImGui::SliderFloat("RT屈折表示倍率", &rtSettings.debugDisplayScale, 0.1f, 16.0f, "%.2f");
-	rtChanged |= ImGui::Combo("RT屈折シェーダー表示", &rtSettings.debugViewMode, kRTRefractionDebugViewNames, IM_ARRAYSIZE(kRTRefractionDebugViewNames));
-	rtChanged |= ImGui::Checkbox("RT屈折ログを有効にする", &rtSettings.debugLogEnabled);
-	ImGui::TextDisabled("RT屈折シェーダー表示を使うときは、水面可視化モードを『RT屈折』か『RT屈折とシーン比較』にすると確認しやすいです。");
-	if (rtChanged) {
-		editorFacade.ApplyRayTracingSettings(rtSettings);
-	}
-
-	ImGui::TreePop();
+	InfoRow("水面の高さ", std::format("{:.2f} m", waterPlane->GetTransform().GetTranslate().y));
+	InfoRow("反射", waterPlane->GetFrameConstants().reflectionEnabled != 0 ? "使う" : "使わない");
 }
 
-void WaterSurfaceDebugPanel::DrawFFTOceanDebugSection(
-	WaterRenderFeature& runtimeController,
-	WaterEditorFacade& editorFacade) {
+void WaterSurfaceDebugPanel::DrawSurfaceView(WaterRenderFeature& runtimeController) {
 	WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
-	if (!waterPlane) {
-		return;
+	ImGui::SeparatorText("水面の可視化");
+	bool changed = CheckRow("surfaceView", "可視化する", surfaceViewEnabled_);
+	ImGui::BeginDisabled(!surfaceViewEnabled_);
+	changed |= ViewModeRow("surfaceMode", "表示", surfaceViewMode_, kSurfaceViews);
+	if (SurfaceViewUsesScale(surfaceViewMode_)) {
+		changed |= ScaleRow("surfaceScale", "倍率", surfaceViewScale_);
 	}
-
-	const ImGuiTreeNodeFlags flags = waterPlane->IsUsingFFTOcean() ? ImGuiTreeNodeFlags_DefaultOpen : 0;
-	if (!ImGui::TreeNodeEx(waterPlane->IsUsingFFTOcean() ? "FFTOcean デバッグ" : "FFTOcean デバッグ（待機中）", flags)) {
-		return;
-	}
-
-	const WaterEditorFFTSettings settings = editorFacade.GetFFTSettings();
-
-	ImGui::Text("状態: %s", waterPlane->IsUsingFFTOcean() ? "使用中" : "待機中");
-	ImGui::Text("FFT SRV 接続: %s", waterPlane->HasFFTOceanTextureSRVs() ? "有効" : "無効");
-
-	if (!settings.managerAvailable) {
-		ImGui::TextDisabled("FFTOceanManager を取得できません。");
-		ImGui::TreePop();
-		return;
-	}
-
-	ImGui::Text("初期化状態: %s", settings.initialized ? "完了" : "未初期化");
-	ImGui::Text("解像度: %d", settings.resolution);
-	ImGui::Text("パッチ長: 521/127/31 m (カスケード固定)");
-	ImGui::Text("振幅スケール: %.3f", settings.amplitudeScale);
-	ImGui::Text("風向: (%.3f, %.3f)", settings.windDirection[0], settings.windDirection[1]);
-	ImGui::Text("風速: %.3f", settings.windSpeed);
-	ImGui::Text("Choppiness: %.3f", settings.choppiness);
-	ImGui::Text("成分数: %u", settings.activeComponentCount);
-	ImGui::Text("重力: %.3f", settings.gravity);
-	ImGui::Separator();
-	ImGui::TextDisabled("注: DXR 屈折データは現在 Gerstner 系 WaterConstants を参照しており、FFT 表示と完全一致しない場合があります。");
-
-	ImGui::TreePop();
-}
-
-void WaterSurfaceDebugPanel::DrawGerstnerWaveDebugSection(WaterRenderFeature& runtimeController) {
-	WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
-	if (!waterPlane) {
-		return;
-	}
-
-	const bool isActive = !waterPlane->IsUsingFFTOcean();
-	const ImGuiTreeNodeFlags flags = isActive ? ImGuiTreeNodeFlags_DefaultOpen : 0;
-	if (!ImGui::TreeNodeEx(isActive ? "Gerstner Wave デバッグ" : "Gerstner Wave デバッグ（待機中）", flags)) {
-		return;
-	}
-
-	const WaterConstants& waterConstants = waterPlane->GetWaterConstants();
-	const WaveParams* waves = waterPlane->GetWaves();
-	const uint32_t activeWaveCount = std::min(waterConstants.activeWaveCount, kMaxWaterWaveCount);
-
-	ImGui::Text("状態: %s", isActive ? "使用中" : "待機中");
-	ImGui::Text("有効波数: %u / %u", activeWaveCount, kMaxWaterWaveCount);
-
-	float maxAmplitude = 0.0f;
-	float minWavelength = activeWaveCount > 0 ? waves[0].wavelength : 0.0f;
-	float maxWavelength = 0.0f;
-	float averageSpeed = 0.0f;
-	for (uint32_t waveIndex = 0; waveIndex < activeWaveCount; ++waveIndex) {
-		maxAmplitude = std::max(maxAmplitude, waves[waveIndex].amplitude);
-		minWavelength = std::min(minWavelength, waves[waveIndex].wavelength);
-		maxWavelength = std::max(maxWavelength, waves[waveIndex].wavelength);
-		averageSpeed += waves[waveIndex].speed;
-	}
-	if (activeWaveCount > 0) {
-		averageSpeed /= static_cast<float>(activeWaveCount);
-	}
-
-	ImGui::Text("最大振幅: %.3f", maxAmplitude);
-	ImGui::Text("波長レンジ: %.3f - %.3f", minWavelength, maxWavelength);
-	ImGui::Text("平均速度: %.3f", averageSpeed);
-
-	if (ImGui::TreeNode("有効波プレビュー")) {
-		for (uint32_t waveIndex = 0; waveIndex < activeWaveCount; ++waveIndex) {
-			ImGui::BulletText(
-				"波 %u: dir=(%.2f, %.2f) amp=%.3f len=%.3f speed=%.3f steep=%.3f",
-				waveIndex,
-				waves[waveIndex].direction.x,
-				waves[waveIndex].direction.y,
-				waves[waveIndex].amplitude,
-				waves[waveIndex].wavelength,
-				waves[waveIndex].speed,
-				waves[waveIndex].steepness);
-		}
-		ImGui::TreePop();
-	}
-
-	ImGui::TreePop();
-}
-
-void WaterSurfaceDebugPanel::DrawCausticsDebugSection(WaterEditorFacade& editorFacade) {
-	if (!ImGui::TreeNode("コースティクス デバッグ")) {
-		return;
-	}
-
-	WaterEditorCausticsSettings settings = editorFacade.GetCausticsSettings();
-	if (!settings.techniqueAvailable) {
-		ImGui::TextDisabled("WaterCausticsTechnique が登録されていません。");
-		ImGui::TreePop();
-		return;
-	}
-
-	bool changed = false;
-
-	// 見た目パラメータ（強度・生成方式など）は Phase 5 で WaterCVars 化し、
-	// 水面パラメータパネルの「コースティクス」セクションへ移設した。
-	// ここに残るのはデバッグ表示・ログ（非永続のランタイム状態）のみ。
-
-	// デバッグ描画モードとログ出力の切り替えを提供する
-	ImGui::SeparatorText("デバッグ表示");
-	changed |= ImGui::SliderFloat("表示倍率", &settings.debugDisplayScale, 0.1f, 16.0f, "%.2f");
-	static const char* kCausticsDebugModes[] = {
-		"合成結果",
-		"Raw RGB",
-		"グレースケール",
-		"水中判定マップ (R=置換率/G=矩形/B=水深)",
-		"水面線の連続性 (緑=連続/赤=明るすぎ)",
-	};
-	changed |= ImGui::Combo("表示モード", &settings.debugViewMode, kCausticsDebugModes, IM_ARRAYSIZE(kCausticsDebugModes));
-	ImGui::TextDisabled(
-		"「水中判定マップ」「水面線の連続性」は不透明パス（海底・砂）の可視化です。\n"
-		"水面に隠れる領域も見たいときは水面オブジェクトを非表示にしてください。");
-	changed |= ImGui::Checkbox("ログ出力を有効にする", &settings.debugLogEnabled);
-
-	ImGui::SeparatorText("RTコースティクス デバッグ");
-	if (settings.rtManagerAvailable) {
-		changed |= ImGui::SliderFloat("RT表示倍率", &settings.rtDebugDisplayScale, 0.1f, 16.0f, "%.2f");
-		changed |= ImGui::Combo("RTシェーダー表示", &settings.rtDebugViewMode, kRTCausticsDebugViewNames, IM_ARRAYSIZE(kRTCausticsDebugViewNames));
-		changed |= ImGui::Checkbox("RTログを有効にする", &settings.rtDebugLogEnabled);
-		ImGui::TextDisabled("RTシェーダー表示を使うと DeferredLighting 側のコースティクス入力そのものが可視化されます。");
-	} else {
-		ImGui::TextDisabled("RTWaterCausticsManager を取得できません。");
-	}
-
-	// 現在の出力先や入力 SRV を診断情報として表示する
-	const WaterEditorCausticsDiagnostics diagnostics = editorFacade.GetCausticsDiagnostics();
-	ImGui::Text("波数: %u", diagnostics.activeWaveCount);
-	ImGui::Text("メインライト: %s", diagnostics.mainLightEnabled ? "有効" : "無効");
-	ImGui::Text("出力 SRV: 0x%llX", diagnostics.outputHandle);
-	ImGui::Text("Normal SRV: 0x%llX", diagnostics.normalHandle);
-
+	ImGui::EndDisabled();
 	if (changed) {
-		editorFacade.ApplyCausticsSettings(settings);
+		waterPlane->SetDepthFadeDebug(surfaceViewEnabled_, surfaceViewScale_);
+		waterPlane->SetDepthDebugViewMode(static_cast<WaterDebugViewMode>(surfaceViewMode_));
 	}
+}
 
-	ImGui::TreePop();
+void WaterSurfaceDebugPanel::DrawRefractionDebug(WaterEditorFacade& editorFacade) {
+	WaterEditorRefractionDebug debug = editorFacade.GetRefractionDebug();
+	if (!debug.available) {
+		return;
+	}
+	ImGui::SeparatorText("レイトレの屈折");
+	bool changed = ViewModeRow("refractionMode", "表示", debug.viewMode, kRefractionViews);
+	if (RefractionViewUsesScale(debug.viewMode)) {
+		changed |= ScaleRow("refractionScale", "倍率", debug.displayScale);
+	}
+	changed |= CheckRow("refractionLog", "ログに出す", debug.logEnabled);
+	if (changed) {
+		editorFacade.ApplyRefractionDebug(debug);
+	}
+	UI::Hint("水面の可視化の表示を「RT屈折」か「RT屈折とシーン比較」にすると見比べやすい。");
+}
+
+void WaterSurfaceDebugPanel::DrawCausticsDebug(WaterEditorFacade& editorFacade) {
+	WaterEditorCausticsDebug debug = editorFacade.GetCausticsDebug();
+	if (!debug.techniqueAvailable && !debug.rtManagerAvailable) {
+		return;
+	}
+	ImGui::SeparatorText("コースティクス");
+	bool changed = false;
+	if (debug.techniqueAvailable) {
+		changed |= ViewModeRow("causticsMode", "表示", debug.viewMode, kCausticsViews);
+		changed |= ScaleRow("causticsScale", "倍率", debug.displayScale);
+		changed |= CheckRow("causticsLog", "ログに出す", debug.logEnabled);
+	}
+	if (debug.rtManagerAvailable) {
+		changed |= ViewModeRow("rtCausticsMode", "レイトレの表示", debug.rtViewMode, kRTCausticsViews);
+		if (debug.rtViewMode != 0) {
+			changed |= ScaleRow("rtCausticsScale", "レイトレの倍率", debug.rtDisplayScale);
+		}
+		changed |= CheckRow("rtCausticsLog", "レイトレのログ", debug.rtLogEnabled);
+	}
+	if (changed) {
+		editorFacade.ApplyCausticsDebug(debug);
+	}
 }
 
 #endif

@@ -56,7 +56,7 @@ inline const char* const kWaterDebugViewModeNames[] = {
     "最終合成",
     "RT屈折成功マスク",
     "FFT Jacobian",
-    "平面反射(生・雲なし)",
+    "平面反射(生)",
     "雲キューブマップ色",
     "雲上書き強度",
     "合成:透過のみ(Fresnel=0)",

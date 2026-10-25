@@ -198,7 +198,6 @@ struct WaterPresetData {
 	uint32_t recommendedWaveCount;
 	CoreEngine::Vector4 baseColor;
 	float roughness;
-	float metallic;
 	// 波長依存の光学特性（水質）。色は光源 × 係数から導出されるため色指定は持たない
 	CoreEngine::Vector3 absorptionCoeff; // σa [1/m]
 	CoreEngine::Vector3 scatteringCoeff; // σs [1/m]
@@ -215,7 +214,6 @@ inline const WaterPresetData& GetWaterPresetData(WaterPresetType type) {
 		16,
 		{ 0.04f, 0.18f, 0.28f, 0.85f },
 		0.03f,
-		0.0f,
 		// やや緑がかった淡水: 溶存有機物で青の吸収が増え、緑寄りの散乱が強い
 		{ 0.45f, 0.09f, 0.06f },
 		{ 0.010f, 0.032f, 0.028f },
@@ -234,7 +232,6 @@ inline const WaterPresetData& GetWaterPresetData(WaterPresetType type) {
 		16,
 		{ 0.03f, 0.12f, 0.22f, 0.88f },
 		0.10f,
-		0.0f,
 		// 澄んだ熱帯外洋水（Jerlov I 相当）: 浅瀬エメラルド〜深瀬青が σ から生じる
 		{ 0.35f, 0.07f, 0.02f },
 		{ 0.003f, 0.008f, 0.016f },
@@ -253,7 +250,6 @@ inline const WaterPresetData& GetWaterPresetData(WaterPresetType type) {
 		16,
 		{ 0.02f, 0.22f, 0.35f, 0.78f },
 		0.01f,
-		0.0f,
 		// 純水に近い透明度: 吸収・散乱とも最小で、シアン寄りの淡い色になる
 		{ 0.30f, 0.05f, 0.015f },
 		{ 0.002f, 0.004f, 0.007f },
@@ -272,7 +268,6 @@ inline const WaterPresetData& GetWaterPresetData(WaterPresetType type) {
 		16,
 		{ 0.06f, 0.10f, 0.15f, 0.72f },
 		0.06f,
-		0.0f,
 		// 濁水: 泥・有機物が短波長（青）を強く吸収し、散乱も強く茶褐色寄りになる
 		{ 0.60f, 0.70f, 1.10f },
 		{ 0.35f, 0.30f, 0.22f },

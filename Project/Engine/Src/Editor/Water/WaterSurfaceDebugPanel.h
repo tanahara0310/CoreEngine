@@ -6,32 +6,37 @@
 namespace CoreEngine { class WaterRenderFeature; }
 
 #ifdef CORE_EDITOR
+
+/// @brief 水面のインスペクタのうち、デバッグ表示と診断（保存しない）を描く
 class WaterSurfaceDebugPanel {
 public:
-	/// @brief デバッグパネルの初期状態を水面へ反映する
+	/// @brief デバッグ表示の初期状態を水面へ入れる
 	void Initialize(CoreEngine::WaterRenderFeature& runtimeController);
 
-	/// @brief 水面デバッグ表示と診断 UI を描画する
+	/// @brief 「デバッグ」セクションを描く
 	void Draw(CoreEngine::WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade);
 
 private:
-	/// @brief 水面共通の診断情報と Depth Fade 可視化 UI を描画する
-	void DrawCommonDebugSection(CoreEngine::WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade);
+	/// @brief 今の状態（描き方・FFT の準備・水面の高さ・反射）
+	void DrawStatusRows(CoreEngine::WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade);
 
-	/// @brief FFT Ocean の診断 UI を描画する
-	void DrawFFTOceanDebugSection(CoreEngine::WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade);
+	/// @brief 水面の可視化
+	void DrawSurfaceView(CoreEngine::WaterRenderFeature& runtimeController);
 
-	/// @brief Gerstner Wave の診断 UI を描画する
-	void DrawGerstnerWaveDebugSection(CoreEngine::WaterRenderFeature& runtimeController);
+	/// @brief レイトレの屈折の可視化
+	void DrawRefractionDebug(WaterEditorFacade& editorFacade);
 
-	/// @brief コースティクスのデバッグ UI を描画する
-	void DrawCausticsDebugSection(WaterEditorFacade& editorFacade);
+	/// @brief コースティクスの可視化
+	void DrawCausticsDebug(WaterEditorFacade& editorFacade);
 
-	/// @brief Depth Fade デバッグ表示の有効フラグ
-	bool depthFadeDebugEnabled_ = false;
-	/// @brief Depth Fade デバッグ表示倍率
-	float depthFadeDebugScale_ = 1.5f;
-	/// @brief 水面デバッグ可視化モード
-	int depthDebugViewMode_ = static_cast<int>(WaterDebugViewMode::RawDepth);
+	/// @brief 水面の可視化を有効にするか
+	bool surfaceViewEnabled_ = false;
+
+	/// @brief 水面の可視化の倍率
+	float surfaceViewScale_ = 1.5f;
+
+	/// @brief 水面の可視化のモード（WaterDebugViewMode）
+	int surfaceViewMode_ = static_cast<int>(WaterDebugViewMode::RawDepth);
 };
+
 #endif
