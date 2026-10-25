@@ -338,7 +338,7 @@ void WaterSurfaceParameterPanel::DrawGerstnerRows(WaterRenderFeature& runtimeCon
 			RegenerateGerstnerWaves(runtimeController);
 		}
 	}
-	UI::Hint("Gerstner の波は保存しません。開き直すと既定の波に戻ります。");
+	InspectorLayout::Hint("Gerstner の波は保存しません。開き直すと既定の波に戻ります。");
 
 	if (!ImGui::TreeNode("個別の波")) {
 		return;
@@ -445,7 +445,7 @@ void WaterSurfaceParameterPanel::DrawWaterColorSection() {
 	CVarUI::DrawRow(&WaterCVars::ScatteringBase, "散乱 [1/m]", "%.3f", kRgbLabels);
 	CVarUI::DrawRow(&WaterCVars::Turbidity, "濁り", "%.2f");
 	CVarUI::DrawRow(&WaterCVars::DepthFadeEnabled, "水深で透け方を変える");
-	UI::Hint("水の色は吸収と散乱から光で決まる。澄んだ水は 吸収が 赤 > 緑 > 青。");
+	InspectorLayout::Hint("水の色は吸収と散乱から光で決まる。澄んだ水は 吸収が 赤 > 緑 > 青。");
 }
 
 void WaterSurfaceParameterPanel::DrawSurfaceSection() {
@@ -478,7 +478,7 @@ void WaterSurfaceParameterPanel::DrawFoamSection(WaterRenderFeature& runtimeCont
 	CVarUI::DrawRow(&WaterCVars::FoamDecaySeconds, "消えるまでの時間", "%.1f s");
 	CVarUI::DrawRow(&WaterCVars::FoamCascadeWeights, "波の大きさごとの重み", "%.2f", kCascadeLabels);
 	ImGui::EndDisabled();
-	UI::Hint("白波の割合は風速から観測式で決まる。白波の量はその倍率。");
+	InspectorLayout::Hint("白波の割合は風速から観測式で決まる。白波の量はその倍率。");
 }
 
 void WaterSurfaceParameterPanel::DrawCausticsSection() {
@@ -489,7 +489,7 @@ void WaterSurfaceParameterPanel::DrawCausticsSection() {
 		static_cast<int>(std::size(kCausticsBackendNames)));
 	CVarUI::DrawRow(&WaterCVars::CausticsRefractiveIndex, "屈折率", "%.3f");
 	if (WaterCVars::CausticsBackend.Get() != 1) {
-		UI::Hint("レイトレーシングの明るさは、光と水の吸収から決まる。");
+		InspectorLayout::Hint("レイトレーシングの明るさは、光と水の吸収から決まる。");
 		return;
 	}
 	if (WaterCVars::FFTEnabled.Get()) {

@@ -373,6 +373,13 @@ namespace CoreEngine::InspectorLayout
             ImGui::GetColorU32(Theme::kText), message, nullptr, wrapWidth);
         ImGui::Dummy(ImVec2(width, max.y - min.y));
     }
+
+    void Hint(const char* text)
+    {
+        ImGui::PushTextWrapPos(0.0f);
+        ImGui::TextDisabled("%s", text);
+        ImGui::PopTextWrapPos();
+    }
 }
 
 #endif // CORE_EDITOR

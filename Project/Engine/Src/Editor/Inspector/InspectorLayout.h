@@ -99,6 +99,9 @@ namespace CoreEngine::InspectorLayout
 
     /// @brief 左に色の帯を付けた注意書きを、幅いっぱいに折り返して描く
     void HelpBox(const char* message, Message kind = Message::Info);
+
+    /// @brief 淡い補足の文を、欄の幅で折り返して描く
+    void Hint(const char* text);
 }
 
 #endif // CORE_EDITOR

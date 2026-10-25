@@ -10,6 +10,8 @@
 #include "Editor/ImGui/ImGuiAll.h"
 #include "Editor/Inspector/InspectorLayout.h"
 
+#include "../../../Assets/Shaders/Water/Common/FFTOceanCascadeValues.hlsli"
+
 #include <format>
 #include <string>
 
@@ -157,7 +159,7 @@ void WaterSurfaceDebugPanel::Draw(WaterRenderFeature& runtimeController, WaterEd
 	if (!runtimeController.GetWaterPlane() || !ImGui::CollapsingHeader("デバッグ")) {
 		return;
 	}
-	UI::Hint("ここの値は保存しません。状態の確認と、描いた中身の可視化に使います。");
+	InspectorLayout::Hint("ここの値は保存しません。状態の確認と、描いた中身の可視化に使います。");
 	DrawStatusRows(runtimeController, editorFacade);
 	DrawSurfaceView(runtimeController);
 	DrawRefractionDebug(editorFacade);
@@ -172,8 +174,10 @@ void WaterSurfaceDebugPanel::DrawStatusRows(WaterRenderFeature& runtimeControlle
 		const FFTOceanManager* manager = editorFacade.GetFFTOceanManager();
 		const bool ready = manager && manager->IsInitialized() && waterPlane->HasFFTOceanTextureSRVs();
 		InfoRow("FFT の海", ready
-			? std::format("準備できた（{0}×{0}・パッチ 521 / 127 / 31 m）", manager->GetSettings().resolution)
+			? std::format("準備できた（{0}×{0}）", manager->GetSettings().resolution)
 			: std::string("準備中"));
+		constexpr float kPatchLengths[] = FFT_OCEAN_CASCADE_PATCH_LENGTHS;
+		InfoRow("パッチの大きさ", std::format("{:.0f} / {:.0f} / {:.0f} m", kPatchLengths[0], kPatchLengths[1], kPatchLengths[2]));
 	}
 	InfoRow("水面の高さ", std::format("{:.2f} m", waterPlane->GetTransform().GetTranslate().y));
 	InfoRow("反射", waterPlane->GetFrameConstants().reflectionEnabled != 0 ? "使う" : "使わない");
@@ -209,7 +213,7 @@ void WaterSurfaceDebugPanel::DrawRefractionDebug(WaterEditorFacade& editorFacade
 	if (changed) {
 		editorFacade.ApplyRefractionDebug(debug);
 	}
-	UI::Hint("水面の可視化の表示を「RT屈折」か「RT屈折とシーン比較」にすると見比べやすい。");
+	InspectorLayout::Hint("水面の可視化の表示を「RT屈折」か「RT屈折とシーン比較」にすると見比べやすい。");
 }
 
 void WaterSurfaceDebugPanel::DrawCausticsDebug(WaterEditorFacade& editorFacade) {
