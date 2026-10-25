@@ -327,7 +327,7 @@ def srgb(hexstr):
 
 
 def pbr_material(name, fn, res=1024, ao_samples=64, ao_strength=1.0, uv="smart", bake=True, bump_distance=0.02,
-                 double_sided=False, ao_distance=1.5, atlas_size=(1.0, 1.0)):
+                 double_sided=False, ao_distance=1.5, atlas_size=(1.0, 1.0), uv_angle=40.0, uv_margin=0.004):
     """プロシージャル PBR 材質を作る。
 
     fn(nb) は dict を返す:
@@ -342,6 +342,7 @@ def pbr_material(name, fn, res=1024, ao_samples=64, ao_strength=1.0, uv="smart",
         "atlas" = Proc UV の 0..1 を 1 枚の平面に焼く（葉などの共有テクスチャ。AO は cavity のみ）
     double_sided: エンジンは常に裏面カリングするので、裏向きの面を複製して両面にする
     atlas_size: atlas 用平面の実寸(m)。バンプの強さの基準になる
+    uv_angle / uv_margin: "smart" の展開で島を分ける角度と島どうしの余白（小さな部品が多いときは広げる）
     """
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True
@@ -366,7 +367,7 @@ def pbr_material(name, fn, res=1024, ao_samples=64, ao_strength=1.0, uv="smart",
         nb._in(bsdf, "Alpha", out["alpha"])
     _REGISTRY[mat.name] = dict(out=out, res=res, ao_samples=ao_samples, ao_strength=ao_strength, uv=uv,
                                bake=bake, bsdf=bsdf, double_sided=double_sided, ao_distance=ao_distance,
-                               atlas_size=atlas_size)
+                               atlas_size=atlas_size, uv_angle=uv_angle, uv_margin=uv_margin)
     return mat
 
 
@@ -527,7 +528,7 @@ def bake_part(obj, mat, out_dir, prefix):
         layer = me.uv_layers.get("Bake") or me.uv_layers["Proc"]
         me.uv_layers.active = layer
     else:
-        smart_uv(obj)
+        smart_uv(obj, angle=info["uv_angle"], margin=info["uv_margin"])
 
     color = _bake_socket(obj, mat, out["color"], res, samples=6, tag="col")[..., :3]
     rough = out.get("rough", 0.8)
