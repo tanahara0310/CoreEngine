@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.35.0">
+<meta name="engine-version" content="0.36.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -9747,6 +9747,17 @@ python Tools/OkinawaBeach/bake_player_walk.py
 
   <h2 id="changelog-history">更新履歴</h2>
 
+  <h3 id="changelog-v0-36-0">v0.36.0 <span class="dim">（2026-10-25）</span></h3>
+  <p>水面のインスペクタを、ほかのコンポーネントと同じ新しいエディタの作りにした版です（<a href="#api-WaterSurface">水面</a>）。</p>
+  <ul>
+    <li><strong>行の形</strong>：水面の設定を、左にラベル・右に値の行で並べ、セクション（波・水の色・反射と屈折・泡・コースティクス・デバッグ）ごとに開閉できるようにしました。既定値から変えた値はラベルが橙色になり、右クリックで既定値へ戻せます。変更は Ctrl+Z で戻せます。</li>
+    <li><strong>海況と水質</strong>：「海況」で風速・吹送距離・うねりなどをまとめて入れられます（鏡のような凪から嵐までの 6 種）。いまの値で出来上がる風波とうねりの波長と高さも出します。「水質」は Jerlov の水型から吸収と散乱をまとめて入れます。風とうねりの向きは角度（度）で入れます。</li>
+    <li><strong>消した設定</strong>：効いていなかった CVar <code>r.Water.Metallic</code>（水面は金属にしない）・<code>r.Water.FFT.Gravity</code>（波は重力 9.81m/s² で計算する）・<code>r.Water.JerlovPreset</code> を消しました。CVars.json に残っていても読み飛ばします。</li>
+    <li><strong>コースティクス</strong>：レイトレーシングのときは屈折率だけを出し、強さなどの 6 つはスクリーンスペース方式（Gerstner の波用）のときだけ出します。6 つはレイトレーシングには効いていませんでした。</li>
+    <li><strong>Gerstner の波</strong>：エディタで水面を開いたときに波を作り直さないようにしました。これまではエディタだけ湖のプリセットから作り直していて、ゲームの起動とは違う波になっていました。波の種類を選んでも、水の色や反射の設定は書き換えません。</li>
+    <li><strong>デバッグ</strong>：水面の可視化から何も映らないモード（なし・雲上書き強度）を外し、レイトレのコースティクスの表示から「浅瀬のフェード」を外しました。倍率は効くモードのときだけ出します。</li>
+  </ul>
+
   <h3 id="changelog-v0-35-0">v0.35.0 <span class="dim">（2026-10-25）</span></h3>
   <p>Shadertoy の海のシェーダ「Seascape」を移したシーンを Sandbox に足した版です（<a href="#pe-shadertoy">Shadertoy のシェーダを移す</a>）。</p>
   <ul>
@@ -15059,12 +15070,9 @@ void LateUpdate()   // 追いかける相手が動いた後に動かす
     requires: "トランスフォーム・メッシュ描画（自動で足します）、シーンの機能 <code>WaterRender</code>",
     props: [
       ["一辺の長さ", "size", "float", "50", "水面の大きさ（m）。シーンを読み込むときに効きます。"],
-      ["分割数", "resolution", "int", "64", "水面全体を覆う格子の細かさ。シーンを読み込むときに効きます。カメラの周りは別の細かい格子で描きます（下の注意）。"],
-      ["FFT の海を使う", "useFFTOcean", "bool", "オフ", "外洋のうねりで波を作る。"],
-      ["UV の流れる速さ", "scrollSpeed", "Vector2", "(0.03, 0.01)", ""],
-      ["UV の繰り返し", "uvTiling", "Vector2", "(4, 4)", ""]
+      ["分割数", "resolution", "int", "64", "水面全体を覆う格子の細かさ。シーンを読み込むときに効きます。カメラの周りは別の細かい格子で描きます（下の注意）。"]
     ],
-    notes: "<ul><li>水面を使うシーンは、<span class=\"path\">_scene.json</span> に <code>\"features\": [\"WaterRender\"]</code> を書き足す必要があります（エディタに追加の画面はありません。サンプル Sandbox の WaterTestScene を参照）。</li><li>この機能が動いている間、「FFT の海を使う」「UV の流れる速さ」「UV の繰り返し」は CVar（<code>r.Water.*</code>）の値で毎フレーム上書きされます。</li><li>FFT の海でレイトレーシングが使えるときは、ゲームのカメラの周り 256m 四方（海底の高さを測る範囲）を 0.5m 間隔の細かい格子で描き、その外を「分割数」の格子で描きます。範囲はカメラと一緒に 0.5m 単位で動きます。CVar <code>r.Water.Shore.FineMesh</code> で切れます。</li><li>FFT の海の波の形（頂点の高さと横のずれ）には、その格子の間隔で表せる波だけを入れます。細かい格子は 3 つのカスケードの波を全部（短い波まで）、粗い格子は 60m より長い波だけです。形に入らない短い波は、陰影（法線）で描きます。細かい格子を使わないとき（レイトレーシングが無い・<code>r.Water.Shore.FineMesh</code> を切った）は、カメラの近くも 60m より長い波だけの形になります。</li></ul>",
+    notes: "<ul><li>水面を使うシーンは、<span class=\"path\">_scene.json</span> に <code>\"features\": [\"WaterRender\"]</code> を書き足す必要があります（エディタに追加の画面はありません。サンプル Sandbox の WaterTestScene を参照）。</li><li>波・水の色・反射と屈折・泡・コースティクスは水面 1 枚ごとの値でなく、プロジェクトの CVar（<code>r.Water.*</code>。<span class=\"path\">Config/EngineSettings/CVars.json</span>）で決まり、どのシーンの水面にも同じ値が効きます。エディタでは水面のインスペクタの「一辺の長さ」「分割数」の下に、セクションごとに並びます。「波」の「海況」で風速・吹送距離・うねりをまとめて入れられ、いまの値で出来上がる風波とうねりの波長と高さも出ます。いちばん下のボタンで <code>r.Water.*</code> をすべて既定値へ戻せます。</li><li>「FFT の海で描く」を切ると Gerstner の波で描きます。Gerstner の波は保存せず、開き直すと既定の 16 本に戻ります。</li><li>コースティクスの「作り方」をスクリーンスペースにしたときの強さなどの値は、Gerstner の波のときだけ効きます。レイトレーシングの明るさは、光と水の吸収から決まります。</li><li>FFT の海でレイトレーシングが使えるときは、ゲームのカメラの周り 256m 四方（海底の高さを測る範囲）を 0.5m 間隔の細かい格子で描き、その外を「分割数」の格子で描きます。範囲はカメラと一緒に 0.5m 単位で動きます。CVar <code>r.Water.Shore.FineMesh</code> で切れます。</li><li>FFT の海の波の形（頂点の高さと横のずれ）には、その格子の間隔で表せる波だけを入れます。細かい格子は 3 つのカスケードの波を全部（短い波まで）、粗い格子は 60m より長い波だけです。形に入らない短い波は、陰影（法線）で描きます。細かい格子を使わないとき（レイトレーシングが無い・<code>r.Water.Shore.FineMesh</code> を切った）は、カメラの近くも 60m より長い波だけの形になります。</li></ul>",
     see: [["file-formats", "_scene.json の書き方"]]
   },
 
