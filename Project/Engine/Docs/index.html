@@ -9752,6 +9752,7 @@ python Tools/OkinawaBeach/bake_player_walk.py
   <ul>
     <li><strong>SeascapeScene</strong>：Sandbox に、Seascape をプロジェクトのポストエフェクトとして移したシーンを足しました。再生すると、再生を始めてからの秒数で海が動き、ゲーム画面を左ボタンでドラッグすると Shadertoy と同じく時間がずれます。</li>
     <li><strong>Start で有効にしたポストエフェクト</strong>：シーンを開いたときの既定への戻しを、次の描画の前でなく、シーンの設定を読むときにその場で行うようにしました。起動した最初のシーンとエディタの再生では、スクリプトの <code>Start</code> で <code>PostEffect::SetEnabled</code> を呼んだり値を変えたりしても、次の描画で戻っていました。</li>
+    <li><strong>Sandbox の海況</strong>：沖縄の海辺と水面の試験シーンの海を、強い風が短い距離だけ吹いたときの尖った短い波にしました（風速 13m/s・吹送距離 20km・波の高さ ×1.15・うねりの高さ 0.95m・白波 ×1.0）。v0.34.0 でカメラの近くの短い波も形に入るようになったので、波が形として立ちます。</li>
   </ul>
 
   <h3 id="changelog-v0-34-0">v0.34.0 <span class="dim">（2026-10-24）</span></h3>

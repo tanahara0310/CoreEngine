@@ -13,18 +13,22 @@
     ],
     "r.Water.Caustics.DepthAttenuation": 1.517,
     "r.Water.Caustics.Intensity": 1.128,
-    "r.Water.FFT.ActiveComponentCount": 48,
-    "r.Water.FFT.Choppiness": 0.1,
+    "r.Water.FFT.ActiveComponentCount": 64,
+    "r.Water.FFT.AmplitudeScale": 1.15,
+    "r.Water.FFT.Choppiness": 1.812,
+    "r.Water.FFT.FetchKm": 20.0,
     "r.Water.FFT.WindDirection": [
-        1.0,
-        0.0
+        0.72198826,
+        0.6919054
     ],
-    "r.Water.FFT.WindSpeed": 2.0,
+    "r.Water.FFT.WindSpeed": 13.0,
     "r.Water.Foam.CascadeWeights": [
         1.0,
         1.0,
         1.0
     ],
+    "r.Water.Foam.Opacity": 0.612,
+    "r.Water.Foam.WhitecapScale": 1.0,
     "r.Water.ScatteringBase": [
         0.003,
         0.008,
@@ -34,6 +38,7 @@
         0.0,
         1.0
     ],
+    "r.Water.Swell.Height": 0.95,
     "r.Water.Swell.RelativeWidth": 0.15,
     "version": 1
 }
