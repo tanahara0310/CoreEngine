@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.34.0">
+<meta name="engine-version" content="0.35.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2123,7 +2123,7 @@ kbd {
     <thead><tr><th>プロジェクト</th><th>中身</th></tr></thead>
     <tbody>
       <tr><td><span class="path">Projects/Sokoban</span></td><td>倉庫番。スクリプト 1 本（<span class="path">SokobanBoard.as</span>）とプレハブ 5 つだけで、文字で書いた盤面からステージを組み立てる小さな見本。ステージはインスペクタの <code>stages</code> に 1 行足せば増やせます。</td></tr>
-      <tr><td><span class="path">Projects/Sandbox</span></td><td>機能ごとの試験場（物理・キャラクターの歩行・UI・水面・カメラの揺れ・スクリプトのシューター）。沖縄の海辺のシーンでは、待機・歩き・走りのアニメーションが付いた人型を操作できます（<a href="#tutorial-beach-player">沖縄の海辺をプレイヤーで歩く</a>）。</td></tr>
+      <tr><td><span class="path">Projects/Sandbox</span></td><td>機能ごとの試験場（物理・キャラクターの歩行・UI・水面・カメラの揺れ・スクリプトのシューター・Shadertoy から移した海のシェーダ）。沖縄の海辺のシーンでは、待機・歩き・走りのアニメーションが付いた人型を操作できます（<a href="#tutorial-beach-player">沖縄の海辺をプレイヤーで歩く</a>）。</td></tr>
       <tr><td><span class="path">Projects/Sample2D</span></td><td>2D の横スクロールの見本。走る・跳ぶ・コインを集める・ゴールに着く、の 1 ステージに、クリックした所へ箱を落とす遊びを足したもの。スプライトのアニメ・平行投影のカメラの追従・遠景・剛体の軸の固定・トリガーを、スクリプト 6 本（プレイヤー・進行・コイン・ゴール・カメラの追従・遠景）で使っています。使っている機能は <a href="#guide-2d">2D ゲームの作り方</a> で説明しています。</td></tr>
       <tr><td><span class="path">Projects/Tsunagazaru</span></td><td>つながザルをえない。走り続けるトロッコの前にレールを敷いていくゲームで、C++ で作ったゲームをスクリプトだけで作り直した大きめの見本（タイトル・ゲーム・リザルトの 3 シーン）。シーンを切り替えるときのロード画面も、プロジェクトのシェーダで描いています（<a href="#settings-loading-screen">シーンを切り替えるときのロード画面</a>）。</td></tr>
       <tr><td><span class="path">Projects/Reprism</span></td><td>レプリズム。自機のまわりのブロックをハットに写し取って運び、置いた足場でゴールを目指すパズルアクションで、C++ で作ったゲームをスクリプトだけで作り直した見本（タイトル・ステージ選択・ゲームの 3 シーンと 13 ステージ）。ブロックやゴールの光り方はスプライトのマテリアル（<a href="#script-material">マテリアルとシェーダ</a>）、ネオン・走査線・画面の縁の光は<a href="#script-posteffect">プロジェクトのポストエフェクト</a>、ステージの切り替えはブロックに割れて落ちる遷移（<a href="#scenes-transition-effect">自分のシェーダで覆う</a>）で描いています。</td></tr>
@@ -5546,7 +5546,7 @@ kbd {
     <li>1 つのポストエフェクトは「名前・マテリアル・差し込む段・最初に有効か」です。マテリアルの <code>shader</code> にはコンピュートシェーダを指します。</li>
     <li>値はシェーダの <code>register(b0)</code> の定数バッファの項目で、スプライトのマテリアルと同じく .mat の <code>values</code> とインスペクタの欄になります。</li>
     <li>スクリプトからは <a href="#api-PostEffect">PostEffect</a> で有効を切り替え、<code>PostEffect::GetMaterial</code> で値を変えます。</li>
-    <li><strong>シーンを開くたびに</strong>、有効かどうかは Project.json の値へ、マテリアルの値は .mat の中身へ戻ります。演出の消し忘れが次のシーンへ持ち越されません。</li>
+    <li><strong>シーンを開くたびに</strong>、有効かどうかは Project.json の値へ、マテリアルの値は .mat の中身へ戻ります。演出の消し忘れが次のシーンへ持ち越されません。戻すのはそのシーンのスクリプトが動き出す前なので、<code>Start</code> で有効にしたり値を変えたりできます。</li>
   </ul>
 
   <h2 id="pe-project">Project.json に並べる</h2>
@@ -5656,6 +5656,27 @@ kbd {
     <li>名前が Project.json に無いと、名前ごとに 1 回だけ警告を出して何もしません。</li>
     <li>エンジンのエフェクト（Bloom など）は今までどおり CVar で切り替えます（<a href="#api-PostProcess">ポストエフェクト</a>）。</li>
     <li>シーンの遷移に使うこともできます（<a href="#scenes-transition-effect">自分のシェーダで覆う</a>）。遷移が使っている間は、シーンを開いたときの既定への戻しをしません。</li>
+  </ul>
+
+  <h2 id="pe-shadertoy">Shadertoy のシェーダを移す</h2>
+  <p>Shadertoy の Image のシェーダ（<code>mainImage</code> だけで画面を描くもの）は、ポストエフェクトとして移せます。前の段の画面を読まずに全部の画素を書くので、シーンの絵は覆われます。Sandbox の <code>SeascapeScene</code> が見本です（「Seascape」を移したもの。シェーダは <span class="path">PostEffects/Seascape.CS.hlsl</span>、入力を渡すのは <span class="path">Scripts/SeascapeScene/ShadertoyInput.as</span>）。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Shadertoy</th><th>ポストエフェクトでの書き方</th></tr></thead>
+    <tbody>
+      <tr><td><code>fragCoord</code></td><td><code>float2(id.x + 0.5f, gPostEffect.screenSize.y - (id.y + 0.5f))</code>（左下が原点）</td></tr>
+      <tr><td><code>iResolution</code></td><td><code>float2(gPostEffect.screenSize)</code></td></tr>
+      <tr><td><code>iTime</code></td><td>マテリアルの値。スクリプトが再生を始めてからの秒数を毎フレーム入れる（<code>gPostEffect.time</code> は起動からの時間）</td></tr>
+      <tr><td><code>iMouse</code></td><td>マテリアルの値。スクリプトが <code>Input::GetMousePosition</code>（1920×1080 基準・左上が原点）を割合にし、上下を返して入れる</td></tr>
+      <tr><td><code>fragColor</code></td><td>表示の値（sRGB）なので <code>SRGBToLinear(saturate(色))</code> にして <code>gOutput</code> へ書く（バックバッファが sRGB へ直す）</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li><code>vec</code>→<code>float</code>、<code>mix</code>→<code>lerp</code>、<code>fract</code>→<code>frac</code>、<code>inversesqrt</code>→<code>rsqrt</code>、<code>const</code>→<code>static const</code> に置き換えます。</li>
+    <li>GLSL の行列は列で並べます。<code>mat2(a, b, c, d)</code> と <code>v *= m</code> は、同じ並びの <code>float2x2(a, b, c, d)</code> と <code>v = mul(m, v)</code> になります。<code>m[i]</code> で列を入れた行列の <code>v * m</code> は、同じものを行に入れた <code>mul(m, v)</code> です。</li>
+    <li><code>fract(sin(h) * 43758.5)</code> のような乱数は、GPU とコンパイラの丸めの違いで値が変わるので、波などの細かい模様は機械ごとに違って見えます（Shadertoy でも同じです）。</li>
+    <li>移したシェーダにも元のライセンスが掛かります。作者とライセンスの書き込みは消さずに残します。</li>
   </ul>
 
   <h2 id="pe-editor">エディタ</h2>
@@ -9726,6 +9747,13 @@ python Tools/OkinawaBeach/bake_player_walk.py
 
   <h2 id="changelog-history">更新履歴</h2>
 
+  <h3 id="changelog-v0-35-0">v0.35.0 <span class="dim">（2026-10-25）</span></h3>
+  <p>Shadertoy の海のシェーダ「Seascape」を移したシーンを Sandbox に足した版です（<a href="#pe-shadertoy">Shadertoy のシェーダを移す</a>）。</p>
+  <ul>
+    <li><strong>SeascapeScene</strong>：Sandbox に、Seascape をプロジェクトのポストエフェクトとして移したシーンを足しました。再生すると、再生を始めてからの秒数で海が動き、ゲーム画面を左ボタンでドラッグすると Shadertoy と同じく時間がずれます。</li>
+    <li><strong>Start で有効にしたポストエフェクト</strong>：シーンを開いたときの既定への戻しを、次の描画の前でなく、シーンの設定を読むときにその場で行うようにしました。起動した最初のシーンとエディタの再生では、スクリプトの <code>Start</code> で <code>PostEffect::SetEnabled</code> を呼んだり値を変えたりしても、次の描画で戻っていました。</li>
+  </ul>
+
   <h3 id="changelog-v0-34-0">v0.34.0 <span class="dim">（2026-10-24）</span></h3>
   <p>FFT の海で、カメラの近くの水面の形に 60m より短い波も入れた版です（<a href="#api-WaterSurface">水面</a>）。</p>
   <ul>
@@ -11519,7 +11547,7 @@ void Update()
   {
     id: "PostEffect", kind: "namespace", cat: "描画", brief: "プロジェクトのポストエフェクト",
     keywords: "ポストエフェクト posteffect 画面全体 有効 無効 切り替え 値 マテリアル project.json",
-    summary: "Project.json の <code>postEffects</code> に並べた、自分のポストエフェクトを扱います（<a href=\"#script-posteffect\">プロジェクトのポストエフェクト</a>）。シーンを開くたびに、有効かどうかは Project.json の値へ、値は .mat の中身へ戻ります。",
+    summary: "Project.json の <code>postEffects</code> に並べた、自分のポストエフェクトを扱います（<a href=\"#script-posteffect\">プロジェクトのポストエフェクト</a>）。シーンを開くたびに（そのシーンのスクリプトが動き出す前に）、有効かどうかは Project.json の値へ、値は .mat の中身へ戻ります。",
     sections: [
       {
         title: "関数", members: [

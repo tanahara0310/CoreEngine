@@ -1,0 +1,13 @@
+{
+    "shader": {
+        "path": "Application/Assets/PostEffects/Seascape.CS.hlsl"
+    },
+    "textures": {},
+    "values": {
+        "iTime": 0.0,
+        "mouse": [
+            0.0,
+            0.0
+        ]
+    }
+}
