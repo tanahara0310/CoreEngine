@@ -326,7 +326,7 @@ namespace CoreEngine::Editor::ScriptBinding
             if (!RequireGUI("Foldout")) {
                 return false;
             }
-            return ImGui::CollapsingHeader(label.c_str(), defaultOpen ? ImGuiTreeNodeFlags_DefaultOpen : 0);
+            return InspectorLayout::Foldout(label.c_str(), defaultOpen);
         }
 
         // ---------------------------------------------------------------- 値の入力
