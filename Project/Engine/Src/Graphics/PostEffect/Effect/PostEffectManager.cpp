@@ -219,6 +219,14 @@ const ProjectPostEffect* PostEffectManager::FindProjectEffectByMaterial(const st
     return nullptr;
 }
 
+void PostEffectManager::ResetProjectEffects()
+{
+    for (ProjectPostEffect* effect : projectEffects_) {
+        effect->ResetToDefault();
+    }
+    RebuildEffectPtrCache();
+}
+
 void PostEffectManager::RebuildEffectPtrCache()
 {
     effectPtrCache_.clear();
@@ -354,14 +362,6 @@ bool PostEffectManager::ValidateChain() const
 
 void PostEffectManager::PrepareFrame(const PostEffectFrameContext& ctx)
 {
-    // シーンを開いたら、プロジェクトのポストエフェクトを Project.json と .mat の中身へ戻す
-    if (projectEffectsResetRequested_.exchange(false)) {
-        for (ProjectPostEffect* effect : projectEffects_) {
-            effect->ResetToDefault();
-        }
-        RebuildEffectPtrCache();
-    }
-
     // 有効/無効は CVar（"r.<Effect>.Enabled"）が持つため、SetEffectEnabled を通らない経路でも
     // 変化しうる（CVars.json からの復元、コンソール入力、プリセット適用など）。
     // その場合キャッシュが古いままだと「タブ上は有効なのに画面に反映されない」状態になるので、

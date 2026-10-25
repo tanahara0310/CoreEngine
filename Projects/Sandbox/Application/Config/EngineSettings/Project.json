@@ -1,5 +1,13 @@
 {
     "initialScene": "PhysicsTestScene",
     "name": "Sandbox",
+    "postEffects": [
+        {
+            "enabled": false,
+            "material": "Application/Assets/PostEffects/Seascape.mat",
+            "name": "Seascape",
+            "stage": "PostTonemap"
+        }
+    ],
     "version": "1.0"
 }

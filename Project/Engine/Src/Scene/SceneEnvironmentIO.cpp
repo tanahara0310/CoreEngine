@@ -66,7 +66,7 @@ namespace CoreEngine
 
         // プロジェクトのポストエフェクトの有効と値も、前のシーンのものを残さない
         if (auto* postEffects = engine ? engine->GetService<PostEffectManager>() : nullptr) {
-            postEffects->RequestProjectEffectsReset();
+            postEffects->ResetProjectEffects();
         }
     }
 
