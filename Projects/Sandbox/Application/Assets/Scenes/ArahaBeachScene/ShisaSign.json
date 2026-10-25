@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "2e3f0d19ed369939"
+                },
+                "rotate": [
+                    0.0,
+                    -1.5707964,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    74.0,
+                    2.55,
+                    52.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "061125c9-697a-5ec5-ac53-1e5ecfee442d",
+                    "path": "Application/Assets/Models/Okinawa/ShisaSign/ShisaSign.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "2537cbaf012655d8",
+    "name": "ShisaSign",
+    "order": 218
+}

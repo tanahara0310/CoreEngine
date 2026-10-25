@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "bdc7680fd9b927b8"
+                },
+                "rotate": [
+                    0.0,
+                    1.8285675,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    -40.8927,
+                    2.5,
+                    -290.41025
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "9bfc0e80-a921-5d33-a1ac-610a4d311853",
+                    "path": "Application/Assets/Models/Okinawa/Seawall_Straight/Seawall_Straight.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "d223f4b6c17e0ac2",
+    "name": "Seawall_Straight (2)",
+    "order": 12
+}

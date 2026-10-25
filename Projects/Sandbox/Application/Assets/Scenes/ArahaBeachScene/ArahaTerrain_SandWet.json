@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "6a63c902245f5e0e"
+                },
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "ffde27ab-dfd3-5a2b-a967-3aa4b3fa8260",
+                    "path": "Application/Assets/Models/Okinawa/ArahaTerrain_SandWet/ArahaTerrain_SandWet.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "23e05f32515ad24e",
+    "name": "ArahaTerrain_SandWet",
+    "order": 5
+}

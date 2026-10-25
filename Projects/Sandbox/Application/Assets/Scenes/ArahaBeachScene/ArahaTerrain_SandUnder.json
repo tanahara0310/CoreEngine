@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "6a63c902245f5e0e"
+                },
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "2da9acfc-5445-58a0-ae7a-2d1593c8590d",
+                    "path": "Application/Assets/Models/Okinawa/ArahaTerrain_SandUnder/ArahaTerrain_SandUnder.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "cbcbf698bbe5a844",
+    "name": "ArahaTerrain_SandUnder",
+    "order": 6
+}

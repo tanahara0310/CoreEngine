@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "98449a19fa9b046c"
+                },
+                "rotate": [
+                    0.0,
+                    -0.6275296,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    -146.37354,
+                    0.0,
+                    -199.50967
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "4a7ea2f1-f981-53c3-87c5-17fc6ef97479",
+                    "path": "Application/Assets/Models/Okinawa/SwimNet/SwimNet.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "e62f198de818220e",
+    "name": "SwimNet (9)",
+    "order": 119
+}

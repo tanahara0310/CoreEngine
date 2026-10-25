@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "ba1087ebe62f770d"
+                },
+                "rotate": [
+                    0.0,
+                    -5.4420323,
+                    0.0
+                ],
+                "scale": [
+                    1.1059461,
+                    1.1059461,
+                    1.1059461
+                ],
+                "translate": [
+                    55.530586,
+                    2.5,
+                    18.035027
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "098c2ea0-6a85-5fb5-a036-10ff2f15e48c",
+                    "path": "Application/Assets/Models/Okinawa/CoconutPalm_C/CoconutPalm_C.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "492703b84a8a6354",
+    "name": "CoconutPalm_C (12)",
+    "order": 257
+}

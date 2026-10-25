@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "98449a19fa9b046c"
+                },
+                "rotate": [
+                    0.0,
+                    -1.3250566,
+                    0.0
+                ],
+                "scale": [
+                    0.75,
+                    0.75,
+                    0.75
+                ],
+                "translate": [
+                    -47.0,
+                    0.0,
+                    3.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "c01a37fa-dad3-5d36-9d73-aa707e443c3f",
+                    "path": "Application/Assets/Models/Okinawa/ArahaIsland/ArahaIsland.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "a08961dcab5a0be5",
+    "name": "ArahaIsland (1)",
+    "order": 104
+}

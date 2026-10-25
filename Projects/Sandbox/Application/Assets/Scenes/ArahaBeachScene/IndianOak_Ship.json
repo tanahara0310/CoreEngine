@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "2e3f0d19ed369939"
+                },
+                "rotate": [
+                    0.0,
+                    2.7925267,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    50.5,
+                    2.55,
+                    -52.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "444d69a6-a3ab-5729-9d10-90d307775985",
+                    "path": "Application/Assets/Models/Okinawa/IndianOak_Ship/IndianOak_Ship.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "77cc4ef9c8620c6a",
+    "name": "IndianOak_Ship",
+    "order": 216
+}

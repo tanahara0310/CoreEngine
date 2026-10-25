@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "01ac57967148c8be"
+                },
+                "rotate": [
+                    0.0,
+                    -1.4470131,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    44.882133,
+                    1.1707803,
+                    46.67989
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "dcb1b535-9e27-5bdd-ba75-da7cc25fc4ac",
+                    "path": "Application/Assets/Models/Okinawa/DeckChair_A/DeckChair_A.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "615b071c457f4b33",
+    "name": "DeckChair_A (5)",
+    "order": 299
+}

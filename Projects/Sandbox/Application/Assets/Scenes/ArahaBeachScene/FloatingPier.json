@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "98449a19fa9b046c"
+                },
+                "rotate": [
+                    0.0,
+                    -4.6343346,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    -2.8580053,
+                    0.0,
+                    109.30147
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "6c193854-6aaa-52af-8b52-e8656d2a4e05",
+                    "path": "Application/Assets/Models/Okinawa/FloatingPier/FloatingPier.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "bad74ec8c47176bf",
+    "name": "FloatingPier",
+    "order": 109
+}
