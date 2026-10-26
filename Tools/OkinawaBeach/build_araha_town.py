@@ -136,7 +136,8 @@ class Ground:
 # 建物
 # ---------------------------------------------------------------------------
 
-def build_blocks(town, ground, mats):
+def build_blocks(town, ground, mats, park):
+    """区画ごとの建物のモデルを書き出す。park（公園の輪郭）の中の建物は作らない"""
     ctx = TM.Context(town)
     blocks = {}
     stats = {}
@@ -153,6 +154,9 @@ def build_blocks(town, ground, mats):
             skipped += 1
             continue
         if not (AT.FAR_BOX[0] < cx < AT.FAR_BOX[1] and AT.FAR_BOX[2] < cy < AT.FAR_BOX[3]):
+            continue
+        if AM.inside(np.array([cx]), np.array([cy]), park)[0]:
+            skipped += 1
             continue
         info = TM.classify(b, poly, ctx)
         if info is None:
@@ -454,7 +458,7 @@ def main():
     if "blocks" in only:
         mats = building_materials()
         print(f"  外壁と屋上のテクスチャ ({time.time() - t0:.0f}s)")
-        build_blocks(town, ground, mats)
+        build_blocks(town, ground, mats, m.park)
     if "ground" in only:
         build_ground(town, m, field, P, parts, ring_idx, ground)
     if "seawall" in only:
