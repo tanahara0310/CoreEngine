@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "12fe7d5a2391e726"
+                },
+                "rotate": [
+                    0.0,
+                    -0.9455207,
+                    0.0
+                ],
+                "scale": [
+                    1.0292696,
+                    1.0292696,
+                    1.0292696
+                ],
+                "translate": [
+                    135.31032,
+                    2.5,
+                    193.49771
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "1bbd82f1-6753-5312-af92-2b3bae401f1e",
+                    "path": "Application/Assets/Models/Okinawa/Fukugi/Fukugi.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "2489b80714bfd1a0",
+    "name": "Fukugi (21)",
+    "order": 493
+}

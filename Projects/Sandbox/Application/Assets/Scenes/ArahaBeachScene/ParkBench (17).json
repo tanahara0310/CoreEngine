@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "8fa997446731f570"
+                },
+                "rotate": [
+                    0.0,
+                    -4.386665,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    120.28309,
+                    2.5,
+                    235.60321
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "8ecf11db-1e38-5aa2-92bd-2c58464ec97e",
+                    "path": "Application/Assets/Models/Okinawa/ParkBench/ParkBench.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "2b853861b77b72a8",
+    "name": "ParkBench (17)",
+    "order": 365
+}

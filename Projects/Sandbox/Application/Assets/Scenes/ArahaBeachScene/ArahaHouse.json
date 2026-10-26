@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "8fa997446731f570"
+                },
+                "rotate": [
+                    0.0,
+                    0.31415927,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    44.5,
+                    2.55,
+                    -113.5
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "eb21f901-88c4-5af0-af7b-81e5dbb77b61",
+                    "path": "Application/Assets/Models/Okinawa/ArahaHouse/ArahaHouse.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "a8f801f7e1bb2ede",
+    "name": "ArahaHouse",
+    "order": 307
+}

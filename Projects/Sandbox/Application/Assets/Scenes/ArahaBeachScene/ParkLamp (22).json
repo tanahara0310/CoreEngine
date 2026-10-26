@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "8fa997446731f570"
+                },
+                "rotate": [
+                    0.0,
+                    -0.013954165,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    -32.92464,
+                    2.55,
+                    -350.14886
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "09964fd7-a80d-5602-9da3-d8b7c6827724",
+                    "path": "Application/Assets/Models/Okinawa/ParkLamp/ParkLamp.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "731e5d6006439e52",
+    "name": "ParkLamp (22)",
+    "order": 369
+}

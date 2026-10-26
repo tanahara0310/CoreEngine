@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "8fa997446731f570"
+                },
+                "rotate": [
+                    0.0,
+                    0.31415927,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.12006664,
+                    2.55,
+                    -152.25194
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "c60793d1-a049-5431-b1ab-5136bd5e385b",
+                    "path": "Application/Assets/Models/Okinawa/BBQShelter/BBQShelter.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "4e9637f78b1ce9c3",
+    "name": "BBQShelter (9)",
+    "order": 322
+}

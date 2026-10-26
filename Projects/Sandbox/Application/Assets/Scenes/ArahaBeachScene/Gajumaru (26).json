@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "12fe7d5a2391e726"
+                },
+                "rotate": [
+                    0.0,
+                    -2.0238256,
+                    0.0
+                ],
+                "scale": [
+                    0.91751796,
+                    0.91751796,
+                    0.91751796
+                ],
+                "translate": [
+                    63.295605,
+                    2.5,
+                    -121.19529
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "bfb603f9-2f34-5d11-9325-5a33a503f5ad",
+                    "path": "Application/Assets/Models/Okinawa/Gajumaru/Gajumaru.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "c162e6e593c13cc6",
+    "name": "Gajumaru (26)",
+    "order": 555
+}

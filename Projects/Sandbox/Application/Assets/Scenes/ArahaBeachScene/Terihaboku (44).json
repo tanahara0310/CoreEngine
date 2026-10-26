@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "12fe7d5a2391e726"
+                },
+                "rotate": [
+                    0.0,
+                    -1.8637766,
+                    0.0
+                ],
+                "scale": [
+                    0.93842083,
+                    0.93842083,
+                    0.93842083
+                ],
+                "translate": [
+                    29.999594,
+                    2.5,
+                    -260.26834
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "72c13102-2e3e-5bc3-9876-a76877daee44",
+                    "path": "Application/Assets/Models/Okinawa/Terihaboku/Terihaboku.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "bb3f5b4e01dda86a",
+    "name": "Terihaboku (44)",
+    "order": 594
+}

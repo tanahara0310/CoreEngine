@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "12fe7d5a2391e726"
+                },
+                "rotate": [
+                    0.0,
+                    -3.6143095,
+                    0.0
+                ],
+                "scale": [
+                    0.8710672,
+                    0.8710672,
+                    0.8710672
+                ],
+                "translate": [
+                    39.6362,
+                    2.5,
+                    -73.07109
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "bdb4f856-4453-59e6-ba2c-c31c170ff173",
+                    "path": "Application/Assets/Models/Okinawa/Hououboku/Hououboku.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "2914e83d93762dd8",
+    "name": "Hououboku (14)",
+    "order": 532
+}

@@ -27,6 +27,16 @@ WALL_ENDS = ((-46.1, -310.2), (124.1, 257.5))
 # 浜の北と南の外の海岸線（突堤の付け根から先）の始まり
 NORTH_COAST_FROM = (133.6, 286.7)
 SOUTH_COAST_TO = (-68.5, -323.3)
+# 公園の施設のモデルと野外ステージの裏の広場: (中心, 方位 [度。北から時計回り], 占める範囲)。方位は野外ステージと遊具ではモデルの +X、
+# ほかはモデルの +Y（長手）が向く方位。範囲は半径か (方位の向きの半分の長さ, 横の半分の長さ)。園路と木はこの範囲を避ける
+PARK_FACILITIES = {
+    "ArahaAmphitheater": ((9.5, -213.0), 102.0, 37.0),
+    "ArahaAmphitheater_Plaza": ((57.9, -223.3), 102.0, (10.0, 15.0)),
+    "ArahaCourts": ((93.5, 79.5), 14.8, (38.5, 11.0)),
+    "ArahaHouse": ((44.5, -113.5), 18.0, (12.5, 13.0)),
+    "ParkToilet": ((91.7, 8.5), 17.7, (7.5, 4.0)),
+    "PlayTower": ((68.0, 12.0), 20.0, (7.5, 5.5)),
+}
 
 
 def _nearest(pts, p):
@@ -107,6 +117,46 @@ def dist(px, py, pts):
         t = np.clip(((px - a[0]) * vx + (py - a[1]) * vy) / L2, 0.0, 1.0)
         d = np.minimum(d, np.hypot(px - (a[0] + t * vx), py - (a[1] + t * vy)))
     return d
+
+
+def in_facility(px, py, margin=0.0):
+    """公園の施設の範囲（PARK_FACILITIES）に入る点"""
+    px = np.asarray(px, float)
+    py = np.asarray(py, float)
+    res = np.zeros(np.shape(px), bool)
+    for (cx, cy), az, ext in PARK_FACILITIES.values():
+        dx, dy = px - cx, py - cy
+        if np.isscalar(ext):
+            res |= np.hypot(dx, dy) < ext + margin
+            continue
+        a = math.radians(az)
+        along = dx * math.sin(a) + dy * math.cos(a)
+        across = dx * math.cos(a) - dy * math.sin(a)
+        res |= (np.abs(along) < ext[0] + margin) & (np.abs(across) < ext[1] + margin)
+    return res
+
+
+def park_footways(m, wall_clear=8.0, margin=1.5):
+    """公園の中の歩道の線。地図の歩道を 1 m おきに取り、護岸の遊歩道の近くと施設の範囲を除いて切った点列のリスト"""
+    data = json.load(open(MAP_PATH, encoding="utf-8"))
+    park = np.array(data["park"]["points"], float)
+    out = []
+    for fw in data["footways"]:
+        pts = resample(np.array(fw["points"], float), 1.0)
+        ok = inside(pts[:, 0], pts[:, 1], park) & inside(pts[:, 0], pts[:, 1], m.land)
+        ok &= dist(pts[:, 0], pts[:, 1], m.wall) > wall_clear
+        ok &= ~in_facility(pts[:, 0], pts[:, 1], margin=margin)
+        run = []
+        for p, k in zip(pts, ok):
+            if k:
+                run.append(p)
+                continue
+            if len(run) >= 4:
+                out.append(np.array(run))
+            run = []
+        if len(run) >= 4:
+            out.append(np.array(run))
+    return out
 
 
 def smoothstep(e0, e1, x):

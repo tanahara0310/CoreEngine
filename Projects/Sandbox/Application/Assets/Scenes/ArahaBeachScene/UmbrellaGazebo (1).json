@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "8fa997446731f570"
+                },
+                "rotate": [
+                    0.0,
+                    -1.3089969,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    85.8,
+                    2.55,
+                    -181.7
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "6b14d48a-e1e2-5c23-8ccb-b5758d5a5559",
+                    "path": "Application/Assets/Models/Okinawa/UmbrellaGazebo/UmbrellaGazebo.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "e6b44e600a4ffe9d",
+    "name": "UmbrellaGazebo (1)",
+    "order": 326
+}
