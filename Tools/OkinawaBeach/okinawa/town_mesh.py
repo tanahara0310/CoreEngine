@@ -1,6 +1,6 @@
 """街の地面と建物の形（numpy）
 
-地面: 今の地形の格子（araha_map.grid_points）のうち公園の外の四角（面の種類 5）と、その外を覆う粗い格子。
+地面: 今の地形の格子（araha_map.grid_points）を境目で切り分けたうちの公園の外（面の種類 5）と、その外を覆う粗い格子。
       粗い格子は今の地形の格子にかかる升目を抜き、抜いた所の縁と今の地形の格子の外周を三角形で縫い合わせる。
 建物: OSM の建物の輪郭を立ち上げ、外壁・屋上の手すり壁・屋上・給水タンク・塔屋を作る。
 """
@@ -465,17 +465,6 @@ def chunk_name(cx, cy):
 # 地面
 # ---------------------------------------------------------------------------
 
-def near_town_cells(field, P):
-    """今の地形の格子の升目のうち、街の地面（面の種類 5）のもの [k, 2]（左下の番号）"""
-    px, py = P[..., 0], P[..., 1]
-    cx = (px[:-1, :-1] + px[1:, :-1] + px[1:, 1:] + px[:-1, 1:]) / 4
-    cy = (py[:-1, :-1] + py[1:, :-1] + py[1:, 1:] + py[:-1, 1:]) / 4
-    creg = field.classify(cx, cy)
-    cz = field.height(cx, cy, creg)
-    csurf = field.surface(creg, cz, cx, cy)
-    return np.argwhere(csurf == 5)
-
-
 def removed_cells(xs, ys, ring):
     """外側の格子の升目のうち、今の地形の格子にかかるもの [ny-1, nx-1]"""
     X, Y = np.meshgrid(xs, ys)
@@ -562,7 +551,7 @@ def grid_normals(xs, ys, Z):
     return n / np.linalg.norm(n, axis=-1, keepdims=True)
 
 
-def field_normals(field, px, py, e=0.5):
+def field_normals(field, px, py, e=0.25):
     hx = (field.height(px + e, py) - field.height(px - e, py)) / (2 * e)
     hy = (field.height(px, py + e) - field.height(px, py - e)) / (2 * e)
     n = np.stack([-hx, -hy, np.ones_like(hx)], -1)

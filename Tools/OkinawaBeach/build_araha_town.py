@@ -1,9 +1,10 @@
 """アラハビーチのまわりの街（地面・建物）のモデルを書き出す（Blender を使わない）
 
-使い方: python Tools/OkinawaBeach/build_araha_town.py
+使い方: python Tools/OkinawaBeach/build_araha_town.py [blocks] [ground] [seawall]（省くと全部）
 data/araha_town.json（OpenStreetMap の建物・道路・面・海岸線）と data/araha_dem.npz（国土地理院の標高タイル）から、
   ArahaTown_Ground        : 公園の外の街の地面と、その外の遠くの丘・海底（道路・駐車場・緑地を描いたテクスチャ）
   ArahaTown_Block_<区画>  : 512 m 四方ごとの建物（外壁・屋上・給水タンク・塔屋）
+  ArahaTown_Seawall       : 浜と突堤と砂浜の外の海岸の護岸（壁と天端）
   ArahaTown_Textures      : 建物の外壁と屋上のテクスチャ（区画のモデルが共有する）
 を Projects/Sandbox/Application/Assets/Models/Okinawa へ書き出す。どのモデルも原点に回転なしで置く。
 """
@@ -30,9 +31,20 @@ MODELS_DIR = os.path.join(PROJECT_DIR, "Application", "Assets", "Models", "Okina
 TEX_NAME = "ArahaTown_Textures"
 TEX_DIR = os.path.join(MODELS_DIR, TEX_NAME)
 GROUND = "ArahaTown_Ground"
+SEAWALL = "ArahaTown_Seawall"
 GUID_NAMESPACE = uuid.uuid5(uuid.NAMESPACE_URL, "https://github.com/tanahara0310/CoreEngine/Tools/OkinawaBeach")
 BLEND_OUT = 60.0     # 今の地形の格子の外で、その高さから外側の高さへ移る幅 [m]
 SKIRT = 60.0         # 外側の地面の外周から下へ垂らす深さ [m]
+# 護岸: 天端の幅・陸の地面からの高さ・壁の下端 [m]、浜・突堤・砂浜から離す距離 [m]
+WALL_TOP_WIDTH = 6.0
+WALL_TOP_RISE = 0.3
+WALL_BOTTOM = -3.0
+WALL_CLEAR_BEACH = 14.0
+WALL_CLEAR_JETTY = 6.0
+WALL_CLEAR_JETTY_OUTLINE = 22.0
+JETTY_ROOT_FREE = 6.0
+WALL_CLEAR_SAND = 10.0
+WALL_MIN_RUN = 12.0
 
 
 def write_meta(path, kind):
@@ -183,39 +195,54 @@ def tile_boxes(x0, x1, y0, y1, size):
     return out
 
 
-def build_ground(town, m, field, P, Zn, ring_idx, ground):
+def ring_with_cuts(P, ring_idx, parts):
+    """今の地形の格子の外周の点列に、面の種類の境目で切った点を足したもの [n, 3]（反時計回り）"""
+    allv = np.concatenate([v for v, _ in parts.values()])
+    out = []
+    n = len(ring_idx)
+    for q in range(n):
+        a = P[ring_idx[q]]
+        b = P[ring_idx[(q + 1) % n]]
+        e = b - a
+        L2 = float(e @ e)
+        lo = np.minimum(a, b) - 1e-4
+        hi = np.maximum(a, b) + 1e-4
+        cand = allv[(allv[:, 0] >= lo[0]) & (allv[:, 0] <= hi[0]) & (allv[:, 1] >= lo[1]) & (allv[:, 1] <= hi[1])]
+        t = ((cand[:, 0] - a[0]) * e[0] + (cand[:, 1] - a[1]) * e[1]) / L2
+        off = np.abs((cand[:, 0] - a[0]) * e[1] - (cand[:, 1] - a[1]) * e[0]) / math.sqrt(L2)
+        on = (off < 1e-5) & (t > -1e-7) & (t < 1.0 - 1e-7)
+        pts = cand[on]
+        order = np.argsort(t[on])
+        seen = set()
+        for p in pts[order]:
+            k = (round(float(p[0]), 4), round(float(p[1]), 4))
+            if k not in seen:
+                seen.add(k)
+                out.append(p)
+    return np.array(out)
+
+
+def build_ground(town, m, field, P, parts, ring_idx, ground):
     out_dir = os.path.join(MODELS_DIR, GROUND)
     fresh_dir(out_dir)
     xs, ys, Zf = ground.xs, ground.ys, ground.Z
     nx, ny = len(xs), len(ys)
-    ns, nt = P.shape[:2]
     NF = nx * ny
     t = time.time()
-    # ---- 頂点（外側の格子 → 今の地形の格子）----
+    # ---- 頂点（外側の格子 → 今の地形の格子の中の街 → 今の地形の格子の外周）----
     X, Y = np.meshgrid(xs, ys)
-    pos = np.concatenate([np.stack([X.ravel(), Y.ravel(), Zf.ravel()], -1),
-                          np.column_stack([P.reshape(-1, 2), Zn.ravel()])])
-    nrm_far = TM.grid_normals(xs, ys, Zf).reshape(-1, 3)
-    nrm_near = TM.field_normals(field, P[..., 0], P[..., 1]).reshape(-1, 3)
-    nrm = np.concatenate([nrm_far, nrm_near])
+    town_v, town_t = parts.get(5, (np.zeros((0, 3)), np.zeros((0, 3), int)))
+    ring = ring_with_cuts(P, ring_idx, parts)
+    pos = np.concatenate([np.stack([X.ravel(), Y.ravel(), Zf.ravel()], -1), town_v, ring])
+    nrm = np.concatenate([TM.grid_normals(xs, ys, Zf).reshape(-1, 3),
+                          TM.field_normals(field, town_v[:, 0], town_v[:, 1]),
+                          TM.field_normals(field, ring[:, 0], ring[:, 1])])
+    NT = NF + len(town_v)
 
     def fid(iy, ix):
         return iy * nx + ix
 
-    def nid(i, j):
-        return NF + i * nt + j
-
-    tris = []
-    # ---- 今の地形の格子の中の街 ----
-    cells = TM.near_town_cells(field, P)
-    for i, j in cells:
-        a, b, c, d = nid(i, j), nid(i + 1, j), nid(i + 1, j + 1), nid(i, j + 1)
-        e1 = pos[b] - pos[a]
-        e2 = pos[d] - pos[a]
-        if e1[0] * e2[1] - e1[1] * e2[0] > 0:
-            tris += [(a, b, c, "near"), (a, c, d, "near")]
-        else:
-            tris += [(a, c, b, "near"), (a, d, c, "near")]
+    tris = [(a + NF, b + NF, c + NF, "near") for a, b, c in town_t]
     n_near = len(tris)
     # ---- 外側の格子（今の地形の格子にかかる升目と、陸から遠い海を抜く）----
     ring_pts = np.array([P[i, j] for i, j in ring_idx])
@@ -231,9 +258,9 @@ def build_ground(town, m, field, P, Zn, ring_idx, ground):
     # ---- 縫い合わせ ----
     loop = TM.boundary_loop(removed)
     Bpts = np.array([(xs[ix], ys[iy]) for iy, ix in loop])
-    zt, j0 = TM.zipper(ring_pts, Bpts)
+    zt, j0 = TM.zipper(ring[:, :2], Bpts)
     loop = loop[j0:] + loop[:j0]
-    ids = [nid(i, j) for i, j in ring_idx] + [fid(iy, ix) for iy, ix in loop]
+    ids = [NT + k for k in range(len(ring))] + [fid(iy, ix) for iy, ix in loop]
     folded = 0
     for a, b, c in zt:
         A, Bv, Cv = pos[ids[a]], pos[ids[b]], pos[ids[c]]
@@ -254,9 +281,7 @@ def build_ground(town, m, field, P, Zn, ring_idx, ground):
             line = [(iy, 0) for iy in range(ny - 1, -1, -1)]
         skirt.append(line)
     # ---- 材質（タイル）へ分ける ----
-    near_cells_pos = pos[[nid(i, j) for i, j in cells]] if len(cells) else np.zeros((0, 3))
-    nb = (near_cells_pos[:, 0].min(), near_cells_pos[:, 0].max(), near_cells_pos[:, 1].min(),
-          near_cells_pos[:, 1].max())
+    nb = (town_v[:, 0].min(), town_v[:, 0].max(), town_v[:, 1].min(), town_v[:, 1].max())
     near_tiles = tile_boxes(*nb, AT.NEAR_TILE)
     ib = AT.INNER_BOX
     mid_tiles = tile_boxes(ib[0], ib[1], ib[2], ib[3], AT.MID_TILE)
@@ -281,7 +306,7 @@ def build_ground(town, m, field, P, Zn, ring_idx, ground):
             name = f"{GROUND}_Far"
         else:
             box = (near_tiles if kind == "near" else mid_tiles)[(i, j)][0]
-            px = AT.TILE_PX
+            px = AT.NEAR_PX if kind == "near" else AT.TILE_PX
             ew = f"E{i}" if i >= 0 else f"W{-i}"
             ns_ = f"N{j}" if j >= 0 else f"S{-j}"
             name = f"{GROUND}_{'Near' if kind == 'near' else 'Mid'}_{ew}_{ns_}"
@@ -317,20 +342,123 @@ def build_ground(town, m, field, P, Zn, ring_idx, ground):
     print(f"  地面のテクスチャ {painted} 枚 ({time.time() - t:.0f}s)・{n} 三角形")
 
 
+def build_seawall(town, m, ground):
+    """海岸線（OSM。左が陸）に沿った護岸。浜・突堤・地図の砂浜の近くは作らない"""
+    import export_araha_scene as EX
+    out_dir = os.path.join(MODELS_DIR, SEAWALL)
+    fresh_dir(out_dir)
+    prefix = f"{SEAWALL}_Concrete"
+    TT.save_maps(out_dir, prefix, TT.paint_seawall(91))
+    for f in sorted(os.listdir(out_dir)):
+        write_meta(os.path.join(out_dir, f), "Texture")
+    wall_mat = GW.Material(prefix, f"{prefix}_BaseColor.png", f"{prefix}_Normal.png", f"{prefix}_ORM.png")
+    top_mat = GW.Material(f"{SEAWALL}_Top", f"../{TEX_NAME}/ArahaTown_Roof_Concrete_BaseColor.png",
+                          f"../{TEX_NAME}/ArahaTown_Roof_Concrete_Normal.png",
+                          f"../{TEX_NAME}/ArahaTown_Roof_Concrete_ORM.png")
+    jetties = [(np.array(r), np.array(h)) for r, h, _ in EX.JETTIES]
+    sands = [a["_a"] for a in town.areas if a["kind"] == "beach"]
+    x0, x1, y0, y1 = AT.FAR_BOX
+    wall = GW.Primitive()
+    top = GW.Primitive()
+    runs = 0
+    for c in town.coastline:
+        pts = AM.resample(c, 2.0)
+        ok = (pts[:, 0] > x0 + 20) & (pts[:, 0] < x1 - 20) & (pts[:, 1] > y0 + 20) & (pts[:, 1] < y1 - 20)
+        ok &= AM.dist(pts[:, 0], pts[:, 1], np.vstack([m.beach_area, m.beach_area[:1]])) > WALL_CLEAR_BEACH
+        ok &= ~AM.inside(pts[:, 0], pts[:, 1], m.beach_area)
+        for r, h in jetties:
+            # 突堤の石の中は作らない。付け根から JETTY_ROOT_FREE より先は、突堤の縁をなぞる海岸線も除く
+            ax = (h - r) / np.hypot(*(h - r))
+            along = (pts[:, 0] - r[0]) * ax[0] + (pts[:, 1] - r[1]) * ax[1]
+            d = AM.dist(pts[:, 0], pts[:, 1], np.array([r, h]))
+            ok &= d > WALL_CLEAR_JETTY
+            ok &= ~((d < WALL_CLEAR_JETTY_OUTLINE) & (along > JETTY_ROOT_FREE))
+            ok &= np.hypot(pts[:, 0] - h[0], pts[:, 1] - h[1]) > WALL_CLEAR_JETTY_OUTLINE + 8.0
+        for a in sands:
+            ok &= ~AM.inside(pts[:, 0], pts[:, 1], a)
+            ok &= AM.dist(pts[:, 0], pts[:, 1], np.vstack([a, a[:1]])) > WALL_CLEAR_SAND
+        k = 0
+        while k < len(pts):
+            if not ok[k]:
+                k += 1
+                continue
+            e = k
+            while e < len(pts) and ok[e]:
+                e += 1
+            if e - k >= 3 and (e - k - 1) * 2.0 >= WALL_MIN_RUN:
+                add_wall_run(wall, top, pts[k:e], ground)
+                runs += 1
+            k = e
+    path = os.path.join(out_dir, SEAWALL + ".gltf")
+    n = GW.write(path, SEAWALL, [(wall_mat, wall), (top_mat, top)])
+    write_meta(path, "Model")
+    print(f"  護岸 {runs} 本・{n} 三角形")
+
+
+def add_wall_run(wall, top, pts, ground):
+    """海岸線の点列 pts（左が陸）に沿った壁（海側の面）と天端と両端の面"""
+    t = np.gradient(pts, axis=0)
+    t /= np.linalg.norm(t, axis=1, keepdims=True)
+    n = np.stack([-t[:, 1], t[:, 0]], -1)                 # 陸の向き
+    inland = pts + n * (WALL_TOP_WIDTH + 2.0)
+    z_top = ground(inland[:, 0], inland[:, 1]) + WALL_TOP_RISE
+    z_top = np.convolve(np.pad(z_top, 3, mode="edge"), np.ones(7) / 7, mode="valid")
+    acc = np.concatenate([[0.0], np.cumsum(np.hypot(*np.diff(pts, axis=0).T))])
+    W = TT.SEAWALL_W
+    for i in range(len(pts) - 1):
+        a, b = pts[i], pts[i + 1]
+        za, zb = z_top[i], z_top[i + 1]
+        ua, ub = acc[i] / W, acc[i + 1] / W
+        va = lambda z: (z - TT.SEAWALL_Z0) / W  # noqa: E731
+        e = b - a
+        L = max(float(np.hypot(*e)), 1e-9)
+        tan = (e[0] / L, e[1] / L, 0.0)
+        nrm = (e[1] / L, -e[0] / L, 0.0)                    # 海の向き
+        # 海側の壁（海から見ると a が左、b が右）
+        wall.add([(a[0], a[1], WALL_BOTTOM), (b[0], b[1], WALL_BOTTOM), (b[0], b[1], zb), (a[0], a[1], za)], nrm,
+                 [(ua, va(WALL_BOTTOM)), (ub, va(WALL_BOTTOM)), (ub, va(zb)), (ua, va(za))], tan,
+                 [(0, 1, 2), (0, 2, 3)])
+        # 天端
+        ia, ib = a + n[i] * WALL_TOP_WIDTH, b + n[i + 1] * WALL_TOP_WIDTH
+        q = np.array([(a[0], a[1], za), (b[0], b[1], zb), (ib[0], ib[1], zb), (ia[0], ia[1], za)])
+        top.add(q, (0, 0, 1), q[:, :2] / TT.ROOF_TILE, (1, 0, 0), [(0, 1, 2), (0, 2, 3)])
+        # 天端の陸側の縁（地面まで。陸から見ると b が左、a が右）
+        zga, zgb = za - WALL_TOP_RISE - 0.6, zb - WALL_TOP_RISE - 0.6
+        wall.add([(ib[0], ib[1], zgb), (ia[0], ia[1], zga), (ia[0], ia[1], za), (ib[0], ib[1], zb)],
+                 (-nrm[0], -nrm[1], 0.0), [(-ub, va(zgb)), (-ua, va(zga)), (-ua, va(za)), (-ub, va(zb))],
+                 (-tan[0], -tan[1], 0.0), [(0, 1, 2), (0, 2, 3)])
+    # 両端の面
+    for i, sgn in ((0, -1.0), (len(pts) - 1, 1.0)):
+        a = pts[i]
+        ia = a + n[i] * WALL_TOP_WIDTH
+        tz = z_top[i]
+        q = np.array([(a[0], a[1], WALL_BOTTOM), (ia[0], ia[1], WALL_BOTTOM), (ia[0], ia[1], tz), (a[0], a[1], tz)])
+        nn = (t[i, 0] * sgn, t[i, 1] * sgn, 0.0)
+        uv = np.array([(0.0, (WALL_BOTTOM - TT.SEAWALL_Z0) / W), (WALL_TOP_WIDTH / W, (WALL_BOTTOM - TT.SEAWALL_Z0) / W),
+                       (WALL_TOP_WIDTH / W, (tz - TT.SEAWALL_Z0) / W), (0.0, (tz - TT.SEAWALL_Z0) / W)])
+        tris = [(0, 1, 2), (0, 2, 3)] if sgn > 0 else [(0, 2, 1), (0, 3, 2)]
+        wall.add(q, nn, uv, (n[i, 0], n[i, 1], 0.0), tris)
+
+
 def main():
     t0 = time.time()
     town = AT.Town()
     m = AM.Map()
     field = AM.Field(m)
     P = AM.grid_points(m)
-    Zn = field.height(P[..., 0], P[..., 1])
+    parts = field.split_grid(P)
     ring_idx = AT.grid_ring(P)
     ring_pts = np.array([P[i, j] for i, j in ring_idx])
     ground = Ground(town, m, field, ring_pts)
-    mats = building_materials()
-    print(f"  外壁と屋上のテクスチャ ({time.time() - t0:.0f}s)")
-    build_blocks(town, ground, mats)
-    build_ground(town, m, field, P, Zn, ring_idx, ground)
+    only = set(sys.argv[1:]) or {"blocks", "ground", "seawall"}
+    if "blocks" in only:
+        mats = building_materials()
+        print(f"  外壁と屋上のテクスチャ ({time.time() - t0:.0f}s)")
+        build_blocks(town, ground, mats)
+    if "ground" in only:
+        build_ground(town, m, field, P, parts, ring_idx, ground)
+    if "seawall" in only:
+        build_seawall(town, m, ground)
     print(f"[done] {time.time() - t0:.0f}s")
 
 

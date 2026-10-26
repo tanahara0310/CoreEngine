@@ -1,0 +1,298 @@
+{
+ "asset": {
+  "generator": "CoreEngine OkinawaBeach build_araha_town",
+  "version": "2.0"
+ },
+ "scene": 0,
+ "scenes": [
+  {
+   "name": "Scene",
+   "nodes": [
+    0
+   ]
+  }
+ ],
+ "nodes": [
+  {
+   "mesh": 0,
+   "name": "ArahaTown_Seawall"
+  }
+ ],
+ "meshes": [
+  {
+   "name": "ArahaTown_Seawall",
+   "primitives": [
+    {
+     "attributes": {
+      "POSITION": 0,
+      "NORMAL": 1,
+      "TEXCOORD_0": 2,
+      "TANGENT": 3
+     },
+     "indices": 4,
+     "material": 0
+    },
+    {
+     "attributes": {
+      "POSITION": 5,
+      "NORMAL": 6,
+      "TEXCOORD_0": 7,
+      "TANGENT": 8
+     },
+     "indices": 9,
+     "material": 1
+    }
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "ArahaTown_Seawall_Concrete",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 0
+    },
+    "metallicRoughnessTexture": {
+     "index": 1
+    }
+   },
+   "occlusionTexture": {
+    "index": 1
+   },
+   "normalTexture": {
+    "index": 2
+   }
+  },
+  {
+   "name": "ArahaTown_Seawall_Top",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 3
+    },
+    "metallicRoughnessTexture": {
+     "index": 4
+    }
+   },
+   "occlusionTexture": {
+    "index": 4
+   },
+   "normalTexture": {
+    "index": 5
+   }
+  }
+ ],
+ "accessors": [
+  {
+   "bufferView": 0,
+   "componentType": 5126,
+   "count": 60904,
+   "type": "VEC3",
+   "min": [
+    -2551.89990234375,
+    -8.167167663574219,
+    -4824.39990234375
+   ],
+   "max": [
+    189.41563415527344,
+    5.449073314666748,
+    2603.394775390625
+   ]
+  },
+  {
+   "bufferView": 1,
+   "componentType": 5126,
+   "count": 60904,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 2,
+   "componentType": 5126,
+   "count": 60904,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 3,
+   "componentType": 5126,
+   "count": 60904,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 4,
+   "componentType": 5123,
+   "count": 91356,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 5,
+   "componentType": 5126,
+   "count": 30304,
+   "type": "VEC3",
+   "min": [
+    -2551.89990234375,
+    -7.267167568206787,
+    -4824.39990234375
+   ],
+   "max": [
+    189.41563415527344,
+    5.449073314666748,
+    2603.394775390625
+   ]
+  },
+  {
+   "bufferView": 6,
+   "componentType": 5126,
+   "count": 30304,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 7,
+   "componentType": 5126,
+   "count": 30304,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 8,
+   "componentType": 5126,
+   "count": 30304,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 9,
+   "componentType": 5123,
+   "count": 45456,
+   "type": "SCALAR"
+  }
+ ],
+ "bufferViews": [
+  {
+   "buffer": 0,
+   "byteOffset": 0,
+   "byteLength": 730848,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 730848,
+   "byteLength": 730848,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1461696,
+   "byteLength": 487232,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1948928,
+   "byteLength": 974464,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 2923392,
+   "byteLength": 182712,
+   "target": 34963
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 3106104,
+   "byteLength": 363648,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 3469752,
+   "byteLength": 363648,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 3833400,
+   "byteLength": 242432,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 4075832,
+   "byteLength": 484864,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 4560696,
+   "byteLength": 90912,
+   "target": 34963
+  }
+ ],
+ "buffers": [
+  {
+   "byteLength": 4651608,
+   "uri": "ArahaTown_Seawall.bin"
+  }
+ ],
+ "textures": [
+  {
+   "sampler": 0,
+   "source": 0
+  },
+  {
+   "sampler": 0,
+   "source": 1
+  },
+  {
+   "sampler": 0,
+   "source": 2
+  },
+  {
+   "sampler": 0,
+   "source": 3
+  },
+  {
+   "sampler": 0,
+   "source": 4
+  },
+  {
+   "sampler": 0,
+   "source": 5
+  }
+ ],
+ "images": [
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Seawall_Concrete_BaseColor",
+   "uri": "ArahaTown_Seawall_Concrete_BaseColor.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Seawall_Concrete_ORM",
+   "uri": "ArahaTown_Seawall_Concrete_ORM.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Seawall_Concrete_Normal",
+   "uri": "ArahaTown_Seawall_Concrete_Normal.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Roof_Concrete_BaseColor",
+   "uri": "../ArahaTown_Textures/ArahaTown_Roof_Concrete_BaseColor.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Roof_Concrete_ORM",
+   "uri": "../ArahaTown_Textures/ArahaTown_Roof_Concrete_ORM.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Roof_Concrete_Normal",
+   "uri": "../ArahaTown_Textures/ArahaTown_Roof_Concrete_Normal.png"
+  }
+ ],
+ "samplers": [
+  {
+   "magFilter": 9729,
+   "minFilter": 9987
+  }
+ ]
+}

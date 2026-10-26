@@ -22,6 +22,7 @@ OUTER_STEP = 64.0
 MID_TILE = 1024.0
 NEAR_TILE = 512.0
 TILE_PX = 1024
+NEAR_PX = 2048
 TILE_MARGIN = 16.0
 FAR_PX = 2048
 # 海と陸を分ける絵の解像度 [m/px]、海岸線の左右で陸と海を決め直す幅 [m]、海の深さを決める距離の絵の解像度
@@ -251,6 +252,9 @@ def paint_ground(town, box, px, seed, building_lots=True):
     dfree = ImageDraw.Draw(free)
     trees = Image.new("L", (W, W), 0)
     dtrees = ImageDraw.Draw(trees)
+    # アスファルトの所（255）
+    paved = Image.new("L", (W, W), 0)
+    dpaved = ImageDraw.Draw(paved)
     rank = {k: i for i, k in enumerate(AREA_ORDER)}
     for a in sorted(town.near(town.areas, box), key=lambda a: rank.get(a["kind"], -1)):
         if a["kind"] not in AREA_COLOR or len(a["pts"]) < 3:
@@ -259,6 +263,7 @@ def paint_ground(town, box, px, seed, building_lots=True):
         dr.polygon(pts, fill=AREA_COLOR[a["kind"]])
         dfree.polygon(pts, fill=0)
         dtrees.polygon(pts, fill=int(TREE_DENSITY.get(a["kind"], 0.0) * 250))
+        dpaved.polygon(pts, fill=255 if a["kind"] == "parking" else 0)
     if building_lots:
         for b in town.near(town.buildings, box):
             if len(b["pts"]) >= 3:
@@ -276,7 +281,24 @@ def paint_ground(town, box, px, seed, building_lots=True):
         dr.line(q, fill=color, width=wpx, joint="curve")
         dfree.line(q, fill=0, width=wpx, joint="curve")
         dtrees.line(q, fill=0, width=wpx, joint="curve")
+        dpaved.line(q, fill=255 if color == ASPHALT else 0, width=wpx, joint="curve")
 
+    if scale >= 2.0:
+        for a in town.near(town.areas, box):
+            if a["kind"] != "parking" or len(a["pts"]) < 3:
+                continue
+            poly = a["_a"]
+            ccw = 0.5 * np.sum(poly[:, 0] * np.roll(poly[:, 1], -1) - np.roll(poly[:, 0], -1) * poly[:, 1]) > 0
+            for p0, p1 in zip(poly, np.roll(poly, -1, 0)):
+                e = p1 - p0
+                L = float(np.hypot(*e))
+                if L < 10.0:
+                    continue
+                t = e / L
+                n = np.array([-t[1], t[0]]) * (1.0 if ccw else -1.0)
+                for d in np.arange(1.5, L - 1.0, 2.5):
+                    q = p0 + t * d
+                    dr.line(P([q + n * 0.3, q + n * 5.0]), fill=LINE_WHITE, width=max(1, int(round(0.12 * scale))))
     roads = [r for r in town.near(town.roads, box) if r.get("tunnel") not in ("yes", "building_passage")
              and len(r["pts"]) >= 2]
     order = {k: i for i, k in enumerate(["path", "footway", "cycleway", "steps", "track", "pedestrian", "service",
@@ -326,6 +348,7 @@ def paint_ground(town, box, px, seed, building_lots=True):
                 for d in _dashes(pts, 3.0, 4.0):
                     line(d, 0.12, LINE_WHITE)
     img = np.asarray(im.resize((px, px), Image.LANCZOS), np.float32) / 255.0
+    paved_a = np.asarray(paved.resize((px, px), Image.BILINEAR), np.float32) / 255.0
     free_a = np.asarray(free.resize((px, px), Image.BILINEAR), np.float32) / 255.0
     tree_a = np.asarray(trees.resize((px, px), Image.BILINEAR), np.float32) / 250.0
     rng = np.random.default_rng(seed)
@@ -355,6 +378,12 @@ def paint_ground(town, box, px, seed, building_lots=True):
     img = img + (tree[None, None, :] * tone[..., None] - img) * cover[..., None]
     fine = _noise(px, px, rng, [(cells(2.0), 0.10), (cells(9.0), 0.10), (cells(40.0), 0.12)])
     img *= (1.0 + fine)[..., None]
+    if res <= 0.35:
+        # アスファルト: 骨材の粒・補修の継ぎはぎ・ひび・タイヤの跡の黒ずみ
+        grain = _noise(px, px, rng, [(2, 0.18)])
+        patch = smoothstep(0.1, 0.14, _noise(px, px, rng, [(cells(6.0), 1.0)])) * 0.12             - smoothstep(0.12, 0.16, _noise(px, px, rng, [(cells(9.0), 1.0)])) * 0.1
+        crack = (np.abs(_noise(px, px, rng, [(cells(3.0), 1.0), (cells(1.0), 0.4)])) < 0.012).astype(np.float32)
+        img *= (1.0 + (grain + patch - crack * 0.35) * paved_a)[..., None]
     # 海（海岸線の外）は海底の砂の色
     sea = ~town.is_land(X, Y)
     if sea.any():
