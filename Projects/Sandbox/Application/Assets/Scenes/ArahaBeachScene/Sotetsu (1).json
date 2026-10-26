@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "12fe7d5a2391e726"
+                },
+                "rotate": [
+                    0.0,
+                    -1.15294,
+                    0.0
+                ],
+                "scale": [
+                    0.9450162,
+                    0.9450162,
+                    0.9450162
+                ],
+                "translate": [
+                    84.0,
+                    2.5,
+                    15.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "f527374a-eae8-577b-8fda-0f663103d170",
+                    "path": "Application/Assets/Models/Okinawa/Sotetsu/Sotetsu.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "93cd77aa7a0447ba",
+    "name": "Sotetsu (1)",
+    "order": 413
+}

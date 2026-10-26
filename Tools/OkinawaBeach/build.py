@@ -32,6 +32,8 @@ ASSETS = [
     "reef_terrain", "beachrock", "coral", "sealife", "seagrass", "fish",
     # アラハビーチ（北谷町）
     "araha_island", "jetty", "seawall", "lifeguard", "swim_net", "shisa_sign", "indian_oak",
+    # 安良波公園の施設と木
+    "park_tree", "amphitheater", "park_house", "park_shelter", "basket_court", "playground",
 ]
 
 

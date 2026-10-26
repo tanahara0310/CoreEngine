@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "12fe7d5a2391e726"
+                },
+                "rotate": [
+                    0.0,
+                    -3.590885,
+                    0.0
+                ],
+                "scale": [
+                    1.1069881,
+                    1.1069881,
+                    1.1069881
+                ],
+                "translate": [
+                    53.860428,
+                    2.5,
+                    -240.5253
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "1d7f5049-cdb6-5b65-ad08-4ae55f41181d",
+                    "path": "Application/Assets/Models/Okinawa/Kobateishi_A/Kobateishi_A.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "ab0ba472efa45abd",
+    "name": "Kobateishi_A (31)",
+    "order": 595
+}

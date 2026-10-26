@@ -2,7 +2,7 @@
 
 使い方: python Tools/OkinawaBeach/export_araha_scene.py
 data/araha_map.json（OpenStreetMap の浜・海岸線）の線に沿って、地形・護岸・突堤・沖の岩・浮き桟橋・ネット・
-ヤシ並木・海賊船の遊具などを置く。高さは地形（okinawa/araha_map.py の Field）と同じ式で求める。
+ヤシ並木・海賊船の遊具、公園の施設・木・園路などを置く。高さは地形（okinawa/araha_map.py の Field）と同じ式で求める。
 太陽・水面・見た目の設定は OkinawaBeachScene のものを使う。シーンのフォルダは書き出すたびに作り直す。
 
 座標: Blender と同じ（x = 東、y = 北、z = 上）で計算し、エンジンへは (x, z, y)、Z 軸まわりの角度は符号を反転して書く。
@@ -48,6 +48,29 @@ MONUMENT = ((64.0, -68.0), 270.0)      # 石碑の位置と、正面の向き
 SIGN = ((74.0, 52.0), 90.0)            # シーサー看板の位置と、正面の向き
 LIFEGUARD_NEAR = (10.0, -115.0)        # 監視台（管理棟の前）
 CAMERA = ((-70.0, 80.0, 14.0), (40.0, -30.0, 3.0), 55.0)
+# 公園の施設（araha_map.PARK_FACILITIES の位置）のまわりの物
+BBQ_ORIGIN = (8.0, -128.0)             # バーベキューの屋根の並びの北の端
+BBQ_AZ = 18.0                          # 並びの向き（海岸に沿う方位）
+GAZEBOS = [(88.7, -187.7), (85.8, -181.7)]  # 傘形の東屋（地図の位置）
+PERGOLA_AT = (0.2, 0.36, 0.55, 0.72)   # 格子屋根の東屋を置く、遊歩道から 15 m 陸側の線の位置（南端からの割合）
+# 植栽の区域: (x0, x1, y0, y1)、木どうしの間隔 [m]、樹種の重み
+TREE_ZONES = [
+    ((95.0, 160.0, 120.0, 285.0), 7.0,
+     {"Terihaboku": 3, "Fukugi": 2.5, "Kobateishi_A": 1.5, "Kobateishi_B": 1, "Gajumaru": 1.5, "Hououboku": 1}),
+    ((50.0, 105.0, -45.0, 42.0), 13.0,
+     {"Gajumaru": 1, "Hououboku": 1.5, "Kobateishi_A": 2, "Kobateishi_B": 1, "Terihaboku": 1}),
+    ((25.0, 85.0, -100.0, -45.0), 15.0, {"Kobateishi_A": 2, "Terihaboku": 1, "Hououboku": 1}),
+    ((30.0, 80.0, -172.0, -120.0), 6.5, {"Gajumaru": 3, "Terihaboku": 2, "Fukugi": 1.5}),
+    ((-5.0, 32.0, -180.0, -122.0), 11.0, {"Kobateishi_A": 2, "Kobateishi_B": 1.5, "Terihaboku": 1}),
+    ((-40.0, 100.0, -265.0, -175.0), 12.0,
+     {"Kobateishi_A": 1.5, "Terihaboku": 1.5, "Hououboku": 1, "Gajumaru": 1, "Fukugi": 1}),
+    ((-60.0, -15.0, -335.0, -262.0), 8.0, {"Fukugi": 2, "Terihaboku": 1.5}),
+]
+COURT_ROW = 9.0                        # コートの東の縁に沿った並木の間隔
+FEATURE_TREES = [((78.0, 25.0), "Gajumaru", 1.15)]   # 航空写真で目立つ大木
+SOTETSU = [(36.0, -100.0), (53.0, -101.0), (84.0, 15.0), (99.0, 2.0), (70.0, 47.0), (-8.0, -205.0), (-6.0, -222.0)]
+CROWN = {"Gajumaru": 6.0, "Kobateishi_A": 4.5, "Kobateishi_B": 3.0, "Fukugi": 1.8, "Terihaboku": 4.0,
+         "Hououboku": 5.5}           # 樹冠の半径 [m]
 SUN_DIR = (0.663, -0.643, 0.383)        # 光の進む向き（エンジンの座標）。西南西の高さ 40°
 
 
@@ -310,6 +333,137 @@ def place_park(sc, m, field, wall, acc, rnd):
     sc.mesh("ShisaSign", g, (x, y, AM.LAWN), angle(v) + 90.0)
 
 
+def place_facilities(sc, m, rnd):
+    """公園の施設と東屋・遊具・街灯・ベンチ。戻り値は木を避ける点 [(x, y, 半径)]"""
+    g = sc.group("ParkFacilities")
+    F = AM.PARK_FACILITIES
+    keep = []
+    (x, y), az, _ = F["ArahaAmphitheater"]
+    sc.mesh("ArahaAmphitheater", g, (x, y, AM.LAWN), angle(heading(az)))
+    for name in ("ArahaCourts", "ArahaHouse", "ParkToilet"):
+        (x, y), az, _ = F[name]
+        sc.mesh(name, g, (x, y, AM.LAWN), angle(heading(az)) - 90.0)
+    (x, y), az, _ = F["PlayTower"]
+    yaw = angle(heading(az))
+    sc.mesh("PlayTower", g, (x, y, AM.LAWN), yaw)
+    c, s = math.cos(math.radians(yaw)), math.sin(math.radians(yaw))
+    for model, (lx, ly) in (("SpringLion", (-3.2, -5.6)), ("SpringHippo", (0.2, -6.0)), ("SpringLion", (3.4, -5.4))):
+        px, py = x + lx * c - ly * s, y + lx * s + ly * c
+        sc.mesh(model, g, (px, py, AM.LAWN), yaw + 180.0 + rnd.uniform(-15, 15))
+        keep.append((px, py, 1.5))
+    # バーベキューの屋根の並び（長手を海岸に沿わせる）
+    along, across = heading(BBQ_AZ), heading(BBQ_AZ + 90.0)
+    for i in range(4):
+        for j in range(3):
+            p = np.array(BBQ_ORIGIN) - along * 8.5 * i + across * 6.5 * j
+            sc.mesh("BBQShelter", g, (p[0], p[1], AM.LAWN), angle(along) - 90.0)
+            keep.append((p[0], p[1], 3.5))
+    for p in GAZEBOS:
+        sc.mesh("UmbrellaGazebo", g, (p[0], p[1], AM.LAWN), angle(heading(15.0)))
+        keep.append((p[0], p[1], 3.5))
+    # 遊歩道の近くの格子屋根の東屋・街灯・ベンチ
+    line = AM.offset_line(m.wall, -15.0, step=1.0, passes=100)
+    acc = arc(line)
+    for f in PERGOLA_AT:
+        s_ = acc[-1] * f
+        p = at(line, acc, s_)
+        t = at(line, acc, s_ + 1.0) - p
+        if AM.in_facility(p[0], p[1], margin=4.0):
+            continue
+        sc.mesh("Pergola", g, (p[0], p[1], AM.LAWN), angle(t))
+        keep.append((p[0], p[1], 3.5))
+    for d_off, every, model, s0 in ((-4.2, 32.0, "ParkLamp", 10.0), (-3.4, 32.0, "ParkBench", 26.0)):
+        line = AM.offset_line(m.wall, d_off, step=1.0, passes=100)
+        acc = arc(line)
+        nrm = AM.normals(line)
+        s_ = s0
+        while s_ < acc[-1] - 5.0:
+            i = int(np.searchsorted(acc, s_))
+            p, n = line[i], nrm[i]
+            if model == "ParkLamp":
+                # 灯具の腕（+X）を遊歩道の上へ
+                sc.mesh(model, g, (p[0], p[1], AM.PROMENADE), angle(n))
+            else:
+                # 座る人が海を見る（ベンチの -Y を海へ）
+                sc.mesh(model, g, (p[0], p[1], AM.PROMENADE), angle(n) + 90.0)
+            s_ += every
+    # 園路沿いの街灯
+    for k, path in enumerate(AM.park_footways(m)):
+        acc = arc(path)
+        nrm = AM.normals(path)
+        s_ = 8.0
+        while s_ < acc[-1] - 4.0:
+            i = int(np.searchsorted(acc, s_))
+            p = path[i] + nrm[i] * 2.2
+            sc.mesh("ParkLamp", g, (p[0], p[1], AM.LAWN), angle(-nrm[i]))
+            keep.append((p[0], p[1], 1.2))
+            s_ += 26.0
+    # コートの東の観客席のベンチ
+    (cx, cy), az, (hl, hw) = F["ArahaCourts"]
+    al, ac = heading(az), heading(az + 90.0)
+    for k in range(-3, 4):
+        p = np.array((cx, cy)) + ac * (hw - 3.0) + al * (k * 9.0)
+        sc.mesh("ParkBench", g, (p[0], p[1], AM.LAWN + 0.08), angle(ac) + 90.0 + 180.0)
+    return keep
+
+
+def place_trees(sc, m, rnd, keep):
+    """植栽の区域ごとに間隔を空けて公園の木を散らす"""
+    g = sc.group("ParkTrees")
+    data = json.load(open(AM.MAP_PATH, encoding="utf-8"))
+    park = np.array(data["park"]["points"], float)
+    paths = AM.park_footways(m)
+    placed = []
+    others = [(np.array(SHIP[0]), 9.0), (np.array(MONUMENT[0]), 4.0), (np.array(SIGN[0]), 5.0),
+              (np.array(LIFEGUARD_NEAR), 6.0)] + [(np.array((x, y)), r) for x, y, r in keep]
+
+    def ok(x, y, crown, spacing):
+        if not AM.inside(np.array([x]), np.array([y]), park)[0] or not AM.inside(np.array([x]), np.array([y]), m.land)[0]:
+            return False
+        if AM.dist(np.array([x]), np.array([y]), m.wall)[0] < 9.0:
+            return False
+        if AM.in_facility(x, y, margin=crown * 0.5):
+            return False
+        for line in paths:
+            if np.min(np.hypot(line[:, 0] - x, line[:, 1] - y)) < 2.6:
+                return False
+        for c, r in others:
+            if math.hypot(c[0] - x, c[1] - y) < r + crown * 0.5:
+                return False
+        for px, py, sp in placed:
+            if math.hypot(px - x, py - y) < max(sp, spacing) * 0.8:
+                return False
+        return True
+
+    def put(model, x, y, spacing, scale=None):
+        sc.mesh(model, g, (x, y, AM.LAWN - 0.05), rnd.uniform(0, 360), scale or rnd.uniform(0.85, 1.12))
+        placed.append((x, y, spacing))
+
+    for (x, y), model, scale in FEATURE_TREES:
+        put(model, x, y, 12.0, scale)
+    for (x, y) in SOTETSU:
+        if not AM.in_facility(x, y, margin=0.8):
+            sc.mesh("Sotetsu", g, (x, y, AM.LAWN - 0.05), rnd.uniform(0, 360), rnd.uniform(0.9, 1.15))
+    (cx, cy), az, (hl, hw) = AM.PARK_FACILITIES["ArahaCourts"]
+    al, ac = heading(az), heading(az + 90.0)
+    for k in range(-4, 5):
+        p = np.array((cx, cy)) + ac * (hw + 1.6) + al * (k * COURT_ROW)
+        model = "Kobateishi_A" if k % 2 else "Terihaboku"
+        if ok(p[0], p[1], CROWN[model] * 0.6, COURT_ROW):
+            put(model, p[0], p[1], COURT_ROW)
+    for (x0, x1, y0, y1), spacing, weights in TREE_ZONES:
+        models = list(weights)
+        w = np.array([weights[k] for k in models], float)
+        w /= w.sum()
+        tries = int((x1 - x0) * (y1 - y0) / spacing ** 2 * 6)
+        for _ in range(tries):
+            x, y = rnd.uniform(x0, x1), rnd.uniform(y0, y1)
+            model = models[int(np.searchsorted(np.cumsum(w), rnd.random()))]
+            if ok(x, y, CROWN[model], spacing):
+                put(model, x, y, spacing)
+    print(f"  公園の木 {len(placed)} 本")
+
+
 def place_vegetation(sc, m, field, rnd):
     g = sc.group("Vegetation")
     # 遊歩道の陸側の縁に沿ったヤシ並木
@@ -393,6 +547,11 @@ def main():
     place_park(sc, m, field, wall, acc, rnd)
     place_vegetation(sc, m, field, rnd)
     place_beach_props(sc, m, field, rnd)
+    # 公園の施設・木・園路（シーンの最後に足し、別の乱数で置く）
+    sc.mesh("ArahaPath", g, (0.0, 0.0, 0.0))
+    park_rnd = random.Random(2027)
+    keep = place_facilities(sc, m, park_rnd)
+    place_trees(sc, m, park_rnd, keep)
 
     if os.path.isdir(OUT_DIR):
         shutil.rmtree(OUT_DIR)
