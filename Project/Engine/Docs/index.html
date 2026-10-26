@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.38.0">
+<meta name="engine-version" content="0.39.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -9746,6 +9746,14 @@ python Tools/OkinawaBeach/bake_player_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-39-0">v0.39.0 <span class="dim">（2026-10-26）</span></h3>
+  <p>風で揺れる植物が多いシーンで、レイトレーシングの加速構造の準備（プロファイラの <code>ASBuild</code>）が重くなっていたのを軽くした版です。</p>
+  <ul>
+    <li><strong>まとめて積む</strong>：揺れる植物・海草とスキニングモデルの今の形をレイトレーシング（影・水面の反射・コースティクス）へ反映する処理（頂点の変形と BLAS の更新）を、1 本ずつ前の処理を待たずに、まとめて GPU へ積むようにしました。</li>
+    <li><strong>揺れを反映するのはカメラの近くだけ</strong>：揺れる植物・海草の揺れを反映するのは、カメラから <code>r.RT.DynamicGeometry.Distance</code>（既定 50m）以内の物だけにしました。それより遠い物の影と水面の映り込みは、揺れる前の形を使います。0 にすると、距離によらずすべての揺れを反映します。スキニングモデルは今までどおりすべて反映します。</li>
+    <li><strong>速さ</strong>：<code>ArahaBeachScene</code>（RTX 4060 Laptop・1920×1080）で、公園の木立の中から見たときの GPU 時間が 55.4ms から 19.9ms（<code>ASBuild</code> は 44.6ms から 6.8ms）、海の上から見たときが 55.2ms から 14.3ms になりました。</li>
+  </ul>
 
   <h3 id="changelog-v0-38-0">v0.38.0 <span class="dim">（2026-10-26）</span></h3>
   <p>Sandbox の <code>ArahaBeachScene</code> の公園（安良波公園）に、施設・木・園路を足した版です。位置は航空写真と OpenStreetMap の地図に合わせています。モデルは <span class="path">Models/Okinawa</span> に入っています。</p>
