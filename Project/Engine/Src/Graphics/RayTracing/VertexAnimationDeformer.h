@@ -13,6 +13,7 @@
 #include <iterator>
 #include <memory>
 #include <unordered_map>
+#include <vector>
 
 namespace CoreEngine
 {
@@ -68,7 +69,14 @@ namespace CoreEngine
             uint32_t padding = 0;
         };
 
-        /// @brief Deform の結果
+        /// @brief 持ち主 1 つぶんの変形の依頼
+        struct Request {
+            const void* owner = nullptr;  ///< 持ち主の識別子（コンポーネントのアドレス。持ち主ごとに頂点バッファを持つ）
+            const Model* model = nullptr; ///< 変形するモデル（マテリアルの頂点アニメーションの種類・倍率を読む）
+            Matrix4x4 world{};            ///< ワールド行列（個体ごとの位相と風向き）
+        };
+
+        /// @brief DeformBatch の結果（依頼 1 つにつき 1 つ）
         struct Output {
             ID3D12Resource* vertices = nullptr;       ///< 揺れた頂点（VertexData の並び。NON_PIXEL_SHADER_RESOURCE 状態）
             uint32_t vertexBufferIndex = UINT32_MAX;  ///< その ByteAddressBuffer SRV のヒープ内インデックス
@@ -83,16 +91,15 @@ namespace CoreEngine
         /// @brief 使う GraphicsCore を控える（CS は初回の Deform で組む）
         void Initialize(GraphicsCore* graphicsCore);
 
-        /// @brief 頂点アニメーションをかけた頂点を書く
-        /// @param cmdList 積み先（加速構造の構築と同じリスト）
-        /// @param owner   持ち主の識別子（コンポーネントのアドレス。持ち主ごとに頂点バッファを持つ）
-        /// @param model   変形するモデル（マテリアルの頂点アニメーションの種類・倍率を読む）
-        /// @param world   ワールド行列（個体ごとの位相と風向き）
-        /// @param params  時間・風（描画と同じ VertexAnimationParams::Build() の値）
-        /// @param frame   今フレームの番号（使われなくなったバッファの回収用）
-        /// @return 揺れた頂点と、その SRV。失敗なら vertices = nullptr
-        Output Deform(ID3D12GraphicsCommandList* cmdList, const void* owner, const Model& model,
-            const Matrix4x4& world, const VertexAnimationParams& params, uint64_t frame);
+        /// @brief 依頼をまとめて、頂点アニメーションをかけた頂点を書く
+        /// @param cmdList  積み先（加速構造の構築と同じリスト）
+        /// @param requests 変形する持ち主の並び
+        /// @param params   時間・風（描画と同じ VertexAnimationParams::Build() の値）
+        /// @param frame    今フレームの番号（使われなくなったバッファの回収用）
+        /// @return requests と同じ並びの結果。作れなかった依頼は vertices = nullptr
+        /// @details 頂点バッファの状態の切り替えは、全部の変形の前と後に 1 回ずつまとめて張る。
+        std::vector<Output> DeformBatch(ID3D12GraphicsCommandList* cmdList, const std::vector<Request>& requests,
+            const VertexAnimationParams& params, uint64_t frame);
 
         /// @brief 今フレーム使われなかった頂点バッファを捨てる（GPU が使い終わってから解放される）
         void RetireUnused(uint64_t frame);
@@ -114,6 +121,9 @@ namespace CoreEngine
 
         /// @brief 頂点バッファと SRV を、GPU が使い終わってから手放す
         void ReleaseEntry(Entry& entry);
+
+        /// @brief 持ち主の頂点バッファを用意する（頂点数が変わったら張り直す）。作れなければ nullptr
+        Entry* EnsureEntry(const void* owner, uint32_t vertexCount, uint64_t frame);
 
         /// @brief このフレーム数使われなかったバッファを捨てる
         static constexpr uint64_t kKeepFrames = 2;

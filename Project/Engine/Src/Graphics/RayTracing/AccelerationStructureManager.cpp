@@ -427,16 +427,59 @@ namespace CoreEngine
     // =========================================================================
     // 動的 BLAS（揺れる植物・スキニングモデル）
     // =========================================================================
-    D3D12_GPU_VIRTUAL_ADDRESS AccelerationStructureManager::BuildOrUpdateDynamicBLAS(
-        ID3D12GraphicsCommandList* cmdList, const void* owner, const BLASDesc& desc,
-        uint64_t frame, bool geometryChanged)
+    bool AccelerationStructureManager::BeginDynamicBLASBatch(ID3D12GraphicsCommandList* cmdList)
     {
-        if (!isSupported_ || !cmdList || !owner || !desc.vertexBuffer || desc.vertexCount == 0) {
-            return 0;
+        dynamicCmdList_.Reset();
+        dynamicBuildsPending_ = false;
+        if (!isSupported_ || !cmdList || FAILED(cmdList->QueryInterface(IID_PPV_ARGS(&dynamicCmdList_)))) {
+            dynamicCmdList_.Reset();
+            return false;
         }
 
-        Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> cmdList4;
-        if (FAILED(cmdList->QueryInterface(IID_PPV_ARGS(&cmdList4)))) {
+        // 前の組で切り出した合計が収まるようにスクラッチを広げる（上限まで）
+        const UINT64 wanted = (std::min)(dynamicScratchDemand_, kDynamicScratchMaxBytes);
+        if (wanted > dynamicScratchSize_) {
+            if (dynamicScratch_) {
+                retiredResources_.push_back(std::move(dynamicScratch_));
+            }
+            dynamicScratch_ = CreateScratch(wanted);
+            dynamicScratchSize_ = dynamicScratch_ ? wanted : 0;
+        }
+        dynamicScratchOffset_ = 0;
+        dynamicScratchDemand_ = 0;
+        return true;
+    }
+
+    D3D12_GPU_VIRTUAL_ADDRESS AccelerationStructureManager::AllocateDynamicScratch(UINT64 len)
+    {
+        constexpr UINT64 kAlign = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT;
+        len = (std::max)(kAlign, (len + kAlign - 1) / kAlign * kAlign);
+        dynamicScratchDemand_ += len;
+        if (len > dynamicScratchSize_) {
+            // 1 本でスクラッチを超えるときは張り直す（前の構築は退避した古いバッファを使い続ける）
+            if (dynamicScratch_) {
+                retiredResources_.push_back(std::move(dynamicScratch_));
+            }
+            dynamicScratch_ = CreateScratch(len);
+            dynamicScratchSize_ = dynamicScratch_ ? len : 0;
+            dynamicScratchOffset_ = 0;
+            if (!dynamicScratch_) {
+                return 0;
+            }
+        } else if (dynamicScratchOffset_ + len > dynamicScratchSize_) {
+            // 使い切ったら、ここまでの構築がスクラッチを使い終わるのを待って先頭から使い直す
+            Barrier::UAVRaw(dynamicCmdList_.Get(), dynamicScratch_.Get());
+            dynamicScratchOffset_ = 0;
+        }
+        const D3D12_GPU_VIRTUAL_ADDRESS address = dynamicScratch_->GetGPUVirtualAddress() + dynamicScratchOffset_;
+        dynamicScratchOffset_ += len;
+        return address;
+    }
+
+    D3D12_GPU_VIRTUAL_ADDRESS AccelerationStructureManager::BuildOrUpdateDynamicBLAS(
+        const void* owner, const BLASDesc& desc, uint64_t frame, bool geometryChanged)
+    {
+        if (!dynamicCmdList_ || !owner || !desc.vertexBuffer || desc.vertexCount == 0) {
             return 0;
         }
 
@@ -475,31 +518,38 @@ namespace CoreEngine
         inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
         inputs.pGeometryDescs = &geomDesc;
 
-        D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO prebuild{};
-        device5_->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &prebuild);
+        // 必要な大きさは形が変わったときだけ問い合わせる
+        if (shapeChanged) {
+            D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO prebuild{};
+            device5_->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &prebuild);
+            entry.buildScratchSize = prebuild.ScratchDataSizeInBytes;
+            entry.updateScratchSize = prebuild.UpdateScratchDataSizeInBytes;
 
-        // 形が変わって結果が収まらなければ張り直す（前の結果は実行待ちのフレームが使っているので退避）
-        if (!entry.result || entry.resultSize < prebuild.ResultDataMaxSizeInBytes) {
-            if (entry.result) {
-                retiredResources_.push_back(std::move(entry.result));
-            }
-            entry.result = CreateASBuffer(prebuild.ResultDataMaxSizeInBytes);
-            entry.resultSize = entry.result ? prebuild.ResultDataMaxSizeInBytes : 0;
-            if (!entry.result) {
-                dynamicBlas_.erase(owner);
-                return 0;
+            // 結果が収まらなければ張り直す（前の結果は実行待ちのフレームが使っているので退避）
+            if (!entry.result || entry.resultSize < prebuild.ResultDataMaxSizeInBytes) {
+                if (entry.result) {
+                    retiredResources_.push_back(std::move(entry.result));
+                }
+                entry.result = CreateASBuffer(prebuild.ResultDataMaxSizeInBytes);
+                entry.resultSize = entry.result ? prebuild.ResultDataMaxSizeInBytes : 0;
+                if (!entry.result) {
+                    dynamicBlas_.erase(owner);
+                    return 0;
+                }
             }
         }
 
-        // スクラッチは静的 BLAS と共有する（構築ごとに UAV バリアで直列化している）
-        EnsureScratchBuffer((std::max)(prebuild.ScratchDataSizeInBytes, prebuild.UpdateScratchDataSizeInBytes));
-
         const bool rebuild = shapeChanged || entry.updatesSinceBuild >= kDynamicRebuildInterval;
+        const D3D12_GPU_VIRTUAL_ADDRESS scratch =
+            AllocateDynamicScratch(rebuild ? entry.buildScratchSize : entry.updateScratchSize);
+        if (!scratch) {
+            return 0;
+        }
 
         D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc{};
         buildDesc.DestAccelerationStructureData = entry.result->GetGPUVirtualAddress();
         buildDesc.Inputs = inputs;
-        buildDesc.ScratchAccelerationStructureData = blasScratch_->GetGPUVirtualAddress();
+        buildDesc.ScratchAccelerationStructureData = scratch;
         if (rebuild) {
             entry.updatesSinceBuild = 0;
         } else {
@@ -509,11 +559,9 @@ namespace CoreEngine
             ++entry.updatesSinceBuild;
         }
 
-        cmdList4->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr);
-
-        // TLAS 構築より前に書き終わるように。スクラッチも次の構築と直列化する（BuildBLAS と同じ理由）
-        Barrier::UAVRaw(cmdList, entry.result.Get());
-        Barrier::UAVRaw(cmdList, blasScratch_.Get());
+        // 組の中では待たずに続けて積む（結果とスクラッチの範囲は持ち主ごとに別）
+        dynamicCmdList_->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr);
+        dynamicBuildsPending_ = true;
 
         entry.vertexAddress = vertexAddress;
         entry.vertexCount = desc.vertexCount;
@@ -521,6 +569,16 @@ namespace CoreEngine
         entry.indexAddress = indexAddress;
         entry.indexCount = desc.indexCount;
         return entry.result->GetGPUVirtualAddress();
+    }
+
+    void AccelerationStructureManager::EndDynamicBLASBatch()
+    {
+        // 積んだ全部の構築・更新が、TLAS の構築とトレースより前に書き終わるように
+        if (dynamicCmdList_ && dynamicBuildsPending_) {
+            Barrier::UAVAll(dynamicCmdList_.Get());
+        }
+        dynamicBuildsPending_ = false;
+        dynamicCmdList_.Reset();
     }
 
     void AccelerationStructureManager::RetireUnusedDynamicBLAS(uint64_t frame)
@@ -647,13 +705,17 @@ namespace CoreEngine
         if (blasScratch_) {
             retiredResources_.push_back(std::move(blasScratch_));
         }
+        blasScratch_ = CreateScratch(requiredSize);
+    }
 
+    Microsoft::WRL::ComPtr<ID3D12Resource> AccelerationStructureManager::CreateScratch(UINT64 size) const
+    {
         D3D12_HEAP_PROPERTIES heapProps{};
         heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
 
         D3D12_RESOURCE_DESC resDesc{};
         resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-        resDesc.Width = requiredSize;
+        resDesc.Width = size;
         resDesc.Height = 1;
         resDesc.DepthOrArraySize = 1;
         resDesc.MipLevels = 1;
@@ -661,10 +723,12 @@ namespace CoreEngine
         resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
         resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
+        Microsoft::WRL::ComPtr<ID3D12Resource> buffer;
         device5_->CreateCommittedResource(
             &heapProps, D3D12_HEAP_FLAG_NONE, &resDesc,
             D3D12_RESOURCE_STATE_COMMON,
-            nullptr, IID_PPV_ARGS(&blasScratch_));
+            nullptr, IID_PPV_ARGS(&buffer));
+        return buffer;
     }
 
     void AccelerationStructureManager::MoveRetiredResourcesTo(

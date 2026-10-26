@@ -126,96 +126,121 @@ namespace CoreEngine
         return true;
     }
 
-    VertexAnimationDeformer::Output VertexAnimationDeformer::Deform(ID3D12GraphicsCommandList* cmdList,
-        const void* owner, const Model& model, const Matrix4x4& world, const VertexAnimationParams& params,
+    VertexAnimationDeformer::Entry* VertexAnimationDeformer::EnsureEntry(const void* owner, uint32_t vertexCount,
         uint64_t frame)
     {
-        if (!cmdList || !owner || !EnsurePipeline()) {
-            return {};
-        }
-        const ModelResource* resource = model.GetModelResource();
-        if (!resource || !resource->IsLoaded() || !resource->GetVertexBuffer() || !resource->GetIndexBuffer()) {
-            return {};
-        }
-        const uint32_t vertexCount = resource->GetVertexCount();
-        if (vertexCount == 0 || resource->GetIndexCount() == 0) {
-            return {};
-        }
-
-        // ===== 持ち主ごとの頂点バッファ（頂点数が変わったら張り直す） =====
         Entry& entry = entries_[owner];
         entry.lastUsedFrame = frame;
-        if (!entry.vertices || entry.vertexCount != vertexCount) {
-            ReleaseEntry(entry);
-            D3D12_RESOURCE_DESC desc{};
-            desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-            desc.Width = static_cast<UINT64>(vertexCount) * sizeof(VertexData);
-            desc.Height = 1;
-            desc.DepthOrArraySize = 1;
-            desc.MipLevels = 1;
-            desc.Format = DXGI_FORMAT_UNKNOWN;
-            desc.SampleDesc.Count = 1;
-            desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-            desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-            Microsoft::WRL::ComPtr<ID3D12Resource> buffer = ResourceFactory::CreateTextureResource(
-                graphicsCore_->GetDevice(), desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-            if (!buffer) {
-                entries_.erase(owner);
-                return {};
-            }
-            buffer->SetName(L"VertexAnimationDeform Vertices");
-            entry.vertices.Reset(buffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-            entry.vertexCount = vertexCount;
+        if (entry.vertices && entry.vertexCount == vertexCount) {
+            return &entry;
+        }
+        ReleaseEntry(entry);
+        D3D12_RESOURCE_DESC desc{};
+        desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        desc.Width = static_cast<UINT64>(vertexCount) * sizeof(VertexData);
+        desc.Height = 1;
+        desc.DepthOrArraySize = 1;
+        desc.MipLevels = 1;
+        desc.Format = DXGI_FORMAT_UNKNOWN;
+        desc.SampleDesc.Count = 1;
+        desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+        Microsoft::WRL::ComPtr<ID3D12Resource> buffer = ResourceFactory::CreateTextureResource(
+            graphicsCore_->GetDevice(), desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        if (!buffer) {
+            entries_.erase(owner);
+            return nullptr;
+        }
+        buffer->SetName(L"VertexAnimationDeform Vertices");
+        entry.vertices.Reset(buffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        entry.vertexCount = vertexCount;
 
-            // 水面の映り込みのヒットシェーディングが読む ByteAddressBuffer SRV（静止形の BLAS の頂点と同じ作り）
-            if (DescriptorAllocator* descriptors = graphicsCore_->GetDescriptorAllocator()) {
-                D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-                srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
-                srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-                srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-                srvDesc.Buffer.FirstElement = 0;
-                srvDesc.Buffer.NumElements = static_cast<UINT>(desc.Width / sizeof(uint32_t));
-                srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
-                entry.rawSrv = UniqueDescriptor(*descriptors,
-                    descriptors->CreateSRV(buffer.Get(), srvDesc, "VertexAnimationDeform VerticesRawSRV"));
-            }
+        // 水面の映り込みのヒットシェーディングが読む ByteAddressBuffer SRV（静止形の BLAS の頂点と同じ作り）
+        if (DescriptorAllocator* descriptors = graphicsCore_->GetDescriptorAllocator()) {
+            D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+            srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+            srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+            srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+            srvDesc.Buffer.FirstElement = 0;
+            srvDesc.Buffer.NumElements = static_cast<UINT>(desc.Width / sizeof(uint32_t));
+            srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
+            entry.rawSrv = UniqueDescriptor(*descriptors,
+                descriptors->CreateSRV(buffer.Get(), srvDesc, "VertexAnimationDeform VerticesRawSRV"));
+        }
+        return &entry;
+    }
+
+    std::vector<VertexAnimationDeformer::Output> VertexAnimationDeformer::DeformBatch(
+        ID3D12GraphicsCommandList* cmdList, const std::vector<Request>& requests,
+        const VertexAnimationParams& params, uint64_t frame)
+    {
+        std::vector<Output> outputs(requests.size());
+        if (!cmdList || requests.empty() || !EnsurePipeline()) {
+            return outputs;
         }
 
-        // ===== サブメッシュ（マテリアル）ごとに、そのインデックスが指す頂点を書く =====
-        Barrier::Transition(cmdList, entry.vertices, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        cmdList->SetComputeRootSignature(rootSignatureMg_->GetRootSignature());
-        cmdList->SetPipelineState(pso_.Get());
-
-        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
-        binder.SetConstants(bindings_[VertexAnimationDeformBind::gVertexAnim], params);
-        binder.Set(bindings_[VertexAnimationDeformBind::gSourceVertices], resource->GetVertexBuffer()->GetGPUVirtualAddress());
-        binder.Set(bindings_[VertexAnimationDeformBind::gIndices], resource->GetIndexBuffer()->GetGPUVirtualAddress());
-        binder.Set(bindings_[VertexAnimationDeformBind::gOutputVertices], entry.vertices.GpuAddress());
-
-        DeformConstants constants{};
-        constants.world = world;
-        constants.worldInverseTranspose = MathCore::Matrix::Transpose(MathCore::Matrix::Inverse(world));
-        constants.vertexCount = vertexCount;
-        for (const SubMeshData& subMesh : resource->GetSubMeshes()) {
-            if (subMesh.indexCount == 0) {
+        // ===== 持ち主ごとの頂点バッファを用意し、書き込みの状態へまとめて切り替える =====
+        std::vector<Entry*> targets(requests.size(), nullptr);
+        BarrierBatch toWrite(cmdList);
+        for (size_t i = 0; i < requests.size(); ++i) {
+            const Request& request = requests[i];
+            if (!request.owner || !request.model) {
                 continue;
             }
-            // 揺れないマテリアル（なし・魚）のサブメッシュも、元の頂点を書くために回す
-            constants.indexStart = subMesh.startIndex;
-            constants.indexCount = subMesh.indexCount;
-            binder.Set(bindings_[VertexAnimationDeformBind::gMaterial], model.GetMaterialCBVAddress(subMesh.materialIndex));
-            binder.SetConstants(bindings_[VertexAnimationDeformBind::gDeform], constants);
-            binder.ValidateBeforeDraw(bindings_);
-            cmdList->Dispatch((subMesh.indexCount + kThreadGroupSize - 1) / kThreadGroupSize, 1, 1);
+            const ModelResource* resource = request.model->GetModelResource();
+            if (!resource || !resource->IsLoaded() || !resource->GetVertexBuffer() || !resource->GetIndexBuffer()
+                || resource->GetVertexCount() == 0 || resource->GetIndexCount() == 0) {
+                continue;
+            }
+            targets[i] = EnsureEntry(request.owner, resource->GetVertexCount(), frame);
+            if (targets[i]) {
+                toWrite.Transition(targets[i]->vertices, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            }
         }
+        toWrite.Flush();
 
-        // BLAS の入力とレイトレーシングのシェーダーからの読み取りは NON_PIXEL_SHADER_RESOURCE
-        // （UAV の書き込みの完了もこの遷移が保証する）
-        Barrier::Transition(cmdList, entry.vertices, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        Output output;
-        output.vertices = entry.vertices.Get();
-        output.vertexBufferIndex = entry.rawSrv.IsValid() ? entry.rawSrv.Index() : UINT32_MAX;
-        return output;
+        // ===== 持ち主ごと・サブメッシュ（マテリアル）ごとに、そのインデックスが指す頂点を書く =====
+        cmdList->SetComputeRootSignature(rootSignatureMg_->GetRootSignature());
+        cmdList->SetPipelineState(pso_.Get());
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
+        binder.SetConstants(bindings_[VertexAnimationDeformBind::gVertexAnim], params);
+        BarrierBatch toRead(cmdList);
+        for (size_t i = 0; i < requests.size(); ++i) {
+            Entry* entry = targets[i];
+            if (!entry) {
+                continue;
+            }
+            const Model& model = *requests[i].model;
+            const ModelResource* resource = model.GetModelResource();
+            binder.Set(bindings_[VertexAnimationDeformBind::gSourceVertices], resource->GetVertexBuffer()->GetGPUVirtualAddress());
+            binder.Set(bindings_[VertexAnimationDeformBind::gIndices], resource->GetIndexBuffer()->GetGPUVirtualAddress());
+            binder.Set(bindings_[VertexAnimationDeformBind::gOutputVertices], entry->vertices.GpuAddress());
+
+            DeformConstants constants{};
+            constants.world = requests[i].world;
+            constants.worldInverseTranspose = MathCore::Matrix::Transpose(MathCore::Matrix::Inverse(requests[i].world));
+            constants.vertexCount = entry->vertexCount;
+            for (const SubMeshData& subMesh : resource->GetSubMeshes()) {
+                if (subMesh.indexCount == 0) {
+                    continue;
+                }
+                // 揺れないマテリアル（なし・魚）のサブメッシュも、元の頂点を書くために回す
+                constants.indexStart = subMesh.startIndex;
+                constants.indexCount = subMesh.indexCount;
+                binder.Set(bindings_[VertexAnimationDeformBind::gMaterial], model.GetMaterialCBVAddress(subMesh.materialIndex));
+                binder.SetConstants(bindings_[VertexAnimationDeformBind::gDeform], constants);
+                binder.ValidateBeforeDraw(bindings_);
+                cmdList->Dispatch((subMesh.indexCount + kThreadGroupSize - 1) / kThreadGroupSize, 1, 1);
+            }
+
+            // BLAS の入力とレイトレーシングのシェーダーからの読み取りは NON_PIXEL_SHADER_RESOURCE
+            // （UAV の書き込みの完了もこの遷移が保証する）
+            toRead.Transition(entry->vertices, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            outputs[i].vertices = entry->vertices.Get();
+            outputs[i].vertexBufferIndex = entry->rawSrv.IsValid() ? entry->rawSrv.Index() : UINT32_MAX;
+        }
+        toRead.Flush();
+        return outputs;
     }
 
     void VertexAnimationDeformer::RetireUnused(uint64_t frame)
