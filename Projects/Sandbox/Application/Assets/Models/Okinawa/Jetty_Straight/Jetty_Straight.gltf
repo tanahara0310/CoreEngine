@@ -143,41 +143,41 @@
 		{
 			"bufferView":0,
 			"componentType":5126,
-			"count":26193,
+			"count":34867,
 			"max":[
-				7.291438102722168,
-				2.423675060272217,
-				10.514832496643066
+				7.179823875427246,
+				2.4162144660949707,
+				10.485973358154297
 			],
 			"min":[
-				-7.371731281280518,
-				-2.3276619911193848,
-				-0.5279630422592163
+				-7.363264083862305,
+				-2.2041451930999756,
+				-0.48761239647865295
 			],
 			"type":"VEC3"
 		},
 		{
 			"bufferView":1,
 			"componentType":5126,
-			"count":26193,
+			"count":34867,
 			"type":"VEC3"
 		},
 		{
 			"bufferView":2,
 			"componentType":5126,
-			"count":26193,
+			"count":34867,
 			"type":"VEC2"
 		},
 		{
 			"bufferView":3,
 			"componentType":5126,
-			"count":26193,
+			"count":34867,
 			"type":"VEC4"
 		},
 		{
 			"bufferView":4,
 			"componentType":5123,
-			"count":103320,
+			"count":126720,
 			"type":"SCALAR"
 		},
 		{
@@ -224,62 +224,62 @@
 	"bufferViews":[
 		{
 			"buffer":0,
-			"byteLength":314316,
+			"byteLength":418404,
 			"byteOffset":0,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":314316,
-			"byteOffset":314316,
+			"byteLength":418404,
+			"byteOffset":418404,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":209544,
-			"byteOffset":628632,
+			"byteLength":278936,
+			"byteOffset":836808,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":419088,
-			"byteOffset":838176,
+			"byteLength":557872,
+			"byteOffset":1115744,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":206640,
-			"byteOffset":1257264,
+			"byteLength":253440,
+			"byteOffset":1673616,
 			"target":34963
 		},
 		{
 			"buffer":0,
 			"byteLength":20808,
-			"byteOffset":1463904,
+			"byteOffset":1927056,
 			"target":34962
 		},
 		{
 			"buffer":0,
 			"byteLength":20808,
-			"byteOffset":1484712,
+			"byteOffset":1947864,
 			"target":34962
 		},
 		{
 			"buffer":0,
 			"byteLength":13872,
-			"byteOffset":1505520,
+			"byteOffset":1968672,
 			"target":34962
 		},
 		{
 			"buffer":0,
 			"byteLength":27744,
-			"byteOffset":1519392,
+			"byteOffset":1982544,
 			"target":34962
 		},
 		{
 			"buffer":0,
 			"byteLength":19404,
-			"byteOffset":1547136,
+			"byteOffset":2010288,
 			"target":34963
 		}
 	],
@@ -291,7 +291,7 @@
 	],
 	"buffers":[
 		{
-			"byteLength":1566540,
+			"byteLength":2029692,
 			"uri":"Jetty_Straight.bin"
 		}
 	]
