@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "5a8cd3fb3a295b65"
+                },
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "d9e94720-8888-54ec-9b81-9a8ff62c90b3",
+                    "path": "Application/Assets/Models/Okinawa/ArahaTown_Block_W01024_N04096/ArahaTown_Block_W01024_N04096.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "b982321c06c45f1f",
+    "name": "ArahaTown_Block_W01024_N04096",
+    "order": 670
+}
