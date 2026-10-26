@@ -44,7 +44,8 @@ def build_meshes(field):
     cy = (py[:-1, :-1] + py[1:, :-1] + py[1:, 1:] + py[:-1, 1:]) / 4
     creg = field.classify(cx, cy)
     cz = field.height(cx, cy, creg)
-    csurf = field.surface(creg, cz)
+    # 街の地面（公園の外）は build_araha_town.py が同じ格子で書き出すので、ここでは作らない
+    csurf = field.surface(creg, cz, cx, cy)
     out = {}
     for si, sname in enumerate(SURFACES):
         mask = csurf == si

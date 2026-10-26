@@ -15,12 +15,19 @@ import numpy as np
 
 TOOL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MAP_PATH = os.path.join(TOOL_DIR, "data", "araha_map.json")
+DEM_PATH = os.path.join(TOOL_DIR, "data", "araha_dem.npz")
 PROMENADE = 2.5
 SAND_TOE = PROMENADE - 0.9
 LAWN = PROMENADE + 0.05
 # 護岸の線から陸側でまだ浜の下端の高さにしておく幅（陸の高さへ上がる面が遊歩道の舗装の下に入る）
 WALL_SKIRT = 2.0
 SEABED_MAX = -9.5
+# 公園の外の街の地面: 標高（国土地理院の標高タイル）がこの高さを超えた分だけ LAWN から上げる
+DEM_REF = 2.0
+# 上げ始める公園の外の距離と、上げ切る距離 [m]
+TOWN_RISE_BLEND = (20.0, 120.0)
+# 護岸の線からこの距離までの陸は、公園の外でも芝生のまま（遊歩道とヤシ並木の下）
+TOWN_WALL_CLEAR = 12.0
 # 浜の海側の縁・陸側の縁の両端（地図の浜の頂点のうち、この点にいちばん近いもの）
 WATER_ENDS = ((-108.2, -276.4), (51.7, 278.0))
 WALL_ENDS = ((-46.1, -310.2), (124.1, 257.5))
@@ -92,7 +99,51 @@ class Map:
                                [[self.north_coast[-1][0], far], [far, far], [far, -far],
                                 [self.south_coast[-1][0], -far]],
                                self.south_coast[::-1], self.wall[:1]])
+        self.park = np.array(data["park"]["points"], float)
         self.attribution = data["attribution"]
+
+
+_DEM = None
+
+
+def _dem():
+    """標高の格子（0.1 m 単位の整数、海は -1）を m に直し、3x3 でならしたもの"""
+    global _DEM
+    if _DEM is None:
+        d = np.load(DEM_PATH)
+        h = np.maximum(d["h"].astype(float), 0.0) * 0.1
+        p = np.pad(h, 1, mode="edge")
+        h = sum(p[1 + dy:p.shape[0] - 1 + dy, 1 + dx:p.shape[1] - 1 + dx]
+                for dy in (-1, 0, 1) for dx in (-1, 0, 1)) / 9.0
+        _DEM = (h, float(d["x0"]), float(d["y0"]), float(d["step"]))
+    return _DEM
+
+
+def dem_height(px, py):
+    """標高 [m]（双線形。海と範囲の外は 0）"""
+    h, x0, y0, step = _dem()
+    fx = np.clip((np.asarray(px, float) - x0) / step, 0.0, h.shape[1] - 1.001)
+    fy = np.clip((np.asarray(py, float) - y0) / step, 0.0, h.shape[0] - 1.001)
+    ix = np.floor(fx).astype(int)
+    iy = np.floor(fy).astype(int)
+    tx = fx - ix
+    ty = fy - iy
+    return (h[iy, ix] * (1 - tx) * (1 - ty) + h[iy, ix + 1] * tx * (1 - ty)
+            + h[iy + 1, ix] * (1 - tx) * ty + h[iy + 1, ix + 1] * tx * ty)
+
+
+def park_distance(m, px, py):
+    """公園の外の点の、公園の縁までの距離（公園の中は 0）"""
+    px = np.asarray(px, float)
+    py = np.asarray(py, float)
+    d = dist(px, py, np.vstack([m.park, m.park[:1]]))
+    return np.where(inside(px, py, m.park), 0.0, d)
+
+
+def town_rise(m, px, py):
+    """街の地面を LAWN から上げる高さ（公園の近くは 0）"""
+    r = np.maximum(dem_height(px, py) - DEM_REF, 0.0)
+    return r * smoothstep(TOWN_RISE_BLEND[0], TOWN_RISE_BLEND[1], park_distance(m, px, py))
 
 
 def inside(px, py, poly):
@@ -208,16 +259,22 @@ class Field:
         z_sea = z_sea + 0.18 * waves(px, py, [(41.0, 75, 0.0, 1.0), (17.0, 160, 2.0, 0.5), (63.0, 10, 4.0, 0.7)]) \
             * smoothstep(8.0, 40.0, d_sea)
         z_sea = np.maximum(z_sea, SEABED_MAX)
-        # 陸: 遊歩道の下は舗装のすぐ下、その先の公園は平ら。浜の外の海岸は護岸で下がる
-        z_land = np.where(d_wall < 4.6, PROMENADE - 0.05, LAWN)
+        # 陸: 遊歩道の下は舗装のすぐ下、その先の公園は平ら、公園の外の街は標高に沿って上がる。浜の外の海岸は護岸で下がる
+        z_land = np.where(d_wall < 4.6, PROMENADE - 0.05, LAWN + town_rise(m, px, py))
         z_land = z_land + (-1.0 - z_land) * smoothstep(5.0, 0.0, d_coast) * (d_wall > 4.6)
         z = np.where(region == 2, z_land, np.where(region == 1, z_beach, z_sea))
         # 護岸の線から陸側 WALL_SKIRT までは浜の下端の高さ（護岸の本体と遊歩道の下に隠れる）
         return np.where((region == 2) & (d_wall < WALL_SKIRT), SAND_TOE, z)
 
-    def surface(self, region, z):
-        """面の種類の番号（0 乾いた砂, 1 濡れた砂, 2 水中の砂, 3 深い海底, 4 芝生）"""
+    def surface(self, region, z, px=None, py=None):
+        """面の種類の番号（0 乾いた砂, 1 濡れた砂, 2 水中の砂, 3 深い海底, 4 芝生, 5 街の地面）
+
+        街の地面は、位置 (px, py) を渡したときだけ分ける（公園の外で、護岸の線から TOWN_WALL_CLEAR より離れた陸）。
+        """
         s = np.full(np.shape(z), 4)
+        if px is not None:
+            town = ~inside(px, py, self.m.park) & (dist(px, py, self.m.wall) > TOWN_WALL_CLEAR)
+            s = np.where(town, 5, s)
         s = np.where(region == 1, np.where(z > 0.3, 0, 1), s)
         return np.where(region == 0, np.where(z > -0.5, 1, np.where(z > -3.0, 2, 3)), s)
 
