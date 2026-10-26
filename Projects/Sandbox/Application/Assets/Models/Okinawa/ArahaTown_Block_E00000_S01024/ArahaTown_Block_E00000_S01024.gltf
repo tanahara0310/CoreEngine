@@ -1,0 +1,3274 @@
+{
+ "asset": {
+  "generator": "CoreEngine OkinawaBeach build_araha_town",
+  "version": "2.0"
+ },
+ "scene": 0,
+ "scenes": [
+  {
+   "name": "Scene",
+   "nodes": [
+    0
+   ]
+  }
+ ],
+ "nodes": [
+  {
+   "mesh": 0,
+   "name": "ArahaTown_Block_E00000_S01024"
+  }
+ ],
+ "meshes": [
+  {
+   "name": "ArahaTown_Block_E00000_S01024",
+   "primitives": [
+    {
+     "attributes": {
+      "POSITION": 0,
+      "NORMAL": 1,
+      "TEXCOORD_0": 2,
+      "TANGENT": 3
+     },
+     "indices": 4,
+     "material": 0
+    },
+    {
+     "attributes": {
+      "POSITION": 5,
+      "NORMAL": 6,
+      "TEXCOORD_0": 7,
+      "TANGENT": 8
+     },
+     "indices": 9,
+     "material": 1
+    },
+    {
+     "attributes": {
+      "POSITION": 10,
+      "NORMAL": 11,
+      "TEXCOORD_0": 12,
+      "TANGENT": 13
+     },
+     "indices": 14,
+     "material": 2
+    },
+    {
+     "attributes": {
+      "POSITION": 15,
+      "NORMAL": 16,
+      "TEXCOORD_0": 17,
+      "TANGENT": 18
+     },
+     "indices": 19,
+     "material": 3
+    },
+    {
+     "attributes": {
+      "POSITION": 20,
+      "NORMAL": 21,
+      "TEXCOORD_0": 22,
+      "TANGENT": 23
+     },
+     "indices": 24,
+     "material": 4
+    },
+    {
+     "attributes": {
+      "POSITION": 25,
+      "NORMAL": 26,
+      "TEXCOORD_0": 27,
+      "TANGENT": 28
+     },
+     "indices": 29,
+     "material": 5
+    },
+    {
+     "attributes": {
+      "POSITION": 30,
+      "NORMAL": 31,
+      "TEXCOORD_0": 32,
+      "TANGENT": 33
+     },
+     "indices": 34,
+     "material": 6
+    },
+    {
+     "attributes": {
+      "POSITION": 35,
+      "NORMAL": 36,
+      "TEXCOORD_0": 37,
+      "TANGENT": 38
+     },
+     "indices": 39,
+     "material": 7
+    },
+    {
+     "attributes": {
+      "POSITION": 40,
+      "NORMAL": 41,
+      "TEXCOORD_0": 42,
+      "TANGENT": 43
+     },
+     "indices": 44,
+     "material": 8
+    },
+    {
+     "attributes": {
+      "POSITION": 45,
+      "NORMAL": 46,
+      "TEXCOORD_0": 47,
+      "TANGENT": 48
+     },
+     "indices": 49,
+     "material": 9
+    },
+    {
+     "attributes": {
+      "POSITION": 50,
+      "NORMAL": 51,
+      "TEXCOORD_0": 52,
+      "TANGENT": 53
+     },
+     "indices": 54,
+     "material": 10
+    },
+    {
+     "attributes": {
+      "POSITION": 55,
+      "NORMAL": 56,
+      "TEXCOORD_0": 57,
+      "TANGENT": 58
+     },
+     "indices": 59,
+     "material": 11
+    },
+    {
+     "attributes": {
+      "POSITION": 60,
+      "NORMAL": 61,
+      "TEXCOORD_0": 62,
+      "TANGENT": 63
+     },
+     "indices": 64,
+     "material": 12
+    },
+    {
+     "attributes": {
+      "POSITION": 65,
+      "NORMAL": 66,
+      "TEXCOORD_0": 67,
+      "TANGENT": 68
+     },
+     "indices": 69,
+     "material": 13
+    },
+    {
+     "attributes": {
+      "POSITION": 70,
+      "NORMAL": 71,
+      "TEXCOORD_0": 72,
+      "TANGENT": 73
+     },
+     "indices": 74,
+     "material": 14
+    },
+    {
+     "attributes": {
+      "POSITION": 75,
+      "NORMAL": 76,
+      "TEXCOORD_0": 77,
+      "TANGENT": 78
+     },
+     "indices": 79,
+     "material": 15
+    },
+    {
+     "attributes": {
+      "POSITION": 80,
+      "NORMAL": 81,
+      "TEXCOORD_0": 82,
+      "TANGENT": 83
+     },
+     "indices": 84,
+     "material": 16
+    },
+    {
+     "attributes": {
+      "POSITION": 85,
+      "NORMAL": 86,
+      "TEXCOORD_0": 87,
+      "TANGENT": 88
+     },
+     "indices": 89,
+     "material": 17
+    },
+    {
+     "attributes": {
+      "POSITION": 90,
+      "NORMAL": 91,
+      "TEXCOORD_0": 92,
+      "TANGENT": 93
+     },
+     "indices": 94,
+     "material": 18
+    },
+    {
+     "attributes": {
+      "POSITION": 95,
+      "NORMAL": 96,
+      "TEXCOORD_0": 97,
+      "TANGENT": 98
+     },
+     "indices": 99,
+     "material": 19
+    },
+    {
+     "attributes": {
+      "POSITION": 100,
+      "NORMAL": 101,
+      "TEXCOORD_0": 102,
+      "TANGENT": 103
+     },
+     "indices": 104,
+     "material": 20
+    },
+    {
+     "attributes": {
+      "POSITION": 105,
+      "NORMAL": 106,
+      "TEXCOORD_0": 107,
+      "TANGENT": 108
+     },
+     "indices": 109,
+     "material": 21
+    },
+    {
+     "attributes": {
+      "POSITION": 110,
+      "NORMAL": 111,
+      "TEXCOORD_0": 112,
+      "TANGENT": 113
+     },
+     "indices": 114,
+     "material": 22
+    },
+    {
+     "attributes": {
+      "POSITION": 115,
+      "NORMAL": 116,
+      "TEXCOORD_0": 117,
+      "TANGENT": 118
+     },
+     "indices": 119,
+     "material": 23
+    },
+    {
+     "attributes": {
+      "POSITION": 120,
+      "NORMAL": 121,
+      "TEXCOORD_0": 122,
+      "TANGENT": 123
+     },
+     "indices": 124,
+     "material": 24
+    },
+    {
+     "attributes": {
+      "POSITION": 125,
+      "NORMAL": 126,
+      "TEXCOORD_0": 127,
+      "TANGENT": 128
+     },
+     "indices": 129,
+     "material": 25
+    },
+    {
+     "attributes": {
+      "POSITION": 130,
+      "NORMAL": 131,
+      "TEXCOORD_0": 132,
+      "TANGENT": 133
+     },
+     "indices": 134,
+     "material": 26
+    }
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "ArahaTown_Facade_AptGlass_White",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 0
+    },
+    "metallicRoughnessTexture": {
+     "index": 1
+    }
+   },
+   "occlusionTexture": {
+    "index": 1
+   },
+   "normalTexture": {
+    "index": 2
+   }
+  },
+  {
+   "name": "ArahaTown_Facade_Apt_Beige",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 3
+    },
+    "metallicRoughnessTexture": {
+     "index": 4
+    }
+   },
+   "occlusionTexture": {
+    "index": 4
+   },
+   "normalTexture": {
+    "index": 5
+   }
+  },
+  {
+   "name": "ArahaTown_Facade_Apt_Brown",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 6
+    },
+    "metallicRoughnessTexture": {
+     "index": 7
+    }
+   },
+   "occlusionTexture": {
+    "index": 7
+   },
+   "normalTexture": {
+    "index": 8
+   }
+  },
+  {
+   "name": "ArahaTown_Facade_Apt_Gray",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 9
+    },
+    "metallicRoughnessTexture": {
+     "index": 10
+    }
+   },
+   "occlusionTexture": {
+    "index": 10
+   },
+   "normalTexture": {
+    "index": 11
+   }
+  },
+  {
+   "name": "ArahaTown_Facade_Apt_White",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 12
+    },
+    "metallicRoughnessTexture": {
+     "index": 13
+    }
+   },
+   "occlusionTexture": {
+    "index": 13
+   },
+   "normalTexture": {
+    "index": 14
+   }
+  },
+  {
+   "name": "ArahaTown_Facade_Base_Beige",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 15
+    },
+    "metallicRoughnessTexture": {
+     "index": 16
+    }
+   },
+   "occlusionTexture": {
+    "index": 16
+   },
+   "normalTexture": {
+    "index": 17
+   }
+  },
+  {
+   "name": "ArahaTown_Facade_Base_Cream",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 18
+    },
+    "metallicRoughnessTexture": {
+     "index": 19
+    }
+   },
+   "occlusionTexture": {
+    "index": 19
+   },
+   "normalTexture": {
+    "index": 20
+   }
+  },
+  {
+   "name": "ArahaTown_Facade_BigBox_Gray",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 21
+    },
+    "metallicRoughnessTexture": {
+     "index": 22
+    }
+   },
+   "occlusionTexture": {
+    "index": 22
+   },
+   "normalTexture": {
+    "index": 23
+   }
+  },
+  {
+   "name": "ArahaTown_Facade_BigBox_Ivory",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 24
+    },
+    "metallicRoughnessTexture": {
+     "index": 25
+    }
+   },
+   "occlusionTexture": {
+    "index": 25
+   },
+   "normalTexture": {
+    "index": 26
+   }
+  },
+  {
+   "name": "ArahaTown_Facade_House_Cream",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 27
+    },
+    "metallicRoughnessTexture": {
+     "index": 28
+    }
+   },
+   "occlusionTexture": {
+    "index": 28
+   },
+   "normalTexture": {
+    "index": 29
+   }
+  },
+  {
+   "name": "ArahaTown_Facade_House_Gray",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 30
+    },
+    "metallicRoughnessTexture": {
+     "index": 31
+    }
+   },
+   "occlusionTexture": {
+    "index": 31
+   },
+   "normalTexture": {
+    "index": 32
+   }
+  },
+  {
+   "name": "ArahaTown_Facade_House_Mint",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 33
+    },
+    "metallicRoughnessTexture": {
+     "index": 34
+    }
+   },
+   "occlusionTexture": {
+    "index": 34
+   },
+   "normalTexture": {
+    "index": 35
+   }
+  },
+  {
+   "name": "ArahaTown_Facade_House_Pink",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 36
+    },
+    "metallicRoughnessTexture": {
+     "index": 37
+    }
+   },
+   "occlusionTexture": {
+    "index": 37
+   },
+   "normalTexture": {
+    "index": 38
+   }
+  },
+  {
+   "name": "ArahaTown_Facade_House_White",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 39
+    },
+    "metallicRoughnessTexture": {
+     "index": 40
+    }
+   },
+   "occlusionTexture": {
+    "index": 40
+   },
+   "normalTexture": {
+    "index": 41
+   }
+  },
+  {
+   "name": "ArahaTown_Facade_Office_Gray",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 42
+    },
+    "metallicRoughnessTexture": {
+     "index": 43
+    }
+   },
+   "occlusionTexture": {
+    "index": 43
+   },
+   "normalTexture": {
+    "index": 44
+   }
+  },
+  {
+   "name": "ArahaTown_Facade_Office_White",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 45
+    },
+    "metallicRoughnessTexture": {
+     "index": 46
+    }
+   },
+   "occlusionTexture": {
+    "index": 46
+   },
+   "normalTexture": {
+    "index": 47
+   }
+  },
+  {
+   "name": "ArahaTown_Facade_Shop_A",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 48
+    },
+    "metallicRoughnessTexture": {
+     "index": 49
+    }
+   },
+   "occlusionTexture": {
+    "index": 49
+   },
+   "normalTexture": {
+    "index": 50
+   }
+  },
+  {
+   "name": "ArahaTown_Facade_Shop_B",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 51
+    },
+    "metallicRoughnessTexture": {
+     "index": 52
+    }
+   },
+   "occlusionTexture": {
+    "index": 52
+   },
+   "normalTexture": {
+    "index": 53
+   }
+  },
+  {
+   "name": "ArahaTown_Facade_Tower_Beige",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 54
+    },
+    "metallicRoughnessTexture": {
+     "index": 55
+    }
+   },
+   "occlusionTexture": {
+    "index": 55
+   },
+   "normalTexture": {
+    "index": 56
+   }
+  },
+  {
+   "name": "ArahaTown_Facade_Tower_White",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 57
+    },
+    "metallicRoughnessTexture": {
+     "index": 58
+    }
+   },
+   "occlusionTexture": {
+    "index": 58
+   },
+   "normalTexture": {
+    "index": 59
+   }
+  },
+  {
+   "name": "ArahaTown_Plain",
+   "pbrMetallicRoughness": {
+    "baseColorFactor": [
+     0.66,
+     0.65,
+     0.62,
+     1.0
+    ],
+    "roughnessFactor": 0.85,
+    "metallicFactor": 0.0
+   }
+  },
+  {
+   "name": "ArahaTown_Roof_Coated",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 60
+    },
+    "metallicRoughnessTexture": {
+     "index": 61
+    }
+   },
+   "occlusionTexture": {
+    "index": 61
+   },
+   "normalTexture": {
+    "index": 62
+   }
+  },
+  {
+   "name": "ArahaTown_Roof_Concrete",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 63
+    },
+    "metallicRoughnessTexture": {
+     "index": 64
+    }
+   },
+   "occlusionTexture": {
+    "index": 64
+   },
+   "normalTexture": {
+    "index": 65
+   }
+  },
+  {
+   "name": "ArahaTown_Roof_Metal",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 66
+    },
+    "metallicRoughnessTexture": {
+     "index": 67
+    }
+   },
+   "occlusionTexture": {
+    "index": 67
+   },
+   "normalTexture": {
+    "index": 68
+   }
+  },
+  {
+   "name": "ArahaTown_TankBlue",
+   "pbrMetallicRoughness": {
+    "baseColorFactor": [
+     0.1,
+     0.22,
+     0.5,
+     1.0
+    ],
+    "roughnessFactor": 0.4,
+    "metallicFactor": 0.0
+   }
+  },
+  {
+   "name": "ArahaTown_TankSteel",
+   "pbrMetallicRoughness": {
+    "baseColorFactor": [
+     0.62,
+     0.63,
+     0.64,
+     1.0
+    ],
+    "roughnessFactor": 0.35,
+    "metallicFactor": 0.9
+   }
+  },
+  {
+   "name": "ArahaTown_TankWhite",
+   "pbrMetallicRoughness": {
+    "baseColorFactor": [
+     0.78,
+     0.78,
+     0.76,
+     1.0
+    ],
+    "roughnessFactor": 0.45,
+    "metallicFactor": 0.0
+   }
+  }
+ ],
+ "accessors": [
+  {
+   "bufferView": 0,
+   "componentType": 5126,
+   "count": 48,
+   "type": "VEC3",
+   "min": [
+    157.39999389648438,
+    2.1500000953674316,
+    351.0
+   ],
+   "max": [
+    175.0,
+    21.450000762939453,
+    373.0
+   ]
+  },
+  {
+   "bufferView": 1,
+   "componentType": 5126,
+   "count": 48,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 2,
+   "componentType": 5126,
+   "count": 48,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 3,
+   "componentType": 5126,
+   "count": 48,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 4,
+   "componentType": 5123,
+   "count": 72,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 5,
+   "componentType": 5126,
+   "count": 1636,
+   "type": "VEC3",
+   "min": [
+    2.799999952316284,
+    2.1500000953674316,
+    -7.199999809265137
+   ],
+   "max": [
+    380.8999938964844,
+    27.77650260925293,
+    997.5999755859375
+   ]
+  },
+  {
+   "bufferView": 6,
+   "componentType": 5126,
+   "count": 1636,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 7,
+   "componentType": 5126,
+   "count": 1636,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 8,
+   "componentType": 5126,
+   "count": 1636,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 9,
+   "componentType": 5123,
+   "count": 2454,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 10,
+   "componentType": 5126,
+   "count": 948,
+   "type": "VEC3",
+   "min": [
+    -2.0999999046325684,
+    2.1500000953674316,
+    40.0
+   ],
+   "max": [
+    334.20001220703125,
+    16.450000762939453,
+    850.5
+   ]
+  },
+  {
+   "bufferView": 11,
+   "componentType": 5126,
+   "count": 948,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 12,
+   "componentType": 5126,
+   "count": 948,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 13,
+   "componentType": 5126,
+   "count": 948,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 14,
+   "componentType": 5123,
+   "count": 1422,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 15,
+   "componentType": 5126,
+   "count": 1576,
+   "type": "VEC3",
+   "min": [
+    -7.099999904632568,
+    2.1500000953674316,
+    33.400001525878906
+   ],
+   "max": [
+    328.29998779296875,
+    18.450000762939453,
+    945.7999877929688
+   ]
+  },
+  {
+   "bufferView": 16,
+   "componentType": 5126,
+   "count": 1576,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 17,
+   "componentType": 5126,
+   "count": 1576,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 18,
+   "componentType": 5126,
+   "count": 1576,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 19,
+   "componentType": 5123,
+   "count": 2364,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 20,
+   "componentType": 5126,
+   "count": 1344,
+   "type": "VEC3",
+   "min": [
+    3.700000047683716,
+    2.1500000953674316,
+    19.799999237060547
+   ],
+   "max": [
+    310.70001220703125,
+    22.820653915405273,
+    828.7999877929688
+   ]
+  },
+  {
+   "bufferView": 21,
+   "componentType": 5126,
+   "count": 1344,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 22,
+   "componentType": 5126,
+   "count": 1344,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 23,
+   "componentType": 5126,
+   "count": 1344,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 24,
+   "componentType": 5123,
+   "count": 2016,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 25,
+   "componentType": 5126,
+   "count": 1064,
+   "type": "VEC3",
+   "min": [
+    401.29998779296875,
+    3.9732859134674072,
+    171.60000610351562
+   ],
+   "max": [
+    1018.2000122070312,
+    26.53042221069336,
+    1049.300048828125
+   ]
+  },
+  {
+   "bufferView": 26,
+   "componentType": 5126,
+   "count": 1064,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 27,
+   "componentType": 5126,
+   "count": 1064,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 28,
+   "componentType": 5126,
+   "count": 1064,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 29,
+   "componentType": 5123,
+   "count": 1596,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 30,
+   "componentType": 5126,
+   "count": 1432,
+   "type": "VEC3",
+   "min": [
+    364.79998779296875,
+    3.932452440261841,
+    108.5999984741211
+   ],
+   "max": [
+    1045.699951171875,
+    27.448043823242188,
+    990.0
+   ]
+  },
+  {
+   "bufferView": 31,
+   "componentType": 5126,
+   "count": 1432,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 32,
+   "componentType": 5126,
+   "count": 1432,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 33,
+   "componentType": 5126,
+   "count": 1432,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 34,
+   "componentType": 5123,
+   "count": 2148,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 35,
+   "componentType": 5126,
+   "count": 80,
+   "type": "VEC3",
+   "min": [
+    918.5,
+    9.584747314453125,
+    531.5
+   ],
+   "max": [
+    1013.2999877929688,
+    25.96831512451172,
+    604.2999877929688
+   ]
+  },
+  {
+   "bufferView": 36,
+   "componentType": 5126,
+   "count": 80,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 37,
+   "componentType": 5126,
+   "count": 80,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 38,
+   "componentType": 5126,
+   "count": 80,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 39,
+   "componentType": 5123,
+   "count": 120,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 40,
+   "componentType": 5126,
+   "count": 136,
+   "type": "VEC3",
+   "min": [
+    126.4000015258789,
+    2.1500000953674316,
+    264.1000061035156
+   ],
+   "max": [
+    923.7999877929688,
+    20.477209091186523,
+    717.5
+   ]
+  },
+  {
+   "bufferView": 41,
+   "componentType": 5126,
+   "count": 136,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 42,
+   "componentType": 5126,
+   "count": 136,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 43,
+   "componentType": 5126,
+   "count": 136,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 44,
+   "componentType": 5123,
+   "count": 204,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 45,
+   "componentType": 5126,
+   "count": 1640,
+   "type": "VEC3",
+   "min": [
+    -2.700000047683716,
+    2.1500000953674316,
+    -9.5
+   ],
+   "max": [
+    287.5,
+    15.449999809265137,
+    969.4000244140625
+   ]
+  },
+  {
+   "bufferView": 46,
+   "componentType": 5126,
+   "count": 1640,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 47,
+   "componentType": 5126,
+   "count": 1640,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 48,
+   "componentType": 5126,
+   "count": 1640,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 49,
+   "componentType": 5123,
+   "count": 2460,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 50,
+   "componentType": 5126,
+   "count": 2032,
+   "type": "VEC3",
+   "min": [
+    5.199999809265137,
+    2.1500000953674316,
+    2.5
+   ],
+   "max": [
+    365.3999938964844,
+    16.316152572631836,
+    982.4000244140625
+   ]
+  },
+  {
+   "bufferView": 51,
+   "componentType": 5126,
+   "count": 2032,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 52,
+   "componentType": 5126,
+   "count": 2032,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 53,
+   "componentType": 5126,
+   "count": 2032,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 54,
+   "componentType": 5123,
+   "count": 3048,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 55,
+   "componentType": 5126,
+   "count": 1764,
+   "type": "VEC3",
+   "min": [
+    -2.0999999046325684,
+    2.1500000953674316,
+    0.20000000298023224
+   ],
+   "max": [
+    324.1000061035156,
+    18.450000762939453,
+    992.4000244140625
+   ]
+  },
+  {
+   "bufferView": 56,
+   "componentType": 5126,
+   "count": 1764,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 57,
+   "componentType": 5126,
+   "count": 1764,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 58,
+   "componentType": 5126,
+   "count": 1764,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 59,
+   "componentType": 5123,
+   "count": 2646,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 60,
+   "componentType": 5126,
+   "count": 1508,
+   "type": "VEC3",
+   "min": [
+    89.5999984741211,
+    2.1500000953674316,
+    -4.900000095367432
+   ],
+   "max": [
+    329.5,
+    16.780048370361328,
+    1004.2999877929688
+   ]
+  },
+  {
+   "bufferView": 61,
+   "componentType": 5126,
+   "count": 1508,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 62,
+   "componentType": 5126,
+   "count": 1508,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 63,
+   "componentType": 5126,
+   "count": 1508,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 64,
+   "componentType": 5123,
+   "count": 2262,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 65,
+   "componentType": 5126,
+   "count": 2208,
+   "type": "VEC3",
+   "min": [
+    3.9000000953674316,
+    2.1500000953674316,
+    -2.5
+   ],
+   "max": [
+    313.70001220703125,
+    15.642925262451172,
+    1011.5999755859375
+   ]
+  },
+  {
+   "bufferView": 66,
+   "componentType": 5126,
+   "count": 2208,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 67,
+   "componentType": 5126,
+   "count": 2208,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 68,
+   "componentType": 5126,
+   "count": 2208,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 69,
+   "componentType": 5123,
+   "count": 3312,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 70,
+   "componentType": 5126,
+   "count": 72,
+   "type": "VEC3",
+   "min": [
+    252.6999969482422,
+    2.264920473098755,
+    162.39999389648438
+   ],
+   "max": [
+    274.20001220703125,
+    10.906879425048828,
+    179.0
+   ]
+  },
+  {
+   "bufferView": 71,
+   "componentType": 5126,
+   "count": 72,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 72,
+   "componentType": 5126,
+   "count": 72,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 73,
+   "componentType": 5126,
+   "count": 72,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 74,
+   "componentType": 5123,
+   "count": 108,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 75,
+   "componentType": 5126,
+   "count": 96,
+   "type": "VEC3",
+   "min": [
+    108.0,
+    2.1500000953674316,
+    62.599998474121094
+   ],
+   "max": [
+    351.79998779296875,
+    14.25,
+    628.4000244140625
+   ]
+  },
+  {
+   "bufferView": 76,
+   "componentType": 5126,
+   "count": 96,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 77,
+   "componentType": 5126,
+   "count": 96,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 78,
+   "componentType": 5126,
+   "count": 96,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 79,
+   "componentType": 5123,
+   "count": 144,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 80,
+   "componentType": 5126,
+   "count": 168,
+   "type": "VEC3",
+   "min": [
+    -2.0999999046325684,
+    2.1500000953674316,
+    70.69999694824219
+   ],
+   "max": [
+    365.3999938964844,
+    8.357458114624023,
+    949.4000244140625
+   ]
+  },
+  {
+   "bufferView": 81,
+   "componentType": 5126,
+   "count": 168,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 82,
+   "componentType": 5126,
+   "count": 168,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 83,
+   "componentType": 5126,
+   "count": 168,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 84,
+   "componentType": 5123,
+   "count": 252,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 85,
+   "componentType": 5126,
+   "count": 84,
+   "type": "VEC3",
+   "min": [
+    5.300000190734863,
+    2.1500000953674316,
+    62.599998474121094
+   ],
+   "max": [
+    351.79998779296875,
+    7.45745849609375,
+    719.5999755859375
+   ]
+  },
+  {
+   "bufferView": 86,
+   "componentType": 5126,
+   "count": 84,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 87,
+   "componentType": 5126,
+   "count": 84,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 88,
+   "componentType": 5126,
+   "count": 84,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 89,
+   "componentType": 5123,
+   "count": 126,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 90,
+   "componentType": 5126,
+   "count": 240,
+   "type": "VEC3",
+   "min": [
+    11.699999809265137,
+    2.1500000953674316,
+    126.5
+   ],
+   "max": [
+    150.10000610351562,
+    46.849998474121094,
+    716.2000122070312
+   ]
+  },
+  {
+   "bufferView": 91,
+   "componentType": 5126,
+   "count": 240,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 92,
+   "componentType": 5126,
+   "count": 240,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 93,
+   "componentType": 5126,
+   "count": 240,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 94,
+   "componentType": 5123,
+   "count": 360,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 95,
+   "componentType": 5126,
+   "count": 48,
+   "type": "VEC3",
+   "min": [
+    179.39999389648438,
+    2.1500000953674316,
+    221.3000030517578
+   ],
+   "max": [
+    210.1999969482422,
+    34.451271057128906,
+    257.5
+   ]
+  },
+  {
+   "bufferView": 96,
+   "componentType": 5126,
+   "count": 48,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 97,
+   "componentType": 5126,
+   "count": 48,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 98,
+   "componentType": 5126,
+   "count": 48,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 99,
+   "componentType": 5123,
+   "count": 72,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 100,
+   "componentType": 5126,
+   "count": 10738,
+   "type": "VEC3",
+   "min": [
+    -7.099999904632568,
+    2.1500000953674316,
+    -9.5
+   ],
+   "max": [
+    742.9000244140625,
+    48.77000045776367,
+    873.9000244140625
+   ]
+  },
+  {
+   "bufferView": 101,
+   "componentType": 5126,
+   "count": 10738,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 102,
+   "componentType": 5126,
+   "count": 10738,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 103,
+   "componentType": 5126,
+   "count": 10738,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 104,
+   "componentType": 5123,
+   "count": 16110,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 105,
+   "componentType": 5126,
+   "count": 582,
+   "type": "VEC3",
+   "min": [
+    -2.4189140796661377,
+    5.570000171661377,
+    -9.189830780029297
+   ],
+   "max": [
+    1045.699951171875,
+    26.896503448486328,
+    1036.199951171875
+   ]
+  },
+  {
+   "bufferView": 106,
+   "componentType": 5126,
+   "count": 582,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 107,
+   "componentType": 5126,
+   "count": 582,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 108,
+   "componentType": 5126,
+   "count": 582,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 109,
+   "componentType": 5123,
+   "count": 1200,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 110,
+   "componentType": 5126,
+   "count": 978,
+   "type": "VEC3",
+   "min": [
+    -6.789796352386475,
+    5.570000171661377,
+    -7.090397834777832
+   ],
+   "max": [
+    1042.4000244140625,
+    45.970001220703125,
+    1049.300048828125
+   ]
+  },
+  {
+   "bufferView": 111,
+   "componentType": 5126,
+   "count": 978,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 112,
+   "componentType": 5126,
+   "count": 978,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 113,
+   "componentType": 5126,
+   "count": 978,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 114,
+   "componentType": 5123,
+   "count": 1950,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 115,
+   "componentType": 5126,
+   "count": 42,
+   "type": "VEC3",
+   "min": [
+    126.7105712890625,
+    7.650000095367432,
+    93.4000015258789
+   ],
+   "max": [
+    1013.2999877929688,
+    25.96831512451172,
+    717.5
+   ]
+  },
+  {
+   "bufferView": 116,
+   "componentType": 5126,
+   "count": 42,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 117,
+   "componentType": 5126,
+   "count": 42,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 118,
+   "componentType": 5126,
+   "count": 42,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 119,
+   "componentType": 5123,
+   "count": 84,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 120,
+   "componentType": 5126,
+   "count": 4400,
+   "type": "VEC3",
+   "min": [
+    4.952098846435547,
+    6.019999980926514,
+    0.24629223346710205
+   ],
+   "max": [
+    338.7275085449219,
+    48.16544723510742,
+    863.5573120117188
+   ]
+  },
+  {
+   "bufferView": 121,
+   "componentType": 5126,
+   "count": 4400,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 122,
+   "componentType": 5126,
+   "count": 4400,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 123,
+   "componentType": 5126,
+   "count": 4400,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 124,
+   "componentType": 5123,
+   "count": 7392,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 125,
+   "componentType": 5126,
+   "count": 3880,
+   "type": "VEC3",
+   "min": [
+    5.582367897033691,
+    6.019999980926514,
+    7.1637282371521
+   ],
+   "max": [
+    374.58026123046875,
+    35.8955078125,
+    789.1979370117188
+   ]
+  },
+  {
+   "bufferView": 126,
+   "componentType": 5126,
+   "count": 3880,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 127,
+   "componentType": 5126,
+   "count": 3880,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 128,
+   "componentType": 5126,
+   "count": 3880,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 129,
+   "componentType": 5123,
+   "count": 6504,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 130,
+   "componentType": 5126,
+   "count": 4700,
+   "type": "VEC3",
+   "min": [
+    1.8469699621200562,
+    6.019999980926514,
+    -3.4051148891448975
+   ],
+   "max": [
+    358.5779724121094,
+    41.73627471923828,
+    835.1611328125
+   ]
+  },
+  {
+   "bufferView": 131,
+   "componentType": 5126,
+   "count": 4700,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 132,
+   "componentType": 5126,
+   "count": 4700,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 133,
+   "componentType": 5126,
+   "count": 4700,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 134,
+   "componentType": 5123,
+   "count": 7896,
+   "type": "SCALAR"
+  }
+ ],
+ "bufferViews": [
+  {
+   "buffer": 0,
+   "byteOffset": 0,
+   "byteLength": 576,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 576,
+   "byteLength": 576,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1152,
+   "byteLength": 384,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1536,
+   "byteLength": 768,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 2304,
+   "byteLength": 144,
+   "target": 34963
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 2448,
+   "byteLength": 19632,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 22080,
+   "byteLength": 19632,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 41712,
+   "byteLength": 13088,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 54800,
+   "byteLength": 26176,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 80976,
+   "byteLength": 4908,
+   "target": 34963
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 85884,
+   "byteLength": 11376,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 97260,
+   "byteLength": 11376,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 108636,
+   "byteLength": 7584,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 116220,
+   "byteLength": 15168,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 131388,
+   "byteLength": 2844,
+   "target": 34963
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 134232,
+   "byteLength": 18912,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 153144,
+   "byteLength": 18912,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 172056,
+   "byteLength": 12608,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 184664,
+   "byteLength": 25216,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 209880,
+   "byteLength": 4728,
+   "target": 34963
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 214608,
+   "byteLength": 16128,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 230736,
+   "byteLength": 16128,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 246864,
+   "byteLength": 10752,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 257616,
+   "byteLength": 21504,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 279120,
+   "byteLength": 4032,
+   "target": 34963
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 283152,
+   "byteLength": 12768,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 295920,
+   "byteLength": 12768,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 308688,
+   "byteLength": 8512,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 317200,
+   "byteLength": 17024,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 334224,
+   "byteLength": 3192,
+   "target": 34963
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 337416,
+   "byteLength": 17184,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 354600,
+   "byteLength": 17184,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 371784,
+   "byteLength": 11456,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 383240,
+   "byteLength": 22912,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 406152,
+   "byteLength": 4296,
+   "target": 34963
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 410448,
+   "byteLength": 960,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 411408,
+   "byteLength": 960,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 412368,
+   "byteLength": 640,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 413008,
+   "byteLength": 1280,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 414288,
+   "byteLength": 240,
+   "target": 34963
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 414528,
+   "byteLength": 1632,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 416160,
+   "byteLength": 1632,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 417792,
+   "byteLength": 1088,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 418880,
+   "byteLength": 2176,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 421056,
+   "byteLength": 408,
+   "target": 34963
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 421464,
+   "byteLength": 19680,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 441144,
+   "byteLength": 19680,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 460824,
+   "byteLength": 13120,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 473944,
+   "byteLength": 26240,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 500184,
+   "byteLength": 4920,
+   "target": 34963
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 505104,
+   "byteLength": 24384,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 529488,
+   "byteLength": 24384,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 553872,
+   "byteLength": 16256,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 570128,
+   "byteLength": 32512,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 602640,
+   "byteLength": 6096,
+   "target": 34963
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 608736,
+   "byteLength": 21168,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 629904,
+   "byteLength": 21168,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 651072,
+   "byteLength": 14112,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 665184,
+   "byteLength": 28224,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 693408,
+   "byteLength": 5292,
+   "target": 34963
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 698700,
+   "byteLength": 18096,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 716796,
+   "byteLength": 18096,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 734892,
+   "byteLength": 12064,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 746956,
+   "byteLength": 24128,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 771084,
+   "byteLength": 4524,
+   "target": 34963
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 775608,
+   "byteLength": 26496,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 802104,
+   "byteLength": 26496,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 828600,
+   "byteLength": 17664,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 846264,
+   "byteLength": 35328,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 881592,
+   "byteLength": 6624,
+   "target": 34963
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 888216,
+   "byteLength": 864,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 889080,
+   "byteLength": 864,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 889944,
+   "byteLength": 576,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 890520,
+   "byteLength": 1152,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 891672,
+   "byteLength": 216,
+   "target": 34963
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 891888,
+   "byteLength": 1152,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 893040,
+   "byteLength": 1152,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 894192,
+   "byteLength": 768,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 894960,
+   "byteLength": 1536,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 896496,
+   "byteLength": 288,
+   "target": 34963
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 896784,
+   "byteLength": 2016,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 898800,
+   "byteLength": 2016,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 900816,
+   "byteLength": 1344,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 902160,
+   "byteLength": 2688,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 904848,
+   "byteLength": 504,
+   "target": 34963
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 905352,
+   "byteLength": 1008,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 906360,
+   "byteLength": 1008,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 907368,
+   "byteLength": 672,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 908040,
+   "byteLength": 1344,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 909384,
+   "byteLength": 252,
+   "target": 34963
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 909636,
+   "byteLength": 2880,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 912516,
+   "byteLength": 2880,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 915396,
+   "byteLength": 1920,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 917316,
+   "byteLength": 3840,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 921156,
+   "byteLength": 720,
+   "target": 34963
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 921876,
+   "byteLength": 576,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 922452,
+   "byteLength": 576,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 923028,
+   "byteLength": 384,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 923412,
+   "byteLength": 768,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 924180,
+   "byteLength": 144,
+   "target": 34963
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 924324,
+   "byteLength": 128856,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1053180,
+   "byteLength": 128856,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1182036,
+   "byteLength": 85904,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1267940,
+   "byteLength": 171808,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1439748,
+   "byteLength": 32220,
+   "target": 34963
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1471968,
+   "byteLength": 6984,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1478952,
+   "byteLength": 6984,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1485936,
+   "byteLength": 4656,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1490592,
+   "byteLength": 9312,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1499904,
+   "byteLength": 2400,
+   "target": 34963
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1502304,
+   "byteLength": 11736,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1514040,
+   "byteLength": 11736,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1525776,
+   "byteLength": 7824,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1533600,
+   "byteLength": 15648,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1549248,
+   "byteLength": 3900,
+   "target": 34963
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1553148,
+   "byteLength": 504,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1553652,
+   "byteLength": 504,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1554156,
+   "byteLength": 336,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1554492,
+   "byteLength": 672,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1555164,
+   "byteLength": 168,
+   "target": 34963
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1555332,
+   "byteLength": 52800,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1608132,
+   "byteLength": 52800,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1660932,
+   "byteLength": 35200,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1696132,
+   "byteLength": 70400,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1766532,
+   "byteLength": 14784,
+   "target": 34963
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1781316,
+   "byteLength": 46560,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1827876,
+   "byteLength": 46560,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1874436,
+   "byteLength": 31040,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1905476,
+   "byteLength": 62080,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1967556,
+   "byteLength": 13008,
+   "target": 34963
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 1980564,
+   "byteLength": 56400,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 2036964,
+   "byteLength": 56400,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 2093364,
+   "byteLength": 37600,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 2130964,
+   "byteLength": 75200,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 2206164,
+   "byteLength": 15792,
+   "target": 34963
+  }
+ ],
+ "buffers": [
+  {
+   "byteLength": 2221956,
+   "uri": "ArahaTown_Block_E00000_S01024.bin"
+  }
+ ],
+ "textures": [
+  {
+   "sampler": 0,
+   "source": 0
+  },
+  {
+   "sampler": 0,
+   "source": 1
+  },
+  {
+   "sampler": 0,
+   "source": 2
+  },
+  {
+   "sampler": 0,
+   "source": 3
+  },
+  {
+   "sampler": 0,
+   "source": 4
+  },
+  {
+   "sampler": 0,
+   "source": 5
+  },
+  {
+   "sampler": 0,
+   "source": 6
+  },
+  {
+   "sampler": 0,
+   "source": 7
+  },
+  {
+   "sampler": 0,
+   "source": 8
+  },
+  {
+   "sampler": 0,
+   "source": 9
+  },
+  {
+   "sampler": 0,
+   "source": 10
+  },
+  {
+   "sampler": 0,
+   "source": 11
+  },
+  {
+   "sampler": 0,
+   "source": 12
+  },
+  {
+   "sampler": 0,
+   "source": 13
+  },
+  {
+   "sampler": 0,
+   "source": 14
+  },
+  {
+   "sampler": 0,
+   "source": 15
+  },
+  {
+   "sampler": 0,
+   "source": 16
+  },
+  {
+   "sampler": 0,
+   "source": 17
+  },
+  {
+   "sampler": 0,
+   "source": 18
+  },
+  {
+   "sampler": 0,
+   "source": 19
+  },
+  {
+   "sampler": 0,
+   "source": 20
+  },
+  {
+   "sampler": 0,
+   "source": 21
+  },
+  {
+   "sampler": 0,
+   "source": 22
+  },
+  {
+   "sampler": 0,
+   "source": 23
+  },
+  {
+   "sampler": 0,
+   "source": 24
+  },
+  {
+   "sampler": 0,
+   "source": 25
+  },
+  {
+   "sampler": 0,
+   "source": 26
+  },
+  {
+   "sampler": 0,
+   "source": 27
+  },
+  {
+   "sampler": 0,
+   "source": 28
+  },
+  {
+   "sampler": 0,
+   "source": 29
+  },
+  {
+   "sampler": 0,
+   "source": 30
+  },
+  {
+   "sampler": 0,
+   "source": 31
+  },
+  {
+   "sampler": 0,
+   "source": 32
+  },
+  {
+   "sampler": 0,
+   "source": 33
+  },
+  {
+   "sampler": 0,
+   "source": 34
+  },
+  {
+   "sampler": 0,
+   "source": 35
+  },
+  {
+   "sampler": 0,
+   "source": 36
+  },
+  {
+   "sampler": 0,
+   "source": 37
+  },
+  {
+   "sampler": 0,
+   "source": 38
+  },
+  {
+   "sampler": 0,
+   "source": 39
+  },
+  {
+   "sampler": 0,
+   "source": 40
+  },
+  {
+   "sampler": 0,
+   "source": 41
+  },
+  {
+   "sampler": 0,
+   "source": 42
+  },
+  {
+   "sampler": 0,
+   "source": 43
+  },
+  {
+   "sampler": 0,
+   "source": 44
+  },
+  {
+   "sampler": 0,
+   "source": 45
+  },
+  {
+   "sampler": 0,
+   "source": 46
+  },
+  {
+   "sampler": 0,
+   "source": 47
+  },
+  {
+   "sampler": 0,
+   "source": 48
+  },
+  {
+   "sampler": 0,
+   "source": 49
+  },
+  {
+   "sampler": 0,
+   "source": 50
+  },
+  {
+   "sampler": 0,
+   "source": 51
+  },
+  {
+   "sampler": 0,
+   "source": 52
+  },
+  {
+   "sampler": 0,
+   "source": 53
+  },
+  {
+   "sampler": 0,
+   "source": 54
+  },
+  {
+   "sampler": 0,
+   "source": 55
+  },
+  {
+   "sampler": 0,
+   "source": 56
+  },
+  {
+   "sampler": 0,
+   "source": 57
+  },
+  {
+   "sampler": 0,
+   "source": 58
+  },
+  {
+   "sampler": 0,
+   "source": 59
+  },
+  {
+   "sampler": 0,
+   "source": 60
+  },
+  {
+   "sampler": 0,
+   "source": 61
+  },
+  {
+   "sampler": 0,
+   "source": 62
+  },
+  {
+   "sampler": 0,
+   "source": 63
+  },
+  {
+   "sampler": 0,
+   "source": 64
+  },
+  {
+   "sampler": 0,
+   "source": 65
+  },
+  {
+   "sampler": 0,
+   "source": 66
+  },
+  {
+   "sampler": 0,
+   "source": 67
+  },
+  {
+   "sampler": 0,
+   "source": 68
+  }
+ ],
+ "images": [
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_AptGlass_White_BaseColor",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_AptGlass_White_BaseColor.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_AptGlass_White_ORM",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_AptGlass_White_ORM.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_AptGlass_White_Normal",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_AptGlass_White_Normal.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Apt_Beige_BaseColor",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Apt_Beige_BaseColor.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Apt_Beige_ORM",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Apt_Beige_ORM.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Apt_Beige_Normal",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Apt_Beige_Normal.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Apt_Brown_BaseColor",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Apt_Brown_BaseColor.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Apt_Brown_ORM",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Apt_Brown_ORM.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Apt_Brown_Normal",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Apt_Brown_Normal.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Apt_Gray_BaseColor",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Apt_Gray_BaseColor.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Apt_Gray_ORM",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Apt_Gray_ORM.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Apt_Gray_Normal",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Apt_Gray_Normal.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Apt_White_BaseColor",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Apt_White_BaseColor.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Apt_White_ORM",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Apt_White_ORM.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Apt_White_Normal",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Apt_White_Normal.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Base_Beige_BaseColor",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Base_Beige_BaseColor.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Base_Beige_ORM",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Base_Beige_ORM.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Base_Beige_Normal",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Base_Beige_Normal.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Base_Cream_BaseColor",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Base_Cream_BaseColor.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Base_Cream_ORM",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Base_Cream_ORM.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Base_Cream_Normal",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Base_Cream_Normal.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_BigBox_Gray_BaseColor",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_BigBox_Gray_BaseColor.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_BigBox_Gray_ORM",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_BigBox_Gray_ORM.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_BigBox_Gray_Normal",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_BigBox_Gray_Normal.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_BigBox_Ivory_BaseColor",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_BigBox_Ivory_BaseColor.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_BigBox_Ivory_ORM",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_BigBox_Ivory_ORM.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_BigBox_Ivory_Normal",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_BigBox_Ivory_Normal.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_House_Cream_BaseColor",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_House_Cream_BaseColor.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_House_Cream_ORM",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_House_Cream_ORM.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_House_Cream_Normal",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_House_Cream_Normal.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_House_Gray_BaseColor",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_House_Gray_BaseColor.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_House_Gray_ORM",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_House_Gray_ORM.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_House_Gray_Normal",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_House_Gray_Normal.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_House_Mint_BaseColor",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_House_Mint_BaseColor.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_House_Mint_ORM",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_House_Mint_ORM.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_House_Mint_Normal",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_House_Mint_Normal.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_House_Pink_BaseColor",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_House_Pink_BaseColor.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_House_Pink_ORM",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_House_Pink_ORM.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_House_Pink_Normal",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_House_Pink_Normal.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_House_White_BaseColor",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_House_White_BaseColor.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_House_White_ORM",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_House_White_ORM.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_House_White_Normal",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_House_White_Normal.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Office_Gray_BaseColor",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Office_Gray_BaseColor.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Office_Gray_ORM",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Office_Gray_ORM.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Office_Gray_Normal",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Office_Gray_Normal.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Office_White_BaseColor",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Office_White_BaseColor.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Office_White_ORM",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Office_White_ORM.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Office_White_Normal",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Office_White_Normal.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Shop_A_BaseColor",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Shop_A_BaseColor.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Shop_A_ORM",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Shop_A_ORM.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Shop_A_Normal",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Shop_A_Normal.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Shop_B_BaseColor",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Shop_B_BaseColor.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Shop_B_ORM",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Shop_B_ORM.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Shop_B_Normal",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Shop_B_Normal.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Tower_Beige_BaseColor",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Tower_Beige_BaseColor.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Tower_Beige_ORM",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Tower_Beige_ORM.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Tower_Beige_Normal",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Tower_Beige_Normal.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Tower_White_BaseColor",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Tower_White_BaseColor.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Tower_White_ORM",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Tower_White_ORM.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Tower_White_Normal",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Tower_White_Normal.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Roof_Coated_BaseColor",
+   "uri": "../ArahaTown_Textures/ArahaTown_Roof_Coated_BaseColor.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Roof_Coated_ORM",
+   "uri": "../ArahaTown_Textures/ArahaTown_Roof_Coated_ORM.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Roof_Coated_Normal",
+   "uri": "../ArahaTown_Textures/ArahaTown_Roof_Coated_Normal.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Roof_Concrete_BaseColor",
+   "uri": "../ArahaTown_Textures/ArahaTown_Roof_Concrete_BaseColor.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Roof_Concrete_ORM",
+   "uri": "../ArahaTown_Textures/ArahaTown_Roof_Concrete_ORM.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Roof_Concrete_Normal",
+   "uri": "../ArahaTown_Textures/ArahaTown_Roof_Concrete_Normal.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Roof_Metal_BaseColor",
+   "uri": "../ArahaTown_Textures/ArahaTown_Roof_Metal_BaseColor.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Roof_Metal_ORM",
+   "uri": "../ArahaTown_Textures/ArahaTown_Roof_Metal_ORM.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Roof_Metal_Normal",
+   "uri": "../ArahaTown_Textures/ArahaTown_Roof_Metal_Normal.png"
+  }
+ ],
+ "samplers": [
+  {
+   "magFilter": 9729,
+   "minFilter": 9987
+  }
+ ]
+}
