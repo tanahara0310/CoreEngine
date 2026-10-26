@@ -80,18 +80,31 @@ namespace CoreEngine
         /// @return 成功した場合 true（既に構築済みの場合も true）
         bool BuildBLASFromModelResource(ID3D12GraphicsCommandList* cmdList, ModelResource* resource);
 
-        /// @brief 形が毎フレーム変わるメッシュの BLAS を構築・更新する（揺れる植物・スキニングモデル）
+        /// @brief 動的 BLAS の構築・更新を積み始める（EndDynamicBLASBatch と組で、フレームに 1 回）
         /// @param cmdList 積み先
+        /// @return 積めるなら true
+        /// @details 組の中の構築・更新は 1 本ずつ待たずに続けて積む。スクラッチは 1 本のバッファを
+        ///          構築ごとに切り分けて使い、足りなくなったときだけ UAV バリアで前の構築を待ってから先頭へ戻る。
+        bool BeginDynamicBLASBatch(ID3D12GraphicsCommandList* cmdList);
+
+        /// @brief 形が毎フレーム変わるメッシュの BLAS を構築・更新する（揺れる植物・スキニングモデル）
         /// @param owner   持ち主の識別子（コンポーネントのアドレスなど。持ち主ごとに 1 本持つ）
         /// @param desc    頂点とインデックス。頂点バッファは NON_PIXEL_SHADER_RESOURCE を含む状態にしておくこと
         /// @param frame   今フレームの番号（使われなくなった BLAS の回収に使う）
         /// @param geometryChanged 前フレームから頂点が動いたか（false なら作り直さずに前の BLAS を使う）
         /// @return BLAS の GPU 仮想アドレス（InstanceDesc::blasAddress へ入れる）。作れなければ 0
-        /// @details 初回と形（頂点数・インデックス数・バッファ）が変わったときは ALLOW_UPDATE 付きで構築し、
-        ///          以後は前回の結果をその場で更新（refit）する。更新を重ねると木構造が緩んで
-        ///          トレースが遅くなるので、kDynamicRebuildInterval 回に 1 回は構築し直す（持ち主ごとにずらす）。
-        D3D12_GPU_VIRTUAL_ADDRESS BuildOrUpdateDynamicBLAS(ID3D12GraphicsCommandList* cmdList,
-            const void* owner, const BLASDesc& desc, uint64_t frame, bool geometryChanged = true);
+        /// @details BeginDynamicBLASBatch と EndDynamicBLASBatch の間で呼ぶ。
+        ///          初回と形（頂点数・インデックス数・バッファ）が変わったときは ALLOW_UPDATE 付きで構築し、
+        ///          以後は前回の結果をその場で更新（refit）する。kDynamicRebuildInterval 回に 1 回は
+        ///          構築し直す（持ち主ごとにずらす）。
+        D3D12_GPU_VIRTUAL_ADDRESS BuildOrUpdateDynamicBLAS(const void* owner, const BLASDesc& desc, uint64_t frame,
+            bool geometryChanged = true);
+
+        /// @brief 積んだ構築・更新の書き込みが TLAS の構築より前に終わるよう、UAV バリアを 1 回張って組を閉じる
+        void EndDynamicBLASBatch();
+
+        /// @brief 持ち主の動的 BLAS を今持っているか
+        bool HasDynamicBLAS(const void* owner) const { return dynamicBlas_.find(owner) != dynamicBlas_.end(); }
 
         /// @brief 今フレーム使われなかった動的 BLAS を退避リストへ回す（BuildTLAS の後に呼ぶ）
         void RetireUnusedDynamicBLAS(uint64_t frame);
@@ -169,6 +182,9 @@ namespace CoreEngine
     private:
         void EnsureScratchBuffer(UINT64 requiredSize);
 
+        /// @brief スクラッチ用のバッファ（DEFAULT・UAV）を作る
+        Microsoft::WRL::ComPtr<ID3D12Resource> CreateScratch(UINT64 size) const;
+
         /// @brief BLASDesc から三角形ジオメトリの記述子を作る（BuildBLAS と動的 BLAS で共通）
         static D3D12_RAYTRACING_GEOMETRY_DESC MakeGeometryDesc(const BLASDesc& desc);
 
@@ -239,6 +255,8 @@ namespace CoreEngine
             UINT vertexStride = 0;
             D3D12_GPU_VIRTUAL_ADDRESS indexAddress = 0;
             UINT indexCount = 0;
+            UINT64 buildScratchSize = 0;     ///< 構築に要るスクラッチ（形が変わったときに問い合わせた値）
+            UINT64 updateScratchSize = 0;    ///< 更新に要るスクラッチ
             uint32_t updatesSinceBuild = 0;  ///< 最後に構築し直してからの更新回数
             uint64_t lastUsedFrame = 0;
         };
@@ -248,6 +266,19 @@ namespace CoreEngine
         static constexpr uint32_t kDynamicRebuildInterval = 120;
         /// @brief このフレーム数使われなかった動的 BLAS を捨てる
         static constexpr uint64_t kDynamicKeepFrames = 2;
+
+        /// @brief 動的 BLAS のスクラッチから len バイトを切り出す（足りなければ前の構築を待って先頭へ戻る）
+        D3D12_GPU_VIRTUAL_ADDRESS AllocateDynamicScratch(UINT64 len);
+
+        // 動的 BLAS の組（BeginDynamicBLASBatch 〜 EndDynamicBLASBatch）
+        Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> dynamicCmdList_;
+        Microsoft::WRL::ComPtr<ID3D12Resource> dynamicScratch_;
+        UINT64 dynamicScratchSize_ = 0;
+        UINT64 dynamicScratchOffset_ = 0;
+        UINT64 dynamicScratchDemand_ = 0;  ///< 直近の組で切り出した合計（次の組のスクラッチの大きさ）
+        bool dynamicBuildsPending_ = false;
+        /// @brief 動的 BLAS のスクラッチの上限（これを超える組は途中で前の構築を待って使い回す）
+        static constexpr UINT64 kDynamicScratchMaxBytes = 64ull << 20;
 
         // BLAS 構築用スクラッチ（再利用）
         Microsoft::WRL::ComPtr<ID3D12Resource> blasScratch_;

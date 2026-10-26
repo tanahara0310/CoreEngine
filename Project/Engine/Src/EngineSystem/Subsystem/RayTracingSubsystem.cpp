@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "RayTracingSubsystem.h"
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <utility>
 #include <vector>
@@ -44,6 +45,42 @@ namespace CoreEngine
         CVar<bool> cvDynamicGeometry{ "r.RT.DynamicGeometry", true,
             "揺れる植物・海草とスキニングモデルの今の形を、レイトレーシング（影・水面の反射・コースティクス）へ"
             "毎フレーム反映する（off なら静止形の BLAS を使う）" };
+
+        CVar<float> cvDynamicGeometryDistance{ "r.RT.DynamicGeometry.Distance", 50.0f,
+            "揺れる植物・海草の揺れをレイトレーシングへ反映する、カメラからの距離 [m]。"
+            "これより遠い物は静止形の BLAS を使う（0 なら距離によらずすべて反映する）",
+            CVarRange{ 0.0f, 2000.0f } };
+
+        /// @brief 反映をやめる距離 = 反映を始める距離 × この倍率（反映中の物はこの距離まで反映を続ける）
+        constexpr float kDynamicGeometryKeepScale = 1.1f;
+
+        /// @brief カメラからモデルの外接球の表面までの距離 [m]（カメラが球の中なら 0 以下）
+        float DistanceToBounds(const ModelResource& resource, const Matrix4x4& world, const Vector3& cameraPosition)
+        {
+            const BoundingBox& box = resource.GetLocalBoundingBox();
+            if (!box.IsValid()) {
+                return 0.0f;
+            }
+            const Vector3 localCenter = {
+                (box.min.x + box.max.x) * 0.5f, (box.min.y + box.max.y) * 0.5f, (box.min.z + box.max.z) * 0.5f };
+            const Vector3 half = { (box.max.x - box.min.x) * 0.5f, (box.max.y - box.min.y) * 0.5f,
+                (box.max.z - box.min.z) * 0.5f };
+            const auto& m = world.m;
+            // 行ベクトル規約（p' = p * M）で中心をワールドへ移し、半径は各軸の拡大の最大で広げる
+            const Vector3 center = {
+                localCenter.x * m[0][0] + localCenter.y * m[1][0] + localCenter.z * m[2][0] + m[3][0],
+                localCenter.x * m[0][1] + localCenter.y * m[1][1] + localCenter.z * m[2][1] + m[3][1],
+                localCenter.x * m[0][2] + localCenter.y * m[1][2] + localCenter.z * m[2][2] + m[3][2] };
+            const float scale = (std::max)({
+                std::sqrt(m[0][0] * m[0][0] + m[0][1] * m[0][1] + m[0][2] * m[0][2]),
+                std::sqrt(m[1][0] * m[1][0] + m[1][1] * m[1][1] + m[1][2] * m[1][2]),
+                std::sqrt(m[2][0] * m[2][0] + m[2][1] * m[2][1] + m[2][2] * m[2][2]) });
+            const float radius = std::sqrt(half.x * half.x + half.y * half.y + half.z * half.z) * scale;
+            const float dx = center.x - cameraPosition.x;
+            const float dy = center.y - cameraPosition.y;
+            const float dz = center.z - cameraPosition.z;
+            return std::sqrt(dx * dx + dy * dy + dz * dz) - radius;
+        }
 
         /// @brief 今フレーム風や波で揺れる（植物・海草の）マテリアルを持つか
         /// @note 魚の泳ぎは 1 cm ほどしか動かないので、影は静止形（共有の BLAS）で足りる
@@ -258,43 +295,38 @@ namespace CoreEngine
         // 変形は描画と同じ時間・同じ式なので、今フレームの画面の形と一致する。
         // 水面の映り込みのヒットシェーディングにも変形後の頂点（VertexData の並び）を読ませるので、
         // 当たった点の位置・法線（そこから撃つ影のレイ）も画面の形と一致する。
+        // 揺れはカメラから r.RT.DynamicGeometry.Distance 以内の物だけ反映し、それより遠い物は静止形の BLAS を使う。
+        // 変形と BLAS の構築・更新は、シーンの物を集め終えてからまとめて積む。
         ID3D12GraphicsCommandList* asCmdList = dx->GetCommandList();
         const uint64_t frame = context.frameNumber;
         const bool dynamicGeometry = cvDynamicGeometry.Get();
         VertexAnimationDeformer* deformer = context.vertexAnimationDeformer;
         const VertexAnimationParams animParams = VertexAnimationParams::Build();
         const bool swaying = dynamicGeometry && deformer;
+        const float swayDistance = cvDynamicGeometryDistance.Get();
+        const bool hasCamera = context.frameViews && context.frameViews->GameView().isValid;
+        const Vector3 cameraPosition = hasCamera ? context.frameViews->GameView().position : Vector3{ 0.0f, 0.0f, 0.0f };
 
-        /// 動く形の BLAS と、ヒットシェーディングが読む頂点バッファ（UINT32_MAX = 静止形の頂点を読む）
-        struct DynamicGeometry {
-            D3D12_GPU_VIRTUAL_ADDRESS blas = 0;
-            uint32_t vertexBufferIndex = UINT32_MAX;
+        /// 今フレーム動く形にする物（TLAS とヒットシェーディングの表の行へ、後から BLAS と頂点を入れる）
+        struct DynamicTarget {
+            size_t row = 0;                          ///< tlasInstances / hitInstances の行
+            const void* owner = nullptr;
+            const ModelResource* resource = nullptr;
+            ID3D12Resource* vertices = nullptr;      ///< 動いた頂点（揺れる物は変形の後に入る）
+            uint32_t vertexBufferIndex = UINT32_MAX; ///< その頂点の SRV（ヒットシェーディングが読む）
+            bool changed = true;                     ///< 前フレームから頂点が動いたか
+            int deformIndex = -1;                    ///< deformRequests の番号（揺れる物だけ）
         };
-        auto buildDynamicBLAS = [&](const void* owner, Model& model, const Matrix4x4& world) -> DynamicGeometry {
-            ModelResource* resource = model.GetModelResource();
-            AccelerationStructureManager::BLASDesc desc{};
-            desc.vertexCount = resource->GetVertexCount();
-            desc.vertexStride = sizeof(VertexData);  // スキニングの出力も頂点変形の出力も VertexData の並び（位置が先頭）
-            desc.vertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
-            desc.indexBuffer = resource->GetIndexBuffer();
-            desc.indexCount = resource->GetIndexCount();  // 静止形の BLAS と同じく LOD0 全体
-            desc.indexFormat = DXGI_FORMAT_R32_UINT;
-            bool changed = true;
-            uint32_t vertexBufferIndex = UINT32_MAX;
-            if (model.HasSkinCluster()) {
-                desc.vertexBuffer = model.PrepareSkinnedVerticesForRayTracing(asCmdList, changed);
-                vertexBufferIndex = model.GetSkinnedVertexBufferHeapIndex();
-            } else if (swaying && SwaysWithWindOrWater(model, animParams)) {
-                const VertexAnimationDeformer::Output deformed =
-                    deformer->Deform(asCmdList, owner, model, world, animParams, frame);
-                desc.vertexBuffer = deformed.vertices;
-                vertexBufferIndex = deformed.vertexBufferIndex;
+        std::vector<DynamicTarget> dynamicTargets;
+        std::vector<VertexAnimationDeformer::Request> deformRequests;
+
+        /// 揺れを反映する距離の内にあるか（反映中の物は kDynamicGeometryKeepScale 倍の距離まで反映を続ける）
+        auto withinSwayDistance = [&](const void* owner, const ModelResource& resource, const Matrix4x4& world) {
+            if (swayDistance <= 0.0f || !hasCamera) {
+                return true;
             }
-            if (!desc.vertexBuffer) {
-                return {};
-            }
-            const D3D12_GPU_VIRTUAL_ADDRESS blas = asMgr->BuildOrUpdateDynamicBLAS(asCmdList, owner, desc, frame, changed);
-            return blas ? DynamicGeometry{ blas, vertexBufferIndex } : DynamicGeometry{};
+            const float limit = asMgr->HasDynamicBLAS(owner) ? swayDistance * kDynamicGeometryKeepScale : swayDistance;
+            return DistanceToBounds(resource, world, cameraPosition) <= limit;
         };
 
         // 「メッシュを持つか」はコンポーネントの有無で決まるので、具象クラスを知る必要はない。
@@ -321,19 +353,69 @@ namespace CoreEngine
                 inst.blasIndex = resource->GetBLASIndex();
                 inst.SetTransform(world);
                 inst.instanceMask = ClassifyMeshInstanceMask(*model);
-                uint32_t hitVertexBufferIndex = UINT32_MAX;
                 if (dynamicGeometry) {
-                    // 作れなければ 0 のまま（静止形の BLAS を使う）
-                    const DynamicGeometry dynamic = buildDynamicBLAS(&renderer, *mutableModel, world);
-                    inst.blasAddress = dynamic.blas;
-                    hitVertexBufferIndex = dynamic.vertexBufferIndex;
+                    DynamicTarget target;
+                    target.row = tlasInstances.size();
+                    target.owner = &renderer;
+                    target.resource = resource;
+                    if (model->HasSkinCluster()) {
+                        target.vertices = mutableModel->PrepareSkinnedVerticesForRayTracing(asCmdList, target.changed);
+                        target.vertexBufferIndex = model->GetSkinnedVertexBufferHeapIndex();
+                        if (target.vertices) {
+                            dynamicTargets.push_back(target);
+                        }
+                    } else if (swaying && SwaysWithWindOrWater(*model, animParams)
+                        && withinSwayDistance(&renderer, *resource, world)) {
+                        target.deformIndex = static_cast<int>(deformRequests.size());
+                        deformRequests.push_back({ &renderer, model, world });
+                        dynamicTargets.push_back(target);
+                    }
                 }
+                // BLAS（動く形なら後で差し替える）と静止形の頂点で行を足す
                 tlasInstances.push_back(inst);
                 if (descriptors) {
                     AppendHitInstance(*asMgr, inst, *resource, model, renderer.GetTextureOverrideHandle(),
-                        *descriptors, hitInstances, hitSubMeshes, hitVertexBufferIndex);
+                        *descriptors, hitInstances, hitSubMeshes);
                 }
             });
+
+        // ===== 揺れる物をまとめて変形し、動く形の BLAS をまとめて構築・更新する =====
+        if (!dynamicTargets.empty()) {
+            const std::vector<VertexAnimationDeformer::Output> deformed = (deformer && !deformRequests.empty())
+                ? deformer->DeformBatch(asCmdList, deformRequests, animParams, frame)
+                : std::vector<VertexAnimationDeformer::Output>(deformRequests.size());
+            if (asMgr->BeginDynamicBLASBatch(asCmdList)) {
+                for (DynamicTarget& target : dynamicTargets) {
+                    if (target.deformIndex >= 0) {
+                        const VertexAnimationDeformer::Output& output = deformed[static_cast<size_t>(target.deformIndex)];
+                        target.vertices = output.vertices;
+                        target.vertexBufferIndex = output.vertexBufferIndex;
+                    }
+                    // 作れなければ静止形の BLAS のまま
+                    if (!target.vertices) {
+                        continue;
+                    }
+                    AccelerationStructureManager::BLASDesc desc{};
+                    desc.vertexBuffer = target.vertices;
+                    desc.vertexCount = target.resource->GetVertexCount();
+                    desc.vertexStride = sizeof(VertexData);  // スキニングの出力も頂点変形の出力も VertexData の並び（位置が先頭）
+                    desc.vertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
+                    desc.indexBuffer = target.resource->GetIndexBuffer();
+                    desc.indexCount = target.resource->GetIndexCount();  // 静止形の BLAS と同じく LOD0 全体
+                    desc.indexFormat = DXGI_FORMAT_R32_UINT;
+                    const D3D12_GPU_VIRTUAL_ADDRESS blas =
+                        asMgr->BuildOrUpdateDynamicBLAS(target.owner, desc, frame, target.changed);
+                    if (!blas) {
+                        continue;
+                    }
+                    tlasInstances[target.row].blasAddress = blas;
+                    if (descriptors && target.vertexBufferIndex != UINT32_MAX) {
+                        hitInstances[target.row].vertexBufferIndex = target.vertexBufferIndex;
+                    }
+                }
+                asMgr->EndDynamicBLASBatch();
+            }
+        }
 
         // ===== モデルの粒もキャスターとして載せる =====
         // BLAS はモデル単位で構築済みなので、ここで足すのはインスタンスだけ。
