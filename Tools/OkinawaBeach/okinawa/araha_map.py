@@ -28,6 +28,9 @@ DEM_REF = 2.0
 TOWN_RISE_BLEND = (20.0, 120.0)
 # 護岸の線からこの距離までの陸は、公園の外でも芝生のまま（遊歩道とヤシ並木の下）
 TOWN_WALL_CLEAR = 12.0
+# 浜の外の海岸の護岸の足元の高さ（地形の陸と海の境目の点）と、護岸の前の海底を深くする量 [m]
+COAST_FOOT = -1.0
+COAST_DEEPEN = 1.3
 # 浜の海側の縁・陸側の縁の両端（地図の浜の頂点のうち、この点にいちばん近いもの）
 WATER_ENDS = ((-108.2, -276.4), (51.7, 278.0))
 WALL_ENDS = ((-46.1, -310.2), (124.1, 257.5))
@@ -132,6 +135,14 @@ def dem_height(px, py):
             + h[iy + 1, ix] * (1 - tx) * ty + h[iy + 1, ix + 1] * tx * ty)
 
 
+def signed_dist(px, py, poly):
+    """多角形の縁までの距離（中は正、外は負）"""
+    px = np.asarray(px, float)
+    py = np.asarray(py, float)
+    d = dist(px, py, np.vstack([poly, poly[:1]]))
+    return np.where(inside(px, py, poly), d, -d)
+
+
 def park_distance(m, px, py):
     """公園の外の点の、公園の縁までの距離（公園の中は 0）"""
     px = np.asarray(px, float)
@@ -224,6 +235,43 @@ def waves(px, py, comps):
     return v
 
 
+def _cut_convex(poly, col):
+    """凸多角形 poly [n, k] を、列 col の値の符号で切り分けた凸多角形の一覧
+
+    辺の上で値が 0 になる点（各辺に高々 1 つ）を周に沿って並べ、隣り合う点のあいだの周の部分ごとに 1 つ、
+    点が 4 つ以上なら全部の点を結んだ真ん中の多角形も返す（どれも凸で、合わせると元の多角形になる）。
+    """
+    s = poly[:, col]
+    pos = s > 0
+    if pos.all() or (~pos).all():
+        return [poly]
+    n = len(poly)
+    ring = []
+    cuts = []
+    for a in range(n):
+        pa, pb = poly[a], poly[(a + 1) % n]
+        ring.append(pa)
+        if pos[a] != pos[(a + 1) % n]:
+            t = pa[col] / (pa[col] - pb[col])
+            cuts.append(len(ring))
+            ring.append(pa + (pb - pa) * t)
+    out = []
+    m = len(ring)
+    for q in range(len(cuts)):
+        a, b = cuts[q], cuts[(q + 1) % len(cuts)]
+        part = [ring[a]]
+        k = (a + 1) % m
+        while k != b:
+            part.append(ring[k])
+            k = (k + 1) % m
+        part.append(ring[b])
+        if len(part) >= 3:
+            out.append(np.array(part))
+    if len(cuts) >= 4:
+        out.append(np.array([ring[c] for c in cuts]))
+    return out
+
+
 class Field:
     """高さと面の種類"""
 
@@ -258,6 +306,9 @@ class Field:
         z_sea = -(1.8 * (1.0 - np.exp(-d_sea / 25.0)) + 0.012 * d_sea) - 3.0 * smoothstep(110.0, 170.0, d_sea)
         z_sea = z_sea + 0.18 * waves(px, py, [(41.0, 75, 0.0, 1.0), (17.0, 160, 2.0, 0.5), (63.0, 10, 4.0, 0.7)]) \
             * smoothstep(8.0, 40.0, d_sea)
+        # 浜から離れた海岸（護岸）の前は、足元から深くする
+        d_beach = dist(px, py, np.vstack([m.beach_area, m.beach_area[:1]]))
+        z_sea = z_sea - COAST_DEEPEN * np.exp(-d_coast / 10.0) * smoothstep(8.0, 25.0, d_beach)
         z_sea = np.maximum(z_sea, SEABED_MAX)
         # 陸: 遊歩道の下は舗装のすぐ下、その先の公園は平ら、公園の外の街は標高に沿って上がる。浜の外の海岸は護岸で下がる
         z_land = np.where(d_wall < 4.6, PROMENADE - 0.05, LAWN + town_rise(m, px, py))
@@ -277,6 +328,99 @@ class Field:
             s = np.where(town, 5, s)
         s = np.where(region == 1, np.where(z > 0.3, 0, 1), s)
         return np.where(region == 0, np.where(z > -0.5, 1, np.where(z > -3.0, 2, 3)), s)
+
+    def boundaries(self, px, py, z):
+        """面の種類の境目を決める値 [..., 6]（どれも 0 が境目）: 陸の内外・浜の内外・z-0.3・z+0.5・z+3・街の内外"""
+        m = self.m
+        s_land = signed_dist(px, py, m.land)
+        s_beach = signed_dist(px, py, m.beach_area)
+        s_town = np.minimum(-signed_dist(px, py, m.park), dist(px, py, m.wall) - TOWN_WALL_CLEAR)
+        return np.stack([s_land, s_beach, z - 0.3, z + 0.5, z + 3.0, s_town], -1)
+
+    @staticmethod
+    def surface_of(b):
+        """boundaries の値 → 面の種類の番号（classify と surface と同じ決まり）"""
+        land = b[..., 0] > 0
+        beach = (b[..., 1] > 0) & ~land
+        z = b[..., 2] + 0.3
+        s = np.where(b[..., 5] > 0, 5, 4)
+        s = np.where(beach, np.where(z > 0.3, 0, 1), s)
+        return np.where(~land & ~beach, np.where(z > -0.5, 1, np.where(z > -3.0, 2, 3)), s)
+
+    def split_grid(self, P):
+        """格子 P [ns, nt, 2] を面の種類ごとの三角形に分ける。境目を通る四角は境目の線で切り分ける
+
+        戻り値: {面の種類: (頂点 [n, 3], 三角形 [m, 3])}。境目の点は格子の辺の上で値を線形に補間して求めるので、
+        隣の四角とは同じ点で切れる（どの値の符号が変わる辺も、その辺を持つ両方の四角で切る）。
+        """
+        ns, nt = P.shape[:2]
+        px, py = P[..., 0], P[..., 1]
+        Z = self.height(px, py)
+        B = self.boundaries(px, py, Z)
+        V = np.concatenate([P, Z[..., None], B], -1)          # x, y, z, 境目の値 6 つ
+        sign = B > 0
+        corners = np.stack([sign[:-1, :-1], sign[1:, :-1], sign[1:, 1:], sign[:-1, 1:]], 0)
+        mixed = (corners.any(0) & ~corners.all(0)).any(-1)
+        out = {}
+
+        def emit(poly):
+            g = poly.mean(axis=0)
+            k = int(self.surface_of(g[3:])[()])
+            out.setdefault(k, []).append(poly)
+
+        # 境目を通らない四角はそのまま
+        surf = self.surface_of(V[:-1, :-1, 3:] * 0.25 + V[1:, :-1, 3:] * 0.25 + V[1:, 1:, 3:] * 0.25
+                               + V[:-1, 1:, 3:] * 0.25)
+        whole = {}
+        for i, j in np.argwhere(~mixed):
+            whole.setdefault(int(surf[i, j]), []).append((i, j))
+        for i, j in np.argwhere(mixed):
+            pieces = [np.array([V[i, j], V[i + 1, j], V[i + 1, j + 1], V[i, j + 1]])]
+            for f in range(B.shape[-1]):
+                nxt = []
+                for poly in pieces:
+                    nxt += _cut_convex(poly, 3 + f)
+                pieces = nxt
+            for poly in pieces:
+                emit(poly)
+        result = {}
+        for k in set(whole) | set(out):
+            verts, tris, index = [], [], {}
+
+            def vid(p):
+                key = (round(float(p[0]), 4), round(float(p[1]), 4))
+                if key not in index:
+                    index[key] = len(verts)
+                    verts.append(p[:4])
+                return index[key]
+
+            for i, j in whole.get(k, []):
+                a, b, c, d = (vid(V[i, j]), vid(V[i + 1, j]), vid(V[i + 1, j + 1]), vid(V[i, j + 1]))
+                tris += [(a, b, c), (a, c, d)]
+            for poly in out.get(k, []):
+                ids = [vid(p) for p in poly]
+                # 同じ所を通る境目どうしでできた重なった点を除く
+                ids = [q for n, q in enumerate(ids) if q != ids[n - 1]]
+                tris += [(ids[0], ids[q], ids[q + 1]) for q in range(1, len(ids) - 1)]
+            tr = np.array([t for t in tris if len(set(t)) == 3], int)
+            vt = np.array(verts, float)
+            # 浜の外の海岸（陸と海の境目）で切った点は護岸の足元の高さ（陸側は護岸の天端の下、海側は水の下）
+            cut = np.abs(vt[:, 3]) < 1e-6
+            if cut.any():
+                cx, cy = vt[cut, 0], vt[cut, 1]
+                coast = (np.minimum.reduce([dist(cx, cy, e) for e in self.coasts]) < 1.0)                     & (dist(cx, cy, self.m.wall) > WALL_SKIRT + 4.0)
+                z = vt[cut, 2]
+                z[coast] = COAST_FOOT
+                vt[cut, 2] = z
+            vt = vt[:, :3]
+            # 上を向く並びにそろえ、面積の無い三角形を除く
+            e1 = vt[tr[:, 1]] - vt[tr[:, 0]]
+            e2 = vt[tr[:, 2]] - vt[tr[:, 0]]
+            cr = e1[:, 0] * e2[:, 1] - e1[:, 1] * e2[:, 0]
+            tr[cr < 0] = tr[cr < 0][:, ::-1]
+            tr = tr[np.abs(cr) > 1e-8]
+            result[k] = (vt, tr)
+        return result
 
 
 # ---------------------------------------------------------------------------
