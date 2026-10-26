@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.37.0">
+<meta name="engine-version" content="0.38.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2123,7 +2123,7 @@ kbd {
     <thead><tr><th>プロジェクト</th><th>中身</th></tr></thead>
     <tbody>
       <tr><td><span class="path">Projects/Sokoban</span></td><td>倉庫番。スクリプト 1 本（<span class="path">SokobanBoard.as</span>）とプレハブ 5 つだけで、文字で書いた盤面からステージを組み立てる小さな見本。ステージはインスペクタの <code>stages</code> に 1 行足せば増やせます。</td></tr>
-      <tr><td><span class="path">Projects/Sandbox</span></td><td>機能ごとの試験場（物理・キャラクターの歩行・UI・水面・カメラの揺れ・スクリプトのシューター・Shadertoy から移した海のシェーダ）。沖縄の海辺のシーンでは、待機・歩き・走りのアニメーションが付いた人型を操作できます（<a href="#tutorial-beach-player">沖縄の海辺をプレイヤーで歩く</a>）。実在のアラハビーチ（北谷町）を地図の形のとおりに作ったシーン <code>ArahaBeachScene</code> もあります（<a href="#changelog-v0-37-0">v0.37.0</a>）。</td></tr>
+      <tr><td><span class="path">Projects/Sandbox</span></td><td>機能ごとの試験場（物理・キャラクターの歩行・UI・水面・カメラの揺れ・スクリプトのシューター・Shadertoy から移した海のシェーダ）。沖縄の海辺のシーンでは、待機・歩き・走りのアニメーションが付いた人型を操作できます（<a href="#tutorial-beach-player">沖縄の海辺をプレイヤーで歩く</a>）。実在のアラハビーチ（北谷町）を地図の形のとおりに作ったシーン <code>ArahaBeachScene</code> もあります（<a href="#changelog-v0-37-0">v0.37.0</a>。公園の施設と木は <a href="#changelog-v0-38-0">v0.38.0</a>）。</td></tr>
       <tr><td><span class="path">Projects/Sample2D</span></td><td>2D の横スクロールの見本。走る・跳ぶ・コインを集める・ゴールに着く、の 1 ステージに、クリックした所へ箱を落とす遊びを足したもの。スプライトのアニメ・平行投影のカメラの追従・遠景・剛体の軸の固定・トリガーを、スクリプト 6 本（プレイヤー・進行・コイン・ゴール・カメラの追従・遠景）で使っています。使っている機能は <a href="#guide-2d">2D ゲームの作り方</a> で説明しています。</td></tr>
       <tr><td><span class="path">Projects/Tsunagazaru</span></td><td>つながザルをえない。走り続けるトロッコの前にレールを敷いていくゲームで、C++ で作ったゲームをスクリプトだけで作り直した大きめの見本（タイトル・ゲーム・リザルトの 3 シーン）。シーンを切り替えるときのロード画面も、プロジェクトのシェーダで描いています（<a href="#settings-loading-screen">シーンを切り替えるときのロード画面</a>）。</td></tr>
       <tr><td><span class="path">Projects/Reprism</span></td><td>レプリズム。自機のまわりのブロックをハットに写し取って運び、置いた足場でゴールを目指すパズルアクションで、C++ で作ったゲームをスクリプトだけで作り直した見本（タイトル・ステージ選択・ゲームの 3 シーンと 13 ステージ）。ブロックやゴールの光り方はスプライトのマテリアル（<a href="#script-material">マテリアルとシェーダ</a>）、ネオン・走査線・画面の縁の光は<a href="#script-posteffect">プロジェクトのポストエフェクト</a>、ステージの切り替えはブロックに割れて落ちる遷移（<a href="#scenes-transition-effect">自分のシェーダで覆う</a>）で描いています。</td></tr>
@@ -9746,6 +9746,19 @@ python Tools/OkinawaBeach/bake_player_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-38-0">v0.38.0 <span class="dim">（2026-10-26）</span></h3>
+  <p>Sandbox の <code>ArahaBeachScene</code> の公園（安良波公園）に、施設・木・園路を足した版です。位置は航空写真と OpenStreetMap の地図に合わせています。モデルは <span class="path">Models/Okinawa</span> に入っています。</p>
+  <ul>
+    <li><strong>野外ステージ</strong>（<code>ArahaAmphitheater</code>）：涙形の低いステージ（上面は水色の浅い噴水池、側面はモザイクタイル）を、半円の芝の段が囲みます。段の上に壁画の壁と手すり付きの通路があり、背中側には貝のモニュメントから水が段々に落ちる噴水と、その両脇の階段・段々の花壇、受けの池と灰色の石に赤いレンガの帯の広場があります。</li>
+    <li><strong>3on3 のバスケットコート</strong>（<code>ArahaCourts</code>）：多目的広場に半面のコートが 5 面あり、ゴールのバックボードはコートごとに色の違う飾りです。</li>
+    <li><strong>管理棟とトイレ</strong>（<code>ArahaHouse</code> / <code>ParkToilet</code>）：白い壁に赤瓦の寄棟屋根の平屋です。管理棟は長さの違う 2 棟が通路でつながり、海側に柱の並ぶ深い軒、自動販売機、外のシャワーがあります。</li>
+    <li><strong>東屋・バーベキュー場・街灯・ベンチ</strong>：Y 字の方杖で格子屋根を支える東屋（<code>Pergola</code>）、茶色の方形屋根の傘形の東屋（<code>UmbrellaGazebo</code>）、白い幕の屋根とテーブル・コンロのバーベキューの屋根（<code>BBQShelter</code>）、公園の街灯（<code>ParkLamp</code>）、ベンチ（<code>ParkBench</code>）です。</li>
+    <li><strong>幼児用の遊具</strong>：黄色い柱のやぐらに赤い屋根、すべり台と登り網の付いた遊具が青いゴムチップ舗装に載ったもの（<code>PlayTower</code>）と、ライオンとカバのスプリング遊具（<code>SpringLion</code> / <code>SpringHippo</code>）です。</li>
+    <li><strong>公園の木</strong>：ガジュマル（気根が垂れる）、コバテイシ（段になる枝と紅葉の混じる葉）、フクギ、テリハボク、ホウオウボク（朱色の花が混じる）、ソテツの 7 種類です（<code>Gajumaru</code> など）。ヤシなどと同じく、置くだけで風に揺れます。シーンでは航空写真で木立の見える区域ごとに約 230 本を置いています。</li>
+    <li><strong>園路</strong>（<code>ArahaPath</code>）：地図の歩道の線から作った、灰色の平板の帯です。施設と遊歩道にかかる部分は除いています。</li>
+    <li><strong>作り方</strong>：<span class="path">Tools/OkinawaBeach</span> の Blender のスクリプト（<span class="path">park_tree.py</span>・<span class="path">amphitheater.py</span>・<span class="path">park_house.py</span>・<span class="path">park_shelter.py</span>・<span class="path">basket_court.py</span>・<span class="path">playground.py</span>・<span class="path">araha_path.py</span>）で作り、<span class="path">export_araha_scene.py</span> で置きます。施設の位置と向きは <span class="path">okinawa/araha_map.py</span> の <code>PARK_FACILITIES</code> にまとめ、園路と木はその範囲を避けます。</li>
+  </ul>
 
   <h3 id="changelog-v0-37-0">v0.37.0 <span class="dim">（2026-10-26）</span></h3>
   <p>Sandbox に、実在のアラハビーチ（北谷町・安良波公園）を元にしたシーン <code>ArahaBeachScene</code> と、そこに置く 3D モデルを足した版です。モデルは <span class="path">Models/Okinawa</span> に入っています。今までの沖縄の海辺（<code>OkinawaBeachScene</code>）はそのまま残しています。</p>

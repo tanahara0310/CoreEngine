@@ -154,13 +154,21 @@ def my_material():
 | `shisa_sign` | ShisaSign（入口の「ようこそ」の看板を抱えるシーサー） | 台の底。正面（文字の面）は -Y |
 | `indian_oak` | IndianOak_Ship（インディアン・オーク号の遊具一式）, IndianOak_Monument（由来の石碑） | 地面。船首は +X、遊具の付く側（正面）は -Y |
 | `araha_terrain` | ArahaTerrain_SandDry / SandWet / SandUnder / Seabed / Lawn（乾いた砂・濡れた砂・水中の砂・深い海底・公園の芝生） | シーンの原点（浜の中央）に回転なしで置く。x = 東、y = 北 |
+| `araha_path` | ArahaPath（公園の園路。灰色の平板の帯） | `araha_terrain` と同じ（シーンの原点に回転なしで置く） |
+| `park_tree` | Gajumaru（ガジュマル。気根が垂れる）, Kobateishi_A / Kobateishi_B（コバテイシ。段になる枝と紅葉が混じる葉）, Fukugi（フクギ）, Terihaboku（テリハボク）, Hououboku（ホウオウボク。朱色の花が混じる）, Sotetsu（ソテツ。2 株立ち） | 接地点 |
+| `amphitheater` | ArahaAmphitheater（野外ステージ。涙形のステージと浅い噴水池、半円の芝の段、壁画の壁と上の通路、貝のモニュメントから段々に落ちる噴水と両脇の階段・花壇、受けの池と広場） | ステージの中心の地面。客席と噴水は +X 側（客席はステージ = -X を向く） |
+| `park_house` | ArahaHouse（赤瓦の寄棟屋根の管理棟 2 棟と通路、海側の深い軒、自動販売機、外のシャワー）, ParkToilet（公園のトイレ） | 建物の中心の地面。+Y が長手、-X が海側 |
+| `park_shelter` | Pergola（Y 字の方杖で格子屋根を支える東屋）, UmbrellaGazebo（茶色の方形屋根の傘形の東屋）, BBQShelter（白い幕の屋根とテーブル・コンロ）, ParkLamp（公園の街灯。灯具の腕が +X）, ParkBench（ベンチ。座る向きが -Y） | 床の中心の地面 |
+| `basket_court` | ArahaCourts（多目的広場の 3on3 のバスケットコート。半面 5 面とゴール） | 広場の中心の地面。+Y が長手（北）、ゴールは -X の辺と +Y の端 |
+| `playground` | PlayTower（やぐら・すべり台・登り網と青いゴムチップ舗装）, SpringLion / SpringHippo（スプリング遊具） | 地面。すべり台は +X へ降りる。スプリング遊具の顔は -Y |
 
 #### 地図とシーン
 
 - `fetch_araha_map.py`（Blender 不要）: OpenStreetMap の浜・海岸線・公園・歩道の線を取り、浜の中央を原点にした座標で `data/araha_map.json` に書く。地図データは © OpenStreetMap contributors（ODbL 1.0）
 - `okinawa/araha_map.py`（Blender 不要）: 地図の読み込みと地形の高さ（浜・陸・海の範囲、波打ち際から護岸へ上がる浜、170 m あたりから深くなる海、平らな公園）。地形の生成とシーンの書き出しで共有する
 - `araha_terrain`: 波打ち際に沿って曲がる格子（浜の近くほど細かい）で地形を作り、面の種類ごとにモデルを分ける。テクスチャは 40 m 周期の継ぎ目の無いタイルを焼き、UV = (x, y) / 40 で繰り返す（タイルを焼いた後、`build.py` が `after_export` を呼んで地形のモデルを同じフォルダへ書き出し直す）
-- `export_araha_scene.py`（Blender 不要）: Sandbox の `ArahaBeachScene` を書き出す。護岸は地図の浜の陸側の縁に 8 m ずつ、突堤は両端の鉤の形に合わせて直線＋先端、沖の岩・浮き桟橋・ネット・ヤシ並木・海賊船の遊具などを置く。太陽・水面・見た目の設定は OkinawaBeachScene のものを使う
+- `araha_path`: 地図の歩道の線のうち、公園の中で遊歩道から離れ、施設の範囲（`araha_map.PARK_FACILITIES`）にかからない部分を幅 2.6 m の帯にして芝生の少し上に敷く。テクスチャは 8 m 周期のタイルで、地形と同じく `after_export` で書き出し直す。`araha_terrain` と同じく `build.py` の一覧には入れていないので、名前を指定してビルドする
+- `export_araha_scene.py`（Blender 不要）: Sandbox の `ArahaBeachScene` を書き出す。護岸は地図の浜の陸側の縁に 8 m ずつ、突堤は両端の鉤の形に合わせて直線＋先端、沖の岩・浮き桟橋・ネット・ヤシ並木・海賊船の遊具などを置く。公園の施設は `araha_map.PARK_FACILITIES` の位置と向き（航空写真と地図で合わせた）に置き、木は航空写真で見た植栽の区域ごとに間隔を空けて散らす（園路・施設・遊歩道を避ける）。太陽・水面・見た目の設定は OkinawaBeachScene のものを使う
 
 ### 海の中・リーフ地形
 
@@ -178,7 +186,7 @@ def my_material():
 植物・海草・魚は **頂点シェーダーで動かす** ための値を頂点に焼き込み、ウミガメは **骨（スキン）とアニメーション** を持つ。
 Blender 上での確認は `demo_anim.py`（下記）。
 
-### 植物・海草の揺れ（CoconutPalm / Adan / Hibiscus / Bougainvillea / Seagrass_Patch）
+### 植物・海草の揺れ（CoconutPalm / Adan / Hibiscus / Bougainvillea / 公園の木（park_tree） / Seagrass_Patch）
 
 | glTF | 値 | 内容 |
 |---|---|---|
