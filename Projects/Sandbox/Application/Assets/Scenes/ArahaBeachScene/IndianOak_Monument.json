@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "2e3f0d19ed369939"
+                },
+                "rotate": [
+                    0.0,
+                    1.5707964,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    64.0,
+                    2.55,
+                    -68.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "34e86cb6-195c-5b9f-8772-708c7e21d61b",
+                    "path": "Application/Assets/Models/Okinawa/IndianOak_Monument/IndianOak_Monument.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "97d2f38aa8f1409d",
+    "name": "IndianOak_Monument",
+    "order": 217
+}

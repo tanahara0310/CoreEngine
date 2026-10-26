@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "01ac57967148c8be"
+                },
+                "rotate": [
+                    0.0,
+                    -0.4337588,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    16.11982,
+                    1.1445239,
+                    -51.752872
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "ba0ef01f-761b-55fc-9f4b-685330bbe8cd",
+                    "path": "Application/Assets/Models/Okinawa/BeachParasol_A/BeachParasol_A.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "5059765e242ecc4e",
+    "name": "BeachParasol_A (1)",
+    "order": 294
+}

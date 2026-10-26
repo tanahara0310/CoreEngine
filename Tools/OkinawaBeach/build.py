@@ -30,6 +30,8 @@ ASSETS = [
     "sabani", "pier", "parasol", "props", "tetrapod", "terrain",
     # 海の中・リーフ地形
     "reef_terrain", "beachrock", "coral", "sealife", "seagrass", "fish",
+    # アラハビーチ（北谷町）
+    "araha_island", "jetty", "seawall", "lifeguard", "swim_net", "shisa_sign", "indian_oak",
 ]
 
 
@@ -87,6 +89,10 @@ def build(module_name):
         exported.append((vname, path))
         finals.append(obj)
         print(f"  {vname}: {tris} tris ({time.time() - t0:.0f}s)")
+    # 焼いたテクスチャを使って別の形を書き出し直すモジュール（地形のタイルなど）
+    post = getattr(mod, "after_export", None)
+    if post:
+        post(exported)
     C.slim_scene(finals)
     C.save_blend(module_name)
     os.makedirs(C.PREVIEW_DIR, exist_ok=True)

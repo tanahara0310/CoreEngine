@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "741b622bbe75c30b"
+                },
+                "rotate": [
+                    0.0,
+                    -4.9874077,
+                    0.0
+                ],
+                "scale": [
+                    0.9243513,
+                    0.9243513,
+                    0.9243513
+                ],
+                "translate": [
+                    -100.90333,
+                    -2.7574387,
+                    -153.84424
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "694c59e6-16fc-5522-9592-abe0459b5137",
+                    "path": "Application/Assets/Models/Okinawa/Anemone_Clownfish/Anemone_Clownfish.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "38f9d196ed4ef942",
+    "name": "Anemone_Clownfish (1)",
+    "order": 198
+}

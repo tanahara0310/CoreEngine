@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "741b622bbe75c30b"
+                },
+                "rotate": [
+                    0.0,
+                    -4.835086,
+                    0.0
+                ],
+                "scale": [
+                    1.1349807,
+                    1.1349807,
+                    1.1349807
+                ],
+                "translate": [
+                    -92.11619,
+                    -2.3696454,
+                    -143.91525
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "78fbbb20-09ea-5993-97b0-00e109ff3c8d",
+                    "path": "Application/Assets/Models/Okinawa/Coral_Branch_A/Coral_Branch_A.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "f3cdda46cfe55986",
+    "name": "Coral_Branch_A (2)",
+    "order": 200
+}

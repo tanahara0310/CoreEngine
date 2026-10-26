@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "dc171e168f36e7bb"
+                },
+                "rotate": [
+                    0.0,
+                    2.1086318,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    -119.52917,
+                    0.0,
+                    -287.2633
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "28d91eba-cc1c-5495-aaba-43a7c6b1bc47",
+                    "path": "Application/Assets/Models/Okinawa/Jetty_HeadL/Jetty_HeadL.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "1976c1b115190d66",
+    "name": "Jetty_HeadL",
+    "order": 101
+}

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.36.0">
+<meta name="engine-version" content="0.37.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2123,7 +2123,7 @@ kbd {
     <thead><tr><th>プロジェクト</th><th>中身</th></tr></thead>
     <tbody>
       <tr><td><span class="path">Projects/Sokoban</span></td><td>倉庫番。スクリプト 1 本（<span class="path">SokobanBoard.as</span>）とプレハブ 5 つだけで、文字で書いた盤面からステージを組み立てる小さな見本。ステージはインスペクタの <code>stages</code> に 1 行足せば増やせます。</td></tr>
-      <tr><td><span class="path">Projects/Sandbox</span></td><td>機能ごとの試験場（物理・キャラクターの歩行・UI・水面・カメラの揺れ・スクリプトのシューター・Shadertoy から移した海のシェーダ）。沖縄の海辺のシーンでは、待機・歩き・走りのアニメーションが付いた人型を操作できます（<a href="#tutorial-beach-player">沖縄の海辺をプレイヤーで歩く</a>）。</td></tr>
+      <tr><td><span class="path">Projects/Sandbox</span></td><td>機能ごとの試験場（物理・キャラクターの歩行・UI・水面・カメラの揺れ・スクリプトのシューター・Shadertoy から移した海のシェーダ）。沖縄の海辺のシーンでは、待機・歩き・走りのアニメーションが付いた人型を操作できます（<a href="#tutorial-beach-player">沖縄の海辺をプレイヤーで歩く</a>）。実在のアラハビーチ（北谷町）を地図の形のとおりに作ったシーン <code>ArahaBeachScene</code> もあります（<a href="#changelog-v0-37-0">v0.37.0</a>）。</td></tr>
       <tr><td><span class="path">Projects/Sample2D</span></td><td>2D の横スクロールの見本。走る・跳ぶ・コインを集める・ゴールに着く、の 1 ステージに、クリックした所へ箱を落とす遊びを足したもの。スプライトのアニメ・平行投影のカメラの追従・遠景・剛体の軸の固定・トリガーを、スクリプト 6 本（プレイヤー・進行・コイン・ゴール・カメラの追従・遠景）で使っています。使っている機能は <a href="#guide-2d">2D ゲームの作り方</a> で説明しています。</td></tr>
       <tr><td><span class="path">Projects/Tsunagazaru</span></td><td>つながザルをえない。走り続けるトロッコの前にレールを敷いていくゲームで、C++ で作ったゲームをスクリプトだけで作り直した大きめの見本（タイトル・ゲーム・リザルトの 3 シーン）。シーンを切り替えるときのロード画面も、プロジェクトのシェーダで描いています（<a href="#settings-loading-screen">シーンを切り替えるときのロード画面</a>）。</td></tr>
       <tr><td><span class="path">Projects/Reprism</span></td><td>レプリズム。自機のまわりのブロックをハットに写し取って運び、置いた足場でゴールを目指すパズルアクションで、C++ で作ったゲームをスクリプトだけで作り直した見本（タイトル・ステージ選択・ゲームの 3 シーンと 13 ステージ）。ブロックやゴールの光り方はスプライトのマテリアル（<a href="#script-material">マテリアルとシェーダ</a>）、ネオン・走査線・画面の縁の光は<a href="#script-posteffect">プロジェクトのポストエフェクト</a>、ステージの切り替えはブロックに割れて落ちる遷移（<a href="#scenes-transition-effect">自分のシェーダで覆う</a>）で描いています。</td></tr>
@@ -9746,6 +9746,21 @@ python Tools/OkinawaBeach/bake_player_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-37-0">v0.37.0 <span class="dim">（2026-10-26）</span></h3>
+  <p>Sandbox に、実在のアラハビーチ（北谷町・安良波公園）を元にしたシーン <code>ArahaBeachScene</code> と、そこに置く 3D モデルを足した版です。モデルは <span class="path">Models/Okinawa</span> に入っています。今までの沖縄の海辺（<code>OkinawaBeachScene</code>）はそのまま残しています。</p>
+  <ul>
+    <li><strong>ArahaBeachScene</strong>：約 600m の砂浜を、地図の形のとおりに作ったシーンです。浜は南が狭く北ほど広く、両端は石積みの突堤が浜を抱えるように曲がっています。浜の後ろに護岸と赤茶の遊歩道とヤシ並木、公園の芝生にインディアン・オーク号の遊具・石碑・シーサー看板・監視台があります。沖には岩が 3 つと浮き桟橋、遊泳区域を囲むクラゲ防止ネットがあり、海の中は砂地で、岩の周りにだけサンゴがあります。</li>
+    <li><strong>地形</strong>：OpenStreetMap の浜と海岸線から高さを決めた地形です（<code>ArahaTerrain_*</code>）。乾いた砂・濡れた砂・水中の砂・深い海底・芝生の 5 つのモデルに分け、40m で継ぎ目なく繰り返すテクスチャを貼っています。地図データは © OpenStreetMap contributors（ODbL 1.0）です。</li>
+    <li><strong>インディアン・オーク号の遊具</strong>（<code>IndianOak_Ship</code>）：1840 年に北谷沖で座礁した英国船を模した、砂に半分埋まった帆船の遊具です。帆の無い 3 本のマストと見張り台、縄はしごの網、赤い登り台・斜路・すべり台、船尾の筒のすべり台、まわりの青いゴムの床まで 1 つのモデルです。由来を書いた石碑（<code>IndianOak_Monument</code>）は別のモデルです。</li>
+    <li><strong>アラハ島</strong>（<code>ArahaIsland</code>）：沖の琉球石灰岩の小島です。3 つの塊が水中の土台でつながり、水面のすぐ上がくびれています。</li>
+    <li><strong>突堤</strong>：浜の両端の、丸い大石を積んだ堤です。10m の直線（<code>Jetty_Straight</code>）をつないで伸ばし、先に右か左へ曲がる鉤形の先端（<code>Jetty_HeadR</code> / <code>Jetty_HeadL</code>）を付けます。</li>
+    <li><strong>護岸と遊歩道</strong>：斜めのコンクリートの護岸と、赤茶のインターロッキングの遊歩道です。8m の直線（<code>Seawall_Straight</code>）と、浜へ降りる階段の付いたもの（<code>Seawall_Stairs</code>）を並べてつなぎます。</li>
+    <li><strong>監視台</strong>（<code>LifeguardTower</code>）：遊歩道から浜へ張り出したコンクリートの台に、水色の監視小屋・手すり・青い旗の旗竿・浮き輪が載っています。</li>
+    <li><strong>入口のシーサー看板</strong>（<code>ShisaSign</code>）：大きなシーサーが「ようこそ 安良波公園 アラハビーチへ」の看板を抱えています。</li>
+    <li><strong>クラゲ防止ネットと浮き桟橋</strong>：黄色の浮きを並べたロープと、海底まで垂れたハブクラゲ防止ネットを 10m ずつつなぐもの（<code>SwimNet</code>）と、白いキューブフロートの浮き桟橋です。浮き桟橋ははしごの付いた先端（<code>FloatingPier</code>）と、つないで通路にするもの（<code>FloatingPier_Walk</code>）があります。</li>
+    <li><strong>作り方</strong>：モデルと地形は <span class="path">Tools/OkinawaBeach</span> の Blender のスクリプトで作ります（<span class="path">araha_island.py</span>・<span class="path">araha_terrain.py</span> など 8 本。置き方の基準は同じフォルダの README）。地図は <span class="path">fetch_araha_map.py</span> で取り、シーンは <span class="path">export_araha_scene.py</span> で書き出します（どちらも Blender は要りません）。共有の材質にコンクリート・塗装した鉄・亜鉛めっき・インターロッキングの舗装を足し、Windows の Blender 4.4 でも焼けるようにしました。小さな UV の島の陰（AO）が隣の島の値で埋まって暗くなる焼き方の不具合も直しました。</li>
+  </ul>
 
   <h3 id="changelog-v0-36-0">v0.36.0 <span class="dim">（2026-10-25）</span></h3>
   <p>水面のインスペクタを、ほかのコンポーネントと同じ新しいエディタの作りにした版です（<a href="#api-WaterSurface">水面</a>）。</p>

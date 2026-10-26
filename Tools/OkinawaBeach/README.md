@@ -43,6 +43,15 @@ OKI_RES_SCALE=0.25 python3 Tools/OkinawaBeach/build.py palm   # テクスチャ 
 
 Blender 本体で実行する場合: `blender -b -P Tools/OkinawaBeach/build.py -- rocks`
 
+Windows の Blender 本体（4.4 で確認）で実行する場合は、同梱の Python に Pillow と SciPy を別のフォルダへ入れ、
+`--factory-startup` で起動する（UI が日本語の設定のままだと、新しく作るノードの名前が訳されて `Principled BSDF` が見つからない）。
+
+```sh
+"C:/Program Files/Blender Foundation/Blender 4.4/4.4/python/bin/python.exe" -m pip install --target <フォルダ> pillow scipy
+# 入った numpy は消す（Blender 同梱の numpy を使う）
+PYTHONPATH=<フォルダ> blender -b --factory-startup --python-use-system-env -P Tools/OkinawaBeach/build.py -- araha_island
+```
+
 ## モジュール構成
 
 ```
@@ -130,6 +139,28 @@ def my_material():
 | `props` | Driftwood_A/B, Shell_Cowrie, Shell_SpiderConch, CoralPiece_A/B, Coconut_Husk, GlassFloat | 接地点 |
 | `tetrapod` | Tetrapod_A/B | 接地面 |
 | `terrain` | BeachTerrain_Shore, BeachTerrain_Flat | 40 m 角タイルの中心。X 方向に周期的 |
+
+### アラハビーチ（北谷町）
+
+実在のアラハビーチ（安良波公園）にある物。高さの基準はモジュールごとに違うので「原点・置き方」を見る。
+
+| モジュール | バリエーション | 原点・置き方 |
+|---|---|---|
+| `araha_island` | ArahaIsland（沖のアラハ島。3 つの石灰岩の塊、長さ約 22 m） | 島の中心の真下。z=0 が平均水面、海底は z=-2.2 |
+| `jetty` | Jetty_Straight（直線 10 m）, Jetty_HeadR / Jetty_HeadL（+X / -X へ 75° 曲がる鉤形の先端） | 陸側の端の天端の中心の真下。z=0 が平均水面、天端 z=+2.0。-Y（海側）へ伸びる。Straight は y-10 ごとにつなぐ |
+| `seawall` | Seawall_Straight, Seawall_Stairs（中央に幅 3 m の階段） | z=0 が遊歩道の舗装面、y=0 が護岸の天端の前の線、浜の砂は z=-0.9。X 方向に 8 m で、x+8 ごとにつなぐ |
+| `lifeguard` | LifeguardTower（水色の監視小屋・手すり・旗竿・浮き輪） | seawall と同じ基準（z=0 が舗装面、y=0 が護岸の線）。台は -Y へ 3.2 m 張り出す |
+| `swim_net` | SwimNet（浮きのロープとハブクラゲ防止ネット、10 m）, FloatingPier（白いキューブフロートの浮き桟橋 12 m × 2.5 m、+X の端にはしご）, FloatingPier_Walk（はしごの無い通路用） | z=0 が平均水面。SwimNet は x+10 ごと、FloatingPier_Walk は x+12 ごとにつなぐ |
+| `shisa_sign` | ShisaSign（入口の「ようこそ」の看板を抱えるシーサー） | 台の底。正面（文字の面）は -Y |
+| `indian_oak` | IndianOak_Ship（インディアン・オーク号の遊具一式）, IndianOak_Monument（由来の石碑） | 地面。船首は +X、遊具の付く側（正面）は -Y |
+| `araha_terrain` | ArahaTerrain_SandDry / SandWet / SandUnder / Seabed / Lawn（乾いた砂・濡れた砂・水中の砂・深い海底・公園の芝生） | シーンの原点（浜の中央）に回転なしで置く。x = 東、y = 北 |
+
+#### 地図とシーン
+
+- `fetch_araha_map.py`（Blender 不要）: OpenStreetMap の浜・海岸線・公園・歩道の線を取り、浜の中央を原点にした座標で `data/araha_map.json` に書く。地図データは © OpenStreetMap contributors（ODbL 1.0）
+- `okinawa/araha_map.py`（Blender 不要）: 地図の読み込みと地形の高さ（浜・陸・海の範囲、波打ち際から護岸へ上がる浜、170 m あたりから深くなる海、平らな公園）。地形の生成とシーンの書き出しで共有する
+- `araha_terrain`: 波打ち際に沿って曲がる格子（浜の近くほど細かい）で地形を作り、面の種類ごとにモデルを分ける。テクスチャは 40 m 周期の継ぎ目の無いタイルを焼き、UV = (x, y) / 40 で繰り返す（タイルを焼いた後、`build.py` が `after_export` を呼んで地形のモデルを同じフォルダへ書き出し直す）
+- `export_araha_scene.py`（Blender 不要）: Sandbox の `ArahaBeachScene` を書き出す。護岸は地図の浜の陸側の縁に 8 m ずつ、突堤は両端の鉤の形に合わせて直線＋先端、沖の岩・浮き桟橋・ネット・ヤシ並木・海賊船の遊具などを置く。太陽・水面・見た目の設定は OkinawaBeachScene のものを使う
 
 ### 海の中・リーフ地形
 

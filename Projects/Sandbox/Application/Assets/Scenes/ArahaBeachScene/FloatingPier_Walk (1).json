@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "98449a19fa9b046c"
+                },
+                "rotate": [
+                    0.0,
+                    -3.0635383,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    16.333384,
+                    0.0,
+                    107.800446
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "9dffba25-96aa-51f9-a973-c088ad35cafb",
+                    "path": "Application/Assets/Models/Okinawa/FloatingPier_Walk/FloatingPier_Walk.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "beea34acfe3c46fb",
+    "name": "FloatingPier_Walk (1)",
+    "order": 107
+}

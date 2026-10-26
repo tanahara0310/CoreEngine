@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "dc171e168f36e7bb"
+                },
+                "rotate": [
+                    0.0,
+                    2.1086318,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    -85.17639,
+                    0.0,
+                    -307.75443
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "a5215d77-42e5-5c58-bb9b-3b20965e3d3e",
+                    "path": "Application/Assets/Models/Okinawa/Jetty_Straight/Jetty_Straight.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "0f87d6d6bef99bd6",
+    "name": "Jetty_Straight (10)",
+    "order": 97
+}

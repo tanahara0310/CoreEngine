@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "bdc7680fd9b927b8"
+                },
+                "rotate": [
+                    0.0,
+                    1.8886682,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    2.7590985,
+                    2.5,
+                    -136.53369
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "65e1d633-6603-5bf8-8e6a-b1cc62c61da2",
+                    "path": "Application/Assets/Models/Okinawa/Seawall_Stairs/Seawall_Stairs.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "014c70073dc4d369",
+    "name": "Seawall_Stairs (1)",
+    "order": 32
+}

@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "bdc7680fd9b927b8"
+                },
+                "rotate": [
+                    0.0,
+                    1.8886682,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    9.798838,
+                    2.5,
+                    -115.1382
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "f26314c9-2c35-5ca6-a306-ff77c9b57b27",
+                    "path": "Application/Assets/Models/Okinawa/LifeguardTower/LifeguardTower.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "c00bd48b79e0c201",
+    "name": "LifeguardTower",
+    "order": 84
+}
