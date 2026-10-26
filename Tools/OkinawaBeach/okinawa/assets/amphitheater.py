@@ -74,7 +74,7 @@ def grass_material():
         height = nb.add(nb.mul(tuft, 0.6), nb.mul(fine, 0.4))
         return dict(color=col, rough=0.88, height=height, height_scale=0.01)
 
-    return pbr_material("AmphiGrass", fn, res=2048, ao_distance=0.8)
+    return pbr_material("AmphiGrass", fn, res=4096, ao_distance=0.8)
 
 
 def soil_material():
@@ -120,7 +120,7 @@ def walk_material():
         return dict(color=col, rough=nb.mixf(0.82, 0.95, joint), height=height, height_scale=0.006,
                     cavity=nb.maprange(joint, 0, 1, 1.0, 0.65))
 
-    return pbr_material("AmphiWalk", fn, res=2048, ao_distance=0.3)
+    return pbr_material("AmphiWalk", fn, res=4096, ao_distance=0.3)
 
 
 def plaza_material():

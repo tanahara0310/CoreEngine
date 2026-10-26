@@ -133,7 +133,7 @@ def module(prefix, with_stairs):
     bands = [(COPE_BACK - 0.01, COPE_BACK + 0.2, "#9e978a"), (COPE_BACK + WALK_D - 0.2, COPE_BACK + WALK_D + 0.01, "#9e978a")]
     tag = "T" if with_stairs else "S"
     groups = [
-        (walls, concrete(f"SeawallConcrete{tag}", res=2048, stain_top=-0.45, salt=0.35)),
+        (walls, concrete(f"SeawallConcrete{tag}", res=2048, stain_top=-0.45, salt=0.35, relief=0.009, streaks=0.55)),
         (tops, paving(f"SeawallPaving{tag}", res=2048, bands=bands, x0=-HALF, uv="keep")),
         (curbs, concrete(f"SeawallCurb{tag}", res=512, tint="#bdb9ae", salt=0.1)),
     ]
