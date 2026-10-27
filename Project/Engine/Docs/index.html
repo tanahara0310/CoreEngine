@@ -2158,6 +2158,7 @@ kbd {
     <li><strong>実行する</strong><kbd>F5</kbd>（またはデバッグなしで <kbd>Ctrl</kbd>+<kbd>F5</kbd>）。起動するとプロジェクトを選ぶ画面が出ます。</li>
   </ol>
   <p>実行ファイルは <span class="path">generated/CoreEngine/outputs/&lt;構成&gt;/CoreEngine.exe</span> にできます。初めての起動ではシェーダのコンパイルに時間がかかります（2 回目からはキャッシュを使います）。</p>
+  <div class="callout note"><p>自分のゲームを自分の git リポジトリで作るときは、エンジンをそのリポジトリの中にサブモジュールとして入れます。手順は <a href="#own-repo">自分のリポジトリでゲームを作る</a> にあります。</p></div>
 
   <h2 id="setup-clean">不要なファイルを消す</h2>
   <p>リポジトリ直下の <span class="path">Clean.bat</span> をダブルクリックすると、ビルドの中間ファイル・キャッシュ・ログなど作り直せる物を消せます。段を選び、消す物と大きさの一覧を見てから <kbd>Y</kbd> で消します。</p>
@@ -2207,6 +2208,89 @@ kbd {
   <p>読み込みのスレッドは、起動時に CPU のスレッド数から決めます（モデル 4 割・テクスチャ 4 割・文字 2 割）。本数は起動のログの <code>[Threads]</code> の行に出ます。<code>--workers</code> を毎回付ける代わりに、<span class="path">Engine/Config/config_*.json</span> の <code>"threads": { "workerLimit": 1 }</code> でも決められます（起動の引数が優先）。</p>
 </article>
 
+<article class="page" id="own-repo" data-group="はじめに" data-title="自分のリポジトリでゲームを作る" data-nav="自分のリポジトリで作る" data-keywords="サブモジュール submodule git github リポジトリ 自分 ゲーム クローン 取り込み 更新 版 バージョン プル pull エンジンを使う 固定 gitignore .vs recurse-submodules">
+  <h1>自分のリポジトリでゲームを作る</h1>
+  <p class="lead">ゲームは自分の git リポジトリに置き、エンジンはその中にサブモジュールとして入れます。どの版のエンジンを使うかはゲームのリポジトリが覚えているので、エンジンが更新されても、自分で取り込むまで手元のエンジンは変わりません。</p>
+
+  <h2 id="own-repo-layout">フォルダの形</h2>
+  <script type="text/x-code" data-lang="text" data-file="C:\Games\MyGame">
+    MyGame\              自分のリポジトリ
+      .gitignore         .vs/ を git から外す
+      .gitmodules        エンジンの URL（サブモジュールを足すと作られる）
+      CoreEngine\        エンジン（サブモジュール。中は変えない）
+      MyGame\            ゲームのプロジェクト（エディタの新規作成で作る）
+  </script>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>場所</th><th>ゲームのリポジトリに入るもの</th></tr></thead>
+    <tbody>
+      <tr><td class="nowrap"><span class="path">CoreEngine\</span></td><td>使うエンジンのコミットだけ。エンジンのファイルそのものは入りません</td></tr>
+      <tr><td class="nowrap">プロジェクト</td><td><span class="path">Application/Assets/</span> と <span class="path">Application/Config/</span>。<span class="path">Saved/</span>・<span class="path">Intermediate/</span>・<span class="path">Build/</span> はプロジェクトの <span class="path">.gitignore</span> で外してあります（<a href="#team-files">共有するものと自分だけのもの</a>）</td></tr>
+      <tr><td class="nowrap"><span class="path">.vs\</span></td><td>入れません。Visual Studio がフォルダーを開いたときに作るキャッシュです</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2 id="own-repo-setup">最初の準備</h2>
+  <h3 id="own-repo-setup-repo">リポジトリとエンジンを用意する</h3>
+  <ol class="steps">
+    <li><strong>リポジトリを作る</strong>GitHub で自分のリポジトリを作ります（非公開でかまいません）。<span class="ui">Add .gitignore</span> で <code>VisualStudio</code> を選ぶと、<span class="path">.vs/</span> を外す設定が入ります。</li>
+    <li><strong>クローンする</strong>Visual Studio の <span class="ui">リポジトリのクローン</span> で、日本語を含まない短い場所（例 <span class="path">C:\Games\MyGame</span>）に取ります。</li>
+    <li><strong>エンジンをサブモジュールで足す</strong>ここだけはコマンドで行います。Visual Studio の <span class="ui">表示<span class="arrow">▸</span>ターミナル</span> を開き、リポジトリのフォルダで次を実行します。</li>
+  </ol>
+  <script type="text/x-code" data-lang="text" data-file="ターミナル（リポジトリのフォルダで）">
+    git submodule add https://github.com/tanahara0310/CoreEngine1.git CoreEngine
+  </script>
+  <div class="callout warn" data-title="git clone で入れない"><p>フォルダの中で <code>git clone</code> してエンジンを入れると、ゲームのリポジトリにエンジンの URL が残りません。ほかの PC でクローンしたときに <span class="path">CoreEngine</span> が空のフォルダになり、取り出せなくなります。間違えたときは、コミットする前に <span class="path">CoreEngine</span> フォルダを消して、上のコマンドでやり直します。</p></div>
+
+  <h3 id="own-repo-setup-build">ビルドしてプロジェクトを作る</h3>
+  <ol class="steps">
+    <li><strong>ビルドする</strong><span class="path">CoreEngine\Project\CoreEngine.slnx</span> を開き、NuGet パッケージを復元してから <code>Development</code> をビルドします。ゲームを書き出すなら <code>Release</code> もビルドします（<a href="#setup">エンジンのビルドと起動</a>）。</li>
+    <li><strong>プロジェクトを作る</strong>エディタの選ぶ画面で <span class="ui">新規作成</span> を押し、<span class="ui">保存先</span> を <span class="ui">参照…</span> でリポジトリのフォルダ（例 <span class="path">C:\Games\MyGame</span>）にします（<a href="#first-project">最初のプロジェクトを作る</a>）。</li>
+    <li><strong>コミットしてプッシュする</strong>Visual Studio の <span class="ui">ファイル<span class="arrow">▸</span>開く<span class="arrow">▸</span>フォルダー</span> でリポジトリのフォルダを開くと、<span class="ui">Git 変更</span> が自分のリポジトリを指します。<span class="path">.gitmodules</span>・<span class="path">CoreEngine</span>・プロジェクトをコミットしてプッシュします。</li>
+  </ol>
+  <div class="callout warn" data-title="保存先の既定はエンジンの中"><p>新規作成の保存先は、最初はエンジンの <span class="path">Projects</span> フォルダ（<span class="path">CoreEngine\Projects</span>）になっています。そのまま作ると、ゲームはエンジンの中にでき、自分のリポジトリにはコミットされません。作ってしまったときは、エディタを閉じてからプロジェクトのフォルダをリポジトリのフォルダへ移し、選ぶ画面の <span class="ui">追加…</span> で開き直します。</p></div>
+
+  <h2 id="own-repo-daily">ふだんの作業</h2>
+  <ul>
+    <li>エディタは <span class="path">CoreEngine\generated\CoreEngine\outputs\Development\CoreEngine.exe</span> か Visual Studio から起動します。2 回目からは、選ぶ画面の一覧から開けます。</li>
+    <li>コミットとプッシュは、リポジトリのフォルダを開いた Visual Studio の <span class="ui">Git 変更</span> から行います。題が「2 件のリポジトリ」になり、ゲームとエンジンの両方が並びます。エンジンのソリューションを開いた窓の <span class="ui">Git 変更</span> は、エンジンのリポジトリだけを指しています。</li>
+    <li>エンジンにはコミットもプッシュもしません（エンジンのリポジトリへのプッシュは断られます）。</li>
+    <li>エンジンのファイルは変えません。開いて保存しただけでも、Visual Studio の整形で空白が変わることがあります。エンジンの <span class="ui">Git 変更</span> に変更が出ていたら、右クリックして <span class="ui">変更を元に戻す</span> で戻します。</li>
+    <li>何人かで 1 本のゲームを作るときの決まりは <a href="#team">チームで作る（git）</a> にあります。</li>
+  </ul>
+
+  <h2 id="own-repo-update">エンジンを取り込む</h2>
+  <p>エンジンが更新されても、取り込むまで手元のエンジンは変わりません。欲しい機能や不具合の直しが入ったときや、週に 1 回など決めた区切りで取り込みます。提出や発表の直前は取り込まない方が安全です。</p>
+  <ol class="steps">
+    <li><strong>更新履歴を読む</strong><a href="#changelog">更新履歴とバージョン</a> で、今の版（<span class="ui">Help<span class="arrow">▸</span>バージョン情報</span>）より後の版に、ゲームの側で直すことが書かれていないか見ます。</li>
+    <li><strong>エディタを閉じる</strong>開いたままだと、ビルドで exe を書き換えられません。</li>
+    <li><strong>エンジンの変更を戻す</strong><span class="path">CoreEngine.slnx</span> を開いた Visual Studio の <span class="ui">Git 変更</span> に変更が出ていたら、<span class="ui">変更を元に戻す</span> で戻します。</li>
+    <li><strong>master に切り替えてプルする</strong>ブランチの欄には、ブランチ名ではなくコミットの番号が出ています（サブモジュールはブランチから外れた状態で取り出されるため）。一覧から <code>master</code> を選んで切り替え、<span class="ui">プル</span> します。</li>
+    <li><strong>ビルドする</strong><code>Development</code> と、書き出すなら <code>Release</code> をビルドします。</li>
+    <li><strong>必要なら保存し直す</strong>更新履歴に保存の形式が変わったとあれば、エディタで <span class="ui">File<span class="arrow">▸</span>すべてのシーンと設定を保存し直す…</span> を実行します（<a href="#team-resave">エンジンを更新したあと</a>）。</li>
+    <li><strong>ゲームの方でコミットする</strong>リポジトリのフォルダを開いた <span class="ui">Git 変更</span> に <span class="path">CoreEngine</span> が出ます。「使うエンジンの版を変えた」という記録です。エディタが開いたときに書き直したスクリプトの基底クラス（<span class="path">ScriptComponent.as</span>・<span class="path">as.predefined</span> など）と一緒にコミットして、プッシュします。</li>
+  </ol>
+  <p>コマンドで取り込むときは、手順 4 の代わりにリポジトリのフォルダで次を実行します。</p>
+  <script type="text/x-code" data-lang="text" data-file="ターミナル（リポジトリのフォルダで）">
+    git submodule update --remote CoreEngine
+  </script>
+
+  <h2 id="own-repo-clone">ほかの PC で続きをする</h2>
+  <p>ゲームのリポジトリをクローンするときは、エンジンも一緒に取ります。</p>
+  <script type="text/x-code" data-lang="text" data-file="ターミナル">
+    git clone --recurse-submodules https://github.com/自分の名前/MyGame.git
+  </script>
+  <p>クローンした後で <span class="path">CoreEngine</span> が空なら、リポジトリのフォルダで <code>git submodule update --init</code> を実行します。取り出されるのは、ゲームのリポジトリが覚えている版のエンジンです。開く前にエンジンをビルドします。</p>
+
+  <h2 id="own-repo-request">エンジンに欲しい機能があるとき</h2>
+  <ul>
+    <li>まずスクリプトで作れないか考えます。スクリプトのコンポーネントと<a href="#editor-ext-tutorial">エディタの拡張</a>で、エンジンを変えずに作れることが多いです。</li>
+    <li>エンジンの変更が要るときは、エンジンの作者に <a href="https://github.com/tanahara0310/CoreEngine1/issues">Issue</a> か、教わった不具合・要望のフォームで知らせます。自分のゲームにしか要らない処理は、エンジンには入りません。</li>
+    <li>入った機能は、自分で取り込んだときから使えます。ほかの人のゲームには、その人が取り込むまで入りません。</li>
+  </ul>
+</article>
+
 <article class="page" id="first-project" data-group="はじめに" data-title="最初のプロジェクトを作る" data-nav="最初のプロジェクト" data-keywords="新規 プロジェクト 作成 作る 開く ランチャー テンプレート 3d の基本 空のプロジェクト">
   <h1>最初のプロジェクトを作る</h1>
   <p class="lead">エディタを起動すると、プロジェクトを選ぶ画面（「CoreEngine — プロジェクトを開く」）が出ます。ここでテンプレートから新しいプロジェクトを作り、開いて動かしてみます。</p>
@@ -2215,7 +2299,7 @@ kbd {
   <ol class="steps">
     <li><strong>新規作成を開く</strong>左の <span class="ui">新規作成</span>（または一覧の <span class="ui">＋ 新規作成</span>）を押します。</li>
     <li><strong>テンプレートを選ぶ</strong><span class="ui">3D の基本</span> を選びます。WASD・矢印キー・左スティックで動く箱が入っていて、スクリプトの書き方の見本になります。</li>
-    <li><strong>名前と保存先を決める</strong><span class="ui">名前</span> はそのままフォルダ名になるので、英数字と <code>_</code> <code>-</code> だけにします。<span class="ui">保存先</span> の既定はリポジトリの <span class="path">Projects</span> フォルダです。日本語などを含むパスは避けてください。</li>
+    <li><strong>名前と保存先を決める</strong><span class="ui">名前</span> はそのままフォルダ名になるので、英数字と <code>_</code> <code>-</code> だけにします。<span class="ui">保存先</span> の既定はリポジトリの <span class="path">Projects</span> フォルダです。自分のリポジトリで作るときは、<span class="ui">参照…</span> でそのリポジトリのフォルダにします（<a href="#own-repo">自分のリポジトリでゲームを作る</a>）。日本語などを含むパスは避けてください。</li>
     <li><strong>作成して開く</strong>下の <span class="ui">作られるフォルダ</span> で中身を確かめ、<span class="ui">作成して開く</span> を押すと、エディタがそのプロジェクトで起動します。</li>
   </ol>
   <div class="table-wrap">
