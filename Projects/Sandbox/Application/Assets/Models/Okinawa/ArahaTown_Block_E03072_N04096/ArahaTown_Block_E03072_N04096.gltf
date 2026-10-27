@@ -1,0 +1,546 @@
+{
+ "asset": {
+  "generator": "CoreEngine OkinawaBeach build_araha_town",
+  "version": "2.0"
+ },
+ "scene": 0,
+ "scenes": [
+  {
+   "name": "Scene",
+   "nodes": [
+    0
+   ]
+  }
+ ],
+ "nodes": [
+  {
+   "mesh": 0,
+   "name": "ArahaTown_Block_E03072_N04096"
+  }
+ ],
+ "meshes": [
+  {
+   "name": "ArahaTown_Block_E03072_N04096",
+   "primitives": [
+    {
+     "attributes": {
+      "POSITION": 0,
+      "NORMAL": 1,
+      "TEXCOORD_0": 2,
+      "TANGENT": 3
+     },
+     "indices": 4,
+     "material": 0
+    },
+    {
+     "attributes": {
+      "POSITION": 5,
+      "NORMAL": 6,
+      "TEXCOORD_0": 7,
+      "TANGENT": 8
+     },
+     "indices": 9,
+     "material": 1
+    },
+    {
+     "attributes": {
+      "POSITION": 10,
+      "NORMAL": 11,
+      "TEXCOORD_0": 12,
+      "TANGENT": 13
+     },
+     "indices": 14,
+     "material": 2
+    },
+    {
+     "attributes": {
+      "POSITION": 15,
+      "NORMAL": 16,
+      "TEXCOORD_0": 17,
+      "TANGENT": 18
+     },
+     "indices": 19,
+     "material": 3
+    }
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "ArahaTown_Facade_Base_Beige",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 0
+    },
+    "metallicRoughnessTexture": {
+     "index": 1
+    }
+   },
+   "occlusionTexture": {
+    "index": 1
+   },
+   "normalTexture": {
+    "index": 2
+   }
+  },
+  {
+   "name": "ArahaTown_Facade_Base_Cream",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 3
+    },
+    "metallicRoughnessTexture": {
+     "index": 4
+    }
+   },
+   "occlusionTexture": {
+    "index": 4
+   },
+   "normalTexture": {
+    "index": 5
+   }
+  },
+  {
+   "name": "ArahaTown_Roof_Coated",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 6
+    },
+    "metallicRoughnessTexture": {
+     "index": 7
+    }
+   },
+   "occlusionTexture": {
+    "index": 7
+   },
+   "normalTexture": {
+    "index": 8
+   }
+  },
+  {
+   "name": "ArahaTown_Roof_Concrete",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 9
+    },
+    "metallicRoughnessTexture": {
+     "index": 10
+    }
+   },
+   "occlusionTexture": {
+    "index": 10
+   },
+   "normalTexture": {
+    "index": 11
+   }
+  }
+ ],
+ "accessors": [
+  {
+   "bufferView": 0,
+   "componentType": 5126,
+   "count": 1184,
+   "type": "VEC3",
+   "min": [
+    3076.60009765625,
+    78.96163177490234,
+    -4493.2998046875
+   ],
+   "max": [
+    3370.699951171875,
+    96.24396514892578,
+    -4102.2001953125
+   ]
+  },
+  {
+   "bufferView": 1,
+   "componentType": 5126,
+   "count": 1184,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 2,
+   "componentType": 5126,
+   "count": 1184,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 3,
+   "componentType": 5126,
+   "count": 1184,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 4,
+   "componentType": 5123,
+   "count": 1776,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 5,
+   "componentType": 5126,
+   "count": 1280,
+   "type": "VEC3",
+   "min": [
+    3060.5,
+    77.48843383789062,
+    -4487.7001953125
+   ],
+   "max": [
+    3374.199951171875,
+    96.27914428710938,
+    -4090.300048828125
+   ]
+  },
+  {
+   "bufferView": 6,
+   "componentType": 5126,
+   "count": 1280,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 7,
+   "componentType": 5126,
+   "count": 1280,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 8,
+   "componentType": 5126,
+   "count": 1280,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 9,
+   "componentType": 5123,
+   "count": 1920,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 10,
+   "componentType": 5126,
+   "count": 90,
+   "type": "VEC3",
+   "min": [
+    3080.89990234375,
+    87.62859344482422,
+    -4493.2998046875
+   ],
+   "max": [
+    3347.699951171875,
+    95.57864379882812,
+    -4094.199951171875
+   ]
+  },
+  {
+   "bufferView": 11,
+   "componentType": 5126,
+   "count": 90,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 12,
+   "componentType": 5126,
+   "count": 90,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 13,
+   "componentType": 5126,
+   "count": 90,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 14,
+   "componentType": 5123,
+   "count": 174,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 15,
+   "componentType": 5126,
+   "count": 218,
+   "type": "VEC3",
+   "min": [
+    3060.5,
+    86.51649475097656,
+    -4493.10009765625
+   ],
+   "max": [
+    3374.199951171875,
+    96.27914428710938,
+    -4090.300048828125
+   ]
+  },
+  {
+   "bufferView": 16,
+   "componentType": 5126,
+   "count": 218,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 17,
+   "componentType": 5126,
+   "count": 218,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 18,
+   "componentType": 5126,
+   "count": 218,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 19,
+   "componentType": 5123,
+   "count": 462,
+   "type": "SCALAR"
+  }
+ ],
+ "bufferViews": [
+  {
+   "buffer": 0,
+   "byteOffset": 0,
+   "byteLength": 14208,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 14208,
+   "byteLength": 14208,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 28416,
+   "byteLength": 9472,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 37888,
+   "byteLength": 18944,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 56832,
+   "byteLength": 3552,
+   "target": 34963
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 60384,
+   "byteLength": 15360,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 75744,
+   "byteLength": 15360,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 91104,
+   "byteLength": 10240,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 101344,
+   "byteLength": 20480,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 121824,
+   "byteLength": 3840,
+   "target": 34963
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 125664,
+   "byteLength": 1080,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 126744,
+   "byteLength": 1080,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 127824,
+   "byteLength": 720,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 128544,
+   "byteLength": 1440,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 129984,
+   "byteLength": 348,
+   "target": 34963
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 130332,
+   "byteLength": 2616,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 132948,
+   "byteLength": 2616,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 135564,
+   "byteLength": 1744,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 137308,
+   "byteLength": 3488,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 140796,
+   "byteLength": 924,
+   "target": 34963
+  }
+ ],
+ "buffers": [
+  {
+   "byteLength": 141720,
+   "uri": "ArahaTown_Block_E03072_N04096.bin"
+  }
+ ],
+ "textures": [
+  {
+   "sampler": 0,
+   "source": 0
+  },
+  {
+   "sampler": 0,
+   "source": 1
+  },
+  {
+   "sampler": 0,
+   "source": 2
+  },
+  {
+   "sampler": 0,
+   "source": 3
+  },
+  {
+   "sampler": 0,
+   "source": 4
+  },
+  {
+   "sampler": 0,
+   "source": 5
+  },
+  {
+   "sampler": 0,
+   "source": 6
+  },
+  {
+   "sampler": 0,
+   "source": 7
+  },
+  {
+   "sampler": 0,
+   "source": 8
+  },
+  {
+   "sampler": 0,
+   "source": 9
+  },
+  {
+   "sampler": 0,
+   "source": 10
+  },
+  {
+   "sampler": 0,
+   "source": 11
+  }
+ ],
+ "images": [
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Base_Beige_BaseColor",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Base_Beige_BaseColor.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Base_Beige_ORM",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Base_Beige_ORM.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Base_Beige_Normal",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Base_Beige_Normal.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Base_Cream_BaseColor",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Base_Cream_BaseColor.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Base_Cream_ORM",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Base_Cream_ORM.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Facade_Base_Cream_Normal",
+   "uri": "../ArahaTown_Textures/ArahaTown_Facade_Base_Cream_Normal.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Roof_Coated_BaseColor",
+   "uri": "../ArahaTown_Textures/ArahaTown_Roof_Coated_BaseColor.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Roof_Coated_ORM",
+   "uri": "../ArahaTown_Textures/ArahaTown_Roof_Coated_ORM.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Roof_Coated_Normal",
+   "uri": "../ArahaTown_Textures/ArahaTown_Roof_Coated_Normal.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Roof_Concrete_BaseColor",
+   "uri": "../ArahaTown_Textures/ArahaTown_Roof_Concrete_BaseColor.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Roof_Concrete_ORM",
+   "uri": "../ArahaTown_Textures/ArahaTown_Roof_Concrete_ORM.png"
+  },
+  {
+   "mimeType": "image/png",
+   "name": "ArahaTown_Roof_Concrete_Normal",
+   "uri": "../ArahaTown_Textures/ArahaTown_Roof_Concrete_Normal.png"
+  }
+ ],
+ "samplers": [
+  {
+   "magFilter": 9729,
+   "minFilter": 9987
+  }
+ ]
+}

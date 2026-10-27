@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.39.0">
+<meta name="engine-version" content="0.40.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2123,7 +2123,7 @@ kbd {
     <thead><tr><th>プロジェクト</th><th>中身</th></tr></thead>
     <tbody>
       <tr><td><span class="path">Projects/Sokoban</span></td><td>倉庫番。スクリプト 1 本（<span class="path">SokobanBoard.as</span>）とプレハブ 5 つだけで、文字で書いた盤面からステージを組み立てる小さな見本。ステージはインスペクタの <code>stages</code> に 1 行足せば増やせます。</td></tr>
-      <tr><td><span class="path">Projects/Sandbox</span></td><td>機能ごとの試験場（物理・キャラクターの歩行・UI・水面・カメラの揺れ・スクリプトのシューター・Shadertoy から移した海のシェーダ）。沖縄の海辺のシーンでは、待機・歩き・走りのアニメーションが付いた人型を操作できます（<a href="#tutorial-beach-player">沖縄の海辺をプレイヤーで歩く</a>）。実在のアラハビーチ（北谷町）を地図の形のとおりに作ったシーン <code>ArahaBeachScene</code> もあります（<a href="#changelog-v0-37-0">v0.37.0</a>。公園の施設と木は <a href="#changelog-v0-38-0">v0.38.0</a>）。</td></tr>
+      <tr><td><span class="path">Projects/Sandbox</span></td><td>機能ごとの試験場（物理・キャラクターの歩行・UI・水面・カメラの揺れ・スクリプトのシューター・Shadertoy から移した海のシェーダ）。沖縄の海辺のシーンでは、待機・歩き・走りのアニメーションが付いた人型を操作できます（<a href="#tutorial-beach-player">沖縄の海辺をプレイヤーで歩く</a>）。実在のアラハビーチ（北谷町）を地図の形のとおりに作ったシーン <code>ArahaBeachScene</code> もあります（<a href="#changelog-v0-37-0">v0.37.0</a>。公園の施設と木は <a href="#changelog-v0-38-0">v0.38.0</a>、まわりの街は <a href="#changelog-v0-40-0">v0.40.0</a>）。</td></tr>
       <tr><td><span class="path">Projects/Sample2D</span></td><td>2D の横スクロールの見本。走る・跳ぶ・コインを集める・ゴールに着く、の 1 ステージに、クリックした所へ箱を落とす遊びを足したもの。スプライトのアニメ・平行投影のカメラの追従・遠景・剛体の軸の固定・トリガーを、スクリプト 6 本（プレイヤー・進行・コイン・ゴール・カメラの追従・遠景）で使っています。使っている機能は <a href="#guide-2d">2D ゲームの作り方</a> で説明しています。</td></tr>
       <tr><td><span class="path">Projects/Tsunagazaru</span></td><td>つながザルをえない。走り続けるトロッコの前にレールを敷いていくゲームで、C++ で作ったゲームをスクリプトだけで作り直した大きめの見本（タイトル・ゲーム・リザルトの 3 シーン）。シーンを切り替えるときのロード画面も、プロジェクトのシェーダで描いています（<a href="#settings-loading-screen">シーンを切り替えるときのロード画面</a>）。</td></tr>
       <tr><td><span class="path">Projects/Reprism</span></td><td>レプリズム。自機のまわりのブロックをハットに写し取って運び、置いた足場でゴールを目指すパズルアクションで、C++ で作ったゲームをスクリプトだけで作り直した見本（タイトル・ステージ選択・ゲームの 3 シーンと 13 ステージ）。ブロックやゴールの光り方はスプライトのマテリアル（<a href="#script-material">マテリアルとシェーダ</a>）、ネオン・走査線・画面の縁の光は<a href="#script-posteffect">プロジェクトのポストエフェクト</a>、ステージの切り替えはブロックに割れて落ちる遷移（<a href="#scenes-transition-effect">自分のシェーダで覆う</a>）で描いています。</td></tr>
@@ -9746,6 +9746,17 @@ python Tools/OkinawaBeach/bake_player_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-40-0">v0.40.0 <span class="dim">（2026-10-26）</span></h3>
+  <p>Sandbox の <code>ArahaBeachScene</code> に、まわりの街と遠くの丘を足した版です。今までは公園の奥が平らな芝生で、少し先で地面が途切れていましたが、浜からも空からも、実際の北谷町の街並みと丘が見えるようになりました。モデルは <span class="path">Models/Okinawa</span> に入っています。</p>
+  <ul>
+    <li><strong>建物</strong>（<code>ArahaTown_Block_*</code>）：浜を中心に約 5.7km × 8km の範囲の約 12,000 棟を、OpenStreetMap の建物の形のとおりに立てました。階数の分かる建物（ホテルや高層マンションなど）はその高さにし、分からない建物は種類と広さから決めています。外壁は、窓の上に庇があり花ブロックや雨だれの筋の付いた戸建て、ベランダのあるマンション、ホテル、学校や事務所、1 階が店の建物、大きな店や倉庫、美浜アメリカンビレッジの色とりどりの壁、米軍基地の建物を描き分けています。浜から 900m 以内の建物には、屋上の手すり壁と給水タンク・塔屋も付けています。</li>
+    <li><strong>街の地面</strong>（<code>ArahaTown_Ground</code>）：公園の外の地面に、地図の道路（車線と歩道）・駐車場・緑地・建物の敷地を描き、木立や空き地の草も足しました。高さは国土地理院の標高に合わせているので、内陸へ行くほど上がり、2km より先は標高 100m を超える丘になります。今の地形と外側の地面は、すき間も重なりも無いようにつないでいます。</li>
+    <li><strong>地形の芝生</strong>：<code>ArahaTerrain_Lawn</code> は公園の中と遊歩道のまわりだけにしました（その外は街の地面です）。</li>
+    <li><strong>重さ</strong>：RTX 4060 Laptop・1920×1080 の GPU 時間で、最初のカメラの位置から見たときは 14.6ms から 15.5ms、建物がいちばん多く映る浜の上空から内陸を見たときは 13.0ms から 13.5ms になりました。</li>
+    <li><strong>作り方</strong>：<span class="path">Tools/OkinawaBeach</span> の <span class="path">fetch_araha_town.py</span> で地図と標高を取り、<span class="path">build_araha_town.py</span> でモデルを書き出し、<span class="path">export_araha_scene.py</span> で置きます（どれも Blender は要りません）。建物の種類の決め方とモデルの中身は同じフォルダの README にあります。</li>
+    <li><strong>出典</strong>：地図データは © OpenStreetMap contributors（ODbL 1.0）です。標高は国土地理院の標高タイルを加工したものです。</li>
+  </ul>
 
   <h3 id="changelog-v0-39-0">v0.39.0 <span class="dim">（2026-10-26）</span></h3>
   <p>風で揺れる植物が多いシーンで、レイトレーシングの加速構造の準備（プロファイラの <code>ASBuild</code>）が重くなっていたのを軽くした版です。</p>

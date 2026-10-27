@@ -2,7 +2,8 @@
 
 使い方: python Tools/OkinawaBeach/export_araha_scene.py
 data/araha_map.json（OpenStreetMap の浜・海岸線）の線に沿って、地形・護岸・突堤・沖の岩・浮き桟橋・ネット・
-ヤシ並木・海賊船の遊具、公園の施設・木・園路などを置く。高さは地形（okinawa/araha_map.py の Field）と同じ式で求める。
+ヤシ並木・海賊船の遊具、公園の施設・木・園路と、まわりの街（build_araha_town.py の地面と建物）を置く。
+高さは地形（okinawa/araha_map.py の Field）と同じ式で求める。
 太陽・水面・見た目の設定は OkinawaBeachScene のものを使う。シーンのフォルダは書き出すたびに作り直す。
 
 座標: Blender と同じ（x = 東、y = 北、z = 上）で計算し、エンジンへは (x, z, y)、Z 軸まわりの角度は符号を反転して書く。
@@ -500,6 +501,16 @@ def place_beach_props(sc, m, field, rnd):
             sc.mesh("DeckChair_A", g, (q[0], q[1], zq), rnd.uniform(70, 110))
 
 
+def place_town(sc):
+    """まわりの街（build_araha_town.py が書き出した地面と区画ごとの建物）。どれも原点に置く"""
+    g = sc.group("Town")
+    sc.mesh("ArahaTown_Ground", g, (0.0, 0.0, 0.0))
+    blocks = sorted(n for n in os.listdir(MODELS_DIR) if n.startswith("ArahaTown_Block_"))
+    for name in blocks:
+        sc.mesh(name, g, (0.0, 0.0, 0.0))
+    print(f"  街の区画 {len(blocks)} 個")
+
+
 def camera_object(sc):
     (cx, cy, cz), (tx, ty, tz), fov = CAMERA
     f = np.array([tx - cx, tz - cz, ty - cy])  # エンジンの座標 (x, 上, z=北)
@@ -552,6 +563,8 @@ def main():
     park_rnd = random.Random(2027)
     keep = place_facilities(sc, m, park_rnd)
     place_trees(sc, m, park_rnd, keep)
+    # まわりの街（シーンの最後に足す）
+    place_town(sc)
 
     if os.path.isdir(OUT_DIR):
         shutil.rmtree(OUT_DIR)
