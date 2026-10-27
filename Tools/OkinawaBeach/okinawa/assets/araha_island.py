@@ -135,13 +135,13 @@ def island_material(name="ArahaIsland", res=2048):
         ridge = nb.noise(nb.mapping(cs, scale=(1, 1, 2.2)), 6.0, 8, 0.7, distortion=0.4)
         fine = nb.noise(co, 25.0, 4, 0.6)
 
-        base = nb.ramp(big, [(0.30, srgb("#6f675a")), (0.55, srgb("#857c6b")), (0.75, srgb("#9a907c"))])
+        base = nb.ramp(big, [(0.30, srgb("#5f594e")), (0.55, srgb("#756d5f")), (0.75, srgb("#8a8170"))])
         grey = nb.mix(base, srgb("#66625a"), nb.smooth(mid, 0.45, 0.7))
         # 風雨で黒ずんだ上面と地衣類
         nz = nb.sep(nb.node("ShaderNodeNewGeometry").outputs["Normal"])[2]
         lichen = nb.smooth(nb.noise(cs, 11.0, 4, 0.6), 0.55, 0.68)
-        grey = nb.mix(grey, srgb("#3b3a35"), nb.mul(lichen, 0.45))
-        grey = nb.mix(grey, srgb("#55524a"), nb.mul(nb.smooth(nz, 0.4, 0.9), nb.mul(nb.smooth(big, 0.4, 0.7), 0.5)))
+        grey = nb.mix(grey, srgb("#33322e"), nb.mul(lichen, 0.6))
+        grey = nb.mix(grey, srgb("#4a4740"), nb.mul(nb.smooth(nz, 0.3, 0.85), 0.7))
         # 張り出しの下は雨だれの黒い筋
         streak = nb.noise(nb.mapping(co, scale=(9, 9, 0.6)), 1.0, 4, 0.6)
         grey = nb.mix(grey, srgb("#45423b"), nb.mul(nb.smooth(streak, 0.55, 0.75), 0.4))
@@ -164,7 +164,8 @@ def island_material(name="ArahaIsland", res=2048):
         rough = nb.mixf(nb.maprange(fine, 0.3, 0.7, 0.82, 0.95), 0.45, wet)
         height = nb.add(nb.add(nb.mul(pits, -0.6), nb.mul(ridge, 0.5)), nb.mul(fine, 0.15))
         cavity = nb.maprange(pits, 0.0, 1.0, 1.0, 0.55)
-        return dict(color=col, rough=rough, height=height, height_scale=0.05, cavity=cavity)
+        height = nb.add(height, nb.mul(nb.noise(co, 60.0, 3, 0.6), 0.12))
+        return dict(color=col, rough=rough, height=height, height_scale=0.08, cavity=cavity)
 
     return pbr_material(name, fn, res=res, ao_samples=64, ao_distance=3.0)
 

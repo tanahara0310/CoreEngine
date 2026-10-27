@@ -50,7 +50,7 @@ def limestone(name="Limestone", res=2048, tide_top=1.7, tide_bottom=-0.2, scale=
 
 
 def concrete(name="Concrete", res=1024, tint="#a8a59c", scale=1.0, stain_top=None, salt=0.3, ao_distance=0.8,
-             uv="smart"):
+             uv="smart", relief=0.003, streaks=0.35):
     """打ち放しのコンクリート。気泡穴・雨だれの筋・砂ぼこり
 
     stain_top: この高さ(m)より下を潮と砂で黒ずませる（None なら汚さない）
@@ -67,7 +67,7 @@ def concrete(name="Concrete", res=1024, tint="#a8a59c", scale=1.0, stain_top=Non
         col = nb.hsv(base, 0.5, 1.0, nb.maprange(mid, 0.3, 0.7, 0.92, 1.05))
         # 雨だれの縦筋
         streak = nb.noise(nb.mapping(cs, scale=(16.0, 16.0, 0.8)), 1.2, 4, 0.55)
-        col = nb.mix(col, srgb("#6f6c65"), nb.mul(nb.smooth(streak, 0.56, 0.72), 0.35))
+        col = nb.mix(col, srgb("#5f5c55"), nb.mul(nb.smooth(streak, 0.56, 0.72), streaks))
         # 気泡穴
         bh = nb.voronoi(cs, 38.0)
         bhr = nb.sep(nb.voronoi(cs, 38.0, out="Color"))[0]
@@ -82,7 +82,7 @@ def concrete(name="Concrete", res=1024, tint="#a8a59c", scale=1.0, stain_top=Non
             zz = nb.add(z, nb.mul(nb.sub(big, 0.5), 0.35))
             stain = nb.smooth(zz, stain_top, stain_top - 0.5)
             col = nb.mix(col, nb.mix(srgb("#6d6a60"), srgb("#5d5c53"), mid), nb.mul(stain, 0.55))
-        return dict(color=col, rough=rough, height=height, height_scale=0.003,
+        return dict(color=col, rough=rough, height=height, height_scale=relief,
                     cavity=nb.maprange(holes, 0, 1, 1.0, 0.5))
 
     return pbr_material(name, fn, res=res, ao_distance=ao_distance, uv=uv)

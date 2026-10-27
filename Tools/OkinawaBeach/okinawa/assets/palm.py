@@ -81,7 +81,7 @@ def frond_material():
         grain = nb.noise(nb.comb(nb.mul(U, 200.0), nb.mul(V, 20.0), 0.0), 1.0, 3, 0.5)
         col = nb.hsv(col, 0.5, 1.0, nb.maprange(grain, 0.3, 0.7, 0.88, 1.08))
 
-        rough = nb.mixf(0.5, 0.8, dry)
+        rough = nb.mixf(0.62, 0.85, dry)
         height = nb.add(nb.mul(nb.sub(1.0, nb.math("DIVIDE", d, nb.math("MAXIMUM", nb.mul(width, 0.5), 0.001))),
                                leaf), nb.mul(rachis, 1.5))
         return dict(color=col, rough=rough, alpha=alpha, height=height, height_scale=0.004,
@@ -121,8 +121,9 @@ def trunk_material(trunk_len):
         height = nb.add(nb.mul(ring_soft, -0.8), nb.mul(fiss_line, -0.5))
         height = nb.add(height, nb.mul(nb.mul(fib, boot), 0.8))
         rough = nb.mixf(0.85, 0.95, boot)
-        return dict(color=col, rough=rough, height=height, height_scale=0.015,
-                    cavity=nb.maprange(ring, 0, 1, 1.0, 0.8))
+        height = nb.add(height, nb.mul(nb.noise(nb.mapping(cyl, scale=(14, 14, 3)), 6.0, 5, 0.65), 0.35))
+        return dict(color=col, rough=rough, height=height, height_scale=0.025,
+                    cavity=nb.maprange(ring, 0, 1, 1.0, 0.72))
 
     return pbr_material("PalmTrunk", fn, res=2048, ao_distance=0.6, uv="keep")
 

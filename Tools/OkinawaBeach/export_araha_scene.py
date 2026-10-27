@@ -479,7 +479,7 @@ def place_vegetation(sc, m, field, rnd):
             sc.mesh(rnd.choice(palms), g, (p[0], p[1], AM.LAWN - 0.05), rnd.uniform(0, 360), rnd.uniform(0.9, 1.15))
         s += rnd.uniform(8.0, 10.5)
     # 突堤の付け根と看板のまわりの低木
-    for (x, y), model in (((118.0, 300.0), "Adan_A"), ((112.0, 294.0), "Adan_B"), ((-60.0, -330.0), "Adan_A"),
+    for (x, y), model in (((143.0, 281.0), "Adan_A"), ((145.5, 291.0), "Adan_B"), ((-60.0, -330.0), "Adan_A"),
                           ((-52.0, -326.0), "Adan_B"), ((sign[0] + 3.0, sign[1] - 3.0), "Hibiscus_A"),
                           ((sign[0] + 3.0, sign[1] + 3.5), "Bougainvillea_A")):
         reg = int(field.classify(x, y))
@@ -502,9 +502,10 @@ def place_beach_props(sc, m, field, rnd):
 
 
 def place_town(sc):
-    """まわりの街（build_araha_town.py が書き出した地面と区画ごとの建物）。どれも原点に置く"""
+    """まわりの街（build_araha_town.py が書き出した地面・護岸と区画ごとの建物）。どれも原点に置く"""
     g = sc.group("Town")
     sc.mesh("ArahaTown_Ground", g, (0.0, 0.0, 0.0))
+    sc.mesh("ArahaTown_Seawall", g, (0.0, 0.0, 0.0))
     blocks = sorted(n for n in os.listdir(MODELS_DIR) if n.startswith("ArahaTown_Block_"))
     for name in blocks:
         sc.mesh(name, g, (0.0, 0.0, 0.0))

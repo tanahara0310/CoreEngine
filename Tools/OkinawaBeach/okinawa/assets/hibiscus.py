@@ -188,8 +188,8 @@ class Canvas:
                 mk("rough", np.stack([self.r, one, one], -1)))
 
 
-def image_material(name, canvas, res, atlas_size, height_scale=0.003):
-    """Canvas の画像を Proc UV で読んでベイクする atlas マテリアル"""
+def image_material(name, canvas, res, atlas_size, height_scale=0.003, rough_floor=None):
+    """Canvas の画像を Proc UV で読んでベイクする atlas マテリアル。rough_floor を渡すと粗さをその値より下げない"""
     ic, iahc, ir = canvas.images(name)
 
     def fn(nb):
@@ -198,6 +198,8 @@ def image_material(name, canvas, res, atlas_size, height_scale=0.003):
         # 高さは Linear でないとバンプの微分が 0 になる
         ahc = nb.sep(nb.image(iahc, uv, interp="Linear", ext="CLIP")["Color"])
         rough = nb.sep(nb.image(ir, uv, interp="Closest", ext="CLIP")["Color"])[0]
+        if rough_floor is not None:
+            rough = nb.math("MAXIMUM", rough, rough_floor)
         return dict(color=col, alpha=ahc[0], height=ahc[1], height_scale=height_scale, rough=rough, cavity=ahc[2])
 
     return pbr_material(name, fn, res=res, uv="atlas", double_sided=True, atlas_size=atlas_size)

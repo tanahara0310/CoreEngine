@@ -89,73 +89,73 @@
 		{
 			"bufferView":0,
 			"componentType":5126,
-			"count":11584,
+			"count":12002,
 			"max":[
-				175.21682739257812,
+				177.28677368164062,
 				2.549999952316284,
-				384.1360168457031
+				377.85906982421875
 			],
 			"min":[
-				-55.15163803100586,
-				-0.8606709837913513,
-				-274.382080078125
+				-56.44135284423828,
+				-0.3161698877811432,
+				-273.5769348144531
 			],
 			"type":"VEC3"
 		},
 		{
 			"bufferView":1,
 			"componentType":5126,
-			"count":11584,
+			"count":12002,
 			"type":"VEC3"
 		},
 		{
 			"bufferView":2,
 			"componentType":5126,
-			"count":11584,
+			"count":12002,
 			"type":"VEC2"
 		},
 		{
 			"bufferView":3,
 			"componentType":5126,
-			"count":11584,
+			"count":12002,
 			"type":"VEC4"
 		},
 		{
 			"bufferView":4,
 			"componentType":5123,
-			"count":67014,
+			"count":69519,
 			"type":"SCALAR"
 		}
 	],
 	"bufferViews":[
 		{
 			"buffer":0,
-			"byteLength":139008,
+			"byteLength":144024,
 			"byteOffset":0,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":139008,
-			"byteOffset":139008,
+			"byteLength":144024,
+			"byteOffset":144024,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":92672,
-			"byteOffset":278016,
+			"byteLength":96016,
+			"byteOffset":288048,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":185344,
-			"byteOffset":370688,
+			"byteLength":192032,
+			"byteOffset":384064,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":134028,
-			"byteOffset":556032,
+			"byteLength":139038,
+			"byteOffset":576096,
 			"target":34963
 		}
 	],
@@ -167,7 +167,7 @@
 	],
 	"buffers":[
 		{
-			"byteLength":690060,
+			"byteLength":715136,
 			"uri":"ArahaTerrain_Lawn.bin"
 		}
 	]

@@ -89,73 +89,73 @@
 		{
 			"bufferView":0,
 			"componentType":5126,
-			"count":34890,
+			"count":36882,
 			"max":[
-				171.349365234375,
-				2.549999952316284,
-				747.930419921875
+				173.25193786621094,
+				-0.5,
+				748.1220092773438
 			],
 			"min":[
-				-237.7806854248047,
-				-3.2048490047454834,
-				-525.7109375
+				-236.4407958984375,
+				-3,
+				-525.7069091796875
 			],
 			"type":"VEC3"
 		},
 		{
 			"bufferView":1,
 			"componentType":5126,
-			"count":34890,
+			"count":36882,
 			"type":"VEC3"
 		},
 		{
 			"bufferView":2,
 			"componentType":5126,
-			"count":34890,
+			"count":36882,
 			"type":"VEC2"
 		},
 		{
 			"bufferView":3,
 			"componentType":5126,
-			"count":34890,
+			"count":36882,
 			"type":"VEC4"
 		},
 		{
 			"bufferView":4,
 			"componentType":5123,
-			"count":201726,
+			"count":213471,
 			"type":"SCALAR"
 		}
 	],
 	"bufferViews":[
 		{
 			"buffer":0,
-			"byteLength":418680,
+			"byteLength":442584,
 			"byteOffset":0,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":418680,
-			"byteOffset":418680,
+			"byteLength":442584,
+			"byteOffset":442584,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":279120,
-			"byteOffset":837360,
+			"byteLength":295056,
+			"byteOffset":885168,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":558240,
-			"byteOffset":1116480,
+			"byteLength":590112,
+			"byteOffset":1180224,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":403452,
-			"byteOffset":1674720,
+			"byteLength":426942,
+			"byteOffset":1770336,
 			"target":34963
 		}
 	],
@@ -167,7 +167,7 @@
 	],
 	"buffers":[
 		{
-			"byteLength":2078172,
+			"byteLength":2197280,
 			"uri":"ArahaTerrain_SandUnder.bin"
 		}
 	]

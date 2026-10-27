@@ -36,6 +36,8 @@ VERTEX_ANIMATION = "plant"
 
 UP = Vector((0, 0, 1))
 RES_SCALE = float(os.environ.get("OKI_RES_SCALE", "1"))
+# 葉の粗さの下限
+LEAF_ROUGH_MIN = 0.6
 CELLS = [(0.0, 0.0), (0.5, 0.0), (0.0, 0.5), (0.5, 0.5)]
 DARK = (0.5, 0.5)
 _MATS = {}
@@ -377,7 +379,7 @@ def _branchlet_atlas(name, sp, seed, card):
     draw_branchlets(cv, rnd, (0.0, 0.5, 0.5), dict(sp, n_side=max(2, sp["n_side"] - 2)), lift=1.12)
     draw_branchlets(cv, rnd, (0.5, 0.5, 0.5), sp, lift=0.6)
     cv.finish()
-    return image_material(name, cv, 2048, (card * 2, card * 2))
+    return image_material(name, cv, 2048, (card * 2, card * 2), rough_floor=LEAF_ROUGH_MIN)
 
 
 # --- 樹種ごとの葉 --------------------------------------------------------------
@@ -451,7 +453,8 @@ def kobateishi_leaf():
     draw_rosettes(cv, rnd, (0.0, 0.5, 0.5), sp, red=0.7)
     draw_rosettes(cv, rnd, (0.5, 0.5, 0.5), sp, lift=0.6, red=0.05)
     cv.finish()
-    return image_material("KobateishiLeaf", cv, 2048, (KOBATEISHI_CARD * 2, KOBATEISHI_CARD * 2))
+    return image_material("KobateishiLeaf", cv, 2048, (KOBATEISHI_CARD * 2, KOBATEISHI_CARD * 2),
+                          rough_floor=LEAF_ROUGH_MIN)
 
 
 def hououboku_leaf():
@@ -476,7 +479,8 @@ def hououboku_leaf():
     draw_flame_flowers(cv, rnd, (0.0, 0.5, 0.5), sp)
     draw_bipinnate(cv, rnd, (0.5, 0.5, 0.5), sp, lift=0.6)
     cv.finish()
-    return image_material("HououbokuLeaf", cv, 2048, (HOUOU_CARD * 2, HOUOU_CARD * 2))
+    return image_material("HououbokuLeaf", cv, 2048, (HOUOU_CARD * 2, HOUOU_CARD * 2),
+                          rough_floor=LEAF_ROUGH_MIN)
 
 
 SOTETSU_W = 0.62
@@ -518,7 +522,7 @@ def sotetsu_frond_material():
         o = nb.mix(o, srgb("#6a5a30"), nb.mul(nb.smooth(q, 0.6, 1.0), 0.6))
         col = nb.mix(g, o, old)
         col = nb.mix(col, nb.mix(srgb("#8a8a50"), srgb("#8a7a48"), old), rachis)
-        rough = nb.mixf(0.3, 0.6, old)
+        rough = nb.mixf(0.6, 0.78, old)
         height = nb.add(nb.mul(nb.sub(1.0, nb.math("DIVIDE", d, nb.math("MAXIMUM", nb.mul(width, 0.5), 0.001))),
                                leaf), nb.mul(rachis, 1.5))
         return dict(color=col, rough=rough, alpha=alpha, height=height, height_scale=0.003,
@@ -564,7 +568,7 @@ def bark_material(name, dark, base, light, crack="#3a3028", fiss=0.5, fiss_scale
             col = nb.mix(col, srgb("#b8b4a0"), nb.mul(li, lichen))
         z = nb.sep(nb.coord("Object"))[2]
         col = nb.mix(col, srgb("#5d5444"), nb.mul(nb.smooth(z, 0.35, 0.0), 0.5))
-        return dict(color=col, rough=rough, height=height, height_scale=0.012,
+        return dict(color=col, rough=rough, height=height, height_scale=0.022,
                     cavity=nb.maprange(cr, 0, 1, 1.0, 1.0 - 0.3 * fiss))
 
     return pbr_material(name, fn, res=res, ao_distance=0.6, uv="keep")

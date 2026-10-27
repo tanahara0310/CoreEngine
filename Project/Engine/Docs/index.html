@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.40.0">
+<meta name="engine-version" content="0.41.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2123,7 +2123,7 @@ kbd {
     <thead><tr><th>プロジェクト</th><th>中身</th></tr></thead>
     <tbody>
       <tr><td><span class="path">Projects/Sokoban</span></td><td>倉庫番。スクリプト 1 本（<span class="path">SokobanBoard.as</span>）とプレハブ 5 つだけで、文字で書いた盤面からステージを組み立てる小さな見本。ステージはインスペクタの <code>stages</code> に 1 行足せば増やせます。</td></tr>
-      <tr><td><span class="path">Projects/Sandbox</span></td><td>機能ごとの試験場（物理・キャラクターの歩行・UI・水面・カメラの揺れ・スクリプトのシューター・Shadertoy から移した海のシェーダ）。沖縄の海辺のシーンでは、待機・歩き・走りのアニメーションが付いた人型を操作できます（<a href="#tutorial-beach-player">沖縄の海辺をプレイヤーで歩く</a>）。実在のアラハビーチ（北谷町）を地図の形のとおりに作ったシーン <code>ArahaBeachScene</code> もあります（<a href="#changelog-v0-37-0">v0.37.0</a>。公園の施設と木は <a href="#changelog-v0-38-0">v0.38.0</a>、まわりの街は <a href="#changelog-v0-40-0">v0.40.0</a>）。</td></tr>
+      <tr><td><span class="path">Projects/Sandbox</span></td><td>機能ごとの試験場（物理・キャラクターの歩行・UI・水面・カメラの揺れ・スクリプトのシューター・Shadertoy から移した海のシェーダ）。沖縄の海辺のシーンでは、待機・歩き・走りのアニメーションが付いた人型を操作できます（<a href="#tutorial-beach-player">沖縄の海辺をプレイヤーで歩く</a>）。実在のアラハビーチ（北谷町）を地図の形のとおりに作ったシーン <code>ArahaBeachScene</code> もあります（<a href="#changelog-v0-37-0">v0.37.0</a>。公園の施設と木は <a href="#changelog-v0-38-0">v0.38.0</a>、まわりの街は <a href="#changelog-v0-40-0">v0.40.0</a>、質感は <a href="#changelog-v0-41-0">v0.41.0</a>）。</td></tr>
       <tr><td><span class="path">Projects/Sample2D</span></td><td>2D の横スクロールの見本。走る・跳ぶ・コインを集める・ゴールに着く、の 1 ステージに、クリックした所へ箱を落とす遊びを足したもの。スプライトのアニメ・平行投影のカメラの追従・遠景・剛体の軸の固定・トリガーを、スクリプト 6 本（プレイヤー・進行・コイン・ゴール・カメラの追従・遠景）で使っています。使っている機能は <a href="#guide-2d">2D ゲームの作り方</a> で説明しています。</td></tr>
       <tr><td><span class="path">Projects/Tsunagazaru</span></td><td>つながザルをえない。走り続けるトロッコの前にレールを敷いていくゲームで、C++ で作ったゲームをスクリプトだけで作り直した大きめの見本（タイトル・ゲーム・リザルトの 3 シーン）。シーンを切り替えるときのロード画面も、プロジェクトのシェーダで描いています（<a href="#settings-loading-screen">シーンを切り替えるときのロード画面</a>）。</td></tr>
       <tr><td><span class="path">Projects/Reprism</span></td><td>レプリズム。自機のまわりのブロックをハットに写し取って運び、置いた足場でゴールを目指すパズルアクションで、C++ で作ったゲームをスクリプトだけで作り直した見本（タイトル・ステージ選択・ゲームの 3 シーンと 13 ステージ）。ブロックやゴールの光り方はスプライトのマテリアル（<a href="#script-material">マテリアルとシェーダ</a>）、ネオン・走査線・画面の縁の光は<a href="#script-posteffect">プロジェクトのポストエフェクト</a>、ステージの切り替えはブロックに割れて落ちる遷移（<a href="#scenes-transition-effect">自分のシェーダで覆う</a>）で描いています。</td></tr>
@@ -9746,6 +9746,21 @@ python Tools/OkinawaBeach/bake_player_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-41-0">v0.41.0 <span class="dim">（2026-10-26）</span></h3>
+  <p>Sandbox の <code>ArahaBeachScene</code> の質感を、写真に近づけた版です。PBR の凹凸・粗さ・AO を使い、近くで見える大きな面はテクスチャの解像度も上げました。</p>
+  <ul>
+    <li><strong>地形の境目</strong>：砂浜・濡れた砂・水中の砂・芝生・街の地面の境目が、格子の四角に沿って階段状になっていたのを直しました。境目を通る四角は境目の線で切り分けるので、境目がなめらかな線になります。</li>
+    <li><strong>浜の外の海岸</strong>：突堤の外の海岸に、OpenStreetMap の海岸線に沿ってコンクリートの護岸を立てました（<code>ArahaTown_Seawall</code>）。壁には水の下の藻・フジツボの群れ・波しぶきで濡れた帯・塩の白い筋・黒い雨だれを描いています。護岸の前の海底は深くしました。今までは陸と海の高さが食い違って、水際がノコギリ状になっていました。</li>
+    <li><strong>砂浜</strong>：乾いた砂と濡れた砂のテクスチャを 4096 画素（1 cm あたり約 1 画素）にしました。乾いた砂は、色を少し落として濃淡を付け、踏み荒らした起伏・足跡のくぼみ・貝殻のかけらを描いています。濡れた砂は、暗く光る水の膜・波が引いた跡の筋・小さな穴を描いています。</li>
+    <li><strong>突堤の石</strong>：丸い玉石に見えていた石を、割れ面のある岩の形にしました。石灰岩の小さな穴と潮間帯のフジツボを足し、凹凸を 2.5 倍にしています。</li>
+    <li><strong>街の建物</strong>：外壁のテクスチャを 2048 画素（1 m あたり約 170 画素）にし、凹凸を実寸の高さから求めるようにしました。窓の庇・面格子・アルミサッシ・カーテン・室外機と配管・花ブロックを描き、黒カビの雨だれ・錆の筋・ひびと補修跡・塗装の剥がれで古さを出しています。屋上は伸縮目地・防水塗装の剥がれ・水たまりの跡・黒カビにしました。</li>
+    <li><strong>街の地面</strong>：公園の裏は 2048 画素にし、アスファルトの骨材の粒・継ぎはぎ・ひびと、駐車場の白線を描きました。</li>
+    <li><strong>公園の木とヤシ</strong>：葉の粗さを 0.6 以上にしました。下から見上げたとき、葉の板が空を強く映り込ませて白くぎらつかなくなります。幹と樹皮の凹凸も強めました（ヤシは CoconutPalm_* なので、OkinawaBeachScene のヤシも同じく変わります）。</li>
+    <li><strong>浜の護岸・沖の岩・東屋・野外ステージ</strong>：浜の護岸は凹凸を 3 倍にし、雨だれを濃くしました。沖の岩は上面を黒ずんだ石灰岩にし、細かい凹凸を足しています。バーベキュー場の幕には雨水の跡・黒カビ・砂ぼこりを描きました。野外ステージの芝の段と通路は 4096 画素にしています。</li>
+    <li><strong>公園の中の建物の重なり</strong>：地図の公園の中にある建物（トイレと東屋 2 つ）が、街の建物として公園の施設に重なって立っていたので、作らないようにしました。</li>
+    <li><strong>重さ</strong>：GPU 時間は v0.40.0 から増えていません。変更前と変更後のモデルを同じ時間帯に続けて測り、差が無いことを確かめました。シーンのテクスチャの総量は約 1.41 G 画素（VRAM 約 1.9GB）で、約 25% 増えました。</li>
+  </ul>
 
   <h3 id="changelog-v0-40-0">v0.40.0 <span class="dim">（2026-10-26）</span></h3>
   <p>Sandbox の <code>ArahaBeachScene</code> に、まわりの街と遠くの丘を足した版です。今までは公園の奥が平らな芝生で、少し先で地面が途切れていましたが、浜からも空からも、実際の北谷町の街並みと丘が見えるようになりました。モデルは <span class="path">Models/Okinawa</span> に入っています。</p>

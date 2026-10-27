@@ -93,11 +93,17 @@ def canvas_material():
         wv = nb.wave(co, 260.0, 0.0, 0.0, kind="BANDS", direction="X")
         n = nb.noise(co, 1.2, 4, 0.55)
         col = nb.mix(srgb("#dcdcd4"), srgb("#f2f2ee"), nb.smooth(n, 0.35, 0.7))
-        stain = nb.smooth(nb.noise(nb.mapping(co, scale=(1, 1, 2)), 2.5, 4, 0.6), 0.58, 0.72)
-        col = nb.mix(col, srgb("#a8a494"), nb.mul(stain, 0.35))
-        return dict(color=col, rough=0.8, height=nb.add(nb.mul(wv, 0.3), nb.mul(n, 0.4)), height_scale=0.0015)
+        stain = nb.smooth(nb.noise(nb.mapping(co, scale=(1, 1, 2)), 2.5, 4, 0.6), 0.55, 0.72)
+        col = nb.mix(col, srgb("#9c9886"), nb.mul(stain, 0.5))
+        # 雨水の流れた跡と、縁の黒カビ・砂ぼこり
+        run = nb.smooth(nb.noise(nb.mapping(co, scale=(9, 9, 0.7)), 1.5, 4, 0.6), 0.55, 0.7)
+        col = nb.mix(col, srgb("#7e7b6f"), nb.mul(run, 0.3))
+        mold = nb.smooth(nb.noise(co, 6.0, 5, 0.6), 0.62, 0.74)
+        col = nb.mix(col, srgb("#55574e"), nb.mul(mold, 0.35))
+        height = nb.add(nb.add(nb.mul(wv, 0.3), nb.mul(n, 0.4)), nb.mul(nb.noise(co, 40.0, 3, 0.6), 0.2))
+        return dict(color=col, rough=0.85, height=height, height_scale=0.003)
 
-    return pbr_material("ShelterCanvas", fn, res=512, double_sided=True, ao_distance=0.5)
+    return pbr_material("ShelterCanvas", fn, res=1024, double_sided=True, ao_distance=0.5)
 
 
 def floor_material():

@@ -126,16 +126,16 @@ def core_mesh(name, field, x0, x1, y0, y1, step=0.3, inset=0.35):
 # 石
 # ---------------------------------------------------------------------------
 def stone_library(rnd, count=10):
-    """丸みのある石の原形（長径 1 m）。平たい軸が Z"""
+    """割れ面のある石の原形（長径 1 m）。平たい軸が Z"""
     lib = []
     for k in range(count):
         off = Vector((rnd.uniform(-50, 50), rnd.uniform(-50, 50), rnd.uniform(-50, 50)))
         sx, sy, sz = 0.5, rnd.uniform(0.36, 0.48), rnd.uniform(0.26, 0.36)
         # 割れ面（平らな面）をいくつか作る平面
         planes = []
-        for _ in range(rnd.randint(4, 7)):
+        for _ in range(rnd.randint(6, 10)):
             n = Vector((rnd.gauss(0, 1), rnd.gauss(0, 1), rnd.gauss(0, 1))).normalized()
-            planes.append((n, rnd.uniform(0.62, 0.85)))
+            planes.append((n, rnd.uniform(0.55, 0.8)))
         bm = geo.icosphere_bm(3)
         for v in bm.verts:
             d = v.co.normalized()
@@ -146,12 +146,12 @@ def stone_library(rnd, count=10):
             for n, dist in planes:
                 h = q.dot(n)
                 if h > dist:
-                    q = q - n * (h - dist) * 0.85
-            nz = geo.fbm(d * 1.6 + off, 3) * 0.1 + geo.fbm(d * 4.0 + off, 2) * 0.025
+                    q = q - n * (h - dist) * 0.97
+            nz = geo.fbm(d * 1.6 + off, 3) * 0.1 + geo.fbm(d * 4.5 + off, 3) * 0.045 + geo.fbm(d * 11.0 + off, 2) * 0.014
             v.co = Vector((q.x * sx, q.y * sy, q.z * sz)) * (1.0 + nz)
         obj = C.from_bmesh(f"_stone{k}", bm)
-        geo.smooth_mod(obj, 0.5, 2)
-        geo.decimate(obj, target_tris=280)
+        geo.smooth_mod(obj, 0.3, 1)
+        geo.decimate(obj, target_tris=520)
         C.set_smooth(obj, True, angle=55)
         lib.append(obj)
     return lib
@@ -207,7 +207,7 @@ def place_stones(prefix, rnd, lib, field, pts):
 # 材質
 # ---------------------------------------------------------------------------
 def stone_material(name, res=2048):
-    """灰色の大石。上は日に焼けて明るく、潮の当たる下は黒ずみ、水中は藻"""
+    """灰色の大石。上は日に焼けて明るく、潮の当たる下は黒ずみ、水中は藻。石灰岩の小さな穴と潮間帯のフジツボ"""
     def fn(nb):
         co = nb.coord("Object")
         z = nb.sep(co)[2]
@@ -235,10 +235,22 @@ def stone_material(name, res=2048):
         # 白い塩と鳥のふん
         salt = nb.mul(nb.smooth(nb.noise(co, 8.0, 4, 0.6), 0.66, 0.74), nb.smooth(z, 0.8, 1.4))
         col = nb.mix(col, srgb("#dedbd2"), nb.mul(salt, 0.45))
+        # 石灰岩の溶けた小さな穴と、潮間帯のフジツボ
+        pit_d = nb.voronoi(nb.mapping(co, loc=(5, 2, 9)), 18.0)
+        pit_r = nb.sep(nb.voronoi(nb.mapping(co, loc=(5, 2, 9)), 18.0, out="Color"))[0]
+        pits = nb.mul(nb.smooth(pit_d, 0.22, 0.08), nb.math("GREATER_THAN", pit_r, 0.55))
+        col = nb.mix(col, srgb("#4a4945"), nb.mul(pits, 0.55))
+        barn_d = nb.voronoi(nb.mapping(co, loc=(1, 7, 3)), 90.0)
+        barn = nb.mul(nb.mul(nb.smooth(barn_d, 0.32, 0.18), nb.smooth(edge, 1.1, 0.7)), nb.smooth(edge, -0.2, 0.2))
+        barn = nb.mul(barn, nb.smooth(nb.noise(co, 3.0, 3, 0.6), 0.4, 0.6))
+        col = nb.mix(col, srgb("#cfc8b6"), nb.mul(barn, 0.8))
         wet = nb.smooth(edge, 0.9, 0.2)
-        rough = nb.mixf(nb.maprange(fine, 0.3, 0.7, 0.62, 0.85), 0.35, wet)
-        height = nb.add(nb.mul(mid, 0.4), nb.add(nb.mul(fine, 0.3), nb.mul(nb.smooth(speck, 0.12, 0.05), 0.1)))
-        return dict(color=col, rough=rough, height=height, height_scale=0.01)
+        rough = nb.mixf(nb.maprange(fine, 0.3, 0.7, 0.66, 0.9), 0.25, wet)
+        rough = nb.mixf(rough, 0.85, barn)
+        height = nb.add(nb.mul(mid, 0.45), nb.add(nb.mul(fine, 0.3), nb.mul(nb.smooth(speck, 0.12, 0.05), 0.1)))
+        height = nb.add(height, nb.add(nb.mul(pits, -0.5), nb.mul(barn, 0.35)))
+        return dict(color=col, rough=rough, height=height, height_scale=0.025,
+                    cavity=nb.maprange(pits, 0, 1, 1.0, 0.55))
 
     # UV の島を大きく分け、島どうしの余白を広げる
     return pbr_material(name, fn, res=res, ao_distance=1.2, ao_samples=48, uv_angle=70.0, uv_margin=0.012,

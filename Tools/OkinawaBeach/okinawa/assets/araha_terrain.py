@@ -29,48 +29,21 @@ SURFACES = ["SandDry", "SandWet", "SandUnder", "Seabed", "Lawn"]
 
 def build_meshes(field):
     P = AM.grid_points(field.m)
-    ns, nt, _ = P.shape
-    px, py = P[..., 0], P[..., 1]
-    region = field.classify(px, py)
-    Z = field.height(px, py, region)
-    # 法線は高さの式の勾配から
-    e = 0.25
-    hx = (field.height(px + e, py) - field.height(px - e, py)) / (2 * e)
-    hy = (field.height(px, py + e) - field.height(px, py - e)) / (2 * e)
-    nrm = np.stack([-hx, -hy, np.ones_like(hx)], -1)
-    nrm /= np.linalg.norm(nrm, axis=-1, keepdims=True)
-    # 四角形ごとの面の種類（中心の点で決める）
-    cx = (px[:-1, :-1] + px[1:, :-1] + px[1:, 1:] + px[:-1, 1:]) / 4
-    cy = (py[:-1, :-1] + py[1:, :-1] + py[1:, 1:] + py[:-1, 1:]) / 4
-    creg = field.classify(cx, cy)
-    cz = field.height(cx, cy, creg)
-    # 街の地面（公園の外）は build_araha_town.py が同じ格子で書き出すので、ここでは作らない
-    csurf = field.surface(creg, cz, cx, cy)
+    # 面の種類の境目を通る四角は境目の線で切り分ける。街の地面（5）は build_araha_town.py が同じ切り方で書き出す
+    parts = field.split_grid(P)
     out = {}
     for si, sname in enumerate(SURFACES):
-        mask = csurf == si
-        if not mask.any():
+        if si not in parts:
             continue
-        used = np.zeros((ns, nt), bool)
-        used[:-1, :-1] |= mask
-        used[1:, :-1] |= mask
-        used[1:, 1:] |= mask
-        used[:-1, 1:] |= mask
-        idx = -np.ones((ns, nt), int)
-        idx[used] = np.arange(used.sum())
-        verts = np.stack([px[used], py[used], Z[used]], -1)
-        ii, jj = np.nonzero(mask)
-        a = idx[ii, jj]
-        b = idx[ii + 1, jj]
-        c = idx[ii + 1, jj + 1]
-        d = idx[ii, jj + 1]
-        faces = np.stack([a, b, c, d], -1)
-        # 上を向く並びにそろえる（格子は s が北向き、t が海側向き）
-        e1 = verts[faces[0, 1]] - verts[faces[0, 0]]
-        e2 = verts[faces[0, 3]] - verts[faces[0, 0]]
-        if np.cross(e1, e2)[2] < 0:
-            faces = faces[:, ::-1]
-        obj = C.mesh_object(f"ArahaTerrain_{sname}", verts.tolist(), faces.tolist())
+        verts, tris = parts[si]
+        # 法線は高さの式の勾配から
+        e = 0.25
+        px, py = verts[:, 0], verts[:, 1]
+        hx = (field.height(px + e, py) - field.height(px - e, py)) / (2 * e)
+        hy = (field.height(px, py + e) - field.height(px, py - e)) / (2 * e)
+        nrm = np.stack([-hx, -hy, np.ones_like(hx)], -1)
+        nrm /= np.linalg.norm(nrm, axis=-1, keepdims=True)
+        obj = C.mesh_object(f"ArahaTerrain_{sname}", verts.tolist(), tris.tolist())
         me = obj.data
         layer = me.uv_layers.new(name="UVMap")
         lv = np.empty(len(me.loops), np.int32)
@@ -78,7 +51,7 @@ def build_meshes(field):
         layer.data.foreach_set("uv", (verts[lv, :2] / TILE).astype(np.float32).ravel())
         for p in me.polygons:
             p.use_smooth = True
-        me.normals_split_custom_set_from_vertices([tuple(v) for v in nrm[used]])
+        me.normals_split_custom_set_from_vertices([tuple(v) for v in nrm])
         me.update()
         out[sname] = obj
     return out
@@ -91,18 +64,82 @@ def tile_mesh(name):
     return TR._grid_mesh(name, lambda X, Y: np.zeros_like(X))
 
 
-def wet_material(name):
+def _trampled(nb, T):
+    """人に踏まれた砂の起伏: 足跡のくぼみ（縁が少し盛り上がる）と蹴られた小山。戻り値は (高さ [m], くぼみの濃さ)"""
+    zone = nb.smooth(T.noise(0.18, 3, 0.55, off=401.0), 0.38, 0.62)
+    d1 = T.voronoi(3.6, off=403.0)
+    d2 = T.voronoi(5.1, off=405.0)
+    r1 = nb.sep(T.voronoi(3.6, out="Color", off=403.0))[0]
+    r2 = nb.sep(T.voronoi(5.1, out="Color", off=405.0))[0]
+    # ボロノイの距離は Scale 倍した空間の単位（セル 1/3.6 m）。くぼみの半径はおよそ 10 cm
+    dent1 = nb.mul(nb.smooth(d1, 0.36, 0.12), nb.math("GREATER_THAN", r1, 0.4))
+    dent2 = nb.mul(nb.smooth(d2, 0.42, 0.14), nb.math("GREATER_THAN", r2, 0.55))
+    rim1 = nb.mul(nb.mul(nb.smooth(d1, 0.3, 0.42), nb.smooth(d1, 0.6, 0.44)), nb.math("GREATER_THAN", r1, 0.4))
+    dent = nb.mul(nb.math("MAXIMUM", dent1, dent2), zone)
+    lumps = nb.mul(nb.sub(T.noise(4.5, 4, 0.6, off=407.0), 0.5), zone)
+    height = nb.add(nb.add(nb.mul(dent, -0.02), nb.mul(nb.mul(rim1, zone), 0.006)), nb.mul(lumps, 0.014))
+    return height, dent
+
+
+def dry_material(name):
+    """乾いた白砂（共通の砂の模様に、色の濃淡・踏み荒らした起伏・足跡のくぼみを足す）"""
     def fn(nb):
         T = TR.Torus(nb)
         d = TR._dry_sand(nb, T)
-        col = nb.hsv(nb.mix(d["col"], srgb("#bfb39a"), 0.35), 0.5, 1.0, 0.68)
-        film = nb.smooth(T.noise(0.8, 3, 0.55, off=201.0), 0.45, 0.7)
-        col = nb.hsv(col, 0.5, 1.0, nb.maprange(film, 0, 1, 1.0, 0.9))
-        rough = nb.mixf(0.45, 0.3, film)
-        height = nb.mul(d["fine"], 0.002)
-        return dict(color=col, rough=rough, height=height, height_scale=1.0)
+        col = nb.hsv(d["col"], 0.5, 1.02, 0.9)
+        patch = T.noise(0.35, 4, 0.6, off=411.0)
+        col = nb.mix(col, srgb("#bcae92"), nb.mul(nb.smooth(patch, 0.5, 0.75), 0.22))
+        col = nb.hsv(col, 0.5, 1.0, nb.maprange(T.noise(2.2, 4, 0.6, off=413.0), 0.3, 0.7, 0.94, 1.04))
+        # 粒のざらつき（5〜7 mm の明暗）と、数 cm の貝殻・サンゴ片
+        grain = T.noise(150.0, 2, 0.6, off=417.0)
+        col = nb.hsv(col, 0.5, 1.0, nb.maprange(grain, 0.3, 0.7, 0.9, 1.1))
+        sd = T.voronoi(9.0, off=419.0)
+        sr = nb.sep(T.voronoi(9.0, out="Color", off=419.0))
+        shell = nb.mul(nb.smooth(sd, 0.22, 0.12), nb.math("GREATER_THAN", sr[0], 0.82))
+        col = nb.mix(col, nb.mix(srgb("#f4efe4"), srgb("#d9c7ae"), sr[1]), nb.mul(shell, 0.85))
+        th, dent = _trampled(nb, T)
+        col = nb.hsv(col, 0.5, 1.0, nb.maprange(dent, 0.0, 1.0, 1.0, 0.9))
+        height = nb.add(d["height"], th)
+        height = nb.add(height, nb.mul(nb.sub(T.noise(40.0, 3, 0.6, off=415.0), 0.5), 0.0015))
+        height = nb.add(height, nb.add(nb.mul(nb.sub(grain, 0.5), 0.0012), nb.mul(shell, 0.004)))
+        rough = nb.maprange(d["rough"], 0.7, 0.92, 0.8, 0.95)
+        cavity = nb.maprange(dent, 0.0, 1.0, 1.0, 0.8)
+        return dict(color=col, rough=rough, height=height, height_scale=1.0, cavity=cavity)
 
-    return pbr_material(name, fn, res=1024, uv="keep", ao_strength=0.0)
+    return pbr_material(name, fn, res=4096, uv="keep", ao_strength=0.0)
+
+
+def wet_material(name):
+    """濡れた砂（暗く、水の膜で光る。波が引いた跡の筋、空気の抜けた小さな穴）"""
+    def fn(nb):
+        T = TR.Torus(nb)
+        d = TR._dry_sand(nb, T)
+        col = nb.hsv(nb.mix(d["col"], srgb("#b3a78e"), 0.45), 0.5, 1.05, 0.62)
+        col = nb.hsv(col, 0.5, 1.0, nb.maprange(T.noise(0.6, 4, 0.6, off=421.0), 0.3, 0.7, 0.9, 1.07))
+        film = nb.smooth(T.noise(0.7, 3, 0.55, off=201.0), 0.42, 0.68)
+        col = nb.hsv(col, 0.5, 1.0, nb.maprange(film, 0, 1, 1.0, 0.88))
+        # 波が引いた跡（汀線に平行な南北の細い筋。整数波数で周期を保つ）
+        k = math.tau / TILE
+        warp = nb.add(nb.mul(T.noise(0.3, 3, 0.5, off=423.0), 9.0), nb.mul(T.noise(2.0, 2, 0.5, off=425.0), 0.9))
+        ph = nb.add(nb.add(nb.mul(T.x, 21 * k), nb.mul(T.y, 3 * k)), warp)
+        line = nb.smooth(nb.math("SINE", ph), 0.975, 1.0)
+        line = nb.mul(line, nb.smooth(T.noise(0.5, 2, 0.5, off=427.0), 0.35, 0.6))
+        col = nb.mix(col, srgb("#9c927b"), nb.mul(line, 0.25))
+        col = nb.mix(col, srgb("#e6dcc6"), nb.mul(d["white"], 0.4))
+        grain = T.noise(150.0, 2, 0.6, off=433.0)
+        col = nb.hsv(col, 0.5, 1.0, nb.maprange(grain, 0.3, 0.7, 0.93, 1.07))
+        holes = nb.mul(nb.smooth(T.voronoi(7.0, off=429.0), 0.025, 0.008),
+                       nb.math("GREATER_THAN", nb.sep(T.voronoi(7.0, out="Color", off=429.0))[0], 0.6))
+        col = nb.mix(col, srgb("#5d5444"), nb.mul(holes, 0.8))
+        height = nb.add(nb.mul(d["fine"], 0.0015), nb.mul(line, 0.0015))
+        height = nb.add(height, nb.mul(nb.sub(grain, 0.5), 0.0006))
+        height = nb.add(height, nb.mul(holes, -0.006))
+        height = nb.add(height, nb.mul(nb.sub(T.noise(30.0, 3, 0.6, off=431.0), 0.5), 0.001))
+        rough = nb.mixf(0.34, 0.07, film)
+        return dict(color=col, rough=rough, height=height, height_scale=1.0,
+                    cavity=nb.maprange(holes, 0, 1, 1.0, 0.6))
+
+    return pbr_material(name, fn, res=4096, uv="keep", ao_strength=0.0)
 
 
 def under_material(name, deep):
@@ -134,7 +171,7 @@ def under_material(name, deep):
             rough = 0.75
         return dict(color=col, rough=rough, height=height, height_scale=1.0)
 
-    return pbr_material(name, fn, res=1024, uv="keep", ao_strength=0.0)
+    return pbr_material(name, fn, res=2048, uv="keep", ao_strength=0.0)
 
 
 def lawn_material(name):
@@ -164,7 +201,7 @@ def lawn_material(name):
 
 
 MATERIALS = {
-    "SandDry": lambda: TR.sand_material("ArahaSandDry", False),
+    "SandDry": lambda: dry_material("ArahaSandDry"),
     "SandWet": lambda: wet_material("ArahaSandWet"),
     "SandUnder": lambda: under_material("ArahaSandUnder", False),
     "Seabed": lambda: under_material("ArahaSeabed", True),
@@ -205,7 +242,10 @@ PREVIEW = dict(extra=_preview_extra)
 
 def build():
     out = {}
+    only = [v for v in os.environ.get("OKI_ONLY", "").split(",") if v]
     for s in SURFACES:
+        if only and s not in only:
+            continue
         t = tile_mesh(f"ArahaTerrain_{s}_tile")
         C.assign(t, MATERIALS[s]())
         out[f"ArahaTerrain_{s}"] = [t]
