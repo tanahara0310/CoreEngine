@@ -180,6 +180,8 @@ def my_material():
 - `fetch_araha_town.py`（Blender 不要）: まわりの街（約 5.7 km × 8 km）の建物・道路・土地の使い方・海岸線を OpenStreetMap から、標高を国土地理院の標高タイル（DEM10B）から取り、`data/araha_town.json` と `data/araha_dem.npz`（10 m 格子）に書く。標高は国土地理院の標高タイルを加工したもの
 - `build_araha_town.py`（Blender 不要）: まわりの街のモデルを書き出す（下の「まわりの街」）
 - `export_araha_scene.py`（Blender 不要）: Sandbox の `ArahaBeachScene` を書き出す。護岸は地図の浜の陸側の縁に 8 m ずつ、突堤は両端の鉤の形に合わせて直線＋先端、沖の岩・浮き桟橋・ネット・ヤシ並木・海賊船の遊具などを置く。公園の施設は `araha_map.PARK_FACILITIES` の位置と向き（航空写真と地図で合わせた）に置き、木は航空写真で見た植栽の区域ごとに間隔を空けて散らす（園路・施設・遊歩道を避ける）。太陽・水面・見た目の設定は OkinawaBeachScene のものを使う。まわりの街（`ArahaTown_Ground` と `ArahaTown_Block_*`）はシーンの最後に原点へ置く
+  その後ろにプレイヤー（OkinawaBeachScene の Player・PlayerModel が雛形）・Explorer と操作の表示・設定の画面の UI を置き、MainCamera に広域カメラ（`ArahaFlyCamera`）を付ける。`PlayerColliders.json` は書き出し直しても残す
+- `bake_araha_walk.py`（Blender 不要）: `ArahaBeachScene` をプレイヤーが歩くためのデータを作る。浜と公園の高さの表（1 m 格子）・街の高さの表（4 m 格子）・街の建物の輪郭（`build_araha_town.town_buildings` と同じ建物）を `Data/ArahaBeach` へ、物の箱を `PlayerColliders.json` へ書く。`export_araha_scene.py` の後に流す
 
 #### まわりの街（C 群）
 

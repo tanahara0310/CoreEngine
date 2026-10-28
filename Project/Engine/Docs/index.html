@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.41.0">
+<meta name="engine-version" content="0.42.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2123,7 +2123,7 @@ kbd {
     <thead><tr><th>プロジェクト</th><th>中身</th></tr></thead>
     <tbody>
       <tr><td><span class="path">Projects/Sokoban</span></td><td>倉庫番。スクリプト 1 本（<span class="path">SokobanBoard.as</span>）とプレハブ 5 つだけで、文字で書いた盤面からステージを組み立てる小さな見本。ステージはインスペクタの <code>stages</code> に 1 行足せば増やせます。</td></tr>
-      <tr><td><span class="path">Projects/Sandbox</span></td><td>機能ごとの試験場（物理・キャラクターの歩行・UI・水面・カメラの揺れ・スクリプトのシューター・Shadertoy から移した海のシェーダ）。沖縄の海辺のシーンでは、待機・歩き・走りのアニメーションが付いた人型を操作できます（<a href="#tutorial-beach-player">沖縄の海辺をプレイヤーで歩く</a>）。実在のアラハビーチ（北谷町）を地図の形のとおりに作ったシーン <code>ArahaBeachScene</code> もあります（<a href="#changelog-v0-37-0">v0.37.0</a>。公園の施設と木は <a href="#changelog-v0-38-0">v0.38.0</a>、まわりの街は <a href="#changelog-v0-40-0">v0.40.0</a>、質感は <a href="#changelog-v0-41-0">v0.41.0</a>）。</td></tr>
+      <tr><td><span class="path">Projects/Sandbox</span></td><td>機能ごとの試験場（物理・キャラクターの歩行・UI・水面・カメラの揺れ・スクリプトのシューター・Shadertoy から移した海のシェーダ）。沖縄の海辺のシーンでは、待機・歩き・走りのアニメーションが付いた人型を操作できます（<a href="#tutorial-beach-player">沖縄の海辺をプレイヤーで歩く</a>）。実在のアラハビーチ（北谷町）を地図の形のとおりに作ったシーン <code>ArahaBeachScene</code> もあります（<a href="#changelog-v0-37-0">v0.37.0</a>。公園の施設と木は <a href="#changelog-v0-38-0">v0.38.0</a>、まわりの街は <a href="#changelog-v0-40-0">v0.40.0</a>、質感は <a href="#changelog-v0-41-0">v0.41.0</a>）。プレイヤーで歩き回り、広域カメラで見渡せます（<a href="#beach-player-araha">アラハビーチを歩き回る・見渡す</a>）。</td></tr>
       <tr><td><span class="path">Projects/Sample2D</span></td><td>2D の横スクロールの見本。走る・跳ぶ・コインを集める・ゴールに着く、の 1 ステージに、クリックした所へ箱を落とす遊びを足したもの。スプライトのアニメ・平行投影のカメラの追従・遠景・剛体の軸の固定・トリガーを、スクリプト 6 本（プレイヤー・進行・コイン・ゴール・カメラの追従・遠景）で使っています。使っている機能は <a href="#guide-2d">2D ゲームの作り方</a> で説明しています。</td></tr>
       <tr><td><span class="path">Projects/Tsunagazaru</span></td><td>つながザルをえない。走り続けるトロッコの前にレールを敷いていくゲームで、C++ で作ったゲームをスクリプトだけで作り直した大きめの見本（タイトル・ゲーム・リザルトの 3 シーン）。シーンを切り替えるときのロード画面も、プロジェクトのシェーダで描いています（<a href="#settings-loading-screen">シーンを切り替えるときのロード画面</a>）。</td></tr>
       <tr><td><span class="path">Projects/Reprism</span></td><td>レプリズム。自機のまわりのブロックをハットに写し取って運び、置いた足場でゴールを目指すパズルアクションで、C++ で作ったゲームをスクリプトだけで作り直した見本（タイトル・ステージ選択・ゲームの 3 シーンと 13 ステージ）。ブロックやゴールの光り方はスプライトのマテリアル（<a href="#script-material">マテリアルとシェーダ</a>）、ネオン・走査線・画面の縁の光は<a href="#script-posteffect">プロジェクトのポストエフェクト</a>、ステージの切り替えはブロックに割れて落ちる遷移（<a href="#scenes-transition-effect">自分のシェーダで覆う</a>）で描いています。</td></tr>
@@ -9141,6 +9141,50 @@ blender -b Tools/XBot/XBot.blend --python Tools/XBot/render_sheet.py -- 出力�
 python Tools/OkinawaBeach/bake_player_walk.py
   </script>
   <p>X Bot は元から Mixamo の骨（<code>mixamorig:</code> で始まる 65 本）と皮膚の重みを持っているので、骨はそのまま使っています。別の Mixamo のキャラクターでも、骨の名前が同じなら同じスクリプトでアニメーションを付けられます。</p>
+
+  <h2 id="beach-player-araha">アラハビーチを歩き回る・見渡す</h2>
+  <p><code>ArahaBeachScene</code> にも同じプレイヤーがいます（スクリプトは同じ <code>BeachPlayer</code>）。まわりの街まで入れると東西 3km・南北 4km あるので、上空を飛んで見渡す広域カメラへ切り替えられ、速さなどは画面の設定から変えられます。どちらも UI の部品で作ってあるので、書き出したゲーム（Release）でも使えます。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>操作</th><th>キーボード・マウス</th><th>コントローラー</th></tr></thead>
+    <tbody>
+      <tr><td>プレイヤー視点と広域カメラの切り替え</td><td><kbd>Tab</kbd></td><td>Y</td></tr>
+      <tr><td>設定の画面を開く・閉じる</td><td><kbd>Esc</kbd> か左上の「設定を開く」</td><td>メニューボタン（閉じるのは B でも）</td></tr>
+      <tr><td>移動</td><td>WASD</td><td>左スティック</td></tr>
+      <tr><td>走る（広域カメラでは速く動く）</td><td>左 <kbd>Shift</kbd></td><td>左スティックの押し込み</td></tr>
+      <tr><td>カメラを回す・向きを変える</td><td>矢印キー・右ドラッグ</td><td>右スティック</td></tr>
+      <tr><td>ホイール</td><td>プレイヤー視点はカメラの距離、広域カメラは進む速さ</td><td>—</td></tr>
+      <tr><td>上昇・下降（広域カメラ）</td><td><kbd>E</kbd>・<kbd>Q</kbd></td><td>RT・LT</td></tr>
+      <tr><td>カメラの真下へプレイヤーを降ろす（広域カメラ。真下が建物や海なら 40m 以内の近くの地面へ）</td><td><kbd>F</kbd></td><td>X</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>画面の左上には、今の視点の操作の一覧と、速さ（広域カメラでは地面からの高さ）が出ます。コントローラーがつながっていればコントローラーの一覧、つながっていなければキーボード・マウスの一覧です。抜き差しするとその場で切り替わります。</p>
+  <p>設定の画面（右上）は視点ごとに項目が変わります。プレイヤー視点は歩く速さ・走る速さ、広域カメラは進む速さ・速くするときの倍率・上昇・下降の速さ・向きを変える速さ・視野角です。マウスはつまみをドラッグ、コントローラーは上下で項目を選び左右で値を変えます。変えた値は <span class="path">Application/Saved/ArahaExplore.json</span> に残り、次に開いたときも同じ値で始まります。「既定に戻す」でシーンに書いた値へ戻ります。</p>
+  <div class="callout warn" data-title="速さを変えると足が滑って見える"><p>アニメーターには再生の速さが無いので、クリップは歩き 1.4m/s・走り 3.5m/s の歩幅のままです。速さを上げると、そのぶん足が地面を滑って見えます。</p></div>
+  <p>足元と当たりは沖縄の海辺と同じ作り（高さの表＋静的な箱）で、街の広さに合わせて表を 2 つに分け、建物は輪郭で当てています。</p>
+  <ul>
+    <li><strong>浜と公園の表</strong>：<span class="path">Data/ArahaBeach/ArahaGround.json</span>。1m 格子で、地形・園路・護岸と階段・突堤・浮き桟橋の床の高い方を持ちます（手すりは床にしません）。</li>
+    <li><strong>街の表</strong>：<span class="path">ArahaGroundWide.json</span>。4m 格子で、街の地面と海岸の護岸を持ちます。浜と公園の表の外ではこちらを引きます（<code>wideGroundData</code>）。</li>
+    <li><strong>建物</strong>：<span class="path">ArahaBuildings.json</span>。街の建物の輪郭（OpenStreetMap）を 32m の区画ごとに持ち、輪郭から 0.35m（<code>blockerRadius</code>）より近くへは進みません（<code>blockerData</code>）。屋根だけの建物は柱だけを当てます。</li>
+    <li><strong>物</strong>：<code>PlayerColliders</code> の箱。木の幹と根・街灯・ベンチ・東屋の柱・遊具などです。背の高い木の葉は箱にしないので、木の下はくぐれます。</li>
+  </ul>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>オブジェクト</th><th>中身</th></tr></thead>
+    <tbody>
+      <tr><td>Player・PlayerModel</td><td>沖縄の海辺のものと同じ。<code>BeachPlayer</code> の表と建物の輪郭だけアラハのものにしてある</td></tr>
+      <tr><td>MainCamera</td><td><code>ArahaFlyCamera</code>（アラハビーチ：広域カメラ）。広域カメラの間だけこのカメラを動かす。プレイヤー視点では <code>BeachPlayer</code> が動かす</td></tr>
+      <tr><td>Explorer</td><td><code>ArahaExplorer</code>（アラハビーチ：探索の操作と表示）。視点の切り替え・左上の一覧・設定の画面を受け持つ</td></tr>
+      <tr><td>Explore で始まる UI</td><td>左上の一覧と設定の画面の部品。<code>ArahaExplorer</code> が名前で探し、文と項目の数に合わせて位置と大きさを置き直す</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>視点の切り替えなどは、Sandbox の <span class="path">InputActions.json</span> に足した入力アクション <code>SwitchView</code>・<code>MoveUp</code>・<code>MoveDown</code>・<code>PlacePlayer</code> です。設定の画面は <code>Pause</code>（<kbd>Esc</kbd>・メニューボタン）で開きます。シーンを書き出し直したら、表と箱も作り直します。</p>
+  <script type="text/x-code" data-lang="text" data-file="コマンド（リポジトリの根で）">
+python Tools/OkinawaBeach/export_araha_scene.py
+python Tools/OkinawaBeach/bake_araha_walk.py
+  </script>
 </article>
 <article class="page" id="recipes" data-group="困ったとき・資料" data-title="レシピ集（よくある処理の書き方）" data-nav="レシピ集" data-keywords="レシピ サンプル コード 書き方 したい タイマー 一定間隔 遅らせる 向く 追いかける 点滅 無敵 ポーズ 一時停止 ハイスコア 保存 ランダム 乱数 ゼロ埋め 振動 マウス 視点 ゆっくり 近づける 画面外 消す">
   <h1>レシピ集</h1>
@@ -9830,6 +9874,18 @@ python Tools/OkinawaBeach/bake_player_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-42-0">v0.42.0 <span class="dim">（2026-10-28）</span></h3>
+  <p>Sandbox の <code>ArahaBeachScene</code> を、人型のプレイヤーで歩き回り、広域カメラで見渡せるようにした版です（<a href="#beach-player-araha">アラハビーチを歩き回る・見渡す</a>）。</p>
+  <ul>
+    <li><strong>プレイヤー</strong>：沖縄の海辺と同じ X Bot とスクリプト <code>BeachPlayer</code> を置きました。<code>BeachPlayer</code> は、細かい表の外で引く広い高さの表（<code>wideGroundData</code>）と、中へ入らない建物の輪郭（<code>blockerData</code>）を持てるようにしました。どちらも空なら今までどおりなので、<code>OkinawaBeachScene</code> の動きは変わりません。</li>
+    <li><strong>当たり</strong>：浜と公園は 1m 格子・街は 4m 格子の高さの表、街の建物 2,240 棟の輪郭、木の幹と根・街灯・ベンチ・東屋の柱などの箱 877 個を、<span class="path">Tools/OkinawaBeach/bake_araha_walk.py</span> で作ります。</li>
+    <li><strong>広域カメラ</strong>：スクリプト <code>ArahaFlyCamera</code> で、上空を水平に飛び、上昇・下降できるカメラです。地面と水面より下へは潜りません。カメラの真下へプレイヤーを降ろせます（真下が建物の中や海なら、40m 以内で立てる所を探します）。</li>
+    <li><strong>操作の表示と設定の画面</strong>：スクリプト <code>ArahaExplorer</code> が、左上に今の視点の操作の一覧（コントローラーがつながっていればコントローラーの一覧）を出し、右上の設定の画面でプレイヤーと広域カメラの速さなどを変えられるようにします。UI の部品で作ってあるので、書き出したゲームでも使えます。</li>
+    <li><strong>入力アクション</strong>：Sandbox の <span class="path">InputActions.json</span> に <code>SwitchView</code>（<kbd>Tab</kbd>・Y）・<code>MoveUp</code>（<kbd>E</kbd>・RT）・<code>MoveDown</code>（<kbd>Q</kbd>・LT）・<code>PlacePlayer</code>（<kbd>F</kbd>・X）を足しました。</li>
+    <li><strong>DataFile・SaveFile の配列の読み込み</strong>：<code>GetIntArray</code>・<code>GetFloatArray</code>・<code>GetStringArray</code> が、1 要素足すたびに配列を丁度の大きさへ取り直してコピーしていたので、手間が要素の数の 2 乗に比例していました。街の高さの表（約 79 万個）では、読み込みで数分止まります。先に要素の数だけ取ってから足すようにしました。</li>
+    <li><strong>当たりの総当たり</strong>：コライダーの組み合わせを総当たりで探す処理（既定の <code>r.Collision.BroadPhase</code> = 0）で、静止したもの同士の組み合わせを 1 つずつ数えずに飛ばすようにしました。静止したものには動くものだけを当てるので、手間は「動くものの数 × 全体の数」になります。箱が 877 個・動くものが 1 個のアラハでは、1 フレームに調べる組み合わせが約 38 万から 877 になります。見つかる組み合わせとその順番は変わりません。</li>
+  </ul>
 
   <h3 id="changelog-v0-41-0">v0.41.0 <span class="dim">（2026-10-26）</span></h3>
   <p>Sandbox の <code>ArahaBeachScene</code> の質感を、写真に近づけた版です。PBR の凹凸・粗さ・AO を使い、近くで見える大きな面はテクスチャの解像度も上げました。</p>

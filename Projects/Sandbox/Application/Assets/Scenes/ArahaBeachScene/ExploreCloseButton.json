@@ -1,0 +1,73 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchor": 2,
+                "anchoredPosition": [
+                    -40.0,
+                    32.0
+                ],
+                "pivot": [
+                    1.0,
+                    0.0
+                ],
+                "rotation": 0.0,
+                "size": [
+                    120.0,
+                    44.0
+                ],
+                "sortOrder": 112
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    0.019382361,
+                    0.09758735,
+                    0.2541521,
+                    0.95
+                ],
+                "texture": null
+            },
+            "type": "UIImage"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "disabledColor": [
+                    0.10224173,
+                    0.10224173,
+                    0.10224173,
+                    0.6
+                ],
+                "hoveredColor": [
+                    0.04231141,
+                    0.18782078,
+                    0.4677838,
+                    1.0
+                ],
+                "interactable": true,
+                "normalColor": [
+                    0.019382361,
+                    0.09758735,
+                    0.2541521,
+                    0.95
+                ],
+                "pressedColor": [
+                    0.009134059,
+                    0.04231141,
+                    0.122138776,
+                    1.0
+                ]
+            },
+            "type": "UIButton"
+        }
+    ],
+    "id": "f845551453cd66f4",
+    "name": "ExploreCloseButton",
+    "order": 693
+}

@@ -1,0 +1,87 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchor": 2,
+                "anchoredPosition": [
+                    -592.0,
+                    334.0
+                ],
+                "pivot": [
+                    0.0,
+                    0.0
+                ],
+                "rotation": 0.0,
+                "size": [
+                    552.0,
+                    18.0
+                ],
+                "sortOrder": 111
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    0.04231141,
+                    0.054480277,
+                    0.07618538,
+                    1.0
+                ],
+                "texture": null
+            },
+            "type": "UIImage"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "direction": 0,
+                "disabledColor": [
+                    0.15592647,
+                    0.15592647,
+                    0.15592647,
+                    0.6
+                ],
+                "fill": {
+                    "comp": "RectTransform",
+                    "ref": "1c503f256655246e"
+                },
+                "handle": {
+                    "comp": "RectTransform",
+                    "ref": "a48d74ab172c8dc7"
+                },
+                "hoveredColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "interactable": true,
+                "maxValue": 1.0,
+                "minValue": 0.0,
+                "navigationStep": 0.02,
+                "normalColor": [
+                    0.80695224,
+                    0.8549926,
+                    0.91309863,
+                    1.0
+                ],
+                "pressedColor": [
+                    0.40197778,
+                    0.61049557,
+                    0.8713671,
+                    1.0
+                ],
+                "value": 0.5,
+                "wholeNumbers": false
+            },
+            "type": "UISlider"
+        }
+    ],
+    "id": "1abd777893cf9e2a",
+    "name": "ExploreRowSlider3",
+    "order": 712
+}

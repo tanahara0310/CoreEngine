@@ -33,6 +33,25 @@
                 "projection": 0
             },
             "type": "Camera"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "boostMultiplier": 4.0,
+                "climbSpeed": 20.0,
+                "fieldOfView": 60.0,
+                "lookSensitivity": 1.0,
+                "maxHeight": 2000.0,
+                "minClearance": 2.0,
+                "mouseSensitivity": 0.004,
+                "moveSpeed": 30.0,
+                "player": {
+                    "ref": "333dc56ddffd8ea0"
+                },
+                "smoothing": 0.2,
+                "turnSpeed": 1.6
+            },
+            "type": "ArahaFlyCamera"
         }
     ],
     "id": "5134b2c6ef0d2a47",

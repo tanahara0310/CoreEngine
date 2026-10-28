@@ -1,0 +1,53 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchor": 2,
+                "anchoredPosition": [
+                    -372.0,
+                    434.0
+                ],
+                "pivot": [
+                    0.0,
+                    0.0
+                ],
+                "rotation": 0.0,
+                "sortOrder": 114
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "alignH": 0,
+                "alignV": 0,
+                "color": [
+                    0.73046076,
+                    0.7758222,
+                    0.838799,
+                    1.0
+                ],
+                "fieldAutoFit": true,
+                "font": "Default",
+                "fontSize": 18.0,
+                "lineSpacing": 1.25,
+                "outlineColor": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "outlineWidth": 0.0,
+                "text": "",
+                "weight": 0.0,
+                "wrapWidth": 0.0
+            },
+            "type": "UIText"
+        }
+    ],
+    "id": "6a7ccf82ad9a4bc4",
+    "name": "ExploreSettingsHint",
+    "order": 722
+}

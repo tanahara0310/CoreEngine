@@ -1,0 +1,45 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "flyCamera": {
+                    "ref": "5134b2c6ef0d2a47"
+                },
+                "messageSeconds": 3.0,
+                "placeSearchRadius": 40.0,
+                "player": {
+                    "ref": "333dc56ddffd8ea0"
+                },
+                "saveFile": "ArahaExplore.json"
+            },
+            "type": "ArahaExplorer"
+        }
+    ],
+    "id": "2c9893e0d072260a",
+    "name": "Explorer",
+    "order": 723
+}

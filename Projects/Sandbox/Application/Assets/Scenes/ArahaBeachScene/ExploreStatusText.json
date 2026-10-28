@@ -1,0 +1,53 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchor": 0,
+                "anchoredPosition": [
+                    32.0,
+                    240.0
+                ],
+                "pivot": [
+                    0.0,
+                    0.0
+                ],
+                "rotation": 0.0,
+                "sortOrder": 101
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "alignH": 0,
+                "alignV": 0,
+                "color": [
+                    0.5149177,
+                    0.7605245,
+                    1.0,
+                    1.0
+                ],
+                "fieldAutoFit": true,
+                "font": "Default",
+                "fontSize": 20.0,
+                "lineSpacing": 1.25,
+                "outlineColor": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "outlineWidth": 0.0,
+                "text": "",
+                "weight": 0.0,
+                "wrapWidth": 0.0
+            },
+            "type": "UIText"
+        }
+    ],
+    "id": "feecb4d53bcc2d35",
+    "name": "ExploreStatusText",
+    "order": 688
+}

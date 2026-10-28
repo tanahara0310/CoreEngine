@@ -2,6 +2,7 @@ using namespace CoreEngine;
 
 // 沖縄の砂浜を歩き回るプレイヤー
 // 足元は高さの表に合わせ、物との当たりはキャラクタコントローラで解く。カメラは後ろから追う
+// 広い表と建物の輪郭を渡すと、細かい表の外ではそちらを引き、輪郭の中へは入らない
 [DisplayName("沖縄の砂浜：プレイヤー")]
 class BeachPlayer : ScriptComponent
 {
@@ -14,10 +15,19 @@ class BeachPlayer : ScriptComponent
     [Asset("Json")] [Tooltip("歩ける地面の高さの表（Tools/OkinawaBeach/bake_player_walk.py が書き出す）")]
     string groundData = "Application/Assets/Data/OkinawaBeach/BeachGround.json";
 
-    [Range(0.5f, 4.0f)] [Tooltip("歩く速さ m/s（Walk のクリップの歩幅に合わせてある）")]
+    [Asset("Json")] [Tooltip("groundData の外で引く、広い範囲の高さの表（無ければ空）")]
+    string wideGroundData = "";
+
+    [Asset("Json")] [Tooltip("中へ入らない建物の輪郭（無ければ空）")]
+    string blockerData = "";
+
+    [Range(0.1f, 1.0f)] [Tooltip("建物の輪郭から離れている距離 m")]
+    float blockerRadius = 0.35f;
+
+    [Range(0.5f, 30.0f)] [Tooltip("歩く速さ m/s（1.4 で Walk のクリップの歩幅に合う）")]
     float walkSpeed = 1.4f;
 
-    [Range(1.0f, 8.0f)] [Tooltip("走る速さ m/s（Run のクリップの歩幅に合わせてある）")]
+    [Range(1.0f, 80.0f)] [Tooltip("走る速さ m/s（3.5 で Run のクリップの歩幅に合う）")]
     float runSpeed = 3.5f;
 
     [Range(1.0f, 40.0f)] [Tooltip("速さが変わるときの加速度 m/s²")]
@@ -56,13 +66,9 @@ class BeachPlayer : ScriptComponent
     private CharacterController@ controller_;
     private Animator@ animator_;
 
-    private array<int>@ heights_;
-    private float originX_ = 0.0f;
-    private float originZ_ = 0.0f;
-    private float cell_ = 0.5f;
-    private int countX_ = 0;
-    private int countZ_ = 0;
-    private int noGround_ = -9999;
+    private GroundGrid ground_;
+    private GroundGrid wideGround_;
+    private FootprintGrid blockers_;
 
     private Vector3 moveDirection_ = Vector3(0.0f, 0.0f, 1.0f);
     private float speed_ = 0.0f;
@@ -71,6 +77,7 @@ class BeachPlayer : ScriptComponent
     private float cameraYaw_ = 0.0f;
     private float cameraPitch_ = 0.3f;
     private string clip_ = "Idle";
+    private bool controlled_ = true;
 
     void Start()
     {
@@ -85,16 +92,61 @@ class BeachPlayer : ScriptComponent
         if (dt <= 0.0f) {
             return;
         }
-        TurnCamera(dt);
+        if (controlled_) {
+            TurnCamera(dt);
+        }
         Walk(dt);
         UpdateClip();
-        PlaceCamera();
+        if (controlled_) {
+            PlaceCamera();
+        }
     }
 
     void OnScriptReloaded()
     {
         Connect();
         LoadGround();
+    }
+
+    // ===== ほかのスクリプトから使う =====
+
+    // 入力で動かし、カメラを追わせるか（false の間は止まって待つ）
+    void SetControlled(bool on)
+    {
+        controlled_ = on;
+    }
+
+    bool IsControlled() const
+    {
+        return controlled_;
+    }
+
+    // 実際に進んでいる速さ m/s
+    float GetSpeed() const
+    {
+        return actualSpeed_;
+    }
+
+    // 足元の高さの表を引く（表の外と地面の無い所は false）
+    bool GroundHeight(float x, float z, float &out height)
+    {
+        return GroundAt(x, z, height);
+    }
+
+    // (x, z) へ立たせて facing の向きにする。立てない所なら何もせず false
+    bool PlaceAt(float x, float z, float facing)
+    {
+        float ground;
+        if (!GroundAt(x, z, ground) || ground < -maxWaterDepth || blockers_.Overlaps(x, z, blockerRadius)) {
+            return false;
+        }
+        owner.transform.position = Vector3(x, ground + footOffset, z);
+        speed_ = 0.0f;
+        actualSpeed_ = 0.0f;
+        yaw_ = facing;
+        cameraYaw_ = facing;
+        owner.transform.rotation = Vector3(0.0f, yaw_, 0.0f);
+        return true;
     }
 
     // コントローラとアニメーターを引き、向きと再生中のクリップを今の状態から取る
@@ -129,56 +181,30 @@ class BeachPlayer : ScriptComponent
 
     private void LoadGround()
     {
-        @heights_ = null;
-        DataFile@ file = DataFile(groundData);
-        if (!file.exists) {
-            Warn("BeachPlayer: 地面の高さの表 " + groundData + " がありません");
-            return;
+        string problem;
+        if (!ground_.Load(groundData, problem)) {
+            Warn("BeachPlayer: " + problem);
         }
-        originX_ = file.GetFloat("originX");
-        originZ_ = file.GetFloat("originZ");
-        cell_ = file.GetFloat("cell", 0.5f);
-        countX_ = file.GetInt("countX");
-        countZ_ = file.GetInt("countZ");
-        noGround_ = file.GetInt("noGround", -9999);
-        array<int>@ heights = file.GetIntArray("heights");
-        if (heights is null || int(heights.length()) != countX_ * countZ_ || cell_ <= 0.0f) {
-            Warn("BeachPlayer: 地面の高さの表の大きさが合いません");
-            return;
+        wideGround_.Clear();
+        if (wideGroundData != "" && !wideGround_.Load(wideGroundData, problem)) {
+            Warn("BeachPlayer: " + problem);
         }
-        @heights_ = heights;
+        blockers_.Clear();
+        if (blockerData != "" && !blockers_.Load(blockerData, problem)) {
+            Warn("BeachPlayer: " + problem);
+        }
     }
 
-    // 表を双一次で引く（表の外と地面の無い所は false）
+    // 細かい表を引き、その外なら広い表を引く（どちらにも無い所は false）
     private bool GroundAt(float x, float z, float &out height)
     {
-        height = 0.0f;
-        if (heights_ is null) {
-            return false;
+        if (ground_.Sample(x, z, height)) {
+            return true;
         }
-        const float fx = (x - originX_) / cell_;
-        const float fz = (z - originZ_) / cell_;
-        const int i = int(floor(fx));
-        const int j = int(floor(fz));
-        if (i < 0 || j < 0 || i + 1 >= countX_ || j + 1 >= countZ_) {
-            return false;
-        }
-        const int h00 = heights_[j * countX_ + i];
-        const int h01 = heights_[j * countX_ + i + 1];
-        const int h10 = heights_[(j + 1) * countX_ + i];
-        const int h11 = heights_[(j + 1) * countX_ + i + 1];
-        if (h00 == noGround_ || h01 == noGround_ || h10 == noGround_ || h11 == noGround_) {
-            return false;
-        }
-        const float tx = fx - float(i);
-        const float tz = fz - float(j);
-        const float near = Lerp(float(h00), float(h01), tx);
-        const float far = Lerp(float(h10), float(h11), tx);
-        height = Lerp(near, far, tz) * 0.01f;
-        return true;
+        return wideGround_.Sample(x, z, height);
     }
 
-    // そこへ立てるか（表の中・深すぎない・急すぎない）
+    // そこへ立てるか（表の中・深すぎない・急すぎない・建物の外）
     private bool CanStand(float x, float z, float fromHeight, float distance, float &out height)
     {
         if (!GroundAt(x, z, height)) {
@@ -187,7 +213,10 @@ class BeachPlayer : ScriptComponent
         if (height < -maxWaterDepth) {
             return false;
         }
-        return height - fromHeight <= maxClimb * distance + 0.02f;
+        if (height - fromHeight > maxClimb * distance + 0.02f) {
+            return false;
+        }
+        return !blockers_.Overlaps(x, z, blockerRadius);
     }
 
     private void SnapToGround()
@@ -204,9 +233,12 @@ class BeachPlayer : ScriptComponent
     private void Walk(float dt)
     {
         // 入力はカメラの向きを前として扱う
-        const Vector2 stick = Input::GetAxis2D(
-            InputAction::MoveLeft, InputAction::MoveRight,
-            InputAction::MoveBack, InputAction::MoveForward);
+        Vector2 stick = Vector2(0.0f, 0.0f);
+        if (controlled_) {
+            stick = Input::GetAxis2D(
+                InputAction::MoveLeft, InputAction::MoveRight,
+                InputAction::MoveBack, InputAction::MoveForward);
+        }
         const bool pressed = Length(stick) > 0.15f;
         if (pressed) {
             const Vector3 forward = Vector3(sin(cameraYaw_), 0.0f, cos(cameraYaw_));
