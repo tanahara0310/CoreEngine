@@ -180,6 +180,42 @@
                 "Key:Escape",
                 "Gamepad:Start"
             ]
+        },
+        {
+            "id": "SwitchView",
+            "display": "視点の切り替え",
+            "context": "Game",
+            "defaults": [
+                "Key:Tab",
+                "Gamepad:Y"
+            ]
+        },
+        {
+            "id": "MoveUp",
+            "display": "上昇",
+            "context": "Game",
+            "defaults": [
+                "Key:E",
+                "Axis:RightTrigger+"
+            ]
+        },
+        {
+            "id": "MoveDown",
+            "display": "下降",
+            "context": "Game",
+            "defaults": [
+                "Key:Q",
+                "Axis:LeftTrigger+"
+            ]
+        },
+        {
+            "id": "PlacePlayer",
+            "display": "プレイヤーを降ろす",
+            "context": "Game",
+            "defaults": [
+                "Key:F",
+                "Gamepad:X"
+            ]
         }
     ]
 }

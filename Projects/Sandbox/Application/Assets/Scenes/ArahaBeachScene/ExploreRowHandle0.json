@@ -1,0 +1,42 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchor": 2,
+                "anchoredPosition": [
+                    -592.0,
+                    145.0
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "rotation": 0.0,
+                "size": [
+                    14.0,
+                    34.0
+                ],
+                "sortOrder": 113
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    0.80695224,
+                    0.8549926,
+                    0.91309863,
+                    1.0
+                ],
+                "texture": null
+            },
+            "type": "UIImage"
+        }
+    ],
+    "id": "a48d75ab172c8f7a",
+    "name": "ExploreRowHandle0",
+    "order": 699
+}

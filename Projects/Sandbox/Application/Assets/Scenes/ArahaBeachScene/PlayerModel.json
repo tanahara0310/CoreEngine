@@ -1,0 +1,54 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "333dc56ddffd8ea0"
+                },
+                "rotate": [
+                    0.0,
+                    3.1415927,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    -0.9,
+                    0.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "clips": [
+                    {
+                        "name": "Idle",
+                        "sourceName": "Idle"
+                    },
+                    {
+                        "name": "Walk",
+                        "sourceName": "Walk"
+                    },
+                    {
+                        "name": "Run",
+                        "sourceName": "Run"
+                    }
+                ],
+                "model": "Application/Assets/Models/XBot/XBot.gltf"
+            },
+            "type": "Animator"
+        }
+    ],
+    "id": "d115933c78f8950d",
+    "name": "PlayerModel",
+    "order": 685
+}

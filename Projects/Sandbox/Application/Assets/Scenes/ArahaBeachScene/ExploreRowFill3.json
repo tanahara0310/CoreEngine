@@ -1,0 +1,42 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchor": 2,
+                "anchoredPosition": [
+                    -592.0,
+                    334.0
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "rotation": 0.0,
+                "size": [
+                    0.0,
+                    18.0
+                ],
+                "sortOrder": 112
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    0.064803265,
+                    0.3515326,
+                    0.7605245,
+                    1.0
+                ],
+                "texture": null
+            },
+            "type": "UIImage"
+        }
+    ],
+    "id": "1c503f256655246e",
+    "name": "ExploreRowFill3",
+    "order": 713
+}

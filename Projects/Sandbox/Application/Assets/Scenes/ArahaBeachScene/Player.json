@@ -1,0 +1,100 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    4.712389,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    20.0,
+                    1.888666,
+                    -10.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "shapes": [
+                    {
+                        "enabled": true,
+                        "height": 1.8,
+                        "layer": "Player",
+                        "offset": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "radius": 0.35,
+                        "static": false,
+                        "trigger": false,
+                        "type": "Capsule"
+                    }
+                ]
+            },
+            "type": "Collider"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "skinWidth": 0.02,
+                "slopeLimit": 45.0,
+                "stepOffset": 0.3,
+                "useGravity": false
+            },
+            "type": "CharacterController"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "acceleration": 14.0,
+                "blendTime": 0.2,
+                "blockerData": {
+                    "guid": "e2ea77f0-999b-5403-b0c0-a6dc302fdd0b",
+                    "path": "Application/Assets/Data/ArahaBeach/ArahaBuildings.json"
+                },
+                "blockerRadius": 0.35,
+                "cameraDistance": 5.0,
+                "cameraObject": {
+                    "ref": "5134b2c6ef0d2a47"
+                },
+                "cameraPitchSpeed": 1.5,
+                "cameraTurnSpeed": 2.5,
+                "footOffset": 0.9,
+                "groundData": {
+                    "guid": "12935c1c-d99c-55a3-ba28-2a280e9a4f45",
+                    "path": "Application/Assets/Data/ArahaBeach/ArahaGround.json"
+                },
+                "lookHeight": 0.65,
+                "maxClimb": 0.8,
+                "maxWaterDepth": 0.45,
+                "model": {
+                    "ref": "d115933c78f8950d"
+                },
+                "mouseSensitivity": 0.005,
+                "runSpeed": 3.5,
+                "turnSpeed": 12.0,
+                "walkSpeed": 1.4,
+                "wideGroundData": {
+                    "guid": "dfa8e42e-4c0f-55e4-a85d-cd22a7ec54b7",
+                    "path": "Application/Assets/Data/ArahaBeach/ArahaGroundWide.json"
+                }
+            },
+            "type": "BeachPlayer"
+        }
+    ],
+    "id": "333dc56ddffd8ea0",
+    "name": "Player",
+    "order": 684
+}
