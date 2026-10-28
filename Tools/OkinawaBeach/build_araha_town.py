@@ -136,13 +136,10 @@ class Ground:
 # 建物
 # ---------------------------------------------------------------------------
 
-def build_blocks(town, ground, mats, park):
-    """区画ごとの建物のモデルを書き出す。park（公園の輪郭）の中の建物は作らない"""
+def town_buildings(town, park, skipped=None):
+    """建てる建物を (OSM の建物, 輪郭, 種類の情報) で順に返す。park（公園の輪郭）の中の建物と小さい建物は省く。
+    skipped（リスト）を渡すと、省いた数をその要素 0 に足す"""
     ctx = TM.Context(town)
-    blocks = {}
-    stats = {}
-    skipped = 0
-    t = time.time()
     for b in town.buildings:
         poly = TM.clean_polygon(b["_a"])
         if poly is None:
@@ -151,23 +148,37 @@ def build_blocks(town, ground, mats, park):
         r = math.hypot(cx, cy)
         area = TM.signed_area(poly)
         if area < 8.0 or (r > TM.SMALL_SKIP_RADIUS and area < TM.SMALL_SKIP_AREA):
-            skipped += 1
+            if skipped is not None:
+                skipped[0] += 1
             continue
         if not (AT.FAR_BOX[0] < cx < AT.FAR_BOX[1] and AT.FAR_BOX[2] < cy < AT.FAR_BOX[3]):
             continue
         if AM.inside(np.array([cx]), np.array([cy]), park)[0]:
-            skipped += 1
+            if skipped is not None:
+                skipped[0] += 1
             continue
         info = TM.classify(b, poly, ctx)
         if info is None:
             continue
+        yield b, poly, info
+
+
+def build_blocks(town, ground, mats, park):
+    """区画ごとの建物のモデルを書き出す"""
+    blocks = {}
+    stats = {}
+    skipped = [0]
+    t = time.time()
+    for b, poly, info in town_buildings(town, park, skipped):
+        cx, cy = poly.mean(axis=0)
+        r = math.hypot(cx, cy)
         name = TM.chunk_name(cx, cy)
         B = blocks.get(name)
         if B is None:
             B = blocks[name] = TM.Builder((0.0, 0.0))
         TM.build_building(B, b, poly, info, ground, r < TM.DETAIL_RADIUS)
         stats[info["style"]] = stats.get(info["style"], 0) + 1
-    print(f"  建物 {sum(stats.values())} 棟 {dict(sorted(stats.items()))}（小さくて省いた {skipped}）({time.time() - t:.0f}s)")
+    print(f"  建物 {sum(stats.values())} 棟 {dict(sorted(stats.items()))}（小さくて省いた {skipped[0]}）({time.time() - t:.0f}s)")
     for name in os.listdir(MODELS_DIR):
         if name.startswith("ArahaTown_Block_"):
             shutil.rmtree(os.path.join(MODELS_DIR, name))

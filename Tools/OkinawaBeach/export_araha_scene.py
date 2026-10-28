@@ -30,7 +30,7 @@ SCENES_DIR = os.path.join(PROJECT_DIR, "Application", "Assets", "Scenes")
 TEMPLATE_DIR = os.path.join(SCENES_DIR, "OkinawaBeachScene")
 SCENE = "ArahaBeachScene"
 OUT_DIR = os.path.join(SCENES_DIR, SCENE)
-META_TYPES = {".gltf": "Model", ".png": "Texture"}
+META_TYPES = {".gltf": "Model", ".png": "Texture", ".json": "Json"}
 GUID_NAMESPACE = uuid.uuid5(uuid.NAMESPACE_URL, "https://github.com/tanahara0310/CoreEngine/Tools/OkinawaBeach")
 
 TERRAIN = ["ArahaTerrain_SandDry", "ArahaTerrain_SandWet", "ArahaTerrain_SandUnder", "ArahaTerrain_Seabed",
@@ -73,6 +73,12 @@ SOTETSU = [(36.0, -100.0), (53.0, -101.0), (84.0, 15.0), (99.0, 2.0), (70.0, 47.
 CROWN = {"Gajumaru": 6.0, "Kobateishi_A": 4.5, "Kobateishi_B": 3.0, "Fukugi": 1.8, "Terihaboku": 4.0,
          "Hououboku": 5.5}           # 樹冠の半径 [m]
 SUN_DIR = (0.663, -0.643, 0.383)        # 光の進む向き（エンジンの座標）。西南西の高さ 40°
+# プレイヤー（OkinawaBeachScene の Player・PlayerModel を雛形にする）
+PLAYER_AT = ((20.0, -10.0), 270.0)     # 立たせる位置と、向く方位（北から時計回り）
+FOOT_OFFSET = 0.9                      # カプセルの中心から足元まで（BeachPlayer.footOffset）
+DATA_DIR = os.path.join(PROJECT_DIR, "Application", "Assets", "Data", "ArahaBeach")
+# bake_araha_walk.py が書くので、シーンを書き出し直しても消さないファイル
+KEEP_FILES = ("PlayerColliders.json",)
 
 
 # ---- 書式（エンジンが保存するときと同じ形） ----
@@ -523,7 +529,7 @@ def camera_object(sc):
     for c in comps:
         if c["type"] == "Camera":
             c["parameters"]["fov"] = fov
-    sc.add("MainCamera", comps)
+    sc.add("MainCamera", comps + [fly_camera_component()])
 
 
 def sun_object(sc):
@@ -539,6 +545,136 @@ def sun_object(sc):
 def water_object(sc):
     water = load_template("WaterPlane.json")
     sc.add("WaterPlane", water["components"])
+
+
+# ---- 歩き回る・見渡す（プレイヤー・広域カメラ・操作の表示と設定の画面） ----
+
+def data_ref(name):
+    path = os.path.join(DATA_DIR, name)
+    return {"guid": ensure_meta(path), "path": project_path(path)}
+
+
+def player_objects(sc, field):
+    """沖縄の海辺のプレイヤーを雛形に、足元の表と建物の輪郭をアラハのものへ差し替えて置く"""
+    (px, py), azimuth = PLAYER_AT
+    z = float(field.height(px, py))
+    player = load_template("Player.json")
+    for c in player["components"]:
+        p = c["parameters"]
+        if c["type"] == "Transform":
+            p["translate"] = [f32(px), f32(z + FOOT_OFFSET), f32(py)]
+            p["rotate"] = [0.0, f32(math.radians(azimuth)), 0.0]
+        elif c["type"] == "BeachPlayer":
+            p["cameraObject"] = {"ref": object_id("MainCamera")}
+            p["model"] = {"ref": object_id("PlayerModel")}
+            p["groundData"] = data_ref("ArahaGround.json")
+            p["wideGroundData"] = data_ref("ArahaGroundWide.json")
+            p["blockerData"] = data_ref("ArahaBuildings.json")
+            p["blockerRadius"] = 0.35
+    sc.add("Player", player["components"])
+    model = load_template("PlayerModel.json")
+    for c in model["components"]:
+        if c["type"] == "Transform":
+            c["parameters"]["parent"] = {"comp": "Transform", "ref": object_id("Player")}
+    sc.add("PlayerModel", model["components"])
+
+
+def fly_camera_component():
+    return {"enabled": True, "type": "ArahaFlyCamera", "parameters": {
+        "player": {"ref": object_id("Player")},
+        "moveSpeed": 30.0, "boostMultiplier": 4.0, "climbSpeed": 20.0, "lookSensitivity": 1.0,
+        "fieldOfView": 60.0, "smoothing": 0.2, "minClearance": 2.0, "maxHeight": 2000.0,
+        "turnSpeed": 1.6, "mouseSensitivity": 0.004}}
+
+
+def srgb(r, g, b, a=1.0):
+    """sRGB の 0〜255 を、UI が書く色（リニア）へ"""
+    def lin(c):
+        c /= 255.0
+        return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+    return [f32(lin(r)), f32(lin(g)), f32(lin(b)), f32(a)]
+
+
+TOP_LEFT, TOP_RIGHT = 0, 2
+PANEL = srgb(12, 16, 22, 0.66)
+BUTTON = {"normalColor": srgb(38, 88, 138, 0.95), "hoveredColor": srgb(58, 120, 182, 1.0),
+          "pressedColor": srgb(24, 58, 98, 1.0), "disabledColor": srgb(90, 90, 90, 0.6)}
+
+
+def rect(anchor, pos, pivot, sort, size=None):
+    p = {"anchor": anchor, "anchoredPosition": [f32(pos[0]), f32(pos[1])], "pivot": [f32(pivot[0]), f32(pivot[1])],
+         "rotation": 0.0, "sortOrder": sort}
+    if size is not None:
+        p["size"] = [f32(size[0]), f32(size[1])]
+    return {"enabled": True, "type": "RectTransform", "parameters": p}
+
+
+def ui_text(sc, name, text, anchor, pos, pivot, sort, size=24.0, align=0, color=(255, 255, 255)):
+    sc.add(name, [rect(anchor, pos, pivot, sort), {"enabled": True, "type": "UIText", "parameters": {
+        "alignH": align, "alignV": 0, "color": srgb(*color), "fieldAutoFit": True, "font": "Default",
+        "fontSize": f32(size), "lineSpacing": 1.25, "outlineColor": [0.0, 0.0, 0.0, 0.0], "outlineWidth": 0.0,
+        "text": text, "weight": 0.0, "wrapWidth": 0.0}}])
+
+
+def ui_image(sc, name, anchor, pos, pivot, size, sort, color, extra=()):
+    sc.add(name, [rect(anchor, pos, pivot, sort, size),
+                  {"enabled": True, "type": "UIImage", "parameters": {"color": color, "texture": None}}] + list(extra))
+
+
+def ui_button(sc, name, label_name, label, anchor, pos, pivot, size, sort):
+    ui_image(sc, name, anchor, pos, pivot, size, sort, BUTTON["normalColor"],
+             [{"enabled": True, "type": "UIButton", "parameters": dict(BUTTON, interactable=True)}])
+    cx = pos[0] + (0.5 - pivot[0]) * size[0]
+    cy = pos[1] + (0.5 - pivot[1]) * size[1]
+    sc.add(label_name, [rect(anchor, (cx, cy), (0.5, 0.5), sort + 1), {"enabled": True, "type": "UIText", "parameters": {
+               "alignH": 1, "alignV": 1, "color": srgb(255, 255, 255), "fieldAutoFit": True, "font": "Default",
+               "fontSize": 22.0, "lineSpacing": 1.0, "outlineColor": [0.0, 0.0, 0.0, 0.0], "outlineWidth": 0.0,
+               "text": label, "weight": 0.0, "wrapWidth": 0.0}}])
+
+
+def explore_ui(sc):
+    """左上の操作の一覧と、右上の設定の画面（位置と大きさは ArahaExplorer.as が文と項目の数に合わせて置き直す）"""
+    ui_image(sc, "ExploreHelpPanel", TOP_LEFT, (16, 16), (0, 0), (520, 260), 100, PANEL)
+    ui_text(sc, "ExploreHelpText", "プレイヤー視点", TOP_LEFT, (32, 28), (0, 0), 101)
+    ui_text(sc, "ExploreStatusText", "", TOP_LEFT, (32, 240), (0, 0), 101, size=20.0, color=(190, 226, 255))
+    ui_button(sc, "ExploreSettingsButton", "ExploreSettingsButtonLabel", "設定を開く", TOP_LEFT, (16, 290), (0, 0),
+              (200, 44), 100)
+
+    width, margin, pad, row_top, row_step = 600.0, 16.0, 24.0, 84.0, 66.0
+    left, right = -margin - width + pad, -margin - pad
+    ui_image(sc, "ExploreSettingsPanel", TOP_RIGHT, (-margin, margin), (1, 0), (width, 500), 110,
+             srgb(12, 16, 22, 0.82))
+    ui_text(sc, "ExploreSettingsTitle", "設定", TOP_RIGHT, (left, margin + 22), (0, 0), 114, size=28.0)
+    ui_button(sc, "ExploreCloseButton", "ExploreCloseLabel", "閉じる", TOP_RIGHT, (right, margin + 16), (1, 0),
+              (120, 44), 112)
+    for i in range(5):
+        y = margin + row_top + row_step * i
+        ui_text(sc, f"ExploreRowLabel{i}", "", TOP_RIGHT, (left, y), (0, 0), 114, size=22.0)
+        ui_text(sc, f"ExploreRowValue{i}", "", TOP_RIGHT, (right, y), (1, 0), 114, size=22.0, align=2,
+                color=(190, 226, 255))
+        fill, handle = f"ExploreRowFill{i}", f"ExploreRowHandle{i}"
+        slider = {"enabled": True, "type": "UISlider", "parameters": {
+            "interactable": True, "direction": 0, "minValue": 0.0, "maxValue": 1.0, "value": 0.5,
+            "wholeNumbers": False, "navigationStep": 0.02,
+            "fill": {"comp": "RectTransform", "ref": object_id(fill)},
+            "handle": {"comp": "RectTransform", "ref": object_id(handle)},
+            "normalColor": srgb(232, 238, 245), "hoveredColor": srgb(255, 255, 255),
+            "pressedColor": srgb(170, 205, 240), "disabledColor": srgb(110, 110, 110, 0.6)}}
+        ui_image(sc, f"ExploreRowSlider{i}", TOP_RIGHT, (left, y + 36), (0, 0), (right - left, 18), 111,
+                 srgb(58, 66, 78), [slider])
+        ui_image(sc, fill, TOP_RIGHT, (left, y + 36), (0.5, 0.5), (0, 18), 112, srgb(72, 160, 226))
+        ui_image(sc, handle, TOP_RIGHT, (left, y + 45), (0.5, 0.5), (14, 34), 113, srgb(232, 238, 245))
+    bottom = margin + row_top + row_step * 5 + 4
+    ui_button(sc, "ExploreResetButton", "ExploreResetLabel", "既定に戻す", TOP_RIGHT, (left, bottom), (0, 0),
+              (200, 44), 112)
+    ui_text(sc, "ExploreSettingsHint", "", TOP_RIGHT, (left + 220, bottom), (0, 0), 114, size=18.0,
+            color=(222, 228, 236))
+
+
+def explorer_object(sc):
+    sc.add("Explorer", [transform((0.0, 0.0, 0.0)), {"enabled": True, "type": "ArahaExplorer", "parameters": {
+        "player": {"ref": object_id("Player")}, "flyCamera": {"ref": object_id("MainCamera")},
+        "saveFile": "ArahaExplore.json", "messageSeconds": 3.0, "placeSearchRadius": 40.0}}])
 
 
 def main():
@@ -566,7 +702,19 @@ def main():
     place_trees(sc, m, park_rnd, keep)
     # まわりの街（シーンの最後に足す）
     place_town(sc)
+    # 歩き回る・見渡す
+    player_objects(sc, field)
+    explore_ui(sc)
+    explorer_object(sc)
 
+    kept = {}
+    for name in KEEP_FILES:
+        path = os.path.join(OUT_DIR, name)
+        if os.path.exists(path):
+            with open(path, encoding="utf-8") as f:
+                kept[name] = json.load(f)
+            kept[name]["order"] = sc.order
+            sc.order += 1
     if os.path.isdir(OUT_DIR):
         shutil.rmtree(OUT_DIR)
     os.makedirs(OUT_DIR)
@@ -574,6 +722,10 @@ def main():
         shutil.copy(os.path.join(TEMPLATE_DIR, name), os.path.join(OUT_DIR, name))
     for name, obj in sc.objects.items():
         write_json(os.path.join(OUT_DIR, name + ".json"), obj)
+    for name, obj in kept.items():
+        write_json(os.path.join(OUT_DIR, name), obj)
+    if len(kept) < len(KEEP_FILES):
+        print("PlayerColliders.json がありません。bake_araha_walk.py を流してください")
     print(f"{len(sc.objects)} objects -> {OUT_DIR}")
 
 

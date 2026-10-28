@@ -120,7 +120,7 @@ _gltf_cache = {}
 def load_gltf(path):
     """glTF の全三角形をシーン空間で返す（頂点 P と添字 T。z は反転済み）"""
     if path in _gltf_cache:
-        return _gltf_cache[path]
+        return _gltf_cache[path][:2]
     with open(path, encoding="utf-8") as f:
         g = json.load(f)
     base = os.path.dirname(path)
@@ -143,8 +143,9 @@ def load_gltf(path):
             return np.array(rows)
         return np.frombuffer(raw, dtype=dtype, count=a["count"] * count, offset=offset).reshape(a["count"], count)
 
-    points, triangles = [], []
+    points, triangles, materials = [], [], []
     total = 0
+    names = [m.get("name", "") for m in g.get("materials", [])]
 
     def walk(index, parent):
         nonlocal total
@@ -160,6 +161,8 @@ def load_gltf(path):
                     t = np.arange(len(p)).reshape(-1, 3)
                 points.append(p)
                 triangles.append(t + total)
+                material = names[prim["material"]] if "material" in prim else ""
+                materials.extend([material] * len(t))
                 total += len(p)
         for child in node.get("children", []):
             walk(child, m)
@@ -169,8 +172,14 @@ def load_gltf(path):
     P = np.concatenate(points) if points else np.zeros((0, 3))
     T = np.concatenate(triangles) if triangles else np.zeros((0, 3), dtype=np.int64)
     P[:, 2] *= -1.0
-    _gltf_cache[path] = (P, T)
+    _gltf_cache[path] = (P, T, np.array(materials, dtype=object))
     return P, T
+
+
+def triangle_materials(path):
+    """load_gltf の三角形ごとの材質の名前"""
+    load_gltf(path)
+    return _gltf_cache[path][2]
 
 
 # ---- シーン ----
@@ -184,10 +193,10 @@ def euler_matrix(r):
     return rz @ ry @ rx
 
 
-def scene_objects():
+def scene_objects(scene_dir=SCENE_DIR, skip=SKIP_OBJECTS):
     """シーンの物を (名前, モデルのパス, ワールドの三角形 P, T, 動くか) で返す"""
     objects = {}
-    for path in glob.glob(os.path.join(SCENE_DIR, "*.json")):
+    for path in glob.glob(os.path.join(scene_dir, "*.json")):
         if os.path.basename(path).startswith("_"):
             continue
         with open(path, encoding="utf-8") as f:
@@ -217,7 +226,7 @@ def scene_objects():
 
     result = []
     for oid, o in objects.items():
-        if not o["model"] or o["name"] in SKIP_OBJECTS:
+        if not o["model"] or o["name"] in skip:
             continue
         P, T = load_gltf(os.path.join(PROJECT_DIR, o["model"]))
         W = world(oid)
@@ -228,18 +237,19 @@ def scene_objects():
 # ---- 高さの表 ----
 
 def rasterize_max(H, xs, zs, P, T):
-    """三角形を真上から見て、格子点の高さの最大を H へ書く"""
+    """三角形を真上から見て、格子点の高さの最大を H へ書く（格子の幅は xs の間隔）"""
     if len(T) == 0:
         return
+    cell = xs[1] - xs[0]
     a, b, c = P[T[:, 0]], P[T[:, 1]], P[T[:, 2]]
     lo = np.minimum(np.minimum(a, b), c)
     hi = np.maximum(np.maximum(a, b), c)
     x0, z0 = xs[0], zs[0]
     for i in np.nonzero((hi[:, 0] >= xs[0]) & (lo[:, 0] <= xs[-1]) & (hi[:, 2] >= zs[0]) & (lo[:, 2] <= zs[-1]))[0]:
-        i0 = max(0, int(math.ceil((lo[i, 0] - x0) / CELL - 1e-9)))
-        i1 = min(len(xs) - 1, int(math.floor((hi[i, 0] - x0) / CELL + 1e-9)))
-        j0 = max(0, int(math.ceil((lo[i, 2] - z0) / CELL - 1e-9)))
-        j1 = min(len(zs) - 1, int(math.floor((hi[i, 2] - z0) / CELL + 1e-9)))
+        i0 = max(0, int(math.ceil((lo[i, 0] - x0) / cell - 1e-9)))
+        i1 = min(len(xs) - 1, int(math.floor((hi[i, 0] - x0) / cell + 1e-9)))
+        j0 = max(0, int(math.ceil((lo[i, 2] - z0) / cell - 1e-9)))
+        j1 = min(len(zs) - 1, int(math.floor((hi[i, 2] - z0) / cell + 1e-9)))
         if i1 < i0 or j1 < j0:
             continue
         A, B, C = a[i], b[i], c[i]
@@ -289,8 +299,9 @@ def deck_triangles(P, T, deck):
 
 def ground_many(H, xs, zs, x, z):
     """表を双一次で引く（配列版。範囲外・地面の無い所は nan）"""
-    fx = (np.asarray(x) - xs[0]) / CELL
-    fz = (np.asarray(z) - zs[0]) / CELL
+    cell = xs[1] - xs[0]
+    fx = (np.asarray(x) - xs[0]) / cell
+    fz = (np.asarray(z) - zs[0]) / cell
     i = np.floor(fx).astype(np.int64)
     j = np.floor(fz).astype(np.int64)
     ok = (i >= 0) & (j >= 0) & (i + 1 < len(xs)) & (j + 1 < len(zs))
@@ -303,8 +314,9 @@ def ground_many(H, xs, zs, x, z):
 
 def ground_top(H, xs, zs, x, z):
     """点を囲む 4 つの格子点の高い方（配列版。範囲外・地面の無い所は nan）"""
-    i = np.floor((np.asarray(x) - xs[0]) / CELL).astype(np.int64)
-    j = np.floor((np.asarray(z) - zs[0]) / CELL).astype(np.int64)
+    cell = xs[1] - xs[0]
+    i = np.floor((np.asarray(x) - xs[0]) / cell).astype(np.int64)
+    j = np.floor((np.asarray(z) - zs[0]) / cell).astype(np.int64)
     ok = (i >= 0) & (j >= 0) & (i + 1 < len(xs)) & (j + 1 < len(zs))
     i, j = np.where(ok, i, 0), np.where(ok, j, 0)
     g = np.maximum(np.maximum(H[j, i], H[j, i + 1]), np.maximum(H[j + 1, i], H[j + 1, i + 1]))
@@ -329,8 +341,8 @@ def slice_points(P, T, bottom, top, spacing):
     return np.concatenate(out) if out else np.zeros((0, 3))
 
 
-def clusters(points):
-    """点を PROP_CELL の格子で塗り、2 マスまでの隙間はつないで、塊ごとに点の添字を返す"""
+def clusters(points, reach=2):
+    """点を PROP_CELL の格子で塗り、reach マスまでの隙間はつないで、塊ごとに点の添字を返す"""
     if len(points) == 0:
         return []
     keys = np.floor(points[:, [0, 2]] / PROP_CELL).astype(np.int64)
@@ -346,8 +358,8 @@ def clusters(points):
         while queue:
             cx, cz = queue.popleft()
             members.extend(cells[(cx, cz)])
-            for dx in (-2, -1, 0, 1, 2):
-                for dz in (-2, -1, 0, 1, 2):
+            for dx in range(-reach, reach + 1):
+                for dz in range(-reach, reach + 1):
                     nb = (cx + dx, cz + dz)
                     if nb in cells and nb not in seen:
                         seen.add(nb)
@@ -374,10 +386,10 @@ def box_shape(x0, x1, y0, y1, z0, z1):
     }
 
 
-def prop_boxes(P, T, H, xs, zs):
-    """物のうち、真下の地面から SLICE_HEIGHT までにある部分を塊に分けて箱にする"""
+def prop_boxes(P, T, H, xs, zs, reach=2):
+    """物のうち、真下の地面から SLICE_HEIGHT までにある部分を塊に分けて箱にする（reach は clusters と同じ）"""
     lo, hi = P.min(0), P.max(0)
-    if hi[0] < AREA_X[0] or lo[0] > AREA_X[1] or hi[2] < AREA_Z[0] or lo[2] > AREA_Z[1]:
+    if hi[0] < xs[0] or lo[0] > xs[-1] or hi[2] < zs[0] or lo[2] > zs[-1]:
         return []
     gx, gz = np.meshgrid(np.linspace(lo[0], hi[0], 8), np.linspace(lo[2], hi[2], 8))
     under = ground_many(H, xs, zs, gx.ravel(), gz.ravel())
@@ -391,7 +403,7 @@ def prop_boxes(P, T, H, xs, zs):
     keep = (rise > 0.05) & (rise < SLICE_HEIGHT) & (ground >= DEEPEST_WALK - SLICE_HEIGHT)
     pts, ground, rise = pts[keep], ground[keep], rise[keep]
     shapes = []
-    for members in clusters(pts):
+    for members in clusters(pts, reach):
         if rise[members].max() < MIN_RISE:
             continue
         q = pts[members]
