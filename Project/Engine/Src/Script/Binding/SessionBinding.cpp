@@ -191,6 +191,8 @@ namespace CoreEngine::Script
                 if (!result || it == data_.end() || !it->is_array()) {
                     return result;
                 }
+                // 要素の数だけ先に取ってから足す
+                result->Reserve(static_cast<asUINT>(it->size()));
                 for (const json& element : *it) {
                     if (element.is_number_integer()) {
                         int value = element.get<int>();
@@ -208,6 +210,8 @@ namespace CoreEngine::Script
                 if (!result || it == data_.end() || !it->is_array()) {
                     return result;
                 }
+                // 要素の数だけ先に取ってから足す
+                result->Reserve(static_cast<asUINT>(it->size()));
                 for (const json& element : *it) {
                     if (element.is_number()) {
                         float value = element.get<float>();
@@ -225,6 +229,8 @@ namespace CoreEngine::Script
                 if (!result || it == data_.end() || !it->is_array()) {
                     return result;
                 }
+                // 要素の数だけ先に取ってから足す
+                result->Reserve(static_cast<asUINT>(it->size()));
                 for (const json& element : *it) {
                     if (element.is_string()) {
                         std::string value = element.get<std::string>();
