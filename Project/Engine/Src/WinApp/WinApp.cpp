@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "WinApp.h"
 
+#include "Launch/AppResource.h"
 #include "Utility/CVar/CVar.h"
 
 #include <algorithm>
@@ -70,6 +71,9 @@ void WinApp::RegisterWindowClass()
     wc_.hInstance = GetModuleHandleA(nullptr);
     // カーソル
     wc_.hCursor = LoadCursor(nullptr, IDC_ARROW);
+    // タスクバー・Alt+Tab・タイトルバーのアイコン
+    wc_.hIcon = LoadAppIcon(false);
+    wc_.hIconSm = LoadAppIcon(true);
     // ウィンドウクラスの登録
     RegisterClassEx(&wc_);
 }

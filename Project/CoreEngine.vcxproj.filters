@@ -1393,6 +1393,9 @@
     <ClCompile Include="Engine\Src\Editor\ImGui\GameDebugUI.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\ImGui\EditorLogo.cpp">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Launch\MyGame.cpp">
       <Filter>Engine\Src\Launch</Filter>
     </ClCompile>
@@ -3603,6 +3606,12 @@
     <ClInclude Include="Engine\Src\Editor\ImGui\GameDebugUI.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ImGui\EditorLogo.h">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Launch\AppResource.h">
+      <Filter>Engine\Src\Launch</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\WinApp\WinApp.h">
       <Filter>Engine\Src\WinApp</Filter>
     </ClInclude>
@@ -4064,6 +4073,16 @@
     <None Include="Engine\Src\Particle\README.md">
       <Filter>Engine\Src\Particle</Filter>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Engine\Src\Launch\CoreEngine.rc">
+      <Filter>Engine\Src\Launch</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="Engine\Src\Launch\CoreEngine.ico">
+      <Filter>Engine\Src\Launch</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Build">

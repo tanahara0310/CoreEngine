@@ -3,6 +3,7 @@
 
 #ifdef CORE_EDITOR
 
+#include "Editor/ImGui/EditorLogo.h"
 #include "Editor/ImGui/EditorTheme.h"
 #include "Editor/ImGui/ImGuiManager.h"
 #include "Editor/Launcher/ProjectBrowser.h"
@@ -136,8 +137,11 @@ namespace CoreEngine::Editor
 
         std::optional<ProjectThumbnails> thumbnails;
         thumbnails.emplace(graphics);
+        std::optional<EditorLogo> logo;
+        logo.emplace(graphics);
         ProjectBrowser browser(list, hwnd);
         browser.SetThumbnails(&*thumbnails);
+        browser.SetLogo(&*logo);
         bool closed = false;
         while (true) {
             if (winApp.ProcessMessage()) {
@@ -180,7 +184,9 @@ namespace CoreEngine::Editor
 
         graphics.WaitForGpuIdle();
         browser.SetThumbnails(nullptr);
+        browser.SetLogo(nullptr);
         thumbnails.reset();
+        logo.reset();
         ImGui_ImplDX12_Shutdown();
         ImGui_ImplWin32_Shutdown();
         ImGui::DestroyContext();

@@ -10,6 +10,7 @@
 #include "Editor/Camera/EditorCameraInput.h"
 #include "Editor/Scene/SceneDebugEditor.h"
 #include "Editor/ImGui/GameDebugUI.h"
+#include "Launch/AppResource.h"
 #include "WinApp/WinApp.h"
 #include <ImGuizmo.h>
 #include <filesystem>
@@ -20,6 +21,21 @@ namespace CoreEngine
 {
 
     namespace fs = std::filesystem;
+
+    namespace
+    {
+        void (*originalCreatePlatformWindow)(ImGuiViewport*) = nullptr;
+
+        /// @brief ImGui が別のウィンドウ（OS のウィンドウ）を作ったあと、エンジンのアイコンを付ける
+        void CreatePlatformWindowWithIcon(ImGuiViewport* viewport)
+        {
+            originalCreatePlatformWindow(viewport);
+            if (const HWND hwnd = static_cast<HWND>(viewport->PlatformHandleRaw)) {
+                ::SendMessageW(hwnd, WM_SETICON, ICON_BIG, reinterpret_cast<LPARAM>(LoadAppIcon(false)));
+                ::SendMessageW(hwnd, WM_SETICON, ICON_SMALL, reinterpret_cast<LPARAM>(LoadAppIcon(true)));
+            }
+        }
+    }
 
 #ifdef CORE_EDITOR
     namespace
@@ -146,6 +162,13 @@ namespace CoreEngine
         LoadFonts(ImGui_ImplWin32_GetDpiScaleForHwnd(hwnd));
 
         ImGui_ImplWin32_Init(hwnd_);
+
+        // 別モニタへ出したウィンドウにもエンジンのアイコンを付ける
+        ImGuiPlatformIO& platformIO = ImGui::GetPlatformIO();
+        if (platformIO.Platform_CreateWindow && platformIO.Platform_CreateWindow != &CreatePlatformWindowWithIcon) {
+            originalCreatePlatformWindow = platformIO.Platform_CreateWindow;
+            platformIO.Platform_CreateWindow = &CreatePlatformWindowWithIcon;
+        }
 
         // ImGui のフォント用スロットは DescriptorAllocator から正規に確保する
         // （ヒープ先頭を決め打ちで使うと他の SRV と衝突する）

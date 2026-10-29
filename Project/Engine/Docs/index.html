@@ -3,8 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.44.0">
+<meta name="engine-version" content="0.45.0">
 <title>CoreEngine ドキュメント</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;600&amp;family=Zen+Kaku+Gothic+New:wght@700&amp;display=swap">
@@ -32,6 +33,11 @@
   --accent: #2e6cb4;
   --accent-hover: #235894;
   --accent-soft: #e3edf8;
+
+  /* ロゴの水中側（青・シアン・重なり） */
+  --logo-prism: #3b5bdb;
+  --logo-lagoon: #1b9aae;
+  --logo-spark: #2b7bc5;
 
   /* 意味色（エディタの kScript / kOk / kWarn / kError / kWarm） */
   --script: #7446bf;
@@ -109,6 +115,9 @@
     --accent: #5596de;
     --accent-hover: #7aaee9;
     --accent-soft: #2a3f55;
+    --logo-prism: #5b7cff;
+    --logo-lagoon: #6fd3e0;
+    --logo-spark: #a2e8ff;
     --script: #b88ee8;
     --script-soft: #33294a;
     --ok: #4ec27a;
@@ -142,6 +151,9 @@
   --accent: #5596de;
   --accent-hover: #7aaee9;
   --accent-soft: #2a3f55;
+  --logo-prism: #5b7cff;
+  --logo-lagoon: #6fd3e0;
+  --logo-spark: #a2e8ff;
   --script: #b88ee8;
   --script-soft: #33294a;
   --ok: #4ec27a;
@@ -257,10 +269,14 @@ img {
 }
 
 .brand-mark {
-  width: 1.6rem;
+  width: 1.57rem;
   height: 1.6rem;
   flex: none;
 }
+
+.brand-mark .logo-prism { fill: var(--logo-prism); }
+.brand-mark .logo-lagoon { fill: var(--logo-lagoon); }
+.brand-mark .logo-spark { fill: var(--logo-spark); }
 
 .brand small {
   font-family: var(--font-body);
@@ -1991,10 +2007,14 @@ kbd {
     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 5.5h14M3 10h14M3 14.5h14" stroke-linecap="round"/></svg>
   </button>
   <a class="brand" href="#home" aria-label="CoreEngine ドキュメントのホーム">
-    <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
-      <path d="M16 2.8 27.4 9.4v13.2L16 29.2 4.6 22.6V9.4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" opacity="0.55"/>
-      <path d="M16 2.8v6.6M27.4 9.4l-5.7 3.3M4.6 9.4l5.7 3.3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.55"/>
-      <path d="M16 9.4 21.7 12.7v6.6L16 22.6l-5.7-3.3v-6.6z" fill="var(--accent)"/>
+    <svg class="brand-mark" viewBox="15 12 94 96" aria-hidden="true">
+      <defs><clipPath id="brand-mark-under"><path d="M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z" transform="translate(-1 2)"/></clipPath></defs>
+      <g transform="translate(5 0)">
+        <path d="M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z" fill="currentColor" transform="translate(-4 -2)"/>
+        <path class="logo-prism" d="M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z" transform="translate(-1 2)"/>
+        <path class="logo-lagoon" d="M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z" transform="translate(8 2)"/>
+        <g clip-path="url(#brand-mark-under)"><path class="logo-spark" d="M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z" transform="translate(8 2)"/></g>
+      </g>
     </svg>
     <span class="brand-text">CoreEngine <small>ドキュメント</small></span>
     <span class="brand-version" data-engine-version></span>
@@ -3147,7 +3167,7 @@ kbd {
   <table>
     <thead><tr><th>どこで出るか</th><th>写真の見え方</th><th>重ねる文字</th></tr></thead>
     <tbody>
-      <tr><td>エディタ</td><td>そのまま（下半分を文字のために暗くする）</td><td>CoreEngine のマークと版・プロジェクト名・今の作業と ％・細目（シェーダー名など）</td></tr>
+      <tr><td>エディタ</td><td>そのまま（下半分を文字のために暗くする）</td><td>CoreEngine のロゴ（左下）と版（ロゴの右端）・プロジェクト名・今の作業と ％・細目（シェーダー名など）</td></tr>
       <tr><td>書き出したゲーム</td><td>ぼかして暗く沈める</td><td>ゲームの題名・小見出し・ヒント・「読み込み中」。技術的な名前や ％ は出さない</td></tr>
     </tbody>
   </table>
@@ -3169,7 +3189,7 @@ kbd {
     <li><strong>選ぶ・書く</strong><span class="ui">ローディング画面の画像</span> で写真を選び、ゲームの画面に出す題名・小見出し・ヒントを書きます。</li>
     <li><strong>試す</strong><span class="ui">エディタの画面を試す</span>・<span class="ui">ゲームの画面を試す</span> を押すと、今の設定の画面が 3 秒ほど出ます（そのあいだエディタは止まります）。起動し直さずに見た目を確かめられます。</li>
   </ol>
-  <p>エンジンの既定の写真は <span class="path">Engine/Assets/Textures/Splash/DefaultSplash.jpg</span> です。このファイルを置き換えると、写真を選んでいないすべてのプロジェクトの写真が変わります。指定した写真が見つからないときも既定の写真を使います。</p>
+  <p>エンジンの既定の写真は <span class="path">Engine/Assets/Textures/Splash/DefaultSplash.jpg</span> です。このファイルを置き換えると、写真を選んでいないすべてのプロジェクトの写真が変わります。指定した写真が見つからないときも既定の写真を使います。エディタの画面のロゴは <span class="path">Engine/Assets/Textures/Logo/CoreEngineLogo.png</span> です（読めないときは CoreEngine の文字を出します）。</p>
   <p>進捗は、前回の起動で各ステップにかかった時間の割合で進みます（記録は <span class="path">Intermediate/StartupTimings.txt</span>）。記録の無い初めての起動と、ステップの数が変わったあとの 1 回は、済んだステップの数で割った進み方になります。</p>
 
   <h2 id="settings-loading-screen">シーンを切り替えるときのロード画面</h2>
@@ -9878,6 +9898,16 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-45-0">v0.45.0 <span class="dim">（2026-10-30）</span></h3>
+  <p>エンジンの正式なロゴを入れ、仮のマークと文字で代わりにしていた所をすべて置き換えた版です。</p>
+  <ul>
+    <li><strong>ロゴ</strong>：C の輪を水面の線で上下に切り、水中の側を青とシアンの 2 枚にずらして重ねたマークと、同じく水面で切った「COREENGINE」の文字です。エンジンが使う画像は <span class="path">Engine/Assets/Textures/Logo/</span> の 3 枚（マークだけ・横組み・縦組み。どれも暗い下地に置く絵）です。</li>
+    <li><strong>起動中のローディング画面</strong>：エディタの画面の左下に横組みのロゴを出し、版はその行の右端に出します。今までの菱形のマークはなくなりました（<a href="#settings-splash">起動中のローディング画面</a>）。書き出したゲームの画面は変わりません。</li>
+    <li><strong>exe とウィンドウのアイコン</strong>：exe にアイコンを入れました。エクスプローラー・タスクバー・Alt+Tab・タイトルバーに出ます。エンジンの窓・ゲーム映像専用の窓・別のモニターへ出した ImGui の窓のどれにも付きます。書き出したゲームの exe も同じアイコンです。</li>
+    <li><strong>エディタ</strong>：メニューバーの左端の「CoreEngine」の文字をマークに替えました（マウスを重ねると版が出ます）。プロジェクトの窓（ランチャー・File メニュー）の左の列と、Help → バージョン情報 にもロゴを出します。</li>
+    <li><strong>ドキュメント</strong>：画面の上の見出しのマークを正式なマークに替え、ブラウザーのタブにもアイコンを出します。</li>
+  </ul>
 
   <h3 id="changelog-v0-44-0">v0.44.0 <span class="dim">（2026-10-29）</span></h3>
   <p>DLL を exe の隣の <span class="path">Binaries/</span> フォルダへまとめ、書き出したゲームの exe の隣に DLL を置かないようにした版です（<a href="#export-contents">書き出されるもの</a>）。</p>

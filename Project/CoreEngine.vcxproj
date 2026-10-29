@@ -667,6 +667,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Input\KeyboardInput.cpp" />
     <ClCompile Include="Engine\Src\Input\GamepadInput.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\GameDebugUI.cpp" />
+    <ClCompile Include="Engine\Src\Editor\ImGui\EditorLogo.cpp" />
     <ClCompile Include="Engine\Src\Launch\MyGame.cpp" />
     <ClCompile Include="Engine\Src\Launch\main.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
@@ -1810,6 +1811,8 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Input\MouseInput.h" />
     <ClInclude Include="Engine\Src\Input\GamepadInput.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\GameDebugUI.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\EditorLogo.h" />
+    <ClInclude Include="Engine\Src\Launch\AppResource.h" />
     <ClInclude Include="Engine\Src\WinApp\WinApp.h" />
     <ClInclude Include="Engine\Src\Graphics\RootSignature\RootSignatureManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\TextureManager.h" />
@@ -1974,6 +1977,10 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="Externals\angelscript\source\as_callfunc_x64_msvc_asm.asm" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Engine\Src\Launch\CoreEngine.rc" />
+    <Image Include="Engine\Src\Launch\CoreEngine.ico" />
   </ItemGroup>
   <!-- エディタを含まない構成（CORE_EDITOR を定義しない Release）では、Editor 配下と ImGui 系の .cpp をビルドしない -->
   <ItemGroup Condition="'$(Configuration)'=='Release'">

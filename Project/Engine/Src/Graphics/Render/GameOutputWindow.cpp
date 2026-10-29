@@ -9,6 +9,7 @@
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/PostEffect/Effect/PostEffectNames.h"
 #include "Graphics/PostEffect/FullScreen.h"
+#include "Launch/AppResource.h"
 #include "Utility/Logger/Logger.h"
 #include "WinApp/WinApp.h"
 
@@ -140,6 +141,8 @@ namespace CoreEngine
             windowClass.hInstance = ::GetModuleHandleW(nullptr);
             windowClass.hCursor = ::LoadCursor(nullptr, IDC_ARROW);
             windowClass.hbrBackground = reinterpret_cast<HBRUSH>(::GetStockObject(BLACK_BRUSH));
+            windowClass.hIcon = LoadAppIcon(false);
+            windowClass.hIconSm = LoadAppIcon(true);
 
             if (::RegisterClassExW(&windowClass) == 0) {
                 Logger::GetInstance().Errorf(LogCategory::Graphics, LogSubCategory::SwapChain,

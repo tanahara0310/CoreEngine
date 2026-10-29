@@ -15,6 +15,7 @@
 
 namespace CoreEngine::Editor
 {
+    class EditorLogo;
     class ProjectThumbnails;
 
     /// @brief プロジェクトの一覧と新規作成の画面
@@ -45,6 +46,9 @@ namespace CoreEngine::Editor
 
         /// @brief サムネイルを出すときに使う（無ければ色の面と頭文字を出す）
         void SetThumbnails(ProjectThumbnails* thumbnails) { thumbnails_ = thumbnails; }
+
+        /// @brief 左の列の上に出すロゴ（無ければ名前の文字を出す）
+        void SetLogo(EditorLogo* logo) { logo_ = logo; }
 
     private:
         /// @brief 右側に出している画面
@@ -85,6 +89,7 @@ namespace CoreEngine::Editor
         HWND owner_ = nullptr;
         std::filesystem::path current_;
         ProjectThumbnails* thumbnails_ = nullptr;
+        EditorLogo* logo_ = nullptr;
         std::string engineRootText_;
         View view_ = View::Projects;
         std::vector<ProjectEntry> entries_;
