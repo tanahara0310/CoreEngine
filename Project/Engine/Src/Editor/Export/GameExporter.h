@@ -44,7 +44,8 @@ namespace CoreEngine::Editor
 
     /// @brief 開いているプロジェクトを、Release の exe と一緒に書き出す
     /// @details 書き出す先の並びは Release の exe の隣と同じ
-    ///          （exe と DLL・Engine/Assets・Application/Assets・Application/Config）。
+    ///          （exe・DLL の Binaries・Engine/Assets・Application/Assets・Application/Config）。
+    ///          DLL は Binaries にだけ置くので、書き出す先の根にある DLL は消す。
     ///          画像のテクスチャ（PNG・JPG など）は写さず、DDS へ変換して Engine/Cooked・Application/Cooked に書く。
     ///          モデルのファイル（と OBJ の .mtl・glTF の外部バッファ）も写さず、.cmesh へ変換して同じ場所に書く。
     ///          シェーダは一覧（ShaderManifest）のものを DXIL へコンパイルして同じ場所に書く（元の .hlsl も写す）。
