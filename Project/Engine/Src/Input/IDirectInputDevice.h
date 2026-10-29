@@ -4,7 +4,7 @@
 namespace CoreEngine
 {
     /// @brief DirectInput系デバイスの初期化インターフェース
-    /// XInput(GamepadInput)はこのインターフェースを継承しない
+    /// ゲームパッド(GamepadInput)は SDL3 で読むので、このインターフェースを継承しない
     class IDirectInputDevice : public IInputDevice {
     public:
         virtual ~IDirectInputDevice() = default;

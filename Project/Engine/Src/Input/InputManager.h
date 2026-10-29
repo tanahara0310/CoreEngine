@@ -37,6 +37,18 @@ public:
     const InputQuery& GetQuery() const { return query_; }
 
 private:
+    /// @brief SDL のイベントを読み、つないだパッドを空いている番号へ割り当て、外したパッドを外す
+    void PollGamepadEvents();
+
+    /// @brief パッドを開いて番号へ割り当てる（XInput の番号が空いていればその番号）
+    void AttachGamepad(uint32_t instanceId);
+
+    /// @brief パッドの割り当てを外して閉じる
+    void DetachGamepad(uint32_t instanceId);
+
+    /// @brief 再生中で前面にいる間だけパッドを振動させる。再生を止めたら振動の指定を消す
+    void UpdateVibration();
+
     // DirectInputオブジェクト（ComPtrでリーク防止）
     Microsoft::WRL::ComPtr<IDirectInput8> directInput_;
 
@@ -50,5 +62,8 @@ private:
     std::vector<IInputDevice*> devices_;
 
     InputQuery query_;
+
+    bool gamepadSystemReady_ = false;
+    bool wasInPlayMode_ = false;
 };
 }
