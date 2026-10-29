@@ -114,7 +114,7 @@ namespace CoreEngine::Editor
             Row("Release の exe", plan_.error.empty()
                 ? ToUtf8(plan_.releaseExe) + "（ビルド " + plan_.releaseBuiltAt + "）"
                 : std::string("－"));
-            Row("写すもの", "Release のフォルダの exe と DLL\nEngine\\Assets・Application\\Assets・Application\\Config");
+            Row("写すもの", "Release のフォルダの exe と Binaries（DLL）\nEngine\\Assets・Application\\Assets・Application\\Config");
             Row("変換するもの", "画像のテクスチャ（PNG・JPG など）は写さず、DDS に変換して\nEngine\\Cooked・Application\\Cooked に書きます\n"
                 "モデル（glTF・OBJ など）も写さず、.cmesh に変換して同じ場所に書きます\n"
                 "シーン・プレハブ・マテリアル・設定などの JSON は、MessagePack（バイナリ）にして同じ名前で書きます\n"

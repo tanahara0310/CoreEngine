@@ -23,6 +23,9 @@ namespace CoreEngine
     class ProjectPaths
     {
     public:
+        /// @brief exe の隣で DLL を置くフォルダの名前
+        static constexpr std::wstring_view kBinariesFolder = L"Binaries";
+
         /// @brief 根を先に決めておく（省略可。初回参照時に自動で決まる）
         static void Prime();
 

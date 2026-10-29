@@ -295,6 +295,11 @@ namespace CoreEngine::Editor
             plan.error = "先に Release でビルドしてください（" + ToUtf8(plan.releaseExe) + " がありません）";
             return plan;
         }
+        const std::filesystem::path releaseBinaries = plan.releaseExe.parent_path() / ProjectPaths::kBinariesFolder;
+        if (!std::filesystem::is_directory(releaseBinaries, ec)) {
+            plan.error = "Release でビルドし直してください（" + ToUtf8(releaseBinaries) + " がありません）";
+            return plan;
+        }
         plan.releaseBuiltAt = FormatWriteTime(plan.releaseExe);
         return plan;
     }
@@ -318,20 +323,21 @@ namespace CoreEngine::Editor
             destination / "Application" / "Cooked",
         };
 
-        // 写すファイルを先に集める（Release のフォルダの exe と DLL、各フォルダの中身）。
+        // 写すファイルを先に集める（Release の exe と Binaries の DLL、各フォルダの中身）。
         // 画像のテクスチャは写さずに DDS へ変換する
         std::vector<CopyItem> items;
         std::vector<std::filesystem::path> textures;
         std::error_code ec;
-        const std::filesystem::path releaseDirectory = plan.releaseExe.parent_path();
-        for (const auto& entry : std::filesystem::directory_iterator(releaseDirectory, ec)) {
-            const std::filesystem::path extension = entry.path().extension();
-            if (entry.is_regular_file(ec) && (extension == ".exe" || extension == ".dll")) {
-                items.push_back({ entry.path(), destination / entry.path().filename() });
+        items.push_back({ plan.releaseExe, destination / plan.releaseExe.filename() });
+        const std::filesystem::path releaseBinaries = plan.releaseExe.parent_path() / ProjectPaths::kBinariesFolder;
+        const std::filesystem::path binaries = destination / ProjectPaths::kBinariesFolder;
+        for (const auto& entry : std::filesystem::directory_iterator(releaseBinaries, ec)) {
+            if (entry.is_regular_file(ec)) {
+                items.push_back({ entry.path(), binaries / entry.path().filename() });
             }
         }
         if (ec) {
-            result.error = ToUtf8(releaseDirectory) + " を読めませんでした";
+            result.error = ToUtf8(releaseBinaries) + " を読めませんでした";
             return result;
         }
         // エディタだけで読むスクリプトのフォルダ
@@ -387,6 +393,7 @@ namespace CoreEngine::Editor
 
         // 丸ごと写すフォルダとクック済みのデータのフォルダは、書き出す先の側を消しておく
         std::vector<std::filesystem::path> clearFolders(std::begin(cookedFolders), std::end(cookedFolders));
+        clearFolders.push_back(binaries);
         for (const FolderItem& folder : folders) {
             clearFolders.push_back(folder.to);
         }
@@ -394,6 +401,21 @@ namespace CoreEngine::Editor
             std::filesystem::remove_all(folder, ec);
             if (ec) {
                 result.error = ToUtf8(folder) + " を消せませんでした" + kLockedHint;
+                return result;
+            }
+        }
+        // DLL は Binaries にだけ置くので、書き出す先の根にある DLL は消す
+        std::vector<std::filesystem::path> rootDlls;
+        std::error_code listError;
+        for (const auto& entry : std::filesystem::directory_iterator(destination, listError)) {
+            if (MakeFileKey(entry.path().extension()) == L".dll") {
+                rootDlls.push_back(entry.path());
+            }
+        }
+        for (const std::filesystem::path& dll : rootDlls) {
+            std::filesystem::remove(dll, ec);
+            if (ec) {
+                result.error = ToUtf8(dll) + " を消せませんでした" + kLockedHint;
                 return result;
             }
         }
