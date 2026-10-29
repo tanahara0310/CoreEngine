@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.42.0">
+<meta name="engine-version" content="0.43.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4338,6 +4338,8 @@ kbd {
     }
   </script>
   <p>2 人以上で遊ぶときは、関数の最後の引数 <code>player</code> に 0〜3 を渡してパッドを分けます（省略するとキーボードとすべてのパッドを合わせて見ます）。</p>
+  <p>振動は 0 を渡すまで続きます。エディタで再生を止めると振動の指定は消えます。一時停止している間と、別のアプリへ切り替えている間はモーターが止まり、戻ると設定した強さで再開します。</p>
+  <p>パッドは SDL3 で読みます。Xbox のコントローラーに加え、PS4・PS5・Switch の Pro コントローラー・8BitDo など、SDL3 が知っているパッドは USB でも Bluetooth でも使えます。ボタンは Xbox の並びの位置で読むので、<code>A</code> は右側の 4 つのボタンの下（PS の ×、Switch の B）、<code>B</code> は右、<code>X</code> は左、<code>Y</code> は上です。つないだ順に空いている番号（0〜3）へ入り、つないだ・外したことはログに出ます。</p>
 </article>
 
 <article class="page" id="script-time-tween" data-group="スクリプト" data-title="時間と Tween" data-keywords="時間 デルタタイム タイマー 待つ 遅延 スロー ヒットストップ ポーズ tween トゥイーン アニメーション イージング 補間 フェード 演出">
@@ -9875,6 +9877,15 @@ python Tools/OkinawaBeach/bake_araha_walk.py
 
   <h2 id="changelog-history">更新履歴</h2>
 
+  <h3 id="changelog-v0-43-0">v0.43.0 <span class="dim">（2026-10-29）</span></h3>
+  <p>ゲームパッドを SDL3 で読むようにし、Xbox 以外のパッドと Bluetooth のパッドも使えるようにした版です（<a href="#input-gamepad">ゲームパッド</a>）。</p>
+  <ul>
+    <li><strong>読めるパッド</strong>：今までは XInput だけで読んでいたので、Xbox 型でないパッド（PS4・PS5・Switch の Pro コントローラー、Bluetooth で汎用のパッドとしてつながる 8BitDo など）は、つないでも反応しませんでした。SDL3 のゲームパッドの機能で読むようにし、どのパッドも Xbox の並びのボタンとして返します。スクリプトの関数と <span class="path">InputActions.json</span> の <code>Gamepad:A</code> などの書き方は変わりません。</li>
+    <li><strong>番号</strong>：つないだパッドは空いている番号（0〜3）へ入ります。Xbox のパッドは XInput の番号が空いていればその番号です。つないだ・外したことはログに出ます。</li>
+    <li><strong>振動</strong>：<code>Input::SetVibration</code> が強さを計算するだけで、パッドへ送っていませんでした。パッドへ送るようにしました。エディタで再生を止めると振動の指定を消し、一時停止している間と別のアプリへ切り替えている間はモーターを止めます（戻ると設定した強さで再開）。エンジンを閉じるときも止めます。</li>
+    <li><strong>SDL3</strong>：<span class="path">Project/Externals/SDL3</span> に SDL 3.4.18 の DLL 版（zlib ライセンス）を置きました。ビルドすると <span class="path">SDL3.dll</span> が exe の隣へコピーされ、ゲームの書き出しでも一緒に写します。</li>
+  </ul>
+
   <h3 id="changelog-v0-42-0">v0.42.0 <span class="dim">（2026-10-28）</span></h3>
   <p>Sandbox の <code>ArahaBeachScene</code> を、人型のプレイヤーで歩き回り、広域カメラで見渡せるようにした版です（<a href="#beach-player-araha">アラハビーチを歩き回る・見渡す</a>）。</p>
   <ul>
@@ -10886,7 +10897,7 @@ void Update()
           { n: "GetRightStick", s: "Vector2 GetRightStick(int player = 0)", t: "f", d: "右スティック（-1〜1）。" },
           { n: "GetLeftTrigger", s: "float GetLeftTrigger(int player = 0)", t: "f", d: "左トリガー（0〜1）。" },
           { n: "GetRightTrigger", s: "float GetRightTrigger(int player = 0)", t: "f", d: "右トリガー（0〜1）。" },
-          { n: "SetVibration", s: "void SetVibration(float left, float right, int player = 0)", t: "f", d: "振動させます（左右のモーターの強さ 0〜1）。止めるときは 0 を渡します。" }
+          { n: "SetVibration", s: "void SetVibration(float left, float right, int player = 0)", t: "f", d: "振動させます（左右のモーターの強さ 0〜1）。止めるときは 0 を渡します。再生を止めると止まり、一時停止中と別のアプリへ切り替えている間は止まります。" }
         ]
       }
     ],
