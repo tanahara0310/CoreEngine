@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.43.0">
+<meta name="engine-version" content="0.44.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3276,17 +3276,18 @@ kbd {
   <h2 id="export-steps">書き出す手順</h2>
   <ol class="steps">
     <li><strong>シーンを保存する</strong>書き出すのはディスクにあるファイルです。保存していない変更は入りません（<kbd>Ctrl</kbd>+<kbd>S</kbd>）。</li>
-    <li><strong>Release をビルドする</strong>Visual Studio で構成を <span class="ui">Release</span> にしてビルドします。エディタからはビルドしません。<span class="path">generated/CoreEngine/outputs/Release/CoreEngine.exe</span> ができていれば準備完了です。</li>
+    <li><strong>Release をビルドする</strong>Visual Studio で構成を <span class="ui">Release</span> にしてビルドします。エディタからはビルドしません。<span class="path">generated/CoreEngine/outputs/Release/CoreEngine.exe</span> と、その隣の <span class="path">Binaries/</span>（DLL のフォルダ）ができていれば準備完了です。</li>
     <li><strong>書き出す</strong>エディタで <span class="ui">File<span class="arrow">▸</span>ゲームを書き出す…</span> を開きます。書き出す先・使う Release の exe（ビルドした日時）・写すものを確かめて、<span class="ui">書き出す</span> を押します。画像のテクスチャを DDS に、モデルを .cmesh に、JSON を MessagePack に変換してから写します（<a href="#export-cooking">テクスチャの変換</a>・<a href="#export-models">モデルの変換</a>・<a href="#export-json">JSON のバイナリ化</a>）。</li>
     <li><strong>遊んで確かめる</strong><span class="ui">エクスプローラーで開く</span> で書き出したフォルダを開き、<span class="path">CoreEngine.exe</span> を起動します。</li>
   </ol>
-  <div class="callout note"><p>Release の exe が無いと、窓に「先に Release でビルドしてください」と出て書き出せません。書き出したゲームを動かしたままだとファイルを書き換えられないので、閉じてから書き出します。</p></div>
+  <div class="callout note"><p>Release の exe が無いと、窓に「先に Release でビルドしてください」と出て書き出せません。exe の隣に <span class="path">Binaries/</span> が無い（DLL をそこへ置く前の版でビルドした）ときは「Release でビルドし直してください」と出ます。書き出したゲームを動かしたままだとファイルを書き換えられないので、閉じてから書き出します。</p></div>
 
   <h2 id="export-contents">書き出されるもの</h2>
   <script type="text/x-code" data-lang="text" data-file="Projects/MyGame/Build/Windows/">
     Windows/
-    ├─ CoreEngine.exe と *.dll      Release のフォルダから
-    ├─ CookManifest.json            変換したデータの一覧（これがあると、書き出したゲームとして動く）
+    ├─ CoreEngine.exe               Release のフォルダから
+    ├─ Binaries/                    exe が読む DLL（SDL3.dll・dxcompiler.dll。Release のフォルダの Binaries から）
+    ├─ CookManifest.json           変換したデータの一覧（これがあると、書き出したゲームとして動く）
     ├─ Engine/
     │  ├─ Assets/                   エンジンの素材（シェーダなど。画像のテクスチャとモデルのファイルは除く。JSON は MessagePack）
     │  └─ Cooked/                   エンジンの画像のテクスチャを変換した DDS・モデルの .cmesh・コンパイルしたシェーダの DXIL
@@ -3296,7 +3297,7 @@ kbd {
        ├─ Config/                   プロジェクトの設定（起動シーン・入力・レイヤー・CVar。MessagePack）
        └─ Saved/                    遊んだ人のセーブデータ（ゲームが作る）
   </script>
-  <p>書き出すたびに、<span class="path">Engine/Assets</span>・<span class="path">Engine/Cooked</span>・<span class="path">Application/Assets</span>・<span class="path">Application/Cooked</span>・<span class="path">Application/Config</span> をいったん消してから書き直します。遊んだ人のデータが入る <span class="path">Application/Saved</span> は残します。<span class="path">Build/</span> は git の対象外です。</p>
+  <p>書き出すたびに、<span class="path">Binaries</span>・<span class="path">Engine/Assets</span>・<span class="path">Engine/Cooked</span>・<span class="path">Application/Assets</span>・<span class="path">Application/Cooked</span>・<span class="path">Application/Config</span> をいったん消してから書き直します。DLL は <span class="path">Binaries</span> にだけ置くので、書き出す先の根（exe の隣）に DLL があれば消します。遊んだ人のデータが入る <span class="path">Application/Saved</span> は残します。<span class="path">Build/</span> は git の対象外です。</p>
 
   <h2 id="export-cooking">テクスチャの変換</h2>
   <p>画像のテクスチャ（PNG・JPG・JPEG・BMP・TGA）は写さずに、GPU がそのまま読める圧縮形式の DDS（既定は BC3。<a href="#project-texture-color">画像の取り込み設定</a>で BC7・非圧縮も選べます）へ変換して <span class="path">Cooked/</span> に書きます。遊ぶ人の PC では変換しないので、初めての起動でもテクスチャの変換を待ちません。元の画像は入りませんが、隣の <span class="path">.meta</span> は入るので、スクリプトやシーンからは今までどおり <span class="path">.png</span> などの名前で使えます。ただしローディング画面の写真（<a href="#settings-splash">起動中のローディング画面</a>）だけは、DirectX 12 の準備より前に読むので、元の画像のまま写します。</p>
@@ -3348,6 +3349,7 @@ kbd {
       <tr><td>始まるシーン</td><td><span class="ui">Project Settings</span> ▸ <span class="ui">Startup</span> の起動シーン（<span class="path">Project.json</span> の <code>initialScene</code>）</td></tr>
       <tr><td>窓のタイトル</td><td>プロジェクトの名前</td></tr>
       <tr><td>エディタ</td><td>無し。起動するとすぐにゲームが始まる</td></tr>
+      <tr><td>DLL</td><td>exe の隣の <span class="path">Binaries/</span> から読む。読めないと「SDL3.dll を読み込めませんでした」のように出て終わる</td></tr>
       <tr><td>スクリプト</td><td>起動時にコンパイルする。<span class="path">Scripts/Editor/</span> の中は読まない。ホットリロードは無い</td></tr>
       <tr><td>テクスチャ</td><td><span class="path">Cooked/</span> の DDS を読む。元の画像からは作らない（<a href="#export-cooking">テクスチャの変換</a>）</td></tr>
       <tr><td>モデル</td><td><span class="path">Cooked/</span> の .cmesh を読む。元のモデルのファイルからは作らない（<a href="#export-models">モデルの変換</a>）</td></tr>
@@ -9876,6 +9878,13 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-44-0">v0.44.0 <span class="dim">（2026-10-29）</span></h3>
+  <p>DLL を exe の隣の <span class="path">Binaries/</span> フォルダへまとめ、書き出したゲームの exe の隣に DLL を置かないようにした版です（<a href="#export-contents">書き出されるもの</a>）。</p>
+  <ul>
+    <li><strong>DLL の置き場所</strong>：ビルドすると <span class="path">SDL3.dll</span> と <span class="path">dxcompiler.dll</span> を exe の隣の <span class="path">Binaries/</span> へコピーします。exe はこの 2 つを遅延読み込みにし、起動の最初に <span class="path">Binaries/</span> を DLL の探し先へ足してから読み込みます。読めなければ「SDL3.dll を読み込めませんでした」のように出して終わります。exe の隣に前の版の DLL が残っていれば、ビルドのときに消します。</li>
+    <li><strong>書き出し</strong>：exe と <span class="path">Binaries/</span> だけを写します。Release の exe が使わない <span class="path">WinPixEventRuntime.dll</span>（エディタのビルドが PIX で使う DLL）は写さなくなりました。書き出す先の根に前の書き出しの DLL が残っていれば消します。Release の exe の隣に <span class="path">Binaries/</span> が無いときは、書き出しの窓に「Release でビルドし直してください」と出ます。</li>
+  </ul>
 
   <h3 id="changelog-v0-43-0">v0.43.0 <span class="dim">（2026-10-29）</span></h3>
   <p>ゲームパッドを SDL3 で読むようにし、Xbox 以外のパッドと Bluetooth のパッドも使えるようにした版です（<a href="#input-gamepad">ゲームパッド</a>）。</p>
