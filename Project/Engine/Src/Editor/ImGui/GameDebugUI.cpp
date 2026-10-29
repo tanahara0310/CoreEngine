@@ -91,6 +91,13 @@ namespace CoreEngine
             screenCapture_.SetHwnd(debug->GetImGuiManager()->GetHwnd());
         }
 
+        // ロゴは最初のフレームより前に GPU へ載せておく
+        if (Editor::EditorLogo* const logo = Logo()) {
+            for (const Editor::EditorLogo::Kind kind : { Editor::EditorLogo::Kind::Mark, Editor::EditorLogo::Kind::Horizontal, Editor::EditorLogo::Kind::Stacked }) {
+                logo->Texture(kind);
+            }
+        }
+
         if (dockingUI_) {
             RegisterWindowsForDocking();
         }
@@ -146,7 +153,7 @@ namespace CoreEngine
             return;
         }
 
-        ImGui::TextColored(Editor::Theme::kAccentHover, "CoreEngine");
+        DrawMenuBarLogo();
         ImGui::Dummy(ImVec2(6.0f, 0.0f));
 
         DrawFileMenu();
@@ -687,7 +694,13 @@ namespace CoreEngine
         ImGui::SetNextWindowSize(ImVec2(360.0f, 0.0f), ImGuiCond_FirstUseEver);
         if (auto w = UI::Scope::WindowScope("バージョン情報", &showAboutWindow_,
             ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::TextColored(Editor::Theme::kAccentHover, "CoreEngine");
+            Editor::EditorLogo* const logo = Logo();
+            if (const ImTextureID texture = logo ? logo->Texture(Editor::EditorLogo::Kind::Horizontal) : 0) {
+                const float height = ImGui::GetFontSize() * 3.0f;
+                ImGui::Image(texture, ImVec2(height * logo->Aspect(Editor::EditorLogo::Kind::Horizontal), height));
+            } else {
+                ImGui::TextColored(Editor::Theme::kAccentHover, "CoreEngine");
+            }
             ImGui::Separator();
             ImGui::Text("バージョン: v%s", kEngineVersion);
             ImGui::Text("ビルド構成: %s", BuildConfigName());
@@ -870,6 +883,34 @@ namespace CoreEngine
         return true;
     }
 
+    Editor::EditorLogo* GameDebugUI::Logo()
+    {
+        if (!logo_) {
+            if (GraphicsCore* const graphics = engine_ ? engine_->GetService<GraphicsCore>() : nullptr) {
+                logo_ = std::make_unique<Editor::EditorLogo>(*graphics);
+            }
+        }
+        return logo_.get();
+    }
+
+    void GameDebugUI::DrawMenuBarLogo()
+    {
+        Editor::EditorLogo* const logo = Logo();
+        const ImTextureID texture = logo ? logo->Texture(Editor::EditorLogo::Kind::Mark) : 0;
+        if (texture == 0) {
+            ImGui::TextColored(Editor::Theme::kAccentHover, "CoreEngine");
+            return;
+        }
+
+        // 絵は描画リストへ置き、メニューの並びには幅だけを空けて取る
+        const float height = ImGui::GetFontSize() * 1.2f;
+        const float width = height * logo->Aspect(Editor::EditorLogo::Kind::Mark);
+        const ImVec2 min(ImGui::GetCursorScreenPos().x, ImGui::GetWindowPos().y + (ImGui::GetWindowHeight() - height) * 0.5f);
+        ImGui::GetWindowDrawList()->AddImage(texture, min, ImVec2(min.x + width, min.y + height));
+        ImGui::Dummy(ImVec2(width, ImGui::GetFrameHeight()));
+        ImGui::SetItemTooltip("CoreEngine v%s", kEngineVersion);
+    }
+
     void GameDebugUI::OpenProjectBrowser(bool newProject)
     {
         WinApp* const winApp = engine_ ? engine_->GetWinApp() : nullptr;
@@ -882,6 +923,7 @@ namespace CoreEngine
         projectBrowser_ = std::make_unique<Editor::ProjectBrowser>(
             projectList_, winApp ? winApp->GetHwnd() : nullptr, ProjectPaths::ProjectRoot());
         projectBrowser_->SetThumbnails(projectThumbnails_.get());
+        projectBrowser_->SetLogo(Logo());
         if (newProject) {
             projectBrowser_->ShowNewProject();
         }

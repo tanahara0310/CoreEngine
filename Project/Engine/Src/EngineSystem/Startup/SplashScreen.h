@@ -13,12 +13,15 @@ namespace CoreEngine
     public:
         /// @brief 画面の作り
         enum class Style {
-            Editor, ///< 画像の上にエンジンの名前・版・今のステップ・割合を出す（エディタ用）
+            Editor, ///< 画像の上にエンジンのロゴ・版・今のステップ・割合を出す（エディタ用）
             Game,   ///< 暗くした画像の上にゲームの題名・ヒント・読み込み中だけを出す（書き出したゲーム用）
         };
 
         /// @brief エンジンの既定の画像
         static constexpr const char* kDefaultImage = "Engine/Assets/Textures/Splash/DefaultSplash.jpg";
+
+        /// @brief エディタ用の画面に出すエンジンのロゴ（透過 PNG）
+        static constexpr const char* kLogoImage = "Engine/Assets/Textures/Logo/CoreEngineLogo.png";
 
         /// @brief 背景に敷く画像のパス
         /// @return プロジェクトの指定 → エンジンの既定の順で、ファイルがある方。どちらも無ければ空
@@ -62,13 +65,13 @@ namespace CoreEngine
     private:
         static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
-        /// @brief 背景（画像と、画面の作りに合わせた暗くする処理・マーク）を窓の大きさで 1 枚に組み立てる
+        /// @brief 背景（画像と、画面の作りに合わせた暗くする処理・ロゴ）を窓の大きさで 1 枚に組み立てる
         void BuildBackdrop();
 
         /// @brief メモリ DC に組み立ててから一度に転送する（ちらつき防止）
         void Render(HDC targetDC);
 
-        /// @brief エディタ用の文字（名前・版・プロジェクト名・ステップ・細目）を描く
+        /// @brief エディタ用の文字（版・プロジェクト名・ステップ・細目。ロゴが無ければ名前も）を描く
         void DrawEditorTexts(HDC dc) const;
 
         /// @brief ゲーム用の文字（題名・小見出し・ヒント・読み込み中）を描く
@@ -85,6 +88,7 @@ namespace CoreEngine
         Style style_ = Style::Editor;
 
         HBITMAP backdrop_ = nullptr;
+        bool hasLogo_ = false; ///< 背景にロゴを描き込めた
 
         HFONT headlineFont_ = nullptr;
         HFONT smallFont_ = nullptr;

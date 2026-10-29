@@ -47,7 +47,7 @@ if (-not (Test-Path $FiltersFile)) {
 # ---------------------------------------------------------------------------
 # Item types to track
 # ---------------------------------------------------------------------------
-$ItemTypes = @("ClCompile", "ClInclude", "None")
+$ItemTypes = @("ClCompile", "ClInclude", "None", "ResourceCompile", "Image")
 
 # ---------------------------------------------------------------------------
 # Helper: derive expected filter from a relative file path

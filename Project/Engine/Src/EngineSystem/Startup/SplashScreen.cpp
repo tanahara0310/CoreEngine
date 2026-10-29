@@ -38,9 +38,8 @@ namespace CoreEngine
         // ── エディタ用の配置と色（96 DPI 基準） ──
         constexpr int32_t kMarginLeft = 28;
         constexpr int32_t kMarginRight = 26;
-        constexpr int32_t kMarkSize = 40;
-        constexpr int32_t kMarkTop = 251;
-        constexpr int32_t kNameGap = 12;
+        constexpr int32_t kLogoTop = 238;
+        constexpr int32_t kLogoHeight = 52;
         constexpr int32_t kBarHeight = 3;
 
         constexpr COLORREF kEdgeColor = RGB(30, 36, 44);
@@ -291,46 +290,74 @@ namespace CoreEngine
             return loaded;
         }
 
-        /// @brief エンジンのマーク（菱形の枠 2 重と中心の円）を白で描き込む
-        /// @details 40 × 40 の升目で形を決め、1 画素を 4 × 4 に分けて覆う割合でなめらかにする
-        void DrawMark(std::vector<uint32_t>& pixels, int32_t width, int32_t height, int32_t left, int32_t top, int32_t size)
+        /// @brief 透過 PNG を高さ logoHeight に縮めて読む（アルファを掛けた BGRA 32bit）
+        /// @param logoWidth 縮めたあとの幅を受け取る
+        bool LoadLogoPixels(const std::filesystem::path& path, uint32_t logoHeight, uint32_t& logoWidth, std::vector<uint32_t>& pixels)
         {
-            constexpr int kSamples = 4;
-            constexpr double kGrid = 40.0;
-            constexpr double kCenter = kGrid * 0.5;
-            constexpr double kSqrt2 = 1.41421356;
-            const double unit = kGrid / size;
+            using Microsoft::WRL::ComPtr;
 
-            for (int32_t y = 0; y < size; ++y) {
+            const HRESULT com = ::CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+            bool loaded = false;
+            {
+                ComPtr<IWICImagingFactory> factory;
+                ComPtr<IWICBitmapDecoder> decoder;
+                ComPtr<IWICBitmapFrameDecode> frame;
+                UINT sourceWidth = 0;
+                UINT sourceHeight = 0;
+                if (logoHeight > 0
+                    && SUCCEEDED(::CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&factory)))
+                    && SUCCEEDED(factory->CreateDecoderFromFilename(path.c_str(), nullptr, GENERIC_READ, WICDecodeMetadataCacheOnDemand, &decoder))
+                    && SUCCEEDED(decoder->GetFrame(0, &frame))
+                    && SUCCEEDED(frame->GetSize(&sourceWidth, &sourceHeight))
+                    && sourceWidth > 0 && sourceHeight > 0) {
+                    logoWidth = (std::max)(1u, static_cast<uint32_t>(std::lround(static_cast<double>(sourceWidth) * logoHeight / sourceHeight)));
+
+                    ComPtr<IWICFormatConverter> converter;
+                    ComPtr<IWICBitmapScaler> scaler;
+                    loaded = SUCCEEDED(factory->CreateFormatConverter(&converter))
+                        && SUCCEEDED(converter->Initialize(frame.Get(), GUID_WICPixelFormat32bppPBGRA,
+                            WICBitmapDitherTypeNone, nullptr, 0.0, WICBitmapPaletteTypeCustom))
+                        && SUCCEEDED(factory->CreateBitmapScaler(&scaler))
+                        && SUCCEEDED(scaler->Initialize(converter.Get(), logoWidth, logoHeight, WICBitmapInterpolationModeFant));
+                    if (loaded) {
+                        pixels.resize(static_cast<size_t>(logoWidth) * logoHeight);
+                        loaded = SUCCEEDED(scaler->CopyPixels(nullptr, logoWidth * 4,
+                            static_cast<UINT>(pixels.size() * sizeof(uint32_t)), reinterpret_cast<BYTE*>(pixels.data())));
+                    }
+                }
+            }
+            if (SUCCEEDED(com)) {
+                ::CoUninitialize();
+            }
+            return loaded;
+        }
+
+        /// @brief アルファを掛けた BGRA の絵を、BGRX の画像の (left, top) へ重ねる
+        void BlendPremultiplied(std::vector<uint32_t>& pixels, int32_t width, int32_t height,
+                                const std::vector<uint32_t>& image, int32_t imageWidth, int32_t imageHeight, int32_t left, int32_t top)
+        {
+            for (int32_t y = 0; y < imageHeight; ++y) {
                 const int32_t py = top + y;
                 if (py < 0 || py >= height) {
                     continue;
                 }
-                for (int32_t x = 0; x < size; ++x) {
+                for (int32_t x = 0; x < imageWidth; ++x) {
                     const int32_t px = left + x;
                     if (px < 0 || px >= width) {
                         continue;
                     }
-                    double coverage = 0.0;
-                    for (int sy = 0; sy < kSamples; ++sy) {
-                        for (int sx = 0; sx < kSamples; ++sx) {
-                            const double u = (x + (sx + 0.5) / kSamples) * unit - kCenter;
-                            const double v = (y + (sy + 0.5) / kSamples) * unit - kCenter;
-                            const double diamond = std::abs(u) + std::abs(v);
-                            if (u * u + v * v <= 4.2 * 4.2) {
-                                coverage += 1.0;
-                            } else if (std::abs(diamond - 17.0) <= 1.2 * kSqrt2) {
-                                coverage += 0.9;
-                            } else if (std::abs(diamond - 10.0) <= 0.72 * kSqrt2) {
-                                coverage += 0.45;
-                            }
-                        }
+                    const uint32_t source = image[static_cast<size_t>(y) * imageWidth + x];
+                    const uint32_t alpha = source >> 24;
+                    if (alpha == 0) {
+                        continue;
                     }
-                    coverage /= kSamples * kSamples;
-                    if (coverage > 0.0) {
-                        uint32_t& pixel = pixels[static_cast<size_t>(py) * width + px];
-                        pixel = BlendPixel(pixel, RGB(255, 255, 255), static_cast<float>(coverage));
-                    }
+                    uint32_t& pixel = pixels[static_cast<size_t>(py) * width + px];
+                    const auto channel = [source, alpha, destination = pixel](int shift) {
+                        const uint32_t s = (source >> shift) & 0xFFu;
+                        const uint32_t d = (destination >> shift) & 0xFFu;
+                        return (std::min)(255u, s + (d * (255u - alpha) + 127u) / 255u);
+                    };
+                    pixel = channel(0) | (channel(8) << 8) | (channel(16) << 16);
                 }
             }
         }
@@ -493,7 +520,16 @@ namespace CoreEngine
                     row[x] = BlendPixel(row[x], kShadeColor, shade);
                 }
             }
-            DrawMark(pixels, width_, height_, Scale(kMarginLeft, dpi_), Scale(kMarkTop, dpi_), Scale(kMarkSize, dpi_));
+
+            // 左下にロゴを描き込む
+            std::vector<uint32_t> logo;
+            uint32_t logoWidth = 0;
+            const auto logoHeight = static_cast<uint32_t>(Scale(kLogoHeight, dpi_));
+            hasLogo_ = LoadLogoPixels(ProjectPaths::Resolve(kLogoImage), logoHeight, logoWidth, logo);
+            if (hasLogo_) {
+                BlendPremultiplied(pixels, width_, height_, logo, static_cast<int32_t>(logoWidth), static_cast<int32_t>(logoHeight),
+                    Scale(kMarginLeft, dpi_), Scale(kLogoTop, dpi_));
+            }
         }
 
         BITMAPINFO info{};
@@ -642,18 +678,14 @@ namespace CoreEngine
         DrawShadowedText(dc, projectName_, RECT{ left, Scale(18, dpi_), right, Scale(38, dpi_) },
             DT_RIGHT | kLine | DT_END_ELLIPSIS, kProjectColor, shadowOffset);
 
-        // 左下: マークの右にエンジンの名前と版
-        const int32_t nameLeft = Scale(kMarginLeft + kMarkSize + kNameGap, dpi_);
+        // 左下はロゴ（背景に描き込み済み。読めなかったときは名前の文字）、同じ行の右端に版
+        const RECT logoRow{ left, Scale(kLogoTop, dpi_), right, Scale(kLogoTop + kLogoHeight, dpi_) };
+        if (!hasLogo_) {
+            SelectObject(dc, headlineFont_);
+            DrawShadowedText(dc, kEngineName, logoRow, DT_LEFT | DT_VCENTER | kLine | DT_END_ELLIPSIS, kNameColor, shadowOffset);
+        }
         SelectObject(dc, smallFont_);
-        SetTextCharacterExtra(dc, Scale(1, dpi_));
-        SetTextColor(dc, kVersionColor);
-        RECT versionRect{ nameLeft, Scale(279, dpi_), right, Scale(297, dpi_) };
-        DrawTextW(dc, versionText_.c_str(), -1, &versionRect, DT_LEFT | kLine | DT_END_ELLIPSIS);
-        SetTextCharacterExtra(dc, 0);
-
-        SelectObject(dc, headlineFont_);
-        DrawShadowedText(dc, kEngineName, RECT{ nameLeft, Scale(244, dpi_), right, Scale(280, dpi_) },
-            DT_LEFT | kLine | DT_END_ELLIPSIS, kNameColor, shadowOffset);
+        DrawShadowedText(dc, versionText_, logoRow, DT_RIGHT | DT_VCENTER | kLine | DT_END_ELLIPSIS, kVersionColor, shadowOffset);
 
         // 今のステップ名（左）とパーセント（右）
         SelectObject(dc, statusFont_);

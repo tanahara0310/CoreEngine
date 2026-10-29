@@ -3,6 +3,7 @@
 
 #ifdef CORE_EDITOR
 
+#include "Editor/ImGui/EditorLogo.h"
 #include "Editor/ImGui/EditorTheme.h"
 #include "Editor/Launcher/ProjectThumbnails.h"
 #include "Utility/Path/ProjectPaths.h"
@@ -299,7 +300,18 @@ namespace CoreEngine::Editor
         ImGui::BeginChild("##Nav", ImVec2(fontSize * 15.0f, 0.0f), ImGuiChildFlags_AlwaysUseWindowPadding);
         ImGui::PopStyleVar();
 
-        ImGui::TextColored(Theme::kAccentHover, "CoreEngine");
+        // 列の幅に収まる大きさで、ロゴを真ん中に置く
+        if (const ImTextureID logo = logo_ ? logo_->Texture(EditorLogo::Kind::Stacked) : 0) {
+            const float aspect = logo_->Aspect(EditorLogo::Kind::Stacked);
+            const float available = ImGui::GetContentRegionAvail().x;
+            const float height = (std::min)(fontSize * 9.0f, available / aspect);
+            const float width = height * aspect;
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (available - width) * 0.5f);
+            ImGui::Image(logo, ImVec2(width, height));
+            ImGui::Spacing();
+        } else {
+            ImGui::TextColored(Theme::kAccentHover, "CoreEngine");
+        }
         ImGui::PushStyleColor(ImGuiCol_Text, Theme::kTextMute);
         ImGui::PushTextWrapPos(0.0f);
         ImGui::TextUnformatted(engineRootText_.c_str());

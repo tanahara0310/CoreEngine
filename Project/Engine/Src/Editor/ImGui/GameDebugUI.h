@@ -2,6 +2,7 @@
 #include "Editor/ImGui/Gizmo.h"
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/ConsoleUI.h"
+#include "Editor/ImGui/EditorLogo.h"
 #include "Graphics/RHI/Debug/PixCapture.h"
 #include "WinApp/ScreenCapture.h"
 #include "Editor/ImGui/ProjectSettingsWindow.h"
@@ -147,6 +148,7 @@ namespace CoreEngine
         ProjectSettingsWindow projectSettings_;  ///< Project Settings ウィンドウ
 
         Editor::ProjectList projectList_;                        ///< 最近のプロジェクトの一覧
+        std::unique_ptr<Editor::EditorLogo> logo_;               ///< メニューバー・バージョン情報・プロジェクトの窓に出すロゴ
         std::unique_ptr<Editor::ProjectThumbnails> projectThumbnails_; ///< プロジェクトの窓に出すサムネイル
         std::unique_ptr<Editor::ProjectBrowser> projectBrowser_; ///< プロジェクトの窓の中身（開いている間だけある）
         std::vector<Editor::ProjectEntry> recentProjects_;       ///< 最近のプロジェクトのメニューに出すもの
@@ -197,6 +199,12 @@ namespace CoreEngine
         /// @brief 新しいシーンを作って登録し、開く
         /// @return 作れたら true（作れなければ newSceneError_ に理由が入る）
         bool CreateAndOpenScene(const std::string& name, int templateIndex);
+
+        /// @brief ロゴ（まだ無ければ作る。GPU が無ければ nullptr）
+        Editor::EditorLogo* Logo();
+
+        /// @brief メニューバーの左端にロゴのマークを描く（読めなければ名前の文字）
+        void DrawMenuBarLogo();
 
         /// @brief プロジェクトの窓（一覧と新規作成）を開く
         /// @param newProject 新規作成の画面から始めるなら true
