@@ -61,7 +61,7 @@ namespace CoreEngine
         /// @brief 泡の時間変化を進めるシステムを返す（描画側に無ければ nullptr）
         const WaterFoamSystem* GetWaterFoamSystem() const;
 
-        /// @brief 現在の水面高さ（ワールド Y）を返す
+        /// @brief 現在の水面高さ（ワールド Y。潮位を含む）を返す
         float GetWaterHeight() const;
 
         /// @brief 現在フレームの水面状態を返す（水面が無効なら regionValid=0）
@@ -103,6 +103,9 @@ namespace CoreEngine
 
         /// @brief 今の海の範囲マップと波の高さを waterSurfaceState_.seaMap へ書く（地図が無ければ空にする）
         void UpdateSeaMapBinding();
+
+        /// @brief 大気の月と太陽の高さから潮位を求め、水面へ渡す
+        void UpdateSkyTide(SceneContext& ctx) const;
 
         /// @brief 水面描画と同じ σa を RT コースティクスへ同期する
         void SyncCausticsAbsorption(RenderDomainContext& domain) const;

@@ -179,7 +179,7 @@ void WaterSurfaceDebugPanel::DrawStatusRows(WaterRenderFeature& runtimeControlle
 		constexpr float kPatchLengths[] = FFT_OCEAN_CASCADE_PATCH_LENGTHS;
 		InfoRow("パッチの大きさ", std::format("{:.0f} / {:.0f} / {:.0f} m", kPatchLengths[0], kPatchLengths[1], kPatchLengths[2]));
 	}
-	InfoRow("水面の高さ", std::format("{:.2f} m", waterPlane->GetTransform().GetTranslate().y));
+	InfoRow("水面の高さ", std::format("{:.2f} m（潮位 {:+.2f} m）", waterPlane->GetWaterLevel(), waterPlane->GetTideHeight()));
 	InfoRow("反射", waterPlane->GetFrameConstants().reflectionEnabled != 0 ? "使う" : "使わない");
 }
 

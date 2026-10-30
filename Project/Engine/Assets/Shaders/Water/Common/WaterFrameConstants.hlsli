@@ -94,7 +94,8 @@ cbuffer WaterFrameConstants : register(b5)
     int gShoreMeshEnabled;        // 1 = 範囲の中を岸の細かい格子で描き、粗い格子は範囲の中を描かない
     float gShoreMeshBlendWidth;   // 範囲の端から内側へ、粗い格子の形から岸の格子の形へ移す幅 [m]
     float gShoreMeshCellSize;     // 岸の格子の 1 マスの幅 [m]
-    float gShoreMeshPad;
+    // ---- 潮 ----
+    float gTideHeight;            // 潮で水面をトランスフォームの高さから上下させる量 [m]
 
     // ---- 海の範囲マップ（gWaterSeaMap。WaterSeaMap.hlsli）----
     float2 gSeaMapOriginXZ;       // 地図の範囲の XZ の最小の角 [m]

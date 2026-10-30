@@ -176,6 +176,7 @@ namespace CoreEngine
         frameCB_.shoreMeshEnabled = (binding.shoreMeshEnabled && frameCB_.seabedEnabled != 0) ? 1 : 0;
         frameCB_.shoreMeshBlendWidth = (std::max)(frameCB_.meshCellSizeXZ[0], frameCB_.meshCellSizeXZ[1]);
         frameCB_.shoreMeshCellSize = binding.seabedSize / static_cast<float>(WaterSurfaceMeshGenerator::kShoreSubdivisions);
+        frameCB_.tideHeight = GetTideHeight();
 
         // 海の範囲マップ
         const WaterSeaMapBinding& seaMap = binding.seaMap;
@@ -225,6 +226,20 @@ namespace CoreEngine
             HasFFTOceanTextureSRVs(),
             std::filesystem::path(GetVertexShaderPath()).string(),
             std::filesystem::path(GetPixelShaderPath()).string());
+    }
+
+    float WaterSurfaceComponent::GetWaterLevel() const {
+        const float baseHeight = transformComponent_ ? GetTransform().GetTranslate().y : 0.0f;
+        return baseHeight + GetTideHeight();
+    }
+
+    void WaterSurfaceComponent::SetTideHeight(float height) {
+        tideOverridden_ = true;
+        tideOverrideHeight_ = height;
+    }
+
+    void WaterSurfaceComponent::ClearTideHeight() {
+        tideOverridden_ = false;
     }
 
     void WaterSurfaceComponent::SetWave(uint32_t index, const WaveParams& wave) {
