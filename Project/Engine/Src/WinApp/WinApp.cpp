@@ -20,6 +20,16 @@ namespace
     CVar<bool> cvQuitOnEscape{
         "sys.Window.QuitOnEscape", false,
         "Esc キーでアプリケーションを終了する（無効でも × ボタンと Alt+F4 では終了できる）" };
+
+    /// @brief タイトルバー・タスクバー・Alt+Tab のアイコンをウィンドウ自身へ渡す
+    /// @details いったん外してから渡すので、同じアイコンでも描き直される
+    void SetWindowIcons(HWND hwnd)
+    {
+        SendMessage(hwnd, WM_SETICON, ICON_BIG, 0);
+        SendMessage(hwnd, WM_SETICON, ICON_SMALL, 0);
+        SendMessage(hwnd, WM_SETICON, ICON_BIG, reinterpret_cast<LPARAM>(LoadAppIcon(false)));
+        SendMessage(hwnd, WM_SETICON, ICON_SMALL, reinterpret_cast<LPARAM>(LoadAppIcon(true)));
+    }
 }
 
 bool WinApp::QuitsOnEscape()
@@ -116,6 +126,8 @@ void WinApp::CreateAppWindow(const wchar_t* title)
         wc_.hInstance,                 // インスタンスハンドル
         nullptr);                      // その他のパラメータ
 
+    SetWindowIcons(hwnd_);
+
     // 起動時はボーダーレス全画面。ただしこの時点では表示しない。
     // SW_SHOWMAXIMIZED ではタイトルバーとタスクバーが残るので「全画面」にはならない。
     // ここでジオメトリだけ先に適用するのはクライアントサイズを確定させるため
@@ -189,6 +201,8 @@ void WinApp::SetFullscreen(bool fullscreen)
         SetWindowPlacement(hwnd_, &windowedPlacement_);
         SetWindowPos(hwnd_, nullptr, 0, 0, 0, 0,
             SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+        // タイトルバーが戻ったので、アイコンを渡し直す
+        SetWindowIcons(hwnd_);
         isFullscreen_ = false;
     }
 }
