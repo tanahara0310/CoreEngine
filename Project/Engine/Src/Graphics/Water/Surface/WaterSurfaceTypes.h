@@ -149,14 +149,21 @@ struct WaterFrameConstants {
 	float shoreMeshBlendWidth = 1.0f;    // 範囲の端から内側へ、粗い格子の形から岸の格子の形へ移す幅 [m]
 	float shoreMeshCellSize = 1.0f;      // 岸の格子の 1 マスの幅 [m]
 	float shoreMeshPad = 0.0f;
+	// ---- 海の範囲マップ（gWaterSeaMap。WaterSeaMapBinding の同名の値）----
+	float seaMapOriginXZ[2] = { 0.0f, 0.0f }; // 地図の範囲の XZ の最小の角 [m]
+	float seaMapTexelsPerMeter = 0.0f;         // 1 m あたりのテクセル数
+	int seaMapEnabled = 0;                     // 1 = 波の変位を水深と上の物までの高さで弱める
+	uint32_t seaMapResolution[2] = { 0, 0 };   // 地図の X・Z のテクセル数
+	float seaMapDepthOffset = 0.0f;            // 今の水面の高さ − 測ったときの水面の高さ [m]
+	float seaMapInvWaveHeight = 0.0f;          // 波の高さ（有義波高）の逆数 [1/m]
 };
 
-// 全 41 フィールドのオフセットを HLSL packing 規則から機械的に導出して検証する。
+// 全 48 フィールドのオフセットを HLSL packing 規則から機械的に導出して検証する。
 // ずれると水柱厚さ・光学係数が別のフィールドを読み、波打ち際の段差として現れる
 // （RTシャドウの cbuffer 配列ずれ事故と同型）。
 // 以前はここに「absorptionCoeff は 16B 境界」「cameraNearZ は 80」といった個別 assert を
 // 人手で並べていたが、下の表が全フィールドを検査するので不要になった。
-static_assert(sizeof(WaterFrameConstants) == 224, "WaterFrameConstants size mismatch with HLSL cbuffer");
+static_assert(sizeof(WaterFrameConstants) == 256, "WaterFrameConstants size mismatch with HLSL cbuffer");
 static constexpr Cb::Field kWaterFrameConstantsFields[] = {
     CB_FIELD(WaterFrameConstants, reflectionEnabled), CB_FIELD(WaterFrameConstants, fresnelReflectanceScale),
     CB_FIELD(WaterFrameConstants, fresnelBaseReflectance), CB_FIELD(WaterFrameConstants, depthFadeEnabled),
@@ -181,6 +188,9 @@ static constexpr Cb::Field kWaterFrameConstantsFields[] = {
     CB_FIELD(WaterFrameConstants, meshGridOriginXZ), CB_FIELD(WaterFrameConstants, meshCellSizeXZ),
     CB_FIELD(WaterFrameConstants, shoreMeshEnabled), CB_FIELD(WaterFrameConstants, shoreMeshBlendWidth),
     CB_FIELD(WaterFrameConstants, shoreMeshCellSize), CB_FIELD(WaterFrameConstants, shoreMeshPad),
+    CB_FIELD(WaterFrameConstants, seaMapOriginXZ), CB_FIELD(WaterFrameConstants, seaMapTexelsPerMeter),
+    CB_FIELD(WaterFrameConstants, seaMapEnabled), CB_FIELD(WaterFrameConstants, seaMapResolution),
+    CB_FIELD(WaterFrameConstants, seaMapDepthOffset), CB_FIELD(WaterFrameConstants, seaMapInvWaveHeight),
 };
 CB_VERIFY_LAYOUT(WaterFrameConstants, kWaterFrameConstantsFields);
 CB_BIND_HLSL(WaterFrameConstants, kWaterFrameConstantsFields, "WaterFrameConstants");

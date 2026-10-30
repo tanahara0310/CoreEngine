@@ -8,6 +8,7 @@
 #include "Utility/Logger/Logger.h"
 #include <algorithm>
 #include <cassert>
+#include <cstring>
 #include <string>
 
 namespace CoreEngine
@@ -162,6 +163,24 @@ namespace CoreEngine
     {
         // ヒットシェーディングの表は BuildTLAS のたびに同じ並びで送り直す
         hitTablesValid_ = false;
+
+        // 止まっている形の決まった物の並びと置き場所を 1 つの値にまとめる（FNV-1a）
+        uint64_t signature = 14695981039346656037ull;
+        auto mixSignature = [&signature](const void* data, size_t bytes) {
+            const auto* p = static_cast<const unsigned char*>(data);
+            for (size_t i = 0; i < bytes; ++i) {
+                signature = (signature ^ p[i]) * 1099511628211ull;
+            }
+        };
+        for (const InstanceDesc& inst : instances) {
+            if (inst.instanceMask != RayTracingInstanceMask::kSolid) {
+                continue;
+            }
+            mixSignature(&inst.blasIndex, sizeof(inst.blasIndex));
+            mixSignature(&inst.blasAddress, sizeof(inst.blasAddress));
+            mixSignature(inst.transform, sizeof(inst.transform));
+        }
+        staticSolidSignature_ = signature;
 
         if (!isSupported_ || instances.empty()) {
             tlasInstanceCount_ = 0;
@@ -590,6 +609,34 @@ namespace CoreEngine
                     retiredResources_.push_back(std::move(it->second.result));
                 }
                 it = dynamicBlas_.erase(it);
+            } else {
+                ++it;
+            }
+        }
+    }
+
+    bool AccelerationStructureManager::TrackSolidMotion(const void* owner, const Matrix4x4& world, uint64_t frame)
+    {
+        auto [it, inserted] = solidMotion_.try_emplace(owner);
+        SolidMotionEntry& entry = it->second;
+        entry.lastSeenFrame = frame;
+        if (inserted) {
+            entry.world = world;
+            return false;
+        }
+        if (std::memcmp(&entry.world, &world, sizeof(Matrix4x4)) != 0) {
+            entry.world = world;
+            entry.lastMovedFrame = frame;
+            entry.moved = true;
+        }
+        return entry.moved && frame - entry.lastMovedFrame <= kSolidMotionKeepFrames;
+    }
+
+    void AccelerationStructureManager::RetireUnusedSolidMotion(uint64_t frame)
+    {
+        for (auto it = solidMotion_.begin(); it != solidMotion_.end();) {
+            if (it->second.lastSeenFrame != frame) {
+                it = solidMotion_.erase(it);
             } else {
                 ++it;
             }

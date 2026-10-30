@@ -13,6 +13,7 @@
 #include "../Common/GerstnerWave.hlsli"
 #include "../Common/FFTOceanCascade.hlsli"
 #include "../Common/WaterShoreMesh.hlsli"
+#include "../Common/WaterSeaMap.hlsli"
 // ピクセルフットプリントの算出（ScreenUVToNDC / ReconstructWorldPosition）
 #include "../../Include/Common/DepthReconstruction.hlsli"
 
@@ -45,6 +46,13 @@ cbuffer WaterSurfaceData : register(b1)
     float gSurfaceShoreMeshCellSize;       // 岸の格子の 1 マスの幅 [m]
     float gSurfaceShoreMeshBlendWidth;     // 範囲の端から内側へ、粗い格子の形から移す幅 [m]
     float2 gSurfacePad3;
+    // 海の範囲マップ（WaterSeaMap.hlsli。地図はシェーダー可視ヒープから番号で引く）
+    float2 gSurfaceSeaMapOriginXZ;         // 地図の範囲の XZ の最小の角 [m]
+    float gSurfaceSeaMapTexelsPerMeter;    // 1 m あたりのテクセル数
+    uint gSurfaceSeaMapSrvIndex;           // 地図の SRV のヒープの中の番号
+    uint2 gSurfaceSeaMapResolution;        // 地図の X・Z のテクセル数（0 なら地図なし）
+    float gSurfaceSeaMapDepthOffset;       // 今の水面の高さ − 測ったときの水面の高さ [m]
+    float gSurfaceSeaMapInvWaveHeight;     // 波の高さ（有義波高）の逆数 [1/m]
 };
 
 static const uint kWaterSurfaceModelTypeGerstner = 0;
@@ -86,6 +94,20 @@ float ProjectFootprintOntoSurface(
     return perpendicularWidth / max(abs(dot(rayDirection, surfaceNormal)), 0.05f);
 }
 
+/// @brief 海の範囲マップから、波の変位に掛ける倍率を返す（地図が無ければ 1）
+/// @param conservative true なら粗い格子用の値を使う
+float EvaluateSurfaceSeaMapWaveScale(float2 worldXZ, bool conservative)
+{
+    if (gSurfaceSeaMapResolution.x == 0)
+    {
+        return 1.0f;
+    }
+    Texture2D<float4> seaMap = ResourceDescriptorHeap[gSurfaceSeaMapSrvIndex];
+    const float4 value = SampleWaterSeaMap(
+        seaMap, worldXZ, gSurfaceSeaMapOriginXZ, gSurfaceSeaMapTexelsPerMeter, gSurfaceSeaMapResolution);
+    return ComputeWaterSeaMapWaveScale(value, conservative, gSurfaceSeaMapDepthOffset, gSurfaceSeaMapInvWaveHeight);
+}
+
 float3 EvaluateWaterOffsetGerstner(float2 worldXZ)
 {
     float3 totalOffset = float3(0.0f, 0.0f, 0.0f);
@@ -101,7 +123,8 @@ float3 EvaluateWaterOffsetGerstner(float2 worldXZ)
         totalOffset += EvaluateGerstnerWaveOffset(gSurfaceWaves[waveIndex], gSurfaceTime, worldXZ);
     }
 
-    return totalOffset;
+    // Gerstner の水面は粗い格子だけで描く
+    return totalOffset * EvaluateSurfaceSeaMapWaveScale(worldXZ, true);
 }
 
 float3 EvaluateWaterNormalGerstner(float2 worldXZ)
@@ -187,7 +210,8 @@ float3 SampleFFTOceanCascadeDisplacement(Texture2DArray<float4> textureData, flo
         displacement += float3(horizontal.x, d.y, horizontal.y);
     }
     // 波群エンベロープでタイル周期を崩す（ラスタ描画と同一の変調）
-    return displacement * ComputeFFTWaveGroupEnvelope(worldXZ, gSurfaceWaveGroupPhase);
+    return displacement * ComputeFFTWaveGroupEnvelope(worldXZ, gSurfaceWaveGroupPhase)
+        * EvaluateSurfaceSeaMapWaveScale(worldXZ, false);
 }
 
 /// @brief フットプリントに対するカスケードの傾きの残し具合（1=そのまま / 0=外す）
@@ -258,7 +282,9 @@ float3 SampleMeshVertexDisplacement(Texture2DArray<float4> displacementTex, floa
         const float2 horizontal = RotateFromFFTCascadeGrid(float2(d.x, d.z), c);
         disp += float3(horizontal.x, d.y, horizontal.y) * weight;
     }
-    return disp * ComputeFFTWaveGroupEnvelope(baseXZ, gSurfaceWaveGroupPhase);
+    const bool conservative = UseConservativeWaterSeaMap(vertexSpacing, gSurfaceSeaMapTexelsPerMeter);
+    return disp * ComputeFFTWaveGroupEnvelope(baseXZ, gSurfaceWaveGroupPhase)
+        * EvaluateSurfaceSeaMapWaveScale(baseXZ, conservative);
 }
 
 /// @brief 粗い格子（水面メッシュの PlaneMeshGenerator の部分）の XZ の最小の角と 1 マスの幅

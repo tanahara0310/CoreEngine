@@ -273,6 +273,10 @@ void WaterSurfaceParameterPanel::DrawWaveSection(WaterRenderFeature& runtimeCont
 
 	ImGui::SeparatorText("形");
 	CVarUI::DrawRow(&WaterCVars::ShoreFineMesh, "カメラの近くを細かく描く");
+	CVarUI::DrawRow(&WaterCVars::SeaMapEnabled, "陸と浅瀬で波を弱める");
+	ImGui::BeginDisabled(!WaterCVars::SeaMapEnabled.Get());
+	CVarUI::DrawRow(&WaterCVars::SeaMapResolution, "海の範囲の細かさ");
+	ImGui::EndDisabled();
 }
 
 void WaterSurfaceParameterPanel::DrawSeaStateRow() {

@@ -46,6 +46,8 @@ namespace CoreEngine
         desc.srvTableNames = kSrvTableNames;
         desc.constantsName = "WaterSeabedConstants";
         desc.constantsBytes = sizeof(WaterSeabedConstants);
+        // 水面の共通関数（RTWaterSurfaceCommon.hlsli）が海の範囲マップをヒープから引く
+        desc.directlyIndexedHeap = true;
         return InitializeFromDesc(dxCommon, descriptorAllocator, asMgr, shaderProgramCache, desc);
     }
 
@@ -90,7 +92,7 @@ namespace CoreEngine
         constants.windowOriginXZ[1] = window_.originZ;
         constants.texelSize = kTexelSize;
         constants.maxDepth = kMaxDepth;
-        constants.instanceMask = RayTracingInstanceMask::kSolid;
+        constants.instanceMask = RayTracingInstanceMask::kSolid | RayTracingInstanceMask::kMovable;
 
         const SurfaceConstantsUpload surface = UploadSurfaceDataForDispatch(dispatchSurfaceData, fftOceanInput);
 

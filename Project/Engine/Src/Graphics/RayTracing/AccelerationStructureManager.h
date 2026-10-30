@@ -24,6 +24,7 @@ namespace CoreEngine
         inline constexpr UINT kVegetation = 0x02; ///< 風や波で揺れる材質（植物・海草）を持つメッシュ
         inline constexpr UINT kParticle = 0x04;   ///< モデルの粒
         inline constexpr UINT kCreature = 0x08;   ///< 泳ぐ生き物（魚の動きの材質を持つメッシュ）
+        inline constexpr UINT kMovable = 0x10;    ///< 動いている形の決まった物（スキニングと、少し前まで動いていた物）
         inline constexpr UINT kAll = 0xFF;
     }
 
@@ -111,6 +112,18 @@ namespace CoreEngine
 
         /// @brief 動的 BLAS の数
         UINT GetDynamicBLASCount() const { return static_cast<UINT>(dynamicBlas_.size()); }
+
+        /// @brief 形の決まった物が少し前まで動いていたかを、持ち主ごとに行列を覚えて返す
+        /// @param owner 持ち主の識別子（コンポーネントのアドレスなど）
+        /// @param world 今フレームのワールド行列
+        /// @param frame 今フレームの番号
+        /// @return 前に見たときから行列が変わったフレームから kSolidMotionKeepFrames 以内なら true（初めて見た物は false）
+        bool TrackSolidMotion(const void* owner, const Matrix4x4& world, uint64_t frame);
+        /// @brief 今フレーム見なかった持ち主の行列の記録を捨てる（BuildTLAS の後に呼ぶ）
+        void RetireUnusedSolidMotion(uint64_t frame);
+        /// @brief 直近の BuildTLAS の、印が kSolid のインスタンス（BLAS と行列）から求めた値
+        /// @details 止まっている形の決まった物が増えた・減った・置き直されたときに値が変わる
+        uint64_t GetStaticSolidSignature() const { return staticSolidSignature_; }
 
         /// @brief TLAS の SRV GPU ハンドルを取得
         D3D12_GPU_DESCRIPTOR_HANDLE GetTLASSRVHandle() const {
@@ -266,6 +279,18 @@ namespace CoreEngine
         static constexpr uint32_t kDynamicRebuildInterval = 120;
         /// @brief このフレーム数使われなかった動的 BLAS を捨てる
         static constexpr uint64_t kDynamicKeepFrames = 2;
+
+        /// @brief 形の決まった物 1 つぶんの行列の記録
+        struct SolidMotionEntry {
+            Matrix4x4 world{};
+            uint64_t lastMovedFrame = 0;
+            uint64_t lastSeenFrame = 0;
+            bool moved = false; ///< 一度でも行列が変わったか
+        };
+        std::unordered_map<const void*, SolidMotionEntry> solidMotion_;
+        /// @brief 行列が変わってからこのフレーム数は動いている物として扱う
+        static constexpr uint64_t kSolidMotionKeepFrames = 90;
+        uint64_t staticSolidSignature_ = 0;
 
         /// @brief 動的 BLAS のスクラッチから len バイトを切り出す（足りなければ前の構築を待って先頭へ戻る）
         D3D12_GPU_VIRTUAL_ADDRESS AllocateDynamicScratch(UINT64 len);

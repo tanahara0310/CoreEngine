@@ -111,5 +111,11 @@ void WaterShaderResourceBinder::Bind(
     if (renderResources.HasShoreFoam()) {
         binder.Set(table_[WaterBind::gWaterShoreFoam], renderResources.shoreFoamSRV);
     }
+
+    // 海の範囲マップ
+    // （未接続のフレームはシェーダー側フラグ gSeaMapEnabled=0 で参照されない）
+    if (renderResources.HasSeaMap()) {
+        binder.Set(table_[WaterBind::gWaterSeaMap], renderResources.seaMapSRV);
+    }
 }
 }

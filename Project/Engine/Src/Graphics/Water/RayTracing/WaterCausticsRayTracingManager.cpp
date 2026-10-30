@@ -89,6 +89,8 @@ namespace CoreEngine
         desc.srvTableNames = kSrvTableNames;
         desc.constantsName = "WaterCausticsConstants";
         desc.constantsBytes = sizeof(WaterCausticsConstants);
+        // 水面の共通関数（RTWaterSurfaceCommon.hlsli）が海の範囲マップをヒープから引く
+        desc.directlyIndexedHeap = true;
         return InitializeFromDesc(dxCommon, descriptorAllocator, asMgr, shaderProgramCache, desc);
     }
 
