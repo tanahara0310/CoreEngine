@@ -32,9 +32,9 @@ namespace CoreEngine
         Matrix4x4 invViewProj;        // 逆ビュープロジェクション行列（Aerial Perspective 用）
         Vector3 cameraWorldPos;       float groundLevelY;          // カメラのワールド座標 [m] / 地表とみなす世界Y座標 [m]
         float multiScatteringFactor;  float apKmPerSlice;          // 多重散乱スケール / APの1スライスあたり距離 [km]
-        float constantsPad[2];        // パディング
+        float moonDiskIntensity;      float constantsPad;          // 月面の明るさ（満ち欠けを掛ける前） / パディング
         // ===== 月（第2大気ライト。UE の Second Atmosphere Light 相当） =====
-        Vector3 moonDirection;        float moonIntensity;         // 月光の進行方向 / 強度（sunIntensity と同ドメイン）
+        Vector3 moonDirection;        float moonIntensity;         // 月光の進行方向 / 強度（満ち欠け込み。sunIntensity と同ドメイン）
         Vector3 moonColor;            float moonDiskHalfAngleRad;  // 月光色 / 月の視半径 [rad]
         float moonDiskLuminanceScale; float hasMoon;               // 月ディスク輝度スケール / 月有効フラグ (0/1)
         float moonPhaseFromSun;       float starIntensity;         // 満ち欠けの太陽連動 (0=常に満月) / 星空の強度 (0=無効)
@@ -60,7 +60,8 @@ namespace CoreEngine
         CB_FIELD(AtmosphereShaderConstants, invViewProj), CB_FIELD(AtmosphereShaderConstants, cameraWorldPos),
         CB_FIELD(AtmosphereShaderConstants, groundLevelY),
         CB_FIELD(AtmosphereShaderConstants, multiScatteringFactor),
-        CB_FIELD(AtmosphereShaderConstants, apKmPerSlice), CB_FIELD(AtmosphereShaderConstants, constantsPad),
+        CB_FIELD(AtmosphereShaderConstants, apKmPerSlice),
+        CB_FIELD(AtmosphereShaderConstants, moonDiskIntensity), CB_FIELD(AtmosphereShaderConstants, constantsPad),
         CB_FIELD(AtmosphereShaderConstants, moonDirection), CB_FIELD(AtmosphereShaderConstants, moonIntensity),
         CB_FIELD(AtmosphereShaderConstants, moonColor), CB_FIELD(AtmosphereShaderConstants, moonDiskHalfAngleRad),
         CB_FIELD(AtmosphereShaderConstants, moonDiskLuminanceScale), CB_FIELD(AtmosphereShaderConstants, hasMoon),
@@ -110,9 +111,10 @@ namespace CoreEngine
         float moonDiskLuminanceScale = 25.0f;
 
         /// @brief 月の満ち欠けを太陽方向から計算するか
-        /// @details false（既定）= 常に満月。ゲームでは太陽と月を独立に動かすことが多く、
-        ///          実位相だと配置次第で意図せず新月（ほぼ見えない月）になるため固定満月を既定とする。
-        ///          true = 太陽・月の位置関係から実際の位相（新月〜満月）を自動計算する。
+        /// @details false（既定）= 常に満月。
+        ///          true = 太陽・月の位置関係から位相（新月〜満月）を求め、月面の欠けを描き、
+        ///          空・雲・露出・地表を照らす月光を月全体の明るさに合わせて弱める。
+        ///          SetMoonPhaseFromSunOverride(true) の間は false でも true として扱う。
         bool moonPhaseFromSun = false;
 
         // ===== 星空（Phase 5: 手続き的星field） =====
@@ -221,8 +223,18 @@ namespace CoreEngine
         /// @brief 月光の色
         const Vector4& GetMoonColor() const { return moonColor_; }
 
-        /// @brief 月光の強度（大気の輝度ドメイン）
+        /// @brief 月光の強度（大気の輝度ドメイン。満ち欠けの明るさを掛けた値）
         float GetMoonIntensity() const { return moonIntensity_; }
+
+        /// @brief 月全体の明るさ（満月 = 1・新月 = 0。満ち欠けを求めないときは 1）
+        float GetMoonPhaseBrightness() const { return moonPhaseBrightness_; }
+
+        /// @brief CVar r.Atmosphere.MoonPhaseFromSun に関わらず満ち欠けを太陽方向から求める
+        /// @details 時刻の機能が月齢で月を動かす間だけ true にし、終わるときに false へ戻す。
+        void SetMoonPhaseFromSunOverride(bool enabled) { moonPhaseFromSunOverride_ = enabled; }
+
+        /// @brief 満ち欠けを太陽方向から求めているか（CVar と上書きのどちらかが立っている）
+        bool IsMoonPhaseFromSun() const { return parameters_.moonPhaseFromSun || moonPhaseFromSunOverride_; }
 
         /// @brief 有効な月ライトが取得できているか
         bool HasMoonLight() const { return hasMoonLight_; }
@@ -460,7 +472,10 @@ namespace CoreEngine
         // 月（第2大気ライト）。isAtmosphereMoon のライトが無ければ hasMoonLight_=false のまま
         Vector3 moonDirection_ = { 0.0f, -1.0f, 0.0f };
         Vector4 moonColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
-        float moonIntensity_ = 0.0f;
+        float moonIntensity_ = 0.0f;       ///< 月光の強度（満ち欠け込み）
+        float moonDiskIntensity_ = 0.0f;   ///< 月面の明るさ（満ち欠けを掛ける前）
+        float moonPhaseBrightness_ = 1.0f; ///< 月全体の明るさ（満月 = 1）
+        bool moonPhaseFromSunOverride_ = false; ///< CVar に関わらず満ち欠けを求めるか
         bool hasMoonLight_ = false;
         Vector3 moonTransmittance_ = { 1.0f, 1.0f, 1.0f }; ///< 地表→月の大気透過率（惑星遮蔽込み）
         float sceneIlluminationLuminance_ = 0.18f; ///< 照明駆動露出用のシーン代表輝度（カメラ非依存）

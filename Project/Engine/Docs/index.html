@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.47.0">
+<meta name="engine-version" content="0.48.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -9707,7 +9707,7 @@ python Tools/OkinawaBeach/bake_araha_walk.py
     <tbody>
       <tr><td><code>collision.pairs</code></td><td>当たるレイヤーの組み合わせ。<strong>ここに書いた組み合わせだけ</strong>が当たる（キーが無ければ、<code>Default</code> がすべてのレイヤーと当たる既定の表）</td></tr>
       <tr><td><code>defaultGround</code></td><td>エンジンが置く床（DefaultGround）を出すか</td></tr>
-      <tr><td><code>features</code></td><td>シーンに足す機能。<code>WaterRender</code>（水面を描く。<a href="#api-WaterSurface">水面</a> に必要）・<code>TimeOfDay</code>（時刻を進め、空と光を昼・夕方・夜と変える）</td></tr>
+      <tr><td><code>features</code></td><td>シーンに足す機能。<code>WaterRender</code>（水面を描く。<a href="#api-WaterSurface">水面</a> に必要）・<code>TimeOfDay</code>（時刻を進め、空と光を昼・夕方・夜と変える。月は月齢で満ち欠けする。<a href="#api-SkyBox">空と大気散乱</a>）</td></tr>
     </tbody>
   </table>
   </div>
@@ -9905,6 +9905,14 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-48-0">v0.48.0 <span class="dim">（2026-10-31）</span></h3>
+  <p>月が満ち欠けするようにした版です（<a href="#api-SkyBox">空と大気散乱</a>）。シーンの機能 <code>TimeOfDay</code> の月が月齢で動き、潮にも大潮と小潮ができます（<a href="#api-WaterSurface">水面</a>）。</p>
+  <ul>
+    <li><strong>月齢</strong>：<code>TimeOfDay</code> の月は、太陽と同じ道を月齢の分だけ遅れて通ります。開始時の月齢は <code>r.TimeOfDay.StartMoonAge</code>（既定は満月で、今までと同じ位置から始まります）で決まり、時刻が 24 時間進むごとに 1 日進みます（<code>r.TimeOfDay.AdvanceMoonAge</code> で止められます）。月齢によっては昼の空にも月が出ます。Engine Settings の「Time of Day」に、月齢のスライダーと「新月」「上弦」「満月」「下弦」のボタンを足しました。</li>
+    <li><strong>欠けた月の見た目と明るさ</strong>：満ち欠けを求めるとき（CVar <code>r.Atmosphere.MoonPhaseFromSun</code> がオン、または <code>TimeOfDay</code> がある間）は、月面を Lommel–Seeliger の法則で照らして欠けを描き（満月は縁まで同じ明るさ）、月光（空の明るさ・雲・自動露出・地表を照らす光）を月面全体の明るさに合わせて弱めます。半月で満月の約 38%、新月で 0 です。今までの満ち欠けは月面を Lambert の法則で照らしていたので、満月でも縁が暗く、月光の強さも変わりませんでした。</li>
+    <li><strong>大潮と小潮</strong>：潮位は大気の月と太陽の高さから求めているので、月齢で月が動くと、新月と満月の頃は大潮、上弦と下弦の頃は小潮（干満差は大潮の約 37%）になり、満潮の時刻が毎日約 49 分ずつ遅れます。</li>
+  </ul>
 
   <h3 id="changelog-v0-47-0">v0.47.0 <span class="dim">（2026-10-30）</span></h3>
   <p>大気の月と太陽の高さから潮位を求め、水面を満ち引きさせるようにした版です（<a href="#api-WaterSurface">水面</a>）。</p>
@@ -15300,13 +15308,13 @@ void LateUpdate()   // 追いかける相手が動いた後に動かす
   {
     id: "SkyBox", kind: "component", cat: "環境", display: "空と大気散乱", type: "SkyBox",
     accessor: "owner.skyBox", title: "空と大気散乱（SkyBox）", brief: "空と環境光",
-    keywords: "空 スカイボックス 大気 太陽 月 時刻 環境光 ibl",
+    keywords: "空 スカイボックス 大気 太陽 月 時刻 環境光 ibl 満ち欠け 月齢 新月 満月 上弦 下弦",
     summary: "空と大気散乱、周りの環境光を決めます。インスペクタでは太陽と月の配置（「正午」「朝」「夕暮れ」「夜（満月）」、時刻から配置）や大気のパラメータも調整できます。",
     props: [
       ["向き", "rotation", "Vector3", "(0, 0, 0)", "空の向き（インスペクタは度、スクリプトはラジアン）。"],
       ["環境光の強さ", "environmentIntensity", "float", "1", "0〜10。"]
     ],
-    notes: "<ul><li>シーンに空が無いと、エンジンが保存されない空を自動で置きます。値を保存したいときは、自分で空のオブジェクトを置きます。</li><li>インスペクタの主なまとまり：「太陽と月の配置」「太陽」「月」「環境光」「大気パラメータ」「診断」。</li></ul>",
+    notes: "<ul><li>シーンに空が無いと、エンジンが保存されない空を自動で置きます。値を保存したいときは、自分で空のオブジェクトを置きます。</li><li>インスペクタの主なまとまり：「太陽と月の配置」「太陽」「月」「環境光」「大気パラメータ」「診断」。</li><li>月は既定でいつも満月の形で描きます。CVar <code>r.Atmosphere.MoonPhaseFromSun</code> をオンにすると、太陽と月の向きから満ち欠けを求めて月面の欠けを描き、月光（空の明るさ・雲・自動露出・地表を照らす光）を月面全体の明るさに合わせて弱めます。半月で満月の約 38%、新月で 0 です。シーンの機能 <code>TimeOfDay</code> がある間は、オフでも満ち欠けします。</li><li><code>TimeOfDay</code> の月は、太陽と同じ道を月齢の分だけ遅れて通ります（月齢 0 で新月・7.4 で上弦・14.8 で満月・22.1 で下弦）。上弦の月は夕方に、満月は真夜中に、下弦の月は明け方にいちばん高く昇り、月の出は毎日約 49 分ずつ遅れます。月齢によっては昼の空にも月が出ます。開始時の月齢は <code>r.TimeOfDay.StartMoonAge</code>（既定は満月）で決まり、時刻が 24 時間進むごとに 1 日進みます。<code>r.TimeOfDay.AdvanceMoonAge</code> を切ると、開始時の月齢のまま毎晩同じ形の月になります。Engine Settings の「Time of Day」に、月齢のスライダーと「新月」「上弦」「満月」「下弦」のボタンがあります。</li></ul>",
     see: [["api-Light", "ライト"], ["api-HeightFog", "高さフォグ"]]
   },
 
@@ -15366,7 +15374,7 @@ void LateUpdate()   // 追いかける相手が動いた後に動かす
         ]
       }
     ],
-    notes: "<ul><li>水面を使うシーンは、<span class=\"path\">_scene.json</span> に <code>\"features\": [\"WaterRender\"]</code> を書き足す必要があります（エディタに追加の画面はありません。サンプル Sandbox の WaterTestScene を参照）。</li><li>波・水の色・反射と屈折・泡・コースティクスは水面 1 枚ごとの値でなく、プロジェクトの CVar（<code>r.Water.*</code>。<span class=\"path\">Config/EngineSettings/CVars.json</span>）で決まり、どのシーンの水面にも同じ値が効きます。エディタでは水面のインスペクタの「一辺の長さ」「分割数」の下に、セクションごとに並びます。「波」の「海況」で風速・吹送距離・うねりをまとめて入れられ、いまの値で出来上がる風波とうねりの波長と高さも出ます。いちばん下のボタンで <code>r.Water.*</code> をすべて既定値へ戻せます。</li><li>「FFT の海で描く」を切ると Gerstner の波で描きます。Gerstner の波は保存せず、開き直すと既定の 16 本に戻ります。</li><li>コースティクスの「作り方」をスクリーンスペースにしたときの強さなどの値は、Gerstner の波のときだけ効きます。レイトレーシングの明るさは、光と水の吸収から決まります。</li><li>FFT の海でレイトレーシングが使えるときは、ゲームのカメラの周り 256m 四方（海底の高さを測る範囲）を 0.5m 間隔の細かい格子で描き、その外を「分割数」の格子で描きます。範囲はカメラと一緒に 0.5m 単位で動きます。CVar <code>r.Water.Shore.FineMesh</code> で切れます。</li><li>FFT の海の波の形（頂点の高さと横のずれ）には、その格子の間隔で表せる波だけを入れます。細かい格子は 3 つのカスケードの波を全部（短い波まで）、粗い格子は 60m より長い波だけです。形に入らない短い波は、陰影（法線）で描きます。細かい格子を使わないとき（レイトレーシングが無い・<code>r.Water.Shore.FineMesh</code> を切った）は、カメラの近くも 60m より長い波だけの形になります。</li><li>レイトレーシングが使えるときは、水面の範囲全体の水深と水面の上にある物までの高さを測った地図（海の範囲マップ）で波の形を弱めます。陸や建物の下では波が出ず、浅瀬では水深に応じて低くなり、桟橋の下では桟橋に届かない高さまでになります。水面の範囲の端に触れている水と、いちばん大きな水のかたまりを海とし、それ以外の囲まれた水（プールや池）は波立ちません。測るのは止まっている物だけで、物を置く・動かすと、落ち着いてから測り直します。CVar <code>r.Water.SeaMap.Enabled</code> で切れ、<code>r.Water.SeaMap.Resolution</code>（地図の長い辺のテクセル数）で細かさを変えられます。</li><li>「潮の高さ」を 0 より大きくすると、大気の月と太陽の高さから潮位を求め、水面をトランスフォームの高さから上下させます（トランスフォームの値は変えません）。月の効きを 1、太陽を 0.46 として足し合わせ、どちらも真上か真下で満潮、地平線で干潮です。月が無いシーンは太陽だけで求め、どちらも無ければ潮は動きません。水面の描画・映り込み・屈折・コースティクス・水中の霧と明るさ・岸の泡・海の範囲マップは、どれも潮位を足した高さを使います。</li><li>月と太陽が真上まで来ないと、満潮は「潮の高さ」まで上がりません。シーンの機能 <code>TimeOfDay</code> は緯度（<code>r.TimeOfDay.LatitudeDeg</code>。既定 35 度）が高いほど南中が低く、35 度では満潮が「潮の高さ」の 0.34 倍、干潮が −1 倍です。</li><li><code>TimeOfDay</code> の月は太陽のちょうど 12 時間後を通るので、いつも大潮で、満潮は 0 時と 12 時、干潮は 6 時と 18 時です。潮の速さは空の時間の速さ（<code>r.TimeOfDay.DayLengthSeconds</code>）で決まります。<code>TimeOfDay</code> の無いシーンや時間を進めないシーンでは、潮位は一定です。</li><li>スクリプトで水の高さを使う（浮かぶ・泳ぐ・濡れる）ときは、トランスフォームの高さでなく <code>waterLevel</code> を読みます。潮を自分で動かしたいときは <code>SetTideHeight</code> で指定します。</li><li>海の範囲マップの水深は、潮位を除いた高さで測ってから潮位の分を足します。満潮で水に沈んだ低い陸にも、その深さに応じて波が出ます。</li></ul>",
+    notes: "<ul><li>水面を使うシーンは、<span class=\"path\">_scene.json</span> に <code>\"features\": [\"WaterRender\"]</code> を書き足す必要があります（エディタに追加の画面はありません。サンプル Sandbox の WaterTestScene を参照）。</li><li>波・水の色・反射と屈折・泡・コースティクスは水面 1 枚ごとの値でなく、プロジェクトの CVar（<code>r.Water.*</code>。<span class=\"path\">Config/EngineSettings/CVars.json</span>）で決まり、どのシーンの水面にも同じ値が効きます。エディタでは水面のインスペクタの「一辺の長さ」「分割数」の下に、セクションごとに並びます。「波」の「海況」で風速・吹送距離・うねりをまとめて入れられ、いまの値で出来上がる風波とうねりの波長と高さも出ます。いちばん下のボタンで <code>r.Water.*</code> をすべて既定値へ戻せます。</li><li>「FFT の海で描く」を切ると Gerstner の波で描きます。Gerstner の波は保存せず、開き直すと既定の 16 本に戻ります。</li><li>コースティクスの「作り方」をスクリーンスペースにしたときの強さなどの値は、Gerstner の波のときだけ効きます。レイトレーシングの明るさは、光と水の吸収から決まります。</li><li>FFT の海でレイトレーシングが使えるときは、ゲームのカメラの周り 256m 四方（海底の高さを測る範囲）を 0.5m 間隔の細かい格子で描き、その外を「分割数」の格子で描きます。範囲はカメラと一緒に 0.5m 単位で動きます。CVar <code>r.Water.Shore.FineMesh</code> で切れます。</li><li>FFT の海の波の形（頂点の高さと横のずれ）には、その格子の間隔で表せる波だけを入れます。細かい格子は 3 つのカスケードの波を全部（短い波まで）、粗い格子は 60m より長い波だけです。形に入らない短い波は、陰影（法線）で描きます。細かい格子を使わないとき（レイトレーシングが無い・<code>r.Water.Shore.FineMesh</code> を切った）は、カメラの近くも 60m より長い波だけの形になります。</li><li>レイトレーシングが使えるときは、水面の範囲全体の水深と水面の上にある物までの高さを測った地図（海の範囲マップ）で波の形を弱めます。陸や建物の下では波が出ず、浅瀬では水深に応じて低くなり、桟橋の下では桟橋に届かない高さまでになります。水面の範囲の端に触れている水と、いちばん大きな水のかたまりを海とし、それ以外の囲まれた水（プールや池）は波立ちません。測るのは止まっている物だけで、物を置く・動かすと、落ち着いてから測り直します。CVar <code>r.Water.SeaMap.Enabled</code> で切れ、<code>r.Water.SeaMap.Resolution</code>（地図の長い辺のテクセル数）で細かさを変えられます。</li><li>「潮の高さ」を 0 より大きくすると、大気の月と太陽の高さから潮位を求め、水面をトランスフォームの高さから上下させます（トランスフォームの値は変えません）。月の効きを 1、太陽を 0.46 として足し合わせ、どちらも真上か真下で満潮、地平線で干潮です。月が無いシーンは太陽だけで求め、どちらも無ければ潮は動きません。水面の描画・映り込み・屈折・コースティクス・水中の霧と明るさ・岸の泡・海の範囲マップは、どれも潮位を足した高さを使います。</li><li>月と太陽が真上まで来ないと、満潮は「潮の高さ」まで上がりません。シーンの機能 <code>TimeOfDay</code> は緯度（<code>r.TimeOfDay.LatitudeDeg</code>。既定 35 度）が高いほど南中が低く、35 度では満潮が「潮の高さ」の 0.34 倍、干潮が −1 倍です。</li><li><code>TimeOfDay</code> の月は月齢の分だけ太陽から遅れて動くので、新月と満月の頃は大潮、上弦と下弦の頃は小潮になります（小潮の干満差は大潮の約 37%）。満潮の時刻は毎日約 49 分ずつ遅れます（満月の日は 0 時と 12 時）。潮の速さは空の時間の速さ（<code>r.TimeOfDay.DayLengthSeconds</code>）で決まります。<code>TimeOfDay</code> の無いシーンや時間を進めないシーンでは、潮位は一定です。</li><li>スクリプトで水の高さを使う（浮かぶ・泳ぐ・濡れる）ときは、トランスフォームの高さでなく <code>waterLevel</code> を読みます。潮を自分で動かしたいときは <code>SetTideHeight</code> で指定します。</li><li>海の範囲マップの水深は、潮位を除いた高さで測ってから潮位の分を足します。満潮で水に沈んだ低い陸にも、その深さに応じて波が出ます。</li></ul>",
     see: [["file-formats", "_scene.json の書き方"], ["api-SkyBox", "空と大気散乱"]]
   },
 

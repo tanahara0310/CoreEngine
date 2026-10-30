@@ -310,8 +310,8 @@ namespace CoreEngine {
                 }
                 TrackLightEdit();
 
-                // 満ち欠け: 既定は常に満月（実位相は太陽の配置次第で意図せず新月になるためオプトイン）
-                // 実体は CVar が持つ（GetParametersMutable への直書きは次の同期で戻されるため使わない）
+                // 満ち欠け: 既定は常に満月。オンにすると太陽との位置から欠けと月光の明るさを求める
+                // （TimeOfDay がある間はオフでも満ち欠けする）。実体は CVar が持つ（GetParametersMutable への直書きは次の同期で戻されるため使わない）
                 CVarUI::DrawTree("r.Atmosphere.MoonPhaseFromSun");
             }
             if (changed) {
@@ -388,6 +388,9 @@ namespace CoreEngine {
                     const Vector3& moonDir = atmosphereManager->GetMoonDirection();
                     ImGui::Text("月ライト方向: (%.3f, %.3f, %.3f)", moonDir.x, moonDir.y, moonDir.z);
                     ImGui::Text("月光強度（空）: %.3f", atmosphereManager->GetMoonIntensity());
+                    ImGui::Text("月全体の明るさ（満ち欠け）: %.1f%%%s",
+                        atmosphereManager->GetMoonPhaseBrightness() * 100.0f,
+                        atmosphereManager->IsMoonPhaseFromSun() ? "" : "（満ち欠けなし）");
                     const Vector3& moonTrans = atmosphereManager->GetMoonTransmittance();
                     ImGui::Text("月透過率（地表）: (%.3f, %.3f, %.3f)", moonTrans.x, moonTrans.y, moonTrans.z);
                 }

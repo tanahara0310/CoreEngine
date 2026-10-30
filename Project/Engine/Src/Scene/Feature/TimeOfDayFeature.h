@@ -7,6 +7,7 @@
 
 namespace CoreEngine
 {
+    class AtmosphereManager;
     class GameObject;
     class ICVar;
     class LightComponent;
@@ -25,6 +26,9 @@ namespace CoreEngine
     ///       後ろ 2 つは他機能の CVar（r.AutoExposure.MaxEV / r.Atmosphere.SkyAmbientScale）
     ///       なので、サイクルの間だけ名前で借りて上書きする。露出上限は夜だけが張り付く
     ///       値なので昼には影響せず、空アンビエントは夜の度合いで倍率を掛ける。
+    /// @note 月は太陽と同じ軌道を月齢の分だけ遅れて通る（月齢 0 = 新月で太陽と重なり、
+    ///       朔望月の半分 = 満月で真反対）。サイクルの間は大気に満ち欠けを求めさせ
+    ///       （AtmosphereManager::SetMoonPhaseFromSunOverride）、月面の欠けと月光の明るさを位置に合わせる。
     /// @note シーン終了時に太陽・月・自動露出・借りた CVar をサイクル開始前の状態へ戻す。
     ///       戻さないと EnvironmentFeature が終了時に写す CVar
     ///       （r.AtmosphereLights.*）や保存 JSON へ夜向けの値が焼き付き、次のシーンや
@@ -63,6 +67,21 @@ namespace CoreEngine
         void SetDayLengthSeconds(float seconds);
         float GetDayLengthSeconds() const;
 
+        // ==================== 月齢 ====================
+
+        /// @brief 朔望月（新月から次の新月まで）[日]
+        static constexpr float kSynodicMonthDays = 29.530589f;
+
+        /// @brief 月齢を直接設定する [日]（0 から朔望月の範囲へ巻き取る）
+        /// @note 0 = 新月・7.4 = 上弦・14.8 = 満月・22.1 = 下弦。
+        void SetMoonAge(float days);
+
+        /// @brief 現在の月齢 [日]
+        float GetMoonAge() const { return moonAgeDays_; }
+
+        /// @brief 月の照らされた面の割合（0 = 新月 / 1 = 満月）
+        float GetMoonIlluminatedFraction() const;
+
         // ==================== 現在の状態 ====================
 
         /// @brief 太陽の高度角 [deg]（0 = 地平線 / 90 = 天頂 / 負値 = 地平線下）
@@ -70,6 +89,12 @@ namespace CoreEngine
 
         /// @brief 太陽の方位角 [deg]（0 = +Z 方向）
         float GetSunAzimuthDeg() const { return sunAzimuthDeg_; }
+
+        /// @brief 月の高度角 [deg]（負値 = 地平線下）
+        float GetMoonElevationDeg() const { return moonElevationDeg_; }
+
+        /// @brief 月の方位角 [deg]（0 = +Z 方向）
+        float GetMoonAzimuthDeg() const { return moonAzimuthDeg_; }
 
         /// @brief 太陽が地平線より下か
         bool IsNight() const { return sunElevationDeg_ < 0.0f; }
@@ -127,11 +152,15 @@ namespace CoreEngine
         LightComponent* CreateMoonObject(SceneContext& ctx);
 
         static LightManager* GetLightManager(SceneContext& ctx);
+        static AtmosphereManager* GetAtmosphereManager(SceneContext& ctx);
         static ToneMapping* GetToneMapping(SceneContext& ctx);
 
         float timeOfDay_ = 12.0f;         ///< 現在時刻 [h]（0-24）
+        float moonAgeDays_ = kSynodicMonthDays * 0.5f; ///< 現在の月齢 [日]
         float sunElevationDeg_ = 90.0f;   ///< 直近に適用した太陽高度角 [deg]
         float sunAzimuthDeg_ = 0.0f;      ///< 直近に適用した太陽方位角 [deg]
+        float moonElevationDeg_ = -90.0f; ///< 直近に適用した月高度角 [deg]
+        float moonAzimuthDeg_ = 0.0f;     ///< 直近に適用した月方位角 [deg]
         float nightFactor_ = 0.0f;        ///< 夜の度合い（0-1）
 
         // ---- サイクル開始前の状態（Finalize で戻す）----

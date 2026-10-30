@@ -44,11 +44,12 @@ struct AtmosphereConstants
 
     float multiScatteringFactor;  // 多重散乱寄与のスケール（1=近似そのまま。等方Psi_ms近似は薄明時に過大評価するため抑制用）
     float apKmPerSlice;           // Camera Volume の1スライスあたり距離 [km]（UE の AP View Distance Scale 相当。最大距離 = 32×この値）
-    float2 constantsPad;
+    float moonDiskIntensity;      // 月面の明るさ（満ち欠けを掛ける前。月面の各点で満ち欠けを掛ける）
+    float constantsPad;
 
     // ===== 月（第2大気ライト。UE の Second Atmosphere Light 相当） =====
     float3 moonDirection;         // 月光の進行方向（正規化。月の位置方向は -moonDirection）
-    float moonIntensity;          // 月光強度スケール（sunIntensity と同じ輝度ドメイン）
+    float moonIntensity;          // 月光強度スケール（満ち欠け込み。sunIntensity と同じ輝度ドメイン）
 
     float3 moonColor;             // 月光の色
     float moonDiskHalfAngleRad;   // 月の視半径 [rad]
