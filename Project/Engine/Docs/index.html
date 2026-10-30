@@ -2228,7 +2228,7 @@ kbd {
   <p>読み込みのスレッドは、起動時に CPU のスレッド数から決めます（モデル 4 割・テクスチャ 4 割・文字 2 割）。本数は起動のログの <code>[Threads]</code> の行に出ます。<code>--workers</code> を毎回付ける代わりに、<span class="path">Engine/Config/config_*.json</span> の <code>"threads": { "workerLimit": 1 }</code> でも決められます（起動の引数が優先）。</p>
 </article>
 
-<article class="page" id="own-repo" data-group="はじめに" data-title="自分のリポジトリでゲームを作る" data-nav="自分のリポジトリで作る" data-keywords="サブモジュール submodule git github リポジトリ 自分 ゲーム クローン 取り込み 更新 版 バージョン プル pull エンジンを使う 固定 gitignore .vs recurse-submodules">
+<article class="page" id="own-repo" data-group="はじめに" data-title="自分のリポジトリでゲームを作る" data-nav="自分のリポジトリで作る" data-keywords="サブモジュール submodule git github リポジトリ 自分 ゲーム クローン 取り込み 更新 版 バージョン プル pull エンジンを使う 固定 gitignore .vs recurse-submodules CoreEngine1 名前 改名 url set-url sync">
   <h1>自分のリポジトリでゲームを作る</h1>
   <p class="lead">ゲームは自分の git リポジトリに置き、エンジンはその中にサブモジュールとして入れます。どの版のエンジンを使うかはゲームのリポジトリが覚えているので、エンジンが更新されても、自分で取り込むまで手元のエンジンは変わりません。</p>
 
@@ -2259,7 +2259,7 @@ kbd {
     <li><strong>エンジンをサブモジュールで足す</strong>ここだけはコマンドで行います。Visual Studio の <span class="ui">表示<span class="arrow">▸</span>ターミナル</span> を開き、リポジトリのフォルダで次を実行します。</li>
   </ol>
   <script type="text/x-code" data-lang="text" data-file="ターミナル（リポジトリのフォルダで）">
-    git submodule add https://github.com/tanahara0310/CoreEngine1.git CoreEngine
+    git submodule add https://github.com/tanahara0310/CoreEngine.git CoreEngine
   </script>
   <div class="callout warn" data-title="git clone で入れない"><p>フォルダの中で <code>git clone</code> してエンジンを入れると、ゲームのリポジトリにエンジンの URL が残りません。ほかの PC でクローンしたときに <span class="path">CoreEngine</span> が空のフォルダになり、取り出せなくなります。間違えたときは、コミットする前に <span class="path">CoreEngine</span> フォルダを消して、上のコマンドでやり直します。</p></div>
 
@@ -2303,10 +2303,17 @@ kbd {
   </script>
   <p>クローンした後で <span class="path">CoreEngine</span> が空なら、リポジトリのフォルダで <code>git submodule update --init</code> を実行します。取り出されるのは、ゲームのリポジトリが覚えている版のエンジンです。開く前にエンジンをビルドします。</p>
 
+  <h2 id="own-repo-rename">前の名前（CoreEngine1）で足したとき</h2>
+  <p>エンジンのリポジトリの名前は、<code>CoreEngine1</code> から <code>CoreEngine</code> に変わりました。前の名前で足したサブモジュールも、GitHub が新しい名前へ転送するので、そのまま使えます。新しい名前にそろえるときは、リポジトリのフォルダで次を実行し、変わった <span class="path">.gitmodules</span> をコミットしてプッシュします。</p>
+  <script type="text/x-code" data-lang="text" data-file="ターミナル（リポジトリのフォルダで）">
+    git submodule set-url CoreEngine https://github.com/tanahara0310/CoreEngine.git
+  </script>
+  <p>ほかの PC でも続きをしているときは、そちらでプルしたあとに <code>git submodule sync</code> を実行します。プルだけでは、その PC のエンジンは前の名前につないだままです。</p>
+
   <h2 id="own-repo-request">エンジンに欲しい機能があるとき</h2>
   <ul>
     <li>まずスクリプトで作れないか考えます。スクリプトのコンポーネントと<a href="#editor-ext-tutorial">エディタの拡張</a>で、エンジンを変えずに作れることが多いです。</li>
-    <li>エンジンの変更が要るときは、エンジンの作者に <a href="https://github.com/tanahara0310/CoreEngine1/issues">Issue</a> か、教わった不具合・要望のフォームで知らせます。自分のゲームにしか要らない処理は、エンジンには入りません。</li>
+    <li>エンジンの変更が要るときは、エンジンの作者に <a href="https://github.com/tanahara0310/CoreEngine/issues">Issue</a> か、教わった不具合・要望のフォームで知らせます。自分のゲームにしか要らない処理は、エンジンには入りません。</li>
     <li>入った機能は、自分で取り込んだときから使えます。ほかの人のゲームには、その人が取り込むまで入りません。</li>
   </ul>
 </article>
