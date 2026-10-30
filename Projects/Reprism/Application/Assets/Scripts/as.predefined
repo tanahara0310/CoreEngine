@@ -1199,6 +1199,12 @@ class WaterSurface {
 	void set_size(float) property;
 	int get_resolution() const property;
 	void set_resolution(int) property;
+	float get_tideAmplitude() const property;
+	void set_tideAmplitude(float) property;
+	float get_tideHeight() const property;
+	float get_waterLevel() const property;
+	void SetTideHeight(float);
+	void ClearTideHeight();
 }
 }
 uint scan(const string&in str, ?&out...);

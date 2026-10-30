@@ -45,6 +45,16 @@ namespace CoreEngine
             REFLECT_ACCESSOR("resolution", "分割数", GetResolutionValue, SetResolutionValue,
                 p.range = Range(2.0f, 1024.0f, 1.0f),
                 p.tooltip = "XZ 方向の分割数。シーンを読み込むときに効く")
+            REFLECT_PROPERTY(tideAmplitude_, "潮の高さ", p.range = Range(0.0f, 20.0f, 0.01f),
+                p.tooltip = "月と太陽が真上か真下に来たとき、水面がトランスフォームの高さより上がる高さ [m]。"
+                            "地平線に来たときは同じだけ下がる。0 で潮なし")
+            REFLECT_READONLY_ACCESSOR("tideHeight", "今の潮位", GetTideHeight)
+            REFLECT_READONLY_ACCESSOR("waterLevel", "今の水面の高さ", GetWaterLevel)
+
+            REFLECT_METHOD("SetTideHeight", "潮位を指定する", SetTideHeight,
+                m.tooltip = "月と太陽の代わりに、この高さ [m] を潮位にする。ClearTideHeight で戻す")
+            REFLECT_METHOD("ClearTideHeight", "潮位の指定をやめる", ClearTideHeight,
+                m.tooltip = "月と太陽から潮位を求める状態へ戻す")
         REFLECT_END()
 
         /// @brief トランスフォームとメッシュ描画を確保し、平面メッシュ・シェーダー・定数バッファを用意する
@@ -139,6 +149,26 @@ namespace CoreEngine
         /// @brief FFT Ocean 描画経路を切り替える（WaterRenderFeature が `r.Water.FFT.Enabled` に合わせて呼ぶ）
         void SetUseFFTOcean(bool useFFTOcean);
 
+        // ===== 潮 =====
+
+        /// @brief 潮の高さ（月と太陽が真上か真下に来たときにトランスフォームの高さより上がる高さ [m]。0 で潮なし）
+        float GetTideAmplitude() const { return tideAmplitude_; }
+
+        /// @brief 月と太陽から求めた潮位 [m] を受け取る（WaterRenderFeature が毎フレーム呼ぶ）
+        void SetSkyTideHeight(float height) { skyTideHeight_ = height; }
+
+        /// @brief 今の潮位 [m]（SetTideHeight で指定していればその値、なければ月と太陽から求めた値）
+        float GetTideHeight() const { return tideOverridden_ ? tideOverrideHeight_ : skyTideHeight_; }
+
+        /// @brief 今の水面の高さ [m]（トランスフォームの高さ＋今の潮位）
+        float GetWaterLevel() const;
+
+        /// @brief 月と太陽の代わりに潮位 [m] を指定する
+        void SetTideHeight(float height);
+
+        /// @brief 潮位の指定をやめ、月と太陽から求める状態へ戻す
+        void ClearTideHeight();
+
         // ===== マテリアル操作 =====
 
         /// @brief 水面ベースカラーを設定する
@@ -198,6 +228,11 @@ namespace CoreEngine
         float    size_;
         uint32_t resolution_;
         bool useFFTOcean_ = false;
+
+        float tideAmplitude_ = 0.0f;      ///< 月と太陽が真上か真下に来たときにトランスフォームの高さより上がる高さ [m]
+        float skyTideHeight_ = 0.0f;      ///< 月と太陽から求めた潮位 [m]
+        bool tideOverridden_ = false;     ///< SetTideHeight で潮位を指定しているか
+        float tideOverrideHeight_ = 0.0f; ///< SetTideHeight で指定した潮位 [m]
 
         WaterConstantBufferSet constantBuffers_; ///< Water 描画用 GPU 定数バッファ群
 

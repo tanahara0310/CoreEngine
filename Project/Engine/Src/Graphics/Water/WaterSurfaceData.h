@@ -28,6 +28,7 @@ namespace CoreEngine
     /// @note 水面パスと RT パス・水中判定が同じ波面を見るための単一の情報源
     struct WaterSurfaceData {
         float waterHeight = 0.0f;
+        float tideHeight = 0.0f; ///< waterHeight のうち、潮でトランスフォームの高さから上下させた分 [m]
         uint32_t activeWaveCount = 0;
         float time = 0.0f;
         uint32_t simulationType = kWaterSurfaceModelTypeGerstner;

@@ -148,7 +148,8 @@ struct WaterFrameConstants {
 	int shoreMeshEnabled = 0;            // 1 = 範囲の中を岸の細かい格子で描き、粗い格子は範囲の中を描かない
 	float shoreMeshBlendWidth = 1.0f;    // 範囲の端から内側へ、粗い格子の形から岸の格子の形へ移す幅 [m]
 	float shoreMeshCellSize = 1.0f;      // 岸の格子の 1 マスの幅 [m]
-	float shoreMeshPad = 0.0f;
+	// ---- 潮 ----
+	float tideHeight = 0.0f;             // 潮で水面をトランスフォームの高さから上下させる量 [m]
 	// ---- 海の範囲マップ（gWaterSeaMap。WaterSeaMapBinding の同名の値）----
 	float seaMapOriginXZ[2] = { 0.0f, 0.0f }; // 地図の範囲の XZ の最小の角 [m]
 	float seaMapTexelsPerMeter = 0.0f;         // 1 m あたりのテクセル数
@@ -187,7 +188,7 @@ static constexpr Cb::Field kWaterFrameConstantsFields[] = {
     CB_FIELD(WaterFrameConstants, foamDriftOffsetXZ), CB_FIELD(WaterFrameConstants, foamStretchAxis),
     CB_FIELD(WaterFrameConstants, meshGridOriginXZ), CB_FIELD(WaterFrameConstants, meshCellSizeXZ),
     CB_FIELD(WaterFrameConstants, shoreMeshEnabled), CB_FIELD(WaterFrameConstants, shoreMeshBlendWidth),
-    CB_FIELD(WaterFrameConstants, shoreMeshCellSize), CB_FIELD(WaterFrameConstants, shoreMeshPad),
+    CB_FIELD(WaterFrameConstants, shoreMeshCellSize), CB_FIELD(WaterFrameConstants, tideHeight),
     CB_FIELD(WaterFrameConstants, seaMapOriginXZ), CB_FIELD(WaterFrameConstants, seaMapTexelsPerMeter),
     CB_FIELD(WaterFrameConstants, seaMapEnabled), CB_FIELD(WaterFrameConstants, seaMapResolution),
     CB_FIELD(WaterFrameConstants, seaMapDepthOffset), CB_FIELD(WaterFrameConstants, seaMapInvWaveHeight),

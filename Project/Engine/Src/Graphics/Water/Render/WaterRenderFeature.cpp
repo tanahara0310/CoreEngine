@@ -10,6 +10,7 @@
 #include "GameObject/GameObjectManager.h"
 #include "Graphics/Render/SkyBox/SkyBoxComponent.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
+#include "Graphics/Light/LightManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Material/MaterialInstance.h"
 #include "Graphics/Model/ModelManager.h"
@@ -51,6 +52,45 @@ namespace CoreEngine
 
         /// @brief 海の範囲マップで割る波の高さの下限 [m]
         constexpr float kSeaMapMinWaveHeight = 0.05f;
+
+        /// @brief 潮を起こす力の重み（月を 1 としたときの太陽）
+        constexpr float kMoonTideWeight = 1.0f;
+        constexpr float kSunTideWeight = 0.46f;
+
+        /// @brief 月と太陽の高さから潮位を求める（真上か真下で満潮、地平線で干潮）
+        /// @param amplitude 月と太陽が真上か真下に来たときにトランスフォームの高さより上がる高さ [m]
+        /// @return 潮位 [m]。月が無ければ太陽だけで求め、どちらも無ければ 0
+        float ComputeSkyTideHeight(float amplitude, const LightManager* lightManager)
+        {
+            if (amplitude <= 0.0f || !lightManager) {
+                return 0.0f;
+            }
+
+            float weighted = 0.0f;
+            float weightSum = 0.0f;
+            const auto accumulate = [&](const Light* light, float weight) {
+                if (!light) {
+                    return;
+                }
+                const Vector3& d = light->direction;
+                const float length = std::sqrt(d.x * d.x + d.y * d.y + d.z * d.z);
+                if (length < 1.0e-6f) {
+                    return;
+                }
+                // 天頂角 θ の cos 2θ（= 2cos²θ − 1）。光の向きの逆が天体の方向
+                const float cosZenith = -d.y / length;
+                weighted += weight * (2.0f * cosZenith * cosZenith - 1.0f);
+                weightSum += weight;
+            };
+
+            const Light* const moon = lightManager->GetAtmosphereMoonLight();
+            const Light* const sun = lightManager->GetAtmosphereSunLight();
+            accumulate(moon, kMoonTideWeight);
+            if (sun != moon) {
+                accumulate(sun, kSunTideWeight);
+            }
+            return (weightSum > 0.0f) ? amplitude * weighted / weightSum : 0.0f;
+        }
 
         static_assert(WaterSeabedRayTracingManager::kResolution * WaterSeabedRayTracingManager::kTexelSize
                 == WaterSurfaceMeshGenerator::kShoreSubdivisions * WaterSeabedRayTracingManager::kWindowSnapMeters,
@@ -191,6 +231,7 @@ namespace CoreEngine
 
             // 大気散乱（EnvironmentFeature）の更新後に結線する。
             // LUT / SH / キューブマップの準備完了はこの時点で確定している。
+            UpdateSkyTide(ctx);
             RefreshWaterSurfaceState();
 
             if (!domain) {
@@ -278,7 +319,7 @@ namespace CoreEngine
     float WaterRenderFeature::GetWaterHeight() const
     {
         const WaterSurfaceComponent* const waterPlane = waterPlane_.Get();
-        return waterPlane ? waterPlane->GetTransform().GetTranslate().y : 0.0f;
+        return waterPlane ? waterPlane->GetWaterLevel() : 0.0f;
     }
 
     WaterSurfaceSimulator* WaterRenderFeature::GetActiveSimulator() const
@@ -680,7 +721,7 @@ namespace CoreEngine
         }
 
         WaterSurfaceSimulationInput simulationInput{};
-        simulationInput.waterHeight = waterPlane->GetTransform().GetTranslate().y;
+        simulationInput.waterHeight = waterPlane->GetWaterLevel();
         simulationInput.gerstnerConstants = &waterPlane->GetWaterConstants();
 
         auto* activeSimulator = GetActiveSimulator();
@@ -695,6 +736,7 @@ namespace CoreEngine
         }
 
         activeSimulator->CaptureSurface(simulationInput, waterSurfaceState_);
+        waterSurfaceState_.tideHeight = waterPlane->GetTideHeight();
 
         // 水面メッシュのワールド XZ 範囲。コースティクスが水域の外（無限市松床など）へ
         // 漏れないようにするための受光マスク。メッシュはローカル ±localSize/2 に広がる
@@ -718,6 +760,16 @@ namespace CoreEngine
             surfaceModelProvider_->SetSurfaceData(
                 waterSurfaceState_, activeSimulator->GetSimulationType());
         }
+    }
+
+    void WaterRenderFeature::UpdateSkyTide(SceneContext& ctx) const
+    {
+        WaterSurfaceComponent* const waterPlane = waterPlane_.Get();
+        if (!waterPlane) {
+            return;
+        }
+        const LightManager* const lightManager = ctx.engine ? ctx.engine->GetService<LightManager>() : nullptr;
+        waterPlane->SetSkyTideHeight(ComputeSkyTideHeight(waterPlane->GetTideAmplitude(), lightManager));
     }
 
     void WaterRenderFeature::UpdateSeaMapBinding()

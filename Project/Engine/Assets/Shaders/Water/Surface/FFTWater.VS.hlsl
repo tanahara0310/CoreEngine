@@ -140,7 +140,9 @@ FFTWaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
         ? SampleShoreMeshVertexDisplacement(baseWorldPos.xz)
         : SampleVertexDisplacement(baseWorldPos.xz, GetCoarseMeshVertexSpacing());
 
-    float3 worldPos = baseWorldPos + displacement;
+    // 潮の分だけ水面全体を上下させる（静止水面からの波の高さ waveHeight には含めない）
+    const float3 tideOffset = float3(0.0f, gTideHeight, 0.0f);
+    float3 worldPos = baseWorldPos + displacement + tideOffset;
 
     // タンジェント基底は波の傾き（fftNormal）に依存させず、水面が平坦なときの基準フレームを
     // そのままワールド変換して渡す。法線自体はピクセルシェーダー側で gFFTOceanNormal を
@@ -160,7 +162,7 @@ FFTWaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     output.waveHeight = displacement.y;
 
     float4 baseClip = mul(localPosition, mtx.WVP);
-    float3 offsetLS = mul(displacement, invWorld3);
+    float3 offsetLS = mul(displacement + tideOffset, invWorld3);
     float4 offsetClip = mul(float4(offsetLS, 0.0f), mtx.WVP);
     output.position = baseClip + offsetClip;
 

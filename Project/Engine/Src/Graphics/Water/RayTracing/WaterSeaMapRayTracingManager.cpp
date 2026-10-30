@@ -84,7 +84,8 @@ namespace CoreEngine
         key.height = std::clamp(static_cast<uint32_t>(std::ceil(sizeZ / key.texelSize)), 1u, maxResolution);
         key.originXZ[0] = surfaceData.regionCenterXZ[0] - 0.5f * static_cast<float>(key.width) * key.texelSize;
         key.originXZ[1] = surfaceData.regionCenterXZ[1] - 0.5f * static_cast<float>(key.height) * key.texelSize;
-        key.waterHeight = surfaceData.waterHeight;
+        // 潮で動く分は depthOffset で足すので、潮を除いた高さで測る
+        key.waterHeight = surfaceData.waterHeight - surfaceData.tideHeight;
 
         // 粗い格子の三角形 1 つが覆う範囲（頂点の間隔＋水平変位）と、バイリニアで混ざる隣のテクセルの分
         const float coarseSpacing = longSide / (std::max)(surfaceData.meshSubdivisions, 1.0f);

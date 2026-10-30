@@ -87,7 +87,9 @@ WaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
         totalOffset *= ComputeWaterSeaMapWaveScale(seaMapValue, true, gSeaMapDepthOffset, gSeaMapInvWaveHeight);
     }
 
-    worldPos += totalOffset;
+    // 潮の分だけ水面全体を上下させる（静止水面からの波の高さ waveHeight には含めない）
+    const float3 tideOffset = float3(0.0f, gTideHeight, 0.0f);
+    worldPos += totalOffset + tideOffset;
 
     // ---- 3. 解析偏微分から接線空間を再構築する ----
     float3 tangent = normalize(dPdX);
@@ -105,7 +107,7 @@ WaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     // WorldInversTranspose = (World^-1)^T なので transpose すると World^-1 になる
     // スケールが変わっても変位量が増幅されないように正しい逆行列を使用する
     float3x3 invWorld3 = transpose((float3x3) mtx.WorldInversTranspose);
-    float3 offsetLS = mul(totalOffset, invWorld3);
+    float3 offsetLS = mul(totalOffset + tideOffset, invWorld3);
     float4 offsetClip = mul(float4(offsetLS, 0.0f), mtx.WVP);
     output.position = baseClip + offsetClip;
 
