@@ -300,6 +300,15 @@ namespace CoreEngine
         surfaceConstants.shoreMeshSize = surfaceData.shoreMeshSize;
         surfaceConstants.shoreMeshCellSize = surfaceData.shoreMeshCellSize;
         surfaceConstants.shoreMeshBlendWidth = surfaceData.shoreMeshBlendWidth;
+        const WaterSeaMapBinding& seaMap = surfaceData.seaMap;
+        for (int c = 0; c < 2; ++c) {
+            surfaceConstants.seaMapOriginXZ[c] = seaMap.originXZ[c];
+            surfaceConstants.seaMapResolution[c] = seaMap.resolution[c];
+        }
+        surfaceConstants.seaMapTexelsPerMeter = seaMap.texelsPerMeter;
+        surfaceConstants.seaMapSrvIndex = seaMap.srvHeapIndex;
+        surfaceConstants.seaMapDepthOffset = seaMap.depthOffset;
+        surfaceConstants.seaMapInvWaveHeight = seaMap.invWaveHeight;
         return surfaceConstants;
     }
 

@@ -8,6 +8,7 @@
 #include "Graphics/RayTracing/VertexAnimationDeformer.h"
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterSeabedRayTracingManager.h"
+#include "Graphics/Water/RayTracing/WaterSeaMapRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterReflectionRayTracingManager.h"
 #include "Graphics/Water/FFTOceanManager.h"
@@ -143,6 +144,14 @@ namespace CoreEngine
                 "RenderDomainContext: WaterSeabedRayTracingManager 初期化完了\n");
         }
 
+        rtWaterSeaMapManager_ = std::make_unique<WaterSeaMapRayTracingManager>();
+        if (accelerationStructureManager_->IsSupported()) {
+            rtWaterSeaMapManager_->Initialize(dxCommon, descriptorAllocator,
+                accelerationStructureManager_.get(), shaderProgramCache);
+            Logger::GetInstance().Infof(LogCategory::Graphics,
+                "RenderDomainContext: WaterSeaMapRayTracingManager 初期化完了\n");
+        }
+
         fftOceanManager_ = std::make_unique<FFTOceanManager>();
         if (fftOceanManager_->Initialize(dxCommon, descriptorAllocator)) {
             Logger::GetInstance().Infof(LogCategory::Graphics,
@@ -165,6 +174,7 @@ namespace CoreEngine
             rtWaterReflectionManager_.get(),
             rtWaterCausticsManager_.get(),
             rtWaterSeabedManager_.get(),
+            rtWaterSeaMapManager_.get(),
         };
         for (RayTracingPassBase* pass : passes) {
             if (pass) {
@@ -187,6 +197,7 @@ namespace CoreEngine
         fogManager_.reset();
         volumetricCloudManager_.reset();
         atmosphereManager_.reset();
+        rtWaterSeaMapManager_.reset();
         rtWaterSeabedManager_.reset();
         rtWaterCausticsManager_.reset();
         rtWaterReflectionManager_.reset();
@@ -233,6 +244,7 @@ namespace CoreEngine
         context.rtWaterRefractionManager = rtWaterRefractionManager_.get();
         context.rtWaterReflectionManager = rtWaterReflectionManager_.get();
         context.rtWaterSeabedManager = rtWaterSeabedManager_.get();
+        context.rtWaterSeaMapManager = rtWaterSeaMapManager_.get();
         context.fftOceanManager = fftOceanManager_.get();
         context.waterFoamSystem = waterFoamSystem_.get();
         context.atmosphereManager = atmosphereManager_.get();

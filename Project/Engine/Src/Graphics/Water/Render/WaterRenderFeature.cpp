@@ -2,6 +2,7 @@
 #include "WaterRenderFeature.h"
 
 #include <algorithm>
+#include <cmath>
 
 #include "Camera/CameraStructs.h"
 #include "Camera/Camera.h"
@@ -24,6 +25,7 @@
 #include "Graphics/Water/RayTracing/WaterReflectionRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterSeabedRayTracingManager.h"
+#include "Graphics/Water/RayTracing/WaterSeaMapRayTracingManager.h"
 #include "Graphics/Water/Foam/WaterFoamSystem.h"
 #include "Graphics/Water/WaterCVars.h"
 #include "Graphics/Water/Simulation/FFTOceanSurfaceSimulator.h"
@@ -46,6 +48,9 @@ namespace CoreEngine
 
         /// @brief 診断ログの出力間隔（フレーム）
         constexpr uint32_t kDiagnosticsLogInterval = 120u;
+
+        /// @brief 海の範囲マップで割る波の高さの下限 [m]
+        constexpr float kSeaMapMinWaveHeight = 0.05f;
 
         static_assert(WaterSeabedRayTracingManager::kResolution * WaterSeabedRayTracingManager::kTexelSize
                 == WaterSurfaceMeshGenerator::kShoreSubdivisions * WaterSeabedRayTracingManager::kWindowSnapMeters,
@@ -179,15 +184,18 @@ namespace CoreEngine
         }
         case SceneUpdatePhase::PostLogic:
         {
+            auto* domain = ctx.engine ? ctx.engine->GetRenderDomainContext() : nullptr;
+            if (domain) {
+                publishTarget_ = domain;
+            }
+
             // 大気散乱（EnvironmentFeature）の更新後に結線する。
             // LUT / SH / キューブマップの準備完了はこの時点で確定している。
             RefreshWaterSurfaceState();
 
-            auto* domain = ctx.engine ? ctx.engine->GetRenderDomainContext() : nullptr;
             if (!domain) {
                 break;
             }
-            publishTarget_ = domain;
 
             // Gerstner / FFT の切り替え結果を屈折・反射・コースティクスへ伝播する
             ConnectSurfaceModelProvider(*domain);
@@ -427,6 +435,14 @@ namespace CoreEngine
                 if (const WaterFoamSystem* foam = domain.GetWaterFoamSystem(); foam && foam->IsShoreActive()) {
                     binding.resources.shoreFoamSRV = foam->GetShoreSRVHandle();
                 }
+            }
+        }
+
+        // 海の範囲マップ。値は RefreshWaterSurfaceState が waterSurfaceState_ へ書いたもの
+        if (waterSurfaceState_.seaMap.resolution[0] > 0) {
+            if (const auto* seaMapManager = domain.GetWaterSeaMapRayTracingManager()) {
+                binding.resources.seaMapSRV = seaMapManager->GetView().srvHandle;
+                binding.seaMap = waterSurfaceState_.seaMap;
             }
         }
 
@@ -695,10 +711,55 @@ namespace CoreEngine
         // coverage 判定のメッシュ同一基準化に使う実際の頂点グリッド分割数
         waterSurfaceState_.meshSubdivisions = static_cast<float>(waterPlane->GetResolution());
 
+        // 海の範囲マップを書いてから provider へ写す
+        UpdateSeaMapBinding();
+
         if (surfaceModelProvider_) {
             surfaceModelProvider_->SetSurfaceData(
                 waterSurfaceState_, activeSimulator->GetSimulationType());
         }
+    }
+
+    void WaterRenderFeature::UpdateSeaMapBinding()
+    {
+        waterSurfaceState_.seaMap = {};
+        RenderDomainContext* const domain = publishTarget_;
+        const WaterSeaMapRayTracingManager* const seaMapManager =
+            domain ? domain->GetWaterSeaMapRayTracingManager() : nullptr;
+        if (!seaMapManager || waterSurfaceState_.regionValid == 0 || !WaterCVars::SeaMapEnabled.Get()) {
+            return;
+        }
+        const WaterSeaMapView& view = seaMapManager->GetView();
+        if (!view.valid) {
+            return;
+        }
+
+        // 波の高さ（有義波高）。FFT は風波とうねりの合成、Gerstner は振幅の二乗和から
+        float waveHeight = 0.0f;
+        if (waterSurfaceState_.simulationType == kWaterSurfaceModelTypeFFTOcean) {
+            if (const FFTOceanManager* fftOcean = domain->GetFFTOceanManager()) {
+                const FFTOceanManager::WaveSummary summary = fftOcean->GetWaveSummary();
+                waveHeight = std::sqrt(summary.windSeaHeight * summary.windSeaHeight
+                    + summary.swellHeight * summary.swellHeight);
+            }
+        } else {
+            float sumSquares = 0.0f;
+            for (uint32_t waveIndex = 0; waveIndex < waterSurfaceState_.activeWaveCount; ++waveIndex) {
+                const float amplitude = waterSurfaceState_.waves[waveIndex].amplitude;
+                sumSquares += amplitude * amplitude;
+            }
+            waveHeight = 4.0f * std::sqrt(0.5f * sumSquares);
+        }
+
+        WaterSeaMapBinding& seaMap = waterSurfaceState_.seaMap;
+        seaMap.srvHeapIndex = view.srvHeapIndex;
+        seaMap.resolution[0] = view.resolution[0];
+        seaMap.resolution[1] = view.resolution[1];
+        seaMap.originXZ[0] = view.originXZ[0];
+        seaMap.originXZ[1] = view.originXZ[1];
+        seaMap.texelsPerMeter = view.texelsPerMeter;
+        seaMap.depthOffset = waterSurfaceState_.waterHeight - view.waterHeight;
+        seaMap.invWaveHeight = 1.0f / (std::max)(waveHeight, kSeaMapMinWaveHeight);
     }
 
     void WaterRenderFeature::LogFrameDiagnostics(const WaterFrameBinding& binding) const

@@ -18,6 +18,10 @@ cbuffer WaterConstants : register(b4)
 // VS では実際には使用しないが、PS（Water.PS.hlsl）と同一レイアウトを保つために宣言する。
 #include "../Common/WaterFrameConstants.hlsli"
 #include "../Common/WaterShoreMesh.hlsli"
+#include "../Common/WaterSeaMap.hlsli"
+
+// 海の範囲マップ（水深と上の物までの高さ。gSeaMapEnabled = 0 のときは読まない）
+Texture2D<float4> gWaterSeaMap : register(t29);
 
 // ===== 水面専用出力構造体 =====
 struct WaterVSOutput
@@ -73,6 +77,14 @@ WaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
 
         totalOffset += EvaluateGerstnerWaveOffset(gWaves[i], gTime, restPos.xz);
         AccumulateGerstnerWaveDerivatives(gWaves[i], gTime, restPos.xz, dPdX, dPdZ);
+    }
+
+    // 海の範囲マップで弱める（粗い格子だけで描くので粗い格子用の値。RT の EvaluateWaterOffsetGerstner と同じ式）
+    if (gSeaMapEnabled != 0)
+    {
+        const float4 seaMapValue = SampleWaterSeaMap(
+            gWaterSeaMap, restPos.xz, gSeaMapOriginXZ, gSeaMapTexelsPerMeter, gSeaMapResolution);
+        totalOffset *= ComputeWaterSeaMapWaveScale(seaMapValue, true, gSeaMapDepthOffset, gSeaMapInvWaveHeight);
     }
 
     worldPos += totalOffset;

@@ -20,6 +20,7 @@ namespace CoreEngine
     class WaterReflectionRayTracingManager;
     class WaterCausticsRayTracingManager;
     class WaterSeabedRayTracingManager;
+    class WaterSeaMapRayTracingManager;
     class FFTOceanManager;
     class WaterFoamSystem;
     class AtmosphereManager;
@@ -90,6 +91,7 @@ namespace CoreEngine
         WaterReflectionRayTracingManager* GetWaterReflectionRayTracingManager() { return rtWaterReflectionManager_.get(); }
         WaterCausticsRayTracingManager* GetWaterCausticsRayTracingManager() { return rtWaterCausticsManager_.get(); }
         WaterSeabedRayTracingManager* GetWaterSeabedRayTracingManager() { return rtWaterSeabedManager_.get(); }
+        WaterSeaMapRayTracingManager* GetWaterSeaMapRayTracingManager() { return rtWaterSeaMapManager_.get(); }
         FFTOceanManager* GetFFTOceanManager() { return fftOceanManager_.get(); }
         WaterFoamSystem* GetWaterFoamSystem() { return waterFoamSystem_.get(); }
         AtmosphereManager* GetAtmosphereManager() { return atmosphereManager_.get(); }
@@ -129,6 +131,7 @@ namespace CoreEngine
         std::unique_ptr<WaterReflectionRayTracingManager> rtWaterReflectionManager_;
         std::unique_ptr<WaterCausticsRayTracingManager> rtWaterCausticsManager_;
         std::unique_ptr<WaterSeabedRayTracingManager> rtWaterSeabedManager_;
+        std::unique_ptr<WaterSeaMapRayTracingManager> rtWaterSeaMapManager_;
         std::unique_ptr<FFTOceanManager> fftOceanManager_;
         std::unique_ptr<WaterFoamSystem> waterFoamSystem_;
         std::unique_ptr<AtmosphereManager> atmosphereManager_;

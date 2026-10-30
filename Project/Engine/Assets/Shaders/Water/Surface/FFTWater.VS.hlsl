@@ -13,6 +13,10 @@ SamplerState gSampler : register(s0);
 // 波群エンベロープの位相（gWaveGroupPhase）を読む。レイアウトは Water.PS.hlsl と同じ。
 #include "../Common/WaterFrameConstants.hlsli"
 #include "../Common/WaterShoreMesh.hlsli"
+#include "../Common/WaterSeaMap.hlsli"
+
+// 海の範囲マップ（水深と上の物までの高さ。gSeaMapEnabled = 0 のときは読まない）
+Texture2D<float4> gWaterSeaMap : register(t29);
 
 struct FFTWaterVSOutput
 {
@@ -38,7 +42,21 @@ struct FFTWaterVSOutput
     nointerpolation float shoreMeshVertex : TEXCOORD3;
 };
 
-/// @brief 頂点の変位（格子の間隔で解像できるカスケード＋波群エンベロープ）
+/// @brief 海の範囲マップから、頂点の変位に掛ける倍率を返す（RTWaterSurfaceCommon.hlsli の EvaluateSurfaceSeaMapWaveScale と同じ式）
+/// @param vertexSpacing 頂点の格子の間隔 [m]（地図のテクセルより広ければ粗い格子用の値を使う）
+float GetSeaMapWaveScale(float2 baseXZ, float vertexSpacing)
+{
+    if (gSeaMapEnabled == 0)
+    {
+        return 1.0f;
+    }
+    const float4 value = SampleWaterSeaMap(
+        gWaterSeaMap, baseXZ, gSeaMapOriginXZ, gSeaMapTexelsPerMeter, gSeaMapResolution);
+    const bool conservative = UseConservativeWaterSeaMap(vertexSpacing, gSeaMapTexelsPerMeter);
+    return ComputeWaterSeaMapWaveScale(value, conservative, gSeaMapDepthOffset, gSeaMapInvWaveHeight);
+}
+
+/// @brief 頂点の変位（格子の間隔で解像できるカスケード＋波群エンベロープ＋海の範囲マップ）
 /// @param vertexSpacing 頂点の格子の間隔 [m]（ComputeFFTGeometryCascadeWeight）
 /// @details 各カスケードを「ワールドXZ / パッチ長」でサンプルし、格子の間隔で決まる重みを掛けて合算する。
 ///          FFTOceanFinalize.CS はワールド軸（+X=texU, +Z=texV, Y=up）でエンコードするため、
@@ -63,7 +81,8 @@ float3 SampleVertexDisplacement(float2 baseXZ, float vertexSpacing)
     }
 
     // 波群エンベロープでタイル周期を崩す（PS の法線・RT の波面評価と同一の変調）
-    return displacement * ComputeFFTWaveGroupEnvelope(baseXZ, gWaveGroupPhase);
+    return displacement * ComputeFFTWaveGroupEnvelope(baseXZ, gWaveGroupPhase)
+        * GetSeaMapWaveScale(baseXZ, vertexSpacing);
 }
 
 /// @brief 粗い格子の頂点の間隔 [m]

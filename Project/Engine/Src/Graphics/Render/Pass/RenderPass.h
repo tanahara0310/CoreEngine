@@ -34,6 +34,7 @@ namespace CoreEngine
     class RayTracingShadowManager;
     class WaterCausticsRayTracingManager;
     class WaterSeabedRayTracingManager;
+    class WaterSeaMapRayTracingManager;
     class WaterRefractionRayTracingManager;
     class WaterReflectionRayTracingManager;
     class FFTOceanManager;
@@ -69,6 +70,7 @@ namespace CoreEngine
         WaterRefractionRayTracingManager* rtWaterRefractionManager = nullptr; ///< DXR 水面屈折
         WaterReflectionRayTracingManager* rtWaterReflectionManager = nullptr; ///< DXR 水面反射（鏡像カメラ置き換え）
         WaterSeabedRayTracingManager* rtWaterSeabedManager = nullptr; ///< DXR 海底の高さ（カメラの周りの範囲）
+        WaterSeaMapRayTracingManager* rtWaterSeaMapManager = nullptr; ///< DXR 海の範囲マップ（水面の範囲全体の水深と陸）
         FFTOceanManager* fftOceanManager = nullptr; ///< FFT Ocean 波面生成マネージャー
         WaterFoamSystem* waterFoamSystem = nullptr; ///< 泡の時間変化（白波の蓄積）
         AtmosphereManager* atmosphereManager = nullptr; ///< 大気散乱管理（LUT生成・太陽情報）

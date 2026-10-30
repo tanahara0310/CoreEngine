@@ -95,6 +95,14 @@ cbuffer WaterFrameConstants : register(b5)
     float gShoreMeshBlendWidth;   // 範囲の端から内側へ、粗い格子の形から岸の格子の形へ移す幅 [m]
     float gShoreMeshCellSize;     // 岸の格子の 1 マスの幅 [m]
     float gShoreMeshPad;
+
+    // ---- 海の範囲マップ（gWaterSeaMap。WaterSeaMap.hlsli）----
+    float2 gSeaMapOriginXZ;       // 地図の範囲の XZ の最小の角 [m]
+    float gSeaMapTexelsPerMeter;  // 1 m あたりのテクセル数
+    int gSeaMapEnabled;           // 1 = 波の変位を水深と上の物までの高さで弱める
+    uint2 gSeaMapResolution;      // 地図の X・Z のテクセル数
+    float gSeaMapDepthOffset;     // 今の水面の高さ − 測ったときの水面の高さ [m]
+    float gSeaMapInvWaveHeight;   // 波の高さ（有義波高）の逆数 [1/m]
 };
 
 #endif // WATER_FRAME_CONSTANTS_INCLUDED

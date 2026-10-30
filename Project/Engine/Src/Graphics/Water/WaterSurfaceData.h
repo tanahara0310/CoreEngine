@@ -12,6 +12,18 @@ namespace CoreEngine
     // 以前はここに同一レイアウト 32B の WaterWaveParam が重複定義されていた。
     using WaterWaveParam = ::WaveParams;
 
+    /// @brief 海の範囲マップ（WaterSeaMapRayTracingManager が水面の範囲全体を測った地図）の結線
+    /// @details 地図は (水深, 上の物までの高さ, 粗い格子用の水深, 粗い格子用の上の物までの高さ) [m]。
+    ///          波の変位をこの 2 つの高さで弱める（WaterSeaMap.hlsli）
+    struct WaterSeaMapBinding {
+        uint32_t srvHeapIndex = 0;          ///< 地図の SRV のシェーダー可視ヒープの中の番号（RT が ResourceDescriptorHeap で引く）
+        uint32_t resolution[2] = { 0, 0 };  ///< 地図の X・Z のテクセル数（0 なら地図なし）
+        float originXZ[2] = { 0.0f, 0.0f }; ///< 地図の範囲の XZ の最小の角 [m]
+        float texelsPerMeter = 0.0f;        ///< 1 m あたりのテクセル数
+        float depthOffset = 0.0f;           ///< 今の水面の高さ − 測ったときの水面の高さ [m]
+        float invWaveHeight = 0.0f;         ///< 波の高さ（有義波高）の逆数 [1/m]
+    };
+
     /// @brief 水面の形状を再現するのに必要な状態（水面高さ・時刻・波パラメータ）
     /// @note 水面パスと RT パス・水中判定が同じ波面を見るための単一の情報源
     struct WaterSurfaceData {
@@ -42,6 +54,9 @@ namespace CoreEngine
         float shoreMeshSize = 0.0f;                  ///< 範囲の一辺の長さ [m]
         float shoreMeshCellSize = 0.0f;              ///< 1 マスの幅 [m]
         float shoreMeshBlendWidth = 0.0f;            ///< 範囲の端から内側へ、粗い格子の形から移す幅 [m]
+
+        // 海の範囲マップ。水深と上の物までの高さで波の変位を弱める
+        WaterSeaMapBinding seaMap{};
     };
 
     /// @brief 水の光学特性（屈折率・吸収・散乱）

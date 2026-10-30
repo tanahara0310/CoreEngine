@@ -162,9 +162,16 @@ namespace CoreEngine
             float shoreMeshCellSize = 0.0f;
             float shoreMeshBlendWidth = 0.0f;
             float pad3[2] = { 0.0f, 0.0f };
+            // ---- 海の範囲マップ（WaterSeaMapBinding の同名の値）----
+            float seaMapOriginXZ[2] = { 0.0f, 0.0f };
+            float seaMapTexelsPerMeter = 0.0f;
+            uint32_t seaMapSrvIndex = 0;
+            uint32_t seaMapResolution[2] = { 0, 0 };
+            float seaMapDepthOffset = 0.0f;
+            float seaMapInvWaveHeight = 0.0f;
         };
 
-        static_assert(sizeof(WaterSurfaceConstants) == 16 + 32 * kMaxWaterSurfaceWaveCount + 96,
+        static_assert(sizeof(WaterSurfaceConstants) == 16 + 32 * kMaxWaterSurfaceWaveCount + 128,
             "WaterSurfaceConstants layout mismatch with RTWaterSurfaceCommon.hlsli cbuffer");
 
         static constexpr Cb::Field kWaterSurfaceConstantsFields[] = {
@@ -178,7 +185,10 @@ namespace CoreEngine
             CB_FIELD(WaterSurfaceConstants, pad2), CB_FIELD(WaterSurfaceConstants, shoreMeshEnabled),
             CB_FIELD(WaterSurfaceConstants, shoreMeshSize), CB_FIELD(WaterSurfaceConstants, shoreMeshOriginXZ),
             CB_FIELD(WaterSurfaceConstants, shoreMeshCellSize), CB_FIELD(WaterSurfaceConstants, shoreMeshBlendWidth),
-            CB_FIELD(WaterSurfaceConstants, pad3),
+            CB_FIELD(WaterSurfaceConstants, pad3), CB_FIELD(WaterSurfaceConstants, seaMapOriginXZ),
+            CB_FIELD(WaterSurfaceConstants, seaMapTexelsPerMeter), CB_FIELD(WaterSurfaceConstants, seaMapSrvIndex),
+            CB_FIELD(WaterSurfaceConstants, seaMapResolution), CB_FIELD(WaterSurfaceConstants, seaMapDepthOffset),
+            CB_FIELD(WaterSurfaceConstants, seaMapInvWaveHeight),
         };
         CB_VERIFY_LAYOUT(WaterSurfaceConstants, kWaterSurfaceConstantsFields);
         CB_BIND_HLSL(WaterSurfaceConstants, kWaterSurfaceConstantsFields, "WaterSurfaceData");

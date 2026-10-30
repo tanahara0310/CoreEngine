@@ -353,6 +353,11 @@ namespace CoreEngine
                 inst.blasIndex = resource->GetBLASIndex();
                 inst.SetTransform(world);
                 inst.instanceMask = ClassifyMeshInstanceMask(*model);
+                // 形の決まった物のうち、少し前まで動いていた物とスキニングの物は動く物の印にする
+                if (inst.instanceMask == RayTracingInstanceMask::kSolid
+                    && (asMgr->TrackSolidMotion(&renderer, world, frame) || model->HasSkinCluster())) {
+                    inst.instanceMask = RayTracingInstanceMask::kMovable;
+                }
                 if (dynamicGeometry) {
                     DynamicTarget target;
                     target.row = tlasInstances.size();
@@ -456,6 +461,7 @@ namespace CoreEngine
 
         // 消えた・動かなくなった持ち主の動的 BLAS と頂点バッファを捨てる（GPU が使い終わってから解放）
         asMgr->RetireUnusedDynamicBLAS(frame);
+        asMgr->RetireUnusedSolidMotion(frame);
         if (deformer) {
             deformer->RetireUnused(frame);
         }

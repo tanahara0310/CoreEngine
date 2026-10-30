@@ -101,6 +101,9 @@ namespace CoreEngine
 
         WaterFrameBinding BuildFrameBinding(SceneContext& ctx, RenderDomainContext& domain) const;
 
+        /// @brief 今の海の範囲マップと波の高さを waterSurfaceState_.seaMap へ書く（地図が無ければ空にする）
+        void UpdateSeaMapBinding();
+
         /// @brief 水面描画と同じ σa を RT コースティクスへ同期する
         void SyncCausticsAbsorption(RenderDomainContext& domain) const;
 

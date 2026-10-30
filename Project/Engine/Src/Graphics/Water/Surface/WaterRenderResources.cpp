@@ -20,6 +20,10 @@ namespace CoreEngine
         return shoreFoamSRV.ptr != 0;
     }
 
+    bool WaterRenderResources::HasSeaMap() const {
+        return seaMapSRV.ptr != 0;
+    }
+
     bool WaterRenderResources::HasSceneDepth() const {
         return sceneDepthSRV.ptr != 0;
     }

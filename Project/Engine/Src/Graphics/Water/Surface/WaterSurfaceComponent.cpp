@@ -177,6 +177,17 @@ namespace CoreEngine
         frameCB_.shoreMeshBlendWidth = (std::max)(frameCB_.meshCellSizeXZ[0], frameCB_.meshCellSizeXZ[1]);
         frameCB_.shoreMeshCellSize = binding.seabedSize / static_cast<float>(WaterSurfaceMeshGenerator::kShoreSubdivisions);
 
+        // 海の範囲マップ
+        const WaterSeaMapBinding& seaMap = binding.seaMap;
+        frameCB_.seaMapEnabled = (renderResources_.HasSeaMap() && seaMap.resolution[0] > 0 && seaMap.resolution[1] > 0) ? 1 : 0;
+        for (int c = 0; c < 2; ++c) {
+            frameCB_.seaMapOriginXZ[c] = seaMap.originXZ[c];
+            frameCB_.seaMapResolution[c] = seaMap.resolution[c];
+        }
+        frameCB_.seaMapTexelsPerMeter = seaMap.texelsPerMeter;
+        frameCB_.seaMapDepthOffset = seaMap.depthOffset;
+        frameCB_.seaMapInvWaveHeight = seaMap.invWaveHeight;
+
         frameCB_.skyAmbientScale = binding.skyAmbientScale;
         for (int c = 0; c < 3; ++c) {
             frameCB_.fftCascadeMeanSquareSlope[c] = binding.fftCascadeMeanSquareSlope[c];

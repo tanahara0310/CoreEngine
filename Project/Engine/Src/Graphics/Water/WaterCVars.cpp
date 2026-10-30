@@ -104,6 +104,12 @@ namespace CoreEngine
         CVar<bool> ShoreFineMesh{ "r.Water.Shore.FineMesh", true,
             "カメラの周りの範囲（海底の高さを測る範囲）を細かい格子で描き、短い波まで形に入れる（FFTOcean 専用）" };
 
+        // ---- 海の範囲マップ ----
+        CVar<bool> SeaMapEnabled{ "r.Water.SeaMap.Enabled", true,
+            "水面の範囲全体の水深と上の物までの高さをレイトレーシングで測り、陸の下・浅瀬・桟橋の下で波を弱める" };
+        CVar<int> SeaMapResolution{ "r.Water.SeaMap.Resolution", 2048,
+            "海の範囲マップの長い辺のテクセル数（細かいほど岸の形に沿う）", CVarRange{ 256.0f, 4096.0f } };
+
         // ---- コースティクス ----
         CVar<int> CausticsBackend{ "r.Water.Caustics.Backend", 0,
             "生成方式（0: レイトレーシング / 1: スクリーンスペース。SS は Gerstner 専用）",

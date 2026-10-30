@@ -50,6 +50,10 @@ namespace CoreEngine
         // ---- 岸 ----
         extern CVar<bool>    ShoreFineMesh;
 
+        // ---- 海の範囲マップ ----
+        extern CVar<bool>    SeaMapEnabled;
+        extern CVar<int>     SeaMapResolution;
+
         // ---- コースティクス ----
         extern CVar<int>     CausticsBackend; // 0=RT / 1=ScreenSpace（コンボは水面パネル。NoUI）
         extern CVar<float>   CausticsIntensity;
