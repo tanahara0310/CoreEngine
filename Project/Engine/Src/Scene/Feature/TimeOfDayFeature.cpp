@@ -3,7 +3,9 @@
 #include "TimeOfDayFeature.h"
 
 #include "EngineSystem/EngineSystem.h"
+#include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Light/LightManager.h"
+#include "Graphics/Render/RenderDomainContext.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/GameObjectManager.h"
 #include "GameObject/Component/Light/LightComponent.h"
@@ -71,7 +73,16 @@ namespace
 
     CVar<bool> cvMoon{
         "r.TimeOfDay.Moon", true,
-        "夜に月（第2大気ライト）を出す。太陽の 12 時間ずれ＝満月の軌道を通る" };
+        "月（第2大気ライト）を出す。月齢の分だけ太陽から遅れて同じ軌道を通り、太陽との位置で満ち欠けする" };
+
+    CVar<float> cvStartMoonAge{
+        "r.TimeOfDay.StartMoonAge", 14.765f,
+        "シーン開始時の月齢 [日]（0=新月 7.4=上弦 14.8=満月 22.1=下弦）",
+        CVarRange{ 0.0f, 29.53f } };
+
+    CVar<bool> cvAdvanceMoonAge{
+        "r.TimeOfDay.AdvanceMoonAge", true,
+        "時刻が 24 時間進むごとに月齢を 1 日進める（切ると開始時の月齢のまま、毎晩同じ形の月になる）" };
 
     CVar<Vector3> cvMoonColor{
         "r.TimeOfDay.MoonColor", { 0.55f, 0.65f, 0.85f },
@@ -111,6 +122,14 @@ namespace
         hours = std::fmod(hours, 24.0f);
         return (hours < 0.0f) ? hours + 24.0f : hours;
     }
+
+    /// @brief 月齢を [0, 朔望月) へ巻き取る
+    float NormalizeMoonAge(float days)
+    {
+        constexpr float kMonth = TimeOfDayFeature::kSynodicMonthDays;
+        days = std::fmod(days, kMonth);
+        return (days < 0.0f) ? days + kMonth : days;
+    }
 }
 
 SCENE_FEATURE_REGISTER("TimeOfDay", [] { return std::make_unique<CoreEngine::TimeOfDayFeature>(); })
@@ -122,6 +141,7 @@ namespace CoreEngine
     void TimeOfDayFeature::Initialize(SceneContext&)
     {
         timeOfDay_ = NormalizeHours(cvStartHour.Get());
+        moonAgeDays_ = NormalizeMoonAge(cvStartMoonAge.Get());
 
 #ifdef CORE_EDITOR
         // Engine Settings に「Time of Day」パネルを登録する（パラメータ UI は CVar から自動生成する）
@@ -143,7 +163,11 @@ namespace CoreEngine
         // Feature 自体は回りながら時刻だけが止まり、スライダー編集の反映は残る
         if (cvAdvance.Get()) {
             const float dayLength = std::max(cvDayLengthSeconds.Get(), 1.0f);
-            timeOfDay_ = NormalizeHours(timeOfDay_ + Time::DeltaTime() * (24.0f / dayLength));
+            const float advancedHours = Time::DeltaTime() * (24.0f / dayLength);
+            timeOfDay_ = NormalizeHours(timeOfDay_ + advancedHours);
+            if (cvAdvanceMoonAge.Get()) {
+                moonAgeDays_ = NormalizeMoonAge(moonAgeDays_ + advancedHours / 24.0f);
+            }
         }
 
         ApplyToLights(ctx);
@@ -153,6 +177,10 @@ namespace CoreEngine
 
     void TimeOfDayFeature::Finalize(SceneContext& ctx)
     {
+        if (AtmosphereManager* const atmosphere = GetAtmosphereManager(ctx)) {
+            atmosphere->SetMoonPhaseFromSunOverride(false);
+        }
+
         // 自動露出を元へ戻す（サイクルが触っていた場合のみ）
         if (autoExposureOverridden_) {
             if (ToneMapping* toneMapping = GetToneMapping(ctx)) {
@@ -221,6 +249,20 @@ namespace CoreEngine
     float TimeOfDayFeature::GetDayLengthSeconds() const
     {
         return cvDayLengthSeconds.Get();
+    }
+
+    // ==================== 月齢 ====================
+
+    void TimeOfDayFeature::SetMoonAge(float days)
+    {
+        moonAgeDays_ = NormalizeMoonAge(days);
+    }
+
+    float TimeOfDayFeature::GetMoonIlluminatedFraction() const
+    {
+        // 離角 e = 360°×月齢/朔望月。照らされた面の割合は (1 − cos e) / 2
+        const float elongation = MathCore::Constants::kTwoPi * moonAgeDays_ / kSynodicMonthDays;
+        return 0.5f * (1.0f - std::cos(elongation));
     }
 
     // ==================== 太陽軌道 ====================
@@ -340,7 +382,10 @@ namespace CoreEngine
                 ? values.atmosphereIntensity : LightUnits::LuxToShader(values.intensity);
         }
 
-        // ---- 月（太陽の 12 時間ずれ＝満月の軌道。太陽が沈んでいる間だけ昇っている）----
+        // ---- 月（太陽と同じ軌道を月齢の分だけ遅れて通る。満ち欠けは大気が太陽との位置から描く）----
+        if (AtmosphereManager* const atmosphere = GetAtmosphereManager(ctx)) {
+            atmosphere->SetMoonPhaseFromSunOverride(true);
+        }
         const bool wantMoon = cvMoon.Get();
         LightComponent* moon = LightComponent::Find(lightManager->GetAtmosphereMoonHandle());
         if (!moon) {
@@ -366,19 +411,19 @@ namespace CoreEngine
             savedMoonValid_ = true;
         }
 
-        float moonElevationDeg = 0.0f;
-        float moonAzimuthDeg = 0.0f;
-        ComputeSunAngles(timeOfDay_ + 12.0f, latitudeDeg, moonElevationDeg, moonAzimuthDeg);
-        moonAzimuthDeg += azimuthOffset;  // 月も同じだけ回して太陽の真反対を保つ
+        // 月齢 a の月は太陽より 24·a/朔望月 時間遅れて南中する（a = 朔望月の半分で 12 時間＝満月）
+        const float moonLagHours = 24.0f * moonAgeDays_ / kSynodicMonthDays;
+        ComputeSunAngles(timeOfDay_ - moonLagHours, latitudeDeg, moonElevationDeg_, moonAzimuthDeg_);
+        moonAzimuthDeg_ += azimuthOffset;  // 太陽と同じだけ回す
 
-        moonValues.direction = ComputeLightDirection(moonElevationDeg, moonAzimuthDeg);
+        moonValues.direction = ComputeLightDirection(moonElevationDeg_, moonAzimuthDeg_);
         moonValues.color = cvMoonColor.Get();
         moonValues.intensity = cvMoonSurfaceIntensity.Get();
         // 空は太陽スケールとの比で置く。地表の月光/日光比（114 lx / 57,143 lx ≒ 1/500）と
         // 桁を揃えないと、地面は暗いのに空だけ明るい夜になる
         moonValues.atmosphereIntensity = sunSkyScale * cvMoonSkyRatio.Get();
-        // 昼間に月を光らせない（地平線下でも大気の透過率でほぼ消えるが、明示的に落とす）
-        moon->SetEnabled(wantMoon && moonElevationDeg > 0.0f);
+        // 地平線の下の月は光らせない（大気の透過率でもほぼ消えるが、明示的に落とす）
+        moon->SetEnabled(wantMoon && moonElevationDeg_ > 0.0f);
         moon->SyncWithManager();
     }
 
@@ -468,6 +513,12 @@ namespace CoreEngine
         return ctx.engine ? ctx.engine->GetService<LightManager>() : nullptr;
     }
 
+    AtmosphereManager* TimeOfDayFeature::GetAtmosphereManager(SceneContext& ctx)
+    {
+        RenderDomainContext* const renderDomain = ctx.engine ? ctx.engine->GetRenderDomainContext() : nullptr;
+        return renderDomain ? renderDomain->GetAtmosphereManager() : nullptr;
+    }
+
     ToneMapping* TimeOfDayFeature::GetToneMapping(SceneContext& ctx)
     {
         auto* postEffect = ctx.engine ? ctx.engine->GetService<PostEffectManager>() : nullptr;
@@ -485,6 +536,8 @@ namespace CoreEngine
         const int minute = static_cast<int>((timeOfDay_ - static_cast<float>(hour)) * 60.0f);
         ImGui::Text("%02d:%02d", hour, minute);
         ImGui::Text("太陽  高度 %.1f°  方位 %.1f°", sunElevationDeg_, sunAzimuthDeg_);
+        ImGui::Text("月    高度 %.1f°  方位 %.1f°  月齢 %.1f 日（照らされた面 %.0f%%）",
+            moonElevationDeg_, moonAzimuthDeg_, moonAgeDays_, GetMoonIlluminatedFraction() * 100.0f);
         ImGui::Text("夜の度合い %.2f%s", nightFactor_, IsNight() ? "（地平線下）" : "");
 
         // 借りている CVar の実効値。夜の暗さはこの 2 つと月光 [lx] で決まる
@@ -502,7 +555,7 @@ namespace CoreEngine
             SetTimeOfDay(hours);
         }
 
-        struct Preset { const char* label; float hour; };
+        struct Preset { const char* label; float value; };
         constexpr Preset kPresets[] = {
             { "夜明け 5:00", 5.0f }, { "正午 12:00", 12.0f },
             { "夕暮れ 18:00", 18.0f }, { "深夜 0:00", 0.0f },
@@ -514,7 +567,27 @@ namespace CoreEngine
             }
             first = false;
             if (ImGui::SmallButton(preset.label)) {
-                SetTimeOfDay(preset.hour);
+                SetTimeOfDay(preset.value);
+            }
+        }
+
+        float moonAge = moonAgeDays_;
+        if (ImGui::SliderFloat("月齢 [日]", &moonAge, 0.0f, kSynodicMonthDays, "%.1f")) {
+            SetMoonAge(moonAge);
+        }
+
+        constexpr Preset kMoonPresets[] = {
+            { "新月", 0.0f }, { "上弦", kSynodicMonthDays * 0.25f },
+            { "満月", kSynodicMonthDays * 0.5f }, { "下弦", kSynodicMonthDays * 0.75f },
+        };
+        first = true;
+        for (const Preset& preset : kMoonPresets) {
+            if (!first) {
+                ImGui::SameLine();
+            }
+            first = false;
+            if (ImGui::SmallButton(preset.label)) {
+                SetMoonAge(preset.value);
             }
         }
 

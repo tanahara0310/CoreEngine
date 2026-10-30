@@ -100,7 +100,8 @@ namespace CoreEngine
         CVar<bool> cvMoonPhaseFromSun{
             "r.Atmosphere.MoonPhaseFromSun", false,
             "月の満ち欠けを太陽方向から計算する。false（既定）= 常に満月。"
-            "実位相だと配置次第で意図せず新月になるため固定満月が既定" };
+            "true で太陽と月の位置から月面の欠けを描き、月光（空・雲・露出・地表）を月全体の明るさに合わせて弱める。"
+            "シーンの機能 TimeOfDay がある間は切っていても満ち欠けする" };
 
         CVar<float> cvStarIntensity{
             "r.Atmosphere.StarIntensity", 1.0f,
@@ -154,6 +155,28 @@ namespace CoreEngine
             desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
             desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
             return desc;
+        }
+
+        /// @brief 太陽と月の光の向きから月全体の明るさを求める（満月 = 1・新月 = 0）
+        /// @details 月面の各点を Lommel–Seeliger の法則（SkyAtmosphere.PS の月面と同じ式）で
+        ///          照らしたときの、見えている面全体の明るさ。
+        ///          位相角 α（太陽−月−地表の角）に対して 1 − sin(α/2)·tan(α/2)·ln(cot(α/4))。
+        float ComputeMoonPhaseBrightness(const Vector3& sunDirection, const Vector3& moonDirection)
+        {
+            constexpr float kPi = MathCore::Constants::kPi;
+            // 空で見た太陽と月の離角の補角が位相角
+            const float cosElongation = std::clamp(Dot(sunDirection, moonDirection), -1.0f, 1.0f);
+            const float phaseAngle = kPi - std::acos(cosElongation);
+            if (phaseAngle < 1e-4f) {
+                return 1.0f;
+            }
+            if (phaseAngle > kPi - 1e-3f) {
+                return 0.0f;
+            }
+            const float half = 0.5f * phaseAngle;
+            const float brightness =
+                1.0f - std::sin(half) * std::tan(half) * std::log(1.0f / std::tan(0.5f * half));
+            return std::clamp(brightness, 0.0f, 1.0f);
         }
     }
 
@@ -1112,6 +1135,15 @@ namespace CoreEngine
             }
         }
 
+        // ===== 満ち欠け =====
+        // 月面は満ち欠けを掛ける前の明るさで描き、月光（空・雲・露出・地表）は月全体の明るさを掛ける
+        moonDiskIntensity_ = moonIntensity_;
+        moonPhaseBrightness_ = 1.0f;
+        if (hasMoonLight_ && IsMoonPhaseFromSun()) {
+            moonPhaseBrightness_ = ComputeMoonPhaseBrightness(sunDirection_, moonDirection_);
+            moonIntensity_ *= moonPhaseBrightness_;
+        }
+
         // ===== カメラ高度 → 惑星中心距離の変換 =====
         // ワールド全体を惑星スケールへは変換しない。Y座標のみを高度として扱う。
         cameraHeightAboveGround_ = cameraWorldPosition.y - parameters_.groundLevelY;
@@ -1175,8 +1207,10 @@ namespace CoreEngine
         if (lightManager) {
             lightManager->SetAtmosphereSunTransmittance(
                 transmittanceOnLight_ ? sunTransmittance_ : Vector3{ 1.0f, 1.0f, 1.0f });
-            lightManager->SetAtmosphereMoonTransmittance(
-                transmittanceOnLight_ ? moonTransmittance_ : Vector3{ 1.0f, 1.0f, 1.0f });
+            // 月は満ち欠けの明るさも同じ倍率に掛ける
+            const Vector3 moonLightScale =
+                transmittanceOnLight_ ? moonTransmittance_ : Vector3{ 1.0f, 1.0f, 1.0f };
+            lightManager->SetAtmosphereMoonTransmittance(moonLightScale * moonPhaseBrightness_);
         }
 
         // ===== 照明駆動露出用のシーン代表輝度 =====
@@ -1193,6 +1227,7 @@ namespace CoreEngine
         // 大気アクティブ時は Update() が毎フレーム上書きするので、ここでは触らない。
         if (!atmosphereActive_ && lightManager) {
             lightManager->SetAtmosphereSunTransmittance({ 1.0f, 1.0f, 1.0f });
+            lightManager->SetAtmosphereMoonTransmittance({ 1.0f, 1.0f, 1.0f });
         }
 
         // 次フレームは Update() を呼ぶ大気シーンでのみ再度有効化される
@@ -1342,11 +1377,12 @@ namespace CoreEngine
         // ===== 月（第2大気ライト） =====
         constants.moonDirection = moonDirection_;
         constants.moonIntensity = moonIntensity_;
+        constants.moonDiskIntensity = moonDiskIntensity_;
         constants.moonColor = { moonColor_.x, moonColor_.y, moonColor_.z };
         constants.moonDiskHalfAngleRad = parameters_.moonDiskAngularRadiusDeg * MathCore::Constants::kDegToRad;
         constants.moonDiskLuminanceScale = parameters_.moonDiskLuminanceScale;
         constants.hasMoon = hasMoonLight_ ? 1.0f : 0.0f;
-        constants.moonPhaseFromSun = parameters_.moonPhaseFromSun ? 1.0f : 0.0f;
+        constants.moonPhaseFromSun = IsMoonPhaseFromSun() ? 1.0f : 0.0f;
 
         // ===== 星空（SkyAtmosphere.PS が消費。LUT には影響しない） =====
         constants.starIntensity = parameters_.starIntensity;

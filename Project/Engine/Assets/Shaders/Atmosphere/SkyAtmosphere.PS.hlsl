@@ -99,14 +99,19 @@ PixelShaderOutput main(VertexShaderOutput input)
         {
             float3 toMoon = -gAtmosphere.moonDirection;
             float cosViewMoon = clamp(dot(viewDir, toMoon), -1.0f, 1.0f);
-            float angleToMoon = acos(cosViewMoon);
+            // 月の中心から見た視線のずれ（長さ = sin(離角)）。月の近くの小さな角度は acos でなくこの長さから求める
+            float3 moonOffset = viewDir - toMoon * cosViewMoon;
+            float angleToMoon = (cosViewMoon > 0.0f) ? asin(saturate(length(moonOffset))) : acos(cosViewMoon);
             float moonHalfAngle = max(gAtmosphere.moonDiskHalfAngleRad, 1e-5f);
 
             // 透過率×惑星遮蔽で月の出・月の入りの減光と消失を太陽ディスクと同様に扱う
             float3 moonTransmittance = SampleTransmittanceToSun(
                 gTransmittanceLUT, gLUTSampler, cameraPos, toMoon, gAtmosphere);
-            float3 moonRadiance = moonTransmittance * gAtmosphere.moonDiskLuminanceScale
-                                * gAtmosphere.moonColor * gAtmosphere.moonIntensity;
+            float3 moonRadianceUnit = moonTransmittance * gAtmosphere.moonDiskLuminanceScale
+                                    * gAtmosphere.moonColor;
+            // 月面は満ち欠けを掛ける前の明るさ、グレアは満ち欠けを掛けた月光の強さで描く
+            float3 moonDiskRadiance = moonRadianceUnit * gAtmosphere.moonDiskIntensity;
+            float3 moonGlareRadiance = moonRadianceUnit * gAtmosphere.moonIntensity;
 
             float moonEdge = max(fwidth(angleToMoon), 1e-5f);
             float moonMask = 1.0f - smoothstep(moonHalfAngle - moonEdge, moonHalfAngle + moonEdge, angleToMoon);
@@ -114,31 +119,31 @@ PixelShaderOutput main(VertexShaderOutput input)
             if (moonMask > 0.0f)
             {
                 // ===== 満ち欠け =====
-                // 既定は常に満月（moonPhaseFromSun=0）。ゲームでは太陽と月を独立に動かすため、
-                // 実位相だと配置次第で意図せず新月（ほぼ見えない月）になる。
-                // 太陽連動（=1）のときのみ、ディスク内ローカル座標から月面の球法線を復元し
-                // 太陽方向のランバート陰影で新月〜満月を自動再現する
-                // （周縁減光は掛けない: 月は反射体で、太陽と違い縁が暗くならない）。
+                // moonPhaseFromSun=0 は常に満月。=1 のときはディスク内の位置から月面の球法線を復元し、
+                // 太陽方向から Lommel–Seeliger の法則で照らす（満月で一様・欠けた側の明暗境界へ向かって暗くなる。
+                // 周縁減光は掛けない）。
                 float moonPhase = 1.0f;
                 if (gAtmosphere.moonPhaseFromSun > 0.5f)
                 {
-                    float r = saturate(angleToMoon / moonHalfAngle);      // ディスク中心 0 → 縁 1
-                    float3 discU = viewDir - toMoon * cosViewMoon;        // 画面内の径方向
-                    float discULen = length(discU);
-                    discU = (discULen > 1e-6f) ? discU / discULen : float3(0.0f, 0.0f, 0.0f);
-                    // 遠方球の可視面法線 ≒ 径方向成分 + 観測者方向（月→カメラ = -toMoon）成分
-                    float3 moonNormal = normalize(discU * r - toMoon * sqrt(saturate(1.0f - r * r)));
-                    moonPhase = saturate(dot(moonNormal, toSun));
+                    // 月面の法線の画面内の成分（ディスクの中心 0 → 縁で長さ 1。輪郭のぼかしの幅では縁の値）
+                    float3 moonTangent = moonOffset / sin(moonHalfAngle);
+                    moonTangent /= max(length(moonTangent), 1.0f);
+                    // 遠方球の可視面法線 = 画面内の成分 + 観測者方向（月→カメラ = -toMoon）成分
+                    float muView = sqrt(saturate(1.0f - dot(moonTangent, moonTangent)));
+                    float3 moonNormal = moonTangent - toMoon * muView;
+                    float muSun = dot(moonNormal, toSun);
+                    // 満月で 1。面全体で積分すると AtmosphereManager の ComputeMoonPhaseBrightness になる
+                    moonPhase = (muSun > 0.0f) ? 2.0f * muSun / max(muSun + muView, 1e-4f) : 0.0f;
                     // 地球照（新月側がわずかに見える現実の見え方）ぶんの床を足す
                     moonPhase = max(moonPhase, 0.02f);
                 }
 
-                luminance += moonMask * moonRadiance * moonPhase;
+                luminance += moonMask * moonDiskRadiance * moonPhase;
             }
 
             // 控えめなグレア（空の散乱に埋もれない程度のにじみ。太陽の係数より大幅に弱い）
             float xm = max(angleToMoon - moonHalfAngle, 0.0f) / moonHalfAngle;
-            luminance += moonRadiance * 0.03f * exp(-xm * 1.8f);
+            luminance += moonGlareRadiance * 0.03f * exp(-xm * 1.8f);
         }
 
         // ===== 星空（Phase 5: 手続き的星field） =====
