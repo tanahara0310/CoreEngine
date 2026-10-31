@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.49.0">
+<meta name="engine-version" content="0.50.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2143,7 +2143,8 @@ kbd {
     <thead><tr><th>プロジェクト</th><th>中身</th></tr></thead>
     <tbody>
       <tr><td><span class="path">Projects/Sokoban</span></td><td>倉庫番。スクリプト 1 本（<span class="path">SokobanBoard.as</span>）とプレハブ 5 つだけで、文字で書いた盤面からステージを組み立てる小さな見本。ステージはインスペクタの <code>stages</code> に 1 行足せば増やせます。</td></tr>
-      <tr><td><span class="path">Projects/Sandbox</span></td><td>機能ごとの試験場（物理・キャラクターの歩行・UI・水面・カメラの揺れ・スクリプトのシューター・Shadertoy から移した海のシェーダ）。沖縄の海辺のシーンでは、待機・歩き・走りのアニメーションが付いた人型を操作できます（<a href="#tutorial-beach-player">沖縄の海辺をプレイヤーで歩く</a>）。実在のアラハビーチ（北谷町）を地図の形のとおりに作ったシーン <code>ArahaBeachScene</code> もあります（<a href="#changelog-v0-37-0">v0.37.0</a>。公園の施設と木は <a href="#changelog-v0-38-0">v0.38.0</a>、まわりの街は <a href="#changelog-v0-40-0">v0.40.0</a>、質感は <a href="#changelog-v0-41-0">v0.41.0</a>）。プレイヤーで歩き回り、広域カメラで見渡せます（<a href="#beach-player-araha">アラハビーチを歩き回る・見渡す</a>）。</td></tr>
+      <tr><td><span class="path">Projects/TestBed</span></td><td>エンジンの機能ごとの試験場（物理・キャラクターの歩行・UI・水面・カメラの揺れ・スクリプトのシューター）と、エディタの拡張の見本（<a href="#editor-ext-samples">見本とテスト</a>）。基本図形と小さなモデルだけで作っているので、すぐに開けます。</td></tr>
+      <tr><td><span class="path">Projects/Sandbox</span></td><td>Shadertoy から移した海のシェーダのシーン <code>SeascapeScene</code>（<a href="#pe-shadertoy">Shadertoy のシェーダを移す</a>）。沖縄の海辺のシーンでは、待機・歩き・走りのアニメーションが付いた人型を操作できます（<a href="#tutorial-beach-player">沖縄の海辺をプレイヤーで歩く</a>）。実在のアラハビーチ（北谷町）を地図の形のとおりに作ったシーン <code>ArahaBeachScene</code> もあります（<a href="#changelog-v0-37-0">v0.37.0</a>。公園の施設と木は <a href="#changelog-v0-38-0">v0.38.0</a>、まわりの街は <a href="#changelog-v0-40-0">v0.40.0</a>、質感は <a href="#changelog-v0-41-0">v0.41.0</a>）。プレイヤーで歩き回り、広域カメラで見渡せます（<a href="#beach-player-araha">アラハビーチを歩き回る・見渡す</a>）。</td></tr>
       <tr><td><span class="path">Projects/Sample2D</span></td><td>2D の横スクロールの見本。走る・跳ぶ・コインを集める・ゴールに着く、の 1 ステージに、クリックした所へ箱を落とす遊びを足したもの。スプライトのアニメ・平行投影のカメラの追従・遠景・剛体の軸の固定・トリガーを、スクリプト 6 本（プレイヤー・進行・コイン・ゴール・カメラの追従・遠景）で使っています。使っている機能は <a href="#guide-2d">2D ゲームの作り方</a> で説明しています。</td></tr>
       <tr><td><span class="path">Projects/Tsunagazaru</span></td><td>つながザルをえない。走り続けるトロッコの前にレールを敷いていくゲームで、C++ で作ったゲームをスクリプトだけで作り直した大きめの見本（タイトル・ゲーム・リザルトの 3 シーン）。シーンを切り替えるときのロード画面も、プロジェクトのシェーダで描いています（<a href="#settings-loading-screen">シーンを切り替えるときのロード画面</a>）。</td></tr>
       <tr><td><span class="path">Projects/Reprism</span></td><td>レプリズム。自機のまわりのブロックをハットに写し取って運び、置いた足場でゴールを目指すパズルアクションで、C++ で作ったゲームをスクリプトだけで作り直した見本（タイトル・ステージ選択・ゲームの 3 シーンと 13 ステージ）。ブロックやゴールの光り方はスプライトのマテリアル（<a href="#script-material">マテリアルとシェーダ</a>）、ネオン・走査線・画面の縁の光は<a href="#script-posteffect">プロジェクトのポストエフェクト</a>、ステージの切り替えはブロックに割れて落ちる遷移（<a href="#scenes-transition-effect">自分のシェーダで覆う</a>）で描いています。</td></tr>
@@ -5867,7 +5868,7 @@ kbd {
     <li><a href="#editor-ext-tutorial">作り方：柱を並べる道具を作る</a>：手順を追って 1 つ作ります。初めてならここから。</li>
     <li><a href="#editor-ext-usage">使い方：開く・読み直す・止まったとき</a>：作った道具の開き方、保存したときに値がどうなるか、エラーの直し方。</li>
     <li>作りたいものに合わせて：<a href="#editor-ext-window">ウィンドウとメニュー</a>・<a href="#editor-ext-gui">画面の部品</a>・<a href="#editor-ext-scene">シーンとデータを扱う</a>・<a href="#editor-ext-sceneview">シーンビューの道具とギズモ</a>・<a href="#editor-ext-inspector">インスペクタを自分で描く</a>・<a href="#editor-ext-nodes">ノードエディタ</a>・<a href="#editor-ext-tools">グラフ・カーブ・時間軸</a>。</li>
-    <li><a href="#editor-ext-samples">見本とテスト</a>：Sandbox に入っている見本と、機能をひととおり試すウィンドウ。</li>
+    <li><a href="#editor-ext-samples">見本とテスト</a>：TestBed に入っている見本と、機能をひととおり試すウィンドウ。</li>
     <li><a href="#editor-ext-reference">関数の一覧</a>：すべての関数の使い方。</li>
   </ol>
 </article>
@@ -6295,7 +6296,7 @@ kbd {
   </ul>
 
   <h2 id="script-editor-gui">EditorGUI の部品</h2>
-  <p>値を入れる部品は、インスペクタと同じく左にラベル、右に欄を並べます（ラベルを <code>"##名前"</code> のように <code>##</code> で始めると、ラベルを出さずに欄を幅いっぱいにします。表の中で便利です）。全部の関数は <a href="#api-EditorGUI">EditorGUI</a> にあり、Sandbox の <span class="ui">Tools<span class="arrow">▸</span>テスト<span class="arrow">▸</span>エディタ拡張のテスト</span>（<a href="#script-editor-feature-test">エディタ拡張のテスト</a>）で実際の見た目と動きを確かめられます。</p>
+  <p>値を入れる部品は、インスペクタと同じく左にラベル、右に欄を並べます（ラベルを <code>"##名前"</code> のように <code>##</code> で始めると、ラベルを出さずに欄を幅いっぱいにします。表の中で便利です）。全部の関数は <a href="#api-EditorGUI">EditorGUI</a> にあり、TestBed の<span class="ui">Tools<span class="arrow">▸</span>テスト<span class="arrow">▸</span>エディタ拡張のテスト</span>（<a href="#script-editor-feature-test">エディタ拡張のテスト</a>）で実際の見た目と動きを確かめられます。</p>
   <div class="table-wrap">
   <table>
     <thead><tr><th>種類</th><th>関数</th></tr></thead>
@@ -6716,7 +6717,7 @@ kbd {
         }
     }
   </script>
-  <p>エンジンのコンポーネントに付けると、プロジェクトの中のその型すべてのインスペクタが変わります。一部のオブジェクトだけに足したいときは、<code>target.name</code> などで分けます（Sandbox の <span class="path">FeatureTestRigidbodyInspector.as</span> は、名前が「FeatureTest」で始まる物だけに足しています）。</p>
+  <p>エンジンのコンポーネントに付けると、プロジェクトの中のその型すべてのインスペクタが変わります。一部のオブジェクトだけに足したいときは、<code>target.name</code> などで分けます（TestBed の <span class="path">FeatureTestRigidbodyInspector.as</span> は、名前が「FeatureTest」で始まる物だけに足しています）。</p>
   <h3 id="editor-ext-inspector-scene">選んでいる間、シーンビューにハンドルを出す</h3>
   <p><code>OnSceneGUI</code> を書くと、持ち主を選んでいる間、シーンビューに描けます。点の配列を持つコンポーネントなら、点ごとに <code>Handles::PositionHandle</code> を出して動かせます（<a href="#script-editor-handles">ハンドルで点を動かす</a>）。</p>
 </article>
@@ -6870,10 +6871,10 @@ kbd {
 
 <article class="page" id="editor-ext-samples" data-group="エディタの拡張" data-title="見本とテスト" data-nav="見本とテスト" data-keywords="見本 サンプル テスト マップ生成 会話エディタ 配置ツール 巡回 カーブ エディタ拡張のテスト">
   <h1>見本とテスト</h1>
-  <p class="lead">Sandbox プロジェクトに入っている、エディタの拡張の見本です。どれもそのまま開いて動かせ、コードはコメント付きで読めます。</p>
+  <p class="lead">TestBed プロジェクトに入っている、エディタの拡張の見本です。どれもそのまま開いて動かせ、コードはコメント付きで読めます。</p>
 
   <h2 id="script-editor-sample">見本：マップ生成</h2>
-  <p>Sandbox プロジェクトの <span class="path">Scripts/Editor/MapGenerator.as</span> は、洞窟のような地形を作り、壁のブロックとしてシーンへ並べるウィンドウです。地形は、周りの 8 マスの壁の数で壁か床かを決め直すのを繰り返して作ります（セル・オートマトン）。<span class="ui">Tools<span class="arrow">▸</span>マップ生成</span> で開きます。</p>
+  <p>TestBed プロジェクトの <span class="path">Scripts/Editor/MapGenerator.as</span> は、洞窟のような地形を作り、壁のブロックとしてシーンへ並べるウィンドウです。地形は、周りの 8 マスの壁の数で壁か床かを決め直すのを繰り返して作ります（セル・オートマトン）。<span class="ui">Tools<span class="arrow">▸</span>マップ生成</span> で開きます。</p>
   <ol class="steps">
     <li><strong>地形を作る</strong>幅・奥行き・壁の割合・ならす回数・シードを決めて <span class="ui">生成</span> を押します。同じシードなら毎回同じ地形になります（<a href="#api-RandomStream"><code>RandomStream</code></a>）。</li>
     <li><strong>プレビューを塗って直す</strong>左ドラッグで壁、右ドラッグで床に塗れます。</li>
@@ -6884,7 +6885,7 @@ kbd {
 
 
   <h2 id="script-editor-sample-dialogue">見本：会話エディタ</h2>
-  <p>Sandbox プロジェクトの <span class="path">Scripts/Editor/DialogueEditor.as</span> は、会話の流れをノードでつなぐウィンドウです。<span class="ui">Tools<span class="arrow">▸</span>会話エディタ</span> で開きます。</p>
+  <p>TestBed プロジェクトの <span class="path">Scripts/Editor/DialogueEditor.as</span> は、会話の流れをノードでつなぐウィンドウです。<span class="ui">Tools<span class="arrow">▸</span>会話エディタ</span> で開きます。</p>
   <ol class="steps">
     <li><strong>ノードを足す</strong>何も無いところを右クリックし、<span class="ui">セリフ</span>・<span class="ui">選択肢</span>・<span class="ui">終わり</span> から選びます。ピンから伸ばした線を何も無いところで離しても、足したノードへそのままつながります。</li>
     <li><strong>つなぐ・外す</strong>右のピン（出口）から左のピン（入口）へドラッグしてつなぎます。1 つの出口から出るつながりは 1 本で、つなぎ直すと前のつながりは外れます。入口のピンからドラッグすると外れます。</li>
@@ -6941,7 +6942,7 @@ kbd {
 
 
   <h2 id="script-editor-feature-test">エディタ拡張のテスト</h2>
-  <p>Sandbox の <span class="ui">Tools<span class="arrow">▸</span>テスト<span class="arrow">▸</span>エディタ拡張のテスト</span> は、このページの機能をひととおり試せるウィンドウです。上の段のタブで分野を、下の段のタブで機能を選びます。各タブの上の <span class="ui">確かめること</span> にチェックを入れていくと、ウィンドウの上に確かめた数の合計が出ます（チェックはウィンドウの値として保存され、次の起動でも残ります。<span class="ui">チェックを全部外す</span> で外せます）。</p>
+  <p>TestBed の <span class="ui">Tools<span class="arrow">▸</span>テスト<span class="arrow">▸</span>エディタ拡張のテスト</span> は、このページの機能をひととおり試せるウィンドウです。上の段のタブで分野を、下の段のタブで機能を選びます。各タブの上の <span class="ui">確かめること</span> にチェックを入れていくと、ウィンドウの上に確かめた数の合計が出ます（チェックはウィンドウの値として保存され、次の起動でも残ります。<span class="ui">チェックを全部外す</span> で外せます）。</p>
   <p>使い方は、各タブのスクリプト（<span class="path">Scripts/Editor/FeatureTest</span>）の先頭に、関数の一覧と一緒に書いてあります。エディタの拡張を書くときの見本としても読めます。</p>
   <table>
     <thead><tr><th>分野</th><th>タブ</th><th>試すこと</th><th>スクリプト</th></tr></thead>
@@ -8545,7 +8546,7 @@ kbd {
   <p>光線で当たるのはコライダーを持つ物だけです。クリックで選びたい物には、トリガーのコライダーを付けておきます。範囲の中にいる物をまとめて集めるときは <code>Physics::OverlapSphere</code>（<a href="#g3d-extra">演出</a> の爆発の例）を使います。</p>
 
   <h2 id="g3d-anim">アニメーション</h2>
-  <p>骨の入った glTF モデルのアニメーションは、<a href="#api-Animator">アニメーション</a> コンポーネントが再生します。クリップの一覧（名前とモデルの中のアニメーション名の対応）は、シーンやプレハブの JSON の <code>clips</code> に書きます（サンプル Sandbox の <span class="path">Prefabs/Physics/HumanModel.prefab</span> が見本）。スクリプトからは名前で切り替えます。</p>
+  <p>骨の入った glTF モデルのアニメーションは、<a href="#api-Animator">アニメーション</a> コンポーネントが再生します。クリップの一覧（名前とモデルの中のアニメーション名の対応）は、シーンやプレハブの JSON の <code>clips</code> に書きます（サンプル TestBed の <span class="path">Prefabs/Physics/HumanModel.prefab</span> が見本）。スクリプトからは名前で切り替えます。</p>
   <script type="text/x-code" data-lang="as" data-file="LocomotionAnimation3D.as">
     using namespace CoreEngine;
 
@@ -9906,6 +9907,15 @@ python Tools/OkinawaBeach/bake_araha_walk.py
 
   <h2 id="changelog-history">更新履歴</h2>
 
+  <h3 id="changelog-v0-50-0">v0.50.0 <span class="dim">（2026-11-01）</span> <span class="badge">サンプルだけ</span></h3>
+  <p>エンジンの機能を試すための軽いプロジェクト <span class="path">Projects/TestBed</span> を足した版です（<a href="#intro-samples">付属のサンプル</a>）。Sandbox に入っていた試験用のシーンとエディタの拡張の見本を、重いモデル抜きで写しました。</p>
+  <ul>
+    <li><strong>試験用のシーン</strong>：物理とキャラクターの歩行（<code>PhysicsTestScene</code>）・UI（<code>UITestScene</code>）・水面（<code>WaterTestScene</code>）・カメラの揺れと材質の並び（<code>TestScene</code>）・スクリプトのシューター（<code>ScriptShooterTest</code>）の 5 つです。プロジェクト全体で約 10MB なので、すぐに開けます。</li>
+    <li><strong>水面の試験</strong>：<code>WaterTestScene</code> は、地面と水面だけにしました（飾りの島とサンゴ礁を外しています）。</li>
+    <li><strong>エディタの拡張の見本</strong>：マップ生成・会話エディタ・配置ツール・巡回の道筋・<span class="ui">Tools<span class="arrow">▸</span>テスト<span class="arrow">▸</span>エディタ拡張のテスト</span> も TestBed で開けます（<a href="#editor-ext-samples">見本とテスト</a>）。ドキュメントの案内も TestBed に替えました。</li>
+    <li><strong>Sandbox</strong>：今は同じものが Sandbox にも残っています。</li>
+  </ul>
+
   <h3 id="changelog-v0-49-0">v0.49.0 <span class="dim">（2026-10-31）</span></h3>
   <p>潮などで水面が下がったあと、水に浸かっていた面が濡れた見た目で残り、時間とともに乾くようにした版です（<a href="#api-WaterSurface">水面</a>）。</p>
   <ul>
@@ -11213,7 +11223,7 @@ void OnTriggerEnter(Collision@ other)
     id: "CollisionLayer", kind: "enum", cat: "物理・当たり判定", brief: "当たり判定のレイヤー（プロジェクトごと）",
     keywords: "レイヤー 当たり判定 グループ 衝突",
     summary: "当たり判定のグループです。<strong>名前の並びはプロジェクトごと</strong>で、<span class=\"path\">Application/Config/EngineSettings/Layers.json</span>（エディタの <span class=\"ui\">Project Settings</span>）で決めます。最大 32 個、先頭は必ず <code>Default</code> です。",
-    intro: "<p>下はサンプル（Sandbox）の並びです。ファイルが無いプロジェクトでは <code>Default</code> だけになります。どのレイヤーとどのレイヤーが当たるかは、シーンごとの設定（<span class=\"path\">_scene.json</span> の <code>collision</code>）で決まります。</p>",
+    intro: "<p>下はサンプル（TestBed）の並びです。ファイルが無いプロジェクトでは <code>Default</code> だけになります。どのレイヤーとどのレイヤーが当たるかは、シーンごとの設定（<span class=\"path\">_scene.json</span> の <code>collision</code>）で決まります。</p>",
     values: [
       ["Default", 0, "何も決めていないときのレイヤー（必ずある）"],
       ["Player", 1, "（サンプルの例）自機"],
@@ -15405,7 +15415,7 @@ void LateUpdate()   // 追いかける相手が動いた後に動かす
         ]
       }
     ],
-    notes: "<ul><li>水面を使うシーンは、<span class=\"path\">_scene.json</span> に <code>\"features\": [\"WaterRender\"]</code> を書き足す必要があります（エディタに追加の画面はありません。サンプル Sandbox の WaterTestScene を参照）。</li><li>波・水の色・反射と屈折・泡・コースティクスは水面 1 枚ごとの値でなく、プロジェクトの CVar（<code>r.Water.*</code>。<span class=\"path\">Config/EngineSettings/CVars.json</span>）で決まり、どのシーンの水面にも同じ値が効きます。エディタでは水面のインスペクタの「一辺の長さ」「分割数」の下に、セクションごとに並びます。「波」の「海況」で風速・吹送距離・うねりをまとめて入れられ、いまの値で出来上がる風波とうねりの波長と高さも出ます。いちばん下のボタンで <code>r.Water.*</code> をすべて既定値へ戻せます。</li><li>「FFT の海で描く」を切ると Gerstner の波で描きます。Gerstner の波は保存せず、開き直すと既定の 16 本に戻ります。</li><li>コースティクスの「作り方」をスクリーンスペースにしたときの強さなどの値は、Gerstner の波のときだけ効きます。レイトレーシングの明るさは、光と水の吸収から決まります。</li><li>FFT の海でレイトレーシングが使えるときは、ゲームのカメラの周り 256m 四方（海底の高さを測る範囲）を 0.5m 間隔の細かい格子で描き、その外を「分割数」の格子で描きます。範囲はカメラと一緒に 0.5m 単位で動きます。CVar <code>r.Water.Shore.FineMesh</code> で切れます。</li><li>FFT の海の波の形（頂点の高さと横のずれ）には、その格子の間隔で表せる波だけを入れます。細かい格子は 3 つのカスケードの波を全部（短い波まで）、粗い格子は 60m より長い波だけです。形に入らない短い波は、陰影（法線）で描きます。細かい格子を使わないとき（レイトレーシングが無い・<code>r.Water.Shore.FineMesh</code> を切った）は、カメラの近くも 60m より長い波だけの形になります。</li><li>レイトレーシングが使えるときは、水面の範囲全体の水深と水面の上にある物までの高さを測った地図（海の範囲マップ）で波の形を弱めます。陸や建物の下では波が出ず、浅瀬では水深に応じて低くなり、桟橋の下では桟橋に届かない高さまでになります。水面の範囲の端に触れている水と、いちばん大きな水のかたまりを海とし、それ以外の囲まれた水（プールや池）は波立ちません。測るのは止まっている物だけで、物を置く・動かすと、落ち着いてから測り直します。CVar <code>r.Water.SeaMap.Enabled</code> で切れ、<code>r.Water.SeaMap.Resolution</code>（地図の長い辺のテクセル数）で細かさを変えられます。</li><li>「潮の高さ」を 0 より大きくすると、大気の月と太陽の高さから潮位を求め、水面をトランスフォームの高さから上下させます（トランスフォームの値は変えません）。月の効きを 1、太陽を 0.46 として足し合わせ、どちらも真上か真下で満潮、地平線で干潮です。月が無いシーンは太陽だけで求め、どちらも無ければ潮は動きません。水面の描画・映り込み・屈折・コースティクス・水中の霧と明るさ・岸の泡・海の範囲マップは、どれも潮位を足した高さを使います。</li><li>月と太陽が真上まで来ないと、満潮は「潮の高さ」まで上がりません。シーンの機能 <code>TimeOfDay</code> は緯度（<code>r.TimeOfDay.LatitudeDeg</code>。既定 35 度）が高いほど南中が低く、35 度では満潮が「潮の高さ」の 0.34 倍、干潮が −1 倍です。</li><li><code>TimeOfDay</code> の月は月齢の分だけ太陽から遅れて動くので、新月と満月の頃は大潮、上弦と下弦の頃は小潮になります（小潮の干満差は大潮の約 37%）。満潮の時刻は毎日約 49 分ずつ遅れます（満月の日は 0 時と 12 時）。潮の速さは空の時間の速さ（<code>r.TimeOfDay.DayLengthSeconds</code>）で決まります。<code>TimeOfDay</code> の無いシーンや時間を進めないシーンでは、潮位は一定です。</li><li>スクリプトで水の高さを使う（浮かぶ・泳ぐ・濡れる）ときは、トランスフォームの高さでなく <code>waterLevel</code> を読みます。潮を自分で動かしたいときは <code>SetTideHeight</code> で指定します。</li><li>海の範囲マップの水深は、潮位を除いた高さで測ってから潮位の分を足します。満潮で水に沈んだ低い陸にも、その深さに応じて波が出ます。</li><li>水面が下がると（潮・<code>SetTideHeight</code>・トランスフォームを下げる）、それまで水に浸かっていた面が暗く、つやのある見た目で残り、時間とともに乾きます（濡れ跡）。水から出た時刻をワールドの高さごとに覚えて、その時刻からの時間で乾かすので、カメラを動かしても消えません。乾く速さは <code>r.Water.Wetness.DrySeconds</code>（濡れ具合が 1/e になるまでのゲームの時間。既定 60 秒）で決まり、<code>r.Water.Wetness.Enabled</code> で切れます。インスペクタの「濡れ跡」にも並びます。今の水面より 0.5 m 下までの面も、波打ち際として濡れて見えます。スキンメッシュと水面の範囲の外は濡らしません。</li></ul>",
+    notes: "<ul><li>水面を使うシーンは、<span class=\"path\">_scene.json</span> に <code>\"features\": [\"WaterRender\"]</code> を書き足す必要があります（エディタに追加の画面はありません。サンプル TestBed の WaterTestScene を参照）。</li><li>波・水の色・反射と屈折・泡・コースティクスは水面 1 枚ごとの値でなく、プロジェクトの CVar（<code>r.Water.*</code>。<span class=\"path\">Config/EngineSettings/CVars.json</span>）で決まり、どのシーンの水面にも同じ値が効きます。エディタでは水面のインスペクタの「一辺の長さ」「分割数」の下に、セクションごとに並びます。「波」の「海況」で風速・吹送距離・うねりをまとめて入れられ、いまの値で出来上がる風波とうねりの波長と高さも出ます。いちばん下のボタンで <code>r.Water.*</code> をすべて既定値へ戻せます。</li><li>「FFT の海で描く」を切ると Gerstner の波で描きます。Gerstner の波は保存せず、開き直すと既定の 16 本に戻ります。</li><li>コースティクスの「作り方」をスクリーンスペースにしたときの強さなどの値は、Gerstner の波のときだけ効きます。レイトレーシングの明るさは、光と水の吸収から決まります。</li><li>FFT の海でレイトレーシングが使えるときは、ゲームのカメラの周り 256m 四方（海底の高さを測る範囲）を 0.5m 間隔の細かい格子で描き、その外を「分割数」の格子で描きます。範囲はカメラと一緒に 0.5m 単位で動きます。CVar <code>r.Water.Shore.FineMesh</code> で切れます。</li><li>FFT の海の波の形（頂点の高さと横のずれ）には、その格子の間隔で表せる波だけを入れます。細かい格子は 3 つのカスケードの波を全部（短い波まで）、粗い格子は 60m より長い波だけです。形に入らない短い波は、陰影（法線）で描きます。細かい格子を使わないとき（レイトレーシングが無い・<code>r.Water.Shore.FineMesh</code> を切った）は、カメラの近くも 60m より長い波だけの形になります。</li><li>レイトレーシングが使えるときは、水面の範囲全体の水深と水面の上にある物までの高さを測った地図（海の範囲マップ）で波の形を弱めます。陸や建物の下では波が出ず、浅瀬では水深に応じて低くなり、桟橋の下では桟橋に届かない高さまでになります。水面の範囲の端に触れている水と、いちばん大きな水のかたまりを海とし、それ以外の囲まれた水（プールや池）は波立ちません。測るのは止まっている物だけで、物を置く・動かすと、落ち着いてから測り直します。CVar <code>r.Water.SeaMap.Enabled</code> で切れ、<code>r.Water.SeaMap.Resolution</code>（地図の長い辺のテクセル数）で細かさを変えられます。</li><li>「潮の高さ」を 0 より大きくすると、大気の月と太陽の高さから潮位を求め、水面をトランスフォームの高さから上下させます（トランスフォームの値は変えません）。月の効きを 1、太陽を 0.46 として足し合わせ、どちらも真上か真下で満潮、地平線で干潮です。月が無いシーンは太陽だけで求め、どちらも無ければ潮は動きません。水面の描画・映り込み・屈折・コースティクス・水中の霧と明るさ・岸の泡・海の範囲マップは、どれも潮位を足した高さを使います。</li><li>月と太陽が真上まで来ないと、満潮は「潮の高さ」まで上がりません。シーンの機能 <code>TimeOfDay</code> は緯度（<code>r.TimeOfDay.LatitudeDeg</code>。既定 35 度）が高いほど南中が低く、35 度では満潮が「潮の高さ」の 0.34 倍、干潮が −1 倍です。</li><li><code>TimeOfDay</code> の月は月齢の分だけ太陽から遅れて動くので、新月と満月の頃は大潮、上弦と下弦の頃は小潮になります（小潮の干満差は大潮の約 37%）。満潮の時刻は毎日約 49 分ずつ遅れます（満月の日は 0 時と 12 時）。潮の速さは空の時間の速さ（<code>r.TimeOfDay.DayLengthSeconds</code>）で決まります。<code>TimeOfDay</code> の無いシーンや時間を進めないシーンでは、潮位は一定です。</li><li>スクリプトで水の高さを使う（浮かぶ・泳ぐ・濡れる）ときは、トランスフォームの高さでなく <code>waterLevel</code> を読みます。潮を自分で動かしたいときは <code>SetTideHeight</code> で指定します。</li><li>海の範囲マップの水深は、潮位を除いた高さで測ってから潮位の分を足します。満潮で水に沈んだ低い陸にも、その深さに応じて波が出ます。</li><li>水面が下がると（潮・<code>SetTideHeight</code>・トランスフォームを下げる）、それまで水に浸かっていた面が暗く、つやのある見た目で残り、時間とともに乾きます（濡れ跡）。水から出た時刻をワールドの高さごとに覚えて、その時刻からの時間で乾かすので、カメラを動かしても消えません。乾く速さは <code>r.Water.Wetness.DrySeconds</code>（濡れ具合が 1/e になるまでのゲームの時間。既定 60 秒）で決まり、<code>r.Water.Wetness.Enabled</code> で切れます。インスペクタの「濡れ跡」にも並びます。今の水面より 0.5 m 下までの面も、波打ち際として濡れて見えます。スキンメッシュと水面の範囲の外は濡らしません。</li></ul>",
     see: [["file-formats", "_scene.json の書き方"], ["api-SkyBox", "空と大気散乱"]]
   },
 
@@ -15630,7 +15640,7 @@ class PlayerWalker : ScriptComponent
         ]
       }
     ],
-    notes: "<ul><li>クリップの一覧（名前とモデル内のアニメーション名の対応）はインスペクタでは編集できず、保存データ（シーンやプレハブの JSON）の <code>clips</code> に書きます。サンプル Sandbox の <span class=\"path\">Prefabs/Physics/HumanModel.prefab</span> が見本です。</li><li>最初のクリップは自動で再生されます。</li></ul>",
+    notes: "<ul><li>クリップの一覧（名前とモデル内のアニメーション名の対応）はインスペクタでは編集できず、保存データ（シーンやプレハブの JSON）の <code>clips</code> に書きます。サンプル TestBed の <span class=\"path\">Prefabs/Physics/HumanModel.prefab</span> が見本です。</li><li>最初のクリップは自動で再生されます。</li></ul>",
     examples: [
       {
         title: "例：止まる・歩くを切り替える",

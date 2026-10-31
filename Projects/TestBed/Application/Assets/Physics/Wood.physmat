@@ -1,0 +1,6 @@
+{
+    "restitution": 0.1,
+    "friction": 0.55,
+    "restitutionCombine": 2,
+    "frictionCombine": 3
+}

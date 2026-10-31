@@ -1,0 +1,51 @@
+{
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [ 0.0, 0.0, 0.0 ],
+                "scale": [ 1.0, 1.0, 1.0 ],
+                "translate": [ 0.0, 0.0, 0.0 ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "model": {
+                    "guid": "e8a79191-50ea-0673-1816-c257f280ba64",
+                    "path": "Engine/Assets/Models/Primitives/Box/cube.obj"
+                }
+            },
+            "type": "MeshRenderer"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [ 0.42, 0.44, 0.5, 1.0 ],
+                "emissive": [ 0.0, 0.0, 0.0, 1.0 ],
+                "metallic": 0.0,
+                "roughness": 0.85
+            },
+            "type": "Material"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "shapes": [
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [ 0.0, 0.0, 0.0 ],
+                        "size": [ 1.0, 1.0, 1.0 ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box"
+                    }
+                ]
+            },
+            "type": "Collider"
+        }
+    ]
+}

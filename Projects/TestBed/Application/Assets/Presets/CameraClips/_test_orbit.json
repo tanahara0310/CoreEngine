@@ -1,0 +1,570 @@
+{
+    "version": "2.0",
+    "timelineLength": 10.0,
+    "easingTypeIndex": 0,
+    "shotsEnabled": false,
+    "keyframes": [
+        {
+            "time": 0.0,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 0.0,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 0.2,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 0.000124,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 0.4,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 0.000964,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 0.6,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 0.003152,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 0.8,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 0.00724,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 1.0,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 0.013696,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 1.2,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 0.02291,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 1.4,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 0.0352,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 1.6,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 0.050814,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 1.8,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 0.069932,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 2.0,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 0.092672,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 2.2,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 0.119094,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 2.4,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 0.149202,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 2.6,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 0.182948,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 2.8,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 0.220237,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 3.0,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 0.260928,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 3.2,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 0.304842,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 3.4,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 0.351761,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 3.6,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 0.401436,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 3.8,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 0.453585,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 4.0,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 0.507904,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 4.2,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 0.564065,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 4.4,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 0.621721,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 4.6,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 0.680511,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 4.8,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 0.740064,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 5.0,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 0.8,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 5.2,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 0.859936,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 5.4,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 0.919489,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 5.6,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 0.978279,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 5.8,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 1.035935,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 6.0,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 1.092096,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 6.2,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 1.146415,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 6.4,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 1.198564,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 6.6,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 1.248239,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 6.8,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 1.295158,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 7.0,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 1.339072,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 7.2,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 1.379763,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 7.4,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 1.417052,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 7.6,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 1.450798,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 7.8,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 1.480906,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 8.0,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 1.507328,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 8.2,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 1.530068,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 8.4,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 1.549186,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 8.6,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 1.5648,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 8.8,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 1.57709,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 9.0,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 1.586304,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 9.2,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 1.59276,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 9.4,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 1.596848,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 9.6,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 1.599036,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 9.8,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 1.599876,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        },
+        {
+            "time": 10.0,
+            "snapshot": {
+                "isDebugCamera": true,
+                "target": [0.0, 6.0, -8.0],
+                "distance": 120.0,
+                "pitch": 0.2,
+                "yaw": 1.6,
+                "parameters": { "fov": 0.45, "nearClip": 0.1, "farClip": 50000.0, "aspectRatio": 0.0 }
+            }
+        }
+    ],
+    "shots": []
+}

@@ -1,0 +1,15 @@
+{
+    "layers": [
+        "Default",
+        "Player",
+        "Enemy",
+        "PlayerBullet",
+        "EnemyBullet",
+        "Boss",
+        "BossBullet",
+        "BossAttack",
+        "Item",
+        "Environment"
+    ],
+    "version": "1.0"
+}
