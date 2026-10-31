@@ -1,0 +1,42 @@
+{
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [ 0.0, 0.0, 0.0 ],
+                "scale": [ 1.0, 1.0, 1.0 ],
+                "translate": [ 0.0, 1.0, 0.0 ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "shapes": [
+                    {
+                        "enabled": true,
+                        "height": 1.8,
+                        "layer": "Default",
+                        "offset": [ 0.0, 0.0, 0.0 ],
+                        "radius": 0.35,
+                        "static": false,
+                        "trigger": false,
+                        "type": "Capsule"
+                    }
+                ]
+            },
+            "type": "Collider"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "skinWidth": 0.02,
+                "slopeLimit": 45.0,
+                "stepOffset": 0.3,
+                "useGravity": true
+            },
+            "type": "CharacterController"
+        }
+    ]
+}
