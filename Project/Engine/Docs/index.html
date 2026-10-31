@@ -10423,10 +10423,31 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <ol class="steps">
     <li><strong>番号を決める</strong>上の表に従って決めます。</li>
     <li><strong>3 か所を同じ番号にする</strong><span class="path">Project/Engine/Src/EngineSystem/EngineVersion.h</span> の <code>kEngineVersion</code>、このドキュメント（<span class="path">Project/Engine/Docs/index.html</span>）の先頭近くにある <code>engine-version</code> の値、そしてこのページの新しい項目です。</li>
+    <li><strong>新しい項目を決まった形で書く</strong>この項目は、master に入ると Discord の更新のお知らせにもなります。下の <a href="#changelog-notify">Discord へのお知らせ</a> の形で書きます。</li>
     <li><strong>PR をマージする</strong>ドキュメントはエンジンと同じリポジトリに入っているので、同じ PR で一緒に直します。</li>
     <li><strong>主の数字を上げたときだけタグを打つ</strong>主の数字が上がる版（<code>v1.0.0</code> など）では、マージしたあとの master に <code>git tag -a v1.0.0 -m "v1.0.0"</code> を付けて、<code>git push origin v1.0.0</code> で送ります。副と修正の数字だけを上げた版には、タグを打ちません。</li>
   </ol>
   <div class="callout note" data-title="古い版のドキュメント"><p>ドキュメントはエンジンと同じリポジトリに入っているので、別の番号は付けません。古い版のドキュメントは、その版を入れたコミットを取り出すと読めます。主の版はタグで（<code>git checkout v1.0.0</code>）、副と修正の版は版の番号でコミットを探して（<code>git log --oneline --grep "0.23.0"</code>）取り出します。</p></div>
+
+  <h3 id="changelog-notify">Discord へのお知らせ</h3>
+  <p>master で <span class="path">EngineVersion.h</span> の版が上がると、GitHub Actions の <code>ReleaseNotify</code>（<span class="path">.github/workflows/release-notify.yml</span>）が、このページの新しい項目から Discord の更新のお知らせを作って送ります。1 回のマージで版がいくつか上がったときは、版ごとに 1 通ずつ送ります。お知らせのタイトルは、その版を入れた PR へのリンクです。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>項目に書くもの</th><th>書き方</th><th>お知らせでは</th></tr></thead>
+    <tbody>
+      <tr><td class="nowrap">最初の段落</td><td>「〜した版です」と、何が変わったかを 1〜2 文で書きます</td><td>本文の最初に載ります（500 字まで）</td></tr>
+      <tr><td class="nowrap">箇条書きの見出し</td><td><code>&lt;li&gt;&lt;strong&gt;見出し&lt;/strong&gt;：本文&lt;/li&gt;</code> の形にし、見出しは短くします</td><td>見出しだけが「変わったところ」（修正の版は「直したところ」）に並びます</td></tr>
+      <tr><td class="nowrap">警告の囲み</td><td>古いスクリプトやシーンがそのままでは動かなくなるときは、箇条書きのあとに <code>&lt;div class="callout warn" data-title="〜には"&gt;</code> の囲みで直し方を書きます</td><td>囲みの題と中身が ⚠️ の段落になり、色が赤になって、後輩のロールを名指しします</td></tr>
+      <tr><td class="nowrap">サンプルだけの印</td><td>付属のサンプルだけを変えた版は、見出しの日付のあとに <code>&lt;span class="badge"&gt;サンプルだけ&lt;/span&gt;</code> を付けます</td><td>灰色になり、「エンジンの機能は変わりません」と添えます</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>ほかの版の色は、副の数字が上がった版が緑（機能追加）、修正の数字だけが上がった版が黄（不具合の修正）、主の数字が上がった版が紫です。</p>
+  <p>送り先は、リポジトリの Secret <code>DISCORD_RELEASE_WEBHOOK_URL</code>（チャンネルの Webhook の URL）です。無いときは送りません。名指しするロールは、リポジトリの変数 <code>DISCORD_RELEASE_ROLE_ID</code>（ロールの ID）です。送り直すときは、GitHub の <span class="ui">Actions<span class="arrow">▸</span>ReleaseNotify<span class="arrow">▸</span>Run workflow</span> で版（例 <code>0.49.0</code>）を入れて実行します。空のままなら今の版を送ります。</p>
+  <p>送る前に中身を見るときは、リポジトリのフォルダで次を実行します。Discord へは送らず、送る中身を表示します。</p>
+  <script type="text/x-code" data-lang="shell" data-file="Git Bash（リポジトリのフォルダで）">
+    DRY_RUN=1 VERSION=0.49.0 node .github/scripts/notify-release.mjs
+  </script>
 </article>
 
 <article class="page" id="components-index" data-group="コンポーネント" data-title="コンポーネント一覧" data-nav="一覧" data-keywords="コンポーネント 一覧 リファレンス 部品 インスペクタ 項目 エンジン 付けられるもの">
