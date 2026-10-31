@@ -39,6 +39,18 @@ namespace CoreEngine
             float padding0 = 0.0f;
         };
 
+        /// @brief 濡れ跡（水が引いたあとの濡れた面）の定数（HLSL 側 WetSurfaceConstants と一致させること）
+        /// @details 今の水面から上へ等間隔に並べた濡れ具合を、面の高さで引く（WetSurface.hlsli）
+        struct WetSurfaceConstants {
+            uint32_t enabled = 0;            ///< 1 = 濡れ跡を描く
+            float bottomHeight = 0.0f;       ///< 表の下端（今の水面の高さ）[m]
+            float samplesPerMeter = 0.0f;    ///< 1 m あたりの標本の数
+            float pad = 0.0f;
+            float regionCenterXZ[2] = {};    ///< 水面の範囲の中心
+            float regionHalfExtentXZ[2] = {};///< 水面の範囲の半分の幅
+            Vector4 wetness[16] = {};        ///< 下端から上へ並べた濡れ具合（4 つずつ詰める）
+        };
+
         DeferredLightingTechnique() = default;
         ~DeferredLightingTechnique() override = default;
 
@@ -79,6 +91,9 @@ namespace CoreEngine
 
         /// @brief 水中ライティングの設定（このフレームで水中の点を照らすのに使った値）
         const WaterCausticsDebugSettings& GetWaterCausticsDebugSettings() const { return waterCausticsDebug_.Get(); }
+
+        /// @brief 濡れ跡の定数を設定
+        void SetWetSurfaceConstants(const WetSurfaceConstants& constants) { wetSurface_.Set(constants); }
 
         /// @brief RT シャドウマスク SRV を設定（DXR レイトレーシングシャドウ結果）
         /// @param handle  SRV ハンドル（無効時は {} を渡す）
@@ -144,6 +159,18 @@ namespace CoreEngine
         // ===== Water Caustics =====
         D3D12_GPU_DESCRIPTOR_HANDLE waterCausticsHandle_{};
         PerFrameConstants<WaterCausticsDebugSettings> waterCausticsDebug_;
+
+        // ===== 濡れ跡 =====
+        static constexpr Cb::Field kWetSurfaceConstantsFields[] = {
+            CB_FIELD(WetSurfaceConstants, enabled), CB_FIELD(WetSurfaceConstants, bottomHeight),
+            CB_FIELD(WetSurfaceConstants, samplesPerMeter), CB_FIELD(WetSurfaceConstants, pad),
+            CB_FIELD(WetSurfaceConstants, regionCenterXZ), CB_FIELD(WetSurfaceConstants, regionHalfExtentXZ),
+            CB_FIELD(WetSurfaceConstants, wetness),
+        };
+        CB_VERIFY_LAYOUT(WetSurfaceConstants, kWetSurfaceConstantsFields);
+        CB_BIND_HLSL(WetSurfaceConstants, kWetSurfaceConstantsFields, "gWetSurface");
+
+        PerFrameConstants<WetSurfaceConstants> wetSurface_;
 
         // ===== 空アンビエント（大気散乱 SH。Sky Light 相当） =====
         // 有効フラグ・スケールは AtmosphereManager が持ち、Execute で毎フレーム UploadRing に置く

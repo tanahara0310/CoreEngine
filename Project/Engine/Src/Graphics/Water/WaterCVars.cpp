@@ -110,6 +110,12 @@ namespace CoreEngine
         CVar<int> SeaMapResolution{ "r.Water.SeaMap.Resolution", 2048,
             "海の範囲マップの長い辺のテクセル数（細かいほど岸の形に沿う）", CVarRange{ 256.0f, 4096.0f } };
 
+        // ---- 濡れ跡 ----
+        CVar<bool> WetnessEnabled{ "r.Water.Wetness.Enabled", true,
+            "水面が下がったあと、水に浸かっていた面を濡れた見た目（暗く・なめらか）にする" };
+        CVar<float> WetnessDrySeconds{ "r.Water.Wetness.DrySeconds", 60.0f,
+            "水から出た面の濡れ具合が 1/e になるまでの時間 [s]", CVarRange{ 1.0f, 3600.0f } };
+
         // ---- コースティクス ----
         CVar<int> CausticsBackend{ "r.Water.Caustics.Backend", 0,
             "生成方式（0: レイトレーシング / 1: スクリーンスペース。SS は Gerstner 専用）",

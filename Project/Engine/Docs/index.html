@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.48.0">
+<meta name="engine-version" content="0.49.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -9906,6 +9906,16 @@ python Tools/OkinawaBeach/bake_araha_walk.py
 
   <h2 id="changelog-history">更新履歴</h2>
 
+  <h3 id="changelog-v0-49-0">v0.49.0 <span class="dim">（2026-10-31）</span></h3>
+  <p>潮などで水面が下がったあと、水に浸かっていた面が濡れた見た目で残り、時間とともに乾くようにした版です（<a href="#api-WaterSurface">水面</a>）。</p>
+  <ul>
+    <li><strong>濡れ跡</strong>：水面が下がると、それまで水に浸かっていた地面や岩が暗く、つやのある（粗さの低い）見た目で残ります。水から出た時刻をワールドの高さごとに覚えているので、潮が引いた帯は上ほど先に乾き、水際に近いほど濡れています。もう一度水に浸かると濡れ直します。どのシーンの水面にも同じように効き、カメラを動かしても濡れ跡は消えません。</li>
+    <li><strong>乾く速さ</strong>：CVar <code>r.Water.Wetness.DrySeconds</code>（既定 60 秒）で、水から出た面の濡れ具合が 1/e（約 37%）になるまでの時間を決めます。ゲームの時間で進むので、一時停止中は乾かず、<code>Time::SetTimeScale</code> で速めると早く乾きます。<code>r.Water.Wetness.Enabled</code>（既定オン）で切れます。どちらも水面のインスペクタの「濡れ跡」に並びます。</li>
+    <li><strong>波打ち際</strong>：今の水面（波を除いた高さ）より 0.5 m 下までの面は、波の谷で水から出ても濡れて見えます。潮の無いシーンでも、波打ち際の砂や岩が少し暗くなります。</li>
+    <li><strong>濡らさない物</strong>：プレイヤーなどのスキンメッシュと、水面の範囲（一辺の長さ）の外は濡らしません。スキンの無い動く物は、動かない物と同じように濡れます。</li>
+    <li><strong>映り込みと屈折</strong>：レイトレーシングで水面に映る面、水を通して見える面にも同じ濡れ跡が付きます。</li>
+  </ul>
+
   <h3 id="changelog-v0-48-0">v0.48.0 <span class="dim">（2026-10-31）</span></h3>
   <p>月が満ち欠けするようにした版です（<a href="#api-SkyBox">空と大気散乱</a>）。シーンの機能 <code>TimeOfDay</code> の月が月齢で動き、潮にも大潮と小潮ができます（<a href="#api-WaterSurface">水面</a>）。</p>
   <ul>
@@ -15356,7 +15366,7 @@ void LateUpdate()   // 追いかける相手が動いた後に動かす
   {
     id: "WaterSurface", kind: "component", cat: "環境", display: "水面", type: "WaterSurface",
     accessor: "owner.waterSurface", title: "水面（WaterSurface）", brief: "波立つ水面",
-    keywords: "水 水面 海 波 fft 潮 満潮 干潮 満ち引き 潮位 水位",
+    keywords: "水 水面 海 波 fft 潮 満潮 干潮 満ち引き 潮位 水位 濡れ 濡れ跡 濡れた砂 乾く",
     summary: "波の立つ水面を描きます。穏やかな波（Gerstner 波）と、外洋のうねり（FFT の海）を選べます。大気の月と太陽の高さで満ち引きさせることもできます。",
     requires: "トランスフォーム・メッシュ描画（自動で足します）、シーンの機能 <code>WaterRender</code>",
     props: [
@@ -15374,7 +15384,7 @@ void LateUpdate()   // 追いかける相手が動いた後に動かす
         ]
       }
     ],
-    notes: "<ul><li>水面を使うシーンは、<span class=\"path\">_scene.json</span> に <code>\"features\": [\"WaterRender\"]</code> を書き足す必要があります（エディタに追加の画面はありません。サンプル Sandbox の WaterTestScene を参照）。</li><li>波・水の色・反射と屈折・泡・コースティクスは水面 1 枚ごとの値でなく、プロジェクトの CVar（<code>r.Water.*</code>。<span class=\"path\">Config/EngineSettings/CVars.json</span>）で決まり、どのシーンの水面にも同じ値が効きます。エディタでは水面のインスペクタの「一辺の長さ」「分割数」の下に、セクションごとに並びます。「波」の「海況」で風速・吹送距離・うねりをまとめて入れられ、いまの値で出来上がる風波とうねりの波長と高さも出ます。いちばん下のボタンで <code>r.Water.*</code> をすべて既定値へ戻せます。</li><li>「FFT の海で描く」を切ると Gerstner の波で描きます。Gerstner の波は保存せず、開き直すと既定の 16 本に戻ります。</li><li>コースティクスの「作り方」をスクリーンスペースにしたときの強さなどの値は、Gerstner の波のときだけ効きます。レイトレーシングの明るさは、光と水の吸収から決まります。</li><li>FFT の海でレイトレーシングが使えるときは、ゲームのカメラの周り 256m 四方（海底の高さを測る範囲）を 0.5m 間隔の細かい格子で描き、その外を「分割数」の格子で描きます。範囲はカメラと一緒に 0.5m 単位で動きます。CVar <code>r.Water.Shore.FineMesh</code> で切れます。</li><li>FFT の海の波の形（頂点の高さと横のずれ）には、その格子の間隔で表せる波だけを入れます。細かい格子は 3 つのカスケードの波を全部（短い波まで）、粗い格子は 60m より長い波だけです。形に入らない短い波は、陰影（法線）で描きます。細かい格子を使わないとき（レイトレーシングが無い・<code>r.Water.Shore.FineMesh</code> を切った）は、カメラの近くも 60m より長い波だけの形になります。</li><li>レイトレーシングが使えるときは、水面の範囲全体の水深と水面の上にある物までの高さを測った地図（海の範囲マップ）で波の形を弱めます。陸や建物の下では波が出ず、浅瀬では水深に応じて低くなり、桟橋の下では桟橋に届かない高さまでになります。水面の範囲の端に触れている水と、いちばん大きな水のかたまりを海とし、それ以外の囲まれた水（プールや池）は波立ちません。測るのは止まっている物だけで、物を置く・動かすと、落ち着いてから測り直します。CVar <code>r.Water.SeaMap.Enabled</code> で切れ、<code>r.Water.SeaMap.Resolution</code>（地図の長い辺のテクセル数）で細かさを変えられます。</li><li>「潮の高さ」を 0 より大きくすると、大気の月と太陽の高さから潮位を求め、水面をトランスフォームの高さから上下させます（トランスフォームの値は変えません）。月の効きを 1、太陽を 0.46 として足し合わせ、どちらも真上か真下で満潮、地平線で干潮です。月が無いシーンは太陽だけで求め、どちらも無ければ潮は動きません。水面の描画・映り込み・屈折・コースティクス・水中の霧と明るさ・岸の泡・海の範囲マップは、どれも潮位を足した高さを使います。</li><li>月と太陽が真上まで来ないと、満潮は「潮の高さ」まで上がりません。シーンの機能 <code>TimeOfDay</code> は緯度（<code>r.TimeOfDay.LatitudeDeg</code>。既定 35 度）が高いほど南中が低く、35 度では満潮が「潮の高さ」の 0.34 倍、干潮が −1 倍です。</li><li><code>TimeOfDay</code> の月は月齢の分だけ太陽から遅れて動くので、新月と満月の頃は大潮、上弦と下弦の頃は小潮になります（小潮の干満差は大潮の約 37%）。満潮の時刻は毎日約 49 分ずつ遅れます（満月の日は 0 時と 12 時）。潮の速さは空の時間の速さ（<code>r.TimeOfDay.DayLengthSeconds</code>）で決まります。<code>TimeOfDay</code> の無いシーンや時間を進めないシーンでは、潮位は一定です。</li><li>スクリプトで水の高さを使う（浮かぶ・泳ぐ・濡れる）ときは、トランスフォームの高さでなく <code>waterLevel</code> を読みます。潮を自分で動かしたいときは <code>SetTideHeight</code> で指定します。</li><li>海の範囲マップの水深は、潮位を除いた高さで測ってから潮位の分を足します。満潮で水に沈んだ低い陸にも、その深さに応じて波が出ます。</li></ul>",
+    notes: "<ul><li>水面を使うシーンは、<span class=\"path\">_scene.json</span> に <code>\"features\": [\"WaterRender\"]</code> を書き足す必要があります（エディタに追加の画面はありません。サンプル Sandbox の WaterTestScene を参照）。</li><li>波・水の色・反射と屈折・泡・コースティクスは水面 1 枚ごとの値でなく、プロジェクトの CVar（<code>r.Water.*</code>。<span class=\"path\">Config/EngineSettings/CVars.json</span>）で決まり、どのシーンの水面にも同じ値が効きます。エディタでは水面のインスペクタの「一辺の長さ」「分割数」の下に、セクションごとに並びます。「波」の「海況」で風速・吹送距離・うねりをまとめて入れられ、いまの値で出来上がる風波とうねりの波長と高さも出ます。いちばん下のボタンで <code>r.Water.*</code> をすべて既定値へ戻せます。</li><li>「FFT の海で描く」を切ると Gerstner の波で描きます。Gerstner の波は保存せず、開き直すと既定の 16 本に戻ります。</li><li>コースティクスの「作り方」をスクリーンスペースにしたときの強さなどの値は、Gerstner の波のときだけ効きます。レイトレーシングの明るさは、光と水の吸収から決まります。</li><li>FFT の海でレイトレーシングが使えるときは、ゲームのカメラの周り 256m 四方（海底の高さを測る範囲）を 0.5m 間隔の細かい格子で描き、その外を「分割数」の格子で描きます。範囲はカメラと一緒に 0.5m 単位で動きます。CVar <code>r.Water.Shore.FineMesh</code> で切れます。</li><li>FFT の海の波の形（頂点の高さと横のずれ）には、その格子の間隔で表せる波だけを入れます。細かい格子は 3 つのカスケードの波を全部（短い波まで）、粗い格子は 60m より長い波だけです。形に入らない短い波は、陰影（法線）で描きます。細かい格子を使わないとき（レイトレーシングが無い・<code>r.Water.Shore.FineMesh</code> を切った）は、カメラの近くも 60m より長い波だけの形になります。</li><li>レイトレーシングが使えるときは、水面の範囲全体の水深と水面の上にある物までの高さを測った地図（海の範囲マップ）で波の形を弱めます。陸や建物の下では波が出ず、浅瀬では水深に応じて低くなり、桟橋の下では桟橋に届かない高さまでになります。水面の範囲の端に触れている水と、いちばん大きな水のかたまりを海とし、それ以外の囲まれた水（プールや池）は波立ちません。測るのは止まっている物だけで、物を置く・動かすと、落ち着いてから測り直します。CVar <code>r.Water.SeaMap.Enabled</code> で切れ、<code>r.Water.SeaMap.Resolution</code>（地図の長い辺のテクセル数）で細かさを変えられます。</li><li>「潮の高さ」を 0 より大きくすると、大気の月と太陽の高さから潮位を求め、水面をトランスフォームの高さから上下させます（トランスフォームの値は変えません）。月の効きを 1、太陽を 0.46 として足し合わせ、どちらも真上か真下で満潮、地平線で干潮です。月が無いシーンは太陽だけで求め、どちらも無ければ潮は動きません。水面の描画・映り込み・屈折・コースティクス・水中の霧と明るさ・岸の泡・海の範囲マップは、どれも潮位を足した高さを使います。</li><li>月と太陽が真上まで来ないと、満潮は「潮の高さ」まで上がりません。シーンの機能 <code>TimeOfDay</code> は緯度（<code>r.TimeOfDay.LatitudeDeg</code>。既定 35 度）が高いほど南中が低く、35 度では満潮が「潮の高さ」の 0.34 倍、干潮が −1 倍です。</li><li><code>TimeOfDay</code> の月は月齢の分だけ太陽から遅れて動くので、新月と満月の頃は大潮、上弦と下弦の頃は小潮になります（小潮の干満差は大潮の約 37%）。満潮の時刻は毎日約 49 分ずつ遅れます（満月の日は 0 時と 12 時）。潮の速さは空の時間の速さ（<code>r.TimeOfDay.DayLengthSeconds</code>）で決まります。<code>TimeOfDay</code> の無いシーンや時間を進めないシーンでは、潮位は一定です。</li><li>スクリプトで水の高さを使う（浮かぶ・泳ぐ・濡れる）ときは、トランスフォームの高さでなく <code>waterLevel</code> を読みます。潮を自分で動かしたいときは <code>SetTideHeight</code> で指定します。</li><li>海の範囲マップの水深は、潮位を除いた高さで測ってから潮位の分を足します。満潮で水に沈んだ低い陸にも、その深さに応じて波が出ます。</li><li>水面が下がると（潮・<code>SetTideHeight</code>・トランスフォームを下げる）、それまで水に浸かっていた面が暗く、つやのある見た目で残り、時間とともに乾きます（濡れ跡）。水から出た時刻をワールドの高さごとに覚えて、その時刻からの時間で乾かすので、カメラを動かしても消えません。乾く速さは <code>r.Water.Wetness.DrySeconds</code>（濡れ具合が 1/e になるまでのゲームの時間。既定 60 秒）で決まり、<code>r.Water.Wetness.Enabled</code> で切れます。インスペクタの「濡れ跡」にも並びます。今の水面より 0.5 m 下までの面も、波打ち際として濡れて見えます。スキンメッシュと水面の範囲の外は濡らしません。</li></ul>",
     see: [["file-formats", "_scene.json の書き方"], ["api-SkyBox", "空と大気散乱"]]
   },
 

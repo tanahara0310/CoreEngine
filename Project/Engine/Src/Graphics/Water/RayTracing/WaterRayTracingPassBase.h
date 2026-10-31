@@ -41,6 +41,9 @@ namespace CoreEngine
         float cloudShadowRegionSize = 0.0f;           ///< 雲の影のマップが覆う範囲の幅 [m]
         float cloudShadowAnchorY = 0.0f;              ///< 雲の影のマップを置く高さ（雲底）
         float cloudShadowEdgeFadeStart = 1.0f;        ///< 範囲の端で雲の影を消し始める正規化半径
+        WaterWetnessBinding wetSurface{};             ///< 濡れ跡の表（enabled = 0 なら濡れ跡なし）
+        float wetSurfaceRegionCenterXZ[2] = {};       ///< 濡れ跡を付ける範囲（水面の範囲）の中心
+        float wetSurfaceRegionHalfExtentXZ[2] = {};   ///< 濡れ跡を付ける範囲の半分の幅
     };
 
     /// @brief DXR 水面パス（屈折・反射・コースティクス）の共通基盤

@@ -270,6 +270,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterConstantBufferSet.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterRenderResources.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterWetnessHistory.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterShaderResourceBinder.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Outline\Outline.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\UIOverlay\UIOverlay.cpp" />
@@ -1310,6 +1311,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterSurfaceComponent.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterSurfaceMeshGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterRenderResources.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterWetnessHistory.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterShaderResourceBinder.h" />
     <ClInclude Include="Engine\Src\Camera\CameraManager.h" />
     <ClInclude Include="Engine\Src\Camera\CameraStructs.h" />

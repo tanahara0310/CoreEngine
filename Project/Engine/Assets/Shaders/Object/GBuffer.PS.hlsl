@@ -6,12 +6,17 @@
 // ライティングは DeferredLighting.PS.hlsl で行う。
 // マテリアル定義とサンプリングヘルパーは ObjectMaterial.hlsli と共有する。
 
+// 1 = 動く物（スキンメッシュ）。GBufferSkinning.PS.hlsl が 1 にして include する
+#ifndef GBUFFER_MOVING_OBJECT
+#define GBUFFER_MOVING_OBJECT 0
+#endif
+
 struct GBufferOutput
 {
     float4 albedoAO : SV_TARGET0; ///< rgb=アルベド, a=AO
     float4 normalRoughness : SV_TARGET1; ///< rgb=ワールド法線(エンコード済み), a=ラフネス（0=アンリット）
     float4 emissiveMetallic : SV_TARGET2; ///< rgb=エミッシブ, a=メタリック
-    float4 motionVector : SV_TARGET3; ///< rg=モーションベクター（NDC空間の2Dオフセット）, b=水面フラグ（0）
+    float4 motionVector : SV_TARGET3; ///< rg=モーションベクター（NDC空間の2Dオフセット）, b=水面フラグ（0）, a=動く物（1）
 };
 
 GBufferOutput main(VertexShaderOutput input)
@@ -36,7 +41,7 @@ GBufferOutput main(VertexShaderOutput input)
     // TAA・SSAO テンポラル・RTShadow が前フレームの画素を逆算して再投影するために使う。
     float2 ndcCurrent = input.clipPosCurrent.xy / input.clipPosCurrent.w;
     float2 ndcPrev = input.clipPosPrev.xy / input.clipPosPrev.w;
-    output.motionVector = float4(ndcCurrent - ndcPrev, 0.0f, 0.0f);
+    output.motionVector = float4(ndcCurrent - ndcPrev, 0.0f, (float)GBUFFER_MOVING_OBJECT);
 
     // ===== アンリットマテリアル処理 =====
     // enableLighting=0 の場合、DeferredLighting パスに roughness=0 のセンチネル値を書き込む。

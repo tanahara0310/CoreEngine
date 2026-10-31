@@ -32,6 +32,8 @@ namespace CoreEngine::DeferredLightingBind
         gSkySpecularMap,
         gCloudShadowMap,
         gCloudShadow,
+        gGBufferMotion,
+        gWetSurface,
         Count
     };
 
@@ -72,6 +74,10 @@ namespace CoreEngine::DeferredLightingBind
         // 雲シャドウ（雲を使わないシーン・LUT 未生成のフレームは差さない）
         { "gCloudShadowMap",      ShaderBindingType::SRV, BindingUsage::Conditional },
         { "gCloudShadow",         ShaderBindingType::CBV, BindingUsage::Conditional },
+
+        // 濡れ跡（動く物の印を読む G-Buffer のモーションベクターと、高さごとの濡れ具合の表）。毎フレーム差す
+        { "gGBufferMotion",       ShaderBindingType::SRV, BindingUsage::Required    },
+        { "gWetSurface",          ShaderBindingType::CBV, BindingUsage::Required    },
     };
 
     static_assert(std::size(kDecls) == Slot::Count,

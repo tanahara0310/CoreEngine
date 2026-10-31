@@ -232,7 +232,7 @@ namespace CoreEngine
             // 大気散乱（EnvironmentFeature）の更新後に結線する。
             // LUT / SH / キューブマップの準備完了はこの時点で確定している。
             UpdateSkyTide(ctx);
-            RefreshWaterSurfaceState();
+            RefreshWaterSurfaceState(Time::DeltaTime());
 
             if (!domain) {
                 break;
@@ -700,12 +700,13 @@ namespace CoreEngine
         caustics->SetSettings(settings);
     }
 
-    void WaterRenderFeature::RefreshWaterSurfaceState()
+    void WaterRenderFeature::RefreshWaterSurfaceState(float deltaSeconds)
     {
         WaterSurfaceComponent* const waterPlane = waterPlane_.Get();
         // 前フレームの値を破棄し、現在の水面状態から再構築する
         waterSurfaceState_ = {};
         if (!waterPlane) {
+            wetnessHistory_.Clear();
             return;
         }
 
@@ -717,6 +718,7 @@ namespace CoreEngine
             if (surfaceModelProvider_) {
                 surfaceModelProvider_->ClearSurfaceData();
             }
+            wetnessHistory_.Clear();
             return;
         }
 
@@ -753,8 +755,9 @@ namespace CoreEngine
         // coverage 判定のメッシュ同一基準化に使う実際の頂点グリッド分割数
         waterSurfaceState_.meshSubdivisions = static_cast<float>(waterPlane->GetResolution());
 
-        // 海の範囲マップを書いてから provider へ写す
+        // 海の範囲マップと濡れ跡を書いてから provider へ写す
         UpdateSeaMapBinding();
+        UpdateWetness(deltaSeconds);
 
         if (surfaceModelProvider_) {
             surfaceModelProvider_->SetSurfaceData(
@@ -770,6 +773,17 @@ namespace CoreEngine
         }
         const LightManager* const lightManager = ctx.engine ? ctx.engine->GetService<LightManager>() : nullptr;
         waterPlane->SetSkyTideHeight(ComputeSkyTideHeight(waterPlane->GetTideAmplitude(), lightManager));
+    }
+
+    void WaterRenderFeature::UpdateWetness(float deltaSeconds)
+    {
+        if (waterSurfaceState_.regionValid == 0 || !WaterCVars::WetnessEnabled.Get()) {
+            wetnessHistory_.Clear();
+            return;
+        }
+        const float drySeconds = WaterCVars::WetnessDrySeconds.Get();
+        wetnessHistory_.Record(waterSurfaceState_.waterHeight, deltaSeconds, drySeconds);
+        waterSurfaceState_.wetness = wetnessHistory_.BuildBinding(drySeconds);
     }
 
     void WaterRenderFeature::UpdateSeaMapBinding()

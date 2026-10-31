@@ -18,6 +18,8 @@
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Utility/Logger/Logger.h"
 #include "Graphics/Render/RenderGraph.h"
+
+#include <cstring>
 #include "Camera/Camera.h"
 #include "Math/MathCore.h"
 
@@ -54,6 +56,8 @@ namespace CoreEngine
         builder.Read(FrameBlackboard::GBufferAlbedoAO, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         builder.Read(FrameBlackboard::GBufferNormalRoughness, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         builder.Read(FrameBlackboard::GBufferEmissiveMetallic, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        // モーションベクターの a（動く物の印）を濡れ跡に使う
+        builder.Read(FrameBlackboard::GBufferMotionVector, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         if (context.viewSettings.enableSSAO) {
             builder.Read(FrameBlackboard::SSAO, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         }
@@ -231,6 +235,25 @@ namespace CoreEngine
                 debugSettings.absorptionCoeff[2] = rtSettings.absorptionCoeff[2];
             }
             deferredLighting->SetWaterCausticsDebugSettings(debugSettings);
+        }
+
+        // ===== 濡れ跡（水が引いたあとの濡れた面） =====
+        {
+            DeferredLightingTechnique::WetSurfaceConstants wetSurface{};
+            const WaterSurfaceData* surface = context.waterSurfaceState;
+            if (surface && surface->regionValid != 0 && surface->wetness.enabled != 0) {
+                wetSurface.enabled = 1;
+                wetSurface.bottomHeight = surface->wetness.bottomHeight;
+                wetSurface.samplesPerMeter = surface->wetness.samplesPerMeter;
+                wetSurface.regionCenterXZ[0] = surface->regionCenterXZ[0];
+                wetSurface.regionCenterXZ[1] = surface->regionCenterXZ[1];
+                wetSurface.regionHalfExtentXZ[0] = surface->regionHalfExtentXZ[0];
+                wetSurface.regionHalfExtentXZ[1] = surface->regionHalfExtentXZ[1];
+                static_assert(sizeof(wetSurface.wetness) == sizeof(surface->wetness.wetness),
+                    "濡れ跡の表の標本数を C++ と HLSL でそろえる");
+                std::memcpy(wetSurface.wetness, surface->wetness.wetness, sizeof(wetSurface.wetness));
+            }
+            deferredLighting->SetWetSurfaceConstants(wetSurface);
         }
 
         if (caustics && caustics->GetParams().debugLogEnabled != 0) {

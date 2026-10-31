@@ -24,6 +24,18 @@ namespace CoreEngine
         float invWaveHeight = 0.0f;         ///< 波の高さ（有義波高）の逆数 [1/m]
     };
 
+    /// @brief 濡れ跡の表の標本数（WetSurface.hlsli の kWetSurfaceSampleCount と同じ）
+    static constexpr uint32_t kWaterWetnessSampleCount = 64;
+
+    /// @brief 水が引いたあとの濡れ跡の表（WaterWetnessHistory が作る）
+    /// @details 今の水面から上へ等間隔に、その高さの面の濡れ具合 [0,1] を並べる
+    struct WaterWetnessBinding {
+        uint32_t enabled = 0;         ///< 1 = 濡れ跡を描く
+        float bottomHeight = 0.0f;    ///< 表の下端（今の水面の高さ）[m]
+        float samplesPerMeter = 0.0f; ///< 1 m あたりの標本の数
+        float wetness[kWaterWetnessSampleCount] = {}; ///< 下端から上へ並べた濡れ具合
+    };
+
     /// @brief 水面の形状を再現するのに必要な状態（水面高さ・時刻・波パラメータ）
     /// @note 水面パスと RT パス・水中判定が同じ波面を見るための単一の情報源
     struct WaterSurfaceData {
@@ -58,6 +70,9 @@ namespace CoreEngine
 
         // 海の範囲マップ。水深と上の物までの高さで波の変位を弱める
         WaterSeaMapBinding seaMap{};
+
+        // 水が引いたあとの濡れ跡
+        WaterWetnessBinding wetness{};
     };
 
     /// @brief 水の光学特性（屈折率・吸収・散乱）

@@ -54,6 +54,10 @@ namespace CoreEngine
         extern CVar<bool>    SeaMapEnabled;
         extern CVar<int>     SeaMapResolution;
 
+        // ---- 濡れ跡 ----
+        extern CVar<bool>    WetnessEnabled;
+        extern CVar<float>   WetnessDrySeconds;
+
         // ---- コースティクス ----
         extern CVar<int>     CausticsBackend; // 0=RT / 1=ScreenSpace（コンボは水面パネル。NoUI）
         extern CVar<float>   CausticsIntensity;

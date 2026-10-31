@@ -5,6 +5,7 @@
 #include "../Include/Common/ColorSpace.hlsli" // Luminance / ACESFilm
 // 水中ライティング置換の関数群（PI / Luminance に依存するため PBR / ColorSpace の後）
 #include "../Include/Lighting/UnderwaterLighting.hlsli"
+#include "../Include/Lighting/WetSurface.hlsli"
 #include "../Cloud/Common/CloudShadowCommon.hlsli"
 
 // ============================================================
@@ -110,6 +111,30 @@ static const float kSkySpecularMipCount = 5.0f;
 // 雲が無効なフレームは差されないので、寸法 1x1 のダミーで無効化を検出する。
 Texture2D<float> gCloudShadowMap : register(t20);
 ConstantBuffer<CloudShadowConstants> gCloudShadow : register(b8);
+
+// ============================================================
+// 濡れ跡（水が引いたあとの濡れた面。WetSurface.hlsli）
+// ============================================================
+// G-Buffer のモーションベクターの a = 1 は動く物（スキンメッシュ）。動く物には濡れ跡を付けない
+Texture2D<float4> gGBufferMotion : register(t21);
+
+// C++ 側 DeferredLightingTechnique::WetSurfaceConstants と一致させること
+struct WetSurfaceConstants
+{
+    uint enabled;              // 1 = 濡れ跡を描く
+    float bottomHeight;        // 表の下端（今の水面の高さ）[m]
+    float samplesPerMeter;     // 1 m あたりの標本の数
+    float wetSurfacePad;
+    float2 regionCenterXZ;     // 水面の範囲
+    float2 regionHalfExtentXZ;
+    float4 wetness[kWetSurfaceTableVectorCount]; // 下端から上へ並べた濡れ具合（4 つずつ詰める）
+};
+ConstantBuffer<WetSurfaceConstants> gWetSurface : register(b9);
+
+float LoadWetSurfaceSample(uint n)
+{
+    return gWetSurface.wetness[n >> 2][n & 3u];
+}
 
 /// @brief SH9 係数から法線方向の空の放射照度/π を評価する
 float3 EvaluateSkyIrradiance(float3 n)
@@ -278,11 +303,19 @@ PixelShaderOutput main(PixelShaderInput input)
     const float underwaterFactor = underwater.factor;
     const float3 underwaterAmbientT = underwater.ambientTransmittance;
 
-    // 濡れ暗色化（★F0 計算の後・albedo を使うすべてのライティングの前★）
-    if (gWaterCausticsDebug.waterVolumeEnabled != 0)
+    // 濡れ跡（水が引いたあとの濡れた面）。動く物には付けない
+    float wetness = 0.0f;
+    if (gWetSurface.enabled != 0 && gGBufferMotion.Load(loadCoord).a < 0.5f)
     {
-        albedo = ApplyWetDarkening(albedo, underwaterFactor);
+        wetness = SampleWetSurface(
+            worldPos, gWetSurface.bottomHeight, gWetSurface.samplesPerMeter,
+            gWetSurface.regionCenterXZ, gWetSurface.regionHalfExtentXZ);
     }
+    // 水中の面の粗さは変えない（水中の照らし方に任せる）
+    roughness = ApplyWetRoughness(roughness, wetness * (1.0f - underwaterFactor));
+
+    // 濡れ暗色化（★F0 計算の後・albedo を使うすべてのライティングの前★）
+    albedo = ApplyWetDarkening(albedo, max(underwaterFactor, wetness));
 
     float3 Lo = float3(0.0f, 0.0f, 0.0f);
 
