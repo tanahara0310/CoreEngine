@@ -5,6 +5,7 @@
 #include "Graphics/Water/Simulation/WaterSurfaceModelProvider.h"
 #include "Graphics/Water/Simulation/WaterSurfaceSimulator.h"
 #include "Graphics/Water/Surface/WaterRenderResources.h"
+#include "Graphics/Water/Surface/WaterWetnessHistory.h"
 #include "Graphics/Water/WaterSurfaceData.h"
 #include "Math/Vector/Vector3.h"
 
@@ -70,7 +71,8 @@ namespace CoreEngine
         /// @brief 水面状態を即座に再構築する
         /// @details UI で波パラメータを変更した直後など、次フレームを待たずに
         ///          RT 側へ反映したい場合に呼ぶ。
-        void RefreshWaterSurfaceState();
+        /// @param deltaSeconds 前の記録から進んだ時間（濡れ跡を乾かす。フレームの更新以外は 0）
+        void RefreshWaterSurfaceState(float deltaSeconds = 0.0f);
 
     private:
         /// @brief 現在の描画経路に対応する simulator を返す
@@ -107,6 +109,9 @@ namespace CoreEngine
         /// @brief 大気の月と太陽の高さから潮位を求め、水面へ渡す
         void UpdateSkyTide(SceneContext& ctx) const;
 
+        /// @brief 今の水面の高さを濡れ跡の記録へ足し、waterSurfaceState_.wetness へ表を書く
+        void UpdateWetness(float deltaSeconds);
+
         /// @brief 水面描画と同じ σa を RT コースティクスへ同期する
         void SyncCausticsAbsorption(RenderDomainContext& domain) const;
 
@@ -131,6 +136,9 @@ namespace CoreEngine
 
         /// @brief 現在フレームの水面状態（RenderDomainContext へ publish する実体）
         WaterSurfaceData waterSurfaceState_{};
+
+        /// @brief 水面の高さの移り変わり（濡れ跡の表を作る）
+        WaterWetnessHistory wetnessHistory_{};
 
         /// @brief RT 水面パスへ渡す surface model provider（寿命管理付き）
         std::shared_ptr<StaticWaterSurfaceModelProvider> surfaceModelProvider_{};

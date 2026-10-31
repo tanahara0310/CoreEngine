@@ -10,6 +10,8 @@
 #include "../Common/ColorSpace.hlsli"
 // 濡れ暗色化・水面を通った日光の合成（DeferredLighting の水中ライティングと同じ式）
 #include "../Lighting/UnderwaterLighting.hlsli"
+// 水が引いたあとの濡れ跡（DeferredLighting と同じ式）
+#include "../Lighting/WetSurface.hlsli"
 #include "../../Cloud/Common/CloudShadowCommon.hlsli"
 
 // 表・テクスチャ・ライトは ResourceDescriptorHeap からヒープ内インデックスで引く
@@ -33,8 +35,18 @@ cbuffer RTHitShadingConstants : register(b2)
     float gCloudShadowRegionSize;
     float gCloudShadowAnchorY;
     float gCloudShadowEdgeFadeStart;
-    float3 gHitShadingPad;
+    // 濡れ跡（DeferredLighting の gWetSurface と同じ値）
+    uint gWetSurfaceEnabled;          // 1 = 濡れ跡を描く
+    float gWetSurfaceBottomHeight;    // 表の下端（今の水面の高さ）[m]
+    float gWetSurfaceSamplesPerMeter; // 1 m あたりの標本の数
+    float4 gWetSurfaceRegion;         // xy = 水面の範囲の中心 / zw = 範囲の半分の幅
+    float4 gWetSurfaceTable[kWetSurfaceTableVectorCount]; // 下端から上へ並べた濡れ具合（4 つずつ詰める）
 };
+
+float LoadWetSurfaceSample(uint n)
+{
+    return gWetSurfaceTable[n >> 2][n & 3u];
+}
 
 // テクスチャを繰り返して引くサンプラ
 SamplerState gLinearWrap : register(s1);
@@ -42,6 +54,7 @@ SamplerState gLinearWrap : register(s1);
 static const uint kRTHitNoTexture = 0xFFFFFFFFu;
 static const uint kRTHitSubMeshFlagLit = 1u << 0;
 static const uint kRTHitSubMeshFlagDither = 1u << 1;
+static const uint kRTHitSubMeshFlagMoving = 1u << 2;
 
 // 頂点の並び（C++ 側 VertexData: 位置 16 + UV 8 + 法線 12 + 接線 12 + 頂点アニメーションの値 16。
 // RayTracingSubsystem.cpp の static_assert と一致させる）
@@ -96,6 +109,7 @@ struct RTHitSurface
     float ao;          // 環境光に掛ける AO（1 = 遮蔽なし）
     bool lit;          // false ならアンリット
     bool cutout;       // アルファで抜ける所に当たった
+    bool moving;       // 動く物（スキンメッシュ）。濡れ跡を付けない
 };
 
 /// @brief 頂点位置をワールドへ移す
@@ -287,6 +301,7 @@ RTHitSurface FetchHitSurface(
     surface.metallic = saturate(metallic);
     surface.roughness = saturate(max(roughness, 0.01f));
     surface.lit = (subMesh.flags & kRTHitSubMeshFlagLit) != 0;
+    surface.moving = (subMesh.flags & kRTHitSubMeshFlagMoving) != 0;
     return surface;
 }
 
@@ -342,8 +357,18 @@ float3 ShadeHitSurface(
         return surface.albedo;
     }
 
+    // 濡れ跡（水が引いたあとの濡れた面）。動く物には付けず、水中の面の粗さは変えない
+    float wetness = 0.0f;
+    if (gWetSurfaceEnabled != 0 && !surface.moving)
+    {
+        wetness = SampleWetSurface(
+            surface.position, gWetSurfaceBottomHeight, gWetSurfaceSamplesPerMeter,
+            gWetSurfaceRegion.xy, gWetSurfaceRegion.zw);
+    }
+    const float roughness = ApplyWetRoughness(surface.roughness, wetness * (1.0f - underwater.factor));
+
     const float3 F0 = lerp(float3(DIELECTRIC_F0, DIELECTRIC_F0, DIELECTRIC_F0), surface.albedo, surface.metallic);
-    const float3 albedo = ApplyWetDarkening(surface.albedo, underwater.factor);
+    const float3 albedo = ApplyWetDarkening(surface.albedo, max(underwater.factor, wetness));
     const float mainLightShadow = lerp(0.3f, 1.0f, mainLightVisibility);
     float3 color = surface.emissive;
     bool mainLightEnabled = false;
@@ -367,7 +392,7 @@ float3 ShadeHitSurface(
                 : underwater.ambientTransmittance;
             color += CalculatePBRLighting(
                 surface.normal, toViewer, L, light.color.rgb, light.intensity,
-                albedo, surface.metallic, surface.roughness, 1.0f) * shadow * cloudShadow * lightScale;
+                albedo, surface.metallic, roughness, 1.0f) * shadow * cloudShadow * lightScale;
             if (gSkyAmbientEnabled == 0)
             {
                 color += CalculateHalfLambertAmbient(
@@ -404,8 +429,8 @@ float3 ShadeHitSurface(
             const float NdotV = saturate(dot(surface.normal, toViewer));
             const float3 R = reflect(-toViewer, surface.normal);
             const float3 prefiltered = skySpecularMap.SampleLevel(
-                gLinearWrap, R, surface.roughness * (kRTHitSkySpecularMipCount - 1.0f)).rgb;
-            const float2 envBRDF = EnvBRDFApprox(surface.roughness, NdotV);
+                gLinearWrap, R, roughness * (kRTHitSkySpecularMipCount - 1.0f)).rgb;
+            const float2 envBRDF = EnvBRDFApprox(roughness, NdotV);
             color += prefiltered * (F0 * envBRDF.x + envBRDF.y) * gSkyAmbientScale * surface.ao * skyShadow
                 * underwater.ambientTransmittance;
         }

@@ -243,6 +243,11 @@ namespace CoreEngine
                 outSubMeshes.push_back(MakeHitSubMesh(
                     whole, resource.GetDefaultMaterial(0), resource, baseColorOverride, descriptors));
             }
+            if (model && model->HasSkinCluster()) {
+                for (size_t i = row.firstSubMesh; i < outSubMeshes.size(); ++i) {
+                    outSubMeshes[i].flags |= kRTHitSubMeshFlagMoving;
+                }
+            }
             row.subMeshCount = static_cast<uint32_t>(outSubMeshes.size()) - row.firstSubMesh;
             outInstances.push_back(row);
         }
@@ -837,6 +842,16 @@ namespace CoreEngine
                 input.cloudShadowAnchorY = cloudShadow.anchorWorldY;
                 input.cloudShadowEdgeFadeStart = cloudShadow.edgeFadeStart;
             }
+        }
+
+        // 濡れ跡（DeferredLighting と同じ表と範囲）
+        if (const WaterSurfaceData* surface = context.waterSurfaceState;
+            surface && surface->regionValid != 0 && surface->wetness.enabled != 0) {
+            input.wetSurface = surface->wetness;
+            input.wetSurfaceRegionCenterXZ[0] = surface->regionCenterXZ[0];
+            input.wetSurfaceRegionCenterXZ[1] = surface->regionCenterXZ[1];
+            input.wetSurfaceRegionHalfExtentXZ[0] = surface->regionHalfExtentXZ[0];
+            input.wetSurfaceRegionHalfExtentXZ[1] = surface->regionHalfExtentXZ[1];
         }
         return input;
     }

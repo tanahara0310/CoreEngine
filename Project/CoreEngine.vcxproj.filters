@@ -211,6 +211,9 @@
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterRenderResources.cpp">
       <Filter>Engine\Src\Graphics\Water\Surface</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterWetnessHistory.cpp">
+      <Filter>Engine\Src\Graphics\Water\Surface</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterShaderResourceBinder.cpp">
       <Filter>Engine\Src\Graphics\Water\Surface</Filter>
     </ClCompile>
@@ -2101,6 +2104,9 @@
       <Filter>Engine\Src\Graphics\Water\Surface</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterRenderResources.h">
+      <Filter>Engine\Src\Graphics\Water\Surface</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterWetnessHistory.h">
       <Filter>Engine\Src\Graphics\Water\Surface</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterShaderResourceBinder.h">

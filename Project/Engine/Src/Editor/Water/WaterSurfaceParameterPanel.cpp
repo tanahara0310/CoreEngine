@@ -236,6 +236,7 @@ void WaterSurfaceParameterPanel::Draw(WaterRenderFeature& runtimeController, Wat
 	DrawWaterColorSection();
 	DrawSurfaceSection();
 	DrawFoamSection(runtimeController);
+	DrawWetnessSection();
 	DrawCausticsSection();
 }
 
@@ -484,6 +485,17 @@ void WaterSurfaceParameterPanel::DrawFoamSection(WaterRenderFeature& runtimeCont
 	CVarUI::DrawRow(&WaterCVars::FoamCascadeWeights, "波の大きさごとの重み", "%.2f", kCascadeLabels);
 	ImGui::EndDisabled();
 	InspectorLayout::Hint("白波の割合は風速から観測式で決まる。白波の量はその倍率。");
+}
+
+void WaterSurfaceParameterPanel::DrawWetnessSection() {
+	if (!InspectorLayout::Foldout("濡れ跡", false)) {
+		return;
+	}
+	CVarUI::DrawRow(&WaterCVars::WetnessEnabled, "水が引いたあとを濡らす");
+	ImGui::BeginDisabled(!WaterCVars::WetnessEnabled.Get());
+	CVarUI::DrawRow(&WaterCVars::WetnessDrySeconds, "乾くまでの時間", "%.0f s");
+	ImGui::EndDisabled();
+	InspectorLayout::Hint("潮などで水面が下がると、水に浸かっていた面が暗く、つやのある見た目で残り、時間とともに乾く。");
 }
 
 void WaterSurfaceParameterPanel::DrawCausticsSection() {

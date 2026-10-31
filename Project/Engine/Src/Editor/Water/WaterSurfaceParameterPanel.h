@@ -40,6 +40,9 @@ private:
 	/// @brief 泡
 	void DrawFoamSection(CoreEngine::WaterRenderFeature& runtimeController);
 
+	/// @brief 濡れ跡
+	void DrawWetnessSection();
+
 	/// @brief コースティクス
 	void DrawCausticsSection();
 

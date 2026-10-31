@@ -24,7 +24,7 @@ namespace CoreEngine
         auto gBufferVertexShaderBlob = shaderCompiler_->CompileShader(L"Engine/Assets/Shaders/Skinning/GBufferSkinning.VS.hlsl", L"vs_6_0");
         assert(gBufferVertexShaderBlob != nullptr);
 
-        auto gBufferPixelShaderBlob = shaderCompiler_->CompileShader(L"Engine/Assets/Shaders/Object/GBuffer.PS.hlsl", L"ps_6_0");
+        auto gBufferPixelShaderBlob = shaderCompiler_->CompileShader(L"Engine/Assets/Shaders/Skinning/GBufferSkinning.PS.hlsl", L"ps_6_0");
         assert(gBufferPixelShaderBlob != nullptr);
 
         // シェーダーリフレクションを構築（RootSignature 自動生成に使用）

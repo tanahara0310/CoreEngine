@@ -37,7 +37,11 @@ namespace CoreEngine
             float cloudShadowRegionSize;
             float cloudShadowAnchorY;
             float cloudShadowEdgeFadeStart;
-            float pad[3];
+            uint32_t wetSurfaceEnabled;
+            float wetSurfaceBottomHeight;
+            float wetSurfaceSamplesPerMeter;
+            float wetSurfaceRegion[4];
+            Vector4 wetSurfaceTable[kWaterWetnessSampleCount / 4];
         };
         static constexpr Cb::Field kRTHitShadingConstantsFields[] = {
             CB_FIELD(RTHitShadingConstants, hitInstanceTableIndex),
@@ -56,7 +60,11 @@ namespace CoreEngine
             CB_FIELD(RTHitShadingConstants, cloudShadowRegionSize),
             CB_FIELD(RTHitShadingConstants, cloudShadowAnchorY),
             CB_FIELD(RTHitShadingConstants, cloudShadowEdgeFadeStart),
-            CB_FIELD(RTHitShadingConstants, pad),
+            CB_FIELD(RTHitShadingConstants, wetSurfaceEnabled),
+            CB_FIELD(RTHitShadingConstants, wetSurfaceBottomHeight),
+            CB_FIELD(RTHitShadingConstants, wetSurfaceSamplesPerMeter),
+            CB_FIELD(RTHitShadingConstants, wetSurfaceRegion),
+            CB_FIELD(RTHitShadingConstants, wetSurfaceTable),
         };
         CB_VERIFY_LAYOUT(RTHitShadingConstants, kRTHitShadingConstantsFields);
         CB_BIND_HLSL(RTHitShadingConstants, kRTHitShadingConstantsFields, "RTHitShadingConstants");
@@ -344,6 +352,16 @@ namespace CoreEngine
         constants.cloudShadowRegionSize = input.cloudShadowRegionSize;
         constants.cloudShadowAnchorY = input.cloudShadowAnchorY;
         constants.cloudShadowEdgeFadeStart = input.cloudShadowEdgeFadeStart;
+        constants.wetSurfaceEnabled = input.wetSurface.enabled;
+        constants.wetSurfaceBottomHeight = input.wetSurface.bottomHeight;
+        constants.wetSurfaceSamplesPerMeter = input.wetSurface.samplesPerMeter;
+        constants.wetSurfaceRegion[0] = input.wetSurfaceRegionCenterXZ[0];
+        constants.wetSurfaceRegion[1] = input.wetSurfaceRegionCenterXZ[1];
+        constants.wetSurfaceRegion[2] = input.wetSurfaceRegionHalfExtentXZ[0];
+        constants.wetSurfaceRegion[3] = input.wetSurfaceRegionHalfExtentXZ[1];
+        static_assert(sizeof(constants.wetSurfaceTable) == sizeof(input.wetSurface.wetness),
+            "濡れ跡の表の標本数を C++ と HLSL でそろえる");
+        std::memcpy(constants.wetSurfaceTable, input.wetSurface.wetness, sizeof(constants.wetSurfaceTable));
         return dxCommon_->GetUploadRing().AllocateConstants(constants);
     }
 

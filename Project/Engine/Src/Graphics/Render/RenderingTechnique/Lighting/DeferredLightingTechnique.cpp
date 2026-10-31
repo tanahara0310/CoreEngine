@@ -50,6 +50,7 @@ namespace CoreEngine
         deferredView_.Initialize(uploadRing);
         deferredView_.Set(DeferredViewParams{ MathCore::Matrix::Identity(), { 0.0f, 0.0f, 0.0f, 1.0f } });
         waterCausticsDebug_.Initialize(uploadRing);
+        wetSurface_.Initialize(uploadRing);
     }
 
     void DeferredLightingTechnique::ResolveBindings()
@@ -102,6 +103,8 @@ namespace CoreEngine
             gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness));
         binder.Set(bindings_[DeferredLightingBind::gEmissiveMetallic],
             gBufferManager->GetSRVHandle(GBufferManager::Target::EmissiveMetallic));
+        binder.Set(bindings_[DeferredLightingBind::gGBufferMotion],
+            gBufferManager->GetSRVHandle(GBufferManager::Target::MotionVector));
 
         // SceneDepth（WorldPosition ターゲット廃止に伴い、深度から復元する）
         if (context.frameBlackboard) {
@@ -153,6 +156,7 @@ namespace CoreEngine
         }
 
         binder.Set(bindings_[DeferredLightingBind::gWaterCausticsDebug], waterCausticsDebug_.Address());
+        binder.Set(bindings_[DeferredLightingBind::gWetSurface], wetSurface_.Address());
 
         // ===== 空アンビエント（大気散乱 SH。Sky Light 相当） =====
         {

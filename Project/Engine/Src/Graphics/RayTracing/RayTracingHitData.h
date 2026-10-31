@@ -64,4 +64,6 @@ namespace CoreEngine
     inline constexpr uint32_t kRTHitSubMeshFlagLit = 1u << 0;
     /// @brief ディザで抜く材質（しきい値 0.5 で抜く）
     inline constexpr uint32_t kRTHitSubMeshFlagDither = 1u << 1;
+    /// @brief 動く物（スキンメッシュ）。濡れ跡を付けない
+    inline constexpr uint32_t kRTHitSubMeshFlagMoving = 1u << 2;
 }
