@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.51.0">
+<meta name="engine-version" content="0.52.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2925,8 +2925,9 @@ kbd {
   <table>
     <thead><tr><th><code>format</code></th><th>形式</th></tr></thead>
     <tbody>
-      <tr><td>書かない</td><td>BC3（既定）</td></tr>
-      <tr><td><code>"bc3"</code></td><td>BC3</td></tr>
+      <tr><td>書かない</td><td>既定。透明を使う画素が 1 つでもある画像は BC3、全部が不透明な画像は BC1 にする</td></tr>
+      <tr><td><code>"bc3"</code></td><td>BC3（1 画素 1 バイト）。透明を持てる</td></tr>
+      <tr><td><code>"bc1"</code></td><td>BC1（1 画素 0.5 バイト）。色の画質は BC3 と同じで、大きさは半分。透明は持てない（透明の部分は不透明になる）</td></tr>
       <tr><td><code>"bc7"</code></td><td>BC7。BC3 より色の段差やにじみが少なく、大きさは同じ。ただし変換が BC3 の 100 倍以上かかる（2048 四方で 1 枚 45 秒ほど）ので、UI やロゴなど、圧縮の汚れが目立つ画像に絞って使う</td></tr>
       <tr><td><code>"none"</code></td><td>圧縮しない（1 画素 4 バイト）。ドット絵など、圧縮でにじませたくない画像に使う。大きさは BC3 の 4 倍</td></tr>
     </tbody>
@@ -3333,6 +3334,7 @@ kbd {
     ├─ CoreEngine.exe               Release のフォルダから
     ├─ Binaries/                    exe が読む DLL（SDL3.dll・dxcompiler.dll。Release のフォルダの Binaries から）
     ├─ CookManifest.json            変換したデータの一覧（これがあると、書き出したゲームとして動く）
+    ├─ CookedTextureAliases.txt     中身が同じなので 1 つにまとめた DDS の一覧（まとめた物があるときだけ）
     ├─ Engine/
     │  ├─ Assets/                   エンジンの素材（シェーダなど。画像のテクスチャとモデルのファイルは除く。JSON は MessagePack）
     │  └─ Cooked/                   エンジンの画像のテクスチャを変換した DDS・モデルの .cmesh・コンパイルしたシェーダの DXIL
@@ -3345,7 +3347,7 @@ kbd {
   <p>書き出すたびに、<span class="path">Binaries</span>・<span class="path">Engine/Assets</span>・<span class="path">Engine/Cooked</span>・<span class="path">Application/Assets</span>・<span class="path">Application/Cooked</span>・<span class="path">Application/Config</span> をいったん消してから書き直します。DLL は <span class="path">Binaries</span> にだけ置くので、書き出す先の根（exe の隣）に DLL があれば消します。遊んだ人のデータが入る <span class="path">Application/Saved</span> は残します。<span class="path">Build/</span> は git の対象外です。</p>
 
   <h2 id="export-cooking">テクスチャの変換</h2>
-  <p>画像のテクスチャ（PNG・JPG・JPEG・BMP・TGA）は写さずに、GPU がそのまま読める圧縮形式の DDS（既定は BC3。<a href="#project-texture-color">画像の取り込み設定</a>で BC7・非圧縮も選べます）へ変換して <span class="path">Cooked/</span> に書きます。遊ぶ人の PC では変換しないので、初めての起動でもテクスチャの変換を待ちません。元の画像は入りませんが、隣の <span class="path">.meta</span> は入るので、スクリプトやシーンからは今までどおり <span class="path">.png</span> などの名前で使えます。ただしローディング画面の写真（<a href="#settings-splash">起動中のローディング画面</a>）だけは、DirectX 12 の準備より前に読むので、元の画像のまま写します。</p>
+  <p>画像のテクスチャ（PNG・JPG・JPEG・BMP・TGA）は写さずに、GPU がそのまま読める圧縮形式の DDS（既定は、透明のある画像が BC3・全部不透明な画像が BC1。<a href="#project-texture-color">画像の取り込み設定</a>で BC7・非圧縮なども選べます）へ変換して <span class="path">Cooked/</span> に書きます。遊ぶ人の PC では変換しないので、初めての起動でもテクスチャの変換を待ちません。元の画像は入りませんが、隣の <span class="path">.meta</span> は入るので、スクリプトやシーンからは今までどおり <span class="path">.png</span> などの名前で使えます。ただしローディング画面の写真（<a href="#settings-splash">起動中のローディング画面</a>）だけは、DirectX 12 の準備より前に読むので、元の画像のまま写します。</p>
   <div class="table-wrap">
   <table>
     <thead><tr><th>元の画像</th><th>変換した DDS</th></tr></thead>
@@ -3357,6 +3359,7 @@ kbd {
   </div>
   <p>モデルのマテリアルで法線・メタリック/ラフネス・遮蔽に使う画像と、マテリアル（<span class="path">.mat</span>）で <code>linear</code> にしたテクスチャはリニア、それ以外の画像は sRGB で変換します。<span class="path">.meta</span> の取り込み設定で色空間を決めた画像は、その版だけを作ります（<a href="#project-texture-color">画像の取り込み設定</a>）。</p>
   <p>エディタでも、画像は元のファイルを直接は読まず、同じ変換で作った DDS を読みます。作った DDS は <span class="path">Intermediate/DerivedData/Texture/</span> に置き（名前は画像の GUID と <code>.srgb.dds</code> か <code>.linear.dds</code>）、書き出しはそれを写します。隣の <span class="path">.ddinfo</span> に元の画像の大きさ・日時と、中身から計算した印を控えておき、元の画像の中身か変換の設定が変わったときだけ作り直します（日時だけを古いまま差し替えても作り直します）。初めて開くときや画像を描き直したあとは、変換のぶん時間がかかります。</p>
+  <p>別々のモデルが中身の同じ画像を持っているとき（色違いの木が同じ葉の画像を持つなど）は、変換した DDS を 1 つだけ置きます。置かなかった DDS の名前は、書き出し先の根の <span class="path">CookedTextureAliases.txt</span>（1 行に「置かなかった DDS の綴り」と「代わりに読む DDS の綴り」をタブで区切って書いた一覧）に書き、書き出したゲームはそこから代わりの DDS を読みます。中身が同じかは、元の画像の中身と変換の設定から計算した印で決めるので、ファイル名や置き場所が違ってもまとめられます。まとめた数は書き出しの結果に出ます。</p>
   <p>書き出しの最後に、変換したものの一覧 <span class="path">CookManifest.json</span> を書き出し先の根に置きます。一覧のある書き出したゲームは元の画像から DDS を作りません。DDS が無い画像は Console にエラーを出して代わりの画像（<span class="path">error.png</span>）を使うので、書き出し直してください。起動のログの <code>[DerivedData] Texture: クック済み … / 中間 … / 取り込み … / 無し …</code> の行で、どこから読んだかを数えられます（書き出したゲームでは「クック済み」だけになります）。</p>
 
   <h2 id="export-models">モデルの変換</h2>
@@ -3371,6 +3374,7 @@ kbd {
     <tbody>
       <tr><td><span class="path">.json</span>・<span class="path">.prefab</span>・<span class="path">.mat</span>・<span class="path">.physmat</span>・<span class="path">.meta</span></td><td>MessagePack に変換して書く（名前は変えない）</td></tr>
       <tr><td><span class="path">CookManifest.json</span></td><td>テキストの JSON のまま（変換したものの一覧）</td></tr>
+      <tr><td><span class="path">CookedTextureAliases.txt</span></td><td>テキストのまま（1 つにまとめた DDS の一覧）</td></tr>
       <tr><td>スクリプトの <a href="#api-SaveFile"><code>SaveFile</code></a> が書くセーブデータ</td><td>遊ぶ人の PC でテキストの JSON のまま書く</td></tr>
     </tbody>
   </table>
@@ -9923,6 +9927,15 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-52-0">v0.52.0 <span class="dim">（2026-11-02）</span></h3>
+  <p>書き出したゲームのテクスチャを小さくした版です。見本の Sandbox（アラハビーチ・沖縄の海辺など）を書き出すと、全体が 2.86GB から 1.55GB に、アラハビーチのシーンで使う分が 1.86GB から 0.99GB になりました。見た目は変わりません。</p>
+  <ul>
+    <li><strong>圧縮の既定</strong>：透明を使う画素が 1 つも無い画像は、BC3 の半分の大きさの BC1 で圧縮します。色の部分は BC3 と同じ形式なので、色はまったく変わりません。透明のある画像は今までどおり BC3 です。画像ごとに <code>"bc1"</code> も選べるようにしました（<a href="#project-texture-color">画像の取り込み設定</a>）。</li>
+    <li><strong>同じ画像をまとめる</strong>：別々のモデルが中身の同じ画像を持っているとき、書き出しでは DDS を 1 つだけ置き、ほかは別名の一覧 <span class="path">CookedTextureAliases.txt</span> から引きます（<a href="#export-cooking">テクスチャの変換</a>）。</li>
+    <li><strong>エディタ</strong>：エディタでも同じ形式で変換するので、VRAM の使用も減ります。</li>
+  </ul>
+  <div class="callout warn" data-title="取り込んだ後の最初の起動"><p>圧縮の既定が変わるので、取り込んだ後に初めてプロジェクトを開くときと、初めて書き出すときに、テクスチャを全部変換し直します。画像の多いプロジェクトでは、いつもより時間がかかります。</p></div>
 
   <h3 id="changelog-v0-51-0">v0.51.0 <span class="dim">（2026-11-01）</span> <span class="badge">サンプルだけ</span></h3>
   <p>重いアセットを使う見本を、別のリポジトリ <a href="https://github.com/tanahara0310/CoreEngineGames">CoreEngineGames</a> へ移した版です（<a href="#intro-samples-games">CoreEngineGames にある見本</a>）。エンジンの最新の版のファイルが 1.7GB から 0.22GB になりました。</p>
