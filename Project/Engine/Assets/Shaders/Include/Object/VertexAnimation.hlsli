@@ -10,7 +10,7 @@
 //
 // 振幅は「強さ 1」での値（モデル作成時の想定はやや強い海風）。オブジェクト空間（Y-up、原点 = 根元）で
 // 動かすので、拡大した個体は揺れも同じ比率で大きくなる。法線は変えない（揺れは小さいので見た目の差は小さい）。
-// 数式は Tools/OkinawaBeach/README.md の HLSL 例、Blender 上の確認用ジオメトリノード（okinawa/motion.py）と同じ。
+// 数式は CoreEngineGames の Tools/OkinawaBeach/README.md の HLSL 例、Blender 上の確認用ジオメトリノード（okinawa/motion.py）と同じ。
 #ifndef VERTEX_ANIMATION_HLSLI
 #define VERTEX_ANIMATION_HLSLI
 
