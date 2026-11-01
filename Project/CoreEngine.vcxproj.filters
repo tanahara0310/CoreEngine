@@ -91,6 +91,9 @@
     <ClCompile Include="Engine\Src\Utility\Path\CookedPath.cpp">
       <Filter>Engine\Src\Utility\Path</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\Compression\CompressedFile.cpp">
+      <Filter>Engine\Src\Utility\Compression</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Utility\CommandLine\CommandLine.cpp">
       <Filter>Engine\Src\Utility\CommandLine</Filter>
     </ClCompile>
@@ -1516,6 +1519,84 @@
     <ClCompile Include="Externals\meshoptimizer\src\vfetchoptimizer.cpp">
       <Filter>Externals\meshoptimizer\src</Filter>
     </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\common\debug.c">
+      <Filter>Externals\zstd\lib\common</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\common\entropy_common.c">
+      <Filter>Externals\zstd\lib\common</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\common\error_private.c">
+      <Filter>Externals\zstd\lib\common</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\common\fse_decompress.c">
+      <Filter>Externals\zstd\lib\common</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\common\pool.c">
+      <Filter>Externals\zstd\lib\common</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\common\threading.c">
+      <Filter>Externals\zstd\lib\common</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\common\xxhash.c">
+      <Filter>Externals\zstd\lib\common</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\common\zstd_common.c">
+      <Filter>Externals\zstd\lib\common</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\compress\fse_compress.c">
+      <Filter>Externals\zstd\lib\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\compress\hist.c">
+      <Filter>Externals\zstd\lib\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\compress\huf_compress.c">
+      <Filter>Externals\zstd\lib\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\compress\zstd_compress.c">
+      <Filter>Externals\zstd\lib\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\compress\zstd_compress_literals.c">
+      <Filter>Externals\zstd\lib\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\compress\zstd_compress_sequences.c">
+      <Filter>Externals\zstd\lib\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\compress\zstd_compress_superblock.c">
+      <Filter>Externals\zstd\lib\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\compress\zstd_double_fast.c">
+      <Filter>Externals\zstd\lib\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\compress\zstd_fast.c">
+      <Filter>Externals\zstd\lib\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\compress\zstd_lazy.c">
+      <Filter>Externals\zstd\lib\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\compress\zstd_ldm.c">
+      <Filter>Externals\zstd\lib\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\compress\zstd_opt.c">
+      <Filter>Externals\zstd\lib\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\compress\zstd_preSplit.c">
+      <Filter>Externals\zstd\lib\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\compress\zstdmt_compress.c">
+      <Filter>Externals\zstd\lib\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\decompress\huf_decompress.c">
+      <Filter>Externals\zstd\lib\decompress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\decompress\zstd_ddict.c">
+      <Filter>Externals\zstd\lib\decompress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\decompress\zstd_decompress.c">
+      <Filter>Externals\zstd\lib\decompress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\decompress\zstd_decompress_block.c">
+      <Filter>Externals\zstd\lib\decompress</Filter>
+    </ClCompile>
     <ClCompile Include="Externals\msdfgen\core\Contour.cpp">
       <Filter>Externals\msdfgen\core</Filter>
     </ClCompile>
@@ -1967,6 +2048,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Path\CookedPath.h">
       <Filter>Engine\Src\Utility\Path</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Compression\CompressedFile.h">
+      <Filter>Engine\Src\Utility\Compression</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\CommandLine\CommandLine.h">
       <Filter>Engine\Src\Utility\CommandLine</Filter>
@@ -3738,6 +3822,9 @@
     <ClInclude Include="Externals\meshoptimizer\src\meshoptimizer.h">
       <Filter>Externals\meshoptimizer\src</Filter>
     </ClInclude>
+    <ClInclude Include="Externals\zstd\lib\zstd.h">
+      <Filter>Externals\zstd\lib</Filter>
+    </ClInclude>
     <ClInclude Include="Externals\angelscript\add_on\autowrapper\aswrappedcall.h">
       <Filter>Externals\angelscript\add_on\autowrapper</Filter>
     </ClInclude>
@@ -4640,6 +4727,9 @@
     <Filter Include="Engine\Src\Utility\CommandLine">
       <UniqueIdentifier>{882D8E9A-9339-42AB-8001-6E7A64556FC7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Src\Utility\Compression">
+      <UniqueIdentifier>{A4EE7D68-1223-4F45-BC86-729CDA4123D3}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Engine\Src\Utility\CVar">
       <UniqueIdentifier>{3C1F7A62-5D48-4B0E-9E21-7A6C0B4D8F13}</UniqueIdentifier>
     </Filter>
@@ -4741,6 +4831,21 @@
     </Filter>
     <Filter Include="Externals\msdfgen\core">
       <UniqueIdentifier>{20709903-646C-4980-BF9A-292A677E35D3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\zstd">
+      <UniqueIdentifier>{4424280B-BF98-4434-B7C5-E2B1EDCB0651}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\zstd\lib">
+      <UniqueIdentifier>{1D1C2766-604E-4D74-8A83-33DC7CCD855D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\zstd\lib\common">
+      <UniqueIdentifier>{24735C86-10F1-4582-A24E-AB66ACE8B823}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\zstd\lib\compress">
+      <UniqueIdentifier>{602707FF-E943-462D-A568-0034D5D8D52F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\zstd\lib\decompress">
+      <UniqueIdentifier>{B9173ECC-A0D5-4435-BB4F-68BFEA68D8C5}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

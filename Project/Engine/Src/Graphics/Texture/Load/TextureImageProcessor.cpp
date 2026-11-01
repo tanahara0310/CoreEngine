@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "TextureImageProcessor.h"
+#include "Utility/Compression/CompressedFile.h"
 
 #include <filesystem>
 #include <algorithm>
@@ -7,6 +8,12 @@
 
 namespace CoreEngine
 {
+    namespace
+    {
+        /// @brief DDS の見出しの大きさ（印 4 バイト・DDS_HEADER 124 バイト・DX10 の見出し 20 バイト）
+        constexpr size_t kDdsHeaderSize = 4 + 124 + 20;
+    }
+
     TextureImageProcessor::FileType TextureImageProcessor::DetectFileType(const std::wstring& filePath)
     {
         std::wstring extension = std::filesystem::path(filePath).extension().wstring();
@@ -28,7 +35,11 @@ namespace CoreEngine
         // 拡張子判定結果に応じて最適なDirectXTexローダーを呼び分ける。
         FileType fileType = DetectFileType(filePath);
         if (fileType == FileType::DDS) {
-            return DirectX::LoadFromDDSFile(filePath.c_str(), DirectX::DDS_FLAGS_NONE, nullptr, image);
+            std::vector<uint8_t> data;
+            if (!CompressedFile::Read(filePath, data)) {
+                return HRESULT_FROM_WIN32(ERROR_READ_FAULT);
+            }
+            return DirectX::LoadFromDDSMemory(data.data(), data.size(), DirectX::DDS_FLAGS_NONE, nullptr, image);
         }
         if (fileType == FileType::HDR) {
             return DirectX::LoadFromHDRFile(filePath.c_str(), nullptr, image);
@@ -52,7 +63,11 @@ namespace CoreEngine
     {
         FileType fileType = DetectFileType(filePath);
         if (fileType == FileType::DDS) {
-            return DirectX::GetMetadataFromDDSFile(filePath.c_str(), DirectX::DDS_FLAGS_NONE, metadata);
+            std::vector<uint8_t> header;
+            if (!CompressedFile::ReadHead(filePath, kDdsHeaderSize, header)) {
+                return HRESULT_FROM_WIN32(ERROR_READ_FAULT);
+            }
+            return DirectX::GetMetadataFromDDSMemory(header.data(), header.size(), DirectX::DDS_FLAGS_NONE, metadata);
         }
         if (fileType == FileType::HDR) {
             return DirectX::GetMetadataFromHDRFile(filePath.c_str(), metadata);
