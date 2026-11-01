@@ -6,6 +6,7 @@
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Graphics/Model/Derived/ModelDerivedData.h"
 #include "Graphics/Model/Import/MeshImporter.h"
+#include "Utility/Compression/CompressedFile.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
 
@@ -55,13 +56,12 @@ namespace CoreEngine::Editor
             return ToUtf8(cooked.parent_path()) + " を作れませんでした";
         }
 
-        // 開発中の派生データを新しくしてから写す
+        // 開発中の派生データを新しくしてから、圧縮して写す
         const DerivedData::Result derived = ModelDerivedData::EnsureIntermediate(source);
         if (derived.path.empty()) {
             return ToUtf8(relative) + " を .cmesh に変換できませんでした";
         }
-        std::filesystem::copy_file(derived.path, cooked, std::filesystem::copy_options::overwrite_existing, ec);
-        if (ec) {
+        if (!CompressedFile::WriteCompressed(derived.path, cooked)) {
             return ToUtf8(cooked) + " を書けませんでした";
         }
 

@@ -9,6 +9,7 @@
 #include "Graphics/Texture/Cook/CookedTexture.h"
 #include "Graphics/Texture/Derived/TextureDerivedData.h"
 #include "Graphics/Texture/Path/TexturePathResolver.h"
+#include "Utility/Compression/CompressedFile.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
 
@@ -133,13 +134,12 @@ namespace CoreEngine::Editor
                 return ToUtf8(cooked.parent_path()) + " を作れませんでした";
             }
 
-            // 開発中の派生データを新しくしてから写す
+            // 開発中の派生データを新しくしてから、圧縮して写す
             const DerivedData::Result derived = TextureDerivedData::EnsureIntermediate(target.source, colorSpace);
             if (derived.path.empty()) {
                 return ToUtf8(target.relative) + " を DDS に変換できませんでした";
             }
-            std::filesystem::copy_file(derived.path, cooked, std::filesystem::copy_options::overwrite_existing, ec);
-            if (ec) {
+            if (!CompressedFile::WriteCompressed(derived.path, cooked)) {
                 return ToUtf8(cooked) + " を書けませんでした";
             }
 

@@ -1,11 +1,11 @@
 #include "pch.h"
 #include "CmeshFile.h"
+#include "Utility/Compression/CompressedFile.h"
 #include "Utility/Logger/Logger.h"
 
 #include <cstddef>
 #include <cstring>
 #include <fstream>
-#include <iterator>
 #include <stdexcept>
 #include <type_traits>
 
@@ -443,11 +443,10 @@ namespace CoreEngine
     bool CmeshFile::Read(const std::filesystem::path& path, MeshAsset& asset)
     {
         Logger& log = Logger::GetInstance();
-        std::ifstream file(path, std::ios::binary);
-        if (!file) {
+        std::vector<uint8_t> data;
+        if (!CompressedFile::Read(path, data)) {
             return false;
         }
-        const std::vector<uint8_t> data((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 
         try {
             Reader reader(data.data(), data.size());
