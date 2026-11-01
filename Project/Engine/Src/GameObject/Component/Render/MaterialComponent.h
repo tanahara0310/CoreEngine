@@ -40,7 +40,7 @@ public:
             p.range = Range(0.1f, 5.0f))
         REFLECT_ENUM_ACCESSOR("vertexAnimation", "頂点アニメーション", GetVertexAnimation, SetVertexAnimation,
             kVertexAnimationTypeNames,
-            p.tooltip = "TEXCOORD_1/2 に揺れ・泳ぎのデータを持つモデル（Tools/OkinawaBeach の植物・海草・魚）を動かす")
+            p.tooltip = "TEXCOORD_1/2 に揺れ・泳ぎのデータを持つモデル（CoreEngineGames の Tools/OkinawaBeach で作った植物・海草・魚）を動かす")
         REFLECT_ACCESSOR("vertexAnimStrength", "揺れの強さ", GetVertexAnimStrength, SetVertexAnimStrength,
             p.range = Range(0.0f, 3.0f))
         REFLECT_ACCESSOR("vertexAnimSpeed", "揺れの速さ", GetVertexAnimSpeed, SetVertexAnimSpeed,

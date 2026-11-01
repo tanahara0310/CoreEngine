@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.50.0">
+<meta name="engine-version" content="0.51.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2144,8 +2144,18 @@ kbd {
     <tbody>
       <tr><td><span class="path">Projects/Sokoban</span></td><td>倉庫番。スクリプト 1 本（<span class="path">SokobanBoard.as</span>）とプレハブ 5 つだけで、文字で書いた盤面からステージを組み立てる小さな見本。ステージはインスペクタの <code>stages</code> に 1 行足せば増やせます。</td></tr>
       <tr><td><span class="path">Projects/TestBed</span></td><td>エンジンの機能ごとの試験場（物理・キャラクターの歩行・UI・水面・カメラの揺れ・スクリプトのシューター）と、エディタの拡張の見本（<a href="#editor-ext-samples">見本とテスト</a>）。基本図形と小さなモデルだけで作っているので、すぐに開けます。</td></tr>
-      <tr><td><span class="path">Projects/Sandbox</span></td><td>Shadertoy から移した海のシェーダのシーン <code>SeascapeScene</code>（<a href="#pe-shadertoy">Shadertoy のシェーダを移す</a>）。沖縄の海辺のシーンでは、待機・歩き・走りのアニメーションが付いた人型を操作できます（<a href="#tutorial-beach-player">沖縄の海辺をプレイヤーで歩く</a>）。実在のアラハビーチ（北谷町）を地図の形のとおりに作ったシーン <code>ArahaBeachScene</code> もあります（<a href="#changelog-v0-37-0">v0.37.0</a>。公園の施設と木は <a href="#changelog-v0-38-0">v0.38.0</a>、まわりの街は <a href="#changelog-v0-40-0">v0.40.0</a>、質感は <a href="#changelog-v0-41-0">v0.41.0</a>）。プレイヤーで歩き回り、広域カメラで見渡せます（<a href="#beach-player-araha">アラハビーチを歩き回る・見渡す</a>）。</td></tr>
       <tr><td><span class="path">Projects/Sample2D</span></td><td>2D の横スクロールの見本。走る・跳ぶ・コインを集める・ゴールに着く、の 1 ステージに、クリックした所へ箱を落とす遊びを足したもの。スプライトのアニメ・平行投影のカメラの追従・遠景・剛体の軸の固定・トリガーを、スクリプト 6 本（プレイヤー・進行・コイン・ゴール・カメラの追従・遠景）で使っています。使っている機能は <a href="#guide-2d">2D ゲームの作り方</a> で説明しています。</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3 id="intro-samples-games">CoreEngineGames にある見本</h3>
+  <p>重いアセットを使う見本は、別のリポジトリ <a href="https://github.com/tanahara0310/CoreEngineGames">CoreEngineGames</a> にあります。エンジンのリポジトリと横に並べて取り出し、エディタの選ぶ画面の <span class="ui">追加…</span> でプロジェクトのフォルダを選ぶと開けます。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>プロジェクト</th><th>中身</th></tr></thead>
+    <tbody>
+      <tr><td><span class="path">Projects/Sandbox</span></td><td>Shadertoy から移した海のシェーダのシーン <code>SeascapeScene</code>（<a href="#pe-shadertoy">Shadertoy のシェーダを移す</a>）。沖縄の海辺のシーンでは、待機・歩き・走りのアニメーションが付いた人型を操作できます（<a href="#tutorial-beach-player">沖縄の海辺をプレイヤーで歩く</a>）。実在のアラハビーチ（北谷町）を地図の形のとおりに作ったシーン <code>ArahaBeachScene</code> もあります（<a href="#changelog-v0-37-0">v0.37.0</a>。公園の施設と木は <a href="#changelog-v0-38-0">v0.38.0</a>、まわりの街は <a href="#changelog-v0-40-0">v0.40.0</a>、質感は <a href="#changelog-v0-41-0">v0.41.0</a>）。プレイヤーで歩き回り、広域カメラで見渡せます（<a href="#beach-player-araha">アラハビーチを歩き回る・見渡す</a>）。</td></tr>
       <tr><td><span class="path">Projects/Tsunagazaru</span></td><td>つながザルをえない。走り続けるトロッコの前にレールを敷いていくゲームで、C++ で作ったゲームをスクリプトだけで作り直した大きめの見本（タイトル・ゲーム・リザルトの 3 シーン）。シーンを切り替えるときのロード画面も、プロジェクトのシェーダで描いています（<a href="#settings-loading-screen">シーンを切り替えるときのロード画面</a>）。</td></tr>
       <tr><td><span class="path">Projects/Reprism</span></td><td>レプリズム。自機のまわりのブロックをハットに写し取って運び、置いた足場でゴールを目指すパズルアクションで、C++ で作ったゲームをスクリプトだけで作り直した見本（タイトル・ステージ選択・ゲームの 3 シーンと 13 ステージ）。ブロックやゴールの光り方はスプライトのマテリアル（<a href="#script-material">マテリアルとシェーダ</a>）、ネオン・走査線・画面の縁の光は<a href="#script-posteffect">プロジェクトのポストエフェクト</a>、ステージの切り替えはブロックに割れて落ちる遷移（<a href="#scenes-transition-effect">自分のシェーダで覆う</a>）で描いています。</td></tr>
     </tbody>
@@ -2229,7 +2239,7 @@ kbd {
   <p>読み込みのスレッドは、起動時に CPU のスレッド数から決めます（モデル 4 割・テクスチャ 4 割・文字 2 割）。本数は起動のログの <code>[Threads]</code> の行に出ます。<code>--workers</code> を毎回付ける代わりに、<span class="path">Engine/Config/config_*.json</span> の <code>"threads": { "workerLimit": 1 }</code> でも決められます（起動の引数が優先）。</p>
 </article>
 
-<article class="page" id="own-repo" data-group="はじめに" data-title="自分のリポジトリでゲームを作る" data-nav="自分のリポジトリで作る" data-keywords="サブモジュール submodule git github リポジトリ 自分 ゲーム クローン 取り込み 更新 版 バージョン プル pull エンジンを使う 固定 gitignore .vs recurse-submodules CoreEngine1 名前 改名 url set-url sync">
+<article class="page" id="own-repo" data-group="はじめに" data-title="自分のリポジトリでゲームを作る" data-nav="自分のリポジトリで作る" data-keywords="サブモジュール submodule git github リポジトリ 自分 ゲーム クローン 取り込み 更新 版 バージョン プル pull エンジンを使う 固定 gitignore .vs recurse-submodules CoreEngine1 名前 改名 url set-url sync depth shallow 浅い 軽く">
   <h1>自分のリポジトリでゲームを作る</h1>
   <p class="lead">ゲームは自分の git リポジトリに置き、エンジンはその中にサブモジュールとして入れます。どの版のエンジンを使うかはゲームのリポジトリが覚えているので、エンジンが更新されても、自分で取り込むまで手元のエンジンは変わりません。</p>
 
@@ -2260,8 +2270,10 @@ kbd {
     <li><strong>エンジンをサブモジュールで足す</strong>ここだけはコマンドで行います。Visual Studio の <span class="ui">表示<span class="arrow">▸</span>ターミナル</span> を開き、リポジトリのフォルダで次を実行します。</li>
   </ol>
   <script type="text/x-code" data-lang="text" data-file="ターミナル（リポジトリのフォルダで）">
-    git submodule add https://github.com/tanahara0310/CoreEngine.git CoreEngine
+    git submodule add --depth 1 https://github.com/tanahara0310/CoreEngine.git CoreEngine
+    git config -f .gitmodules submodule.CoreEngine.shallow true
   </script>
+  <p><code>--depth 1</code> で、エンジンの最新の版だけを取ります（全部の履歴は 2GB を超えます）。2 行目は、ほかの PC でクローンしたときも最新の版だけを取るよう <span class="path">.gitmodules</span> に書く設定です。</p>
   <div class="callout warn" data-title="git clone で入れない"><p>フォルダの中で <code>git clone</code> してエンジンを入れると、ゲームのリポジトリにエンジンの URL が残りません。ほかの PC でクローンしたときに <span class="path">CoreEngine</span> が空のフォルダになり、取り出せなくなります。間違えたときは、コミットする前に <span class="path">CoreEngine</span> フォルダを消して、上のコマンドでやり直します。</p></div>
 
   <h3 id="own-repo-setup-build">ビルドしてプロジェクトを作る</h3>
@@ -2303,6 +2315,11 @@ kbd {
     git clone --recurse-submodules https://github.com/自分の名前/MyGame.git
   </script>
   <p>クローンした後で <span class="path">CoreEngine</span> が空なら、リポジトリのフォルダで <code>git submodule update --init</code> を実行します。取り出されるのは、ゲームのリポジトリが覚えている版のエンジンです。開く前にエンジンをビルドします。</p>
+  <p><span class="path">.gitmodules</span> に <code>shallow = true</code> があれば、エンジンはその版だけを取ります。前の手順（<code>--depth 1</code> なし）で足したサブモジュールは、全部の履歴を取ります。ほかの PC でも軽く取れるようにするには、リポジトリのフォルダで次を実行し、変わった <span class="path">.gitmodules</span> をコミットしてプッシュします。今の PC に取ってあるエンジンはそのまま使えます。</p>
+  <script type="text/x-code" data-lang="text" data-file="ターミナル（リポジトリのフォルダで）">
+    git config -f .gitmodules submodule.CoreEngine.shallow true
+  </script>
+  <p>v0.51.0 より前のエンジンには、重いアセットを使う見本（1GB を超えます）が入っています。ゲームのリポジトリがそれより前の版を覚えていると、最新の版だけを取る設定でも重くなるので、先に v0.51.0 以降へ取り込んでおきます。</p>
 
   <h2 id="own-repo-rename">前の名前（CoreEngine1）で足したとき</h2>
   <p>エンジンのリポジトリの名前は、<code>CoreEngine1</code> から <code>CoreEngine</code> に変わりました。前の名前で足したサブモジュールも、GitHub が新しい名前へ転送するので、そのまま使えます。新しい名前にそろえるときは、リポジトリのフォルダで次を実行し、変わった <span class="path">.gitmodules</span> をコミットしてプッシュします。</p>
@@ -5775,7 +5792,7 @@ kbd {
   </ul>
 
   <h2 id="pe-shadertoy">Shadertoy のシェーダを移す</h2>
-  <p>Shadertoy の Image のシェーダ（<code>mainImage</code> だけで画面を描くもの）は、ポストエフェクトとして移せます。前の段の画面を読まずに全部の画素を書くので、シーンの絵は覆われます。Sandbox の <code>SeascapeScene</code> が見本です（「Seascape」を移したもの。シェーダは <span class="path">PostEffects/Seascape.CS.hlsl</span>、入力を渡すのは <span class="path">Scripts/SeascapeScene/ShadertoyInput.as</span>）。</p>
+  <p>Shadertoy の Image のシェーダ（<code>mainImage</code> だけで画面を描くもの）は、ポストエフェクトとして移せます。前の段の画面を読まずに全部の画素を書くので、シーンの絵は覆われます。<a href="#intro-samples-games">CoreEngineGames</a> の Sandbox にある <code>SeascapeScene</code> が見本です（「Seascape」を移したもの。シェーダは <span class="path">PostEffects/Seascape.CS.hlsl</span>、入力を渡すのは <span class="path">Scripts/SeascapeScene/ShadertoyInput.as</span>）。</p>
   <div class="table-wrap">
   <table>
     <thead><tr><th>Shadertoy</th><th>ポストエフェクトでの書き方</th></tr></thead>
@@ -6296,7 +6313,7 @@ kbd {
   </ul>
 
   <h2 id="script-editor-gui">EditorGUI の部品</h2>
-  <p>値を入れる部品は、インスペクタと同じく左にラベル、右に欄を並べます（ラベルを <code>"##名前"</code> のように <code>##</code> で始めると、ラベルを出さずに欄を幅いっぱいにします。表の中で便利です）。全部の関数は <a href="#api-EditorGUI">EditorGUI</a> にあり、TestBed の<span class="ui">Tools<span class="arrow">▸</span>テスト<span class="arrow">▸</span>エディタ拡張のテスト</span>（<a href="#script-editor-feature-test">エディタ拡張のテスト</a>）で実際の見た目と動きを確かめられます。</p>
+  <p>値を入れる部品は、インスペクタと同じく左にラベル、右に欄を並べます（ラベルを <code>"##名前"</code> のように <code>##</code> で始めると、ラベルを出さずに欄を幅いっぱいにします。表の中で便利です）。全部の関数は <a href="#api-EditorGUI">EditorGUI</a> にあり、TestBed の <span class="ui">Tools<span class="arrow">▸</span>テスト<span class="arrow">▸</span>エディタ拡張のテスト</span>（<a href="#script-editor-feature-test">エディタ拡張のテスト</a>）で実際の見た目と動きを確かめられます。</p>
   <div class="table-wrap">
   <table>
     <thead><tr><th>種類</th><th>関数</th></tr></thead>
@@ -9106,11 +9123,11 @@ kbd {
 </article>
 <article class="page" id="tutorial-beach-player" data-group="チュートリアル" data-title="沖縄の海辺をプレイヤーで歩く" data-nav="海辺を歩く" data-keywords="サンプル 見本 プレイヤー キャラクター 人型 操作 歩く 走る 待機 アニメーション アニメーター クリップ mixamo x bot blender fbx gltf 骨 スキン 高さ 地面 足元 コライダー 桟橋 カメラ 追う 沖縄 OkinawaBeachScene BeachPlayer">
   <h1>沖縄の海辺をプレイヤーで歩く</h1>
-  <p class="lead">Sandbox の <code>OkinawaBeachScene</code> には、操作できる人型（Mixamo の X Bot）がいます。待機・歩き・走りのアニメーションを 1 つの glTF に入れ、スクリプト <span class="path">BeachPlayer.as</span> が進んだ速さに合わせて切り替えます。</p>
+  <p class="lead"><a href="#intro-samples-games">CoreEngineGames</a> の Sandbox にある <code>OkinawaBeachScene</code> には、操作できる人型（Mixamo の X Bot）がいます。待機・歩き・走りのアニメーションを 1 つの glTF に入れ、スクリプト <span class="path">BeachPlayer.as</span> が進んだ速さに合わせて切り替えます。</p>
 
   <h2 id="beach-player-play">動かす</h2>
   <ol class="steps">
-    <li><strong>開く</strong>Sandbox を開き、Project の <span class="path">Scenes</span> から <code>OkinawaBeachScene</code> を開きます。</li>
+    <li><strong>開く</strong>CoreEngineGames の <span class="path">Projects/Sandbox</span> を選ぶ画面の <span class="ui">追加…</span> で開き、Project の <span class="path">Scenes</span> から <code>OkinawaBeachScene</code> を開きます。</li>
     <li><strong>遊ぶ</strong><kbd>Ctrl</kbd>+<kbd>P</kbd>。カメラの向きを前として WASD（左スティック）で歩き、<kbd>Shift</kbd>（左スティックの押し込み）を押している間は走ります。カメラは矢印キー（右スティック）か右ドラッグで回り、ホイールで寄ります。歩いている間も回せます。</li>
   </ol>
   <p>停止中はスキンモデルの姿勢が計算されないので、人型は再生するまで見えません。</p>
@@ -9167,7 +9184,7 @@ kbd {
     </tbody>
   </table>
   </div>
-  <script type="text/x-code" data-lang="text" data-file="コマンド（リポジトリの根で）">
+  <script type="text/x-code" data-lang="text" data-file="コマンド（CoreEngineGames の根で）">
 blender -b --factory-startup --python Tools/XBot/build_xbot.py -- "X Bot.fbx"
 blender -b Tools/XBot/XBot.blend --python Tools/XBot/render_sheet.py -- 出力フォルダ
 python Tools/OkinawaBeach/bake_player_walk.py
@@ -9213,7 +9230,7 @@ python Tools/OkinawaBeach/bake_player_walk.py
   </table>
   </div>
   <p>視点の切り替えなどは、Sandbox の <span class="path">InputActions.json</span> に足した入力アクション <code>SwitchView</code>・<code>MoveUp</code>・<code>MoveDown</code>・<code>PlacePlayer</code> です。設定の画面は <code>Pause</code>（<kbd>Esc</kbd>・メニューボタン）で開きます。シーンを書き出し直したら、表と箱も作り直します。</p>
-  <script type="text/x-code" data-lang="text" data-file="コマンド（リポジトリの根で）">
+  <script type="text/x-code" data-lang="text" data-file="コマンド（CoreEngineGames の根で）">
 python Tools/OkinawaBeach/export_araha_scene.py
 python Tools/OkinawaBeach/bake_araha_walk.py
   </script>
@@ -9906,6 +9923,15 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-51-0">v0.51.0 <span class="dim">（2026-11-01）</span> <span class="badge">サンプルだけ</span></h3>
+  <p>重いアセットを使う見本を、別のリポジトリ <a href="https://github.com/tanahara0310/CoreEngineGames">CoreEngineGames</a> へ移した版です（<a href="#intro-samples-games">CoreEngineGames にある見本</a>）。エンジンの最新の版のファイルが 1.7GB から 0.22GB になりました。</p>
+  <ul>
+    <li><strong>移したもの</strong>：<span class="path">Projects/Sandbox</span>（アラハビーチ・沖縄の海辺・Seascape）・<span class="path">Projects/Reprism</span>・<span class="path">Projects/Tsunagazaru</span> と、モデルを作る <span class="path">Tools/OkinawaBeach</span>・<span class="path">Tools/XBot</span> です。中身は変えていません。エディタの選ぶ画面の <span class="ui">追加…</span> で開けます。</li>
+    <li><strong>エンジンに残る見本</strong>：倉庫番（Sokoban）・2D の見本（Sample2D）・機能の試験場（TestBed）です。</li>
+    <li><strong>サブモジュールを軽く取る</strong>：<a href="#own-repo">自分のリポジトリでゲームを作る</a> の手順を、最新の版だけを取る形（<code>--depth 1</code> と <code>shallow = true</code>）にしました。前の手順で足した人が、ほかの PC でも軽く取れるようにする設定も書きました。</li>
+  </ul>
+  <div class="callout warn" data-title="Sandbox・Reprism・Tsunagazaru のファイルを使っていたら"><p>取り込むと、エンジンの中からこの 3 つのプロジェクトと <span class="path">Tools/OkinawaBeach</span>・<span class="path">Tools/XBot</span> が消えます。自分のゲームからそれらのモデルやスクリプトを直接指していたら、CoreEngineGames から自分のプロジェクトへ写してください。写して使っていたなら、何もしなくて大丈夫です。</p></div>
 
   <h3 id="changelog-v0-50-0">v0.50.0 <span class="dim">（2026-11-01）</span> <span class="badge">サンプルだけ</span></h3>
   <p>エンジンの機能を試すための軽いプロジェクト <span class="path">Projects/TestBed</span> を足した版です（<a href="#intro-samples">付属のサンプル</a>）。Sandbox に入っていた試験用のシーンとエディタの拡張の見本を、重いモデル抜きで写しました。</p>
