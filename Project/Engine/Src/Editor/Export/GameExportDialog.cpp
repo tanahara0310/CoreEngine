@@ -196,9 +196,10 @@ namespace CoreEngine::Editor
         } else {
             const double megabytes = static_cast<double>(result_.bytes) / (1024.0 * 1024.0);
             ImGui::TextColored(Theme::kOk, "%s",
-                std::format("書き出しました（ファイル {} 個・{:.1f} MB・DDS に変換したテクスチャ {} 枚・"
+                std::format("書き出しました（ファイル {} 個・{:.1f} MB・DDS に変換したテクスチャ {} 枚"
+                    "（中身が同じで 1 つにまとめた DDS {} 個）・"
                     ".cmesh に変換したモデル {} 個・コンパイルしたシェーダ {} 本・MessagePack にした JSON {} 個）",
-                    result_.fileCount, megabytes, result_.cookedTextures, result_.cookedModels,
+                    result_.fileCount, megabytes, result_.cookedTextures, result_.mergedTextures, result_.cookedModels,
                     result_.cookedShaders, result_.convertedJson).c_str());
             if (result_.cookedShaders == 0) {
                 ImGui::TextColored(Theme::kWarn, "%s",

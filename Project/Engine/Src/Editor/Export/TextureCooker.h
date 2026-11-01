@@ -39,6 +39,15 @@ namespace CoreEngine::Editor
         /// @return 失敗した訳（成功なら空）
         std::string Cook(const CookTarget& target, const std::filesystem::path& destination,
             int& writtenFiles, std::uintmax_t& writtenBytes, std::vector<CookRecord>& records);
+
+        /// @brief 中身が同じ DDS（派生キーが同じ物）を 1 つだけ残し、消した物を別名の一覧（CookedTexture::kAliasFileName）に書く
+        /// @param destination 書き出す先の根
+        /// @param records Cook が書いた記録。消した DDS の記録は、残した DDS の綴りに書き換える
+        /// @param removedFiles 消したファイルの数を足す
+        /// @param removedBytes 消した大きさ（バイト）を足す
+        /// @return 失敗した訳（成功なら空）
+        std::string MergeDuplicates(const std::filesystem::path& destination, std::vector<CookRecord>& records,
+            int& removedFiles, std::uintmax_t& removedBytes);
     }
 }
 

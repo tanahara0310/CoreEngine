@@ -25,7 +25,9 @@ namespace CoreEngine::Editor::TextureImportInspector
         };
 
         constexpr const char* kDefaultFormatLabel =
+            (TextureImporter::kDefaultCompression == TextureCompression::Auto) ? "既定（透明があれば BC3・無ければ BC1）" :
             (TextureImporter::kDefaultCompression == TextureCompression::BC3) ? "既定（BC3）" :
+            (TextureImporter::kDefaultCompression == TextureCompression::BC1) ? "既定（BC1）" :
             (TextureImporter::kDefaultCompression == TextureCompression::None) ? "既定（圧縮しない）" : "既定（BC7）";
 
         constexpr std::array kColorSpaces = {
@@ -38,6 +40,7 @@ namespace CoreEngine::Editor::TextureImportInspector
             Choice{ "", kDefaultFormatLabel },
             Choice{ "bc7", "BC7" },
             Choice{ "bc3", "BC3" },
+            Choice{ "bc1", "BC1（透明なし）" },
             Choice{ "none", "圧縮しない" },
         };
 

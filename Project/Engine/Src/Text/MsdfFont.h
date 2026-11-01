@@ -87,7 +87,7 @@ namespace CoreEngine
     ///  描画中のアトラス参照と衝突しない。
     ///
     /// @note アトラスは TextureManager を通さず自前で GPU へ上げている。
-    ///       TextureManager の経路はミップ生成と BC3 圧縮を行うが、
+    ///       TextureManager の経路はミップ生成と BC 圧縮を行うが、
     ///       どちらも距離場を破壊する（ミップ平均はコーナーの median を壊し、
     ///       ブロック圧縮は輪郭にノイズを載せる）ため通せない。
     class MsdfFont

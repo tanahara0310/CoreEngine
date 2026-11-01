@@ -14,6 +14,7 @@
 
 #include <cwctype>
 #include <format>
+#include <fstream>
 #include <unordered_map>
 
 namespace CoreEngine::Editor
@@ -149,6 +150,49 @@ namespace CoreEngine::Editor
                 TextureDerivedData::Settings(target.source, colorSpace), derived.key });
         }
         return {};
+    }
+
+    std::string TextureCooker::MergeDuplicates(const std::filesystem::path& destination, std::vector<CookRecord>& records,
+        int& removedFiles, std::uintmax_t& removedBytes)
+    {
+        // 派生キーごとに、綴りがいちばん前の DDS を残す（どのスレッドが先に終わっても同じ結果にする）
+        std::unordered_map<std::string, std::string> kept;
+        for (const CookRecord& record : records) {
+            if (record.key.empty()) {
+                continue;
+            }
+            auto [it, inserted] = kept.try_emplace(record.key, record.derived);
+            if (!inserted && record.derived < it->second) {
+                it->second = record.derived;
+            }
+        }
+
+        Logger& log = Logger::GetInstance();
+        std::string aliases;
+        for (CookRecord& record : records) {
+            const auto found = record.key.empty() ? kept.end() : kept.find(record.key);
+            if (found == kept.end() || found->second == record.derived) {
+                continue;
+            }
+            const std::filesystem::path duplicate = destination / log.Utf8ToPath(record.derived);
+            std::error_code ec;
+            const std::uintmax_t size = std::filesystem::file_size(duplicate, ec);
+            if (!std::filesystem::remove(duplicate, ec) || ec) {
+                return ToUtf8(duplicate) + " を消せませんでした";
+            }
+            ++removedFiles;
+            removedBytes += size;
+            aliases += std::format("{}\t{}\n", record.derived, found->second);
+            record.derived = found->second;
+        }
+        if (aliases.empty()) {
+            return {};
+        }
+
+        const std::filesystem::path aliasFile = destination / CookedTexture::kAliasFileName;
+        std::ofstream file(aliasFile, std::ios::binary | std::ios::trunc);
+        file.write(aliases.data(), static_cast<std::streamsize>(aliases.size()));
+        return file ? std::string() : ToUtf8(aliasFile) + " を書けませんでした";
     }
 }
 

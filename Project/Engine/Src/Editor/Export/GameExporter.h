@@ -36,6 +36,7 @@ namespace CoreEngine::Editor
         std::vector<std::string> warnings; ///< 書き出した後に確かめて見つかったこと（書き出しは済んでいる）
         int fileCount = 0;        ///< 書いたファイルの数
         int cookedTextures = 0;   ///< DDS へ変換した画像の数
+        int mergedTextures = 0;   ///< 中身が同じなので 1 つにまとめた DDS の数（置かずに別名にした数）
         int cookedShaders = 0;    ///< DXIL へコンパイルしたシェーダの数
         int cookedModels = 0;     ///< .cmesh へ変換したモデルの数
         int convertedJson = 0;    ///< MessagePack へ変換した JSON のファイルの数
@@ -47,6 +48,7 @@ namespace CoreEngine::Editor
     ///          （exe・DLL の Binaries・Engine/Assets・Application/Assets・Application/Config）。
     ///          DLL は Binaries にだけ置くので、書き出す先の根にある DLL は消す。
     ///          画像のテクスチャ（PNG・JPG など）は写さず、DDS へ変換して Engine/Cooked・Application/Cooked に書く。
+    ///          中身が同じ DDS は 1 つだけ置き、ほかは別名の一覧（CookedTextureAliases.txt）に書く。
     ///          モデルのファイル（と OBJ の .mtl・glTF の外部バッファ）も写さず、.cmesh へ変換して同じ場所に書く。
     ///          シェーダは一覧（ShaderManifest）のものを DXIL へコンパイルして同じ場所に書く（元の .hlsl も写す）。
     ///          中身が JSON のファイル（.json・.prefab・.mat・.meta・.physmat）は MessagePack へ変換して同じ名前で書く。

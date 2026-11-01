@@ -24,7 +24,7 @@ namespace CoreEngine
         struct ImportSettings
         {
             std::string colorSpace; // "srgb" / "linear"。空なら頼まれた色空間で読む
-            std::string format;     // "bc7" / "bc3" / "none"。空なら既定の形式
+            std::string format;     // "bc7" / "bc3" / "bc1" / "none"。空なら既定の形式
         };
 
         // メタファイルから画像の取り込み設定を読み取る（書いていない・読めない・ほかの値の項目は空）

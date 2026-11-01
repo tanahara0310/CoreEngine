@@ -420,10 +420,12 @@ namespace CoreEngine::Editor
             }
         }
         const std::filesystem::path manifestPath = destination / CookedPath::kManifestFileName;
-        std::filesystem::remove(manifestPath, ec);
-        if (ec) {
-            result.error = ToUtf8(manifestPath) + " を消せませんでした" + kLockedHint;
-            return result;
+        for (const std::filesystem::path& file : { manifestPath, destination / CookedTexture::kAliasFileName }) {
+            std::filesystem::remove(file, ec);
+            if (ec) {
+                result.error = ToUtf8(file) + " を消せませんでした" + kLockedHint;
+                return result;
+            }
         }
 
         // 画像は WIC で読むので、書き出しの間は COM のマルチスレッドの区画を保つ（プールのワーカーもこの区画で COM を使う）
@@ -521,6 +523,21 @@ namespace CoreEngine::Editor
             result.error = std::format("{} 件を変換できなかったので、ファイルを写す前に書き出しを止めました。"
                 "直してから書き出し直してください", result.failures.size());
             return result;
+        }
+
+        // 中身が同じ DDS は 1 つだけ残し、ほかは別名の一覧に書く
+        int removedFiles = 0;
+        std::uintmax_t removedBytes = 0;
+        result.error = TextureCooker::MergeDuplicates(destination, cookRecords, removedFiles, removedBytes);
+        if (!result.error.empty()) {
+            result.error += kLockedHint;
+            return result;
+        }
+        result.mergedTextures = removedFiles;
+        result.fileCount -= removedFiles;
+        result.bytes -= removedBytes;
+        if (removedFiles > 0) {
+            ++result.fileCount;
         }
 
         // 写す先のフォルダを先に作ってから、ファイルを並べて写す
