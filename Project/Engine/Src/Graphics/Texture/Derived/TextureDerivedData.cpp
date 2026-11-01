@@ -59,8 +59,8 @@ namespace CoreEngine
         DerivedData::Request request = MakeRequest(source, colorSpace, compression);
         const std::filesystem::path relative = ProjectPaths::MakeRelative(source);
         if (!relative.empty()) {
-            request.cooked = CookedPath::Resolve(CookedTexture::ToCookedPath(relative, colorSpace));
-            request.cookedFallback = CookedPath::Resolve(CookedTexture::ToCookedPath(relative, Other(colorSpace)));
+            request.cooked = CookedTexture::ResolveCookedPath(CookedTexture::ToCookedPath(relative, colorSpace));
+            request.cookedFallback = CookedTexture::ResolveCookedPath(CookedTexture::ToCookedPath(relative, Other(colorSpace)));
         }
         return DerivedData::Find(request, MakeImporter(colorSpace, compression));
     }

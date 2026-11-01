@@ -17,6 +17,9 @@ namespace CoreEngine
         if (setting == "bc3") {
             return TextureCompression::BC3;
         }
+        if (setting == "bc1") {
+            return TextureCompression::BC1;
+        }
         if (setting == "none") {
             return TextureCompression::None;
         }
@@ -26,7 +29,9 @@ namespace CoreEngine
     const char* TextureImporter::CompressionName(TextureCompression compression)
     {
         switch (compression) {
+        case TextureCompression::Auto: return "auto";
         case TextureCompression::BC3: return "bc3";
+        case TextureCompression::BC1: return "bc1";
         case TextureCompression::None: return "none";
         default: return "bc7";
         }
@@ -61,6 +66,10 @@ namespace CoreEngine
 
             // 形式と色空間に合わせて圧縮する。1 枚の圧縮は 1 スレッドで行い、画像ごとの並列は呼ぶ側のスレッドプールに任せる。
             // 圧縮できない大きさ（4x4 未満など）は非圧縮のまま書く
+            // 自動は、全画素が不透明なら透明を持たない BC1、そうでなければ BC3 にする
+            if (compression == TextureCompression::Auto) {
+                compression = mipChain.IsAlphaAllOpaque() ? TextureCompression::BC1 : TextureCompression::BC3;
+            }
             DirectX::ScratchImage compressedImage;
             hr = E_FAIL;
             if (compression != TextureCompression::None) {
@@ -69,6 +78,9 @@ namespace CoreEngine
                 DirectX::TEX_COMPRESS_FLAGS flags = DirectX::TEX_COMPRESS_BC7_QUICK;
                 if (compression == TextureCompression::BC3) {
                     compressFormat = linear ? DXGI_FORMAT_BC3_UNORM : DXGI_FORMAT_BC3_UNORM_SRGB;
+                    flags = DirectX::TEX_COMPRESS_DEFAULT;
+                } else if (compression == TextureCompression::BC1) {
+                    compressFormat = linear ? DXGI_FORMAT_BC1_UNORM : DXGI_FORMAT_BC1_UNORM_SRGB;
                     flags = DirectX::TEX_COMPRESS_DEFAULT;
                 }
                 hr = DirectX::Compress(

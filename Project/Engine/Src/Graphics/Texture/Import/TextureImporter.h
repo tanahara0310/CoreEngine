@@ -12,8 +12,10 @@ namespace CoreEngine
     /// @brief 画像の圧縮の形式（.meta の import.format）
     enum class TextureCompression
     {
+        Auto, ///< 透明のある画像は BC3、全部不透明な画像は BC1
         BC7,  ///< BC7（モード 6 だけを使う速い圧縮）
         BC3,  ///< BC3（DXT5）
+        BC1,  ///< BC1（DXT1。透明を持たない。BC3 の半分の大きさ）
         None, ///< 圧縮しない（RGBA 各 8 ビット）
     };
 
@@ -25,9 +27,9 @@ namespace CoreEngine
         inline constexpr uint32_t kVersion = 1;
 
         /// @brief 取り込み設定で形式を決めていない画像の形式
-        inline constexpr TextureCompression kDefaultCompression = TextureCompression::BC3;
+        inline constexpr TextureCompression kDefaultCompression = TextureCompression::Auto;
 
-        /// @brief 取り込み設定の文字列（"bc7" / "bc3" / "none" / 空）から形式を決める（空なら既定）
+        /// @brief 取り込み設定の文字列（"bc7" / "bc3" / "bc1" / "none" / 空）から形式を決める（空なら既定）
         TextureCompression ParseCompression(std::string_view setting);
 
         /// @brief 形式を取り込み設定の文字列にする

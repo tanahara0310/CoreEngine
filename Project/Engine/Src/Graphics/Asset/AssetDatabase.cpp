@@ -536,6 +536,51 @@ namespace CoreEngine
         size_t registeredTextures = 0;
         size_t registeredModels = 0;
 
+        // 画像の DDS（sRGB 版とリニア版は同じ元の画像に戻るので、2 つ目は登録済みとして飛ばす）とモデルの .cmesh を、元のファイルとして登録する
+        const auto registerCooked = [&](const std::filesystem::path& cookedRelative, const std::string& category) {
+            AssetType type = AssetType::Texture;
+            std::filesystem::path sourceRelative = CookedTexture::ToSourcePath(cookedRelative);
+            if (sourceRelative.empty()) {
+                type = AssetType::Model;
+                sourceRelative = ModelDerivedData::ToSourcePath(cookedRelative);
+            }
+            if (sourceRelative.empty()) {
+                return;
+            }
+            const std::string sourceRelativeUtf8 = log.PathToUtf8(sourceRelative);
+
+            std::unique_lock lock(mutex_);
+            if (guidsByPath_.contains(MakePathKey(sourceRelativeUtf8))) {
+                return;
+            }
+
+            const std::filesystem::path sourcePath = ProjectPaths::Resolve(sourceRelativeUtf8);
+            const std::filesystem::path metaPath = AssetMetadata::GetMetaFilePath(sourcePath);
+            const std::string guid = AssetMetadata::LoadGUID(metaPath);
+            if (guid.empty()) {
+                log.Logf(LogLevel::WARNING, LogCategory::System, "{}",
+                    "クック済みのデータに対応する .meta が無いので登録しません: " + sourceRelativeUtf8);
+                return;
+            }
+
+            AssetInfo info;
+            info.guid = guid;
+            info.name = BaseName(sourcePath);
+            info.fileName = log.PathToUtf8(sourcePath.filename());
+            info.fullPath = sourcePath;
+            info.relativePath = sourceRelative;
+            info.type = type;
+            info.category = category;
+            if (type == AssetType::Texture) {
+                const AssetMetadata::ImportSettings import = AssetMetadata::LoadImportSettings(metaPath);
+                info.colorSpace = import.colorSpace;
+                info.format = import.format;
+                ++registeredTextures;
+            } else {
+                ++registeredModels;
+            }
+            MergeAssetInfo(std::move(info));
+        };
         for (const char* folder : CookedPath::kFolders) {
             const std::filesystem::path cookedRoot = ProjectPaths::Resolve(folder);
             std::error_code ec;
@@ -546,55 +591,14 @@ namespace CoreEngine
 
             for (auto it = std::filesystem::recursive_directory_iterator(cookedRoot, ec);
                 !ec && it != std::filesystem::recursive_directory_iterator(); it.increment(ec)) {
-                if (!it->is_regular_file(ec)) {
-                    continue;
+                if (it->is_regular_file(ec)) {
+                    registerCooked(ProjectPaths::MakeRelative(it->path()), category);
                 }
-
-                // 画像の DDS（sRGB 版とリニア版は同じ元の画像に戻るので、2 つ目は登録済みとして飛ばす）とモデルの .cmesh
-                const std::filesystem::path cookedRelative = ProjectPaths::MakeRelative(it->path());
-                AssetType type = AssetType::Texture;
-                std::filesystem::path sourceRelative = CookedTexture::ToSourcePath(cookedRelative);
-                if (sourceRelative.empty()) {
-                    type = AssetType::Model;
-                    sourceRelative = ModelDerivedData::ToSourcePath(cookedRelative);
-                }
-                if (sourceRelative.empty()) {
-                    continue;
-                }
-                const std::string sourceRelativeUtf8 = log.PathToUtf8(sourceRelative);
-
-                std::unique_lock lock(mutex_);
-                if (guidsByPath_.contains(MakePathKey(sourceRelativeUtf8))) {
-                    continue;
-                }
-
-                const std::filesystem::path sourcePath = ProjectPaths::Resolve(sourceRelativeUtf8);
-                const std::filesystem::path metaPath = AssetMetadata::GetMetaFilePath(sourcePath);
-                const std::string guid = AssetMetadata::LoadGUID(metaPath);
-                if (guid.empty()) {
-                    log.Logf(LogLevel::WARNING, LogCategory::System, "{}",
-                        "クック済みのデータに対応する .meta が無いので登録しません: " + sourceRelativeUtf8);
-                    continue;
-                }
-
-                AssetInfo info;
-                info.guid = guid;
-                info.name = BaseName(sourcePath);
-                info.fileName = log.PathToUtf8(sourcePath.filename());
-                info.fullPath = sourcePath;
-                info.relativePath = sourceRelative;
-                info.type = type;
-                info.category = category;
-                if (type == AssetType::Texture) {
-                    const AssetMetadata::ImportSettings import = AssetMetadata::LoadImportSettings(metaPath);
-                    info.colorSpace = import.colorSpace;
-                    info.format = import.format;
-                    ++registeredTextures;
-                } else {
-                    ++registeredModels;
-                }
-                MergeAssetInfo(std::move(info));
             }
+        }
+        // 中身が同じなので置かなかった DDS は、別名の一覧から登録する
+        for (const std::filesystem::path& alias : CookedTexture::AliasPaths()) {
+            registerCooked(alias, (_wcsicmp(alias.begin()->c_str(), L"Engine") == 0) ? "Engine" : "Application");
         }
 
         if (registeredTextures > 0 || registeredModels > 0) {

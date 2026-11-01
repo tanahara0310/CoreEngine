@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <vector>
 
 #include "Graphics/Texture/TextureColorSpace.h"
 
@@ -10,8 +11,13 @@ namespace CoreEngine
     /// @details `Application/Assets/a/b.png` の DDS は `Application/Cooked/a/b.png.dds`、
     ///          リニア版は `Application/Cooked/a/b.png.linear.dds` に置く（置き場は CookedPath）。
     ///          書き出したゲームは元の画像を持たず、この DDS を読む。
+    ///          中身が同じ DDS は 1 つだけ置き、ほかの綴りは別名の一覧（kAliasFileName）で置いた DDS を指す。
     namespace CookedTexture
     {
+        /// @brief 書き出したゲームの根に置く、DDS の別名の一覧のファイル名
+        /// @details 1 行に「別名の綴り」「タブ」「実際に置いた DDS の綴り」（どちらも `Application/Cooked/…` の形・UTF-8）
+        inline constexpr const char* kAliasFileName = "CookedTextureAliases.txt";
+
         /// @brief 書き出し時に DDS へ変換する画像か（拡張子で判定）
         bool IsCookable(const std::filesystem::path& path);
 
@@ -24,6 +30,13 @@ namespace CoreEngine
         /// @param cookedRelative `Application/Cooked/…` か `Engine/Cooked/…` の綴り
         /// @return クック済みの DDS の綴りでなければ空
         std::filesystem::path ToSourcePath(const std::filesystem::path& cookedRelative);
+
+        /// @brief クック済みの DDS の綴りを、読むファイルの絶対パスにする（別名なら実際に置いた DDS）
+        /// @return 綴りが `Application/…` か `Engine/…` でなければ空（ファイルがあるかは見ない）
+        std::filesystem::path ResolveCookedPath(const std::filesystem::path& cookedRelative);
+
+        /// @brief 別名の一覧にある綴り（書き出したゲームでなければ空）
+        std::vector<std::filesystem::path> AliasPaths();
 
         /// @brief 元の画像に対応するクック済みの DDS を探す
         /// @param sourcePath 元の画像の絶対パス（ファイルが無くてもよい）

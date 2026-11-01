@@ -5,8 +5,10 @@
 
 #include <algorithm>
 #include <cwctype>
+#include <fstream>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 
 namespace CoreEngine
 {
@@ -21,6 +23,52 @@ namespace CoreEngine
             std::transform(text.begin(), text.end(), text.begin(),
                 [](wchar_t c) { return static_cast<wchar_t>(std::towlower(c)); });
             return text;
+        }
+
+        /// @brief 綴りを照合用のキーにする（正規化して小文字）
+        std::wstring MakeKey(const std::filesystem::path& path)
+        {
+            return ToLower(path.lexically_normal().generic_wstring());
+        }
+
+        /// @brief UTF-8 の文字列をパスにする
+        std::filesystem::path FromUtf8(std::string_view text)
+        {
+            return std::filesystem::path(std::u8string(reinterpret_cast<const char8_t*>(text.data()), text.size()));
+        }
+
+        /// @brief DDS の別名の一覧
+        struct AliasTable
+        {
+            std::unordered_map<std::wstring, std::filesystem::path> targets; ///< 別名のキー → 実際に置いた DDS の綴り
+            std::vector<std::filesystem::path> aliases;                      ///< 別名の綴り（一覧の順）
+        };
+
+        /// @brief 書き出したゲームの根の別名の一覧を 1 度だけ読む（書き出したゲームでなければ空）
+        const AliasTable& Aliases()
+        {
+            static const AliasTable table = [] {
+                AliasTable result;
+                if (!CookedPath::IsCookedBuild()) {
+                    return result;
+                }
+                std::ifstream file(ProjectPaths::EngineRoot() / CookedTexture::kAliasFileName, std::ios::binary);
+                std::string line;
+                while (std::getline(file, line)) {
+                    if (!line.empty() && line.back() == '\r') {
+                        line.pop_back();
+                    }
+                    const size_t tab = line.find('\t');
+                    if (tab == std::string::npos) {
+                        continue;
+                    }
+                    const std::filesystem::path alias = FromUtf8(std::string_view(line).substr(0, tab));
+                    result.targets.emplace(MakeKey(alias), FromUtf8(std::string_view(line).substr(tab + 1)));
+                    result.aliases.push_back(alias);
+                }
+                return result;
+            }();
+            return table;
         }
     }
 
@@ -67,13 +115,32 @@ namespace CoreEngine
         return IsCookable(source) ? source : std::filesystem::path{};
     }
 
+    std::filesystem::path CookedTexture::ResolveCookedPath(const std::filesystem::path& cookedRelative)
+    {
+        if (cookedRelative.empty()) {
+            return {};
+        }
+        const AliasTable& table = Aliases();
+        if (!table.targets.empty()) {
+            if (const auto found = table.targets.find(MakeKey(cookedRelative)); found != table.targets.end()) {
+                return CookedPath::Resolve(found->second);
+            }
+        }
+        return CookedPath::Resolve(cookedRelative);
+    }
+
+    std::vector<std::filesystem::path> CookedTexture::AliasPaths()
+    {
+        return Aliases().aliases;
+    }
+
     std::filesystem::path CookedTexture::Find(const std::filesystem::path& sourcePath, TextureColorSpace colorSpace)
     {
         if (!IsCookable(sourcePath)) {
             return {};
         }
         const std::filesystem::path cookedPath =
-            CookedPath::Resolve(ToCookedPath(ProjectPaths::MakeRelative(sourcePath), colorSpace));
+            ResolveCookedPath(ToCookedPath(ProjectPaths::MakeRelative(sourcePath), colorSpace));
         if (cookedPath.empty()) {
             return {};
         }
