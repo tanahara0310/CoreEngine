@@ -3,7 +3,7 @@
 #include "Graphics/Water/Surface/WaterSurfaceTypes.h"
 #include "Editor/Water/WaterEditorFacade.h"
 
-namespace CoreEngine { class WaterRenderFeature; }
+namespace CoreEngine { class WaterSystem; }
 
 #ifdef CORE_EDITOR
 
@@ -11,17 +11,17 @@ namespace CoreEngine { class WaterRenderFeature; }
 class WaterSurfaceDebugPanel {
 public:
 	/// @brief デバッグ表示の初期状態を水面へ入れる
-	void Initialize(CoreEngine::WaterRenderFeature& runtimeController);
+	void Initialize(CoreEngine::WaterSystem& runtimeController);
 
 	/// @brief 「デバッグ」セクションを描く
-	void Draw(CoreEngine::WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade);
+	void Draw(CoreEngine::WaterSystem& runtimeController, WaterEditorFacade& editorFacade);
 
 private:
 	/// @brief 今の状態（描き方・FFT の準備・水面の高さ・反射）
-	void DrawStatusRows(CoreEngine::WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade);
+	void DrawStatusRows(CoreEngine::WaterSystem& runtimeController, WaterEditorFacade& editorFacade);
 
 	/// @brief 水面の可視化
-	void DrawSurfaceView(CoreEngine::WaterRenderFeature& runtimeController);
+	void DrawSurfaceView(CoreEngine::WaterSystem& runtimeController);
 
 	/// @brief レイトレの屈折の可視化
 	void DrawRefractionDebug(WaterEditorFacade& editorFacade);

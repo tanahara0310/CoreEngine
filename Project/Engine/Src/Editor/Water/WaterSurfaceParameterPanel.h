@@ -3,7 +3,7 @@
 #include "Graphics/Water/Surface/WaterSurfaceTypes.h"
 #include "Editor/Water/WaterEditorFacade.h"
 
-namespace CoreEngine { class WaterRenderFeature; }
+namespace CoreEngine { class WaterSystem; }
 
 #ifdef CORE_EDITOR
 
@@ -13,14 +13,14 @@ namespace CoreEngine { class WaterRenderFeature; }
 class WaterSurfaceParameterPanel {
 public:
 	/// @brief Gerstner の波をプリセットから作る（CVar には触れない）
-	void Initialize(CoreEngine::WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade);
+	void Initialize(CoreEngine::WaterSystem& runtimeController, WaterEditorFacade& editorFacade);
 
 	/// @brief 各セクションを描く
-	void Draw(CoreEngine::WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade);
+	void Draw(CoreEngine::WaterSystem& runtimeController, WaterEditorFacade& editorFacade);
 
 private:
 	/// @brief 波（FFT の海の海況とうねり、または Gerstner の波）
-	void DrawWaveSection(CoreEngine::WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade);
+	void DrawWaveSection(CoreEngine::WaterSystem& runtimeController, WaterEditorFacade& editorFacade);
 
 	/// @brief 海況のプリセットを選ぶ行
 	void DrawSeaStateRow();
@@ -29,7 +29,7 @@ private:
 	void DrawWaveSummaryRows(WaterEditorFacade& editorFacade);
 
 	/// @brief Gerstner の波のプリセット・本数・個別の波
-	void DrawGerstnerRows(CoreEngine::WaterRenderFeature& runtimeController);
+	void DrawGerstnerRows(CoreEngine::WaterSystem& runtimeController);
 
 	/// @brief 水の色（水質・吸収・散乱・濁り）
 	void DrawWaterColorSection();
@@ -38,7 +38,7 @@ private:
 	void DrawSurfaceSection();
 
 	/// @brief 泡
-	void DrawFoamSection(CoreEngine::WaterRenderFeature& runtimeController);
+	void DrawFoamSection(CoreEngine::WaterSystem& runtimeController);
 
 	/// @brief 濡れ跡
 	void DrawWetnessSection();
@@ -47,7 +47,7 @@ private:
 	void DrawCausticsSection();
 
 	/// @brief Gerstner の波をプリセットから作り直す
-	void RegenerateGerstnerWaves(CoreEngine::WaterRenderFeature& runtimeController);
+	void RegenerateGerstnerWaves(CoreEngine::WaterSystem& runtimeController);
 
 	/// @brief Gerstner の波のプリセット（WaterPresetType。-1 は水面の既定の波）
 	int gerstnerPreset_ = -1;

@@ -45,7 +45,7 @@ namespace CoreEngine
             float waveGroupPhase[3] = { 0.0f, 0.0f, 0.0f }; ///< 波群エンベロープの位相のずれ [rad]
         };
 
-        /// @brief 泡の設定（WaterRenderFeature が毎フレーム渡す）
+        /// @brief 泡の設定（WaterSystem が毎フレーム渡す）
         struct Settings {
             bool enabled = WaterFoamDefaults::kEnabled;
             /// @brief 海面から 10 m の高さの風速 [m/s]。白波の被覆率の目標を決める

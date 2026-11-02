@@ -47,7 +47,7 @@ namespace CoreEngine
             ShaderProgramCache* shaderProgramCache);
 
         /// @brief 水面の描画に使うマネージャ（水面のレイトレ 4 つ・FFT の海・泡）を、まだなら作る
-        /// @details 水面のあるシーン（WaterRenderFeature の初期化）が呼ぶ。作るまでは各 Get が nullptr を返す。
+        /// @details 水面のあるシーン（WaterSystem の初期化）が呼ぶ。作るまでは各 Get が nullptr を返す。
         ///          一度作ったら Shutdown まで持つ。
         void EnsureWaterInitialized();
 
@@ -98,24 +98,17 @@ namespace CoreEngine
         VolumetricCloudManager* GetVolumetricCloudManager() { return volumetricCloudManager_.get(); }
         FogManager* GetFogManager() { return fogManager_.get(); }
 
-        // ===== 水面サーフェス状態の publish =====
+        // ===== 水の 1 フレームの状態 =====
 
-        /// @brief 水面サーフェス状態を publish する（WaterRenderFeature が毎フレーム呼ぶ）
-        /// @param state 水面データ。所有者は WaterRenderFeature
-        /// @warning Feature の Finalize で必ず nullptr へ戻すこと（ダングリング防止）
-        void PublishWaterSurfaceState(const WaterSurfaceData* state) { waterSurfaceState_ = state; }
-
-        /// @brief publish 済みの水面サーフェス状態を返す（水面不在なら nullptr）
-        const WaterSurfaceData* GetWaterSurfaceState() const { return waterSurfaceState_; }
-
-        /// @brief FFT Ocean のシミュレーション時刻を publish する
-        /// @details 水面の表示・非表示や Gerstner / FFT の切り替えとは独立に進む。
-        ///          サーフェス状態の time を流用していたときは、水面を非表示にすると
-        ///          0 秒へ巻き戻って波形が飛んでいた。
-        void PublishFFTOceanSimulationTime(float timeSeconds) { fftOceanSimulationTime_ = timeSeconds; }
-
-        /// @brief publish 済みの FFT Ocean シミュレーション時刻を返す
-        float GetFFTOceanSimulationTime() const { return fftOceanSimulationTime_; }
+        /// @brief このフレームの水面の状態と FFT の海の時刻を渡す（WaterSystem が毎フレーム呼ぶ）
+        /// @param snapshot 水面の状態（水面が無ければ nullptr）。所有者は WaterSystem
+        /// @param fftOceanTime FFT の海の時刻 [s]（水面の表示や波の方式の切り替えと関係なく進む）
+        /// @warning WaterSystem の Finalize で必ず nullptr へ戻す
+        void PublishWaterFrame(const WaterSurfaceData* snapshot, float fftOceanTime)
+        {
+            waterSurfaceState_ = snapshot;
+            fftOceanSimulationTime_ = fftOceanTime;
+        }
 
     private:
         GraphicsCore* dxCommon_ = nullptr; ///< リサイズ通知の登録解除に使う（非所有）
@@ -138,9 +131,9 @@ namespace CoreEngine
         std::unique_ptr<VolumetricCloudManager> volumetricCloudManager_;
         std::unique_ptr<FogManager> fogManager_;
 
-        /// @brief WaterRenderFeature が publish した水面状態（非所有）
+        /// @brief WaterSystem が渡した水面の状態（非所有）
         const WaterSurfaceData* waterSurfaceState_ = nullptr;
-        /// @brief FFT Ocean のシミュレーション時刻（水面の表示状態と独立）
+        /// @brief FFT の海の時刻 [s]
         float fftOceanSimulationTime_ = 0.0f;
     };
 

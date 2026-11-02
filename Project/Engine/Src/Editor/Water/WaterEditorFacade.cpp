@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Editor/Water/WaterEditorFacade.h"
 
-#include "Graphics/Water/Render/WaterRenderFeature.h"
+#include "Graphics/Water/System/WaterSystem.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueManager.h"
@@ -9,7 +9,7 @@
 
 using namespace CoreEngine;
 
-void WaterEditorFacade::Initialize(WaterRenderFeature& runtimeController, EngineSystem& engine) {
+void WaterEditorFacade::Initialize(WaterSystem& runtimeController, EngineSystem& engine) {
     runtimeController_ = &runtimeController;
     engine_ = &engine;
 }

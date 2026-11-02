@@ -381,12 +381,8 @@ namespace CoreEngine
         UINT height,
         ViewID viewId)
     {
-        WaterSurfaceData resolvedSurfaceData{};
-        const WaterSurfaceData& dispatchSurfaceData =
-            ResolveSurfaceDataForDispatch(surfaceData, resolvedSurfaceData);
-
         const uint32_t viewIndex = static_cast<uint32_t>(viewId);
-        BeginDiagnostics(viewIndex, width, height, dispatchSurfaceData, sceneDepthSRV, sceneColorSRV);
+        BeginDiagnostics(viewIndex, width, height, surfaceData, sceneDepthSRV, sceneColorSRV);
 
         DispatchResources resources;
         if (!BeginDispatch(cmdList, width, height, viewIndex, resources)) {
@@ -415,7 +411,7 @@ namespace CoreEngine
         constants.cameraPosition[0] = cameraPosition.x;
         constants.cameraPosition[1] = cameraPosition.y;
         constants.cameraPosition[2] = cameraPosition.z;
-        constants.waterHeight = dispatchSurfaceData.waterHeight;
+        constants.waterHeight = surfaceData.waterHeight;
         constants.sunDirection[0] = sunShadow.direction.x;
         constants.sunDirection[1] = sunShadow.direction.y;
         constants.sunDirection[2] = sunShadow.direction.z;
@@ -441,7 +437,7 @@ namespace CoreEngine
         const D3D12_GPU_DESCRIPTOR_HANDLE skyEnvSRV =
             hasSkyEnvironment ? skyEnvironmentSRV : sceneColorSRV;
 
-        const SurfaceConstantsUpload surface = UploadSurfaceDataForDispatch(dispatchSurfaceData, fftOceanInput);
+        const SurfaceConstantsUpload surface = UploadSurfaceDataForDispatch(surfaceData, fftOceanInput);
 
         // 反射の元画像の縮小段を作る。作れないフレームは元画像そのもの（段数 1）と深度を差し、
         // シェーダーはぼかさずに引く
@@ -449,7 +445,7 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE skyCoveragePyramidSRV = sceneDepthSRV;
         if (colorPyramidPipelineReady_ && EnsureColorPyramid(width, height)) {
             BuildColorPyramid(
-                cmdList, sceneColorSRV, sceneDepthSRV, constants.invViewProjection, dispatchSurfaceData);
+                cmdList, sceneColorSRV, sceneDepthSRV, constants.invViewProjection, surfaceData);
             colorPyramidSRV = colorPyramidFullSrv_.gpuHandle;
             skyCoveragePyramidSRV = skyCoveragePyramidFullSrv_.gpuHandle;
         }

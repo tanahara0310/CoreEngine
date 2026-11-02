@@ -365,40 +365,4 @@ namespace CoreEngine
         std::memcpy(constants.wetSurfaceTable, input.wetSurface.wetness, sizeof(constants.wetSurfaceTable));
         return dxCommon_->GetUploadRing().AllocateConstants(constants);
     }
-
-    void WaterRayTracingPassBase::SetSurfaceModelProvider(
-        const std::shared_ptr<const IWaterSurfaceModelProvider>& provider)
-    {
-        surfaceModelProvider_ = provider;
-    }
-
-    std::shared_ptr<const IWaterSurfaceModelProvider> WaterRayTracingPassBase::GetSurfaceModelProvider() const
-    {
-        return surfaceModelProvider_.lock();
-    }
-
-    const WaterSurfaceData& WaterRayTracingPassBase::ResolveSurfaceDataForDispatch(
-        const WaterSurfaceData& fallbackSurfaceData,
-        WaterSurfaceData& outResolvedSurfaceData) const
-    {
-        const std::shared_ptr<const IWaterSurfaceModelProvider> surfaceModelProvider = surfaceModelProvider_.lock();
-        if (!surfaceModelProvider) {
-            return fallbackSurfaceData;
-        }
-
-        if (!surfaceModelProvider->TryGetSurfaceData(outResolvedSurfaceData)) {
-            Logger::GetInstance().Warnf(
-                LogCategory::Graphics,
-                LogSubCategory::Pipeline,
-                "{}: surface model provider returned no data. fallback path is used. provider='{}' type={}",
-                GetOwnerName(),
-                surfaceModelProvider->GetProviderName(),
-                static_cast<uint32_t>(surfaceModelProvider->GetSimulationType()));
-            return fallbackSurfaceData;
-        }
-
-        // 以前はここで毎フレーム Infof を出していたが、3 マネージャ分が常時流れて
-        // ログを埋めるだけだったため撤去した（解決結果は GetDispatchInfo で参照できる）。
-        return outResolvedSurfaceData;
-    }
 }

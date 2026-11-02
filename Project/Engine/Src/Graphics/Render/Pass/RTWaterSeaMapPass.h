@@ -5,7 +5,7 @@
 namespace CoreEngine
 {
     /// @brief 水面の範囲全体の水深と陸をレイトレーシングで測り、波を弱める地図（海の範囲マップ）を作るパス
-    /// @details 測るのは条件が変わったときだけ。できた地図は WaterRenderFeature が次のフレームから水面へ渡す
+    /// @details 測るのは条件が変わったときだけ。できた地図は WaterSystem が次のフレームから水面へ渡す
     class RTWaterSeaMapPass : public RenderPass
     {
     public:

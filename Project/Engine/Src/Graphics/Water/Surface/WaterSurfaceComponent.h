@@ -24,7 +24,7 @@ namespace CoreEngine
     /// @brief 水面を描くコンポーネント（平面メッシュ・水のパラメータ・専用シェーダー）
     /// @details 責務はメッシュ・マテリアルと水そのもののパラメータまで。
     ///          シーンカラーや RT 屈折・FFT・大気といった外部リソースの結線は
-    ///          WaterRenderFeature が組み立て、ApplyFrameBinding() で 1 度に渡す。
+    ///          WaterSystem が組み立て、ApplyFrameBinding() で 1 度に渡す。
     ///          トランスフォームとメッシュ描画のコンポーネントは `Awake()` で足す。
     class WaterSurfaceComponent : public IComponent
         , public ICustomShaderProvider {
@@ -36,7 +36,7 @@ namespace CoreEngine
 
         const char* GetTypeName() const override { return "WaterSurface"; }
 
-        // 水の見た目そのもの（FFT の切り替え・フレネル・光学係数・泡・波）は CVar と WaterRenderFeature が持つ。
+        // 水の見た目そのもの（FFT の切り替え・フレネル・光学係数・泡・波）は CVar と WaterSystem が持つ。
         // ここに出すのは、その水面 1 枚ごとに決めるものだけ
         REFLECT_BEGIN(WaterSurfaceComponent, "水面")
             REFLECT_PARTIAL()
@@ -149,7 +149,7 @@ namespace CoreEngine
         /// @param stretchAxis   模様を風の向きに伸ばす軸（WaterFoamSystem::ComputeFoamStretchAxis）
         void SetFoamMotion(const std::array<float, 2>& driftOffsetXZ, const std::array<float, 2>& stretchAxis);
 
-        /// @brief FFT Ocean 描画経路を切り替える（WaterRenderFeature が `r.Water.FFT.Enabled` に合わせて呼ぶ）
+        /// @brief FFT Ocean 描画経路を切り替える（WaterSystem が `r.Water.FFT.Enabled` に合わせて呼ぶ）
         void SetUseFFTOcean(bool useFFTOcean);
 
         // ===== 潮 =====
@@ -157,7 +157,7 @@ namespace CoreEngine
         /// @brief 潮の高さ（月と太陽が真上か真下に来たときにトランスフォームの高さより上がる高さ [m]。0 で潮なし）
         float GetTideAmplitude() const { return tideAmplitude_; }
 
-        /// @brief 月と太陽から求めた潮位 [m] を受け取る（WaterRenderFeature が毎フレーム呼ぶ）
+        /// @brief 月と太陽から求めた潮位 [m] を受け取る（WaterSystem が毎フレーム呼ぶ）
         void SetSkyTideHeight(float height) { skyTideHeight_ = height; }
 
         /// @brief 今の潮位 [m]（SetTideHeight で指定していればその値、なければ月と太陽から求めた値）
@@ -193,6 +193,9 @@ namespace CoreEngine
 
         /// @brief メッシュの分割数（XZ 方向共通）を返す
         uint32_t GetResolution() const { return resolution_; }
+
+        /// @brief 粗い格子の 1 マスのワールドの大きさ（X, Z）[m]
+        Vector2 GetMeshCellSizeXZ() const;
 
         /// @brief 分割数（記述子が扱える int で読み書きする）
         int GetResolutionValue() const { return static_cast<int>(resolution_); }

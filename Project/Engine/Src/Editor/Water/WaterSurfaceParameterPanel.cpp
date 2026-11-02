@@ -4,7 +4,7 @@
 #ifdef CORE_EDITOR
 
 #include "Graphics/Water/Foam/WaterFoamSystem.h"
-#include "Graphics/Water/Render/WaterRenderFeature.h"
+#include "Graphics/Water/System/WaterSystem.h"
 #include "Graphics/Water/Surface/WaterSurfaceComponent.h"
 #include "Graphics/Water/WaterCVars.h"
 
@@ -224,14 +224,14 @@ Vector2 NormalizeDirection(const Vector2& direction) {
 }
 }
 
-void WaterSurfaceParameterPanel::Initialize(WaterRenderFeature& runtimeController, [[maybe_unused]] WaterEditorFacade& editorFacade) {
+void WaterSurfaceParameterPanel::Initialize(WaterSystem& runtimeController, [[maybe_unused]] WaterEditorFacade& editorFacade) {
 	gerstnerPreset_ = -1;
 	if (const WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane()) {
 		gerstnerWaveCount_ = static_cast<int>(waterPlane->GetActiveWaveCount());
 	}
 }
 
-void WaterSurfaceParameterPanel::Draw(WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade) {
+void WaterSurfaceParameterPanel::Draw(WaterSystem& runtimeController, WaterEditorFacade& editorFacade) {
 	DrawWaveSection(runtimeController, editorFacade);
 	DrawWaterColorSection();
 	DrawSurfaceSection();
@@ -240,7 +240,7 @@ void WaterSurfaceParameterPanel::Draw(WaterRenderFeature& runtimeController, Wat
 	DrawCausticsSection();
 }
 
-void WaterSurfaceParameterPanel::DrawWaveSection(WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade) {
+void WaterSurfaceParameterPanel::DrawWaveSection(WaterSystem& runtimeController, WaterEditorFacade& editorFacade) {
 	if (!InspectorLayout::Foldout("波", true)) {
 		return;
 	}
@@ -309,7 +309,7 @@ void WaterSurfaceParameterPanel::DrawWaveSummaryRows(WaterEditorFacade& editorFa
 		: std::string("なし"));
 }
 
-void WaterSurfaceParameterPanel::DrawGerstnerRows(WaterRenderFeature& runtimeController) {
+void WaterSurfaceParameterPanel::DrawGerstnerRows(WaterSystem& runtimeController) {
 	WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
 	if (!waterPlane) {
 		return;
@@ -376,7 +376,7 @@ void WaterSurfaceParameterPanel::DrawGerstnerRows(WaterRenderFeature& runtimeCon
 	ImGui::TreePop();
 }
 
-void WaterSurfaceParameterPanel::RegenerateGerstnerWaves(WaterRenderFeature& runtimeController) {
+void WaterSurfaceParameterPanel::RegenerateGerstnerWaves(WaterSystem& runtimeController) {
 	WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
 	if (!waterPlane) {
 		return;
@@ -465,7 +465,7 @@ void WaterSurfaceParameterPanel::DrawSurfaceSection() {
 	CVarUI::DrawRow(&WaterCVars::BaseColor, "反射が無いときの色");
 }
 
-void WaterSurfaceParameterPanel::DrawFoamSection(WaterRenderFeature& runtimeController) {
+void WaterSurfaceParameterPanel::DrawFoamSection(WaterSystem& runtimeController) {
 	if (!InspectorLayout::Foldout("泡", false)) {
 		return;
 	}

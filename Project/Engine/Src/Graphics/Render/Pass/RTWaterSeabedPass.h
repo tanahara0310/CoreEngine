@@ -5,7 +5,7 @@
 namespace CoreEngine
 {
     /// @brief カメラの周りの範囲の海底の高さをレイトレーシングで測るパス
-    /// @details 範囲は WaterRenderFeature がフレームの頭で決める。水面の岸の泡が読む
+    /// @details 範囲は WaterSystem がフレームの頭で決める。水面の岸の泡が読む
     class RTWaterSeabedPass : public RenderPass
     {
     public:

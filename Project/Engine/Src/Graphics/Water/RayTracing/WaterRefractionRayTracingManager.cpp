@@ -117,12 +117,8 @@ namespace CoreEngine
         UINT height,
         ViewID viewId)
     {
-        WaterSurfaceData resolvedSurfaceData{};
-        const WaterSurfaceData& dispatchSurfaceData =
-            ResolveSurfaceDataForDispatch(surfaceData, resolvedSurfaceData);
-
         const uint32_t viewIndex = static_cast<uint32_t>(viewId);
-        BeginDiagnostics(viewIndex, width, height, dispatchSurfaceData, sceneDepthSRV, sceneColorSRV);
+        BeginDiagnostics(viewIndex, width, height, surfaceData, sceneDepthSRV, sceneColorSRV);
 
         DispatchResources resources;
         if (!BeginDispatch(cmdList, width, height, viewIndex, resources)) {
@@ -135,7 +131,7 @@ namespace CoreEngine
         constants.cameraPosition[0] = cameraPosition.x;
         constants.cameraPosition[1] = cameraPosition.y;
         constants.cameraPosition[2] = cameraPosition.z;
-        constants.waterHeight = dispatchSurfaceData.waterHeight;
+        constants.waterHeight = surfaceData.waterHeight;
         constants.surfaceBias = settings_.surfaceBias;
         constants.maxRayDistance = settings_.maxRayDistance;
         constants.refractionEta = 1.0f / (std::max)(settings_.waterRefractiveIndex, 1.0e-4f);
@@ -155,7 +151,7 @@ namespace CoreEngine
         const D3D12_GPU_DESCRIPTOR_HANDLE fftNormalSRV =
             (fftOceanInput.normalSRV.ptr != 0) ? fftOceanInput.normalSRV : sceneColorSRV;
 
-        const SurfaceConstantsUpload surface = UploadSurfaceDataForDispatch(dispatchSurfaceData, fftOceanInput);
+        const SurfaceConstantsUpload surface = UploadSurfaceDataForDispatch(surfaceData, fftOceanInput);
 
         // 診断ログは UI の「RT屈折ログを有効にする」でのみ出す。
         // 以前は毎フレーム無条件に 3 本（うち 1 本は引数 26 個）流れており、
@@ -172,10 +168,10 @@ namespace CoreEngine
                 width,
                 height,
                 lastDispatchInfo_.blasCount,
-                dispatchSurfaceData.waterHeight,
-                dispatchSurfaceData.simulationType,
+                surfaceData.waterHeight,
+                surfaceData.simulationType,
                 surface.constants.activeWaveCount,
-                dispatchSurfaceData.time,
+                surfaceData.time,
                 constants.refractionEta,
                 constants.maxRayDistance,
                 constants.surfaceBias,
