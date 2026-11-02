@@ -19,6 +19,7 @@ namespace CoreEngine
             "r.Cloud",
             "r.Fog",
             "r.TimeOfDay",
+            "r.Wind",
 
             // ポストエフェクト
             "r.AutoExposure",

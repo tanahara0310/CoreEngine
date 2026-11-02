@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "VertexAnimation.h"
 
-#include "Graphics/Water/WaterCVars.h"
+#include "Scene/Environment/WindCVars.h"
 #include "Utility/FrameRate/Time.h"
 
 #include <algorithm>
@@ -14,7 +14,7 @@ namespace CoreEngine
         CVar<bool> Enabled{ "r.VertexAnim.Enabled", true,
             "頂点アニメーション（植物の揺れ・海草・魚の泳ぎ）を動かす（off で止まる）" };
         CVar<float> ReferenceWindSpeed{ "r.VertexAnim.ReferenceWindSpeed", 15.0f,
-            "この風速 [m/s]（海の FFT の風速）のとき植物がモデル作成時の想定どおりに揺れる",
+            "この風速 [m/s]（シーンの風 r.Wind.Speed）のとき植物がモデル作成時の想定どおりに揺れる",
             CVarRange{ 1.0f, 40.0f } };
         CVar<float> WindScale{ "r.VertexAnim.WindScale", 1.0f,
             "植物の揺れの倍率", CVarRange{ 0.0f, 3.0f } };
@@ -24,6 +24,9 @@ namespace CoreEngine
 
     namespace
     {
+        /// @brief シーンの水のうねりの進む向き（水もうねりも無ければ無し）
+        std::optional<Vector2> sSwellDirection;
+
         /// @brief XZ の向きを正規化する（長さ 0 なら +X）
         Vector2 NormalizeXZ(const Vector2& v)
         {
@@ -48,17 +51,20 @@ namespace CoreEngine
         params.time = std::fmod(Time::TimeSinceStartup(), kWrapSeconds);
         params.prevTime = params.time - Time::DeltaTime();
 
-        // 植物: 海（FFT）と同じ風。風速が基準のとき強さ 1（上限 2）
-        const Vector2 wind = WaterCVars::FFTWindDirection.Get();
-        params.windDir = NormalizeXZ(wind);
+        // 植物: 海と同じシーンの風。風速が基準のとき強さ 1（上限 2）
+        params.windDir = WindCVars::NormalizedDirection();
         const float reference = (std::max)(VertexAnimationCVars::ReferenceWindSpeed.Get(), 0.1f);
-        params.windStrength = std::clamp(WaterCVars::FFTWindSpeed.Get() / reference, 0.0f, 2.0f)
+        params.windStrength = std::clamp(WindCVars::Speed.Get() / reference, 0.0f, 2.0f)
             * VertexAnimationCVars::WindScale.Get();
 
-        // 海草: うねりが有効ならその進行方向に寄せ返す（無ければ風向き）
-        params.waterDir = WaterCVars::SwellEnabled.Get()
-            ? NormalizeXZ(WaterCVars::SwellDirection.Get()) : params.windDir;
+        // 海草: うねりがあればその進行方向に寄せ返す（無ければ風向き）
+        params.waterDir = sSwellDirection ? NormalizeXZ(*sSwellDirection) : params.windDir;
         params.waterStrength = VertexAnimationCVars::WaterScale.Get();
         return params;
+    }
+
+    void VertexAnimationParams::SetSwellDirection(const std::optional<Vector2>& direction)
+    {
+        sSwellDirection = direction;
     }
 }

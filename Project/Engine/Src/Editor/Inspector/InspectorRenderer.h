@@ -3,6 +3,7 @@
 #include "Utility/JsonManager/JsonManager.h"
 
 #include <functional>
+#include <initializer_list>
 #include <string>
 
 namespace CoreEngine::Reflection
@@ -66,6 +67,21 @@ namespace CoreEngine
         ///       呼び出し側が Undo のために書くコードは無い。
         bool Draw(const Reflection::TypeDescriptor& type, void* instance,
                   const DrawContext& context = {});
+
+        /// @brief 名前で選んだプロパティだけを、並べた順に描く
+        /// @param names 描くプロパティの保存キー（記述子に無い名前は飛ばす）
+        /// @return 値が変更されたら true
+        /// @note 履歴の積み方は `Draw` と同じ。項目を見出しごとに分けて並べる画面に使う。
+        bool DrawProperties(const Reflection::TypeDescriptor& type, void* instance,
+                            const DrawContext& context, std::initializer_list<const char*> names);
+
+        /// @brief 保存形の値をまとめて書き込み、1 件の履歴にする
+        /// @param values 保存キーから値への表（記述子に無いキーと、今と同じ値は飛ばす）
+        /// @param label 履歴に出す名前
+        /// @return 1 つでも書き換えたら true
+        /// @note プリセットのように、いくつかの値を一度に入れて 1 回の Ctrl+Z で戻したいときに使う。
+        bool Assign(const Reflection::TypeDescriptor& type, void* instance, const json& values,
+                    const DrawContext& context, const std::string& label);
 
         /// @brief 既定値と違うプロパティをすべて既定値へ戻す
         /// @return 1 つでも書き換えたら true

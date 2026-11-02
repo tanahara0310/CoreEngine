@@ -33,5 +33,10 @@
     "r.TimeOfDay.Advance": false,
     "r.Vignette.Intensity": 2.0,
     "r.Vignette.Smoothness": 0.1,
+    "r.Wind.Direction": [
+        0.72198826,
+        0.6919054
+    ],
+    "r.Wind.Speed": 13.0,
     "version": "1.0"
 }

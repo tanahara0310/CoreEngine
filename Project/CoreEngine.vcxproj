@@ -331,6 +331,8 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting\WaterCausticsTechnique.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanDebugProbe.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\WaterCVars.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\WaterProfile.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\WaterSettingsMigration.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanDispatchHelper.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Foam\WaterFoamSystem.cpp" />
@@ -586,6 +588,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Editor\Scene\SceneFileDialogs.cpp" />
     <ClCompile Include="Engine\Src\Scene\PrefabSystem.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneEnvironmentIO.cpp" />
+    <ClCompile Include="Engine\Src\Scene\Environment\WindCVars.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneSaveSystem.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneTransition.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Model.cpp" />
@@ -1776,6 +1779,8 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\GodRayPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanDebugProbe.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\WaterCVars.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\WaterProfile.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\WaterSettingsMigration.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanDispatchHelper.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanGpuResources.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanManager.h" />
@@ -1868,6 +1873,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Editor\Scene\SceneFileDialogs.h" />
     <ClInclude Include="Engine\Src\Scene\PrefabSystem.h" />
     <ClInclude Include="Engine\Src\Scene\SceneEnvironmentIO.h" />
+    <ClInclude Include="Engine\Src\Scene\Environment\WindCVars.h" />
     <ClInclude Include="Engine\Src\Scene\SceneSaveSystem.h" />
     <ClInclude Include="Engine\Src\Scene\SceneTransition.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Model.h" />

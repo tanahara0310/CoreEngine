@@ -394,6 +394,12 @@
     <ClCompile Include="Engine\Src\Graphics\Water\WaterCVars.cpp">
       <Filter>Engine\Src\Graphics\Water</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\WaterProfile.cpp">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\WaterSettingsMigration.cpp">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanDispatchHelper.cpp">
       <Filter>Engine\Src\Graphics\Water</Filter>
     </ClCompile>
@@ -1149,6 +1155,9 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Scene\SceneEnvironmentIO.cpp">
       <Filter>Engine\Src\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Scene\Environment\WindCVars.cpp">
+      <Filter>Engine\Src\Scene\Environment</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Scene\SceneSaveSystem.cpp">
       <Filter>Engine\Src\Scene</Filter>
@@ -3111,6 +3120,12 @@
     <ClInclude Include="Engine\Src\Graphics\Water\WaterCVars.h">
       <Filter>Engine\Src\Graphics\Water</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\WaterProfile.h">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\WaterSettingsMigration.h">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanDispatchHelper.h">
       <Filter>Engine\Src\Graphics\Water</Filter>
     </ClInclude>
@@ -3386,6 +3401,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Scene\SceneEnvironmentIO.h">
       <Filter>Engine\Src\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Scene\Environment\WindCVars.h">
+      <Filter>Engine\Src\Scene\Environment</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Scene\SceneSaveSystem.h">
       <Filter>Engine\Src\Scene</Filter>
@@ -4753,6 +4771,9 @@
     </Filter>
     <Filter Include="Engine\Src\Scene">
       <UniqueIdentifier>{863EA1EF-7BCF-42DB-9258-C0D9FAE56DED}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Scene\Environment">
+      <UniqueIdentifier>{D19269E5-5075-460C-90EF-FB9BBB679B8D}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Scene\Feature">
       <UniqueIdentifier>{D4DC083E-4D17-492A-A32F-9CBA81EC3352}</UniqueIdentifier>

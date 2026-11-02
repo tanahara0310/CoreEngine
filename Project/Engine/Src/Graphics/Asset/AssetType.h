@@ -18,7 +18,8 @@ namespace CoreEngine
         MaterialLibrary,
         Json,
         Csv,
-        PhysicsMaterial
+        PhysicsMaterial,
+        WaterProfile
     };
 
     // AssetType を文字列に変換
@@ -38,6 +39,7 @@ namespace CoreEngine
         case AssetType::Json:            return "Json";
         case AssetType::Csv:             return "Csv";
         case AssetType::PhysicsMaterial: return "PhysicsMaterial";
+        case AssetType::WaterProfile:    return "WaterProfile";
         default:                         return "Unknown";
         }
     }
@@ -57,6 +59,7 @@ namespace CoreEngine
         if (typeStr == "Json")            return AssetType::Json;
         if (typeStr == "Csv")             return AssetType::Csv;
         if (typeStr == "PhysicsMaterial") return AssetType::PhysicsMaterial;
+        if (typeStr == "WaterProfile")    return AssetType::WaterProfile;
         return AssetType::Unknown;
     }
 }

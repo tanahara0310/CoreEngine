@@ -10,6 +10,7 @@
 #endif
 // ImGui 無しビルドでも CVar の保存値を適用するために常に必要
 #include "Settings/CVarSettingsSection.h"
+#include "Graphics/Water/WaterSettingsMigration.h"
 #include "Utility/CVar/CVarRegistry.h"
 #include "Factory/GraphicsComponentFactory.h"
 #include "Factory/CoreComponentFactory.h"
@@ -228,6 +229,8 @@ namespace CoreEngine
         // 読み込みだけをここで行う（DebugSubsystem::Initialize と同じ順番＝
         // サブシステム初期化直後に適用され、Debug ビルドと同じ結果になる）
         sequence.Add("CVar プロジェクト設定の適用", [] {
+            // 古い版のプロジェクト設定にある水の性質と風を、各シーンへ移してから読む
+            WaterSettingsMigration::MigrateProject();
             CVarSettingsSection::LoadProjectConfigFile();
             // 静的初期化中（main より前）に溜まった CVar の警告をログへ流す
             CVarRegistry::Get().FlushPendingWarnings();

@@ -256,7 +256,7 @@ namespace CoreEngine::Editor::ScriptBinding
                 }
                 std::vector<AssetType> types;
                 if (*assetType == AssetType::Unknown) {
-                    for (int value = static_cast<int>(AssetType::Texture); value <= static_cast<int>(AssetType::PhysicsMaterial); ++value) {
+                    for (int value = static_cast<int>(AssetType::Texture); value <= static_cast<int>(AssetType::WaterProfile); ++value) {
                         types.push_back(static_cast<AssetType>(value));
                     }
                 } else {

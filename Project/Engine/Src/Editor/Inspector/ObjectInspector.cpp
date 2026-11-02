@@ -247,7 +247,9 @@ namespace CoreEngine::Editor::ObjectInspector
                 const auto drawDefault = [&]() {
                     bool defaultChanged = false;
                     if (descriptor) {
-                        defaultChanged |= InspectorRenderer::Draw(*descriptor, component.GetReflectionInstance(), context);
+                        defaultChanged |= (inspector && inspector->drawProperties)
+                            ? inspector->drawProperties(component, context)
+                            : InspectorRenderer::Draw(*descriptor, component.GetReflectionInstance(), context);
                     }
                     // 記述子で描けない欄（記述子を持たない型は全部、一部だけを載せた型は残り）
                     if (inspector && inspector->drawBody && (!descriptor || descriptor->partial)) {

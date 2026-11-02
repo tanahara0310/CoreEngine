@@ -190,7 +190,9 @@ namespace CoreEngine::Editor::PrefabAssetInspector
                 // 中身の有無は、値が変わったかではなくカーソルが進んだかで見る
                 const float cursorBefore = ImGui::GetCursorPosY();
                 if (descriptor) {
-                    changed |= InspectorRenderer::Draw(*descriptor, component.GetReflectionInstance(), context);
+                    changed |= (inspector && inspector->drawProperties)
+                        ? inspector->drawProperties(component, context)
+                        : InspectorRenderer::Draw(*descriptor, component.GetReflectionInstance(), context);
                 }
                 if (inspector && inspector->drawBody && (!descriptor || descriptor->partial)) {
                     changed |= inspector->drawBody(component);

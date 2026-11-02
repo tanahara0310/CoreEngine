@@ -3,6 +3,7 @@
 #include "GameObject/Component/Core/IComponent.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
+#include "Graphics/Asset/AssetRef.h"
 #include "Graphics/Primitive/PlaneMeshGenerator.h"
 #include "Graphics/Shader/ICustomShaderProvider.h"
 #include "Math/Vector/Vector2.h"
@@ -10,6 +11,7 @@
 #include "Math/Vector/Vector4.h"
 #include "Graphics/Water/Surface/WaterConstantBufferSet.h"
 #include "Graphics/Water/Surface/WaterRenderResources.h"
+#include "Graphics/Water/WaterProfile.h"
 
 #include <array>
 #include "Graphics/Water/Surface/WaterSurfaceTypes.h"
@@ -18,11 +20,14 @@
 
 #include <d3d12.h>
 #include <memory>
+#include <string>
+#include <string_view>
 
 namespace CoreEngine
 {
-    /// @brief 水面を描くコンポーネント（平面メッシュ・水のパラメータ・専用シェーダー）
-    /// @details 責務はメッシュ・マテリアルと水そのもののパラメータまで。
+    /// @brief 水面を描くコンポーネント（平面メッシュ・水の性質・専用シェーダー）
+    /// @details 責務はメッシュ・マテリアルと水そのものの性質（WaterProfile）まで。
+    ///          水の性質はシーンへ保存し、`.waterprofile` を指していれば読み込むときにその値で上書きする。
     ///          シーンカラーや RT 屈折・FFT・大気といった外部リソースの結線は
     ///          WaterSystem が組み立て、ApplyFrameBinding() で 1 度に渡す。
     ///          トランスフォームとメッシュ描画のコンポーネントは `Awake()` で足す。
@@ -31,15 +36,14 @@ namespace CoreEngine
     public:
         /// @param size 水面の一辺のサイズ（XZ 方向共通）
         /// @param resolution XZ 方向の分割数
-        /// @note 描画経路（FFT か Gerstner か）は `r.Water.FFT.Enabled` から決める。
+        /// @note 描画経路（FFT か Gerstner か）は WaterProfile::fftEnabled から決める。
         WaterSurfaceComponent(float size = 50.0f, uint32_t resolution = 64);
 
         const char* GetTypeName() const override { return "WaterSurface"; }
 
-        // 水の見た目そのもの（FFT の切り替え・フレネル・光学係数・泡・波）は CVar と WaterSystem が持つ。
-        // ここに出すのは、その水面 1 枚ごとに決めるものだけ
+        // 水面 1 枚ごとの値（大きさ・分割数・潮）と、水の性質（WaterProfile）。
+        // 風はシーンの r.Wind.*、描画の品質と負荷はプロジェクトの r.Water.* が持つ
         REFLECT_BEGIN(WaterSurfaceComponent, "水面")
-            REFLECT_PARTIAL()
             REFLECT_PROPERTY(size_, "一辺の長さ", p.range = Range(1.0f, 20000.0f, 1.0f),
                 p.tooltip = "メッシュの大きさ [m]。シーンを読み込むときに効く")
             REFLECT_ACCESSOR("resolution", "分割数", GetResolutionValue, SetResolutionValue,
@@ -51,6 +55,70 @@ namespace CoreEngine
             REFLECT_READONLY_ACCESSOR("tideHeight", "今の潮位", GetTideHeight)
             REFLECT_READONLY_ACCESSOR("waterLevel", "今の水面の高さ", GetWaterLevel)
 
+            REFLECT_ASSET_REF(profileAsset_, "プロファイル")
+
+            // ---- 見た目 ----
+            REFLECT_PROPERTY(profile_.baseColor, "反射が無いときの色",
+                p.type = ::CoreEngine::Reflection::PropertyType::Color,
+                p.tooltip = "レイトレーシングの映り込みも空のキューブも無いときだけ使う色（不透明度は使わない）")
+            REFLECT_PROPERTY(profile_.roughness, "粗さ", p.range = Range(0.0f, 1.0f),
+                p.tooltip = "水面の粗さ（ハイライトの広がり）")
+            REFLECT_PROPERTY(profile_.fresnelScale, "反射の強さ", p.range = Range(0.0f, 2.0f),
+                p.tooltip = "反射の強さの倍率（1 = 物理値）")
+            REFLECT_PROPERTY(profile_.fresnelF0, "正面の反射率", p.range = Range(0.0f, 0.1f),
+                p.tooltip = "正面から見たときの反射率（水は 0.02）")
+            REFLECT_PROPERTY(profile_.depthFadeEnabled, "水深で透け方を変える",
+                p.tooltip = "水の厚さで光が減る分（Beer-Lambert）を透け方に入れる")
+
+            // ---- 水質 ----
+            REFLECT_PROPERTY(profile_.absorption, "吸収 [1/m]", p.range = Range(0.0f, 4.0f),
+                p.tooltip = "吸収係数 σa（RGB）。澄んだ水は 赤 > 緑 > 青")
+            REFLECT_PROPERTY(profile_.scattering, "散乱 [1/m]", p.range = Range(0.0f, 2.0f),
+                p.tooltip = "散乱係数 σs（RGB）。深いところの水の色を決める")
+            REFLECT_PROPERTY(profile_.turbidity, "濁り", p.range = Range(0.0f, 1.0f),
+                p.tooltip = "青の吸収と粒子の散乱を足す（緑に濁る）")
+            REFLECT_PROPERTY(profile_.refractiveIndex, "屈折率", p.range = Range(1.0f, 2.0f),
+                p.tooltip = "空気 1 に対する屈折率（水は 1.333）。水面の透過・屈折・コースティクス・水中の影に効く")
+
+            // ---- 風波 ----
+            REFLECT_PROPERTY(profile_.fftEnabled, "FFT の海で描く",
+                p.tooltip = "切ると Gerstner の波で描く（Gerstner の波は保存しない）")
+            REFLECT_PROPERTY(profile_.fetchKm, "吹送距離 [km]", p.range = Range(1.0f, 2000.0f),
+                p.tooltip = "風が海の上を吹いてきた距離。シーンの風速と合わせて波の長さと高さが決まる。"
+                            "短いと若く尖った波、長いと育ちきった波")
+            REFLECT_PROPERTY(profile_.amplitudeScale, "高さの倍率", p.range = Range(0.0f, 4.0f),
+                p.tooltip = "風速と吹送距離から求めた波高に掛ける倍率")
+            REFLECT_PROPERTY(profile_.choppiness, "波頭の尖り", p.range = Range(0.0f, 4.0f),
+                p.tooltip = "水平に寄せる強さ")
+            REFLECT_PROPERTY(profile_.componentCount, "短い波の量", p.range = Range(1.0f, 64.0f),
+                p.tooltip = "スペクトルの成分の数（多いほど短い波まで入る）")
+
+            // ---- うねり ----
+            REFLECT_PROPERTY(profile_.swellEnabled, "うねりを重ねる",
+                p.tooltip = "遠くの嵐から届いた長い周期の波を重ねる（その場の風とは別に決まる）")
+            REFLECT_PROPERTY(profile_.swellHeight, "うねりの高さ [m]", p.range = Range(0.0f, 12.0f),
+                p.tooltip = "有義波高")
+            REFLECT_PROPERTY(profile_.swellPeriod, "うねりの周期 [s]", p.range = Range(2.0f, 30.0f),
+                p.tooltip = "ピーク周期（波長 = 重力 × 周期² / 2π。12 秒で約 225 m）")
+            REFLECT_PROPERTY(profile_.swellDirection, "うねりの進む向き",
+                p.flags = ::CoreEngine::Reflection::PropertyFlags::Direction,
+                p.tooltip = "+X から +Z へ回した角度。風の向きと変えると斜めに交わる波になる")
+            REFLECT_PROPERTY(profile_.swellRelativeWidth, "うねりの周期のばらつき", p.range = Range(0.01f, 0.5f),
+                p.tooltip = "周波数の帯域幅（ピークに対する比）。小さいほど周期がそろう")
+            REFLECT_PROPERTY(profile_.swellSpread, "うねりの向きのそろい方", p.range = Range(1.0f, 60.0f),
+                p.tooltip = "大きいほど一方向にそろう")
+
+            // ---- 泡 ----
+            REFLECT_PROPERTY(profile_.foamEnabled, "泡を出す",
+                p.tooltip = "白波と岸の泡を出す（FFT の海だけ）")
+            REFLECT_PROPERTY(profile_.foamWhitecapScale, "白波の量", p.range = Range(0.0f, 4.0f),
+                p.tooltip = "白波の割合の倍率（1 = 風速からの観測式 W = 3.84e-6·U^3.41）")
+            REFLECT_PROPERTY(profile_.foamOpacity, "泡の不透明度", p.range = Range(0.0f, 1.0f))
+            REFLECT_PROPERTY(profile_.foamDecaySeconds, "泡が消えるまでの時間 [s]", p.range = Range(0.2f, 10.0f),
+                p.tooltip = "泡が e^-1 まで減る時間")
+            REFLECT_PROPERTY(profile_.foamCascadeWeights, "波の大きさごとの重み", p.range = Range(0.0f, 1.0f),
+                p.tooltip = "白波を立てる傾きの寄与（大・中・小のカスケード）")
+
             REFLECT_METHOD("SetTideHeight", "潮位を指定する", SetTideHeight,
                 m.tooltip = "月と太陽の代わりに、この高さ [m] を潮位にする。ClearTideHeight で戻す")
             REFLECT_METHOD("ClearTideHeight", "潮位の指定をやめる", ClearTideHeight,
@@ -58,7 +126,11 @@ namespace CoreEngine
         REFLECT_END()
 
         /// @brief トランスフォームとメッシュ描画を確保し、平面メッシュ・シェーダー・定数バッファを用意する
+        /// @details プロファイルを指していれば、その値を読み込む。
         void Awake() override;
+
+        /// @brief 指すプロファイルが変わったら読み直す
+        void OnPropertyChanged(const Reflection::PropertyDescriptor& property) override;
 
         /// @brief トランスフォームとメッシュ描画を使う
         bool RequiresComponent(const IComponent& other) const override;
@@ -152,6 +224,37 @@ namespace CoreEngine
         /// @brief FFT Ocean 描画経路を切り替える（WaterSystem が `r.Water.FFT.Enabled` に合わせて呼ぶ）
         void SetUseFFTOcean(bool useFFTOcean);
 
+        // ===== 水の性質 =====
+
+        /// @brief 水の性質（見た目・水質・波・うねり・泡）
+        const WaterProfile& GetProfile() const { return profile_; }
+
+        /// @brief 水の性質をまとめて入れる（プロファイルの指す先は変えない）
+        void SetProfile(const WaterProfile& profile) { profile_ = profile; }
+
+        /// @brief 指しているプロファイル（何も指していなければ自分の値を使う）
+        const AssetRef<WaterProfileAsset>& GetProfileAsset() const { return profileAsset_; }
+
+        /// @brief プロファイルを指し直して読み込む（空なら指さない）
+        void SetProfileAsset(std::string_view pathOrName);
+
+        /// @brief 指しているプロファイルの値を自分へ写す
+        /// @return 読めたら true（指していない・読めなければ false で、値は変えない）
+        bool LoadProfileFromAsset();
+
+        /// @brief 指しているプロファイルの値を、保存形で読む（水面 1 枚ごとの値は含まない）
+        /// @return 指していない・読めなければ null の JSON
+        json ReadProfileAsset() const;
+
+        /// @brief 今の水の性質を、指しているプロファイルへ書き込む
+        /// @return 書けたら true
+        bool SaveProfileToAsset() const;
+
+        /// @brief 今の水の性質をプロファイルのファイルとして書く（指す先は変えない）
+        /// @param assetPath `Application/Assets/…` の綴り（拡張子は .waterprofile）
+        /// @return 書けたら true
+        bool WriteProfile(const std::string& assetPath) const;
+
         // ===== 潮 =====
 
         /// @brief 潮の高さ（月と太陽が真上か真下に来たときにトランスフォームの高さより上がる高さ [m]。0 で潮なし）
@@ -219,6 +322,9 @@ namespace CoreEngine
         }
 
     private:
+        /// @brief 今の水の性質を、プロファイルの保存形（水面 1 枚ごとの値を除いたもの）にする
+        json BuildProfileJson() const;
+
         /// @brief 水面の平面メッシュの生成器を作る
         std::unique_ptr<IPrimitiveMeshGenerator> CreateMeshGenerator() const;
 
@@ -233,7 +339,10 @@ namespace CoreEngine
 
         float    size_;
         uint32_t resolution_;
-        bool useFFTOcean_ = false;
+        bool useFFTOcean_ = WaterProfile{}.fftEnabled;
+
+        AssetRef<WaterProfileAsset> profileAsset_; ///< 値を読み込むプロファイル（何も指さなければ自分の値）
+        WaterProfile profile_{};                   ///< 水の性質
 
         float tideAmplitude_ = 0.0f;      ///< 月と太陽が真上か真下に来たときにトランスフォームの高さより上がる高さ [m]
         float skyTideHeight_ = 0.0f;      ///< 月と太陽から求めた潮位 [m]

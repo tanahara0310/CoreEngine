@@ -51,7 +51,7 @@ namespace CoreEngine::Editor
     ///          中身が同じ DDS は 1 つだけ置き、ほかは別名の一覧（CookedTextureAliases.txt）に書く。
     ///          モデルのファイル（と OBJ の .mtl・glTF の外部バッファ）も写さず、.cmesh へ変換して同じ場所に書く。
     ///          シェーダは一覧（ShaderManifest）のものを DXIL へコンパイルして同じ場所に書く（元の .hlsl も写す）。
-    ///          中身が JSON のファイル（.json・.prefab・.mat・.meta・.physmat）は MessagePack へ変換して同じ名前で書く。
+    ///          中身が JSON のファイル（.json・.prefab・.mat・.meta・.physmat・.waterprofile）は MessagePack へ変換して同じ名前で書く。
     ///          変換と写しはスレッドプールで並べて行う。変換できない物があれば全部集めてから、ファイルを写さずに止める。
     namespace GameExporter
     {

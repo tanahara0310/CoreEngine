@@ -6,10 +6,12 @@
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/Material/MaterialInstance.h"
 #include "Graphics/Model/ModelManager.h"
+#include "Graphics/Render/Model/VertexAnimation.h"
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Water/Surface/WaterRenderResources.h"
 #include "Graphics/Water/Surface/WaterSurfaceComponent.h"
 #include "Graphics/Water/System/WaterFrameContext.h"
+#include "Graphics/Water/WaterProfile.h"
 #include "Scene/Feature/SceneFeatureRegistry.h"
 #ifdef CORE_EDITOR
 #include "Editor/Water/WaterEditorPanel.h"
@@ -43,14 +45,16 @@ namespace CoreEngine
     {
         // 水面の描画に使うマネージャ（水面のレイトレ・FFT の海・泡）は、水面のあるシーンで初めて作る
         RenderDomainContext* const domain = ctx.engine ? ctx.engine->GetRenderDomainContext() : nullptr;
-        const WaterSettings& settings = settingsSource_.Refresh();
         if (domain) {
             domain->EnsureWaterInitialized();
-            // FFT の海のスペクトルは、このシーンの設定で 1 回だけ作る
-            wave_.ApplyFFTSettings(*domain, settings.waves);
         }
 
         AcquireWaterPlane(ctx);
+        const WaterSettings& settings = RefreshSettings();
+        if (domain) {
+            // FFT の海のスペクトルは設定が変わったときだけ作り直す
+            wave_.ApplyFFTSettings(*domain, settings.waves);
+        }
 
 #ifdef CORE_EDITOR
         // 水面の調整画面は水面と一緒に出す（シーンのコードは登録に関与しない）
@@ -81,6 +85,11 @@ namespace CoreEngine
 
         AdoptSceneWaterPlane(ctx);
         appearance_.FindSky(ctx);
+
+        // 保存データの水面に乗り換えたら、その水の設定でスペクトルを作っておく
+        if (RenderDomainContext* const domain = ctx.engine ? ctx.engine->GetRenderDomainContext() : nullptr) {
+            wave_.ApplyFFTSettings(*domain, RefreshSettings().waves);
+        }
     }
 
     void WaterSystem::AdoptSceneWaterPlane(SceneContext& ctx)
@@ -130,9 +139,10 @@ namespace CoreEngine
             }
             publishTarget_ = domain;
 
-            const WaterSettings& settings = settingsSource_.Refresh();
+            const WaterSettings& settings = RefreshSettings();
             WaterSurfaceComponent* const waterPlane = waterPlane_.Get();
             if (!waterPlane) {
+                VertexAnimationParams::SetSwellDirection(std::nullopt);
                 CaptureSnapshot(*domain, settings, Time::DeltaTime());
                 domain->PublishWaterFrame(nullptr, wave_.GetFFTOceanTime());
                 break;
@@ -141,6 +151,10 @@ namespace CoreEngine
             // 潮 → 設定 → 海底の範囲（スナップショットの前に水面の高さ・波の方式・岸の範囲を決める）
             const LightManager* const lightManager = ctx.engine ? ctx.engine->GetService<LightManager>() : nullptr;
             tide_.Update(lightManager, *waterPlane);
+
+            // 海草はこの水のうねりの向きへ寄せ返す
+            VertexAnimationParams::SetSwellDirection(settings.waves.swellEnabled
+                ? std::optional<Vector2>(settings.waves.swellDirection) : std::nullopt);
 
             const WaterFrameContext frame{ ctx, *domain, *waterPlane, settings };
             wave_.ApplySettings(frame);
@@ -176,6 +190,7 @@ namespace CoreEngine
         // 水面オブジェクトは GameObjectManager が所有しているため参照だけ外す
         waterPlane_.Reset();
         appearance_.Reset();
+        VertexAnimationParams::SetSwellDirection(std::nullopt);
 
         // snapshot_ はこの Feature の持ち物なので、受け渡しを取り消さないと次のシーンの描画が消えた実体を読む
         if (publishTarget_) {
@@ -251,6 +266,13 @@ namespace CoreEngine
         material->SetRoughness(preset.roughness);
         material->SetLightingEnabled(true);
         material->SetNormalMapEnabled(false);
+    }
+
+    const WaterSettings& WaterSystem::RefreshSettings()
+    {
+        const WaterSurfaceComponent* const waterPlane = waterPlane_.Get();
+        settings_ = BuildWaterSettings(waterPlane ? waterPlane->GetProfile() : WaterProfile{});
+        return settings_;
     }
 
     void WaterSystem::CaptureSnapshot(RenderDomainContext& domain, const WaterSettings& settings, float deltaSeconds)

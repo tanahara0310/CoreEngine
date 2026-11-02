@@ -13,6 +13,11 @@ namespace CoreEngine
     class IComponent;
 }
 
+namespace CoreEngine::InspectorRenderer
+{
+    struct DrawContext;
+}
+
 /// @brief コンポーネントの型ごとの、インスペクタでの出し方
 namespace CoreEngine::Editor::ComponentInspectors
 {
@@ -23,6 +28,12 @@ namespace CoreEngine::Editor::ComponentInspectors
         bool hidden = false;                       ///< インスペクタに出さない
         bool shownFirst = false;                   ///< ほかのコンポーネントより先に並べる
         std::function<bool(IComponent&)> drawBody; ///< 記述子で描けない欄（値を変えたら true）
+
+        /// @brief 記述子の欄を、既定の並びの代わりに描く（値を変えたら true）
+        /// @details 欄を見出しごとに分ける・プリセットの行を挟むときに使う。受け取った文脈で
+        ///          InspectorRenderer::DrawProperties と Assign を呼べば、履歴とプレハブの印は既定の並びと同じに付く。
+        std::function<bool(IComponent&, const InspectorRenderer::DrawContext&)> drawProperties;
+
         std::function<void(IComponent&)> drawExtra; ///< 欄の後に足す表示
     };
 
