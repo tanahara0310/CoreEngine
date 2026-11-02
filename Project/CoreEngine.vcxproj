@@ -268,7 +268,17 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Editor\Water\WaterEditorPanel.cpp" />
     <ClCompile Include="Engine\Src\Editor\Water\WaterSurfaceDebugPanel.cpp" />
     <ClCompile Include="Engine\Src\Editor\Water\WaterSurfaceParameterPanel.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\System\WaterAppearanceModule.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\System\WaterCausticsModule.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\System\WaterFoamModule.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\System\WaterRayTracingModule.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\System\WaterSeaMapModule.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\System\WaterSettings.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\System\WaterShoreModule.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\System\WaterSystem.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\System\WaterTideModule.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\System\WaterWaveModule.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\System\WaterWetnessModule.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterConstantBufferSet.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterRenderResources.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterWetnessHistory.cpp" />
@@ -331,7 +341,6 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanSpectrumDebugHelper.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Simulation\FFTOceanSurfaceSimulator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Simulation\GerstnerWaterSimulator.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Water\Simulation\WaterSurfaceModelProvider.cpp" />
     <ClCompile Include="Engine\Src\pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
@@ -1464,7 +1473,18 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Editor\Water\WaterSurfaceDebugPanel.h" />
     <ClInclude Include="Engine\Src\Editor\Water\WaterSurfaceParameterPanel.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Render\IRenderableComponent.h" />
-    <ClInclude Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\System\WaterAppearanceModule.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\System\WaterCausticsModule.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\System\WaterFoamModule.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\System\WaterFrameContext.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\System\WaterRayTracingModule.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\System\WaterSeaMapModule.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\System\WaterSettings.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\System\WaterShoreModule.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\System\WaterSystem.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\System\WaterTideModule.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\System\WaterWaveModule.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\System\WaterWetnessModule.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterConstantBufferSet.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterSurfaceComponent.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterSurfaceMeshGenerator.h" />
@@ -1768,7 +1788,6 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\Water\WaterFoamDefaults.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Simulation\FFTOceanSurfaceSimulator.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Simulation\GerstnerWaterSimulator.h" />
-    <ClInclude Include="Engine\Src\Graphics\Water\Simulation\WaterSurfaceModelProvider.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Simulation\WaterSurfaceSimulator.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterDebugViewMode.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterSurfaceTypes.h" />

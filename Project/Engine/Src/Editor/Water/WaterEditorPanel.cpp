@@ -3,7 +3,7 @@
 #include "Editor/Water/WaterEditorPanel.h"
 
 #include "EngineSystem/EngineSystem.h"
-#include "Graphics/Water/Render/WaterRenderFeature.h"
+#include "Graphics/Water/System/WaterSystem.h"
 
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
@@ -37,7 +37,7 @@ void WaterEditorPanel::Shutdown() {
 }
 
 void WaterEditorPanel::Initialize(
-	[[maybe_unused]] WaterRenderFeature* waterFeature,
+	[[maybe_unused]] WaterSystem* waterFeature,
 	[[maybe_unused]] EngineSystem& engine) {
 	waterFeature_ = waterFeature;
 	if (!waterFeature_) {

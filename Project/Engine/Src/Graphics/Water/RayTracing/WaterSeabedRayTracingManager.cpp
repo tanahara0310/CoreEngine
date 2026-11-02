@@ -75,12 +75,8 @@ namespace CoreEngine
             return;
         }
 
-        WaterSurfaceData resolvedSurfaceData{};
-        const WaterSurfaceData& dispatchSurfaceData =
-            ResolveSurfaceDataForDispatch(surfaceData, resolvedSurfaceData);
-
         const uint32_t viewIndex = static_cast<uint32_t>(viewId);
-        BeginDiagnostics(viewIndex, kResolution, kResolution, dispatchSurfaceData, {}, {});
+        BeginDiagnostics(viewIndex, kResolution, kResolution, surfaceData, {}, {});
 
         DispatchResources resources;
         if (!BeginDispatch(cmdList, kResolution, kResolution, viewIndex, resources, DXGI_FORMAT_R32_FLOAT)) {
@@ -94,7 +90,7 @@ namespace CoreEngine
         constants.maxDepth = kMaxDepth;
         constants.instanceMask = RayTracingInstanceMask::kSolid | RayTracingInstanceMask::kMovable;
 
-        const SurfaceConstantsUpload surface = UploadSurfaceDataForDispatch(dispatchSurfaceData, fftOceanInput);
+        const SurfaceConstantsUpload surface = UploadSurfaceDataForDispatch(surfaceData, fftOceanInput);
 
         BindAndDispatchRays(
             cmdList,

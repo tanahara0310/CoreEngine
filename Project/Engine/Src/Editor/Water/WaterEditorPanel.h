@@ -9,20 +9,20 @@
 
 namespace CoreEngine {
 	class EngineSystem;
-	class WaterRenderFeature;
+	class WaterSystem;
 }
 
 namespace CoreEngine {
 
 /// @brief 水面エディタ UI の組み立てとインスペクタへの登録を担当する
 /// @details 水面本体・波シミュレーション・毎フレームのリソース結線は
-///          Engine 側の WaterRenderFeature が持つ。ここは UI だけを扱う。
+///          Engine 側の WaterSystem が持つ。ここは UI だけを扱う。
 class WaterEditorPanel {
 public:
 	/// @brief 水面 UI の各パネルを初期化し、水面コンポーネントのインスペクタとして登録する
 	/// @param waterFeature シーンへ登録済みの水面 Feature（nullptr のとき UI は出ない）
 	/// @param engine エンジンシステム
-	void Initialize(CoreEngine::WaterRenderFeature* waterFeature, CoreEngine::EngineSystem& engine);
+	void Initialize(CoreEngine::WaterSystem* waterFeature, CoreEngine::EngineSystem& engine);
 
 	/// @brief インスペクタの登録を外し、Feature 参照を切る
 	/// @note 水面の Feature の Finalize から呼ぶ。何度呼んでもよい。
@@ -43,7 +43,7 @@ private:
 #endif
 
 	/// @brief UI の操作対象（所有権は Scene の Feature 一覧）
-	CoreEngine::WaterRenderFeature* waterFeature_ = nullptr;
+	CoreEngine::WaterSystem* waterFeature_ = nullptr;
 };
 
 }

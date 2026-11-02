@@ -205,8 +205,38 @@
     <ClCompile Include="Engine\Src\Editor\Water\WaterSurfaceParameterPanel.cpp">
       <Filter>Engine\Src\Editor\Water</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.cpp">
-      <Filter>Engine\Src\Graphics\Water\Render</Filter>
+    <ClCompile Include="Engine\Src\Graphics\Water\System\WaterAppearanceModule.cpp">
+      <Filter>Engine\Src\Graphics\Water\System</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\System\WaterCausticsModule.cpp">
+      <Filter>Engine\Src\Graphics\Water\System</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\System\WaterFoamModule.cpp">
+      <Filter>Engine\Src\Graphics\Water\System</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\System\WaterRayTracingModule.cpp">
+      <Filter>Engine\Src\Graphics\Water\System</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\System\WaterSeaMapModule.cpp">
+      <Filter>Engine\Src\Graphics\Water\System</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\System\WaterSettings.cpp">
+      <Filter>Engine\Src\Graphics\Water\System</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\System\WaterShoreModule.cpp">
+      <Filter>Engine\Src\Graphics\Water\System</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\System\WaterSystem.cpp">
+      <Filter>Engine\Src\Graphics\Water\System</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\System\WaterTideModule.cpp">
+      <Filter>Engine\Src\Graphics\Water\System</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\System\WaterWaveModule.cpp">
+      <Filter>Engine\Src\Graphics\Water\System</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\System\WaterWetnessModule.cpp">
+      <Filter>Engine\Src\Graphics\Water\System</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterConstantBufferSet.cpp">
       <Filter>Engine\Src\Graphics\Water\Surface</Filter>
@@ -392,9 +422,6 @@
       <Filter>Engine\Src\Graphics\Water\Simulation</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\Simulation\GerstnerWaterSimulator.cpp">
-      <Filter>Engine\Src\Graphics\Water\Simulation</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Water\Simulation\WaterSurfaceModelProvider.cpp">
       <Filter>Engine\Src\Graphics\Water\Simulation</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\pch.cpp">
@@ -2175,8 +2202,41 @@
     <ClInclude Include="Engine\Src\GameObject\Component\Render\IRenderableComponent.h">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.h">
-      <Filter>Engine\Src\Graphics\Water\Render</Filter>
+    <ClInclude Include="Engine\Src\Graphics\Water\System\WaterAppearanceModule.h">
+      <Filter>Engine\Src\Graphics\Water\System</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\System\WaterCausticsModule.h">
+      <Filter>Engine\Src\Graphics\Water\System</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\System\WaterFoamModule.h">
+      <Filter>Engine\Src\Graphics\Water\System</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\System\WaterFrameContext.h">
+      <Filter>Engine\Src\Graphics\Water\System</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\System\WaterRayTracingModule.h">
+      <Filter>Engine\Src\Graphics\Water\System</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\System\WaterSeaMapModule.h">
+      <Filter>Engine\Src\Graphics\Water\System</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\System\WaterSettings.h">
+      <Filter>Engine\Src\Graphics\Water\System</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\System\WaterShoreModule.h">
+      <Filter>Engine\Src\Graphics\Water\System</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\System\WaterSystem.h">
+      <Filter>Engine\Src\Graphics\Water\System</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\System\WaterTideModule.h">
+      <Filter>Engine\Src\Graphics\Water\System</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\System\WaterWaveModule.h">
+      <Filter>Engine\Src\Graphics\Water\System</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\System\WaterWetnessModule.h">
+      <Filter>Engine\Src\Graphics\Water\System</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterConstantBufferSet.h">
       <Filter>Engine\Src\Graphics\Water\Surface</Filter>
@@ -3085,9 +3145,6 @@
       <Filter>Engine\Src\Graphics\Water\Simulation</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\Simulation\GerstnerWaterSimulator.h">
-      <Filter>Engine\Src\Graphics\Water\Simulation</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Water\Simulation\WaterSurfaceModelProvider.h">
       <Filter>Engine\Src\Graphics\Water\Simulation</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\Simulation\WaterSurfaceSimulator.h">
@@ -4634,14 +4691,14 @@
     <Filter Include="Engine\Src\Graphics\Water\RayTracing">
       <UniqueIdentifier>{01A8FFFF-937C-46E3-98EF-476A65F5EEAC}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Engine\Src\Graphics\Water\Render">
-      <UniqueIdentifier>{4B12F921-6D73-4BD6-B4F9-23B4F214771D}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Engine\Src\Graphics\Water\Simulation">
       <UniqueIdentifier>{885AB6EC-E224-419F-8C36-DD519D941E3B}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Water\Surface">
       <UniqueIdentifier>{DC70B5CC-F394-41D8-AE69-0F79ED80E885}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Water\System">
+      <UniqueIdentifier>{D2682989-3B2A-4327-A460-231A8BE8958D}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Input">
       <UniqueIdentifier>{54C16D33-E6EA-45EA-BFD5-732F01D04340}</UniqueIdentifier>

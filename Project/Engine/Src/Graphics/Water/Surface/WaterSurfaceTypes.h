@@ -123,7 +123,7 @@ struct WaterFrameConstants {
 		CoreEngine::WaterFoamDefaults::kCascadeWeights[2],
 	};
 	// 泡の寿命 τ [s]。PS 未使用だが実行時の値の単一情報源としてここに持ち、
-	// WaterRenderFeature が毎フレーム WaterFoamSystem::SetSettings へ渡す
+	// WaterSystem が毎フレーム WaterFoamSystem::SetSettings へ渡す
 	float foamDecaySeconds = CoreEngine::WaterFoamDefaults::kDecaySeconds;
 	// ---- 見えない細かい波のラフネス換算 ----
 	// FFT カスケードごとの平均二乗傾斜（x・z の傾きの二乗和の平均。FFTOceanManager が求める）

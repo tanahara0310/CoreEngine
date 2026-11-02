@@ -5,7 +5,7 @@
 #include "Graphics/Render/RenderingTechnique/Lighting/WaterCausticsTechnique.h"
 #include "Graphics/Water/FFTOceanManager.h"
 
-namespace CoreEngine { class WaterRenderFeature; }
+namespace CoreEngine { class WaterSystem; }
 
 namespace CoreEngine {
     class EngineSystem;
@@ -37,7 +37,7 @@ struct WaterEditorCausticsDebug {
 class WaterEditorFacade {
 public:
     /// @brief 参照先を初期化する
-    void Initialize(CoreEngine::WaterRenderFeature& runtimeController, CoreEngine::EngineSystem& engine);
+    void Initialize(CoreEngine::WaterSystem& runtimeController, CoreEngine::EngineSystem& engine);
 
     /// @brief FFT の海の manager（無ければ nullptr）
     CoreEngine::FFTOceanManager* GetFFTOceanManager() const;
@@ -59,6 +59,6 @@ private:
     CoreEngine::WaterCausticsRayTracingManager* GetWaterCausticsManager() const;
     CoreEngine::WaterCausticsTechnique* GetWaterCausticsTechnique() const;
 
-    CoreEngine::WaterRenderFeature* runtimeController_ = nullptr;
+    CoreEngine::WaterSystem* runtimeController_ = nullptr;
     CoreEngine::EngineSystem* engine_ = nullptr;
 };

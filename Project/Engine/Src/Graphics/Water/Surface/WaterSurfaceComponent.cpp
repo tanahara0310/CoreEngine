@@ -168,9 +168,9 @@ namespace CoreEngine
         const WorldTransform& transform = GetTransform();
         const Vector3 translate = transform.GetTranslate();
         const Vector3 scale = transform.GetScale();
-        const float cells = static_cast<float>((std::max)(resolution_, 1u));
-        frameCB_.meshCellSizeXZ[0] = size_ * scale.x / cells;
-        frameCB_.meshCellSizeXZ[1] = size_ * scale.z / cells;
+        const Vector2 cellSize = GetMeshCellSizeXZ();
+        frameCB_.meshCellSizeXZ[0] = cellSize.x;
+        frameCB_.meshCellSizeXZ[1] = cellSize.y;
         frameCB_.meshGridOriginXZ[0] = translate.x - 0.5f * size_ * scale.x;
         frameCB_.meshGridOriginXZ[1] = translate.z - 0.5f * size_ * scale.z;
         frameCB_.shoreMeshEnabled = (binding.shoreMeshEnabled && frameCB_.seabedEnabled != 0) ? 1 : 0;
@@ -232,6 +232,15 @@ namespace CoreEngine
     float WaterSurfaceComponent::GetWaterLevel() const {
         const float baseHeight = transformComponent_ ? GetTransform().GetTranslate().y : 0.0f;
         return baseHeight + GetTideHeight();
+    }
+
+    Vector2 WaterSurfaceComponent::GetMeshCellSizeXZ() const {
+        if (!transformComponent_) {
+            return { 0.0f, 0.0f };
+        }
+        const Vector3 scale = GetTransform().GetScale();
+        const float cells = static_cast<float>((std::max)(resolution_, 1u));
+        return { size_ * scale.x / cells, size_ * scale.z / cells };
     }
 
     void WaterSurfaceComponent::SetTideHeight(float height) {

@@ -3,7 +3,7 @@
 
 #ifdef CORE_EDITOR
 
-#include "Graphics/Water/Render/WaterRenderFeature.h"
+#include "Graphics/Water/System/WaterSystem.h"
 #include "Graphics/Water/Surface/WaterSurfaceComponent.h"
 
 #include "Editor/ImGui/EditorTheme.h"
@@ -148,14 +148,14 @@ bool CheckRow(const char* id, const char* label, bool& value) {
 }
 }
 
-void WaterSurfaceDebugPanel::Initialize(WaterRenderFeature& runtimeController) {
+void WaterSurfaceDebugPanel::Initialize(WaterSystem& runtimeController) {
 	if (WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane()) {
 		waterPlane->SetDepthFadeDebug(surfaceViewEnabled_, surfaceViewScale_);
 		waterPlane->SetDepthDebugViewMode(static_cast<WaterDebugViewMode>(surfaceViewMode_));
 	}
 }
 
-void WaterSurfaceDebugPanel::Draw(WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade) {
+void WaterSurfaceDebugPanel::Draw(WaterSystem& runtimeController, WaterEditorFacade& editorFacade) {
 	if (!runtimeController.GetWaterPlane() || !InspectorLayout::Foldout("デバッグ", false)) {
 		return;
 	}
@@ -166,7 +166,7 @@ void WaterSurfaceDebugPanel::Draw(WaterRenderFeature& runtimeController, WaterEd
 	DrawCausticsDebug(editorFacade);
 }
 
-void WaterSurfaceDebugPanel::DrawStatusRows(WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade) {
+void WaterSurfaceDebugPanel::DrawStatusRows(WaterSystem& runtimeController, WaterEditorFacade& editorFacade) {
 	const WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
 	ImGui::SeparatorText("状態");
 	InfoRow("描き方", waterPlane->IsUsingFFTOcean() ? "FFT の海" : "Gerstner の波");
@@ -183,7 +183,7 @@ void WaterSurfaceDebugPanel::DrawStatusRows(WaterRenderFeature& runtimeControlle
 	InfoRow("反射", waterPlane->GetFrameConstants().reflectionEnabled != 0 ? "使う" : "使わない");
 }
 
-void WaterSurfaceDebugPanel::DrawSurfaceView(WaterRenderFeature& runtimeController) {
+void WaterSurfaceDebugPanel::DrawSurfaceView(WaterSystem& runtimeController) {
 	WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
 	ImGui::SeparatorText("水面の可視化");
 	bool changed = CheckRow("surfaceView", "可視化する", surfaceViewEnabled_);

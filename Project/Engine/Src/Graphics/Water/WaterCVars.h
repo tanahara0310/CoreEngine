@@ -6,7 +6,7 @@ namespace CoreEngine
 {
     /// @brief 水面パラメータの CVar 群（単一情報源）
     /// @details 定義は WaterCVars.cpp。永続化は CVars.json（CVarSettingsSection）へ一本化し、
-    ///          WaterRenderFeature::ApplySettingsFromCVars が毎フレームここから各所へ反映する。
+    ///          WaterSystem が CVar の変わったときに読み直し、毎フレーム各所へ渡す。
     /// @note UI は CVar ツリーと水面パネルの両方から編集できる（同じストレージを書くので食い違わない）。
     namespace WaterCVars
     {

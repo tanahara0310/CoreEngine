@@ -107,12 +107,8 @@ namespace CoreEngine
         UINT height,
         ViewID viewId)
     {
-        WaterSurfaceData resolvedSurfaceData{};
-        const WaterSurfaceData& dispatchSurfaceData =
-            ResolveSurfaceDataForDispatch(surfaceData, resolvedSurfaceData);
-
         const uint32_t viewIndex = static_cast<uint32_t>(viewId);
-        BeginDiagnostics(viewIndex, width, height, dispatchSurfaceData, sceneDepthSRV, {});
+        BeginDiagnostics(viewIndex, width, height, surfaceData, sceneDepthSRV, {});
 
         DispatchResources resources;
         if (!BeginDispatch(cmdList, width, height, viewIndex, resources)) {
@@ -136,11 +132,11 @@ namespace CoreEngine
         constants.lightColor[1] = lightInput.color.y;
         constants.lightColor[2] = lightInput.color.z;
         constants.lightIntensity = lightInput.intensity;
-        constants.regionCenterXZ[0] = dispatchSurfaceData.regionCenterXZ[0];
-        constants.regionCenterXZ[1] = dispatchSurfaceData.regionCenterXZ[1];
-        constants.regionHalfExtentXZ[0] = dispatchSurfaceData.regionHalfExtentXZ[0];
-        constants.regionHalfExtentXZ[1] = dispatchSurfaceData.regionHalfExtentXZ[1];
-        constants.regionValid = dispatchSurfaceData.regionValid;
+        constants.regionCenterXZ[0] = surfaceData.regionCenterXZ[0];
+        constants.regionCenterXZ[1] = surfaceData.regionCenterXZ[1];
+        constants.regionHalfExtentXZ[0] = surfaceData.regionHalfExtentXZ[0];
+        constants.regionHalfExtentXZ[1] = surfaceData.regionHalfExtentXZ[1];
+        constants.regionValid = surfaceData.regionValid;
         constants.absorptionCoeff[0] = settings_.absorptionCoeff[0];
         constants.absorptionCoeff[1] = settings_.absorptionCoeff[1];
         constants.absorptionCoeff[2] = settings_.absorptionCoeff[2];
@@ -162,7 +158,7 @@ namespace CoreEngine
                 settings_.refractiveIndex);
         }
 
-        const SurfaceConstantsUpload surface = UploadSurfaceDataForDispatch(dispatchSurfaceData, fftOceanInput);
+        const SurfaceConstantsUpload surface = UploadSurfaceDataForDispatch(surfaceData, fftOceanInput);
 
         BindAndDispatchRays(
             cmdList,
@@ -190,9 +186,9 @@ namespace CoreEngine
                 viewIndex,
                 width,
                 height,
-                dispatchSurfaceData.waterHeight,
-                dispatchSurfaceData.simulationType,
-                dispatchSurfaceData.activeWaveCount,
+                surfaceData.waterHeight,
+                surfaceData.simulationType,
+                surfaceData.activeWaveCount,
                 resources.outputSrvHandle.ptr,
                 settings_.debugViewMode,
                 settings_.debugDisplayScale);

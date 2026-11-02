@@ -251,7 +251,7 @@ namespace CoreEngine
         context.volumetricCloudManager = volumetricCloudManager_.get();
         context.fogManager = fogManager_.get();
 
-        // 水面状態は WaterRenderFeature が publish する（シーンに水面用の仮想関数を持たせない）
+        // 水面の状態は WaterSystem が PublishWaterFrame で渡す
         context.waterSurfaceState = waterSurfaceState_;
         context.fftOceanSimulationTime = fftOceanSimulationTime_;
     }

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.53.1">
+<meta name="engine-version" content="0.53.2">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -9935,6 +9935,14 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-53-2">v0.53.2 <span class="dim">（2026-11-03）</span></h3>
+  <p>水面の処理の中身を整理した版です。見た目・動き・シーンの書き方（<code>"features": ["WaterRender"]</code>）・CVar・スクリプトは変わりません。</p>
+  <ul>
+    <li><strong>水面の処理を部品に分けた</strong>：水面の機能を、潮・波・水面の見た目・泡・コースティクス・屈折と映り込み・岸・海の範囲マップ・濡れ跡の部品に分け、毎フレーム決まった順に呼ぶようにしました。</li>
+    <li><strong>水面の状態を 1 つに</strong>：描画が読む水面の状態（高さ・波・範囲・岸の格子・濡れ跡）を、フレームに 1 回作る 1 つにまとめました。レイトレーシングの映り込み・屈折・コースティクス・海底が、別に写した水面の状態を読む経路をなくしました。</li>
+    <li><strong>設定の読み込み</strong>：<code>r.Water.*</code> の CVar は、どれかが変わったフレームだけ読み直します。</li>
+  </ul>
 
   <h3 id="changelog-v0-53-1">v0.53.1 <span class="dim">（2026-11-03）</span></h3>
   <p>FFT の海の映り込みを、実際の海と同じ式で求めるようにした版です。風のある海で、町並みが鏡のようにくっきり映っていたのを直しました。映り込みは風が強いほど縦に伸びてぼけ、遠くの水面ほど空が映ります。Gerstner の波の見た目は変わりません。</p>

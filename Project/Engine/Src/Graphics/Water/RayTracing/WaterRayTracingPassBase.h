@@ -12,7 +12,6 @@
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Graphics/Water/WaterSurfaceData.h"
-#include "Graphics/Water/Simulation/WaterSurfaceModelProvider.h"
 #include "Graphics/RayTracing/RayTracingPassBase.h"
 
 namespace CoreEngine
@@ -64,11 +63,6 @@ namespace CoreEngine
             /// @brief 波群エンベロープの位相のずれ [rad]（FFTOceanManager::ComputeWaveGroupPhase）
             float waveGroupPhase[3] = { 0.0f, 0.0f, 0.0f };
         };
-
-        /// @brief RT 側が参照する水面モデルの供給元を差し替える
-        void SetSurfaceModelProvider(const std::shared_ptr<const IWaterSurfaceModelProvider>& provider);
-        /// @brief 現在の水面モデル供給元を取得
-        std::shared_ptr<const IWaterSurfaceModelProvider> GetSurfaceModelProvider() const;
 
         /// @brief 直近ディスパッチ時の水面高さ（診断ログ用）
         float GetLastWaterHeight() const { return lastWaterHeight_; }
@@ -228,15 +222,8 @@ namespace CoreEngine
             const WaterSurfaceData& surfaceData,
             const FFTOceanInput& fftOceanInput) const;
 
-        /// @brief provider があればそこから、無ければ fallback から surface data を決める
-        const WaterSurfaceData& ResolveSurfaceDataForDispatch(
-            const WaterSurfaceData& fallbackSurfaceData,
-            WaterSurfaceData& outResolvedSurfaceData) const;
-
         /// @brief ヒットシェーディングの定数（RTHitShadingConstants）を記録中のフレームの UploadRing に置き、GPU アドレスを返す
         D3D12_GPU_VIRTUAL_ADDRESS UploadHitShadingConstants(const WaterHitShadingInput& input) const;
-
-        std::weak_ptr<const IWaterSurfaceModelProvider> surfaceModelProvider_;
 
     private:
         WaterSurfaceConstants BuildSurfaceConstants(
