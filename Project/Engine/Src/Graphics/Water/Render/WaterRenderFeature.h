@@ -72,11 +72,15 @@ namespace CoreEngine
         /// @details UI で波パラメータを変更した直後など、次フレームを待たずに
         ///          RT 側へ反映したい場合に呼ぶ。
         /// @param deltaSeconds 前の記録から進んだ時間（濡れ跡を乾かす。フレームの更新以外は 0）
-        void RefreshWaterSurfaceState(float deltaSeconds = 0.0f);
+        /// @return 有効な水面を simulator から写したか
+        bool RefreshWaterSurfaceState(float deltaSeconds = 0.0f);
 
     private:
         /// @brief 現在の描画経路に対応する simulator を返す
         WaterSurfaceSimulator* GetActiveSimulator() const;
+
+        /// @brief 今の水面状態を RT の屈折・反射・コースティクスが読む provider へ写す
+        void PushSurfaceToProvider() const;
 
         /// @brief 水面オブジェクトをシーンから採用、無ければ生成する
         void AcquireWaterPlane(SceneContext& ctx);

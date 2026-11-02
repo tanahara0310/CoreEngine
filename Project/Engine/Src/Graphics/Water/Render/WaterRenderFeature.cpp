@@ -232,7 +232,7 @@ namespace CoreEngine
             // 大気散乱（EnvironmentFeature）の更新後に結線する。
             // LUT / SH / キューブマップの準備完了はこの時点で確定している。
             UpdateSkyTide(ctx);
-            RefreshWaterSurfaceState(Time::DeltaTime());
+            const bool surfaceCaptured = RefreshWaterSurfaceState(Time::DeltaTime());
 
             if (!domain) {
                 break;
@@ -269,6 +269,9 @@ namespace CoreEngine
             waterSurfaceState_.shoreMeshSize = binding.seabedSize;
             waterSurfaceState_.shoreMeshCellSize = frameConstants.shoreMeshCellSize;
             waterSurfaceState_.shoreMeshBlendWidth = frameConstants.shoreMeshBlendWidth;
+            if (surfaceCaptured) {
+                PushSurfaceToProvider();
+            }
             LogFrameDiagnostics(binding);
             break;
         }
@@ -700,14 +703,14 @@ namespace CoreEngine
         caustics->SetSettings(settings);
     }
 
-    void WaterRenderFeature::RefreshWaterSurfaceState(float deltaSeconds)
+    bool WaterRenderFeature::RefreshWaterSurfaceState(float deltaSeconds)
     {
         WaterSurfaceComponent* const waterPlane = waterPlane_.Get();
         // 前フレームの値を破棄し、現在の水面状態から再構築する
         waterSurfaceState_ = {};
         if (!waterPlane) {
             wetnessHistory_.Clear();
-            return;
+            return false;
         }
 
         // 水面が無効なフレームは「水なし」として扱う。
@@ -719,7 +722,7 @@ namespace CoreEngine
                 surfaceModelProvider_->ClearSurfaceData();
             }
             wetnessHistory_.Clear();
-            return;
+            return false;
         }
 
         WaterSurfaceSimulationInput simulationInput{};
@@ -734,7 +737,7 @@ namespace CoreEngine
                 surfaceModelProvider_->SetSurfaceData(
                     waterSurfaceState_, WaterSurfaceSimulationType::Gerstner);
             }
-            return;
+            return false;
         }
 
         activeSimulator->CaptureSurface(simulationInput, waterSurfaceState_);
@@ -759,7 +762,14 @@ namespace CoreEngine
         UpdateSeaMapBinding();
         UpdateWetness(deltaSeconds);
 
-        if (surfaceModelProvider_) {
+        PushSurfaceToProvider();
+        return true;
+    }
+
+    void WaterRenderFeature::PushSurfaceToProvider() const
+    {
+        const WaterSurfaceSimulator* const activeSimulator = GetActiveSimulator();
+        if (surfaceModelProvider_ && activeSimulator) {
             surfaceModelProvider_->SetSurfaceData(
                 waterSurfaceState_, activeSimulator->GetSimulationType());
         }
