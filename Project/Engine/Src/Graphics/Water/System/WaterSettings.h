@@ -70,18 +70,8 @@ namespace CoreEngine
         float wetnessDrySeconds = 60.0f;
     };
 
-    /// @brief r.Water.* の CVar から WaterSettings を作り、CVar が変わったときだけ作り直す
-    class WaterSettingsSource {
-    public:
-        /// @brief CVar がどれか変わっていれば読み直し、今の設定を返す
-        const WaterSettings& Refresh();
+    struct WaterProfile;
 
-        /// @brief 最後に読んだ設定を返す
-        const WaterSettings& Get() const { return settings_; }
-
-    private:
-        WaterSettings settings_{};
-        uint32_t cvarRevision_ = 0;
-        bool loaded_ = false;
-    };
+    /// @brief 水の性質・シーンの風・プロジェクトの品質の設定から、このフレームの設定を作る
+    WaterSettings BuildWaterSettings(const WaterProfile& profile);
 }

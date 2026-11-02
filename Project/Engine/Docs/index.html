@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.53.2">
+<meta name="engine-version" content="0.54.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -3375,12 +3375,12 @@ kbd {
   </ul>
 
   <h2 id="export-json">JSON のバイナリ化</h2>
-  <p>シーン・プレハブ・マテリアル（<span class="path">.mat</span>）・物理の材質（<span class="path">.physmat</span>）・<span class="path">.meta</span>・データ（<a href="#api-DataFile"><code>DataFile</code></a> の JSON）・プロジェクトの設定など、中身が JSON のファイルは、書き出すときに <strong>MessagePack</strong>（JSON と同じ中身をバイナリにした形）へ変換して、同じ名前で書きます。書き出したゲームはこれを読みます。遊ぶ人がメモ帳で開いても中身は読めず、ファイルも小さくなります。暗号ではないので、書き換えを完全に防ぐものではありません。</p>
+  <p>シーン・プレハブ・マテリアル（<span class="path">.mat</span>）・物理の材質（<span class="path">.physmat</span>）・水面プロファイル（<span class="path">.waterprofile</span>）・<span class="path">.meta</span>・データ（<a href="#api-DataFile"><code>DataFile</code></a> の JSON）・プロジェクトの設定など、中身が JSON のファイルは、書き出すときに <strong>MessagePack</strong>（JSON と同じ中身をバイナリにした形）へ変換して、同じ名前で書きます。書き出したゲームはこれを読みます。遊ぶ人がメモ帳で開いても中身は読めず、ファイルも小さくなります。暗号ではないので、書き換えを完全に防ぐものではありません。</p>
   <div class="table-wrap">
   <table>
     <thead><tr><th>ファイル</th><th>書き出したゲーム</th></tr></thead>
     <tbody>
-      <tr><td><span class="path">.json</span>・<span class="path">.prefab</span>・<span class="path">.mat</span>・<span class="path">.physmat</span>・<span class="path">.meta</span></td><td>MessagePack に変換して書く（名前は変えない）</td></tr>
+      <tr><td><span class="path">.json</span>・<span class="path">.prefab</span>・<span class="path">.mat</span>・<span class="path">.physmat</span>・<span class="path">.waterprofile</span>・<span class="path">.meta</span></td><td>MessagePack に変換して書く（名前は変えない）</td></tr>
       <tr><td><span class="path">CookManifest.json</span></td><td>テキストの JSON のまま（変換したものの一覧）</td></tr>
       <tr><td><span class="path">CookedTextureAliases.txt</span></td><td>テキストのまま（1 つにまとめた DDS の一覧）</td></tr>
       <tr><td>スクリプトの <a href="#api-SaveFile"><code>SaveFile</code></a> が書くセーブデータ</td><td>遊ぶ人の PC でテキストの JSON のまま書く</td></tr>
@@ -9710,7 +9710,7 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <script type="text/x-code" data-lang="text" data-file="Application/Assets/Scenes/Main/">
     Main/
     ├─ _scene.json          シーンの設定（床・当たるレイヤーの組み合わせ・機能）
-    ├─ _environment.json    空・雲・霧・ポストエフェクトなど、シーンごとの CVar
+    ├─ _environment.json    空・雲・霧・風・ポストエフェクトなど、シーンごとの CVar
     ├─ _cloudPaint.bin      雲の配置のペイント（使ったときだけ）
     ├─ MainCamera.json      オブジェクト 1 個につき 1 ファイル
     ├─ Player.json
@@ -9864,6 +9864,7 @@ python Tools/OkinawaBeach/bake_araha_walk.py
       <tr><td>音</td><td><span class="path">.wav</span>・<span class="path">.mp3</span></td></tr>
       <tr><td>フォント</td><td><span class="path">.ttf</span>・<span class="path">.otf</span></td></tr>
       <tr><td>物理マテリアル</td><td><span class="path">.physmat</span>（<a href="#api-PhysicsMaterial">書き方</a>）</td></tr>
+      <tr><td>水面プロファイル</td><td><span class="path">.waterprofile</span>（<a href="#api-WaterSurface">水面</a>のインスペクタで作る）</td></tr>
       <tr><td>マテリアル（スプライト・UI 画像）</td><td><span class="path">.mat</span>（<a href="#format-material">書き方</a>）・シェーダは <span class="path">.hlsl</span></td></tr>
     </tbody>
   </table>
@@ -9935,6 +9936,17 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-54-0">v0.54.0 <span class="dim">（2026-11-03）</span></h3>
+  <p>水の性質（波・水の色・反射と屈折・泡）を、プロジェクトの CVar から水面コンポーネントの値へ移した版です。シーンごとに違う海を作れ、同じ値を水面プロファイル（<span class="path">.waterprofile</span>）にして、ほかのシーンの水面からも指せます。風はシーンの設定 <code>r.Wind.*</code> になり、海の波と植物の揺れが同じ風で動きます。取り込んだ後も見た目は変わりません。</p>
+  <ul>
+    <li><strong>水面の値</strong>：見た目（粗さ・反射の強さ・正面の反射率・反射が無いときの色・水深で透け方を変える）・水質（吸収・散乱・濁り・屈折率）・風波（FFT の海で描く・吹送距離・高さの倍率・波頭の尖り・短い波の量）・うねり・泡を、水面コンポーネントの値にしました。シーンの水面のファイルに保存され、スクリプトからも <code>owner.waterSurface.fetchKm</code> のように読み書きできます（<a href="#api-WaterSurface">水面</a>）。</li>
+    <li><strong>水面プロファイル</strong>：水面のインスペクタの「プロファイルとして保存」で、今の値を <span class="path">Assets/Water/</span> に <span class="path">.waterprofile</span> として書き、それを指します。プロファイルを指した水面には、シーンを開いたときと指し直したときにプロファイルの値が入ります。インスペクタで変えた値をプロファイルにも残すには「プロファイルへ書き込む」を押します。物理マテリアルの <span class="path">.physmat</span> と同じ使い方です。</li>
+    <li><strong>風</strong>：風速と風の向きを、シーンの CVar <code>r.Wind.Speed</code>・<code>r.Wind.Direction</code>（<span class="path">_environment.json</span>）にしました。海の風波・白波・映り込みのぼけ・植物の揺れが、この風で決まります。水面の無いシーンでは、海藻もうねりの向きでなく風の向きに揺れます。</li>
+    <li><strong>プロジェクトに残る設定</strong>：<code>r.Water.*</code> は、描画の品質と負荷の設定（カメラの近くの細かい格子・海の範囲マップ・濡れ跡・コースティクスの作り方とスクリーンスペースの値・屈折のずれの上限・モーションベクター）だけになりました。</li>
+    <li><strong>インスペクタ</strong>：<code>Vector2</code> の値に「向き」の印（<code>PropertyFlags::Direction</code>）を付けると、角度（度）で直す欄になります。C++ でコンポーネントの出し方を登録するときの <code>drawProperties</code> で、記述子の欄を見出しごとに分けて描けるようにしました（履歴とプレハブの印は既定の並びと同じに付きます）。</li>
+  </ul>
+  <div class="callout warn" data-title="取り込んだ後の最初の起動で、水の設定を移します"><p>CVars.json にある水の性質と風の値（<code>r.Water.FFT.*</code>・<code>r.Water.Swell.*</code>・<code>r.Water.Foam.*</code>・<code>r.Water.BaseColor</code> など 27 個）は、取り込んだ後に初めてプロジェクトを開いたときに、すべてのシーンとプレハブの水面へ、風は各シーンの <span class="path">_environment.json</span> へ自動で移し、CVars.json からは消します。移す前の CVars.json は <span class="path">Saved/EditorSettings/CVars.json.water.migrated</span> に残します。シーンの水面のファイル・<span class="path">_environment.json</span>・CVars.json が書き換わるので、まとめてコミットしてください。スクリプトで <code>CVar::SetFloat("r.Water.FFT.WindSpeed", …)</code> のように名前で書いていたときは、<code>r.Wind.Speed</code> か水面の値（<code>owner.waterSurface.…</code>）へ直してください。</p></div>
 
   <h3 id="changelog-v0-53-2">v0.53.2 <span class="dim">（2026-11-03）</span></h3>
   <p>水面の処理の中身を整理した版です。見た目・動き・シーンの書き方（<code>"features": ["WaterRender"]</code>）・CVar・スクリプトは変わりません。</p>
@@ -15476,7 +15488,33 @@ void LateUpdate()   // 追いかける相手が動いた後に動かす
     props: [
       ["一辺の長さ", "size", "float", "50", "水面の大きさ（m）。シーンを読み込むときに効きます。"],
       ["分割数", "resolution", "int", "64", "水面全体を覆う格子の細かさ。シーンを読み込むときに効きます。カメラの周りは別の細かい格子で描きます（下の注意）。"],
-      ["潮の高さ", "tideAmplitude", "float", "0", "月と太陽が真上か真下に来たとき、水面がトランスフォームの高さより上がる高さ（m）。地平線に来たときは同じだけ下がります。0 で潮なし。"]
+      ["潮の高さ", "tideAmplitude", "float", "0", "月と太陽が真上か真下に来たとき、水面がトランスフォームの高さより上がる高さ（m）。地平線に来たときは同じだけ下がります。0 で潮なし。"],
+      ["プロファイル", "profileAsset", "string", "なし", ".waterprofile ファイル。指定すると、シーンを開いたときと指し直したときに、その値が下の水の性質へ入ります。"],
+      ["反射が無いときの色", "baseColor", "Vector4", "(0.04, 0.18, 0.28, 0.85)", "レイトレーシングの映り込みも空のキューブも無いときだけ使う色（w は使いません）。"],
+      ["粗さ", "roughness", "float", "0.03", "水面の粗さ（ハイライトの広がり）。"],
+      ["反射の強さ", "fresnelScale", "float", "1", "反射の強さの倍率（1 = 物理値）。"],
+      ["正面の反射率", "fresnelF0", "float", "0.02", "正面から見たときの反射率（水は 0.02）。"],
+      ["水深で透け方を変える", "depthFadeEnabled", "bool", "true", "水の厚さで光が減る分（Beer-Lambert）を透け方に入れます。"],
+      ["吸収", "absorption", "Vector3", "(0.45, 0.09, 0.06)", "吸収係数（1/m。RGB）。澄んだ水は 赤 &gt; 緑 &gt; 青。"],
+      ["散乱", "scattering", "Vector3", "(0.010, 0.032, 0.028)", "散乱係数（1/m。RGB）。深いところの水の色を決めます。"],
+      ["濁り", "turbidity", "float", "0", "青の吸収と粒子の散乱を足します（緑に濁る）。"],
+      ["屈折率", "refractiveIndex", "float", "1.333", "空気 1 に対する屈折率。水面の透過・屈折・コースティクス・水中の影に効きます。"],
+      ["FFT の海で描く", "fftEnabled", "bool", "true", "切ると Gerstner の波で描きます（下の注意）。"],
+      ["吹送距離", "fetchKm", "float", "200", "風が海の上を吹いてきた距離（km）。シーンの風速と合わせて、波の長さと高さが決まります。短いと若く尖った波、長いと育ちきった波。"],
+      ["高さの倍率", "amplitudeScale", "float", "1", "風速と吹送距離から求めた波高に掛ける倍率。"],
+      ["波頭の尖り", "choppiness", "float", "1.8", "水平に寄せる強さ。"],
+      ["短い波の量", "componentCount", "int", "48", "スペクトルの成分の数（1〜64。多いほど短い波まで入る）。"],
+      ["うねりを重ねる", "swellEnabled", "bool", "true", "遠くの嵐から届いた長い周期の波を重ねます（その場の風とは別に決まる）。"],
+      ["うねりの高さ", "swellHeight", "float", "1.2", "有義波高（m）。"],
+      ["うねりの周期", "swellPeriod", "float", "12", "ピーク周期（秒）。波長は 重力 × 周期² / 2π（12 秒で約 225m）。"],
+      ["うねりの進む向き", "swellDirection", "Vector2", "(0.342, -0.940)", "XZ の向き（長さ 1）。インスペクタでは +X から +Z へ回した角度で直します。"],
+      ["うねりの周期のばらつき", "swellRelativeWidth", "float", "0.06", "周波数の帯域幅（ピークに対する比）。小さいほど周期がそろいます。"],
+      ["うねりの向きのそろい方", "swellSpread", "float", "24", "大きいほど一方向にそろいます。"],
+      ["泡を出す", "foamEnabled", "bool", "true", "白波と岸の泡を出します（FFT の海だけ）。"],
+      ["白波の量", "foamWhitecapScale", "float", "1", "白波の割合の倍率（1 = 風速からの観測式）。"],
+      ["泡の不透明度", "foamOpacity", "float", "0.9", "泡の不透明度。"],
+      ["泡が消えるまでの時間", "foamDecaySeconds", "float", "3", "泡が e<sup>-1</sup> まで減る時間（秒）。"],
+      ["波の大きさごとの重み", "foamCascadeWeights", "Vector3", "(1, 0.5, 0.2)", "白波を立てる傾きの寄与（大・中・小のカスケード）。"]
     ],
     sections: [
       {
@@ -15488,7 +15526,7 @@ void LateUpdate()   // 追いかける相手が動いた後に動かす
         ]
       }
     ],
-    notes: "<ul><li>水面を使うシーンは、<span class=\"path\">_scene.json</span> に <code>\"features\": [\"WaterRender\"]</code> を書き足す必要があります（エディタに追加の画面はありません。サンプル TestBed の WaterTestScene を参照）。</li><li>波・水の色・反射と屈折・泡・コースティクスは水面 1 枚ごとの値でなく、プロジェクトの CVar（<code>r.Water.*</code>。<span class=\"path\">Config/EngineSettings/CVars.json</span>）で決まり、どのシーンの水面にも同じ値が効きます。エディタでは水面のインスペクタの「一辺の長さ」「分割数」の下に、セクションごとに並びます。「波」の「海況」で風速・吹送距離・うねりをまとめて入れられ、いまの値で出来上がる風波とうねりの波長と高さも出ます。いちばん下のボタンで <code>r.Water.*</code> をすべて既定値へ戻せます。</li><li>「FFT の海で描く」を切ると Gerstner の波で描きます。Gerstner の波は保存せず、開き直すと既定の 16 本に戻ります。</li><li>FFT の海の映り込みは、風速（<code>r.Water.FFT.WindSpeed</code>）が強いほど縦に伸びてぼけ、遠くの水面ほど空が映ります。FFT が表せない短い波の傾きを風速から求めて足しているためです。鏡のように映したいときは風速を下げます。</li><li>コースティクスの「作り方」をスクリーンスペースにしたときの強さなどの値は、Gerstner の波のときだけ効きます。レイトレーシングの明るさは、光と水の吸収から決まります。</li><li>FFT の海でレイトレーシングが使えるときは、ゲームのカメラの周り 256m 四方（海底の高さを測る範囲）を 0.5m 間隔の細かい格子で描き、その外を「分割数」の格子で描きます。範囲はカメラと一緒に 0.5m 単位で動きます。CVar <code>r.Water.Shore.FineMesh</code> で切れます。</li><li>FFT の海の波の形（頂点の高さと横のずれ）には、その格子の間隔で表せる波だけを入れます。細かい格子は 3 つのカスケードの波を全部（短い波まで）、粗い格子は 60m より長い波だけです。形に入らない短い波は、陰影（法線）で描きます。細かい格子を使わないとき（レイトレーシングが無い・<code>r.Water.Shore.FineMesh</code> を切った）は、カメラの近くも 60m より長い波だけの形になります。</li><li>レイトレーシングが使えるときは、水面の範囲全体の水深と水面の上にある物までの高さを測った地図（海の範囲マップ）で波の形を弱めます。陸や建物の下では波が出ず、浅瀬では水深に応じて低くなり、桟橋の下では桟橋に届かない高さまでになります。水面の範囲の端に触れている水と、いちばん大きな水のかたまりを海とし、それ以外の囲まれた水（プールや池）は波立ちません。測るのは止まっている物だけで、物を置く・動かすと、落ち着いてから測り直します。CVar <code>r.Water.SeaMap.Enabled</code> で切れ、<code>r.Water.SeaMap.Resolution</code>（地図の長い辺のテクセル数）で細かさを変えられます。</li><li>「潮の高さ」を 0 より大きくすると、大気の月と太陽の高さから潮位を求め、水面をトランスフォームの高さから上下させます（トランスフォームの値は変えません）。月の効きを 1、太陽を 0.46 として足し合わせ、どちらも真上か真下で満潮、地平線で干潮です。月が無いシーンは太陽だけで求め、どちらも無ければ潮は動きません。水面の描画・映り込み・屈折・コースティクス・水中の霧と明るさ・岸の泡・海の範囲マップは、どれも潮位を足した高さを使います。</li><li>月と太陽が真上まで来ないと、満潮は「潮の高さ」まで上がりません。シーンの機能 <code>TimeOfDay</code> は緯度（<code>r.TimeOfDay.LatitudeDeg</code>。既定 35 度）が高いほど南中が低く、35 度では満潮が「潮の高さ」の 0.34 倍、干潮が −1 倍です。</li><li><code>TimeOfDay</code> の月は月齢の分だけ太陽から遅れて動くので、新月と満月の頃は大潮、上弦と下弦の頃は小潮になります（小潮の干満差は大潮の約 37%）。満潮の時刻は毎日約 49 分ずつ遅れます（満月の日は 0 時と 12 時）。潮の速さは空の時間の速さ（<code>r.TimeOfDay.DayLengthSeconds</code>）で決まります。<code>TimeOfDay</code> の無いシーンや時間を進めないシーンでは、潮位は一定です。</li><li>スクリプトで水の高さを使う（浮かぶ・泳ぐ・濡れる）ときは、トランスフォームの高さでなく <code>waterLevel</code> を読みます。潮を自分で動かしたいときは <code>SetTideHeight</code> で指定します。</li><li>海の範囲マップの水深は、潮位を除いた高さで測ってから潮位の分を足します。満潮で水に沈んだ低い陸にも、その深さに応じて波が出ます。</li><li>水面が下がると（潮・<code>SetTideHeight</code>・トランスフォームを下げる）、それまで水に浸かっていた面が暗く、つやのある見た目で残り、時間とともに乾きます（濡れ跡）。水から出た時刻をワールドの高さごとに覚えて、その時刻からの時間で乾かすので、カメラを動かしても消えません。乾く速さは <code>r.Water.Wetness.DrySeconds</code>（濡れ具合が 1/e になるまでのゲームの時間。既定 60 秒）で決まり、<code>r.Water.Wetness.Enabled</code> で切れます。インスペクタの「濡れ跡」にも並びます。今の水面より 0.5 m 下までの面も、波打ち際として濡れて見えます。スキンメッシュと水面の範囲の外は濡らしません。</li></ul>",
+    notes: "<ul><li>水面を使うシーンは、<span class=\"path\">_scene.json</span> に <code>\"features\": [\"WaterRender\"]</code> を書き足す必要があります（エディタに追加の画面はありません。サンプル TestBed の WaterTestScene を参照）。</li><li>水の性質（波・水の色・反射と屈折・泡）は水面 1 枚ごとの値で、シーンの水面のファイルに保存されます。風（<code>r.Wind.Speed</code>・<code>r.Wind.Direction</code>）はシーンの CVar で <span class=\"path\">_environment.json</span> に、描画の品質と負荷（細かい格子・海の範囲マップ・濡れ跡・コースティクスの作り方・屈折のずれの上限）はプロジェクトの CVar（<code>r.Water.*</code>。<span class=\"path\">Config/EngineSettings/CVars.json</span>）に保存されます。エディタでは水面のインスペクタに、この 3 つがセクションごとに並びます（プロジェクトとシーンの値は見出しに書いてあります）。「波」の「海況」でシーンの風速と吹送距離・うねりをまとめて入れられ、いまの値で出来上がる風波とうねりの波長と高さも出ます。いちばん下のボタンで <code>r.Water.*</code> を既定値へ戻せます。</li><li>「プロファイルとして保存」を押すと、今の水の性質を <span class=\"path\">Assets/Water/</span> に <span class=\"path\">.waterprofile</span> として書き、それを指します。ほかのシーンの水面からも同じプロファイルを指せます。プロファイルを指した水面には、シーンを開いたときと指し直したときにプロファイルの値が入ります（物理マテリアルの <span class=\"path\">.physmat</span> と同じ）。インスペクタで変えた値は、「プロファイルへ書き込む」を押すまでプロファイルへは残りません。</li><li>「FFT の海で描く」を切ると Gerstner の波で描きます。Gerstner の波は保存せず、開き直すと既定の 16 本に戻ります。</li><li>FFT の海の映り込みは、シーンの風速（<code>r.Wind.Speed</code>）が強いほど縦に伸びてぼけ、遠くの水面ほど空が映ります。FFT が表せない短い波の傾きを風速から求めて足しているためです。鏡のように映したいときは風速を下げます。</li><li>コースティクスの「作り方」をスクリーンスペースにしたときの強さなどの値は、Gerstner の波のときだけ効きます。レイトレーシングの明るさは、光と水の吸収から決まります。</li><li>FFT の海でレイトレーシングが使えるときは、ゲームのカメラの周り 256m 四方（海底の高さを測る範囲）を 0.5m 間隔の細かい格子で描き、その外を「分割数」の格子で描きます。範囲はカメラと一緒に 0.5m 単位で動きます。CVar <code>r.Water.Shore.FineMesh</code> で切れます。</li><li>FFT の海の波の形（頂点の高さと横のずれ）には、その格子の間隔で表せる波だけを入れます。細かい格子は 3 つのカスケードの波を全部（短い波まで）、粗い格子は 60m より長い波だけです。形に入らない短い波は、陰影（法線）で描きます。細かい格子を使わないとき（レイトレーシングが無い・<code>r.Water.Shore.FineMesh</code> を切った）は、カメラの近くも 60m より長い波だけの形になります。</li><li>レイトレーシングが使えるときは、水面の範囲全体の水深と水面の上にある物までの高さを測った地図（海の範囲マップ）で波の形を弱めます。陸や建物の下では波が出ず、浅瀬では水深に応じて低くなり、桟橋の下では桟橋に届かない高さまでになります。水面の範囲の端に触れている水と、いちばん大きな水のかたまりを海とし、それ以外の囲まれた水（プールや池）は波立ちません。測るのは止まっている物だけで、物を置く・動かすと、落ち着いてから測り直します。CVar <code>r.Water.SeaMap.Enabled</code> で切れ、<code>r.Water.SeaMap.Resolution</code>（地図の長い辺のテクセル数）で細かさを変えられます。</li><li>「潮の高さ」を 0 より大きくすると、大気の月と太陽の高さから潮位を求め、水面をトランスフォームの高さから上下させます（トランスフォームの値は変えません）。月の効きを 1、太陽を 0.46 として足し合わせ、どちらも真上か真下で満潮、地平線で干潮です。月が無いシーンは太陽だけで求め、どちらも無ければ潮は動きません。水面の描画・映り込み・屈折・コースティクス・水中の霧と明るさ・岸の泡・海の範囲マップは、どれも潮位を足した高さを使います。</li><li>月と太陽が真上まで来ないと、満潮は「潮の高さ」まで上がりません。シーンの機能 <code>TimeOfDay</code> は緯度（<code>r.TimeOfDay.LatitudeDeg</code>。既定 35 度）が高いほど南中が低く、35 度では満潮が「潮の高さ」の 0.34 倍、干潮が −1 倍です。</li><li><code>TimeOfDay</code> の月は月齢の分だけ太陽から遅れて動くので、新月と満月の頃は大潮、上弦と下弦の頃は小潮になります（小潮の干満差は大潮の約 37%）。満潮の時刻は毎日約 49 分ずつ遅れます（満月の日は 0 時と 12 時）。潮の速さは空の時間の速さ（<code>r.TimeOfDay.DayLengthSeconds</code>）で決まります。<code>TimeOfDay</code> の無いシーンや時間を進めないシーンでは、潮位は一定です。</li><li>スクリプトで水の高さを使う（浮かぶ・泳ぐ・濡れる）ときは、トランスフォームの高さでなく <code>waterLevel</code> を読みます。潮を自分で動かしたいときは <code>SetTideHeight</code> で指定します。</li><li>海の範囲マップの水深は、潮位を除いた高さで測ってから潮位の分を足します。満潮で水に沈んだ低い陸にも、その深さに応じて波が出ます。</li><li>水面が下がると（潮・<code>SetTideHeight</code>・トランスフォームを下げる）、それまで水に浸かっていた面が暗く、つやのある見た目で残り、時間とともに乾きます（濡れ跡）。水から出た時刻をワールドの高さごとに覚えて、その時刻からの時間で乾かすので、カメラを動かしても消えません。乾く速さは <code>r.Water.Wetness.DrySeconds</code>（濡れ具合が 1/e になるまでのゲームの時間。既定 60 秒）で決まり、<code>r.Water.Wetness.Enabled</code> で切れます。インスペクタの「濡れ跡」にも並びます。今の水面より 0.5 m 下までの面も、波打ち際として濡れて見えます。スキンメッシュと水面の範囲の外は濡らしません。</li></ul>",
     see: [["file-formats", "_scene.json の書き方"], ["api-SkyBox", "空と大気散乱"]]
   },
 

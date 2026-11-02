@@ -9,7 +9,9 @@
 
 namespace CoreEngine {
 	class EngineSystem;
+	class IComponent;
 	class WaterSystem;
+	namespace InspectorRenderer { struct DrawContext; }
 }
 
 namespace CoreEngine {
@@ -30,9 +32,11 @@ public:
 
 private:
 #ifdef CORE_EDITOR
-	/// @brief 水面コンポーネントのインスペクタの、記述子で描けない欄を描く
-	void DrawImGuiContent();
-	/// @brief 保存する値（波・水の色・反射・泡・コースティクス）
+	/// @brief 水面コンポーネントの記述子の欄を、見出しごとに分けて描く
+	bool DrawProperties(CoreEngine::IComponent& component, const CoreEngine::InspectorRenderer::DrawContext& context);
+	/// @brief 欄の後の、デバッグ表示とプロジェクトの設定を戻すボタン
+	void DrawExtra(CoreEngine::IComponent& component);
+	/// @brief 水面 1 枚の値・水の性質・シーンの風・プロジェクトの品質の設定
 	WaterSurfaceParameterPanel parameterPanel_{};
 	/// @brief デバッグ表示と診断（保存しない）
 	WaterSurfaceDebugPanel debugPanel_{};

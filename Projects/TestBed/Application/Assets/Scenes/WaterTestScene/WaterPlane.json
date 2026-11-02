@@ -4,8 +4,34 @@
         {
             "enabled": true,
             "parameters": {
+                "absorption": [
+                    0.35,
+                    0.07,
+                    0.02
+                ],
+                "amplitudeScale": 1.15,
+                "choppiness": 1.812,
+                "componentCount": 64,
+                "fetchKm": 20.0,
+                "foamCascadeWeights": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "foamOpacity": 0.612,
                 "resolution": 256,
+                "scattering": [
+                    0.003,
+                    0.008,
+                    0.016
+                ],
                 "size": 100.0,
+                "swellDirection": [
+                    0.0,
+                    1.0
+                ],
+                "swellHeight": 0.95,
+                "swellRelativeWidth": 0.15,
                 "tideAmplitude": 0.0
             },
             "type": "WaterSurface"

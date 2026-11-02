@@ -4,6 +4,8 @@
 #include "Math/Vector/Vector2.h"
 #include "Utility/CVar/CVar.h"
 
+#include <optional>
+
 namespace CoreEngine
 {
     /// @brief 頂点アニメーション（植物の揺れ・海草の寄せ返し・魚の泳ぎ）のフレーム共通定数
@@ -25,9 +27,14 @@ namespace CoreEngine
         static constexpr float kWrapSeconds = 240.0f;
 
         /// @brief 今フレームの値を作る
-        /// @details 時間は Time（ポーズ・タイムスケールに従う。水面と同じ）、風向・風速は海（FFT）の
-        ///          CVar と同じものを使うので、波と植物が同じ風で動く。倍率は r.VertexAnim.* の CVar。
+        /// @details 時間は Time（ポーズ・タイムスケールに従う。水面と同じ）、風向・風速はシーンの風
+        ///          `r.Wind.*`（海の波と同じ）。海草はシーンの水のうねりの向き、うねりが無ければ風の向きへ寄せ返す。
+        ///          倍率は r.VertexAnim.* の CVar。
         static VertexAnimationParams Build();
+
+        /// @brief 海草を寄せ返す向きを受け取る（WaterSystem が毎フレーム呼ぶ）
+        /// @param direction シーンの水のうねりの進む向き（XZ）。水もうねりも無ければ nullopt
+        static void SetSwellDirection(const std::optional<Vector2>& direction);
     };
 
     static constexpr Cb::Field kVertexAnimationParamsFields[] = {

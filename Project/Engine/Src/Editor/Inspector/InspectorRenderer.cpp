@@ -19,10 +19,12 @@
 #include "Scene/PrefabSystem.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <format>
 #include <memory>
+#include <numbers>
 #include <optional>
 #include <string_view>
 #include <utility>
@@ -177,6 +179,26 @@ namespace CoreEngine
                 });
         }
 
+        /// @brief XZ の向きを、+X から +Z へ回した角度（度）でドラッグして書き換える（書き込む値は長さ 1）
+        bool DragDirection(const char* id, Vector2& direction)
+        {
+            constexpr float kRadToDeg = 180.0f / std::numbers::pi_v<float>;
+            float degrees = std::atan2(direction.y, direction.x) * kRadToDeg;
+            if (degrees < 0.0f) {
+                degrees += 360.0f;
+            }
+            if (!ImGui::DragFloat(id, &degrees, 0.5f, 0.0f, 0.0f, "%.0f°")) {
+                return false;
+            }
+            degrees = std::fmod(degrees, 360.0f);
+            if (degrees < 0.0f) {
+                degrees += 360.0f;
+            }
+            const float radians = degrees / kRadToDeg;
+            direction = Vector2{ std::cos(radians), std::sin(radians) };
+            return true;
+        }
+
         /// @brief 文字列を候補の一覧から選ぶ欄（一覧の上の入力欄に名前を打って Enter でも決まる）
         /// @param instance 候補を記述子に尋ねるときに渡す持ち主
         /// @return 別の値を選んだら true
@@ -326,6 +348,9 @@ namespace CoreEngine
                 return ranged ? InspectorLayout::FilledField((*number - r.min) / (r.max - r.min), drawField) : drawField();
             }
             case PropertyType::Vector2:
+                if (Reflection::HasFlag(p.flags, Reflection::PropertyFlags::Direction)) {
+                    return DragDirection(label, *static_cast<Vector2*>(value));
+                }
                 return DragScaledVector(label, &static_cast<Vector2*>(value)->x, 2, r, scale);
             case PropertyType::Vector3:
                 return DragScaledVector(label, &static_cast<Vector3*>(value)->x, 3, r, scale);
@@ -801,21 +826,15 @@ namespace CoreEngine
             }
             return type.displayName && type.displayName[0] ? type.displayName : type.name;
         }
-    }
 
-    bool InspectorRenderer::Draw(const Reflection::TypeDescriptor& type, void* instance,
-                                 const DrawContext& context)
-    {
-        if (!instance) {
-            return false;
-        }
-
-        const std::string ownerLabel = OwnerLabelOf(type, context);
-
-        bool changed = false;
-        for (const auto& p : type.properties) {
+        /// @brief プロパティを 1 つ、左にラベル・右に欄の行で描く
+        /// @return 値が変更されたら true
+        bool DrawOne(const Reflection::PropertyDescriptor& p, void* instance,
+                     const InspectorRenderer::DrawContext& context, const std::string& ownerLabel)
+        {
+            bool changed = false;
             if (!p.IsVisible() || !p.IsValid()) {
-                continue;
+                return changed;
             }
 
             // 値を自分で持たない型もあるので、記述子の getter で控えに読み出してから編集する。
@@ -824,7 +843,7 @@ namespace CoreEngine
             current.LoadFrom(p, instance);
             void* value = current.Data(p.type);
             if (!value) {
-                continue;
+                return changed;
             }
 
             ImGui::PushID(p.name.c_str());
@@ -833,7 +852,7 @@ namespace CoreEngine
             if (!p.IsEditable()) {
                 ShowPropertyTooltip(p, DrawReadOnly(p, value));
                 ImGui::PopID();
-                continue;
+                return changed;
             }
 
             const PropertyState state = InspectState(p, instance, context);
@@ -873,7 +892,7 @@ namespace CoreEngine
                 changed = DrawPropertyMenu(p, instance, state, context, ownerLabel) || changed;
                 ImGui::PopID();
                 ShowPropertyTooltip(p, hovered);
-                continue;
+                return changed;
             }
 
             // 配列は要素の欄とボタンを 1 つの項目にまとめる。並びの変更はその場で、値の編集は離したときに履歴へ積む
@@ -913,7 +932,7 @@ namespace CoreEngine
                 changed = DrawPropertyMenu(p, instance, state, context, ownerLabel) || changed;
                 ImGui::PopID();
                 ShowPropertyTooltip(p, hovered);
-                continue;
+                return changed;
             }
 
             // 描く前の値を控え、掴んだフレームでそれを編集前の値として持ち、離した瞬間に 1 件だけ履歴へ積む。
@@ -946,8 +965,71 @@ namespace CoreEngine
             changed = DrawPropertyMenu(p, instance, state, context, ownerLabel) || changed;
             ImGui::PopID();
             ShowPropertyTooltip(p, hovered);
+            return changed;
+        }
+    }
+
+    bool InspectorRenderer::Draw(const Reflection::TypeDescriptor& type, void* instance,
+                                 const DrawContext& context)
+    {
+        if (!instance) {
+            return false;
+        }
+
+        const std::string ownerLabel = OwnerLabelOf(type, context);
+        bool changed = false;
+        for (const auto& p : type.properties) {
+            changed = DrawOne(p, instance, context, ownerLabel) || changed;
         }
         return changed;
+    }
+
+    bool InspectorRenderer::DrawProperties(const Reflection::TypeDescriptor& type, void* instance,
+                                           const DrawContext& context, std::initializer_list<const char*> names)
+    {
+        if (!instance) {
+            return false;
+        }
+
+        const std::string ownerLabel = OwnerLabelOf(type, context);
+        bool changed = false;
+        for (const char* const name : names) {
+            if (const Reflection::PropertyDescriptor* const p = type.Find(name)) {
+                changed = DrawOne(*p, instance, context, ownerLabel) || changed;
+            }
+        }
+        return changed;
+    }
+
+    bool InspectorRenderer::Assign(const Reflection::TypeDescriptor& type, void* instance, const json& values,
+                                   const DrawContext& context, const std::string& label)
+    {
+        if (!instance || !values.is_object()) {
+            return false;
+        }
+
+        auto composite = std::make_unique<Editor::CompositeCommand>(label);
+        for (const auto& p : type.properties) {
+            if (!p.IsValid() || !p.IsEditable()) {
+                continue;
+            }
+            const auto found = values.find(p.name);
+            if (found == values.end()
+                || PrefabSystem::SameValue(*found, Reflection::PropertySerializer::PropertyToJson(p, instance))) {
+                continue;
+            }
+            composite->Add(AssignFromJson(p, instance, *found, context, label));
+        }
+
+        if (composite->IsEmpty()) {
+            return false;
+        }
+        if (std::unique_ptr<Editor::IEditorCommand> single = composite->ExtractSingle()) {
+            Editor::EditorCommandStack::Get().Push(std::move(single));
+        } else {
+            Editor::EditorCommandStack::Get().Push(std::move(composite));
+        }
+        return true;
     }
 
     bool InspectorRenderer::ResetToDefaults(const Reflection::TypeDescriptor& type, void* instance,

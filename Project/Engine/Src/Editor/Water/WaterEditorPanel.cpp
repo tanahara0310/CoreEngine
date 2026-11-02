@@ -3,6 +3,7 @@
 #include "Editor/Water/WaterEditorPanel.h"
 
 #include "EngineSystem/EngineSystem.h"
+#include "Graphics/Water/Surface/WaterSurfaceComponent.h"
 #include "Graphics/Water/System/WaterSystem.h"
 
 #ifdef CORE_EDITOR
@@ -10,6 +11,7 @@
 #include "Editor/ImGui/ImGuiAll.h"
 #include "Editor/ImGui/Widgets/EditorBars.h"
 #include "Editor/Inspector/InspectorLayout.h"
+#include "Editor/Inspector/InspectorRenderer.h"
 #endif
 
 using namespace CoreEngine;
@@ -19,11 +21,11 @@ namespace {
 	/// @brief この設定を持つコンポーネントの型名
 	constexpr const char* kComponentTypeName = "WaterSurface";
 
-	/// @brief 水面の CVar の接頭辞
+	/// @brief プロジェクトの水の描画設定の CVar の接頭辞
 	constexpr const char* kCVarPrefix = "r.Water.";
 
-	/// @brief すべて既定値へ戻すボタンの文字
-	constexpr const char* kResetLabel = "水面の設定をすべて既定値へ戻す";
+	/// @brief プロジェクトの水の描画設定を既定値へ戻すボタンの文字
+	constexpr const char* kResetLabel = "プロジェクトの水の描画設定を既定値へ戻す";
 }
 #endif
 
@@ -51,31 +53,31 @@ void WaterEditorPanel::Initialize(
 	parameterPanel_.Initialize(*waterFeature_, editorFacade_);
 	debugPanel_.Initialize(*waterFeature_);
 
-	// シーンに置かれた水面コンポーネントのインスペクタとして中身を描く
+	// 水面コンポーネントの欄を見出しごとに分けて描き、後ろにデバッグ表示を足す
 	inspector_ = Editor::ComponentInspectors::Register(kComponentTypeName, {
 		.displayName = "水面",
-		.drawBody = [this](IComponent&) { DrawImGuiContent(); return false; },
+		.drawProperties = [this](IComponent& component, const InspectorRenderer::DrawContext& context) {
+			return DrawProperties(component, context);
+		},
+		.drawExtra = [this](IComponent& component) { DrawExtra(component); },
 		});
 #endif
 }
 
 #ifdef CORE_EDITOR
-void WaterEditorPanel::DrawImGuiContent() {
-	if (!waterFeature_ || !waterFeature_->GetWaterPlane()) {
-		UI::Hint("水面オブジェクトがありません");
-		return;
+bool WaterEditorPanel::DrawProperties(IComponent& component, const InspectorRenderer::DrawContext& context) {
+	return parameterPanel_.Draw(static_cast<WaterSurfaceComponent&>(component), context, waterFeature_, editorFacade_);
+}
+
+void WaterEditorPanel::DrawExtra(IComponent& component) {
+	// デバッグ表示はシーンで描いている水面のときだけ出す
+	if (waterFeature_ && waterFeature_->GetWaterPlane() == &component) {
+		debugPanel_.Draw(*waterFeature_, editorFacade_);
 	}
 
 	ImGui::Spacing();
-	InspectorLayout::HelpBox("ここから下の値はプロジェクト全体の設定（CVars.json）です。どのシーンの水面にも同じ値が効きます。");
-	ImGui::Spacing();
-
-	parameterPanel_.Draw(*waterFeature_, editorFacade_);
-	debugPanel_.Draw(*waterFeature_, editorFacade_);
-
-	ImGui::Spacing();
 	InspectorLayout::AlignToRight(UI::Bar::ButtonWidth(kResetLabel));
-	if (UI::Bar::Button(kResetLabel, false, "r.Water.* をすべて既定値へ戻す（Ctrl+Z で戻せる）")) {
+	if (UI::Bar::Button(kResetLabel, false, "r.Water.*（描画の品質と負荷）をすべて既定値へ戻す（Ctrl+Z で戻せる）")) {
 		CVarUI::ResetTree(kCVarPrefix);
 	}
 }

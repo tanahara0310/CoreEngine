@@ -29,6 +29,7 @@
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Model/ModelManager.h"
+#include "Graphics/Water/WaterSettingsMigration.h"
 #include "Graphics/Render/Render.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Diagnostics/EngineStats.h"
@@ -534,6 +535,8 @@ namespace CoreEngine
         if (auto* editorSettings = engine_->GetSubsystem<EditorSettingsSubsystem>()) {
             // 旧形式（Saved/EditorSettings/CVars.json 全部入り）があれば先に 2 層へ移行する
             CVarSettingsSection::MigrateLegacyFile();
+            // 古い版のプロジェクト設定にある水の性質と風を、各シーンへ移す
+            WaterSettingsMigration::MigrateProject();
 
             cvarConfigSection_ = std::make_unique<CVarSettingsSection>(/*userStatePart=*/false);
             editorSettings->RegisterSection(cvarConfigSection_.get(), this);

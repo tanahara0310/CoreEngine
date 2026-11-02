@@ -90,6 +90,7 @@ namespace CoreEngine::Reflection
         NoSave   = 1 << 2,  ///< 保存しない（インスペクタには出す）
         NoAlpha  = 1 << 3,  ///< 色の不透明度を扱わない（Color の欄に不透明度を出さない）
         Multiline = 1 << 4, ///< 文字列を複数行で編集する
+        Direction = 1 << 5, ///< Vector2 を XZ の向きとして角度（度）で編集する（書き込む値は長さ 1）
     };
 
     constexpr PropertyFlags operator|(PropertyFlags a, PropertyFlags b) noexcept

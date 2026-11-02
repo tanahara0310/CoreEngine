@@ -86,6 +86,9 @@ namespace CoreEngine
         /// @brief 生成直後の水面マテリアル既定値を設定する
         void ConfigureDefaultMaterial() const;
 
+        /// @brief 水面の WaterProfile・シーンの風・プロジェクトの品質の設定から settings_ を作り直す
+        const WaterSettings& RefreshSettings();
+
         /// @brief 水面の今の状態から snapshot_ を作り直す
         /// @param deltaSeconds 前の記録から進んだ時間（濡れ跡を乾かす）
         void CaptureSnapshot(RenderDomainContext& domain, const WaterSettings& settings, float deltaSeconds);
@@ -104,8 +107,8 @@ namespace CoreEngine
         /// @brief この Feature が水面を作ったか（シーンが自前の水面を置いていたら引っ込める）
         bool ownsWaterPlane_ = false;
 
-        /// @brief r.Water.* の CVar から作る設定
-        WaterSettingsSource settingsSource_{};
+        /// @brief このフレームの設定（水面の WaterProfile・シーンの風・プロジェクトの品質の設定から作る）
+        WaterSettings settings_{};
 
         /// @brief このフレームの水面の状態（描画側へ渡す実体）
         WaterSurfaceData snapshot_{};

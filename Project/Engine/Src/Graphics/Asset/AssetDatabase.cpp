@@ -655,6 +655,12 @@ namespace CoreEngine
             return AssetType::PhysicsMaterial;
         }
 
+        // 水のプロファイル
+        if (ext == ".waterprofile")
+        {
+            return AssetType::WaterProfile;
+        }
+
         // プレハブ
         if (ext == ".prefab")
         {

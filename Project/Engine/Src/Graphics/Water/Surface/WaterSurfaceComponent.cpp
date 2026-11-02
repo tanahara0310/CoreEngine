@@ -11,6 +11,8 @@
 #include "Graphics/Water/Surface/WaterSurfaceMeshGenerator.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/RHI/GraphicsCore.h"
+#include "Reflection/PropertySerializer.h"
+#include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
 #include <filesystem>
 
@@ -19,6 +21,24 @@ COMPONENT_REGISTER(CoreEngine::WaterSurfaceComponent)
 
 namespace CoreEngine
 {
+    namespace
+    {
+        /// @brief 水面 1 枚ごとの値の保存キー（プロファイルには入れない）
+        constexpr const char* kSurfaceOnlyKeys[] = { "size", "resolution", "tideAmplitude", "profileAsset" };
+
+        /// @brief プロファイルの保存形の版を書くキー
+        constexpr const char* kProfileVersionKey = "version";
+
+        /// @brief 保存形から水面 1 枚ごとの値と版を取り除く
+        void EraseNonProfileKeys(json& parameters)
+        {
+            for (const char* const key : kSurfaceOnlyKeys) {
+                parameters.erase(key);
+            }
+            parameters.erase(kProfileVersionKey);
+        }
+    }
+
     bool WaterSurfaceComponent::WritesMotionVector() const
     {
         return WaterCVars::WriteMotionVector.Get();
@@ -26,8 +46,7 @@ namespace CoreEngine
 
     WaterSurfaceComponent::WaterSurfaceComponent(float size, uint32_t resolution)
         : size_(size)
-        , resolution_(resolution)
-        , useFFTOcean_(WaterCVars::FFTEnabled.Get()) {
+        , resolution_(resolution) {
         waterCB_.activeWaveCount = kMaxWaterWaveCount;
         frameCB_.useFFTOceanNormalMap = useFFTOcean_ ? 1 : 0;
 
@@ -63,6 +82,11 @@ namespace CoreEngine
         transformComponent_ = owner->GetOrAddComponent<TransformComponent>();
         meshRenderer_ = owner->GetOrAddComponent<MeshRendererComponent>();
 
+        // 保存した値を読んだ後なので、プロファイルの値で上書きしてから波の方式を決める
+        LoadProfileFromAsset();
+        useFFTOcean_ = profile_.fftEnabled;
+        frameCB_.useFFTOceanNormalMap = useFFTOcean_ ? 1 : 0;
+
         // 水面は専用のパスで描く（GameObject の描画項目はパスから種別を決める）
         meshRenderer_->SetRenderPassType(RenderPassType::WaterSurface);
         meshRenderer_->SetPrimitive(CreateMeshGenerator());
@@ -84,6 +108,72 @@ namespace CoreEngine
 
         // 登録したシェーダーを含めてメッシュを作る
         meshRenderer_->ReloadFromSpec();
+    }
+
+    void WaterSurfaceComponent::OnPropertyChanged(const Reflection::PropertyDescriptor& property) {
+        if (property.type == Reflection::PropertyType::AssetRef) {
+            LoadProfileFromAsset();
+        }
+    }
+
+    void WaterSurfaceComponent::SetProfileAsset(std::string_view pathOrName) {
+        profileAsset_.SetPath(pathOrName);
+        LoadProfileFromAsset();
+    }
+
+    bool WaterSurfaceComponent::LoadProfileFromAsset() {
+        const Reflection::TypeDescriptor* const descriptor = GetTypeDescriptor();
+        const json document = ReadProfileAsset();
+        if (!descriptor || !document.is_object()) {
+            return false;
+        }
+        Reflection::PropertySerializer::Load(*descriptor, this, document);
+        return true;
+    }
+
+    json WaterSurfaceComponent::ReadProfileAsset() const {
+        const Reflection::TypeDescriptor* const descriptor = GetTypeDescriptor();
+        if (!profileAsset_.IsSet() || !descriptor) {
+            return json();
+        }
+
+        const std::string path = profileAsset_.GetPath();
+        json document = JsonManager::GetInstance().LoadJson(path);
+        if (!document.is_object()) {
+            Logger::GetInstance().Warnf(LogCategory::System,
+                "WaterSurface: プロファイルを読めません: {}", path);
+            return json();
+        }
+
+        // 古い版で書いたプロファイルは、コンポーネントの保存値と同じ移行を通す
+        const auto version = document.find(kProfileVersionKey);
+        const uint32_t savedVersion = Reflection::PropertySerializer::ReadVersion(
+            version != document.end() ? *version : json());
+        if (savedVersion != descriptor->version) {
+            Reflection::PropertySerializer::MigrateParameters(*descriptor, savedVersion, document);
+        }
+        EraseNonProfileKeys(document);
+        return document;
+    }
+
+    json WaterSurfaceComponent::BuildProfileJson() const {
+        json document = json::object();
+        const Reflection::TypeDescriptor* const descriptor = GetTypeDescriptor();
+        if (!descriptor) {
+            return document;
+        }
+        Reflection::PropertySerializer::Save(*descriptor, this, document);
+        EraseNonProfileKeys(document);
+        document[kProfileVersionKey] = descriptor->version;
+        return document;
+    }
+
+    bool WaterSurfaceComponent::SaveProfileToAsset() const {
+        return profileAsset_.IsSet() && WriteProfile(profileAsset_.GetPath());
+    }
+
+    bool WaterSurfaceComponent::WriteProfile(const std::string& assetPath) const {
+        return JsonManager::GetInstance().SaveJson(assetPath, BuildProfileJson());
     }
 
     std::wstring WaterSurfaceComponent::GetVertexShaderPath() const {

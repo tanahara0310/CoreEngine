@@ -8,14 +8,22 @@
 #include "Graphics/Water/Surface/WaterSurfaceComponent.h"
 #include "Graphics/Water/WaterCVars.h"
 
+#include "Editor/Command/EditorCommandStack.h"
 #include "Editor/ImGui/CVarPanel.h"
 #include "Editor/ImGui/EditorTheme.h"
 #include "Editor/ImGui/ImGuiAll.h"
 #include "Editor/ImGui/Widgets/EditorBars.h"
 #include "Editor/Inspector/InspectorLayout.h"
+#include "Editor/Inspector/InspectorRenderer.h"
+#include "GameObject/GameObject.h"
+#include "Graphics/Asset/AssetDatabase.h"
+#include "Graphics/Asset/AssetRef.h"
 #include "Math/MathCore.h"
+#include "Reflection/PropertySerializer.h"
+#include "Scene/Environment/WindCVars.h"
 #include "Utility/CVar/CVarRegistry.h"
 #include "Utility/CVar/CVarUndoStack.h"
+#include "Utility/Path/ProjectPaths.h"
 #include "Utility/Random/RandomGenerator.h"
 
 #include <algorithm>
@@ -30,9 +38,13 @@ using namespace CoreEngine;
 namespace {
 constexpr float kTwoPi = std::numbers::pi_v<float> * 2.0f;
 
-/// ベクトルの成分の名前
-constexpr const char* kRgbLabels[] = { "R", "G", "B" };
-constexpr const char* kCascadeLabels[] = { "大", "中", "小" };
+/// プロファイルの操作のボタンの文字
+constexpr const char* kWriteProfileLabel = "プロファイルへ書き込む";
+constexpr const char* kReloadProfileLabel = "読み直す";
+constexpr const char* kCreateProfileLabel = "プロファイルとして保存";
+
+/// 新しく作るプロファイルを置くフォルダ
+constexpr const char* kProfileFolder = "Application/Assets/Water";
 
 /// @brief 海況のプリセット（風波は風速と吹送距離から、うねりは高さと周期から決まる）
 struct SeaStatePreset {
@@ -106,18 +118,18 @@ bool NearlyEqual(const Vector3& lhs, const Vector3& rhs) {
 	return NearlyEqual(lhs.x, rhs.x) && NearlyEqual(lhs.y, rhs.y) && NearlyEqual(lhs.z, rhs.z);
 }
 
-/// @brief 今の CVar に一致する海況のプリセット（無ければ -1）
-int FindSeaStatePreset() {
+/// @brief 今の水とシーンの風に一致する海況のプリセット（無ければ -1）
+int FindSeaStatePreset(const WaterProfile& profile) {
 	for (int i = 0; i < kSeaStatePresetCount; ++i) {
 		const SeaStatePreset& preset = kSeaStatePresets[i];
-		if (NearlyEqual(WaterCVars::FFTWindSpeed.Get(), preset.windSpeed)
-			&& NearlyEqual(WaterCVars::FFTFetchKilometers.Get(), preset.fetchKm)
-			&& NearlyEqual(WaterCVars::FFTAmplitudeScale.Get(), preset.amplitudeScale)
-			&& NearlyEqual(WaterCVars::FFTChoppiness.Get(), preset.choppiness)
-			&& WaterCVars::FFTActiveComponentCount.Get() == preset.componentCount
-			&& WaterCVars::SwellEnabled.Get() == preset.swellEnabled
-			&& NearlyEqual(WaterCVars::SwellHeight.Get(), preset.swellHeight)
-			&& NearlyEqual(WaterCVars::SwellPeriod.Get(), preset.swellPeriod)) {
+		if (NearlyEqual(WindCVars::Speed.Get(), preset.windSpeed)
+			&& NearlyEqual(profile.fetchKm, preset.fetchKm)
+			&& NearlyEqual(profile.amplitudeScale, preset.amplitudeScale)
+			&& NearlyEqual(profile.choppiness, preset.choppiness)
+			&& profile.componentCount == preset.componentCount
+			&& profile.swellEnabled == preset.swellEnabled
+			&& NearlyEqual(profile.swellHeight, preset.swellHeight)
+			&& NearlyEqual(profile.swellPeriod, preset.swellPeriod)) {
 			return i;
 		}
 	}
@@ -125,55 +137,25 @@ int FindSeaStatePreset() {
 }
 
 /// @brief 今の吸収・散乱係数に一致する水型（無ければ -1）
-int FindJerlovWaterType() {
+int FindJerlovWaterType(const WaterProfile& profile) {
 	for (int i = 0; i < kJerlovWaterTypeCount; ++i) {
-		if (NearlyEqual(WaterCVars::AbsorptionBase.Get(), kJerlovWaterTypes[i].absorption)
-			&& NearlyEqual(WaterCVars::ScatteringBase.Get(), kJerlovWaterTypes[i].scattering)
-			&& WaterCVars::Turbidity.Get() == 0.0f) {
+		if (NearlyEqual(profile.absorption, kJerlovWaterTypes[i].absorption)
+			&& NearlyEqual(profile.scattering, kJerlovWaterTypes[i].scattering)
+			&& profile.turbidity == 0.0f) {
 			return i;
 		}
 	}
 	return -1;
 }
 
-/// @brief CVar へ値を入れ、Undo を 1 件積む（BeginBatch の中なら 1 回の Ctrl+Z にまとまる）
+/// @brief CVar へ値を入れ、Undo を 1 件積む（BatchScope の中なら 1 回の Ctrl+Z にまとまる）
 template <class T>
 void AssignWithUndo(CVar<T>& cvar, const T& value) {
 	auto& undoStack = CVarUndoStack::Get();
 	undoStack.BeginEdit(&cvar);
 	cvar.Set(value);
 	undoStack.CommitEdit(&cvar);
-}
-
-/// @brief 複数の CVar の書き換えを 1 回の Ctrl+Z で戻せるようにまとめ、すぐに保存する
-template <class Body>
-void AssignInBatch(Body&& body) {
-	auto& undoStack = CVarUndoStack::Get();
-	undoStack.BeginBatch();
-	body();
-	undoStack.EndBatch();
 	CVarRegistry::Get().NotifyCommit();
-}
-
-void ApplySeaStatePreset(const SeaStatePreset& preset) {
-	AssignInBatch([&] {
-		AssignWithUndo(WaterCVars::FFTWindSpeed, preset.windSpeed);
-		AssignWithUndo(WaterCVars::FFTFetchKilometers, preset.fetchKm);
-		AssignWithUndo(WaterCVars::FFTAmplitudeScale, preset.amplitudeScale);
-		AssignWithUndo(WaterCVars::FFTChoppiness, preset.choppiness);
-		AssignWithUndo(WaterCVars::FFTActiveComponentCount, preset.componentCount);
-		AssignWithUndo(WaterCVars::SwellEnabled, preset.swellEnabled);
-		AssignWithUndo(WaterCVars::SwellHeight, preset.swellHeight);
-		AssignWithUndo(WaterCVars::SwellPeriod, preset.swellPeriod);
-		});
-}
-
-void ApplyJerlovWaterType(const JerlovWaterType& type) {
-	AssignInBatch([&] {
-		AssignWithUndo(WaterCVars::AbsorptionBase, type.absorption);
-		AssignWithUndo(WaterCVars::ScatteringBase, type.scattering);
-		AssignWithUndo(WaterCVars::Turbidity, 0.0f);
-		});
 }
 
 /// @brief 編集できない値の行（左にラベル、右に淡い文字）
@@ -183,7 +165,7 @@ void InfoRow(const char* label, const std::string& value) {
 	ImGui::TextDisabled("%s", value.c_str());
 }
 
-/// @brief 一覧から選ぶ行（CVar でない値。選んだ番号を返し、選ばなければ -1）
+/// @brief 一覧から選ぶ行（保存する値でない選択。選んだ番号を返し、選ばなければ -1）
 /// @param current 今の番号（-1 なら unmatchedName を出す）
 /// @param descriptions 項目ごとの説明（nullptr なら出さない）
 int ChoiceRow(const char* id, const char* label, int current, const char* const* names,
@@ -222,6 +204,24 @@ Vector2 NormalizeDirection(const Vector2& direction) {
 	const float length = std::sqrt(direction.x * direction.x + direction.y * direction.y);
 	return length > 1.0e-5f ? Vector2{ direction.x / length, direction.y / length } : Vector2{ 1.0f, 0.0f };
 }
+
+/// @brief ファイル名に使えない文字を _ にする
+std::string ToFileName(std::string name) {
+	for (char& c : name) {
+		if (c == '\\' || c == '/' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') {
+			c = '_';
+		}
+	}
+	return name.empty() ? std::string("Water") : name;
+}
+}
+
+bool WaterSurfaceParameterPanel::Target::Rows(std::initializer_list<const char*> names) const {
+	return InspectorRenderer::DrawProperties(type, instance, context, names);
+}
+
+bool WaterSurfaceParameterPanel::Target::Assign(const json& values, const std::string& label) const {
+	return InspectorRenderer::Assign(type, instance, values, context, label);
 }
 
 void WaterSurfaceParameterPanel::Initialize(WaterSystem& runtimeController, [[maybe_unused]] WaterEditorFacade& editorFacade) {
@@ -231,69 +231,135 @@ void WaterSurfaceParameterPanel::Initialize(WaterSystem& runtimeController, [[ma
 	}
 }
 
-void WaterSurfaceParameterPanel::Draw(WaterSystem& runtimeController, WaterEditorFacade& editorFacade) {
-	DrawWaveSection(runtimeController, editorFacade);
-	DrawWaterColorSection();
-	DrawSurfaceSection();
-	DrawFoamSection(runtimeController);
+bool WaterSurfaceParameterPanel::Draw(WaterSurfaceComponent& water, const InspectorRenderer::DrawContext& context,
+	WaterSystem* runtimeController, WaterEditorFacade& editorFacade) {
+	const Reflection::TypeDescriptor* const type = water.GetTypeDescriptor();
+	void* const instance = water.GetReflectionInstance();
+	if (!type || !instance) {
+		return false;
+	}
+	const Target target{ water, *type, instance, context };
+
+	bool changed = target.Rows({ "size", "resolution", "tideAmplitude", "tideHeight", "waterLevel" });
+	changed = DrawProfileSection(target) || changed;
+	changed = DrawWaveSection(target, editorFacade) || changed;
+	changed = DrawWaterColorSection(target) || changed;
+	changed = DrawSurfaceSection(target) || changed;
+	changed = DrawFoamSection(target, runtimeController) || changed;
 	DrawWetnessSection();
-	DrawCausticsSection();
+	DrawCausticsSection(target);
+	return changed;
 }
 
-void WaterSurfaceParameterPanel::DrawWaveSection(WaterSystem& runtimeController, WaterEditorFacade& editorFacade) {
+bool WaterSurfaceParameterPanel::DrawProfileSection(const Target& target) {
+	if (!InspectorLayout::Foldout("プロファイル", true)) {
+		return false;
+	}
+
+	bool changed = target.Rows({ "profileAsset" });
+	WaterSurfaceComponent& water = target.water;
+	const AssetRef<WaterProfileAsset>& profileAsset = water.GetProfileAsset();
+	if (profileAsset.IsSet()) {
+		const float spacing = ImGui::GetStyle().ItemSpacing.x;
+		InspectorLayout::AlignToRight(UI::Bar::ButtonWidth(kWriteProfileLabel) + spacing + UI::Bar::ButtonWidth(kReloadProfileLabel));
+		if (UI::Bar::Button(kWriteProfileLabel, false, "今の値をプロファイルのファイルへ書く")) {
+			water.SaveProfileToAsset();
+		}
+		ImGui::SameLine();
+		if (UI::Bar::Button(kReloadProfileLabel, false, "プロファイルの値を入れ直す（Ctrl+Z で戻せる）")) {
+			changed = target.Assign(water.ReadProfileAsset(), "水面の値をプロファイルから読み直す") || changed;
+		}
+		InspectorLayout::Hint("シーンを開いたときと指し直したときに、プロファイルの値が入る。ここで変えた値をプロファイルにも残すには「プロファイルへ書き込む」。");
+		return changed;
+	}
+
+	InspectorLayout::AlignToRight(UI::Bar::ButtonWidth(kCreateProfileLabel));
+	if (UI::Bar::Button(kCreateProfileLabel, false, "今の値で Assets/Water に .waterprofile を作り、それを指す（ほかのシーンの水からも指せる）")) {
+		const GameObject* const owner = water.GetOwner();
+		const std::string baseName = ToFileName(owner ? owner->GetName() : std::string());
+		std::string path = std::format("{}/{}.waterprofile", kProfileFolder, baseName);
+		for (int n = 2; JsonManager::GetInstance().FileExists(path); ++n) {
+			path = std::format("{}/{}_{}.waterprofile", kProfileFolder, baseName, n);
+		}
+		const AssetInfo* const info = water.WriteProfile(path)
+			? AssetDatabase::GetInstance().ImportAsset(ProjectPaths::Resolve(path)) : nullptr;
+		if (info) {
+			const json values = { { "profileAsset",
+				Reflection::PropertySerializer::AssetRefToJson(Reflection::AssetRefValue{ info->guid, ToAssetPath(*info) }) } };
+			changed = target.Assign(values, "水面のプロファイルを作って指す") || changed;
+		}
+	}
+	InspectorLayout::Hint("水の性質（波・水の色・反射と屈折・泡）はこの水面ごとにシーンへ保存する。プロファイルにすると、ほかのシーンの水と同じ値を使える。");
+	return changed;
+}
+
+bool WaterSurfaceParameterPanel::DrawWaveSection(const Target& target, WaterEditorFacade& editorFacade) {
 	if (!InspectorLayout::Foldout("波", true)) {
-		return;
+		return false;
 	}
 
-	CVarUI::DrawRow(&WaterCVars::FFTEnabled, "FFT の海で描く");
-	if (!WaterCVars::FFTEnabled.Get()) {
-		DrawGerstnerRows(runtimeController);
-		return;
+	bool changed = target.Rows({ "fftEnabled" });
+	if (!target.water.GetProfile().fftEnabled) {
+		DrawGerstnerRows(target.water);
+		return changed;
 	}
 
-	DrawSeaStateRow();
+	changed = DrawSeaStateRow(target) || changed;
 	DrawWaveSummaryRows(editorFacade);
 
+	ImGui::SeparatorText("風（シーンの設定）");
+	CVarUI::DrawRow(&WindCVars::Speed, "風速", "%.1f m/s");
+	CVarUI::DrawDirectionRow(&WindCVars::Direction, "風が吹いていく向き");
+	InspectorLayout::Hint("風はシーンの _environment.json に保存する。植物の揺れにも効く。");
+
 	ImGui::SeparatorText("風波");
-	CVarUI::DrawRow(&WaterCVars::FFTWindSpeed, "風速", "%.1f m/s");
-	CVarUI::DrawDirectionRow(&WaterCVars::FFTWindDirection, "風が吹いていく向き");
-	CVarUI::DrawRow(&WaterCVars::FFTFetchKilometers, "吹送距離", "%.0f km");
-	CVarUI::DrawRow(&WaterCVars::FFTAmplitudeScale, "高さの倍率", "%.2f");
-	CVarUI::DrawRow(&WaterCVars::FFTChoppiness, "波頭の尖り", "%.2f");
-	CVarUI::DrawRow(&WaterCVars::FFTActiveComponentCount, "短い波の量");
+	changed = target.Rows({ "fetchKm", "amplitudeScale", "choppiness", "componentCount" }) || changed;
 
 	ImGui::SeparatorText("うねり");
-	CVarUI::DrawRow(&WaterCVars::SwellEnabled, "うねりを重ねる");
-	ImGui::BeginDisabled(!WaterCVars::SwellEnabled.Get());
-	CVarUI::DrawRow(&WaterCVars::SwellHeight, "高さ", "%.2f m");
-	CVarUI::DrawRow(&WaterCVars::SwellPeriod, "周期", "%.1f s");
-	CVarUI::DrawDirectionRow(&WaterCVars::SwellDirection, "進む向き");
-	CVarUI::DrawRow(&WaterCVars::SwellRelativeWidth, "周期のばらつき", "%.2f");
-	CVarUI::DrawRow(&WaterCVars::SwellSpread, "向きのそろい方", "%.0f");
+	changed = target.Rows({ "swellEnabled" }) || changed;
+	ImGui::BeginDisabled(!target.water.GetProfile().swellEnabled);
+	changed = target.Rows({ "swellHeight", "swellPeriod", "swellDirection", "swellRelativeWidth", "swellSpread" }) || changed;
 	ImGui::EndDisabled();
 
-	ImGui::SeparatorText("形");
+	ImGui::SeparatorText("形（プロジェクトの設定）");
 	CVarUI::DrawRow(&WaterCVars::ShoreFineMesh, "カメラの近くを細かく描く");
 	CVarUI::DrawRow(&WaterCVars::SeaMapEnabled, "陸と浅瀬で波を弱める");
 	ImGui::BeginDisabled(!WaterCVars::SeaMapEnabled.Get());
 	CVarUI::DrawRow(&WaterCVars::SeaMapResolution, "海の範囲の細かさ");
 	ImGui::EndDisabled();
+	return changed;
 }
 
-void WaterSurfaceParameterPanel::DrawSeaStateRow() {
+bool WaterSurfaceParameterPanel::DrawSeaStateRow(const Target& target) {
 	static const char* names[kSeaStatePresetCount];
 	static const char* descriptions[kSeaStatePresetCount];
 	for (int i = 0; i < kSeaStatePresetCount; ++i) {
 		names[i] = kSeaStatePresets[i].name;
 		descriptions[i] = kSeaStatePresets[i].description;
 	}
-	const int chosen = ChoiceRow("seaState", "海況", FindSeaStatePreset(), names, descriptions, kSeaStatePresetCount);
+	const int chosen = ChoiceRow("seaState", "海況", FindSeaStatePreset(target.water.GetProfile()), names, descriptions, kSeaStatePresetCount);
 	if (ImGui::IsItemHovered()) {
-		ImGui::SetTooltip("風速・吹送距離・うねりなどをまとめて入れる（Ctrl+Z で戻せる）。\n風の向きとうねりの向きは変えない");
+		ImGui::SetTooltip("シーンの風速と、吹送距離・うねりなどをまとめて入れる（Ctrl+Z で戻せる）。\n風の向きとうねりの向きは変えない");
 	}
-	if (chosen >= 0) {
-		ApplySeaStatePreset(kSeaStatePresets[chosen]);
+	if (chosen < 0) {
+		return false;
 	}
+
+	const SeaStatePreset& preset = kSeaStatePresets[chosen];
+	const std::string label = std::format("海況を「{}」にする", preset.name);
+	Editor::BatchScope batch(label);
+	const json values = {
+		{ "fetchKm", preset.fetchKm },
+		{ "amplitudeScale", preset.amplitudeScale },
+		{ "choppiness", preset.choppiness },
+		{ "componentCount", preset.componentCount },
+		{ "swellEnabled", preset.swellEnabled },
+		{ "swellHeight", preset.swellHeight },
+		{ "swellPeriod", preset.swellPeriod },
+	};
+	const bool changed = target.Assign(values, label);
+	AssignWithUndo(WindCVars::Speed, preset.windSpeed);
+	return changed;
 }
 
 void WaterSurfaceParameterPanel::DrawWaveSummaryRows(WaterEditorFacade& editorFacade) {
@@ -309,18 +375,13 @@ void WaterSurfaceParameterPanel::DrawWaveSummaryRows(WaterEditorFacade& editorFa
 		: std::string("なし"));
 }
 
-void WaterSurfaceParameterPanel::DrawGerstnerRows(WaterSystem& runtimeController) {
-	WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
-	if (!waterPlane) {
-		return;
-	}
-
+void WaterSurfaceParameterPanel::DrawGerstnerRows(WaterSurfaceComponent& water) {
 	const int chosen = ChoiceRow("gerstnerPreset", "波の種類", gerstnerPreset_, kGerstnerPresetNames, nullptr,
 		kGerstnerPresetCount, "既定の波");
 	if (chosen >= 0) {
 		gerstnerPreset_ = chosen;
 		gerstnerWaveCount_ = static_cast<int>(GetWaterPresetData(static_cast<WaterPresetType>(gerstnerPreset_)).recommendedWaveCount);
-		RegenerateGerstnerWaves(runtimeController);
+		RegenerateGerstnerWaves(water);
 	}
 
 	InspectorLayout::BeginRow("波の本数", Editor::Theme::kTextDim);
@@ -332,16 +393,16 @@ void WaterSurfaceParameterPanel::DrawGerstnerRows(WaterSystem& runtimeController
 		});
 	if (countChanged) {
 		if (gerstnerPreset_ >= 0) {
-			RegenerateGerstnerWaves(runtimeController);
+			RegenerateGerstnerWaves(water);
 		} else {
-			waterPlane->SetActiveWaveCount(static_cast<uint32_t>(gerstnerWaveCount_));
+			water.SetActiveWaveCount(static_cast<uint32_t>(gerstnerWaveCount_));
 		}
 	}
 
 	if (gerstnerPreset_ >= 0) {
 		InspectorLayout::AlignToRight(UI::Bar::ButtonWidth("波を作り直す"));
 		if (UI::Bar::Button("波を作り直す", false, "同じ種類で、向きと位相を振り直す")) {
-			RegenerateGerstnerWaves(runtimeController);
+			RegenerateGerstnerWaves(water);
 		}
 	}
 	InspectorLayout::Hint("Gerstner の波は保存しません。開き直すと既定の波に戻ります。");
@@ -349,8 +410,8 @@ void WaterSurfaceParameterPanel::DrawGerstnerRows(WaterSystem& runtimeController
 	if (!ImGui::TreeNode("個別の波")) {
 		return;
 	}
-	WaveParams* waves = waterPlane->GetWaves();
-	const uint32_t waveCount = (std::min)(waterPlane->GetActiveWaveCount(), kMaxWaterWaveCount);
+	WaveParams* waves = water.GetWaves();
+	const uint32_t waveCount = (std::min)(water.GetActiveWaveCount(), kMaxWaterWaveCount);
 	for (uint32_t waveIndex = 0; waveIndex < waveCount; ++waveIndex) {
 		ImGui::PushID(static_cast<int>(waveIndex));
 		if (ImGui::TreeNode("##wave", "波 %u", waveIndex)) {
@@ -376,12 +437,7 @@ void WaterSurfaceParameterPanel::DrawGerstnerRows(WaterSystem& runtimeController
 	ImGui::TreePop();
 }
 
-void WaterSurfaceParameterPanel::RegenerateGerstnerWaves(WaterSystem& runtimeController) {
-	WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
-	if (!waterPlane) {
-		return;
-	}
-
+void WaterSurfaceParameterPanel::RegenerateGerstnerWaves(WaterSurfaceComponent& water) {
 	const WaterPresetData& presetData = GetWaterPresetData(static_cast<WaterPresetType>(gerstnerPreset_));
 	const uint32_t activeWaveCount = static_cast<uint32_t>(std::clamp(gerstnerWaveCount_, 1, static_cast<int>(kMaxWaterWaveCount)));
 	auto& random = RandomGenerator::GetInstance();
@@ -416,7 +472,7 @@ void WaterSurfaceParameterPanel::RegenerateGerstnerWaves(WaterSystem& runtimeCon
 			wave.speed = random.GetFloat(layer.speedMin, layer.speedMax);
 			wave.steepness = random.GetFloat(layer.steepnessMin, layer.steepnessMax);
 			wave.phaseOffset = random.GetFloat(0.0f, kTwoPi);
-			waterPlane->SetWave(waveIndex, wave);
+			water.SetWave(waveIndex, wave);
 		}
 	}
 
@@ -424,71 +480,74 @@ void WaterSurfaceParameterPanel::RegenerateGerstnerWaves(WaterSystem& runtimeCon
 	for (; waveIndex < kMaxWaterWaveCount; ++waveIndex) {
 		WaveParams wave{};
 		wave.direction = dominantDirection;
-		waterPlane->SetWave(waveIndex, wave);
+		water.SetWave(waveIndex, wave);
 	}
 
-	waterPlane->SetActiveWaveCount(activeWaveCount);
+	water.SetActiveWaveCount(activeWaveCount);
 }
 
-void WaterSurfaceParameterPanel::DrawWaterColorSection() {
+bool WaterSurfaceParameterPanel::DrawWaterColorSection(const Target& target) {
 	if (!InspectorLayout::Foldout("水の色", true)) {
-		return;
+		return false;
 	}
 
 	static const char* names[kJerlovWaterTypeCount];
 	for (int i = 0; i < kJerlovWaterTypeCount; ++i) {
 		names[i] = kJerlovWaterTypes[i].name;
 	}
-	const int chosen = ChoiceRow("waterType", "水質", FindJerlovWaterType(), names, nullptr, kJerlovWaterTypeCount);
+	bool changed = false;
+	const int chosen = ChoiceRow("waterType", "水質", FindJerlovWaterType(target.water.GetProfile()), names, nullptr, kJerlovWaterTypeCount);
 	if (ImGui::IsItemHovered()) {
 		ImGui::SetTooltip("Jerlov の水型。吸収と散乱をまとめて入れ、濁りを 0 に戻す（Ctrl+Z で戻せる）");
 	}
 	if (chosen >= 0) {
-		ApplyJerlovWaterType(kJerlovWaterTypes[chosen]);
+		const JerlovWaterType& type = kJerlovWaterTypes[chosen];
+		const json values = {
+			{ "absorption", JsonManager::Vector3ToJson(type.absorption) },
+			{ "scattering", JsonManager::Vector3ToJson(type.scattering) },
+			{ "turbidity", 0.0f },
+		};
+		changed = target.Assign(values, std::format("水質を「{}」にする", type.name));
 	}
 
-	CVarUI::DrawRow(&WaterCVars::AbsorptionBase, "吸収 [1/m]", "%.3f", kRgbLabels);
-	CVarUI::DrawRow(&WaterCVars::ScatteringBase, "散乱 [1/m]", "%.3f", kRgbLabels);
-	CVarUI::DrawRow(&WaterCVars::Turbidity, "濁り", "%.2f");
-	CVarUI::DrawRow(&WaterCVars::DepthFadeEnabled, "水深で透け方を変える");
+	changed = target.Rows({ "absorption", "scattering", "turbidity", "depthFadeEnabled" }) || changed;
 	InspectorLayout::Hint("水の色は吸収と散乱から光で決まる。澄んだ水は 吸収が 赤 > 緑 > 青。");
+	return changed;
 }
 
-void WaterSurfaceParameterPanel::DrawSurfaceSection() {
+bool WaterSurfaceParameterPanel::DrawSurfaceSection(const Target& target) {
 	if (!InspectorLayout::Foldout("反射と屈折", false)) {
-		return;
+		return false;
 	}
-	CVarUI::DrawRow(&WaterCVars::FresnelScale, "反射の強さ", "%.2f");
-	CVarUI::DrawRow(&WaterCVars::FresnelF0, "正面の反射率", "%.3f");
-	CVarUI::DrawRow(&WaterCVars::Roughness, "粗さ", "%.3f");
-	CVarUI::DrawRow(&WaterCVars::RefractionMaxOffsetPixels, "屈折のずれの上限", "%.0f px");
-	CVarUI::DrawRow(&WaterCVars::BaseColor, "反射が無いときの色");
+	const bool changed = target.Rows({ "fresnelScale", "fresnelF0", "roughness", "refractiveIndex", "baseColor" });
+	CVarUI::DrawRow(&WaterCVars::RefractionMaxOffsetPixels, "屈折のずれの上限（プロジェクト）", "%.0f px");
+	return changed;
 }
 
-void WaterSurfaceParameterPanel::DrawFoamSection(WaterSystem& runtimeController) {
+bool WaterSurfaceParameterPanel::DrawFoamSection(const Target& target, WaterSystem* runtimeController) {
 	if (!InspectorLayout::Foldout("泡", false)) {
-		return;
+		return false;
 	}
-	if (!WaterCVars::FFTEnabled.Get()) {
+	const WaterProfile& profile = target.water.GetProfile();
+	if (!profile.fftEnabled) {
 		InspectorLayout::HelpBox("泡は FFT の海のときだけ出ます。");
 	}
 
-	CVarUI::DrawRow(&WaterCVars::FoamEnabled, "泡を出す");
-	ImGui::BeginDisabled(!WaterCVars::FoamEnabled.Get());
-	CVarUI::DrawRow(&WaterCVars::FoamWhitecapScale, "白波の量", "%.2f");
-	if (const WaterFoamSystem* foam = runtimeController.GetWaterFoamSystem()) {
+	bool changed = target.Rows({ "foamEnabled" });
+	ImGui::BeginDisabled(!target.water.GetProfile().foamEnabled);
+	changed = target.Rows({ "foamWhitecapScale" }) || changed;
+	if (const WaterFoamSystem* foam = runtimeController ? runtimeController->GetWaterFoamSystem() : nullptr) {
 		InfoRow("白波の割合", std::format("目標 {:.2f}% ／ 実測 {:.2f}%",
 			foam->GetTargetWhitecapCoverage() * 100.0f, foam->GetMeasuredWhitecapCoverage() * 100.0f));
 	}
-	CVarUI::DrawRow(&WaterCVars::FoamOpacity, "不透明度", "%.2f");
-	CVarUI::DrawRow(&WaterCVars::FoamDecaySeconds, "消えるまでの時間", "%.1f s");
-	CVarUI::DrawRow(&WaterCVars::FoamCascadeWeights, "波の大きさごとの重み", "%.2f", kCascadeLabels);
+	changed = target.Rows({ "foamOpacity", "foamDecaySeconds", "foamCascadeWeights" }) || changed;
 	ImGui::EndDisabled();
-	InspectorLayout::Hint("白波の割合は風速から観測式で決まる。白波の量はその倍率。");
+	InspectorLayout::Hint("白波の割合はシーンの風速から観測式で決まる。白波の量はその倍率。");
+	return changed;
 }
 
 void WaterSurfaceParameterPanel::DrawWetnessSection() {
-	if (!InspectorLayout::Foldout("濡れ跡", false)) {
+	if (!InspectorLayout::Foldout("濡れ跡（プロジェクトの設定）", false)) {
 		return;
 	}
 	CVarUI::DrawRow(&WaterCVars::WetnessEnabled, "水が引いたあとを濡らす");
@@ -498,18 +557,17 @@ void WaterSurfaceParameterPanel::DrawWetnessSection() {
 	InspectorLayout::Hint("潮などで水面が下がると、水に浸かっていた面が暗く、つやのある見た目で残り、時間とともに乾く。");
 }
 
-void WaterSurfaceParameterPanel::DrawCausticsSection() {
-	if (!InspectorLayout::Foldout("コースティクス", false)) {
+void WaterSurfaceParameterPanel::DrawCausticsSection(const Target& target) {
+	if (!InspectorLayout::Foldout("コースティクス（プロジェクトの設定）", false)) {
 		return;
 	}
 	CVarUI::DrawEnumRow(&WaterCVars::CausticsBackend, "作り方", kCausticsBackendNames,
 		static_cast<int>(std::size(kCausticsBackendNames)));
-	CVarUI::DrawRow(&WaterCVars::CausticsRefractiveIndex, "屈折率", "%.3f");
 	if (WaterCVars::CausticsBackend.Get() != 1) {
-		InspectorLayout::Hint("レイトレーシングの明るさは、光と水の吸収から決まる。");
+		InspectorLayout::Hint("レイトレーシングの明るさは、光と水の吸収から決まる。屈折率は「反射と屈折」の水の値を使う。");
 		return;
 	}
-	if (WaterCVars::FFTEnabled.Get()) {
+	if (target.water.GetProfile().fftEnabled) {
 		InspectorLayout::HelpBox("スクリーンスペース方式は Gerstner の波のときだけ出ます。", InspectorLayout::Message::Warning);
 	}
 	CVarUI::DrawRow(&WaterCVars::CausticsIntensity, "強さ", "%.2f");
