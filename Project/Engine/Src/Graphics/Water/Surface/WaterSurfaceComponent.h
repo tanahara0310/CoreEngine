@@ -131,6 +131,9 @@ namespace CoreEngine
         /// @param scatteringCoeff 散乱係数 σs [1/m]（RGB 波長別。深瀬のインスキャッタ色を決める）
         void SetWaterOpticalCoefficients(const Vector3& absorptionCoeff, const Vector3& scatteringCoeff);
 
+        /// @brief 水の屈折率（空気 1 に対する比）を設定する
+        void SetRefractiveIndex(float refractiveIndex);
+
         /// @brief 泡（whitecap）パラメータを設定する（FFTOcean 専用）
         /// @param bias           砕けるしきい値（合成ヤコビアン detJ がこれを下回ると泡が立つ）
         /// @param cascadeWeights カスケード別の勾配寄与の重み（無重みだと最小カスケードが支配して飽和する）

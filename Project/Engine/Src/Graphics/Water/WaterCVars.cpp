@@ -129,7 +129,7 @@ namespace CoreEngine
         CVar<float> CausticsSurfaceSampleRadius{ "r.Water.Caustics.SurfaceSampleRadius", 0.35f,
             "水面を調べる半径 [m]（スクリーンスペース方式だけ）", CVarRange{ 0.01f, 4.0f } };
         CVar<float> CausticsRefractiveIndex{ "r.Water.Caustics.RefractiveIndex", 1.333f,
-            "屈折率（RT / スクリーンスペース両方へ同値を反映）", CVarRange{ 1.0f, 2.0f } };
+            "水の屈折率（水面の透過・RT の屈折・コースティクス・水中の影へ同じ値を反映）", CVarRange{ 1.0f, 2.0f } };
         CVar<float> CausticsReceiverNormalStrength{ "r.Water.Caustics.ReceiverNormalStrength", 1.0f,
             "受ける面の向きの効き方（スクリーンスペース方式だけ）", CVarRange{ 0.0f, 2.0f } };
         CVar<float> CausticsAlignmentPower{ "r.Water.Caustics.AlignmentPower", 6.0f,

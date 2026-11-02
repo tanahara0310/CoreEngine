@@ -236,22 +236,6 @@ PixelShaderOutput main(PixelShaderInput input)
     gCloudShadowMap.GetDimensions(csW, csH);
     bool useCloudShadow = (csW > 1.0f && csH > 1.0f && gCloudShadow.sceneStrength > 0.0f);
 
-    // ===== RT シャドウ デバッグ表示 =====
-#if 0  // 1 でデバッグ表示ON、0 で通常描画
-    if (useRTShadow)
-    {
-        // 赤(影=0) → 緑(光=1) のグラデーション
-        // ソフトシャドウが効いていれば影の境界に黄色〜のグラデーションが表示される
-        output.color = float4(1.0f - baseShadow, baseShadow, 0.0f, 1.0f);
-    }
-    else
-    {
-        // 青 = RT シャドウ未使用（PCF フォールバック）
-        output.color = float4(0.0f, 0.0f, 1.0f, 1.0f);
-    }
-    return output;
-#endif
-
     // ============================================================
     // PBR ライティングパス（常にここに到達）
     // ============================================================

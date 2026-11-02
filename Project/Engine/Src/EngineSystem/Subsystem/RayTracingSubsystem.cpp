@@ -672,6 +672,8 @@ namespace CoreEngine
                 outDispatchContext.fftOceanInput.cascadeMeanSquareSlope[c] =
                     context.fftOceanManager->GetCascadeMeanSquareSlope(c);
             }
+            outDispatchContext.fftOceanInput.fineWaveMeanSquareSlope =
+                context.fftOceanManager->GetFineWaveMeanSquareSlope();
             const std::array<float, 3> waveGroupPhase =
                 context.fftOceanManager->ComputeWaveGroupPhase(context.fftOceanSimulationTime);
             for (size_t i = 0; i < waveGroupPhase.size(); ++i) {

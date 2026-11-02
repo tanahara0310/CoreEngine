@@ -3,6 +3,7 @@
 // ============================================================
 
 #include "RTWaterSurfaceCommon.hlsli"
+#include "../Common/WaterVisibleSlope.hlsli"
 #include "../../Include/Common/DepthReconstruction.hlsli"
 #include "../../Include/RayTracing/RTHitShading.hlsli"
 
@@ -166,6 +167,38 @@ float4 SampleReflectedGeometryStreak(
         return float4(0.0f, 0.0f, 0.0f, -1.0f);
     }
     return float4(geometryColorSum / max(geometrySum, 1.0e-4f), geometrySum / aboveWaterSum);
+}
+
+/// @brief 反射の向きのばらつきが 1 画素を超えるとき、ばらつきが覆う範囲に写っている物の色と割合で置き換える
+/// @param resolvedColor    ぼかす前の色
+/// @param tracedColor      画面から色が取れない分を埋める色
+/// @param skyAlongRay      同じレイ向きの空（範囲の残りを埋める）
+/// @param sceneWeight      画面から色が取れる度合い
+/// @param uv               範囲の中心（スクリーン UV）
+/// @param verticalSpread   反射の向きの縦のばらつき（1σ・rad）
+/// @param horizontalSpread 反射の向きの横のばらつき（1σ・rad）
+/// @param pixelsPerRadian  範囲の中心で反射の向き 1 rad が覆う画素数
+float3 ApplyReflectionSpread(
+    float3 resolvedColor, float3 tracedColor, float3 skyAlongRay, float sceneWeight,
+    float2 uv, float verticalSpread, float horizontalSpread, float pixelsPerRadian)
+{
+    const float verticalSigmaPixels = verticalSpread * pixelsPerRadian;
+    const uint pyramidLevels = GetReflectionPyramidLevels();
+    // 広がり 0.5〜1 画素の間でぼかさない色からなめらかにつなぐ
+    const float blurBlend = saturate(log2(max(2.0f * verticalSigmaPixels, 1.0f)));
+    if (blurBlend <= 0.0f || pyramidLevels <= 1)
+    {
+        return resolvedColor;
+    }
+    const float4 geometry = SampleReflectedGeometryStreak(
+        uv, verticalSigmaPixels, horizontalSpread * pixelsPerRadian, pyramidLevels);
+    if (geometry.a < 0.0f)
+    {
+        return resolvedColor;
+    }
+    const float3 screenBlurredColor = lerp(skyAlongRay, geometry.rgb, geometry.a);
+    const float3 blurredColor = lerp(tracedColor, screenBlurredColor, sceneWeight);
+    return lerp(resolvedColor, blurredColor, blurBlend);
 }
 
 /// @brief 投影先のまわりの画素から、当たった点と同じ奥行きに写っている物の色を探す
@@ -356,21 +389,35 @@ void RTWaterReflectionRayGen()
 
     float3 waterNormal = EvaluateWaterNormal(gFFTOceanNormal, waterPos.xz, directionFootprint);
 
-    // 1 ピクセルより細かくて見えない波の傾きを、反射のぼけとして戻す（画素より大きい波はぼかさない）。
+    // 反射の向きの法線から外した波とカスケードより細かい波の傾きを、反射のぼけとして戻す。
     // 空はそのラフネスに合ったミップで、物は反射の向きのばらつき（1σ・rad）の幅でぼかして引く。
-    // 軸ごとの傾きの分散は平均二乗傾斜の半分。視線を含む縦の面では反射の向きが傾きの 2 倍ぶれ、
-    // 横へは視線と水面のなす角 γ の sin 倍に縮む
-    const float excludedMeanSquareSlope = EvaluateExcludedMeanSquareSlope(waterPos.xz, surfaceFootprintMeters);
-    const float skyRoughness = AddSlopeVarianceToRoughness(kSkyEnvMicroRoughness, excludedMeanSquareSlope);
-    const float verticalReflectionSpread = 2.0f * sqrt(0.5f * excludedMeanSquareSlope);
-    const float horizontalReflectionSpread = verticalReflectionSpread * saturate(-primaryDir.y);
+    // 軸ごとの傾きの分散は平均二乗傾斜の半分。見えている面はカメラの方を向いた面に偏るので、
+    // 縦の面の傾きは見えている面の分布で平均とばらつきを求める。
+    // 縦の面では反射の向きが傾きの 2 倍ぶれ、横へは視線と水面のなす角 γ の sin 倍に縮む
+    const float unresolvedMeanSquareSlope = EvaluateExcludedMeanSquareSlope(waterPos.xz, directionFootprint)
+        + EvaluateFineWaveMeanSquareSlope();
+    const float slopeVariance = 0.5f * unresolvedMeanSquareSlope;
+    const float skyRoughness = AddSlopeVarianceToRoughness(kSkyEnvMicroRoughness, unresolvedMeanSquareSlope);
+    const VisibleSlopeMoments visibleSlope =
+        ComputeVisibleSlopeMoments(dot(-primaryDir, waterNormal), slopeVariance);
+    const float verticalReflectionSpread = 2.0f * visibleSlope.std;
+    const float horizontalReflectionSpread = 2.0f * sqrt(slopeVariance) * saturate(-primaryDir.y);
 
     // この水面の点がヤシや岩の影に入っているか（Water.PS がメインライトの項へ掛ける）
     gSunVisibilityOutput[launchIndex] = TraceSunVisibility(waterPos, waterNormal, gSurfaceBias);
 
+    // 反射に使う法線は、見えている面の平均の傾きだけカメラの方へ倒す
+    float3 reflectionNormal = waterNormal;
+    const float3 awayFromCamera = primaryDir - dot(primaryDir, waterNormal) * waterNormal;
+    const float awayLength = length(awayFromCamera);
+    if (awayLength > 1.0e-5f)
+    {
+        reflectionNormal = normalize(waterNormal - visibleSlope.mean * (awayFromCamera / awayLength));
+    }
+
     // 視線（primaryDir）を水面法線で鏡面反射。カメラは水面を上から見下ろすため
     // primaryDir は下向き、reflectedDir は上向き（空・水上ジオメトリ方向）になる。
-    float3 reflectedDir = reflect(primaryDir, waterNormal);
+    float3 reflectedDir = reflect(primaryDir, reflectionNormal);
     if (dot(reflectedDir, reflectedDir) <= 1.0e-6f)
     {
         gReflectionOutput[launchIndex] = MakeFallbackOutput(kRTReasonInvalidBounceVector);
@@ -398,8 +445,22 @@ void RTWaterReflectionRayGen()
 
     if (payload.hitFlag < 0.5f)
     {
-        // 反射レイが何にも当たらず空へ抜けた。トレースした向きそのもので空を引く
-        gReflectionOutput[launchIndex] = MakeSkyResolvedOutput(ray.Direction, kRTReasonTraceMiss, skyRoughness);
+        // 反射レイが何にも当たらず空へ抜けた。トレースした向きそのもので空を引き、
+        // ばらつきの範囲はその向きが画面に写る位置のまわりから物の色と割合を引く
+        float4 missOutput = MakeSkyResolvedOutput(ray.Direction, kRTReasonTraceMiss, skyRoughness);
+        const float4 directionClip = mul(float4(ray.Direction, 0.0f), gViewProjection);
+        if (missOutput.a > 0.5f && directionClip.w > 1.0e-5f)
+        {
+            const float2 directionUV = (directionClip.xy / directionClip.w) * float2(0.5f, -0.5f) + 0.5f;
+            const float directionEdgeFade = ComputeRTScreenBoundsFade(directionUV, float2(gScreenWidth, gScreenHeight));
+            if (directionEdgeFade > 1.0e-4f)
+            {
+                missOutput.rgb = ApplyReflectionSpread(
+                    missOutput.rgb, missOutput.rgb, missOutput.rgb, directionEdgeFade, directionUV,
+                    verticalReflectionSpread, horizontalReflectionSpread, 1.0f / max(pixelAngle, 1.0e-6f));
+            }
+        }
+        gReflectionOutput[launchIndex] = missOutput;
         return;
     }
 
@@ -503,21 +564,9 @@ void RTWaterReflectionRayGen()
     const float hitPixelMeters = ComputePixelPerpendicularWidth(
         reflectedUV, saturate(ndc.z), float2(gScreenWidth, gScreenHeight), gInvViewProjection);
     const float pixelsPerRadian = payload.hitT / max(hitPixelMeters, 1.0e-4f);
-    const float verticalSigmaPixels = verticalReflectionSpread * pixelsPerRadian;
-    const uint pyramidLevels = GetReflectionPyramidLevels();
-    // 広がり 0.5〜1 画素の間でぼかさない色からなめらかにつなぐ
-    const float blurBlend = saturate(log2(max(2.0f * verticalSigmaPixels, 1.0f)));
-    if (blurBlend > 0.0f && pyramidLevels > 1)
-    {
-        const float4 geometry = SampleReflectedGeometryStreak(
-            reflectedUV, verticalSigmaPixels, horizontalReflectionSpread * pixelsPerRadian, pyramidLevels);
-        if (geometry.a >= 0.0f)
-        {
-            const float3 screenBlurredColor = lerp(skyAlongRay, geometry.rgb, geometry.a);
-            const float3 blurredColor = lerp(tracedColor, screenBlurredColor, sceneWeight);
-            resolvedColor = lerp(resolvedColor, blurredColor, blurBlend);
-        }
-    }
+    resolvedColor = ApplyReflectionSpread(
+        resolvedColor, tracedColor, skyAlongRay, sceneWeight, reflectedUV,
+        verticalReflectionSpread, horizontalReflectionSpread, pixelsPerRadian);
 
     // Water.PS へは常に「解決済みの 1 枚」を渡す（alpha は成功固定）。
     gReflectionOutput[launchIndex] = float4(resolvedColor, MakeSuccessAlpha(1.0f));

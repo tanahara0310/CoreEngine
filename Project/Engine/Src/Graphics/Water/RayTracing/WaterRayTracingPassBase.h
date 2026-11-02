@@ -59,6 +59,8 @@ namespace CoreEngine
             uint32_t enabled = 0;
             /// @brief カスケードごとの平均二乗傾斜（x・z の傾きの二乗和の平均）
             float cascadeMeanSquareSlope[3] = { 0.0f, 0.0f, 0.0f };
+            /// @brief カスケードより細かい波の平均二乗傾斜（FFTOceanManager::GetFineWaveMeanSquareSlope）
+            float fineWaveMeanSquareSlope = 0.0f;
             /// @brief 波群エンベロープの位相のずれ [rad]（FFTOceanManager::ComputeWaveGroupPhase）
             float waveGroupPhase[3] = { 0.0f, 0.0f, 0.0f };
         };
@@ -153,7 +155,7 @@ namespace CoreEngine
             uint32_t regionValid = 0;                     ///< 0 = 水面メッシュの範囲が分からない
             // FFT カスケードごとの平均二乗傾斜（x・z の傾きの二乗和の平均）
             float cascadeMeanSquareSlope[3] = { 0.0f, 0.0f, 0.0f };
-            float pad1 = 0.0f;
+            float fineWaveMeanSquareSlope = 0.0f;         ///< カスケードより細かい波の平均二乗傾斜
             float regionCenterXZ[2] = { 0.0f, 0.0f };     ///< 水面メッシュのワールド XZ 範囲の中心
             float regionHalfExtentXZ[2] = { 0.0f, 0.0f }; ///< 水面メッシュのワールド XZ 範囲の半分の大きさ
             float waveGroupPhase[3] = { 0.0f, 0.0f, 0.0f };   ///< 波群エンベロープの位相のずれ [rad]
@@ -183,7 +185,7 @@ namespace CoreEngine
             CB_FIELD(WaterSurfaceConstants, waves), CB_FIELD(WaterSurfaceConstants, fftOceanEnabled),
             CB_FIELD(WaterSurfaceConstants, fftOceanResolution), CB_FIELD(WaterSurfaceConstants, meshSubdivisions),
             CB_FIELD(WaterSurfaceConstants, regionValid), CB_FIELD(WaterSurfaceConstants, cascadeMeanSquareSlope),
-            CB_FIELD(WaterSurfaceConstants, pad1), CB_FIELD(WaterSurfaceConstants, regionCenterXZ),
+            CB_FIELD(WaterSurfaceConstants, fineWaveMeanSquareSlope), CB_FIELD(WaterSurfaceConstants, regionCenterXZ),
             CB_FIELD(WaterSurfaceConstants, regionHalfExtentXZ), CB_FIELD(WaterSurfaceConstants, waveGroupPhase),
             CB_FIELD(WaterSurfaceConstants, pad2), CB_FIELD(WaterSurfaceConstants, shoreMeshEnabled),
             CB_FIELD(WaterSurfaceConstants, shoreMeshSize), CB_FIELD(WaterSurfaceConstants, shoreMeshOriginXZ),

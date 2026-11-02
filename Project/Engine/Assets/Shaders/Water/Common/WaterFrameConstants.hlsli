@@ -33,7 +33,7 @@ cbuffer WaterFrameConstants : register(b5)
     // 水の色は shallow/deep の色指定ではなく、吸収・散乱係数と光源から導出する。
     // 赤 > 緑 > 青 の順に吸収が強いことが「水が青い」物理の本体。
     float3 gAbsorptionCoeff; // 吸収係数 σa [1/m]（RGB 波長別）
-    float gAbsorptionPad;
+    float gWaterRefractiveIndex; // 水の屈折率（空気 1 に対する比）
     float3 gScatteringCoeff; // 散乱係数 σs [1/m]（RGB 波長別）
     float gScatteringPad;
 
@@ -69,7 +69,8 @@ cbuffer WaterFrameConstants : register(b5)
     // ---- 見えない細かい波のラフネス換算 ----
     // FFT カスケードごとの平均二乗傾斜（x・z の傾きの二乗和の平均）
     float3 gFFTCascadeMeanSquareSlope;
-    float gFFTCascadeMeanSquareSlopePad;
+    // カスケードより細かい波（さざ波）の平均二乗傾斜
+    float gFineWaveMeanSquareSlope;
 
     // ---- 海底の高さ（カメラの周りの範囲を RT で真上から測ったもの。gWaterSeabedHeight）----
     float2 gSeabedOriginXZ; // 範囲の XZ の最小の角 [m]

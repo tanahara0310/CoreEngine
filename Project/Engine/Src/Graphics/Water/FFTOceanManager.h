@@ -123,6 +123,10 @@ namespace CoreEngine
             return cascadeMeanSquareSlope_[cascadeIndex] * settings_.amplitudeScale * settings_.amplitudeScale;
         }
 
+        /// @brief カスケードより細かい波（さざ波）の平均二乗傾斜を返す
+        /// @details 風速から Cox-Munk の式で求めた海面全体の平均二乗傾斜から、カスケードが持つ分を引いた残り
+        float GetFineWaveMeanSquareSlope() const;
+
         // マルチスケール・カスケード数。各カスケードは異なるパッチ長の独立したFFTで、
         // 周期が噛み合わないため単一タイルの「格子状の繰り返し」を打ち消す。
         // 出力は Texture2DArray（スライス = カスケード）にまとめ、水面シェーダ側で

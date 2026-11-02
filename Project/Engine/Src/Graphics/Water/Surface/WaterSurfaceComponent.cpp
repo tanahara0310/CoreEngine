@@ -193,6 +193,7 @@ namespace CoreEngine
         for (int c = 0; c < 3; ++c) {
             frameCB_.fftCascadeMeanSquareSlope[c] = binding.fftCascadeMeanSquareSlope[c];
         }
+        frameCB_.fineWaveMeanSquareSlope = binding.fineWaveMeanSquareSlope;
 
         // 不正なクリップ距離（0 や逆転）はシェーダーの LinearizeDepth を破綻させるため、
         // 直前の有効値を維持する
@@ -317,6 +318,10 @@ namespace CoreEngine
         frameCB_.scatteringCoeff[0] = scatteringCoeff.x;
         frameCB_.scatteringCoeff[1] = scatteringCoeff.y;
         frameCB_.scatteringCoeff[2] = scatteringCoeff.z;
+    }
+
+    void WaterSurfaceComponent::SetRefractiveIndex(float refractiveIndex) {
+        frameCB_.refractiveIndex = refractiveIndex;
     }
 
     void WaterSurfaceComponent::SetBaseColor(const Vector4& color) {

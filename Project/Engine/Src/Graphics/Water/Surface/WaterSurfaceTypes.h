@@ -87,7 +87,7 @@ struct WaterFrameConstants {
 	int skyAmbientEnabled = 0;
 	// 波長依存の吸収係数 σa [1/m]（RGB）。赤 > 緑 > 青 が水の青さの物理的源泉
 	float absorptionCoeff[3] = { 0.35f, 0.07f, 0.02f };
-	float absorptionPad = 0.0f;
+	float refractiveIndex = 1.333f; // 水の屈折率（空気 1 に対する比）
 	// 波長依存の散乱係数 σs [1/m]（RGB）。深瀬のインスキャッタ色 (σs/σt) を決める
 	float scatteringCoeff[3] = { 0.003f, 0.008f, 0.016f };
 	float scatteringPad = 0.0f;
@@ -128,7 +128,8 @@ struct WaterFrameConstants {
 	// ---- 見えない細かい波のラフネス換算 ----
 	// FFT カスケードごとの平均二乗傾斜（x・z の傾きの二乗和の平均。FFTOceanManager が求める）
 	float fftCascadeMeanSquareSlope[3] = { 0.0f, 0.0f, 0.0f };
-	float fftCascadeMeanSquareSlopePad = 0.0f;
+	// カスケードより細かい波の平均二乗傾斜（FFTOceanManager::GetFineWaveMeanSquareSlope）
+	float fineWaveMeanSquareSlope = 0.0f;
 	// ---- 海底の高さ（カメラの周りの範囲を RT で真上から測ったもの。gWaterSeabedHeight）----
 	float seabedOriginXZ[2] = { 0.0f, 0.0f }; // 範囲の XZ の最小の角 [m]
 	float seabedInvSize = 0.0f;                // 範囲の一辺の長さの逆数 [1/m]
@@ -170,7 +171,7 @@ static constexpr Cb::Field kWaterFrameConstantsFields[] = {
     CB_FIELD(WaterFrameConstants, fresnelBaseReflectance), CB_FIELD(WaterFrameConstants, depthFadeEnabled),
     CB_FIELD(WaterFrameConstants, depthFadeDebugEnabled), CB_FIELD(WaterFrameConstants, depthFadeDebugScale),
     CB_FIELD(WaterFrameConstants, skyAmbientScale), CB_FIELD(WaterFrameConstants, skyAmbientEnabled),
-    CB_FIELD(WaterFrameConstants, absorptionCoeff), CB_FIELD(WaterFrameConstants, absorptionPad),
+    CB_FIELD(WaterFrameConstants, absorptionCoeff), CB_FIELD(WaterFrameConstants, refractiveIndex),
     CB_FIELD(WaterFrameConstants, scatteringCoeff), CB_FIELD(WaterFrameConstants, scatteringPad),
     CB_FIELD(WaterFrameConstants, depthDebugViewMode), CB_FIELD(WaterFrameConstants, useFFTOceanNormalMap),
     CB_FIELD(WaterFrameConstants, aerialPerspectiveEnabled),
@@ -181,7 +182,7 @@ static constexpr Cb::Field kWaterFrameConstantsFields[] = {
     CB_FIELD(WaterFrameConstants, foamOpacity), CB_FIELD(WaterFrameConstants, foamCascadeWeights),
     CB_FIELD(WaterFrameConstants, foamDecaySeconds),
     CB_FIELD(WaterFrameConstants, fftCascadeMeanSquareSlope),
-    CB_FIELD(WaterFrameConstants, fftCascadeMeanSquareSlopePad),
+    CB_FIELD(WaterFrameConstants, fineWaveMeanSquareSlope),
     CB_FIELD(WaterFrameConstants, seabedOriginXZ), CB_FIELD(WaterFrameConstants, seabedInvSize),
     CB_FIELD(WaterFrameConstants, seabedEnabled),
     CB_FIELD(WaterFrameConstants, shoreFoamEnabled), CB_FIELD(WaterFrameConstants, waveGroupPhase),

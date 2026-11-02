@@ -96,6 +96,9 @@ namespace CoreEngine
         /// @brief FFT カスケードごとの平均二乗傾斜（FFT を使わないときは 0）
         float fftCascadeMeanSquareSlope[3] = { 0.0f, 0.0f, 0.0f };
 
+        /// @brief カスケードより細かい波の平均二乗傾斜（FFT を使わないときは 0）
+        float fineWaveMeanSquareSlope = 0.0f;
+
         /// @brief 大気アクティブ＋SH 生成済みか（シェーダー側の参照可否）
         bool skyAmbientEnabled = false;
 
