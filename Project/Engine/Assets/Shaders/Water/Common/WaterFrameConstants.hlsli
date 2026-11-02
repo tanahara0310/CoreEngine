@@ -33,7 +33,7 @@ cbuffer WaterFrameConstants : register(b5)
     // 水の色は shallow/deep の色指定ではなく、吸収・散乱係数と光源から導出する。
     // 赤 > 緑 > 青 の順に吸収が強いことが「水が青い」物理の本体。
     float3 gAbsorptionCoeff; // 吸収係数 σa [1/m]（RGB 波長別）
-    float gAbsorptionPad;
+    float gWaterRefractiveIndex; // 水の屈折率（空気 1 に対する比）
     float3 gScatteringCoeff; // 散乱係数 σs [1/m]（RGB 波長別）
     float gScatteringPad;
 

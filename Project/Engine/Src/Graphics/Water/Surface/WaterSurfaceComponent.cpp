@@ -319,6 +319,10 @@ namespace CoreEngine
         frameCB_.scatteringCoeff[2] = scatteringCoeff.z;
     }
 
+    void WaterSurfaceComponent::SetRefractiveIndex(float refractiveIndex) {
+        frameCB_.refractiveIndex = refractiveIndex;
+    }
+
     void WaterSurfaceComponent::SetBaseColor(const Vector4& color) {
         auto* mat = GetModel() ? GetModel()->GetMaterial() : nullptr;
         if (mat) { mat->SetColor(color); }

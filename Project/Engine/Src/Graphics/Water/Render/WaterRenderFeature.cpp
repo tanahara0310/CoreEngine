@@ -550,6 +550,7 @@ namespace CoreEngine
         // 実効 σa/σs = ベース + 濁度ゲイン（合成は WaterCVars 側。永続化はベース値のみ）
         waterPlane->SetWaterOpticalCoefficients(
             WaterCVars::EffectiveAbsorption(), WaterCVars::EffectiveScattering());
+        waterPlane->SetRefractiveIndex(WaterCVars::CausticsRefractiveIndex.Get());
         // 白波のしきい値は WaterFoamSystem が白波の被覆率から較正した値を使う
         float foamBias = WaterFoamDefaults::kBias;
         float foamGain = WaterFoamDefaults::kGain;
@@ -609,6 +610,7 @@ namespace CoreEngine
         if (auto* rtRefraction = domain.GetWaterRefractionRayTracingManager()) {
             WaterRefractionRayTracingSettings settings = rtRefraction->GetSettings();
             settings.maxRefractionOffsetPixels = WaterCVars::RefractionMaxOffsetPixels.Get();
+            settings.waterRefractiveIndex = WaterCVars::CausticsRefractiveIndex.Get();
             rtRefraction->SetSettings(settings);
         }
     }
