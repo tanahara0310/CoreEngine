@@ -128,7 +128,8 @@ struct WaterFrameConstants {
 	// ---- 見えない細かい波のラフネス換算 ----
 	// FFT カスケードごとの平均二乗傾斜（x・z の傾きの二乗和の平均。FFTOceanManager が求める）
 	float fftCascadeMeanSquareSlope[3] = { 0.0f, 0.0f, 0.0f };
-	float fftCascadeMeanSquareSlopePad = 0.0f;
+	// カスケードより細かい波の平均二乗傾斜（FFTOceanManager::GetFineWaveMeanSquareSlope）
+	float fineWaveMeanSquareSlope = 0.0f;
 	// ---- 海底の高さ（カメラの周りの範囲を RT で真上から測ったもの。gWaterSeabedHeight）----
 	float seabedOriginXZ[2] = { 0.0f, 0.0f }; // 範囲の XZ の最小の角 [m]
 	float seabedInvSize = 0.0f;                // 範囲の一辺の長さの逆数 [1/m]
@@ -181,7 +182,7 @@ static constexpr Cb::Field kWaterFrameConstantsFields[] = {
     CB_FIELD(WaterFrameConstants, foamOpacity), CB_FIELD(WaterFrameConstants, foamCascadeWeights),
     CB_FIELD(WaterFrameConstants, foamDecaySeconds),
     CB_FIELD(WaterFrameConstants, fftCascadeMeanSquareSlope),
-    CB_FIELD(WaterFrameConstants, fftCascadeMeanSquareSlopePad),
+    CB_FIELD(WaterFrameConstants, fineWaveMeanSquareSlope),
     CB_FIELD(WaterFrameConstants, seabedOriginXZ), CB_FIELD(WaterFrameConstants, seabedInvSize),
     CB_FIELD(WaterFrameConstants, seabedEnabled),
     CB_FIELD(WaterFrameConstants, shoreFoamEnabled), CB_FIELD(WaterFrameConstants, waveGroupPhase),

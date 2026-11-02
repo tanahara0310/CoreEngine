@@ -298,6 +298,7 @@ namespace CoreEngine
             surfaceConstants.cascadeMeanSquareSlope[c] = fftOceanInput.cascadeMeanSquareSlope[c];
             surfaceConstants.waveGroupPhase[c] = fftOceanInput.waveGroupPhase[c];
         }
+        surfaceConstants.fineWaveMeanSquareSlope = fftOceanInput.fineWaveMeanSquareSlope;
         surfaceConstants.regionValid = surfaceData.regionValid;
         for (int c = 0; c < 2; ++c) {
             surfaceConstants.regionCenterXZ[c] = surfaceData.regionCenterXZ[c];

@@ -34,7 +34,7 @@ cbuffer WaterSurfaceData : register(b1)
     uint gSurfaceRegionValid;              // 0 = 水面メッシュの範囲が分からない
     // FFT カスケードごとの平均二乗傾斜（x・z の傾きの二乗和の平均）
     float3 gSurfaceCascadeMeanSquareSlope;
-    float gSurfacePad1;
+    float gSurfaceFineWaveMeanSquareSlope; // カスケードより細かい波の平均二乗傾斜
     float2 gSurfaceRegionCenterXZ;         // 水面メッシュのワールド XZ 範囲
     float2 gSurfaceRegionHalfExtentXZ;
     float3 gSurfaceWaveGroupPhase;         // 波群エンベロープの位相のずれ [rad]
@@ -402,6 +402,13 @@ float EvaluateExcludedMeanSquareSlope(float2 worldXZ, float footprintMeters)
     }
     const float envelope = ComputeFFTWaveGroupEnvelope(worldXZ, gSurfaceWaveGroupPhase);
     return excluded * envelope * envelope;
+}
+
+/// @brief カスケードより細かい波（さざ波）の平均二乗傾斜を返す
+/// @details Gerstner の波面では 0
+float EvaluateFineWaveMeanSquareSlope()
+{
+    return UseFFTOceanSurface() ? gSurfaceFineWaveMeanSquareSlope : 0.0f;
 }
 
 // ============================================================

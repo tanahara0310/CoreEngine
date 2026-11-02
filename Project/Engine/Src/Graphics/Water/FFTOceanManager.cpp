@@ -678,6 +678,17 @@ namespace CoreEngine
         return summary;
     }
 
+    float FFTOceanManager::GetFineWaveMeanSquareSlope() const
+    {
+        // Cox-Munk（油膜の無い海面）: 平均二乗傾斜 = 0.003 + 5.12e-3 × 風速 [m/s]
+        const float totalMeanSquareSlope = 0.003f + 5.12e-3f * (std::max)(settings_.windSpeed, 0.0f);
+        float resolvedMeanSquareSlope = 0.0f;
+        for (uint32_t c = 0; c < kCascadeCount; ++c) {
+            resolvedMeanSquareSlope += GetCascadeMeanSquareSlope(c);
+        }
+        return (std::max)(totalMeanSquareSlope - resolvedMeanSquareSlope, 0.0f);
+    }
+
     std::array<float, 3> FFTOceanManager::ComputeWaveGroupPhase(float timeSeconds) const
     {
         constexpr double kTwoPi = 6.283185307179586;

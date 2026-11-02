@@ -3,6 +3,7 @@
 #include "AtmosphereApply.hlsli"
 // カスケード定数・回転写像・波群エンベロープの唯一の情報源
 #include "../Common/FFTOceanCascade.hlsli"
+#include "../Common/WaterVisibleSlope.hlsli"
 // RT 屈折アルファのエンコード規約（RTWaterRefraction.hlsl と共有）
 #include "../Common/WaterRefractionEncoding.hlsli"
 #include "ColorSpace.hlsli" // Luminance
@@ -332,6 +333,9 @@ WaterPixelOutput main(WaterPSInput input)
     // 以降の PBR・水柱厚さ・フレネル・グリッターで使い回す。
     float unresolvedMeanSquareSlope;
     const float3 surfaceNormal = ResolveSurfaceNormal(input, unresolvedMeanSquareSlope);
+    // 反射のにじみに使う、法線に入っていない傾き（カスケードより細かい波を含む）
+    const float reflectionMeanSquareSlope = unresolvedMeanSquareSlope
+        + ((gUseFFTOceanNormalMap != 0) ? gFineWaveMeanSquareSlope : 0.0f);
 
     // ---- 2. スクリーン UV を計算する ----
     uint sceneDepthWidth = 1;
@@ -391,9 +395,10 @@ WaterPixelOutput main(WaterPSInput input)
     float3 viewDir = normalize(gCamera.worldPosition - input.worldPosition);
     float3 geomNormal = surfaceNormal;
 
-    // フレネルは反射像・透過像と同じ面法線で評価する
+    // フレネルは反射像・透過像と同じ面法線で評価し、法線に入っていない傾きは見えている面で平均する
     float cosTheta = saturate(dot(surfaceNormal, viewDir));
-    float fresnel = FresnelSchlick(cosTheta, saturate(gFresnelBaseReflectance));
+    float fresnel = ComputeVisibleFacetFresnel(
+        cosTheta, 0.5f * reflectionMeanSquareSlope, saturate(gFresnelBaseReflectance));
     float reflectanceWeight = saturate(fresnel * gFresnelReflectanceScale);
 
     // ---- 5.5. 泡マスク（dissolve 方式）----
@@ -494,7 +499,7 @@ WaterPixelOutput main(WaterPSInput input)
         {
             const float kEnvMipCount = 5.0f;
             const float envMip = AddSlopeVarianceToRoughness(
-                kWaterReflectionMicroRoughness, unresolvedMeanSquareSlope) * (kEnvMipCount - 1.0f);
+                kWaterReflectionMicroRoughness, reflectionMeanSquareSlope) * (kEnvMipCount - 1.0f);
             float3 envReflectDir = reflect(-viewDir, geomNormal);
             envReflectDir.y = max(abs(envReflectDir.y), 0.01f);
             fallbackReflectColor =

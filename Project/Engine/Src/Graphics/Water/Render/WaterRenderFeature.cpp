@@ -501,6 +501,7 @@ namespace CoreEngine
             for (uint32_t c = 0; c < FFTOceanManager::kCascadeCount; ++c) {
                 binding.fftCascadeMeanSquareSlope[c] = fftOcean->GetCascadeMeanSquareSlope(c);
             }
+            binding.fineWaveMeanSquareSlope = fftOcean->GetFineWaveMeanSquareSlope();
         }
 
         // 大気散乱（Aerial Perspective）・空アンビエント・空スペキュラの接続

@@ -101,7 +101,7 @@ namespace CoreEngine
         // ---- 反射の元画像の縮小段（段 0 = 半分の解像度）----
         // 荒れた水面の反射は、法線から外した細かい波の分だけ当たった物をぼかして引く。
         // 色の段は物の画素の色（乗算済みアルファ）、空の段は空の画素の割合を持つ
-        static constexpr uint32_t kColorPyramidMaxMips = 6;
+        static constexpr uint32_t kColorPyramidMaxMips = 8;
         GpuResource colorPyramid_;
         std::array<DescriptorHandle, kColorPyramidMaxMips> colorPyramidMipSrv_{};
         std::array<DescriptorHandle, kColorPyramidMaxMips> colorPyramidMipUav_{};

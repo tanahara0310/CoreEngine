@@ -69,7 +69,8 @@ cbuffer WaterFrameConstants : register(b5)
     // ---- 見えない細かい波のラフネス換算 ----
     // FFT カスケードごとの平均二乗傾斜（x・z の傾きの二乗和の平均）
     float3 gFFTCascadeMeanSquareSlope;
-    float gFFTCascadeMeanSquareSlopePad;
+    // カスケードより細かい波（さざ波）の平均二乗傾斜
+    float gFineWaveMeanSquareSlope;
 
     // ---- 海底の高さ（カメラの周りの範囲を RT で真上から測ったもの。gWaterSeabedHeight）----
     float2 gSeabedOriginXZ; // 範囲の XZ の最小の角 [m]
