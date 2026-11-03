@@ -118,9 +118,9 @@ WaterPixelOutput main(WaterPSInput input)
     const float sunDiffuseVisibility = ApplyShadowLightFloor(sunVisibility);
 
     // ---- 4. 水面専用 PBR フォワード出力（discard なし）----
-    // 反射と空環境マップが有効なフレームでは、反射色は RT 反射か空キューブマップの色になり、
+    // 空環境マップが有効なフレームでは、反射色は RT 反射か空キューブマップの色になり、
     // フォワード PBR の rgb は読まれないので計算を省く。
-    const bool forwardColorUnused = (gReflectionEnabled != 0) && (gSkyEnvReflectionEnabled != 0);
+    const bool forwardColorUnused = gSkyEnvReflectionEnabled != 0;
     PixelShaderOutput output;
     if (forwardColorUnused)
     {
@@ -212,9 +212,9 @@ WaterPixelOutput main(WaterPSInput input)
     output.color.rgb = finalWaterComposite;
 
     // ---- 11. 太陽のきらめき（ComputeSunGlintSpecular）----
-    // 反射が無効なときはフォワード PBR の色（太陽のスペキュラ入り）が反射色なので、加算しない。
+    // 反射色が映り込みの像でないときはフォワード PBR の色（太陽のスペキュラ入り）が反射色なので、加算しない。
     // 泡は拡散層で鏡面のきらめきを持たない: 被覆分の輝度抑制＋ラフネス引き上げの両方。
-    if (gReflectionEnabled)
+    if (UsesReflectionImage())
     {
         output.color.rgb +=
             ComputeSunGlintSpecular(
