@@ -24,7 +24,7 @@ namespace CoreEngine
     namespace
     {
         /// @brief 水面 1 枚ごとの値の保存キー（プロファイルには入れない）
-        constexpr const char* kSurfaceOnlyKeys[] = { "size", "resolution", "tideAmplitude", "profileAsset" };
+        constexpr const char* kSurfaceOnlyKeys[] = { "size", "resolution", "primary", "tideAmplitude", "profileAsset" };
 
         /// @brief プロファイルの保存形の版を書くキー
         constexpr const char* kProfileVersionKey = "version";
@@ -102,7 +102,7 @@ namespace CoreEngine
         auto* dxCommon = engine ? engine->GetService<GraphicsCore>() : nullptr;
         if (dxCommon) {
             constantBuffers_.Initialize(dxCommon->GetUploadRing());
-            constantBuffers_.UpdateWaterConstants(waterCB_);
+            UploadWaterConstants();
             constantBuffers_.UpdateFrameConstants(frameCB_);
         }
 
@@ -299,6 +299,14 @@ namespace CoreEngine
         constantBuffers_.UpdateFrameConstants(frameCB_);
     }
 
+    void WaterSurfaceComponent::UploadWaterConstants() {
+        drawnWaterCB_ = waterCB_;
+        for (WaveParams& wave : drawnWaterCB_.waves) {
+            wave.amplitude *= profile_.amplitudeScale;
+        }
+        constantBuffers_.UpdateWaterConstants(drawnWaterCB_);
+    }
+
     void WaterSurfaceComponent::SetWaveModel(WaterWaveModelType waveModel) {
         if (waveModel_ == waveModel) {
             return;
@@ -437,7 +445,7 @@ namespace CoreEngine
         // simulation 層が決定した時間を CPU / GPU の WaterConstants へ反映する
         elapsedTime_ = timeSeconds;
         waterCB_.time = timeSeconds;
-        constantBuffers_.UpdateWaterConstants(waterCB_);
+        UploadWaterConstants();
     }
 
     std::unique_ptr<IPrimitiveMeshGenerator> WaterSurfaceComponent::CreateMeshGenerator() const {

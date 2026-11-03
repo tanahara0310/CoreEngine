@@ -49,6 +49,9 @@ namespace CoreEngine
             REFLECT_ACCESSOR("resolution", "分割数", GetResolutionValue, SetResolutionValue,
                 p.range = Range(2.0f, 1024.0f, 1.0f),
                 p.tooltip = "XZ 方向の分割数。シーンを読み込むときに効く")
+            REFLECT_PROPERTY(primary_, "主の水にする",
+                p.tooltip = "FFT の海・泡・岸・レイトレーシングの映り込みと屈折・濡れ跡・水中の霧をこの水面で描く。"
+                            "どの水面にも付いていなければシーンで最初の水面。ほかの水面は Gerstner の波と空の映り込みで描く")
             REFLECT_PROPERTY(tideAmplitude_, "潮の高さ", p.range = Range(0.0f, 20.0f, 0.01f),
                 p.tooltip = "月と太陽が真上か真下に来たとき、水面がトランスフォームの高さより上がる高さ [m]。"
                             "地平線に来たときは同じだけ下がる。0 で潮なし")
@@ -87,7 +90,7 @@ namespace CoreEngine
                 p.tooltip = "風が海の上を吹いてきた距離。シーンの風速と合わせて波の長さと高さが決まる。"
                             "短いと若く尖った波、長いと育ちきった波")
             REFLECT_PROPERTY(profile_.amplitudeScale, "高さの倍率", p.range = Range(0.0f, 4.0f),
-                p.tooltip = "風速と吹送距離から求めた波高に掛ける倍率")
+                p.tooltip = "FFT の海では風速と吹送距離から求めた波高に、Gerstner の波では 16 本の波の高さに掛ける倍率（0 で波なし）")
             REFLECT_PROPERTY(profile_.choppiness, "波頭の尖り", p.range = Range(0.0f, 4.0f),
                 p.tooltip = "水平に寄せる強さ")
             REFLECT_PROPERTY(profile_.componentCount, "短い波の量", p.range = Range(1.0f, 64.0f),
@@ -255,6 +258,14 @@ namespace CoreEngine
         /// @return 書けたら true
         bool WriteProfile(const std::string& assetPath) const;
 
+        // ===== 主の水 =====
+
+        /// @brief 主の水にするか（FFT の海・泡・岸・レイトレーシングの映り込みと屈折をこの水面で描く）
+        bool IsPrimary() const { return primary_; }
+
+        /// @brief 主の水にするかを設定する
+        void SetPrimary(bool primary) { primary_ = primary; }
+
         // ===== 潮 =====
 
         /// @brief 潮の高さ（月と太陽が真上か真下に来たときにトランスフォームの高さより上がる高さ [m]。0 で潮なし）
@@ -285,7 +296,7 @@ namespace CoreEngine
 
         // ===== ゲッター =====
 
-        /// @brief 波パラメータ配列への参照を返す（ImGui 直接編集用）
+        /// @brief 波パラメータ配列への参照を返す（ImGui 直接編集用。高さの倍率を掛ける前の値）
         WaveParams* GetWaves() { return waterCB_.waves; }
 
         /// @brief 現在有効な Gerstner Wave 本数を返す
@@ -304,8 +315,8 @@ namespace CoreEngine
         int GetResolutionValue() const { return static_cast<int>(resolution_); }
         void SetResolutionValue(int resolution) { resolution_ = static_cast<uint32_t>(resolution < 2 ? 2 : resolution); }
 
-        /// @brief DXR 屈折用に現在の WaterConstants を取得する
-        const WaterConstants& GetWaterConstants() const { return waterCB_; }
+        /// @brief 描いている WaterConstants（Gerstner の波の高さに高さの倍率を掛けた値）
+        const WaterConstants& GetWaterConstants() const { return drawnWaterCB_; }
 
         /// @brief フレーム定数への参照を返す（ImGui から reflectionEnabled 等を参照する用）
         const WaterFrameConstants& GetFrameConstants() const { return frameCB_; }
@@ -334,6 +345,9 @@ namespace CoreEngine
         /// @brief フレーム定数バッファを GPU へ転送する
         void UploadFrameConstants();
 
+        /// @brief 波の値に高さの倍率を掛けて描く値を作り、GPU へ転送する
+        void UploadWaterConstants();
+
         TransformComponent* transformComponent_ = nullptr;
         MeshRendererComponent* meshRenderer_ = nullptr;
 
@@ -341,6 +355,7 @@ namespace CoreEngine
         uint32_t resolution_;
         WaterWaveModelType waveModel_ = WaterProfile{}.WaveModel();
 
+        bool primary_ = false;                     ///< 主の水にするか
         AssetRef<WaterProfileAsset> profileAsset_; ///< 値を読み込むプロファイル（何も指さなければ自分の値）
         WaterProfile profile_{};                   ///< 水の性質
 
@@ -357,6 +372,7 @@ namespace CoreEngine
 
         // ---- CPU 側の Water パラメータ保持 ----
         WaterConstants waterCB_{};         ///< 波パラメータと時間の CPU 側コピー
+        WaterConstants drawnWaterCB_{};    ///< 描く値（waterCB_ の波の高さに高さの倍率を掛けたもの）
         float elapsedTime_ = 0.0f;         ///< 経過時間（波位相用）
 
         // ---- CPU 側のフレーム定数保持 ----
