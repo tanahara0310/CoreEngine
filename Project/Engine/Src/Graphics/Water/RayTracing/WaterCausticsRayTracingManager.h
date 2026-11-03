@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <memory>
 
+#include "Graphics/Water/WaterPhysics.h"
 #include "Graphics/Water/WaterSurfaceData.h"
 #include "Math/Vector/Vector3.h"
 #include "Math/Matrix/Matrix4x4.h"
@@ -23,9 +24,8 @@ namespace CoreEngine
         float maxTraceDistance = 500.0f;
         float surfaceBias = 0.02f;
         // 1.0 = 物理値（水平太陽照度 × ヤコビアン集光率）をそのまま出力する。
-        // 旧実装（集光項なし・可視性テストのみ）の見た目合わせだった 3.0 から変更。
         float intensityScale = 1.0f;
-        float refractiveIndex = 1.333f;
+        float refractiveIndex = WaterPhysics::kRefractiveIndex;
         // 波長依存の吸収係数 σa [1/m]（RGB）。水面描画（Jerlov プリセット/濁度 UI）と
         // 同じ値が WaterSystem から毎フレーム同期される。
         // 既定値は Ocean プリセット（Jerlov I 相当）と同値。

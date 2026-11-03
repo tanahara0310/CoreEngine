@@ -1,10 +1,8 @@
 #include "Object3dVertex.hlsli"
-// カスケード定数・回転写像・波群エンベロープの唯一の情報源
-#include "../Common/FFTOceanCascade.hlsli"
+#include "../Common/WaveSurface.hlsli"
 
 // カスケード（マルチスケールFFT）は Texture2DArray のスライスに格納される。
-// ヤコビアン（t20）は頂点解像度に依存しないよう Water.PS 側で直接サンプルする
-// （以前ここでカスケード0のみを頂点サンプルして渡していた経路は廃止）。
+// ヤコビアン（t20）は頂点解像度に依存しないよう Water.PS 側で直接サンプルする。
 Texture2DArray<float4> gFFTOceanDisplacement : register(t18);
 SamplerState gLinearClamp : register(s2);
 // WRAP サンプラ（カスケードのワールドタイリング用）。gSampler は Anisotropic=WRAP。
@@ -58,30 +56,9 @@ float GetSeaMapWaveScale(float2 baseXZ, float vertexSpacing)
 
 /// @brief 頂点の変位（格子の間隔で解像できるカスケード＋波群エンベロープ＋海の範囲マップ）
 /// @param vertexSpacing 頂点の格子の間隔 [m]（ComputeFFTGeometryCascadeWeight）
-/// @details 各カスケードを「ワールドXZ / パッチ長」でサンプルし、格子の間隔で決まる重みを掛けて合算する。
-///          FFTOceanFinalize.CS はワールド軸（+X=texU, +Z=texV, Y=up）でエンコードするため、
-///          ワールドXZをそのまま UV にすれば法線マップとも軸・スケールが一致する。
 float3 SampleVertexDisplacement(float2 baseXZ, float vertexSpacing)
 {
-    float3 displacement = float3(0.0f, 0.0f, 0.0f);
-    [unroll]
-    for (int ci = 0; ci < kFFTCascadeCount; ++ci)
-    {
-        const float weight = ComputeFFTGeometryCascadeWeight(ci, vertexSpacing);
-        if (weight <= 0.0f)
-        {
-            continue;
-        }
-        // ワールドXZ を回転格子系へ（uv = R(θ)·p / patch）
-        float2 cuv = ComputeFFTCascadeUV(baseXZ, ci);
-        float3 d = gFFTOceanDisplacement.SampleLevel(gSampler, float3(cuv, (float)ci), 0.0f).xyz;
-        // テクスチャ格子系の水平変位 (d.x, d.z) をワールドへ逆回転（高さ d.y はそのまま）
-        float2 horizontal = RotateFromFFTCascadeGrid(float2(d.x, d.z), ci);
-        displacement += float3(horizontal.x, d.y, horizontal.y) * weight;
-    }
-
-    // 波群エンベロープでタイル周期を崩す（PS の法線・RT の波面評価と同一の変調）
-    return displacement * ComputeFFTWaveGroupEnvelope(baseXZ, gWaveGroupPhase)
+    return SampleFFTVertexDisplacement(gFFTOceanDisplacement, gSampler, baseXZ, vertexSpacing, gWaveGroupPhase)
         * GetSeaMapWaveScale(baseXZ, vertexSpacing);
 }
 

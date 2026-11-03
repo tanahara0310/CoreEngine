@@ -2,17 +2,11 @@
 // 水面法線の解決（Water.PS.hlsl 専用）
 // ------------------------------------------------------------
 // ピクセル単位の面法線（FFT 3 カスケード合成＋フットプリントフェード AA）。
-//
-// 【include 位置の契約】Water.PS.hlsl のリソース宣言・WaterPSInput・
-// WaterFrameConstants(b5) の後で include すること。以下に暗黙依存する:
-//   資源    : gFFTOceanNormal / gSampler / gCamera（Object3dForward.hlsli）
-//   cbuffer : gUseFFTOceanNormalMap
-//   型      : WaterPSInput
-//   関数    : ComputeFFTCascadeUV / RotateFromFFTCascadeGrid /
-//             ComputeFFTWaveGroupEnvelope（Common/FFTOceanCascade.hlsli）
 // ============================================================
 #ifndef WATER_NORMALS_INCLUDED
 #define WATER_NORMALS_INCLUDED
+
+#include "WaterSurfaceResources.hlsli"
 
 /// @brief ピクセル単位の法線を解決する
 /// @details Gerstner Wave は頂点シェーダーで解析的に計算した法線をそのまま補間して使えるが、
@@ -40,15 +34,8 @@ float3 ResolveSurfaceNormal(WaterPSInput input, out float unresolvedMeanSquareSl
     float3 tangent = normalize(input.tangent);
     float3 bitangent = normalize(input.bitangent);
 
-    // ★フェード判定は「距離」ではなく「1 ピクセルが覆うテクセル数」で行う★
-    // FFT の法線テクスチャは MipLevels=1 で生成されており（FFTOceanManager.cpp）、
-    // Sample() は異方性サンプラでもミップを選べない＝縮小フィルタが一切効かない。
-    // そのため 1 ピクセルが多数テクセルを跨ぐ状況では法線がピクセル毎に暴れる。
-    // 旧実装はこれをカメラ距離でフェードして誤魔化していたが、**かすめ角では
-    // 距離が近くてもフットプリントが巨大になる**ため全く効かず、水面すれすれの
-    // 視点で明暗がピクセル単位に切り替わる黒いギザギザとして現れていた
-    // （2026-08-09 修正）。UV の画面微分から実測フットプリントを求めれば、
-    // 距離と角度の両方を正しく織り込める。
+    // フェードは「1 ピクセルが覆うテクセル数」で決める。FFT の法線テクスチャはミップを持たないので、
+    // UV の画面微分から求めたフットプリントで、距離とかすめ角の両方の縮小を織り込む。
     uint normalTexWidth = 1;
     uint normalTexHeight = 1;
     uint normalTexSlices = 1;
@@ -59,9 +46,7 @@ float3 ResolveSurfaceNormal(WaterPSInput input, out float unresolvedMeanSquareSl
     [unroll]
     for (int ci = 0; ci < kFFTCascadeCount; ++ci)
     {
-        // 参照格子座標を回転格子系へ（FFTWater.VS の変位サンプリングと同一の引数）。
-        // ここを input.worldPosition.xz にすると、変位後の点で法線を引くことになり
-        // 水平変位ぶん法線が幾何からズレる（2026-08-08 修正）。
+        // 参照格子座標を回転格子系へ（FFTWater.VS の変位サンプリングと同一の引数）
         float2 cuv = ComputeFFTCascadeUV(input.baseWorldXZ, ci);
         float3 enc = gFFTOceanNormal.Sample(gSampler, float3(cuv, (float)ci)).xyz;
         float3 nLocal = normalize(enc * 2.0f - 1.0f); // (x=+texU, y=up, z=+texV)

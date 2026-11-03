@@ -1801,6 +1801,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanSpectrumBuilder.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanSpectrumDebugHelper.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\WaterFoamDefaults.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\WaterPhysics.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Simulation\FFTOceanSurfaceSimulator.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Simulation\GerstnerWaterSimulator.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Simulation\WaterSurfaceSimulator.h" />

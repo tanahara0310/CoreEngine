@@ -2,6 +2,7 @@
 #include "Object3d.hlsli"
 #include "ObjectMaterial.hlsli"
 #include "../Lighting/LightStructures.hlsli"
+#include "../Lighting/ShadowLightFloor.hlsli"
 #include "../PBR/PBR.hlsli"
 #include "Fog.hlsli"
 
@@ -57,7 +58,7 @@ void CalculateDirectionalLights(
             rtShadow = gRTShadowMask.Load(int3(coord, 0)).r;
         }
     }
-    float shadowFactor = lerp(0.3f, 1.0f, rtShadow);
+    float shadowFactor = ApplyShadowLightFloor(rtShadow);
 
     for (uint i = 0; i < gLightCounts.directionalLightCount; ++i)
     {

@@ -26,9 +26,6 @@ namespace CoreEngine
         // 反射ヒット点のスクリーン再投影ずれ量の上限（ピクセル）。
         // 0 = 無制限（RT で求めた正確な位置をそのまま使う。既定）。
         float maxReflectionOffsetPixels = 0.0f;
-        float debugDisplayScale = 1.0f;
-        uint32_t debugViewMode = 0;
-        uint32_t debugLogEnabled = 0;
     };
 
     /// @brief 水面の点から光源が見えるかを調べるための光源

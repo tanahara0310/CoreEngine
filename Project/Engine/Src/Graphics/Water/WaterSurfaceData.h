@@ -75,12 +75,4 @@ namespace CoreEngine
         WaterWetnessBinding wetness{};
     };
 
-    /// @brief 水の光学特性（屈折率・吸収・散乱）
-    struct WaterOpticalProperties {
-        float refractiveIndex = 1.333f;
-        float absorptionCoeff = 0.3f;
-        float scatteringCoeff = 0.0f;
-        float anisotropy = 0.0f;
-    };
-
 }

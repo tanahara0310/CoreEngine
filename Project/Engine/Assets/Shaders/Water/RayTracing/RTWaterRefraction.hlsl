@@ -5,9 +5,8 @@
 // 画面の外・画面に写る別の面の陰）ときは、当たった点を材質と光で照らして色を決める。
 // ============================================================
 
-#include "RTWaterSurfaceCommon.hlsli"
+#include "RTWaterTrace.hlsli"
 #include "../../Include/Common/DepthReconstruction.hlsli"
-#include "../../Include/RayTracing/RTHitShading.hlsli"
 // 出力アルファのエンコード規約（読み手の Water.PS.hlsl と共有）
 #include "../Common/WaterRefractionEncoding.hlsli"
 // 水面を通って水中の点へ届く日光（RTWaterCaustics と共有）
@@ -15,7 +14,7 @@
 
 RWTexture2D<float4> gRefractionOutput : register(u0);
 RaytracingAccelerationStructure gScene : register(t0);
-Texture2D<float> gSceneDepth : register(t1); // WorldPosition ターゲット廃止に伴い深度から復元する
+Texture2D<float> gSceneDepth : register(t1); // ワールド座標は深度から復元する
 Texture2D<float4> gSceneColor : register(t2);
 Texture2DArray<float4> gFFTOceanDisplacement : register(t3);
 Texture2DArray<float4> gFFTOceanNormal : register(t4);
@@ -23,9 +22,8 @@ Texture2DArray<float4> gFFTOceanNormal : register(t4);
 cbuffer WaterRefractionConstants : register(b0)
 {
     float4x4 gViewProjection;
-    float4x4 gInvViewProjection; // WorldPosition ターゲット廃止に伴う深度復元用
+    float4x4 gInvViewProjection; // 深度復元用
     float3 gCameraPosition;
-    float gWaterHeight;
     float gSurfaceBias;
     float gMaxRayDistance;
     float gRefractionEta;
@@ -35,10 +33,9 @@ cbuffer WaterRefractionConstants : register(b0)
     float gDebugDisplayScale;
     uint gDebugViewMode;
     // 水中の点を照らす値（DeferredLighting の水中ライティング・RT コースティクスと同じ値）
+    float gCausticsIntensityScale;    // RT コースティクスの強さの倍率
     float3 gUnderwaterAbsorption;     // 吸収係数 σa [1/m]
     uint gUnderwaterLightingEnabled;  // 1 = 水中の点のメインライトを水面を通った日光で照らす
-    float gCausticsIntensityScale;    // RT コースティクスの強さの倍率
-    float3 gRefractionPad;
 };
 
 static const uint kRTRefractionDebugNone = 0;
@@ -46,37 +43,6 @@ static const uint kRTRefractionDebugUVOffsetPixels = 1;
 static const uint kRTRefractionDebugDepthMismatch = 2;
 static const uint kRTRefractionDebugWaterNormal = 3;
 static const uint kRTRefractionDebugRefractedDirection = 4;
-
-/// @brief 屈折パスのペイロード（屈折レイと影のレイで共通）
-struct RTRefractionPayload
-{
-    float hitT;
-    float hitFlag;        // 1 = 当たった / 0 = 抜けた
-    uint instanceIndex;   // InstanceID()（ヒットシェーディングの表の行）
-    uint primitiveIndex;  // PrimitiveIndex()
-    float2 barycentrics;  // 交点の重心座標
-};
-
-#ifdef __INTELLISENSE__
-#define RAY_FLAG_NONE 0x0
-#define RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH 0x4
-#define RAY_FLAG_SKIP_CLOSEST_HIT_SHADER 0x8
-void TraceRay(
-    RaytracingAccelerationStructure scene,
-    uint rayFlags,
-    uint instanceInclusionMask,
-    uint rayContributionToHitGroupIndex,
-    uint multiplierForGeometryContributionToHitGroupIndex,
-    uint missShaderIndex,
-    RayDesc ray,
-    inout RTRefractionPayload payload);
-#endif
-
-// ペイロード・失敗理由コード・画面端フェード・波面評価は RTWaterSurfaceCommon.hlsli（共通）。
-// アルファのエンコード規約（kRTSuccessRangeMin / kRTMaxOpticalPathMeters /
-// kRTColorInvalidOffset / EncodeHitAlpha）は Common/WaterRefractionEncoding.hlsli が
-// 唯一の情報源。読み手の Water.PS.hlsl も同じヘッダーを include する。
-// 失敗理由コード（1〜9/255 = [0, 0.5) の範囲）は成功レンジと衝突しない。
 
 float4 MakeFallbackOutput(float3 fallbackColor, float reasonCode)
 {
@@ -91,39 +57,6 @@ float4 MakeColorFallbackWithPath(float3 fallbackColor, float opticalPathLength)
 
 /// @brief この高さ [m] までの面は水中の面として扱う（波込みの水面との誤差の分）
 static const float kUnderwaterMarginMeters = 0.02f;
-/// @brief アルファで抜ける所に当たったときに、その先へ撃ち直す回数の上限
-static const uint kMaxCutoutRetrace = 3;
-
-/// @brief 何にも当たっていない状態のペイロード
-RTRefractionPayload MakeEmptyRefractionPayload()
-{
-    RTRefractionPayload payload;
-    payload.hitT = 0.0f;
-    payload.hitFlag = 0.0f;
-    payload.instanceIndex = 0;
-    payload.primitiveIndex = 0;
-    payload.barycentrics = float2(0.0f, 0.0f);
-    return payload;
-}
-
-/// @brief 点から向きへ遮る物が無いかを返す（1 = 無い / 0 = 遮られる）
-float TraceVisibility(float3 origin, float3 direction, float maxDistance)
-{
-    RayDesc ray;
-    ray.Origin = origin;
-    ray.Direction = direction;
-    ray.TMin = 0.001f;
-    ray.TMax = maxDistance;
-
-    // 当たりはヒットシェーダーを通さずに終えるので、当たった扱いで初期化してミスだけが 0 に戻す
-    RTRefractionPayload payload = MakeEmptyRefractionPayload();
-    payload.hitFlag = 1.0f;
-    TraceRay(
-        gScene,
-        RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER,
-        0xFF, 0, 1, 0, ray, payload);
-    return 1.0f - payload.hitFlag;
-}
 
 /// @brief メインライトで水中の点を照らすコースティクスの値（RT コースティクスのパスと同じ値）
 WaterCausticsParams MakeRefractionCausticsParams(DirectionalLightData mainLight)
@@ -208,7 +141,7 @@ RTHitUnderwaterLighting BuildRefractionHitLighting(
             if (path.traceRequired)
             {
                 // 日光が水面へ入る点から当たった点まで届くか（水中の区間の遮蔽）と集光率
-                RTRefractionPayload payload = MakeEmptyRefractionPayload();
+                RTWaterHitPayload payload = MakeEmptyHitPayload();
                 TraceRay(gScene, RAY_FLAG_NONE, 0xFF, 0, 1, 0, path.ray, payload);
                 lighting.transmittedMainLight = FinishWaterCaustics(
                     path, params, surface.position, surface.normal, footprintMeters,
@@ -227,7 +160,7 @@ RTHitUnderwaterLighting BuildRefractionHitLighting(
         {
             shadowOrigin = surface.position + surface.normal * max(gSurfaceBias, 0.02f);
         }
-        mainLightVisibility = TraceVisibility(shadowOrigin, toLight, gMaxRayDistance);
+        mainLightVisibility = TraceVisibility(gScene, shadowOrigin, toLight, gMaxRayDistance);
     }
     return lighting;
 }
@@ -239,39 +172,21 @@ RTHitUnderwaterLighting BuildRefractionHitLighting(
 /// @param coneSpread        レイの広がりの角度（rad。距離に比例して幅が増える）
 /// @return rgb = 照らした色、a = 1（抜ける材質の先で何にも当たらなかったときは 0）
 /// @details 抜ける材質（アルファ）に当たったときは、その先へ撃ち直す
-float4 ShadeRefractionHit(RayDesc ray, RTRefractionPayload payload, float coneWidthAtOrigin, float coneSpread)
+float4 ShadeRefractionHit(RayDesc ray, RTWaterHitPayload payload, float coneWidthAtOrigin, float coneSpread)
 {
-    [loop]
-    for (uint attempt = 0; attempt <= kMaxCutoutRetrace; ++attempt)
+    RTHitSurface surface;
+    float coneWidth;
+    if (!FindOpaqueHitSurface(gScene, ray, payload, coneWidthAtOrigin, coneSpread, surface, coneWidth))
     {
-        const float coneWidth = coneWidthAtOrigin + coneSpread * payload.hitT;
-        const RTHitSurface surface = FetchHitSurface(
-            payload.instanceIndex, payload.primitiveIndex, payload.barycentrics, ray.Direction, coneWidth);
-        if (!surface.cutout)
-        {
-            const float footprintMeters = ProjectFootprintOntoSurface(coneWidth, ray.Direction, surface.normal);
-            float mainLightVisibility;
-            const RTHitUnderwaterLighting lighting =
-                BuildRefractionHitLighting(surface, footprintMeters, mainLightVisibility);
-            // 見る向きは画面に写る点と同じくカメラからの直線（屈折レイの向きではない）
-            const float3 toCamera = normalize(gCameraPosition - surface.position);
-            return float4(ShadeHitSurface(surface, toCamera, mainLightVisibility, lighting), 1.0f);
-        }
-        if (attempt == kMaxCutoutRetrace)
-        {
-            break;
-        }
-
-        ray.TMin = payload.hitT + 1.0e-3f;
-        payload.hitT = 0.0f;
-        payload.hitFlag = 0.0f;
-        TraceRay(gScene, RAY_FLAG_NONE, 0xFF, 0, 1, 0, ray, payload);
-        if (payload.hitFlag < 0.5f)
-        {
-            break;
-        }
+        return float4(0.0f, 0.0f, 0.0f, 0.0f);
     }
-    return float4(0.0f, 0.0f, 0.0f, 0.0f);
+    const float footprintMeters = ProjectFootprintOntoSurface(coneWidth, ray.Direction, surface.normal);
+    float mainLightVisibility;
+    const RTHitUnderwaterLighting lighting =
+        BuildRefractionHitLighting(surface, footprintMeters, mainLightVisibility);
+    // 見る向きは画面に写る点と同じくカメラからの直線（屈折レイの向きではない）
+    const float3 toCamera = normalize(gCameraPosition - surface.position);
+    return float4(ShadeHitSurface(surface, toCamera, mainLightVisibility, lighting), 1.0f);
 }
 
 float3 EncodeSignedVector(float3 vectorValue)
@@ -405,7 +320,7 @@ void RTWaterRefractionRayGen()
     ray.TMin = 0.001f;
     ray.TMax = gMaxRayDistance;
 
-    RTRefractionPayload payload = MakeEmptyRefractionPayload();
+    RTWaterHitPayload payload = MakeEmptyHitPayload();
 
     // 屈折は「屈折レイが最初に交差する最も近い面」の色が必要なため、
     // 最近接ヒット（RAY_FLAG_NONE）でトレースする。
@@ -437,16 +352,10 @@ void RTWaterRefractionRayGen()
     const float opticalPathLength = length(hitWorldPos - ray.Origin);
 
     // ヒット点を画面へ投影する。カメラの後ろは画面の外と同じに扱う
-    const float4 clip = mul(float4(hitWorldPos, 1.0f), gViewProjection);
+    const float2 screenSize = float2(gScreenWidth, gScreenHeight);
     float2 uv = screenUV;
-    float edgeFade = 0.0f;
-    if (clip.w > 1.0e-5f)
-    {
-        const float3 ndc = clip.xyz / clip.w;
-        uv = ndc.xy * float2(0.5f, -0.5f) + 0.5f;
-        // 画面の外へはみ出した距離だけ下げる（画面内の屈折先は上下左右とも 1）
-        edgeFade = ComputeRTScreenBoundsFade(uv, float2(gScreenWidth, gScreenHeight));
-    }
+    float3 ndc = float3(0.0f, 0.0f, 0.0f);
+    const float edgeFade = ProjectToScreen(hitWorldPos, gViewProjection, screenSize, uv, ndc);
 
     // サンプル座標の算出には必ず [0,1] にクランプした値を使う。
     // 範囲外の uv をそのまま uint へキャストすると負値が巨大な符号なし値にラップし、
@@ -459,16 +368,8 @@ void RTWaterRefractionRayGen()
     // 実ヒット点の深度が食い違い depth mismatch でフォールバックしていた。
     // gMaxRefractionOffsetPixels は 0 で無制限（物理的に正しい RT 屈折）、
     // 正の値のときのみ暴発防止用の安全クランプとして機能する。
-    float2 refractedUV = clampedUV;
-    if (gMaxRefractionOffsetPixels > 0.0f)
-    {
-        float2 maxOffset = max(gMaxRefractionOffsetPixels, 0.0f) / float2(gScreenWidth, gScreenHeight);
-        float2 uvOffset = clamp(clampedUV - screenUV, -maxOffset, maxOffset);
-        refractedUV = saturate(screenUV + uvOffset);
-    }
-
-    uint2 sampleCoord = uint2(refractedUV * float2(gScreenWidth, gScreenHeight));
-    sampleCoord = min(sampleCoord, uint2(gScreenWidth - 1.0f, gScreenHeight - 1.0f));
+    const float2 refractedUV = LimitReprojectionOffset(clampedUV, screenUV, gMaxRefractionOffsetPixels, screenSize);
+    const uint2 sampleCoord = ScreenUVToPixelCoord(refractedUV, screenSize);
 
     const float uvOffsetPixels = length((refractedUV - screenUV) * float2(gScreenWidth, gScreenHeight));
 
@@ -543,20 +444,15 @@ void RTWaterRefractionRayGen()
 }
 
 [shader("miss")]
-void RTWaterRefractionMiss(inout RTRefractionPayload payload)
+void RTWaterRefractionMiss(inout RTWaterHitPayload payload)
 {
-    payload.hitT = 0.0f;
-    payload.hitFlag = 0.0f;
+    RecordWaterTraceMiss(payload);
 }
 
 [shader("closesthit")]
 void RTWaterRefractionClosestHit(
-    inout RTRefractionPayload payload,
+    inout RTWaterHitPayload payload,
     in BuiltInTriangleIntersectionAttributes attr)
 {
-    payload.hitT = RayTCurrent();
-    payload.hitFlag = 1.0f;
-    payload.instanceIndex = InstanceID();
-    payload.primitiveIndex = PrimitiveIndex();
-    payload.barycentrics = attr.barycentrics;
+    RecordWaterTraceHit(payload, attr);
 }

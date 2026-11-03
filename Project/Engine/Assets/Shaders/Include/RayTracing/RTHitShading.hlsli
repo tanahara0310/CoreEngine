@@ -9,6 +9,7 @@
 #include "../PBR/PBR.hlsli"
 #include "../Common/ColorSpace.hlsli"
 // 濡れ暗色化・水面を通った日光の合成（DeferredLighting の水中ライティングと同じ式）
+#include "../Lighting/ShadowLightFloor.hlsli"
 #include "../Lighting/UnderwaterLighting.hlsli"
 // 水が引いたあとの濡れ跡（DeferredLighting と同じ式）
 #include "../Lighting/WetSurface.hlsli"
@@ -369,7 +370,7 @@ float3 ShadeHitSurface(
 
     const float3 F0 = lerp(float3(DIELECTRIC_F0, DIELECTRIC_F0, DIELECTRIC_F0), surface.albedo, surface.metallic);
     const float3 albedo = ApplyWetDarkening(surface.albedo, max(underwater.factor, wetness));
-    const float mainLightShadow = lerp(0.3f, 1.0f, mainLightVisibility);
+    const float mainLightShadow = ApplyShadowLightFloor(mainLightVisibility);
     float3 color = surface.emissive;
     bool mainLightEnabled = false;
     float mainLightCloudShadow = 1.0f;

@@ -17,6 +17,8 @@
 #ifndef UNDERWATER_LIGHTING_INCLUDED
 #define UNDERWATER_LIGHTING_INCLUDED
 
+#include "ShadowLightFloor.hlsli"
+
 /// @brief 水中ライティング置換に必要な値一式
 struct UnderwaterContext
 {
@@ -97,7 +99,7 @@ float3 CompositeUnderwaterCaustics(
     // ほぼ鉛直なので Fresnel は法線入射の F0 で近似する。
     const float3 causticsKD = (1.0f.xxx - F0) * (1.0f - metallic);
     float3 result = causticsRadiance * causticsKD * albedo / PI;
-    result *= lerp(0.3f, 1.0f, mainLightShadow);
+    result *= ApplyShadowLightFloor(mainLightShadow);
     return result;
 }
 

@@ -8,6 +8,7 @@
 #include "RTWaterSurfaceCommon.hlsli"
 // フレネル透過率・受光面の幾何項
 #include "../Common/WaterSunTransmission.hlsli"
+#include "../Common/WaterPhysics.hlsli"
 
 /// @brief コースティクスの計算に使う日光と水の値
 struct WaterCausticsParams
@@ -131,7 +132,7 @@ WaterCausticsPath BeginWaterCaustics(
     const float coverage = crossFade * regionFade;
     path.coverage = coverage;
 
-    const float eta = 1.0f / max(params.refractiveIndex, 1.001f);
+    const float eta = 1.0f / max(params.refractiveIndex, kWaterMinRefractiveIndex);
     // refract() には光の進む向き（下向き）を渡す
     float3 lightDir = normalize(params.lightDirection);
 
@@ -271,7 +272,7 @@ WaterCausticsResult FinishWaterCaustics(
         return result;
     }
 
-    const float eta = 1.0f / max(params.refractiveIndex, 1.001f);
+    const float eta = 1.0f / max(params.refractiveIndex, kWaterMinRefractiveIndex);
     const float3 lightDir = normalize(params.lightDirection);
     const float3 waterPos = path.entryPosition;
     const float3 refractedDir = path.refractedDir;

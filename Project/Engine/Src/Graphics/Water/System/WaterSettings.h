@@ -2,6 +2,7 @@
 
 #include <cstdint>
 
+#include "Graphics/Water/WaterPhysics.h"
 #include "Math/Vector/Vector2.h"
 #include "Math/Vector/Vector3.h"
 #include "Math/Vector/Vector4.h"
@@ -13,11 +14,11 @@ namespace CoreEngine
         Vector4 baseColor{};
         float roughness = 0.0f;
         float fresnelScale = 1.0f;
-        float fresnelF0 = 0.02f;
+        float fresnelF0 = WaterPhysics::kFresnelF0;
         bool depthFadeEnabled = true;
         Vector3 absorption{};       ///< 実効吸収係数 σa [1/m]（ベース＋濁度）
         Vector3 scattering{};       ///< 実効散乱係数 σs [1/m]（ベース＋濁度）
-        float refractiveIndex = 1.333f;
+        float refractiveIndex = WaterPhysics::kRefractiveIndex;
     };
 
     /// @brief FFT の海の波の設定

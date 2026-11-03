@@ -11,7 +11,7 @@
 
 RWTexture2D<float4> gCausticsOutput : register(u0);
 RaytracingAccelerationStructure gScene : register(t0);
-Texture2D<float> gSceneDepth : register(t1); // WorldPosition ターゲット廃止に伴い深度から復元する
+Texture2D<float> gSceneDepth : register(t1); // ワールド座標は深度から復元する
 Texture2D<float4> gNormalRoughness : register(t2);
 Texture2DArray<float4> gFFTOceanDisplacement : register(t3);
 Texture2DArray<float4> gFFTOceanNormal : register(t4);
@@ -21,22 +21,13 @@ cbuffer WaterCausticsConstants : register(b0)
     float gMaxTraceDistance;
     float gSurfaceBias;
     float gIntensityScale;
-    // 旧 gWaterHeight。水面高さは b1 の gSurfaceWaterHeight に一本化され未使用。
-    // スロットを消すと後続の float3 が 16B 境界をまたいで C++ 側とずれるため
-    // パディングとして残す（RTシャドウの cbuffer 配列ずれ事故と同型の罠）。
-    float gPadding0;
+    float gRefractiveIndex;
     float3 gLightDirection;
     float gScreenWidth;
     float gScreenHeight;
-    // 旧 FFT 有効情報 3 スロット。実体は b1（RTWaterSurfaceCommon.hlsli）へ一本化済み。
-    uint gFFTOceanPad1;
-    float gFFTOceanPad0;
-    uint gFFTOceanPad2;
-    float gRefractiveIndex;
     float gDebugDisplayScale;
     uint gDebugViewMode;
-    // シーンの実際のディレクショナルライトが無効な場合はコースティクスも出さない。
-    // 以前はここが未使用の padding で、ライトを消してもコースティクスが消えなかった。
+    // シーンのディレクショナルライトが無効な場合はコースティクスも出さない
     uint gLightEnabled;
     float3 gLightColor;
     float gLightIntensity;
@@ -45,11 +36,10 @@ cbuffer WaterCausticsConstants : register(b0)
     // 水域の外（無限床など「水面高さより低い場所すべて」）にも集光模様が漏れる。
     float2 gRegionCenterXZ;
     float2 gRegionHalfExtentXZ;
-    uint gRegionValid;
-    // 波長依存の吸収係数 σa [1/m]（RGB）。水面描画（WaterFrameConstants.absorptionCoeff、
-    // Jerlov プリセット/濁度 UI）と同じ値が毎フレーム同期される。赤 > 緑 > 青。
+    // 波長依存の吸収係数 σa [1/m]（RGB）。水面描画（WaterFrameConstants.absorptionCoeff）と同じ値。赤 > 緑 > 青。
     float3 gAbsorptionCoeff;
-    float4x4 gInvViewProj; // WorldPosition ターゲット廃止に伴う深度復元用
+    uint gRegionValid;
+    float4x4 gInvViewProj; // 深度復元用
 };
 
 static const uint kRTCausticsDebugNone = 0;
@@ -83,7 +73,7 @@ float3 BuildCausticsDebugColor(
     uint debugViewMode,
     float shallowFade,
     float matchFactor,
-    float transmittanceLuma, // Beer–Lambert 透過率の輝度（旧 attenuation スロット）
+    float transmittanceLuma, // Beer–Lambert 透過率の輝度
     float receiverFacingFactor,
     float intensity,
     float concentration)

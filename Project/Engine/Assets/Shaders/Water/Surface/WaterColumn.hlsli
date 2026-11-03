@@ -3,16 +3,11 @@
 // ------------------------------------------------------------
 // 水柱厚さの 4 供給源（RT実測 / スクリーン空間近似 / 無限水柱 / 解析的鉛直水深）から、
 // 屈折像と同じ経路の水柱厚さを求める。屈折レイがヒットしなかった画素は残りの 3 つを合成する。
-//
-// 【include 位置の契約】Water.PS.hlsl のリソース宣言・WaterPSInput・
-// WaterFrameConstants(b5) の後で include すること。以下に暗黙依存する:
-//   資源    : gSceneDepth / gLinearClamp / gRTWaterRefractionColor / gCamera(b0)
-//   cbuffer : gDepthFadeEnabled / gCameraNearZ / gCameraFarZ / gWaterRefractiveIndex
-//   型      : WaterPSInput
-//   関数    : IsRTPathValid / DecodeRTOpticalPath（Common/WaterRefractionEncoding.hlsli）
 // ============================================================
 #ifndef WATER_COLUMN_INCLUDED
 #define WATER_COLUMN_INCLUDED
+
+#include "WaterSurfaceResources.hlsli"
 
 /// @brief NDC 深度値をビュー空間線形深度（メートル単位）に変換する
 /// @param ndcDepth  深度テクスチャから読んだ NDC 深度 [0,1]

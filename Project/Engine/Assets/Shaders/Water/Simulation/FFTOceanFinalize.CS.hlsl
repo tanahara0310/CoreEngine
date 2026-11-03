@@ -43,10 +43,9 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     const float checkerDown = ((coordDown.x + coordDown.y) & oddMask) != 0 ? -1.0f : 1.0f;
     const float checkerUp = ((coordUp.x + coordUp.y) & oddMask) != 0 ? -1.0f : 1.0f;
 
-    const float debugScale = 1.0f;
-    const float displacementX = spectrumA.z * checker * debugScale;
-    const float height = spectrumA.x * checker * debugScale;
-    const float displacementZ = spectrumB.x * checker * debugScale;
+    const float displacementX = spectrumA.z * checker;
+    const float height = spectrumA.x * checker;
+    const float displacementZ = spectrumB.x * checker;
 
     const float4 leftSpectrumA = gHeightDisplacementXSpectrum.Load(int3(coordLeft, 0));
     const float4 rightSpectrumA = gHeightDisplacementXSpectrum.Load(int3(coordRight, 0));
@@ -62,14 +61,14 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     const float downHeight = downSpectrumA.x * checkerDown;
     const float upHeight = upSpectrumA.x * checkerUp;
 
-    const float leftDisplacementX = leftSpectrumA.z * checkerLeft * debugScale;
-    const float rightDisplacementX = rightSpectrumA.z * checkerRight * debugScale;
-    const float downDisplacementX = downSpectrumA.z * checkerDown * debugScale;
-    const float upDisplacementX = upSpectrumA.z * checkerUp * debugScale;
-    const float leftDisplacementZ = leftSpectrumB.x * checkerLeft * debugScale;
-    const float rightDisplacementZ = rightSpectrumB.x * checkerRight * debugScale;
-    const float downDisplacementZ = downSpectrumB.x * checkerDown * debugScale;
-    const float upDisplacementZ = upSpectrumB.x * checkerUp * debugScale;
+    const float leftDisplacementX = leftSpectrumA.z * checkerLeft;
+    const float rightDisplacementX = rightSpectrumA.z * checkerRight;
+    const float downDisplacementX = downSpectrumA.z * checkerDown;
+    const float upDisplacementX = upSpectrumA.z * checkerUp;
+    const float leftDisplacementZ = leftSpectrumB.x * checkerLeft;
+    const float rightDisplacementZ = rightSpectrumB.x * checkerRight;
+    const float downDisplacementZ = downSpectrumB.x * checkerDown;
+    const float upDisplacementZ = upSpectrumB.x * checkerUp;
 
     const float texelLength = gPatchLength / (float)gResolution;
     const float invTwoTexelLength = 1.0f / max(2.0f * texelLength, 1.0e-4f);

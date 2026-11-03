@@ -1,10 +1,9 @@
 #include "Object3dVertex.hlsli"
-// Gerstner 波の数式の唯一の情報源（RTWaterSurfaceCommon / WaterCaustics.PS と共有）。
-// 以前ここに独自の CalcGerstnerWave があり「基準不一致」型バグの温床だった。
+// Gerstner 波の数式（RTWaterSurfaceCommon / WaterCaustics.PS と共有）
 #include "../Common/GerstnerWave.hlsli"
 
 // ===== Gerstner Wave 定数バッファ =====
-// WaterPlaneObject::BindCustomResources() が b4 にバインドする。
+// WaterShaderResourceBinder が b4 にバインドする。
 // C++ 側の対応構造体: WaterConstants（WaterSurfaceTypes.h）
 cbuffer WaterConstants : register(b4)
 {
@@ -15,7 +14,7 @@ cbuffer WaterConstants : register(b4)
 };
 
 // ===== フレーム定数バッファ =====
-// VS では実際には使用しないが、PS（Water.PS.hlsl）と同一レイアウトを保つために宣言する。
+// VS は海の範囲マップの値（gSeaMap*）を読む。
 #include "../Common/WaterFrameConstants.hlsli"
 #include "../Common/WaterShoreMesh.hlsli"
 #include "../Common/WaterSeaMap.hlsli"

@@ -2,10 +2,10 @@
 // DXR 水面反射シェーダー
 // ============================================================
 
-#include "RTWaterSurfaceCommon.hlsli"
+#include "RTWaterTrace.hlsli"
 #include "../Common/WaterVisibleSlope.hlsli"
+#include "../Common/WaterAppearanceConstants.hlsli"
 #include "../../Include/Common/DepthReconstruction.hlsli"
-#include "../../Include/RayTracing/RTHitShading.hlsli"
 
 RWTexture2D<float4> gReflectionOutput : register(u0);
 // 水面の日向率（0=影 / 1=日向）。水面ではない画素は 1
@@ -32,44 +32,16 @@ cbuffer WaterReflectionConstants : register(b0)
     float4x4 gViewProjection;
     float4x4 gInvViewProjection; // 深度復元用
     float3 gCameraPosition;
-    float gWaterHeight;
-    float3 gSunDirection; // メインライトの向き（光源→シーン・正規化済み）
     float gSurfaceBias;
+    float3 gSunDirection; // メインライトの向き（光源→シーン・正規化済み）
     float gMaxRayDistance;
     float gSkyEnvReflectionEnabled; // 1 = gSkyEnvironmentMap が有効
     float gScreenWidth;
     float gScreenHeight;
     float gMaxReflectionOffsetPixels;
     uint gSunShadowEnabled; // 1 なら水面の点から光源へ影のレイを撃つ
-    float gDebugDisplayScale;
-    uint gDebugViewMode;
+    float3 gReflectionPad;
 };
-
-/// @brief 反射パスのペイロード（反射レイと影のレイで共通）
-struct RTReflectionPayload
-{
-    float hitT;
-    float hitFlag;        // 1 = 当たった / 0 = 抜けた
-    uint instanceIndex;   // InstanceID()（ヒットシェーディングの表の行）
-    uint primitiveIndex;  // PrimitiveIndex()
-    float2 barycentrics;  // 交点の重心座標
-};
-
-#ifdef __INTELLISENSE__
-#define RAY_FLAG_NONE 0x0
-void TraceRay(
-    RaytracingAccelerationStructure scene,
-    uint rayFlags,
-    uint instanceInclusionMask,
-    uint rayContributionToHitGroupIndex,
-    uint multiplierForGeometryContributionToHitGroupIndex,
-    uint missShaderIndex,
-    RayDesc ray,
-    inout RTReflectionPayload payload);
-#endif
-
-// 失敗理由コード（kRTReason*）・画面端フェード・波面評価は
-// RTWaterSurfaceCommon.hlsli（3 シェーダー共通）。
 
 // ===== 成功アルファ ＝ 反射色の「信頼度」を連続値で運ぶ =====
 //   alpha ∈ (0.5, 1.0] … 成功。confidence = (alpha - 0.5) * 2
@@ -87,16 +59,10 @@ float4 MakeFallbackOutput(float reasonCode)
 }
 
 // ===== 空環境マップ =====
-// ★Water.PS.hlsl の kWaterReflectionMicroRoughness / kEnvMipCount と一致させること★
-// （未解像さざ波の実効ラフネスに相当するミップを引く。値がずれると
-//   RT が解決した空と Water.PS 側の保険フォールバックで見た目が食い違う）
-static const float kSkyEnvMipCount = 5.0f;
-static const float kSkyEnvMicroRoughness = 0.20f;
-
 /// @param perceptualRoughness 空をぼかすラフネス（ミップ = ラフネス × (段数 - 1)）
 float3 SampleSkyEnvironment(float3 dir, float perceptualRoughness)
 {
-    const float mip = saturate(perceptualRoughness) * (kSkyEnvMipCount - 1.0f);
+    const float mip = saturate(perceptualRoughness) * (kWaterSkyEnvMipCount - 1.0f);
     return gSkyEnvironmentMap.SampleLevel(gLinearClamp, dir, mip).rgb;
 }
 
@@ -249,29 +215,8 @@ float TraceSunVisibility(float3 position, float3 normal, float bias)
     {
         return 1.0f;
     }
-
-    RayDesc ray;
-    ray.Origin = position + normal * bias;
-    ray.Direction = toSun;
-    ray.TMin = 0.001f;
-    ray.TMax = gMaxRayDistance;
-
-    // 当たりはヒットシェーダーを通さずに終えるので、当たった扱いで初期化してミスだけが 0 に戻す
-    RTReflectionPayload payload;
-    payload.hitT = 0.0f;
-    payload.hitFlag = 1.0f;
-    payload.instanceIndex = 0;
-    payload.primitiveIndex = 0;
-    payload.barycentrics = float2(0.0f, 0.0f);
-    TraceRay(
-        gScene,
-        RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER,
-        0xFF, 0, 1, 0, ray, payload);
-    return 1.0f - payload.hitFlag;
+    return TraceVisibility(gScene, position + normal * bias, toSun, gMaxRayDistance);
 }
-
-// アルファで抜ける所に当たったときに、その先へ撃ち直す回数の上限
-static const uint kMaxCutoutRetrace = 3;
 
 /// @brief 反射レイが当たった物を、当たった点の材質と光で照らした色を返す
 /// @param ray               反射レイ
@@ -280,35 +225,17 @@ static const uint kMaxCutoutRetrace = 3;
 /// @param coneSpread        レイの広がりの角度（rad。距離に比例して幅が増える）
 /// @return rgb = 照らした色、a = 1（抜ける材質の先で何にも当たらなかったときは 0）
 /// @details 抜ける材質（アルファ）に当たったときは、その先へ撃ち直す
-float4 ShadeReflectionHit(RayDesc ray, RTReflectionPayload payload, float coneWidthAtOrigin, float coneSpread)
+float4 ShadeReflectionHit(RayDesc ray, RTWaterHitPayload payload, float coneWidthAtOrigin, float coneSpread)
 {
-    [loop]
-    for (uint attempt = 0; attempt <= kMaxCutoutRetrace; ++attempt)
+    RTHitSurface surface;
+    float coneWidth;
+    if (!FindOpaqueHitSurface(gScene, ray, payload, coneWidthAtOrigin, coneSpread, surface, coneWidth))
     {
-        const float coneWidth = coneWidthAtOrigin + coneSpread * payload.hitT;
-        const RTHitSurface surface = FetchHitSurface(
-            payload.instanceIndex, payload.primitiveIndex, payload.barycentrics, ray.Direction, coneWidth);
-        if (!surface.cutout)
-        {
-            const float bias = max(0.02f, payload.hitT * 1.0e-4f);
-            const float visibility = TraceSunVisibility(surface.position, surface.normal, bias);
-            return float4(ShadeHitSurface(surface, -ray.Direction, visibility, AboveWaterLighting()), 1.0f);
-        }
-        if (attempt == kMaxCutoutRetrace)
-        {
-            break;
-        }
-
-        ray.TMin = payload.hitT + 1.0e-3f;
-        payload.hitT = 0.0f;
-        payload.hitFlag = 0.0f;
-        TraceRay(gScene, RAY_FLAG_NONE, 0xFF, 0, 1, 0, ray, payload);
-        if (payload.hitFlag < 0.5f)
-        {
-            break;
-        }
+        return float4(0.0f, 0.0f, 0.0f, 0.0f);
     }
-    return float4(0.0f, 0.0f, 0.0f, 0.0f);
+    const float bias = max(0.02f, payload.hitT * 1.0e-4f);
+    const float visibility = TraceSunVisibility(surface.position, surface.normal, bias);
+    return float4(ShadeHitSurface(surface, -ray.Direction, visibility, AboveWaterLighting()), 1.0f);
 }
 
 [shader("raygeneration")]
@@ -397,7 +324,7 @@ void RTWaterReflectionRayGen()
     const float unresolvedMeanSquareSlope = EvaluateExcludedMeanSquareSlope(waterPos.xz, directionFootprint)
         + EvaluateFineWaveMeanSquareSlope();
     const float slopeVariance = 0.5f * unresolvedMeanSquareSlope;
-    const float skyRoughness = AddSlopeVarianceToRoughness(kSkyEnvMicroRoughness, unresolvedMeanSquareSlope);
+    const float skyRoughness = AddSlopeVarianceToRoughness(kWaterReflectionMicroRoughness, unresolvedMeanSquareSlope);
     const VisibleSlopeMoments visibleSlope =
         ComputeVisibleSlopeMoments(dot(-primaryDir, waterNormal), slopeVariance);
     const float verticalReflectionSpread = 2.0f * visibleSlope.std;
@@ -433,12 +360,7 @@ void RTWaterReflectionRayGen()
     ray.TMin = 0.001f;
     ray.TMax = gMaxRayDistance;
 
-    RTReflectionPayload payload;
-    payload.hitT = 0.0f;
-    payload.hitFlag = 0.0f;
-    payload.instanceIndex = 0;
-    payload.primitiveIndex = 0;
-    payload.barycentrics = float2(0.0f, 0.0f);
+    RTWaterHitPayload payload = MakeEmptyHitPayload();
 
     // 反射は最も近い交差面の色が必要なため最近接ヒット（RAY_FLAG_NONE）。
     TraceRay(gScene, RAY_FLAG_NONE, 0xFF, 0, 1, 0, ray, payload);
@@ -470,16 +392,10 @@ void RTWaterReflectionRayGen()
     const bool hitShadingEnabled = (gHitShadingEnabled != 0);
 
     float3 hitWorldPos = ray.Origin + ray.Direction * payload.hitT;
-    float4 clip = mul(float4(hitWorldPos, 1.0f), gViewProjection);
+    const float2 screenSize = float2(gScreenWidth, gScreenHeight);
     float3 ndc = float3(0.0f, 0.0f, 0.0f);
     float2 uv = float2(0.0f, 0.0f);
-    float edgeFade = 0.0f;
-    if (clip.w > 1.0e-5f)
-    {
-        ndc = clip.xyz / clip.w;
-        uv = ndc.xy * float2(0.5f, -0.5f) + 0.5f;
-        edgeFade = ComputeRTScreenBoundsFade(uv, float2(gScreenWidth, gScreenHeight));
-    }
+    const float edgeFade = ProjectToScreen(hitWorldPos, gViewProjection, screenSize, uv, ndc);
     if (edgeFade <= 1.0e-4f)
     {
         // 当たった点が画面に写っていない（画面の外・カメラの後ろ）ときは、当たった点を照らして色を決める
@@ -496,17 +412,8 @@ void RTWaterReflectionRayGen()
         return;
     }
 
-    float2 clampedUV = saturate(uv);
-    float2 reflectedUV = clampedUV;
-    if (gMaxReflectionOffsetPixels > 0.0f)
-    {
-        float2 maxOffset = max(gMaxReflectionOffsetPixels, 0.0f) / float2(gScreenWidth, gScreenHeight);
-        float2 uvOffset = clamp(clampedUV - screenUV, -maxOffset, maxOffset);
-        reflectedUV = saturate(screenUV + uvOffset);
-    }
-
-    uint2 sampleCoord = uint2(reflectedUV * float2(gScreenWidth, gScreenHeight));
-    sampleCoord = min(sampleCoord, uint2(gScreenWidth - 1.0f, gScreenHeight - 1.0f));
+    const float2 reflectedUV = LimitReprojectionOffset(saturate(uv), screenUV, gMaxReflectionOffsetPixels, screenSize);
+    const uint2 sampleCoord = ScreenUVToPixelCoord(reflectedUV, screenSize);
 
     // 同じレイ向きで引いた空（当たった点を照らせないときと、ぼかした範囲の空の分に使う）
     const bool hasSkyCube = (gSkyEnvReflectionEnabled >= 0.5f);
@@ -573,20 +480,15 @@ void RTWaterReflectionRayGen()
 }
 
 [shader("miss")]
-void RTWaterReflectionMiss(inout RTReflectionPayload payload)
+void RTWaterReflectionMiss(inout RTWaterHitPayload payload)
 {
-    payload.hitT = 0.0f;
-    payload.hitFlag = 0.0f;
+    RecordWaterTraceMiss(payload);
 }
 
 [shader("closesthit")]
 void RTWaterReflectionClosestHit(
-    inout RTReflectionPayload payload,
+    inout RTWaterHitPayload payload,
     in BuiltInTriangleIntersectionAttributes attr)
 {
-    payload.hitT = RayTCurrent();
-    payload.hitFlag = 1.0f;
-    payload.instanceIndex = InstanceID();
-    payload.primitiveIndex = PrimitiveIndex();
-    payload.barycentrics = attr.barycentrics;
+    RecordWaterTraceHit(payload, attr);
 }

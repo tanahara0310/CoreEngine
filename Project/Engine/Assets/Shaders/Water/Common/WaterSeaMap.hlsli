@@ -11,8 +11,8 @@
 #ifndef WATER_SEA_MAP_HLSLI
 #define WATER_SEA_MAP_HLSLI
 
-/// @brief 砕波の限界（波の高さ ≤ この値 × 水深）
-static const float kWaterSeaMapBreakingRatio = 0.78f;
+#include "WaterPhysics.hlsli"
+
 /// @brief 上の物までの高さに対して、波の山が届いてよい高さ（波の高さの倍数）
 static const float kWaterSeaMapCrestRatio = 1.5f;
 /// @brief 範囲の外として返す水深・上の物までの高さ [m]（波を弱めない）
@@ -45,13 +45,13 @@ float4 SampleWaterSeaMap(
 /// @param conservative  true なら粗い格子用の値を使う
 /// @param depthOffset   今の水面の高さ − 測ったときの水面の高さ [m]
 /// @param invWaveHeight 波の高さ（有義波高）の逆数 [1/m]
-/// @details 波の高さを水深の kWaterSeaMapBreakingRatio 倍までに、波の山を上の物の手前までに抑える
+/// @details 波の高さを水深の kWaterBreakingIndex 倍までに、波の山を上の物の手前までに抑える
 float ComputeWaterSeaMapWaveScale(float4 seaMapValue, bool conservative, float depthOffset, float invWaveHeight)
 {
     const float2 depthAndClearance = conservative ? seaMapValue.zw : seaMapValue.xy;
     const float depth = depthAndClearance.x + depthOffset;
     const float clearance = depthAndClearance.y - depthOffset;
-    const float byDepth = saturate(kWaterSeaMapBreakingRatio * depth * invWaveHeight);
+    const float byDepth = saturate(kWaterBreakingIndex * depth * invWaveHeight);
     const float byClearance = saturate(clearance * invWaveHeight / kWaterSeaMapCrestRatio);
     return min(byDepth, byClearance);
 }

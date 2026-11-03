@@ -4,6 +4,7 @@
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Graphics/Water/Surface/WaterDebugViewMode.h"
 #include "Graphics/Water/WaterFoamDefaults.h"
+#include "Graphics/Water/WaterPhysics.h"
 #include "Math/Vector/Vector2.h"
 #include "Math/Vector/Vector3.h"
 #include "Math/Vector/Vector4.h"
@@ -77,7 +78,7 @@ CB_BIND_HLSL(WaterConstants, kWaterConstantsFields, "WaterConstants");
 struct WaterFrameConstants {
 	int reflectionEnabled = 0;
 	float fresnelReflectanceScale = 1.0f;
-	float fresnelBaseReflectance = 0.02f;
+	float fresnelBaseReflectance = CoreEngine::WaterPhysics::kFresnelF0;
 	int depthFadeEnabled = 1;
 	int depthFadeDebugEnabled = 0;
 	float depthFadeDebugScale = 1.5f;
@@ -87,7 +88,7 @@ struct WaterFrameConstants {
 	int skyAmbientEnabled = 0;
 	// 波長依存の吸収係数 σa [1/m]（RGB）。赤 > 緑 > 青 が水の青さの物理的源泉
 	float absorptionCoeff[3] = { 0.35f, 0.07f, 0.02f };
-	float refractiveIndex = 1.333f; // 水の屈折率（空気 1 に対する比）
+	float refractiveIndex = CoreEngine::WaterPhysics::kRefractiveIndex; // 水の屈折率（空気 1 に対する比）
 	// 波長依存の散乱係数 σs [1/m]（RGB）。深瀬のインスキャッタ色 (σs/σt) を決める
 	float scatteringCoeff[3] = { 0.003f, 0.008f, 0.016f };
 	float scatteringPad = 0.0f;
