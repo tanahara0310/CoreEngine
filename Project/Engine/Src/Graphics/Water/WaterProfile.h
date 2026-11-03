@@ -2,6 +2,7 @@
 
 #include "Graphics/Water/WaterFoamDefaults.h"
 #include "Graphics/Water/WaterPhysics.h"
+#include "Graphics/Water/Wave/WaterWaveModelType.h"
 #include "Math/Vector/Vector2.h"
 #include "Math/Vector/Vector3.h"
 #include "Math/Vector/Vector4.h"
@@ -55,5 +56,10 @@ namespace CoreEngine
 
         /// @brief 実効散乱係数（ベース値＋濁りの分）
         Vector3 EffectiveScattering() const;
+
+        /// @brief 水面を描く波のモデル
+        WaterWaveModelType WaveModel() const {
+            return fftEnabled ? WaterWaveModelType::FFTOcean : WaterWaveModelType::Gerstner;
+        }
     };
 }

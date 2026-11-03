@@ -345,8 +345,8 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanResourceFactory.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanSpectrumBuilder.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanSpectrumDebugHelper.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Water\Simulation\FFTOceanSurfaceSimulator.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Water\Simulation\GerstnerWaterSimulator.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\Wave\FFTOceanWaveModel.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\Wave\GerstnerWaveModel.cpp" />
     <ClCompile Include="Engine\Src\pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
@@ -1802,9 +1802,10 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanSpectrumDebugHelper.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\WaterFoamDefaults.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\WaterPhysics.h" />
-    <ClInclude Include="Engine\Src\Graphics\Water\Simulation\FFTOceanSurfaceSimulator.h" />
-    <ClInclude Include="Engine\Src\Graphics\Water\Simulation\GerstnerWaterSimulator.h" />
-    <ClInclude Include="Engine\Src\Graphics\Water\Simulation\WaterSurfaceSimulator.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\Wave\FFTOceanWaveModel.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\Wave\GerstnerWaveModel.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\Wave\WaterWaveModel.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\Wave\WaterWaveModelType.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterDebugViewMode.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterSurfaceTypes.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\WaterSurfaceData.h" />

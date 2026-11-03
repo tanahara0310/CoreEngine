@@ -54,7 +54,7 @@ namespace CoreEngine
         const WaterSettings& settings = RefreshSettings();
         if (domain) {
             // FFT の海のスペクトルは設定が変わったときだけ作り直す
-            wave_.ApplyFFTSettings(*domain, settings.waves);
+            wave_.ApplyModelSettings(*domain, settings.waves);
         }
 
 #ifdef CORE_EDITOR
@@ -69,7 +69,7 @@ namespace CoreEngine
 
         // 初期フレームでも水面シェーダーの時間が不定にならないよう即時反映する
         if (WaterSurfaceComponent* const waterPlane = waterPlane_.Get()) {
-            waterPlane->SetSimulationTime(wave_.GetActiveTime(*waterPlane));
+            waterPlane->SetSimulationTime(wave_.GetDrawnModel(*waterPlane).GetTime());
         }
 
         publishTarget_ = domain;
@@ -89,7 +89,7 @@ namespace CoreEngine
 
         // 保存データの水面に乗り換えたら、その水の設定でスペクトルを作っておく
         if (RenderDomainContext* const domain = ctx.engine ? ctx.engine->GetRenderDomainContext() : nullptr) {
-            wave_.ApplyFFTSettings(*domain, RefreshSettings().waves);
+            wave_.ApplyModelSettings(*domain, RefreshSettings().waves);
         }
     }
 
@@ -124,11 +124,11 @@ namespace CoreEngine
         switch (phase) {
         case SceneUpdatePhase::PreObjectUpdate:
         {
-            // 波の時刻を進め、使っている方式の時刻を水面へ渡す
+            // 波の時刻を進め、描いているモデルの時刻を水面へ渡す
             WaterSurfaceComponent* const waterPlane = waterPlane_.Get();
             wave_.Advance(Time::DeltaTime(), waterPlane);
             if (waterPlane) {
-                waterPlane->SetSimulationTime(wave_.GetActiveTime(*waterPlane));
+                waterPlane->SetSimulationTime(wave_.GetDrawnModel(*waterPlane).GetTime());
             }
 
             // GPU が済んだ水面の高さの問い合わせを、オブジェクトの更新より前に受け取る
@@ -155,7 +155,7 @@ namespace CoreEngine
                 break;
             }
 
-            // 潮 → 設定 → 海底の範囲（スナップショットの前に水面の高さ・波の方式・岸の範囲を決める）
+            // 潮 → 設定 → 海底の範囲（スナップショットの前に水面の高さ・波のモデル・岸の範囲を決める）
             const LightManager* const lightManager = ctx.engine ? ctx.engine->GetService<LightManager>() : nullptr;
             tide_.Update(lightManager, *waterPlane);
 
@@ -165,11 +165,12 @@ namespace CoreEngine
 
             const WaterFrameContext frame{ ctx, *domain, *waterPlane, settings };
             wave_.ApplySettings(frame);
+            const WaterWaveCapabilities waveCapabilities = wave_.GetDrawnModel(*waterPlane).GetCapabilities();
             appearance_.ApplySettings(frame);
-            foam_.ApplySettings(frame, wave_.GetFFTOceanTime());
+            foam_.ApplySettings(frame, waveCapabilities, wave_.GetFFTOceanTime());
             caustics_.ApplySettings(frame);
             rayTracing_.ApplySettings(frame);
-            shore_.UpdateWindow(frame);
+            shore_.UpdateWindow(frame, waveCapabilities);
 
             CaptureSnapshot(*domain, settings, Time::DeltaTime());
             domain->PublishWaterFrame(&snapshot_, wave_.GetFFTOceanTime());
@@ -293,7 +294,7 @@ namespace CoreEngine
 
         // 水面が無効なフレームは regionValid=0 の「水なし」にする（RT コースティクスと水中の光を止める）
         if (IsWaterActive(*waterPlane)) {
-            wave_.Capture(*waterPlane, snapshot_);
+            wave_.Capture(domain, *waterPlane, snapshot_);
             snapshot_.tideHeight = waterPlane->GetTideHeight();
 
             // 水面メッシュのワールド XZ 範囲（コースティクスを水域の外へ漏らさない受光マスク）。
@@ -310,7 +311,7 @@ namespace CoreEngine
             // 被覆の判定をメッシュと同じ基準にするための頂点の分割数
             snapshot_.meshSubdivisions = static_cast<float>(waterPlane->GetResolution());
 
-            seaMap_.Capture(domain, settings, snapshot_);
+            seaMap_.Capture(domain, settings, wave_.GetDrawnModel(*waterPlane), snapshot_);
             wetness_.Capture(settings, deltaSeconds, snapshot_);
         } else {
             wetness_.Clear();
@@ -352,7 +353,7 @@ namespace CoreEngine
             "WaterSystem: SRV sceneColor=0x{:X} sceneDepth=0x{:X} refraction=0x{:X} reflection=0x{:X} "
             "fftDisp=0x{:X} fftNormal=0x{:X} skyIrradiance=0x{:X} skyEnv=0x{:X} | "
             "flags refl={} ap={} skyAmbient={} skyEnv={} debugMode={} | "
-            "clip near={:.3f} far={:.1f} | surface height={:.3f} waves={} time={:.3f} regionValid={} | useFFT={}",
+            "clip near={:.3f} far={:.1f} | surface height={:.3f} waves={} time={:.3f} regionValid={} | waveModel={}",
             resources.sceneColorSRV.ptr,
             resources.sceneDepthSRV.ptr,
             resources.refractionColorSRV.ptr,
@@ -372,6 +373,6 @@ namespace CoreEngine
             snapshot_.activeWaveCount,
             snapshot_.time,
             snapshot_.regionValid,
-            waterPlane->IsUsingFFTOcean());
+            static_cast<uint32_t>(waterPlane->GetWaveModel()));
     }
 }

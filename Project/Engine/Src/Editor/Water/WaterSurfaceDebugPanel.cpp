@@ -169,8 +169,9 @@ void WaterSurfaceDebugPanel::Draw(WaterSystem& runtimeController, WaterEditorFac
 void WaterSurfaceDebugPanel::DrawStatusRows(WaterSystem& runtimeController, WaterEditorFacade& editorFacade) {
 	const WaterSurfaceComponent* waterPlane = runtimeController.GetWaterPlane();
 	ImGui::SeparatorText("状態");
-	InfoRow("描き方", waterPlane->IsUsingFFTOcean() ? "FFT の海" : "Gerstner の波");
-	if (waterPlane->IsUsingFFTOcean()) {
+	const bool fftOcean = waterPlane->GetWaveModel() == WaterWaveModelType::FFTOcean;
+	InfoRow("描き方", fftOcean ? "FFT の海" : "Gerstner の波");
+	if (fftOcean) {
 		const FFTOceanManager* manager = editorFacade.GetFFTOceanManager();
 		const bool ready = manager && manager->IsInitialized() && waterPlane->HasFFTOceanTextureSRVs();
 		InfoRow("FFT の海", ready

@@ -48,7 +48,7 @@ namespace CoreEngine
         : size_(size)
         , resolution_(resolution) {
         waterCB_.activeWaveCount = kMaxWaterWaveCount;
-        frameCB_.useFFTOceanNormalMap = useFFTOcean_ ? 1 : 0;
+        frameCB_.useFFTOceanNormalMap = waveModel_ == WaterWaveModelType::FFTOcean ? 1 : 0;
 
         // デフォルトの波パラメータを設定（16 本の Gerstner Wave を重ね合わせる）
         waterCB_.waves[0]  = { {  1.0f,  0.0f }, 0.18f, 14.0f, 1.6f, 0.24f, 0.0f };
@@ -82,10 +82,10 @@ namespace CoreEngine
         transformComponent_ = owner->GetOrAddComponent<TransformComponent>();
         meshRenderer_ = owner->GetOrAddComponent<MeshRendererComponent>();
 
-        // 保存した値を読んだ後なので、プロファイルの値で上書きしてから波の方式を決める
+        // 保存した値を読んだ後なので、プロファイルの値で上書きしてから波のモデルを決める
         LoadProfileFromAsset();
-        useFFTOcean_ = profile_.fftEnabled;
-        frameCB_.useFFTOceanNormalMap = useFFTOcean_ ? 1 : 0;
+        waveModel_ = profile_.WaveModel();
+        frameCB_.useFFTOceanNormalMap = waveModel_ == WaterWaveModelType::FFTOcean ? 1 : 0;
 
         // 水面は専用のパスで描く（GameObject の描画項目はパスから種別を決める）
         meshRenderer_->SetRenderPassType(RenderPassType::WaterSurface);
@@ -177,7 +177,7 @@ namespace CoreEngine
     }
 
     std::wstring WaterSurfaceComponent::GetVertexShaderPath() const {
-        return useFFTOcean_
+        return waveModel_ == WaterWaveModelType::FFTOcean
             ? L"FFTWater.VS.hlsl"
             : L"Water.VS.hlsl";
     }
@@ -200,8 +200,8 @@ namespace CoreEngine
         Logger::GetInstance().Infof(
             LogCategory::Graphics,
             LogSubCategory::Pipeline,
-            "WaterPlane: begin shader pipeline rebuild. wait for GPU before PSO replacement. useFFTOcean={}",
-            useFFTOcean_);
+            "WaterPlane: begin shader pipeline rebuild. wait for GPU before PSO replacement. waveModel={}",
+            static_cast<uint32_t>(waveModel_));
         dxCommon->WaitForGpuIdle();
 
         meshRenderer_->SetCustomShaderProvider(this);
@@ -210,8 +210,8 @@ namespace CoreEngine
         Logger::GetInstance().Infof(
             LogCategory::Graphics,
             LogSubCategory::Pipeline,
-            "WaterPlane: end shader pipeline rebuild. useFFTOcean={}",
-            useFFTOcean_);
+            "WaterPlane: end shader pipeline rebuild. waveModel={}",
+            static_cast<uint32_t>(waveModel_));
     }
 
     void WaterSurfaceComponent::BindCustomResources(
@@ -299,21 +299,21 @@ namespace CoreEngine
         constantBuffers_.UpdateFrameConstants(frameCB_);
     }
 
-    void WaterSurfaceComponent::SetUseFFTOcean(bool useFFTOcean) {
-        if (useFFTOcean_ == useFFTOcean) {
+    void WaterSurfaceComponent::SetWaveModel(WaterWaveModelType waveModel) {
+        if (waveModel_ == waveModel) {
             return;
         }
 
-        useFFTOcean_ = useFFTOcean;
-        frameCB_.useFFTOceanNormalMap = useFFTOcean_ ? 1 : 0;
+        waveModel_ = waveModel;
+        frameCB_.useFFTOceanNormalMap = waveModel_ == WaterWaveModelType::FFTOcean ? 1 : 0;
         RebuildWaterShaderPipeline();
         UploadFrameConstants();
 
         Logger::GetInstance().Infof(
             LogCategory::Graphics,
             LogSubCategory::Pipeline,
-            "WaterPlane: switched water shader path. useFFTOcean={} hasFFTSRVs={} vertexShader={} pixelShader={}",
-            useFFTOcean_,
+            "WaterPlane: switched water shader path. waveModel={} hasFFTSRVs={} vertexShader={} pixelShader={}",
+            static_cast<uint32_t>(waveModel_),
             HasFFTOceanTextureSRVs(),
             std::filesystem::path(GetVertexShaderPath()).string(),
             std::filesystem::path(GetPixelShaderPath()).string());

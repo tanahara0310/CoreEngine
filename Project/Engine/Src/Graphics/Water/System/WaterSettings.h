@@ -3,6 +3,7 @@
 #include <cstdint>
 
 #include "Graphics/Water/WaterPhysics.h"
+#include "Graphics/Water/Wave/WaterWaveModelType.h"
 #include "Math/Vector/Vector2.h"
 #include "Math/Vector/Vector3.h"
 #include "Math/Vector/Vector4.h"
@@ -21,9 +22,9 @@ namespace CoreEngine
         float refractiveIndex = WaterPhysics::kRefractiveIndex;
     };
 
-    /// @brief FFT の海の波の設定
+    /// @brief 波の設定（モデルの選択と FFT の海のスペクトル）
     struct WaterWaveSettings {
-        bool fftEnabled = true;
+        WaterWaveModelType model = WaterWaveModelType::FFTOcean;
         float amplitudeScale = 1.0f;
         Vector2 windDirection{};
         float windSpeed = 0.0f;

@@ -436,11 +436,11 @@
     <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanSpectrumDebugHelper.cpp">
       <Filter>Engine\Src\Graphics\Water</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Water\Simulation\FFTOceanSurfaceSimulator.cpp">
-      <Filter>Engine\Src\Graphics\Water\Simulation</Filter>
+    <ClCompile Include="Engine\Src\Graphics\Water\Wave\FFTOceanWaveModel.cpp">
+      <Filter>Engine\Src\Graphics\Water\Wave</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Water\Simulation\GerstnerWaterSimulator.cpp">
-      <Filter>Engine\Src\Graphics\Water\Simulation</Filter>
+    <ClCompile Include="Engine\Src\Graphics\Water\Wave\GerstnerWaveModel.cpp">
+      <Filter>Engine\Src\Graphics\Water\Wave</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\pch.cpp">
       <Filter>Engine\Src</Filter>
@@ -3189,14 +3189,17 @@
     <ClInclude Include="Engine\Src\Graphics\Water\WaterPhysics.h">
       <Filter>Engine\Src\Graphics\Water</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Water\Simulation\FFTOceanSurfaceSimulator.h">
-      <Filter>Engine\Src\Graphics\Water\Simulation</Filter>
+    <ClInclude Include="Engine\Src\Graphics\Water\Wave\FFTOceanWaveModel.h">
+      <Filter>Engine\Src\Graphics\Water\Wave</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Water\Simulation\GerstnerWaterSimulator.h">
-      <Filter>Engine\Src\Graphics\Water\Simulation</Filter>
+    <ClInclude Include="Engine\Src\Graphics\Water\Wave\GerstnerWaveModel.h">
+      <Filter>Engine\Src\Graphics\Water\Wave</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Water\Simulation\WaterSurfaceSimulator.h">
-      <Filter>Engine\Src\Graphics\Water\Simulation</Filter>
+    <ClInclude Include="Engine\Src\Graphics\Water\Wave\WaterWaveModel.h">
+      <Filter>Engine\Src\Graphics\Water\Wave</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\Wave\WaterWaveModelType.h">
+      <Filter>Engine\Src\Graphics\Water\Wave</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterDebugViewMode.h">
       <Filter>Engine\Src\Graphics\Water\Surface</Filter>
@@ -4745,14 +4748,14 @@
     <Filter Include="Engine\Src\Graphics\Water\RayTracing">
       <UniqueIdentifier>{01A8FFFF-937C-46E3-98EF-476A65F5EEAC}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Engine\Src\Graphics\Water\Simulation">
-      <UniqueIdentifier>{885AB6EC-E224-419F-8C36-DD519D941E3B}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Engine\Src\Graphics\Water\Surface">
       <UniqueIdentifier>{DC70B5CC-F394-41D8-AE69-0F79ED80E885}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Water\System">
       <UniqueIdentifier>{D2682989-3B2A-4327-A460-231A8BE8958D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Water\Wave">
+      <UniqueIdentifier>{30B1C3E9-1DD4-4F47-A7F5-9E07808C96CC}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Input">
       <UniqueIdentifier>{54C16D33-E6EA-45EA-BFD5-732F01D04340}</UniqueIdentifier>

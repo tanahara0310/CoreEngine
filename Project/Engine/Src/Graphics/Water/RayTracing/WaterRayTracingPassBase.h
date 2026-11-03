@@ -16,7 +16,6 @@
 
 namespace CoreEngine
 {
-    class FFTOceanManager;
 
     /// @brief DXR 水面パス共通のビュー識別子
     enum class RTWaterViewID : uint32_t {
@@ -51,20 +50,8 @@ namespace CoreEngine
     /// @details 水面固有の要素だけを持つ。水面に限らない部分は RayTracingPassBase 側にある。
     class WaterRayTracingPassBase : public RayTracingPassBase {
     public:
-        /// @brief FFT Ocean の波面テクスチャ入力（3 パス共通）
-        /// @details 有効判定は enabled と resolution（旧 patchLength は形骸のため撤去）。
-        struct FFTOceanInput {
-            D3D12_GPU_DESCRIPTOR_HANDLE displacementSRV{};
-            D3D12_GPU_DESCRIPTOR_HANDLE normalSRV{};
-            uint32_t resolution = 0;
-            uint32_t enabled = 0;
-            /// @brief カスケードごとの平均二乗傾斜（x・z の傾きの二乗和の平均）
-            float cascadeMeanSquareSlope[3] = { 0.0f, 0.0f, 0.0f };
-            /// @brief カスケードより細かい波の平均二乗傾斜（FFTOceanManager::GetFineWaveMeanSquareSlope）
-            float fineWaveMeanSquareSlope = 0.0f;
-            /// @brief 波群エンベロープの位相のずれ [rad]（FFTOceanManager::ComputeWaveGroupPhase）
-            float waveGroupPhase[3] = { 0.0f, 0.0f, 0.0f };
-        };
+        /// @brief FFT の海の波面のテクスチャ入力（WaterSurfaceData::fftOcean）
+        using FFTOceanInput = WaterFFTOceanInput;
 
         /// @brief 直近ディスパッチ時の水面高さ（診断ログ用）
         float GetLastWaterHeight() const { return lastWaterHeight_; }
@@ -77,7 +64,7 @@ namespace CoreEngine
             float waterHeight = 0.0f;
             uint32_t activeWaveCount = 0;
             float time = 0.0f;
-            uint32_t simulationType = kWaterSurfaceModelTypeGerstner;
+            uint32_t simulationType = static_cast<uint32_t>(WaterWaveModelType::Gerstner);
             WaterWaveParam waves[kMaxWaterSurfaceWaveCount]{};
             // ---- Phase 3 で b0 の 3 重定義から b1 へ一本化した FFT 有効情報 ----
             // HLSL 側 RTWaterSurfaceCommon.hlsli の cbuffer WaterSurfaceData と一致必須。
@@ -138,12 +125,6 @@ namespace CoreEngine
         static WaterSurfaceConstants BuildSurfaceConstants(
             const WaterSurfaceData& surfaceData,
             const FFTOceanInput& fftOceanInput);
-
-        /// @brief FFT の海の波面テクスチャ入力を組み立てる（FFT の波面でないときは enabled = 0）
-        /// @param simulationTime FFT の海の時刻 [s]（波群エンベロープの位相に使う）
-        /// @param simulationType 水面の波の方式（WaterSurfaceData::simulationType）
-        static FFTOceanInput MakeFFTOceanInput(
-            const FFTOceanManager* fftOceanManager, float simulationTime, uint32_t simulationType);
 
     protected:
         /// @brief パイプライン 1 本分の構成（差分はこれだけ。残りは全パス同型）

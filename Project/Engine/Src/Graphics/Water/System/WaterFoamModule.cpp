@@ -8,10 +8,12 @@
 #include "Graphics/Water/Surface/WaterSurfaceComponent.h"
 #include "Graphics/Water/System/WaterFrameContext.h"
 #include "Graphics/Water/System/WaterSettings.h"
+#include "Graphics/Water/Wave/WaterWaveModel.h"
 
 namespace CoreEngine
 {
-    void WaterFoamModule::ApplySettings(const WaterFrameContext& frame, float fftOceanTime) const
+    void WaterFoamModule::ApplySettings(
+        const WaterFrameContext& frame, const WaterWaveCapabilities& waves, float fftOceanTime) const
     {
         const WaterFoamSettings& settings = frame.settings.foam;
         WaterSurfaceComponent& waterPlane = frame.waterPlane;
@@ -32,7 +34,7 @@ namespace CoreEngine
         }
 
         WaterFoamSystem::Settings foamSettings{};
-        foamSettings.enabled = settings.enabled && waterPlane.IsUsingFFTOcean();
+        foamSettings.enabled = settings.enabled && waves.foam;
         foamSettings.windSpeed = frame.settings.waves.windSpeed;
         foamSettings.whitecapScale = settings.whitecapScale;
         if (const FFTOceanManager* fftOcean = frame.domain.GetFFTOceanManager()) {
