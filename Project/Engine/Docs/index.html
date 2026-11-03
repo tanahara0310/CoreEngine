@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.56.1">
+<meta name="engine-version" content="0.57.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -3315,7 +3315,7 @@ kbd {
   <p>Key Config では、割り当てのボタンを押してから新しいキーを押すと割り当てが変わります。<span class="ui">x</span> で削除、<span class="ui">追加</span> で足し、同じ場面のほかのアクションと重なると赤く表示されます。<span class="ui">初期値に戻す</span> で InputActions.json の既定に戻ります。</p>
 </article>
 
-<article class="page" id="editor-export" data-group="エディタ" data-title="ゲームを書き出す" data-nav="ゲームの書き出し" data-keywords="書き出し 書き出す export ビルド release 配布 exe 完成 build windows 全画面 フルスクリーン 終了 esc 起動シーン テクスチャ dds 変換 クック cooked シェーダ dxil コンパイル モデル cmesh 並列 スレッド 失敗 json messagepack バイナリ">
+<article class="page" id="editor-export" data-group="エディタ" data-title="ゲームを書き出す" data-nav="ゲームの書き出し" data-keywords="書き出し 書き出す export ビルド release 配布 exe 完成 build windows 全画面 フルスクリーン 終了 esc 起動シーン テクスチャ dds 変換 クック cooked シェーダ dxil コンパイル モデル cmesh 並列 スレッド 失敗 json messagepack バイナリ シーン 選ぶ 外す 除く 大きさ 容量 exportExcludedScenes">
   <h1>ゲームを書き出す</h1>
   <p class="lead">完成したゲームを、エディタの無い PC でも遊べるフォルダにまとめます。できたフォルダを丸ごと渡せば、そのまま遊べます。</p>
 
@@ -3323,7 +3323,7 @@ kbd {
   <ol class="steps">
     <li><strong>シーンを保存する</strong>書き出すのはディスクにあるファイルです。保存していない変更は入りません（<kbd>Ctrl</kbd>+<kbd>S</kbd>）。</li>
     <li><strong>Release をビルドする</strong>Visual Studio で構成を <span class="ui">Release</span> にしてビルドします。エディタからはビルドしません。<span class="path">generated/CoreEngine/outputs/Release/CoreEngine.exe</span> と、その隣の <span class="path">Binaries/</span>（DLL のフォルダ）ができていれば準備完了です。</li>
-    <li><strong>書き出す</strong>エディタで <span class="ui">File<span class="arrow">▸</span>ゲームを書き出す…</span> を開きます。書き出す先・使う Release の exe（ビルドした日時）・写すものを確かめて、<span class="ui">書き出す</span> を押します。画像のテクスチャを DDS に、モデルを .cmesh に（どちらも圧縮して）、JSON を MessagePack に変換してから写します（<a href="#export-cooking">テクスチャの変換</a>・<a href="#export-models">モデルの変換</a>・<a href="#export-compression">書き出しの圧縮</a>・<a href="#export-json">JSON のバイナリ化</a>）。</li>
+    <li><strong>書き出す</strong>エディタで <span class="ui">File<span class="arrow">▸</span>ゲームを書き出す…</span> を開きます。書き出す先・使う Release の exe（ビルドした日時）・写すものを確かめ、<span class="ui">書き出すシーン</span> で入れないシーンのチェックを外して（<a href="#export-scenes">書き出すシーンを選ぶ</a>）、<span class="ui">書き出す</span> を押します。画像のテクスチャを DDS に、モデルを .cmesh に（どちらも圧縮して）、JSON を MessagePack に変換してから写します（<a href="#export-cooking">テクスチャの変換</a>・<a href="#export-models">モデルの変換</a>・<a href="#export-compression">書き出しの圧縮</a>・<a href="#export-json">JSON のバイナリ化</a>）。</li>
     <li><strong>遊んで確かめる</strong><span class="ui">エクスプローラーで開く</span> で書き出したフォルダを開き、<span class="path">CoreEngine.exe</span> を起動します。</li>
   </ol>
   <div class="callout note"><p>Release の exe が無いと、窓に「先に Release でビルドしてください」と出て書き出せません。exe の隣に <span class="path">Binaries/</span> が無い（DLL をそこへ置く前の版でビルドした）ときは「Release でビルドし直してください」と出ます。書き出したゲームを動かしたままだとファイルを書き換えられないので、閉じてから書き出します。</p></div>
@@ -3345,6 +3345,17 @@ kbd {
        └─ Saved/                    遊んだ人のセーブデータ（ゲームが作る）
   </script>
   <p>書き出すたびに、<span class="path">Binaries</span>・<span class="path">Engine/Assets</span>・<span class="path">Engine/Cooked</span>・<span class="path">Application/Assets</span>・<span class="path">Application/Cooked</span>・<span class="path">Application/Config</span> をいったん消してから書き直します。DLL は <span class="path">Binaries</span> にだけ置くので、書き出す先の根（exe の隣）に DLL があれば消します。遊んだ人のデータが入る <span class="path">Application/Saved</span> は残します。<span class="path">Build/</span> は git の対象外です。</p>
+
+  <h2 id="export-scenes">書き出すシーンを選ぶ</h2>
+  <p>書き出しの窓の <span class="ui">書き出すシーン</span> に、プロジェクトのシーンがチェックの付いた一覧で出ます。テスト用のシーンのように遊ぶ人に渡さないシーンはチェックを外すと、そのシーンと、<strong>そのシーンだけが使う</strong>モデル・テクスチャ・音を書き出しません。ゲームのフォルダが小さくなり、書き出しも速く終わります。最初は全部にチェックが付いていて、今までと同じものを書き出します。</p>
+  <ul>
+    <li>起動シーンは外せません（チェックを変えられません）。</li>
+    <li>外したシーンは、プロジェクトの設定（<span class="path">Project.json</span> の <code>exportExcludedScenes</code>）に名前で保存します。次に開いたときも同じシーンが外れています。あとで足したシーンにはチェックが付きます。</li>
+    <li>書き出しの結果に、書き出さなかったシーンと、モデル・テクスチャ・音の数が出ます。</li>
+  </ul>
+  <p>外したシーンが使っていても、書き出すものから使うアセットは書き出します。書き出すものとは、残したシーン・プレハブ・マテリアル・データ（<a href="#api-DataFile"><code>DataFile</code></a> の JSON と CSV）・プロジェクトの設定と、スクリプトに文字列で書いてあるパスや名前です（<code>"Application/Assets/Models/Rock/rock.gltf"</code> も <code>"rock.gltf"</code> も）。モデルが使うテクスチャは、そのモデルを書き出すかで決まります。</p>
+  <p>どのシーンも使わないアセットは、外したシーンと関わりがないので、今までどおり書き出します（スクリプトが組み立てたパスで読むかもしれないため）。要らないアセットは、プロジェクトから消してください。<span class="path">Engine/Assets</span> は全部書き出します。</p>
+  <div class="callout warn" data-title="スクリプトで開くシーンは外さない"><p>外したシーンを <code>Scene::ChangeScene</code> で開くと、書き出したゲームではシーンが見つかりません。スクリプトに外したシーンの名前の文字列があると、窓に「スクリプトに "…" と書いてあります」と出るので、そのシーンを使うならチェックを付け直してください。また、スクリプトが文字列をつないで作ったパス（<code>"Stage" + n + ".json"</code> など）で、外したシーンだけが使うアセットを読むと、書き出したゲームでは見つかりません。そういうアセットは、パスをそのままスクリプトに書くか、残すシーンやプレハブから参照してください。</p></div>
 
   <h2 id="export-cooking">テクスチャの変換</h2>
   <p>画像のテクスチャ（PNG・JPG・JPEG・BMP・TGA）は写さずに、GPU がそのまま読める圧縮形式の DDS（既定は、透明のある画像が BC3・全部不透明な画像が BC1。<a href="#project-texture-color">画像の取り込み設定</a>で BC7・非圧縮なども選べます）へ変換して <span class="path">Cooked/</span> に書きます。遊ぶ人の PC では変換しないので、初めての起動でもテクスチャの変換を待ちません。元の画像は入りませんが、隣の <span class="path">.meta</span> は入るので、スクリプトやシーンからは今までどおり <span class="path">.png</span> などの名前で使えます。ただしローディング画面の写真（<a href="#settings-splash">起動中のローディング画面</a>）だけは、DirectX 12 の準備より前に読むので、元の画像のまま写します。</p>
@@ -3425,6 +3436,7 @@ kbd {
     <li>起動シーンが、最初に見せたい画面（タイトルなど）になっている</li>
     <li>すべてのシーンを保存した。Hierarchy のシーン名の後ろに <code>*</code> が無い</li>
     <li>Console にエラーと警告が残っていない</li>
+    <li>遊ぶ人に渡さないテスト用のシーンは、<span class="ui">書き出すシーン</span> のチェックを外した（<a href="#export-scenes">書き出すシーンを選ぶ</a>）</li>
     <li>Development で最初のシーンから最後まで通して遊んだ（シーンの切り替えと <a href="#api-Session">Session</a> の受け渡しを含めて）</li>
     <li>キーボードとゲームパッドの両方で操作できる。メニューはキーだけでも選べる（<a href="#ui-button">Focus</a>）</li>
     <li>エディタでしか使わないテスト用のスクリプトは <span class="path">Scripts/Editor/</span> に入れてある</li>
@@ -9996,7 +10008,7 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <table>
     <thead><tr><th>ファイル</th><th>中身</th></tr></thead>
     <tbody>
-      <tr><td><span class="path">Project.json</span></td><td>プロジェクト名（<code>name</code>）・起動シーン（<code>initialScene</code>）・ローディング画面の写真（<code>splashImage</code>。省くとエンジンの既定）・ゲームの画面の題名（<code>splashTitle</code>。省くとプロジェクト名）・小見出し（<code>splashSubtitle</code>）・ヒント（<code>splashTips</code>）。<a href="#settings-splash">起動中のローディング画面</a>。シーンを切り替えるときのロード画面のシェーダ（<code>loadingScreenShader</code>。省くとエンジンの既定）と画像（<code>loadingScreenImages</code>）。<a href="#settings-loading-screen">シーンを切り替えるときのロード画面</a>。自分のポストエフェクトの並び（<code>postEffects</code>）。<a href="#pe-project">プロジェクトのポストエフェクト</a>。引数なしの <code>Scene::ChangeScene</code> の遷移（<code>defaultTransition</code>）。<a href="#scenes-transition">遷移を指定する</a></td></tr>
+      <tr><td><span class="path">Project.json</span></td><td>プロジェクト名（<code>name</code>）・起動シーン（<code>initialScene</code>）・ローディング画面の写真（<code>splashImage</code>。省くとエンジンの既定）・ゲームの画面の題名（<code>splashTitle</code>。省くとプロジェクト名）・小見出し（<code>splashSubtitle</code>）・ヒント（<code>splashTips</code>）。<a href="#settings-splash">起動中のローディング画面</a>。シーンを切り替えるときのロード画面のシェーダ（<code>loadingScreenShader</code>。省くとエンジンの既定）と画像（<code>loadingScreenImages</code>）。<a href="#settings-loading-screen">シーンを切り替えるときのロード画面</a>。自分のポストエフェクトの並び（<code>postEffects</code>）。<a href="#pe-project">プロジェクトのポストエフェクト</a>。引数なしの <code>Scene::ChangeScene</code> の遷移（<code>defaultTransition</code>）。<a href="#scenes-transition">遷移を指定する</a>。ゲームの書き出しに入れないシーン（<code>exportExcludedScenes</code>）。<a href="#export-scenes">書き出すシーンを選ぶ</a></td></tr>
       <tr><td><span class="path">Layers.json</span></td><td>レイヤーの名前の並び。先頭は必ず <code>Default</code>、最大 32 個。並びの番号がスクリプトの <code>CollisionLayer</code> の値になる</td></tr>
       <tr><td><span class="path">InputActions.json</span></td><td>入力アクション（<code>id</code>・<code>display</code>・<code>context</code>・<code>defaults</code>）。<a href="#editor-settings-keyconfig">書き方</a></td></tr>
       <tr><td><span class="path">CVars.json</span></td><td>既定から変えたプロジェクト全体の CVar（<code>"r.TAA.Enabled": false</code> のような名前と値）</td></tr>
@@ -10120,6 +10132,13 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-57-0">v0.57.0 <span class="dim">（2026-11-04）</span></h3>
+  <p>ゲームの書き出しで、書き出すシーンを選べるようにした版です。外したシーンと、そのシーンだけが使うアセットを書き出さないので、テスト用のシーンを持つプロジェクトの書き出しが小さくなります。チェックを外さなければ、今までと同じものを書き出します。</p>
+  <ul>
+    <li><strong>書き出すシーン</strong>：書き出しの窓にシーンの一覧を出し、チェックを外したシーンのフォルダと、そのシーンからだけ使うモデル・テクスチャ・音（と <span class="path">.meta</span>）を書き出さないようにしました。残したシーン・プレハブ・マテリアル・データ・設定・スクリプトの文字列から使うものは書き出し、どのシーンも使わないアセットも今までどおり書き出します。起動シーンは外せません。外したシーンは <span class="path">Project.json</span> の <code>exportExcludedScenes</code> に保存します（<a href="#export-scenes">書き出すシーンを選ぶ</a>）。</li>
+    <li><strong>外したシーンの名前の警告</strong>：スクリプトに外したシーンの名前の文字列があると、書き出しの窓に出します（<code>Scene::ChangeScene</code> で開くシーンを外していないかの目安）。</li>
+  </ul>
 
   <h3 id="changelog-v0-56-1">v0.56.1 <span class="dim">（2026-11-04）</span></h3>
   <p>エディタの停止中に、骨の入ったモデルが見えなかった不具合を直した版です。</p>
