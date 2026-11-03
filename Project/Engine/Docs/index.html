@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.56.0">
+<meta name="engine-version" content="0.56.1">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -9327,7 +9327,6 @@ kbd {
     <li><strong>開く</strong>CoreEngineGames の <span class="path">Projects/Sandbox</span> を選ぶ画面の <span class="ui">追加…</span> で開き、Project の <span class="path">Scenes</span> から <code>OkinawaBeachScene</code> を開きます。</li>
     <li><strong>遊ぶ</strong><kbd>Ctrl</kbd>+<kbd>P</kbd>。カメラの向きを前として WASD（左スティック）で歩き、<kbd>Shift</kbd>（左スティックの押し込み）を押している間は走ります。カメラは矢印キー（右スティック）か右ドラッグで回り、ホイールで寄ります。歩いている間も回せます。</li>
   </ol>
-  <p>停止中はスキンモデルの姿勢が計算されないので、人型は再生するまで見えません。</p>
   <p>カメラを回す操作は、Sandbox の <span class="path">InputActions.json</span> に足した入力アクション <code>LookUp</code>・<code>LookDown</code>・<code>LookLeft</code>・<code>LookRight</code>（矢印キー・右スティック）です。移動と同時に入れられるよう、Sandbox では矢印キーを移動（<code>MoveForward</code> など）から外しています。</p>
 
   <h2 id="beach-player-scene">シーンのオブジェクト</h2>
@@ -10121,6 +10120,12 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-56-1">v0.56.1 <span class="dim">（2026-11-04）</span></h3>
+  <p>エディタの停止中に、骨の入ったモデルが見えなかった不具合を直した版です。</p>
+  <ul>
+    <li><strong>停止中のスキンモデル</strong>：<a href="#api-Animator">アニメーション</a> を付けたモデル（人型やウミガメ）は、姿勢を再生中にしか作っていなかったので、停止中は全部の頂点が 1 点に潰れて見えませんでした。モデルを読み込んだときに、最初のクリップの最初のコマの姿勢を作るようにしました。再生中の動きは変わりません。</li>
+  </ul>
 
   <h3 id="changelog-v0-56-0">v0.56.0 <span class="dim">（2026-11-03）</span></h3>
   <p>シーンに水面を何枚でも置けるようにした版です。海のほかに池やプールを置くと、それぞれの見た目と水質で描かれ、浮力と水面の高さを調べるもその水面で効きます。水面が 1 枚のシーンの見た目は変わりません。</p>
@@ -16048,7 +16053,7 @@ class PlayerWalker : ScriptComponent
         ]
       }
     ],
-    notes: "<ul><li>クリップの一覧（名前とモデル内のアニメーション名の対応）はインスペクタでは編集できず、保存データ（シーンやプレハブの JSON）の <code>clips</code> に書きます。サンプル TestBed の <span class=\"path\">Prefabs/Physics/HumanModel.prefab</span> が見本です。</li><li>最初のクリップは自動で再生されます。</li></ul>",
+    notes: "<ul><li>クリップの一覧（名前とモデル内のアニメーション名の対応）はインスペクタでは編集できず、保存データ（シーンやプレハブの JSON）の <code>clips</code> に書きます。サンプル TestBed の <span class=\"path\">Prefabs/Physics/HumanModel.prefab</span> が見本です。</li><li>最初のクリップは自動で再生されます。停止中（編集中）は、最初のクリップの最初のコマの姿勢で見えます。</li></ul>",
     examples: [
       {
         title: "例：止まる・歩くを切り替える",

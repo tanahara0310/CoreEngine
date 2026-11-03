@@ -132,6 +132,9 @@ namespace CoreEngine
         instance->SetAnimationPlayer(std::make_unique<AnimationPlayer>(
             resource, std::move(skeletonAnimator), std::move(factory)));
 
+        // 時刻を進めずに最初のコマの姿勢でボーン行列を作る（Update が回らない停止中もこの姿勢で描く）
+        instance->UpdateAnimation(0.0f);
+
         return instance;
     }
 
